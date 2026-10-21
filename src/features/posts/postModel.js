@@ -515,6 +515,23 @@ export const wantsPost = (s) => {
   // "Yarış için görsel oluştur", "Cumhuriyet yarışının afişini hazırla": Instagram denmese de yarış/duyuru görseli gönderidir
   return /(görsel|afiş|poster)/.test(t) && /(hazırla|oluştur|yap\b|yapalım|çıkar|tasarla|üret)/.test(t) && /(yarış|kupa|için|duyuru|tebrik|bayram|kutlama|29 ekim|10 kasım|19 mayıs|23 nisan|30 ağustos)/.test(t);
 };
+// Kayıtlı gönderiyi açma (ana asistan): "Atatürk Kupası'nın görselini aç", "yarışın Instagram gönderisini göster"
+// (hazırla / oluştur değil; o wantsPost)
+export const wantsPostOpen = (s) => {
+  const t = String(s || "").toLocaleLowerCase("tr-TR");
+  if (/mesaj|(hazırla|oluştur|tasarla|üret|çiz|yap\b|yapalım)/.test(t)) return false;
+  return /(görsel|gönderi(?!l)|gönderisi|[iı]nstagram|[iı]nsta\b|afiş|\bpost)/.test(t) && /(?<![\p{L}])aç(?![\p{L}])|açar mısın|açsana|göster|getir/u.test(t);
+};
+// Söylenen gönderi isteğinde yarışı belirten başka bir şey yok mu ("Instagram görseli hazırla", "bunun için afiş yap"):
+// öyleyse sohbetin az önceki yarışına (ya da açık yarış sayfasına) bağlanır (Seyhun, 2026-10-21)
+const POST_FILLER = /^(bir|bi|de|da|ve|için|icin|bunun|onun|şunun|bu|şu|buna|ona|yarış\S*|kupa\S*|[iı]nstagram\S*|[iı]nsta\S*|görsel\S*|gönderi\S*|paylaşım\S*|post\S*|afiş\S*|poster\S*|hazırla\S*|oluştur\S*|yap\S*|tasarla\S*|üret\S*|çıkar\S*|aç\S*|göster\S*|getir\S*|bana|lütfen|hemen|şimdi|da|onu)$/u;
+export const postGeneric = (s) =>
+  String(s || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[.,!?'’]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((w) => POST_FILLER.test(w));
 // Gönderi ekranında görsel isteği: "gün batımında teknelerle görsel üret", "başka resim yap"
 export const wantsPostImage = (s) => {
   const t = String(s || "").toLocaleLowerCase("tr-TR");

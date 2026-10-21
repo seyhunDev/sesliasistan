@@ -13,7 +13,8 @@ const startOfDay = (now) => {
 const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
 // Varsayılan kapsam: bugün (gece yarısından beri). meta: { version, voice, quick, device }
-export function reportText({ now = Date.now(), since = startOfDay(now), list = timingList(), errors = timingErrors(), meta = {} } = {}) {
+// session: tek konuşmanın raporu (asistan kapanınca kaydedilir, lib/assistLog.js)
+export function reportText({ now = Date.now(), since = startOfDay(now), list = timingList(), errors = timingErrors(), meta = {}, session = false } = {}) {
   const rows = list.filter((r) => r.at >= since).sort((a, b) => a.at - b.at);
   const errs = errors.filter((e) => e.at >= since).sort((a, b) => a.at - b.at);
   const totals = rows.map((r) => timingSteps(r).total).filter((t) => t > 0);
@@ -22,7 +23,7 @@ export function reportText({ now = Date.now(), since = startOfDay(now), list = t
   const failed = rows.filter((r) => r.info?.err).length;
   const head = [
     `ASİSTAN RAPORU · ${new Date(now).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })} ${hm(now)}`,
-    `Kapsam: bugün ${hm(since)}'den beri, bu cihaz`,
+    session ? `Kapsam: bu konuşma (${hm(since)}'de açıldı), bu cihaz` : `Kapsam: bugün ${hm(since)}'den beri, bu cihaz`,
     meta.version && `Sürüm: ${meta.version}`,
     meta.device && `Cihaz: ${meta.device}`,
     `Sesli yanıt: ${meta.voice ? "açık" : "kapalı"} · Hazır cevaplar: ${meta.quick ? "açık" : "kapalı"}`,
@@ -62,4 +63,19 @@ export function reportText({ now = Date.now(), since = startOfDay(now), list = t
 export function reportAsk(s) {
   const t = String(s || "").toLocaleLowerCase("tr-TR").replace(/[.!?,]+/g, " ").replace(/\s+/g, " ").trim();
   return /^(bana )?(asistan(ın)? |test )?rapor(u|unu)? ?(oluştur|hazırla|çıkar|ver|paylaş|göster|yap)\p{L}*( bana)?$/u.test(t) || /^(asistan|test) raporu$/.test(t);
+}
+
+// Raporun başındaki cihaz bilgisi (yalnız tarayıcıda): sürüm, cihaz, sesli yanıt, hazır cevaplar
+export function reportDevice() {
+  const ua = navigator.userAgent || "";
+  const os = /iPhone|iPad/.test(ua) ? `iOS ${(/OS (\d+[_\d]*)/.exec(ua)?.[1] || "").replace(/_/g, ".")}` : /Android/.test(ua) ? "Android" : /Mac/.test(ua) ? "Mac" : "Bilgisayar";
+  const app = window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone ? "ana ekran uygulaması" : "tarayıcı";
+  return `${os}, ${app}`;
+}
+export function reportVoiceOn() {
+  try {
+    return localStorage.getItem("sa_tts_on") === "1";
+  } catch {
+    return false;
+  }
 }

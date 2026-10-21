@@ -46,7 +46,7 @@ import { briefOf, briefText } from "@/lib/brief";
 const DIRECT = [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15];
 
 export async function run(ctx, t, viaVoice = false, fresh = false) {
-  const { askAI, askAll, chatRestore, askTasks, askTo, askedMore, athAsk, attAsk, attHere, cancelPending, cards, chainRace, chainStep, confirmPending, contacts, continuePerson, convo, createAs, curRace, done, drafts, dropDrafts, eventFlow, finish, flowOf, focusRef, goRace, heldQ, invAsk, invDelete, invFlow, invPage, isStaff, logFlow, members, memo, msgDraft, myKind, notes, okFlow, openBirthday, openNav, openRace, owner, park, planTimeAsk, updateRecord, by, parked, past, pastOn, pastTurns, path, personFlow, planCutN, planLearn, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFollow, raceOrg, racer, races, refineDrafts, reply, run, runAttendance, runDebt, runEvent, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, saveBirthday, saveDraftsNow, setCards, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setText, setTurns, setVoice, setWork, skipRace, startPerson, startPlan, startPost, tasks, toast, tts, turns, waitFor } = ctx;
+  const { askAI, askAll, chatRestore, askTasks, askTo, askedMore, athAsk, attAsk, attHere, cancelPending, cards, chainRace, chainStep, confirmPending, contacts, continuePerson, convo, createAs, curRace, done, drafts, dropDrafts, eventFlow, finish, flowOf, focusRef, goRace, heldQ, invAsk, invDelete, invFlow, invPage, isStaff, logFlow, members, memo, msgDraft, myKind, notes, okFlow, openBirthday, openNav, openPost, openRace, owner, park, planTimeAsk, updateRecord, by, parked, past, pastOn, pastTurns, path, personFlow, planCutN, planLearn, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFollow, raceOrg, racer, races, refineDrafts, reply, run, runAttendance, runDebt, runEvent, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, saveBirthday, saveDraftsNow, setCards, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setText, setTurns, setVoice, setWork, skipRace, startPerson, startPlan, startPost, tasks, toast, tts, turns, waitFor } = ctx;
   const s = cleanSay(t); // dolgu söz, kekemelik, Türkçe harfsiz yazım, bozuk iş fiilleri ("şey ııı", "foca yarisini ac", "yarışı oluru")
   if (!s) return toast("Yaz veya mikrofona bas");
   timingStart(s, viaVoice);
@@ -330,6 +330,8 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
       // Instagram gönderisi: yeni gönderi açılır, yarış ve sporcular bağlanır, yazıları yapay zeka yazar
       case "post":
         return startPost(s, viaVoice), true;
+      case "postOpen":
+        return openPost(s, viaVoice), true;
       // Tek yarışı açma: yerel eşleştirme, emin değilse yapay zeka, yine olmazsa seçenekler
       case "raceOpen":
         if (raceOrg && !races.current.length) races.current = await loadRaces(raceOrg).catch(() => []);
