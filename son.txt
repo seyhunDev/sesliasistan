@@ -1,8 +1,8 @@
-Commit: 7687d1d · Asistan: sesle önemli plan (yeni planda ve var olan planda önemli yap / çıkar) (#662)
-Zaman: 2026-10-22-0000 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39674063998
+Commit: 7687d1d (kaydedilmemiş değişiklikle) · Asistan: sesle önemli plan (yeni planda ve var olan planda önemli yap / çıkar) (#662)
+Zaman: 2026-10-22-0016 (İstanbul)
+Çalıştırma: Mac (npm run test:hepsi)
 
-TAM TEST · 21.10.2026 23:54:01
+TAM TEST · 22.10.2026 00:06:59
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,27 +20,24 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1342/1371 geçti · 29 kalan · 407 sn
+SONUÇ: 1363/1371 geçti · 8 kalan · 591 sn
 ======================================================================
 
-1. BİRİM TESTLERİ: 1/1
-  ✓ Birim testleri: 1/1
+1. BİRİM TESTLERİ: 0/1
+  ✗ Birim testleri: 0/1
+      ✗ “3633 test”
+          beklenen: hepsi geçer
+          olan:     3632/3633 geçti
+      ✗ “700 satır okunur” → HATA: Cannot read properties of undefined (reading 'book_new') (beklenen: 500 sınırı yüklemede yok, yalnız gelenler saklanır)
 
-2. ANLAMA: temiz cümleler: 117/121
+2. ANLAMA: temiz cümleler: 121/121
   ✓ Temiz cümle: Plan / takvim: 8/8
   ✓ Temiz cümle: Görev: 6/6
   ✓ Temiz cümle: Not: 3/3
   ✓ Temiz cümle: Mesaj: 10/10
-  ✗ Temiz cümle: Soru: 5/8
-      ✗ “Dün antrenmana kimler geldi?”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “Antrenmana Ali geldi mi?”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “Kaç sporcumuz var?”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     clubAsk
+  ✓ Temiz cümle: Soru: 5/5
+  ✓ Temiz cümle: Soru (yoklamadan): 2/2
+  ✓ Temiz cümle: Soru (kulüp verisinden): 1/1
   ✓ Temiz cümle: Yoklama: 6/6
   ✓ Temiz cümle: Yoklama (yoklama sayfasında): 3/3
   ✓ Temiz cümle: Antrenman günlüğü: 3/3
@@ -61,78 +58,18 @@ SONUÇ: 1342/1371 geçti · 29 kalan · 407 sn
   ✓ Temiz cümle: Etkinlik: 2/2
   ✓ Temiz cümle: Ders programı: 1/1
   ✓ Temiz cümle: Arama: 2/2
-  ✗ Temiz cümle: Sayfa açma: 9/10
-      ✗ “Instagram'ı aç.”
-          beklenen: sayfa aç
-          olan:     postOpen
+  ✓ Temiz cümle: Sayfa açma: 10/10
   ✓ Temiz cümle: Kapatma: 4/4
   ✓ Temiz cümle: Kapatma (soru sonrası): 2/2
   ✓ Temiz cümle: Geri al: 1/1
   ✓ Temiz cümle: çok iş: 18/18
 
-2. ANLAMA: insan ve ses tanıma hataları: 609/630
-  ✗ Bozuk: noktalamasız: 117/121
-      ✗ “Dün antrenmana kimler geldi”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “Antrenmana Ali geldi mi”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “Kaç sporcumuz var”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     clubAsk
-      ✗ “Instagram'ı aç”
-          beklenen: sayfa aç
-          olan:     postOpen
-  ✗ Bozuk: küçük harf, kesme işaretsiz: 117/121
-      ✗ “dün antrenmana kimler geldi”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “antrenmana ali geldi mi”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “kaç sporcumuz var”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     clubAsk
-      ✗ “ınstagramı aç”
-          beklenen: sayfa aç
-          olan:     postOpen
-  ✗ Bozuk: Türkçe harfsiz (klavye): 99/102
-      ✗ “Dun antrenmana kimler geldi?”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “Kac sporcumuz var?”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     clubAsk
-      ✗ “Instagram'i ac.”
-          beklenen: sayfa aç
-          olan:     postOpen
-  ✗ Bozuk: dolgu sözlü (şey, ııı): 117/121
-      ✗ “şey ııı Dün antrenmana kimler geldi?”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “şey ııı Antrenmana Ali geldi mi?”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “şey ııı Kaç sporcumuz var?”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     clubAsk
-      ✗ “şey ııı Instagram'ı aç.”
-          beklenen: sayfa aç
-          olan:     postOpen
-  ✗ Bozuk: kekeme (ilk söz iki kez): 117/121
-      ✗ “Dün Dün antrenmana kimler geldi?”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “Antrenmana Antrenmana Ali geldi mi?”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “Kaç Kaç sporcumuz var?”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     clubAsk
-      ✗ “Instagram'ı Instagram'ı aç.”
-          beklenen: sayfa aç
-          olan:     postOpen
+2. ANLAMA: insan ve ses tanıma hataları: 628/630
+  ✓ Bozuk: noktalamasız: 121/121
+  ✓ Bozuk: küçük harf, kesme işaretsiz: 121/121
+  ✓ Bozuk: Türkçe harfsiz (klavye): 102/102
+  ✓ Bozuk: dolgu sözlü (şey, ııı): 121/121
+  ✓ Bozuk: kekeme (ilk söz iki kez): 121/121
   ✓ Gerçek hata: yanlış duyulan fiil (oluru, hazirla): 1/1
   ✓ Gerçek hata: aynı cümle, Türkçe harfsiz ve noktasız: 1/1
   ✓ Gerçek hata: yanlış duyulan fiil + sonra: 1/1
@@ -167,17 +104,17 @@ SONUÇ: 1342/1371 geçti · 29 kalan · 407 sn
   ✓ Gerçek hata: mesaj, yoklama sanılmamalı: 1/1
   ✗ Gerçek hata: soru, yoklama yazılmamalı: 0/2
       ✗ “bugün antremana kimler geldi”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
+          beklenen: görev listesi: attQuery + yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     tek iş sanıldı, hepsi → attQuery (diğer işler yapılmaz)
       ✗ “mustafa geldi mi antrenmana”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
+          beklenen: görev listesi: attQuery + yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     tek iş sanıldı, hepsi → attQuery (diğer işler yapılmaz)
   ✓ Gerçek hata: mesaj, kapatma sanılmamalı: 1/1
   ✓ Gerçek hata: optimist → optimus: 1/1
   ✓ Gerçek hata: noktasız (yoklama sayfasında): 1/1
   ✓ Gerçek hata: yazım hatası (gönderi ekranında): 1/1
 
-2. ANLAMA: insan davranışları (düzeltme, vazgeçme, onay, tekrar, soru/komut, öğrenme): 185/187
+2. ANLAMA: insan davranışları (düzeltme, vazgeçme, onay, tekrar, soru/komut, öğrenme): 187/187
   ✓ Mesaj kartına cevap (gönder / vazgeç / değiştir): 45/45
   ✓ Kayıt taslağına cevap (kaydet / vazgeç / değiştir): 24/24
   ✓ “Başka bir isteğin var mı?” cevabı: 19/19
@@ -185,13 +122,7 @@ SONUÇ: 1342/1371 geçti · 29 kalan · 407 sn
   ✓ Yeni cümle: Düzeltme: 8/8
   ✓ Yeni cümle: Vazgeçme: 7/7
   ✓ Yeni cümle: Gönderme: 9/9
-  ✗ Yeni cümle: Soru / komut: 11/13
-      ✗ “Ali geldi mi”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
-      ✗ “Ali bugün geldi mi antrenmana”
-          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     attQuery
+  ✓ Yeni cümle: Soru / komut: 13/13
   ✓ Yeni cümle: Tekrar: 6/6
   ✓ Yeni cümle: Kibar / sokak ağzı: 12/12
   ✓ Uzun, dağınık anlatım (yapay zeka cevap vermezse): 4/4
@@ -204,16 +135,16 @@ SONUÇ: 1342/1371 geçti · 29 kalan · 407 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 63/63
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 62/63
   ✓ Sunucu ucu: girişsiz istek reddedilir: 17/17
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
+  ✗ Sayfa açılıyor (girişsiz → giriş ekranı): 43/44
+      ✗ “/athletes/races/x1/media”
+          beklenen: çökmez, giriş ekranına yönlendirir
+          olan:     404 · → /athletes/races/x1/media
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 103/105
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 101/105
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
@@ -224,13 +155,22 @@ SONUÇ: 1342/1371 geçti · 29 kalan · 407 sn
   ✓ Önceki sohbetler: 3/3
   ✓ Sesli yanıt: 8/8
   ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
-  ✗ Onay isteyen işler: 9/10
-      ✗ “Ege'ye yaz … → “gönder””
-          beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 14 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+  ✓ Onay isteyen işler: 10/10
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
-  ✓ Asistanın gizli olduğu yerler: 8/8
+  ✗ Asistanın gizli olduğu yerler: 4/8
+      ✗ “Yarış multimedya açılışı”
+          beklenen: dün antrenman günü varken bugün seçili, son yarış günü değil
+          olan:      · bugün 2026-10-22
+      ✗ “Yarış multimedya: arkadan dönüş”
+          beklenen: başka gün seçiliyken uygulamaya 1 dk sonra dönünce yine bugün
+          olan:     
+      ✗ “Yarış multimedya: sayaç”
+          beklenen: ana düğme Başlat → Durdur → Devam; durunca kartta Sıfırla; start yarış açmaz
+          olan:     hata: locator.click: Timeout 5000ms exceeded.
+      ✗ “Yarış multimedya: denemeleri sıfırla”
+          beklenen: Liste › Denemeleri sıfırla → 1 eklenen gün yazar, Sıfırla'dan sonra dünkü gün kalkar
+          olan:     hata: Liste: locator.click: Timeout 5000ms exceeded.
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
