@@ -1,8 +1,8 @@
-Commit: 7687d1d (kaydedilmemiş değişiklikle) · Asistan: sesle önemli plan (yeni planda ve var olan planda önemli yap / çıkar) (#662)
-Zaman: 2026-10-22-0038 (İstanbul)
-Çalıştırma: Mac (npm run test:hepsi)
+Commit: c1b6fa0 · Testler: örnek cümlelere kişi listesi, Instagram'ı aç sayfayı açar, yoklama/kulüp sorusu beklentisi (#663)
+Zaman: 2026-10-22-0046 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39680548350
 
-TAM TEST · 22.10.2026 00:31:20
+TAM TEST · 22.10.2026 00:39:47
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,15 +20,11 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1370/1371 geçti · 1 kalan · 405 sn
+SONUÇ: 1370/1371 geçti · 1 kalan · 420 sn
 ======================================================================
 
-1. BİRİM TESTLERİ: 0/1
-  ✗ Birim testleri: 0/1
-      ✗ “3633 test”
-          beklenen: hepsi geçer
-          olan:     3632/3633 geçti
-      ✗ “700 satır okunur” → HATA: Cannot read properties of undefined (reading 'book_new') (beklenen: 500 sınırı yüklemede yok, yalnız gelenler saklanır)
+1. BİRİM TESTLERİ: 1/1
+  ✓ Birim testleri: 1/1
 
 2. ANLAMA: temiz cümleler: 121/121
   ✓ Temiz cümle: Plan / takvim: 8/8
@@ -134,7 +130,7 @@ SONUÇ: 1370/1371 geçti · 1 kalan · 405 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 105/105
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 104/105
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
@@ -146,7 +142,10 @@ SONUÇ: 1370/1371 geçti · 1 kalan · 405 sn
   ✓ Önceki sohbetler: 3/3
   ✓ Sesli yanıt: 8/8
   ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
-  ✓ Onay isteyen işler: 10/10
+  ✗ Onay isteyen işler: 9/10
+      ✗ “Ege'ye yaz … → “gönder””
+          beklenen: sesle onaylanınca mesaj gider
+          olan:     “ay zeka 17 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
