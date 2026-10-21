@@ -213,6 +213,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   const sttNames = [...new Set([...staffNames, ...contacts.map((c) => c.name), ...athNames])].slice(0, 60);
   const sp = useSpeech({
     noLevel: true, // ses seviyesi dalgaya (ListenWave) doğrudan gider; burada saniyede 10 yeniden çizim olmasın
+    hold: true, // asistan açıkken aynı mikrofon (kayıt yolu): her turda yeniden açılan mikrofon iPhone'da ses vermeyebiliyordu
     names: sttNames,
     terms: racer ? raceNames().slice(0, 12) : [],
     onFinal: (raw, mode) => {
@@ -819,7 +820,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   useEffect(() => {
     if (!open) {
       cancelRun();
-      sp.cancel();
+      sp.release(); // dinlemeyi iptal eder, tutulan mikrofonu bırakır (iPhone'da kayıt işareti söner)
       startedFor.current = null;
       setBooting(false);
       // Kapanma animasyonu bitince temizle: bir sonraki açılışta eski konuşma görünmesin (yapay zekanın bağlamında kalır)

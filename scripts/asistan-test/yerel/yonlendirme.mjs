@@ -729,12 +729,18 @@ group("Yönlendirme: afiş Kulüpten haberler'e")([
   ]);
 }
 
-// Hazır kalıp (src/data/hazir-kaliplar.json): dosyadaki kayıt cümlesi yapay zekaya gitmeden yerelde kaydedilir
+// Yapay zeka önce (2026-10-21): Hazır cevaplar kapalıyken hazır kalıp ve yerel kayıt/soru cevabı yok; yerelde yalnız
+// cihaz işleri. Açıkken (quick) hazır kalıp yerelde kaydedilir.
 {
   const { routesOf } = await import("@/lib/assistRoute");
-  const first = (x) => routesOf(x, { owner: true, today }).find((r) => r.id !== "more");
-  group("Yönlendirme: hazır kalıp")([
-    ["yarın 10'da antrenman ekle", { desc: "yerel kayıt (hazır)", fn: first, ok: (r) => r?.id === "local" && r.cmd?.ready === true }],
-    ["yarın 10'da kürek antrenmanı ekle", { desc: "dosyada yok: yapay zeka", fn: first, ok: (r) => r?.id === "ai" }],
+  const first = (x, quick = false) => routesOf(x, { owner: true, today, quick }).find((r) => r.id !== "more");
+  group("Yönlendirme: yapay zeka önce")([
+    ["yarın 10'da antrenman ekle", { desc: "hazır kalıp da yapay zekaya", fn: first, ok: (r) => r?.id === "ai" }],
+    ["not al malzeme odası dolu", { desc: "kayıt yapay zekaya", fn: first, ok: (r) => r?.id === "ai" }],
+    ["bugün plan var mı", { desc: "soru yapay zekaya", fn: first, ok: (r) => r?.id === "ai" }],
+    ["yarın 10'da antrenman ekle", { desc: "Hazır cevaplar açık: yerel kayıt (hazır)", fn: (x) => first(x, true), ok: (r) => r?.id === "local" && r.cmd?.ready === true }],
+    ["yarın 10'da kürek antrenmanı ekle", { desc: "Hazır cevaplar açık, dosyada yok: yapay zeka", fn: (x) => first(x, true), ok: (r) => r?.id === "ai" }],
+    ["fiş çek", { desc: "fiş kamerası yerelde", fn: first, ok: (r) => r?.id === "local" && r.cmd?.type === "receipt" }],
+    ["yarışlar sayfasını aç", { desc: "sayfa açma yerelde", fn: first, ok: (r) => r?.id === "navigate" || (r?.id === "local" && r.cmd?.type === "navigate") }],
   ]);
 }

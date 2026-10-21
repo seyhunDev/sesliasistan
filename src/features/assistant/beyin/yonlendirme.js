@@ -22,6 +22,7 @@ import { postHandler } from "@/features/posts/posts";
 import { openChat, lastSentChat } from "@/features/chat/ChatProvider";
 import { listsFor } from "@/features/shop/shop";
 import { routesOf, EARLY } from "@/lib/assistRoute";
+import { quickOn } from "@/lib/quickMode";
 import { routeFromAct, withAct } from "@/lib/actRun";
 import { takeAct } from "./gorevListesi";
 import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
@@ -85,7 +86,9 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   if (!chained) scoreStart(s, { awaiting: !!cards.awaiting || drafts.length > 0, yes: isYes(s) });
   // Hızlı bilgi isteği ("notlarımı oku", "yarın planda neler var", "haftalık özet çıkar"): uzun cümlenin içinde de olsa
   // yapay zekaya gitmeden telefonda cevaplanır ve okunur; cümlede başka iş varsa o kısım cevap okunduktan sonra kendi yoluna gider
-  const brief = !chained && !msgFirst && !cards.awaiting && !drafts.length ? briefOf(s) : null;
+  // Yapay zeka önce: Hazır cevaplar (Ayarlar › Öğrenme) kapalıyken özet soruları da yapay zekaya gider, cevap bir kez okunur
+  const quick = quickOn();
+  const brief = quick && !chained && !msgFirst && !cards.awaiting && !drafts.length ? briefOf(s) : null;
   if (brief) {
     if (ctx.readMode) ctx.readMode.current = !brief.rest; // kalan iş varsa okuma bitince mikrofon açılmaz, iş sürer
     setTurns((p) => [...p, { role: "user", text: s }]);
@@ -263,7 +266,7 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
     races: races.current, raceNames: raceNames(), names: contacts.map((c) => c.name), logHere: !!logPlan || path === "/training",
     invPage, fitHere: path === "/fitness" || !!fp?.fit, foodHere: path === "/fitness" && /tab=food/.test(window.location.search), attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
     prefer: preferRef.current, skipRace: skipRace.current, shop: shopLists.length > 0, focus: !!focusRef.current, memo: memo.current, plans, tasks, notes,
-    guide: !!guideHandler(), chatHere: !!openChat(), myFit: mine.length > 0, myFitToday: !!planOf(mine, todayStr()), fitPeople,
+    quick, guide: !!guideHandler(), chatHere: !!openChat(), myFit: mine.length > 0, myFitToday: !!planOf(mine, todayStr()), fitPeople,
   });
   // Görev listesinin numaralı işi (4-15): yol önceden belli, komut alanlardan hazır (cümle yeniden okunmaz; actRun.js)
   const routes = chained ? withAct(found, routeFromAct(takeAct(ctx, DIRECT), { today: todayStr() })) : found;

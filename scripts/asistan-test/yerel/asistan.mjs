@@ -122,7 +122,7 @@ const { precue } = await import("@/lib/precue");
 const pcWx = (d) => (d === tom ? [{ hh: "16", wind: 13.6 }] : []);
 const PC = (desc, ok) => ({ desc, fn: (s) => precue(s, { plans: data.plans, today, weatherRows: pcWx }), ok });
 group("Ön cevap")([
-  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, kısa ve çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && r.slots.date === tom && /^Tamam, planı hazırlıyorum\. /.test(r.line) && /Yönetim kurulu toplantısı” planın da var/.test(r.line) && /^Bilgin olsun, o saatlerde/.test(r.info) && /söylendi: "Bilgin olsun, o saatlerde/.test(r.hint))],
+  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, kısa ve çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && r.slots.date === tom && /^Tamam, planı hazırlıyorum\. /.test(r.line) && /Yönetim kurulu toplantısı” planın da var/.test(r.line) && /^Bilgin olsun, o saatlerde/.test(r.info) && /henüz söylenmedi[^"]*"Bilgin olsun, o saatlerde/.test(r.hint))],
   ["yarın 16'da yarış antrenmanı var", PC("plan, o saatte rüzgâr", (r) => r?.kind === "plan" && /rüzgâr 14 knot/.test(r.line))],
   ["cumartesi yarış planla", PC("plan, ne yaptığını söyler", (r) => r?.kind === "plan" && /^Tamam, planı hazırlıyorum\./.test(r.line) && r.work === "Plan hazırlanıyor")],
   ["Ali'ye motoru kontrol etmesini hatırlat", PC("görev", (r) => r?.kind === "task")],

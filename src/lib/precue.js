@@ -180,7 +180,7 @@ function nowHm() {
 // Yapay zekaya: kullanıcıya ne söylendiği ve telefonun ne anladığı (doğruysa tamamlasın, yanlışsa düzeltsin)
 function hintOf(said, { kind = "", date = "", time = "" }) {
   const got = [kind && `tür=${kind}`, date && `tarih=${date}`, time && `saat=${time}`].filter(Boolean).join(", ");
-  return [said && `Kullanıcıya az önce şu söylendi: "${said}"`, got && `Telefonun ilk anladığı: ${got}`].filter(Boolean).join("\n");
+  return [said && `Veriden ilgili bilgi (kullanıcıya henüz söylenmedi; gerekiyorsa cevabında kısaca söyle): "${said}"`, got && `Telefonun ilk anladığı: ${got}`].filter(Boolean).join("\n");
 }
 
 function addDays(date, n) {
