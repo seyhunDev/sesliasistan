@@ -128,7 +128,8 @@ export function ownedBy(own, here) {
 export function takeTimer(remote, mine, first, now) {
   if (!remote) return false;
   if (JSON.stringify(pickTimer(remote)) === JSON.stringify(pickTimer(mine))) return false;
-  if (first) return remote.end != null && now < remote.end + (UP_MAX + 1) * 1000;
+  // Açılışta: yalnız süren sayaç; bu telefonda ondan sonra (ör. antrenmanda Bitir) yazılmış sayaç varsa eski kayıt geri gelmez
+  if (first) return remote.end != null && now < remote.end + (UP_MAX + 1) * 1000 && !((mine?.at || 0) > (remote.at || 0));
   return true;
 }
 // Start dizisi şeridi (Yarış Kuralları 26): 5 dk'da uyarı, 4'te hazırlık, 1'de son dakika, 0'da start. Süre kısaysa olmayanlar düşer.
