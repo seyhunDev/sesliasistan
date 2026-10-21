@@ -15,6 +15,7 @@ import { UsageRow } from "@/features/settings/Usage";
 import { CallsRow } from "@/features/settings/Calls";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { ProbeRow, TimingRow } from "@/features/settings/Timing";
+import { PastChatsRow } from "@/features/settings/PastChats";
 import { buildLine } from "@/lib/buildInfo";
 import { logout } from "@/lib/auth";
 import { KIND_LABEL, kindOf } from "@/lib/kinds";
@@ -120,6 +121,7 @@ export default function SettingsPage() {
         <Fold title="Öğrenme" sub={profile.brainOff ? "Kapalı" : "Açık"}>
           <BrainCard bare owner />
         </Fold>
+        <PastChatsRow />
         <PermissionsRow />
       </Group>
 

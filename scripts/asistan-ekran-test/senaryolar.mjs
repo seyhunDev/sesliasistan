@@ -135,7 +135,12 @@ export async function run(server, log = () => {}) {
         const t = tasksReply(body?.text || "");
         return t ? json({ tasks: t }) : json({ error: "yok" }, 503);
       }
-      if (u.pathname === "/api/transcribe") return json({ text: transcript });
+      if (u.pathname === "/api/transcribe") {
+        // transcript işlev olabilir: ({ partial }) → metin (son çeviriyi ara yazıdan ayırmak için)
+        if (typeof transcript !== "function") return json({ text: transcript });
+        const raw = route.request().postDataBuffer()?.toString("latin1") || "";
+        return json({ text: transcript({ partial: /name="partial"/.test(raw) }) });
+      }
       if (u.pathname === "/api/soz") {
         const t = sozReply(body || {});
         return t ? json({ text: t, ms: 1, model: "taklit" }) : json({ error: "yok", reason: "other" }, 503);
@@ -196,6 +201,7 @@ export async function run(server, log = () => {}) {
   };
   // Açık sohbette yeni söz (konuşarak): Konuş düğmesi → söyle → Gönder
   const talkAsk = async (page, text) => {
+    const sr0 = await page.evaluate(() => window.__t.srStarts);
     if (!(await page.locator(".afull.afull-in").count())) {
       await waitFor(async () => !(await full(page).count()), 2000); // kapanış animasyonu bitsin
       await orb(page).click();
@@ -205,14 +211,27 @@ export async function run(server, log = () => {}) {
       await btn(page, "Konuş").click({ timeout: 5000 });
     }
     if (!(await waitFor(async () => (await state(page)) === "listening", 4000))) throw new Error(`dinlemeye geçmedi (durum: ${await state(page)})`);
-    await say(page, text);
-    await page.waitForTimeout(150);
+    // Kayıt yolu (sesli yanıt açıkken, telefonun tanıması başlamadı): söz sunucu çevirisinden gelir. Okumadan hemen sonra
+    // mikrofon 0,6 sn bekleyip açılır (playback.js): telefonun tanıması başlayana kadar beklenir
+    await waitFor(async () => (await page.evaluate(() => window.__t.srStarts)) > sr0, 1200);
+    const viaServer = (await page.evaluate(() => window.__t.srStarts)) === sr0;
+    const prev = transcript;
+    if (viaServer) transcript = text;
+    else await say(page, text);
+    await page.waitForTimeout(viaServer ? 1200 : 150);
     const send = btn(page, "Gönder");
     if (!(await waitFor(() => send.count(), 3000))) {
       const labels = await page.locator("[data-dome] button[aria-label]").evaluateAll((l) => l.map((b) => b.getAttribute("aria-label")));
       throw new Error(`Gönder düğmesi yok (durum: ${await state(page)}; düğmeler: ${labels.join(", ")})`);
     }
+    const tr0 = calls.filter((c) => c.path === "/api/transcribe").length;
     await send.click({ timeout: 5000 });
+    if (viaServer) {
+      // Son çeviri isteği gidene kadar (boşsa ham sesle ikinci deneme de) söz yerinde kalır
+      await waitFor(async () => calls.filter((c) => c.path === "/api/transcribe").length > tr0 && (await state(page)) !== "listening", 9000);
+      await page.waitForTimeout(1500);
+      transcript = prev;
+    }
   };
   // Asistanı kapat: dinliyorsa önce dinlemeyi bırak, sonra × (Konuşmayı bitir)
   const closeAll = async (page) => {

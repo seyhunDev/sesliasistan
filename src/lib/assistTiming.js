@@ -92,6 +92,11 @@ export function speechMark(name, at) {
 }
 
 // Dinlerken gelen ara yazı (canlı yazı): her parçanın gecikmesi (ms, istek gidişinden yazının gelişine) ve servis
+// Kaydın ölçümü (rapor için): süre, boyut, ham ses tepe/ortalama, ham sesle yeniden deneme, çeviri servisi
+export function speechDiag(o) {
+  if (speech && o) speech.mic = o;
+}
+
 export function speechLive(ms, by) {
   if (!speech || !(ms >= 0)) return;
   speech.live = [...(speech.live || []), { ms: Math.round(ms), by: String(by || "") }].slice(-30);
@@ -129,8 +134,8 @@ export function timingStart(text, viaVoice) {
   flush();
   const t = clock();
   const sp = viaVoice && speech?.text && t - speech.text < 10000 ? speech : null;
-  const { live, tries, ...marks } = sp || {};
-  cur = { at: t, text: String(text || "").slice(0, 300), voice: !!viaVoice, engine: "", marks: { ...marks, run: t }, ...(live?.length ? { live } : {}), ...(tries ? { tries } : {}) };
+  const { live, tries, mic, ...marks } = sp || {};
+  cur = { at: t, text: String(text || "").slice(0, 300), voice: !!viaVoice, engine: "", marks: { ...marks, run: t }, ...(live?.length ? { live } : {}), ...(tries ? { tries } : {}), ...(mic ? { mic } : {}) };
   speech = null;
 }
 

@@ -42,6 +42,7 @@ export function reportText({ now = Date.now(), since = startOfDay(now), list = t
       r.answer ? `   Cevap: “${r.answer}”` : "   Cevap: (yok)",
       i0.model ? `   Model: ${i0.model}${i0.retry ? ` (bir kez yeniden denendi: ${ERR[i0.retry] || i0.retry})` : ""}` : "",
       i0.err ? `   Hata: yapay zeka ${ERR[i0.err] || i0.err}` : "",
+      r.mic ? `   Kayıt: ${r.mic.sec} sn, ${r.mic.kb} KB, ham ses tepe ${r.mic.peak}, ortalama ${r.mic.rms}${r.mic.by ? `, ${r.mic.by}` : ""}${r.mic.again ? `, ${r.mic.again}` : ""}` : "",
       i0.sozErr ? `   Söz yapay zekası olmadı (${ERR[i0.sozErr] || i0.sozErr}), yerel cümle` : "",
       `   Süreler: ${steps.map((s) => `${s.label} ${msText(s.ms)}`).join(" · ") || "-"}`,
       lv ? `   ${lv[0].toLocaleUpperCase("tr-TR")}${lv.slice(1)}` : "",
