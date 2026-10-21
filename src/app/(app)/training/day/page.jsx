@@ -198,7 +198,7 @@ function Day() {
             presets={[60, 120, 300, 600]}
             compact
             race={withRaces ? flow : null}
-            title={withRaces ? (cur ? cur.name : flow.label) : ""}
+            title={cur ? cur.name : ""}
             lead={
               tabs && (
                 <>

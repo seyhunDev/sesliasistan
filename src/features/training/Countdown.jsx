@@ -273,14 +273,25 @@ export function raceVoid(race) {
 // geri sayımda dokununca durur; durunca çemberin altında Devam ve Sıfırla (yarışta Sıfırla geri sayımı iptal eder, sebep sorulur). Startan sonra
 // çember dokunuşa kapalı (yanlışlıkla bitmesin): Bitir ve İptal alt şeritte. Süre seçimi (presets + başka süre) sağ üstteki "⋯" penceresinde.
 // Halkanın içinde yarışın adı (title); alt şeritte lead (Fotoğraf, Video) ve tail (+); ana düğme yokken lead geniş durur.
-export function Countdown({ mode = "", presets = PRESETS, onZero, race = null, compact = false, title = "", lead = null, tail = null }) {
+export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, compact = false, title = "", lead = null, tail = null }) {
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
   const [pick, setPick] = useState(false);
+  const [arm, setArm] = useState(false); // "+ Yarış": sıradaki start yarış olur
   const save = (x) => write({ ...x, own: ownHere() });
+  // Her start yarış değil (Seyhun 2026-10-21: "start antrenmanı yapıyor olabilirim, + ile yarış ekleyebilmeliyim"). Sayaç yarışa bağlıysa (rid)
+  // yarış düğmeleri (İptal, Bitir, kaydırma) yarışı da değiştirir; düz startta sayaç yalnız sayar.
+  const race = all && t.rid ? all : null;
 
-  const start = () => raceStart(race, mode);
+  const start = () => (raceStart(arm ? all : null, mode), setArm(false));
+  // Düz start yarışa çevrilir: start anı yarışın startı (sayaç çalışırken); durmuşken ya da sayaç yokken sıradaki start yarış olur
+  const toRace = () => {
+    if (!running) return setArm((a) => !a);
+    const rid = `s${t.end.toString(36)}`;
+    write({ ...t, rid });
+    all.onStart(t.end, rid, t);
+  };
   const cancel = () => raceCancel(race);
   const finish = () => raceFinish(race);
   const voidIt = () => raceVoid(race); // startan sonra yarışı iptal (genel geri çağırma, tehir): sayaç durur, sebebi çağıran sorar
@@ -317,6 +328,11 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null, c
 
   return (
     <section onPointerDown={() => running && !up && audio()} className={`relative mt-3 rounded-2xl border border-line bg-card px-4 text-center ${compact ? "pb-3 pt-3" : "pb-4 pt-5"}`}>
+      {compact && all && !race && !paused && (
+        <button type="button" onClick={toRace} aria-pressed={arm} className={`absolute left-2.5 top-2.5 z-[1] h-10 rounded-full px-3.5 text-[0.9375rem] font-semibold active:scale-95 ${arm ? "bg-acc text-white" : "bg-bg text-acc"}`}>
+          {arm ? "Yarış ✓" : "+ Yarış"}
+        </button>
+      )}
       {compact && idle && (
         <button type="button" onClick={() => setPick(true)} aria-label="Süre seç" className="absolute right-2.5 top-2.5 z-[1] grid size-10 place-items-center rounded-full bg-bg text-[1.25rem] leading-none tracking-wider text-fg2 active:scale-95">
           ⋯
@@ -333,7 +349,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null, c
           {!idle && !up && <circle cx={V / 2} cy={V / 2} r={R} fill="none" stroke={hot ? "var(--rec)" : paused ? "var(--mut)" : "var(--acc)"} strokeWidth={big ? 10 : 8} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} />}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {title && <span className="text-[0.875rem] font-semibold text-fg2">{title}</span>}
+          {(title || (arm && all)) && <span className="text-[0.875rem] font-semibold text-fg2">{title || all.label}</span>}
           <b className={`${big ? "text-[4.5rem] leading-[1.1]" : "text-[3.75rem]"} font-semibold tabular-nums tracking-tight ${hot ? "text-rec" : ""}`}>{mmss(up ? upSec(t.end, now) : Math.max(0, rem))}</b>
           {compact && idle ? (
             <svg viewBox="0 0 24 24" className="mt-0.5 size-8 text-acc" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>

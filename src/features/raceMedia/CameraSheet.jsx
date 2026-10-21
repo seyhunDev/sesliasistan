@@ -157,8 +157,8 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null, rf = null }) 
   const ctrl = rf && (
     <div className="flex items-center gap-2">
       {!t.running ? (
-        <button type="button" onClick={() => raceStart(rf.flow)} className={`${pill} bg-white text-black`}>
-          Başlat · {rf.flow.label}
+        <button type="button" onClick={() => raceStart(null)} className={`${pill} bg-white text-black`}>
+          Başlat
         </button>
       ) : (
         <>

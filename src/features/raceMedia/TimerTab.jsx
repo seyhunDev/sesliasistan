@@ -59,7 +59,7 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset 
         presets={PRESETS}
         race={flow}
         compact
-        title={cur ? raceName(cur) : flow.label}
+        title={cur ? raceName(cur) : ""}
         lead={
           <>
             <button type="button" onClick={() => onCam("photo")} aria-label="Fotoğraf" className={`${icon} bg-acc`}>
