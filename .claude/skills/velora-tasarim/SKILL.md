@@ -65,10 +65,10 @@ Tailwind'de `bg-bg`, `text-mut`, `text-acc`, `border-line` gibi sınıflarla yaz
 
 ## Sayfaların durumu (2026-10-21)
 
-Yeni tasarımda olanlar: Ana sayfa, Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`) ve Antrenman günü (`/training/day`; sayaç `Countdown dark` ile lacivertte). Asistan ekranı yarı yarıya geçti (lacivert tam ekran).
+Yeni tasarımda olanlar: Ana sayfa, Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`) Antrenman günü (`/training/day`; sayaç `Countdown dark` ile lacivertte) ve Yarışlar (`/athletes/races`; sıradaki yarış lacivertte). Asistan ekranı yarı yarıya geçti (lacivert tam ekran).
 
-Henüz eski tasarımda olanlar: archive, athletes (yarışlar, yoklama dahil), birthdays, calendar, debts, dues, events, fitness, inventory, invoices, mail, messages, my-attendance, notes, payments, people, plans, posts, receipts, schedule, settings, shopping, staff, tasks, wind.
+Henüz eski tasarımda olanlar: archive, athletes (yarış detay, yoklama dahil), birthdays, calendar, debts, dues, events, fitness, inventory, invoices, mail, messages, my-attendance, notes, payments, people, plans, posts, receipts, schedule, settings, shopping, staff, tasks, wind.
 
-Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar · Yarış detay · Planlar.
+Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar ✓ · Yarış detay · Planlar.
 
 Bir sayfa geçince bu listeyi güncelle.

@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { RaceList, isPast } from "@/features/athletes/RaceList";
 import { loadRaces } from "@/features/athletes/races";
 
-// Yarışlar: sıradaki yarış kartı, yaklaşan yarışlar ay ay, geçmiş yarışlar en altta; yarışa dokununca evrak, sporcular, yapılacaklar
+// Yarışlar (yeni tasarım 2026-10-21): lacivert üstte başlık ve sıradaki yarış; sıradaki yarış kartı, yaklaşan yarışlar ay ay, geçmiş yarışlar en altta; yarışa dokununca evrak, sporcular, yapılacaklar
 export default function RacesPage() {
   const { profile } = useAuth();
   const router = useRouter();
@@ -34,16 +34,26 @@ function Races({ orgId }) {
   const past = (races?.length || 0) - up;
   const sub = !races ? "Yükleniyor…" : [up ? `${up} yaklaşan` : "Yaklaşan yarış yok", past && `${past} geçmiş`].filter(Boolean).join(" · ");
 
+  const head = (
+    <header className="flex items-center gap-2.5">
+      <BackButton href="/athletes" />
+      <div className="min-w-0 flex-1 leading-tight">
+        <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Yarışlar</h1>
+        <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
+      </div>
+      <Link href="/athletes/races/new" data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+        <Icon name="plus" className="size-4" />
+        Yarış
+      </Link>
+    </header>
+  );
+
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Yarışlar" sub={sub} back="/athletes">
-        <Link href="/athletes/races/new" className="flex h-10 items-center gap-1.5 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
-          <Icon name="plus" className="size-[1.125rem]" />
-          Yarış
-        </Link>
-      </PageHeader>
-      {error && <p className="mt-3 text-center text-[0.875rem] text-rec">{error}</p>}
-      {!races ? <Loading label="Yarışlar yükleniyor" /> : <RaceList races={races} onOpen={(r) => router.push(`/athletes/races/${r.id}`)} />}
+      <RaceList races={races} head={head} onOpen={(r) => router.push(`/athletes/races/${r.id}`)}>
+        {error && <p className="text-center text-[0.875rem] text-rec">{error}</p>}
+        {!races && <Loading label="Yarışlar yükleniyor" />}
+      </RaceList>
     </main>
   );
 }
