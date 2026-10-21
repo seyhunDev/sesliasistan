@@ -200,7 +200,9 @@ async function scenarios2(h) {
     const b = brain();
     await talkAsk(page, "bugün plan var mı");
     await check(GS, "bugün plan var mı (sesli yanıt açık)", "yapay zekaya bir kez gider, cevap bir kez okunur", async () => {
-      await waitFor(async () => (await state(page)) === "listening" || (await state(page)) === "idle", 9000);
+      // Gönder'den hemen sonra durum bir an boşta görünebilir: yapay zeka çağrısı ve okuma bitene kadar beklenir
+      await waitFor(async () => brain() - b >= 1 && /Yönetim toplantısı/.test(await page.evaluate(() => window.__t.spoken.join(" "))) && ["listening", "idle"].includes(await state(page)), 12000);
+      await page.waitForTimeout(800); // ikinci okuma olacaksa görünsün
       const sp = await page.evaluate(() => window.__t.spoken.join(" | "));
       const n = (sp.match(/Yönetim toplantısı/g) || []).length;
       return [brain() - b === 1 && n === 1, `yapay zeka ${brain() - b} kez · okunan ${n} kez · ${clean(sp).slice(0, 100)}`];
