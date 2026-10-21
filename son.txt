@@ -1,8 +1,8 @@
-Commit: b535e70 · Hava durumu tam sayfa; alttan pencere açıkken arka sayfa kaymaz (#627)
-Zaman: 2026-10-21-1037 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39562491949
+Commit: 10eb542 · Sayaç: her sayfa yalnız kendi sayacını gösterir, başka sayfanın sayımı açılmaz (#628)
+Zaman: 2026-10-21-1105 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39565813952
 
-TAM TEST · 21.10.2026 10:31:07
+TAM TEST · 21.10.2026 10:59:06
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1333/1360 geçti · 27 kalan · 400 sn
+SONUÇ: 1332/1360 geçti · 28 kalan · 399 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -191,8 +191,11 @@ SONUÇ: 1333/1360 geçti · 27 kalan · 400 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 89/95
-  ✓ Sekme çubuğundaki yeşil düğme: 2/2
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 88/95
+  ✗ Sekme çubuğundaki yeşil düğme: 1/2
+      ✗ “ana sayfa”
+          beklenen: ortada tek asistan düğmesi, 5 sütun
+          olan:     0 düğme · 5 sütun
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✗ Halka renkleri: 5/6
       ✗ “okurken”
