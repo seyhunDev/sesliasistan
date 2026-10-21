@@ -1,7 +1,7 @@
 // Asistanın beyni: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
 import { devOn, timingInfo, timingMark, timingReply, timingSaid } from "@/lib/assistTiming";
 import { failed, PLAN_MAX, planLessons, rememberPlan } from "@/lib/taskPlan";
-import { record } from "@/lib/brain/store";
+import { holdPattern, record } from "@/lib/brain/store";
 import { scoreEnd } from "@/lib/brain/scoreStore";
 import { DROPPED, MORE } from "./ortak";
 import { spokenReply } from "@/lib/sayLines";
@@ -93,7 +93,9 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   if (!awaiting && aiLesson.current) {
     const ls = aiLesson.current;
     aiLesson.current = null;
-    if (!(extra.fail ?? failed(message)) && !DROPPED.test(message)) record(ls.x, ls.l, "ai");
+    const good = !(extra.fail ?? failed(message)) && !DROPPED.test(message);
+    if (good) record(ls.x, ls.l, "ai");
+    holdPattern(ls.pat, good); // kalıp: doğru da yanlış da yazılır; doğru olan 2 dk geri alınmazsa sayılır
   }
   if (!awaiting && planOn.current && planLearn.current) {
     const pl = planLearn.current;
@@ -192,6 +194,7 @@ export function finish(ctx, keepSpeech = false) {
 export function abort(ctx) {
   const { cancelRun, heard, setText, setTurns, stopPlan } = ctx;
   const t = heard;
+  holdPattern(ctx.aiLesson.current?.pat, false); // kullanıcı durdurdu: kalıp yanlış sayılır
   cancelRun();
   stopPlan();
   setTurns((p) => p.slice(0, -1));

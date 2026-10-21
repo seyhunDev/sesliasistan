@@ -5,7 +5,7 @@ import { messageFirst, waMode, jobsIn } from "@/lib/steps";
 import { isEnd, isNoMore, isNo, isYes, lastCreated, KIND, PAGES } from "@/lib/assistantLocal";
 import { splitChain } from "@/lib/chain";
 import { looksMulti, actCount, clausesOf, cachedPlan, localPlan, lastPagesPlan, orderPlan } from "@/lib/taskPlan";
-import { countHit, record } from "@/lib/brain/store";
+import { countHit, learnedReady, record, settlePattern } from "@/lib/brain/store";
 import { scoreStart } from "@/lib/brain/scoreStore";
 import { historyFor, DRAFT_AGE, isDraftEdit } from "@/lib/convoContext";
 import { isDrop } from "@/features/events/eventWords";
@@ -84,6 +84,8 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   if (!chained && ctx.readMode) ctx.readMode.current = wantsRead(s);
   // Puanlama (yalnız ölçer): yeni tur ya da bekleyen soruya cevap; önceki işi düzeltiyorsa o iş kötü sayılır
   if (!chained) scoreStart(s, { awaiting: !!cards.awaiting || drafts.length > 0, yes: isYes(s) });
+  // Öğrenme kaydı: bekleyen kalıp bu sözle geri alındı mı ("geri al", "yanlış", aynı cümle yeniden)
+  if (!chained && !cards.awaiting && !drafts.length) settlePattern(s);
   // Hızlı bilgi isteği ("notlarımı oku", "yarın planda neler var", "haftalık özet çıkar"): uzun cümlenin içinde de olsa
   // yapay zekaya gitmeden telefonda cevaplanır ve okunur; cümlede başka iş varsa o kısım cevap okunduktan sonra kendi yoluna gider
   // Yapay zeka önce: Hazır cevaplar (Ayarlar › Öğrenme) kapalıyken özet soruları da yapay zekaya gider, cevap bir kez okunur
@@ -266,7 +268,7 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
     races: races.current, raceNames: raceNames(), names: contacts.map((c) => c.name), logHere: !!logPlan || path === "/training",
     invPage, fitHere: path === "/fitness" || !!fp?.fit, foodHere: path === "/fitness" && /tab=food/.test(window.location.search), attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
     prefer: preferRef.current, skipRace: skipRace.current, shop: shopLists.length > 0, focus: !!focusRef.current, memo: memo.current, plans, tasks, notes,
-    quick, guide: !!guideHandler(), chatHere: !!openChat(), myFit: mine.length > 0, myFitToday: !!planOf(mine, todayStr()), fitPeople,
+    quick, learned: learnedReady, guide: !!guideHandler(), chatHere: !!openChat(), myFit: mine.length > 0, myFitToday: !!planOf(mine, todayStr()), fitPeople,
   });
   // Görev listesinin numaralı işi (4-15): yol önceden belli, komut alanlardan hazır (cümle yeniden okunmaz; actRun.js)
   const routes = chained ? withAct(found, routeFromAct(takeAct(ctx, DIRECT), { today: todayStr() })) : found;

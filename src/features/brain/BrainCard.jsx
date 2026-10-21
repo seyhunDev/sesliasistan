@@ -5,7 +5,9 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { Switch } from "@/features/settings/ui";
 import { LABELS } from "@/lib/brain/model";
 import { patternReport, resetPatternMeter } from "@/lib/brain/patternMeter";
-import { flush, guess, missedLocal, resetBrain, setBrainOff, stats, subscribe } from "@/lib/brain/store";
+import { dropPattern, flush, guess, missedLocal, patternRows, resetBrain, setBrainOff, stats, subscribe } from "@/lib/brain/store";
+import { READY } from "@/lib/brain/aiPatterns";
+import { Button } from "@/components/ui/Button";
 import { reportText } from "@/lib/brain/score";
 import { quickOn, setQuick } from "@/lib/quickMode";
 import { resetScore, scoreReport, subscribeScore } from "@/lib/brain/scoreStore";
@@ -36,6 +38,8 @@ export function BrainCard({ bare, owner }) {
   const g = q.trim() ? guess(q) : null;
   const missed = missedLocal();
   const pr = patternReport();
+  const pats = patternRows();
+  const readyN = pats.filter((x) => x.ready).length;
   const pct = Math.min(100, Math.round((s.docBytes / s.docLimit) * 100));
 
   const h = s.hits;
@@ -68,6 +72,15 @@ export function BrainCard({ bare, owner }) {
       toast("Sıfırlanamadı, bağlantını kontrol et");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function dropPat(k) {
+    try {
+      await dropPattern(k);
+      toast("Kalıp silindi");
+    } catch {
+      toast("Bu cihazdan silindi, eşitlenemedi");
     }
   }
 
@@ -220,6 +233,43 @@ export function BrainCard({ bare, owner }) {
                   {r.full}/{r.n}
                   {r.ready ? " · hazır" : ""}
                 </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Öğrenilen kalıplar: yapay zekanın her cevapla verdiği öğrenme kaydı (aiPatterns.js). Hazır olanlar yalnız
+          Hazır cevaplar açıkken yapay zekasız yapılır */}
+      {pats.length > 0 && (
+        <div className="mt-2 rounded-lg bg-card px-2.5 py-2 text-[0.8125rem] ring-1 ring-line">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-mut">
+              Öğrenilen kalıplar · {pats.length} · {readyN} hazır
+            </p>
+            <button
+              onClick={() =>
+                navigator.clipboard
+                  ?.writeText(pats.map((x) => `${x.ready ? "hazır " : ""}${x.ok}/${x.n} ${x.p} · ${x.k || labelName(x.l)} · “${x.x}”`).join("\n"))
+                  .then(() => toast("Kopyalandı"), () => toast("Kopyalanamadı"))
+              }
+              className="font-semibold text-acc"
+            >
+              Kopyala
+            </button>
+          </div>
+          <ul className="mt-1 divide-y divide-line">
+            {pats.slice(0, 12).map((x) => (
+              <li key={x.key} className="flex items-center justify-between gap-2 py-1">
+                <span className="min-w-0">
+                  <span className="block truncate">{x.p}</span>
+                  <span className="block truncate text-mut tabular-nums">
+                    {x.ok}/{x.n} doğru{x.ready ? " · hazır" : x.n < READY.n ? ` · ${READY.n - x.n} kez daha` : ""}
+                  </span>
+                </span>
+                <Button variant="text" size="sm" onClick={() => dropPat(x.key)} className="shrink-0 text-mut">
+                  Sil
+                </Button>
               </li>
             ))}
           </ul>

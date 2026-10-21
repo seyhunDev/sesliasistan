@@ -1433,6 +1433,57 @@ group("Temiz başlık ve sorusuz ekleme")([
   ]);
 }
 
+// Öğrenme kaydı (Seyhun 2026-10-21): yapay zeka her cevapta iş adı, cümle kalıbı, yerler, ses düzeltmeleri ve güven
+// verir (lib/ai/assistant.js cleanLearn); kalıplar sayılır, 10 kez %90 doğruysa hazır olur (lib/brain/aiPatterns.js)
+{
+  const { cleanLearn, parseAssistant } = await import("@/lib/ai/assistant");
+  const AP = await import("@/lib/brain/aiPatterns");
+  const { learnedCreate, routesOf } = await import("@/lib/assistRoute");
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  const P = "{gün} {saat}'te {başlık} ekle";
+  const said = "san ver'e cuma 9'da görev ekle";
+  group("Öğrenme kaydı: yapay zeka cevabı")([
+    ["tam kayıt", C("iş adı küçük harf, güven 0-1", () => cleanLearn({ task: "Plan Ekle", pattern: P, slots: [{ k: "gün", v: "cuma" }], conf: 1.4 }, "cuma 9'da antrenman ekle"), (r) => r.task === "plan.ekle" && r.pattern === P && r.conf === 1 && r.slots.length === 1)],
+    ["bilinmeyen yer", C("atılır", () => cleanLearn({ pattern: P, slots: [{ k: "xx", v: "1" }, { k: "{saat}", v: "9" }] }), (r) => r.slots.length === 1 && r.slots[0].k === "saat")],
+    ["uydurma düzeltme", C("cümlede geçmeyen atılır", () => cleanLearn({ pattern: P, fixes: [{ heard: "san ver", meant: "Sanver" }, { heard: "yok", meant: "var" }] }, said), (r) => r.fixes.length === 1 && r.fixes[0].meant === "Sanver")],
+    ["boş kayıt", C("null", () => cleanLearn({ conf: 0.5 }), (r) => r === null)],
+    ["kayıt yok", C("null", () => cleanLearn(undefined), (r) => r === null)],
+    ["parseAssistant", C("learn alanı gelir", () => parseAssistant({ intent: "create", message: "", learn: { task: "plan.ekle", pattern: P } }, [], [], "cuma 9'da antrenman ekle").learn, (r) => r?.task === "plan.ekle")],
+    ["learn'süz cevap", C("learn null, cevap bozulmaz", () => parseAssistant({ intent: "chat", message: "Merhaba" }), (r) => r.learn === null && r.message === "Merhaba")],
+  ]);
+  const ai = (p = P, conf = 0.9) => ({ learn: cleanLearn({ task: "plan.ekle", pattern: p, slots: [{ k: "gün", v: "cuma" }, { k: "saat", v: "09:00" }], conf }) });
+  const runs = (n, ok, p = P) => Array.from({ length: n }, (_, i) => ({ ...AP.lessonOf(`cuma ${i}'da antrenman ekle`, ai(p), "create:plan"), ok: i < ok ? 1 : 0, t: i }));
+  group("Öğrenme kaydı: kalıplar")([
+    ["kayıt", C("söz, kalıp, iş, etiket, yerler", () => AP.lessonOf("cuma 9'da antrenman ekle", ai(), "create:plan"), (r) => r.p === P && r.k === "plan.ekle" && r.l === "create:plan" && r.v === "gün=cuma|saat=09:00" && r.c === 0.9)],
+    ["kalıpsız cevap", C("kaydedilmez", () => AP.lessonOf("merhaba", { learn: null }), (r) => r === null)],
+    ["ek farkı", C("{saat}'te = {saat}te = {saat}'de", () => AP.patKey("{gün} {saat}'te {başlık} ekle") === AP.patKey("{gün} {saat}te {başlık} ekle") && AP.patKey(P) === AP.patKey("{gün} {saat}'de {başlık} ekle"), (r) => r === true)],
+    ["10 kez, 10 doğru", C("hazır", () => AP.tallyPats(runs(10, 10))[0], (r) => r.n === 10 && r.ok === 10 && r.ready)],
+    ["10 kez, 8 doğru", C("hazır değil", () => AP.tallyPats(runs(10, 8))[0], (r) => r.n === 10 && !r.ready)],
+    ["9 kez, 9 doğru", C("hazır değil (az)", () => AP.tallyPats(runs(9, 9))[0], (r) => !r.ready)],
+    ["iki kalıp", C("ayrı sayılır, çok olan önde", () => AP.tallyPats([...runs(3, 3, "{başlık} notu al"), ...runs(5, 5)]), (r) => r.length === 2 && r[0].n === 5)],
+    ["silinen kalıp", C("listede yok", () => AP.tallyPats(runs(10, 10), [AP.patKey(P)]), (r) => r.length === 0)],
+  ]);
+  const hold = { x: "cuma 9'da antrenman ekle", t: Math.floor(Date.now() / 1000) };
+  group("Öğrenme kaydı: geri alındı mı")([
+    ["geri al", C("yanlış", () => AP.undoneBy("geri al", hold), (r) => r === true)],
+    ["X değil Y", C("yanlış", () => AP.undoneBy("10 değil 11", hold), (r) => r === true)],
+    ["aynı cümle yeniden", C("yanlış (anlaşılmadı)", () => AP.undoneBy("cuma 9'da antrenman ekle", hold), (r) => r === true)],
+    ["başka iş", C("doğru", () => AP.undoneBy("notları aç", hold), (r) => r === false)],
+    ["3 dk sonra geri al", C("doğru kalır (süre geçti)", () => AP.undoneBy("geri al", { ...hold, t: hold.t - 180 }), (r) => r === false)],
+  ]);
+  const ready = AP.tallyPats(runs(10, 10));
+  const learned = (s) => AP.readyLearned(s, ready);
+  group("Öğrenme kaydı: hazır kalıp eşleşmesi")([
+    ["kalıba uyan", C("yerler çıkar", () => AP.matchPattern(P, "Cuma 9'da yelken antrenmanı ekle."), (r) => r?.gün === "cuma" && r.saat === "9da" && /yelken/.test(r.başlık))],
+    ["uymayan", C("null", () => AP.matchPattern(P, "bugün hava nasıl"), (r) => r === null)],
+    ["hazır kalıp", C("bulunur", () => learned("yarın 10'da antrenman ekle"), (r) => r?.row.ready)],
+    ["hazır olmayan", C("kullanılmaz", () => AP.readyLearned("yarın 10'da antrenman ekle", AP.tallyPats(runs(10, 7))), (r) => r === null)],
+    ["kayıt ekleme", C("plan, yarın 10:00", () => learnedCreate("yarın 10'da antrenman ekle", learned, today), (r) => r?.ready && r.items[0].type === "plan" && r.items[0].time === "10:00" && r.items[0].date === tom)],
+    ["Hazır cevaplar kapalı", C("yapay zekaya gider", () => routesOf("cuma 9'da yelken antrenmanı ekle", { owner: true, today, quick: false, learned }).map((x) => x.id), (r) => !r.includes("local"))],
+    ["Hazır cevaplar açık", C("telefonda yapılır", () => routesOf("cuma 9'da yelken antrenmanı ekle", { owner: true, today, quick: true, learned }).find((x) => x.id === "local")?.cmd, (r) => r?.ready && r.items?.[0]?.type === "plan")],
+  ]);
+}
+
 // Süre sınırları (motor planı 2. adım): sunucu ~9,5 sn içinde biter, ilk parça gelmezse kalan süreyle yedek; telefon
 // bağlantı kopmasında bir kez sessizce dener (lib/ai/budget.js)
 {
