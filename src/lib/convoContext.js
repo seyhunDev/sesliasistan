@@ -6,6 +6,10 @@
 export const HISTORY_MAX = 1500;
 // Ekrandan kalkan konuşma (küreye yeniden basınca, kapatıp açınca) bu süre yapay zekaya geçmiş olarak gitmeye devam eder
 export const PAST_MS = 15 * 60e3;
+// Asistandan çıkıp bu süre içinde yeniden açınca konuşma ekranda kalır, sonra ekran temiz başlar (Seyhun: "asistandan
+// çıktım, diyelim ki 30 saniye geçti, artık onu temizleyebiliriz; hafızada aynı formülle kalmaya devam edebilir", 2026-10-22)
+export const REOPEN_MS = 30e3;
+export const resumeOk = (closedAt, n, now = Date.now()) => closedAt > 0 && n > 0 && now - closedAt < REOPEN_MS;
 const TURN_MAX = 300;
 export const DRAFT_TEXT_MAX = 1000;
 // Taslak bu kadar kullanıcı cümlesinden sonra bağlamdan düşer (konu değişmiştir)
