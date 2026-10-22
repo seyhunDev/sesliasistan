@@ -374,13 +374,26 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   const idle = (bar || slim) && !rec && !active && !typing;
 
   // Yükseklik içeriği izler (kubbe içerikle birlikte büyür/küçülür; geçiş CSS'te). Boştaki yükseklik sayfanın alt boşluğu olur.
+  // Asistan açılıp kapanırken boy geçişsiz bir anda değişir (Seyhun 2026-10-22: "açılırken takılıyor"): tam ekrana doğru
+  // kare kare büyüyen boy her karede yerleşim ve büyük bir alanın yeniden boyanması demekti. Açılış/kapanış hareketi
+  // yalnız içeride, transform ve opacity ile (globals.css .afull-in / .afull-out).
+  const wasActive = useRef(active);
   useLayoutEffect(() => {
     const o = box.current;
     const i = inner.current;
     if (!o || !i) return;
+    const jump = wasActive.current !== active;
+    wasActive.current = active;
     const set = () => {
       const h = shown ? Math.round(i.offsetHeight) : 0;
-      if (o.style.height !== `${h}px`) o.style.height = `${h}px`;
+      if (o.style.height !== `${h}px`) {
+        if (jump) o.style.transition = "none";
+        o.style.height = `${h}px`;
+        if (jump) {
+          void o.offsetHeight; // geçişsiz boy uygulansın, sonra geçiş geri gelsin
+          o.style.transition = "";
+        }
+      }
       if (idle) {
         document.documentElement.style.setProperty("--dome-h", `${h}px`);
         document.documentElement.style.setProperty("--stage-h", `${h}px`);
