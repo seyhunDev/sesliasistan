@@ -65,7 +65,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Sesli asistan, toplantı modu ve aramalar için mikrofon kullanılır.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Fiş, belge ve envanter fotoğrafı çekmek için kamera kullanılır.</string>
+	<string>Fiş, belge, envanter fotoğrafı ve antrenman/yarış videosu çekmek için kamera kullanılır.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Fiş, belge ve gönderi fotoğrafı seçmek için fotoğraflara erişilir.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

@@ -31,6 +31,16 @@ export function showTimer(t) {
   (t ? p.timerShow(t) : p.timerEnd()).catch(() => {});
 }
 
+// Üstünde sayaç akan iPhone kamerası (Medya › Kayıt; VeloraKamera.swift). Bu parça olmadan kurulmuş eski uygulamada yok (false).
+export const hasCamera = () => typeof plugin()?.camera === "function";
+// t: { end (ms), paused, left (sn), title } ya da null (sayaç yok). Sonuç File (lastModified = kaydın bittiği an) ya da null (vazgeçildi)
+export async function nativeCamera(t) {
+  const r = await plugin().camera(t || {});
+  if (!r || r.cancel || !r.path) return null;
+  const blob = await (await fetch(r.path)).blob();
+  return new File([blob], r.name || (r.kind === "video" ? "video.mov" : "foto.jpg"), { type: r.type || blob.type, lastModified: Math.round(r.end || Date.now()) });
+}
+
 // Plan alarmları: [{ key, at (ms), title }] (lib/planAlarm.js alarmItems). Sonuç { kind: "alarm" | "notification", count }
 // (count -1: izin verilmedi)
 export async function syncAlarms(items) {
