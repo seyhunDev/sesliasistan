@@ -1,8 +1,8 @@
-Commit: cf83e02 · Ekran testi: enerji ölçümü sayfa durulunca, yavaş makinede mikrofon ve sekme düğmesi beklenir (#696)
-Zaman: 2026-10-22-2016 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39820158307
+Commit: d070466 · Asistan: kayıt kartı varken yapay zekanın aynı bilgiyi tekrar eden cümlesi atılır (#697)
+Zaman: 2026-10-22-2023 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39821122002
 
-TAM TEST · 22.10.2026 20:09:38
+TAM TEST · 22.10.2026 20:17:17
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1372/1373 geçti · 1 kalan · 432 sn
+SONUÇ: 1372/1373 geçti · 1 kalan · 398 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -146,7 +146,7 @@ SONUÇ: 1372/1373 geçti · 1 kalan · 432 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 19 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 11 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
