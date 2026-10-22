@@ -1,8 +1,8 @@
-Commit: c774f48 · Mesajlar başlığı diğer sayfalarla aynı (PageHeader görünümü) (#688)
-Zaman: 2026-10-22-1724 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39794388985
+Commit: e63c1e8 · Merge pull request #690 from seyhunDev/claude/project-thread-gvvohu
+Zaman: 2026-10-22-1835 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39805502661
 
-TAM TEST · 22.10.2026 17:17:43
+TAM TEST · 22.10.2026 18:30:54
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,15 +12,12 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Sayfalar tarayıcıda açılıyor…
     Sesli asistan ekranı (sahte Firebase, yapay zekasız)…
     Asistan: sekme çubuğu, açılış, dinleme, kapanış…
-    Asistan: çalışırken, küçültme, sesli yanıt, geçmiş…
-    Asistan: kayıt, onaylar, görev listesi…
-    Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 19/19 geçti
+    Çevrimdışı: 0/1 geçti
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1370/1373 geçti · 3 kalan · 429 sn
+SONUÇ: 1246/1250 geçti · 4 kalan · 258 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -125,52 +122,29 @@ SONUÇ: 1370/1373 geçti · 3 kalan · 429 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 63/63
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 61/63
   ✓ Sunucu ucu: girişsiz istek reddedilir: 17/17
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
-  ✓ Giriş ekranı: 2/2
+  ✗ Giriş ekranı: 0/2
+      ✗ “alanlar”
+          beklenen: kullanıcı adı ve şifre alanı
+          olan:     1 alan
+      ✗ “açılış”
+          beklenen: giriş ekranı açılır
+          olan:     locator.fill: Timeout 30000ms exceeded.
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 104/107
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
-  ✗ Enerji (boşta): 1/2
-      ✗ “ana sayfa”
-          beklenen: saniyede en çok 3 stil ve yerleşim hesabı
-          olan:     stil 16/sn · yerleşim 0.8/sn
-  ✓ Dokun konuş: tam ekran açılış: 5/5
-  ✓ Halka renkleri: 6/6
-  ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
-  ✓ Kapanış: 2/2
-  ✓ Basılı tut yaz: 1/1
-  ✓ Sayfa hataları: 7/7
-  ✓ Küçültme (aşağı kaydır): 4/4
-  ✓ Önceki sohbetler: 3/3
-  ✓ Sesli yanıt: 8/8
-  ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
-  ✗ Onay isteyen işler: 9/10
-      ✗ “Ege'ye yaz … → “gönder””
-          beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 26 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
-  ✓ Görev listesi ve ilerleme halkası: 3/3
-  ✓ Tohum cümleler (telefonda cevap): 12/12
-  ✓ Asistanın gizli olduğu yerler: 8/8
-  ✓ Geniş ekran (sol menü): 3/3
-  ✓ Asistan raporu: 3/3
-  ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
-  ✓ Instagram gönderisi: 1/1
-  ✓ Tam ekran üstte: 1/1
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 1/2
+  ✗ Senaryolar: 0/1
+      ✗ “çalıştırma”
+          beklenen: tamamlanır
+          olan:     locator.fill: Timeout 30000ms exceeded. | Call log: |   - waiting for locator('input').nth(1)
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 19/19
-  ✓ İnternet varken: 2/2
-  ✓ Yavaş bağlantı: 3/3
-  ✓ İnternet yok: 5/5
-  ✓ Bağlantı gelince: 2/2
-  ✓ Açıkken kopup gelince: 2/2
-  ✓ Önbellek iç hatası: 3/3
-  ✓ iPhone: 2/2
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 0/1
+  ✗ Akış: 0/1
+      ✗ “senaryo”
+          beklenen: biter
+          olan:     locator.fill: Timeout 30000ms exceeded.
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
