@@ -299,68 +299,56 @@ select {
 .asheet-input:focus-within { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 55%, transparent); }
 .asheet-on { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 70%, transparent); }
 .asheet .vlight[data-state="idle"] { --vl-a: #8b5cf6; --vl-b: #22d3ee; --vl-w: #fff; --vl-h: rgba(124, 92, 255, .3); }
-/* TAM SAYFA ASİSTAN (2026-10-14; yeni tasarım 2026-10-22, Seyhun: "sade şık, animasyonları iyi çalışsın, iPhone'da uygulama").
-   Asistan açıkken kubbe ekranın tamamı: sabit lacivert zemin, üstte canlı logo (.lring), önde sohbet, adımlar ve kartlar, en
-   altta konuşma kutusu. Boşta hiçbir şey oynamaz; yalnız transform ve opacity hareket eder, bulanıklık yok. */
+/* ASİSTAN DÜĞMEDE (2026-10-22, Seyhun'un onayladığı örnek /mnt/project-files/asistan-ekrani/asistan-dugme.html): asistan açıkken
+   tam ekran zemin yok; bulunduğun sayfa bulanıklaşır ve hafifçe kararır (.abg), önde sohbet, adımlar ve kartlar (kendi
+   zeminleriyle), en altta asistan düğmesi ve iki yan düğme. Bulanıklık yarıçapı canlandırılmaz, yalnız örtünün opaklığı
+   değişir (iPhone'da akıcı). Boşta hiçbir şey oynamaz. */
 .afull { color-scheme: dark; color: var(--fg);
-  --bg: #0b1024; --card: #161b36; --fg: #e8eaf6; --mut: #9a9fbd; --line: #2a3054; --acc: #7c6cf0; --acc2: #7c6cf0; --rec: #e0675e;
-  --ok: #55a374; --fg2: #b8bcd6; --accbg: #26243f; --warn: #d0a25e; --warnbg: #2e281f;
-  --ab-base1: #10142f; --ab-base2: #141938; /* ana sayfa kokpitiyle aynı lacivert (.ck), açılınca aynı dünyanın devamı */
-  --ab-panel: rgba(28, 34, 71, .88); }
-/* Zemin (yeni tasarım, 2026-10-22, onaylı örnek /mnt/project-files/asistan-ekrani/asistan-yeni.html): sabit lacivert ışık, hiçbir
-   şey kendiliğinden oynamaz (eski renk bulutları ve dönen halkalar kaldırıldı; boşta pil ve ısı). Hareket yalnız duruma göre:
-   canlı logo (.lring) ve kenar ışığı (.aedge). Yalnız transform ve opacity değişir. */
-.abg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; contain: strict;
-  background: radial-gradient(120% 70% at 50% 28%, #1b2150 0%, var(--ab-base2) 55%, var(--ab-base1) 100%); }
-/* Kenar ışığı: dinlerken mor-turkuaz, sesle güçlenir (--lvl kubbeye ListenWave'den gelir); çalışırken soluk kehribar */
-.abg .aedge { position: absolute; inset: 0; display: block; opacity: 0; transition: opacity .4s ease;
-  box-shadow: inset 0 0 0 2px rgba(139, 92, 246, .9), inset 0 0 28px 6px rgba(139, 92, 246, .42), inset 0 -36px 56px -12px rgba(34, 211, 238, .32); }
-@media (min-width: 34rem) { .abg .aedge { display: none; } }
-.afull[data-state="listening"] .aedge { opacity: calc(.45 + var(--lvl, 0) * .55); transition: opacity .08s linear; }
-.afull[data-state="busy"] .aedge { opacity: .3; box-shadow: inset 0 0 0 1.5px rgba(240, 195, 107, .7), inset 0 0 24px 4px rgba(240, 195, 107, .22); }
-
-/* Canlı logo (LogoRing): Velora halkasının 24 çubuğu. Açılışta bir kez büyür; dinlerken sesle uzar; çalışırken işler
-   bittikçe yanar ya da üzerinde ışık döner; konuşurken atar; bitince içeri çekilir, onay çizilir. */
-.lring { display: block; overflow: visible; }
-.lring line { stroke-width: 30; stroke-linecap: round; transform-box: fill-box; transform-origin: 50% 100%; transition: transform .2s ease-out, opacity .3s ease; }
-.lring circle { transform-box: fill-box; transform-origin: 50% 50%; transition: transform .45s cubic-bezier(.3, 1.6, .5, 1); }
-.afull-in .lring line { animation: lrgrow .55s cubic-bezier(.22, .8, .24, 1) both; animation-delay: calc(.12s + var(--i) * 20ms); }
-@keyframes lrgrow { from { transform: scaleY(0); opacity: 0; } }
-.lring[data-tone="listen"] line { animation: none; transform: scaleY(calc(.55 + var(--lvl, 0) * var(--m) * .9)); transition: transform .1s ease-out; }
-.lring[data-tone="work"] line { opacity: .3; transform: scaleY(.75); }
-.lring[data-tone="work"] line.on { opacity: 1; transform: none; }
-.lring[data-tone="work"] circle { transform: scale(.72); }
-.lring[data-run] line { animation: lrrun 1.2s linear infinite; animation-delay: calc(var(--i) * 50ms - 1.2s); }
-@keyframes lrrun { 0%, 60%, 100% { opacity: .3; transform: scaleY(.75); } 15% { opacity: 1; transform: scaleY(1.12); } }
-.lring[data-tone="speak"] line { animation: lrspeak .6s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -90ms); }
-@keyframes lrspeak { from { transform: scaleY(.6); } to { transform: scaleY(calc(.8 + var(--m) * .35)); } }
-.lring[data-tone="ok"] line { animation: none; opacity: 0; transform: scaleY(.15); }
-.lring[data-tone="ok"] circle { transform: scale(2.5); }
-.lring-check { fill: none; stroke: #fff; stroke-width: 34; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 420; stroke-dashoffset: 420; animation: lrdraw .45s .25s ease-out forwards; }
+  --bg: #0b1024; --card: #161b36; --fg: #f1f2fa; --mut: #b3b7d2; --line: #2f3560; --acc: #7c6cf0; --acc2: #7c6cf0; --rec: #e0675e;
+  --ok: #55a374; --fg2: #c5c8de; --accbg: #26243f; --warn: #d0a25e; --warnbg: #2e281f;
+  --ab-panel: rgba(24, 29, 62, .9); }
+.abg { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  background: rgba(10, 13, 34, .62); -webkit-backdrop-filter: blur(20px) saturate(1.15); backdrop-filter: blur(20px) saturate(1.15); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .abg { background: rgba(10, 13, 34, .9); } }
+/* Ortadaki asistan düğmesi (OrbMain): alt çubuktaki düğmeyle aynı .vlight renkleri; açıkken biraz büyük. Çalışırken çevresinde
+   ışık döner (.vl-ring burada görünür), iş bitince içinde onay çizilir. Yan düğmeler yarı saydam beyaz. */
+.vlight.aorb .vl-ring { display: block; }
+.aorb .vl-disc { box-shadow: 0 14px 34px -12px rgba(0, 0, 0, .65), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.asheet .aorb[data-state="idle"] .vl-disc { background: var(--brand); }
+.aorb .lring-check { fill: none; stroke: #fff; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: lrdraw .45s .15s ease-out forwards; }
 @keyframes lrdraw { to { stroke-dashoffset: 0; } }
-@media (prefers-reduced-motion: reduce) { .lring line, .lring circle { animation: none !important; transition: none; } .lring-check { animation: none; stroke-dashoffset: 0; } }
+.aside-btn { background: rgba(255, 255, 255, .14); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); }
+.afull .asheet-input { background: none; box-shadow: none; }
+.afull .asheet-input.atype { background: var(--ab-panel); box-shadow: inset 0 0 0 1px var(--line); }
+.afull .asheet-draft { border-radius: 1.125rem; padding: .75rem .875rem; margin-inline: -.875rem; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.amsg-in { animation: msgin .32s cubic-bezier(.22, .8, .24, 1) both; }
+@media (prefers-reduced-motion: reduce) { .aorb .lring-check { animation: none; stroke-dashoffset: 0; } .amsg-in { animation: none; } }
 
 /* Önde: görev listesi ve kartlar hafif saydam panel (bulanıklık yok: arkadaki hareket her karede yeniden bulanıklaştırılmasın) */
 .afull .apanel { background: var(--ab-panel); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .07), 0 12px 32px -16px rgba(0, 0, 0, .7); }
 .afull .asheet { background: transparent; box-shadow: none; }
 .afull .asheet::after { display: none; }
-.afull .asheet-input { background: var(--ab-panel); }
 .afull [data-user-bubble] { background: var(--ab-panel); box-shadow: 0 0 0 .5px var(--line); }
 /* Sıralı açılış (Seyhun 2026-10-22: "önce arka plan güzelce açılsın, sonra yazı alanı"): zemin alttan yükselip belirir,
    ardından üst satır, logo, konuşma alanı ve en son yazı kutusu sırayla yukarı kayarak gelir. Kubbenin boyu açılırken bir
    anda değişir (TabBar wasActive); hareket yalnız transform ve opacity. */
-@keyframes afullin { from { opacity: 0; } }
-@keyframes afbgin { from { opacity: 0; transform: translate3d(0, 12%, 0) scale(1.04); } }
+/* .afull'un kendisi opaklıkla canlandırılmaz: opaklığı değişen bir ata, içindeki backdrop-filter'ı (bulanık sayfa) bozar */
+@keyframes afullin { from { translate: 0 0; } }
+@keyframes afbgin { from { opacity: 0; } }
+@keyframes asidein { from { opacity: 0; transform: scale(.6); } }
 @keyframes afpartin { from { opacity: 0; transform: translate3d(0, 1.25rem, 0); } }
-.afull-in { animation: afullin .2s ease-out both; }
-.afull-in > .abg { animation: afbgin .42s cubic-bezier(.22, .8, .24, 1) both; will-change: transform, opacity; }
+.afull-in { animation: afullin .3s linear; }
+.afull-in > .abg { animation: afbgin .3s ease-out both; }
+.afull-in .aside { animation: asidein .35s cubic-bezier(.3, 1.5, .5, 1) both; animation-delay: .12s; }
 .afull-in > .asheet > * { animation: afpartin .4s cubic-bezier(.22, .8, .24, 1) both; animation-delay: .14s; }
 .afull-in > .asheet > :nth-child(2) { animation-delay: .1s; }
-.afull-in > .asheet > :last-child { animation-delay: .22s; }
+.afull-in > .asheet > :last-child { animation: none; } /* düğme yerinde kalır (alt çubuktaki düğmenin devamı) */
 /* Kapanırken ve küçülürken aşağı inerek kaybolur (TabBar LEAVE_MS ile aynı süre) */
-@keyframes afullout { to { opacity: 0; } }
+@keyframes afullout { to { translate: 0 0; } }
 @keyframes afpartout { to { opacity: 0; transform: translate3d(0, 1.5rem, 0); } }
-.afull-out { animation: afullout .34s cubic-bezier(.4, 0, .6, 1) forwards; pointer-events: none; }
+.afull-out { animation: afullout .34s linear forwards; pointer-events: none; }
+.afull-out > .abg { animation: afbgout .34s cubic-bezier(.4, 0, .6, 1) forwards; }
+@keyframes afbgout { to { opacity: 0; } }
 .afull-out > .asheet { animation: afpartout .22s cubic-bezier(.4, 0, .6, 1) forwards; }
 @media (prefers-reduced-motion: reduce) { .afull-in > .abg, .afull-in > .asheet > *, .afull-out > .asheet { animation: none; } }
 /* Uygulama yüklenince kubbe alttan yükselerek gelir (yalnız ilk açılışta; dolgu modu "backwards": bittikten sonra

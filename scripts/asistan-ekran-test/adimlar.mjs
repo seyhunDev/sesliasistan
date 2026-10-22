@@ -94,19 +94,19 @@ export async function scenarios(h) {
     return [!!ok && n > srBefore, `${await state(page)} · tanıma ${n - srBefore} kez açıldı`];
   });
   // Dinlerken "Dinliyorum" yalnız alttaki çubukta, halkada yazı yok (2026-10-18)
-  await check("Halka renkleri", "dinlerken", "logo dinliyor (24 çubuk sesle oynar), halkada yazı yok, alttaki çubukta “Dinliyorum”", async () => {
+  // Asistan düğmede (2026-10-22): düğme kırmızı, içinde canlı ses dalgası; "Dinliyorum" söylenen yazının altında
+  await check("Halka renkleri", "dinlerken", "düğme kırmızı + ses dalgası, durum satırında yazı yok, yazının altında “Dinliyorum”", async () => {
     const c = await ringColor(page);
-    const bars = (await page.locator("[data-dome] [data-ring] line").count()) === 24 ? 5 : 0;
+    const bars = (await page.locator("[data-dome] [data-ring] canvas").count()) === 1 ? 5 : 0;
     const t = (await ringText(page)).trim();
     const box = await dome(page).locator(".asheet-input").innerText();
     return [c === "kırmızı" && bars === 5 && !t && /Dinliyorum/.test(box), `${c} · ${bars} çubuk · halka: “${t}” · çubuk: “${box.replace(/\n/g, " ")}”`];
   });
-  // Yeni tasarım (2026-10-22): zemin sabit, dinlerken ekranın kenarı parlar (kenar ışığı sesle güçlenir)
-  await check("Halka renkleri", "zemin", "zemin sürekli oynamaz (yalnız açılışta), dinlerken kenar ışığı görünür", async () => {
-    // Zemin yalnız açılışta bir kez belirir (afbgin), sürekli oynamaz
-    const anim = await page.locator("[data-dome] .abg").evaluate((el) => { const c = getComputedStyle(el); return `${c.animationName} ${c.animationIterationCount}`; });
-    const op = await page.locator("[data-dome] .aedge").evaluate((el) => Number(getComputedStyle(el).opacity));
-    return [!/infinite/.test(anim) && op > 0.3, `zemin animasyonu ${anim} · kenar ışığı ${op.toFixed(2)}`];
+  // Asistan düğmede (2026-10-22): ayrı zemin yok, arkadaki sayfa bulanıklaşır; örtü sürekli oynamaz; yan düğmeler
+  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), yanda Vazgeç ve Dur", async () => {
+    const z = await page.locator("[data-dome] .abg").evaluate((el) => { const c = getComputedStyle(el); return { anim: `${c.animationName} ${c.animationIterationCount}`, blur: c.backdropFilter || c.webkitBackdropFilter || "" }; });
+    const side = (await btn(page, "Sil ve dinlemeyi bırak").count()) + (await btn(page, "Dur").count());
+    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && side === 2, `örtü ${z.anim} · ${z.blur} · yan düğme ${side}`];
   });
   await say(page, "notlarımı oku");
   // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutuya akar, altta süre + dalga, ■ Dur ve ↑ Gönder
