@@ -201,7 +201,6 @@ group("iPhone widget ve titreşim")([
     { title: "Ece", unread: 1, last: { text: "Ok", by: "ece", at: 1 } },
   ], "me"), ok: (r) => r.unread === 4 && r.msgs.map((m) => m.from).join() === "Can,Ayşe" }],
   ["widget aidat", { desc: "yalnız bu ayın özeti", fn: () => [WD.widgetDues({ ym: "2026-10", paidCount: 9, count: 14 }, "2026-10"), WD.widgetDues({ ym: "2026-09", paidCount: 9, count: 14 }, "2026-10")], ok: ([a, b]) => a.paid === 9 && a.count === 14 && b === null }],
-  ["widget kelimesi", { desc: "her gün bir sonraki kelime, gün içinde aynı", fn: () => [WD.dayWord("2026-10-22"), WD.dayWord("2026-10-22"), WD.dayWord("2026-10-23")], ok: ([a, b, c]) => a.en && a.tr && a.en === b.en && a.en !== c.en }],
   ["titreşim türü", { desc: "8 hafif, 14 orta, 30 güçlü, [10,40,10] başarı, uzun dizi hata", fn: () => [8, 14, 30, [10, 40, 10], [30, 50, 30, 50, 30], 0].map(HP.kindOf).join(), ok: (r) => r === "light,medium,heavy,success,error," }],
 ]);
 

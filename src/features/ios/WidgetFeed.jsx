@@ -9,7 +9,8 @@ import { getPlace } from "@/features/weather/weather";
 import { readSum } from "@/lib/homeTiles";
 import { widgetData } from "@/lib/nativeIos";
 import { todayStr } from "@/lib/utils/format";
-import { dayWord, widgetDues, widgetMoney, widgetMsgs, widgetPlans } from "@/lib/widgetData";
+import { widgetWord } from "@/lib/englishWords";
+import { widgetDues, widgetMoney, widgetMsgs, widgetPlans } from "@/lib/widgetData";
 
 // iPhone widget'larına veri (yalnız iPhone uygulamasında, IosBridge içinde durur): planlar, sayaç, mesajlar, hesap, aidat, günün kelimesi
 // ve konum (rüzgârı widget kendisi alır). Değişince gönderilir, aynı veri iki kez gönderilmez.
@@ -33,7 +34,7 @@ export function WidgetFeed({ timer }) {
         ...widgetMsgs(chats, uid),
         money: widgetMoney(m.bank),
         dues: profile?.role === "owner" ? widgetDues(readSum().dues, ym) : null,
-        word: dayWord(today),
+        word: widgetWord(undefined, today),
       }
     : null;
   const key = v ? JSON.stringify(v) : "";

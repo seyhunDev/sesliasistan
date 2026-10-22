@@ -1,7 +1,6 @@
 // iPhone widget'larının verisi (mobil/ios VeloraWidget/*.swift; uygulama yazar, widget'lar okur). Yalnız iPhone uygulamasında
 // gönderilir (features/ios/WidgetFeed.jsx); Firestore'a ek okuma yok, bellekte ya da bu cihazda saklı olandan gelir.
 import { planRecipients } from "./reminders.js";
-import { WORDS } from "./englishWords.js";
 
 // Planlar: bugünden sonraki, bitmemiş ve iptal edilmemiş, bu kişiye ait (sorumlu, ana hesap ya da ekleyen) ilk 8 plan. Widget geçenleri kendisi düşer.
 export function widgetPlans(plans, { uid, ownerId, today }) {
@@ -31,10 +30,3 @@ export const widgetMoney = (bank) => (bank ? { big: bank.big, label: bank.label,
 
 // Aidat: bu ayın özeti (aidat sayfası ve ana sayfa bu cihazda saklar, homeTiles readSum().dues): { paid, count }
 export const widgetDues = (sum, ym) => (sum && sum.ym === ym && sum.count > 0 ? { paid: sum.paidCount, count: sum.count } : null);
-
-// Günün kelimesi (kelime çalışma listesi gelene kadar gömülü listeden, her gün bir sonraki): { en, type, tr, ex, exTr }
-export function dayWord(today) {
-  const n = Math.floor(Date.parse(`${today}T12:00:00Z`) / 864e5);
-  const [en, type, tr, ex, exTr] = WORDS[((n % WORDS.length) + WORDS.length) % WORDS.length];
-  return { en, type, tr, ex, exTr };
-}
