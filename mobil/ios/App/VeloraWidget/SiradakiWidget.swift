@@ -9,6 +9,17 @@ struct VeloraGiris: TimelineEntry {
     let date: Date
     let v: WidgetVeri?
     let r: GunRuzgar?
+    var b = Bolumler()
+}
+
+// Büyük Velora widget'ında görünen bölümler (iOS 17+: widget'a basılı tut › Edit Widget)
+struct Bolumler: Hashable {
+    var ruzgar = true
+    var antrenman = true
+    var banka = true
+    var aidat = true
+    var planlar = false
+    var kelime = false
 }
 
 // ruzgar: grafiği olan widget'lar rüzgârı da alır (25 dk saklanır)
@@ -26,19 +37,23 @@ struct VeloraSaglayici: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<VeloraGiris>) -> Void) {
         Task {
-            let now = Date()
-            let e = await giris(now)
-            // 15 dakikada bir (grafikteki "şimdi" ilerler), sayaç bitince ve planlar geçince liste yenilenir
-            var anlar: [Date] = (0..<4).map { now.addingTimeInterval(Double($0) * 900) }
-            if let t = e.v?.timer, t.paused != true { anlar.append(t.bitis.addingTimeInterval(3601)) }
-            anlar += (e.v?.plans ?? []).compactMap { WidgetVeri.baslangic($0)?.addingTimeInterval(3601) }
-            let son = now.addingTimeInterval(3600)
-            let entries = Set(anlar.filter { $0 >= now && $0 <= son }).sorted().map { VeloraGiris(date: $0, v: e.v, r: e.r) }
-            completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(ruzgar ? 1800 : 3600))))
+            let e = await giris(Date())
+            completion(VeloraSaglayici.akis(e, ruzgar: ruzgar))
         }
     }
 
-    private func giris(_ now: Date) async -> VeloraGiris {
+    // 15 dakikada bir (grafikteki "şimdi" ilerler), sayaç bitince ve planlar geçince yenilenir
+    static func akis(_ e: VeloraGiris, ruzgar: Bool) -> Timeline<VeloraGiris> {
+        let now = e.date
+        var anlar: [Date] = (0..<4).map { now.addingTimeInterval(Double($0) * 900) }
+        if let t = e.v?.timer, t.paused != true { anlar.append(t.bitis.addingTimeInterval(3601)) }
+        anlar += (e.v?.plans ?? []).compactMap { WidgetVeri.baslangic($0)?.addingTimeInterval(3601) }
+        let son = now.addingTimeInterval(3600)
+        let entries = Set(anlar.filter { $0 >= now && $0 <= son }).sorted().map { VeloraGiris(date: $0, v: e.v, r: e.r, b: e.b) }
+        return Timeline(entries: entries, policy: .after(now.addingTimeInterval(ruzgar ? 1800 : 3600)))
+    }
+
+    func giris(_ now: Date) async -> VeloraGiris {
         let v = WidgetVeri.oku()
         let r = ruzgar ? await RuzgarKaynak.al(lat: v?.lat ?? 39.0717, lon: v?.lon ?? 26.8886) : nil
         return VeloraGiris(date: now, v: v, r: r)
@@ -56,8 +71,8 @@ extension WidgetVeri {
                 Plan(title: "Yarış kaydı son gün", date: yarin, time: "", important: true),
                 Plan(title: "Kulüp toplantısı", date: yarin, time: "18:00", important: false),
             ],
-            place: "Dikili", lat: nil, lon: nil, timer: nil, unread: 2,
-            msgs: [Mesaj(from: "Ayşe", text: "Yarın gelemem"), Mesaj(from: "Mert", text: "Tamam hocam")],
+            place: "Dikili", lat: nil, lon: nil, timer: nil,
+            training: Antrenman(id: "", title: "Optimist antrenmanı", date: bugun, time: "16:00", place: "Dikili"),
             money: Para(big: "12.480 ₺", label: "Banka", sub: nil),
             dues: Aidat(paid: 9, count: 14),
             word: Kelime(en: "acknowledge", type: "fiil", tr: "kabul etmek, onaylamak", ex: "He acknowledged that he had made a mistake.", exTr: nil, study: true, day: 3)
@@ -133,18 +148,19 @@ struct Baslik: View {
 // Zemin: ana ekranda lacivert, kilit ekranında sistemin yarı saydam kutusu
 struct Zemin: ViewModifier {
     @Environment(\.widgetFamily) var family
+    var renk: Color = wLacivert
     func body(content: Content) -> some View {
         let kilit: Bool = [WidgetFamily.accessoryRectangular, .accessoryCircular, .accessoryInline].contains(family)
         if #available(iOS 17.0, *) {
             if kilit {
                 content.containerBackground(for: .widget) { AccessoryWidgetBackground() }
             } else {
-                content.foregroundStyle(.white).tint(.white).containerBackground(for: .widget) { wLacivert }
+                content.foregroundStyle(.white).tint(.white).containerBackground(for: .widget) { renk }
             }
         } else if kilit {
             content
         } else {
-            content.foregroundStyle(.white).tint(.white).padding().background(wLacivert)
+            content.foregroundStyle(.white).tint(.white).padding().background(renk)
         }
     }
 }

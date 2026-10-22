@@ -58,7 +58,7 @@ export async function unlock() {
   }
 }
 
-// Widget verisi (lib/widgetData.js, features/ios/WidgetFeed.jsx): { plans, place, lat, lon, timer, unread, msgs, money, dues, word }
+// Widget verisi (lib/widgetData.js, features/ios/WidgetFeed.jsx): { plans, training, place, lat, lon, timer, money, dues, word }
 export function widgetData(v) {
   plugin()?.widgetData?.({ json: JSON.stringify(v) }).catch(() => {});
 }
