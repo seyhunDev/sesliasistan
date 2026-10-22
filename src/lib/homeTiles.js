@@ -480,7 +480,7 @@ export function nextPlan(plans, now, today = now.toLocaleDateString("sv-SE")) {
   const lim = new Date(now.getTime() + 7 * 864e5).toLocaleDateString("sv-SE");
   return (
     (plans || [])
-      .filter((p) => p?.date && p.status !== "cancelled" && p.status !== "done" && p.date >= today && p.date <= lim && !p.fit)
+      .filter((p) => p?.date && !p.done && p.status !== "cancelled" && p.status !== "done" && p.date >= today && p.date <= lim && !p.fit)
       .filter((p) => p.date > today || end(p) > hm)
       .sort((a, b) => `${a.date} ${a.time || "99"}`.localeCompare(`${b.date} ${b.time || "99"}`))[0] || null
   );
