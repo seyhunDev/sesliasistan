@@ -1111,6 +1111,20 @@ group("Cihazdaki veriler")([
     return a.kind === "docs" && a.title === "Foça yarışı" && /10 sayfa/.test(a.sub) && b.kind === "extra" && /2 dosya/.test(b.sub) && c.kind === "notice" && c.title === "talimat.pdf";
   })],
   ["ayar boyutu", F("anahtar + değer, 2 bayt/karakter", () => DD.storageBytes([["ab", "cd"], ["x", null]]) === 10)],
+  ["telefondaki medya", F("yarış başına grup, büyük önce, kalan gün ilk silinecekten", () => {
+    const now = Date.parse("2026-10-22T12:00:00Z");
+    const d = (n) => now - n * 864e5;
+    const g = DD.mediaGroups([
+      { id: "a", raceId: "r1", kind: "video", size: 50, savedAt: d(1) },
+      { id: "b", raceId: "r1", kind: "photo", size: 5, savedAt: d(3) },
+      { id: "c", raceId: "ant-p1", kind: "video", size: 80, savedAt: d(6.5) },
+    ], 7, now);
+    return g.length === 2 && g[0].raceId === "ant-p1" && g[0].daysLeft === 1 && g[1].size === 55 && g[1].daysLeft === 4 && DD.mediaCount(g[1]) === "1 video · 1 foto" && g[1].ids.join() === "a,b";
+  })],
+  ["buluttaki medya", F("yalnız canlı belgede adresi olanlar silinir", () => {
+    const ok = DD.inCloud(["a", "b", "c"], [{ id: "a", url: "https://x" }, { id: "b", url: "" }]);
+    return ok.join() === "a" && DD.inCloud(["a"], null).length === 0;
+  })],
 ]);
 
 // Envanter (invModel.js): numara, yapay zeka işlemlerinin uygulanması, hedef envanter, hareket kaydı
