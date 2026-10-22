@@ -4,6 +4,8 @@
 // [kelime, tür, Türkçe anlam, örnek cümle, örneğin Türkçesi]
 // Sıra: liste sabit bir karışık sıraya dizilir, bu cihaz kaldığı yeri saklar (localStorage "sa-word-i");
 // her açılışta sıradaki kelime gelir, liste bitmeden aynı kelime tekrar etmez. Çalışılan kelimeler (aşağıda "Deste") önce gelir.
+import { PHRASES, PHRASE_TOPICS } from "@/lib/englishPhrases";
+
 export const WORDS = [
   ["achieve", "fiil", "başarmak, elde etmek", "She worked hard to achieve her goals this year.", "Bu yıl hedeflerine ulaşmak için çok çalıştı."],
   ["acknowledge", "fiil", "kabul etmek, onaylamak", "He acknowledged that he had made a mistake.", "Bir hata yaptığını kabul etti."],
@@ -241,27 +243,31 @@ export function nextWordIndex(store = typeof localStorage === "undefined" ? null
 
 // ---- Deste: çalışılan kelimeler (aralıklı tekrar) ----
 // deck = { words: [kelime], gaps: [gün], seedV }
-// kelime = { en, type, tr, ex, exTr, status: "list" | "study" | "known", box, due (YYYY-MM-DD), at }
+// kelime = { en, type, tr, ex, exTr, kind: "word" | "phrase", topic, status: "list" | "study" | "known", box, due (YYYY-MM-DD), at, kd (öğrenildiği gün) }
+// kind "phrase": İngilizce sayfası › Cümleler (englishPhrases.js, konu konu); kelime kartı ve widget listeden yalnız kelime seçer.
 // "study": kullanıcı "çalıştır" dedi; öğrenene kadar gösterilir. İlk gün hemen, sonra gaps aralıklarıyla
 // (varsayılan 1, 2, 4, 7, 14 gün; son aralık "öğrendim" denene kadar tekrar eder). "known": öğrendim, artık gelmez.
 export const GAPS = [1, 2, 4, 7, 14];
-export const SEED_V = 2; // gömülü liste büyüyünce artar: eksik kelimeler desteye eklenir
+export const SEED_V = 3; // gömülü liste büyüyünce artar: eksik kelimeler desteye eklenir
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
-export const wordKey = (en) => S(en, 60).toLocaleLowerCase("en-US");
+export const wordKey = (en) => S(en, 160).toLocaleLowerCase("en-US");
 
 export function cleanWord(w = {}) {
   const status = ["study", "known"].includes(w.status) ? w.status : "list";
   return {
-    en: S(w.en, 60),
+    en: S(w.en, 160),
     type: S(w.type, 20),
     tr: S(w.tr, 120),
     ex: S(w.ex, 200),
     exTr: S(w.exTr, 200),
+    kind: w.kind === "phrase" ? "phrase" : "word",
+    topic: S(w.topic, 40),
     status,
     box: Math.max(0, Math.min(20, Math.round(Number(w.box) || 0))),
     due: DAY.test(String(w.due || "")) ? w.due : "",
     at: S(w.at, 30),
+    kd: DAY.test(String(w.kd || "")) ? w.kd : "",
   };
 }
 export const cleanGaps = (g) => {
@@ -277,13 +283,14 @@ export function cleanDeck(d = {}) {
   return { words, gaps: cleanGaps(d?.gaps), seedV: Math.max(0, Math.round(Number(d?.seedV) || 0)) };
 }
 
-const fromRow = ([en, type, tr, ex, exTr]) => ({ en, type, tr, ex, exTr, status: "list", box: 0, due: "", at: "" });
+const fromRow = ([en, type, tr, ex, exTr]) => ({ en, type, tr, ex, exTr, kind: "word", status: "list", box: 0, due: "", at: "" });
+const SEED = [...WORDS.map(fromRow), ...Object.entries(PHRASES).flatMap(([topic, rows]) => rows.map(([en, tr]) => ({ en, type: "cümle", tr, ex: "", exTr: "", kind: "phrase", topic, status: "list" })))];
 // Gömülü listede olup destede olmayanlar eklenir (deste yoksa tamamı); { deck, changed }
 export function seedDeck(d) {
   const deck = cleanDeck(d);
   if (deck.seedV >= SEED_V) return { deck, changed: false };
   const have = new Set(deck.words.map((w) => wordKey(w.en)));
-  const add = WORDS.filter((r) => !have.has(wordKey(r[0]))).map(fromRow);
+  const add = SEED.filter((w) => !have.has(wordKey(w.en)));
   return { deck: { ...deck, words: [...deck.words, ...add], seedV: SEED_V }, changed: true };
 }
 
@@ -317,15 +324,16 @@ export function studyWord(deck, w, today, at = "") {
   const nw = cleanWord({ ...w, status: "study", box: 0, due: today, at });
   return nw.en && nw.tr ? { ...deck, words: [nw, ...deck.words] } : deck;
 }
-export const knowWord = (deck, en) => mapWord(deck, en, (x) => ({ ...x, status: "known", due: "" }));
+export const knowWord = (deck, en, today = "") => mapWord(deck, en, (x) => ({ ...x, status: "known", due: "", kd: today }));
 export const unstudyWord = (deck, en) => mapWord(deck, en, (x) => ({ ...x, status: "list", box: 0, due: "" }));
 
 const card = (w, study) => ({ en: w.en, type: w.type, tr: w.tr, ex: w.ex, exTr: w.exTr, study });
+const isWord = (w) => w.kind !== "phrase";
 // Uygulamadaki kart: tekrarı gelen çalışma kelimesi önce, yoksa listeden sıradaki (i: nextWordIndex)
 export function pickCard(deck, today, i = 0) {
   const due = dueWords(deck, today)[0];
   if (due) return card(due, true);
-  const list = (deck?.words || []).filter((w) => w.status === "list");
+  const list = (deck?.words || []).filter((w) => w.status === "list" && isWord(w));
   if (!list.length) return null;
   const o = wordOrder(list.length);
   return card(list[o[((i % o.length) + o.length) % o.length]], false);
@@ -365,12 +373,30 @@ export function widgetWord(deck = cachedDeck(), today = isoDay()) {
 // ---- Asistan cümleleri ----
 // "resilient kelimesini ekle", "bana X kelimesini çalıştır", "X kelimesini öğrendim", "X kelimesini çalışmadan çıkar",
 // "çalıştığım kelimeler neler", "kelimeleri her gün göster", "kelime tekrarını 1 3 7 gün yap"
-// → { op: "study" | "known" | "drop" | "ask" | "gaps", word, gaps }
+// "İngilizce could you give me a hand cümlesini ekle" (kind "phrase": İngilizce sayfası › Cümleler)
+// → { op: "study" | "known" | "drop" | "ask" | "gaps", word, gaps, kind? }
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/[.!…]+$/u, "").replace(/\s+/g, " ").trim();
 const WORD_OF = /^(.+?)\s+(?:ingilizce\s+)?(?:kelimesi\p{L}*|kelimeyi|sözcüğ\p{L}*|deyimi\p{L}*)(?:\s|$)/u;
 const NUM = { bir: 1, iki: 2, üç: 3, dört: 4, beş: 5, altı: 6, yedi: 7, sekiz: 8, dokuz: 9, on: 10, "on beş": 15, otuz: 30 };
+const PHRASE_OF = /^(.+?)\s+(?:ingilizce\s+)?(?:cümlesi\p{L}*|cümleyi|kalıbı\p{L}*)(?:\s|$)/u;
+function opOf(t, word) {
+  if (/öğrendim|biliyorum|ezberledim/u.test(t)) return { op: "known", word };
+  if (/(çalışma\p{L}*dan|listeden) (çıkar|kaldır|sil)|çalışmayı bırak|(çıkar|kaldır|sil)\p{L}*$/u.test(t)) return { op: "drop", word };
+  if (/(ekle|çalıştır|çalış\p{L}*|öğret|ezberlet|kaydet|listeme|listeye|göster)/u.test(t)) return { op: "study", word };
+  return null;
+}
 export function wordCommand(raw) {
   const t = low(raw);
+  // Cümle: İngilizce söylenen (ya da "İngilizce" denen) en az iki kelimelik kalıp; "bu cümleyi not al" gibi Türkçe cümleler değil
+  const pm = /cümle|kalıb/u.test(t) ? t.match(PHRASE_OF) : null;
+  if (pm) {
+    const ph = pm[1].replace(/^(bana |ingilizce |şu |yeni )+/u, "").replace(/^["“'‘]|["”'’]$/gu, "").trim();
+    const latin = /^[a-z][a-z'’ ,?!.-]*$/i.test(ph) && ph.split(" ").length >= 2;
+    if (ph && ph.split(" ").length <= 12 && (latin || /ingilizce/u.test(t))) {
+      const r = opOf(t, ph);
+      return r ? { ...r, kind: "phrase" } : null;
+    }
+  }
   if (!/(kelime|sözcü|deyim)/u.test(t)) return null;
   if (/(kelime|sözcük)\p{L}* (tekrar\p{L}*|aralı\p{L}*|sıklı\p{L}*)|kelimeleri (her|\d+|bir|iki|üç) /u.test(t)) {
     let gaps = [];
@@ -392,8 +418,50 @@ export function wordCommand(raw) {
     word = k ? k[1].trim() : "";
   }
   if (!word || word.split(" ").length > 5) return null;
-  if (/öğrendim|biliyorum|ezberledim/u.test(t)) return { op: "known", word };
-  if (/(çalışma\p{L}*dan|listeden) (çıkar|kaldır|sil)|çalışmayı bırak|(çıkar|kaldır|sil)\p{L}*$/u.test(t)) return { op: "drop", word };
-  if (/(ekle|çalıştır|çalış\p{L}*|öğret|ezberlet|kaydet|listeme|listeye|göster)/u.test(t)) return { op: "study", word };
-  return null;
+  return opOf(t, word);
 }
+
+// ---- İngilizce sayfası (/english): Kelimeler / Cümleler ----
+export const ofKind = (deck, kind) => (deck?.words || []).filter((w) => (kind === "phrase") === (w.kind === "phrase"));
+// Üstteki sayılar: { study, known, list }
+export function deckCounts(deck, kind) {
+  const l = ofKind(deck, kind);
+  const n = (st) => l.filter((w) => w.status === st).length;
+  return { study: n("study"), known: n("known"), list: n("list") };
+}
+// Cümle konuları: [{ topic, known, total }] (hazır konular sırayla, sonra kendi eklediklerin)
+export function topicStats(deck) {
+  const l = ofKind(deck, "phrase");
+  const names = [...new Set([...PHRASE_TOPICS, ...l.map((w) => w.topic || "Eklediklerim")])];
+  return names
+    .map((topic) => {
+      const t = l.filter((w) => (w.topic || "Eklediklerim") === topic);
+      return { topic, known: t.filter((w) => w.status === "known").length, total: t.length };
+    })
+    .filter((t) => t.total);
+}
+// Sıradaki kart: tekrarı gelen çalışma kelimesi, sonra diğer çalışılanlar, sonra liste (kelimeler karışık sırayla, cümleler konu sırasıyla).
+// skip: "Sonraki" ile geçilenler (bu açılışta); hepsi geçildiyse baştan. Dönüş: kelime ya da null
+export function pageCard(deck, { kind = "word", today, topic = "", skip = [] } = {}) {
+  const all = ofKind(deck, kind).filter((w) => !topic || (w.topic || "Eklediklerim") === topic);
+  const due = dueWords({ words: all }, today);
+  const rest = all.filter((w) => w.status === "study" && !due.includes(w));
+  let list = all.filter((w) => w.status === "list");
+  if (kind !== "phrase") {
+    const o = wordOrder(list.length);
+    list = o.map((i) => list[i]);
+  }
+  const order = [...due, ...rest, ...list];
+  const sk = new Set(skip.map(wordKey));
+  return order.find((w) => !sk.has(wordKey(w.en))) || order[0] || null;
+}
+// Öğrendiklerim: en son öğrenilen önce
+export const knownList = (deck, kind) =>
+  ofKind(deck, kind)
+    .filter((w) => w.status === "known")
+    .sort((a, b) => (b.kd || "").localeCompare(a.kd || ""));
+// Çalışılanlar: en yakın tekrar önce
+export const studyRows = (deck, kind) =>
+  ofKind(deck, kind)
+    .filter((w) => w.status === "study")
+    .sort((a, b) => (a.due || "").localeCompare(b.due || ""));

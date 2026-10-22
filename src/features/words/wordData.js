@@ -7,6 +7,7 @@
 import { doc, getDoc, runTransaction } from "firebase/firestore";
 import { setDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
+import { authFetch } from "@/lib/authFetch";
 import { cachedDeck, cleanDeck, keepDeck, seedDeck } from "@/lib/englishWords";
 
 const ref = (orgId) => doc(db, "orgs", orgId, "english", "deck");
@@ -46,4 +47,12 @@ export async function updateDeck(orgId, fn) {
     return next;
   });
   return put(orgId, deck);
+}
+
+// Söylenen/yazılan kelimenin ya da cümlenin kartı (yapay zeka, /api/word): { en, type, tr, ex, exTr } (+ kind, topic). Kaydetmez.
+export async function askWord(word, kind = "word") {
+  const res = await authFetch("/api/word", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ word, kind }) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.word) throw new Error(data.error || "Hazırlayamadım, tekrar dene.");
+  return kind === "phrase" ? { ...data.word, kind: "phrase", topic: "Eklediklerim" } : data.word;
 }
