@@ -327,12 +327,30 @@ export function mediaGroups(media, starts, day) {
     // Aynı numaralı iki yarış (geçersiz sayılan ve tekrarı) ayrı gruplarda: anahtar yarışın kendisi
     const key = `${id || n}-${phase}`;
     const title = n ? `${name} · ${PHASES[phase]}` : name ? `${name} · ${phase === "race" ? "Startan sonra" : PHASES[phase]}` : id ? (phase === "race" ? "Startan sonra" : PHASES[phase]) : PHASES.pre;
-    if (!groups.has(key)) groups.set(key, { key, n, at, rank: order[phase], title, items: [] });
+    // race/rname: galeride yarışa göre birleştirmek için (mediaByRace)
+    const rname = n || name ? name : id ? "" : "Diğer";
+    if (!groups.has(key)) groups.set(key, { key, n, at, rank: order[phase], title, race: id || (n ? `n${n}` : ""), rname, items: [] });
     groups.get(key).items.push(m);
   }
   return [...groups.values()]
     .sort((a, b) => String(b.at).localeCompare(String(a.at)) || (b.n || 0) - (a.n || 0) || a.rank - b.rank)
-    .map(({ key, title, items }) => ({ key, title, items: items.reverse() }));
+    .map(({ key, title, race, rname, items }) => ({ key, title, race, rname, items: items.reverse() }));
+}
+
+// Galeri (Seyhun 2026-10-22, örnek yaris-tasarim/medya/galeri-iphone.png): evreler değil yarışlar gruplanır ("1. yarış", "Startan sonra",
+// "Diğer"); evre her karede ("−0:42" / "+3:10"). Yarış içinde çekiliş sırasıyla (eskiden yeniye), en son yarış en üstte.
+export function mediaByRace(media, starts, day) {
+  const out = [];
+  for (const g of mediaGroups(media, starts, day)) {
+    const k = g.race || `x${g.rname}`;
+    const last = out.find((x) => x.key === k);
+    if (last) last.items.push(...g.items);
+    else out.push({ key: k, free: g.race.startsWith("free"), title: g.rname, items: [...g.items] });
+  }
+  return out.map(({ key, free, title, items }) => {
+    const sorted = items.sort((a, b) => String(a.at).localeCompare(String(b.at)));
+    return { key, title: free ? (sorted.every((m) => m.phase === "race" || m.phase === "after") ? "Startan sonra" : "Start") : title || "Diğer", items: sorted };
+  });
 }
 
 // Sonradan düzeltme (büyük açınca "Düzelt"): çekimin yarışı ve anı değişir; mom null: yarışsız. Dönüş yeni liste

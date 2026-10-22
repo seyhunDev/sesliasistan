@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { addRaceMedia, backfillPoster, dropRaceMedia, mutedCopy, posterOf, prepRaceMedia, saveMedia } from "@/features/athletes/raceLiveStore";
 import { Button } from "@/components/ui/Button";
 import { Bar, readTimer } from "@/features/training/Countdown";
-import { dayOf, fixMedia, hm, mediaGroups, mediaOf, momentAt, momentBadge, momentOf, tagMedia } from "@/lib/raceLive";
+import { dayOf, fixMedia, hm, mediaByRace, mediaGroups, mediaOf, momentAt, momentBadge, momentOf, tagMedia } from "@/lib/raceLive";
 import { MediaViewer } from "./MediaViewer";
 import { Thumb } from "./Thumb";
 import { CameraSheet } from "./CameraSheet";
@@ -25,6 +25,7 @@ import { clearKept, dropKept, dropPending, keepLocal, listKept, listPending, put
 // Çekilen hemen kaydedilir (önce gözden geçirme yok). file0: alttaki Kayıt ile çekilen dosya (işlenince onFileDone).
 // Yüklenen ve yüklenmekte olan kayıtlar sayfa genelinde tutulur: sekme değişince Medya yeniden açılır, telefonda bekleyen kayıt (yüklemesi
 // eski sekmede sürerken) yeniden sıraya girip ikinci kez yükleniyordu (Seyhun 2026-10-22: "aynı videonun iki kaydı düşüyor")
+const INFO_KEY = "sa-medya-bilgi";
 const inflight = new Set();
 // Yükleme durumu da sayfa genelinde (sekme değişip Medya yeniden açılınca halka kaldığı yerden görünür):
 // ups { [id]: { rec, url, p, err } }; mine: bu telefonda çekilip yüklenen künye → { url: yerel dosya, done: kısa ✓ }
@@ -83,6 +84,21 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
   const justDone = Object.values(mine).some((x) => x.done);
   const groups = mediaGroups([...mediaOf(live.media, pick), ...upItems], live.starts, day);
   const titleOf = new Map(groups.flatMap((g) => g.items.map((m) => [m.id, g.title])));
+  const gallery = mediaByRace([...mediaOf(live.media, pick), ...upItems], live.starts, day);
+  const count = (xs) => [xs.filter((m) => m.kind === "video").length, xs.filter((m) => m.kind !== "video").length].map((n, k) => n && `${n} ${k ? "fotoğraf" : "video"}`).filter(Boolean).join(" · ");
+  // Bilgi kartı bir kez (Seyhun 2026-10-22): ✕'e basınca bu telefonda bir daha çıkmaz
+  const [info, setInfo] = useState(false);
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(INFO_KEY)) setInfo(true);
+    } catch {}
+  }, []);
+  const closeInfo = () => {
+    setInfo(false);
+    try {
+      localStorage.setItem(INFO_KEY, "1");
+    } catch {}
+  };
   const first = (a) => (a.studentName || "").split(" ")[0];
 
   // Çekilenin anı (Süre sekmesindeki yarışlara göre: momentAt) ve üstüne basılan yazı ("4. yarış · Son 1 dakika · 0:42 kala" / yarış adı · saat)
@@ -337,6 +353,15 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
           ))}
         </div>
       )}
+      {info && (
+        <div className={`${card} relative mt-3 py-3 pl-3.5 pr-11 text-[0.875rem] leading-snug`}>
+          <b className="mb-0.5 block font-semibold">Videolar nerede saklanır?</b>
+          Telefonda 7 gün saklanır, buluta da yüklenir. Bulutta 720p tutulur. Çekildiği kalitede kalsın istersen 7 gün içinde İndir ile telefonuna kaydet.
+          <button type="button" onClick={closeInfo} aria-label="Bilgiyi kapat" className="absolute right-1.5 top-1.5 grid size-9 place-items-center rounded-full text-mut active:bg-bg">
+            <Icon name="x" className="size-5" />
+          </button>
+        </div>
+      )}
       <div className="mt-3 flex items-center justify-between gap-3 px-1">
         {/* Yükleme sürerken burada ne kadarının gittiği yazar (Seyhun 2026-10-22: "yüklenip yüklenmediğini bilmiyorum"), bitince sayılar */}
         <p className="text-[0.875rem] tabular-nums text-mut">{going.length ? `${going.length} ${going.every((x) => x.kind === "video") ? "video" : going.every((x) => x.kind !== "video") ? "fotoğraf" : "kayıt"} buluta gönderiliyor · %${Math.round((going.reduce((a, x) => a + (x.u.p || 0), 0) / going.length) * 100)}` : justDone ? "Buluta gönderildi ✓" : todays.length ? [todays.filter((m) => m.kind === "video").length, todays.filter((m) => m.kind !== "video").length].map((n, k) => n && `${n} ${k ? "fotoğraf" : "video"}`).filter(Boolean).join(" · ") : ""}</p>
@@ -350,12 +375,16 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
         </div>
       </div>
       {!groups.length && <p className={`${card} mt-3 px-4 py-6 text-center text-[0.875rem] text-mut`}>Bu gün fotoğraf ya da video yok.</p>}
-      {groups.map((g) => (
+      {/* iPhone galerisi gibi (Seyhun 2026-10-22 onayı, yaris-tasarim/medya/galeri-iphone.png): yarışa göre, kenardan kenara 4'lü sıkı ızgara */}
+      {gallery.map((g) => (
         <section key={g.key}>
-          <p className="mb-1.5 mt-4 px-1 text-[0.8125rem] text-mut">{g.title}</p>
-          <div className={`${card} grid grid-cols-3 gap-1 overflow-hidden p-1`}>
+          <div className="mb-1.5 mt-4 flex items-baseline justify-between gap-3 px-1">
+            <b className="truncate text-[1.0625rem] font-semibold">{g.title}</b>
+            <span className="shrink-0 text-[0.8125rem] text-mut">{count(g.items)}</span>
+          </div>
+          <div className="-mx-5 grid grid-cols-4 gap-0.5">
             {g.items.map((m) => (
-              <button key={m.id} type="button" onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden rounded-xl bg-line active:opacity-80">
+              <button key={m.id} type="button" onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden bg-line active:opacity-80">
                 <Thumb kind={m.kind} url={m.url} thumb={m.thumb || m.u?.pic} dur={m.dur} local={m.u?.url || mine[m.id]?.url} up={m.u && !m.u.err ? m.u.p : null} err={!!m.u?.err} done={!!mine[m.id]?.done} />
                 {m.phase && <span className="absolute left-1 top-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums text-white">{momentBadge(m)}</span>}
               </button>
@@ -366,7 +395,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
 
       <MediaViewer
         // Yüklenmekte olan da hemen izlenir (Seyhun 2026-10-22: "telefonda tuttuğumuzu kullanamıyoruz"): telefondaki dosyadan oynar
-        items={groups.flatMap((g) => g.items).map((m) => (m.u ? { ...m, url: m.u.url, local: m.u.url, thumb: m.u.pic, up: m.u.err ? -1 : m.u.p } : mine[m.id] ? { ...m, local: mine[m.id].url } : m))}
+        items={gallery.flatMap((g) => g.items).map((m) => (m.u ? { ...m, url: m.u.url, local: m.u.url, thumb: m.u.pic, up: m.u.err ? -1 : m.u.p } : mine[m.id] ? { ...m, local: mine[m.id].url } : m))}
         id={open ? open.id : ""}
         onPick={setOpen}
         onClose={() => setOpen("")}
