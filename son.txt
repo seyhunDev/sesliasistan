@@ -1,8 +1,8 @@
-Commit: b06fd95 · Medya: buluta gönderim sessiz köşe halkası; görüntü hemen kullanılır (#671)
-Zaman: 2026-10-22-1205 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39751778996
+Commit: c32ef83 · Medya: Kayıt iPhone kamerasını açar; sayaçlı kamera Medya ⋯ içinde (#672)
+Zaman: 2026-10-22-1344 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39764406809
 
-TAM TEST · 22.10.2026 11:58:47
+TAM TEST · 22.10.2026 13:37:13
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1369/1371 geçti · 2 kalan · 418 sn
+SONUÇ: 1370/1371 geçti · 1 kalan · 426 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -130,7 +130,7 @@ SONUÇ: 1369/1371 geçti · 2 kalan · 418 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 103/105
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 104/105
   ✗ Sekme çubuğundaki yeşil düğme: 1/2
       ✗ “ana sayfa”
           beklenen: ortada tek asistan düğmesi, 5 sütun
@@ -145,10 +145,7 @@ SONUÇ: 1369/1371 geçti · 2 kalan · 418 sn
   ✓ Önceki sohbetler: 3/3
   ✓ Sesli yanıt: 8/8
   ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
-  ✗ Onay isteyen işler: 9/10
-      ✗ “Ege'ye yaz … → “gönder””
-          beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 19 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+  ✓ Onay isteyen işler: 10/10
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
