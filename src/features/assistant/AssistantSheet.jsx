@@ -5,7 +5,6 @@ import { Icon } from "@/components/ui/Icon";
 import { Thread } from "@/features/add/Thread";
 import { rel } from "@/lib/utils/format";
 import { shareGroup } from "@/lib/cancelPlan";
-import { PastSessions } from "./PastSessions";
 import { ATT_LABEL } from "@/features/athletes/assistAttendance";
 import { PAGES, describeAction } from "@/lib/assistantLocal";
 import { RecordList } from "./RecordList";
@@ -18,7 +17,7 @@ import { useAssistant, SILENCE_MS, KIND_ICON } from "./useAssistant";
 import { devOn } from "@/lib/assistTiming";
 
 export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
-  const { auto, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listenOnce, listening, nextStep, okFlow: okFlowRef, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, tts, turns, undoAtt, used, voice, history } = useAssistant({ open, onClose, seed, onLive, onAct });
+  const { auto, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listenOnce, listening, nextStep, okFlow: okFlowRef, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, tts, turns, undoAtt, used, voice } = useAssistant({ open, onClose, seed, onLive, onAct });
 
   // Yapay zeka aynı kaydı birden çok kez gösterebilir: her kayıt bir kez listelenir
   const shownOf = (show = []) =>
@@ -111,8 +110,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const convoView = (embedded) => (
     <>
         {/* Boş sohbette açıklama yazısı yok (sade tasarım, 2026-10-16): kutudaki "Yaz ya da konuş…" yeter */}
-
-        <PastSessions list={history} />
 
         <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => (
           <>

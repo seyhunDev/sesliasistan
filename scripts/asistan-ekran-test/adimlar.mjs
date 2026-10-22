@@ -102,10 +102,11 @@ export async function scenarios(h) {
     return [c === "kırmızı" && bars === 5 && !t && /Dinliyorum/.test(box), `${c} · ${bars} çubuk · halka: “${t}” · çubuk: “${box.replace(/\n/g, " ")}”`];
   });
   // Yeni tasarım (2026-10-22): zemin sabit, dinlerken ekranın kenarı parlar (kenar ışığı sesle güçlenir)
-  await check("Halka renkleri", "zemin", "sabit zemin (abg), dinlerken kenar ışığı görünür", async () => {
-    const anim = await page.locator("[data-dome] .abg").evaluate((el) => getComputedStyle(el).animationName);
+  await check("Halka renkleri", "zemin", "zemin sürekli oynamaz (yalnız açılışta), dinlerken kenar ışığı görünür", async () => {
+    // Zemin yalnız açılışta bir kez belirir (afbgin), sürekli oynamaz
+    const anim = await page.locator("[data-dome] .abg").evaluate((el) => { const c = getComputedStyle(el); return `${c.animationName} ${c.animationIterationCount}`; });
     const op = await page.locator("[data-dome] .aedge").evaluate((el) => Number(getComputedStyle(el).opacity));
-    return [anim === "none" && op > 0.3, `zemin animasyonu ${anim} · kenar ışığı ${op.toFixed(2)}`];
+    return [!/infinite/.test(anim) && op > 0.3, `zemin animasyonu ${anim} · kenar ışığı ${op.toFixed(2)}`];
   });
   await say(page, "notlarımı oku");
   // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutuya akar, altta süre + dalga, ■ Dur ve ↑ Gönder

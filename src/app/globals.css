@@ -324,7 +324,7 @@ select {
 .lring { display: block; overflow: visible; }
 .lring line { stroke-width: 30; stroke-linecap: round; transform-box: fill-box; transform-origin: 50% 100%; transition: transform .2s ease-out, opacity .3s ease; }
 .lring circle { transform-box: fill-box; transform-origin: 50% 50%; transition: transform .45s cubic-bezier(.3, 1.6, .5, 1); }
-.afull-in .lring line { animation: lrgrow .55s cubic-bezier(.22, .8, .24, 1) both; animation-delay: calc(var(--i) * 22ms); }
+.afull-in .lring line { animation: lrgrow .55s cubic-bezier(.22, .8, .24, 1) both; animation-delay: calc(.12s + var(--i) * 20ms); }
 @keyframes lrgrow { from { transform: scaleY(0); opacity: 0; } }
 .lring[data-tone="listen"] line { animation: none; transform: scaleY(calc(.55 + var(--lvl, 0) * var(--m) * .9)); transition: transform .1s ease-out; }
 .lring[data-tone="work"] line { opacity: .3; transform: scaleY(.75); }
@@ -346,11 +346,23 @@ select {
 .afull .asheet::after { display: none; }
 .afull .asheet-input { background: var(--ab-panel); }
 .afull [data-user-bubble] { background: var(--ab-panel); box-shadow: 0 0 0 .5px var(--line); }
-@keyframes afullin { from { opacity: 0; transform: translate3d(0, 2.5rem, 0); } }
-.afull-in { animation: afullin .42s cubic-bezier(.22, .8, .24, 1) both; }
+/* Sıralı açılış (Seyhun 2026-10-22: "önce arka plan güzelce açılsın, sonra yazı alanı"): zemin alttan yükselip belirir,
+   ardından üst satır, logo, konuşma alanı ve en son yazı kutusu sırayla yukarı kayarak gelir. Kubbenin boyu açılırken bir
+   anda değişir (TabBar wasActive); hareket yalnız transform ve opacity. */
+@keyframes afullin { from { opacity: 0; } }
+@keyframes afbgin { from { opacity: 0; transform: translate3d(0, 12%, 0) scale(1.04); } }
+@keyframes afpartin { from { opacity: 0; transform: translate3d(0, 1.25rem, 0); } }
+.afull-in { animation: afullin .2s ease-out both; }
+.afull-in > .abg { animation: afbgin .42s cubic-bezier(.22, .8, .24, 1) both; will-change: transform, opacity; }
+.afull-in > .asheet > * { animation: afpartin .4s cubic-bezier(.22, .8, .24, 1) both; animation-delay: .14s; }
+.afull-in > .asheet > :nth-child(2) { animation-delay: .1s; }
+.afull-in > .asheet > :last-child { animation-delay: .22s; }
 /* Kapanırken ve küçülürken aşağı inerek kaybolur (TabBar LEAVE_MS ile aynı süre) */
-@keyframes afullout { to { opacity: 0; transform: translate3d(0, 3rem, 0); } }
+@keyframes afullout { to { opacity: 0; } }
+@keyframes afpartout { to { opacity: 0; transform: translate3d(0, 1.5rem, 0); } }
 .afull-out { animation: afullout .34s cubic-bezier(.4, 0, .6, 1) forwards; pointer-events: none; }
+.afull-out > .asheet { animation: afpartout .22s cubic-bezier(.4, 0, .6, 1) forwards; }
+@media (prefers-reduced-motion: reduce) { .afull-in > .abg, .afull-in > .asheet > *, .afull-out > .asheet { animation: none; } }
 /* Uygulama yüklenince kubbe alttan yükselerek gelir (yalnız ilk açılışta; dolgu modu "backwards": bittikten sonra
    klavye için verilen transform'u ezmesin) */
 @keyframes domerise { from { transform: translateY(100%); } }

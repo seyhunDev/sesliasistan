@@ -374,13 +374,26 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   const idle = (bar || slim) && !rec && !active && !typing;
 
   // Yükseklik içeriği izler (kubbe içerikle birlikte büyür/küçülür; geçiş CSS'te). Boştaki yükseklik sayfanın alt boşluğu olur.
+  // Asistan açılıp kapanırken boy geçişsiz bir anda değişir (Seyhun 2026-10-22: "açılırken takılıyor"): tam ekrana doğru
+  // kare kare büyüyen boy her karede yerleşim ve büyük bir alanın yeniden boyanması demekti. Açılış/kapanış hareketi
+  // yalnız içeride, transform ve opacity ile (globals.css .afull-in / .afull-out).
+  const wasActive = useRef(active);
   useLayoutEffect(() => {
     const o = box.current;
     const i = inner.current;
     if (!o || !i) return;
+    const jump = wasActive.current !== active;
+    wasActive.current = active;
     const set = () => {
       const h = shown ? Math.round(i.offsetHeight) : 0;
-      if (o.style.height !== `${h}px`) o.style.height = `${h}px`;
+      if (o.style.height !== `${h}px`) {
+        if (jump) o.style.transition = "none";
+        o.style.height = `${h}px`;
+        if (jump) {
+          void o.offsetHeight; // geçişsiz boy uygulansın, sonra geçiş geri gelsin
+          o.style.transition = "";
+        }
+      }
       if (idle) {
         document.documentElement.style.setProperty("--dome-h", `${h}px`);
         document.documentElement.style.setProperty("--stage-h", `${h}px`);
@@ -553,11 +566,9 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   useEffect(() => {
     const el = feed.current;
     if (!active || !el || typeof ResizeObserver === "undefined") return;
-    // Gözlemci ilk ölçümü kendisi de verir; yuvanın kendi 4 px'lik payı ve önceki sohbetler sayılmaz (açılışta halka büyük
-    // kalır, ilk yeni yazıda küçülür)
+    // Gözlemci ilk ölçümü kendisi de verir; yuvanın kendi 4 px'lik payı sayılmaz (açılışta halka büyük kalır, ilk yazıda küçülür)
     const ro = new ResizeObserver(() => {
-      const past = el.querySelector("[data-past]");
-      if (el.offsetHeight - (past ? past.offsetHeight + 16 : 0) > 8) setFilled(true);
+      if (el.offsetHeight > 8) setFilled(true);
     });
     ro.observe(el);
     return () => {
