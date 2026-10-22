@@ -36,8 +36,9 @@ export async function clearInbox(uid, ids) {
   });
 }
 
-// "Senin için" (tek kutu): bakman gereken her şey bir listede. Önce yapılacaklar (useForYou: silme isteği, mesaj, fatura,
-// geciken ve bugünkü görev, yeni verilen, ödenecek fiş), sonra telefona gelen bildirimler (users/{uid}.inbox, lib/inbox).
+// "Senin için" (tek kutu): bakman gereken her şey bir listede. Önce telefona gelen bildirimler (users/{uid}.inbox, lib/inbox;
+// az olur, temizlenir), sonra yapılacaklar (useForYou: silme isteği, mesaj, fatura, geciken ve bugünkü görev, yeni verilen
+// (fitness programı tek satır), ödenecek fiş).
 // Zilin sayısı = GÖRMEDİĞİN bildirimler (uygulama simgesindeki sayıyla aynı). Zile dokunup pencere açılınca hepsi görüldü yazılır
 // (inboxSeen), sayı hemen düşer; pencere açıkken gelen yeni bildirim de görüldü sayılır. Pencere açılmadan sayı düşmez.
 // Pencerede o açılışta yeni olanlar noktalı ve koyu, eskiler soluk. Bir kez çağrılır (OwnerHome), sonuç zile, şeride ve pencereye verilir.
@@ -88,7 +89,7 @@ export function useInbox() {
   };
   const actions = todo;
   const fresh = unread.map(note);
-  const list = [...actions, ...fresh]; // "N şey seni bekliyor" şeridi
+  const list = [...fresh, ...actions]; // "N şey seni bekliyor" şeridi
   // Bildirim satırı: listeden kalıcı silinir (users/{uid}.inbox); yapılacak satırı: bu cihazda gizlenir (ForYou)
   const hide = (id) => {
     if (!id.startsWith("n:")) return hideTodo(id);
@@ -165,7 +166,7 @@ export function InboxBell({ inbox, onOpen }) {
   );
 }
 
-// Pencere: yapılacakların hepsi, altında son bildirimler (okunanlar soluk; sola kaydır › Sil, ya da Tümünü temizle)
+// Pencere: önce son bildirimler, altında yapılacakların hepsi (okunanlar soluk; sola kaydır › Sil, ya da Tümünü temizle)
 export function InboxSheet({ inbox, open, onClose }) {
   const { actions, history, hide, clearAll } = inbox;
   const go = (x) => (x.stay ? x : { ...x, onOpen: () => (onClose(), x.onOpen()) });
@@ -173,12 +174,6 @@ export function InboxSheet({ inbox, open, onClose }) {
     <Sheet open={open} onClose={onClose} title="Senin için">
       <div className="space-y-5">
         {!actions.length && !history.length && <p className="px-1 py-6 text-center text-[0.875rem] text-mut">Yeni bir şey yok.</p>}
-        {actions.length > 0 && (
-          <section aria-label="Yapılacaklar">
-            <SectionHead title="Yapılacaklar" count={actions.length} />
-            <List rows={actions.map(go)} onHide={hide} />
-          </section>
-        )}
         {history.length > 0 && (
           <section aria-label="Bildirimler">
             <SectionHead title="Bildirimler">
@@ -187,6 +182,12 @@ export function InboxSheet({ inbox, open, onClose }) {
               </button>
             </SectionHead>
             <List rows={history.map(go)} onHide={hide} hideLabel="Sil" />
+          </section>
+        )}
+        {actions.length > 0 && (
+          <section aria-label="Yapılacaklar">
+            <SectionHead title="Yapılacaklar" count={actions.length} />
+            <List rows={actions.map(go)} onHide={hide} />
           </section>
         )}
       </div>
