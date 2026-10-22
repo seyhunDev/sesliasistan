@@ -142,7 +142,7 @@ function AthleteList() {
         {data && !err && usedClasses.length > 1 && (
           <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
             {[{ id: "", name: "Tümü" }, ...usedClasses].map((c) => (
-              <button key={c.id || "all"} type="button" onClick={() => setCls(c.id)} aria-pressed={cls === c.id} data-press className={`${pill0} ${cls === c.id ? "border-white bg-white text-[#141938]" : "ck-glass text-white"}`}>
+              <button key={c.id || "all"} type="button" onClick={() => setCls(c.id)} aria-pressed={cls === c.id} data-press className={`${pill0} ${cls === c.id ? "border-white bg-white text-[#11203a]" : "ck-glass text-white"}`}>
                 {c.name}
               </button>
             ))}

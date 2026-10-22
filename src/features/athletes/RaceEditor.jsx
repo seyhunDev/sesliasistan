@@ -838,7 +838,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
             )}
           </span>
           <span className="mt-3.5 block h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
-            <span className="block h-full rounded-full bg-[#a78bfa]" style={{ width: `${Math.round((doneN / stat.length) * 100)}%` }} />
+            <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round((doneN / stat.length) * 100)}%` }} />
           </span>
           <span className="mt-1.5 flex justify-between text-[0.78rem] text-white/70">
             <span>Hazırlık</span>

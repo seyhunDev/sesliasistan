@@ -165,7 +165,7 @@ export default function LoginPage() {
       </Button>
       {SIGNUP && (
         <p className="mt-5 text-center text-[0.875rem] text-white/60">
-          Hesabın yok mu? <Link href="/register" className="font-semibold text-[#a78bfa]">Kayıt ol</Link>
+          Hesabın yok mu? <Link href="/register" className="font-semibold text-[#67e8f9]">Kayıt ol</Link>
         </p>
       )}
     </form>

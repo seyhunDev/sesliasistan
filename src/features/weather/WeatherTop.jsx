@@ -72,7 +72,7 @@ export function WeatherTop({ w, refresh }) {
             const on = d.date === sel;
             const dt = new Date(`${d.date}T12:00:00`);
             return (
-              <button key={d.date} type="button" data-press aria-pressed={on} onClick={() => setSel(d.date)} className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 ${on ? "bg-white text-[#141938]" : ""}`}>
+              <button key={d.date} type="button" data-press aria-pressed={on} onClick={() => setSel(d.date)} className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 ${on ? "bg-white text-[#11203a]" : ""}`}>
                 <small className={`text-[0.75rem] font-semibold capitalize ${on ? "" : "text-white/60"}`}>{i === 0 ? "Bugün" : dt.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "")}</small>
                 <b className="text-[1.5rem] font-bold leading-none tracking-[-.03em] tabular-nums">{dt.getDate()}</b>
                 <Icon name={sky(d.code).icon} className="mt-0.5 size-4" />
