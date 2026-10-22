@@ -1,7 +1,7 @@
 import AppIntents
 import Foundation
 
-// Uygulamanın dışından gelen istek ("talk": asistan dinlesin, "timer": sayacın sayfası açılsın). Uygulama kapalıysa
+// Uygulamanın dışından gelen istek ("talk": asistan dinlesin, "timer": sayacın sayfası açılsın, "go:/yol": widget o sayfayı açsın). Uygulama kapalıysa
 // web sayfası yüklenince alır (VeloraPlugin.takeOpen); açıksa VeloraPlugin "open" olayıyla hemen iletir.
 enum Bekleyen {
     static let olay = Notification.Name("VeloraBekleyen")
@@ -24,10 +24,14 @@ enum Bekleyen {
         return ne
     }
 
-    // velora://bas-konus (Kısayollar, eski iOS) ve velora://sayac (kilit ekranındaki sayaç)
+    // velora://bas-konus (Kısayollar, eski iOS), velora://sayac (kilit ekranındaki sayaç), velora://ac/messages (widget: o sayfa açılır, "go:/messages")
     static func url(_ u: URL) {
         guard u.scheme == "velora" else { return }
-        koy(u.host == "sayac" ? "timer" : "talk")
+        switch u.host {
+        case "sayac": koy("timer")
+        case "ac": koy("go:" + (u.path.isEmpty ? "/" : u.path))
+        default: koy("talk")
+        }
     }
 }
 

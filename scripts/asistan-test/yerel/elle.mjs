@@ -193,6 +193,14 @@ group("iPhone widget ve titreşim")([
     { title: "Bitti", date: "2026-10-05", time: "11:00", people: ["ali"], done: true },
     { title: "Kamp", date: "2026-10-03", endDate: "2026-10-07", people: ["ali"] },
   ], { uid: "ali", ownerId: "own", today: "2026-10-05" }).map((p) => `${p.title}@${p.date} ${p.time}${p.important ? "!" : ""}`).join(), ok: (r) => r === "Kamp@2026-10-05 ,A@2026-10-05 18:00!,B@2026-10-06 09:00" }],
+  ["widget mesajları", { desc: "okunmamış, sessizde olmayan, başkasından; en yeni 2; toplam sayı", fn: () => WD.widgetMsgs([
+    { title: "Ayşe", unread: 1, last: { text: "Yarın gelemem", by: "ay", at: 3 } },
+    { title: "Mert", unread: 2, last: { text: "Tamam", by: "me", at: 5 } },
+    { title: "Kulüp", unread: 3, mutedByMe: true, last: { text: "x", by: "k", at: 9 } },
+    { title: "Can", unread: 2, last: { text: "Geldim", by: "can", at: 4 } },
+    { title: "Ece", unread: 1, last: { text: "Ok", by: "ece", at: 1 } },
+  ], "me"), ok: (r) => r.unread === 4 && r.msgs.map((m) => m.from).join() === "Can,Ayşe" }],
+  ["widget aidat", { desc: "yalnız bu ayın özeti", fn: () => [WD.widgetDues({ ym: "2026-10", paidCount: 9, count: 14 }, "2026-10"), WD.widgetDues({ ym: "2026-09", paidCount: 9, count: 14 }, "2026-10")], ok: ([a, b]) => a.paid === 9 && a.count === 14 && b === null }],
   ["titreşim türü", { desc: "8 hafif, 14 orta, 30 güçlü, [10,40,10] başarı, uzun dizi hata", fn: () => [8, 14, 30, [10, 40, 10], [30, 50, 30, 50, 30], 0].map(HP.kindOf).join(), ok: (r) => r === "light,medium,heavy,success,error," }],
 ]);
 
