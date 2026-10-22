@@ -58,7 +58,7 @@ export async function unlock() {
   }
 }
 
-// Ana ekran widget'ı: { plans: [{ title, date, time, important }], place, lat, lon }
+// Widget verisi (lib/widgetData.js, features/ios/WidgetFeed.jsx): { plans, place, lat, lon, timer, unread, msgs, money, dues, word }
 export function widgetData(v) {
   plugin()?.widgetData?.({ json: JSON.stringify(v) }).catch(() => {});
 }
