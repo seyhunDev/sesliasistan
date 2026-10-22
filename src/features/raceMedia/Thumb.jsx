@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { mmss } from "@/lib/raceScore";
+import { Loader } from "@/components/ui/Loader";
 
 // Küçük resim: fotoğraf ya da videonun ilk karesi; videoda sağ altta süresi (Seyhun 2026-10-18: "videoların süresi gösterilsin").
 // Süre kayıttan (dur), yoksa videonun kendisinden okunur. thumb: kayıtla yüklenen 480 px JPEG (Seyhun 2026-10-21: "sürekli video
@@ -9,22 +10,39 @@ import { mmss } from "@/lib/raceScore";
 // up: yükleniyor (0..1, halka dolar); done: yeni yüklendi (kısa ✓); err: yüklenemedi.
 export function Thumb({ kind, url, thumb = "", local = "", dur = 0, up = null, done = false, err = false }) {
   const [meta, setMeta] = useState(0);
+  // İnene kadar uygulamanın üç noktası (Seyhun 2026-10-22: "modern bir loading, uygulamadakilerle uyumlu"); görüntü inince yumuşakça belirir
+  const [ready, setReady] = useState("");
   const sec = dur || meta;
   const pic = local && kind !== "video" ? local : thumb || (kind !== "video" ? url : "");
   return (
     <>
       {pic ? (
         /* eslint-disable-next-line @next/next/no-img-element */
-        <img src={pic} alt="" loading="lazy" className="size-full object-cover" />
+        <img
+          ref={(el) => el?.complete && el.naturalWidth && ready !== pic && setReady(pic)}
+          src={pic}
+          alt=""
+          loading="lazy"
+          onLoad={() => setReady(pic)}
+          onError={() => setReady(pic)}
+          className={`size-full object-cover transition-opacity duration-300 ${ready === pic ? "opacity-100" : "opacity-0"}`}
+        />
       ) : (
         <video
           src={`${local || url}#t=0.3`}
           muted
           playsInline
           preload="metadata"
-          onLoadedMetadata={(e) => isFinite(e.currentTarget.duration) && setMeta(Math.round(e.currentTarget.duration))}
+          onLoadedMetadata={(e) => (setReady("v"), isFinite(e.currentTarget.duration) && setMeta(Math.round(e.currentTarget.duration)))}
+          onLoadedData={() => setReady("v")}
+          onError={() => setReady("v")}
           className="size-full object-cover"
         />
+      )}
+      {ready !== (pic || "v") && (
+        <span className="absolute inset-0 grid place-items-center">
+          <Loader size="xs" />
+        </span>
       )}
       {kind === "video" && <span className="absolute bottom-1 right-1.5 text-[0.6875rem] font-semibold tabular-nums text-white [text-shadow:0_1px_2px_rgba(0,0,0,.6)]">{sec ? mmss(sec) : "video"}</span>}
       {/* Buluta gönderilirken görüntü kapanmaz (telefondaki dosya hemen kullanılır; Seyhun 2026-10-22: "telefondaki veriyi kullanmıyor muyuz?"):

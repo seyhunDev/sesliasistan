@@ -18,7 +18,7 @@ import { WeatherTab } from "./WeatherTab";
 import { VoidSheet, useRaceFlow } from "./useRaceFlow";
 import { TimerTab } from "./TimerTab";
 import { ResultsTab } from "./ResultsTab";
-import { MediaTab } from "./MediaTab";
+import { MediaSettingsButton, MediaTab } from "./MediaTab";
 import { RecPick } from "./RecPick";
 import { DaySummarySheet } from "./DaySummarySheet";
 import { DaySheet } from "./DaySheet";
@@ -149,9 +149,12 @@ export function RaceMedia({ orgId, id }) {
       sub={sub}
       back={`/athletes/races/${id}`}
       action={
-        <button type="button" onClick={() => setSum(true)} data-press className="btn btn-secondary btn-sm">
-          Özet
-        </button>
+        <>
+          {tab === "media" && <MediaSettingsButton />}
+          <button type="button" onClick={() => setSum(true)} data-press className="btn btn-secondary btn-sm">
+            Özet
+          </button>
+        </>
       }
     >
       {timer.running && tab !== "sure" && (

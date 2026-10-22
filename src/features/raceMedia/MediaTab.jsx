@@ -10,14 +10,12 @@ import { dayOf, fixMedia, hm, mediaByRace, mediaGroups, mediaOf, momentAt, momen
 import { MediaViewer } from "./MediaViewer";
 import { Thumb } from "./Thumb";
 import { CameraSheet } from "./CameraSheet";
-import { RecPick } from "./RecPick";
 import { Sheet } from "@/components/ui/Sheet";
 import { Icon } from "@/components/ui/Icon";
-import { buttonClass } from "@/components/ui/buttonClass";
 import { clearKept, dropKept, dropPending, keepLocal, listKept, listPending, putPending } from "./pendingStore";
 
-// Medya: üstteki "+ Kayıt" ve alt sekmelerin yanındaki Kayıt iPhone'un kendi kamerasını açar (RecPick; Seyhun 2026-10-22: sarsıntısız,
-// net görüntü), dosyası olduğu gibi (prepRaceMedia). Yanındaki ⋯: Sayaçlı kamera (CameraSheet: süre ekranda, bipler sürer) ve telefonda
+// Medya: alt sekmelerin yanındaki Kayıt iPhone'un kendi kamerasını açar (RecPick; Seyhun 2026-10-22: sarsıntısız,
+// net görüntü), dosyası olduğu gibi (prepRaceMedia). Başlıktaki ayar düğmesi (MediaSettingsButton): Sayaçlı kamera (CameraSheet: süre ekranda, bipler sürer) ve telefonda
 // tutulanların boyutu / Telefondan sil. Video en çok 2 dk; sırayla Storage'a yüklenir ve yarışa yazılır.
 // Start sayacı sürerken çekilen, starta göre anıyla kaydedilir; liste yarışa ve ana göre gruplu
 // ("2. yarış · Son 1 dakika", lib/raceLive.js mediaGroups), küçük resimde "−0:42" / "+12:30". Dokununca büyük açılır:
@@ -26,6 +24,21 @@ import { clearKept, dropKept, dropPending, keepLocal, listKept, listPending, put
 // Yüklenen ve yüklenmekte olan kayıtlar sayfa genelinde tutulur: sekme değişince Medya yeniden açılır, telefonda bekleyen kayıt (yüklemesi
 // eski sekmede sürerken) yeniden sıraya girip ikinci kez yükleniyordu (Seyhun 2026-10-22: "aynı videonun iki kaydı düşüyor")
 const INFO_KEY = "sa-medya-bilgi";
+// Çekim ayarları başlıkta (Seyhun 2026-10-22, örnek yaris-tasarim/medya/medya-ust-bos-yukleniyor.png): Kayıt zaten alt sekmelerin yanında;
+// başlıktaki düğme Medya'nın "Çekim" penceresini açar (sayaçlı kamera, telefonda tutulanlar, Telefondan sil)
+const SET_EV = "sa-medya-ayar";
+export function MediaSettingsButton({ dark = false }) {
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new Event(SET_EV))}
+      aria-label="Çekim ayarları"
+      className={`grid size-10 shrink-0 place-items-center rounded-full active:translate-y-px ${dark ? "bg-white/15 text-white active:bg-white/25" : "border border-line bg-card shadow-[0_2px_0_var(--line)]"}`}
+    >
+      <Icon name="sliders" className="size-5" />
+    </button>
+  );
+}
 const inflight = new Set();
 // Yükleme durumu da sayfa genelinde (sekme değişip Medya yeniden açılınca halka kaldığı yerden görünür):
 // ups { [id]: { rec, url, p, err } }; mine: bu telefonda çekilip yüklenen künye → { url: yerel dosya, done: kısa ✓ }
@@ -70,6 +83,11 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
   const [cam, setCam] = useState(""); // açık sayaçlı kamera: "photo" | "video"
   const [more, setMore] = useState(false); // ⋯: Sayaçlı kamera, telefonda tutulanlar
   const camRef = useRef("");
+  useEffect(() => {
+    const f = () => setMore(true);
+    window.addEventListener(SET_EV, f);
+    return () => window.removeEventListener(SET_EV, f);
+  }, []);
   useEffect(() => {
     camRef.current = cam;
   }, [cam]);
@@ -369,19 +387,19 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
           </button>
         </div>
       )}
-      <div className="mt-3 flex items-center justify-between gap-3 px-1">
-        {/* Yükleme sürerken burada ne kadarının gittiği yazar (Seyhun 2026-10-22: "yüklenip yüklenmediğini bilmiyorum"), bitince sayılar */}
-        <p className="text-[0.875rem] tabular-nums text-mut">{going.length ? `${going.length} ${going.every((x) => x.kind === "video") ? "video" : going.every((x) => x.kind !== "video") ? "fotoğraf" : "kayıt"} buluta gönderiliyor · %${Math.round((going.reduce((a, x) => a + (x.u.p || 0), 0) / going.length) * 100)}` : justDone ? "Buluta gönderildi ✓" : todays.length ? [todays.filter((m) => m.kind === "video").length, todays.filter((m) => m.kind !== "video").length].map((n, k) => n && `${n} ${k ? "fotoğraf" : "video"}`).filter(Boolean).join(" · ") : ""}</p>
-        <div className="flex shrink-0 gap-2">
-          <RecPick onFile={take} className={buttonClass({ size: "sm", full: false })}>
-            + Kayıt
-          </RecPick>
-          <Button variant="secondary" size="sm" full={false} onClick={() => setMore(true)} aria-label="Diğer çekim" className="px-2.5">
-            <Icon name="more" className="size-5" />
-          </Button>
+      {/* Yükleme sürerken ne kadarının gittiği yazar (Seyhun 2026-10-22: "yüklenip yüklenmediğini bilmiyorum"); Kayıt ve ayarlar satırı kalktı */}
+      {(going.length > 0 || justDone) && (
+        <p className="mt-3 px-1 text-[0.875rem] tabular-nums text-mut">{going.length ? `${going.length} ${going.every((x) => x.kind === "video") ? "video" : going.every((x) => x.kind !== "video") ? "fotoğraf" : "kayıt"} buluta gönderiliyor · %${Math.round((going.reduce((a, x) => a + (x.u.p || 0), 0) / going.length) * 100)}` : "Buluta gönderildi ✓"}</p>
+      )}
+      {!groups.length && (
+        <div className="fade-in px-6 pt-16 text-center">
+          <div className="mx-auto mb-4 grid size-[4.75rem] place-items-center rounded-3xl bg-acc/10 text-acc">
+            <Icon name="image" className="size-9" />
+          </div>
+          <b className="block text-[1.1875rem] font-semibold">{day === dayOf(new Date().toISOString()) ? "Bugün kayıt yok" : "Bu günde kayıt yok"}</b>
+          <p className="mt-1.5 text-[0.9375rem] text-mut">Kayıt&apos;a dokununca iPhone kamerası açılır.</p>
         </div>
-      </div>
-      {!groups.length && <p className={`${card} mt-3 px-4 py-6 text-center text-[0.875rem] text-mut`}>Bu gün fotoğraf ya da video yok.</p>}
+      )}
       {/* iPhone galerisi gibi (Seyhun 2026-10-22 onayı, yaris-tasarim/medya/galeri-iphone.png): yarışa göre, kenardan kenara 4'lü sıkı ızgara */}
       {gallery.map((g) => (
         <section key={g.key}>
