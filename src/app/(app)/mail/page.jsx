@@ -29,7 +29,7 @@ import { noText, payOf, totalOf } from "@/lib/receipts";
 import { useInvoiceDesk } from "@/features/invoices/InvoicesView";
 import { STATE, stateOf } from "@/lib/invoices";
 import { AddBar, Choose, Fold, Group, MonthList, card } from "@/features/bank/HesapViews";
-import { amt, dayText, para } from "@/lib/hesapRows";
+import { amt, dayText, para, tieOf } from "@/lib/hesapRows";
 
 const localDate = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date(iso));
 // Hareketin günü "YYYY-MM-DD": zamandan, yoksa "17.10.2026" yazımından
@@ -235,6 +235,7 @@ export default function MailPage() {
     id: x.id,
     day: dayOf(x),
     sort: sortOf(x),
+    tie: tieOf(x),
     amount: x.amount,
     title: whoIn(x) || x.note || x.desc,
     sub: [dayText(dayOf(x)), whoIn(x) && (x.note || x.desc), x.currency && !/^(TL|TRY)$/i.test(x.currency) && x.currency].filter(Boolean).join(" · "),
@@ -247,6 +248,7 @@ export default function MailPage() {
       id: x.id,
       day: dayOf(x),
       sort: sortOf(x),
+      tie: tieOf(x),
       amount: x.amount,
       title: x.who || x.note,
       sub: [dayText(dayOf(x)), x.who && x.note].filter(Boolean).join(" · "),
@@ -260,6 +262,7 @@ export default function MailPage() {
     id: `rc-${r.id}`,
     day: r.date || "",
     sort: `${r.date || ""}T${r.time || "00:00"}`,
+    tie: tieOf(r),
     amount: -totalOf(r) / 100,
     title: r.merchant || "İsimsiz",
     sub: [dayText(r.date), noText(r.no), r.cat].filter(Boolean).join(" · "),
@@ -273,6 +276,7 @@ export default function MailPage() {
       id: `inv-${x.id}`,
       day: invDay(x),
       sort: invDay(x),
+      tie: tieOf(x),
       amount: -(x.amount || 0),
       title: x.seller || "Fatura",
       sub: [st === "paid" ? dayText(x.paidAt) : x.due && `Son gün ${dayText(x.due)}`, x.no && `Fatura ${x.no}`, x.desc].filter(Boolean).join(" · "),
@@ -297,6 +301,7 @@ export default function MailPage() {
     id: x.id,
     day: dayOf(x),
     sort: sortOf(x),
+    tie: tieOf(x),
     amount: x.dir === "debt" ? -Math.abs(x.amount) : x.amount,
     title: x.who || x.note,
     sub: [dayText(dayOf(x)), x.who && x.note].filter(Boolean).join(" · "),
@@ -310,10 +315,10 @@ export default function MailPage() {
   const qSum = inOut(bankShown);
   const clubReceipts = receipts.filter((r) => (r.scope || "club") !== "personal");
   const invList = desk.list || [];
-  const toPay = [...invList.filter((x) => x.status !== "paid").sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999")).map(invoiceRow), ...clubReceipts.filter((r) => payOf(r) === "pending").map(receiptRow)];
+  const toPay = [...invList.filter((x) => x.status !== "paid").sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || String(a.id).localeCompare(String(b.id))).map(invoiceRow), ...clubReceipts.filter((r) => payOf(r) === "pending").map(receiptRow)];
   const toPaySum = toPay.reduce((n, r) => n + Math.abs(r.amount), 0);
   const fisRows = [...clubReceipts.filter((r) => payOf(r) !== "pending").map(receiptRow), ...invList.filter((x) => x.status === "paid").map(invoiceRow)];
-  const lentOpen = [...splitDebts(lent, "club").open, ...splitDebts(lent, "personal").open].sort((a, b) => `${b.date || ""}${b.at || ""}`.localeCompare(`${a.date || ""}${a.at || ""}`));
+  const lentOpen = [...splitDebts(lent, "club").open, ...splitDebts(lent, "personal").open].sort((a, b) => `${b.date || ""}${b.at || ""}`.localeCompare(`${a.date || ""}${a.at || ""}`) || String(a.id).localeCompare(String(b.id)));
   const lentClosed = [...splitDebts(lent, "club").closed, ...splitDebts(lent, "personal").closed];
   const lentSum = lentOpen.reduce((n, d) => n + leftOf(d), 0);
   const kisiRows = [

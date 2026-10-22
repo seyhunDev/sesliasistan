@@ -1434,6 +1434,11 @@ group("Hesaplar arama ve eklenen adlar")([
     const g = HR.byMonth([{ id: "a", day: "2026-09-30", amount: 100 }, { id: "b", day: "2026-10-02", sort: "2026-10-02T08:00", amount: -40 }, { id: "c", day: "2026-10-05", amount: 300 }]);
     return g.length === 2 && g[0].ym === "2026-10" && g[0].rows[0].id === "c" && g[0].in === 300 && g[0].out === 40 && g[1].in === 100 && HR.dayText("2026-10-17") === "17 Eki" && HR.monthText("2025-03") === "Mart 2025" && HR.amt(-300) === "−300" && HR.amt(1200).startsWith("+");
   })],
+  ["Hesaplar sabit sıra", F("aynı gündekiler gelen sıradan bağımsız: önce yeni eklenen, sonra kimlik", () => {
+    const rows = [{ id: "b", day: "2026-10-20", sort: "2026-10-20", tie: "2026-10-20T08:00:00Z" }, { id: "a", day: "2026-10-20", sort: "2026-10-20", tie: "2026-10-20T08:00:00Z" }, { id: "c", day: "2026-10-20", sort: "2026-10-20", tie: "2026-10-20T09:00:00Z" }];
+    const k = (l) => HR.byMonth(l)[0].rows.map((r) => r.id).join("");
+    return k(rows) === "cab" && k([...rows].reverse()) === "cab" && HR.tieOf({ createdAt: { seconds: 0 } }) === "1970-01-01T00:00:00.000Z" && HR.tieOf({ at: 0 }) === "1970-01-01T00:00:00.000Z";
+  })],
   ["kasa: kulübün verdiği borç", F("borç kasadan düşer, geri ödeme girer; kişisel borç kasaya girmez; eski borç sayılmaz", () => {
     const items = [
       { id: "d1", kind: "club", who: "Ali", amount: 500, date: "2026-10-12", at: "2026-10-12T09:00:00Z", paid: [{ id: "p1", amt: 200, date: "2026-10-13" }] },
