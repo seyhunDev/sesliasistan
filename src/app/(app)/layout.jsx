@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { TimerSound } from "@/features/training/Countdown";
 import { IosBridge } from "@/features/ios/IosBridge";
+import { AppLock } from "@/features/ios/AppLock";
 import { DataProvider } from "@/features/data/DataProvider";
 import { ChatProvider } from "@/features/chat/ChatProvider";
 import { CallProvider } from "@/features/call/CallProvider";
@@ -81,6 +82,7 @@ export default function AppLayout({ children }) {
                   <TryAssistant />
                   <TimerSound />
                   <IosBridge />
+                  <AppLock />
                  </DockProvider>
                 </AssistantProvider>
               </MeetingProvider>

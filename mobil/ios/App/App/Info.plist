@@ -70,6 +70,8 @@
 	<string>Fiş, belge ve gönderi fotoğrafı seçmek için fotoğraflara erişilir.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Hazırlanan görselleri Fotoğraflar'a kaydetmek için.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Velora açılırken Face ID ile kilidi açmak için.</string>
 	<key>NSAlarmKitUsageDescription</key>
 	<string>Plan alarmlarını saat alarmı gibi çaldırmak için.</string>
 	<key>NSSupportsLiveActivities</key>
