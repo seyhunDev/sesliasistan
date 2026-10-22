@@ -13,7 +13,28 @@ import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind } 
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
 const VIDEO_SEC = 120;
-const VIDEO_MAX = 58 * 1024 * 1024; // storage.rules raceMedia: 60 MB
+const VIDEO_MAX = 95 * 1024 * 1024; // storage.rules raceMedia: 100 MB
+
+// Video kalitesi (Seyhun 2026-10-22: "videolar niye kalitesiz, kalite tercihi yapamıyor muyuz, en az 1080p"): bu telefonda seçilir
+// (Çekim ayarları ve sayaçlı kameradaki düğme). hi 1080p (varsayılan): sayaçlı kamera 6 Mbit, buluta 1920 px 5 Mbit kopya (2 dk ≈ 75-90 MB).
+// lo 720p: 2,5 Mbit (2 dk ≈ 38 MB, az yer, denizde daha hızlı açılır). iPhone kamerasının aslı telefonda çekildiği kalitede kalır (İndir).
+export const VIDEO_Q = {
+  hi: { px: 1920, cam: 6_000_000, cloud: 5_000_000, label: "1080p" },
+  lo: { px: 1280, cam: 2_500_000, cloud: 2_500_000, label: "720p" },
+};
+const QKEY = "sa-cam-q";
+export const readVideoQ = () => {
+  try {
+    return localStorage.getItem(QKEY) === "lo" ? "lo" : "hi";
+  } catch {
+    return "hi";
+  }
+};
+export const saveVideoQ = (q) => {
+  try {
+    localStorage.setItem(QKEY, q);
+  } catch {}
+};
 const live = (orgId, id) => doc(db, "orgs", orgId, "raceLive", id);
 const store = () => {
   const s = getStorage(app);
@@ -43,9 +64,9 @@ export const saveMedia = (orgId, id, list) => setDoc(live(orgId, id), { media: c
 
 // Seçilen ya da çekilen dosya → saklanacak hâl: { blob, type, kind }. onProg(0..1) küçültme ilerlemesi
 // Kurallar (Seyhun 2026-10-20: "iPhone'un kendi kamerası"): fotoğraf 2048 px JPEG; video en çok 2 dakika, iPhone'un çektiği dosya
-// olduğu gibi saklanır (ses, kalite ve yön korunur). Storage sınırını (60 MB) aşarsa 1280 px'e sesli küçültülür (video süresi kadar sürer).
+// olduğu gibi saklanır (ses, kalite ve yön korunur). Storage sınırını (100 MB) aşarsa 1280 px'e sesli küçültülür (video süresi kadar sürer).
 // Uygulama içi (sayaçlı) kameranın videosu zaten küçük ve sessizdir.
-const RAW_MAX = 55 * 1024 * 1024;
+const RAW_MAX = 95 * 1024 * 1024;
 export async function prepRaceMedia(file, onProg) {
   if (!isVideoFile(file)) {
     const img = await compressImage(file, 2048, 0.85);
@@ -67,7 +88,7 @@ export async function prepRaceMedia(file, onProg) {
 }
 
 // Buluttaki video (Seyhun 2026-10-22: "datadan alınan videolar çok yavaş, YouTube gibi gösterirken yüklensin"): iPhone videosu saniyede
-// 10-50 Mbit; denizde telefon interneti bunu oynatırken indiremiyor, oynatıcı bekliyordu. Buluta 1280 px, 2,5 Mbit (720p) kopya gider:
+// 10-50 Mbit; denizde telefon interneti bunu oynatırken indiremiyor, oynatıcı bekliyordu. Buluta seçilen kalitede kopya gider (VIDEO_Q):
 // inerken hemen oynar (MP4 parça parça yazılır), yükleme de kısalır. Aslı telefonda 7 gün (İndir). Küçültme video süresi kadar sürer;
 // olmazsa sınırın altındaki aslı gider. onProg(0..1)
 const STREAM_BPS = 2_500_000;
@@ -75,7 +96,10 @@ export async function cloudCopy(blob, type, onProg) {
   const url = URL.createObjectURL(blob);
   try {
     const v = await videoMeta(url);
-    const small = await shrinkVideo(v, onProg, 1280, STREAM_BPS, true);
+    const q = VIDEO_Q[readVideoQ()];
+    // Zaten o kalitede ve sınırın altındaysa aslı gider (yeniden kodlamak yalnız bozar)
+    if (v.duration > 0 && (blob.size * 8) / v.duration <= q.cloud * 1.3 && blob.size <= RAW_MAX) return { blob, type };
+    const small = await shrinkVideo(v, onProg, q.px, q.cloud, true);
     if (small.size > VIDEO_MAX) throw new Error("büyük");
     return { blob: small, type: small.type };
   } catch (e) {

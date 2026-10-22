@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { card } from "@/components/ui/Page";
+import { Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
-import { addRaceMedia, backfillPoster, cloudCopy, dropRaceMedia, mutedCopy, posterOf, prepRaceMedia, saveMedia } from "@/features/athletes/raceLiveStore";
+import { VIDEO_Q, addRaceMedia, backfillPoster, cloudCopy, dropRaceMedia, mutedCopy, posterOf, prepRaceMedia, readVideoQ, saveMedia, saveVideoQ } from "@/features/athletes/raceLiveStore";
 import { Button } from "@/components/ui/Button";
 import { Bar, readTimer } from "@/features/training/Countdown";
 import { dayOf, fixMedia, hm, mediaByRace, mediaGroups, mediaOf, momentAt, momentBadge, momentOf, tagMedia } from "@/lib/raceLive";
@@ -81,7 +81,9 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
   };
   const [last, setLast] = useState(null); // kamerada köşedeki son çekilen: { id, kind, url, state: up | ok | err, err }
   const [cam, setCam] = useState(""); // açık sayaçlı kamera: "photo" | "video"
-  const [more, setMore] = useState(false); // ⋯: Sayaçlı kamera, telefonda tutulanlar
+  const [more, setMore] = useState(false); // ⋯: Sayaçlı kamera, video kalitesi, telefonda tutulanlar
+  const [vq, setVq] = useState("hi");
+  useEffect(() => setVq(readVideoQ()), [more, cam]);
   const camRef = useRef("");
   useEffect(() => {
     const f = () => setMore(true);
@@ -381,7 +383,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
       {info && (
         <div className={`${card} relative mt-3 py-3 pl-3.5 pr-11 text-[0.875rem] leading-snug`}>
           <b className="mb-0.5 block font-semibold">Videolar nerede saklanır?</b>
-          Telefonda 7 gün saklanır, buluta da yüklenir. Bulutta 720p tutulur. Çekildiği kalitede kalsın istersen 7 gün içinde İndir ile telefonuna kaydet.
+          Telefonda 7 gün saklanır, buluta da yüklenir. Bulutta {VIDEO_Q[vq].label} tutulur. Çekildiği kalitede kalsın istersen 7 gün içinde İndir ile telefonuna kaydet.
           <button type="button" onClick={closeInfo} aria-label="Bilgiyi kapat" className="absolute right-1.5 top-1.5 grid size-9 place-items-center rounded-full text-mut active:bg-bg">
             <Icon name="x" className="size-5" />
           </button>
@@ -446,6 +448,8 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
         <Button variant="secondary" onClick={() => (setMore(false), setCam("video"))}>
           Sayaçlı kamera
         </Button>
+        <p className="mb-2 mt-5 px-1 text-[0.9375rem] font-semibold">Video kalitesi</p>
+        <Seg value={vq} onChange={(k) => (setVq(k), saveVideoQ(k))} options={[["hi", "1080p"], ["lo", "720p"]]} />
         <p className="mt-4 px-1 text-[0.9375rem] tabular-nums">{stockText}</p>
         {stock.length > 0 && (
           <Button variant="secondary" onClick={() => (setMore(false), clearPhone())} className="mt-2">

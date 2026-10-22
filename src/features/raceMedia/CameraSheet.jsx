@@ -6,9 +6,10 @@ import { recType } from "@/features/fitness/fitMedia";
 import { useTimerRun } from "@/features/training/Countdown";
 import { upSec } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
+import { VIDEO_Q, readVideoQ, saveVideoQ } from "@/features/athletes/raceLiveStore";
 
 // Uygulama içi kamera (Seyhun 2026-10-18: telefonun kamerası açılınca uygulama arkaya geçiyor, start bipleri susuyordu).
-// Sayfa önde kaldığı için sayaç ve bipleri sürer; üstte sayaç görünür. Fotoğraf 1600 px JPEG; video sessiz, 960 px, ~1,6 Mbit/sn,
+// Sayfa önde kaldığı için sayaç ve bipleri sürer; üstte sayaç görünür. Fotoğraf 1600 px JPEG; video sesli, seçilen kalitede (VIDEO_Q: 1080p 6 Mbit / 720p),
 // en çok 2 dakika (doğrudan küçük kaydedilir, sonradan küçültme yok). Görüntünün üstüne yazı basılmaz (Seyhun 2026-10-20: "çok yazı olmasın").
 // Kamera açılamazsa onFail: çağıran telefonun kendi kamerasına düşer. Çekilen her kare onShot ile hemen verilir, kamera açık kalır;
 // last: köşedeki son çekilen ve yükleme durumu (yükleniyor / yüklenemedi: telefonda saklandı, dokununca sebebi).
@@ -20,17 +21,7 @@ export function CameraSheet({ open, ...props }) {
   return createPortal(<Cam {...props} />, document.body);
 }
 
-// Video kalitesi (Seyhun 2026-10-22: "çok kalitesiz çekiyormuş gibi"): Yüksek 1080p (varsayılan), Normal 720p. 2 dakikalık video
-// Yüksek'te ≈ 38 MB, Normal'de ≈ 30 MB (Storage 60 MB sınırı ve 5 GB kota). Seçim bu telefonda hatırlanır.
-const QUAL = { hi: { px: 1920, bps: 2_500_000, label: "Yüksek" }, lo: { px: 1280, bps: 2_000_000, label: "Normal" } };
-const QKEY = "sa-cam-q";
-const readQ = () => {
-  try {
-    return localStorage.getItem(QKEY) === "lo" ? "lo" : "hi";
-  } catch {
-    return "hi";
-  }
-};
+// Video kalitesi 1080p (varsayılan) / 720p: raceLiveStore VIDEO_Q; seçim bu telefonda hatırlanır, Çekim ayarlarıyla aynı
 
 function Cam({ mode, onMode, onClose, onShot, onFail, last = null, onNative, stock = "", onClear = null }) {
   const vid = useRef(null);
@@ -41,14 +32,12 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null, onNative, sto
   const [recAt, setRecAt] = useState(0);
   const [recNow, setRecNow] = useState(0);
   const [flash, setFlash] = useState(false);
-  const [q, setQ] = useState(readQ);
+  const [q, setQ] = useState(readVideoQ);
   const [menu, setMenu] = useState(false); // ⋯ çekim ayarları: iPhone kamerası, telefonda tutulanlar
   const pickQ = () => {
     const n = q === "hi" ? "lo" : "hi";
     setQ(n);
-    try {
-      localStorage.setItem(QKEY, n);
-    } catch {}
+    saveVideoQ(n);
   };
   // Yakınlaştırma (Seyhun 2026-10-22): iki parmakla ya da "1×" düğmesiyle. Telefon destekliyorsa kameranın kendi zoom'u (tele lens dahil),
   // yoksa görüntünün ortası kırpılır (çekilen fotoğraf/video da aynı kırpılır)
@@ -152,7 +141,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null, onNative, sto
     const type = recType();
     const c = document.createElement("canvas");
     if (!v?.videoWidth || !type || !c.captureStream) return fns.current.onFail(new Error("Bu telefonda uygulama içinde video çekilemiyor"));
-    const [w, h] = size(QUAL[q].px);
+    const [w, h] = size(VIDEO_Q[q].px);
     c.width = w;
     c.height = h;
     const ctx = c.getContext("2d");
@@ -173,7 +162,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null, onNative, sto
     };
     draw();
     const out = new MediaStream([...c.captureStream(30).getVideoTracks(), ...(stream.current?.getAudioTracks() || [])]);
-    const r = new MediaRecorder(out, { mimeType: type, videoBitsPerSecond: QUAL[q].bps, audioBitsPerSecond: 96_000 });
+    const r = new MediaRecorder(out, { mimeType: type, videoBitsPerSecond: VIDEO_Q[q].cam, audioBitsPerSecond: 96_000 });
     const parts = [];
     r.ondataavailable = (e) => e.data?.size && parts.push(e.data);
     r.onstop = () => {
@@ -273,8 +262,8 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null, onNative, sto
       <div className={`absolute inset-x-0 top-0 flex items-center justify-between gap-2 bg-gradient-to-b from-black/60 to-transparent pb-6 pt-[calc(0.5rem+env(safe-area-inset-top))] ${safeX} landscape:right-[calc(6.5rem+env(safe-area-inset-right))] landscape:justify-start`}>
         <div className="min-w-0">{info}</div>
         {mode === "video" && !recAt && (
-          <button type="button" onClick={pickQ} aria-label={`Video kalitesi: ${QUAL[q].label}`} className="ml-auto h-8 shrink-0 rounded-full bg-black/50 px-3 text-[0.8125rem] font-semibold">
-            {q === "hi" ? "1080p" : "720p"}
+          <button type="button" onClick={pickQ} aria-label={`Video kalitesi: ${VIDEO_Q[q].label}`} className="ml-auto h-8 shrink-0 rounded-full bg-black/50 px-3 text-[0.8125rem] font-semibold">
+            {VIDEO_Q[q].label}
           </button>
         )}
         {!recAt && onNative && (
