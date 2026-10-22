@@ -1,8 +1,8 @@
-Commit: c691a45 · Asistan: "medya sayfası" yeni Medya sayfasını açar, Instagram'ı değil (#686)
-Zaman: 2026-10-22-1656 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39790233418
+Commit: c44cdff · Mesajlar'a geri düğmesi; Yarışlar, Etkinlikler, Gönderiler geri dönüşte boş yüklenmesin (#687)
+Zaman: 2026-10-22-1712 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39792558501
 
-TAM TEST · 22.10.2026 16:49:32
+TAM TEST · 22.10.2026 17:04:50
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1371/1373 geçti · 2 kalan · 403 sn
+SONUÇ: 1371/1373 geçti · 2 kalan · 434 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -135,7 +135,7 @@ SONUÇ: 1371/1373 geçti · 2 kalan · 403 sn
   ✗ Enerji (boşta): 1/2
       ✗ “ana sayfa”
           beklenen: saniyede en çok 3 stil ve yerleşim hesabı
-          olan:     stil 13.6/sn · yerleşim 0.8/sn
+          olan:     stil 15.6/sn · yerleşim 0.8/sn
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
@@ -149,7 +149,7 @@ SONUÇ: 1371/1373 geçti · 2 kalan · 403 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 14 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 15 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
