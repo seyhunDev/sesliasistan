@@ -1075,6 +1075,10 @@ group("Temiz başlık ve sorusuz ekleme")([
   ["Tamam. Kaydedeyim mi?", Y("tamam ve soru atılır", extraNote, "")],
   ["O saatte Antrenman planı da var. Kaydedeyim mi?", Y("ek bilgi kalır", extraNote, "O saatte Antrenman planı da var. ")],
   ["Rüzgâr 22 knot olacak.", Y("rüzgâr bilgisi kalır", extraNote, "Rüzgâr 22 knot olacak. ")],
+  ["kartı tekrar eden cümle", Y("atılır (kart gösteriyor)", () => extraNote("Yarın saat 10'da antrenmanın var.", [{ title: "Antrenman" }]), "")],
+  ["kartı tekrar eden + rüzgâr", Y("yalnız rüzgâr kalır", () => extraNote("Yarın 10'da yelken antrenmanı var. Rüzgâr 22 knot olacak.", [{ title: "Yelken antrenmanı" }]), "Rüzgâr 22 knot olacak. ")],
+  ["aynı adlı başka plan", Y("çakışma bilgisi kalır", () => extraNote("O saatte Antrenman planı da var.", [{ title: "Antrenman" }]), "O saatte Antrenman planı da var. ")],
+  ["başka konu", Y("kalır", () => extraNote("Ali bu hafta izinli.", [{ title: "Toplantı" }]), "Ali bu hafta izinli. ")],
 ]);
 
 // Kulüp özeti (ana yapay zekaya giden; lib/ai/clubDigest.js)
