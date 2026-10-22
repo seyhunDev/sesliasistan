@@ -61,7 +61,7 @@ private struct Etiket: View {
     }
 }
 
-// Büyük sayı + yanında küçük soluk ek ("12 kn · hamle 18")
+// Büyük sayı + yanında küçük soluk ek ("12 kn · sağanak 18")
 private struct Sayi: View {
     let deger: String
     var ek: String = ""
@@ -131,7 +131,7 @@ private struct RuzgarBolumu: View {
                     HStack(alignment: .bottom) {
                         VStack(alignment: .leading, spacing: 4) {
                             Etiket(yazi: "Rüzgâr · \(e.v?.place ?? "Dikili")")
-                            Sayi(deger: "\(s.wind)", ek: s.gust > s.wind ? "kn · hamle \(s.gust)" : "kn")
+                            Sayi(deger: "\(s.wind)", ek: s.gust > s.wind ? "kn · sağanak \(s.gust)" : "kn")
                         }
                         Spacer()
                         Etiket(yazi: r.bugun ? gunBicim.string(from: e.date) : "Yarın")

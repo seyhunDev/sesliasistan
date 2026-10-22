@@ -2,14 +2,14 @@ import SwiftUI
 import WidgetKit
 
 // Widget'ların rüzgâr grafiği: ana sayfadaki grafiğin aynısı (src/features/home/CockpitWind.jsx). Dolu mor alan rüzgâr, açık mor alan ve
-// kesik çizgi hamle; üstte 2 saatte bir yön oku (rüzgârın estiği yöne bakar, 17 kn ve üstü turuncu), altında 3 saatte bir saat, sıcaklık,
-// "rüzgâr–hamle" kn. Kırmızı nokta şimdi. Saatler 06–21; saat 21'den sonra yarının günü gösterilir.
+// kesik çizgi sağanak; üstte 2 saatte bir yön oku (rüzgârın estiği yöne bakar, 17 kn ve üstü turuncu), altında 3 saatte bir saat, sıcaklık,
+// "rüzgâr–sağanak" kn. Kırmızı çizgi ve nokta şimdi ("şimdi" yazısıyla). Saatler 06–23; saat 23'ten sonra yarının günü gösterilir.
 // Veri open-meteo'dan (uygulamanın hava sayfasıyla aynı kaynak, knot); 25 dakika uygulama grubunda saklanır, her widget yeniden çekmez.
 
 let wLacivert = Color(red: 0.137, green: 0.145, blue: 0.369) // --deep #23255e
 let wMor = Color(red: 0.69, green: 0.66, blue: 1.0) // lacivert üstünde okunan açık mor
 private let alanMor = Color(red: 0.655, green: 0.545, blue: 0.98) // #a78bfa
-private let hamleMor = Color(red: 0.769, green: 0.71, blue: 0.992) // #c4b5fd
+private let saganakMor = Color(red: 0.769, green: 0.71, blue: 0.992) // #c4b5fd
 private let turuncu = Color(red: 0.957, green: 0.651, blue: 0.29) // #f4a64a
 private let kirmizi = Color(red: 1.0, green: 0.42, blue: 0.42) // #ff6b6b
 
@@ -30,7 +30,7 @@ struct GunRuzgar: Codable, Hashable {
 
     var bugun: Bool { date == GunRuzgar.gun(Date()) }
 
-    // Şimdiki rüzgâr ve hamle (saatler arası ara değer); bugün değilse ilk saat
+    // Şimdiki rüzgâr ve sağanak (saatler arası ara değer); bugün değilse ilk saat
     func simdi(_ now: Date = Date()) -> (wind: Int, gust: Int) {
         guard let k = konum(now) else { return (hours.first?.wind ?? 0, hours.first?.gust ?? 0) }
         let i = min(hours.count - 1, Int(k))
@@ -73,7 +73,7 @@ enum RuzgarKaynak {
     static func al(lat: Double, lon: Double) async -> GunRuzgar? {
         let now = Date()
         let saat = Calendar.current.component(.hour, from: now)
-        let gun = GunRuzgar.gun(saat >= 21 ? now.addingTimeInterval(86400) : now)
+        let gun = GunRuzgar.gun(saat >= 23 ? now.addingTimeInterval(86400) : now)
         let ud = UserDefaults(suiteName: WidgetVeri.grup)
         let eski = ud?.data(forKey: anahtar).flatMap { try? JSONDecoder().decode(GunRuzgar.self, from: $0) }
         if let e = eski, e.date == gun, abs(e.lat - lat) < 0.01, abs(e.lon - lon) < 0.01, now.timeIntervalSince1970 - e.at < 25 * 60 {
@@ -108,7 +108,7 @@ enum RuzgarKaynak {
         let sayi = { (a: [Any], i: Int) -> Double in i < a.count ? (a[i] as? NSNumber)?.doubleValue ?? 0 : 0 }
         var hours: [RSaat] = []
         for (i, t) in time.enumerated() where t.hasPrefix(gun) {
-            guard let hh = Int(t.dropFirst(11).prefix(2)), (6...21).contains(hh) else { continue }
+            guard let hh = Int(t.dropFirst(11).prefix(2)), (6...23).contains(hh) else { continue }
             let w = Int(sayi(ws, i).rounded())
             hours.append(RSaat(hh: hh, wind: w, gust: max(w, Int(sayi(gs, i).rounded())), dir: sayi(ds, i), t: Int(sayi(ts, i).rounded())))
         }
@@ -153,7 +153,7 @@ struct RuzgarGrafik: View {
                 c.alan(g.hours.map { Double($0.gust) }).fill((mono ? Color.white : alanMor).opacity(mono ? 0.3 : 0.26))
                 c.alan(g.hours.map { Double($0.wind) }).fill((mono ? Color.white : alanMor).opacity(mono ? 0.85 : 0.92))
                 if !mono {
-                    c.cizgi(g.hours.map { Double($0.gust) }).stroke(hamleMor, style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
+                    c.cizgi(g.hours.map { Double($0.gust) }).stroke(saganakMor, style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
                 }
                 if let k = g.konum(now) {
                     let v = Double(g.simdi(now).wind)
@@ -161,8 +161,11 @@ struct RuzgarGrafik: View {
                         p.move(to: CGPoint(x: c.x(k), y: c.top - 4))
                         p.addLine(to: CGPoint(x: c.x(k), y: c.y(0)))
                     }
-                    .stroke(mono ? Color.white : kirmizi, style: StrokeStyle(lineWidth: 1.2, dash: [2, 2]))
-                    Circle().fill(mono ? Color.white : kirmizi).frame(width: 7, height: 7)
+                    .stroke(mono ? Color.white : kirmizi, lineWidth: mono ? 1.2 : 1.6)
+                    if !mono {
+                        Circle().fill(kirmizi.opacity(0.35)).frame(width: 16, height: 16).position(x: c.x(k), y: c.y(v))
+                    }
+                    Circle().fill(mono ? Color.white : kirmizi).frame(width: mono ? 7 : 9, height: mono ? 7 : 9)
                         .overlay(Circle().stroke(mono ? Color.black.opacity(0.5) : wLacivert, lineWidth: 1.5))
                         .position(x: c.x(k), y: c.y(v))
                 }
@@ -171,7 +174,7 @@ struct RuzgarGrafik: View {
     }
 }
 
-// 3 saatte bir: saat, sıcaklık, rüzgâr–hamle (grafikteki saatin tam altında)
+// 3 saatte bir: saat, sıcaklık, rüzgâr–sağanak (grafikteki saatin tam altında)
 struct RuzgarEtiket: View {
     let g: GunRuzgar
     var body: some View {
