@@ -27,13 +27,14 @@ export function Thumb({ kind, url, thumb = "", local = "", dur = 0, up = null, d
         />
       )}
       {kind === "video" && <span className="absolute bottom-1 right-1.5 text-[0.6875rem] font-semibold tabular-nums text-white [text-shadow:0_1px_2px_rgba(0,0,0,.6)]">{sec ? mmss(sec) : "video"}</span>}
+      {/* Buluta gönderilirken görüntü kapanmaz (telefondaki dosya hemen kullanılır; Seyhun 2026-10-22: "telefondaki veriyi kullanmıyor muyuz?"):
+          köşede küçük dolan halka */}
       {up != null && (
-        <span className="absolute inset-0 grid place-items-center bg-[rgba(20,22,40,.35)]" aria-label={`Yükleniyor %${Math.round(up * 100)}`}>
-          <svg width="44" height="44" viewBox="0 0 44 44" className={up > 0 ? "" : "animate-spin"}>
-            <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.35)" strokeWidth="4" />
-            <circle cx="22" cy="22" r="18" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeDasharray="113.1" strokeDashoffset={113.1 * (1 - (up > 0 ? Math.max(0.04, up) : 0.25))} transform="rotate(-90 22 22)" className="transition-[stroke-dashoffset] duration-300" />
+        <span className="absolute right-1 top-1 grid size-6 place-items-center rounded-full bg-black/45" aria-label={`Buluta gönderiliyor %${Math.round(up * 100)}`}>
+          <svg width="18" height="18" viewBox="0 0 18 18" className={up > 0 ? "" : "animate-spin"}>
+            <circle cx="9" cy="9" r="7" fill="none" stroke="rgba(255,255,255,.35)" strokeWidth="2.5" />
+            <circle cx="9" cy="9" r="7" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="44" strokeDashoffset={44 * (1 - (up > 0 ? Math.max(0.06, up) : 0.25))} transform="rotate(-90 9 9)" className="transition-[stroke-dashoffset] duration-300" />
           </svg>
-          {up > 0 && <b className="absolute text-[0.6875rem] font-semibold tabular-nums text-white">{Math.round(up * 100)}</b>}
         </span>
       )}
       {done && <span className="absolute right-1.5 top-1.5 grid size-[1.125rem] place-items-center rounded-full bg-ok text-[0.6875rem] font-bold text-white">✓</span>}
