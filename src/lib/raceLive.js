@@ -279,13 +279,20 @@ function cleanMoment(m) {
 const clock = (sec) => `${Math.floor(Math.abs(sec) / 60)}:${pad(Math.abs(sec) % 60)}`;
 // Kısa rozet (küçük resmin köşesi): "−3:12" start öncesi, "+12:30" startan beri
 export const momentBadge = (m) => (m?.phase ? `${m.sec < 0 ? "−" : "+"}${clock(m.sec)}` : "");
+// Yarışa çevrilmemiş düz start (Seyhun 2026-10-22: "yarış olarak saymasam da start verdim, starttan sonra çekmişim"): an sayaçtan
+// (momentOf), yarış satırı yok; o güne o anda start yoksa "Start 10:42 · Startan sonra" diye ayrı gruplanır, "Start öncesi"ne düşmez
+export function freeStart(m, starts) {
+  if (!m?.phase || m.rid || !starts) return false;
+  const t = Date.parse(m.end);
+  return !startsOn(starts, dayOf(m.end)).some((x) => Math.abs(Date.parse(x.at) - t) < 5000);
+}
 // Uzun yazı (büyük açılınca, fotoğrafın üstüne basılan): "Son 1 dakika · 0:42 kala", "Startan beri 12:30"
-export const momentText = (m) =>
-  !m?.phase ? "" : m.phase === "race" ? `Yarış sırasında · ${clock(m.sec)}` : m.phase === "after" ? PHASES.after : `${PHASES[m.phase]} · ${clock(m.sec)} kala`;
+export const momentText = (m, starts) =>
+  !m?.phase ? "" : m.phase === "race" ? `${freeStart(m, starts) ? "Startan beri" : "Yarış sırasında"} · ${clock(m.sec)}` : m.phase === "after" ? PHASES.after : `${PHASES[m.phase]} · ${clock(m.sec)} kala`;
 // Çekilenin yarışının adı: bağlı yarış satırı (rid), yoksa 0 anına denk gelen start, yoksa o andan önceki startların sırası + 1
 export const momentRaceName = (m, starts) => {
   const s = m?.rid && (starts || []).find((x) => x.id === m.rid);
-  return s ? raceTitle(s) : `${momentRace(m, starts)}. yarış`;
+  return s ? raceTitle(s) : freeStart(m, starts) ? `Start ${hm(m.end)}` : `${momentRace(m, starts)}. yarış`;
 };
 export function momentRace(m, starts) {
   const r = m?.rid && (starts || []).find((x) => x.id === m.rid);
@@ -310,18 +317,20 @@ export function mediaGroups(media, starts, day) {
     let phase = "pre";
     let id = "";
     let at = "";
-    if (m.phase) (n = momentRace(m, starts)), (name = momentRaceName(m, starts)), (phase = m.phase), (id = m.rid || ""), (at = m.end);
+    if (m.phase && freeStart(m, starts)) (name = `Start ${hm(m.end)}`), (phase = m.phase), (id = `free${m.end}`), (at = m.end);
+    else if (m.phase) (n = momentRace(m, starts)), (name = momentRaceName(m, starts)), (phase = m.phase), (id = m.rid || ""), (at = m.end);
     else {
       const s = [...st].reverse().find((x) => x.at <= m.at);
       if (s) (n = s.n), (name = raceTitle(s)), (phase = "race"), (id = s.id), (at = s.at);
     }
     // Aynı numaralı iki yarış (geçersiz sayılan ve tekrarı) ayrı gruplarda: anahtar yarışın kendisi
     const key = `${id || n}-${phase}`;
-    if (!groups.has(key)) groups.set(key, { key, n, at, rank: order[phase], title: n ? `${name} · ${PHASES[phase]}` : PHASES.pre, items: [] });
+    const title = n ? `${name} · ${PHASES[phase]}` : name ? `${name} · ${phase === "race" ? "Startan sonra" : PHASES[phase]}` : PHASES.pre;
+    if (!groups.has(key)) groups.set(key, { key, n, at, rank: order[phase], title, items: [] });
     groups.get(key).items.push(m);
   }
   return [...groups.values()]
-    .sort((a, b) => (b.n || 0) - (a.n || 0) || String(b.at).localeCompare(String(a.at)) || a.rank - b.rank)
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)) || (b.n || 0) - (a.n || 0) || a.rank - b.rank)
     .map(({ key, title, items }) => ({ key, title, items: items.reverse() }));
 }
 

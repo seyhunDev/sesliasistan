@@ -20,6 +20,18 @@ export function CameraSheet({ open, ...props }) {
   return createPortal(<Cam {...props} />, document.body);
 }
 
+// Video kalitesi (Seyhun 2026-10-22: "çok kalitesiz çekiyormuş gibi"): Yüksek 1080p (varsayılan), Normal 720p. 2 dakikalık video
+// Yüksek'te ≈ 50 MB, Normal'de ≈ 30 MB (Storage 60 MB sınırı ve 5 GB kota). Seçim bu telefonda hatırlanır.
+const QUAL = { hi: { px: 1920, bps: 3_400_000, label: "Yüksek" }, lo: { px: 1280, bps: 2_000_000, label: "Normal" } };
+const QKEY = "sa-cam-q";
+const readQ = () => {
+  try {
+    return localStorage.getItem(QKEY) === "lo" ? "lo" : "hi";
+  } catch {
+    return "hi";
+  }
+};
+
 function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
   const vid = useRef(null);
   const stream = useRef(null);
@@ -29,6 +41,14 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
   const [recAt, setRecAt] = useState(0);
   const [recNow, setRecNow] = useState(0);
   const [flash, setFlash] = useState(false);
+  const [q, setQ] = useState(readQ);
+  const pickQ = () => {
+    const n = q === "hi" ? "lo" : "hi";
+    setQ(n);
+    try {
+      localStorage.setItem(QKEY, n);
+    } catch {}
+  };
   const timer = useTimerRun();
   useEffect(() => {
     fns.current = { onShot, onFail };
@@ -73,7 +93,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
   const photo = () => {
     const v = vid.current;
     if (!v?.videoWidth) return;
-    const [w, h] = size(1600);
+    const [w, h] = size(2048);
     const c = document.createElement("canvas");
     c.width = w;
     c.height = h;
@@ -82,14 +102,15 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
     const at = new Date().toISOString(); // fotoğrafa yazı Kaydet'te basılır (yarışı ve anı değiştirilebilsin)
     setFlash(true);
     setTimeout(() => setFlash(false), 120);
-    c.toBlob((b) => b && fns.current.onShot({ blob: b, type: "image/jpeg", kind: "photo", at }), "image/jpeg", 0.8);
+    c.toBlob((b) => b && fns.current.onShot({ blob: b, type: "image/jpeg", kind: "photo", at }), "image/jpeg", 0.85);
   };
   const start = () => {
+    if (rec.current) return; // hızlı çift dokunuş iki kayıt başlatmasın (Seyhun 2026-10-22: "aynı videodan iki kayıt")
     const v = vid.current;
     const type = recType();
     const c = document.createElement("canvas");
     if (!v?.videoWidth || !type || !c.captureStream) return fns.current.onFail(new Error("Bu telefonda uygulama içinde video çekilemiyor"));
-    const [w, h] = size(960);
+    const [w, h] = size(QUAL[q].px);
     c.width = w;
     c.height = h;
     const ctx = c.getContext("2d");
@@ -108,7 +129,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
       raf = requestAnimationFrame(draw);
     };
     draw();
-    const r = new MediaRecorder(c.captureStream(30), { mimeType: type, videoBitsPerSecond: 1_600_000 });
+    const r = new MediaRecorder(c.captureStream(30), { mimeType: type, videoBitsPerSecond: QUAL[q].bps });
     const parts = [];
     r.ondataavailable = (e) => e.data?.size && parts.push(e.data);
     r.onstop = () => {
@@ -202,6 +223,11 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
       {flash && <div className="pointer-events-none absolute inset-0 bg-black/60" />}
       <div className={`absolute inset-x-0 top-0 flex items-center justify-between gap-2 bg-gradient-to-b from-black/60 to-transparent pb-6 pt-[calc(0.5rem+env(safe-area-inset-top))] ${safeX} landscape:right-[calc(6.5rem+env(safe-area-inset-right))] landscape:justify-start`}>
         <div className="min-w-0">{info}</div>
+        {mode === "video" && !recAt && (
+          <button type="button" onClick={pickQ} aria-label={`Video kalitesi: ${QUAL[q].label}`} className="ml-auto h-8 shrink-0 rounded-full bg-black/50 px-3 text-[0.8125rem] font-semibold">
+            {q === "hi" ? "1080p" : "720p"}
+          </button>
+        )}
       </div>
       {status && (
         <p className="absolute inset-x-3 bottom-[calc(10rem+env(safe-area-inset-bottom))] mx-auto w-fit max-w-full rounded-lg bg-[#FF3B30] px-3 py-1.5 text-center text-[0.8125rem] landscape:bottom-4 landscape:right-[calc(6.5rem+env(safe-area-inset-right))]">
