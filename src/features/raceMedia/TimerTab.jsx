@@ -5,16 +5,15 @@ import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { Countdown, useTimerRun } from "@/features/training/Countdown";
 import { mmss } from "@/lib/raceScore";
-import { addWind, saveBuoys } from "@/features/athletes/raceLiveStore";
+import { saveBuoys } from "@/features/athletes/raceLiveStore";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { COURSES, FLAGS, VOIDS, addBuoy, atOf, dropBuoy, nextBuoy, upSec, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn, windOn } from "@/lib/raceLive";
+import { COURSES, FLAGS, VOIDS, addBuoy, atOf, dropBuoy, nextBuoy, upSec, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn } from "@/lib/raceLive";
 import { Button } from "@/components/ui/Button";
-import { WindSheet } from "./WeatherTab";
 
 // Süre (Seyhun 2026-10-18): yarış akışı (useRaceFlow: Başlat · İptal · Yarışı bitir, sebep sorma, Geri al). Yarışlar bütün seri boyunca
 // numaralanır (2. gün 4. yarıştan devam eder); adı, saatleri ve iptal durumu dokununca değişir. Yarış günü sayfa bu sekmeyle açılır.
 // Düzen (Seyhun 2026-10-19 onayı, örnek yaris-tasarim/multimedya/sure-yeni-2.png): sayaca dokununca başlar; altta Start · Şamandıra ·
-// Finish kareleri; günün yarışları tek satır ("Liste ›" açar). Alt şerit: Rüzgâr (çekim alttaki Kayıt düğmesinden, Seyhun 2026-10-22).
+// Finish kareleri; günün yarışları tek satır ("Liste ›" açar). Alt şeritte ana düğme (Başlat · Durdur · Devam · Bitir; rüzgâr Hava sekmesinde, çekim alttaki Kayıt ile; Seyhun 2026-10-22).
 // Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip.
 const PRESETS = [60, 120, 300, 600];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
@@ -23,12 +22,10 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
   const tr = useTimerRun();
   const timer = tr.t;
   const [edit, setEdit] = useState(null); // düzenlenen yarış
-  const [wind, setWind] = useState(false);
   const [list, setList] = useState(false); // bugünün yarışları (eskiden sayfanın altındaki liste)
   const { flow, ridOf, save, undo } = rf;
   const cur = timer.end != null || timer.left != null ? live.starts.find((x) => x.id === ridOf(timer)) : null; // durmuş geri sayım da (Devam bekler)
   const rdays = raceDays(race);
-  const lastWind = windOn(live.wind, day).at(-1);
   const add = () => {
     setList(false);
     const now = new Date();
@@ -59,7 +56,7 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
         race={flow}
         title={cur ? raceName(cur) : ""}
         where={race?.name || "Yarış"}
-        tail={<Button variant="secondary" onClick={() => setWind(true)}>Rüzgâr</Button>}
+        bottom
       />
       {!!cur && tr.up && !cur.void && <Marks buoys={live.buoys} s={cur} on onMark={mark} onBuoys={setBuoys} />}
       <button type="button" onClick={() => setList(true)} data-press="row" className="mt-3 flex w-full items-center justify-between px-1 py-1 text-left text-[0.875rem]">
@@ -68,16 +65,6 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
         </span>
         <b className="shrink-0 font-semibold">Liste ›</b>
       </button>
-      <WindSheet
-        open={wind}
-        onClose={() => setWind(false)}
-        day={day}
-        last={lastWind}
-        onSave={(w) => {
-          setWind(false);
-          onChange((l) => ({ wind: [...l.wind, w] }), () => addWind(orgId, race.id, w));
-        }}
-      />
       <Sheet open={list} onClose={() => setList(false)} title="Yarışlar">
         {list && (
           <div className="-mt-3 pb-2">

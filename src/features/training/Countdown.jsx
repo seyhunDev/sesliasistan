@@ -275,8 +275,8 @@ export function makeRace(race) {
 // sırası şeridi; geri sayımda −1 dk · Eşitle (en yakın tam dakika, komitenin işaretiyle eşitlemek için) · +1 dk; startan sonra "+ Yarış yap" ve
 // İptal. Kartın altında tek ana düğme: Başlat · Durdur · Devam · Bitir (çember yok, yanlış dokunuş sayacı değiştirmez).
 // title: yarışa bağlı sayaçta yarışın adı; where: bu sayfanın adı (sayaç başlatılınca kayda yazılır). beforeStart: Başlat'tan önce (planı yoksa açar).
-// Alt şeritte lead ve tail (Fotoğraf, Video, Rüzgâr). dark: lacivert kokpitin içinde (antrenman günü, 2026-10-21 yeni tasarım): kart yok, beyaz yazı.
-export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, lead = null, tail = null, dark = false }) {
+// Alt şeritte lead ve tail. bottom: ana düğme kokpitte değil alt şeritte (başparmak yetişsin; Seyhun 2026-10-22), solunda side (Sonucu söyle). dark: lacivert kokpitin içinde (antrenman günü, 2026-10-21 yeni tasarım): kart yok, beyaz yazı.
+export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, lead = null, tail = null, dark = false, bottom = false, side = null }) {
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
@@ -320,6 +320,21 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
           ? "bg-acc text-white shadow-[0_3px_0_color-mix(in_srgb,var(--acc)_70%,#000)]"
           : "border border-line bg-card text-fg shadow-[0_3px_0_var(--line)]"
     }`;
+  // Alt şeritte açık zeminde (bottom): kokpitin dışında
+  const barCls = (on) =>
+    `flex h-14 w-full items-center justify-center rounded-2xl text-[1.125rem] font-semibold active:translate-y-0.5 active:shadow-none ${
+      on ? "bg-acc text-white shadow-[0_3px_0_color-mix(in_srgb,var(--acc)_70%,#000)]" : "border border-line bg-card text-fg shadow-[0_3px_0_var(--line)]"
+    }`;
+  const main = (cls) =>
+    away ? (
+      <Link href={ownHref} className={cls(true)}>
+        {t.where || "Sayacın sayfası"} ›
+      </Link>
+    ) : (
+      <button type="button" onClick={idle ? start : up ? (race ? () => raceFinish(race) : reset) : running ? pause : resume} className={cls(!running || up)}>
+        {idle ? "Başlat" : up ? "Bitir" : running ? "Durdur" : "Devam"}
+      </button>
+    );
   const red = dark ? "text-[#f4a49c]" : "text-rec"; // lacivertte koyu kırmızı okunmuyor
   const accTx = dark ? "text-[#c4b5fd]" : "text-acc";
   const stepCls = (st) =>
@@ -377,14 +392,15 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
           </div>
         )}
       </section>
-      {away ? (
-        <Link href={ownHref} className={mainCls(true)}>
-          {t.where || "Sayacın sayfası"} ›
-        </Link>
+      {bottom ? (
+        <Bar>
+          <div className="flex gap-2">
+            {side && <div className="min-w-0 flex-1 [&>*]:w-full">{side}</div>}
+            <div className={side ? "min-w-0 flex-1" : "w-full"}>{main(barCls)}</div>
+          </div>
+        </Bar>
       ) : (
-      <button type="button" onClick={idle ? start : up ? (race ? () => raceFinish(race) : reset) : running ? pause : resume} className={mainCls(!running || up)}>
-        {idle ? "Başlat" : up ? "Bitir" : running ? "Durdur" : "Devam"}
-      </button>
+        main(mainCls)
       )}
       <Pick open={pick} dur={t.dur} presets={presets} onClose={() => setPick(false)} onPick={(s) => (choose(s), setPick(false))} />
       {(lead || tail) && (
