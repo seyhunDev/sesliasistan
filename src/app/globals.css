@@ -444,8 +444,8 @@ select {
    Koyu lacivert zemin (ana ekran simgesiyle aynı; açık ve koyu modda aynı), ortada Velora logosu: 24 ses çubuğu sırayla
    ortadan dışa uzar, ortadaki ışık yanar, altında Velora yazısı belirir; yükleme sürerken çubuklar konuşur gibi kısalıp
    uzar. Bitince logo büyüyüp ekran solar; aynı anda sayfa altından belirir (html[data-boot=enter] main) ve asistan kubbesi yükselir. */
-.boot { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; overflow: hidden; color: #e8ecff;
-  background: radial-gradient(120% 75% at 50% 38%, #18204a 0%, #0b1024 55%, #070b18 100%); }
+.boot { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; overflow: hidden; color: #e8ecff; }
+.boot-bg { position: absolute; inset: 0; background: radial-gradient(120% 75% at 50% 38%, #18204a 0%, #0b1024 55%, #070b18 100%); }
 .boot::before { content: ""; position: absolute; left: 50%; top: 42%; width: 26rem; height: 26rem; transform: translate(-50%, -50%); border-radius: 9999px;
   background: radial-gradient(closest-side, rgba(124, 92, 255, .22), rgba(34, 211, 238, .08) 60%, transparent); animation: bootglow 2.6s ease-in-out infinite; }
 .boot-mark { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: -6vh; }
@@ -462,6 +462,14 @@ select {
   animation: bootin .7s cubic-bezier(.2, .9, .3, 1) .9s both, bootpulse 1.8s ease-in-out 1.6s infinite; }
 .boot[data-phase="out"] { pointer-events: none; animation: bootout .55s cubic-bezier(.4, 0, .2, 1) forwards; }
 .boot[data-phase="out"] .boot-mark { animation: bootzoom .55s cubic-bezier(.4, 0, .2, 1) forwards; }
+/* Giriş ekranına uçuş (BootSplash flyTo): logo giriş ekranındaki yerine kayıp küçülür, zemin ve yazılar solar, alttaki lacivert giriş ekranı görünür */
+.boot-logo { transition: transform .72s cubic-bezier(.65, 0, .35, 1); }
+.boot[data-phase="out"][data-fly] { animation: none; }
+.boot[data-fly] .boot-mark, .boot[data-fly] .boot-ray, .boot[data-fly] .boot-core, .boot[data-fly] .boot-core-glow { animation: none; }
+.boot[data-fly] .boot-logo { transform: var(--fly); }
+.boot[data-fly] .boot-bg, .boot[data-fly]::before { animation: bootout .5s ease-out forwards; }
+.boot[data-fly] :is(.boot-word, .boot-sub) { animation: bootout .25s ease-out forwards; }
+html[data-boot-fly] [data-boot-target] { visibility: hidden; }
 @keyframes bootray { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
 @keyframes boottalk { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.55); } }
 @keyframes bootcore { from { transform: scale(0); opacity: 0; } }
@@ -477,10 +485,22 @@ html[data-boot="enter"] :is(main, [data-boot-enter]) { animation: softin .5s eas
 /* kaydırma (transform) yalnız içinde sabit çubuk yoksa: transform sabit öğeleri sayfaya bağlar, zıplarlardı */
 html[data-boot="enter"] :is(main, [data-boot-enter]):not(:has(.fixed)) { animation: bootenter .6s cubic-bezier(.22, .8, .24, 1) .06s backwards; }
 html[data-boot="on"] .dome-rise { animation-play-state: paused; }
+/* Giriş ekranı: Velora yazısı ve form sırayla aşağıdan belirir (açılış ekranı çekilirken başlar); logo açılış ekranı yoksa büyüyerek gelir;
+   adım değişince form yandan kayar (ileri sağdan, geri soldan) */
+.auth-rise { animation: authrise .55s cubic-bezier(.22, .8, .24, 1) var(--d, 0s) backwards; }
+.auth-pop { animation: authpop .6s cubic-bezier(.2, .9, .3, 1.2) backwards; }
+.auth-step { animation: authstep .32s cubic-bezier(.22, .8, .24, 1) backwards; }
+.auth-step[data-back] { animation-name: authback; }
+html[data-boot="on"] :is(.auth-rise, .auth-pop) { animation-play-state: paused; }
+@keyframes authrise { from { opacity: 0; transform: translateY(18px); } }
+@keyframes authpop { from { opacity: 0; transform: scale(.6); } }
+@keyframes authstep { from { opacity: 0; transform: translateX(28px); } }
+@keyframes authback { from { opacity: 0; transform: translateX(-28px); } }
 @media (prefers-reduced-motion: reduce) {
   .boot::before, .boot-word, .boot-sub, .boot-mark, .boot-ray, .boot-core, .boot-core-glow { animation: none; }
   .boot[data-phase="out"] .boot-mark { animation: none; }
   html[data-boot="enter"] :is(main, [data-boot-enter]) { animation: softin .3s ease-out backwards; }
+  .auth-rise, .auth-pop, .auth-step { animation: softin .3s ease-out backwards; }
 }
 
 /* Asistan açıkken sayfanın alttaki düğme çubuğu (evrak hazırla, kaydet…) gizlenir: asistan onun arkasında kalmasın */
