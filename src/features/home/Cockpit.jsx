@@ -9,7 +9,7 @@ import { useData } from "@/features/data/DataProvider";
 import { dayHours, nowOf, sky, windName } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
 import { isTraining } from "@/lib/trainingLog";
-import { attHref, nextPlan } from "@/lib/homeTiles";
+import { attHref, nextPlan, planTag } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
 import { CockpitWind } from "./CockpitWind";
 import { InboxBell } from "./Inbox";
@@ -82,8 +82,10 @@ export function Cockpit({ weather, inbox, onInbox, children }) {
   );
 }
 
-// Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan. Antrenmansa sağda "Yoklama" ve "Süre" (antrenman sayfası, sayaç).
-// Satıra dokununca plan açılır. Aynı plan aşağıdaki takvim listesinde tekrar yazmaz (OwnerHome kimliğini SiradaCard'a "skip" olarak verir).
+// Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan. Kokpitin en belirgin parçası
+// (Seyhun 2026-10-22 "A · Mor kart"): logo morunda dolu kart; üstte gün ve tür, büyük saat + tam başlık (2 satıra kadar), altta yer ve kalan süre.
+// Antrenmansa kartın içinde Yoklama ve Süre (widget'taki gibi). Karta dokununca plan açılır. Aynı plan aşağıdaki takvim listesinde tekrar yazmaz
+// (OwnerHome kimliğini SiradaCard'a "skip" olarak verir).
 function NextPlan({ now }) {
   const { plans } = useData();
   const { profile } = useAuth();
@@ -92,42 +94,52 @@ function NextPlan({ now }) {
   const p = nextPlan(plans, now, today);
   if (!p) return null;
   const mins = p.date === today && p.time ? Math.round((new Date(`${p.date}T${p.time}`) - now) / 60000) : null;
-  // Solda büyük: bugünse saat (saatsizse "Bugün"), sonraki günlerde "Yarın" ya da "3 gün"; altta bir kez gün adı (tam), saat ve yer
-  // (Seyhun 2026-10-21: "cum yerine tam yazalım ya da kaç gün kaldığını; yanında yine cuma ve saat yazıyor, tekrar oluyor")
+  // Gün bir kez yazılır: üstte "Bugün" / "Yarın" / "Pazartesi 26 Eki"; altta kalan süre (Seyhun 2026-10-21: tekrar olmasın)
   const days = Math.round((Date.parse(`${p.date}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5);
-  const big = days === 0 ? p.time || "Bugün" : days === 1 ? "Yarın" : `${days} gün`;
   const d = new Date(`${p.date}T12:00`);
-  const when =
-    days > 0
-      ? `${cap(d.toLocaleDateString("tr-TR", { weekday: "long" }))} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}${p.time ? ` ${p.time}` : ""}`
-      : mins == null
-        ? "Gün boyu"
-        : mins <= 0
-          ? "Şimdi"
-          : mins < 60
-            ? `${mins} dk sonra`
-            : `${Math.floor(mins / 60)} sa ${mins % 60 ? `${mins % 60} dk ` : ""}sonra`;
+  const day = days === 0 ? "Bugün" : days === 1 ? "Yarın" : `${cap(d.toLocaleDateString("tr-TR", { weekday: "long" }))} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}`;
+  const left =
+    days > 1
+      ? `${days} gün sonra`
+      : days === 1
+        ? ""
+        : mins == null
+          ? "Gün boyu"
+          : mins <= 0
+            ? "Şimdi"
+            : mins < 60
+              ? `${mins} dk sonra`
+              : `${Math.floor(mins / 60)} sa ${mins % 60 ? `${mins % 60} dk ` : ""}sonra`;
   const sail = isTraining(p);
-  // Antrenmansa Süre'nin yanında Yoklama (widget'taki gibi; Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
+  const tag = planTag(p);
+  // Antrenmansa Süre'nin yanında Yoklama (Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
   const att = sail && canSeeAthletes(profile?.email);
   return (
-    <div className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-white/12 bg-white/[.07] py-2.5 pl-3.5 pr-2.5">
-      <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-        <span className="shrink-0 text-[1.5rem] font-bold tracking-[-.02em] tabular-nums">{big}</span>
-        <span className="min-w-0 flex-1 leading-tight">
-          <b className="block truncate text-[0.9375rem] font-semibold">{p.title || "Plan"}</b>
-          <small className="block truncate text-[0.8125rem] text-white/65">{[when, p.place].filter(Boolean).join(" · ")}</small>
+    <div className="ck-plan mt-3 rounded-[1.375rem] p-3.5 pb-3 text-white">
+      <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="block w-full min-w-0 text-left">
+        <span className="flex items-center gap-1.5 text-[0.75rem] font-bold uppercase tracking-[.04em] text-white/85">
+          <span className="size-[7px] shrink-0 rounded-full bg-white" />
+          <span className="truncate">{[day, tag].filter(Boolean).join(" · ")}</span>
         </span>
+        <span className="mt-1 flex items-baseline gap-2.5">
+          {p.time && <b className="shrink-0 text-[1.75rem] font-bold leading-tight tracking-[-.03em] tabular-nums">{p.time}</b>}
+          <span className="line-clamp-2 min-w-0 text-[1.0625rem] font-semibold leading-snug">{p.title || "Plan"}</span>
+        </span>
+        {(p.place || left) && <small className="mt-0.5 block truncate text-[0.8125rem] text-white/80">{[p.place, left].filter(Boolean).join(" · ")}</small>}
       </button>
-      {att && (
-        <Link href={attHref(p.date, today) || "/athletes/attendance"} data-press className="ck-btn ck-btn2 shrink-0">
-          Yoklama
-        </Link>
-      )}
-      {sail && (
-        <Link href={`/training/day?id=${p.id}`} data-press className="ck-btn shrink-0">
-          Süre
-        </Link>
+      {(att || sail) && (
+        <div className={`mt-3 grid gap-2 ${att && sail ? "grid-cols-2" : "grid-cols-1"}`}>
+          {att && (
+            <Link href={attHref(p.date, today) || "/athletes/attendance"} data-press className="ck-pbtn ck-pbtn2">
+              Yoklama
+            </Link>
+          )}
+          {sail && (
+            <Link href={`/training/day?id=${p.id}`} data-press className="ck-pbtn">
+              Süre
+            </Link>
+          )}
+        </div>
       )}
     </div>
   );
