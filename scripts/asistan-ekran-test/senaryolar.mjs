@@ -17,7 +17,7 @@ const TOMORROW = ymd(new Date(Date.now() + 864e5));
 const now = new Date().toISOString();
 
 // Halkanın renkleri (TabBar.jsx RING_C)
-const RING = { listen: "kırmızı", work: "kehribar", speak: "mavi", ok: "yeşil", idle: "mor" }; // canlı logonun durumu (LogoRing data-tone)
+const RING = { listen: "kırmızı", work: "kehribar", speak: "mavi", ok: "yeşil", idle: "mor" }; // asistan düğmesinin durumu (TabBar OrbMain data-tone)
 
 async function launch() {
   const { chromium } = await import("playwright-core");

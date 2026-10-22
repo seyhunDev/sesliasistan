@@ -135,7 +135,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         {/* Görev listesi (tek cümlede birden çok iş): yalnız işlerin adı ve sonucu; ara adımlar (sporcular yükleniyor…) görünmez.
             Biten iş soluk ve işaretli, süren iş parlıyor, sıradakiler silik (Seyhun, 2026-10-09) */}
         {plan.length > 0 && (
-          <ol className="msg-in mt-3 grid gap-2.5 px-0.5 py-1 text-[0.9375rem]" aria-label="Görev listesi">
+          <ol className="apanel msg-in mt-4 grid gap-2.5 rounded-2xl px-3.5 py-3 text-[0.9375rem]" aria-label="Görev listesi">
             {plan.map((x, i) => (
               <li key={i} className={`step-in flex items-center gap-2.5 ${x.st === "done" || x.st === "run" ? "text-fg" : x.st === "fail" ? "text-rec" : x.st === "skip" ? "text-mut/60 line-through" : "text-mut/60"}`}>
                 <span className="astep-dot" data-st={x.st || "wait"}>
