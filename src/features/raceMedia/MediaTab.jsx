@@ -70,6 +70,8 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const pick = tagged.some((a) => a.id === who) ? who : "";
   const upItems = pick ? [] : Object.values(ups).filter((x) => x.rec.raceId === race.id).map(({ rec, url, p, err }) => ({ id: rec.id, kind: rec.kind, at: rec.at, dur: rec.dur, ...rec.mom, u: { url, p, err } }));
   const open = live.media.find((m) => m.id === openId) || upItems.find((m) => m.id === openId) || null;
+  const going = upItems.filter((x) => !x.u.err);
+  const justDone = Object.values(mine).some((x) => x.done);
   const groups = mediaGroups([...mediaOf(live.media, pick), ...upItems], live.starts, day);
   const first = (a) => (a.studentName || "").split(" ")[0];
 
@@ -92,7 +94,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
         const { [rec.id]: u, ...rest } = x.ups;
         return { ups: rest, mine: u ? { ...x.mine, [meta.id]: { url: u.url, done: true } } : x.mine, kept: { ...x.kept, [meta.id]: { kind: rec.kind, size: rec.blob.size } } };
       });
-      setTimeout(() => setMine((m) => (m[meta.id] ? { ...m, [meta.id]: { ...m[meta.id], done: false } } : m)), 1500);
+      setTimeout(() => setMine((m) => (m[meta.id] ? { ...m, [meta.id]: { ...m[meta.id], done: false } } : m)), 4000);
       setOpen((o) => (o === rec.id ? meta.id : o)); // yüklenirken izleniyorsa izleme sürer
       onChange((l) => ({ media: [...l.media, meta] }));
       setWaiting((w) => w.filter((x) => x.id !== rec.id));
@@ -287,7 +289,8 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
         </div>
       )}
       <div className="mt-3 flex items-center justify-between gap-3 px-1">
-        <p className="text-[0.875rem] text-mut">{todays.length ? [todays.filter((m) => m.kind === "video").length, todays.filter((m) => m.kind !== "video").length].map((n, k) => n && `${n} ${k ? "fotoğraf" : "video"}`).filter(Boolean).join(" · ") : ""}</p>
+        {/* Yükleme sürerken burada ne kadarının gittiği yazar (Seyhun 2026-10-22: "yüklenip yüklenmediğini bilmiyorum"), bitince sayılar */}
+        <p className="text-[0.875rem] tabular-nums text-mut">{going.length ? `${going.length} kayıt yükleniyor · %${Math.round((going.reduce((a, x) => a + (x.u.p || 0), 0) / going.length) * 100)}` : justDone ? "Yüklendi ✓" : todays.length ? [todays.filter((m) => m.kind === "video").length, todays.filter((m) => m.kind !== "video").length].map((n, k) => n && `${n} ${k ? "fotoğraf" : "video"}`).filter(Boolean).join(" · ") : ""}</p>
         <Button size="sm" full={false} onClick={() => setCam("video")}>
           + Kayıt
         </Button>

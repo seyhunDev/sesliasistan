@@ -138,12 +138,17 @@ async function putPoster(orgId, mid, poster) {
 export async function addRaceMedia(orgId, id, m, at, onProg, extra = null) {
   const mid = newId();
   const r = sref(store(), mpath(orgId, mid));
-  const poster = await posterOf(m.blob, m.kind);
+  // Küçük resim yüklemeyle aynı anda hazırlanır (önce yapılınca iPhone'da yükleme 10 sn'ye kadar %0'da bekliyordu; Seyhun 2026-10-22)
+  const posterP = posterOf(m.blob, m.kind).catch(() => null);
   const task = uploadBytesResumable(r, m.blob, { contentType: m.type, cacheControl: "private, max-age=31536000" });
   await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
-  const thumb = await putPoster(orgId, mid, poster);
+  const thumb = await putPoster(orgId, mid, await posterP);
   const meta = cleanMedia([{ id: mid, kind: m.kind, type: m.type, size: m.blob.size, url: await getDownloadURL(r), at, thumb, ...extra }])[0];
-  await setDoc(live(orgId, id), { media: arrayUnion(meta) }, { merge: true });
+  // Kayıt telefondaki Firestore önbelleğine hemen yazılır; sunucunun onayı zayıf bağlantıda uzun sürer, beklenmez (halka %100'de takılı
+  // kalıyordu). Yazma arkada tamamlanır.
+  const w = setDoc(live(orgId, id), { media: arrayUnion(meta) }, { merge: true });
+  w.catch((e) => console.warn("[raceMedia] künye yazılamadı", e));
+  await Promise.race([w, new Promise((res) => setTimeout(res, 3000))]);
   return meta;
 }
 
