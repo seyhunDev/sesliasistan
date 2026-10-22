@@ -767,8 +767,9 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .navy .bg-emerald-100 { background-color: rgba(16, 185, 129, .16); }
 .navy :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900) { color: #fbbf5c; }
 .navy :is(.text-rose-600, .text-rose-700, .text-red-600) { color: #fb8a9a; }
-/* Ana sayfa lacivertken sayfanın kalanı da lacivert (alt boşlukta açık şerit kalmasın) */
-html:has(.home-navy), body:has(.home-navy) { background: #141938; }
+/* Ana sayfa lacivertken sayfanın kalanı da lacivert (alt boşlukta ve aşağı çekince koyu şerit kalmasın). !important:
+   koyu moddaki "html[data-theme=dark] body:has(main.grouped)" kuralı daha özgül, alt çubuğun üstünde siyah şerit bırakıyordu */
+html:has(.home-navy), body:has(.home-navy) { background: #141938 !important; }
 /* Asistan kapanınca sekme çubuğu alttan kayarak gelir (TabBar rise) */
 @keyframes atabup { from { transform: translate3d(0, 100%, 0); } }
 .atab-up { animation: atabup .36s cubic-bezier(.22, .8, .24, 1) backwards; }
