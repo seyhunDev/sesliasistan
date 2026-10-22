@@ -12,3 +12,7 @@
 0. Xcode'dan yeniden kur (VeloraWidget hedefine de Team seç). Dene: Eylem tuşu / Siri "Velora dinle" asistanı dinlemeye açıyor mu; Denetim Merkezi'ne "Velora'ya söyle" düğmesi eklenebiliyor mu; antrenman sayacı kilit ekranında ve Dynamic Island'da akıyor mu; "antrenmanın 1 saat öncesine alarm kur" deyince ilk seferde alarm izni sorulup saat alarmı çalıyor mu.
 - Seyhun'un ekip kimliği (DEVELOPMENT_TEAM) projeye yazılırsa her güncellemede Team seçmek gerekmez.
 - Sıradaki iPhone işleri (listeden seçilmedi): uygulama bildirimleri (APNs), paylaş menüsü, arka planda yükleme, titreşim/Face ID/widget; tek başına "sabah 7'ye alarm kur" (plansız alarm).
+
+## Nerede kaldım (ek)
+
+- Seyhun telefonda denedi: "1 saat öncesine alarm kur" planın Alarm satırına yazıldı, Settings › Apps › Velora › Alarms açık (izin verilmiş) ama kurulduğu görünmüyordu. Artık alarm telefona kurulunca kısa yazı çıkar ("Alarm kuruldu · Cum 18:00"), izin yoksa nereden açılacağı yazılır (src/features/ios/IosBridge.jsx). Alarmın gerçekten çaldığı henüz denenmedi.
