@@ -373,6 +373,14 @@ export function gridOf(athletes, months, cfg, yms) {
   return { rows, totals };
 }
 
+// Gelir kartı: ay ay beklenen (burslu, başlamamış, sayılmayan hariç) ve alınan; total son yms ayında alınan toplam.
+// → { list [{ ym, expected, paid }] (en yeni önce), now (son ay), total }
+export function incomeOf(athletes, months, cfg, yms) {
+  const { totals } = gridOf(athletes, months, cfg, yms);
+  const list = [...yms].reverse().map((ym) => ({ ym, expected: totals[ym].expected, paid: r2(totals[ym].paid) }));
+  return { list, now: list[0], total: r2(list.reduce((s, x) => s + x.paid, 0)) };
+}
+
 // Eşleşme bekleyen gelen paralar (aylara göre, en yeni ay önce): [{ ym, m, r }]
 export function pendingOf(movements, months, athletes, cfg, yms) {
   const out = [];

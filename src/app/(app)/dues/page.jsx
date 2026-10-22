@@ -15,7 +15,7 @@ import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { monthLabel } from "@/features/athletes/attendanceReport";
 import { EXCEL_UPLOAD } from "@/features/bank/LedgerCard";
 import { deleteStatement, loadDuesRange, loadMovementsRange, loadStatements, saveCfg, saveMonth, saveRoster, uploadStatement } from "@/features/dues/duesData";
-import { allocate, athleteDues, dropGroup, gridOf, historyOf, lastMonths, movKey, payerOf, paymentsOf, pendingOf, splitAmount, words } from "@/lib/dues";
+import { allocate, athleteDues, dropGroup, gridOf, historyOf, incomeOf, lastMonths, movKey, payerOf, paymentsOf, pendingOf, splitAmount, words } from "@/lib/dues";
 import { money } from "@/lib/bankSheet";
 import { todayStr } from "@/lib/utils/format";
 import { saveSum } from "@/lib/homeTiles";
@@ -306,6 +306,7 @@ function Dues({ uid, duesAt }) {
         <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sporcu ya da veli" className="mt-2 h-10 w-full rounded-full border border-line bg-card px-4 text-[0.9375rem] outline-none" />
       )}
 
+      {cfg.fee > 0 && !find && <Income inc={incomeOf(active, months, cfg, yms)} />}
       {group("Borcu var", oweRows)}
       {group("Borcu yok", okRows)}
       {group("Burslu", bursRows)}
@@ -390,6 +391,56 @@ function Dues({ uid, duesAt }) {
         </div>
       </Sheet>
     </Shell>
+  );
+}
+
+// Gelir: bu ay beklenen / alınan / kalan; son 12 ayda alınan (dokununca ay ay)
+function Income({ inc }) {
+  const [open, setOpen] = useState(false);
+  const { now } = inc;
+  const p = now.expected > 0 ? Math.min(1, now.paid / now.expected) : 0;
+  const line = "flex items-center justify-between gap-3";
+  return (
+    <section className="mt-4">
+      <h2 className="px-1 pb-1.5 text-[0.8125rem] font-semibold text-mut">Gelir</h2>
+      <div className={`px-4 py-3 text-[0.9375rem] ${card}`}>
+        <p className={line}>
+          <span className="capitalize">{shortMonth(now.ym)} beklenen</span>
+          <b className="font-semibold tabular-nums">{TL(now.expected)}</b>
+        </p>
+        <p className={`${line} mt-1.5`}>
+          <span>Alınan</span>
+          <b className="font-semibold tabular-nums text-ok">{TL(now.paid)}</b>
+        </p>
+        <span className="mt-2.5 block h-1.5 overflow-hidden rounded-full bg-line">
+          <span className="block h-full rounded-full bg-ok" style={{ width: `${Math.round(p * 100)}%` }} />
+        </span>
+        <p className={`${line} mt-1.5 text-[0.8125rem] text-mut`}>
+          <span>%{Math.round(p * 100)}</span>
+          <span>Kalan {TL(Math.max(0, now.expected - now.paid))}</span>
+        </p>
+        <button type="button" onClick={() => setOpen((x) => !x)} data-press="row" className={`${line} mt-3 w-full border-t border-line pt-2.5 text-left`}>
+          <span>Son 12 ayda alınan</span>
+          <span className="flex items-center gap-1.5">
+            <b className="font-semibold tabular-nums">{TL(inc.total)}</b>
+            <span className="text-mut">{open ? "‹" : "›"}</span>
+          </span>
+        </button>
+        {open && (
+          <ul className="mt-1.5 divide-y divide-line text-[0.875rem]">
+            {inc.list.map((x) => (
+              <li key={x.ym} className={`${line} py-1.5`}>
+                <span className="capitalize text-fg2">{monthLabel(x.ym)}</span>
+                <span className="tabular-nums">
+                  <span className="text-mut">{TL(x.expected)} / </span>
+                  <b className="font-semibold">{TL(x.paid)}</b>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
 
