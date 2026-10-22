@@ -95,24 +95,26 @@ export async function scenarios(h) {
   });
   // Dinlerken "Dinliyorum" yalnız alttaki çubukta, halkada yazı yok (2026-10-18)
   // Asistan düğmede (2026-10-22): düğme kırmızı, içinde canlı ses dalgası; "Dinliyorum" söylenen yazının altında
-  await check("Halka renkleri", "dinlerken", "düğme kırmızı + ses dalgası, durum satırında yazı yok, yazının altında “Dinliyorum”", async () => {
+  // Seyhun 2026-10-22: "iki farklı yerde dinliyorum yazısı çıkıyor": ekranda tek "Dinliyorum"
+  await check("Halka renkleri", "dinlerken", "düğme kırmızı + ses dalgası, durum satırında yazı yok, “Dinliyorum” tek yerde", async () => {
     const c = await ringColor(page);
     const bars = (await page.locator("[data-dome] [data-ring] canvas").count()) === 1 ? 5 : 0;
     const t = (await ringText(page)).trim();
-    const box = await dome(page).locator(".asheet-input").innerText();
-    return [c === "kırmızı" && bars === 5 && !t && /Dinliyorum/.test(box), `${c} · ${bars} çubuk · halka: “${t}” · çubuk: “${box.replace(/\n/g, " ")}”`];
+    const all = await dome(page).innerText();
+    const n = (all.match(/Dinliyorum/g) || []).length;
+    return [c === "kırmızı" && bars === 5 && !t && n === 1, `${c} · ${bars} çubuk · halka: “${t}” · “Dinliyorum” ${n} kez`];
   });
   // Asistan düğmede (2026-10-22): ayrı zemin yok, arkadaki sayfa bulanıklaşır; örtü sürekli oynamaz; yan düğmeler
-  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), yanda Vazgeç ve Dur", async () => {
+  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), yanda Kapat ve Dur", async () => {
     const z = await page.locator("[data-dome] .abg").evaluate((el) => { const c = getComputedStyle(el); return { anim: `${c.animationName} ${c.animationIterationCount}`, blur: c.backdropFilter || c.webkitBackdropFilter || "" }; });
-    const side = (await btn(page, "Sil ve dinlemeyi bırak").count()) + (await btn(page, "Dur").count());
+    const side = (await btn(page, "Asistanı kapat").count()) + (await btn(page, "Dur").count());
     return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && side === 2, `örtü ${z.anim} · ${z.blur} · yan düğme ${side}`];
   });
   await say(page, "notlarımı oku");
   // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutuya akar, altta süre + dalga, ■ Dur ve ↑ Gönder
   await check(G2, "konuşurken", "kutuda canlı yazı, süre, Dur ve Gönder düğmeleri", async () => {
     const ok = await waitFor(async () => /notlarımı oku/.test(await dome(page).locator(".asheet-input").innerText()), 3000);
-    const box = (await dome(page).locator(".asheet-input").innerText()).replace(/\n/g, " ");
+    const box = (await dome(page).locator(".asheet").innerText()).replace(/\n/g, " ");
     const dur = await btn(page, "Dur").count();
     return [!!ok && /\d:\d\d/.test(box) && dur === 1 && (await btn(page, "Gönder").count()) === 1, `${box.slice(0, 80)} · Dur ${dur}`];
   });
@@ -146,8 +148,8 @@ export async function scenarios(h) {
 
   // Kapat (×): aşağı kayarak kapanır, sekmeler geri gelir
   const G4 = "Kapanış";
-  await btn(page, "Konuşmayı bitir").click();
-  await check(G4, "× (Konuşmayı bitir)", "afull-out ile aşağı kayarak kapanır", async () => {
+  await btn(page, "Asistanı kapat").click();
+  await check(G4, "× (Asistanı kapat)", "afull-out ile aşağı kayarak kapanır", async () => {
     const cls = await waitFor(async () => {
       const c = await full(page).getAttribute("class", { timeout: 300 }).catch(() => "");
       return /afull-out/.test(c) ? c : null;
@@ -159,6 +161,11 @@ export async function scenarios(h) {
     const n = await full(page).count();
     const o = await orb(page).count();
     return [n === 0 && o === 1, `tam ekran ${n} · düğme ${o}`];
+  });
+  // Seyhun 2026-10-22: sekme çubuğu bir anda belirmesin, alttan kayarak gelsin
+  await check(G4, "sekme çubuğu", "alttan kayarak gelir (atab-up)", async () => {
+    const c = await page.locator("[data-dome] .atabbar-wrap").getAttribute("class").catch(() => "");
+    return [/atab-up/.test(c || ""), c || "çubuk yok"];
   });
 
   // ================================================================ 2. Basılı tut: yaz
@@ -381,13 +388,14 @@ async function answer(h, page, text) {
   // Soru okununca mikrofon açılır; GitHub makinesi yavaş olduğunda okuma uzun sürebiliyor (6 sn yetmedi, 22 Eki)
   await waitFor(async () => (await state(page)) === "listening", 12000);
   await page.waitForTimeout(1200);
-  if (await btn(page, "Gönder").count()) return btn(page, "Gönder").click({ timeout: 5000 });
+  // Dinlerken küre sesin gücüyle büyüyüp küçülür (sahte mikrofonun bipi): "durağan değil" beklemesine takılmasın
+  if (await btn(page, "Gönder").count()) return btn(page, "Gönder").click({ timeout: 5000, force: true });
   // Kendiliğinden açılan mikrofon bu arada kapandıysa (GitHub makinesinde yavaş: 22 Eki üç kez) kullanıcı gibi Konuş'a basılır
   await waitFor(async () => (await btn(page, "Konuş").count()) > 0, 6000);
   if (!(await btn(page, "Konuş").count())) return;
   await btn(page, "Konuş").click({ timeout: 5000 });
   await waitFor(async () => (await btn(page, "Gönder").count()) > 0, 6000);
-  if (await btn(page, "Gönder").count()) await btn(page, "Gönder").click({ timeout: 5000 });
+  if (await btn(page, "Gönder").count()) await btn(page, "Gönder").click({ timeout: 5000, force: true });
 }
 
 async function scenarios3(h) {
@@ -967,7 +975,8 @@ async function scenarios4(h) {
     await orb(page).click();
     await page.waitForTimeout(800);
     await check("Tam ekran üstte", "yeni sürüm notu varken asistanı aç", "asistanın yazı kutusu ve düğmeleri görünür (notun altında kalmaz)", async () => {
-      const r = await page.locator("[data-dome] .asheet-input").boundingBox();
+      // Düğme sırası (× · küre · sağdaki düğme): dinlerken söz yoksa yazı kutusu çizilmez
+      const r = await page.locator("[data-dome] [data-orb]").locator("..").boundingBox();
       const pts = [[r.x + 30, r.y + r.height - 30], [r.x + r.width / 2, r.y + 20], [r.x + r.width - 30, r.y + r.height - 30]];
       const hit = await page.evaluate((ps) => ps.every(([x, y]) => !!document.elementFromPoint(x, y)?.closest("[data-dome]")), pts);
       return [hit && had > 0, `${had ? "not vardı" : "not çıkmadı (sınanamadı)"} · ${hit ? "kutu ve düğmeler üstte" : "“Güncellendi” notu kutuyu örtüyor"}`];
