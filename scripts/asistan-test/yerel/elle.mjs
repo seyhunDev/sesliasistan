@@ -2207,6 +2207,13 @@ group("Plan bitti ve kelime kartı")([
       EW.keepDeck(EW.studyWord(seeded(), R, T), st);
       return EW.findWord(EW.cachedDeck(st), "resilient")?.status === "study";
     })],
+    ["kartta Çalış", F("listedeki kelime çalışmaya girer, bugünkü tekrarı sayılır (yarın gelir)", () => {
+      const d0 = seeded();
+      const w = EW.pickCard(d0, T, 0);
+      const d = EW.reviewWord(EW.studyWord(d0, w, T), w.en, T);
+      const x = EW.findWord(d, w.en);
+      return x.status === "study" && x.due === "2026-10-23" && d.words.length === d0.words.length && EW.pickCard(d, "2026-10-23", 0).en === w.en;
+    })],
     ["ekle cümlesi", F("kelime ve çalıştır", () => JSON.stringify(EW.wordCommand("resilient kelimesini ekle, bana çalıştır")) === '{"op":"study","word":"resilient"}')],
     ["deyim", F("iki kelimeli", () => EW.wordCommand("İngilizce take off kelimesini çalışma listeme ekle")?.word === "take off")],
     ["öğrendim cümlesi", F("known", () => EW.wordCommand("resilient kelimesini öğrendim")?.op === "known")],
