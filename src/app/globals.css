@@ -291,7 +291,7 @@ select {
 /* Ortadaki asistan düğmesi açık zeminde yeşil (durum renkleri aynı: kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor) */
 .acenter .vlight[data-state="idle"], .sidenav .vlight[data-state="idle"] { --vl-a: #8b5cf6; --vl-b: #22d3ee; --vl-w: #fff; --vl-h: rgba(124, 92, 255, .35); }
 /* Boştaki asistan düğmesi Velora logosunun geçişini alır (mor → turkuaz); diğer durumların renkleri aynı */
-:is(.acenter, .sidenav, .asheet) .vlight[data-state="idle"] .vl-disc { background: var(--brand); box-shadow: 0 10px 26px -10px rgba(35, 37, 94, .6), inset 0 1px 0 rgba(255, 255, 255, .25); }
+:is(.acenter, .sidenav, .asheet) .vlight[data-state="idle"]:not(.aorb) .vl-disc { background: var(--brand); box-shadow: 0 10px 26px -10px rgba(35, 37, 94, .6), inset 0 1px 0 rgba(255, 255, 255, .25); }
 .asheet { position: relative; background: var(--card); border-radius: 1.75rem 1.75rem 0 0;
   box-shadow: 0 -0.5px 0 var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); }
 @media (min-width: 34rem) { .asheet { box-shadow: 0 0 0 0.5px var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); } }
@@ -314,7 +314,13 @@ select {
    ışık döner (.vl-ring burada görünür), iş bitince içinde onay çizilir. Yan düğmeler yarı saydam beyaz. */
 .vlight.aorb .vl-ring { display: block; }
 .aorb .vl-disc { box-shadow: 0 14px 34px -12px rgba(0, 0, 0, .65), inset 0 1px 0 rgba(255, 255, 255, .25); }
-.asheet .aorb[data-state="idle"] .vl-disc { background: var(--brand); }
+/* Düğmenin rengi değişken üzerinden: boşta mor, dinlerken kırmızı… geçiş yumuşak (--vl-a/--vl-b @property ile canlanır).
+   Asistan açılınca yeni düğme alt çubuktaki mor düğmenin renginden başlar (@starting-style), bir anda kırmızı olmaz */
+.asheet .aorb[data-state="idle"] { --vl-a: var(--brand); --vl-b: var(--brand); }
+.asheet .vlight.aorb { transition: transform .15s ease-out, --vl-a .45s ease, --vl-b .45s ease, --vl-h .45s ease; }
+.asheet .vlight.aorb[data-state="listening"] { transition: --vl-a .45s ease, --vl-b .45s ease, --vl-h .45s ease; } /* dalga her karede: transform geçişsiz */
+@starting-style { .asheet .vlight.aorb { --vl-a: var(--brand); --vl-b: var(--brand); } }
+.aorb canvas { animation: afbgin .35s ease-out both; }
 .aorb .lring-check { fill: none; stroke: #fff; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: lrdraw .45s .15s ease-out forwards; }
 @keyframes lrdraw { to { stroke-dashoffset: 0; } }
 .aside-btn { background: rgba(255, 255, 255, .14); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); }
@@ -335,11 +341,18 @@ select {
 /* .afull'un kendisi opaklıkla canlandırılmaz: opaklığı değişen bir ata, içindeki backdrop-filter'ı (bulanık sayfa) bozar */
 @keyframes afullin { from { translate: 0 0; } }
 @keyframes afbgin { from { opacity: 0; } }
-@keyframes asidein { from { opacity: 0; transform: scale(.6); } }
+/* Yan düğmeler ortadaki düğmenin arkasından yana kayarak çıkar */
+@keyframes asidein { from { opacity: 0; transform: translate3d(var(--ax, 0), 0, 0) scale(.7); } }
+@keyframes aswap { from { opacity: 0; transform: scale(.7); } }
+.aswap { animation: aswap .28s cubic-bezier(.22, .8, .24, 1) both; }
 @keyframes afpartin { from { opacity: 0; transform: translate3d(0, 1.25rem, 0); } }
 .afull-in { animation: afullin .3s linear; }
 .afull-in > .abg { animation: afbgin .3s ease-out both; }
-.afull-in .aside { animation: asidein .35s cubic-bezier(.3, 1.5, .5, 1) both; animation-delay: .12s; }
+.afull-in .aside { animation: asidein .5s cubic-bezier(.22, .8, .24, 1) both; animation-delay: .1s; }
+.aside-l { --ax: 2.75rem; }
+.aside-r { --ax: -2.75rem; }
+.afull-in .aside-r { animation-delay: .16s; }
+@media (prefers-reduced-motion: reduce) { .afull-in .aside, .aswap, .aorb canvas { animation: none; } }
 .afull-in > .asheet > * { animation: afpartin .4s cubic-bezier(.22, .8, .24, 1) both; animation-delay: .14s; }
 .afull-in > .asheet > :nth-child(2) { animation-delay: .1s; }
 .afull-in > .asheet > :last-child { animation: none; } /* düğme yerinde kalır (alt çubuktaki düğmenin devamı) */
