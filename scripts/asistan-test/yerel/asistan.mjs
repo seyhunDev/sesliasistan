@@ -1525,6 +1525,28 @@ group("Temiz başlık ve sorusuz ekleme")([
   ]);
 }
 
+// Yalnız istenen (Seyhun 2026-10-22): kayıt konusunda geçen ad sorumlu olmaz, istenmeyen mesaj gitmez (lib/ai/assistant.js)
+{
+  const { parseAssistant } = await import("@/lib/ai/assistant");
+  const P = ["Hüseyin Enes", "Ali Kaya", "Ayşe Yılmaz"];
+  const pl = (o = {}) => ({ type: "plan", title: "Tekne tamiri", date: tom, time: "09:00", assignTo: ["Hüseyin Enes"], ...o });
+  const parse = (said, extra = {}) => parseAssistant({ intent: "create", message: "", items: [pl()], ...extra }, P, ["Hüseyin Enes", "Ali Kaya"], said);
+  const who = (r) => r.items[0].assignTo || [];
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  const SAID = "Yarına plan oluşturalım sabah 9 için. Hüseyin Enes'in teknesinin tamir edilmesi.";
+  group("Yalnız istenen (sorumlu, mesaj)")([
+    ["Enes'in teknesi", C("sorumlu atanmaz", () => who(parse(SAID)), (r) => r.length === 0)],
+    ["kendiliğinden mesaj", C("mesaj atılmaz", () => parse(SAID, { send: { to: "Hüseyin Enes", text: "Yarın 9'da tekne tamiri var." } }), (r) => !r.send && !r.sends.length && r.items.length === 1)],
+    ["Ali'ye ver", C("sorumlu kalır", () => who(parse("yarın 9'da tekne tamiri planı ekle, Ali'ye ver", {})), (r) => r.length === 1)],
+    ["Ali yapsın", C("sorumlu kalır", () => who(parse("yarın 9'da tekne tamiri, Ali yapsın")), (r) => r.length === 1)],
+    ["sorumlu Ali", C("sorumlu kalır", () => who(parse("yarın 9'da tekne tamiri ekle sorumlu Ali")), (r) => r.length === 1)],
+    ["görevlendir", C("sorumlu kalır", () => who(parse("Ali'yi yarın 9'daki tekne tamirine görevlendir")), (r) => r.length === 1)],
+    ["olsun", C("“olsun” atama değil", () => who(parse("yarın 9'da tekne tamiri olsun")), (r) => r.length === 0)],
+    ["plan + yaz", C("istenen mesaj kalır", () => parse("yarın 9'a tekne tamiri ekle, Ali'ye de yaz", { send: { to: "Ali Kaya", text: "Yarın 9'da tekne tamiri var." } }), (r) => !!r.send)],
+    ["sorumlu ≠ sor", C("“sorumlu” mesaj sözü değil", () => parse("yarın 9'da tamir, sorumlu Ali", { send: { to: "Ali Kaya", text: "x" } }), (r) => !r.send)],
+  ]);
+}
+
 // Süre sınırları (motor planı 2. adım): sunucu ~9,5 sn içinde biter, ilk parça gelmezse kalan süreyle yedek; telefon
 // bağlantı kopmasında bir kez sessizce dener (lib/ai/budget.js)
 {
