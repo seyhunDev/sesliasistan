@@ -2905,3 +2905,18 @@ group("Ortak düğmeler")([
       /useState\(\(\) => eventsNow\(orgId\)\)/.test(src("app/(app)/events/page.jsx")) && /useState\(\(\) => postsNow\(orgId\)\)/.test(src("app/(app)/posts/page.jsx")))],
   ]);
 }
+
+// Zildeki yapılacaklar: sporcuya verilen fitness programı tek satır; pencerede önce bildirimler
+{
+  const NP = await import("@/lib/fitness/newProgram");
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  const plans = Array.from({ length: 82 }, (_, i) => ({ fit: { prog: "p1" }, date: new Date(Date.parse("2026-10-23") + Math.floor(i / 3) * 864e5).toISOString().slice(0, 10), createdByUid: "s" }));
+  group("Bildirim kutusu: fitness programı")([
+    ["tek satır", F("82 plan tek gruba toplanır", () => { const g = NP.fitGroups(plans); return g.length === 1 && g[0].n === 82 && g[0].by === "s"; })],
+    ["metin", F("hafta ve antrenman sayısı", () => NP.fitText(NP.fitGroups(plans)[0]) === "4 haftalık, 82 antrenman")],
+    ["iki program", F("program başına ayrı satır", () => NP.fitGroups([...plans.slice(0, 3), { fit: { prog: "p2" }, date: "2026-10-24" }]).length === 2)],
+    ["planlar ayrı çıkmaz", F("ForYou yeni planlarda fitness planını atlar", () => /!\(kind === "plan" && r\.fit\?\.prog\)/.test(src("features/home/ForYou.jsx")))],
+    ["önce bildirimler", F("pencerede Bildirimler, Yapılacaklar'dan önce", () => { const s = src("features/home/Inbox.jsx"); return s.indexOf('aria-label="Bildirimler"') < s.indexOf('aria-label="Yapılacaklar"'); })],
+  ]);
+}
