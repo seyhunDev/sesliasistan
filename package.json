@@ -16,6 +16,7 @@
     "test:elle": "node --no-warnings scripts/asistan-test/calistir.mjs elle",
     "test:yaris": "node --no-warnings scripts/asistan-test/calistir.mjs yaris",
     "test:bildirim": "node --no-warnings scripts/asistan-test/calistir.mjs bildirim",
+    "test:yemek": "node --no-warnings scripts/asistan-test/calistir.mjs yemek",
     "test:yz": "node --no-warnings scripts/asistan-test/calistir.mjs asistan --yz",
     "test:canli": "node --no-warnings scripts/uygulama-test/calistir.mjs",
     "test:hepsi": "node --no-warnings scripts/tam-test/calistir.mjs",
