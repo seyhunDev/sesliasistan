@@ -1,8 +1,8 @@
-Commit: ff76413 · Merge pull request #737 from seyhunDev/claude/project-thread-j6wft8
-Zaman: 2026-10-23-0200 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39868199771
+Commit: 80421a6 · iPhone uygulamasında da kenardan kaydırarak geri (#738)
+Zaman: 2026-10-23-0209 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39868993414
 
-TAM TEST · 23.10.2026 01:54:18
+TAM TEST · 23.10.2026 02:01:40
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1376/1376 geçti · 0 kalan · 386 sn
+SONUÇ: 1376/1376 geçti · 0 kalan · 450 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
