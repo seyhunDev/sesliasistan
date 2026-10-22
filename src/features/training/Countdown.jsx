@@ -123,7 +123,9 @@ export function useTimerRun({ onZero } = {}) {
   }, [onZero]);
 
   const running = t.end != null;
-  const rem = running ? Math.ceil((t.end - now) / 1000) : t.left ?? t.dur;
+  // Saat en az son yazış anı: Başlat'a basınca ilk karede eski saatle dev bir süre ("kod gibi" yazı) görünüp titremesin
+  const n = Math.max(now, t.at || 0);
+  const rem = running ? Math.ceil((t.end - n) / 1000) : t.left ?? t.dur;
   const up = running && rem <= 0; // 0'dan sonra ileri sayım
 
   useEffect(() => {
@@ -141,7 +143,7 @@ export function useTimerRun({ onZero } = {}) {
     return () => clearInterval(id);
   }, [running, t.end, t.mode, t.rid, t.own]);
 
-  return { t, now, running, rem, up };
+  return { t, now: n, running, rem, up };
 }
 
 // Bipler, ses oturumu ve ekranın açık kalması: uygulama düzeninde bir kez durur ((app)/layout.jsx), sayfa ya da sekme değişse de çalışır.
@@ -336,6 +338,13 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
       </button>
     );
   const red = dark ? "text-[#f4a49c]" : "text-rec"; // lacivertte koyu kırmızı okunmuyor
+  // iPhone saati gibi: ikinci düğme (Sıfırla / İptal) ana düğmenin hemen solunda; varken side (Sonucu söyle) yer açar
+  const sub2 = bottom && !away && (paused || up) && (
+    <button type="button" onClick={paused ? (race ? () => raceCancel(race) : reset) : race ? () => raceVoid(race) : reset} className={barCls(false).replace("text-fg", "text-rec")}>
+      {paused ? "Sıfırla" : "İptal"}
+    </button>
+  );
+  const left = sub2 || side;
   const accTx = dark ? "text-[#c4b5fd]" : "text-acc";
   const stepCls = (st) =>
     dark
@@ -378,25 +387,25 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
             <button type="button" onClick={() => add(60)} className={btn}>+1 dk</button>
           </div>
         )}
-        {paused && !away && (
+        {paused && !away && !bottom && (
           <div className="mt-3.5 flex gap-2">
             <button type="button" onClick={race ? () => raceCancel(race) : reset} className={`${btn} ${red}`}>Sıfırla</button>
           </div>
         )}
-        {up && !away && (
+        {up && !away && (!bottom || (all && !race && mine)) && (
           <div className="mt-3.5 flex gap-2">
             {all && !race && mine && (
               <button type="button" onClick={() => makeRace(all)} className={`${btn} ${accTx}`}>+ Yarış yap</button>
             )}
-            <button type="button" onClick={race ? () => raceVoid(race) : reset} className={`${btn} ${red}`}>İptal</button>
+            {!bottom && <button type="button" onClick={race ? () => raceVoid(race) : reset} className={`${btn} ${red}`}>İptal</button>}
           </div>
         )}
       </section>
       {bottom ? (
         <Bar>
           <div className="flex gap-2">
-            {side && <div className="min-w-0 flex-1 [&>*]:w-full">{side}</div>}
-            <div className={side ? "min-w-0 flex-1" : "w-full"}>{main(barCls)}</div>
+            {left && <div className="min-w-0 flex-1 [&>*]:w-full">{left}</div>}
+            <div className={left ? "min-w-0 flex-1" : "w-full"}>{main(barCls)}</div>
           </div>
         </Bar>
       ) : (
