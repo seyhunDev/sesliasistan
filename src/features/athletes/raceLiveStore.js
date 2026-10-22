@@ -86,7 +86,7 @@ export async function posterOf(blob, kind) {
   const url = URL.createObjectURL(blob);
   try {
     const src = await new Promise((res, rej) => {
-      const t = setTimeout(() => rej(new Error("zaman")), 10000);
+      const t = setTimeout(() => rej(new Error("zaman")), 15000);
       const ok = (x) => (clearTimeout(t), res(x));
       const no = () => (clearTimeout(t), rej(new Error("açılamadı")));
       if (kind !== "video") {
@@ -96,16 +96,26 @@ export async function posterOf(blob, kind) {
         im.src = url;
         return;
       }
+      // iPhone kamerasının büyük .mov dosyasında Safari veri yüklemeye başlamıyordu (küçük resim çıkmıyordu; Seyhun 2026-10-22):
+      // load() çağrılır, üst bilgi gelince kareye gidilir; 1,5 sn'de kare gelmezse sessiz oynatıp durdurmak yüklemeyi başlatır
       const v = document.createElement("video");
       v.muted = true;
       v.playsInline = true;
+      v.setAttribute("playsinline", "");
       v.preload = "auto";
-      v.onloadeddata = () => {
+      let asked = false;
+      const seek = () => {
+        if (asked) return;
+        asked = true;
         v.onseeked = () => ok(v);
-        v.currentTime = Math.min(0.3, (v.duration || 1) / 2);
+        v.currentTime = Math.min(0.3, (isFinite(v.duration) && v.duration > 0 ? v.duration : 1) / 2);
       };
+      v.onloadedmetadata = seek;
+      v.onloadeddata = seek;
       v.onerror = no;
       v.src = url;
+      v.load();
+      setTimeout(() => v.readyState < 2 && v.play().then(() => v.pause(), () => {}), 1500);
     });
     const w0 = src.videoWidth || src.naturalWidth;
     const h0 = src.videoHeight || src.naturalHeight;
@@ -139,7 +149,7 @@ export async function addRaceMedia(orgId, id, m, at, onProg, extra = null) {
   const mid = newId();
   const r = sref(store(), mpath(orgId, mid));
   // Küçük resim yüklemeyle aynı anda hazırlanır (önce yapılınca iPhone'da yükleme 10 sn'ye kadar %0'da bekliyordu; Seyhun 2026-10-22)
-  const posterP = posterOf(m.blob, m.kind).catch(() => null);
+  const posterP = (m.posterP || posterOf(m.blob, m.kind)).catch(() => null); // posterP: MediaTab çekilir çekilmez başlattı
   const task = uploadBytesResumable(r, m.blob, { contentType: m.type, cacheControl: "private, max-age=31536000" });
   await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
   const thumb = await putPoster(orgId, mid, await posterP);
