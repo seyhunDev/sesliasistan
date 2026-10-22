@@ -1,15 +1,17 @@
 import SwiftUI
 import WidgetKit
 
-// Widget'ların rüzgâr grafiği: ana sayfadaki grafiğin aynısı (src/features/home/CockpitWind.jsx). Dolu mor alan rüzgâr, açık mor alan ve
+// Widget'ların rüzgâr grafiği: ana sayfadaki grafiğin aynısı (src/features/home/CockpitWind.jsx). Dolu camgöbeği alan rüzgâr, açık alan ve
 // kesik çizgi sağanak; üstte 2 saatte bir yön oku (rüzgârın estiği yöne bakar, 17 kn ve üstü turuncu), altında 3 saatte bir saat, sıcaklık,
 // "rüzgâr–sağanak" kn. Kırmızı çizgi ve nokta şimdi ("şimdi" yazısıyla). Saatler 06–23; saat 23'ten sonra yarının günü gösterilir.
 // Veri open-meteo'dan (uygulamanın hava sayfasıyla aynı kaynak, knot); 25 dakika uygulama grubunda saklanır, her widget yeniden çekmez.
 
-let wLacivert = Color(red: 0.137, green: 0.145, blue: 0.369) // --deep #23255e
-let wMor = Color(red: 0.69, green: 0.66, blue: 1.0) // lacivert üstünde okunan açık mor
-private let alanMor = Color(red: 0.655, green: 0.545, blue: 0.98) // #a78bfa
-private let saganakMor = Color(red: 0.769, green: 0.71, blue: 0.992) // #c4b5fd
+// Okyanus renkleri (Seyhun 2026-10-22: uygulama Okyanus'a geçiyor; örnek /mnt/project-files/iphone/widget-okyanus-ornek.png)
+let wZemin = Color(red: 0.067, green: 0.125, blue: 0.227) // gece mavisi #11203a
+let wUst = Color(red: 0.078, green: 0.22, blue: 0.353) // zeminin üstü #14385a (yukarıdan aşağı geçiş)
+let wAcik = Color(red: 0.404, green: 0.91, blue: 0.976) // koyu zeminde okunan camgöbeği #67e8f9
+private let alanRenk = Color(red: 0.133, green: 0.827, blue: 0.933) // #22d3ee
+private let saganakRenk = Color(red: 0.647, green: 0.953, blue: 0.988) // #a5f3fc
 private let turuncu = Color(red: 0.957, green: 0.651, blue: 0.29) // #f4a64a
 private let kirmizi = Color(red: 1.0, green: 0.42, blue: 0.42) // #ff6b6b
 
@@ -39,6 +41,12 @@ struct GunRuzgar: Codable, Hashable {
         let w = Double(hours[i].wind) + Double(hours[j].wind - hours[i].wind) * f
         let g = Double(hours[i].gust) + Double(hours[j].gust - hours[i].gust) * f
         return (Int(w.rounded()), Int(g.rounded()))
+    }
+
+    // Şimdiki yön (derece, rüzgârın geldiği yön)
+    func yon(_ now: Date = Date()) -> Double {
+        guard let k = konum(now) else { return hours.first?.dir ?? 0 }
+        return hours[min(hours.count - 1, Int(k.rounded()))].dir
     }
 
     // Şimdinin grafikteki yeri (0 = ilk saat); gün dışındaysa nil
@@ -150,10 +158,10 @@ struct RuzgarGrafik: View {
                             .position(x: c.x(Double(i)), y: 6)
                     }
                 }
-                c.alan(g.hours.map { Double($0.gust) }).fill((mono ? Color.white : alanMor).opacity(mono ? 0.3 : 0.26))
-                c.alan(g.hours.map { Double($0.wind) }).fill((mono ? Color.white : alanMor).opacity(mono ? 0.85 : 0.92))
+                c.alan(g.hours.map { Double($0.gust) }).fill((mono ? Color.white : alanRenk).opacity(mono ? 0.3 : 0.26))
+                c.alan(g.hours.map { Double($0.wind) }).fill((mono ? Color.white : alanRenk).opacity(mono ? 0.85 : 0.92))
                 if !mono {
-                    c.cizgi(g.hours.map { Double($0.gust) }).stroke(saganakMor, style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
+                    c.cizgi(g.hours.map { Double($0.gust) }).stroke(saganakRenk, style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
                 }
                 if let k = g.konum(now) {
                     let v = Double(g.simdi(now).wind)
@@ -166,7 +174,7 @@ struct RuzgarGrafik: View {
                         Circle().fill(kirmizi.opacity(0.35)).frame(width: 16, height: 16).position(x: c.x(k), y: c.y(v))
                     }
                     Circle().fill(mono ? Color.white : kirmizi).frame(width: mono ? 7 : 9, height: mono ? 7 : 9)
-                        .overlay(Circle().stroke(mono ? Color.black.opacity(0.5) : wLacivert, lineWidth: 1.5))
+                        .overlay(Circle().stroke(mono ? Color.black.opacity(0.5) : wZemin, lineWidth: 1.5))
                         .position(x: c.x(k), y: c.y(v))
                 }
             }

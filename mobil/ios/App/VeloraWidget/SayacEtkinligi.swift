@@ -4,7 +4,7 @@ import WidgetKit
 
 // Kilit ekranında yarı saydam koyu cam: duvar kâğıdıyla uyumlu (iOS saat rengini vermez)
 private let cam = Color(red: 0.04, green: 0.047, blue: 0.11).opacity(0.42)
-private let mor = Color(red: 0.357, green: 0.31, blue: 0.839) // --acc #5b4fd6
+private let vurgu = Color(red: 0.133, green: 0.827, blue: 0.933) // Okyanus camgöbeği #22d3ee
 
 // Süre: durduysa kalan sabit; çalışıyorsa sistem kendisi sayar (0'a kadar geri, sonra ileri: "Startan beri")
 private struct Sure: View {
@@ -51,14 +51,14 @@ struct SayacEtkinligi: Widget {
                         .frame(maxWidth: 110)
                 }
             } compactLeading: {
-                Image(systemName: ctx.state.paused ? "pause.fill" : "timer").foregroundStyle(mor)
+                Image(systemName: ctx.state.paused ? "pause.fill" : "timer").foregroundStyle(vurgu)
             } compactTrailing: {
                 Sure(state: ctx.state)
                     .monospacedDigit()
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 52)
             } minimal: {
-                Image(systemName: "timer").foregroundStyle(mor)
+                Image(systemName: "timer").foregroundStyle(vurgu)
             }
             .widgetURL(URL(string: "velora://sayac"))
         }
