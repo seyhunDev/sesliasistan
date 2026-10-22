@@ -1,8 +1,8 @@
-Commit: 0f9455f · İngilizce sayfası açılınca klavye açılmasın (Ekle alanında autoFocus kalktı) (#728)
-Zaman: 2026-10-23-0031 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39856876165
+Commit: 7c626b9 · Merge pull request #730 from seyhunDev/claude/project-thread-76s7q5
+Zaman: 2026-10-23-0050 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39859340752
 
-TAM TEST · 23.10.2026 00:24:14
+TAM TEST · 23.10.2026 00:43:09
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1376/1376 geçti · 0 kalan · 431 sn
+SONUÇ: 1376/1376 geçti · 0 kalan · 423 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
