@@ -15,6 +15,7 @@ import { UsageRow } from "@/features/settings/Usage";
 import { CallsRow } from "@/features/settings/Calls";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { PastChatsRow } from "@/features/settings/PastChats";
+import { EnergyRow } from "@/features/settings/Energy";
 import { buildLine } from "@/lib/buildInfo";
 import { logout } from "@/lib/auth";
 import { KIND_LABEL, kindOf } from "@/lib/kinds";
@@ -73,12 +74,13 @@ function PersonSettings({ profile, n }) {
   );
 }
 
-// Seyrek kullanılanlar: satıra dokununca alttan açılan pencerede aynı düzende satırlar
-function SheetRow({ title, children }) {
+// Arşivlenenler: seyrek ya da bir kez kullanılan ayarlar silinmedi, alttan açılan pencerede durur (Seyhun, 2026-10-22).
+// Seyhun gerekirse tek tek kaldıracak.
+function SheetRow({ title, sub, children }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Row title={title} onClick={() => setOpen(true)} chevron />
+      <Row title={title} sub={sub} onClick={() => setOpen(true)} chevron />
       <Sheet open={open} onClose={() => setOpen(false)} title={title}>
         <div className="-mt-5 pb-2">{children}</div>
       </Sheet>
@@ -86,7 +88,7 @@ function SheetRow({ title, children }) {
   );
 }
 
-// Ayarlar (ana hesap): Genel, Bildirimler, Asistan; Diğer (Bağlantılar, Veri ve kullanım pencereleri, Testler sayfası); Hesap (Seyhun, 2026-10-20)
+// Ayarlar (ana hesap): Genel, Bildirimler, Ses ve asistan, Veri ve cihaz, Testler, Hesap; en altta Arşivlenenler (Seyhun, 2026-10-22)
 export default function SettingsPage() {
   const { profile } = useAuth();
   const { members } = useData();
@@ -105,7 +107,6 @@ export default function SettingsPage() {
         <ThemeRow />
         <WeatherPlaceRow />
         <RacesRow />
-        <LedgerRow />
       </Group>
 
       <Group title="Bildirimler">
@@ -114,43 +115,45 @@ export default function SettingsPage() {
         <SummaryRow />
       </Group>
 
-      <Group title="Asistan">
+      <Group title="Ses ve asistan">
         <VoiceRow />
         <PowerRow />
-        <Fold title="Öğrenme" sub={profile.brainOff ? "Kapalı" : "Açık"}>
-          <BrainCard bare owner />
-        </Fold>
         <PastChatsRow />
         <PermissionsRow />
       </Group>
 
-      <Group title="Diğer">
-        <SheetRow title="Bağlantılar">
-          <Group>
-            <Row title="Gmail ve banka mailleri" href="/mail/setup" />
-            <CalendarFeedRow />
-          </Group>
-        </SheetRow>
-        <SheetRow title="Veri ve kullanım">
-          <Group title="Kullanım">
-            <UsageRow />
-            <CallsRow />
-          </Group>
-          <Group title="Veri">
-            <BackupRow />
-            <DeviceDataRow />
-            <MoveAllRow />
-            <MailFilesRow />
-          </Group>
-        </SheetRow>
+      <Group title="Veri ve cihaz">
+        <EnergyRow />
+        <UsageRow />
+        <DeviceDataRow />
+        <BackupRow />
+        <Row title="Gmail ve banka mailleri" href="/mail/setup" />
+        <CalendarFeedRow />
+      </Group>
+
+      <Group>
         <Row title="Testler" href="/settings/tests" />
       </Group>
 
       <Group title="Hesap">
-        <Row title="Kişiler" sub={members.length ? `${members.length} kişi` : ""} href="/staff" />
         <PasswordRow />
         <VersionRow />
         <Row title="Çıkış yap" danger onClick={() => logout()} />
+      </Group>
+
+      <Group>
+        <SheetRow title="Arşivlenenler" sub="6">
+          <Group>
+            <LedgerRow />
+            <Fold title="Öğrenme" sub={profile.brainOff ? "Kapalı" : "Açık"}>
+              <BrainCard bare owner />
+            </Fold>
+            <CallsRow />
+            <MoveAllRow />
+            <MailFilesRow />
+            <Row title="Kişiler" sub={members.length ? `${members.length} kişi` : ""} href="/staff" />
+          </Group>
+        </SheetRow>
       </Group>
     </main>
   );
