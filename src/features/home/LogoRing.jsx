@@ -14,6 +14,16 @@ const H = [60, 100, 140, 90, 120, 70, 150, 85];
 const BARS = Array.from({ length: 24 }, (_, i) => H[i % 8]);
 // Her çubuğun sese tepkisi biraz farklı (hepsi aynı uzayınca halka şişer gibi görünür)
 const M = BARS.map((_, i) => (0.45 + 0.55 * Math.abs(Math.sin(i * 1.7))).toFixed(2));
+// Logodaki gibi sol üstten sağ alta mor → turkuaz: her çubuğun rengi konumundan (döndürülmüş çubukta degrade kayardı)
+const mix = (t) => {
+  const a = [0x8b, 0x5c, 0xf6], b = [0x22, 0xd3, 0xee];
+  return `rgb(${a.map((x, k) => Math.round(x + (b[k] - x) * t)).join(",")})`;
+};
+const COL = BARS.map((h, i) => {
+  const r = (i * 15 * Math.PI) / 180, d = 200 + h / 2; // çubuğun ortası, merkeze uzaklık
+  const x = Math.sin(r) * d, y = -Math.cos(r) * d;
+  return mix(Math.min(1, Math.max(0, ((x + y) / Math.SQRT2 + 300) / 600)));
+});
 
 export function LogoRing({ r, big }) {
   const id = useId().replace(/:/g, "");
@@ -35,13 +45,11 @@ export function LogoRing({ r, big }) {
           <stop offset="1" stopColor="#22D3EE" />
         </linearGradient>
       </defs>
-      <g stroke={`url(#lr${id})`}>
-        {BARS.map((h, i) => (
-          <g key={i} transform={`rotate(${i * 15} 512 512)`}>
-            <line x1="512" y1="312" x2="512" y2={312 - h} style={{ "--i": i, "--m": M[i] }} className={lit >= 0 && i < lit ? "on" : undefined} />
-          </g>
-        ))}
-      </g>
+      {BARS.map((h, i) => (
+        <g key={i} transform={`rotate(${i * 15} 512 512)`}>
+          <line x1="512" y1="312" x2="512" y2={312 - h} stroke={COL[i]} style={{ "--i": i, "--m": M[i] }} className={lit >= 0 && i < lit ? "on" : undefined} />
+        </g>
+      ))}
       <circle cx="512" cy="512" r="70" fill={`url(#lr${id})`} />
       {r.check && <path className="lring-check" d="M440 515 l50 50 l100 -110" />}
     </svg>

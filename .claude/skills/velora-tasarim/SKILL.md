@@ -77,10 +77,16 @@ Arama kutusu ve süzgeç çipleri lacivert üstte durur: kutu `ck-glass`, çip s
 
 ## Sayfaların durumu (2026-10-21)
 
-Yeni tasarımda olanlar: Ana sayfa, Giriş (`/login`; lacivert tam ekran, iki adım, 2026-10-22), Testler (`/settings/tests`; GitHub sonucu ve Hepsini çalıştır / Seçilenler lacivertte, testler özellik özellik), Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`), Antrenman günü (`/training/day`; sayaç `Countdown dark` ile lacivertte), Yarışlar (`/athletes/races`; sıradaki yarış lacivertte), Planlar (`/plans`; bölüm başına tek liste, gün başlığı, saat + kategori çizgisi), Sporcular (`/athletes`; arama ve sınıflar lacivertte), Yoklama (`/athletes/attendance`; gün, sayılar, toplu işaret lacivertte) Yarış detay (`/athletes/races/[id]`; sekmeler lacivertte büyük düğmeler, her birinde kısa durum) ve Medya (`/media`; Antrenman / Yarış, bölüm başına 4'lü ızgara, 2026-10-22). Asistan ekranı yarı yarıya geçti (lacivert tam ekran).
+Yeni tasarımda olanlar: Ana sayfa, Giriş (`/login`; lacivert tam ekran, iki adım, 2026-10-22), Testler (`/settings/tests`; GitHub sonucu ve Hepsini çalıştır / Seçilenler lacivertte, testler özellik özellik), Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`), Antrenman günü (`/training/day`; sayaç `Countdown dark` ile lacivertte), Yarışlar (`/athletes/races`; sıradaki yarış lacivertte), Planlar (`/plans`; bölüm başına tek liste, gün başlığı, saat + kategori çizgisi), Sporcular (`/athletes`; arama ve sınıflar lacivertte), Yoklama (`/athletes/attendance`; gün, sayılar, toplu işaret lacivertte), Yarış detay (`/athletes/races/[id]`; sekmeler lacivertte büyük düğmeler, her birinde kısa durum) ve Medya (`/media`; Antrenman / Yarış, bölüm başına 4'lü ızgara, 2026-10-22). Asistan ekranı (2026-10-22): sabit lacivert zemin, canlı logo halkası (`LogoRing`), dinlerken kenar ışığı, iş adımları; boşta hiçbir şey oynamaz.
 
 Henüz eski tasarımda olanlar: archive, athletes alt sayfaları (sporcu detayı, yoklama raporu, yarış multimedya), birthdays, calendar, debts, dues, events, fitness, inventory, invoices, mail, messages, my-attendance, notes, payments, people, posts, receipts, schedule, settings, shopping, staff, tasks, wind.
 
 Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar ✓ · Yarış detay ✓ · Planlar ✓ · Sporcular ✓ · Yoklama ✓. Sonrası Seyhun'a sorulacak.
 
 Bir sayfa geçince bu listeyi güncelle.
+
+## Hareket (animasyon)
+
+- Hareket yalnız bir şey olurken: dinleme, iş, konuşma, kayıt. Boşta ekranda sürekli dönen, nefes alan, kayan bir şey olmaz (ekran testi "Enerji (boşta)": saniyede en çok 3 stil hesabı).
+- Yalnız `transform` ve `opacity` oynar. Bulanıklık (`filter`, `backdrop-filter`) hareketli öğede yok.
+- Açılışta bir kez ve kısa (0,3–0,6 sn). `prefers-reduced-motion` açıksa hareket durur.

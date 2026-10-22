@@ -6,14 +6,13 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { readTimer, useTimer } from "@/features/training/Countdown";
-import { bindHaptics, iosApp, onOpen, showTimer, syncAlarms, takeOpen } from "@/lib/nativeIos";
+import { iosApp, onOpen, showTimer, syncAlarms, takeOpen } from "@/lib/nativeIos";
 import { alarmItems } from "@/lib/planAlarm";
 
 // iPhone uygulamasının yerel parçalarını web'e bağlar (uygulama düzeninde bir kez durur; tarayıcıda hiçbir şey yapmaz):
 // - bas-konuş: Siri / Eylem tuşu / Denetim Merkezi düğmesi → asistan açılır ve dinler
 // - tek sayaç (training/Countdown.jsx) kilit ekranında ve Dynamic Island'da görünür; dokununca sayacın sayfası açılır
 // - plan alarmları (lib/planAlarm.js) telefona kurulur, plan değişince yeniden eşitlenir
-// - titreşim: navigator.vibrate yerel titreşime bağlanır (bindHaptics)
 export function IosBridge() {
   const router = useRouter();
   const toast = useToast();
@@ -24,7 +23,6 @@ export function IosBridge() {
   const ownerId = profile?.orgId;
 
   useEffect(() => {
-    bindHaptics();
     if (!iosApp()) return;
     const go = (what) => {
       if (what === "talk") window.dispatchEvent(new CustomEvent("sa-open-assistant", { detail: { listen: true } }));
