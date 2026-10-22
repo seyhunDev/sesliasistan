@@ -168,6 +168,19 @@ group("Plana özel hatırlatma")([
   ["var olan plan", { desc: "değişiklik remind'i yazar ve söyler", fn: () => [AL.buildPatch("plan", { remind: 30 }).remind, AL.describeAction({ op: "update", kind: "plan", patch: { remind: 30 } }, { title: "Antrenman" })].join("|"), ok: (r) => r === "30|Güncelle: Antrenman → 30 dk önce hatırlat" }],
 ]);
 
+// Plan alarmı (iPhone uygulamasında saat alarmı; lib/planAlarm.js)
+const PAL = await import("@/lib/planAlarm");
+const AP0 = { id: "p1", title: "Antrenman", date: "2026-10-05", time: "10:00", people: ["ali"], alarm: 60 };
+group("Plan alarmı")([
+  ["cümleden", { desc: "1 saat öncesine / yarım saat önceye / saatinde / kaldır / yalnız hatırlat", fn: () => ["antrenmanın bir saat öncesine alarm kur", "alarmı yarım saat önceye kur", "toplantıya alarm kur", "alarmı kaldır", "1 saat önce hatırlat"].map(PAL.alarmOf).join(), ok: (r) => r === "60,30,0,-1," }],
+  ["taslağa yazılır", { desc: "yeni plan alarm 60 alır, hatırlatma ayrı", fn: () => AP.applyRepeat([{ type: "plan", title: "A", date: "2026-10-05", time: "10:00" }], "yarın 10'da antrenman 1 saat önce alarm kur, yarım saat önce hatırlat", "2026-10-04").map((x) => `${x.alarm}/${x.remind}`).join(), ok: (r) => r === "60/30" }],
+  ["alarm anı", { desc: "10:00 planda 1 saat önce 09:00; tüm gün 08:00", fn: () => [new Date(PAL.alarmAt(AP0)).getHours(), new Date(PAL.alarmAt({ ...AP0, time: "", alarm: 0 })).getHours()].join(), ok: (r) => r === "9,8" }],
+  ["kime kurulur", { desc: "sorumluya ve ana hesaba; başkasına yok; geçmiş ve bitmiş yok", fn: () => { const o = { ownerId: "own", now: new Date("2026-10-04T12:00:00").getTime() }; return [PAL.alarmItems([AP0], { ...o, uid: "ali" }).length, PAL.alarmItems([AP0], { ...o, uid: "own" }).length, PAL.alarmItems([AP0], { ...o, uid: "veli" }).length, PAL.alarmItems([{ ...AP0, done: true }], { ...o, uid: "ali" }).length, PAL.alarmItems([{ ...AP0, date: "2026-10-01" }], { ...o, uid: "ali" }).length].join(); }, ok: (r) => r === "1,1,0,0,0" }],
+  ["anahtar", { desc: "saat ya da başlık değişince yeni alarm", fn: () => { const o = { ownerId: "own", uid: "ali", now: new Date("2026-10-04T12:00:00").getTime() }; const k = (p) => PAL.alarmItems([p], o)[0].key; return k(AP0) !== k({ ...AP0, time: "11:00" }) && k(AP0) !== k({ ...AP0, title: "B" }) && k(AP0) === k({ ...AP0 }); }, ok: (r) => r === true }],
+  ["var olan plan", { desc: "değişiklik alarmı yazar, -1 kaldırır, söyler", fn: () => [AL.buildPatch("plan", { alarm: 60 }).alarm, AL.buildPatch("plan", { alarm: -1 }).alarm, AL.describeAction({ op: "update", kind: "plan", patch: { alarm: 60 } }, { title: "Antrenman" })].join("|"), ok: (r) => r === "60||Güncelle: Antrenman → 1 saat önce alarm" }],
+  ["plan formu", { desc: "Yok · Saatinde · 15 dk · 30 dk · 1 saat · 1 gün", fn: () => PAL.ALARM_OPTS.map((o) => o.label).join(), ok: (r) => r === "Yok,Saatinde,15 dk,30 dk,1 saat,1 gün" }],
+]);
+
 // Takvim, görev grupları, doğum günleri (agenda.js)
 const AG = await import("@/lib/agenda");
 const TT = [{ title: "a", due: "2026-10-01" }, { title: "b", due: "2026-10-03" }, { title: "c", due: "2026-10-04" }, { title: "d", due: "2026-10-08" }, { title: "e", due: "2026-10-20" }, { title: "f" }];

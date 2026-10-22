@@ -7,7 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		04B9E716A050F9D397C6A3A0 /* VeloraShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D07CF92D46E0231AB320F7 /* VeloraShortcuts.swift */; };
+		180C0C73D22504771518AEAE /* VeloraViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F38269AA9E14BBF7B4E136 /* VeloraViewController.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		4701CA92010C7A2A2DDBB6AF /* VeloraWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C10D666C1E68CE420A77769 /* VeloraWidgetBundle.swift */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -15,11 +18,47 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		540ABF1D552007264B0433A4 /* BasKonusIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0B925A9974D22CB14DAF43 /* BasKonusIntent.swift */; };
+		540D978572051EB01D5F412A /* SayacAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3772322A5AB97E0472A7C025 /* SayacAttributes.swift */; };
+		624973B5D07D3E6F2D20A93C /* BasKonusIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0B925A9974D22CB14DAF43 /* BasKonusIntent.swift */; };
+		807274EC1BA097F271335A09 /* SayacEtkinligi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18CA58FDC714C878CD676251 /* SayacEtkinligi.swift */; };
+		91699ADD12EEE281D263D84F /* VeloraPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C75B3DEB8AF3DF1615522AF /* VeloraPlugin.swift */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		ABA9E90894C35777AD6D9FBD /* VeloraWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D19ABCD897C28D13037094CA /* VeloraWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E80FBE2F50C3ACAADEB04374 /* BasKonusDugmesi.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B4D2A6D4D0DA57384FADF7 /* BasKonusDugmesi.swift */; };
+		FFB1DAE1BB00BBEF9DD020AC /* SayacAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3772322A5AB97E0472A7C025 /* SayacAttributes.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		177A15CDCBBE95138DFC4E0E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2C2226015C9398B9898121EB;
+			remoteInfo = VeloraWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A9BAFBD57262806464DAF683 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				ABA9E90894C35777AD6D9FBD /* VeloraWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		18CA58FDC714C878CD676251 /* SayacEtkinligi.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SayacEtkinligi.swift; sourceTree = "<group>"; };
+		1C75B3DEB8AF3DF1615522AF /* VeloraPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VeloraPlugin.swift; sourceTree = "<group>"; };
+		1D3F5EC4A1DE02C2E55C1D74 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		3772322A5AB97E0472A7C025 /* SayacAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SayacAttributes.swift; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -28,8 +67,14 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		7C10D666C1E68CE420A77769 /* VeloraWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VeloraWidgetBundle.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		AB0B925A9974D22CB14DAF43 /* BasKonusIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BasKonusIntent.swift; sourceTree = "<group>"; };
+		B9B4D2A6D4D0DA57384FADF7 /* BasKonusDugmesi.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BasKonusDugmesi.swift; sourceTree = "<group>"; };
+		D0D07CF92D46E0231AB320F7 /* VeloraShortcuts.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VeloraShortcuts.swift; sourceTree = "<group>"; };
+		D19ABCD897C28D13037094CA /* VeloraWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VeloraWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D9F38269AA9E14BBF7B4E136 /* VeloraViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VeloraViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,15 +86,46 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		94748FE32C51359964A0414C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3A9FE8B5DBC382108E8E5A1B /* Ortak */ = {
+			isa = PBXGroup;
+			children = (
+				AB0B925A9974D22CB14DAF43 /* BasKonusIntent.swift */,
+				3772322A5AB97E0472A7C025 /* SayacAttributes.swift */,
+			);
+			name = Ortak;
+			path = Ortak;
+			sourceTree = "<group>";
+		};
+		49F17CAF2E41BD16EAE2D401 /* VeloraWidget */ = {
+			isa = PBXGroup;
+			children = (
+				7C10D666C1E68CE420A77769 /* VeloraWidgetBundle.swift */,
+				18CA58FDC714C878CD676251 /* SayacEtkinligi.swift */,
+				B9B4D2A6D4D0DA57384FADF7 /* BasKonusDugmesi.swift */,
+				1D3F5EC4A1DE02C2E55C1D74 /* Info.plist */,
+			);
+			name = VeloraWidget;
+			path = VeloraWidget;
+			sourceTree = "<group>";
+		};
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				3A9FE8B5DBC382108E8E5A1B /* Ortak */,
+				49F17CAF2E41BD16EAE2D401 /* VeloraWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -57,6 +133,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				D19ABCD897C28D13037094CA /* VeloraWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -73,6 +150,9 @@
 				504EC3131FED79650016851F /* Info.plist */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
+				1C75B3DEB8AF3DF1615522AF /* VeloraPlugin.swift */,
+				D9F38269AA9E14BBF7B4E136 /* VeloraViewController.swift */,
+				D0D07CF92D46E0231AB320F7 /* VeloraShortcuts.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -80,6 +160,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		2C2226015C9398B9898121EB /* VeloraWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BBDF1518739DEB5CB28A1B81 /* Build configuration list for PBXNativeTarget "VeloraWidget" */;
+			buildPhases = (
+				CB8C35D93C85659495C93D9E /* Sources */,
+				94748FE32C51359964A0414C /* Frameworks */,
+				0910E8ADCC7467D3CC8B7ED8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VeloraWidget;
+			productName = VeloraWidget;
+			productReference = D19ABCD897C28D13037094CA /* VeloraWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		504EC3031FED79650016851F /* App */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */;
@@ -87,10 +184,12 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				A9BAFBD57262806464DAF683 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				30BDFC7EC85CFA10B39517D0 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -118,11 +217,12 @@
 			};
 			buildConfigurationList = 504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */;
 			compatibilityVersion = "Xcode 8.0";
-			developmentRegion = en;
+			developmentRegion = tr;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
+				tr,
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
@@ -133,11 +233,19 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				2C2226015C9398B9898121EB /* VeloraWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0910E8ADCC7467D3CC8B7ED8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3021FED79650016851F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -160,10 +268,36 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				91699ADD12EEE281D263D84F /* VeloraPlugin.swift in Sources */,
+				180C0C73D22504771518AEAE /* VeloraViewController.swift in Sources */,
+				04B9E716A050F9D397C6A3A0 /* VeloraShortcuts.swift in Sources */,
+				624973B5D07D3E6F2D20A93C /* BasKonusIntent.swift in Sources */,
+				FFB1DAE1BB00BBEF9DD020AC /* SayacAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CB8C35D93C85659495C93D9E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4701CA92010C7A2A2DDBB6AF /* VeloraWidgetBundle.swift in Sources */,
+				807274EC1BA097F271335A09 /* SayacEtkinligi.swift in Sources */,
+				E80FBE2F50C3ACAADEB04374 /* BasKonusDugmesi.swift in Sources */,
+				540ABF1D552007264B0433A4 /* BasKonusIntent.swift in Sources */,
+				540D978572051EB01D5F412A /* SayacAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		30BDFC7EC85CFA10B39517D0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = VeloraWidget;
+			target = 2C2226015C9398B9898121EB /* VeloraWidget */;
+			targetProxy = 177A15CDCBBE95138DFC4E0E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -185,6 +319,59 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		0D135554C66A030E03D75AA1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VeloraWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seyhunyildiz.sesliasistan.VeloraWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3F5CED272DB9B2465A1F16C2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VeloraWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seyhunyildiz.sesliasistan.VeloraWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		504EC3141FED79650016851F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
@@ -308,6 +495,15 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					ActivityKit,
+					"-weak_framework",
+					AppIntents,
+					"-weak_framework",
+					AlarmKit,
+				);
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.seyhunyildiz.sesliasistan;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -330,6 +526,15 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					ActivityKit,
+					"-weak_framework",
+					AppIntents,
+					"-weak_framework",
+					AlarmKit,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.seyhunyildiz.sesliasistan;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
@@ -355,6 +560,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BBDF1518739DEB5CB28A1B81 /* Build configuration list for PBXNativeTarget "VeloraWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3F5CED272DB9B2465A1F16C2 /* Release */,
+				0D135554C66A030E03D75AA1 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

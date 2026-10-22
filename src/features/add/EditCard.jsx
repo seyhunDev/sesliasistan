@@ -5,6 +5,8 @@ import { Icon } from "@/components/ui/Icon";
 import { leftLabel } from "@/lib/agenda";
 import { addDays, cap, short, todayStr } from "@/lib/utils/format";
 import { Picker, RemindChips, TIMES, addDaysFrom, chip, dayLabel, remindText, saturday } from "./DraftCard";
+import { ALARM_OPTS, alarmText, okAlarm } from "@/lib/planAlarm";
+import { iosApp } from "@/lib/nativeIos";
 
 const D = (s) => new Date(`${s}T00:00`);
 // "14:05" (bugün), "dün 18:20", "27 Eyl 09:10"
@@ -275,6 +277,17 @@ export function EditCard({ d, meta, planTitle, done, noteState, cancelled, repea
               <Row icon="bell" label="Hatırlat" value={remindText(d.remind ?? null)} tone={d.remind ? "text-fg" : undefined} open={open === "remind"} onToggle={toggle("remind")}>
                 <RemindChips value={d.remind ?? null} onPick={(v) => onChange({ remind: v })} />
                 <p className="mt-2 text-[0.8125rem] text-mut">Sorumlulara ve sana bildirim gider.</p>
+              </Row>
+            )}
+            {d.date && (iosApp() || okAlarm(d.alarm)) && (
+              <Row icon="clock" label="Alarm" value={alarmText(d.alarm)} tone={okAlarm(d.alarm) ? "text-fg" : undefined} open={open === "alarm"} onToggle={toggle("alarm")}>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALARM_OPTS.map((o) => (
+                    <button key={String(o.min)} type="button" onClick={() => onChange({ alarm: o.min })} className={chip((okAlarm(d.alarm) ? d.alarm : null) === o.min)}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
               </Row>
             )}
             <li className="border-b border-line">
