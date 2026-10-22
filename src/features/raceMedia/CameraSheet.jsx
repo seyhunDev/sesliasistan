@@ -21,8 +21,8 @@ export function CameraSheet({ open, ...props }) {
 }
 
 // Video kalitesi (Seyhun 2026-10-22: "çok kalitesiz çekiyormuş gibi"): Yüksek 1080p (varsayılan), Normal 720p. 2 dakikalık video
-// Yüksek'te ≈ 50 MB, Normal'de ≈ 30 MB (Storage 60 MB sınırı ve 5 GB kota). Seçim bu telefonda hatırlanır.
-const QUAL = { hi: { px: 1920, bps: 3_400_000, label: "Yüksek" }, lo: { px: 1280, bps: 2_000_000, label: "Normal" } };
+// Yüksek'te ≈ 38 MB, Normal'de ≈ 30 MB (Storage 60 MB sınırı ve 5 GB kota). Seçim bu telefonda hatırlanır.
+const QUAL = { hi: { px: 1920, bps: 2_500_000, label: "Yüksek" }, lo: { px: 1280, bps: 2_000_000, label: "Normal" } };
 const QKEY = "sa-cam-q";
 const readQ = () => {
   try {
