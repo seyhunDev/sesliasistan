@@ -18,7 +18,7 @@ import { TrainingLog } from "@/features/add/TrainingLog";
 import { Bar, Countdown, useTimerRun } from "@/features/training/Countdown";
 import { useTrainingFlow } from "@/features/training/useTrainingFlow";
 import { Marks } from "@/features/raceMedia/TimerTab";
-import { MediaTab } from "@/features/raceMedia/MediaTab";
+import { MediaSettingsButton, MediaTab } from "@/features/raceMedia/MediaTab";
 import { WeatherTab } from "@/features/raceMedia/WeatherTab";
 import { TabDock } from "@/features/raceMedia/RaceMedia";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
@@ -190,6 +190,7 @@ function Day() {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{title}</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
           </div>
+          {shown === "media" && <MediaSettingsButton dark />}
         </header>
         {shown === "sure" && (
           <Countdown
