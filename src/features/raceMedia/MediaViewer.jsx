@@ -165,7 +165,7 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
       {m.kind === "video" ? (
         // Düzenleme paneli açıkken dikte video panelin üstünde biter (yan çevrilince bütün ekran)
         <div className={`absolute inset-0 ${panel ? "portrait:bottom-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
-          <Clip key={m.id} m={m} bar={ui && !panel} onTap={() => setUi((v) => !v)} />
+          <Clip key={m.local || m.id} m={m} bar={ui && !panel} onTap={() => setUi((v) => !v)} />
         </div>
       ) : (
         <>
@@ -181,11 +181,15 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
           </button>
           <div className="min-w-0 flex-1 text-center leading-tight [text-shadow:0_1px_2px_rgba(0,0,0,.6)]">
             <p className="truncate text-[0.9375rem] font-semibold">{title || hm(m.at)}</p>
-            <p className="truncate text-[0.75rem] text-white/60">{title ? `${when} · ${hm(m.at)}` : when}</p>
+            <p className="truncate text-[0.75rem] text-white/60">{m.up != null ? (m.up < 0 ? "Yüklenemedi · telefonda" : `Yükleniyor %${Math.round(m.up * 100)}`) : title ? `${when} · ${hm(m.at)}` : when}</p>
           </div>
-          <button type="button" onClick={() => setMenu(true)} aria-label="Diğer" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 active:bg-white/25">
-            <Icon name="more" className="size-5" />
-          </button>
+          {m.up != null ? (
+            <span className="size-10 shrink-0" />
+          ) : (
+            <button type="button" onClick={() => setMenu(true)} aria-label="Diğer" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 active:bg-white/25">
+              <Icon name="more" className="size-5" />
+            </button>
+          )}
         </div>
       )}
       {busy && <p className="absolute inset-x-0 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 mx-auto w-fit rounded-lg bg-black/70 px-3 py-1.5 text-[0.875rem] font-semibold">{busy}</p>}

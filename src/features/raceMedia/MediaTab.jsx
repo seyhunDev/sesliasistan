@@ -62,11 +62,11 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const [more, setMore] = useState(false); // ⋯: Sayaçlı kamera
   const [openId, setOpen] = useState("");
   const [who, setWho] = useState("");
-  const open = live.media.find((m) => m.id === openId) || null;
   const todays = live.media.filter((m) => dayOf(m.at) === day);
   const tagged = ours.filter((a) => todays.some((m) => m.ath.includes(a.id)));
   const pick = tagged.some((a) => a.id === who) ? who : "";
   const upItems = pick ? [] : Object.values(ups).filter((x) => x.rec.raceId === race.id).map(({ rec, url, p, err }) => ({ id: rec.id, kind: rec.kind, at: rec.at, dur: rec.dur, ...rec.mom, u: { url, p, err } }));
+  const open = live.media.find((m) => m.id === openId) || upItems.find((m) => m.id === openId) || null;
   const groups = mediaGroups([...mediaOf(live.media, pick), ...upItems], live.starts, day);
   const first = (a) => (a.studentName || "").split(" ")[0];
 
@@ -90,6 +90,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
         return { ups: rest, mine: u ? { ...x.mine, [meta.id]: { url: u.url, done: true } } : x.mine, kept: { ...x.kept, [meta.id]: { kind: rec.kind, size: rec.blob.size } } };
       });
       setTimeout(() => setMine((m) => (m[meta.id] ? { ...m, [meta.id]: { ...m[meta.id], done: false } } : m)), 1500);
+      setOpen((o) => (o === rec.id ? meta.id : o)); // yüklenirken izleniyorsa izleme sürer
       onChange((l) => ({ media: [...l.media, meta] }));
       setWaiting((w) => w.filter((x) => x.id !== rec.id));
       setLast((l) => (l?.id === rec.id ? { ...l, state: "ok" } : l));
@@ -292,7 +293,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
           <p className="mb-1.5 mt-4 px-1 text-[0.8125rem] text-mut">{g.title}</p>
           <div className={`${card} grid grid-cols-3 gap-1 overflow-hidden p-1`}>
             {g.items.map((m) => (
-              <button key={m.id} type="button" disabled={!!m.u} onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden rounded-xl bg-line active:opacity-80">
+              <button key={m.id} type="button" onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden rounded-xl bg-line active:opacity-80">
                 <Thumb kind={m.kind} url={m.url} thumb={m.thumb} dur={m.dur} local={m.u?.url || mine[m.id]?.url} up={m.u && !m.u.err ? m.u.p : null} err={!!m.u?.err} done={!!mine[m.id]?.done} />
                 {m.phase && <span className="absolute left-1 top-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums text-white">{momentBadge(m)}</span>}
               </button>
@@ -302,7 +303,8 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
       ))}
 
       <MediaViewer
-        items={groups.flatMap((g) => g.items).filter((m) => !m.u).map((m) => (mine[m.id] ? { ...m, local: mine[m.id].url } : m))}
+        // Yüklenmekte olan da hemen izlenir (Seyhun 2026-10-22: "telefonda tuttuğumuzu kullanamıyoruz"): telefondaki dosyadan oynar
+        items={groups.flatMap((g) => g.items).map((m) => (m.u ? { ...m, url: m.u.url, local: m.u.url, up: m.u.err ? -1 : m.u.p } : mine[m.id] ? { ...m, local: mine[m.id].url } : m))}
         id={open ? open.id : ""}
         onPick={setOpen}
         onClose={() => setOpen("")}
