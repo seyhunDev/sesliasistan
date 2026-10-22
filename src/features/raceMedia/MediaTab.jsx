@@ -8,11 +8,11 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Bar, readTimer } from "@/features/training/Countdown";
-import { dayOf, fixMedia, hm, mediaGroups, mediaOf, momentAt, momentBadge, momentOf, momentRaceName, momentText, tagMedia } from "@/lib/raceLive";
+import { dayOf, fixMedia, hm, mediaGroups, mediaOf, momentAt, momentBadge, momentOf, momentRaceName, tagMedia } from "@/lib/raceLive";
 import { MediaViewer } from "./MediaViewer";
 import { Thumb } from "./Thumb";
 import { CameraSheet } from "./CameraSheet";
-import { dropPending, listPending, putPending } from "./pendingStore";
+import { clearKept, dropKept, dropPending, keepLocal, listKept, listPending, putPending } from "./pendingStore";
 
 // Medya: "Fotoğraf" ve "Video" iPhone'un kendi kamerasını açar (Seyhun 2026-10-20: kalite, ses, yön); sayaç sayarken sayaçlı kamerayı. Yanındaki ⋯ › Sayaçlı kamera
 // uygulama içi kamerayı açar (CameraSheet: sayaç ve bipler sürer; Süre'den açılan kamera da bu). Video en çok 2 dk, iPhone'un dosyası
@@ -26,12 +26,14 @@ import { dropPending, listPending, putPending } from "./pendingStore";
 const inflight = new Set();
 // Yükleme durumu da sayfa genelinde (sekme değişip Medya yeniden açılınca halka kaldığı yerden görünür):
 // ups { [id]: { rec, url, p, err } }; mine: bu telefonda çekilip yüklenen künye → { url: yerel dosya, done: kısa ✓ }
-let upSnap = { ups: {}, mine: {} };
+// kept: telefonda 7 gün tutulan (pendingStore "kept") künye → { kind, size }; Medya › ⋯ içinde toplamı yazar
+let upSnap = { ups: {}, mine: {}, kept: {} };
+let keptLoaded = false;
 const upSubs = new Set();
 const upSet = (f) => ((upSnap = f(upSnap)), upSubs.forEach((x) => x()));
 const upSub = (x) => (upSubs.add(x), () => upSubs.delete(x));
 const upGet = () => upSnap;
-const blankUps = { ups: {}, mine: {} };
+const blankUps = { ups: {}, mine: {}, kept: {} };
 const done = new Set();
 const tried = new Set(); // bu açılışta küçük resmi denenen kayıtlar (olmazsa yeniden denenmez)
 
@@ -45,7 +47,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const [waiting, setWaiting] = useState([]); // telefonda bekleyen (yüklenemeyen) kayıtlar
   // Yüklenenler listede hemen, telefondaki önizlemesiyle (Seyhun 2026-10-21, örnek yaris-tasarim/medya/yukleme.png): üstünde dolan halka,
   // bitince kısa ✓. ups: yüklenen/bekleyen kayıtlar { [id]: { rec, url, p, err } }; mine: bu telefonda çekilip yüklenen künye → yerel dosya
-  const { ups, mine } = useSyncExternalStore(upSub, upGet, () => blankUps);
+  const { ups, mine, kept } = useSyncExternalStore(upSub, upGet, () => blankUps);
   const setUps = (f) => upSet((x) => ({ ...x, ups: f(x.ups) }));
   const setMine = (f) => upSet((x) => ({ ...x, mine: f(x.mine) }));
   const [tick, setTick] = useState(0); // eski kayıtların küçük resmi: biri bitince sıradaki
@@ -81,10 +83,11 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
       up(rec.id, () => ({ p: 0, err: false }));
       const meta = await addRaceMedia(orgId, race.id, rec, rec.at, (p) => up(rec.id, () => ({ p })), { ...rec.mom, dur: rec.dur });
       done.add(rec.id);
+      await keepLocal({ id: meta.id, raceId: race.id, kind: rec.kind, size: rec.blob.size, blob: rec.blob });
       await dropPending(rec.id);
       upSet((x) => {
         const { [rec.id]: u, ...rest } = x.ups;
-        return { ups: rest, mine: u ? { ...x.mine, [meta.id]: { url: u.url, done: true } } : x.mine };
+        return { ups: rest, mine: u ? { ...x.mine, [meta.id]: { url: u.url, done: true } } : x.mine, kept: { ...x.kept, [meta.id]: { kind: rec.kind, size: rec.blob.size } } };
       });
       setTimeout(() => setMine((m) => (m[meta.id] ? { ...m, [meta.id]: { ...m[meta.id], done: false } } : m)), 1500);
       onChange((l) => ({ media: [...l.media, meta] }));
@@ -146,6 +149,32 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [race.id]);
+  // Telefonda tutulanlar (7 günü geçenler silinir) sayfa açılışında bir kez okunur: izlerken yerel dosya oynar
+  useEffect(() => {
+    if (keptLoaded) return;
+    keptLoaded = true;
+    listKept().then((list) =>
+      upSet((x) => {
+        const mine = { ...x.mine };
+        const kept = { ...x.kept };
+        for (const k of list) {
+          if (!mine[k.id]) mine[k.id] = { url: URL.createObjectURL(k.blob), done: false };
+          kept[k.id] = { kind: k.kind, size: k.size || k.blob?.size || 0 };
+        }
+        return { ...x, mine, kept };
+      }),
+    );
+  }, []);
+  const clearPhone = async () => {
+    await clearKept();
+    upSet((x) => {
+      const mine = { ...x.mine };
+      for (const id of Object.keys(x.kept)) if (mine[id]) (URL.revokeObjectURL(mine[id].url), delete mine[id]);
+      return { ...x, mine, kept: {} };
+    });
+    setMore(false);
+    toast("Telefondan silindi");
+  };
   // Küçük resmi olmayan eski kayıtlar sırayla bir kez tamamlanır (sonra liste videoyu indirmez)
   const noThumb = live.media.find((m) => !m.thumb && !tried.has(m.id));
   useEffect(() => {
@@ -199,6 +228,13 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
     setOpen("");
     const rest = live.media.filter((x) => x.id !== m.id);
     onChange({ media: rest }, () => dropRaceMedia(orgId, race.id, m, rest));
+    dropKept(m.id);
+    upSet((x) => {
+      const { [m.id]: k, ...kept } = x.kept;
+      const { [m.id]: u, ...mine } = x.mine;
+      if (u) URL.revokeObjectURL(u.url);
+      return k || u ? { ...x, kept, mine } : x;
+    });
   };
   // Sonradan düzeltme: yarışı ve anı değişir (fotoğrafa basılı yazı değişmez)
   const fix = (m, mom) => {
@@ -231,6 +267,11 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
 
 
   const waitErr = waiting.find((x) => x.err)?.err || "";
+  const stock = Object.values(kept);
+  const nv = stock.filter((k) => k.kind === "video").length;
+  const mb = stock.reduce((a, k) => a + (k.size || 0), 0) / 1e6;
+  const size = mb >= 1000 ? `${(mb / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} GB` : `${Math.max(1, Math.round(mb))} MB`;
+  const stockText = !stock.length ? "Telefonda kayıt yok" : `Telefonda ${[nv && `${nv} video`, stock.length - nv && `${stock.length - nv} fotoğraf`].filter(Boolean).join(" · ")} · ${size}`;
   return (
     <>
       {((!online && (waiting.length > 0 || upItems.length > 0)) || (online && waiting.length > 0 && waitErr && waitErr !== "İnternet yok.")) && (
@@ -261,11 +302,11 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
       ))}
 
       <MediaViewer
-        items={groups.flatMap((g) => g.items).filter((m) => !m.u)}
+        items={groups.flatMap((g) => g.items).filter((m) => !m.u).map((m) => (mine[m.id] ? { ...m, local: mine[m.id].url } : m))}
         id={open ? open.id : ""}
         onPick={setOpen}
         onClose={() => setOpen("")}
-        label={(m) => (!m.phase ? hm(m.at) : m.kind === "video" ? momentRaceName(m, live.starts) : `${momentRaceName(m, live.starts)} · ${momentText(m, live.starts)}` /* videoda süre görüntünün üstünde akar */)}
+        label={(m) => (m.phase ? momentRaceName(m, live.starts) : "") /* an (startan beri) görüntünün üstünde yazar */}
         ours={ours}
         onTag={tag}
         onShare={share}
@@ -298,6 +339,13 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
         <Button variant="secondary" onClick={() => (setMore(false), setCam("video"))}>
           Sayaçlı kamera
         </Button>
+        {/* Yüklenenler 7 gün telefonda (izlerken beklemeden oynar); toplam boyut ve elle silme (Firebase'deki kalır) */}
+        <p className="mt-4 px-1 text-[0.9375rem] tabular-nums">{stockText}</p>
+        {stock.length > 0 && (
+          <Button variant="secondary" onClick={clearPhone} className="mt-2">
+            Telefondan sil
+          </Button>
+        )}
       </Sheet>
       <CameraSheet open={!!cam} mode={cam} onMode={setCam} onClose={() => (setCam(""), onCamClose?.())} onShot={shot} onFail={camFail} last={last} />
     </>
