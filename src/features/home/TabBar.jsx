@@ -264,19 +264,20 @@ function AssistBox({ mode, text, tail = "", ph, r = {}, onX, xLabel, xText, onMa
         </p>
       )}
       <div className="relative flex h-[5.25rem] items-center justify-center">
-        <span className="aside absolute left-[10%] flex flex-col items-center gap-1.5">
+        <span className="aside aside-l absolute left-[10%] flex flex-col items-center gap-1.5">
           <button type="button" onClick={onX} aria-label={xLabel} className={SIDE}>
             <Icon name="x" className="size-[1.375rem]" />
           </button>
           <small className="text-[0.6875rem] font-semibold text-fg/75">{xText}</small>
         </span>
         <OrbMain mode={mode} r={r} icon={mainIcon} label={mainLabel} on={mainOn} onTap={onMain} onHold={onHold} />
+        {/* Sağdaki düğme yerinde kalır, yalnız simgesi ve adı yumuşakça değişir (Yaz → Dur → Devam; bir anda belirmesin) */}
         {right && (
-          <span key={right.label} className="aside absolute right-[10%] flex flex-col items-center gap-1.5">
+          <span className="aside aside-r absolute right-[10%] flex flex-col items-center gap-1.5">
             <button type="button" onClick={right.on} aria-label={right.label} className={SIDE}>
-              {right.icon}
+              <span key={right.label} className="aswap grid place-items-center">{right.icon}</span>
             </button>
-            <small className="text-[0.6875rem] font-semibold text-fg/75">{right.text}</small>
+            <small key={right.text} className="aswap text-[0.6875rem] font-semibold text-fg/75">{right.text}</small>
           </span>
         )}
       </div>
