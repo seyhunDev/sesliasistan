@@ -28,6 +28,11 @@ export async function loadLive(orgId, id) {
   return cleanLive(snap.exists() ? snap.data() : {});
 }
 
+// Medya sayfası (/media): bütün antrenman (ant-<planId>) ve yarış belgelerinin fotoğraf/video künyeleri. Dönüş [{ id, media }] (boşlar yok)
+export async function loadAllMedia(orgId) {
+  const snap = await getDocs(collection(db, "orgs", orgId, "raceLive"));
+  return snap.docs.map((d) => ({ id: d.id, media: cleanMedia(d.data()?.media) })).filter((x) => x.media.length);
+}
 export const addWind = (orgId, id, w) => setDoc(live(orgId, id), { wind: arrayUnion(cleanWind([w])[0]) }, { merge: true });
 export const saveWind = (orgId, id, list) => setDoc(live(orgId, id), { wind: cleanWind(list) }, { merge: true });
 export const saveBuoys = (orgId, id, list) => setDoc(live(orgId, id), { buoys: cleanBuoys(list) }, { merge: true });

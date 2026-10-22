@@ -175,7 +175,7 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
     onSave && ["İndir", "download", () => onSave(m)],
     ours.length > 0 && onTag && ["Kimler", "users", () => setPanel("tag")],
     onFix && ["Düzelt", "edit", () => setPanel("fix")],
-    ["Sil", "trash", () => onDrop(m)],
+    onDrop && ["Sil", "trash", () => onDrop(m)],
   ].filter(Boolean);
   const tools = acts.length > 0 && (
     <div className="mt-1 flex justify-around">
