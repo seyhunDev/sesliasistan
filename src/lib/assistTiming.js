@@ -176,9 +176,9 @@ function aiCountUp() {
 const DEV_KEY = "sa-dev";
 export function devOn() {
   try {
-    return box()?.getItem(DEV_KEY) !== "0";
+    return box()?.getItem(DEV_KEY) === "1"; // varsayılan kapalı (Seyhun 2026-10-22: "bu süreleri kaldıralım"); Testler › Süre kaydı'ndan açılır
   } catch {
-    return true;
+    return false;
   }
 }
 export function setDevOn(on) {
