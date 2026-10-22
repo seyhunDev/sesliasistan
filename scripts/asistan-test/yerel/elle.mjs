@@ -2855,6 +2855,7 @@ group("Ortak düğmeler")([
     // Seyhun 2026-10-22: bitirilip arşive giden antrenman "Bugün · Gün boyu" diye kalıyordu (plan bitti alanı done: true)
     ["bitirilen plan", F("arşivdeki (bitti) atlanır, sıradaki gelir", () => HT.nextPlan([{ id: "s", title: "Antrenman", date: "2026-10-21", done: true }, P[2], P[3]], at, "2026-10-21")?.id === "c")],
     ["8 gün sonra", F("7 günden uzak plan yok", () => HT.nextPlan([{ id: "u", date: "2026-10-30", time: "10:00" }], at, "2026-10-21") === null)],
+    ["tür başlıkta", F("“Optimist antrenmanı” Antrenman etiketi almaz, toplantı alır", () => HT.planTag({ title: "Optimist antrenmanı", cat: "Antrenman" }) === "" && HT.planTag({ title: "Yönetim", cat: "Toplantı" }) === "Toplantı" && HT.planTag({ title: "Fitness · İlay", fit: { name: "İlay" } }) === "")],
   ]);
 }
 
