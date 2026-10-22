@@ -145,7 +145,7 @@ private struct SayacYazi: View {
 
 // MARK: Büyük widget'ın üstü: logo, rüzgâr başlığı
 
-// Velora logosu: ortadaki beyaz ışığın çevresinde 24 ses çubuğu (src/components/ui/AppLogo.jsx RAYS ile aynı boylar)
+// Velora logosu: ortadaki beyaz ışığın çevresinde 24 ses çubuğu (src/components/ui/AppLogo.jsx RAYS ile aynı; Okyanus degradesi #0ea5c4→#a5f3fc)
 private struct LogoCubuklari: Shape {
     func path(in rect: CGRect) -> Path {
         let boy: [CGFloat] = [60, 100, 140, 90, 120, 70, 150, 85]
@@ -167,9 +167,9 @@ private struct Logo: View {
     var body: some View {
         ZStack {
             LogoCubuklari()
-                .stroke(LinearGradient(colors: [wAcik, vurguDugme], startPoint: .topLeading, endPoint: .bottomTrailing),
-                        style: StrokeStyle(lineWidth: boy * 44 / 760, lineCap: .round))
-            Circle().fill(.white).frame(width: boy * 144 / 760, height: boy * 144 / 760)
+                .stroke(LinearGradient(colors: [vurguDugme, Color(red: 0.647, green: 0.953, blue: 0.988)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        style: StrokeStyle(lineWidth: boy * 30 / 760, lineCap: .round))
+            Circle().fill(.white).frame(width: boy * 128 / 760, height: boy * 128 / 760)
         }
         .frame(width: boy, height: boy)
     }
