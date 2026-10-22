@@ -138,8 +138,19 @@ export function keepNotes(items, raw, keep = 0) {
 // Soru cümleleri ("onaylıyor musun?", "kaydedeyim mi?") ve işi anlatan cümleler ("planı oluşturuyorum", "ekledim") atılır:
 // kayıt zaten yapıldı, hem sorup hem eklemek çelişir.
 const DOING = /(ekle|kaydet|oluştur|hazırla|planla|ayarla|onay|kaydedebilirsin|kontrol edip)/i;
-export function extraNote(m) {
+// list: kaydedilen kayıtlar. Kart zaten başlığı, günü ve saati gösteriyor; yapay zekanın bunu yeniden anlatan cümlesi
+// ("Yarın saat 10'da antrenmanın var.") atılır (Seyhun 2026-10-22: "ekranda gösteriliyorsa mesaj tekrar etmesin").
+// Kayıtta olmayan bilgi taşıyan cümle (çakışma, rüzgâr, hava, uyarı) kalır.
+const NEWS = /(çakış|aynı saat|\bd[ae] var|rüzg[aâ]r|knot|hava|yağmur|yağış|fırtına|dikkat|unutma|\bama\b|fakat|ancak|uyarı|geç kal|sorumlu)/iu;
+const foldTr = (x) => String(x || "").toLocaleLowerCase("tr-TR").replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim();
+const restates = (x, list) =>
+  !NEWS.test(x) &&
+  list.some((d) => {
+    const t = foldTr(d?.title || d?.body);
+    return [...t].length >= 3 && foldTr(x).includes(t.split(" ").slice(0, 2).join(" "));
+  });
+export function extraNote(m, list = []) {
   const parts = String(m || "").replace(/\s+/g, " ").trim().match(/[^.!?]+[.!?]*/g) || [];
-  const keep = parts.map((x) => x.trim()).filter((x) => x && !/\?\s*$/.test(x) && !DOING.test(x) && !/^(tamam|tamamdır|peki|olur)[.!]?$/i.test(x));
+  const keep = parts.map((x) => x.trim()).filter((x) => x && !/\?\s*$/.test(x) && !DOING.test(x) && !/^(tamam|tamamdır|peki|olur)[.!]?$/i.test(x) && !restates(x, list));
   return keep.length ? `${keep.join(" ")} ` : "";
 }
