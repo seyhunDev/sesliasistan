@@ -237,10 +237,10 @@ export async function run(server, log = () => {}) {
       transcript = prev;
     }
   };
-  // Asistanı kapat: dinliyorsa önce dinlemeyi bırak, sonra × (Konuşmayı bitir)
+  // Asistanı kapat: × her durumda kapatır
   const closeAll = async (page) => {
     for (let i = 0; i < 4 && (await page.locator(".afull.afull-in").count()); i++) {
-      for (const name of ["Sil ve dinlemeyi bırak", "Konuşmayı bitir"]) {
+      for (const name of ["Asistanı kapat"]) {
         const x = btn(page, name);
         if (await x.count()) {
           await x.click().catch(() => {});
@@ -277,7 +277,7 @@ export async function run(server, log = () => {}) {
     const { scenarios } = await import("./adimlar.mjs");
     await scenarios({ getDoc, log, check, push, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI: (f, d = 0) => ((ai = f), (aiDelay = d)), setTasks: (f) => (tasksReply = f), setTranscript: (t) => (transcript = t), setSoz: (f) => (sozReply = f), setLive: (t) => (liveToken = t), TODAY, TOMORROW });
   } catch (e) {
-    push("Senaryolar", "çalıştırma", "tamamlanır", false, String(e.stack || e.message).split("\n").slice(0, 3).join(" | "));
+    push("Senaryolar", "çalıştırma", "tamamlanır", false, String(e.stack || e.message).split("\n").filter((l) => /\.mjs/.test(l)).slice(0, 6).join(" | "));
   } finally {
     await browser.close().catch(() => {});
   }

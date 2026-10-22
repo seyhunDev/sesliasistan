@@ -1,168 +1,233 @@
 import SwiftUI
 import WidgetKit
 
-// Ana ekran ve kilit ekranı widget'ı: rüzgâr (şimdi) + sıradaki planlar. Dokununca Velora açılır.
-// Planlar uygulamadan gelir (WidgetVeri), rüzgâr open-meteo'dan (uygulamanın hava sayfasıyla aynı kaynak, knot).
+// Velora widget'larının ortak parçaları (veri sağlayıcı, zemin, plan satırı) ve "Sıradaki" widget'ı.
+// Diğer widget'lar Widgetlar.swift'te, rüzgâr grafiği Ruzgar.swift'te. Veriyi uygulama yazar (WidgetVeri), dokununca
+// velora://ac/<yol> ile uygulamada o sayfa açılır.
 
-private let lacivert = Color(red: 0.137, green: 0.145, blue: 0.369) // --deep #23255e
-private let mor = Color(red: 0.69, green: 0.66, blue: 1.0) // lacivert üstünde okunan açık mor
-
-struct Ruzgar: Hashable {
-    var kn: Int
-    var gust: Int
-    var dir: Double
-}
-
-struct SiradakiGiris: TimelineEntry {
+struct VeloraGiris: TimelineEntry {
     let date: Date
-    let plans: [WidgetVeri.Plan]
-    let place: String
-    let wind: Ruzgar?
+    let v: WidgetVeri?
+    let r: GunRuzgar?
+    var b = Bolumler()
 }
 
-struct SiradakiSaglayici: TimelineProvider {
-    func placeholder(in context: Context) -> SiradakiGiris {
-        SiradakiGiris(date: Date(), plans: [WidgetVeri.Plan(title: "Antrenman", date: "", time: "10:00", important: false)], place: "Dikili", wind: Ruzgar(kn: 12, gust: 18, dir: 0))
+// Büyük Velora widget'ında görünen bölümler (iOS 17+: widget'a basılı tut › Edit Widget)
+struct Bolumler: Hashable {
+    var ruzgar = true
+    var antrenman = true
+    var banka = true
+    var aidat = true
+    var planlar = false
+    var kelime = false
+}
+
+// ruzgar: grafiği olan widget'lar rüzgârı da alır (25 dk saklanır)
+struct VeloraSaglayici: TimelineProvider {
+    var ruzgar = false
+
+    func placeholder(in context: Context) -> VeloraGiris {
+        VeloraGiris(date: Date(), v: .ornek, r: ruzgar ? .ornek : nil)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (SiradakiGiris) -> Void) {
-        let v = WidgetVeri.oku()
-        completion(SiradakiGiris(date: Date(), plans: v?.siradaki() ?? placeholder(in: context).plans, place: v?.place ?? "Dikili", wind: Ruzgar(kn: 12, gust: 18, dir: 0)))
+    func getSnapshot(in context: Context, completion: @escaping (VeloraGiris) -> Void) {
+        if context.isPreview { return completion(placeholder(in: context)) }
+        Task { completion(await giris(Date())) }
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<SiradakiGiris>) -> Void) {
-        let v = WidgetVeri.oku()
-        ruzgarAl(lat: v?.lat ?? 39.0717, lon: v?.lon ?? 26.8886) { wind in
-            let now = Date()
-            // Şimdi + sıradaki planların başlangıç anları (liste kendiliğinden ilerler); 30 dk sonra rüzgâr yenilenir
-            let anlar = [now] + (v?.plans ?? []).compactMap { WidgetVeri.baslangic($0)?.addingTimeInterval(3600) }.filter { $0 > now && $0 < now.addingTimeInterval(1800) }
-            let entries = anlar.sorted().map { d in
-                SiradakiGiris(date: d, plans: v?.siradaki(d) ?? [], place: v?.place ?? "Dikili", wind: wind)
-            }
-            completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(1800))))
+    func getTimeline(in context: Context, completion: @escaping (Timeline<VeloraGiris>) -> Void) {
+        Task {
+            let e = await giris(Date())
+            completion(VeloraSaglayici.akis(e, ruzgar: ruzgar))
         }
     }
 
-    private func ruzgarAl(lat: Double, lon: Double, done: @escaping (Ruzgar?) -> Void) {
-        var c = URLComponents(string: "https://api.open-meteo.com/v1/forecast")!
-        c.queryItems = [
-            URLQueryItem(name: "latitude", value: String(lat)),
-            URLQueryItem(name: "longitude", value: String(lon)),
-            URLQueryItem(name: "current", value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m"),
-            URLQueryItem(name: "wind_speed_unit", value: "kn"),
-        ]
-        guard let url = c.url else { return done(nil) }
-        URLSession.shared.dataTask(with: url) { data, _, _ in
-            guard let data,
-                  let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let cur = j["current"] as? [String: Any],
-                  let kn = cur["wind_speed_10m"] as? Double else { return done(nil) }
-            done(Ruzgar(kn: Int(kn.rounded()), gust: Int(((cur["wind_gusts_10m"] as? Double) ?? kn).rounded()), dir: (cur["wind_direction_10m"] as? Double) ?? 0))
-        }.resume()
+    // 15 dakikada bir (grafikteki "şimdi" ilerler), sayaç bitince ve planlar geçince yenilenir
+    static func akis(_ e: VeloraGiris, ruzgar: Bool) -> Timeline<VeloraGiris> {
+        let now = e.date
+        var anlar: [Date] = (0..<4).map { now.addingTimeInterval(Double($0) * 900) }
+        if let t = e.v?.timer, t.paused != true { anlar.append(t.bitis.addingTimeInterval(3601)) }
+        anlar += (e.v?.plans ?? []).compactMap { WidgetVeri.baslangic($0)?.addingTimeInterval(3601) }
+        let son = now.addingTimeInterval(3600)
+        let entries = Set(anlar.filter { $0 >= now && $0 <= son }).sorted().map { VeloraGiris(date: $0, v: e.v, r: e.r, b: e.b) }
+        return Timeline(entries: entries, policy: .after(now.addingTimeInterval(ruzgar ? 1800 : 3600)))
+    }
+
+    func giris(_ now: Date) async -> VeloraGiris {
+        let v = WidgetVeri.oku()
+        let r = ruzgar ? await RuzgarKaynak.al(lat: v?.lat ?? 39.0717, lon: v?.lon ?? 26.8886) : nil
+        return VeloraGiris(date: now, v: v, r: r)
     }
 }
 
-// "Bugün 10:00", "Yarın", "Cum 24 Eki 18:00"
-private func ne(_ p: WidgetVeri.Plan) -> String {
+extension WidgetVeri {
+    // Widget galerisindeki örnek
+    static var ornek: WidgetVeri {
+        let bugun = GunRuzgar.gun(Date())
+        let yarin = GunRuzgar.gun(Date().addingTimeInterval(86400))
+        return WidgetVeri(
+            plans: [
+                Plan(title: "Optimist antrenmanı", date: bugun, time: "", important: false),
+                Plan(title: "Yarış kaydı son gün", date: yarin, time: "", important: true),
+                Plan(title: "Kulüp toplantısı", date: yarin, time: "18:00", important: false),
+            ],
+            place: "Dikili", lat: nil, lon: nil, timer: nil,
+            training: Antrenman(id: "", title: "Optimist antrenmanı", date: bugun, time: "16:00", place: "Dikili"),
+            money: Para(big: "12.480 ₺", label: "Banka", sub: nil),
+            dues: Aidat(paid: 9, count: 14),
+            word: Kelime(en: "acknowledge", type: "fiil", tr: "kabul etmek, onaylamak", ex: "He acknowledged that he had made a mistake.", exTr: nil, study: true, day: 3)
+        )
+    }
+}
+
+let gunBicim: DateFormatter = {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "tr_TR")
+    f.dateFormat = "EEE d MMM"
+    return f
+}()
+
+// Planın sol sütunu: bugün saat, yarın "Yarın", sonra "Cum 24"
+func planZamani(_ p: WidgetVeri.Plan, _ now: Date) -> String {
     guard let d = WidgetVeri.baslangic(p) else { return p.time }
     let cal = Calendar.current
-    let gun: String
-    if cal.isDateInToday(d) { gun = "Bugün" } else if cal.isDateInTomorrow(d) { gun = "Yarın" } else {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "tr_TR")
-        f.dateFormat = "EEE d MMM"
-        gun = f.string(from: d)
-    }
-    return p.time.isEmpty ? gun : "\(gun) \(p.time)"
+    if cal.isDate(d, inSameDayAs: now) { return p.time.isEmpty ? "Bugün" : p.time }
+    if let y = cal.date(byAdding: .day, value: 1, to: now), cal.isDate(d, inSameDayAs: y) { return "Yarın" }
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "tr_TR")
+    f.dateFormat = "EEE d"
+    return f.string(from: d)
 }
 
-private struct RuzgarSatiri: View {
-    let wind: Ruzgar?
+// İlk plana kalan süre: "40 dk", "3 sa", "2 gün"
+func kalan(_ p: WidgetVeri.Plan, _ now: Date) -> String {
+    guard let d = WidgetVeri.baslangic(p) else { return "" }
+    let dk = Int(d.timeIntervalSince(now) / 60)
+    if dk <= 0 { return p.time.isEmpty ? "bugün" : "şimdi" }
+    if dk < 60 { return "\(dk) dk" }
+    if dk < 24 * 60 { return "\(dk / 60) sa" }
+    return "\(dk / 1440) gün"
+}
+
+struct PlanSatiri: View {
+    let p: WidgetVeri.Plan
+    let now: Date
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "arrow.down")
-                .font(.system(size: 13, weight: .bold))
-                .rotationEffect(.degrees(wind?.dir ?? 0))
-                .foregroundStyle(mor)
-            Text(wind.map { "\($0.kn)" } ?? "–").font(.system(size: 22, weight: .semibold).monospacedDigit())
-            Text(wind.map { "kn · \($0.gust)" } ?? "kn").font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.65))
+        HStack(spacing: 7) {
+            Circle().stroke(Color.white.opacity(0.45), lineWidth: 1.6).frame(width: 12, height: 12)
+            Text(planZamani(p, now))
+                .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                .foregroundStyle(.white.opacity(0.65))
+                .frame(width: 38, alignment: .leading)
+                .lineLimit(1)
+            Text(p.title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(p.important == true ? wMor : Color.white)
+                .lineLimit(1)
+            Spacer(minLength: 0)
         }
     }
 }
 
-private struct PlanSatiri: View {
-    let p: WidgetVeri.Plan
+// Başlık satırı: solda ad (+ soluk ek), sağda soluk değer
+struct Baslik: View {
+    let ad: String
+    var ek: String = ""
+    var sag: String = ""
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(p.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
-            Text(ne(p)).font(.system(size: 12, weight: .medium)).foregroundStyle(p.important == true ? mor : .white.opacity(0.65)).lineLimit(1)
+        HStack(alignment: .firstTextBaseline) {
+            (Text(ad) + Text(ek.isEmpty ? "" : " · \(ek)").foregroundColor(.white.opacity(0.65)))
+                .font(.system(size: 13, weight: .semibold))
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            Text(sag).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.65)).lineLimit(1)
+        }
+    }
+}
+
+// Zemin: ana ekranda lacivert, kilit ekranında sistemin yarı saydam kutusu
+struct Zemin: ViewModifier {
+    @Environment(\.widgetFamily) var family
+    var renk: Color = wLacivert
+    func body(content: Content) -> some View {
+        let kilit: Bool = [WidgetFamily.accessoryRectangular, .accessoryCircular, .accessoryInline].contains(family)
+        if #available(iOS 17.0, *) {
+            if kilit {
+                content.containerBackground(for: .widget) { AccessoryWidgetBackground() }
+            } else {
+                content.foregroundStyle(.white).tint(.white).containerBackground(for: .widget) { renk }
+            }
+        } else if kilit {
+            content
+        } else {
+            content.foregroundStyle(.white).tint(.white).padding().background(renk)
         }
     }
 }
 
 struct SiradakiGorunum: View {
     @Environment(\.widgetFamily) var family
-    let e: SiradakiGiris
+    let e: VeloraGiris
 
     var body: some View {
+        let plans = e.v?.siradaki(e.date) ?? []
         switch family {
         case .accessoryRectangular:
-            VStack(alignment: .leading, spacing: 1) {
-                if let p = e.plans.first {
-                    Text(p.title).font(.headline).lineLimit(1)
-                    Text(ne(p)).font(.caption).lineLimit(1)
-                } else {
-                    Text("Plan yok").font(.headline)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("Sıradaki").font(.system(size: 13, weight: .bold))
+                    Spacer()
+                    if let p = plans.first { Text(kalan(p, e.date)).font(.system(size: 12, weight: .semibold)).opacity(0.75) }
                 }
-                if let w = e.wind { Text("Rüzgâr \(w.kn) kn · \(w.gust)").font(.caption).lineLimit(1) }
-            }
-        case .systemMedium:
-            HStack(alignment: .top, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(e.place).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.65))
-                    RuzgarSatiri(wind: e.wind)
-                    Spacer(minLength: 0)
+                if plans.isEmpty { Text("Plan yok").font(.system(size: 13, weight: .semibold)) }
+                ForEach(plans.prefix(3), id: \.self) { p in
+                    (Text(planZamani(p, e.date) + " ").foregroundColor(.white.opacity(0.7)) + Text(p.title))
+                        .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                        .lineLimit(1)
                 }
-                .frame(width: 96, alignment: .leading)
-                VStack(alignment: .leading, spacing: 8) {
-                    if e.plans.isEmpty { Text("Sırada plan yok").font(.system(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.65)) }
-                    ForEach(e.plans.prefix(3), id: \.self) { PlanSatiri(p: $0) }
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        default:
-            VStack(alignment: .leading, spacing: 8) {
-                RuzgarSatiri(wind: e.wind)
                 Spacer(minLength: 0)
-                if let p = e.plans.first { PlanSatiri(p: p) } else {
-                    Text("Sırada plan yok").font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.65))
+            }
+            .padding(.horizontal, 4)
+        case .systemSmall:
+            VStack(alignment: .leading, spacing: 6) {
+                Baslik(ad: "Sıradaki", sag: plans.first.map { kalan($0, e.date) } ?? "")
+                if plans.isEmpty { Bos(yazi: "Sırada plan yok") }
+                ForEach(plans.prefix(2), id: \.self) { p in
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(p.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(p.important == true ? wMor : Color.white).lineLimit(2)
+                        Text(planZamani(p, e.date)).font(.system(size: 12, weight: .semibold).monospacedDigit()).foregroundStyle(.white.opacity(0.65))
+                    }
                 }
+                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        default:
+            VStack(alignment: .leading, spacing: 7) {
+                Baslik(ad: "Sıradaki", sag: gunBicim.string(from: e.date))
+                if plans.isEmpty { Bos(yazi: "Sırada plan yok") }
+                ForEach(plans.prefix(3), id: \.self) { PlanSatiri(p: $0, now: e.date) }
+                Spacer(minLength: 0)
+            }
         }
     }
 }
 
-private struct Zemin: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 17.0, *) {
-            content.containerBackground(for: .widget) { lacivert }
-        } else {
-            content.padding().background(lacivert)
-        }
+struct Bos: View {
+    let yazi: String
+    var body: some View {
+        Text(yazi).font(.system(size: 13, weight: .semibold)).foregroundStyle(.white.opacity(0.65))
     }
 }
 
 struct SiradakiWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "com.seyhunyildiz.sesliasistan.siradaki", provider: SiradakiSaglayici()) { e in
+        StaticConfiguration(kind: "com.seyhunyildiz.sesliasistan.siradaki", provider: VeloraSaglayici()) { e in
             SiradakiGorunum(e: e)
-                .foregroundStyle(.white)
                 .modifier(Zemin())
+                .widgetURL(URL(string: "velora://ac/plans"))
         }
-        .configurationDisplayName("Velora")
-        .description("Rüzgâr ve sıradaki planlar")
+        .configurationDisplayName("Sıradaki")
+        .description("Sıradaki planların")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
     }
 }

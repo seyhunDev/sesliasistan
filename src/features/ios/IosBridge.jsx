@@ -1,23 +1,22 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { readTimer, useTimer } from "@/features/training/Countdown";
-import { getPlace } from "@/features/weather/weather";
 import { bridgeVibrate } from "@/lib/haptic";
-import { iosApp, onOpen, showTimer, syncAlarms, takeOpen, widgetData } from "@/lib/nativeIos";
+import { iosApp, onOpen, showTimer, syncAlarms, takeOpen } from "@/lib/nativeIos";
 import { alarmItems } from "@/lib/planAlarm";
-import { todayStr } from "@/lib/utils/format";
-import { widgetPlans } from "@/lib/widgetData";
+import { WidgetFeed } from "./WidgetFeed";
 
 // iPhone uygulamasının yerel parçalarını web'e bağlar (uygulama düzeninde bir kez durur; tarayıcıda hiçbir şey yapmaz):
 // - bas-konuş: Siri / Eylem tuşu / Denetim Merkezi düğmesi → asistan açılır ve dinler
 // - tek sayaç (training/Countdown.jsx) kilit ekranında ve Dynamic Island'da görünür; dokununca sayacın sayfası açılır
 // - plan alarmları (lib/planAlarm.js) telefona kurulur, plan değişince yeniden eşitlenir
-// - ana ekran widget'ı sıradaki planları alır (lib/widgetData.js); eski navigator.vibrate çağrıları Taptic olur (lib/haptic.js)
+// - widget'lar planları, sayacı, mesajları, hesabı ve günün kelimesini alır (WidgetFeed); dokununca ilgili sayfa açılır ("go:/yol")
+// - eski navigator.vibrate çağrıları Taptic olur (lib/haptic.js)
 export function IosBridge() {
   const router = useRouter();
   const toast = useToast();
@@ -27,11 +26,13 @@ export function IosBridge() {
   const uid = profile?.uid;
   const ownerId = profile?.orgId;
 
+  const ios = useSyncExternalStore(noSub, iosApp, () => false);
   useEffect(() => {
     if (!iosApp()) return;
     bridgeVibrate();
     const go = (what) => {
-      if (what === "talk") window.dispatchEvent(new CustomEvent("sa-open-assistant", { detail: { listen: true } }));
+      if (what.startsWith("go:")) router.push(what.slice(3) || "/");
+      else if (what === "talk") window.dispatchEvent(new CustomEvent("sa-open-assistant", { detail: { listen: true } }));
       else if (what === "timer") {
         const own = readTimer().own;
         if (own) router.push(own.startsWith("/athletes/races/") ? `${own}?tab=sure` : own);
@@ -77,17 +78,10 @@ export function IosBridge() {
     return () => (clearTimeout(id), document.removeEventListener("visibilitychange", vis));
   }, [alarmKey, uid, toast]);
 
-  // Widget: planlar değişince (aynı liste iki kez gönderilmez)
-  const today = todayStr();
-  const wKey = JSON.stringify(uid && ownerId ? widgetPlans(plans, { uid, ownerId, today }) : []);
-  useEffect(() => {
-    if (!iosApp() || !uid) return;
-    const p = getPlace();
-    widgetData({ plans: JSON.parse(wKey), place: p.name, lat: p.lat, lon: p.lon });
-  }, [wKey, uid]);
-
-  return null;
+  return ios ? <WidgetFeed timer={state && { ...state, title }} /> : null;
 }
+
+const noSub = () => () => {};
 
 // Daha önce kurulduğu söylenen alarmlar (her açılışta yeniden söylenmesin)
 const KEYS = "sa-alarm-keys";
