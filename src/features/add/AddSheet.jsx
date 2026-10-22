@@ -42,7 +42,7 @@ const MANUAL = [["plan", "Plan", "cal"], ["task", "Görev", "task"], ["note", "N
 
 const fromRecord = (kind, r) => ({
   ...(kind === "plan"
-    ? { ...blank("plan"), title: r.title, date: r.date, endDate: r.endDate || "", time: r.time || "", allDay: r.allDay ?? !r.time, place: r.place || "", remind: r.remind ?? null, cat: r.cat, important: !!r.important }
+    ? { ...blank("plan"), title: r.title, date: r.date, endDate: r.endDate || "", time: r.time || "", allDay: r.allDay ?? !r.time, place: r.place || "", remind: r.remind ?? null, alarm: r.alarm ?? null, cat: r.cat, important: !!r.important }
     : kind === "task"
       ? { ...blank("task"), title: r.title, date: r.due || "", cat: r.cat }
       : { ...blank("note"), title: r.title, body: r.body, cat: r.cat }),
@@ -261,6 +261,18 @@ export function AddSheet({ open, onClose, seed }) {
     onClose();
   }
 
+  // Planın Hatırlat, Alarm ve Önemli seçimleri dokununca kaydedilir (Seyhun 2026-10-22: "seçiyorum ama kaydedilmiyor";
+  // alttaki Kaydet'e basmadan kapatınca kayboluyordu). Başka alan elle değiştirilmişse Kaydet'e bırakılır.
+  function quickSave(patch) {
+    if (edit?.kind !== "plan" || !drafts[0] || dirty || !Object.keys(patch).every((k) => ["remind", "alarm", "important"].includes(k))) return false;
+    const next = { ...drafts[0], ...patch };
+    orig.current = editKey(next);
+    setDrafts([next]);
+    updateRecord(edit.kind, edit.id, patch, by);
+    toast("Kaydedildi");
+    return true;
+  }
+
   function saveEdit() {
     const d = drafts[0];
     const e = d ? check(d) : "Kayıt bulunamadı";
@@ -360,7 +372,7 @@ export function AddSheet({ open, onClose, seed }) {
                 }}
                 assign={assign}
                 onAddStaff={addStaff}
-                onChange={(patch) => update(0, patch)}
+                onChange={(patch) => quickSave(patch) || update(0, patch)}
                 acks={
                   rec && !isStaff
                     ? assigneesOf(rec)

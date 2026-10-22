@@ -18,6 +18,7 @@ import { PastChatsRow } from "@/features/settings/PastChats";
 import { EnergyRow } from "@/features/settings/Energy";
 import { buildLine } from "@/lib/buildInfo";
 import { logout } from "@/lib/auth";
+import { FaceIdRow } from "@/features/ios/AppLock";
 import { KIND_LABEL, kindOf } from "@/lib/kinds";
 import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 
@@ -67,6 +68,7 @@ function PersonSettings({ profile, n }) {
       </Group>
       <Group title="Hesap">
         <PasswordRow />
+        <FaceIdRow />
         <VersionRow />
         <Row title="Çıkış yap" danger onClick={() => logout()} />
       </Group>
@@ -137,6 +139,7 @@ export default function SettingsPage() {
 
       <Group title="Hesap">
         <PasswordRow />
+        <FaceIdRow />
         <VersionRow />
         <Row title="Çıkış yap" danger onClick={() => logout()} />
       </Group>

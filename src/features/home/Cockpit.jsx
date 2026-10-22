@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { canSeeAthletes } from "@/features/athletes/access";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
 import { dayHours, nowOf, sky, windName } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
 import { isTraining } from "@/lib/trainingLog";
-import { nextPlan } from "@/lib/homeTiles";
+import { attHref, nextPlan } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
 import { CockpitWind } from "./CockpitWind";
 import { InboxBell } from "./Inbox";
@@ -81,10 +82,11 @@ export function Cockpit({ weather, inbox, onInbox, children }) {
   );
 }
 
-// Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan. Antrenmansa sağda "Süre" (antrenman sayfası, sayaç).
+// Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan. Antrenmansa sağda "Yoklama" ve "Süre" (antrenman sayfası, sayaç).
 // Satıra dokununca plan açılır. Aynı plan aşağıdaki takvim listesinde tekrar yazmaz (OwnerHome kimliğini SiradaCard'a "skip" olarak verir).
 function NextPlan({ now }) {
   const { plans } = useData();
+  const { profile } = useAuth();
   const { openAdd } = useAdd();
   const today = todayStr();
   const p = nextPlan(plans, now, today);
@@ -106,6 +108,8 @@ function NextPlan({ now }) {
             ? `${mins} dk sonra`
             : `${Math.floor(mins / 60)} sa ${mins % 60 ? `${mins % 60} dk ` : ""}sonra`;
   const sail = isTraining(p);
+  // Antrenmansa Süre'nin yanında Yoklama (widget'taki gibi; Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
+  const att = sail && canSeeAthletes(profile?.email);
   return (
     <div className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-white/12 bg-white/[.07] py-2.5 pl-3.5 pr-2.5">
       <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="flex min-w-0 flex-1 items-center gap-3 text-left">
@@ -115,6 +119,11 @@ function NextPlan({ now }) {
           <small className="block truncate text-[0.8125rem] text-white/65">{[when, p.place].filter(Boolean).join(" · ")}</small>
         </span>
       </button>
+      {att && (
+        <Link href={attHref(p.date, today) || "/athletes/attendance"} data-press className="ck-btn ck-btn2 shrink-0">
+          Yoklama
+        </Link>
+      )}
       {sail && (
         <Link href={`/training/day?id=${p.id}`} data-press className="ck-btn shrink-0">
           Süre

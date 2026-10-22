@@ -1,6 +1,52 @@
 // Asistan ekran testinin adımları (senaryolar.mjs hazırlar: giriş, taklitler, yardımcılar).
 // Her check(grup, söz, beklenen, fn): fn true/false ya da [geçti mi, olan] döndürür.
 
+// Enerji (2026-10-22): boşta ekran saniyede kaç stil / yerleşim hesabı yapıyor (Chrome Performance ölçüleri).
+// Boşta sürekli çalışan animasyon ya da döngü telefonu ısıtır, pili bitirir; boştayken bunlar ~0 olmalı.
+const ENERGY_MAX = 3;
+async function idleCost(page, ms = 2500) {
+  // Önce sayfa yerleşsin: veri, hava grafiği, resimler yüklenirken yapılan hesaplar "boşta" sayılmaz. En çok 8 sn, 1 sn
+  // hiç değişiklik olmayana kadar beklenir (sürekli değişen bir şey varsa yine ölçülür ve test düşer)
+  await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+  await page.evaluate(
+    () =>
+      new Promise((ok) => {
+        let last = performance.now();
+        const mo = new MutationObserver(() => (last = performance.now()));
+        mo.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+        const t0 = performance.now();
+        const tick = () => (performance.now() - last > 1000 || performance.now() - t0 > 8000 ? (mo.disconnect(), ok()) : setTimeout(tick, 100));
+        tick();
+      }),
+  );
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Performance.enable");
+  const get = async () => Object.fromEntries((await cdp.send("Performance.getMetrics")).metrics.map((m) => [m.name, m.value]));
+  // Boşta DOM'u değiştiren parçalar (sayaç, döngü): en çok değişen 4 öğe raporda görünsün
+  await page.evaluate(() => {
+    const n = (window.__muts = new Map());
+    const key = (el) => (el?.nodeType === 1 ? el : el?.parentElement);
+    const name = (el) => el && `${el.tagName.toLowerCase()}${el.getAttribute("class") ? "." + el.getAttribute("class").split(" ").slice(0, 2).join(".") : ""}`;
+    window.__mo?.disconnect();
+    window.__mo = new MutationObserver((ms) => ms.forEach((m) => { const k = name(key(m.target)); n.set(k, (n.get(k) || 0) + 1); }));
+    window.__mo.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+  });
+  const a = await get();
+  await page.waitForTimeout(ms);
+  const b = await get();
+  const muts = await page.evaluate(() => {
+    window.__mo?.disconnect();
+    return [...window.__muts.entries()].sort((x, y) => y[1] - x[1]).slice(0, 4).map(([k, v]) => `${k}×${v}`).join(", ");
+  });
+  await cdp.detach().catch(() => {});
+  const per = (k) => Math.round(((b[k] - a[k]) / ms) * 10000) / 10;
+  // Süren animasyonlar (sınıf + ad): hangi parçanın boşta çalıştığı rapordan okunsun
+  const running = await page.evaluate(() =>
+    [...new Set(document.getAnimations().filter((x) => x.playState === "running").map((x) => `${x.effect?.target?.getAttribute?.("class")?.split(" ")[0] || x.effect?.target?.tagName || "?"}:${x.animationName || x.transitionProperty || "?"}`))].slice(0, 8).join(", "),
+  );
+  return { style: per("RecalcStyleCount"), layout: per("LayoutCount"), running: [running, muts && `değişen: ${muts}`].filter(Boolean).join(" · ") };
+}
+
 export async function scenarios(h) {
   const { check, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI, setTasks, setTranscript, setLive, TODAY, TOMORROW, log } = h;
 
@@ -11,6 +57,7 @@ export async function scenarios(h) {
   await page.evaluate(() => localStorage.setItem("sa-quick", "1"));
   const G1 = "Sekme çubuğundaki yeşil düğme";
   await check(G1, "ana sayfa", "ortada tek asistan düğmesi, 5 sütun", async () => {
+    await orb(page).first().waitFor({ timeout: 12000 }).catch(() => {}); // yavaş makinede sekme çubuğu geç çiziliyor
     const n = await orb(page).count();
     const cols = await page.locator("nav[aria-label='Sekmeler'] > div").getAttribute("class");
     return [n === 1 && /grid-cols-5/.test(cols), `${n} düğme · ${/grid-cols-(\d)/.exec(cols)?.[1]} sütun`];
@@ -21,6 +68,11 @@ export async function scenarios(h) {
     return [st === "idle" && /dokun konuş, basılı tut yaz/.test(lb), `${st} · ${lb}`];
   });
 
+  await check("Enerji (boşta)", "ana sayfa", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
+    await page.waitForTimeout(800);
+    const c = await idleCost(page);
+    return [c.style <= ENERGY_MAX && c.layout <= ENERGY_MAX, `stil ${c.style}/sn · yerleşim ${c.layout}/sn${c.running ? ` · süren: ${c.running}` : ""}`];
+  });
   // Dokun: tam ekran açılır, dinler
   const srBefore = await page.evaluate(() => window.__t.srStarts);
   await orb(page).click();
@@ -42,23 +94,27 @@ export async function scenarios(h) {
     return [!!ok && n > srBefore, `${await state(page)} · tanıma ${n - srBefore} kez açıldı`];
   });
   // Dinlerken "Dinliyorum" yalnız alttaki çubukta, halkada yazı yok (2026-10-18)
-  await check("Halka renkleri", "dinlerken", "kırmızı halka + ses çubukları, halkada yazı yok, alttaki çubukta “Dinliyorum”", async () => {
+  // Asistan düğmede (2026-10-22): düğme kırmızı, içinde canlı ses dalgası; "Dinliyorum" söylenen yazının altında
+  // Seyhun 2026-10-22: "iki farklı yerde dinliyorum yazısı çıkıyor": ekranda tek "Dinliyorum"
+  await check("Halka renkleri", "dinlerken", "düğme kırmızı + ses dalgası, durum satırında yazı yok, “Dinliyorum” tek yerde", async () => {
     const c = await ringColor(page);
-    const bars = await page.locator("[data-dome] rect.aring-bar").count();
+    const bars = (await page.locator("[data-dome] [data-ring] canvas").count()) === 1 ? 5 : 0;
     const t = (await ringText(page)).trim();
-    const box = await dome(page).locator(".asheet-input").innerText();
-    return [c === "kırmızı" && bars === 5 && !t && /Dinliyorum/.test(box), `${c} · ${bars} çubuk · halka: “${t}” · çubuk: “${box.replace(/\n/g, " ")}”`];
+    const all = await dome(page).innerText();
+    const n = (all.match(/Dinliyorum/g) || []).length;
+    return [c === "kırmızı" && bars === 5 && !t && n === 1, `${c} · ${bars} çubuk · halka: “${t}” · “Dinliyorum” ${n} kez`];
   });
-  await check("Halka renkleri", "zemin", "arkada renk bulutları ve nokta ızgara (abg)", async () => {
-    const n = await page.locator("[data-dome] .abg > i").count();
-    const anim = await page.locator("[data-dome] .ab-b1").evaluate((el) => getComputedStyle(el).animationName);
-    return [n >= 4 && anim !== "none", `${n} katman · ${anim}`];
+  // Asistan düğmede (2026-10-22): ayrı zemin yok, arkadaki sayfa bulanıklaşır; örtü sürekli oynamaz; yan düğmeler
+  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), yanda Kapat ve Dur", async () => {
+    const z = await page.locator("[data-dome] .abg").evaluate((el) => { const c = getComputedStyle(el); return { anim: `${c.animationName} ${c.animationIterationCount}`, blur: c.backdropFilter || c.webkitBackdropFilter || "" }; });
+    const side = (await btn(page, "Asistanı kapat").count()) + (await btn(page, "Dur").count());
+    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && side === 2, `örtü ${z.anim} · ${z.blur} · yan düğme ${side}`];
   });
   await say(page, "notlarımı oku");
   // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutuya akar, altta süre + dalga, ■ Dur ve ↑ Gönder
   await check(G2, "konuşurken", "kutuda canlı yazı, süre, Dur ve Gönder düğmeleri", async () => {
     const ok = await waitFor(async () => /notlarımı oku/.test(await dome(page).locator(".asheet-input").innerText()), 3000);
-    const box = (await dome(page).locator(".asheet-input").innerText()).replace(/\n/g, " ");
+    const box = (await dome(page).locator(".asheet").innerText()).replace(/\n/g, " ");
     const dur = await btn(page, "Dur").count();
     return [!!ok && /\d:\d\d/.test(box) && dur === 1 && (await btn(page, "Gönder").count()) === 1, `${box.slice(0, 80)} · Dur ${dur}`];
   });
@@ -71,6 +127,11 @@ export async function scenarios(h) {
     const devam = await btn(page, "Konuşmaya devam").count();
     return [/notlarımı oku/.test(box) && devam === 1 && h.aiCalls() === beforeDur && (await state(page)) === "idle", `${box.slice(0, 80)} · devam ${devam} · yz ${h.aiCalls() - beforeDur} · ${await state(page)}`];
   });
+  await check("Enerji (boşta)", "asistan açık, boşta", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
+    await page.waitForTimeout(800);
+    const c = await idleCost(page);
+    return [c.style <= ENERGY_MAX && c.layout <= ENERGY_MAX, `stil ${c.style}/sn · yerleşim ${c.layout}/sn${c.running ? ` · süren: ${c.running}` : ""}`];
+  });
   const before = h.aiCalls();
   await btn(page, "Gönder").click();
   const G3 = "Yerel hızlı cevap (Hazır cevaplar açık)";
@@ -81,14 +142,14 @@ export async function scenarios(h) {
   await check("Halka renkleri", "cevaptan sonra", "yeşil halka ve onay (✓ Tamam), durum boşta", async () => {
     await waitFor(async () => (await state(page)) === "idle", 5000);
     const c = await ringColor(page);
-    const chk = await page.locator("[data-dome] .aring-check").count();
+    const chk = await page.locator("[data-dome] .lring-check").count();
     return [c === "yeşil" && chk === 1, `${c} · onay ${chk} · ${await state(page)}`];
   });
 
   // Kapat (×): aşağı kayarak kapanır, sekmeler geri gelir
   const G4 = "Kapanış";
-  await btn(page, "Konuşmayı bitir").click();
-  await check(G4, "× (Konuşmayı bitir)", "afull-out ile aşağı kayarak kapanır", async () => {
+  await btn(page, "Asistanı kapat").click();
+  await check(G4, "× (Asistanı kapat)", "afull-out ile aşağı kayarak kapanır", async () => {
     const cls = await waitFor(async () => {
       const c = await full(page).getAttribute("class", { timeout: 300 }).catch(() => "");
       return /afull-out/.test(c) ? c : null;
@@ -100,6 +161,11 @@ export async function scenarios(h) {
     const n = await full(page).count();
     const o = await orb(page).count();
     return [n === 0 && o === 1, `tam ekran ${n} · düğme ${o}`];
+  });
+  // Seyhun 2026-10-22: sekme çubuğu bir anda belirmesin, alttan kayarak gelsin
+  await check(G4, "sekme çubuğu", "alttan kayarak gelir (atab-up)", async () => {
+    const c = await page.locator("[data-dome] .atabbar-wrap").getAttribute("class").catch(() => "");
+    return [/atab-up/.test(c || ""), c || "çubuk yok"];
   });
 
   // ================================================================ 2. Basılı tut: yaz
@@ -182,29 +248,44 @@ async function scenarios2(h) {
     return [!!ok, `tam ekran ${await full(page).count()} · küçük ${await page.locator(".amini").count()}`];
   });
 
-  // Önceki sohbet: yeniden açınca son sohbetler soluk görünür
-  const GP = "Önceki sohbetler";
+  // Yeniden açılış (Seyhun 2026-10-22): 30 sn içinde açınca konuşma kalır; sonra ekran temiz başlar, önceki sohbetler
+  // ekranda görünmez ama yapay zeka hatırlamaya devam eder (istekte geçmiş olarak gider)
+  const GP = "Yeniden açılış";
   await orb(page).click();
-  await check(GP, "yeniden aç", "son sohbet üstte soluk görünür (Önceki sohbetler)", async () => {
-    const ok = await waitFor(async () => /akşam ne yapsam/.test(await page.locator("[data-dome] [data-past]").innerText().catch(() => "")), 3000);
-    const cls = await page.locator("[data-dome] [data-past]").getAttribute("class").catch(() => "");
-    return [!!ok && /text-mut/.test(cls), ok ? `soluk: ${/text-mut/.test(cls)}` : "görünmüyor"];
-  });
-  await check(GP, "en çok 3 sohbet", "3'ten fazla eski sohbet gösterilmez", async () => {
-    const n = await page.locator("[data-dome] [data-past] > *").count();
-    return [n <= 3, `${n} sohbet`];
+  await check(GP, "30 sn içinde yeniden aç", "konuşma kaldığı yerden görünür", async () => {
+    const ok = await waitFor(async () => /rüzgâr sakin/.test(await convo(page)), 3000);
+    return [!!ok, ok ? "konuşma ekranda" : `görünmüyor: ${clean(await convo(page)).slice(0, 80)}`];
   });
   await closeAll(page);
-  // Ayarlar › Geçmiş sohbetler › gizle: ekranda görünmez (hafıza kalır)
-  await page.evaluate(() => localStorage.setItem("sa-asst-past-shown", "0"));
-  await orb(page).click();
-  await check(GP, "gizliyken yeniden aç", "eski sohbetler ekranda görünmez", async () => {
-    await page.waitForTimeout(1200);
-    const n = await page.locator("[data-dome] [data-past]").count();
-    return [n === 0, `${n} eski sohbet alanı`];
+  await page.evaluate(() => {
+    const now = Date.now.bind(Date);
+    window.__realNow = now;
+    Date.now = () => now() + 31000;
   });
+  await orb(page).click();
+  await check(GP, "30 sn sonra yeniden aç", "ekran temiz: eski konuşma ve önceki sohbetler görünmez", async () => {
+    await waitFor(async () => (await page.locator(".afull.afull-in").count()) > 0, 3000);
+    await page.waitForTimeout(800);
+    const c = clean(await convo(page));
+    const past = await page.locator("[data-dome] [data-past]").count();
+    return [!/rüzgâr sakin|akşam ne yapsam/.test(c) && past === 0, `konuşma: “${c.slice(0, 60)}” · eski sohbet alanı ${past}`];
+  });
+  {
+    setAI(() => ({ intent: "chat", message: "Tamam, hatırlıyorum." }));
+    await closeAll(page);
+    const n = calls.length;
+    await talkAsk(page, "az önce ne demiştin");
+    await check(GP, "temiz ekranda yeni soru", "yapay zekaya önceki konuşma geçmiş olarak gider (hafıza sürer)", async () => {
+      await waitFor(async () => calls.slice(n).some((c) => c.path === "/api/assistant"), 6000);
+      const req = calls.slice(n).find((c) => c.path === "/api/assistant")?.body || {};
+      const sent = JSON.stringify([req.history || "", req.sessions || []]);
+      return [/rüzgâr sakin|akşam ne yapsam/.test(sent), sent.slice(0, 120)];
+    });
+  }
+  await page.evaluate(() => window.__realNow && (Date.now = window.__realNow));
+  setAI(() => ({ intent: "chat", message: "Tamam." }));
+  await waitFor(async () => (await state(page)) === "idle", 3000);
   await closeAll(page);
-  await page.evaluate(() => localStorage.removeItem("sa-asst-past-shown"));
 
   // Sesli yanıt açık: okur (mavi), bitince mikrofon bir kez açılır
   const GS = "Sesli yanıt";
@@ -304,9 +385,17 @@ async function scenarios2(h) {
 async function answer(h, page, text) {
   const { state, btn, waitFor, setTranscript } = h;
   setTranscript(text);
-  await waitFor(async () => (await state(page)) === "listening", 6000);
+  // Soru okununca mikrofon açılır; GitHub makinesi yavaş olduğunda okuma uzun sürebiliyor (6 sn yetmedi, 22 Eki)
+  await waitFor(async () => (await state(page)) === "listening", 12000);
   await page.waitForTimeout(1200);
-  if (await btn(page, "Gönder").count()) await btn(page, "Gönder").click({ timeout: 5000 });
+  // Dinlerken küre sesin gücüyle büyüyüp küçülür (sahte mikrofonun bipi): "durağan değil" beklemesine takılmasın
+  if (await btn(page, "Gönder").count()) return btn(page, "Gönder").click({ timeout: 5000, force: true });
+  // Kendiliğinden açılan mikrofon bu arada kapandıysa (GitHub makinesinde yavaş: 22 Eki üç kez) kullanıcı gibi Konuş'a basılır
+  await waitFor(async () => (await btn(page, "Konuş").count()) > 0, 6000);
+  if (!(await btn(page, "Konuş").count())) return;
+  await btn(page, "Konuş").click({ timeout: 5000 });
+  await waitFor(async () => (await btn(page, "Gönder").count()) > 0, 6000);
+  if (await btn(page, "Gönder").count()) await btn(page, "Gönder").click({ timeout: 5000, force: true });
 }
 
 async function scenarios3(h) {
@@ -499,7 +588,7 @@ async function scenarios3(h) {
   await check(GO, "Ege'ye yaz … → “gönder”", "sesle onaylanınca mesaj gider", async () => {
     const ok = await waitFor(async () => /Gönderdim|gönderemedim/.test(await convo(page)), 9000);
     const t = clean(await convo(page));
-    return [!!ok && /Gönderdim/.test(t), `“${t.slice(-90)}”`];
+    return [!!ok && /Gönderdim/.test(t), `“${t.slice(-90)}” · durum ${await state(page)} · mikrofon ${await page.evaluate(() => window.__t.srStarts)} kez`];
   });
   setTranscript("");
   await closeAll(page);
@@ -552,7 +641,7 @@ async function scenarios3(h) {
   await talkAsk(page, "kasaya 300 lira gelir yaz ve yarın 10'da tekne yıkama planı ekle");
   const t0 = Date.now();
   while (Date.now() - t0 < 9000) {
-    const off = await page.locator("[data-dome] svg circle").nth(1).getAttribute("stroke-dashoffset").catch(() => null);
+    const off = await page.locator("[data-dome] [data-ring]").first().getAttribute("data-fill").catch(() => null);
     if (off != null && !fills.includes(off)) fills.push(off);
     if ((await state(page)) === "idle" && fills.length) break;
     await page.waitForTimeout(100);
@@ -667,15 +756,15 @@ async function scenarios4(h) {
     });
     await page.waitForTimeout(400);
     await check(GN, "Yarış multimedya: arkadan dönüş", "başka gün seçiliyken uygulamaya 1 dk sonra dönünce yine bugün", async () => [(await picked()) === today, `${await picked()}`]);
-    await check(GN, "Yarış multimedya: sayaç", "ana düğme Başlat → Durdur → Devam; durunca kartta Sıfırla; start yarış açmaz", async () => {
+    await check(GN, "Yarış multimedya: sayaç", "ana düğme Başlat → Durdur → Devam; durunca Sıfırla alt şeritte Devam'ın yanında (iPhone saati gibi); start yarış açmaz", async () => {
       const old = await page.locator("button", { hasText: /^Başlat ·/ }).count();
       await page.getByRole("button", { name: "Başlat", exact: true }).click({ timeout: 5000 });
       await page.waitForTimeout(1200);
       await page.getByRole("button", { name: "Durdur", exact: true }).click({ timeout: 5000 });
       await page.waitForTimeout(500);
       const dv = await page.getByRole("button", { name: "Devam", exact: true }).count();
-      const sf = await page.locator("section button", { hasText: /^Sıfırla$/ }).count();
-      await page.locator("section button", { hasText: /^Sıfırla$/ }).click();
+      const sf = await page.locator("[data-bar] button", { hasText: /^Sıfırla$/ }).count();
+      await page.locator("[data-bar] button", { hasText: /^Sıfırla$/ }).click({ timeout: 5000 });
       await page.waitForTimeout(500);
       await page.getByRole("button", { name: /Yanlış başlattım/ }).click({ timeout: 5000 }).catch(() => {});
       await page.waitForTimeout(800);
@@ -886,7 +975,8 @@ async function scenarios4(h) {
     await orb(page).click();
     await page.waitForTimeout(800);
     await check("Tam ekran üstte", "yeni sürüm notu varken asistanı aç", "asistanın yazı kutusu ve düğmeleri görünür (notun altında kalmaz)", async () => {
-      const r = await page.locator("[data-dome] .asheet-input").boundingBox();
+      // Düğme sırası (× · küre · sağdaki düğme): dinlerken söz yoksa yazı kutusu çizilmez
+      const r = await page.locator("[data-dome] [data-orb]").locator("..").boundingBox();
       const pts = [[r.x + 30, r.y + r.height - 30], [r.x + r.width / 2, r.y + 20], [r.x + r.width - 30, r.y + r.height - 30]];
       const hit = await page.evaluate((ps) => ps.every(([x, y]) => !!document.elementFromPoint(x, y)?.closest("[data-dome]")), pts);
       return [hit && had > 0, `${had ? "not vardı" : "not çıkmadı (sınanamadı)"} · ${hit ? "kutu ve düğmeler üstte" : "“Güncellendi” notu kutuyu örtüyor"}`];

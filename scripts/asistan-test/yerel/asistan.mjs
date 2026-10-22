@@ -76,7 +76,7 @@ const P = (page) => ({ page }), C = (chat) => ({ chat }), W = (chatWith) => ({ c
 const cases = [
   // sayfalar — farklı söyleyişler
   ["yoklamayı aç", P("attendance")], ["yoklama sayfasını açar mısın", P("attendance")], ["yoklamaya git", P("attendance")], ["Yoklama ekranını göster", P("attendance")],
-  ["planları aç", P("plans")], ["planlara git", P("plans")], ["planlar sayfası", P("plans")], ["planlarımı göster", P("plans")], ["etkinlikleri aç", P("events")], ["etkinlikler sayfasına git", P("events")], ["etkinliklerim", P("events")], ["instagram sayfasını aç", P("posts")], ["gönderileri aç", P("posts")], ["instagram", P("posts")], ["gönderilerim", P("posts")], ["rüzgâr haritasını aç", P("wind")], ["rüzgar haritası", P("wind")], ["rüzgâr haritasına bakalım", P("wind")], ["windy'yi aç", P("wind")], ["hava durumunu aç", P("weather")], ["hava durumu sayfasına git", P("weather")],
+  ["planları aç", P("plans")], ["planlara git", P("plans")], ["planlar sayfası", P("plans")], ["planlarımı göster", P("plans")], ["etkinlikleri aç", P("events")], ["etkinlikler sayfasına git", P("events")], ["etkinliklerim", P("events")], ["instagram sayfasını aç", P("posts")], ["gönderileri aç", P("posts")], ["instagram", P("posts")], ["gönderilerim", P("posts")], ["medya sayfasına git", P("media")], ["medyayı aç", P("media")], ["medya", P("media")], ["videoları göster", P("media")], ["sosyal medya sayfasını aç", P("posts")], ["rüzgâr haritasını aç", P("wind")], ["rüzgar haritası", P("wind")], ["rüzgâr haritasına bakalım", P("wind")], ["windy'yi aç", P("wind")], ["hava durumunu aç", P("weather")], ["hava durumu sayfasına git", P("weather")],
   ["ana sayfaya git", P("home")], ["anasayfaya dön", P("home")], ["ana sayfa", P("home")], ["başa dön", P("home")], ["ana ekrana geç", P("home")],
   ["görevleri aç", P("tasks")], ["görevlerime bakalım", P("tasks")], ["yapılacakları göster", P("tasks")], ["işlerimi aç", P("tasks")],
   ["notları aç", P("notes")], ["notlarıma git", P("notes")], ["notlar", P("notes")],
@@ -321,6 +321,7 @@ const Fa = (desc, fn) => ({ desc, fn, ok: (r) => r === true });
 group("Velilere duyuru ve iptal")([
   ["velilere yaz", Fa("Sporcular grubuna gider", () => AIA.parseAssistant({ intent: "message", message: "Göndereyim mi?", send: { to: "velilere", text: "Cumartesi kamp 9'da." } }).send?.to === "Sporcular")],
   ["iptal işlemi", Fa("op cancel geçerli", () => AIA.parseAssistant({ intent: "action", message: "Açtım", actions: [{ op: "cancel", kind: "plan", id: "p1" }] }).actions[0]?.op === "cancel")],
+  ["plan alarmı", Fa("'antrenmanın 1 saat öncesine alarm kur' → patch.alarm 60 (yapay zeka yazmasa da)", () => AIA.parseAssistant({ intent: "action", message: "Tamam.", actions: [{ op: "update", kind: "plan", id: "p1", patch: {} }] }, [], [], "antrenmanın 1 saat öncesine alarm kur").actions[0]?.patch.alarm === 60)],
   ["haftalık plan", Fa("weekly → repeat week", () => AIA.parseAssistant({ intent: "create", message: "", items: [{ type: "plan", title: "Antrenman", date: "2026-10-06", time: "16:00", weekly: true }] }).items[0]?.repeat === "week")],
   ["haftalık plan (yapay zeka kaçırdı)", Fa("cümlede 'her salı' varsa weekly yazılmasa da haftalık, salıya denk", () => { const it = AIA.parseAssistant({ intent: "create", message: "Her hafta salı ekledim.", items: [{ type: "plan", title: "Optimist antrenmanı", date: "", time: "16:00" }] }, [], [], "her salı 16:00 Optimist antrenmanı ekle").items[0]; return it?.repeat === "week" && it.time === "16:00" && new Date(`${it.date}T12:00:00`).getDay() === 2; })],
   ["tek seferlik plan", Fa("tekrar söylenmediyse haftalık olmaz", () => !AIA.parseAssistant({ intent: "create", message: "", items: [{ type: "plan", title: "Antrenman", date: "2026-10-06", time: "16:00" }] }, [], [], "salı 16:00 antrenman ekle").items[0]?.repeat)],
@@ -1073,6 +1074,10 @@ group("Temiz başlık ve sorusuz ekleme")([
   ["Tamam. Kaydedeyim mi?", Y("tamam ve soru atılır", extraNote, "")],
   ["O saatte Antrenman planı da var. Kaydedeyim mi?", Y("ek bilgi kalır", extraNote, "O saatte Antrenman planı da var. ")],
   ["Rüzgâr 22 knot olacak.", Y("rüzgâr bilgisi kalır", extraNote, "Rüzgâr 22 knot olacak. ")],
+  ["kartı tekrar eden cümle", Y("atılır (kart gösteriyor)", () => extraNote("Yarın saat 10'da antrenmanın var.", [{ title: "Antrenman" }]), "")],
+  ["kartı tekrar eden + rüzgâr", Y("yalnız rüzgâr kalır", () => extraNote("Yarın 10'da yelken antrenmanı var. Rüzgâr 22 knot olacak.", [{ title: "Yelken antrenmanı" }]), "Rüzgâr 22 knot olacak. ")],
+  ["aynı adlı başka plan", Y("çakışma bilgisi kalır", () => extraNote("O saatte Antrenman planı da var.", [{ title: "Antrenman" }]), "O saatte Antrenman planı da var. ")],
+  ["başka konu", Y("kalır", () => extraNote("Ali bu hafta izinli.", [{ title: "Toplantı" }]), "Ali bu hafta izinli. ")],
 ]);
 
 // Kulüp özeti (ana yapay zekaya giden; lib/ai/clubDigest.js)
@@ -1091,6 +1096,19 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["sporcular", C("ad ve sınıf, kişisel bilgi yok", () => CD.athletesBlock([{ studentName: "Ali Kaya", cls: "Optimist", tc: "123" }]), (t) => /Ali Kaya \(Optimist\)/.test(t) && !/123/.test(t))],
     ["envanter", C("kategori adetleri", () => CD.inventoryBlock([{ name: "Yelken Kulübü", items: [{ cat: "Tekne", qty: 3 }, { cat: "Tekne", qty: 1 }, { cat: "Telsiz", qty: 2, state: "Arızalı" }] }]), (t) => /Tekne 4/.test(t) && /Telsiz 2/.test(t) && /sorunlu 1/.test(t))],
     ["boş", C("veri yoksa blok yok", () => CD.clubDigest({}), (t) => t === "")],
+  ]);
+}
+
+// Yeniden açılış: 30 sn içinde konuşma ekranda kalır, sonra temiz (Seyhun 2026-10-22; hafıza PAST_MS sürer)
+{
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  const t = 1_000_000;
+  group("Yeniden açılış (30 sn)")([
+    ["10 sn sonra", C("konuşma ekranda kalır", () => CX.resumeOk(t, 3, t + 10e3), (r) => r === true)],
+    ["31 sn sonra", C("ekran temiz başlar", () => CX.resumeOk(t, 3, t + 31e3), (r) => r === false)],
+    ["boş konuşma", C("konuşma yoksa sürdürülecek bir şey yok", () => CX.resumeOk(t, 0, t + 1e3), (r) => r === false)],
+    ["hiç kapanmadı", C("ilk açılış temiz", () => CX.resumeOk(0, 3, t), (r) => r === false)],
+    ["hafıza daha uzun", C("yapay zekanın hatırladığı süre ekran süresinden uzun", () => CX.PAST_MS > CX.REOPEN_MS, (r) => r === true)],
   ]);
 }
 
@@ -1504,6 +1522,28 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["önemli yap", C("patch important true", () => buildPatch("plan", upd({ important: true })), (r) => r.important === true)],
     ["önemliden çıkar", C("patch important false", () => buildPatch("plan", upd({ important: false })), (r) => r.important === false)],
     ["söylenen", C("“önemli”", () => describeAction({ op: "update", kind: "plan", patch: { important: true } }, { title: "Toplantı" }), (r) => /önemli/.test(r))],
+  ]);
+}
+
+// Yalnız istenen (Seyhun 2026-10-22): kayıt konusunda geçen ad sorumlu olmaz, istenmeyen mesaj gitmez (lib/ai/assistant.js)
+{
+  const { parseAssistant } = await import("@/lib/ai/assistant");
+  const P = ["Hüseyin Enes", "Ali Kaya", "Ayşe Yılmaz"];
+  const pl = (o = {}) => ({ type: "plan", title: "Tekne tamiri", date: tom, time: "09:00", assignTo: ["Hüseyin Enes"], ...o });
+  const parse = (said, extra = {}) => parseAssistant({ intent: "create", message: "", items: [pl()], ...extra }, P, ["Hüseyin Enes", "Ali Kaya"], said);
+  const who = (r) => r.items[0].assignTo || [];
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  const SAID = "Yarına plan oluşturalım sabah 9 için. Hüseyin Enes'in teknesinin tamir edilmesi.";
+  group("Yalnız istenen (sorumlu, mesaj)")([
+    ["Enes'in teknesi", C("sorumlu atanmaz", () => who(parse(SAID)), (r) => r.length === 0)],
+    ["kendiliğinden mesaj", C("mesaj atılmaz", () => parse(SAID, { send: { to: "Hüseyin Enes", text: "Yarın 9'da tekne tamiri var." } }), (r) => !r.send && !r.sends.length && r.items.length === 1)],
+    ["Ali'ye ver", C("sorumlu kalır", () => who(parse("yarın 9'da tekne tamiri planı ekle, Ali'ye ver", {})), (r) => r.length === 1)],
+    ["Ali yapsın", C("sorumlu kalır", () => who(parse("yarın 9'da tekne tamiri, Ali yapsın")), (r) => r.length === 1)],
+    ["sorumlu Ali", C("sorumlu kalır", () => who(parse("yarın 9'da tekne tamiri ekle sorumlu Ali")), (r) => r.length === 1)],
+    ["görevlendir", C("sorumlu kalır", () => who(parse("Ali'yi yarın 9'daki tekne tamirine görevlendir")), (r) => r.length === 1)],
+    ["olsun", C("“olsun” atama değil", () => who(parse("yarın 9'da tekne tamiri olsun")), (r) => r.length === 0)],
+    ["plan + yaz", C("istenen mesaj kalır", () => parse("yarın 9'a tekne tamiri ekle, Ali'ye de yaz", { send: { to: "Ali Kaya", text: "Yarın 9'da tekne tamiri var." } }), (r) => !!r.send)],
+    ["sorumlu ≠ sor", C("“sorumlu” mesaj sözü değil", () => parse("yarın 9'da tamir, sorumlu Ali", { send: { to: "Ali Kaya", text: "x" } }), (r) => !r.send)],
   ]);
 }
 

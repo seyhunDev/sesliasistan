@@ -11,7 +11,7 @@ import { EventEditor } from "@/features/events/EventEditor";
 import { EventForm } from "@/features/events/EventForm";
 import { freshEvent, cleanEvent } from "@/features/events/eventModel";
 import { kindFromText } from "@/features/events/eventWords";
-import { addEventPlan, askPlan, deleteEvent, loadEvents, saveEvent } from "@/features/events/events";
+import { addEventPlan, askPlan, deleteEvent, eventsNow, loadEvents, saveEvent } from "@/features/events/events";
 import { goBack } from "@/lib/navTrail";
 
 // Tek etkinlik (yeni etkinlik için /events/new)
@@ -26,15 +26,18 @@ export default function EventPage() {
   return <Event orgId={profile.orgId} uid={user.uid} by={{ name: profile?.name ?? "Kullanıcı" }} />;
 }
 
+// Listeden yeni açıldıysa (1 dk içinde okunan liste) etkinlik bellekten gelir: "yükleniyor" yok, yeniden okuma yok
+const cachedEvent = (orgId, id) => eventsNow(orgId, 60e3)?.find((x) => x.id === id) || null;
+
 function Event({ orgId, uid, by }) {
   const { id } = useParams();
   const router = useRouter();
   const toast = useToast();
   const { saveDrafts } = useData();
-  const [ev, setEv] = useState(id === "new" ? freshEvent() : null);
+  const [ev, setEv] = useState(() => (id === "new" ? freshEvent() : cachedEvent(orgId, id)));
   const [missing, setMissing] = useState(false);
   useEffect(() => {
-    if (id === "new") return;
+    if (id === "new" || cachedEvent(orgId, id)) return;
     loadEvents(orgId).then(
       (list) => {
         const e = list.find((x) => x.id === id);

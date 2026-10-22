@@ -234,7 +234,7 @@ export function TimerSound() {
 }
 
 // mode "start" (yarış multimedya sayfası, Seyhun 2026-10-18): yelken start dizisi; başlatınca, 4:00 ve 1:00 kala bip, son 10 saniye
-// her saniye, 0'da uzun bip (lib/raceLive.js beepAt). Sayaç düğmelerinin işi (Countdown ve uygulama içi kamera aynı yolu kullanır, CameraSheet).
+// her saniye, 0'da uzun bip (lib/raceLive.js beepAt). Sayaç düğmelerinin işi (Countdown).
 // TEK SAYAÇ (Seyhun 2026-10-21: "tek bir sayaç kullanalım, oradan yönetelim"): telefonda bir sayaç var; antrenman, yarış multimedya, kamera ve
 // küre aynı sayacı gösterir ve yönetir. own/where: sayacın başlatıldığı sayfa ve adı (başka sayfada üstte yazar, dokununca oraya gider).
 // race: o sayfanın yarış akışı; yalnız sayaç o sayfanın ve yarışa bağlıysa (rid) çağrılır. Akışa önceki kayıt verilir (Geri al için).

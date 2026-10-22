@@ -39,15 +39,21 @@ const dataUrlOf = (blob) =>
     r.readAsDataURL(blob);
   });
 
+// Son okunan liste bellekte: gönderiden geri dönünce liste "yükleniyor" göstermeden hemen çizilir, arkada tazelenir
+let last = null; // { orgId, list }
+export const postsNow = (orgId) => (last?.orgId === orgId ? last.list : null);
+
 // Okuma: sayfa açılınca bir kez (canlı dinleme yok, kota için)
 export async function loadPosts(orgId) {
   const snap = await getDocs(col(orgId));
-  return snap.docs
+  const list = snap.docs
     .map((d) => {
       const x = d.data();
       return { id: d.id, ...cleanPost(x), at: x.updatedAt?.toMillis?.() || x.createdAt?.toMillis?.() || 0 };
     })
     .sort((a, b) => b.at - a.at);
+  last = { orgId, list };
+  return list;
 }
 
 export async function loadPost(orgId, id) {
@@ -138,6 +144,7 @@ export async function deletePost(orgId, post) {
 
 // Arşive kaldır / arşivden çıkar (gönderi silinmez; sırası değişmesin diye updatedAt'a dokunulmaz)
 export async function archivePost(orgId, id, archived) {
+  if (last) last.list = last.list.map((p) => (p.id === id ? { ...p, archived: !!archived } : p));
   await updateDoc(doc(col(orgId), id), { archived: !!archived, archivedAt: archived ? serverTimestamp() : null });
 }
 

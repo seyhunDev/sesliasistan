@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Splash } from "@/components/ui/Splash";
-import { AppLogo } from "@/components/ui/AppLogo";
+import { GlowMark } from "@/components/ui/AppLogo";
 
+// Uygulamanın ilk yüzü: tüm ekran lacivert kokpit. Logo ekranın üstünde sabit durur (ortalanmaz), böylece
+// telefonda klavye açılınca yukarı kaymaz; her adımda tek kutu + tek düğme klavyenin üstünde kalır (2026-10-22).
+// Açılış: açılış ekranının logosu buradaki logonun yerine uçar (BootSplash, data-boot-target), ardından Velora yazısı ve
+// form sırayla belirir. Açılış ekranı yokken (çıkış yapınca) logo büyüyerek gelir.
 export default function AuthLayout({ children }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  // İlk çizimde açılış ekranı yoksa logo kendisi belirir (uçuş olmayacak)
+  const [pop] = useState(() => typeof document !== "undefined" && !document.documentElement.dataset.boot);
 
   useEffect(() => {
     if (!loading && user) router.replace("/");
@@ -16,13 +22,18 @@ export default function AuthLayout({ children }) {
 
   if (loading || user) return <Splash />;
   return (
-    <div data-boot-enter="" className="mx-auto flex min-h-dvh max-w-[26.25rem] flex-col justify-center px-5 py-10">
-      {/* Uygulama kimliği */}
-      <div className="mb-7 flex flex-col items-center text-center">
-        <AppLogo size={112} variant="full" />
-        <p className="mt-3 text-[0.875rem] text-mut">Planlar, görevler ve notlar; konuşarak</p>
+    <div className="ck min-h-dvh overflow-hidden">
+      <div className="mx-auto max-w-[26.25rem] px-6 pb-10 pt-[calc(env(safe-area-inset-top)+3.5rem)]">
+        <div className="mb-8 flex flex-col items-center">
+          <GlowMark size={84} data-boot-target="" className={pop ? "auth-pop" : ""} />
+          <span className="auth-rise mt-3 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white" style={{ "--d": ".5s" }}>
+            Velora
+          </span>
+        </div>
+        <div className="auth-rise" style={{ "--d": ".6s" }}>
+          {children}
+        </div>
       </div>
-      <div className="rounded-3xl bg-card p-6 shadow-[0_1px_3px_rgba(38,40,44,.06),0_12px_32px_-16px_rgba(38,40,44,.18)]">{children}</div>
     </div>
   );
 }

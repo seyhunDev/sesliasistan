@@ -17,21 +17,6 @@ export function saveSession(uid, s) {
   } catch {}
 }
 
-// Asistan ekranında eski sohbetler (Ayarlar › Asistan › Geçmiş sohbetler). Gizliyken yalnız ekranda görünmez; yapay
-// zekanın hafızası (son oturumlar) sürer. Bu cihazda saklanır, varsayılan açık (Seyhun, 2026-10-21)
-const SHOWN = "sa-asst-past-shown";
-export function pastShown() {
-  try {
-    return localStorage.getItem(SHOWN) !== "0";
-  } catch {
-    return true;
-  }
-}
-export function setPastShown(on) {
-  try {
-    localStorage.setItem(SHOWN, on ? "1" : "0");
-  } catch {}
-}
 // Geçmişi tamamen sil: bu cihazdaki tüm oturumlar ve açık asistanın az önceki konuşması (hafıza da gider)
 export const PAST_CLEAR = "sa-past-clear";
 export function clearSessions() {

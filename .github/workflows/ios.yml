@@ -1,0 +1,32 @@
+# iPhone uygulamasının (mobil/ios) yerel kodu derleniyor mu: imzasız, simülatör için. Yalnız mobil/ios değişince çalışır.
+name: iPhone derleme
+
+on:
+  pull_request:
+    paths:
+      - "mobil/ios/**"
+      - "mobil/package.json"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+jobs:
+  derle:
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobil
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx cap sync ios
+      - run: xcodebuild -version
+      - name: Derle
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -80
+          test ${PIPESTATUS[0]} -eq 0

@@ -50,3 +50,32 @@ Web tarafı: `src/lib/nativePush.js`, `src/lib/push.js`; sunucu: `src/lib/server
 
 - Arama sürerken uygulama arka plana geçince mikrofonun kesilmemesi (ön plan hizmeti).
 - Atama bildiriminin "iletildi" onayı Android'de yazılmaz (bildirim kodu arka planda çalışmıyor).
+
+## iPhone (iOS)
+
+Yalnız kendi iPhone'unda deneme için (App Store yok). Proje `ios/` (Capacitor, Swift Package Manager; CocoaPods
+gerekmez). Kabuk Android'deki gibi canlı siteyi açar; web değişiklikleri kendiliğinden gelir, yalnız yerel kısım
+değişince Xcode'dan yeniden kurulur. Ad "Velora", paket `com.seyhunyildiz.sesliasistan`.
+
+- Mac'te: `cd mobil && npm install && npm run ios` (Xcode açılır), Signing & Capabilities › Team seçilir, iPhone
+  kabloyla bağlanıp Run. iPhone'da Ayarlar › Gizlilik ve Güvenlik › Geliştirici Modu açık olmalı.
+- İzin metinleri (Info.plist): mikrofon, kamera, fotoğraflar. Arka planda ses (`UIBackgroundModes audio`): ekran
+  kilitlenince arama ve toplantı kaydı sürsün diye.
+- Yerel parçalar (`App/VeloraPlugin.swift`, web `src/lib/nativeIos.js` + `src/features/ios/IosBridge.jsx`):
+  - Bas-konuş: `Ortak/BasKonusIntent.swift` (Siri "Velora dinle", Eylem tuşu / Kısayollar "Velora'ya söyle", iOS 18+
+    Denetim Merkezi ve kilit ekranı düğmesi `VeloraWidget/BasKonusDugmesi.swift`, `velora://bas-konus`). Uygulama açılır,
+    asistan dinler.
+  - Tek sayaç kilit ekranında ve Dynamic Island'da (Canlı Etkinlik, iOS 16.2+): `VeloraWidget/SayacEtkinligi.swift`;
+    dokununca sayacın sayfası (`velora://sayac`).
+  - Plan alarmı (`alarm` alanı, `src/lib/planAlarm.js`): iOS 26'da saat alarmı (AlarmKit, sessiz modda da çalar), eski
+    iOS'ta sesli bildirim. Uygulama açılınca ve planlar değişince eşitlenir.
+  - Titreşim (`haptic`, web `src/lib/haptic.js`), Face ID kilidi (`unlock`, `src/features/ios/AppLock.jsx`) ve ana ekran
+    widget'lar (`VeloraWidget/Widgetlar.swift`: Velora (büyük, iOS 17+, Edit Widget ile bölüm seçimi), Rüzgâr, Antrenman, Banka ve aidat, Kelime, Özet; `SiradakiWidget.swift`: Sıradaki +
+    ortak sağlayıcı; `Ruzgar.swift`: ana sayfadaki rüzgâr grafiği). Veri `src/features/ios/WidgetFeed.jsx` → `widgetData` ile ortak
+    uygulama grubuna `group.com.seyhunyildiz.sesliasistan` yazılır, rüzgârı widget open-meteo'dan alır; dokununca
+    `velora://ac/<yol>` o sayfayı açar: `App/VeloraDokunus.swift`.
+  - `VeloraWidget` ayrı hedeftir (app extension, iOS 16.2+); Xcode'da Signing › Team ona da seçilir. Uygulama iOS 15+.
+  - GitHub Actions "iPhone derleme" bu klasör değişince imzasız simülatör derlemesi yapar.
+- Henüz yok: bildirimler (APNs anahtarı ve Firebase ayarı gerekir; uygulamada web bildirimi çalışmaz, ana ekrandaki
+  PWA'yı silme), dosya indirme/yazdırma (`AsistanDosya` iOS'ta yok; paylaşım menüsü çalışır), kapalıyken arama zili
+  (CallKit).

@@ -88,11 +88,15 @@ export function remindOf(text) {
   if (/hat[ıi]rlatma (olmas[ıi]n|yok|gönderme|istemiyorum)|hat[ıi]rlatmas[ıi]n/.test(t)) return 0;
   const m = /(yarım saat|çeyrek saat|(\d+|bir|iki|üç|dört|beş|on|yirmi|otuz|kırk beş|kırk)\s*(dk|dakika|saat|gün))\s*(önceden|önce|evvel|kala)?\s*hat[ıi]rlat/.exec(t);
   if (!m) return null;
+  const v = leadMin(m);
+  return v > 0 && v <= 2880 ? v : null;
+}
+// Eşleşmedeki süre (dakika): m[1] tüm ifade, m[2] sayı, m[3] birim. Alarm cümlesi de kullanır (lib/planAlarm.js).
+export function leadMin(m) {
   if (m[1] === "yarım saat") return 30;
   if (m[1] === "çeyrek saat") return 15;
   const n = /^\d+$/.test(m[2]) ? Number(m[2]) : NUM[m[2]] || 1;
-  const v = m[3] === "gün" ? n * 1440 : m[3] === "saat" ? n * 60 : n;
-  return v > 0 && v <= 2880 ? v : null;
+  return m[3] === "gün" ? n * 1440 : m[3] === "saat" ? n * 60 : n;
 }
 // Taslak listesine uygular: yalnız planlara (plan yoksa olduğu gibi)
 export function applyRemind(items, text) {

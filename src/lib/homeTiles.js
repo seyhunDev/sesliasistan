@@ -247,6 +247,7 @@ export function homeActions(o) {
       o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
       (!o.staff || o.fit) && { href: "/fitness", icon: "dumbbell", label: "Fitness" },
       o.lessons && { href: "/schedule", icon: "book", label: "Dersler" },
+      !o.side && { href: "/english", icon: "chat", label: "İngilizce" }, // kelimeler ve hazır cümleler (Seyhun 2026-10-22)
       { href: "/archive", icon: "archive", label: "Arşiv" },
     ]],
     ["Kulüp", [
@@ -255,6 +256,7 @@ export function homeActions(o) {
       o.athletes && !o.side && { href: "/training/day", icon: "clock", label: "Antrenman" }, // sayaç, yoklama, yarışlar, günlük
       o.races && { href: "/athletes/races", icon: "flag", label: "Yarışlar" },
       (o.training || o.athletes) && !o.side && { href: "/training", icon: "trend", label: "Ant. günlüğü" },
+      o.athletes && !o.side && { href: "/media", icon: "image", label: "Medya" }, // antrenman ve yarış fotoğraf/videoları (Seyhun 2026-10-22)
       o.athletes && o.owner && { href: "/dues", icon: "wallet", label: "Aidatlar" },
       !o.staff && { href: "/inventory", icon: "box", label: "Envanter" },
       { href: "/wind", icon: "wind", label: "Rüzgâr" },
@@ -447,11 +449,13 @@ export function planTone(p) {
   return CAT_TONE[p.cat || p.category] || "gen";
 }
 // Plan türünün kısa adı (Bugün/Yarın satırındaki etiket); Genel ve türsüz planda boş
+// Tür adı başlıkta zaten geçiyorsa yazılmaz ("Optimist antrenmanı" · Antrenman tekrarı; Seyhun 2026-10-22: "iki tane antrenman yazılıyor")
 export function planTag(p) {
   if (!p) return "";
-  if (isFit(p)) return "Fitness";
-  const c = p.cat || p.category || "";
-  return c && c !== "Genel" ? c : "";
+  const c = isFit(p) ? "Fitness" : p.cat || p.category || "";
+  if (!c || c === "Genel") return "";
+  const low = (t) => String(t || "").toLocaleLowerCase("tr-TR");
+  return low(p.title).includes(low(c)) ? "" : c;
 }
 
 // Ana sayfadaki yuvarlak kişi şeridi (Instagram hikâyeleri gibi): bugün doğum günü olanlar önde, sonra çalışan, aile, sporcu, diğer; ada göre.
@@ -478,7 +482,7 @@ export function nextPlan(plans, now, today = now.toLocaleDateString("sv-SE")) {
   const lim = new Date(now.getTime() + 7 * 864e5).toLocaleDateString("sv-SE");
   return (
     (plans || [])
-      .filter((p) => p?.date && p.status !== "cancelled" && p.status !== "done" && p.date >= today && p.date <= lim && !p.fit)
+      .filter((p) => p?.date && !p.done && p.status !== "cancelled" && p.status !== "done" && p.date >= today && p.date <= lim && !p.fit)
       .filter((p) => p.date > today || end(p) > hm)
       .sort((a, b) => `${a.date} ${a.time || "99"}`.localeCompare(`${b.date} ${b.time || "99"}`))[0] || null
   );

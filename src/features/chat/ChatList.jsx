@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useNow } from "@/hooks/useNow";
@@ -94,6 +95,7 @@ export function ChatList() {
     .filter((x) => !needle || fold(x.title).includes(needle))
     .sort((a, b) => b.at - a.at);
   const unreadCount = chatRows.filter((x) => x.unread > 0 && !x.c.archivedByMe).length;
+  const chatCount = chatRows.filter((x) => !x.c.archivedByMe).length; // başlığın alt satırı (okunmamış sayısı süzgeçte durur)
   // Arşivlenen sohbetler (yalnız benim listemden kalkar): listenin altında, dokununca açılır
   const archRows = needle ? [] : chatRows.filter((x) => x.c.archivedByMe).sort((a, b) => b.at - a.at);
 
@@ -138,17 +140,21 @@ export function ChatList() {
   return (
     // min-h-lvh: liste kısa olsa da sayfa en az ekran boyu; Safari alt çubuğu küçülmüş kalır, alt menü yerinden oynamaz
     <main className="mx-auto min-h-lvh max-w-[30rem] pb-[calc(8rem+env(safe-area-inset-bottom))]">
-      {/* Başlık: büyük "Mesajlar", sağda yeni sohbet */}
-      <header className="sticky top-0 z-10 bg-bg/90 px-5 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] backdrop-blur">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-[1.625rem] font-bold leading-tight tracking-[-0.02em]">Mesajlar</h1>
+      {/* Başlık: diğer sayfalardaki PageHeader ile aynı (geri, başlık + kısa alt satır, sağda yeni sohbet); altında arama ve süzgeç */}
+      <header className="sticky top-0 z-10 bg-bg/90 px-4 pb-2.5 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur">
+        <div className="flex items-center gap-2.5">
+          <BackButton href="/" className="-my-0.5 touch-manipulation" />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-[1.375rem] font-semibold leading-tight tracking-tight">Mesajlar</h1>
+            <p className="truncate text-[0.8125rem] text-mut">{chatCount ? `${chatCount} sohbet` : "Henüz sohbet yok"}</p>
+          </div>
           <button
             type="button"
             onClick={() => setNewOpen(true)}
             aria-label="Yeni sohbet"
-            className="grid size-10 place-items-center rounded-full bg-deep text-white shadow-[0_6px_16px_-8px_rgba(31,90,75,.8)] active:scale-90"
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-card text-acc shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-90"
           >
-            <Icon name="edit" className="size-5" />
+            <Icon name="edit" className="size-[1.125rem]" />
           </button>
         </div>
         {find ? (

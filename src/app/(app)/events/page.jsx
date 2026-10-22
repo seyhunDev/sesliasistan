@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Loading } from "@/components/ui/Loader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { EventList, isPast } from "@/features/events/EventList";
-import { loadEvents } from "@/features/events/events";
+import { eventsNow, loadEvents } from "@/features/events/events";
 
 // Etkinlikler: kamp, balık, gezi, konser… her biri için ihtiyaç listesi, bütçe, yapılacaklar (yalnız ana hesap)
 export default function EventsPage() {
@@ -24,10 +24,10 @@ export default function EventsPage() {
 
 function Events({ orgId }) {
   const router = useRouter();
-  const [events, setEvents] = useState(null);
+  const [events, setEvents] = useState(() => eventsNow(orgId)); // bellekte varsa hemen, arkada tazelenir
   const [error, setError] = useState("");
   useEffect(() => {
-    loadEvents(orgId).then(setEvents, (e) => (setEvents([]), setError(e?.message || "Etkinlikler alınamadı.")));
+    loadEvents(orgId).then(setEvents, (e) => (setEvents((l) => l || []), setError(e?.message || "Etkinlikler alınamadı.")));
   }, [orgId]);
   const up = events?.filter((e) => !isPast(e)).length || 0;
 

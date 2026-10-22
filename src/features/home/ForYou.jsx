@@ -10,6 +10,7 @@ import { GROUPS } from "@/lib/kinds";
 import { useData } from "@/features/data/DataProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { assigneesOf, isNewFor } from "@/lib/people";
+import { fitGroups, fitText } from "@/lib/fitness/newProgram";
 import { TLk, totalOf } from "@/lib/receipts";
 import { todayStr } from "@/lib/utils/format";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -181,9 +182,20 @@ export function useForYou() {
         onOpen: () => open("task", t.id),
         trail: <DoneBtn onClick={() => toggleTask(t.id)} />,
       });
+  // Yeni verilen fitness programı: her antrenman ayrı satır değil, program başına tek satır (sporcuya 80+ plan düşer)
+  for (const g of fitGroups(plans.filter((r) => r.fit?.prog && isNewFor(r, myUid))))
+    items.push({
+      id: `new:fit:${g.prog}`,
+      lead: <IconDot icon="dumbbell" tone="acc" />,
+      title: "Yeni antrenman programı",
+      sub: `${first(nameOf(g.by))} · ${fitText(g)}`,
+      time: g.at ? listTime(g.at) : "",
+      dot: true,
+      onOpen: () => router.push("/fitness"),
+    });
   // Yeni verilen / eklenen
   for (const [kind, r] of recs)
-    if (isNewFor(r, myUid) && !(kind === "task" && r.done))
+    if (isNewFor(r, myUid) && !(kind === "task" && r.done) && !(kind === "plan" && r.fit?.prog))
       items.push({
         id: `new:${kind}:${r.id}`,
         lead: <IconDot icon={KIND_ICON[kind]} tone="acc" />,

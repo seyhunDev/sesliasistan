@@ -22,6 +22,7 @@ import { Loading } from "@/components/ui/Loader";
 import { useDock } from "@/features/home/TabBar";
 import { InvoicePanel, InvoiceRow, useInvoiceDesk } from "@/features/invoices/InvoicesView";
 import { TL } from "@/lib/invoices";
+import { tieOf } from "@/lib/hesapRows";
 
 const inp = "h-11 w-full min-w-0 rounded-xl border border-line bg-card px-3 text-base text-fg outline-none transition focus:border-acc";
 const shiftMonth = (m, n) => {
@@ -94,7 +95,7 @@ export function ReceiptBook({ kind: start = "" }) {
         if (s && !`${noText(r.no)} ${r.no || ""} ${r.merchant} ${r.docNo || ""} ${r.taxId || ""} ${r.note || ""} ${(r.items || []).map((i) => i.n).join(" ")}`.toLocaleLowerCase("tr-TR").includes(s)) return false;
         return true;
     };
-    const byDate = (a, b) => `${b.date}${b.time || ""}`.localeCompare(`${a.date}${a.time || ""}`);
+    const byDate = (a, b) => `${b.date}${b.time || ""}`.localeCompare(`${a.date}${a.time || ""}`) || tieOf(b).localeCompare(tieOf(a)) || String(a.id).localeCompare(String(b.id)); // sabit sıra
     return shownKind === "invoice" ? [] : receipts.filter(match).sort(byDate);
   }, [receipts, month, q, cats, pay, by, min, max, review, state, scope, shownKind]);
 
@@ -124,7 +125,7 @@ export function ReceiptBook({ kind: start = "" }) {
       .filter((x) => x.status !== "paid")
       .filter((x) => (Number.isNaN(lo) || (x.amount || 0) >= lo) && (Number.isNaN(hi) || (x.amount || 0) <= hi))
       .filter((x) => !s || low(`${x.seller} ${x.no} ${x.taxId} ${x.desc} ${x.note}`).includes(s))
-      .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
+      .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || String(a.id).localeCompare(String(b.id)));
   }, [desk.list, shownKind, q, pay, by, min, max, review, state, scope]);
   const invList = invMatch.filter((x) => x.status === "paid");
 

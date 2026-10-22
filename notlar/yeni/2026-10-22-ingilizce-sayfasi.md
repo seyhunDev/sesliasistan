@@ -1,0 +1,9 @@
+## Nerede kaldım
+- İngilizce sayfası `/english` (Seyhun: "kelime listesi olsun, hazır cümleler olsun… öğrendiğimi yazarım, öğrenilenlere kaydedilir, sıradakini öğrenirim… bunun da butonu olsun"; örnek onaylı `/mnt/project-files/ingilizce-kelime/sayfa-ornek.png`; telefonda denenmedi): lacivert üstte geri, "İngilizce", Ekle; Kelimeler / Cümleler düğmeleri; Çalışıyorum · Öğrendim · Sırada sayıları. Altta "Sıradaki" kartı (önce tekrarı gelen çalışılan, sonra diğer çalışılanlar, sonra liste): Öğrendim → Öğrendiklerim'e (öğrenme günüyle), Sonraki → kaydetmeden geçer. Kelimelerde "Çalışıyorum" (tekrar günü etiketi) ve "Öğrendiklerim" (ilk 5, Tümü ›). Cümlelerde konular (Günlük konuşma, Yolculuk ve otel, Toplantı ve iş, Yarış ve spor; her biri 25, `src/lib/englishPhrases.js`), konuya dokununca kart o konudan gelir. Ekle: yazılan kelime/cümlenin kartını yapay zeka hazırlar (`/api/word`, cümlede `kind: "phrase"`), çalışmaya girer.
+- Deste aynı belge (`orgs/{orgId}/english/deck`); kelimeye `kind` ("word"/"phrase"), `topic`, `kd` (öğrenildiği gün) eklendi, `SEED_V` 3 (100 cümle eksikse eklenir). Kelime kartı ve widget listeden yalnız kelime seçer. Ortak görünüm `src/features/words/WordView.jsx`.
+- Giriş: Ana sayfa › Tümü › Günlük › "İngilizce" (`homeActions`), kelime kartının başlığına dokununca, asistana "İngilizce sayfasını aç". Asistan cümle de ekler: "could you give me a hand cümlesini ekle", "İngilizce yardım eder misin cümlesini çalışma listeme ekle".
+- Testler: `test:elle` › "İngilizce kelime çalışma" (24), yönlendirme › phraseAdd, englishPage; tarayıcı testine `/english` ve `/api/word` eklendi.
+
+## Sıradaki işler
+0. Telefonda: Ana sayfa › Tümü › İngilizce açılıyor mu; Öğrendim / Sonraki; Cümleler'de konuya dokun; Ekle ile bir kelime ve bir cümle ekle.
+1. Seyhun "geliştireceğiz" dedi: sonraki adımlar için fikir (sesli tekrar, kendini sınama, telaffuz) sorulabilir.

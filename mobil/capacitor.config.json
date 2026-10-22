@@ -1,6 +1,6 @@
 {
   "appId": "com.seyhunyildiz.sesliasistan",
-  "appName": "Asistan",
+  "appName": "Velora",
   "webDir": "www",
   "server": {
     "url": "https://sesliasistan.netlify.app",
@@ -15,5 +15,8 @@
       "smallIcon": "ic_stat_asistan",
       "iconColor": "#22705c"
     }
+  },
+  "ios": {
+    "backgroundColor": "#f4f3ef"
   }
 }

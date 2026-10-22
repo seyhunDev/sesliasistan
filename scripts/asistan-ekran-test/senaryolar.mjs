@@ -17,7 +17,7 @@ const TOMORROW = ymd(new Date(Date.now() + 864e5));
 const now = new Date().toISOString();
 
 // Halkanın renkleri (TabBar.jsx RING_C)
-const RING = { "#e8705f": "kırmızı", "#f0c36b": "kehribar", "#6aaef0": "mavi", "#6fc39b": "yeşil" };
+const RING = { listen: "kırmızı", work: "kehribar", speak: "mavi", ok: "yeşil", idle: "mor" }; // asistan düğmesinin durumu (TabBar OrbMain data-tone)
 
 async function launch() {
   const { chromium } = await import("playwright-core");
@@ -156,11 +156,13 @@ export async function run(server, log = () => {}) {
     // Next geliştirme penceresi (sağ alttaki "Issue" düğmesi) dokunuşları kapatmasın
     await page.addStyleTag?.({ content: "" }).catch(() => {});
     await page.goto(`${server.url}/login`, { waitUntil: "load", timeout: 120000 });
-    const inputs = page.locator("input");
-    await inputs.first().waitFor({ timeout: 30000 });
-    await inputs.nth(0).fill(email);
-    await inputs.nth(1).fill(PASS);
-    await inputs.nth(1).press("Enter");
+    // İki adımlı giriş: önce e-posta / kullanıcı adı (Devam = Enter), sonra şifre
+    const inputs = page.locator("input[name=username]:not([readonly])");
+    await inputs.waitFor({ timeout: 30000 });
+    await inputs.fill(email);
+    await inputs.press("Enter");
+    await page.locator("input[name=password]").fill(PASS);
+    await page.locator("input[name=password]").press("Enter");
     await page.waitForURL((x) => !x.pathname.startsWith("/login"), { timeout: 60000 });
     await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
     await page.waitForTimeout(1500);
@@ -171,7 +173,7 @@ export async function run(server, log = () => {}) {
   const dome = (page) => page.locator("[data-dome]");
   const state = (page) => dome(page).getAttribute("data-state");
   const full = (page) => page.locator(".afull");
-  const ringColor = (page) => page.locator("[data-dome] svg circle").nth(1).getAttribute("stroke").then((c) => RING[c] || c);
+  const ringColor = (page) => page.locator("[data-dome] [data-ring]").first().getAttribute("data-tone").then((c) => RING[c] || c);
   const ringText = (page) => page.locator("[data-dome] [aria-live='polite']").first().innerText().catch(() => "");
   const last = (page) => page.locator("[data-dome] [data-last-reply]").last().innerText().catch(() => "");
   const convo = (page) => page.locator("[data-dome] .overflow-y-auto").first().innerText().catch(() => "");
@@ -235,10 +237,10 @@ export async function run(server, log = () => {}) {
       transcript = prev;
     }
   };
-  // Asistanı kapat: dinliyorsa önce dinlemeyi bırak, sonra × (Konuşmayı bitir)
+  // Asistanı kapat: × her durumda kapatır
   const closeAll = async (page) => {
     for (let i = 0; i < 4 && (await page.locator(".afull.afull-in").count()); i++) {
-      for (const name of ["Sil ve dinlemeyi bırak", "Konuşmayı bitir"]) {
+      for (const name of ["Asistanı kapat"]) {
         const x = btn(page, name);
         if (await x.count()) {
           await x.click().catch(() => {});
@@ -275,7 +277,7 @@ export async function run(server, log = () => {}) {
     const { scenarios } = await import("./adimlar.mjs");
     await scenarios({ getDoc, log, check, push, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI: (f, d = 0) => ((ai = f), (aiDelay = d)), setTasks: (f) => (tasksReply = f), setTranscript: (t) => (transcript = t), setSoz: (f) => (sozReply = f), setLive: (t) => (liveToken = t), TODAY, TOMORROW });
   } catch (e) {
-    push("Senaryolar", "çalıştırma", "tamamlanır", false, String(e.stack || e.message).split("\n").slice(0, 3).join(" | "));
+    push("Senaryolar", "çalıştırma", "tamamlanır", false, String(e.stack || e.message).split("\n").filter((l) => /\.mjs/.test(l)).slice(0, 6).join(" | "));
   } finally {
     await browser.close().catch(() => {});
   }

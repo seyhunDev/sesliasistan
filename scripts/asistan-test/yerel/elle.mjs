@@ -168,6 +168,42 @@ group("Plana özel hatırlatma")([
   ["var olan plan", { desc: "değişiklik remind'i yazar ve söyler", fn: () => [AL.buildPatch("plan", { remind: 30 }).remind, AL.describeAction({ op: "update", kind: "plan", patch: { remind: 30 } }, { title: "Antrenman" })].join("|"), ok: (r) => r === "30|Güncelle: Antrenman → 30 dk önce hatırlat" }],
 ]);
 
+// Plan alarmı (iPhone uygulamasında saat alarmı; lib/planAlarm.js)
+const PAL = await import("@/lib/planAlarm");
+const AP0 = { id: "p1", title: "Antrenman", date: "2026-10-05", time: "10:00", people: ["ali"], alarm: 60 };
+group("Plan alarmı")([
+  ["cümleden", { desc: "1 saat öncesine / yarım saat önceye / saatinde / kaldır / yalnız hatırlat", fn: () => ["antrenmanın bir saat öncesine alarm kur", "alarmı yarım saat önceye kur", "toplantıya alarm kur", "alarmı kaldır", "1 saat önce hatırlat"].map(PAL.alarmOf).join(), ok: (r) => r === "60,30,0,-1," }],
+  ["taslağa yazılır", { desc: "yeni plan alarm 60 alır, hatırlatma ayrı", fn: () => AP.applyRepeat([{ type: "plan", title: "A", date: "2026-10-05", time: "10:00" }], "yarın 10'da antrenman 1 saat önce alarm kur, yarım saat önce hatırlat", "2026-10-04").map((x) => `${x.alarm}/${x.remind}`).join(), ok: (r) => r === "60/30" }],
+  ["alarm anı", { desc: "10:00 planda 1 saat önce 09:00; tüm gün 08:00", fn: () => [new Date(PAL.alarmAt(AP0)).getHours(), new Date(PAL.alarmAt({ ...AP0, time: "", alarm: 0 })).getHours()].join(), ok: (r) => r === "9,8" }],
+  ["kime kurulur", { desc: "sorumluya ve ana hesaba; başkasına yok; geçmiş ve bitmiş yok", fn: () => { const o = { ownerId: "own", now: new Date("2026-10-04T12:00:00").getTime() }; return [PAL.alarmItems([AP0], { ...o, uid: "ali" }).length, PAL.alarmItems([AP0], { ...o, uid: "own" }).length, PAL.alarmItems([AP0], { ...o, uid: "veli" }).length, PAL.alarmItems([{ ...AP0, done: true }], { ...o, uid: "ali" }).length, PAL.alarmItems([{ ...AP0, date: "2026-10-01" }], { ...o, uid: "ali" }).length].join(); }, ok: (r) => r === "1,1,0,0,0" }],
+  ["anahtar", { desc: "saat ya da başlık değişince yeni alarm", fn: () => { const o = { ownerId: "own", uid: "ali", now: new Date("2026-10-04T12:00:00").getTime() }; const k = (p) => PAL.alarmItems([p], o)[0].key; return k(AP0) !== k({ ...AP0, time: "11:00" }) && k(AP0) !== k({ ...AP0, title: "B" }) && k(AP0) === k({ ...AP0 }); }, ok: (r) => r === true }],
+  ["var olan plan", { desc: "değişiklik alarmı yazar, -1 kaldırır, söyler", fn: () => [AL.buildPatch("plan", { alarm: 60 }).alarm, AL.buildPatch("plan", { alarm: -1 }).alarm, AL.describeAction({ op: "update", kind: "plan", patch: { alarm: 60 } }, { title: "Antrenman" })].join("|"), ok: (r) => r === "60||Güncelle: Antrenman → 1 saat önce alarm" }],
+  ["plan formu", { desc: "Yok · Saatinde · 15 dk · 30 dk · 1 saat · 1 gün", fn: () => PAL.ALARM_OPTS.map((o) => o.label).join(), ok: (r) => r === "Yok,Saatinde,15 dk,30 dk,1 saat,1 gün" }],
+]);
+
+// iPhone uygulaması: ana ekran widget'ının planları ve titreşim türleri
+const WD = await import("@/lib/widgetData");
+const HP = await import("@/lib/haptic");
+group("iPhone widget ve titreşim")([
+  ["widget planları", { desc: "bugünden sonraki, benim, bitmemiş; saat sırasıyla", fn: () => WD.widgetPlans([
+    { title: "B", date: "2026-10-06", time: "09:00", people: ["ali"] },
+    { title: "A", date: "2026-10-05", time: "18:00", people: ["ali"], important: true },
+    { title: "Eski", date: "2026-10-01", time: "10:00", people: ["ali"] },
+    { title: "Başkası", date: "2026-10-05", time: "10:00", people: ["veli"] },
+    { title: "Bitti", date: "2026-10-05", time: "11:00", people: ["ali"], done: true },
+    { title: "Kamp", date: "2026-10-03", endDate: "2026-10-07", people: ["ali"] },
+  ], { uid: "ali", ownerId: "own", today: "2026-10-05" }).map((p) => `${p.title}@${p.date} ${p.time}${p.important ? "!" : ""}`).join(), ok: (r) => r === "Kamp@2026-10-05 ,A@2026-10-05 18:00!,B@2026-10-06 09:00" }],
+  ["widget antrenmanı", { desc: "bugünkü ya da sıradaki antrenman, benim; geçmiş ve iptal yok", fn: () => WD.widgetTraining([
+    { id: "a", title: "Optimist antrenmanı", date: "2026-10-06", time: "10:00", people: ["ali"] },
+    { id: "b", title: "Antrenman", date: "2026-10-05", time: "16:00", people: ["ali"], place: "Dikili" },
+    { id: "c", title: "Antrenman", date: "2026-10-04", time: "16:00", people: ["ali"] },
+    { id: "d", title: "Antrenman", date: "2026-10-05", time: "09:00", people: ["ali"], status: "cancelled" },
+    { id: "e", title: "Toplantı", date: "2026-10-05", time: "08:00", people: ["ali"] },
+  ], { uid: "ali", ownerId: "own", today: "2026-10-05" }), ok: (r) => r?.id === "b" && r.time === "16:00" && r.place === "Dikili" }],
+  ["widget aidat", { desc: "yalnız bu ayın özeti", fn: () => [WD.widgetDues({ ym: "2026-10", paidCount: 9, count: 14 }, "2026-10"), WD.widgetDues({ ym: "2026-09", paidCount: 9, count: 14 }, "2026-10")], ok: ([a, b]) => a.paid === 9 && a.count === 14 && b === null }],
+  ["titreşim türü", { desc: "8 hafif, 14 orta, 30 güçlü, [10,40,10] başarı, uzun dizi hata", fn: () => [8, 14, 30, [10, 40, 10], [30, 50, 30, 50, 30], 0].map(HP.kindOf).join(), ok: (r) => r === "light,medium,heavy,success,error," }],
+]);
+
 // Takvim, görev grupları, doğum günleri (agenda.js)
 const AG = await import("@/lib/agenda");
 const TT = [{ title: "a", due: "2026-10-01" }, { title: "b", due: "2026-10-03" }, { title: "c", due: "2026-10-04" }, { title: "d", due: "2026-10-08" }, { title: "e", due: "2026-10-20" }, { title: "f" }];
@@ -1412,6 +1448,11 @@ group("Hesaplar arama ve eklenen adlar")([
     const g = HR.byMonth([{ id: "a", day: "2026-09-30", amount: 100 }, { id: "b", day: "2026-10-02", sort: "2026-10-02T08:00", amount: -40 }, { id: "c", day: "2026-10-05", amount: 300 }]);
     return g.length === 2 && g[0].ym === "2026-10" && g[0].rows[0].id === "c" && g[0].in === 300 && g[0].out === 40 && g[1].in === 100 && HR.dayText("2026-10-17") === "17 Eki" && HR.monthText("2025-03") === "Mart 2025" && HR.amt(-300) === "−300" && HR.amt(1200).startsWith("+");
   })],
+  ["Hesaplar sabit sıra", F("aynı gündekiler gelen sıradan bağımsız: önce yeni eklenen, sonra kimlik", () => {
+    const rows = [{ id: "b", day: "2026-10-20", sort: "2026-10-20", tie: "2026-10-20T08:00:00Z" }, { id: "a", day: "2026-10-20", sort: "2026-10-20", tie: "2026-10-20T08:00:00Z" }, { id: "c", day: "2026-10-20", sort: "2026-10-20", tie: "2026-10-20T09:00:00Z" }];
+    const k = (l) => HR.byMonth(l)[0].rows.map((r) => r.id).join("");
+    return k(rows) === "cab" && k([...rows].reverse()) === "cab" && HR.tieOf({ createdAt: { seconds: 0 } }) === "1970-01-01T00:00:00.000Z" && HR.tieOf({ at: 0 }) === "1970-01-01T00:00:00.000Z";
+  })],
   ["kasa: kulübün verdiği borç", F("borç kasadan düşer, geri ödeme girer; kişisel borç kasaya girmez; eski borç sayılmaz", () => {
     const items = [
       { id: "d1", kind: "club", who: "Ali", amount: 500, date: "2026-10-12", at: "2026-10-12T09:00:00Z", paid: [{ id: "p1", amt: 200, date: "2026-10-13" }] },
@@ -1798,6 +1839,15 @@ group("Sporcu mesajları")([
   ["çalışan ↔ veli", F("değişmedi", () => KD.canTalk("staff", "parent") && KD.canTalk("student", "staff"))],
 ]);
 
+// Giriş ekranı (src/lib/kinds.js): e-posta ya da kullanıcı adı yazımı canlı denetlenir, hep küçük harfe çevrilir
+group("Giriş ekranı")([
+  ["e-posta", F("tamamı yazılınca doğru", () => KD.validLogin("Seyhun@Gmail.com") && !KD.validLogin("seyhun@gm") && !KD.validLogin("seyhun@gmail."))],
+  ["kullanıcı adı", F("3-30 karakter, harf rakam nokta", () => KD.validLogin("ege.demir") && !KD.validLogin("eg") && !KD.validLogin(".ege") && !KD.validLogin("ege demir!"))],
+  ["büyük I", F("ILAY → ilay (ılay değil)", () => KD.cleanLogin("ILAY") === "ilay" && KD.loginEmail("ILAY") === `ilay@${KD.USER_DOMAIN}`)],
+  ["Türkçe harf", F("çağan → cagan, kullanıcı adı gibi", () => KD.cleanLogin("Çağan.Yılmaz") === "cagan.yilmaz" && KD.cleanLogin("Çağan.Yılmaz") === KD.suggestUsername("Çağan Yılmaz"))],
+  ["e-postada I", F("küçük i olur", () => KD.loginEmail(" ALI@Mail.com ") === "ali@mail.com")],
+]);
+
 // Sesli arama 1. adım (src/lib/call.js): kimler arayabilir, durum yazıları, süre
 const CL = await import("@/lib/call");
 group("Sesli arama")([
@@ -2109,7 +2159,7 @@ group("Beslenme")([
 // Plan bitti (Arşiv'e gider) ve İngilizce kelime kartı
 const HTP = await import("@/lib/homeTiles");
 const EW = await import("@/lib/englishWords");
-group("Plan bitti ve kelime kartı", [
+group("Plan bitti ve kelime kartı")([
   ["bitti yaması", F("done + doneAt, geri al temizler", () => {
     const d = PA.planDonePatch("2026-10-10T10:00:00Z");
     const r = PA.planReopenPatch();
@@ -2137,6 +2187,87 @@ group("Plan bitti ve kelime kartı", [
     return b === a + 1;
   })],
 ]);
+
+// İngilizce kelime çalışma: Firestore destesi (orgs/{orgId}/english/deck), aralıklı tekrar, widget kartı, asistan cümleleri
+{
+  const T = "2026-10-22";
+  const R = { en: "resilient", type: "sıfat", tr: "dirençli", ex: "Kids are resilient.", exTr: "Çocuklar dirençlidir." };
+  const seeded = () => EW.seedDeck(null).deck;
+  group("İngilizce kelime çalışma")([
+    ["deste tohumu", F("gömülü listenin tamamı, hepsi liste", () => { const { deck, changed } = EW.seedDeck(null); return changed && deck.words.length === EW.WORDS.length + 100 && deck.words.every((w) => w.status === "list") && deck.seedV === EW.SEED_V && EW.ofKind(deck, "phrase").length === 100; })],
+    ["tohum bir kez", F("güncel deste yeniden yazılmaz", () => !EW.seedDeck(seeded()).changed)],
+    ["eksik kelime eklenir", F("eski destede kendi kelimesi ve durumu kalır", () => {
+      const old = { words: [{ ...R, status: "study", box: 2, due: T }, { en: "achieve", tr: "başarmak", status: "known" }], seedV: 1 };
+      const { deck, changed } = EW.seedDeck(old);
+      return changed && deck.words.length === EW.WORDS.length + 101 && EW.findWord(deck, "resilient").box === 2 && EW.findWord(deck, "achieve").status === "known";
+    })],
+    ["çalışmaya al", F("ilk gün hemen kartta, çalış işaretiyle", () => { const d = EW.studyWord(seeded(), R, T); const c = EW.pickCard(d, T, 5); return c.en === "resilient" && c.study === true; })],
+    ["tekrar aralığı", F("1, 2, 4 gün sonra; aynı gün ikinci gösterim saymaz", () => {
+      let d = EW.studyWord(seeded(), R, T);
+      d = EW.reviewWord(d, "resilient", T);
+      const a = EW.findWord(d, "resilient").due;
+      d = EW.reviewWord(d, "resilient", T);
+      const same = EW.findWord(d, "resilient").due;
+      d = EW.reviewWord(d, "resilient", "2026-10-23");
+      const b = EW.findWord(d, "resilient").due;
+      d = EW.reviewWord(d, "resilient", "2026-10-25");
+      return a === "2026-10-23" && same === a && b === "2026-10-25" && EW.findWord(d, "resilient").due === "2026-10-29" && !EW.pickCard(d, "2026-10-26", 0).study;
+    })],
+    ["son aralık tekrar eder", F("öğrendim denene kadar 14 günde bir", () => {
+      let d = { ...EW.studyWord(seeded(), R, T), gaps: [1, 3] };
+      for (const day of ["2026-10-22", "2026-10-23", "2026-10-26"]) d = EW.reviewWord(d, "resilient", day);
+      return EW.findWord(d, "resilient").due === "2026-10-29" && EW.findWord(d, "resilient").status === "study";
+    })],
+    ["öğrendim", F("artık kartta ve widget'ta yok", () => {
+      const d = EW.knowWord(EW.studyWord(seeded(), R, T), "resilient");
+      return EW.findWord(d, "resilient").status === "known" && !EW.pickCard(d, T, 0).study && EW.widgetWord(d, T).en !== "resilient";
+    })],
+    ["widget kartı", F("çalışma kelimesi önce, alanlar tam", () => {
+      const d = EW.reviewWord(EW.studyWord(seeded(), R, T), "resilient", T);
+      const w = EW.widgetWord(d, "2026-10-22");
+      return w.en === "resilient" && w.study === true && ["en", "type", "tr", "ex", "exTr", "study"].every((k) => k in w);
+    })],
+    ["widget çalışma yokken", F("listeden günün kelimesi, gün boyu aynı", () => { const a = EW.widgetWord(seeded(), T); return a.study === false && a.en && EW.widgetWord(seeded(), T).en === a.en; })],
+    ["cihaz kopyası", F("yazılan deste geri okunur", () => {
+      const m = new Map();
+      const st = { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, v) };
+      EW.keepDeck(EW.studyWord(seeded(), R, T), st);
+      return EW.findWord(EW.cachedDeck(st), "resilient")?.status === "study";
+    })],
+    ["kartta Çalış", F("listedeki kelime çalışmaya girer, bugünkü tekrarı sayılır (yarın gelir)", () => {
+      const d0 = seeded();
+      const w = EW.pickCard(d0, T, 0);
+      const d = EW.reviewWord(EW.studyWord(d0, w, T), w.en, T);
+      const x = EW.findWord(d, w.en);
+      return x.status === "study" && x.due === "2026-10-23" && d.words.length === d0.words.length && EW.pickCard(d, "2026-10-23", 0).en === w.en;
+    })],
+    ["kart ve widget cümle seçmez", F("listeden yalnız kelime", () => { const d = seeded(); return Array.from({ length: 40 }, (_, i) => EW.pickCard(d, T, i)).every((c) => c.type !== "cümle") && EW.widgetWord(d, T).type !== "cümle"; })],
+    ["sayfa sayıları", F("kelime ve cümle ayrı", () => { const d = EW.knowWord(EW.studyWord(seeded(), R, T), "achieve", T); const w = EW.deckCounts(d, "word"); const p = EW.deckCounts(d, "phrase"); return w.study === 1 && w.known === 1 && w.list === EW.WORDS.length - 1 && p.list === 100 && p.known === 0; })],
+    ["sayfa sıradaki", F("çalışılan önce, Sonraki geçer, hepsi geçilince baştan", () => {
+      const d = EW.studyWord(seeded(), R, T);
+      const a = EW.pageCard(d, { kind: "word", today: T });
+      const b = EW.pageCard(d, { kind: "word", today: T, skip: [a.en] });
+      const all = EW.ofKind(d, "word").map((w) => w.en);
+      return a.en === "resilient" && b.en !== "resilient" && b.status === "list" && EW.pageCard(d, { kind: "word", today: T, skip: all }).en === "resilient";
+    })],
+    ["cümle konusu", F("konuya dokununca kart o konudan", () => { const c = EW.pageCard(seeded(), { kind: "phrase", today: T, topic: "Yarış ve spor" }); return c.topic === "Yarış ve spor" && c.kind === "phrase"; })],
+    ["öğrendiklerim", F("öğrenme günüyle, en yeni önce; konu sayısı artar", () => {
+      let d = EW.knowWord(seeded(), "achieve", "2026-10-20");
+      d = EW.knowWord(d, "Could you give me a hand?", T);
+      d = EW.knowWord(d, "adapt", T);
+      const k = EW.knownList(d, "word");
+      return k.map((w) => w.en).join() === "adapt,achieve" && k[0].kd === T && EW.topicStats(d)[0].known === 1 && EW.topicStats(d).length === 4;
+    })],
+    ["cümle ekle cümlesi", F("İngilizce söylenen cümle", () => JSON.stringify(EW.wordCommand("could you give me a hand cümlesini ekle")) === '{"op":"study","word":"could you give me a hand","kind":"phrase"}')],
+    ["Türkçe cümle değil", F("bu cümleyi not al / kaydet", () => !EW.wordCommand("bu cümleyi not al") && !EW.wordCommand("bu cümleyi kaydet"))],
+    ["ekle cümlesi", F("kelime ve çalıştır", () => JSON.stringify(EW.wordCommand("resilient kelimesini ekle, bana çalıştır")) === '{"op":"study","word":"resilient"}')],
+    ["deyim", F("iki kelimeli", () => EW.wordCommand("İngilizce take off kelimesini çalışma listeme ekle")?.word === "take off")],
+    ["öğrendim cümlesi", F("known", () => EW.wordCommand("resilient kelimesini öğrendim")?.op === "known")],
+    ["çıkar cümlesi", F("drop", () => EW.wordCommand("resilient kelimesini çalışmadan çıkar")?.op === "drop")],
+    ["aralık cümlesi", F("her gün, 2 günde bir, 1 3 7", () => EW.wordCommand("kelimeleri her gün göster")?.gaps?.join() === "1" && EW.wordCommand("kelimeleri iki günde bir göster")?.gaps?.join() === "2" && EW.wordCommand("kelime tekrarını 1 3 7 gün yap")?.gaps?.join() === "1,3,7")],
+    ["başka cümleler değil", F("kelime geçmeyen cümle", () => !EW.wordCommand("yarın 10'da toplantı ekle") && !EW.wordCommand("not al: yeni kelime öğrendim"))],
+  ]);
+}
 
 const DB = await import("@/lib/debts");
 {
@@ -2735,7 +2866,10 @@ group("Ortak düğmeler")([
     ["bugün bitti", F("yarının ilk planı", () => HT.nextPlan(P.filter((p) => p.date !== "2026-10-21" || p.id === "a"), at, "2026-10-21")?.id === "d")],
     ["iptal ve fitness", F("sayılmaz", () => HT.nextPlan([{ ...P[2], status: "cancelled" }, { ...P[2], id: "f", fit: { name: "x" } }, P[3]], at, "2026-10-21")?.id === "d")],
     ["saatsiz plan", F("gün boyu sürer", () => HT.nextPlan([{ id: "s", title: "Kamp", date: "2026-10-21" }], at, "2026-10-21")?.id === "s")],
+    // Seyhun 2026-10-22: bitirilip arşive giden antrenman "Bugün · Gün boyu" diye kalıyordu (plan bitti alanı done: true)
+    ["bitirilen plan", F("arşivdeki (bitti) atlanır, sıradaki gelir", () => HT.nextPlan([{ id: "s", title: "Antrenman", date: "2026-10-21", done: true }, P[2], P[3]], at, "2026-10-21")?.id === "c")],
     ["8 gün sonra", F("7 günden uzak plan yok", () => HT.nextPlan([{ id: "u", date: "2026-10-30", time: "10:00" }], at, "2026-10-21") === null)],
+    ["tür başlıkta", F("“Optimist antrenmanı” Antrenman etiketi almaz, toplantı alır", () => HT.planTag({ title: "Optimist antrenmanı", cat: "Antrenman" }) === "" && HT.planTag({ title: "Yönetim", cat: "Toplantı" }) === "Toplantı" && HT.planTag({ title: "Fitness · İlay", fit: { name: "İlay" } }) === "")],
   ]);
 }
 
@@ -2778,5 +2912,33 @@ group("Ortak düğmeler")([
     ["taslaktan kayda", F("planın Önemli anahtarı kayda important olarak gider, kapalıysa false", () =>
       D.toPatch({ ...D.blank("plan"), title: "x", date: "2026-10-23", important: true }).important === true &&
       D.toPatch({ ...D.blank("plan"), title: "x", date: "2026-10-23" }).important === false)],
+  ]);
+}
+
+// Sayfa geçişleri: alt sekme Mesajlar'da da ortak geri düğmesi; listeden açılıp geri dönünce liste bellekten hemen çizilir
+{
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  group("Sayfa geçişleri")([
+    ["Mesajlar başlığı", F("geri düğmesi + diğer sayfalarla aynı başlık boyu", () => /<BackButton href="\/"/.test(src("features/chat/ChatList.jsx")) && /<h1 className="truncate text-\[1\.375rem\] font-semibold/.test(src("features/chat/ChatList.jsx")))],
+    ["Yarışlar geri dönüş", F("liste racesNow ile başlar, yarış 1 dk içindeki listeden açılır", () =>
+      /useState\(\(\) => racesNow\(orgId\)\)/.test(src("app/(app)/athletes/races/page.jsx")) && /racesNow\(orgId, 60e3\)/.test(src("app/(app)/athletes/races/[id]/page.jsx")) && /stale\(\)/.test(src("features/athletes/races.js")))],
+    ["Etkinlikler ve Gönderiler", F("liste bellekten başlar", () =>
+      /useState\(\(\) => eventsNow\(orgId\)\)/.test(src("app/(app)/events/page.jsx")) && /useState\(\(\) => postsNow\(orgId\)\)/.test(src("app/(app)/posts/page.jsx")))],
+  ]);
+}
+
+// Zildeki yapılacaklar: sporcuya verilen fitness programı tek satır; pencerede önce bildirimler
+{
+  const NP = await import("@/lib/fitness/newProgram");
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  const plans = Array.from({ length: 82 }, (_, i) => ({ fit: { prog: "p1" }, date: new Date(Date.parse("2026-10-23") + Math.floor(i / 3) * 864e5).toISOString().slice(0, 10), createdByUid: "s" }));
+  group("Bildirim kutusu: fitness programı")([
+    ["tek satır", F("82 plan tek gruba toplanır", () => { const g = NP.fitGroups(plans); return g.length === 1 && g[0].n === 82 && g[0].by === "s"; })],
+    ["metin", F("hafta ve antrenman sayısı", () => NP.fitText(NP.fitGroups(plans)[0]) === "4 haftalık, 82 antrenman")],
+    ["iki program", F("program başına ayrı satır", () => NP.fitGroups([...plans.slice(0, 3), { fit: { prog: "p2" }, date: "2026-10-24" }]).length === 2)],
+    ["planlar ayrı çıkmaz", F("ForYou yeni planlarda fitness planını atlar", () => /!\(kind === "plan" && r\.fit\?\.prog\)/.test(src("features/home/ForYou.jsx")))],
+    ["önce bildirimler", F("pencerede Bildirimler, Yapılacaklar'dan önce", () => { const s = src("features/home/Inbox.jsx"); return s.indexOf('aria-label="Bildirimler"') < s.indexOf('aria-label="Yapılacaklar"'); })],
   ]);
 }

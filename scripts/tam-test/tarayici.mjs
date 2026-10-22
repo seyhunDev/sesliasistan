@@ -8,12 +8,12 @@ const PAGES = [
   "/", "/mail", "/payments", "/athletes", "/athletes/attendance", "/athletes/races", "/athletes/races/new", "/dues", "/posts", "/posts/new",
   "/plans", "/notes", "/tasks", "/messages", "/receipts", "/inventory", "/training", "/fitness", "/settings",
   // Sonradan eklenen sayfalar (yarış multimedya, antrenman günü, takvim, kişi sayfası…); kayıt sayfaları uydurma kimlikle
-  "/archive", "/athletes/x1", "/athletes/attendance/report", "/athletes/races/x1", "/athletes/races/x1/media", "/birthdays", "/calendar",
+  "/archive", "/athletes/x1", "/athletes/attendance/report", "/athletes/races/x1", "/athletes/races/x1/media", "/birthdays", "/calendar", "/english",
   "/debts", "/events", "/events/x1", "/inventory/x1", "/invoices", "/mail/setup", "/my-attendance", "/people/staff", "/people/p/x1",
   "/posts/x1", "/receipts/x1", "/schedule", "/settings/voice-test", "/settings/tests", "/shopping", "/staff", "/training/day", "/wind",
 ];
 // Sunucu uçları: girişsiz istek reddedilmeli (401/403), çökmemeli (500)
-const APIS = ["assistant", "tasks", "attendance", "race", "post-caption", "training-log", "fitness", "inventory", "invoice", "person", "event-plan", "schedule", "interpret", "transcribe", "notify", "staff", "receipt-no"];
+const APIS = ["assistant", "word", "tasks", "attendance", "race", "post-caption", "training-log", "fitness", "inventory", "invoice", "person", "event-plan", "schedule", "interpret", "transcribe", "notify", "staff", "receipt-no"];
 
 // Tarayıcı: önce bu bilgisayardaki Google Chrome, yoksa Playwright'ın kendi Chromium'u (bulutta /opt/pw-browsers)
 async function launch() {
@@ -93,13 +93,16 @@ export async function run(server, log = () => {}) {
       page.on("pageerror", (e) => errs.push(String(e.message || e).split("\n")[0]));
       try {
         await page.goto(`${server.url}/login`, { waitUntil: "load", timeout: 120000 });
-        const inputs = page.locator("input");
-        await inputs.first().waitFor({ timeout: 20000 });
-        const n = await inputs.count();
-        push("Giriş ekranı", "alanlar", "kullanıcı adı ve şifre alanı", n >= 2, `${n} alan`);
-        await inputs.nth(0).fill("yanlis.kullanici");
-        await inputs.nth(1).fill("yanlis-sifre-123");
-        await inputs.nth(1).press("Enter");
+        // İki adımlı giriş: önce e-posta / kullanıcı adı (doğru yazılınca Devam), sonra şifre
+        const id = page.locator("input[name=username]:not([readonly])");
+        await id.waitFor({ timeout: 20000 });
+        await id.fill("yanlis.kullanici");
+        await id.press("Enter");
+        const pw = page.locator("input[name=password]");
+        const hasPw = await pw.waitFor({ timeout: 10000 }).then(() => true, () => false);
+        push("Giriş ekranı", "alanlar", "kullanıcı adı, Devam, şifre alanı", hasPw, hasPw ? "2 adım" : "şifre adımı açılmadı");
+        await pw.fill("yanlis-sifre-123");
+        await pw.press("Enter");
         const t0 = Date.now();
         let msg = "";
         while (Date.now() - t0 < 20000 && !msg) {

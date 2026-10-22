@@ -12,7 +12,9 @@ export const PAGES = {
   inventory: { path: "/inventory", label: "Envanter", need: "owner" },
   fitness: { path: "/fitness", label: "Fitness", need: "owner" },
   food: { path: "/fitness?tab=food", label: "Beslenme", need: "owner" },
-  posts: { path: "/posts", label: "Instagram gönderileri", need: "owner" },
+  posts: { path: "/posts", label: "Instagram gönderileri (sosyal medya paylaşımları)", need: "owner" },
+  // "medya sayfası" Instagram değil, bu sayfa (Seyhun 2026-10-22: "medya sayfasına git dedim, Instagram'a gitti")
+  media: { path: "/media", label: "Medya (antrenman ve yarış fotoğraf/videoları)", need: "athletes" },
   tasks: { path: "/tasks", label: "Görevler" },
   notes: { path: "/notes", label: "Notlar" },
   receipts: { path: "/receipts", label: "Fişler", need: "receipts" },
@@ -32,6 +34,7 @@ export const PAGES = {
   shopping: { path: "/shopping", label: "Alışveriş listesi" },
   birthdays: { path: "/birthdays", label: "Doğum günleri" },
   schedule: { path: "/schedule", label: "Ders programı" },
+  english: { path: "/english", label: "İngilizce (kelimeler ve hazır cümleler)" },
   archive: { path: "/archive", label: "Arşiv" },
   settings: { path: "/settings", label: "Ayarlar" },
   people: { path: "/staff", label: "Kişiler", need: "owner" },
@@ -77,6 +80,7 @@ const TARGETS = [
   ["birthdays", /(^|\s)doğum ?gün\S*/],
   ["schedule", /(^|\s)(ders\S*|okul programı\S*)/],
   ["shopping", /(^|\s)(alışveriş\S*|market\S*|alınacak\S*)/],
+  ["english", /(^|\s)(ingilizce (sayfa|ekran|çalış|öğren|kelimeler|cümleler)\S*|kelimelerim\S*)|^ingilizce$/],
   ["archive", /(^|\s)arşiv\S*/],
   ["settings", /(^|\s)(ayar\S*|tercih\S*)/],
   ["invoices", /(^|\s)fatura\S*/],
@@ -89,7 +93,8 @@ const TARGETS = [
   ["calendar", /(^|\s)takvim\S*/],
   ["events", /(^|\s)(etkinlikler\S*|organizasyon\S*|kamp planlar\S*|geziler\S*)/],
   ["inventory", /(^|\s)(envanter\S*|demirbaş\S*)/],
-  ["posts", /(^|\s)([iı]nstagram\S*|gönderiler\S*|paylaşımlar\S*)/],
+  ["posts", /(^|\s)([iı]nstagram\S*|gönderiler\S*|paylaşımlar\S*|sosyal medya\S*)/],
+  ["media", /(^|\s)(medya\S*|fotoğraflar\S*|videolar\S*)(?=\s|$)/],
   ["plans", /(^|\s)(plan\S*|etkinlik\S*|program\S*)/],
   ["peopleStaff", /(^|\s)(çalışan\S*|personel\S*)/],
   ["people", /(^|\s)(kişi\S*|rehber\S*)/],
@@ -98,7 +103,7 @@ const TARGETS = [
 ];
 
 // Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası", "planlarım", "fişlerim")
-const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|[iı]nstagram|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|borçlar(ım)?|alacaklar(ım)?|antrenman günlüğü|antrenman sayfası|sayaç|geri sayım|envanter(im)?|demirbaşlar|fitness?|fitnes|beslenme|rüzg[aâ]r haritası|ruzgar haritası|windy)( sayfası| ekranı)?$/;
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|[iı]nstagram|medya|ingilizce|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|borçlar(ım)?|alacaklar(ım)?|antrenman günlüğü|antrenman sayfası|sayaç|geri sayım|envanter(im)?|demirbaşlar|fitness?|fitnes|beslenme|rüzg[aâ]r haritası|ruzgar haritası|windy)( sayfası| ekranı)?$/;
 
 // Önceki sayfaya dönüş ("geri dön", "geri git", "bir önceki sayfaya dön"): kısa ve başka iş içermeyen cümleler
 const BACK = /^(?:(?:tamam|şimdi|hadi|bir)\s+)?(?:geri (?:dön|git|gel|gidelim|dönelim)\S*|(?:bir )?önceki sayfa\S*(?: (?:dön|git|aç|geç)\S*)?|geri)(?: lütfen)?$/;

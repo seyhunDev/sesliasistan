@@ -1,7 +1,8 @@
 import { TOOL as CREATE_TOOL, toDrafts } from "./schema";
-import { matchPerson } from "../names.js";
+import { assigneesInText, matchPerson } from "../names.js";
 import { applyRepeat } from "../repeat.js";
 import { remindOf } from "../reminders.js";
+import { alarmOf } from "../planAlarm.js";
 
 const KIND = ["plan", "task", "note"];
 import { PAGE_KEYS as PAGES, PAGES as PAGE_INFO } from "../nav.js";
@@ -69,6 +70,7 @@ Kullanıcı tek cümlede birden çok iş isteyebilir: "Gökhan'a yarın 10'da te
 - Var olan kaydın sorumlusunu değiştirmek ("motor görevini Ali'ye ver", "toplantıya Ayşe'yi de ekle", "görevden Ali'yi çıkar") → op update, patch.assignTo: kaydın YENİ sorumlularının tam listesi (KİŞİLER bölümündeki tam adlar; çıkarılan yazılmaz, hepsi çıkarılırsa boş liste).
 - message: yalnız "Tamam." yaz (uygulama ne yaptığını ve silme onayını kendisi söyler). Kayıt belirsizse işlem yapma, tek kısa soru sor.
 - Var olan planın hatırlatması ("antrenmanı yarım saat önce hatırlat", "toplantıyı 1 gün önce hatırlat", "yarınki planı hatırlatma") → op update, patch.remind dakika (15, 30, 60, 1440; hatırlatma istenmezse 0). Yeni plan açma. Yeni plan cümlesinde ("yarın 10'da antrenman, yarım saat önce hatırlat") hatırlatmayı uygulama cümleden kendisi okur, sen planı yaz.
+- Var olan planın alarmı ("antrenmanın 1 saat öncesine alarm kur", "toplantıya alarm kur", "alarmı kaldır") → op update, patch.alarm dakika (başlangıçtan kaç dakika önce; tam saatinde 0; kaldırmak için -1). Alarm iPhone'da saat alarmı gibi çalar; hatırlatmadan (remind) ayrıdır. Yeni plan cümlesindeki alarmı uygulama kendisi okur.
 - update için patch'e yalnızca DEĞİŞEN alanları yaz. "Ertele", "öne al" gibi göreli ifadelerde yeni tarihi ŞİMDİ bilgisine göre hesapla. Saati kaldırmak için allDay true.
 - Toplu işlemler için (birkaç görevi birden tamamla) actions'a hepsini ekle, en fazla 10.
 
@@ -96,6 +98,7 @@ Sayfa isteğinde navigate'i doldur, message'ı çok kısa yaz ("Görevleri açı
 
 ## Yeni kayıt (create)
 - plan: belirli bir zamanda olacak etkinlik. task: yapılacak iş, başlık emir kipinde ("Tekneleri hazırla"). note: bilgi veya gözlem.
+- SORUMLU VE MESAJ YALNIZ İSTENİRSE: assignTo yalnız kullanıcı işi açıkça birine verdiyse dolar ("Ali'ye ver", "Ali yapsın", "Ali halletsin", "sorumlu Ali", "Ali'yi görevlendir"). Kaydın konusunda geçen ad sorumlu DEĞİLDİR: "Enes'in teknesinin tamiri için plan oluştur" → plan "Enes'in teknesinin tamiri", assignTo boş. Plan/görev/not isteğine kendiliğinden mesaj (send) ekleme; mesaj yalnız "yaz, söyle, haber ver, mesaj at" denirse.
 - NOT YALNIZ İSTENİRSE: kullanıcı "not al", "not düş", "nota/notlara ekle ya da yaz", "not olarak kaydet" demediyse note OLUŞTURMA; yalnız istenen ana işi yap (plan, görev, mesaj, yoklama, antrenman günlüğü). Ana işin ayrıntıları (katılanlar, çalışılacaklar, hava) ayrı bir nota yazılmaz. Tek istisna: cümle hiçbir iş istemeyip yalnız bir bilgi bildiriyorsa ("malzeme odası dolu") not olur. Not istendiyse hem ana iş hem not yazılır.
 - Tarihleri YYYY-MM-DD, saatleri 24 saatlik HH:MM yaz. Tarih ve SAAT UYDURMA, varsayılan saat ekleme; bilinmiyorsa boş bırak.
 - Tek cümleden birden çok kayıt çıkabilir (bir plan ve o plana bağlı görev; not yalnız istenirse); bağlı olanlara linkToPlan true ver. Bağlı görevin tarihi yoksa planın tarihini kullan.
@@ -180,6 +183,7 @@ export const ASSISTANT_TOOL = {
                 assignTo: { type: "array", items: { type: "string" }, description: "Sorumluları değiştirirken: yeni sorumluların tam listesi (KİŞİLER bölümündeki tam adlar)" },
                 remind: { type: "number", description: "Yalnız plan: kaç dakika önce hatırlatılsın (15, 30, 60, 1440); 0 = hatırlatma yok" },
                 important: { type: "boolean", description: "Yalnız plan: önemli yap true, önemliden çıkar false" },
+                alarm: { type: "number", description: "Yalnız plan: alarm başlangıçtan kaç dakika önce çalsın (0 tam saatinde, 60 bir saat önce); -1 = alarmı kaldır" },
               },
             },
           },
@@ -241,6 +245,7 @@ function cleanPatch(p) {
   if (p?.allDay === true) o.allDay = true;
   if (typeof p?.important === "boolean") o.important = p.important;
   if (Number.isFinite(p?.remind) && p.remind >= 0 && p.remind <= 2880) o.remind = Math.round(p.remind);
+  if (Number.isFinite(p?.alarm) && p.alarm >= -1 && p.alarm <= 2880) o.alarm = Math.round(p.alarm);
   if (Array.isArray(p?.assignTo)) o.assignTo = p.assignTo.map((x) => txt(x, 60)).filter(Boolean).slice(0, 10);
   return o;
 }
@@ -326,7 +331,7 @@ export function parseAssistant(raw, people = [], contacts = [], said = "") {
     .filter(Boolean)
     .filter((x, i, a) => a.findIndex((y) => y.to === x.to && y.text === x.text) === i)
     .slice(0, 5);
-  return {
+  const out = {
     send: send || sends[0] || null,
     sends,
     intent: INTENTS.includes(raw?.intent) ? raw.intent : "chat",
@@ -344,9 +349,28 @@ export function parseAssistant(raw, people = [], contacts = [], said = "") {
       .slice(0, 10)
       .map((a) => ({ op: a.op, kind: a.kind, id: cid(a.id), patch: cleanPatch(a.patch) }))
       // "antrenmanı yarım saat önce hatırlat": yapay zeka patch.remind yazmayı unutursa cümleden
-      .map((a) => (a.op === "update" && a.kind === "plan" && a.patch.remind === undefined && remindOf(said) !== null ? { ...a, patch: { ...a.patch, remind: remindOf(said) } } : a)),
+      .map((a) => (a.op === "update" && a.kind === "plan" && a.patch.remind === undefined && remindOf(said) !== null ? { ...a, patch: { ...a.patch, remind: remindOf(said) } } : a))
+      // "antrenmanın 1 saat öncesine alarm kur": alarm da aynı şekilde
+      .map((a) => (a.op === "update" && a.kind === "plan" && a.patch.alarm === undefined && alarmOf(said) !== null ? { ...a, patch: { ...a.patch, alarm: alarmOf(said) } } : a)),
     learn: cleanLearn(raw?.learn, said),
-    items: markImportant(said ? applyRepeat(toDrafts(raw?.items, people, raw?.message), said, trToday()) : toDrafts(raw?.items, people, raw?.message), said),
+    items: onlyAsked(markImportant(said ? applyRepeat(toDrafts(raw?.items, people, raw?.message), said, trToday()) : toDrafts(raw?.items, people, raw?.message), said), said, people),
   };
+  if (said && out.intent !== "message" && !MSG_CUE.test(said)) Object.assign(out, { send: null, sends: [] });
+  return out;
+}
+
+// Yalnız istenen yapılır (Seyhun 2026-10-22: "Enes'in teknesinin tamiri için plan oluştur dedim, görevlendirip mesaj
+// atmaya çalıştı; ben onu görevlendir, mesaj at demedim"). Kullanıcının cümlesinde işi birine verme sözü yoksa yapay
+// zekanın seçtiği sorumlu atılır (sorumluya bildirim gider); mesaj sözü yoksa kayıt isteğine eklenen mesaj atılır.
+const L = "(?<![\\p{L}])";
+const ASSIGN_CUE = new RegExp(
+  `${L}(?:sorumlu|görevlendir|atay|ata(?![\\p{L}])|atan|ver(?![\\p{L}])|verin|verelim|versene|yaptır|bırak(?![\\p{L}])|ilgilen(?:sin|ecek)|hallet(?:sin|sinler|ecek))|${L}(?!(?:ol|kal|başla|bit|sür|dur)s[ıiuü]n)[\\p{L}]{2,}?s[ıiuü]n(?:lar|ler)?(?![\\p{L}])`,
+  "iu",
+);
+export const MSG_CUE = new RegExp(`${L}(?:yaz|söyle|haber|sor(?!uml)|ilet|mesaj|gönder|bildir|duyur|whatsapp|paylaş)`, "iu");
+export const assignAsked = (said, people = []) => ASSIGN_CUE.test(String(said || "")) || assigneesInText(said, people).length > 0;
+function onlyAsked(items, said, people) {
+  if (!said || assignAsked(said, people)) return items;
+  return items.map((d) => (d.assignTo?.length ? { ...d, assignTo: [] } : d));
 }
 const trToday = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
