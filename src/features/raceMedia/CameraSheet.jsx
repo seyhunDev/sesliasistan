@@ -96,7 +96,9 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
       fns.current.onFail(new Error("Kamera açılamadı"));
       return;
     }
-    md.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }).then(
+    // Ses de kaydedilir (Seyhun 2026-10-22: çekilen videoda ses yoktu); mikrofon izni verilmezse yalnız görüntü
+    const video = { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+    md.getUserMedia({ video, audio: true }).catch(() => md.getUserMedia({ video, audio: false })).then(
       (s) => {
         if (off) return s.getTracks().forEach((t) => t.stop());
         stream.current = s;
@@ -169,7 +171,8 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
       raf = requestAnimationFrame(draw);
     };
     draw();
-    const r = new MediaRecorder(c.captureStream(30), { mimeType: type, videoBitsPerSecond: QUAL[q].bps });
+    const out = new MediaStream([...c.captureStream(30).getVideoTracks(), ...(stream.current?.getAudioTracks() || [])]);
+    const r = new MediaRecorder(out, { mimeType: type, videoBitsPerSecond: QUAL[q].bps, audioBitsPerSecond: 96_000 });
     const parts = [];
     r.ondataavailable = (e) => e.data?.size && parts.push(e.data);
     r.onstop = () => {
