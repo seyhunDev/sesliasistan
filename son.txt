@@ -1,8 +1,8 @@
-Commit: b53103c · Enerji: asistan düğmesi ve ekranı boştayken animasyon durur, ekran testine boşta ölçüm (#682)
-Zaman: 2026-10-22-1555 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39781289027
+Commit: 02fd745 · Ekran testi: sayaçta Sıfırla artık alt şeritte (#683)
+Zaman: 2026-10-22-1603 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39782536241
 
-TAM TEST · 22.10.2026 15:48:43
+TAM TEST · 22.10.2026 15:56:53
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1369/1373 geçti · 4 kalan · 413 sn
+SONUÇ: 1371/1373 geçti · 2 kalan · 395 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -130,15 +130,12 @@ SONUÇ: 1369/1373 geçti · 4 kalan · 413 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 103/107
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 105/107
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✗ Enerji (boşta): 1/2
       ✗ “ana sayfa”
           beklenen: saniyede en çok 3 stil ve yerleşim hesabı
-          olan:     stil 18.8/sn · yerleşim 0.8/sn
+          olan:     stil 26/sn · yerleşim 0.8/sn
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
@@ -152,13 +149,10 @@ SONUÇ: 1369/1373 geçti · 4 kalan · 413 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 12 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 16 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
-  ✗ Asistanın gizli olduğu yerler: 7/8
-      ✗ “Yarış multimedya: sayaç”
-          beklenen: ana düğme Başlat → Durdur → Devam; durunca kartta Sıfırla; start yarış açmaz
-          olan:     hata: locator.click: Timeout 30000ms exceeded.
+  ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
