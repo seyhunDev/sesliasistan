@@ -5,15 +5,46 @@
 // Boşta sürekli çalışan animasyon ya da döngü telefonu ısıtır, pili bitirir; boştayken bunlar ~0 olmalı.
 const ENERGY_MAX = 3;
 async function idleCost(page, ms = 2500) {
+  // Önce sayfa yerleşsin: veri, hava grafiği, resimler yüklenirken yapılan hesaplar "boşta" sayılmaz. En çok 8 sn, 1 sn
+  // hiç değişiklik olmayana kadar beklenir (sürekli değişen bir şey varsa yine ölçülür ve test düşer)
+  await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+  await page.evaluate(
+    () =>
+      new Promise((ok) => {
+        let last = performance.now();
+        const mo = new MutationObserver(() => (last = performance.now()));
+        mo.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+        const t0 = performance.now();
+        const tick = () => (performance.now() - last > 1000 || performance.now() - t0 > 8000 ? (mo.disconnect(), ok()) : setTimeout(tick, 100));
+        tick();
+      }),
+  );
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Performance.enable");
   const get = async () => Object.fromEntries((await cdp.send("Performance.getMetrics")).metrics.map((m) => [m.name, m.value]));
+  // Boşta DOM'u değiştiren parçalar (sayaç, döngü): en çok değişen 4 öğe raporda görünsün
+  await page.evaluate(() => {
+    const n = (window.__muts = new Map());
+    const key = (el) => (el?.nodeType === 1 ? el : el?.parentElement);
+    const name = (el) => el && `${el.tagName.toLowerCase()}${el.getAttribute("class") ? "." + el.getAttribute("class").split(" ").slice(0, 2).join(".") : ""}`;
+    window.__mo?.disconnect();
+    window.__mo = new MutationObserver((ms) => ms.forEach((m) => { const k = name(key(m.target)); n.set(k, (n.get(k) || 0) + 1); }));
+    window.__mo.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+  });
   const a = await get();
   await page.waitForTimeout(ms);
   const b = await get();
+  const muts = await page.evaluate(() => {
+    window.__mo?.disconnect();
+    return [...window.__muts.entries()].sort((x, y) => y[1] - x[1]).slice(0, 4).map(([k, v]) => `${k}×${v}`).join(", ");
+  });
   await cdp.detach().catch(() => {});
   const per = (k) => Math.round(((b[k] - a[k]) / ms) * 10000) / 10;
-  return { style: per("RecalcStyleCount"), layout: per("LayoutCount") };
+  // Süren animasyonlar (sınıf + ad): hangi parçanın boşta çalıştığı rapordan okunsun
+  const running = await page.evaluate(() =>
+    [...new Set(document.getAnimations().filter((x) => x.playState === "running").map((x) => `${x.effect?.target?.getAttribute?.("class")?.split(" ")[0] || x.effect?.target?.tagName || "?"}:${x.animationName || x.transitionProperty || "?"}`))].slice(0, 8).join(", "),
+  );
+  return { style: per("RecalcStyleCount"), layout: per("LayoutCount"), running: [running, muts && `değişen: ${muts}`].filter(Boolean).join(" · ") };
 }
 
 export async function scenarios(h) {
@@ -26,6 +57,7 @@ export async function scenarios(h) {
   await page.evaluate(() => localStorage.setItem("sa-quick", "1"));
   const G1 = "Sekme çubuğundaki yeşil düğme";
   await check(G1, "ana sayfa", "ortada tek asistan düğmesi, 5 sütun", async () => {
+    await orb(page).first().waitFor({ timeout: 12000 }).catch(() => {}); // yavaş makinede sekme çubuğu geç çiziliyor
     const n = await orb(page).count();
     const cols = await page.locator("nav[aria-label='Sekmeler'] > div").getAttribute("class");
     return [n === 1 && /grid-cols-5/.test(cols), `${n} düğme · ${/grid-cols-(\d)/.exec(cols)?.[1]} sütun`];
@@ -39,7 +71,7 @@ export async function scenarios(h) {
   await check("Enerji (boşta)", "ana sayfa", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
     await page.waitForTimeout(800);
     const c = await idleCost(page);
-    return [c.style <= ENERGY_MAX && c.layout <= ENERGY_MAX, `stil ${c.style}/sn · yerleşim ${c.layout}/sn`];
+    return [c.style <= ENERGY_MAX && c.layout <= ENERGY_MAX, `stil ${c.style}/sn · yerleşim ${c.layout}/sn${c.running ? ` · süren: ${c.running}` : ""}`];
   });
   // Dokun: tam ekran açılır, dinler
   const srBefore = await page.evaluate(() => window.__t.srStarts);
@@ -94,7 +126,7 @@ export async function scenarios(h) {
   await check("Enerji (boşta)", "asistan açık, boşta", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
     await page.waitForTimeout(800);
     const c = await idleCost(page);
-    return [c.style <= ENERGY_MAX && c.layout <= ENERGY_MAX, `stil ${c.style}/sn · yerleşim ${c.layout}/sn`];
+    return [c.style <= ENERGY_MAX && c.layout <= ENERGY_MAX, `stil ${c.style}/sn · yerleşim ${c.layout}/sn${c.running ? ` · süren: ${c.running}` : ""}`];
   });
   const before = h.aiCalls();
   await btn(page, "Gönder").click();
@@ -329,7 +361,8 @@ async function scenarios2(h) {
 async function answer(h, page, text) {
   const { state, btn, waitFor, setTranscript } = h;
   setTranscript(text);
-  await waitFor(async () => (await state(page)) === "listening", 6000);
+  // Soru okununca mikrofon açılır; GitHub makinesi yavaş olduğunda okuma uzun sürebiliyor (6 sn yetmedi, 22 Eki)
+  await waitFor(async () => (await state(page)) === "listening", 12000);
   await page.waitForTimeout(1200);
   if (await btn(page, "Gönder").count()) await btn(page, "Gönder").click({ timeout: 5000 });
 }
