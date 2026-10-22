@@ -202,14 +202,6 @@ function Day() {
             title={cur ? cur.name : ""}
             where={title}
             beforeStart={!plan && racer ? addPlan : undefined}
-            lead={
-              tabs && (
-                <>
-                  <Button variant="secondary" onClick={() => (setCam({ kind: "photo" }), setTab("media"))}>Fotoğraf</Button>
-                  <Button variant="secondary" onClick={() => (setCam({ kind: "video" }), setTab("media"))}>Video</Button>
-                </>
-              )
-            }
             tail={tabs && <Button variant="secondary" onClick={() => setWind(true)}>Rüzgâr</Button>}
           />
         )}
@@ -293,7 +285,7 @@ function Day() {
           ours={ours}
           onChange={change}
           cam0={cam?.kind || ""}
-          onCamClose={() => cam && (setTab("sure"), setCam(null))}
+          onCamClose={() => cam && (setTab(cam.back || "sure"), setCam(null))}
         />
       )}
       {tabs && shown === "wx" && <WeatherTab orgId={orgId} race={place} day={date} live={live} onChange={change} saveSpot={saveSpot} />}
@@ -337,7 +329,7 @@ function Day() {
               change((l) => ({ wind: [...l.wind, w] }), () => addWind(orgId, liveId, w));
             }}
           />
-          <TabDock value={shown} onChange={setTab} />
+          <TabDock value={shown} onChange={setTab} onRec={() => (setCam({ kind: "video", back: shown }), setTab("media"))} />
         </>
       )}
     </main>

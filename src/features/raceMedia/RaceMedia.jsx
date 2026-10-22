@@ -183,7 +183,7 @@ export function RaceMedia({ orgId, id }) {
         </button>
       </div>
       {tab === "wx" && <WeatherTab orgId={orgId} race={race} day={cur} live={live} onChange={change} onRace={setRace} />}
-      {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onCam={openCam} onReset={() => setReset(true)} />}
+      {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onReset={() => setReset(true)} />}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
       {tab === "media" && (
         <MediaTab
@@ -216,7 +216,7 @@ export function RaceMedia({ orgId, id }) {
           change({ days: next }, () => saveDays(orgId, id, next));
         }}
       />
-      <TabDock value={tab} onChange={setTab} />
+      <TabDock value={tab} onChange={setTab} onRec={() => openCam("video")} />
       <ResetSheet
         open={reset}
         onClose={() => setReset(false)}
@@ -242,9 +242,10 @@ export function RaceMedia({ orgId, id }) {
   );
 }
 
-// Sekmeler en altta (Seyhun 2026-10-19: "alttan yönetelim"); sekmenin düğme şeridi (Countdown Bar) bunun üstünde durur (--bar-b)
+// Sekmeler en altta (Seyhun 2026-10-19: "alttan yönetelim"); sekmenin düğme şeridi (Countdown Bar) bunun üstünde durur (--bar-b).
+// Yanında tek Kayıt düğmesi (Seyhun 2026-10-22: ayrı Fotoğraf/Video düğmeleri kalktı): her sekmeden kamerayı açar, foto/video kamerada seçilir
 const TAB_ICON = { sure: "clock", media: "image", wx: "wind", res: "flag" };
-export function TabDock({ value, onChange }) {
+export function TabDock({ value, onChange, onRec }) {
   useEffect(() => {
     const r = document.documentElement.style;
     r.setProperty("--bar-b", "calc(env(safe-area-inset-bottom) + 4.75rem)");
@@ -252,13 +253,23 @@ export function TabDock({ value, onChange }) {
   }, []);
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[30rem] px-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
-      <div className="grid grid-cols-4 rounded-[1.25rem] border border-line bg-card p-1.5 shadow-[0_2px_12px_rgba(38,40,44,.06)]">
-        {TABS.map(([k, l]) => (
-          <button key={k} type="button" onClick={() => onChange(k)} aria-pressed={value === k} className={`flex flex-col items-center gap-0.5 rounded-[0.875rem] py-1.5 text-[0.71875rem] ${value === k ? "bg-accbg font-semibold text-deep" : "text-mut"}`}>
-            <Icon name={TAB_ICON[k]} className="size-[1.375rem]" />
-            {l}
+      <div className="flex gap-2">
+        <div className="grid flex-1 grid-cols-4 rounded-[1.25rem] border border-line bg-card p-1.5 shadow-[0_2px_12px_rgba(38,40,44,.06)]">
+          {TABS.map(([k, l]) => (
+            <button key={k} type="button" onClick={() => onChange(k)} aria-pressed={value === k} className={`flex flex-col items-center gap-0.5 rounded-[0.875rem] py-1.5 text-[0.71875rem] ${value === k ? "bg-accbg font-semibold text-deep" : "text-mut"}`}>
+              <Icon name={TAB_ICON[k]} className="size-[1.375rem]" />
+              {l}
+            </button>
+          ))}
+        </div>
+        {onRec && (
+          <button type="button" onClick={onRec} data-press className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[1.25rem] border border-line bg-card text-[0.71875rem] font-semibold shadow-[0_2px_12px_rgba(38,40,44,.06)]">
+            <span className="grid size-[1.375rem] place-items-center rounded-full border-2 border-rec">
+              <span className="size-2.5 rounded-full bg-rec" />
+            </span>
+            Kayıt
           </button>
-        ))}
+        )}
       </div>
     </nav>
   );
