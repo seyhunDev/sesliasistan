@@ -8,7 +8,7 @@ export const THEMES = [
 export const cleanTheme = (v) => (v === "light" || v === "dark" ? v : "");
 
 // Durum çubuğu / tarayıcı rengi (globals.css'teki --bg ile aynı)
-export const THEME_BG = { light: "#f4f3ef", dark: "#121416" };
+export const THEME_BG = { light: "#f2f4f6", dark: "#121416" };
 
 // Seçimden ekranda kullanılacak tema: otomatikte telefonun açık/koyu ayarı
 export const resolveTheme = (v, prefersDark) => cleanTheme(v) || (prefersDark ? "dark" : "light");

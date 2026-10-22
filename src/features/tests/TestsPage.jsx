@@ -219,7 +219,7 @@ export function TestsPage() {
                 <span className="text-[1.375rem] text-white/50"> / {gh.total}</span>
               </b>
               <span className="mt-2 block h-[0.4375rem] overflow-hidden rounded-full bg-white/15" aria-hidden="true">
-                <span className="block h-full rounded-full bg-[#a78bfa]" style={{ width: `${Math.round((gh.pass / Math.max(1, gh.total)) * 100)}%` }} />
+                <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round((gh.pass / Math.max(1, gh.total)) * 100)}%` }} />
               </span>
             </>
           )}
