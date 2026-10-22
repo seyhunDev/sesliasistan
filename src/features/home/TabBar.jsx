@@ -553,11 +553,9 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   useEffect(() => {
     const el = feed.current;
     if (!active || !el || typeof ResizeObserver === "undefined") return;
-    // Gözlemci ilk ölçümü kendisi de verir; yuvanın kendi 4 px'lik payı ve önceki sohbetler sayılmaz (açılışta halka büyük
-    // kalır, ilk yeni yazıda küçülür)
+    // Gözlemci ilk ölçümü kendisi de verir; yuvanın kendi 4 px'lik payı sayılmaz (açılışta halka büyük kalır, ilk yazıda küçülür)
     const ro = new ResizeObserver(() => {
-      const past = el.querySelector("[data-past]");
-      if (el.offsetHeight - (past ? past.offsetHeight + 16 : 0) > 8) setFilled(true);
+      if (el.offsetHeight > 8) setFilled(true);
     });
     ro.observe(el);
     return () => {
