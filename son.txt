@@ -1,8 +1,8 @@
-Commit: 81b4974 · Merge pull request #705 from seyhunDev/claude/project-thread-76s7q5
-Zaman: 2026-10-22-2144 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39833122658
+Commit: 869f941 · iPhone: titreşim, Face ID ile kilit, ana ekran widget'ı (#698)
+Zaman: 2026-10-22-2159 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39835179290
 
-TAM TEST · 22.10.2026 21:39:01
+TAM TEST · 22.10.2026 21:53:05
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -14,12 +14,13 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Asistan: sekme çubuğu, açılış, dinleme, kapanış…
     Asistan: çalışırken, küçültme, sesli yanıt, geçmiş…
     Asistan: kayıt, onaylar, görev listesi…
+    Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
     Çevrimdışı çalışma (internet kesilip açılır)…
     Çevrimdışı: 19/19 geçti
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1317/1318 geçti · 1 kalan · 331 sn
+SONUÇ: 1373/1373 geçti · 0 kalan · 402 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -129,7 +130,7 @@ SONUÇ: 1317/1318 geçti · 1 kalan · 331 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 51/52
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 107/107
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Enerji (boşta): 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
@@ -137,15 +138,20 @@ SONUÇ: 1317/1318 geçti · 1 kalan · 331 sn
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 2/2
   ✓ Basılı tut yaz: 1/1
-  ✓ Sayfa hataları: 2/2
+  ✓ Sayfa hataları: 7/7
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
-  ✓ Onaysız kayıt ve “Kaydedildi”: 9/9
-  ✗ Senaryolar: 0/1
-      ✗ “çalıştırma”
-          beklenen: tamamlanır
-          olan:     locator.click: Timeout 5000ms exceeded. | Call log: |   - waiting for locator('[data-dome] button[aria-label=\'Gönder\']')
+  ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
+  ✓ Onay isteyen işler: 10/10
+  ✓ Görev listesi ve ilerleme halkası: 3/3
+  ✓ Tohum cümleler (telefonda cevap): 12/12
+  ✓ Asistanın gizli olduğu yerler: 8/8
+  ✓ Geniş ekran (sol menü): 3/3
+  ✓ Asistan raporu: 3/3
+  ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
+  ✓ Instagram gönderisi: 1/1
+  ✓ Tam ekran üstte: 1/1
   ✓ Güvenlik: 1/1
 
 3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 19/19
