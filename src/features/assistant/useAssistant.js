@@ -18,8 +18,8 @@ import { rel, todayStr } from "@/lib/utils/format";
 import { seriesDates } from "@/lib/repeat";
 import { pastTense } from "@/lib/assistTasks";
 import { useWaitLines } from "./WaitLines";
-import { ASK_EMPTY, PAST_MS, asksToClear, remember, sessionOf, sessionsFor } from "@/lib/convoContext";
-import { PAST_CLEAR, loadSessions, pastShown, saveSession } from "@/lib/sessionStore";
+import { ASK_EMPTY, PAST_MS, REOPEN_MS, asksToClear, remember, resumeOk, sessionOf, sessionsFor } from "@/lib/convoContext";
+import { PAST_CLEAR, loadSessions, saveSession } from "@/lib/sessionStore";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
@@ -76,6 +76,7 @@ export const pastSnap = (prev, list, msgDraft, memo) => ({ turns: [...prev, ...l
 
 // Saat (render dışında, olay ve etkilerde çağrılır)
 const nowMs = () => Date.now();
+const NO_HISTORY = [];
 
 export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   const ctx = {}; // taşınan işlerin bağlamı (sonda doldurulur)
@@ -367,24 +368,35 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   const past = useRef({ turns: [], at: 0, msgDraft: null, memo: {} });
   const pastOn = () => recentPast(past.current);
   const pastTurns = () => (pastOn() ? past.current.turns : []);
+  // Kapatınca konuşma geçmişe yazılır; REOPEN_MS içinde yeniden açılırsa yazılmamış sayılır (aynı turlar iki kez gitmesin)
+  const shut = useRef({ at: 0, past: null, msgDraft: null, saved: 0 });
+  const shutTimer = useRef(0);
+  useEffect(() => () => clearTimeout(shutTimer.current), []);
+  const clearScreen = () => {
+    setTurns([]);
+    setUsed(new Set());
+    setDrafts([]);
+    setSaved([]);
+    setCards(EMPTY);
+    setText("");
+    setHeard("");
+    setError("");
+  };
+  // Bu açılışın oturumu: id (cihazdaki kaydın anahtarı), saved: cihaza zaten yazılan tur sayısı (kısa aradan sonra devam)
+  const sess = useRef({ id: 0, saved: 0 });
   function keepPast(list) {
     past.current = pastSnap(pastTurns(), list, msgDraft.current, memo.current);
     // Son 5 oturum (Seyhun, 2026-10-14): bu açılışın konuşması kısa özet olarak cihazda kalır, sonraki isteklerde yapay zekaya gider
-    saveSession(dataUid, sessionOf(list, memo.current, { id: openId.current, at: past.current.at }));
+    saveSession(dataUid, sessionOf(list.slice(sess.current.saved), memo.current, { id: sess.current.id, at: past.current.at }));
+    sess.current.saved = 0;
   }
-  const openId = useRef(0);
-  useEffect(() => {
-    if (open) openId.current = nowMs();
-  }, [open]);
-  // Ekranda, yeni konuşmanın üstünde son 3 oturum (Seyhun: "önceki birkaç sohbet gösterirsin her zaman", 2026-10-17)
-  const [history, setHistory] = useState([]);
-  // Ayarlar'da gizlendiyse ekranda gösterilmez; hafıza (yapay zekaya giden oturumlar) sürer
-  const loadHistory = () => setHistory(pastShown() ? loadSessions(dataUid).slice(-3) : []);
+  // Önceki sohbetler ekranda gösterilmez (Seyhun, 2026-10-22: her açılış temiz); yapay zekanın hafızası (sessionsNow) sürer
+  const history = NO_HISTORY;
   // Ayarlar › Geçmişi sil: az önceki konuşma da unutulur
   useEffect(() => {
     const clear = () => {
       past.current = { turns: [], at: 0, msgDraft: null, memo: {} };
-      setHistory([]);
+      shut.current = { at: 0, past: null, msgDraft: null, saved: 0 };
     };
     window.addEventListener(PAST_CLEAR, clear);
     return () => window.removeEventListener(PAST_CLEAR, clear);
@@ -784,7 +796,6 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
     const asking = cards.awaiting || cards.pending || drafts.length || planOn.current || (!askedMore.current && /\?\s*$/.test(lastAsk));
     if (!asking && turns.length && phase === "idle") {
       keepPast(turns);
-      loadHistory(); // kalkan konuşma önceki sohbetlerin arasında görünür
       setTurns([]);
       setCards(EMPTY);
       setSteps([]);
@@ -871,24 +882,28 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
         setTimeout(() => saveSessionLog(at), 400); // son cevabın süre kaydı da girsin
       }
       setBooting(false);
-      // Kapanma animasyonu bitince temizle: bir sonraki açılışta eski konuşma görünmesin (yapay zekanın bağlamında kalır)
+      // Konuşma yapay zekanın bağlamına yazılır; ekran REOPEN_MS sonra temizlenir (o arada açılırsa kaldığı yerden sürer)
+      if (shut.current.at) return; // zaten kapalıydı (yalnız seed değişti)
+      shut.current = { at: nowMs(), past: past.current, msgDraft: msgDraft.current, saved: turns.length };
       keepPast(turns);
       msgDraft.current = null;
-      const t = setTimeout(() => {
-        setTurns([]);
-        setUsed(new Set());
-        setDrafts([]);
-        setSaved([]);
-        setCards(EMPTY);
-        setText("");
-        setHeard("");
-        setError("");
-        setPhase("idle");
-      }, 350);
-      return () => clearTimeout(t);
+      setPhase("idle");
+      clearTimeout(shutTimer.current);
+      shutTimer.current = setTimeout(clearScreen, REOPEN_MS);
+      return;
     }
     if (startedFor.current === seed?.id) return;
-    if (!startedFor.current) loadHistory(); // bu açılış: önceki sohbetler bir kez okunur
+    // Kısa aradan sonra açılış: ekrandaki konuşma, taslak ve yapay zekanın bağlamı kapanmadan önceki gibi kalır
+    const back = !startedFor.current && resumeOk(shut.current.at, shut.current.saved, nowMs());
+    if (!startedFor.current) {
+      clearTimeout(shutTimer.current);
+      if (back) {
+        past.current = shut.current.past;
+        msgDraft.current = shut.current.msgDraft;
+        sess.current.saved = shut.current.saved;
+      } else sess.current = { id: nowMs(), saved: 0 };
+      shut.current = { at: 0, past: null, msgDraft: null, saved: 0 };
+    }
     const cont = seed?.cont && startedFor.current !== null;
     startedFor.current = seed?.id;
     preferRef.current = seed?.prefer || "";
@@ -897,6 +912,16 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
     askTo.current = null;
     sentOk.current = false;
     setFocus(seed?.focus || null);
+    if (back) {
+      convo.current = !!(seed?.listen || seed?.voice);
+      setVoice(!!seed?.voice);
+      if (seed?.text) run(seed.text, !!seed.voice);
+      else if (seed?.listen) {
+        setBooting(true);
+        sp.start(listenOpts(true));
+      }
+      return;
+    }
     // Panel zaten açıktı (alttaki "Konuş"/"Yaz"): sohbet sıfırlanmaz, kaldığı yerden devam
     if (cont) {
       if (seed?.text) run(seed.text, !!seed.voice);

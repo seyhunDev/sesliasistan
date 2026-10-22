@@ -240,29 +240,44 @@ async function scenarios2(h) {
     return [!!ok, `tam ekran ${await full(page).count()} · küçük ${await page.locator(".amini").count()}`];
   });
 
-  // Önceki sohbet: yeniden açınca son sohbetler soluk görünür
-  const GP = "Önceki sohbetler";
+  // Yeniden açılış (Seyhun 2026-10-22): 30 sn içinde açınca konuşma kalır; sonra ekran temiz başlar, önceki sohbetler
+  // ekranda görünmez ama yapay zeka hatırlamaya devam eder (istekte geçmiş olarak gider)
+  const GP = "Yeniden açılış";
   await orb(page).click();
-  await check(GP, "yeniden aç", "son sohbet üstte soluk görünür (Önceki sohbetler)", async () => {
-    const ok = await waitFor(async () => /akşam ne yapsam/.test(await page.locator("[data-dome] [data-past]").innerText().catch(() => "")), 3000);
-    const cls = await page.locator("[data-dome] [data-past]").getAttribute("class").catch(() => "");
-    return [!!ok && /text-mut/.test(cls), ok ? `soluk: ${/text-mut/.test(cls)}` : "görünmüyor"];
-  });
-  await check(GP, "en çok 3 sohbet", "3'ten fazla eski sohbet gösterilmez", async () => {
-    const n = await page.locator("[data-dome] [data-past] > *").count();
-    return [n <= 3, `${n} sohbet`];
+  await check(GP, "30 sn içinde yeniden aç", "konuşma kaldığı yerden görünür", async () => {
+    const ok = await waitFor(async () => /rüzgâr sakin/.test(await convo(page)), 3000);
+    return [!!ok, ok ? "konuşma ekranda" : `görünmüyor: ${clean(await convo(page)).slice(0, 80)}`];
   });
   await closeAll(page);
-  // Ayarlar › Geçmiş sohbetler › gizle: ekranda görünmez (hafıza kalır)
-  await page.evaluate(() => localStorage.setItem("sa-asst-past-shown", "0"));
-  await orb(page).click();
-  await check(GP, "gizliyken yeniden aç", "eski sohbetler ekranda görünmez", async () => {
-    await page.waitForTimeout(1200);
-    const n = await page.locator("[data-dome] [data-past]").count();
-    return [n === 0, `${n} eski sohbet alanı`];
+  await page.evaluate(() => {
+    const now = Date.now.bind(Date);
+    window.__realNow = now;
+    Date.now = () => now() + 31000;
   });
+  await orb(page).click();
+  await check(GP, "30 sn sonra yeniden aç", "ekran temiz: eski konuşma ve önceki sohbetler görünmez", async () => {
+    await waitFor(async () => (await page.locator(".afull.afull-in").count()) > 0, 3000);
+    await page.waitForTimeout(800);
+    const c = clean(await convo(page));
+    const past = await page.locator("[data-dome] [data-past]").count();
+    return [!/rüzgâr sakin|akşam ne yapsam/.test(c) && past === 0, `konuşma: “${c.slice(0, 60)}” · eski sohbet alanı ${past}`];
+  });
+  {
+    setAI(() => ({ intent: "chat", message: "Tamam, hatırlıyorum." }));
+    await closeAll(page);
+    const n = calls.length;
+    await talkAsk(page, "az önce ne demiştin");
+    await check(GP, "temiz ekranda yeni soru", "yapay zekaya önceki konuşma geçmiş olarak gider (hafıza sürer)", async () => {
+      await waitFor(async () => calls.slice(n).some((c) => c.path === "/api/assistant"), 6000);
+      const req = calls.slice(n).find((c) => c.path === "/api/assistant")?.body || {};
+      const sent = JSON.stringify([req.history || "", req.sessions || []]);
+      return [/rüzgâr sakin|akşam ne yapsam/.test(sent), sent.slice(0, 120)];
+    });
+  }
+  await page.evaluate(() => window.__realNow && (Date.now = window.__realNow));
+  setAI(() => ({ intent: "chat", message: "Tamam." }));
+  await waitFor(async () => (await state(page)) === "idle", 3000);
   await closeAll(page);
-  await page.evaluate(() => localStorage.removeItem("sa-asst-past-shown"));
 
   // Sesli yanıt açık: okur (mavi), bitince mikrofon bir kez açılır
   const GS = "Sesli yanıt";
