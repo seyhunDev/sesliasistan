@@ -49,6 +49,41 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
       localStorage.setItem(QKEY, n);
     } catch {}
   };
+  // Yakınlaştırma (Seyhun 2026-10-22): iki parmakla ya da "1×" düğmesiyle. Telefon destekliyorsa kameranın kendi zoom'u (tele lens dahil),
+  // yoksa görüntünün ortası kırpılır (çekilen fotoğraf/video da aynı kırpılır)
+  const [zoom, setZoom] = useState(1);
+  const [hwZoom, setHwZoom] = useState(false);
+  const zr = useRef({ z: 1, hw: null, pinch: null });
+  const zMax = () => Math.min(5, zr.current.hw?.max || 5);
+  const setZ = (z) => {
+    const n = Math.round(Math.max(1, Math.min(zMax(), z)) * 10) / 10;
+    zr.current.z = n;
+    setZoom(n);
+    const tr = stream.current?.getVideoTracks?.()[0];
+    if (zr.current.hw && tr) tr.applyConstraints({ advanced: [{ zoom: Math.max(zr.current.hw.min || 1, n) }] }).catch(() => {});
+  };
+  // Videodan alınacak bölge: kendi zoom'u varsa bütün kare, yoksa ortadaki 1/z
+  const crop = (v) => {
+    const z = zr.current.hw ? 1 : zr.current.z;
+    const sw = v.videoWidth / z;
+    const sh = v.videoHeight / z;
+    return [(v.videoWidth - sw) / 2, (v.videoHeight - sh) / 2, sw, sh];
+  };
+  const touch = {
+    onTouchStart: (e) => {
+      if (e.touches.length !== 2) return;
+      const [a, b] = e.touches;
+      zr.current.pinch = { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), z: zr.current.z };
+    },
+    onTouchMove: (e) => {
+      const p = zr.current.pinch;
+      if (!p || e.touches.length !== 2) return;
+      const [a, b] = e.touches;
+      setZ((p.z * Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)) / p.d);
+    },
+    onTouchEnd: (e) => e.touches.length < 2 && (zr.current.pinch = null),
+  };
+  const zStep = () => setZ(zoom < 1.95 ? 2 : zoom < 2.95 && zMax() >= 3 ? 3 : 1);
   const timer = useTimerRun();
   useEffect(() => {
     fns.current = { onShot, onFail };
@@ -65,6 +100,10 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
       (s) => {
         if (off) return s.getTracks().forEach((t) => t.stop());
         stream.current = s;
+        try {
+          const cap = s.getVideoTracks()[0]?.getCapabilities?.().zoom;
+          if (cap?.max > 1) (zr.current.hw = cap), setHwZoom(true);
+        } catch {}
         const v = vid.current;
         v.srcObject = s;
         v.play().then(() => !off && setReady(true), () => !off && setReady(true));
@@ -98,7 +137,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
     c.width = w;
     c.height = h;
     const ctx = c.getContext("2d");
-    ctx.drawImage(v, 0, 0, w, h);
+    ctx.drawImage(v, ...crop(v), 0, 0, w, h);
     const at = new Date().toISOString(); // fotoğrafa yazı Kaydet'te basılır (yarışı ve anı değiştirilebilsin)
     setFlash(true);
     setTimeout(() => setFlash(false), 120);
@@ -118,14 +157,15 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
     let raf = 0;
     // Kayıt sürerken telefon çevrilirse görüntü ezilmez: kareye sığdırılır, boşluk siyah
     const draw = () => {
-      const sc = Math.min(w / (v.videoWidth || w), h / (v.videoHeight || h));
-      const dw = Math.round((v.videoWidth || w) * sc);
-      const dh = Math.round((v.videoHeight || h) * sc);
+      const [sx, sy, sw, sh] = crop(v);
+      const sc = Math.min(w / (sw || w), h / (sh || h));
+      const dw = Math.round((sw || w) * sc);
+      const dh = Math.round((sh || h) * sc);
       if (dw !== w || dh !== h) {
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, w, h);
       }
-      ctx.drawImage(v, (w - dw) / 2, (h - dh) / 2, dw, dh);
+      ctx.drawImage(v, sx, sy, sw, sh, (w - dw) / 2, (h - dh) / 2, dw, dh);
       raf = requestAnimationFrame(draw);
     };
     draw();
@@ -183,6 +223,11 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
       ))}
     </div>
   );
+  const zBtn = (
+    <button type="button" onClick={zStep} aria-label="Yakınlaştır" className="grid size-9 place-items-center rounded-full bg-black/50 text-[0.75rem] font-semibold tabular-nums text-[#FFD60A]">
+      {`${String(zoom).replace(".", ",")}×`}
+    </button>
+  );
   const shut = (
     <button
       type="button"
@@ -218,8 +263,8 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
   // sağda dikey şerit (çentik payı kadar geniş, içi ortalı), sayaç sol üstte.
   const safeX = "pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]";
   return (
-    <div data-cam className="fixed inset-0 z-[80] overflow-hidden bg-black text-white">
-      <video ref={vid} muted playsInline autoPlay className="absolute inset-0 size-full object-cover" />
+    <div data-cam {...touch} className="fixed inset-0 z-[80] touch-none overflow-hidden bg-black text-white">
+      <video ref={vid} muted playsInline autoPlay style={hwZoom || zoom === 1 ? undefined : { transform: `scale(${zoom})` }} className="absolute inset-0 size-full object-cover" />
       {flash && <div className="pointer-events-none absolute inset-0 bg-black/60" />}
       <div className={`absolute inset-x-0 top-0 flex items-center justify-between gap-2 bg-gradient-to-b from-black/60 to-transparent pb-6 pt-[calc(0.5rem+env(safe-area-inset-top))] ${safeX} landscape:right-[calc(6.5rem+env(safe-area-inset-right))] landscape:justify-start`}>
         <div className="min-w-0">{info}</div>
@@ -235,6 +280,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
         </p>
       )}
       <div className={`absolute inset-x-0 bottom-0 bg-black/45 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 ${safeX} landscape:hidden`}>
+        <div className="-mt-14 mb-5 flex justify-center">{zBtn}</div>
         {modes}
         <div className="mt-3 grid grid-cols-3 items-center">
           <div>{done}</div>
@@ -245,6 +291,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
       <div className="absolute inset-y-0 right-0 hidden w-[calc(6.5rem+env(safe-area-inset-right))] flex-col items-center justify-between bg-black/45 pr-[env(safe-area-inset-right)] py-[calc(1rem+env(safe-area-inset-bottom))] landscape:flex">
         {thumb}
         <div className="flex flex-col items-center gap-4">
+          {zBtn}
           {modes}
           {shut}
         </div>

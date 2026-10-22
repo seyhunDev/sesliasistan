@@ -105,7 +105,22 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
     addUp(rec);
     enqueue(rec);
   };
-  const retry = () => waiting.forEach((r) => enqueue(r));
+  // Bekleyen kayıt kendiliğinden yeniden denenir (Seyhun 2026-10-22: "Tekrar dene" düğmesi kalktı): internet gelince ve 30 sn'de bir
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const f = () => setOnline(navigator.onLine);
+    f();
+    window.addEventListener("online", f);
+    window.addEventListener("offline", f);
+    return () => (window.removeEventListener("online", f), window.removeEventListener("offline", f));
+  }, []);
+  const hasWait = waiting.length > 0;
+  useEffect(() => {
+    if (!hasWait) return;
+    const id = setInterval(() => navigator.onLine && listPending(race.id).then((l) => l.forEach((r) => enqueue(r))), 30e3);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasWait, race.id]);
   // Sayfa açılınca telefonda kalanlar (eski "kaydetmeden önce" bekleyenler dahil) listelenir ve yeniden denenir; internet gelince de
   useEffect(() => {
     let on = true;
@@ -208,18 +223,8 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const waitErr = waiting.find((x) => x.err)?.err || "";
   return (
     <>
-      {waiting.length > 0 && (
-        <div className={`${card} mt-3 flex items-center gap-3 px-4 py-3`}>
-          <span className="min-w-0 flex-1">
-            <b className="block text-[0.9375rem] font-semibold text-warn">{waiting.length} kayıt telefonda bekliyor</b>
-            <span className="block text-[0.8125rem] text-mut">{busy || waitErr || "Yükleniyor"}</span>
-          </span>
-          {!busy && (
-            <button type="button" onClick={retry} data-press className="btn btn-primary btn-sm shrink-0">
-              Tekrar dene
-            </button>
-          )}
-        </div>
+      {((!online && (waiting.length > 0 || Object.keys(ups).length > 0)) || (online && waiting.length > 0 && waitErr && waitErr !== "İnternet yok.")) && (
+        <p className="mt-3 px-1 text-[0.875rem] text-warn">{online ? waitErr : "Bağlantı yok · telefona kaydedildi"}</p>
       )}
       {tagged.length > 0 && (
         <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
