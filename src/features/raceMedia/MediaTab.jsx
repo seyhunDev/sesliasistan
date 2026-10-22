@@ -389,9 +389,9 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
             <b className="truncate text-[1.0625rem] font-semibold">{g.title}</b>
             <span className="shrink-0 text-[0.8125rem] text-mut">{count(g.items)}</span>
           </div>
-          <div className="-mx-5 grid grid-cols-4 gap-0.5">
+          <div className="grid grid-cols-4 gap-1">
             {g.items.map((m) => (
-              <button key={m.id} type="button" onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden bg-line active:opacity-80">
+              <button key={m.id} type="button" onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden rounded-lg bg-line active:opacity-80">
                 <Thumb kind={m.kind} url={m.url} thumb={m.thumb || m.u?.pic} dur={m.dur} local={m.u?.url || mine[m.id]?.url} up={m.u && !m.u.err ? m.u.p : null} err={!!m.u?.err} done={!!mine[m.id]?.done} />
                 {m.phase && <span className="absolute left-1 top-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums text-white">{momentBadge(m)}</span>}
               </button>
