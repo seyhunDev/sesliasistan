@@ -2772,7 +2772,7 @@ group("Ortak düğmeler")([
   const { readFileSync } = await import("node:fs");
   const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
   group("Sayfa geçişleri")([
-    ["Mesajlar geri düğmesi", F("sohbet listesinde BackButton ana sayfaya", () => /<BackButton href="\/"/.test(src("features/chat/ChatList.jsx")))],
+    ["Mesajlar başlığı", F("geri düğmesi + diğer sayfalarla aynı başlık boyu", () => /<BackButton href="\/"/.test(src("features/chat/ChatList.jsx")) && /<h1 className="truncate text-\[1\.375rem\] font-semibold/.test(src("features/chat/ChatList.jsx")))],
     ["Yarışlar geri dönüş", F("liste racesNow ile başlar, yarış 1 dk içindeki listeden açılır", () =>
       /useState\(\(\) => racesNow\(orgId\)\)/.test(src("app/(app)/athletes/races/page.jsx")) && /racesNow\(orgId, 60e3\)/.test(src("app/(app)/athletes/races/[id]/page.jsx")) && /stale\(\)/.test(src("features/athletes/races.js")))],
     ["Etkinlikler ve Gönderiler", F("liste bellekten başlar", () =>
