@@ -15,13 +15,12 @@ import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia
 const VIDEO_SEC = 120;
 const VIDEO_MAX = 58 * 1024 * 1024; // storage.rules raceMedia: 60 MB (Seyhun 2026-10-22: "60 MB kalsın, 80 saniyelik kaliteli video yeter")
 
-// Video kalitesi (Seyhun 2026-10-22: "videolar niye kalitesiz, kalite tercihi yapamıyor muyuz, en az 1080p"): bu telefonda seçilir
-// (Çekim ayarları ve sayaçlı kameradaki düğme). Storage sınırı 60 MB kalır. hi 1080p (varsayılan): sayaçlı kamera 5,5 Mbit, en çok 80 sn
-// (≈ 56 MB); buluta 1920 px 5 Mbit kopya, uzun iPhone videosunda bit hızı 60 MB'a sığacak kadar düşer (2 dk ≈ 3,6 Mbit).
-// lo 720p: 2,5 Mbit, 2 dk (≈ 38 MB, denizde daha hızlı açılır). iPhone kamerasının aslı telefonda çekildiği kalitede kalır (İndir).
+// Video kalitesi (Seyhun 2026-10-22: "videolar niye kalitesiz, en az 1080p"; Storage sınırı 60 MB kalır): buluta giden kopyanın kalitesi,
+// bu telefonda seçilir (Medya › Çekim). hi 1080p (varsayılan): 1920 px en çok 5 Mbit, uzun videoda 60 MB'a sığacak kadar düşer (80 sn'ye kadar
+// tam, 2 dk ≈ 3,6 Mbit). lo 720p: 2,5 Mbit. iPhone kamerasının aslı telefonda çekildiği kalitede kalır (İndir).
 export const VIDEO_Q = {
-  hi: { px: 1920, cam: 5_500_000, cloud: 5_000_000, sec: 80, label: "1080p" },
-  lo: { px: 1280, cam: 2_500_000, cloud: 2_500_000, sec: 120, label: "720p" },
+  hi: { px: 1920, cloud: 5_000_000, label: "1080p" },
+  lo: { px: 1280, cloud: 2_500_000, label: "720p" },
 };
 const QKEY = "sa-cam-q";
 export const readVideoQ = () => {
@@ -66,7 +65,6 @@ export const saveMedia = (orgId, id, list) => setDoc(live(orgId, id), { media: c
 // Seçilen ya da çekilen dosya → saklanacak hâl: { blob, type, kind }. onProg(0..1) küçültme ilerlemesi
 // Kurallar (Seyhun 2026-10-20: "iPhone'un kendi kamerası"): fotoğraf 2048 px JPEG; video en çok 2 dakika, iPhone'un çektiği dosya
 // olduğu gibi saklanır (ses, kalite ve yön korunur). Storage sınırını (60 MB) aşarsa 1280 px'e sesli küçültülür (video süresi kadar sürer).
-// Uygulama içi (sayaçlı) kameranın videosu zaten küçük ve sessizdir.
 const RAW_MAX = 55 * 1024 * 1024;
 export async function prepRaceMedia(file, onProg) {
   if (!isVideoFile(file)) {
