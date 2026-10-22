@@ -156,11 +156,13 @@ export async function run(server, log = () => {}) {
     // Next geliştirme penceresi (sağ alttaki "Issue" düğmesi) dokunuşları kapatmasın
     await page.addStyleTag?.({ content: "" }).catch(() => {});
     await page.goto(`${server.url}/login`, { waitUntil: "load", timeout: 120000 });
-    const inputs = page.locator("input");
-    await inputs.first().waitFor({ timeout: 30000 });
-    await inputs.nth(0).fill(email);
-    await inputs.nth(1).fill(PASS);
-    await inputs.nth(1).press("Enter");
+    // İki adımlı giriş: önce e-posta / kullanıcı adı (Devam = Enter), sonra şifre
+    const inputs = page.locator("input[name=username]:not([readonly])");
+    await inputs.waitFor({ timeout: 30000 });
+    await inputs.fill(email);
+    await inputs.press("Enter");
+    await page.locator("input[name=password]").fill(PASS);
+    await page.locator("input[name=password]").press("Enter");
     await page.waitForURL((x) => !x.pathname.startsWith("/login"), { timeout: 60000 });
     await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
     await page.waitForTimeout(1500);

@@ -93,13 +93,16 @@ export async function run(server, log = () => {}) {
       page.on("pageerror", (e) => errs.push(String(e.message || e).split("\n")[0]));
       try {
         await page.goto(`${server.url}/login`, { waitUntil: "load", timeout: 120000 });
-        const inputs = page.locator("input");
-        await inputs.first().waitFor({ timeout: 20000 });
-        const n = await inputs.count();
-        push("Giriş ekranı", "alanlar", "kullanıcı adı ve şifre alanı", n >= 2, `${n} alan`);
-        await inputs.nth(0).fill("yanlis.kullanici");
-        await inputs.nth(1).fill("yanlis-sifre-123");
-        await inputs.nth(1).press("Enter");
+        // İki adımlı giriş: önce e-posta / kullanıcı adı (doğru yazılınca Devam), sonra şifre
+        const id = page.locator("input[name=username]:not([readonly])");
+        await id.waitFor({ timeout: 20000 });
+        await id.fill("yanlis.kullanici");
+        await id.press("Enter");
+        const pw = page.locator("input[name=password]");
+        const hasPw = await pw.waitFor({ timeout: 10000 }).then(() => true, () => false);
+        push("Giriş ekranı", "alanlar", "kullanıcı adı, Devam, şifre alanı", hasPw, hasPw ? "2 adım" : "şifre adımı açılmadı");
+        await pw.fill("yanlis-sifre-123");
+        await pw.press("Enter");
         const t0 = Date.now();
         let msg = "";
         while (Date.now() - t0 < 20000 && !msg) {
