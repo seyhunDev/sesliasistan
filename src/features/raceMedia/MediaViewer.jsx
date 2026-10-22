@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { dayOf, hm } from "@/lib/raceLive";
+import { dayOf } from "@/lib/raceLive";
 import { dayLabel } from "@/lib/agenda";
 import { Icon } from "@/components/ui/Icon";
 import { MomentPicker } from "./MomentPicker";
@@ -209,8 +209,8 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
             <Icon name="back" className="size-5" />
           </button>
           <div className="min-w-0 flex-1 text-center leading-tight [text-shadow:0_1px_2px_rgba(0,0,0,.6)]">
-            <p className="truncate text-[0.9375rem] font-semibold">{title || hm(m.at)}</p>
-            <p className="truncate text-[0.75rem] text-white/60">{m.up != null ? (m.up < 0 ? "Telefonda · buluta gönderilemedi" : `Buluta gönderiliyor %${Math.round(m.up * 100)}`) : title ? `${when} · ${hm(m.at)}` : when}</p>
+            <p className="truncate text-[0.9375rem] font-semibold">{title || when}</p>
+            {m.up != null && <p className="truncate text-[0.75rem] text-white/60">{m.up < 0 ? "Telefonda · buluta gönderilemedi" : `Buluta gönderiliyor %${Math.round(m.up * 100)}`}</p>}
           </div>
           <span className="size-10 shrink-0" />
         </div>
