@@ -665,6 +665,13 @@ html[data-theme="dark"] .tone-ve { --tbg: #2c2433; --tfg: #c3a6d4; }
 html[data-theme="dark"] .tone-fa { --tbg: #33271f; --tfg: #d6ad8c; }
 html[data-theme="dark"] .tone-fit { --tbg: #33261b; --tfg: #e0a46c; }
 html[data-theme="dark"] .tone-gen { --tbg: #26292c; --tfg: #8b8f94; }
+/* Lacivert bölümde tonlar yarı saydam (zeminle bütün), yazısı açık */
+.navy .tone-st { --tbg: rgba(95, 191, 150, .16); --tfg: #8fd8bb; }
+.navy .tone-sp { --tbg: rgba(110, 160, 230, .17); --tfg: #9cc2f0; }
+.navy .tone-ve { --tbg: rgba(180, 140, 230, .18); --tfg: #cfb2ef; }
+.navy .tone-fa { --tbg: rgba(220, 160, 110, .16); --tfg: #e6bc96; }
+.navy .tone-fit { --tbg: rgba(240, 150, 70, .17); --tfg: #f2b07a; }
+.navy .tone-gen { --tbg: rgba(255, 255, 255, .08); --tfg: #b4b7d0; }
 .tone-chip { background: var(--tbg); color: var(--tfg); }
 .tone-bar { background: var(--tfg); }
 .tone-fg { color: var(--tfg); }
@@ -705,9 +712,9 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
     radial-gradient(90% 60% at 0% 100%, rgba(34, 211, 238, .14), transparent 62%),
     #141938;
 }
-.ck :is(.btn-round, .btn-back) { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .16); color: #fff; box-shadow: none; }
+.ck :is(.btn-round, .btn-back), .navy :is(.btn-round, .btn-back) { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .16); color: #fff; box-shadow: none; }
 /* Lacivertte basınca açık renk parlamasın: yalnız içeri girer, zemin biraz koyulaşır (geri düğmesi: Seyhun 2026-10-21 "A · Yuvarlak simge") */
-.ck :is(.btn-round, .btn-back)[data-pressed] { background: rgba(255, 255, 255, .06); }
+.ck :is(.btn-round, .btn-back)[data-pressed], .navy :is(.btn-round, .btn-back)[data-pressed] { background: rgba(255, 255, 255, .06); }
 .ck .btn-round .ring-bg { --tw-ring-color: #141938; }
 /* Kokpitteki beyaz küçük düğme (Süre) */
 /* Giriş ekranı (lacivert, (auth)/login): tek yazı kutusu; e-posta ya da kullanıcı adı doğru yazılınca yeşil çerçeve.
@@ -736,6 +743,32 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .ck-glass { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); }
 /* Kokpitteki seçili gün (HomeDays: penceresi açık gün) */
 .ck .raised.ck-sel { background: #8b5cf6; color: #fff; border-color: #a78bfa; }
+/* LACİVERT BÖLÜM (ana sayfanın alt kısmı, gün penceresi; Seyhun 2026-10-22): kokpitin devamı. Değişkenler lacivert tonlara çevrilir,
+   içindeki kartlar ve listeler kendiliğinden uyar; data-theme="dark" ile dark: sınıfları da çalışır */
+.navy {
+  color-scheme: dark;
+  --bg: #141938;
+  --card: #1c2248;
+  --fg: #eceaf8;
+  --mut: #a3a7c7;
+  --line: #2c3361;
+  --acc: #a78bfa;
+  --acc2: #a78bfa;
+  --accbg: #2b2766;
+  --fg2: #c9cbe3;
+  --ok: #5fbf86;
+  --rec: #f08178;
+  --warn: #e3b46c;
+  --warnbg: #3a3222;
+  color: var(--fg);
+  background: #141938;
+}
+.navy :is(.bg-amber-50, .bg-amber-100) { background-color: rgba(245, 158, 11, .14); }
+.navy .bg-emerald-100 { background-color: rgba(16, 185, 129, .16); }
+.navy :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900) { color: #fbbf5c; }
+.navy :is(.text-rose-600, .text-rose-700, .text-red-600) { color: #fb8a9a; }
+/* Ana sayfa lacivertken sayfanın kalanı da lacivert (alt boşlukta açık şerit kalmasın) */
+html:has(.home-navy), body:has(.home-navy) { background: #141938; }
 /* Asistan kapanınca sekme çubuğu alttan kayarak gelir (TabBar rise) */
 @keyframes atabup { from { transform: translate3d(0, 100%, 0); } }
 .atab-up { animation: atabup .36s cubic-bezier(.22, .8, .24, 1) backwards; }
