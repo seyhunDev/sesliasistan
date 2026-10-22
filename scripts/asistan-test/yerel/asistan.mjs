@@ -13,6 +13,7 @@ import { cleanWaLink, waGroupFor, cleanWaGroups } from "@/lib/waGroups";
 import * as CX from "@/lib/convoContext";
 import { miniText, pullAction } from "@/lib/miniOrb";
 import { wantsRead } from "@/lib/readAloud";
+import { hapticKind } from "@/lib/nativeIos";
 
 const { group, results } = suite("asistan");
 const cmd = (s) => localCommand(s, data, today);
@@ -1134,6 +1135,13 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["satır: dinliyor", C("söylenen yazı", () => miniText("listening", { heard: " yarın  10'da " }), (t) => t === "yarın 10'da")],
     ["satır: iş", C("o anki iş", () => miniText("busy", { status: "Plan hazırlanıyor…", said: "x" }), (t) => t === "Plan hazırlanıyor…")],
     ["satır: cevap", C("son cevap", () => miniText("idle", { lastReply: "Ekledim: Antrenman" }), (t) => t === "Ekledim: Antrenman")],
+  ]);
+  group("iPhone titreşimi")([
+    ["kısa", C("10 ms hafif", () => hapticKind(8), (r) => r === "light")],
+    ["orta", C("20 ms orta", () => hapticKind(15), (r) => r === "medium")],
+    ["uzun", C("uzun güçlü", () => hapticKind(40), (r) => r === "heavy")],
+    ["dizi", C("bip-bip dizisi tamam titreşimi", () => hapticKind([10, 40, 10]), (r) => r === "success")],
+    ["sıfır", C("0 titreşmez", () => hapticKind(0), (r) => r === "")],
   ]);
   group("Tek bekleyen soru")([
     ["yeni soru", C("yeni soru sorulunca diğer bütün sorular kapanır", () => CX.asksToClear("ok"), (r) => !r.includes("ok") && r.includes("person") && r.includes("raceChoice") && r.includes("to") && r.length === Object.keys(CX.ASK_EMPTY).length - 1)],

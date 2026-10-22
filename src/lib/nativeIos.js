@@ -40,3 +40,26 @@ export async function syncAlarms(items) {
     return null;
   }
 }
+
+// Titreşim: iPhone'da navigator.vibrate yok (Safari desteklemez). Uygulamada eklentide haptic varsa navigator.vibrate ona
+// bağlanır; böylece uygulamanın her yerindeki kısa titreşimler iPhone uygulamasında da hissedilir. Süreye göre:
+// ≤10 ms hafif, ≤20 ms orta, daha uzun ya da dizi (bip-bip) "tamam" titreşimi.
+export function hapticKind(p) {
+  if (Array.isArray(p)) return p.length > 1 ? "success" : hapticKind(p[0]);
+  const ms = Number(p) || 0;
+  if (ms <= 0) return "";
+  return ms <= 10 ? "light" : ms <= 20 ? "medium" : "heavy";
+}
+export function bindHaptics() {
+  const p = plugin();
+  if (!p?.haptic || typeof navigator === "undefined" || navigator.__veloraHaptic) return;
+  const vib = (pattern) => {
+    const kind = hapticKind(pattern);
+    if (kind) p.haptic({ kind }).catch?.(() => {});
+    return true;
+  };
+  try {
+    Object.defineProperty(navigator, "vibrate", { value: vib, configurable: true, writable: true });
+    navigator.__veloraHaptic = true;
+  } catch {}
+}

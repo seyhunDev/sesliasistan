@@ -138,13 +138,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         {/* Görev listesi (tek cümlede birden çok iş): yalnız işlerin adı ve sonucu; ara adımlar (sporcular yükleniyor…) görünmez.
             Biten iş soluk ve işaretli, süren iş parlıyor, sıradakiler silik (Seyhun, 2026-10-09) */}
         {plan.length > 0 && (
-          <ol className="apanel fade-in mt-3 space-y-2 rounded-2xl px-3.5 py-3 text-[0.9375rem]" aria-label="Görev listesi">
+          <ol className="msg-in mt-3 grid gap-2.5 px-0.5 py-1 text-[0.9375rem]" aria-label="Görev listesi">
             {plan.map((x, i) => (
-              <li key={i} className={`flex items-center gap-2 ${x.st === "run" ? "font-medium" : x.st === "done" ? "text-mut" : x.st === "fail" ? "text-rec" : x.st === "skip" ? "text-mut/60 line-through" : "text-mut/50"}`}>
-                <span className="grid size-4 shrink-0 place-items-center">
-                  {x.st === "done" ? <Icon name="check" className="size-4 text-acc [stroke-width:2.5]" /> : x.st === "skip" ? <Icon name="x" className="size-3.5 text-mut/60 [stroke-width:2.5]" /> : x.st === "fail" ? <Icon name="x" className="size-4 [stroke-width:2.5]" /> : <span className={`size-1.5 rounded-full ${x.st === "run" ? "bg-acc" : "bg-mut/40"}`} />}
+              <li key={i} className={`step-in flex items-center gap-2.5 ${x.st === "done" || x.st === "run" ? "text-fg" : x.st === "fail" ? "text-rec" : x.st === "skip" ? "text-mut/60 line-through" : "text-mut/60"}`}>
+                <span className="astep-dot" data-st={x.st || "wait"}>
+                  {x.st === "done" ? <svg viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-5" /></svg> : x.st === "fail" ? <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" /></svg> : null}
                 </span>
-                <span className={`min-w-0 truncate ${x.st === "run" ? "work-text" : ""}`}>{x.label}</span>
+                <span className="min-w-0 truncate">{x.label}</span>
               </li>
             ))}
           </ol>
@@ -306,7 +306,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         {/* Az önce kaydedilenler: yalnız Düzenle (değişiklik sesle de söylenebilir) */}
         {saved.length > 0 && !drafts.length && (
           // Kaydedildi animasyonu (Seyhun'un onayladığı örnek, 2026-10-18): kart yeşil parıltıyla aşağı kayarak gelir, ✓ büyüyerek belirir
-          <div key={saved.map((x) => x.id).join()} className="asaved mt-3 overflow-hidden rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_10px_28px_-16px_rgba(38,40,44,.3)]">
+          <div key={saved.map((x) => x.id).join()} className="asaved mt-3 overflow-hidden rounded-[1.25rem] border border-line bg-card">
             <ul className="divide-y divide-line">
               {saved.map((x) => (
                 <li key={x.id} className="flex items-center gap-3 px-3.5 py-3">

@@ -12,6 +12,7 @@ import AlarmKit
 // - open olayı / takeOpen: bas-konuş ("talk") ya da kilit ekranındaki sayaca dokunuş ("timer")
 // - timerShow / timerEnd: kilit ekranı ve Dynamic Island'da sayaç (iOS 16.2+)
 // - alarmSync: planların alarmları; iOS 26'da saat alarmı (AlarmKit, sessiz modda da çalar), eski iOS'ta bildirim
+// - haptic: kısa titreşim (iPhone Safari'de navigator.vibrate yok; web tarafı onu buraya bağlar)
 @objc(VeloraPlugin)
 public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "VeloraPlugin"
@@ -22,6 +23,7 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "timerShow", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "timerEnd", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "alarmSync", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnNone),
     ]
 
     override public func load() {
@@ -40,6 +42,21 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         var live = false
         if #available(iOS 16.2, *) { live = ActivityAuthorizationInfo().areActivitiesEnabled }
         call.resolve(["alarm": alarm, "live": live, "ios": UIDevice.current.systemVersion])
+    }
+
+    // kind: light | medium | heavy | success | warning | error
+    @objc func haptic(_ call: CAPPluginCall) {
+        let kind = call.getString("kind", "light")
+        DispatchQueue.main.async {
+            switch kind {
+            case "success": UINotificationFeedbackGenerator().notificationOccurred(.success)
+            case "warning": UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            case "error": UINotificationFeedbackGenerator().notificationOccurred(.error)
+            case "medium": UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            case "heavy": UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            default: UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+        }
     }
 
     @objc func takeOpen(_ call: CAPPluginCall) {
