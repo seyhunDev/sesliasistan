@@ -1,6 +1,21 @@
 // Asistan ekran testinin adımları (senaryolar.mjs hazırlar: giriş, taklitler, yardımcılar).
 // Her check(grup, söz, beklenen, fn): fn true/false ya da [geçti mi, olan] döndürür.
 
+// Enerji (2026-10-22): boşta ekran saniyede kaç stil / yerleşim hesabı yapıyor (Chrome Performance ölçüleri).
+// Boşta sürekli çalışan animasyon ya da döngü telefonu ısıtır, pili bitirir; boştayken bunlar ~0 olmalı.
+const ENERGY_MAX = 3;
+async function idleCost(page, ms = 2500) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Performance.enable");
+  const get = async () => Object.fromEntries((await cdp.send("Performance.getMetrics")).metrics.map((m) => [m.name, m.value]));
+  const a = await get();
+  await page.waitForTimeout(ms);
+  const b = await get();
+  await cdp.detach().catch(() => {});
+  const per = (k) => Math.round(((b[k] - a[k]) / ms) * 10000) / 10;
+  return { style: per("RecalcStyleCount"), layout: per("LayoutCount") };
+}
+
 export async function scenarios(h) {
   const { check, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI, setTasks, setTranscript, setLive, TODAY, TOMORROW, log } = h;
 
@@ -21,6 +36,11 @@ export async function scenarios(h) {
     return [st === "idle" && /dokun konuş, basılı tut yaz/.test(lb), `${st} · ${lb}`];
   });
 
+  await check("Enerji (boşta)", "ana sayfa", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
+    await page.waitForTimeout(800);
+    const c = await idleCost(page);
+    return [c.style <= ENERGY_MAX && c.layout <= ENERGY_MAX, `stil ${c.style}/sn · yerleşim ${c.layout}/sn`];
+  });
   // Dokun: tam ekran açılır, dinler
   const srBefore = await page.evaluate(() => window.__t.srStarts);
   await orb(page).click();
@@ -70,6 +90,11 @@ export async function scenarios(h) {
     const box = (await dome(page).locator(".asheet-input").innerText()).replace(/\n/g, " ");
     const devam = await btn(page, "Konuşmaya devam").count();
     return [/notlarımı oku/.test(box) && devam === 1 && h.aiCalls() === beforeDur && (await state(page)) === "idle", `${box.slice(0, 80)} · devam ${devam} · yz ${h.aiCalls() - beforeDur} · ${await state(page)}`];
+  });
+  await check("Enerji (boşta)", "asistan açık, boşta", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
+    await page.waitForTimeout(800);
+    const c = await idleCost(page);
+    return [c.style <= ENERGY_MAX && c.layout <= ENERGY_MAX, `stil ${c.style}/sn · yerleşim ${c.layout}/sn`];
   });
   const before = h.aiCalls();
   await btn(page, "Gönder").click();
