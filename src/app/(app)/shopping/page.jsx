@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Loading } from "@/components/ui/Loader";
@@ -8,11 +10,46 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useKind } from "@/features/auth/useKind";
 import { useData } from "@/features/data/DataProvider";
+import { FoodHome } from "@/yemek/ui/FoodHome";
 import { LISTS, addItems, clearDone, listsFor, removeItem, splitItems, toggleItem, useShop } from "@/features/shop/shop";
+
+// Alışveriş (Seyhun 2026-10-22: "alışveriş, yemek siparişi gibisinden birleştirmeliyiz"): ana hesapta lacivert üstte
+// Liste / Yemek. Yemek: Velora Yemek (src/yemek, ayrı projeye taşınacak). ?tab=yemek ile Yemek açılır.
+export default function ShoppingPage() {
+  return (
+    <Suspense fallback={null}>
+      <Shopping />
+    </Suspense>
+  );
+}
+
+function Shopping() {
+  const kind = useKind();
+  const sp = useSearchParams();
+  const [picked, setPicked] = useState(null);
+  const tab = picked || (sp.get("tab") === "yemek" ? "yemek" : "liste");
+  const { profile } = useAuth();
+  const pick = (t) => {
+    setPicked(t);
+    window.history.replaceState(window.history.state, "", t === "yemek" ? "/shopping?tab=yemek" : "/shopping");
+  };
+  const tabs =
+    kind === "owner" ? (
+      <div className="mt-3.5 grid grid-cols-2 gap-2">
+        {[["liste", "Liste"], ["yemek", "Yemek"]].map(([k, n]) => (
+          <button key={k} type="button" data-press aria-pressed={tab === k} onClick={() => pick(k)} className={`raised h-11 rounded-xl border text-[0.9375rem] font-semibold ${tab === k ? "ck-sel" : ""}`}>
+            {n}
+          </button>
+        ))}
+      </div>
+    ) : null;
+  if (tab === "yemek" && kind === "owner" && profile?.orgId) return <FoodHome orgId={profile.orgId} tabs={tabs} />;
+  return <ListPage tabs={tabs} />;
+}
 
 // Alışveriş listesi: yaz (virgülle birden çok), dokun → alındı; alınanlar altta, "Temizle" ile silinir.
 // Aile ve Ekip listeleri ayrı; herkes yalnızca kendi grubunun listesini görür.
-export default function ShoppingPage() {
+function ListPage({ tabs }) {
   const { profile } = useAuth();
   const kind = useKind();
   const { members, nameOf } = useData();
@@ -66,8 +103,18 @@ export default function ShoppingPage() {
   );
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Alışveriş" sub={items ? (open.length ? `${open.length} alınacak` : "Liste boş") : "…"} />
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Alışveriş">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Alışveriş</h1>
+            <p className="truncate text-[0.8125rem] text-white/65">{items ? (open.length ? `${open.length} alınacak` : "Liste boş") : "…"}</p>
+          </div>
+        </header>
+        {tabs}
+      </section>
+      <div className="relative -mx-5 -mt-6 min-h-[50vh] rounded-t-[1.75rem] bg-bg px-5 pt-3">
 
       {lists.length > 1 && (
         <div className="mt-2 flex gap-2">
@@ -126,6 +173,7 @@ export default function ShoppingPage() {
           )}
         </>
       )}
+      </div>
     </main>
   );
 }
