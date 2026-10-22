@@ -1,6 +1,7 @@
 // Tekrarlayan plan: "her salı 16:00 antrenman" bir kez söylenir, haftalık kopyalar oluşturulur.
 // Kopyalar ayrı plan kaydıdır (seriesId ortak); bildirim, takvim, ana sayfa olduğu gibi çalışır.
 import { applyRemind } from "./reminders.js";
+import { applyAlarm } from "./planAlarm.js";
 
 export const MAX_REPEAT = 26; // en çok yarım yıl
 export const DEFAULT_WEEKS = 12; // bitiş söylenmezse ~3 ay
@@ -52,7 +53,7 @@ export function nextWeekday(day, from) {
 
 // Yapay zeka ya da yerel kural tekrarı kaçırdıysa cümleden tamamlar. Birden çok gün söylendiyse
 // ("her salı ve perşembe") plan her gün için ayrı seri olur.
-export const applyRepeat = (items, text, today) => applyRemind(repeatOnly(items, text, today), text);
+export const applyRepeat = (items, text, today) => applyAlarm(applyRemind(repeatOnly(items, text, today), text), text);
 function repeatOnly(items, text, today) {
   const r = repeatOf(text);
   if (!r || items.some((x) => x.repeat === "week")) return items;

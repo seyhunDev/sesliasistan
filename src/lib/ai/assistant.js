@@ -2,6 +2,7 @@ import { TOOL as CREATE_TOOL, toDrafts } from "./schema";
 import { matchPerson } from "../names.js";
 import { applyRepeat } from "../repeat.js";
 import { remindOf } from "../reminders.js";
+import { alarmOf } from "../planAlarm.js";
 
 const KIND = ["plan", "task", "note"];
 import { PAGE_KEYS as PAGES, PAGES as PAGE_INFO } from "../nav.js";
@@ -69,6 +70,7 @@ Kullanıcı tek cümlede birden çok iş isteyebilir: "Gökhan'a yarın 10'da te
 - Var olan kaydın sorumlusunu değiştirmek ("motor görevini Ali'ye ver", "toplantıya Ayşe'yi de ekle", "görevden Ali'yi çıkar") → op update, patch.assignTo: kaydın YENİ sorumlularının tam listesi (KİŞİLER bölümündeki tam adlar; çıkarılan yazılmaz, hepsi çıkarılırsa boş liste).
 - message: yalnız "Tamam." yaz (uygulama ne yaptığını ve silme onayını kendisi söyler). Kayıt belirsizse işlem yapma, tek kısa soru sor.
 - Var olan planın hatırlatması ("antrenmanı yarım saat önce hatırlat", "toplantıyı 1 gün önce hatırlat", "yarınki planı hatırlatma") → op update, patch.remind dakika (15, 30, 60, 1440; hatırlatma istenmezse 0). Yeni plan açma. Yeni plan cümlesinde ("yarın 10'da antrenman, yarım saat önce hatırlat") hatırlatmayı uygulama cümleden kendisi okur, sen planı yaz.
+- Var olan planın alarmı ("antrenmanın 1 saat öncesine alarm kur", "toplantıya alarm kur", "alarmı kaldır") → op update, patch.alarm dakika (başlangıçtan kaç dakika önce; tam saatinde 0; kaldırmak için -1). Alarm iPhone'da saat alarmı gibi çalar; hatırlatmadan (remind) ayrıdır. Yeni plan cümlesindeki alarmı uygulama kendisi okur.
 - update için patch'e yalnızca DEĞİŞEN alanları yaz. "Ertele", "öne al" gibi göreli ifadelerde yeni tarihi ŞİMDİ bilgisine göre hesapla. Saati kaldırmak için allDay true.
 - Toplu işlemler için (birkaç görevi birden tamamla) actions'a hepsini ekle, en fazla 10.
 
@@ -180,6 +182,7 @@ export const ASSISTANT_TOOL = {
                 assignTo: { type: "array", items: { type: "string" }, description: "Sorumluları değiştirirken: yeni sorumluların tam listesi (KİŞİLER bölümündeki tam adlar)" },
                 remind: { type: "number", description: "Yalnız plan: kaç dakika önce hatırlatılsın (15, 30, 60, 1440); 0 = hatırlatma yok" },
                 important: { type: "boolean", description: "Yalnız plan: önemli yap true, önemliden çıkar false" },
+                alarm: { type: "number", description: "Yalnız plan: alarm başlangıçtan kaç dakika önce çalsın (0 tam saatinde, 60 bir saat önce); -1 = alarmı kaldır" },
               },
             },
           },
@@ -241,6 +244,7 @@ function cleanPatch(p) {
   if (p?.allDay === true) o.allDay = true;
   if (typeof p?.important === "boolean") o.important = p.important;
   if (Number.isFinite(p?.remind) && p.remind >= 0 && p.remind <= 2880) o.remind = Math.round(p.remind);
+  if (Number.isFinite(p?.alarm) && p.alarm >= -1 && p.alarm <= 2880) o.alarm = Math.round(p.alarm);
   if (Array.isArray(p?.assignTo)) o.assignTo = p.assignTo.map((x) => txt(x, 60)).filter(Boolean).slice(0, 10);
   return o;
 }
@@ -344,7 +348,9 @@ export function parseAssistant(raw, people = [], contacts = [], said = "") {
       .slice(0, 10)
       .map((a) => ({ op: a.op, kind: a.kind, id: cid(a.id), patch: cleanPatch(a.patch) }))
       // "antrenmanı yarım saat önce hatırlat": yapay zeka patch.remind yazmayı unutursa cümleden
-      .map((a) => (a.op === "update" && a.kind === "plan" && a.patch.remind === undefined && remindOf(said) !== null ? { ...a, patch: { ...a.patch, remind: remindOf(said) } } : a)),
+      .map((a) => (a.op === "update" && a.kind === "plan" && a.patch.remind === undefined && remindOf(said) !== null ? { ...a, patch: { ...a.patch, remind: remindOf(said) } } : a))
+      // "antrenmanın 1 saat öncesine alarm kur": alarm da aynı şekilde
+      .map((a) => (a.op === "update" && a.kind === "plan" && a.patch.alarm === undefined && alarmOf(said) !== null ? { ...a, patch: { ...a.patch, alarm: alarmOf(said) } } : a)),
     learn: cleanLearn(raw?.learn, said),
     items: markImportant(said ? applyRepeat(toDrafts(raw?.items, people, raw?.message), said, trToday()) : toDrafts(raw?.items, people, raw?.message), said),
   };

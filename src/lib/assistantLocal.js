@@ -1,6 +1,7 @@
 import { addDate, weekRange } from "@/lib/ai/digest";
 import { short, todayStr } from "@/lib/utils/format";
 import { remindLabel } from "@/lib/reminders";
+import { alarmLabel } from "@/lib/planAlarm";
 
 export { PAGES } from "./nav";
 export const KIND = { plan: "Plan", task: "Görev", note: "Not" };
@@ -50,6 +51,7 @@ export function buildPatch(kind, p = {}, rec = {}) {
     if (p.time) Object.assign(o, { time: p.time, allDay: false, durationMin: rec.durationMin || 60, timeSource: "user" });
     else if (p.allDay === true) Object.assign(o, { time: "", allDay: true, durationMin: null, timeSource: "none" });
     if (Number.isFinite(p.remind)) o.remind = p.remind; // plana özel hatırlatma (dk önce; 0 yok)
+    if (Number.isFinite(p.alarm)) o.alarm = p.alarm >= 0 ? p.alarm : null; // iPhone alarmı (dk önce; null kaldırır; lib/planAlarm.js)
     if (typeof p.important === "boolean") o.important = p.important; // Önemli plan (lib/planImportant.js)
   } else if (kind === "task") {
     if (p.date) o.due = p.date;
@@ -70,6 +72,7 @@ export function describeAction(a, rec) {
   if (p.place) parts.push(`yer ${p.place}`);
   if (p.body) parts.push("not metni");
   if (Number.isFinite(p.remind)) parts.push(remindLabel(p.remind));
+  if (Number.isFinite(p.alarm)) parts.push(alarmLabel(p.alarm));
   if (p.important === true) parts.push("önemli");
   else if (p.important === false) parts.push("önemli değil");
   if (Array.isArray(p.assignTo)) parts.push(p.assignTo.length ? `sorumlu ${p.assignTo.join(", ")}` : "sorumlu yok");

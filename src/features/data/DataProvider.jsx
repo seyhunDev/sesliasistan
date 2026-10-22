@@ -340,6 +340,7 @@ export function DataProvider({ children }) {
             status: "planned",
             // Hatırlat: seçildiyse o; sorumlusu olan planda varsayılan 1 saat önce (sorumlulara ve ana hesaba gider)
             ...(d.remind != null ? { remind: d.remind } : base.assignees.length ? { remind: 60 } : {}),
+            ...(d.alarm != null ? { alarm: d.alarm } : {}), // iPhone alarmı (lib/planAlarm.js)
             ...(d.log ? { log: d.log } : {}), // antrenman günlüğüyle açılan plan
             ...(d.important ? { important: true } : {}), // Önemli (elle ya da sesle; lib/planImportant.js)
           };
