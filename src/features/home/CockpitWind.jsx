@@ -40,6 +40,10 @@ export function CockpitWind({ rows, date }) {
   const ni = Math.floor(nowAt);
   const nowV = nowAt >= 0 ? rows[ni].wind + ((rows[ni + 1]?.wind ?? rows[ni].wind) - rows[ni].wind) * (nowAt - ni) : null;
   const ticks = [5, 10, 15, 20, 25, 30].filter((v) => v < top);
+  // Günün en sert sağanağı (Seyhun 2026-10-22): şimdi çizgisinden soluk dikey çizgi, tepesinde küçük nokta, yanında "15:00 · 23 kn".
+  // Yazı çizginin sağında; grafiğin sağ yarısındaysa solunda. Eskiden sıcaklığın yanında yazıyordu.
+  const pk = rows.reduce((a, h, i) => (h.gust > rows[a].gust ? i : a), 0);
+  const pkRight = x(pk) < (W - R) / 2;
   return (
     <div className="ck-wind">
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img" aria-label="Bugünün saatlik rüzgâr grafiği">
@@ -73,6 +77,15 @@ export function CockpitWind({ rows, date }) {
           {got.length > 1 && <path d={oLine} fill="none" stroke="#9cc3ee" strokeWidth="1.3" />}
           {oGust && <path d={oGust} fill="none" stroke="#9cc3ee" strokeWidth="1.3" strokeDasharray="3 3" />}
         </g>
+        {rows[pk].gust > 0 && (
+          <g>
+            <line x1={x(pk)} x2={x(pk)} y1={y(rows[pk].gust)} y2={y(0)} stroke="#fff" strokeOpacity=".4" strokeWidth="1" strokeDasharray="2 3" />
+            <circle cx={x(pk)} cy={y(rows[pk].gust)} r="2.6" fill="#fff" fillOpacity=".8" />
+            <text x={x(pk) + (pkRight ? 6 : -6)} y={y(rows[pk].gust) + 3.5} textAnchor={pkRight ? "start" : "end"} fontSize="10" fontWeight="600" fill="#fff" fillOpacity=".85" stroke="#12213f" strokeWidth="3" strokeLinejoin="round" paintOrder="stroke">
+              {`${rows[pk].hh}:00 · ${rows[pk].gust} kn`}
+            </text>
+          </g>
+        )}
         {nowV != null && (
           <g>
             <line x1={x(nowAt)} x2={x(nowAt)} y1={T - 6} y2={y(0)} stroke="#ff6b6b" strokeWidth="1.3" strokeDasharray="2 2" />

@@ -27,7 +27,6 @@ export function WeatherTop({ w, refresh }) {
   const info = all.find((d) => d.date === sel) || all[0];
   const isToday = sel === all[0]?.date;
   const n = isToday ? nowOf(w) : null;
-  const peak = rows.length ? rows.reduce((a, h) => (h.gust > a.gust ? h : a), rows[0]) : null;
   const top = rows.length ? rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]) : null;
   const place = getPlace();
   const st = useWindObs(place, sel, today)?.station;
@@ -53,7 +52,6 @@ export function WeatherTop({ w, refresh }) {
               <b className="block truncate text-[0.9375rem] font-semibold">{sky(v.code, v.day).label}</b>
               <small className="block truncate text-[0.8125rem] text-white/65 tabular-nums">
                 {info ? `${info.min}° / ${info.max}°` : ""}
-                {peak ? ` · ${peak.hh}:00 ${peak.gust} kn` : ""}
               </small>
             </span>
             <span className="shrink-0 text-right leading-tight">
