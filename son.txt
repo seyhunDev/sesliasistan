@@ -1,8 +1,8 @@
-Commit: eaa53d5 · iPhone widget'ları sade tasarım: Velora (bölüm seçimli), Antrenman/sayaç, Banka ve aidat; mesaj kaldırıldı (#714)
-Zaman: 2026-10-22-2312 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39845497232
+Commit: 9be82ba · Merge pull request #721 from seyhunDev/claude/project-thread-76s7q5
+Zaman: 2026-10-22-2336 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39849102439
 
-TAM TEST · 22.10.2026 23:04:22
+TAM TEST · 22.10.2026 23:29:15
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1376/1376 geçti · 0 kalan · 500 sn
+SONUÇ: 1376/1376 geçti · 0 kalan · 455 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
