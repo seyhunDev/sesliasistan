@@ -380,6 +380,12 @@ async function answer(h, page, text) {
   // Soru okununca mikrofon açılır; GitHub makinesi yavaş olduğunda okuma uzun sürebiliyor (6 sn yetmedi, 22 Eki)
   await waitFor(async () => (await state(page)) === "listening", 12000);
   await page.waitForTimeout(1200);
+  if (await btn(page, "Gönder").count()) return btn(page, "Gönder").click({ timeout: 5000 });
+  // Kendiliğinden açılan mikrofon bu arada kapandıysa (GitHub makinesinde yavaş: 22 Eki üç kez) kullanıcı gibi Konuş'a basılır
+  await waitFor(async () => (await btn(page, "Konuş").count()) > 0, 6000);
+  if (!(await btn(page, "Konuş").count())) return;
+  await btn(page, "Konuş").click({ timeout: 5000 });
+  await waitFor(async () => (await btn(page, "Gönder").count()) > 0, 6000);
   if (await btn(page, "Gönder").count()) await btn(page, "Gönder").click({ timeout: 5000 });
 }
 
@@ -573,7 +579,7 @@ async function scenarios3(h) {
   await check(GO, "Ege'ye yaz … → “gönder”", "sesle onaylanınca mesaj gider", async () => {
     const ok = await waitFor(async () => /Gönderdim|gönderemedim/.test(await convo(page)), 9000);
     const t = clean(await convo(page));
-    return [!!ok && /Gönderdim/.test(t), `“${t.slice(-90)}”`];
+    return [!!ok && /Gönderdim/.test(t), `“${t.slice(-90)}” · durum ${await state(page)} · mikrofon ${await page.evaluate(() => window.__t.srStarts)} kez`];
   });
   setTranscript("");
   await closeAll(page);
