@@ -5,6 +5,7 @@
 //     elle     sayfalardaki işlemlerin hesabı: bildirimler, yoklama raporu, etkinlik, Instagram gönderisi, ana sayfa  (npm run test:elle)
 //     yaris    yarış bütçesi, iş listesi, evrak PDF'i, çevre, hava                                                  (npm run test:yaris)
 //     bildirim ana hesap, çalışan, sporcu, veli, aile bildirimleri (sahte sunucuyla)                         (npm run test:bildirim)
+//     yemek    yemek siparişi: örnek restoranlar, sepet, adres seçimi, cümleden istek, öneri                (npm run test:yemek)
 //   --yz ile: gerçek yapay zekaya da sorar (anahtar .env.local'dan; ~20 istek kotadan düşer)                         (npm run test:yz)
 //   --ayrinti: geçen testleri de tek tek yazar
 // Sonuç ekrana ve ~/Downloads/yerel-test-<tarih>.txt dosyasına yazılır (bu dosyayı sohbete yükleyebilirsin).
@@ -40,6 +41,7 @@ const AREAS = {
   elle: { title: "ELLE İŞLEMLER (sayfa hesapları)", files: ["elle"] },
   yaris: { title: "YARIŞ (bütçe, iş, evrak, çevre, hava)", files: ["yaris"] },
   bildirim: { title: "BİLDİRİM (hesaplara göre)", files: ["bildirim"] },
+  yemek: { title: "YEMEK (sepet, adres, öneri)", files: ["yemek"] },
 };
 const asked = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const bad = asked.filter((a) => !AREAS[a]);

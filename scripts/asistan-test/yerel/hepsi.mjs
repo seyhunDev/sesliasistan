@@ -7,6 +7,7 @@ import "./elle.mjs";
 import "./yaris.mjs";
 import "./cumleler.mjs";
 import "./bildirim.mjs";
+import "./yemek.mjs";
 import { results, settle } from "./ortak.mjs";
 
 await settle();
