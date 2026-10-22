@@ -1,8 +1,8 @@
-Commit: db8bbad (kaydedilmemiş değişiklikle) · Asistan: 30 sn içinde yeniden açınca konuşma kalır, sonra ekran temiz; önceki sohbetler ekranda gösterilmez (hafıza sürer) (#700)
-Zaman: 2026-10-22-2100 (İstanbul)
-Çalıştırma: Mac (npm run test:hepsi)
+Commit: 345212d · Merge pull request #703 from seyhunDev/claude/project-thread-76s7q5
+Zaman: 2026-10-22-2109 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39827757183
 
-TAM TEST · 22.10.2026 20:53:24
+TAM TEST · 22.10.2026 21:02:04
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,15 +20,11 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1372/1373 geçti · 1 kalan · 432 sn
+SONUÇ: 1373/1373 geçti · 0 kalan · 417 sn
 ======================================================================
 
-1. BİRİM TESTLERİ: 0/1
-  ✗ Birim testleri: 0/1
-      ✗ “3667 test”
-          beklenen: hepsi geçer
-          olan:     3666/3667 geçti
-      ✗ “700 satır okunur” → HATA: Cannot read properties of undefined (reading 'book_new') (beklenen: 500 sınırı yüklemede yok, yalnız gelenler saklanır)
+1. BİRİM TESTLERİ: 1/1
+  ✓ Birim testleri: 1/1
 
 2. ANLAMA: temiz cümleler: 121/121
   ✓ Temiz cümle: Plan / takvim: 8/8
