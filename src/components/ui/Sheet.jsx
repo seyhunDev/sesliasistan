@@ -24,7 +24,7 @@ const typing = () => {
 // Sayfanın en üst katmanına (body) çizilir: kaydırılan ya da soldurma maskeli bir kutunun (ör. asistan sahnesi)
 // içinden açılsa da kırpılmaz, altında kalmaz.
 // Aşağı çekme tutamaçtan/başlıktan her zaman, içerikten yalnızca içerik en üstteyken çalışır.
-export function Sheet({ open, onClose, title, navy = false, children }) {
+export function Sheet({ open, onClose, title, navy, children }) {
   const [dy, setDy] = useState(0);
   const drag = useRef(null); // { y, t, fromContent }
   const bodyRef = useRef(null);
