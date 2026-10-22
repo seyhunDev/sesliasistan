@@ -1,8 +1,8 @@
-Commit: 5614457 · Medya: sade izleme ekranı, yükleniyor halkası, yüklenenler 7 gün telefonda (#668)
-Zaman: 2026-10-22-1122 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39746321200
+Commit: 784b716 · Medya: yüklenirken de telefondaki dosyadan izle; 1080p bit hızı 2,5 Mbps (#669)
+Zaman: 2026-10-22-1137 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39748151841
 
-TAM TEST · 22.10.2026 11:15:18
+TAM TEST · 22.10.2026 11:30:15
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1369/1371 geçti · 2 kalan · 416 sn
+SONUÇ: 1369/1371 geçti · 2 kalan · 425 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -148,7 +148,7 @@ SONUÇ: 1369/1371 geçti · 2 kalan · 416 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 22 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 18 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
