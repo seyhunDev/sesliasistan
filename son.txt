@@ -1,8 +1,8 @@
-Commit: 025852c · Yeni Medya sayfası: antrenman ve yarış fotoğraf/videoları tek yerde (#685)
-Zaman: 2026-10-22-1633 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39786583954
+Commit: c691a45 · Asistan: "medya sayfası" yeni Medya sayfasını açar, Instagram'ı değil (#686)
+Zaman: 2026-10-22-1656 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39790233418
 
-TAM TEST · 22.10.2026 16:26:03
+TAM TEST · 22.10.2026 16:49:32
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1370/1373 geçti · 3 kalan · 416 sn
+SONUÇ: 1371/1373 geçti · 2 kalan · 403 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -130,15 +130,12 @@ SONUÇ: 1370/1373 geçti · 3 kalan · 416 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 104/107
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 105/107
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✗ Enerji (boşta): 1/2
       ✗ “ana sayfa”
           beklenen: saniyede en çok 3 stil ve yerleşim hesabı
-          olan:     stil 22.4/sn · yerleşim 0.8/sn
+          olan:     stil 13.6/sn · yerleşim 0.8/sn
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
@@ -152,7 +149,7 @@ SONUÇ: 1370/1373 geçti · 3 kalan · 416 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 24 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 14 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
