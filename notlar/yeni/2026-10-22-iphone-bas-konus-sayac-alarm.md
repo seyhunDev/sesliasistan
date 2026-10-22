@@ -16,3 +16,4 @@
 ## Nerede kaldım (ek)
 
 - Seyhun telefonda denedi: "1 saat öncesine alarm kur" planın Alarm satırına yazıldı, Settings › Apps › Velora › Alarms açık (izin verilmiş) ama kurulduğu görünmüyordu. Artık alarm telefona kurulunca kısa yazı çıkar ("Alarm kuruldu · Cum 18:00"), izin yoksa nereden açılacağı yazılır (src/features/ios/IosBridge.jsx). Alarmın gerçekten çaldığı henüz denenmedi.
+- Plan detayında Hatırlat, Alarm ve Önemli artık dokununca kaydedilir ("Kaydedildi"); önceden alttaki Kaydet'e basmadan kapatınca kayboluyordu (Seyhun: "seçiyorum ama kaydedilmiyor"). Başka alan da değiştirilmişse yine Kaydet ile (src/features/add/AddSheet.jsx quickSave).
