@@ -12,7 +12,7 @@ export function Gauge({ value = 0, max = 100, label, sub, dark = false, size = 9
       <svg viewBox="0 0 100 56" width={size} height={size * 0.56} aria-hidden="true">
         <defs>
           <linearGradient id={id} x1="0" x2="1">
-            <stop offset="0" stopColor={dark ? "#8b5cf6" : "var(--acc)"} />
+            <stop offset="0" stopColor={dark ? "#0ea5c4" : "var(--acc)"} />
             <stop offset="1" stopColor={dark ? "#22d3ee" : "var(--acc)"} />
           </linearGradient>
         </defs>

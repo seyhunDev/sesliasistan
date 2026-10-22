@@ -136,7 +136,7 @@ export default function PlansPage() {
         {people.length > 0 && (
           <div className="-mx-5 mt-4 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
             {people.map(([k, l]) => (
-              <button key={k} type="button" onClick={() => setWho(k)} aria-pressed={who === k} data-press className={`${pill0} ${who === k ? "border-white bg-white text-[#141938]" : "ck-glass text-white"}`}>
+              <button key={k} type="button" onClick={() => setWho(k)} aria-pressed={who === k} data-press className={`${pill0} ${who === k ? "border-white bg-white text-[#11203a]" : "ck-glass text-white"}`}>
                 {l}
               </button>
             ))}

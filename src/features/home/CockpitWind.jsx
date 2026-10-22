@@ -66,8 +66,8 @@ export function CockpitWind({ rows, date }) {
           ) : null,
         )}
         <g className="ck-draw">
-          <path d={close(gust, 0, n - 1)} fill="#a78bfa" fillOpacity=".26" />
-          <path d={close(wind, 0, n - 1)} fill="#a78bfa" fillOpacity=".92" />
+          <path d={close(gust, 0, n - 1)} fill="#67e8f9" fillOpacity=".26" />
+          <path d={close(wind, 0, n - 1)} fill="#67e8f9" fillOpacity=".92" />
           <path d={gust} fill="none" stroke="#c4b5fd" strokeWidth="1.3" strokeDasharray="3 3" />
           {got.length > 1 && <path d={close(oLine, got[0].i, got[got.length - 1].i)} fill={OBS} fillOpacity=".55" />}
           {got.length > 1 && <path d={oLine} fill="none" stroke="#9cc3ee" strokeWidth="1.3" />}
@@ -77,7 +77,7 @@ export function CockpitWind({ rows, date }) {
           <g>
             <line x1={x(nowAt)} x2={x(nowAt)} y1={T - 6} y2={y(0)} stroke="#ff6b6b" strokeWidth="1.3" strokeDasharray="2 2" />
             <circle cx={x(nowAt)} cy={y(nowV)} r="9" fill="#ff6b6b" className="ck-pulse" />
-            <circle cx={x(nowAt)} cy={y(nowV)} r="4.5" fill="#ff6b6b" stroke="#141938" strokeWidth="2" />
+            <circle cx={x(nowAt)} cy={y(nowV)} r="4.5" fill="#ff6b6b" stroke="#11203a" strokeWidth="2" />
           </g>
         )}
       </svg>
