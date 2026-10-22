@@ -3,7 +3,7 @@ import SwiftUI
 import WidgetKit
 
 // Velora widget'ları (Seyhun 2026-10-22 onayı: /mnt/project-files/iphone/widget-ornek-4.png, "daha sade, tek parça"):
-// - Velora (büyük, iOS 17+): rüzgâr grafiği, antrenman / sayaç ("Süre" doğrudan antrenmanın sayacı), banka ve aidat;
+// - Velora (büyük, iOS 17+): rüzgâr grafiği, antrenman / sayaç ("Süre" doğrudan antrenmanın sayacı, "Yoklama" o günün yoklaması), banka ve aidat;
 //   widget'a basılı tut › Edit Widget ile bölümler seçilir (sıradaki planlar ve kelime de eklenebilir)
 // - Rüzgâr (orta, kilit ekranı), Antrenman (küçük, kilit ekranı; sayaç çalışırken mor ve canlı), Banka ve aidat (küçük, kilit ekranı),
 //   Kelime (orta, kilit ekranı), Özet (kilit ekranında saatin üstü: "Antrenman 16:00 · 12 kn")
@@ -26,6 +26,17 @@ private func ruzgarYazi(_ r: GunRuzgar?, _ now: Date) -> String {
 private func antrenmanURL(_ a: WidgetVeri.Antrenman?) -> URL {
     guard let a, !a.id.isEmpty else { return url("/training/day") }
     return url("/training/day?id=\(a.id)")
+}
+
+// Yoklama: antrenmanın günü (bugün ya da geçmişse), yoksa bugünün yoklaması
+private func yoklamaURL(_ a: WidgetVeri.Antrenman?, _ now: Date) -> URL {
+    if let a, !a.date.isEmpty, a.date <= GunRuzgar.gun(now) { return url("/athletes/attendance?gun=\(a.date)") }
+    return url("/athletes/attendance")
+}
+
+// Başlık "Antrenman" / "Optimist antrenmanı" gibiyse "Antrenman" bir daha yazılmaz: başlık etiket olur
+private func antrenmanAdi(_ a: WidgetVeri.Antrenman) -> String {
+    a.title.lowercased(with: Locale(identifier: "tr_TR")).contains("antrenman") ? a.title : "Antrenman"
 }
 
 private func antrenmanPlan(_ a: WidgetVeri.Antrenman) -> WidgetVeri.Plan {
@@ -61,7 +72,7 @@ private struct Etiket: View {
     }
 }
 
-// Büyük sayı + yanında küçük soluk ek ("12 kn · hamle 18")
+// Büyük sayı + yanında küçük soluk ek ("12 kn · sağanak 18")
 private struct Sayi: View {
     let deger: String
     var ek: String = ""
@@ -93,16 +104,30 @@ private struct Cubuk: View {
     }
 }
 
-private struct SureDugmesi: View {
+// Antrenmanın düğmeleri: Yoklama (o günün yoklaması) ve Süre (antrenmanın sayacı, ana düğme mor)
+private struct Dugme: View {
+    let yazi: String
     let hedef: URL
+    var ana = false
     var body: some View {
         Link(destination: hedef) {
-            Text("Süre")
+            Text(yazi)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
-                .background(Capsule().fill(morDugme))
+                .background(Capsule().fill(ana ? morDugme : Color.white.opacity(0.16)))
+        }
+    }
+}
+
+private struct AntrenmanDugmeleri: View {
+    let sure: URL
+    let yoklama: URL
+    var body: some View {
+        HStack(spacing: 6) {
+            Dugme(yazi: "Yoklama", hedef: yoklama)
+            Dugme(yazi: "Süre", hedef: sure, ana: true)
         }
     }
 }
@@ -131,7 +156,7 @@ private struct RuzgarBolumu: View {
                     HStack(alignment: .bottom) {
                         VStack(alignment: .leading, spacing: 4) {
                             Etiket(yazi: "Rüzgâr · \(e.v?.place ?? "Dikili")")
-                            Sayi(deger: "\(s.wind)", ek: s.gust > s.wind ? "kn · hamle \(s.gust)" : "kn")
+                            Sayi(deger: "\(s.wind)", ek: s.gust > s.wind ? "kn · sağanak \(s.gust)" : "kn")
                         }
                         Spacer()
                         Etiket(yazi: r.bugun ? gunBicim.string(from: e.date) : "Yarın")
@@ -165,16 +190,17 @@ private struct AntrenmanBolumu: View {
                     SayacYazi(t: t).font(.system(size: 28, weight: .bold).monospacedDigit())
                 }
                 Spacer()
-                SureDugmesi(hedef: sayacURL)
+                AntrenmanDugmeleri(sure: sayacURL, yoklama: yoklamaURL(e.v?.antrenman(e.date), e.date))
             }
         } else if let a = e.v?.antrenman(e.date) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Etiket(yazi: gunAdi(a, e.date) == "Bugün" ? "Antrenman" : "Antrenman · \(gunAdi(a, e.date))")
-                    Sayi(deger: a.time.isEmpty ? gunAdi(a, e.date) : a.time, ek: a.place?.isEmpty == false ? a.place! : a.title, boy: 24)
+                    let ad = antrenmanAdi(a)
+                    Etiket(yazi: gunAdi(a, e.date) == "Bugün" ? ad : "\(ad) · \(gunAdi(a, e.date))")
+                    Sayi(deger: a.time.isEmpty ? gunAdi(a, e.date) : a.time, ek: a.place?.isEmpty == false ? a.place! : (ad == a.title ? "" : a.title), boy: 24)
                 }
                 Spacer()
-                SureDugmesi(hedef: antrenmanURL(a))
+                AntrenmanDugmeleri(sure: antrenmanURL(a), yoklama: yoklamaURL(a, e.date))
             }
         } else {
             VStack(alignment: .leading, spacing: 4) {
@@ -382,7 +408,7 @@ struct AntrenmanGorunum: View {
         if family == .accessoryRectangular {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text(t?.title ?? "Antrenman").font(.system(size: 12, weight: .semibold)).opacity(0.75)
+                    Text(t?.title ?? a.map(antrenmanAdi) ?? "Antrenman").font(.system(size: 12, weight: .semibold)).opacity(0.75).lineLimit(1)
                     Spacer()
                     Text(t != nil ? "süre" : a.map { gunAdi($0, e.date).lowercased(with: Locale(identifier: "tr_TR")) } ?? "")
                         .font(.system(size: 12, weight: .semibold)).opacity(0.75)
@@ -400,7 +426,7 @@ struct AntrenmanGorunum: View {
             .padding(.horizontal, 4)
         } else {
             VStack(alignment: .leading) {
-                Text(t?.title ?? "Antrenman").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
+                Text(t?.title ?? a.map(antrenmanAdi) ?? "Antrenman").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
                 Spacer(minLength: 0)
                 if let t {
                     SayacYazi(t: t).font(.system(size: 34, weight: .bold).monospacedDigit()).minimumScaleFactor(0.6)
@@ -482,11 +508,12 @@ struct KelimeGorunum: View {
     var body: some View {
         if let w = e.v?.word {
             if family == .accessoryRectangular {
-                VStack(alignment: .leading, spacing: 0) {
-                    (Text(w.en).font(.system(size: 15, weight: .bold)) + Text(w.type.map { "  \($0)" } ?? "").font(.system(size: 11, weight: .semibold)))
+                // Kilit ekranında örnek cümle yok (sığmıyordu): kelime, türü, anlamı
+                VStack(alignment: .leading, spacing: 1) {
+                    (Text(w.en).font(.system(size: 17, weight: .bold)) + Text(w.type.map { "  \($0)" } ?? "").font(.system(size: 11, weight: .semibold)).foregroundColor(.white.opacity(0.75)))
                         .lineLimit(1)
-                    Text(w.tr).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-                    if let ex = w.ex { Text(ex).font(.system(size: 11, weight: .medium)).opacity(0.75).lineLimit(1) }
+                        .minimumScaleFactor(0.7)
+                    Text(w.tr).font(.system(size: 14, weight: .semibold)).opacity(0.9).lineLimit(2)
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 4)
