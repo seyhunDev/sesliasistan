@@ -134,7 +134,7 @@ function Clip({ m, bar, onTap, tools = null }) {
   );
 }
 
-function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, onDrop, starts = [], onFix, busy = "" }) {
+function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, onSave, onDrop, starts = [], onFix, busy = "" }) {
   const [ui, setUi] = useState(true);
   // Videoyu paylaşırken sorulur: sesli ya da sessiz (Seyhun 2026-10-20)
   const [ask, setAsk] = useState(false);
@@ -172,6 +172,7 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
   // Yüklenmekte olan kayıtta yok (künyesi henüz yok)
   const acts = m.up != null ? [] : [
     onShare && ["Paylaş", "share", () => shareIt(m)],
+    onSave && ["İndir", "download", () => onSave(m)],
     ours.length > 0 && onTag && ["Kimler", "users", () => setPanel("tag")],
     onFix && ["Düzelt", "edit", () => setPanel("fix")],
     ["Sil", "trash", () => onDrop(m)],

@@ -267,6 +267,36 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
     onChange({ media: next }, () => saveMedia(orgId, race.id, next));
   };
   // muted: sessiz kopya paylaşılır (kayıttaki video sesli kalır)
+  // İndir (Seyhun 2026-10-22: "telefona indir butonu olsun, orijinal haliyle"): telefonda saklanan aslı (m.local), yoksa buluttaki.
+  // iPhone paylaşım ekranında "Videoyu Kaydet" ile Fotoğraflar'a gider. Büyük dosya inerken dokunuş süresi geçerse iPhone paylaşımı
+  // açmaz: hazırlanan dosya saklanır, ikinci dokunuşta hemen açılır.
+  const ready = useRef(null);
+  const save = async (m) => {
+    try {
+      let f = ready.current?.id === m.id ? ready.current.f : null;
+      if (!f) {
+        setBusy("Hazırlanıyor");
+        const blob = await (await fetch(m.local || m.url)).blob();
+        const type = blob.type || m.type || (m.kind === "video" ? "video/mp4" : "image/jpeg");
+        const ext = m.kind !== "video" ? "jpg" : type.includes("webm") ? "webm" : type.includes("quicktime") ? "mov" : "mp4";
+        f = new File([blob], `${race.name || "yarış"} ${hm(m.at).replace(":", ".")}.${ext}`, { type });
+        ready.current = { id: m.id, f };
+        setBusy("");
+      }
+      if (navigator.canShare?.({ files: [f] })) await navigator.share({ files: [f] });
+      else {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(f);
+        a.download = f.name;
+        a.click();
+      }
+      ready.current = null;
+    } catch (e) {
+      setBusy("");
+      if (e?.name === "NotAllowedError" && ready.current?.id === m.id) toast("Hazır, yeniden İndir'e dokun");
+      else if (e?.name !== "AbortError") toast("İndirilemedi");
+    }
+  };
   const share = async (m, muted = false) => {
     try {
       let blob = await (await fetch(m.url)).blob();
@@ -344,6 +374,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
         ours={ours}
         onTag={tag}
         onShare={share}
+        onSave={save}
         busy={busy}
         onDrop={drop}
         starts={live.starts}
