@@ -79,7 +79,7 @@ function Day() {
   const [adding, setAdding] = useState(false);
   const [tab, setTab] = useState(TABS.includes(q.get("tab")) ? q.get("tab") : "sure");
   useTabInUrl(tab);
-  const [cam, setCam] = useState(null); // Süre'den açılan kamera: { kind }
+  const [shot, setShot] = useState(null); // alttaki Kayıt ile iPhone kamerasında çekilen dosya (Medya işler)
   const [wind, setWind] = useState(false);
   const orgId = profile?.orgId || "";
   const liveId = plan && racer && orgId ? `ant-${plan.id}` : "";
@@ -284,8 +284,8 @@ function Day() {
           live={{ ...live, starts: startsOf(races, date) }}
           ours={ours}
           onChange={change}
-          cam0={cam?.kind || ""}
-          onCamClose={() => cam && (setTab(cam.back || "sure"), setCam(null))}
+          file0={shot}
+          onFileDone={() => setShot(null)}
         />
       )}
       {tabs && shown === "wx" && <WeatherTab orgId={orgId} race={place} day={date} live={live} onChange={change} saveSpot={saveSpot} />}
@@ -329,7 +329,7 @@ function Day() {
               change((l) => ({ wind: [...l.wind, w] }), () => addWind(orgId, liveId, w));
             }}
           />
-          <TabDock value={shown} onChange={setTab} onRec={() => (setCam({ kind: "video", back: shown }), setTab("media"))} />
+          <TabDock value={shown} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} />
         </>
       )}
     </main>

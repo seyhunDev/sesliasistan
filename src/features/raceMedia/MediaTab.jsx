@@ -10,15 +10,19 @@ import { dayOf, fixMedia, hm, mediaGroups, mediaOf, momentAt, momentBadge, momen
 import { MediaViewer } from "./MediaViewer";
 import { Thumb } from "./Thumb";
 import { CameraSheet } from "./CameraSheet";
+import { RecPick } from "./RecPick";
+import { Sheet } from "@/components/ui/Sheet";
+import { Icon } from "@/components/ui/Icon";
+import { buttonClass } from "@/components/ui/buttonClass";
 import { clearKept, dropKept, dropPending, keepLocal, listKept, listPending, putPending } from "./pendingStore";
 
-// Medya: üstteki "+ Kayıt" ve alt sekmelerin yanındaki Kayıt uygulama içi kamerayı açar (CameraSheet: sayaç ve bipler sürer, foto/video
-// orada seçilir; Seyhun 2026-10-22). Kameranın ⋯ menüsünde iPhone'un kendi kamerası (dosyası olduğu gibi, prepRaceMedia) ve telefonda
+// Medya: üstteki "+ Kayıt" ve alt sekmelerin yanındaki Kayıt iPhone'un kendi kamerasını açar (RecPick; Seyhun 2026-10-22: sarsıntısız,
+// net görüntü), dosyası olduğu gibi (prepRaceMedia). Yanındaki ⋯: Sayaçlı kamera (CameraSheet: süre ekranda, bipler sürer) ve telefonda
 // tutulanların boyutu / Telefondan sil. Video en çok 2 dk; sırayla Storage'a yüklenir ve yarışa yazılır.
 // Start sayacı sürerken çekilen, starta göre anıyla kaydedilir; liste yarışa ve ana göre gruplu
 // ("2. yarış · Son 1 dakika", lib/raceLive.js mediaGroups), küçük resimde "−0:42" / "+12:30". Dokununca büyük açılır:
 // yarıştaki sporcular etiketlenir (dokun ekle/çıkar), Paylaş, Düzelt (yarış ve an), Sil. Etiketli varsa üstte sporcu süzgeci.
-// Çekilen hemen kaydedilir (önce gözden geçirme yok). Süre'den açılan kamera kapanınca Süre'ye dönülür (onCamClose).
+// Çekilen hemen kaydedilir (önce gözden geçirme yok). file0: alttaki Kayıt ile çekilen dosya (işlenince onFileDone).
 // Yüklenen ve yüklenmekte olan kayıtlar sayfa genelinde tutulur: sekme değişince Medya yeniden açılır, telefonda bekleyen kayıt (yüklemesi
 // eski sekmede sürerken) yeniden sıraya girip ikinci kez yükleniyordu (Seyhun 2026-10-22: "aynı videonun iki kaydı düşüyor")
 const inflight = new Set();
@@ -33,9 +37,10 @@ const upSub = (x) => (upSubs.add(x), () => upSubs.delete(x));
 const upGet = () => upSnap;
 const blankUps = { ups: {}, mine: {}, kept: {} };
 const done = new Set();
+const seenFiles = new WeakSet(); // alttaki Kayıt dosyası bir kez işlenir
 const tried = new Set(); // bu açılışta küçük resmi denenen kayıtlar (olmazsa yeniden denenmez)
 
-export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "", onCamClose }) {
+export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = null, onFileDone }) {
   const toast = useToast();
   const photo = useRef(null);
   const video = useRef(null);
@@ -52,14 +57,9 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const up = (id, f) => setUps((u) => (u[id] ? { ...u, [id]: { ...u[id], ...f(u[id]) } } : u));
   const addUp = (rec, err = false) => setUps((u) => (u[rec.id] ? u : { ...u, [rec.id]: { rec, url: URL.createObjectURL(rec.blob), p: err ? null : 0, err } }));
   const [last, setLast] = useState(null); // kamerada köşedeki son çekilen: { id, kind, url, state: up | ok | err, err }
-  const [cam, setCam] = useState(cam0); // açık uygulama içi kamera: "photo" | "video" (cam0: alttaki Kayıt düğmesinden açıldı)
-  // Medya açıkken alttaki Kayıt'a basılınca da kamera açılır
-  const [cam0Was, setCam0Was] = useState(cam0);
-  if (cam0 !== cam0Was) {
-    setCam0Was(cam0);
-    if (cam0) setCam(cam0);
-  }
-  const camRef = useRef(cam0);
+  const [cam, setCam] = useState(""); // açık sayaçlı kamera: "photo" | "video"
+  const [more, setMore] = useState(false); // ⋯: Sayaçlı kamera, telefonda tutulanlar
+  const camRef = useRef("");
   useEffect(() => {
     camRef.current = cam;
   }, [cam]);
@@ -218,6 +218,14 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
       setBusy("");
     }
   };
+  // Alttaki Kayıt ile (başka sekmede) çekilen dosya burada işlenir
+  useEffect(() => {
+    if (!file0 || seenFiles.has(file0)) return;
+    seenFiles.add(file0);
+    take(file0);
+    onFileDone?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file0]);
   // Kayıt her zaman bizim kamerayı açar (foto/video kamerada seçilir; Seyhun 2026-10-22). iPhone'un kendi kamerası kameranın ⋯ menüsünde
   const native = (k) => (setCam(""), (k === "photo" ? photo : video).current?.click());
   const camFail = (e) => {
@@ -291,9 +299,14 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
       <div className="mt-3 flex items-center justify-between gap-3 px-1">
         {/* Yükleme sürerken burada ne kadarının gittiği yazar (Seyhun 2026-10-22: "yüklenip yüklenmediğini bilmiyorum"), bitince sayılar */}
         <p className="text-[0.875rem] tabular-nums text-mut">{going.length ? `${going.length} ${going.every((x) => x.kind === "video") ? "video" : going.every((x) => x.kind !== "video") ? "fotoğraf" : "kayıt"} buluta gönderiliyor · %${Math.round((going.reduce((a, x) => a + (x.u.p || 0), 0) / going.length) * 100)}` : justDone ? "Buluta gönderildi ✓" : todays.length ? [todays.filter((m) => m.kind === "video").length, todays.filter((m) => m.kind !== "video").length].map((n, k) => n && `${n} ${k ? "fotoğraf" : "video"}`).filter(Boolean).join(" · ") : ""}</p>
-        <Button size="sm" full={false} onClick={() => setCam("video")}>
-          + Kayıt
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <RecPick onFile={take} className={buttonClass({ size: "sm", full: false })}>
+            + Kayıt
+          </RecPick>
+          <Button variant="secondary" size="sm" full={false} onClick={() => setMore(true)} aria-label="Diğer çekim" className="px-2.5">
+            <Icon name="more" className="size-5" />
+          </Button>
+        </div>
       </div>
       {!groups.length && <p className={`${card} mt-3 px-4 py-6 text-center text-[0.875rem] text-mut`}>Bu gün fotoğraf ya da video yok.</p>}
       {groups.map((g) => (
@@ -333,7 +346,18 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
           <div className="grid h-14 w-full place-items-center rounded-2xl border border-line bg-card text-[1rem] font-semibold">{pending > 1 ? `${busy} · ${pending - 1} sırada` : busy}</div>
         </Bar>
       )}
-      <CameraSheet open={!!cam} mode={cam} onMode={setCam} onClose={() => (setCam(""), onCamClose?.())} onShot={shot} onFail={camFail} last={last} onNative={native} stock={stockText} onClear={stock.length ? clearPhone : null} />
+      <Sheet open={more} onClose={() => setMore(false)} title="Çekim">
+        <Button variant="secondary" onClick={() => (setMore(false), setCam("video"))}>
+          Sayaçlı kamera
+        </Button>
+        <p className="mt-4 px-1 text-[0.9375rem] tabular-nums">{stockText}</p>
+        {stock.length > 0 && (
+          <Button variant="secondary" onClick={() => (setMore(false), clearPhone())} className="mt-2">
+            Telefondan sil
+          </Button>
+        )}
+      </Sheet>
+      <CameraSheet open={!!cam} mode={cam} onMode={setCam} onClose={() => setCam("")} onShot={shot} onFail={camFail} last={last} onNative={native} stock={stockText} onClear={stock.length ? clearPhone : null} />
     </>
   );
 }

@@ -19,6 +19,7 @@ import { VoidSheet, useRaceFlow } from "./useRaceFlow";
 import { TimerTab } from "./TimerTab";
 import { ResultsTab } from "./ResultsTab";
 import { MediaTab } from "./MediaTab";
+import { RecPick } from "./RecPick";
 import { DaySummarySheet } from "./DaySummarySheet";
 import { DaySheet } from "./DaySheet";
 import { ResetSheet } from "./ResetSheet";
@@ -40,7 +41,7 @@ export function RaceMedia({ orgId, id }) {
   const q = useSearchParams();
   const [tabPick, setTab] = useState(TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
   useTabInUrl(tabPick);
-  const [cam, setCam] = useState(null); // Süre'den açılan kamera: { kind, back }
+  const [shot, setShot] = useState(null); // alttaki Kayıt ile iPhone kamerasında çekilen dosya (Medya işler)
   const [race, setRace] = useState(null);
   const [missing, setMissing] = useState(false);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -141,7 +142,6 @@ export function RaceMedia({ orgId, id }) {
   const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" ? names[cur] : "", dayLabel(cur)].filter(Boolean).join(" · ");
   const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
   const tab = tabPick || (days.includes(today) ? "sure" : "wx");
-  const openCam = (kind) => (setCam({ kind, back: tab }), setTab("media"));
 
   return (
     <Shell
@@ -193,8 +193,8 @@ export function RaceMedia({ orgId, id }) {
           live={live}
           ours={ours}
           onChange={change}
-          cam0={cam?.kind || ""}
-          onCamClose={() => cam && (setTab(cam.back), setCam(null))}
+          file0={shot}
+          onFileDone={() => setShot(null)}
         />
       )}
       <VoidSheet ask={rf.ask} onChoose={rf.choose} />
@@ -216,7 +216,7 @@ export function RaceMedia({ orgId, id }) {
           change({ days: next }, () => saveDays(orgId, id, next));
         }}
       />
-      <TabDock value={tab} onChange={setTab} onRec={() => openCam("video")} />
+      <TabDock value={tab} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} />
       <ResetSheet
         open={reset}
         onClose={() => setReset(false)}
@@ -243,7 +243,7 @@ export function RaceMedia({ orgId, id }) {
 }
 
 // Sekmeler en altta (Seyhun 2026-10-19: "alttan yönetelim"); sekmenin düğme şeridi (Countdown Bar) bunun üstünde durur (--bar-b).
-// Yanında tek Kayıt düğmesi (Seyhun 2026-10-22: ayrı Fotoğraf/Video düğmeleri kalktı): her sekmeden kamerayı açar, foto/video kamerada seçilir
+// Yanında tek Kayıt düğmesi (Seyhun 2026-10-22: ayrı Fotoğraf/Video düğmeleri kalktı): her sekmeden iPhone kamerasını açar (RecPick), çekilen Medya'da
 const TAB_ICON = { sure: "clock", media: "image", wx: "wind", res: "flag" };
 export function TabDock({ value, onChange, onRec }) {
   useEffect(() => {
@@ -263,12 +263,12 @@ export function TabDock({ value, onChange, onRec }) {
           ))}
         </div>
         {onRec && (
-          <button type="button" onClick={onRec} data-press className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[1.25rem] border border-line bg-card text-[0.71875rem] font-semibold shadow-[0_2px_12px_rgba(38,40,44,.06)]">
+          <RecPick onFile={onRec} aria-label="Kayıt" className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[1.25rem] border border-line bg-card text-[0.71875rem] font-semibold shadow-[0_2px_12px_rgba(38,40,44,.06)]">
             <span className="grid size-[1.375rem] place-items-center rounded-full border-2 border-rec">
               <span className="size-2.5 rounded-full bg-rec" />
             </span>
             Kayıt
-          </button>
+          </RecPick>
         )}
       </div>
     </nav>
