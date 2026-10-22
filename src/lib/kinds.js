@@ -46,12 +46,18 @@ export function missingOf(m) {
 
 // Kullanıcı adıyla giriş: e-postası olmayanlar (çocuk, sporcu) için sahte alan adına çevrilir
 export const USER_DOMAIN = "kullanici.sesliasistan.app";
+const TR = { ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u" };
+// Giriş kutusundaki yazı: küçük harf, boşluksuz; kullanıcı adları Türkçe harfsiz oluşturulur ("ILAY" → "ilay", "çağan" → "cagan")
+export const cleanLogin = (s) => {
+  const t = String(s || "").trim().toLocaleLowerCase("tr-TR").replace(/\s+/g, "");
+  return t.includes("@") ? t.replace(/ı/g, "i") : t.replace(/[çğıöşü]/g, (c) => TR[c]);
+};
 export const loginEmail = (s) => {
-  const t = String(s || "").trim().toLocaleLowerCase("tr-TR");
+  const t = cleanLogin(s);
   return t.includes("@") ? t : `${t}@${USER_DOMAIN}`;
 };
 export const shownLogin = (email) => String(email || "").replace(`@${USER_DOMAIN}`, "");
-const TR = { ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u" };
+export const validEmail = (s) => /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(String(s || ""));
 // "Ege Demir" → "ege.demir"
 export const suggestUsername = (name) =>
   String(name || "")
@@ -63,6 +69,11 @@ export const suggestUsername = (name) =>
     .replace(/^\.+|\.+$/g, "")
     .slice(0, 30);
 export const validUsername = (u) => /^[a-z0-9][a-z0-9._-]{2,29}$/.test(u);
+// Giriş ekranı: yazılan e-posta ya da kullanıcı adı doğru biçimde mi (hesabın varlığına bakılmaz)
+export const validLogin = (s) => {
+  const t = cleanLogin(s);
+  return t.includes("@") ? validEmail(t) : validUsername(t);
+};
 
 // Kişiler sayfaları: Çalışanlar, Aile, Sporcular (sporcu, öğrenci, veli), Diğer
 export const PEOPLE_GROUPS = {
