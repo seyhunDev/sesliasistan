@@ -94,17 +94,18 @@ export async function scenarios(h) {
     return [!!ok && n > srBefore, `${await state(page)} · tanıma ${n - srBefore} kez açıldı`];
   });
   // Dinlerken "Dinliyorum" yalnız alttaki çubukta, halkada yazı yok (2026-10-18)
-  await check("Halka renkleri", "dinlerken", "kırmızı halka + ses çubukları, halkada yazı yok, alttaki çubukta “Dinliyorum”", async () => {
+  await check("Halka renkleri", "dinlerken", "logo dinliyor (24 çubuk sesle oynar), halkada yazı yok, alttaki çubukta “Dinliyorum”", async () => {
     const c = await ringColor(page);
-    const bars = await page.locator("[data-dome] rect.aring-bar").count();
+    const bars = (await page.locator("[data-dome] [data-ring] line").count()) === 24 ? 5 : 0;
     const t = (await ringText(page)).trim();
     const box = await dome(page).locator(".asheet-input").innerText();
     return [c === "kırmızı" && bars === 5 && !t && /Dinliyorum/.test(box), `${c} · ${bars} çubuk · halka: “${t}” · çubuk: “${box.replace(/\n/g, " ")}”`];
   });
-  await check("Halka renkleri", "zemin", "arkada renk bulutları ve nokta ızgara (abg)", async () => {
-    const n = await page.locator("[data-dome] .abg > i").count();
-    const anim = await page.locator("[data-dome] .ab-b1").evaluate((el) => getComputedStyle(el).animationName);
-    return [n >= 4 && anim !== "none", `${n} katman · ${anim}`];
+  // Yeni tasarım (2026-10-22): zemin sabit, dinlerken ekranın kenarı parlar (kenar ışığı sesle güçlenir)
+  await check("Halka renkleri", "zemin", "sabit zemin (abg), dinlerken kenar ışığı görünür", async () => {
+    const anim = await page.locator("[data-dome] .abg").evaluate((el) => getComputedStyle(el).animationName);
+    const op = await page.locator("[data-dome] .aedge").evaluate((el) => Number(getComputedStyle(el).opacity));
+    return [anim === "none" && op > 0.3, `zemin animasyonu ${anim} · kenar ışığı ${op.toFixed(2)}`];
   });
   await say(page, "notlarımı oku");
   // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutuya akar, altta süre + dalga, ■ Dur ve ↑ Gönder
@@ -138,7 +139,7 @@ export async function scenarios(h) {
   await check("Halka renkleri", "cevaptan sonra", "yeşil halka ve onay (✓ Tamam), durum boşta", async () => {
     await waitFor(async () => (await state(page)) === "idle", 5000);
     const c = await ringColor(page);
-    const chk = await page.locator("[data-dome] .aring-check").count();
+    const chk = await page.locator("[data-dome] .lring-check").count();
     return [c === "yeşil" && chk === 1, `${c} · onay ${chk} · ${await state(page)}`];
   });
 
@@ -610,7 +611,7 @@ async function scenarios3(h) {
   await talkAsk(page, "kasaya 300 lira gelir yaz ve yarın 10'da tekne yıkama planı ekle");
   const t0 = Date.now();
   while (Date.now() - t0 < 9000) {
-    const off = await page.locator("[data-dome] svg circle").nth(1).getAttribute("stroke-dashoffset").catch(() => null);
+    const off = await page.locator("[data-dome] [data-ring]").first().getAttribute("data-fill").catch(() => null);
     if (off != null && !fills.includes(off)) fills.push(off);
     if ((await state(page)) === "idle" && fills.length) break;
     await page.waitForTimeout(100);
