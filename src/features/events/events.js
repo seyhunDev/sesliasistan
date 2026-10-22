@@ -10,15 +10,24 @@ import { cleanEvent } from "./eventModel";
 // Etkinlikler: orgs/{orgId}/events (yalnız ana hesap; mevcut kural ana hesaba orgs altındaki her koleksiyonu açıyor)
 const col = (orgId) => collection(db, "orgs", orgId, "events");
 
+// Son okunan liste bellekte: geri dönünce liste hemen çizilir (arkada tazelenir), listeden açılan etkinlik yeniden okunmaz.
+// Yazınca eskimiş sayılır.
+let last = null; // { orgId, at, list }
+export const eventsNow = (orgId, maxAge = Infinity) => (last?.orgId === orgId && Date.now() - last.at < maxAge ? last.list : null);
+const stale = () => last && (last.at = 0);
+
 // Okuma: sayfa açılınca bir kez (canlı dinleme yok, kota için)
 export async function loadEvents(orgId) {
   const snap = await getDocs(col(orgId));
-  return snap.docs.map((d) => ({ id: d.id, ...cleanEvent(d.data()) })).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+  const list = snap.docs.map((d) => ({ id: d.id, ...cleanEvent(d.data()) })).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+  last = { orgId, at: Date.now(), list };
+  return list;
 }
 
 // Yeni etkinliği ekler ya da var olanı günceller; kimliği döndürür
 export async function saveEvent(orgId, uid, ev) {
   const data = { ...cleanEvent(ev), updatedAt: serverTimestamp() };
+  stale();
   if (ev.id) {
     await updateDoc(doc(col(orgId), ev.id), data);
     return ev.id;
@@ -27,7 +36,7 @@ export async function saveEvent(orgId, uid, ev) {
   return ref.id;
 }
 
-export const deleteEvent = (orgId, id) => deleteDoc(doc(col(orgId), id));
+export const deleteEvent = (orgId, id) => (stale(), deleteDoc(doc(col(orgId), id)));
 
 // Yapay zekayla plan: { ask: ["where"|"when"|"people"], question, event, message }
 // general false: yer/zaman eksikse önce soru döner. Yalnız etkinlik bilgisi ve kullanıcının cümlesi gider.

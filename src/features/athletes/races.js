@@ -336,14 +336,22 @@ export async function loadRace(orgId, id) {
 // Yalnız sonuçlar (multimedya sayfasından yükleme): yarışın diğer alanlarına dokunulmaz; bulunan yeni sporcular yarışa eklenir
 export async function saveRaceResults(orgId, id, results, addIds = []) {
   const data = { results: cleanResults(results), updatedAt: serverTimestamp() };
+  stale();
   if (addIds.length) data.athleteIds = arrayUnion(...addIds);
   await soon(updateDoc(doc(col(orgId), id), data), 2500, "Yarış");
 }
+
+// Son okunan liste bellekte: geri dönünce Yarışlar listesi "yükleniyor" göstermeden hemen çizilir (arkada tazelenir),
+// listeden açılan yarış yeniden okunmadan açılır. Yazınca eskimiş sayılır (yalnız liste anında çizmek için kullanır).
+let last = null; // { orgId, at, list }
+export const racesNow = (orgId, maxAge = Infinity) => (last?.orgId === orgId && Date.now() - last.at < maxAge ? last.list : null);
+const stale = () => last && (last.at = 0);
 
 export async function loadRaces(orgId) {
   const snap = await getDocs(col(orgId));
   const list = snap.docs.map((d) => ({ id: d.id, ...clean(d.data()) })).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
   rememberRaceNames(list.map((r) => r.name));
+  last = { orgId, at: Date.now(), list };
   return list;
 }
 
@@ -351,6 +359,7 @@ export async function loadRaces(orgId) {
 export async function saveRace(orgId, uid, r) {
   const data = { ...clean(r), updatedAt: serverTimestamp() };
   rememberRaceNames([data.name]);
+  stale();
   // Sunucu onayı en çok 2,5 sn beklenir; yazma cihazda yapılmıştır, arkada gider (lib/soon.js, denetim B11)
   if (r.id) {
     await soon(updateDoc(doc(col(orgId), r.id), data), 2500, "Yarış");
@@ -362,9 +371,9 @@ export async function saveRace(orgId, uid, r) {
 }
 
 // Yalnız yarışın yeri (multimedya Hava sekmesinden); diğer alanlara dokunulmaz
-export const saveRaceSpot = (orgId, id, spot) => updateDoc(doc(col(orgId), id), { spot: cleanSpot(spot), updatedAt: serverTimestamp() });
+export const saveRaceSpot = (orgId, id, spot) => (stale(), updateDoc(doc(col(orgId), id), { spot: cleanSpot(spot), updatedAt: serverTimestamp() }));
 
-export const deleteRace = (orgId, id) => deleteDoc(doc(col(orgId), id));
+export const deleteRace = (orgId, id) => (stale(), deleteDoc(doc(col(orgId), id)));
 
 // Gün ekle: "2026-10-07", -1 → "2026-10-06"
 export function shiftDay(s, n) {

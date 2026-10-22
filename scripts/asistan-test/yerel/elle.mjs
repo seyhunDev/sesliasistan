@@ -2766,3 +2766,16 @@ group("Ortak düğmeler")([
       D.toPatch({ ...D.blank("plan"), title: "x", date: "2026-10-23" }).important === false)],
   ]);
 }
+
+// Sayfa geçişleri: alt sekme Mesajlar'da da ortak geri düğmesi; listeden açılıp geri dönünce liste bellekten hemen çizilir
+{
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  group("Sayfa geçişleri")([
+    ["Mesajlar geri düğmesi", F("sohbet listesinde BackButton ana sayfaya", () => /<BackButton href="\/"/.test(src("features/chat/ChatList.jsx")))],
+    ["Yarışlar geri dönüş", F("liste racesNow ile başlar, yarış 1 dk içindeki listeden açılır", () =>
+      /useState\(\(\) => racesNow\(orgId\)\)/.test(src("app/(app)/athletes/races/page.jsx")) && /racesNow\(orgId, 60e3\)/.test(src("app/(app)/athletes/races/[id]/page.jsx")) && /stale\(\)/.test(src("features/athletes/races.js")))],
+    ["Etkinlikler ve Gönderiler", F("liste bellekten başlar", () =>
+      /useState\(\(\) => eventsNow\(orgId\)\)/.test(src("app/(app)/events/page.jsx")) && /useState\(\(\) => postsNow\(orgId\)\)/.test(src("app/(app)/posts/page.jsx")))],
+  ]);
+}
