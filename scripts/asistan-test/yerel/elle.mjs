@@ -2852,6 +2852,8 @@ group("Ortak düğmeler")([
     ["bugün bitti", F("yarının ilk planı", () => HT.nextPlan(P.filter((p) => p.date !== "2026-10-21" || p.id === "a"), at, "2026-10-21")?.id === "d")],
     ["iptal ve fitness", F("sayılmaz", () => HT.nextPlan([{ ...P[2], status: "cancelled" }, { ...P[2], id: "f", fit: { name: "x" } }, P[3]], at, "2026-10-21")?.id === "d")],
     ["saatsiz plan", F("gün boyu sürer", () => HT.nextPlan([{ id: "s", title: "Kamp", date: "2026-10-21" }], at, "2026-10-21")?.id === "s")],
+    // Seyhun 2026-10-22: bitirilip arşive giden antrenman "Bugün · Gün boyu" diye kalıyordu (plan bitti alanı done: true)
+    ["bitirilen plan", F("arşivdeki (bitti) atlanır, sıradaki gelir", () => HT.nextPlan([{ id: "s", title: "Antrenman", date: "2026-10-21", done: true }, P[2], P[3]], at, "2026-10-21")?.id === "c")],
     ["8 gün sonra", F("7 günden uzak plan yok", () => HT.nextPlan([{ id: "u", date: "2026-10-30", time: "10:00" }], at, "2026-10-21") === null)],
   ]);
 }
