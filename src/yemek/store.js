@@ -3,20 +3,27 @@
 // Velora Yemek verisi (Firestore). Şimdilik ana hesabın işletmesi altında (orgs/{org}/…, kural değişikliği gerekmez);
 // ayrı projeye taşınınca kök koleksiyonlar olur, adlar aynı kalır:
 //   yemekSiparisler/{id}  sipariş (order.js'deki yapı)
-//   yemek/me              { addresses: [{ id, name, text, note, pos }], lastAddressId }
+//   yemek/me              { addresses: [{ id, name, text, note, pos }], lastAddressId }   (müşteri)
+//   yemek/ayar            { demo, closed: { [restoran]: true }, couriers: [{ id, name, phone }] }   (Yönetim)
 // Restoranlar şimdilik koddaki örnek veri (sample.js): okuma yok. Geçmiş sayfa açılınca bir kez (en çok 30 okuma),
 // açık sipariş canlı izlenir (tek belge).
 import { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { addDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { SAMPLE_PLACES } from "./sample";
+import { isOpenAt, travelMin } from "./order";
+import { distanceKm } from "./address";
 
 export const PLACES = SAMPLE_PLACES;
 export const placeById = (id) => PLACES.find((p) => p.id === id) || null;
 
 const ordersCol = (orgId) => collection(db, "orgs", orgId, "yemekSiparisler");
 const meRef = (orgId) => doc(db, "orgs", orgId, "yemek", "me");
+const setRef = (orgId) => doc(db, "orgs", orgId, "yemek", "ayar");
+
+// Restoran şu an sipariş alıyor mu: saatleri uygun ve Yönetim'den kapatılmamış
+export const openNow = (place, settings, date) => !settings?.closed?.[place?.id] && isOpenAt(place, date);
 
 // Geçmiş + adresler: bir kez okunur, sayfalar arasında bellekte kalır (aynı oturumda tekrar okunmaz)
 let memo = null; // { orgId, history, me }
@@ -28,8 +35,9 @@ export function useFood(orgId) {
     Promise.all([
       getDocs(query(ordersCol(orgId), orderBy("at", "desc"), limit(30))).then((s) => s.docs.map((d) => ({ ...d.data(), id: d.id }))).catch(() => []),
       getDoc(meRef(orgId)).then((d) => d.data() || {}).catch(() => ({})),
-    ]).then(([history, me]) => {
-      memo = { orgId, history, me };
+      getDoc(setRef(orgId)).then((d) => d.data() || {}).catch(() => ({})),
+    ]).then(([history, me, settings]) => {
+      memo = { orgId, history, me, settings };
       if (!off) setState(memo);
     });
     return () => { off = true; };
@@ -64,6 +72,54 @@ export async function saveMe(orgId, patch) {
   await setDoc(meRef(orgId), patch, { merge: true });
   touch((m) => ({ me: { ...m.me, ...patch } }));
 }
+
+// ---- Yönetim, restoran ve kurye ekranları ----
+// Ayarlar canlı (tek belge)
+export function useSettings(orgId) {
+  const [st, setSt] = useState(null);
+  useEffect(() => {
+    if (!orgId) return;
+    return onSnapshot(setRef(orgId), (d) => {
+      const v = d.data() || {};
+      setSt(v);
+      touch(() => ({ settings: v }));
+    }, () => setSt({}));
+  }, [orgId]);
+  return st;
+}
+export const saveSettings = (orgId, patch) => setDoc(setRef(orgId), patch, { merge: true });
+
+// Bugünün siparişleri canlı (tek alanlı sorgu, dizin gerekmez): açıklar, biten ve ciro buradan
+export function useToday(orgId) {
+  const [list, setList] = useState(null);
+  useEffect(() => {
+    if (!orgId) return;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return onSnapshot(query(ordersCol(orgId), where("at", ">=", start.toISOString())),
+      (s) => setList(s.docs.map((d) => ({ ...d.data(), id: d.id })).sort((a, b) => b.at.localeCompare(a.at))),
+      () => setList([]));
+  }, [orgId]);
+  return list;
+}
+
+// Restoranın ve kuryenin işleri. Deneme siparişine dokunulunca gerçek olur (demo: false).
+const nowIso = () => new Date().toISOString();
+export function acceptOrder(orgId, o, place) {
+  const t = nowIso();
+  const km = distanceKm(place?.pos, o.address?.pos);
+  const road = travelMin(Number.isFinite(km) ? km : 2);
+  return patchOrder(orgId, o.id, { demo: false, status: "preparing", times: { ...(o.times || {}), accepted: t, preparing: t }, eta: new Date(Date.now() + ((place?.prepMin || 20) + road) * 60000).toISOString() });
+}
+export const rejectOrder = (orgId, o) => patchOrder(orgId, o.id, { demo: false, status: "cancelled", times: { ...(o.times || {}), cancelled: nowIso() } });
+export function giveToCourier(orgId, o, place, courier) {
+  return patchOrder(orgId, o.id, {
+    demo: false, status: "onTheWay", times: { ...(o.times || {}), onTheWay: nowIso() },
+    courier: { id: courier.id, name: courier.name, phone: courier.phone || "", pos: place?.pos || null, at: nowIso() },
+  });
+}
+export const deliverOrder = (orgId, o) => patchOrder(orgId, o.id, { demo: false, status: "delivered", times: { ...(o.times || {}), delivered: nowIso() } });
+export const courierAt = (orgId, id, pos) => updateDoc(doc(ordersCol(orgId), id), { "courier.pos": pos, "courier.at": nowIso() });
 
 // Sepet: tek restoran, telefonda (localStorage). Başka restorandan ürün eklenince eski sepet değişir (sorulur).
 const CART = "yemek-sepet";

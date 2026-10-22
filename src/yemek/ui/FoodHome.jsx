@@ -5,13 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
+import { Sheet } from "@/components/ui/Sheet";
+import { buttonClass } from "@/components/ui/buttonClass";
 import { ListHead, RowList, Row, SkelRow } from "@/components/ui/Row";
 import { isOpenAt, makeLine } from "../order";
 import { pickAddress } from "../address";
 import { suggest, parseAsk } from "../suggest";
 import { liveView } from "../demo";
 import { minutesLeft, STATUS_NAMES, isOpenOrder } from "../order";
-import { PLACES, placeById, useFood, herePos, writeCart } from "../store";
+import { PLACES, placeById, useFood, herePos, writeCart, openNow } from "../store";
 import { Img, tl, rating } from "./Img";
 
 // Alışveriş › Yemek (müşteri; Seyhun 2026-10-22 "Ne yiyelim" örneği A): lacivertte arama ve fotoğraflı mutfaklar,
@@ -31,6 +33,7 @@ export function FoodHome({ orgId, tabs }) {
   const food = useFood(orgId);
   const [cuisine, setCuisine] = useState("");
   const [q, setQ] = useState("");
+  const [menu, setMenu] = useState(false);
   const [pos, setPos] = useState(null);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -42,10 +45,10 @@ export function FoodHome({ orgId, tabs }) {
   const addr = food ? pickAddress(food.me.addresses || [], pos, food.me.lastAddressId) : null;
   const where = addr?.address ? `${addr.address.name}${addr.why === "near" ? " · konumuna göre" : ""}` : "Adres seçilmedi";
   const ask = useMemo(() => (q.trim() ? parseAsk(q, PLACES) : { cuisine: cuisine || undefined }), [q, cuisine]);
-  const picks = useMemo(() => (food ? suggest({ places: PLACES, history: food.history, ask, now, pos: addr?.address?.pos, n: 5 }) : []), [food, ask, addr?.address?.pos]); // eslint-disable-line react-hooks/exhaustive-deps
+  const picks = useMemo(() => (food ? suggest({ places: PLACES, history: food.history, ask, now, pos: addr?.address?.pos, n: 5, closed: food.settings?.closed }) : []), [food, ask, addr?.address?.pos]); // eslint-disable-line react-hooks/exhaustive-deps
   const needle = q.trim().toLocaleLowerCase("tr");
   const places = PLACES.filter((p) => (!cuisine || p.cuisines.includes(cuisine)) && (!needle || [p.name, ...p.cuisines, ...p.menu.flatMap((c) => c.items.map((i) => i.name))].some((s) => s.toLocaleLowerCase("tr").includes(needle))))
-    .sort((a, b) => isOpenAt(b) - isOpenAt(a));
+    .sort((a, b) => openNow(b, food?.settings) - openNow(a, food?.settings));
   // Deneme siparişinin durumu saatten hesaplanır (kayıtta "sent" kalmış olabilir)
   const live = (food?.history || []).map((o) => ({ ...o, status: o.status === "cancelled" ? o.status : liveView(o, placeById(o.placeId), now).status }));
   const open = live.find(isOpenOrder);
@@ -69,6 +72,9 @@ export function FoodHome({ orgId, tabs }) {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Ne yiyelim?</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{food ? where : "…"}</p>
           </div>
+          <button type="button" onClick={() => setMenu(true)} aria-label="Yönetim ekranları" data-press className={buttonClass({ variant: "back" })}>
+            <Icon name="more" className="size-5" />
+          </button>
         </header>
         {tabs}
         <label className="ck-glass mt-3 flex h-11 items-center gap-2 rounded-xl px-3.5">
@@ -134,12 +140,12 @@ export function FoodHome({ orgId, tabs }) {
           <ListHead title="Restoranlar" count={places.length} />
           <div className="space-y-3">
             {places.map((p) => {
-              const on = isOpenAt(p);
+              const on = openNow(p, food?.settings);
               return (
                 <Link key={p.id} href={`/yemek/${p.id}`} data-press className={`block overflow-hidden rounded-[1.25rem] border border-line bg-card ${on ? "" : "opacity-60"}`}>
                   <span className="relative block">
                     <Img src={p.cover} w={800} alt={p.name} className="h-[7.5rem] w-full" />
-                    <span className="absolute left-2.5 top-2.5 rounded-lg bg-white px-2 py-0.5 text-[0.75rem] font-bold text-deep">{on ? `${p.prepMin + 10} dk` : `Kapalı · ${p.hours[0]}`}</span>
+                    <span className="absolute left-2.5 top-2.5 rounded-lg bg-white px-2 py-0.5 text-[0.75rem] font-bold text-deep">{on ? `${p.prepMin + 10} dk` : isOpenAt(p) ? "Kapalı" : `Kapalı · ${p.hours[0]}`}</span>
                   </span>
                   <span className="flex items-center gap-3 px-3.5 py-2.5">
                     <span className="min-w-0 flex-1">
@@ -154,6 +160,14 @@ export function FoodHome({ orgId, tabs }) {
           </div>
         </section>
       </div>
+
+      <Sheet open={menu} onClose={() => setMenu(false)} title="Velora Yemek">
+        <RowList>
+          <Row href="/yemek/yonetim" title="Yönetim" sub="Siparişler, restoranlar, kuryeler" />
+          <Row href="/yemek/panel" title="Restoran ekranı" sub="Siparişi onayla, kuryeye ver" />
+          <Row href="/yemek/kurye" title="Kurye ekranı" sub="Konumu paylaş, teslim et" />
+        </RowList>
+      </Sheet>
     </main>
   );
 }

@@ -18,7 +18,11 @@ export function liveView(order, place, now = Date.now()) {
   if (!order) return null;
   if (!order.demo || order.status === "cancelled") {
     const km = distanceKm(place?.pos, order.address?.pos);
-    return { status: order.status, times: order.times || {}, eta: order.eta || etaFrom(order, place, Number.isFinite(km) ? km : 2, new Date(now)).toISOString(), courier: order.courier || null };
+    let eta = order.eta || etaFrom(order, place, Number.isFinite(km) ? km : 2, new Date(now)).toISOString();
+    // Yolda ve kuryenin konumu biliniyorsa kalan süre kuryeden adrese olan yoldan hesaplanır
+    const left = order.status === "onTheWay" ? distanceKm(order.courier?.pos, order.address?.pos) : NaN;
+    if (Number.isFinite(left)) eta = new Date(now + travelMin(left) * MIN).toISOString();
+    return { status: order.status, times: order.times || {}, eta, courier: order.courier || null };
   }
   const t = demoTimes(order, place);
   const status = [...STATUSES].reverse().find((s) => now >= t[s]) || "sent";

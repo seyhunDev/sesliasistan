@@ -42,10 +42,12 @@ export function parseAsk(text, places = []) {
   if (/yeni bir|farkl[ıi]|denemedi[gğ]im|hi[çc] yemedi[gğ]im|de[gğ]i[sş]iklik/.test(t)) ask.novel = true;
   const ppl = /(\d+|bir|iki|üç|uc|dört|dort|beş|bes|altı) ki[sş]i/.exec(t);
   if (ppl) ask.people = Number(ppl[1]) || NUM[ppl[1]] || 1;
+  // Restoran adı: tam ad ya da ilk kelime; ilk kelime mutfak ya da yer adıysa ("Pizza Rüzgar", "Burger Koy", "Dikili …") sayılmaz
+  const common = new Set(["dikili", ...places.flatMap((p) => (p.cuisines || []).map(low))]);
   for (const p of places) {
     const n = low(p.name);
     const first = n.split(" ")[0];
-    if (t.includes(n) || (first.length > 3 && new RegExp(`(^|\\s)${first}`, "u").test(t))) { ask.placeId = p.id; break; }
+    if (t.includes(n) || (first.length > 3 && !common.has(first) && new RegExp(`(^|\\s)${first}`, "u").test(t))) { ask.placeId = p.id; break; }
   }
   for (const p of places) for (const c of p.menu || []) for (const it of c.items) {
     const n = low(it.name).replace(/\s*\(.*\)$/, "");
@@ -151,7 +153,7 @@ export const RULES = [
     return { score: ((c.place.rating || 4) - 4.2) * 2 + ((c.item.tags || []).includes("popüler") ? 1 : 0) };
   },
   function openNow(c, x) {
-    return isOpenAt(c.place, new Date(x.now)) ? { score: 0 } : { score: -100 };
+    return isOpenAt(c.place, new Date(x.now)) && !x.closed?.[c.place.id] ? { score: 0 } : { score: -100 };
   },
   function speed(c, x) {
     const s = -c.min / (x.ask.fast ? 8 : 30);
@@ -185,8 +187,8 @@ export function candidates(places, pos) {
 }
 
 // En iyi n öneri; aynı restorandan en çok bir (çeşit olsun diye). Her öneride: { place, item, price, min, score, why }
-export function suggest({ places, history = [], ask = {}, now = Date.now(), pos, n = 3, taste }) {
-  const x = { ask, taste: taste || tasteOf(history), now: typeof now === "number" ? now : new Date(now).getTime() };
+export function suggest({ places, history = [], ask = {}, now = Date.now(), pos, n = 3, taste, closed }) {
+  const x = { ask, closed, taste: taste || tasteOf(history), now: typeof now === "number" ? now : new Date(now).getTime() };
   const scored = candidates(places, pos).map((c) => {
     let score = 0, why, top = 0;
     for (const rule of RULES) {
@@ -221,9 +223,9 @@ export function findRepeat(history = [], ask = {}, now = Date.now()) {
 }
 
 // Asistan ve "Bugün ne yiyelim?" düğmesi için tek giriş: cümle → { repeat?, picks, say }
-export function answerFood({ text, places, history = [], now = Date.now(), pos }) {
+export function answerFood({ text, places, history = [], now = Date.now(), pos, closed }) {
   const ask = parseAsk(text, places);
-  const picks = suggest({ places, history, ask, now, pos });
+  const picks = suggest({ places, history, ask, now, pos, closed });
   const label = ask.cuisine || (ask.placeId && places.find((p) => p.id === ask.placeId)?.name) || "";
   if (ask.repeat) {
     const order = findRepeat(history, ask, now);
