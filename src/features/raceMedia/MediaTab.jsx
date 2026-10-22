@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
-import { addRaceMedia, backfillPoster, dropRaceMedia, mutedCopy, posterOf, prepRaceMedia, saveMedia } from "@/features/athletes/raceLiveStore";
+import { addRaceMedia, backfillPoster, cloudCopy, dropRaceMedia, mutedCopy, posterOf, prepRaceMedia, saveMedia } from "@/features/athletes/raceLiveStore";
 import { Button } from "@/components/ui/Button";
 import { Bar, readTimer } from "@/features/training/Countdown";
 import { dayOf, fixMedia, hm, mediaByRace, mediaGroups, mediaOf, momentAt, momentBadge, momentOf, tagMedia } from "@/lib/raceLive";
@@ -112,9 +112,16 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
     try {
       addUp(rec);
       up(rec.id, () => ({ p: 0, err: false }));
-      const meta = await addRaceMedia(orgId, race.id, { ...rec, posterP: posterJobs.get(rec.id) }, rec.at, (p) => up(rec.id, () => ({ p })), { ...rec.mom, dur: rec.dur });
+      // Büyük iPhone videosu: buluta önce akışa uygun 720p kopyası hazırlanır (halkanın ilk yarısı), aslı telefonda kalır
+      let cl = rec;
+      if (rec.big && rec.kind === "video") {
+        const c = await cloudCopy(rec.blob, rec.type, (p) => up(rec.id, () => ({ p: p * 0.5 })));
+        if (c.blob !== rec.blob) cl = { ...rec, blob: c.blob, type: c.type, orig: rec.blob };
+      }
+      const half = cl !== rec;
+      const meta = await addRaceMedia(orgId, race.id, { ...cl, posterP: posterJobs.get(rec.id) }, rec.at, (p) => up(rec.id, () => ({ p: half ? 0.5 + p * 0.5 : p })), { ...rec.mom, dur: rec.dur });
       done.add(rec.id);
-      await keepLocal({ id: meta.id, raceId: race.id, kind: rec.kind, size: (rec.orig || rec.blob).size, blob: rec.orig || rec.blob });
+      await keepLocal({ id: meta.id, raceId: race.id, kind: rec.kind, size: (cl.orig || cl.blob).size, blob: cl.orig || cl.blob });
       await dropPending(rec.id);
       upSet((x) => {
         const { [rec.id]: u, ...rest } = x.ups;
@@ -143,7 +150,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
   // Görüntünün üstüne yazı basılmaz (Seyhun 2026-10-20: "çok yazı olmasın"); an uygulamada görüntünün başlığında yazar
   // orig: küçültülmeden önceki dosya (iPhone videosu); telefonda o tutulur ve izlenir (çekildiği kalitede), buluta küçüğü gider
   const keep = async (m, at, mom, before = 0, orig = null) => {
-    const rec = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, raceId: race.id, at, kind: m.kind, type: m.type, blob: m.blob, ...(orig && orig !== m.blob ? { orig } : {}), dur: m.dur || 0, mom, before, err: "" };
+    const rec = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, raceId: race.id, at, kind: m.kind, type: m.type, blob: m.blob, ...(orig && orig !== m.blob ? { orig } : {}), dur: m.dur || 0, ...(m.big ? { big: true } : {}), mom, before, err: "" };
     setLast((l) => (l?.url && URL.revokeObjectURL(l.url), { id: rec.id, kind: rec.kind, url: URL.createObjectURL(rec.blob), state: "up" }));
     await putPending(rec);
     addUp(rec);

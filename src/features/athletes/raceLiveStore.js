@@ -53,16 +53,30 @@ export async function prepRaceMedia(file, onProg) {
     if (v.duration && isFinite(v.duration) && v.duration > VIDEO_SEC + 1) throw new Error("Video en çok 2 dakika olabilir. Daha kısa çek.");
     const dur = v.duration && isFinite(v.duration) ? Math.round(v.duration) : 0;
     const type = file.type || (/\.mov$/i.test(file.name || "") ? "video/quicktime" : "video/mp4");
-    if (file.size <= RAW_MAX) return { blob: file, type, kind: "video", dur };
-    let blob;
-    try {
-      blob = await shrinkVideo(v, onProg, 1280, 3_000_000, true);
-    } catch (e) {
-      if (e.message !== "no-shrink") console.warn("[raceMedia] küçültülemedi", e);
-      throw new Error("Video çok büyük ve bu telefonda küçültülemedi. Daha kısa çek.");
-    }
-    if (blob.size > VIDEO_MAX) throw new Error("Video çok büyük. Daha kısa çek.");
-    return { blob, type: blob.type, kind: "video", dur };
+    // big: buluta akışa uygun küçük kopyası gider (cloudCopy; yüklemeden hemen önce, sırada). Dosya telefonda hemen izlenir.
+    const big = dur ? (file.size * 8) / dur > STREAM_BPS * 1.6 : file.size > 15 * 1024 * 1024;
+    return { blob: file, type, kind: "video", dur, big };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// Buluttaki video (Seyhun 2026-10-22: "datadan alınan videolar çok yavaş, YouTube gibi gösterirken yüklensin"): iPhone videosu saniyede
+// 10-50 Mbit; denizde telefon interneti bunu oynatırken indiremiyor, oynatıcı bekliyordu. Buluta 1280 px, 2,5 Mbit (720p) kopya gider:
+// inerken hemen oynar (MP4 parça parça yazılır), yükleme de kısalır. Aslı telefonda 7 gün (İndir). Küçültme video süresi kadar sürer;
+// olmazsa sınırın altındaki aslı gider. onProg(0..1)
+const STREAM_BPS = 2_500_000;
+export async function cloudCopy(blob, type, onProg) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const v = await videoMeta(url);
+    const small = await shrinkVideo(v, onProg, 1280, STREAM_BPS, true);
+    if (small.size > VIDEO_MAX) throw new Error("büyük");
+    return { blob: small, type: small.type };
+  } catch (e) {
+    if (e.message !== "no-shrink") console.warn("[raceMedia] küçültülemedi", e);
+    if (blob.size <= RAW_MAX) return { blob, type };
+    throw new Error("Video çok büyük ve bu telefonda küçültülemedi. Daha kısa çek.");
   } finally {
     URL.revokeObjectURL(url);
   }
