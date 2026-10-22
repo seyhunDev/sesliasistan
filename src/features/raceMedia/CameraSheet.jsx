@@ -9,12 +9,11 @@ import { mmss } from "@/lib/raceScore";
 import { VIDEO_Q, readVideoQ, saveVideoQ } from "@/features/athletes/raceLiveStore";
 
 // Uygulama içi kamera (Seyhun 2026-10-18: telefonun kamerası açılınca uygulama arkaya geçiyor, start bipleri susuyordu).
-// Sayfa önde kaldığı için sayaç ve bipleri sürer; üstte sayaç görünür. Fotoğraf 1600 px JPEG; video sesli, seçilen kalitede (VIDEO_Q: 1080p 6 Mbit / 720p),
-// en çok 2 dakika (doğrudan küçük kaydedilir, sonradan küçültme yok). Görüntünün üstüne yazı basılmaz (Seyhun 2026-10-20: "çok yazı olmasın").
+// Sayfa önde kaldığı için sayaç ve bipleri sürer; üstte sayaç görünür. Fotoğraf 1600 px JPEG; video sesli, seçilen kalitede (VIDEO_Q: 1080p 5,5 Mbit en çok 80 sn / 720p 2 dk),
+// 1080p en çok 80 sn, 720p 2 dakika (doğrudan küçük kaydedilir, sonradan küçültme yok). Görüntünün üstüne yazı basılmaz (Seyhun 2026-10-20: "çok yazı olmasın").
 // Kamera açılamazsa onFail: çağıran telefonun kendi kamerasına düşer. Çekilen her kare onShot ile hemen verilir, kamera açık kalır;
 // last: köşedeki son çekilen ve yükleme durumu (yükleniyor / yüklenemedi: telefonda saklandı, dokununca sebebi).
 // Sayaç yalnız görünür (Seyhun 2026-10-21: "çekerken süreyi durdurma ve bitirme gösterilmemeli"); yönetimi Süre ekranında.
-const MAX_SEC = 120;
 
 export function CameraSheet({ open, ...props }) {
   if (!open) return null;
@@ -170,7 +169,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null, onNative, sto
       const blob = new Blob(parts, { type: type.split(";")[0] });
       if (blob.size) fns.current.onShot({ blob, type: blob.type, kind: "video", at, dur: Math.round((Date.now() - Date.parse(at)) / 1000) });
     };
-    const cut = setTimeout(() => stop(), MAX_SEC * 1000);
+    const cut = setTimeout(() => stop(), VIDEO_Q[q].sec * 1000); // 1080p 80 sn, 720p 2 dk (60 MB sınırı)
     rec.current = {
       stop: () => {
         clearTimeout(cut);
