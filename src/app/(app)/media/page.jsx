@@ -125,9 +125,9 @@ function Library({ orgId }) {
                   Tümü ›
                 </Link>
               </div>
-              <div className="-mx-5 grid grid-cols-4 gap-0.5">
+              <div className="grid grid-cols-4 gap-1">
                 {shown.map((m, i) => (
-                  <button key={m.id} type="button" onClick={() => setOpen({ sec: s.key, id: m.id })} className="relative aspect-square overflow-hidden bg-line active:opacity-80">
+                  <button key={m.id} type="button" onClick={() => setOpen({ sec: s.key, id: m.id })} className="relative aspect-square overflow-hidden rounded-lg bg-line active:opacity-80">
                     <Thumb kind={m.kind} url={m.url} thumb={m.thumb} dur={m.dur} local={kept[m.id] || ""} />
                     {i === 3 && more > 0 && <span className="absolute inset-0 grid place-items-center bg-black/45 text-[1.25rem] font-semibold text-white">+{more}</span>}
                   </button>

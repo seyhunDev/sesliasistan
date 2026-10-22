@@ -111,7 +111,7 @@ function Composer({ cfg, onDone, init = "" }) {
   const has = !!text.trim();
 
   return (
-    <AssistBox
+    <TypeBox
       mode={listening ? "listening" : "typing"}
       onX={() => (listening ? sp.stop("edit") : onDone())}
       xLabel={listening ? "Dinlemeyi bırak" : "Yazmayı bırak"}
@@ -139,7 +139,7 @@ function Composer({ cfg, onDone, init = "" }) {
           className="block max-h-[7.5rem] min-h-[3.5rem] w-full resize-none bg-transparent px-5 pb-1 pt-4 text-[1.0625rem] leading-snug text-fg outline-none [field-sizing:content] placeholder:text-mut"
         />
       )}
-    </AssistBox>
+    </TypeBox>
   );
 }
 
@@ -216,17 +216,131 @@ function NavTab({ href, icon, label, active, badge }) {
   );
 }
 
-// Asistan kutusu, sade (Seyhun: "daha sade, daha kullanıcı dostu", 2026-10-16). Sesle ve yazarak aynı kutu: üstte yazı,
-// altta düğmeler. Konuşurken Claude uygulamasındaki gibi (Seyhun, 2026-10-21): söylenen yazı kutuya akar (son, henüz
-// kesinleşmemiş kısım soluk), altta süre ve sesle oynayan dalga, sağda ■ Dur ve ↑ Gönder.
-//   idle      × kapatır (taslak varsa siler)  · ana düğme 🎤 konuş (taslak varsa 🎤 devam + ↑ gönder) · kutuya dokun: yaz
-//   listening × sözü siler · ■ dur (söz kutuda kalır, gönderilmez) · ↑ gönder · yazıya dokun: dur, düzelt
-//   sending / busy  × kapatır                 · ■ durdur
-//   speaking  × kapatır                       · ■ okumayı kes, dinle
-// mode: listening | sending | busy | speaking | idle | typing (klavye; children yazı alanı)
-// tail: yazının soluk son kısmı (telefonun tanımasında kesinleşmemiş söz). onStop: dinlerken ■; onTalk: taslakla 🎤 devam
+// ASİSTAN DÜĞMEDE (Seyhun'un onayladığı örnek, 2026-10-22; /mnt/project-files/asistan-ekrani/asistan-dugme.html):
+// tam ekran zemin yok, bulunduğun sayfa bulanıklaşır; her şey alt çubuktaki asistan düğmesinin üstünde döner. Düğme yerinde
+// kalır, biraz büyür; sekmelerin yerine iki yan düğme gelir. Söylenen yazı düğmenin hemen üstünde büyük harflerle akar
+// (son, henüz kesinleşmemiş kısım soluk). Mesajlar, adımlar ve kartlar ayrı zemin almaz (bulanık sayfa yeter).
+//   durum                ortadaki düğme                         sol          sağ
+//   boşta                logo · dokun konuş, basılı tut yaz      × Kapat      ⌨ Yaz
+//   dinliyor             kırmızı, ses dalgası · dokun gönder     × Vazgeç     ■ Dur (söz kalır, gönderilmez)
+//   durdu (taslak)       ↑ Gönder · yazıya dokun: düzelt/ekle    × Sil        🎤 Devam
+//   gönderiliyor / iş    kehribar, ışık döner · dokun durdur     × Kapat
+//   konuşuyor            mavi · dokun sözünü kes, dinle          × Kapat
+// mode: listening | sending | busy | speaking | idle. tail: yazının soluk son kısmı. r: ringOf (data-tone, alttaki durum yazısı)
+const SIDE = "aside-btn grid size-[3.25rem] touch-manipulation place-items-center rounded-full text-white transition active:scale-90";
+function AssistBox({ mode, text, tail = "", ph, r = {}, onX, xLabel, xText, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, onType, onHold }) {
+  const box = useRef(null);
+  useEffect(() => {
+    const el = box.current;
+    if (el) el.scrollTop = el.scrollHeight; // uzun sözde son kısım görünsün
+  }, [text, tail]);
+  const listening = mode === "listening";
+  const said = [text, tail].filter(Boolean).join(" ");
+  const showText = listening || mode === "sending" || !!said;
+  const right = listening && onStop ? { label: "Dur", text: "Dur", on: onStop, icon: <span className="size-3.5 rounded-[3px] bg-white" aria-hidden="true" /> }
+    : onTalk ? { label: "Konuşmaya devam", text: "Devam", on: onTalk, icon: <Icon name="mic" className="size-[1.375rem]" /> }
+    : mode === "idle" && onType ? { label: "Yaz", text: "Yaz", on: onType, icon: <Icon name="keyboard" className="size-[1.375rem]" /> }
+    : null;
+  return (
+    <div className="relative px-5 pb-1">
+      {/* Söylenen / yazılan söz: düğmenin üstünde, büyük. Dinlerken altında süre; durunca dokununca klavyeyle düzeltilir */}
+      {showText && (
+        <div data-mode={mode} className={`asheet-input amsg-in mb-4 ${mode === "idle" ? "asheet-draft" : ""}`}>
+          <div ref={box} onClick={onText} className={`max-h-[9.5rem] overflow-hidden text-[1.3125rem] font-semibold leading-snug tracking-[-.01em] ${onText ? "cursor-text" : ""}`}>
+            {said ? (
+              <span className="text-fg">
+                {text}
+                {tail && <span className="text-fg/45">{text ? " " : ""}{tail}</span>}
+                {listening && <i className="box-caret" aria-hidden="true" />}
+              </span>
+            ) : (
+              <span className="text-fg/60">
+                {listening ? "Dinliyorum…" : ph}
+                {listening && <i className="box-caret" aria-hidden="true" />}
+              </span>
+            )}
+          </div>
+          {listening && (
+            <p className="mt-2 flex items-center gap-2 text-[0.8125rem] font-semibold text-fg/70">
+              <MicDot />
+              Dinliyorum · <ListenClock />
+            </p>
+          )}
+        </div>
+      )}
+      <div className="relative flex h-[5.25rem] items-center justify-center">
+        <span className="aside absolute left-[10%] flex flex-col items-center gap-1.5">
+          <button type="button" onClick={onX} aria-label={xLabel} className={SIDE}>
+            <Icon name="x" className="size-[1.375rem]" />
+          </button>
+          <small className="text-[0.6875rem] font-semibold text-fg/75">{xText}</small>
+        </span>
+        <OrbMain mode={mode} r={r} icon={mainIcon} label={mainLabel} on={mainOn} onTap={onMain} onHold={onHold} />
+        {right && (
+          <span key={right.label} className="aside absolute right-[10%] flex flex-col items-center gap-1.5">
+            <button type="button" onClick={right.on} aria-label={right.label} className={SIDE}>
+              {right.icon}
+            </button>
+            <small className="text-[0.6875rem] font-semibold text-fg/75">{right.text}</small>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Ortadaki düğme (alt çubuktaki asistan düğmesiyle aynı yer ve görünüş, globals.css .vlight .aorb): renk durumu anlatır.
+// İçinde: dinlerken canlı ses dalgası, taslakta ↑, iş bitince onay, değilse logo dalgası. data-tone/data-fill ekran testleri için.
+function OrbMain({ mode, r, icon, label, on, onTap, onHold }) {
+  const t = useRef(null);
+  const held = useRef(false);
+  const vstate = mode === "listening" ? "listening" : mode === "busy" || mode === "sending" ? "busy" : mode === "speaking" ? "speaking" : "idle";
+  const down = () => {
+    held.current = false;
+    if (!onHold || mode !== "idle") return;
+    t.current = setTimeout(() => {
+      held.current = true;
+      navigator.vibrate?.(12);
+      onHold();
+    }, HOLD_MS);
+  };
+  const up = () => clearTimeout(t.current);
+  return (
+    <button
+      type="button"
+      data-orb=""
+      data-ring=""
+      data-tone={r.tone || "idle"}
+      data-fill={r.fill || 0}
+      data-state={vstate}
+      disabled={!on}
+      onPointerDown={down}
+      onPointerUp={up}
+      onPointerLeave={up}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={() => !held.current && onTap()}
+      aria-label={label}
+      className="vlight aorb size-[4.5rem] shrink-0 select-none disabled:opacity-60 [-webkit-touch-callout:none]"
+    >
+      <span className="vl-halo" aria-hidden="true" />
+      <span className="vl-ring" aria-hidden="true" />
+      <span className="vl-disc" aria-hidden="true" />
+      {mode === "listening" ? (
+        <ListenWave round />
+      ) : icon === "up" ? (
+        <Icon name="up" className="relative size-7 text-white [stroke-width:2.5]" />
+      ) : r.check && mode === "idle" ? (
+        <svg viewBox="0 0 48 48" className="relative size-8" aria-hidden="true"><path className="lring-check" d="M13 25l7 7 15-16" /></svg>
+      ) : (
+        <span className="vl-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span>
+      )}
+    </button>
+  );
+}
+
+// Yazı kutusu (klavyeyle yazarken, Composer): üstte yazı alanı, altta × · ses · ↑ Gönder (2026-10-16 sade kutu)
 const ROUND = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full transition active:scale-90";
-function AssistBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, children }) {
+function TypeBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, children }) {
   const box = useRef(null);
   useEffect(() => {
     const el = box.current;
@@ -239,7 +353,7 @@ function AssistBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, m
   const said = [text, tail].filter(Boolean).join(" ");
   return (
     <div className="px-3 pb-1 pt-2">
-      <div data-mode={mode} className={`asheet-input rounded-[1.75rem] ${listening ? "asheet-on" : ""}`}>
+      <div data-mode={mode} className={`asheet-input atype rounded-[1.75rem] ${listening ? "asheet-on" : ""}`}>
         {/* Yazı alanı boştayken (taslak ya da "Yaz ya da konuş…") ve dinlerken (canlı söz). Çevrilirken ve iş sürerken yok:
             gönderilen söz sohbete balon olarak düşer. */}
         {children || (!quiet && (
@@ -321,64 +435,12 @@ function ListenClock() {
 // Yazarken kubbe klavyenin üstüne taşınır. rec: plan/görev/not ekranı açık (AddSheet); kubbe o ekranın üstünde sekmesiz ve
 // Oluştur'suz görünür, asistan o kaydı bilir (focus).
 const noop = () => () => {};
-// Tam sayfa asistanın zemini: üç yavaş renk bulutu, nokta ızgara, duruma göre renk alan çekirdek ışık (globals.css .abg)
+// Asistan açıkken arkadaki sayfa bulanıklaşır ve hafifçe kararır (globals.css .abg); ayrı zemin yok
 function AssistBg() {
-  return (
-    <div className="abg" aria-hidden="true">
-      <i className="ab-b1" />
-      <i className="ab-b2" />
-      <i className="ab-b3" />
-      <i className="ab-grid" />
-      <i className="ab-core">
-        <i className="ab-glow" />
-        <i className="ab-ring" />
-        <i className="ab-ring ab-ring2" />
-      </i>
-    </div>
-  );
+  return <div className="abg" aria-hidden="true" />;
 }
 
-// İlerleme halkası (onaylı örnek, 2026-10-17): dinlerken kırmızı + ses çubukları, düşünürken/işlerken kehribar ve işlerin
-// sayısıyla dolar, bitince yeşil onay. Konuşma yokken ekranın üstünde büyük, konuşma dolunca üstte küçük satır.
 const LEAVE_MS = 340; // globals.css › .afull-out
-const RING_C = { listen: "#e8705f", work: "#f0c36b", speak: "#6aaef0", ok: "#6fc39b", idle: "#a78bfa" };
-function ProgressRing({ r, big }) {
-  const C = 2 * Math.PI * 62;
-  const c = RING_C[r.tone] || RING_C.idle;
-  const svg = (
-    <svg viewBox="0 0 200 200" className={big ? "size-[11.5rem]" : "size-11 shrink-0"} aria-hidden="true">
-      <circle cx="100" cy="100" r="62" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="9" />
-      <circle
-        cx="100" cy="100" r="62" fill="none" stroke={c} strokeWidth="9" strokeLinecap="round" transform="rotate(-90 100 100)"
-        strokeDasharray={`${C} ${C}`} strokeDashoffset={C * (1 - (r.fill || 0))}
-        className={`aring-arc ${r.creep ? "aring-creep" : ""}`} style={{ "--aring-c": C, opacity: r.fill ? 1 : 0 }}
-      />
-      {r.bars && [14, 26, 38, 26, 14].map((h, i) => (
-        <rect key={i} x={73 + i * 12} y={100 - h / 2} width="6" height={h} rx="3" fill={c} className="aring-bar" style={{ animationDelay: `${i * 0.12}s` }} />
-      ))}
-      {/* Boşta ve çalışırken halkanın ortasında Velora logosu yavaşça nefes alır (kokpit tasarımı "C", 2026-10-21); dinlerken ses çubukları, bitince onay */}
-      {big && !r.bars && !r.check && <image href="/brand/velora-mark.svg" x="58" y="58" width="84" height="84" className="aring-logo" />}
-      {r.check && <path d="M78 101 l15 15 l30 -32" fill="none" stroke={c} strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" className="aring-check" />}
-    </svg>
-  );
-  if (big) return (
-    <div className="pointer-events-none flex shrink-0 flex-col items-center pt-[6vh] text-center" aria-live="polite">
-      {svg}
-      <p className="mt-3 min-h-7 px-6 text-xl font-semibold text-fg">{r.label}</p>
-      <p className="min-h-5 px-6 text-sm text-mut">{r.sub}</p>
-    </div>
-  );
-  if (!r.label && !r.fill && !r.bars) return null;
-  return (
-    <div className="pointer-events-none mx-4 flex shrink-0 items-center gap-3" aria-live="polite">
-      {svg}
-      <div className="min-w-0" hidden={!r.label}>
-        <p className="truncate text-[0.9375rem] font-semibold text-fg">{r.label}</p>
-        {r.sub && <p className="truncate text-[0.8125rem] text-mut">{r.sub}</p>}
-      </div>
-    </div>
-  );
-}
 
 // Sesli yanıt düğmesi (Seyhun 2026-10-20: "asistan kullanılırken de seslendirmeyi kapatabilmeliyim, uygun ortam olmayabilir"):
 // sağ üstte hoparlör. Kapatınca okuma o an susar, sonraki cevaplar yalnız yazılır; açınca sonraki cevaplar okunur.
@@ -420,13 +482,26 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   const idle = (bar || slim) && !rec && !active && !typing;
 
   // Yükseklik içeriği izler (kubbe içerikle birlikte büyür/küçülür; geçiş CSS'te). Boştaki yükseklik sayfanın alt boşluğu olur.
+  // Asistan açılıp kapanırken boy geçişsiz bir anda değişir (Seyhun 2026-10-22: "açılırken takılıyor"): tam ekrana doğru
+  // kare kare büyüyen boy her karede yerleşim ve büyük bir alanın yeniden boyanması demekti. Açılış/kapanış hareketi
+  // yalnız içeride, transform ve opacity ile (globals.css .afull-in / .afull-out).
+  const wasActive = useRef(active);
   useLayoutEffect(() => {
     const o = box.current;
     const i = inner.current;
     if (!o || !i) return;
+    const jump = wasActive.current !== active;
+    wasActive.current = active;
     const set = () => {
       const h = shown ? Math.round(i.offsetHeight) : 0;
-      if (o.style.height !== `${h}px`) o.style.height = `${h}px`;
+      if (o.style.height !== `${h}px`) {
+        if (jump) o.style.transition = "none";
+        o.style.height = `${h}px`;
+        if (jump) {
+          void o.offsetHeight; // geçişsiz boy uygulansın, sonra geçiş geri gelsin
+          o.style.transition = "";
+        }
+      }
       if (idle) {
         document.documentElement.style.setProperty("--dome-h", `${h}px`);
         document.documentElement.style.setProperty("--stage-h", `${h}px`);
@@ -599,11 +674,9 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   useEffect(() => {
     const el = feed.current;
     if (!active || !el || typeof ResizeObserver === "undefined") return;
-    // Gözlemci ilk ölçümü kendisi de verir; yuvanın kendi 4 px'lik payı ve önceki sohbetler sayılmaz (açılışta halka büyük
-    // kalır, ilk yeni yazıda küçülür)
+    // Gözlemci ilk ölçümü kendisi de verir; yuvanın kendi 4 px'lik payı sayılmaz (açılışta halka büyük kalır, ilk yazıda küçülür)
     const ro = new ResizeObserver(() => {
-      const past = el.querySelector("[data-past]");
-      if (el.offsetHeight - (past ? past.offsetHeight + 16 : 0) > 8) setFilled(true);
+      if (el.offsetHeight > 8) setFilled(true);
     });
     ro.observe(el);
     return () => {
@@ -632,7 +705,8 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
     : mode === "sending" ? heard || "" // yalnız şimdi söylenen: önceki söz (live.said) bir an görünüp kaybolmasın (Seyhun, 2026-10-09)
     : mode === "busy" ? live.said || ""
     : draft;
-  const boxPh = mode === "idle" ? "Yaz ya da konuş…" : "";
+  const boxPh = "";
+  const ring = active ? ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown, saved: live.saved }) : {};
   return (
     <div
       ref={box}
@@ -656,22 +730,25 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
           {active && <AssistBg />}
           <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col pt-[env(safe-area-inset-top)]" : ""}`}>
             {active && (
-              <div className="relative flex h-12 shrink-0 items-center justify-center px-3">
-                {/* Sol üstteki Oluştur (+) kaldırıldı (Seyhun, 2026-10-18) */}
-                {/* Tutamaç: aşağı çekerek kapatılabildiği anlaşılsın */}
-                <span className="pointer-events-none h-[5px] w-10 rounded-full bg-mut/30" aria-hidden="true" />
+              <div className="relative flex h-12 shrink-0 items-center px-5">
+                {/* Durum yazısı (Düşünüyorum, Yapıyorum 2 / 3, Kaydedildi): sol üstte tek satır; sağda sesli yanıt */}
+                <p aria-live="polite" className="min-w-0 truncate text-[0.875rem] font-semibold text-fg/80">
+                  {ring.label}
+                  {ring.label && ring.sub ? <span className="font-normal text-fg/60"> · {ring.sub}</span> : null}
+                </p>
                 <ReadToggle />
               </div>
             )}
-            {active && <ProgressRing big={!open} r={ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown, saved: live.saved })} />}
             {active && (
               <div
                 ref={pane}
+                // Boş (bulanık) alana dokununca kapanır; konuşma, iş ya da taslak sürerken kapanmaz
+                onClick={(e) => (e.target === pane.current || e.target === body.current) && mode === "idle" && !draft && onClose?.()}
                 // Sohbet alanı ekranın kalanını kaplar; mesajlar alttan dolar, fazlası içeride kayar
                 // Üstte boşluk ve yukarı doğru soluklaşma (Seyhun: "yazı yukarı gittikçe soluklaşsın, üstte biraz boşluk", 2026-10-14)
-                className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 [mask-image:linear-gradient(to_bottom,transparent,rgba(0,0,0,.35)_2.5rem,#000_40%)] [scrollbar-width:none]"
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 [mask-image:linear-gradient(to_bottom,transparent,rgba(0,0,0,.35)_2.5rem,#000_40%)] [scrollbar-width:none]"
               >
-                <div ref={body} className={`flex min-h-full flex-col justify-end ${open ? "pb-1 pt-10" : ""}`}>
+                <div ref={body} className="flex min-h-full flex-col justify-end pb-5 pt-10">
                   <div ref={feed}>
                     <div ref={setSlot} />
                   </div>
@@ -683,11 +760,15 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
             ) : box2 ? (
               <AssistBox
                 mode={mode}
+                r={ring}
                 text={boxText}
                 ph={boxPh}
                 tail={mode === "listening" && heard && live.heardFix != null ? live.tail || "" : ""}
                 onX={mode === "listening" || draft ? voice.cancel : onClose}
                 xLabel={mode === "listening" ? "Sil ve dinlemeyi bırak" : draft ? "Yazıyı sil" : "Konuşmayı bitir"}
+                xText={mode === "listening" ? "Vazgeç" : draft ? "Sil" : "Kapat"}
+                onType={typeNow}
+                onHold={typeNow}
                 onStop={voice.edit}
                 onTalk={mode === "idle" && draft ? talk : undefined}
                 onMain={mode === "listening" ? voice.stop : mode === "idle" ? (draft ? voice.send : talk) : mode === "speaking" ? talk : voice.abort}

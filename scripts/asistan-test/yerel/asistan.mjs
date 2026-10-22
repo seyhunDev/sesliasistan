@@ -1099,6 +1099,19 @@ group("Temiz başlık ve sorusuz ekleme")([
   ]);
 }
 
+// Yeniden açılış: 30 sn içinde konuşma ekranda kalır, sonra temiz (Seyhun 2026-10-22; hafıza PAST_MS sürer)
+{
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  const t = 1_000_000;
+  group("Yeniden açılış (30 sn)")([
+    ["10 sn sonra", C("konuşma ekranda kalır", () => CX.resumeOk(t, 3, t + 10e3), (r) => r === true)],
+    ["31 sn sonra", C("ekran temiz başlar", () => CX.resumeOk(t, 3, t + 31e3), (r) => r === false)],
+    ["boş konuşma", C("konuşma yoksa sürdürülecek bir şey yok", () => CX.resumeOk(t, 0, t + 1e3), (r) => r === false)],
+    ["hiç kapanmadı", C("ilk açılış temiz", () => CX.resumeOk(0, 3, t), (r) => r === false)],
+    ["hafıza daha uzun", C("yapay zekanın hatırladığı süre ekran süresinden uzun", () => CX.PAST_MS > CX.REOPEN_MS, (r) => r === true)],
+  ]);
+}
+
 // Sohbet hafızası ve tek bekleyen soru (lib/convoContext.js; inceleme adım 4)
 {
   const C = (desc, fn, ok) => ({ desc, fn, ok });

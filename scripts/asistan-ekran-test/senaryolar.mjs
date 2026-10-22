@@ -17,7 +17,7 @@ const TOMORROW = ymd(new Date(Date.now() + 864e5));
 const now = new Date().toISOString();
 
 // Halkanın renkleri (TabBar.jsx RING_C)
-const RING = { "#e8705f": "kırmızı", "#f0c36b": "kehribar", "#6aaef0": "mavi", "#6fc39b": "yeşil" };
+const RING = { listen: "kırmızı", work: "kehribar", speak: "mavi", ok: "yeşil", idle: "mor" }; // asistan düğmesinin durumu (TabBar OrbMain data-tone)
 
 async function launch() {
   const { chromium } = await import("playwright-core");
@@ -173,7 +173,7 @@ export async function run(server, log = () => {}) {
   const dome = (page) => page.locator("[data-dome]");
   const state = (page) => dome(page).getAttribute("data-state");
   const full = (page) => page.locator(".afull");
-  const ringColor = (page) => page.locator("[data-dome] svg circle").nth(1).getAttribute("stroke").then((c) => RING[c] || c);
+  const ringColor = (page) => page.locator("[data-dome] [data-ring]").first().getAttribute("data-tone").then((c) => RING[c] || c);
   const ringText = (page) => page.locator("[data-dome] [aria-live='polite']").first().innerText().catch(() => "");
   const last = (page) => page.locator("[data-dome] [data-last-reply]").last().innerText().catch(() => "");
   const convo = (page) => page.locator("[data-dome] .overflow-y-auto").first().innerText().catch(() => "");

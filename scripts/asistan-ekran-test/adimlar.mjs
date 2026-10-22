@@ -94,17 +94,19 @@ export async function scenarios(h) {
     return [!!ok && n > srBefore, `${await state(page)} · tanıma ${n - srBefore} kez açıldı`];
   });
   // Dinlerken "Dinliyorum" yalnız alttaki çubukta, halkada yazı yok (2026-10-18)
-  await check("Halka renkleri", "dinlerken", "kırmızı halka + ses çubukları, halkada yazı yok, alttaki çubukta “Dinliyorum”", async () => {
+  // Asistan düğmede (2026-10-22): düğme kırmızı, içinde canlı ses dalgası; "Dinliyorum" söylenen yazının altında
+  await check("Halka renkleri", "dinlerken", "düğme kırmızı + ses dalgası, durum satırında yazı yok, yazının altında “Dinliyorum”", async () => {
     const c = await ringColor(page);
-    const bars = await page.locator("[data-dome] rect.aring-bar").count();
+    const bars = (await page.locator("[data-dome] [data-ring] canvas").count()) === 1 ? 5 : 0;
     const t = (await ringText(page)).trim();
     const box = await dome(page).locator(".asheet-input").innerText();
     return [c === "kırmızı" && bars === 5 && !t && /Dinliyorum/.test(box), `${c} · ${bars} çubuk · halka: “${t}” · çubuk: “${box.replace(/\n/g, " ")}”`];
   });
-  await check("Halka renkleri", "zemin", "arkada renk bulutları ve nokta ızgara (abg)", async () => {
-    const n = await page.locator("[data-dome] .abg > i").count();
-    const anim = await page.locator("[data-dome] .ab-b1").evaluate((el) => getComputedStyle(el).animationName);
-    return [n >= 4 && anim !== "none", `${n} katman · ${anim}`];
+  // Asistan düğmede (2026-10-22): ayrı zemin yok, arkadaki sayfa bulanıklaşır; örtü sürekli oynamaz; yan düğmeler
+  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), yanda Vazgeç ve Dur", async () => {
+    const z = await page.locator("[data-dome] .abg").evaluate((el) => { const c = getComputedStyle(el); return { anim: `${c.animationName} ${c.animationIterationCount}`, blur: c.backdropFilter || c.webkitBackdropFilter || "" }; });
+    const side = (await btn(page, "Sil ve dinlemeyi bırak").count()) + (await btn(page, "Dur").count());
+    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && side === 2, `örtü ${z.anim} · ${z.blur} · yan düğme ${side}`];
   });
   await say(page, "notlarımı oku");
   // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutuya akar, altta süre + dalga, ■ Dur ve ↑ Gönder
@@ -138,7 +140,7 @@ export async function scenarios(h) {
   await check("Halka renkleri", "cevaptan sonra", "yeşil halka ve onay (✓ Tamam), durum boşta", async () => {
     await waitFor(async () => (await state(page)) === "idle", 5000);
     const c = await ringColor(page);
-    const chk = await page.locator("[data-dome] .aring-check").count();
+    const chk = await page.locator("[data-dome] .lring-check").count();
     return [c === "yeşil" && chk === 1, `${c} · onay ${chk} · ${await state(page)}`];
   });
 
@@ -239,29 +241,44 @@ async function scenarios2(h) {
     return [!!ok, `tam ekran ${await full(page).count()} · küçük ${await page.locator(".amini").count()}`];
   });
 
-  // Önceki sohbet: yeniden açınca son sohbetler soluk görünür
-  const GP = "Önceki sohbetler";
+  // Yeniden açılış (Seyhun 2026-10-22): 30 sn içinde açınca konuşma kalır; sonra ekran temiz başlar, önceki sohbetler
+  // ekranda görünmez ama yapay zeka hatırlamaya devam eder (istekte geçmiş olarak gider)
+  const GP = "Yeniden açılış";
   await orb(page).click();
-  await check(GP, "yeniden aç", "son sohbet üstte soluk görünür (Önceki sohbetler)", async () => {
-    const ok = await waitFor(async () => /akşam ne yapsam/.test(await page.locator("[data-dome] [data-past]").innerText().catch(() => "")), 3000);
-    const cls = await page.locator("[data-dome] [data-past]").getAttribute("class").catch(() => "");
-    return [!!ok && /text-mut/.test(cls), ok ? `soluk: ${/text-mut/.test(cls)}` : "görünmüyor"];
-  });
-  await check(GP, "en çok 3 sohbet", "3'ten fazla eski sohbet gösterilmez", async () => {
-    const n = await page.locator("[data-dome] [data-past] > *").count();
-    return [n <= 3, `${n} sohbet`];
+  await check(GP, "30 sn içinde yeniden aç", "konuşma kaldığı yerden görünür", async () => {
+    const ok = await waitFor(async () => /rüzgâr sakin/.test(await convo(page)), 3000);
+    return [!!ok, ok ? "konuşma ekranda" : `görünmüyor: ${clean(await convo(page)).slice(0, 80)}`];
   });
   await closeAll(page);
-  // Ayarlar › Geçmiş sohbetler › gizle: ekranda görünmez (hafıza kalır)
-  await page.evaluate(() => localStorage.setItem("sa-asst-past-shown", "0"));
-  await orb(page).click();
-  await check(GP, "gizliyken yeniden aç", "eski sohbetler ekranda görünmez", async () => {
-    await page.waitForTimeout(1200);
-    const n = await page.locator("[data-dome] [data-past]").count();
-    return [n === 0, `${n} eski sohbet alanı`];
+  await page.evaluate(() => {
+    const now = Date.now.bind(Date);
+    window.__realNow = now;
+    Date.now = () => now() + 31000;
   });
+  await orb(page).click();
+  await check(GP, "30 sn sonra yeniden aç", "ekran temiz: eski konuşma ve önceki sohbetler görünmez", async () => {
+    await waitFor(async () => (await page.locator(".afull.afull-in").count()) > 0, 3000);
+    await page.waitForTimeout(800);
+    const c = clean(await convo(page));
+    const past = await page.locator("[data-dome] [data-past]").count();
+    return [!/rüzgâr sakin|akşam ne yapsam/.test(c) && past === 0, `konuşma: “${c.slice(0, 60)}” · eski sohbet alanı ${past}`];
+  });
+  {
+    setAI(() => ({ intent: "chat", message: "Tamam, hatırlıyorum." }));
+    await closeAll(page);
+    const n = calls.length;
+    await talkAsk(page, "az önce ne demiştin");
+    await check(GP, "temiz ekranda yeni soru", "yapay zekaya önceki konuşma geçmiş olarak gider (hafıza sürer)", async () => {
+      await waitFor(async () => calls.slice(n).some((c) => c.path === "/api/assistant"), 6000);
+      const req = calls.slice(n).find((c) => c.path === "/api/assistant")?.body || {};
+      const sent = JSON.stringify([req.history || "", req.sessions || []]);
+      return [/rüzgâr sakin|akşam ne yapsam/.test(sent), sent.slice(0, 120)];
+    });
+  }
+  await page.evaluate(() => window.__realNow && (Date.now = window.__realNow));
+  setAI(() => ({ intent: "chat", message: "Tamam." }));
+  await waitFor(async () => (await state(page)) === "idle", 3000);
   await closeAll(page);
-  await page.evaluate(() => localStorage.removeItem("sa-asst-past-shown"));
 
   // Sesli yanıt açık: okur (mavi), bitince mikrofon bir kez açılır
   const GS = "Sesli yanıt";
@@ -364,6 +381,12 @@ async function answer(h, page, text) {
   // Soru okununca mikrofon açılır; GitHub makinesi yavaş olduğunda okuma uzun sürebiliyor (6 sn yetmedi, 22 Eki)
   await waitFor(async () => (await state(page)) === "listening", 12000);
   await page.waitForTimeout(1200);
+  if (await btn(page, "Gönder").count()) return btn(page, "Gönder").click({ timeout: 5000 });
+  // Kendiliğinden açılan mikrofon bu arada kapandıysa (GitHub makinesinde yavaş: 22 Eki üç kez) kullanıcı gibi Konuş'a basılır
+  await waitFor(async () => (await btn(page, "Konuş").count()) > 0, 6000);
+  if (!(await btn(page, "Konuş").count())) return;
+  await btn(page, "Konuş").click({ timeout: 5000 });
+  await waitFor(async () => (await btn(page, "Gönder").count()) > 0, 6000);
   if (await btn(page, "Gönder").count()) await btn(page, "Gönder").click({ timeout: 5000 });
 }
 
@@ -557,7 +580,7 @@ async function scenarios3(h) {
   await check(GO, "Ege'ye yaz … → “gönder”", "sesle onaylanınca mesaj gider", async () => {
     const ok = await waitFor(async () => /Gönderdim|gönderemedim/.test(await convo(page)), 9000);
     const t = clean(await convo(page));
-    return [!!ok && /Gönderdim/.test(t), `“${t.slice(-90)}”`];
+    return [!!ok && /Gönderdim/.test(t), `“${t.slice(-90)}” · durum ${await state(page)} · mikrofon ${await page.evaluate(() => window.__t.srStarts)} kez`];
   });
   setTranscript("");
   await closeAll(page);
@@ -610,7 +633,7 @@ async function scenarios3(h) {
   await talkAsk(page, "kasaya 300 lira gelir yaz ve yarın 10'da tekne yıkama planı ekle");
   const t0 = Date.now();
   while (Date.now() - t0 < 9000) {
-    const off = await page.locator("[data-dome] svg circle").nth(1).getAttribute("stroke-dashoffset").catch(() => null);
+    const off = await page.locator("[data-dome] [data-ring]").first().getAttribute("data-fill").catch(() => null);
     if (off != null && !fills.includes(off)) fills.push(off);
     if ((await state(page)) === "idle" && fills.length) break;
     await page.waitForTimeout(100);
