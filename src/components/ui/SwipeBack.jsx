@@ -7,13 +7,14 @@ import { edgeStart, swipeAxis, swipeDone } from "@/lib/swipeBack";
 
 // Kenardan kaydırarak geri (iPhone uygulamaları gibi): ana ekrana eklenen uygulamada (Safari çubuğu yokken)
 // ekranın sol kenarından sağa çekince sayfa parmağı izler, bırakınca önceki sayfaya dönülür. Safari'de ve
-// Android'de telefonun kendi geri hareketi olduğu için yalnız iPhone/iPad ana ekran uygulamasında çalışır.
+// Android'de telefonun kendi geri hareketi olduğu için yalnız iPhone/iPad ana ekran uygulamasında ve iPhone
+// uygulamasında (Capacitor, mobil/ios; WKWebView'in kendi geri hareketi kapalı) çalışır.
 // Alt sekme sayfalarında, açık pencere (alttan açılan pencere, asistan) varken ve geri gidilecek yer yokken çalışmaz.
 const standaloneIos = () => {
   if (typeof window === "undefined") return false;
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const alone = navigator.standalone === true || window.matchMedia?.("(display-mode: standalone)").matches;
-  return ios && alone && !window.Capacitor?.isNativePlatform?.();
+  return ios && (alone || window.Capacitor?.getPlatform?.() === "ios");
 };
 
 // Asistan açık, klavye açık ya da ekranda açık bir pencere var (kapalı pencereler ekranın altında bekler)
