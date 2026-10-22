@@ -8,6 +8,9 @@ import { authErrorMessage, register } from "@/lib/auth";
 
 const SIGNUP = process.env.NEXT_PUBLIC_ALLOW_SIGNUP === "1";
 
+// Giriş ekranı lacivert; kayıt formu onun içinde açık renkli kartta durur
+const CARD = "rounded-3xl bg-card p-6 text-fg";
+
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -18,7 +21,7 @@ export default function RegisterPage() {
   // Kayıt kapalıyken form yerine bilgi göster
   if (!SIGNUP) {
     return (
-      <div>
+      <div className={CARD}>
         <h1 className="text-[1.375rem] font-semibold tracking-tight">Kayıt kapalı</h1>
         <p className="mt-2 text-[0.9375rem] leading-relaxed text-mut">Yeni hesaplar yönetici tarafından açılıyor. Erişim için yöneticiyle iletişime geç.</p>
         <Link href="/login" className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-xl bg-acc text-base font-semibold text-white active:scale-[.98]">
@@ -42,7 +45,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={onSubmit} className={CARD}>
       <h1 className="text-[1.375rem] font-semibold tracking-tight">Hesap oluştur</h1>
       <p className="mt-1 text-[0.875rem] text-mut">Birkaç bilgiyle hemen başla.</p>
 

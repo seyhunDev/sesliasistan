@@ -6,6 +6,8 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { Splash } from "@/components/ui/Splash";
 import { AppLogo } from "@/components/ui/AppLogo";
 
+// Uygulamanın ilk yüzü: tüm ekran lacivert kokpit. Logo ekranın üstünde sabit durur (ortalanmaz), böylece
+// telefonda klavye açılınca yukarı kaymaz; her adımda tek kutu + tek düğme klavyenin üstünde kalır (2026-10-22).
 export default function AuthLayout({ children }) {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -16,13 +18,14 @@ export default function AuthLayout({ children }) {
 
   if (loading || user) return <Splash />;
   return (
-    <div data-boot-enter="" className="mx-auto flex min-h-dvh max-w-[26.25rem] flex-col justify-center px-5 py-10">
-      {/* Uygulama kimliği */}
-      <div className="mb-7 flex flex-col items-center text-center">
-        <AppLogo size={112} variant="full" />
-        <p className="mt-3 text-[0.875rem] text-mut">Planlar, görevler ve notlar; konuşarak</p>
+    <div data-boot-enter="" className="ck min-h-dvh">
+      <div className="mx-auto max-w-[26.25rem] px-6 pb-10 pt-[calc(env(safe-area-inset-top)+3.5rem)]">
+        <div className="mb-8 flex flex-col items-center">
+          <AppLogo size={84} />
+          <span className="mt-3 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white">Velora</span>
+        </div>
+        {children}
       </div>
-      <div className="rounded-3xl bg-card p-6 shadow-[0_1px_3px_rgba(38,40,44,.06),0_12px_32px_-16px_rgba(38,40,44,.18)]">{children}</div>
     </div>
   );
 }

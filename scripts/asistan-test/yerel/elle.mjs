@@ -1784,6 +1784,15 @@ group("Sporcu mesajları")([
   ["çalışan ↔ veli", F("değişmedi", () => KD.canTalk("staff", "parent") && KD.canTalk("student", "staff"))],
 ]);
 
+// Giriş ekranı (src/lib/kinds.js): e-posta ya da kullanıcı adı yazımı canlı denetlenir, hep küçük harfe çevrilir
+group("Giriş ekranı")([
+  ["e-posta", F("tamamı yazılınca doğru", () => KD.validLogin("Seyhun@Gmail.com") && !KD.validLogin("seyhun@gm") && !KD.validLogin("seyhun@gmail."))],
+  ["kullanıcı adı", F("3-30 karakter, harf rakam nokta", () => KD.validLogin("ege.demir") && !KD.validLogin("eg") && !KD.validLogin(".ege") && !KD.validLogin("ege demir!"))],
+  ["büyük I", F("ILAY → ilay (ılay değil)", () => KD.cleanLogin("ILAY") === "ilay" && KD.loginEmail("ILAY") === `ilay@${KD.USER_DOMAIN}`)],
+  ["Türkçe harf", F("çağan → cagan, kullanıcı adı gibi", () => KD.cleanLogin("Çağan.Yılmaz") === "cagan.yilmaz" && KD.cleanLogin("Çağan.Yılmaz") === KD.suggestUsername("Çağan Yılmaz"))],
+  ["e-postada I", F("küçük i olur", () => KD.loginEmail(" ALI@Mail.com ") === "ali@mail.com")],
+]);
+
 // Sesli arama 1. adım (src/lib/call.js): kimler arayabilir, durum yazıları, süre
 const CL = await import("@/lib/call");
 group("Sesli arama")([

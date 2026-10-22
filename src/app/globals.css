@@ -689,6 +689,14 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .ck :is(.btn-round, .btn-back)[data-pressed] { background: rgba(255, 255, 255, .06); }
 .ck .btn-round .ring-bg { --tw-ring-color: #141938; }
 /* Kokpitteki beyaz küçük düğme (Süre) */
+/* Giriş ekranı (lacivert, (auth)/login): tek yazı kutusu; e-posta ya da kullanıcı adı doğru yazılınca yeşil çerçeve.
+   Ana düğme yazı tamamlanana kadar soluk durur (yüklenirken değil). */
+.auth-in { display: block; width: 100%; height: 3.5rem; border-radius: 1rem; padding: 0 1rem; font-size: 1.0625rem; font-weight: 500; color: #fff; background: rgba(255, 255, 255, .08); border: 1.5px solid rgba(255, 255, 255, .16); outline: none; transition: border-color .15s; }
+.auth-in::placeholder { color: rgba(255, 255, 255, .4); }
+.auth-in:focus { border-color: #a78bfa; }
+.auth-in[data-ok] { border-color: #5fbf86; }
+.ck .btn-primary:disabled:not([aria-busy="true"]) { opacity: 1; color: rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .1); }
+.ck .btn-text { color: #a78bfa; }
 .ck-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.9rem; border-radius: 0.75rem; background: #fff; color: #141938; font-size: 0.84375rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
 .ck-btn[data-pressed] { transform: translateY(1px) scale(.97); box-shadow: 0 1px 0 rgba(0, 0, 0, .35); }
 /* Rüzgâr grafiği açılışta soldan sağa çizilir; şimdi noktası atar */
