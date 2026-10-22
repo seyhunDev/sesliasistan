@@ -438,7 +438,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   // Bilgisi tamam taslak (eksik soru yok, başlık/tarih var) sormadan kaydedilir; kartta yalnız Düzenle kalır
   // Kayıt sorulmadan yapıldığı için yapay zekanın soru ve "oluşturuyorum/ekliyorum" cümleleri atılır
   // (önceden "Akşam 8 için planı oluşturuyorum, onaylıyor musun? Ekledim: …" okunuyordu); yalnız ek bilgi kalır
-  const extra = (m) => extraNote(m);
+  const extra = (m, list) => extraNote(m, list);
   const ready = (list) => list.length > 0 && !firstNeed(list) && list.every((d) => !check(d));
   function saveDraftsNow(...a) {
     setAuto(null);

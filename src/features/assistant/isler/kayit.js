@@ -141,10 +141,10 @@ export async function saveDraftsNow(ctx, viaVoice, list = ctx.drafts, pre = "", 
   const kind = { time: "plan", due: "task" }[line.offer];
   const pid = kind && !ctx.planOn?.current && !ctx.chain?.current?.length && (r.ids || []).find(([k]) => k === kind)?.[1];
   // Teklif yapılamıyorsa (liste sürüyor, kimlik yok) teklif cümlesi de söylenmez
-  if (!pid) return done(`${lead}${extra(pre)}${line.text.replace(/ (İstersen saatini|Son tarih söylemedin).*$/, "")}`, { engine: "local" }, viaVoice);
+  if (!pid) return done(`${lead}${extra(pre, list)}${line.text.replace(/ (İstersen saatini|Son tarih söylemedin).*$/, "")}`, { engine: "local" }, viaVoice);
   waitFor("planTime");
   planTimeAsk.current = { kind: line.offer, id: pid, title: list[0].title, date: list[0].date };
-  reply(`${lead}${extra(pre)}${line.text}`, { engine: "local", listen: true }, viaVoice);
+  reply(`${lead}${extra(pre, list)}${line.text}`, { engine: "local", listen: true }, viaVoice);
 }
 
 export function dropDrafts(ctx, viaVoice) {
