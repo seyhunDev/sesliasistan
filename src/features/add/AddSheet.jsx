@@ -261,6 +261,18 @@ export function AddSheet({ open, onClose, seed }) {
     onClose();
   }
 
+  // Planın Hatırlat, Alarm ve Önemli seçimleri dokununca kaydedilir (Seyhun 2026-10-22: "seçiyorum ama kaydedilmiyor";
+  // alttaki Kaydet'e basmadan kapatınca kayboluyordu). Başka alan elle değiştirilmişse Kaydet'e bırakılır.
+  function quickSave(patch) {
+    if (edit?.kind !== "plan" || !drafts[0] || dirty || !Object.keys(patch).every((k) => ["remind", "alarm", "important"].includes(k))) return false;
+    const next = { ...drafts[0], ...patch };
+    orig.current = editKey(next);
+    setDrafts([next]);
+    updateRecord(edit.kind, edit.id, patch, by);
+    toast("Kaydedildi");
+    return true;
+  }
+
   function saveEdit() {
     const d = drafts[0];
     const e = d ? check(d) : "Kayıt bulunamadı";
@@ -360,7 +372,7 @@ export function AddSheet({ open, onClose, seed }) {
                 }}
                 assign={assign}
                 onAddStaff={addStaff}
-                onChange={(patch) => update(0, patch)}
+                onChange={(patch) => quickSave(patch) || update(0, patch)}
                 acks={
                   rec && !isStaff
                     ? assigneesOf(rec)
