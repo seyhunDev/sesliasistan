@@ -1,8 +1,8 @@
-Commit: 4fd5e02 · Medya: bekleme kartı kalktı, kendiliğinden yeniden dener; kamerada yakınlaştırma (#666)
-Zaman: 2026-10-22-1037 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39740795567
+Commit: 4d0a94f · Medya: izlerken sayaç, kamerada ses, poster, ⋯ menüsü; sekme değişse de yükleme halkası (#667)
+Zaman: 2026-10-22-1056 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39743125544
 
-TAM TEST · 22.10.2026 10:30:47
+TAM TEST · 22.10.2026 10:49:06
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1369/1371 geçti · 2 kalan · 425 sn
+SONUÇ: 1369/1371 geçti · 2 kalan · 420 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
