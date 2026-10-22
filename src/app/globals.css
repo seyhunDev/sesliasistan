@@ -728,6 +728,16 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .ck-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.9rem; border-radius: 0.75rem; background: #fff; color: #141938; font-size: 0.84375rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
 .ck-btn2 { background: rgba(255, 255, 255, .14); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18), 0 2px 0 rgba(0, 0, 0, .3); }
 .ck-btn[data-pressed] { transform: translateY(1px) scale(.97); box-shadow: 0 1px 0 rgba(0, 0, 0, .35); }
+/* Kokpitteki en yakın plan (Cockpit NextPlan; Seyhun 2026-10-22 "A · Mor kart"): logo morundan maviye dolu kart; içinde beyaz (Süre) ve
+   yarı saydam (Yoklama) düğme */
+.ck-plan { background: linear-gradient(135deg, #7c4dff 0%, #5b5cf0 55%, #3f7ae8 100%); box-shadow: 0 10px 24px -12px rgba(124, 77, 255, .8), inset 0 1px 0 rgba(255, 255, 255, .22); }
+.ck-pbtn { display: grid; place-items: center; height: 2.5rem; border-radius: 0.75rem; background: #fff; color: #3b2a9e; font-size: 0.9375rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .25); }
+.ck-pbtn2 { background: rgba(255, 255, 255, .18); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3); }
+.ck-pbtn[data-pressed] { transform: translateY(1px) scale(.97); }
+/* Kokpitteki iş düğmeleri (HomeGrid › ActionGrid pill): ince mor çerçeveli, alçak, yuvarlak; tarih kutularına benzemez. Günün ana işi dolu mor */
+.ck .raised.ck-pill { height: 2.5rem; border-radius: 9999px; background: transparent; border: 1.5px solid rgba(167, 139, 250, .55); box-shadow: none; color: #fff; font-size: 0.875rem; }
+.ck .raised.ck-pill[data-pressed] { background: rgba(167, 139, 250, .16); transform: scale(.97); }
+.ck .raised.ck-pill.act-main { background: #8b5cf6; border-color: #8b5cf6; color: #fff; }
 /* Rüzgâr grafiği açılışta soldan sağa çizilir; şimdi noktası atar */
 .ck-draw { animation: ck-draw .9s cubic-bezier(.22, .8, .24, 1) both; }
 @keyframes ck-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }

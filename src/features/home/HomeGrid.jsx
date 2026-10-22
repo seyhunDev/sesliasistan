@@ -42,7 +42,7 @@ export function HomeGrid({ pages, side, athletes, receipts, owner }) {
   const groups = (pages || []).filter((g) => g.items.length);
   return (
     <>
-      <ActionGrid items={[...items, { key: "all", label: "Tümü", onClick: () => setAll(true) }]} />
+      <ActionGrid pill items={[...items, { key: "all", label: "Tümü", onClick: () => setAll(true) }]} />
       <Sheet open={all} onClose={() => setAll(false)} title="Tüm sayfalar">
         <div className="space-y-4 pb-1">
           {groups.map((g) => (
