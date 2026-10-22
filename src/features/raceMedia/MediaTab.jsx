@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { addRaceMedia, backfillPoster, dropRaceMedia, mutedCopy, prepRaceMedia, saveMedia } from "@/features/athletes/raceLiveStore";
@@ -24,6 +24,14 @@ import { dropPending, listPending, putPending } from "./pendingStore";
 // Yüklenen ve yüklenmekte olan kayıtlar sayfa genelinde tutulur: sekme değişince Medya yeniden açılır, telefonda bekleyen kayıt (yüklemesi
 // eski sekmede sürerken) yeniden sıraya girip ikinci kez yükleniyordu (Seyhun 2026-10-22: "aynı videonun iki kaydı düşüyor")
 const inflight = new Set();
+// Yükleme durumu da sayfa genelinde (sekme değişip Medya yeniden açılınca halka kaldığı yerden görünür):
+// ups { [id]: { rec, url, p, err } }; mine: bu telefonda çekilip yüklenen künye → { url: yerel dosya, done: kısa ✓ }
+let upSnap = { ups: {}, mine: {} };
+const upSubs = new Set();
+const upSet = (f) => ((upSnap = f(upSnap)), upSubs.forEach((x) => x()));
+const upSub = (x) => (upSubs.add(x), () => upSubs.delete(x));
+const upGet = () => upSnap;
+const blankUps = { ups: {}, mine: {} };
 const done = new Set();
 const tried = new Set(); // bu açılışta küçük resmi denenen kayıtlar (olmazsa yeniden denenmez)
 
@@ -37,8 +45,9 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const [waiting, setWaiting] = useState([]); // telefonda bekleyen (yüklenemeyen) kayıtlar
   // Yüklenenler listede hemen, telefondaki önizlemesiyle (Seyhun 2026-10-21, örnek yaris-tasarim/medya/yukleme.png): üstünde dolan halka,
   // bitince kısa ✓. ups: yüklenen/bekleyen kayıtlar { [id]: { rec, url, p, err } }; mine: bu telefonda çekilip yüklenen künye → yerel dosya
-  const [ups, setUps] = useState({});
-  const [mine, setMine] = useState({});
+  const { ups, mine } = useSyncExternalStore(upSub, upGet, () => blankUps);
+  const setUps = (f) => upSet((x) => ({ ...x, ups: f(x.ups) }));
+  const setMine = (f) => upSet((x) => ({ ...x, mine: f(x.mine) }));
   const [tick, setTick] = useState(0); // eski kayıtların küçük resmi: biri bitince sıradaki
   const up = (id, f) => setUps((u) => (u[id] ? { ...u, [id]: { ...u[id], ...f(u[id]) } } : u));
   const addUp = (rec, err = false) => setUps((u) => (u[rec.id] ? u : { ...u, [rec.id]: { rec, url: URL.createObjectURL(rec.blob), p: err ? null : 0, err } }));
@@ -55,7 +64,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const todays = live.media.filter((m) => dayOf(m.at) === day);
   const tagged = ours.filter((a) => todays.some((m) => m.ath.includes(a.id)));
   const pick = tagged.some((a) => a.id === who) ? who : "";
-  const upItems = pick ? [] : Object.values(ups).map(({ rec, url, p, err }) => ({ id: rec.id, kind: rec.kind, at: rec.at, dur: rec.dur, ...rec.mom, u: { url, p, err } }));
+  const upItems = pick ? [] : Object.values(ups).filter((x) => x.rec.raceId === race.id).map(({ rec, url, p, err }) => ({ id: rec.id, kind: rec.kind, at: rec.at, dur: rec.dur, ...rec.mom, u: { url, p, err } }));
   const groups = mediaGroups([...mediaOf(live.media, pick), ...upItems], live.starts, day);
   const first = (a) => (a.studentName || "").split(" ")[0];
 
@@ -73,10 +82,9 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
       const meta = await addRaceMedia(orgId, race.id, rec, rec.at, (p) => up(rec.id, () => ({ p })), { ...rec.mom, dur: rec.dur });
       done.add(rec.id);
       await dropPending(rec.id);
-      setUps((u) => {
-        const { [rec.id]: x, ...rest } = u;
-        if (x) setMine((m) => ({ ...m, [meta.id]: { url: x.url, done: true } }));
-        return rest;
+      upSet((x) => {
+        const { [rec.id]: u, ...rest } = x.ups;
+        return { ups: rest, mine: u ? { ...x.mine, [meta.id]: { url: u.url, done: true } } : x.mine };
       });
       setTimeout(() => setMine((m) => (m[meta.id] ? { ...m, [meta.id]: { ...m[meta.id], done: false } } : m)), 1500);
       onChange((l) => ({ media: [...l.media, meta] }));
@@ -168,7 +176,9 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
       setBusy("Hazırlanıyor…");
       const m = await prepRaceMedia(file, (p) => setBusy(`Küçültülüyor %${Math.round(p * 100)}`));
       setBusy("");
-      await keep(m, at, mom, file.size);
+      // iPhone videosunun dosya zamanı kaydın bittiği an: an (startan beri) kaydın başına göre
+      const at0 = m.kind === "video" && m.dur && t && dayOf(t) === day ? new Date(Date.parse(at) - m.dur * 1000).toISOString() : at;
+      await keep(m, at0, at0 === at ? mom : momentFor(at0), file.size);
     } catch (e) {
       toast(e?.message || "Kaydedilemedi");
       setBusy("");
@@ -223,7 +233,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const waitErr = waiting.find((x) => x.err)?.err || "";
   return (
     <>
-      {((!online && (waiting.length > 0 || Object.keys(ups).length > 0)) || (online && waiting.length > 0 && waitErr && waitErr !== "İnternet yok.")) && (
+      {((!online && (waiting.length > 0 || upItems.length > 0)) || (online && waiting.length > 0 && waitErr && waitErr !== "İnternet yok.")) && (
         <p className="mt-3 px-1 text-[0.875rem] text-warn">{online ? waitErr : "Bağlantı yok · telefona kaydedildi"}</p>
       )}
       {tagged.length > 0 && (
@@ -255,7 +265,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
         id={open ? open.id : ""}
         onPick={setOpen}
         onClose={() => setOpen("")}
-        label={(m) => (m.phase ? `${momentRaceName(m, live.starts)} · ${momentText(m, live.starts)}` : hm(m.at))}
+        label={(m) => (!m.phase ? hm(m.at) : m.kind === "video" ? momentRaceName(m, live.starts) : `${momentRaceName(m, live.starts)} · ${momentText(m, live.starts)}` /* videoda süre görüntünün üstünde akar */)}
         ours={ours}
         onTag={tag}
         onShare={share}
