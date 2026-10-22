@@ -98,8 +98,9 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
           <HomeDays today={todayStr()} fit={fit} att={athletes} />
         </div>
       </Cockpit>
-      {/* Açık zemin lacivertin üstüne yuvarlak köşeyle biner */}
-      <div className="relative -mx-4 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-4 pt-5">
+      {/* Alt kısım da lacivert (Seyhun 2026-10-22: "yukarısı daha güzel, bu tasarımı devam ettirelim"): kartlar kokpitteki gibi
+          yarı saydam lacivert, yazılar açık; renkler globals.css .navy değişkenlerinden (koyu görünüm sınıfları da çalışır) */}
+      <div data-theme="dark" className="navy home-navy relative -mx-4 space-y-6 px-4 pb-6 pt-2">
         {quota && (
           <p className="-mb-4 px-1 text-[0.75rem] tabular-nums text-mut">
             Bugün kalan · asistan {quota.qa.left}/{quota.qa.limit} · fiş {quota.qr.left}/{quota.qr.limit}

@@ -1434,6 +1434,11 @@ group("Hesaplar arama ve eklenen adlar")([
     const g = HR.byMonth([{ id: "a", day: "2026-09-30", amount: 100 }, { id: "b", day: "2026-10-02", sort: "2026-10-02T08:00", amount: -40 }, { id: "c", day: "2026-10-05", amount: 300 }]);
     return g.length === 2 && g[0].ym === "2026-10" && g[0].rows[0].id === "c" && g[0].in === 300 && g[0].out === 40 && g[1].in === 100 && HR.dayText("2026-10-17") === "17 Eki" && HR.monthText("2025-03") === "Mart 2025" && HR.amt(-300) === "−300" && HR.amt(1200).startsWith("+");
   })],
+  ["Hesaplar sabit sıra", F("aynı gündekiler gelen sıradan bağımsız: önce yeni eklenen, sonra kimlik", () => {
+    const rows = [{ id: "b", day: "2026-10-20", sort: "2026-10-20", tie: "2026-10-20T08:00:00Z" }, { id: "a", day: "2026-10-20", sort: "2026-10-20", tie: "2026-10-20T08:00:00Z" }, { id: "c", day: "2026-10-20", sort: "2026-10-20", tie: "2026-10-20T09:00:00Z" }];
+    const k = (l) => HR.byMonth(l)[0].rows.map((r) => r.id).join("");
+    return k(rows) === "cab" && k([...rows].reverse()) === "cab" && HR.tieOf({ createdAt: { seconds: 0 } }) === "1970-01-01T00:00:00.000Z" && HR.tieOf({ at: 0 }) === "1970-01-01T00:00:00.000Z";
+  })],
   ["kasa: kulübün verdiği borç", F("borç kasadan düşer, geri ödeme girer; kişisel borç kasaya girmez; eski borç sayılmaz", () => {
     const items = [
       { id: "d1", kind: "club", who: "Ali", amount: 500, date: "2026-10-12", at: "2026-10-12T09:00:00Z", paid: [{ id: "p1", amt: 200, date: "2026-10-13" }] },
@@ -2847,7 +2852,10 @@ group("Ortak düğmeler")([
     ["bugün bitti", F("yarının ilk planı", () => HT.nextPlan(P.filter((p) => p.date !== "2026-10-21" || p.id === "a"), at, "2026-10-21")?.id === "d")],
     ["iptal ve fitness", F("sayılmaz", () => HT.nextPlan([{ ...P[2], status: "cancelled" }, { ...P[2], id: "f", fit: { name: "x" } }, P[3]], at, "2026-10-21")?.id === "d")],
     ["saatsiz plan", F("gün boyu sürer", () => HT.nextPlan([{ id: "s", title: "Kamp", date: "2026-10-21" }], at, "2026-10-21")?.id === "s")],
+    // Seyhun 2026-10-22: bitirilip arşive giden antrenman "Bugün · Gün boyu" diye kalıyordu (plan bitti alanı done: true)
+    ["bitirilen plan", F("arşivdeki (bitti) atlanır, sıradaki gelir", () => HT.nextPlan([{ id: "s", title: "Antrenman", date: "2026-10-21", done: true }, P[2], P[3]], at, "2026-10-21")?.id === "c")],
     ["8 gün sonra", F("7 günden uzak plan yok", () => HT.nextPlan([{ id: "u", date: "2026-10-30", time: "10:00" }], at, "2026-10-21") === null)],
+    ["tür başlıkta", F("“Optimist antrenmanı” Antrenman etiketi almaz, toplantı alır", () => HT.planTag({ title: "Optimist antrenmanı", cat: "Antrenman" }) === "" && HT.planTag({ title: "Yönetim", cat: "Toplantı" }) === "Toplantı" && HT.planTag({ title: "Fitness · İlay", fit: { name: "İlay" } }) === "")],
   ]);
 }
 
@@ -2903,5 +2911,20 @@ group("Ortak düğmeler")([
       /useState\(\(\) => racesNow\(orgId\)\)/.test(src("app/(app)/athletes/races/page.jsx")) && /racesNow\(orgId, 60e3\)/.test(src("app/(app)/athletes/races/[id]/page.jsx")) && /stale\(\)/.test(src("features/athletes/races.js")))],
     ["Etkinlikler ve Gönderiler", F("liste bellekten başlar", () =>
       /useState\(\(\) => eventsNow\(orgId\)\)/.test(src("app/(app)/events/page.jsx")) && /useState\(\(\) => postsNow\(orgId\)\)/.test(src("app/(app)/posts/page.jsx")))],
+  ]);
+}
+
+// Zildeki yapılacaklar: sporcuya verilen fitness programı tek satır; pencerede önce bildirimler
+{
+  const NP = await import("@/lib/fitness/newProgram");
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  const plans = Array.from({ length: 82 }, (_, i) => ({ fit: { prog: "p1" }, date: new Date(Date.parse("2026-10-23") + Math.floor(i / 3) * 864e5).toISOString().slice(0, 10), createdByUid: "s" }));
+  group("Bildirim kutusu: fitness programı")([
+    ["tek satır", F("82 plan tek gruba toplanır", () => { const g = NP.fitGroups(plans); return g.length === 1 && g[0].n === 82 && g[0].by === "s"; })],
+    ["metin", F("hafta ve antrenman sayısı", () => NP.fitText(NP.fitGroups(plans)[0]) === "4 haftalık, 82 antrenman")],
+    ["iki program", F("program başına ayrı satır", () => NP.fitGroups([...plans.slice(0, 3), { fit: { prog: "p2" }, date: "2026-10-24" }]).length === 2)],
+    ["planlar ayrı çıkmaz", F("ForYou yeni planlarda fitness planını atlar", () => /!\(kind === "plan" && r\.fit\?\.prog\)/.test(src("features/home/ForYou.jsx")))],
+    ["önce bildirimler", F("pencerede Bildirimler, Yapılacaklar'dan önce", () => { const s = src("features/home/Inbox.jsx"); return s.indexOf('aria-label="Bildirimler"') < s.indexOf('aria-label="Yapılacaklar"'); })],
   ]);
 }
