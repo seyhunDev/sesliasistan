@@ -122,7 +122,7 @@ struct PlanSatiri: View {
                 .lineLimit(1)
             Text(p.title)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(p.important == true ? wMor : Color.white)
+                .foregroundStyle(p.important == true ? wAcik : Color.white)
                 .lineLimit(1)
             Spacer(minLength: 0)
         }
@@ -145,22 +145,26 @@ struct Baslik: View {
     }
 }
 
-// Zemin: ana ekranda lacivert, kilit ekranında sistemin yarı saydam kutusu
+// Zemin: ana ekranda Okyanus mavisi, kilit ekranında sistemin yarı saydam kutusu
 struct Zemin: ViewModifier {
     @Environment(\.widgetFamily) var family
-    var renk: Color = wLacivert
+    var renk: Color = wZemin
+    // Okyanus zemini yukarıda biraz açık (deniz yüzeyi gibi), sayaç rengi düz
+    private var zemin: LinearGradient {
+        LinearGradient(colors: [renk == wZemin ? wUst : renk, renk], startPoint: .top, endPoint: .center)
+    }
     func body(content: Content) -> some View {
         let kilit: Bool = [WidgetFamily.accessoryRectangular, .accessoryCircular, .accessoryInline].contains(family)
         if #available(iOS 17.0, *) {
             if kilit {
                 content.containerBackground(for: .widget) { AccessoryWidgetBackground() }
             } else {
-                content.foregroundStyle(.white).tint(.white).containerBackground(for: .widget) { renk }
+                content.foregroundStyle(.white).tint(.white).containerBackground(for: .widget) { zemin }
             }
         } else if kilit {
             content
         } else {
-            content.foregroundStyle(.white).tint(.white).padding().background(renk)
+            content.foregroundStyle(.white).tint(.white).padding().background(zemin)
         }
     }
 }
@@ -194,7 +198,7 @@ struct SiradakiGorunum: View {
                 if plans.isEmpty { Bos(yazi: "Sırada plan yok") }
                 ForEach(plans.prefix(2), id: \.self) { p in
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(p.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(p.important == true ? wMor : Color.white).lineLimit(2)
+                        Text(p.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(p.important == true ? wAcik : Color.white).lineLimit(2)
                         Text(planZamani(p, e.date)).font(.system(size: 12, weight: .semibold).monospacedDigit()).foregroundStyle(.white.opacity(0.65))
                     }
                 }
