@@ -220,7 +220,6 @@ export default function EnglishPage() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addNew()}
-            autoFocus
             autoCapitalize="off"
             enterKeyHint="done"
           />
