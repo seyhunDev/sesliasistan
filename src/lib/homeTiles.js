@@ -449,11 +449,13 @@ export function planTone(p) {
   return CAT_TONE[p.cat || p.category] || "gen";
 }
 // Plan türünün kısa adı (Bugün/Yarın satırındaki etiket); Genel ve türsüz planda boş
+// Tür adı başlıkta zaten geçiyorsa yazılmaz ("Optimist antrenmanı" · Antrenman tekrarı; Seyhun 2026-10-22: "iki tane antrenman yazılıyor")
 export function planTag(p) {
   if (!p) return "";
-  if (isFit(p)) return "Fitness";
-  const c = p.cat || p.category || "";
-  return c && c !== "Genel" ? c : "";
+  const c = isFit(p) ? "Fitness" : p.cat || p.category || "";
+  if (!c || c === "Genel") return "";
+  const low = (t) => String(t || "").toLocaleLowerCase("tr-TR");
+  return low(p.title).includes(low(c)) ? "" : c;
 }
 
 // Ana sayfadaki yuvarlak kişi şeridi (Instagram hikâyeleri gibi): bugün doğum günü olanlar önde, sonra çalışan, aile, sporcu, diğer; ada göre.
