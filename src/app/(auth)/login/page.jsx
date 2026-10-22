@@ -30,13 +30,17 @@ export default function LoginPage() {
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [move, setMove] = useState(""); // adım değişince form yandan kayar: "" (ilk açılış) | fwd | back
   const ok = validLogin(id);
   const isEmail = id.includes("@");
 
-  const go = (s) => {
+  const go = (s, back = false) => {
     setError("");
+    setMove(back ? "back" : "fwd");
     setStep(s);
   };
+  // Adım kutusu: her adım yeni çizilir (key), ileri sağdan, geri soldan gelir
+  const stepProps = { className: move ? "auth-step" : undefined, "data-back": move === "back" || undefined };
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -63,10 +67,14 @@ export default function LoginPage() {
     setBusy(true);
     try {
       await resetPassword(cleanLogin(id));
+      setMove("fwd");
       setStep("sent");
     } catch (err) {
       // Hesabın olup olmadığını belli etme: "kullanıcı yok" da gönderildi sayılır
-      if (err?.code === "auth/user-not-found") setStep("sent");
+      if (err?.code === "auth/user-not-found") {
+        setMove("fwd");
+        setStep("sent");
+      }
       else setError(authErrorMessage(err));
     }
     setBusy(false);
@@ -80,25 +88,25 @@ export default function LoginPage() {
 
   if (step === "sent") {
     return (
-      <div>
+      <div key={step} {...stepProps}>
         <h1 className="text-[1.25rem] font-semibold text-white">E-postanı kontrol et</h1>
         <p className="mt-2 text-[0.9375rem] leading-relaxed text-white/70">
           <b className="font-semibold text-white">{cleanLogin(id)}</b> adresine kayıtlı bir hesap varsa şifre sıfırlama bağlantısı gönderdik. Gelmediyse gereksiz (spam) klasörüne de bak.
         </p>
-        <Button className="mt-6" onClick={() => go("pw")}>Girişe dön</Button>
+        <Button className="mt-6" onClick={() => go("pw", true)}>Girişe dön</Button>
       </div>
     );
   }
 
   if (step === "pw") {
     return (
-      <form onSubmit={onSubmit}>
+      <form onSubmit={onSubmit} key={step} {...stepProps}>
         <h1 className="mb-3.5 text-[1.25rem] font-semibold text-white">Şifre</h1>
         {/* Şifre yöneticisi hangi hesap olduğunu bilsin */}
         <input type="text" name="username" autoComplete="username" value={cleanLogin(id)} readOnly tabIndex={-1} aria-hidden="true" className="sr-only" />
         <div className="ck-glass mb-3 flex h-12 items-center gap-2 rounded-[0.875rem] pl-3.5 pr-1">
           <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{cleanLogin(id)}</span>
-          <Button type="button" variant="text" size="sm" onClick={() => { setPassword(""); go("id"); }}>Değiştir</Button>
+          <Button type="button" variant="text" size="sm" onClick={() => { setPassword(""); go("id", true); }}>Değiştir</Button>
         </div>
         <div className="relative">
           <input
@@ -129,7 +137,7 @@ export default function LoginPage() {
   }
 
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={onSubmit} key={step} {...stepProps}>
       <h1 className="mb-3.5 text-[1.25rem] font-semibold text-white">Giriş yap</h1>
       <div className="relative">
         <input
