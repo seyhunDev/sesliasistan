@@ -5,15 +5,15 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
-import { cartTotals, isOpenAt, lineDetail, etaFrom } from "../order";
+import { cartTotals, lineDetail, etaFrom } from "../order";
 import { pickAddress, distanceKm } from "../address";
-import { herePos, placeOrder, saveMe, writeCart } from "../store";
+import { herePos, openNow, placeOrder, saveMe, writeCart } from "../store";
 import { tl } from "./Img";
 
 const PAYS = [["kapıda-kart", "Kapıda kart"], ["kapıda-nakit", "Kapıda nakit"]];
 
 // Sepet (örnek 4): ürünler (adet ±), toplam, adres (konuma 300 m içindeki kendiliğinden; yoksa sorar), ödeme, "Siparişi ver".
-export function CartSheet({ open, onClose, place, lines, food, orgId, uid, onPlaced }) {
+export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name, onPlaced }) {
   const toast = useToast();
   const [pos, setPos] = useState(null);
   const [addrId, setAddrId] = useState(""); // elle seçilen; yoksa konuma göre / son kullanılan
@@ -35,7 +35,7 @@ export function CartSheet({ open, onClose, place, lines, food, orgId, uid, onPla
   const auto = pickAddress(addresses, pos, food?.me.lastAddressId);
   const addr = addresses.find((a) => a.id === addrId) || auto.address || null;
   const totals = cartTotals(place, lines);
-  const closed = !isOpenAt(place);
+  const closed = !openNow(place, food?.settings);
 
   const setQty = (i, d) => {
     const next = lines.map((l, j) => (j === i ? { ...l, qty: l.qty + d, total: l.unit * (l.qty + d) } : l)).filter((l) => l.qty > 0);
@@ -50,7 +50,7 @@ export function CartSheet({ open, onClose, place, lines, food, orgId, uid, onPla
       const km = distanceKm(place.pos, addr.pos);
       const order = {
         placeId: place.id, placeName: place.name, cuisines: place.cuisines, lines, subtotal: totals.subtotal, fee: totals.fee, total: totals.total,
-        pay, address: addr, demo: true, eta: etaFrom({ status: "sent" }, place, Number.isFinite(km) ? km : 2).toISOString(), courier: null,
+        pay, address: addr, customer: name || "", demo: food?.settings?.demo !== false, eta: etaFrom({ status: "sent" }, place, Number.isFinite(km) ? km : 2).toISOString(), courier: null,
       };
       const id = await placeOrder(orgId, uid, order);
       saveMe(orgId, { lastAddressId: addr.id }).catch(() => {});
