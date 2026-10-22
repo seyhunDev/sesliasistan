@@ -24,12 +24,12 @@ enum Bekleyen {
         return ne
     }
 
-    // velora://bas-konus (Kısayollar, eski iOS), velora://sayac (kilit ekranındaki sayaç), velora://ac/messages (widget: o sayfa açılır, "go:/messages")
+    // velora://bas-konus (Kısayollar, eski iOS), velora://sayac (kilit ekranındaki sayaç), velora://ac/training/day?id=… (widget: o sayfa açılır, "go:/yol")
     static func url(_ u: URL) {
         guard u.scheme == "velora" else { return }
         switch u.host {
         case "sayac": koy("timer")
-        case "ac": koy("go:" + (u.path.isEmpty ? "/" : u.path))
+        case "ac": koy("go:" + (u.path.isEmpty ? "/" : u.path) + (u.query.map { "?" + $0 } ?? ""))
         default: koy("talk")
         }
     }

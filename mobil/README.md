@@ -70,7 +70,7 @@ değişince Xcode'dan yeniden kurulur. Ad "Velora", paket `com.seyhunyildiz.sesl
   - Plan alarmı (`alarm` alanı, `src/lib/planAlarm.js`): iOS 26'da saat alarmı (AlarmKit, sessiz modda da çalar), eski
     iOS'ta sesli bildirim. Uygulama açılınca ve planlar değişince eşitlenir.
   - Titreşim (`haptic`, web `src/lib/haptic.js`), Face ID kilidi (`unlock`, `src/features/ios/AppLock.jsx`) ve ana ekran
-    widget'lar (`VeloraWidget/Widgetlar.swift`: Bugün, Rüzgâr, Kelime, Mesaj, Hesap, Özet; `SiradakiWidget.swift`: Sıradaki +
+    widget'lar (`VeloraWidget/Widgetlar.swift`: Velora (büyük, iOS 17+, Edit Widget ile bölüm seçimi), Rüzgâr, Antrenman, Banka ve aidat, Kelime, Özet; `SiradakiWidget.swift`: Sıradaki +
     ortak sağlayıcı; `Ruzgar.swift`: ana sayfadaki rüzgâr grafiği). Veri `src/features/ios/WidgetFeed.jsx` → `widgetData` ile ortak
     uygulama grubuna `group.com.seyhunyildiz.sesliasistan` yazılır, rüzgârı widget open-meteo'dan alır; dokununca
     `velora://ac/<yol>` o sayfayı açar: `App/VeloraDokunus.swift`.

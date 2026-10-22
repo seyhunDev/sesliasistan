@@ -19,9 +19,13 @@ struct WidgetVeri: Codable {
         var bitis: Date { Date(timeIntervalSince1970: end / 1000) }
     }
 
-    struct Mesaj: Codable, Hashable {
-        var from: String
-        var text: String
+    // Bugünkü ya da sıradaki antrenman (dokununca /training/day?id=… Süre ekranı)
+    struct Antrenman: Codable, Hashable {
+        var id: String
+        var title: String
+        var date: String
+        var time: String
+        var place: String?
     }
 
     // Ana sayfadaki Hesap satırı: big "12.480 ₺", label "Kasada nakit" / "Banka", sub "Banka 3.200 ₺"
@@ -52,8 +56,7 @@ struct WidgetVeri: Codable {
     var lat: Double?
     var lon: Double?
     var timer: Zaman?
-    var unread: Int?
-    var msgs: [Mesaj]?
+    var training: Antrenman?
     var money: Para?
     var dues: Aidat?
     var word: Kelime?
@@ -93,8 +96,11 @@ struct WidgetVeri: Codable {
         return t.bitis.addingTimeInterval(3600) > now ? t : nil
     }
 
-    // Bugünkü (geçmemiş) plan sayısı
-    func bugunIs(_ now: Date = Date()) -> Int {
-        siradaki(now).filter { WidgetVeri.baslangic($0).map { Calendar.current.isDate($0, inSameDayAs: now) } ?? false }.count
+    // Antrenman henüz geçmediyse (başladıktan 2 saat sonrasına kadar)
+    func antrenman(_ now: Date = Date()) -> Antrenman? {
+        guard let a = training else { return nil }
+        let p = Plan(title: a.title, date: a.date, time: a.time, important: nil)
+        guard let s = WidgetVeri.baslangic(p) else { return nil }
+        return a.time.isEmpty ? (Calendar.current.isDate(s, inSameDayAs: now) || s > now ? a : nil) : (s.addingTimeInterval(7200) > now ? a : nil)
     }
 }

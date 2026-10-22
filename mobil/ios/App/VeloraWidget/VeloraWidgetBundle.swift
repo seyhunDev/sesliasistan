@@ -5,12 +5,14 @@ import WidgetKit
 @main
 struct VeloraWidgetBundle: WidgetBundle {
     var body: some Widget {
-        BugunWidget()
+        if #available(iOS 17.0, *) {
+            VeloraBuyukWidget()
+        }
         RuzgarWidget()
+        AntrenmanWidget()
+        ParaWidget()
         SiradakiWidget()
         KelimeWidget()
-        MesajWidget()
-        HesapWidget()
         OzetWidget()
         SayacEtkinligi()
         if #available(iOS 18.0, *) {
