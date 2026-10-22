@@ -8,7 +8,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Bar, readTimer } from "@/features/training/Countdown";
-import { dayOf, fixMedia, hm, mediaGroups, mediaOf, momentAt, momentBadge, momentRaceName, momentText, tagMedia } from "@/lib/raceLive";
+import { dayOf, fixMedia, hm, mediaGroups, mediaOf, momentAt, momentBadge, momentOf, momentRaceName, momentText, tagMedia } from "@/lib/raceLive";
 import { MediaViewer } from "./MediaViewer";
 import { Thumb } from "./Thumb";
 import { CameraSheet } from "./CameraSheet";
@@ -21,6 +21,10 @@ import { dropPending, listPending, putPending } from "./pendingStore";
 // ("2. yarış · Son 1 dakika", lib/raceLive.js mediaGroups), küçük resimde "−0:42" / "+12:30". Dokununca büyük açılır:
 // yarıştaki sporcular etiketlenir (dokun ekle/çıkar), Paylaş, Düzelt (yarış ve an), Sil. Etiketli varsa üstte sporcu süzgeci.
 // Çekilen hemen kaydedilir (önce gözden geçirme yok). Süre'den açılan kamera kapanınca Süre'ye dönülür (onCamClose).
+// Yüklenen ve yüklenmekte olan kayıtlar sayfa genelinde tutulur: sekme değişince Medya yeniden açılır, telefonda bekleyen kayıt (yüklemesi
+// eski sekmede sürerken) yeniden sıraya girip ikinci kez yükleniyordu (Seyhun 2026-10-22: "aynı videonun iki kaydı düşüyor")
+const inflight = new Set();
+const done = new Set();
 const tried = new Set(); // bu açılışta küçük resmi denenen kayıtlar (olmazsa yeniden denenmez)
 
 export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "", onCamClose }) {
@@ -30,8 +34,6 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const [busy, setBusy] = useState(""); // ilerleme yazısı
   const [pending, setPending] = useState(0); // sırada bekleyen kayıt
   const queue = useRef(Promise.resolve());
-  const inflight = useRef(new Set());
-  const done = useRef(new Set());
   const [waiting, setWaiting] = useState([]); // telefonda bekleyen (yüklenemeyen) kayıtlar
   // Yüklenenler listede hemen, telefondaki önizlemesiyle (Seyhun 2026-10-21, örnek yaris-tasarim/medya/yukleme.png): üstünde dolan halka,
   // bitince kısa ✓. ups: yüklenen/bekleyen kayıtlar { [id]: { rec, url, p, err } }; mine: bu telefonda çekilip yüklenen künye → yerel dosya
@@ -63,13 +65,13 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const errText = (e) =>
     e?.code === "storage/unauthorized" ? "Storage kuralı yayınlanmamış olabilir (Firebase › Storage › Rules)." : /network|retry-limit|offline/i.test(`${e?.code} ${e?.message}`) || !navigator.onLine ? "İnternet yok." : e?.message || "Yüklenemedi.";
   const send = async (rec) => {
-    if (inflight.current.has(rec.id) || done.current.has(rec.id)) return; // aynı kayıt iki kez sıraya girdiyse bir kez yüklenir
-    inflight.current.add(rec.id);
+    if (inflight.has(rec.id) || done.has(rec.id)) return; // aynı kayıt iki kez sıraya girdiyse bir kez yüklenir
+    inflight.add(rec.id);
     try {
       addUp(rec);
       up(rec.id, () => ({ p: 0, err: false }));
       const meta = await addRaceMedia(orgId, race.id, rec, rec.at, (p) => up(rec.id, () => ({ p })), { ...rec.mom, dur: rec.dur });
-      done.current.add(rec.id);
+      done.add(rec.id);
       await dropPending(rec.id);
       setUps((u) => {
         const { [rec.id]: x, ...rest } = u;
@@ -88,7 +90,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
       setLast((l) => (l?.id === rec.id ? { ...l, state: "err", err } : l));
       up(rec.id, () => ({ p: null, err: true }));
     }
-    inflight.current.delete(rec.id);
+    inflight.delete(rec.id);
   };
   const enqueue = (rec) => {
     setPending((n) => n + 1);
@@ -107,7 +109,8 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   // Sayfa açılınca telefonda kalanlar (eski "kaydetmeden önce" bekleyenler dahil) listelenir ve yeniden denenir; internet gelince de
   useEffect(() => {
     let on = true;
-    listPending(race.id).then((all) => {
+    listPending(race.id).then((list) => {
+      const all = list.filter((r) => !inflight.has(r.id) && !done.has(r.id)); // önceki açılışta yüklenmekte olan, orada biter
       if (!on || !all.length) return;
       setWaiting(all);
       all.forEach((r) => (addUp(r, !!r.err), enqueue(r)));
@@ -136,14 +139,16 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noThumb?.id, tick]);
   // Uygulama içi kameradan: an çekildiği anda hesaplanır (sayaç sonra sıfırlansa da kalır)
-  const shot = (x) => keep(x, x.at, momentAt(x.at, live.starts));
+  // An: yarış satırından; yarış yoksa süren start sayacından (düz start, "+ Yarış yap" denmemiş)
+  const momentFor = (at) => momentAt(at, live.starts) || momentOf(at, readTimer());
+  const shot = (x) => keep(x, x.at, momentFor(x.at));
   // Telefonun kendi kamerasıyla (uygulama içi kamera açılamazsa): çekildiği an dosyanın zamanı bu güne aitse o, değilse şimdi
   const take = async (file) => {
     if (!file) return;
     const t = file.lastModified ? new Date(file.lastModified).toISOString() : "";
     const now = new Date().toISOString();
     const at = t && dayOf(t) === day ? t : dayOf(now) === day ? now : new Date(`${day}T12:00:00`).toISOString();
-    const mom = momentAt(at, live.starts);
+    const mom = momentFor(at);
     try {
       setBusy("Hazırlanıyor…");
       const m = await prepRaceMedia(file, (p) => setBusy(`Küçültülüyor %${Math.round(p * 100)}`));
@@ -245,7 +250,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
         id={open ? open.id : ""}
         onPick={setOpen}
         onClose={() => setOpen("")}
-        label={(m) => (m.phase ? `${momentRaceName(m, live.starts)} · ${momentText(m)}` : hm(m.at))}
+        label={(m) => (m.phase ? `${momentRaceName(m, live.starts)} · ${momentText(m, live.starts)}` : hm(m.at))}
         ours={ours}
         onTag={tag}
         onShare={share}
