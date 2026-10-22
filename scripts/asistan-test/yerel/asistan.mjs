@@ -1158,7 +1158,7 @@ group("Temiz başlık ve sorusuz ekleme")([
 
 // Sporcu sayfasındaki aidat bölümü ve "Ahmet'in aidat durumu ne" cevabı (lib/dues.js athleteDues, athleteDuesText)
 {
-  const { athleteDues, athleteDuesText, monthRows, startOf, ymOfTime } = await import("@/lib/dues");
+  const { athleteDues, athleteDuesText, incomeOf, monthRows, startOf, ymOfTime } = await import("@/lib/dues");
   const { unpaidRoster } = await import("@/lib/duesRemind");
   const { rosterOf } = await import("@/lib/duesAuto");
   const a = { id: "a1", studentName: "Ali Kaya" };
@@ -1176,6 +1176,7 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["zaman damgası", { desc: "Firestore zamanı ay olur", fn: () => ymOfTime({ toDate: () => new Date(2026, 2, 5) }), ok: (r) => r === "2026-03" }],
     ["tablo", { desc: "başlamamış ve sayılmayan sporcu beklenene ve sayıya girmez", fn: () => monthRows([a, { id: "b", studentName: "Bora", from: "2026-11" }, { id: "c", studentName: "Can" }], { free: { c: true } }, { fee: 1000 }, "2026-10"), ok: (r) => r.count === 1 && r.expected === 1000 && r.rows.find((x) => x.a.id === "b").state === "none" && r.rows.find((x) => x.a.id === "c").state === "free" }],
     ["burslu", { desc: "burslu: hiçbir ay borç değil, ödeyen/ödemeyen sayısına girmez", fn: () => [athleteDues(a, { fee: 1500, burs: { a1: true } }, {}, yms), monthRows([a, { id: "c", studentName: "Can" }], {}, { fee: 1000, burs: { c: true } }, "2026-10")], ok: ([d1, t]) => d1.debt === 0 && d1.now.state === "burs" && t.count === 1 && t.rows.find((x) => x.a.id === "c").state === "burs" }],
+    ["gelir", { desc: "gelir kartı: burslu beklentiye girmez, alınan aylara göre toplanır", fn: () => incomeOf([a, { id: "c", studentName: "Can" }], { "2026-09": { paid: { a1: [{ amt: 1000 }] } }, "2026-10": { paid: { a1: [{ amt: 400 }] } } }, { fee: 1000, burs: { c: true } }, ["2026-09", "2026-10"]), ok: (r) => r.now.ym === "2026-10" && r.now.expected === 1000 && r.now.paid === 400 && r.total === 1400 && r.list[1].paid === 1000 }],
     ["burslu hatırlatma", { desc: "burslu sporcuya hatırlatma gitmez", fn: () => unpaidRoster({ fee: 1000, burs: { c: true }, roster: [a, { id: "c", studentName: "Can" }] }, {}, "2026-10"), ok: (r) => r.length === 1 && r[0].a.id === "a1" }],
     ["hatırlatma", { desc: "sunucu listesi: başlamamış ve muaf sporcuya hatırlatma gitmez", fn: () => unpaidRoster({ fee: 1000, roster: [a, { id: "b", studentName: "Bora", from: "2026-11" }, { id: "c", studentName: "Can" }] }, { free: { c: true } }, "2026-10"), ok: (r) => r.length === 1 && r[0].a.id === "a1" }],
     ["sunucu listesi", { desc: "başlangıç ayı listeye yazılır", fn: () => rosterOf([{ ...a, createdAt: "2026-07-01T10:00:00" }], { start: {} }), ok: (r) => r[0].from === "2026-07" }],
