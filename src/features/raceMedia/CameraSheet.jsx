@@ -32,7 +32,7 @@ const readQ = () => {
   }
 };
 
-function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
+function Cam({ mode, onMode, onClose, onShot, onFail, last = null, onNative, stock = "", onClear = null }) {
   const vid = useRef(null);
   const stream = useRef(null);
   const rec = useRef(null); // { r, raf, stop }
@@ -42,6 +42,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
   const [recNow, setRecNow] = useState(0);
   const [flash, setFlash] = useState(false);
   const [q, setQ] = useState(readQ);
+  const [menu, setMenu] = useState(false); // ⋯ çekim ayarları: iPhone kamerası, telefonda tutulanlar
   const pickQ = () => {
     const n = q === "hi" ? "lo" : "hi";
     setQ(n);
@@ -276,7 +277,39 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
             {q === "hi" ? "1080p" : "720p"}
           </button>
         )}
+        {!recAt && onNative && (
+          <button type="button" onClick={() => setMenu(true)} aria-label="Çekim ayarları" className={`grid size-8 shrink-0 place-items-center rounded-full bg-black/50 text-[1.125rem] font-bold leading-none ${mode === "video" ? "" : "ml-auto"}`}>
+            ⋯
+          </button>
+        )}
       </div>
+      {menu && (
+        <div className="absolute inset-0 z-10 flex items-end justify-center bg-black/50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={() => setMenu(false)}>
+          <div className="w-full max-w-[22rem] space-y-2" onClick={(e) => e.stopPropagation()}>
+            <div className="overflow-hidden rounded-2xl bg-[#2C2C2E]">
+              {[
+                ["iPhone kamerasıyla fotoğraf", () => onNative("photo")],
+                ["iPhone kamerasıyla video", () => onNative("video")],
+              ].map(([l, f]) => (
+                <button key={l} type="button" onClick={() => (setMenu(false), f())} className="block h-14 w-full border-b border-white/10 text-[1.0625rem] font-semibold last:border-0 active:bg-[#3A3A3C]">
+                  {l}
+                </button>
+              ))}
+            </div>
+            <div className="overflow-hidden rounded-2xl bg-[#2C2C2E]">
+              <p className="grid h-12 place-items-center border-b border-white/10 px-3 text-[0.875rem] tabular-nums text-white/60 last:border-0">{stock}</p>
+              {onClear && (
+                <button type="button" onClick={() => (setMenu(false), onClear())} className="block h-14 w-full text-[1.0625rem] font-semibold active:bg-[#3A3A3C]">
+                  Telefondan sil
+                </button>
+              )}
+            </div>
+            <button type="button" onClick={() => setMenu(false)} className="h-14 w-full rounded-2xl bg-[#1C1C1E] text-[1.0625rem] active:bg-[#2C2C2E]">
+              Vazgeç
+            </button>
+          </div>
+        </div>
+      )}
       {status && (
         <p className="absolute inset-x-3 bottom-[calc(10rem+env(safe-area-inset-bottom))] mx-auto w-fit max-w-full rounded-lg bg-[#FF3B30] px-3 py-1.5 text-center text-[0.8125rem] landscape:bottom-4 landscape:right-[calc(6.5rem+env(safe-area-inset-right))]">
           {status}

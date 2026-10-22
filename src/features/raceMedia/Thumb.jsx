@@ -33,6 +33,7 @@ export function Thumb({ kind, url, thumb = "", local = "", dur = 0, up = null, d
             <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.35)" strokeWidth="4" />
             <circle cx="22" cy="22" r="18" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeDasharray="113.1" strokeDashoffset={113.1 * (1 - (up > 0 ? Math.max(0.04, up) : 0.25))} transform="rotate(-90 22 22)" className="transition-[stroke-dashoffset] duration-300" />
           </svg>
+          {up > 0 && <b className="absolute text-[0.6875rem] font-semibold tabular-nums text-white">{Math.round(up * 100)}</b>}
         </span>
       )}
       {done && <span className="absolute right-1.5 top-1.5 grid size-[1.125rem] place-items-center rounded-full bg-ok text-[0.6875rem] font-bold text-white">✓</span>}

@@ -14,12 +14,12 @@ import { WindSheet } from "./WeatherTab";
 // Süre (Seyhun 2026-10-18): yarış akışı (useRaceFlow: Başlat · İptal · Yarışı bitir, sebep sorma, Geri al). Yarışlar bütün seri boyunca
 // numaralanır (2. gün 4. yarıştan devam eder); adı, saatleri ve iptal durumu dokununca değişir. Yarış günü sayfa bu sekmeyle açılır.
 // Düzen (Seyhun 2026-10-19 onayı, örnek yaris-tasarim/multimedya/sure-yeni-2.png): sayaca dokununca başlar; altta Start · Şamandıra ·
-// Finish kareleri; günün yarışları tek satır ("Liste ›" açar). Alt şerit: Fotoğraf · Video · ana düğme · + (rüzgâr, akıntı, not).
+// Finish kareleri; günün yarışları tek satır ("Liste ›" açar). Alt şerit: Rüzgâr (çekim alttaki Kayıt düğmesinden, Seyhun 2026-10-22).
 // Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip.
 const PRESETS = [60, 120, 300, 600];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
-export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset }) {
+export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
   const tr = useTimerRun();
   const timer = tr.t;
   const [edit, setEdit] = useState(null); // düzenlenen yarış
@@ -59,12 +59,6 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset 
         race={flow}
         title={cur ? raceName(cur) : ""}
         where={race?.name || "Yarış"}
-        lead={
-          <>
-            <Button variant="secondary" onClick={() => onCam("photo")}>Fotoğraf</Button>
-            <Button variant="secondary" onClick={() => onCam("video")}>Video</Button>
-          </>
-        }
         tail={<Button variant="secondary" onClick={() => setWind(true)}>Rüzgâr</Button>}
       />
       {!!cur && tr.up && !cur.void && <Marks buoys={live.buoys} s={cur} on onMark={mark} onBuoys={setBuoys} />}

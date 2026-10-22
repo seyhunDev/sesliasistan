@@ -40,11 +40,17 @@ function Clip({ m, bar, onTap }) {
   const [play, setPlay] = useState(false);
   const [wait, setWait] = useState(true);
   const [pct, setPct] = useState(0);
+  // Açılınca oynatılır; iPhone sesli kendiliğinden oynatmaya izin vermezse video hiç inmiyor ve "Yükleniyor" bitmiyordu
+  // (Seyhun 2026-10-22): o zaman halka yerine küçük resim ve oynat düğmesi görünür, dokununca iner ve oynar.
+  const [want, setWant] = useState(true);
+  useEffect(() => {
+    v.current?.play().catch(() => setWant(false));
+  }, []);
   const s = m.phase ? Math.round(m.sec + t) : null;
   const toggle = () => {
     const x = v.current;
     if (!x) return;
-    if (x.paused || x.ended) x.play().catch(() => {});
+    if (x.paused || x.ended) (setWant(true), x.play().catch(() => setWant(false)));
     else x.pause();
   };
   const seek = (e) => {
@@ -67,7 +73,6 @@ function Clip({ m, bar, onTap }) {
         src={m.local || m.url}
         poster={m.thumb || undefined}
         preload="auto"
-        autoPlay
         playsInline
         onClick={onTap}
         onLoadedMetadata={(e) => isFinite(e.currentTarget.duration) && setD(e.currentTarget.duration)}
@@ -78,11 +83,12 @@ function Clip({ m, bar, onTap }) {
         onEnded={() => setPlay(false)}
         onWaiting={() => setWait(true)}
         onCanPlay={() => setWait(false)}
+        onLoadedData={() => setWait(false)}
         onPlaying={() => setWait(false)}
-        className={`size-full object-contain transition-[filter] ${wait ? "brightness-[.55]" : ""}`}
+        className={`size-full object-contain transition-[filter] ${want && wait ? "brightness-[.55]" : ""}`}
       />
       <Pill s={s} />
-      {wait && (
+      {want && wait && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center" role="status">
           <svg width="52" height="52" viewBox="0 0 44 44" className={`mx-auto ${pct > 0 ? "" : "animate-spin"}`}>
             <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.3)" strokeWidth="4" />
