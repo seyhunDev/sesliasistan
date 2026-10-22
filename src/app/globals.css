@@ -718,3 +718,7 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .ck-glass { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); }
 /* Kokpitteki seçili gün (HomeDays: penceresi açık gün) */
 .ck .raised.ck-sel { background: #8b5cf6; color: #fff; border-color: #a78bfa; }
+/* Asistan kapanınca sekme çubuğu alttan kayarak gelir (TabBar rise) */
+@keyframes atabup { from { transform: translate3d(0, 100%, 0); } }
+.atab-up { animation: atabup .36s cubic-bezier(.22, .8, .24, 1) backwards; }
+@media (prefers-reduced-motion: reduce) { .atab-up { animation: none; } }

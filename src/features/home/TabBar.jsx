@@ -1,5 +1,6 @@
 "use client";
 
+import { haptic } from "@/lib/haptic";
 import { Suspense, createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -91,7 +92,7 @@ export function useDock(cfg) {
 
 // Yazarak sorma: sesle aynı kutu (sade tasarım, 2026-10-16). Üstte yazı alanı, altta × (yazmayı bırak) ve tek ana düğme:
 // yazı varken ↑ gönder, boşken 🎤 (söyleneni kutuya yazar, dokununca durur).
-function Composer({ cfg, onDone, init = "" }) {
+function Composer({ cfg, onDone, onClose, init = "" }) {
   const { openAssistant } = useAssistant();
   const toast = useToast();
   const [text, setText] = useState(init);
@@ -113,8 +114,8 @@ function Composer({ cfg, onDone, init = "" }) {
   return (
     <TypeBox
       mode={listening ? "listening" : "typing"}
-      onX={() => (listening ? sp.stop("edit") : onDone())}
-      xLabel={listening ? "Dinlemeyi bırak" : "Yazmayı bırak"}
+      onX={() => (sp.cancel(), onDone(), onClose?.())}
+      xLabel="Asistanı kapat"
       onMain={listening ? () => sp.stop("edit") : has ? send : () => sp.start({ autoStop: 8000 })}
       mainIcon={listening ? "check" : has ? "up" : "mic"}
       mainLabel={listening ? "Bitti" : has ? "Gönder" : "Sesle yaz"}
@@ -236,7 +237,8 @@ function AssistBox({ mode, text, tail = "", ph, r = {}, onX, xLabel, xText, onMa
   }, [text, tail]);
   const listening = mode === "listening";
   const said = [text, tail].filter(Boolean).join(" ");
-  const showText = listening || mode === "sending" || !!said;
+  // "Dinliyorum" tek yerde (Seyhun 2026-10-22): kutu yalnız söz varken; dinlerken altta tek satır (nokta · Dinliyorum · süre)
+  const showText = !!said;
   const right = listening && onStop ? { label: "Dur", text: "Dur", on: onStop, icon: <span className="size-3.5 rounded-[3px] bg-white" aria-hidden="true" /> }
     : onTalk ? { label: "Konuşmaya devam", text: "Devam", on: onTalk, icon: <Icon name="mic" className="size-[1.375rem]" /> }
     : mode === "idle" && onType ? { label: "Yaz", text: "Yaz", on: onType, icon: <Icon name="keyboard" className="size-[1.375rem]" /> }
@@ -245,28 +247,21 @@ function AssistBox({ mode, text, tail = "", ph, r = {}, onX, xLabel, xText, onMa
     <div className="relative px-5 pb-1">
       {/* Söylenen / yazılan söz: düğmenin üstünde, büyük. Dinlerken altında süre; durunca dokununca klavyeyle düzeltilir */}
       {showText && (
-        <div data-mode={mode} className={`asheet-input amsg-in mb-4 ${mode === "idle" ? "asheet-draft" : ""}`}>
+        <div data-mode={mode} className={`asheet-input amsg-in ${listening ? "mb-2" : "mb-4"} ${mode === "idle" ? "asheet-draft" : ""}`}>
           <div ref={box} onClick={onText} className={`max-h-[9.5rem] overflow-hidden text-[1.3125rem] font-semibold leading-snug tracking-[-.01em] ${onText ? "cursor-text" : ""}`}>
-            {said ? (
-              <span className="text-fg">
-                {text}
-                {tail && <span className="text-fg/45">{text ? " " : ""}{tail}</span>}
-                {listening && <i className="box-caret" aria-hidden="true" />}
-              </span>
-            ) : (
-              <span className="text-fg/60">
-                {listening ? "Dinliyorum…" : ph}
-                {listening && <i className="box-caret" aria-hidden="true" />}
-              </span>
-            )}
+            <span className="text-fg">
+              {text}
+              {tail && <span className="text-fg/45">{text ? " " : ""}{tail}</span>}
+              {listening && <i className="box-caret" aria-hidden="true" />}
+            </span>
           </div>
-          {listening && (
-            <p className="mt-2 flex items-center gap-2 text-[0.8125rem] font-semibold text-fg/70">
-              <MicDot />
-              Dinliyorum · <ListenClock />
-            </p>
-          )}
         </div>
+      )}
+      {listening && (
+        <p className="amsg-in mb-3 flex items-center justify-center gap-2 text-[0.875rem] font-semibold text-fg/75">
+          <MicDot />
+          Dinliyorum · <ListenClock />
+        </p>
       )}
       <div className="relative flex h-[5.25rem] items-center justify-center">
         <span className="aside absolute left-[10%] flex flex-col items-center gap-1.5">
@@ -688,6 +683,13 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   // Yazı kutusunda görünen: dinlerken ve gönderilirken söylenen söz, değilse sayfanın ipucu
   // Alttan açılan sayfa: asistan açıkken, yazarken ya da kayıt ekranında; değilse sekme çubuğu
   const sheet = active || typing || rec;
+  // Asistan kapanınca sekme çubuğu bir anda belirmez, alttan kayarak gelir (Seyhun 2026-10-22: "her defasında göze kötü geliyor")
+  const [wasSheet, setWasSheet] = useState(sheet);
+  const [rise, setRise] = useState(false);
+  if (wasSheet !== sheet) {
+    setWasSheet(sheet);
+    setRise(!sheet);
+  }
   const said = heard || (active && state === "listening" ? "Dinliyorum…" : "");
   // Konuşma kutusu (Seyhun'un örneği, 2026-10-09): dinlerken, çevrilirken ve durdurulup bekleyen sözde satırın yerine
   // geniş yuvarlak kutu: üstte söylenen yazı, altta × (sil) · noktalı ses dalgası · ■ (durdur, gönderme) · ↑ (gönder)
@@ -707,6 +709,11 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
     : draft;
   const boxPh = "";
   const ring = active ? ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown, saved: live.saved }) : {};
+  // İş bitince (düğmede ✓) kısa "tamam" titreşimi; dinleme başlarken titreşim useSpeech'te
+  const done = !!ring.check;
+  useEffect(() => {
+    if (done) haptic("success");
+  }, [done]);
   return (
     <div
       ref={box}
@@ -756,7 +763,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
               </div>
             )}
             {typing ? (
-              <Composer cfg={cfg} onDone={onTypingDone} init={typeInit} />
+              <Composer cfg={cfg} onDone={onTypingDone} onClose={onClose} init={typeInit} />
             ) : box2 ? (
               <AssistBox
                 mode={mode}
@@ -764,9 +771,10 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                 text={boxText}
                 ph={boxPh}
                 tail={mode === "listening" && heard && live.heardFix != null ? live.tail || "" : ""}
-                onX={mode === "listening" || draft ? voice.cancel : onClose}
-                xLabel={mode === "listening" ? "Sil ve dinlemeyi bırak" : draft ? "Yazıyı sil" : "Konuşmayı bitir"}
-                xText={mode === "listening" ? "Vazgeç" : draft ? "Sil" : "Kapat"}
+                // × her zaman asistanı kapatır (Seyhun 2026-10-22); dinleme ve bekleyen söz de gider
+                onX={onClose}
+                xLabel="Asistanı kapat"
+                xText="Kapat"
                 onType={typeNow}
                 onHold={typeNow}
                 onStop={voice.edit}
@@ -791,7 +799,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
           </div>
         ) : (
           // Boşta: alt sekme çubuğu, ortada asistan düğmesi (çubuktan yukarı taşar; üstündeki saydam pay dokunuş almaz)
-          <div className={`atabbar-wrap ${noAi ? "" : "pt-4"}`}>
+          <div className={`atabbar-wrap ${noAi ? "" : "pt-4"} ${rise ? "atab-up" : ""}`}>
             <nav aria-label="Sekmeler" className="atabbar relative pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-0.5rem))]">
               {/* Sporcu tarafında asistan düğmesi yok, dört sekme (Seyhun: "sporcu sesli asistanı kullanmayacak", 2026-10-13) */}
               <div className={`mx-auto grid h-14 max-w-[34rem] items-stretch ${noAi ? "grid-cols-4" : "grid-cols-5"}`}>

@@ -24,6 +24,7 @@ const ERR = {
 };
 const FATAL = ["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported", "network"];
 const NO_SPEECH = "Ses duyulmadı, tekrar dene.";
+const QUIET_PEAK = 0.04; // ham ses tepesi bunun altındaysa konuşma yok sayılır (oda gürültüsü; konuşma genelde 0,1 üstü)
 const MAX_SEC = 90; // güvenlik sınırı
 const FINAL_WAIT = 700; // durdurunca son sonucu en fazla bu kadar bekle (ms)
 const VOICE_LVL = 0.03; // kayıt yolunda "ses var" alt eşiği (ortam gürültüsüne göre yükselir, vad.js)
@@ -534,7 +535,9 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       const blob = new Blob(chunks, { type });
       // Kendiliğinden açılan dinlemede hiç konuşulmadıysa (ölçer çalışıyor ve ses yok) kayıt gönderilmez:
       // Whisper sessizlikte "İzlediğiniz için teşekkür ederim" gibi cümle uydurur, asistan bunu komut sanır
-      if (s.auto && s.meterLive && !s.voiceSeen) {
+      // Elle durdurulsa da (bastı, konuşmadı, yine bastı) ölçer hiç ses görmediyse ve ham ses de neredeyse sessizse
+      // gönderilmez (Seyhun 2026-10-22: "ses hiç algılanamadıysa yapay zekaya bir şey gitmesin")
+      if (s.meterLive && !s.voiceSeen && (s.auto || (!s.partial && s.pcmPeak && pcmLevel(s).peak < QUIET_PEAK))) {
         finish();
         fail(NO_SPEECH);
         return;
