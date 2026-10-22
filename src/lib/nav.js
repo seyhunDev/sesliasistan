@@ -34,6 +34,7 @@ export const PAGES = {
   shopping: { path: "/shopping", label: "Alışveriş listesi" },
   birthdays: { path: "/birthdays", label: "Doğum günleri" },
   schedule: { path: "/schedule", label: "Ders programı" },
+  english: { path: "/english", label: "İngilizce (kelimeler ve hazır cümleler)" },
   archive: { path: "/archive", label: "Arşiv" },
   settings: { path: "/settings", label: "Ayarlar" },
   people: { path: "/staff", label: "Kişiler", need: "owner" },
@@ -79,6 +80,7 @@ const TARGETS = [
   ["birthdays", /(^|\s)doğum ?gün\S*/],
   ["schedule", /(^|\s)(ders\S*|okul programı\S*)/],
   ["shopping", /(^|\s)(alışveriş\S*|market\S*|alınacak\S*)/],
+  ["english", /(^|\s)(ingilizce (sayfa|ekran|çalış|öğren|kelimeler|cümleler)\S*|kelimelerim\S*)|^ingilizce$/],
   ["archive", /(^|\s)arşiv\S*/],
   ["settings", /(^|\s)(ayar\S*|tercih\S*)/],
   ["invoices", /(^|\s)fatura\S*/],
@@ -101,7 +103,7 @@ const TARGETS = [
 ];
 
 // Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası", "planlarım", "fişlerim")
-const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|[iı]nstagram|medya|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|borçlar(ım)?|alacaklar(ım)?|antrenman günlüğü|antrenman sayfası|sayaç|geri sayım|envanter(im)?|demirbaşlar|fitness?|fitnes|beslenme|rüzg[aâ]r haritası|ruzgar haritası|windy)( sayfası| ekranı)?$/;
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|[iı]nstagram|medya|ingilizce|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|borçlar(ım)?|alacaklar(ım)?|antrenman günlüğü|antrenman sayfası|sayaç|geri sayım|envanter(im)?|demirbaşlar|fitness?|fitnes|beslenme|rüzg[aâ]r haritası|ruzgar haritası|windy)( sayfası| ekranı)?$/;
 
 // Önceki sayfaya dönüş ("geri dön", "geri git", "bir önceki sayfaya dön"): kısa ve başka iş içermeyen cümleler
 const BACK = /^(?:(?:tamam|şimdi|hadi|bir)\s+)?(?:geri (?:dön|git|gel|gidelim|dönelim)\S*|(?:bir )?önceki sayfa\S*(?: (?:dön|git|aç|geç)\S*)?|geri)(?: lütfen)?$/;

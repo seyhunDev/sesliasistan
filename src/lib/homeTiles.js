@@ -247,6 +247,7 @@ export function homeActions(o) {
       o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
       (!o.staff || o.fit) && { href: "/fitness", icon: "dumbbell", label: "Fitness" },
       o.lessons && { href: "/schedule", icon: "book", label: "Dersler" },
+      !o.side && { href: "/english", icon: "chat", label: "İngilizce" }, // kelimeler ve hazır cümleler (Seyhun 2026-10-22)
       { href: "/archive", icon: "archive", label: "Arşiv" },
     ]],
     ["Kulüp", [

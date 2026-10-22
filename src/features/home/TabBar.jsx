@@ -740,9 +740,12 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
             {active && (
               <div className="relative flex h-12 shrink-0 items-center px-5">
                 {/* Durum yazısı (Düşünüyorum, Yapıyorum 2 / 3, Kaydedildi): sol üstte tek satır; sağda sesli yanıt */}
+                {/* İş bitince ("Kaydedildi", "Tamam") yazı görünmez: bunu düğmedeki yeşil ✓ anlatır; ekran okuyucu yine okur */}
                 <p aria-live="polite" className="min-w-0 truncate text-[0.875rem] font-semibold text-fg/80">
-                  {ring.label}
-                  {ring.label && ring.sub ? <span className="font-normal text-fg/60"> · {ring.sub}</span> : null}
+                  <span className={ring.tone === "ok" ? "sr-only" : ""}>
+                    {ring.label}
+                    {ring.label && ring.sub ? <span className="font-normal text-fg/60"> · {ring.sub}</span> : null}
+                  </span>
                 </p>
                 <ReadToggle />
               </div>
