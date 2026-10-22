@@ -9,8 +9,8 @@ import { MomentPicker } from "./MomentPicker";
 
 // Tam ekran görüntüleyici, iPhone Fotoğraflar gibi sade (Seyhun 2026-10-22: "çok karma karışık, daha sade, iPhone tasarım"; örnek
 // yaris-tasarim/medya/izleme-sade.png): siyah zemin, görüntü ekrana sığar. Üstte yuvarlak geri, ortada başlık (yarış/start adı) ve altında
-// küçük gün · saat, sağda ⋯ (Paylaş · Kimler var · Düzelt · Sil; Düzelt: yarış ve an, MomentPicker). Videoda yalnız çekimdeki sayaç, altta
-// ince çubuk (geçen / kalan süre) ve oynat/durdur. Görüntüye dokununca bütün yazılar gizlenir/görünür; sağa-sola kaydırınca önceki/sonraki.
+// küçük gün · saat. Altta iPhone gibi araç çubuğu: Paylaş · Kimler · Düzelt · Sil (Düzelt: yarış ve an, MomentPicker). Videoda çekimdeki sayaç, altta
+// oynat · sarma çubuğu (geçen / kalan) · ses. Görüntüye dokununca bütün yazılar gizlenir/görünür; sağa-sola kaydırınca önceki/sonraki.
 // Telefonda tutulan dosya (m.local, 7 gün) varsa o oynar, beklemeden açılır; yoksa Firebase'den, inerken "Yükleniyor %38".
 export function MediaViewer(props) {
   if (!props.id) return null;
@@ -32,7 +32,7 @@ function Pill({ s }) {
 }
 
 // Video: kendi oynatma çubuğumuz (iPhone'un düğmeleri yok). Küçük resim hemen görünür, inerken ortada halka ve yüzde.
-function Clip({ m, bar, onTap }) {
+function Clip({ m, bar, onTap, tools = null }) {
   const v = useRef(null);
   const track = useRef(null);
   const [t, setT] = useState(0);
@@ -43,6 +43,7 @@ function Clip({ m, bar, onTap }) {
   // Açılınca oynatılır; iPhone sesli kendiliğinden oynatmaya izin vermezse video hiç inmiyor ve "Yükleniyor" bitmiyordu
   // (Seyhun 2026-10-22): o zaman halka yerine küçük resim ve oynat düğmesi görünür, dokununca iner ve oynar.
   const [want, setWant] = useState(true);
+  const [mute, setMute] = useState(false);
   useEffect(() => {
     v.current?.play().catch(() => setWant(false));
   }, []);
@@ -98,31 +99,35 @@ function Clip({ m, bar, onTap }) {
         </div>
       )}
       {bar && (
-        <div onTouchStart={stop} onTouchEnd={stop} className={`absolute inset-x-0 bottom-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))] [text-shadow:0_1px_2px_rgba(0,0,0,.6)] ${side}`}>
-          <div
-            ref={track}
-            onPointerDown={(e) => (e.currentTarget.setPointerCapture(e.pointerId), seek(e))}
-            onPointerMove={(e) => e.currentTarget.hasPointerCapture(e.pointerId) && seek(e)}
-            className="flex h-6 cursor-pointer touch-none items-center"
-            role="slider"
-            aria-label="Süre"
-            aria-valuemin={0}
-            aria-valuemax={Math.round(d)}
-            aria-valuenow={Math.round(t)}
-          >
-            <div className="h-1 w-full overflow-hidden rounded-full bg-white/25">
-              <div className="h-full rounded-full bg-white" style={{ width: `${d ? Math.min(100, (t / d) * 100) : 0}%` }} />
+        // iPhone Fotoğraflar gibi (Seyhun 2026-10-22): oynat · sarma çubuğu · ses, altında Paylaş · Kimler · Düzelt · Sil
+        <div onTouchStart={stop} onTouchEnd={stop} className={`absolute inset-x-0 bottom-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] [text-shadow:0_1px_2px_rgba(0,0,0,.6)] ${side}`}>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={toggle} aria-label={play ? "Durdur" : "Oynat"} className="grid size-11 shrink-0 place-items-center rounded-full active:bg-white/15">
+              <svg viewBox="0 0 24 24" className="size-6" fill="currentColor">
+                {play ? <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" /> : <path d="M8 5.5v13a.5.5 0 0 0 .77.42l10.2-6.5a.5.5 0 0 0 0-.84L8.77 5.08A.5.5 0 0 0 8 5.5Z" />}
+              </svg>
+            </button>
+            <div
+              ref={track}
+              onPointerDown={(e) => (e.currentTarget.setPointerCapture(e.pointerId), seek(e))}
+              onPointerMove={(e) => e.currentTarget.hasPointerCapture(e.pointerId) && seek(e)}
+              className="relative h-9 min-w-0 flex-1 cursor-pointer touch-none overflow-hidden rounded-lg bg-white/15"
+              role="slider"
+              aria-label="Süre"
+              aria-valuemin={0}
+              aria-valuemax={Math.round(d)}
+              aria-valuenow={Math.round(t)}
+            >
+              <div className="absolute inset-y-0 left-0 bg-white/25" style={{ width: `${d ? Math.min(100, (t / d) * 100) : 0}%` }} />
+              <div className="absolute inset-y-0 w-[3px] -translate-x-1/2 rounded-full bg-white" style={{ left: `${d ? Math.min(100, (t / d) * 100) : 0}%` }} />
+              <span className="absolute inset-y-0 left-2.5 flex items-center text-[0.75rem] font-semibold tabular-nums">{ms(Math.round(t))}</span>
+              <span className="absolute inset-y-0 right-2.5 flex items-center text-[0.75rem] font-semibold tabular-nums text-white/70">−{ms(Math.max(0, Math.round(d - t)))}</span>
             </div>
+            <button type="button" onClick={() => (v.current && (v.current.muted = !mute), setMute(!mute))} aria-label={mute ? "Sesi aç" : "Sesi kapat"} className="grid size-11 shrink-0 place-items-center rounded-full active:bg-white/15">
+              <Icon name={mute ? "mute" : "volume"} className="size-6" />
+            </button>
           </div>
-          <div className="flex justify-between text-[0.6875rem] tabular-nums text-white/60">
-            <span>{ms(Math.round(t))}</span>
-            <span>−{ms(Math.max(0, Math.round(d - t)))}</span>
-          </div>
-          <button type="button" onClick={toggle} aria-label={play ? "Durdur" : "Oynat"} className="mx-auto mt-1 grid size-12 place-items-center rounded-full active:bg-white/15">
-            <svg viewBox="0 0 24 24" className="size-7" fill="currentColor">
-              {play ? <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" /> : <path d="M8 5.5v13a.5.5 0 0 0 .77.42l10.2-6.5a.5.5 0 0 0 0-.84L8.77 5.08A.5.5 0 0 0 8 5.5Z" />}
-            </svg>
-          </button>
+          {tools}
         </div>
       )}
     </>
@@ -134,9 +139,8 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
   // Videoyu paylaşırken sorulur: sesli ya da sessiz (Seyhun 2026-10-20)
   const [ask, setAsk] = useState(false);
   const shareIt = (x) => (x.kind === "video" ? setAsk(true) : onShare(x));
-  // Paylaş · Kimler var · Düzelt · Sil "⋯" altında (Seyhun 2026-10-22: "öyle açık kalmasına gerek yok, odak noktamız video");
+  // Paylaş · Kimler · Düzelt · Sil altta araç çubuğunda (önce ⋯ altındaydı; Seyhun 2026-10-22 iPhone gibi istedi);
   // panel: altta açık düzenleme ("fix": yarış ve an, "tag": kimler var), Tamam ile kapanır
-  const [menu, setMenu] = useState(false);
   const [panel, setPanel] = useState(null);
   const start = useRef(null);
   const i = Math.max(0, items.findIndex((m) => m.id === id));
@@ -164,6 +168,24 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
   };
   const side = "pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]";
   const title = label(m);
+  // Alt araç çubuğu (iPhone Fotoğraflar gibi; Seyhun 2026-10-22: "iPhone tasarımına benzetelim, daha kullanışlı olur").
+  // Yüklenmekte olan kayıtta yok (künyesi henüz yok)
+  const acts = m.up != null ? [] : [
+    onShare && ["Paylaş", "share", () => shareIt(m)],
+    ours.length > 0 && onTag && ["Kimler", "users", () => setPanel("tag")],
+    onFix && ["Düzelt", "edit", () => setPanel("fix")],
+    ["Sil", "trash", () => onDrop(m)],
+  ].filter(Boolean);
+  const tools = acts.length > 0 && (
+    <div className="mt-1 flex justify-around">
+      {acts.map(([l, ic, f]) => (
+        <button key={l} type="button" onClick={f} className="flex min-w-16 flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-[0.6875rem] font-semibold active:bg-white/15">
+          <Icon name={ic} className="size-6" />
+          {l}
+        </button>
+      ))}
+    </div>
+  );
   const when = dayLabel(dayOf(m.at), dayOf(new Date().toISOString()));
 
   return (
@@ -171,13 +193,14 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
       {m.kind === "video" ? (
         // Düzenleme paneli açıkken dikte video panelin üstünde biter (yan çevrilince bütün ekran)
         <div className={`absolute inset-0 ${panel ? "portrait:bottom-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
-          <Clip key={m.local || m.id} m={m} bar={ui && !panel} onTap={() => setUi((v) => !v)} />
+          <Clip key={m.local || m.id} m={m} bar={ui && !panel} onTap={() => setUi((v) => !v)} tools={tools} />
         </div>
       ) : (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img key={m.id} src={m.local || m.url} alt="" onClick={() => setUi((v) => !v)} className="absolute inset-0 size-full object-contain" />
           <Pill s={m.phase ? Math.round(m.sec) : null} />
+          {ui && !panel && tools && <div className={`absolute inset-x-0 bottom-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] ${side}`}>{tools}</div>}
         </>
       )}
       {ui && (
@@ -189,39 +212,10 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
             <p className="truncate text-[0.9375rem] font-semibold">{title || hm(m.at)}</p>
             <p className="truncate text-[0.75rem] text-white/60">{m.up != null ? (m.up < 0 ? "Telefonda · buluta gönderilemedi" : `Buluta gönderiliyor %${Math.round(m.up * 100)}`) : title ? `${when} · ${hm(m.at)}` : when}</p>
           </div>
-          {m.up != null ? (
-            <span className="size-10 shrink-0" />
-          ) : (
-            <button type="button" onClick={() => setMenu(true)} aria-label="Diğer" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 active:bg-white/25">
-              <Icon name="more" className="size-5" />
-            </button>
-          )}
+          <span className="size-10 shrink-0" />
         </div>
       )}
       {busy && <p className="absolute inset-x-0 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 mx-auto w-fit rounded-lg bg-black/70 px-3 py-1.5 text-[0.875rem] font-semibold">{busy}</p>}
-      {menu && (
-        <div className="absolute inset-0 z-30 flex items-end justify-center bg-black/50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={() => setMenu(false)}>
-          <div className="w-full max-w-[22rem] space-y-2" onClick={(e) => e.stopPropagation()}>
-            <div className="overflow-hidden rounded-2xl bg-[#2C2C2E]">
-              {[
-                onShare && ["Paylaş", () => shareIt(m)],
-                ours.length > 0 && onTag && ["Kimler var", () => setPanel("tag")],
-                onFix && ["Düzelt", () => setPanel("fix")],
-                ["Sil", () => onDrop(m), true],
-              ]
-                .filter(Boolean)
-                .map(([l, f, red]) => (
-                  <button key={l} type="button" onClick={() => (setMenu(false), f())} className={`block h-14 w-full border-b border-white/10 text-[1.0625rem] font-semibold last:border-0 active:bg-[#3A3A3C] ${red ? "text-[#FF453A]" : ""}`}>
-                    {l}
-                  </button>
-                ))}
-            </div>
-            <button type="button" onClick={() => setMenu(false)} className="h-14 w-full rounded-2xl bg-[#1C1C1E] text-[1.0625rem] active:bg-[#2C2C2E]">
-              Vazgeç
-            </button>
-          </div>
-        </div>
-      )}
       {ask && (
         <div className="absolute inset-0 z-30 flex items-end justify-center bg-black/50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={() => setAsk(false)}>
           <div className="w-full max-w-[22rem] space-y-2" onClick={(e) => e.stopPropagation()}>
