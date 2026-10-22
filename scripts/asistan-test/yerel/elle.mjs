@@ -2141,7 +2141,7 @@ group("Beslenme")([
 // Plan bitti (Arşiv'e gider) ve İngilizce kelime kartı
 const HTP = await import("@/lib/homeTiles");
 const EW = await import("@/lib/englishWords");
-group("Plan bitti ve kelime kartı", [
+group("Plan bitti ve kelime kartı")([
   ["bitti yaması", F("done + doneAt, geri al temizler", () => {
     const d = PA.planDonePatch("2026-10-10T10:00:00Z");
     const r = PA.planReopenPatch();
@@ -2169,6 +2169,61 @@ group("Plan bitti ve kelime kartı", [
     return b === a + 1;
   })],
 ]);
+
+// İngilizce kelime çalışma: Firestore destesi (orgs/{orgId}/english/deck), aralıklı tekrar, widget kartı, asistan cümleleri
+{
+  const T = "2026-10-22";
+  const R = { en: "resilient", type: "sıfat", tr: "dirençli", ex: "Kids are resilient.", exTr: "Çocuklar dirençlidir." };
+  const seeded = () => EW.seedDeck(null).deck;
+  group("İngilizce kelime çalışma")([
+    ["deste tohumu", F("gömülü listenin tamamı, hepsi liste", () => { const { deck, changed } = EW.seedDeck(null); return changed && deck.words.length === EW.WORDS.length && deck.words.every((w) => w.status === "list") && deck.seedV === EW.SEED_V; })],
+    ["tohum bir kez", F("güncel deste yeniden yazılmaz", () => !EW.seedDeck(seeded()).changed)],
+    ["eksik kelime eklenir", F("eski destede kendi kelimesi ve durumu kalır", () => {
+      const old = { words: [{ ...R, status: "study", box: 2, due: T }, { en: "achieve", tr: "başarmak", status: "known" }], seedV: 1 };
+      const { deck, changed } = EW.seedDeck(old);
+      return changed && deck.words.length === EW.WORDS.length + 1 && EW.findWord(deck, "resilient").box === 2 && EW.findWord(deck, "achieve").status === "known";
+    })],
+    ["çalışmaya al", F("ilk gün hemen kartta, çalış işaretiyle", () => { const d = EW.studyWord(seeded(), R, T); const c = EW.pickCard(d, T, 5); return c.en === "resilient" && c.study === true; })],
+    ["tekrar aralığı", F("1, 2, 4 gün sonra; aynı gün ikinci gösterim saymaz", () => {
+      let d = EW.studyWord(seeded(), R, T);
+      d = EW.reviewWord(d, "resilient", T);
+      const a = EW.findWord(d, "resilient").due;
+      d = EW.reviewWord(d, "resilient", T);
+      const same = EW.findWord(d, "resilient").due;
+      d = EW.reviewWord(d, "resilient", "2026-10-23");
+      const b = EW.findWord(d, "resilient").due;
+      d = EW.reviewWord(d, "resilient", "2026-10-25");
+      return a === "2026-10-23" && same === a && b === "2026-10-25" && EW.findWord(d, "resilient").due === "2026-10-29" && !EW.pickCard(d, "2026-10-26", 0).study;
+    })],
+    ["son aralık tekrar eder", F("öğrendim denene kadar 14 günde bir", () => {
+      let d = { ...EW.studyWord(seeded(), R, T), gaps: [1, 3] };
+      for (const day of ["2026-10-22", "2026-10-23", "2026-10-26"]) d = EW.reviewWord(d, "resilient", day);
+      return EW.findWord(d, "resilient").due === "2026-10-29" && EW.findWord(d, "resilient").status === "study";
+    })],
+    ["öğrendim", F("artık kartta ve widget'ta yok", () => {
+      const d = EW.knowWord(EW.studyWord(seeded(), R, T), "resilient");
+      return EW.findWord(d, "resilient").status === "known" && !EW.pickCard(d, T, 0).study && EW.widgetWord(d, T).en !== "resilient";
+    })],
+    ["widget kartı", F("çalışma kelimesi önce, alanlar tam", () => {
+      const d = EW.reviewWord(EW.studyWord(seeded(), R, T), "resilient", T);
+      const w = EW.widgetWord(d, "2026-10-22");
+      return w.en === "resilient" && w.study === true && ["en", "type", "tr", "ex", "exTr", "study"].every((k) => k in w);
+    })],
+    ["widget çalışma yokken", F("listeden günün kelimesi, gün boyu aynı", () => { const a = EW.widgetWord(seeded(), T); return a.study === false && a.en && EW.widgetWord(seeded(), T).en === a.en; })],
+    ["cihaz kopyası", F("yazılan deste geri okunur", () => {
+      const m = new Map();
+      const st = { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, v) };
+      EW.keepDeck(EW.studyWord(seeded(), R, T), st);
+      return EW.findWord(EW.cachedDeck(st), "resilient")?.status === "study";
+    })],
+    ["ekle cümlesi", F("kelime ve çalıştır", () => JSON.stringify(EW.wordCommand("resilient kelimesini ekle, bana çalıştır")) === '{"op":"study","word":"resilient"}')],
+    ["deyim", F("iki kelimeli", () => EW.wordCommand("İngilizce take off kelimesini çalışma listeme ekle")?.word === "take off")],
+    ["öğrendim cümlesi", F("known", () => EW.wordCommand("resilient kelimesini öğrendim")?.op === "known")],
+    ["çıkar cümlesi", F("drop", () => EW.wordCommand("resilient kelimesini çalışmadan çıkar")?.op === "drop")],
+    ["aralık cümlesi", F("her gün, 2 günde bir, 1 3 7", () => EW.wordCommand("kelimeleri her gün göster")?.gaps?.join() === "1" && EW.wordCommand("kelimeleri iki günde bir göster")?.gaps?.join() === "2" && EW.wordCommand("kelime tekrarını 1 3 7 gün yap")?.gaps?.join() === "1,3,7")],
+    ["başka cümleler değil", F("kelime geçmeyen cümle", () => !EW.wordCommand("yarın 10'da toplantı ekle") && !EW.wordCommand("not al: yeni kelime öğrendim"))],
+  ]);
+}
 
 const DB = await import("@/lib/debts");
 {
