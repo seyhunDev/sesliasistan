@@ -34,6 +34,11 @@ private func yoklamaURL(_ a: WidgetVeri.Antrenman?, _ now: Date) -> URL {
     return url("/athletes/attendance")
 }
 
+// Başlık "Antrenman" / "Optimist antrenmanı" gibiyse "Antrenman" bir daha yazılmaz: başlık etiket olur
+private func antrenmanAdi(_ a: WidgetVeri.Antrenman) -> String {
+    a.title.lowercased(with: Locale(identifier: "tr_TR")).contains("antrenman") ? a.title : "Antrenman"
+}
+
 private func antrenmanPlan(_ a: WidgetVeri.Antrenman) -> WidgetVeri.Plan {
     WidgetVeri.Plan(title: a.title, date: a.date, time: a.time, important: nil)
 }
@@ -190,8 +195,9 @@ private struct AntrenmanBolumu: View {
         } else if let a = e.v?.antrenman(e.date) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Etiket(yazi: gunAdi(a, e.date) == "Bugün" ? "Antrenman" : "Antrenman · \(gunAdi(a, e.date))")
-                    Sayi(deger: a.time.isEmpty ? gunAdi(a, e.date) : a.time, ek: a.place?.isEmpty == false ? a.place! : a.title, boy: 24)
+                    let ad = antrenmanAdi(a)
+                    Etiket(yazi: gunAdi(a, e.date) == "Bugün" ? ad : "\(ad) · \(gunAdi(a, e.date))")
+                    Sayi(deger: a.time.isEmpty ? gunAdi(a, e.date) : a.time, ek: a.place?.isEmpty == false ? a.place! : (ad == a.title ? "" : a.title), boy: 24)
                 }
                 Spacer()
                 AntrenmanDugmeleri(sure: antrenmanURL(a), yoklama: yoklamaURL(a, e.date))
@@ -402,7 +408,7 @@ struct AntrenmanGorunum: View {
         if family == .accessoryRectangular {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text(t?.title ?? "Antrenman").font(.system(size: 12, weight: .semibold)).opacity(0.75)
+                    Text(t?.title ?? a.map(antrenmanAdi) ?? "Antrenman").font(.system(size: 12, weight: .semibold)).opacity(0.75).lineLimit(1)
                     Spacer()
                     Text(t != nil ? "süre" : a.map { gunAdi($0, e.date).lowercased(with: Locale(identifier: "tr_TR")) } ?? "")
                         .font(.system(size: 12, weight: .semibold)).opacity(0.75)
@@ -420,7 +426,7 @@ struct AntrenmanGorunum: View {
             .padding(.horizontal, 4)
         } else {
             VStack(alignment: .leading) {
-                Text(t?.title ?? "Antrenman").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
+                Text(t?.title ?? a.map(antrenmanAdi) ?? "Antrenman").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
                 Spacer(minLength: 0)
                 if let t {
                     SayacYazi(t: t).font(.system(size: 34, weight: .bold).monospacedDigit()).minimumScaleFactor(0.6)

@@ -7,3 +7,5 @@
 Ek (aynı PR): büyük Velora widget'ının antrenman bölümünde "Süre"nin soluna "Yoklama" düğmesi geldi (Seyhun: "bir tane de yoklama butonu koy"). Antrenman bugün ya da geçmişteyse o günün yoklaması (`/athletes/attendance?gun=`), ileri tarihliyse bugünün yoklaması açılır. Küçük Antrenman widget'ında düğme yok (iOS küçük widget'ta tek dokunuş verir).
 
 Ek 2 (aynı PR, Seyhun onayı "Yap", örnek /mnt/project-files/iphone/kilit-ekrani-ornek.png): kilit ekranındaki sayaç kutusu (Live Activity) lacivert yerine yarı saydam koyu cam (duvar kâğıdıyla uyumlu; iOS saat rengini vermiyor). Kilit ekranı kelime kartında örnek cümle kaldırıldı (yarım kalıyordu): kelime + tür + anlam (2 satıra kadar).
+
+Ek 3 (Seyhun: "iki tane antrenman yazılıyor"): widget'larda antrenman başlığı "antrenman" kelimesini içeriyorsa (ör. "Antrenman", "Optimist antrenmanı") etiket olarak başlık yazılır, "Antrenman" bir daha yazılmaz (`antrenmanAdi`). Ana sayfadaki aynı tekrar ana sayfa tasarım dizisinde.
