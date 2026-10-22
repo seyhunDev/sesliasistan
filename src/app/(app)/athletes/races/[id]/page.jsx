@@ -16,7 +16,7 @@ import { placeText } from "@/features/athletes/RaceList";
 import { Icon } from "@/components/ui/Icon";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { coachStart } from "@/features/athletes/raceDocs";
-import { addRacePlan, deleteRace, freshRace, loadRaces, saveRace } from "@/features/athletes/races";
+import { addRacePlan, deleteRace, freshRace, loadRaces, racesNow, saveRace } from "@/features/athletes/races";
 import { addNoticePlans } from "@/features/athletes/raceNotice";
 import { dropLive } from "@/features/athletes/raceLiveStore";
 import { mailToMe } from "@/features/mail/outbox";
@@ -43,6 +43,9 @@ export default function RacePage() {
   return <Race orgId={profile.orgId} uid={user.uid} by={{ name: profile?.name ?? "Kullanıcı" }} mail={mail} coach={coach} />;
 }
 
+// Listeden yeni açıldıysa (1 dk içinde okunan liste) yarış bellekten gelir: "yükleniyor" yok, yeniden okuma yok
+const cachedRace = (orgId, id) => (id === "new" ? null : racesNow(orgId, 60e3)?.find((x) => x.id === id) || null);
+
 function Race({ orgId, uid, by, mail, coach }) {
   const { id } = useParams();
   const router = useRouter();
@@ -51,11 +54,12 @@ function Race({ orgId, uid, by, mail, coach }) {
   const { openAdd } = useAdd();
   const { data, err, reload } = useDikili("list", loadAthletes);
   const user = useDikiliUser();
-  const [race, setRace] = useState(null);
+  const [race, setRace] = useState(() => cachedRace(orgId, id));
   const [missingRace, setMissingRace] = useState(false);
   const [head0, setHead] = useState(null); // başlık: yarış bilgisi değişince güncellenir
   const [menu, setMenu] = useState(false); // sağ üstteki ⋯ (düzenle, talimat, yarışı sil)
   useEffect(() => {
+    if (cachedRace(orgId, id)) return;
     loadRaces(orgId).then(
       (list) => {
         if (id === "new") return setRace(freshRace(list.find((r) => r.signer) || list[0], todayStr()));

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useNow } from "@/hooks/useNow";
@@ -138,10 +139,11 @@ export function ChatList() {
   return (
     // min-h-lvh: liste kısa olsa da sayfa en az ekran boyu; Safari alt çubuğu küçülmüş kalır, alt menü yerinden oynamaz
     <main className="mx-auto min-h-lvh max-w-[30rem] pb-[calc(8rem+env(safe-area-inset-bottom))]">
-      {/* Başlık: büyük "Mesajlar", sağda yeni sohbet */}
+      {/* Başlık: solda geri, büyük "Mesajlar", sağda yeni sohbet */}
       <header className="sticky top-0 z-10 bg-bg/90 px-5 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] backdrop-blur">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-[1.625rem] font-bold leading-tight tracking-[-0.02em]">Mesajlar</h1>
+        <div className="flex items-center gap-2.5">
+          <BackButton href="/" className="-my-0.5 touch-manipulation" />
+          <h1 className="min-w-0 flex-1 truncate text-[1.625rem] font-bold leading-tight tracking-[-0.02em]">Mesajlar</h1>
           <button
             type="button"
             onClick={() => setNewOpen(true)}

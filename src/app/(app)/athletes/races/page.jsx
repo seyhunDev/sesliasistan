@@ -9,7 +9,7 @@ import { Loading } from "@/components/ui/Loader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { RaceList, isPast } from "@/features/athletes/RaceList";
-import { loadRaces } from "@/features/athletes/races";
+import { loadRaces, racesNow } from "@/features/athletes/races";
 
 // Yarışlar (yeni tasarım 2026-10-21): lacivert üstte başlık ve sıradaki yarış; sıradaki yarış kartı, yaklaşan yarışlar ay ay, geçmiş yarışlar en altta; yarışa dokununca evrak, sporcular, yapılacaklar
 export default function RacesPage() {
@@ -25,10 +25,10 @@ export default function RacesPage() {
 
 function Races({ orgId }) {
   const router = useRouter();
-  const [races, setRaces] = useState(null);
+  const [races, setRaces] = useState(() => racesNow(orgId)); // bellekte varsa hemen (geri dönüşte boş ekran yok), arkada tazelenir
   const [error, setError] = useState("");
   useEffect(() => {
-    loadRaces(orgId).then(setRaces, (e) => (setRaces([]), setError(e?.message || "Yarışlar alınamadı.")));
+    loadRaces(orgId).then(setRaces, (e) => (setRaces((r) => r || []), setError(e?.message || "Yarışlar alınamadı.")));
   }, [orgId]);
   const up = races?.filter((r) => !isPast(r)).length || 0;
   const past = (races?.length || 0) - up;

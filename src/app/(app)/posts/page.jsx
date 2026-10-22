@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Loading } from "@/components/ui/Loader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { PostList } from "@/features/posts/PostList";
-import { archivePost, loadPosts } from "@/features/posts/posts";
+import { archivePost, loadPosts, postsNow } from "@/features/posts/posts";
 import { Seg } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { saveSum } from "@/lib/homeTiles";
@@ -27,7 +27,7 @@ export default function PostsPage() {
 
 function Posts({ orgId }) {
   const router = useRouter();
-  const [posts, setPosts] = useState(null);
+  const [posts, setPosts] = useState(() => postsNow(orgId)); // bellekte varsa hemen, arkada tazelenir
   const [error, setError] = useState("");
   const [tab, setTab] = useState("live");
   const toast = useToast();
@@ -43,7 +43,7 @@ function Posts({ orgId }) {
         setPosts(list);
         sum(list);
       },
-      (e) => (setPosts([]), setError(e?.message || "Gönderiler alınamadı.")),
+      (e) => (setPosts((l) => l || []), setError(e?.message || "Gönderiler alınamadı.")),
     );
   }, [orgId]);
 
