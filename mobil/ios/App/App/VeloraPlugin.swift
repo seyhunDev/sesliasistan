@@ -12,6 +12,7 @@ import AlarmKit
 // - open olayı / takeOpen: bas-konuş ("talk") ya da kilit ekranındaki sayaca dokunuş ("timer")
 // - timerShow / timerEnd: kilit ekranı ve Dynamic Island'da sayaç (iOS 16.2+)
 // - alarmSync: planların alarmları; iOS 26'da saat alarmı (AlarmKit, sessiz modda da çalar), eski iOS'ta bildirim
+// - haptic, biometry / unlock (Face ID kilidi), widgetData (ana ekran widget'ı): VeloraDokunus.swift
 @objc(VeloraPlugin)
 public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "VeloraPlugin"
@@ -22,6 +23,10 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "timerShow", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "timerEnd", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "alarmSync", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "biometry", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "unlock", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "widgetData", returnType: CAPPluginReturnPromise),
     ]
 
     override public func load() {

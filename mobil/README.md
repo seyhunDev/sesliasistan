@@ -69,6 +69,9 @@ değişince Xcode'dan yeniden kurulur. Ad "Velora", paket `com.seyhunyildiz.sesl
     dokununca sayacın sayfası (`velora://sayac`).
   - Plan alarmı (`alarm` alanı, `src/lib/planAlarm.js`): iOS 26'da saat alarmı (AlarmKit, sessiz modda da çalar), eski
     iOS'ta sesli bildirim. Uygulama açılınca ve planlar değişince eşitlenir.
+  - Titreşim (`haptic`, web `src/lib/haptic.js`), Face ID kilidi (`unlock`, `src/features/ios/AppLock.jsx`) ve ana ekran
+    widget'ı (`VeloraWidget/SiradakiWidget.swift`: rüzgâr + sıradaki planlar; planlar `widgetData` ile ortak uygulama
+    grubuna `group.com.seyhunyildiz.sesliasistan` yazılır, rüzgârı widget open-meteo'dan alır): `App/VeloraDokunus.swift`.
   - `VeloraWidget` ayrı hedeftir (app extension, iOS 16.2+); Xcode'da Signing › Team ona da seçilir. Uygulama iOS 15+.
   - GitHub Actions "iPhone derleme" bu klasör değişince imzasız simülatör derlemesi yapar.
 - Henüz yok: bildirimler (APNs anahtarı ve Firebase ayarı gerekir; uygulamada web bildirimi çalışmaz, ana ekrandaki

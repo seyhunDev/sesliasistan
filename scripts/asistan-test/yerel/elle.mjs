@@ -181,6 +181,21 @@ group("Plan alarmı")([
   ["plan formu", { desc: "Yok · Saatinde · 15 dk · 30 dk · 1 saat · 1 gün", fn: () => PAL.ALARM_OPTS.map((o) => o.label).join(), ok: (r) => r === "Yok,Saatinde,15 dk,30 dk,1 saat,1 gün" }],
 ]);
 
+// iPhone uygulaması: ana ekran widget'ının planları ve titreşim türleri
+const WD = await import("@/lib/widgetData");
+const HP = await import("@/lib/haptic");
+group("iPhone widget ve titreşim")([
+  ["widget planları", { desc: "bugünden sonraki, benim, bitmemiş; saat sırasıyla", fn: () => WD.widgetPlans([
+    { title: "B", date: "2026-10-06", time: "09:00", people: ["ali"] },
+    { title: "A", date: "2026-10-05", time: "18:00", people: ["ali"], important: true },
+    { title: "Eski", date: "2026-10-01", time: "10:00", people: ["ali"] },
+    { title: "Başkası", date: "2026-10-05", time: "10:00", people: ["veli"] },
+    { title: "Bitti", date: "2026-10-05", time: "11:00", people: ["ali"], done: true },
+    { title: "Kamp", date: "2026-10-03", endDate: "2026-10-07", people: ["ali"] },
+  ], { uid: "ali", ownerId: "own", today: "2026-10-05" }).map((p) => `${p.title}@${p.date} ${p.time}${p.important ? "!" : ""}`).join(), ok: (r) => r === "Kamp@2026-10-05 ,A@2026-10-05 18:00!,B@2026-10-06 09:00" }],
+  ["titreşim türü", { desc: "8 hafif, 14 orta, 30 güçlü, [10,40,10] başarı, uzun dizi hata", fn: () => [8, 14, 30, [10, 40, 10], [30, 50, 30, 50, 30], 0].map(HP.kindOf).join(), ok: (r) => r === "light,medium,heavy,success,error," }],
+]);
+
 // Takvim, görev grupları, doğum günleri (agenda.js)
 const AG = await import("@/lib/agenda");
 const TT = [{ title: "a", due: "2026-10-01" }, { title: "b", due: "2026-10-03" }, { title: "c", due: "2026-10-04" }, { title: "d", due: "2026-10-08" }, { title: "e", due: "2026-10-20" }, { title: "f" }];

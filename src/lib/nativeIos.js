@@ -40,3 +40,25 @@ export async function syncAlarms(items) {
     return null;
   }
 }
+
+// Face ID / Touch ID: "faceID" | "touchID" | "" (yok ya da bu kurulumda eklenti yok)
+export async function biometry() {
+  try {
+    return (await plugin()?.biometry?.())?.type || "";
+  } catch {
+    return "";
+  }
+}
+// Kilidi aç (Face ID, olmazsa telefon şifresi): true/false
+export async function unlock() {
+  try {
+    return !!(await plugin()?.unlock?.({ reason: "Velora'yı aç" }))?.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Ana ekran widget'ı: { plans: [{ title, date, time, important }], place, lat, lon }
+export function widgetData(v) {
+  plugin()?.widgetData?.({ json: JSON.stringify(v) }).catch(() => {});
+}

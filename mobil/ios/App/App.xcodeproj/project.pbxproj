@@ -10,6 +10,7 @@
 		04B9E716A050F9D397C6A3A0 /* VeloraShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D07CF92D46E0231AB320F7 /* VeloraShortcuts.swift */; };
 		180C0C73D22504771518AEAE /* VeloraViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F38269AA9E14BBF7B4E136 /* VeloraViewController.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		321CD14448AB5423FD3A54CC /* SiradakiWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F7D2CFE17439D3CFD16C0 /* SiradakiWidget.swift */; };
 		4701CA92010C7A2A2DDBB6AF /* VeloraWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C10D666C1E68CE420A77769 /* VeloraWidgetBundle.swift */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
@@ -20,11 +21,14 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		540ABF1D552007264B0433A4 /* BasKonusIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0B925A9974D22CB14DAF43 /* BasKonusIntent.swift */; };
 		540D978572051EB01D5F412A /* SayacAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3772322A5AB97E0472A7C025 /* SayacAttributes.swift */; };
+		6074A0C454744B8EEC3CC9D1 /* WidgetVeri.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930923C97F1D84C1EA540CCD /* WidgetVeri.swift */; };
 		624973B5D07D3E6F2D20A93C /* BasKonusIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0B925A9974D22CB14DAF43 /* BasKonusIntent.swift */; };
+		7299878CF1D9342E0EA1D38B /* VeloraDokunus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF9CB03D6E6B64655752F95 /* VeloraDokunus.swift */; };
 		807274EC1BA097F271335A09 /* SayacEtkinligi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18CA58FDC714C878CD676251 /* SayacEtkinligi.swift */; };
 		91699ADD12EEE281D263D84F /* VeloraPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C75B3DEB8AF3DF1615522AF /* VeloraPlugin.swift */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		ABA9E90894C35777AD6D9FBD /* VeloraWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D19ABCD897C28D13037094CA /* VeloraWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B27EDC7923ED3F06B6FB2683 /* WidgetVeri.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930923C97F1D84C1EA540CCD /* WidgetVeri.swift */; };
 		E80FBE2F50C3ACAADEB04374 /* BasKonusDugmesi.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B4D2A6D4D0DA57384FADF7 /* BasKonusDugmesi.swift */; };
 		FFB1DAE1BB00BBEF9DD020AC /* SayacAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3772322A5AB97E0472A7C025 /* SayacAttributes.swift */; };
 /* End PBXBuildFile section */
@@ -59,6 +63,7 @@
 		1D3F5EC4A1DE02C2E55C1D74 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		3772322A5AB97E0472A7C025 /* SayacAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SayacAttributes.swift; sourceTree = "<group>"; };
+		3CF9CB03D6E6B64655752F95 /* VeloraDokunus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VeloraDokunus.swift; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -68,13 +73,17 @@
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		7C10D666C1E68CE420A77769 /* VeloraWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VeloraWidgetBundle.swift; sourceTree = "<group>"; };
+		930923C97F1D84C1EA540CCD /* WidgetVeri.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetVeri.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		AB0B925A9974D22CB14DAF43 /* BasKonusIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BasKonusIntent.swift; sourceTree = "<group>"; };
+		B29D8945D4D702D7395FEA0E /* App.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		B64F7D2CFE17439D3CFD16C0 /* SiradakiWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiradakiWidget.swift; sourceTree = "<group>"; };
 		B9B4D2A6D4D0DA57384FADF7 /* BasKonusDugmesi.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BasKonusDugmesi.swift; sourceTree = "<group>"; };
 		D0D07CF92D46E0231AB320F7 /* VeloraShortcuts.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VeloraShortcuts.swift; sourceTree = "<group>"; };
 		D19ABCD897C28D13037094CA /* VeloraWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VeloraWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9F38269AA9E14BBF7B4E136 /* VeloraViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VeloraViewController.swift; sourceTree = "<group>"; };
+		EE299718D63EDA7E55123840 /* VeloraWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = VeloraWidget.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,6 +110,7 @@
 			children = (
 				AB0B925A9974D22CB14DAF43 /* BasKonusIntent.swift */,
 				3772322A5AB97E0472A7C025 /* SayacAttributes.swift */,
+				930923C97F1D84C1EA540CCD /* WidgetVeri.swift */,
 			);
 			name = Ortak;
 			path = Ortak;
@@ -113,6 +123,8 @@
 				18CA58FDC714C878CD676251 /* SayacEtkinligi.swift */,
 				B9B4D2A6D4D0DA57384FADF7 /* BasKonusDugmesi.swift */,
 				1D3F5EC4A1DE02C2E55C1D74 /* Info.plist */,
+				B64F7D2CFE17439D3CFD16C0 /* SiradakiWidget.swift */,
+				EE299718D63EDA7E55123840 /* VeloraWidget.entitlements */,
 			);
 			name = VeloraWidget;
 			path = VeloraWidget;
@@ -153,6 +165,8 @@
 				1C75B3DEB8AF3DF1615522AF /* VeloraPlugin.swift */,
 				D9F38269AA9E14BBF7B4E136 /* VeloraViewController.swift */,
 				D0D07CF92D46E0231AB320F7 /* VeloraShortcuts.swift */,
+				3CF9CB03D6E6B64655752F95 /* VeloraDokunus.swift */,
+				B29D8945D4D702D7395FEA0E /* App.entitlements */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -273,6 +287,8 @@
 				04B9E716A050F9D397C6A3A0 /* VeloraShortcuts.swift in Sources */,
 				624973B5D07D3E6F2D20A93C /* BasKonusIntent.swift in Sources */,
 				FFB1DAE1BB00BBEF9DD020AC /* SayacAttributes.swift in Sources */,
+				7299878CF1D9342E0EA1D38B /* VeloraDokunus.swift in Sources */,
+				B27EDC7923ED3F06B6FB2683 /* WidgetVeri.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -285,6 +301,8 @@
 				E80FBE2F50C3ACAADEB04374 /* BasKonusDugmesi.swift in Sources */,
 				540ABF1D552007264B0433A4 /* BasKonusIntent.swift in Sources */,
 				540D978572051EB01D5F412A /* SayacAttributes.swift in Sources */,
+				321CD14448AB5423FD3A54CC /* SiradakiWidget.swift in Sources */,
+				6074A0C454744B8EEC3CC9D1 /* WidgetVeri.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -324,6 +342,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = VeloraWidget/VeloraWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -350,6 +369,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = VeloraWidget/VeloraWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -486,6 +506,7 @@
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
@@ -517,6 +538,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
