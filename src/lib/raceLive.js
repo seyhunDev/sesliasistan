@@ -317,7 +317,8 @@ export function mediaGroups(media, starts, day) {
     let phase = "pre";
     let id = "";
     let at = "";
-    if (m.phase && freeStart(m, starts)) (name = `Start ${hm(m.end)}`), (phase = m.phase), (id = `free${m.end}`), (at = m.end);
+    // Düz startta saat yazılmaz (Seyhun 2026-10-22: "Start 14:33 bu ne? saati mi veriyor?"): yalnız evre
+    if (m.phase && freeStart(m, starts)) (phase = m.phase), (id = `free${m.end}`), (at = m.end);
     else if (m.phase) (n = momentRace(m, starts)), (name = momentRaceName(m, starts)), (phase = m.phase), (id = m.rid || ""), (at = m.end);
     else {
       const s = [...st].reverse().find((x) => x.at <= m.at);
@@ -325,7 +326,7 @@ export function mediaGroups(media, starts, day) {
     }
     // Aynı numaralı iki yarış (geçersiz sayılan ve tekrarı) ayrı gruplarda: anahtar yarışın kendisi
     const key = `${id || n}-${phase}`;
-    const title = n ? `${name} · ${PHASES[phase]}` : name ? `${name} · ${phase === "race" ? "Startan sonra" : PHASES[phase]}` : PHASES.pre;
+    const title = n ? `${name} · ${PHASES[phase]}` : name ? `${name} · ${phase === "race" ? "Startan sonra" : PHASES[phase]}` : id ? (phase === "race" ? "Startan sonra" : PHASES[phase]) : PHASES.pre;
     if (!groups.has(key)) groups.set(key, { key, n, at, rank: order[phase], title, items: [] });
     groups.get(key).items.push(m);
   }

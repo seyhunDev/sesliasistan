@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { addRaceMedia, backfillPoster, dropRaceMedia, mutedCopy, posterOf, prepRaceMedia, saveMedia } from "@/features/athletes/raceLiveStore";
 import { Button } from "@/components/ui/Button";
 import { Bar, readTimer } from "@/features/training/Countdown";
-import { dayOf, fixMedia, hm, mediaGroups, mediaOf, momentAt, momentBadge, momentOf, momentRaceName, tagMedia } from "@/lib/raceLive";
+import { dayOf, fixMedia, hm, mediaGroups, mediaOf, momentAt, momentBadge, momentOf, tagMedia } from "@/lib/raceLive";
 import { MediaViewer } from "./MediaViewer";
 import { Thumb } from "./Thumb";
 import { CameraSheet } from "./CameraSheet";
@@ -82,6 +82,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
   const going = upItems.filter((x) => !x.u.err);
   const justDone = Object.values(mine).some((x) => x.done);
   const groups = mediaGroups([...mediaOf(live.media, pick), ...upItems], live.starts, day);
+  const titleOf = new Map(groups.flatMap((g) => g.items.map((m) => [m.id, g.title])));
   const first = (a) => (a.studentName || "").split(" ")[0];
 
   // Çekilenin anı (Süre sekmesindeki yarışlara göre: momentAt) ve üstüne basılan yazı ("4. yarış · Son 1 dakika · 0:42 kala" / yarış adı · saat)
@@ -339,7 +340,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
         id={open ? open.id : ""}
         onPick={setOpen}
         onClose={() => setOpen("")}
-        label={(m) => (m.phase ? momentRaceName(m, live.starts) : "") /* an (startan beri) görüntünün üstünde yazar */}
+        label={(m) => titleOf.get(m.id) || "" /* üstte grubun adı (yarış · evre); an zaten görüntünün üstünde yazar, saat yazılmaz */}
         ours={ours}
         onTag={tag}
         onShare={share}
