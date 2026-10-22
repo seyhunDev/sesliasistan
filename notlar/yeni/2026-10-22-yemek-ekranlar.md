@@ -1,0 +1,6 @@
+## Nerede kaldım
+- Velora Yemek 2. adım (Seyhun: "Ne yiyelim sayfası güzel… fotoğrafları link olarak kullan"; telefonda denenmedi): Alışveriş sayfası lacivert üstte Liste / Yemek (yalnız ana hesap; `?tab=yemek`). Yemek: arama, fotoğraflı mutfaklar, açık sipariş, "Sana göre" (öneri kuralları), son siparişler (Aynısı), restoranlar. `/yemek/[id]` restoran menüsü + ürün seçenekleri + sepet (adres konuma 300 m içinde kendiliğinden, yoksa sorar; yeni adres "Buraya yeni adres"), "Siparişi ver". `/yemek/siparis/[id]` takip: büyük kalan dakika, 4 adım, yolda iken harita (Leaflet) ve kurye, teslimden sonra yıldız + not. Deneme modu (`src/yemek/demo.js`): restoran/kurye yokken durum saatten hesaplanır, hiçbir şey yazılmaz (teslimde bir kez "delivered" yazılır). Veri `orgs/{org}/yemekSiparisler` ve `orgs/{org}/yemek/me` (ana hesap kuralı yeterli, firestore.rules değişmedi). Testler: `npm run test:yemek` 54.
+
+## Sıradaki işler
+0. Telefonda: Alışveriş › Yemek, bir restoran, ürün ekle, sepette adres (ilk kez "Buraya yeni adres"), Siparişi ver, takip ekranı ~30 dk'da teslim; sonra yıldız ver ve "Sana göre"nin değiştiğini gör.
+1. Velora Yemek 3. adım: Yönetim (`/yemek/yonetim`), Restoran ekranı (`/yemek/panel`), Kurye ekranı (`/yemek/kurye`, canlı konum). 4. adım: yapay zeka önerisi + asistan işi `isler/yemek.js`.

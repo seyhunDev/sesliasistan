@@ -5,6 +5,7 @@ import { unitPrice, pickProblem, defaultPicks, makeLine, cartTotals, isOpenAt, e
 import { pickAddress, addressBySpeech, distanceM } from "@/yemek/address";
 import { parseAsk, suggest, findRepeat, answerFood, tasteOf, den } from "@/yemek/suggest";
 import { photoUrl } from "@/yemek/photo";
+import { liveView } from "@/yemek/demo";
 import { suite } from "./ortak.mjs";
 
 const { group } = suite("yemek");
@@ -100,4 +101,17 @@ group("Sesli cevap")([
   ["Her zamanki dönerden", { desc: "son döner siparişi (iskender)", fn: A, ok: (g) => g.repeat?.lines[0].itemId === "ud-iskender" }],
   ["Ne yiyelim?", { desc: "3 öneri, ilk + \"Ya da\"", fn: A, ok: (g) => g.picks.length === 3 && / Ya da /.test(g.say) }],
   ["Türkçe ek", { desc: "Rüzgar'dan, Dikili'den, Fırın'dan, Lokantası'ndan, Koy'dan", fn: () => ["Pizza Rüzgar", "Smash Dikili", "Napoli Taş Fırın", "Dikili Esnaf Lokantası", "Burger Koy", "Liman Balık"].map(den).join(" "), ok: (g) => g === "Pizza Rüzgar'dan Smash Dikili'den Napoli Taş Fırın'dan Dikili Esnaf Lokantası'ndan Burger Koy'dan Liman Balık'tan" }],
+]);
+
+// Deneme modu: Pizza Rüzgar (hazırlık 25 dk) → Kulüp (~150 m, yol 5 dk); hiçbir şey yazılmaz, saatten hesaplanır
+const T0 = new Date(NOW).toISOString();
+const demoOrder = { demo: true, status: "sent", at: T0, times: { sent: T0 }, address: ADDR[1] };
+const at = (m) => liveView(demoOrder, place("pizza-ruzgar"), NOW + m * 60000);
+group("Deneme modu")([
+  ["30 sn sonra", { desc: "Gönderildi", fn: () => at(0.5).status, ok: (g) => g === "sent" }],
+  ["1,5 dk sonra", { desc: "Onaylandı", fn: () => at(1.5).status, ok: (g) => g === "accepted" }],
+  ["10 dk sonra", { desc: "Hazırlanıyor, kurye yok", fn: () => at(10), ok: (g) => g.status === "preparing" && !g.courier }],
+  ["27 dk sonra", { desc: "Yolda, kurye restoranla adres arasında", fn: () => at(27), ok: (g) => g.status === "onTheWay" && g.courier && g.courier.pos.lat < place("pizza-ruzgar").pos.lat && g.courier.pos.lat > ADDR[1].pos.lat }],
+  ["31 dk sonra", { desc: "Teslim edildi, 5 adımın saati", fn: () => at(31), ok: (g) => g.status === "delivered" && Object.keys(g.times).length === 5 }],
+  ["iptal edilen", { desc: "İptal kalır", fn: () => liveView({ ...demoOrder, status: "cancelled" }, place("pizza-ruzgar"), NOW + 40 * 60000).status, ok: (g) => g === "cancelled" }],
 ]);
