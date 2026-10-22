@@ -502,11 +502,12 @@ struct KelimeGorunum: View {
     var body: some View {
         if let w = e.v?.word {
             if family == .accessoryRectangular {
-                VStack(alignment: .leading, spacing: 0) {
-                    (Text(w.en).font(.system(size: 15, weight: .bold)) + Text(w.type.map { "  \($0)" } ?? "").font(.system(size: 11, weight: .semibold)))
+                // Kilit ekranında örnek cümle yok (sığmıyordu): kelime, türü, anlamı
+                VStack(alignment: .leading, spacing: 1) {
+                    (Text(w.en).font(.system(size: 17, weight: .bold)) + Text(w.type.map { "  \($0)" } ?? "").font(.system(size: 11, weight: .semibold)).foregroundColor(.white.opacity(0.75)))
                         .lineLimit(1)
-                    Text(w.tr).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-                    if let ex = w.ex { Text(ex).font(.system(size: 11, weight: .medium)).opacity(0.75).lineLimit(1) }
+                        .minimumScaleFactor(0.7)
+                    Text(w.tr).font(.system(size: 14, weight: .semibold)).opacity(0.9).lineLimit(2)
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 4)
