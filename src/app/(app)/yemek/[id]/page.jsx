@@ -14,7 +14,7 @@ export default function YemekPlacePage() {
   if (!profile?.orgId || kind !== "owner") return null;
   return (
     <Suspense fallback={null}>
-      <PlaceView orgId={profile.orgId} uid={profile.uid} id={id} />
+      <PlaceView orgId={profile.orgId} uid={profile.uid} name={profile.name} id={id} />
     </Suspense>
   );
 }

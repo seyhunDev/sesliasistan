@@ -5,15 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
-import { isOpenAt, cartTotals } from "../order";
-import { placeById, useFood, useCart, writeCart } from "../store";
+import { cartTotals } from "../order";
+import { openNow, placeById, useFood, useCart, writeCart } from "../store";
 import { Img, tl, rating } from "./Img";
 import { ItemSheet } from "./ItemSheet";
 import { CartSheet } from "./CartSheet";
 
 // Restoran sayfası (müşteri; örnek B): kapak fotoğrafı, lacivert kategori şeridi, ürünler (yazı solda, fotoğraf sağda).
 // Ürüne dokununca seçenek penceresi; altta sepet düğmesi. ?urun=… o ürünü, ?sepet=1 sepeti açar.
-export function PlaceView({ orgId, uid, id }) {
+export function PlaceView({ orgId, uid, name, id }) {
   const place = placeById(id);
   const router = useRouter();
   const sp = useSearchParams();
@@ -27,7 +27,7 @@ export function PlaceView({ orgId, uid, id }) {
 
   const lastIds = useMemo(() => new Set((food?.history || []).filter((o) => o.placeId === id).slice(0, 1).flatMap((o) => o.lines.map((l) => l.itemId))), [food, id]);
   if (!place) return <p className="p-10 text-center text-mut">Restoran bulunamadı.</p>;
-  const on = isOpenAt(place);
+  const on = openNow(place, food?.settings);
   const mine = cart.placeId === place.id ? cart.lines : [];
   const totals = cartTotals(place, mine);
   const count = mine.reduce((n, l) => n + l.qty, 0);
@@ -99,7 +99,7 @@ export function PlaceView({ orgId, uid, id }) {
       )}
 
       <ItemSheet place={place} item={item} onClose={() => setItem(null)} onAdd={add} closed={!on} />
-      <CartSheet open={cartOpen} onClose={() => setCartOpen(false)} place={place} lines={mine} food={food} orgId={orgId} uid={uid} onPlaced={(oid) => router.replace(`/yemek/siparis/${oid}`)} />
+      <CartSheet open={cartOpen} onClose={() => setCartOpen(false)} place={place} lines={mine} food={food} orgId={orgId} uid={uid} name={name} onPlaced={(oid) => router.replace(`/yemek/siparis/${oid}`)} />
     </main>
   );
 }
