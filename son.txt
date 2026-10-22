@@ -1,8 +1,8 @@
-Commit: c1b6fa0 · Testler: örnek cümlelere kişi listesi, Instagram'ı aç sayfayı açar, yoklama/kulüp sorusu beklentisi (#663)
-Zaman: 2026-10-22-0046 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39680548350
+Commit: 69abc99 · Aidatlar: gelir kartı (bu ay beklenen, alınan, kalan; son 12 ayda alınan) (#664)
+Zaman: 2026-10-22-0938 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39734532799
 
-TAM TEST · 22.10.2026 00:39:47
+TAM TEST · 22.10.2026 09:32:24
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1370/1371 geçti · 1 kalan · 420 sn
+SONUÇ: 1370/1371 geçti · 1 kalan · 385 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -145,7 +145,7 @@ SONUÇ: 1370/1371 geçti · 1 kalan · 420 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 17 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 13 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
