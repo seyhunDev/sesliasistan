@@ -290,7 +290,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
       )}
       <div className="mt-3 flex items-center justify-between gap-3 px-1">
         {/* Yükleme sürerken burada ne kadarının gittiği yazar (Seyhun 2026-10-22: "yüklenip yüklenmediğini bilmiyorum"), bitince sayılar */}
-        <p className="text-[0.875rem] tabular-nums text-mut">{going.length ? `${going.length} kayıt yükleniyor · %${Math.round((going.reduce((a, x) => a + (x.u.p || 0), 0) / going.length) * 100)}` : justDone ? "Yüklendi ✓" : todays.length ? [todays.filter((m) => m.kind === "video").length, todays.filter((m) => m.kind !== "video").length].map((n, k) => n && `${n} ${k ? "fotoğraf" : "video"}`).filter(Boolean).join(" · ") : ""}</p>
+        <p className="text-[0.875rem] tabular-nums text-mut">{going.length ? `${going.length} ${going.every((x) => x.kind === "video") ? "video" : going.every((x) => x.kind !== "video") ? "fotoğraf" : "kayıt"} buluta gönderiliyor · %${Math.round((going.reduce((a, x) => a + (x.u.p || 0), 0) / going.length) * 100)}` : justDone ? "Buluta gönderildi ✓" : todays.length ? [todays.filter((m) => m.kind === "video").length, todays.filter((m) => m.kind !== "video").length].map((n, k) => n && `${n} ${k ? "fotoğraf" : "video"}`).filter(Boolean).join(" · ") : ""}</p>
         <Button size="sm" full={false} onClick={() => setCam("video")}>
           + Kayıt
         </Button>
