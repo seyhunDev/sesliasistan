@@ -50,3 +50,17 @@ Web tarafı: `src/lib/nativePush.js`, `src/lib/push.js`; sunucu: `src/lib/server
 
 - Arama sürerken uygulama arka plana geçince mikrofonun kesilmemesi (ön plan hizmeti).
 - Atama bildiriminin "iletildi" onayı Android'de yazılmaz (bildirim kodu arka planda çalışmıyor).
+
+## iPhone (iOS)
+
+Yalnız kendi iPhone'unda deneme için (App Store yok). Proje `ios/` (Capacitor, Swift Package Manager; CocoaPods
+gerekmez). Kabuk Android'deki gibi canlı siteyi açar; web değişiklikleri kendiliğinden gelir, yalnız yerel kısım
+değişince Xcode'dan yeniden kurulur. Ad "Velora", paket `com.seyhunyildiz.sesliasistan`.
+
+- Mac'te: `cd mobil && npm install && npm run ios` (Xcode açılır), Signing & Capabilities › Team seçilir, iPhone
+  kabloyla bağlanıp Run. iPhone'da Ayarlar › Gizlilik ve Güvenlik › Geliştirici Modu açık olmalı.
+- İzin metinleri (Info.plist): mikrofon, kamera, fotoğraflar. Arka planda ses (`UIBackgroundModes audio`): ekran
+  kilitlenince arama ve toplantı kaydı sürsün diye.
+- Henüz yok: bildirimler (APNs anahtarı ve Firebase ayarı gerekir; uygulamada web bildirimi çalışmaz, ana ekrandaki
+  PWA'yı silme), dosya indirme/yazdırma (`AsistanDosya` iOS'ta yok; paylaşım menüsü çalışır), kapalıyken arama zili
+  (CallKit).
