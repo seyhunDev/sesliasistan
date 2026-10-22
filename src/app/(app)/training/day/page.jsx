@@ -12,14 +12,14 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { isActive, loadAthletes } from "@/features/athletes/data";
-import { loadLive, addWind } from "@/features/athletes/raceLiveStore";
+import { loadLive } from "@/features/athletes/raceLiveStore";
 import { RollPanel } from "@/features/athletes/RollPanel";
 import { TrainingLog } from "@/features/add/TrainingLog";
 import { Bar, Countdown, useTimerRun } from "@/features/training/Countdown";
 import { useTrainingFlow } from "@/features/training/useTrainingFlow";
 import { Marks } from "@/features/raceMedia/TimerTab";
 import { MediaTab } from "@/features/raceMedia/MediaTab";
-import { WeatherTab, WindSheet } from "@/features/raceMedia/WeatherTab";
+import { WeatherTab } from "@/features/raceMedia/WeatherTab";
 import { TabDock } from "@/features/raceMedia/RaceMedia";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { RaceList, Races } from "@/features/training/Races";
@@ -28,7 +28,7 @@ import { useSpeech } from "@/hooks/useSpeech";
 import { voiceResult, voiceText } from "@/lib/raceVoice";
 import { canLog, isTraining, pickPlan } from "@/lib/trainingLog";
 import { cleanRaces, mmss, newRace, standings } from "@/lib/raceScore";
-import { BUOYS, cleanBuoys, cleanLive, upSec, windOn } from "@/lib/raceLive";
+import { BUOYS, cleanBuoys, cleanLive, upSec } from "@/lib/raceLive";
 import { todayStr } from "@/lib/utils/format";
 import { useTabInUrl } from "@/hooks/useTabInUrl";
 
@@ -37,7 +37,7 @@ import { useTabInUrl } from "@/hooks/useTabInUrl";
 // Süre: multimedyanın sayacı (Countdown compact + Marks, useTrainingFlow; her start bir yarış açar) ve Yoklama, Yarışlar, Günlük satırları.
 // Medya: multimedyanın MediaTab'ı; fotoğraf/video bu antrenmana bağlı (raceLive/ant-<planId>, Storage raceMedia), antrenman yarışlarına göre gruplu.
 // Hava: multimedyanın WeatherTab'ı; yer planın `spot`u, yoksa Dikili. Sonuçlar: günün yarışları ve puan durumu (Races).
-// Süre'de "Sonucu söyle": yarış sıralaması sesle ("1 Ali, 2 Ayşe", yalnız adlar da, karışık da), onaysız yazılır, 8 sn Geri al (lib/raceVoice.js voiceResult).
+// Süre'de alt şeritte "Sonucu söyle" ve ana düğme (Başlat…; Seyhun 2026-10-22: "Başlat'ı ve Sonucu söyle'yi aşağı al, Rüzgâr'ı kaldır"): yarış sıralaması sesle ("1 Ali, 2 Ayşe", yalnız adlar da, karışık da), onaysız yazılır, 8 sn Geri al (lib/raceVoice.js voiceResult).
 // Yeni tasarım (Seyhun 2026-10-21 onayı, /mnt/project-files/antrenman-sayfasi/yeni-tasarim/ornek.png): üstte lacivert kokpit (geri, ad, gün;
 // Süre'de sayaç da orada), altında açık zeminde "Sonucu söyle" ve tek liste (Yoklama, Yarışlar, Günlük).
 // Açılış: ?id=<antrenman planı> (plan penceresinden, gün penceresinden) ya da bugünün antrenmanı; ?tab=media|wx|res. Sesle: "antrenman sayfasını aç".
@@ -80,7 +80,6 @@ function Day() {
   const [tab, setTab] = useState(TABS.includes(q.get("tab")) ? q.get("tab") : "sure");
   useTabInUrl(tab);
   const [shot, setShot] = useState(null); // alttaki Kayıt ile iPhone kamerasında çekilen dosya (Medya işler)
-  const [wind, setWind] = useState(false);
   const orgId = profile?.orgId || "";
   const liveId = plan && racer && orgId ? `ant-${plan.id}` : "";
   const [live, setLive] = useState(() => cleanLive({}));
@@ -181,7 +180,6 @@ function Day() {
   const leader = table.races.length ? table.rows[0]?.name.split(" ")[0] : "";
   const tabs = !!liveId && !locked;
   const shown = tabs ? tab : "sure";
-  const lastWind = windOn(live.wind, date).at(-1);
 
   return (
     <main className={`mx-auto max-w-[30rem] px-5 ${tabs ? "pb-[calc(env(safe-area-inset-bottom)+11rem)]" : "pb-[calc(var(--dome-h,var(--stage-h,6rem))+6rem)]"}`}>
@@ -202,7 +200,20 @@ function Day() {
             title={cur ? cur.name : ""}
             where={title}
             beforeStart={!plan && racer ? addPlan : undefined}
-            tail={tabs && <Button variant="secondary" onClick={() => setWind(true)}>Rüzgâr</Button>}
+            bottom={tabs}
+            side={
+              withRaces && (
+                <button
+                  type="button"
+                  onClick={() => (sp.status === "listening" ? sp.stop() : sp.status === "idle" && (setSaid(""), sp.start({ autoStop: 0 })))}
+                  disabled={sp.status === "transcribing"}
+                  className={`flex h-14 items-center justify-center gap-2 rounded-2xl px-2 text-[1rem] font-semibold active:translate-y-px active:shadow-none disabled:opacity-60 ${sp.status === "listening" ? "bg-rec text-white" : "border border-line bg-card shadow-[0_2px_0_var(--line)]"}`}
+                >
+                  <Icon name={sp.status === "listening" ? "stop" : "mic"} className="size-5 shrink-0" />
+                  <span className="truncate">{sp.status === "listening" ? "Bitince dokun" : sp.status === "transcribing" ? "Yazıya çevriliyor" : "Sonucu söyle"}</span>
+                </button>
+              )
+            }
           />
         )}
       </section>
@@ -219,22 +230,9 @@ function Day() {
       {shown === "sure" && (
         <>
           {withRaces && !!cur && tr.up && <Marks buoys={buoys} s={cur} on onMark={mark} onBuoys={(next) => updateRecord("plan", plan.id, { buoys: next }, by)} />}
-          {withRaces && (
-            <>
-              <button
-                type="button"
-                onClick={() => (sp.status === "listening" ? sp.stop() : sp.status === "idle" && (setSaid(""), sp.start({ autoStop: 0 })))}
-                disabled={sp.status === "transcribing"}
-                className={`flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[1rem] font-semibold active:translate-y-px active:shadow-none disabled:opacity-60 ${sp.status === "listening" ? "bg-rec text-white" : "border border-line bg-card shadow-[0_2px_0_var(--line)]"}`}
-              >
-                <Icon name={sp.status === "listening" ? "stop" : "mic"} className="size-5" />
-                {sp.status === "listening" ? "Dinliyorum · bitince dokun" : sp.status === "transcribing" ? "Yazıya çevriliyor…" : "Sonucu söyle"}
-              </button>
-              {said && <p className="mt-2 px-1 text-[0.875rem] leading-snug text-fg2">{said}</p>}
-            </>
-          )}
+          {withRaces && said && <p className="mb-3 px-1 text-[0.875rem] leading-snug text-fg2">{said}</p>}
 
-          <section className={withRaces ? "mt-6" : ""}>
+          <section>
             <ListHead title={plan ? "Bugün" : "Plan"} />
             <RowList>
               {!plan ? (
@@ -319,16 +317,6 @@ function Day() {
       )}
       {tabs && (
         <>
-          <WindSheet
-            open={wind}
-            onClose={() => setWind(false)}
-            day={date}
-            last={lastWind}
-            onSave={(w) => {
-              setWind(false);
-              change((l) => ({ wind: [...l.wind, w] }), () => addWind(orgId, liveId, w));
-            }}
-          />
           <TabDock value={shown} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} />
         </>
       )}
