@@ -3,7 +3,7 @@ import SwiftUI
 import WidgetKit
 
 // Velora widget'ları (Seyhun 2026-10-22 onayı: /mnt/project-files/iphone/widget-ornek-4.png, "daha sade, tek parça"):
-// - Velora (büyük, iOS 17+): rüzgâr grafiği, antrenman / sayaç ("Süre" doğrudan antrenmanın sayacı), banka ve aidat;
+// - Velora (büyük, iOS 17+): rüzgâr grafiği, antrenman / sayaç ("Süre" doğrudan antrenmanın sayacı, "Yoklama" o günün yoklaması), banka ve aidat;
 //   widget'a basılı tut › Edit Widget ile bölümler seçilir (sıradaki planlar ve kelime de eklenebilir)
 // - Rüzgâr (orta, kilit ekranı), Antrenman (küçük, kilit ekranı; sayaç çalışırken mor ve canlı), Banka ve aidat (küçük, kilit ekranı),
 //   Kelime (orta, kilit ekranı), Özet (kilit ekranında saatin üstü: "Antrenman 16:00 · 12 kn")
@@ -26,6 +26,12 @@ private func ruzgarYazi(_ r: GunRuzgar?, _ now: Date) -> String {
 private func antrenmanURL(_ a: WidgetVeri.Antrenman?) -> URL {
     guard let a, !a.id.isEmpty else { return url("/training/day") }
     return url("/training/day?id=\(a.id)")
+}
+
+// Yoklama: antrenmanın günü (bugün ya da geçmişse), yoksa bugünün yoklaması
+private func yoklamaURL(_ a: WidgetVeri.Antrenman?, _ now: Date) -> URL {
+    if let a, !a.date.isEmpty, a.date <= GunRuzgar.gun(now) { return url("/athletes/attendance?gun=\(a.date)") }
+    return url("/athletes/attendance")
 }
 
 private func antrenmanPlan(_ a: WidgetVeri.Antrenman) -> WidgetVeri.Plan {
@@ -93,16 +99,30 @@ private struct Cubuk: View {
     }
 }
 
-private struct SureDugmesi: View {
+// Antrenmanın düğmeleri: Yoklama (o günün yoklaması) ve Süre (antrenmanın sayacı, ana düğme mor)
+private struct Dugme: View {
+    let yazi: String
     let hedef: URL
+    var ana = false
     var body: some View {
         Link(destination: hedef) {
-            Text("Süre")
+            Text(yazi)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
-                .background(Capsule().fill(morDugme))
+                .background(Capsule().fill(ana ? morDugme : Color.white.opacity(0.16)))
+        }
+    }
+}
+
+private struct AntrenmanDugmeleri: View {
+    let sure: URL
+    let yoklama: URL
+    var body: some View {
+        HStack(spacing: 6) {
+            Dugme(yazi: "Yoklama", hedef: yoklama)
+            Dugme(yazi: "Süre", hedef: sure, ana: true)
         }
     }
 }
@@ -165,7 +185,7 @@ private struct AntrenmanBolumu: View {
                     SayacYazi(t: t).font(.system(size: 28, weight: .bold).monospacedDigit())
                 }
                 Spacer()
-                SureDugmesi(hedef: sayacURL)
+                AntrenmanDugmeleri(sure: sayacURL, yoklama: yoklamaURL(e.v?.antrenman(e.date), e.date))
             }
         } else if let a = e.v?.antrenman(e.date) {
             HStack {
@@ -174,7 +194,7 @@ private struct AntrenmanBolumu: View {
                     Sayi(deger: a.time.isEmpty ? gunAdi(a, e.date) : a.time, ek: a.place?.isEmpty == false ? a.place! : a.title, boy: 24)
                 }
                 Spacer()
-                SureDugmesi(hedef: antrenmanURL(a))
+                AntrenmanDugmeleri(sure: antrenmanURL(a), yoklama: yoklamaURL(a, e.date))
             }
         } else {
             VStack(alignment: .leading, spacing: 4) {

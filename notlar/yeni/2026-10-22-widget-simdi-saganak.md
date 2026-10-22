@@ -3,3 +3,5 @@
 
 ## Sıradaki işler
 0. Xcode'dan yeniden yükleyip ana ekran widget'ında şimdi çizgisini kontrol et.
+
+Ek (aynı PR): büyük Velora widget'ının antrenman bölümünde "Süre"nin soluna "Yoklama" düğmesi geldi (Seyhun: "bir tane de yoklama butonu koy"). Antrenman bugün ya da geçmişteyse o günün yoklaması (`/athletes/attendance?gun=`), ileri tarihliyse bugünün yoklaması açılır. Küçük Antrenman widget'ında düğme yok (iOS küçük widget'ta tek dokunuş verir).
