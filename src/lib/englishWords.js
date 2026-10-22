@@ -1,8 +1,9 @@
 // İngilizce kelime kartı (Planlar, Notlar, Görevler sayfalarının altında): B2 seviyesinde sık kullanılan kelimeler.
-// Liste uygulamaya gömülü (yapay zeka ve Firestore okuması yok). Her satır:
+// Gömülü liste destenin tohumudur: ana hesapta deste Firestore'da tek belgededir (orgs/{orgId}/english/deck,
+// features/words/wordData.js), ilk açılışta bu listeyle dolar. Her satır:
 // [kelime, tür, Türkçe anlam, örnek cümle, örneğin Türkçesi]
 // Sıra: liste sabit bir karışık sıraya dizilir, bu cihaz kaldığı yeri saklar (localStorage "sa-word-i");
-// her açılışta sıradaki kelime gelir, liste bitmeden aynı kelime tekrar etmez.
+// her açılışta sıradaki kelime gelir, liste bitmeden aynı kelime tekrar etmez. Çalışılan kelimeler (aşağıda "Deste") önce gelir.
 export const WORDS = [
   ["achieve", "fiil", "başarmak, elde etmek", "She worked hard to achieve her goals this year.", "Bu yıl hedeflerine ulaşmak için çok çalıştı."],
   ["acknowledge", "fiil", "kabul etmek, onaylamak", "He acknowledged that he had made a mistake.", "Bir hata yaptığını kabul etti."],
@@ -163,6 +164,47 @@ export const WORDS = [
   ["take part in", "deyim", "katılmak", "Our sailors will take part in the national championship.", "Sporcularımız Türkiye şampiyonasına katılacak."],
   ["get rid of", "deyim", "kurtulmak, atmak", "We need to get rid of the old equipment.", "Eski ekipmandan kurtulmamız gerekiyor."],
   ["on the other hand", "deyim", "öte yandan", "It's expensive; on the other hand, it's very good quality.", "Pahalı; öte yandan kalitesi çok iyi."],
+  // Günlük konuşmada en sık geçenler (2026-10-22 eklendi)
+  ["actually", "zarf", "aslında", "I actually prefer tea to coffee.", "Aslında çayı kahveye tercih ederim."],
+  ["afford", "fiil", "parası yetmek, karşılayabilmek", "We can't afford a new boat this year.", "Bu yıl yeni bir tekneye paramız yetmez."],
+  ["although", "bağlaç", "-e rağmen, gerçi", "Although it was windy, we went sailing.", "Rüzgârlı olmasına rağmen yelkene çıktık."],
+  ["anyway", "zarf", "neyse, yine de", "It was raining, but we went out anyway.", "Yağmur yağıyordu ama yine de dışarı çıktık."],
+  ["borrow", "fiil", "ödünç almak", "Can I borrow your pen for a minute?", "Bir dakika kalemini ödünç alabilir miyim?"],
+  ["bring up", "deyim", "(konuyu) açmak, gündeme getirmek", "She brought up the budget at the meeting.", "Toplantıda bütçe konusunu açtı."],
+  ["by the way", "deyim", "bu arada", "By the way, did you call the hotel?", "Bu arada, oteli aradın mı?"],
+  ["check out", "deyim", "göz atmak; otelden çıkmak", "Check out this new photo from the race.", "Yarıştan bu yeni fotoğrafa bir bak."],
+  ["deal with", "deyim", "ilgilenmek, halletmek", "I'll deal with the paperwork tomorrow.", "Evraklarla yarın ben ilgilenirim."],
+  ["definitely", "zarf", "kesinlikle", "I'll definitely be there on Saturday.", "Cumartesi kesinlikle orada olacağım."],
+  ["depend on", "deyim", "-e bağlı olmak", "It depends on the weather.", "Havaya bağlı."],
+  ["enough", "sıfat", "yeterli, yeter", "Do we have enough life jackets?", "Yeterince can yeleğimiz var mı?"],
+  ["exactly", "zarf", "tam olarak, aynen", "That's exactly what I meant.", "Tam olarak bunu demek istedim."],
+  ["find out", "deyim", "öğrenmek, keşfetmek", "Let's find out what time the race starts.", "Yarışın saat kaçta başladığını öğrenelim."],
+  ["get along with", "deyim", "iyi geçinmek", "He gets along well with his teammates.", "Takım arkadaşlarıyla iyi geçinir."],
+  ["give up", "deyim", "vazgeçmek, bırakmak", "Don't give up, you are almost there.", "Vazgeçme, neredeyse geldin."],
+  ["go on", "deyim", "devam etmek; olmak", "What's going on here?", "Burada neler oluyor?"],
+  ["hang out", "deyim", "takılmak, vakit geçirmek", "We usually hang out at the marina after training.", "Antrenmandan sonra genelde marinada takılırız."],
+  ["however", "zarf", "ancak, fakat", "The plan is good; however, it is expensive.", "Plan iyi; ancak pahalı."],
+  ["instead", "zarf", "yerine", "Let's walk instead of taking a taxi.", "Taksiye binmek yerine yürüyelim."],
+  ["keep in mind", "deyim", "aklında tutmak", "Keep in mind that the shop closes at six.", "Dükkânın altıda kapandığını aklında tut."],
+  ["lately", "zarf", "son zamanlarda", "I've been very busy lately.", "Son zamanlarda çok meşgulüm."],
+  ["look after", "deyim", "bakmak, ilgilenmek", "Can you look after the kids for an hour?", "Bir saat çocuklara bakabilir misin?"],
+  ["look for", "deyim", "aramak", "I'm looking for my car keys.", "Araba anahtarlarımı arıyorum."],
+  ["mean", "fiil", "kastetmek, anlamına gelmek", "What does this word mean?", "Bu kelime ne anlama geliyor?"],
+  ["mind", "fiil", "sakıncası olmak", "Do you mind if I open the window?", "Pencereyi açmamın sakıncası var mı?"],
+  ["miss", "fiil", "kaçırmak; özlemek", "Hurry up or we'll miss the bus.", "Acele et yoksa otobüsü kaçıracağız."],
+  ["pick up", "deyim", "almak (birini/bir şeyi)", "I'll pick you up at eight.", "Seni sekizde alırım."],
+  ["probably", "zarf", "muhtemelen", "It will probably rain tomorrow.", "Yarın muhtemelen yağmur yağacak."],
+  ["realize", "fiil", "fark etmek", "I didn't realize it was so late.", "Bu kadar geç olduğunu fark etmemiştim."],
+  ["remind", "fiil", "hatırlatmak", "Please remind me to call the coach.", "Lütfen antrenörü aramamı hatırlat."],
+  ["set up", "deyim", "kurmak, ayarlamak", "Let's set up a meeting for next week.", "Gelecek hafta için bir toplantı ayarlayalım."],
+  ["show up", "deyim", "gelmek, ortaya çıkmak", "Only five sailors showed up today.", "Bugün sadece beş sporcu geldi."],
+  ["sort out", "deyim", "çözmek, halletmek", "Don't worry, we'll sort it out.", "Merak etme, hallederiz."],
+  ["take care of", "deyim", "ilgilenmek, bakmak", "I'll take care of the tickets.", "Biletlerle ben ilgilenirim."],
+  ["though", "zarf", "yine de, ama", "It was a hard day. It was fun, though.", "Zor bir gündü. Yine de eğlenceliydi."],
+  ["turn out", "deyim", "çıkmak, ortaya çıkmak", "The weather turned out better than expected.", "Hava beklenenden iyi çıktı."],
+  ["used to", "deyim", "eskiden ... -erdi", "I used to sail every weekend.", "Eskiden her hafta sonu yelken yapardım."],
+  ["whether", "bağlaç", "-ip -mediği", "I'm not sure whether he is coming.", "Gelip gelmediğinden emin değilim."],
+  ["work out", "deyim", "spor yapmak; çözmek", "I work out three times a week.", "Haftada üç kez spor yapıyorum."],
 ];
 
 // Sabit karışık sıra (her cihazda aynı): basit karıştırıcı, tohum sabit
@@ -195,4 +237,163 @@ export function nextWordIndex(store = typeof localStorage === "undefined" ? null
     /* gizli pencere */
   }
   return i;
+}
+
+// ---- Deste: çalışılan kelimeler (aralıklı tekrar) ----
+// deck = { words: [kelime], gaps: [gün], seedV }
+// kelime = { en, type, tr, ex, exTr, status: "list" | "study" | "known", box, due (YYYY-MM-DD), at }
+// "study": kullanıcı "çalıştır" dedi; öğrenene kadar gösterilir. İlk gün hemen, sonra gaps aralıklarıyla
+// (varsayılan 1, 2, 4, 7, 14 gün; son aralık "öğrendim" denene kadar tekrar eder). "known": öğrendim, artık gelmez.
+export const GAPS = [1, 2, 4, 7, 14];
+export const SEED_V = 2; // gömülü liste büyüyünce artar: eksik kelimeler desteye eklenir
+const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+export const wordKey = (en) => S(en, 60).toLocaleLowerCase("en-US");
+
+export function cleanWord(w = {}) {
+  const status = ["study", "known"].includes(w.status) ? w.status : "list";
+  return {
+    en: S(w.en, 60),
+    type: S(w.type, 20),
+    tr: S(w.tr, 120),
+    ex: S(w.ex, 200),
+    exTr: S(w.exTr, 200),
+    status,
+    box: Math.max(0, Math.min(20, Math.round(Number(w.box) || 0))),
+    due: DAY.test(String(w.due || "")) ? w.due : "",
+    at: S(w.at, 30),
+  };
+}
+export const cleanGaps = (g) => {
+  const a = (Array.isArray(g) ? g : []).map((n) => Math.round(Number(n))).filter((n) => n >= 1 && n <= 365).slice(0, 10);
+  return a.length ? a : [...GAPS];
+};
+export function cleanDeck(d = {}) {
+  const seen = new Set();
+  const words = (Array.isArray(d?.words) ? d.words : [])
+    .map(cleanWord)
+    .filter((w) => w.en && w.tr && !seen.has(wordKey(w.en)) && seen.add(wordKey(w.en)))
+    .slice(0, 2000);
+  return { words, gaps: cleanGaps(d?.gaps), seedV: Math.max(0, Math.round(Number(d?.seedV) || 0)) };
+}
+
+const fromRow = ([en, type, tr, ex, exTr]) => ({ en, type, tr, ex, exTr, status: "list", box: 0, due: "", at: "" });
+// Gömülü listede olup destede olmayanlar eklenir (deste yoksa tamamı); { deck, changed }
+export function seedDeck(d) {
+  const deck = cleanDeck(d);
+  if (deck.seedV >= SEED_V) return { deck, changed: false };
+  const have = new Set(deck.words.map((w) => wordKey(w.en)));
+  const add = WORDS.filter((r) => !have.has(wordKey(r[0]))).map(fromRow);
+  return { deck: { ...deck, words: [...deck.words, ...add], seedV: SEED_V }, changed: true };
+}
+
+const addDays = (day, n) => {
+  const d = new Date(`${day}T12:00:00`);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+const dayNo = (day) => Math.floor(new Date(`${day}T12:00:00Z`).getTime() / 86400000);
+
+export const studyList = (deck) => (deck?.words || []).filter((w) => w.status === "study");
+// Bugün tekrarı gelen çalışma kelimeleri (en eskisi önce)
+export const dueWords = (deck, today) => studyList(deck).filter((w) => !w.due || w.due <= today).sort((a, b) => (a.due || "").localeCompare(b.due || ""));
+
+// Desteyi kelimeye göre değiştirir
+const mapWord = (deck, en, fn) => ({ ...deck, words: deck.words.map((w) => (wordKey(w.en) === wordKey(en) ? cleanWord(fn(w)) : w)) });
+export const findWord = (deck, en) => (deck?.words || []).find((w) => wordKey(w.en) === wordKey(en)) || null;
+
+// Kart gösterildi: tekrar günüyse bir sonraki aralığa geçer (aynı gün ikinci gösterim saymaz)
+export function reviewWord(deck, en, today) {
+  const w = findWord(deck, en);
+  if (!w || w.status !== "study" || (w.due && w.due > today)) return deck;
+  const gaps = cleanGaps(deck.gaps);
+  const g = gaps[Math.min(w.box, gaps.length - 1)];
+  return mapWord(deck, en, (x) => ({ ...x, box: x.box + 1, due: addDays(today, g) }));
+}
+// Çalışmaya al: yoksa eklenir (w: { en, type, tr, ex, exTr }), bugün hemen gösterilir, kutu baştan
+export function studyWord(deck, w, today, at = "") {
+  const cur = findWord(deck, w.en);
+  if (cur) return mapWord(deck, w.en, (x) => ({ ...x, ...Object.fromEntries(Object.entries(w).filter(([, v]) => v)), status: "study", box: 0, due: today, at: at || x.at }));
+  const nw = cleanWord({ ...w, status: "study", box: 0, due: today, at });
+  return nw.en && nw.tr ? { ...deck, words: [nw, ...deck.words] } : deck;
+}
+export const knowWord = (deck, en) => mapWord(deck, en, (x) => ({ ...x, status: "known", due: "" }));
+export const unstudyWord = (deck, en) => mapWord(deck, en, (x) => ({ ...x, status: "list", box: 0, due: "" }));
+
+const card = (w, study) => ({ en: w.en, type: w.type, tr: w.tr, ex: w.ex, exTr: w.exTr, study });
+// Uygulamadaki kart: tekrarı gelen çalışma kelimesi önce, yoksa listeden sıradaki (i: nextWordIndex)
+export function pickCard(deck, today, i = 0) {
+  const due = dueWords(deck, today)[0];
+  if (due) return card(due, true);
+  const list = (deck?.words || []).filter((w) => w.status === "list");
+  if (!list.length) return null;
+  const o = wordOrder(list.length);
+  return card(list[o[((i % o.length) + o.length) % o.length]], false);
+}
+
+// ---- Cihazdaki kopya (widget ve çevrimdışı; ana hesap dışındakilerin destesi de burada) ----
+export const DECK_KEY = "sa-words-deck";
+const LS = () => (typeof localStorage === "undefined" ? null : localStorage);
+export function cachedDeck(store = LS()) {
+  try {
+    const raw = store?.getItem(DECK_KEY);
+    if (raw) return seedDeck(JSON.parse(raw)).deck;
+  } catch {
+    /* bozuk kopya */
+  }
+  return seedDeck(null).deck;
+}
+export function keepDeck(deck, store = LS()) {
+  try {
+    store?.setItem(DECK_KEY, JSON.stringify(cleanDeck(deck)));
+  } catch {
+    /* dolu ya da gizli pencere */
+  }
+}
+
+const isoDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// iPhone widget'ı için günün kartı: { en, type, tr, ex, exTr, study }. Önce tekrarı gelen çalışma kelimesi, yoksa diğer
+// çalışma kelimeleri (gün gün sırayla), o da yoksa listeden günün kelimesi. Gün boyunca aynı kelime; desteyi değiştirmez.
+export function widgetWord(deck = cachedDeck(), today = isoDay()) {
+  const due = dueWords(deck, today)[0];
+  if (due) return card(due, true);
+  const st = studyList(deck);
+  if (st.length) return card(st[dayNo(today) % st.length], true);
+  return pickCard(deck, today, dayNo(today));
+}
+
+// ---- Asistan cümleleri ----
+// "resilient kelimesini ekle", "bana X kelimesini çalıştır", "X kelimesini öğrendim", "X kelimesini çalışmadan çıkar",
+// "çalıştığım kelimeler neler", "kelimeleri her gün göster", "kelime tekrarını 1 3 7 gün yap"
+// → { op: "study" | "known" | "drop" | "ask" | "gaps", word, gaps }
+const low = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/[.!…]+$/u, "").replace(/\s+/g, " ").trim();
+const WORD_OF = /^(.+?)\s+(?:ingilizce\s+)?(?:kelimesi\p{L}*|kelimeyi|sözcüğ\p{L}*|deyimi\p{L}*)(?:\s|$)/u;
+const NUM = { bir: 1, iki: 2, üç: 3, dört: 4, beş: 5, altı: 6, yedi: 7, sekiz: 8, dokuz: 9, on: 10, "on beş": 15, otuz: 30 };
+export function wordCommand(raw) {
+  const t = low(raw);
+  if (!/(kelime|sözcü|deyim)/u.test(t)) return null;
+  if (/(kelime|sözcük)\p{L}* (tekrar\p{L}*|aralı\p{L}*|sıklı\p{L}*)|kelimeleri (her|\d+|bir|iki|üç) /u.test(t)) {
+    let gaps = [];
+    if (/her gün/u.test(t)) gaps = [1];
+    else {
+      const m = t.match(/(\d+|bir|iki|üç|dört|beş|altı|yedi) günde bir/u);
+      if (m) gaps = [Number(m[1]) || NUM[m[1]]];
+      else gaps = [...t.matchAll(/\d+/g)].map((x) => Number(x[0]));
+    }
+    gaps = gaps.filter((n) => n >= 1 && n <= 365);
+    if (gaps.length) return { op: "gaps", gaps };
+  }
+  if (/(çalıştığım|çalışılan|çalışacağım|öğrendiğim) (ingilizce )?(kelime|sözcük)|kelime listem|kaç kelime/u.test(t)) return { op: "ask", known: /öğrendiğim/u.test(t) };
+  const m = t.match(WORD_OF);
+  let word = m ? m[1].replace(/^(bana |ingilizce |şu |bu |yeni )+/u, "").replace(/['’].*$/u, "").replace(/^["“]|["”]$/gu, "").trim() : "";
+  // "kelime ekle: resilient", "çalışma listeme resilient ekle"
+  if (!word) {
+    const k = t.match(/(?:kelime|sözcük) (?:ekle|çalıştır)\p{L}*[: ]+(.+)$/u);
+    word = k ? k[1].trim() : "";
+  }
+  if (!word || word.split(" ").length > 5) return null;
+  if (/öğrendim|biliyorum|ezberledim/u.test(t)) return { op: "known", word };
+  if (/(çalışma\p{L}*dan|listeden) (çıkar|kaldır|sil)|çalışmayı bırak|(çıkar|kaldır|sil)\p{L}*$/u.test(t)) return { op: "drop", word };
+  if (/(ekle|çalıştır|çalış\p{L}*|öğret|ezberlet|kaydet|listeme|listeye|göster)/u.test(t)) return { op: "study", word };
+  return null;
 }
