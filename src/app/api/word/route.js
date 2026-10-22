@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 
 // Söylenen kelimenin kartı (asistan "X kelimesini ekle, bana çalıştır"; kelime destede yoksa): İngilizce kelime,
 // türü, Türkçe anlamı, yaygın kullanımla örnek cümle ve Türkçesi. Türkçe söylenirse İngilizcesi bulunur. Kaydetmez.
+// kind "phrase": hazır cümle kartı (İngilizce sayfası › Cümleler › Ekle).
 const SYSTEM = `Türkçe konuşan, İngilizce öğrenen bir yetişkine kelime kartı hazırlıyorsun.
 Kurallar:
 - Kullanıcı bir İngilizce kelime ya da deyim söyler (sesle yazıldığı için yazımı bozuk olabilir, en olası İngilizce kelimeyi seç). Türkçe bir kelime söylerse en yaygın İngilizce karşılığını al.
@@ -17,6 +18,16 @@ Kurallar:
 - ex: kelimenin en yaygın kullanımıyla günlük hayattan kısa, doğal bir İngilizce cümle (en çok 12 kelime).
 - exTr: örnek cümlenin doğal Türkçesi.
 - Söylenen şey bir kelime değilse ya da anlaşılmıyorsa en boş kalsın.`;
+
+const PHRASE = `Türkçe konuşan, İngilizce öğrenen bir yetişkine hazır cümle kartı hazırlıyorsun.
+Kurallar:
+- Kullanıcı İngilizce bir cümle ya da kalıp söyler (sesle yazıldığı için bozuk olabilir, en doğal ve doğru İngilizce hâlini yaz). Türkçe söylerse günlük konuşmada en doğal İngilizce karşılığını yaz.
+- en: cümlenin doğru yazımı, büyük harfle başlar, noktalama ile biter.
+- type: "cümle".
+- tr: cümlenin doğal Türkçesi.
+- ex: bu cümlenin geçtiği kısa bir örnek durum cümlesi (İngilizce, en çok 12 kelime) ya da boş.
+- exTr: örneğin Türkçesi ya da boş.
+- Anlaşılmıyorsa en boş kalsın.`;
 
 const SCHEMA = {
   type: "object",
@@ -36,13 +47,14 @@ async function handle(request) {
   } catch {
     return bad("Geçersiz istek");
   }
-  const word = S(body?.word, 60);
+  const phrase = body?.kind === "phrase";
+  const word = S(body?.word, phrase ? 160 : 60);
   if (!word) return bad("Hangi kelime?");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
   countAi(au, "word");
   try {
-    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Kelime: """${word}"""`, schema: SCHEMA, maxTokens: 600, timeoutMs: 15000 });
-    const w = { en: S(raw?.en, 60), type: S(raw?.type, 20), tr: S(raw?.tr, 120), ex: S(raw?.ex, 200), exTr: S(raw?.exTr, 200) };
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: phrase ? PHRASE : SYSTEM, user: `${phrase ? "Cümle" : "Kelime"}: """${word}"""`, schema: SCHEMA, maxTokens: 600, timeoutMs: 15000 });
+    const w = { en: S(raw?.en, phrase ? 160 : 60), type: S(raw?.type, 20), tr: S(raw?.tr, 120), ex: S(raw?.ex, 200), exTr: S(raw?.exTr, 200) };
     if (!w.en || !w.tr) return bad(`"${word}" kelimesini anlayamadım. Harf harf söyler misin?`, 422);
     return NextResponse.json({ word: w });
   } catch (e) {

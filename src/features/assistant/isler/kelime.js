@@ -1,20 +1,13 @@
 // İngilizce kelime çalışma: "resilient kelimesini ekle, bana çalıştır", "X kelimesini öğrendim",
-// "X kelimesini çalışmadan çıkar", "çalıştığım kelimeler neler", "kelimeleri her gün göster".
+// "X kelimesini çalışmadan çıkar", "çalıştığım kelimeler neler", "kelimeleri her gün göster", "see you later cümlesini ekle".
 // Deste ana hesapta Firestore'da tek belge (features/words/wordData.js); kelime destede yoksa kartı yapay zeka hazırlar (/api/word).
 import { findWord, knowWord, studyList, studyWord, unstudyWord, wordKey } from "@/lib/englishWords";
-import { loadDeck, updateDeck } from "@/features/words/wordData";
-import { authFetch } from "@/lib/authFetch";
+import { askWord, loadDeck, updateDeck } from "@/features/words/wordData";
 import { todayStr } from "@/lib/utils/format";
 
 const L = { engine: "local" };
 const gapText = (g) => (g.length === 1 ? (g[0] === 1 ? "her gün" : `${g[0]} günde bir`) : `${g.join(", ")} gün arayla`);
 
-async function askWord(word) {
-  const res = await authFetch("/api/word", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ word }) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.word) throw new Error(data.error || "Kelimeyi hazırlayamadım.");
-  return data.word;
-}
 
 export async function runWords(ctx, { wc }, viaVoice) {
   const { done, owner, profile, reply, setPhase } = ctx;
@@ -41,11 +34,11 @@ export async function runWords(ctx, { wc }, viaVoice) {
     let w = findWord(deck, wc.word) || deck.words.find((x) => wordKey(x.tr).split(/,\s*/).includes(wordKey(wc.word)));
     if (wc.op === "known" || wc.op === "drop") {
       if (!w) return reply(`“${wc.word}” listende yok.`, { fail: true, ...L }, viaVoice);
-      await save((d) => (wc.op === "known" ? knowWord(d, w.en) : unstudyWord(d, w.en)));
+      await save((d) => (wc.op === "known" ? knowWord(d, w.en, todayStr()) : unstudyWord(d, w.en)));
       return done(wc.op === "known" ? `Harika, “${w.en}” öğrenildi. Artık göstermeyeceğim.` : `“${w.en}” çalışmadan çıktı.`, L, viaVoice);
     }
     // Çalışmaya al: destede yoksa kartı yapay zeka hazırlar
-    if (!w) w = await askWord(wc.word);
+    if (!w) w = await askWord(wc.word, wc.kind);
     if (findWord(deck, w.en)?.status === "study") return reply(`“${w.en}” zaten çalışma listende.`, L, viaVoice);
     await save((d) => studyWord(d, w, todayStr(), new Date().toISOString()));
     const d = await loadDeck(orgId);

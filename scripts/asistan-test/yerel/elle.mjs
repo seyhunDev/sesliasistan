@@ -2175,12 +2175,12 @@ group("Plan bitti ve kelime kartı")([
   const R = { en: "resilient", type: "sıfat", tr: "dirençli", ex: "Kids are resilient.", exTr: "Çocuklar dirençlidir." };
   const seeded = () => EW.seedDeck(null).deck;
   group("İngilizce kelime çalışma")([
-    ["deste tohumu", F("gömülü listenin tamamı, hepsi liste", () => { const { deck, changed } = EW.seedDeck(null); return changed && deck.words.length === EW.WORDS.length && deck.words.every((w) => w.status === "list") && deck.seedV === EW.SEED_V; })],
+    ["deste tohumu", F("gömülü listenin tamamı, hepsi liste", () => { const { deck, changed } = EW.seedDeck(null); return changed && deck.words.length === EW.WORDS.length + 100 && deck.words.every((w) => w.status === "list") && deck.seedV === EW.SEED_V && EW.ofKind(deck, "phrase").length === 100; })],
     ["tohum bir kez", F("güncel deste yeniden yazılmaz", () => !EW.seedDeck(seeded()).changed)],
     ["eksik kelime eklenir", F("eski destede kendi kelimesi ve durumu kalır", () => {
       const old = { words: [{ ...R, status: "study", box: 2, due: T }, { en: "achieve", tr: "başarmak", status: "known" }], seedV: 1 };
       const { deck, changed } = EW.seedDeck(old);
-      return changed && deck.words.length === EW.WORDS.length + 1 && EW.findWord(deck, "resilient").box === 2 && EW.findWord(deck, "achieve").status === "known";
+      return changed && deck.words.length === EW.WORDS.length + 101 && EW.findWord(deck, "resilient").box === 2 && EW.findWord(deck, "achieve").status === "known";
     })],
     ["çalışmaya al", F("ilk gün hemen kartta, çalış işaretiyle", () => { const d = EW.studyWord(seeded(), R, T); const c = EW.pickCard(d, T, 5); return c.en === "resilient" && c.study === true; })],
     ["tekrar aralığı", F("1, 2, 4 gün sonra; aynı gün ikinci gösterim saymaz", () => {
@@ -2222,6 +2222,25 @@ group("Plan bitti ve kelime kartı")([
       const x = EW.findWord(d, w.en);
       return x.status === "study" && x.due === "2026-10-23" && d.words.length === d0.words.length && EW.pickCard(d, "2026-10-23", 0).en === w.en;
     })],
+    ["kart ve widget cümle seçmez", F("listeden yalnız kelime", () => { const d = seeded(); return Array.from({ length: 40 }, (_, i) => EW.pickCard(d, T, i)).every((c) => c.type !== "cümle") && EW.widgetWord(d, T).type !== "cümle"; })],
+    ["sayfa sayıları", F("kelime ve cümle ayrı", () => { const d = EW.knowWord(EW.studyWord(seeded(), R, T), "achieve", T); const w = EW.deckCounts(d, "word"); const p = EW.deckCounts(d, "phrase"); return w.study === 1 && w.known === 1 && w.list === EW.WORDS.length - 1 && p.list === 100 && p.known === 0; })],
+    ["sayfa sıradaki", F("çalışılan önce, Sonraki geçer, hepsi geçilince baştan", () => {
+      const d = EW.studyWord(seeded(), R, T);
+      const a = EW.pageCard(d, { kind: "word", today: T });
+      const b = EW.pageCard(d, { kind: "word", today: T, skip: [a.en] });
+      const all = EW.ofKind(d, "word").map((w) => w.en);
+      return a.en === "resilient" && b.en !== "resilient" && b.status === "list" && EW.pageCard(d, { kind: "word", today: T, skip: all }).en === "resilient";
+    })],
+    ["cümle konusu", F("konuya dokununca kart o konudan", () => { const c = EW.pageCard(seeded(), { kind: "phrase", today: T, topic: "Yarış ve spor" }); return c.topic === "Yarış ve spor" && c.kind === "phrase"; })],
+    ["öğrendiklerim", F("öğrenme günüyle, en yeni önce; konu sayısı artar", () => {
+      let d = EW.knowWord(seeded(), "achieve", "2026-10-20");
+      d = EW.knowWord(d, "Could you give me a hand?", T);
+      d = EW.knowWord(d, "adapt", T);
+      const k = EW.knownList(d, "word");
+      return k.map((w) => w.en).join() === "adapt,achieve" && k[0].kd === T && EW.topicStats(d)[0].known === 1 && EW.topicStats(d).length === 4;
+    })],
+    ["cümle ekle cümlesi", F("İngilizce söylenen cümle", () => JSON.stringify(EW.wordCommand("could you give me a hand cümlesini ekle")) === '{"op":"study","word":"could you give me a hand","kind":"phrase"}')],
+    ["Türkçe cümle değil", F("bu cümleyi not al / kaydet", () => !EW.wordCommand("bu cümleyi not al") && !EW.wordCommand("bu cümleyi kaydet"))],
     ["ekle cümlesi", F("kelime ve çalıştır", () => JSON.stringify(EW.wordCommand("resilient kelimesini ekle, bana çalıştır")) === '{"op":"study","word":"resilient"}')],
     ["deyim", F("iki kelimeli", () => EW.wordCommand("İngilizce take off kelimesini çalışma listeme ekle")?.word === "take off")],
     ["öğrendim cümlesi", F("known", () => EW.wordCommand("resilient kelimesini öğrendim")?.op === "known")],
