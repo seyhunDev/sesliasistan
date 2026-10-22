@@ -35,6 +35,7 @@ import { updateAsk } from "@/lib/newVersion";
 import { inboxClearAsk } from "@/lib/inbox";
 import { resultsAsk } from "@/lib/resultSheet";
 import { debtAsk, debtCommand } from "@/lib/debts";
+import { wordCommand } from "@/lib/englishWords";
 import { timerCommand, windCommand } from "@/lib/raceLive";
 import { resultCommand } from "@/lib/raceVoice";
 import { attQueryAsk } from "@/lib/attQuery";
@@ -155,6 +156,9 @@ export function routesOf(s, c = {}) {
   const dq = owner && !isStaff ? debtAsk(s) : null;
   const dc = !dq && !mf && owner && !isStaff ? debtCommand(s) : null;
   if (dq || dc) add("debt", { dq, dc });
+  // İngilizce kelime çalışma: "resilient kelimesini ekle, bana çalıştır", "X kelimesini öğrendim", "çalıştığım kelimeler neler"
+  const wc = !mf && !athleteSide ? wordCommand(s) : null;
+  if (wc) add("words", { wc });
   if (c.onPost) add("postEdit");
   if (!mf && wantsSchedule(s, path === "/schedule")) add("schedule");
   const bday = !mf && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş|(?<![\p{L}])(kim|kimin|kimler|kimlerin|yaklaş\p{L}*|var mı|neler)(?![\p{L}])/iu.test(s) && parseBirthday(s);
@@ -224,6 +228,7 @@ export function routeOf(s, c = {}) {
     if (r.id === "local") return r.cmd.type === "receipt" ? "receiptCam" : r.cmd.type === "meeting" ? "meeting" : r.cmd.type === "navigate" ? "navigate" : `local:${r.cmd.type}`;
     if (r.id === "logBare") return "log";
     if (r.id === "debt") return r.dq ? "debt(ask)" : `debt(${r.dc.op})`;
+    if (r.id === "words") return `words(${r.wc.op})`;
     return r.id;
   }
   return "ai";

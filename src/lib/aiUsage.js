@@ -8,6 +8,7 @@ export const AI_LABELS = {
   replies: "Hazır yanıt",
   meeting: "Toplantı özeti",
   schedule: "Ders programı",
+  word: "İngilizce kelime kartı",
   attendance: "Sesli yoklama",
   race: "Yarış (asistan)",
   "race-notice": "Yarış talimatı",
