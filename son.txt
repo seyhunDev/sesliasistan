@@ -1,8 +1,8 @@
-Commit: 9745aa5 · Merge pull request #713 from seyhunDev/claude/project-thread-76s7q5
-Zaman: 2026-10-22-2246 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39841886276
+Commit: 9745aa5 (kaydedilmemiş değişiklikle) · Merge pull request #713 from seyhunDev/claude/project-thread-76s7q5
+Zaman: 2026-10-22-2300 (İstanbul)
+Çalıştırma: Mac (npm run test:hepsi)
 
-TAM TEST · 22.10.2026 22:39:01
+TAM TEST · 22.10.2026 22:53:20
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,11 +20,15 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1374/1374 geçti · 0 kalan · 439 sn
+SONUÇ: 1373/1374 geçti · 1 kalan · 452 sn
 ======================================================================
 
-1. BİRİM TESTLERİ: 1/1
-  ✓ Birim testleri: 1/1
+1. BİRİM TESTLERİ: 0/1
+  ✗ Birim testleri: 0/1
+      ✗ “3712 test”
+          beklenen: hepsi geçer
+          olan:     3711/3712 geçti
+      ✗ “700 satır okunur” → HATA: Cannot read properties of undefined (reading 'book_new') (beklenen: 500 sınırı yüklemede yok, yalnız gelenler saklanır)
 
 2. ANLAMA: temiz cümleler: 121/121
   ✓ Temiz cümle: Plan / takvim: 8/8
