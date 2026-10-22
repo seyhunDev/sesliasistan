@@ -16,8 +16,8 @@ import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
 
 // Ana sayfanın lacivert üst kısmı ("kokpit"; Seyhun 2026-10-21 "C · Lacivert kokpit" seçti, örnek ana-sayfa/futuristik/c2-kokpit-ruzgar.png):
-// logo + tarih + doğum günü + zil + Ayarlar; altında bugünün havası tek satırda (sıcaklık, gökyüzü, en düşük/en yüksek, günün en sert sağanağı;
-// "14:00 23 kn" = günün en sert sağanağı ve saati; sağda şimdiki rüzgâr "rüzgâr–sağanak kn"), büyük rüzgâr grafiği (CockpitWind) ve sıradaki iş (nextPlan). Hava satırı ya da grafiğe dokununca
+// logo + tarih + doğum günü + zil + Ayarlar; altında bugünün havası tek satırda (sıcaklık, gökyüzü, en düşük/en yüksek;
+// günün en sert sağanağı grafikte soluk çizgiyle (CockpitWind); sağda şimdiki rüzgâr "rüzgâr–sağanak kn"), büyük rüzgâr grafiği (CockpitWind) ve sıradaki iş (nextPlan). Hava satırı ya da grafiğe dokununca
 // hava sayfası açılır. Lacivert her iki temada aynı (logonun gecesi); altındaki açık zemin üstüne yuvarlak köşeyle biner (OwnerHome).
 // children (iş düğmeleri, büyük günler) en altta, araya boşluk konmaz (Seyhun 2026-10-21: "çok boşluklar oldu"; tam ekran uzatma kaldırıldı).
 export function Cockpit({ weather, inbox, onInbox, children }) {
@@ -29,7 +29,6 @@ export function Cockpit({ weather, inbox, onInbox, children }) {
   const n = nowOf(w);
   const rows = dayHours(w, today);
   const day = w?.today?.date === today ? w.today : w?.days?.find((d) => d.date === today);
-  const peak = rows?.length ? rows.reduce((a, h) => (h.gust > a.gust ? h : a), rows[0]) : null;
   const dname = now.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
   const date = now.toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
   const goWeather = () => (w ? router.push("/weather") : refresh(true));
@@ -55,7 +54,6 @@ export function Cockpit({ weather, inbox, onInbox, children }) {
               <b className="block truncate text-[0.9375rem] font-semibold">{sky(n.code, n.day).label}</b>
               <small className="block truncate text-[0.8125rem] text-white/65 tabular-nums">
                 {day ? `${day.min}° / ${day.max}°` : ""}
-                {peak && peak.gust > n.gust ? `${day ? " · " : ""}${peak.hh}:00 ${peak.gust} kn` : ""}
               </small>
             </span>
             <span className="shrink-0 text-right leading-tight">
