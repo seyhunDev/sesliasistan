@@ -1110,6 +1110,11 @@ async function camsPage(h) {
     const ok = await waitFor(() => page.locator("header button", { hasText: "Ayvalık" }).count(), 5000);
     return [n >= 5 && !!ok, `${n} yer · ${ok ? "Ayvalık seçildi" : "seçilmedi"}`];
   });
+  await check(G, "yer kalıcı", "sayfa yeniden açılınca seçilen yerle açılır", async () => {
+    await page.reload({ waitUntil: "load" });
+    const ok = await waitFor(() => page.locator("main header button", { hasText: "Ayvalık" }).count(), 15000);
+    return [!!ok, ok ? "Ayvalık" : "yer seçilmemiş"];
+  });
   await check("Sayfa hataları", "kameralar", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
 }
