@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HomeDays } from "./HomeDays";
 import { todayStr } from "@/lib/utils/format";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -83,17 +83,25 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
     lessons: lessons.length > 0,
     fit: staff && myFit(plans, profile?.uid).length > 0,
   }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
+  // Seçilen gün (Seyhun 2026-10-23 "günler en üstte"): kokpitteki hava, grafik ve planlar bu güne göre; pick: penceresi açık gün
+  const today = todayStr();
+  const [sel, setSel] = useState(today);
+  const [pick, setPick] = useState(null);
 
 
   return (
     <>
-      {/* Lacivert kokpit (Seyhun 2026-10-21; boşluksuz, sıkı): iş düğmeleri (en sık işler adıyla, sonunda Tümü) ve büyük günler (güne dokununca o günün penceresi) */}
-      <Cockpit weather={weather} inbox={inbox} onInbox={onInbox}>
+      {/* Lacivert kokpit (Seyhun 2026-10-21; boşluksuz, sıkı): en üstte büyük günler (seçilen güne göre hava ve planlar), altta iş düğmeleri (en sık işler adıyla, sonunda Tümü) */}
+      <Cockpit
+        weather={weather}
+        inbox={inbox}
+        onInbox={onInbox}
+        sel={sel}
+        onOpenDay={() => setPick(sel)}
+        days={<HomeDays today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
+      >
         <div className="mt-4">
           <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
-        </div>
-        <div className="mt-3">
-          <HomeDays today={todayStr()} fit={fit} att={athletes} />
         </div>
         {owner && (
           <div className="mt-5">

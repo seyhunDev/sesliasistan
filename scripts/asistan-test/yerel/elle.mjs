@@ -2870,6 +2870,13 @@ group("Ortak düğmeler")([
     ["bitirilen plan", F("arşivdeki (bitti) atlanır, sıradaki gelir", () => HT.nextPlan([{ id: "s", title: "Antrenman", date: "2026-10-21", done: true }, P[2], P[3]], at, "2026-10-21")?.id === "c")],
     ["8 gün sonra", F("7 günden uzak plan yok", () => HT.nextPlan([{ id: "u", date: "2026-10-30", time: "10:00" }], at, "2026-10-21") === null)],
     ["yemek kartı", F("saate göre: 8 kahvaltı, 12 öğle, 19 akşam, 2 gece", () => HT.mealLabel(8) === "Kahvaltı önerisi" && HT.mealLabel(12) === "Öğle yemeği önerisi" && HT.mealLabel(19) === "Akşam yemeği önerisi" && HT.mealLabel(2) === "Gece atıştırması")],
+    ["seçilen günün planları", F("iptal ve biten çıkar, saatsiz sonda", () => HT.dayPlans([{ id: "a", date: "2026-10-26", time: "16:00" }, { id: "b", date: "2026-10-26", time: "" }, { id: "c", date: "2026-10-26", time: "10:00" }, { id: "d", date: "2026-10-26", time: "09:00", status: "cancelled" }, { id: "e", date: "2026-10-26", time: "08:00", done: true }, { id: "f", date: "2026-10-27", time: "09:00" }], "2026-10-26").map((p) => p.id).join() === "c,a,b")],
+    ["seçilen günün havası", F("saatlerden en düşük/yüksek, gündüz en sert rüzgâr; özet varsa ondan; saat yoksa yok", () => {
+      const rows = ["06", "09", "13", "15", "21"].map((hh, i) => ({ hh, t: [12, 15, 20, 22, 16][i], code: [0, 1, 2, 3, 0][i], wind: [20, 8, 12, 16, 25][i], gust: [24, 12, 18, 22, 30][i], dir: [0, 90, 180, 270, 45][i] }));
+      const a = HT.dayWeather({ days: [] }, rows, "2026-10-29");
+      const b = HT.dayWeather({ days: [{ date: "2026-10-29", min: 10, max: 24, code: 61 }] }, rows, "2026-10-29");
+      return a.min === 12 && a.max === 22 && a.code === 2 && a.wind === 16 && a.gust === 22 && a.dir === 270 && b.min === 10 && b.max === 24 && b.code === 61 && HT.dayWeather({}, [], "2026-10-29") === null;
+    })],
     ["yemek kartı fotoğrafı", F("saate göre: 8 kahvaltı, 13 makarna, 20 pizza, 1 burger", () => HT.mealPhoto(8) === "breakfast" && HT.mealPhoto(13) === "pasta" && HT.mealPhoto(20) === "pizza" && HT.mealPhoto(1) === "burger")],
     ["tür başlıkta", F("“Optimist antrenmanı” Antrenman etiketi almaz, toplantı alır", () => HT.planTag({ title: "Optimist antrenmanı", cat: "Antrenman" }) === "" && HT.planTag({ title: "Yönetim", cat: "Toplantı" }) === "Toplantı" && HT.planTag({ title: "Fitness · İlay", fit: { name: "İlay" } }) === "")],
   ]);
