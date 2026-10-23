@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { Icon } from "@/components/ui/Icon";
 import { useEffect, useMemo, useState } from "react";
 import { HomeDays } from "./HomeDays";
 import { todayStr } from "@/lib/utils/format";
@@ -15,7 +17,6 @@ import { InboxSheet, useInbox } from "./Inbox";
 import { WaitRow } from "./WaitRow";
 import { Cockpit } from "./Cockpit";
 import { FoodCard } from "./FoodCard";
-import { SeaCard } from "@/features/sea/SeaCard";
 import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
@@ -109,7 +110,17 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
             <FoodCard />
           </div>
         )}
-        {!side && <SeaCard className="mt-3" />}
+        {/* Deniz trafiği ve Kameralar: yalnız sayfasına giden iki sade düğme, veri çekmez (Seyhun 2026-10-23) */}
+        {!side && (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {[["/sea", "anchor", "Deniz trafiği"], ["/cams", "video", "Kameralar"]].map(([href, icon, label]) => (
+              <Link key={href} href={href} data-press className="food-card flex h-14 min-w-0 items-center gap-2.5 rounded-[1.125rem] px-4">
+                <Icon name={icon} className="size-5 shrink-0 text-[#22d3ee]" />
+                <span className="truncate text-[0.9375rem] font-semibold">{label}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </Cockpit>
       {/* Alt kısım da lacivert (Seyhun 2026-10-22: "yukarısı daha güzel, bu tasarımı devam ettirelim"): kartlar kokpitteki gibi
           yarı saydam lacivert, yazılar açık; renkler globals.css .navy değişkenlerinden (koyu görünüm sınıfları da çalışır) */}
