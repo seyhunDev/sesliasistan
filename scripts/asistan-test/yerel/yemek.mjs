@@ -6,6 +6,7 @@ import { pickAddress, addressBySpeech, distanceM, parseReverse, addressText, til
 import { parseAsk, suggest, findRepeat, answerFood, tasteOf, den } from "@/yemek/suggest";
 import { photoUrl } from "@/yemek/photo";
 import { liveView } from "@/yemek/demo";
+import { decodeLine, pointAlong, progressOn, rideMin, roadMin } from "@/yemek/route";
 import { suite } from "./ortak.mjs";
 
 const { group } = suite("yemek");
@@ -139,4 +140,17 @@ group("Haritadan adres")([
   ["adres satırı", { desc: "sokak, kat, daire, zil · mahalle", fn: () => addressText({ street: "1453 Sk. No 12", floor: "2", flat: "5", bell: "Yıldız", area: "Cumhuriyet Mah., Dikili" }), ok: (g) => g === "1453 Sk. No 12, Kat 2, Daire 5, Zil Yıldız · Cumhuriyet Mah., Dikili" }],
   ["boş alanlar yazılmaz", { desc: "yalnız sokak", fn: () => addressText({ street: "Liman Cd.", floor: "", flat: "" }), ok: (g) => g === "Liman Cd." }],
   ["küçük harita karoları", { desc: "Dikili z16: 4 karo, yerin çevresindeki 128 px dolu (sağ kenara yakın → sağdaki karo da)", fn: () => tileOf({ lat: 39.0712, lng: 26.8889 }), ok: (g) => { const mx = Math.min(...g.map((t) => t.dx)), my = Math.min(...g.map((t) => t.dy)); return g.length === 4 && g.some((t) => t.url.endsWith("/16/37662/25029.png")) && g.some((t) => t.url.includes("/16/37663/")) && mx <= -128 && mx + 512 >= 128 && my <= -128 && my + 512 >= 128; } }],
+]);
+
+// Yollardan rota (OSRM polyline6): çözme, yol üzerinde ilerleme, araca göre süre, deneme kuryesi yolda
+const LINE = "gk|oiAwsahr@f{Cg^v|A~{Bv|Av|A"; // 39.0745,26.8875 → 39.0720,26.8880 → 39.0705,26.8860 → 39.0690,26.8845
+const R = { line: LINE, km: 1.4, min: 6 };
+group("Rota")([
+  ["polyline çözülür", { desc: "4 nokta, ilk ve son doğru", fn: () => decodeLine(LINE), ok: (g) => g.length === 4 && Math.abs(g[0][1] - 39.0745) < 1e-6 && Math.abs(g[3][0] - 26.8845) < 1e-6 }],
+  ["yolun yarısı", { desc: "uçlar arasında, yol üzerinde", fn: () => pointAlong(decodeLine(LINE), 0.5), ok: (g) => g.lat < 39.0745 && g.lat > 39.069 && progressOn(decodeLine(LINE), g).off < 5 }],
+  ["kuryenin yoldaki yeri", { desc: "2. köşede ≈ %35", fn: () => progressOn(decodeLine(LINE), { lat: 39.072, lng: 26.888 }), ok: (g) => g.off < 1 && g.f > 0.25 && g.f < 0.45 }],
+  ["araca göre süre", { desc: "araba 6, motor 5, bisiklet 6 (1,4 km / 15 km/sa)", fn: () => ["araba", "motor", "bisiklet"].map((v) => rideMin(R, v)), ok: (g) => g[0] === 6 && g[1] === 5 && g[2] === 6 }],
+  ["rotasız sipariş", { desc: "kuş uçuşu tahmin (en az 5 dk)", fn: () => roadMin({ address: ADDR[1] }, place("pizza-ruzgar")), ok: (g) => g === 5 }],
+  ["deneme kuryesi rotada", { desc: "yolun yarısında kurye yol üzerinde, motorlu", fn: () => { const o = { ...demoOrder, route: R }; const v0 = liveView(o, pr, NOW); return liveView(o, pr, new Date(v0.eta).getTime() - 2.5 * 60000); }, ok: (g) => g.status === "onTheWay" && g.courier.vehicle === "motor" && progressOn(decodeLine(LINE), g.courier.pos).off < 5 && g.f > 0.3 && g.f < 0.7 }],
+  ["gerçek kurye rotada", { desc: "kalan süre rotanın kalanından (motor 5 dk × %65 ≈ 3)", fn: () => { const v = liveView({ ...real, route: R, courier: { vehicle: "motor", pos: { lat: 39.072, lng: 26.888 } } }, pr, NOW); return [minutesLeft(v.eta, new Date(NOW)), v.f]; }, ok: (g) => g[0] >= 3 && g[0] <= 4 && g[1] > 0.25 }],
 ]);

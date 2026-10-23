@@ -10,6 +10,7 @@ import { distanceM } from "../address";
 import { placeById, useSettings, useToday, deliverOrder, courierAt } from "../store";
 import { tl } from "./Img";
 import { TrackMap } from "./TrackMap";
+import { photoUrl } from "../photo";
 import { useNow, useRemembered, withLive } from "./AdminView";
 
 // Velora Yemek › Kurye ekranı (başka telefondan açılır; kurye bu cihazda hatırlanır). Yoldaki siparişleri gösterir;
@@ -120,7 +121,7 @@ function Courier({ orgId, courier, onChange }) {
           const nav = to ? `https://maps.apple.com/?daddr=${to.lat},${to.lng}&dirflg=d` : "";
           return (
             <section key={o.id} className="space-y-3">
-              <TrackMap from={place?.pos} to={to} courier={o.live.courier?.pos} />
+              <TrackMap from={place?.pos} to={to} courier={o.live.courier} route={o.route} f={o.live.f} photo={place?.cover && photoUrl(place.cover, 120)} />
               <div className="overflow-hidden rounded-[1.25rem] border border-line bg-card">
                 <div className="flex items-center gap-3 px-3.5 py-2.5">
                   <span className="min-w-0 flex-1">
