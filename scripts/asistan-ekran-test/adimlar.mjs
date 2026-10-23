@@ -1036,23 +1036,19 @@ async function scenarios4(h) {
   await seaPage(h);
 }
 
-// ================================================================ Deniz trafiği (/sea): taklit gemi listesi (taklitler.mjs SEA)
+// ================================================================ Deniz trafiği (/sea): tam ekran VesselFinder haritası
 async function seaPage(h) {
-  const { check, newPage, waitFor, calls, log } = h;
+  const { check, newPage, waitFor, log } = h;
   log("    Deniz trafiği sayfası…");
   const { page, errs } = await newPage();
   await page.goto(page.url().replace(/\/[^/]*$/, "/sea"), { waitUntil: "load" });
   const G = "Deniz trafiği";
-  await check(G, "sayfa açılır", "bölümler ve gemiler listelenir", async () => {
-    const ok = await waitFor(() => page.getByText("Ayvalık Ferry").count(), 15000);
-    const text = await page.locator("main").innerText();
-    return [!!ok && /YAKLAŞAN \/ AYRILAN/.test(text) && /DEMİRDE/.test(text) && /LİMANDA/.test(text) && /Yanaşıyor/.test(text), text.replace(/\s+/g, " ").slice(0, 160)];
-  });
-  await check(G, "veri sorulur", "/api/sea istenir", async () => [calls.some((c) => c.path === "/api/sea"), `${calls.filter((c) => c.path === "/api/sea").length} istek`]);
-  await check(G, "yenileme süresi", "dokununca 20 sn → 30 sn", async () => {
-    const b = page.locator("button[aria-label='Yenileme süresi']");
-    await b.click();
-    return [/30 sn/.test(await b.innerText()), await b.innerText()];
+  await check(G, "sayfa açılır", "tam ekran VesselFinder haritası, Teknem ve Acil", async () => {
+    const ok = await waitFor(() => page.locator("iframe[src^='/vf.html']").count(), 15000);
+    const src = (await page.locator("iframe[src^='/vf.html']").first().getAttribute("src").catch(() => "")) || "";
+    const h = Number(new URLSearchParams(src.split("?")[1] || "").get("h"));
+    const btns = await page.getByRole("button", { name: /Teknem|Acil/ }).count();
+    return [!!ok && h > 400 && btns === 2, `${src} · ${btns} düğme`];
   });
   await check(G, "Acil penceresi", "158 ve 112 aranabilir", async () => {
     await page.getByRole("button", { name: /Acil/ }).click();
