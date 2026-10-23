@@ -7,7 +7,7 @@ import { fetchRoute, lineOf } from "../route";
 // Takip haritası (Seyhun 2026-10-23: tek, akıcı, göze hoş harita): vektör harita, restorandan adrese yollardan rota
 // (çizilerek gelir), restoran fotoğraflı yuvarlak, ev camgöbeği, kurye aracına göre simge (motor / araba / bisiklet)
 // ve yumuşak kayarak ilerler; yolun alınan kısmı soluk. Telefonda tek parmak sayfayı kaydırır, iki parmak yakınlaştırır.
-// small: ana sayfadaki yemek kartının üstündeki küçük harita (çerçevesiz, dokunulmaz; dokunuş kartın bağlantısına gider).
+// small: ana sayfadaki yemek kartının üstündeki küçük harita (çerçevesiz, dokunulmaz; dokunuş kartın bağlantısına gider); onFail: harita yüklenemedi.
 const ACC = "#0b7f99", DEEP = "#0f2c45";
 const ICONS = {
   motor: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M9 17h4l3-7h3M14.5 10 13 6h-2.5M8 14h5"/>',
@@ -51,7 +51,7 @@ function useLine(route, from, to) {
   return given || got || null;
 }
 
-export function TrackMap({ from, to, courier, route, photo, f = 0, info, tall, small }) {
+export function TrackMap({ from, to, courier, route, photo, f = 0, info, tall, small, onFail }) {
   const box = useRef(null);
   const map = useRef(null);
   const marks = useRef({});
@@ -88,7 +88,7 @@ export function TrackMap({ from, to, courier, route, photo, f = 0, info, tall, s
         });
         m.on("error", () => {}); // tek karo hatası haritayı düşürmesin
       })
-      .catch(() => live && setErr(true));
+      .catch(() => live && (setErr(true), onFail?.()));
     return () => {
       live = false;
       cancelAnimationFrame(anim.current);
@@ -162,10 +162,10 @@ export function TrackMap({ from, to, courier, route, photo, f = 0, info, tall, s
   if (err) return null;
   return (
     <div className="relative">
-      <div ref={box} className={small ? "pointer-events-none h-[7.5rem] w-full overflow-hidden bg-[#eef0ea]" : `${tall ? "h-[26rem]" : "h-72"} w-full overflow-hidden rounded-[1.25rem] border border-line bg-[#eef0ea]`} />
+      <div ref={box} className={small ? "pointer-events-none h-[9.5rem] w-full overflow-hidden bg-[#eef0ea]" : `${tall ? "h-[26rem]" : "h-72"} w-full overflow-hidden rounded-[1.25rem] border border-line bg-[#eef0ea]`} />
       {info && <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1.5 text-[0.8125rem] font-semibold text-[#26282c] shadow-sm">{info}</span>}
-      <button type="button" onClick={(e) => (e.preventDefault(), setAbout(!about))} aria-label="Harita kaynağı" className="absolute bottom-2 right-2 grid size-6 place-items-center rounded-full bg-white/85 text-[0.75rem] font-bold text-[#74777d]">i</button>
-      {about && <p className="absolute bottom-2 right-10 rounded-lg bg-white/90 px-2 py-1 text-[0.6875rem] text-[#74777d]">{MAP_ATTR}</p>}
+      <button type="button" onClick={(e) => (e.preventDefault(), setAbout(!about))} aria-label="Harita kaynağı" className={`absolute right-2 ${small ? "top-2" : "bottom-2"} grid size-6 place-items-center rounded-full bg-white/85 text-[0.75rem] font-bold text-[#74777d]`}>i</button>
+      {about && <p className={`absolute right-10 ${small ? "top-2" : "bottom-2"} rounded-lg bg-white/90 px-2 py-1 text-[0.6875rem] text-[#74777d]`}>{MAP_ATTR}</p>}
     </div>
   );
 }
