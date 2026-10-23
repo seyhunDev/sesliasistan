@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { authFetch } from "@/lib/authFetch";
 
-// Deniz trafiği verisi (/api/sea, aisstream): ana sayfa kartı every sn'de bir sorar; arka planda / ekran kapalıyken durur
-// (pil ve data). Sayfa artık yalnız VesselFinder haritası (2026-10-23), bu veriyi kullanmaz.
+// Deniz trafiği verisi (/api/sea, aisstream): yalnız sesli asistan sorar (sayfa VesselFinder haritası, ana sayfa kartı
+// 2026-10-23'te kalktı).
 
-// Asistan ve sayfa aynı isteği kullanır
+// Sesli asistanın isteği (isler/deniz.js)
 export async function fetchSea() {
   const r = await authFetch("/api/sea");
   if (!r.ok) {
@@ -14,39 +14,6 @@ export async function fetchSea() {
     return { error: "fail", why: j.error || `sunucu ${r.status}` };
   }
   return r.json();
-}
-
-export function useSea(every) {
-  const [data, setData] = useState(null);
-  const [fail, setFail] = useState(false);
-  const busy = useRef(false);
-  const load = useCallback(async () => {
-    if (busy.current || document.hidden) return;
-    busy.current = true;
-    try {
-      const v = await fetchSea();
-      // Hata olursa son gemiler kalır; hiç gemi gelmediyse hata gösterilir (sayfa "yükleniyor"da takılmaz)
-      setData((d) => (v.ships || !d?.ships ? v : d));
-      setFail(!!v.error && v.error !== "nokey");
-    } catch (e) {
-      setData((d) => d || { error: "fail", why: e?.message || "bağlantı yok" });
-      setFail(true);
-    } finally {
-      busy.current = false;
-    }
-  }, []);
-  useEffect(() => {
-    const first = setTimeout(load, 0);
-    const id = setInterval(load, every * 1000);
-    const vis = () => !document.hidden && load();
-    document.addEventListener("visibilitychange", vis);
-    return () => {
-      clearTimeout(first);
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", vis);
-    };
-  }, [every, load]);
-  return { data, fail, reload: load };
 }
 
 // Telefonun konumu ("Teknem"): yalnız sayfa açıkken izlenir
