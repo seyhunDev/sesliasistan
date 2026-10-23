@@ -544,3 +544,6 @@ export function fitWeek(fit = [], today) {
   const week = fit.filter((f) => f.date >= ymd(mon) && f.date <= ymd(sun));
   return { n: week.length, done: week.filter((f) => statusOf(f.plan || f, today) === "done").length };
 }
+
+// Ana sayfa yemek kartının başlığı saate göre (FoodCard; yemek konusunun saat aralıkları): 06–11 kahvaltı, 11–16 öğle, 16–23 akşam, gece atıştırma
+export const mealLabel = (h) => (h >= 6 && h < 11 ? "Kahvaltı önerisi" : h >= 11 && h < 16 ? "Öğle yemeği önerisi" : h >= 16 && h < 23 ? "Akşam yemeği önerisi" : "Gece atıştırması");
