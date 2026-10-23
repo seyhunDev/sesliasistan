@@ -24,6 +24,7 @@
     "test:cevrimdisi": "node --no-warnings scripts/cevrimdisi-test/calistir.mjs"
   },
   "dependencies": {
+    "@netlify/blobs": "^11.1.6",
     "@opentelemetry/api": "^1.9.1",
     "@pdf-lib/fontkit": "^1.1.1",
     "firebase": "^12.19.0",

@@ -1,0 +1,75 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { authFetch } from "@/lib/authFetch";
+import { REFRESH } from "@/lib/sea";
+
+// Deniz trafiği verisi (/api/sea): sayfa açık ve ekranda iken every sn'de bir sorulur; arka planda / ekran kapalıyken durur
+// (pil ve data). Yenileme süresi telefonda saklanır (10/20/30/60 sn, varsayılan 20).
+const KEY = "sa-sea-every";
+export function readEvery() {
+  try {
+    const v = Number(localStorage.getItem(KEY));
+    return REFRESH.includes(v) ? v : 20;
+  } catch {
+    return 20;
+  }
+}
+export function saveEvery(v) {
+  try {
+    localStorage.setItem(KEY, String(v));
+  } catch {}
+}
+
+// Asistan ve sayfa aynı isteği kullanır
+export async function fetchSea() {
+  const r = await authFetch("/api/sea");
+  if (!r.ok) throw new Error("sea");
+  return r.json();
+}
+
+export function useSea(every) {
+  const [data, setData] = useState(null);
+  const [fail, setFail] = useState(false);
+  const busy = useRef(false);
+  const load = useCallback(async () => {
+    if (busy.current || document.hidden) return;
+    busy.current = true;
+    try {
+      const v = await fetchSea();
+      if (v.ships || v.error === "nokey") setData(v);
+      setFail(!!v.error && v.error !== "nokey");
+    } catch {
+      setFail(true);
+    } finally {
+      busy.current = false;
+    }
+  }, []);
+  useEffect(() => {
+    const first = setTimeout(load, 0);
+    const id = setInterval(load, every * 1000);
+    const vis = () => !document.hidden && load();
+    document.addEventListener("visibilitychange", vis);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", vis);
+    };
+  }, [every, load]);
+  return { data, fail, reload: load };
+}
+
+// Telefonun konumu ("Teknem"): yalnız sayfa açıkken izlenir
+export function useMyPos() {
+  const [pos, setPos] = useState(null);
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (p) => setPos({ lat: p.coords.latitude, lon: p.coords.longitude, sog: Math.max(0, (p.coords.speed || 0) * 1.944) }),
+      () => {},
+      { enableHighAccuracy: false, maximumAge: 15000, timeout: 20000 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
+  return pos;
+}

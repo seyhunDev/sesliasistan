@@ -10,6 +10,7 @@ import { wantsLog, bareLog, isLogAnswer } from "@/lib/trainingLog";
 import { wantsEvent } from "@/features/events/eventWords";
 import { wantsInventory } from "@/features/inventory/invWords";
 import { athleteIn, fitLocal, guideWord, wantsFitness } from "@/lib/fitness/words";
+import { seaAsk } from "@/lib/sea";
 import { fold } from "@/lib/fitness/exercises";
 import { wantsFood } from "@/lib/fitness/food";
 import { foodOrderAsk } from "@/yemek/voice";
@@ -169,6 +170,9 @@ export function routesOf(s, c = {}) {
   // İngilizce kelime çalışma: "resilient kelimesini ekle, bana çalıştır", "X kelimesini öğrendim", "çalıştığım kelimeler neler"
   const wc = !mf && !athleteSide ? wordCommand(s) : null;
   if (wc) add("words", { wc });
+  // Deniz trafiği: "yanaşan gemi var mı", "limanda kaç gemi var", "Sahil Güvenlik nerede" (isler/deniz.js)
+  const sq = !mf && !athleteSide ? seaAsk(s) : null;
+  if (sq) add("sea", { sq });
   if (c.onPost) add("postEdit");
   if (!mf && wantsSchedule(s, path === "/schedule")) add("schedule");
   const bday = !mf && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş|(?<![\p{L}])(kim|kimin|kimler|kimlerin|yaklaş\p{L}*|var mı|neler)(?![\p{L}])/iu.test(s) && parseBirthday(s);
@@ -239,6 +243,7 @@ export function routeOf(s, c = {}) {
     if (r.id === "logBare") return "log";
     if (r.id === "debt") return r.dq ? "debt(ask)" : `debt(${r.dc.op})`;
     if (r.id === "words") return `words(${r.wc.op})`;
+    if (r.id === "sea") return `sea(${r.sq.q})`;
     return r.id;
   }
   return "ai";
