@@ -13,7 +13,7 @@ import { CAMS_FIRST, CAMS_RADIUS, PLACES, agoLabel, findPlace, kmLabel, nearPlac
 // Halka açık canlı kameralar (Seyhun 2026-10-23): ana sayfada yok, İşlemler › Kulüp › Kameralar. Lacivert üstte yer
 // düğmesi ve en yakın kamera büyük; altta 6 kamera, kalanı "Daha fazla". Kameraya dokununca Windy oynatıcısı açılır.
 // Kaynak Windy Webcams (ücretsiz katman: düşük çözünürlük, Windy'ye bağlantı ve "Windy.com" yazısı zorunlu).
-// Yer: ?yer= (sesli komut) › son seçilen › telefonun konumu › Dikili.
+// Yer: ?yer= (sesli komut) › kayıtlı yer (kalıcı) › telefonun konumu (bir kez, kaydedilir) › Dikili.
 const SAVE = "cams-place";
 const read = () => {
   try {
@@ -46,6 +46,9 @@ async function search(name, signal) {
 }
 // Alt yazı: Windy'de uzaklık ve son görüntü, YouTube'da kanal adı
 const meta = (c, ago = "") => (c.km == null ? c.ch || c.src : `${kmLabel(c.km)}${c.at ? ` · ${agoLabel(c.at)}${ago}` : ""}`);
+// YouTube'dan yayın gelmeyince nedeni (sayfanın altında tek satır)
+const ytNote = (d, p) =>
+  d.ytState === "nokey" ? "Anahtar yok" : d.ytState === "noplace" ? "Yer seçilmedi" : d.ytState === "fail" ? `Bağlanamadı${d.ytWhy ? ` (${d.ytWhy.replace(/^youtube /, "")})` : ""}` : `${p?.mine ? nearPlace(p) || "Burada" : p?.name || "Burada"} canlı yayın yok`;
 const label = (p) => (p?.mine ? nearPlace(p) || "Konumum" : p?.name || "");
 
 export function CamsPage() {
@@ -56,15 +59,20 @@ export function CamsPage() {
   const [open, setOpen] = useState(null);
   const [pick, setPick] = useState(false);
 
-  // Başlangıç yeri
+  // Başlangıç yeri (Seyhun 2026-10-23: "seçtiği yer sabit kalıcı olsun, istediğinde değiştirir"): kayıtlı yer hemen açılır,
+  // konum yeniden sorulmaz ("Konumum" da kayıtlı koordinatla; yer penceresinden yeniden seçilince güncellenir).
+  // Kayıt yoksa bir kez telefonun konumu alınıp kaydedilir; izin yoksa Dikili. Sesle söylenen yer (?yer=) de kaydedilir.
   useEffect(() => {
     let off = false;
     (async () => {
-      let p = null;
-      if (yer) p = findPlace(yer) || (await search(yer).then((r) => r[0] || null).catch(() => null));
-      if (!p) p = read();
-      if (!p || p.mine) p = (await here()) || p || PLACES[0];
-      if (!off) setPlace(p);
+      let p = yer ? findPlace(yer) || (await search(yer).then((r) => r[0] || null).catch(() => null)) : null;
+      if (p) write(p);
+      else p = read();
+      if (!p) {
+        p = await here();
+        if (p) write(p);
+      }
+      if (!off) setPlace(p || PLACES[0]);
     })();
     return () => {
       off = true;
@@ -141,6 +149,11 @@ export function CamsPage() {
             </>
           )
         )}
+        {cur && ((!cur.error && cur.ytState !== "ok") || (cur.ytState === "ok" && !cur.yt?.length)) ? (
+          <RowList>
+            <Row title="YouTube" right={<small className="text-[0.8125rem] font-semibold text-mut">{ytNote(cur, place)}</small>} />
+          </RowList>
+        ) : null}
         {cams.length > 0 && (
           <p className="px-1 text-right text-[0.75rem] font-semibold text-mut">
             Kameralar: {cur.yt?.length > 0 && "YouTube"}

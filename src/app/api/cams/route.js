@@ -54,7 +54,10 @@ export async function GET(req) {
   for (const x of [w, y]) if (x.status === "rejected") console.error("cams", x.reason?.message);
   const cams = w.status === "fulfilled" ? w.value : [];
   const yt = y.status === "fulfilled" ? y.value : [];
-  const out = { cams, yt };
+  // YouTube durumu sayfada yazılır (Seyhun: "YouTube gelmedi, yoksa yok yazısı gösterelim"): nokey · noplace · fail · ok
+  const ytState = !yk ? "nokey" : !place ? "noplace" : y.status === "rejected" ? "fail" : "ok";
+  const out = { cams, yt, ytState };
+  if (ytState === "fail") out.ytWhy = String(y.reason?.message || "").slice(0, 80);
   if (!cams.length && !yt.length && (w.status === "rejected" || y.status === "rejected")) {
     out.error = w.reason?.bad ? "badkey" : "fail";
     out.why = String((w.reason || y.reason)?.message || "").slice(0, 120);
