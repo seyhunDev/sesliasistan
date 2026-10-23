@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
-import { ListHead, Row, RowList, SkelRow } from "@/components/ui/Row";
+import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { EMERGENCY, REFRESH, VHF, agoText, groupShips, km, nearestPort, shipLine } from "@/lib/sea";
-import { SeaMap } from "./SeaMap";
+import { VesselMap } from "./VesselMap";
 import { readEvery, saveEvery, useMyPos, useSea } from "./useSea";
 
 // Deniz trafiği (Seyhun 2026-10-23): Dikili çevresindeki gemiler canlı (AIS). Lacivert üstte harita ve üç düğme
 // (Teknem · yenileme süresi · Acil), altta bölüm bölüm gemiler: yaklaşan/ayrılan, seyirde, demirde, limanda.
+// Harita VesselFinder'ın (aisstream Dikili'de sinyal vermedi, 2026-10-23); alttaki liste aisstream'den gelir ve yalnız
+// gemi varsa görünür (boş liste haritadaki gemilerle çelişmesin).
 const fmt = (n) => String(Math.round(n * 10) / 10).replace(".", ",");
 
 function Lead({ s }) {
@@ -54,8 +56,7 @@ export function SeaPage() {
   }, []);
   const { data, fail } = useSea(every);
   const me = useMyPos();
-  const [focus, setFocus] = useState(null);
-  const [pick, setPick] = useState(null);
+  const [center, setCenter] = useState(null);
   const [tall, setTall] = useState(false);
   const [sos, setSos] = useState(false);
   const [, tick] = useState(0);
@@ -72,11 +73,10 @@ export function SeaPage() {
     saveEvery(v);
   };
   const show = (p) => {
-    setFocus({ ...p, t: Date.now() });
-    setPick(p.m || null);
+    setCenter({ lat: +p.lat.toFixed(4), lon: +p.lon.toFixed(4) });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const sub = data?.at ? `Dikili · ${ships.length} gemi · ${agoText(data.at)}` : "Dikili";
+  const sub = ships.length ? `Dikili · ${ships.length} gemi · ${agoText(data.at)}` : "Dikili";
 
   return (
     <>
@@ -89,7 +89,7 @@ export function SeaPage() {
           </div>
         </header>
         <div className="mt-4">
-          <SeaMap ships={ships} me={me} focus={focus} pick={pick} onPick={setPick} tall={tall} onTall={() => setTall(!tall)} />
+          <VesselMap center={center || undefined} zoom={center ? 13 : 10} tall={tall} onTall={() => setTall(!tall)} />
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
           <button type="button" data-press onClick={() => me && show(me)} className="raised flex h-[3.5rem] min-w-0 flex-col items-center justify-center rounded-2xl px-1">
@@ -107,42 +107,21 @@ export function SeaPage() {
         </div>
       </section>
 
-      <div className="relative -mx-5 -mt-6 min-h-[40vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
-        {data?.error === "nokey" ? (
-          <RowList>
-            <Row title="Gemi verisi bağlı değil" sub="Netlify'a AISSTREAM_KEY eklenmeli" warn />
-          </RowList>
-        ) : data?.error && !data.ships ? (
-          <RowList>
-            <Row title="Gemi verisi alınamadı" sub={data.why || "Sunucu cevap vermedi"} warn />
-          </RowList>
-        ) : !data ? (
-          <RowList>
-            <SkelRow />
-            <SkelRow />
-            <SkelRow />
-          </RowList>
-        ) : (
-          <>
-            {fail && ships.length > 0 && <p className="px-1 text-[0.8125rem] font-semibold text-warn">Bağlantı yok, son bilgi gösteriliyor</p>}
-            {!groups.length && (
+      {ships.length > 0 && (
+        <div className="relative -mx-5 -mt-6 min-h-[40vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+          {fail && <p className="px-1 text-[0.8125rem] font-semibold text-warn">Bağlantı yok, son bilgi gösteriliyor</p>}
+          {groups.map((g) => (
+            <section key={g.id}>
+              <ListHead title={g.title} count={g.ships.length} />
               <RowList>
-                <Row title="Çevrede sinyal veren gemi yok" sub={data.last ? `Bölgeden son sinyal ${agoText(data.last)}` : "Bölgeden henüz hiç sinyal gelmedi"} />
+                {g.ships.map((s) => (
+                  <Row key={s.m} onClick={() => show(s)} chev={false} lead={<Lead s={s} />} title={s.n} sub={shipLine(s)} right={<StateTag s={s} />} warn={!!s.state.warn} label={`${s.n}, ${s.state.label}`} />
+                ))}
               </RowList>
-            )}
-            {groups.map((g) => (
-              <section key={g.id}>
-                <ListHead title={g.title} count={g.ships.length} />
-                <RowList>
-                  {g.ships.map((s) => (
-                    <Row key={s.m} onClick={() => show(s)} chev={false} lead={<Lead s={s} />} title={s.n} sub={shipLine(s)} right={<StateTag s={s} />} warn={!!s.state.warn} label={`${s.n}, ${s.state.label}`} />
-                  ))}
-                </RowList>
-              </section>
-            ))}
-          </>
-        )}
-      </div>
+            </section>
+          ))}
+        </div>
+      )}
 
       <SosSheet open={sos} onClose={() => setSos(false)} me={me} ships={ships} />
     </>
