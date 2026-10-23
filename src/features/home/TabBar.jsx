@@ -92,13 +92,14 @@ export function useDock(cfg) {
 
 // Yazarak sorma: sesle aynı kutu (sade tasarım, 2026-10-16). Üstte yazı alanı, altta × (yazmayı bırak) ve tek ana düğme:
 // yazı varken ↑ gönder, boşken 🎤 (söyleneni kutuya yazar, dokununca durur).
-function Composer({ cfg, onDone, onClose, init = "" }) {
+function Composer({ cfg, onDone, onClose, onPhoto, init = "" }) {
   const { openAssistant } = useAssistant();
   const toast = useToast();
   const [text, setText] = useState(init);
   const input = useRef(null);
   const sp = useSpeech({ onFinal: (t) => setText((p) => (p ? `${p} ${t}` : t)), onFail: (m) => toast(m) });
   const listening = sp.status === "listening";
+  const picking = useRef(false); // fotoğraf seçici açıkken kutu kendiliğinden kapanmasın (kapanırsa seçilen dosya kaybolur)
   useEffect(() => input.current?.focus(), []);
 
   const send = () => {
@@ -119,6 +120,8 @@ function Composer({ cfg, onDone, onClose, init = "" }) {
       onMain={listening ? () => sp.stop("edit") : has ? send : () => sp.start({ autoStop: 8000 })}
       mainIcon={listening ? "check" : has ? "up" : "mic"}
       mainLabel={listening ? "Bitti" : has ? "Gönder" : "Sesle yaz"}
+      onPick={() => (picking.current = true)}
+      onPhoto={onPhoto && !listening ? (f) => (sp.cancel(), onDone(), onPhoto(f)) : undefined}
     >
       {listening ? (
         <p className="min-h-[3.5rem] px-5 pb-1 pt-4 text-[1.0625rem] leading-snug">
@@ -132,7 +135,8 @@ function Composer({ cfg, onDone, onClose, init = "" }) {
           rows={1}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && (e.preventDefault(), send())}
-          onBlur={() => setTimeout(() => !text.trim() && input.current !== document.activeElement && onDone(), 150)}
+          onFocus={() => (picking.current = false)}
+          onBlur={() => setTimeout(() => !picking.current && !text.trim() && input.current !== document.activeElement && onDone(), 150)}
           placeholder={cfg.ph}
           aria-label={cfg.ph}
           enterKeyHint="send"
@@ -336,8 +340,9 @@ function OrbMain({ mode, r, icon, label, on, onTap, onHold }) {
 
 // Yazı kutusu (klavyeyle yazarken, Composer): üstte yazı alanı, altta × · ses · ↑ Gönder (2026-10-16 sade kutu)
 const ROUND = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full transition active:scale-90";
-function TypeBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, children }) {
+function TypeBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, onPhoto, onPick, children }) {
   const box = useRef(null);
+  const pick = useRef(null);
   useEffect(() => {
     const el = box.current;
     if (el) el.scrollTop = el.scrollHeight; // uzun sözde son kısım görünsün
@@ -378,6 +383,25 @@ function TypeBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, mai
           <button type="button" onPointerDown={keep} onClick={onX} aria-label={xLabel} className={`${ROUND} bg-fg/[.07] text-fg`}>
             <Icon name="x" className="size-[1.375rem]" />
           </button>
+          {/* Fotoğraf: seçilen resim asistana gider (motor photoIn verince görünür) */}
+          {onPhoto && (
+            <>
+              <button type="button" onPointerDown={keep} onClick={() => (onPick?.(), pick.current?.click())} aria-label="Fotoğraf" className={`${ROUND} bg-fg/[.07] text-fg`}>
+                <Icon name="image" className="size-[1.25rem]" />
+              </button>
+              <input
+                ref={pick}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) onPhoto(f);
+                }}
+              />
+            </>
+          )}
           {listening ? (
             <span className="flex min-w-0 flex-1 items-center gap-2.5" onClick={onText}>
               <MicDot />
@@ -767,7 +791,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
               </div>
             )}
             {typing ? (
-              <Composer cfg={cfg} onDone={onTypingDone} onClose={onClose} init={typeInit} />
+              <Composer cfg={cfg} onDone={onTypingDone} onClose={onClose} onPhoto={voice.photo} init={typeInit} />
             ) : box2 ? (
               <AssistBox
                 mode={mode}
@@ -990,6 +1014,8 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
           abort: () => act.current.abort?.(),
           send: () => act.current.send?.(),
           listen: () => act.current.listen?.(),
+          // Fotoğrafı asistana ver: motor photoIn yayınlamadıysa düğme yok
+          photo: act.current.photoIn ? (f) => act.current.photoIn(f) : undefined,
           // Bekleyen söze dokununca yazı kutusunda düzenlenir
           type: () => {
             setTypeInit(act.current.takeDraft?.() || "");
