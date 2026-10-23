@@ -8,6 +8,8 @@ import { photoUrl } from "@/yemek/photo";
 import { liveView } from "@/yemek/demo";
 import { decodeLine, pointAlong, progressOn, rideMin, roadMin } from "@/yemek/route";
 import { foodOrderAsk, planVoiceOrder } from "@/yemek/voice";
+import { qrText, parseQr, qrCells, orderNo, pickupOf } from "@/yemek/qr";
+import jsQR from "@/lib/vendor/jsQR.cjs";
 import { suite } from "./ortak.mjs";
 
 const { group } = suite("yemek");
@@ -189,4 +191,28 @@ group("Sesle sipariş: ne yapılır")([
   ["ikincisi", { desc: "son önerilerin ikincisi", fn: (s) => { const sug = VP("yemek söyle", { pos: ADDR[0].pos }); return [sug.picks[1].place.id, VP(s, { pos: ADDR[0].pos, last: sug.picks })]; }, ok: ([id, g]) => g.kind === "order" && g.place.id === id }],
   ["pizza söyle (adres yok)", { desc: "sepete konur, adres sorulur", fn: () => planVoiceOrder({ s: "pizza söyle", ask: { mode: "order" }, places: all, history: HISTORY, me: {}, now: NOW, pos: ADDR[0].pos }), ok: (g) => g.kind === "noAddress" && g.lines.length > 0 }],
   ["pizza söyle (hepsi kapalı)", { desc: "açık yer yok", fn: () => VP("pizza söyle", { pos: ADDR[0].pos, open: () => false }), ok: (g) => g.kind === "none" }],
+]);
+
+// Siparişin kare kodu (fiş, restoran ekranı) ve kuryenin okutması
+const scanBack = (text) => {
+  const { n, dark } = qrCells(text), s = 4, q = 4, w = (n + 2 * q) * s;
+  const px = new Uint8ClampedArray(w * w * 4).fill(255);
+  for (let y = 0; y < w; y++) for (let x = 0; x < w; x++) {
+    const r = Math.floor(y / s) - q, c = Math.floor(x / s) - q;
+    if (r >= 0 && c >= 0 && r < n && c < n && dark(r, c)) { const i = (y * w + x) * 4; px[i] = px[i + 1] = px[i + 2] = 0; }
+  }
+  return jsQR(px, w, w)?.data;
+};
+const LIVE = (id, status) => ({ id, status, live: { status } });
+const TODAY = [LIVE("o1aaaa", "sent"), LIVE("o2bbbb", "preparing"), LIVE("o3cccc", "accepted"), LIVE("o4dddd", "onTheWay"), LIVE("o5eeee", "delivered")];
+group("Sipariş kare kodu")([
+  ["kod üretilir ve okunur", { desc: "çizilen kod okununca aynı sipariş", fn: () => parseQr(scanBack(qrText("Xy12AbCdEf34"))), ok: (g) => g === "Xy12AbCdEf34" }],
+  ["kısa numara", { desc: "son 4 hane büyük harf", fn: () => orderNo("Xy12AbCdEf34"), ok: (g) => g === "EF34" }],
+  ["başka kod", { desc: "sipariş değil", fn: () => [parseQr("https://example.com"), parseQr(""), parseQr("VY:a")], ok: (g) => g.every((x) => x === null) }],
+  ["hazırlanan sipariş", { desc: "kuryeye verilebilir", fn: () => pickupOf(TODAY, qrText("o2bbbb")).why, ok: (g) => g === "ok" }],
+  ["onaylandı", { desc: "kuryeye verilebilir", fn: () => pickupOf(TODAY, qrText("o3cccc")).why, ok: (g) => g === "ok" }],
+  ["henüz onaylanmadı", { desc: "bekle", fn: () => pickupOf(TODAY, qrText("o1aaaa")).why, ok: (g) => g === "wait" }],
+  ["zaten yolda", { desc: "yolda", fn: () => pickupOf(TODAY, qrText("o4dddd")).why, ok: (g) => g === "road" }],
+  ["teslim edilmiş", { desc: "kapanmış", fn: () => pickupOf(TODAY, qrText("o5eeee")).why, ok: (g) => g === "done" }],
+  ["bilinmeyen sipariş", { desc: "yok", fn: () => pickupOf(TODAY, qrText("zzzzzz")).why, ok: (g) => g === "none" }],
 ]);

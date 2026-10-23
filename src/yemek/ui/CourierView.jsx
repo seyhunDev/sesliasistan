@@ -7,13 +7,16 @@ import { RowList, Row } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { minutesLeft } from "../order";
 import { distanceM } from "../address";
-import { placeById, useSettings, useToday, deliverOrder, courierAt } from "../store";
+import { placeById, useSettings, useToday, deliverOrder, courierAt, giveToCourier } from "../store";
+import { orderNo, pickupOf, PICKUP_SAY } from "../qr";
+import { ScanSheet } from "./ScanSheet";
 import { tl } from "./Img";
 import { TrackMap } from "./TrackMap";
 import { photoUrl } from "../photo";
 import { useNow, useRemembered, withLive } from "./AdminView";
 
 // Velora Yemek › Kurye ekranı (başka telefondan açılır; kurye bu cihazda hatırlanır). Yoldaki siparişleri gösterir;
+// "Kare kod okut": restoranın fişindeki ya da ekranındaki kod okutulup "Teslim al" denince sipariş bu kuryeye verilir (Yolda).
 // sipariş varken telefonun konumu siparişe yazılır (en sık 10 sn'de bir, en az 25 m yer değişince), ekran açık tutulur.
 const KEY = "yemek-kurye";
 const STEP_MS = 10000;
@@ -66,7 +69,9 @@ function Courier({ orgId, courier, onChange }) {
   const now = useNow();
   const [busy, setBusy] = useState("");
   const [gps, setGps] = useState(""); // "" | "on" | "off"
-  const mine = withLive(today, now).filter((o) => o.live.status === "onTheWay" && o.courier?.id === courier.id);
+  const [scan, setScan] = useState(null); // null | "cam" | { o, why } okutulan sipariş
+  const all = withLive(today, now);
+  const mine = all.filter((o) => o.live.status === "onTheWay" && o.courier?.id === courier.id);
   const ids = mine.map((o) => o.id).join(",");
   const last = useRef(null); // { pos, t }
 
@@ -106,6 +111,18 @@ function Courier({ orgId, courier, onChange }) {
     setBusy("");
   };
 
+  const take = async (o) => {
+    setBusy(o.id);
+    try {
+      await giveToCourier(orgId, o, placeById(o.placeId), courier);
+      setScan(null);
+      toast("Sipariş sende, yola çıkabilirsin");
+    } catch {
+      toast("Olmadı, yeniden dene");
+    }
+    setBusy("");
+  };
+
   const pill = ids ? (
     <span className={`shrink-0 rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold ${gps === "off" ? "bg-warnbg text-warn" : "ck-glass"}`}>{gps === "off" ? "Konum kapalı" : "Konum açık"}</span>
   ) : null;
@@ -114,6 +131,7 @@ function Courier({ orgId, courier, onChange }) {
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
       <Top title={courier.name} sub="Kurye · değiştir" onSub={onChange} pill={pill} />
       <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-4 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        <Button onClick={() => setScan("cam")}>Kare kod okut</Button>
         {today && !mine.length && <p className="pt-6 text-center text-[0.9375rem] text-mut">Yolda sipariş yok</p>}
         {mine.map((o) => {
           const place = placeById(o.placeId);
@@ -141,6 +159,42 @@ function Courier({ orgId, courier, onChange }) {
           );
         })}
       </div>
+      <ScanSheet open={!!scan} onClose={() => setScan(null)} onCode={(text) => setScan(pickupOf(all, text))}>
+        {scan && scan !== "cam" && <Picked scan={scan} busy={busy} onTake={take} onAgain={() => setScan("cam")} onClose={() => setScan(null)} />}
+      </ScanSheet>
     </main>
+  );
+}
+
+// Okutulan sipariş: verilebiliyorsa özeti ve "Teslim al"; değilse nedeni ve "Yeniden okut"
+function Picked({ scan: { o, why }, busy, onTake, onAgain, onClose }) {
+  if (why !== "ok") {
+    return (
+      <div className="space-y-4 pb-2">
+        <p className="py-6 text-center text-[1rem] font-semibold">{PICKUP_SAY[why]}</p>
+        <div className="grid grid-cols-[1fr_1.7fr] gap-2.5">
+          <Button variant="secondary" onClick={onClose}>Kapat</Button>
+          <Button onClick={onAgain}>Yeniden okut</Button>
+        </div>
+      </div>
+    );
+  }
+  const n = o.lines.reduce((a, l) => a + l.qty, 0);
+  return (
+    <div className="space-y-4 pb-2">
+      <div className="overflow-hidden rounded-[1.25rem] border border-line bg-bg">
+        <div className="flex items-center gap-3 px-3.5 py-2.5">
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[0.9375rem] font-semibold">{o.placeName} · #{orderNo(o.id)}</b>
+            <small className="block truncate text-[0.8125rem] text-mut">{n} ürün · {o.pay === "kapıda-nakit" ? "Nakit" : "Kart"} {tl(o.total)}</small>
+          </span>
+        </div>
+        <p className="border-t border-line px-3.5 py-2 text-[0.875rem]"><b className="font-semibold">{o.customer || "Müşteri"} · {o.address?.name}</b>{o.address?.text ? ` · ${o.address.text}` : ""}</p>
+      </div>
+      <div className="grid grid-cols-[1fr_1.7fr] gap-2.5">
+        <Button variant="secondary" onClick={onClose}>Vazgeç</Button>
+        <Button loading={busy === o.id} onClick={() => onTake(o)}>Teslim al</Button>
+      </div>
+    </div>
   );
 }

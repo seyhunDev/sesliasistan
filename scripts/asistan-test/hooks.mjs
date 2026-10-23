@@ -11,7 +11,10 @@ for (const m of ["next/server", "firebase-admin/app", "firebase-admin/firestore"
 const withExt = (p) => (/\.[mc]?jsx?$/.test(p) && existsSync(p) ? p : existsSync(p + ".js") ? p + ".js" : existsSync(p + ".jsx") ? p + ".jsx" : existsSync(p + "/index.js") ? p + "/index.js" : p);
 export async function resolve(spec, ctx, next) {
   if (STUBS[spec]) return { url: STUBS[spec], shortCircuit: true };
-  if (spec.startsWith("@/")) return { url: pathToFileURL(withExt(SRC + spec.slice(2))).href, shortCircuit: true, format: "module" };
+  if (spec.startsWith("@/")) {
+    const f = withExt(SRC + spec.slice(2));
+    return { url: pathToFileURL(f).href, shortCircuit: true, format: f.endsWith(".cjs") ? "commonjs" : "module" };
+  }
   if ((spec.startsWith("./") || spec.startsWith("../")) && ctx.parentURL?.startsWith(SRC_URL)) {
     return { url: pathToFileURL(withExt(fileURLToPath(new URL(spec, ctx.parentURL)))).href, shortCircuit: true, format: "module" };
   }
@@ -20,6 +23,8 @@ export async function resolve(spec, ctx, next) {
 export async function load(url, ctx, next) {
   // Veri dosyası (src/data/*.json): Next gibi varsayılan dışa aktarım olarak yüklenir
   if (url.startsWith(SRC_URL) && url.endsWith(".json")) return { format: "module", source: `export default ${readFileSync(fileURLToPath(url), "utf8")};`, shortCircuit: true };
+  // Olduğu gibi alınan CommonJS kütüphane (src/lib/vendor/*.cjs)
+  if (url.startsWith(SRC_URL) && url.endsWith(".cjs")) return next(url, { ...ctx, format: "commonjs" });
   if (url.startsWith(SRC_URL)) return { ...(await next(url, { ...ctx, format: "module" })), format: "module" };
   return next(url, ctx);
 }
