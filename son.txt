@@ -1,8 +1,8 @@
-Commit: 54ecf83 · Yemek Yönetim: durum seçilince durumuna göre kısa onay hareketi, pencere kendiliğinden kapanır (#771)
-Zaman: 2026-10-23-1535 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39953492996
+Commit: 625ac8e · Deniz trafiği: sunucu en geç 9 sn'de cevap verir (depo ve toplama süre sınırı), telefonda gerçek hata yazısı (#773)
+Zaman: 2026-10-23-1946 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39988441630
 
-TAM TEST · 23.10.2026 15:28:50
+TAM TEST · 23.10.2026 19:40:03
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -21,7 +21,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1386/1386 geçti · 0 kalan · 414 sn
+SONUÇ: 1386/1386 geçti · 0 kalan · 410 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

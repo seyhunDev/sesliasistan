@@ -1,8 +1,8 @@
-Commit: ee7113a · Süre: Rüzgâr kalktı; Başlat ve Sonucu söyle alt şeritte (#673)
-Zaman: 2026-10-22-1351 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39765211375
+Commit: 625ac8e · Deniz trafiği: sunucu en geç 9 sn'de cevap verir (depo ve toplama süre sınırı), telefonda gerçek hata yazısı (#773)
+Zaman: 2026-10-23-1946 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39988441630
 
-TAM TEST · 22.10.2026 13:44:44
+TAM TEST · 23.10.2026 19:40:03
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -15,12 +15,13 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Asistan: çalışırken, küçültme, sesli yanıt, geçmiş…
     Asistan: kayıt, onaylar, görev listesi…
     Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
+    Deniz trafiği sayfası…
     Çevrimdışı çalışma (internet kesilip açılır)…
     Çevrimdışı: 19/19 geçti
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1370/1371 geçti · 1 kalan · 385 sn
+SONUÇ: 1386/1386 geçti · 0 kalan · 410 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -125,35 +126,35 @@ SONUÇ: 1370/1371 geçti · 1 kalan · 385 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 63/63
-  ✓ Sunucu ucu: girişsiz istek reddedilir: 17/17
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 66/66
+  ✓ Sunucu ucu: girişsiz istek reddedilir: 18/18
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 46/46
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 104/105
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 117/117
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
+  ✓ Enerji (boşta): 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
-  ✓ Kapanış: 2/2
+  ✓ Kapanış: 3/3
   ✓ Basılı tut yaz: 1/1
-  ✓ Sayfa hataları: 7/7
+  ✓ Sayfa hataları: 8/8
   ✓ Küçültme (aşağı kaydır): 4/4
-  ✓ Önceki sohbetler: 3/3
+  ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
   ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
-  ✗ Onay isteyen işler: 9/10
-      ✗ “Ege'ye yaz … → “gönder””
-          beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 15 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+  ✓ Onay isteyen işler: 10/10
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
+  ✓ Kişi kare kodu: 4/4
   ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
   ✓ Instagram gönderisi: 1/1
   ✓ Tam ekran üstte: 1/1
+  ✓ Deniz trafiği: 4/4
   ✓ Güvenlik: 1/1
 
 3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 19/19
