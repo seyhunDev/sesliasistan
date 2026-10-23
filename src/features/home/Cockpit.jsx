@@ -9,7 +9,7 @@ import { useData } from "@/features/data/DataProvider";
 import { dayHours, nowOf, sky, windName } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
 import { isTraining } from "@/lib/trainingLog";
-import { attHref, nextPlan, planTag } from "@/lib/homeTiles";
+import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
 import { CockpitWind } from "./CockpitWind";
 import { InboxBell } from "./Inbox";
@@ -21,25 +21,27 @@ import { BirthdayBadge } from "./PeopleStrip";
 // hava sayfası açılır. Lacivert her iki temada aynı (logonun gecesi); altındaki açık zemin üstüne yuvarlak köşeyle biner (OwnerHome).
 // children (iş düğmeleri, büyük günler) en altta, araya boşluk konmaz (Seyhun 2026-10-21: "çok boşluklar oldu"; tam ekran uzatma kaldırıldı).
 // Alt boşluk küçük ve sol alttaki mor ışık yok (ck-top; Seyhun 2026-10-23 "niye notların arka planı farklı"): altındaki lacivert notlar kesintisiz devam eder.
-export function Cockpit({ weather, inbox, onInbox, children }) {
+// 2026-10-23 (Seyhun "günler en üstte", örnek gunler.html): üstte tarih başlığı yok (tarih yalnız gün şeridinde); sağ üstte doğum günü, zil, Ayarlar;
+// altında gün şeridi (days, HomeDays), sonra seçilen günün (sel) havası ve rüzgâr grafiği. Bugün seçiliyse şimdiki rüzgâr ve sıradaki plan;
+// başka gün seçiliyse o günün gündüz rüzgârı ve o günün planları (DayPlans; "Günü aç" o günün penceresini açar, onOpenDay).
+export function Cockpit({ weather, inbox, onInbox, days, sel, onOpenDay, children }) {
   const { profile } = useAuth();
   const router = useRouter();
   const now = useNow();
   const { w, err, refresh } = weather;
   const today = todayStr();
-  const n = nowOf(w);
-  const rows = dayHours(w, today);
-  const day = w?.today?.date === today ? w.today : w?.days?.find((d) => d.date === today);
-  const dname = now.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
-  const date = now.toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
+  const date = sel || today;
+  const isToday = date === today;
+  const rows = dayHours(w, date);
+  const dw = dayWeather(w, rows, date);
+  const n = isToday ? nowOf(w) : dw && { t: dw.max, code: dw.code, day: true, wind: dw.wind, gust: dw.gust, dir: dw.dir };
+  const dname = cap(new Date(`${date}T12:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""));
   const goWeather = () => (w ? router.push("/weather") : refresh(true));
 
   return (
     <section className="ck ck-top -mx-4 px-4 pb-4 pt-[calc(0.875rem+env(safe-area-inset-top))]" aria-label="Bugün">
-      <header className="flex items-center gap-3">
-        <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold leading-tight tracking-[-.02em]">
-          <span className="capitalize">{dname}</span> {date}
-        </h1>
+      <header className="-mb-1 flex items-center justify-end gap-2">
+        <h1 className="sr-only">{now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}</h1>
         <BirthdayBadge />
         <InboxBell inbox={inbox} onOpen={onInbox} />
         <Link href="/settings" aria-label="Ayarlar" className="grid size-9 shrink-0 place-items-center rounded-full bg-white/12 text-[0.8125rem] font-semibold text-white active:scale-90">
@@ -47,18 +49,20 @@ export function Cockpit({ weather, inbox, onInbox, children }) {
         </Link>
       </header>
 
-      <button type="button" onClick={goWeather} aria-label="Bugünün hava ayrıntısı" className="mt-4 block w-full text-left">
+      <div className="mt-3">{days}</div>
+
+      <button type="button" onClick={goWeather} aria-label="Hava ayrıntısı" className="mt-4 block w-full text-left">
         {n ? (
           <span className="flex items-center gap-3">
             <span className="shrink-0 text-[2.5rem] font-bold leading-none tracking-[-.04em] tabular-nums">{n.t}°</span>
             <span className="min-w-0 flex-1 leading-tight">
-              <b className="block truncate text-[0.9375rem] font-semibold">{sky(n.code, n.day).label}</b>
+              <b className="block truncate text-[0.9375rem] font-semibold">{isToday ? "" : `${dname} · `}{sky(n.code, n.day).label}</b>
               <small className="block truncate text-[0.8125rem] text-white/65 tabular-nums">
-                {day ? `${day.min}° / ${day.max}°` : ""}
+                {dw ? `${dw.min}° / ${dw.max}°` : ""}
               </small>
             </span>
             <span className="shrink-0 text-right leading-tight">
-              <small className="block text-[0.75rem] text-white/65">{windName(n.dir)[0]} · şimdi</small>
+              <small className="block text-[0.75rem] text-white/65">{windName(n.dir)[0]} · {isToday ? "şimdi" : "gün içi"}</small>
               <b className="text-[1.375rem] font-bold tracking-[-.02em] tabular-nums">
                 {n.wind}
                 {n.gust > n.wind && <span className="font-medium text-white/60">–{n.gust}</span>}
@@ -67,15 +71,15 @@ export function Cockpit({ weather, inbox, onInbox, children }) {
             </span>
           </span>
         ) : (
-          <span className="block py-2 text-[0.875rem] text-white/70">{err ? "Hava durumu alınamadı · dokun, yenile" : "Hava yükleniyor…"}</span>
+          <span className="block py-2 text-[0.875rem] text-white/70">{err ? "Hava durumu alınamadı · dokun, yenile" : w ? "Bu gün için hava tahmini yok" : "Hava yükleniyor…"}</span>
         )}
       </button>
       {rows?.length > 0 && (
-        <button type="button" onClick={goWeather} aria-label="Bugünün rüzgârı, ayrıntı" className="mt-2 block w-full text-left">
-          <CockpitWind rows={rows} />
+        <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className="mt-2 block w-full text-left">
+          <CockpitWind key={date} rows={rows} date={date} />
         </button>
       )}
-      <NextPlan now={now} />
+      {isToday ? <NextPlan now={now} /> : <DayPlans date={date} onOpen={onOpenDay} />}
       {children}
     </section>
   );
@@ -140,6 +144,37 @@ function NextPlan({ now }) {
             </Link>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Seçilen (bugün olmayan) günün planları: başlıkta gün ve sayı, sağda "Günü aç"; satır = renk çizgisi, saat, ad, yer; dokununca plan
+function DayPlans({ date, onOpen }) {
+  const { plans } = useData();
+  const { openAdd } = useAdd();
+  const list = dayPlans(plans, date);
+  const d = new Date(`${date}T12:00`);
+  const title = `${cap(d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""))} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "long" })}`;
+  return (
+    <div className="mt-3 overflow-hidden rounded-[1.375rem] border border-white/10 bg-[#182a48]">
+      <div className="flex items-center gap-2 px-3.5 pb-1.5 pt-3 text-[0.75rem] font-bold tracking-[.05em] text-[#9fb0cc]">
+        <span className="min-w-0 flex-1 truncate">{title.toLocaleUpperCase("tr-TR")}{list.length ? ` · ${list.length} PLAN` : ""}</span>
+        <button type="button" data-press onClick={onOpen} className="shrink-0 text-[0.8125rem] font-semibold tracking-normal text-[#67e8f9]">Günü aç ›</button>
+      </div>
+      {list.length ? (
+        list.map((p) => (
+          <button key={p.id} type="button" data-press="row" onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="flex w-full items-center gap-2.5 border-t border-[#26395c] px-3.5 py-2.5 text-left">
+            <span className={`tone-${planTone(p)} tone-bar w-1 self-stretch rounded-full`} />
+            <b className="w-11 shrink-0 text-[0.9375rem] font-semibold tabular-nums">{p.time || "Gün"}</b>
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block truncate text-[0.9375rem]">{p.title || "Plan"}</span>
+              {p.place && <small className="block truncate text-[0.78rem] text-[#9fb0cc]">{p.place}</small>}
+            </span>
+          </button>
+        ))
+      ) : (
+        <p className="border-t border-[#26395c] px-3.5 py-3 text-[0.875rem] text-[#9fb0cc]">Bu gün plan yok</p>
       )}
     </div>
   );

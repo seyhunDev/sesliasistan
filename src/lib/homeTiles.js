@@ -549,3 +549,30 @@ export function fitWeek(fit = [], today) {
 export const mealLabel = (h) => (h >= 6 && h < 11 ? "Kahvaltı önerisi" : h >= 11 && h < 16 ? "Öğle yemeği önerisi" : h >= 16 && h < 23 ? "Akşam yemeği önerisi" : "Gece atıştırması");
 // Ana sayfa yemek kartının arkasındaki fotoğraf (src/yemek/photo.js anahtarı), mealLabel ile aynı saat dilimleri
 export const mealPhoto = (h) => (h >= 6 && h < 11 ? "breakfast" : h >= 11 && h < 16 ? "pasta" : h >= 16 && h < 23 ? "pizza" : "burger");
+
+// Ana sayfada seçilen günün planları (Seyhun 2026-10-23 "günler en üstte"): iptal ve bitenler hariç, saat sırasıyla (saatsizler sonda)
+export function dayPlans(plans = [], date) {
+  return plans
+    .filter((p) => p.date === date && p.status !== "cancelled" && !p.done && p.status !== "done")
+    .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+}
+
+// Seçilen günün havası (kokpitteki hava satırı): saatlik satırlardan en düşük/en yüksek sıcaklık, öğlenin gökyüzü, gündüzün (09–18)
+// en sert rüzgârı ve sağanağı, yönü. Günlük özet varsa (w.today / w.days) sıcaklık ve gökyüzü ondan. Saat yoksa null.
+export function dayWeather(w, rows, date) {
+  if (!rows?.length) return null;
+  const info = w?.today?.date === date ? w.today : w?.days?.find((d) => d.date === date);
+  const ts = rows.map((h) => h.t);
+  const noon = rows.find((h) => h.hh === "13") || rows[Math.floor(rows.length / 2)];
+  const dayRows = rows.filter((h) => h.hh >= "09" && h.hh <= "18");
+  const use = dayRows.length ? dayRows : rows;
+  const top = use.reduce((a, h) => (h.wind > a.wind ? h : a), use[0]);
+  return {
+    min: info?.min ?? Math.min(...ts),
+    max: info?.max ?? Math.max(...ts),
+    code: info?.code ?? noon.code,
+    wind: Math.max(...use.map((h) => h.wind)),
+    gust: Math.max(...use.map((h) => h.gust)),
+    dir: top.dir,
+  };
+}
