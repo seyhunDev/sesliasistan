@@ -129,7 +129,7 @@ function Courier({ orgId, courier, onChange }) {
                   </span>
                   <b className="shrink-0 text-[1.125rem] font-bold tabular-nums">{minutesLeft(o.live.eta, new Date(now))} dk</b>
                 </div>
-                {o.address?.text && <p className="border-t border-line px-3.5 py-2 text-[0.875rem]">{o.address.text}</p>}
+                {o.address?.text && <p className="border-t border-line px-3.5 py-2 text-[0.875rem]">{o.address.text}{o.address.note ? ` · ${o.address.note}` : ""}</p>}
                 <div className="flex gap-2 border-t border-line p-2.5 [&>*]:flex-1">
                   {o.phone && <a href={`tel:${o.phone}`} data-press className="btn btn-secondary w-full">Ara</a>}
                   {nav && <a href={nav} target="_blank" rel="noreferrer" data-press className="btn btn-secondary w-full">Yol tarifi</a>}
