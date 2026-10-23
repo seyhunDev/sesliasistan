@@ -3046,3 +3046,13 @@ group("Ortak düğmeler")([
     ["ses: fiş kamerası değil", F("tekil kamerayı aç, fiş, ön kamera → null", () => C.camsAsk("kamerayı aç") === null && C.camsAsk("fiş kamerasını aç") === null && C.camsAsk("ön kamerayı aç") === null && C.camsAsk("yarış kamerasını aç") === null)],
   ]);
 }
+
+// Ana sayfa: Deniz trafiği ve Kameralar yalnız iki düğme (veri çeken kart yok)
+{
+  const { readFileSync } = await import("node:fs");
+  const s = readFileSync(new URL("../../../src/features/home/OwnerHome.jsx", import.meta.url), "utf8");
+  group("Ana sayfa: deniz ve kamera düğmeleri")([
+    ["iki düğme", F("/sea ve /cams bağlantısı", () => /\["\/sea", "anchor", "Deniz trafiği"\], \["\/cams", "video", "Kameralar"\]/.test(s))],
+    ["veri çekmez", F("SeaCard ana sayfada yok", () => !/SeaCard/.test(s))],
+  ]);
+}
