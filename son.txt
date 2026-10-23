@@ -1,8 +1,8 @@
-Commit: b9efb51 · Aidatlar: yeni tasarım (lacivert üstte bu ayın geliri, Ödeme ekle / Banka, borcu yoksa ✓, ayarlar ⋯ içinde) (#755)
-Zaman: 2026-10-23-1308 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39935911214
+Commit: f12a626 · Yemek: sepet çubuğu alt çubuğa yapışık lacivert, arkada ürün fotoğrafları (#756)
+Zaman: 2026-10-23-1320 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39937524797
 
-TAM TEST · 23.10.2026 13:00:53
+TAM TEST · 23.10.2026 13:13:31
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1376/1376 geçti · 0 kalan · 433 sn
+SONUÇ: 1376/1376 geçti · 0 kalan · 441 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
