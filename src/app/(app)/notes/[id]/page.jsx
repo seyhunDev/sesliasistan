@@ -46,7 +46,8 @@ export default function NotePage() {
   const [menu, setMenu] = useState(false);
   const [who, setWho] = useState(false);
   const saved = useRef({ title: rec?.title || "", body: rec?.body && rec.body !== rec.title ? rec.body : "" });
-  const creating = useRef(false);
+  const creating = useRef(null); // yeni notun yazılma sözü (Promise)
+  const alive = useRef(true);
   const bodyRef = useRef(null);
 
   // Kayıt sonradan gelirse (sayfa doğrudan açıldı) ya da başka yerden değişirse, elle değişiklik yoksa ekrana yazılır
@@ -69,6 +70,7 @@ export default function NotePage() {
   });
   const save = useCallback(async () => {
     const { id: cur, title: t0, body: b0 } = state.current;
+    if (!cur && creating.current) return creating.current; // yeni not yazılıyor: aynı yazmayı bekle
     const t = t0.trim();
     const b = b0.trim();
     if (t === saved.current.title.trim() && b === saved.current.body.trim()) return cur;
@@ -78,25 +80,36 @@ export default function NotePage() {
       updateRecord("note", cur, { title: t || b.split("\n")[0].slice(0, 80), body: b || t }, by);
       return cur;
     }
-    if (creating.current) return "";
-    creating.current = true;
-    const r = await saveDrafts([{ type: "note", title: t || b.split("\n")[0].slice(0, 80), body: b || t, cat: "Genel", assignees: [] }], { source: "manual", by });
-    const nid = r?.ids?.[0]?.[1];
-    if (nid) {
-      setId(nid);
-      window.history.replaceState(window.history.state, "", `/notes/${nid}`);
+    // Yeni not bir kez yazılır: alandan çıkış (blur) ile Yapıldı aynı anda kaydederse ikincisi aynı yazmayı bekler
+    creating.current = saveDrafts([{ type: "note", title: t || b.split("\n")[0].slice(0, 80), body: b || t, cat: "Genel", assignees: [] }], { source: "manual", by }).then((r) => {
+      const nid = r?.ids?.[0]?.[1] || "";
+      if (!nid) {
+        creating.current = null;
+        return "";
+      }
+      state.current.id = nid;
+      if (alive.current) {
+        setId(nid);
+        window.history.replaceState(window.history.state, "", `/notes/${nid}`);
+      }
+      const { title: t1, body: b1 } = state.current; // yazılırken eklenen harfler
+      if (t1 !== t0 || b1 !== b0) {
+        saved.current = { title: t1, body: b1 };
+        updateRecord("note", nid, { title: t1.trim() || b1.trim().split("\n")[0].slice(0, 80), body: b1.trim() || t1.trim() }, by);
+      }
       return nid;
-    }
-    creating.current = false;
-    return "";
+    });
+    return creating.current;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [updateRecord, saveDrafts]);
 
   // Uygulama arka plana geçince ve sayfadan çıkınca da kaydedilir
   useEffect(() => {
+    alive.current = true;
     const onHide = () => document.visibilityState === "hidden" && save();
     document.addEventListener("visibilitychange", onHide);
     return () => {
+      alive.current = false;
       document.removeEventListener("visibilitychange", onHide);
       save();
     };
@@ -139,18 +152,19 @@ export default function NotePage() {
   };
   const done = async () => {
     const nid = await save();
-    if (!nid) return router.push("/notes");
+    // replace: geri gelince biten not yeniden açılmasın
+    if (!nid) return router.replace("/notes");
     updateRecord("note", nid, noteDonePatch(), by);
     navigator.vibrate?.(10);
     toast("Yapıldı, Arşiv'e kaldırıldı", { action: { label: "Geri al", onClick: () => updateRecord("note", nid, noteReopenPatch(), by) } });
-    router.push("/notes");
+    router.replace("/notes");
   };
   const set = (patch) => rec && updateRecord("note", rec.id, patch, by);
   const del = () => {
     setMenu(false);
     if (rec) removeWithUndo("note", rec.id);
     saved.current = { title, body }; // silinen not çıkarken yeniden yazılmasın
-    router.push("/notes");
+    router.replace("/notes");
   };
   const assigned = rec?.assignees || [];
   const canAssign = !isStaff && members.length > 0 && !!rec;
