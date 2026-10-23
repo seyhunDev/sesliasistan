@@ -130,30 +130,35 @@ const dayName = (d, today) => {
 // sabit notun sağında "Sabit". Dokununca not açılır. Not ekleme kokpitin altındaki "Not" düğmesinde (HomeGrid).
 export function NotesWidget({ notes }) {
   const { openAdd } = useAdd();
-  const { list, total } = homeNotes(notes || [], 3);
+  const { list, total } = homeNotes(notes || [], 8);
+  // Seyhun 2026-10-23 "A · Kayan not kartları": yapışkan not gibi küçük kartlar sağa kayar; kartta yalnız başlık (3 satıra kadar) ve tarih.
+  // Sabitlenen not ince vurgu çerçeveli; notun rengi (color, Notlar sayfası) varsa kart o renkte. Dokununca not açılır.
   return (
     <section aria-label="Notlar">
       <ListHead title="Notlar" count={total} href={total > 0 ? "/notes" : null} />
-      <RowList>
-        {list.length ? (
-          list.map((n) => {
-            const when = n.createdAt ? rel((n.updatedAt || n.createdAt).slice(0, 10)) : "";
-            const first = String(n.body && n.body !== n.title ? n.body : "").split("\n").find((x) => x.trim()) || "";
+      {list.length ? (
+        <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {list.map((n) => {
+            const when = rel((n.updatedAt || n.createdAt || "").slice(0, 10));
+            const first = String(n.body || "").split("\n").find((x) => x.trim()) || "";
             return (
-              <Row
+              <button
                 key={n.id}
+                type="button"
+                data-press
                 onClick={() => openAdd({ edit: { kind: "note", id: n.id } })}
-                title={n.title || "Not"}
-                sub={[!n.pinned && when, first.trim()].filter(Boolean).join(" · ")}
-                right={n.pinned ? <Tag tone="fa">Sabit</Tag> : null}
-                chev={false}
-              />
+                className={`note-card flex h-[6.5rem] w-[8.5rem] shrink-0 snap-start flex-col rounded-2xl border p-3 text-left ${n.pinned ? "note-pin" : ""}`}
+                data-color={n.color || undefined}
+              >
+                <b className="line-clamp-3 text-[0.9375rem] font-semibold leading-snug">{n.title || first || "Not"}</b>
+                {when && <small className="mt-auto truncate text-[0.75rem] text-mut">{when}</small>}
+              </button>
             );
-          })
-        ) : (
-          <p className="py-3.5 text-[0.9375rem] text-mut">Henüz not yok</p>
-        )}
-      </RowList>
+          })}
+        </div>
+      ) : (
+        <p className="px-1 py-2 text-[0.9375rem] text-mut">Henüz not yok</p>
+      )}
     </section>
   );
 }

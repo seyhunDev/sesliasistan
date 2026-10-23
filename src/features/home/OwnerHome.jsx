@@ -8,12 +8,11 @@ import { useData } from "@/features/data/DataProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { PaidNotice } from "@/features/receipts/Payment";
 import { useWeather } from "@/features/weather/useWeather";
-import { useNow } from "@/hooks/useNow";
-import { fitDays, homeActions, nextPlan } from "@/lib/homeTiles";
+import { fitDays, homeActions } from "@/lib/homeTiles";
 import { useQuota } from "@/lib/quota";
 import { BirthdayStrip } from "./BirthdayStrip";
 import { InboxSheet, useInbox } from "./Inbox";
-import { SiradaCard } from "./SiradaCard";
+import { WaitRow } from "./WaitRow";
 import { Cockpit } from "./Cockpit";
 import { FoodCard } from "./FoodCard";
 import { HomeGrid } from "./HomeGrid";
@@ -67,8 +66,6 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
   const athletes = canSeeAthletes(profile?.email);
   const race = useRaceHome();
   const { openMeeting } = useMeeting();
-  const now = useNow();
-  const next = nextPlan(plans, now);
   const training = plans.some((p) => (p.cat || p.category) === "Antrenman");
   // Antrenman kartında fitness antrenmanları da: kendi planların ve (ana hesapta) sporcularınki
   const fit = useMemo(() => (side ? [] : fitDays(plans, owner ? fitOthers || [] : [], members, profile?.uid)), [side, owner, plans, fitOthers, members, profile?.uid]);
@@ -113,9 +110,12 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
           </p>
         )}
         <PaidNotice />
-        {/* Notlar takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"); Sporcular ve Fitness takvimin altında, Kulüp'ten önce (2026-10-21) */}
-        <NotesWidget notes={notes} />
-        <SiradaCard skip={next?.id} weather={weather} inbox={inbox} onInbox={onInbox} att={athletes} />
+        {/* Takvim listesi yok (Seyhun 2026-10-23 "A"): bir günün planları kokpitteki gün kutusuna dokununca açılır. Notlar kayan kartlar,
+            altında Seni bekleyenler; sonra Sporcular, Fitness, Kulüp */}
+        <div>
+          <NotesWidget notes={notes} />
+          <WaitRow inbox={inbox} onAll={onInbox} />
+        </div>
         {athletes && owner && <AthletesWidget races={race.open} />}
         {!side && <FitWidget fit={fit} />}
         <div className="empty:hidden">
