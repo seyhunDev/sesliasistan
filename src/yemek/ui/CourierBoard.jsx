@@ -7,7 +7,7 @@ import { Img } from "./Img";
 // Kurye ana sayfası (Seyhun 2026-10-23): lacivertte kuryenin adı, durumu ve bugünün sayıları; altta Kare kod okut,
 // Yolda (harita + müşteri + Teslim), Sırada (restorana gidilecekler), Bugün teslim. Yalnız görünüm; veri CourierView'dan.
 // active: [{ id, title, sub, left, address, phone, nav, map, busy }]  next: [{ id, title, sub, right, photo }]  done: [{ id, title, sub, at }]
-export function CourierBoard({ name, busy, gps, onOut, outLabel = "Çıkış", onScan, onDone, active = [], next = [], done = [], head }) {
+export function CourierBoard({ near = [], name, busy, gps, onOut, outLabel = "Çıkış", onScan, onDone, active = [], next = [], done = [], head }) {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Kurye">
@@ -69,7 +69,18 @@ export function CourierBoard({ name, busy, gps, onOut, outLabel = "Çıkış", o
           </section>
         )}
 
-        {!active.length && !next.length && <p className="py-4 text-center text-[0.9375rem] text-mut">Şu an sipariş yok</p>}
+        {!active.length && !next.length && !near.length && <p className="py-4 text-center text-[0.9375rem] text-mut">Şu an sipariş yok</p>}
+
+        {near.length > 0 && (
+          <section>
+            <ListHead title="Yakındaki restoranlar" />
+            <RowList>
+              {near.map((n) => (
+                <Row key={n.id} lead={<Img src={n.photo} w={120} className="size-11 shrink-0 rounded-xl" />} title={n.title} sub={n.sub} right={<span className="text-[0.8125rem] font-semibold text-mut">{n.right}</span>} />
+              ))}
+            </RowList>
+          </section>
+        )}
 
         {done.length > 0 && (
           <section>

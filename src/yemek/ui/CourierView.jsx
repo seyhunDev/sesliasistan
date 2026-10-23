@@ -7,10 +7,11 @@ import { RowList, Row } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { minutesLeft } from "../order";
 import { distanceM } from "../address";
-import { placeById, useSettings, useToday, deliverOrder, courierAt, giveToCourier, saveSettings } from "../store";
+import { PLACES, placeById, useSettings, useToday, deliverOrder, courierAt, giveToCourier, saveSettings } from "../store";
 import { orderNo, pickupOf, PICKUP_SAY } from "../qr";
 import { ScanSheet } from "./ScanSheet";
 import { CourierBoard } from "./CourierBoard";
+import { nearPlaces } from "../couriers";
 import { tl } from "./Img";
 import { TrackMap } from "./TrackMap";
 import { photoUrl } from "../photo";
@@ -31,7 +32,7 @@ export function CourierView({ orgId }) {
   if (cid === null || !settings) return null;
   const courier = (settings.couriers || []).find((c) => c.id === cid);
   if (!courier) return <PickCourier couriers={settings.couriers || []} onPick={pick} />;
-  return <Courier orgId={orgId} courier={courier} couriers={settings.couriers || []} onChange={() => pick("")} />;
+  return <Courier orgId={orgId} courier={courier} couriers={settings.couriers || []} closed={settings.closed} onChange={() => pick("")} />;
 }
 
 // Kendi hesabıyla giren kurye (role "courier"): uygulamada yalnız bu ekran var. Yazmalar sunucudan (/api/kurye).
@@ -48,7 +49,7 @@ export function CourierSelf({ profile }) {
       </main>
     );
   }
-  return <Courier orgId={profile.courierOf} courier={courier} couriers={settings.couriers || []} onChange={out} self />;
+  return <Courier orgId={profile.courierOf} courier={courier} couriers={settings.couriers || []} closed={settings.closed} onChange={out} self />;
 }
 
 function Top({ title, sub, onSub, pill, self }) {
@@ -88,7 +89,7 @@ function PickCourier({ couriers, onPick }) {
 const HERE_MS = 60000;
 const HERE_M = 100;
 
-function Courier({ orgId, courier, couriers, onChange, self }) {
+function Courier({ orgId, courier, couriers, closed, onChange, self }) {
   const toast = useToast();
   const today = useToday(orgId);
   const now = useNow();
@@ -204,11 +205,17 @@ function Courier({ orgId, courier, couriers, onChange, self }) {
     id: o.id, title: `${o.customer || "Müşteri"} · ${o.address?.name || ""}`, sub: `${o.placeName} · ${o.pay === "kapıda-nakit" ? "Nakit" : "Kart"} ${tl(o.total)}`, at: hm(o.live.times?.delivered),
   }));
 
+  // Müsaitken en yakın restoranlar (uzaklık ve süre)
+  const fmt = (k) => (k < 1 ? `${Math.round(k * 100) * 10} m` : `${k.toFixed(1).replace(".", ",")} km`);
+  const near = mine.length || given.length ? [] : nearPlaces(at, PLACES, { vehicle: courier.vehicle, closed, now: new Date(now) }).map((r) => ({
+    id: r.place.id, title: r.place.name, photo: r.place.cover, sub: [r.open ? "Açık" : "Kapalı", r.place.area].filter(Boolean).join(" · "), right: `${fmt(r.km)} · ${r.min} dk`,
+  }));
+
   return (
     <>
       <CourierBoard name={courier.name} busy={!!(mine.length || given.length)} gps={ids ? gps : ""} onScan={() => setScan("cam")} onDone={(id) => done(mine.find((o) => o.id === id))}
         onOut={onChange} outLabel={self ? "Çıkış" : "Değiştir"} head={self ? null : <BackButton href="/yemek/yonetim" />}
-        active={active} next={next} done={today ? doneList : []} />
+        active={active} next={next} done={today ? doneList : []} near={near} />
       <ScanSheet open={!!scan} onClose={() => setScan(null)} onCode={(text) => setScan(pickupOf(all, text))}>
         {scan && scan !== "cam" && <Picked scan={scan} busy={busy} onTake={take} onAgain={() => setScan("cam")} onClose={() => setScan(null)} />}
       </ScanSheet>

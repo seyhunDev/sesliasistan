@@ -8,7 +8,7 @@ import { photoUrl } from "@/yemek/photo";
 import { liveView } from "@/yemek/demo";
 import { decodeLine, pointAlong, progressOn, rideMin, roadMin } from "@/yemek/route";
 import { foodOrderAsk, planVoiceOrder } from "@/yemek/voice";
-import { busyOrder, courierState, nearestFree, sortCouriers, DEMO_COURIERS, courierOnOrder, pickCourier } from "@/yemek/couriers";
+import { busyOrder, courierState, nearestFree, sortCouriers, DEMO_COURIERS, courierOnOrder, pickCourier, nearPlaces } from "@/yemek/couriers";
 import { accountCourier, courierCan, deliverPatch, pickupPatch } from "@/yemek/steps";
 import { qrText, parseQr, qrCells, orderNo, pickupOf } from "@/yemek/qr";
 import jsQR from "@/lib/vendor/jsQR.cjs";
@@ -230,6 +230,8 @@ group("Kuryeler")([
   ["teslim edildi", { desc: "kurye müsait", fn: () => courierState(KC[0], [ORD("dk-murat", "delivered")]).busy, ok: (g) => g === false }],
   ["en yakın müsait", { desc: "Pizza Rüzgar'a en yakın Ayşe (bisiklet, ~300 m)", fn: () => nearestFree(KC, [], PR.pos)?.id, ok: (g) => g === "dk-ayse" }],
   ["en yakın siparişteyse", { desc: "sıradaki yakın müsait (siparişteki ve deneme-siparişteki atlanır)", fn: () => nearestFree(KC, [ORD("dk-ayse", "onTheWay")], PR.pos)?.id, ok: (g) => g && g !== "dk-ayse" && !KC.find((c) => c.id === g).demoBusy }],
+  ["yakındaki restoranlar", { desc: "Murat'ın yerinden en yakın 3, yakından uzağa, süre ve açık", fn: () => nearPlaces(KC[0].pos, SAMPLE_PLACES, { n: 3, now: new Date(NOW) }), ok: (g) => g.length === 3 && g[0].km <= g[1].km && g[1].km <= g[2].km && g.every((r) => r.min >= 1 && typeof r.open === "boolean") }],
+  ["kapatılan restoran", { desc: "kapalı görünür", fn: () => { const r = nearPlaces(KC[0].pos, SAMPLE_PLACES, { n: 1, now: new Date(NOW) })[0]; return nearPlaces(KC[0].pos, SAMPLE_PLACES, { n: 1, now: new Date(NOW), closed: { [r.place.id]: true } })[0].open; }, ok: (g) => g === false }],
   ["tek kurye siparişte", { desc: "yine ona atanır (Sırada)", fn: () => pickCourier([KC[2]], [ORD("dk-ayse", "onTheWay")], PR.pos)?.id, ok: (g) => g === "dk-ayse" }],
   ["müsait varken", { desc: "müsait olana", fn: () => pickCourier(KC, [ORD("dk-ayse", "onTheWay")], PR.pos)?.id, ok: (g) => g && g !== "dk-ayse" && !KC.find((c) => c.id === g).demoBusy }],
   ["hepsi siparişte", { desc: "atanmaz", fn: () => nearestFree(KC, KC.map((c) => ORD(c.id, "onTheWay")), PR.pos), ok: (g) => g === null }],
