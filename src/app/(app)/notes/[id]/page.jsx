@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { stamp } from "@/features/add/EditCard";
-import { NOTE_COLORS, noteDonePatch, noteReopenPatch, noteText } from "@/lib/noteState";
+import { NOTE_COLORS, NOTE_GONE, noteColor, noteDonePatch, noteReopenPatch, noteText } from "@/lib/noteState";
 import { cap } from "@/lib/utils/format";
 import { lockedFor } from "@/lib/people";
 
@@ -31,7 +31,9 @@ const plain = `${btn} border-line bg-card text-fg shadow-[0_2px_0_rgba(38,40,44,
 
 // Not sayfası (Seyhun 2026-10-23): not tam sayfa açılır, başlığa ya da yazıya dokunup hemen yazılır; Kaydet yok,
 // alandan çıkınca, sayfadan ayrılınca ya da uygulama arka plana geçince kendiliğinden kaydedilir. /notes/new boş not açar,
-// ilk yazıyla kayıt oluşur. Altta sabit: Yapıldı, Sabitle, Paylaş, ⋯ (Not ayarları: renk, sorumlu, kopyala, arşiv, sil).
+// ilk yazıyla kayıt oluşur. Yeni tasarım (Seyhun 2026-10-23 "Yap"): başlık lacivert üstte, sağ üstte renk ve ⋯ (Not ayarları:
+// renk, sorumlu, kopyala, arşiv, sil); yazı altta. Altta sabit: Sabitle, Paylaş, Tamamla. Tamamla: halka yeşil dolar, tik çizilir,
+// başlığın üstü çizilir; sonra liste açılır, not satırı kayarak çıkar (NOTE_GONE), "Geri al".
 export default function NotePage() {
   const { id: param } = useParams();
   const router = useRouter();
@@ -45,6 +47,7 @@ export default function NotePage() {
   const [body, setBody] = useState(rec?.body && rec.body !== rec.title ? rec.body : "");
   const [menu, setMenu] = useState(false);
   const [who, setWho] = useState(false);
+  const [finishing, setFinishing] = useState(false); // Tamamla animasyonu
   const saved = useRef({ title: rec?.title || "", body: rec?.body && rec.body !== rec.title ? rec.body : "" });
   const creating = useRef(null); // yeni notun yazılma sözü (Promise)
   const alive = useRef(true);
@@ -151,11 +154,19 @@ export default function NotePage() {
     } else copy();
   };
   const done = async () => {
-    const nid = await save();
+    if (finishing) return;
+    document.activeElement?.blur?.();
+    setFinishing(true);
+    navigator.vibrate?.(10);
+    const [nid] = await Promise.all([save(), new Promise((r) => setTimeout(r, 850))]);
     // replace: geri gelince biten not yeniden açılmasın
     if (!nid) return router.replace("/notes");
     updateRecord("note", nid, noteDonePatch(), by);
-    navigator.vibrate?.(10);
+    try {
+      sessionStorage.setItem(NOTE_GONE, nid); // listede bu satır kayarak çıkar
+    } catch {
+      /* saklanamadı: satır hemen kaybolur */
+    }
     toast("Yapıldı, Arşiv'e kaldırıldı", { action: { label: "Geri al", onClick: () => updateRecord("note", nid, noteReopenPatch(), by) } });
     router.replace("/notes");
   };
@@ -171,50 +182,86 @@ export default function NotePage() {
   const whoNames = assigned.map((u) => nameOf(u)).filter(Boolean).join(", ");
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-[30rem] flex-col px-5 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-      <header className="flex items-center">
-        <BackButton href="/notes" />
-      </header>
-
-      <div className="flex-1 cursor-text pb-4 pt-4" onClick={(e) => e.target === e.currentTarget && bodyRef.current?.focus()}>
+    <main className="mx-auto flex min-h-[100dvh] max-w-[30rem] flex-col px-5 pb-[calc(6rem+env(safe-area-inset-bottom))]">
+      <section className="ck -mx-5 px-5 pb-10 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Not">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/notes" />
+          <span className="flex-1" />
+          {rec && !ro && (
+            <>
+              <button type="button" onClick={() => setMenu(true)} aria-label="Renk" data-press className="btn btn-round">
+                <span className="size-3.5 rounded-full" style={{ background: rec.color ? noteColor(rec) : "rgba(255,255,255,.35)" }} />
+              </button>
+              <button type="button" onClick={() => setMenu(true)} aria-label="Not ayarları" data-press className="btn btn-round text-[1.125rem] font-bold leading-none">
+                ⋯
+              </button>
+            </>
+          )}
+        </header>
         <Grow
           value={title}
           onChange={(e) => setTitle(cap(e.target.value))}
           onBlur={save}
-          readOnly={ro}
+          readOnly={ro || finishing}
           placeholder="Başlık"
           autoCapitalize="sentences"
           enterKeyHint="next"
           autoFocus={!id}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), bodyRef.current?.focus())}
-          className="text-[1.625rem] font-bold leading-tight tracking-[-.02em] text-fg placeholder:text-mut/60"
+          className={`mt-4 !text-[1.625rem] font-bold leading-tight tracking-[-.02em] text-white placeholder:text-white/40 ${finishing ? "note-strike" : ""}`}
         />
-        {meta && <p className="mt-1.5 truncate text-[0.8125rem] text-mut">{meta}</p>}
-        <BodyArea value={body} onChange={setBody} onBlur={save} inputRef={bodyRef} readOnly={ro} />
+        {meta && <p className="mt-1.5 truncate text-[0.8125rem] font-semibold text-white/60">{meta}</p>}
+      </section>
+
+      <div className="relative -mx-5 -mt-6 flex-1 cursor-text rounded-t-[1.75rem] bg-bg px-5 pt-5" onClick={(e) => e.target === e.currentTarget && bodyRef.current?.focus()}>
+        <div className={finishing ? "opacity-35 transition-opacity duration-300" : ""}>
+          <BodyArea value={body} onChange={setBody} onBlur={save} inputRef={bodyRef} readOnly={ro || finishing} />
+        </div>
+        {finishing && (
+          <div className="pointer-events-none absolute inset-x-0 top-24 flex flex-col items-center gap-2.5" aria-live="polite">
+            <span className="note-burst grid size-24 place-items-center rounded-full bg-ok">
+              <svg viewBox="0 0 24 24" className="size-12" aria-hidden="true">
+                <path d="M5 12.5l4.5 4.5L19 7.5" className="note-check" />
+              </svg>
+            </span>
+            <b className="text-[1.125rem] font-bold text-ok">Yapıldı</b>
+          </div>
+        )}
       </div>
 
       <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2.5">
-        <div className="mx-auto flex max-w-[30rem] gap-2">
+        <div className={`mx-auto flex max-w-[30rem] gap-2 ${finishing ? "pointer-events-none" : ""}`}>
+          {!ro && !off && (
+            <button type="button" onClick={() => rec && set({ pinned: !rec.pinned })} disabled={!rec || finishing} aria-pressed={!!rec?.pinned} data-press className={`${plain} ${rec?.pinned ? "!text-acc" : ""} disabled:opacity-40`}>
+              {rec?.pinned ? "Sabitli" : "Sabitle"}
+            </button>
+          )}
+          <button type="button" onClick={share} disabled={finishing} data-press className={`${plain} disabled:opacity-40`}>
+            Paylaş
+          </button>
           {ro ? null : off ? (
-            <button type="button" onClick={() => set(noteReopenPatch())} data-press className={`${btn} flex-[1.4] border-acc bg-acc text-white`}>
+            <button type="button" onClick={() => set(noteReopenPatch())} data-press className={`${btn} flex-[1.6] border-acc bg-acc text-white shadow-[0_2px_0_#075c70]`}>
               Notlara al
             </button>
           ) : (
-            <>
-              <button type="button" onClick={done} data-press className={`${btn} border-acc bg-acc text-white shadow-[0_2px_0_#075c70]`}>
-                Yapıldı
-              </button>
-              <button type="button" onClick={() => rec && set({ pinned: !rec.pinned })} disabled={!rec} aria-pressed={!!rec?.pinned} data-press className={`${plain} ${rec?.pinned ? "!text-acc" : ""} disabled:opacity-40`}>
-                {rec?.pinned ? "Sabitli" : "Sabitle"}
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={done}
+              data-press
+              className={`${btn} flex flex-[1.6] items-center justify-center gap-2 text-white transition-colors duration-300 ${finishing ? "border-ok bg-ok shadow-[0_2px_0_#356b4b]" : "border-acc bg-acc shadow-[0_2px_0_#075c70]"}`}
+            >
+              {finishing ? (
+                <span className="note-burst grid size-[1.375rem] place-items-center rounded-full bg-white text-ok">
+                  <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden="true">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" className="note-check" />
+                  </svg>
+                </span>
+              ) : (
+                <span className="size-[1.375rem] rounded-full border-2 border-white/90" aria-hidden="true" />
+              )}
+              {finishing ? "Yapıldı" : "Tamamla"}
+            </button>
           )}
-          <button type="button" onClick={share} data-press className={plain}>
-            Paylaş
-          </button>
-          {!ro && <button type="button" onClick={() => setMenu(true)} aria-label="Not ayarları" data-press className={`${plain} !flex-none w-[3.25rem]`}>
-            ⋯
-          </button>}
         </div>
       </div>
 
@@ -300,7 +347,7 @@ function BodyArea({ value, onChange, onBlur, inputRef, readOnly }) {
       readOnly={readOnly}
       placeholder="Yaz"
       autoCapitalize="sentences"
-      className="mt-4 block w-full resize-none overflow-hidden bg-transparent text-[1.0625rem] leading-relaxed text-fg/90 outline-none placeholder:text-mut/60"
+      className="block w-full resize-none overflow-hidden bg-transparent !text-[1.0625rem] leading-relaxed text-fg/90 outline-none placeholder:text-mut/60"
     />
   );
 }
