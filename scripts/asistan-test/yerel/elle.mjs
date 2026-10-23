@@ -3043,6 +3043,13 @@ group("Ortak düğmeler")([
     ["sayfa yolu", F("/cams?yer=", () => C.camsPath("Ayvalık") === "/cams?yer=Ayval%C4%B1k" && C.camsPath("") === "/cams")],
     ["ses: yer", F("hazır ve serbest yer", () => C.camsAsk("Ayvalık kameralarını aç")?.place === "Ayvalık" && C.camsAsk("Midilli'deki kameralar")?.place === "Midilli" && C.camsAsk("Bodrum'un kameralarını göster")?.place === "Bodrum" && C.camsAsk("Çeşmedeki kameraları aç")?.place === "Çeşme")],
     ["ses: yersiz", F("kameraları aç → boş yer", () => C.camsAsk("kameraları aç")?.place === "" && C.camsAsk("canlı kameraları göster")?.place === "")],
+    ["YouTube yayını", F("yer adı geçen canlı yayın, oynatıcı ve bağlantı", () => { const c = C.ytCam({ id: { videoId: "v1" }, snippet: { title: "Ayvalık Cunda &amp; Liman Canlı", channelTitle: "Ayvalık Belediyesi", liveBroadcastContent: "live", thumbnails: { high: { url: "h.jpg" } } } }, "Ayvalık"); return c.id === "yt:v1" && c.title === "Ayvalık Cunda & Liman Canlı" && /youtube-nocookie\.com\/embed\/v1/.test(c.player) && c.preview === "h.jpg" && c.km === null && c.src === "YouTube"; })],
+    ["YouTube eleme", F("başka yer, haber, canlı değil → atlanır", () => C.ytList([
+      { id: { videoId: "a" }, snippet: { title: "İstanbul Boğaz canlı", channelTitle: "X", liveBroadcastContent: "live" } },
+      { id: { videoId: "b" }, snippet: { title: "Ayvalık haber canlı", channelTitle: "X", liveBroadcastContent: "live" } },
+      { id: { videoId: "c" }, snippet: { title: "Ayvalık sahil", channelTitle: "X", liveBroadcastContent: "none" } },
+      { id: { videoId: "d" }, snippet: { title: "Cunda adası", channelTitle: "Ayvalık Kent TV", liveBroadcastContent: "live" } },
+    ], "Ayvalık").map((c) => c.id).join() === "yt:d")],
     ["ses: fiş kamerası değil", F("tekil kamerayı aç, fiş, ön kamera → null", () => C.camsAsk("kamerayı aç") === null && C.camsAsk("fiş kamerasını aç") === null && C.camsAsk("ön kamerayı aç") === null && C.camsAsk("yarış kamerasını aç") === null)],
   ]);
 }
