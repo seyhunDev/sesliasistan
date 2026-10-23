@@ -12,9 +12,13 @@ export const runtime = "nodejs";
 // Anahtar Netlify ortam değişkeni AISSTREAM_KEY (gizli); telefona hiç gitmez. İstek sınırına sayılmaz (yapay zekasız).
 const FRESH = 8e3;
 const WINDOW = 4500;
-const FIRST_WINDOW = 7000; // liste boşken biraz daha uzun dinlenir
+const FIRST_WINDOW = 5000; // liste boşken biraz daha uzun dinlenir
+
+const DEADLINE = 9000; // Netlify işlevi 10 sn'de kesilir; ondan önce mutlaka cevap verilir
 
 let mem = { at: 0, all: {} };
+// Süresi dolan iş hata verir (canlıda istek cevapsız kaldı, 2026-10-23)
+const within = (p, ms, msg) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(msg)), ms))]);
 let running = null;
 
 async function store() {
@@ -29,7 +33,7 @@ async function load() {
   const s = await store();
   if (!s) return mem;
   try {
-    const v = await s.get("state", { type: "json" });
+    const v = await within(s.get("state", { type: "json" }), 2000, "depo");
     return v?.all ? v : mem;
   } catch {
     return mem;
@@ -38,7 +42,7 @@ async function load() {
 async function save(v) {
   mem = v;
   const s = await store();
-  if (s) await s.setJSON("state", v).catch(() => {});
+  if (s) await within(s.setJSON("state", v), 2000, "depo").catch(() => {});
 }
 
 async function refresh(key) {
@@ -65,7 +69,7 @@ export async function GET(req) {
   if (!key) return NextResponse.json({ error: "nokey" });
   try {
     running ||= refresh(key).finally(() => (running = null));
-    const v = await running;
+    const v = await within(running, DEADLINE, "süre doldu");
     return NextResponse.json({ at: v.at, ships: shipList(v.all) }, { headers: { "cache-control": "no-store" } });
   } catch (e) {
     return NextResponse.json({ error: "fail", why: String(e?.message || "").slice(0, 120) });
