@@ -15,6 +15,7 @@ import { InboxSheet, useInbox } from "./Inbox";
 import { WaitRow } from "./WaitRow";
 import { Cockpit } from "./Cockpit";
 import { FoodCard } from "./FoodCard";
+import { SeaCard } from "@/features/sea/SeaCard";
 import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
@@ -108,6 +109,7 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
             <FoodCard />
           </div>
         )}
+        {!side && <SeaCard className="mt-3" />}
       </Cockpit>
       {/* Alt kısım da lacivert (Seyhun 2026-10-22: "yukarısı daha güzel, bu tasarımı devam ettirelim"): kartlar kokpitteki gibi
           yarı saydam lacivert, yazılar açık; renkler globals.css .navy değişkenlerinden (koyu görünüm sınıfları da çalışır) */}

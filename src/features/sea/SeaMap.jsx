@@ -20,7 +20,10 @@ function shipHtml(s) {
   return { html: `<span style="display:block;width:12px;height:12px;border-radius:999px;border:2.5px solid ${ring};background:#fff"></span>`, rot: 0 };
 }
 
-export function SeaMap({ ships = [], me, focus, pick, onPick }) {
+const NOOP = () => {};
+
+// small: ana sayfadaki küçük harita (dokunulmaz, kartın bağlantısı Deniz trafiği sayfasını açar)
+export function SeaMap({ ships = [], me, focus, pick, onPick = NOOP, small = false }) {
   const box = useRef(null);
   const map = useRef(null);
   const marks = useRef(new Map());
@@ -37,7 +40,7 @@ export function SeaMap({ ships = [], me, focus, pick, onPick }) {
         if (!live || !box.current) return;
         const touch = window.matchMedia?.("(pointer: coarse)").matches;
         const m = new ml.Map({
-          container: box.current, style: MAP_STYLE, center: [SEA_CENTER.lon, SEA_CENTER.lat], zoom: 10.6,
+          container: box.current, style: MAP_STYLE, center: [SEA_CENTER.lon, SEA_CENTER.lat], zoom: small ? 9.9 : 10.6, interactive: !small,
           attributionControl: false, dragPan: !touch, dragRotate: false, touchPitch: false, pitchWithRotate: false, scrollZoom: false,
         });
         m.touchZoomRotate?.disableRotation();
@@ -56,7 +59,7 @@ export function SeaMap({ ships = [], me, focus, pick, onPick }) {
       all.clear();
       meMark.current = null;
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Gemiler: var olan işaret yerinde güncellenir, kaybolan silinir
   useEffect(() => {
@@ -103,13 +106,13 @@ export function SeaMap({ ships = [], me, focus, pick, onPick }) {
   const sel = pick && ships.find((s) => s.m === pick);
   return (
     <div className="relative">
-      <div ref={box} className="h-72 w-full overflow-hidden rounded-[1.25rem] border border-white/15 bg-[#e6ecef]" />
+      <div ref={box} className={small ? "pointer-events-none h-[9.5rem] w-full overflow-hidden bg-[#e6ecef]" : "h-72 w-full overflow-hidden rounded-[1.25rem] border border-white/15 bg-[#e6ecef]"} />
       {sel && (
         <button type="button" onClick={() => onPick(null)} className="absolute left-3 right-3 top-3 truncate rounded-full bg-white/95 px-3 py-1.5 text-left text-[0.8125rem] font-semibold text-[#26282c] shadow-sm">
           {sel.n} · {sel.state.label} · {shipLine(sel)}
         </button>
       )}
-      <button type="button" onClick={() => setAbout(!about)} aria-label="Harita kaynağı" className="absolute bottom-2 right-2 grid size-6 place-items-center rounded-full bg-white/85 text-[0.75rem] font-bold text-[#74777d]">i</button>
+      <button type="button" onClick={(e) => (e.preventDefault(), setAbout(!about))} aria-label="Harita kaynağı" className="absolute bottom-2 right-2 grid size-6 place-items-center rounded-full bg-white/85 text-[0.75rem] font-bold text-[#74777d]">i</button>
       {about && <p className="absolute bottom-2 right-10 rounded-lg bg-white/90 px-2 py-1 text-[0.6875rem] text-[#74777d]">{MAP_ATTR} · AIS: aisstream.io</p>}
     </div>
   );
