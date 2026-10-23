@@ -23,4 +23,5 @@ export function courierCan(o, place, courierId, now = Date.now()) {
 }
 
 // Kayıtlı kurye: ayardaki couriers[] satırı (kimliği hesabın uid'si)
-export const accountCourier = (uid, name, phone) => ({ id: uid, uid, name, phone: phone || "", vehicle: "motor", account: true });
+// login: kullanıcı adı (Yönetim'de görünür; şifre hiçbir yerde saklanmaz)
+export const accountCourier = (uid, name, phone, login = "") => ({ id: uid, uid, name, phone: phone || "", vehicle: "motor", account: true, login });

@@ -12,7 +12,7 @@ import { STATUSES, STATUS_NAMES, lineDetail, minutesLeft } from "../order";
 import { liveView } from "../demo";
 import { VEHICLES } from "../route";
 import { PLACES, placeById, useSettings, useToday, saveSettings, setStatus } from "../store";
-import { courierState, sortCouriers, DEMO_COURIERS } from "../couriers";
+import { courierState, sortCouriers } from "../couriers";
 import { orderNo } from "../qr";
 import { Img, tl } from "./Img";
 import { CourierMap } from "./CourierMap";
@@ -248,6 +248,29 @@ function Couriers({ couriers, orders, demo, save, signup }) {
     }
     setWait(false);
   };
+  const pass = async (c) => {
+    const p = window.prompt(`${c.name} için yeni şifre (en az 6 karakter)`);
+    if (!p) return;
+    try {
+      const r = await kuryeApi("password", { id: c.id, password: p });
+      toast(`Kullanıcı adı ${r.login}, şifre kaydedildi`);
+    } catch (e) {
+      toast(e.message);
+    }
+  };
+  // Deneme kuryeleri gerçek hesap olarak açılır (kullanıcı adları listede, şifre burada verilir)
+  const demoFlip = async () => {
+    const password = hasDemo ? "" : window.prompt("Deneme kuryelerinin şifresi (en az 6 karakter)");
+    if (!hasDemo && !password) return;
+    setWait(true);
+    try {
+      await kuryeApi("demo", { on: !hasDemo, password });
+      toast(hasDemo ? "Deneme kuryeleri kaldırıldı" : "Deneme kuryeleri eklendi");
+    } catch (e) {
+      toast(e.message);
+    }
+    setWait(false);
+  };
   const drop = (c) => {
     if (!window.confirm(`${c.name} silinsin mi?`)) return;
     if (c.account) kuryeApi("remove", { id: c.id }).catch((e) => toast(e.message));
@@ -276,9 +299,10 @@ function Couriers({ couriers, orders, demo, save, signup }) {
               <span className={`grid size-10 shrink-0 place-items-center rounded-full text-[0.875rem] font-bold ${c.busy ? "bg-deep text-white" : "bg-accbg text-acc"}`}>{c.name.slice(0, 2).toLocaleUpperCase("tr")}</span>
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[0.9375rem] font-semibold">{c.name}</b>
-                <small className="block truncate text-[0.8125rem] text-mut">{c.busy ? `Siparişte${c.order ? ` · ${c.order.placeName} #${orderNo(c.order.id)}` : ""}` : [VEHICLES[c.vehicle || "motor"], c.phone].filter(Boolean).join(" · ")}</small>
+                <small className="block truncate text-[0.8125rem] text-mut">{c.busy ? `Siparişte${c.order ? ` · ${c.order.placeName} #${orderNo(c.order.id)}` : ""}` : [c.account && (c.login || "Hesaplı"), VEHICLES[c.vehicle || "motor"], c.phone].filter(Boolean).join(" · ")}</small>
               </span>
               <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[0.75rem] font-bold ${c.busy ? "bg-line text-mut" : "bg-accbg text-acc"}`}>{c.busy ? "Siparişte" : "Müsait"}</span>
+              {c.account && <button type="button" onClick={() => pass(c)} className="shrink-0 text-[0.8125rem] font-semibold text-acc">Şifre</button>}
               <button type="button" aria-label={`${c.name} sil`} onClick={() => drop(c)} data-press className="btn btn-icon btn-sm text-mut">
                 <Icon name="trash" className="size-4" />
               </button>
@@ -294,7 +318,7 @@ function Couriers({ couriers, orders, demo, save, signup }) {
         <Switch on={signup} onChange={wait ? undefined : flip} label="Kurye kaydı" />
       </div>
       {demo && (
-        <Button variant="secondary" onClick={() => save({ couriers: hasDemo ? couriers.filter((c) => !c.demo) : [...couriers, ...DEMO_COURIERS.filter((d) => !couriers.some((c) => c.id === d.id))] })}>
+        <Button variant="secondary" loading={wait} onClick={demoFlip}>
           {hasDemo ? "Deneme kuryelerini kaldır" : "Deneme kuryeleri ekle"}
         </Button>
       )}

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb, adminReady } from "@/lib/server/admin";
-import { loginEmail, validUsername, cleanLogin } from "@/lib/kinds";
+import { loginEmail, validUsername, cleanLogin, shownLogin } from "@/lib/kinds";
 import { SAMPLE_PLACES } from "@/yemek/sample";
+import { DEMO_COURIERS } from "@/yemek/couriers";
 import { accountCourier, courierCan, deliverPatch, pickupPatch } from "@/yemek/steps";
 
 export const runtime = "nodejs";
@@ -78,21 +79,51 @@ export async function POST(request) {
       return bad("Hesap açılamadı.", 500);
     }
     await db.collection("users").doc(user.uid).set({ name, email: loginEmail(login), role: "courier", orgId: user.uid, courierOf: open.orgId, phone, createdAt: new Date().toISOString() });
-    await editCouriers(db, open.orgId, (l) => [...l.filter((c) => c.id !== user.uid), accountCourier(user.uid, name, phone)]);
+    await editCouriers(db, open.orgId, (l) => [...l.filter((c) => c.id !== user.uid), accountCourier(user.uid, name, phone, login)]);
     return NextResponse.json({ ok: true });
   }
 
   const me = await who(request);
   if (!me) return bad("Oturum gerekli.", 401);
 
-  // Ana hesabın işleri: kaydı aç/kapa, hesaplı kuryeyi sil
-  if (act === "signup" || act === "remove") {
+  // Ana hesabın işleri: kaydı aç/kapa, hesaplı kuryeyi sil, kuryeye yeni şifre ver (denemeler için; şifre saklanmaz)
+  if (act === "signup" || act === "remove" || act === "password" || act === "demo") {
     if (me.role !== "owner" || me.orgId !== me.uid) return bad("Yalnız ana hesap.", 403);
     if (act === "signup") {
       const open = !!body.open;
       await OPEN_REF(db).set({ orgId: me.uid, open, at: new Date().toISOString() });
       await setRef(db, me.uid).set({ signup: open }, { merge: true });
       return NextResponse.json({ ok: true, open });
+    }
+    // Deneme kuryeleri: ekleyince her biri giriş yapılabilen kurye hesabı (aynı şifre), kaldırınca hesaplar kapanır
+    if (act === "demo") {
+      const on = !!body.on;
+      const password = String(body.password || "");
+      if (on && password.length < 6) return bad("Şifre en az 6 karakter olmalı.");
+      for (const d of DEMO_COURIERS) {
+        if (on) {
+          await adminAuth().createUser({ uid: d.id, email: loginEmail(d.login), password, displayName: d.name })
+            .catch((e) => (e.code === "auth/uid-already-exists" || e.code === "auth/email-already-exists" ? adminAuth().updateUser(d.id, { password }) : Promise.reject(e)));
+          await db.collection("users").doc(d.id).set({ name: d.name, email: loginEmail(d.login), role: "courier", orgId: d.id, courierOf: me.uid, phone: d.phone, createdAt: new Date().toISOString() });
+        } else {
+          await adminAuth().deleteUser(d.id).catch(() => {});
+          await db.collection("users").doc(d.id).delete();
+        }
+      }
+      const ids = new Set(DEMO_COURIERS.map((d) => d.id));
+      await editCouriers(db, me.uid, (l) => [...l.filter((c) => !ids.has(c.id)), ...(on ? DEMO_COURIERS.map((d) => ({ ...d, uid: d.id, account: true, demo: true })) : [])]);
+      return NextResponse.json({ ok: true, logins: on ? DEMO_COURIERS.map((d) => d.login) : [] });
+    }
+    if (act === "password") {
+      const id = String(body.id || "");
+      const password = String(body.password || "");
+      const u = id ? (await db.collection("users").doc(id).get()).data() : null;
+      if (u?.role !== "courier" || u.courierOf !== me.uid) return bad("Kurye hesabı bulunamadı.", 404);
+      if (password.length < 6) return bad("Şifre en az 6 karakter olmalı.");
+      await adminAuth().updateUser(id, { password });
+      const login = shownLogin(u.email);
+      await editCouriers(db, me.uid, (l) => l.map((c) => (c.id === id ? { ...c, login } : c)));
+      return NextResponse.json({ ok: true, login });
     }
     const id = String(body.id || "");
     const u = id ? (await db.collection("users").doc(id).get()).data() : null;
