@@ -124,7 +124,7 @@ function Panel({ orgId, place, onChange }) {
                 );
               })}
             </div>
-            {o.address?.text && <p className="border-t border-line px-3.5 py-2 text-[0.8125rem] text-mut">{o.address.text}</p>}
+            {o.address?.text && <p className="border-t border-line px-3.5 py-2 text-[0.8125rem] text-mut">{o.address.text}{o.address.note ? ` · ${o.address.note}` : ""}</p>}
             {tab !== "road" && (
               <div className="grid grid-cols-[1fr_1.7fr] gap-2 border-t border-line p-2.5">
                 {tab === "new" ? (

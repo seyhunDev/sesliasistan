@@ -2,7 +2,7 @@
 // Saat sabit: Çarşamba 2026-10-21 19:30 (akşam yemeği; kahvaltı ve tatlı öne çıkmaz).
 import { SAMPLE_PLACES, catalogOf } from "@/yemek/sample";
 import { unitPrice, pickProblem, defaultPicks, makeLine, cartTotals, isOpenAt, etaFrom, minutesLeft, lineDetail } from "@/yemek/order";
-import { pickAddress, addressBySpeech, distanceM } from "@/yemek/address";
+import { pickAddress, addressBySpeech, distanceM, parseReverse, addressText, tileOf } from "@/yemek/address";
 import { parseAsk, suggest, findRepeat, answerFood, tasteOf, den } from "@/yemek/suggest";
 import { photoUrl } from "@/yemek/photo";
 import { liveView } from "@/yemek/demo";
@@ -127,4 +127,15 @@ group("Restoran ve kurye")([
   ["kurye adrese ~1,5 km", { desc: "kalan ~5 dk (kuryeden adrese)", fn: () => minutesLeft(liveView({ ...real, courier: { id: "k1", name: "Ali", pos: { lat: ADDR[1].pos.lat + 0.0135, lng: ADDR[1].pos.lng } } }, pr, NOW).eta, new Date(NOW)), ok: (g) => g >= 4 && g <= 5 }],
   ["kurye kapıda", { desc: "en az 5 dk (yol alt sınırı)", fn: () => minutesLeft(liveView({ ...real, courier: { id: "k1", name: "Ali", pos: ADDR[1].pos } }, pr, NOW).eta, new Date(NOW)), ok: (g) => g === 5 }],
   ["Yönetim'den kapatılan restoran", { desc: "pizza aranınca Pizza Rüzgar önerilmez", fn: () => suggest({ places: all, history: HISTORY, ask: parseAsk("pizza", all), now: NOW, pos: ADDR[1].pos, closed: { "pizza-ruzgar": true } }), ok: (g) => g.length && !g.some((c) => c.place.id === "pizza-ruzgar") }],
+]);
+
+// Haritadan adres (Nominatim ters arama cevabı) ve adresin tek satırı
+group("Haritadan adres")([
+  ["mahalle ve sokak kısaltılır", { desc: "1453 Sokak → 1453 Sk. No 12; Cumhuriyet Mahallesi → Cumhuriyet Mah., Dikili", fn: () => parseReverse({ address: { road: "1453 Sokak", house_number: "12", suburb: "Cumhuriyet Mahallesi", town: "Dikili", county: "Dikili" } }), ok: (g) => g.street === "1453 Sk. No 12" && g.area === "Cumhuriyet Mah., Dikili" }],
+  ["cadde, numara yok", { desc: "Atatürk Cd.", fn: () => parseReverse({ address: { road: "Atatürk Caddesi", neighbourhood: "Gazipaşa Mahallesi", city: "Dikili" } }), ok: (g) => g.street === "Atatürk Cd." && g.area === "Gazipaşa Mah., Dikili" }],
+  ["sokak bulunamadı", { desc: "boş sokak, yalnız ilçe", fn: () => parseReverse({ address: { county: "Dikili" } }), ok: (g) => g.street === "" && g.area === "Dikili" }],
+  ["cevap yok", { desc: "boş", fn: () => parseReverse(null), ok: (g) => g.street === "" && g.area === "" }],
+  ["adres satırı", { desc: "sokak, kat, daire, zil · mahalle", fn: () => addressText({ street: "1453 Sk. No 12", floor: "2", flat: "5", bell: "Yıldız", area: "Cumhuriyet Mah., Dikili" }), ok: (g) => g === "1453 Sk. No 12, Kat 2, Daire 5, Zil Yıldız · Cumhuriyet Mah., Dikili" }],
+  ["boş alanlar yazılmaz", { desc: "yalnız sokak", fn: () => addressText({ street: "Liman Cd.", floor: "", flat: "" }), ok: (g) => g === "Liman Cd." }],
+  ["küçük harita karoları", { desc: "Dikili z16: 4 karo, yerin çevresindeki 128 px dolu (sağ kenara yakın → sağdaki karo da)", fn: () => tileOf({ lat: 39.0712, lng: 26.8889 }), ok: (g) => { const mx = Math.min(...g.map((t) => t.dx)), my = Math.min(...g.map((t) => t.dy)); return g.length === 4 && g.some((t) => t.url.endsWith("/16/37662/25029.png")) && g.some((t) => t.url.includes("/16/37663/")) && mx <= -128 && mx + 512 >= 128 && my <= -128 && my + 512 >= 128; } }],
 ]);
