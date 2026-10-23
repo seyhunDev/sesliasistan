@@ -59,7 +59,7 @@ export function SeaMap({ ships = [], me, focus, pick, onPick = NOOP, small = fal
       all.clear();
       meMark.current = null;
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Gemiler: var olan işaret yerinde güncellenir, kaybolan silinir
   useEffect(() => {
