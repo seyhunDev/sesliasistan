@@ -3020,7 +3020,7 @@ group("Ortak düğmeler")([
   const r3 = await run((c) => c.close(1008, "yetkisiz"));
   const r4 = await collect("x", 500, "ws://127.0.0.1:9");
   group("Deniz trafiği: aisstream bağlantısı")([
-    ["mesaj gelir", F("abonelik gider, ikili mesaj okunur", () => !r1.err && r1.parts.length === 1 && r1.parts[0].m === 271000009)],
+    ["mesaj gelir", F("abonelik gider, ikili mesaj okunur, sayılır", () => !r1.err && r1.n === 1 && r1.parts.length === 1 && r1.parts[0].m === 271000009)],
     ["anahtar hatası", F("hata metni döner", () => /Api Key Is Not Valid/.test(r2.err?.message || ""))],
     ["mesajsız kapanma", F("hata sayılır", () => /kapandı 1008/.test(r3.err?.message || ""))],
     ["sunucu yok", F("hata döner, takılmaz", () => !!r4.err && r4.parts.length === 0)],

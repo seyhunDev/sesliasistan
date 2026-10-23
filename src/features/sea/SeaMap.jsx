@@ -23,7 +23,8 @@ function shipHtml(s) {
 const NOOP = () => {};
 
 // small: ana sayfadaki küçük harita (dokunulmaz, kartın bağlantısı Deniz trafiği sayfasını açar)
-export function SeaMap({ ships = [], me, focus, pick, onPick = NOOP, small = false }) {
+// tall: büyütülmüş harita; onTall verilirse haritada Büyüt / Küçült düğmesi çıkar
+export function SeaMap({ ships = [], me, focus, pick, onPick = NOOP, small = false, tall = false, onTall }) {
   const box = useRef(null);
   const map = useRef(null);
   const marks = useRef(new Map());
@@ -38,12 +39,13 @@ export function SeaMap({ ships = [], me, focus, pick, onPick = NOOP, small = fal
     loadMapLibre()
       .then((ml) => {
         if (!live || !box.current) return;
-        const touch = window.matchMedia?.("(pointer: coarse)").matches;
+        // Sayfada harita serbest: tek parmakla kaydırılır, iki parmakla ve +/- ile yakınlaşır (Seyhun 2026-10-23: "neden büyütemiyorum")
         const m = new ml.Map({
           container: box.current, style: MAP_STYLE, center: [SEA_CENTER.lon, SEA_CENTER.lat], zoom: small ? 9.9 : 10.6, interactive: !small,
-          attributionControl: false, dragPan: !touch, dragRotate: false, touchPitch: false, pitchWithRotate: false, scrollZoom: false,
+          attributionControl: false, dragRotate: false, touchPitch: false, pitchWithRotate: false, cooperativeGestures: false,
         });
         m.touchZoomRotate?.disableRotation();
+        if (!small) m.addControl(new ml.NavigationControl({ showCompass: false }), "bottom-left");
         const sg = document.createElement("div");
         sg.innerHTML = `<span style="display:grid;place-items:center;width:24px;height:24px;border-radius:6px;background:${DEEP};color:#fff;font:700 10px system-ui">SG</span>`;
         sg.title = SG_POST.name;
@@ -95,6 +97,11 @@ export function SeaMap({ ships = [], me, focus, pick, onPick = NOOP, small = fal
     } else meMark.current.setLngLat([me.lon, me.lat]);
   }, [ready, me?.lat, me?.lon]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Büyüt / Küçült: kutu boyu değişince harita yeniden çizilir
+  useEffect(() => {
+    if (ready) map.current?.resize();
+  }, [ready, tall]);
+
   // Dışarıdan odak (listede satıra ya da Teknem'e dokununca)
   useEffect(() => {
     const m = map.current;
@@ -106,10 +113,15 @@ export function SeaMap({ ships = [], me, focus, pick, onPick = NOOP, small = fal
   const sel = pick && ships.find((s) => s.m === pick);
   return (
     <div className="relative">
-      <div ref={box} className={small ? "pointer-events-none h-[9.5rem] w-full overflow-hidden bg-[#e6ecef]" : "h-72 w-full overflow-hidden rounded-[1.25rem] border border-white/15 bg-[#e6ecef]"} />
+      <div ref={box} className={small ? "pointer-events-none h-[9.5rem] w-full overflow-hidden bg-[#e6ecef]" : `${tall ? "h-[68vh]" : "h-72"} w-full overflow-hidden rounded-[1.25rem] border border-white/15 bg-[#e6ecef]`} />
       {sel && (
         <button type="button" onClick={() => onPick(null)} className="absolute left-3 right-3 top-3 truncate rounded-full bg-white/95 px-3 py-1.5 text-left text-[0.8125rem] font-semibold text-[#26282c] shadow-sm">
           {sel.n} · {sel.state.label} · {shipLine(sel)}
+        </button>
+      )}
+      {onTall && (
+        <button type="button" onClick={onTall} className="absolute bottom-2 right-10 rounded-full bg-white/95 px-3 py-1 text-[0.8125rem] font-semibold text-[#26282c] shadow-sm">
+          {tall ? "Küçült" : "Büyüt"}
         </button>
       )}
       <button type="button" onClick={(e) => (e.preventDefault(), setAbout(!about))} aria-label="Harita kaynağı" className="absolute bottom-2 right-2 grid size-6 place-items-center rounded-full bg-white/85 text-[0.75rem] font-bold text-[#74777d]">i</button>

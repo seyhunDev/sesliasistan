@@ -13,22 +13,23 @@ async function socket(url) {
   return new WS(url);
 }
 
-// aisstream'e bağlan, ms boyunca dinle, gelen parçaları döndür
+// aisstream'e bağlan, ms boyunca dinle, gelen parçaları döndür: { parts, err, n: gelen mesaj sayısı }
 export async function collect(key, ms, url = AIS_URL) {
   let ws;
   try {
     ws = await socket(url);
   } catch (e) {
-    return { parts: [], err: e };
+    return { parts: [], err: e, n: 0 };
   }
   return new Promise((done) => {
     const parts = [];
+    let n = 0;
     const end = (err) => {
       clearTimeout(timer);
       try {
         ws.close();
       } catch {}
-      done({ parts, err });
+      done({ parts, err, n });
     };
     const timer = setTimeout(() => end(null), ms);
     let got = false;
@@ -38,6 +39,7 @@ export async function collect(key, ms, url = AIS_URL) {
         const msg = JSON.parse(await text(ev.data));
         if (msg?.error) return end(new Error(`aisstream: ${msg.error}`));
         got = true;
+        n++;
         const p = parseAis(msg);
         if (p) parts.push(p);
       } catch {}
