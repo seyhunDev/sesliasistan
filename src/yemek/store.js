@@ -12,7 +12,7 @@ import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, wh
 import { addDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { SAMPLE_PLACES } from "./sample";
-import { isOpenAt, travelMin } from "./order";
+import { STATUSES, isOpenAt, travelMin } from "./order";
 import { distanceKm } from "./address";
 
 export const PLACES = SAMPLE_PLACES;
@@ -136,6 +136,14 @@ export function giveToCourier(orgId, o, place, courier) {
   });
 }
 export const deliverOrder = (orgId, o) => patchOrder(orgId, o.id, { demo: false, status: "delivered", times: { ...(o.times || {}), delivered: nowIso() } });
+// Yönetim'den elle durum: o adımın saati yazılır, sipariş gerçek olur
+// (geri alınırsa sonraki adımların saatleri silinir)
+export function setStatus(orgId, o, status) {
+  const all = { ...(o.times || {}), ...(o.live?.times || {}) };
+  const i = STATUSES.indexOf(status);
+  const times = Object.fromEntries(Object.entries(all).filter(([k]) => status === "cancelled" || (k !== "cancelled" && STATUSES.indexOf(k) < i)));
+  return patchOrder(orgId, o.id, { demo: false, status, times: { ...times, [status]: nowIso() } });
+}
 export const courierAt = (orgId, id, pos) => updateDoc(doc(ordersCol(orgId), id), { "courier.pos": pos, "courier.at": nowIso() });
 
 // Sepet: tek restoran, telefonda (localStorage). Başka restorandan ürün eklenince eski sepet değişir (sorulur).
