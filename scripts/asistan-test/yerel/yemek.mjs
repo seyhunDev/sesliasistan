@@ -7,6 +7,7 @@ import { parseAsk, suggest, findRepeat, answerFood, tasteOf, den } from "@/yemek
 import { photoUrl } from "@/yemek/photo";
 import { liveView } from "@/yemek/demo";
 import { decodeLine, pointAlong, progressOn, rideMin, roadMin } from "@/yemek/route";
+import { foodOrderAsk, planVoiceOrder } from "@/yemek/voice";
 import { suite } from "./ortak.mjs";
 
 const { group } = suite("yemek");
@@ -153,4 +154,39 @@ group("Rota")([
   ["rotasız sipariş", { desc: "kuş uçuşu tahmin (en az 5 dk)", fn: () => roadMin({ address: ADDR[1] }, place("pizza-ruzgar")), ok: (g) => g === 5 }],
   ["deneme kuryesi rotada", { desc: "yolun yarısında kurye yol üzerinde, motorlu", fn: () => { const o = { ...demoOrder, route: R }; const v0 = liveView(o, pr, NOW); return liveView(o, pr, new Date(v0.eta).getTime() - 2.5 * 60000); }, ok: (g) => g.status === "onTheWay" && g.courier.vehicle === "motor" && progressOn(decodeLine(LINE), g.courier.pos).off < 5 && g.f > 0.3 && g.f < 0.7 }],
   ["gerçek kurye rotada", { desc: "kalan süre rotanın kalanından (motor 5 dk × %65 ≈ 3)", fn: () => { const v = liveView({ ...real, route: R, courier: { vehicle: "motor", pos: { lat: 39.072, lng: 26.888 } } }, pr, NOW); return [minutesLeft(v.eta, new Date(NOW)), v.f]; }, ok: (g) => g[0] >= 3 && g[0] <= 4 && g[1] > 0.25 }],
+]);
+
+// Sesle sipariş (asistan, isler/yemek.js): cümle → öneri / hemen sipariş; sipariş 3 sn çizgiyle CartSheet'te verilir
+const VA = (s, recent) => foodOrderAsk(s, all, recent)?.mode || null;
+const VME = { addresses: ADDR, lastAddressId: "ev" };
+const VP = (s, extra = {}) => planVoiceOrder({ s, ask: foodOrderAsk(s, all, !!extra.last), places: all, history: HISTORY, me: VME, now: NOW, ...extra });
+const VM = (want, recent) => ({ desc: want || "sipariş değil", fn: (s) => VA(s, recent), ok: (g) => g === want });
+group("Sesle sipariş: ne istendi")([
+  ["bana yemek siparişi ver hemen şimdi", VM("suggest")],
+  ["yemek söyle", VM("suggest")],
+  ["bugün ne yiyelim", VM("suggest")],
+  ["sen bir şey seç sipariş ver", VM("auto")],
+  ["sen seç yemek söyle", VM("auto")],
+  ["pizza söyle", VM("order")],
+  ["Pizza Rüzgar'dan karışık pizza sipariş ver", VM("order")],
+  ["dün söylediğimden sipariş ver", VM("order")],
+  ["iskender istiyorum", VM("order")],
+  ["pizza yedim", VM(null)],
+  ["öğlen tavuk pilav yedim", VM(null)],
+  ["Ali'ye mesaj gönder", VM(null)],
+  ["listeye süt ekle", VM(null)],
+  ["ilkini ver", VM("pick", true)],
+  ["evet", VM("pick", true)],
+  ["ikincisi", VM("pick", true)],
+  ["ilkini ver", VM(null, false), "öneri yokken"],
+]);
+group("Sesle sipariş: ne yapılır")([
+  ["bana yemek siparişi ver", { desc: "3 öneri, \"Hangisini vereyim?\"", fn: (s) => VP(s, { pos: ADDR[0].pos }), ok: (g) => g.kind === "suggest" && g.picks.length === 3 && /Hangisini vereyim\?$/.test(g.say) }],
+  ["sen seç sipariş ver", { desc: "ilk öneri hemen, Ev adresine", fn: (s) => VP(s, { pos: ADDR[0].pos }), ok: (g) => g.kind === "order" && g.address.id === "ev" && g.lines.length === 1 && /Veriyorum\.$/.test(g.say) }],
+  ["Pizza Rüzgar'dan karışık pizza söyle", { desc: "Pizza Rüzgar, karışık", fn: (s) => VP(s, { pos: ADDR[0].pos }), ok: (g) => g.kind === "order" && g.place.id === "pizza-ruzgar" && g.lines.some((l) => l.itemId === "pr-karisik") }],
+  ["dün söylediğimden sipariş ver", { desc: "dünkü sepet (karışık + kola)", fn: (s) => VP(s, { pos: ADDR[0].pos }), ok: (g) => g.kind === "order" && g.place.id === "pizza-ruzgar" && g.lines.length === 2 }],
+  ["kulübe pizza söyle", { desc: "Kulüp adresine", fn: (s) => VP(s, { pos: ADDR[0].pos }), ok: (g) => g.kind === "order" && g.address.id === "kulup" }],
+  ["ikincisi", { desc: "son önerilerin ikincisi", fn: (s) => { const sug = VP("yemek söyle", { pos: ADDR[0].pos }); return [sug.picks[1].place.id, VP(s, { pos: ADDR[0].pos, last: sug.picks })]; }, ok: ([id, g]) => g.kind === "order" && g.place.id === id }],
+  ["pizza söyle (adres yok)", { desc: "sepete konur, adres sorulur", fn: () => planVoiceOrder({ s: "pizza söyle", ask: { mode: "order" }, places: all, history: HISTORY, me: {}, now: NOW, pos: ADDR[0].pos }), ok: (g) => g.kind === "noAddress" && g.lines.length > 0 }],
+  ["pizza söyle (hepsi kapalı)", { desc: "açık yer yok", fn: () => VP("pizza söyle", { pos: ADDR[0].pos, open: () => false }), ok: (g) => g.kind === "none" }],
 ]);

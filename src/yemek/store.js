@@ -12,8 +12,9 @@ import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, wh
 import { addDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { SAMPLE_PLACES } from "./sample";
-import { STATUSES, isOpenAt } from "./order";
-import { roadMin } from "./route";
+import { STATUSES, isOpenAt, cartTotals, etaFrom } from "./order";
+import { fetchRoute, roadMin } from "./route";
+import { distanceKm } from "./address";
 
 export const PLACES = SAMPLE_PLACES;
 export const placeById = (id) => PLACES.find((p) => p.id === id) || null;
@@ -29,6 +30,24 @@ export const openNow = (place, settings, date) => !settings?.closed?.[place?.id]
 // Değişince (yeni adres, sipariş) açık ekranlar hemen yenilenir.
 let memo = null; // { orgId, history, me, settings }
 const subs = new Set();
+// Sayfasız okuma (asistan): bellekte varsa o, yoksa bir kez okunur
+let loading = null;
+export function loadFood(orgId) {
+  if (memo?.orgId === orgId) return Promise.resolve(memo);
+  if (loading?.orgId === orgId) return loading.p;
+  const p = Promise.all([
+    getDocs(query(ordersCol(orgId), orderBy("at", "desc"), limit(30))).then((s) => s.docs.map((d) => ({ ...d.data(), id: d.id }))).catch(() => []),
+    getDoc(meRef(orgId)).then((d) => d.data() || {}).catch(() => ({})),
+    getDoc(setRef(orgId)).then((d) => d.data() || {}).catch(() => ({})),
+  ]).then(([history, me, settings]) => {
+    memo = { orgId, history, me, settings };
+    loading = null;
+    subs.forEach((on) => on(memo));
+    return memo;
+  });
+  loading = { orgId, p };
+  return p;
+}
 export function useFood(orgId) {
   const [state, setState] = useState(() => (memo?.orgId === orgId ? memo : null));
   useEffect(() => {
@@ -39,14 +58,7 @@ export function useFood(orgId) {
   useEffect(() => {
     if (!orgId || memo?.orgId === orgId) return;
     let off = false;
-    Promise.all([
-      getDocs(query(ordersCol(orgId), orderBy("at", "desc"), limit(30))).then((s) => s.docs.map((d) => ({ ...d.data(), id: d.id }))).catch(() => []),
-      getDoc(meRef(orgId)).then((d) => d.data() || {}).catch(() => ({})),
-      getDoc(setRef(orgId)).then((d) => d.data() || {}).catch(() => ({})),
-    ]).then(([history, me, settings]) => {
-      memo = { orgId, history, me, settings };
-      if (!off) setState(memo);
-    });
+    loadFood(orgId).then((m) => !off && setState(m));
     return () => { off = true; };
   }, [orgId]);
   return state;
@@ -72,6 +84,20 @@ export async function placeOrder(orgId, uid, data) {
   const ref = await addDoc(ordersCol(orgId), order);
   touch((m) => ({ history: [{ ...order, id: ref.id }, ...m.history] }));
   return ref.id;
+}
+
+// Siparişi ver (sepet ve asistan aynı yoldan): yollardan rota, süre = hazırlık + yol, deneme modu ayardan
+export async function orderNow(orgId, uid, { place, lines, address, pay = "kapıda-kart", name = "", demo = true }) {
+  const totals = cartTotals(place, lines);
+  const km = distanceKm(place.pos, address.pos);
+  const route = await fetchRoute(place.pos, address.pos);
+  const road = roadMin({ route, address }, place);
+  const id = await placeOrder(orgId, uid, {
+    placeId: place.id, placeName: place.name, cuisines: place.cuisines, lines, subtotal: totals.subtotal, fee: totals.fee, total: totals.total,
+    pay, address, customer: name || "", demo, eta: etaFrom({ status: "sent" }, place, Number.isFinite(km) ? km : 2, new Date(), road).toISOString(), courier: null, route,
+  });
+  saveMe(orgId, { lastAddressId: address.id }).catch(() => {});
+  return id;
 }
 
 export async function patchOrder(orgId, id, patch) {
