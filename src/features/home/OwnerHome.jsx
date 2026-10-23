@@ -15,6 +15,7 @@ import { BirthdayStrip } from "./BirthdayStrip";
 import { InboxSheet, useInbox } from "./Inbox";
 import { SiradaCard } from "./SiradaCard";
 import { Cockpit } from "./Cockpit";
+import { FoodCard } from "./FoodCard";
 import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
@@ -97,6 +98,11 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         <div className="mt-3">
           <HomeDays today={todayStr()} fit={fit} att={athletes} />
         </div>
+        {owner && (
+          <div className="mt-3">
+            <FoodCard />
+          </div>
+        )}
       </Cockpit>
       {/* Alt kısım da lacivert (Seyhun 2026-10-22: "yukarısı daha güzel, bu tasarımı devam ettirelim"): kartlar kokpitteki gibi
           yarı saydam lacivert, yazılar açık; renkler globals.css .navy değişkenlerinden (koyu görünüm sınıfları da çalışır) */}
