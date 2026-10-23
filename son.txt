@@ -1,8 +1,8 @@
-Commit: 80a803e · Ana sayfa: deniz trafiği kartı (küçük harita, dokununca /sea) (#767)
-Zaman: 2026-10-23-1451 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39948026289
+Commit: d8c0c94 · Yemek: kurye ana sayfası (Yolda, Sırada, Bugün teslim), müsait kurye yoksa en yakın kuryeye atama (#768)
+Zaman: 2026-10-23-1503 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39949494708
 
-TAM TEST · 23.10.2026 14:43:34
+TAM TEST · 23.10.2026 14:55:41
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -21,7 +21,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1386/1386 geçti · 0 kalan · 457 sn
+SONUÇ: 1386/1386 geçti · 0 kalan · 455 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
