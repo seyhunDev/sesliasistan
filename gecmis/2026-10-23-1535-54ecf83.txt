@@ -1,8 +1,8 @@
-Commit: c32ef83 · Medya: Kayıt iPhone kamerasını açar; sayaçlı kamera Medya ⋯ içinde (#672)
-Zaman: 2026-10-22-1344 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39764406809
+Commit: 54ecf83 · Yemek Yönetim: durum seçilince durumuna göre kısa onay hareketi, pencere kendiliğinden kapanır (#771)
+Zaman: 2026-10-23-1535 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39953492996
 
-TAM TEST · 22.10.2026 13:37:13
+TAM TEST · 23.10.2026 15:28:50
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -15,12 +15,13 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Asistan: çalışırken, küçültme, sesli yanıt, geçmiş…
     Asistan: kayıt, onaylar, görev listesi…
     Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
+    Deniz trafiği sayfası…
     Çevrimdışı çalışma (internet kesilip açılır)…
     Çevrimdışı: 19/19 geçti
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1370/1371 geçti · 1 kalan · 426 sn
+SONUÇ: 1386/1386 geçti · 0 kalan · 414 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -125,35 +126,35 @@ SONUÇ: 1370/1371 geçti · 1 kalan · 426 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 63/63
-  ✓ Sunucu ucu: girişsiz istek reddedilir: 17/17
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 66/66
+  ✓ Sunucu ucu: girişsiz istek reddedilir: 18/18
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 46/46
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 104/105
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 117/117
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
+  ✓ Enerji (boşta): 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
-  ✓ Kapanış: 2/2
+  ✓ Kapanış: 3/3
   ✓ Basılı tut yaz: 1/1
-  ✓ Sayfa hataları: 7/7
+  ✓ Sayfa hataları: 8/8
   ✓ Küçültme (aşağı kaydır): 4/4
-  ✓ Önceki sohbetler: 3/3
+  ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
   ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
   ✓ Onay isteyen işler: 10/10
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
+  ✓ Kişi kare kodu: 4/4
   ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
   ✓ Instagram gönderisi: 1/1
   ✓ Tam ekran üstte: 1/1
+  ✓ Deniz trafiği: 4/4
   ✓ Güvenlik: 1/1
 
 3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 19/19
