@@ -1,7 +1,7 @@
 // Yemek siparişi (src/yemek): örnek veri, sepet hesabı, adres seçimi, cümleden istek, öneri kuralları.
 // Saat sabit: Çarşamba 2026-10-21 19:30 (akşam yemeği; kahvaltı ve tatlı öne çıkmaz).
 import { SAMPLE_PLACES, catalogOf } from "@/yemek/sample";
-import { unitPrice, pickProblem, defaultPicks, makeLine, cartTotals, isOpenAt, etaFrom, minutesLeft, lineDetail } from "@/yemek/order";
+import { unitPrice, pickProblem, defaultPicks, makeLine, cartTotals, isOpenAt, etaFrom, minutesLeft, lineDetail, stepRows } from "@/yemek/order";
 import { pickAddress, addressBySpeech, distanceM, parseReverse, addressText, tileOf } from "@/yemek/address";
 import { parseAsk, suggest, findRepeat, answerFood, tasteOf, den } from "@/yemek/suggest";
 import { photoUrl } from "@/yemek/photo";
@@ -250,4 +250,11 @@ group("Kurye hesabı")([
   ["teslim edilmiş", { desc: "hiçbir şey yapamaz", fn: () => courierCan(REAL("delivered", "u1"), PR, "u1", NOW), ok: (g) => g === "" }],
   ["teslim alma", { desc: "Yolda, kurye ve varış yazılır", fn: () => pickupPatch(REAL("preparing"), PR, ME, NOW), ok: (g) => g.status === "onTheWay" && g.courier.id === "u1" && g.times.onTheWay && g.eta > new Date(NOW).toISOString() && g.demo === false }],
   ["teslim etme", { desc: "Teslim edildi saati", fn: () => deliverPatch(REAL("onTheWay", "u1"), NOW), ok: (g) => g.status === "delivered" && g.times.delivered === new Date(NOW).toISOString() }],
+]);
+
+// Takip › Adım adım: onay ve hazırlık aynı dakikadaysa tek satır; her satır kendi saatiyle
+group("Adım adım")([
+  ["onay ile hazırlık aynı an", { desc: "tek satır 'Onaylandı, hazırlanıyor'", fn: () => stepRows({ sent: new Date(2026, 9, 21, 19, 0).toISOString(), accepted: new Date(2026, 9, 21, 19, 3).toISOString(), preparing: new Date(2026, 9, 21, 19, 3).toISOString() }).map((r) => r.title), ok: (g) => g.length === 2 && g[0] === "Onaylandı, hazırlanıyor" && g[1] === "Gönderildi" }],
+  ["farklı saatler", { desc: "her adım ayrı, yeniden eskiye", fn: () => stepRows({ sent: new Date(2026, 9, 21, 19, 0).toISOString(), accepted: new Date(2026, 9, 21, 19, 1).toISOString(), preparing: new Date(2026, 9, 21, 19, 2).toISOString(), onTheWay: new Date(2026, 9, 21, 19, 20).toISOString() }).map((r) => r.s), ok: (g) => g.join() === "onTheWay,preparing,accepted,sent" }],
+  ["iptal", { desc: "iptal en üstte", fn: () => stepRows({ sent: new Date(2026, 9, 21, 19, 0).toISOString(), cancelled: new Date(2026, 9, 21, 19, 2).toISOString() }, true).map((r) => r.s), ok: (g) => g.join() === "cancelled,sent" }],
 ]);

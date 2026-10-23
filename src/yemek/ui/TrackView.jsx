@@ -8,7 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
 import { ListHead, RowList, Row } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
-import { STATUS_NAMES, lineDetail, minutesLeft } from "../order";
+import { lineDetail, minutesLeft, stepRows } from "../order";
 import { liveView } from "../demo";
 import { placeById, useOrder, patchOrder } from "../store";
 import { Img, tl } from "./Img";
@@ -128,16 +128,16 @@ export function TrackView({ orgId, id }) {
         <section>
           <ListHead title="Adım adım" />
           <RowList>
-            {[...(cancelled ? ["cancelled"] : []), ...["delivered", "onTheWay", "preparing", "accepted", "sent"].filter((s) => v.times[s])].map((s) => (
-              <Row key={s} title={STATUS_NAMES[s]} right={<span className="text-[0.8125rem] font-semibold text-mut">{hm(v.times[s] || order.times?.[s])}</span>} />
+            {stepRows({ ...order.times, ...v.times }, cancelled).map((r) => (
+              <Row key={r.s} title={r.title} right={<span className="text-[0.8125rem] font-semibold text-mut">{hm(r.at)}</span>} />
             ))}
           </RowList>
           {order.demo && <p className="mt-1.5 px-1 text-[0.75rem] text-mut">Deneme modu</p>}
         </section>
 
         {!done && !cancelled && (
-          <div className="grid grid-cols-2 gap-2.5">
-            <Button variant="secondary" disabled={step > 1} onClick={cancel}>İptal et</Button>
+          <div className={`grid gap-2.5 ${v.status === "sent" ? "grid-cols-2" : ""}`}>
+            {v.status === "sent" && <Button variant="secondary" onClick={cancel}>İptal et</Button>}
             <a href={`tel:${(place?.phone || "").replace(/\s/g, "")}`} data-press className="btn btn-secondary w-full"><Icon name="phone" className="size-4" /> Restoranı ara</a>
           </div>
         )}
