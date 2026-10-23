@@ -12,7 +12,8 @@ service cloud.firestore {
       allow update: if request.auth != null && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role
                     && request.resource.data.orgId == resource.data.orgId
-                    && request.resource.data.get("kind", null) == resource.data.get("kind", null);
+                    && request.resource.data.get("kind", null) == resource.data.get("kind", null)
+                    && request.resource.data.get("courierOf", null) == resource.data.get("courierOf", null);
       allow delete: if false;
     }
 
@@ -30,6 +31,11 @@ service cloud.firestore {
       return signedIn() && p.role == "staff" && p.orgId == orgId;
     }
     function inOrg(orgId) { return isOwner(orgId) || isStaff(orgId); }
+    // Velora Yemek kuryesi (profili yalnız sunucu açar: role "courier", courierOf = işletme). Yalnız okur; yazmalar /api/kurye
+    function isCourier(orgId) {
+      let p = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return signedIn() && p.get("role", "") == "courier" && p.get("courierOf", "") == orgId;
+    }
     // Kişi türü: ana hesap "owner"; diğerleri users.kind (staff | family | athlete | student | parent | other; yoksa staff)
     function kindOfUser(u) {
       let ref = /databases/$(database)/documents/users/$(u);
@@ -77,6 +83,13 @@ service cloud.firestore {
       // Ana hesap: kendi işletmesindeki her şey (doğum günleri hariç: kişiye özel, aşağıda)
       match /{col}/{document=**} {
         allow read, write: if isOwner(orgId) && !(col in ["birthdays", "chats", "calls"]);
+      }
+      // Kurye: bugünün siparişleri ve yemek ayarı (kurye listesi), yalnız okuma
+      match /yemekSiparisler/{id} {
+        allow read: if isCourier(orgId);
+      }
+      match /yemek/ayar {
+        allow read: if isCourier(orgId);
       }
       // Doğum günleri kişiye özel: ana hesap yalnızca kendi eklediklerini okur/yazar
       match /birthdays/{id} {

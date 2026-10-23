@@ -64,8 +64,9 @@ export function AuthProvider({ children }) {
             uid: user.uid,
             name: doc_?.name || user.displayName || user.email?.split("@")[0] || "Kullanıcı",
             email: user.email,
-            role: doc_?.role === "staff" ? "staff" : "owner",
+            role: doc_?.role === "staff" || doc_?.role === "courier" ? doc_.role : "owner", // courier: Velora Yemek kurye hesabı (yalnız kurye ekranı)
             orgId: doc_?.orgId || user.uid,
+            courierOf: doc_?.role === "courier" ? doc_?.courierOf || "" : "", // kuryenin çalıştığı işletme (sunucu yazar)
             kind: doc_?.role === "staff" ? doc_?.kind || "staff" : "owner", // kişi türü (lib/kinds): staff | family | athlete | student | parent | other
             photo: doc_?.photo || "", // profil fotoğrafı adresi (Storage; /api/photo yazar)
             photoPath: doc_?.photoPath || "",
