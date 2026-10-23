@@ -125,6 +125,7 @@ group("Restoran ve kurye")([
   ["onaylanan sipariş saatten ilerlemez", { desc: "Hazırlanıyor kalır", fn: () => liveView({ ...demoOrder, demo: false, status: "preparing" }, pr, NOW + 60 * 60000).status, ok: (g) => g === "preparing" }],
   ["kurye konumu yok", { desc: "kayıtlı varış saati", fn: () => liveView(real, pr, NOW).eta, ok: (g) => g === real.eta }],
   ["kurye adrese ~1,5 km", { desc: "kalan ~5 dk (kuryeden adrese)", fn: () => minutesLeft(liveView({ ...real, courier: { id: "k1", name: "Ali", pos: { lat: ADDR[1].pos.lat + 0.0135, lng: ADDR[1].pos.lng } } }, pr, NOW).eta, new Date(NOW)), ok: (g) => g >= 4 && g <= 5 }],
+  ["süre doldu ama teslim edilmedi", { desc: "en az 1 dk gösterilir", fn: () => minutesLeft(new Date(NOW - 10 * 60000).toISOString(), new Date(NOW)), ok: (g) => g === 1 }],
   ["kurye kapıda", { desc: "en az 5 dk (yol alt sınırı)", fn: () => minutesLeft(liveView({ ...real, courier: { id: "k1", name: "Ali", pos: ADDR[1].pos } }, pr, NOW).eta, new Date(NOW)), ok: (g) => g === 5 }],
   ["Yönetim'den kapatılan restoran", { desc: "pizza aranınca Pizza Rüzgar önerilmez", fn: () => suggest({ places: all, history: HISTORY, ask: parseAsk("pizza", all), now: NOW, pos: ADDR[1].pos, closed: { "pizza-ruzgar": true } }), ok: (g) => g.length && !g.some((c) => c.place.id === "pizza-ruzgar") }],
 ]);
