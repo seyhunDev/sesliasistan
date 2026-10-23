@@ -1,8 +1,8 @@
-Commit: 127c6f0 · "Kayıtların gönderiliyor" şeridi takılı kalmaz: bir kez kısa görünür, asılı bağlantı yenilenir (#784)
-Zaman: 2026-10-23-2232 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40011074196
+Commit: b9928c5 · Yemek: sepet çubuğunda Sepete git camgöbeği ana düğme (koyu temada soluk kalıyordu) (#785)
+Zaman: 2026-10-24-0017 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40024448207
 
-TAM TEST · 23.10.2026 22:24:04
+TAM TEST · 24.10.2026 00:08:06
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 433 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 494 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
