@@ -56,6 +56,7 @@ export function SeaPage() {
   const me = useMyPos();
   const [focus, setFocus] = useState(null);
   const [pick, setPick] = useState(null);
+  const [tall, setTall] = useState(false);
   const [sos, setSos] = useState(false);
   const [, tick] = useState(0);
   useEffect(() => {
@@ -88,7 +89,7 @@ export function SeaPage() {
           </div>
         </header>
         <div className="mt-4">
-          <SeaMap ships={ships} me={me} focus={focus} pick={pick} onPick={setPick} />
+          <SeaMap ships={ships} me={me} focus={focus} pick={pick} onPick={setPick} tall={tall} onTall={() => setTall(!tall)} />
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
           <button type="button" data-press onClick={() => me && show(me)} className="raised flex h-[3.5rem] min-w-0 flex-col items-center justify-center rounded-2xl px-1">
@@ -126,7 +127,7 @@ export function SeaPage() {
             {fail && ships.length > 0 && <p className="px-1 text-[0.8125rem] font-semibold text-warn">Bağlantı yok, son bilgi gösteriliyor</p>}
             {!groups.length && (
               <RowList>
-                <Row title="Çevrede sinyal veren gemi yok" />
+                <Row title="Çevrede sinyal veren gemi yok" sub={data.last ? `Bölgeden son sinyal ${agoText(data.last)}` : "Bölgeden henüz hiç sinyal gelmedi"} />
               </RowList>
             )}
             {groups.map((g) => (

@@ -49,7 +49,7 @@ async function refresh(key) {
   const cur = await load();
   if (Date.now() - cur.at < FRESH) return cur;
   const empty = !Object.keys(cur.all).length;
-  const { parts, err } = await collect(key, empty ? FIRST_WINDOW : WINDOW);
+  const { parts, err, n } = await collect(key, empty ? FIRST_WINDOW : WINDOW);
   if (err && !parts.length) {
     console.error("sea", err.message);
     if (!empty) return cur;
@@ -57,7 +57,8 @@ async function refresh(key) {
   }
   const all = { ...cur.all };
   for (const p of parts) mergeShip(all, p);
-  const next = { at: Date.now(), all: prune(all) };
+  // last: bölgeden son mesajın zamanı (gemi gelmiyorsa sayfa "son sinyal" ya da "hiç sinyal yok" der)
+  const next = { at: Date.now(), all: prune(all), last: n ? Date.now() : cur.last || 0 };
   await save(next);
   return next;
 }
@@ -70,7 +71,7 @@ export async function GET(req) {
   try {
     running ||= refresh(key).finally(() => (running = null));
     const v = await within(running, DEADLINE, "süre doldu");
-    return NextResponse.json({ at: v.at, ships: shipList(v.all) }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ at: v.at, last: v.last || 0, ships: shipList(v.all) }, { headers: { "cache-control": "no-store" } });
   } catch (e) {
     return NextResponse.json({ error: "fail", why: String(e?.message || "").slice(0, 120) });
   }
