@@ -88,6 +88,23 @@ export const INIT = ({ standalone = false, sha = "" } = {}) => `(() => {
   };
 })();`;
 
+// Kameralar (/api/cams) taklit cevabı: lib/cams.js camList biçiminde; görüntüler data: SVG (dış adreslere gidilmez)
+const pic = (sky, sea) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225"><rect width="400" height="130" fill="${sky}"/><rect y="130" width="400" height="95" fill="${sea}"/></svg>`)}`;
+const cam = (id, title, km, min, live = false) => ({ id: String(id), title, lat: 39, lon: 26.8, at: Date.now() - min * 60e3, thumb: pic("#b9d6e6", "#3b7da0"), preview: pic(id % 2 ? "#9cc7de" : "#c7dbe6", id % 2 ? "#2f6f93" : "#356f8c"), player: "", live, link: `https://www.windy.com/webcams/${id}`, km });
+export const CAMS = {
+  cams: [
+    cam(1, "Ayvalık · Cunda koyu", 27, 2, true),
+    cam(2, "Bergama · Akropol", 31, 5),
+    cam(3, "Midilli · Molivos", 34, 1),
+    cam(4, "Çandarlı limanı", 38, 8),
+    cam(5, "Midilli · Limanı", 45, 3),
+    cam(6, "Foça · Sirenler", 52, 4),
+    cam(7, "Altınova sahil", 58, 12),
+    cam(8, "Karşıyaka sahil", 79, 6),
+    cam(9, "İzmir · Kordon", 83, 2),
+  ],
+};
+
 // Deniz trafiği (/api/sea) taklit cevabı: lib/sea.js shipList biçiminde
 const ship = (m, n, type, lat, lon, sog, cog, key, label, port, km, extra = {}) => ({ m, n, t: 0, type, lat, lon, sog, cog, dest: "", seen: Date.now(), guard: false, state: { key, label, port, km, ...extra } });
 export const SEA = {

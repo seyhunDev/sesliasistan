@@ -5,7 +5,7 @@
 import { existsSync } from "node:fs";
 import { INIT } from "./taklitler.mjs";
 import { seed, FS_HOST, PROJECT } from "./emulator.mjs";
-import { SEA } from "./taklitler.mjs";
+import { CAMS, SEA } from "./taklitler.mjs";
 
 const K = "asistan ekran";
 const OWNER = "sahip@ornek.local";
@@ -149,6 +149,7 @@ export async function run(server, log = () => {}) {
       }
       if (u.pathname === "/api/tts") return json({ error: "anahtar yok" }, 501);
       if (u.pathname === "/api/sea") return json(SEA);
+      if (u.pathname === "/api/cams") return json(CAMS);
       if (u.pathname === "/api/live-token") return liveToken && body?.used == null ? json(liveToken) : json({ error: "anahtar yok" }, body?.used == null ? 501 : 200);
       return json({ ok: true });
     });

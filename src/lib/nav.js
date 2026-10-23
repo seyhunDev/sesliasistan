@@ -30,6 +30,7 @@ export const PAGES = {
   weather: { path: "/weather", label: "Hava durumu" },
   wind: { path: "/wind", label: "Rüzgâr haritası" },
   sea: { path: "/sea", label: "Deniz trafiği (gemiler, Sahil Güvenlik, acil)" },
+  cams: { path: "/cams", label: "Kameralar (halka açık canlı kameralar)" },
   dues: { path: "/dues", label: "Aidatlar", need: "athletes" },
   myAttendance: { path: "/my-attendance", label: "Yoklamam", need: "athleteSide" },
   shopping: { path: "/shopping", label: "Alışveriş listesi" },

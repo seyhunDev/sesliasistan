@@ -1034,6 +1034,7 @@ async function scenarios4(h) {
     await page.context().close();
   }
   await seaPage(h);
+  await camsPage(h);
 }
 
 // ================================================================ Deniz trafiği (/sea): tam ekran VesselFinder haritası
@@ -1064,5 +1065,48 @@ async function seaPage(h) {
     await page.screenshot({ path: `${process.env.SEA_SHOT}.png`, fullPage: true });
   }
   await check("Sayfa hataları", "deniz trafiği", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
+}
+
+// ================================================================ Kameralar (/cams): en yakın büyük, 6 kamera, Daha fazla, yer penceresi
+async function camsPage(h) {
+  const { check, newPage, waitFor, log } = h;
+  log("    Kameralar sayfası…");
+  const { page, errs } = await newPage();
+  await page.goto(page.url().replace(/\/[^/]*$/, "/cams"), { waitUntil: "load" });
+  const G = "Kameralar";
+  await check(G, "sayfa açılır", "en yakın kamera büyük, altta 6 kamera ve Daha fazla", async () => {
+    const ok = await waitFor(() => page.getByText("Ayvalık · Cunda koyu").count(), 15000);
+    const small = await page.locator("main .grid > button").count();
+    const more = await page.getByRole("button", { name: /Daha fazla \(2\)/ }).count();
+    if (process.env.CAMS_SHOT) await page.screenshot({ path: `${process.env.CAMS_SHOT}.png` });
+    return [!!ok && small === 6 && more === 1, `${small} küçük kamera · Daha fazla ${more}`];
+  });
+  await check(G, "Daha fazla", "kalan kameralar da görünür", async () => {
+    await page.getByRole("button", { name: /Daha fazla/ }).click();
+    const n = await page.locator("main .grid > button").count();
+    return [n === 8, `${n} küçük kamera`];
+  });
+  await check(G, "kamera penceresi", "Windy'de aç bağlantısı", async () => {
+    await page.getByText("Bergama · Akropol").click();
+    const d = page.locator("[role='dialog'][aria-label='Bergama · Akropol']");
+    await d.waitFor({ timeout: 5000 });
+    const n = await d.locator("a[href='https://www.windy.com/webcams/2']").count();
+    if (process.env.CAMS_SHOT) await page.screenshot({ path: `${process.env.CAMS_SHOT}-kamera.png` });
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+    return [n === 1, `${n} bağlantı`];
+  });
+  await check(G, "yer penceresi", "hazır yerler, seçilen yere geçer", async () => {
+    await page.locator("main header button").last().click();
+    const d = page.locator("[role='dialog'][aria-label='Yer']");
+    await d.waitFor({ timeout: 5000 });
+    const n = await d.getByRole("button", { name: /Ayvalık|Bergama|Foça|İzmir|Midilli/ }).count();
+    if (process.env.CAMS_SHOT) await page.screenshot({ path: `${process.env.CAMS_SHOT}-yer.png` });
+    await d.getByRole("button", { name: "Ayvalık" }).click();
+    const ok = await waitFor(() => page.locator("header button", { hasText: "Ayvalık" }).count(), 5000);
+    return [n >= 5 && !!ok, `${n} yer · ${ok ? "Ayvalık seçildi" : "seçilmedi"}`];
+  });
+  await check("Sayfa hataları", "kameralar", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
 }

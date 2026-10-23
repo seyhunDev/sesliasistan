@@ -24,6 +24,7 @@ import { listsFor } from "@/features/shop/shop";
 import { routesOf, EARLY } from "@/lib/assistRoute";
 import { foodOrderCmd, foodRecent } from "../isler/yemek";
 import { runSea } from "../isler/deniz";
+import { runCams } from "../isler/kamera";
 import { quickOn } from "@/lib/quickMode";
 import { routeFromAct, withAct } from "@/lib/actRun";
 import { takeAct } from "./gorevListesi";
@@ -441,6 +442,10 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
       // Deniz trafiği: yanaşan/limandaki/demirdeki gemiler, Sahil Güvenlik, acil numara (isler/deniz.js)
       case "sea":
         return runSea(ctx, r.sq, viaVoice), true;
+      // Halka açık kameralar: sayfa, söylenen yerle (isler/kamera.js)
+      case "cams":
+        record(s, "nav:cams", "local");
+        return runCams(ctx, r.cq, viaVoice), true;
       // Gelen ödemeler: "bu ay ne kadar ödeme aldım"
       case "payee":
         return runPayee(r.pq, viaVoice), true;
