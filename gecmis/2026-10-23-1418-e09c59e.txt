@@ -1,8 +1,8 @@
-Commit: 4fd5e02 · Medya: bekleme kartı kalktı, kendiliğinden yeniden dener; kamerada yakınlaştırma (#666)
-Zaman: 2026-10-22-1037 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39740795567
+Commit: e09c59e · Yemek: teslim edildi ekranı tam ekran fotoğraflı, puan isteğe bağlı, yıldız ya da kapatınca geri dönülür (#762)
+Zaman: 2026-10-23-1418 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39944123051
 
-TAM TEST · 22.10.2026 10:30:47
+TAM TEST · 23.10.2026 14:11:05
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1369/1371 geçti · 2 kalan · 425 sn
+SONUÇ: 1380/1380 geçti · 0 kalan · 432 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -125,32 +125,28 @@ SONUÇ: 1369/1371 geçti · 2 kalan · 425 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 63/63
-  ✓ Sunucu ucu: girişsiz istek reddedilir: 17/17
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 65/65
+  ✓ Sunucu ucu: girişsiz istek reddedilir: 18/18
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 45/45
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 103/105
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 112/112
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
+  ✓ Enerji (boşta): 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
-  ✓ Kapanış: 2/2
+  ✓ Kapanış: 3/3
   ✓ Basılı tut yaz: 1/1
   ✓ Sayfa hataları: 7/7
   ✓ Küçültme (aşağı kaydır): 4/4
-  ✓ Önceki sohbetler: 3/3
+  ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
   ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
-  ✗ Onay isteyen işler: 9/10
-      ✗ “Ege'ye yaz … → “gönder””
-          beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 18 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+  ✓ Onay isteyen işler: 10/10
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
+  ✓ Kişi kare kodu: 4/4
   ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 3/3

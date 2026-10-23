@@ -1,8 +1,8 @@
-Commit: d7aadfa · Asistan: yazı kutusunda Fotoğraf düğmesi (motor photoIn verince görünür) (#760)
-Zaman: 2026-10-23-1352 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39941277439
+Commit: e09c59e · Yemek: teslim edildi ekranı tam ekran fotoğraflı, puan isteğe bağlı, yıldız ya da kapatınca geri dönülür (#762)
+Zaman: 2026-10-23-1418 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39944123051
 
-TAM TEST · 23.10.2026 13:45:52
+TAM TEST · 23.10.2026 14:11:05
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1376/1376 geçti · 0 kalan · 427 sn
+SONUÇ: 1380/1380 geçti · 0 kalan · 432 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -130,7 +130,7 @@ SONUÇ: 1376/1376 geçti · 0 kalan · 427 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 45/45
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 108/108
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 112/112
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Enerji (boşta): 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
@@ -146,6 +146,7 @@ SONUÇ: 1376/1376 geçti · 0 kalan · 427 sn
   ✓ Onay isteyen işler: 10/10
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
+  ✓ Kişi kare kodu: 4/4
   ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 3/3
