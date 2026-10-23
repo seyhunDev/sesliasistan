@@ -2,6 +2,7 @@
 // Kurye ayarda (orgs/{org}/yemek/ayar couriers[]): { id, name, phone, vehicle, pos?, at?, demo?, demoBusy? }.
 // Kurye ekranı açıkken telefonun konumu kuryenin pos'una yazılır; deneme kuryelerinin konumu sabit.
 import { distanceKm } from "./address";
+import { isOpenAt } from "./order";
 
 const OPEN = new Set(["sent", "accepted", "preparing", "onTheWay"]);
 const statusOf = (o) => o.live?.status || o.status;
@@ -61,3 +62,18 @@ export const DEMO_COURIERS = [
   { id: "dk-zeynep", login: "kurye.zeynep", name: "Zeynep", phone: "0532 000 00 15", vehicle: "motor", pos: { lat: 39.0790, lng: 26.8968 }, demoBusy: true },
   { id: "dk-ali", login: "kurye.ali", name: "Ali", phone: "0532 000 00 16", vehicle: "bisiklet", pos: { lat: 39.0736, lng: 26.8840 } },
 ].map((c) => ({ ...c, demo: true }));
+
+// Kurye müsaitken en yakın restoranlar (Seyhun 2026-10-23): uzaklık, yaklaşık süre (yol kuş uçuşunun 1,3 katı;
+// motor/araba 30, bisiklet 15 km/sa), açık mı. En çok n tane.
+const SPEED = { motor: 30, araba: 30, bisiklet: 15 };
+export function nearPlaces(pos, places = [], { vehicle = "motor", closed = {}, now = new Date(), n = 5 } = {}) {
+  if (!pos) return [];
+  return places
+    .filter((p) => p.pos)
+    .map((p) => {
+      const km = distanceKm(pos, p.pos);
+      return { place: p, km, min: Math.max(1, Math.round(((km * 1.3) / (SPEED[vehicle] || 30)) * 60)), open: !closed[p.id] && isOpenAt(p, now) };
+    })
+    .sort((a, b) => a.km - b.km)
+    .slice(0, n);
+}
