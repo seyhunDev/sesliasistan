@@ -26,9 +26,16 @@ const setRef = (orgId) => doc(db, "orgs", orgId, "yemek", "ayar");
 export const openNow = (place, settings, date) => !settings?.closed?.[place?.id] && isOpenAt(place, date);
 
 // Geçmiş + adresler: bir kez okunur, sayfalar arasında bellekte kalır (aynı oturumda tekrar okunmaz)
-let memo = null; // { orgId, history, me }
+// Değişince (yeni adres, sipariş) açık ekranlar hemen yenilenir.
+let memo = null; // { orgId, history, me, settings }
+const subs = new Set();
 export function useFood(orgId) {
   const [state, setState] = useState(() => (memo?.orgId === orgId ? memo : null));
+  useEffect(() => {
+    const on = (m) => m.orgId === orgId && setState(m);
+    subs.add(on);
+    return () => subs.delete(on);
+  }, [orgId]);
   useEffect(() => {
     if (!orgId || memo?.orgId === orgId) return;
     let off = false;
@@ -44,7 +51,11 @@ export function useFood(orgId) {
   }, [orgId]);
   return state;
 }
-const touch = (fn) => { if (memo) memo = { ...memo, ...fn(memo) }; };
+const touch = (fn) => {
+  if (!memo) return;
+  memo = { ...memo, ...fn(memo) };
+  subs.forEach((on) => on(memo));
+};
 
 export function useOrder(orgId, id) {
   const [order, setOrder] = useState(() => memo?.history.find((o) => o.id === id) || null);
@@ -69,8 +80,14 @@ export async function patchOrder(orgId, id, patch) {
 }
 
 export async function saveMe(orgId, patch) {
-  await setDoc(meRef(orgId), patch, { merge: true });
+  const before = memo?.me;
   touch((m) => ({ me: { ...m.me, ...patch } }));
+  try {
+    await setDoc(meRef(orgId), patch, { merge: true });
+  } catch (e) {
+    touch(() => ({ me: before }));
+    throw e;
+  }
 }
 
 // ---- Yönetim, restoran ve kurye ekranları ----
