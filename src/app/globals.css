@@ -523,6 +523,22 @@ body:has(.cartbar) .atabbar, body:has(.cartbar) .acenter { background: #11203a; 
 body:has(.cartbar) .atabbar :is(a, button):not(.vlight) { color: rgba(255, 255, 255, .62); }
 body[data-asst] .cartbar, body[data-typing] .cartbar { display: none; }
 
+/* Velora Yemek sipariş fişi (src/yemek/ui/PrintSlip.jsx): ekranda görünmez; basarken yalnız fiş basılır (80 mm fiş yazıcısı) */
+.print-slip { display: none; }
+@media print {
+  @page { size: 80mm auto; margin: 4mm; }
+  body > *:not(.print-slip) { display: none !important; }
+  body { padding: 0 !important; background: #fff !important; }
+  .print-slip { display: block; width: 72mm; color: #000; font: 11pt/1.35 -apple-system, "Helvetica Neue", Arial, sans-serif; }
+  .print-slip h1 { font-size: 15pt; font-weight: 800; text-align: center; }
+  .print-slip .ps-no { text-align: center; font-weight: 700; }
+  .print-slip hr { border: 0; border-top: 1px dashed #000; margin: 2.5mm 0; }
+  .print-slip .ps-line { display: flex; justify-content: space-between; gap: 3mm; }
+  .print-slip .ps-line small { display: block; font-size: 9pt; }
+  .print-slip .ps-total { font-size: 13pt; font-weight: 800; }
+  .print-slip .ps-qr { display: block; width: 42mm; height: 42mm; margin: 4mm auto 1mm; }
+}
+
 /* Asistan açıkken sayfanın alttaki düğme çubuğu (evrak hazırla, kaydet…) gizlenir: asistan onun arkasında kalmasın */
 body[data-asst] [data-pagebar],
 body[data-typing] [data-pagebar] {

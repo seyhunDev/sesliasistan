@@ -10,11 +10,15 @@ import { lineDetail, minutesLeft } from "../order";
 import { VEHICLES } from "../route";
 import { distanceKm } from "../address";
 import { PLACES, placeById, useSettings, useToday, saveSettings, acceptOrder, rejectOrder, giveToCourier } from "../store";
+import { orderNo } from "../qr";
 import { Img, tl } from "./Img";
+import { OrderQr } from "./OrderQr";
+import { PrintSlip } from "./PrintSlip";
 import { StatusTag, Switch, useNow, useRemembered, withLive } from "./AdminView";
 
 // Velora Yemek › Restoran ekranı (örnek D): başka cihazdan açılır, hangi restoran olduğu telefonda hatırlanır.
-// Yeni: Reddet / Onayla · N dk. Hazırlanan: Kuryeye ver (kurye seçilir). Yolda: kurye ve kalan dakika.
+// Yeni: Reddet / Onayla · N dk. Hazırlanan: siparişin kare kodu, Bastır (kare kodlu fiş), Kuryeye ver (kurye seçilir);
+// kurye kare kodu Kurye ekranında okutup kabul edince de sipariş ona verilir. Yolda: kurye ve kalan dakika.
 const KEY = "yemek-panel";
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 const km = (k) => (Number.isFinite(k) ? (k < 1 ? `${Math.round(k * 1000)} m` : `${k.toFixed(1).replace(".", ",")} km`) : "");
@@ -58,6 +62,7 @@ function Panel({ orgId, place, onChange }) {
   const [tab, setTab] = useState("new");
   const [give, setGive] = useState(null); // kuryeye verilecek sipariş
   const [busy, setBusy] = useState("");
+  const [print, setPrint] = useState(null); // basılan sipariş
   const mine = withLive(today, now).filter((o) => o.placeId === place.id);
   const groups = {
     new: mine.filter((o) => o.live.status === "sent"),
@@ -126,6 +131,12 @@ function Panel({ orgId, place, onChange }) {
               })}
             </div>
             {o.address?.text && <p className="border-t border-line px-3.5 py-2 text-[0.8125rem] text-mut">{o.address.text}{o.address.note ? ` · ${o.address.note}` : ""}</p>}
+            {tab === "cook" && (
+              <div className="flex items-center gap-3 border-t border-line px-3.5 py-2.5">
+                <OrderQr id={o.id} className="size-[5.5rem] shrink-0 rounded-lg border border-line" />
+                <b className="text-[1.375rem] font-bold tabular-nums tracking-[.04em]">#{orderNo(o.id)}</b>
+              </div>
+            )}
             {tab !== "road" && (
               <div className="grid grid-cols-[1fr_1.7fr] gap-2 border-t border-line p-2.5">
                 {tab === "new" ? (
@@ -135,7 +146,7 @@ function Panel({ orgId, place, onChange }) {
                   </>
                 ) : (
                   <>
-                    <span />
+                    <Button variant="secondary" onClick={() => setPrint({ o, k: Date.now() })}>Bastır</Button>
                     <Button loading={busy === o.id} onClick={() => setGive(o)}>Kuryeye ver</Button>
                   </>
                 )}
@@ -148,6 +159,7 @@ function Panel({ orgId, place, onChange }) {
         ))}
       </div>
 
+      {print && <PrintSlip key={print.k} order={print.o} place={place} onDone={() => setPrint(null)} />}
       <Sheet open={!!give} onClose={() => setGive(null)} title="Hangi kurye?">
         <div className="space-y-3 pb-2">
           {couriers.length ? (
