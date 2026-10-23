@@ -83,8 +83,7 @@ export function Cockpit({ weather, inbox, onInbox, children }) {
 // Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan. Kokpitin en belirgin parçası
 // (Seyhun 2026-10-22 "A · Mor kart"): logo morunda dolu kart; üstte solda gün ve tür, aynı satırın sonunda kalan süre (Seyhun: "biri başta,
 // biri sonda", altta boş satır kalmasın); büyük saat + tam başlık (2 satıra kadar), altta yalnız yer.
-// Antrenmansa kartın içinde Yoklama ve Süre (widget'taki gibi). Karta dokununca plan açılır. Aynı plan aşağıdaki takvim listesinde tekrar yazmaz
-// (OwnerHome kimliğini SiradaCard'a "skip" olarak verir).
+// Antrenmansa kartın içinde Yoklama ve Süre (widget'taki gibi). Karta dokununca plan açılır.
 function NextPlan({ now }) {
   const { plans } = useData();
   const { profile } = useAuth();
