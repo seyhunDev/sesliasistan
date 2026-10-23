@@ -327,6 +327,16 @@ select {
 .aorb canvas { animation: afbgin .35s ease-out both; }
 .aorb .lring-check { fill: none; stroke: #fff; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: lrdraw .45s .15s ease-out forwards; }
 @keyframes lrdraw { to { stroke-dashoffset: 0; } }
+/* Not sayfası Tamamla (Seyhun 2026-10-23): yeşil daire büyüyüp oturur, tik çizilir, başlığın üstü soldan sağa çizilir; listede satır sola kayıp çıkar */
+.note-burst { animation: aokpop .55s cubic-bezier(.3, 1.4, .5, 1) both, animin .3s ease-out both; }
+.note-check { fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; animation: lrdraw .4s .2s ease-out forwards; }
+.note-burst .note-check { stroke: #fff; }
+.note-burst.bg-white .note-check { stroke: currentColor; }
+.note-strike { text-decoration: line-through 2px transparent; animation: notestrike .4s .15s ease-out forwards; }
+@keyframes notestrike { to { text-decoration-color: currentColor; opacity: .6; } }
+.note-out { animation: noteout .5s .15s ease-in forwards; }
+@keyframes noteout { to { transform: translateX(-105%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .note-burst, .note-out { animation-duration: .01s; } .note-check, .note-strike { animation-duration: .01s; animation-delay: 0s; } }
 .aside-btn { background: rgba(255, 255, 255, .14); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); }
 .afull .asheet-input { background: none; box-shadow: none; }
 .afull .asheet-input.atype { background: var(--ab-panel); box-shadow: inset 0 0 0 1px var(--line); }

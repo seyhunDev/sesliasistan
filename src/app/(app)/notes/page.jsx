@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
@@ -18,7 +18,7 @@ import { WordCard } from "@/features/words/WordCard";
 import { assigneesOf, lockedFor, whoText } from "@/lib/people";
 import { useWho } from "@/features/data/useWho";
 import { isLogNote } from "@/lib/trainingLog";
-import { noteColor, noteDonePatch, noteReopenPatch, noteWhen } from "@/lib/noteState";
+import { NOTE_GONE, noteColor, noteDonePatch, noteReopenPatch, noteWhen } from "@/lib/noteState";
 import { useToast } from "@/components/ui/ToastProvider";
 
 // Arama için sadeleştirir: büyük/küçük harf, ı/i ve ş, ğ, ç, ö, ü farkını yok sayar ("iskota" = "Iskota")
@@ -29,7 +29,22 @@ const fold = (s = "") => s.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normal
 export default function NotesPage() {
   const { notes: allNotes, updateRecord, removeWithUndo, myUid, nameOf, isStaff } = useData();
   const router = useRouter();
-  const live = allNotes.filter((n) => !n.archived); // arşivlenenler Arşiv sayfasında
+  // Not sayfasında Tamamla denen not bir an listede kalır ve kayarak çıkar (NOTE_GONE)
+  const [gone, setGone] = useState(() => {
+    try {
+      const id = sessionStorage.getItem(NOTE_GONE);
+      sessionStorage.removeItem(NOTE_GONE);
+      return id;
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    if (!gone) return;
+    const t = setTimeout(() => setGone(null), 700);
+    return () => clearTimeout(t);
+  }, [gone]);
+  const live = allNotes.filter((n) => !n.archived || n.id === gone); // arşivlenenler Arşiv sayfasında
   // Antrenman günlüğüne benzeyen notlar listede değil, ayrı satırda (eski sürümler günlüğü ayrıca not olarak da yazıyordu)
   const logNotes = live.filter(isLogNote);
   const notes = live.filter((n) => !isLogNote(n));
@@ -44,9 +59,10 @@ export default function NotesPage() {
   const by = { name: profile?.name ?? "Kullanıcı" };
   const today = todayStr();
   const given = (n) => n.createdByUid && n.createdByUid !== myUid && assigneesOf(n).includes(myUid);
+  const nAll = notes.filter((n) => n.id !== gone).length;
   const nPinned = notes.filter((n) => n.pinned).length;
   const nGiven = notes.filter(given).length;
-  const chips = [["all", "Tümü", notes.length], nPinned > 0 && ["pinned", "Sabitli", nPinned], nGiven > 0 && ["given", "Bana verilen", nGiven]].filter(Boolean);
+  const chips = [["all", "Tümü", nAll], nPinned > 0 && ["pinned", "Sabitli", nPinned], nGiven > 0 && ["given", "Bana verilen", nGiven]].filter(Boolean);
   const passF = (n) => (f === "pinned" ? n.pinned : f === "given" ? given(n) : true);
 
   const needle = fold(q.trim());
@@ -74,12 +90,11 @@ export default function NotesPage() {
     const pill = pillOf(n);
     const who = pill ? "" : whoText(n, myUid, nameOf);
     const preview = [who, n.body && n.body !== n.title ? n.body.replace(/\s+/g, " ") : ""].filter(Boolean).join(" · ");
-    return (
-      <SwipeRow key={n.id} actions={acts(n)}>
+    const inner = (
         <button onClick={() => open(n)} data-press="row" className="flex min-h-[3.5rem] w-full items-center gap-3 bg-card px-3.5 py-2.5 text-left">
           <span className="w-[3px] self-stretch rounded-full" style={{ background: noteColor(n) }} aria-hidden="true" />
           <span className="min-w-0 flex-1">
-            <b className="block truncate text-[0.9375rem] font-semibold">{n.title || "Başlıksız"}</b>
+            <b className={`block truncate text-[0.9375rem] font-semibold ${n.id === gone ? "text-mut line-through" : ""}`}>{n.title || "Başlıksız"}</b>
             {preview && <small className="block truncate text-[0.8125rem] text-mut">{preview}</small>}
             {n.deleteReq && (
               <span className="mt-1 block">
@@ -90,6 +105,16 @@ export default function NotesPage() {
           {pill}
           <span className="shrink-0 text-[0.8125rem] font-semibold text-mut">{noteWhen(n.updatedAt || n.createdAt, today)}</span>
         </button>
+    );
+    if (n.id === gone)
+      return (
+        <div key={n.id} className="note-out pointer-events-none">
+          {inner}
+        </div>
+      );
+    return (
+      <SwipeRow key={n.id} actions={acts(n)}>
+        {inner}
       </SwipeRow>
     );
   };
@@ -111,7 +136,7 @@ export default function NotesPage() {
           <BackButton href="/" />
           <div className="min-w-0 flex-1 leading-tight">
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Notlar</h1>
-            <p className="truncate text-[0.8125rem] text-white/65">{notes.length ? `${notes.length} not` : "Not yok"}</p>
+            <p className="truncate text-[0.8125rem] text-white/65">{nAll ? `${nAll} not` : "Not yok"}</p>
           </div>
           <Link href="/notes/new" data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
             <Icon name="plus" className="size-4" />
