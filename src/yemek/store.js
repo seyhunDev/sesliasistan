@@ -14,6 +14,8 @@ import { db } from "@/lib/firebase/clientApp";
 import { SAMPLE_PLACES } from "./sample";
 import { STATUSES, isOpenAt, cartTotals, etaFrom } from "./order";
 import { fetchRoute, roadMin } from "./route";
+import { liveView } from "./demo";
+import { courierOnOrder, nearestFree } from "./couriers";
 import { distanceKm } from "./address";
 
 export const PLACES = SAMPLE_PLACES;
@@ -86,15 +88,22 @@ export async function placeOrder(orgId, uid, data) {
   return ref.id;
 }
 
-// Siparişi ver (sepet ve asistan aynı yoldan): yollardan rota, süre = hazırlık + yol, deneme modu ayardan
+// Siparişin durumu şu an (deneme siparişleri kendiliğinden ilerler)
+export const withLiveNow = (list, now = Date.now()) => (list || []).map((o) => ({ ...o, live: liveView(o, placeById(o.placeId), now) }));
+
+// Siparişi ver (sepet ve asistan aynı yoldan): yollardan rota, süre = hazırlık + yol, deneme modu ayardan.
+// Restorana en yakın müsait kurye hemen atanır (Seyhun 2026-10-23); kurye restoranda kare kodu okutunca ya da
+// restoran "Kuryeye ver" deyince yola çıkar.
 export async function orderNow(orgId, uid, { place, lines, address, pay = "kapıda-kart", name = "", demo = true }) {
   const totals = cartTotals(place, lines);
   const km = distanceKm(place.pos, address.pos);
+  const food = await loadFood(orgId).catch(() => null);
+  const near = nearestFree(food?.settings?.couriers || [], withLiveNow(food?.history), place.pos);
   const route = await fetchRoute(place.pos, address.pos);
   const road = roadMin({ route, address }, place);
   const id = await placeOrder(orgId, uid, {
     placeId: place.id, placeName: place.name, cuisines: place.cuisines, lines, subtotal: totals.subtotal, fee: totals.fee, total: totals.total,
-    pay, address, customer: name || "", demo, eta: etaFrom({ status: "sent" }, place, Number.isFinite(km) ? km : 2, new Date(), road).toISOString(), courier: null, route,
+    pay, address, customer: name || "", demo, eta: etaFrom({ status: "sent" }, place, Number.isFinite(km) ? km : 2, new Date(), road).toISOString(), courier: near ? courierOnOrder(near) : null, route,
   });
   saveMe(orgId, { lastAddressId: address.id }).catch(() => {});
   return id;

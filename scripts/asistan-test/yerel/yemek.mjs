@@ -8,6 +8,7 @@ import { photoUrl } from "@/yemek/photo";
 import { liveView } from "@/yemek/demo";
 import { decodeLine, pointAlong, progressOn, rideMin, roadMin } from "@/yemek/route";
 import { foodOrderAsk, planVoiceOrder } from "@/yemek/voice";
+import { busyOrder, courierState, nearestFree, sortCouriers, DEMO_COURIERS, courierOnOrder } from "@/yemek/couriers";
 import { qrText, parseQr, qrCells, orderNo, pickupOf } from "@/yemek/qr";
 import jsQR from "@/lib/vendor/jsQR.cjs";
 import { suite } from "./ortak.mjs";
@@ -215,4 +216,23 @@ group("Sipariş kare kodu")([
   ["zaten yolda", { desc: "yolda", fn: () => pickupOf(TODAY, qrText("o4dddd")).why, ok: (g) => g === "road" }],
   ["teslim edilmiş", { desc: "kapanmış", fn: () => pickupOf(TODAY, qrText("o5eeee")).why, ok: (g) => g === "done" }],
   ["bilinmeyen sipariş", { desc: "yok", fn: () => pickupOf(TODAY, qrText("zzzzzz")).why, ok: (g) => g === "none" }],
+]);
+
+// Kuryeler: müsait / siparişte, en yakın müsait kuryeye atama, deneme kuryeleri
+const PR = place("pizza-ruzgar");
+const KC = DEMO_COURIERS;
+const ORD = (cid, status) => ({ id: `o-${cid}-${status}`, placeName: "X", courier: { id: cid }, status, live: { status } });
+group("Kuryeler")([
+  ["deneme kuryeleri", { desc: "6 kurye, hepsi konumlu, ikisi siparişte", fn: () => KC, ok: (g) => g.length === 6 && g.every((c) => c.pos && c.demo) && g.filter((c) => c.demoBusy).length === 2 }],
+  ["yoldaki sipariş", { desc: "kurye siparişte", fn: () => courierState(KC[0], [ORD("dk-murat", "onTheWay")]).busy, ok: (g) => g === true }],
+  ["atanmış, hazırlanıyor", { desc: "kurye siparişte", fn: () => courierState(KC[0], [ORD("dk-murat", "preparing")]).busy, ok: (g) => g === true }],
+  ["teslim edildi", { desc: "kurye müsait", fn: () => courierState(KC[0], [ORD("dk-murat", "delivered")]).busy, ok: (g) => g === false }],
+  ["en yakın müsait", { desc: "Pizza Rüzgar'a en yakın Ayşe (bisiklet, ~300 m)", fn: () => nearestFree(KC, [], PR.pos)?.id, ok: (g) => g === "dk-ayse" }],
+  ["en yakın siparişteyse", { desc: "sıradaki yakın müsait (siparişteki ve deneme-siparişteki atlanır)", fn: () => nearestFree(KC, [ORD("dk-ayse", "onTheWay")], PR.pos)?.id, ok: (g) => g && g !== "dk-ayse" && !KC.find((c) => c.id === g).demoBusy }],
+  ["hepsi siparişte", { desc: "atanmaz", fn: () => nearestFree(KC, KC.map((c) => ORD(c.id, "onTheWay")), PR.pos), ok: (g) => g === null }],
+  ["konumsuz kurye", { desc: "atanmaz", fn: () => nearestFree([{ id: "k1", name: "A" }], [], PR.pos), ok: (g) => g === null }],
+  ["kurye seçme listesi", { desc: "müsaitler önce, yakına göre; siparişteki seçilemez (busy)", fn: () => sortCouriers(KC, [ORD("dk-murat", "onTheWay")], PR.pos), ok: (g) => g.slice(0, 3).every((c) => !c.busy) && g.at(-1).busy && g[0].km <= g[1].km && g.find((c) => c.id === "dk-murat").busy }],
+  ["siparişteki kuryenin siparişi", { desc: "hangi sipariş", fn: () => busyOrder(KC[0], [ORD("dk-murat", "preparing")])?.id, ok: (g) => g === "o-dk-murat-preparing" }],
+  ["siparişe yazılan kurye", { desc: "ad, araç; konum yola çıkınca", fn: () => courierOnOrder(KC[2]), ok: (g) => g.name === "Ayşe" && g.vehicle === "bisiklet" && g.pos === null }],
+  ["deneme siparişinde atanan kurye", { desc: "yolda görünen kurye atanan (Ayşe, bisiklet)", fn: () => { const o = { ...demoOrder, courier: courierOnOrder(KC[2]) }; const t = new Date(o.at).getTime(); return liveView(o, pr, t + (pr.prepMin + 3) * 60000).courier; }, ok: (g) => g?.name === "Ayşe" && g.vehicle === "bisiklet" }],
 ]);
