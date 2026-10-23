@@ -747,10 +747,11 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .ck .raised.ck-pill { height: 2.5rem; border-radius: 9999px; background: transparent; border: 1.5px solid rgba(103, 232, 249, .55); box-shadow: none; color: #fff; font-size: 0.875rem; }
 .ck .raised.ck-pill[data-pressed] { background: rgba(103, 232, 249, .16); transform: scale(.97); }
 .ck .raised.ck-pill.act-main { background: #0ea5c4; border-color: #0ea5c4; color: #fff; }
-/* Ana sayfa not kartları (HomeWidgets NotesWidget; Seyhun 2026-10-23 "kayan not kartları"): lacivert kart, sabitlenen ince vurgu çerçeveli;
-   notun rengi varsa kartın zemini o rengin tonu (satır içi, noteColor) */
-.note-card { background: var(--card); border-color: var(--line); }
-.note-card.note-pin { border-color: color-mix(in srgb, var(--acc) 60%, transparent); }
+/* Ana sayfa not kartları (HomeWidgets NotesWidget; Seyhun 2026-10-23 "B · Yapışkan not"): gerçek kâğıt renginde yapışkan not, koyu yazı,
+   sağ altta kıvrık köşe. Renksiz not sarı, renkli not kendi açık tonunda (--p, satır içi). Sabitlenen notta üstte camgöbeği raptiye */
+.note-card { position: relative; color: #2a2416; background: var(--p, #f6e7a6); border-radius: 0.375rem 0.375rem 1.375rem 0.375rem; box-shadow: 0 8px 18px -10px rgba(0, 0, 0, .8); }
+.note-card::after { content: ""; position: absolute; right: 0; bottom: 0; width: 1.375rem; height: 1.375rem; border-radius: 0 0 1.375rem 0; background: linear-gradient(135deg, rgba(0, 0, 0, .18) 50%, rgba(255, 255, 255, .35) 50%); }
+.note-card.note-pin::before { content: ""; position: absolute; left: 50%; top: -0.3rem; width: 0.7rem; height: 0.7rem; margin-left: -0.35rem; border-radius: 9999px; background: #0ea5c4; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
 /* Rüzgâr grafiği açılışta soldan sağa çizilir; şimdi noktası atar */
 .ck-draw { animation: ck-draw .9s cubic-bezier(.22, .8, .24, 1) both; }
 @keyframes ck-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
