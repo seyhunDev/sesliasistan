@@ -369,9 +369,10 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
           </button>
         </div>
       )}
-      {/* Yükleme sürerken ne kadarının gittiği yazar (Seyhun 2026-10-22: "yüklenip yüklenmediğini bilmiyorum"); Kayıt ve ayarlar satırı kalktı */}
+      {/* Yükleme sürerken ne kadarının gittiği yazar (Seyhun 2026-10-22: "yüklenip yüklenmediğini bilmiyorum"); sayfayla kaymaz,
+          alttaki sekmelerin hemen üstünde sabit durur (Seyhun 2026-10-23) */}
       {(going.length > 0 || justDone) && (
-        <p className="mt-3 px-1 text-[0.875rem] tabular-nums text-mut">{going.length ? `${going.length} ${going.every((x) => x.kind === "video") ? "video" : going.every((x) => x.kind !== "video") ? "fotoğraf" : "kayıt"} buluta gönderiliyor · %${Math.round((going.reduce((a, x) => a + (x.u.p || 0), 0) / going.length) * 100)}` : "Buluta gönderildi ✓"}</p>
+        <p role="status" style={{ bottom: "calc(var(--bar-b, env(safe-area-inset-bottom)) + 0.5rem)" }} className="pointer-events-none fixed inset-x-0 z-30 mx-auto w-fit max-w-[calc(100%-2rem)] rounded-full border border-line bg-card px-3.5 py-1.5 text-center text-[0.8125rem] font-semibold tabular-nums text-mut shadow-[0_2px_12px_rgba(38,40,44,.08)]">{going.length ? `${going.length} ${going.every((x) => x.kind === "video") ? "video" : going.every((x) => x.kind !== "video") ? "fotoğraf" : "kayıt"} buluta gönderiliyor · %${Math.round((going.reduce((a, x) => a + (x.u.p || 0), 0) / going.length) * 100)}` : "Buluta gönderildi ✓"}</p>
       )}
       {!groups.length && (
         <div className="fade-in px-6 pt-16 text-center">
