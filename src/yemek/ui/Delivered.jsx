@@ -1,24 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Img } from "./Img";
 
 // Teslim edildi ekranı (Seyhun 2026-10-23): tam ekran, arkada siparişin fotoğrafı. Puan isteğe bağlı: yıldıza dokununca
 // (yazıldıysa notla) kaydedilir ve ekran kapanır; ✕ ile puansız kapanır. Bir kez kapanınca bir daha çıkmaz (order.rateDone).
+// Dokunulmazsa 10 sn sonra kendiliğinden kapanır (uygulama sonradan açılınca da bu ekran görünür, Seyhun 2026-10-23).
+const AUTO_MS = 10000;
 const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "");
 
 export function Delivered({ order, photo, onRate, onClose }) {
   const [note, setNote] = useState("");
   const [writing, setWriting] = useState(false);
   const [picked, setPicked] = useState(0);
+  const [touched, setTouched] = useState(false);
+  useEffect(() => {
+    if (touched) return;
+    const t = setTimeout(onClose, AUTO_MS);
+    return () => clearTimeout(t);
+  }, [touched]); // eslint-disable-line react-hooks/exhaustive-deps
   const rate = async (n) => {
     if (picked) return;
     setPicked(n);
     await onRate(n, note.trim());
   };
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-[#11203a] text-white" role="dialog" aria-label="Teslim edildi">
+    <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-[#11203a] text-white" role="dialog" aria-label="Teslim edildi" onPointerDown={() => setTouched(true)}>
       <Img src={photo} w={900} className="absolute inset-0 size-full !bg-transparent" />
       <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,32,58,.35)_0%,rgba(17,32,58,.15)_30%,rgba(17,32,58,.85)_62%,#11203a_80%)]" aria-hidden="true" />
       <div className="relative flex justify-end px-4 pt-[calc(0.75rem+env(safe-area-inset-top))]">

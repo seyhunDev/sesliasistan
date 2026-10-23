@@ -7,7 +7,7 @@
 //   yemek/ayar            { demo, closed: { [restoran]: true }, couriers: [{ id, name, phone }] }   (Yönetim)
 // Restoranlar şimdilik koddaki örnek veri (sample.js): okuma yok. Geçmiş sayfa açılınca bir kez (en çok 30 okuma),
 // açık sipariş canlı izlenir (tek belge).
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { addDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
@@ -72,12 +72,36 @@ const touch = (fn) => {
   subs.forEach((on) => on(memo));
 };
 
+// Tek sipariş, canlı. "Bulunamadı" (false) yalnız sunucu "yok" deyince: telefon uygulamayı arkada bekletip açınca
+// dinleyici hata verebilir ya da önbellek boş gelebilir (Seyhun 2026-10-23); o zaman eldeki kayıt kalır, yeniden dinlenir.
 export function useOrder(orgId, id) {
   const [order, setOrder] = useState(() => memo?.history.find((o) => o.id === id) || null);
+  const [round, setRound] = useState(0);
+  const fails = useRef(0);
   useEffect(() => {
     if (!orgId || !id) return;
-    return onSnapshot(doc(ordersCol(orgId), id), (d) => setOrder(d.exists() ? { ...d.data(), id: d.id } : false), () => setOrder(false));
-  }, [orgId, id]);
+    let t;
+    const off = onSnapshot(doc(ordersCol(orgId), id), { includeMetadataChanges: true }, (d) => {
+      if (d.exists()) {
+        fails.current = 0;
+        setOrder({ ...d.data(), id: d.id });
+      } else if (!d.metadata.fromCache) setOrder(false);
+    }, () => {
+      if (++fails.current >= 5) return setOrder((o) => o || false);
+      t = setTimeout(() => setRound((n) => n + 1), 3000);
+    });
+    return () => { off(); clearTimeout(t); };
+  }, [orgId, id, round]);
+  // Uygulama öne gelince yeniden dinle (arkadayken kopan bağlantı)
+  useEffect(() => {
+    const on = () => {
+      if (document.visibilityState !== "visible") return;
+      fails.current = 0;
+      setRound((n) => n + 1);
+    };
+    document.addEventListener("visibilitychange", on);
+    return () => document.removeEventListener("visibilitychange", on);
+  }, []);
   return order;
 }
 
