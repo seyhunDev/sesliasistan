@@ -1,8 +1,8 @@
-Commit: 80421a6 · iPhone uygulamasında da kenardan kaydırarak geri (#738)
-Zaman: 2026-10-23-0209 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39868993414
+Commit: 28df258 · Merge pull request #739 from seyhunDev/claude/project-thread-76s7q5
+Zaman: 2026-10-23-0905 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39908643850
 
-TAM TEST · 23.10.2026 02:01:40
+TAM TEST · 23.10.2026 08:57:56
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1376/1376 geçti · 0 kalan · 450 sn
+SONUÇ: 1376/1376 geçti · 0 kalan · 445 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
