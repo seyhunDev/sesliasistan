@@ -28,7 +28,7 @@ function route(s, ctx = {}) {
     owner, isStaff: !owner, racer: owner, att: owner, athleteSide: !!ctx.athlete, path, today, races, raceNames: races.map((r) => r.name), names,
     logHere: path === "/training", fitHere: path === "/fitness", foodHere: !!ctx.food, invPage: path.startsWith("/inventory"), attHere: path === "/athletes/attendance",
     curRace: curRace && curRace !== "new" ? curRace : "", askedMore: !!ctx.askedMore, shop: true,
-    guide: !!ctx.guide, myFit: !!ctx.myFit, myFitToday: !!ctx.myFitToday, fitPeople: ctx.fitPeople || [],
+    foodRecent: !!ctx.foodRecent, guide: !!ctx.guide, myFit: !!ctx.myFit, myFitToday: !!ctx.myFitToday, fitPeople: ctx.fitPeople || [],
   });
   return got === "person" && !owner ? "person(yetkisiz)" : got;
 }
@@ -47,7 +47,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { attQuery: "attQuery", clubAsk: "clubAsk", infoAsk: "infoAsk", undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", raceWind: "raceWind", raceTimer: "raceTimer", trainResult: "trainResult", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)", words: "words(study)", wordKnown: "words(known)", wordAsk: "words(ask)", wordGaps: "words(gaps)", phraseAdd: "words(study)", englishPage: "navigate" };
+const PATH = { attQuery: "attQuery", clubAsk: "clubAsk", infoAsk: "infoAsk", undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", raceWind: "raceWind", raceTimer: "raceTimer", trainResult: "trainResult", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)", words: "words(study)", wordKnown: "words(known)", wordAsk: "words(ask)", wordGaps: "words(gaps)", phraseAdd: "words(study)", englishPage: "navigate", foodOrder: "foodOrder" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"], planDone: ["planDone"],
@@ -237,8 +237,25 @@ for (const [task, list] of Object.entries(CASES)) {
 }
 group("Yönlendirme: karışma (iki işe benzeyen cümle)")(CROSS.map(([task, s, why]) => [s, wrap(task, {}, true), why]));
 // Çalışan hesabı: yalnız ana hesaba açık akışlar başlamaz
-const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "results", "attendance", "race", "raceOpen", "dues", "income", "athlete", "receiptPay", "absent", "personDelete", "invoiceTask", "raceHere", "hotel", "athleteOpen", "personOpen", "athleteBody", "fitness", "food"].includes(r) };
-group("Yönlendirme: çalışan hesabı")(["envantere 3 Optimist teknesi ekle", "kamp planı yapmak istiyorum", "Foça yarışı için Instagram gönderisi hazırla", "bu ay ne kadar ödeme aldım", "Turkcell faturası ödendi", "yoklama al, Ali geldi", "Foça yarışını aç", "aidat hatırlatması gönder", "Ahmet'ten 2000 lira bağış geldi", "Ali Kaya'yı arşive al", "Ali'nin fişlerini ödedim", "gelmeyenlerin velilerine haber ver", "Ayşe Yılmaz'ı kişilerden sil", "Ali'nin kilosu 52", "squat 3 set 10 tekrar 60 kilo yaptım", "öğlen tavuk pilav yedim"].map((s) => [s, STAFF]));
+const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "results", "attendance", "race", "raceOpen", "dues", "income", "athlete", "receiptPay", "absent", "personDelete", "invoiceTask", "raceHere", "hotel", "athleteOpen", "personOpen", "athleteBody", "fitness", "food", "foodOrder"].includes(r) };
+group("Yönlendirme: çalışan hesabı")(["envantere 3 Optimist teknesi ekle", "kamp planı yapmak istiyorum", "Foça yarışı için Instagram gönderisi hazırla", "bu ay ne kadar ödeme aldım", "Turkcell faturası ödendi", "yoklama al, Ali geldi", "Foça yarışını aç", "aidat hatırlatması gönder", "Ahmet'ten 2000 lira bağış geldi", "Ali Kaya'yı arşive al", "Ali'nin fişlerini ödedim", "gelmeyenlerin velilerine haber ver", "Ayşe Yılmaz'ı kişilerden sil", "Ali'nin kilosu 52", "squat 3 set 10 tekrar 60 kilo yaptım", "öğlen tavuk pilav yedim", "yemek siparişi ver", "sen seç pizza söyle"].map((s) => [s, STAFF]));
+
+// Sesle yemek siparişi (Velora Yemek, ana hesap): beslenme kaydı ("pizza yedim") siparişe gitmez
+const RO = (want, ctx = {}) => ({ desc: `yol: ${want}`, fn: (s) => route(s, ctx), ok: (r) => r === want });
+group("Yönlendirme: sesle yemek siparişi")([
+  ["bana yemek siparişi ver hemen şimdi", RO("foodOrder")],
+  ["sen bir şey seç sipariş ver", RO("foodOrder")],
+  ["Pizza Rüzgar'dan karışık pizza söyle", RO("foodOrder")],
+  ["dün söylediğimden yemek sipariş ver", RO("foodOrder")],
+  ["bugün ne yiyelim", RO("foodOrder")],
+  ["pizza yedim", RO("food")],
+  ["öğlen tavuk pilav ve ayran içtim", RO("food")],
+  ["ilkini ver", RO("foodOrder", { foodRecent: true }), "öneriden sonra"],
+  ["pizza söyle", RO("foodOrder", { path: "/fitness" }), "Fitness sayfasında da"],
+  ["pizza söyle", RO("foodOrder")],
+  ["Ali'ye söyle pizza alsın", { desc: "mesaj, sipariş değil", fn: (s) => route(s), ok: (r) => r !== "foodOrder" }],
+  ["Ali'ye pizza söyle", { desc: "mesaj, sipariş değil", fn: (s) => route(s), ok: (r) => r !== "foodOrder" }],
+]);
 
 // Sporcu fitness (antrenörün hazırladığı program) ve adım adım antrenman ekranı
 const FP = [{ uid: "u1", name: "Ali Kaya" }, { uid: "u2", name: "Zeynep Ak" }];
