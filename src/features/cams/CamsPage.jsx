@@ -44,6 +44,8 @@ async function search(name, signal) {
   const j = await r.json();
   return (j.results || []).map((x) => ({ name: x.name, sub: [x.admin1, x.country].filter(Boolean).join(", "), lat: x.latitude, lon: x.longitude }));
 }
+// Alt yazı: Windy'de uzaklık ve son görüntü, YouTube'da kanal adı
+const meta = (c, ago = "") => (c.km == null ? c.ch || c.src : `${kmLabel(c.km)}${c.at ? ` · ${agoLabel(c.at)}${ago}` : ""}`);
 const label = (p) => (p?.mine ? nearPlace(p) || "Konumum" : p?.name || "");
 
 export function CamsPage() {
@@ -72,7 +74,7 @@ export function CamsPage() {
   useEffect(() => {
     if (!place) return;
     let off = false;
-    authFetch(`/api/cams?lat=${place.lat.toFixed(3)}&lon=${place.lon.toFixed(3)}`)
+    authFetch(`/api/cams?lat=${place.lat.toFixed(3)}&lon=${place.lon.toFixed(3)}&q=${encodeURIComponent(place.mine ? nearPlace(place) : place.name)}`)
       .then((r) => r.json())
       .catch(() => ({ error: "fail" }))
       .then((j) => !off && setData({ ...j, for: place }));
@@ -88,7 +90,7 @@ export function CamsPage() {
     setPlace(p);
   };
   const cur = data?.for === place ? data : null; // yer değişince eski kameralar görünmez
-  const cams = cur?.cams || [];
+  const cams = [...(cur?.yt || []), ...(cur?.cams || [])]; // önce yerin YouTube yayınları, sonra yakından uzağa Windy
   const [top, ...rest] = cams;
   const shown = all ? rest : rest.slice(0, CAMS_FIRST);
 
@@ -116,7 +118,7 @@ export function CamsPage() {
           </div>
         ) : cur.error ? (
           <RowList>
-            <Row title={cur.error === "nokey" || cur.error === "badkey" ? "Kamera anahtarı yok" : "Kameralar alınamadı"} sub={cur.error === "nokey" ? "Netlify'a WINDY_WEBCAMS_KEY eklenmeli" : cur.error === "badkey" ? "WINDY_WEBCAMS_KEY geçersiz" : "Biraz sonra yeniden dene"} />
+            <Row title={cur.error === "nokey" || cur.error === "badkey" ? "Kamera anahtarı yok" : "Kameralar alınamadı"} sub={cur.error === "nokey" ? "Netlify'a kamera anahtarı eklenmeli" : cur.error === "badkey" ? "Windy anahtarı geçersiz" : "Biraz sonra yeniden dene"} />
           </RowList>
         ) : !cams.length ? (
           <RowList>
@@ -140,9 +142,15 @@ export function CamsPage() {
           )
         )}
         {cams.length > 0 && (
-          <a href="https://www.windy.com/webcams" target="_blank" rel="noopener noreferrer" className="block px-1 text-right text-[0.75rem] font-semibold text-mut">
-            Kameralar: Windy.com
-          </a>
+          <p className="px-1 text-right text-[0.75rem] font-semibold text-mut">
+            Kameralar: {cur.yt?.length > 0 && "YouTube"}
+            {cur.yt?.length > 0 && cur.cams?.length > 0 && " · "}
+            {cur.cams?.length > 0 && (
+              <a href="https://www.windy.com/webcams" target="_blank" rel="noopener noreferrer">
+                Windy.com
+              </a>
+            )}
+          </p>
         )}
       </div>
 
@@ -170,8 +178,7 @@ function BigCam({ c, onOpen }) {
       <span className="absolute inset-x-0 bottom-0 flex items-baseline gap-2 bg-[#11203a]/80 px-3 py-2">
         <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{c.title}</b>
         <small className="shrink-0 text-[0.8125rem] font-semibold text-white/65 tabular-nums">
-          {kmLabel(c.km)}
-          {c.at ? ` · ${agoLabel(c.at)}` : ""}
+          {meta(c)}
         </small>
       </span>
     </button>
@@ -185,8 +192,7 @@ function SmallCam({ c, onOpen }) {
       <span className="block px-2.5 py-1.5">
         <b className="block truncate text-[0.875rem] font-semibold">{c.title}</b>
         <small className="block truncate text-[0.75rem] font-semibold text-mut tabular-nums">
-          {kmLabel(c.km)}
-          {c.at ? ` · ${agoLabel(c.at)}` : ""}
+          {meta(c)}
         </small>
       </span>
     </button>
@@ -203,11 +209,10 @@ function CamSheet({ c, onClose }) {
             {c.player ? <iframe src={c.player} title={c.title} allow="autoplay; fullscreen" allowFullScreen className="block size-full border-0" /> : <Img src={c.preview} className="size-full" />}
           </div>
           <p className="px-1 text-[0.8125rem] font-semibold text-mut tabular-nums">
-            {kmLabel(c.km)}
-            {c.at ? ` · ${agoLabel(c.at)} önce` : ""}
+            {meta(c, " önce")}
           </p>
           <a href={c.link} target="_blank" rel="noopener noreferrer" data-press className={buttonClass({ variant: "secondary", full: true })}>
-            Windy&apos;de aç
+            {c.src === "YouTube" ? "YouTube'da aç" : "Windy'de aç"}
           </a>
         </div>
       )}

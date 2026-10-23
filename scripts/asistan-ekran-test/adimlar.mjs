@@ -1078,17 +1078,17 @@ async function camsPage(h) {
   const { page, errs } = await newPage();
   await page.goto(page.url().replace(/\/[^/]*$/, "/cams"), { waitUntil: "load" });
   const G = "Kameralar";
-  await check(G, "sayfa açılır", "en yakın kamera büyük, altta 6 kamera ve Daha fazla", async () => {
-    const ok = await waitFor(() => page.getByText("Ayvalık · Cunda koyu").count(), 15000);
+  await check(G, "sayfa açılır", "yerin YouTube yayını büyük, altta 6 kamera ve Daha fazla", async () => {
+    const ok = await waitFor(() => page.getByText("Dikili Limanı Canlı").count(), 15000);
     const small = await page.locator("main .grid > button").count();
-    const more = await page.getByRole("button", { name: /Daha fazla \(2\)/ }).count();
+    const more = await page.getByRole("button", { name: /Daha fazla \(3\)/ }).count();
     if (process.env.CAMS_SHOT) await page.screenshot({ path: `${process.env.CAMS_SHOT}.png` });
     return [!!ok && small === 6 && more === 1, `${small} küçük kamera · Daha fazla ${more}`];
   });
   await check(G, "Daha fazla", "kalan kameralar da görünür", async () => {
     await page.getByRole("button", { name: /Daha fazla/ }).click();
     const n = await page.locator("main .grid > button").count();
-    return [n === 8, `${n} küçük kamera`];
+    return [n === 9, `${n} küçük kamera`];
   });
   await check(G, "kamera penceresi", "Windy'de aç bağlantısı", async () => {
     await page.getByText("Bergama · Akropol").click();
