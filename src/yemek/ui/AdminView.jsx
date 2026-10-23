@@ -180,14 +180,25 @@ function OrderRow({ o, now, onOpen }) {
   );
 }
 
+// Durum seçilince gösterilen onay (Seyhun 2026-10-23): simge, hareket (globals.css yst-*), yazı
+const DONE_ICON = { sent: "arrow", accepted: "check", preparing: "flame", onTheWay: "nav", delivered: "checks", cancelled: "x" };
+const DONE_SAY = { sent: "Gönderildi", accepted: "Onaylandı", preparing: "Hazırlanıyor", onTheWay: "Yola çıktı", delivered: "Teslim edildi", cancelled: "İptal edildi" };
+const DONE_TONE = { delivered: "bg-ok/15 text-ok", cancelled: "bg-rec/10 text-rec" };
+
 // Sipariş ayrıntısı ve elle durum değiştirme (Yönetim)
 function OrderSheet({ orgId, o, onClose }) {
   const toast = useToast();
   const [busy, setBusy] = useState("");
+  const [done, setDone] = useState(""); // seçilen durum kaydedildi: onay hareketi, sonra pencere kapanır
   const change = async (st) => {
     setBusy(st);
     try {
       await setStatus(orgId, o, st);
+      setDone(st);
+      setTimeout(() => {
+        setDone("");
+        onClose();
+      }, 1100);
     } catch {
       toast("Kaydedilemedi");
     }
@@ -195,7 +206,15 @@ function OrderSheet({ orgId, o, onClose }) {
   };
   return (
     <Sheet open={!!o} onClose={onClose} title={o ? `${o.customer || "Müşteri"} · ${o.placeName}` : ""}>
-      {o && (
+      {o && done && (
+        <div className="grid place-items-center gap-3 py-10" role="status">
+          <span className={`yst-ring grid size-20 place-items-center rounded-full ${DONE_TONE[done] || "bg-accbg text-acc"}`}>
+            <Icon name={DONE_ICON[done] || "check"} className={`yst-${done} size-9`} />
+          </span>
+          <b className="text-[1.125rem] font-bold">{DONE_SAY[done] || STATUS_NAMES[done]}</b>
+        </div>
+      )}
+      {o && !done && (
         <div className="space-y-4 pb-2">
           <div className="overflow-hidden rounded-[1.25rem] border border-line bg-bg px-3.5">
             {o.lines.map((l, i) => (

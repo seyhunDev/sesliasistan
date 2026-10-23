@@ -839,3 +839,16 @@ html:has(:is(.home-navy, .page-navy)), body:has(:is(.home-navy, .page-navy)) { b
    zemin aşağı doğru daha da koyulaşır. Kartlar #13233d. Sayfanın kalanı da koyu (alt boşlukta açık şerit kalmasın) */
 .fit-dark { --bg: #0b1628; --card: #13233d; background: linear-gradient(#0b1628 0, #0b1628 55%, #060d1a 100%); }
 html:has(.fit-dark), body:has(.fit-dark) { background: #060d1a !important; }
+
+/* Velora Yemek › Yönetim: durum değişince kısa onay (her durumun kendi hareketi), sonra pencere kapanır */
+@keyframes ystin { from { opacity: 0; transform: scale(.6); } }
+@keyframes ystslide { 0% { transform: translateX(-18px); opacity: 0; } 60% { transform: translateX(4px); opacity: 1; } 100% { transform: none; } }
+@keyframes ystwig { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
+@keyframes ystshake { 0%, 100% { transform: none; } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@keyframes ystpop { 50% { transform: scale(1.18); } }
+.yst-ring { animation: ystin .25s ease-out both; }
+.yst-sent, .yst-onTheWay { animation: ystslide .55s ease-out .1s both; }
+.yst-preparing { animation: ystwig .5s ease-in-out .15s 2; }
+.yst-cancelled { animation: ystshake .45s ease-in-out .15s; }
+.yst-accepted, .yst-delivered { animation: ystpop .4s ease-out .15s; }
+@media (prefers-reduced-motion: reduce) { .yst-ring, [class*="yst-"] { animation: none !important; } }
