@@ -12,6 +12,8 @@ import { wantsInventory } from "@/features/inventory/invWords";
 import { athleteIn, fitLocal, guideWord, wantsFitness } from "@/lib/fitness/words";
 import { fold } from "@/lib/fitness/exercises";
 import { wantsFood } from "@/lib/fitness/food";
+import { foodOrderAsk } from "@/yemek/voice";
+import { SAMPLE_PLACES } from "@/yemek/sample";
 import { bodyCommand } from "@/lib/athleteBody";
 import { wantsPost, wantsPostOpen } from "@/features/posts/postModel";
 import { raceAsk, wantsRaceOpen, findRace, raceJobHere, wantsRaceText } from "@/features/athletes/raceNav";
@@ -55,7 +57,7 @@ export const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|
 // Yapay zeka önce: Hazır cevaplar (c.quick, lib/quickMode.js) kapalıyken soru ve kayıt cümleleri yerel kurallarla
 // cevaplanmaz; yerelde yalnız cihaz işleri kalır. yonlendirme.js'deki hızlı özet de aynı düğmeye bağlı.
 const DEVICE = new Set(["receipt", "meeting", "navigate"]);
-export const EARLY = new Set(["close", "report", "tests", "logBare", "log", "event", "inventory", "food", "fitness"]);
+export const EARLY = new Set(["close", "report", "tests", "logBare", "log", "event", "inventory", "foodOrder", "food", "fitness"]);
 
 // Son eklenen işlerin (assistMore.js) hangisi: test ve öğrenme kaydı için ad; uygulamada runMore kendisi seçer
 export function moreKind(s, c = {}) {
@@ -101,7 +103,7 @@ export function moreKind(s, c = {}) {
 // c: { owner (ana hesap), isStaff, racer (sporcu/yarış yetkisi), athleteSide (sporcu/veli/öğrenci), att (yoklama yetkisi),
 //      guide (adım adım antrenman ekranı açık), myFit (sporcunun kendi fitness planı var), myFitToday (bugün var),
 //      fitPeople (ana hesap: fitness planı olan sporcular [{ uid, name }]),
-//      path, today, races, raceNames, names (kişi adları), logHere, invPage, fitHere (Fitness sayfası ya da açık fitness planı), foodHere (Fitness › Beslenme), attHere, curRace, onPost, drafts (taslak var), pending (onay kartı var),
+//      path, today, races, raceNames, names (kişi adları), logHere, invPage, fitHere (Fitness sayfası ya da açık fitness planı), foodHere (Fitness › Beslenme), foodRecent (az önce sesle yemek önerildi), attHere, curRace, onPost, drafts (taslak var), pending (onay kartı var),
 //      chatHere (sohbet ekranı açık), askedMore, invAsk, askTo, prefer, skipRace, shop (alışveriş listesi var), focus (açık kayıt/sohbet), memo (sohbet hafızası), plans, tasks, notes }
 // Dönen: [{ id, ...veri }] uygulanacak sırayla; son aday her zaman { id: "ai" }
 export function routesOf(s, c = {}) {
@@ -133,7 +135,13 @@ export function routesOf(s, c = {}) {
   // "Mete'nin kilosu 52" sporcunun ölçümüdür: Fitness sayfasında da beslenme/fitness'a gitmez
   const bodyFirst = owner && racer && bodyCommand(s)?.explicit;
   // Beslenme fitness'tan önce: Fitness sayfasında "öğlen tavuk pilav yedim", "kilom 82" yemek/kilo kaydıdır
-  if (!mf && !bodyFirst && owner && !isStaff && wantsFood(s, !!c.foodHere) && !nav(s)) add("food");
+  // Yemek siparişi (ana hesap, Velora Yemek): "yemek siparişi ver", "sen seç sipariş ver", "Pizza Rüzgar'dan karışık söyle";
+  // öneriden sonra "ilkini ver" (c.foodRecent). "pizza yedim" siparişe girmez, beslenme kaydıdır
+  // "pizza söyle" mesaj gibi görünür: kimseye değilse ("Ali'ye söyle…" değil) ve "söyle" sondaysa siparişe
+  const foMsg = mf && !/'(y?[ae]|n[ae])(?![\p{L}])/u.test(s) && /s[oö]yle\p{L}*[\s.!]*$/u.test(s);
+  const fo = (!mf || foMsg) && owner && !isStaff ? foodOrderAsk(s, SAMPLE_PLACES, !!c.foodRecent) : null;
+  if (fo) add("foodOrder", { fo });
+  if (!fo && !mf && !bodyFirst && owner && !isStaff && wantsFood(s, !!c.foodHere) && !nav(s)) add("food");
   // Ana hesap: "sporcular bugün antrenman yaptı mı" her yerde. Sporcu (antrenörün hazırladığı programı varsa):
   // "bugünkü antrenmanım ne", "antrenmana başla", "bu hafta kaç antrenman yaptım"; yaptım/atladım bugün fitness antrenmanı varsa
   const fl = !mf ? fitLocal(s) : null;

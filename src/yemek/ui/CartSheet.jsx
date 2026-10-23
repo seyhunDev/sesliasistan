@@ -5,20 +5,24 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
-import { cartTotals, lineDetail, etaFrom } from "../order";
+import { cartTotals, lineDetail } from "../order";
 import { pickAddress, distanceKm } from "../address";
-import { herePos, openNow, placeOrder, saveMe, writeCart } from "../store";
+import { herePos, openNow, orderNow, saveMe, writeCart } from "../store";
 import { tl } from "./Img";
 import { AddressForm } from "./AddressForm";
-import { fetchRoute, roadMin } from "../route";
 
 const PAYS = [["kapıda-kart", "Kapıda kart"], ["kapıda-nakit", "Kapıda nakit"]];
 
+const HEMEN_MS = 3000;
+
 // Sepet (örnek 4): ürünler (adet ±), toplam, adres (konuma 300 m içindeki kendiliğinden; yoksa sorar), ödeme, "Siparişi ver".
-export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name, onPlaced }) {
+// hemen: sesle verilen sipariş (asistan, isler/yemek.js); 3 sn çizgi dolar, sipariş kendiliğinden verilir (İptal / Şimdi).
+// adres: asistanın seçtiği adres.
+export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name, onPlaced, hemen, adres }) {
   const toast = useToast();
   const [pos, setPos] = useState(null);
-  const [addrId, setAddrId] = useState(""); // elle seçilen; yoksa konuma göre / son kullanılan
+  const [addrId, setAddrId] = useState(adres || ""); // elle seçilen; yoksa konuma göre / son kullanılan
+  const [count, setCount] = useState(!!hemen); // sesle sipariş: geri sayım sürüyor
   const [mode, setMode] = useState("cart"); // cart | pick | new | edit
   const [editId, setEditId] = useState("");
   const [pay, setPay] = useState("kapıda-kart");
@@ -26,6 +30,7 @@ export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name,
   const addresses = food?.me.addresses || [];
 
   const close = () => {
+    setCount(false);
     onClose();
     setMode("cart");
     setAddrId("");
@@ -39,26 +44,29 @@ export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name,
   const addr = addresses.find((a) => a.id === addrId) || auto.address || null;
   const totals = cartTotals(place, lines);
   const closed = !openNow(place, food?.settings);
+  const canSend = !!food && !!addr && !closed && totals.short <= 0 && lines.length > 0;
+  const counting = count && open && mode === "cart" && canSend;
+
+  // Sesle sipariş: veri ve adres hazır olunca 3 sn sonra kendiliğinden
+  useEffect(() => {
+    if (!counting) return;
+    const t = setTimeout(() => send(), HEMEN_MS);
+    return () => clearTimeout(t);
+  }, [counting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setQty = (i, d) => {
+    setCount(false);
     const next = lines.map((l, j) => (j === i ? { ...l, qty: l.qty + d, total: l.unit * (l.qty + d) } : l)).filter((l) => l.qty > 0);
     writeCart({ placeId: next.length ? place.id : "", lines: next });
     if (!next.length) close();
   };
 
   async function send() {
+    setCount(false);
     if (!addr) return setMode("pick");
     setBusy(true);
     try {
-      const km = distanceKm(place.pos, addr.pos);
-      const route = await fetchRoute(place.pos, addr.pos); // yollardan rota; olmazsa düz çizgi
-      const road = roadMin({ route, address: addr }, place);
-      const order = {
-        placeId: place.id, placeName: place.name, cuisines: place.cuisines, lines, subtotal: totals.subtotal, fee: totals.fee, total: totals.total,
-        pay, address: addr, customer: name || "", demo: food?.settings?.demo !== false, eta: etaFrom({ status: "sent" }, place, Number.isFinite(km) ? km : 2, new Date(), road).toISOString(), courier: null, route,
-      };
-      const id = await placeOrder(orgId, uid, order);
-      saveMe(orgId, { lastAddressId: addr.id }).catch(() => {});
+      const id = await orderNow(orgId, uid, { place, lines, address: addr, pay, name, demo: food?.settings?.demo !== false });
       writeCart({ placeId: "", lines: [] });
       close();
       onPlaced(id);
@@ -95,7 +103,7 @@ export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name,
           <div>
             <div className="mb-1.5 flex items-center justify-between px-1">
               <h3 className="text-[0.8125rem] font-bold text-mut">Adres</h3>
-              {addresses.length > 0 && <button type="button" onClick={() => setMode("pick")} className="text-[0.8125rem] font-semibold text-acc">Değiştir</button>}
+              {addresses.length > 0 && <button type="button" onClick={() => (setCount(false), setMode("pick"))} className="text-[0.8125rem] font-semibold text-acc">Değiştir</button>}
             </div>
             <button type="button" onClick={() => setMode(addresses.length ? "pick" : "new")} data-press="row" className="flex w-full items-center gap-3 rounded-[1.25rem] border border-line bg-bg px-3.5 py-2.5 text-left">
               <span className="min-w-0 flex-1">
@@ -109,15 +117,20 @@ export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name,
 
           <div className="flex gap-2">
             {PAYS.map(([k, n]) => (
-              <button key={k} type="button" aria-pressed={pay === k} onClick={() => setPay(k)} data-press
+              <button key={k} type="button" aria-pressed={pay === k} onClick={() => (setCount(false), setPay(k))} data-press
                 className={`flex-1 rounded-xl border py-2.5 text-[0.875rem] font-semibold ${pay === k ? "border-acc bg-accbg text-acc" : "border-line bg-card"}`}>{n}</button>
             ))}
           </div>
 
+          {counting && (
+            <div className="h-[3px] overflow-hidden rounded-full bg-line" aria-hidden="true">
+              <div className="h-full origin-left rounded-full bg-acc" style={{ animation: `autofill ${HEMEN_MS}ms linear forwards` }} />
+            </div>
+          )}
           <div className="grid grid-cols-[1fr_1.7fr] gap-2.5">
-            <Button variant="secondary" onClick={close}>Vazgeç</Button>
+            <Button variant="secondary" onClick={counting ? () => setCount(false) : close}>{counting ? "İptal" : "Vazgeç"}</Button>
             <Button loading={busy} disabled={closed || totals.short > 0 || !food} onClick={send}>
-              {closed ? "Şu an kapalı" : totals.short > 0 ? `Min sepete ${tl(totals.short)} var` : addr ? "Siparişi ver" : "Adres seç"}
+              {counting ? "Şimdi" : closed ? "Şu an kapalı" : totals.short > 0 ? `Min sepete ${tl(totals.short)} var` : addr ? "Siparişi ver" : "Adres seç"}
             </Button>
           </div>
         </div>

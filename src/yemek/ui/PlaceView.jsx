@@ -99,7 +99,7 @@ export function PlaceView({ orgId, uid, name, id }) {
       )}
 
       <ItemSheet place={place} item={item} onClose={() => setItem(null)} onAdd={add} closed={!on} />
-      <CartSheet open={cartOpen} onClose={() => setCartOpen(false)} place={place} lines={mine} food={food} orgId={orgId} uid={uid} name={name} onPlaced={(oid) => router.replace(`/yemek/siparis/${oid}`)} />
+      <CartSheet open={cartOpen} onClose={() => setCartOpen(false)} place={place} lines={mine} food={food} orgId={orgId} uid={uid} name={name} hemen={sp.get("hemen") === "1"} adres={sp.get("adres") || ""} onPlaced={(oid) => router.replace(`/yemek/siparis/${oid}`)} />
     </main>
   );
 }

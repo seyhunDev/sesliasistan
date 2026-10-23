@@ -22,6 +22,7 @@ import { postHandler } from "@/features/posts/posts";
 import { openChat, lastSentChat } from "@/features/chat/ChatProvider";
 import { listsFor } from "@/features/shop/shop";
 import { routesOf, EARLY } from "@/lib/assistRoute";
+import { foodOrderCmd, foodRecent } from "../isler/yemek";
 import { quickOn } from "@/lib/quickMode";
 import { routeFromAct, withAct } from "@/lib/actRun";
 import { takeAct } from "./gorevListesi";
@@ -266,7 +267,7 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   const found = routesOf(s, {
     owner, isStaff, racer, att: canSeeAthletes(profile?.email), athleteSide: isAthleteSide(myKind), path, today: todayStr(),
     races: races.current, raceNames: raceNames(), names: contacts.map((c) => c.name), logHere: !!logPlan || path === "/training",
-    invPage, fitHere: path === "/fitness" || !!fp?.fit, foodHere: path === "/fitness" && /tab=food/.test(window.location.search), attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
+    invPage, fitHere: path === "/fitness" || !!fp?.fit, foodHere: path === "/fitness" && /tab=food/.test(window.location.search), foodRecent: foodRecent(), attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
     prefer: preferRef.current, skipRace: skipRace.current, shop: shopLists.length > 0, focus: !!focusRef.current, memo: memo.current, plans, tasks, notes,
     quick, learned: learnedReady, guide: !!guideHandler(), chatHere: !!openChat(), myFit: mine.length > 0, myFitToday: !!planOf(mine, todayStr()), fitPeople,
   });
@@ -445,6 +446,9 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
       // Son eklenen işler (lib/assistMore.js): arama, sporcu, nakit gelir, aidat hatırlatması…
       case "more":
         return runMore(s, viaVoice, r.pre);
+      // Sesle yemek siparişi: öneri ya da sepetle restoran sayfası, 3 sn sonra sipariş (isler/yemek.js)
+      case "foodOrder":
+        return (await foodOrderCmd(ctx, s, viaVoice, r.fo)) === true;
       // Alışveriş listesi: ekle / aldım / sil / oku ("ekmek aldım" listede yoksa alışveriş değildir)
       case "shopping": {
         const list = /ekip|kulüp|kulup/i.test(s) && shopLists.includes("team") ? "team" : shopLists[0];
