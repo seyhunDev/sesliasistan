@@ -1,8 +1,8 @@
-Commit: bb28c96 · Kameralar: Türk kıyıları için YouTube canlı yayınları (#781)
-Zaman: 2026-10-23-2158 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40006888755
+Commit: 2919d95 · Kameralar: seçilen yer kalıcı, YouTube gelmezse nedeni yazılır (#783)
+Zaman: 2026-10-23-2219 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40009323685
 
-TAM TEST · 23.10.2026 21:53:30
+TAM TEST · 23.10.2026 22:11:52
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -13,12 +13,16 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Sesli asistan ekranı (sahte Firebase, yapay zekasız)…
     Asistan: sekme çubuğu, açılış, dinleme, kapanış…
     Asistan: çalışırken, küçültme, sesli yanıt, geçmiş…
+    Asistan: kayıt, onaylar, görev listesi…
+    Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
+    Deniz trafiği sayfası…
+    Kameralar sayfası…
     Çevrimdışı çalışma (internet kesilip açılır)…
     Çevrimdışı: 19/19 geçti
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1309/1310 geçti · 1 kalan · 297 sn
+SONUÇ: 1391/1391 geçti · 0 kalan · 451 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -128,7 +132,7 @@ SONUÇ: 1309/1310 geçti · 1 kalan · 297 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 47/47
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 39/40
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 121/121
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Enerji (boşta): 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
@@ -136,14 +140,23 @@ SONUÇ: 1309/1310 geçti · 1 kalan · 297 sn
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 3/3
   ✓ Basılı tut yaz: 1/1
-  ✓ Sayfa hataları: 1/1
+  ✓ Sayfa hataları: 9/9
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
-  ✓ Sesli yanıt: 5/5
-  ✗ Senaryolar: 0/1
-      ✗ “çalıştırma”
-          beklenen: tamamlanır
-          olan:         at talkAsk (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/senaryolar.mjs:235:16) |     at async scenarios2 (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:351:3) |     at async scenarios (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:201:3) |     at async Module.run (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/senaryolar.mjs:281:5) |     at async file:///home/runner/work/sesliasistan/sesliasistan/scripts/tam-test/calistir.mjs:110:21
+  ✓ Sesli yanıt: 8/8
+  ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
+  ✓ Onay isteyen işler: 10/10
+  ✓ Görev listesi ve ilerleme halkası: 3/3
+  ✓ Tohum cümleler (telefonda cevap): 12/12
+  ✓ Kişi kare kodu: 4/4
+  ✓ Asistanın gizli olduğu yerler: 8/8
+  ✓ Geniş ekran (sol menü): 3/3
+  ✓ Asistan raporu: 3/3
+  ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
+  ✓ Instagram gönderisi: 1/1
+  ✓ Tam ekran üstte: 1/1
+  ✓ Deniz trafiği: 2/2
+  ✓ Kameralar: 5/5
   ✓ Güvenlik: 1/1
 
 3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 19/19
