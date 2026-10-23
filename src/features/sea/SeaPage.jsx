@@ -1,46 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
-import { ListHead, Row, RowList } from "@/components/ui/Row";
+import { Row, RowList } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
-import { EMERGENCY, REFRESH, VHF, agoText, groupShips, km, nearestPort, shipLine } from "@/lib/sea";
+import { EMERGENCY, VHF, nearestPort } from "@/lib/sea";
 import { VesselMap } from "./VesselMap";
-import { readEvery, saveEvery, useMyPos, useSea } from "./useSea";
+import { useMyPos } from "./useSea";
 
-// Deniz trafiği (Seyhun 2026-10-23): Dikili çevresindeki gemiler canlı (AIS). Lacivert üstte harita ve üç düğme
-// (Teknem · yenileme süresi · Acil), altta bölüm bölüm gemiler: yaklaşan/ayrılan, seyirde, demirde, limanda.
-// Harita VesselFinder'ın (aisstream Dikili'de sinyal vermedi, 2026-10-23); alttaki liste aisstream'den gelir ve yalnız
-// gemi varsa görünür (boş liste haritadaki gemilerle çelişmesin).
+// Deniz trafiği (Seyhun 2026-10-23): ekranın tamamı VesselFinder'ın canlı gemi haritası ("direkt tam ekran yapalım,
+// büyüt olmasın"). Üstte lacivert ince şerit (geri, başlık), altta haritanın üstünde iki büyük düğme: Teknem (haritayı
+// telefonun konumunda açar) · Acil (158, 112, Kanal 16, konumumu kopyala). aisstream listesi Dikili'de sinyal vermediği
+// için sayfadan kalktı; sesli cevaplar hâlâ /api/sea'den.
 const fmt = (n) => String(Math.round(n * 10) / 10).replace(".", ",");
 
-function Lead({ s }) {
-  const k = s.state.key;
-  const moving = ["approach", "leave", "underway", "fishing"].includes(k);
-  const c = s.state.warn ? "var(--warn)" : moving || k === "ready" ? "var(--acc)" : "var(--mut)";
-  return (
-    <span className={`grid size-8 shrink-0 place-items-center rounded-full ${moving || k === "ready" ? "bg-accbg" : "bg-bg"}`}>
-      {s.guard ? (
-        <b className="text-[0.625rem] font-bold text-fg">SG</b>
-      ) : moving ? (
-        <svg width="14" height="14" viewBox="0 0 24 24" style={{ transform: `rotate(${s.cog ?? 0}deg)` }}><path d="M12 3 L18 20 L12 16 L6 20Z" fill={c} /></svg>
-      ) : k === "moored" ? (
-        <span className="block size-2.5" style={{ background: c }} />
-      ) : (
-        <span className="block size-3 rounded-full border-2" style={{ borderColor: c }} />
-      )}
-    </span>
-  );
-}
-
-function StateTag({ s }) {
-  const k = s.state.key;
-  const cls = s.state.warn ? "bg-warnbg text-warn" : ["approach", "leave", "underway", "ready", "fishing"].includes(k) ? "bg-accbg text-acc" : "bg-bg text-mut";
-  return <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[0.75rem] font-semibold ${cls}`}>{s.state.label}</span>;
-}
-
-// Telefonun konumu limana göre: "Limanda", "Dikili 2,1 km"
+// Telefonun konumu limana göre: "Dikili limanı", "Dikili 2,1 km", "4,5 kn"
 function myState(me) {
   if (!me) return "Konum yok";
   const p = nearestPort(me);
@@ -49,88 +24,41 @@ function myState(me) {
 }
 
 export function SeaPage() {
-  const [every, setEvery] = useState(20);
-  useEffect(() => {
-    const t = setTimeout(() => setEvery(readEvery()), 0); // telefonda saklanan süre (sunucuda okunamaz)
-    return () => clearTimeout(t);
-  }, []);
-  const { data, fail } = useSea(every);
   const me = useMyPos();
   const [center, setCenter] = useState(null);
-  const [tall, setTall] = useState(false);
   const [sos, setSos] = useState(false);
-  const [, tick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => !document.hidden && tick((n) => n + 1), 10000);
-    return () => clearInterval(id);
-  }, []);
-
-  const ships = useMemo(() => data?.ships || [], [data]);
-  const groups = useMemo(() => groupShips(ships), [ships]);
-  const nextEvery = () => {
-    const v = REFRESH[(REFRESH.indexOf(every) + 1) % REFRESH.length];
-    setEvery(v);
-    saveEvery(v);
-  };
-  const show = (p) => {
-    setCenter({ lat: +p.lat.toFixed(4), lon: +p.lon.toFixed(4) });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-  const sub = ships.length ? `Dikili · ${ships.length} gemi · ${agoText(data.at)}` : "Dikili";
 
   return (
     <>
-      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Deniz trafiği">
-        <header className="flex items-center gap-2.5">
+      <div className="fixed inset-0 z-0 flex flex-col">
+        <header className="ck flex shrink-0 items-center gap-2.5 px-5 pb-2.5 pt-[calc(0.5rem+env(safe-area-inset-top))]">
           <BackButton href="/" />
-          <div className="min-w-0 flex-1 leading-tight">
-            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Deniz trafiği</h1>
-            <p className="truncate text-[0.8125rem] text-white/65 tabular-nums">{sub}</p>
-          </div>
+          <h1 className="min-w-0 flex-1 truncate text-[1.25rem] font-bold tracking-[-.02em]">Deniz trafiği</h1>
         </header>
-        <div className="mt-4">
-          <VesselMap center={center || undefined} zoom={center ? 13 : 10} tall={tall} onTall={() => setTall(!tall)} />
+        <div className="min-h-0 flex-1">
+          <VesselMap center={center || undefined} zoom={center ? 13 : 10} />
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <button type="button" data-press onClick={() => me && show(me)} className="raised flex h-[3.5rem] min-w-0 flex-col items-center justify-center rounded-2xl px-1">
-            <b className="text-[0.9375rem] font-semibold">Teknem</b>
+      </div>
+      <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="ck mx-auto grid max-w-[30rem] grid-cols-2 gap-2 rounded-[1.375rem] p-2 shadow-lg">
+          <button type="button" data-press onClick={() => me && setCenter({ lat: +me.lat.toFixed(4), lon: +me.lon.toFixed(4) })} className="raised flex h-[3.75rem] min-w-0 flex-col items-center justify-center rounded-2xl px-2">
+            <b className="text-[1rem] font-semibold">Teknem</b>
             <small className="w-full truncate text-center text-[0.75rem] text-white/65">{myState(me)}</small>
           </button>
-          <button type="button" data-press onClick={nextEvery} aria-label="Yenileme süresi" className="raised flex h-[3.5rem] min-w-0 flex-col items-center justify-center rounded-2xl px-1">
-            <b className="text-[0.9375rem] font-semibold tabular-nums">{every} sn</b>
-            <small className="text-[0.75rem] text-white/65">Yenileme</small>
-          </button>
-          <button type="button" data-press onClick={() => setSos(true)} className="raised act-main flex h-[3.5rem] min-w-0 flex-col items-center justify-center rounded-2xl px-1">
-            <b className="text-[0.9375rem] font-semibold">Acil</b>
+          <button type="button" data-press onClick={() => setSos(true)} className="raised act-main flex h-[3.75rem] min-w-0 flex-col items-center justify-center rounded-2xl px-2">
+            <b className="text-[1rem] font-semibold">Acil</b>
             <small className="text-[0.75rem] font-semibold text-[var(--rec)]">158 · Kanal 16</small>
           </button>
         </div>
-      </section>
+      </div>
 
-      {ships.length > 0 && (
-        <div className="relative -mx-5 -mt-6 min-h-[40vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
-          {fail && <p className="px-1 text-[0.8125rem] font-semibold text-warn">Bağlantı yok, son bilgi gösteriliyor</p>}
-          {groups.map((g) => (
-            <section key={g.id}>
-              <ListHead title={g.title} count={g.ships.length} />
-              <RowList>
-                {g.ships.map((s) => (
-                  <Row key={s.m} onClick={() => show(s)} chev={false} lead={<Lead s={s} />} title={s.n} sub={shipLine(s)} right={<StateTag s={s} />} warn={!!s.state.warn} label={`${s.n}, ${s.state.label}`} />
-                ))}
-              </RowList>
-            </section>
-          ))}
-        </div>
-      )}
-
-      <SosSheet open={sos} onClose={() => setSos(false)} me={me} ships={ships} />
+      <SosSheet open={sos} onClose={() => setSos(false)} me={me} />
     </>
   );
 }
 
-function SosSheet({ open, onClose, me, ships }) {
+function SosSheet({ open, onClose, me }) {
   const toast = useToast();
-  const guard = me ? ships.filter((s) => s.guard).map((s) => ({ ...s, d: km(me, s) })).sort((a, b) => a.d - b.d)[0] : ships.find((s) => s.guard);
   const where = me ? `${me.lat.toFixed(4)} K, ${me.lon.toFixed(4)} D` : "";
   const copy = async () => {
     try {
@@ -149,7 +77,6 @@ function SosSheet({ open, onClose, me, ships }) {
         </RowList>
         <RowList>
           <Row title="Konumum" sub={where || "Konum izni yok"} onClick={where ? copy : undefined} right={where ? "Kopyala" : null} chev={false} />
-          {guard && <Row title={guard.n} sub={`Sahil Güvenlik · ${guard.d != null ? `${fmt(guard.d)} km` : shipLine(guard)}`} />}
         </RowList>
       </div>
     </Sheet>

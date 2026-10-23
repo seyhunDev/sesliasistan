@@ -114,6 +114,7 @@ export function SeaMap({ ships = [], me, focus, pick, onPick = NOOP, small = fal
   return (
     <div className="relative">
       <div ref={box} className={small ? "pointer-events-none h-[9.5rem] w-full overflow-hidden bg-[#e6ecef]" : `${tall ? "h-[68vh]" : "h-72"} w-full overflow-hidden rounded-[1.25rem] border border-white/15 bg-[#e6ecef]`} />
+      {small && <div aria-hidden="true" className={`pointer-events-none absolute inset-0 bg-[#dfe6ea] transition-opacity duration-500 ${ready ? "opacity-0" : "animate-pulse"}`} />}
       {sel && (
         <button type="button" onClick={() => onPick(null)} className="absolute left-3 right-3 top-3 truncate rounded-full bg-white/95 px-3 py-1.5 text-left text-[0.8125rem] font-semibold text-[#26282c] shadow-sm">
           {sel.n} · {sel.state.label} · {shipLine(sel)}

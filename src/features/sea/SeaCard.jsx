@@ -10,23 +10,25 @@ import { useSea } from "./useSea";
 // Az data: 60 sn'de bir, yalnız ekran açıkken sorar. Anahtar yoksa (AISSTREAM_KEY) kart görünmez; veri alınamazsa kart
 // "Veri alınamadı" der (Seyhun 2026-10-23: kart hiç çıkmayınca "ana sayfa kartını da yap" dedi).
 // Sayfadaki harita VesselFinder'ın (2026-10-23); kartta hafif kendi haritamız kalır (VesselFinder ana sayfada ağır).
+// Kart yerini baştan tutar (Seyhun 2026-10-23: "sonradan bir anda beliriyor, diğer alanları etkiliyor"): veri gelene
+// kadar alt yazı yerinde sönükleşen çizgi, harita yüklenene kadar harita yerinde sönükleşen zemin.
 // Görünüş yemek kartıyla aynı (.food-card); OwnerHome'da yemek kartının altında (ana sayfa sahibiyle 2026-10-23).
 const MOVE = ["approach", "leave", "ready"];
 
 export function SeaCard({ className = "" }) {
   const { data } = useSea(60);
   const ships = useMemo(() => data?.ships || [], [data]);
-  if (!data || data.error === "nokey") return null;
+  if (data?.error === "nokey") return null;
   const moving = ships.filter((s) => MOVE.includes(s.state.key));
   const near = moving.filter((s) => s.state.key === "approach").length;
-  const sub = !data.ships ? "Veri alınamadı" : !ships.length ? "Dikili" : [`${ships.length} gemi`, near ? `${near} yanaşıyor` : moving.length ? `${moving.length} hareketli` : ""].filter(Boolean).join(" · ");
+  const sub = !data ? null : !data.ships ? "Veri alınamadı" : !ships.length ? "Dikili" : [`${ships.length} gemi`, near ? `${near} yanaşıyor` : moving.length ? `${moving.length} hareketli` : ""].filter(Boolean).join(" · ");
   return (
     <Link href="/sea" data-press className={`food-card block overflow-hidden rounded-[1.375rem] ${className}`}>
       <SeaMap small ships={ships} />
       <span className="flex items-center gap-3 px-4 py-3">
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[1.0625rem] font-semibold">Deniz trafiği</b>
-          <small className="block truncate text-[0.8125rem] text-white/65 tabular-nums">{sub}</small>
+          {sub ? <small className="block truncate text-[0.8125rem] text-white/65 tabular-nums">{sub}</small> : <span aria-hidden="true" className="mt-1.5 block h-3 w-28 animate-pulse rounded-full bg-white/15" />}
         </span>
         <span className="food-btn shrink-0">Aç</span>
       </span>

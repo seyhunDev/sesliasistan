@@ -2,24 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { authFetch } from "@/lib/authFetch";
-import { REFRESH } from "@/lib/sea";
 
-// Deniz trafiği verisi (/api/sea): sayfa açık ve ekranda iken every sn'de bir sorulur; arka planda / ekran kapalıyken durur
-// (pil ve data). Yenileme süresi telefonda saklanır (10/20/30/60 sn, varsayılan 20).
-const KEY = "sa-sea-every";
-export function readEvery() {
-  try {
-    const v = Number(localStorage.getItem(KEY));
-    return REFRESH.includes(v) ? v : 20;
-  } catch {
-    return 20;
-  }
-}
-export function saveEvery(v) {
-  try {
-    localStorage.setItem(KEY, String(v));
-  } catch {}
-}
+// Deniz trafiği verisi (/api/sea, aisstream): ana sayfa kartı every sn'de bir sorar; arka planda / ekran kapalıyken durur
+// (pil ve data). Sayfa artık yalnız VesselFinder haritası (2026-10-23), bu veriyi kullanmaz.
 
 // Asistan ve sayfa aynı isteği kullanır
 export async function fetchSea() {
