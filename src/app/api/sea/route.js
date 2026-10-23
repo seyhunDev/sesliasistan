@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
-import { SEA_BOX, mergeShip, parseAis, prune, shipList } from "@/lib/sea";
+import { mergeShip, prune, shipList } from "@/lib/sea";
+import { collect } from "@/lib/server/aisStream";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,6 @@ export const runtime = "nodejs";
 const FRESH = 8e3;
 const WINDOW = 4500;
 const FIRST_WINDOW = 7000; // liste boşken biraz daha uzun dinlenir
-const TYPES = ["PositionReport", "StandardClassBPositionReport", "ExtendedClassBPositionReport", "ShipStaticData", "StaticDataReport"];
 
 let mem = { at: 0, all: {} };
 let running = null;
@@ -41,40 +41,6 @@ async function save(v) {
   if (s) await s.setJSON("state", v).catch(() => {});
 }
 
-const text = async (d) => (typeof d === "string" ? d : d instanceof Blob ? d.text() : new TextDecoder().decode(d));
-
-// aisstream'e bağlan, ms boyunca dinle, gelen parçaları döndür
-function collect(key, ms) {
-  return new Promise((done) => {
-    const parts = [];
-    let ws;
-    const end = (err) => {
-      clearTimeout(timer);
-      try {
-        ws?.close();
-      } catch {}
-      done({ parts, err });
-    };
-    const timer = setTimeout(() => end(null), ms);
-    try {
-      ws = new WebSocket("wss://stream.aisstream.io/v0/stream");
-    } catch (e) {
-      return end(e);
-    }
-    ws.onopen = () => ws.send(JSON.stringify({ APIKey: key, BoundingBoxes: [SEA_BOX], FilterMessageTypes: TYPES }));
-    ws.onmessage = async (ev) => {
-      try {
-        const msg = JSON.parse(await text(ev.data));
-        if (msg?.error) return end(new Error(msg.error));
-        const p = parseAis(msg);
-        if (p) parts.push(p);
-      } catch {}
-    };
-    ws.onerror = () => end(new Error("ws"));
-    ws.onclose = () => end(null);
-  });
-}
-
 async function refresh(key) {
   const cur = await load();
   if (Date.now() - cur.at < FRESH) return cur;
@@ -101,7 +67,7 @@ export async function GET(req) {
     running ||= refresh(key).finally(() => (running = null));
     const v = await running;
     return NextResponse.json({ at: v.at, ships: shipList(v.all) }, { headers: { "cache-control": "no-store" } });
-  } catch {
-    return NextResponse.json({ error: "fail" });
+  } catch (e) {
+    return NextResponse.json({ error: "fail", why: String(e?.message || "").slice(0, 120) });
   }
 }

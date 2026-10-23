@@ -111,6 +111,10 @@ export function SeaPage() {
           <RowList>
             <Row title="Gemi verisi bağlı değil" sub="Netlify'a AISSTREAM_KEY eklenmeli" warn />
           </RowList>
+        ) : data?.error && !data.ships ? (
+          <RowList>
+            <Row title="Gemi verisi alınamadı" sub={data.why || "Sunucu cevap vermedi"} warn />
+          </RowList>
         ) : !data ? (
           <RowList>
             <SkelRow />
@@ -119,7 +123,7 @@ export function SeaPage() {
           </RowList>
         ) : (
           <>
-            {fail && <p className="px-1 text-[0.8125rem] font-semibold text-warn">Bağlantı yok, son bilgi gösteriliyor</p>}
+            {fail && ships.length > 0 && <p className="px-1 text-[0.8125rem] font-semibold text-warn">Bağlantı yok, son bilgi gösteriliyor</p>}
             {!groups.length && (
               <RowList>
                 <Row title="Çevrede sinyal veren gemi yok" />

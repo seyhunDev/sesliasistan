@@ -3001,3 +3001,28 @@ group("Ortak düğmeler")([
     ["soru değil", F("gemi kelimesi ama başka iş", () => S.seaAsk("tekne yıkama planı ekle") === null && S.seaAsk("deniz trafiğini aç") === null && S.seaAsk("yarın 10'da antrenman") === null)],
   ]);
 }
+
+// aisstream bağlantısı (lib/server/aisStream.js): yerel sahte sunucuyla mesaj, anahtar hatası, mesajsız kapanma
+{
+  const { collect } = await import("@/lib/server/aisStream");
+  const { WebSocketServer } = await import("ws");
+  const run = (onSub) => new Promise((ok) => {
+    const wss = new WebSocketServer({ port: 0 }, async () => {
+      const r = await collect("anahtar", 800, `ws://127.0.0.1:${wss.address().port}`);
+      wss.close();
+      ok(r);
+    });
+    wss.on("connection", (c) => c.on("message", (m) => onSub(c, JSON.parse(String(m)))));
+  });
+  const pos = { MessageType: "PositionReport", MetaData: { MMSI: 271000009, ShipName: "DENEME" }, Message: { PositionReport: { Latitude: 39.05, Longitude: 26.85, Sog: 4, Cog: 90, TrueHeading: 90, NavigationalStatus: 0, UserID: 271000009 } } };
+  const r1 = await run((c, sub) => sub.APIKey === "anahtar" && sub.BoundingBoxes?.length === 1 && c.send(Buffer.from(JSON.stringify(pos))));
+  const r2 = await run((c) => c.send(JSON.stringify({ error: "Api Key Is Not Valid" })));
+  const r3 = await run((c) => c.close(1008, "yetkisiz"));
+  const r4 = await collect("x", 500, "ws://127.0.0.1:9");
+  group("Deniz trafiği: aisstream bağlantısı")([
+    ["mesaj gelir", F("abonelik gider, ikili mesaj okunur", () => !r1.err && r1.parts.length === 1 && r1.parts[0].m === 271000009)],
+    ["anahtar hatası", F("hata metni döner", () => /Api Key Is Not Valid/.test(r2.err?.message || ""))],
+    ["mesajsız kapanma", F("hata sayılır", () => /kapandı 1008/.test(r3.err?.message || ""))],
+    ["sunucu yok", F("hata döner, takılmaz", () => !!r4.err && r4.parts.length === 0)],
+  ]);
+}
