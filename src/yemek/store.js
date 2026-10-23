@@ -120,6 +120,19 @@ export function useToday(orgId) {
   return list;
 }
 
+// Ana sayfa kartı: son 3 saatin siparişleri canlı (birkaç belge), açık olan (deneme siparişi saatten) ilki
+export function useActiveOrder(orgId) {
+  const [list, setList] = useState([]);
+  useEffect(() => {
+    if (!orgId) return;
+    const from = new Date(Date.now() - 3 * 3600000).toISOString();
+    return onSnapshot(query(ordersCol(orgId), where("at", ">=", from)),
+      (s) => setList(s.docs.map((d) => ({ ...d.data(), id: d.id })).sort((a, b) => b.at.localeCompare(a.at))),
+      () => setList([]));
+  }, [orgId]);
+  return list;
+}
+
 // Restoranın ve kuryenin işleri. Deneme siparişine dokunulunca gerçek olur (demo: false).
 const nowIso = () => new Date().toISOString();
 export function acceptOrder(orgId, o, place) {

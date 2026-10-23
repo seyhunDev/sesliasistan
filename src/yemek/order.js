@@ -72,4 +72,5 @@ export function etaFrom(order, place, km, now = new Date()) {
   else base = new Date((at("sent") || now).getTime() + (prep + road + 2) * 60000);
   return base < now ? now : base;
 }
-export const minutesLeft = (eta, now = new Date()) => Math.max(0, Math.ceil((new Date(eta) - now) / 60000));
+// Teslim edilmeyen siparişte süre dolsa da en az 1 dk (kurye "Teslim" deyince biter)
+export const minutesLeft = (eta, now = new Date()) => Math.max(1, Math.ceil((new Date(eta) - now) / 60000));

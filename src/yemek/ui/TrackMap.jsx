@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { OSM, OSM_ATTR, loadLeaflet } from "@/lib/leaflet";
+import { loadLeaflet } from "@/lib/leaflet";
+import { MAP_STYLE, MAP_STYLES, addStyle } from "../mapStyles";
 
 // Takip haritası: restoran (lacivert halka), adres (camgöbeği), kurye (lacivert dolu nokta, canlı). Harita bir kez kurulur,
 // kurye değişince yalnız işaret yer değiştirir. Telefonda tek parmak sayfayı kaydırır.
@@ -10,12 +11,13 @@ const RING = '<span style="display:block;width:22px;height:22px;border-radius:99
 const HOME = '<span style="display:block;width:22px;height:22px;border-radius:999px;background:#0b7f99;box-shadow:inset 0 0 0 5px #0b7f99,inset 0 0 0 11px #fff"></span>';
 const BIKE = '<span style="display:block;width:22px;height:22px;border-radius:999px;background:#0f2c45;border:3px solid #fff;box-shadow:0 0 0 6px rgba(11,127,153,.25)"></span>';
 
-export function TrackMap({ from, to, courier }) {
+export function TrackMap({ from, to, courier, look = MAP_STYLE, tall }) {
   const box = useRef(null);
   const map = useRef(null);
   const bike = useRef(null);
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState(false);
+  const [info, setInfo] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -23,8 +25,8 @@ export function TrackMap({ from, to, courier }) {
       .then((L) => {
         if (!live || !box.current) return;
         const touch = window.matchMedia?.("(pointer: coarse)").matches;
-        const m = L.map(box.current, { zoomControl: false, attributionControl: true, dragging: !touch, scrollWheelZoom: false, tap: false });
-        L.tileLayer(OSM, { maxZoom: 19, attribution: OSM_ATTR }).addTo(m);
+        const m = L.map(box.current, { zoomControl: false, attributionControl: false, dragging: !touch, scrollWheelZoom: false, tap: false });
+        addStyle(L, m, look);
         const pts = [from, to].filter(Boolean).map((p) => [p.lat, p.lng]);
         if (from) L.marker([from.lat, from.lng], { icon: dot(L, RING) }).addTo(m);
         if (to) L.marker([to.lat, to.lng], { icon: dot(L, HOME) }).addTo(m);
@@ -53,5 +55,11 @@ export function TrackMap({ from, to, courier }) {
   }, [ready, courier?.lat, courier?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (err) return null;
-  return <div ref={box} className="h-64 w-full overflow-hidden rounded-[1.25rem] border border-line bg-line" />;
+  return (
+    <div className="relative">
+      <div ref={box} className={`${tall ? "h-[26rem]" : "h-64"} w-full overflow-hidden rounded-[1.25rem] border border-line bg-line`} />
+      <button type="button" onClick={() => setInfo(!info)} aria-label="Harita kaynağı" className="absolute bottom-2 right-2 z-[500] grid size-6 place-items-center rounded-full bg-white/85 text-[0.75rem] font-bold text-mut">i</button>
+      {info && <p className="absolute bottom-2 right-10 z-[500] rounded-lg bg-white/90 px-2 py-1 text-[0.6875rem] text-mut">{MAP_STYLES[look]?.attr}</p>}
+    </div>
+  );
 }
