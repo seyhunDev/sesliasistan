@@ -9,6 +9,7 @@ import { useSea } from "./useSea";
 // üstte küçük harita (dokunulmaz), altta "Deniz trafiği" ve kısa özet ("7 gemi · 2 yanaşıyor"). Kartın tamamı /sea'yi açar.
 // Az data: 60 sn'de bir, yalnız ekran açıkken sorar. Anahtar yoksa (AISSTREAM_KEY) kart görünmez; veri alınamazsa kart
 // "Veri alınamadı" der (Seyhun 2026-10-23: kart hiç çıkmayınca "ana sayfa kartını da yap" dedi).
+// Sayfadaki harita VesselFinder'ın (2026-10-23); kartta hafif kendi haritamız kalır (VesselFinder ana sayfada ağır).
 // Görünüş yemek kartıyla aynı (.food-card); OwnerHome'da yemek kartının altında (ana sayfa sahibiyle 2026-10-23).
 const MOVE = ["approach", "leave", "ready"];
 
@@ -18,7 +19,7 @@ export function SeaCard({ className = "" }) {
   if (!data || data.error === "nokey") return null;
   const moving = ships.filter((s) => MOVE.includes(s.state.key));
   const near = moving.filter((s) => s.state.key === "approach").length;
-  const sub = !data.ships ? "Veri alınamadı" : [`${ships.length} gemi`, near ? `${near} yanaşıyor` : moving.length ? `${moving.length} hareketli` : ""].filter(Boolean).join(" · ");
+  const sub = !data.ships ? "Veri alınamadı" : !ships.length ? "Dikili" : [`${ships.length} gemi`, near ? `${near} yanaşıyor` : moving.length ? `${moving.length} hareketli` : ""].filter(Boolean).join(" · ");
   return (
     <Link href="/sea" data-press className={`food-card block overflow-hidden rounded-[1.375rem] ${className}`}>
       <SeaMap small ships={ships} />
