@@ -809,3 +809,7 @@ html:has(:is(.home-navy, .page-navy)), body:has(:is(.home-navy, .page-navy)) { b
 @keyframes atabup { from { transform: translate3d(0, 100%, 0); } }
 .atab-up { animation: atabup .36s cubic-bezier(.22, .8, .24, 1) backwards; }
 @media (prefers-reduced-motion: reduce) { .atab-up { animation: none; } }
+/* FITNESS SPORCULAR (Seyhun 2026-10-23 "A · Koyu"): baştan sona koyu, üstte salon fotoğrafı koyulaşarak kaybolur (FitnessHome FitPhoto),
+   zemin aşağı doğru daha da koyulaşır. Kartlar #13233d. Sayfanın kalanı da koyu (alt boşlukta açık şerit kalmasın) */
+.fit-dark { --bg: #0b1628; --card: #13233d; background: linear-gradient(#0b1628 0, #0b1628 55%, #060d1a 100%); }
+html:has(.fit-dark), body:has(.fit-dark) { background: #060d1a !important; }
