@@ -51,12 +51,13 @@ export function sortCouriers(couriers = [], orders = [], pos) {
   return [...couriers].map((c) => ({ ...c, ...courierState(c, orders), km: km(c) })).sort((a, b) => a.busy - b.busy || a.km - b.km);
 }
 
-// Deneme kuryeleri: Dikili'nin farklı yerlerinde, ikisi siparişte
+// Deneme kuryeleri: Dikili'nin farklı yerlerinde, ikisi siparişte. Yönetim'den eklenince her biri gerçek kurye hesabı olur
+// (kullanıcı adı login, şifreyi ana hesap ekleme anında verir; /api/kurye action demo). Kuryeyle girilince yeri telefondan.
 export const DEMO_COURIERS = [
-  { id: "dk-murat", name: "Murat", phone: "0532 000 00 11", vehicle: "motor", pos: { lat: 39.0718, lng: 26.8884 } },
-  { id: "dk-emre", name: "Emre", phone: "0532 000 00 12", vehicle: "motor", pos: { lat: 39.0762, lng: 26.8931 } },
-  { id: "dk-ayse", name: "Ayşe", phone: "0532 000 00 13", vehicle: "bisiklet", pos: { lat: 39.0694, lng: 26.8858 } },
-  { id: "dk-can", name: "Can", phone: "0532 000 00 14", vehicle: "araba", pos: { lat: 39.0655, lng: 26.8812 }, demoBusy: true },
-  { id: "dk-zeynep", name: "Zeynep", phone: "0532 000 00 15", vehicle: "motor", pos: { lat: 39.0790, lng: 26.8968 }, demoBusy: true },
-  { id: "dk-ali", name: "Ali", phone: "0532 000 00 16", vehicle: "bisiklet", pos: { lat: 39.0736, lng: 26.8840 } },
+  { id: "dk-murat", login: "kurye.murat", name: "Murat", phone: "0532 000 00 11", vehicle: "motor", pos: { lat: 39.0718, lng: 26.8884 } },
+  { id: "dk-emre", login: "kurye.emre", name: "Emre", phone: "0532 000 00 12", vehicle: "motor", pos: { lat: 39.0762, lng: 26.8931 } },
+  { id: "dk-ayse", login: "kurye.ayse", name: "Ayşe", phone: "0532 000 00 13", vehicle: "bisiklet", pos: { lat: 39.0694, lng: 26.8858 } },
+  { id: "dk-can", login: "kurye.can", name: "Can", phone: "0532 000 00 14", vehicle: "araba", pos: { lat: 39.0655, lng: 26.8812 }, demoBusy: true },
+  { id: "dk-zeynep", login: "kurye.zeynep", name: "Zeynep", phone: "0532 000 00 15", vehicle: "motor", pos: { lat: 39.0790, lng: 26.8968 }, demoBusy: true },
+  { id: "dk-ali", login: "kurye.ali", name: "Ali", phone: "0532 000 00 16", vehicle: "bisiklet", pos: { lat: 39.0736, lng: 26.8840 } },
 ].map((c) => ({ ...c, demo: true }));

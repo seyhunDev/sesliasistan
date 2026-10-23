@@ -5,3 +5,7 @@
 ## Sıradaki işler
 
 - Denemeler bitince "Şifre" düğmesini kaldır (Seyhun söyleyince).
+
+## Asistan
+
+- Deneme kuryeleri (Yönetim › Kuryeler, deneme modunda "Deneme kuryeleri ekle") artık gerçek kurye hesabı: kullanıcı adları kurye.murat, kurye.emre, kurye.ayse, kurye.can, kurye.zeynep, kurye.ali; şifreyi ana hesap eklerken verir (hepsine aynı). Kaldırınca hesaplar kapanır. Deneme kuryesiyle girilince yeri telefondan yazılır.

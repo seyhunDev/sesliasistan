@@ -108,7 +108,7 @@ function Courier({ orgId, courier, couriers, onChange, self }) {
     list.current = couriers;
   });
   useEffect(() => {
-    if (courier.demo || !navigator.geolocation) return;
+    if ((courier.demo && !self) || !navigator.geolocation) return;
     const watch = navigator.geolocation.watchPosition(
       (p) => {
         const pos = { lat: +p.coords.latitude.toFixed(5), lng: +p.coords.longitude.toFixed(5) };

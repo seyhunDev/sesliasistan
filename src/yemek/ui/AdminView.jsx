@@ -12,7 +12,7 @@ import { STATUSES, STATUS_NAMES, lineDetail, minutesLeft } from "../order";
 import { liveView } from "../demo";
 import { VEHICLES } from "../route";
 import { PLACES, placeById, useSettings, useToday, saveSettings, setStatus } from "../store";
-import { courierState, sortCouriers, DEMO_COURIERS } from "../couriers";
+import { courierState, sortCouriers } from "../couriers";
 import { orderNo } from "../qr";
 import { Img, tl } from "./Img";
 import { CourierMap } from "./CourierMap";
@@ -258,6 +258,19 @@ function Couriers({ couriers, orders, demo, save, signup }) {
       toast(e.message);
     }
   };
+  // Deneme kuryeleri gerçek hesap olarak açılır (kullanıcı adları listede, şifre burada verilir)
+  const demoFlip = async () => {
+    const password = hasDemo ? "" : window.prompt("Deneme kuryelerinin şifresi (en az 6 karakter)");
+    if (!hasDemo && !password) return;
+    setWait(true);
+    try {
+      await kuryeApi("demo", { on: !hasDemo, password });
+      toast(hasDemo ? "Deneme kuryeleri kaldırıldı" : "Deneme kuryeleri eklendi");
+    } catch (e) {
+      toast(e.message);
+    }
+    setWait(false);
+  };
   const drop = (c) => {
     if (!window.confirm(`${c.name} silinsin mi?`)) return;
     if (c.account) kuryeApi("remove", { id: c.id }).catch((e) => toast(e.message));
@@ -305,7 +318,7 @@ function Couriers({ couriers, orders, demo, save, signup }) {
         <Switch on={signup} onChange={wait ? undefined : flip} label="Kurye kaydı" />
       </div>
       {demo && (
-        <Button variant="secondary" onClick={() => save({ couriers: hasDemo ? couriers.filter((c) => !c.demo) : [...couriers, ...DEMO_COURIERS.filter((d) => !couriers.some((c) => c.id === d.id))] })}>
+        <Button variant="secondary" loading={wait} onClick={demoFlip}>
           {hasDemo ? "Deneme kuryelerini kaldır" : "Deneme kuryeleri ekle"}
         </Button>
       )}
