@@ -1,8 +1,8 @@
-Commit: 61011ee · Deniz trafiği: Dikili çevresindeki gemiler canlı (AIS, aisstream.io) (#766)
-Zaman: 2026-10-23-1437 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39946342794
+Commit: 80a803e · Ana sayfa: deniz trafiği kartı (küçük harita, dokununca /sea) (#767)
+Zaman: 2026-10-23-1451 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39948026289
 
-TAM TEST · 23.10.2026 14:30:16
+TAM TEST · 23.10.2026 14:43:34
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -21,7 +21,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1386/1386 geçti · 0 kalan · 413 sn
+SONUÇ: 1386/1386 geçti · 0 kalan · 457 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
