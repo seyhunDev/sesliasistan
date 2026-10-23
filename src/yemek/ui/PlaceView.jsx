@@ -3,13 +3,13 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
-import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { cartTotals } from "../order";
 import { openNow, placeById, useFood, useCart, writeCart } from "../store";
 import { Img, tl, rating } from "./Img";
 import { ItemSheet } from "./ItemSheet";
 import { CartSheet } from "./CartSheet";
+import { CartBar } from "./CartBar";
 
 // Restoran sayfası (müşteri; örnek B): kapak fotoğrafı, lacivert kategori şeridi, ürünler (yazı solda, fotoğraf sağda).
 // Ürüne dokununca seçenek penceresi; altta sepet düğmesi. ?urun=… o ürünü, ?sepet=1 sepeti açar.
@@ -89,14 +89,7 @@ export function PlaceView({ orgId, uid, name, id }) {
         ))}
       </div>
 
-      {count > 0 && (
-        <div className="fixed inset-x-0 bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.75rem)] z-30 mx-auto w-full max-w-[30rem] px-5">
-          <Button onClick={() => setCartOpen(true)} className="!justify-between !px-4">
-            <span>Sepet · {count} ürün</span>
-            <span className="tabular-nums">{tl(totals.subtotal)}</span>
-          </Button>
-        </div>
-      )}
+      {count > 0 && <CartBar place={place} lines={mine} count={count} total={totals.subtotal} onOpen={() => setCartOpen(true)} />}
 
       <ItemSheet place={place} item={item} onClose={() => setItem(null)} onAdd={add} closed={!on} />
       <CartSheet open={cartOpen} onClose={() => setCartOpen(false)} place={place} lines={mine} food={food} orgId={orgId} uid={uid} name={name} hemen={sp.get("hemen") === "1"} adres={sp.get("adres") || ""} onPlaced={(oid) => router.replace(`/yemek/siparis/${oid}`)} />

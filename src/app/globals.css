@@ -516,6 +516,13 @@ html[data-boot="on"] :is(.auth-rise, .auth-pop) { animation-play-state: paused; 
   .auth-rise, .auth-pop, .auth-step { animation: softin .3s ease-out backwards; }
 }
 
+/* Velora Yemek sepet çubuğu (src/yemek/ui/CartBar.jsx, Seyhun 2026-10-23): alt çubuğa yapışık, altı 1,5rem alt çubuğun
+   arkasında kalır (arada boşluk görünmesin). Çubuk varken alt çubuk da aynı lacivert: ikisi tek yüzey. */
+.cartbar { bottom: calc(var(--dome-h, 5.5rem) - 2.5rem); }
+body:has(.cartbar) .atabbar, body:has(.cartbar) .acenter { background: #11203a; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+body:has(.cartbar) .atabbar :is(a, button):not(.vlight) { color: rgba(255, 255, 255, .62); }
+body[data-asst] .cartbar, body[data-typing] .cartbar { display: none; }
+
 /* Asistan açıkken sayfanın alttaki düğme çubuğu (evrak hazırla, kaydet…) gizlenir: asistan onun arkasında kalmasın */
 body[data-asst] [data-pagebar],
 body[data-typing] [data-pagebar] {
@@ -702,6 +709,7 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
   body[data-side] { padding-left: 15rem; }
   body[data-side] main.max-w-\[30rem\], body[data-side] [data-screen] > div, body[data-side] main.fixed > div.max-w-\[30rem\] { max-width: 44rem; }
   body[data-side] .atabbar-wrap { display: none; }
+  body[data-side] .cartbar { left: 15rem; bottom: -1.5rem; }
   body[data-side] :is(.fixed[data-pagebar], [data-screen], main.fixed), body[data-side] > [data-bar] { left: 15rem; }
   body[data-side] .dome:not([data-on]) { left: 15rem; }
   body[data-side] > [role="status"].fixed, body[data-side] [role="status"].fixed.inset-x-0 { left: 15rem; }
