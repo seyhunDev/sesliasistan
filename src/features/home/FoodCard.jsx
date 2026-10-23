@@ -7,6 +7,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useActiveOrder, placeById } from "@/yemek/store";
 import { liveView } from "@/yemek/demo";
 import { STATUSES, STATUS_NAMES, minutesLeft } from "@/yemek/order";
+import { photoUrl } from "@/yemek/photo";
 import { Img } from "@/yemek/ui/Img";
 import { TrackMap } from "@/yemek/ui/TrackMap";
 
@@ -14,7 +15,7 @@ import { TrackMap } from "@/yemek/ui/TrackMap";
 // dokununca Alışveriş › Yemek ("Ne yiyelim?"). Yalnız ana hesap. Öneri (ör. "Pizza Rüzgar · Karışık") sonra src/yemek/suggest.js'ten gelecek.
 // Açık sipariş varsa (Seyhun 2026-10-23) kart onu gösterir: durum, restoran, kalan dakika; dokununca takip sayfası (harita, kurye).
 // Görünüm (Seyhun 2026-10-23 "kenardan içeri arka planda bir fotoğraf", globals.css .food-card): sipariş yokken sağdan içeri solan yemek
-// fotoğrafı (saate göre), solda başlık ve "Sipariş ver". Siparişte üstte küçük lacivert harita (restoran, ev, yoldaysa kurye) ve durum;
+// fotoğrafı (saate göre), solda başlık ve "Sipariş ver". Siparişte üstte küçük harita (restoran, ev, yoldaysa kurye) ve durum;
 // altta restoran, büyük kalan dakika, Onaylandı · Hazırlanıyor · Yolda · Teslim adımları.
 const STEPS = STATUSES.slice(1);
 const STEP_NAMES = { accepted: "Onaylandı", preparing: "Hazırlanıyor", onTheWay: "Yolda", delivered: "Teslim" };
@@ -33,19 +34,7 @@ export function FoodCard() {
     return (
       <Link href={`/yemek/siparis/${o.id}`} data-press className="food-card block overflow-hidden rounded-[1.375rem]">
         {map && (
-          <TrackMap
-            small
-            look="lacivert"
-            from={place.pos}
-            to={o.address.pos}
-            courier={v.status === "onTheWay" ? v.courier?.pos : null}
-            label={
-              <span className="absolute left-2.5 top-2.5 z-[500] flex items-center gap-1.5 rounded-full bg-[#0a1528]/80 py-1 pl-2 pr-2.5 text-[0.75rem] font-semibold">
-                <i className="size-[7px] rounded-full bg-[#22d3ee] shadow-[0_0_0_3px_rgba(34,211,238,.25)]" />
-                {CHIP[v.status]}
-              </span>
-            }
-          />
+          <TrackMap small from={place.pos} to={o.address.pos} courier={v.status === "onTheWay" ? v.courier : null} route={o.route} photo={place.cover && photoUrl(place.cover, 120)} f={v.f} info={CHIP[v.status]} />
         )}
         <span className="block px-3.5 pb-3 pt-3">
           <span className="flex items-end gap-3">

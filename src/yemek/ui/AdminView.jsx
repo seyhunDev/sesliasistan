@@ -10,6 +10,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { STATUSES, STATUS_NAMES, lineDetail, minutesLeft } from "../order";
 import { liveView } from "../demo";
+import { VEHICLES } from "../route";
 import { PLACES, placeById, useSettings, useToday, saveSettings, setStatus } from "../store";
 import { Img, tl } from "./Img";
 
@@ -231,9 +232,10 @@ export function Switch({ on, onChange, label }) {
 function Couriers({ couriers, save }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [vehicle, setVehicle] = useState("motor");
   const add = () => {
     if (!name.trim()) return;
-    save({ couriers: [...couriers, { id: `k${Date.now().toString(36)}`, name: name.trim(), phone: phone.trim() }] });
+    save({ couriers: [...couriers, { id: `k${Date.now().toString(36)}`, name: name.trim(), phone: phone.trim(), vehicle }] });
     setName("");
     setPhone("");
   };
@@ -248,7 +250,7 @@ function Couriers({ couriers, save }) {
               <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accbg text-[0.875rem] font-bold text-acc">{c.name.slice(0, 2).toLocaleUpperCase("tr")}</span>
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[0.9375rem] font-semibold">{c.name}</b>
-                {c.phone && <small className="block truncate text-[0.8125rem] text-mut">{c.phone}</small>}
+                <small className="block truncate text-[0.8125rem] text-mut">{[VEHICLES[c.vehicle || "motor"], c.phone].filter(Boolean).join(" · ")}</small>
               </span>
               <button type="button" aria-label={`${c.name} sil`} onClick={() => window.confirm(`${c.name} silinsin mi?`) && save({ couriers: couriers.filter((x) => x.id !== c.id) })} data-press className="btn btn-icon btn-sm text-mut">
                 <Icon name="trash" className="size-4" />
@@ -260,6 +262,12 @@ function Couriers({ couriers, save }) {
       <div className="flex gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad" maxLength={30} className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-card px-3.5 text-base outline-none focus:border-acc" />
         <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon" inputMode="tel" maxLength={20} className="h-11 w-32 rounded-xl border border-line bg-card px-3.5 text-base outline-none focus:border-acc" />
+      </div>
+      <div className="flex gap-2">
+        {Object.entries(VEHICLES).map(([k, n]) => (
+          <button key={k} type="button" aria-pressed={vehicle === k} onClick={() => setVehicle(k)} data-press
+            className={`h-11 flex-1 rounded-xl border text-[0.875rem] font-semibold ${vehicle === k ? "border-acc bg-accbg text-acc" : "border-line bg-card"}`}>{n}</button>
+        ))}
       </div>
       <Button disabled={!name.trim()} onClick={add}>Kurye ekle</Button>
     </section>
