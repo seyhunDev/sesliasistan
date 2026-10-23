@@ -14,6 +14,8 @@ import { tl } from "./Img";
 import { TrackMap } from "./TrackMap";
 import { photoUrl } from "../photo";
 import { useNow, useRemembered, withLive } from "./AdminView";
+import { kuryeApi } from "../courierApi";
+import { logout } from "@/lib/auth";
 
 // Velora Yemek › Kurye ekranı (başka telefondan açılır; kurye bu cihazda hatırlanır). Yoldaki siparişleri gösterir;
 // "Kare kod okut": restoranın fişindeki ya da ekranındaki kod okutulup "Teslim al" denince sipariş bu kuryeye verilir (Yolda).
@@ -31,11 +33,28 @@ export function CourierView({ orgId }) {
   return <Courier orgId={orgId} courier={courier} couriers={settings.couriers || []} onChange={() => pick("")} />;
 }
 
-function Top({ title, sub, onSub, pill }) {
+// Kendi hesabıyla giren kurye (role "courier"): uygulamada yalnız bu ekran var. Yazmalar sunucudan (/api/kurye).
+export function CourierSelf({ profile }) {
+  const settings = useSettings(profile.courierOf);
+  if (!settings) return null;
+  const courier = (settings.couriers || []).find((c) => c.id === profile.uid);
+  const out = () => window.confirm("Çıkış yapılsın mı?") && logout();
+  if (!courier) {
+    return (
+      <main className="mx-auto max-w-[30rem] px-5">
+        <Top title={profile.name} sub="Kurye · çıkış" onSub={out} self />
+        <p className="pt-10 text-center text-[0.9375rem] text-mut">Kurye kaydın kaldırılmış</p>
+      </main>
+    );
+  }
+  return <Courier orgId={profile.courierOf} courier={courier} couriers={settings.couriers || []} onChange={out} self />;
+}
+
+function Top({ title, sub, onSub, pill, self }) {
   return (
     <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Kurye ekranı">
       <header className="flex items-center gap-2.5">
-        <BackButton href="/yemek/yonetim" />
+        {!self && <BackButton href="/yemek/yonetim" />}
         <button type="button" onClick={onSub} disabled={!onSub} className="min-w-0 flex-1 text-left leading-tight">
           <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
           <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{title}</h1>
@@ -68,7 +87,7 @@ function PickCourier({ couriers, onPick }) {
 const HERE_MS = 60000;
 const HERE_M = 100;
 
-function Courier({ orgId, courier, couriers, onChange }) {
+function Courier({ orgId, courier, couriers, onChange, self }) {
   const toast = useToast();
   const today = useToday(orgId);
   const now = useNow();
@@ -95,13 +114,14 @@ function Courier({ orgId, courier, couriers, onChange }) {
         const h = here.current;
         if (h && (Date.now() - h.t < HERE_MS || distanceM(h.pos, pos) < HERE_M)) return;
         here.current = { pos, t: Date.now() };
-        saveSettings(orgId, { couriers: list.current.map((c) => (c.id === courier.id ? { ...c, pos, at: new Date().toISOString() } : c)) }).catch(() => {});
+        (self ? kuryeApi("pos", { pos, here: true })
+          : saveSettings(orgId, { couriers: list.current.map((c) => (c.id === courier.id ? { ...c, pos, at: new Date().toISOString() } : c)) })).catch(() => {});
       },
       () => {},
       { maximumAge: 30000, timeout: 20000 },
     );
     return () => navigator.geolocation.clearWatch(watch);
-  }, [orgId, courier.id, courier.demo]);
+  }, [orgId, courier.id, courier.demo, self]);
 
   // Konum paylaşımı: yalnız yolda sipariş varken
   useEffect(() => {
@@ -115,7 +135,8 @@ function Courier({ orgId, courier, couriers, onChange }) {
         if (l && Date.now() - l.t < STEP_MS) return;
         if (l && distanceM(l.pos, pos) < STEP_M) return;
         last.current = { pos, t: Date.now() };
-        list.forEach((id) => courierAt(orgId, id, pos).catch(() => {}));
+        if (self) kuryeApi("pos", { pos, ids: list }).catch(() => {});
+        else list.forEach((id) => courierAt(orgId, id, pos).catch(() => {}));
       },
       () => setGps("off"),
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
@@ -126,15 +147,15 @@ function Courier({ orgId, courier, couriers, onChange }) {
       navigator.geolocation.clearWatch(watch);
       lock?.release?.().catch(() => {});
     };
-  }, [ids, orgId]);
+  }, [ids, orgId, self]);
 
   const done = async (o) => {
     setBusy(o.id);
     try {
-      await deliverOrder(orgId, o);
+      await (self ? kuryeApi("deliver", { id: o.id }) : deliverOrder(orgId, o));
       toast("Teslim edildi");
-    } catch {
-      toast("Olmadı, yeniden dene");
+    } catch (e) {
+      toast(self && e?.message ? e.message : "Olmadı, yeniden dene");
     }
     setBusy("");
   };
@@ -142,11 +163,11 @@ function Courier({ orgId, courier, couriers, onChange }) {
   const take = async (o) => {
     setBusy(o.id);
     try {
-      await giveToCourier(orgId, o, placeById(o.placeId), courier);
+      await (self ? kuryeApi("pickup", { id: o.id }) : giveToCourier(orgId, o, placeById(o.placeId), courier));
       setScan(null);
       toast("Sipariş sende, yola çıkabilirsin");
-    } catch {
-      toast("Olmadı, yeniden dene");
+    } catch (e) {
+      toast(self && e?.message ? e.message : "Olmadı, yeniden dene");
     }
     setBusy("");
   };
@@ -157,7 +178,7 @@ function Courier({ orgId, courier, couriers, onChange }) {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
-      <Top title={courier.name} sub="Kurye · değiştir" onSub={onChange} pill={pill} />
+      <Top title={courier.name} sub={self ? "Kurye · çıkış" : "Kurye · değiştir"} onSub={onChange} pill={pill} self={self} />
       <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-4 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         <Button onClick={() => setScan("cam")}>Kare kod okut</Button>
         {given.length > 0 && (

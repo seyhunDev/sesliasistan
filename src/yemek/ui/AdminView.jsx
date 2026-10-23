@@ -16,6 +16,7 @@ import { courierState, sortCouriers, DEMO_COURIERS } from "../couriers";
 import { orderNo } from "../qr";
 import { Img, tl } from "./Img";
 import { CourierMap } from "./CourierMap";
+import { kuryeApi } from "../courierApi";
 
 // Velora Yemek › Yönetim (Seyhun, admin; örnek C): lacivertte bugünün sayıları, Siparişler / Restoranlar / Kuryeler,
 // deneme modu. Restoranı Yönetim'den kapatmak saatlere bakmadan sipariş almayı durdurur.
@@ -157,7 +158,7 @@ export function AdminView({ orgId }) {
           </section>
         )}
 
-        {tab === "couriers" && <Couriers couriers={couriers} orders={list} demo={demo} save={save} />}
+        {tab === "couriers" && <Couriers couriers={couriers} orders={list} demo={demo} save={save} signup={!!settings?.signup} />}
       </div>
       <OrderSheet orgId={orgId} o={list.find((x) => x.id === sel)} onClose={() => setSel(null)} />
     </main>
@@ -234,7 +235,24 @@ export function Switch({ on, onChange, label }) {
 
 // Kuryeler: haritada yerleri, listede müsait / siparişte (siparişteki kurye "Kuryeye ver"de seçilemez).
 // Deneme modunda Dikili'de 6 deneme kuryesi yüklenebilir ya da kaldırılabilir.
-function Couriers({ couriers, orders, demo, save }) {
+function Couriers({ couriers, orders, demo, save, signup }) {
+  const toast = useToast();
+  const [wait, setWait] = useState(false);
+  // Kurye kaydı (giriş ekranında "Kurye olarak kayıt ol"): sunucu açar/kapar; kayıtlı kurye silinince hesabı da kapanır
+  const flip = async () => {
+    setWait(true);
+    try {
+      await kuryeApi("signup", { open: !signup });
+    } catch (e) {
+      toast(e.message);
+    }
+    setWait(false);
+  };
+  const drop = (c) => {
+    if (!window.confirm(`${c.name} silinsin mi?`)) return;
+    if (c.account) kuryeApi("remove", { id: c.id }).catch((e) => toast(e.message));
+    else save({ couriers: couriers.filter((x) => x.id !== c.id) });
+  };
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [vehicle, setVehicle] = useState("motor");
@@ -261,12 +279,19 @@ function Couriers({ couriers, orders, demo, save }) {
                 <small className="block truncate text-[0.8125rem] text-mut">{c.busy ? `Siparişte${c.order ? ` · ${c.order.placeName} #${orderNo(c.order.id)}` : ""}` : [VEHICLES[c.vehicle || "motor"], c.phone].filter(Boolean).join(" · ")}</small>
               </span>
               <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[0.75rem] font-bold ${c.busy ? "bg-line text-mut" : "bg-accbg text-acc"}`}>{c.busy ? "Siparişte" : "Müsait"}</span>
-              <button type="button" aria-label={`${c.name} sil`} onClick={() => window.confirm(`${c.name} silinsin mi?`) && save({ couriers: couriers.filter((x) => x.id !== c.id) })} data-press className="btn btn-icon btn-sm text-mut">
+              <button type="button" aria-label={`${c.name} sil`} onClick={() => drop(c)} data-press className="btn btn-icon btn-sm text-mut">
                 <Icon name="trash" className="size-4" />
               </button>
             </div>
           ))}
         </RowList>
+      </div>
+      <div className="flex min-h-[3.5rem] items-center gap-3 rounded-[1.25rem] border border-line bg-card px-3.5 py-2.5">
+        <span className="min-w-0 flex-1">
+          <b className="block text-[0.9375rem] font-semibold">Kurye kaydı</b>
+          {signup && <small className="block truncate text-[0.8125rem] text-mut">sesliasistan.netlify.app/kurye-kayit</small>}
+        </span>
+        <Switch on={signup} onChange={wait ? undefined : flip} label="Kurye kaydı" />
       </div>
       {demo && (
         <Button variant="secondary" onClick={() => save({ couriers: hasDemo ? couriers.filter((c) => !c.demo) : [...couriers, ...DEMO_COURIERS.filter((d) => !couriers.some((c) => c.id === d.id))] })}>

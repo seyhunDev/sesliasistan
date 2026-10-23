@@ -168,6 +168,9 @@ export default function LoginPage() {
           Hesabın yok mu? <Link href="/register" className="font-semibold text-[#67e8f9]">Kayıt ol</Link>
         </p>
       )}
+      <p className="mt-3 text-center text-[0.875rem] text-white/60">
+        <Link href="/kurye-kayit" className="font-semibold text-[#67e8f9]">Kurye olarak kayıt ol</Link>
+      </p>
     </form>
   );
 }

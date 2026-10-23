@@ -17,6 +17,7 @@ import { fetchRoute, roadMin } from "./route";
 import { liveView } from "./demo";
 import { courierOnOrder, nearestFree } from "./couriers";
 import { distanceKm } from "./address";
+import { deliverPatch, pickupPatch } from "./steps";
 
 export const PLACES = SAMPLE_PLACES;
 export const placeById = (id) => PLACES.find((p) => p.id === id) || null;
@@ -176,14 +177,8 @@ export function acceptOrder(orgId, o, place) {
   return patchOrder(orgId, o.id, { demo: false, status: "preparing", times: { ...(o.times || {}), accepted: t, preparing: t }, eta: new Date(Date.now() + ((place?.prepMin || 20) + road) * 60000).toISOString() });
 }
 export const rejectOrder = (orgId, o) => patchOrder(orgId, o.id, { demo: false, status: "cancelled", times: { ...(o.times || {}), cancelled: nowIso() } });
-export function giveToCourier(orgId, o, place, courier) {
-  return patchOrder(orgId, o.id, {
-    demo: false, status: "onTheWay", times: { ...(o.times || {}), onTheWay: nowIso() },
-    eta: new Date(Date.now() + roadMin(o, place, courier.vehicle) * 60000).toISOString(),
-    courier: { id: courier.id, name: courier.name, phone: courier.phone || "", vehicle: courier.vehicle || "motor", pos: place?.pos || null, at: nowIso() },
-  });
-}
-export const deliverOrder = (orgId, o) => patchOrder(orgId, o.id, { demo: false, status: "delivered", times: { ...(o.times || {}), delivered: nowIso() } });
+export const giveToCourier = (orgId, o, place, courier) => patchOrder(orgId, o.id, pickupPatch(o, place, courier));
+export const deliverOrder = (orgId, o) => patchOrder(orgId, o.id, deliverPatch(o));
 // Yönetim'den elle durum: o adımın saati yazılır, sipariş gerçek olur
 // (geri alınırsa sonraki adımların saatleri silinir)
 export function setStatus(orgId, o, status) {
