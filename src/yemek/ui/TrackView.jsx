@@ -8,21 +8,21 @@ import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
 import { ListHead, RowList, Row } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
-import { lineDetail, minutesLeft, stepRows } from "../order";
+import { minutesLeft, stepRows } from "../order";
 import { liveView } from "../demo";
 import { placeById, useOrder, patchOrder } from "../store";
-import { Img, tl } from "./Img";
+import { Img } from "./Img";
 import { Delivered } from "./Delivered";
+import { OrderCard } from "./OrderCard";
 import { photoUrl } from "../photo";
 import { VEHICLES, roadMin } from "../route";
 import { TrackMap } from "./TrackMap";
 
 // Sipariş takibi (örnek 6-7): lacivertte büyük kalan süre ve 4 adım; yolda iken haritada kurye;
-// sipariş, adım adım saatler. Teslim edilince tam ekran "Afiyet olsun" (Delivered.jsx: puan isteğe bağlı, yıldız ya da ✕ ile kapanır,
+// sipariş kartı (OrderCard: arkada fotoğraf, durum, ürünler, tutar), adım adım saatler. Teslim edilince tam ekran "Afiyet olsun" (Delivered.jsx: puan isteğe bağlı, yıldız ya da ✕ ile kapanır,
 // geri dönülür); sonra lacivert üstte siparişin fotoğrafı. Deneme modunda durum kendiliğinden ilerler (demo.js).
 const STEPS = [["accepted", "Onaylandı"], ["preparing", "Hazırlanıyor"], ["onTheWay", "Yolda"], ["delivered", "Teslim"]];
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-const PAY = { "kapıda-kart": "Kapıda kart", "kapıda-nakit": "Kapıda nakit" };
 
 export function TrackView({ orgId, id }) {
   const order = useOrder(orgId, id);
@@ -116,14 +116,12 @@ export function TrackView({ orgId, id }) {
             info={v.courier ? `${v.courier.name} · ${VEHICLES[v.courier.vehicle || "motor"]}${order.route ? ` · ${String(order.route.km).replace(".", ",")} km` : ""}` : `Hazırlık ${place?.prepMin || 20} dk · Yol ${roadMin(order, place)} dk`} />
         )}
 
-        <section>
-          <ListHead title="Sipariş" />
+        {order.rating > 0 && (
           <RowList>
-            {order.rating > 0 && <Row title="Puanın" sub={order.review || undefined} right={<span className="text-[#c99a2e]">{"★".repeat(order.rating)}</span>} />}
-            {order.lines.map((l, i) => <Row key={i} title={`${l.qty > 1 ? `${l.qty}× ` : ""}${l.name}`} sub={lineDetail(l)} right={tl(l.unit * l.qty)} />)}
-            <Row title={`Toplam · ${PAY[order.pay] || ""}`} right={tl(order.total)} />
+            <Row title="Puanın" sub={order.review || undefined} right={<span className="text-[#c99a2e]">{"★".repeat(order.rating)}</span>} />
           </RowList>
-        </section>
+        )}
+        <OrderCard order={order} status={v.status} photo={photo} />
 
         <section>
           <ListHead title="Adım adım" />
