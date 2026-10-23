@@ -240,16 +240,14 @@ export async function run(server, log = () => {}) {
       transcript = prev;
     }
   };
-  // Asistanı kapat: × her durumda kapatır
+  // Asistanı kapat (tek kutu, 2026-10-23): dinliyorsa Dur, taslak varsa × (Sil ve kapat), değilse boş alana dokun
   const closeAll = async (page) => {
     for (let i = 0; i < 4 && (await page.locator(".afull.afull-in").count()); i++) {
-      for (const name of ["Asistanı kapat"]) {
-        const x = btn(page, name);
-        if (await x.count()) {
-          await x.click().catch(() => {});
-          break;
-        }
-      }
+      const dur = btn(page, "Dur");
+      const x = btn(page, "Asistanı kapat");
+      if (await dur.count()) await dur.click().catch(() => {});
+      else if (await x.count()) await x.click().catch(() => {});
+      else await page.locator("[data-dome] [data-apane]").click({ position: { x: 20, y: 20 } }).catch(() => {});
       await page.waitForTimeout(400);
     }
     await waitFor(async () => !(await full(page).count()), 1500);
