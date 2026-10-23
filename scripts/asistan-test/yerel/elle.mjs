@@ -2951,3 +2951,14 @@ group("Ortak düğmeler")([
     ["önce bildirimler", F("pencerede Bildirimler, Yapılacaklar'dan önce", () => { const s = src("features/home/Inbox.jsx"); return s.indexOf('aria-label="Bildirimler"') < s.indexOf('aria-label="Yapılacaklar"'); })],
   ]);
 }
+
+// Asistan yazı kutusunda Fotoğraf düğmesi: motor photoIn verince görünür, seçilen resmi ona verir
+{
+  const { readFileSync } = await import("node:fs");
+  const s = readFileSync(new URL("../../../src/features/home/TabBar.jsx", import.meta.url), "utf8");
+  group("Asistan: fotoğraf düğmesi")([
+    ["yalnız photoIn varsa", F("photo yalnız act.current.photoIn varken verilir", () => /photo: act\.current\.photoIn \? \(f\) => act\.current\.photoIn\(f\) : undefined/.test(s))],
+    ["resim seçici", F('accept="image/*" ve düğme adı Fotoğraf', () => /accept="image\/\*"/.test(s) && /aria-label="Fotoğraf"/.test(s))],
+    ["seçici açıkken kapanmaz", F("kutu picking varken kendiliğinden kapanmaz", () => /!picking\.current && !text\.trim\(\)/.test(s))],
+  ]);
+}
