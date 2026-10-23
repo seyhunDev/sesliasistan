@@ -24,7 +24,10 @@ export function saveEvery(v) {
 // Asistan ve sayfa aynı isteği kullanır
 export async function fetchSea() {
   const r = await authFetch("/api/sea");
-  if (!r.ok) throw new Error("sea");
+  if (!r.ok) {
+    const j = await r.json().catch(() => ({}));
+    return { error: "fail", why: j.error || `sunucu ${r.status}` };
+  }
   return r.json();
 }
 
@@ -37,9 +40,11 @@ export function useSea(every) {
     busy.current = true;
     try {
       const v = await fetchSea();
-      if (v.ships || v.error === "nokey") setData(v);
+      // Hata olursa son gemiler kalır; hiç gemi gelmediyse hata gösterilir (sayfa "yükleniyor"da takılmaz)
+      setData((d) => (v.ships || !d?.ships ? v : d));
       setFail(!!v.error && v.error !== "nokey");
     } catch {
+      setData((d) => d || { error: "fail", why: "bağlantı yok" });
       setFail(true);
     } finally {
       busy.current = false;
