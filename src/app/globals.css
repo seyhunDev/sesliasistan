@@ -738,15 +738,10 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .ck .raised.ck-pill { height: 2.5rem; border-radius: 9999px; background: transparent; border: 1.5px solid rgba(103, 232, 249, .55); box-shadow: none; color: #fff; font-size: 0.875rem; }
 .ck .raised.ck-pill[data-pressed] { background: rgba(103, 232, 249, .16); transform: scale(.97); }
 .ck .raised.ck-pill.act-main { background: #0ea5c4; border-color: #0ea5c4; color: #fff; }
-/* Ana sayfa not kartları (HomeWidgets NotesWidget; Seyhun 2026-10-23 "kayan not kartları"): lacivert kart, sabitlenen ince vurgu çerçeveli,
-   notun rengi (data-color, Notlar sayfasındaki color alanı) varsa kart o rengin koyu tonunda */
+/* Ana sayfa not kartları (HomeWidgets NotesWidget; Seyhun 2026-10-23 "kayan not kartları"): lacivert kart, sabitlenen ince vurgu çerçeveli;
+   notun rengi varsa kartın zemini o rengin tonu (satır içi, noteColor) */
 .note-card { background: var(--card); border-color: var(--line); }
 .note-card.note-pin { border-color: color-mix(in srgb, var(--acc) 60%, transparent); }
-.note-card[data-color="cyan"] { background: #123b4a; border-color: #1d5a6e; }
-.note-card[data-color="green"] { background: #143a2c; border-color: #1f5a43; }
-.note-card[data-color="amber"] { background: #3a3220; border-color: #5a4b28; }
-.note-card[data-color="red"] { background: #3e2026; border-color: #62303a; }
-.note-card[data-color="blue"] { background: #1a2d5a; border-color: #29448a; }
 /* Rüzgâr grafiği açılışta soldan sağa çizilir; şimdi noktası atar */
 .ck-draw { animation: ck-draw .9s cubic-bezier(.22, .8, .24, 1) both; }
 @keyframes ck-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }

@@ -12,7 +12,8 @@ import { useData } from "@/features/data/DataProvider";
 import { statusOf } from "@/lib/fitness/model";
 import { clubRaceRow, fitHref, fitWeek, homeNotes, lastTraining, personHref, readSum, saveSum } from "@/lib/homeTiles";
 import { loadAthletes } from "@/features/athletes/data";
-import { initials, rel, todayStr } from "@/lib/utils/format";
+import { noteColor, noteWhen } from "@/lib/noteState";
+import { initials, todayStr } from "@/lib/utils/format";
 
 // Ana sayfanın canlı alanları: Sporcular, Fitness, Notlar ve Kulüp listesindeki Mesajlar satırı (Kulüp listesi HomeSummary.jsx'te).
 // Bilgisi olmayan alan çizilmez. Bellekteki veriden (useData, useChat), ek okuma yok. WIDGET/WHead: eski kart kalıbı (sıradaki yarış kartı).
@@ -129,30 +130,29 @@ const dayName = (d, today) => {
 // Notlar (Seyhun: "notlar da önemli"): en çok 3 not (sabitler önce, sonra en yeniler; homeNotes), adı ve altında "ne zaman · ilk satır",
 // sabit notun sağında "Sabit". Dokununca not açılır. Not ekleme kokpitin altındaki "Not" düğmesinde (HomeGrid).
 export function NotesWidget({ notes }) {
-  const { openAdd } = useAdd();
   const { list, total } = homeNotes(notes || [], 8);
+  const today = todayStr();
   // Seyhun 2026-10-23 "A · Kayan not kartları": yapışkan not gibi küçük kartlar sağa kayar; kartta yalnız başlık (3 satıra kadar) ve tarih.
-  // Sabitlenen not ince vurgu çerçeveli; notun rengi (color, Notlar sayfası) varsa kart o renkte. Dokununca not açılır.
+  // Sabitlenen not ince vurgu çerçeveli; notun rengi (color, noteColor) varsa kart o rengin tonunda. Dokununca not sayfası (/notes/[id]).
   return (
     <section aria-label="Notlar">
       <ListHead title="Notlar" count={total} href={total > 0 ? "/notes" : null} />
       {list.length ? (
         <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {list.map((n) => {
-            const when = rel((n.updatedAt || n.createdAt || "").slice(0, 10));
+            const when = noteWhen(n.updatedAt || n.createdAt, today);
             const first = String(n.body || "").split("\n").find((x) => x.trim()) || "";
             return (
-              <button
+              <Link
                 key={n.id}
-                type="button"
+                href={`/notes/${n.id}`}
                 data-press
-                onClick={() => openAdd({ edit: { kind: "note", id: n.id } })}
                 className={`note-card flex h-[6.5rem] w-[8.5rem] shrink-0 snap-start flex-col rounded-2xl border p-3 text-left ${n.pinned ? "note-pin" : ""}`}
-                data-color={n.color || undefined}
+                style={n.color ? { background: `color-mix(in srgb, ${noteColor(n)} 20%, var(--card))`, borderColor: `color-mix(in srgb, ${noteColor(n)} 45%, var(--line))` } : undefined}
               >
                 <b className="line-clamp-3 text-[0.9375rem] font-semibold leading-snug">{n.title || first || "Not"}</b>
                 {when && <small className="mt-auto truncate text-[0.75rem] text-mut">{when}</small>}
-              </button>
+              </Link>
             );
           })}
         </div>
