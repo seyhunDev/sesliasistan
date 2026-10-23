@@ -43,8 +43,8 @@ export function useSea(every) {
       // Hata olursa son gemiler kalır; hiç gemi gelmediyse hata gösterilir (sayfa "yükleniyor"da takılmaz)
       setData((d) => (v.ships || !d?.ships ? v : d));
       setFail(!!v.error && v.error !== "nokey");
-    } catch {
-      setData((d) => d || { error: "fail", why: "bağlantı yok" });
+    } catch (e) {
+      setData((d) => d || { error: "fail", why: e?.message || "bağlantı yok" });
       setFail(true);
     } finally {
       busy.current = false;
