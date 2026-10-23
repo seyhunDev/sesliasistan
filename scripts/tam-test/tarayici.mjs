@@ -10,7 +10,7 @@ const PAGES = [
   // Sonradan eklenen sayfalar (yarış multimedya, antrenman günü, takvim, kişi sayfası…); kayıt sayfaları uydurma kimlikle
   "/archive", "/athletes/x1", "/athletes/attendance/report", "/athletes/races/x1", "/athletes/races/x1/media", "/birthdays", "/calendar", "/english",
   "/debts", "/events", "/events/x1", "/inventory/x1", "/invoices", "/mail/setup", "/my-attendance", "/people/staff", "/people/p/x1",
-  "/posts/x1", "/receipts/x1", "/schedule", "/settings/voice-test", "/settings/tests", "/shopping", "/staff", "/training/day", "/wind", "/sea",
+  "/posts/x1", "/receipts/x1", "/schedule", "/settings/voice-test", "/settings/tests", "/shopping", "/staff", "/training/day", "/wind", "/sea", "/cams",
 ];
 // Sunucu uçları: girişsiz istek reddedilmeli (401/403), çökmemeli (500)
 const APIS = ["assistant", "word", "tasks", "attendance", "race", "post-caption", "training-log", "fitness", "inventory", "invoice", "person", "event-plan", "schedule", "interpret", "transcribe", "notify", "staff", "receipt-no"];

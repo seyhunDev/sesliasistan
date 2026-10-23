@@ -3026,3 +3026,23 @@ group("Ortak düğmeler")([
     ["sunucu yok", F("hata döner, takılmaz", () => !!r4.err && r4.parts.length === 0)],
   ]);
 }
+
+// Halka açık kameralar (lib/cams.js): Windy cevabı, uzaklık, süre, sesli komut
+{
+  const C = await import("@/lib/cams");
+  const now = Date.parse("2026-10-23T12:00:00Z");
+  const w = (id, lat, lon, extra = {}) => ({ webcamId: id, title: `Kamera ${id}`, status: "active", lastUpdatedOn: "2026-10-23T11:55:00Z", location: { latitude: lat, longitude: lon }, images: { current: { preview: `p${id}.jpg`, thumbnail: `t${id}.jpg` } }, player: { day: `https://webcams.windy.com/webcams/public/embed/player/${id}/day` }, urls: { detail: `https://www.windy.com/webcams/${id}` }, ...extra });
+  group("Kameralar")([
+    ["Windy kamerası", F("ad, görüntü, oynatıcı, bağlantı", () => { const c = C.normCam(w(7, 39.3, 26.7)); return c.id === "7" && c.preview === "p7.jpg" && /player\/7\/day/.test(c.player) && /webcams\/7$/.test(c.link) && !c.live; })],
+    ["oynatıcı nesne", F("player.live { embed } canlı sayılır", () => { const c = C.normCam(w(8, 39, 26, { player: { live: { embed: "https://x/live" } } })); return c.player === "https://x/live" && c.live; })],
+    ["görüntüsüz atlanır", F("images yok ya da pasif → null", () => C.normCam(w(9, 39, 26, { images: {} })) === null && C.normCam(w(9, 39, 26, { status: "inactive" })) === null)],
+    ["yakından uzağa", F("km eklenir, sıralanır", () => { const l = C.camList([w(1, 38.42, 27.14), w(2, 39.32, 26.69)], C.PLACES[0]); return l[0].id === "2" && l[0].km > 20 && l[0].km < 40 && l[1].km > 60; })],
+    ["km yazısı", F("<1 km, 27 km", () => C.kmLabel(0.4) === "<1 km" && C.kmLabel(27.4) === "27 km")],
+    ["süre yazısı", F("şimdi, 5 dk, 2 sa, 3 gün", () => C.agoLabel(now - 20e3, now) === "şimdi" && C.agoLabel(now - 5 * 60e3, now) === "5 dk" && C.agoLabel(now - 2 * 3600e3, now) === "2 sa" && C.agoLabel(now - 3 * 86400e3, now) === "3 gün")],
+    ["konumum", F("Dikili'ye yakınsa adı", () => C.nearPlace({ lat: 39.07, lon: 26.9 }) === "Dikili" && C.nearPlace({ lat: 40.5, lon: 28 }) === "")],
+    ["sayfa yolu", F("/cams?yer=", () => C.camsPath("Ayvalık") === "/cams?yer=Ayval%C4%B1k" && C.camsPath("") === "/cams")],
+    ["ses: yer", F("hazır ve serbest yer", () => C.camsAsk("Ayvalık kameralarını aç")?.place === "Ayvalık" && C.camsAsk("Midilli'deki kameralar")?.place === "Midilli" && C.camsAsk("Bodrum'un kameralarını göster")?.place === "Bodrum" && C.camsAsk("Çeşmedeki kameraları aç")?.place === "Çeşme")],
+    ["ses: yersiz", F("kameraları aç → boş yer", () => C.camsAsk("kameraları aç")?.place === "" && C.camsAsk("canlı kameraları göster")?.place === "")],
+    ["ses: fiş kamerası değil", F("tekil kamerayı aç, fiş, ön kamera → null", () => C.camsAsk("kamerayı aç") === null && C.camsAsk("fiş kamerasını aç") === null && C.camsAsk("ön kamerayı aç") === null && C.camsAsk("yarış kamerasını aç") === null)],
+  ]);
+}

@@ -11,6 +11,7 @@ import { wantsEvent } from "@/features/events/eventWords";
 import { wantsInventory } from "@/features/inventory/invWords";
 import { athleteIn, fitLocal, guideWord, wantsFitness } from "@/lib/fitness/words";
 import { seaAsk } from "@/lib/sea";
+import { camsAsk } from "@/lib/cams";
 import { fold } from "@/lib/fitness/exercises";
 import { wantsFood } from "@/lib/fitness/food";
 import { foodOrderAsk } from "@/yemek/voice";
@@ -160,6 +161,9 @@ export function routesOf(s, c = {}) {
   if (ra) add("results", { ra });
   if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, c.races || [], today)))) add("raceOpen");
   if (wantsPerson(s) && !(owner && contactScanCommand(s)) && !(owner && racer && athleteCommand(s)?.op === "add")) add("person");
+  // Halka açık kameralar: "kameraları aç", "Ayvalık kameralarını göster" (isler/kamera.js); tekil "kamerayı aç" fiş kamerasıdır
+  const cq = !mf && !athleteSide ? camsAsk(s) : null;
+  if (cq) add("cams", { cq });
   const po = owner && personOpenCommand(s);
   const n = !(racer && athleteOpenCommand(s)) && !(po && matchPerson(po.name, c.names || [])) && nav(s);
   if (n) add("navigate", { nav: n });
