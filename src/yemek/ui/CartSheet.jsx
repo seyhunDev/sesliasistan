@@ -9,6 +9,7 @@ import { cartTotals, lineDetail, etaFrom } from "../order";
 import { pickAddress, distanceKm } from "../address";
 import { herePos, openNow, placeOrder, saveMe, writeCart } from "../store";
 import { tl } from "./Img";
+import { AddressForm } from "./AddressForm";
 
 const PAYS = [["kapıda-kart", "Kapıda kart"], ["kapıda-nakit", "Kapıda nakit"]];
 
@@ -17,7 +18,8 @@ export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name,
   const toast = useToast();
   const [pos, setPos] = useState(null);
   const [addrId, setAddrId] = useState(""); // elle seçilen; yoksa konuma göre / son kullanılan
-  const [mode, setMode] = useState("cart"); // cart | pick | new
+  const [mode, setMode] = useState("cart"); // cart | pick | new | edit
+  const [editId, setEditId] = useState("");
   const [pay, setPay] = useState("kapıda-kart");
   const [busy, setBusy] = useState(false);
   const addresses = food?.me.addresses || [];
@@ -63,7 +65,7 @@ export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name,
     setBusy(false);
   }
 
-  const title = mode === "pick" ? "Hangi adrese?" : mode === "new" ? "Yeni adres" : "Sepet";
+  const title = mode === "pick" ? "Hangi adrese?" : mode === "new" ? "Yeni adres" : mode === "edit" ? "Adresi düzenle" : "Sepet";
   return (
     <Sheet open={open} onClose={close} title={title}>
       {mode === "cart" && (
@@ -122,23 +124,38 @@ export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name,
         <div className="space-y-3 pb-2">
           <div className="overflow-hidden rounded-[1.25rem] border border-line bg-bg px-3.5">
             {addresses.map((a) => (
-              <button key={a.id} type="button" onClick={() => (setAddrId(a.id), setMode("cart"))} data-press="row" className="flex w-full items-center gap-3 border-t border-line py-2.5 text-left first:border-t-0">
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
-                  <small className="block truncate text-[0.8125rem] text-mut">{a.text}{pos && a.pos ? ` · ${km(distanceKm(pos, a.pos))}` : ""}</small>
-                </span>
-                {a.id === addr?.id && <Icon name="check" className="size-5 shrink-0 text-acc" />}
-              </button>
+              <div key={a.id} className="flex items-center gap-1 border-t border-line first:border-t-0">
+                <button type="button" onClick={() => (setAddrId(a.id), setMode("cart"))} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 py-2.5 text-left">
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
+                    <small className="block truncate text-[0.8125rem] text-mut">{a.text}{pos && a.pos ? ` · ${km(distanceKm(pos, a.pos))}` : ""}</small>
+                  </span>
+                  {a.id === addr?.id && <Icon name="check" className="size-5 shrink-0 text-acc" />}
+                </button>
+                <button type="button" onClick={() => (setEditId(a.id), setMode("edit"))} aria-label={`${a.name} düzenle`} data-press className="btn btn-icon btn-sm shrink-0 text-mut">
+                  <Icon name="more" className="size-5" />
+                </button>
+              </div>
             ))}
           </div>
-          <Button variant="secondary" onClick={() => setMode("new")}>Buraya yeni adres</Button>
+          <Button variant="secondary" onClick={() => setMode("new")}>Yeni adres</Button>
         </div>
       )}
 
-      {mode === "new" && (
-        <NewAddress pos={pos} onCancel={() => setMode(addresses.length ? "pick" : "cart")}
+      {(mode === "new" || mode === "edit") && (
+        <AddressForm key={mode + editId} pos={pos} start={mode === "edit" ? addresses.find((a) => a.id === editId) : null}
+          onCancel={() => setMode(addresses.length ? "pick" : "cart")}
+          onDelete={mode === "edit" ? async () => {
+            try {
+              await saveMe(orgId, { addresses: addresses.filter((a) => a.id !== editId) });
+              if (addrId === editId) setAddrId("");
+              setMode("pick");
+            } catch {
+              toast("Silinemedi");
+            }
+          } : null}
           onSave={async (a) => {
-            const list = [...addresses, a];
+            const list = addresses.some((x) => x.id === a.id) ? addresses.map((x) => (x.id === a.id ? a : x)) : [...addresses, a];
             try {
               await saveMe(orgId, { addresses: list });
               setAddrId(a.id);
@@ -159,27 +176,3 @@ const Line = ({ name, value, bold }) => (
     <span className="tabular-nums">{value}</span>
   </div>
 );
-
-// Yeni adres: ad (Ev/Kulüp/İş ya da yazılan), açık adres; konum şu anki yer (izin yoksa konumsuz kaydedilir)
-function NewAddress({ pos, onSave, onCancel }) {
-  const [name, setName] = useState("Ev");
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  return (
-    <div className="space-y-3 pb-2">
-      <div className="flex gap-2">
-        {["Ev", "Kulüp", "İş"].map((n) => (
-          <button key={n} type="button" aria-pressed={name === n} onClick={() => setName(n)} data-press
-            className={`flex-1 rounded-xl border py-2.5 text-[0.875rem] font-semibold ${name === n ? "border-acc bg-accbg text-acc" : "border-line bg-card"}`}>{n}</button>
-        ))}
-      </div>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Adın (ör. Annemler)" maxLength={24} className="h-11 w-full rounded-xl border border-line bg-card px-3.5 text-base outline-none focus:border-acc" />
-      <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Açık adres, kapı, tarif" rows={3} maxLength={200} className="w-full rounded-xl border border-line bg-card px-3.5 py-2.5 text-base outline-none focus:border-acc" />
-      <p className="px-1 text-[0.8125rem] text-mut">{pos ? "Konum: şu an bulunduğun yer" : "Konum alınamadı; adres konumsuz kaydedilir"}</p>
-      <div className="grid grid-cols-[1fr_1.7fr] gap-2.5">
-        <Button variant="secondary" onClick={onCancel}>Vazgeç</Button>
-        <Button loading={busy} disabled={!name.trim() || !text.trim()} onClick={async () => { setBusy(true); await onSave({ id: `a${Date.now().toString(36)}`, name: name.trim(), text: text.trim(), pos: pos || null }); setBusy(false); }}>Kaydet</Button>
-      </div>
-    </div>
-  );
-}
