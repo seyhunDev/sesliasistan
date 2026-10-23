@@ -33,3 +33,6 @@ export const noteWhen = (iso, today) => {
   if (days < 7) return at(d).toLocaleDateString("tr-TR", { weekday: "short" });
   return at(d).toLocaleDateString("tr-TR", d.slice(0, 4) === today.slice(0, 4) ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" });
 };
+
+// Not sayfasında Tamamla denince listede o notun satırı kayarak çıkar: kimlik sessionStorage'da bu adla bir kez okunur
+export const NOTE_GONE = "not-gitti";
