@@ -1,7 +1,7 @@
 // Yemek siparişi (src/yemek): örnek veri, sepet hesabı, adres seçimi, cümleden istek, öneri kuralları.
 // Saat sabit: Çarşamba 2026-10-21 19:30 (akşam yemeği; kahvaltı ve tatlı öne çıkmaz).
 import { SAMPLE_PLACES, catalogOf } from "@/yemek/sample";
-import { unitPrice, pickProblem, defaultPicks, makeLine, cartTotals, isOpenAt, etaFrom, minutesLeft, lineDetail } from "@/yemek/order";
+import { unitPrice, pickProblem, defaultPicks, makeLine, cartTotals, isOpenAt, etaFrom, minutesLeft, lineDetail, stepRows } from "@/yemek/order";
 import { pickAddress, addressBySpeech, distanceM, parseReverse, addressText, tileOf } from "@/yemek/address";
 import { parseAsk, suggest, findRepeat, answerFood, tasteOf, den } from "@/yemek/suggest";
 import { photoUrl } from "@/yemek/photo";
@@ -9,6 +9,7 @@ import { liveView } from "@/yemek/demo";
 import { decodeLine, pointAlong, progressOn, rideMin, roadMin } from "@/yemek/route";
 import { foodOrderAsk, planVoiceOrder } from "@/yemek/voice";
 import { busyOrder, courierState, nearestFree, sortCouriers, DEMO_COURIERS, courierOnOrder } from "@/yemek/couriers";
+import { accountCourier, courierCan, deliverPatch, pickupPatch } from "@/yemek/steps";
 import { qrText, parseQr, qrCells, orderNo, pickupOf } from "@/yemek/qr";
 import jsQR from "@/lib/vendor/jsQR.cjs";
 import { suite } from "./ortak.mjs";
@@ -235,4 +236,25 @@ group("Kuryeler")([
   ["siparişteki kuryenin siparişi", { desc: "hangi sipariş", fn: () => busyOrder(KC[0], [ORD("dk-murat", "preparing")])?.id, ok: (g) => g === "o-dk-murat-preparing" }],
   ["siparişe yazılan kurye", { desc: "ad, araç; konum yola çıkınca", fn: () => courierOnOrder(KC[2]), ok: (g) => g.name === "Ayşe" && g.vehicle === "bisiklet" && g.pos === null }],
   ["deneme siparişinde atanan kurye", { desc: "yolda görünen kurye atanan (Ayşe, bisiklet)", fn: () => { const o = { ...demoOrder, courier: courierOnOrder(KC[2]) }; const t = new Date(o.at).getTime(); return liveView(o, pr, t + (pr.prepMin + 3) * 60000).courier; }, ok: (g) => g?.name === "Ayşe" && g.vehicle === "bisiklet" }],
+]);
+
+// Kurye hesabı (kendi kayıt olan kurye): sunucu yalnız uygun adımı yapar
+const REAL = (status, cid) => ({ id: "r1", placeId: "pizza-ruzgar", status, demo: false, at: new Date(NOW).toISOString(), times: {}, address: { pos: { lat: 39.075, lng: 26.89 } }, ...(cid ? { courier: { id: cid } } : {}) });
+const ME = accountCourier("u1", "Seyhun", "0532");
+group("Kurye hesabı")([
+  ["kayıtlı kurye satırı", { desc: "kimliği uid, hesaplı, motor", fn: () => ME, ok: (g) => g.id === "u1" && g.uid === "u1" && g.account && g.vehicle === "motor" }],
+  ["hazırlanan sipariş", { desc: "teslim alabilir", fn: () => courierCan(REAL("preparing"), PR, "u1", NOW), ok: (g) => g === "pickup" }],
+  ["onaylanmamış sipariş", { desc: "teslim alamaz", fn: () => courierCan(REAL("sent"), PR, "u1", NOW), ok: (g) => g === "" }],
+  ["kendisindeki yoldaki", { desc: "teslim edebilir", fn: () => courierCan(REAL("onTheWay", "u1"), PR, "u1", NOW), ok: (g) => g === "deliver" }],
+  ["başkasındaki yoldaki", { desc: "hiçbir şey yapamaz", fn: () => courierCan(REAL("onTheWay", "u2"), PR, "u1", NOW), ok: (g) => g === "" }],
+  ["teslim edilmiş", { desc: "hiçbir şey yapamaz", fn: () => courierCan(REAL("delivered", "u1"), PR, "u1", NOW), ok: (g) => g === "" }],
+  ["teslim alma", { desc: "Yolda, kurye ve varış yazılır", fn: () => pickupPatch(REAL("preparing"), PR, ME, NOW), ok: (g) => g.status === "onTheWay" && g.courier.id === "u1" && g.times.onTheWay && g.eta > new Date(NOW).toISOString() && g.demo === false }],
+  ["teslim etme", { desc: "Teslim edildi saati", fn: () => deliverPatch(REAL("onTheWay", "u1"), NOW), ok: (g) => g.status === "delivered" && g.times.delivered === new Date(NOW).toISOString() }],
+]);
+
+// Takip › Adım adım: onay ve hazırlık aynı dakikadaysa tek satır; her satır kendi saatiyle
+group("Adım adım")([
+  ["onay ile hazırlık aynı an", { desc: "tek satır 'Onaylandı, hazırlanıyor'", fn: () => stepRows({ sent: new Date(2026, 9, 21, 19, 0).toISOString(), accepted: new Date(2026, 9, 21, 19, 3).toISOString(), preparing: new Date(2026, 9, 21, 19, 3).toISOString() }).map((r) => r.title), ok: (g) => g.length === 2 && g[0] === "Onaylandı, hazırlanıyor" && g[1] === "Gönderildi" }],
+  ["farklı saatler", { desc: "her adım ayrı, yeniden eskiye", fn: () => stepRows({ sent: new Date(2026, 9, 21, 19, 0).toISOString(), accepted: new Date(2026, 9, 21, 19, 1).toISOString(), preparing: new Date(2026, 9, 21, 19, 2).toISOString(), onTheWay: new Date(2026, 9, 21, 19, 20).toISOString() }).map((r) => r.s), ok: (g) => g.join() === "onTheWay,preparing,accepted,sent" }],
+  ["iptal", { desc: "iptal en üstte", fn: () => stepRows({ sent: new Date(2026, 9, 21, 19, 0).toISOString(), cancelled: new Date(2026, 9, 21, 19, 2).toISOString() }, true).map((r) => r.s), ok: (g) => g.join() === "cancelled,sent" }],
 ]);

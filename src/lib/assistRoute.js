@@ -44,6 +44,7 @@ import { resultCommand } from "@/lib/raceVoice";
 import { attQueryAsk } from "@/lib/attQuery";
 import { clubAsk } from "@/lib/clubAsk";
 import { infoAsk } from "@/lib/infoAsk";
+import { contactScanCommand } from "@/lib/contactQr";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -82,6 +83,7 @@ export function moreKind(s, c = {}) {
   if (shopClearCommand(s)) return "shopClear";
   if (birthdayDeleteCommand(s)) return "bdayDelete";
   if (owner && personDeleteCommand(s)) return "personDelete";
+  if (owner && contactScanCommand(s)) return "contactScan";
   if (groupCreateCommand(s)) return "groupCreate";
   if (onRace && racer && hotelAddCommand(s)) return "hotel";
   const bc = owner && racer ? bodyCommand(s) : null;
@@ -157,7 +159,7 @@ export function routesOf(s, c = {}) {
   const ra = !mf && owner && racer ? resultsAsk(s) : null;
   if (ra) add("results", { ra });
   if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, c.races || [], today)))) add("raceOpen");
-  if (wantsPerson(s) && !(owner && racer && athleteCommand(s)?.op === "add")) add("person");
+  if (wantsPerson(s) && !(owner && contactScanCommand(s)) && !(owner && racer && athleteCommand(s)?.op === "add")) add("person");
   const po = owner && personOpenCommand(s);
   const n = !(racer && athleteOpenCommand(s)) && !(po && matchPerson(po.name, c.names || [])) && nav(s);
   if (n) add("navigate", { nav: n });

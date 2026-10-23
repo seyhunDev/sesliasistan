@@ -74,3 +74,14 @@ export function etaFrom(order, place, km, now = new Date(), road = travelMin(km)
 }
 // Teslim edilmeyen siparişte süre dolsa da en az 1 dk (kurye "Teslim" deyince biter)
 export const minutesLeft = (eta, now = new Date()) => Math.max(1, Math.ceil((new Date(eta) - now) / 60000));
+
+const sameMinute = (x, y) => Math.floor(new Date(x).getTime() / 60000) === Math.floor(new Date(y).getTime() / 60000);
+// Adım adım satırları (yeniden eskiye). Restoran "Onayla" deyince onay ve hazırlık aynı anda başlar: tek satır olur
+// (Seyhun 2026-10-23: aynı saat iki kez yazmasın).
+export function stepRows(times = {}, cancelled = false) {
+  const rows = ["delivered", "onTheWay", "preparing", "accepted", "sent"].filter((s) => times[s]).map((s) => ({ s, title: STATUS_NAMES[s], at: times[s] }));
+  const a = rows.find((r) => r.s === "accepted"), p = rows.find((r) => r.s === "preparing");
+  const one = a && p && sameMinute(a.at, p.at);
+  const out = one ? rows.filter((r) => r !== p).map((r) => (r === a ? { ...r, title: "Onaylandı, hazırlanıyor" } : r)) : rows;
+  return [...(cancelled && times.cancelled ? [{ s: "cancelled", title: STATUS_NAMES.cancelled, at: times.cancelled }] : []), ...out];
+}

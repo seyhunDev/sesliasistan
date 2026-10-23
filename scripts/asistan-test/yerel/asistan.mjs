@@ -1527,6 +1527,33 @@ group("Temiz başlık ve sorusuz ekleme")([
   ]);
 }
 
+// Kişi kare kodu ve fotoğraftan kişi (Seyhun 2026-10-23; lib/contactQr.js, assistPerson.applyAnswer)
+{
+  const Q = await import("@/lib/contactQr");
+  const { applyAnswer, nextQuestion } = await import("@/features/people/assistPerson");
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  const deniz = { name: "Deniz Aydın", kind: "staff", title: "Antrenör", phone: "0555 123 45 67", email: "deniz.aydin@example.com", birth: { day: 14, month: 5, year: 1992 } };
+  const card = Q.contactVcard(deniz);
+  group("Kişi kare kodu (vCard)")([
+    ["Velora kodu", C("standart vCard, Velora satırlarıyla", () => card, (r) => /^BEGIN:VCARD\r\nVERSION:3\.0/.test(r) && /FN:Deniz Aydın/.test(r) && /TEL;TYPE=CELL:\+905551234567/.test(r) && /X-VELORA-KIND:staff/.test(r) && /BDAY:1992-05-14/.test(r))],
+    ["geri okuma", C("aynı kişi", () => Q.parseContactQr(card), (r) => r.name === "Deniz Aydın" && r.kind === "staff" && r.title === "Antrenör" && r.phone === "05551234567" && r.email === "deniz.aydin@example.com" && r.birth?.month === 5 && r.velora === true)],
+    ["aile", C("yakınlık da gelir", () => Q.parseContactQr(Q.contactVcard({ name: "Fatma Yıldız", kind: "family", relation: "Anne" })), (r) => r.kind === "family" && r.relation === "Anne")],
+    ["iPhone vCard", C("Velora dışı kartta grup boş (sorulur)", () => Q.parseContactQr("BEGIN:VCARD\nVERSION:3.0\nN:Kaya;Ali;;;\nFN:Ali Kaya\nTEL;type=HOME:0232 111 22 33\nitem1.TEL;type=CELL:+90 532 123 45 67\nEND:VCARD"), (r) => r.name === "Ali Kaya" && r.phone === "05321234567" && !r.kind && r.velora === false)],
+    ["MECARD", C("okunur", () => Q.parseContactQr("MECARD:N:Kaya,Ali;TEL:05321234567;EMAIL:ali@x.com;BDAY:19900312;;"), (r) => r.name === "Ali Kaya" && r.phone === "05321234567" && r.birth?.day === 12)],
+    ["yıl yok", C("--MM-DD", () => Q.parseContactQr(Q.contactVcard({ name: "Ece Su", birth: { day: 3, month: 9 } })).birth, (r) => r.day === 3 && r.month === 9 && r.year === null)],
+    ["virgüllü ad", C("kaçış karakteri", () => Q.parseContactQr(Q.contactVcard({ name: "Ali Kaya", title: "Bakım, onarım" })).title, (r) => r === "Bakım, onarım")],
+    ["başka kod", C("kişi değil", () => Q.parseContactQr("VY:abc123"), (r) => r === null)],
+    ["sesle okut", C("“kare kodu okut” tanınır", () => ["kare kodu okut", "QR okut", "kişinin kare kodunu tara", "karekodla kişi ekle"].every(Q.contactScanCommand), (r) => r === true)],
+    ["yemek kodu", C("kurye kodu değil", () => ["siparişin kare kodunu okut", "kare kod nedir"].some(Q.contactScanCommand), (r) => r === false)],
+  ]);
+  group("Fotoğraftan kişi: adı sorulunca")([
+    ["ad sorusu", C("fotoğraftan sonra adı sorulur", () => nextQuestion({ photo: "x" })?.field, (r) => r === "name")],
+    ["hepsi birden", C("ad, telefon, grup ayrı alanlara", () => applyAnswer({ photo: "x" }, "adı Ali Kaya, telefonu 0532 123 45 67, çalışan", "name"), (r) => r.name === "Ali Kaya" && /0532/.test(r.phone) && r.kind === "staff" && r.photo === "x")],
+    ["yalnız ad", C("ad", () => applyAnswer({}, "Ayşe Yılmaz", "name").name, (r) => r === "Ayşe Yılmaz")],
+    ["bu kişiyi ekle", C("ad ve telefon", () => applyAnswer({}, "bu kişiyi ekle, adı Mert Can telefon 0533 222 11 00", "name"), (r) => r.name === "Mert Can" && /0533/.test(r.phone))],
+  ]);
+}
+
 // Yalnız istenen (Seyhun 2026-10-22): kayıt konusunda geçen ad sorumlu olmaz, istenmeyen mesaj gitmez (lib/ai/assistant.js)
 {
   const { parseAssistant } = await import("@/lib/ai/assistant");

@@ -31,6 +31,7 @@ import { TryAssistant } from "@/features/onboarding/TryAssistant";
 import { installTrail } from "@/lib/navTrail";
 import { NavProgress } from "@/components/ui/NavProgress";
 import { SwipeBack } from "@/components/ui/SwipeBack";
+import { CourierSelf } from "@/yemek/ui/CourierView";
 
 export default function AppLayout({ children }) {
   const { user, profile, loading, error } = useAuth();
@@ -52,6 +53,15 @@ export default function AppLayout({ children }) {
         <p className="text-sm text-mut">Bağlantında bir sorun olabilir. Çıkış yapıp tekrar giriş yapmayı dene.</p>
         <Button variant="ghost" onClick={() => logout()}>Çıkış yap</Button>
       </div>
+    );
+  }
+
+  // Velora Yemek kuryesi: yalnız kurye ekranı (başka veri okunmaz, alt çubuk ve asistan yok)
+  if (profile.role === "courier") {
+    return (
+      <ToastProvider>
+        <CourierSelf profile={profile} />
+      </ToastProvider>
     );
   }
 

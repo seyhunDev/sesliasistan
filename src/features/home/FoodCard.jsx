@@ -23,7 +23,7 @@ import { TrackMap } from "@/yemek/ui/TrackMap";
 // fotoğrafı (saate göre), solda başlık ve "Sipariş ver". Siparişte üstte küçük harita (restoran, ev, yoldaysa kurye) ve durum;
 // altta restoran, büyük kalan dakika, Onaylandı · Hazırlanıyor · Yolda · Teslim adımları.
 // Sipariş kartı (Seyhun 2026-10-23 "Yap", örnek siparis.html): haritanın alt kenarında büyük kalan süre ve varış saati; restoran fotoğrafı,
-// ürün sayısı · tutar · ödeme; adımlar; altta Takip · Yeni sipariş · Yardım. Yardım alttan pencere: restoranı / kuryeyi ara, sipariş, iptal
+// ürün sayısı · tutar · ödeme; adımlar; altta Takip · Yeni sipariş · Yardım. Yardım alttan pencere: restoranı / kuryeyi ara, sipariş, iptal (restoran onaylamadan)
 // (yalnız kurye yola çıkmadan, onay ister). Sonraki yardım satırları bu pencereye eklenir.
 const STEPS = STATUSES.slice(1);
 const STEP_NAMES = { accepted: "Onaylandı", preparing: "Hazırlanıyor", onTheWay: "Yolda", delivered: "Teslim" };
@@ -107,7 +107,7 @@ function OrderCard({ o, v, now, orgId }) {
           {place?.phone && <Row href={tel(place.phone)} title="Restoranı ara" right={<span className="text-[0.8125rem] font-medium text-mut">{place.phone}</span>} chev={false} />}
           {c?.phone && <Row href={tel(c.phone)} title="Kuryeyi ara" right={<span className="text-[0.8125rem] font-medium text-mut">{c.name}</span>} chev={false} />}
           <Row href={href} title="Sipariş" sub={(o.lines || []).map((l) => `${l.qty > 1 ? `${l.qty}× ` : ""}${l.name}`).join(", ")} />
-          {v.status !== "onTheWay" && <Row onClick={cancel} title={<span className="text-[#f08b80]">Siparişi iptal et</span>} chev={false} />}
+          {v.status === "sent" && <Row onClick={cancel} title={<span className="text-[#f08b80]">Siparişi iptal et</span>} chev={false} />}
         </RowList>
       </Sheet>
     </div>
