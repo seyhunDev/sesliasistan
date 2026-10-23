@@ -12,7 +12,7 @@ import { useData } from "@/features/data/DataProvider";
 import { statusOf } from "@/lib/fitness/model";
 import { clubRaceRow, fitHref, fitWeek, homeNotes, lastTraining, personHref, readSum, saveSum } from "@/lib/homeTiles";
 import { loadAthletes } from "@/features/athletes/data";
-import { noteColor, noteWhen } from "@/lib/noteState";
+import { noteWhen } from "@/lib/noteState";
 import { initials, todayStr } from "@/lib/utils/format";
 
 // Ana sayfanın canlı alanları: Sporcular, Fitness, Notlar ve Kulüp listesindeki Mesajlar satırı (Kulüp listesi HomeSummary.jsx'te).
@@ -129,29 +129,35 @@ const dayName = (d, today) => {
 
 // Notlar (Seyhun: "notlar da önemli"): en çok 3 not (sabitler önce, sonra en yeniler; homeNotes), adı ve altında "ne zaman · ilk satır",
 // sabit notun sağında "Sabit". Dokununca not açılır. Not ekleme kokpitin altındaki "Not" düğmesinde (HomeGrid).
+// Yapışkan not kâğıdının rengi, notun rengine göre (NOTE_COLORS anahtarları; renksiz not sarı, .note-card varsayılanı)
+const NOTE_PAPER = { cyan: "#bfe7ef", green: "#cfe8d6", amber: "#f6d79a", red: "#f4cdc6", blue: "#cfdcf5" };
+
 export function NotesWidget({ notes }) {
   const { list, total } = homeNotes(notes || [], 8);
   const today = todayStr();
-  // Seyhun 2026-10-23 "A · Kayan not kartları": yapışkan not gibi kartlar, ekranda ikişer yan yana (Seyhun: "2'şerli, genişliği daha fazla"), sağa kayar; kartta yalnız başlık (3 satıra kadar) ve tarih.
-  // Sabitlenen not ince vurgu çerçeveli; notun rengi (color, noteColor) varsa kart o rengin tonunda. Dokununca not sayfası (/notes/[id]).
+  // Seyhun 2026-10-23 "A · Kayan not kartları": ekranda ikişer yan yana (Seyhun: "2'şerli, genişliği daha fazla"), sağa kayar. Görünüm "B · Yapışkan not"
+  // (globals.css .note-card): kâğıt renginde, başlık (2 satır), altında metnin ilk satırları (2 satır), en altta tarih. Renk NOTE_PAPER (notun rengi), sabitlenende raptiye.
+  // Dokununca not sayfası (/notes/[id]).
   return (
     <section aria-label="Notlar">
       <ListHead title="Notlar" count={total} href={total > 0 ? "/notes" : null} />
       {list.length ? (
-        <div className="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 pt-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {list.map((n) => {
             const when = noteWhen(n.updatedAt || n.createdAt, today);
-            const first = String(n.body || "").split("\n").find((x) => x.trim()) || "";
+            const lines = String(n.body || "").split("\n").map((x) => x.trim()).filter(Boolean);
+            const title = n.title || lines.shift() || "Not";
             return (
               <Link
                 key={n.id}
                 href={`/notes/${n.id}`}
                 data-press
-                className={`note-card flex h-[6.5rem] w-[calc(50%-0.25rem)] shrink-0 snap-start flex-col rounded-2xl border p-3 text-left ${n.pinned ? "note-pin" : ""}`}
-                style={n.color ? { background: `color-mix(in srgb, ${noteColor(n)} 20%, var(--card))`, borderColor: `color-mix(in srgb, ${noteColor(n)} 45%, var(--line))` } : undefined}
+                className={`note-card flex h-[8.5rem] w-[calc(50%-0.25rem)] shrink-0 snap-start flex-col p-3 text-left ${n.pinned ? "note-pin" : ""}`}
+                style={NOTE_PAPER[n.color] ? { "--p": NOTE_PAPER[n.color] } : undefined}
               >
-                <b className="line-clamp-3 text-[0.9375rem] font-semibold leading-snug">{n.title || first || "Not"}</b>
-                {when && <small className="mt-auto truncate text-[0.75rem] text-mut">{when}</small>}
+                <b className="line-clamp-2 text-[0.9375rem] font-semibold leading-snug">{title}</b>
+                {lines.length > 0 && <span className="mt-1 line-clamp-2 text-[0.8125rem] leading-snug opacity-70">{lines.join(" ")}</span>}
+                {when && <small className="mt-auto truncate pr-5 text-[0.75rem] font-semibold opacity-60">{when}</small>}
               </Link>
             );
           })}
