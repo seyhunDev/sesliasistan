@@ -6,10 +6,11 @@ import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { ListHead, RowList, Row, SkelRow } from "@/components/ui/Row";
+import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
-import { STATUS_NAMES, minutesLeft } from "../order";
+import { STATUSES, STATUS_NAMES, lineDetail, minutesLeft } from "../order";
 import { liveView } from "../demo";
-import { PLACES, placeById, useSettings, useToday, saveSettings } from "../store";
+import { PLACES, placeById, useSettings, useToday, saveSettings, setStatus } from "../store";
 import { Img, tl } from "./Img";
 
 // Velora Yemek › Yönetim (Seyhun, admin; örnek C): lacivertte bugünün sayıları, Siparişler / Restoranlar / Kuryeler,
@@ -63,6 +64,7 @@ export function AdminView({ orgId }) {
   const today = useToday(orgId);
   const toast = useToast();
   const [tab, setTab] = useState("orders");
+  const [sel, setSel] = useState(null); // durumu değiştirilecek siparişin id'si
   const now = useNow();
   const list = withLive(today, now);
   const open = list.filter((o) => !["delivered", "cancelled"].includes(o.live.status));
@@ -113,13 +115,13 @@ export function AdminView({ orgId }) {
               <RowList>
                 {!today && <SkelRow />}
                 {today && !open.length && <p className="py-4 text-center text-[0.875rem] text-mut">Açık sipariş yok</p>}
-                {open.map((o) => <OrderRow key={o.id} o={o} now={now} />)}
+                {open.map((o) => <OrderRow key={o.id} o={o} now={now} onOpen={() => setSel(o.id)} />)}
               </RowList>
             </section>
             {done.length > 0 && (
               <section>
                 <ListHead title="Bugün biten" count={done.length} />
-                <RowList>{done.map((o) => <OrderRow key={o.id} o={o} now={now} />)}</RowList>
+                <RowList>{done.map((o) => <OrderRow key={o.id} o={o} now={now} onOpen={() => setSel(o.id)} />)}</RowList>
               </section>
             )}
             <div className="grid grid-cols-2 gap-2.5">
@@ -153,22 +155,68 @@ export function AdminView({ orgId }) {
 
         {tab === "couriers" && <Couriers couriers={couriers} save={save} />}
       </div>
+      <OrderSheet orgId={orgId} o={list.find((x) => x.id === sel)} onClose={() => setSel(null)} />
     </main>
   );
 }
 
-function OrderRow({ o, now }) {
+function OrderRow({ o, now, onOpen }) {
   const place = placeById(o.placeId);
   const left = o.live.status === "onTheWay" ? `${minutesLeft(o.live.eta, new Date(now))} dk` : "";
   return (
     <Row
-      href={`/yemek/siparis/${o.id}`}
+      onClick={onOpen}
       lead={<Img src={o.lines?.[0] && place?.menu.flatMap((c) => c.items).find((i) => i.id === o.lines[0].itemId)?.photo} w={160} className="size-11 shrink-0 rounded-xl" />}
       title={`${o.customer || "Müşteri"} · ${o.placeName}`}
       sub={`${hm(o.at)} · ${tl(o.total)}${o.courier?.name ? ` · ${o.courier.name}` : ""}${o.demo ? " · deneme" : ""}`}
       right={<StatusTag status={o.live.status} extra={left} />}
       chev={false}
     />
+  );
+}
+
+// Sipariş ayrıntısı ve elle durum değiştirme (Yönetim)
+function OrderSheet({ orgId, o, onClose }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState("");
+  const change = async (st) => {
+    setBusy(st);
+    try {
+      await setStatus(orgId, o, st);
+    } catch {
+      toast("Kaydedilemedi");
+    }
+    setBusy("");
+  };
+  return (
+    <Sheet open={!!o} onClose={onClose} title={o ? `${o.customer || "Müşteri"} · ${o.placeName}` : ""}>
+      {o && (
+        <div className="space-y-4 pb-2">
+          <div className="overflow-hidden rounded-[1.25rem] border border-line bg-bg px-3.5">
+            {o.lines.map((l, i) => (
+              <div key={i} className="flex items-center gap-3 border-t border-line py-2.5 first:border-t-0">
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate text-[0.9375rem] font-semibold">{l.qty}× {l.name}</b>
+                  {lineDetail(l) && <small className="block truncate text-[0.8125rem] text-mut">{lineDetail(l)}</small>}
+                </span>
+                <b className="shrink-0 tabular-nums">{tl(l.unit * l.qty)}</b>
+              </div>
+            ))}
+            <div className="flex justify-between border-t border-line py-2.5 font-bold"><span>Toplam</span><span className="tabular-nums">{tl(o.total)}</span></div>
+          </div>
+          <p className="px-1 text-[0.875rem] text-mut">{hm(o.at)} · {o.address?.name} · {o.address?.text}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[...STATUSES, "cancelled"].map((st) => (
+              <button key={st} type="button" data-press aria-pressed={o.live.status === st} disabled={!!busy || o.live.status === st} onClick={() => change(st)}
+                className={`h-11 rounded-xl border text-[0.875rem] font-semibold ${o.live.status === st ? "border-acc bg-accbg text-acc" : "border-line bg-card"}`}>
+                {busy === st ? "…" : STATUS_NAMES[st]}
+              </button>
+            ))}
+          </div>
+          <Link href={`/yemek/siparis/${o.id}`} data-press className="btn btn-secondary w-full">Takip ekranı</Link>
+        </div>
+      )}
+    </Sheet>
   );
 }
 
