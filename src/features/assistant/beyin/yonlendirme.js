@@ -23,6 +23,7 @@ import { openChat, lastSentChat } from "@/features/chat/ChatProvider";
 import { listsFor } from "@/features/shop/shop";
 import { routesOf, EARLY } from "@/lib/assistRoute";
 import { foodOrderCmd, foodRecent } from "../isler/yemek";
+import { runSea } from "../isler/deniz";
 import { quickOn } from "@/lib/quickMode";
 import { routeFromAct, withAct } from "@/lib/actRun";
 import { takeAct } from "./gorevListesi";
@@ -437,6 +438,9 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
       // İngilizce kelime çalışma: ekle/çalıştır, öğrendim, çıkar, liste, tekrar aralığı (isler/kelime.js)
       case "words":
         return runWords(r, viaVoice), true;
+      // Deniz trafiği: yanaşan/limandaki/demirdeki gemiler, Sahil Güvenlik, acil numara (isler/deniz.js)
+      case "sea":
+        return runSea(ctx, r.sq, viaVoice), true;
       // Gelen ödemeler: "bu ay ne kadar ödeme aldım"
       case "payee":
         return runPayee(r.pq, viaVoice), true;

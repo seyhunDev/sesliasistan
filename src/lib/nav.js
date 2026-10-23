@@ -29,6 +29,7 @@ export const PAGES = {
   trainingDay: { path: "/training/day", label: "Antrenman sayfası (sayaç, yoklama, yarışlar)", need: "athletes" },
   weather: { path: "/weather", label: "Hava durumu" },
   wind: { path: "/wind", label: "Rüzgâr haritası" },
+  sea: { path: "/sea", label: "Deniz trafiği (gemiler, Sahil Güvenlik, acil)" },
   dues: { path: "/dues", label: "Aidatlar", need: "athletes" },
   myAttendance: { path: "/my-attendance", label: "Yoklamam", need: "athleteSide" },
   shopping: { path: "/shopping", label: "Alışveriş listesi" },
@@ -69,6 +70,7 @@ const GROUP = [
 const TARGETS = [
   ["wind", /(^|\s)(rüzg[aâ]r harita\S*|ruzgar harita\S*|windy\S*)(?=\s|$)/],
   ["weather", /(^|\s)(hava durumu\S*)(?=\s|$)/],
+  ["sea", /(^|\s)(deniz trafi\S*|gemi trafi\S*|gemiler\S*|gemi haritas\S*)(?=\s|$)/],
   ["food", /(^|\s)(beslenme\S*|öğünler\S*|öğünlerim\S*)(?=\s|$)/],
   ["fitness", /(^|\s)(fitness?\S*|fitnes\S*|spor salon\S*|egzersiz\S*)/],
   ["myAttendance", /(^|\s)(yoklamam\S*|yoklama geçmişim\S*|devamsızlığım\S*)(?=\s|$)/],
@@ -103,7 +105,7 @@ const TARGETS = [
 ];
 
 // Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası", "planlarım", "fişlerim")
-const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|[iı]nstagram|medya|ingilizce|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|borçlar(ım)?|alacaklar(ım)?|antrenman günlüğü|antrenman sayfası|sayaç|geri sayım|envanter(im)?|demirbaşlar|fitness?|fitnes|beslenme|rüzg[aâ]r haritası|ruzgar haritası|windy)( sayfası| ekranı)?$/;
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|[iı]nstagram|medya|ingilizce|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|borçlar(ım)?|alacaklar(ım)?|antrenman günlüğü|antrenman sayfası|sayaç|geri sayım|envanter(im)?|demirbaşlar|fitness?|fitnes|beslenme|rüzg[aâ]r haritası|ruzgar haritası|windy|deniz trafiği|gemiler)( sayfası| ekranı)?$/;
 
 // Önceki sayfaya dönüş ("geri dön", "geri git", "bir önceki sayfaya dön"): kısa ve başka iş içermeyen cümleler
 const BACK = /^(?:(?:tamam|şimdi|hadi|bir)\s+)?(?:geri (?:dön|git|gel|gidelim|dönelim)\S*|(?:bir )?önceki sayfa\S*(?: (?:dön|git|aç|geç)\S*)?|geri)(?: lütfen)?$/;

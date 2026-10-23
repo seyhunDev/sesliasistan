@@ -95,6 +95,7 @@ export const TASKS = [
   { id: "words", group: "Diğer", name: "İngilizce kelime çalışma", say: "resilient kelimesini ekle, bana çalıştır; resilient kelimesini öğrendim; çalıştığım kelimeler neler; kelimeleri her gün göster", who: "herkes", by: "yerel" },
   { id: "foodOrder", group: "Diğer", name: "Yemek siparişi", say: "yemek siparişi ver; sen seç sipariş ver; Pizza Rüzgar'dan karışık söyle; ilkini ver", who: "ana", by: "yerel" },
   { id: "shopping", group: "Diğer", name: "Alışveriş listesi (ekle, alındı, sil, oku)", say: "listeye süt ekle, ekmek alındı", who: "herkes", by: "yerel" },
+  { id: "sea", group: "Diğer", name: "Deniz trafiği (gemiler, Sahil Güvenlik, acil)", say: "yanaşan gemi var mı; limanda kaç gemi var; Sahil Güvenlik nerede; deniz trafiğini aç", who: "yönetici", by: "yerel" },
 ];
 
 const BY_ID = Object.fromEntries(TASKS.map((x) => [x.id, x]));

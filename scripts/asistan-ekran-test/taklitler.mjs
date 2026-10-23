@@ -87,3 +87,18 @@ export const INIT = ({ standalone = false, sha = "" } = {}) => `(() => {
     }
   };
 })();`;
+
+// Deniz trafiği (/api/sea) taklit cevabı: lib/sea.js shipList biçiminde
+const ship = (m, n, type, lat, lon, sog, cog, key, label, port, km, extra = {}) => ({ m, n, t: 0, type, lat, lon, sog, cog, dest: "", seen: Date.now(), guard: false, state: { key, label, port, km, ...extra } });
+export const SEA = {
+  at: Date.now(),
+  ships: [
+    ship(1, "Ayvalık Ferry", "Yolcu", 39.03, 26.8, 11.2, 60, "approach", "Yanaşıyor", "Dikili", 6.2, { min: 20 }),
+    ship(2, "Mavi Rüzgar", "Yat", 39.06, 26.87, 6.4, 240, "leave", "Ayrılıyor", "Dikili", 1.4),
+    { ...ship(3, "Nordic Star", "Tanker", 38.95, 26.75, 12.8, 160, "underway", "Seyirde", "Çandarlı", 12.1), dest: "ALIAGA" },
+    ship(4, "Seher K", "Kuru yük", 39.1, 26.8, 0, null, "ready", "Kalkacak", "Dikili", 7.9),
+    ship(5, "Delta Pioneer", "Tanker", 39.12, 26.82, 0, null, "anchor", "Demirde", "Dikili", 7.6),
+    { ...ship(6, "TCSG 309", "Kolluk", 39.07, 26.88, 0, null, "moored", "Limanda", "Dikili", 0.3), guard: true },
+    ship(7, "Deniz Yıldızı", "Balıkçı", 39.071, 26.886, 0, null, "moored", "Limanda", "Dikili", 0.1),
+  ],
+};

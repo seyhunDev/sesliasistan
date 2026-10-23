@@ -260,6 +260,7 @@ export function homeActions(o) {
       o.athletes && o.owner && { href: "/dues", icon: "wallet", label: "Aidatlar" },
       !o.staff && { href: "/inventory", icon: "box", label: "Envanter" },
       { href: "/wind", icon: "wind", label: "Rüzgâr" },
+      !o.side && { href: "/sea", icon: "map", label: "Gemiler" }, // gemiler canlı, Sahil Güvenlik, acil (Seyhun 2026-10-23)
     ]],
     ["Yönetim", [
       o.receipts && { href: "/receipts", icon: "receipt", label: "Fiş / Fatura" },

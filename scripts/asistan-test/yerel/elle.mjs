@@ -2962,3 +2962,42 @@ group("Ortak düğmeler")([
     ["seçici açıkken kapanmaz", F("kutu picking varken kendiliğinden kapanmaz", () => /!picking\.current && !text\.trim\(\)/.test(s))],
   ]);
 }
+
+// Deniz trafiği (lib/sea.js): AIS mesajı okuma, geminin durumu, asistan cevabı
+{
+  const S = await import("@/lib/sea");
+  const now = Date.parse("2026-10-23T12:00:00Z");
+  const pos = (m, lat, lon, sog, st, cog = 0, t = now) => ({ MessageType: "PositionReport", MetaData: { MMSI: m, ShipName: "TEST@@" }, Message: { PositionReport: { Latitude: lat, Longitude: lon, Sog: sog, Cog: cog, TrueHeading: 0, NavigationalStatus: st, UserID: m } } });
+  const build = (rows) => rows.reduce((all, [msg, t]) => S.mergeShip(all, S.parseAis(msg, t)), {});
+  const D = S.PORTS[0];
+  group("Deniz trafiği")([
+    ["konum mesajı", F("MMSI, ad, hız, durum okunur", () => { const p = S.parseAis(pos(271000001, 39.05, 26.85, 5.2, 0), now); return p.m === 271000001 && p.n === "TEST" && p.sog === 5.2 && p.st === 0 && p.seen === now; })],
+    ["gemi bilgisi", F("tür ve gideceği yer", () => { const p = S.parseAis({ MessageType: "ShipStaticData", MetaData: { MMSI: 5 }, Message: { ShipStaticData: { Name: "NORDIC STAR", Type: 80, Destination: "ALIAGA@@" } } }); return p.t === 80 && p.dest === "ALIAGA" && S.typeLabel(p.t) === "Tanker"; })],
+    ["bozuk mesaj", F("null", () => S.parseAis({ MessageType: "PositionReport", MetaData: {}, Message: {} }) === null)],
+    ["limanda bağlı", F("st 5 → Limanda", () => S.shipState({ lat: D.lat, lon: D.lon, sog: 0, st: 5 }, now).key === "moored")],
+    ["demirde", F("st 1 açıkta → Demirde", () => S.shipState({ lat: 39.02, lon: 26.8, sog: 0.1, st: 1 }, now).key === "anchor")],
+    ["yanaşıyor", F("limana yaklaşan, dakika hesabı", () => {
+      const all = build([[pos(1, 39.03, 26.8, 10, 0), now - 60e3], [pos(1, 39.04, 26.82, 10, 0), now]]);
+      const st = S.shipState(all[1], now);
+      return st.key === "approach" && st.port === "Dikili" && st.min > 0;
+    })],
+    ["ayrılıyor", F("limandan uzaklaşan", () => {
+      const all = build([[pos(2, D.lat - 0.005, D.lon - 0.005, 6, 0), now - 60e3], [pos(2, D.lat - 0.02, D.lon - 0.02, 6, 0), now]]);
+      return S.shipState(all[2], now).key === "leave";
+    })],
+    ["kalkacak", F("demirdeyken seyir durumuna geçti", () => {
+      const all = build([[pos(3, 39.02, 26.8, 0, 1), now - 120e3], [pos(3, 39.02, 26.8, 0, 0), now]]);
+      return S.shipState(all[3], now).key === "ready";
+    })],
+    ["karaya oturmuş", F("amber uyarı", () => { const st = S.shipState({ lat: 39.02, lon: 26.8, sog: 0, st: 6 }, now); return st.key === "trouble" && st.warn; })],
+    ["eski gemi silinir", F("30 dk görünmeyen", () => { const all = { 1: { m: 1, seen: now - 31 * 60e3 }, 2: { m: 2, seen: now } }; S.prune(all, now); return !all[1] && !!all[2]; })],
+    ["Sahil Güvenlik", F("tip 55 ya da TCSG adı", () => S.isGuard({ t: 55 }) && S.isGuard({ n: "TCSG 309" }) && !S.isGuard({ n: "MAVI RUZGAR", t: 37 }))],
+    ["satır yazısı", F("Yolcu · 11,2 kn · Dikili'ye 20 dk", () => S.shipLine({ type: "Yolcu", sog: 11.2, state: { key: "approach", port: "Dikili", min: 20 } }) === "Yolcu · 11,2 kn · Dikili'ye 20 dk")],
+    ["ek: Aliağa'dan", F("limandan çıkış eki", () => /Aliağa'dan çıkıyor/.test(S.shipLine({ type: "Tanker", sog: 4, state: { key: "leave", port: "Aliağa" } })))],
+    ["cevap: özet", F("sayılarla", () => S.seaAnswer("summary", { ships: [{ n: "A", state: { key: "moored" } }, { n: "B", state: { key: "anchor" } }] }) === "Çevrede 2 gemi var: 1 demirde, 1 limanda.")],
+    ["cevap: yanaşan yok", F("kısa cevap", () => S.seaAnswer("approach", { ships: [] }) === "Şu an yanaşan ya da ayrılan gemi yok.")],
+    ["cevap: anahtar yok", F("Netlify uyarısı", () => /aisstream/.test(S.seaAnswer("summary", { error: "nokey" })))],
+    ["cevap: acil", F("158 ve Kanal 16", () => /158/.test(S.seaAnswer("emergency")) && /Kanal 16/.test(S.seaAnswer("emergency")))],
+    ["soru değil", F("gemi kelimesi ama başka iş", () => S.seaAsk("tekne yıkama planı ekle") === null && S.seaAsk("deniz trafiğini aç") === null && S.seaAsk("yarın 10'da antrenman") === null)],
+  ]);
+}

@@ -983,4 +983,40 @@ async function scenarios4(h) {
     });
     await page.context().close();
   }
+  await seaPage(h);
+}
+
+// ================================================================ Deniz trafiği (/sea): taklit gemi listesi (taklitler.mjs SEA)
+async function seaPage(h) {
+  const { check, newPage, waitFor, calls, log } = h;
+  log("    Deniz trafiği sayfası…");
+  const { page, errs } = await newPage();
+  await page.goto(page.url().replace(/\/[^/]*$/, "/sea"), { waitUntil: "load" });
+  const G = "Deniz trafiği";
+  await check(G, "sayfa açılır", "bölümler ve gemiler listelenir", async () => {
+    const ok = await waitFor(() => page.getByText("Ayvalık Ferry").count(), 15000);
+    const text = await page.locator("main").innerText();
+    return [!!ok && /YAKLAŞAN \/ AYRILAN/.test(text) && /DEMİRDE/.test(text) && /LİMANDA/.test(text) && /Yanaşıyor/.test(text), text.replace(/\s+/g, " ").slice(0, 160)];
+  });
+  await check(G, "veri sorulur", "/api/sea istenir", async () => [calls.some((c) => c.path === "/api/sea"), `${calls.filter((c) => c.path === "/api/sea").length} istek`]);
+  await check(G, "yenileme süresi", "dokununca 20 sn → 30 sn", async () => {
+    const b = page.locator("button[aria-label='Yenileme süresi']");
+    await b.click();
+    return [/30 sn/.test(await b.innerText()), await b.innerText()];
+  });
+  await check(G, "Acil penceresi", "158 ve 112 aranabilir", async () => {
+    await page.getByRole("button", { name: /Acil/ }).click();
+    const d = page.locator("[role='dialog'][aria-label='Acil durum']");
+    await d.waitFor({ timeout: 5000 });
+    const n = await d.locator("a[href='tel:158'], a[href='tel:112']").count();
+    if (process.env.SEA_SHOT) await page.screenshot({ path: `${process.env.SEA_SHOT}-acil.png` });
+    return [n === 2, `${n} arama satırı`];
+  });
+  if (process.env.SEA_SHOT) {
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${process.env.SEA_SHOT}.png`, fullPage: true });
+  }
+  await check("Sayfa hataları", "deniz trafiği", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
 }
