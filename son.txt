@@ -1,8 +1,8 @@
-Commit: 2919d95 · Kameralar: seçilen yer kalıcı, YouTube gelmezse nedeni yazılır (#783)
-Zaman: 2026-10-23-2219 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40009323685
+Commit: 127c6f0 · "Kayıtların gönderiliyor" şeridi takılı kalmaz: bir kez kısa görünür, asılı bağlantı yenilenir (#784)
+Zaman: 2026-10-23-2232 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40011074196
 
-TAM TEST · 23.10.2026 22:11:52
+TAM TEST · 23.10.2026 22:24:04
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,11 +18,11 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Deniz trafiği sayfası…
     Kameralar sayfası…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 19/19 geçti
+    Çevrimdışı: 21/21 geçti
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1391/1391 geçti · 0 kalan · 451 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 433 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -159,9 +159,10 @@ SONUÇ: 1391/1391 geçti · 0 kalan · 451 sn
   ✓ Kameralar: 5/5
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 19/19
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 21/21
   ✓ İnternet varken: 2/2
   ✓ Yavaş bağlantı: 3/3
+  ✓ Takılan bağlantı: 2/2
   ✓ İnternet yok: 5/5
   ✓ Bağlantı gelince: 2/2
   ✓ Açıkken kopup gelince: 2/2
