@@ -1,8 +1,8 @@
-Commit: d8c0c94 · Yemek: kurye ana sayfası (Yolda, Sırada, Bugün teslim), müsait kurye yoksa en yakın kuryeye atama (#768)
-Zaman: 2026-10-23-1503 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39949494708
+Commit: 96180d5 · Yemek: deneme kuryeleri gerçek hesap, Yönetim'de kullanıcı adı ve Şifre (#769)
+Zaman: 2026-10-23-1512 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39950612954
 
-TAM TEST · 23.10.2026 14:55:41
+TAM TEST · 23.10.2026 15:04:56
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -21,7 +21,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1386/1386 geçti · 0 kalan · 455 sn
+SONUÇ: 1386/1386 geçti · 0 kalan · 450 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
