@@ -10,7 +10,7 @@ export const DEMO_COURIER = { name: "Murat", vehicle: "motor" };
 
 export function demoTimes(order, place) {
   const t0 = new Date(order.times?.sent || order.at).getTime();
-  const road = roadMin(order, place, "motor");
+  const road = roadMin(order, place, order.courier?.vehicle || "motor");
   const ready = t0 + (place?.prepMin || 20) * MIN;
   return { sent: t0, accepted: t0 + MIN, preparing: t0 + 2 * MIN, onTheWay: ready, delivered: ready + road * MIN };
 }
@@ -42,7 +42,9 @@ export function liveView(order, place, now = Date.now()) {
   if (status === "onTheWay" && place?.pos && order.address?.pos) {
     f = Math.min(1, (now - t.onTheWay) / (t.delivered - t.onTheWay));
     const pos = line ? pointAlong(line, f) : { lat: place.pos.lat + (order.address.pos.lat - place.pos.lat) * f, lng: place.pos.lng + (order.address.pos.lng - place.pos.lng) * f };
-    courier = { ...DEMO_COURIER, pos };
+    // Siparişe kurye atandıysa (en yakın müsait kurye) o, yoksa deneme kuryesi
+    const c = order.courier;
+    courier = c ? { id: c.id, name: c.name, phone: c.phone || "", vehicle: c.vehicle || "motor", pos } : { ...DEMO_COURIER, pos };
   }
   return { status, times, eta: new Date(t.delivered).toISOString(), courier, f };
 }

@@ -7,7 +7,7 @@ import { RowList, Row } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { minutesLeft } from "../order";
 import { distanceM } from "../address";
-import { placeById, useSettings, useToday, deliverOrder, courierAt, giveToCourier } from "../store";
+import { placeById, useSettings, useToday, deliverOrder, courierAt, giveToCourier, saveSettings } from "../store";
 import { orderNo, pickupOf, PICKUP_SAY } from "../qr";
 import { ScanSheet } from "./ScanSheet";
 import { tl } from "./Img";
@@ -28,7 +28,7 @@ export function CourierView({ orgId }) {
   if (cid === null || !settings) return null;
   const courier = (settings.couriers || []).find((c) => c.id === cid);
   if (!courier) return <PickCourier couriers={settings.couriers || []} onPick={pick} />;
-  return <Courier orgId={orgId} courier={courier} onChange={() => pick("")} />;
+  return <Courier orgId={orgId} courier={courier} couriers={settings.couriers || []} onChange={() => pick("")} />;
 }
 
 function Top({ title, sub, onSub, pill }) {
@@ -63,7 +63,12 @@ function PickCourier({ couriers, onPick }) {
   );
 }
 
-function Courier({ orgId, courier, onChange }) {
+// Kurye ekranı açıkken telefonun yeri kuryenin kaydına da yazılır (en sık dakikada bir, 100 m yer değişince):
+// en yakın müsait kurye bundan bulunur
+const HERE_MS = 60000;
+const HERE_M = 100;
+
+function Courier({ orgId, courier, couriers, onChange }) {
   const toast = useToast();
   const today = useToday(orgId);
   const now = useNow();
@@ -72,8 +77,31 @@ function Courier({ orgId, courier, onChange }) {
   const [scan, setScan] = useState(null); // null | "cam" | { o, why } okutulan sipariş
   const all = withLive(today, now);
   const mine = all.filter((o) => o.live.status === "onTheWay" && o.courier?.id === courier.id);
+  const given = all.filter((o) => ["sent", "accepted", "preparing"].includes(o.live.status) && o.courier?.id === courier.id);
   const ids = mine.map((o) => o.id).join(",");
   const last = useRef(null); // { pos, t }
+
+  // Kuryenin yeri (müsait kurye seçimi için)
+  const here = useRef(courier.pos ? { pos: courier.pos, t: 0 } : null);
+  const list = useRef(couriers);
+  useEffect(() => {
+    list.current = couriers;
+  });
+  useEffect(() => {
+    if (courier.demo || !navigator.geolocation) return;
+    const watch = navigator.geolocation.watchPosition(
+      (p) => {
+        const pos = { lat: +p.coords.latitude.toFixed(5), lng: +p.coords.longitude.toFixed(5) };
+        const h = here.current;
+        if (h && (Date.now() - h.t < HERE_MS || distanceM(h.pos, pos) < HERE_M)) return;
+        here.current = { pos, t: Date.now() };
+        saveSettings(orgId, { couriers: list.current.map((c) => (c.id === courier.id ? { ...c, pos, at: new Date().toISOString() } : c)) }).catch(() => {});
+      },
+      () => {},
+      { maximumAge: 30000, timeout: 20000 },
+    );
+    return () => navigator.geolocation.clearWatch(watch);
+  }, [orgId, courier.id, courier.demo]);
 
   // Konum paylaşımı: yalnız yolda sipariş varken
   useEffect(() => {
@@ -132,7 +160,14 @@ function Courier({ orgId, courier, onChange }) {
       <Top title={courier.name} sub="Kurye · değiştir" onSub={onChange} pill={pill} />
       <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-4 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         <Button onClick={() => setScan("cam")}>Kare kod okut</Button>
-        {today && !mine.length && <p className="pt-6 text-center text-[0.9375rem] text-mut">Yolda sipariş yok</p>}
+        {given.length > 0 && (
+          <RowList>
+            {given.map((o) => (
+              <Row key={o.id} title={`${o.placeName} · #${orderNo(o.id)}`} sub={`Restorana git · ${o.customer || "Müşteri"} · ${o.address?.name || ""}`} right={o.live.status === "sent" ? "Yeni" : "Hazırlanıyor"} />
+            ))}
+          </RowList>
+        )}
+        {today && !mine.length && !given.length && <p className="pt-6 text-center text-[0.9375rem] text-mut">Yolda sipariş yok</p>}
         {mine.map((o) => {
           const place = placeById(o.placeId);
           const to = o.address?.pos;

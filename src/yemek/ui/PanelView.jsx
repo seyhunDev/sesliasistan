@@ -11,6 +11,7 @@ import { VEHICLES } from "../route";
 import { distanceKm } from "../address";
 import { PLACES, placeById, useSettings, useToday, saveSettings, acceptOrder, rejectOrder, giveToCourier } from "../store";
 import { orderNo } from "../qr";
+import { sortCouriers } from "../couriers";
 import { Img, tl } from "./Img";
 import { OrderQr } from "./OrderQr";
 import { PrintSlip } from "./PrintSlip";
@@ -63,7 +64,8 @@ function Panel({ orgId, place, onChange }) {
   const [give, setGive] = useState(null); // kuryeye verilecek sipariş
   const [busy, setBusy] = useState("");
   const [print, setPrint] = useState(null); // basılan sipariş
-  const mine = withLive(today, now).filter((o) => o.placeId === place.id);
+  const all = withLive(today, now);
+  const mine = all.filter((o) => o.placeId === place.id);
   const groups = {
     new: mine.filter((o) => o.live.status === "sent"),
     cook: mine.filter((o) => ["accepted", "preparing"].includes(o.live.status)),
@@ -134,7 +136,10 @@ function Panel({ orgId, place, onChange }) {
             {tab === "cook" && (
               <div className="flex items-center gap-3 border-t border-line px-3.5 py-2.5">
                 <OrderQr id={o.id} className="size-[5.5rem] shrink-0 rounded-lg border border-line" />
-                <b className="text-[1.375rem] font-bold tabular-nums tracking-[.04em]">#{orderNo(o.id)}</b>
+                <span className="min-w-0 leading-tight">
+                  <b className="block text-[1.375rem] font-bold tabular-nums tracking-[.04em]">#{orderNo(o.id)}</b>
+                  {o.courier && <small className="block truncate text-[0.8125rem] text-mut">Kurye {o.courier.name}</small>}
+                </span>
               </div>
             )}
             {tab !== "road" && (
@@ -164,8 +169,10 @@ function Panel({ orgId, place, onChange }) {
         <div className="space-y-3 pb-2">
           {couriers.length ? (
             <RowList>
-              {couriers.map((c) => (
-                <Row key={c.id} title={c.name} sub={[VEHICLES[c.vehicle || "motor"], c.phone].filter(Boolean).join(" · ")} onClick={() => { const o = give; setGive(null); run(o.id, () => giveToCourier(orgId, o, place, c)); }} />
+              {give && sortCouriers(couriers, all.filter((o) => o.id !== give.id), place.pos).map((c) => (
+                <Row key={c.id} title={`${c.name}${give.courier?.id === c.id ? " · atanan" : ""}`} right={km(c.km)}
+                  sub={c.busy ? `Siparişte${c.order ? ` · ${c.order.placeName}` : ""}` : [VEHICLES[c.vehicle || "motor"], c.phone].filter(Boolean).join(" · ")}
+                  onClick={c.busy ? undefined : () => { const o = give; setGive(null); run(o.id, () => giveToCourier(orgId, o, place, c)); }} />
               ))}
             </RowList>
           ) : (

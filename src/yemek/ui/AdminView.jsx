@@ -12,7 +12,10 @@ import { STATUSES, STATUS_NAMES, lineDetail, minutesLeft } from "../order";
 import { liveView } from "../demo";
 import { VEHICLES } from "../route";
 import { PLACES, placeById, useSettings, useToday, saveSettings, setStatus } from "../store";
+import { courierState, sortCouriers, DEMO_COURIERS } from "../couriers";
+import { orderNo } from "../qr";
 import { Img, tl } from "./Img";
+import { CourierMap } from "./CourierMap";
 
 // Velora Yemek › Yönetim (Seyhun, admin; örnek C): lacivertte bugünün sayıları, Siparişler / Restoranlar / Kuryeler,
 // deneme modu. Restoranı Yönetim'den kapatmak saatlere bakmadan sipariş almayı durdurur.
@@ -76,7 +79,7 @@ export function AdminView({ orgId }) {
   const couriers = settings?.couriers || [];
   const save = (patch) => saveSettings(orgId, patch).catch(() => toast("Kaydedilemedi"));
 
-  const tabs = [["orders", "Siparişler", `${open.length} açık`], ["places", "Restoranlar", String(PLACES.length)], ["couriers", "Kuryeler", couriers.length ? `${couriers.length} kişi` : "Yok"]];
+  const tabs = [["orders", "Siparişler", `${open.length} açık`], ["places", "Restoranlar", String(PLACES.length)], ["couriers", "Kuryeler", couriers.length ? `${couriers.filter((c) => !courierState(c, list).busy).length} müsait` : "Yok"]];
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Yönetim">
@@ -154,7 +157,7 @@ export function AdminView({ orgId }) {
           </section>
         )}
 
-        {tab === "couriers" && <Couriers couriers={couriers} save={save} />}
+        {tab === "couriers" && <Couriers couriers={couriers} orders={list} demo={demo} save={save} />}
       </div>
       <OrderSheet orgId={orgId} o={list.find((x) => x.id === sel)} onClose={() => setSel(null)} />
     </main>
@@ -229,7 +232,9 @@ export function Switch({ on, onChange, label }) {
   );
 }
 
-function Couriers({ couriers, save }) {
+// Kuryeler: haritada yerleri, listede müsait / siparişte (siparişteki kurye "Kuryeye ver"de seçilemez).
+// Deneme modunda Dikili'de 6 deneme kuryesi yüklenebilir ya da kaldırılabilir.
+function Couriers({ couriers, orders, demo, save }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [vehicle, setVehicle] = useState("motor");
@@ -239,19 +244,23 @@ function Couriers({ couriers, save }) {
     setName("");
     setPhone("");
   };
+  const shown = sortCouriers(couriers, orders);
+  const hasDemo = couriers.some((c) => c.demo);
   return (
     <section className="space-y-3">
+      {couriers.length > 0 && <CourierMap couriers={shown} places={PLACES} />}
       <div>
         <ListHead title="Kuryeler" count={couriers.length} />
         <RowList>
           {!couriers.length && <p className="py-4 text-center text-[0.875rem] text-mut">Kurye yok</p>}
-          {couriers.map((c) => (
+          {shown.map((c) => (
             <div key={c.id} className="flex min-h-[3.5rem] items-center gap-3 border-t border-line py-2.5 first:border-t-0">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accbg text-[0.875rem] font-bold text-acc">{c.name.slice(0, 2).toLocaleUpperCase("tr")}</span>
+              <span className={`grid size-10 shrink-0 place-items-center rounded-full text-[0.875rem] font-bold ${c.busy ? "bg-deep text-white" : "bg-accbg text-acc"}`}>{c.name.slice(0, 2).toLocaleUpperCase("tr")}</span>
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[0.9375rem] font-semibold">{c.name}</b>
-                <small className="block truncate text-[0.8125rem] text-mut">{[VEHICLES[c.vehicle || "motor"], c.phone].filter(Boolean).join(" · ")}</small>
+                <small className="block truncate text-[0.8125rem] text-mut">{c.busy ? `Siparişte${c.order ? ` · ${c.order.placeName} #${orderNo(c.order.id)}` : ""}` : [VEHICLES[c.vehicle || "motor"], c.phone].filter(Boolean).join(" · ")}</small>
               </span>
+              <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[0.75rem] font-bold ${c.busy ? "bg-line text-mut" : "bg-accbg text-acc"}`}>{c.busy ? "Siparişte" : "Müsait"}</span>
               <button type="button" aria-label={`${c.name} sil`} onClick={() => window.confirm(`${c.name} silinsin mi?`) && save({ couriers: couriers.filter((x) => x.id !== c.id) })} data-press className="btn btn-icon btn-sm text-mut">
                 <Icon name="trash" className="size-4" />
               </button>
@@ -259,6 +268,11 @@ function Couriers({ couriers, save }) {
           ))}
         </RowList>
       </div>
+      {demo && (
+        <Button variant="secondary" onClick={() => save({ couriers: hasDemo ? couriers.filter((c) => !c.demo) : [...couriers, ...DEMO_COURIERS.filter((d) => !couriers.some((c) => c.id === d.id))] })}>
+          {hasDemo ? "Deneme kuryelerini kaldır" : "Deneme kuryeleri ekle"}
+        </Button>
+      )}
       <div className="flex gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad" maxLength={30} className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-card px-3.5 text-base outline-none focus:border-acc" />
         <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon" inputMode="tel" maxLength={20} className="h-11 w-32 rounded-xl border border-line bg-card px-3.5 text-base outline-none focus:border-acc" />
