@@ -248,7 +248,8 @@ export function RaceMedia({ orgId, id }) {
 // Sekmeler en altta (Seyhun 2026-10-19: "alttan yönetelim"); sekmenin düğme şeridi (Countdown Bar) bunun üstünde durur (--bar-b).
 // Yanında tek Kayıt düğmesi (Seyhun 2026-10-22: ayrı Fotoğraf/Video düğmeleri kalktı): her sekmeden iPhone kamerasını açar (RecPick), çekilen Medya'da
 const TAB_ICON = { sure: "clock", media: "image", wx: "wind", res: "flag" };
-export function TabDock({ value, onChange, onRec }) {
+// extra: sağa eklenen düğme (antrenman sayfasında asistan, Seyhun 2026-10-23)
+export function TabDock({ value, onChange, onRec, extra = null }) {
   useEffect(() => {
     const r = document.documentElement.style;
     r.setProperty("--bar-b", "calc(env(safe-area-inset-bottom) + 4.75rem)");
@@ -273,6 +274,7 @@ export function TabDock({ value, onChange, onRec }) {
             Kayıt
           </RecPick>
         )}
+        {extra}
       </div>
     </nav>
   );
