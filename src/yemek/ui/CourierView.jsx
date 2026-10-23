@@ -10,6 +10,7 @@ import { distanceM } from "../address";
 import { placeById, useSettings, useToday, deliverOrder, courierAt, giveToCourier, saveSettings } from "../store";
 import { orderNo, pickupOf, PICKUP_SAY } from "../qr";
 import { ScanSheet } from "./ScanSheet";
+import { CourierBoard } from "./CourierBoard";
 import { tl } from "./Img";
 import { TrackMap } from "./TrackMap";
 import { photoUrl } from "../photo";
@@ -172,53 +173,46 @@ function Courier({ orgId, courier, couriers, onChange, self }) {
     setBusy("");
   };
 
-  const pill = ids ? (
-    <span className={`shrink-0 rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold ${gps === "off" ? "bg-warnbg text-warn" : "ck-glass"}`}>{gps === "off" ? "Konum kapalı" : "Konum açık"}</span>
-  ) : null;
+  const at = courier.pos;
+  const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "");
+  const km = (p) => {
+    const m = at && p ? distanceM(at, p) : NaN;
+    return Number.isFinite(m) ? (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1).replace(".", ",")} km`) : "";
+  };
+  const active = mine.map((o) => {
+    const place = placeById(o.placeId);
+    const to = o.address?.pos;
+    return {
+      id: o.id, busy: busy === o.id, phone: o.phone, left: minutesLeft(o.live.eta, new Date(now)),
+      title: `${o.customer || "Müşteri"} · ${o.address?.name || ""}`,
+      sub: `${o.placeName} · ${o.pay === "kapıda-nakit" ? "Nakit" : "Kart"} ${tl(o.total)}`,
+      address: o.address?.text ? `${o.address.text}${o.address.note ? ` · ${o.address.note}` : ""}` : "",
+      nav: to ? `https://maps.apple.com/?daddr=${to.lat},${to.lng}&dirflg=d` : "",
+      map: <TrackMap small from={place?.pos} to={to} courier={o.live.courier} route={o.route} f={o.live.f} photo={place?.cover && photoUrl(place.cover, 120)} />,
+    };
+  });
+  const next = given.map((o) => {
+    const place = placeById(o.placeId);
+    const ready = o.live.times?.preparing ? Math.ceil((new Date(o.live.times.preparing).getTime() + (place?.prepMin || 20) * 60000 - now) / 60000) : null;
+    return {
+      id: o.id, photo: place?.cover, title: `${o.placeName} · #${orderNo(o.id)}`,
+      sub: [o.live.status === "sent" ? "Onay bekliyor" : "Hazırlanıyor", km(place?.pos)].filter(Boolean).join(" · "),
+      right: o.live.status === "sent" ? "Yeni" : ready > 0 ? `${ready} dk` : "Hazır",
+    };
+  });
+  const doneList = all.filter((o) => o.live.status === "delivered" && o.courier?.id === courier.id).map((o) => ({
+    id: o.id, title: `${o.customer || "Müşteri"} · ${o.address?.name || ""}`, sub: `${o.placeName} · ${o.pay === "kapıda-nakit" ? "Nakit" : "Kart"} ${tl(o.total)}`, at: hm(o.live.times?.delivered),
+  }));
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
-      <Top title={courier.name} sub={self ? "Kurye · çıkış" : "Kurye · değiştir"} onSub={onChange} pill={pill} self={self} />
-      <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-4 rounded-t-[1.75rem] bg-bg px-5 pt-5">
-        <Button onClick={() => setScan("cam")}>Kare kod okut</Button>
-        {given.length > 0 && (
-          <RowList>
-            {given.map((o) => (
-              <Row key={o.id} title={`${o.placeName} · #${orderNo(o.id)}`} sub={`Restorana git · ${o.customer || "Müşteri"} · ${o.address?.name || ""}`} right={o.live.status === "sent" ? "Yeni" : "Hazırlanıyor"} />
-            ))}
-          </RowList>
-        )}
-        {today && !mine.length && !given.length && <p className="pt-6 text-center text-[0.9375rem] text-mut">Yolda sipariş yok</p>}
-        {mine.map((o) => {
-          const place = placeById(o.placeId);
-          const to = o.address?.pos;
-          const nav = to ? `https://maps.apple.com/?daddr=${to.lat},${to.lng}&dirflg=d` : "";
-          return (
-            <section key={o.id} className="space-y-3">
-              <TrackMap from={place?.pos} to={to} courier={o.live.courier} route={o.route} f={o.live.f} photo={place?.cover && photoUrl(place.cover, 120)} />
-              <div className="overflow-hidden rounded-[1.25rem] border border-line bg-card">
-                <div className="flex items-center gap-3 px-3.5 py-2.5">
-                  <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.9375rem] font-semibold">{o.customer || "Müşteri"} · {o.address?.name}</b>
-                    <small className="block truncate text-[0.8125rem] text-mut">{o.placeName} · {o.pay === "kapıda-nakit" ? "Nakit" : "Kart"} {tl(o.total)}</small>
-                  </span>
-                  <b className="shrink-0 text-[1.125rem] font-bold tabular-nums">{minutesLeft(o.live.eta, new Date(now))} dk</b>
-                </div>
-                {o.address?.text && <p className="border-t border-line px-3.5 py-2 text-[0.875rem]">{o.address.text}{o.address.note ? ` · ${o.address.note}` : ""}</p>}
-                <div className="flex gap-2 border-t border-line p-2.5 [&>*]:flex-1">
-                  {o.phone && <a href={`tel:${o.phone}`} data-press className="btn btn-secondary w-full">Ara</a>}
-                  {nav && <a href={nav} target="_blank" rel="noreferrer" data-press className="btn btn-secondary w-full">Yol tarifi</a>}
-                  <Button loading={busy === o.id} onClick={() => done(o)}>Teslim</Button>
-                </div>
-              </div>
-            </section>
-          );
-        })}
-      </div>
+    <>
+      <CourierBoard name={courier.name} busy={!!(mine.length || given.length)} gps={ids ? gps : ""} onScan={() => setScan("cam")} onDone={(id) => done(mine.find((o) => o.id === id))}
+        onOut={onChange} outLabel={self ? "Çıkış" : "Değiştir"} head={self ? null : <BackButton href="/yemek/yonetim" />}
+        active={active} next={next} done={today ? doneList : []} />
       <ScanSheet open={!!scan} onClose={() => setScan(null)} onCode={(text) => setScan(pickupOf(all, text))}>
         {scan && scan !== "cam" && <Picked scan={scan} busy={busy} onTake={take} onAgain={() => setScan("cam")} onClose={() => setScan(null)} />}
       </ScanSheet>
-    </main>
+    </>
   );
 }
 

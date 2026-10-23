@@ -28,6 +28,20 @@ export function nearestFree(couriers = [], orders = [], pos) {
   return best;
 }
 
+// Siparişin kuryesi: en yakın müsait; müsait yoksa en yakın kurye (Seyhun 2026-10-23: şimdilik tek kurye var,
+// her sipariş ona gider, meşgulse "Sırada"ya düşer). Konumu bilinen kurye yoksa null.
+export function pickCourier(couriers = [], orders = [], pos) {
+  const free = nearestFree(couriers, orders, pos);
+  if (free || !pos) return free;
+  let best = null, bestKm = Infinity;
+  for (const c of couriers) {
+    if (!c.pos || c.demoBusy) continue;
+    const km = distanceKm(c.pos, pos);
+    if (km < bestKm) [best, bestKm] = [c, km];
+  }
+  return best;
+}
+
 // Siparişe yazılan kurye (atanınca; konumu yola çıkınca yazılır)
 export const courierOnOrder = (c) => ({ id: c.id, name: c.name, phone: c.phone || "", vehicle: c.vehicle || "motor", pos: null });
 

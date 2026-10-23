@@ -8,7 +8,7 @@ import { photoUrl } from "@/yemek/photo";
 import { liveView } from "@/yemek/demo";
 import { decodeLine, pointAlong, progressOn, rideMin, roadMin } from "@/yemek/route";
 import { foodOrderAsk, planVoiceOrder } from "@/yemek/voice";
-import { busyOrder, courierState, nearestFree, sortCouriers, DEMO_COURIERS, courierOnOrder } from "@/yemek/couriers";
+import { busyOrder, courierState, nearestFree, sortCouriers, DEMO_COURIERS, courierOnOrder, pickCourier } from "@/yemek/couriers";
 import { accountCourier, courierCan, deliverPatch, pickupPatch } from "@/yemek/steps";
 import { qrText, parseQr, qrCells, orderNo, pickupOf } from "@/yemek/qr";
 import jsQR from "@/lib/vendor/jsQR.cjs";
@@ -230,6 +230,8 @@ group("Kuryeler")([
   ["teslim edildi", { desc: "kurye müsait", fn: () => courierState(KC[0], [ORD("dk-murat", "delivered")]).busy, ok: (g) => g === false }],
   ["en yakın müsait", { desc: "Pizza Rüzgar'a en yakın Ayşe (bisiklet, ~300 m)", fn: () => nearestFree(KC, [], PR.pos)?.id, ok: (g) => g === "dk-ayse" }],
   ["en yakın siparişteyse", { desc: "sıradaki yakın müsait (siparişteki ve deneme-siparişteki atlanır)", fn: () => nearestFree(KC, [ORD("dk-ayse", "onTheWay")], PR.pos)?.id, ok: (g) => g && g !== "dk-ayse" && !KC.find((c) => c.id === g).demoBusy }],
+  ["tek kurye siparişte", { desc: "yine ona atanır (Sırada)", fn: () => pickCourier([KC[2]], [ORD("dk-ayse", "onTheWay")], PR.pos)?.id, ok: (g) => g === "dk-ayse" }],
+  ["müsait varken", { desc: "müsait olana", fn: () => pickCourier(KC, [ORD("dk-ayse", "onTheWay")], PR.pos)?.id, ok: (g) => g && g !== "dk-ayse" && !KC.find((c) => c.id === g).demoBusy }],
   ["hepsi siparişte", { desc: "atanmaz", fn: () => nearestFree(KC, KC.map((c) => ORD(c.id, "onTheWay")), PR.pos), ok: (g) => g === null }],
   ["konumsuz kurye", { desc: "atanmaz", fn: () => nearestFree([{ id: "k1", name: "A" }], [], PR.pos), ok: (g) => g === null }],
   ["kurye seçme listesi", { desc: "müsaitler önce, yakına göre; siparişteki seçilemez (busy)", fn: () => sortCouriers(KC, [ORD("dk-murat", "onTheWay")], PR.pos), ok: (g) => g.slice(0, 3).every((c) => !c.busy) && g.at(-1).busy && g[0].km <= g[1].km && g.find((c) => c.id === "dk-murat").busy }],
