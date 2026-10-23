@@ -10,6 +10,7 @@ import { pickAddress, distanceKm } from "../address";
 import { herePos, openNow, placeOrder, saveMe, writeCart } from "../store";
 import { tl } from "./Img";
 import { AddressForm } from "./AddressForm";
+import { fetchRoute, roadMin } from "../route";
 
 const PAYS = [["kapıda-kart", "Kapıda kart"], ["kapıda-nakit", "Kapıda nakit"]];
 
@@ -50,9 +51,11 @@ export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name,
     setBusy(true);
     try {
       const km = distanceKm(place.pos, addr.pos);
+      const route = await fetchRoute(place.pos, addr.pos); // yollardan rota; olmazsa düz çizgi
+      const road = roadMin({ route, address: addr }, place);
       const order = {
         placeId: place.id, placeName: place.name, cuisines: place.cuisines, lines, subtotal: totals.subtotal, fee: totals.fee, total: totals.total,
-        pay, address: addr, customer: name || "", demo: food?.settings?.demo !== false, eta: etaFrom({ status: "sent" }, place, Number.isFinite(km) ? km : 2).toISOString(), courier: null,
+        pay, address: addr, customer: name || "", demo: food?.settings?.demo !== false, eta: etaFrom({ status: "sent" }, place, Number.isFinite(km) ? km : 2, new Date(), road).toISOString(), courier: null, route,
       };
       const id = await placeOrder(orgId, uid, order);
       saveMe(orgId, { lastAddressId: addr.id }).catch(() => {});

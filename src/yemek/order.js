@@ -62,9 +62,9 @@ export function isOpenAt(place, date = new Date()) {
 export function travelMin(km) {
   return Math.max(5, Math.round(km * 3));
 }
-export function etaFrom(order, place, km, now = new Date()) {
+// road: yol süresi (dk; rota varsa src/yemek/route.js roadMin), yoksa km'den tahmin
+export function etaFrom(order, place, km, now = new Date(), road = travelMin(km)) {
   const prep = place?.prepMin || 20;
-  const road = travelMin(km);
   const at = (s) => (order.times?.[s] ? new Date(order.times[s]) : null);
   let base;
   if (order.status === "onTheWay") base = new Date((at("onTheWay") || now).getTime() + road * 60000);

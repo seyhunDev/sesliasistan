@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { OSM, OSM_ATTR, loadLeaflet } from "@/lib/leaflet";
+import { MAP_ATTR, MAP_STYLE, loadMapLibre } from "@/lib/maplibre";
 import { addressText, parseReverse, tileOf } from "../address";
 import { herePos } from "../store";
 
@@ -111,6 +111,8 @@ function MapPick({ at, onMove, onFound }) {
   const map = useRef(null);
   const timer = useRef(null);
   const [err, setErr] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const [about, setAbout] = useState(false);
   const cb = useRef({ onMove, onFound });
   useEffect(() => {
     cb.current = { onMove, onFound };
@@ -128,18 +130,21 @@ function MapPick({ at, onMove, onFound }) {
           .catch(() => live && cb.current.onFound({ street: "", area: "" }));
       }, 900);
     };
-    loadLeaflet()
-      .then((L) => {
+    loadMapLibre()
+      .then((ml) => {
         if (!live || !box.current) return;
-        const m = L.map(box.current, { zoomControl: false, attributionControl: true }).setView([at.lat, at.lng], 17);
-        L.tileLayer(OSM, { maxZoom: 19, attribution: OSM_ATTR }).addTo(m);
-        m.attributionControl.setPosition("topright");
+        const m = new ml.Map({ container: box.current, style: MAP_STYLE, center: [at.lng, at.lat], zoom: 16.5, attributionControl: false, dragRotate: false, touchPitch: false, pitchWithRotate: false });
+        m.touchZoomRotate?.disableRotation();
+        m.on("movestart", () => live && setMoving(true));
         m.on("moveend", () => {
+          if (!live) return;
+          setMoving(false);
           const c = m.getCenter();
           const p = { lat: +c.lat.toFixed(6), lng: +c.lng.toFixed(6) };
           cb.current.onMove(p);
           ask(p);
         });
+        m.on("error", () => {});
         map.current = m;
         ask(at);
       })
@@ -154,7 +159,7 @@ function MapPick({ at, onMove, onFound }) {
 
   const goMe = async () => {
     const p = await herePos();
-    if (p && map.current) map.current.setView([p.lat, p.lng], 18);
+    if (p && map.current) map.current.flyTo({ center: [p.lng, p.lat], zoom: 17.5, duration: 1200 });
   };
 
   if (err) return <p className="py-6 text-center text-[0.9375rem] text-mut">Harita açılamadı</p>;
@@ -162,11 +167,13 @@ function MapPick({ at, onMove, onFound }) {
   return (
     <div className="relative" onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
       <div ref={box} className="h-[22rem] w-full overflow-hidden rounded-[1.25rem] border border-line bg-line" />
-      <svg aria-hidden="true" width="36" height="46" viewBox="0 0 36 46" className="pointer-events-none absolute left-1/2 top-1/2 z-[500] -translate-x-1/2 -translate-y-full">
+      <svg aria-hidden="true" width="36" height="46" viewBox="0 0 36 46" className={`pointer-events-none absolute left-1/2 top-1/2 z-[500] -translate-x-1/2 transition-transform duration-200 ${moving ? "-translate-y-[calc(100%+10px)]" : "-translate-y-full"}`}>
         <ellipse cx="18" cy="44" rx="6" ry="2" fill="rgba(0,0,0,.2)" />
         <path d="M18 2C9 2 3 8.5 3 17c0 11 15 26 15 26s15-15 15-26C33 8.5 27 2 18 2z" fill="#0f2c45" />
         <circle cx="18" cy="17" r="6" fill="#fff" />
       </svg>
+      <button type="button" onClick={() => setAbout(!about)} aria-label="Harita kaynağı" className="absolute bottom-3 left-3 z-[500] grid size-6 place-items-center rounded-full bg-white/85 text-[0.75rem] font-bold text-mut">i</button>
+      {about && <p className="absolute bottom-3 left-11 z-[500] rounded-lg bg-white/90 px-2 py-1 text-[0.6875rem] text-mut">{MAP_ATTR}</p>}
       <button type="button" onClick={goMe} data-press className="raised absolute bottom-3 right-3 z-[500] h-10 rounded-full border border-line bg-card px-4 text-[0.875rem] font-semibold">Konumum</button>
     </div>
   );

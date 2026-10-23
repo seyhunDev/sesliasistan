@@ -11,6 +11,8 @@ import { STATUS_NAMES, lineDetail, minutesLeft } from "../order";
 import { liveView } from "../demo";
 import { placeById, useOrder, patchOrder } from "../store";
 import { tl } from "./Img";
+import { photoUrl } from "../photo";
+import { VEHICLES, roadMin } from "../route";
 import { TrackMap } from "./TrackMap";
 
 // Sipariş takibi (örnek 6-7): lacivertte büyük kalan süre ve 4 adım; yolda iken haritada kurye;
@@ -24,7 +26,7 @@ export function TrackView({ orgId, id }) {
   const toast = useToast();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 10000);
+    const t = setInterval(() => setNow(Date.now()), 4000);
     return () => clearInterval(t);
   }, []);
   // Deneme siparişi teslim saatine gelince kayda da "teslim edildi" yazılır (geçmiş ve öneri bunu okur)
@@ -75,7 +77,10 @@ export function TrackView({ orgId, id }) {
       </section>
 
       <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
-        {v.status === "onTheWay" && <TrackMap from={place?.pos} to={order.address?.pos} courier={v.courier?.pos} />}
+        {!done && !cancelled && (
+          <TrackMap from={place?.pos} to={order.address?.pos} courier={v.courier} route={order.route} photo={place?.cover && photoUrl(place.cover, 120)} f={v.f}
+            info={v.courier ? `${v.courier.name} · ${VEHICLES[v.courier.vehicle || "motor"]}${order.route ? ` · ${String(order.route.km).replace(".", ",")} km` : ""}` : `Hazırlık ${place?.prepMin || 20} dk · Yol ${roadMin(order, place)} dk`} />
+        )}
 
         {done && <Rate order={order} orgId={orgId} />}
 

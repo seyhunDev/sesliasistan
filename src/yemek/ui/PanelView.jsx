@@ -7,6 +7,7 @@ import { RowList, Row } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { lineDetail, minutesLeft } from "../order";
+import { VEHICLES } from "../route";
 import { distanceKm } from "../address";
 import { PLACES, placeById, useSettings, useToday, saveSettings, acceptOrder, rejectOrder, giveToCourier } from "../store";
 import { Img, tl } from "./Img";
@@ -152,7 +153,7 @@ function Panel({ orgId, place, onChange }) {
           {couriers.length ? (
             <RowList>
               {couriers.map((c) => (
-                <Row key={c.id} title={c.name} sub={c.phone} onClick={() => { const o = give; setGive(null); run(o.id, () => giveToCourier(orgId, o, place, c)); }} />
+                <Row key={c.id} title={c.name} sub={[VEHICLES[c.vehicle || "motor"], c.phone].filter(Boolean).join(" · ")} onClick={() => { const o = give; setGive(null); run(o.id, () => giveToCourier(orgId, o, place, c)); }} />
               ))}
             </RowList>
           ) : (

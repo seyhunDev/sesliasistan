@@ -12,8 +12,8 @@ import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, wh
 import { addDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { SAMPLE_PLACES } from "./sample";
-import { STATUSES, isOpenAt, travelMin } from "./order";
-import { distanceKm } from "./address";
+import { STATUSES, isOpenAt } from "./order";
+import { roadMin } from "./route";
 
 export const PLACES = SAMPLE_PLACES;
 export const placeById = (id) => PLACES.find((p) => p.id === id) || null;
@@ -137,15 +137,15 @@ export function useActiveOrder(orgId) {
 const nowIso = () => new Date().toISOString();
 export function acceptOrder(orgId, o, place) {
   const t = nowIso();
-  const km = distanceKm(place?.pos, o.address?.pos);
-  const road = travelMin(Number.isFinite(km) ? km : 2);
+  const road = roadMin(o, place);
   return patchOrder(orgId, o.id, { demo: false, status: "preparing", times: { ...(o.times || {}), accepted: t, preparing: t }, eta: new Date(Date.now() + ((place?.prepMin || 20) + road) * 60000).toISOString() });
 }
 export const rejectOrder = (orgId, o) => patchOrder(orgId, o.id, { demo: false, status: "cancelled", times: { ...(o.times || {}), cancelled: nowIso() } });
 export function giveToCourier(orgId, o, place, courier) {
   return patchOrder(orgId, o.id, {
     demo: false, status: "onTheWay", times: { ...(o.times || {}), onTheWay: nowIso() },
-    courier: { id: courier.id, name: courier.name, phone: courier.phone || "", pos: place?.pos || null, at: nowIso() },
+    eta: new Date(Date.now() + roadMin(o, place, courier.vehicle) * 60000).toISOString(),
+    courier: { id: courier.id, name: courier.name, phone: courier.phone || "", vehicle: courier.vehicle || "motor", pos: place?.pos || null, at: nowIso() },
   });
 }
 export const deliverOrder = (orgId, o) => patchOrder(orgId, o.id, { demo: false, status: "delivered", times: { ...(o.times || {}), delivered: nowIso() } });
