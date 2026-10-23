@@ -3056,3 +3056,15 @@ group("Ortak düğmeler")([
     ["veri çekmez", F("SeaCard ana sayfada yok", () => !/SeaCard/.test(s))],
   ]);
 }
+
+// Asistan tek kutu (Seyhun "A · Tek kapsül", 2026-10-23): yan düğmeler yok; Fotoğraf · yazı alanı · ses düğmesi
+{
+  const { readFileSync } = await import("node:fs");
+  const s = readFileSync(new URL("../../../src/features/home/TabBar.jsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../../src/app/globals.css", import.meta.url), "utf8");
+  group("Asistan: tek kutu")([
+    ["yan düğme yok", F("aside sınıfları kalktı", () => !/aside-btn|aside-l|aside-r/.test(s + css))],
+    ["tek kutu", F("apill içinde ses düğmesi küçük", () => /className="apill /.test(s) && /onHold=\{onHold\} small \/>/.test(s))],
+    ["boş alan kapatır", F("dinlerken ve taslakta değil", () => /mode !== "listening" && !draft && onClose\?\.\(\)/.test(s))],
+  ]);
+}

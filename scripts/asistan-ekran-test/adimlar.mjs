@@ -105,10 +105,13 @@ export async function scenarios(h) {
     return [c === "kırmızı" && bars === 5 && !t && n === 1, `${c} · ${bars} çubuk · halka: “${t}” · “Dinliyorum” ${n} kez`];
   });
   // Asistan düğmede (2026-10-22): ayrı zemin yok, arkadaki sayfa bulanıklaşır; örtü sürekli oynamaz; yan düğmeler
-  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), yanda Kapat ve Dur", async () => {
+  // Tek kutu (Seyhun "A · Tek kapsül", 2026-10-23): yan düğme yok; altta tek kutu, dinlerken içinde ■ Dur
+  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), altta tek kutu, içinde Dur, kapat düğmesi yok", async () => {
     const z = await page.locator("[data-dome] .abg").evaluate((el) => { const c = getComputedStyle(el); return { anim: `${c.animationName} ${c.animationIterationCount}`, blur: c.backdropFilter || c.webkitBackdropFilter || "" }; });
-    const side = (await btn(page, "Asistanı kapat").count()) + (await btn(page, "Dur").count());
-    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && side === 2, `örtü ${z.anim} · ${z.blur} · yan düğme ${side}`];
+    const pill = await page.locator("[data-dome] .apill").count();
+    const dur = await page.locator("[data-dome] .apill").getByRole("button", { name: "Dur", exact: true }).count();
+    const x = await btn(page, "Asistanı kapat").count();
+    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && pill === 1 && dur === 1 && x === 0, `örtü ${z.anim} · ${z.blur} · kutu ${pill} · Dur ${dur} · kapat ${x}`];
   });
   await say(page, "notlarımı oku");
   // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutuya akar, altta süre + dalga, ■ Dur ve ↑ Gönder
@@ -148,8 +151,8 @@ export async function scenarios(h) {
 
   // Kapat (×): aşağı kayarak kapanır, sekmeler geri gelir
   const G4 = "Kapanış";
-  await btn(page, "Asistanı kapat").click();
-  await check(G4, "× (Asistanı kapat)", "afull-out ile aşağı kayarak kapanır", async () => {
+  await page.locator("[data-dome] [data-apane]").click({ position: { x: 20, y: 20 } });
+  await check(G4, "boş alana dokun", "afull-out ile aşağı kayarak kapanır", async () => {
     const cls = await waitFor(async () => {
       const c = await full(page).getAttribute("class", { timeout: 300 }).catch(() => "");
       return /afull-out/.test(c) ? c : null;
