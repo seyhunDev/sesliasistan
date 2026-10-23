@@ -441,93 +441,36 @@ export function FitnessHome() {
 
   const todayRows = dayRows(fitOthers, athletes, today, today);
   const wk = rows.reduce((t, r) => ({ done: t.done + r.week.done, planned: t.planned + r.week.planned, missed: t.missed + r.week.missed }), { done: 0, planned: 0, missed: 0 });
+  const dark = tab === "ath";
+  const headBtns = (
+    <>
+      <button type="button" onClick={() => setMenuOpen(true)} aria-label="Diğer" data-press className="btn btn-round size-10 text-fg">
+        <Icon name="more" className="size-5" />
+      </button>
+      <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" className={`grid size-10 place-items-center rounded-full text-white ${dark ? "bg-[#0ea5c4]" : "bg-acc shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)]"}`}>
+        <Icon name="plus" className="size-5" />
+      </button>
+    </>
+  );
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-      <PageHeader title="Fitness" sub={tab === "ath" ? "Sporcuların programı ve takibi" : "Antrenman programın ve takibin"}>
-        <button type="button" onClick={() => setMenuOpen(true)} aria-label="Diğer" data-press className="btn btn-round size-10 text-fg">
-          <Icon name="more" className="size-5" />
-        </button>
-        <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" className="grid size-10 place-items-center rounded-full bg-acc text-white shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)]">
-          <Icon name="plus" className="size-5" />
-        </button>
-      </PageHeader>
-      <Tabs tab={tab} setTab={setTab} withAth={athletes.length > 0} />
+    <main data-theme={dark ? "dark" : undefined} className={`mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)] ${dark ? "navy fit-dark relative min-h-dvh" : ""}`}>
+      {dark && <FitPhoto />}
+      {dark ? (
+        <div className="relative flex items-center gap-2.5 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+          <BackButton href="/" className="-my-0.5 touch-manipulation" />
+          <h1 className="min-w-0 flex-1 truncate text-[1.875rem] font-bold leading-tight tracking-[-.02em]">Fitness</h1>
+          {headBtns}
+        </div>
+      ) : (
+        <PageHeader title="Fitness" sub="Antrenman programın ve takibin">
+          {headBtns}
+        </PageHeader>
+      )}
+      <Tabs tab={tab} setTab={setTab} withAth={athletes.length > 0} dark={dark} />
 
       {tab === "ath" ? (
-        <>
-          <button
-            type="button"
-            onClick={() => {
-              setDayDate(today);
-              setDayOpen(true);
-            }}
-            className="block w-full rounded-[1.625rem] bg-deep p-5 text-left text-white"
-          >
-            <div className="flex items-center justify-between">
-              <small className="text-[0.75rem] font-bold tracking-[.06em] text-white/60">BUGÜN</small>
-              <span className="flex items-center gap-1 text-[0.8125rem] font-semibold text-white/80">
-                Gün gün
-                <Icon name="chev" className="size-4" />
-              </span>
-            </div>
-            <b className="mt-1 block text-[1.125rem] font-semibold leading-snug">{dayLine(todayRows) || "Bugün sporcu antrenmanı yok"}</b>
-            {wk.planned > 0 && (
-              <>
-                <div className="mt-4 flex items-baseline justify-between text-[0.8125rem]">
-                  <span className="text-white/70">Bu hafta</span>
-                  <span>
-                    <b className="tabular-nums">{`${wk.done}/${wk.planned}`}</b>
-                    <span className="text-white/70"> yapıldı</span>
-                    {wk.missed > 0 && <span className="text-[#f3a39a]">{` · ${wk.missed} yapılmadı`}</span>}
-                  </span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
-                  <div className="h-full rounded-full bg-[#bfe8d6]" style={{ width: `${Math.round((wk.done / wk.planned) * 100)}%` }} />
-                </div>
-              </>
-            )}
-          </button>
-
-          {rows.length > 0 && (
-            <>
-              <Head title={`SPORCULAR · ${rows.length}`} />
-              <ul className={`${card} divide-y divide-line overflow-hidden`}>
-                {rows.map((r) => (
-                  <li key={r.uid} className="px-4 py-3">
-                    <button type="button" onClick={() => (setRevOpen(false), setAth(r.uid))} className="flex w-full items-center gap-3 text-left">
-                      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.9375rem] font-bold text-acc">{initialsOf(r.name)}</span>
-                      <span className="min-w-0 flex-1">
-                        <b className="block truncate text-[1rem] font-semibold">{r.name}</b>
-                        <small className={`block truncate text-[0.8125rem] ${/yapmadı/.test(nowLine(r, today)) ? "text-rec" : "text-mut"}`}>{nowLine(r, today)}</small>
-                      </span>
-                      {r.week.planned > 0 && <b className={`shrink-0 text-[0.9375rem] font-bold tabular-nums ${r.week.missed ? "text-rec" : "text-acc"}`}>{`${r.week.done}/${r.week.planned}`}</b>}
-                      <Icon name="chev" className="size-4 shrink-0 text-mut" />
-                    </button>
-                    <WeekDots row={r} today={today} onOpen={open} />
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          {rest.length > 0 && (
-            <>
-              <Head title="PROGRAMI YOK" />
-              <ul className={`${card} divide-y divide-line overflow-hidden`}>
-                {rest.map((a) => (
-                  <li key={a.uid} className="flex items-center gap-3 px-4 py-2.5">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-bg text-[0.8125rem] font-bold text-mut">{initialsOf(a.name)}</span>
-                    <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.name}</span>
-                    <button type="button" onClick={() => newFor(a.uid)} className="h-9 shrink-0 rounded-full bg-acc/10 px-3.5 text-[0.875rem] font-semibold text-acc">
-                      + Program
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </>
+        <AthTab today={today} todayRows={todayRows} wk={wk} rows={rows} rest={rest} onDay={() => (setDayDate(today), setDayOpen(true))} onAth={(uid) => (setRevOpen(false), setAth(uid))} onOpen={open} onNew={newFor} />
       ) : list && !prog && !todays.length && !all.length ? (
         <div className={`${card} flex flex-col items-center gap-3 px-5 py-8 text-center`}>
           <span className="grid size-14 place-items-center rounded-full bg-acc/10 text-acc">
@@ -618,12 +561,12 @@ export function FitnessHome() {
 }
 
 // Sporcular | Benim | Beslenme (adres: /fitness, ?tab=me, ?tab=food; sporcusu yoksa Sporcular yok)
-function Tabs({ tab, setTab, withAth }) {
+function Tabs({ tab, setTab, withAth, dark }) {
   const tabs = [withAth && ["ath", "Sporcular"], ["me", "Benim"], ["food", "Beslenme"]].filter(Boolean);
   return (
-    <div className={`mb-3 grid gap-1 rounded-full bg-card p-1 shadow-[0_1px_3px_rgba(38,40,44,.08)] ${tabs.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+    <div className={`relative mb-3 grid gap-1 rounded-full p-1 ${dark ? "bg-white/10 ring-1 ring-white/15" : "bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)]"} ${tabs.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
       {tabs.map(([k, n]) => (
-        <button key={k} type="button" onClick={() => setTab(k)} className={`h-10 rounded-full text-[0.9375rem] font-semibold transition-colors ${tab === k ? "bg-acc text-white" : "text-mut"}`}>
+        <button key={k} type="button" onClick={() => setTab(k)} className={`h-10 rounded-full text-[0.9375rem] font-semibold transition-colors ${tab === k ? (dark ? "bg-[#0ea5c4] text-white" : "bg-acc text-white") : dark ? "text-white/70" : "text-mut"}`}>
           {n}
         </button>
       ))}
@@ -659,36 +602,162 @@ function ProfileSheet({ open, onClose, value, onSave }) {
 }
 
 const initialsOf = (s) => String(s || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toLocaleUpperCase("tr-TR");
-// Sporcu satırının alt yazısı: bugünün antrenmanı, yoksa bu haftanın kaçırılanı, hafta tamamsa "Bu hafta tamam", yoksa sıradaki
-function nowLine(r, today) {
-  const t = r.week.days.find((d) => d.date === today);
-  if (t) return `Bugün: ${t.name} · ${{ done: "yaptı", skip: "atladı", today: "bekliyor" }[t.st] || "bekliyor"}`;
-  const miss = r.week.days.filter((d) => d.st === "missed").at(-1);
-  if (miss) return `${new Date(`${miss.date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long" })} yapmadı`;
-  if (r.week.planned && r.week.done === r.week.planned) return "Bu hafta tamam";
-  if (r.next) return `Sıradaki: ${new Date(`${r.next.date}T12:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" })} · ${r.next.fit?.name || r.next.title}`;
-  return r.prog?.title || "Bu hafta antrenman yok";
+// Sporcular sekmesinin arka planı (Seyhun 2026-10-23 "A · Koyu", örnek fitness/sporcular-tasarim/ornek.png): üstte salon fotoğrafı
+// (ücretsiz lisanslı Unsplash), aşağı doğru koyulaşıp sayfanın koyu zeminine karışır. Yüklenemezse yalnız koyu zemin kalır.
+const FIT_BG = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&q=60&auto=format&fit=crop";
+function FitPhoto() {
+  const [off, setOff] = useState(false);
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[27rem] overflow-hidden">
+      {/* eslint-disable-next-line @next/next/no-img-element -- dış bağlantı (Unsplash), Next görüntü sunucusu yok */}
+      {!off && <img src={FIT_BG} alt="" onError={() => setOff(true)} className="size-full object-cover opacity-80" />}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,22,40,.3)_0%,rgba(11,22,40,.72)_45%,#0b1628_100%)]" />
+    </div>
+  );
 }
-// Bu hafta (pazartesiden) 7 gün: yapıldı ✓, yapılmadı ✕, atlandı –, bekleyen gün numarası, antrenmansız gün nokta.
-// Antrenmanlı güne dokununca antrenman açılır.
-function WeekDots({ row, today, onOpen }) {
+
+const DOW = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+const shortDay = (d) => new Date(`${d}T12:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" }).replace(/\./g, "");
+
+// Sporcular sekmesi (koyu): bugünün özeti (kaç sporcu, yaptı/bekliyor, bu hafta çubuğu, Gün gün), sporcu kartları, programı olmayanlar
+function AthTab({ today, todayRows, wk, rows, rest, onDay, onAth, onOpen, onNew }) {
+  const c = (k) => todayRows.filter((r) => r.st === k).length;
+  const wait = c("today") + c("next");
+  const parts = [
+    c("done") && [`${c("done")} yaptı`, "text-[#9fe7c6]"],
+    wait && [`${wait} bekliyor`, ""],
+    c("missed") && [`${c("missed")} yapmadı`, "text-[#f3a39a]"],
+    c("skip") && [`${c("skip")} atladı`, ""],
+  ].filter(Boolean);
+  return (
+    <div className="relative">
+      <section className="mt-4">
+        <small className="text-[0.75rem] font-bold tracking-[.06em] text-white/60">{`BUGÜN · ${shortDay(today).toLocaleUpperCase("tr-TR")}`}</small>
+        <b className="mt-0.5 block text-[1.625rem] font-bold leading-tight tracking-[-.02em]">{todayRows.length ? `${todayRows.length} sporcu antrenmanda` : "Bugün antrenman yok"}</b>
+        {parts.length > 0 && (
+          <p className="mt-1 text-[0.875rem] text-white/75">
+            {parts.map(([t, cl], i) => (
+              <span key={t} className={cl}>
+                {i ? " · " : ""}
+                {t}
+              </span>
+            ))}
+          </p>
+        )}
+        {wk.planned > 0 && (
+          <div className="mt-3.5 flex items-center gap-2.5 text-[0.8125rem]">
+            <span className="text-white/75">Bu hafta</span>
+            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/15">
+              <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round((wk.done / wk.planned) * 100)}%` }} />
+            </span>
+            <b className="tabular-nums">{`${wk.done}/${wk.planned}`}</b>
+          </div>
+        )}
+        <button type="button" onClick={onDay} data-press className="ck-glass mt-3.5 h-10 rounded-xl px-4 text-[0.875rem] font-semibold active:scale-[.97]">
+          Gün gün
+        </button>
+      </section>
+
+      {rows.length > 0 && (
+        <>
+          <SecHead title="Sporcular" n={rows.length} />
+          <div className="space-y-3">
+            {rows.map((r) => (
+              <AthCard key={r.uid} row={r} today={today} onAth={() => onAth(r.uid)} onOpen={onOpen} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {rest.length > 0 && (
+        <>
+          <SecHead title="Programı yok" n={rest.length} />
+          <ul className="divide-y divide-white/[.08] overflow-hidden rounded-[1.375rem] border border-white/[.08] bg-[#13233d]">
+            {rest.map((a) => (
+              <li key={a.uid} className="flex items-center gap-3 px-3.5 py-2.5">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/[.08] text-[0.8125rem] font-bold text-[#c5d2e6]">{initialsOf(a.name)}</span>
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.name}</span>
+                <button type="button" onClick={() => onNew(a.uid)} className="h-9 shrink-0 rounded-full bg-[#67e8f9]/15 px-3.5 text-[0.875rem] font-semibold text-[#67e8f9]">
+                  + Program
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SecHead({ title, n }) {
+  return (
+    <div className="mx-1 mb-2.5 mt-7 flex items-center justify-between text-[1rem] font-semibold">
+      {title}
+      <span className="font-medium text-white/55 tabular-nums">{n}</span>
+    </div>
+  );
+}
+
+// Kartın orta satırı: bugünün antrenmanı, yoksa bu haftanın kaçırılanı, yoksa sıradaki; sağda durumu (ad ile durum tekrar edilmez)
+function athLine(r, today) {
+  const t = r.week.days.find((d) => d.date === today);
+  const plan = (d) => d && r.plans.find((p) => p.id === d.id);
+  if (t) return { text: `Bugün · ${t.name}`, tag: { done: ["Yaptı", "ok"], skip: ["Atladı", "skip"], missed: ["Yapmadı", "miss"] }[t.st] || ["Bekliyor", "wait"], plan: plan(t) };
+  const miss = r.week.days.filter((d) => d.st === "missed").at(-1);
+  if (miss) return { text: `${DOW[dowOf(miss.date) - 1]} · ${miss.name}`, tag: ["Yapmadı", "miss"], plan: plan(miss) };
+  const all = r.week.planned > 0 && r.week.done === r.week.planned;
+  if (r.next) return { text: `Sıradaki · ${shortDay(r.next.date)}`, tag: all ? ["Hafta tamam", "ok"] : null, plan: r.next };
+  if (all) return { text: "Bu hafta", tag: ["Tamam", "ok"] };
+  return { text: "Bu hafta antrenman yok", tag: null };
+}
+const TAG = { ok: "bg-[#9fe7c6]/15 text-[#9fe7c6]", miss: "bg-[#f3a39a]/15 text-[#f3a39a]", wait: "bg-[#67e8f9]/15 text-[#67e8f9]", skip: "bg-white/10 text-white/70" };
+
+// Sporcu kartı: üstte baş harfler, ad, hedef · kaçıncı hafta, sağda bu haftanın halkası (dokununca sporcu sayfası);
+// ortada bugünün ya da kaçırılan günün antrenmanı ve durumu; altta Pzt–Paz: ✓ yaptı, ✕ yapmadı, – atladı, çerçeveli bugün,
+// rakam sıradaki, nokta antrenmansız. Antrenmanlı güne ya da orta satıra dokununca o antrenman açılır.
+function AthCard({ row, today, onAth, onOpen }) {
+  const prog = row.prog;
+  const pw = prog && progWeek(prog, today);
+  const sub = [labelOf(GOALS, prog?.goal) || prog?.title, pw && pw.n ? `${Math.min(pw.n, pw.of)}. hafta / ${pw.of}` : ""].filter(Boolean).join(" · ");
+  const pct = row.week.planned ? Math.round((row.week.done / row.week.planned) * 100) : 0;
+  const line = athLine(row, today);
   const mon = addDays(today, 1 - dowOf(today));
   return (
-    <div className="mt-2 grid grid-cols-7 pl-[3.25rem]">
-      {Array.from({ length: 7 }, (_, i) => {
-        const date = addDays(mon, i);
-        const d = row.week.days.find((x) => x.date === date);
-        const plan = d && row.plans.find((p) => p.id === d.id);
-        if (!d) return <span key={date} className="grid h-8 place-items-center"><span className="size-1 rounded-full bg-mut/40" /></span>;
-        const look = { done: "bg-acc text-white", missed: "bg-rec/15 text-rec", skip: "bg-line text-mut", today: "border-2 border-acc text-acc", next: "border border-line text-mut" }[d.st];
-        return (
-          <button key={date} type="button" aria-label={`${d.name} · ${STATUS[d.st]}`} onClick={() => plan && onOpen(plan)} className="grid h-8 place-items-center">
-            <span className={`grid size-7 place-items-center rounded-full text-[0.6875rem] font-bold ${look}`}>
-              {d.st === "done" ? <Icon name="check" className="size-3.5" /> : d.st === "missed" ? "✕" : d.st === "skip" ? "–" : +date.slice(8)}
-            </span>
-          </button>
-        );
-      })}
+    <div className="rounded-[1.5rem] border border-white/[.08] bg-[#13233d] p-4">
+      <button type="button" onClick={onAth} className="flex w-full items-center gap-3 text-left">
+        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#67e8f9]/15 text-[1rem] font-bold text-[#67e8f9]">{initialsOf(row.name)}</span>
+        <span className="min-w-0 flex-1">
+          <b className="block truncate text-[1.0625rem] font-semibold">{row.name}</b>
+          {sub && <small className="block truncate text-[0.8125rem] text-[#9fb0cc]">{sub}</small>}
+        </span>
+        {row.week.planned > 0 && (
+          <span className="grid size-[3.25rem] shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#67e8f9 ${pct}%, rgb(255 255 255 / .12) 0)` }}>
+            <span className="grid size-[2.625rem] place-items-center rounded-full bg-[#13233d] text-[0.875rem] font-bold tabular-nums">{`${row.week.done}/${row.week.planned}`}</span>
+          </span>
+        )}
+      </button>
+      <button type="button" disabled={!line.plan} onClick={() => line.plan && onOpen(line.plan)} className="mt-3 flex w-full items-center justify-between gap-2 rounded-2xl bg-white/[.06] px-3 py-2.5 text-left">
+        <b className="min-w-0 truncate text-[0.875rem] font-semibold">{line.text}</b>
+        {line.tag && <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-bold ${TAG[line.tag[1]]}`}>{line.tag[0]}</span>}
+      </button>
+      <div className="mt-3 grid grid-cols-7 gap-1.5">
+        {DOW.map((dn, i) => {
+          const date = addDays(mon, i);
+          const d = row.week.days.find((x) => x.date === date);
+          const plan = d && row.plans.find((p) => p.id === d.id);
+          const look = !d
+            ? "text-white/25"
+            : { done: "bg-[#9fe7c6] text-[#0b2a20]", missed: "bg-[#f3a39a] text-[#5a1610]", skip: "bg-white/12 text-white/70", today: "border-2 border-[#67e8f9] text-[#67e8f9]" }[d.st] || "border border-white/30 text-white";
+          return (
+            <button key={date} type="button" disabled={!plan} aria-label={d ? `${dn} ${d.name} · ${STATUS[d.st]}` : dn} onClick={() => plan && onOpen(plan)} className="flex flex-col items-center gap-1">
+              <small className={`text-[0.6875rem] ${date === today ? "font-bold text-white" : "text-[#9fb0cc]"}`}>{dn}</small>
+              <span className={`grid h-10 w-full place-items-center rounded-xl text-[0.8125rem] font-bold ${look}`}>
+                {!d ? "·" : d.st === "done" ? <Icon name="check" className="size-4" /> : d.st === "missed" ? "✕" : d.st === "skip" ? "–" : +date.slice(8)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -949,19 +1018,6 @@ function GiveSheet({ open, onClose, others, today, onGo }) {
   );
 }
 
-// Bölüm başlığı (küçük harf aralıklı), sağda isteğe bağlı düğme
-function Head({ title, action, onAction }) {
-  return (
-    <div className="mb-2 mt-5 flex items-center justify-between">
-      <small className="text-[0.75rem] font-bold tracking-[.06em] text-mut">{title}</small>
-      {action && (
-        <button type="button" onClick={onAction} data-press className="btn btn-text btn-sm text-acc">
-          {action}
-        </button>
-      )}
-    </div>
-  );
-}
 
 // Pencere satırı: solda simge dairesi, ad ve açıklama, sağda ok
 function MenuRow({ icon, title, sub, onClick }) {
