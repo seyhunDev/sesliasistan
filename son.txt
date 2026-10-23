@@ -1,8 +1,8 @@
-Commit: f12a626 · Yemek: sepet çubuğu alt çubuğa yapışık lacivert, arkada ürün fotoğrafları (#756)
-Zaman: 2026-10-23-1320 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39937524797
+Commit: d7aadfa · Asistan: yazı kutusunda Fotoğraf düğmesi (motor photoIn verince görünür) (#760)
+Zaman: 2026-10-23-1352 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39941277439
 
-TAM TEST · 23.10.2026 13:13:31
+TAM TEST · 23.10.2026 13:45:52
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1376/1376 geçti · 0 kalan · 441 sn
+SONUÇ: 1376/1376 geçti · 0 kalan · 427 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
