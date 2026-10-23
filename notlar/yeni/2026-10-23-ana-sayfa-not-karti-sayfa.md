@@ -1,6 +1,6 @@
 ## Nerede kaldım
 
-- Ana sayfa not kartları artık notun tam sayfasını açar (`/notes/[id]`, Notlar konusu #744). Kart rengi Notlar sayfasının `noteColor(n)` değerinin tonu, tarih `noteWhen` ile Notlar sayfasıyla aynı biçimde. Tarayıcıda denenmedi (yalnız testler ve derleme), telefonda denenmedi.
+- Ana sayfa not kartları ekranda ikişer yan yana, daha geniş (Seyhun istedi); notun tam sayfasını açar (`/notes/[id]`, Notlar konusu #744). Kart rengi Notlar sayfasının `noteColor(n)` değerinin tonu, tarih `noteWhen` ile Notlar sayfasıyla aynı biçimde. Tarayıcıda denendi (kart /notes/<id> açıyor), telefonda denenmedi.
 
 ## Sıradaki işler
 

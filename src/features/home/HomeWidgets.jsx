@@ -132,13 +132,13 @@ const dayName = (d, today) => {
 export function NotesWidget({ notes }) {
   const { list, total } = homeNotes(notes || [], 8);
   const today = todayStr();
-  // Seyhun 2026-10-23 "A · Kayan not kartları": yapışkan not gibi küçük kartlar sağa kayar; kartta yalnız başlık (3 satıra kadar) ve tarih.
+  // Seyhun 2026-10-23 "A · Kayan not kartları": yapışkan not gibi kartlar, ekranda ikişer yan yana (Seyhun: "2'şerli, genişliği daha fazla"), sağa kayar; kartta yalnız başlık (3 satıra kadar) ve tarih.
   // Sabitlenen not ince vurgu çerçeveli; notun rengi (color, noteColor) varsa kart o rengin tonunda. Dokununca not sayfası (/notes/[id]).
   return (
     <section aria-label="Notlar">
       <ListHead title="Notlar" count={total} href={total > 0 ? "/notes" : null} />
       {list.length ? (
-        <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {list.map((n) => {
             const when = noteWhen(n.updatedAt || n.createdAt, today);
             const first = String(n.body || "").split("\n").find((x) => x.trim()) || "";
@@ -147,7 +147,7 @@ export function NotesWidget({ notes }) {
                 key={n.id}
                 href={`/notes/${n.id}`}
                 data-press
-                className={`note-card flex h-[6.5rem] w-[8.5rem] shrink-0 snap-start flex-col rounded-2xl border p-3 text-left ${n.pinned ? "note-pin" : ""}`}
+                className={`note-card flex h-[6.5rem] w-[calc(50%-0.25rem)] shrink-0 snap-start flex-col rounded-2xl border p-3 text-left ${n.pinned ? "note-pin" : ""}`}
                 style={n.color ? { background: `color-mix(in srgb, ${noteColor(n)} 20%, var(--card))`, borderColor: `color-mix(in srgb, ${noteColor(n)} 45%, var(--line))` } : undefined}
               >
                 <b className="line-clamp-3 text-[0.9375rem] font-semibold leading-snug">{n.title || first || "Not"}</b>
