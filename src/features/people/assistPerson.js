@@ -202,6 +202,16 @@ export function applyAnswer(d, text, field = "") {
     return next;
   }
   const p = parsePerson(text);
+  // Ad sorulunca birkaç bilgi birden ("adı Ali Kaya, telefonu 0532…, çalışan"; fotoğraftan sonra): ad virgüle ya da
+  // sonraki bilginin sözüne kadar, kalanlar kendi alanına
+  if (field === "name" && (p.phone || p.email || p.birth || p.kind || /(?:^|\s)adı/.test(t))) {
+    const nm = /(?:^|\s)(?:adı(?:nı)?\s+)?([\p{L}'’ -]+?)(?=\s*[,.;]|\s+(?:telefon|numara|tel|e.?posta|mail|doğum|çalışan|personel|antrenör|aile|sporcu|öğrenci|veli|eş|olsun|olarak)|$)/u.exec(String(text).replace(/^\s*(?:bu\s+kişi(?:yi)?\s+ekle\s*,?\s*)/iu, ""));
+    const name = (nm?.[1] || "").split(/\s+/).filter((w) => w && !NOT_NAME.has(fold(w))).slice(0, 4).join(" ");
+    if (name) next.name = capWords(name);
+    for (const k of ["phone", "email", "kind", "relation", "title", "birth"]) if (p[k]) next[k] = p[k];
+    if (p.relation && !p.kind) next.kind = "family";
+    return next;
+  }
   if (field === "name" || field === "surname") {
     const words = String(text).replace(/[^\p{L}\s'’-]/gu, " ").trim().split(/\s+/).filter((w) => w && !NOT_NAME.has(fold(w)));
     if (words.length) next.name = field === "surname" && words.length === 1 ? `${d.name} ${capWords(words[0])}` : capWords(words.slice(0, 4).join(" "));

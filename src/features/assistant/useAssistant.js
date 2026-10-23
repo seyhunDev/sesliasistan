@@ -38,6 +38,7 @@ import { extraNote } from "@/lib/steps";
 import * as is_kayit from "./isler/kayit";
 import * as is_mesaj from "./isler/mesaj";
 import * as is_kisi from "./isler/kisi";
+import { SCAN_CODE } from "@/features/people/ContactScan";
 import * as is_yaris from "./isler/yaris";
 import * as is_yoklama from "./isler/yoklama";
 import * as is_gunluk from "./isler/gunluk";
@@ -618,6 +619,22 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   function personSave(...a) {
     return is_kisi.personSave(ctx, ...a);
   }
+  // Asistana fotoğraf (tasarımın düğmesi çağırır): kişi kare kodu, kişinin fotoğrafı ya da kimlik/kartvizit → kişi ekleme.
+  // Yazı kutusunda cümle varsa onunla birlikte gider ("bu kişiyi ekle, adı …")
+  function photoIn(file) {
+    if (!file) return;
+    // Asistan kapalıyken (küreye basılı tutup açılan yazı kutusundan): asistan açılır, fotoğraf açılışta işlenir
+    if (!live.current.open) return window.dispatchEvent(new CustomEvent("sa-open-assistant", { detail: { photo: file } }));
+    const said = text.trim();
+    if (said) setText("");
+    return is_kisi.photoPerson(ctx, file, said, !!convo.current);
+  }
+  // Sesle "kare kodu okut": okutma ekranından gelen kod (people/ContactScan.jsx)
+  useEffect(() => {
+    const on = (e) => live.current.open && is_kisi.scanCode(ctx, e.detail || "", !!convo.current);
+    window.addEventListener(SCAN_CODE, on);
+    return () => window.removeEventListener(SCAN_CODE, on);
+  });
   function personCancel(...a) {
     return is_kisi.personCancel(ctx, ...a);
   }
@@ -814,6 +831,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   useEffect(() => {
     onAct?.({
       listen: stageListen,
+      photoIn, // yazı kutusundaki Fotoğraf düğmesi (TabBar): kişi ekleme
       stop: () => sp.stop("send"),
       // Konuşma kutusu (Seyhun'un örneği): ■ dinlemeyi durdurur, söylenen kutuda kalır (gönderilmez); ↑ kutudakini gönderir;
       // × dinlemeyi de kutudakini de siler. draft: kutuda bekleyen söz (yeniden konuşulursa başına eklenir)
@@ -919,7 +937,8 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
     if (back) {
       convo.current = !!(seed?.listen || seed?.voice);
       setVoice(!!seed?.voice);
-      if (seed?.text) run(seed.text, !!seed.voice);
+      if (seed?.photo) is_kisi.photoPerson(ctx, seed.photo, "", false);
+      else if (seed?.text) run(seed.text, !!seed.voice);
       else if (seed?.listen) {
         setBooting(true);
         sp.start(listenOpts(true));
@@ -928,7 +947,8 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
     }
     // Panel zaten açıktı (alttaki "Konuş"/"Yaz"): sohbet sıfırlanmaz, kaldığı yerden devam
     if (cont) {
-      if (seed?.text) run(seed.text, !!seed.voice);
+      if (seed?.photo) is_kisi.photoPerson(ctx, seed.photo, "", false);
+      else if (seed?.text) run(seed.text, !!seed.voice);
       else if (seed?.listen) {
         convo.current = true;
         sp.start(listenOpts(true));
@@ -947,7 +967,8 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
     setHeard("");
     setError("");
     setVoice(!!seed?.voice);
-    if (seed?.text) run(seed.text, !!seed.voice, true);
+    if (seed?.photo) is_kisi.photoPerson(ctx, seed.photo, "", false);
+    else if (seed?.text) run(seed.text, !!seed.voice, true);
     else if (seed?.listen) {
       setBooting(true);
       sp.start(listenOpts(true));
@@ -971,5 +992,5 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   // Taşınan işler (isler/, beyin/) bileşenin durumuna ve yardımcılarına ctx ile ulaşır; her çizimde yenilenir
   // eslint-disable-next-line react-hooks/refs -- ref nesneleri yalnız iletilir; .current olaylarda okunur
   Object.assign(ctx, { armSave, flushAuto, readMode, sessionsNow, showPage, AMB, actNow, fitOthers, aiLesson, allMembers, askAI, askAll, askDelete, askOk, askTasks, askTo, askedMore, athAsk, attAsk, attHere, birthdays, by, callBusy, canAssign, canOpen, cancelPending, cancelRun, cards, chain, chainGen, chainRace, chainStep, chatArchive, chatDelete, chatPurge, chatRef, chatRemove, chatRestore, chatSend, chats, clearSay, club, confirmPending, contactNames, contacts, continuePerson, convo, createAs, createGroup, ctrl, curRace, dataUid, deleteRecord, deleteSeries, done, draftMeta, draftSay, draftSrc, drafts, dropDrafts, enqueueSay, eventFlow, extra, failNow, find, finish, firstName, flowOf, focusRef, go, goRace, groupIds, handle, heard, heldQ, holdIfTalking, inflight, invAsk, invDelete, invFlow, invHere, invPage, isLocked, isStaff, leave, lessons, listenOnce, listenWhileThinking, live, logFlow, markPaid, setReceiptScope, members, memo, memoSet, msgDraft, myGroups, myKind, myUid, nameIdx, nextInChain, nextStep, notes, okFlow, onClose, openAdd, openBirthday, openChatAt, openMeeting, openNav, openPost, openRace, openReceipt, openRecord, owner, park, parked, past, pastOn, pastTurns, path, personAccount, personCancel, personCard, personFlow, personOpenAccount, personSave, personUndo, personUndoAsk, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, planTimeAsk, plans, preferRef, prepareBatch, prepareSend, profile, queue, raceChoices, raceFailed, raceFollow, raceOrg, racer, races, ready, receipts, refineDrafts, rejectDelete, reply, resolveTo, restAfterAtt, router, run, runAttendance, runDebt, runWords, runEvent, runExtra, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runNow, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, runStep, sameIn, saveAtt, saveBirthday, saveDrafts, saveDraftsNow, saveHereRace, sayQ, sayRace, sentOk, setCards, setDrafts, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setStreamText, setText, setTurns, setVoice, setWork, skipRace, sp, speaking, speakingRef, staff, staffNames, startAuto, startCall, startDrafts, startPerson, startPlan, startPost, stepPerson, stepTo, stepsEnd, stopPlan, streamSaid, tasks, toast, toggleTask, tts, turns, updateRecord, waPeople, waitFor, withAssignees });
-  return { auto, WA_PICK, listenOnce, abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listening, nextStep, okFlow, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, prefer, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait, history };
+  return { photoIn, auto, WA_PICK, listenOnce, abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listening, nextStep, okFlow, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, prefer, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait, history };
 }

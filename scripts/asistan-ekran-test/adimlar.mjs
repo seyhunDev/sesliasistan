@@ -697,6 +697,56 @@ async function scenarios3(h) {
     });
   }
   await closeAll(page);
+  {
+    // Kişi kare kodu (Seyhun 2026-10-23): sesle "kare kodu okut" okutma ekranını açar; Velora kodu okununca kişi hazırlanır
+    const GQ = "Kişi kare kodu";
+    const b = aiCalls();
+    await talkAsk(page, "kare kodu okut");
+    await check(GQ, "kare kodu okut", "okutma ekranı açılır, yapay zekaya gitmez", async () => {
+      const ok = await waitFor(async () => (await page.locator("[role=dialog][aria-label='Kare kod okut']").count()) > 0, 5000);
+      return [!!ok && aiCalls() === b, `${ok ? "açıldı" : "açılmadı"} · yapay zeka ${aiCalls() - b}`];
+    });
+    await page.locator("[role=dialog][aria-label='Kare kod okut'] button", { hasText: "Kapat" }).click();
+    const card = ["BEGIN:VCARD", "VERSION:3.0", "N:Aydın;Deniz;;;", "FN:Deniz Aydın", "TEL;TYPE=CELL:+905551234567", "TITLE:Antrenör", "X-VELORA:1", "X-VELORA-KIND:staff", "END:VCARD"].join("\r\n");
+    await page.evaluate((t) => window.dispatchEvent(new CustomEvent("sa-contact-code", { detail: t })), card);
+    await check(GQ, "Velora kodu okundu", "kişi hazırlanır, kaydetmeden önce sorulur", async () => {
+      const ok = await waitFor(async () => /Velora kare kodundan okudum\. Deniz Aydın, çalışan, antrenör\..*Kaydedeyim mi\?/.test(clean(await convo(page))), 5000);
+      return [!!ok, clean(await last(page)).slice(0, 120)];
+    });
+    await talkAsk(page, "vazgeç");
+    await waitFor(async () => (await state(page)) === "idle", 3000);
+    await closeAll(page);
+    // Fotoğraf düğmesi: kare kodun fotoğrafı seçilince kişi telefonda okunur (yapay zekaya gitmez)
+    const { default: qrcode } = await import("../../src/lib/vendor/qrcode.mjs");
+    const q = qrcode(0, "M");
+    q.addData(card);
+    q.make();
+    const shot = await page.context().newPage();
+    await shot.setViewportSize({ width: 600, height: 800 });
+    await shot.setContent(`<body style="margin:0;background:#ddd;display:grid;place-items:center;height:100vh">${q.createSvgTag({ cellSize: 6, margin: 4 })}</body>`);
+    const png = await shot.screenshot();
+    await shot.close();
+    const o = orb(page);
+    const box = await o.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(650);
+    await page.mouse.up();
+    const b2 = aiCalls();
+    const pick = page.locator("[data-dome] input[type=file][accept='image/*']");
+    await check(GQ, "yazı kutusunda Fotoğraf", "düğme görünür", async () => {
+      const ok = await waitFor(async () => (await btn(page, "Fotoğraf").count()) > 0, 5000);
+      return [!!ok, ok ? "var" : "yok"];
+    });
+    if (await pick.count()) await pick.setInputFiles({ name: "kod.png", mimeType: "image/png", buffer: png });
+    await check(GQ, "kare kodun fotoğrafı", "kişi okunur, yapay zekaya gitmez", async () => {
+      const ok = await waitFor(async () => /Velora kare kodundan okudum\. Deniz Aydın/.test(clean(await convo(page))), 8000);
+      return [!!ok && aiCalls() === b2, `${clean(await last(page)).slice(0, 90)} · yapay zeka ${aiCalls() - b2}`];
+    });
+    await talkAsk(page, "vazgeç");
+    await waitFor(async () => (await state(page)) === "idle", 3000);
+  }
+  await closeAll(page);
 
   await check("Sayfa hataları", "kayıt / onay / görev listesi", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();

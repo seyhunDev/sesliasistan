@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { AssistantSheet } from "./AssistantSheet";
+import { ContactScan } from "@/features/people/ContactScan";
 
 // Sağlayıcının dışında kalan yerler (ör. kayıt ekranı: AddProvider asistandan önce kurulur) olayla açar
 const Ctx = createContext({ openAssistant: (o = {}) => window.dispatchEvent(new CustomEvent("sa-open-assistant", { detail: o })), open: false, live: {}, act: { current: {} }, stageOn: false, setStageOn() {}, setSlot() {} });
@@ -42,6 +43,7 @@ export function AssistantProvider({ children }) {
     <Ctx.Provider value={{ openAssistant, open, live, act, stageOn, setStageOn, setSlot }}>
       {children}
       <AssistantSheet open={open} onClose={close} seed={seed} onLive={setLive} onAct={setAct} slot={slot} />
+      <ContactScan />
     </Ctx.Provider>
   );
 }
