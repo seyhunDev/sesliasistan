@@ -1,8 +1,8 @@
-Commit: d4dd4c7 · Deniz trafiği: sayfa tam ekran VesselFinder haritası (Teknem · Acil), ana sayfa kartı yüklenirken yerini tutar (#776)
-Zaman: 2026-10-23-2119 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40001371674
+Commit: cbb00bd · Antrenman: asistan düğmesi geri geldi, buluta gönderiliyor yazısı sekmelerin üstünde sabit (#777)
+Zaman: 2026-10-23-2134 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40003312029
 
-TAM TEST · 23.10.2026 21:12:35
+TAM TEST · 23.10.2026 21:27:04
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -21,7 +21,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1384/1384 geçti · 0 kalan · 416 sn
+SONUÇ: 1384/1384 geçti · 0 kalan · 458 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
