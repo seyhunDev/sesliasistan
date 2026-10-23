@@ -716,6 +716,15 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 /* Lacivertte basınca açık renk parlamasın: yalnız içeri girer, zemin biraz koyulaşır (geri düğmesi: Seyhun 2026-10-21 "A · Yuvarlak simge") */
 .ck :is(.btn-round, .btn-back)[data-pressed], .navy :is(.btn-round, .btn-back)[data-pressed] { background: rgba(255, 255, 255, .06); }
 .ck .btn-round .ring-bg { --tw-ring-color: #11203a; }
+/* Ana sayfa kokpiti: yalnız sağ üstteki ışık; altta düz lacivert, notların zeminiyle birleşir (Seyhun 2026-10-23) */
+.ck.ck-top { background: radial-gradient(120% 70% at 88% 0%, rgba(34, 211, 238, .24), transparent 62%), #11203a; }
+/* Ana sayfa yemek kartı (FoodCard; Seyhun 2026-10-23): lacivert kart; sipariş yokken sağdaki fotoğraf karta doğru solar (food-fade),
+   siparişte üstte küçük harita, altta 4 adımlı ilerleme çizgisi */
+.food-card { background: #182a48; border: 1px solid rgba(255, 255, 255, .1); box-shadow: 0 10px 24px -14px rgba(0, 0, 0, .8); color: #e6eef7; }
+.food-fade { background: linear-gradient(90deg, #182a48 30%, rgba(24, 42, 72, .85) 48%, rgba(24, 42, 72, 0) 80%); }
+.food-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.95rem; border-radius: 0.6875rem; background: #0ea5c4; color: #fff; font-size: 0.875rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+.food-step { height: 5px; border-radius: 5px; background: rgba(255, 255, 255, .12); }
+.food-step.on { background: #22d3ee; }
 /* Kokpitteki beyaz küçük düğme (Süre) */
 /* Giriş ekranı (lacivert, (auth)/login): tek yazı kutusu; e-posta ya da kullanıcı adı doğru yazılınca yeşil çerçeve.
    Ana düğme yazı tamamlanana kadar soluk durur (yüklenirken değil). */

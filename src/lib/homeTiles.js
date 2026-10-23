@@ -547,3 +547,5 @@ export function fitWeek(fit = [], today) {
 
 // Ana sayfa yemek kartının başlığı saate göre (FoodCard; yemek konusunun saat aralıkları): 06–11 kahvaltı, 11–16 öğle, 16–23 akşam, gece atıştırma
 export const mealLabel = (h) => (h >= 6 && h < 11 ? "Kahvaltı önerisi" : h >= 11 && h < 16 ? "Öğle yemeği önerisi" : h >= 16 && h < 23 ? "Akşam yemeği önerisi" : "Gece atıştırması");
+// Ana sayfa yemek kartının arkasındaki fotoğraf (src/yemek/photo.js anahtarı), mealLabel ile aynı saat dilimleri
+export const mealPhoto = (h) => (h >= 6 && h < 11 ? "breakfast" : h >= 11 && h < 16 ? "pasta" : h >= 16 && h < 23 ? "pizza" : "burger");

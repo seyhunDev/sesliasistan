@@ -96,7 +96,7 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
           <HomeDays today={todayStr()} fit={fit} att={athletes} />
         </div>
         {owner && (
-          <div className="mt-3">
+          <div className="mt-5">
             <FoodCard />
           </div>
         )}

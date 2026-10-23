@@ -20,6 +20,7 @@ import { BirthdayBadge } from "./PeopleStrip";
 // günün en sert sağanağı grafikte soluk çizgiyle (CockpitWind); sağda şimdiki rüzgâr "rüzgâr–sağanak kn"), büyük rüzgâr grafiği (CockpitWind) ve sıradaki iş (nextPlan). Hava satırı ya da grafiğe dokununca
 // hava sayfası açılır. Lacivert her iki temada aynı (logonun gecesi); altındaki açık zemin üstüne yuvarlak köşeyle biner (OwnerHome).
 // children (iş düğmeleri, büyük günler) en altta, araya boşluk konmaz (Seyhun 2026-10-21: "çok boşluklar oldu"; tam ekran uzatma kaldırıldı).
+// Alt boşluk küçük ve sol alttaki mor ışık yok (ck-top; Seyhun 2026-10-23 "niye notların arka planı farklı"): altındaki lacivert notlar kesintisiz devam eder.
 export function Cockpit({ weather, inbox, onInbox, children }) {
   const { profile } = useAuth();
   const router = useRouter();
@@ -34,7 +35,7 @@ export function Cockpit({ weather, inbox, onInbox, children }) {
   const goWeather = () => (w ? router.push("/weather") : refresh(true));
 
   return (
-    <section className="ck -mx-4 px-4 pb-9 pt-[calc(0.875rem+env(safe-area-inset-top))]" aria-label="Bugün">
+    <section className="ck ck-top -mx-4 px-4 pb-4 pt-[calc(0.875rem+env(safe-area-inset-top))]" aria-label="Bugün">
       <header className="flex items-center gap-3">
         <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold leading-tight tracking-[-.02em]">
           <span className="capitalize">{dname}</span> {date}
