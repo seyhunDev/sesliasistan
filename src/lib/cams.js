@@ -62,6 +62,7 @@ export function normCam(w) {
     player: url(pl.live) || url(pl.day) || url(pl.lifetime) || "",
     live: !!url(pl.live),
     link: w.urls?.detail || `https://www.windy.com/webcams/${w.webcamId}`,
+    src: "Windy",
   };
 }
 
@@ -73,6 +74,24 @@ export function camList(webcams, at) {
     .map((c) => ({ ...c, km: Number.isFinite(c.lat) ? distKm(at, c) : 999 }))
     .sort((a, b) => a.km - b.km);
 }
+
+// YouTube canlı yayını (Türk kıyısındaki belediye, otel, marina kameraları çoğunlukla burada; Windy'de az, 2026-10-23).
+// search.list öğesi → kamera; yalnız başlığında ya da kanal adında yerin adı geçen yayın alınır (haber kanalları elenir).
+const decode = (s) => String(s || "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+export function ytCam(it, place) {
+  const id = it?.id?.videoId;
+  const sn = it?.snippet || {};
+  if (!id || (sn.liveBroadcastContent && sn.liveBroadcastContent !== "live")) return null;
+  const title = decode(sn.title).trim();
+  const ch = decode(sn.channelTitle).trim();
+  const p = fold(place);
+  if (p && !fold(`${title} ${ch}`).includes(p)) return null;
+  if (/(^|\s)(haber|news|son dakika|tv)(\s|$)/i.test(fold(title))) return null;
+  const th = sn.thumbnails || {};
+  const img = th.high?.url || th.medium?.url || th.default?.url || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+  return { id: `yt:${id}`, title, ch, lat: NaN, lon: NaN, at: 0, thumb: img, preview: img, player: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&playsinline=1`, live: true, link: `https://www.youtube.com/watch?v=${id}`, km: null, src: "YouTube" };
+}
+export const ytList = (items, place) => (items || []).map((x) => ytCam(x, place)).filter(Boolean);
 
 export const camsPath = (place) => (place ? `/cams?yer=${encodeURIComponent(place)}` : "/cams");
 

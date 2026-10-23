@@ -92,6 +92,7 @@ export const INIT = ({ standalone = false, sha = "" } = {}) => `(() => {
 const pic = (sky, sea) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225"><rect width="400" height="130" fill="${sky}"/><rect y="130" width="400" height="95" fill="${sea}"/></svg>`)}`;
 const cam = (id, title, km, min, live = false) => ({ id: String(id), title, lat: 39, lon: 26.8, at: Date.now() - min * 60e3, thumb: pic("#b9d6e6", "#3b7da0"), preview: pic(id % 2 ? "#9cc7de" : "#c7dbe6", id % 2 ? "#2f6f93" : "#356f8c"), player: "", live, link: `https://www.windy.com/webcams/${id}`, km });
 export const CAMS = {
+  yt: [{ id: "yt:abc", title: "Dikili Limanı Canlı", ch: "Dikili Belediyesi", lat: NaN, lon: NaN, at: 0, thumb: pic("#a9c9dc", "#356f8c"), preview: pic("#a9c9dc", "#356f8c"), player: "", live: true, link: "https://www.youtube.com/watch?v=abc", km: null, src: "YouTube" }],
   cams: [
     cam(1, "Ayvalık · Cunda koyu", 27, 2, true),
     cam(2, "Bergama · Akropol", 31, 5),
