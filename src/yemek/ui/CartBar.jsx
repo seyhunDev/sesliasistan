@@ -5,6 +5,7 @@ import { Img, tl } from "./Img";
 
 // Sepet çubuğu (Seyhun 2026-10-23, örnek A): alt çubuğa yapışık lacivert şerit, arkada sepetteki ürünlerin fotoğrafları
 // soldan koyulaşarak; o sırada alt çubuk da lacivert olur (globals.css .cartbar), ikisi tek yüzey görünür.
+// "Sepete git" camgöbeği ana düğme (beyaz düğme koyu temada lacivert üstünde soluk kalıyordu, Seyhun 2026-10-23).
 export function CartBar({ place, lines, count, total, onOpen }) {
   const items = place.menu.flatMap((c) => c.items);
   const photos = [...new Set(lines.map((l) => items.find((i) => i.id === l.itemId)?.photo).filter(Boolean))].slice(0, 3);
@@ -20,7 +21,7 @@ export function CartBar({ place, lines, count, total, onOpen }) {
             <small className="block truncate text-[0.8125rem] font-semibold text-white/70">Sepet · {count} ürün</small>
             <b className="block text-[1.25rem] font-bold tabular-nums tracking-[-.01em]">{tl(total)}</b>
           </span>
-          <Button variant="secondary" size="sm" full={false} className="!h-10 shrink-0 !rounded-full !px-4 !text-[#11203a]" onClick={(e) => (e.stopPropagation(), onOpen())}>Sepete git</Button>
+          <Button variant="primary" size="sm" full={false} className="!h-10 shrink-0 !rounded-full !px-5" onClick={(e) => (e.stopPropagation(), onOpen())}>Sepete git</Button>
         </div>
       </div>
     </div>
