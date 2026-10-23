@@ -2870,6 +2870,7 @@ group("Ortak düğmeler")([
     ["bitirilen plan", F("arşivdeki (bitti) atlanır, sıradaki gelir", () => HT.nextPlan([{ id: "s", title: "Antrenman", date: "2026-10-21", done: true }, P[2], P[3]], at, "2026-10-21")?.id === "c")],
     ["8 gün sonra", F("7 günden uzak plan yok", () => HT.nextPlan([{ id: "u", date: "2026-10-30", time: "10:00" }], at, "2026-10-21") === null)],
     ["yemek kartı", F("saate göre: 8 kahvaltı, 12 öğle, 19 akşam, 2 gece", () => HT.mealLabel(8) === "Kahvaltı önerisi" && HT.mealLabel(12) === "Öğle yemeği önerisi" && HT.mealLabel(19) === "Akşam yemeği önerisi" && HT.mealLabel(2) === "Gece atıştırması")],
+    ["yemek kartı fotoğrafı", F("saate göre: 8 kahvaltı, 13 makarna, 20 pizza, 1 burger", () => HT.mealPhoto(8) === "breakfast" && HT.mealPhoto(13) === "pasta" && HT.mealPhoto(20) === "pizza" && HT.mealPhoto(1) === "burger")],
     ["tür başlıkta", F("“Optimist antrenmanı” Antrenman etiketi almaz, toplantı alır", () => HT.planTag({ title: "Optimist antrenmanı", cat: "Antrenman" }) === "" && HT.planTag({ title: "Yönetim", cat: "Toplantı" }) === "Toplantı" && HT.planTag({ title: "Fitness · İlay", fit: { name: "İlay" } }) === "")],
   ]);
 }

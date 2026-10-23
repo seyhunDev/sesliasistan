@@ -7,6 +7,7 @@ import { fetchRoute, lineOf } from "../route";
 // Takip haritası (Seyhun 2026-10-23: tek, akıcı, göze hoş harita): vektör harita, restorandan adrese yollardan rota
 // (çizilerek gelir), restoran fotoğraflı yuvarlak, ev camgöbeği, kurye aracına göre simge (motor / araba / bisiklet)
 // ve yumuşak kayarak ilerler; yolun alınan kısmı soluk. Telefonda tek parmak sayfayı kaydırır, iki parmak yakınlaştırır.
+// small: ana sayfadaki yemek kartının üstündeki küçük harita (çerçevesiz, dokunulmaz; dokunuş kartın bağlantısına gider).
 const ACC = "#0b7f99", DEEP = "#0f2c45";
 const ICONS = {
   motor: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M9 17h4l3-7h3M14.5 10 13 6h-2.5M8 14h5"/>',
@@ -50,7 +51,7 @@ function useLine(route, from, to) {
   return given || got || null;
 }
 
-export function TrackMap({ from, to, courier, route, photo, f = 0, info, tall }) {
+export function TrackMap({ from, to, courier, route, photo, f = 0, info, tall, small }) {
   const box = useRef(null);
   const map = useRef(null);
   const marks = useRef({});
@@ -107,7 +108,7 @@ export function TrackMap({ from, to, courier, route, photo, f = 0, info, tall })
     drawn.current = key;
     const pts = [...line, ...(courier?.pos ? [[courier.pos.lng, courier.pos.lat]] : [])];
     const b = pts.reduce((acc, p) => acc.extend(p), new ml.LngLatBounds(pts[0], pts[0]));
-    m.fitBounds(b, { padding: { top: 70, bottom: 50, left: 50, right: 50 }, maxZoom: 16.5, duration: 1400 });
+    m.fitBounds(b, { padding: small ? { top: 34, bottom: 18, left: 30, right: 30 } : { top: 70, bottom: 50, left: 50, right: 50 }, maxZoom: 16.5, duration: 1400 });
     const t0 = performance.now();
     const step = (t) => {
       const k = Math.min(1, (t - t0) / 1100);
@@ -161,9 +162,9 @@ export function TrackMap({ from, to, courier, route, photo, f = 0, info, tall })
   if (err) return null;
   return (
     <div className="relative">
-      <div ref={box} className={`${tall ? "h-[26rem]" : "h-72"} w-full overflow-hidden rounded-[1.25rem] border border-line bg-[#eef0ea]`} />
+      <div ref={box} className={small ? "pointer-events-none h-[7.5rem] w-full overflow-hidden bg-[#eef0ea]" : `${tall ? "h-[26rem]" : "h-72"} w-full overflow-hidden rounded-[1.25rem] border border-line bg-[#eef0ea]`} />
       {info && <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1.5 text-[0.8125rem] font-semibold text-[#26282c] shadow-sm">{info}</span>}
-      <button type="button" onClick={() => setAbout(!about)} aria-label="Harita kaynağı" className="absolute bottom-2 right-2 grid size-6 place-items-center rounded-full bg-white/85 text-[0.75rem] font-bold text-[#74777d]">i</button>
+      <button type="button" onClick={(e) => (e.preventDefault(), setAbout(!about))} aria-label="Harita kaynağı" className="absolute bottom-2 right-2 grid size-6 place-items-center rounded-full bg-white/85 text-[0.75rem] font-bold text-[#74777d]">i</button>
       {about && <p className="absolute bottom-2 right-10 rounded-lg bg-white/90 px-2 py-1 text-[0.6875rem] text-[#74777d]">{MAP_ATTR}</p>}
     </div>
   );
