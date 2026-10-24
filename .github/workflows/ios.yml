@@ -31,3 +31,5 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build > derle.log 2>&1 || { grep -n "error:" derle.log | head -40; tail -60 derle.log; exit 1; }
           tail -30 derle.log
+          grep -E "SwiftCompile .*VeloraSaat|VeloraSaat\.app" derle.log | head -5
+          grep -q "Debug-watchsimulator/VeloraSaat.app" derle.log || { echo "Saat uygulaması derlenmedi"; exit 1; }
