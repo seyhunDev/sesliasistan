@@ -10,16 +10,19 @@ import { ListHead, RowList, Row, SkelRow } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { AISLES } from "../sample";
 import { LOW, NEXT, STATUS_NAMES, free, isOpenOrder, linesText, newId, productProblem, search, tl } from "../catalog";
-import { addStock, deleteProduct, saveProduct, setStatus, useCatalog, useOrders } from "../store";
+import { addStock, deleteProduct, dropRequest, saveProduct, setStatus, useCatalog, useOrders, useRequests } from "../store";
 
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 
-// Market yönetimi (Seyhun 2026-10-24, örnek 4-5): lacivertte Ürünler / Siparişler. Ürünler reyon reyon, satırda stok − sayı +;
+// Market yönetimi (Seyhun 2026-10-24, örnek 4-5): lacivertte Ürünler / Siparişler / İstekler. Ürünler reyon reyon, satırda stok − sayı +;
 // alt satırda fiyat ve siparişte bekleyen. Satıra dokununca düzenle; "Ürün ekle" alt çubuğun üstünde.
 // Siparişler: açıklar üstte, adım adım ilerletilir (teslimde stoktan düşer, iptalde bekleyen açılır).
+// İstekler: menülerde markette bulunamayan malzemeler (kaç kez, hangi menüden); "Ekle" ürün formunu adıyla açar, kaydedince listeden çıkar.
 export function MarketAdmin({ orgId }) {
   const products = useCatalog(orgId);
   const orders = useOrders(orgId, 30);
+  const reqs = useRequests(orgId);
+  const reqList = Object.entries(reqs || {}).map(([key, r]) => ({ key, ...r })).sort((a, b) => b.count - a.count || (b.at || "").localeCompare(a.at || ""));
   const [tab, setTab] = useState("urun");
   const [q, setQ] = useState("");
   const [edit, setEdit] = useState(null); // ürün ya da {} (yeni)
@@ -43,8 +46,8 @@ export function MarketAdmin({ orgId }) {
             <p className="truncate text-[0.8125rem] text-white/65">{products ? `${all.length} ürün${low ? ` · ${low} az kaldı` : ""}` : "…"}</p>
           </div>
         </header>
-        <div className="mt-3.5 grid grid-cols-2 gap-2">
-          {[["urun", "Ürünler", `${all.length}`], ["siparis", "Siparişler", open.length ? `${open.length} açık` : "Açık yok"]].map(([k, n, s]) => (
+        <div className="mt-3.5 grid grid-cols-3 gap-2">
+          {[["urun", "Ürünler", `${all.length}`], ["siparis", "Siparişler", open.length ? `${open.length} açık` : "Açık yok"], ["istek", "İstekler", reqList.length ? `${reqList.length} ürün` : "Yok"]].map(([k, n, s]) => (
             <button key={k} type="button" data-press aria-pressed={tab === k} onClick={() => setTab(k)} className={`raised rounded-xl border px-3 py-2 text-left ${tab === k ? "ck-sel" : ""}`}>
               <b className="block text-[0.9375rem] font-semibold">{n}</b>
               <small className="block truncate text-[0.75rem] opacity-75">{s}</small>
@@ -111,6 +114,31 @@ export function MarketAdmin({ orgId }) {
             )}
           </section>
         )}
+        {tab === "istek" && (
+          <section>
+            <ListHead title="Bulunamayan ürünler" count={reqList.length} />
+            {!reqs ? (
+              <RowList><SkelRow /><SkelRow /></RowList>
+            ) : reqList.length ? (
+              <RowList>
+                {reqList.map((r) => (
+                  <div key={r.key} className="flex min-h-[3.5rem] items-center gap-2 border-t border-line py-2.5 first:border-t-0">
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate text-[0.9375rem] font-semibold">{r.name}</b>
+                      <small className="block truncate text-[0.8125rem] text-mut">{r.count} kez{r.from?.length ? ` · ${r.from.join(", ")}` : ""}</small>
+                    </span>
+                    <Button size="sm" full={false} className="shrink-0" onClick={() => setEdit({ name: r.name, req: r.key })}>Ekle</Button>
+                    <button type="button" onClick={() => dropRequest(orgId, r.key).catch(() => toast("Silinemedi"))} aria-label={`${r.name} listeden çıkar`} data-press className="btn btn-icon btn-sm shrink-0 text-mut">
+                      <Icon name="x" className="size-4" />
+                    </button>
+                  </div>
+                ))}
+              </RowList>
+            ) : (
+              <p className="px-1 text-[0.875rem] text-mut">Bulunamayan ürün yok.</p>
+            )}
+          </section>
+        )}
       </div>
 
       {tab === "urun" && products && (
@@ -119,7 +147,7 @@ export function MarketAdmin({ orgId }) {
         </div>
       )}
 
-      <ProductSheet key={edit?.id || (edit ? "yeni" : "")} p={edit} products={products} orgId={orgId} onClose={() => setEdit(null)} />
+      <ProductSheet key={edit?.id || edit?.req || (edit ? "yeni" : "")} p={edit} products={products} orgId={orgId} onClose={() => setEdit(null)} />
       <AdminOrder order={shown} orgId={orgId} onClose={() => setShow("")} />
     </main>
   );
@@ -138,6 +166,7 @@ function ProductSheet({ p, products, orgId, onClose }) {
     try {
       const id = p.id || newId(products || {}, f.name, f.size);
       await saveProduct(orgId, { id, name: f.name.trim(), size: f.size.trim(), cat: f.cat, price: Number(String(f.price).replace(",", ".")), stock: Math.round(Number(f.stock)) });
+      if (p.req) dropRequest(orgId, p.req).catch(() => {});
       onClose();
     } catch {
       toast("Kaydedilemedi");

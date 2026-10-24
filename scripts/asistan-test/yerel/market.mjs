@@ -1,6 +1,7 @@
 // Velora Market (src/market): örnek ürünler, arama, sepet, stok (bekleyen, teslim, iptal).
 import { SAMPLE_PRODUCTS, AISLES } from "@/market/sample";
 import { search, bump, cartTotal, cartCount, free, holdFor, deliverFor, releaseFor, stockStep, linesText, makeLine, newId, productProblem, NEXT } from "@/market/catalog";
+import { SAMPLE_MENUS, findProduct, menuRows, menuToCart, missingOf, addRequests, parseIngredient } from "@/market/menus";
 import { suite } from "./ortak.mjs";
 
 const { group } = suite("market");
@@ -42,4 +43,26 @@ group("Yönetim")([
   ["yeni ürün kimliği", { desc: "\"Süt 1 L\" var → sut-1-l-2; \"Muskat 50 g\" → muskat-50-g", fn: () => [newId(MAP, "Süt", "1 L"), newId(MAP, "Muskat", "50 g")], ok: (g) => g[0] === "sut-1-l-2" && g[1] === "muskat-50-g" }],
   ["form denetimi", { desc: "ad yok → \"Ad yaz\", fiyat yok → \"Fiyat yaz\", tamam → \"\"", fn: () => [productProblem({ name: "", price: 5, stock: 1 }), productProblem({ name: "Muskat", price: "", stock: 1 }), productProblem({ name: "Muskat", price: "45", stock: "10" })], ok: (g) => g.join("|") === "Ad yaz|Fiyat yaz|" }],
   ["sipariş adımları", { desc: "Gönderildi › Hazırla › Yola çıkar › Teslim edildi", fn: () => [NEXT.sent[1], NEXT.preparing[1], NEXT.onTheWay[1], NEXT.delivered], ok: (g) => g[0] === "Hazırla" && g[1] === "Yola çıkar" && g[2] === "Teslim edildi" && !g[3] }],
+]);
+
+const LIST = SAMPLE_PRODUCTS;
+const laz = SAMPLE_MENUS.find((x) => x.id === "lazanya");
+group("Hazır menüler")([
+  ["6 örnek menü, kimlikler tek", { desc: "Lazanya dahil", fn: () => [SAMPLE_MENUS.length, new Set(SAMPLE_MENUS.map((x) => x.id)).size, !!laz], ok: (g) => g[0] === 6 && g[1] === 6 && g[2] }],
+  ["Lazanya malzemeleri markette", { desc: "9 malzemeden 8'i bulunur, Muskat bulunamadı", fn: () => missingOf(menuRows(laz, LIST)), ok: (g) => g.length === 1 && g[0] === "Muskat" }],
+  ["örnek menülerde bulunamayan", { desc: "yalnız Muskat ve Fesleğen", fn: () => SAMPLE_MENUS.flatMap((x) => missingOf(menuRows(x, LIST))), ok: (g) => g.sort().join() === "Fesleğen,Muskat" }],
+  ["soğan", { desc: "Kuru soğan", fn: (s) => findProduct(LIST, s)?.name, ok: (g) => g === "Kuru soğan" }],
+  ["Limon", { desc: "Limon (Limon sosu değil)", fn: (s) => findProduct(LIST, s)?.name, ok: (g) => g === "Limon" }],
+  ["8 kişilik lazanya", { desc: "yaprak 2 paket", fn: () => menuRows(laz, LIST, 8).find((r) => r.item.name === "Lazanya yaprağı").qty, ok: (g) => g === 2 }],
+  ["sepete ekle (tereyağı evde var)", { desc: "7 ürün; sepetteki süt 1 + 1 = 2", fn: () => { const c = menuToCart([makeLine(sut, 1)], menuRows(laz, LIST), { Tereyağı: true }); return [c.length, c.find((l) => l.id === sut.id).qty, c.some((l) => l.name === "Tereyağı")]; }, ok: (g) => g[0] === 7 && g[1] === 2 && !g[2] }],
+  ["istekler", { desc: "Muskat iki menüden: 2 kez, iki menü adı", fn: () => addRequests(addRequests({}, ["Muskat"], "Lazanya"), ["muskat"], "Beşamel"), ok: (g) => g.muskat?.count === 2 && g.muskat.from.join() === "Lazanya,Beşamel" }],
+]);
+
+group("Malzeme satırı")([
+  ["500 g dana kıyma", { desc: "Dana kıyma · 500 g", fn: (s) => parseIngredient(s), ok: (g) => g.name === "Dana kıyma" && g.amount === "500 g" && g.qty === 1 }],
+  ["2 adet patlıcan", { desc: "Patlıcan · 2 adet, 1 paket", fn: (s) => parseIngredient(s), ok: (g) => g.name === "Patlıcan" && g.amount === "2 adet" && g.qty === 1 }],
+  ["2 paket lazanya yaprağı", { desc: "2 paket", fn: (s) => parseIngredient(s), ok: (g) => g.name === "Lazanya yaprağı" && g.qty === 2 }],
+  ["- 1,5 su bardağı kırmızı mercimek", { desc: "madde imi atılır", fn: (s) => parseIngredient(s), ok: (g) => g.name === "Kırmızı mercimek" && g.amount === "1,5 su bardağı" }],
+  ["3. Muskat", { desc: "numara atılır", fn: (s) => parseIngredient(s), ok: (g) => g.name === "Muskat" && g.amount === "" }],
+  ["Süt - 1 L", { desc: "ad · miktar", fn: (s) => parseIngredient(s), ok: (g) => g.name === "Süt" && g.amount === "1 L" }],
 ]);

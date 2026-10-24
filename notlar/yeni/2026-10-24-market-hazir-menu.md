@@ -1,0 +1,6 @@
+## Nerede kaldım
+- Velora Market 3. adım: hazır menüler (Seyhun: "lazanya için gerekli olan tüm malzemeler… ürün bulunamadı gösterelim… yönetici panelinde ekleyeyim"; telefonda denenmedi). `src/market/menus.js`: 6 örnek menü (Lazanya, Mercimek çorbası, Karnıyarık, Menemen, Tavuk sote, Spagetti bolonez), malzeme → ürün eşleşmesi (`findProduct`: aynı ad, yoksa aramada ilk), kişi sayısına göre adet, sepete ekleme, istek listesi, elle yazılan malzeme satırı (`parseIngredient`). Veri `market/menuler` (yoksa örnekler), `market/istekler`. Ekranlar: Market'te "Hazır menüler" kartları (+ "Yeni menü ›"), `/market/menu/[id]` (`MenuView`: kişi 2/4/6, dokun → evde var, Bulunamadı amber, "Sepete ekle · N ürün ₺"; ⋯ Düzenle / Sil onaylı), `/market/menu/yeni` ve düzenle (`MenuEdit`: ad, kişi, satır satır malzeme, altta markettekiler). Bulunamayanlar "Sepete ekle"de yönetimin İstekler sekmesine gider (kaç kez, hangi menü); "Ekle" ürün formunu adıyla açar, kaydedince istek silinir. Testler `npm run test:market` (33).
+
+## Sıradaki işler
+0. Telefonda: Lazanya'yı aç, kişi değiştir, tereyağına dokun (evde var), Sepete ekle; Yönetim › İstekler'de Muskat'ı ekle → menüde artık bulunuyor mu.
+1. Market 4. adım: yapay zekayla menü (fotoğraf ya da tarif → malzeme listesi, MenuEdit'e dolar) + sesli komutlar (isler/).

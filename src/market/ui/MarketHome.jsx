@@ -8,7 +8,10 @@ import { buttonClass } from "@/components/ui/buttonClass";
 import { ListHead, RowList, Row, SkelRow } from "@/components/ui/Row";
 import { AISLES, aisleName } from "../sample";
 import { LOW, STATUS_NAMES, bump, cartCount, cartTotal, free, isOpenOrder, linesText, search, tl } from "../catalog";
-import { useCart, useCatalog, useOrders, writeCart } from "../store";
+import { useCart, useCatalog, useMenus, useOrders, writeCart } from "../store";
+import { menuRows } from "../menus";
+import { Img } from "@/yemek/ui/Img";
+import Link from "next/link";
 import { MarketCart } from "./MarketCart";
 import { MarketOrder } from "./MarketOrder";
 
@@ -17,6 +20,7 @@ import { MarketOrder } from "./MarketOrder";
 export function MarketHome({ orgId, uid, name, tabs }) {
   const products = useCatalog(orgId);
   const orders = useOrders(orgId);
+  const menus = useMenus(orgId);
   const lines = useCart();
   const [q, setQ] = useState("");
   const [aisle, setAisle] = useState("");
@@ -83,6 +87,29 @@ export function MarketHome({ orgId, uid, name, tabs }) {
             )}
           </section>
         ) : (
+          <>
+          <section>
+            <ListHead title="Hazır menüler" href="/market/menu/yeni" more="Yeni menü" />
+            {!menus ? (
+              <RowList><SkelRow /></RowList>
+            ) : (
+              <div className="-mx-5 flex snap-x scroll-px-5 gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+                {menus.map((m) => {
+                  const rows = menuRows(m, all);
+                  const sum = rows.reduce((s, r) => s + (r.product ? r.product.price * r.qty : 0), 0);
+                  return (
+                    <Link key={m.id} href={`/market/menu/${m.id}`} data-press className="w-[10.5rem] shrink-0 snap-start overflow-hidden rounded-[1.25rem] border border-line bg-card">
+                      <Img src={m.photo} w={360} alt={m.name} className="h-[5.5rem] w-full" />
+                      <span className="block px-3 pb-2.5 pt-2">
+                        <b className="block truncate text-[0.9375rem] font-semibold">{m.name}</b>
+                        <small className="block truncate text-[0.8125rem] text-mut">{m.items.length} malzeme · {tl(sum)}</small>
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
           <section>
             <ListHead title="Reyonlar" count={AISLES.length} />
             <RowList>
@@ -92,6 +119,7 @@ export function MarketHome({ orgId, uid, name, tabs }) {
               })}
             </RowList>
           </section>
+          </>
         )}
       </div>
 
