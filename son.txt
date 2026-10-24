@@ -1,8 +1,8 @@
-Commit: 321a012 · Deneme bildirimi: uygulamada abone olmamanın nedenini söyle (#801)
-Zaman: 2026-10-24-2126 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40120008599
+Commit: e20e22e · Ana sayfa: Kulüp yemek kartının üstünde ikili kutular (A · Kutular) (#802)
+Zaman: 2026-10-24-2154 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40122147788
 
-TAM TEST · 24.10.2026 21:17:46
+TAM TEST · 24.10.2026 21:45:46
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 482 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 487 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
