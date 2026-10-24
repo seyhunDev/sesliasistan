@@ -76,6 +76,12 @@ değişince Xcode'dan yeniden kurulur. Ad "Velora", paket `com.seyhunyildiz.sesl
     `velora://ac/<yol>` o sayfayı açar: `App/VeloraDokunus.swift`.
   - `VeloraWidget` ayrı hedeftir (app extension, iOS 16.2+); Xcode'da Signing › Team ona da seçilir. Uygulama iOS 15+.
   - GitHub Actions "iPhone derleme" bu klasör değişince imzasız simülatör derlemesi yapar.
-- Henüz yok: bildirimler (APNs anahtarı ve Firebase ayarı gerekir; uygulamada web bildirimi çalışmaz, ana ekrandaki
-  PWA'yı silme), dosya indirme/yazdırma (`AsistanDosya` iOS'ta yok; paylaşım menüsü çalışır), kapalıyken arama zili
+  - Apple Watch: `VeloraSaat` hedefi (watchOS 10+, uygulamanın içine gömülü), telefonda `App/VeloraSaatKoprusu.swift`,
+    web `src/features/ios/WatchBridge.jsx`. Team ona da seçilir.
+  - Bildirimler: Firebase Cloud Messaging (Android'deki gibi; sunucu aynı). `AppDelegate.swift` Apple'ın anahtarını
+    Firebase'e verir, sayfaya FCM anahtarı gider (`src/lib/nativePush.js`). Kurulum bir kez: Firebase konsolu › Project
+    settings › Add app › iOS (`com.seyhunyildiz.sesliasistan`), `GoogleService-Info.plist` indirilip `ios/App/App/`
+    içine konur (depoda yok, gitignore); Apple Developer › Keys › APNs anahtarı (.p8) Firebase › Cloud Messaging ›
+    Apple app configuration'a yüklenir. Dosya yoksa uygulama bildirimsiz çalışır (`pushReady` false).
+- Henüz yok: dosya indirme/yazdırma (`AsistanDosya` iOS'ta yok; paylaşım menüsü çalışır), kapalıyken arama zili
   (CallKit).

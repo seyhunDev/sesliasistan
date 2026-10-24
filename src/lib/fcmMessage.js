@@ -1,4 +1,4 @@
-// Android uygulamasına (Firebase Cloud Messaging) gidecek bildirimi Web Push yükünden kurar. Saf: test edilir.
+// Android ve iPhone uygulamasına (Firebase Cloud Messaging; iPhone'a FCM, APNs üzerinden iletir) gidecek bildirimi Web Push yükünden kurar. Saf: test edilir.
 // Metin service worker'daki gibi tek satırlık başlık + ayrıntı (public/sw.js onPush).
 const flat = (x) => String(x || "").replace(/\s*\n+\s*/g, " · ").replace(/\s+/g, " ").trim();
 
@@ -27,6 +27,11 @@ export function fcmMessage(token, payload, ttlSec = 86400) {
       ttl: Math.max(0, Math.round(ttlSec)) * 1000,
       ...(tag ? { collapseKey: tag } : {}),
       notification: { channelId: "genel", ...(tag ? { tag } : {}), ...(count ? { notificationCount: count } : {}) },
+    },
+    // iPhone: sesli; aynı etiketli bildirim öncekinin yerine geçer, rozet sayısı
+    apns: {
+      ...(tag ? { headers: { "apns-collapse-id": tag.slice(0, 64) } } : {}),
+      payload: { aps: { sound: "default", ...(tag ? { "thread-id": tag } : {}), ...(count ? { badge: count } : {}) } },
     },
   };
 }

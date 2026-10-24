@@ -76,7 +76,7 @@ const setOffHere = (v) => {
 };
 
 const subEntry = (j) => ({ endpoint: j.endpoint, keys: j.keys, at: new Date().toISOString(), ua: navigator.userAgent.slice(0, 120) });
-const fcmEntry = (token) => ({ fcm: token, app: "android", at: new Date().toISOString(), ua: navigator.userAgent.slice(0, 120) });
+const fcmEntry = (token) => ({ fcm: token, app: window.Capacitor?.getPlatform?.() === "ios" ? "ios" : "android", at: new Date().toISOString(), ua: navigator.userAgent.slice(0, 120) });
 
 // Uygulama her açılışta: izin verilmişse bu cihazın aboneliğini kontrol eder; yoksa oluşturur, kayıtta yoksa ya da
 // değiştiyse yeniden yazar. Ana ekrana yeniden ekleme ya da iPhone'un aboneliği yenilemesi bildirimleri sessizce
@@ -99,9 +99,9 @@ function claimFcm(token) {
   authFetch("/api/push-claim", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: deviceKey(token), fcm: token }) }).catch(() => {});
 }
 
-// Android uygulaması: izin verilmişse (ask: yoksa iste) anahtarı alıp kaydeder
+// Android ve iPhone uygulaması: izin verilmişse (ask: yoksa iste) anahtarı alıp kaydeder
 async function syncNative(p, ask, lead) {
-  if (!(await nativePushReady())) throw Object.assign(new Error("Bu uygulama sürümünde bildirim yok; yeni APK'yı kur."), { code: "unsupported" });
+  if (!(await nativePushReady())) throw Object.assign(new Error(window.Capacitor?.getPlatform?.() === "ios" ? "Bu iPhone uygulamasında bildirim kurulu değil." : "Bu uygulama sürümünde bildirim yok; yeni APK'yı kur."), { code: "unsupported" });
   const perm = await nativePermission(ask);
   if (perm !== "granted") {
     if (ask) throw Object.assign(new Error("Bildirim izni verilmedi."), { code: "denied" });
