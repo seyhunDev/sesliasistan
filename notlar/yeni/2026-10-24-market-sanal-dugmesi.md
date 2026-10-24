@@ -1,5 +1,6 @@
 ## Nerede kaldım
-- Alışveriş › Market'in üstünde (lacivertte, ⋯'nin solunda) "Sanal" düğmesi var. Velora Sanal'ı (velora-sanal.netlify.app) tek dokunuşla girişle açıyor (`openSanal`, `src/lib/sanal.js`, #804). Market sekmesi aynen kaldı. Seyhun'a "sekme direkt Sanal'ı mı açsın" diye soruldu, cevap bekleniyor. Telefonda denenmedi.
+- Alışveriş'te Market düğmesi artık Velora Sanal'ı (velora-sanal.netlify.app) tek dokunuşla girişle açıyor (`openSanal`, `src/lib/sanal.js`). Seyhun 2026-10-24: "kullanıcı markete tıklayınca Velora sanala gider". Market sayfasındaki ayrı "Sanal" düğmesi (#805) kaldırıldı. Telefonda denenmedi.
+- Velora'daki market sayfası `/shopping?tab=market` adresiyle açılmaya devam ediyor; sesli "lazanya malzemelerini al" komutu sepeti orada açıyor. Market yönetimi Liste'nin ⋯ menüsünde (ana hesap) ve `/market/yonetim` adresinde.
 
 ## Sıradaki işler
-0. Seyhun "direkt Sanal" derse Market sekmesi `openSanal`'a bağlanacak; Market yönetimi ⋯'den ya da `/market/yonetim` adresinden erişilir kalacak, sesli "malzemeleri al" komutunun nereye gideceğine de karar verilecek.
+0. Sesli market komutu (isler/market.js) Velora Sanal'a mı gitsin? Sanal'da sepet ve menüler hazır olunca karar verilecek.
