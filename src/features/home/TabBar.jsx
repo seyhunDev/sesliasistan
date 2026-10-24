@@ -49,6 +49,8 @@ const PAGES = {
   "/inventory": { ph: "Envantere ekle, çıkar ya da sor…", ex: ["Envantere 3 Optimist teknesi ve 2 el telsizi ekle", "Yelken kulübü envanterinden 2 şamandıra çıkar", "Kulüp envanterinde kaç telsiz var?"] },
   "/posts": { ph: "Ne paylaşalım? ör. Foça yarışı için gönderi hazırla", ex: ["Foça yarışı için Instagram gönderisi hazırla", "Yelken okulu kayıtları için gönderi hazırla", "Sıradaki yarış için gönderi hazırla"] },
   "/wind": { ph: "Rüzgârı sor…", ex: ["Yarın öğlen rüzgâr kaç knot?", "Bu hafta yelkene en uygun gün hangisi?", "Cumartesi poyraz sertleşir mi?"] },
+  "/cams": { ph: "Kamera sor…", ex: ["Ayvalık kameralarını aç", "Midilli'deki kameralar", "Dikili kameraları"] },
+  "/sea": { ph: "Gemileri sor…", ex: ["Yanaşan gemi var mı?", "Limanda kaç gemi var?", "Sahil Güvenlik nerede?"] },
   "/fitness": { ph: "Antrenmanını söyle ya da programı değiştir…", ex: ["Pazartesi, çarşamba, cuma sabah 7'de 4 haftalık program hazırla", "Squat 3 set 10 tekrar 60 kilo yaptım", "Çarşambayı bacak günü yap"] },
   "/training": { ph: "Antrenmanı anlat, günlüğe yazayım…", ex: ["Dün 14 knot poyrazda start ve tramola çalıştık, 2 saat sürdü", "Bugünkü antrenman çok iyi geçti, Ali ve Ayşe geldi", "Antrenman günlüğünü aç"] },
 };
@@ -92,13 +94,14 @@ export function useDock(cfg) {
 
 // Yazarak sorma: sesle aynı kutu (sade tasarım, 2026-10-16). Üstte yazı alanı, altta × (yazmayı bırak) ve tek ana düğme:
 // yazı varken ↑ gönder, boşken 🎤 (söyleneni kutuya yazar, dokununca durur).
-function Composer({ cfg, onDone, onClose, init = "" }) {
+function Composer({ cfg, onDone, onClose, onPhoto, init = "" }) {
   const { openAssistant } = useAssistant();
   const toast = useToast();
   const [text, setText] = useState(init);
   const input = useRef(null);
   const sp = useSpeech({ onFinal: (t) => setText((p) => (p ? `${p} ${t}` : t)), onFail: (m) => toast(m) });
   const listening = sp.status === "listening";
+  const picking = useRef(false); // fotoğraf seçici açıkken kutu kendiliğinden kapanmasın (kapanırsa seçilen dosya kaybolur)
   useEffect(() => input.current?.focus(), []);
 
   const send = () => {
@@ -119,6 +122,8 @@ function Composer({ cfg, onDone, onClose, init = "" }) {
       onMain={listening ? () => sp.stop("edit") : has ? send : () => sp.start({ autoStop: 8000 })}
       mainIcon={listening ? "check" : has ? "up" : "mic"}
       mainLabel={listening ? "Bitti" : has ? "Gönder" : "Sesle yaz"}
+      onPick={() => (picking.current = true)}
+      onPhoto={onPhoto && !listening ? (f) => (sp.cancel(), onDone(), onPhoto(f)) : undefined}
     >
       {listening ? (
         <p className="min-h-[3.5rem] px-5 pb-1 pt-4 text-[1.0625rem] leading-snug">
@@ -132,7 +137,8 @@ function Composer({ cfg, onDone, onClose, init = "" }) {
           rows={1}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && (e.preventDefault(), send())}
-          onBlur={() => setTimeout(() => !text.trim() && input.current !== document.activeElement && onDone(), 150)}
+          onFocus={() => (picking.current = false)}
+          onBlur={() => setTimeout(() => !picking.current && !text.trim() && input.current !== document.activeElement && onDone(), 150)}
           placeholder={cfg.ph}
           aria-label={cfg.ph}
           enterKeyHint="send"
@@ -217,37 +223,32 @@ function NavTab({ href, icon, label, active, badge }) {
   );
 }
 
-// ASİSTAN DÜĞMEDE (Seyhun'un onayladığı örnek, 2026-10-22; /mnt/project-files/asistan-ekrani/asistan-dugme.html):
-// tam ekran zemin yok, bulunduğun sayfa bulanıklaşır; her şey alt çubuktaki asistan düğmesinin üstünde döner. Düğme yerinde
-// kalır, biraz büyür; sekmelerin yerine iki yan düğme gelir. Söylenen yazı düğmenin hemen üstünde büyük harflerle akar
-// (son, henüz kesinleşmemiş kısım soluk). Mesajlar, adımlar ve kartlar ayrı zemin almaz (bulanık sayfa yeter).
-//   durum                ortadaki düğme                         sol          sağ
-//   boşta                logo · dokun konuş, basılı tut yaz      × Kapat      ⌨ Yaz
-//   dinliyor             kırmızı, ses dalgası · dokun gönder     × Vazgeç     ■ Dur (söz kalır, gönderilmez)
-//   durdu (taslak)       ↑ Gönder · yazıya dokun: düzelt/ekle    × Sil        🎤 Devam
-//   gönderiliyor / iş    kehribar, ışık döner · dokun durdur     × Kapat
-//   konuşuyor            mavi · dokun sözünü kes, dinle          × Kapat
-// mode: listening | sending | busy | speaking | idle. tail: yazının soluk son kısmı. r: ringOf (data-tone, alttaki durum yazısı)
-const SIDE = "aside-btn grid size-[3.25rem] touch-manipulation place-items-center rounded-full text-white transition active:scale-90";
-function AssistBox({ mode, text, tail = "", ph, r = {}, onX, xLabel, xText, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, onType, onHold }) {
+// TEK KUTU (Seyhun'un seçtiği örnek "A · Tek kapsül", 2026-10-23): yan düğmeler yok; asistan açılınca altta tek kutu çıkar:
+// solda küçük düğme, ortada yazı alanı, sağda ses düğmesi. Söylenen yazı kutunun üstünde büyük harflerle akar (son, henüz
+// kesinleşmemiş kısım soluk). Boş bulanık alana dokunmak ya da aşağı çekmek asistanı kapatır (dinlerken ve taslak varken değil).
+//   durum                solda               ortada                            sağdaki düğme
+//   boşta                Fotoğraf            "Sor ya da ekle…" · dokun: yaz    logo · dokun konuş, basılı tut yaz
+//   dinliyor             ■ Dur (söz kalır)   ● Dinliyorum · süre               kırmızı, ses dalgası · dokun gönder
+//   durdu (taslak)       × Sil ve kapat      Düzelt · 🎤 Devam                 ↑ Gönder
+//   gönderiliyor / iş                        noktalar                          kehribar, ışık döner · dokun durdur
+//   konuşuyor                                noktalar                          mavi · dokun sözünü kes, dinle
+// mode: listening | sending | busy | speaking | idle. tail: yazının soluk son kısmı. r: ringOf (data-tone, üstteki durum yazısı)
+const PILLBTN = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-white/[.08] text-fg transition active:scale-90";
+function AssistBox({ mode, text, tail = "", ph, r = {}, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, onPhoto, onHold }) {
   const box = useRef(null);
+  const pick = useRef(null);
   useEffect(() => {
     const el = box.current;
     if (el) el.scrollTop = el.scrollHeight; // uzun sözde son kısım görünsün
   }, [text, tail]);
   const listening = mode === "listening";
+  const idle = mode === "idle";
   const said = [text, tail].filter(Boolean).join(" ");
-  // "Dinliyorum" tek yerde (Seyhun 2026-10-22): kutu yalnız söz varken; dinlerken altta tek satır (nokta · Dinliyorum · süre)
-  const showText = !!said;
-  const right = listening && onStop ? { label: "Dur", text: "Dur", on: onStop, icon: <span className="size-3.5 rounded-[3px] bg-white" aria-hidden="true" /> }
-    : onTalk ? { label: "Konuşmaya devam", text: "Devam", on: onTalk, icon: <Icon name="mic" className="size-[1.375rem]" /> }
-    : mode === "idle" && onType ? { label: "Yaz", text: "Yaz", on: onType, icon: <Icon name="keyboard" className="size-[1.375rem]" /> }
-    : null;
   return (
-    <div className="relative px-5 pb-1">
-      {/* Söylenen / yazılan söz: düğmenin üstünde, büyük. Dinlerken altında süre; durunca dokununca klavyeyle düzeltilir */}
-      {showText && (
-        <div data-mode={mode} className={`asheet-input amsg-in ${listening ? "mb-2" : "mb-4"} ${mode === "idle" ? "asheet-draft" : ""}`}>
+    <div className="relative px-3 pb-1">
+      {/* Söylenen / yazılan söz: kutunun üstünde, büyük; durunca dokununca klavyeyle düzeltilir */}
+      {!!said && (
+        <div data-mode={mode} className={`asheet-input amsg-in mx-2 ${listening ? "mb-2" : "mb-4"} ${idle ? "asheet-draft" : ""}`}>
           <div ref={box} onClick={onText} className={`max-h-[9.5rem] overflow-hidden text-[1.3125rem] font-semibold leading-snug tracking-[-.01em] ${onText ? "cursor-text" : ""}`}>
             <span className="text-fg">
               {text}
@@ -257,29 +258,53 @@ function AssistBox({ mode, text, tail = "", ph, r = {}, onX, xLabel, xText, onMa
           </div>
         </div>
       )}
-      {listening && (
-        <p className="amsg-in mb-3 flex items-center justify-center gap-2 text-[0.875rem] font-semibold text-fg/75">
-          <MicDot />
-          Dinliyorum · <ListenClock />
-        </p>
-      )}
-      <div className="relative flex h-[5.25rem] items-center justify-center">
-        <span className="aside aside-l absolute left-[10%] flex flex-col items-center gap-1.5">
-          <button type="button" onClick={onX} aria-label={xLabel} className={SIDE}>
-            <Icon name="x" className="size-[1.375rem]" />
+      <div className="apill flex h-[3.875rem] items-center gap-2 rounded-full pl-2 pr-1.5">
+        {listening && onStop ? (
+          <button type="button" onClick={onStop} aria-label="Dur" className={PILLBTN}>
+            <span className="size-3.5 rounded-[3px] bg-white" aria-hidden="true" />
           </button>
-          <small className="text-[0.6875rem] font-semibold text-fg/75">{xText}</small>
-        </span>
-        <OrbMain mode={mode} r={r} icon={mainIcon} label={mainLabel} on={mainOn} onTap={onMain} onHold={onHold} />
-        {/* Sağdaki düğme yerinde kalır, yalnız simgesi ve adı yumuşakça değişir (Yaz → Dur → Devam; bir anda belirmesin) */}
-        {right && (
-          <span className="aside aside-r absolute right-[10%] flex flex-col items-center gap-1.5">
-            <button type="button" onClick={right.on} aria-label={right.label} className={SIDE}>
-              <span key={right.label} className="aswap grid place-items-center">{right.icon}</span>
+        ) : idle && onTalk ? (
+          <button type="button" onClick={onX} aria-label={xLabel} className={PILLBTN}>
+            <Icon name="x" className="size-[1.25rem]" />
+          </button>
+        ) : idle && onPhoto ? (
+          <>
+            <button type="button" onClick={() => pick.current?.click()} aria-label="Fotoğraf" className={PILLBTN}>
+              <Icon name="image" className="size-[1.25rem]" />
             </button>
-            <small key={right.text} className="aswap text-[0.6875rem] font-semibold text-fg/75">{right.text}</small>
-          </span>
+            <input
+              ref={pick}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) onPhoto(f);
+              }}
+            />
+          </>
+        ) : (
+          <span className="w-2 shrink-0" />
         )}
+        {listening ? (
+          <button type="button" onClick={onText} className="flex min-w-0 flex-1 items-center gap-2 text-left text-[0.9375rem] font-semibold text-fg/80">
+            <MicDot />
+            Dinliyorum · <ListenClock />
+          </button>
+        ) : idle ? (
+          <button type="button" onClick={onText} aria-label={onTalk ? "Düzelt" : "Yaz"} className="min-w-0 flex-1 truncate py-3 text-left text-[0.9375rem] text-fg/55">
+            {onTalk ? "Düzelt" : ph}
+          </button>
+        ) : (
+          <span className="h-6 min-w-0 flex-1 animate-pulse bg-[radial-gradient(circle,rgba(255,255,255,.5)_1.5px,transparent_1.6px)] bg-[length:8px_8px] bg-[position:center] bg-repeat-x opacity-70" aria-hidden="true" />
+        )}
+        {idle && onTalk && (
+          <button type="button" onClick={onTalk} aria-label="Konuşmaya devam" className={PILLBTN}>
+            <Icon name="mic" className="size-[1.25rem]" />
+          </button>
+        )}
+        <OrbMain mode={mode} r={r} icon={mainIcon} label={mainLabel} on={mainOn} onTap={onMain} onHold={onHold} small />
       </div>
     </div>
   );
@@ -287,7 +312,7 @@ function AssistBox({ mode, text, tail = "", ph, r = {}, onX, xLabel, xText, onMa
 
 // Ortadaki düğme (alt çubuktaki asistan düğmesiyle aynı yer ve görünüş, globals.css .vlight .aorb): renk durumu anlatır.
 // İçinde: dinlerken canlı ses dalgası, taslakta ↑, iş bitince onay, değilse logo dalgası. data-tone/data-fill ekran testleri için.
-function OrbMain({ mode, r, icon, label, on, onTap, onHold }) {
+function OrbMain({ mode, r, icon, label, on, onTap, onHold, small = false }) {
   const t = useRef(null);
   const held = useRef(false);
   const vstate = mode === "listening" ? "listening" : mode === "busy" || mode === "sending" ? "busy" : mode === "speaking" ? "speaking" : "idle";
@@ -316,17 +341,17 @@ function OrbMain({ mode, r, icon, label, on, onTap, onHold }) {
       onContextMenu={(e) => e.preventDefault()}
       onClick={() => !held.current && onTap()}
       aria-label={label}
-      className="vlight aorb size-[4.5rem] shrink-0 select-none disabled:opacity-60 [-webkit-touch-callout:none]"
+      className={`vlight aorb ${small ? "vl-sm size-[3.125rem]" : "size-[4.5rem]"} shrink-0 select-none disabled:opacity-60 [-webkit-touch-callout:none]`}
     >
       <span className="vl-halo" aria-hidden="true" />
       <span className="vl-ring" aria-hidden="true" />
       <span className="vl-disc" aria-hidden="true" />
       {mode === "listening" ? (
-        <ListenWave round />
+        <ListenWave round {...(small ? { bar: 3, gap: 3 } : {})} />
       ) : icon === "up" ? (
-        <Icon name="up" className="relative size-7 text-white [stroke-width:2.5]" />
+        <Icon name="up" className={`relative ${small ? "size-6" : "size-7"} text-white [stroke-width:2.5]`} />
       ) : r.check && mode === "idle" ? (
-        <svg viewBox="0 0 48 48" className="relative size-8" aria-hidden="true"><path className="lring-check" d="M13 25l7 7 15-16" /></svg>
+        <svg viewBox="0 0 48 48" className={`relative ${small ? "size-6" : "size-8"}`} aria-hidden="true"><path className="lring-check" d="M13 25l7 7 15-16" /></svg>
       ) : (
         <span className="vl-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span>
       )}
@@ -336,8 +361,9 @@ function OrbMain({ mode, r, icon, label, on, onTap, onHold }) {
 
 // Yazı kutusu (klavyeyle yazarken, Composer): üstte yazı alanı, altta × · ses · ↑ Gönder (2026-10-16 sade kutu)
 const ROUND = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full transition active:scale-90";
-function TypeBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, children }) {
+function TypeBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, onPhoto, onPick, children }) {
   const box = useRef(null);
+  const pick = useRef(null);
   useEffect(() => {
     const el = box.current;
     if (el) el.scrollTop = el.scrollHeight; // uzun sözde son kısım görünsün
@@ -378,6 +404,25 @@ function TypeBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, mai
           <button type="button" onPointerDown={keep} onClick={onX} aria-label={xLabel} className={`${ROUND} bg-fg/[.07] text-fg`}>
             <Icon name="x" className="size-[1.375rem]" />
           </button>
+          {/* Fotoğraf: seçilen resim asistana gider (motor photoIn verince görünür) */}
+          {onPhoto && (
+            <>
+              <button type="button" onPointerDown={keep} onClick={() => (onPick?.(), pick.current?.click())} aria-label="Fotoğraf" className={`${ROUND} bg-fg/[.07] text-fg`}>
+                <Icon name="image" className="size-[1.25rem]" />
+              </button>
+              <input
+                ref={pick}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) onPhoto(f);
+                }}
+              />
+            </>
+          )}
           {listening ? (
             <span className="flex min-w-0 flex-1 items-center gap-2.5" onClick={onText}>
               <MicDot />
@@ -708,7 +753,6 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
     : mode === "sending" ? heard || "" // yalnız şimdi söylenen: önceki söz (live.said) bir an görünüp kaybolmasın (Seyhun, 2026-10-09)
     : mode === "busy" ? live.said || ""
     : draft;
-  const boxPh = "";
   const ring = active ? ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown, saved: live.saved }) : {};
   // İş bitince (düğmede ✓) kısa "tamam" titreşimi; dinleme başlarken titreşim useSpeech'te
   const done = !!ring.check;
@@ -753,8 +797,9 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
             {active && (
               <div
                 ref={pane}
-                // Boş (bulanık) alana dokununca kapanır; konuşma, iş ya da taslak sürerken kapanmaz
-                onClick={(e) => (e.target === pane.current || e.target === body.current) && mode === "idle" && !draft && onClose?.()}
+                data-apane=""
+                // Tek kutu (2026-10-23): kapat düğmesi yok, dinlerken ve taslak varken dışında boş alana dokununca kapanır
+                onClick={(e) => (e.target === pane.current || e.target === body.current) && mode !== "listening" && !draft && onClose?.()}
                 // Sohbet alanı ekranın kalanını kaplar; mesajlar alttan dolar, fazlası içeride kayar
                 // Üstte boşluk ve yukarı doğru soluklaşma (Seyhun: "yazı yukarı gittikçe soluklaşsın, üstte biraz boşluk", 2026-10-14)
                 className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 [mask-image:linear-gradient(to_bottom,transparent,rgba(0,0,0,.35)_2.5rem,#000_40%)] [scrollbar-width:none]"
@@ -767,19 +812,18 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
               </div>
             )}
             {typing ? (
-              <Composer cfg={cfg} onDone={onTypingDone} onClose={onClose} init={typeInit} />
+              <Composer cfg={cfg} onDone={onTypingDone} onClose={onClose} onPhoto={voice.photo} init={typeInit} />
             ) : box2 ? (
               <AssistBox
                 mode={mode}
                 r={ring}
                 text={boxText}
-                ph={boxPh}
+                ph={cfg.ph}
                 tail={mode === "listening" && heard && live.heardFix != null ? live.tail || "" : ""}
                 // × her zaman asistanı kapatır (Seyhun 2026-10-22); dinleme ve bekleyen söz de gider
                 onX={onClose}
                 xLabel="Asistanı kapat"
-                xText="Kapat"
-                onType={typeNow}
+                onPhoto={voice.photo}
                 onHold={typeNow}
                 onStop={voice.edit}
                 onTalk={mode === "idle" && draft ? talk : undefined}
@@ -990,6 +1034,8 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
           abort: () => act.current.abort?.(),
           send: () => act.current.send?.(),
           listen: () => act.current.listen?.(),
+          // Fotoğrafı asistana ver: motor photoIn yayınlamadıysa düğme yok
+          photo: act.current.photoIn ? (f) => act.current.photoIn(f) : undefined,
           // Bekleyen söze dokununca yazı kutusunda düzenlenir
           type: () => {
             setTypeInit(act.current.takeDraft?.() || "");

@@ -1111,6 +1111,20 @@ group("Cihazdaki veriler")([
     return a.kind === "docs" && a.title === "Foça yarışı" && /10 sayfa/.test(a.sub) && b.kind === "extra" && /2 dosya/.test(b.sub) && c.kind === "notice" && c.title === "talimat.pdf";
   })],
   ["ayar boyutu", F("anahtar + değer, 2 bayt/karakter", () => DD.storageBytes([["ab", "cd"], ["x", null]]) === 10)],
+  ["telefondaki medya", F("yarış başına grup, büyük önce, kalan gün ilk silinecekten", () => {
+    const now = Date.parse("2026-10-22T12:00:00Z");
+    const d = (n) => now - n * 864e5;
+    const g = DD.mediaGroups([
+      { id: "a", raceId: "r1", kind: "video", size: 50, savedAt: d(1) },
+      { id: "b", raceId: "r1", kind: "photo", size: 5, savedAt: d(3) },
+      { id: "c", raceId: "ant-p1", kind: "video", size: 80, savedAt: d(6.5) },
+    ], 7, now);
+    return g.length === 2 && g[0].raceId === "ant-p1" && g[0].daysLeft === 1 && g[1].size === 55 && g[1].daysLeft === 4 && DD.mediaCount(g[1]) === "1 video · 1 foto" && g[1].ids.join() === "a,b";
+  })],
+  ["buluttaki medya", F("yalnız canlı belgede adresi olanlar silinir", () => {
+    const ok = DD.inCloud(["a", "b", "c"], [{ id: "a", url: "https://x" }, { id: "b", url: "" }]);
+    return ok.join() === "a" && DD.inCloud(["a"], null).length === 0;
+  })],
 ]);
 
 // Envanter (invModel.js): numara, yapay zeka işlemlerinin uygulanması, hedef envanter, hareket kaydı
@@ -2852,7 +2866,19 @@ group("Ortak düğmeler")([
     ["bugün bitti", F("yarının ilk planı", () => HT.nextPlan(P.filter((p) => p.date !== "2026-10-21" || p.id === "a"), at, "2026-10-21")?.id === "d")],
     ["iptal ve fitness", F("sayılmaz", () => HT.nextPlan([{ ...P[2], status: "cancelled" }, { ...P[2], id: "f", fit: { name: "x" } }, P[3]], at, "2026-10-21")?.id === "d")],
     ["saatsiz plan", F("gün boyu sürer", () => HT.nextPlan([{ id: "s", title: "Kamp", date: "2026-10-21" }], at, "2026-10-21")?.id === "s")],
+    // Seyhun 2026-10-22: bitirilip arşive giden antrenman "Bugün · Gün boyu" diye kalıyordu (plan bitti alanı done: true)
+    ["bitirilen plan", F("arşivdeki (bitti) atlanır, sıradaki gelir", () => HT.nextPlan([{ id: "s", title: "Antrenman", date: "2026-10-21", done: true }, P[2], P[3]], at, "2026-10-21")?.id === "c")],
     ["8 gün sonra", F("7 günden uzak plan yok", () => HT.nextPlan([{ id: "u", date: "2026-10-30", time: "10:00" }], at, "2026-10-21") === null)],
+    ["yemek kartı", F("saate göre: 8 kahvaltı, 12 öğle, 19 akşam, 2 gece", () => HT.mealLabel(8) === "Kahvaltı önerisi" && HT.mealLabel(12) === "Öğle yemeği önerisi" && HT.mealLabel(19) === "Akşam yemeği önerisi" && HT.mealLabel(2) === "Gece atıştırması")],
+    ["seçilen günün planları", F("iptal ve biten çıkar, saatsiz sonda", () => HT.dayPlans([{ id: "a", date: "2026-10-26", time: "16:00" }, { id: "b", date: "2026-10-26", time: "" }, { id: "c", date: "2026-10-26", time: "10:00" }, { id: "d", date: "2026-10-26", time: "09:00", status: "cancelled" }, { id: "e", date: "2026-10-26", time: "08:00", done: true }, { id: "f", date: "2026-10-27", time: "09:00" }], "2026-10-26").map((p) => p.id).join() === "c,a,b")],
+    ["seçilen günün havası", F("saatlerden en düşük/yüksek, gündüz en sert rüzgâr; özet varsa ondan; saat yoksa yok", () => {
+      const rows = ["06", "09", "13", "15", "21"].map((hh, i) => ({ hh, t: [12, 15, 20, 22, 16][i], code: [0, 1, 2, 3, 0][i], wind: [20, 8, 12, 16, 25][i], gust: [24, 12, 18, 22, 30][i], dir: [0, 90, 180, 270, 45][i] }));
+      const a = HT.dayWeather({ days: [] }, rows, "2026-10-29");
+      const b = HT.dayWeather({ days: [{ date: "2026-10-29", min: 10, max: 24, code: 61 }] }, rows, "2026-10-29");
+      return a.min === 12 && a.max === 22 && a.code === 2 && a.wind === 16 && a.gust === 22 && a.dir === 270 && b.min === 10 && b.max === 24 && b.code === 61 && HT.dayWeather({}, [], "2026-10-29") === null;
+    })],
+    ["yemek kartı fotoğrafı", F("saate göre: 8 kahvaltı, 13 makarna, 20 pizza, 1 burger", () => HT.mealPhoto(8) === "breakfast" && HT.mealPhoto(13) === "pasta" && HT.mealPhoto(20) === "pizza" && HT.mealPhoto(1) === "burger")],
+    ["tür başlıkta", F("“Optimist antrenmanı” Antrenman etiketi almaz, toplantı alır", () => HT.planTag({ title: "Optimist antrenmanı", cat: "Antrenman" }) === "" && HT.planTag({ title: "Yönetim", cat: "Toplantı" }) === "Toplantı" && HT.planTag({ title: "Fitness · İlay", fit: { name: "İlay" } }) === "")],
   ]);
 }
 
@@ -2923,5 +2949,141 @@ group("Ortak düğmeler")([
     ["iki program", F("program başına ayrı satır", () => NP.fitGroups([...plans.slice(0, 3), { fit: { prog: "p2" }, date: "2026-10-24" }]).length === 2)],
     ["planlar ayrı çıkmaz", F("ForYou yeni planlarda fitness planını atlar", () => /!\(kind === "plan" && r\.fit\?\.prog\)/.test(src("features/home/ForYou.jsx")))],
     ["önce bildirimler", F("pencerede Bildirimler, Yapılacaklar'dan önce", () => { const s = src("features/home/Inbox.jsx"); return s.indexOf('aria-label="Bildirimler"') < s.indexOf('aria-label="Yapılacaklar"'); })],
+  ]);
+}
+
+// Asistan yazı kutusunda Fotoğraf düğmesi: motor photoIn verince görünür, seçilen resmi ona verir
+{
+  const { readFileSync } = await import("node:fs");
+  const s = readFileSync(new URL("../../../src/features/home/TabBar.jsx", import.meta.url), "utf8");
+  group("Asistan: fotoğraf düğmesi")([
+    ["yalnız photoIn varsa", F("photo yalnız act.current.photoIn varken verilir", () => /photo: act\.current\.photoIn \? \(f\) => act\.current\.photoIn\(f\) : undefined/.test(s))],
+    ["resim seçici", F('accept="image/*" ve düğme adı Fotoğraf', () => /accept="image\/\*"/.test(s) && /aria-label="Fotoğraf"/.test(s))],
+    ["seçici açıkken kapanmaz", F("kutu picking varken kendiliğinden kapanmaz", () => /!picking\.current && !text\.trim\(\)/.test(s))],
+  ]);
+}
+
+// Deniz trafiği (lib/sea.js): AIS mesajı okuma, geminin durumu, asistan cevabı
+{
+  const S = await import("@/lib/sea");
+  const now = Date.parse("2026-10-23T12:00:00Z");
+  const pos = (m, lat, lon, sog, st, cog = 0, t = now) => ({ MessageType: "PositionReport", MetaData: { MMSI: m, ShipName: "TEST@@" }, Message: { PositionReport: { Latitude: lat, Longitude: lon, Sog: sog, Cog: cog, TrueHeading: 0, NavigationalStatus: st, UserID: m } } });
+  const build = (rows) => rows.reduce((all, [msg, t]) => S.mergeShip(all, S.parseAis(msg, t)), {});
+  const D = S.PORTS[0];
+  group("Deniz trafiği")([
+    ["konum mesajı", F("MMSI, ad, hız, durum okunur", () => { const p = S.parseAis(pos(271000001, 39.05, 26.85, 5.2, 0), now); return p.m === 271000001 && p.n === "TEST" && p.sog === 5.2 && p.st === 0 && p.seen === now; })],
+    ["gemi bilgisi", F("tür ve gideceği yer", () => { const p = S.parseAis({ MessageType: "ShipStaticData", MetaData: { MMSI: 5 }, Message: { ShipStaticData: { Name: "NORDIC STAR", Type: 80, Destination: "ALIAGA@@" } } }); return p.t === 80 && p.dest === "ALIAGA" && S.typeLabel(p.t) === "Tanker"; })],
+    ["bozuk mesaj", F("null", () => S.parseAis({ MessageType: "PositionReport", MetaData: {}, Message: {} }) === null)],
+    ["limanda bağlı", F("st 5 → Limanda", () => S.shipState({ lat: D.lat, lon: D.lon, sog: 0, st: 5 }, now).key === "moored")],
+    ["demirde", F("st 1 açıkta → Demirde", () => S.shipState({ lat: 39.02, lon: 26.8, sog: 0.1, st: 1 }, now).key === "anchor")],
+    ["yanaşıyor", F("limana yaklaşan, dakika hesabı", () => {
+      const all = build([[pos(1, 39.03, 26.8, 10, 0), now - 60e3], [pos(1, 39.04, 26.82, 10, 0), now]]);
+      const st = S.shipState(all[1], now);
+      return st.key === "approach" && st.port === "Dikili" && st.min > 0;
+    })],
+    ["ayrılıyor", F("limandan uzaklaşan", () => {
+      const all = build([[pos(2, D.lat - 0.005, D.lon - 0.005, 6, 0), now - 60e3], [pos(2, D.lat - 0.02, D.lon - 0.02, 6, 0), now]]);
+      return S.shipState(all[2], now).key === "leave";
+    })],
+    ["kalkacak", F("demirdeyken seyir durumuna geçti", () => {
+      const all = build([[pos(3, 39.02, 26.8, 0, 1), now - 120e3], [pos(3, 39.02, 26.8, 0, 0), now]]);
+      return S.shipState(all[3], now).key === "ready";
+    })],
+    ["karaya oturmuş", F("amber uyarı", () => { const st = S.shipState({ lat: 39.02, lon: 26.8, sog: 0, st: 6 }, now); return st.key === "trouble" && st.warn; })],
+    ["eski gemi silinir", F("30 dk görünmeyen", () => { const all = { 1: { m: 1, seen: now - 31 * 60e3 }, 2: { m: 2, seen: now } }; S.prune(all, now); return !all[1] && !!all[2]; })],
+    ["Sahil Güvenlik", F("tip 55 ya da TCSG adı", () => S.isGuard({ t: 55 }) && S.isGuard({ n: "TCSG 309" }) && !S.isGuard({ n: "MAVI RUZGAR", t: 37 }))],
+    ["satır yazısı", F("Yolcu · 11,2 kn · Dikili'ye 20 dk", () => S.shipLine({ type: "Yolcu", sog: 11.2, state: { key: "approach", port: "Dikili", min: 20 } }) === "Yolcu · 11,2 kn · Dikili'ye 20 dk")],
+    ["ek: Aliağa'dan", F("limandan çıkış eki", () => /Aliağa'dan çıkıyor/.test(S.shipLine({ type: "Tanker", sog: 4, state: { key: "leave", port: "Aliağa" } })))],
+    ["cevap: özet", F("sayılarla", () => S.seaAnswer("summary", { ships: [{ n: "A", state: { key: "moored" } }, { n: "B", state: { key: "anchor" } }] }) === "Çevrede 2 gemi var: 1 demirde, 1 limanda.")],
+    ["cevap: yanaşan yok", F("kısa cevap", () => S.seaAnswer("approach", { ships: [] }) === "Şu an yanaşan ya da ayrılan gemi yok.")],
+    ["cevap: anahtar yok", F("Netlify uyarısı", () => /aisstream/.test(S.seaAnswer("summary", { error: "nokey" })))],
+    ["cevap: acil", F("158 ve Kanal 16", () => /158/.test(S.seaAnswer("emergency")) && /Kanal 16/.test(S.seaAnswer("emergency")))],
+    ["soru değil", F("gemi kelimesi ama başka iş", () => S.seaAsk("tekne yıkama planı ekle") === null && S.seaAsk("deniz trafiğini aç") === null && S.seaAsk("yarın 10'da antrenman") === null)],
+  ]);
+}
+
+// aisstream bağlantısı (lib/server/aisStream.js): yerel sahte sunucuyla mesaj, anahtar hatası, mesajsız kapanma
+{
+  const { collect } = await import("@/lib/server/aisStream");
+  const { WebSocketServer } = await import("ws");
+  const run = (onSub) => new Promise((ok) => {
+    const wss = new WebSocketServer({ port: 0 }, async () => {
+      const r = await collect("anahtar", 800, `ws://127.0.0.1:${wss.address().port}`);
+      wss.close();
+      ok(r);
+    });
+    wss.on("connection", (c) => c.on("message", (m) => onSub(c, JSON.parse(String(m)))));
+  });
+  const pos = { MessageType: "PositionReport", MetaData: { MMSI: 271000009, ShipName: "DENEME" }, Message: { PositionReport: { Latitude: 39.05, Longitude: 26.85, Sog: 4, Cog: 90, TrueHeading: 90, NavigationalStatus: 0, UserID: 271000009 } } };
+  const r1 = await run((c, sub) => sub.APIKey === "anahtar" && sub.BoundingBoxes?.length === 1 && c.send(Buffer.from(JSON.stringify(pos))));
+  const r2 = await run((c) => c.send(JSON.stringify({ error: "Api Key Is Not Valid" })));
+  const r3 = await run((c) => c.close(1008, "yetkisiz"));
+  const r4 = await collect("x", 500, "ws://127.0.0.1:9");
+  group("Deniz trafiği: aisstream bağlantısı")([
+    ["mesaj gelir", F("abonelik gider, ikili mesaj okunur, sayılır", () => !r1.err && r1.n === 1 && r1.parts.length === 1 && r1.parts[0].m === 271000009)],
+    ["anahtar hatası", F("hata metni döner", () => /Api Key Is Not Valid/.test(r2.err?.message || ""))],
+    ["mesajsız kapanma", F("hata sayılır", () => /kapandı 1008/.test(r3.err?.message || ""))],
+    ["sunucu yok", F("hata döner, takılmaz", () => !!r4.err && r4.parts.length === 0)],
+  ]);
+}
+
+// Halka açık kameralar (lib/cams.js): Windy cevabı, uzaklık, süre, sesli komut
+{
+  const C = await import("@/lib/cams");
+  const now = Date.parse("2026-10-23T12:00:00Z");
+  const w = (id, lat, lon, extra = {}) => ({ webcamId: id, title: `Kamera ${id}`, status: "active", lastUpdatedOn: "2026-10-23T11:55:00Z", location: { latitude: lat, longitude: lon }, images: { current: { preview: `p${id}.jpg`, thumbnail: `t${id}.jpg` } }, player: { day: `https://webcams.windy.com/webcams/public/embed/player/${id}/day` }, urls: { detail: `https://www.windy.com/webcams/${id}` }, ...extra });
+  group("Kameralar")([
+    ["Windy kamerası", F("ad, görüntü, oynatıcı, bağlantı", () => { const c = C.normCam(w(7, 39.3, 26.7)); return c.id === "7" && c.preview === "p7.jpg" && /player\/7\/day/.test(c.player) && /webcams\/7$/.test(c.link) && !c.live; })],
+    ["oynatıcı nesne", F("player.live { embed } canlı sayılır", () => { const c = C.normCam(w(8, 39, 26, { player: { live: { embed: "https://x/live" } } })); return c.player === "https://x/live" && c.live; })],
+    ["görüntüsüz atlanır", F("images yok ya da pasif → null", () => C.normCam(w(9, 39, 26, { images: {} })) === null && C.normCam(w(9, 39, 26, { status: "inactive" })) === null)],
+    ["yakından uzağa", F("km eklenir, sıralanır", () => { const l = C.camList([w(1, 38.42, 27.14), w(2, 39.32, 26.69)], C.PLACES[0]); return l[0].id === "2" && l[0].km > 20 && l[0].km < 40 && l[1].km > 60; })],
+    ["km yazısı", F("<1 km, 27 km", () => C.kmLabel(0.4) === "<1 km" && C.kmLabel(27.4) === "27 km")],
+    ["süre yazısı", F("şimdi, 5 dk, 2 sa, 3 gün", () => C.agoLabel(now - 20e3, now) === "şimdi" && C.agoLabel(now - 5 * 60e3, now) === "5 dk" && C.agoLabel(now - 2 * 3600e3, now) === "2 sa" && C.agoLabel(now - 3 * 86400e3, now) === "3 gün")],
+    ["konumum", F("Dikili'ye yakınsa adı", () => C.nearPlace({ lat: 39.07, lon: 26.9 }) === "Dikili" && C.nearPlace({ lat: 40.5, lon: 28 }) === "")],
+    ["sayfa yolu", F("/cams?yer=", () => C.camsPath("Ayvalık") === "/cams?yer=Ayval%C4%B1k" && C.camsPath("") === "/cams")],
+    ["ses: yer", F("hazır ve serbest yer", () => C.camsAsk("Ayvalık kameralarını aç")?.place === "Ayvalık" && C.camsAsk("Midilli'deki kameralar")?.place === "Midilli" && C.camsAsk("Bodrum'un kameralarını göster")?.place === "Bodrum" && C.camsAsk("Çeşmedeki kameraları aç")?.place === "Çeşme")],
+    ["ses: yersiz", F("kameraları aç → boş yer", () => C.camsAsk("kameraları aç")?.place === "" && C.camsAsk("canlı kameraları göster")?.place === "")],
+    ["YouTube yayını", F("yer adı geçen canlı yayın, oynatıcı ve bağlantı", () => { const c = C.ytCam({ id: { videoId: "v1" }, snippet: { title: "Ayvalık Cunda &amp; Liman Canlı", channelTitle: "Ayvalık Belediyesi", liveBroadcastContent: "live", thumbnails: { high: { url: "h.jpg" } } } }, "Ayvalık"); return c.id === "yt:v1" && c.title === "Ayvalık Cunda & Liman Canlı" && /youtube-nocookie\.com\/embed\/v1/.test(c.player) && c.preview === "h.jpg" && c.km === null && c.src === "YouTube"; })],
+    ["YouTube eleme", F("başka yer, haber, canlı değil → atlanır", () => C.ytList([
+      { id: { videoId: "a" }, snippet: { title: "İstanbul Boğaz canlı", channelTitle: "X", liveBroadcastContent: "live" } },
+      { id: { videoId: "b" }, snippet: { title: "Ayvalık haber canlı", channelTitle: "X", liveBroadcastContent: "live" } },
+      { id: { videoId: "c" }, snippet: { title: "Ayvalık sahil", channelTitle: "X", liveBroadcastContent: "none" } },
+      { id: { videoId: "d" }, snippet: { title: "Cunda adası", channelTitle: "Ayvalık Kent TV", liveBroadcastContent: "live" } },
+    ], "Ayvalık").map((c) => c.id).join() === "yt:d")],
+    ["ses: fiş kamerası değil", F("tekil kamerayı aç, fiş, ön kamera → null", () => C.camsAsk("kamerayı aç") === null && C.camsAsk("fiş kamerasını aç") === null && C.camsAsk("ön kamerayı aç") === null && C.camsAsk("yarış kamerasını aç") === null)],
+  ]);
+}
+
+// Ana sayfa: Deniz trafiği ve Kameralar yalnız iki düğme (veri çeken kart yok)
+{
+  const { readFileSync } = await import("node:fs");
+  const s = readFileSync(new URL("../../../src/features/home/OwnerHome.jsx", import.meta.url), "utf8");
+  group("Ana sayfa: deniz ve kamera düğmeleri")([
+    ["iki düğme", F("/sea ve /cams bağlantısı", () => /\["\/sea", "anchor", "Deniz trafiği"\], \["\/cams", "video", "Kameralar"\]/.test(s))],
+    ["veri çekmez", F("SeaCard ana sayfada yok", () => !/SeaCard/.test(s))],
+  ]);
+}
+
+// Asistan tek kutu (Seyhun "A · Tek kapsül", 2026-10-23): yan düğmeler yok; Fotoğraf · yazı alanı · ses düğmesi
+{
+  const { readFileSync } = await import("node:fs");
+  const s = readFileSync(new URL("../../../src/features/home/TabBar.jsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../../src/app/globals.css", import.meta.url), "utf8");
+  group("Asistan: tek kutu")([
+    ["yan düğme yok", F("aside sınıfları kalktı", () => !/aside-btn|aside-l|aside-r/.test(s + css))],
+    ["tek kutu", F("apill içinde ses düğmesi küçük", () => /className="apill /.test(s) && /onHold=\{onHold\} small \/>/.test(s))],
+    ["boş alan kapatır", F("dinlerken ve taslakta değil", () => /mode !== "listening" && !draft && onClose\?\.\(\)/.test(s))],
+  ]);
+}
+
+// Rüzgâr ve sağanak tek yerde "2–4" (Seyhun 2026-10-24); ölçülen saatler de aynı biçimde; ayrı en sert sağanak yazısı yok
+{
+  const WX = await import("@/features/weather/weather");
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  group("Rüzgâr–sağanak tek yerde")([
+    ["biçim", F("2–4, sağanak yoksa 2", () => WX.kn(2, 4) === "2–4" && WX.kn(5, 5) === "5" && WX.kn(3, null) === "3")],
+    ["ölçülen de aynı", F("grafik altı yazısı ölçülen saatte ölçüleni yazar", () => /kn\(o \? o\.wind : h\.wind, o \? o\.gust : h\.gust\)/.test(src("features/home/CockpitWind.jsx")))],
+    ["ayrı sağanak yazısı yok", F("en sert sağanak etiketi kalktı", () => !/pkRight/.test(src("features/home/CockpitWind.jsx")))],
   ]);
 }

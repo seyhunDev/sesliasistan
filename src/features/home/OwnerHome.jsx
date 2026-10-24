@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import Link from "next/link";
+import { Icon } from "@/components/ui/Icon";
+import { useEffect, useMemo, useState } from "react";
 import { HomeDays } from "./HomeDays";
 import { todayStr } from "@/lib/utils/format";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -8,13 +10,13 @@ import { useData } from "@/features/data/DataProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { PaidNotice } from "@/features/receipts/Payment";
 import { useWeather } from "@/features/weather/useWeather";
-import { useNow } from "@/hooks/useNow";
-import { fitDays, homeActions, nextPlan } from "@/lib/homeTiles";
+import { fitDays, homeActions } from "@/lib/homeTiles";
 import { useQuota } from "@/lib/quota";
 import { BirthdayStrip } from "./BirthdayStrip";
 import { InboxSheet, useInbox } from "./Inbox";
-import { SiradaCard } from "./SiradaCard";
+import { WaitRow } from "./WaitRow";
 import { Cockpit } from "./Cockpit";
+import { FoodCard } from "./FoodCard";
 import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
@@ -66,8 +68,6 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
   const athletes = canSeeAthletes(profile?.email);
   const race = useRaceHome();
   const { openMeeting } = useMeeting();
-  const now = useNow();
-  const next = nextPlan(plans, now);
   const training = plans.some((p) => (p.cat || p.category) === "Antrenman");
   // Antrenman kartında fitness antrenmanları da: kendi planların ve (ana hesapta) sporcularınki
   const fit = useMemo(() => (side ? [] : fitDays(plans, owner ? fitOthers || [] : [], members, profile?.uid)), [side, owner, plans, fitOthers, members, profile?.uid]);
@@ -85,30 +85,58 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
     lessons: lessons.length > 0,
     fit: staff && myFit(plans, profile?.uid).length > 0,
   }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
+  // Seçilen gün (Seyhun 2026-10-23 "günler en üstte"): kokpitteki hava, grafik ve planlar bu güne göre; pick: penceresi açık gün
+  const today = todayStr();
+  const [sel, setSel] = useState(today);
+  const [pick, setPick] = useState(null);
 
 
   return (
     <>
-      {/* Lacivert kokpit (Seyhun 2026-10-21; boşluksuz, sıkı): iş düğmeleri (en sık işler adıyla, sonunda Tümü) ve büyük günler (güne dokununca o günün penceresi) */}
-      <Cockpit weather={weather} inbox={inbox} onInbox={onInbox}>
+      {/* Lacivert kokpit (Seyhun 2026-10-21; boşluksuz, sıkı): en üstte büyük günler (seçilen güne göre hava ve planlar), altta iş düğmeleri (en sık işler adıyla, sonunda Tümü) */}
+      <Cockpit
+        weather={weather}
+        inbox={inbox}
+        onInbox={onInbox}
+        sel={sel}
+        onOpenDay={() => setPick(sel)}
+        days={<HomeDays today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
+      >
         <div className="mt-4">
           <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
         </div>
-        <div className="mt-3">
-          <HomeDays today={todayStr()} fit={fit} att={athletes} />
-        </div>
+        {owner && (
+          <div className="mt-5">
+            <FoodCard />
+          </div>
+        )}
+        {/* Deniz trafiği ve Kameralar: yalnız sayfasına giden iki sade düğme, veri çekmez (Seyhun 2026-10-23) */}
+        {!side && (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {[["/sea", "anchor", "Deniz trafiği"], ["/cams", "video", "Kameralar"]].map(([href, icon, label]) => (
+              <Link key={href} href={href} data-press className="food-card flex h-14 min-w-0 items-center gap-2.5 rounded-[1.125rem] px-4">
+                <Icon name={icon} className="size-5 shrink-0 text-[#22d3ee]" />
+                <span className="truncate text-[0.9375rem] font-semibold">{label}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </Cockpit>
-      {/* Açık zemin lacivertin üstüne yuvarlak köşeyle biner */}
-      <div className="relative -mx-4 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-4 pt-5">
+      {/* Alt kısım da lacivert (Seyhun 2026-10-22: "yukarısı daha güzel, bu tasarımı devam ettirelim"): kartlar kokpitteki gibi
+          yarı saydam lacivert, yazılar açık; renkler globals.css .navy değişkenlerinden (koyu görünüm sınıfları da çalışır) */}
+      <div data-theme="dark" className="navy home-navy relative -mx-4 space-y-6 px-4 pb-6 pt-2">
         {quota && (
           <p className="-mb-4 px-1 text-[0.75rem] tabular-nums text-mut">
             Bugün kalan · asistan {quota.qa.left}/{quota.qa.limit} · fiş {quota.qr.left}/{quota.qr.limit}
           </p>
         )}
         <PaidNotice />
-        {/* Notlar takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"); Sporcular ve Fitness takvimin altında, Kulüp'ten önce (2026-10-21) */}
-        <NotesWidget notes={notes} />
-        <SiradaCard skip={next?.id} weather={weather} inbox={inbox} onInbox={onInbox} att={athletes} />
+        {/* Takvim listesi yok (Seyhun 2026-10-23 "A"): bir günün planları kokpitteki gün kutusuna dokununca açılır. Notlar kayan kartlar,
+            altında Seni bekleyenler; sonra Sporcular, Fitness, Kulüp */}
+        <div>
+          <NotesWidget notes={notes} />
+          <WaitRow inbox={inbox} onAll={onInbox} />
+        </div>
         {athletes && owner && <AthletesWidget races={race.open} />}
         {!side && <FitWidget fit={fit} />}
         <div className="empty:hidden">

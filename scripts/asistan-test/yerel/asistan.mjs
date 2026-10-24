@@ -383,6 +383,8 @@ group("Not yapıldı (arşiv)")([
   ["yapıldı yaması", { desc: "done + arşiv, sabit kalkar", fn: () => NS.noteDonePatch("2026-10-06T10:00:00Z"), ok: (r) => r.done && r.archived && r.doneAt === r.archivedAt && r.pinned === false }],
   ["geri al yaması", { desc: "Notlar'a döner", fn: () => NS.noteReopenPatch(), ok: (r) => r.done === false && r.archived === false && r.doneAt === null }],
   ["kopyalanacak metin", { desc: "başlık + farklıysa metin", fn: () => [NS.noteText({ title: "Yelken", body: "Tamir edilecek" }), NS.noteText({ title: "Yelken", body: "Yelken" }), NS.noteText({ title: "", body: "Yalnız metin" })].join("|"), ok: (r) => r === "Yelken\nTamir edilecek|Yelken|Yalnız metin" }],
+  ["not rengi", { desc: "bilinen renk hex, bilinmeyen renksiz", fn: () => [NS.noteColor({ color: "cyan" }), NS.noteColor({ color: "mor" }), NS.noteColor({})].join("|"), ok: (r) => r === "#0ea5c4|var(--line)|var(--line)" }],
+  ["not tarihi", { desc: "Bugün / Dün / gün adı / 17 Eki", fn: () => ["2026-10-23", "2026-10-22", "2026-10-19", "2026-10-02", "2025-12-30"].map((d) => NS.noteWhen(`${d}T09:00:00`, "2026-10-23")).join("|"), ok: (r) => /^Bugün\|Dün\|Pzt\|2 Eki\|30 Ara 2025$/.test(r) }],
   ["durum yazısı", { desc: "Yapıldı / Arşivlendi / Açık", fn: () => nNotes.map(NS.noteStateText).join(","), ok: (r) => r === "Açık,Yapıldı,Arşivlendi" }],
   ["veri özeti", { desc: "açık notlar ve arşivdekiler ayrı, durum yazılı", fn: () => bdNote({ notes: nNotes, now: new Date(`${today}T12:00:00`) }), ok: (r) => /## SON NOTLAR\nn:n1 \| [^\n]*Malzeme odası dolu \| $/m.test(r) && /n:n2 [^\n]*\| yapıldı/.test(r) && /n:n3 [^\n]*\| arşivde/.test(r) && /Notlar: 1 açık, 2 arşivde/.test(r) }],
   ["görev listesi: not yapıldı hemen", { desc: "done_note ve reopen_note onaysız", fn: () => ST.taskList(parseAssistant({ intent: "action", message: "Tamam.", actions: [{ op: "done_note", kind: "note", id: "n1" }, { op: "reopen_note", kind: "note", id: "n2" }] })), ok: (r) => r.now.length === 2 && !r.confirm.length }],
@@ -611,7 +613,7 @@ group("Göreve göre ara yazı")([
     ["envantere 3 telsiz ekle", { desc: "envanter ekleme", fn: inventoryWork, ok: (w) => w === "Envantere ekleniyor" }],
     ["2 şamandıra kayboldu", { desc: "envanterden çıkarma", fn: inventoryWork, ok: (w) => w === "Envanterden çıkarılıyor" }],
     ["kaç telsiz var", { desc: "envanter sorusu", fn: inventoryWork, ok: (w) => w === "Envantere bakılıyor" }],
-    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 2900 && /envanter/i.test(p) }], // 2026-10-18: +rüzgâr kaydı, start sayacı; 2026-10-19: +sohbet arşivi; 2026-10-20: +yoklama, kulüp, fatura/harcama/mesaj sorusu
+    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 3100 && /envanter/i.test(p) }], // 2026-10-18: +rüzgâr kaydı, start sayacı; 2026-10-19: +sohbet arşivi; 2026-10-20: +yoklama, kulüp, fatura/harcama/mesaj sorusu; 2026-10-23: +yemek siparişi; 2026-10-24: +market sepeti
   ]);
 }
 
@@ -1522,6 +1524,33 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["önemli yap", C("patch important true", () => buildPatch("plan", upd({ important: true })), (r) => r.important === true)],
     ["önemliden çıkar", C("patch important false", () => buildPatch("plan", upd({ important: false })), (r) => r.important === false)],
     ["söylenen", C("“önemli”", () => describeAction({ op: "update", kind: "plan", patch: { important: true } }, { title: "Toplantı" }), (r) => /önemli/.test(r))],
+  ]);
+}
+
+// Kişi kare kodu ve fotoğraftan kişi (Seyhun 2026-10-23; lib/contactQr.js, assistPerson.applyAnswer)
+{
+  const Q = await import("@/lib/contactQr");
+  const { applyAnswer, nextQuestion } = await import("@/features/people/assistPerson");
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  const deniz = { name: "Deniz Aydın", kind: "staff", title: "Antrenör", phone: "0555 123 45 67", email: "deniz.aydin@example.com", birth: { day: 14, month: 5, year: 1992 } };
+  const card = Q.contactVcard(deniz);
+  group("Kişi kare kodu (vCard)")([
+    ["Velora kodu", C("standart vCard, Velora satırlarıyla", () => card, (r) => /^BEGIN:VCARD\r\nVERSION:3\.0/.test(r) && /FN:Deniz Aydın/.test(r) && /TEL;TYPE=CELL:\+905551234567/.test(r) && /X-VELORA-KIND:staff/.test(r) && /BDAY:1992-05-14/.test(r))],
+    ["geri okuma", C("aynı kişi", () => Q.parseContactQr(card), (r) => r.name === "Deniz Aydın" && r.kind === "staff" && r.title === "Antrenör" && r.phone === "05551234567" && r.email === "deniz.aydin@example.com" && r.birth?.month === 5 && r.velora === true)],
+    ["aile", C("yakınlık da gelir", () => Q.parseContactQr(Q.contactVcard({ name: "Fatma Yıldız", kind: "family", relation: "Anne" })), (r) => r.kind === "family" && r.relation === "Anne")],
+    ["iPhone vCard", C("Velora dışı kartta grup boş (sorulur)", () => Q.parseContactQr("BEGIN:VCARD\nVERSION:3.0\nN:Kaya;Ali;;;\nFN:Ali Kaya\nTEL;type=HOME:0232 111 22 33\nitem1.TEL;type=CELL:+90 532 123 45 67\nEND:VCARD"), (r) => r.name === "Ali Kaya" && r.phone === "05321234567" && !r.kind && r.velora === false)],
+    ["MECARD", C("okunur", () => Q.parseContactQr("MECARD:N:Kaya,Ali;TEL:05321234567;EMAIL:ali@x.com;BDAY:19900312;;"), (r) => r.name === "Ali Kaya" && r.phone === "05321234567" && r.birth?.day === 12)],
+    ["yıl yok", C("--MM-DD", () => Q.parseContactQr(Q.contactVcard({ name: "Ece Su", birth: { day: 3, month: 9 } })).birth, (r) => r.day === 3 && r.month === 9 && r.year === null)],
+    ["virgüllü ad", C("kaçış karakteri", () => Q.parseContactQr(Q.contactVcard({ name: "Ali Kaya", title: "Bakım, onarım" })).title, (r) => r === "Bakım, onarım")],
+    ["başka kod", C("kişi değil", () => Q.parseContactQr("VY:abc123"), (r) => r === null)],
+    ["sesle okut", C("“kare kodu okut” tanınır", () => ["kare kodu okut", "QR okut", "kişinin kare kodunu tara", "karekodla kişi ekle"].every(Q.contactScanCommand), (r) => r === true)],
+    ["yemek kodu", C("kurye kodu değil", () => ["siparişin kare kodunu okut", "kare kod nedir"].some(Q.contactScanCommand), (r) => r === false)],
+  ]);
+  group("Fotoğraftan kişi: adı sorulunca")([
+    ["ad sorusu", C("fotoğraftan sonra adı sorulur", () => nextQuestion({ photo: "x" })?.field, (r) => r === "name")],
+    ["hepsi birden", C("ad, telefon, grup ayrı alanlara", () => applyAnswer({ photo: "x" }, "adı Ali Kaya, telefonu 0532 123 45 67, çalışan", "name"), (r) => r.name === "Ali Kaya" && /0532/.test(r.phone) && r.kind === "staff" && r.photo === "x")],
+    ["yalnız ad", C("ad", () => applyAnswer({}, "Ayşe Yılmaz", "name").name, (r) => r === "Ayşe Yılmaz")],
+    ["bu kişiyi ekle", C("ad ve telefon", () => applyAnswer({}, "bu kişiyi ekle, adı Mert Can telefon 0533 222 11 00", "name"), (r) => r.name === "Mert Can" && /0533/.test(r.phone))],
   ]);
 }
 

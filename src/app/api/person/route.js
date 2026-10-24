@@ -9,6 +9,8 @@ export const runtime = "nodejs";
 
 // Asistanla kişi ekleme: "Kişi ekle: Ayşe Yılmaz, eşim, 0532 …" -> ad, grup, yakınlık, unvan, telefon, e-posta, doğum günü.
 // Kaydetmez; telefon kontrol edip özet kartında onay ister. Yalnızca ana hesap çağırabilir.
+// Fotoğrafla da (Seyhun 2026-10-23): kişinin fotoğrafı (profil fotoğrafı olur), kimlik ya da kartvizit (üstündeki bilgiler
+// okunur, fotoğraf saklanmaz). Kimlik numarası, seri numarası gibi bilgiler hiç alınmaz.
 const SYSTEM = `Sen bir yelken kulübü yöneticisinin asistanısın. Yönetici, uygulamanın kişi listesine birini eklemek istiyor.
 Söylediği Türkçe ses tanıma metnidir (yazım hataları olabilir) ya da yazdığı cümledir. Yalnızca cümlede geçen bilgileri çıkar, ASLA uydurma.
 
@@ -19,7 +21,13 @@ Alanlar:
 - title: yalnız çalışan için görevi/unvanı ("antrenör", "muhasebe"). Yoksa boş.
 - phone: söylenen telefon numarasının rakamları, olduğu gibi (eksik de olsa). Yoksa boş.
 - email: e-posta ("ali et gmail nokta com" -> "ali@gmail.com"). Yoksa boş.
-- birthDay, birthMonth, birthYear: doğum günü söylendiyse sayı olarak; yıl söylenmediyse birthYear 0. Yoksa hepsi 0.`;
+- birthDay, birthMonth, birthYear: doğum günü söylendiyse sayı olarak; yıl söylenmediyse birthYear 0. Yoksa hepsi 0.
+
+Fotoğraf geldiyse:
+- photoKind: face (bir kişinin yüzü/fotoğrafı; kimlik ya da kart değil), card (kimlik, ehliyet, kartvizit, yaka kartı gibi üstünde yazı olan kart ya da belge), other (başka bir şey). Fotoğraf yoksa boş.
+- Kartın ya da belgenin üstündeki ad soyadı, telefon, e-posta, unvan ve doğum tarihini oku (kartvizitteki görev title olur). Yöneticinin söyledikleri karttakinden önce gelir.
+- Kimlik numarası (TC), seri numarası, belge numarası, adres, anne-baba adı ALINMAZ; hiçbir alana yazma.
+- Yüz fotoğrafından ad, yaş ya da başka bir bilgi TAHMİN ETME; ad yalnız söylenenden ya da yazıdan gelir.`;
 
 const SCHEMA = {
   type: "object",
@@ -33,12 +41,15 @@ const SCHEMA = {
     birthDay: { type: "integer" },
     birthMonth: { type: "integer" },
     birthYear: { type: "integer" },
+    photoKind: { type: "string", enum: ["", "face", "card", "other"] },
   },
   required: ["name", "kind", "relation", "phone", "email", "birthDay", "birthMonth", "birthYear"],
 };
 
 const bad = (error, status = 400) => NextResponse.json({ error }, { status });
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+const TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX = 3 * 1024 * 1024;
 const N = (v, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : 0);
 
 async function handle(request) {
@@ -56,10 +67,16 @@ async function handle(request) {
     return bad("Geçersiz istek");
   }
   const text = S(body?.text, 600);
-  if (!text) return bad("Kişiyi söyle ya da yaz.");
+  const img = body?.image && TYPES.includes(body.image.mimeType) ? body.image : null;
+  if (img && String(img.data || "").length > (MAX * 4) / 3 + 8) return bad("Fotoğraf çok büyük.", 413);
+  if (!text && !img) return bad("Kişiyi söyle ya da yaz.");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
   try {
-    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Yöneticinin söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 600, timeoutMs: 10000 });
+    const said = text ? `Yöneticinin söylediği:\n"""\n${text}\n"""` : "Yönetici bir şey söylemedi.";
+    const raw = await callGemini({
+      model: process.env.GEMINI_MODEL, system: SYSTEM, user: img ? `${said}\nEkteki fotoğrafa da bak.` : said, schema: SCHEMA, maxTokens: 600, timeoutMs: img ? 20000 : 10000,
+      ...(img ? { images: [{ mimeType: img.mimeType, data: String(img.data) }] } : {}),
+    });
     return NextResponse.json({
       name: S(raw?.name, 40),
       kind: S(raw?.kind, 10),
@@ -70,6 +87,7 @@ async function handle(request) {
       birthDay: N(raw?.birthDay, 1, 31),
       birthMonth: N(raw?.birthMonth, 1, 12),
       birthYear: N(raw?.birthYear, 1900, 2100),
+      photoKind: img && ["face", "card", "other"].includes(raw?.photoKind) ? raw.photoKind : "",
     });
   } catch (e) {
     logAiError("person", "gemini", e);

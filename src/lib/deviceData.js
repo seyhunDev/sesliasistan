@@ -39,3 +39,30 @@ export function raceFileInfo(rec, raceName = () => "") {
 
 // Yerel ayarlar (localStorage): anahtar + değer, UTF-16 (2 bayt/karakter)
 export const storageBytes = (pairs) => pairs.reduce((n, [k, v]) => n + (String(k).length + String(v ?? "").length) * 2, 0);
+
+// Telefonda 7 gün tutulan medya (raceMedia/pendingStore "kept"): yarış/antrenman başına grup, en çok yer kaplayan önce.
+// daysLeft: o gruptaki ilk silinecek dosyanın kalan günü (en az 0)
+export function mediaGroups(kept, keepDays = 7, now = Date.now()) {
+  const map = new Map();
+  for (const x of kept || []) {
+    const g = map.get(x.raceId) || { raceId: x.raceId, videos: 0, photos: 0, size: 0, first: Infinity, ids: [] };
+    if (x.kind === "video") g.videos += 1;
+    else g.photos += 1;
+    g.size += x.size || x.blob?.size || 0;
+    g.first = Math.min(g.first, x.savedAt || now);
+    g.ids.push(x.id);
+    map.set(x.raceId, g);
+  }
+  return [...map.values()]
+    .map(({ first, ...g }) => ({ ...g, daysLeft: Math.max(0, keepDays - Math.floor((now - first) / 864e5)) }))
+    .sort((a, b) => b.size - a.size);
+}
+
+// "9 video · 2 foto"
+export const mediaCount = (g) => [g.videos && `${g.videos} video`, g.photos && `${g.photos} foto`].filter(Boolean).join(" · ");
+
+// Bulutta kaydı olan medya: canlı belgedeki (raceLive.media) künyelerden adresi olanlar. Yalnız bunlar telefondan silinir.
+export const inCloud = (ids, media) => {
+  const up = new Set((media || []).filter((m) => m?.id && (m.url || m.path)).map((m) => m.id));
+  return ids.filter((id) => up.has(id));
+};

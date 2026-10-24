@@ -21,6 +21,8 @@ import { Marks } from "@/features/raceMedia/TimerTab";
 import { MediaSettingsButton, MediaTab } from "@/features/raceMedia/MediaTab";
 import { WeatherTab } from "@/features/raceMedia/WeatherTab";
 import { TabDock } from "@/features/raceMedia/RaceMedia";
+import { VoiceLight } from "@/features/home/TabBar";
+import { useAssistant } from "@/features/assistant/AssistantProvider";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { RaceList, Races } from "@/features/training/Races";
 import { aliasesOf, useNameIndex } from "@/features/athletes/names";
@@ -318,9 +320,20 @@ function Day() {
       )}
       {tabs && (
         <>
-          <TabDock value={shown} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} />
+          <TabDock value={shown} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} extra={<AskButton />} />
         </>
       )}
     </main>
+  );
+}
+
+// Asistan düğmesi (Seyhun 2026-10-23: antrenman sayfasında da kullanılsın): dokun konuş, basılı tut yaz; her yerdeki gibi
+const ASK_EX = ["1 Ali, 2 Ayşe, 3 Mehmet", "Rüzgar 12 knot kuzeybatı", "Bugünkü antrenman çok iyi geçti, start çalıştık"];
+function AskButton() {
+  const { openAssistant } = useAssistant();
+  return (
+    <div className="grid w-[4.25rem] shrink-0 place-items-center rounded-[1.25rem] border border-line bg-card shadow-[0_2px_12px_rgba(38,40,44,.06)]">
+      <VoiceLight state="idle" size="size-12" compact onTap={() => openAssistant({ listen: true, dock: true, examples: ASK_EX })} onHold={() => openAssistant({ dock: true, examples: ASK_EX })} />
+    </div>
   );
 }

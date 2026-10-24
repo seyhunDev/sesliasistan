@@ -87,3 +87,36 @@ export const INIT = ({ standalone = false, sha = "" } = {}) => `(() => {
     }
   };
 })();`;
+
+// Kameralar (/api/cams) taklit cevabı: lib/cams.js camList biçiminde; görüntüler data: SVG (dış adreslere gidilmez)
+const pic = (sky, sea) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225"><rect width="400" height="130" fill="${sky}"/><rect y="130" width="400" height="95" fill="${sea}"/></svg>`)}`;
+const cam = (id, title, km, min, live = false) => ({ id: String(id), title, lat: 39, lon: 26.8, at: Date.now() - min * 60e3, thumb: pic("#b9d6e6", "#3b7da0"), preview: pic(id % 2 ? "#9cc7de" : "#c7dbe6", id % 2 ? "#2f6f93" : "#356f8c"), player: "", live, link: `https://www.windy.com/webcams/${id}`, km });
+export const CAMS = {
+  yt: [{ id: "yt:abc", title: "Dikili Limanı Canlı", ch: "Dikili Belediyesi", lat: NaN, lon: NaN, at: 0, thumb: pic("#a9c9dc", "#356f8c"), preview: pic("#a9c9dc", "#356f8c"), player: "", live: true, link: "https://www.youtube.com/watch?v=abc", km: null, src: "YouTube" }],
+  cams: [
+    cam(1, "Ayvalık · Cunda koyu", 27, 2, true),
+    cam(2, "Bergama · Akropol", 31, 5),
+    cam(3, "Midilli · Molivos", 34, 1),
+    cam(4, "Çandarlı limanı", 38, 8),
+    cam(5, "Midilli · Limanı", 45, 3),
+    cam(6, "Foça · Sirenler", 52, 4),
+    cam(7, "Altınova sahil", 58, 12),
+    cam(8, "Karşıyaka sahil", 79, 6),
+    cam(9, "İzmir · Kordon", 83, 2),
+  ],
+};
+
+// Deniz trafiği (/api/sea) taklit cevabı: lib/sea.js shipList biçiminde
+const ship = (m, n, type, lat, lon, sog, cog, key, label, port, km, extra = {}) => ({ m, n, t: 0, type, lat, lon, sog, cog, dest: "", seen: Date.now(), guard: false, state: { key, label, port, km, ...extra } });
+export const SEA = {
+  at: Date.now(),
+  ships: [
+    ship(1, "Ayvalık Ferry", "Yolcu", 39.03, 26.8, 11.2, 60, "approach", "Yanaşıyor", "Dikili", 6.2, { min: 20 }),
+    ship(2, "Mavi Rüzgar", "Yat", 39.06, 26.87, 6.4, 240, "leave", "Ayrılıyor", "Dikili", 1.4),
+    { ...ship(3, "Nordic Star", "Tanker", 38.95, 26.75, 12.8, 160, "underway", "Seyirde", "Çandarlı", 12.1), dest: "ALIAGA" },
+    ship(4, "Seher K", "Kuru yük", 39.1, 26.8, 0, null, "ready", "Kalkacak", "Dikili", 7.9),
+    ship(5, "Delta Pioneer", "Tanker", 39.12, 26.82, 0, null, "anchor", "Demirde", "Dikili", 7.6),
+    { ...ship(6, "TCSG 309", "Kolluk", 39.07, 26.88, 0, null, "moored", "Limanda", "Dikili", 0.3), guard: true },
+    ship(7, "Deniz Yıldızı", "Balıkçı", 39.071, 26.886, 0, null, "moored", "Limanda", "Dikili", 0.1),
+  ],
+};

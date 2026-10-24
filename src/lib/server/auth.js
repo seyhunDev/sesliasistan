@@ -60,12 +60,12 @@ async function roleOf(uid, token, allowed) {
   }
 }
 
-async function check(uid, email, cached) {
+async function check(uid, email, cached, free = false) {
   const allowed = allowList();
   if (allowed.length && !allowed.includes((email || "").toLowerCase()) && !cached?.staffOk) {
     return { ok: false, status: 403, error: "Bu hesabın asistanı kullanma izni yok. Yöneticiden erişim iste." };
   }
-  const over = overLimit(uid);
+  const over = free ? "" : overLimit(uid);
   if (over) {
     return {
       ok: false,
@@ -89,7 +89,8 @@ function peek(token) {
 // Firebase ID token'ını doğrular, izin listesini ve istek sınırını uygular.
 // Geliştirmede DEV_SKIP_AUTH=1 ile doğrulama atlanabilir (yayında yok sayılır). Bu durumda da giriş yapan
 // kişinin gerçek kimliği kullanılır; "dev" gibi sahte bir kimlikle kayıt açılırsa veriler yanlış işletmeye gider.
-export async function requireUser(request) {
+// free: istek sınırına sayılmaz (sık yenilenen, yapay zekasız veri: deniz trafiği)
+export async function requireUser(request, { free = false } = {}) {
   const h = request.headers.get("authorization") || "";
   const token = h.startsWith("Bearer ") ? h.slice(7).trim() : "";
   if (process.env.DEV_SKIP_AUTH === "1" && process.env.NODE_ENV !== "production") {
@@ -102,7 +103,7 @@ export async function requireUser(request) {
   if (!token || !key) return { ok: false };
 
   const hit = cache.get(token);
-  if (hit && hit.exp > Date.now()) return check(hit.uid, hit.email, hit);
+  if (hit && hit.exp > Date.now()) return check(hit.uid, hit.email, hit, free);
   try {
     const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${key}`, {
       method: "POST",
@@ -122,7 +123,7 @@ export async function requireUser(request) {
     }
     cache.set(token, entry);
     if (cache.size > 200) cache.delete(cache.keys().next().value);
-    return check(u.localId, u.email, entry);
+    return check(u.localId, u.email, entry, free);
   } catch {
     return { ok: false };
   }

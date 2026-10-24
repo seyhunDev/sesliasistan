@@ -1,0 +1,78 @@
+import { NextResponse } from "next/server";
+import { requireUser, unauthorized } from "@/lib/server/auth";
+import { mergeShip, prune, shipList } from "@/lib/sea";
+import { collect } from "@/lib/server/aisStream";
+
+export const runtime = "nodejs";
+
+// Deniz trafiği (AIS, aisstream.io ücretsiz): GET → { at, ships: [...] } ya da { error: "nokey" | "fail" }.
+// Telefon 10–60 sn'de bir sorar. Son toplama FRESH'ten yeniyse saklanan liste döner; değilse aisstream'e kısa süre
+// (WINDOW) bağlanıp yalnız Dikili kutusundaki konum ve gemi bilgisi mesajları toplanır, listeye işlenir, bağlantı kapanır.
+// Liste Netlify Blobs'ta (yoksa sunucu belleğinde) durur; demirli gemiler seyrek sinyal verdiği için 30 dk tutulur.
+// Anahtar Netlify ortam değişkeni AISSTREAM_KEY (gizli); telefona hiç gitmez. İstek sınırına sayılmaz (yapay zekasız).
+const FRESH = 8e3;
+const WINDOW = 4500;
+const FIRST_WINDOW = 5000; // liste boşken biraz daha uzun dinlenir
+
+const DEADLINE = 9000; // Netlify işlevi 10 sn'de kesilir; ondan önce mutlaka cevap verilir
+
+let mem = { at: 0, all: {} };
+// Süresi dolan iş hata verir (canlıda istek cevapsız kaldı, 2026-10-23)
+const within = (p, ms, msg) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(msg)), ms))]);
+let running = null;
+
+async function store() {
+  try {
+    const { getStore } = await import("@netlify/blobs");
+    return getStore({ name: "sea", consistency: "strong" });
+  } catch {
+    return null;
+  }
+}
+async function load() {
+  const s = await store();
+  if (!s) return mem;
+  try {
+    const v = await within(s.get("state", { type: "json" }), 2000, "depo");
+    return v?.all ? v : mem;
+  } catch {
+    return mem;
+  }
+}
+async function save(v) {
+  mem = v;
+  const s = await store();
+  if (s) await within(s.setJSON("state", v), 2000, "depo").catch(() => {});
+}
+
+async function refresh(key) {
+  const cur = await load();
+  if (Date.now() - cur.at < FRESH) return cur;
+  const empty = !Object.keys(cur.all).length;
+  const { parts, err, n } = await collect(key, empty ? FIRST_WINDOW : WINDOW);
+  if (err && !parts.length) {
+    console.error("sea", err.message);
+    if (!empty) return cur;
+    throw err;
+  }
+  const all = { ...cur.all };
+  for (const p of parts) mergeShip(all, p);
+  // last: bölgeden son mesajın zamanı (gemi gelmiyorsa sayfa "son sinyal" ya da "hiç sinyal yok" der)
+  const next = { at: Date.now(), all: prune(all), last: n ? Date.now() : cur.last || 0 };
+  await save(next);
+  return next;
+}
+
+export async function GET(req) {
+  const au = await requireUser(req, { free: true });
+  if (!au.ok) return unauthorized(au);
+  const key = process.env.AISSTREAM_KEY;
+  if (!key) return NextResponse.json({ error: "nokey" });
+  try {
+    running ||= refresh(key).finally(() => (running = null));
+    const v = await within(running, DEADLINE, "süre doldu");
+    return NextResponse.json({ at: v.at, last: v.last || 0, ships: shipList(v.all) }, { headers: { "cache-control": "no-store" } });
+  } catch (e) {
+    return NextResponse.json({ error: "fail", why: String(e?.message || "").slice(0, 120) });
+  }
+}

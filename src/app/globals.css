@@ -6,22 +6,22 @@
 @custom-variant active (&:where(.sa-no-active-variant));
 
 :root {
-  /* Göz yormayan palet: sıcak kâğıt tonu zemin, yumuşak koyu yazı. Vurgu Velora logosundan (mor → turkuaz): yumuşak
-     mor (--acc), koyusu gece laciverti (--deep); logonun geçişi yalnız asistan düğmesinde (--brand). Yeşil yalnız "tamam/ödendi". */
-  --bg: #f4f3ef;
-  --card: #fdfcfa;
+  /* "Okyanus" paleti (Seyhun 2026-10-22): serin açık zemin, yumuşak koyu yazı, tek vurgu camgöbeği (--acc), koyusu gece mavisi
+     (--deep, lacivert kokpit #11203a); logonun geçişi (camgöbeği → açık turkuaz) yalnız asistan düğmesinde (--brand). Yeşil yalnız "tamam/ödendi". */
+  --bg: #f2f4f6;
+  --card: #fcfdfe;
   --fg: #26282c;
   --mut: #74777d;
   --line: #e7e5df;
-  --acc: #5b4fd6;
-  --acc2: #5b4fd6; /* gradyan kullanan eski dosyalar düz renk görünsün */
-  --deep: #23255e;
-  --brand: linear-gradient(140deg, #8b5cf6 8%, #4f7cf3 52%, #22d3ee 100%);
+  --acc: #0b7f99;
+  --acc2: #0b7f99; /* gradyan kullanan eski dosyalar düz renk görünsün */
+  --deep: #0f2c45;
+  --brand: linear-gradient(140deg, #0ea5c4 8%, #38bdf8 55%, #a5f3fc 100%);
   --rec: #c8574f;
   --ok: #4a8a64;
   --proc: #f59e0b;
   --fg2: #55595f;
-  --accbg: #ecebfa;
+  --accbg: #e2f2f6;
   --warn: #a8742a;
   --warnbg: #f6eedf;
 }
@@ -36,12 +36,12 @@ html[data-theme="dark"] {
   --fg: #e7e6e2;
   --mut: #9a9ea4;
   --line: #2e3236;
-  --acc: #9488f5;
-  --acc2: #9488f5;
+  --acc: #4fc8e0;
+  --acc2: #4fc8e0;
   --rec: #e0675e;
   --ok: #55a374;
   --fg2: #b3b4b1;
-  --accbg: #26243f;
+  --accbg: #15313d;
   --warn: #d0a25e;
   --warnbg: #2e281f;
 }
@@ -58,7 +58,7 @@ html[data-theme="dark"] :is(.text-violet-600, .text-violet-700) { color: #b9a6fb
 html[data-theme="dark"] :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-teal-600) { color: #5fd3a6; }
 html[data-theme="dark"] .text-slate-700 { color: #c3cbd6; }
 /* Açık zemindeki koyu yeşil yazı (kubbe ve bg-deep kartlarının içi hariç) */
-html[data-theme="dark"] .text-deep:not(.bg-white, .bg-white *) { color: #b3aaff; }
+html[data-theme="dark"] .text-deep:not(.bg-white, .bg-white *) { color: #8fe3f2; }
 /* Gölgeler koyu zeminde görünmez; kartlar ince bir kenarla ayrılır */
 html[data-theme="dark"] .bg-card { box-shadow: 0 0 0 1px rgba(255, 255, 255, .045); }
 
@@ -91,12 +91,12 @@ html[data-theme="dark"] .bg-card { box-shadow: 0 0 0 1px rgba(255, 255, 255, .04
    başka sayfaya geçirmek için <main>'e calm sınıfı, kartlara ui.jsx CALM, başlıklara SectionHead yeter. */
 .calm {
   --bg: #f5f3ee; --card: #fbfaf7; --fg: #2f3236; --fg2: #55595f; --mut: #878a90; --line: #e6e3dc;
-  --acc: #5b4fd6; --accbg: #ecebfa; --warn: #a8742a; --warnbg: #f6eedf;
+  --acc: #0b7f99; --accbg: #e2f2f6; --warn: #a8742a; --warnbg: #f6eedf;
   color: var(--fg); line-height: 1.5; letter-spacing: -.005em; font-feature-settings: "tnum";
 }
 html[data-theme="dark"] .calm {
   --bg: #16181a; --card: #1d2023; --fg: #dcdbd6; --fg2: #b3b4b1; --mut: #8b8f94; --line: #2b2f33;
-  --acc: #9d92f6; --accbg: #26243f; --warn: #d0a25e; --warnbg: #2e281f;
+  --acc: #5cd0e6; --accbg: #15313d; --warn: #d0a25e; --warnbg: #2e281f;
 }
 html[data-theme="dark"] .calm .bg-card { box-shadow: none; }
 /* GRUPLU ANA SAYFA (.calm.grouped; Seyhun 2026-10-17: "2'deki gibi"): iPhone ayarlar düzeni, açık gri zemin, çerçevesiz beyaz kartlar,
@@ -289,24 +289,24 @@ select {
 .atabbar-wrap:has([data-timer-chip]) { padding-top: 3.5rem; }
 .acenter { background: var(--card); box-shadow: 0 -0.5px 0 var(--line), 0 8px 22px -10px rgba(20, 90, 70, .45); }
 /* Ortadaki asistan düğmesi açık zeminde yeşil (durum renkleri aynı: kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor) */
-.acenter .vlight[data-state="idle"], .sidenav .vlight[data-state="idle"] { --vl-a: #8b5cf6; --vl-b: #22d3ee; --vl-w: #fff; --vl-h: rgba(124, 92, 255, .35); }
-/* Boştaki asistan düğmesi Velora logosunun geçişini alır (mor → turkuaz); diğer durumların renkleri aynı */
-:is(.acenter, .sidenav, .asheet) .vlight[data-state="idle"]:not(.aorb) .vl-disc { background: var(--brand); box-shadow: 0 10px 26px -10px rgba(35, 37, 94, .6), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.acenter .vlight[data-state="idle"], .sidenav .vlight[data-state="idle"] { --vl-a: #0ea5c4; --vl-b: #22d3ee; --vl-w: #fff; --vl-h: rgba(14, 165, 196, .35); }
+/* Boştaki asistan düğmesi Velora logosunun geçişini alır (camgöbeği → açık turkuaz); diğer durumların renkleri aynı */
+:is(.acenter, .sidenav, .asheet) .vlight[data-state="idle"]:not(.aorb) .vl-disc { background: var(--brand); box-shadow: 0 10px 26px -10px rgba(15, 44, 69, .6), inset 0 1px 0 rgba(255, 255, 255, .25); }
 .asheet { position: relative; background: var(--card); border-radius: 1.75rem 1.75rem 0 0;
   box-shadow: 0 -0.5px 0 var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); }
 @media (min-width: 34rem) { .asheet { box-shadow: 0 0 0 0.5px var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); } }
 .asheet-input { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .3s ease; }
 .asheet-input:focus-within { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 55%, transparent); }
 .asheet-on { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 70%, transparent); }
-.asheet .vlight[data-state="idle"] { --vl-a: #8b5cf6; --vl-b: #22d3ee; --vl-w: #fff; --vl-h: rgba(124, 92, 255, .3); }
+.asheet .vlight[data-state="idle"] { --vl-a: #0ea5c4; --vl-b: #22d3ee; --vl-w: #fff; --vl-h: rgba(14, 165, 196, .3); }
 /* ASİSTAN DÜĞMEDE (2026-10-22, Seyhun'un onayladığı örnek /mnt/project-files/asistan-ekrani/asistan-dugme.html): asistan açıkken
    tam ekran zemin yok; bulunduğun sayfa bulanıklaşır ve hafifçe kararır (.abg), önde sohbet, adımlar ve kartlar (kendi
    zeminleriyle), en altta asistan düğmesi ve iki yan düğme. Bulanıklık yarıçapı canlandırılmaz, yalnız örtünün opaklığı
    değişir (iPhone'da akıcı). Boşta hiçbir şey oynamaz. */
 .afull { color-scheme: dark; color: var(--fg);
-  --bg: #0b1024; --card: #161b36; --fg: #f1f2fa; --mut: #b3b7d2; --line: #2f3560; --acc: #7c6cf0; --acc2: #7c6cf0; --rec: #e0675e;
-  --ok: #55a374; --fg2: #c5c8de; --accbg: #26243f; --warn: #d0a25e; --warnbg: #2e281f;
-  --ab-panel: rgba(24, 29, 62, .9); }
+  --bg: #0a1730; --card: #132640; --fg: #eef4f8; --mut: #a9bbd3; --line: #26395c; --acc: #14a3c0; --acc2: #14a3c0; --rec: #e0675e;
+  --ok: #55a374; --fg2: #c5c8de; --accbg: #15313d; --warn: #d0a25e; --warnbg: #2e281f;
+  --ab-panel: rgba(17, 32, 58, .9); }
 .abg { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
   background: rgba(10, 13, 34, .62); -webkit-backdrop-filter: blur(20px) saturate(1.15); backdrop-filter: blur(20px) saturate(1.15); }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .abg { background: rgba(10, 13, 34, .9); } }
@@ -314,20 +314,29 @@ select {
    ışık döner (.vl-ring burada görünür), iş bitince içinde onay çizilir. Yan düğmeler yarı saydam beyaz. */
 .vlight.aorb .vl-ring { display: block; }
 .aorb .vl-disc { box-shadow: 0 14px 34px -12px rgba(0, 0, 0, .65), inset 0 1px 0 rgba(255, 255, 255, .25); }
-/* Düğmenin rengi değişken üzerinden: boşta mor, dinlerken kırmızı… geçiş yumuşak (--vl-a/--vl-b @property ile canlanır).
-   Asistan açılınca yeni düğme alt çubuktaki mor düğmenin renginden başlar (@starting-style), bir anda kırmızı olmaz */
-.asheet .aorb[data-state="idle"] { --vl-a: #8b5cf6; --vl-b: #4f7cf3; } /* --brand bir gradyan, renk değişkenine yazılamaz (yazılırsa beyaz kalır) */
+/* Düğmenin rengi değişken üzerinden: boşta camgöbeği, dinlerken kırmızı… geçiş yumuşak (--vl-a/--vl-b @property ile canlanır).
+   Asistan açılınca yeni düğme alt çubuktaki camgöbeği düğmenin renginden başlar (@starting-style), bir anda kırmızı olmaz */
+.asheet .aorb[data-state="idle"] { --vl-a: #0ea5c4; --vl-b: #38bdf8; } /* --brand bir gradyan, renk değişkenine yazılamaz (yazılırsa beyaz kalır) */
 /* İş bitti: düğme yeşile döner, içinde ✓ çizilir, bir kez hafifçe büyüyüp yerine oturur ("Kaydedildi" yazısının yerine) */
 .asheet .aorb[data-tone="ok"][data-state="idle"] { --vl-a: #5fd3a6; --vl-b: #1f9e74; --vl-h: rgba(95, 211, 166, .45); }
 .asheet .aorb[data-tone="ok"][data-state="idle"] .vl-disc { animation: aokpop .6s cubic-bezier(.3, 1.4, .5, 1) .1s both; }
 @keyframes aokpop { 40% { transform: scale(1.1); } }
 .asheet .vlight.aorb { transition: transform .15s ease-out, --vl-a .45s ease, --vl-b .45s ease, --vl-h .45s ease; }
 .asheet .vlight.aorb[data-state="listening"] { transition: --vl-a .45s ease, --vl-b .45s ease, --vl-h .45s ease; } /* dalga her karede: transform geçişsiz */
-@starting-style { .asheet .vlight.aorb { --vl-a: #8b5cf6; --vl-b: #4f7cf3; } }
+@starting-style { .asheet .vlight.aorb { --vl-a: #0ea5c4; --vl-b: #38bdf8; } }
 .aorb canvas { animation: afbgin .35s ease-out both; }
 .aorb .lring-check { fill: none; stroke: #fff; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: lrdraw .45s .15s ease-out forwards; }
 @keyframes lrdraw { to { stroke-dashoffset: 0; } }
-.aside-btn { background: rgba(255, 255, 255, .14); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); }
+/* Not sayfası Tamamla (Seyhun 2026-10-23): yeşil daire büyüyüp oturur, tik çizilir, başlığın üstü soldan sağa çizilir; listede satır sola kayıp çıkar */
+.note-burst { animation: aokpop .55s cubic-bezier(.3, 1.4, .5, 1) both, animin .3s ease-out both; }
+.note-check { fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; animation: lrdraw .4s .2s ease-out forwards; }
+.note-burst .note-check { stroke: #fff; }
+.note-burst.bg-white .note-check { stroke: currentColor; }
+.note-strike { text-decoration: line-through 2px transparent; animation: notestrike .4s .15s ease-out forwards; }
+@keyframes notestrike { to { text-decoration-color: currentColor; opacity: .6; } }
+.note-out { animation: noteout .5s .15s ease-in forwards; }
+@keyframes noteout { to { transform: translateX(-105%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .note-burst, .note-out { animation-duration: .01s; } .note-check, .note-strike { animation-duration: .01s; animation-delay: 0s; } }
 .afull .asheet-input { background: none; box-shadow: none; }
 .afull .asheet-input.atype { background: var(--ab-panel); box-shadow: inset 0 0 0 1px var(--line); }
 .afull .asheet-draft { border-radius: 1.125rem; padding: .75rem .875rem; margin-inline: -.875rem; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
@@ -345,18 +354,10 @@ select {
 /* .afull'un kendisi opaklıkla canlandırılmaz: opaklığı değişen bir ata, içindeki backdrop-filter'ı (bulanık sayfa) bozar */
 @keyframes afullin { from { translate: 0 0; } }
 @keyframes afbgin { from { opacity: 0; } }
-/* Yan düğmeler ortadaki düğmenin arkasından yana kayarak çıkar */
-@keyframes asidein { from { opacity: 0; transform: translate3d(var(--ax, 0), 0, 0) scale(.7); } }
-@keyframes aswap { from { opacity: 0; transform: scale(.7); } }
-.aswap { animation: aswap .28s cubic-bezier(.22, .8, .24, 1) both; }
 @keyframes afpartin { from { opacity: 0; transform: translate3d(0, 1.25rem, 0); } }
 .afull-in { animation: afullin .3s linear; }
 .afull-in > .abg { animation: afbgin .3s ease-out both; }
-.afull-in .aside { animation: asidein .5s cubic-bezier(.22, .8, .24, 1) both; animation-delay: .1s; }
-.aside-l { --ax: 2.75rem; }
-.aside-r { --ax: -2.75rem; }
-.afull-in .aside-r { animation-delay: .16s; }
-@media (prefers-reduced-motion: reduce) { .afull-in .aside, .aswap, .aorb canvas, .aorb .vl-disc { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .aorb canvas, .aorb .vl-disc { animation: none; } }
 .afull-in > .asheet > * { animation: afpartin .4s cubic-bezier(.22, .8, .24, 1) both; animation-delay: .14s; }
 .afull-in > .asheet > :nth-child(2) { animation-delay: .1s; }
 .afull-in > .asheet > :last-child { animation: none; } /* düğme yerinde kalır (alt çubuktaki düğmenin devamı) */
@@ -448,9 +449,9 @@ select {
    ortadan dışa uzar, ortadaki ışık yanar, altında Velora yazısı belirir; yükleme sürerken çubuklar konuşur gibi kısalıp
    uzar. Bitince logo büyüyüp ekran solar; aynı anda sayfa altından belirir (html[data-boot=enter] main) ve asistan kubbesi yükselir. */
 .boot { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; overflow: hidden; color: #e8ecff; }
-.boot-bg { position: absolute; inset: 0; background: radial-gradient(120% 75% at 50% 38%, #18204a 0%, #0b1024 55%, #070b18 100%); }
+.boot-bg { position: absolute; inset: 0; background: radial-gradient(120% 75% at 50% 38%, #1a2e52 0%, #0a1730 55%, #0a1426 100%); }
 .boot::before { content: ""; position: absolute; left: 50%; top: 42%; width: 26rem; height: 26rem; transform: translate(-50%, -50%); border-radius: 9999px;
-  background: radial-gradient(closest-side, rgba(124, 92, 255, .22), rgba(34, 211, 238, .08) 60%, transparent); animation: bootglow 2.6s ease-in-out infinite; }
+  background: radial-gradient(closest-side, rgba(14, 165, 196, .22), rgba(34, 211, 238, .08) 60%, transparent); animation: bootglow 2.6s ease-in-out infinite; }
 .boot-mark { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: -6vh; }
 .boot-logo { display: block; width: 9.5rem; height: 9.5rem; overflow: visible; }
 /* her çubuk iç ucundan büyür (çizimde 512,312; view-box 132'den başladığı için köken 380px 180px; döndürme dıştaki g'de) */
@@ -461,7 +462,7 @@ select {
   animation: bootcore .6s cubic-bezier(.2, .9, .3, 1) .15s both, bootbeat 1.3s ease-in-out 1.2s infinite; }
 .boot-word { margin-top: 1.4rem; font-size: 1.75rem; font-weight: 600; letter-spacing: .01em; color: #f1f3ff;
   animation: bootin .7s cubic-bezier(.2, .9, .3, 1) .75s both; }
-.boot-sub { margin-top: .7rem; font-size: .75rem; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: rgba(232, 236, 255, .5);
+.boot-sub { margin-top: .7rem; font-size: .75rem; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: rgba(230, 240, 250, .5);
   animation: bootin .7s cubic-bezier(.2, .9, .3, 1) .9s both, bootpulse 1.8s ease-in-out 1.6s infinite; }
 .boot[data-phase="out"] { pointer-events: none; animation: bootout .55s cubic-bezier(.4, 0, .2, 1) forwards; }
 .boot[data-phase="out"] .boot-mark { animation: bootzoom .55s cubic-bezier(.4, 0, .2, 1) forwards; }
@@ -504,6 +505,29 @@ html[data-boot="on"] :is(.auth-rise, .auth-pop) { animation-play-state: paused; 
   .boot[data-phase="out"] .boot-mark { animation: none; }
   html[data-boot="enter"] :is(main, [data-boot-enter]) { animation: softin .3s ease-out backwards; }
   .auth-rise, .auth-pop, .auth-step { animation: softin .3s ease-out backwards; }
+}
+
+/* Velora Yemek sepet çubuğu (src/yemek/ui/CartBar.jsx, Seyhun 2026-10-23): alt çubuğa yapışık, altı 1,5rem alt çubuğun
+   arkasında kalır (arada boşluk görünmesin). Çubuk varken alt çubuk da aynı lacivert: ikisi tek yüzey. */
+.cartbar { bottom: calc(var(--dome-h, 5.5rem) - 2.5rem); }
+body:has(.cartbar) .atabbar, body:has(.cartbar) .acenter { background: #11203a; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+body:has(.cartbar) .atabbar :is(a, button):not(.vlight) { color: rgba(255, 255, 255, .62); }
+body[data-asst] .cartbar, body[data-typing] .cartbar { display: none; }
+
+/* Velora Yemek sipariş fişi (src/yemek/ui/PrintSlip.jsx): ekranda görünmez; basarken yalnız fiş basılır (80 mm fiş yazıcısı) */
+.print-slip { display: none; }
+@media print {
+  @page { size: 80mm auto; margin: 4mm; }
+  body > *:not(.print-slip) { display: none !important; }
+  body { padding: 0 !important; background: #fff !important; }
+  .print-slip { display: block; width: 72mm; color: #000; font: 11pt/1.35 -apple-system, "Helvetica Neue", Arial, sans-serif; }
+  .print-slip h1 { font-size: 15pt; font-weight: 800; text-align: center; }
+  .print-slip .ps-no { text-align: center; font-weight: 700; }
+  .print-slip hr { border: 0; border-top: 1px dashed #000; margin: 2.5mm 0; }
+  .print-slip .ps-line { display: flex; justify-content: space-between; gap: 3mm; }
+  .print-slip .ps-line small { display: block; font-size: 9pt; }
+  .print-slip .ps-total { font-size: 13pt; font-weight: 800; }
+  .print-slip .ps-qr { display: block; width: 42mm; height: 42mm; margin: 4mm auto 1mm; }
 }
 
 /* Asistan açıkken sayfanın alttaki düğme çubuğu (evrak hazırla, kaydet…) gizlenir: asistan onun arkasında kalmasın */
@@ -554,7 +578,7 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
 }
 
 /* ORTAK DÜĞMELER (Seyhun, 2026-10-20; components/ui/Button.jsx, buttonClass.js): beş çeşit, renkler temadan.
-   Ana = mor (.acc-btn gibi), İkincil = kabarık (.raised gibi), Tehlike = kabarık + kırmızı yazı, Yazı ve Simge = zeminsiz,
+   Ana = vurgu rengi (.acc-btn gibi), İkincil = kabarık (.raised gibi), Tehlike = kabarık + kırmızı yazı, Yazı ve Simge = zeminsiz,
    Geri ve Yuvarlak (simgeli kabarık) = kabarık yuvarlak.
    Basılı hal yalnız parmak dururken (usePress, data-pressed): kabarıklar içe göçer, zeminsizlerde hafif gri zemin.
    Görünüm @layer components içinde: sayfadaki Tailwind sınıfları (text-rec, h-10…) gerekirse üstüne yazar; basılı hal katmansız. */
@@ -665,6 +689,13 @@ html[data-theme="dark"] .tone-ve { --tbg: #2c2433; --tfg: #c3a6d4; }
 html[data-theme="dark"] .tone-fa { --tbg: #33271f; --tfg: #d6ad8c; }
 html[data-theme="dark"] .tone-fit { --tbg: #33261b; --tfg: #e0a46c; }
 html[data-theme="dark"] .tone-gen { --tbg: #26292c; --tfg: #8b8f94; }
+/* Lacivert bölümde tonlar yarı saydam (zeminle bütün), yazısı açık */
+.navy .tone-st { --tbg: rgba(95, 191, 150, .16); --tfg: #8fd8bb; }
+.navy .tone-sp { --tbg: rgba(110, 160, 230, .17); --tfg: #9cc2f0; }
+.navy .tone-ve { --tbg: rgba(180, 140, 230, .18); --tfg: #cfb2ef; }
+.navy .tone-fa { --tbg: rgba(220, 160, 110, .16); --tfg: #e6bc96; }
+.navy .tone-fit { --tbg: rgba(240, 150, 70, .17); --tfg: #f2b07a; }
+.navy .tone-gen { --tbg: rgba(255, 255, 255, .08); --tfg: #b4b7d0; }
 .tone-chip { background: var(--tbg); color: var(--tfg); }
 .tone-bar { background: var(--tfg); }
 .tone-fg { color: var(--tfg); }
@@ -685,6 +716,7 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
   body[data-side] { padding-left: 15rem; }
   body[data-side] main.max-w-\[30rem\], body[data-side] [data-screen] > div, body[data-side] main.fixed > div.max-w-\[30rem\] { max-width: 44rem; }
   body[data-side] .atabbar-wrap { display: none; }
+  body[data-side] .cartbar { left: 15rem; bottom: -1.5rem; }
   body[data-side] :is(.fixed[data-pagebar], [data-screen], main.fixed), body[data-side] > [data-bar] { left: 15rem; }
   body[data-side] .dome:not([data-on]) { left: 15rem; }
   body[data-side] > [role="status"].fixed, body[data-side] [role="status"].fixed.inset-x-0 { left: 15rem; }
@@ -696,47 +728,123 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
   body[data-side] [data-sheet].translate-y-full { translate: 0 calc(100% + 2rem); }
 }
 
-/* KOKPİT (ana sayfanın lacivert üst kısmı; Seyhun 2026-10-21 "C · Lacivert kokpit"; features/home/Cockpit.jsx): logonun gecesi, sağ üstte mor,
-   sol altta turkuaz hafif ışık; iki temada aynı. İçindeki yuvarlak düğmeler (zil, doğum günü) yarı saydam beyaz. */
+/* KOKPİT (ana sayfanın lacivert üst kısmı; Seyhun 2026-10-21 "C · Lacivert kokpit"; features/home/Cockpit.jsx): logonun gecesi, sağ üstte camgöbeği,
+   sol altta çivit hafif ışık; iki temada aynı. İçindeki yuvarlak düğmeler (zil, doğum günü) yarı saydam beyaz. */
 .ck {
-  color: #eceaf8;
+  color: #e6eef7;
   background:
-    radial-gradient(120% 70% at 88% 0%, rgba(139, 92, 246, .38), transparent 62%),
-    radial-gradient(90% 60% at 0% 100%, rgba(34, 211, 238, .14), transparent 62%),
-    #141938;
+    radial-gradient(120% 70% at 88% 0%, rgba(34, 211, 238, .24), transparent 62%),
+    radial-gradient(90% 60% at 0% 100%, rgba(99, 102, 241, .12), transparent 62%),
+    #11203a;
 }
-.ck :is(.btn-round, .btn-back) { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .16); color: #fff; box-shadow: none; }
+.ck :is(.btn-round, .btn-back), .navy :is(.btn-round, .btn-back) { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .16); color: #fff; box-shadow: none; }
 /* Lacivertte basınca açık renk parlamasın: yalnız içeri girer, zemin biraz koyulaşır (geri düğmesi: Seyhun 2026-10-21 "A · Yuvarlak simge") */
-.ck :is(.btn-round, .btn-back)[data-pressed] { background: rgba(255, 255, 255, .06); }
-.ck .btn-round .ring-bg { --tw-ring-color: #141938; }
+.ck :is(.btn-round, .btn-back)[data-pressed], .navy :is(.btn-round, .btn-back)[data-pressed] { background: rgba(255, 255, 255, .06); }
+.ck .btn-round .ring-bg { --tw-ring-color: #11203a; }
+/* Ana sayfa kokpiti: yalnız sağ üstteki ışık; altta düz lacivert, notların zeminiyle birleşir (Seyhun 2026-10-23) */
+.ck.ck-top { background: radial-gradient(120% 70% at 88% 0%, rgba(34, 211, 238, .24), transparent 62%), #11203a; }
+/* Ana sayfa yemek kartı (FoodCard; Seyhun 2026-10-23): lacivert kart; sipariş yokken sağdaki fotoğraf karta doğru solar (food-fade),
+   siparişte üstte küçük harita, altta 4 adımlı ilerleme çizgisi */
+.food-card { background: #182a48; border: 1px solid rgba(255, 255, 255, .1); box-shadow: 0 10px 24px -14px rgba(0, 0, 0, .8); color: #e6eef7; }
+.food-fade { background: linear-gradient(90deg, #182a48 30%, rgba(24, 42, 72, .85) 48%, rgba(24, 42, 72, 0) 80%); }
+.food-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.95rem; border-radius: 0.6875rem; background: #0ea5c4; color: #fff; font-size: 0.875rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+.food-btn2 { background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); }
+.food-step { height: 5px; border-radius: 5px; background: rgba(255, 255, 255, .12); }
+.food-step.on { background: #22d3ee; }
 /* Kokpitteki beyaz küçük düğme (Süre) */
 /* Giriş ekranı (lacivert, (auth)/login): tek yazı kutusu; e-posta ya da kullanıcı adı doğru yazılınca yeşil çerçeve.
    Ana düğme yazı tamamlanana kadar soluk durur (yüklenirken değil). */
 .auth-in { display: block; width: 100%; height: 3.5rem; border-radius: 1rem; padding: 0 1rem; font-size: 1.0625rem; font-weight: 500; color: #fff; background: rgba(255, 255, 255, .08); border: 1.5px solid rgba(255, 255, 255, .16); outline: none; transition: border-color .15s; }
 .auth-in::placeholder { color: rgba(255, 255, 255, .4); }
-.auth-in:focus { border-color: #a78bfa; }
+.auth-in:focus { border-color: #67e8f9; }
 .auth-in[data-ok] { border-color: #5fbf86; }
 .ck .btn-primary:disabled:not([aria-busy="true"]) { opacity: 1; color: rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .1); }
-.ck .btn-text { color: #a78bfa; }
-.ck-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.9rem; border-radius: 0.75rem; background: #fff; color: #141938; font-size: 0.84375rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+.ck .btn-text { color: #67e8f9; }
+.ck-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.9rem; border-radius: 0.75rem; background: #fff; color: #11203a; font-size: 0.84375rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
 .ck-btn2 { background: rgba(255, 255, 255, .14); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18), 0 2px 0 rgba(0, 0, 0, .3); }
 .ck-btn[data-pressed] { transform: translateY(1px) scale(.97); box-shadow: 0 1px 0 rgba(0, 0, 0, .35); }
+/* Kokpitteki en yakın plan (Cockpit NextPlan; Seyhun 2026-10-22 "A · Mor kart"): logonun camgöbeğinden koyu okyanus mavisine dolu kart; içinde beyaz (Süre) ve
+   yarı saydam (Yoklama) düğme */
+.ck-plan { background: linear-gradient(135deg, #0b6f8f 0%, #0e8fb0 55%, #1fa3c4 100%); box-shadow: 0 10px 24px -12px rgba(8, 145, 178, .8), inset 0 1px 0 rgba(255, 255, 255, .22); }
+.ck-pbtn { display: grid; place-items: center; height: 2.5rem; border-radius: 0.75rem; background: #fff; color: #0b4f6c; font-size: 0.9375rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .25); }
+.ck-pbtn2 { background: rgba(255, 255, 255, .18); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3); }
+.ck-pbtn[data-pressed] { transform: translateY(1px) scale(.97); }
+/* Kokpitteki iş düğmeleri (HomeGrid › ActionGrid pill): ince camgöbeği çerçeveli, alçak, yuvarlak; tarih kutularına benzemez. Günün ana işi dolu camgöbeği */
+.ck .raised.ck-pill { height: 2.5rem; border-radius: 9999px; background: transparent; border: 1.5px solid rgba(103, 232, 249, .55); box-shadow: none; color: #fff; font-size: 0.875rem; }
+.ck .raised.ck-pill[data-pressed] { background: rgba(103, 232, 249, .16); transform: scale(.97); }
+.ck .raised.ck-pill.act-main { background: #0ea5c4; border-color: #0ea5c4; color: #fff; }
+/* Ana sayfa not kartları (HomeWidgets NotesWidget; Seyhun 2026-10-23 "B · Yapışkan not"): gerçek kâğıt renginde yapışkan not, koyu yazı,
+   sağ altta kıvrık köşe. Renksiz not sarı, renkli not kendi açık tonunda (--p, satır içi). Sabitlenen notta üstte camgöbeği raptiye */
+.note-card { position: relative; color: #2a2416; background: var(--p, #f6e7a6); border-radius: 0.375rem 0.375rem 1.375rem 0.375rem; box-shadow: 0 8px 18px -10px rgba(0, 0, 0, .8); }
+.note-card::after { content: ""; position: absolute; right: 0; bottom: 0; width: 1.375rem; height: 1.375rem; border-radius: 0 0 1.375rem 0; background: linear-gradient(135deg, rgba(0, 0, 0, .18) 50%, rgba(255, 255, 255, .35) 50%); }
+.note-card.note-pin::before { content: ""; position: absolute; left: 50%; top: -0.3rem; width: 0.7rem; height: 0.7rem; margin-left: -0.35rem; border-radius: 9999px; background: #0ea5c4; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
 /* Rüzgâr grafiği açılışta soldan sağa çizilir; şimdi noktası atar */
 .ck-draw { animation: ck-draw .9s cubic-bezier(.22, .8, .24, 1) both; }
 @keyframes ck-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 .ck-pulse { transform-box: fill-box; transform-origin: center; animation: ck-pulse 2s ease-out infinite; }
 @keyframes ck-pulse { 0% { opacity: .45; transform: scale(.6); } 100% { opacity: 0; transform: scale(1.6); } }
 @media (prefers-reduced-motion: reduce) { .ck-draw, .ck-pulse { animation: none; } .ck-pulse { opacity: .2; } }
-/* İş düğmeleri ızgarasında günün ana işi (ActionGrid main): açık mor zemin, mor yazı */
+/* İş düğmeleri ızgarasında günün ana işi (ActionGrid main): açık vurgu zemini, vurgu yazısı */
 .raised.act-main { --btn-top: color-mix(in srgb, var(--accbg) 70%, #fff); --btn-bot: var(--accbg); color: var(--acc); border-color: color-mix(in srgb, var(--acc) 28%, var(--line)); }
 /* Kokpit iş düğmeleri (Seyhun 2026-10-21): kokpitteki iş düğmeleri yarı saydam, ana iş beyaz */
 .ck .raised { background: rgba(255, 255, 255, .08); color: #fff; border-color: rgba(255, 255, 255, .14); box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
-.ck .raised.act-main { background: #fff; color: #141938; }
+.ck .raised.act-main { background: #fff; color: #11203a; }
 /* Kokpitte yarı saydam kutu (antrenman sayacının şeridi ve düğmeleri, training/Countdown dark) */
 .ck-glass { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); }
 /* Kokpitteki seçili gün (HomeDays: penceresi açık gün) */
-.ck .raised.ck-sel { background: #8b5cf6; color: #fff; border-color: #a78bfa; }
+.ck .raised.ck-sel { background: #0ea5c4; color: #fff; border-color: #67e8f9; }
+/* Başka gün seçiliyken bugün: beyaz çerçeveli (HomeDays) */
+.ck .raised.ck-tout { background: rgba(255, 255, 255, .08); color: #fff; border-color: #fff; box-shadow: inset 0 0 0 0.5px #fff, 0 2px 0 rgba(0, 0, 0, .35); }
+/* LACİVERT BÖLÜM (ana sayfanın alt kısmı, gün penceresi; Seyhun 2026-10-22): kokpitin devamı. Değişkenler lacivert tonlara çevrilir,
+   içindeki kartlar ve listeler kendiliğinden uyar; data-theme="dark" ile dark: sınıfları da çalışır */
+.navy {
+  color-scheme: dark;
+  --bg: #11203a;
+  --card: #182a48;
+  --fg: #e6eef7;
+  --mut: #9fb0cc;
+  --line: #26395c;
+  --acc: #67e8f9;
+  --acc2: #67e8f9;
+  --accbg: #143a52;
+  --fg2: #c4d0e2;
+  --ok: #5fbf86;
+  --rec: #f08178;
+  --warn: #e3b46c;
+  --warnbg: #3a3222;
+  color: var(--fg);
+  background: #11203a;
+}
+.navy :is(.bg-amber-50, .bg-amber-100) { background-color: rgba(245, 158, 11, .14); }
+.navy .bg-emerald-100 { background-color: rgba(16, 185, 129, .16); }
+.navy :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900) { color: #fbbf5c; }
+.navy :is(.text-rose-600, .text-rose-700, .text-red-600) { color: #fb8a9a; }
+/* Ana sayfa lacivertken sayfanın kalanı da lacivert (alt boşlukta ve aşağı çekince koyu şerit kalmasın). !important:
+   koyu moddaki "html[data-theme=dark] body:has(main.grouped)" kuralı daha özgül, alt çubuğun üstünde siyah şerit bırakıyordu */
+html:has(:is(.home-navy, .page-navy)), body:has(:is(.home-navy, .page-navy)) { background: #11203a !important; }
 /* Asistan kapanınca sekme çubuğu alttan kayarak gelir (TabBar rise) */
 @keyframes atabup { from { transform: translate3d(0, 100%, 0); } }
 .atab-up { animation: atabup .36s cubic-bezier(.22, .8, .24, 1) backwards; }
 @media (prefers-reduced-motion: reduce) { .atab-up { animation: none; } }
+/* FITNESS SPORCULAR (Seyhun 2026-10-23 "A · Koyu"): baştan sona koyu, üstte salon fotoğrafı koyulaşarak kaybolur (FitnessHome FitPhoto),
+   zemin aşağı doğru daha da koyulaşır. Kartlar #13233d. Sayfanın kalanı da koyu (alt boşlukta açık şerit kalmasın) */
+.fit-dark { --bg: #0b1628; --card: #13233d; background: linear-gradient(#0b1628 0, #0b1628 55%, #060d1a 100%); }
+html:has(.fit-dark), body:has(.fit-dark) { background: #060d1a !important; }
+
+/* Velora Yemek › Yönetim: durum değişince kısa onay (her durumun kendi hareketi), sonra pencere kapanır */
+@keyframes ystin { from { opacity: 0; transform: scale(.6); } }
+@keyframes ystslide { 0% { transform: translateX(-18px); opacity: 0; } 60% { transform: translateX(4px); opacity: 1; } 100% { transform: none; } }
+@keyframes ystwig { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
+@keyframes ystshake { 0%, 100% { transform: none; } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@keyframes ystpop { 50% { transform: scale(1.18); } }
+.yst-ring { animation: ystin .25s ease-out both; }
+.yst-sent, .yst-onTheWay { animation: ystslide .55s ease-out .1s both; }
+.yst-preparing { animation: ystwig .5s ease-in-out .15s 2; }
+.yst-cancelled { animation: ystshake .45s ease-in-out .15s; }
+.yst-accepted, .yst-delivered { animation: ystpop .4s ease-out .15s; }
+@media (prefers-reduced-motion: reduce) { .yst-ring, [class*="yst-"] { animation: none !important; } }
+/* Asistan tek kutusu (TabBar AssistBox, "A · Tek kapsül" 2026-10-23): alttan yumuşakça gelir */
+.afull .apill { background: var(--ab-panel); box-shadow: inset 0 0 0 1px var(--line), 0 12px 32px -16px rgba(0, 0, 0, .7); }
+.afull-in .apill { animation: apillin .4s cubic-bezier(.22, .8, .24, 1) .06s both; }
+@keyframes apillin { from { opacity: 0; transform: translateY(.75rem); } }
+@media (prefers-reduced-motion: reduce) { .afull-in .apill { animation: none; } }

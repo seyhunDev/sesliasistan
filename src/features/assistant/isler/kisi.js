@@ -1,10 +1,14 @@
 // Asistanın işleri: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
+import { readPhoto, squarePhoto } from "@/features/people/personPhoto";
+import { setPhoto } from "@/features/people/ProfilePhoto";
 import { readPerson, createPerson, newPassword, openAccount, askOpen, removePerson } from "@/features/people/personActions";
 import { nextQuestion, findDuplicates, summarySay, loginIn, wantsPerson, applyAnswer, changes, formatPhone, suggestLogin } from "@/features/people/assistPerson";
 import { isNo, isYes, undoLast } from "@/lib/assistantLocal";
 import { validUsername, KIND_LABEL, groupOfKind } from "@/lib/kinds";
 import { QUESTION } from "./ortak";
 import { birthdayDeleteCommand, personDeleteCommand, personOpenCommand } from "@/lib/assistMore";
+import { contactScanCommand, parseContactQr } from "@/lib/contactQr";
+import { SCAN_OPEN } from "@/features/people/ContactScan";
 import { personPath } from "@/lib/personPage";
 import { matchPerson } from "@/lib/names";
 import { doc } from "firebase/firestore";
@@ -27,6 +31,56 @@ export async function startPerson(ctx, s, viaVoice) {
   setPhase("idle");
   // Öğrenme kaydına yazılmaz (cümlede telefon/e-posta olabilir)
   stepPerson(r.draft, viaVoice, r.engine === "ai" ? "ai" : "local");
+}
+
+// Asistana eklenen fotoğraf (Seyhun 2026-10-23): Velora kişi kare kodu → kişi hemen hazırlanır; kişinin fotoğrafı →
+// profil fotoğrafı olur, adı sorulur; kimlik/kartvizit → üstündeki bilgiler okunur (fotoğraf saklanmaz).
+// Kişi eklenirken (ad sorulurken ya da onayda) gelen fotoğraf o kişinin fotoğrafı olur. said: yazı kutusundaki cümle.
+export async function photoPerson(ctx, file, said = "", viaVoice = false) {
+  const { isStaff, personFlow, reply, runId, setPhase, setTurns, stepPerson } = ctx;
+  setTurns((p) => [...p, { role: "user", text: said ? `Fotoğraf: ${said}` : "Fotoğraf" }]);
+  if (isStaff) return reply("Fotoğraftan kişi eklemeyi yalnız ana hesap yapabilir.", { engine: "local" }, viaVoice);
+  const id = ++runId.current;
+  setPhase("thinking");
+  const stop = () => id === runId.current && setPhase("idle");
+  let ph;
+  try {
+    ph = await readPhoto(file);
+  } catch {
+    stop();
+    return reply("Fotoğrafı açamadım, başka bir fotoğraf dener misin?", { fail: true, engine: "local" }, viaVoice);
+  }
+  if (id !== runId.current) return;
+  if (ph.qr) {
+    stop();
+    const { velora, ...draft } = ph.qr;
+    return stepPerson(draft, viaVoice, "local", velora ? "Velora kare kodundan okudum. " : "Kare koddaki kişi kartını okudum. ");
+  }
+  if (ph.qrText) {
+    stop();
+    return reply("Bu kare kodda kişi bilgisi yok.", { engine: "local" }, viaVoice);
+  }
+  const f = personFlow.current;
+  if (f && (f.step === "ask" || f.step === "confirm") && !said) {
+    stop();
+    const photo = await squarePhoto(ph.dataUrl).catch(() => "");
+    if (!photo) return reply("Fotoğrafı açamadım.", { fail: true, engine: "local" }, viaVoice);
+    return stepPerson({ ...f.draft, photo }, viaVoice, "local", "Fotoğrafını ekledim. ");
+  }
+  let r;
+  try {
+    r = await readPerson(said, ph.image);
+  } catch (e) {
+    stop();
+    return reply(e.message || "Kişi eklemeyi yalnız ana hesap yapabilir.", { fail: true, engine: "local" }, viaVoice);
+  }
+  if (id !== runId.current) return;
+  stop();
+  const draft = { ...r.draft };
+  if (r.photoKind === "face") draft.photo = await squarePhoto(ph.dataUrl).catch(() => "");
+  if (!draft.photo) delete draft.photo;
+  const lead = r.engine !== "ai" ? "Fotoğrafı okuyamadım. " : r.photoKind === "card" ? "Karttaki bilgileri okudum. " : r.photoKind === "other" && !draft.name ? "Fotoğrafta bir kişi ya da kart göremedim. " : "";
+  stepPerson(draft, viaVoice, r.engine === "ai" ? "ai" : "local", lead);
 }
 
 // Sıradaki adım: eksik/hatalı alan varsa tek soru; yoksa mükerrer kontrolü ve özet + onay
@@ -112,6 +166,10 @@ export async function personSave(ctx, viaVoice) {
   stepTo("Kişi kaydediliyor");
   try {
     const uid = await createPerson(profile.uid, draft);
+    if (draft.photo) {
+      stepTo("Fotoğraf yükleniyor");
+      await setPhoto(profile.orgId || profile.uid, uid, draft.photo).catch(() => toast("Fotoğraf yüklenemedi; kişi sayfasından ekleyebilirsin"));
+    }
     if (draft.birth) {
       stepTo("Doğum günü takvime ekleniyor");
       saveBirthday({ name: draft.name, month: draft.birth.month, day: draft.birth.day, year: draft.birth.year, phone: draft.phone ? formatPhone(draft.phone) : "", memberUid: uid, note: KIND_LABEL[draft.kind] });
@@ -271,4 +329,23 @@ export async function personDeleteCmd(ctx, s, viaVoice) {
     }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
     return true;
   }
+}
+
+// "Kare kodu okut" (ana hesap): canlı okutma açılır (people/ContactScan.jsx); okunan kod useAssistant'ta scanCode'a gelir
+export function contactScanCmd(ctx, s, viaVoice) {
+  const { owner, reply } = ctx;
+  if (!owner || !contactScanCommand(s)) return undefined;
+  window.dispatchEvent(new Event(SCAN_OPEN));
+  reply("Kişinin kare kodunu kameraya göster.", { engine: "local" }, viaVoice);
+  return true;
+}
+
+// Okutulan kare kod (boşsa okutma kapatıldı)
+export function scanCode(ctx, text, viaVoice = false) {
+  const { reply, stepPerson } = ctx;
+  if (!text) return;
+  const qr = parseContactQr(text);
+  if (!qr) return reply("Bu kare kodda kişi bilgisi yok.", { engine: "local" }, viaVoice);
+  const { velora, ...draft } = qr;
+  stepPerson(draft, viaVoice, "local", velora ? "Velora kare kodundan okudum. " : "Kare koddaki kişi kartını okudum. ");
 }

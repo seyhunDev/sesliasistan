@@ -46,6 +46,9 @@ export function compareLinks(p = getPlace()) {
 }
 
 // WMO hava kodu -> Türkçe ad + simge
+// Rüzgâr ve sağanak tek yerde, "alt rüzgâr–sağanak" (Seyhun 2026-10-24: "2-4 knot gibi, 4'ün sağanak olduğunu anlarım"): 2–4, sağanak yoksa 2
+export const kn = (wind, gust) => (gust != null && gust > wind ? `${wind}–${gust}` : `${wind ?? ""}`);
+
 export function sky(code, day = true) {
   if (code === 0) return { label: "Açık", icon: day ? "sun" : "moon" };
   if (code === 1 || code === 2) return { label: code === 1 ? "Az bulutlu" : "Parçalı bulutlu", icon: day ? "cloudSun" : "cloud" };
@@ -123,7 +126,7 @@ export function shape(j, now = new Date()) {
     const i = i0 + k;
     return [t, r(h.temperature_2m[i]), h.weather_code[i], r(h.wind_speed_10m[i]), r(h.wind_gusts_10m[i]), r(h.wind_direction_10m[i])];
   });
-  // Gün detayı için: tüm saatler (bugün 00:00'dan itibaren, 6 gün) kısa biçimde
+  // Gün detayı için: tüm saatler (bugün 00:00'dan itibaren, 7 gün; ana sayfanın 7 günlük şeridi her güne hava gösterir) kısa biçimde
   const hourly = h.time.map((t, i) => [t, r(h.temperature_2m[i]), h.weather_code[i], h.is_day ? h.is_day[i] : 1,
     r(h.wind_speed_10m[i]), r(h.wind_gusts_10m[i]), r(h.wind_direction_10m[i]), h.precipitation_probability?.[i] ?? null]);
   return {
@@ -179,7 +182,7 @@ export function sailWindows(rows) {
 
 function url(p) {
   const q = new URLSearchParams({
-    latitude: p.lat, longitude: p.lon, timezone: p.tz, wind_speed_unit: "kn", forecast_days: "6",
+    latitude: p.lat, longitude: p.lon, timezone: p.tz, wind_speed_unit: "kn", forecast_days: "7",
     current: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m",
     hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability",
     daily: "weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant",

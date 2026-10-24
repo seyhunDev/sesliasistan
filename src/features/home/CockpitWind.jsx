@@ -4,7 +4,7 @@ import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
 import { useWindObs } from "@/features/weather/useWindObs";
 import { OBS } from "@/features/weather/DaySheet";
-import { PLACE, getPlace, sky } from "@/features/weather/weather";
+import { PLACE, getPlace, kn, sky } from "@/features/weather/weather";
 
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
 const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: PLACE.tz });
@@ -13,7 +13,8 @@ const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23
 // yön, hava durumu; hangi saatte ne olduğunu net bilmem gerek"; onaylanan örnek ana-sayfa/futuristik/c2-kokpit-ruzgar.png).
 // Dolu mor alan rüzgâr, açık mor alan ve kesik çizgi sağanak; üstte 2 saatte bir yön oku (rüzgârın estiği yöne bakar, 17 kn ve üstü turuncu),
 // altında 3 saatte bir saat, gökyüzü, sıcaklık ve "rüzgâr–sağanak" kn. Kırmızı "şimdi" noktası dakikaya göre saatler arasında durur.
-// Yakında istasyon varsa geçmiş saatlerde ölçülen rüzgâr mavi gölge + kesik mavi sağanak (hava sayfasındaki grafikle aynı kural).
+// Yakında istasyon varsa geçmiş saatlerde ölçülen rüzgâr mavi gölge + kesik mavi sağanak; o saatlerin altındaki yazı da ölçülen "rüzgâr–sağanak" (mavi).
+// Ayrı "en sert sağanak" yazısı yok (Seyhun 2026-10-24: rüzgâr ve sağanak tek yerde, "2–4 kn").
 // Açılışta grafik soldan sağa 0,9 sn'de çizilir (globals.css .ck-draw); hareket azaltılmışsa çizilmeden gelir. Hava sayfasındaki grafik (WindChart) değişmez.
 const W = 340, L = 6, R = 22, T = 26, H = 132, B = 4;
 export function CockpitWind({ rows, date }) {
@@ -66,8 +67,8 @@ export function CockpitWind({ rows, date }) {
           ) : null,
         )}
         <g className="ck-draw">
-          <path d={close(gust, 0, n - 1)} fill="#a78bfa" fillOpacity=".26" />
-          <path d={close(wind, 0, n - 1)} fill="#a78bfa" fillOpacity=".92" />
+          <path d={close(gust, 0, n - 1)} fill="#67e8f9" fillOpacity=".26" />
+          <path d={close(wind, 0, n - 1)} fill="#67e8f9" fillOpacity=".92" />
           <path d={gust} fill="none" stroke="#c4b5fd" strokeWidth="1.3" strokeDasharray="3 3" />
           {got.length > 1 && <path d={close(oLine, got[0].i, got[got.length - 1].i)} fill={OBS} fillOpacity=".55" />}
           {got.length > 1 && <path d={oLine} fill="none" stroke="#9cc3ee" strokeWidth="1.3" />}
@@ -77,24 +78,22 @@ export function CockpitWind({ rows, date }) {
           <g>
             <line x1={x(nowAt)} x2={x(nowAt)} y1={T - 6} y2={y(0)} stroke="#ff6b6b" strokeWidth="1.3" strokeDasharray="2 2" />
             <circle cx={x(nowAt)} cy={y(nowV)} r="9" fill="#ff6b6b" className="ck-pulse" />
-            <circle cx={x(nowAt)} cy={y(nowV)} r="4.5" fill="#ff6b6b" stroke="#141938" strokeWidth="2" />
+            <circle cx={x(nowAt)} cy={y(nowV)} r="4.5" fill="#ff6b6b" stroke="#11203a" strokeWidth="2" />
           </g>
         )}
       </svg>
-      {/* 3 saatte bir: saat, gökyüzü, sıcaklık, rüzgâr–sağanak (kn); grafikteki saatin tam altında */}
+      {/* 3 saatte bir: saat, gökyüzü, sıcaklık, "rüzgâr-sağanak" (kn, ölçülen de aynı biçimde); grafikteki saatin tam altında */}
       <div className="relative mt-1.5 h-[4.6rem]">
         {rows.map((h, k) => {
           if (+h.hh % 3) return null;
           const s = sky(h.code, h.day);
+          const o = obs[k]; // geçmiş saatte ölçülen varsa onu yaz (mavi), yoksa tahmin
           return (
             <span key={h.time} className="absolute top-0 flex -translate-x-1/2 flex-col items-center gap-[3px] leading-none tabular-nums" style={{ left: `${(x(k) / W) * 100}%` }}>
               <span className="text-[0.6875rem] font-semibold text-white/55">{h.hh}</span>
               <Icon name={s.icon} className={`size-[1.05rem] ${CK_SKY[s.icon] || "text-white/80"}`} />
               <span className="text-[0.75rem] font-semibold">{h.t}°</span>
-              <span className="whitespace-nowrap text-[0.6875rem] font-bold">
-                {h.wind}
-                {h.gust > h.wind && <span className="font-medium text-white/55">–{h.gust}</span>}
-              </span>
+              <span className={`whitespace-nowrap text-[0.6875rem] font-bold ${o ? "text-[#9cc3ee]" : ""}`}>{kn(o ? o.wind : h.wind, o ? o.gust : h.gust)}</span>
             </span>
           );
         })}

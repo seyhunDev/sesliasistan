@@ -22,8 +22,8 @@ export function GlowMark({ size = 84, ...p }) {
     <svg viewBox="132 132 760 760" width={size} height={size} aria-hidden="true" {...p}>
       <defs>
         <linearGradient id="glow-g" gradientUnits="userSpaceOnUse" x1="160" y1="160" x2="864" y2="864">
-          <stop offset="0" stopColor="#8B5CF6" />
-          <stop offset="1" stopColor="#22D3EE" />
+          <stop offset="0" stopColor="#0ea5c4" />
+          <stop offset="1" stopColor="#a5f3fc" />
         </linearGradient>
       </defs>
       <g stroke="url(#glow-g)" strokeWidth="30" strokeLinecap="round">

@@ -5,6 +5,7 @@
 import { existsSync } from "node:fs";
 import { INIT } from "./taklitler.mjs";
 import { seed, FS_HOST, PROJECT } from "./emulator.mjs";
+import { CAMS, SEA } from "./taklitler.mjs";
 
 const K = "asistan ekran";
 const OWNER = "sahip@ornek.local";
@@ -147,6 +148,8 @@ export async function run(server, log = () => {}) {
         return t ? json({ text: t, ms: 1, model: "taklit" }) : json({ error: "yok", reason: "other" }, 503);
       }
       if (u.pathname === "/api/tts") return json({ error: "anahtar yok" }, 501);
+      if (u.pathname === "/api/sea") return json(SEA);
+      if (u.pathname === "/api/cams") return json(CAMS);
       if (u.pathname === "/api/live-token") return liveToken && body?.used == null ? json(liveToken) : json({ error: "anahtar yok" }, body?.used == null ? 501 : 200);
       return json({ ok: true });
     });
@@ -237,16 +240,14 @@ export async function run(server, log = () => {}) {
       transcript = prev;
     }
   };
-  // Asistanı kapat: × her durumda kapatır
+  // Asistanı kapat (tek kutu, 2026-10-23): dinliyorsa Dur, taslak varsa × (Sil ve kapat), değilse boş alana dokun
   const closeAll = async (page) => {
     for (let i = 0; i < 4 && (await page.locator(".afull.afull-in").count()); i++) {
-      for (const name of ["Asistanı kapat"]) {
-        const x = btn(page, name);
-        if (await x.count()) {
-          await x.click().catch(() => {});
-          break;
-        }
-      }
+      const dur = btn(page, "Dur");
+      const x = btn(page, "Asistanı kapat");
+      if (await dur.count()) await dur.click().catch(() => {});
+      else if (await x.count()) await x.click().catch(() => {});
+      else await page.locator("[data-dome] [data-apane]").click({ position: { x: 20, y: 20 } }).catch(() => {});
       await page.waitForTimeout(400);
     }
     await waitFor(async () => !(await full(page).count()), 1500);

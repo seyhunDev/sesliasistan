@@ -6,16 +6,17 @@ import { fromAi, memberData, parsePerson } from "./assistPerson";
 
 // Kişi ekleme cümlesinden alanlar: önce yapay zeka (/api/person), ulaşılamazsa yerel kurallar.
 // Her durumda telefon/e-posta/doğum günü yerelde yeniden kontrol edilir (assistPerson.nextQuestion).
-export async function readPerson(text) {
+// image: { mimeType, data } (fotoğraftan kişi; sonuçta photoKind: face | card | other)
+export async function readPerson(text, image = null) {
   const local = parsePerson(text);
   try {
-    const res = await authFetch("/api/person", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+    const res = await authFetch("/api/person", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, ...(image ? { image } : {}) }) });
     const p = await res.json().catch(() => ({}));
     if (res.status === 403) throw Object.assign(new Error(p.error || "Yetki yok"), { denied: true });
     if (!res.ok) return { draft: local, engine: "local" };
     const ai = fromAi(p);
     // Yapay zekanın atladığı ama cümlede açıkça geçen bilgi yerelden tamamlanır
-    return { draft: { ...local, ...ai, name: ai.name || local.name }, engine: "ai" };
+    return { draft: { ...local, ...ai, name: ai.name || local.name }, engine: "ai", photoKind: p.photoKind || "" };
   } catch (e) {
     if (e.denied) throw e;
     return { draft: local, engine: "local" };

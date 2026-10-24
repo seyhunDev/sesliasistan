@@ -105,10 +105,13 @@ export async function scenarios(h) {
     return [c === "kırmızı" && bars === 5 && !t && n === 1, `${c} · ${bars} çubuk · halka: “${t}” · “Dinliyorum” ${n} kez`];
   });
   // Asistan düğmede (2026-10-22): ayrı zemin yok, arkadaki sayfa bulanıklaşır; örtü sürekli oynamaz; yan düğmeler
-  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), yanda Kapat ve Dur", async () => {
+  // Tek kutu (Seyhun "A · Tek kapsül", 2026-10-23): yan düğme yok; altta tek kutu, dinlerken içinde ■ Dur
+  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), altta tek kutu, içinde Dur, kapat düğmesi yok", async () => {
     const z = await page.locator("[data-dome] .abg").evaluate((el) => { const c = getComputedStyle(el); return { anim: `${c.animationName} ${c.animationIterationCount}`, blur: c.backdropFilter || c.webkitBackdropFilter || "" }; });
-    const side = (await btn(page, "Asistanı kapat").count()) + (await btn(page, "Dur").count());
-    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && side === 2, `örtü ${z.anim} · ${z.blur} · yan düğme ${side}`];
+    const pill = await page.locator("[data-dome] .apill").count();
+    const dur = await page.locator("[data-dome] .apill").getByRole("button", { name: "Dur", exact: true }).count();
+    const x = await btn(page, "Asistanı kapat").count();
+    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && pill === 1 && dur === 1 && x === 0, `örtü ${z.anim} · ${z.blur} · kutu ${pill} · Dur ${dur} · kapat ${x}`];
   });
   await say(page, "notlarımı oku");
   // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutuya akar, altta süre + dalga, ■ Dur ve ↑ Gönder
@@ -148,8 +151,8 @@ export async function scenarios(h) {
 
   // Kapat (×): aşağı kayarak kapanır, sekmeler geri gelir
   const G4 = "Kapanış";
-  await btn(page, "Asistanı kapat").click();
-  await check(G4, "× (Asistanı kapat)", "afull-out ile aşağı kayarak kapanır", async () => {
+  await page.locator("[data-dome] [data-apane]").click({ position: { x: 20, y: 20 } });
+  await check(G4, "boş alana dokun", "afull-out ile aşağı kayarak kapanır", async () => {
     const cls = await waitFor(async () => {
       const c = await full(page).getAttribute("class", { timeout: 300 }).catch(() => "");
       return /afull-out/.test(c) ? c : null;
@@ -697,6 +700,56 @@ async function scenarios3(h) {
     });
   }
   await closeAll(page);
+  {
+    // Kişi kare kodu (Seyhun 2026-10-23): sesle "kare kodu okut" okutma ekranını açar; Velora kodu okununca kişi hazırlanır
+    const GQ = "Kişi kare kodu";
+    const b = aiCalls();
+    await talkAsk(page, "kare kodu okut");
+    await check(GQ, "kare kodu okut", "okutma ekranı açılır, yapay zekaya gitmez", async () => {
+      const ok = await waitFor(async () => (await page.locator("[role=dialog][aria-label='Kare kod okut']").count()) > 0, 5000);
+      return [!!ok && aiCalls() === b, `${ok ? "açıldı" : "açılmadı"} · yapay zeka ${aiCalls() - b}`];
+    });
+    await page.locator("[role=dialog][aria-label='Kare kod okut'] button", { hasText: "Kapat" }).click();
+    const card = ["BEGIN:VCARD", "VERSION:3.0", "N:Aydın;Deniz;;;", "FN:Deniz Aydın", "TEL;TYPE=CELL:+905551234567", "TITLE:Antrenör", "X-VELORA:1", "X-VELORA-KIND:staff", "END:VCARD"].join("\r\n");
+    await page.evaluate((t) => window.dispatchEvent(new CustomEvent("sa-contact-code", { detail: t })), card);
+    await check(GQ, "Velora kodu okundu", "kişi hazırlanır, kaydetmeden önce sorulur", async () => {
+      const ok = await waitFor(async () => /Velora kare kodundan okudum\. Deniz Aydın, çalışan, antrenör\..*Kaydedeyim mi\?/.test(clean(await convo(page))), 5000);
+      return [!!ok, clean(await last(page)).slice(0, 120)];
+    });
+    await talkAsk(page, "vazgeç");
+    await waitFor(async () => (await state(page)) === "idle", 3000);
+    await closeAll(page);
+    // Fotoğraf düğmesi: kare kodun fotoğrafı seçilince kişi telefonda okunur (yapay zekaya gitmez)
+    const { default: qrcode } = await import("../../src/lib/vendor/qrcode.mjs");
+    const q = qrcode(0, "M");
+    q.addData(card);
+    q.make();
+    const shot = await page.context().newPage();
+    await shot.setViewportSize({ width: 600, height: 800 });
+    await shot.setContent(`<body style="margin:0;background:#ddd;display:grid;place-items:center;height:100vh">${q.createSvgTag({ cellSize: 6, margin: 4 })}</body>`);
+    const png = await shot.screenshot();
+    await shot.close();
+    const o = orb(page);
+    const box = await o.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(650);
+    await page.mouse.up();
+    const b2 = aiCalls();
+    const pick = page.locator("[data-dome] input[type=file][accept='image/*']");
+    await check(GQ, "yazı kutusunda Fotoğraf", "düğme görünür", async () => {
+      const ok = await waitFor(async () => (await btn(page, "Fotoğraf").count()) > 0, 5000);
+      return [!!ok, ok ? "var" : "yok"];
+    });
+    if (await pick.count()) await pick.setInputFiles({ name: "kod.png", mimeType: "image/png", buffer: png });
+    await check(GQ, "kare kodun fotoğrafı", "kişi okunur, yapay zekaya gitmez", async () => {
+      const ok = await waitFor(async () => /Velora kare kodundan okudum\. Deniz Aydın/.test(clean(await convo(page))), 8000);
+      return [!!ok && aiCalls() === b2, `${clean(await last(page)).slice(0, 90)} · yapay zeka ${aiCalls() - b2}`];
+    });
+    await talkAsk(page, "vazgeç");
+    await waitFor(async () => (await state(page)) === "idle", 3000);
+  }
+  await closeAll(page);
 
   await check("Sayfa hataları", "kayıt / onay / görev listesi", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
@@ -983,4 +1036,83 @@ async function scenarios4(h) {
     });
     await page.context().close();
   }
+  await seaPage(h);
+  await camsPage(h);
+}
+
+// ================================================================ Deniz trafiği (/sea): tam ekran MarineTraffic haritası
+async function seaPage(h) {
+  const { check, newPage, waitFor, log } = h;
+  log("    Deniz trafiği sayfası…");
+  const { page, errs } = await newPage();
+  await page.goto(page.url().replace(/\/[^/]*$/, "/sea"), { waitUntil: "load" });
+  const G = "Deniz trafiği";
+  await check(G, "sayfa açılır", "tam ekran MarineTraffic haritası, Teknem ve Acil", async () => {
+    const ok = await waitFor(() => page.locator("iframe[src*='marinetraffic.com/en/ais/embed']").count(), 15000);
+    const btns = await page.getByRole("button", { name: /Teknem|Acil/ }).count();
+    return [!!ok && btns === 2, `${ok ? "harita var" : "harita yok"} · ${btns} düğme`];
+  });
+  await check(G, "Acil penceresi", "158 ve 112 aranabilir", async () => {
+    await page.getByRole("button", { name: /Acil/ }).click();
+    const d = page.locator("[role='dialog'][aria-label='Acil durum']");
+    await d.waitFor({ timeout: 5000 });
+    const n = await d.locator("a[href='tel:158'], a[href='tel:112']").count();
+    if (process.env.SEA_SHOT) await page.screenshot({ path: `${process.env.SEA_SHOT}-acil.png` });
+    return [n === 2, `${n} arama satırı`];
+  });
+  if (process.env.SEA_SHOT) {
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${process.env.SEA_SHOT}.png`, fullPage: true });
+  }
+  await check("Sayfa hataları", "deniz trafiği", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
+}
+
+// ================================================================ Kameralar (/cams): en yakın büyük, 6 kamera, Daha fazla, yer penceresi
+async function camsPage(h) {
+  const { check, newPage, waitFor, log } = h;
+  log("    Kameralar sayfası…");
+  const { page, errs } = await newPage();
+  await page.goto(page.url().replace(/\/[^/]*$/, "/cams"), { waitUntil: "load" });
+  const G = "Kameralar";
+  await check(G, "sayfa açılır", "yerin YouTube yayını büyük, altta 6 kamera ve Daha fazla", async () => {
+    const ok = await waitFor(() => page.getByText("Dikili Limanı Canlı").count(), 15000);
+    const small = await page.locator("main .grid > button").count();
+    const more = await page.getByRole("button", { name: /Daha fazla \(3\)/ }).count();
+    if (process.env.CAMS_SHOT) await page.screenshot({ path: `${process.env.CAMS_SHOT}.png` });
+    return [!!ok && small === 6 && more === 1, `${small} küçük kamera · Daha fazla ${more}`];
+  });
+  await check(G, "Daha fazla", "kalan kameralar da görünür", async () => {
+    await page.getByRole("button", { name: /Daha fazla/ }).click();
+    const n = await page.locator("main .grid > button").count();
+    return [n === 9, `${n} küçük kamera`];
+  });
+  await check(G, "kamera penceresi", "Windy'de aç bağlantısı", async () => {
+    await page.getByText("Bergama · Akropol").click();
+    const d = page.locator("[role='dialog'][aria-label='Bergama · Akropol']");
+    await d.waitFor({ timeout: 5000 });
+    const n = await d.locator("a[href='https://www.windy.com/webcams/2']").count();
+    if (process.env.CAMS_SHOT) await page.screenshot({ path: `${process.env.CAMS_SHOT}-kamera.png` });
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+    return [n === 1, `${n} bağlantı`];
+  });
+  await check(G, "yer penceresi", "hazır yerler, seçilen yere geçer", async () => {
+    await page.locator("main header button").last().click();
+    const d = page.locator("[role='dialog'][aria-label='Yer']");
+    await d.waitFor({ timeout: 5000 });
+    const n = await d.getByRole("button", { name: /Ayvalık|Bergama|Foça|İzmir|Midilli/ }).count();
+    if (process.env.CAMS_SHOT) await page.screenshot({ path: `${process.env.CAMS_SHOT}-yer.png` });
+    await d.getByRole("button", { name: "Ayvalık" }).click();
+    const ok = await waitFor(() => page.locator("header button", { hasText: "Ayvalık" }).count(), 5000);
+    return [n >= 5 && !!ok, `${n} yer · ${ok ? "Ayvalık seçildi" : "seçilmedi"}`];
+  });
+  await check(G, "yer kalıcı", "sayfa yeniden açılınca seçilen yerle açılır", async () => {
+    await page.reload({ waitUntil: "load" });
+    const ok = await waitFor(() => page.locator("main header button", { hasText: "Ayvalık" }).count(), 15000);
+    return [!!ok, ok ? "Ayvalık" : "yer seçilmemiş"];
+  });
+  await check("Sayfa hataları", "kameralar", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
 }

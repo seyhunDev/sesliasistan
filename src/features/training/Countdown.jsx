@@ -316,7 +316,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
     `mt-3 flex h-16 w-full items-center justify-center rounded-[1.125rem] text-[1.25rem] font-semibold active:translate-y-0.5 active:shadow-none ${
       dark
         ? on
-          ? "bg-white text-[#141938] shadow-[0_3px_0_rgba(0,0,0,.35)]"
+          ? "bg-white text-[#11203a] shadow-[0_3px_0_rgba(0,0,0,.35)]"
           : "ck-glass text-white shadow-[0_3px_0_rgba(0,0,0,.35)]"
         : on
           ? "bg-acc text-white shadow-[0_3px_0_color-mix(in_srgb,var(--acc)_70%,#000)]"
@@ -348,7 +348,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
   const accTx = dark ? "text-[#c4b5fd]" : "text-acc";
   const stepCls = (st) =>
     dark
-      ? st === "now" ? "bg-[#8b5cf6] text-white" : st === "done" ? "bg-white/20 text-white" : "ck-glass text-white/80"
+      ? st === "now" ? "bg-[#0ea5c4] text-white" : st === "done" ? "bg-white/20 text-white" : "ck-glass text-white/80"
       : st === "now" ? "bg-acc text-white" : st === "done" ? "bg-acc/15 text-acc" : "bg-bg text-mut";
 
   return (

@@ -15,21 +15,23 @@ Ana sayfa (2026-10-21, "C · Lacivert kokpit") bu kuralların örneğidir. Yeni 
 - Düğmelerin kısa bir adı olur ("Yoklama", "Günlük yaz"). Çıplak ok kullanılmaz. Ek işler "⋯" içine konur.
 - Boş alan bırakılmaz, sayfa sıkı durur. Yazı taşmaz (`truncate`).
 - Kısaltmalar kullanılır: Pzt, 17 Eki, ₺. Başlıklar normal harfle yazılır (büyük harf değil), yazılar semibold.
-- Tek vurgu rengi mor. Yeşil yalnız bitti/ödendi için. Amber yalnız gerçek uyarı için. Renk yanıp sönmez.
+- Tek vurgu rengi camgöbeği (Okyanus). Yeşil yalnız bitti/ödendi için. Amber yalnız gerçek uyarı için. Renk yanıp sönmez.
 - Yapay zekâ yapımı görünümden kaçın: degrade, parıltı, gölgeli süs kartları yok. Kartlar düz ve ince çizgili olur.
 
-## Renkler (`src/app/globals.css` `:root`)
+## Renkler (`src/app/globals.css` `:root`): "Okyanus" paleti (Seyhun 2026-10-22)
+
+Lacivert kokpit ve `.navy` sayfalar gece mavisi `#11203a` (kart `#182a48`, çizgi `#26395c`), lacivertte vurgu `#67e8f9`, seçili/ana iş `#0ea5c4`. Logo: gece mavisi zeminde camgöbeği → açık turkuaz çubuklar (`#0ea5c4` → `#a5f3fc`).
 
 | Token | Değer | Kullanım |
 |---|---|---|
-| `--bg` | #f4f3ef | sıcak kırık beyaz zemin |
-| `--card` | #fdfcfa | kart / liste zemini |
+| `--bg` | #f2f4f6 | serin açık zemin |
+| `--card` | #fcfdfe | kart / liste zemini |
 | `--fg` | #26282c | yazı |
 | `--mut` | #74777d | ikinci yazı |
 | `--line` | #e7e5df | ince çizgi |
-| `--acc` | #5b4fd6 | tek vurgu (mor) |
-| `--accbg` | #ecebfa | açık mor zemin |
-| `--deep` | #23255e | lacivert kokpit |
+| `--acc` | #0b7f99 | tek vurgu (camgöbeği) |
+| `--accbg` | #e2f2f6 | açık vurgu zemini |
+| `--deep` | #0f2c45 | koyu gece mavisi |
 | `--ok` | #4a8a64 | bitti / ödendi |
 | `--warn` / `--warnbg` | #a8742a / #f6eedf | uyarı |
 | `--rec` | #c8574f | kayıt / tehlike |
@@ -47,7 +49,7 @@ Tailwind'de `bg-bg`, `text-mut`, `text-acc`, `border-line` gibi sınıflarla yaz
 - `Row.jsx`: `RowList`, `Row` (lead · başlık · alt yazı · sağ değer veya `Tag`), `ListHead`, `SkelRow`, `Tag`. Satır biçimi her listede aynıdır: öğe + durum. Satıra dokununca öğe kendi yerinde açılır. Uyarı alt yazısı amberdir.
 - `Gauge.jsx`: `Gauge` (halka), `Bar` (ince çubuk). "9/14 ödedi" gibi oranlar için kullanılır.
 - `ActionGrid.jsx`: kokpitteki adlı düğme ızgarası.
-- `Button.jsx`: tek düğme bileşeni. Yeni düğme yazılmaz, buradan alınır. Türleri: `primary` (mor, ana iş), `secondary` (beyaz, kabarık), `text`, `icon`, `danger`, `back`, `round`. Hepsi kabarık durur ve basınca içeri göçer.
+- `Button.jsx`: tek düğme bileşeni. Yeni düğme yazılmaz, buradan alınır. Türleri: `primary` (vurgu rengi, ana iş), `secondary` (beyaz, kabarık), `text`, `icon`, `danger`, `back`, `round`. Hepsi kabarık durur ve basınca içeri göçer.
 - `BackButton.jsx`: yuvarlak simge geri düğmesi (karar "A · Yuvarlak simge", #642).
 - `Sheet.jsx`: alttan açılan pencere. Arka plan kaymaz (#627).
 
@@ -55,13 +57,13 @@ Tailwind'de `bg-bg`, `text-mut`, `text-acc`, `border-line` gibi sınıflarla yaz
 
 - `.ck .raised`: yarı saydam beyaz kabarık düğme.
 - `.act-main`: beyaz zemin, en önemli düğme ya da bugün.
-- `.ck-sel`: seçili olan mor (#8b5cf6). `aria-pressed` ile birlikte kullanılır.
+- `.ck-sel`: seçili olan camgöbeği (#0ea5c4). `aria-pressed` ile birlikte kullanılır.
 - `.ck-glass`: yarı saydam kutu (şerit, ikincil düğme).
 - `.ck :is(.btn-round,.btn-back)`: yarı saydam yuvarlak düğme. Basınca açık renkte yanıp sönmez.
 
 ## Önemli plan
 
-Önemli plan (`isImportant`, `src/lib/planImportant.js`: elle/sesle işaretli ya da adında son tarih geçen) satırı açık mor zeminli (`bg-accbg`), alt satırın başında `ImpTag` (mor "Önemli"); tarih kutusu mor çerçeveli. Amber kullanılmaz (amber yalnız gerçek uyarı).
+Önemli plan (`isImportant`, `src/lib/planImportant.js`: elle/sesle işaretli ya da adında son tarih geçen) satırı açık vurgu zeminli (`bg-accbg`), alt satırın başında `ImpTag` (vurgu renginde "Önemli"); tarih kutusu vurgu renginde çerçeveli. Amber kullanılmaz (amber yalnız gerçek uyarı).
 
 ## Sekmeler
 
@@ -77,9 +79,9 @@ Arama kutusu ve süzgeç çipleri lacivert üstte durur: kutu `ck-glass`, çip s
 
 ## Sayfaların durumu (2026-10-21)
 
-Yeni tasarımda olanlar: Ana sayfa, Giriş (`/login`; lacivert tam ekran, iki adım, 2026-10-22), Testler (`/settings/tests`; GitHub sonucu ve Hepsini çalıştır / Seçilenler lacivertte, testler özellik özellik), Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`), Antrenman günü (`/training/day`; sayaç `Countdown dark` ile lacivertte), Yarışlar (`/athletes/races`; sıradaki yarış lacivertte), Planlar (`/plans`; bölüm başına tek liste, gün başlığı, saat + kategori çizgisi), Sporcular (`/athletes`; arama ve sınıflar lacivertte), Yoklama (`/athletes/attendance`; gün, sayılar, toplu işaret lacivertte), Yarış detay (`/athletes/races/[id]`; sekmeler lacivertte büyük düğmeler, her birinde kısa durum) ve Medya (`/media`; Antrenman / Yarış, bölüm başına 4'lü ızgara, 2026-10-22), İngilizce (`/english`; Kelimeler / Cümleler ve sayılar lacivertte, altta Sıradaki kartı, 2026-10-22). Asistan (2026-10-22, "düğmede"): tam ekran zemin yok, sayfa bulanıklaşır; alt çubuktaki düğme yerinde kalır, yanında iki adlı düğme; söylenen yazı düğmenin üstünde; mesaj, görev listesi ve kartlar kendi zeminleriyle.
+Yeni tasarımda olanlar: Ana sayfa, Giriş (`/login`; lacivert tam ekran, iki adım, 2026-10-22), Testler (`/settings/tests`; GitHub sonucu ve Hepsini çalıştır / Seçilenler lacivertte, testler özellik özellik), Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`), Antrenman günü (`/training/day`; sayaç `Countdown dark` ile lacivertte), Yarışlar (`/athletes/races`; sıradaki yarış lacivertte), Planlar (`/plans`; bölüm başına tek liste, gün başlığı, saat + kategori çizgisi), Sporcular (`/athletes`; arama ve sınıflar lacivertte), Yoklama (`/athletes/attendance`; 2026-10-22 baştan sona lacivert: son 7 gün kutuları, tek özet çizgisi, toplu işaret / sınıf / ay raporu / ses adları ⋯ penceresinde), Yarış detay (`/athletes/races/[id]`; sekmeler lacivertte büyük düğmeler, her birinde kısa durum) ve Medya (`/media`; Antrenman / Yarış, bölüm başına 4'lü ızgara, 2026-10-22), Alışveriş (`/shopping`; lacivertte Liste / Yemek, 2026-10-22) ve Velora Yemek (`/shopping?tab=yemek`, `/yemek/[id]`, `/yemek/siparis/[id]`; kod `src/yemek/ui`, fotoğraflı kartlar: kapak, ürün, yuvarlak mutfak), İngilizce (`/english`; Kelimeler / Cümleler ve sayılar lacivertte, altta Sıradaki kartı, 2026-10-22), Fitness › Sporcular (`/fitness`; baştan sona koyu `.fit-dark`, üstte salon fotoğrafı koyulaşarak kaybolur, sporcu kartında hafta halkası ve Pzt–Paz gün kutuları, 2026-10-23; Benim ve Beslenme henüz eski), Notlar (`/notes`; arama ve süzgeç lacivertte, satırda notun rengi; not tam sayfa `/notes/[id]`, kendiliğinden kaydeder, az kullanılanlar ⋯ "Not ayarları"nda, 2026-10-23), Aidatlar (`/dues`; lacivertte bu ayın alınan / beklenen tutarı ve çubuk, Ödeme ekle / Banka, arama; borcu yoksa yeşil ✓ simgesi; aylık aidat, hatırlatma, banka ⋯ "Aidat ayarları"nda, 2026-10-23), Deniz trafiği (`/sea`; lacivertte harita ve Teknem / yenileme / Acil düğmeleri, altta durum durum gemiler, 2026-10-23), Kameralar (`/cams`; lacivertte yer düğmesi ve en yakın kamera büyük, altta 2 sütun kamera kartları ve Daha fazla, 2026-10-23). Asistan (2026-10-22, "düğmede"): tam ekran zemin yok, sayfa bulanıklaşır; alt çubuktaki düğme yerinde kalır, yanında iki adlı düğme; söylenen yazı düğmenin üstünde; mesaj, görev listesi ve kartlar kendi zeminleriyle.
 
-Henüz eski tasarımda olanlar: archive, athletes alt sayfaları (sporcu detayı, yoklama raporu, yarış multimedya), birthdays, calendar, debts, dues, events, fitness, inventory, invoices, mail, messages, my-attendance, notes, payments, people, posts, receipts, schedule, settings, shopping, staff, tasks, wind.
+Henüz eski tasarımda olanlar: archive, athletes alt sayfaları (sporcu detayı, yoklama raporu, yarış multimedya), birthdays, calendar, debts, events, fitness, inventory, invoices, mail, messages, my-attendance, payments, people, posts, receipts, schedule, settings, staff, tasks, wind.
 
 Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar ✓ · Yarış detay ✓ · Planlar ✓ · Sporcular ✓ · Yoklama ✓. Sonrası Seyhun'a sorulacak.
 

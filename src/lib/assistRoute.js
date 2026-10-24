@@ -10,8 +10,13 @@ import { wantsLog, bareLog, isLogAnswer } from "@/lib/trainingLog";
 import { wantsEvent } from "@/features/events/eventWords";
 import { wantsInventory } from "@/features/inventory/invWords";
 import { athleteIn, fitLocal, guideWord, wantsFitness } from "@/lib/fitness/words";
+import { seaAsk } from "@/lib/sea";
+import { camsAsk } from "@/lib/cams";
 import { fold } from "@/lib/fitness/exercises";
 import { wantsFood } from "@/lib/fitness/food";
+import { foodOrderAsk } from "@/yemek/voice";
+import { SAMPLE_PLACES } from "@/yemek/sample";
+import { marketAsk } from "@/market/voice";
 import { bodyCommand } from "@/lib/athleteBody";
 import { wantsPost, wantsPostOpen } from "@/features/posts/postModel";
 import { raceAsk, wantsRaceOpen, findRace, raceJobHere, wantsRaceText } from "@/features/athletes/raceNav";
@@ -41,6 +46,7 @@ import { resultCommand } from "@/lib/raceVoice";
 import { attQueryAsk } from "@/lib/attQuery";
 import { clubAsk } from "@/lib/clubAsk";
 import { infoAsk } from "@/lib/infoAsk";
+import { contactScanCommand } from "@/lib/contactQr";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -55,7 +61,7 @@ export const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|
 // Yapay zeka önce: Hazır cevaplar (c.quick, lib/quickMode.js) kapalıyken soru ve kayıt cümleleri yerel kurallarla
 // cevaplanmaz; yerelde yalnız cihaz işleri kalır. yonlendirme.js'deki hızlı özet de aynı düğmeye bağlı.
 const DEVICE = new Set(["receipt", "meeting", "navigate"]);
-export const EARLY = new Set(["close", "report", "tests", "logBare", "log", "event", "inventory", "food", "fitness"]);
+export const EARLY = new Set(["close", "report", "tests", "logBare", "log", "event", "inventory", "market", "foodOrder", "food", "fitness"]);
 
 // Son eklenen işlerin (assistMore.js) hangisi: test ve öğrenme kaydı için ad; uygulamada runMore kendisi seçer
 export function moreKind(s, c = {}) {
@@ -79,6 +85,7 @@ export function moreKind(s, c = {}) {
   if (shopClearCommand(s)) return "shopClear";
   if (birthdayDeleteCommand(s)) return "bdayDelete";
   if (owner && personDeleteCommand(s)) return "personDelete";
+  if (owner && contactScanCommand(s)) return "contactScan";
   if (groupCreateCommand(s)) return "groupCreate";
   if (onRace && racer && hotelAddCommand(s)) return "hotel";
   const bc = owner && racer ? bodyCommand(s) : null;
@@ -101,7 +108,7 @@ export function moreKind(s, c = {}) {
 // c: { owner (ana hesap), isStaff, racer (sporcu/yarış yetkisi), athleteSide (sporcu/veli/öğrenci), att (yoklama yetkisi),
 //      guide (adım adım antrenman ekranı açık), myFit (sporcunun kendi fitness planı var), myFitToday (bugün var),
 //      fitPeople (ana hesap: fitness planı olan sporcular [{ uid, name }]),
-//      path, today, races, raceNames, names (kişi adları), logHere, invPage, fitHere (Fitness sayfası ya da açık fitness planı), foodHere (Fitness › Beslenme), attHere, curRace, onPost, drafts (taslak var), pending (onay kartı var),
+//      path, today, races, raceNames, names (kişi adları), logHere, invPage, fitHere (Fitness sayfası ya da açık fitness planı), foodHere (Fitness › Beslenme), foodRecent (az önce sesle yemek önerildi), attHere, curRace, onPost, drafts (taslak var), pending (onay kartı var),
 //      chatHere (sohbet ekranı açık), askedMore, invAsk, askTo, prefer, skipRace, shop (alışveriş listesi var), focus (açık kayıt/sohbet), memo (sohbet hafızası), plans, tasks, notes }
 // Dönen: [{ id, ...veri }] uygulanacak sırayla; son aday her zaman { id: "ai" }
 export function routesOf(s, c = {}) {
@@ -133,7 +140,16 @@ export function routesOf(s, c = {}) {
   // "Mete'nin kilosu 52" sporcunun ölçümüdür: Fitness sayfasında da beslenme/fitness'a gitmez
   const bodyFirst = owner && racer && bodyCommand(s)?.explicit;
   // Beslenme fitness'tan önce: Fitness sayfasında "öğlen tavuk pilav yedim", "kilom 82" yemek/kilo kaydıdır
-  if (!mf && !bodyFirst && owner && !isStaff && wantsFood(s, !!c.foodHere) && !nav(s)) add("food");
+  // Yemek siparişi (ana hesap, Velora Yemek): "yemek siparişi ver", "sen seç sipariş ver", "Pizza Rüzgar'dan karışık söyle";
+  // öneriden sonra "ilkini ver" (c.foodRecent). "pizza yedim" siparişe girmez, beslenme kaydıdır
+  // "pizza söyle" mesaj gibi görünür: kimseye değilse ("Ali'ye söyle…" değil) ve "söyle" sondaysa siparişe
+  // Market (ana hesap): "Lazanya malzemelerini sepete ekle", "marketten 2 süt ve ekmek al" (yemek siparişinden ve listeden önce)
+  const mk = !mf && owner && !isStaff ? marketAsk(s) : null;
+  if (mk) add("market", { mk });
+  const foMsg = mf && !/'(y?[ae]|n[ae])(?![\p{L}])/u.test(s) && /s[oö]yle\p{L}*[\s.!]*$/u.test(s);
+  const fo = !mk && (!mf || foMsg) && owner && !isStaff ? foodOrderAsk(s, SAMPLE_PLACES, !!c.foodRecent) : null;
+  if (fo) add("foodOrder", { fo });
+  if (!fo && !mf && !bodyFirst && owner && !isStaff && wantsFood(s, !!c.foodHere) && !nav(s)) add("food");
   // Ana hesap: "sporcular bugün antrenman yaptı mı" her yerde. Sporcu (antrenörün hazırladığı programı varsa):
   // "bugünkü antrenmanım ne", "antrenmana başla", "bu hafta kaç antrenman yaptım"; yaptım/atladım bugün fitness antrenmanı varsa
   const fl = !mf ? fitLocal(s) : null;
@@ -148,7 +164,10 @@ export function routesOf(s, c = {}) {
   const ra = !mf && owner && racer ? resultsAsk(s) : null;
   if (ra) add("results", { ra });
   if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, c.races || [], today)))) add("raceOpen");
-  if (wantsPerson(s) && !(owner && racer && athleteCommand(s)?.op === "add")) add("person");
+  if (wantsPerson(s) && !(owner && contactScanCommand(s)) && !(owner && racer && athleteCommand(s)?.op === "add")) add("person");
+  // Halka açık kameralar: "kameraları aç", "Ayvalık kameralarını göster" (isler/kamera.js); tekil "kamerayı aç" fiş kamerasıdır
+  const cq = !mf && !athleteSide ? camsAsk(s) : null;
+  if (cq) add("cams", { cq });
   const po = owner && personOpenCommand(s);
   const n = !(racer && athleteOpenCommand(s)) && !(po && matchPerson(po.name, c.names || [])) && nav(s);
   if (n) add("navigate", { nav: n });
@@ -159,6 +178,9 @@ export function routesOf(s, c = {}) {
   // İngilizce kelime çalışma: "resilient kelimesini ekle, bana çalıştır", "X kelimesini öğrendim", "çalıştığım kelimeler neler"
   const wc = !mf && !athleteSide ? wordCommand(s) : null;
   if (wc) add("words", { wc });
+  // Deniz trafiği: "yanaşan gemi var mı", "limanda kaç gemi var", "Sahil Güvenlik nerede" (isler/deniz.js)
+  const sq = !mf && !athleteSide ? seaAsk(s) : null;
+  if (sq) add("sea", { sq });
   if (c.onPost) add("postEdit");
   if (!mf && wantsSchedule(s, path === "/schedule")) add("schedule");
   const bday = !mf && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş|(?<![\p{L}])(kim|kimin|kimler|kimlerin|yaklaş\p{L}*|var mı|neler)(?![\p{L}])/iu.test(s) && parseBirthday(s);
@@ -229,6 +251,7 @@ export function routeOf(s, c = {}) {
     if (r.id === "logBare") return "log";
     if (r.id === "debt") return r.dq ? "debt(ask)" : `debt(${r.dc.op})`;
     if (r.id === "words") return `words(${r.wc.op})`;
+    if (r.id === "sea") return `sea(${r.sq.q})`;
     return r.id;
   }
   return "ai";

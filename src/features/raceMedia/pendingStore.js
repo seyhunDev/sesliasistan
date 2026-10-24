@@ -35,6 +35,14 @@ async function tx(mode, fn, store = STORE) {
 
 export const putPending = (x) => tx("readwrite", (s) => s.put(x)).catch(() => {});
 export const dropPending = (id) => tx("readwrite", (s) => s.delete(id)).catch(() => {});
+// Yüklenmeyi bekleyen hepsi (Ayarlar › Telefondaki veriler)
+export async function listAllPending() {
+  try {
+    return (await tx("readonly", (s) => s.getAll())) || [];
+  } catch {
+    return [];
+  }
+}
 export async function listPending(raceId) {
   try {
     const all = (await tx("readonly", (s) => s.getAll())) || [];

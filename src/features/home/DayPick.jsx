@@ -48,7 +48,7 @@ export function DayPick({ day, att, today, onClose }) {
   };
   const noLog = info.sail.find((p) => needsLog(p, today));
   return (
-    <Sheet open={!!day} onClose={onClose} title={title}>
+    <Sheet navy open={!!day} onClose={onClose} title={title}>
       {day && (
         <div className="flex flex-col gap-5 pb-1">
           {info.other.length > 0 && (

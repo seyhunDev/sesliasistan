@@ -24,7 +24,7 @@ const typing = () => {
 // Sayfanın en üst katmanına (body) çizilir: kaydırılan ya da soldurma maskeli bir kutunun (ör. asistan sahnesi)
 // içinden açılsa da kırpılmaz, altında kalmaz.
 // Aşağı çekme tutamaçtan/başlıktan her zaman, içerikten yalnızca içerik en üstteyken çalışır.
-export function Sheet({ open, onClose, title, children }) {
+export function Sheet({ open, onClose, title, navy, children }) {
   const [dy, setDy] = useState(0);
   const drag = useRef(null); // { y, t, fromContent }
   const bodyRef = useRef(null);
@@ -83,7 +83,7 @@ export function Sheet({ open, onClose, title, children }) {
         style={open && dragging ? { transform: `translateY(${dy}px)`, transition: "none" } : undefined}
         className={`fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-[30rem] transition-transform duration-300 ease-out ${open ? "translate-y-0" : "translate-y-full"}`}
       >
-        <div className="flex max-h-[90dvh] flex-col rounded-t-3xl bg-card pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+        <div data-theme={navy ? "dark" : undefined} className={`flex max-h-[90dvh] flex-col rounded-t-3xl pb-[calc(1.25rem+env(safe-area-inset-bottom))] ${navy ? "navy" : "bg-card"}`}>
           {/* Tutamaç + başlık + X: buradan her zaman aşağı çekilebilir */}
           <div onTouchStart={start(false)} onTouchMove={move} onTouchEnd={end} className="shrink-0 touch-none px-5 pt-3">
             <div className="mx-auto h-1 w-9 rounded-full bg-line" />

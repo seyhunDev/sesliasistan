@@ -85,13 +85,20 @@ export async function run(server, log = () => {}) {
   }
 
   let slowWrites = 0; // >0: sunucu yazma onayı bu kadar ms gecikir (zayıf ama var olan bağlantı)
+  let stall = 0; // >0: sıradaki bu kadar yazma isteği asılı kalır (iPhone'da arkadan dönünce takılan bağlantı)
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "tr-TR", timezoneId: "Europe/Istanbul", serviceWorkers: "block" });
   await ctx.addInitScript(INIT({ sha }));
   await ctx.addInitScript(WATCH);
   await ctx.route("**/*", async (route) => {
     const u = new URL(route.request().url());
     if (u.hostname !== "localhost" && u.hostname !== "127.0.0.1") return route.abort();
-    if (slowWrites && /Firestore\/Write\/channel/.test(u.pathname) && route.request().method() === "POST") await sleep(slowWrites);
+    const writeReq = /Firestore\/Write\/channel/.test(u.pathname) && route.request().method() === "POST";
+    if (writeReq && stall > 0) {
+      stall--;
+      await sleep(90000);
+      return route.abort().catch(() => {});
+    }
+    if (slowWrites && writeReq) await sleep(slowWrites);
     if (u.pathname.startsWith("/api/") && u.pathname !== "/api/version") return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
     return route.continue();
   });
@@ -157,6 +164,22 @@ export async function run(server, log = () => {}) {
       return [t.length === 0, t.join(" | ") || "yok"];
     });
     slowWrites = 0;
+
+    // 2b) Bağlantı asılı kaldı (internet var): şerit bir kez kısa görünür, kapanır; bağlantı yenilenir, kayıt gider
+    G = "Takılan bağlantı";
+    await page.evaluate(() => (window.__net = []));
+    stall = 1;
+    await addItem(page, "Pirinç");
+    await check(G, "kayıt gider (bağlantı kendiliğinden yenilenir)", "Pirinç sunucuda", () => until(async () => (await serverItems(ids.owner)).includes("Pirinç"), 40000));
+    await sleep(1500);
+    await check(G, "şerit", "en çok bir kez, kısa; takılı kalmaz", async () => {
+      const log = await page.evaluate(() => window.__net);
+      const on = log.filter((x) => x.t);
+      const off = log.find((x, i) => i > 0 && !x.t && log[i - 1].t);
+      const ms = on.length && off ? off.at - on[0].at : -1;
+      return [on.length <= 1 && (!on.length || (ms > 0 && ms < 6000)) && !log.at(-1)?.t, log.map((x) => x.t || "(kapalı)").join(" → ") + (ms >= 0 ? ` · ${ms} ms` : "")];
+    });
+    stall = 0;
 
     // 3) İnternet yok: kayıt takılmadan telefona yazılır, sakin şerit, sunucuya gitmez
     G = "İnternet yok";

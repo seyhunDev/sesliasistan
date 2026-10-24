@@ -6,7 +6,7 @@ import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { CockpitWind } from "@/features/home/CockpitWind";
 import { todayStr } from "@/lib/utils/format";
-import { dayHours, getPlace, nowOf, placeLabel, sky, windName, compareLinks } from "./weather";
+import { dayHours, getPlace, kn, nowOf, placeLabel, sky, windName, compareLinks } from "./weather";
 import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { WindArrow } from "./parts";
 
@@ -27,7 +27,6 @@ export function WeatherTop({ w, refresh }) {
   const info = all.find((d) => d.date === sel) || all[0];
   const isToday = sel === all[0]?.date;
   const n = isToday ? nowOf(w) : null;
-  const peak = rows.length ? rows.reduce((a, h) => (h.gust > a.gust ? h : a), rows[0]) : null;
   const top = rows.length ? rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]) : null;
   const place = getPlace();
   const st = useWindObs(place, sel, today)?.station;
@@ -53,14 +52,12 @@ export function WeatherTop({ w, refresh }) {
               <b className="block truncate text-[0.9375rem] font-semibold">{sky(v.code, v.day).label}</b>
               <small className="block truncate text-[0.8125rem] text-white/65 tabular-nums">
                 {info ? `${info.min}° / ${info.max}°` : ""}
-                {peak ? ` · ${peak.hh}:00 ${peak.gust} kn` : ""}
               </small>
             </span>
             <span className="shrink-0 text-right leading-tight">
               <small className="block text-[0.75rem] text-white/65">{windName(v.dir)[0]} · {isToday ? "şimdi" : `en sert ${top.hh}:00`}</small>
               <b className="text-[1.375rem] font-bold tracking-[-.02em] tabular-nums">
-                {v.wind}
-                {v.gust > v.wind && <span className="font-medium text-white/60">–{v.gust}</span>}
+                {kn(v.wind, v.gust)}
                 <span className="text-[0.8125rem] font-medium text-white/60"> kn</span>
               </b>
             </span>
@@ -72,7 +69,7 @@ export function WeatherTop({ w, refresh }) {
             const on = d.date === sel;
             const dt = new Date(`${d.date}T12:00:00`);
             return (
-              <button key={d.date} type="button" data-press aria-pressed={on} onClick={() => setSel(d.date)} className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 ${on ? "bg-white text-[#141938]" : ""}`}>
+              <button key={d.date} type="button" data-press aria-pressed={on} onClick={() => setSel(d.date)} className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 ${on ? "bg-white text-[#11203a]" : ""}`}>
                 <small className={`text-[0.75rem] font-semibold capitalize ${on ? "" : "text-white/60"}`}>{i === 0 ? "Bugün" : dt.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "")}</small>
                 <b className="text-[1.5rem] font-bold leading-none tracking-[-.03em] tabular-nums">{dt.getDate()}</b>
                 <Icon name={sky(d.code).icon} className="mt-0.5 size-4" />
@@ -105,8 +102,7 @@ export function WeatherTop({ w, refresh }) {
                   }
                   right={
                     <b className={`text-[0.9375rem] font-semibold tabular-nums ${h.wind >= 17 ? "text-warn" : ""}`}>
-                      {h.wind}
-                      {h.gust > h.wind && <span className="font-normal text-mut">–{h.gust}</span>}
+                      {kn(h.wind, h.gust)}
                       <span className="text-[0.75rem] font-normal text-mut"> kn</span>
                     </b>
                   }
