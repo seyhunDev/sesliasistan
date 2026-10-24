@@ -9,6 +9,7 @@ import { readTimer, useTimer } from "@/features/training/Countdown";
 import { bridgeVibrate } from "@/lib/haptic";
 import { iosApp, onOpen, showTimer, syncAlarms, takeOpen } from "@/lib/nativeIos";
 import { alarmItems } from "@/lib/planAlarm";
+import { WatchBridge } from "./WatchBridge";
 import { WidgetFeed } from "./WidgetFeed";
 
 // iPhone uygulamasının yerel parçalarını web'e bağlar (uygulama düzeninde bir kez durur; tarayıcıda hiçbir şey yapmaz):
@@ -17,6 +18,7 @@ import { WidgetFeed } from "./WidgetFeed";
 // - plan alarmları (lib/planAlarm.js) telefona kurulur, plan değişince yeniden eşitlenir
 // - widget'lar planları, sayacı, mesajları, hesabı ve günün kelimesini alır (WidgetFeed); dokununca ilgili sayfa açılır ("go:/yol")
 // - eski navigator.vibrate çağrıları Taptic olur (lib/haptic.js)
+// - Apple Watch: saatten asistana iş ve tek sayaç (WatchBridge)
 export function IosBridge() {
   const router = useRouter();
   const toast = useToast();
@@ -78,7 +80,12 @@ export function IosBridge() {
     return () => (clearTimeout(id), document.removeEventListener("visibilitychange", vis));
   }, [alarmKey, uid, toast]);
 
-  return ios ? <WidgetFeed timer={state && { ...state, title }} /> : null;
+  return ios ? (
+    <>
+      <WidgetFeed timer={state && { ...state, title }} />
+      <WatchBridge />
+    </>
+  ) : null;
 }
 
 const noSub = () => () => {};

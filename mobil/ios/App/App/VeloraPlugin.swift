@@ -14,6 +14,7 @@ import AlarmKit
 // - alarmSync: planların alarmları; iOS 26'da saat alarmı (AlarmKit, sessiz modda da çalar), eski iOS'ta bildirim
 // - haptic, biometry / unlock (Face ID kilidi), widgetData (ana ekran widget'ı): VeloraDokunus.swift
 // - camera: üstünde sayaç akan iPhone kamerası (Medya › Kayıt): VeloraKamera.swift
+// - watch olayı / watchTake, watchReply, watchState: Apple Watch'tan asistana iş ve tek sayaç (VeloraSaatKoprusu.swift)
 @objc(VeloraPlugin)
 public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "VeloraPlugin"
@@ -29,10 +30,34 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "unlock", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "widgetData", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "camera", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "watchTake", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "watchReply", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "watchState", returnType: CAPPluginReturnPromise),
     ]
 
     override public func load() {
         NotificationCenter.default.addObserver(self, selector: #selector(bekleyen), name: Bekleyen.olay, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(saatIstegi), name: SaatKoprusu.olay, object: nil)
+    }
+
+    // Saatten gelen istek sayfa dinliyorsa hemen gider; dinlemiyorsa watchTake ile alınır
+    @objc func saatIstegi() {
+        guard hasListeners("watch") else { return }
+        for json in SaatKoprusu.shared.al() { notifyListeners("watch", data: ["json": json]) }
+    }
+
+    @objc func watchTake(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { call.resolve(["list": SaatKoprusu.shared.al()]) }
+    }
+
+    @objc func watchReply(_ call: CAPPluginCall) {
+        SaatKoprusu.shared.cevap(call.getString("id", ""), json: call.getString("json", "{}"))
+        call.resolve()
+    }
+
+    @objc func watchState(_ call: CAPPluginCall) {
+        SaatKoprusu.shared.durum(call.getString("json", "{}"))
+        call.resolve()
     }
 
     // Sayfa dinliyorsa istek hemen iletilir; dinlemiyorsa (yükleniyor) takeOpen ile alınana kadar bekler
