@@ -1,8 +1,8 @@
-Commit: 3e4e4a0 · Deniz trafiği: harita yalnız MarineTraffic, VesselFinder ve kaynak seçimi kalktı (#794)
-Zaman: 2026-10-24-1122 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40077174621
+Commit: a07b70b · Market: hazır menüde fotoğraflı üst, tarif, ölçülü set, markalı paketler ve marka değiştirme (#795)
+Zaman: 2026-10-24-1755 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40103952868
 
-TAM TEST · 24.10.2026 11:13:41
+TAM TEST · 24.10.2026 17:46:20
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 488 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 473 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
