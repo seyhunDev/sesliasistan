@@ -13,6 +13,7 @@ import AlarmKit
 // - timerShow / timerEnd: kilit ekranı ve Dynamic Island'da sayaç (iOS 16.2+)
 // - alarmSync: planların alarmları; iOS 26'da saat alarmı (AlarmKit, sessiz modda da çalar), eski iOS'ta bildirim
 // - haptic, biometry / unlock (Face ID kilidi), widgetData (ana ekran widget'ı): VeloraDokunus.swift
+// - camera: üstünde sayaç akan iPhone kamerası (Medya › Kayıt): VeloraKamera.swift
 @objc(VeloraPlugin)
 public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "VeloraPlugin"
@@ -27,6 +28,7 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "biometry", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "unlock", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "widgetData", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "camera", returnType: CAPPluginReturnPromise),
     ]
 
     override public func load() {
