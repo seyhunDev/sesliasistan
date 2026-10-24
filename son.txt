@@ -1,8 +1,8 @@
-Commit: e20e22e · Ana sayfa: Kulüp yemek kartının üstünde ikili kutular (A · Kutular) (#802)
-Zaman: 2026-10-24-2154 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40122147788
+Commit: 2dbcb94 · Alışveriş: Market düğmesi Velora Sanal'ı açar, Market yönetimi Liste ⋯ içinde (#806)
+Zaman: 2026-10-24-2322 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40128691377
 
-TAM TEST · 24.10.2026 21:45:46
+TAM TEST · 24.10.2026 23:13:35
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 487 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 462 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
