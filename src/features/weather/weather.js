@@ -46,6 +46,9 @@ export function compareLinks(p = getPlace()) {
 }
 
 // WMO hava kodu -> Türkçe ad + simge
+// Rüzgâr ve sağanak tek yerde, "alt rüzgâr–sağanak" (Seyhun 2026-10-24: "2-4 knot gibi, 4'ün sağanak olduğunu anlarım"): 2–4, sağanak yoksa 2
+export const kn = (wind, gust) => (gust != null && gust > wind ? `${wind}–${gust}` : `${wind ?? ""}`);
+
 export function sky(code, day = true) {
   if (code === 0) return { label: "Açık", icon: day ? "sun" : "moon" };
   if (code === 1 || code === 2) return { label: code === 1 ? "Az bulutlu" : "Parçalı bulutlu", icon: day ? "cloudSun" : "cloud" };

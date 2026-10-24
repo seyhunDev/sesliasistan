@@ -4,7 +4,7 @@ import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
 import { useWindObs } from "@/features/weather/useWindObs";
 import { OBS } from "@/features/weather/DaySheet";
-import { PLACE, getPlace, sky } from "@/features/weather/weather";
+import { PLACE, getPlace, kn, sky } from "@/features/weather/weather";
 
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
 const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: PLACE.tz });
@@ -13,7 +13,8 @@ const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23
 // yön, hava durumu; hangi saatte ne olduğunu net bilmem gerek"; onaylanan örnek ana-sayfa/futuristik/c2-kokpit-ruzgar.png).
 // Dolu mor alan rüzgâr, açık mor alan ve kesik çizgi sağanak; üstte 2 saatte bir yön oku (rüzgârın estiği yöne bakar, 17 kn ve üstü turuncu),
 // altında 3 saatte bir saat, gökyüzü, sıcaklık ve "rüzgâr–sağanak" kn. Kırmızı "şimdi" noktası dakikaya göre saatler arasında durur.
-// Yakında istasyon varsa geçmiş saatlerde ölçülen rüzgâr mavi gölge + kesik mavi sağanak (hava sayfasındaki grafikle aynı kural).
+// Yakında istasyon varsa geçmiş saatlerde ölçülen rüzgâr mavi gölge + kesik mavi sağanak; o saatlerin altındaki yazı da ölçülen "rüzgâr–sağanak" (mavi).
+// Ayrı "en sert sağanak" yazısı yok (Seyhun 2026-10-24: rüzgâr ve sağanak tek yerde, "2–4 kn").
 // Açılışta grafik soldan sağa 0,9 sn'de çizilir (globals.css .ck-draw); hareket azaltılmışsa çizilmeden gelir. Hava sayfasındaki grafik (WindChart) değişmez.
 const W = 340, L = 6, R = 22, T = 26, H = 132, B = 4;
 export function CockpitWind({ rows, date }) {
@@ -40,10 +41,6 @@ export function CockpitWind({ rows, date }) {
   const ni = Math.floor(nowAt);
   const nowV = nowAt >= 0 ? rows[ni].wind + ((rows[ni + 1]?.wind ?? rows[ni].wind) - rows[ni].wind) * (nowAt - ni) : null;
   const ticks = [5, 10, 15, 20, 25, 30].filter((v) => v < top);
-  // Günün en sert sağanağı (Seyhun 2026-10-22): şimdi çizgisinden soluk dikey çizgi, tepesinde küçük nokta, yanında "15:00 · 23 kn".
-  // Yazı çizginin sağında; grafiğin sağ yarısındaysa solunda. Eskiden sıcaklığın yanında yazıyordu.
-  const pk = rows.reduce((a, h, i) => (h.gust > rows[a].gust ? i : a), 0);
-  const pkRight = x(pk) < (W - R) / 2;
   return (
     <div className="ck-wind">
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img" aria-label="Bugünün saatlik rüzgâr grafiği">
@@ -77,15 +74,6 @@ export function CockpitWind({ rows, date }) {
           {got.length > 1 && <path d={oLine} fill="none" stroke="#9cc3ee" strokeWidth="1.3" />}
           {oGust && <path d={oGust} fill="none" stroke="#9cc3ee" strokeWidth="1.3" strokeDasharray="3 3" />}
         </g>
-        {rows[pk].gust > 0 && (
-          <g>
-            <line x1={x(pk)} x2={x(pk)} y1={y(rows[pk].gust)} y2={y(0)} stroke="#fff" strokeOpacity=".4" strokeWidth="1" strokeDasharray="2 3" />
-            <circle cx={x(pk)} cy={y(rows[pk].gust)} r="2.6" fill="#fff" fillOpacity=".8" />
-            <text x={x(pk) + (pkRight ? 6 : -6)} y={y(rows[pk].gust) + 3.5} textAnchor={pkRight ? "start" : "end"} fontSize="10" fontWeight="600" fill="#fff" fillOpacity=".85" stroke="#12213f" strokeWidth="3" strokeLinejoin="round" paintOrder="stroke">
-              {`${rows[pk].hh}:00 · ${rows[pk].gust} kn`}
-            </text>
-          </g>
-        )}
         {nowV != null && (
           <g>
             <line x1={x(nowAt)} x2={x(nowAt)} y1={T - 6} y2={y(0)} stroke="#ff6b6b" strokeWidth="1.3" strokeDasharray="2 2" />
@@ -94,20 +82,18 @@ export function CockpitWind({ rows, date }) {
           </g>
         )}
       </svg>
-      {/* 3 saatte bir: saat, gökyüzü, sıcaklık, rüzgâr–sağanak (kn); grafikteki saatin tam altında */}
+      {/* 3 saatte bir: saat, gökyüzü, sıcaklık, "rüzgâr-sağanak" (kn, ölçülen de aynı biçimde); grafikteki saatin tam altında */}
       <div className="relative mt-1.5 h-[4.6rem]">
         {rows.map((h, k) => {
           if (+h.hh % 3) return null;
           const s = sky(h.code, h.day);
+          const o = obs[k]; // geçmiş saatte ölçülen varsa onu yaz (mavi), yoksa tahmin
           return (
             <span key={h.time} className="absolute top-0 flex -translate-x-1/2 flex-col items-center gap-[3px] leading-none tabular-nums" style={{ left: `${(x(k) / W) * 100}%` }}>
               <span className="text-[0.6875rem] font-semibold text-white/55">{h.hh}</span>
               <Icon name={s.icon} className={`size-[1.05rem] ${CK_SKY[s.icon] || "text-white/80"}`} />
               <span className="text-[0.75rem] font-semibold">{h.t}°</span>
-              <span className="whitespace-nowrap text-[0.6875rem] font-bold">
-                {h.wind}
-                {h.gust > h.wind && <span className="font-medium text-white/55">–{h.gust}</span>}
-              </span>
+              <span className={`whitespace-nowrap text-[0.6875rem] font-bold ${o ? "text-[#9cc3ee]" : ""}`}>{kn(o ? o.wind : h.wind, o ? o.gust : h.gust)}</span>
             </span>
           );
         })}

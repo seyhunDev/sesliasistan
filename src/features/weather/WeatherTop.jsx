@@ -6,7 +6,7 @@ import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { CockpitWind } from "@/features/home/CockpitWind";
 import { todayStr } from "@/lib/utils/format";
-import { dayHours, getPlace, nowOf, placeLabel, sky, windName, compareLinks } from "./weather";
+import { dayHours, getPlace, kn, nowOf, placeLabel, sky, windName, compareLinks } from "./weather";
 import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { WindArrow } from "./parts";
 
@@ -57,8 +57,7 @@ export function WeatherTop({ w, refresh }) {
             <span className="shrink-0 text-right leading-tight">
               <small className="block text-[0.75rem] text-white/65">{windName(v.dir)[0]} · {isToday ? "şimdi" : `en sert ${top.hh}:00`}</small>
               <b className="text-[1.375rem] font-bold tracking-[-.02em] tabular-nums">
-                {v.wind}
-                {v.gust > v.wind && <span className="font-medium text-white/60">–{v.gust}</span>}
+                {kn(v.wind, v.gust)}
                 <span className="text-[0.8125rem] font-medium text-white/60"> kn</span>
               </b>
             </span>
@@ -103,8 +102,7 @@ export function WeatherTop({ w, refresh }) {
                   }
                   right={
                     <b className={`text-[0.9375rem] font-semibold tabular-nums ${h.wind >= 17 ? "text-warn" : ""}`}>
-                      {h.wind}
-                      {h.gust > h.wind && <span className="font-normal text-mut">–{h.gust}</span>}
+                      {kn(h.wind, h.gust)}
                       <span className="text-[0.75rem] font-normal text-mut"> kn</span>
                     </b>
                   }
