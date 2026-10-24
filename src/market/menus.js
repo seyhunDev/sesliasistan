@@ -77,7 +77,7 @@ export function addRequests(reqs = {}, names = [], from = "", at = new Date().to
 }
 
 // Elle yazılan malzeme satırı: "500 g dana kıyma", "2 adet soğan", "Muskat", "Süt - 1 L", "1. Un" → { name, amount, qty }
-const UNIT = "(?:kg|g|gr|gram|l|lt|litre|ml|adet|paket|kutu|demet|diş|tutam|su bardağı|yemek kaşığı|çay kaşığı|tatlı kaşığı|bardak|kaşık)";
+const UNIT = "(?:kg|g|gr|gram|l|lt|litre|ml|adet|paket|kutu|kavanoz|şişe|demet|bağ|dal|yaprak|dilim|diş|tutam|avuç|fincan|su bardağı|çay bardağı|yemek kaşığı|çay kaşığı|tatlı kaşığı|bardak|kaşık)";
 export function parseIngredient(line = "") {
   const s = line.trim().replace(/^[-•*]\s*/u, "").replace(/^\d+[.)]\s+/u, "").trim();
   if (!s) return null;
@@ -93,3 +93,20 @@ export function parseIngredient(line = "") {
   return { name: cap(s), amount: "", qty: 1 };
 }
 const cap = (s) => s.charAt(0).toLocaleUpperCase("tr") + s.slice(1);
+
+// Yapay zeka cevabını temizle (/api/market-menu): { name, serves, items: [{ name, amount, qty }] }
+export function cleanMenu(raw) {
+  const items = (Array.isArray(raw?.items) ? raw.items : [])
+    .map((x) => ({ name: cap(String(x?.name || "").trim().slice(0, 60)), amount: String(x?.amount || "").trim().slice(0, 40), qty: Math.max(1, Math.min(20, Math.round(Number(x?.packs) || 1))) }))
+    .filter((x) => x.name)
+    .filter((x, i, l) => l.findIndex((y) => fold(y.name) === fold(x.name)) === i)
+    .slice(0, 25);
+  const serves = Math.max(1, Math.min(20, Math.round(Number(raw?.serves) || 4)));
+  return { name: cap(String(raw?.name || "").trim().slice(0, 60)), serves, items };
+}
+// Forma yazılacak satır: "500 g Dana kıyma"; miktarsız ve paket sayısı 1'den çoksa "2 paket …"
+// Miktar sayıyla başlamıyorsa ("birkaç yaprak") ad önde yazılır: "Fesleğen - birkaç yaprak" (parseIngredient ikisini de okur)
+export function itemLine(i) {
+  if (!i.amount) return i.qty > 1 ? `${i.qty} paket ${i.name}` : i.name;
+  return /^(\d|(yarım|bir|iki|üç|dört|beş)\s)/iu.test(i.amount) ? `${i.amount} ${i.name}` : `${i.name} - ${i.amount}`;
+}

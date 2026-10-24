@@ -16,6 +16,7 @@ import { fold } from "@/lib/fitness/exercises";
 import { wantsFood } from "@/lib/fitness/food";
 import { foodOrderAsk } from "@/yemek/voice";
 import { SAMPLE_PLACES } from "@/yemek/sample";
+import { marketAsk } from "@/market/voice";
 import { bodyCommand } from "@/lib/athleteBody";
 import { wantsPost, wantsPostOpen } from "@/features/posts/postModel";
 import { raceAsk, wantsRaceOpen, findRace, raceJobHere, wantsRaceText } from "@/features/athletes/raceNav";
@@ -60,7 +61,7 @@ export const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|
 // Yapay zeka önce: Hazır cevaplar (c.quick, lib/quickMode.js) kapalıyken soru ve kayıt cümleleri yerel kurallarla
 // cevaplanmaz; yerelde yalnız cihaz işleri kalır. yonlendirme.js'deki hızlı özet de aynı düğmeye bağlı.
 const DEVICE = new Set(["receipt", "meeting", "navigate"]);
-export const EARLY = new Set(["close", "report", "tests", "logBare", "log", "event", "inventory", "foodOrder", "food", "fitness"]);
+export const EARLY = new Set(["close", "report", "tests", "logBare", "log", "event", "inventory", "market", "foodOrder", "food", "fitness"]);
 
 // Son eklenen işlerin (assistMore.js) hangisi: test ve öğrenme kaydı için ad; uygulamada runMore kendisi seçer
 export function moreKind(s, c = {}) {
@@ -142,8 +143,11 @@ export function routesOf(s, c = {}) {
   // Yemek siparişi (ana hesap, Velora Yemek): "yemek siparişi ver", "sen seç sipariş ver", "Pizza Rüzgar'dan karışık söyle";
   // öneriden sonra "ilkini ver" (c.foodRecent). "pizza yedim" siparişe girmez, beslenme kaydıdır
   // "pizza söyle" mesaj gibi görünür: kimseye değilse ("Ali'ye söyle…" değil) ve "söyle" sondaysa siparişe
+  // Market (ana hesap): "Lazanya malzemelerini sepete ekle", "marketten 2 süt ve ekmek al" (yemek siparişinden ve listeden önce)
+  const mk = !mf && owner && !isStaff ? marketAsk(s) : null;
+  if (mk) add("market", { mk });
   const foMsg = mf && !/'(y?[ae]|n[ae])(?![\p{L}])/u.test(s) && /s[oö]yle\p{L}*[\s.!]*$/u.test(s);
-  const fo = (!mf || foMsg) && owner && !isStaff ? foodOrderAsk(s, SAMPLE_PLACES, !!c.foodRecent) : null;
+  const fo = !mk && (!mf || foMsg) && owner && !isStaff ? foodOrderAsk(s, SAMPLE_PLACES, !!c.foodRecent) : null;
   if (fo) add("foodOrder", { fo });
   if (!fo && !mf && !bodyFirst && owner && !isStaff && wantsFood(s, !!c.foodHere) && !nav(s)) add("food");
   // Ana hesap: "sporcular bugün antrenman yaptı mı" her yerde. Sporcu (antrenörün hazırladığı programı varsa):

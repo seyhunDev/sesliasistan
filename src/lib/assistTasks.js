@@ -94,6 +94,7 @@ export const TASKS = [
   { id: "debt", group: "Diğer", name: "Borçlar", say: "Ali'ye 500 lira borç verdim; kulüpten Ahmet'e 2 bin lira borç verildi; Ali 200 lirasını geri verdi; kime ne kadar borç verdim; Ali'nin borcunu sil (onayla)", who: "ana", by: "yerel" },
   { id: "words", group: "Diğer", name: "İngilizce kelime çalışma", say: "resilient kelimesini ekle, bana çalıştır; resilient kelimesini öğrendim; çalıştığım kelimeler neler; kelimeleri her gün göster", who: "herkes", by: "yerel" },
   { id: "foodOrder", group: "Diğer", name: "Yemek siparişi", say: "yemek siparişi ver; sen seç sipariş ver; Pizza Rüzgar'dan karışık söyle; ilkini ver", who: "ana", by: "yerel" },
+  { id: "market", group: "Diğer", name: "Market sepeti", say: "Lazanya malzemelerini sepete ekle; bu akşam karnıyarık yapacağım malzemeleri al; marketten 2 süt ve ekmek al", who: "ana", by: "yerel" },
   { id: "shopping", group: "Diğer", name: "Alışveriş listesi (ekle, alındı, sil, oku)", say: "listeye süt ekle, ekmek alındı", who: "herkes", by: "yerel" },
   { id: "cams", group: "Diğer", name: "Kameralar (halka açık canlı kameralar)", say: "kameraları aç; Ayvalık kameralarını göster; Midilli'deki kameralar", who: "yönetici", by: "yerel" },
   { id: "sea", group: "Diğer", name: "Deniz trafiği (gemiler, Sahil Güvenlik, acil)", say: "yanaşan gemi var mı; limanda kaç gemi var; Sahil Güvenlik nerede; deniz trafiğini aç", who: "yönetici", by: "yerel" },

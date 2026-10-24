@@ -613,7 +613,7 @@ group("Göreve göre ara yazı")([
     ["envantere 3 telsiz ekle", { desc: "envanter ekleme", fn: inventoryWork, ok: (w) => w === "Envantere ekleniyor" }],
     ["2 şamandıra kayboldu", { desc: "envanterden çıkarma", fn: inventoryWork, ok: (w) => w === "Envanterden çıkarılıyor" }],
     ["kaç telsiz var", { desc: "envanter sorusu", fn: inventoryWork, ok: (w) => w === "Envantere bakılıyor" }],
-    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 3000 && /envanter/i.test(p) }], // 2026-10-18: +rüzgâr kaydı, start sayacı; 2026-10-19: +sohbet arşivi; 2026-10-20: +yoklama, kulüp, fatura/harcama/mesaj sorusu; 2026-10-23: +yemek siparişi
+    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 3100 && /envanter/i.test(p) }], // 2026-10-18: +rüzgâr kaydı, start sayacı; 2026-10-19: +sohbet arşivi; 2026-10-20: +yoklama, kulüp, fatura/harcama/mesaj sorusu; 2026-10-23: +yemek siparişi; 2026-10-24: +market sepeti
   ]);
 }
 
