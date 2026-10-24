@@ -15,13 +15,17 @@ export function widgetPlans(plans, { uid, ownerId, today }) {
     .slice(0, 8);
 }
 
-// Antrenman: bugünkü ya da sıradaki antrenman planı (dokununca /training/day?id=… Süre ekranı): { id, title, date, time, place }
-export function widgetTraining(plans, { uid, ownerId, today }) {
-  const p = upcoming(plans, { uid, ownerId, today })
-    .filter((x) => isTraining(x) && x.date >= today)
-    .sort((a, b) => when(a).localeCompare(when(b)))[0];
-  return p ? { id: p.id, title: String(p.title || "Antrenman").slice(0, 40), date: p.date, time: p.time || "", place: String(p.place || "").slice(0, 30) } : null;
+// Antrenmanlar: bugünkü ve sıradaki antrenman planları, en çok 3 (dokununca /training/day?id=… Süre ekranı): [{ id, title, date, time, place }].
+// Ana sayfadaki gibi kime atandığına bakılmaz (antrenman sporculara atanır; Seyhun 2026-10-24: "yarın antrenman var, widget yok diyor").
+// Bugünkü antrenman bitirilene (done) kadar gün boyu kalır; widget geçmiş günleri kendisi düşer.
+export function widgetTrainings(plans, { today }) {
+  return (plans || [])
+    .filter((p) => isTraining(p) && p?.date >= today && !p.done && p.status !== "done" && p.status !== "cancelled")
+    .sort((a, b) => when(a).localeCompare(when(b)))
+    .slice(0, 3)
+    .map((p) => ({ id: p.id, title: String(p.title || "Antrenman").slice(0, 40), date: p.date, time: p.time || "", place: String(p.place || "").slice(0, 30) }));
 }
+export const widgetTraining = (plans, opts) => widgetTrainings(plans, opts)[0] || null;
 
 // Hesap: ana sayfadaki Hesap satırının aynısı (features/home/TeamMoney.jsx useMoney().bank): { big, label, sub }
 export const widgetMoney = (bank) => (bank ? { big: bank.big, label: bank.label, sub: bank.sub || "" } : null);
