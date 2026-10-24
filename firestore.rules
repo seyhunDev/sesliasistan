@@ -91,6 +91,14 @@ service cloud.firestore {
       match /yemek/ayar {
         allow read: if isCourier(orgId);
       }
+      // Velora Sanal (velora-sanal deposu): çalışan ve aile bireyi market kataloğunu ve yalnız kendi market siparişlerini okur
+      // (sorgu where uid == kendi uid). Sipariş ve iptal velora-sanal /api/siparis'ten (sunucu) yazılır.
+      match /market/katalog {
+        allow read: if isStaff(orgId) && myKind() in ["staff", "family"];
+      }
+      match /marketSiparisler/{id} {
+        allow read: if isStaff(orgId) && myKind() in ["staff", "family"] && resource.data.get("uid", "") == request.auth.uid;
+      }
       // Doğum günleri kişiye özel: ana hesap yalnızca kendi eklediklerini okur/yazar
       match /birthdays/{id} {
         allow read, update, delete: if isOwner(orgId) && resource.data.get("createdByUid", null) == request.auth.uid;
