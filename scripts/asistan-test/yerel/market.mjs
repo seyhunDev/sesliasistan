@@ -1,6 +1,6 @@
 // Velora Market (src/market): örnek ürünler, arama, sepet, stok (bekleyen, teslim, iptal).
 import { SAMPLE_PRODUCTS, AISLES } from "@/market/sample";
-import { search, bump, cartTotal, cartCount, free, holdFor, deliverFor, releaseFor, stockStep, linesText, makeLine } from "@/market/catalog";
+import { search, bump, cartTotal, cartCount, free, holdFor, deliverFor, releaseFor, stockStep, linesText, makeLine, newId, productProblem, NEXT } from "@/market/catalog";
 import { suite } from "./ortak.mjs";
 
 const { group } = suite("market");
@@ -36,4 +36,10 @@ group("Stok")([
   ["tükenen ürün", { desc: "Hindistan cevizi sütü stok 0", fn: () => holdFor(MAP, [makeLine(hcs, 1)]).short?.[0], ok: (g) => g === "Hindistan cevizi sütü: tükendi" }],
   ["fiyat katalogdan", { desc: "sepette eski fiyat 30 → katalogdaki 42", fn: () => holdFor(MAP, [{ ...makeLine(sut, 1), price: 30, total: 30 }]).total, ok: (g) => g === 42 }],
   ["durum geçişleri", { desc: "teslim → düş, iptal → aç, yolda → yok, teslimden sonra → yok", fn: () => [stockStep("onTheWay", "delivered"), stockStep("sent", "cancelled"), stockStep("sent", "onTheWay"), stockStep("delivered", "cancelled")], ok: (g) => g.join() === "deliver,release,," }],
+]);
+
+group("Yönetim")([
+  ["yeni ürün kimliği", { desc: "\"Süt 1 L\" var → sut-1-l-2; \"Muskat 50 g\" → muskat-50-g", fn: () => [newId(MAP, "Süt", "1 L"), newId(MAP, "Muskat", "50 g")], ok: (g) => g[0] === "sut-1-l-2" && g[1] === "muskat-50-g" }],
+  ["form denetimi", { desc: "ad yok → \"Ad yaz\", fiyat yok → \"Fiyat yaz\", tamam → \"\"", fn: () => [productProblem({ name: "", price: 5, stock: 1 }), productProblem({ name: "Muskat", price: "", stock: 1 }), productProblem({ name: "Muskat", price: "45", stock: "10" })], ok: (g) => g.join("|") === "Ad yaz|Fiyat yaz|" }],
+  ["sipariş adımları", { desc: "Gönderildi › Hazırla › Yola çıkar › Teslim edildi", fn: () => [NEXT.sent[1], NEXT.preparing[1], NEXT.onTheWay[1], NEXT.delivered], ok: (g) => g[0] === "Hazırla" && g[1] === "Yola çıkar" && g[2] === "Teslim edildi" && !g[3] }],
 ]);

@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
+import { Sheet } from "@/components/ui/Sheet";
+import { buttonClass } from "@/components/ui/buttonClass";
 import { ListHead, RowList, Row, SkelRow } from "@/components/ui/Row";
 import { AISLES, aisleName } from "../sample";
 import { LOW, STATUS_NAMES, bump, cartCount, cartTotal, free, isOpenOrder, linesText, search, tl } from "../catalog";
@@ -20,6 +22,7 @@ export function MarketHome({ orgId, uid, name, tabs }) {
   const [aisle, setAisle] = useState("");
   const [cart, setCart] = useState(false);
   const [show, setShow] = useState("");
+  const [menu, setMenu] = useState(false);
 
   const all = useMemo(() => Object.values(products || {}).sort((a, b) => a.name.localeCompare(b.name, "tr")), [products]);
   const found = useMemo(() => search(all.filter((p) => !aisle || p.cat === aisle), q), [all, aisle, q]);
@@ -36,6 +39,9 @@ export function MarketHome({ orgId, uid, name, tabs }) {
           <div className="min-w-0 flex-1 leading-tight">
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Alışveriş</h1>
           </div>
+          <button type="button" onClick={() => setMenu(true)} aria-label="Market yönetimi" data-press className={buttonClass({ variant: "back" })}>
+            <Icon name="more" className="size-5" />
+          </button>
         </header>
         {tabs}
         <label className="ck-glass mt-3 flex h-11 items-center gap-2 rounded-xl px-3.5">
@@ -103,6 +109,11 @@ export function MarketHome({ orgId, uid, name, tabs }) {
 
       <MarketCart open={cart} onClose={() => setCart(false)} lines={lines} products={products} orgId={orgId} uid={uid} name={name} onPlaced={(id) => setShow(id)} />
       <MarketOrder order={shown} orgId={orgId} onClose={() => setShow("")} />
+      <Sheet open={menu} onClose={() => setMenu(false)} title="Velora Market">
+        <RowList>
+          <Row href="/market/yonetim" title="Market yönetimi" sub="Ürünler, stok, siparişler" />
+        </RowList>
+      </Sheet>
     </main>
   );
 }
