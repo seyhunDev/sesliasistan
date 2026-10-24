@@ -195,8 +195,13 @@ export async function disableReminders(p) {
 export async function testPush() {
   let body;
   if (isNativeApp()) {
-    const tok = (await nativePushReady()) && (await nativePermission(false)) === "granted" ? await nativeToken().catch(() => "") : "";
-    if (!tok) throw new Error("Bu cihaz abone değil.");
+    // Neden olmadığı açık söylenir (iPhone kurulumu 2026-10-24: "Bu cihaz abone değil" hangi adımın eksik olduğunu göstermiyordu)
+    if (!(await nativePushReady())) throw new Error(window.Capacitor?.getPlatform?.() === "ios" ? "Bu cihaz abone değil: uygulamada Firebase ayarı (GoogleService-Info.plist) yok." : "Bu cihaz abone değil: bu APK bildirimsiz.");
+    if ((await nativePermission(false)) !== "granted") throw new Error("Bu cihaz abone değil: bildirim izni yok (Ayarlar › Bildirimler'i aç).");
+    const tok = await nativeToken().catch((e) => {
+      throw new Error(`Bu cihaz abone değil: anahtar alınamadı (${e?.message || e}).`);
+    });
+    if (!tok) throw new Error("Bu cihaz abone değil: anahtar boş geldi.");
     body = { fcm: tok };
   } else {
     const sub = await currentSub();
