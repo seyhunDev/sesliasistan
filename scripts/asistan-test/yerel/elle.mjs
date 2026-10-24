@@ -207,6 +207,19 @@ group("iPhone widget ve titreşim")([
   ["titreşim türü", { desc: "8 hafif, 14 orta, 30 güçlü, [10,40,10] başarı, uzun dizi hata", fn: () => [8, 14, 30, [10, 40, 10], [30, 50, 30, 50, 30], 0].map(HP.kindOf).join(), ok: (r) => r === "light,medium,heavy,success,error," }],
 ]);
 
+// Apple Watch tek sayacı yönetir (watchTimer.js): saatten gelen iş telefondaki sayaç kaydına uygulanır
+const WT = await import("@/lib/watchTimer");
+const N0 = 1_000_000;
+group("Saatten sayaç")([
+  ["saatten başlat", F("5 dk start dizisi, bugünkü antrenmanın sayfası", () => { const r = WT.watchTimerAct({ dur: 120, end: null, left: null, zero: 5 }, "start", { sn: 300, own: "/training/day?id=a", where: "Antrenman", now: N0 }); return r.end === N0 + 300000 && r.dur === 300 && r.mode === "start" && r.own === "/training/day?id=a" && r.zero === 5; })],
+  ["durdur ve devam", F("kalan saniye saklanır, devamda yeniden akar", () => { const p = WT.watchTimerAct({ dur: 300, end: N0 + 252000, left: null }, "pause", { now: N0 }); const r = WT.watchTimerAct(p, "resume", { now: N0 + 5000 }); return p.end === null && p.left === 252 && r.end === N0 + 257000 && r.left === null; })],
+  ["±1 dk", F("süre kayar, 1 dakikadan azken −1 yapılmaz", () => WT.watchTimerAct({ dur: 300, end: N0 + 252000 }, "add", { sn: 60, now: N0 }).end === N0 + 312000 && WT.watchTimerAct({ dur: 300, end: N0 + 30000 }, "add", { sn: -60, now: N0 }) === null)],
+  ["bitir", F("start anı yarış için kalır", () => { const r = WT.watchTimerAct({ dur: 300, end: N0 - 4000, mode: "start" }, "finish", { now: N0 }); return r.end === null && r.left === null && r.zero === N0 - 4000; })],
+  ["yarışa bağlı sayaç", F("saatte yalnız görünür, değiştirilmez", () => WT.watchTimerAct({ dur: 300, end: N0 + 9000, rid: "s1" }, "pause", { now: N0 }) === null && WT.watchTimerView({ dur: 300, end: N0 + 9000, rid: "s1", mode: "start" }, { now: N0 }).lock)],
+  ["saatin gördüğü", F("çalışan start dizisi 5 4 1 0, adı", () => { const v = WT.watchTimerView({ dur: 300, end: N0 + 252000, mode: "start", where: "Antrenman" }, { now: N0 }); return v.state === "run" && v.steps.join() === "5,4,1,0" && v.title === "Antrenman"; })],
+  ["bugünkü antrenman", F("Başlat'ın üstünde ad ve saat", () => { const r = WT.watchTraining([{ id: "b", title: "Antrenman", date: "2026-10-06", time: "10:00" }, { id: "a", title: "Optimist", date: "2026-10-05", time: "16:00" }], "2026-10-05"); return r.label === "Optimist · bugün 16:00" && r.own === "/training/day?id=a" && WT.watchTraining([], "2026-10-05").own === "/training"; })],
+]);
+
 // Takvim, görev grupları, doğum günleri (agenda.js)
 const AG = await import("@/lib/agenda");
 const TT = [{ title: "a", due: "2026-10-01" }, { title: "b", due: "2026-10-03" }, { title: "c", due: "2026-10-04" }, { title: "d", due: "2026-10-08" }, { title: "e", due: "2026-10-20" }, { title: "f" }];

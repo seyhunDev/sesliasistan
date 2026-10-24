@@ -72,3 +72,35 @@ export async function unlock() {
 export function widgetData(v) {
   plugin()?.widgetData?.({ json: JSON.stringify(v) }).catch(() => {});
 }
+
+// Apple Watch (mobil/ios/App/VeloraSaat, telefonda VeloraSaatKoprusu.swift). Saatten gelen istek: { id, tur: "sor", metin } ya da
+// { id, tur: "sayac", is, sn }. Cevap watchReply ile verilir: sor için { metin, kaydedildi, soru }, sayaç için { ok, metin? }.
+// Sayfa yüklenmeden gelen istekler watchTake ile bir kez alınır (cevapsız kalan istek telefonda 40 sn sonra saate "cevap yok" der).
+export const watchOk = () => typeof plugin()?.watchReply === "function";
+export function onWatch(fn) {
+  const p = plugin();
+  if (!p?.watchReply || !p.addListener) return () => {};
+  const h = p.addListener("watch", (e) => fn(parseJson(e?.json)));
+  return () => Promise.resolve(h).then((x) => x?.remove?.());
+}
+export async function watchTake() {
+  try {
+    return ((await plugin()?.watchTake?.())?.list || []).map(parseJson).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+export function watchReply(id, v) {
+  plugin()?.watchReply?.({ id, json: JSON.stringify(v) }).catch(() => {});
+}
+// Saatte görünen sayaç (lib/watchTimer.js watchTimerView)
+export function watchState(v) {
+  plugin()?.watchState?.({ json: JSON.stringify(v) }).catch(() => {});
+}
+const parseJson = (s) => {
+  try {
+    return JSON.parse(s || "null");
+  } catch {
+    return null;
+  }
+};

@@ -1,4 +1,5 @@
 # iPhone uygulamasının (mobil/ios) yerel kodu derleniyor mu: imzasız, simülatör için. Yalnız mobil/ios değişince çalışır.
+# App içindeki Apple Watch uygulaması (VeloraSaat) da derlenir: -sdk verilmez, saat hedefi kendi simülatörü için derlensin.
 name: iPhone derleme
 
 on:
@@ -27,6 +28,8 @@ jobs:
       - name: Derle
         run: |
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
-            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO build | tail -80
-          test ${PIPESTATUS[0]} -eq 0
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build > derle.log 2>&1 || { grep -n "error:" derle.log | head -40; tail -60 derle.log; exit 1; }
+          tail -30 derle.log
+          grep -E "SwiftCompile .*VeloraSaat|VeloraSaat\.app" derle.log | head -5
+          grep -q "Debug-watchsimulator/VeloraSaat.app" derle.log || { echo "Saat uygulaması derlenmedi"; exit 1; }
