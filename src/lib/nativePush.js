@@ -1,4 +1,5 @@
-// Android uygulamasında (mobil/, Capacitor) bildirimler: Web Push yerine Firebase Cloud Messaging.
+// Android ve iPhone uygulamasında (mobil/, Capacitor) bildirimler: Web Push yerine Firebase Cloud Messaging.
+// iPhone'da FCM anahtarını AppDelegate verir (APNs anahtarı Firebase'e çevrilir; GoogleService-Info.plist gerekir).
 // Uygulama kayıt anahtarını (token) verir, users/{uid}.push.<cihaz> = { fcm, at, ua, app } olarak saklanır;
 // sunucu bu cihazlara FCM ile gönderir (lib/server/sendDevice.js). Tarayıcıda hiçbiri çalışmaz.
 
@@ -7,12 +8,12 @@ const plugins = () => cap()?.Plugins || {};
 
 export const isNativeApp = () => !!cap()?.isNativePlatform?.();
 
-// Uygulama bildirimlerle (google-services.json) derlendiyse true
+// Uygulama bildirimlerle (Android google-services.json, iPhone GoogleService-Info.plist) derlendiyse true
 let ready = null;
 export function nativePushReady() {
   if (!isNativeApp() || !plugins().PushNotifications) return Promise.resolve(false);
   if (!ready)
-    ready = (plugins().AsistanDosya?.pushReady?.() || Promise.resolve({ ready: false })).then(
+    ready = (plugins().AsistanDosya?.pushReady?.() || plugins().Velora?.pushReady?.() || Promise.resolve({ ready: false })).then(
       (r) => !!r?.ready,
       () => false,
     );
@@ -46,7 +47,8 @@ export function nativeToken() {
   });
 }
 
-// Bildirime dokununca ilgili sayfayı aç; uygulama açıkken gelen bildirimi de göster (Android açık uygulamada göstermez)
+// Bildirime dokununca ilgili sayfayı aç; uygulama açıkken gelen bildirimi de göster (Android açık uygulamada göstermez;
+// iPhone'da gösterir: capacitor.config.json PushNotifications.presentationOptions)
 let wired = false;
 export function wireNativePush(go) {
   if (wired || !isNativeApp()) return;
@@ -56,7 +58,7 @@ export function wireNativePush(go) {
   PN.addListener("pushNotificationActionPerformed", (a) => go(a?.notification?.data?.url || "/"));
   LN?.addListener?.("localNotificationActionPerformed", (a) => go(a?.notification?.extra?.url || "/"));
   PN.addListener("pushNotificationReceived", (n) => {
-    if (!LN) return;
+    if (!LN || cap()?.getPlatform?.() === "ios") return;
     const id = Math.floor(Math.random() * 2e9);
     LN.schedule({
       notifications: [{ id, title: n?.title || n?.data?.title || "Velora", body: n?.body || "", channelId: "genel", extra: { url: n?.data?.url || "/" } }],

@@ -14,6 +14,7 @@ import AlarmKit
 // - alarmSync: planların alarmları; iOS 26'da saat alarmı (AlarmKit, sessiz modda da çalar), eski iOS'ta bildirim
 // - haptic, biometry / unlock (Face ID kilidi), widgetData (ana ekran widget'ı): VeloraDokunus.swift
 // - camera: üstünde sayaç akan iPhone kamerası (Medya › Kayıt): VeloraKamera.swift
+// - pushReady: bildirimler kurulu mu (AppDelegate, Firebase)
 // - watch olayı / watchTake, watchReply, watchState: Apple Watch'tan asistana iş ve tek sayaç (VeloraSaatKoprusu.swift)
 @objc(VeloraPlugin)
 public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -33,6 +34,7 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "watchTake", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "watchReply", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "watchState", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pushReady", returnType: CAPPluginReturnPromise),
     ]
 
     override public func load() {
@@ -72,6 +74,11 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         var live = false
         if #available(iOS 16.2, *) { live = ActivityAuthorizationInfo().areActivitiesEnabled }
         call.resolve(["alarm": alarm, "live": live, "ios": UIDevice.current.systemVersion])
+    }
+
+    // Bildirimler kurulu mu (GoogleService-Info.plist; AppDelegate)
+    @objc func pushReady(_ call: CAPPluginCall) {
+        call.resolve(["ready": Bildirim.hazir])
     }
 
     @objc func takeOpen(_ call: CAPPluginCall) {

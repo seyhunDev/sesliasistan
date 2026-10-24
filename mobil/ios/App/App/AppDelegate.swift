@@ -1,5 +1,7 @@
 import UIKit
 import Capacitor
+import FirebaseCore
+import FirebaseMessaging
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -8,7 +10,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         SaatKoprusu.shared.baslat() // Apple Watch (VeloraSaatKoprusu.swift)
+        if Bildirim.hazir { FirebaseApp.configure() }
         return true
+    }
+
+    // Bildirimler (web: src/lib/nativePush.js): Apple'ın verdiği anahtar Firebase'e verilir, sayfaya FCM anahtarı gider
+    // (sunucu Android'deki gibi FCM ile gönderir). GoogleService-Info.plist yoksa bildirim kurulu değildir.
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        guard Bildirim.hazir else {
+            NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: NSError(domain: "Velora", code: 1, userInfo: [NSLocalizedDescriptionKey: "Bildirim kurulu değil"]))
+            return
+        }
+        Messaging.messaging().apnsToken = deviceToken
+        Messaging.messaging().token { token, error in
+            if let token {
+                NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: token)
+            } else {
+                NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error ?? NSError(domain: "Velora", code: 2))
+            }
+        }
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
@@ -41,4 +65,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         config.delegateClass = SceneDelegate.self
         return config
     }
+}
+
+enum Bildirim {
+    // Firebase'in iPhone ayarı uygulamada mı (Seyhun Mac'te App klasörüne koyar; depoda yok)
+    static let hazir = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil
 }

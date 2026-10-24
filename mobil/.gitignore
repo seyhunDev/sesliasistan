@@ -2,3 +2,5 @@ node_modules
 *.apk
 # Firebase uygulama ayarı (anahtar içerir): GitHub gizlisi GOOGLE_SERVICES_JSON'dan yazılır
 android/app/google-services.json
+# iPhone'un Firebase ayarı (anahtar içerir): Seyhun Firebase konsolundan indirip Mac'te buraya koyar (bildirimler)
+ios/App/App/GoogleService-Info.plist

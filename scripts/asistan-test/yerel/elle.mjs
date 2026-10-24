@@ -54,6 +54,7 @@ group("Android bildirimi")([
   ["yalnız gövde", F("gövde başlık olur", () => { const m = FM.fcmMessage("t", { body: "Bugün doğum günü: Ayşe" }); return m.notification.title === "Bugün doğum günü: Ayşe" && !m.notification.body && m.data.url === "/"; })],
   ["bozuk yük", F("düz metin gövde sayılır", () => FM.fcmMessage("t", "merhaba").notification.title === "merhaba")],
   ["boş yük", F("yedek metin, etiket yok", () => { const m = FM.fcmMessage("t", "{}"); return m.notification.title === "Yeni bildirimin var" && !m.data.tag && !m.android.notification.tag && !m.android.notification.notificationCount; })],
+  ["iPhone (APNs)", F("ses, etiket yerine geçer, rozet", () => { const m = FM.fcmMessage("t", { title: "a", tag: "t1", badge: 3 }); const e = FM.fcmMessage("t", "{}").apns; return m.apns.payload.aps.sound === "default" && m.apns.headers["apns-collapse-id"] === "t1" && m.apns.payload.aps.badge === 3 && !e.headers && !e.payload.aps.badge; })],
   ["veri alanları metin", F("FCM data yalnız metin kabul eder", () => Object.values(FM.fcmMessage("t", { url: "/x", tag: 5 }).data).every((v) => typeof v === "string"))],
   ["gelen arama", F("yalnız veri, hemen, kısa ömürlü", () => {
     const m = FM.callMessage("tok", { id: "abc123DEF456", name: "Ali\nKaya", org: "o1", sig: "s1" });
