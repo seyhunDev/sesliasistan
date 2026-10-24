@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { authFetch } from "@/lib/authFetch";
 
-// Deniz trafiği verisi (/api/sea, aisstream): yalnız sesli asistan sorar (sayfa VesselFinder haritası, ana sayfa kartı
+// Deniz trafiği verisi (/api/sea, aisstream): yalnız sesli asistan sorar (sayfa MarineTraffic haritası, ana sayfa kartı
 // 2026-10-23'te kalktı).
 
 // Sesli asistanın isteği (isler/deniz.js)

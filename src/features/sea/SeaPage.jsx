@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
 import { Row, RowList } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
@@ -9,10 +9,10 @@ import { EMERGENCY, VHF, nearestPort } from "@/lib/sea";
 import { VesselMap } from "./VesselMap";
 import { useMyPos } from "./useSea";
 
-// Deniz trafiği (Seyhun 2026-10-23): ekranın tamamı VesselFinder'ın canlı gemi haritası ("direkt tam ekran yapalım,
-// büyüt olmasın"). Üstte lacivert ince şerit (geri, başlık), altta haritanın üstünde iki büyük düğme: Teknem (haritayı
+// Deniz trafiği (Seyhun 2026-10-23): ekranın tamamı canlı gemi haritası, 2026-10-24'ten beri MarineTraffic ("direkt tam
+// ekran yapalım, büyüt olmasın"). Üstte lacivert ince şerit (geri, başlık), altta haritanın üstünde iki büyük düğme: Teknem (haritayı
 // telefonun konumunda açar) · Acil (158, 112, Kanal 16, konumumu kopyala). aisstream listesi Dikili'de sinyal vermediği
-// için sayfadan kalktı; sesli cevaplar hâlâ /api/sea'den. Haritanın üstünde ortada kaynak seçimi: VesselFinder / MarineTraffic.
+// için sayfadan kalktı; sesli cevaplar hâlâ /api/sea'den.
 const fmt = (n) => String(Math.round(n * 10) / 10).replace(".", ",");
 
 // Telefonun konumu limana göre: "Dikili limanı", "Dikili 2,1 km", "4,5 kn"
@@ -27,22 +27,7 @@ export function SeaPage() {
   const me = useMyPos();
   const [center, setCenter] = useState(null);
   const [sos, setSos] = useState(false);
-  // Harita kaynağı (VesselFinder / MarineTraffic), telefonda saklanır
-  const [from, setFrom] = useState("vf");
-  useEffect(() => {
-    const t = setTimeout(() => {
-      try {
-        if (localStorage.getItem("sa-sea-from") === "mt") setFrom("mt");
-      } catch {}
-    }, 0);
-    return () => clearTimeout(t);
-  }, []);
-  const pickFrom = (v) => {
-    setFrom(v);
-    try {
-      localStorage.setItem("sa-sea-from", v);
-    } catch {}
-  };
+
 
   return (
     <>
@@ -51,15 +36,8 @@ export function SeaPage() {
           <BackButton href="/" />
           <h1 className="min-w-0 flex-1 truncate text-[1.25rem] font-bold tracking-[-.02em]">Deniz trafiği</h1>
         </header>
-        <div className="relative min-h-0 flex-1">
-          <div role="group" aria-label="Harita kaynağı" className="ck absolute left-1/2 top-3 z-10 flex -translate-x-1/2 rounded-full p-1 text-[0.8125rem] font-semibold shadow-lg">
-            {[["vf", "VesselFinder"], ["mt", "MarineTraffic"]].map(([k, t]) => (
-              <button key={k} type="button" aria-pressed={from === k} onClick={() => pickFrom(k)} className={`rounded-full px-3 py-1.5 ${from === k ? "bg-white text-[#11203a]" : "text-white/70"}`}>
-                {t}
-              </button>
-            ))}
-          </div>
-          <VesselMap center={center || undefined} zoom={center ? 13 : 10} from={from} />
+        <div className="min-h-0 flex-1">
+          <VesselMap center={center || undefined} zoom={center ? 13 : 10} />
         </div>
       </div>
       <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
