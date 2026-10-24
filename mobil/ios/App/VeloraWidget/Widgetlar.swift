@@ -16,11 +16,11 @@ private let sayacZemin = Color(red: 0.043, green: 0.498, blue: 0.6) // sayaç ç
 private let yesil = Color(red: 0.56, green: 0.82, blue: 0.65)
 private let soluk = Color.white.opacity(0.55)
 
-// "12 kn · 18"
+// "12–18 kn": rüzgâr ve sağanak tek yazı (ana sayfadaki kn(), Seyhun 2026-10-24)
 private func ruzgarYazi(_ r: GunRuzgar?, _ now: Date) -> String {
     guard let r else { return "" }
     let s = r.simdi(now)
-    return s.gust > s.wind ? "\(s.wind) kn · \(s.gust)" : "\(s.wind) kn"
+    return "\(knYazi(s.wind, s.gust)) kn"
 }
 
 private func antrenmanURL(_ a: WidgetVeri.Antrenman?) -> URL {
@@ -72,7 +72,7 @@ private struct Etiket: View {
     }
 }
 
-// Büyük sayı + yanında küçük soluk ek ("12 kn · sağanak 18")
+// Büyük sayı + yanında küçük soluk ek ("12–18 kn")
 private struct Sayi: View {
     let deger: String
     var ek: String = ""
@@ -194,7 +194,7 @@ private func yonAdi(_ d: Double) -> String {
     return adlar[i]
 }
 
-// Büyük rakamla rüzgâr, sağda sağanak kutusu ve yön pusulası (ok grafikteki gibi rüzgârın estiği yöne bakar)
+// Büyük yazıyla "rüzgâr–sağanak kn" (ayrı sağanak kutusu yok), sağda yön pusulası (ok grafikteki gibi rüzgârın estiği yöne bakar)
 private struct RuzgarKafasi: View {
     let r: GunRuzgar
     let now: Date
@@ -204,22 +204,13 @@ private struct RuzgarKafasi: View {
         let d = r.yon(now)
         HStack(alignment: .center, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                (Text("\(s.wind)").font(.system(size: 42, weight: .bold).monospacedDigit()).kerning(-1.4)
+                (Text(knYazi(s.wind, s.gust)).font(.system(size: 42, weight: .bold).monospacedDigit()).kerning(-1.4)
                     + Text(" kn").font(.system(size: 15, weight: .semibold)).foregroundColor(wAcik))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 Etiket(yazi: "Rüzgâr · \(yer)\(r.bugun ? "" : " · Yarın")")
             }
             Spacer(minLength: 4)
-            if s.gust > s.wind {
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text("Sağanak").font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
-                    (Text("\(s.gust)").font(.system(size: 17, weight: .bold).monospacedDigit())
-                        + Text(" kn").font(.system(size: 11, weight: .semibold)).foregroundColor(.white.opacity(0.6)))
-                }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 6)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(wAcik.opacity(0.12)))
-            }
             VStack(spacing: 2) {
                 ZStack {
                     Circle().fill(wAcik.opacity(0.08))
@@ -251,7 +242,7 @@ private struct RuzgarBolumu: View {
                     HStack(alignment: .firstTextBaseline) {
                         Etiket(yazi: "Rüzgâr · \(e.v?.place ?? "Dikili")\(r.bugun ? "" : " · Yarın")")
                         Spacer()
-                        Sayi(deger: "\(s.wind)", ek: s.gust > s.wind ? "kn · \(s.gust)" : "kn", boy: 20)
+                        Sayi(deger: knYazi(s.wind, s.gust), ek: "kn", boy: 20)
                     }
                 }
                 RuzgarGrafik(g: r, now: e.date).frame(minHeight: 48, maxHeight: 80)

@@ -3,7 +3,7 @@ import WidgetKit
 
 // Widget'ların rüzgâr grafiği: ana sayfadaki grafiğin aynısı (src/features/home/CockpitWind.jsx). Dolu camgöbeği alan rüzgâr, açık alan ve
 // kesik çizgi sağanak; üstte 2 saatte bir yön oku (rüzgârın estiği yöne bakar, 17 kn ve üstü turuncu), altında 3 saatte bir saat, sıcaklık,
-// "rüzgâr–sağanak" kn. Soluk kesik çizgi günün en sert sağanağı ("14:00 · 23 kn", ana sayfadaki gibi). Kırmızı çizgi ve nokta şimdi ("şimdi" yazısıyla). Saatler 06–23; saat 23'ten sonra yarının günü gösterilir.
+// "rüzgâr–sağanak" kn (tek renk, ana sayfadaki gibi). Kırmızı çizgi ve nokta şimdi ("şimdi" yazısıyla). Saatler 06–23; saat 23'ten sonra yarının günü gösterilir.
 // Veri open-meteo'dan (uygulamanın hava sayfasıyla aynı kaynak, knot); 25 dakika uygulama grubunda saklanır, her widget yeniden çekmez.
 
 // Okyanus renkleri (Seyhun 2026-10-22: uygulama Okyanus'a geçiyor; örnek /mnt/project-files/iphone/widget-okyanus-ornek.png)
@@ -73,6 +73,11 @@ struct GunRuzgar: Codable, Hashable {
         let hours = (0..<16).map { i in RSaat(hh: 6 + i, wind: w[i], gust: g[i], dir: d[i], t: t[i]) }
         return GunRuzgar(date: GunRuzgar.gun(Date()), hours: hours, at: 0, lat: 0, lon: 0)
     }()
+}
+
+// Rüzgâr ve sağanak tek yazı: "12–18", sağanak yoksa "12" (src/features/weather/weather.js kn() ile aynı)
+func knYazi(_ wind: Int, _ gust: Int) -> String {
+    gust > wind ? "\(wind)–\(gust)" : "\(wind)"
 }
 
 enum RuzgarKaynak {
@@ -163,26 +168,6 @@ struct RuzgarGrafik: View {
                 if !mono {
                     c.cizgi(g.hours.map { Double($0.gust) }).stroke(saganakRenk, style: StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
                 }
-                if !mono, let pk = g.hours.indices.max(by: { g.hours[$0].gust < g.hours[$1].gust }), g.hours[pk].gust > 0 {
-                    let h = g.hours[pk]
-                    let px = c.x(Double(pk))
-                    let py = c.y(Double(h.gust))
-                    let sag = px < (c.w - c.sag) / 2
-                    Path { p in
-                        p.move(to: CGPoint(x: px, y: py))
-                        p.addLine(to: CGPoint(x: px, y: c.y(0)))
-                    }
-                    .stroke(Color.white.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
-                    Circle().fill(Color.white.opacity(0.8)).frame(width: 5, height: 5).position(x: px, y: py)
-                    Text(String(format: "%02d:00 · %d kn", h.hh, h.gust))
-                        .font(.system(size: 9, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.85))
-                        .shadow(color: wZemin, radius: 1.5)
-                        .lineLimit(1)
-                        .fixedSize()
-                        .frame(width: 80, alignment: sag ? .leading : .trailing)
-                        .position(x: px + (sag ? 46 : -46), y: py)
-                }
                 if let k = g.konum(now) {
                     let v = Double(g.simdi(now).wind)
                     Path { p in
@@ -212,7 +197,7 @@ struct RuzgarEtiket: View {
                 VStack(spacing: 1) {
                     Text(String(format: "%02d", s.hh)).foregroundStyle(.white.opacity(0.55))
                     Text("\(s.t)°")
-                    (Text("\(s.wind)").fontWeight(.bold) + Text(s.gust > s.wind ? "–\(s.gust)" : "").foregroundColor(.white.opacity(0.55)))
+                    Text(knYazi(s.wind, s.gust)).fontWeight(.bold)
                 }
                 .font(.system(size: 9, weight: .semibold).monospacedDigit())
                 .fixedSize()
