@@ -1,8 +1,8 @@
-Commit: 7960053 · Market: yapay zekayla menü (fotoğraf, ad, tarif) ve sesle market sepeti (#792)
-Zaman: 2026-10-24-0913 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40068768591
+Commit: c8ed2e6 · Deniz trafiği: harita kaynağı seçimi VesselFinder / MarineTraffic (#793)
+Zaman: 2026-10-24-1035 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40074174383
 
-TAM TEST · 24.10.2026 09:05:44
+TAM TEST · 24.10.2026 10:27:26
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 431 sn
+SONUÇ: 1394/1394 geçti · 0 kalan · 466 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -132,7 +132,7 @@ SONUÇ: 1393/1393 geçti · 0 kalan · 431 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 47/47
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 121/121
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 122/122
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Enerji (boşta): 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
@@ -155,7 +155,7 @@ SONUÇ: 1393/1393 geçti · 0 kalan · 431 sn
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
   ✓ Instagram gönderisi: 1/1
   ✓ Tam ekran üstte: 1/1
-  ✓ Deniz trafiği: 2/2
+  ✓ Deniz trafiği: 3/3
   ✓ Kameralar: 5/5
   ✓ Güvenlik: 1/1
 
