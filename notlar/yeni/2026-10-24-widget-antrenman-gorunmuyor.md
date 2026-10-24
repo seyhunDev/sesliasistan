@@ -1,0 +1,3 @@
+## Nerede kaldım
+
+- Widget "Yakında antrenman yok" diyordu (Seyhun 2026-10-24: bugün ve yarın antrenman var). Sebepler: (1) widget yalnız Seyhun'a atanmış antrenmanı alıyordu, antrenmanlar sporculara atandığı için hiç çıkmıyordu; (2) tek antrenman gönderiliyordu, saatli antrenman başladıktan 2 saat sonra düşünce sıradakine geçemiyordu. Artık ana sayfadaki gibi kime atandığına bakılmaz (`widgetTrainings`, src/lib/widgetData.js), bugünkü ve sıradaki 3 antrenman gönderilir; bugünkü antrenman bitirilene kadar gün boyu kalır, sonra sıradaki (`WidgetVeri.antrenman`, `trainings`). Telefonda denenmedi; Xcode'dan yeniden kurmak gerekir.

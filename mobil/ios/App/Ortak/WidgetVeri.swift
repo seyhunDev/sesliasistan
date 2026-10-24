@@ -57,6 +57,7 @@ struct WidgetVeri: Codable {
     var lon: Double?
     var timer: Zaman?
     var training: Antrenman?
+    var trainings: [Antrenman]? // bugünkü ve sıradaki antrenmanlar (en çok 3); eski veride yok
     var money: Para?
     var dues: Aidat?
     var word: Kelime?
@@ -96,11 +97,13 @@ struct WidgetVeri: Codable {
         return t.bitis.addingTimeInterval(3600) > now ? t : nil
     }
 
-    // Antrenman henüz geçmediyse (başladıktan 2 saat sonrasına kadar)
+    // Bugünkü ya da sıradaki antrenman: bugünkü gün boyu kalır (bitirilince uygulama listeden çıkarır), sonra sıradaki
     func antrenman(_ now: Date = Date()) -> Antrenman? {
-        guard let a = training else { return nil }
-        let p = Plan(title: a.title, date: a.date, time: a.time, important: nil)
-        guard let s = WidgetVeri.baslangic(p) else { return nil }
-        return a.time.isEmpty ? (Calendar.current.isDate(s, inSameDayAs: now) || s > now ? a : nil) : (s.addingTimeInterval(7200) > now ? a : nil)
+        let bugun = Calendar.current.startOfDay(for: now)
+        let liste = trainings ?? (training.map { [$0] } ?? [])
+        return liste.first { a in
+            guard let s = WidgetVeri.baslangic(Plan(title: a.title, date: a.date, time: "", important: nil)) else { return false }
+            return s >= bugun
+        }
     }
 }

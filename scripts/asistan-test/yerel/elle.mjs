@@ -193,13 +193,16 @@ group("iPhone widget ve titreşim")([
     { title: "Bitti", date: "2026-10-05", time: "11:00", people: ["ali"], done: true },
     { title: "Kamp", date: "2026-10-03", endDate: "2026-10-07", people: ["ali"] },
   ], { uid: "ali", ownerId: "own", today: "2026-10-05" }).map((p) => `${p.title}@${p.date} ${p.time}${p.important ? "!" : ""}`).join(), ok: (r) => r === "Kamp@2026-10-05 ,A@2026-10-05 18:00!,B@2026-10-06 09:00" }],
-  ["widget antrenmanı", { desc: "bugünkü ya da sıradaki antrenman, benim; geçmiş ve iptal yok", fn: () => WD.widgetTraining([
-    { id: "a", title: "Optimist antrenmanı", date: "2026-10-06", time: "10:00", people: ["ali"] },
+  ["widget antrenmanı", { desc: "bugünkü ve sıradaki antrenmanlar (sporcuya atanmış da), en çok 3; geçmiş, iptal ve bitmiş yok", fn: () => WD.widgetTrainings([
+    { id: "a", title: "Optimist antrenmanı", date: "2026-10-06", time: "10:00", people: ["veli"] },
     { id: "b", title: "Antrenman", date: "2026-10-05", time: "16:00", people: ["ali"], place: "Dikili" },
     { id: "c", title: "Antrenman", date: "2026-10-04", time: "16:00", people: ["ali"] },
     { id: "d", title: "Antrenman", date: "2026-10-05", time: "09:00", people: ["ali"], status: "cancelled" },
     { id: "e", title: "Toplantı", date: "2026-10-05", time: "08:00", people: ["ali"] },
-  ], { uid: "ali", ownerId: "own", today: "2026-10-05" }), ok: (r) => r?.id === "b" && r.time === "16:00" && r.place === "Dikili" }],
+    { id: "f", title: "Antrenman", date: "2026-10-05", time: "08:00", done: true },
+    { id: "g", title: "Antrenman", date: "2026-10-07" },
+    { id: "h", title: "Antrenman", date: "2026-10-08" },
+  ], { today: "2026-10-05" }), ok: (r) => r.map((x) => x.id).join() === "b,a,g" && r[0].time === "16:00" && r[0].place === "Dikili" }],
   ["widget aidat", { desc: "yalnız bu ayın özeti", fn: () => [WD.widgetDues({ ym: "2026-10", paidCount: 9, count: 14 }, "2026-10"), WD.widgetDues({ ym: "2026-09", paidCount: 9, count: 14 }, "2026-10")], ok: ([a, b]) => a.paid === 9 && a.count === 14 && b === null }],
   ["titreşim türü", { desc: "8 hafif, 14 orta, 30 güçlü, [10,40,10] başarı, uzun dizi hata", fn: () => [8, 14, 30, [10, 40, 10], [30, 50, 30, 50, 30], 0].map(HP.kindOf).join(), ok: (r) => r === "light,medium,heavy,success,error," }],
 ]);
