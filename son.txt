@@ -1,8 +1,8 @@
-Commit: 443b204 · Apple Watch uygulaması: konuşarak asistana iş ve tek sayaç (#799)
-Zaman: 2026-10-24-1937 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40111726224
+Commit: f46df86 · iPhone uygulamasına bildirimler: Firebase Cloud Messaging (APNs üzerinden) (#800)
+Zaman: 2026-10-24-2059 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40117989375
 
-TAM TEST · 24.10.2026 19:28:55
+TAM TEST · 24.10.2026 20:51:17
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 460 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 444 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
