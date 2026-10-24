@@ -9,15 +9,9 @@ import { Sheet } from "@/components/ui/Sheet";
 import { ListHead, RowList, Row, SkelRow } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { AISLES } from "../sample";
-import { LOW, NEXT, STATUS_NAMES, free, isOpenOrder, linesText, newId, packOf, productProblem, search, tl } from "../catalog";
-import { setItems } from "../menus";
-import { addStock, deleteProduct, dropRequest, saveProduct, setStatus, useCatalog, useMenus, useOrders, useRequests } from "../store";
+import { LOW, NEXT, STATUS_NAMES, free, isOpenOrder, linesText, lineKey, newId, num, packOf, productProblem, search, tl } from "../catalog";
+import { addStock, deleteProduct, dropRequest, saveProduct, setStatus, useCatalog, useOrders, useRequests } from "../store";
 
-// Ölçülü setin içi: "Dana kıyma 500 g, Un 3 yemek kaşığı, …" (set değilse "")
-const setText = (p, menus) => {
-  const menu = p?.cat === "set" && menus?.find((m) => m.id === p.menu);
-  return menu ? setItems(menu, p.people).map((i) => [i.name, i.amount].filter(Boolean).join(" ")).join(", ") : "";
-};
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 
 // Market yönetimi (Seyhun 2026-10-24, örnek 4-5): lacivertte Ürünler / Siparişler / İstekler. Ürünler reyon reyon, satırda stok − sayı +;
@@ -28,7 +22,6 @@ export function MarketAdmin({ orgId }) {
   const products = useCatalog(orgId);
   const orders = useOrders(orgId, 30);
   const reqs = useRequests(orgId);
-  const menus = useMenus(orgId);
   const reqList = Object.entries(reqs || {}).map(([key, r]) => ({ key, ...r })).sort((a, b) => b.count - a.count || (b.at || "").localeCompare(a.at || ""));
   const [tab, setTab] = useState("urun");
   const [q, setQ] = useState("");
@@ -44,7 +37,7 @@ export function MarketAdmin({ orgId }) {
   const bumpStock = (p, d) => addStock(orgId, p.id, d).catch(() => toast("Stok değişmedi"));
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+6rem)]">
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+10rem)]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Market yönetimi">
         <header className="flex items-center gap-2.5">
           <BackButton href="/shopping?tab=market" />
@@ -87,12 +80,12 @@ export function MarketAdmin({ orgId }) {
                         <button type="button" onClick={() => setEdit(p)} data-press="row" className="min-w-0 flex-1 text-left">
                           <b className="block truncate text-[0.9375rem] font-semibold">{p.name} <span className="font-normal text-mut">{packOf(p)}</span></b>
                           <small className={`block truncate text-[0.8125rem] ${free(p) <= LOW ? "text-warn" : "text-mut"}`}>
-                            {tl(p.price)}{p.held ? ` · ${p.held} siparişte bekliyor` : ""}{free(p) <= 0 ? " · Tükendi" : free(p) <= LOW ? " · Az kaldı" : ""}
+                            {tl(p.price)}{p.held ? ` · ${num(p.held)} siparişte bekliyor` : ""}{free(p) <= 0 ? " · Tükendi" : free(p) <= LOW ? " · Az kaldı" : ""}
                           </small>
                         </button>
                         <span className="flex shrink-0 items-center gap-1.5">
                           <button type="button" onClick={() => bumpStock(p, -1)} disabled={p.stock <= (p.held || 0)} aria-label={`${p.name} stok azalt`} data-press className="btn btn-round btn-sm"><Icon name="minus" className="size-3.5" /></button>
-                          <b className="w-7 text-center tabular-nums">{p.stock}</b>
+                          <b className="w-9 text-center tabular-nums">{num(p.stock)}</b>
                           <button type="button" onClick={() => bumpStock(p, 1)} aria-label={`${p.name} stok artır`} data-press className="btn btn-round btn-sm"><Icon name="plus" className="size-3.5" /></button>
                         </span>
                       </div>
@@ -155,7 +148,7 @@ export function MarketAdmin({ orgId }) {
       )}
 
       <ProductSheet key={edit?.id || edit?.req || (edit ? "yeni" : "")} p={edit} products={products} orgId={orgId} onClose={() => setEdit(null)} />
-      <AdminOrder order={shown} orgId={orgId} products={products} menus={menus} onClose={() => setShow("")} />
+      <AdminOrder order={shown} orgId={orgId} onClose={() => setShow("")} />
     </main>
   );
 }
@@ -181,7 +174,7 @@ function ProductSheet({ p, products, orgId, onClose }) {
     setBusy(false);
   }
   async function remove() {
-    if (p.held) return toast(`${p.held} siparişte bekliyor, önce siparişler bitsin`);
+    if (p.held) return toast(`${num(p.held)} siparişte bekliyor, önce siparişler bitsin`);
     setBusy(true);
     try {
       await deleteProduct(orgId, p.id);
@@ -223,8 +216,8 @@ function ProductSheet({ p, products, orgId, onClose }) {
   );
 }
 
-// Yönetimde sipariş: ürünler (ölçülü setin içi altında: hazırlarken tartılacaklar), adres, sonraki adım düğmesi (Hazırla › Yola çıkar › Teslim edildi), bitmemişse İptal
-function AdminOrder({ order: o, orgId, products, menus, onClose }) {
+// Yönetimde sipariş: ürünler (ölçülü olanlarda boyut yerine tartılacak miktar, "Ölçü" yazar), adres, sonraki adım düğmesi (Hazırla › Yola çıkar › Teslim edildi), bitmemişse İptal
+function AdminOrder({ order: o, orgId, onClose }) {
   const toast = useToast();
   const [busy, setBusy] = useState("");
   async function go(status) {
@@ -243,13 +236,10 @@ function AdminOrder({ order: o, orgId, products, menus, onClose }) {
         <div className="space-y-4 pb-2">
           <div className="overflow-hidden rounded-[1.25rem] border border-line bg-bg px-3.5">
             {o.lines.map((l) => (
-              <div key={l.id} className="border-t border-line py-2.5 first:border-t-0">
-                <div className="flex items-center gap-3">
-                  <span className="min-w-0 flex-1 truncate font-semibold">{l.name} <span className="font-normal text-mut">{packOf(l)}</span></span>
-                  <span className="shrink-0 tabular-nums text-mut">×{l.qty}</span>
-                  <b className="w-16 shrink-0 text-right tabular-nums">{tl(l.total)}</b>
-                </div>
-                {setText(products?.[l.id], menus) && <p className="mt-0.5 text-[0.8125rem] text-mut">{setText(products[l.id], menus)}</p>}
+              <div key={lineKey(l)} className="flex items-center gap-3 border-t border-line py-2.5 first:border-t-0">
+                <span className="min-w-0 flex-1 truncate font-semibold">{l.name} <span className="font-normal text-mut">{l.part ? `Ölçü · ${packOf(l)}` : packOf(l)}</span></span>
+                <span className="shrink-0 tabular-nums text-mut">×{l.qty}</span>
+                <b className="w-16 shrink-0 text-right tabular-nums">{tl(l.total)}</b>
               </div>
             ))}
           </div>

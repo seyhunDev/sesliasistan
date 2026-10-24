@@ -8,9 +8,9 @@ import { Sheet } from "@/components/ui/Sheet";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { ListHead, RowList, Row, SkelRow } from "@/components/ui/Row";
 import { AISLES, aisleName } from "../sample";
-import { LOW, STATUS_NAMES, bump, cartCount, cartTotal, free, isOpenOrder, linesText, packOf, search, tl } from "../catalog";
+import { LOW, STATUS_NAMES, bump, cartCount, cartTotal, free, isOpenOrder, linesText, num, packOf, search, tl } from "../catalog";
 import { useCart, useCatalog, useMenus, useOrders, writeCart } from "../store";
-import { menuRows } from "../menus";
+import { menuRows, rowPrice } from "../menus";
 import { Img } from "@/yemek/ui/Img";
 import Link from "next/link";
 import { MarketCart } from "./MarketCart";
@@ -36,7 +36,7 @@ export function MarketHome({ orgId, uid, name, tabs }) {
   const found = useMemo(() => search(all.filter((p) => !aisle || p.cat === aisle), q), [all, aisle, q]);
   const open = (orders || []).filter(isOpenOrder);
   const shown = (orders || []).find((o) => o.id === show);
-  const qtyOf = (id) => lines.find((l) => l.id === id)?.qty || 0;
+  const qtyOf = (id) => lines.find((l) => l.id === id && !l.part)?.qty || 0;
   const listing = q.trim() || aisle;
 
   return (
@@ -100,7 +100,7 @@ export function MarketHome({ orgId, uid, name, tabs }) {
               <div className="-mx-5 flex snap-x scroll-px-5 gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
                 {menus.map((m) => {
                   const rows = menuRows(m, all);
-                  const sum = rows.reduce((s, r) => s + (r.product ? r.product.price * r.qty : 0), 0);
+                  const sum = rows.reduce((s, r) => s + rowPrice(r), 0);
                   return (
                     <Link key={m.id} href={`/market/menu/${m.id}`} data-press className="w-[10.5rem] shrink-0 snap-start overflow-hidden rounded-[1.25rem] border border-line bg-card">
                       <Img src={m.photo} w={360} alt={m.name} className="h-[5.5rem] w-full" />
@@ -159,7 +159,7 @@ export function ProductRow({ p, qty, onBump }) {
       <span className="min-w-0 flex-1">
         <b className="block truncate text-[0.9375rem] font-semibold">{p.name}</b>
         <small className={`block truncate text-[0.8125rem] ${out || left <= LOW ? "text-warn" : "text-mut"}`}>
-          {packOf(p)} · {tl(p.price)}{out ? " · Tükendi" : left <= LOW ? ` · ${left} kaldı` : ""}
+          {packOf(p)} · {tl(p.price)}{out ? " · Tükendi" : left <= LOW ? ` · ${num(left)} kaldı` : ""}
         </small>
       </span>
       {qty > 0 ? (

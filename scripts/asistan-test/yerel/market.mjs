@@ -1,7 +1,7 @@
 // Velora Market (src/market): örnek ürünler, arama, sepet, stok (bekleyen, teslim, iptal).
 import { SAMPLE_PRODUCTS, AISLES } from "@/market/sample";
-import { search, bump, cartTotal, cartCount, free, holdFor, deliverFor, releaseFor, stockStep, linesText, makeLine, newId, productProblem, NEXT, packOf, upgradeKatalog, KATALOG_V } from "@/market/catalog";
-import { SAMPLE_MENUS, SAMPLE_SETS, findProduct, menuRows, menuToCart, missingOf, addRequests, parseIngredient, cleanMenu, itemLine, alternatives, setFor, setItems, scaleAmount, dur, minutesOf, withRecipe, parseStep, stepLine } from "@/market/menus";
+import { search, bump, cartTotal, cartCount, free, holdFor, deliverFor, releaseFor, stockStep, linesText, makeLine, newId, productProblem, NEXT, packOf, upgradeKatalog, KATALOG_V, lineKey } from "@/market/catalog";
+import { SAMPLE_MENUS, findProduct, menuRows, menuToCart, missingOf, addRequests, parseIngredient, cleanMenu, itemLine, alternatives, partOf, rowPrice, byMeasure, scaleAmount, dur, minutesOf, withRecipe, parseStep, stepLine } from "@/market/menus";
 import { marketAsk, findSpoken } from "@/market/voice";
 import { suite } from "./ortak.mjs";
 
@@ -86,21 +86,22 @@ group("Yapay zekayla menü (cevap temizliği)")([
   ["forma satır, geri okunur", { desc: "\"300 g Dana kıyma\", \"Fesleğen - birkaç yaprak\", \"2 paket Spagetti\"", fn: () => [{ name: "Dana kıyma", amount: "300 g", qty: 1 }, { name: "Fesleğen", amount: "birkaç yaprak", qty: 1 }, { name: "Spagetti", amount: "", qty: 2 }].map((i) => { const l = itemLine(i); const p = parseIngredient(l); return `${l}=${p.name}/${p.amount}/${p.qty}`; }).join("|"), ok: (g) => g === "300 g Dana kıyma=Dana kıyma/300 g/1|Fesleğen - birkaç yaprak=Fesleğen/birkaç yaprak/1|2 paket Spagetti=Spagetti/2 paket/2" }],
 ]);
 
-const WITH_SETS = [...LIST, ...SAMPLE_SETS];
 const un = findProduct(LIST, "Un");
-group("Marka, ölçülü set ve tarif")([
+const rowOf = (menu, name, n, pick) => menuRows(menu, LIST, n, pick).find((r) => r.item.name === name);
+group("Marka, ölçü / paket ve tarif")([
   ["Un: varsayılan marka", { desc: "Söke 1 kg; satırda \"Söke · 1 kg\"", fn: () => [un.brand, packOf(un)], ok: (g) => g[0] === "Söke" && g[1] === "Söke · 1 kg" }],
   ["Un markaları", { desc: "Sinangil, Söke, Bağdat (ucuzdan pahalıya)", fn: () => alternatives(LIST, un).map((p) => p.brand).join(), ok: (g) => g === "Sinangil,Söke,Bağdat" }],
   ["varsayılan tükenince", { desc: "Söke stok 0 → stokta olan başka marka", fn: () => findProduct(LIST.map((p) => (p.id === un.id ? { ...p, stock: 0 } : p)), "Un")?.brand, ok: (g) => g && g !== "Söke" }],
   ["söke un", { desc: "markayla arama", fn: (s) => search(LIST, s).map((p) => p.brand), ok: (g) => g.length === 1 && g[0] === "Söke" }],
   ["sepet satırında marka", { desc: "makeLine brand taşır", fn: () => makeLine(un, 1).brand, ok: (g) => g === "Söke" }],
-  ["kimlikler tek (setlerle)", { desc: "ürün + set id'leri tekrarsız", fn: () => WITH_SETS.length - new Set(WITH_SETS.map((p) => p.id)).size, ok: (g) => g === 0 }],
-  ["her örnek menüye 2/4/6 kişilik set", { desc: "18 set, fiyat > 0", fn: () => [SAMPLE_SETS.length, SAMPLE_SETS.filter((x) => x.price > 0).length, setFor(WITH_SETS, "lazanya", 4)?.name], ok: (g) => g[0] === 18 && g[1] === 18 && g[2] === "Lazanya seti" }],
-  ["set malzeme değildir", { desc: "\"lazanya\" malzemesi set değil Lazanya yaprağı", fn: () => findProduct(WITH_SETS, "Lazanya")?.cat, ok: (g) => g !== "set" }],
-  ["2 kişilik lazanya seti", { desc: "kıyma 250 g, un 1,5 yemek kaşığı, soğan 1 adet", fn: () => Object.fromEntries(setItems(laz, 2).map((i) => [i.name, i.amount])), ok: (g) => g["Dana kıyma"] === "250 g" && g.Un === "1,5 yemek kaşığı" && g["Kuru soğan"] === "1 adet" }],
-  ["ölçek", { desc: "yarım demet ×2 = 1 demet; birkaç yaprak aynı kalır; 1 tutam ×1 aynı", fn: () => [scaleAmount("yarım demet", 2), scaleAmount("birkaç yaprak", 2), scaleAmount("1 tutam", 1)].join("|"), ok: (g) => g === "1 demet|birkaç yaprak|1 tutam" }],
-  ["setin stoğu", { desc: "set siparişte bekler, teslimde düşer", fn: () => { const st = setFor(WITH_SETS, "lazanya", 4); const m = Object.fromEntries(WITH_SETS.map((p) => [p.id, p])); const h = holdFor(m, [makeLine(st, 1)]); return [free(h.products[st.id]), deliverFor(h.products, h.lines)[st.id].stock]; }, ok: (g) => g[0] === 4 && g[1] === 4 }],
-  ["eski katalog yükseltilir", { desc: "v yok: set ve markalar eklenir, fiyat korunur; v güncel: dokunulmaz", fn: () => { const old = { [un.id]: { id: un.id, name: "Un", size: "1 kg", cat: "temel", price: 50, stock: 3, held: 1 } }; const sample = Object.fromEntries(WITH_SETS.map((p) => [p.id, p])); const up = upgradeKatalog(old, 0, sample); return [up[un.id].price, up[un.id].brand, !!up["set-lazanya-4"], Object.keys(upgradeKatalog(old, KATALOG_V, sample)).length]; }, ok: (g) => g[0] === 50 && g[1] === "Söke" && g[2] && g[3] === 1 }],
+  ["ölçü hesabı", { desc: "3 yemek kaşığı / 1 kg un = 0,045; 2 adet soğan / 1 kg = 0,3; yarım demet = 0,5; 8 yumurta / 10'lu = 0,8; 500 g / 500 g = yok", fn: () => [partOf("3 yemek kaşığı", un), partOf("2 adet", findProduct(LIST, "Kuru soğan")), partOf("yarım demet", findProduct(LIST, "Maydanoz")), partOf("8 adet", findProduct(LIST, "Yumurta")), partOf("500 g", findProduct(LIST, "Dana kıyma"))].join("|"), ok: (g) => g === "0.045|0.3|0.5|0.8|" }],
+  ["lazanya unu: ölçü önde", { desc: "ölçü ₺2 (en az), Paket seçilince ₺32", fn: () => { const r = rowOf(laz, "Un"); return [byMeasure(r), rowPrice(r), rowPrice(r, { Un: "paket" })]; }, ok: (g) => g[0] && g[1] === 2 && g[2] === 32 }],
+  ["marka ölçüde de geçer", { desc: "Sinangil seçilince ölçü satırı Sinangil", fn: () => { const sin = alternatives(LIST, un)[0]; const c = menuToCart([], [rowOf(laz, "Un", 4, { Un: sin })]); return [c[0].brand, c[0].size, c[0].part]; }, ok: (g) => g[0] === "Sinangil" && g[1] === "3 yemek kaşığı" && g[2] === 0.045 }],
+  ["2 kişilik ölçü", { desc: "kıyma 250 g → 0,5 paket ₺163; un 1,5 yemek kaşığı", fn: () => { const k = rowOf(laz, "Dana kıyma", 2), u = rowOf(laz, "Un", 2); return [k.part, rowPrice(k), u.amount]; }, ok: (g) => g[0] === 0.5 && g[1] === 163 && g[2] === "1,5 yemek kaşığı" }],
+  ["paket ve ölçü ayrı satır", { desc: "aynı unun paketi ve ölçüsü sepette iki satır", fn: () => { let c = bump([], un, 1); c = menuToCart(c, [rowOf(laz, "Un")]); return c.map(lineKey).join(); }, ok: (g) => g === "un-1-kg,un-1-kg~0.045" }],
+  ["ölçünün stoğu", { desc: "un ölçüsü 0,045 paket bekler, teslimde stok 49,955", fn: () => { const h = holdFor(MAP, menuToCart([], [rowOf(laz, "Un")])); return [h.products[un.id].held, deliverFor(h.products, h.lines)[un.id].stock]; }, ok: (g) => g[0] === 0.045 && g[1] === 49.955 }],
+  ["6 patlıcan", { desc: "1,5 kg → 2 paket (ölçü yok)", fn: () => { const r = rowOf(SAMPLE_MENUS.find((x) => x.id === "karniyarik"), "Patlıcan"); return [r.part, r.qty]; }, ok: (g) => g[0] === null && g[1] === 2 }],
+  ["eski katalog yükseltilir", { desc: "v yok: markalar eklenir, fiyat korunur, bekleyeni olmayan set silinir; v güncel: dokunulmaz", fn: () => { const old = { [un.id]: { id: un.id, name: "Un", size: "1 kg", cat: "temel", price: 50, stock: 3, held: 1 }, "set-lazanya-4": { id: "set-lazanya-4", cat: "set", held: 0 } }; const up = upgradeKatalog(old, 2, MAP); return [up[un.id].price, up[un.id].brand, !!up["set-lazanya-4"], Object.keys(upgradeKatalog(old, KATALOG_V, MAP)).length]; }, ok: (g) => g[0] === 50 && g[1] === "Söke" && !g[2] && g[3] === 2 }],
   ["örnek tarifler", { desc: "her menüde adım var; Lazanya 1 sa 10 dk", fn: () => [SAMPLE_MENUS.every((x) => x.steps.length >= 3), dur(minutesOf(laz))], ok: (g) => g[0] && g[1] === "1 sa 10 dk" }],
   ["eski kayıtlı menüye tarif", { desc: "steps yoksa örnekten; kendi menüsüne dokunulmaz", fn: () => [withRecipe({ id: "lazanya", name: "Lazanya", items: [] }).steps?.length, withRecipe({ id: "benim", name: "X", items: [] }).steps], ok: (g) => g[0] === 6 && g[1] === undefined }],
   ["tarif satırı", { desc: "\"2. Soğanı kavur. (5 dk)\" ↔ { text, min }", fn: () => { const st = parseStep("2. Soğanı kavur. (5 dk)"); return [st.text, st.min, stepLine(st)].join("|"); }, ok: (g) => g === "Soğanı kavur.|5|Soğanı kavur. (5 dk)" }],

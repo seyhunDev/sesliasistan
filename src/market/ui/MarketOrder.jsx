@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
-import { STATUSES, STATUS_NAMES, packOf, tl } from "../catalog";
+import { STATUSES, STATUS_NAMES, lineKey, packOf, tl } from "../catalog";
 import { setStatus } from "../store";
 
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
@@ -38,7 +38,7 @@ export function MarketOrder({ order, orgId, onClose }) {
           </div>
           <div className="overflow-hidden rounded-[1.25rem] border border-line bg-bg px-3.5">
             {o.lines.map((l) => (
-              <div key={l.id} className="flex items-center gap-3 border-t border-line py-2.5 first:border-t-0">
+              <div key={lineKey(l)} className="flex items-center gap-3 border-t border-line py-2.5 first:border-t-0">
                 <span className="min-w-0 flex-1 truncate font-semibold">{l.name} <span className="font-normal text-mut">{packOf(l)}</span></span>
                 <span className="shrink-0 tabular-nums text-mut">×{l.qty}</span>
                 <b className="w-16 shrink-0 text-right tabular-nums">{tl(l.total)}</b>
