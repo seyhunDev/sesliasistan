@@ -44,7 +44,7 @@ export async function orderNow(orgId, uid, { lines, address, pay = "kapıda-kart
     const r = holdFor(productsOf(await tx.get(katRef(orgId))), lines);
     if (r.short) return { short: r.short };
     const at = new Date().toISOString();
-    tx.set(katRef(orgId), { products: r.products }, { merge: true });
+    tx.set(katRef(orgId), { products: r.products });
     tx.set(ref, { uid, customer: name, lines: r.lines, total: r.total, pay, address, status: "sent", times: { sent: at }, at });
     return { id: ref.id };
   });
@@ -58,10 +58,20 @@ export function setStatus(orgId, id, status) {
     const kat = await tx.get(katRef(orgId));
     if (!o) return;
     const step = stockStep(o.status, status);
-    if (step) tx.set(katRef(orgId), { products: (step === "deliver" ? deliverFor : releaseFor)(productsOf(kat), o.lines) }, { merge: true });
+    if (step) tx.set(katRef(orgId), { products: (step === "deliver" ? deliverFor : releaseFor)(productsOf(kat), o.lines) });
     tx.update(oRef, { status, [`times.${status}`]: new Date().toISOString() });
   });
 }
+
+// Yönetim: ürünü kaydet / sil, stok ± (katalog tamamı yazılır; belge yoksa örnek ürünlerle açılır)
+function editKatalog(orgId, fn) {
+  return runTransaction(db, async (tx) => {
+    tx.set(katRef(orgId), { products: fn(productsOf(await tx.get(katRef(orgId)))) });
+  });
+}
+export const saveProduct = (orgId, p) => editKatalog(orgId, (all) => ({ ...all, [p.id]: { held: 0, ...all[p.id], ...p } }));
+export const deleteProduct = (orgId, id) => editKatalog(orgId, (all) => Object.fromEntries(Object.entries(all).filter(([k]) => k !== id)));
+export const addStock = (orgId, id, d) => editKatalog(orgId, (all) => (all[id] ? { ...all, [id]: { ...all[id], stock: Math.max(0, (all[id].stock || 0) + d) } } : all));
 
 // Sepet telefonda (localStorage); ekranlar "market-sepet" olayıyla tazelenir
 const CART = "market-sepet";

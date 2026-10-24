@@ -69,3 +69,21 @@ export function stockStep(from, to) {
 // Sipariş satırının kısa hali: "Süt 1 L ×2, Ekmek"
 export const linesText = (lines) => lines.map((l) => `${l.name}${l.qty > 1 ? ` ×${l.qty}` : ""}`).join(", ");
 export const tl = (n) => `₺${Math.round(n).toLocaleString("tr-TR")}`;
+
+// Yönetim: siparişin sonraki adımı ve düğme adı
+export const NEXT = { sent: ["preparing", "Hazırla"], preparing: ["onTheWay", "Yola çıkar"], onTheWay: ["delivered", "Teslim edildi"] };
+// Yeni ürün kimliği: "Süt 1 L" → "sut-1-l" (varsa sonuna -2, -3…)
+const slug = (s) => fold(s).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+export function newId(products, name, size = "") {
+  const base = slug(`${name} ${size}`) || "urun";
+  let id = base;
+  for (let i = 2; products[id]; i++) id = `${base}-${i}`;
+  return id;
+}
+// Ürün formu denetimi: ilk sorun ya da ""
+export function productProblem(p) {
+  if (!p.name?.trim()) return "Ad yaz";
+  if (!(Number(p.price) > 0)) return "Fiyat yaz";
+  if (!(Number(p.stock) >= 0)) return "Stok yaz";
+  return "";
+}
