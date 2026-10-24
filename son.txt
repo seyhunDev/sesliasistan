@@ -1,8 +1,8 @@
-Commit: ab6c26e · Rüzgâr ve sağanak tek yerde (2–4 kn), ölçülen de aynı biçimde, ayrı sağanak yazısı kalktı (#787)
-Zaman: 2026-10-24-0814 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40064936575
+Commit: 4bbcc9f · Yemek: Ne yiyelim'de açık sipariş canlı (teslim edilen sipariş yolda gibi kalmasın) (#788)
+Zaman: 2026-10-24-0840 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40066578733
 
-TAM TEST · 24.10.2026 08:06:28
+TAM TEST · 24.10.2026 08:31:45
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 444 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 452 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
