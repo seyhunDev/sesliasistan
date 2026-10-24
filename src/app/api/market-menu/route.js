@@ -8,7 +8,7 @@ import { cleanMenu } from "@/market/menus";
 export const runtime = "nodejs";
 
 // Market › Yeni menü (Seyhun 2026-10-24: "fotoğrafla yapay zekaya gönderip… malzeme listesini bana liste olarak geri gönderecek"):
-// yemeğin adı, yazılı tarif ya da yemeğin / tarifin fotoğrafı → menü adı, kaç kişilik, malzemeler. Kaydetmez; telefon forma doldurur.
+// yemeğin adı, yazılı tarif ya da yemeğin / tarifin fotoğrafı → menü adı, kaç kişilik, malzemeler, tarif adımları ve süre. Kaydetmez; telefon forma doldurur.
 // Marketteki ürün adları da gider ki malzemeler o adlarla yazılsın (eşleşmeyen telefonda "Bulunamadı" olur).
 const SYSTEM = `Sen Türk mutfağını iyi bilen bir aşçısın. Kullanıcının verdiği yemeğin evde yapılması için gereken malzemeleri çıkar.
 Kurallar:
@@ -16,6 +16,8 @@ Kurallar:
 - name: yemeğin kısa Türkçe adı, ilk harf büyük ("Karnıyarık"). serves: kaç kişilik (tarifte yazmıyorsa 4).
 - items: her malzeme ayrı. name: malzemenin kısa adı; "Market ürünleri" listesinde aynı şey varsa TAM O ADI yaz (ör. "soğan" yerine "Kuru soğan"). amount: tarifteki miktar ("500 g", "2 adet", "1 yemek kaşığı"). packs: marketten kaç paket/adet alınmalı (çoğunlukla 1).
 - Su, tuz gibi evde hep olanları da yaz (kullanıcı çıkarır). Uydurma malzeme ekleme, en çok 20 malzeme.
+- steps: yapılışı, sırayla kısa adımlar (en çok 10). text: bir iki cümle, sade Türkçe; min: o adımın yaklaşık dakikası. Tarif verildiyse onun adımları.
+- minutes: toplam hazırlık + pişirme süresi (dakika).
 - Yemekle ilgisi yoksa isFood false.`;
 
 const SCHEMA = {
@@ -24,12 +26,17 @@ const SCHEMA = {
     isFood: { type: "boolean" },
     name: { type: "string" },
     serves: { type: "number" },
+    minutes: { type: "number" },
     items: {
       type: "array",
       items: { type: "object", properties: { name: { type: "string" }, amount: { type: "string" }, packs: { type: "number" } }, required: ["name", "amount", "packs"] },
     },
+    steps: {
+      type: "array",
+      items: { type: "object", properties: { text: { type: "string" }, min: { type: "number" } }, required: ["text", "min"] },
+    },
   },
-  required: ["isFood", "name", "serves", "items"],
+  required: ["isFood", "name", "serves", "items", "steps", "minutes"],
 };
 
 const bad = (error, status = 400) => NextResponse.json({ error }, { status });
@@ -55,11 +62,11 @@ async function handle(request) {
   countAi(au, "market-menu");
   const user = [
     names.length ? `Market ürünleri: ${names.join(", ")}` : "",
-    text ? `Kullanıcı: "${text}"` : "Fotoğraftaki yemeğin (ya da tarifin) malzemelerini çıkar.",
+    text ? `Kullanıcı: "${text}"` : "Fotoğraftaki yemeğin (ya da tarifin) malzemelerini ve yapılışını çıkar.",
   ].filter(Boolean).join("\n");
   try {
     const raw = await callGemini({
-      model: process.env.GEMINI_MODEL, system: SYSTEM, user, schema: SCHEMA, maxTokens: 1500, timeoutMs: img ? 25000 : 15000,
+      model: process.env.GEMINI_MODEL, system: SYSTEM, user, schema: SCHEMA, maxTokens: 2500, timeoutMs: img ? 25000 : 15000,
       images: img ? [{ mimeType: img.mimeType, data: String(img.data) }] : [],
     });
     const menu = cleanMenu(raw);

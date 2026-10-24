@@ -8,7 +8,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { ListHead, RowList, Row, SkelRow } from "@/components/ui/Row";
 import { AISLES, aisleName } from "../sample";
-import { LOW, STATUS_NAMES, bump, cartCount, cartTotal, free, isOpenOrder, linesText, search, tl } from "../catalog";
+import { LOW, STATUS_NAMES, bump, cartCount, cartTotal, free, isOpenOrder, linesText, packOf, search, tl } from "../catalog";
 import { useCart, useCatalog, useMenus, useOrders, writeCart } from "../store";
 import { menuRows } from "../menus";
 import { Img } from "@/yemek/ui/Img";
@@ -150,7 +150,7 @@ export function MarketHome({ orgId, uid, name, tabs }) {
   );
 }
 
-// Ürün satırı: ad, boyut · fiyat (tükendiyse ya da az kaldıysa amber), sağda ekle ya da − adet +
+// Ürün satırı: ad, marka · boyut · fiyat (tükendiyse ya da az kaldıysa amber), sağda ekle ya da − adet +
 export function ProductRow({ p, qty, onBump }) {
   const left = free(p);
   const out = left <= 0;
@@ -159,7 +159,7 @@ export function ProductRow({ p, qty, onBump }) {
       <span className="min-w-0 flex-1">
         <b className="block truncate text-[0.9375rem] font-semibold">{p.name}</b>
         <small className={`block truncate text-[0.8125rem] ${out || left <= LOW ? "text-warn" : "text-mut"}`}>
-          {p.size} · {tl(p.price)}{out ? " · Tükendi" : left <= LOW ? ` · ${left} kaldı` : ""}
+          {packOf(p)} · {tl(p.price)}{out ? " · Tükendi" : left <= LOW ? ` · ${left} kaldı` : ""}
         </small>
       </span>
       {qty > 0 ? (

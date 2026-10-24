@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { pickAddress } from "@/yemek/address";
 import { herePos, saveMe, useFood } from "@/yemek/store";
 import { AddressForm } from "@/yemek/ui/AddressForm";
-import { bump, cartTotal, tl } from "../catalog";
+import { bump, cartTotal, packOf, tl } from "../catalog";
 import { orderNow, writeCart } from "../store";
 
 const PAYS = [["kapıda-kart", "Kapıda kart"], ["kapıda-nakit", "Kapıda nakit"]];
@@ -69,7 +69,7 @@ export function MarketCart({ open, onClose, lines, products, orgId, uid, name, o
               <div key={l.id} className="flex items-center gap-3 border-t border-line py-2.5 first:border-t-0">
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-[0.9375rem] font-semibold">{l.name}</b>
-                  <small className="block truncate text-[0.8125rem] text-mut">{l.size} · {tl(l.price)}</small>
+                  <small className="block truncate text-[0.8125rem] text-mut">{packOf(l)} · {tl(l.price)}</small>
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5">
                   <button type="button" onClick={() => setQty(l, -1)} aria-label="Azalt" data-press className="btn btn-round btn-sm"><Icon name={l.qty === 1 ? "trash" : "minus"} className="size-3.5" /></button>
