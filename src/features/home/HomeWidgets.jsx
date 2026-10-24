@@ -192,7 +192,7 @@ export function ClubRows({ open, fit }) {
     <>
       {race && <Row href={`/athletes/races/${race.id}`} title={race.title} sub={race.sub} right={race.right} />}
       {train && <Row href={`/athletes/attendance?gun=${train.date}`} title={`Antrenman · ${train.when}`} sub={who} right={`${train.n} kişi`} />}
-      <Row href="/fitness" title="Fitness" sub={fw.n ? `Bu hafta ${fw.done}/${fw.n} yapıldı` : "Bu hafta antrenman yok"} />
+      <Row href="/fitness" title="Fitness" right={fw.n ? `${fw.done}/${fw.n}` : null} sub={fw.n ? "Bu hafta yapıldı" : "Bu hafta antrenman yok"} />
     </>
   );
 }

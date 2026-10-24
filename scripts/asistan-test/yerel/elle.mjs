@@ -3104,3 +3104,14 @@ group("Ortak düğmeler")([
     ["ayrı sağanak yazısı yok", F("en sert sağanak etiketi kalktı", () => !/pkRight/.test(src("features/home/CockpitWind.jsx")))],
   ]);
 }
+
+// Ana sayfa Kulüp (Seyhun "A · Kutular" 2026-10-24): yemek kartının üstünde ikili kutular; satırlar RowTiles içinde kutu olur
+{
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  const home = src("features/home/OwnerHome.jsx");
+  group("Ana sayfa: Kulüp kutuları")([
+    ["yemek kartından önce", F("HomeSummary tiles, FoodCard'dan önce", () => home.indexOf("<HomeSummary\n              tiles") > 0 && home.indexOf("<HomeSummary\n              tiles") < home.indexOf("<FoodCard />"))],
+    ["kutu görünümü", F("Row, RowTiles içinde kutu çizer", () => /const tile = useContext\(TileCtx\);\n  if \(tile\) return <Tile/.test(src("components/ui/Row.jsx")))],
+  ]);
+}

@@ -11,7 +11,7 @@ import { todayStr } from "@/lib/utils/format";
 import { useMoney } from "./TeamMoney";
 import { FadeImg } from "@/components/ui/FadeImg";
 import { NotesWidget, WHead, WIDGET, useMessagesRow } from "./HomeWidgets";
-import { ListHead, Row, RowList, SkelRow } from "@/components/ui/Row";
+import { ListHead, Row, RowList, RowTiles, SkelRow } from "@/components/ui/Row";
 import { Bar } from "@/components/ui/Gauge";
 import { useOpenInvoices } from "@/features/invoices/openInvoices";
 import { invoiceTile } from "@/lib/invoices";
@@ -22,7 +22,7 @@ import { invoiceTile } from "@/lib/invoices";
 // Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır; banka mailleri useMoney; yarış raceHome.js.
 // Okuması süren alanın yerinde yanıp sönen iskelet satırı (SkelRow); önbellekte bilgi varsa (aidat, gönderi, banka, aynı günün yarış ve faturası) hiç çıkmaz.
 const WAIT = 8000;
-export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoices, notes, lead, tail }) {
+export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoices, notes, lead, tail, tiles = false }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
   const [duesGot, setDuesGot] = useState(false);
@@ -109,11 +109,24 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
       {skel("race") ? null : raceCard && <RaceWidget r={raceCard} cls={show("race")} />}
       {(rows.length > 0 || lead) && (
         <section aria-labelledby="home-sum" aria-busy={busy}>
-          <ListHead id="home-sum" title={title} />
-          <RowList>
-            {lead}
-            {rows}
-          </RowList>
+          {tiles ? (
+            // Kokpitte ikili kutular (Seyhun "A · Kutular" 2026-10-24): yemek kartının üstünde, aynı satırlar kutu olarak
+            <>
+              <h2 id="home-sum" className="mb-2 px-1 text-[0.9375rem] font-semibold">{title}</h2>
+              <RowTiles>
+                {lead}
+                {rows}
+              </RowTiles>
+            </>
+          ) : (
+            <>
+              <ListHead id="home-sum" title={title} />
+              <RowList>
+                {lead}
+                {rows}
+              </RowList>
+            </>
+          )}
         </section>
       )}
       {notes && <NotesWidget notes={notes} />}

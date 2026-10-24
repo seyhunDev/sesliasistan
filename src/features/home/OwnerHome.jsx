@@ -105,6 +105,20 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         <div className="mt-4">
           <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
         </div>
+        {/* Kulüp (Seyhun "A · Kutular" 2026-10-24): iş düğmelerinin altında, yemek kartının üstünde ikili kutular */}
+        {owner && (
+          <div className="mt-5 empty:hidden">
+            <HomeSummary
+              tiles
+              title={athletes || race.on ? "Kulüp" : "Özet"}
+              money={canReceipts(kind)}
+              race={null}
+              dues={!!athletes}
+              invoices
+              lead={athletes ? <ClubRows open={race.open} fit={fit} /> : null}
+            />
+          </div>
+        )}
         {owner && (
           <div className="mt-5">
             <FoodCard />
@@ -144,15 +158,17 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         </div>
         {side && <MyAttendanceCard kind={kind} />}
         {staff && <MyFitCard />}
-        <HomeSummary
-          title={owner && (athletes || race.on) ? "Kulüp" : "Özet"}
-          money={canReceipts(kind)}
-          race={null /* Sıradaki yarış kartı yok (Seyhun 2026-10-20: "artık ona ihtiyaç yok"; yarışlar listede, Yarışlar düğmesi altta) */}
-          dues={athletes && owner}
-          posts={!staff}
-          invoices={owner}
-          lead={athletes && owner ? <ClubRows open={race.open} fit={fit} /> : null}
-        />
+        {/* Ana hesapta Kulüp yukarıda (kutular); burada yalnız Instagram. Diğer hesaplarda Özet listesi burada */}
+        {owner ? (
+          <HomeSummary posts={!staff} />
+        ) : (
+          <HomeSummary
+            title="Özet"
+            money={canReceipts(kind)}
+            race={null /* Sıradaki yarış kartı yok (Seyhun 2026-10-20: "artık ona ihtiyaç yok"; yarışlar listede, Yarışlar düğmesi altta) */}
+            posts={!staff}
+          />
+        )}
       </div>
     </>
   );
