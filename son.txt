@@ -1,8 +1,8 @@
-Commit: 7e030e4 · Widget antrenmanı: sporculara atananlar da görünsün, bugünkü gün boyu kalsın (#798)
-Zaman: 2026-10-24-1918 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40110265353
+Commit: 443b204 · Apple Watch uygulaması: konuşarak asistana iş ve tek sayaç (#799)
+Zaman: 2026-10-24-1937 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40111726224
 
-TAM TEST · 24.10.2026 19:10:11
+TAM TEST · 24.10.2026 19:28:55
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
