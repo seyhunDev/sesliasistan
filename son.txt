@@ -1,8 +1,8 @@
-Commit: 4bbcc9f · Yemek: Ne yiyelim'de açık sipariş canlı (teslim edilen sipariş yolda gibi kalmasın) (#788)
-Zaman: 2026-10-24-0840 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40066578733
+Commit: 7960053 · Market: yapay zekayla menü (fotoğraf, ad, tarif) ve sesle market sepeti (#792)
+Zaman: 2026-10-24-0913 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40068768591
 
-TAM TEST · 24.10.2026 08:31:45
+TAM TEST · 24.10.2026 09:05:44
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 452 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 431 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

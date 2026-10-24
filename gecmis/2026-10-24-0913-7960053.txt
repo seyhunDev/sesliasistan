@@ -1,8 +1,8 @@
-Commit: c44cdff · Mesajlar'a geri düğmesi; Yarışlar, Etkinlikler, Gönderiler geri dönüşte boş yüklenmesin (#687)
-Zaman: 2026-10-22-1712 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39792558501
+Commit: 7960053 · Market: yapay zekayla menü (fotoğraf, ad, tarif) ve sesle market sepeti (#792)
+Zaman: 2026-10-24-0913 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40068768591
 
-TAM TEST · 22.10.2026 17:04:50
+TAM TEST · 24.10.2026 09:05:44
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -15,12 +15,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Asistan: çalışırken, küçültme, sesli yanıt, geçmiş…
     Asistan: kayıt, onaylar, görev listesi…
     Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
+    Deniz trafiği sayfası…
+    Kameralar sayfası…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 19/19 geçti
+    Çevrimdışı: 21/21 geçti
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1371/1373 geçti · 2 kalan · 434 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 431 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -125,44 +127,42 @@ SONUÇ: 1371/1373 geçti · 2 kalan · 434 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 63/63
-  ✓ Sunucu ucu: girişsiz istek reddedilir: 17/17
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 67/67
+  ✓ Sunucu ucu: girişsiz istek reddedilir: 18/18
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 47/47
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 105/107
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 121/121
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Enerji (boşta): 1/2
-      ✗ “ana sayfa”
-          beklenen: saniyede en çok 3 stil ve yerleşim hesabı
-          olan:     stil 15.6/sn · yerleşim 0.8/sn
+  ✓ Enerji (boşta): 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
-  ✓ Kapanış: 2/2
+  ✓ Kapanış: 3/3
   ✓ Basılı tut yaz: 1/1
-  ✓ Sayfa hataları: 7/7
+  ✓ Sayfa hataları: 9/9
   ✓ Küçültme (aşağı kaydır): 4/4
-  ✓ Önceki sohbetler: 3/3
+  ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
   ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
-  ✗ Onay isteyen işler: 9/10
-      ✗ “Ege'ye yaz … → “gönder””
-          beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 15 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+  ✓ Onay isteyen işler: 10/10
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
+  ✓ Kişi kare kodu: 4/4
   ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
   ✓ Instagram gönderisi: 1/1
   ✓ Tam ekran üstte: 1/1
+  ✓ Deniz trafiği: 2/2
+  ✓ Kameralar: 5/5
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 19/19
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 21/21
   ✓ İnternet varken: 2/2
   ✓ Yavaş bağlantı: 3/3
+  ✓ Takılan bağlantı: 2/2
   ✓ İnternet yok: 5/5
   ✓ Bağlantı gelince: 2/2
   ✓ Açıkken kopup gelince: 2/2
