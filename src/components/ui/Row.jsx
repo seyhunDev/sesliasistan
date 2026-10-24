@@ -1,3 +1,6 @@
+"use client";
+
+import { createContext, useContext } from "react";
 import Link from "next/link";
 import { Icon } from "./Icon";
 
@@ -9,7 +12,33 @@ export function RowList({ children, className = "" }) {
 }
 
 // lead: soldaki küçük şey (kişi yuvarlağı); warn: alt satır kehribar (gerçek uyarı)
+// Kutu görünümü (ana sayfa Kulüp, Seyhun "A · Kutular" 2026-10-24): RowTiles içindeki satırlar ikili kutu olur: üstte küçük cyan ad,
+// ortada büyük değer (right), altında tek satır (sub). Sayfalar aynı satırları değiştirmeden iki görünümde kullanır.
+const TileCtx = createContext(false);
+export function RowTiles({ children }) {
+  return (
+    <TileCtx.Provider value={true}>
+      <div className="grid grid-cols-2 gap-2">{children}</div>
+    </TileCtx.Provider>
+  );
+}
+function Tile({ href, onClick, title, sub, right, warn, label }) {
+  const body = (
+    <>
+      <span className="truncate text-[0.75rem] font-semibold text-[#22d3ee]">{title}</span>
+      {right != null && <span className="truncate text-[1.25rem] font-bold leading-tight tracking-[-.02em] tabular-nums">{right}</span>}
+      {sub && <small className={`truncate text-[0.75rem] ${warn ? "text-warn" : "text-white/60"}`}>{sub}</small>}
+    </>
+  );
+  const cls = "food-card flex min-h-[5.25rem] min-w-0 flex-col gap-0.5 rounded-[1.125rem] px-3 py-2.5 text-left";
+  if (href) return <Link href={href} data-press aria-label={label} className={cls}>{body}</Link>;
+  if (onClick) return <button type="button" data-press aria-label={label} onClick={onClick} className={cls}>{body}</button>;
+  return <div className={cls}>{body}</div>;
+}
+
 export function Row({ href, onClick, lead, title, sub, right, warn = false, chev = true, label }) {
+  const tile = useContext(TileCtx);
+  if (tile) return <Tile href={href} onClick={onClick} title={title} sub={sub} right={right} warn={warn} label={label} />;
   const body = (
     <>
       {lead}
@@ -46,6 +75,14 @@ export function ListHead({ title, count, href, more = "Tümü", id }) {
 
 // Okuma sürerken satırın yerinde yanıp sönen çizgiler (.shimmer globals.css)
 export function SkelRow() {
+  const tile = useContext(TileCtx);
+  if (tile)
+    return (
+      <div aria-hidden="true" className="food-card flex min-h-[5.25rem] flex-col justify-center gap-2 rounded-[1.125rem] px-3">
+        <span className="shimmer block h-3 w-14 rounded-full" />
+        <span className="shimmer block h-4 w-20 rounded-full" />
+      </div>
+    );
   return (
     <div aria-hidden="true" className="flex min-h-[3.5rem] items-center gap-3 border-t border-line py-2.5 first:border-t-0">
       <span className="flex-1">
