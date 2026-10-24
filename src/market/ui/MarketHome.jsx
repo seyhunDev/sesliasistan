@@ -15,7 +15,6 @@ import { Img } from "@/yemek/ui/Img";
 import Link from "next/link";
 import { MarketCart } from "./MarketCart";
 import { MarketOrder } from "./MarketOrder";
-import { openSanal } from "@/lib/sanal";
 
 // Alışveriş › Market (Seyhun 2026-10-24, örnek 1): lacivertte arama ve reyonlar; altta açık sipariş, reyon listesi ya da
 // bulunan ürünler (adet − / +). Sepet alt çubuğa yapışık şeritte (yemekteki .cartbar), sipariş kapıda ödenir.
@@ -48,8 +47,6 @@ export function MarketHome({ orgId, uid, name, tabs }) {
           <div className="min-w-0 flex-1 leading-tight">
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Alışveriş</h1>
           </div>
-          {/* Velora Sanal (ayrı site, 3B market): tek dokunuşla giriş (lib/sanal.js) */}
-          <button type="button" onClick={openSanal} data-press className="ck-btn ck-btn2 shrink-0">Sanal</button>
           <button type="button" onClick={() => setMenu(true)} aria-label="Market yönetimi" data-press className={buttonClass({ variant: "back" })}>
             <Icon name="more" className="size-5" />
           </button>
