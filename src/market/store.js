@@ -1,7 +1,7 @@
 "use client";
 
 // Velora Market verisi (Firestore, ana hesabın işletmesi altında; kural değişikliği gerekmez):
-//   market/katalog          { products: { [id]: ürün } }   tüm ürünler ve stok tek belgede (sayfa açılınca 1 okuma, canlı)
+//   market/katalog          { products: { [id]: ürün }, v }   tüm ürünler, setler ve stok tek belgede (sayfa açılınca 1 okuma, canlı)
 //   marketSiparisler/{id}   sipariş (catalog.js'deki yapı)
 //   market/menuler          { list: [menü] }   hazır menüler (menus.js; belge yoksa örnek menüler)
 //   market/istekler         { items: { [anahtar]: { name, count, from, at } } }   bulunamayan ürünler (yönetim › İstekler)
@@ -11,13 +11,15 @@ import { useEffect, useState } from "react";
 import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { SAMPLE_PRODUCTS } from "./sample";
-import { SAMPLE_MENUS, addRequests } from "./menus";
-import { deliverFor, holdFor, releaseFor, stockStep } from "./catalog";
+import { SAMPLE_MENUS, SAMPLE_SETS, addRequests, withRecipe } from "./menus";
+import { KATALOG_V, deliverFor, holdFor, releaseFor, stockStep, upgradeKatalog } from "./catalog";
 
 const katRef = (orgId) => doc(db, "orgs", orgId, "market", "katalog");
 const ordersCol = (orgId) => collection(db, "orgs", orgId, "marketSiparisler");
-export const SAMPLE_MAP = Object.fromEntries(SAMPLE_PRODUCTS.map((p) => [p.id, p]));
-const productsOf = (snap) => (snap.exists() ? snap.data().products || {} : SAMPLE_MAP);
+export const SAMPLE_MAP = Object.fromEntries([...SAMPLE_PRODUCTS, ...SAMPLE_SETS].map((p) => [p.id, p]));
+// Eski sürüm belgeye yeni örnekler (markalar, setler) eklenerek okunur (catalog.js upgradeKatalog)
+const productsOf = (snap) => (snap.exists() ? upgradeKatalog(snap.data().products || {}, snap.data().v || 0, SAMPLE_MAP) : SAMPLE_MAP);
+const katData = (products) => ({ products, v: KATALOG_V });
 
 // Katalog canlı: { [id]: ürün } (okunana kadar null)
 export function useCatalog(orgId) {
@@ -47,7 +49,7 @@ export async function orderNow(orgId, uid, { lines, address, pay = "kapıda-kart
     const r = holdFor(productsOf(await tx.get(katRef(orgId))), lines);
     if (r.short) return { short: r.short };
     const at = new Date().toISOString();
-    tx.set(katRef(orgId), { products: r.products });
+    tx.set(katRef(orgId), katData(r.products));
     tx.set(ref, { uid, customer: name, lines: r.lines, total: r.total, pay, address, status: "sent", times: { sent: at }, at });
     return { id: ref.id };
   });
@@ -61,7 +63,7 @@ export function setStatus(orgId, id, status) {
     const kat = await tx.get(katRef(orgId));
     if (!o) return;
     const step = stockStep(o.status, status);
-    if (step) tx.set(katRef(orgId), { products: (step === "deliver" ? deliverFor : releaseFor)(productsOf(kat), o.lines) });
+    if (step) tx.set(katRef(orgId), katData((step === "deliver" ? deliverFor : releaseFor)(productsOf(kat), o.lines)));
     tx.update(oRef, { status, [`times.${status}`]: new Date().toISOString() });
   });
 }
@@ -69,7 +71,7 @@ export function setStatus(orgId, id, status) {
 // Yönetim: ürünü kaydet / sil, stok ± (katalog tamamı yazılır; belge yoksa örnek ürünlerle açılır)
 function editKatalog(orgId, fn) {
   return runTransaction(db, async (tx) => {
-    tx.set(katRef(orgId), { products: fn(productsOf(await tx.get(katRef(orgId)))) });
+    tx.set(katRef(orgId), katData(fn(productsOf(await tx.get(katRef(orgId))))));
   });
 }
 export const saveProduct = (orgId, p) => editKatalog(orgId, (all) => ({ ...all, [p.id]: { held: 0, ...all[p.id], ...p } }));
@@ -79,7 +81,8 @@ export const addStock = (orgId, id, d) => editKatalog(orgId, (all) => (all[id] ?
 // Hazır menüler canlı (tek belge)
 const menuRef = (orgId) => doc(db, "orgs", orgId, "market", "menuler");
 const reqRef = (orgId) => doc(db, "orgs", orgId, "market", "istekler");
-const menusOf = (snap) => (snap.exists() ? snap.data().list || [] : SAMPLE_MENUS);
+// Eski kayıtlı örnek menülerde tarif yoksa örnekten tamamlanır
+const menusOf = (snap) => (snap.exists() ? (snap.data().list || []).map(withRecipe) : SAMPLE_MENUS);
 export function useMenus(orgId) {
   const [list, setList] = useState(null);
   useEffect(() => {

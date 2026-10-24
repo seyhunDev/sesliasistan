@@ -10,20 +10,26 @@ export const isOpenOrder = (o) => !!o && !["delivered", "cancelled"].includes(o.
 export const LOW = 3; // bu kadar ve altı "Az kaldı"
 
 export const free = (p) => Math.max(0, (p?.stock || 0) - (p?.held || 0));
-export const label = (p) => `${p.name} ${p.size}`.trim();
+export const label = (p) => `${p.name} ${p.size} ${p.brand || ""}`.trim();
+// Ürünün alt satırı: "Söke · 1 kg"
+export const packOf = (p) => [p.brand, p.size].filter(Boolean).join(" · ");
 
-// Türkçe arama: büyük/küçük harf ve şapka fark etmez, her kelime ad ya da boyuttaki bir kelimenin başı olmalı ("su 5", "kiyma")
+// Türkçe arama: büyük/küçük harf ve şapka fark etmez, her kelime ad, boyut ya da markadaki bir kelimenin başı olmalı ("su 5", "kiyma")
 const fold = (s = "") => s.toLocaleLowerCase("tr").replace(/[âîû]/g, (c) => ({ â: "a", î: "i", û: "u" })[c]).replace(/[çğıöşü]/g, (c) => ({ ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u" })[c]);
+// Sıra: ad ve boyutla tutanlar markayla tutanlardan önce ("süt": Süt önde, Sütaş yoğurt sonra), sonra kelimenin addaki yeri, ad, varsayılan marka
 export function search(products, q = "") {
   const words = fold(q).split(/\s+/).filter(Boolean);
   if (!words.length) return products;
+  const hits = (text) => { const ws = fold(text).split(/\s+/); return words.every((w) => ws.some((x) => x.startsWith(w))); };
+  const rank = (p) => (hits(`${p.name} ${p.size}`) ? 0 : 1);
+  const pos = (p) => { const i = fold(p.name).indexOf(words[0]); return i < 0 ? 999 : i; };
   return products
-    .filter((p) => { const ws = fold(label(p)).split(/\s+/); return words.every((w) => ws.some((x) => x.startsWith(w))); })
-    .sort((a, b) => fold(a.name).indexOf(words[0]) - fold(b.name).indexOf(words[0]) || a.name.localeCompare(b.name, "tr"));
+    .filter((p) => hits(label(p)))
+    .sort((a, b) => rank(a) - rank(b) || pos(a) - pos(b) || a.name.localeCompare(b.name, "tr") || !!a.alt - !!b.alt);
 }
 
 // Sepet satırı ve toplam
-export const makeLine = (p, qty = 1) => ({ id: p.id, name: p.name, size: p.size, qty, price: p.price, total: p.price * qty });
+export const makeLine = (p, qty = 1) => ({ id: p.id, name: p.name, size: p.size, ...(p.brand ? { brand: p.brand } : {}), qty, price: p.price, total: p.price * qty });
 export const cartTotal = (lines) => lines.reduce((s, l) => s + l.price * l.qty, 0);
 export const cartCount = (lines) => lines.reduce((s, l) => s + l.qty, 0);
 // Sepette adet değişimi (0 olunca satır çıkar); ürün yoksa eklenir
@@ -69,6 +75,16 @@ export function stockStep(from, to) {
 // Sipariş satırının kısa hali: "Süt 1 L ×2, Ekmek"
 export const linesText = (lines) => lines.map((l) => `${l.name}${l.qty > 1 ? ` ×${l.qty}` : ""}`).join(", ");
 export const tl = (n) => `₺${Math.round(n).toLocaleString("tr-TR")}`;
+
+// Katalog sürümü: eski belgeye (v yok) yeni örnek ürünler (markalar, setler) eklenir; yazınca v ile kaydedilir.
+// Var olan ürünün fiyatı, stoğu ve adı korunur; yalnız eksik alanlar (marka) örnekten gelir.
+export const KATALOG_V = 2;
+export function upgradeKatalog(products = {}, v = 0, sample = {}) {
+  if (v >= KATALOG_V) return products;
+  const next = { ...products };
+  for (const [id, p] of Object.entries(sample)) next[id] = next[id] ? { ...p, ...next[id] } : p;
+  return next;
+}
 
 // Yönetim: siparişin sonraki adımı ve düğme adı
 export const NEXT = { sent: ["preparing", "Hazırla"], preparing: ["onTheWay", "Yola çıkar"], onTheWay: ["delivered", "Teslim edildi"] };

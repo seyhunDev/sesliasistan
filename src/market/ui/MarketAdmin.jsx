@@ -9,9 +9,15 @@ import { Sheet } from "@/components/ui/Sheet";
 import { ListHead, RowList, Row, SkelRow } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { AISLES } from "../sample";
-import { LOW, NEXT, STATUS_NAMES, free, isOpenOrder, linesText, newId, productProblem, search, tl } from "../catalog";
-import { addStock, deleteProduct, dropRequest, saveProduct, setStatus, useCatalog, useOrders, useRequests } from "../store";
+import { LOW, NEXT, STATUS_NAMES, free, isOpenOrder, linesText, newId, packOf, productProblem, search, tl } from "../catalog";
+import { setItems } from "../menus";
+import { addStock, deleteProduct, dropRequest, saveProduct, setStatus, useCatalog, useMenus, useOrders, useRequests } from "../store";
 
+// Ölçülü setin içi: "Dana kıyma 500 g, Un 3 yemek kaşığı, …" (set değilse "")
+const setText = (p, menus) => {
+  const menu = p?.cat === "set" && menus?.find((m) => m.id === p.menu);
+  return menu ? setItems(menu, p.people).map((i) => [i.name, i.amount].filter(Boolean).join(" ")).join(", ") : "";
+};
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 
 // Market yönetimi (Seyhun 2026-10-24, örnek 4-5): lacivertte Ürünler / Siparişler / İstekler. Ürünler reyon reyon, satırda stok − sayı +;
@@ -22,6 +28,7 @@ export function MarketAdmin({ orgId }) {
   const products = useCatalog(orgId);
   const orders = useOrders(orgId, 30);
   const reqs = useRequests(orgId);
+  const menus = useMenus(orgId);
   const reqList = Object.entries(reqs || {}).map(([key, r]) => ({ key, ...r })).sort((a, b) => b.count - a.count || (b.at || "").localeCompare(a.at || ""));
   const [tab, setTab] = useState("urun");
   const [q, setQ] = useState("");
@@ -78,7 +85,7 @@ export function MarketAdmin({ orgId }) {
                     {list.map((p) => (
                       <div key={p.id} className="flex min-h-[3.5rem] items-center gap-3 border-t border-line py-2.5 first:border-t-0">
                         <button type="button" onClick={() => setEdit(p)} data-press="row" className="min-w-0 flex-1 text-left">
-                          <b className="block truncate text-[0.9375rem] font-semibold">{p.name} <span className="font-normal text-mut">{p.size}</span></b>
+                          <b className="block truncate text-[0.9375rem] font-semibold">{p.name} <span className="font-normal text-mut">{packOf(p)}</span></b>
                           <small className={`block truncate text-[0.8125rem] ${free(p) <= LOW ? "text-warn" : "text-mut"}`}>
                             {tl(p.price)}{p.held ? ` · ${p.held} siparişte bekliyor` : ""}{free(p) <= 0 ? " · Tükendi" : free(p) <= LOW ? " · Az kaldı" : ""}
                           </small>
@@ -148,24 +155,24 @@ export function MarketAdmin({ orgId }) {
       )}
 
       <ProductSheet key={edit?.id || edit?.req || (edit ? "yeni" : "")} p={edit} products={products} orgId={orgId} onClose={() => setEdit(null)} />
-      <AdminOrder order={shown} orgId={orgId} onClose={() => setShow("")} />
+      <AdminOrder order={shown} orgId={orgId} products={products} menus={menus} onClose={() => setShow("")} />
     </main>
   );
 }
 
-// Ürün ekle / düzenle: ad, boyut, reyon, fiyat, stok. Düzenlerken Sil (siparişte bekleyen varsa silinmez).
+// Ürün ekle / düzenle: ad, marka (aynı adın başka markası ayrı ürün olarak eklenir), boyut, reyon, fiyat, stok. Düzenlerken Sil (siparişte bekleyen varsa silinmez).
 function ProductSheet({ p, products, orgId, onClose }) {
   const toast = useToast();
   const isNew = p && !p.id;
-  const [f, setF] = useState(() => ({ name: p?.name || "", size: p?.size || "", cat: p?.cat || AISLES[0][0], price: p?.price ?? "", stock: p?.stock ?? "" }));
+  const [f, setF] = useState(() => ({ name: p?.name || "", brand: p?.brand || "", size: p?.size || "", cat: p?.cat || AISLES[0][0], price: p?.price ?? "", stock: p?.stock ?? "" }));
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
   const problem = productProblem(f);
   async function save() {
     setBusy(true);
     try {
-      const id = p.id || newId(products || {}, f.name, f.size);
-      await saveProduct(orgId, { id, name: f.name.trim(), size: f.size.trim(), cat: f.cat, price: Number(String(f.price).replace(",", ".")), stock: Math.round(Number(f.stock)) });
+      const id = p.id || newId(products || {}, f.name, `${f.size} ${f.brand}`);
+      await saveProduct(orgId, { id, name: f.name.trim(), brand: f.brand.trim(), size: f.size.trim(), cat: f.cat, price: Number(String(f.price).replace(",", ".")), stock: Math.round(Number(f.stock)) });
       if (p.req) dropRequest(orgId, p.req).catch(() => {});
       onClose();
     } catch {
@@ -188,7 +195,10 @@ function ProductSheet({ p, products, orgId, onClose }) {
     <Sheet open={!!p} onClose={onClose} title={isNew ? "Yeni ürün" : p ? p.name : ""}>
       {p && (
         <div className="space-y-3 pb-2">
-          <Field label="Ad" value={f.name} onChange={set("name")} placeholder="Süt" />
+          <div className="grid grid-cols-2 gap-2.5">
+            <Field label="Ad" value={f.name} onChange={set("name")} placeholder="Süt" />
+            <Field label="Marka" value={f.brand} onChange={set("brand")} placeholder="Pınar" />
+          </div>
           <div className="grid grid-cols-3 gap-2.5">
             <Field label="Boyut" value={f.size} onChange={set("size")} placeholder="1 L" />
             <Field label="Fiyat ₺" value={f.price} onChange={set("price")} inputMode="decimal" />
@@ -213,8 +223,8 @@ function ProductSheet({ p, products, orgId, onClose }) {
   );
 }
 
-// Yönetimde sipariş: ürünler, adres, sonraki adım düğmesi (Hazırla › Yola çıkar › Teslim edildi), bitmemişse İptal
-function AdminOrder({ order: o, orgId, onClose }) {
+// Yönetimde sipariş: ürünler (ölçülü setin içi altında: hazırlarken tartılacaklar), adres, sonraki adım düğmesi (Hazırla › Yola çıkar › Teslim edildi), bitmemişse İptal
+function AdminOrder({ order: o, orgId, products, menus, onClose }) {
   const toast = useToast();
   const [busy, setBusy] = useState("");
   async function go(status) {
@@ -233,10 +243,13 @@ function AdminOrder({ order: o, orgId, onClose }) {
         <div className="space-y-4 pb-2">
           <div className="overflow-hidden rounded-[1.25rem] border border-line bg-bg px-3.5">
             {o.lines.map((l) => (
-              <div key={l.id} className="flex items-center gap-3 border-t border-line py-2.5 first:border-t-0">
-                <span className="min-w-0 flex-1 truncate font-semibold">{l.name} <span className="font-normal text-mut">{l.size}</span></span>
-                <span className="shrink-0 tabular-nums text-mut">×{l.qty}</span>
-                <b className="w-16 shrink-0 text-right tabular-nums">{tl(l.total)}</b>
+              <div key={l.id} className="border-t border-line py-2.5 first:border-t-0">
+                <div className="flex items-center gap-3">
+                  <span className="min-w-0 flex-1 truncate font-semibold">{l.name} <span className="font-normal text-mut">{packOf(l)}</span></span>
+                  <span className="shrink-0 tabular-nums text-mut">×{l.qty}</span>
+                  <b className="w-16 shrink-0 text-right tabular-nums">{tl(l.total)}</b>
+                </div>
+                {setText(products?.[l.id], menus) && <p className="mt-0.5 text-[0.8125rem] text-mut">{setText(products[l.id], menus)}</p>}
               </div>
             ))}
           </div>

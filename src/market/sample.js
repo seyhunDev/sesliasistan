@@ -1,6 +1,8 @@
 // Velora Market örnek ürünleri (yemek yapmaya uygun; fiyatlar ₺, hayali). Yönetim ilk kez yazınca Firestore'a
 // (orgs/{org}/market/katalog) bunlarla başlanır, sonra oradan değişir.
-// Ürün: { id, name, size ("1 L", "500 g", "adet"), cat (reyon id), price, stock, held (siparişte bekleyen) }
+// Ürün: { id, name, size ("1 L", "500 g", "adet"), brand (marka; taze ürünlerde yok), cat (reyon id), price, stock, held (siparişte bekleyen) }
+// Aynı adın başka markası ayrı üründür (Seyhun 2026-10-24: "markasını değiştirebilir olması lazım"; menüde Marka düğmesi).
+// Hazır set (cat "set", menus.js SAMPLE_SETS): menünün tam ölçülü malzemeleri tek pakette; { menu, people } ile bağlı.
 
 export const AISLES = [
   ["sebze", "Meyve ve sebze"],
@@ -11,6 +13,7 @@ export const AISLES = [
   ["firin", "Ekmek ve hamur"],
   ["konserve", "Konserve ve dondurulmuş"],
   ["icecek", "İçecek"],
+  ["set", "Hazır setler"],
 ];
 export const aisleName = (id) => AISLES.find((a) => a[0] === id)?.[1] || "Diğer";
 
@@ -71,8 +74,44 @@ const RAW = {
   ],
 };
 
+// Varsayılan markalar (paketli ürünler)
+const BRAND = {
+  "Tavuk göğüs": "Banvit", "Tavuk but": "Banvit", "Tavuk kanat": "Banvit", "Bütün tavuk": "Banvit", Sucuk: "Namet", Pastırma: "Namet",
+  Süt: "Pınar", Yoğurt: "Sütaş", "Süzme yoğurt": "Sütaş", Ayran: "Sütaş", "Kaşar peyniri": "Pınar", "Beyaz peynir": "Tahsildaroğlu",
+  "Lor peyniri": "Sütaş", Mozzarella: "Pınar", Parmesan: "Galbani", "Krem peynir": "Philadelphia", Tereyağı: "Sütaş", Margarin: "Becel",
+  Krema: "Pınar", Yumurta: "Keskinoğlu", Bal: "Balparmak", Reçel: "Tamek", Tahin: "Koska", Pekmez: "Koska",
+  Un: "Söke", "Toz şeker": "Torku", Pirinç: "Yayla", "Bulgur (pilavlık)": "Duru", "Bulgur (köftelik)": "Duru", "Kırmızı mercimek": "Yayla",
+  "Yeşil mercimek": "Yayla", Nohut: "Yayla", "Kuru fasulye": "Yayla", Spagetti: "Filiz", "Penne makarna": "Filiz", Erişte: "Filiz",
+  "Lazanya yaprağı": "Piyale", Şehriye: "Filiz", "Ayçiçek yağı": "Yudum", Zeytinyağı: "Komili", "Mısır nişastası": "Dr. Oetker",
+  "Kabartma tozu": "Dr. Oetker", Vanilin: "Dr. Oetker", Kakao: "Dr. Oetker", "Galeta unu": "Piyale", İrmik: "Söke", Çay: "Çaykur",
+  "Türk kahvesi": "Mehmet Efendi", Tuz: "Billur", "Domates salçası": "Tat", "Biber salçası": "Tat", Ketçap: "Calvé", Mayonez: "Calvé",
+  Hardal: "Calvé", "Soya sosu": "Kikkoman", Sirke: "Kühne", "Nar ekşisi": "Koska", "Limon sosu": "Kühne", "Et suyu tableti": "Knorr",
+  "Tavuk suyu tableti": "Knorr", "Milföy hamuru": "Superfresh", "Pizza hamuru": "Superfresh", "Hamburger ekmeği": "Uno", "Tost ekmeği": "Uno",
+  "Kuru maya": "Pakmaya", "Domates (konserve)": "Tat", "Mısır konservesi": "Tat", "Ton balığı": "Dardanel", "Haşlanmış nohut": "Tat",
+  "Bezelye (dondurulmuş)": "Superfresh", "Patates (dondurulmuş)": "Superfresh", "Karışık sebze (dondurulmuş)": "Superfresh", Turşu: "Kühne",
+  "Közlenmiş biber": "Tat", "Hindistan cevizi sütü": "Thai Kitchen", Su: "Erikli", "Maden suyu": "Beypazarı", Kola: "Coca-Cola",
+  "Meyve suyu": "Dimes", Limonata: "Uludağ", "Soğuk çay": "Lipton", Şalgam: "Doğanay",
+};
+for (const b of ["Karabiber", "Pul biber", "Kimyon", "Kekik", "Nane (kuru)", "Toz kırmızı biber", "Tarçın", "Zerdeçal", "Köri", "Defne yaprağı"]) BRAND[b] = "Bağdat";
+
+// Başka markalar: [ad, boyut, fiyat, stok, marka]
+const ALTS = [
+  ["Un", "1 kg", 29, 30, "Sinangil"], ["Un", "1 kg", 38, 20, "Bağdat"], ["Pirinç", "1 kg", 79, 25, "Reis"], ["Pirinç", "1 kg", 72, 20, "Duru"],
+  ["Süt", "1 L", 40, 40, "Sütaş"], ["Süt", "1 L", 39, 30, "İçim"], ["Kaşar peyniri", "200 g", 92, 25, "Sütaş"], ["Kaşar peyniri", "200 g", 110, 15, "Muratbey"],
+  ["Tereyağı", "250 g", 122, 20, "Pınar"], ["Tereyağı", "250 g", 112, 20, "İçim"], ["Domates salçası", "830 g", 45, 25, "Tukaş"], ["Domates salçası", "830 g", 52, 20, "Öncü"],
+  ["Spagetti", "500 g", 45, 25, "Barilla"], ["Penne makarna", "500 g", 45, 20, "Barilla"], ["Lazanya yaprağı", "500 g", 120, 10, "Barilla"],
+  ["Ayçiçek yağı", "1 L", 82, 25, "Orkide"], ["Ayçiçek yağı", "1 L", 88, 20, "Komili"], ["Zeytinyağı", "1 L", 240, 15, "Kristal"], ["Zeytinyağı", "1 L", 275, 15, "Tariş"],
+  ["Yoğurt", "1 kg", 72, 25, "Pınar"], ["Yoğurt", "1 kg", 78, 20, "Eker"], ["Kırmızı mercimek", "1 kg", 62, 20, "Duru"], ["Tavuk göğüs", "1 kg", 200, 20, "Şenpiliç"],
+];
+
 const slug = (s) => s.toLocaleLowerCase("tr").replace(/[çğıöşü]/g, (c) => ({ ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u" })[c]).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-export const SAMPLE_PRODUCTS = Object.entries(RAW).flatMap(([cat, list]) =>
-  list.map(([name, size, price, stock]) => ({ id: slug(`${name} ${size}`), name, size, cat, price, stock, held: 0 })),
-);
+const catOf = Object.fromEntries(Object.entries(RAW).flatMap(([cat, list]) => list.map(([name]) => [name, cat])));
+const withBrand = (p, brand) => (brand ? { ...p, brand } : p);
+
+export const SAMPLE_PRODUCTS = [
+  ...Object.entries(RAW).flatMap(([cat, list]) =>
+    list.map(([name, size, price, stock]) => withBrand({ id: slug(`${name} ${size}`), name, size, cat, price, stock, held: 0 }, BRAND[name])),
+  ),
+  ...ALTS.map(([name, size, price, stock, brand]) => ({ id: slug(`${name} ${size} ${brand}`), name, size, brand, cat: catOf[name], price, stock, held: 0, alt: true })),
+];
