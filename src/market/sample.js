@@ -2,7 +2,6 @@
 // (orgs/{org}/market/katalog) bunlarla başlanır, sonra oradan değişir.
 // Ürün: { id, name, size ("1 L", "500 g", "adet"), brand (marka; taze ürünlerde yok), cat (reyon id), price, stock, held (siparişte bekleyen) }
 // Aynı adın başka markası ayrı üründür (Seyhun 2026-10-24: "markasını değiştirebilir olması lazım"; menüde Marka düğmesi).
-// Hazır set (cat "set", menus.js SAMPLE_SETS): menünün tam ölçülü malzemeleri tek pakette; { menu, people } ile bağlı.
 
 export const AISLES = [
   ["sebze", "Meyve ve sebze"],
@@ -13,7 +12,6 @@ export const AISLES = [
   ["firin", "Ekmek ve hamur"],
   ["konserve", "Konserve ve dondurulmuş"],
   ["icecek", "İçecek"],
-  ["set", "Hazır setler"],
 ];
 export const aisleName = (id) => AISLES.find((a) => a[0] === id)?.[1] || "Diğer";
 

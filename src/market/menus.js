@@ -3,10 +3,9 @@
 //   name: malzeme ("Dana kıyma"); amount: tarifteki miktar ("500 g"); qty: marketten kaç paket/adet (serves kişi için)
 //   steps: tarifin adımları (min: o adımın dakikası); minutes: toplam süre (yoksa adımların toplamı)
 // Malzeme katalogdaki ürünle adından eşleşir (findProduct); eşleşmeyen "Bulunamadı" olur ve yöneticinin İstekler listesine gider.
-// İki türlü alınır (Seyhun 2026-10-24 "Set + paketler"): Ölçülü set (market tam ölçüyü hazırlar; katalogda cat "set" ürünü,
-// kişi sayısı başına bir tane) ya da Paketlerle (her malzemenin en küçük paketi, markası değiştirilebilir).
-import { search, makeLine, free } from "./catalog";
-import { SAMPLE_PRODUCTS } from "./sample";
+// Her malzeme ayrı seçilir (Seyhun 2026-10-24): Ölçü (market tarifteki kadarını hazırlar; partOf) ya da Paket (en küçük paketi),
+// ve markası (aynı adın başka markaları; seçim ürün başına, ölçüde de pakette de aynı).
+import { search, bump, free, partPrice } from "./catalog";
 
 const m = (id, name, serves, photo, items, steps = []) => ({
   id, name, serves, photo,
@@ -93,30 +92,18 @@ export function dur(min) {
 const fold = (s = "") => s.toLocaleLowerCase("tr").replace(/[çğıöşü]/g, (c) => ({ ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u" })[c]).trim();
 
 // Malzeme adı → katalogdaki ürün: önce adı aynı olan (stokta olan önde), yoksa aramada ilk çıkan ("soğan" → Kuru soğan); yoksa null
-// Aynı adın birden çok markası varsa: stokta olan, sonra varsayılan marka (alt değil), sonra stoğu çok olan. Setler malzeme değildir.
+// Aynı adın birden çok markası varsa: stokta olan, sonra varsayılan marka (alt değil), sonra stoğu çok olan.
 const pickOrder = (a, b) => (free(b) > 0) - (free(a) > 0) || !!a.alt - !!b.alt || free(b) - free(a);
 export function findProduct(list, name) {
   const n = fold(name);
   if (!n) return null;
-  const goods = list.filter((p) => p.cat !== "set");
-  const same = goods.filter((p) => fold(p.name) === n).sort(pickOrder);
+  const same = list.filter((p) => fold(p.name) === n).sort(pickOrder);
   if (same.length) return same[0];
-  return search(goods, name)[0] || null;
+  return search(list, name)[0] || null;
 }
 
 // Marka seçenekleri: aynı adlı ürünler, ucuzdan pahalıya
-export const alternatives = (list, p) => (p ? list.filter((x) => x.cat !== "set" && fold(x.name) === fold(p.name)).sort((a, b) => a.price - b.price || (a.brand || "").localeCompare(b.brand || "", "tr")) : []);
-
-// Ölçülü set: menünün o kişi sayılık set ürünü (yoksa null)
-export const setId = (menuId, people) => `set-${menuId}-${people}`;
-export const setFor = (list, menuId, people) => list.find((p) => p.cat === "set" && p.menu === menuId && p.people === people) || null;
-// Setin önerilen fiyatı: paketlerin toplamının %75'i, kişi sayısıyla orantılı, 5'e yuvarlı (yönetim değiştirir)
-export function setPrice(menu, list, people) {
-  const full = menuRows(menu, list, menu.serves).reduce((s, r) => s + (r.product ? r.product.price * r.qty : 0), 0);
-  return Math.max(5, Math.round((full * 0.75 * people) / (menu.serves || 4) / 5) * 5);
-}
-// Set ürünü (katalogda cat "set"): "Lazanya seti", "4 kişilik"
-export const makeSet = (menu, people, price, stock) => ({ id: setId(menu.id, people), name: `${menu.name} seti`, size: `${people} kişilik`, cat: "set", menu: menu.id, people, price, stock, held: 0 });
+export const alternatives = (list, p) => (p ? list.filter((x) => fold(x.name) === fold(p.name)).sort((a, b) => a.price - b.price || (a.brand || "").localeCompare(b.brand || "", "tr")) : []);
 
 // Tarifteki miktarı kişi sayısına göre ölçekle: ("500 g", 1.5) → "750 g", ("2 adet", 0.5) → "1 adet", ("yarım demet", 2) → "1 demet"
 const NUMW = { yarım: 0.5, bir: 1, iki: 2, üç: 3, dört: 4, beş: 5 };
@@ -131,27 +118,59 @@ export function scaleAmount(amount = "", k = 1) {
   else v = Math.round(v * 2) / 2;
   return `${String(v).replace(".", ",")}${mm[2] || " "}${unit}`.trim();
 }
-// Setteki malzemeler: [{ name, amount }] (kişi sayısına göre)
-export const setItems = (menu, people) => menu.items.map((i) => ({ name: i.name, amount: scaleAmount(i.amount, people / (menu.serves || people)) }));
-
-// Örnek setler: her örnek menünün 2, 4 ve 6 kişilik seti (stok 5)
-export const SET_SIZES = [2, 4, 6];
-export const SAMPLE_SETS = SAMPLE_MENUS.flatMap((menu) => SET_SIZES.map((n) => makeSet(menu, n, setPrice(menu, SAMPLE_PRODUCTS, n), 5)));
-
-// Menünün satırları, kişi sayısına göre: [{ item, product|null, qty }]
-export function menuRows(menu, list, people = menu.serves) {
-  const k = people / (menu.serves || people || 1);
-  return menu.items.map((item) => ({ item, product: findProduct(list, item.name), qty: Math.max(1, Math.ceil((item.qty || 1) * k - 1e-9)) }));
+// Tarifteki miktar → paketin ne kadarı (Ölçü): ("3 yemek kaşığı", Un 1 kg) → 0,045. Hesaplanamazsa ya da neredeyse bütün paketse null.
+// Kaşık/bardak gram ya da ml sayılır; sebzede "adet" ortalama ağırlıktan; "10'lu" pakette adet sayısından.
+const PER = { g: 1, gr: 1, gram: 1, kg: 1000, ml: 1, l: 1000, lt: 1000, litre: 1000, "yemek kaşığı": 15, "tatlı kaşığı": 10, "çay kaşığı": 5, "su bardağı": 200, "çay bardağı": 100, fincan: 70, tutam: 1, diş: 5 };
+const PIECE_G = { "kuru soğan": 150, domates: 150, patates: 200, havuç: 100, patlıcan: 250, "sivri biber": 30, "kapya biber": 120, limon: 100, kabak: 250, salatalık: 150, elma: 180, sarımsak: 40 };
+const AMOUNT = /^(\d+(?:[.,]\d+)?|(?:yarım|bir|iki|üç|dört|beş)(?!\p{L}))\s*(.*)$/iu;
+// rawPart: kesir sınırsız (2,4 = 3 paket gerekir); partOf: ölçü olarak satılabilecek kesir
+export function rawPart(amount = "", product, k = 1) {
+  if (!product) return null;
+  const a = AMOUNT.exec(String(amount).trim());
+  if (!a) return null;
+  const z = AMOUNT.exec(String(product.size || "").trim()) || ["", "1", product.size || ""];
+  const n = (NUMW[a[1].toLocaleLowerCase("tr")] ?? Number(a[1].replace(",", "."))) * k;
+  const unit = a[2].toLocaleLowerCase("tr").trim();
+  const zn = Number(String(z[1]).replace(",", ".")) || 1;
+  const zu = String(z[2]).toLocaleLowerCase("tr").trim();
+  const count = /^'l[ıiuü]$/u.test(zu) || zu === "adet" ? zn : 0; // "10'lu" → 10 adet, "adet" → 1
+  const piece = PIECE_G[product.name.toLocaleLowerCase("tr")];
+  let part = 0;
+  if (PER[unit] && PER[zu]) part = (n * PER[unit]) / (zn * PER[zu]);
+  else if (unit === "adet" && count) part = n / count;
+  else if (unit === "adet" && piece && PER[zu]) part = (n * piece) / (zn * PER[zu]);
+  else if (unit && unit === zu) part = n / zn; // "yarım demet" / "demet"
+  return part > 0 ? Math.round(part * 1000) / 1000 : null;
+}
+export function partOf(amount = "", product, k = 1) {
+  const part = rawPart(amount, product, k);
+  return part && part < 0.9 ? part : null;
 }
 
+// Menünün satırları, kişi sayısına göre: [{ item, product|null, qty (paket), amount (ölçekli tarif miktarı), part (ölçü; yoksa null) }]
+// pick: { [malzeme adı]: ürün } seçilen marka
+export function menuRows(menu, list, people = menu.serves, pick = {}) {
+  const k = people / (menu.serves || people || 1);
+  return menu.items.map((item) => {
+    const product = pick[item.name] || findProduct(list, item.name);
+    const raw = rawPart(item.amount, product, k);
+    // Paket sayısı: miktar paketle ölçülebiliyorsa ondan (6 patlıcan = 1,5 kg → 2 paket), yoksa menüdeki paket sayısı × kişi oranı
+    const qty = Math.max(1, Math.ceil((raw || (item.qty || 1) * k) - 1e-9));
+    return { item, product, qty, amount: scaleAmount(item.amount, k), part: raw && raw < 0.9 ? raw : null };
+  });
+}
+// Satır ölçüyle mi alınır: ölçü hesaplanabiliyorsa ve "Paket" seçilmediyse (how: { [malzeme adı]: "paket" | "olcu" })
+export const byMeasure = (r, how = {}) => !!r.part && how[r.item.name] !== "paket";
+// Satırın fiyatı ve stokta yeterli mi
+export const rowPrice = (r, how = {}) => (!r.product ? 0 : byMeasure(r, how) ? partPrice(r.product, r.part) : r.product.price * r.qty);
+export const rowOk = (r, how = {}) => !!r.product && free(r.product) >= (byMeasure(r, how) ? r.part : 1);
+
 // Sepete eklenecekler: seçili ve bulunan satırlar (sepettekiyle birleşir). skip: { [malzeme adı]: true } (evde var)
-export function menuToCart(cart, rows, skip = {}) {
+export function menuToCart(cart, rows, skip = {}, how = {}) {
   let next = [...cart];
   for (const r of rows) {
-    if (!r.product || skip[r.item.name] || free(r.product) <= 0) continue;
-    const qty = Math.min(r.qty, free(r.product));
-    const has = next.find((l) => l.id === r.product.id);
-    next = has ? next.map((l) => (l.id === r.product.id ? makeLine(r.product, l.qty + qty) : l)) : [...next, makeLine(r.product, qty)];
+    if (skip[r.item.name] || !rowOk(r, how)) continue;
+    next = byMeasure(r, how) ? bump(next, r.product, 1, { part: r.part, amount: r.amount }) : bump(next, r.product, Math.min(r.qty, Math.floor(free(r.product))));
   }
   return next;
 }

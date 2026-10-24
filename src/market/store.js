@@ -1,7 +1,7 @@
 "use client";
 
 // Velora Market verisi (Firestore, ana hesabın işletmesi altında; kural değişikliği gerekmez):
-//   market/katalog          { products: { [id]: ürün }, v }   tüm ürünler, setler ve stok tek belgede (sayfa açılınca 1 okuma, canlı)
+//   market/katalog          { products: { [id]: ürün }, v }   tüm ürünler ve stok (kesirli olabilir: ölçüyle satılan) tek belgede (sayfa açılınca 1 okuma, canlı)
 //   marketSiparisler/{id}   sipariş (catalog.js'deki yapı)
 //   market/menuler          { list: [menü] }   hazır menüler (menus.js; belge yoksa örnek menüler)
 //   market/istekler         { items: { [anahtar]: { name, count, from, at } } }   bulunamayan ürünler (yönetim › İstekler)
@@ -11,13 +11,13 @@ import { useEffect, useState } from "react";
 import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { SAMPLE_PRODUCTS } from "./sample";
-import { SAMPLE_MENUS, SAMPLE_SETS, addRequests, withRecipe } from "./menus";
+import { SAMPLE_MENUS, addRequests, withRecipe } from "./menus";
 import { KATALOG_V, deliverFor, holdFor, releaseFor, stockStep, upgradeKatalog } from "./catalog";
 
 const katRef = (orgId) => doc(db, "orgs", orgId, "market", "katalog");
 const ordersCol = (orgId) => collection(db, "orgs", orgId, "marketSiparisler");
-export const SAMPLE_MAP = Object.fromEntries([...SAMPLE_PRODUCTS, ...SAMPLE_SETS].map((p) => [p.id, p]));
-// Eski sürüm belgeye yeni örnekler (markalar, setler) eklenerek okunur (catalog.js upgradeKatalog)
+export const SAMPLE_MAP = Object.fromEntries(SAMPLE_PRODUCTS.map((p) => [p.id, p]));
+// Eski sürüm belgeye yeni örnekler (markalar) eklenerek okunur (catalog.js upgradeKatalog)
 const productsOf = (snap) => (snap.exists() ? upgradeKatalog(snap.data().products || {}, snap.data().v || 0, SAMPLE_MAP) : SAMPLE_MAP);
 const katData = (products) => ({ products, v: KATALOG_V });
 

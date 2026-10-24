@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { pickAddress } from "@/yemek/address";
 import { herePos, saveMe, useFood } from "@/yemek/store";
 import { AddressForm } from "@/yemek/ui/AddressForm";
-import { bump, cartTotal, packOf, tl } from "../catalog";
+import { bump, cartTotal, lineKey, packOf, tl } from "../catalog";
 import { orderNow, writeCart } from "../store";
 
 const PAYS = [["kapıda-kart", "Kapıda kart"], ["kapıda-nakit", "Kapıda nakit"]];
@@ -36,7 +36,7 @@ export function MarketCart({ open, onClose, lines, products, orgId, uid, name, o
   };
   const setQty = (l, d) => {
     const p = products?.[l.id] || { ...l };
-    const next = bump(lines, p, d);
+    const next = bump(lines, p, d, l.part ? l : null);
     writeCart(next);
     if (!next.length) close();
   };
@@ -66,7 +66,7 @@ export function MarketCart({ open, onClose, lines, products, orgId, uid, name, o
         <div className="space-y-4 pb-2">
           <div className="overflow-hidden rounded-[1.25rem] border border-line bg-bg px-3.5">
             {lines.map((l) => (
-              <div key={l.id} className="flex items-center gap-3 border-t border-line py-2.5 first:border-t-0">
+              <div key={lineKey(l)} className="flex items-center gap-3 border-t border-line py-2.5 first:border-t-0">
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-[0.9375rem] font-semibold">{l.name}</b>
                   <small className="block truncate text-[0.8125rem] text-mut">{packOf(l)} · {tl(l.price)}</small>
