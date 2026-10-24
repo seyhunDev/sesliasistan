@@ -13,7 +13,7 @@ import { pickAddress } from "../address";
 import { suggest, parseAsk } from "../suggest";
 import { liveView } from "../demo";
 import { minutesLeft, STATUS_NAMES, isOpenOrder } from "../order";
-import { PLACES, placeById, useFood, herePos, writeCart, openNow } from "../store";
+import { PLACES, placeById, useFood, useOrder, herePos, writeCart, openNow } from "../store";
 import { Img, tl, rating } from "./Img";
 
 // Alışveriş › Yemek (müşteri; Seyhun 2026-10-22 "Ne yiyelim" örneği A): lacivertte arama ve fotoğraflı mutfaklar,
@@ -52,6 +52,9 @@ export function FoodHome({ orgId, tabs }) {
   // Deneme siparişinin durumu saatten hesaplanır (kayıtta "sent" kalmış olabilir)
   const live = (food?.history || []).map((o) => ({ ...o, status: o.status === "cancelled" ? o.status : liveView(o, placeById(o.placeId), now).status }));
   const open = live.find(isOpenOrder);
+  // Geçmiş oturumda bir kez okunur; açık sipariş ayrıca canlı dinlenir ki restoran/kurye ilerletince burada da görünsün
+  // (Seyhun 2026-10-24: teslim edilmiş sipariş "10 dk" diye kalıyordu). Teslim olunca dinleme biter.
+  useOrder(orgId, open?.id);
   const past = live.filter((o) => o.status === "delivered").slice(0, 3);
 
   function again(o) {
