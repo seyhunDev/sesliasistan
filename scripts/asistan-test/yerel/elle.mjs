@@ -3075,3 +3075,15 @@ group("Ortak düğmeler")([
     ["boş alan kapatır", F("dinlerken ve taslakta değil", () => /mode !== "listening" && !draft && onClose\?\.\(\)/.test(s))],
   ]);
 }
+
+// Rüzgâr ve sağanak tek yerde "2–4" (Seyhun 2026-10-24); ölçülen saatler de aynı biçimde; ayrı en sert sağanak yazısı yok
+{
+  const WX = await import("@/features/weather/weather");
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  group("Rüzgâr–sağanak tek yerde")([
+    ["biçim", F("2–4, sağanak yoksa 2", () => WX.kn(2, 4) === "2–4" && WX.kn(5, 5) === "5" && WX.kn(3, null) === "3")],
+    ["ölçülen de aynı", F("grafik altı yazısı ölçülen saatte ölçüleni yazar", () => /kn\(o \? o\.wind : h\.wind, o \? o\.gust : h\.gust\)/.test(src("features/home/CockpitWind.jsx")))],
+    ["ayrı sağanak yazısı yok", F("en sert sağanak etiketi kalktı", () => !/pkRight/.test(src("features/home/CockpitWind.jsx")))],
+  ]);
+}
