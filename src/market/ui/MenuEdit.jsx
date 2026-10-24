@@ -1,28 +1,60 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { ListHead, RowList } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newId, tl } from "../catalog";
-import { findProduct, parseIngredient } from "../menus";
-import { saveMenu, useCatalog, useMenus } from "../store";
+import { findProduct, itemLine, parseIngredient } from "../menus";
+import { noteMissing, saveMenu, useCatalog, useMenus } from "../store";
+import { askMenu } from "../ai";
+import { compressImage } from "@/lib/image";
 
 // Yeni menü / menüyü düzenle: ad, kaç kişilik, malzemeler (her satıra bir tane: "500 g dana kıyma").
-// Yazarken altta marketteki karşılıkları görünür; olmayan "Bulunamadı".
+// Yazarken altta marketteki karşılıkları görünür; olmayan "Bulunamadı" (kaydedince yönetimin İstekler'ine gider).
+// Yapay zeka: "Fotoğraf" (yemeğin ya da tarifin fotoğrafı) ya da "Yapay zekayla doldur" (yazılan ad ya da tarif) → ad, kişi, malzemeler.
 export function MenuEdit({ orgId, start, onDone }) {
   const toast = useToast();
   const products = useCatalog(orgId);
   const menus = useMenus(orgId);
   const [name, setName] = useState(start?.name || "");
   const [serves, setServes] = useState(String(start?.serves || 4));
-  const [text, setText] = useState(() => (start?.items || []).map((i) => [i.amount, i.name].filter(Boolean).join(" ")).join("\n"));
+  const [text, setText] = useState(() => (start?.items || []).map(itemLine).join("\n"));
   const [busy, setBusy] = useState(false);
+  const [ai, setAi] = useState(""); // "foto" | "yazi" sürerken
+  const file = useRef(null);
   const list = useMemo(() => Object.values(products || {}), [products]);
   const items = useMemo(() => text.split("\n").map(parseIngredient).filter(Boolean), [text]);
   const problem = !name.trim() ? "Ad yaz" : !items.length ? "Malzeme yaz" : "";
+
+  async function fill(payload, kind) {
+    setAi(kind);
+    try {
+      const r = await askMenu(payload, list);
+      if (!r.isFood) toast("Yemek bulunamadı");
+      else {
+        if (r.name && (!name.trim() || kind === "foto")) setName(r.name);
+        if (r.serves) setServes(String(r.serves));
+        setText(r.items.map(itemLine).join("\n"));
+      }
+    } catch (e) {
+      toast(e.message || "Malzemeler çıkarılamadı");
+    }
+    setAi("");
+  }
+  async function photo(e) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const img = await compressImage(f, 1280, 0.72);
+      fill({ image: { mimeType: img.mimeType, data: img.base64 } }, "foto");
+    } catch {
+      toast("Fotoğraf açılamadı");
+    }
+  }
 
   async function save() {
     setBusy(true);
@@ -30,6 +62,7 @@ export function MenuEdit({ orgId, start, onDone }) {
     const menu = { ...(start || {}), id: start?.id || newId(taken, name), name: name.trim(), serves: Math.max(1, Number(serves) || 4), photo: start?.photo || "", items };
     try {
       await saveMenu(orgId, menu);
+      noteMissing(orgId, items.filter((i) => !findProduct(list, i.name)).map((i) => i.name), menu.name).catch(() => {});
       onDone(menu);
     } catch {
       toast("Kaydedilemedi");
@@ -49,6 +82,11 @@ export function MenuEdit({ orgId, start, onDone }) {
         <div className="grid grid-cols-[1fr_6rem] gap-2.5">
           <Field label="Ad" value={name} onChange={(e) => setName(e.target.value)} placeholder="Karnıyarık" />
           <Field label="Kişi" value={serves} onChange={(e) => setServes(e.target.value)} inputMode="numeric" />
+        </div>
+        <div className="grid grid-cols-2 gap-2.5">
+          <Button variant="secondary" loading={ai === "foto"} disabled={!!ai} onClick={() => file.current?.click()}>Fotoğraf</Button>
+          <Button variant="secondary" loading={ai === "yazi"} disabled={!!ai || !(name.trim() || text.trim())} onClick={() => fill({ text: [name.trim(), text.trim()].filter(Boolean).join("\n") }, "yazi")}>Yapay zekayla doldur</Button>
+          <input ref={file} type="file" accept="image/*" onChange={photo} className="hidden" />
         </div>
         <label className="block">
           <span className="text-[0.8125rem] font-medium text-mut">Malzemeler</span>

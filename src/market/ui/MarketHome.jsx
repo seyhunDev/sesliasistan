@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
@@ -24,9 +25,12 @@ export function MarketHome({ orgId, uid, name, tabs }) {
   const lines = useCart();
   const [q, setQ] = useState("");
   const [aisle, setAisle] = useState("");
-  const [cart, setCart] = useState(false);
+  const [cartPick, setCart] = useState(null);
   const [show, setShow] = useState("");
   const [menu, setMenu] = useState(false);
+  // ?sepet=1: sepet açık gelir (asistan "Lazanya malzemelerini sepete ekle" sonrası, isler/market.js)
+  const sepet = useSearchParams().get("sepet") === "1";
+  const cart = cartPick ?? sepet;
 
   const all = useMemo(() => Object.values(products || {}).sort((a, b) => a.name.localeCompare(b.name, "tr")), [products]);
   const found = useMemo(() => search(all.filter((p) => !aisle || p.cat === aisle), q), [all, aisle, q]);

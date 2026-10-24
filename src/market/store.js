@@ -8,7 +8,7 @@
 // Katalog belgesi yoksa örnek ürünler (sample.js) gösterilir; ilk sipariş ya da yönetim yazması belgeyi onlarla açar.
 // Stok aynı anda iki siparişte bozulmasın diye sipariş, teslim ve iptal işlem (transaction) içinde yapılır.
 import { useEffect, useState } from "react";
-import { collection, doc, limit, onSnapshot, orderBy, query, runTransaction } from "firebase/firestore";
+import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { SAMPLE_PRODUCTS } from "./sample";
 import { SAMPLE_MENUS, addRequests } from "./menus";
@@ -117,6 +117,12 @@ export const dropRequest = (orgId, key) => runTransaction(db, async (tx) => {
   delete items[key];
   tx.set(reqRef(orgId), { items });
 });
+
+// Sayfasız okuma (asistan): katalog ve menüler bir kez (2 okuma)
+export async function loadMarket(orgId) {
+  const [k, m] = await Promise.all([getDoc(katRef(orgId)).catch(() => null), getDoc(menuRef(orgId)).catch(() => null)]);
+  return { products: k ? productsOf(k) : SAMPLE_MAP, menus: m ? menusOf(m) : SAMPLE_MENUS };
+}
 
 // Sepet telefonda (localStorage); ekranlar "market-sepet" olayıyla tazelenir
 const CART = "market-sepet";
