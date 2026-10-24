@@ -1,8 +1,8 @@
-Commit: a9df422 · iPhone uygulaması: Kayıt'ta üstünde sayaç akan iPhone kamerası; web'de eski dosya seçici yedek (#708)
-Zaman: 2026-10-24-1808 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40104835071
+Commit: 7e030e4 · Widget antrenmanı: sporculara atananlar da görünsün, bugünkü gün boyu kalsın (#798)
+Zaman: 2026-10-24-1918 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40110265353
 
-TAM TEST · 24.10.2026 17:59:33
+TAM TEST · 24.10.2026 19:10:11
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 461 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 460 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
