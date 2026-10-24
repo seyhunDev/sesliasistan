@@ -84,7 +84,10 @@ export function useOrder(orgId, id) {
     const off = onSnapshot(doc(ordersCol(orgId), id), { includeMetadataChanges: true }, (d) => {
       if (d.exists()) {
         fails.current = 0;
-        setOrder({ ...d.data(), id: d.id });
+        const o = { ...d.data(), id: d.id };
+        setOrder(o);
+        // Bellekteki geçmiş de tazelenir (Ne yiyelim › Siparişin oradan okur)
+        if (memo?.orgId === orgId && memo.history.some((h) => h.id === o.id)) touch((m) => ({ history: m.history.map((h) => (h.id === o.id ? o : h)) }));
       } else if (!d.metadata.fromCache) setOrder(false);
     }, () => {
       if (++fails.current >= 5) return setOrder((o) => o || false);
