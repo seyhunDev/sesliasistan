@@ -1,8 +1,8 @@
-Commit: 1d1140e · Medya: uzun videolar yüklenir; iPhone'da kopya donanımla hazırlanır, aslı Fotoğraflar'a; web küçültmesi takılmaz (#818)
-Zaman: 2026-10-25-1131 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40176342368
+Commit: 626777d · Ana sayfa iş düğmeleri ikonlu: iki sütun, soldan giren camgöbeği ikon (#819)
+Zaman: 2026-10-25-1757 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40204017940
 
-TAM TEST · 25.10.2026 11:22:33
+TAM TEST · 25.10.2026 17:49:31
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 460 sn
+SONUÇ: 1394/1394 geçti · 0 kalan · 450 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -132,8 +132,9 @@ SONUÇ: 1393/1393 geçti · 0 kalan · 460 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 120/120
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 121/121
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
+  ✓ Ana sayfa: 1/1
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
