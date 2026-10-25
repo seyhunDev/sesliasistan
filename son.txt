@@ -1,8 +1,8 @@
-Commit: d81082c · Ana sayfada yemek kartının altında Market düğmesi (Velora Sanal'ı açar) (#807)
-Zaman: 2026-10-25-0833 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40165420373
+Commit: 10d792c · Alışveriş: Market sekmesi ve sesli market komutu kalktı (market ana sayfadan Velora Sanal'da) (#809)
+Zaman: 2026-10-25-0850 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40166338875
 
-TAM TEST · 25.10.2026 08:24:55
+TAM TEST · 25.10.2026 08:40:49
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 488 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 508 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

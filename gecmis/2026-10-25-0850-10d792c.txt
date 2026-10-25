@@ -1,8 +1,8 @@
-Commit: 81b4974 · Merge pull request #705 from seyhunDev/claude/project-thread-76s7q5
-Zaman: 2026-10-22-2144 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39833122658
+Commit: 10d792c · Alışveriş: Market sekmesi ve sesli market komutu kalktı (market ana sayfadan Velora Sanal'da) (#809)
+Zaman: 2026-10-25-0850 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40166338875
 
-TAM TEST · 22.10.2026 21:39:01
+TAM TEST · 25.10.2026 08:40:49
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -14,12 +14,15 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Asistan: sekme çubuğu, açılış, dinleme, kapanış…
     Asistan: çalışırken, küçültme, sesli yanıt, geçmiş…
     Asistan: kayıt, onaylar, görev listesi…
+    Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
+    Deniz trafiği sayfası…
+    Kameralar sayfası…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 19/19 geçti
+    Çevrimdışı: 21/21 geçti
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1317/1318 geçti · 1 kalan · 331 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 508 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -124,33 +127,42 @@ SONUÇ: 1317/1318 geçti · 1 kalan · 331 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 63/63
-  ✓ Sunucu ucu: girişsiz istek reddedilir: 17/17
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 67/67
+  ✓ Sunucu ucu: girişsiz istek reddedilir: 18/18
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 47/47
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 51/52
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 121/121
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Enerji (boşta): 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
-  ✓ Kapanış: 2/2
+  ✓ Kapanış: 3/3
   ✓ Basılı tut yaz: 1/1
-  ✓ Sayfa hataları: 2/2
+  ✓ Sayfa hataları: 9/9
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
-  ✓ Onaysız kayıt ve “Kaydedildi”: 9/9
-  ✗ Senaryolar: 0/1
-      ✗ “çalıştırma”
-          beklenen: tamamlanır
-          olan:     locator.click: Timeout 5000ms exceeded. | Call log: |   - waiting for locator('[data-dome] button[aria-label=\'Gönder\']')
+  ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
+  ✓ Onay isteyen işler: 10/10
+  ✓ Görev listesi ve ilerleme halkası: 3/3
+  ✓ Tohum cümleler (telefonda cevap): 12/12
+  ✓ Kişi kare kodu: 4/4
+  ✓ Asistanın gizli olduğu yerler: 8/8
+  ✓ Geniş ekran (sol menü): 3/3
+  ✓ Asistan raporu: 3/3
+  ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
+  ✓ Instagram gönderisi: 1/1
+  ✓ Tam ekran üstte: 1/1
+  ✓ Deniz trafiği: 2/2
+  ✓ Kameralar: 5/5
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 19/19
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 21/21
   ✓ İnternet varken: 2/2
   ✓ Yavaş bağlantı: 3/3
+  ✓ Takılan bağlantı: 2/2
   ✓ İnternet yok: 5/5
   ✓ Bağlantı gelince: 2/2
   ✓ Açıkken kopup gelince: 2/2
