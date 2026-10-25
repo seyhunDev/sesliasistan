@@ -17,6 +17,7 @@ import { InboxSheet, useInbox } from "./Inbox";
 import { WaitRow } from "./WaitRow";
 import { Cockpit } from "./Cockpit";
 import { FoodCard } from "./FoodCard";
+import { MarketButton } from "./MarketButton";
 import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
@@ -122,6 +123,11 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         {owner && (
           <div className="mt-5">
             <FoodCard />
+          </div>
+        )}
+        {owner && (
+          <div className="mt-3">
+            <MarketButton />
           </div>
         )}
         {/* Deniz trafiği ve Kameralar: yalnız sayfasına giden iki sade düğme, veri çekmez (Seyhun 2026-10-23) */}
