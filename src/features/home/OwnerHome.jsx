@@ -54,7 +54,7 @@ export function OwnerHome() {
   );
 }
 
-// Sıra: kokpit (iş düğmeleri, büyük günler) › Notlar › Sırada (saat çizgisi, Yarın, Sırada, "seni bekleyenler") › Sporcular › Fitness › doğum günü › Yoklamam › Kulüp/Özet canlı alanları (Seyhun 2026-10-17:
+// Sıra: kokpit (iş düğmeleri, büyük günler) › Notlar › Sırada (saat çizgisi, Yarın, Sırada, "seni bekleyenler") › Sporcular › Fitness › doğum günü › sporcunun antrenmanı › Yoklamam › Kulüp/Özet canlı alanları (Seyhun 2026-10-17:
 // "kısa yolları canlı alanlara çevirelim": Sporcular, Fitness, yarış, aidat, fiş, hesap, Notlar, Mesajlar, Toplantı, Instagram; HomeSummary + HomeWidgets) › bütün sayfalar iş düğmelerindeki "Tümü" penceresinde (HomeGrid).
 // Kişi şeridi kaldırıldı (sporcular kendi alanında, Kişiler alttaki düğmelerde).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
@@ -157,8 +157,8 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         <div className="empty:hidden">
           <BirthdayStrip />
         </div>
-        {side && <MyAttendanceCard kind={kind} />}
         {staff && <MyFitCard />}
+        {side && <MyAttendanceCard kind={kind} />}
         {/* Ana hesapta Kulüp yukarıda (kutular); burada yalnız Instagram. Diğer hesaplarda Özet listesi burada */}
         {owner ? (
           <HomeSummary posts={!staff} />
