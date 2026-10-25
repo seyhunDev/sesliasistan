@@ -3111,7 +3111,23 @@ group("Ortak düğmeler")([
   const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
   const home = src("features/home/OwnerHome.jsx");
   group("Ana sayfa: Kulüp kutuları")([
-    ["yemek kartından önce", F("HomeSummary tiles, FoodCard'dan önce", () => home.indexOf("<HomeSummary\n              tiles") > 0 && home.indexOf("<HomeSummary\n              tiles") < home.indexOf("<FoodCard />"))],
+    ["yemek kartından önce", F("HomeSummary tiles, ShopCards'tan önce", () => home.indexOf("<HomeSummary\n              tiles") > 0 && home.indexOf("<HomeSummary\n              tiles") < home.indexOf("<ShopCards />"))],
     ["kutu görünümü", F("Row, RowTiles içinde kutu çizer", () => /const tile = useContext\(TileCtx\);\n  if \(tile\) return <Tile/.test(src("components/ui/Row.jsx")))],
+  ]);
+}
+
+// Ana sayfa Yemek · Market · Giyim yan yana (Seyhun 2026-10-25): aynı kart; Market Velora Sanal'ı açar, Giyim şimdilik bir yere gitmez;
+// açık yemek / market siparişi kartları üstünde
+{
+  const { readFileSync, existsSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  const shop = src("features/home/ShopCards.jsx");
+  const C = await import("@/market/catalog");
+  group("Ana sayfa: Yemek · Market · Giyim")([
+    ["üç kart yan yana", F("grid-cols-3, Yemek Market Giyim", () => /grid-cols-3/.test(shop) && ["Yemek", "Market", "Giyim"].every((t) => shop.includes(`title="${t}"`)))],
+    ["Market Velora Sanal", F("openSanal çağrılır", () => /openSanal\(\)/.test(shop) && /title="Market"[^\n]*onClick=\{go\}/.test(shop))],
+    ["Giyim bir yere gitmez", F("Giyim kartı off, bağlantı yok", () => /title="Giyim"[^\n]*off \/>/.test(shop) && !/title="Giyim"[^\n]*(href|onClick)/.test(shop))],
+    ["açık market siparişi", F("teslim / iptal açık sayılmaz", () => C.isOpenOrder({ status: "preparing" }) && !C.isOpenOrder({ status: "delivered" }) && !C.isOpenOrder({ status: "cancelled" }) && /find\(isOpenOrder\)/.test(shop))],
+    ["eski Market düğmesi yok", F("MarketButton silindi, ana sayfa ShopCards kullanır", () => !existsSync(new URL("../../../src/features/home/MarketButton.jsx", import.meta.url)) && src("features/home/OwnerHome.jsx").includes("<ShopCards />"))],
   ]);
 }
