@@ -33,28 +33,33 @@ const HOLD_MS = 450; // basılı tutma: yazarak sor (bas-konuş olmayan küçük
 // bırakılırsa gönderilmez. onRelease({ short, away }).
 const SHORT_MS = 300;
 const AWAY_PX = 90;
+// Bırakma pencereden dinlenir: kapalı asistanda basınca sekme çubuğundaki küre yerini açık asistanın küresine bırakır
+// (ilk düğme kalkar), parmağın kalkması yine yakalanır.
 function usePress(onPress, onRelease) {
-  const s = useRef(null);
+  const rel = useRef(onRelease);
+  useLayoutEffect(() => {
+    rel.current = onRelease;
+  });
   if (!onPress) return null;
-  const end = (away) => {
-    const p = s.current;
-    s.current = null;
-    if (p) onRelease?.({ short: Date.now() - p.t < SHORT_MS, away: away || p.away });
-  };
   return {
     onPointerDown: (e) => {
       if (e.button > 0) return;
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-      s.current = { t: Date.now(), x: e.clientX, y: e.clientY, away: false };
+      const p = { t: Date.now(), x: e.clientX, y: e.clientY, away: false };
+      const move = (ev) => {
+        if (Math.hypot(ev.clientX - p.x, ev.clientY - p.y) > AWAY_PX) p.away = true;
+      };
+      const end = (ev) => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", end);
+        window.removeEventListener("pointercancel", end);
+        rel.current?.({ short: Date.now() - p.t < SHORT_MS, away: p.away || ev.type === "pointercancel" });
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", end);
+      window.addEventListener("pointercancel", end);
       navigator.vibrate?.(10);
       onPress();
     },
-    onPointerMove: (e) => {
-      const p = s.current;
-      if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > AWAY_PX) p.away = true;
-    },
-    onPointerUp: () => end(false),
-    onPointerCancel: () => end(true),
     onContextMenu: (e) => e.preventDefault(),
   };
 }
@@ -194,11 +199,12 @@ const LIGHT_LABEL = {
   busy: "Vazgeç",
   speaking: "Sözünü kes ve konuş",
 };
+// İş sürerken kısa dokunuş durdurur; okurken kısa dokunuş okumayı keser, basılı tutunca sözünü kesip dinler
 const PTT_LABEL = {
   idle: "Asistan: basılı tut konuş",
   listening: "Bırak, gönder",
-  busy: "Vazgeç",
-  speaking: "Basılı tut, sözünü kes ve konuş",
+  busy: "Durdur",
+  speaking: "Okumayı kes",
 };
 export function VoiceLight({ onTap, onHold, onPress, onRelease, state, size = "size-[4.5rem]", compact = false }) {
   const t = useRef(null);
@@ -226,7 +232,7 @@ export function VoiceLight({ onTap, onHold, onPress, onRelease, state, size = "s
         onClick: () => !held.current && onTap(),
       })}
       aria-label={ptt ? PTT_LABEL[state] || PTT_LABEL.idle : LIGHT_LABEL[state] || LIGHT_LABEL.idle}
-      className={`vlight ${compact ? "vl-sm" : ""} ${size} shrink-0 select-none active:scale-95 [-webkit-touch-callout:none]`}
+      className={`vlight ${compact ? "vl-sm" : ""} ${size} ${ptt ? "touch-none" : ""} shrink-0 select-none active:scale-95 [-webkit-touch-callout:none]`}
     >
       <span className="vl-halo" aria-hidden="true" />
       <span className="vl-ring" aria-hidden="true" />
@@ -376,7 +382,7 @@ function OrbMain({ mode, r, icon, label, on = true, onTap, onHold, onPress, onRe
         onClick: () => !held.current && onTap(),
       })}
       aria-label={ptt ? PTT_LABEL[vstate] || PTT_LABEL.idle : label}
-      className={`vlight aorb ${small ? "vl-sm size-[3.125rem]" : ptt ? "size-[4.75rem]" : "size-[4.5rem]"} shrink-0 select-none disabled:opacity-60 [-webkit-touch-callout:none]`}
+      className={`vlight aorb ${small ? "vl-sm size-[3.125rem]" : ptt ? "size-[4.75rem] touch-none" : "size-[4.5rem]"} shrink-0 select-none disabled:opacity-60 [-webkit-touch-callout:none]`}
     >
       <span className="vl-halo" aria-hidden="true" />
       <span className="vl-ring" aria-hidden="true" />
@@ -1046,7 +1052,8 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
   };
   const release = ({ short, away }) => {
     if (state === "busy") return short && act.current.abort?.();
-    if (short || away) return act.current.cancel?.();
+    if (short) return (act.current.release || act.current.cancel)?.(); // motor kısa basışı göndermez, mikrofonu kapatır
+    if (away) return act.current.cancel?.();
     (act.current.release || act.current.stop)?.();
   };
   // Yazarak sor ("Şimdi sen dene" yönlendirmesi de kapanır)

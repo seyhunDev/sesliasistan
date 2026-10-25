@@ -1,6 +1,6 @@
 // SESLİ ASİSTAN EKRAN TESTİ: npm run test:asistan-ekran
 // Uygulama bu bilgisayarda açılır, sahte Firebase'e (emülatör) sahte hesapla girilir ve asistan bir insan gibi kullanılır:
-// sekme çubuğundaki düğme (dokun konuş, basılı tut yaz), tam ekran açılış/kapanış, halka renkleri, görev listesi, küçültme,
+// sekme çubuğundaki düğme (basılı tut konuş, bırak gönder; kısa dokun: Fotoğraf · Yaz), tam ekran açılış/kapanış, halka renkleri, görev listesi, küçültme,
 // sesli yanıt, telefonda cevaplanan sorular, onaysız kayıt + "Kaydedildi", silme/mesajda onay, ses kaydı yolu, sporcu
 // hesabı, fitness ve yarış multimedya sayfaları, geniş ekrandaki sol menü.
 // Yapay zekaya hiç istek gitmez (cevaplar taklit), gerçek veriye dokunulmaz. Java gerekir (Firestore emülatörü).

@@ -3140,7 +3140,7 @@ group("Ortak düğmeler")([
   const s = readFileSync(new URL("../../../src/features/home/TabBar.jsx", import.meta.url), "utf8");
   group("Asistan: bas-konuş küre")([
     ["sağ uçta büyük", F("dört sekme solda, küre sağda 4.75rem", () => /grid min-w-0 flex-1 grid-cols-4/.test(s) && /onPress=\{press\} onRelease=\{release\} size="size-\[4\.75rem\]"/.test(s))],
-    ["bırakınca gönderir", F("release gönderir, kısa / uzak iptal", () => /if \(short \|\| away\) return act\.current\.cancel\?\.\(\);\n    \(act\.current\.release \|\| act\.current\.stop\)\?\.\(\);/.test(s))],
+    ["bırakınca gönderir", F("release gönderir; kısa basışı motor yutar, uzağa kaydırma iptal", () => /if \(short\) return \(act\.current\.release \|\| act\.current\.cancel\)\?\.\(\);/.test(s) && /if \(away\) return act\.current\.cancel\?\.\(\);\n    \(act\.current\.release \|\| act\.current\.stop\)\?\.\(\);/.test(s))],
     ["kısa dokunuş sınırı", F("SHORT_MS 300, AWAY_PX 90", () => /const SHORT_MS = 300;/.test(s) && /const AWAY_PX = 90;/.test(s))],
     ["kapalıyken basınca açılır", F("press: kapalıysa openAssistant listen", () => /if \(!active\) return openAssistant\(\{ listen: true/.test(s))],
   ]);
