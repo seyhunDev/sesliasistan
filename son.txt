@@ -1,8 +1,8 @@
-Commit: 0b5e729 · Asistan: yalnız bas-konuş (mikrofon kendiliğinden açılmaz; act.press / act.release) (#813)
-Zaman: 2026-10-25-0915 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40168045911
+Commit: 8f2bd7b · Yemek: Ne yiyelim ⋯ = Yemek ayarların (adresler, ödeme, önceki siparişler); yönetim, restoran ve kurye ekranları Velora'dan silindi (Velora Food'da) (#814)
+Zaman: 2026-10-25-0943 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40169748185
 
-TAM TEST · 25.10.2026 09:09:47
+TAM TEST · 25.10.2026 09:37:54
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,7 +18,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1310/1311 geçti · 1 kalan · 283 sn
+SONUÇ: 1310/1311 geçti · 1 kalan · 306 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
