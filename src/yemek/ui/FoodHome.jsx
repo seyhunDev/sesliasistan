@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
-import { Sheet } from "@/components/ui/Sheet";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { ListHead, RowList, Row, SkelRow } from "@/components/ui/Row";
 import { isOpenAt, makeLine } from "../order";
@@ -15,9 +14,11 @@ import { liveView } from "../demo";
 import { minutesLeft, STATUS_NAMES, isOpenOrder } from "../order";
 import { PLACES, placeById, useFood, useOrder, herePos, writeCart, openNow } from "../store";
 import { Img, tl, rating } from "./Img";
+import { FoodSettings } from "./FoodSettings";
 
 // Alışveriş › Yemek (müşteri; Seyhun 2026-10-22 "Ne yiyelim" örneği A): lacivertte arama ve fotoğraflı mutfaklar,
 // altta açık sipariş, "Sana göre" (öneri kuralları, src/yemek/suggest.js), son siparişler (Aynısı) ve restoranlar.
+// ⋯ = Yemek ayarların (adresler, ödeme, önceki siparişler); yönetim Velora Food'da.
 const CUISINES = [
   ["pizza", "Pizza", "pizzaPep"], ["burger", "Burger", "burger"], ["ev yemeği", "Ev yemeği", "stew"], ["sushi", "Sushi", "sushi"],
   ["döner", "Döner", "doner"], ["balık", "Balık", "fish"], ["tatlı", "Tatlı", "cake"], ["kahvaltı", "Kahvaltı", "breakfast"],
@@ -75,7 +76,7 @@ export function FoodHome({ orgId, tabs }) {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Ne yiyelim?</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{food ? where : "…"}</p>
           </div>
-          <button type="button" onClick={() => setMenu(true)} aria-label="Yönetim ekranları" data-press className={buttonClass({ variant: "back" })}>
+          <button type="button" onClick={() => setMenu(true)} aria-label="Yemek ayarların" data-press className={buttonClass({ variant: "back" })}>
             <Icon name="more" className="size-5" />
           </button>
         </header>
@@ -164,13 +165,7 @@ export function FoodHome({ orgId, tabs }) {
         </section>
       </div>
 
-      <Sheet open={menu} onClose={() => setMenu(false)} title="Velora Yemek">
-        <RowList>
-          <Row href="/yemek/yonetim" title="Yönetim" sub="Siparişler, restoranlar, kuryeler" />
-          <Row href="/yemek/panel" title="Restoran ekranı" sub="Siparişi onayla, kuryeye ver" />
-          <Row href="/yemek/kurye" title="Kurye ekranı" sub="Konumu paylaş, teslim et" />
-        </RowList>
-      </Sheet>
+      <FoodSettings open={menu} onClose={() => setMenu(false)} orgId={orgId} food={food} orders={live} day={day} onAgain={again} />
     </main>
   );
 }

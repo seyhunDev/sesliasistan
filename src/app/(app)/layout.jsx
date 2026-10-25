@@ -31,7 +31,6 @@ import { TryAssistant } from "@/features/onboarding/TryAssistant";
 import { installTrail } from "@/lib/navTrail";
 import { NavProgress } from "@/components/ui/NavProgress";
 import { SwipeBack } from "@/components/ui/SwipeBack";
-import { CourierSelf } from "@/yemek/ui/CourierView";
 
 export default function AppLayout({ children }) {
   const { user, profile, loading, error } = useAuth();
@@ -56,12 +55,14 @@ export default function AppLayout({ children }) {
     );
   }
 
-  // Velora Yemek kuryesi: yalnız kurye ekranı (başka veri okunmaz, alt çubuk ve asistan yok)
+  // Velora Food kurye hesabı: kurye ekranı Velora Food'da (2026-10-25); Velora'da hiçbir veri açılmaz
   if (profile.role === "courier") {
     return (
-      <ToastProvider>
-        <CourierSelf profile={profile} />
-      </ToastProvider>
+      <div className="mx-auto grid min-h-dvh max-w-[26.25rem] content-center gap-4 px-5">
+        <h1 className="text-xl font-bold">Kurye hesabı</h1>
+        <p className="text-sm text-mut">Bu hesapla Velora Food uygulamasından giriş yap.</p>
+        <Button variant="ghost" onClick={() => logout()}>Çıkış yap</Button>
+      </div>
     );
   }
 
