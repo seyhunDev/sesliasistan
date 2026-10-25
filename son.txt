@@ -1,8 +1,8 @@
-Commit: f8873ad · Asistan: küre kesilmez, söz tek yerde, balon yükselir, cevap harf harf yazılır (#817)
-Zaman: 2026-10-25-1039 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40172982791
+Commit: 1d1140e · Medya: uzun videolar yüklenir; iPhone'da kopya donanımla hazırlanır, aslı Fotoğraflar'a; web küçültmesi takılmaz (#818)
+Zaman: 2026-10-25-1131 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40176342368
 
-TAM TEST · 25.10.2026 10:30:24
+TAM TEST · 25.10.2026 11:22:33
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1393/1393 geçti · 0 kalan · 480 sn
+SONUÇ: 1393/1393 geçti · 0 kalan · 460 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
