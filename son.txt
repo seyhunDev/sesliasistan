@@ -1,8 +1,8 @@
-Commit: 24f417d · Market (/sanal) tam ekran: sekme çubuğu ve başlık yok, küçük Geri (#823)
-Zaman: 2026-10-25-2233 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40225748348
+Commit: 0a4d602 · Market (/sanal): çerçeve çentik dahil bütün ekran, paylar Sanal'a st/sb ile gider (#824)
+Zaman: 2026-10-25-2308 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40228610608
 
-TAM TEST · 25.10.2026 22:24:42
+TAM TEST · 25.10.2026 22:59:44
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1394/1394 geçti · 0 kalan · 502 sn
+SONUÇ: 1394/1394 geçti · 0 kalan · 498 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
