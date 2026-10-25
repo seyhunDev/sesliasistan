@@ -1,14 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { Icon } from "@/components/ui/Icon";
 import { monthOf, useMyAttendance } from "@/features/athletes/myAttendance";
-import { CARD, SectionHead } from "./ui";
+import { ListHead, Row, RowList } from "@/components/ui/Row";
 
-const ST = { present: ["Geldi", "text-ok"], absent: ["Gelmedi", "text-rec"], excused: ["İzinli", "text-amber-700"] };
+const ST = { present: ["Geldi", "text-ok"], absent: ["Gelmedi", "text-rec"], excused: ["İzinli", "text-warn"] };
 const DAY = new Intl.DateTimeFormat("tr-TR", { weekday: "short", day: "numeric", month: "short" });
 
-// Sporcu, öğrenci ve velinin ana sayfası: bu ayın yoklaması (geldi/gelmedi, devam %), son antrenman. Dokununca Yoklamam.
+// Sporcu, öğrenci ve velinin ana sayfası: bu ayın yoklaması (geldi/gelmedi, sağda devam %), son antrenman. Dokununca Yoklamam.
+// Ortak liste parçalarıyla (Row), lacivert alt alanda kendiliğinden koyu (Seyhun 2026-10-25).
 // Veli birden çok sporcuya bağlıysa her biri bir satır. Kayıt yoksa ya da erişim yoksa çizilmez.
 export function MyAttendanceCard({ kind }) {
   const { recs } = useMyAttendance(kind);
@@ -17,38 +16,34 @@ export function MyAttendanceCard({ kind }) {
 
   return (
     <section aria-label="Yoklama">
-      <SectionHead title={parent ? "Yoklama · bu ay" : "Yoklamam · bu ay"} />
-      <ul className={`divide-y divide-line overflow-hidden ${CARD}`}>
+      <ListHead title={parent ? "Yoklama · bu ay" : "Yoklamam · bu ay"} href="/my-attendance" />
+      <RowList>
         {recs.map((r) => {
           const m = monthOf(r);
           const last = m.last && ST[m.last[1]];
+          const counts = m.rate == null ? "Bu ay yoklama yok" : `${m.present} geldi · ${m.absent} gelmedi`;
           return (
-            <li key={r.id}>
-              <Link href="/my-attendance" className="flex items-center gap-3 px-3.5 py-3 active:bg-bg">
-                <span className="grid size-[2.625rem] shrink-0 place-items-center rounded-full bg-acc/10 text-[0.875rem] font-bold tabular-nums text-acc">
-                  {m.rate == null ? <Icon name="check" className="size-5" /> : `%${m.rate}`}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[0.9375rem] font-semibold">
-                    {parent ? r.name : m.rate == null ? "Bu ay yoklama yok" : `${m.present} geldi · ${m.absent} gelmedi`}
-                  </b>
-                  <small className="block truncate text-[0.75rem] text-mut">
-                    {parent && m.rate != null && `${m.present} geldi · ${m.absent} gelmedi · `}
-                    {last ? (
-                      <>
-                        Son: {DAY.format(new Date(`${m.last[0]}T12:00:00`))} <span className={`font-semibold ${last[1]}`}>{last[0]}</span>
-                      </>
-                    ) : (
-                      "Henüz yoklama kaydı yok"
-                    )}
-                  </small>
-                </span>
-                <Icon name="chev" className="size-4 shrink-0 text-mut" />
-              </Link>
-            </li>
+            <Row
+              key={r.id}
+              href="/my-attendance"
+              title={parent ? r.name : counts}
+              sub={
+                <>
+                  {parent && m.rate != null && `${counts} · `}
+                  {last ? (
+                    <>
+                      Son: {DAY.format(new Date(`${m.last[0]}T12:00:00`))} <span className={`font-semibold ${last[1]}`}>{last[0]}</span>
+                    </>
+                  ) : (
+                    "Henüz yoklama kaydı yok"
+                  )}
+                </>
+              }
+              right={m.rate == null ? null : `%${m.rate}`}
+            />
           );
         })}
-      </ul>
+      </RowList>
     </section>
   );
 }

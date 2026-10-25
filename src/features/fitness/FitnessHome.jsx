@@ -27,6 +27,7 @@ import { ExerciseLibrary } from "./ExerciseLibrary";
 import { BodyStep, FitIntro } from "./FitIntro";
 import { HistoryCard, MonthCard, ProgramCard, ProgressCard, RowButton, TodayCard, WeekCard, WeekStrip, progSub } from "./FitDashboard";
 import { FoodView } from "./FoodView";
+import { DOW, FitPhoto, WeekBoxes } from "./FitDark";
 import { FitReview } from "./FitReview";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -602,21 +603,6 @@ function ProfileSheet({ open, onClose, value, onSave }) {
 }
 
 const initialsOf = (s) => String(s || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toLocaleUpperCase("tr-TR");
-// Sporcular sekmesinin arka planı (Seyhun 2026-10-23 "A · Koyu", örnek fitness/sporcular-tasarim/ornek.png): üstte salon fotoğrafı
-// (ücretsiz lisanslı Unsplash), aşağı doğru koyulaşıp sayfanın koyu zeminine karışır. Yüklenemezse yalnız koyu zemin kalır.
-const FIT_BG = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&q=60&auto=format&fit=crop";
-function FitPhoto() {
-  const [off, setOff] = useState(false);
-  return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[27rem] overflow-hidden">
-      {/* eslint-disable-next-line @next/next/no-img-element -- dış bağlantı (Unsplash), Next görüntü sunucusu yok */}
-      {!off && <img src={FIT_BG} alt="" onError={() => setOff(true)} className="size-full object-cover opacity-80" />}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,22,40,.3)_0%,rgba(11,22,40,.72)_45%,#0b1628_100%)]" />
-    </div>
-  );
-}
-
-const DOW = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const shortDay = (d) => new Date(`${d}T12:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" }).replace(/\./g, "");
 
 // Sporcular sekmesi (koyu): bugünün özeti (kaç sporcu, yaptı/bekliyor, bu hafta çubuğu, Gün gün), sporcu kartları, programı olmayanlar
@@ -721,7 +707,10 @@ function AthCard({ row, today, onAth, onOpen }) {
   const sub = [labelOf(GOALS, prog?.goal) || prog?.title, pw && pw.n ? `${Math.min(pw.n, pw.of)}. hafta / ${pw.of}` : ""].filter(Boolean).join(" · ");
   const pct = row.week.planned ? Math.round((row.week.done / row.week.planned) * 100) : 0;
   const line = athLine(row, today);
-  const mon = addDays(today, 1 - dowOf(today));
+  const openDay = (d) => {
+    const plan = row.plans.find((p) => p.id === d.id);
+    if (plan) onOpen(plan);
+  };
   return (
     <div className="rounded-[1.5rem] border border-white/[.08] bg-[#13233d] p-4">
       <button type="button" onClick={onAth} className="flex w-full items-center gap-3 text-left">
@@ -740,24 +729,7 @@ function AthCard({ row, today, onAth, onOpen }) {
         <b className="min-w-0 truncate text-[0.875rem] font-semibold">{line.text}</b>
         {line.tag && <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-bold ${TAG[line.tag[1]]}`}>{line.tag[0]}</span>}
       </button>
-      <div className="mt-3 grid grid-cols-7 gap-1.5">
-        {DOW.map((dn, i) => {
-          const date = addDays(mon, i);
-          const d = row.week.days.find((x) => x.date === date);
-          const plan = d && row.plans.find((p) => p.id === d.id);
-          const look = !d
-            ? "text-white/25"
-            : { done: "bg-[#9fe7c6] text-[#0b2a20]", missed: "bg-[#f3a39a] text-[#5a1610]", skip: "bg-white/12 text-white/70", today: "border-2 border-[#67e8f9] text-[#67e8f9]" }[d.st] || "border border-white/30 text-white";
-          return (
-            <button key={date} type="button" disabled={!plan} aria-label={d ? `${dn} ${d.name} · ${STATUS[d.st]}` : dn} onClick={() => plan && onOpen(plan)} className="flex flex-col items-center gap-1">
-              <small className={`text-[0.6875rem] ${date === today ? "font-bold text-white" : "text-[#9fb0cc]"}`}>{dn}</small>
-              <span className={`grid h-10 w-full place-items-center rounded-xl text-[0.8125rem] font-bold ${look}`}>
-                {!d ? "·" : d.st === "done" ? <Icon name="check" className="size-4" /> : d.st === "missed" ? "✕" : d.st === "skip" ? "–" : +date.slice(8)}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <WeekBoxes days={row.week.days} today={today} onOpen={openDay} className="mt-3" />
     </div>
   );
 }
