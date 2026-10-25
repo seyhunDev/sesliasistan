@@ -3145,3 +3145,19 @@ group("Ortak düğmeler")([
     ["kapalıyken basınca açılır", F("press: kapalıysa openAssistant listen", () => /if \(!active\) return openAssistant\(\{ listen: true/.test(s))],
   ]);
 }
+
+// Asistan (Seyhun 2026-10-25): küre çubuğun üstünde kesilmez; söylenen söz tek yerde (gönderilince kutudan sohbete geçer,
+// balon yükselerek belirir); yeni yanıt harf harf yazılır (akışla geldiyse yazılmaz)
+{
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  const tb = src("features/home/TabBar.jsx");
+  const th = src("features/add/Thread.jsx");
+  const sh = src("features/assistant/AssistantSheet.jsx");
+  group("Asistan: tek yerde söz, yazılan yanıt")([
+    ["küre kesilmez", F("sekme çubuğunun üst payı küre taşmasından büyük", () => /atabbar-wrap \$\{noAi \? "" : "pt-9"\}/.test(tb) && /acenter absolute -top-7/.test(tb))],
+    ["iş sürerken kutu boş", F("gönderilen söz kutuda kalmaz", () => /: mode === "busy" \? "" \/\//.test(tb))],
+    ["balon yükselir", F("kullanıcı balonu auser-in", () => /className="auser-in flex flex-col items-end"/.test(th) && /\.auser-in \{ animation: auserin/.test(src("app/globals.css")))],
+    ["harf harf", F("son yanıt Typed, akıştan sonra değil", () => /<Typed turn=\{t\} on=\{typeLast\} \/>/.test(th) && /typeLast=\{!streamed\}/.test(sh))],
+  ]);
+}
