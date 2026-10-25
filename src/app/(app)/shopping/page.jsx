@@ -7,9 +7,6 @@ import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Sheet } from "@/components/ui/Sheet";
-import { RowList, Row } from "@/components/ui/Row";
-import { buttonClass } from "@/components/ui/buttonClass";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useKind } from "@/features/auth/useKind";
 import { useData } from "@/features/data/DataProvider";
@@ -18,7 +15,7 @@ import { LISTS, addItems, clearDone, listsFor, removeItem, splitItems, toggleIte
 
 // Alışveriş (Seyhun 2026-10-22: "alışveriş, yemek siparişi gibisinden birleştirmeliyiz"): ana hesapta lacivert üstte
 // Liste / Yemek. Yemek: Velora Yemek (src/yemek, ayrı projeye taşınacak). ?tab=yemek ile o sekme açılır.
-// Market burada yok (Seyhun 2026-10-25): ana sayfadaki Market düğmesi Velora Sanal'ı açar. Market yönetimi Liste'nin ⋯ içinde.
+// Market burada yok (Seyhun 2026-10-25): ana sayfadaki Market kartı Velora Sanal'ı açar; market yönetimi ve hazır menüler de orada.
 export default function ShoppingPage() {
   return (
     <Suspense fallback={null}>
@@ -65,7 +62,6 @@ function ListPage({ tabs }) {
   const uid = profile?.uid;
   const items = useShop(orgId, list);
   const [text, setText] = useState("");
-  const [more, setMore] = useState(false);
 
   async function add(e) {
     e.preventDefault();
@@ -116,11 +112,6 @@ function ListPage({ tabs }) {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Alışveriş</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{items ? (open.length ? `${open.length} alınacak` : "Liste boş") : "…"}</p>
           </div>
-          {kind === "owner" && (
-            <button type="button" onClick={() => setMore(true)} aria-label="Diğer" data-press className={buttonClass({ variant: "back" })}>
-              <Icon name="more" className="size-5" />
-            </button>
-          )}
         </header>
         {tabs}
       </section>
@@ -184,11 +175,6 @@ function ListPage({ tabs }) {
         </>
       )}
       </div>
-      <Sheet open={more} onClose={() => setMore(false)} title="Alışveriş">
-        <RowList>
-          <Row href="/market/yonetim" title="Market yönetimi" sub="Ürünler, stok, siparişler" />
-        </RowList>
-      </Sheet>
     </main>
   );
 }
