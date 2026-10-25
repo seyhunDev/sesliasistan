@@ -778,6 +778,15 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .ck .raised.ck-pill { height: 2.5rem; border-radius: 9999px; background: transparent; border: 1.5px solid rgba(103, 232, 249, .55); box-shadow: none; color: #fff; font-size: 0.875rem; }
 .ck .raised.ck-pill[data-pressed] { background: rgba(103, 232, 249, .16); transform: scale(.97); }
 .ck .raised.ck-pill.act-main { background: #0ea5c4; border-color: #0ea5c4; color: #fff; }
+/* İkonlu iş düğmesi (HomeGrid › ActionGrid icons; Seyhun 2026-10-25 "B · İki sütun, camgöbeği ikon"): solda büyük camgöbeği ikon kartın kenarından içeri
+   girer ve sağa doğru solar, yazı sağında. Ana iş dolu camgöbeği, ikon beyaz */
+.ck .raised.ck-ibtn { position: relative; overflow: hidden; height: 3.5rem; padding-left: 4rem; border-radius: 1rem; font-size: 0.9375rem; color: #fff; }
+.ck-ibtn .ck-icon { position: absolute; left: -0.55rem; top: 50%; width: 4.6rem; height: 4.6rem; margin-top: -2.3rem; stroke-width: 1.5; color: #22d3ee; opacity: .42; pointer-events: none;
+  -webkit-mask: linear-gradient(90deg, #000 35%, transparent 95%); mask: linear-gradient(90deg, #000 35%, transparent 95%); }
+.ck .raised.ck-ibtn.act-main { background: linear-gradient(180deg, #14b4d4, #0e97b6); border-color: #22d3ee; color: #fff; }
+.ck-ibtn.act-main .ck-icon { color: #fff; opacity: .28; -webkit-mask: none; mask: none; }
+.ck .raised.ck-ibtn.ck-done { color: var(--ok); }
+.ck-ibtn.ck-done .ck-icon { color: var(--ok); }
 /* Ana sayfa not kartları (HomeWidgets NotesWidget; Seyhun 2026-10-23 "B · Yapışkan not"): gerçek kâğıt renginde yapışkan not, koyu yazı,
    sağ altta kıvrık köşe. Renksiz not sarı, renkli not kendi açık tonunda (--p, satır içi). Sabitlenen notta üstte camgöbeği raptiye */
 .note-card { position: relative; color: #2a2416; background: var(--p, #f6e7a6); border-radius: 0.375rem 0.375rem 1.375rem 0.375rem; box-shadow: 0 8px 18px -10px rgba(0, 0, 0, .8); }
