@@ -60,6 +60,10 @@ export const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // dinler, söylenen ekranda yazılır, yeniden dokununca gönderilir. Cevaptan sonra ya da yapay zeka düşünürken mikrofon
 // kendiliğinden açılmaz, sessizlikte kendiliğinden gönderilmez. Eller serbest sohbete dönmek için true.
 export const HANDS_FREE = false;
+// Yalnız bas-konuş (Seyhun 2026-10-25: "otomatik açılma falan yok, sadece bas konuş"): basılı tutarken dinler, bırakınca
+// gönderir; soru sorulunca ya da okuma bitince mikrofon kendiliğinden açılmaz. PRESS_MIN'den kısa basış dokunuştur
+export const PUSH_TALK = true;
+export const PRESS_MIN = 300;
 // Eller serbest sohbette: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
 export const ENDPOINT = HANDS_FREE ? 1500 : 0; // canlı yazı yolunda konuşma bitişi (devam edilirse öncekine eklenir)
 export const listenOpts = (auto) => (HANDS_FREE ? { autoStop: SILENCE_MS, auto, endpoint: ENDPOINT, handsFree: true } : {});
@@ -267,6 +271,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   // Cevap kayıt yoluyla dinlenir (server): telefonun tanıması okumanın ardından "gönder", "evet" gibi kısa sözleri
   // çoğu zaman hiç yazıya çevirmiyordu (Seyhun 2026-10-20); kayıt yolunda ses gerçekten ölçülür, susunca gönderilir
   const listenOnce = () =>
+    !PUSH_TALK &&
     setTimeout(() => {
       if (live.current.open && !live.current.text && live.current.spStatus === "idle") sp.start({ auto: true, quiet: true, autoStop: 8000, endpoint: 1500, handsFree: true, server: true });
     }, 700);
@@ -809,8 +814,8 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
     onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, heardFix, tail: heardTail, said: heard, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow, prog: plan.length ? plan : steps, planShown: plan.length > 0, saved: saved.length > 0 && !drafts.length });
   }, [onLive, open, docked, listening, transcribing, busy, heardNow, heardFix, heardTail, heard, text, lastReply, tts.speaking, booting, turns.length, workNow, plan, steps, saved.length, drafts.length]);
   // Sahnenin düğmeleri buradaki işleri çağırır
-  const stageListen = () => {
-    convo.current = true;
+  // Küreye yeniden basınca eski konuşma kalkar (bir soruya cevap beklenmiyorsa)
+  const clearOld = () => {
     // Küreye yeniden basınca ekran temiz başlar (eski konuşma bir an görünüp kaybolmasın); bir soruya cevap beklenmiyorsa.
     // Kalkan konuşma yapay zekaya geçmiş olarak gitmeye devam eder (keepPast)
     const lastAsk = [...turns].reverse().find((t) => t.role === "assistant" && !t.pre)?.text || "";
@@ -823,14 +828,54 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
       setPlan([]);
       setError("");
     }
+  };
+  const stageListen = () => {
+    convo.current = true;
+    clearOld();
     setHeard("");
     clearSay();
     tts.stop();
     sp.start(listenOpts(false));
   };
+  // Bas-konuş: press() basınca hemen dinler (ilk kelime kaçmasın); release() bırakınca gönderir ve "sent" döner. Kısa
+  // basış (dokunuş) hiçbir şey göndermez, mikrofonu kapatır, eski konuşmayı silmez ve "short" döner. Mikrofon henüz
+  // açılmadan bırakılırsa açıldığı an aynı iş yapılır (dinleme takılı kalmaz)
+  const press = useRef({ at: 0, up: "" });
+  const pressStart = () => {
+    press.current = { at: nowMs(), up: "" };
+    convo.current = true;
+    setHeard("");
+    clearSay();
+    tts.stop();
+    sp.start(listenOpts(false));
+  };
+  const endPress = (how) => {
+    if (how === "send") {
+      clearOld();
+      return sp.stop("send");
+    }
+    sp.cancel();
+    setText("");
+  };
+  const pressEnd = () => {
+    const p = press.current;
+    const how = p.at && nowMs() - p.at < PRESS_MIN ? "short" : "send";
+    if (live.current.spStatus === "listening") endPress(how);
+    else if (live.current.spStatus === "idle") p.up = how;
+    return how === "short" ? "short" : "sent";
+  };
+  useEffect(() => {
+    const p = press.current;
+    if (sp.status !== "listening" || !p.up) return;
+    const how = p.up;
+    p.up = "";
+    endPress(how);
+  }, [sp.status]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     onAct?.({
       listen: stageListen,
+      press: pressStart,
+      release: pressEnd,
       photoIn, // yazı kutusundaki Fotoğraf düğmesi (TabBar): kişi ekleme
       stop: () => sp.stop("send"),
       // Konuşma kutusu (Seyhun'un örneği): ■ dinlemeyi durdurur, söylenen kutuda kalır (gönderilmez); ↑ kutudakini gönderir;
@@ -941,6 +986,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
       else if (seed?.text) run(seed.text, !!seed.voice);
       else if (seed?.listen) {
         setBooting(true);
+        press.current = { at: nowMs(), up: "" }; // basılı tutarak açıldıysa bırakınca release()
         sp.start(listenOpts(true));
       }
       return;
@@ -951,6 +997,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
       else if (seed?.text) run(seed.text, !!seed.voice);
       else if (seed?.listen) {
         convo.current = true;
+        press.current = { at: nowMs(), up: "" }; // basılı tutarak açıldıysa bırakınca release()
         sp.start(listenOpts(true));
       }
       return;
@@ -971,6 +1018,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
     else if (seed?.text) run(seed.text, !!seed.voice, true);
     else if (seed?.listen) {
       setBooting(true);
+      press.current = { at: nowMs(), up: "" }; // basılı tutarak açıldıysa bırakınca release()
       sp.start(listenOpts(true));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

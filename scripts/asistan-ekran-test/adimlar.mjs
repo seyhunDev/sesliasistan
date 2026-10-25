@@ -325,13 +325,16 @@ async function scenarios2(h) {
     return [c === "mavi" && (await btn(page, "Okumayı kes").count()) === 1, `${c} · ${clean(await ringText(page))} · ${await state(page)}`];
   });
   const sr0 = await page.evaluate(() => window.__t.srStarts);
-  await check(GS, "okuma bitince", "mikrofon bir kez kendiliğinden açılır (cevap verilebilsin)", async () => {
-    const ok = await waitFor(async () => (await state(page)) === "listening", 5000);
-    return [!!ok, `${await state(page)} · tanıma +${(await page.evaluate(() => window.__t.srStarts)) - sr0}`];
+  // Yalnız bas-konuş (Seyhun 2026-10-25): okuma bitince mikrofon kendiliğinden açılmaz
+  await check(GS, "okuma bitince", "mikrofon kendiliğinden açılmaz (yalnız bas-konuş)", async () => {
+    await waitFor(async () => (await state(page)) === "idle", 6000);
+    await page.waitForTimeout(2000);
+    const st = await state(page);
+    const n = (await page.evaluate(() => window.__t.srStarts)) - sr0;
+    return [st === "idle" && n === 0, `${st} · tanıma +${n}`];
   });
-  // Cevap mikrofonu kayıt yoluyla dinler (telefonun tanıması değil): söylenen ara çeviriyle (/api/transcribe) gelir
-  setTranscript("kapat");
-  await check(GS, "dinlerken “kapat”", "asistan hemen kapanır", async () => {
+  await talkAsk(page, "kapat");
+  await check(GS, "konuşarak “kapat”", "asistan hemen kapanır", async () => {
     const ok = await waitFor(async () => !(await full(page).count()), 7000);
     return [!!ok, `tam ekran ${await full(page).count()}`];
   });
@@ -385,20 +388,12 @@ async function scenarios2(h) {
 
 // Asistanın sorusundan sonra kendiliğinden açılan cevap mikrofonu (kayıt yolu): kullanıcı konuşur, söz sunucuda çevrilir.
 // Testteki sahte mikrofonun bip sesi konuşma sayılmaz, "sustu" anlaşılmaz: kullanıcı ↑ ile bitirir
+// Asistanın sorusuna sesle cevap: yalnız bas-konuş (Seyhun 2026-10-25), mikrofon kendiliğinden açılmaz; kullanıcı
+// basıp konuşur
 async function answer(h, page, text) {
-  const { state, btn, waitFor, setTranscript } = h;
-  setTranscript(text);
-  // Soru okununca mikrofon açılır; GitHub makinesi yavaş olduğunda okuma uzun sürebiliyor (6 sn yetmedi, 22 Eki)
-  await waitFor(async () => (await state(page)) === "listening", 12000);
-  await page.waitForTimeout(1200);
-  // Dinlerken küre sesin gücüyle büyüyüp küçülür (sahte mikrofonun bipi): "durağan değil" beklemesine takılmasın
-  if (await btn(page, "Gönder").count()) return btn(page, "Gönder").click({ timeout: 5000, force: true });
-  // Kendiliğinden açılan mikrofon bu arada kapandıysa (GitHub makinesinde yavaş: 22 Eki üç kez) kullanıcı gibi Konuş'a basılır
-  await waitFor(async () => (await btn(page, "Konuş").count()) > 0, 6000);
-  if (!(await btn(page, "Konuş").count())) return;
-  await btn(page, "Konuş").click({ timeout: 5000 });
-  await waitFor(async () => (await btn(page, "Gönder").count()) > 0, 6000);
-  if (await btn(page, "Gönder").count()) await btn(page, "Gönder").click({ timeout: 5000, force: true });
+  const { state, waitFor, talkAsk } = h;
+  await waitFor(async () => (await state(page)) === "idle", 12000);
+  return talkAsk(page, text);
 }
 
 async function scenarios3(h) {
