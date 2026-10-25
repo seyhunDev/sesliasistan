@@ -3126,8 +3126,9 @@ group("Ortak düğmeler")([
   group("Ana sayfa: Yemek · Market · Giyim")([
     ["üç kart yan yana", F("grid-cols-3, Yemek Market Giyim", () => /grid-cols-3/.test(shop) && ["Yemek", "Market", "Giyim"].every((t) => shop.includes(`title="${t}"`)))],
     ["Market Velora Sanal", F("Market kartı gömülü /sanal sayfasına gider", () => /title="Market"[^\n]*href="\/sanal"/.test(shop))],
-    ["gömülü Sanal sayfası", F("/sanal çerçevede sanalLink açar", () => { const pg = src("app/(app)/sanal/page.jsx"); return /<iframe/.test(pg) && /sanalLink\(\)/.test(pg); })],
+    ["gömülü Sanal sayfası", F("/sanal çerçevede sanalLink açar", () => { const pg = src("app/(app)/sanal/page.jsx"); return /<iframe/.test(pg) && /sanalLink\(/.test(pg); })],
     ["Sanal tam ekran", F("/sanal'da sekme çubuğu ve başlık yok, yalnız küçük Geri", () => { const pg = src("app/(app)/sanal/page.jsx"); const tb = src("features/home/TabBar.jsx"); return /fixed inset-0/.test(pg) && !/<h1/.test(pg) && /aria-label="Geri"/.test(pg) && /path === "\/sanal"/.test(tb); })],
+    ["Sanal çentik payı", F("çerçeve bütün ekran, üst/alt pay st/sb ile Sanal'a gider", () => { const pg = src("app/(app)/sanal/page.jsx"); const lib = src("lib/sanal.js"); return /absolute inset-0 size-full/.test(pg) && /safe-area-inset-top/.test(pg) && /sanalLink\(pad\)/.test(pg) && /&st=\$\{pad\.st/.test(lib) && /&sb=\$\{pad\.sb/.test(lib); })],
     ["Giyim bir yere gitmez", F("Giyim kartı off, bağlantı yok", () => /title="Giyim"[^\n]*off \/>/.test(shop) && !/title="Giyim"[^\n]*(href|onClick)/.test(shop))],
     ["açık market siparişi", F("teslim / iptal açık sayılmaz", () => C.isOpenOrder({ status: "preparing" }) && !C.isOpenOrder({ status: "delivered" }) && !C.isOpenOrder({ status: "cancelled" }) && /find\(isOpenOrder\)/.test(shop))],
     ["eski Market düğmesi yok", F("MarketButton silindi, ana sayfa ShopCards kullanır", () => !existsSync(new URL("../../../src/features/home/MarketButton.jsx", import.meta.url)) && src("features/home/OwnerHome.jsx").includes("<ShopCards />"))],
