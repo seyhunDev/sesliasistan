@@ -85,11 +85,28 @@ export async function shrinkVideo(v, onProg, max = 640, bps = 900_000, audio = f
   await ac?.resume().catch(() => {});
   await v.play().catch(() => ((v.muted = true), v.play()));
   draw();
-  await new Promise((res) => (v.onended = res));
-  on = false;
-  rec.stop();
-  await done;
-  ac?.close().catch(() => {});
+  // Ekran kilitlenir ya da uygulama arkaya geçerse oynatma durur ve "bitti" hiç gelmezdi (Seyhun 2026-10-25: uzun video yüklenmiyor):
+  // durunca yeniden oynatılır, 20 sn ilerlemezse vazgeçilir (kayıt telefonda bekler, sonra yeniden denenir)
+  let tick = 0;
+  try {
+    await new Promise((res, rej) => {
+      let last = -1;
+      let still = 0;
+      v.onended = res;
+      tick = setInterval(() => {
+        if (v.ended) return;
+        if (v.currentTime !== last) return ((last = v.currentTime), (still = 0));
+        if (v.paused && document.visibilityState === "visible") v.play().catch(() => {});
+        if (++still >= 20) rej(new Error("Küçültme durdu (ekran kilitlendi ya da uygulama arkaya geçti)"));
+      }, 1000);
+    });
+  } finally {
+    clearInterval(tick);
+    on = false;
+    rec.stop();
+    await done;
+    ac?.close().catch(() => {});
+  }
   const blob = new Blob(chunks, { type: type.split(";")[0] });
   if (!blob.size) throw new Error("no-shrink");
   return blob;

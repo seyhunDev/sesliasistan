@@ -1,4 +1,6 @@
+import AVFoundation
 import Capacitor
+import Photos
 import UIKit
 import UniformTypeIdentifiers
 
@@ -67,10 +69,25 @@ final class KameraYonetici: NSObject, UIImagePickerControllerDelegate, UINavigat
                 // Kaydın bittiği an: dosyanın yazıldığı zaman ("Videoyu Kullan"a basılana kadar geçen süre sayılmasın)
                 let at = (try? FileManager.default.attributesOfItem(atPath: src.path)[.creationDate] as? Date) ?? Date()
                 let ext = src.pathExtension.isEmpty ? "mov" : src.pathExtension.lowercased()
-                let dst = tmp.appendingPathComponent("\(ad).\(ext)")
-                try? FileManager.default.removeItem(at: dst)
-                try FileManager.default.copyItem(at: src, to: dst)
-                return cevap(dst, kind: "video", type: ext == "mp4" ? "video/mp4" : "video/quicktime", at: at)
+                let asil = tmp.appendingPathComponent("\(ad)-asil.\(ext)")
+                try? FileManager.default.removeItem(at: asil)
+                try FileManager.default.copyItem(at: src, to: asil)
+                // Seyhun 2026-10-25: "1 dakikadan uzun kayıtlar ne telefona ne buluta yükleniyor". iPhone kamerasının 1080p videosu
+                // saniyede 10-20 Mbit (1 dk ≈ 100 MB); web'deki küçültme video süresi kadar oynatarak çalışıyor, ekran kilitlenince ya da
+                // uzun videoda takılıyordu, 60 MB sınırını aşan aslı da yüklenemiyordu. Şimdi: aslı iPhone'un Fotoğraflar'ına kaydedilir
+                // (telefonda kalır), buluta gidecek 1080p kopya burada donanımla hazırlanır (videodan kısa sürer, 55 MB altına sığar).
+                Fotograflar.kaydet(asil)
+                Task {
+                    do {
+                        let kucuk = tmp.appendingPathComponent("\(ad).mp4")
+                        try await VideoKopya.hazirla(asil, kucuk, enCokBayt: 55 * 1024 * 1024, enCokBps: 5_000_000, enCokPx: 1920)
+                        self.cevap(kucuk, kind: "video", type: "video/mp4", at: at, saved: true)
+                    } catch {
+                        NSLog("[kamera] kopya hazırlanamadı: \(error)")
+                        self.cevap(asil, kind: "video", type: ext == "mp4" ? "video/mp4" : "video/quicktime", at: at, saved: true)
+                    }
+                }
+                return
             }
             if let img = info[.originalImage] as? UIImage, let data = img.jpegData(compressionQuality: 0.92) {
                 let dst = tmp.appendingPathComponent("\(ad).jpg")
@@ -83,9 +100,10 @@ final class KameraYonetici: NSObject, UIImagePickerControllerDelegate, UINavigat
         }
     }
 
-    private func cevap(_ url: URL, kind: String, type: String, at: Date) {
+    // saved: aslı Fotoğraflar'a kaydedildi (web "telefonda 7 gün" kopyası tutmasa da olur)
+    private func cevap(_ url: URL, kind: String, type: String, at: Date, saved: Bool = false) {
         guard let path = plugin?.bridge?.portablePath(fromLocalURL: url)?.absoluteString else { return call.reject("Kayıt okunamadı") }
-        call.resolve(["path": path, "kind": kind, "type": type, "name": url.lastPathComponent, "end": at.timeIntervalSince1970 * 1000])
+        call.resolve(["path": path, "kind": kind, "type": type, "name": url.lastPathComponent, "end": at.timeIntervalSince1970 * 1000, "saved": saved])
     }
 }
 
@@ -153,5 +171,111 @@ final class SayacKatmani: UIView {
         let kalan = end - Date().timeIntervalSince1970
         etiket.text = kalan > 0 ? SayacKatmani.mmss(Int(ceil(kalan))) : "+" + SayacKatmani.mmss(Int(-kalan))
         etiket.textColor = kalan > 0 && kalan <= 60 ? UIColor(red: 1, green: 0.45, blue: 0.4, alpha: 1) : .white
+    }
+}
+
+// Çekilen videonun aslı iPhone'un Fotoğraflar'ına (yalnız ekleme izni)
+enum Fotograflar {
+    static func kaydet(_ url: URL) {
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { durum in
+            guard durum == .authorized || durum == .limited else { return }
+            PHPhotoLibrary.shared().performChanges({
+                PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
+            }) { ok, err in
+                if !ok { NSLog("[kamera] Fotoğraflar'a kaydedilemedi: \(String(describing: err))") }
+            }
+        }
+    }
+}
+
+// Buluta gidecek kopya: en çok enCokPx (uzun kenar), bit hızı süreye göre enCokBayt'a sığacak kadar (en çok enCokBps), H.264 + ses (AAC).
+// Donanım kodlayıcıyla videodan kısa sürer. Yön (dikey/yatay) korunur.
+enum VideoKopya {
+    enum Hata: Error { case iz, okuma, yazma(String) }
+
+    static func hazirla(_ src: URL, _ dst: URL, enCokBayt: Int, enCokBps: Int, enCokPx: CGFloat) async throws {
+        try? FileManager.default.removeItem(at: dst)
+        let asset = AVURLAsset(url: src)
+        let sure = try await asset.load(.duration).seconds
+        guard let vt = try await asset.loadTracks(withMediaType: .video).first else { throw Hata.iz }
+        let at = try await asset.loadTracks(withMediaType: .audio).first
+        let boy = try await vt.load(.naturalSize)
+        let yon = try await vt.load(.preferredTransform)
+        let k = min(1, enCokPx / max(boy.width, boy.height, 1))
+        let w = Int((boy.width * k / 2).rounded()) * 2
+        let h = Int((boy.height * k / 2).rounded()) * 2
+        let sigan = sure > 0 ? Int(Double(enCokBayt * 8) / sure * 0.88) - 160_000 : enCokBps
+        let bps = max(1_000_000, min(enCokBps, sigan))
+
+        let yazar = try AVAssetWriter(outputURL: dst, fileType: .mp4)
+        yazar.shouldOptimizeForNetworkUse = true
+        let vIn = AVAssetWriterInput(mediaType: .video, outputSettings: [
+            AVVideoCodecKey: AVVideoCodecType.h264,
+            AVVideoWidthKey: w,
+            AVVideoHeightKey: h,
+            AVVideoCompressionPropertiesKey: [
+                AVVideoAverageBitRateKey: bps,
+                AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
+                AVVideoMaxKeyFrameIntervalKey: 60,
+            ],
+        ])
+        vIn.transform = yon
+        vIn.expectsMediaDataInRealTime = false
+        guard yazar.canAdd(vIn) else { throw Hata.yazma("video") }
+        yazar.add(vIn)
+
+        let okur = try AVAssetReader(asset: asset)
+        let vOut = AVAssetReaderTrackOutput(track: vt, outputSettings: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange])
+        vOut.alwaysCopiesSampleData = false
+        guard okur.canAdd(vOut) else { throw Hata.okuma }
+        okur.add(vOut)
+
+        // Ses: okunabilir ve yazılabilirse ikisi birden eklenir (biri eksik kalırsa okuma takılmasın diye)
+        var ses: (AVAssetReaderTrackOutput, AVAssetWriterInput)?
+        if let at {
+            let o = AVAssetReaderTrackOutput(track: at, outputSettings: [AVFormatIDKey: kAudioFormatLinearPCM])
+            let i = AVAssetWriterInput(mediaType: .audio, outputSettings: [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVNumberOfChannelsKey: 2,
+                AVSampleRateKey: 44_100,
+                AVEncoderBitRateKey: 128_000,
+            ])
+            i.expectsMediaDataInRealTime = false
+            if okur.canAdd(o), yazar.canAdd(i) {
+                okur.add(o)
+                yazar.add(i)
+                ses = (o, i)
+            }
+        }
+
+        guard okur.startReading() else { throw okur.error ?? Hata.okuma }
+        guard yazar.startWriting() else { throw yazar.error ?? Hata.yazma("başlat") }
+        yazar.startSession(atSourceTime: .zero)
+
+        let kuyruk = DispatchQueue(label: "velora.video.kopya")
+        await withTaskGroup(of: Void.self) { g in
+            g.addTask { await aktar(vOut, vIn, kuyruk) }
+            if let ses { g.addTask { await aktar(ses.0, ses.1, kuyruk) } }
+        }
+        if okur.status == .failed { yazar.cancelWriting(); throw okur.error ?? Hata.okuma }
+        await yazar.finishWriting()
+        if yazar.status != .completed { throw yazar.error ?? Hata.yazma("bitir") }
+    }
+
+    private static func aktar(_ out: AVAssetReaderTrackOutput, _ inp: AVAssetWriterInput, _ q: DispatchQueue) async {
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            var bitti = false
+            inp.requestMediaDataWhenReady(on: q) {
+                if bitti { return }
+                while inp.isReadyForMoreMediaData {
+                    guard let b = out.copyNextSampleBuffer(), inp.append(b) else {
+                        bitti = true
+                        inp.markAsFinished()
+                        c.resume()
+                        return
+                    }
+                }
+            }
+        }
     }
 }
