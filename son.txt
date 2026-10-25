@@ -1,8 +1,8 @@
-Commit: 0a4d602 · Market (/sanal): çerçeve çentik dahil bütün ekran, paylar Sanal'a st/sb ile gider (#824)
-Zaman: 2026-10-25-2308 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40228610608
+Commit: 64dbc51 · iPhone kamerası: çekilen video Medya'ya gelir (.dat ile CORS sorunu yok), alınamazsa uyarı (#825)
+Zaman: 2026-10-25-2350 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40231932213
 
-TAM TEST · 25.10.2026 22:59:44
+TAM TEST · 25.10.2026 23:41:43
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1394/1394 geçti · 0 kalan · 498 sn
+SONUÇ: 1394/1394 geçti · 0 kalan · 508 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
