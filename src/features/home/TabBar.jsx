@@ -792,7 +792,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   const boxText =
     mode === "listening" ? [draft, heard ? live.heardFix ?? heard : ""].filter(Boolean).join(" ")
     : mode === "sending" ? heard || "" // yalnız şimdi söylenen: önceki söz (live.said) bir an görünüp kaybolmasın (Seyhun, 2026-10-09)
-    : mode === "busy" ? live.said || ""
+    : mode === "busy" ? "" // gönderilen söz sohbete balon olarak geçti: kutuda ikinci kez görünmez (Seyhun 2026-10-25)
     : draft;
   const ring = active ? ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown, saved: live.saved }) : {};
   // İş bitince (düğmede ✓) kısa "tamam" titreşimi; dinleme başlarken titreşim useSpeech'te
@@ -884,8 +884,8 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
           </div>
           </div>
         ) : (
-          // Boşta: alt sekme çubuğu, ortada asistan düğmesi (çubuktan yukarı taşar; üstündeki saydam pay dokunuş almaz)
-          <div className={`atabbar-wrap ${noAi ? "" : "pt-4"} ${rise ? "atab-up" : ""}`}>
+          // Boşta: alt sekme çubuğu, sağ uçta büyük asistan küresi (çubuktan yukarı taşar, pt-9 payı kesilmesin diye; üstündeki saydam pay dokunuş almaz)
+          <div className={`atabbar-wrap ${noAi ? "" : "pt-9"} ${rise ? "atab-up" : ""}`}>
             <nav aria-label="Sekmeler" className="atabbar relative pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-0.5rem))]">
               {/* Sporcu tarafında asistan düğmesi yok, dört sekme (Seyhun: "sporcu sesli asistanı kullanmayacak", 2026-10-13) */}
               {/* Bas-konuş (Seyhun 2026-10-25 "A · Çubuğun sağ ucunda"): dört sekme solda, büyük küre sağ uçta, baş parmağın altında */}

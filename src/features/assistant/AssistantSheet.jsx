@@ -1,5 +1,6 @@
 "use client";
 // Asistanın ekranı: sohbet, kartlar, düğmeler. Durum ve beyin useAssistant.js, işler isler/, beyin/.
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/Icon";
 import { Thread } from "@/features/add/Thread";
@@ -103,6 +104,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     : null;
 
   const say = (t) => run(t, false);
+  // Akışla kelime kelime gelen yanıt bitince yeniden harf harf yazılmaz; yeni söz gelince sıfırlanır
+  const [streamed, setStreamed] = useState(false);
+  const lastRole = turns[turns.length - 1]?.role;
+  if (streamText && !streamed) setStreamed(true);
+  if (!streamText && streamed && lastRole === "user") setStreamed(false);
 
   // Konuşma akışı: tam panelde ve sahnenin içinde aynı (embedded: sahnede; tanıtım yazısı yok, panel küçülmez)
   // Söylenen cümle hemen sohbete balon olarak düşer; alttaki kutu iş sürerken yazı göstermez (2026-10-18)
@@ -111,7 +117,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     <>
         {/* Boş sohbette açıklama yazısı yok (sade tasarım, 2026-10-16): kutudaki "Yaz ya da konuş…" yeter */}
 
-        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => (
+        <Thread turns={turns} typeLast={!streamed} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => (
           <>
             {turnLinks(t, i, embedded)}
             {/* Geliştirici bilgisi: süreler, model, bugünkü istek sayısı (Ayarlar › Asistan süre kaydı'ndan kapatılır) */}

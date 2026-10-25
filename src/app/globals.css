@@ -341,7 +341,10 @@ select {
 .afull .asheet-input.atype { background: var(--ab-panel); box-shadow: inset 0 0 0 1px var(--line); }
 .afull .asheet-draft { border-radius: 1.125rem; padding: .75rem .875rem; margin-inline: -.875rem; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
 .amsg-in { animation: msgin .32s cubic-bezier(.22, .8, .24, 1) both; }
-@media (prefers-reduced-motion: reduce) { .aorb .lring-check { animation: none; stroke-dashoffset: 0; } .amsg-in { animation: none; } }
+/* Gönderilen söz sohbete geçerken (Thread, 2026-10-25): kutu boşaldıktan hemen sonra aşağıdan yükselerek belirir */
+@keyframes auserin { from { opacity: 0; transform: translateY(28px) scale(.94); } }
+.auser-in { animation: auserin .42s cubic-bezier(.22, .9, .3, 1.05) .06s both; transform-origin: 100% 100%; }
+@media (prefers-reduced-motion: reduce) { .aorb .lring-check { animation: none; stroke-dashoffset: 0; } .amsg-in, .auser-in { animation: none; } }
 
 /* Önde: görev listesi ve kartlar hafif saydam panel (bulanıklık yok: arkadaki hareket her karede yeniden bulanıklaştırılmasın) */
 .afull .apanel { background: var(--ab-panel); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .07), 0 12px 32px -16px rgba(0, 0, 0, .7); }
