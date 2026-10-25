@@ -65,6 +65,18 @@ export async function scenarios(h) {
     const vw = page.viewportSize().width;
     return [n === 1 && tabs === 4 && ob && ob.x > vw * 0.7 && ob.width >= 70, `${n} düğme · ${tabs} sekme · küre x ${Math.round(ob?.x)} / ${vw} · ${Math.round(ob?.width)} px`];
   });
+  // İkonlu iş düğmeleri (Seyhun 2026-10-25 "B · İki sütun, camgöbeği ikon"): iki sütun, her düğmede soldan giren ikon ve yazı
+  await check("Ana sayfa", "iş düğmeleri", "iki sütun, her düğmede ikon ve ad", async () => {
+    const nav = page.locator("nav[aria-label='İşler']");
+    await nav.waitFor({ timeout: 8000 }).catch(() => {});
+    if (process.env.HOME_SHOT) await nav.screenshot({ path: `${process.env.HOME_SHOT}.png` }).catch(() => {});
+    const r = await nav.evaluate((n) => {
+      const b = [...n.children];
+      const xs = new Set(b.map((e) => Math.round(e.getBoundingClientRect().x)));
+      return { n: b.length, cols: xs.size, ic: b.filter((e) => e.querySelector("svg.ck-icon") && e.textContent.trim()).length };
+    }).catch(() => ({ n: 0, cols: 0, ic: 0 }));
+    return [r.n >= 4 && r.cols === 2 && r.ic === r.n, `${r.n} düğme · ${r.cols} sütun · ${r.ic} ikonlu`];
+  });
   await check(G1, "boşta", "durum boşta, etiket “basılı tut konuş”", async () => {
     const st = await orb(page).getAttribute("data-state");
     const lb = await orb(page).getAttribute("aria-label");
