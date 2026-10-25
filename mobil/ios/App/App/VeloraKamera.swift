@@ -101,9 +101,19 @@ final class KameraYonetici: NSObject, UIImagePickerControllerDelegate, UINavigat
     }
 
     // saved: aslı Fotoğraflar'a kaydedildi (web "telefonda 7 gün" kopyası tutmasa da olur)
+    // Seyhun 2026-10-25: çekilen video Medya'ya gelmiyordu. Sayfa canlı siteden (https) yüklendiği için dosya capacitor:// adresinden
+    // fetch ile okunuyor; Capacitor .mp4/.mov gibi medya uzantılarına CORS başlığı koymuyor, okuma sessizce düşüyordu (fotoğraf .jpg çalışır).
+    // Dosya medya olmayan bir uzantıyla (.dat) verilir; türü "type" ile ayrıca gider.
     private func cevap(_ url: URL, kind: String, type: String, at: Date, saved: Bool = false) {
-        guard let path = plugin?.bridge?.portablePath(fromLocalURL: url)?.absoluteString else { return call.reject("Kayıt okunamadı") }
-        call.resolve(["path": path, "kind": kind, "type": type, "name": url.lastPathComponent, "end": at.timeIntervalSince1970 * 1000, "saved": saved])
+        let ad = url.lastPathComponent
+        var oku = url
+        if kind == "video" {
+            let dat = url.appendingPathExtension("dat")
+            try? FileManager.default.removeItem(at: dat)
+            if (try? FileManager.default.moveItem(at: url, to: dat)) != nil { oku = dat }
+        }
+        guard let path = plugin?.bridge?.portablePath(fromLocalURL: oku)?.absoluteString else { return call.reject("Kayıt okunamadı") }
+        call.resolve(["path": path, "kind": kind, "type": type, "name": ad, "end": at.timeIntervalSince1970 * 1000, "saved": saved])
     }
 }
 

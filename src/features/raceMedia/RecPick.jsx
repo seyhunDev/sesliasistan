@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { hasCamera, nativeCamera } from "@/lib/nativeIos";
 import { readTimer } from "@/features/training/Countdown";
+import { useToast } from "@/components/ui/ToastProvider";
 
 // Kayıt: iPhone'un kendi kamerasını açar (Seyhun 2026-10-22: "sarsıntısız net görüntü istiyorum, iPhone kamerasını kullanalım");
 // fotoğraf ya da video kamerada seçilir. Çekildiği an startla karşılaştırılıp kayda yazılır, izlerken "Startan beri 1:35" görünür (MediaTab take).
@@ -11,6 +12,7 @@ import { readTimer } from "@/features/training/Countdown";
 const noop = () => () => {};
 export function RecPick({ onFile, className = "", children, ...p }) {
   const app = useSyncExternalStore(noop, hasCamera, () => false);
+  const toast = useToast();
   const [wait, setWait] = useState(false); // iPhone buluta gidecek kopyayı hazırlarken (uzun videoda birkaç saniye)
   if (app) {
     const open = async () => {
@@ -24,6 +26,7 @@ export function RecPick({ onFile, className = "", children, ...p }) {
         if (f) onFile(f);
       } catch (e) {
         console.warn("[kamera]", e);
+        toast("Kayıt uygulamaya alınamadı");
       }
       setWait(false);
     };
