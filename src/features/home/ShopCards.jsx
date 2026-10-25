@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useNow } from "@/hooks/useNow";
 import { mealPhoto } from "@/lib/homeTiles";
-import { openSanal } from "@/lib/sanal";
 import { STATUSES, STATUS_NAMES, cartCount, isOpenOrder, tl } from "@/market/catalog";
 import { useOrders } from "@/market/store";
 import { MarketOrder } from "@/market/ui/MarketOrder";
@@ -13,13 +12,13 @@ import { Img } from "@/yemek/ui/Img";
 import { FoodOrder } from "./FoodCard";
 
 // Ana sayfada yan yana Yemek · Market · Giyim (Seyhun 2026-10-25, örnek "A · Yan yana"): aynı görünümde üç kart, arkada solan fotoğraf.
-// Yemek → Alışveriş › Yemek; Market → Velora Sanal (lib/sanal.js, şifresiz giriş); Giyim hazırlanıyor, şimdilik bir yere gitmez.
+// Yemek → Alışveriş › Yemek; Market → /sanal (Velora Sanal Velora'nın içinde gömülü, şifresiz giriş); Giyim hazırlanıyor, şimdilik bir yere gitmez.
 // Açık yemek ya da market siparişi varsa kartların üstünde sipariş kartı çıkar, teslim edilince / iptalde kaybolur.
 const GROCERY = "photo-1542838132-92c53300491e";
 const CLOTHES = "photo-1489987707025-afc232f7ea0f";
 const PAY = { "kapıda-kart": "Kapıda kart", "kapıda-nakit": "Kapıda nakit" };
 
-function Tile({ photo, title, sub, href, onClick, off = false }) {
+function Tile({ photo, title, sub, href, off = false }) {
   const inner = (
     <>
       <Img src={photo} w={360} className={`absolute inset-0 !bg-transparent ${off ? "opacity-35" : "opacity-60"}`} />
@@ -32,29 +31,18 @@ function Tile({ photo, title, sub, href, onClick, off = false }) {
   );
   const cls = "food-card relative flex h-28 min-w-0 flex-col overflow-hidden rounded-[1.25rem] text-left";
   if (href) return <Link href={href} data-press className={cls}>{inner}</Link>;
-  if (off) return <div className={cls} aria-disabled="true">{inner}</div>;
-  return <button type="button" data-press onClick={onClick} className={cls}>{inner}</button>;
+  return <div className={cls} aria-disabled={off || undefined}>{inner}</div>;
 }
 
 export function ShopCards() {
   const now = useNow(60000);
-  const [busy, setBusy] = useState(false);
-  const go = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      await openSanal();
-    } finally {
-      setTimeout(() => setBusy(false), 3000);
-    }
-  };
   return (
     <div className="space-y-3">
       <FoodOrder />
-      <MarketOrderCard onShop={go} />
+      <MarketOrderCard />
       <div className="grid grid-cols-3 gap-2.5">
         <Tile photo={mealPhoto(now.getHours())} title="Yemek" sub="Sipariş ver" href="/shopping?tab=yemek" />
-        <Tile photo={GROCERY} title="Market" sub={busy ? "Açılıyor…" : "Velora Sanal"} onClick={go} />
+        <Tile photo={GROCERY} title="Market" sub="Velora Sanal" href="/sanal" />
         <Tile photo={CLOTHES} title="Giyim" sub="Yakında" off />
       </div>
     </div>
@@ -62,7 +50,7 @@ export function ShopCards() {
 }
 
 // Açık market siparişi (orgs/{org}/marketSiparisler, ana hesap hepsini okur): durum, ürün · tutar · ödeme, adımlar; Takip siparişi açar
-function MarketOrderCard({ onShop }) {
+function MarketOrderCard() {
   const { profile } = useAuth();
   const orgId = profile?.orgId;
   const orders = useOrders(orgId, 5);
@@ -82,7 +70,7 @@ function MarketOrderCard({ onShop }) {
       </button>
       <div className="grid grid-cols-2 gap-2 p-3.5">
         <button type="button" data-press onClick={() => setShow(true)} className="food-btn !h-10 !px-2">Takip</button>
-        <button type="button" data-press onClick={onShop} className="food-btn food-btn2 !h-10 !px-2">Yeni sipariş</button>
+        <Link href="/sanal" data-press className="food-btn food-btn2 !h-10 !px-2">Yeni sipariş</Link>
       </div>
       <MarketOrder order={show ? o : null} orgId={orgId} onClose={() => setShow(false)} />
     </div>

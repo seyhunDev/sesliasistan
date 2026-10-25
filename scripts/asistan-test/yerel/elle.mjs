@@ -3125,7 +3125,8 @@ group("Ortak düğmeler")([
   const C = await import("@/market/catalog");
   group("Ana sayfa: Yemek · Market · Giyim")([
     ["üç kart yan yana", F("grid-cols-3, Yemek Market Giyim", () => /grid-cols-3/.test(shop) && ["Yemek", "Market", "Giyim"].every((t) => shop.includes(`title="${t}"`)))],
-    ["Market Velora Sanal", F("openSanal çağrılır", () => /openSanal\(\)/.test(shop) && /title="Market"[^\n]*onClick=\{go\}/.test(shop))],
+    ["Market Velora Sanal", F("Market kartı gömülü /sanal sayfasına gider", () => /title="Market"[^\n]*href="\/sanal"/.test(shop))],
+    ["gömülü Sanal sayfası", F("/sanal çerçevede sanalLink açar", () => { const pg = src("app/(app)/sanal/page.jsx"); return /<iframe/.test(pg) && /sanalLink\(\)/.test(pg); })],
     ["Giyim bir yere gitmez", F("Giyim kartı off, bağlantı yok", () => /title="Giyim"[^\n]*off \/>/.test(shop) && !/title="Giyim"[^\n]*(href|onClick)/.test(shop))],
     ["açık market siparişi", F("teslim / iptal açık sayılmaz", () => C.isOpenOrder({ status: "preparing" }) && !C.isOpenOrder({ status: "delivered" }) && !C.isOpenOrder({ status: "cancelled" }) && /find\(isOpenOrder\)/.test(shop))],
     ["eski Market düğmesi yok", F("MarketButton silindi, ana sayfa ShopCards kullanır", () => !existsSync(new URL("../../../src/features/home/MarketButton.jsx", import.meta.url)) && src("features/home/OwnerHome.jsx").includes("<ShopCards />"))],
