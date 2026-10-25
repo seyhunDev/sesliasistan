@@ -40,7 +40,7 @@ export function MarketAdmin({ orgId }) {
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+10rem)]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Market yönetimi">
         <header className="flex items-center gap-2.5">
-          <BackButton href="/shopping?tab=market" />
+          <BackButton href="/shopping" />
           <div className="min-w-0 flex-1 leading-tight">
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Market yönetimi</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{products ? `${all.length} ürün${low ? ` · ${low} az kaldı` : ""}` : "…"}</p>

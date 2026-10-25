@@ -23,7 +23,6 @@ import { openChat, lastSentChat } from "@/features/chat/ChatProvider";
 import { listsFor } from "@/features/shop/shop";
 import { routesOf, EARLY } from "@/lib/assistRoute";
 import { foodOrderCmd, foodRecent } from "../isler/yemek";
-import { marketCmd } from "../isler/market";
 import { runSea } from "../isler/deniz";
 import { runCams } from "../isler/kamera";
 import { quickOn } from "@/lib/quickMode";
@@ -456,9 +455,6 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
       // Son eklenen işler (lib/assistMore.js): arama, sporcu, nakit gelir, aidat hatırlatması…
       case "more":
         return runMore(s, viaVoice, r.pre);
-      // Sesle market: menünün malzemeleri ya da ürünler market sepetine, sepet açılır (isler/market.js)
-      case "market":
-        return (await marketCmd(ctx, s, viaVoice, r.mk)) === true;
       // Sesle yemek siparişi: öneri ya da sepetle restoran sayfası, 3 sn sonra sipariş (isler/yemek.js)
       case "foodOrder":
         return (await foodOrderCmd(ctx, s, viaVoice, r.fo)) === true;
