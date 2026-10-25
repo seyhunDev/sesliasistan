@@ -10,15 +10,16 @@ import { RowList, Row, SkelRow, ListHead } from "@/components/ui/Row";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { useToast } from "@/components/ui/ToastProvider";
 import { free, packOf, tl } from "../catalog";
-import { alternatives, byMeasure, dur, menuRows, menuToCart, minutesOf, missingOf, rowOk, rowPrice } from "../menus";
-import { deleteMenu, noteMissing, readCart, useCatalog, useMenus, writeCart } from "../store";
+import { alternatives, byMeasure, dur, menuRows, minutesOf, rowOk, rowPrice } from "../menus";
+import { deleteMenu, useCatalog, useMenus } from "../store";
 import { Img } from "@/yemek/ui/Img";
 import { MenuEdit } from "./MenuEdit";
 
 // Hazır menü (Seyhun 2026-10-24, tarif/ornek.png): üstte yemeğin fotoğrafı açıktan koyu laciverte solar; ad, kişi · süre · malzeme,
 // kişi seçimi, Malzemeler / Tarif. Her malzeme ayrı seçilir: Ölçü (tarifteki kadarı, ör. 3 yemek kaşığı un) ya da Paket (en küçük
 // paket) ve Marka (ürün başına; ölçüde de pakette de aynı). Dokununca "evde var". Markette olmayan "Bulunamadı" (amber) ve
-// yöneticinin İstekler listesine gider. Sepete ekle düğmesi alt çubuğun üstünde; liste onun altında kalmasın diye altta boşluk var.
+// yöneticinin İstekler listesine gider. 2026-10-25: market alışverişi Velora Sanal'da; burası yönetimin menü sayfası (Market yönetimi ›
+// Menüler), sepete ekleme yok, seçimler fiyatı göstermek için.
 export function MenuView({ orgId, id }) {
   const router = useRouter();
   const toast = useToast();
@@ -33,7 +34,6 @@ export function MenuView({ orgId, id }) {
   const [brandRow, setBrandRow] = useState(null);
   const [more, setMore] = useState(false); // false | "menu" | "sil"
   const [edit, setEdit] = useState(false);
-  const [busy, setBusy] = useState(false);
   const n = people || menu?.serves || 4;
   const list = useMemo(() => Object.values(products || {}), [products]);
   const rows = useMemo(() => {
@@ -41,27 +41,18 @@ export function MenuView({ orgId, id }) {
     const chosen = Object.fromEntries(Object.entries(pick).filter(([, pid]) => products[pid]).map(([k, pid]) => [k, products[pid]]));
     return menuRows(menu, list, n, chosen);
   }, [menu, products, list, n, pick]);
-  const missing = missingOf(rows);
   const take = rows.filter((r) => !skip[r.item.name] && rowOk(r, how));
   const total = take.reduce((s, r) => s + rowPrice(r, how), 0);
   const steps = menu?.steps || [];
   const minutes = minutesOf(menu);
 
-  if (id === "yeni") return <MenuEdit orgId={orgId} onDone={(x) => router.replace(x ? `/market/menu/${x.id}` : "/shopping?tab=market")} />;
+  if (id === "yeni") return <MenuEdit orgId={orgId} onDone={(x) => router.replace(x ? `/market/menu/${x.id}` : "/market/yonetim")} />;
   if (edit && menu) return <MenuEdit orgId={orgId} start={menu} onDone={() => setEdit(false)} />;
 
-  async function add() {
-    setBusy(true);
-    writeCart(menuToCart(readCart(), rows, skip, how));
-    noteMissing(orgId, missing, menu.name).catch(() => {});
-    toast(`${take.length} ürün sepete eklendi`);
-    setBusy(false);
-    router.push("/shopping?tab=market");
-  }
   async function remove() {
     try {
       await deleteMenu(orgId, menu.id);
-      router.replace("/shopping?tab=market");
+      router.replace("/market/yonetim");
     } catch {
       toast("Silinemedi");
     }
@@ -75,12 +66,12 @@ export function MenuView({ orgId, id }) {
   ];
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+10rem)]">
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
       <section className="ck relative -mx-5 overflow-hidden px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Hazır menü">
         {menu?.photo && <Img src={menu.photo} w={900} alt="" className="absolute inset-0 !bg-transparent" />}
         <div aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,32,58,.12)_0%,rgba(17,32,58,.45)_35%,rgba(17,32,58,.9)_62%,#11203a_80%)]" />
         <header className="relative flex items-center justify-between">
-          <BackButton href="/shopping?tab=market" />
+          <BackButton href="/market/yonetim" />
           {menu && (
             <button type="button" onClick={() => setMore("menu")} aria-label="Menü işlemleri" data-press className={buttonClass({ variant: "back" })}>
               <Icon name="more" className="size-5" />
@@ -170,17 +161,6 @@ export function MenuView({ orgId, id }) {
           </section>
         )}
       </div>
-
-      {menu && rows.length > 0 && tab === "malzeme" && (
-        <div className="fixed inset-x-0 bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.75rem)] z-30 mx-auto w-full max-w-[30rem] px-5">
-          <Button loading={busy} disabled={!take.length} onClick={add}>
-            <span className="flex w-full items-center justify-between">
-              <span>Sepete ekle · {take.length} ürün</span>
-              <span className="tabular-nums">{tl(total)}</span>
-            </span>
-          </Button>
-        </div>
-      )}
 
       <Sheet open={!!brandRow} onClose={() => setBrandRow(null)} title={brandRow ? [brandRow.item.name, brandRow.amount && `tarif ${brandRow.amount}`].filter(Boolean).join(" · ") : ""}>
         {brandRow && (

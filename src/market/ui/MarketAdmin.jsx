@@ -10,18 +10,20 @@ import { ListHead, RowList, Row, SkelRow } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { AISLES } from "../sample";
 import { LOW, NEXT, STATUS_NAMES, free, isOpenOrder, linesText, lineKey, newId, num, packOf, productProblem, search, tl } from "../catalog";
-import { addStock, deleteProduct, dropRequest, saveProduct, setStatus, useCatalog, useOrders, useRequests } from "../store";
+import { addStock, deleteProduct, dropRequest, saveProduct, setStatus, useCatalog, useMenus, useOrders, useRequests } from "../store";
 
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 
 // Market yönetimi (Seyhun 2026-10-24, örnek 4-5): lacivertte Ürünler / Siparişler / İstekler. Ürünler reyon reyon, satırda stok − sayı +;
 // alt satırda fiyat ve siparişte bekleyen. Satıra dokununca düzenle; "Ürün ekle" alt çubuğun üstünde.
 // Siparişler: açıklar üstte, adım adım ilerletilir (teslimde stoktan düşer, iptalde bekleyen açılır).
+// Menüler (2026-10-25, market alışverişi Velora Sanal'a geçince buraya alındı): hazır menüler, tarif ve malzemeler (/market/menu/[id]).
 // İstekler: menülerde markette bulunamayan malzemeler (kaç kez, hangi menüden); "Ekle" ürün formunu adıyla açar, kaydedince listeden çıkar.
 export function MarketAdmin({ orgId }) {
   const products = useCatalog(orgId);
   const orders = useOrders(orgId, 30);
   const reqs = useRequests(orgId);
+  const menus = useMenus(orgId);
   const reqList = Object.entries(reqs || {}).map(([key, r]) => ({ key, ...r })).sort((a, b) => b.count - a.count || (b.at || "").localeCompare(a.at || ""));
   const [tab, setTab] = useState("urun");
   const [q, setQ] = useState("");
@@ -46,10 +48,10 @@ export function MarketAdmin({ orgId }) {
             <p className="truncate text-[0.8125rem] text-white/65">{products ? `${all.length} ürün${low ? ` · ${low} az kaldı` : ""}` : "…"}</p>
           </div>
         </header>
-        <div className="mt-3.5 grid grid-cols-3 gap-2">
-          {[["urun", "Ürünler", `${all.length}`], ["siparis", "Siparişler", open.length ? `${open.length} açık` : "Açık yok"], ["istek", "İstekler", reqList.length ? `${reqList.length} ürün` : "Yok"]].map(([k, n, s]) => (
-            <button key={k} type="button" data-press aria-pressed={tab === k} onClick={() => setTab(k)} className={`raised rounded-xl border px-3 py-2 text-left ${tab === k ? "ck-sel" : ""}`}>
-              <b className="block text-[0.9375rem] font-semibold">{n}</b>
+        <div className="mt-3.5 grid grid-cols-4 gap-2">
+          {[["urun", "Ürünler", `${all.length}`], ["siparis", "Siparişler", open.length ? `${open.length} açık` : "Açık yok"], ["istek", "İstekler", reqList.length ? `${reqList.length} ürün` : "Yok"], ["menu", "Menüler", menus ? `${menus.length}` : "…"]].map(([k, n, s]) => (
+            <button key={k} type="button" data-press aria-pressed={tab === k} onClick={() => setTab(k)} className={`raised min-w-0 rounded-xl border px-2.5 py-2 text-left ${tab === k ? "ck-sel" : ""}`}>
+              <b className="block truncate text-[0.9375rem] font-semibold">{n}</b>
               <small className="block truncate text-[0.75rem] opacity-75">{s}</small>
             </button>
           ))}
@@ -136,6 +138,18 @@ export function MarketAdmin({ orgId }) {
               </RowList>
             ) : (
               <p className="px-1 text-[0.875rem] text-mut">Bulunamayan ürün yok.</p>
+            )}
+          </section>
+        )}
+        {tab === "menu" && (
+          <section>
+            <ListHead title="Hazır menüler" count={menus?.length} href="/market/menu/yeni" more="Yeni menü" />
+            {!menus ? (
+              <RowList><SkelRow /><SkelRow /></RowList>
+            ) : (
+              <RowList>
+                {menus.map((m) => <Row key={m.id} href={`/market/menu/${m.id}`} title={m.name} sub={`${m.serves} kişilik · ${m.items.length} malzeme${m.steps?.length ? ` · ${m.steps.length} adım` : ""}`} />)}
+              </RowList>
             )}
           </section>
         )}
