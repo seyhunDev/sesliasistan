@@ -85,3 +85,6 @@ export function stepRows(times = {}, cancelled = false) {
   const out = one ? rows.filter((r) => r !== p).map((r) => (r === a ? { ...r, title: "Onaylandı, hazırlanıyor" } : r)) : rows;
   return [...(cancelled && times.cancelled ? [{ s: "cancelled", title: STATUS_NAMES.cancelled, at: times.cancelled }] : []), ...out];
 }
+
+// Kapıda ödeme seçenekleri (sepet ve Yemek ayarların; seçilen yemek/me.pay'de varsayılan olur)
+export const PAYS = [["kapıda-kart", "Kapıda kart"], ["kapıda-nakit", "Kapıda nakit"]];

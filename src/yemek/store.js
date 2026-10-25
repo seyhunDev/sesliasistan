@@ -3,8 +3,8 @@
 // Velora Yemek verisi (Firestore). Şimdilik ana hesabın işletmesi altında (orgs/{org}/…, kural değişikliği gerekmez);
 // ayrı projeye taşınınca kök koleksiyonlar olur, adlar aynı kalır:
 //   yemekSiparisler/{id}  sipariş (order.js'deki yapı)
-//   yemek/me              { addresses: [{ id, name, text, note, pos }], lastAddressId }   (müşteri)
-//   yemek/ayar            { demo, closed: { [restoran]: true }, couriers: [{ id, name, phone }] }   (Yönetim)
+//   yemek/me              { addresses: [{ id, name, text, note, pos }], lastAddressId, pay }   (müşteri; pay: varsayılan ödeme)
+//   yemek/ayar            { demo, closed: { [restoran]: true }, couriers: [{ id, name, phone }] }   (Velora Food yönetir; burada yalnız okunur)
 // Restoranlar şimdilik koddaki örnek veri (sample.js): okuma yok. Geçmiş sayfa açılınca bir kez (en çok 30 okuma),
 // açık sipariş canlı izlenir (tek belge).
 import { useEffect, useRef, useState } from "react";
@@ -12,12 +12,11 @@ import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, wh
 import { addDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { SAMPLE_PLACES } from "./sample";
-import { STATUSES, isOpenAt, cartTotals, etaFrom } from "./order";
+import { isOpenAt, cartTotals, etaFrom } from "./order";
 import { fetchRoute, roadMin } from "./route";
 import { liveView } from "./demo";
 import { courierOnOrder, pickCourier } from "./couriers";
 import { distanceKm } from "./address";
-import { deliverPatch, pickupPatch } from "./steps";
 
 export const PLACES = SAMPLE_PLACES;
 export const placeById = (id) => PLACES.find((p) => p.id === id) || null;
@@ -153,36 +152,6 @@ export async function saveMe(orgId, patch) {
   }
 }
 
-// ---- Yönetim, restoran ve kurye ekranları ----
-// Ayarlar canlı (tek belge)
-export function useSettings(orgId) {
-  const [st, setSt] = useState(null);
-  useEffect(() => {
-    if (!orgId) return;
-    return onSnapshot(setRef(orgId), (d) => {
-      const v = d.data() || {};
-      setSt(v);
-      touch(() => ({ settings: v }));
-    }, () => setSt({}));
-  }, [orgId]);
-  return st;
-}
-export const saveSettings = (orgId, patch) => setDoc(setRef(orgId), patch, { merge: true });
-
-// Bugünün siparişleri canlı (tek alanlı sorgu, dizin gerekmez): açıklar, biten ve ciro buradan
-export function useToday(orgId) {
-  const [list, setList] = useState(null);
-  useEffect(() => {
-    if (!orgId) return;
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    return onSnapshot(query(ordersCol(orgId), where("at", ">=", start.toISOString())),
-      (s) => setList(s.docs.map((d) => ({ ...d.data(), id: d.id })).sort((a, b) => b.at.localeCompare(a.at))),
-      () => setList([]));
-  }, [orgId]);
-  return list;
-}
-
 // Ana sayfa kartı: son 3 saatin siparişleri canlı (birkaç belge), açık olan (deneme siparişi saatten) ilki
 export function useActiveOrder(orgId) {
   const [list, setList] = useState([]);
@@ -195,26 +164,6 @@ export function useActiveOrder(orgId) {
   }, [orgId]);
   return list;
 }
-
-// Restoranın ve kuryenin işleri. Deneme siparişine dokunulunca gerçek olur (demo: false).
-const nowIso = () => new Date().toISOString();
-export function acceptOrder(orgId, o, place) {
-  const t = nowIso();
-  const road = roadMin(o, place);
-  return patchOrder(orgId, o.id, { demo: false, status: "preparing", times: { ...(o.times || {}), accepted: t, preparing: t }, eta: new Date(Date.now() + ((place?.prepMin || 20) + road) * 60000).toISOString() });
-}
-export const rejectOrder = (orgId, o) => patchOrder(orgId, o.id, { demo: false, status: "cancelled", times: { ...(o.times || {}), cancelled: nowIso() } });
-export const giveToCourier = (orgId, o, place, courier) => patchOrder(orgId, o.id, pickupPatch(o, place, courier));
-export const deliverOrder = (orgId, o) => patchOrder(orgId, o.id, deliverPatch(o));
-// Yönetim'den elle durum: o adımın saati yazılır, sipariş gerçek olur
-// (geri alınırsa sonraki adımların saatleri silinir)
-export function setStatus(orgId, o, status) {
-  const all = { ...(o.times || {}), ...(o.live?.times || {}) };
-  const i = STATUSES.indexOf(status);
-  const times = Object.fromEntries(Object.entries(all).filter(([k]) => status === "cancelled" || (k !== "cancelled" && STATUSES.indexOf(k) < i)));
-  return patchOrder(orgId, o.id, { demo: false, status, times: { ...times, [status]: nowIso() } });
-}
-export const courierAt = (orgId, id, pos) => updateDoc(doc(ordersCol(orgId), id), { "courier.pos": pos, "courier.at": nowIso() });
 
 // Sepet: tek restoran, telefonda (localStorage). Başka restorandan ürün eklenince eski sepet değişir (sorulur).
 const CART = "yemek-sepet";

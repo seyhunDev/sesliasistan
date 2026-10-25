@@ -5,13 +5,12 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
-import { cartTotals, lineDetail } from "../order";
+import { PAYS, cartTotals, lineDetail } from "../order";
 import { pickAddress, distanceKm } from "../address";
 import { herePos, openNow, orderNow, saveMe, writeCart } from "../store";
 import { tl } from "./Img";
 import { AddressForm } from "./AddressForm";
 
-const PAYS = [["kapıda-kart", "Kapıda kart"], ["kapıda-nakit", "Kapıda nakit"]];
 
 const HEMEN_MS = 3000;
 
@@ -25,7 +24,8 @@ export function CartSheet({ open, onClose, place, lines, food, orgId, uid, name,
   const [count, setCount] = useState(!!hemen); // sesle sipariş: geri sayım sürüyor
   const [mode, setMode] = useState("cart"); // cart | pick | new | edit
   const [editId, setEditId] = useState("");
-  const [pay, setPay] = useState("kapıda-kart");
+  const [picked, setPay] = useState(""); // bu siparişte seçilen; yoksa Yemek ayarların'daki
+  const pay = picked || food?.me.pay || "kapıda-kart";
   const [busy, setBusy] = useState(false);
   const addresses = food?.me.addresses || [];
 

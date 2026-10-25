@@ -135,7 +135,6 @@ export default function SettingsPage() {
 
       <Group>
         <Row title="Testler" href="/settings/tests" />
-        <Row title="Yemek servisi yönetimi" href="/yemek/yonetim" />
       </Group>
 
       <Group title="Hesap">

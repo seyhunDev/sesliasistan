@@ -53,7 +53,7 @@ export function sortCouriers(couriers = [], orders = [], pos) {
 }
 
 // Deneme kuryeleri: Dikili'nin farklı yerlerinde, ikisi siparişte. Yönetim'den eklenince her biri gerçek kurye hesabı olur
-// (kullanıcı adı login, şifreyi ana hesap ekleme anında verir; /api/kurye action demo). Kuryeyle girilince yeri telefondan.
+// (kullanıcı adı login; hesapları Velora Food açar). Kuryeyle girilince yeri telefondan.
 export const DEMO_COURIERS = [
   { id: "dk-murat", login: "kurye.murat", name: "Murat", phone: "0532 000 00 11", vehicle: "motor", pos: { lat: 39.0718, lng: 26.8884 } },
   { id: "dk-emre", login: "kurye.emre", name: "Emre", phone: "0532 000 00 12", vehicle: "motor", pos: { lat: 39.0762, lng: 26.8931 } },
