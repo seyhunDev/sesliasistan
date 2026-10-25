@@ -106,7 +106,7 @@ export async function cloudCopy(blob, type, onProg) {
   } catch (e) {
     if (e.message !== "no-shrink") console.warn("[raceMedia] küçültülemedi", e);
     if (blob.size <= RAW_MAX) return { blob, type };
-    throw new Error("Video çok büyük ve bu telefonda küçültülemedi. Daha kısa çek.");
+    throw new Error(/durdu/.test(e.message) ? "Video küçültülürken durdu. Ekran açıkken yeniden denenecek." : "Video çok büyük ve bu telefonda küçültülemedi. Daha kısa çek.");
   } finally {
     URL.revokeObjectURL(url);
   }
