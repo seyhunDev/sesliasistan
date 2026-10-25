@@ -10,19 +10,15 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { Sheet } from "@/components/ui/Sheet";
 import { RowList, Row } from "@/components/ui/Row";
 import { buttonClass } from "@/components/ui/buttonClass";
-import { openSanal } from "@/lib/sanal";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useKind } from "@/features/auth/useKind";
 import { useData } from "@/features/data/DataProvider";
 import { FoodHome } from "@/yemek/ui/FoodHome";
-import { MarketHome } from "@/market/ui/MarketHome";
 import { LISTS, addItems, clearDone, listsFor, removeItem, splitItems, toggleItem, useShop } from "@/features/shop/shop";
 
 // Alışveriş (Seyhun 2026-10-22: "alışveriş, yemek siparişi gibisinden birleştirmeliyiz"): ana hesapta lacivert üstte
-// Liste / Yemek / Market. Yemek: Velora Yemek (src/yemek, ayrı projeye taşınacak). Market: Velora Market (src/market, Seyhun 2026-10-24).
-// ?tab=yemek ya da ?tab=market ile o sekme açılır. Market düğmesi Velora Sanal'ı açar (Seyhun 2026-10-24: "kullanıcı markete tıklayınca
-// Velora Sanal'a gider"; tek dokunuşla giriş lib/sanal.js). Velora'daki market sayfası ?tab=market ile (sesli "malzemeleri al") açık kalır;
-// Market yönetimi Liste'nin ⋯ içinde.
+// Liste / Yemek. Yemek: Velora Yemek (src/yemek, ayrı projeye taşınacak). ?tab=yemek ile o sekme açılır.
+// Market burada yok (Seyhun 2026-10-25): ana sayfadaki Market düğmesi Velora Sanal'ı açar. Market yönetimi Liste'nin ⋯ içinde.
 export default function ShoppingPage() {
   return (
     <Suspense fallback={null}>
@@ -35,7 +31,7 @@ function Shopping() {
   const kind = useKind();
   const sp = useSearchParams();
   const [picked, setPicked] = useState(null);
-  const tab = picked || (["yemek", "market"].includes(sp.get("tab")) ? sp.get("tab") : "liste");
+  const tab = picked || (sp.get("tab") === "yemek" ? sp.get("tab") : "liste");
   const { profile } = useAuth();
   const pick = (t) => {
     setPicked(t);
@@ -43,16 +39,15 @@ function Shopping() {
   };
   const tabs =
     kind === "owner" ? (
-      <div className="mt-3.5 grid grid-cols-3 gap-2">
-        {[["liste", "Liste"], ["yemek", "Yemek"], ["market", "Market"]].map(([k, n]) => (
-          <button key={k} type="button" data-press aria-pressed={tab === k} onClick={() => (k === "market" ? openSanal() : pick(k))} className={`raised h-11 rounded-xl border text-[0.9375rem] font-semibold ${tab === k ? "ck-sel" : ""}`}>
+      <div className="mt-3.5 grid grid-cols-2 gap-2">
+        {[["liste", "Liste"], ["yemek", "Yemek"]].map(([k, n]) => (
+          <button key={k} type="button" data-press aria-pressed={tab === k} onClick={() => pick(k)} className={`raised h-11 rounded-xl border text-[0.9375rem] font-semibold ${tab === k ? "ck-sel" : ""}`}>
             {n}
           </button>
         ))}
       </div>
     ) : null;
   if (tab === "yemek" && kind === "owner" && profile?.orgId) return <FoodHome orgId={profile.orgId} tabs={tabs} />;
-  if (tab === "market" && kind === "owner" && profile?.orgId) return <MarketHome orgId={profile.orgId} uid={profile.uid} name={profile.name || ""} tabs={tabs} />;
   return <ListPage tabs={tabs} />;
 }
 
