@@ -56,16 +56,19 @@ export async function scenarios(h) {
   // Bu bölümdeki yerel hızlı cevaplar yalnız Ayarlar › Öğrenme › Hazır cevaplar açıkken (varsayılan: her istek yapay zekaya)
   await page.evaluate(() => localStorage.setItem("sa-quick", "1"));
   const G1 = "Sekme çubuğundaki yeşil düğme";
-  await check(G1, "ana sayfa", "ortada tek asistan düğmesi, 5 sütun", async () => {
+  // Bas-konuş (Seyhun 2026-10-25 "A · Çubuğun sağ ucunda"): dört sekme solda, büyük küre sağ uçta
+  await check(G1, "ana sayfa", "tek asistan düğmesi sağ uçta, solda 4 sekme", async () => {
     await orb(page).first().waitFor({ timeout: 12000 }).catch(() => {}); // yavaş makinede sekme çubuğu geç çiziliyor
     const n = await orb(page).count();
-    const cols = await page.locator("nav[aria-label='Sekmeler'] > div").getAttribute("class");
-    return [n === 1 && /grid-cols-5/.test(cols), `${n} düğme · ${/grid-cols-(\d)/.exec(cols)?.[1]} sütun`];
+    const tabs = await page.locator("nav[aria-label='Sekmeler'] .grid-cols-4 a").count();
+    const ob = await orb(page).boundingBox();
+    const vw = page.viewportSize().width;
+    return [n === 1 && tabs === 4 && ob && ob.x > vw * 0.7 && ob.width >= 70, `${n} düğme · ${tabs} sekme · küre x ${Math.round(ob?.x)} / ${vw} · ${Math.round(ob?.width)} px`];
   });
-  await check(G1, "boşta", "durum boşta, etiket “dokun konuş, basılı tut yaz”", async () => {
+  await check(G1, "boşta", "durum boşta, etiket “basılı tut konuş”", async () => {
     const st = await orb(page).getAttribute("data-state");
     const lb = await orb(page).getAttribute("aria-label");
-    return [st === "idle" && /dokun konuş, basılı tut yaz/.test(lb), `${st} · ${lb}`];
+    return [st === "idle" && /basılı tut konuş/.test(lb), `${st} · ${lb}`];
   });
 
   await check("Enerji (boşta)", "ana sayfa", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
@@ -73,11 +76,11 @@ export async function scenarios(h) {
     const c = await idleCost(page);
     return [c.style <= ENERGY_MAX && c.layout <= ENERGY_MAX, `stil ${c.style}/sn · yerleşim ${c.layout}/sn${c.running ? ` · süren: ${c.running}` : ""}`];
   });
-  // Dokun: tam ekran açılır, dinler
+  // Basılı tut: tam ekran açılır, dinler (bırakana kadar)
   const srBefore = await page.evaluate(() => window.__t.srStarts);
-  await orb(page).click();
-  const G2 = "Dokun konuş: tam ekran açılış";
-  await check(G2, "düğmeye dokun", "tam ekran koyu açılır (afull-in, data-theme=dark), ekranı kaplar", async () => {
+  await h.hold(page);
+  const G2 = "Bas konuş: tam ekran açılış";
+  await check(G2, "düğmeye bas", "tam ekran koyu açılır (afull-in, data-theme=dark), ekranı kaplar", async () => {
     await full(page).waitFor({ timeout: 4000 });
     const cls = await full(page).getAttribute("class");
     const theme = await full(page).getAttribute("data-theme");
@@ -105,38 +108,24 @@ export async function scenarios(h) {
     return [c === "kırmızı" && bars === 5 && !t && n === 1, `${c} · ${bars} çubuk · halka: “${t}” · “Dinliyorum” ${n} kez`];
   });
   // Asistan düğmede (2026-10-22): ayrı zemin yok, arkadaki sayfa bulanıklaşır; örtü sürekli oynamaz; yan düğmeler
-  // Tek kutu (Seyhun "A · Tek kapsül", 2026-10-23): yan düğme yok; altta tek kutu, dinlerken içinde ■ Dur
-  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), altta tek kutu, içinde Dur, kapat düğmesi yok", async () => {
+  // Bas-konuş (2026-10-25): altta tek kutu ve sağında küre; Dur ve kapat düğmesi yok (bırakınca gönderir)
+  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), altta tek kutu, Dur ve kapat düğmesi yok", async () => {
     const z = await page.locator("[data-dome] .abg").evaluate((el) => { const c = getComputedStyle(el); return { anim: `${c.animationName} ${c.animationIterationCount}`, blur: c.backdropFilter || c.webkitBackdropFilter || "" }; });
     const pill = await page.locator("[data-dome] .apill").count();
-    const dur = await page.locator("[data-dome] .apill").getByRole("button", { name: "Dur", exact: true }).count();
+    const dur = await btn(page, "Dur").count();
     const x = await btn(page, "Asistanı kapat").count();
-    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && pill === 1 && dur === 1 && x === 0, `örtü ${z.anim} · ${z.blur} · kutu ${pill} · Dur ${dur} · kapat ${x}`];
+    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && pill === 1 && dur === 0 && x === 0, `örtü ${z.anim} · ${z.blur} · kutu ${pill} · Dur ${dur} · kapat ${x}`];
   });
   await say(page, "notlarımı oku");
-  // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutuya akar, altta süre + dalga, ■ Dur ve ↑ Gönder
-  await check(G2, "konuşurken", "kutuda canlı yazı, süre, Dur ve Gönder düğmeleri", async () => {
+  // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutunun üstüne akar, kutuda "Dinliyorum · süre"; gönderme düğmesi yok
+  await check(G2, "konuşurken", "canlı yazı, süre; Dur ve Gönder düğmesi yok (bırakınca gider)", async () => {
     const ok = await waitFor(async () => /notlarımı oku/.test(await dome(page).locator(".asheet-input").innerText()), 3000);
     const box = (await dome(page).locator(".asheet").innerText()).replace(/\n/g, " ");
     const dur = await btn(page, "Dur").count();
-    return [!!ok && /\d:\d\d/.test(box) && dur === 1 && (await btn(page, "Gönder").count()) === 1, `${box.slice(0, 80)} · Dur ${dur}`];
-  });
-  const beforeDur = h.aiCalls();
-  await btn(page, "Dur").click();
-  await check(G2, "Dur'a basınca", "dinleme biter, söz kutuda kalır, gönderilmez; 🎤 devam ve ↑ Gönder", async () => {
-    await waitFor(async () => (await state(page)) === "idle", 3000);
-    await page.waitForTimeout(400);
-    const box = (await dome(page).locator(".asheet-input").innerText()).replace(/\n/g, " ");
-    const devam = await btn(page, "Konuşmaya devam").count();
-    return [/notlarımı oku/.test(box) && devam === 1 && h.aiCalls() === beforeDur && (await state(page)) === "idle", `${box.slice(0, 80)} · devam ${devam} · yz ${h.aiCalls() - beforeDur} · ${await state(page)}`];
-  });
-  await check("Enerji (boşta)", "asistan açık, boşta", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
-    await page.waitForTimeout(800);
-    const c = await idleCost(page);
-    return [c.style <= ENERGY_MAX && c.layout <= ENERGY_MAX, `stil ${c.style}/sn · yerleşim ${c.layout}/sn${c.running ? ` · süren: ${c.running}` : ""}`];
+    return [!!ok && /\d:\d\d/.test(box) && dur === 0 && (await btn(page, "Gönder").count()) === 0, `${box.slice(0, 80)} · Dur ${dur}`];
   });
   const before = h.aiCalls();
-  await btn(page, "Gönder").click();
+  await h.letGo(page);
   const G3 = "Yerel hızlı cevap (Hazır cevaplar açık)";
   await check(G3, "notlarımı oku", "not okunur, yapay zekaya gitmez", async () => {
     const ok = await waitFor(async () => /Yelken bezleri|kuru yerde/i.test(await convo(page)), 6000);
@@ -147,6 +136,11 @@ export async function scenarios(h) {
     const c = await ringColor(page);
     const chk = await page.locator("[data-dome] .lring-check").count();
     return [c === "yeşil" && chk === 1, `${c} · onay ${chk} · ${await state(page)}`];
+  });
+  await check("Enerji (boşta)", "asistan açık, boşta", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
+    await page.waitForTimeout(800);
+    const c = await idleCost(page);
+    return [c.style <= ENERGY_MAX && c.layout <= ENERGY_MAX, `stil ${c.style}/sn · yerleşim ${c.layout}/sn${c.running ? ` · süren: ${c.running}` : ""}`];
   });
 
   // Kapat (×): aşağı kayarak kapanır, sekmeler geri gelir
@@ -172,9 +166,9 @@ export async function scenarios(h) {
   });
 
   // ================================================================ 2. Basılı tut: yaz
-  const G5 = "Basılı tut yaz";
+  const G5 = "Kısa dokun yaz";
   await typeAsk(page, "bugün planda neler var");
-  await check(G5, "basılı tut → yaz → gönder", "yazı kutusu açılır, gönderince tam ekran asistan cevaplar", async () => {
+  await check(G5, "kısa dokun → Yaz → gönder", "yazı kutusu açılır, gönderince tam ekran asistan cevaplar", async () => {
     const ok = await waitFor(async () => /Dişçi/i.test(await convo(page)), 6000);
     return [!!ok, (await convo(page)).replace(/\s+/g, " ").slice(0, 140)];
   });
@@ -724,12 +718,9 @@ async function scenarios3(h) {
     await shot.setContent(`<body style="margin:0;background:#ddd;display:grid;place-items:center;height:100vh">${q.createSvgTag({ cellSize: 6, margin: 4 })}</body>`);
     const png = await shot.screenshot();
     await shot.close();
-    const o = orb(page);
-    const box = await o.boundingBox();
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.waitForTimeout(650);
-    await page.mouse.up();
+    // Kısa dokunuş: asistan açılır, boşta; altta Fotoğraf · Yaz (bas-konuş 2026-10-25)
+    await page.locator("[data-dome] [data-orb]:visible").first().click();
+    await waitFor(async () => (await state(page)) === "idle", 4000);
     const b2 = aiCalls();
     const pick = page.locator("[data-dome] input[type=file][accept='image/*']");
     await check(GQ, "yazı kutusunda Fotoğraf", "düğme görünür", async () => {
@@ -762,8 +753,8 @@ async function scenarios4(h) {
     const { page, errs } = await newPage({ email: "sporcu@ornek.local" });
     await check(GN, "sporcu hesabı", "asistan düğmesi yok, 4 sekme", async () => {
       const n = await page.locator("[data-orb]").count();
-      const cols = await page.locator("nav[aria-label='Sekmeler'] > div").getAttribute("class").catch(() => "");
-      return [n === 0 && /grid-cols-4/.test(cols), `${n} düğme · ${/grid-cols-(\d)/.exec(cols)?.[1] || "?"} sütun`];
+      const tabs = await page.locator("nav[aria-label='Sekmeler'] a").count();
+      return [n === 0 && tabs === 4, `${n} düğme · ${tabs} sekme`];
     });
     await check(GN, "sporcu hesabı, asistan açma olayı", "başka yerden açılmaya çalışılsa da tam ekran asistan çıkmaz", async () => {
       await page.evaluate(() => window.dispatchEvent(new CustomEvent("sa-open-assistant", { detail: { listen: true } })));
@@ -899,15 +890,15 @@ async function scenarios4(h) {
         return st;
       };
     });
-    await orb(page).click();
-    await check(GR, "dokun konuş", "telefonun tanıması değil, kayıt başlar (dinliyor)", async () => {
+    await h.hold(page);
+    await check(GR, "bas konuş", "telefonun tanıması değil, kayıt başlar (dinliyor)", async () => {
       const ok = await waitFor(async () => (await state(page)) === "listening", 5000);
       const sr = await page.evaluate(() => window.__t.srStarts);
       return [!!ok && sr === 0, `${await state(page)} · telefon tanıması ${sr} kez`];
     });
     await page.waitForTimeout(1800);
-    await btn(page, "Gönder").click().catch(() => {});
-    await check(GR, "Gönder", "ses sunucuda yazıya çevrilir (taklit), cevap gelir", async () => {
+    await h.letGo(page);
+    await check(GR, "bırak", "ses sunucuda yazıya çevrilir (taklit), cevap gelir", async () => {
       const ok = await waitFor(async () => /Yelken bezleri/.test(await last(page)), 9000);
       const n = calls.filter((c) => c.path === "/api/transcribe").length - tr0;
       return [!!ok && n >= 1, `yazıya çevirme isteği ${n} · “${clean(await last(page)).slice(0, 80)}”`];
@@ -917,11 +908,11 @@ async function scenarios4(h) {
     setAI(() => ({ intent: "chat", message: "Yarın saat 10'da toplantı var." }));
     const tr1 = calls.filter((c) => c.path === "/api/transcribe").length;
     await waitFor(async () => (await state(page)) === "idle", 6000);
-    await btn(page, "Konuş").click({ timeout: 5000 }).catch(() => {});
+    await h.hold(page);
     await waitFor(async () => (await state(page)) === "listening", 5000);
     await page.waitForTimeout(1800);
-    await btn(page, "Gönder").click().catch(() => {});
-    await check(GR, "ikinci tur (Konuş'a yeniden bas)", "aynı mikrofonla dinler (yeniden istenmez), cevap gelir", async () => {
+    await h.letGo(page);
+    await check(GR, "ikinci tur (yeniden bas)", "aynı mikrofonla dinler (yeniden istenmez), cevap gelir", async () => {
       const ok = await waitFor(async () => /toplantı/.test(await last(page)), 9000);
       const n = calls.filter((c) => c.path === "/api/transcribe").length - tr1;
       const gum = await page.evaluate(() => window.__gum);
@@ -933,10 +924,10 @@ async function scenarios4(h) {
       setTranscript(({ partial }) => (partial ? "" : ++finals === 1 ? "" : "bugün ne var"));
       setAI(() => ({ intent: "chat", message: "Bugün saat 18'de yelken var." }));
       await waitFor(async () => (await state(page)) === "idle", 6000);
-      await btn(page, "Konuş").click({ timeout: 5000 }).catch(() => {});
+      await h.hold(page);
       await waitFor(async () => (await state(page)) === "listening", 5000);
       await page.waitForTimeout(1800);
-      await btn(page, "Gönder").click().catch(() => {});
+      await h.letGo(page);
       await check(GR, "boş çeviri", "ham sesle yeniden denenir, cevap gelir (“Ses anlaşılamadı” çıkmaz)", async () => {
         const ok = await waitFor(async () => /yelken var/.test(await last(page)), 9000);
         return [!!ok && finals === 2, `son çeviri isteği ${finals} · “${clean(await last(page)).slice(0, 60)}”`];
@@ -969,7 +960,7 @@ async function scenarios4(h) {
       });
       await waitFor(async () => (await state(page)) === "idle", 6000);
       const part0 = calls.filter((c) => c.path === "/api/transcribe").length;
-      await btn(page, "Konuş").click({ timeout: 5000 }).catch(() => {});
+      await h.hold(page);
       await waitFor(async () => (await state(page)) === "listening", 5000);
       await check(GR, "canlı yazı (akış)", "konuşurken kelimeler kutuya akar, parça çevirisi istenmez", async () => {
         const ok = await waitFor(async () => /Yarın saat onda antrenman/.test(await dome(page).locator(".asheet-input").innerText()), 6000);
@@ -978,8 +969,8 @@ async function scenarios4(h) {
         const url = await page.evaluate(() => window.__ws.urls[0] || "");
         return [!!ok && /BidiGenerateContentConstrained\?access_token=auth_tokens/.test(url), `“${box.slice(0, 60)}” · ses parçası ${await page.evaluate(() => window.__ws.audio)} · parça çevirisi ${parts}`];
       });
-      await btn(page, "Gönder").click().catch(() => {});
-      await check(GR, "canlı yazıdan sonra Gönder", "son yazı sunucudan gelir, cevap gelir, akan süre bildirilir", async () => {
+      await h.letGo(page);
+      await check(GR, "canlı yazıdan sonra bırak", "son yazı sunucudan gelir, cevap gelir, akan süre bildirilir", async () => {
         const ok = await waitFor(async () => /10'da antrenman/.test(await last(page)), 9000);
         await page.waitForTimeout(1500);
         const used = calls.filter((c) => c.path === "/api/live-token" && c.body?.used != null).length;

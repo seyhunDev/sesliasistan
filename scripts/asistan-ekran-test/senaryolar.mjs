@@ -1,5 +1,5 @@
 // Sesli asistanın ekran testi: uygulama bu bilgisayarda açılır, sahte Firebase'e (emülatör) giriş yapılır ve asistan
-// bir insan gibi kullanılır: dokun konuş, basılı tut yaz, kapat, küçült, sesli yanıt, onaylar, görev listesi…
+// bir insan gibi kullanılır: basılı tut konuş, kısa dokun yaz, kapat, küçült, sesli yanıt, onaylar, görev listesi…
 // Yapay zekaya hiç istek gitmez: /api/assistant, /api/tasks, /api/transcribe, /api/tts tarayıcıda taklit edilir
 // (her istek sayılır; taklitsiz istek kalırsa test kalır). Uygulama dışındaki adreslere (gerçek Firebase, hava durumu) istek kesilir.
 import { existsSync } from "node:fs";
@@ -193,31 +193,55 @@ export async function run(server, log = () => {}) {
   const say = (page, text) => page.evaluate((t) => window.__t.say(t), text);
   const aiCalls = () => calls.filter((c) => /^\/api\/(assistant|tasks|transcribe|tts|interpret|meeting|receipt)$/.test(c.path)).length;
   const btn = (page, name) => page.locator(`[data-dome] button[aria-label='${name}']`);
-  // Asistanı yazarak kullan: küreye basılı tut, yaz, gönder
-  const typeAsk = async (page, text) => {
-    const o = (await orb(page).count()) ? orb(page) : page.locator("[data-orb]").first();
-    const box = await o.boundingBox();
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  // Bas-konuş (Seyhun 2026-10-25): görünen küreye basılı tut (kapalıysa asistan açılır ve dinler), bırakınca gönderir
+  // Çok kısa basış (300 ms altı) konuşma sayılmaz: bırakmadan önce en az HOLD_MIN beklenir
+  const HOLD_MIN = 500;
+  let heldAt = 0;
+  const hold = async (page) => {
+    heldAt = Date.now();
+    const o = page.locator("[data-dome] [data-orb]:visible").first();
+    await o.waitFor({ timeout: 5000 });
+    // Sekme çubuğu alttan kayarak gelirken küre yer değiştirir: yeri oturana kadar beklenir
+    let b = await o.boundingBox();
+    for (let i = 0; i < 20; i++) {
+      await page.waitForTimeout(80);
+      const n = await o.boundingBox();
+      if (n && b && Math.abs(n.y - b.y) < 0.5 && Math.abs(n.x - b.x) < 0.5) break;
+      b = n;
+    }
+    heldAt = Date.now();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
     await page.mouse.down();
-    await page.waitForTimeout(650);
+  };
+  const letGo = async (page) => {
+    const wait = HOLD_MIN - (Date.now() - heldAt);
+    if (wait > 0) await page.waitForTimeout(wait);
     await page.mouse.up();
+  };
+  // Asistanı yazarak kullan: küreye kısa dokun (açılır, boşta), "Yaz" → yaz, gönder
+  const typeAsk = async (page, text) => {
+    if (!(await page.locator(".afull.afull-in").count())) {
+      await waitFor(async () => !(await full(page).count()), 2000);
+      await orb(page).click();
+      await page.locator(".afull.afull-in").waitFor({ timeout: 4000 });
+    }
+    await waitFor(async () => (await state(page)) === "idle", 6000);
+    await btn(page, "Yaz").click({ timeout: 5000 });
     const ta = page.locator("[data-dome] textarea");
     await ta.waitFor({ timeout: 5000 });
     await ta.fill(text);
     await ta.press("Enter");
   };
-  // Açık sohbette yeni söz (konuşarak): Konuş düğmesi → söyle → Gönder
+  // Konuşarak sor: küreye basılı tut → söyle → bırak (gönderir)
   const talkAsk = async (page, text) => {
     const sr0 = await page.evaluate(() => window.__t.srStarts);
-    if (!(await page.locator(".afull.afull-in").count())) {
-      await waitFor(async () => !(await full(page).count()), 2000); // kapanış animasyonu bitsin
-      await orb(page).click();
+    if (!(await page.locator(".afull.afull-in").count())) await waitFor(async () => !(await full(page).count()), 2000); // kapanış animasyonu bitsin
+    else await waitFor(async () => (await state(page)) === "idle", 6000);
+    await hold(page);
+    if (!(await waitFor(async () => (await state(page)) === "listening", 4000))) {
+      await letGo(page);
+      throw new Error(`dinlemeye geçmedi (durum: ${await state(page)})`);
     }
-    else {
-      await waitFor(async () => (await state(page)) === "idle", 6000);
-      await btn(page, "Konuş").click({ timeout: 5000 });
-    }
-    if (!(await waitFor(async () => (await state(page)) === "listening", 4000))) throw new Error(`dinlemeye geçmedi (durum: ${await state(page)})`);
     // Kayıt yolu (sesli yanıt açıkken, telefonun tanıması başlamadı): söz sunucu çevirisinden gelir. Okumadan hemen sonra
     // mikrofon 0,6 sn bekleyip açılır (playback.js): telefonun tanıması başlayana kadar beklenir
     await waitFor(async () => (await page.evaluate(() => window.__t.srStarts)) > sr0, 1200);
@@ -226,13 +250,8 @@ export async function run(server, log = () => {}) {
     if (viaServer) transcript = text;
     else await say(page, text);
     await page.waitForTimeout(viaServer ? 1200 : 150);
-    const send = btn(page, "Gönder");
-    if (!(await waitFor(() => send.count(), 3000))) {
-      const labels = await page.locator("[data-dome] button[aria-label]").evaluateAll((l) => l.map((b) => b.getAttribute("aria-label")));
-      throw new Error(`Gönder düğmesi yok (durum: ${await state(page)}; düğmeler: ${labels.join(", ")})`);
-    }
     const tr0 = calls.filter((c) => c.path === "/api/transcribe").length;
-    await send.click({ timeout: 5000 });
+    await letGo(page);
     if (viaServer) {
       // Son çeviri isteği gidene kadar (boşsa ham sesle ikinci deneme de) söz yerinde kalır
       await waitFor(async () => calls.filter((c) => c.path === "/api/transcribe").length > tr0 && (await state(page)) !== "listening", 9000);
@@ -240,12 +259,11 @@ export async function run(server, log = () => {}) {
       transcript = prev;
     }
   };
-  // Asistanı kapat (tek kutu, 2026-10-23): dinliyorsa Dur, taslak varsa × (Sil ve kapat), değilse boş alana dokun
+  // Asistanı kapat (2026-10-25): dinliyorsa küreye kısa dokun (göndermeden durur), taslak varsa × (Sil ve kapat), değilse boş alana dokun
   const closeAll = async (page) => {
     for (let i = 0; i < 4 && (await page.locator(".afull.afull-in").count()); i++) {
-      const dur = btn(page, "Dur");
       const x = btn(page, "Asistanı kapat");
-      if (await dur.count()) await dur.click().catch(() => {});
+      if ((await state(page)) === "listening") await page.locator("[data-dome] [data-orb]:visible").first().click().catch(() => {});
       else if (await x.count()) await x.click().catch(() => {});
       else await page.locator("[data-dome] [data-apane]").click({ position: { x: 20, y: 20 } }).catch(() => {});
       await page.waitForTimeout(400);
@@ -276,9 +294,9 @@ export async function run(server, log = () => {}) {
   };
   try {
     const { scenarios } = await import("./adimlar.mjs");
-    await scenarios({ getDoc, log, check, push, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI: (f, d = 0) => ((ai = f), (aiDelay = d)), setTasks: (f) => (tasksReply = f), setTranscript: (t) => (transcript = t), setSoz: (f) => (sozReply = f), setLive: (t) => (liveToken = t), TODAY, TOMORROW });
+    await scenarios({ getDoc, log, check, push, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, hold, letGo, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI: (f, d = 0) => ((ai = f), (aiDelay = d)), setTasks: (f) => (tasksReply = f), setTranscript: (t) => (transcript = t), setSoz: (f) => (sozReply = f), setLive: (t) => (liveToken = t), TODAY, TOMORROW });
   } catch (e) {
-    push("Senaryolar", "çalıştırma", "tamamlanır", false, String(e.stack || e.message).split("\n").filter((l) => /\.mjs/.test(l)).slice(0, 6).join(" | "));
+    push("Senaryolar", "çalıştırma", "tamamlanır", false, [e.message, ...String(e.stack || "").split("\n").filter((l) => /\.mjs/.test(l)).slice(0, 6)].join(" | "));
   } finally {
     await browser.close().catch(() => {});
   }

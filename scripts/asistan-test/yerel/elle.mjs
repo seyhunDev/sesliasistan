@@ -3088,7 +3088,7 @@ group("Ortak düğmeler")([
   const css = readFileSync(new URL("../../../src/app/globals.css", import.meta.url), "utf8");
   group("Asistan: tek kutu")([
     ["yan düğme yok", F("aside sınıfları kalktı", () => !/aside-btn|aside-l|aside-r/.test(s + css))],
-    ["tek kutu", F("apill içinde ses düğmesi küçük", () => /className="apill /.test(s) && /onHold=\{onHold\} small \/>/.test(s))],
+    ["tek kutu", F("solda kutu, sağda bas-konuş küresi", () => /className="apill /.test(s) && /<OrbMain mode=\{mode\} r=\{r\} onPress=\{onPress\} onRelease=\{onRelease\} \/>/.test(s))],
     ["boş alan kapatır", F("dinlerken ve taslakta değil", () => /mode !== "listening" && !draft && onClose\?\.\(\)/.test(s))],
   ]);
 }
@@ -3130,5 +3130,18 @@ group("Ortak düğmeler")([
     ["Giyim bir yere gitmez", F("Giyim kartı off, bağlantı yok", () => /title="Giyim"[^\n]*off \/>/.test(shop) && !/title="Giyim"[^\n]*(href|onClick)/.test(shop))],
     ["açık market siparişi", F("teslim / iptal açık sayılmaz", () => C.isOpenOrder({ status: "preparing" }) && !C.isOpenOrder({ status: "delivered" }) && !C.isOpenOrder({ status: "cancelled" }) && /find\(isOpenOrder\)/.test(shop))],
     ["eski Market düğmesi yok", F("MarketButton silindi, ana sayfa ShopCards kullanır", () => !existsSync(new URL("../../../src/features/home/MarketButton.jsx", import.meta.url)) && src("features/home/OwnerHome.jsx").includes("<ShopCards />"))],
+  ]);
+}
+
+// Bas-konuş (Seyhun 2026-10-25 "A · Çubuğun sağ ucunda"): küre sekme çubuğunun sağ ucunda ve büyük; basılı tut konuş, bırak
+// gönder; kısa dokunuş ve uzağa kaydırıp bırakma göndermez
+{
+  const { readFileSync } = await import("node:fs");
+  const s = readFileSync(new URL("../../../src/features/home/TabBar.jsx", import.meta.url), "utf8");
+  group("Asistan: bas-konuş küre")([
+    ["sağ uçta büyük", F("dört sekme solda, küre sağda 4.75rem", () => /grid min-w-0 flex-1 grid-cols-4/.test(s) && /onPress=\{press\} onRelease=\{release\} size="size-\[4\.75rem\]"/.test(s))],
+    ["bırakınca gönderir", F("release gönderir; kısa basışı motor yutar, uzağa kaydırma iptal", () => /if \(short\) return \(act\.current\.release \|\| act\.current\.cancel\)\?\.\(\);/.test(s) && /if \(away\) return act\.current\.cancel\?\.\(\);\n    \(act\.current\.release \|\| act\.current\.stop\)\?\.\(\);/.test(s))],
+    ["kısa dokunuş sınırı", F("SHORT_MS 300, AWAY_PX 90", () => /const SHORT_MS = 300;/.test(s) && /const AWAY_PX = 90;/.test(s))],
+    ["kapalıyken basınca açılır", F("press: kapalıysa openAssistant listen", () => /if \(!active\) return openAssistant\(\{ listen: true/.test(s))],
   ]);
 }
