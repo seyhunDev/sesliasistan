@@ -6,7 +6,6 @@ import { RowList, Row } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useNow } from "@/hooks/useNow";
-import { mealLabel, mealPhoto } from "@/lib/homeTiles";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useActiveOrder, placeById, patchOrder } from "@/yemek/store";
 import { liveView } from "@/yemek/demo";
@@ -16,7 +15,8 @@ import { photoUrl } from "@/yemek/photo";
 import { Img, tl } from "@/yemek/ui/Img";
 import { TrackMap } from "@/yemek/ui/TrackMap";
 
-// Kokpitin sonunda yemek önerisi (Seyhun 2026-10-23 "A · Günlerin altında kart"): solda saate göre başlık, sağda Sipariş;
+// Yan yana Yemek · Market · Giyim düğmeleri (Seyhun 2026-10-25) ShopCards.jsx'e taşındı; burada yalnız açık yemek siparişi kartı kaldı.
+// Eskisi: kokpitin sonunda yemek önerisi (Seyhun 2026-10-23 "A · Günlerin altında kart"): solda saate göre başlık, sağda Sipariş;
 // dokununca Alışveriş › Yemek ("Ne yiyelim?"). Yalnız ana hesap. Öneri (ör. "Pizza Rüzgar · Karışık") sonra src/yemek/suggest.js'ten gelecek.
 // Açık sipariş varsa (Seyhun 2026-10-23) kart onu gösterir: durum, restoran, kalan dakika; dokununca takip sayfası (harita, kurye).
 // Görünüm (Seyhun 2026-10-23 "kenardan içeri arka planda bir fotoğraf", globals.css .food-card): sipariş yokken sağdan içeri solan yemek
@@ -32,24 +32,13 @@ const PAY = { "kapıda-kart": "Kapıda kart", "kapıda-nakit": "Kapıda nakit" }
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 const tel = (n) => `tel:${String(n || "").replace(/\s/g, "")}`;
 
-export function FoodCard() {
+// Açık yemek siparişi kartı (yoksa hiçbir şey); Yemek düğmesi ShopCards.jsx'te
+export function FoodOrder() {
   const now = useNow(20000);
   const { profile } = useAuth();
   const orders = useActiveOrder(profile?.orgId);
   const open = orders.map((o) => ({ o, v: liveView(o, placeById(o.placeId), now.getTime()) })).find(({ v }) => !["delivered", "cancelled"].includes(v.status));
-  if (open) return <OrderCard o={open.o} v={open.v} now={now} orgId={profile?.orgId} />;
-  const h = now.getHours();
-  return (
-    <Link href="/shopping?tab=yemek" data-press className="food-card relative block h-32 overflow-hidden rounded-[1.375rem]">
-      <Img src={mealPhoto(h)} w={480} className="absolute inset-y-0 right-0 w-[68%] !bg-transparent" />
-      <span className="food-fade absolute inset-0" />
-      <span className="relative flex h-full flex-col px-4 py-3.5">
-        <small className="text-[0.75rem] font-semibold text-[#22d3ee]">{mealLabel(h)}</small>
-        <b className="mt-px text-[1.25rem] font-semibold tracking-[-.01em]">Ne yiyelim?</b>
-        <span className="food-btn mt-auto self-start">Sipariş ver</span>
-      </span>
-    </Link>
-  );
+  return open ? <OrderCard o={open.o} v={open.v} now={now} orgId={profile?.orgId} /> : null;
 }
 
 function OrderCard({ o, v, now, orgId }) {

@@ -16,8 +16,7 @@ import { BirthdayStrip } from "./BirthdayStrip";
 import { InboxSheet, useInbox } from "./Inbox";
 import { WaitRow } from "./WaitRow";
 import { Cockpit } from "./Cockpit";
-import { FoodCard } from "./FoodCard";
-import { MarketButton } from "./MarketButton";
+import { ShopCards } from "./ShopCards";
 import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
@@ -120,14 +119,10 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
             />
           </div>
         )}
+        {/* Yemek · Market · Giyim yan yana (Seyhun 2026-10-25); açık sipariş kartları üstünde */}
         {owner && (
           <div className="mt-5">
-            <FoodCard />
-          </div>
-        )}
-        {owner && (
-          <div className="mt-3">
-            <MarketButton />
+            <ShopCards />
           </div>
         )}
         {/* Deniz trafiği ve Kameralar: yalnız sayfasına giden iki sade düğme, veri çekmez (Seyhun 2026-10-23) */}
