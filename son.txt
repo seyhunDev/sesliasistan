@@ -1,8 +1,8 @@
-Commit: 626777d · Ana sayfa iş düğmeleri ikonlu: iki sütun, soldan giren camgöbeği ikon (#819)
-Zaman: 2026-10-25-1757 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40204017940
+Commit: 4cfbae1 · Kurallar: çalışan ve aile Sanal paket fotoğraflarını okur (marketFoto) (#820)
+Zaman: 2026-10-25-1918 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40210314320
 
-TAM TEST · 25.10.2026 17:49:31
+TAM TEST · 25.10.2026 19:09:45
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1394/1394 geçti · 0 kalan · 450 sn
+SONUÇ: 1394/1394 geçti · 0 kalan · 498 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
