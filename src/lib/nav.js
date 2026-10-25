@@ -34,6 +34,7 @@ export const PAGES = {
   dues: { path: "/dues", label: "Aidatlar", need: "athletes" },
   myAttendance: { path: "/my-attendance", label: "Yoklamam", need: "athleteSide" },
   shopping: { path: "/shopping", label: "Alışveriş listesi" },
+  sanal: { path: "/sanal", label: "Market (Velora Sanal: market alışverişi, sipariş)" },
   birthdays: { path: "/birthdays", label: "Doğum günleri" },
   schedule: { path: "/schedule", label: "Ders programı" },
   english: { path: "/english", label: "İngilizce (kelimeler ve hazır cümleler)" },
