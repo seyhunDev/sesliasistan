@@ -99,6 +99,10 @@ service cloud.firestore {
       match /marketSiparisler/{id} {
         allow read: if isStaff(orgId) && myKind() in ["staff", "family"] && resource.data.get("uid", "") == request.auth.uid;
       }
+      // Paket fotoğrafları (ana hesap yönetimde yükler; Sanal'da raftaki paket ve ürün bilgisi)
+      match /marketFoto/{id} {
+        allow read: if isStaff(orgId) && myKind() in ["staff", "family"];
+      }
       // Doğum günleri kişiye özel: ana hesap yalnızca kendi eklediklerini okur/yazar
       match /birthdays/{id} {
         allow read, update, delete: if isOwner(orgId) && resource.data.get("createdByUid", null) == request.auth.uid;
