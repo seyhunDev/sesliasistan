@@ -327,13 +327,15 @@ function Day() {
   );
 }
 
-// Asistan düğmesi (Seyhun 2026-10-23: antrenman sayfasında da kullanılsın): dokun konuş, basılı tut yaz; her yerdeki gibi
+// Asistan düğmesi (Seyhun 2026-10-23: antrenman sayfasında da kullanılsın): her yerdeki gibi bas-konuş (2026-10-25): basılı
+// tut konuş, bırak gönder; kısa dokunuşta asistan açık ve boşta kalır, dışarı kaydırıp bırakınca iptal
 const ASK_EX = ["1 Ali, 2 Ayşe, 3 Mehmet", "Rüzgar 12 knot kuzeybatı", "Bugünkü antrenman çok iyi geçti, start çalıştık"];
 function AskButton() {
-  const { openAssistant } = useAssistant();
+  const { openAssistant, act } = useAssistant();
+  const release = ({ short, away }) => (short ? (act.current.release || act.current.cancel)?.() : away ? act.current.cancel?.() : (act.current.release || act.current.stop)?.());
   return (
     <div className="grid w-[4.25rem] shrink-0 place-items-center rounded-[1.25rem] border border-line bg-card shadow-[0_2px_12px_rgba(38,40,44,.06)]">
-      <VoiceLight state="idle" size="size-12" compact onTap={() => openAssistant({ listen: true, dock: true, examples: ASK_EX })} onHold={() => openAssistant({ dock: true, examples: ASK_EX })} />
+      <VoiceLight state="idle" size="size-12" compact onPress={() => openAssistant({ listen: true, dock: true, examples: ASK_EX })} onRelease={release} />
     </div>
   );
 }
