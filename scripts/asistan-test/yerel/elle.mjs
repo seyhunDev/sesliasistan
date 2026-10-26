@@ -2818,6 +2818,12 @@ group("Ölçülen rüzgâr")([
   ["m/s raporu", F("250°, 10 m/s = 19 kn, sağanak 29", () => { const o = WO.parseSynop(SYN.ms, "17180"); return o.dir === 250 && o.kn === 19 && o.gust === 29; })],
   ["sakin", F("yön yok, 0 kn, sağanak yok", () => { const o = WO.parseSynop(SYN.calm, "17180"); return o.dir === null && o.kn === 0 && o.gust === null; })],
   ["99 üstü", F("00fff grubu", () => WO.parseSynop(SYN.big, "17180").kn === 105)],
+  ["ölçülen yağış", F("6RRRt: 12 mm / 6 saat; 991 = 0,1 mm / 3 saat; iz 0; grup yoksa null; 333 bölümünden de", () => {
+    const r = (x) => WO.parseSynop(`17180,2026,10,18,12,00,AAXX 18121 17180 12970 33006 10216 ${x}=`, "17180")?.rain;
+    const a = r("60121 333 91108"), b = r("69917"), c = r("69901"), d = r("70212 333 60057 91108");
+    return a.mm === 12 && a.h === 6 && b.mm === 0.1 && b.h === 3 && c.mm === 0 && d.mm === 5 && d.h === 3 && WO.parseSynop(SYN.kn, "17180").rain === null
+      && WO.obsRows([WO.parseSynop("17180,2026,10,18,12,00,AAXX 18121 17180 12970 33006 10216 60121=", "17180")], "2026-10-18")[0].rain.mm === 12;
+  })],
   ["boş rapor", F("NIL, başka istasyon, bozuk satır okunmaz", () => WO.parseSynop("17180,2026,10,18,18,00,AAXX 18184 17180 NIL=", "17180") === null && WO.parseSynop(SYN.kn.replace(/^17180/, "17220"), "17180") === null && WO.parseSynop("x", "17180") === null)],
   ["yerel saat", F("12 ve 15 UTC → 15 ve 18; başka gün çıkar", () => {
     const r = WO.obsRows([WO.parseSynop(SYN.kn), WO.parseSynop(SYN.ms), { at: "2026-10-17T12:00:00.000Z", kn: 3, gust: null, dir: 0 }], "2026-10-18");

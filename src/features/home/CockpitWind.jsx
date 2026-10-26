@@ -42,11 +42,26 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
   const ni = Math.floor(nowAt);
   const nowV = nowAt >= 0 ? rows[ni].wind + ((rows[ni + 1]?.wind ?? rows[ni].wind) - rows[ni].wind) * (nowAt - ni) : null;
   const ticks = [5, 10, 15, 20, 25, 30].filter((v) => v < top);
-  // Yağış (Seyhun 2026-10-26 "A · Altında renkli şerit"): günde yağış varsa grafiğin altında saat saat renkli kutu (mmTone), 1 mm ve üstünde sayı;
-  // saatte 4 mm ve üstü beklenirse grafiğin üstünde kehribar uyarı satırı (gerçek uyarı). Eski önbellekte mm yoksa ikisi de çıkmaz.
-  const wet = rows.some((h) => mmTone(h.mm));
+  // Yağış (Seyhun 2026-10-26 "A · Altında renkli şerit", sonra "B · Tek satır"): grafiğin altında tek şerit. Ölçülen yağmur (istasyon raporu,
+  // çoğunlukla 3/6 saatlik toplam) birkaç saati kaplayan DOLU kutu; beklenen yağmur (tahmin) içi boş, kesik çerçeveli kutu. İstasyon yağmur
+  // bildiriyorsa şimdiden önceki saatlerde tahmin kutusu çizilmez (ölçülen önde). Renk mmTone, 1 mm ve üstünde sayı.
+  // Saatte 4 mm ve üstü beklenirse grafiğin üstünde kehribar uyarı satırı (gerçek uyarı). Eski önbellekte mm yoksa tahmin kutusu çıkmaz.
+  // İlk bakışta anlaşılsın diye (Seyhun: "ilk defa bakan biri bile neyin ne olduğunu anlamalı") şimdi çizgisinin iki yanında "← ölçülen | tahmin →"
+  // ve altta yalnız grafikte olan şeylerin açıklaması.
   const heavy = heavyRain(rows);
   const cw = ((W - L - R) / Math.max(1, n - 1)) * 0.86;
+  const spans = obsRain(ob?.rows, rows);
+  const pastCut = spans.length ? (day < today ? n - 1 : hi) : -1;
+  const fc = rows.map((h, i) => (i > pastCut ? mmTone(h.mm) : null));
+  const wet = fc.some(Boolean) || spans.some((sp) => sp.mm >= 0.1);
+  const split = hi >= 0 && (got.length > 0 || spans.length > 0);
+  const legend = [
+    ["Rüzgâr", <i key="w" className="inline-block h-2.5 w-4 rounded-[3px] bg-[#67e8f9]" />],
+    ["Sağanak", <i key="g" className="inline-block w-4 border-t-2 border-dashed border-[#c4b5fd]" />],
+    got.length > 1 && ["Ölçülen rüzgâr", <i key="o" className="inline-block h-2.5 w-4 rounded-[3px] bg-[#9cc3ee]" />],
+    spans.some((sp) => sp.mm >= 0.1) && ["Ölçülen yağmur", <i key="r" className="inline-block h-2.5 w-4 rounded-[3px] bg-[#4f86c0]" />],
+    fc.some(Boolean) && ["Beklenen yağmur", <i key="f" className="box-border inline-block h-2.5 w-4 rounded-[3px] border-[1.4px] border-dashed border-[#4f86c0] bg-[rgba(79,134,192,.22)]" />],
+  ].filter(Boolean);
   return (
     <div className="ck-wind">
       {heavy && (
@@ -94,14 +109,36 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
           </g>
         )}
       </svg>
+      {split && (
+        <div className="relative h-3.5 text-[0.625rem] font-bold leading-none">
+          {hi >= 2 && <span className="absolute top-0.5 -translate-x-full whitespace-nowrap pr-1 text-[#9cc3ee]" style={{ left: `${(x(nowAt) / W) * 100}%` }}>← ölçülen</span>}
+          {hi < n - 3 && <span className="absolute top-0.5 whitespace-nowrap pl-1 text-[#67e8f9]" style={{ left: `${(x(nowAt) / W) * 100}%` }}>tahmin →</span>}
+        </div>
+      )}
       {wet && (
         <svg viewBox={`0 0 ${W} 18`} className="mt-1 block w-full" role="img" aria-label="Saatlik yağış, mm">
           {rows.map((h, i) => {
-            const c = mmTone(h.mm);
+            if (spans.some((sp) => i >= sp.a && i <= sp.b)) return null;
+            const c = fc[i];
+            const bx = (x(i) - cw / 2).toFixed(1);
             return (
               <g key={`m${h.time}`}>
-                <rect x={(x(i) - cw / 2).toFixed(1)} y="1" width={cw.toFixed(1)} height="16" rx="3" fill={c || "rgba(255,255,255,.06)"} />
-                {h.mm >= 1 && <text x={x(i).toFixed(1)} y="12.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">{Math.round(h.mm)}</text>}
+                {c ? (
+                  <rect x={bx} y="1.7" width={cw.toFixed(1)} height="14.6" rx="3" fill={c} fillOpacity=".22" stroke={c} strokeWidth="1.4" strokeDasharray="2.5 1.8" data-kind="tahmin" />
+                ) : (
+                  <rect x={bx} y="1" width={cw.toFixed(1)} height="16" rx="3" fill="rgba(255,255,255,.06)" />
+                )}
+                {c && h.mm >= 1 && <text x={x(i).toFixed(1)} y="12.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">{Math.round(h.mm)}</text>}
+              </g>
+            );
+          })}
+          {spans.map((sp) => {
+            const x1 = x(sp.a) - cw / 2, x2 = x(sp.b) + cw / 2;
+            const c = mmTone(sp.mm);
+            return (
+              <g key={`o${sp.a}`}>
+                <rect x={x1.toFixed(1)} y="1" width={(x2 - x1).toFixed(1)} height="16" rx="3" fill={c || "rgba(156,195,238,.16)"} data-kind="olculen" />
+                {sp.mm >= 0.1 && <text x={((x1 + x2) / 2).toFixed(1)} y="12.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">{sp.mm >= 1 ? (x2 - x1 > 34 ? `${Math.round(sp.mm)} mm` : Math.round(sp.mm)) : "<1"}</text>}
               </g>
             );
           })}
@@ -123,8 +160,33 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
           );
         })}
       </div>
+      <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[0.6875rem] text-white/70" aria-label="Grafik açıklaması">
+        {legend.map(([t, i]) => (
+          <span key={t} className="inline-flex items-center gap-1.5">
+            {i}
+            {t}
+          </span>
+        ))}
+      </p>
     </div>
   );
+}
+
+// Ölçülen yağış kutuları: istasyon satırlarındaki rain { mm, h } (raporun saatinde biten h saat) → grafikte [a, b] saat aralığı ve mm.
+// Kısa süreli rapor önce yerleşir; üst üste binen uzun süreli rapor atlanır.
+function obsRain(obs, rows) {
+  const at = (hh) => rows.findIndex((r) => r.hh === hh);
+  const list = (obs || [])
+    .filter((o) => o.rain && o.rain.mm != null && o.rain.h > 0)
+    .map((o) => {
+      const end = at(o.hh);
+      return end < 0 ? null : { a: Math.max(0, end - o.rain.h), b: end - 1, mm: o.rain.mm, h: o.rain.h };
+    })
+    .filter((sp) => sp && sp.b >= sp.a)
+    .sort((p, q) => p.h - q.h);
+  const out = [];
+  for (const sp of list) if (!out.some((o) => sp.a <= o.b && o.a <= sp.b)) out.push(sp);
+  return out.sort((p, q) => p.a - q.a);
 }
 
 // Lacivert zeminde gökyüzü simgelerinin rengi

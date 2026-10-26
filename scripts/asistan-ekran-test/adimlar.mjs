@@ -1101,6 +1101,56 @@ async function rainStrip(h) {
   });
   await check("Sayfa hataları", "hava yağış", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
+  await rainSplit(h);
+}
+
+// Ölçülen yağmur (dolu kutu, şimdiden önce) ile beklenen yağmur (içi boş kesik çerçeve, şimdiden sonra) ayrımı (Seyhun 2026-10-26 "B · Tek satır")
+async function rainSplit(h) {
+  const { check, newPage, waitFor, log } = h;
+  log("    Hava: ölçülen / beklenen yağmur…");
+  const { page, errs } = await newPage();
+  const p = (n) => String(n).padStart(2, "0");
+  const nowH = +new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: "Europe/Istanbul" }).format(new Date());
+  await page.route("**/api.open-meteo.com/**", (route) => {
+    const d0 = new Date();
+    const days = [...Array(7)].map((_, k) => { const d = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + k); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; });
+    const time = days.flatMap((d) => [...Array(24)].map((_, i) => `${d}T${p(i)}:00`));
+    // Tahmin: her saat biraz yağmur; şimdiden önceki kutular ölçülenle değişmeli
+    const mm = time.map((t, i) => (i < 24 ? 1.5 : 0));
+    const at = (f) => time.map(f);
+    const body = {
+      current: { time: time[nowH], temperature_2m: 17, weather_code: 61, is_day: 1, wind_speed_10m: 9, wind_gusts_10m: 14, wind_direction_10m: 200 },
+      hourly: { time, temperature_2m: at(() => 17), weather_code: at(() => 61), is_day: at(() => 1),
+        wind_speed_10m: at(() => 9), wind_gusts_10m: at(() => 14), wind_direction_10m: at(() => 200), precipitation_probability: at(() => 80), precipitation: mm },
+      daily: { time: days, weather_code: days.map(() => 61), temperature_2m_max: days.map(() => 19), temperature_2m_min: days.map(() => 14),
+        wind_speed_10m_max: days.map(() => 12), wind_gusts_10m_max: days.map(() => 18), wind_direction_10m_dominant: days.map(() => 200) },
+    };
+    return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
+  });
+  // İstasyon: şimdiki saatte biten 3 saatlik 4.2 mm rapor
+  await page.route("**/api/wind-obs**", (route) => {
+    const rows = [...Array(nowH + 1)].map((_, i) => ({ hh: p(i), wind: 6, gust: 10, dir: 200, at: `${p(i)}:00`, rain: i === nowH && nowH >= 1 ? { mm: 4.2, h: 3 } : null }));
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ station: { name: "Dikili", km: 1, near: true }, rows }) });
+  });
+  await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
+  await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
+  await check("Hava", "ölçülen / beklenen yağmur", "şimdiden önce dolu ölçülen kutu, sonra kesik çerçeveli tahmin; etiket ve açıklama satırı", async () => {
+    const S = "svg[aria-label='Saatlik yağış, mm']";
+    await waitFor(() => page.locator(`${S} [data-kind='olculen']`).count(), 15000);
+    const olc = await page.locator(`${S} [data-kind='olculen']`).count();
+    const tah = await page.locator(`${S} [data-kind='tahmin']`).count();
+    const txt = await page.locator(`${S} text`).allTextContents();
+    const wantOlc = nowH >= 1 ? 1 : 0;
+    const wantTah = 23 - nowH;
+    // Etiketler kenara sığmazsa çıkmaz (gece yarısına yakın "tahmin →" yok)
+    const lbl = ((await page.getByText("← ölçülen").count()) > 0) === nowH >= 2 && ((await page.getByText("tahmin →").count()) > 0) === nowH < 21;
+    const leg = await page.locator("[aria-label='Grafik açıklaması']").first().textContent().catch(() => "");
+    const legOk = /Ölçülen yağmur/.test(leg || "") === !!wantOlc && /Beklenen yağmur/.test(leg || "") === wantTah > 0;
+    if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-ayrim.png`, fullPage: true }));
+    return [olc === wantOlc && tah === wantTah && (!wantOlc || txt.includes("4 mm") || txt.includes("4")) && lbl && legOk, `ölçülen ${olc}/${wantOlc} · tahmin ${tah}/${wantTah} · yazı ${txt.join(",")} · etiket ${lbl} · açıklama ${legOk}`];
+  });
+  await check("Sayfa hataları", "hava ölçülen yağmur", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
 }
 
 // ================================================================ Kameralar (/cams): en yakın büyük, 6 kamera, Daha fazla, yer penceresi
