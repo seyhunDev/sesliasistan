@@ -36,9 +36,25 @@ export const hasCamera = () => typeof plugin()?.camera === "function";
 // t: { end (ms), paused, left (sn), title } ya da null (sayaç yok). Sonuç File (lastModified = kaydın bittiği an) ya da null (vazgeçildi)
 export async function nativeCamera(t) {
   const r = await plugin().camera(t || {});
-  if (!r || r.cancel || !r.path) return null;
-  const blob = await (await fetch(r.path)).blob();
+  if (!r || r.cancel || (!r.path && !r.file)) return null;
+  const blob = r.file && typeof plugin().cameraRead === "function" ? await readNative(r) : await (await fetch(r.path)).blob();
   return new File([blob], r.name || (r.kind === "video" ? "video.mov" : "foto.jpg"), { type: r.type || blob.type, lastModified: Math.round(r.end || Date.now()) });
+}
+
+// Seyhun 2026-10-26: "Kayıt uygulamaya alınamadı". Sayfa canlı siteden açık, capacitor:// adresini fetch okuyamıyor; dosya
+// eklentiden 2 MB'lık parçalarla (base64) alınır, son parçada telefondaki geçici dosya silinir.
+async function readNative(r) {
+  const parts = [];
+  const len = 2 * 1024 * 1024;
+  for (let off = 0; ; off += len) {
+    const { data, done } = await plugin().cameraRead({ file: r.file, offset: off, length: len });
+    const bin = atob(data || "");
+    const u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    parts.push(u);
+    if (done || !bin.length) break;
+  }
+  return new Blob(parts, { type: r.type || "" });
 }
 
 // Plan alarmları: [{ key, at (ms), title }] (lib/planAlarm.js alarmItems). Sonuç { kind: "alarm" | "notification", count }

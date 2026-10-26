@@ -31,6 +31,7 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "unlock", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "widgetData", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "camera", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cameraRead", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "watchTake", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "watchReply", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "watchState", returnType: CAPPluginReturnPromise),
