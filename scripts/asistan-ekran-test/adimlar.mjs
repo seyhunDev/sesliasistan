@@ -1036,6 +1036,7 @@ async function scenarios4(h) {
   }
   await seaPage(h);
   await camsPage(h);
+  await rainStrip(h);
 }
 
 // ================================================================ Deniz trafiği (/sea): tam ekran MarineTraffic haritası
@@ -1064,6 +1065,41 @@ async function seaPage(h) {
     await page.screenshot({ path: `${process.env.SEA_SHOT}.png`, fullPage: true });
   }
   await check("Sayfa hataları", "deniz trafiği", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
+}
+
+// ================================================================ Hava: yağış şeridi ve kuvvetli yağış uyarısı (Seyhun 2026-10-26 "A · Altında renkli şerit")
+async function rainStrip(h) {
+  const { check, newPage, waitFor, log } = h;
+  log("    Hava: yağış şeridi…");
+  const { page, errs } = await newPage();
+  // Open-Meteo taklidi: 7 gün saatlik; bugün 14–16 arası kuvvetli yağış
+  await page.route("**/api.open-meteo.com/**", (route) => {
+    const p = (n) => String(n).padStart(2, "0");
+    const d0 = new Date();
+    const days = [...Array(7)].map((_, k) => { const d = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + k); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; });
+    const time = days.flatMap((d) => [...Array(24)].map((_, i) => `${d}T${p(i)}:00`));
+    const mm = time.map((t, i) => (i < 24 ? [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 2, 5.5, 9, 3, 0.6, 0, 0, 0, 0, 0, 0][i] : 0));
+    const at = (f) => time.map(f);
+    const body = {
+      current: { time: time[10], temperature_2m: 17, weather_code: 80, is_day: 1, wind_speed_10m: 9, wind_gusts_10m: 14, wind_direction_10m: 200 },
+      hourly: { time, temperature_2m: at(() => 17), weather_code: at((_, i) => (mm[i] > 1 ? 81 : 3)), is_day: at((t) => (+t.slice(11, 13) >= 7 && +t.slice(11, 13) <= 18 ? 1 : 0)),
+        wind_speed_10m: at(() => 9), wind_gusts_10m: at(() => 14), wind_direction_10m: at(() => 200), precipitation_probability: at((_, i) => (mm[i] ? 80 : 10)), precipitation: mm },
+      daily: { time: days, weather_code: days.map(() => 80), temperature_2m_max: days.map(() => 19), temperature_2m_min: days.map(() => 14),
+        wind_speed_10m_max: days.map(() => 12), wind_gusts_10m_max: days.map(() => 18), wind_direction_10m_dominant: days.map(() => 200) },
+    };
+    return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
+  });
+  await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
+  await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
+  await check("Hava", "yağış şeridi", "yağışlı günde grafiğin altında saat saat renkli kutu, kuvvetli yağışta kehribar uyarı", async () => {
+    const ok = await waitFor(() => page.locator("svg[aria-label='Saatlik yağış, mm']").count(), 15000);
+    const warn = await page.getByText(/Kuvvetli yağış 14:00–16:00 · günde 21 mm/).count();
+    const nums = await page.locator("svg[aria-label='Saatlik yağış, mm'] text").count();
+    if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}.png`, fullPage: true }));
+    return [ok > 0 && warn > 0 && nums === 4, `şerit ${ok} · uyarı ${warn} · sayı ${nums}`];
+  });
+  await check("Sayfa hataları", "hava yağış", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
 }
 

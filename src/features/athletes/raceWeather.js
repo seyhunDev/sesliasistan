@@ -147,7 +147,7 @@ export function rowsFrom(j, date) {
   const h = j?.hourly || {};
   return (h.time || [])
     .map((time, i) => ({ time, hh: time.slice(11, 13), t: N(h.temperature_2m?.[i]), code: N(h.weather_code?.[i]), day: h.is_day ? !!h.is_day[i] : true,
-      wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]), rain: N(h.precipitation_probability?.[i]) }))
+      wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]), rain: N(h.precipitation_probability?.[i]), mm: h.precipitation?.[i] == null ? null : Math.round(h.precipitation[i] * 10) / 10 }))
     .filter((x) => x.time.startsWith(date) && x.wind !== null && x.gust !== null && x.dir !== null);
 }
 export async function loadRaceDay(r, date, force = false) {
@@ -165,7 +165,7 @@ export async function loadRaceDay(r, date, force = false) {
   const place = await racePlace(r);
   const q = new URLSearchParams({
     latitude: place.lat, longitude: place.lon, timezone: "auto", wind_speed_unit: "kn", start_date: date, end_date: date,
-    hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability",
+    hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,precipitation",
   });
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${q}`, { signal: AbortSignal.timeout(12000) });
   if (!res.ok) throw new Error(`Hava tahmini alınamadı (${res.status})`);

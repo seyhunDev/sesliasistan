@@ -2812,7 +2812,7 @@ group("Ölçülen rüzgâr")([
   const J = {
     current: { time: "2026-10-18T10:15", temperature_2m: 19.6, weather_code: 1, is_day: 1, wind_speed_10m: 11.4, wind_gusts_10m: 16.5, wind_direction_10m: 315 },
     hourly: { time: T, temperature_2m: T.map(() => 18.4), weather_code: T.map(() => 2), is_day: T.map((t) => (+t.slice(11, 13) >= 7 && +t.slice(11, 13) <= 18 ? 1 : 0)),
-      wind_speed_10m: T.map((t) => (+t.slice(11, 13) >= 12 && +t.slice(11, 13) <= 15 ? 12 : 4)), wind_gusts_10m: T.map(() => 15), wind_direction_10m: T.map(() => 315), precipitation_probability: T.map(() => 20) },
+      wind_speed_10m: T.map((t) => (+t.slice(11, 13) >= 12 && +t.slice(11, 13) <= 15 ? 12 : 4)), wind_gusts_10m: T.map(() => 15), wind_direction_10m: T.map(() => 315), precipitation_probability: T.map(() => 20), precipitation: T.map((t) => (t.startsWith("2026-10-19T1") ? [0, 0.4, 2, 5.2, 9, 3, 0, 0, 0, 0][+t[12]] : 0)) },
     daily: { time: ["2026-10-18", "2026-10-19", "2026-10-20"], weather_code: [1, 3, 61], temperature_2m_max: [23.4, 21, 18], temperature_2m_min: [14.6, 13, 12],
       wind_speed_10m_max: [12, 18, 25], wind_gusts_10m_max: [16, 24, 33], wind_direction_10m_dominant: [315, 45, 225] },
   };
@@ -2825,6 +2825,15 @@ group("Ölçülen rüzgâr")([
     ["günün saatleri", F("yarının 24 saati, yağmur olasılığıyla; eski önbellekte null", () => {
       const d = WXN.dayHours(W, "2026-10-19");
       return d.length === 24 && d[13].wind === 12 && d[13].rain === 20 && d[3].day === false && WXN.dayHours({}, "2026-10-19") === null;
+    })],
+    ["yağış mm", F("saatlik yağış dayHours'a mm olarak gelir; eski önbellekte null", () => {
+      const d = WXN.dayHours(W, "2026-10-19");
+      return d[13].mm === 5.2 && d[14].mm === 9 && d[3].mm === 0 && WXN.dayHours({ hourly: [["2026-10-19T03:00", 1, 2, 1, 4, 5, 6, 20]] }, "2026-10-19")[0].mm === null;
+    })],
+    ["yağış rengi", F("0,1 altı boş; <1 açık, 1–4 orta, 4–8 koyu, 8+ mor", () => WXN.mmTone(0) === null && WXN.mmTone(null) === null && WXN.mmTone(0.5) === "#8fb0d0" && WXN.mmTone(2) === "#4f86c0" && WXN.mmTone(5) === "#2b5f9e" && WXN.mmTone(12) === "#7b5cc4")],
+    ["kuvvetli yağış uyarısı", F("saatte 4 mm ve üstü: ilk ve son saat aralığı, günün toplamı; yoksa null", () => {
+      const h = WXN.heavyRain(WXN.dayHours(W, "2026-10-19"));
+      return h && h.from === "13:00" && h.to === "15:00" && h.total === 20 && WXN.heavyRain(WXN.dayHours(W, "2026-10-18")) === null && WXN.heavyRain([]) === null;
     })],
     ["yelkene uygun saatler", F("gündüz 7–16 kn, sağanak 22 altı: 12–16; tek saat sayılmaz; gece sayılmaz", () => {
       const rows = WXN.dayHours(W, "2026-10-18");
