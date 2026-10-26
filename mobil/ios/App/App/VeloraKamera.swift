@@ -8,7 +8,8 @@ import UniformTypeIdentifiers
 // görmedim, keşke görebilseydim". Kamera uygulamanın içinde açıldığı için Dynamic Island'daki sayaç görünmüyordu; burada iPhone'un
 // kendi kamera ekranının (UIImagePickerController) üstüne büyük süre yazılır. Dokunuşlar kameraya geçer.
 // Girdi: end (ms, sayacın sıfır anı; 0 = sayaç yok), paused, left (sn, durmuşsa), title.
-// Sonuç: { path (web'in okuyabileceği adres), kind: photo | video, type, end (ms, kaydın bittiği an) } ya da { cancel: true }
+// Sonuç: { path (web'in okuyabileceği adres), kind: photo | video, type, end (ms, kaydın bittiği an), asset (videonun Fotoğraflar'daki
+// kimliği; Velora'dan silinince oradan da silinir, photosDelete) } ya da { cancel: true }
 extension VeloraPlugin {
     @objc func camera(_ call: CAPPluginCall) {
         let end = call.getDouble("end", 0) / 1000
@@ -76,15 +77,21 @@ final class KameraYonetici: NSObject, UIImagePickerControllerDelegate, UINavigat
                 // saniyede 10-20 Mbit (1 dk ≈ 100 MB); web'deki küçültme video süresi kadar oynatarak çalışıyor, ekran kilitlenince ya da
                 // uzun videoda takılıyordu, 60 MB sınırını aşan aslı da yüklenemiyordu. Şimdi: aslı iPhone'un Fotoğraflar'ına kaydedilir
                 // (telefonda kalır), buluta gidecek 1080p kopya burada donanımla hazırlanır (videodan kısa sürer, 55 MB altına sığar).
-                Fotograflar.kaydet(asil)
                 Task {
+                    async let kimlik = Fotograflar.kaydet(asil)
+                    let kucuk = tmp.appendingPathComponent("\(ad).mp4")
+                    var hazir = true
                     do {
-                        let kucuk = tmp.appendingPathComponent("\(ad).mp4")
                         try await VideoKopya.hazirla(asil, kucuk, enCokBayt: 55 * 1024 * 1024, enCokBps: 5_000_000, enCokPx: 1920)
-                        self.cevap(kucuk, kind: "video", type: "video/mp4", at: at, saved: true)
                     } catch {
                         NSLog("[kamera] kopya hazırlanamadı: \(error)")
-                        self.cevap(asil, kind: "video", type: ext == "mp4" ? "video/mp4" : "video/quicktime", at: at, saved: true)
+                        hazir = false
+                    }
+                    let asset = await kimlik
+                    if hazir {
+                        self.cevap(kucuk, kind: "video", type: "video/mp4", at: at, saved: asset != nil, asset: asset)
+                    } else {
+                        self.cevap(asil, kind: "video", type: ext == "mp4" ? "video/mp4" : "video/quicktime", at: at, saved: asset != nil, asset: asset)
                     }
                 }
                 return
@@ -103,10 +110,12 @@ final class KameraYonetici: NSObject, UIImagePickerControllerDelegate, UINavigat
     // saved: aslı Fotoğraflar'a kaydedildi (web "telefonda 7 gün" kopyası tutmasa da olur)
     // Seyhun 2026-10-26: "Kayıt uygulamaya alınamadı" (#825'ten sonra da). Sayfa canlı siteden (https) açık; capacitor:// adresindeki
     // dosyayı fetch ile okumak WebView'de düşüyor. Dosya artık adresle değil, eklentiden parça parça okunur (cameraRead).
-    private func cevap(_ url: URL, kind: String, type: String, at: Date, saved: Bool = false) {
+    private func cevap(_ url: URL, kind: String, type: String, at: Date, saved: Bool = false, asset: String? = nil) {
         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue ?? 0
         let path = plugin?.bridge?.portablePath(fromLocalURL: url)?.absoluteString ?? ""
-        call.resolve(["file": url.path, "size": size, "path": path, "kind": kind, "type": type, "name": url.lastPathComponent, "end": at.timeIntervalSince1970 * 1000, "saved": saved])
+        var r: [String: Any] = ["file": url.path, "size": size, "path": path, "kind": kind, "type": type, "name": url.lastPathComponent, "end": at.timeIntervalSince1970 * 1000, "saved": saved]
+        if let asset { r["asset"] = asset }
+        call.resolve(r)
     }
 }
 
@@ -203,17 +212,47 @@ final class SayacKatmani: UIView {
     }
 }
 
-// Çekilen videonun aslı iPhone'un Fotoğraflar'ına (yalnız ekleme izni)
+// Çekilen videonun aslı iPhone'un Fotoğraflar'ına (yalnız ekleme izni). Sonuç Fotoğraflar'daki kimliği (kaydedilemezse nil).
 enum Fotograflar {
-    static func kaydet(_ url: URL) {
-        PHPhotoLibrary.requestAuthorization(for: .addOnly) { durum in
-            guard durum == .authorized || durum == .limited else { return }
-            PHPhotoLibrary.shared().performChanges({
-                PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
-            }) { ok, err in
-                if !ok { NSLog("[kamera] Fotoğraflar'a kaydedilemedi: \(String(describing: err))") }
+    static func kaydet(_ url: URL) async -> String? {
+        let durum = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+        guard durum == .authorized || durum == .limited else { return nil }
+        final class Kutu: @unchecked Sendable { var id: String? }
+        let kimlik = Kutu()
+        do {
+            try await PHPhotoLibrary.shared().performChanges {
+                kimlik.id = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)?.placeholderForCreatedAsset?.localIdentifier
             }
+            return kimlik.id
+        } catch {
+            NSLog("[kamera] Fotoğraflar'a kaydedilemedi: \(error)")
+            return nil
         }
+    }
+
+    // Seyhun 2026-10-26: Velora'dan silinen video Fotoğraflar'dan da silinsin. iPhone silmeden önce kendisi sorar ("Silinsin mi?").
+    // Okuma izni ilk seferde istenir; "Sınırlı erişim"de de Velora'nın kaydettikleri görünür. Bulunamayan (elle silinmiş) atlanır.
+    static func sil(_ kimlikler: [String]) async -> Int {
+        let durum = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+        guard durum == .authorized || durum == .limited else { return -1 }
+        let bul = PHAsset.fetchAssets(withLocalIdentifiers: kimlikler, options: nil)
+        guard bul.count > 0 else { return 0 }
+        do {
+            try await PHPhotoLibrary.shared().performChanges { PHAssetChangeRequest.deleteAssets(bul) }
+            return bul.count
+        } catch {
+            NSLog("[kamera] Fotoğraflar'dan silinmedi: \(error)")
+            return 0
+        }
+    }
+}
+
+// Girdi: ids (Fotoğraflar kimlikleri, camera sonucundaki asset). Sonuç { deleted } (-1: izin yok, 0: silinmedi ya da vazgeçildi)
+extension VeloraPlugin {
+    @objc func photosDelete(_ call: CAPPluginCall) {
+        let ids = (call.getArray("ids") as? [String] ?? []).filter { !$0.isEmpty }
+        if ids.isEmpty { return call.resolve(["deleted": 0]) }
+        Task { call.resolve(["deleted": await Fotograflar.sil(ids)]) }
     }
 }
 

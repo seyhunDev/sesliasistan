@@ -33,12 +33,22 @@ export function showTimer(t) {
 
 // Üstünde sayaç akan iPhone kamerası (Medya › Kayıt; VeloraKamera.swift). Bu parça olmadan kurulmuş eski uygulamada yok (false).
 export const hasCamera = () => typeof plugin()?.camera === "function";
-// t: { end (ms), paused, left (sn), title } ya da null (sayaç yok). Sonuç File (lastModified = kaydın bittiği an) ya da null (vazgeçildi)
+// t: { end (ms), paused, left (sn), title } ya da null (sayaç yok). Sonuç File (lastModified = kaydın bittiği an; asset = videonun
+// Fotoğraflar'daki kimliği) ya da null (vazgeçildi)
 export async function nativeCamera(t) {
   const r = await plugin().camera(t || {});
   if (!r || r.cancel || (!r.path && !r.file)) return null;
   const blob = r.file && typeof plugin().cameraRead === "function" ? await readNative(r) : await (await fetch(r.path)).blob();
-  return new File([blob], r.name || (r.kind === "video" ? "video.mov" : "foto.jpg"), { type: r.type || blob.type, lastModified: Math.round(r.end || Date.now()) });
+  const f = new File([blob], r.name || (r.kind === "video" ? "video.mov" : "foto.jpg"), { type: r.type || blob.type, lastModified: Math.round(r.end || Date.now()) });
+  if (r.asset) f.asset = r.asset;
+  return f;
+}
+
+// Seyhun 2026-10-26: Velora'dan silinen video Fotoğraflar'dan da silinsin. iPhone kendisi onay sorar. Eski kurulumda yok (null).
+export async function deletePhotos(ids) {
+  const p = plugin();
+  if (typeof p?.photosDelete !== "function" || !ids.length) return null;
+  return p.photosDelete({ ids }).catch(() => null);
 }
 
 // Seyhun 2026-10-26: "Kayıt uygulamaya alınamadı". Sayfa canlı siteden açık, capacitor:// adresini fetch okuyamıyor; dosya

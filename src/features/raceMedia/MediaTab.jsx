@@ -11,7 +11,7 @@ import { MediaViewer } from "./MediaViewer";
 import { Thumb } from "./Thumb";
 import { Sheet } from "@/components/ui/Sheet";
 import { Icon } from "@/components/ui/Icon";
-import { hasCamera } from "@/lib/nativeIos";
+import { deletePhotos, hasCamera } from "@/lib/nativeIos";
 import { clearKept, dropKept, dropPending, keepLocal, listKept, listPending, putPending } from "./pendingStore";
 
 // Medya: alt sekmelerin yanındaki Kayıt iPhone'un kendi kamerasını açar (RecPick; Seyhun 2026-10-22: sarsıntısız,
@@ -24,7 +24,7 @@ import { clearKept, dropKept, dropPending, keepLocal, listKept, listPending, put
 // Yüklenen ve yüklenmekte olan kayıtlar sayfa genelinde tutulur: sekme değişince Medya yeniden açılır, telefonda bekleyen kayıt (yüklemesi
 // eski sekmede sürerken) yeniden sıraya girip ikinci kez yükleniyordu (Seyhun 2026-10-22: "aynı videonun iki kaydı düşüyor")
 const noSub = () => () => {};
-const INFO_KEY = "sa-medya-bilgi2"; // 2026-10-26: iPhone uygulamasında aslı Fotoğraflar'da; yeni yazı bir kez daha görünür
+const INFO_KEY = "sa-medya-bilgi3"; // 2026-10-26: iPhone uygulamasında aslı Fotoğraflar'da; yeni yazı bir kez daha görünür
 // Çekim ayarları başlıkta (Seyhun 2026-10-22, örnek yaris-tasarim/medya/medya-ust-bos-yukleniyor.png): Kayıt zaten alt sekmelerin yanında;
 // başlıktaki düğme Medya'nın "Çekim" penceresini açar (video kalitesi, telefonda tutulanlar, Telefondan sil)
 const SET_EV = "sa-medya-ayar";
@@ -133,7 +133,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
         if (c.blob !== rec.blob) cl = { ...rec, blob: c.blob, type: c.type, orig: rec.blob };
       }
       const half = cl !== rec;
-      const meta = await addRaceMedia(orgId, race.id, { ...cl, posterP: posterJobs.get(rec.id) }, rec.at, (p) => up(rec.id, () => ({ p: half ? 0.5 + p * 0.5 : p })), { ...rec.mom, dur: rec.dur });
+      const meta = await addRaceMedia(orgId, race.id, { ...cl, posterP: posterJobs.get(rec.id) }, rec.at, (p) => up(rec.id, () => ({ p: half ? 0.5 + p * 0.5 : p })), { ...rec.mom, dur: rec.dur, ...(rec.asset ? { asset: rec.asset } : {}) });
       done.add(rec.id);
       await keepLocal({ id: meta.id, raceId: race.id, kind: rec.kind, size: (cl.orig || cl.blob).size, blob: cl.orig || cl.blob });
       await dropPending(rec.id);
@@ -161,8 +161,9 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
   // Çekilen hemen kaydedilir (Seyhun 2026-10-18: çoğu zaman yarış ve an doğru; yanlışsa büyük açıp "Düzelt"): telefonda saklanır, sıraya girer.
   // Görüntünün üstüne yazı basılmaz (Seyhun 2026-10-20: "çok yazı olmasın"); an uygulamada görüntünün başlığında yazar
   // orig: küçültülmeden önceki dosya (iPhone videosu); telefonda o tutulur ve izlenir (çekildiği kalitede), buluta küçüğü gider
-  const keep = async (m, at, mom, before = 0, orig = null) => {
-    const rec = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, raceId: race.id, at, kind: m.kind, type: m.type, blob: m.blob, ...(orig && orig !== m.blob ? { orig } : {}), dur: m.dur || 0, ...(m.big ? { big: true } : {}), mom, before, err: "" };
+  // asset: iPhone uygulamasında aslının Fotoğraflar'daki kimliği (Velora'dan silinince oradan da silinir)
+  const keep = async (m, at, mom, before = 0, orig = null, asset = "") => {
+    const rec = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, raceId: race.id, at, kind: m.kind, type: m.type, blob: m.blob, ...(orig && orig !== m.blob ? { orig } : {}), dur: m.dur || 0, ...(m.big ? { big: true } : {}), ...(asset ? { asset } : {}), mom, before, err: "" };
     await putPending(rec);
     addUp(rec);
     enqueue(rec);
@@ -255,7 +256,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
       setBusy("");
       // iPhone videosunun dosya zamanı kaydın bittiği an: an (startan beri) kaydın başına göre
       const at0 = m.kind === "video" && m.dur && t && dayOf(t) === day ? new Date(Date.parse(at) - m.dur * 1000).toISOString() : at;
-      await keep(m, at0, at0 === at ? mom : momentFor(at0), file.size, m.kind === "video" ? file : null);
+      await keep(m, at0, at0 === at ? mom : momentFor(at0), file.size, m.kind === "video" ? file : null, file.asset || "");
     } catch (e) {
       toast(e?.message || "Kaydedilemedi");
       setBusy("");
@@ -275,6 +276,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
     setOpen("");
     const rest = live.media.filter((x) => x.id !== m.id);
     onChange({ media: rest }, () => dropRaceMedia(orgId, race.id, m, rest));
+    if (m.asset) deletePhotos([m.asset]); // aslı Fotoğraflar'dan da (iPhone onay sorar; Seyhun 2026-10-26)
     dropKept(m.id);
     upSet((x) => {
       const { [m.id]: k, ...kept } = x.kept;
@@ -367,7 +369,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
         <div className={`${card} relative mt-3 py-3 pl-3.5 pr-11 text-[0.875rem] leading-snug`}>
           <b className="mb-0.5 block font-semibold">Videolar nerede saklanır?</b>
           {app
-            ? "Aslı iPhone'un Fotoğraflar'ına kaydedilir. Buluta 1080p kopyası yüklenir, silinene kadar kalır. Velora'dan silmek bulut kopyasını siler; aslı Fotoğraflar'da kalır."
+            ? "Aslı iPhone'un Fotoğraflar'ına kaydedilir. Buluta 1080p kopyası yüklenir, silinene kadar kalır. Velora'dan silince Fotoğraflar'daki aslı da silinir (iPhone onay sorar)."
             : `Telefonda 7 gün saklanır, buluta da yüklenir. Bulutta ${VIDEO_Q[vq].label} tutulur. Çekildiği kalitede kalsın istersen 7 gün içinde İndir ile telefonuna kaydet.`}
           <button type="button" onClick={closeInfo} aria-label="Bilgiyi kapat" className="absolute right-1.5 top-1.5 grid size-9 place-items-center rounded-full text-mut active:bg-bg">
             <Icon name="x" className="size-5" />
