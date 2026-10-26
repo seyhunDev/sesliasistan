@@ -54,10 +54,30 @@ export function parseSynop(line, id) {
   const at = new Date(Date.UTC(+Y, +M - 1, +D, +h, +m));
   if (Number.isNaN(at.getTime())) return null;
   const kn = Math.round(ff * k);
-  return { at: at.toISOString(), dir: dd >= 1 && dd <= 36 ? dd * 10 : null, kn, gust: gust == null ? null : Math.max(kn, Math.round(gust * k)) };
+  return { at: at.toISOString(), dir: dd >= 1 && dd <= 36 ? dd * 10 : null, kn, gust: gust == null ? null : Math.max(kn, Math.round(gust * k)), rain: synopRain(g, i, s3) };
 }
 
-// Yerel güne göre saatlik satırlar { hh, wind, gust, dir, at }; aynı saatte birden çok rapor varsa sonuncusu
+// Ölçülen yağış (Seyhun 2026-10-26: "gerçekleşen yağmuru da"): 6RRRt grubu (önce bölüm 1, yoksa 333 bölümü).
+// RRR mm (990 iz = 0, 991–999 = 0,1–0,9), t süre: 1=6, 2=12, 3=18, 4=24, 5=1, 6=2, 7=3, 8=9, 9=15 saat. Dönen { mm, h } ya da null
+const RAIN_H = { 1: 6, 2: 12, 3: 18, 4: 24, 5: 1, 6: 2, 7: 3, 8: 9, 9: 15 };
+function rainOf(grp) {
+  const RRR = +grp.slice(1, 4);
+  const h = RAIN_H[grp[4]];
+  if (!h) return null;
+  return { mm: RRR >= 991 ? (RRR - 990) / 10 : RRR === 990 ? 0 : RRR, h };
+}
+function synopRain(g, from, s3) {
+  const end = s3 >= 0 ? s3 : g.length;
+  for (let j = from; j < end; j++) {
+    if (/^(222|555)/.test(g[j])) break;
+    if (/^6\d{4}$/.test(g[j])) return rainOf(g[j]);
+  }
+  if (s3 >= 0) for (let j = s3 + 1; j < g.length && !/^(444|555)$/.test(g[j]); j++) if (/^6\d{4}$/.test(g[j])) return rainOf(g[j]);
+  return null;
+}
+
+// Yerel güne göre saatlik satırlar { hh, wind, gust, dir, at, rain }; aynı saatte birden çok rapor varsa sonuncusu.
+// rain: { mm, h } raporun saatinde biten h saatlik ölçülen yağış ya da null
 export function obsRows(list, date, tz = "Europe/Istanbul") {
   const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: tz });
   const hr = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: tz });
@@ -66,7 +86,7 @@ export function obsRows(list, date, tz = "Europe/Istanbul") {
     if (!o) continue;
     const d = new Date(o.at);
     if (ymd.format(d) !== date) continue;
-    by.set(hr.format(d), { hh: hr.format(d), wind: o.kn, gust: o.gust, dir: o.dir, at: o.at });
+    by.set(hr.format(d), { hh: hr.format(d), wind: o.kn, gust: o.gust, dir: o.dir, at: o.at, rain: o.rain ?? null });
   }
   return [...by.values()].sort((a, b) => a.hh.localeCompare(b.hh));
 }
