@@ -33,7 +33,7 @@ import { useTabInUrl } from "@/hooks/useTabInUrl";
 // Sağ üstte "Özet": seçili günün kartı (rüzgâr, yarışlar, bizimkiler) veliye/Instagram'a paylaşılır (DaySummarySheet).
 // Sıra yarış gününün işine göre (Seyhun 2026-10-18 onayı): Süre · Medya · Sonuçlar; yarış günü Süre'yle, başka gün Medya'yla açılır.
 // Hava sekmesi kalktı (Seyhun 2026-10-26: "multimedyada artık gerek yok, hava durumuna zaten birçok yerde bakıyoruz"); yarışın havası
-// yarış sayfasının Hava sekmesinde (RaceWx.jsx).
+// yarış sayfasının üstünde (RaceWx.jsx).
 const TABS = [["sure", "Süre"], ["media", "Medya"], ["res", "Sonuçlar"]];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 

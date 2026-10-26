@@ -26,7 +26,7 @@ import { BudgetView } from "./BudgetView";
 import { tl, totals } from "./budget";
 import { buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
-import { RaceDayWx, RaceWxTab } from "./RaceWx";
+import { RaceWx } from "./RaceWx";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { loadPosts } from "@/features/posts/posts";
 import { racePlansOf, racePostOf } from "./raceLinks";
@@ -818,7 +818,6 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const dayAll = raceDay ? Math.round((new Date(`${r.endDate || r.startDate}T12:00:00`) - new Date(`${r.startDate}T12:00:00`)) / 864e5) + 1 : 0;
   const tabs = [
     ["sum", raceDay ? "Bugün" : "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
-    ["wx", "Hava", "", false], // Seyhun 2026-10-26: hava kendi sekmesinde (Yolculuk'tan taşındı), gün gün grafik
     ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
     ["docs", "Evrak", file ? "Hazır" : stale || r.docsAt ? "Yenile" : "Hazır değil", !stat[1][4]],
     ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4]],
@@ -847,7 +846,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
               Multimedya
             </Link>
           )}
-          {rid && <RaceDayWx r={{ ...r, id: rid }} day={today} />}
+          {rid && <RaceWx r={{ ...r, id: rid }} />}
         </div>
       ) : !over && left != null ? (
         <div className="mt-4">
@@ -873,6 +872,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
               {doneN} / {stat.length} tamam{todoList.length ? ` · ${todoList.length} iş` : ""}
             </span>
           </span>
+          {rid && <RaceWx r={{ ...r, id: rid }} />}
         </div>
       ) : (
         mediaBtn && <div className="mt-4 flex justify-end">{mediaBtn}</div>
@@ -1102,7 +1102,6 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
         </>
       )}
 
-      {tab === "wx" && (rid ? <RaceWxTab r={{ ...r, id: rid }} /> : <p className="mt-4 px-1 text-[0.875rem] text-mut">Yarış kaydedilince hava burada görünür.</p>)}
 
       {tab === "people" && (
         <>

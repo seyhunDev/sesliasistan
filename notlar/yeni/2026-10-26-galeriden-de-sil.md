@@ -10,4 +10,5 @@
 
 ## Tasarım
 
-- Multimedya sayfasındaki Hava sekmesi kalktı (Seyhun 2026-10-26: "multimedyada artık gerek yok"). Sekmeler Süre · Medya · Sonuçlar; yarış günü değilse Medya açılır. Yarışın havası yarış sayfasının Hava sekmesinde. Elle rüzgâr kaydı ("Rüzgar yaz") da onunla gitti; eski kayıtlar belgede duruyor. WeatherTab.jsx antrenman günü sayfasında kullanılmaya devam ediyor.
+- Multimedya sayfasındaki Hava sekmesi de kalktı (Seyhun 2026-10-26: "multimedyada artık gerek yok"). Sekmeler Süre · Medya · Sonuçlar; yarış günü değilse Medya açılır. Yarışın havası yarış sayfasının üstünde. Elle rüzgâr kaydı ("Rüzgar yaz") da onunla gitti; eski kayıtlar belgede duruyor. WeatherTab.jsx antrenman günü sayfasında kullanılmaya devam ediyor.
+- Yarış sayfasında hava tek yerde (Seyhun 2026-10-26, "Yarış sayfası" seçimi): üstteki lacivert alanda, yarış günü Multimedya'nın altında, öncesinde hazırlık çubuğunun altında; yarış günleri gün gün seçilir (RaceWx.jsx RaceWx). Ayrı Hava sekmesi kalktı. İlk gün tahmin ufkunun (16 gün) ötesindeyse görünmez.
