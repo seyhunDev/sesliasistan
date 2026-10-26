@@ -5,6 +5,16 @@ import { authFetch, jsonOf } from "@/lib/authFetch";
 // Anahtar alınamazsa (bağlantı, yetki) site yine açılır, orada Velora kullanıcı adı ve şifreyle girilir.
 export const SANAL_URL = "https://velora-sanal.netlify.app";
 
+// Giriş anahtarı (1 saat) ya da null; gömülü /sanal bunu Sanal isteyince postMessage ile verir
+export async function sanalToken() {
+  try {
+    const r = await jsonOf(await authFetch("/api/sanal-giris", { method: "POST", timeout: 10000 }));
+    return r?.token || null;
+  } catch {
+    return null;
+  }
+}
+
 // pad: gömülü tam ekranda iPhone'un üst (çentik) ve alt (çizgi) payı, px; iframe içine safe-area gelmediği için Sanal bunları
 // adresten okur (st, sb) ve üst/alt satırını o kadar içeride çizer (velora-sanal #13)
 export async function sanalLink(pad) {
