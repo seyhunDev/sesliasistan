@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { CockpitWind } from "@/features/home/CockpitWind";
-import { WindArrow } from "@/features/weather/parts";
 import { kn, sky, windName } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
 import { cleanSpot, forecastFrom, lastForecastDay, loadRaceDay, raceDays } from "./raceWeather";
 
 // Yarışın havası, hava sayfasıyla aynı tasarım (Seyhun 2026-10-26: "bizim hava durumu sayfamızda kullandığımız tasarımın aynısı"):
-// üstte sıcaklık, gök, rüzgâr; altında aynı büyük grafik (CockpitWind; yarış yerinin ölçümüyle). Veri loadRaceDay (Multimedya › Hava ile ortak).
+// üstte sıcaklık, gök, rüzgâr; altında aynı büyük grafik (CockpitWind; yarış yerinin ölçümüyle). Veri loadRaceDay (antrenman günü › Hava ile ortak).
 
 function useDay(r, day, tick = 0) {
   const [got, setGot] = useState({ key: "", rows: null, place: "", err: "" });
@@ -64,20 +62,10 @@ function DayChart({ rows, day, at }) {
   );
 }
 
-// Yarış günü: Multimedya'nın altında bugünün havası (veri yoksa hiçbir şey)
-export function RaceDayWx({ r, day }) {
-  const d = useDay(r, day);
-  if (d.loading) return <div className="ck-glass mt-3 h-[12rem] animate-pulse rounded-2xl" aria-label="Hava yükleniyor" />;
-  if (!d.rows?.length) return null;
-  return (
-    <div className="mt-4">
-      <DayChart rows={d.rows} day={day} at={d.at} />
-    </div>
-  );
-}
-
-// Hava sekmesi: yarış günleri gün gün (güne dokununca grafik o güne geçer), altında saat saat liste
-export function RaceWxTab({ r }) {
+// Yarış sayfasının üstünde (lacivert) tek hava yeri (Seyhun 2026-10-26: "hava durumunu birçok yerde gösteriyoruz… günlere göre
+// seçebiliyoruz ya, o çok güzel"): yarış günleri gün gün, güne dokununca grafik o güne geçer. Ayrı Hava sekmesi ve Multimedya'daki
+// Hava kalktı. Tahmin henüz çıkmadıysa (ilk gün 16 günden ileride) hiç görünmez.
+export function RaceWx({ r }) {
   const today = todayStr();
   const days = raceDays(r);
   const first = days.find((d) => d >= today) || days[days.length - 1] || "";
@@ -86,72 +74,38 @@ export function RaceWxTab({ r }) {
   const late = sel && sel > lastForecastDay(today);
   const d = useDay(r, late ? "" : sel, tick);
   const sp = cleanSpot(r.spot);
-  if (!days.length) return <p className="mt-4 rounded-2xl border border-line bg-card px-4 py-6 text-center text-[0.875rem] text-mut">Yarışın tarihi yazılınca hava burada görünür.</p>;
+  if (!first || first > lastForecastDay(today)) return null;
   return (
-    <>
-      <section className="ck mt-4 rounded-[1.75rem] px-4 pb-4 pt-4" aria-label="Yarış havası">
-        <div className="mb-3 flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">{d.place || sp?.name || r.district || r.city}</span>
-          <button type="button" onClick={() => setTick((n) => n + 1)} aria-label="Yenile" data-press className="btn btn-round size-8">
-            <Icon name="load" className="size-4" />
-          </button>
-        </div>
-        {late ? (
-          <p className="py-8 text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
-        ) : d.rows?.length ? (
-          <DayChart rows={d.rows} day={sel} at={d.at} />
-        ) : d.err ? (
-          <p className="py-8 text-center text-[0.875rem] text-white/70">{d.err}</p>
-        ) : (
-          <div className="ck-glass h-[12rem] animate-pulse rounded-2xl" aria-label="Hava yükleniyor" />
-        )}
-        {days.length > 1 && (
-          <nav aria-label="Günler" className="mt-3 grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(days.length, 6)}, minmax(0, 1fr))` }}>
-            {days.slice(0, 6).map((x) => {
-              const on = x === sel;
-              const dt = new Date(`${x}T12:00:00`);
-              return (
-                <button key={x} type="button" data-press aria-pressed={on} onClick={() => setSel(x)} className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 ${on ? "bg-white text-[#11203a]" : ""}`}>
-                  <small className={`text-[0.75rem] font-semibold capitalize ${on ? "" : "text-white/60"}`}>{x === today ? "Bugün" : dt.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "")}</small>
-                  <b className="text-[1.5rem] font-bold leading-none tracking-[-.03em] tabular-nums">{dt.getDate()}</b>
-                </button>
-              );
-            })}
-          </nav>
-        )}
-      </section>
-      {d.rows?.length > 0 && !late && (
-        <section className="mt-5">
-          <ListHead title="Saat saat" />
-          <RowList>
-            {d.rows
-              .filter((h) => sel !== today || +h.hh >= +nowHH())
-              .map((h) => (
-                <Row
-                  key={h.time}
-                  lead={<b className="w-9 text-[0.9375rem] font-semibold tabular-nums">{h.hh}</b>}
-                  title={
-                    <span className="flex items-center gap-2">
-                      {h.code != null && <Icon name={sky(h.code, h.day).icon} className="size-5 text-acc" />}
-                      {h.t != null && <span className="tabular-nums">{Math.round(h.t)}°</span>}
-                      {h.rain >= 30 && <span className="text-[0.8125rem] font-normal text-mut tabular-nums">%{h.rain}</span>}
-                      <span className="flex items-center gap-1 text-[0.8125rem] font-normal text-mut">
-                        <WindArrow deg={h.dir} className="size-3" />
-                        {windName(h.dir)[0]}
-                      </span>
-                    </span>
-                  }
-                  right={
-                    <b className={`text-[0.9375rem] font-semibold tabular-nums ${h.wind >= 17 ? "text-warn" : ""}`}>
-                      {kn(Math.round(h.wind), Math.round(h.gust))}
-                      <span className="text-[0.75rem] font-normal text-mut"> kn</span>
-                    </b>
-                  }
-                />
-              ))}
-          </RowList>
-        </section>
+    <section className="mt-4" aria-label="Yarış havası">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">Hava · {d.place || sp?.name || r.district || r.city}</span>
+        <button type="button" onClick={() => setTick((n) => n + 1)} aria-label="Yenile" data-press className="btn btn-round size-8">
+          <Icon name="load" className="size-4" />
+        </button>
+      </div>
+      {late ? (
+        <p className="py-8 text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
+      ) : d.rows?.length ? (
+        <DayChart rows={d.rows} day={sel} at={d.at} />
+      ) : d.err ? (
+        <p className="py-8 text-center text-[0.875rem] text-white/70">Hava tahmini alınamadı.</p>
+      ) : (
+        <div className="ck-glass h-[12rem] animate-pulse rounded-2xl" aria-label="Hava yükleniyor" />
       )}
-    </>
+      {days.length > 1 && (
+        <nav aria-label="Günler" className="mt-3 grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(days.length, 6)}, minmax(0, 1fr))` }}>
+          {days.slice(0, 6).map((x) => {
+            const on = x === sel;
+            const dt = new Date(`${x}T12:00:00`);
+            return (
+              <button key={x} type="button" data-press aria-pressed={on} onClick={() => setSel(x)} className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 ${on ? "bg-white text-[#11203a]" : ""}`}>
+                <small className={`text-[0.75rem] font-semibold capitalize ${on ? "" : "text-white/60"}`}>{x === today ? "Bugün" : dt.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "")}</small>
+                <b className="text-[1.5rem] font-bold leading-none tracking-[-.03em] tabular-nums">{dt.getDate()}</b>
+              </button>
+            );
+          })}
+        </nav>
+      )}
+    </section>
   );
 }

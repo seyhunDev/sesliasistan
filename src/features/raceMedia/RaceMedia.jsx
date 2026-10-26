@@ -14,7 +14,6 @@ import { cleanLive, dayNames, dayOf, liveDays, ownedBy, pickTimer, resetPatch, u
 import { mmss } from "@/lib/raceScore";
 import { mineHere, ownHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
-import { WeatherTab } from "./WeatherTab";
 import { VoidSheet, useRaceFlow } from "./useRaceFlow";
 import { TimerTab } from "./TimerTab";
 import { ResultsTab } from "./ResultsTab";
@@ -27,13 +26,15 @@ import { useLiveSync } from "./useLiveSync";
 import { useTabInUrl } from "@/hooks/useTabInUrl";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
-// Hava: yarış yerinin saatlik tahmini (hava sayfasındaki grafik) + elle yazılan rüzgâr noktaları; Süre: start sayacı (5 dk dizisi)
+// Süre: start sayacı (5 dk dizisi)
 // ve günün yarışları; Sonuçlar: sonuç PDF'inden Genel ve Bizimkiler; Medya: fotoğraf/video, yarışa göre gruplu.
 // Kayıt raceLive belgesinde (raceLiveStore.js); çok günlü yarışta üstte gün seçilir. ?tab=sure (asistan sayacı başlatınca).
 // Start sayacı başka sekmede ve sayfada da öter (Countdown.jsx TimerSound); sayfanın diğer sekmelerinde küçük süre satırı görünür (dokununca Süre).
 // Sağ üstte "Özet": seçili günün kartı (rüzgâr, yarışlar, bizimkiler) veliye/Instagram'a paylaşılır (DaySummarySheet).
-// Sıra yarış gününün işine göre (Seyhun 2026-10-18 onayı): Süre · Medya · Hava · Sonuçlar; yarış günü Süre'yle, başka gün Hava'yla açılır
-const TABS = [["sure", "Süre"], ["media", "Medya"], ["wx", "Hava"], ["res", "Sonuçlar"]];
+// Sıra yarış gününün işine göre (Seyhun 2026-10-18 onayı): Süre · Medya · Sonuçlar; yarış günü Süre'yle, başka gün Medya'yla açılır.
+// Hava sekmesi kalktı (Seyhun 2026-10-26: "multimedyada artık gerek yok, hava durumuna zaten birçok yerde bakıyoruz"); yarışın havası
+// yarış sayfasının üstünde (RaceWx.jsx).
+const TABS = [["sure", "Süre"], ["media", "Medya"], ["res", "Sonuçlar"]];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 
 export function RaceMedia({ orgId, id }) {
@@ -141,7 +142,7 @@ export function RaceMedia({ orgId, id }) {
   const cur = day || (days.includes(today) ? today : !days.length || today < days[0] ? days[0] || today : days[days.length - 1]);
   const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" ? names[cur] : "", dayLabel(cur)].filter(Boolean).join(" · ");
   const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
-  const tab = tabPick || (days.includes(today) ? "sure" : "wx");
+  const tab = tabPick || (days.includes(today) ? "sure" : "media");
 
   return (
     <Shell
@@ -185,7 +186,6 @@ export function RaceMedia({ orgId, id }) {
           +
         </button>
       </div>
-      {tab === "wx" && <WeatherTab orgId={orgId} race={race} day={cur} live={live} onChange={change} onRace={setRace} />}
       {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onReset={() => setReset(true)} />}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
       {tab === "media" && (
@@ -247,7 +247,7 @@ export function RaceMedia({ orgId, id }) {
 
 // Sekmeler en altta (Seyhun 2026-10-19: "alttan yönetelim"); sekmenin düğme şeridi (Countdown Bar) bunun üstünde durur (--bar-b).
 // Yanında tek Kayıt düğmesi (Seyhun 2026-10-22: ayrı Fotoğraf/Video düğmeleri kalktı): her sekmeden iPhone kamerasını açar (RecPick), çekilen Medya'da
-const TAB_ICON = { sure: "clock", media: "image", wx: "wind", res: "flag" };
+const TAB_ICON = { sure: "clock", media: "image", res: "flag" };
 // extra: sağa eklenen düğme (antrenman sayfasında asistan, Seyhun 2026-10-23)
 export function TabDock({ value, onChange, onRec, extra = null }) {
   useEffect(() => {
