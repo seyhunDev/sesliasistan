@@ -1,8 +1,8 @@
-Commit: 64dbc51 · iPhone kamerası: çekilen video Medya'ya gelir (.dat ile CORS sorunu yok), alınamazsa uyarı (#825)
-Zaman: 2026-10-25-2350 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40231932213
+Commit: 254b765 · iPhone kamerası: çekilen dosya eklentiden parça parça okunur (capacitor:// fetch yerine) (#826)
+Zaman: 2026-10-26-0538 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40259249801
 
-TAM TEST · 25.10.2026 23:41:43
+TAM TEST · 26.10.2026 05:28:46
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
