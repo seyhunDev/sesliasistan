@@ -15,6 +15,7 @@ import { dropReceiptPhoto, forgetPending, pendingPhoto, uploadReceiptPhoto } fro
 import { isNewFor, lockedFor, peopleFor, pushWhy } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
 import { inboxBadge } from "@/lib/inbox";
+import { iosBadgeKind, setIosBadge } from "@/lib/nativeIos";
 import { seriesDates } from "@/lib/repeat";
 import { canSeeAthletes } from "@/features/athletes/access";
 
@@ -626,10 +627,22 @@ export function DataProvider({ children }) {
   // Sunucu her bildirimle aynısını gönderir (lib/inbox); ana sayfadaki "Bildirimler" kartı bu listeyi gösterir, görülünce sıfırlanır.
   const inbox = profile?.inbox;
   const inboxSeen = profile?.inboxSeen;
+  // iPhone uygulamasında (Capacitor) navigator.setAppBadge yok: sayıyı uygulama kendisi yazar (VeloraPlugin.badge); bu parça
+  // olmadan kurulmuş eski uygulamada sunucu sessiz bildirimle düzeltir (/api/badge, yalnız sayı değişince). Önceden hiçbiri
+  // yoktu, APNs'in koyduğu sayı zil görülse de simgede kalıyordu (Seyhun, 2026-10-26).
+  const badgeSent = useRef(null);
   useEffect(() => {
-    if (!uid || typeof navigator === "undefined" || !navigator.setAppBadge) return;
+    if (!uid || typeof navigator === "undefined") return;
     const n = inboxBadge(inbox, inboxSeen);
-    (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
+    const ios = iosBadgeKind();
+    if (ios === "plugin") return void setIosBadge(n);
+    if (ios === "server") {
+      if (badgeSent.current === n) return;
+      badgeSent.current = n;
+      authFetch("/api/badge", { method: "POST" }).catch(() => (badgeSent.current = null));
+      return;
+    }
+    if (navigator.setAppBadge) (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
   }, [uid, inbox, inboxSeen]);
 
   // ---- Geri alınabilir silme ----

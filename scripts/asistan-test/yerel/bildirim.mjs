@@ -441,4 +441,32 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   add(G, "gerçek planlar", "denemeler plan listesine yazılmaz", ![...F.store.keys()].some((k) => k.startsWith("orgs/own/plans/")));
 }
 
+// ---------------- Simgedeki sayı (iPhone uygulaması) ----------------
+{
+  const G = "Simgedeki sayı (iPhone uygulaması)";
+  const { badgeMessage, fcmMessage } = await import("@/lib/fcmMessage");
+  const badge = (await import("@/app/api/badge/route")).POST;
+  reset();
+  put("users/own", { ...get("users/own"), push: { w: { endpoint: "e-own", keys: {} }, i: { fcm: "t-ios", app: "ios" }, a: { fcm: "t-and", app: "android" } } });
+  const now = Date.now();
+  const at = (s) => new Date(now - s * 1000).toISOString();
+  put("users/own", { ...get("users/own"), inbox: [{ id: "1", tag: "a", at: at(10) }, { id: "2", tag: "b", at: at(20) }, { id: "3", tag: "c", at: at(30) }], inboxSeen: at(25) });
+  F.sent.length = 0;
+  let r = (await quiet(badge)({ uid: "own" })).body;
+  const ios = F.sent.filter((x) => x.to === "t-ios");
+  add(G, "zilde 2 görülmemiş bildirim var, uygulama sayıyı bildirdi", "iPhone'a yalnız sayı (2) gider, yazı ve ses yok", r.count === 2 && ios.length === 1 && ios[0].payload.apns.payload.aps.badge === 2 && !ios[0].payload.notification && !ios[0].payload.apns.payload.aps.sound);
+  add(G, "aynı hesapta Android ve tarayıcı da var", "yalnız iPhone uygulamasına gider", F.sent.length === 1);
+  put("users/own", { ...get("users/own"), inboxSeen: at(0) });
+  F.sent.length = 0;
+  r = (await quiet(badge)({ uid: "own" })).body;
+  add(G, "Seyhun zile baktı (hepsi görüldü)", "simgedeki sayı 0 yapılır", r.count === 0 && F.sent[0]?.payload.apns.payload.aps.badge === 0);
+  add(G, "sayı istemciden alınmaz", "sunucu zilden hesaplar", badgeMessage("t", -3).apns.payload.aps.badge === 0 && badgeMessage("t", 5000).apns.payload.aps.badge === 999);
+  // Önceki hata: iPhone uygulamasında navigator.setAppBadge yok, sayıyı indiren hiçbir yol yoktu
+  const fs = await import("node:fs");
+  const dp = fs.readFileSync("src/features/data/DataProvider.jsx", "utf8");
+  const sw = fs.readFileSync("mobil/ios/App/App/VeloraPlugin.swift", "utf8");
+  add(G, "uygulama açıkken zil görüldü (iPhone uygulaması)", "sayıyı uygulama yazar, eski uygulamada sunucu", /iosBadgeKind\(\)/.test(dp) && /setIosBadge\(n\)/.test(dp) && /\/api\/badge/.test(dp) && /name: "badge"/.test(sw) && /setBadgeCount/.test(sw));
+  add(G, "yeni bildirim (sayı 3)", "iPhone bildiriminde de simge sayısı 3", fcmMessage("t", { title: "x", badge: 3 }).apns.payload.aps.badge === 3);
+}
+
 for (const [g, cases] of Object.entries(rows)) group(g)(cases.map(([say, desc, got, ok]) => [say, { desc, fn: () => got, ok }]));
