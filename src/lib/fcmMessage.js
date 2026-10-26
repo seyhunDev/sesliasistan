@@ -36,6 +36,13 @@ export function fcmMessage(token, payload, ttlSec = 86400) {
   };
 }
 
+// Yalnız simge sayısı (iPhone): yazı ve ses yok. Eski iPhone uygulaması sayıyı kendisi indiremediği için zil görülünce
+// sunucu bunu gönderir (/api/badge); 0 sayıyı siler.
+export function badgeMessage(token, count) {
+  const n = Math.max(0, Math.min(999, Math.round(Number(count) || 0)));
+  return { token, apns: { headers: { "apns-push-type": "alert", "apns-priority": "5" }, payload: { aps: { badge: n } } } };
+}
+
 // Gelen arama (Android uygulaması): yalnız veri taşıyan, hemen iletilen mesaj. Bildirimi uygulamanın kendi kodu gösterir
 // (mobil/…/AramaMesaj.java): zil çalan, kilit ekranında tam ekran açılan arama bildirimi, Aç / Reddet düğmeleri.
 // sig: Reddet düğmesinin oturumsuz gönderdiği imza (lib/server/callPush.js). Çalma süresinden sonra iletilmez.

@@ -120,3 +120,14 @@ const parseJson = (s) => {
     return null;
   }
 };
+
+// Simgedeki sayı (VeloraPlugin.badge). Bu parça olmadan kurulmuş eski iPhone uygulamasında yok: false döner,
+// o zaman sayıyı sunucu sessiz bir bildirimle düzeltir (/api/badge).
+export const iosBadgeKind = () => {
+  const C = typeof window !== "undefined" ? window.Capacitor : null;
+  if (!C?.isNativePlatform?.() || C.getPlatform?.() !== "ios") return "";
+  return typeof plugin()?.badge === "function" ? "plugin" : "server";
+};
+export function setIosBadge(count) {
+  return plugin()?.badge?.({ count }).catch(() => {});
+}

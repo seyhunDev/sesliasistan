@@ -15,6 +15,7 @@ import AlarmKit
 // - haptic, biometry / unlock (Face ID kilidi), widgetData (ana ekran widget'ı): VeloraDokunus.swift
 // - camera: üstünde sayaç akan iPhone kamerası (Medya › Kayıt): VeloraKamera.swift
 // - pushReady: bildirimler kurulu mu (AppDelegate, Firebase)
+// - badge: simgedeki sayı (zildeki okunmamışlar); 0 olunca bildirim merkezindeki Velora bildirimleri de kalkar
 // - watch olayı / watchTake, watchReply, watchState: Apple Watch'tan asistana iş ve tek sayaç (VeloraSaatKoprusu.swift)
 @objc(VeloraPlugin)
 public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -36,6 +37,7 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "watchReply", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "watchState", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "pushReady", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "badge", returnType: CAPPluginReturnPromise),
     ]
 
     override public func load() {
@@ -80,6 +82,21 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
     // Bildirimler kurulu mu (GoogleService-Info.plist; AppDelegate)
     @objc func pushReady(_ call: CAPPluginCall) {
         call.resolve(["ready": Bildirim.hazir])
+    }
+
+    // Simgedeki sayı: WKWebView'da navigator.setAppBadge yok, APNs'in koyduğu sayıyı yalnız uygulama indirebilir
+    @objc func badge(_ call: CAPPluginCall) {
+        let n = max(0, call.getInt("count", 0))
+        DispatchQueue.main.async {
+            let c = UNUserNotificationCenter.current()
+            if #available(iOS 16.0, *) {
+                c.setBadgeCount(n)
+            } else {
+                UIApplication.shared.applicationIconBadgeNumber = n
+            }
+            if n == 0 { c.removeAllDeliveredNotifications() }
+            call.resolve(["ok": true])
+        }
     }
 
     @objc func takeOpen(_ call: CAPPluginCall) {
