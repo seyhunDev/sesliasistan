@@ -1,8 +1,8 @@
-Commit: 9c23909 · Yarış sayfası açılmıyordu: eksik bölüm değişkeni raceDocs missing işlevini gölgeliyordu (#838)
-Zaman: 2026-10-26-2247 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40388428757
+Commit: 77909cb · Yarış sayfası: sporcu seçili ekran testi; evrak yalnız gerçek değişiklikte yenile der (#839)
+Zaman: 2026-10-26-2301 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40390694844
 
-TAM TEST · 26.10.2026 22:38:46
+TAM TEST · 26.10.2026 22:53:27
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -19,10 +19,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Kameralar sayfası…
     Çevrimdışı çalışma (internet kesilip açılır)…
     Çevrimdışı: 21/21 geçti
+    Yarış sayfası (sporcu seçili, yarış günü)…
+    Yarış günü (sporcu seçili)…
+    Yarıştan önce (sporcu seçili)…
+    Multimedya…
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1394/1394 geçti · 0 kalan · 497 sn
+SONUÇ: 1399/1399 geçti · 0 kalan · 486 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -169,6 +173,9 @@ SONUÇ: 1394/1394 geçti · 0 kalan · 497 sn
   ✓ Açıkken kopup gelince: 2/2
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
+
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 5/5
+  ✓ Yarış sayfası: 5/5
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
