@@ -1,8 +1,8 @@
-Commit: 77909cb · Yarış sayfası: sporcu seçili ekran testi; evrak yalnız gerçek değişiklikte yenile der (#839)
-Zaman: 2026-10-26-2301 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40390694844
+Commit: 9e5e0f4 · Rüzgâr grafiği: saat saat yağış şeridi (mm, renk ölçeği) ve kuvvetli yağış uyarısı (#840)
+Zaman: 2026-10-26-2341 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40396475496
 
-TAM TEST · 26.10.2026 22:53:27
+TAM TEST · 26.10.2026 23:32:22
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -17,6 +17,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
     Deniz trafiği sayfası…
     Kameralar sayfası…
+    Hava: yağış şeridi…
     Çevrimdışı çalışma (internet kesilip açılır)…
     Çevrimdışı: 21/21 geçti
     Yarış sayfası (sporcu seçili, yarış günü)…
@@ -26,7 +27,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1399/1399 geçti · 0 kalan · 486 sn
+SONUÇ: 1401/1401 geçti · 0 kalan · 516 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -136,7 +137,7 @@ SONUÇ: 1399/1399 geçti · 0 kalan · 486 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 121/121
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 123/123
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Ana sayfa: 1/1
   ✓ Enerji (boşta): 2/2
@@ -145,7 +146,7 @@ SONUÇ: 1399/1399 geçti · 0 kalan · 486 sn
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 3/3
   ✓ Kısa dokun yaz: 1/1
-  ✓ Sayfa hataları: 9/9
+  ✓ Sayfa hataları: 10/10
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
@@ -162,6 +163,7 @@ SONUÇ: 1399/1399 geçti · 0 kalan · 486 sn
   ✓ Tam ekran üstte: 1/1
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
+  ✓ Hava: 1/1
   ✓ Güvenlik: 1/1
 
 3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 21/21
