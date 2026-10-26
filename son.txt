@@ -1,8 +1,8 @@
-Commit: 254b765 · iPhone kamerası: çekilen dosya eklentiden parça parça okunur (capacitor:// fetch yerine) (#826)
-Zaman: 2026-10-26-0538 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40259249801
+Commit: 7471a00 · Market (/sanal) hızlı açılış: çerçeve anahtarı beklemeden açılır, anahtar Sanal isteyince verilir (#827)
+Zaman: 2026-10-26-1827 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40347955398
 
-TAM TEST · 26.10.2026 05:28:46
+TAM TEST · 26.10.2026 18:18:30
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1394/1394 geçti · 0 kalan · 508 sn
+SONUÇ: 1394/1394 geçti · 0 kalan · 505 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
