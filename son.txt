@@ -1,8 +1,8 @@
-Commit: 8e1e785 · Yarış havası: yüklenirken grafikle aynı yükseklikte yer tutucu (#835)
-Zaman: 2026-10-26-2200 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40381333577
+Commit: a694eb5 · Yarış havası: gerçekleşen rüzgâr en yakın istasyondan (100 km'ye kadar) (#836)
+Zaman: 2026-10-26-2219 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40384284522
 
-TAM TEST · 26.10.2026 21:51:01
+TAM TEST · 26.10.2026 22:10:30
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1394/1394 geçti · 0 kalan · 514 sn
+SONUÇ: 1394/1394 geçti · 0 kalan · 493 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
