@@ -56,3 +56,11 @@ export async function askWord(word, kind = "word") {
   if (!res.ok || !data.word) throw new Error(data.error || "Hazırlayamadım, tekrar dene.");
   return kind === "phrase" ? { ...data.word, kind: "phrase", topic: "Eklediklerim" } : data.word;
 }
+
+// Kartın ek örnekleri (İngilizce sayfası): { ex2, dlg } ya da hata. Sayfa bunu desteye yazar (setMore), bir daha sorulmaz.
+export async function moreWord(w) {
+  const res = await authFetch("/api/word", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ more: true, en: w.en, tr: w.tr, ex: w.ex, kind: w.kind }) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.more) throw new Error(data.error || "Hazırlayamadım");
+  return data.more;
+}

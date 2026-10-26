@@ -1,9 +1,11 @@
 "use client";
 
 import { Icon } from "@/components/ui/Icon";
+import { release, silentWav } from "@/features/speech/TtsProvider";
+import { authFetch } from "@/lib/authFetch";
 
-// Telefonun İngilizce sesiyle okur (yoksa sessiz)
-export function sayEn(text) {
+// Telefonun İngilizce sesi (sunucu sesi yoksa ya da gelmezse)
+function device(text) {
   try {
     const s = window.speechSynthesis;
     if (!s || !text) return;
@@ -17,6 +19,56 @@ export function sayEn(text) {
   } catch {
     /* ses yok */
   }
+}
+
+// İngilizce satırı okur (Seyhun 2026-10-26: "İngilizce her şeyi duyabiliyor olmamız lazım, tıklayarak"): önce sunucudaki
+// Google İngilizce sesi (/api/tts lang "en", GOOGLE_TTS_KEY), aynı satır ikinci kez sorulmaz (bellekte); anahtar yoksa ya da
+// 4 sn'de gelmezse telefonun sesi. iPhone'da ses öğesi dokunuş anında sessiz sesle açılır, sonra gelen ses çalabilir.
+let el = null;
+let server = true;
+let job = 0;
+const got = new Map();
+export function sayEn(text) {
+  const t = String(text || "").replace(/\s+/g, " ").trim().slice(0, 400);
+  if (!t || typeof window === "undefined") return;
+  const id = ++job;
+  try {
+    window.speechSynthesis?.cancel();
+  } catch {
+    /* yok */
+  }
+  if (!server || typeof Audio === "undefined") return device(t);
+  if (!el) {
+    el = new Audio();
+    const s = silentWav();
+    el.src = s;
+    el.play().catch(() => {});
+  } else el.pause();
+  const a = el;
+  let url = got.get(t);
+  if (!url) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    url = authFetch("/api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: t, lang: "en", rate: 0.95 }), signal: ctrl.signal })
+      .then(async (r) => {
+        if (r.status === 501) server = false;
+        if (!r.ok) throw new Error(String(r.status));
+        return URL.createObjectURL(await r.blob());
+      })
+      .finally(() => clearTimeout(timer));
+    got.set(t, url);
+    if (got.size > 80) got.delete(got.keys().next().value);
+    url.catch(() => got.delete(t));
+  }
+  url.then(
+    (u) => {
+      if (id !== job) return;
+      a.onended = () => release(a);
+      a.src = u;
+      a.play().catch(() => device(t));
+    },
+    () => id === job && device(t),
+  );
 }
 
 // Kelime ya da cümle: İngilizcesi (dinle), türü, Türkçesi, örnek cümle ve Türkçesi (dokununca okunur).

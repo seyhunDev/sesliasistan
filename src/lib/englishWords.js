@@ -268,7 +268,20 @@ export function cleanWord(w = {}) {
     due: DAY.test(String(w.due || "")) ? w.due : "",
     at: S(w.at, 30),
     kd: DAY.test(String(w.kd || "")) ? w.kd : "",
+    ...moreOf(w),
   };
+}
+// Yapay zekanın bir kez hazırladığı ek örnekler (İngilizce sayfası): ex2 en çok 3 cümle, dlg en çok 4 satırlık diyalog
+// (A, B, A… sırayla); her biri { e: İngilizce, t: Türkçe }. Boşsa alan hiç yazılmaz (belge küçük kalır).
+const lines = (a, n) =>
+  (Array.isArray(a) ? a : [])
+    .map((x) => ({ e: S(x?.e, 200), t: S(x?.t, 200) }))
+    .filter((x) => x.e)
+    .slice(0, n);
+function moreOf(w) {
+  const ex2 = lines(w.ex2, 3);
+  const dlg = lines(w.dlg, 4);
+  return { ...(ex2.length ? { ex2 } : {}), ...(dlg.length ? { dlg } : {}) };
 }
 export const cleanGaps = (g) => {
   const a = (Array.isArray(g) ? g : []).map((n) => Math.round(Number(n))).filter((n) => n >= 1 && n <= 365).slice(0, 10);
@@ -325,6 +338,11 @@ export function studyWord(deck, w, today, at = "") {
   return nw.en && nw.tr ? { ...deck, words: [nw, ...deck.words] } : deck;
 }
 export const knowWord = (deck, en, today = "") => mapWord(deck, en, (x) => ({ ...x, status: "known", due: "", kd: today }));
+// Sınavda yanlış: çalışmaya girer (ya da kalır), kutu baştan, yarın yeniden gelir
+export const missWord = (deck, w, today) => mapWord(studyWord(deck, w, today), w.en, (x) => ({ ...x, box: 0, due: addDays(today, 1) }));
+// Ek örnekleri kaydeder (more: { ex2, dlg })
+export const setMore = (deck, en, more) => mapWord(deck, en, (x) => ({ ...x, ...more }));
+export const hasMore = (w) => !!(w?.ex2?.length || w?.dlg?.length);
 export const unstudyWord = (deck, en) => mapWord(deck, en, (x) => ({ ...x, status: "list", box: 0, due: "" }));
 
 const card = (w, study) => ({ en: w.en, type: w.type, tr: w.tr, ex: w.ex, exTr: w.exTr, study });
@@ -465,3 +483,49 @@ export const studyRows = (deck, kind) =>
   ofKind(deck, kind)
     .filter((w) => w.status === "study")
     .sort((a, b) => (a.due || "").localeCompare(b.due || ""));
+
+// Kartın örnek cümleleri: kendi örneği önce, sonra yapay zekanınkiler (aynısı tekrar etmez), en çok 3
+export function sentencesOf(w) {
+  const all = [...(w?.ex ? [{ e: w.ex, t: w.exTr }] : []), ...(w?.ex2 || [])];
+  const seen = new Set();
+  return all.filter((x) => x.e && !seen.has(x.e.toLowerCase()) && seen.add(x.e.toLowerCase())).slice(0, 3);
+}
+
+// Sına (Seyhun 2026-10-26: "öyle hemen öğrendim… neyi öğrendin?"): üç soru. Kelimede 1) anlamını seç, 2) cümledeki boşluğu
+// doldur (kelime örnek cümlede geçmiyorsa Türkçesinden İngilizcesini seç), 3) dinle, anlamını seç. Cümlede 1) anlamını seç,
+// 2) Türkçesinden İngilizcesini seç, 3) dinle, anlamını seç. Şıklar aynı türden başka kartlardan, dördü farklı.
+// Soru: { kind: "mean" | "blank" | "en" | "listen", ask, say, opts, ok } (ok doğru şıkkın sırası). rnd: test için.
+const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function pick(pool, n, rnd, not) {
+  const seen = new Set(not.map((x) => x.toLowerCase()));
+  const out = [];
+  const p = [...pool];
+  while (out.length < n && p.length) {
+    const v = p.splice(Math.floor(rnd() * p.length), 1)[0];
+    if (v && !seen.has(v.toLowerCase())) seen.add(v.toLowerCase()) && out.push(v);
+  }
+  return out;
+}
+function ask(kind, askText, say, right, pool, rnd) {
+  const opts = [right, ...pick(pool, 3, rnd, [right])];
+  for (let i = opts.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
+  return { kind, ask: askText, say, opts, ok: opts.indexOf(right) };
+}
+export function quizFor(deck, w, rnd = Math.random) {
+  const phrase = w.kind === "phrase";
+  const same = ofKind(deck, phrase ? "phrase" : "word").filter((x) => wordKey(x.en) !== wordKey(w.en));
+  const trs = same.map((x) => x.tr);
+  const ens = same.map((x) => x.en);
+  const qs = [ask("mean", w.en, w.en, w.tr, trs, rnd)];
+  const re = new RegExp(`\\b${esc(w.en)}\\w*`, "i");
+  const s = !phrase && sentencesOf(w).find((x) => re.test(x.e));
+  if (s) {
+    const hit = s.e.match(re)[0];
+    qs.push(ask("blank", s.e.replace(re, "___"), s.e, hit, ens, rnd));
+  } else qs.push(ask("en", w.tr, "", w.en, ens, rnd));
+  qs.push(ask("listen", "", w.en, w.tr, trs, rnd));
+  return qs;
+}

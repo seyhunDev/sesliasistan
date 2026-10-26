@@ -32,7 +32,7 @@ const write = (k, v) => {
 };
 
 // iOS'ta sesi "açmak" için sessiz bir ses dosyası
-function silentWav() {
+export function silentWav() {
   const n = 800;
   const buf = new ArrayBuffer(44 + n * 2);
   const v = new DataView(buf);
@@ -46,7 +46,7 @@ function silentWav() {
 // Okuma bitince ses öğesi boşaltılır: kaynak dolu kalırsa iPhone ses oturumu "çalma" kipinde kalır, ardından açılan
 // mikrofon (telefonun tanıması ya da kayıt) ses alamaz; asistan kapatılıp açılsa da düzelmez (Seyhun, 2026-10-20:
 // "sesli cevaptan sonra mikrofon çalışmıyor, ses duyulamadı diyor")
-function release(a) {
+export function release(a) {
   if (!a || !a.getAttribute?.("src")) return;
   try {
     a.pause();
