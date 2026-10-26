@@ -101,19 +101,38 @@ final class KameraYonetici: NSObject, UIImagePickerControllerDelegate, UINavigat
     }
 
     // saved: aslı Fotoğraflar'a kaydedildi (web "telefonda 7 gün" kopyası tutmasa da olur)
-    // Seyhun 2026-10-25: çekilen video Medya'ya gelmiyordu. Sayfa canlı siteden (https) yüklendiği için dosya capacitor:// adresinden
-    // fetch ile okunuyor; Capacitor .mp4/.mov gibi medya uzantılarına CORS başlığı koymuyor, okuma sessizce düşüyordu (fotoğraf .jpg çalışır).
-    // Dosya medya olmayan bir uzantıyla (.dat) verilir; türü "type" ile ayrıca gider.
+    // Seyhun 2026-10-26: "Kayıt uygulamaya alınamadı" (#825'ten sonra da). Sayfa canlı siteden (https) açık; capacitor:// adresindeki
+    // dosyayı fetch ile okumak WebView'de düşüyor. Dosya artık adresle değil, eklentiden parça parça okunur (cameraRead).
     private func cevap(_ url: URL, kind: String, type: String, at: Date, saved: Bool = false) {
-        let ad = url.lastPathComponent
-        var oku = url
-        if kind == "video" {
-            let dat = url.appendingPathExtension("dat")
-            try? FileManager.default.removeItem(at: dat)
-            if (try? FileManager.default.moveItem(at: url, to: dat)) != nil { oku = dat }
+        let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue ?? 0
+        let path = plugin?.bridge?.portablePath(fromLocalURL: url)?.absoluteString ?? ""
+        call.resolve(["file": url.path, "size": size, "path": path, "kind": kind, "type": type, "name": url.lastPathComponent, "end": at.timeIntervalSince1970 * 1000, "saved": saved])
+    }
+}
+
+// Çekilen dosyanın bir parçası (base64). Girdi: file (camera'nın verdiği), offset, length. Son parçada dosya silinir.
+// Yalnız geçici klasördeki velora- dosyaları okunur.
+extension VeloraPlugin {
+    @objc func cameraRead(_ call: CAPPluginCall) {
+        let file = call.getString("file", "")
+        let offset = call.getInt("offset", 0)
+        let length = min(max(call.getInt("length", 0), 1), 8 * 1024 * 1024)
+        let tmp = FileManager.default.temporaryDirectory.standardizedFileURL.path
+        let url = URL(fileURLWithPath: file).standardizedFileURL
+        guard url.path.hasPrefix(tmp), url.lastPathComponent.hasPrefix("velora-") else { return call.reject("Dosya okunamaz") }
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let h = try FileHandle(forReadingFrom: url)
+                defer { try? h.close() }
+                try h.seek(toOffset: UInt64(offset))
+                let data = try h.read(upToCount: length) ?? Data()
+                let done = data.count < length
+                if done { try? FileManager.default.removeItem(at: url) }
+                call.resolve(["data": data.base64EncodedString(), "done": done])
+            } catch {
+                call.reject("Kayıt okunamadı: \(error.localizedDescription)")
+            }
         }
-        guard let path = plugin?.bridge?.portablePath(fromLocalURL: oku)?.absoluteString else { return call.reject("Kayıt okunamadı") }
-        call.resolve(["path": path, "kind": kind, "type": type, "name": ad, "end": at.timeIntervalSince1970 * 1000, "saved": saved])
     }
 }
 

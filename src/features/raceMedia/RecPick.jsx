@@ -26,7 +26,7 @@ export function RecPick({ onFile, className = "", children, ...p }) {
         if (f) onFile(f);
       } catch (e) {
         console.warn("[kamera]", e);
-        toast("Kayıt uygulamaya alınamadı");
+        toast(`Kayıt uygulamaya alınamadı${e?.message ? `: ${e.message}` : ""}`);
       }
       setWait(false);
     };
