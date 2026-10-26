@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { Label, Seg, card } from "@/components/ui/Page";
@@ -137,6 +138,20 @@ function Row({ label, children, className = "" }) {
 }
 const Group = ({ children, className = "" }) => <div className={`${card} divide-y divide-line overflow-hidden ${className}`}>{children}</div>;
 const Pair = ({ children }) => <div className="grid grid-cols-2 divide-x divide-line">{children}</div>;
+
+// Multimedya sol altta, alt çubuğun hemen üstünde (Seyhun 2026-10-26: "diğer butonlarla karışmasın, bu farklı; altta solda,
+// tek tıkla ulaşabilsin"). body'ye taşınır: sayfadaki dönüşümler sabit konumu bozmasın.
+const noSub = () => () => {};
+function MediaFab({ href }) {
+  const on = useSyncExternalStore(noSub, () => true, () => false);
+  if (!on) return null;
+  return createPortal(
+    <Link href={href} data-press className="btn btn-primary fixed bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.75rem)] left-5 z-30 rounded-full px-5 shadow-[0_6px_18px_rgba(0,0,0,.22)]">
+      Multimedya
+    </Link>,
+    document.body,
+  );
+}
 
 function Check({ on, tone = "ok" }) {
   return (
@@ -848,17 +863,13 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
           </span>
         </div>
       )}
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        {rid && (
-          <Link href={`/athletes/races/${rid}/media`} data-press className="raised flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
-            Multimedya
-          </Link>
-        )}
-        <button type="button" onClick={() => (r.noticeFile ? noticeOpen() : setNoticeMenu(true))} data-press className={`raised flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold ${rid ? "" : "col-span-2"}`}>
-          {r.notice ? "Talimat" : "Talimat yükle"}
+      {/* Talimat yüklüyse düğme kalkar, ⋯ içinde "Talimatı gör" (Seyhun 2026-10-26); Multimedya sol altta ayrı düğme (MediaFab) */}
+      {!r.notice && (
+        <button type="button" onClick={() => setNoticeMenu(true)} data-press className="raised mt-4 flex h-11 w-full items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+          Talimat yükle
         </button>
-      </div>
-      <nav aria-label="Bölümler" className="mt-2 grid grid-cols-3 gap-2">
+      )}
+      <nav aria-label="Bölümler" className={`${r.notice ? "mt-4" : "mt-2"} grid grid-cols-3 gap-2`}>
         {tabs.map(([k, name, sub, warn]) => {
           const on = tab === k;
           return (
@@ -951,11 +962,13 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
 
   return (
     <>
+      {rid && !(tab === "docs" && !file) && <MediaFab href={`/athletes/races/${rid}/media`} />}
       {/* Sağ üstteki ⋯ (Seyhun 2026-10-20: "editleme, silme… bir ayarlar butonuyla ulaşabildiğimiz şeyler olmalı") */}
       <Sheet open={menu} onClose={() => onMenu?.(false)} title="Yarış">
         <ul className={`${card} divide-y divide-line overflow-hidden`}>
           {[
             ["Bilgileri düzenle", () => setEdit(true)],
+            r.noticeFile && ["Talimatı gör", noticeOpen],
             r.notice && ["Talimatı değiştir", () => setNoticeMenu(true)],
             r.notice && ["Talimatı sil", dropNotice, true],
           ]
