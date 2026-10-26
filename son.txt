@@ -1,8 +1,8 @@
-Commit: a694eb5 · Yarış havası: gerçekleşen rüzgâr en yakın istasyondan (100 km'ye kadar) (#836)
-Zaman: 2026-10-26-2219 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40384284522
+Commit: 9c23909 · Yarış sayfası açılmıyordu: eksik bölüm değişkeni raceDocs missing işlevini gölgeliyordu (#838)
+Zaman: 2026-10-26-2247 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40388428757
 
-TAM TEST · 26.10.2026 22:10:30
+TAM TEST · 26.10.2026 22:38:46
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1394/1394 geçti · 0 kalan · 493 sn
+SONUÇ: 1394/1394 geçti · 0 kalan · 497 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
