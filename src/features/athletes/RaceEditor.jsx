@@ -172,12 +172,15 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const [stale, setStale] = useState(false); // hazır evrak bir bilgi değişince geçersiz oldu (yeniden hazırlanmalı)
   const [mailText, setMailText] = useState(""); // hazır PDF'in mail metni
   const [made, setMade] = useState(null); // { at, pages } hazırlanma zamanı (bu cihazda saklı)
+  // Bu cihazdaki kopyaya bakıldı mı (Seyhun 2026-10-26: "hiçbir değişiklik olmadan evrak yenilemesi istiyor"): bakılana kadar "yenile" denmez
+  const [checked, setChecked] = useState(false);
   const [parts, setParts] = useState([]); // her belge ayrı PDF: [{ key, title, file, pages }]
   const [extras, setExtras] = useState([]); // eski düzen: yalnız bu telefonda kalan eklenen evrak [{ id, name, type, blob, at }] (Firebase'e gönderilir)
   // Hazır PDF bu cihazda saklıdır; sayfaya dönünce yeniden hazırlamak gerekmez
   useEffect(() => {
     let live = true;
     getRaceFile(start.id).then((f) => {
+      if (live) setChecked(true);
       if (!live || !f?.blob) return;
       setFile(new File([f.blob], f.name, { type: "application/pdf" }));
       if (Array.isArray(f.docs) && f.docs.length && !startDocs) setDocs(cleanDocs(f.docs));
@@ -205,8 +208,10 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
     setDocs(next);
     setR((p) => ({ ...p, docs: next }));
   };
+  // Yalnız değer gerçekten değişince (aynı sporcuyu yeniden eklemek, aynı oteli seçmek evrakı bozmaz)
+  const same = (a, b) => (Array.isArray(a) ? a.join() === (b || []).join() : (a ?? "") === (b ?? ""));
   const set = (k) => (v) => {
-    dropFile();
+    if (!same(v, latest.current[k])) dropFile();
     setR((p) => {
       const n = { ...p, [k]: v };
       // İzin aralığı varsayılan olarak yarıştan bir gün önce başlar, bir gün sonra biter
@@ -252,7 +257,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const coachLast = useRef(coach);
   const [coachSaved, setCoachSaved] = useState(false);
   const setCoachField = (k) => (v) => {
-    dropFile();
+    if (!same(v, coach[k])) dropFile();
     coachDirty.current = true;
     setCoach((c) => ({ ...c, [k]: v }));
   };
@@ -651,7 +656,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const hotelCount = raceHotels(r).length;
   const stat = [
     ["people", "users", "Sporcu", !chosen.length ? "Sporcu seçilmedi" : incomplete.length ? `${chosen.length} sporcu · ${incomplete.length} bilgi eksik` : `${chosen.length} sporcu · bilgiler tamam`, chosen.length > 0 && !incomplete.length, chosen.length ? "Sporcu bilgilerini tamamla" : "Sporcuları ekle"],
-    ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : stale || r.docsAt ? "Eski, yenilenmeli" : "Hazırlanmadı", !!file, stale || r.docsAt ? "Evrakı yenile" : "Evrakı hazırla"],
+    ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : stale ? "Eski, yenilenmeli" : !checked && r.docsAt ? "Hazır" : r.docsAt ? "Bu cihazda yok" : "Hazırlanmadı", !!file || (!checked && !!r.docsAt && !stale), stale ? "Evrakı yenile" : "Evrakı hazırla"],
     ["trip", "nav", "Yolculuk", trip.length ? [trip[0][1], hotelCount && `${hotelCount} otel`].filter(Boolean).join(" · ") : "Çıkış girilmedi", trip.length > 0, "Yolculuğu yaz"],
     ["budget", "wallet", "Bütçe", money.lines.length ? (chosen.length ? `${money.varies ? "Ortak pay" : "Sporcu başı"} ${tl(money.perAthlete)}` : `Toplam ${tl(money.total)}`) : "Kalem yok", money.lines.length > 0, "Bütçeyi çıkar"],
   ];
@@ -823,7 +828,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const tabs = [
     ["sum", raceDay ? "Bugün" : "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
     ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
-    ["docs", "Evrak", file ? "Hazır" : stale || r.docsAt ? "Yenile" : "Hazır değil", !stat[1][4]],
+    ["docs", "Evrak", file || (!checked && r.docsAt && !stale) ? "Hazır" : stale ? "Yenile" : r.docsAt ? "Bu cihazda yok" : "Hazır değil", !stat[1][4]],
     ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4]],
     ["budget", "Bütçe", money.lines.length ? tl(chosen.length ? money.perAthlete : money.total) : "Yok", !stat[3][4]],
     ["sheet", "Veli", "Bilgi notu", false],
@@ -1276,16 +1281,16 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
 
       {tab === "docs" && (
         <>
-          {/* Hazır evrak bir bilgi değişince ya da bu telefonda yoksa: yenile uyarısı */}
-          {!file && (stale || r.docsAt) && chosen.length > 0 && (
+          {/* Hazır evrak bir bilgi değişince (stale) ya da bu telefonda yoksa (başka cihazda hazırlandı / telefon sildi): uyarı */}
+          {!file && (stale || (checked && r.docsAt)) && chosen.length > 0 && (
             <div className="mt-4 flex items-center gap-3 rounded-2xl bg-amber-500/10 px-4 py-3 ring-1 ring-amber-500/30">
               <Icon name="alert" className="size-5 shrink-0 text-amber-600" />
               <span className="min-w-0 flex-1">
-                <b className="block text-[0.9375rem] font-semibold">Evrak eski, yenile</b>
-                <span className="block text-[0.8125rem] text-mut">{stale ? "Bir bilgi değişti, önceki evrak geçersiz." : "Daha önce hazırlanmıştı; bu telefonda yok ya da bir bilgi değişti."}</span>
+                <b className="block text-[0.9375rem] font-semibold">{stale ? "Evrak eski, yenile" : "Evrak bu cihazda yok"}</b>
+                <span className="block text-[0.8125rem] text-mut">{stale ? "Bir bilgi değişti, önceki evrak geçersiz." : "Başka cihazda hazırlandı ya da telefon sildi. Yeniden hazırla."}</span>
               </span>
               <button type="button" onClick={make} disabled={busy} className="h-9 shrink-0 rounded-full bg-amber-600 px-4 text-[0.8125rem] font-semibold text-white disabled:opacity-50">
-                {busy ? "Hazırlanıyor…" : "Yenile"}
+                {busy ? "Hazırlanıyor…" : stale ? "Yenile" : "Hazırla"}
               </button>
             </div>
           )}

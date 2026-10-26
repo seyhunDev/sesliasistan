@@ -111,6 +111,9 @@ try {
       out("    Çevrimdışı çalışma (internet kesilip açılır)…");
       const cev = await import("../cevrimdisi-test/senaryolar.mjs");
       rows.push(...(await cev.run(server, out)));
+      out("    Yarış sayfası (sporcu seçili, yarış günü)…");
+      const yar = await import("../yaris-ekran-test/senaryolar.mjs");
+      rows.push(...(await yar.run(server, out)));
     } else rows.push({ katman: "asistan ekran", grup: "Asistan ekranı", say: "", expect: "", ok: emuErr?.skip ? null : false, got: `${emuErr?.skip ? "ATLANDI: " : ""}${String(emuErr?.message || "emülatör yok").slice(0, 600)}` });
   } else if (!withBrowser) rows.push({ katman: "tarayıcı", grup: "Tarayıcı", say: "sayfalar", expect: "", ok: null, got: "ATLANDI (--tarayicisiz)" });
 
@@ -142,6 +145,7 @@ const KATMAN = [
   ["tarayıcı", "3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları"],
   ["asistan ekran", "3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase)"],
   ["çevrimdışı", "3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase)"],
+  ["yarış ekranı", "3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase)"],
   ["yapay zeka", "4. GERÇEK YAPAY ZEKA"],
 ];
 const counted = rows.filter((r) => r.ok !== null && r.grup !== "Birim testleri: kalanlar");
