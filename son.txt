@@ -1,8 +1,8 @@
-Commit: af55911 · Multimedya: silinen video Fotoğraflar'dan da silinir; yarışta hava tek yerde (#834)
-Zaman: 2026-10-26-2140 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40378391690
+Commit: 8e1e785 · Yarış havası: yüklenirken grafikle aynı yükseklikte yer tutucu (#835)
+Zaman: 2026-10-26-2200 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40381333577
 
-TAM TEST · 26.10.2026 21:31:17
+TAM TEST · 26.10.2026 21:51:01
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1394/1394 geçti · 0 kalan · 503 sn
+SONUÇ: 1394/1394 geçti · 0 kalan · 514 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
