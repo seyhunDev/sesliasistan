@@ -6,7 +6,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { BrainCard } from "@/features/brain/BrainCard";
 import { useData } from "@/features/data/DataProvider";
-import { Fold, NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, ThemeRow, VoiceRow, WeatherPlaceRow, PasswordRow, useNotifications, RacesRow, LedgerRow } from "@/features/settings/Groups";
+import { Fold, NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, ThemeRow, VoiceRow, WeatherPlaceRow, PasswordRow, useNotifications, RacesRow, RaceLiveRow, LedgerRow } from "@/features/settings/Groups";
 import { Group, Row } from "@/features/settings/ui";
 import { BackupRow } from "@/features/settings/Backup";
 import { DeviceDataRow } from "@/features/settings/DeviceData";
@@ -109,6 +109,7 @@ export default function SettingsPage() {
         <ThemeRow />
         <WeatherPlaceRow />
         <RacesRow />
+        <RaceLiveRow />
       </Group>
 
       <Group title="Bildirimler">

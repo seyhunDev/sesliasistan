@@ -99,6 +99,7 @@ export function AuthProvider({ children }) {
             ledgerCard: !!doc_?.ledgerCard, // ayarlar: Hesaplar'da Banka defteri kartı
             coach: doc_?.coach && typeof doc_.coach === "object" ? doc_.coach : null, // yarış evrakı: antrenör ve destek botu bilgisi
             races: doc_?.races === "on" || doc_?.races === "off" ? doc_.races : "", // ayarlar: ana sayfada Yarışlar düğmesi (raceHome.js)
+            raceLive: doc_?.raceLive === "off" ? "off" : "", // ayarlar: süren yarışın ana sayfa Multimedya kısayolu (RaceLive; "off" gizli)
             textSize: doc_?.textSize === "l" || doc_?.textSize === "xl" ? doc_.textSize : "", // ayarlar: yazı ve simge boyutu
             introV: Number(doc_?.introV) || (doc_?.onboarded ? 1 : 0), // görülen en son tanıtım sürümü (yeni slaytlar bundan büyük)
             onboarded: doc_ ? !!doc_.onboarded : null, // ilk açılış izin slaytları görüldü mü (null: henüz bilinmiyor)

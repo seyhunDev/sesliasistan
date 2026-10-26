@@ -27,6 +27,7 @@ import { MyAttendanceCard } from "./MyAttendanceCard";
 import { MyFitCard } from "./MyFitCard";
 import { myFit } from "@/lib/fitness/model";
 import { useRaceHome } from "@/features/athletes/raceHome";
+import { RaceLive } from "./RaceLive";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 
 // Ana sayfa (Seyhun 2026-10-21 "C · Lacivert kokpit", ilk ekran "A · tam lacivert"): ilk ekran tam bir sayfa lacivert kokpit (Cockpit: tarih, zil, Ayarlar,
@@ -100,6 +101,7 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         onInbox={onInbox}
         sel={sel}
         onOpenDay={() => setPick(sel)}
+        live={athletes ? <RaceLive open={race.open} /> : null}
         days={<HomeDays today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
       >
         <div className="mt-4">
