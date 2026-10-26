@@ -1,8 +1,8 @@
-Commit: 5eb4c20 · Simgedeki bildirim sayısı iPhone uygulamasında inmiyordu: uygulama sayıyı yazar, eski uygulamada sunucu sessiz bildirimle düzeltir (#829)
-Zaman: 2026-10-26-2033 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40368008221
+Commit: 1c85b94 · Yarış sayfası: yarış günü görünümü (Multimedya ve günün rüzgârı önde, Özet yerine Bugün) (#830)
+Zaman: 2026-10-26-2103 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40372968091
 
-TAM TEST · 26.10.2026 20:23:49
+TAM TEST · 26.10.2026 20:54:57
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1394/1394 geçti · 0 kalan · 510 sn
+SONUÇ: 1394/1394 geçti · 0 kalan · 486 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
