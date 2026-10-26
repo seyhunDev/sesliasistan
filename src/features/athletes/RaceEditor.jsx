@@ -26,8 +26,7 @@ import { BudgetView } from "./BudgetView";
 import { tl, totals } from "./budget";
 import { buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
-import { loadRaceDay } from "./raceWeather";
-import { sky, windName } from "@/features/weather/weather";
+import { RaceDayWx, RaceWxTab } from "./RaceWx";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { loadPosts } from "@/features/posts/posts";
 import { racePlansOf, racePostOf } from "./raceLinks";
@@ -139,52 +138,6 @@ function Row({ label, children, className = "" }) {
 }
 const Group = ({ children, className = "" }) => <div className={`${card} divide-y divide-line overflow-hidden ${className}`}>{children}</div>;
 const Pair = ({ children }) => <div className="grid grid-cols-2 divide-x divide-line">{children}</div>;
-
-// Yarış günü rüzgârı (lacivert üstte): 10–17 arası aralık, yön, sıcaklık, gök; saat saat ok, rüzgâr ve sağanak.
-// Veri Multimedya › Hava ile aynı (loadRaceDay, telefonda saklanır); alınamazsa hiçbir şey göstermez.
-function DayWind({ r, day }) {
-  const [rows, setRows] = useState(null);
-  useEffect(() => {
-    let on = true;
-    loadRaceDay(r, day).then((d) => on && setRows(d.rows), () => on && setRows([]));
-    return () => {
-      on = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [r.id, r.spot?.lat, r.spot?.lon, day]);
-  if (rows === null) return <div className="ck-glass mt-3 h-[9.5rem] animate-pulse rounded-2xl" aria-label="Hava yükleniyor" />;
-  const hrs = rows.filter((x) => +x.hh >= 10 && +x.hh <= 17);
-  if (!hrs.length) return null;
-  const lo = Math.min(...hrs.map((x) => Math.round(x.wind)));
-  const hi = Math.max(...hrs.map((x) => Math.round(x.wind)));
-  const g = hrs.reduce((a, x) => (x.gust > a.gust ? x : a), hrs[0]);
-  const hNow = String(new Date().getHours()).padStart(2, "0");
-  const cur = hrs.find((x) => x.hh === hNow) || hrs[Math.min(hrs.length - 1, 3)];
-  return (
-    <div className="ck-glass mt-3 rounded-2xl px-3.5 pb-3 pt-3.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <b className="text-[1.875rem] font-bold leading-none tracking-[-.03em] tabular-nums">
-          {lo === hi ? hi : `${lo}–${hi}`}
-          <small className="ml-1 text-[0.9375rem] font-semibold text-white/70">kn</small>
-        </b>
-        <span className="min-w-0 truncate text-[0.84375rem] text-white/75">{[windName(cur.dir)[0], cur.t != null && `${Math.round(cur.t)}°`, cur.code != null && sky(cur.code, cur.day).label].filter(Boolean).join(" · ")}</span>
-      </div>
-      <p className="mt-1 text-[0.84375rem] text-white/75">Sağanak en çok {Math.round(g.gust)} kn ({g.hh}:00)</p>
-      <div className="mt-3 flex justify-between">
-        {hrs.map((x) => (
-          <span key={x.time} className="flex w-9 flex-col items-center gap-0.5 text-[0.75rem] text-white/65">
-            {x.hh}
-            <svg viewBox="-6 -6 12 12" className="my-0.5 size-4" aria-hidden="true">
-              <path d="M0,-5.5L0,5.5M-3.2,2.3L0,5.5L3.2,2.3" transform={`rotate(${Math.round(x.dir) % 360})`} fill="none" stroke={x.wind >= 17 ? "#ffb86b" : "#67e8f9"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <b className="text-[0.9375rem] font-semibold tabular-nums text-white">{Math.round(x.wind)}</b>
-            <span className="text-[0.71875rem] tabular-nums text-[#ffd59a]">{Math.round(x.gust)}</span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function Check({ on, tone = "ok" }) {
   return (
@@ -865,6 +818,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const dayAll = raceDay ? Math.round((new Date(`${r.endDate || r.startDate}T12:00:00`) - new Date(`${r.startDate}T12:00:00`)) / 864e5) + 1 : 0;
   const tabs = [
     ["sum", raceDay ? "Bugün" : "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
+    ["wx", "Hava", "", false], // Seyhun 2026-10-26: hava kendi sekmesinde (Yolculuk'tan taşındı), gün gün grafik
     ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
     ["docs", "Evrak", file ? "Hazır" : stale || r.docsAt ? "Yenile" : "Hazır değil", !stat[1][4]],
     ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4]],
@@ -893,7 +847,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
               Multimedya
             </Link>
           )}
-          {rid && <DayWind r={{ ...r, id: rid }} day={today} />}
+          {rid && <RaceDayWx r={{ ...r, id: rid }} day={today} />}
         </div>
       ) : !over && left != null ? (
         <div className="mt-4">
@@ -1148,6 +1102,8 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
         </>
       )}
 
+      {tab === "wx" && (rid ? <RaceWxTab r={{ ...r, id: rid }} /> : <p className="mt-4 px-1 text-[0.875rem] text-mut">Yarış kaydedilince hava burada görünür.</p>)}
+
       {tab === "people" && (
         <>
           <Label right={chosen.length ? `${chosen.length} sporcu` : ""}>KAFİLE</Label>
@@ -1311,7 +1267,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
 
           <RaceHotels hotels={raceHotels(r)} onChange={(list) => put("hotels", list)} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
 
-          <AroundView r={r} onChange={(a) => put("around", a)} onWeather={(w) => put("weather", w)} />
+          <AroundView r={r} onChange={(a) => put("around", a)} />
         </>
       )}
 
