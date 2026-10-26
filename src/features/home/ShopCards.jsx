@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { preconnect } from "react-dom";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useNow } from "@/hooks/useNow";
 import { mealPhoto } from "@/lib/homeTiles";
+import { SANAL_URL } from "@/lib/sanal";
 import { STATUSES, STATUS_NAMES, cartCount, isOpenOrder, tl } from "@/market/catalog";
 import { useOrders } from "@/market/store";
 import { MarketOrder } from "@/market/ui/MarketOrder";
@@ -36,6 +38,7 @@ function Tile({ photo, title, sub, href, off = false }) {
 
 export function ShopCards() {
   const now = useNow(60000);
+  preconnect(SANAL_URL); // Market'e basınca Sanal'a bağlantı hazır olsun (Seyhun 2026-10-26 "yavaş açılıyor")
   return (
     <div className="space-y-3">
       <FoodOrder />
