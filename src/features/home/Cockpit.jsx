@@ -24,7 +24,7 @@ import { BirthdayBadge } from "./PeopleStrip";
 // 2026-10-23 (Seyhun "günler en üstte", örnek gunler.html): üstte tarih başlığı yok (tarih yalnız gün şeridinde); sağ üstte doğum günü, zil, Ayarlar;
 // altında gün şeridi (days, HomeDays), sonra seçilen günün (sel) havası ve rüzgâr grafiği. Bugün seçiliyse şimdiki rüzgâr ve sıradaki plan;
 // başka gün seçiliyse o günün gündüz rüzgârı ve o günün planları (DayPlans; "Günü aç" o günün penceresini açar, onOpenDay).
-export function Cockpit({ weather, inbox, onInbox, days, sel, onOpenDay, children }) {
+export function Cockpit({ weather, inbox, onInbox, days, live, sel, onOpenDay, children }) {
   const { profile } = useAuth();
   const router = useRouter();
   const now = useNow();
@@ -50,6 +50,7 @@ export function Cockpit({ weather, inbox, onInbox, days, sel, onOpenDay, childre
       </header>
 
       <div className="mt-3">{days}</div>
+      {live}
 
       <button type="button" onClick={goWeather} aria-label="Hava ayrıntısı" className="mt-4 block w-full text-left">
         {n ? (

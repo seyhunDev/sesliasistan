@@ -500,6 +500,14 @@ const daysTo = (date, today) => Math.round((Date.parse(`${date}T12:00:00`) - Dat
 
 // Yarış satırı: süren yarış (başladı, bitmedi) önce, yoksa sıradaki. open: [{ id, name, startDate, endDate, place, count }] (raceHome.js)
 // { id, title, sub ("17-19 Eki · Foça · 6 sporcu" ya da "Sürüyor · Foça"), right ("Sürüyor", "Yarın", "4 gün") } ya da null
+// Süren yarış (ilk gününden son gününe kadar; ana sayfa Multimedya kısayolu RaceLive): { id, title } ya da null. Birden çok varsa en erken başlayan.
+export function liveRace(open = [], today) {
+  const r = (open || [])
+    .filter((x) => x?.id && x.startDate && x.startDate <= today && (x.endDate || x.startDate) >= today)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+  return r ? { id: r.id, title: r.name || "Yarış" } : null;
+}
+
 export function clubRaceRow(open = [], today) {
   const list = open.filter((r) => r.startDate && (r.endDate || r.startDate) >= today).sort((a, b) => a.startDate.localeCompare(b.startDate));
   const r = list.find((x) => x.startDate <= today) || list[0];

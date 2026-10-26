@@ -762,6 +762,24 @@ export function RacesRow() {
   );
 }
 
+// Süren yarışın ana sayfa Multimedya kısayolu (RaceLive; users.raceLive "off" = gizli). Ana sayfadaki ⋯ › "Hiç gösterme" kapatır, burada açılır
+export function RaceLiveRow() {
+  const race = useRaceHome();
+  const { profile } = useAuth();
+  const toast = useToast();
+  const [on, setOn] = useState(null);
+  if (!race.allowed) return null;
+  const cur = on ?? profile?.raceLive !== "off";
+  const flip = (v) => {
+    setOn(v);
+    saveUser(profile.uid, { raceLive: v ? "on" : "off" }).catch(() => {
+      setOn(!v);
+      toast("Kaydedilemedi, tekrar dene");
+    });
+  };
+  return <Row title="Ana sayfada yarış kısayolu" right={<Switch on={cur} onChange={flip} label="Ana sayfada yarış kısayolu" />} />;
+}
+
 // Hesaplar sayfasında "Banka defteri" kartı (yalnız ana hesap): kapalıyken gizli (users.ledgerCard; Seyhun, 2026-10-05)
 export function LedgerRow() {
   const { profile } = useAuth();
