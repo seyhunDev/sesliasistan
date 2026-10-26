@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { CockpitWind } from "@/features/home/CockpitWind";
+import { useWindObs } from "@/features/weather/useWindObs";
 import { kn, sky, windName } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
 import { cleanSpot, forecastFrom, lastForecastDay, loadRaceDay, raceDays } from "./raceWeather";
@@ -56,7 +57,7 @@ function DayChart({ rows, day, at }) {
         </span>
       </div>
       <div className="mt-2">
-        <CockpitWind key={day} rows={rows} date={day} place={at} />
+        <CockpitWind key={day} rows={rows} date={day} place={at} far />
       </div>
     </>
   );
@@ -91,11 +92,17 @@ export function RaceWx({ r }) {
   const late = sel && sel > lastForecastDay(today);
   const d = useDay(r, late ? "" : sel, tick);
   const sp = cleanSpot(r.spot);
+  // Gerçekleşen rüzgâr en yakın istasyondan (grafikle aynı istek, önbellekten): hangi istasyon ve uzaklığı başlıkta yazar
+  const ob = useWindObs(d.at, late ? "" : sel, today, true);
+  const st = ob?.rows?.length ? ob.station : null;
   if (!first || first > lastForecastDay(today)) return null;
   return (
     <section className="mt-4" aria-label="Yarış havası">
       <div className="mb-2 flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">Hava · {d.place || sp?.name || r.district || r.city}</span>
+        <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">
+          Hava · {d.place || sp?.name || r.district || r.city}
+          {st && ` · ölçüm ${st.name} ${String(st.km).replace(".", ",")} km`}
+        </span>
         <button type="button" onClick={() => setTick((n) => n + 1)} aria-label="Yenile" data-press className="btn btn-round size-8">
           <Icon name="load" className="size-4" />
         </button>

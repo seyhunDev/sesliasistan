@@ -17,11 +17,12 @@ const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23
 // Ayrı "en sert sağanak" yazısı yok (Seyhun 2026-10-24: rüzgâr ve sağanak tek yerde, "2–4 kn").
 // Açılışta grafik soldan sağa 0,9 sn'de çizilir (globals.css .ck-draw); hareket azaltılmışsa çizilmeden gelir. Hava sayfasındaki grafik (WindChart) değişmez.
 const W = 340, L = 6, R = 22, T = 26, H = 132, B = 4;
-export function CockpitWind({ rows, date, place = null }) {
+// far: istasyon 10 km'den uzakta da (100 km'ye kadar) ölçüm çizilir (yarış sayfası; Seyhun 2026-10-26: "yarışın olduğu yerdeki gerçekleşmiş rüzgârı göremiyorum")
+export function CockpitWind({ rows, date, place = null, far = false }) {
   const now = useNow();
   const today = YMD.format(now);
   const day = date || today;
-  const ob = useWindObs(place || getPlace(), day, today); // place: başka yerin grafiği (yarış sayfası); yoksa hava yeri
+  const ob = useWindObs(place || getPlace(), day, today, far); // place: başka yerin grafiği (yarış sayfası); yoksa hava yeri
   if (!rows?.length) return null;
   const n = rows.length;
   const obs = rows.map((h) => ob?.rows?.find((o) => o.hh === h.hh));
