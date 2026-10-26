@@ -4,7 +4,7 @@ import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
 import { useWindObs } from "@/features/weather/useWindObs";
 import { OBS } from "@/features/weather/DaySheet";
-import { PLACE, getPlace, kn, sky } from "@/features/weather/weather";
+import { PLACE, getPlace, heavyRain, kn, mmTone, sky } from "@/features/weather/weather";
 
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
 const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: PLACE.tz });
@@ -42,8 +42,19 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
   const ni = Math.floor(nowAt);
   const nowV = nowAt >= 0 ? rows[ni].wind + ((rows[ni + 1]?.wind ?? rows[ni].wind) - rows[ni].wind) * (nowAt - ni) : null;
   const ticks = [5, 10, 15, 20, 25, 30].filter((v) => v < top);
+  // Yağış (Seyhun 2026-10-26 "A · Altında renkli şerit"): günde yağış varsa grafiğin altında saat saat renkli kutu (mmTone), 1 mm ve üstünde sayı;
+  // saatte 4 mm ve üstü beklenirse grafiğin üstünde kehribar uyarı satırı (gerçek uyarı). Eski önbellekte mm yoksa ikisi de çıkmaz.
+  const wet = rows.some((h) => mmTone(h.mm));
+  const heavy = heavyRain(rows);
+  const cw = ((W - L - R) / Math.max(1, n - 1)) * 0.86;
   return (
     <div className="ck-wind">
+      {heavy && (
+        <p className="mb-2 flex items-start gap-2 rounded-xl bg-[rgba(227,180,108,.13)] px-3 py-2 text-[0.8125rem] font-semibold text-[#e3b46c]">
+          <span className="mt-[0.35rem] size-2 shrink-0 rounded-full bg-[#e3b46c]" />
+          <span>Kuvvetli yağış {heavy.from}–{heavy.to} · günde {heavy.total} mm</span>
+        </p>
+      )}
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img" aria-label="Bugünün saatlik rüzgâr grafiği">
         {ticks.map((v) => (
           <g key={v}>
@@ -83,6 +94,19 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
           </g>
         )}
       </svg>
+      {wet && (
+        <svg viewBox={`0 0 ${W} 18`} className="mt-1 block w-full" role="img" aria-label="Saatlik yağış, mm">
+          {rows.map((h, i) => {
+            const c = mmTone(h.mm);
+            return (
+              <g key={`m${h.time}`}>
+                <rect x={(x(i) - cw / 2).toFixed(1)} y="1" width={cw.toFixed(1)} height="16" rx="3" fill={c || "rgba(255,255,255,.06)"} />
+                {h.mm >= 1 && <text x={x(i).toFixed(1)} y="12.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">{Math.round(h.mm)}</text>}
+              </g>
+            );
+          })}
+        </svg>
+      )}
       {/* 3 saatte bir: saat, gökyüzü, sıcaklık, "rüzgâr-sağanak" (kn, ölçülen de aynı biçimde); grafikteki saatin tam altında */}
       <div className="relative mt-1.5 h-[4.6rem]">
         {rows.map((h, k) => {
