@@ -59,10 +59,12 @@ async function generate(model, text) {
 // ilk ses kabul edilmezse sıradaki denenir.
 // pick: kullanıcının Ayarlar'da seçtiği ses (lib/speech/googleVoices.js listesinden), önce o denenir
 const GVOICES = (pick = "") => [...new Set([pick, process.env.GOOGLE_TTS_VOICE, "tr-TR-Chirp3-HD-Aoede", "tr-TR-Wavenet-E", "tr-TR-Standard-E"].filter(Boolean))];
+// İngilizce sayfasındaki satırlar (lang "en"): İngilizce ses; GOOGLE_TTS_VOICE_EN ile değişir
+const EN_VOICES = () => [...new Set([process.env.GOOGLE_TTS_VOICE_EN, "en-US-Chirp3-HD-Aoede", "en-US-Neural2-F", "en-US-Standard-F"].filter(Boolean))];
 
-async function google(text, rate, pick = "") {
+async function google(text, rate, pick = "", en = false) {
   let last = "";
-  for (const name of GVOICES(pick)) {
+  for (const name of en ? EN_VOICES() : GVOICES(pick)) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     try {
@@ -71,7 +73,7 @@ async function google(text, rate, pick = "") {
       const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(process.env.GOOGLE_TTS_KEY)}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ input: { text }, voice: { languageCode: "tr-TR", name }, audioConfig }),
+        body: JSON.stringify({ input: { text }, voice: { languageCode: name.slice(0, 5), name }, audioConfig }),
         signal: ctrl.signal,
       });
       const raw = await res.text();
@@ -115,16 +117,18 @@ export async function POST(request) {
   if (!text) return NextResponse.json({ error: "Metin boş" }, { status: 400 });
   if (text.length > 400) return NextResponse.json({ error: "Metin çok uzun" }, { status: 400 });
   const rate = Math.min(1.4, Math.max(0.7, Number(body?.rate) || 1));
+  const en = body?.lang === "en";
+  if (en && !hasGoogle) return NextResponse.json({ error: "İngilizce ses için Google anahtarı yok" }, { status: 501 });
 
   let last = "";
   if (hasGoogle) {
     try {
-      const mp3 = await google(text, rate, googleVoiceName(String(body?.voice || "")));
+      const mp3 = await google(text, rate, en ? "" : googleVoiceName(String(body?.voice || "")), en);
       countAi(au, "tts-chr", text.length);
       return new Response(new Uint8Array(mp3), { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
     } catch (e) {
       last = `google: ${e.message}`;
-      if (!useGemini) return NextResponse.json({ error: "Ses üretilemedi", detail: last }, { status: 502 });
+      if (!useGemini || en) return NextResponse.json({ error: "Ses üretilemedi", detail: last }, { status: 502 });
     }
   }
   for (const m of MODELS()) {

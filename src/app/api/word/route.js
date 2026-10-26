@@ -29,6 +29,35 @@ Kurallar:
 - exTr: örneğin Türkçesi ya da boş.
 - Anlaşılmıyorsa en boş kalsın.`;
 
+// more: İngilizce sayfasında kartın ek örnekleri (bir kez hazırlanır, desteye yazılır)
+const MORE = `Türkçe konuşan, İngilizce öğrenen bir yetişkin için verilen kelimeye ya da cümleye örnek hazırlıyorsun.
+Kurallar:
+- ex2: kelimenin (cümlede: kalıbın) en yaygın kullanımıyla günlük hayattan 2 kısa, doğal İngilizce cümle (her biri en çok 12 kelime). Kelime ya da kalıp cümlede aynen geçsin. Verilen örnek cümleyi tekrar etme.
+- dlg: iki kişi arasında 3 satırlık kısa, doğal bir günlük konuşma (A, B, A sırasıyla; her satır en çok 12 kelime). Kelime ya da kalıp en az bir satırda geçsin.
+- Her satırda e: İngilizcesi, t: doğal Türkçesi.
+- Sade, B1-B2 düzeyinde, gerçek hayattan konular (iş, yolculuk, aile, spor, alışveriş).`;
+const LINES = { type: "array", items: { type: "object", properties: { e: { type: "string" }, t: { type: "string" } }, required: ["e", "t"] } };
+const MORE_SCHEMA = { type: "object", properties: { ex2: LINES, dlg: LINES }, required: ["ex2", "dlg"] };
+const lines = (a, n) =>
+  (Array.isArray(a) ? a : [])
+    .map((x) => ({ e: S(x?.e, 200), t: S(x?.t, 200) }))
+    .filter((x) => x.e && x.t)
+    .slice(0, n);
+
+async function more(au, body) {
+  const en = S(body?.en, 160);
+  if (!en) return bad("Hangi kelime?");
+  countAi(au, "word");
+  try {
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: MORE, user: `${body?.kind === "phrase" ? "Cümle" : "Kelime"}: """${en}""" (${S(body?.tr, 120)})\nVerilen örnek: """${S(body?.ex, 200)}"""`, schema: MORE_SCHEMA, maxTokens: 900, timeoutMs: 15000 });
+    return NextResponse.json({ more: { ex2: lines(raw?.ex2, 3), dlg: lines(raw?.dlg, 4) } });
+  } catch (e) {
+    logAiError("word", "gemini", e);
+    if (e.status === 429) return bad("Yapay zeka kotası şu an dolu. Biraz sonra tekrar dene.", 429);
+    return bad("Örnekleri hazırlayamadım.", 502);
+  }
+}
+
 const SCHEMA = {
   type: "object",
   properties: { en: { type: "string" }, type: { type: "string" }, tr: { type: "string" }, ex: { type: "string" }, exTr: { type: "string" } },
@@ -47,10 +76,11 @@ async function handle(request) {
   } catch {
     return bad("Geçersiz istek");
   }
+  if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
+  if (body?.more) return more(au, body);
   const phrase = body?.kind === "phrase";
   const word = S(body?.word, phrase ? 160 : 60);
   if (!word) return bad("Hangi kelime?");
-  if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
   countAi(au, "word");
   try {
     const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: phrase ? PHRASE : SYSTEM, user: `${phrase ? "Cümle" : "Kelime"}: """${word}"""`, schema: SCHEMA, maxTokens: 600, timeoutMs: 15000 });

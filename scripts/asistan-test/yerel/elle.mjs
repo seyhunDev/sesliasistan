@@ -2286,6 +2286,31 @@ group("Plan bitti ve kelime kartı")([
   ]);
 }
 
+// İngilizce sayfası (2026-10-26): ek örnekler (ex2, dlg) desteye yazılır, Sına üç soru, yanlışta yarına kalır
+{
+  const T = "2026-10-26";
+  const deck = EW.seedDeck(null).deck;
+  const R = { en: "resilient", type: "sıfat", tr: "dirençli", ex: "Kids are resilient.", exTr: "Çocuklar dirençlidir.", kind: "word" };
+  const M = { ex2: [{ e: "Our team was resilient after the loss.", t: "Takımımız kayıptan sonra çabuk toparlandı." }], dlg: [{ e: "How is he?", t: "Nasıl?" }, { e: "Fine, he is resilient.", t: "İyi, dirençli." }] };
+  const withR = () => EW.studyWord(deck, R, T);
+  let seed = 1;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  group("İngilizce sayfası: örnekler ve Sına")([
+    ["ek örnek kaydı", F("ex2 ve dlg temizlenip kalır", () => { const w = EW.findWord(EW.cleanDeck(EW.setMore(withR(), "resilient", M)), "resilient"); return w.ex2.length === 1 && w.dlg.length === 2 && EW.hasMore(w); })],
+    ["boş ek örnek yazılmaz", F("alan hiç yok", () => { const w = EW.cleanWord(R); return !("ex2" in w) && !("dlg" in w) && !EW.hasMore(w); })],
+    ["sınır", F("en çok 3 cümle, 4 satır", () => { const w = EW.cleanWord({ ...R, ex2: Array(6).fill({ e: "a", t: "b" }), dlg: Array(9).fill({ e: "a", t: "b" }) }); return w.ex2.length === 3 && w.dlg.length === 4; })],
+    ["örnek cümleler", F("kendi örneği önce, tekrar etmez", () => { const s = EW.sentencesOf({ ...R, ex2: [{ e: "kids are resilient." }, ...M.ex2] }); return s.length === 2 && s[0].e === R.ex; })],
+    ["kelime sınavı", F("anlam, boşluk, dinle; 4 farklı şık, doğru şık içinde", () => {
+      const qs = EW.quizFor(EW.setMore(withR(), "resilient", M), { ...R, ...M }, rnd);
+      return qs.map((q) => q.kind).join() === "mean,blank,listen" && qs.every((q) => q.opts.length === 4 && new Set(q.opts).size === 4 && q.ok >= 0) && qs[0].opts[qs[0].ok] === "dirençli" && qs[1].ask.includes("___") && qs[1].opts[qs[1].ok].toLowerCase() === "resilient";
+    })],
+    ["cümlede geçmezse", F("Türkçesinden İngilizcesi", () => EW.quizFor(deck, { ...R, ex: "" }, rnd)[1].kind === "en")],
+    ["cümle sınavı", F("anlam, İngilizcesi, dinle", () => { const p = EW.ofKind(deck, "phrase")[0]; const qs = EW.quizFor(deck, p, rnd); return qs.map((q) => q.kind).join() === "mean,en,listen" && qs[1].opts[qs[1].ok] === p.en; })],
+    ["yanlışsa yarın", F("çalışmaya girer, kutu 0, yarın", () => { const w = EW.findWord(EW.missWord(deck, R, T), "resilient"); return w.status === "study" && w.box === 0 && w.due === "2026-10-27"; })],
+    ["doğruysa öğrenildi", F("known", () => EW.findWord(EW.knowWord(withR(), "resilient", T), "resilient").status === "known")],
+  ]);
+}
+
 const DB = await import("@/lib/debts");
 {
   const D = (o) => DB.cleanDebt({ who: "Ali Kaya", amount: 1000, date: "2026-10-01", ...o });
