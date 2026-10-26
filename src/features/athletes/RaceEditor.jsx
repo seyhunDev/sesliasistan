@@ -812,8 +812,8 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const doneN = stat.filter((x) => x[4]).length;
   // Seyhun 2026-10-26: "Hazırlık tamam 3/4, niye?" Sayılan dört bölüm (Sporcu, Evrak, Yolculuk, Bütçe); Plan, Not ve çıkarılan işler sayılmaz.
   // Eksik bölüm adıyla yazılır, "tamam" yalnız işler bitip dört bölüm de tamamsa.
-  const missing = stat.filter((x) => !x[4]);
-  const missText = missing.length > 2 ? `${missing.length} bölüm eksik` : missing.length ? `Eksik: ${missing.map((x) => x[2]).join(", ")}` : "";
+  const lacking = stat.filter((x) => !x[4]);
+  const missText = lacking.length > 2 ? `${lacking.length} bölüm eksik` : lacking.length ? `Eksik: ${lacking.map((x) => x[2]).join(", ")}` : "";
   // Yarış günü (Seyhun 2026-10-26: "önemli olan hava durumu ve multimedya, o ikisini ön planda tutmalıyız"): başlangıçtan bitişe
   // üstte büyük Multimedya ve günün rüzgârı; Özet yerine "Bugün" (kalan iş kısa notta, dokununca açılır)
   const today = todayStr();
@@ -1050,8 +1050,8 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
         <>
           {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} />}
           {raceDay && (
-            <button type="button" onClick={() => (!todoList.length && missing.length ? setTab(missing[0][0]) : setPrepOpen((v) => !v))} aria-expanded={todoList.length || !missing.length ? prepOpen : undefined} data-press="row" className={`${card} mt-4 flex min-h-[2.875rem] w-full items-center gap-2.5 px-4 py-2 text-left`}>
-              {todoList.length || missing.length ? (
+            <button type="button" onClick={() => (!todoList.length && lacking.length ? setTab(lacking[0][0]) : setPrepOpen((v) => !v))} aria-expanded={todoList.length || !lacking.length ? prepOpen : undefined} data-press="row" className={`${card} mt-4 flex min-h-[2.875rem] w-full items-center gap-2.5 px-4 py-2 text-left`}>
+              {todoList.length || lacking.length ? (
                 <span className="size-2 shrink-0 rounded-full bg-amber-500" />
               ) : (
                 <span className="grid size-5 shrink-0 place-items-center rounded-full bg-ok text-white">
@@ -1059,7 +1059,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
                 </span>
               )}
               <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{todoList.length ? [`${todoList.length} iş kaldı`, missText].filter(Boolean).join(" · ") : missText || "Hazırlık tamam"}</span>
-              <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${prepOpen && (todoList.length || !missing.length) ? "rotate-90" : ""}`} />
+              <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${prepOpen && (todoList.length || !lacking.length) ? "rotate-90" : ""}`} />
             </button>
           )}
           {!over && (!raceDay || prepOpen) && (
