@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { Label, Seg, card } from "@/components/ui/Page";
@@ -138,20 +137,6 @@ function Row({ label, children, className = "" }) {
 }
 const Group = ({ children, className = "" }) => <div className={`${card} divide-y divide-line overflow-hidden ${className}`}>{children}</div>;
 const Pair = ({ children }) => <div className="grid grid-cols-2 divide-x divide-line">{children}</div>;
-
-// Multimedya sol altta, alt çubuğun hemen üstünde (Seyhun 2026-10-26: "diğer butonlarla karışmasın, bu farklı; altta solda,
-// tek tıkla ulaşabilsin"). body'ye taşınır: sayfadaki dönüşümler sabit konumu bozmasın.
-const noSub = () => () => {};
-function MediaFab({ href }) {
-  const on = useSyncExternalStore(noSub, () => true, () => false);
-  if (!on) return null;
-  return createPortal(
-    <Link href={href} data-press className="btn btn-primary fixed bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.75rem)] left-5 z-30 rounded-full px-5 shadow-[0_6px_18px_rgba(0,0,0,.22)]">
-      Multimedya
-    </Link>,
-    document.body,
-  );
-}
 
 function Check({ on, tone = "ok" }) {
   return (
@@ -725,23 +710,17 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const doneTasks = doneList.filter((x) => x.key !== "docs");
   const [showDone, setShowDone] = useState(false);
   // Yarış kartının satırı: sol ad, sağda durum (ya da mor işlem), altında kısa bilgi
-  const linkRow = ({ k, title, main, sub, act, onClick, href, thumb, right }) => {
+  // Tek satır (Seyhun 2026-10-26: "çok yer kaplıyor, liste gibi"): solda başlık, ortada değer, sağda kısa ek bilgi
+  const linkRow = ({ k, title, main, sub, act, onClick, href, right }) => {
     const body = (
       <>
-        <span className="w-[4.75rem] shrink-0 text-[0.875rem] leading-tight text-mut">{title}</span>
-        {thumb !== undefined && (
-          <span className="size-11 shrink-0 overflow-hidden rounded-lg bg-acc/15">{/* eslint-disable-next-line @next/next/no-img-element -- küçük görsel data adresi */}
-            {thumb && <img src={thumb} alt="" className="size-full object-cover" />}</span>
-        )}
-        <span className="min-w-0 flex-1">
-          <span className={`block truncate text-[0.9375rem] ${act ? "font-semibold text-acc" : "font-medium"}`}>{main}</span>
-          {sub && <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>}
-        </span>
-        {right && <span className="shrink-0 text-[0.8125rem] text-mut">{right}</span>}
+        <span className="w-[5.5rem] shrink-0 truncate text-[0.875rem] text-mut">{title}</span>
+        <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${act ? "font-semibold text-acc" : "font-medium"}`}>{main}</span>
+        {(right || sub) && <span className="max-w-[45%] shrink-0 truncate text-[0.8125rem] text-mut">{right || sub}</span>}
         {!act && <Icon name="chev" className="size-4 shrink-0 text-mut/60" />}
       </>
     );
-    const cls = "flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg";
+    const cls = "flex min-h-[2.875rem] w-full items-center gap-3 px-4 py-2 text-left active:bg-bg";
     return (
       <li key={k}>
         {href ? (
@@ -780,17 +759,16 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
         <button type="button" onClick={() => markStep(s, true)} aria-label={`${s.label}: yapıldı`} data-press className="btn btn-icon shrink-0">
           <span className="size-[1.375rem] rounded-full border-2 border-line" />
         </button>
-        <span className="min-w-0 flex-1 py-3">
-          <span className="block text-[0.9375rem] font-medium leading-snug">{s.label}</span>
-          <span className="block truncate text-[0.8125rem] text-mut">{[s.date && shortDay(s.date), s.detail || stepSrc[s.group]].filter(Boolean).join(" · ")}</span>
-        </span>
-        {left !== null && (
+        <span className="min-w-0 flex-1 truncate py-2.5 text-[0.9375rem] font-medium">{s.label}</span>
+        {left !== null && left <= 14 ? (
           <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
             {left < 0 ? "Geçti" : left === 0 ? "Bugün" : `${left} gün`}
           </span>
+        ) : (
+          <span className="max-w-[35%] shrink-0 truncate text-[0.8125rem] text-mut">{s.date ? shortDay(s.date) : s.detail || stepSrc[s.group]}</span>
         )}
-        <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} data-press className="btn btn-icon shrink-0 text-mut">
-          <Icon name="x" className="size-4" />
+        <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} data-press className="btn btn-icon btn-sm shrink-0 text-mut/60">
+          <Icon name="x" className="size-3.5" />
         </button>
       </li>
     );
@@ -838,21 +816,32 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
     ["budget", "Bütçe", money.lines.length ? tl(chosen.length ? money.perAthlete : money.total) : "Yok", !stat[3][4]],
     ["sheet", "Veli", "Bilgi notu", false],
   ];
+  // Seyhun 2026-10-26 (örnek A, yaris-tasarim/ozet-liste): üstte kalan gün + yanında Multimedya (ayrı, açık renk), altında tek satır
+  // kaydırılabilir sekmeler (eksikse sarı nokta). Talimat yüklüyse düğme yok, ⋯ içinde "Talimatı gör".
+  const mediaBtn = rid && (
+    <Link href={`/athletes/races/${rid}/media`} data-press className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-[#67e8f9] px-4 text-[0.9375rem] font-bold text-[#06283a] shadow-[0_3px_0_#2aa9bd] active:translate-y-px active:shadow-none">
+      <Icon name="video" className="size-[1.125rem]" />
+      Multimedya
+    </Link>
+  );
   const top = (
     <>
-      {!over && left != null && (
+      {!over && left != null ? (
         <div className="mt-4">
-          <span className="flex items-baseline gap-2">
-            {left > 1 ? (
-              <>
-                <b className="text-[3rem] font-bold leading-none tracking-[-.04em] tabular-nums">{left}</b>
-                <span className="text-[1rem] font-semibold text-white/75">gün kaldı</span>
-              </>
-            ) : (
-              <b className="text-[2rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
-            )}
+          <span className="flex items-center justify-between gap-3">
+            <span className="flex min-w-0 items-baseline gap-2">
+              {left > 1 ? (
+                <>
+                  <b className="text-[2.375rem] font-bold leading-none tracking-[-.04em] tabular-nums">{left}</b>
+                  <span className="text-[0.9375rem] font-semibold text-white/75">gün kaldı</span>
+                </>
+              ) : (
+                <b className="truncate text-[1.75rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
+              )}
+            </span>
+            {mediaBtn}
           </span>
-          <span className="mt-3.5 block h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
+          <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
             <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round((doneN / stat.length) * 100)}%` }} />
           </span>
           <span className="mt-1.5 flex justify-between text-[0.78rem] text-white/70">
@@ -862,20 +851,21 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
             </span>
           </span>
         </div>
+      ) : (
+        mediaBtn && <div className="mt-4 flex justify-end">{mediaBtn}</div>
       )}
-      {/* Talimat yüklüyse düğme kalkar, ⋯ içinde "Talimatı gör" (Seyhun 2026-10-26); Multimedya sol altta ayrı düğme (MediaFab) */}
       {!r.notice && (
-        <button type="button" onClick={() => setNoticeMenu(true)} data-press className="raised mt-4 flex h-11 w-full items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+        <button type="button" onClick={() => setNoticeMenu(true)} data-press className="raised mt-3 flex h-10 w-full items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
           Talimat yükle
         </button>
       )}
-      <nav aria-label="Bölümler" className={`${r.notice ? "mt-4" : "mt-2"} grid grid-cols-3 gap-2`}>
-        {tabs.map(([k, name, sub, warn]) => {
+      <nav aria-label="Bölümler" className="-mx-5 mt-4 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {tabs.map(([k, name, , warn]) => {
           const on = tab === k;
           return (
-            <button key={k} type="button" aria-pressed={on} onClick={() => setTab(k)} data-press className={`raised flex h-[3.875rem] min-w-0 flex-col items-center justify-center rounded-2xl border px-1.5 leading-tight ${on ? "ck-sel" : ""}`}>
-              <b className="text-[0.9375rem] font-semibold">{name}</b>
-              <small className={`mt-0.5 max-w-full truncate text-[0.75rem] font-medium ${on ? "text-white/85" : warn && !over ? "text-[#ffd59a]" : "text-white/60"}`}>{sub}</small>
+            <button key={k} type="button" aria-pressed={on} onClick={() => setTab(k)} data-press className={`raised flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[0.875rem] font-semibold ${on ? "ck-sel" : ""}`}>
+              {warn && !over && <span className="size-1.5 rounded-full bg-[#ffd59a]" aria-label="eksik" />}
+              {name}
             </button>
           );
         })}
@@ -962,7 +952,6 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
 
   return (
     <>
-      {rid && !(tab === "docs" && !file) && <MediaFab href={`/athletes/races/${rid}/media`} />}
       {/* Sağ üstteki ⋯ (Seyhun 2026-10-20: "editleme, silme… bir ayarlar butonuyla ulaşabildiğimiz şeyler olmalı") */}
       <Sheet open={menu} onClose={() => onMenu?.(false)} title="Yarış">
         <ul className={`${card} divide-y divide-line overflow-hidden`}>
@@ -1058,19 +1047,21 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
           )}
 
           <Label>Yarış</Label>
-          <ul className={`${card} divide-y divide-line overflow-hidden`}>{raceRows.map(linkRow)}</ul>
+          <ul className={`${card} divide-y divide-line overflow-hidden`}>
+            {raceRows.map(linkRow)}
+            <li className="flex items-start gap-3 px-4 py-2">
+              <span className="w-[5.5rem] shrink-0 pt-[0.4375rem] text-[0.875rem] text-mut">Not</span>
+              <textarea
+                value={r.note}
+                onChange={(e) => put("note", e.target.value)}
+                aria-label="Not"
+                placeholder="Not ekle"
+                rows={Math.max(1, Math.min(8, (r.note || "").split("\n").length + (r.note ? 1 : 0)))}
+                className="block min-h-[1.875rem] min-w-0 flex-1 resize-none bg-transparent py-1 text-[0.9375rem] leading-relaxed outline-none placeholder:text-mut/60"
+              />
+            </li>
+          </ul>
           {r.notice && noticeInfo && <NoticeDetails n={r.notice} />}
-
-          <Label>Not</Label>
-          <div className={`${card} px-4 py-3`}>
-            <textarea
-              value={r.note}
-              onChange={(e) => put("note", e.target.value)}
-              placeholder="Konaklama, ulaşım, kayıt ücreti, tekne taşıma…"
-              rows={3}
-              className="block w-full resize-none bg-transparent text-[0.9375rem] leading-relaxed outline-none placeholder:text-mut/60"
-            />
-          </div>
 
         </>
       )}

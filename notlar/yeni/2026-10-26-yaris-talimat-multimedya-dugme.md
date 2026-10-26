@@ -1,8 +1,12 @@
 ## Nerede kaldım
 
-- Yarış sayfası (RaceEditor): talimat yüklüyse üstteki Talimat düğmesi kalktı, ⋯ menüsünde "Talimatı gör" (dosya varsa). Talimat yoksa tam genişlik "Talimat yükle" kalır (Seyhun 2026-10-26).
-- Multimedya artık sol altta, alt çubuğun hemen üstünde sabit düğme (MediaFab, body'ye portal); Evrak sekmesinin alt çubuğu açıkken gizlenir.
+- Yarış sayfası (RaceEditor) Seyhun'un seçtiği örnek A ile sadeleşti (2026-10-26, /mnt/project-files/yaris-tasarim/ozet-liste/ornek.png):
+  - Üstte "19 gün kaldı" + yanında açık camgöbeği Multimedya düğmesi (ayrı görünsün diye; talimat yoksa altında "Talimat yükle").
+  - Sekmeler tek satır küçük haplar, yatay kaydırılır (Bütçe, Veli sağda); eksik olanda sarı nokta. Sekmelerdeki alt yazılar kalktı.
+  - Talimat yüklüyse Talimat düğmesi yok, ⋯ menüsünde "Talimatı gör".
+  - Özet: Yapılacaklar tek satır (sağda kısa bilgi ya da 14 günden yakın son tarihte gün etiketi, küçük ✕); Yarış satırları tek satır; Not ayrı kart değil, Yarış listesinin son satırı.
+- Telefonda denenmedi.
 
 ## Sıradaki işler
 
-- Seyhun telefonda baksın; düğme bir satırın üstüne biniyorsa yeri ya da boyutu ayarlanır.
+- Seyhun telefonda baksın; sekmelerin kaydığı anlaşılmazsa yazılar küçültülüp hepsi sığdırılabilir.
