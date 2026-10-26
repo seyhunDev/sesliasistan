@@ -62,6 +62,23 @@ function DayChart({ rows, day, at }) {
   );
 }
 
+// Yüklenirken: DayChart'ın biçiminde (sıcaklık satırı + grafik) yanıp sönen yer tutucu
+function Wait() {
+  return (
+    <div className="animate-pulse" role="status" aria-label="Hava yükleniyor">
+      <div className="flex h-[2.6875rem] items-center gap-3">
+        <span className="h-9 w-16 rounded-xl bg-white/12" />
+        <span className="flex-1 space-y-1.5">
+          <span className="block h-3.5 w-28 rounded-full bg-white/12" />
+          <span className="block h-3 w-16 rounded-full bg-white/10" />
+        </span>
+        <span className="h-7 w-20 rounded-xl bg-white/12" />
+      </div>
+      <div className="ck-glass mt-2 h-[13.4375rem] rounded-2xl" />
+    </div>
+  );
+}
+
 // Yarış sayfasının üstünde (lacivert) tek hava yeri (Seyhun 2026-10-26: "hava durumunu birçok yerde gösteriyoruz… günlere göre
 // seçebiliyoruz ya, o çok güzel"): yarış günleri gün gün, güne dokununca grafik o güne geçer. Ayrı Hava sekmesi ve Multimedya'daki
 // Hava kalktı. Tahmin henüz çıkmadıysa (ilk gün 16 günden ileride) hiç görünmez.
@@ -83,15 +100,18 @@ export function RaceWx({ r }) {
           <Icon name="load" className="size-4" />
         </button>
       </div>
-      {late ? (
-        <p className="py-8 text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
-      ) : d.rows?.length ? (
-        <DayChart rows={d.rows} day={sel} at={d.at} />
-      ) : d.err ? (
-        <p className="py-8 text-center text-[0.875rem] text-white/70">Hava tahmini alınamadı.</p>
-      ) : (
-        <div className="ck-glass h-[12rem] animate-pulse rounded-2xl" aria-label="Hava yükleniyor" />
-      )}
+      {/* Seyhun 2026-10-26: gün değişince yüklenirken alan küçülüp sayfa zıplıyordu; her durumda grafikle aynı yükseklik */}
+      <div className="flex min-h-[16.625rem] flex-col">
+        {late ? (
+          <p className="m-auto text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
+        ) : d.rows?.length ? (
+          <DayChart rows={d.rows} day={sel} at={d.at} />
+        ) : d.err ? (
+          <p className="m-auto text-center text-[0.875rem] text-white/70">Hava tahmini alınamadı.</p>
+        ) : (
+          <Wait />
+        )}
+      </div>
       {days.length > 1 && (
         <nav aria-label="Günler" className="mt-3 grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(days.length, 6)}, minmax(0, 1fr))` }}>
           {days.slice(0, 6).map((x) => {
