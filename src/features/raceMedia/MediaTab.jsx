@@ -11,6 +11,7 @@ import { MediaViewer } from "./MediaViewer";
 import { Thumb } from "./Thumb";
 import { Sheet } from "@/components/ui/Sheet";
 import { Icon } from "@/components/ui/Icon";
+import { hasCamera } from "@/lib/nativeIos";
 import { clearKept, dropKept, dropPending, keepLocal, listKept, listPending, putPending } from "./pendingStore";
 
 // Medya: alt sekmelerin yanındaki Kayıt iPhone'un kendi kamerasını açar (RecPick; Seyhun 2026-10-22: sarsıntısız,
@@ -22,7 +23,8 @@ import { clearKept, dropKept, dropPending, keepLocal, listKept, listPending, put
 // Çekilen hemen kaydedilir (önce gözden geçirme yok). file0: alttaki Kayıt ile çekilen dosya (işlenince onFileDone).
 // Yüklenen ve yüklenmekte olan kayıtlar sayfa genelinde tutulur: sekme değişince Medya yeniden açılır, telefonda bekleyen kayıt (yüklemesi
 // eski sekmede sürerken) yeniden sıraya girip ikinci kez yükleniyordu (Seyhun 2026-10-22: "aynı videonun iki kaydı düşüyor")
-const INFO_KEY = "sa-medya-bilgi";
+const noSub = () => () => {};
+const INFO_KEY = "sa-medya-bilgi2"; // 2026-10-26: iPhone uygulamasında aslı Fotoğraflar'da; yeni yazı bir kez daha görünür
 // Çekim ayarları başlıkta (Seyhun 2026-10-22, örnek yaris-tasarim/medya/medya-ust-bos-yukleniyor.png): Kayıt zaten alt sekmelerin yanında;
 // başlıktaki düğme Medya'nın "Çekim" penceresini açar (video kalitesi, telefonda tutulanlar, Telefondan sil)
 const SET_EV = "sa-medya-ayar";
@@ -99,6 +101,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
   const count = (xs) => [xs.filter((m) => m.kind === "video").length, xs.filter((m) => m.kind !== "video").length].map((n, k) => n && `${n} ${k ? "fotoğraf" : "video"}`).filter(Boolean).join(" · ");
   // Bilgi kartı bir kez (Seyhun 2026-10-22): ✕'e basınca bu telefonda bir daha çıkmaz
   const [info, setInfo] = useState(false);
+  const app = useSyncExternalStore(noSub, hasCamera, () => false); // iPhone uygulaması: aslı Fotoğraflar'a gider (VeloraKamera)
   useEffect(() => {
     try {
       if (!localStorage.getItem(INFO_KEY)) setInfo(true);
@@ -363,7 +366,9 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
       {info && (
         <div className={`${card} relative mt-3 py-3 pl-3.5 pr-11 text-[0.875rem] leading-snug`}>
           <b className="mb-0.5 block font-semibold">Videolar nerede saklanır?</b>
-          Telefonda 7 gün saklanır, buluta da yüklenir. Bulutta {VIDEO_Q[vq].label} tutulur. Çekildiği kalitede kalsın istersen 7 gün içinde İndir ile telefonuna kaydet.
+          {app
+            ? "Aslı iPhone'un Fotoğraflar'ına kaydedilir. Buluta 1080p kopyası yüklenir, silinene kadar kalır. Velora'dan silmek bulut kopyasını siler; aslı Fotoğraflar'da kalır."
+            : `Telefonda 7 gün saklanır, buluta da yüklenir. Bulutta ${VIDEO_Q[vq].label} tutulur. Çekildiği kalitede kalsın istersen 7 gün içinde İndir ile telefonuna kaydet.`}
           <button type="button" onClick={closeInfo} aria-label="Bilgiyi kapat" className="absolute right-1.5 top-1.5 grid size-9 place-items-center rounded-full text-mut active:bg-bg">
             <Icon name="x" className="size-5" />
           </button>
