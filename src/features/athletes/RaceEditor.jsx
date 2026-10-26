@@ -26,6 +26,8 @@ import { BudgetView } from "./BudgetView";
 import { tl, totals } from "./budget";
 import { buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
+import { loadRaceDay } from "./raceWeather";
+import { sky, windName } from "@/features/weather/weather";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { loadPosts } from "@/features/posts/posts";
 import { racePlansOf, racePostOf } from "./raceLinks";
@@ -137,6 +139,52 @@ function Row({ label, children, className = "" }) {
 }
 const Group = ({ children, className = "" }) => <div className={`${card} divide-y divide-line overflow-hidden ${className}`}>{children}</div>;
 const Pair = ({ children }) => <div className="grid grid-cols-2 divide-x divide-line">{children}</div>;
+
+// Yarış günü rüzgârı (lacivert üstte): 10–17 arası aralık, yön, sıcaklık, gök; saat saat ok, rüzgâr ve sağanak.
+// Veri Multimedya › Hava ile aynı (loadRaceDay, telefonda saklanır); alınamazsa hiçbir şey göstermez.
+function DayWind({ r, day }) {
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    let on = true;
+    loadRaceDay(r, day).then((d) => on && setRows(d.rows), () => on && setRows([]));
+    return () => {
+      on = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [r.id, r.spot?.lat, r.spot?.lon, day]);
+  if (rows === null) return <div className="ck-glass mt-3 h-[9.5rem] animate-pulse rounded-2xl" aria-label="Hava yükleniyor" />;
+  const hrs = rows.filter((x) => +x.hh >= 10 && +x.hh <= 17);
+  if (!hrs.length) return null;
+  const lo = Math.min(...hrs.map((x) => Math.round(x.wind)));
+  const hi = Math.max(...hrs.map((x) => Math.round(x.wind)));
+  const g = hrs.reduce((a, x) => (x.gust > a.gust ? x : a), hrs[0]);
+  const hNow = String(new Date().getHours()).padStart(2, "0");
+  const cur = hrs.find((x) => x.hh === hNow) || hrs[Math.min(hrs.length - 1, 3)];
+  return (
+    <div className="ck-glass mt-3 rounded-2xl px-3.5 pb-3 pt-3.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <b className="text-[1.875rem] font-bold leading-none tracking-[-.03em] tabular-nums">
+          {lo === hi ? hi : `${lo}–${hi}`}
+          <small className="ml-1 text-[0.9375rem] font-semibold text-white/70">kn</small>
+        </b>
+        <span className="min-w-0 truncate text-[0.84375rem] text-white/75">{[windName(cur.dir)[0], cur.t != null && `${Math.round(cur.t)}°`, cur.code != null && sky(cur.code, cur.day).label].filter(Boolean).join(" · ")}</span>
+      </div>
+      <p className="mt-1 text-[0.84375rem] text-white/75">Sağanak en çok {Math.round(g.gust)} kn ({g.hh}:00)</p>
+      <div className="mt-3 flex justify-between">
+        {hrs.map((x) => (
+          <span key={x.time} className="flex w-9 flex-col items-center gap-0.5 text-[0.75rem] text-white/65">
+            {x.hh}
+            <svg viewBox="-6 -6 12 12" className="my-0.5 size-4" aria-hidden="true">
+              <path d="M0,-5.5L0,5.5M-3.2,2.3L0,5.5L3.2,2.3" transform={`rotate(${Math.round(x.dir) % 360})`} fill="none" stroke={x.wind >= 17 ? "#ffb86b" : "#67e8f9"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <b className="text-[0.9375rem] font-semibold tabular-nums text-white">{Math.round(x.wind)}</b>
+            <span className="text-[0.71875rem] tabular-nums text-[#ffd59a]">{Math.round(x.gust)}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function Check({ on, tone = "ok" }) {
   return (
@@ -709,6 +757,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const todoList = steps.filter((x) => x.key !== "docs").sort((x, y) => order.indexOf(x.group) - order.indexOf(y.group));
   const doneTasks = doneList.filter((x) => x.key !== "docs");
   const [showDone, setShowDone] = useState(false);
+  const [prepOpen, setPrepOpen] = useState(false); // yarış günü: kalan işler kısa notun altında açılır
   // Yarış kartının satırı: sol ad, sağda durum (ya da mor işlem), altında kısa bilgi
   // Tek satır (Seyhun 2026-10-26: "çok yer kaplıyor, liste gibi"): solda başlık, ortada değer, sağda kısa ek bilgi
   const linkRow = ({ k, title, main, sub, act, onClick, href, right }) => {
@@ -808,8 +857,14 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   // Multimedya · Talimat, altında büyük sekme düğmeleri (her birinde kısa durum; eksikse sarı). Özet'teki eski Hazırlık listesi bu düğmelere geçti.
   const left = r.startDate ? daysTo(r.startDate) : null;
   const doneN = stat.filter((x) => x[4]).length;
+  // Yarış günü (Seyhun 2026-10-26: "önemli olan hava durumu ve multimedya, o ikisini ön planda tutmalıyız"): başlangıçtan bitişe
+  // üstte büyük Multimedya ve günün rüzgârı; Özet yerine "Bugün" (kalan iş kısa notta, dokununca açılır)
+  const today = todayStr();
+  const raceDay = !over && !!r.startDate && today >= r.startDate;
+  const dayNo = raceDay ? Math.round((new Date(`${today}T12:00:00`) - new Date(`${r.startDate}T12:00:00`)) / 864e5) + 1 : 0;
+  const dayAll = raceDay ? Math.round((new Date(`${r.endDate || r.startDate}T12:00:00`) - new Date(`${r.startDate}T12:00:00`)) / 864e5) + 1 : 0;
   const tabs = [
-    ["sum", "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
+    ["sum", raceDay ? "Bugün" : "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
     ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
     ["docs", "Evrak", file ? "Hazır" : stale || r.docsAt ? "Yenile" : "Hazır değil", !stat[1][4]],
     ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4]],
@@ -826,7 +881,21 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   );
   const top = (
     <>
-      {!over && left != null ? (
+      {raceDay ? (
+        <div className="mt-3">
+          <span className="flex items-baseline gap-2">
+            <b className="text-[1.625rem] font-bold leading-none tracking-tight">Yarış günü</b>
+            {dayAll > 1 && <span className="text-[0.9375rem] font-semibold tabular-nums text-white/70">{dayNo} / {dayAll}</span>}
+          </span>
+          {rid && (
+            <Link href={`/athletes/races/${rid}/media`} data-press className="mt-4 flex h-[3.25rem] items-center justify-center gap-2.5 rounded-2xl bg-[#67e8f9] text-[1.0625rem] font-bold text-[#06283a] shadow-[0_3px_0_#2aa9bd] active:translate-y-px active:shadow-none">
+              <Icon name="video" className="size-5" />
+              Multimedya
+            </Link>
+          )}
+          {rid && <DayWind r={{ ...r, id: rid }} day={today} />}
+        </div>
+      ) : !over && left != null ? (
         <div className="mt-4">
           <span className="flex items-center justify-between gap-3">
             <span className="flex min-w-0 items-baseline gap-2">
@@ -1022,7 +1091,20 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
       {tab === "sum" && (
         <>
           {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} />}
-          {!over && (
+          {raceDay && (
+            <button type="button" onClick={() => setPrepOpen((v) => !v)} aria-expanded={prepOpen} data-press="row" className={`${card} mt-4 flex min-h-[2.875rem] w-full items-center gap-2.5 px-4 py-2 text-left`}>
+              {todoList.length ? (
+                <span className="size-2 shrink-0 rounded-full bg-amber-500" />
+              ) : (
+                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-ok text-white">
+                  <Icon name="check" className="size-3" />
+                </span>
+              )}
+              <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{todoList.length ? `${todoList.length} iş kaldı` : `Hazırlık tamam · ${doneN} / ${stat.length}`}</span>
+              <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${prepOpen ? "rotate-90" : ""}`} />
+            </button>
+          )}
+          {!over && (!raceDay || prepOpen) && (
             <>
               <Label right={todoList.length ? `${todoList.length} iş` : ""}>Yapılacaklar</Label>
               <ul className={`${card} divide-y divide-line overflow-hidden`}>
