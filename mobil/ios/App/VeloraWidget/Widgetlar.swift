@@ -194,36 +194,52 @@ private func yonAdi(_ d: Double) -> String {
     return adlar[i]
 }
 
-// Büyük yazıyla "rüzgâr–sağanak kn" (ayrı sağanak kutusu yok), sağda yön pusulası (ok grafikteki gibi rüzgârın estiği yöne bakar)
+// Büyük widget'ın üstü (Seyhun 2026-10-27 onayı, derli toplu): küçük logo + başlık + tarih tek satır; altında büyük "rüzgâr–sağanak kn",
+// yarış günü altında evin tek satırı; sağda yön ve pusula (ok grafikteki gibi rüzgârın estiği yöne bakar)
 private struct RuzgarKafasi: View {
     let r: GunRuzgar
     let now: Date
     let baslik: String
+    var evSatiri: String?
     var body: some View {
         let s = r.simdi(now)
         let d = r.yon(now)
-        HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                (Text(knYazi(s.wind, s.gust)).font(.system(size: 42, weight: .bold).monospacedDigit()).kerning(-1.4)
-                    + Text(" kn").font(.system(size: 15, weight: .semibold)).foregroundColor(wAcik))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Etiket(yazi: baslik)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Logo(boy: 14)
+                Text(baslik).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
+                Spacer(minLength: 4)
+                Text(gunBicim.string(from: now)).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
             }
-            Spacer(minLength: 4)
-            VStack(spacing: 2) {
+            HStack(alignment: .center, spacing: 6) {
+                VStack(alignment: .leading, spacing: 1) {
+                    (Text(knYazi(s.wind, s.gust)).font(.system(size: 36, weight: .bold).monospacedDigit()).kerning(-1.2)
+                        + Text(" kn").font(.system(size: 14, weight: .semibold)).foregroundColor(wAcik))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    if let evSatiri { EvSatiri(yazi: evSatiri) }
+                }
+                Spacer(minLength: 4)
+                Text(yonAdi(d)).font(.system(size: 11, weight: .bold)).foregroundStyle(.white.opacity(0.75))
                 ZStack {
                     Circle().fill(wAcik.opacity(0.08))
-                    Circle().stroke(wAcik.opacity(0.35), lineWidth: 1.5)
+                    Circle().stroke(wAcik.opacity(0.4), lineWidth: 1.5)
                     Image(systemName: "arrow.down")
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(wAcik)
                         .rotationEffect(.degrees(d))
                 }
-                .frame(width: 40, height: 40)
-                Text(yonAdi(d)).font(.system(size: 10, weight: .bold)).foregroundStyle(.white.opacity(0.75))
+                .frame(width: 32, height: 32)
             }
         }
+    }
+}
+
+// Yarış günü evin tek satırı: "Dikili · 17° · 6–10 kn"
+private struct EvSatiri: View {
+    let yazi: String
+    var body: some View {
+        Text(yazi).font(.system(size: 11, weight: .semibold).monospacedDigit()).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
     }
 }
 
@@ -239,24 +255,24 @@ private struct RuzgarBolumu: View {
             // Yarış günü: "Foça · Ege Kupası", altında evin tek satırı "Dikili · 17° · 6–10 kn"
             let y = e.ev != nil ? e.v?.yaris(e.date) : nil
             let baslik = y.map { "\($0.place) · \($0.name)" } ?? "Rüzgâr · \(ev)\(r.bugun ? "" : " · Yarın")"
+            let evSatiri: String? = y != nil ? e.ev.map { (h: GunRuzgar) -> String in
+                let hs = h.simdi(e.date)
+                return "\(ev) · \(h.sicaklik(e.date))° · \(knYazi(hs.wind, hs.gust)) kn"
+            } : nil
             VStack(alignment: .leading, spacing: 4) {
                 if buyuk {
-                    RuzgarKafasi(r: r, now: e.date, baslik: baslik).padding(.bottom, 2)
+                    RuzgarKafasi(r: r, now: e.date, baslik: baslik, evSatiri: evSatiri)
+                    RuzgarGrafik(g: r, now: e.date).frame(height: 66)
+                    RuzgarEtiket(g: r, kisa: true)
                 } else {
                     HStack(alignment: .firstTextBaseline) {
                         Etiket(yazi: baslik)
                         Spacer()
                         Sayi(deger: knYazi(s.wind, s.gust), ek: "kn", boy: 20)
                     }
-                }
-                RuzgarGrafik(g: r, now: e.date).frame(minHeight: 48, maxHeight: 80)
-                RuzgarEtiket(g: r)
-                if y != nil, let h = e.ev {
-                    let hs = h.simdi(e.date)
-                    Text("\(ev) · \(h.sicaklik(e.date))° · \(knYazi(hs.wind, hs.gust)) kn")
-                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.7))
-                        .lineLimit(1)
+                    RuzgarGrafik(g: r, now: e.date).frame(minHeight: 48, maxHeight: 80)
+                    RuzgarEtiket(g: r)
+                    if let evSatiri { EvSatiri(yazi: evSatiri) }
                 }
             }
         } else {
@@ -285,7 +301,7 @@ private struct AntrenmanBolumu: View {
                 VStack(alignment: .leading, spacing: 4) {
                     let ad = antrenmanAdi(a)
                     Etiket(yazi: gunAdi(a, e.date) == "Bugün" ? ad : "\(ad) · \(gunAdi(a, e.date))")
-                    Sayi(deger: a.time.isEmpty ? gunAdi(a, e.date) : a.time, ek: a.place?.isEmpty == false ? a.place! : (ad == a.title ? "" : a.title), boy: 24)
+                    Sayi(deger: a.time.isEmpty ? gunAdi(a, e.date) : a.time, ek: a.place?.isEmpty == false ? a.place! : (ad == a.title ? "" : a.title), boy: 22)
                 }
                 Spacer()
                 AntrenmanDugmeleri(sure: antrenmanURL(a), yoklama: yoklamaURL(a, e.date))
@@ -309,7 +325,7 @@ private struct ParaBolumu: View {
                 Link(destination: url("/mail")) {
                     VStack(alignment: .leading, spacing: 4) {
                         Etiket(yazi: e.v?.money?.label ?? "Banka")
-                        Sayi(deger: e.v?.money?.big ?? "–", boy: 20).privacySensitive()
+                        Sayi(deger: e.v?.money?.big ?? "–", boy: 18).privacySensitive()
                         if let s = e.v?.money?.sub, !s.isEmpty { Etiket(yazi: s).privacySensitive() }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -320,10 +336,10 @@ private struct ParaBolumu: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Etiket(yazi: aidatAdi(e.date))
                         if let d = e.v?.dues {
-                            Sayi(deger: "\(d.paid)/\(d.count)", boy: 20)
+                            Sayi(deger: "\(d.paid)/\(d.count)", boy: 18)
                             Cubuk(oran: Double(d.paid) / Double(max(1, d.count))).padding(.top, 3)
                         } else {
-                            Sayi(deger: "–", boy: 20)
+                            Sayi(deger: "–", boy: 18)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -381,7 +397,8 @@ struct VeloraGorunum: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            MarkaSatiri(now: e.date).padding(.bottom, 10)
+            // Rüzgâr başta ise logo ve tarih onun başlık satırında; değilse ayrı satır
+            if liste.first != .ruzgar || e.r == nil { MarkaSatiri(now: e.date).padding(.bottom, 10) }
             if liste.isEmpty { Bos(yazi: "Edit Widget ile bölüm seç") }
             ForEach(Array(liste.enumerated()), id: \.element) { i, bolum in
                 if i > 0 { Ayrac() }

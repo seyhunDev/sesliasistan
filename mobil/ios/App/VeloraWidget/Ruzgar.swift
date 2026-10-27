@@ -197,24 +197,25 @@ struct RuzgarGrafik: View {
     }
 }
 
-// 3 saatte bir: saat, sıcaklık, rüzgâr–sağanak (grafikteki saatin tam altında)
+// 3 saatte bir: saat, sıcaklık, rüzgâr–sağanak (grafikteki saatin tam altında). kisa: büyük widget'ta sıcaklıksız iki satır (sığsın diye)
 struct RuzgarEtiket: View {
     let g: GunRuzgar
+    var kisa = false
     var body: some View {
         GeometryReader { geo in
             let c = Cizim(n: g.hours.count, ust: 1, w: geo.size.width, h: 1, top: 0, sag: 14)
             ForEach(Array(g.hours.enumerated()).filter { $0.element.hh % 3 == 0 }, id: \.offset) { i, s in
                 VStack(spacing: 1) {
                     Text(String(format: "%02d", s.hh)).foregroundStyle(.white.opacity(0.55))
-                    Text("\(s.t)°")
+                    if !kisa { Text("\(s.t)°") }
                     Text(knYazi(s.wind, s.gust)).fontWeight(.bold)
                 }
                 .font(.system(size: 9, weight: .semibold).monospacedDigit())
                 .fixedSize()
-                .position(x: min(max(c.x(Double(i)), 12), c.w - 12), y: 17)
+                .position(x: min(max(c.x(Double(i)), 12), c.w - 12), y: kisa ? 12 : 17)
             }
         }
-        .frame(height: 34)
+        .frame(height: kisa ? 24 : 34)
     }
 }
 
