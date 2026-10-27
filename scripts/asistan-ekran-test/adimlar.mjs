@@ -1153,14 +1153,17 @@ async function rainSplit(h) {
 }
 
 // Yarış günü ana sayfa (Seyhun 2026-10-27 "A · Yarışın yeri büyük"): yarın Foça'da test yarışı; yarın seçilince büyük hava Foça'nın, Dikili tek satır
+const nav0 = async (page) => page.locator("nav[aria-label='Günler'] button").first().click().catch(() => {});
 async function raceDayHome(h) {
   const { check, newPage, waitFor, log } = h;
   log("    Ana sayfa: yarış günü havası…");
   const { page, errs } = await newPage();
   const p = (n) => String(n).padStart(2, "0");
-  await page.route("**/geocoding-api.open-meteo.com/**", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ results: [{ name: "Foça", admin1: "İzmir", country_code: "TR", latitude: 38.67, longitude: 26.75 }] }) }),
-  );
+  await page.route("**/geocoding-api.open-meteo.com/**", (route) => {
+    const dk = /Dikili/.test(decodeURIComponent(route.request().url()));
+    const hit = dk ? { name: "Dikili", admin1: "İzmir", country_code: "TR", latitude: 39.07, longitude: 26.89 } : { name: "Foça", admin1: "İzmir", country_code: "TR", latitude: 38.67, longitude: 26.75 };
+    return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ results: [hit] }) });
+  });
   await page.route("**/api.open-meteo.com/**", (route) => {
     const foca = route.request().url().includes("latitude=38.67");
     const d0 = new Date();
@@ -1187,6 +1190,26 @@ async function raceDayHome(h) {
     const home = await page.getByRole("button", { name: "Dikili havası" }).count();
     if (process.env.WX_SHOT) await page.waitForTimeout(2000).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-yaris.png` }));
     return [before === 0 && ok > 0 && place === 1 && home === 1, `önce ${before} · yarış havası ${ok} · Foça ${place} · Dikili satırı ${home}`];
+  });
+  // Yarış şeridi (Seyhun 2026-10-27 "Evet, böyle yap"): bugün süren yarışta büyük sayaç, Başlat → Durdur → Devam; Kayıt ve Multimedya
+  await check("Ana sayfa", "yarış şeridinde Süre", "sayaç 5:00, Başlat'a basınca geri sayım ve Durdur, Durdur'da Devam; Kayıt ve Multimedya var", async () => {
+    await nav0(page);
+    const strip = page.locator("[aria-label='Süren yarış']");
+    await strip.waitFor({ timeout: 12000 });
+    const go = strip.getByRole("button", { name: "Başlat" });
+    await waitFor(async () => ((await go.isEnabled().catch(() => false)) ? 1 : 0), 10000);
+    const t0 = await strip.locator("b.tabular-nums").first().textContent();
+    await go.click();
+    await page.waitForTimeout(1500);
+    const sub = await strip.textContent();
+    const stop = await strip.getByRole("button", { name: "Durdur" }).count();
+    await strip.getByRole("button", { name: "Durdur" }).click().catch(() => {});
+    const dev = await strip.getByRole("button", { name: "Devam" }).count();
+    const rec = await strip.getByLabel("Kayıt").count();
+    const mm = await strip.getByRole("link", { name: "Multimedya" }).count();
+    if (process.env.WX_SHOT) await strip.screenshot({ path: `${process.env.WX_SHOT}-serit.png` }).catch(() => {});
+    await page.evaluate(() => localStorage.removeItem("sa-sayac"));
+    return [/^0?5:00$/.test(t0) && /starta kalan/.test(sub) && stop === 1 && dev === 1 && rec >= 1 && mm === 1, `ilk ${t0} · ${/starta kalan/.test(sub) ? "geri sayım" : "sayım yok"} · Durdur ${stop} · Devam ${dev} · Kayıt ${rec} · Multimedya ${mm}`];
   });
   await check("Sayfa hataları", "yarış günü havası", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();

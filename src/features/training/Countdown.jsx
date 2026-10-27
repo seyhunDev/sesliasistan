@@ -238,9 +238,10 @@ export function TimerSound() {
 // TEK SAYAÇ (Seyhun 2026-10-21: "tek bir sayaç kullanalım, oradan yönetelim"): telefonda bir sayaç var; antrenman, yarış multimedya, kamera ve
 // küre aynı sayacı gösterir ve yönetir. own/where: sayacın başlatıldığı sayfa ve adı (başka sayfada üstte yazar, dokununca oraya gider).
 // race: o sayfanın yarış akışı; yalnız sayaç o sayfanın ve yarışa bağlıysa (rid) çağrılır. Akışa önceki kayıt verilir (Geri al için).
-const flowOf = (race, t) => (race && t.rid && mineHere(t) ? race : null);
-export function raceStart(race, mode = "start", where = "") { // race yoksa düz start (yarış açılmaz)
-  const t = { ...readTimer(), own: ownHere(), where };
+// own: sayacın sahibi sayfa (ana sayfadaki yarış şeridi yarışın multimedya sayfası adına başlatır/bitirir; Seyhun 2026-10-27)
+const flowOf = (race, t, own) => (race && t.rid && (own ? ownedBy(t.own, own) : mineHere(t)) ? race : null);
+export function raceStart(race, mode = "start", where = "", own = ownHere()) { // race yoksa düz start (yarış açılmaz)
+  const t = { ...readTimer(), own, where };
   audio();
   const left = t.left ?? t.dur;
   if (mode === "start" && t.left == null && !beepAt(left, mode)) beep("mid"); // start dizisi: başlarken bip (1 ya da 4 dk'da zaten çalar)
@@ -249,15 +250,15 @@ export function raceStart(race, mode = "start", where = "") { // race yoksa düz
   write({ ...t, mode, end, left: null, rid });
   race?.onStart(end, rid, t);
 }
-export function raceCancel(race) {
+export function raceCancel(race, own) {
   const t = readTimer();
   write({ dur: t.dur, end: null, left: null, zero: t.zero });
-  flowOf(race, t)?.onCancel(t);
+  flowOf(race, t, own)?.onCancel(t);
 }
-export function raceFinish(race) {
+export function raceFinish(race, own) {
   const t = readTimer();
   write({ dur: t.dur, end: null, left: null, zero: t.end });
-  flowOf(race, t)?.onFinish(t);
+  flowOf(race, t, own)?.onFinish(t);
 }
 export function raceVoid(race) {
   const t = readTimer();
