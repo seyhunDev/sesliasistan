@@ -57,6 +57,12 @@ struct GunRuzgar: Codable, Hashable {
         return k >= 0 && k <= Double(hours.count - 1) ? k : nil
     }
 
+    // Şimdiki (bugün değilse ilk saatin) sıcaklığı
+    func sicaklik(_ now: Date = Date()) -> Int {
+        guard let k = konum(now) else { return hours.first?.t ?? 0 }
+        return hours[min(hours.count - 1, Int(k.rounded()))].t
+    }
+
     static func gun(_ d: Date) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -81,9 +87,13 @@ func knYazi(_ wind: Int, _ gust: Int) -> String {
 }
 
 enum RuzgarKaynak {
-    private static let anahtar = "ruzgarOnbellek"
+    // Yer başına ayrı saklanır (yarış günü hem yarış yeri hem ev çekilir)
+    private static func anahtar(_ lat: Double, _ lon: Double) -> String {
+        "ruzgarOnbellek-\(Int((lat * 100).rounded()))-\(Int((lon * 100).rounded()))"
+    }
 
     static func al(lat: Double, lon: Double) async -> GunRuzgar? {
+        let anahtar = anahtar(lat, lon)
         let now = Date()
         let saat = Calendar.current.component(.hour, from: now)
         let gun = GunRuzgar.gun(saat >= 23 ? now.addingTimeInterval(86400) : now)
