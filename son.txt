@@ -1,8 +1,8 @@
-Commit: 228e347 · Ana sayfa yarış şeridi: tek sayaçla Süre ve Kayıt (#847)
-Zaman: 2026-10-27-2204 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40564177644
+Commit: 8dba7e4 · Ana sayfa yarış şeridi: büyük sayaç, süre çipleri, start dizisi, Sıfırla (#849)
+Zaman: 2026-10-27-2305 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40573481614
 
-TAM TEST · 27.10.2026 21:54:11
+TAM TEST · 27.10.2026 22:56:14
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1404/1406 geçti · 2 kalan · 568 sn
+SONUÇ: 1406/1406 geçti · 0 kalan · 548 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -139,19 +139,13 @@ SONUÇ: 1404/1406 geçti · 2 kalan · 568 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 126/128
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 128/128
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Ana sayfa: 3/3
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
-  ✗ Halka renkleri: 5/6
-      ✗ “cevaptan sonra”
-          beklenen: yeşil halka ve onay (✓ Tamam), durum boşta
-          olan:     mor · onay 0 · idle
-  ✗ Yerel hızlı cevap (Hazır cevaplar açık): 5/6
-      ✗ “notlarımı oku”
-          beklenen: not okunur, yapay zekaya gitmez
-          olan:      · yz isteği 0
+  ✓ Halka renkleri: 6/6
+  ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 3/3
   ✓ Kısa dokun yaz: 1/1
   ✓ Sayfa hataları: 12/12
