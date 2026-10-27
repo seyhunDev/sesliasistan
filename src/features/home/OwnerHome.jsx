@@ -10,7 +10,7 @@ import { useData } from "@/features/data/DataProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { PaidNotice } from "@/features/receipts/Payment";
 import { useWeather } from "@/features/weather/useWeather";
-import { fitDays, homeActions } from "@/lib/homeTiles";
+import { awayRace, fitDays, homeActions } from "@/lib/homeTiles";
 import { useQuota } from "@/lib/quota";
 import { BirthdayStrip } from "./BirthdayStrip";
 import { InboxSheet, useInbox } from "./Inbox";
@@ -102,6 +102,7 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         sel={sel}
         onOpenDay={() => setPick(sel)}
         live={athletes ? <RaceLive open={race.open} /> : null}
+        away={athletes ? awayRace(race.open, sel) : null}
         days={<HomeDays today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
       >
         <div className="mt-4">

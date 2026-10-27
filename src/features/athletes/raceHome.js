@@ -52,12 +52,15 @@ export function nextInfo(list) {
   };
 }
 
+// Yarış yerinin havası için (ana sayfa, raceWeather.racePlace): seçilen yer, Çevre'deki yarış alanı, ilçe ve il
+const wxOf = (r) => ({ spot: r.spot || null, around: r.around?.venue ? { venue: r.around.venue } : null, district: r.district || "", city: r.city || "" });
+
 function countRaces(orgId) {
   if (!cache || cache.orgId !== orgId || Date.now() - cache.at > 5 * 60e3) {
     const p = loadRaces(orgId)
       .then((list) => {
         const up = list.filter((r) => r.startDate && !isPast(r));
-        return { all: list.length, up: up.length, next: nextInfo(list), open: up.map((r) => ({ id: r.id, name: r.name || "", startDate: r.startDate, endDate: r.endDate || "", place: r.district || "", count: r.athleteIds?.length || 0 })) };
+        return { all: list.length, up: up.length, next: nextInfo(list), open: up.map((r) => ({ id: r.id, name: r.name || "", startDate: r.startDate, endDate: r.endDate || "", place: r.district || "", count: r.athleteIds?.length || 0, ...wxOf(r) })) };
       })
       .catch(() => null)
       .then((c) => {

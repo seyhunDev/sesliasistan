@@ -1149,6 +1149,47 @@ async function rainSplit(h) {
   });
   await check("Sayfa hataları", "hava ölçülen yağmur", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
+  await raceDayHome(h);
+}
+
+// Yarış günü ana sayfa (Seyhun 2026-10-27 "A · Yarışın yeri büyük"): yarın Foça'da test yarışı; yarın seçilince büyük hava Foça'nın, Dikili tek satır
+async function raceDayHome(h) {
+  const { check, newPage, waitFor, log } = h;
+  log("    Ana sayfa: yarış günü havası…");
+  const { page, errs } = await newPage();
+  const p = (n) => String(n).padStart(2, "0");
+  await page.route("**/geocoding-api.open-meteo.com/**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ results: [{ name: "Foça", admin1: "İzmir", country_code: "TR", latitude: 38.67, longitude: 26.75 }] }) }),
+  );
+  await page.route("**/api.open-meteo.com/**", (route) => {
+    const foca = route.request().url().includes("latitude=38.67");
+    const d0 = new Date();
+    const days = [...Array(7)].map((_, k) => { const d = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + k); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; });
+    const time = days.flatMap((d) => [...Array(24)].map((_, i) => `${d}T${p(i)}:00`));
+    const at = (f) => time.map(f);
+    const wv = foca ? 15 : 7;
+    const body = {
+      current: { time: time[10], temperature_2m: foca ? 21 : 17, weather_code: 2, is_day: 1, wind_speed_10m: wv, wind_gusts_10m: wv + 6, wind_direction_10m: 20 },
+      hourly: { time, temperature_2m: at(() => (foca ? 21 : 17)), weather_code: at(() => 2), is_day: at(() => 1), wind_speed_10m: at(() => wv), wind_gusts_10m: at(() => wv + 6), wind_direction_10m: at(() => 20), precipitation_probability: at(() => 0), precipitation: at(() => 0) },
+      daily: { time: days, weather_code: days.map(() => 2), temperature_2m_max: days.map(() => 22), temperature_2m_min: days.map(() => 15), wind_speed_10m_max: days.map(() => wv), wind_gusts_10m_max: days.map(() => wv + 6), wind_direction_10m_dominant: days.map(() => 20) },
+    };
+    return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
+  });
+  await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx|rwx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
+  await page.goto(page.url().replace(/\/[^/]*$/, "/"), { waitUntil: "load" });
+  await check("Ana sayfa", "yarış günü havası", "yarın (Foça'da yarış) seçilince büyük hava Foça'nın, altta tek satır Dikili; bugün eski düzen", async () => {
+    const nav = page.locator("nav[aria-label='Günler']");
+    await nav.waitFor({ timeout: 12000 });
+    const before = await page.getByRole("button", { name: "Yarış yerinin havası" }).count();
+    await nav.locator("button").nth(1).click();
+    const ok = await waitFor(() => page.getByRole("button", { name: "Yarış yerinin havası" }).count(), 15000);
+    const place = await page.locator("section[aria-label='Bugün'] p", { hasText: /^Foça$/ }).count();
+    const home = await page.getByRole("button", { name: "Dikili havası" }).count();
+    if (process.env.WX_SHOT) await page.waitForTimeout(2000).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-yaris.png` }));
+    return [before === 0 && ok > 0 && place === 1 && home === 1, `önce ${before} · yarış havası ${ok} · Foça ${place} · Dikili satırı ${home}`];
+  });
+  await check("Sayfa hataları", "yarış günü havası", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
 }
 
 // ================================================================ Kameralar (/cams): en yakın büyük, 6 kamera, Daha fazla, yer penceresi
