@@ -1191,25 +1191,41 @@ async function raceDayHome(h) {
     if (process.env.WX_SHOT) await page.waitForTimeout(2000).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-yaris.png` }));
     return [before === 0 && ok > 0 && place === 1 && home === 1, `önce ${before} · yarış havası ${ok} · Foça ${place} · Dikili satırı ${home}`];
   });
-  // Yarış şeridi (Seyhun 2026-10-27 "Evet, böyle yap"): bugün süren yarışta büyük sayaç, Başlat → Durdur → Devam; Kayıt ve Multimedya
-  await check("Ana sayfa", "yarış şeridinde Süre", "sayaç 5:00, Başlat'a basınca geri sayım ve Durdur, Durdur'da Devam; Kayıt ve Multimedya var", async () => {
+  // Yarış şeridi (Seyhun 2026-10-27 "Evet, böyle yap", sonra "A · Büyük rakam"): bugün süren yarışta dev sayaç, süre çipleri, Başlat → Durdur → Devam,
+  // sayarken start dizisi, durunca Sıfırla; Kayıt ve Multimedya
+  await check("Ana sayfa", "yarış şeridinde Süre", "sayaç 5:00, 2 dk çipi 2:00 yapar, Başlat'a basınca geri sayım, dizi çubuğu ve Durdur, Durdur'da Devam ve Sıfırla (yanlış başlattım: yarış silinir); Kayıt ve Multimedya var", async () => {
     await nav0(page);
     const strip = page.locator("[aria-label='Süren yarış']");
     await strip.waitFor({ timeout: 12000 });
     const go = strip.getByRole("button", { name: "Başlat" });
     await waitFor(async () => ((await go.isEnabled().catch(() => false)) ? 1 : 0), 10000);
-    const t0 = await strip.locator("b.tabular-nums").first().textContent();
+    const big = strip.locator("b.tabular-nums").first();
+    const t0 = await big.textContent();
+    await strip.getByRole("button", { name: "2 dk", exact: true }).click();
+    const t2 = await big.textContent();
+    await strip.getByRole("button", { name: "5 dk", exact: true }).click();
     await go.click();
     await page.waitForTimeout(1500);
     const sub = await strip.textContent();
+    const seq = await strip.locator("[aria-label='Start dizisi']").count();
     const stop = await strip.getByRole("button", { name: "Durdur" }).count();
+    if (process.env.WX_SHOT) await strip.screenshot({ path: `${process.env.WX_SHOT}-serit.png` }).catch(() => {});
     await strip.getByRole("button", { name: "Durdur" }).click().catch(() => {});
     const dev = await strip.getByRole("button", { name: "Devam" }).count();
+    const reset = await strip.getByRole("button", { name: "Sıfırla" }).isEnabled().catch(() => false);
+    await strip.getByRole("button", { name: "Sıfırla" }).click().catch(() => {});
+    const why = page.getByRole("button", { name: /Yanlış başlattım/ });
+    const asked = await why.waitFor({ timeout: 4000 }).then(() => 1, () => 0);
+    await why.click().catch(() => {});
+    await page.waitForTimeout(600);
+    const back = await strip.getByRole("button", { name: "Başlat" }).count();
     const rec = await strip.getByLabel("Kayıt").count();
     const mm = await strip.getByRole("link", { name: "Multimedya" }).count();
-    if (process.env.WX_SHOT) await strip.screenshot({ path: `${process.env.WX_SHOT}-serit.png` }).catch(() => {});
+    const old = /YARIŞ SÜRÜYOR/.test(await strip.textContent());
+    if (process.env.WX_SHOT) await strip.screenshot({ path: `${process.env.WX_SHOT}-serit-bos.png` }).catch(() => {});
     await page.evaluate(() => localStorage.removeItem("sa-sayac"));
-    return [/^0?5:00$/.test(t0) && /starta kalan/.test(sub) && stop === 1 && dev === 1 && rec >= 1 && mm === 1, `ilk ${t0} · ${/starta kalan/.test(sub) ? "geri sayım" : "sayım yok"} · Durdur ${stop} · Devam ${dev} · Kayıt ${rec} · Multimedya ${mm}`];
+    const ok = /^0?5:00$/.test(t0) && /^0?2:00$/.test(t2) && /starta kalan/i.test(sub) && seq === 1 && stop === 1 && dev === 1 && reset && asked === 1 && back === 1 && /1\. yarış/.test(await strip.textContent()) && rec >= 1 && mm === 1 && !old;
+    return [ok, `ilk ${t0} · çip ${t2} · ${/starta kalan/i.test(sub) ? "geri sayım" : "sayım yok"} · dizi ${seq} · Durdur ${stop} · Devam ${dev} · Sıfırla ${reset ? "açık" : "kapalı"} · sebep ${asked} → Başlat ${back} · Kayıt ${rec} · Multimedya ${mm}${old ? " · eski başlık var" : ""}`];
   });
   await check("Sayfa hataları", "yarış günü havası", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
