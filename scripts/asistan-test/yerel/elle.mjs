@@ -204,6 +204,11 @@ group("iPhone widget ve titreşim")([
     { id: "g", title: "Antrenman", date: "2026-10-07" },
     { id: "h", title: "Antrenman", date: "2026-10-08" },
   ], { today: "2026-10-05" }), ok: (r) => r.map((x) => x.id).join() === "b,a,g" && r[0].time === "16:00" && r[0].place === "Dikili" }],
+  ["widget yarış yeri", { desc: "Foça'daki yarış: yer adı ilçe, Dikili'ye 10 km'den yakınsa ya da konumsuzsa yok", fn: () => {
+    const r = { id: "r", name: "Ege Kupası", startDate: "2026-10-26", endDate: "2026-10-28" };
+    const home = { lat: 39.0717, lon: 26.8886 };
+    return [WD.widgetRace(r, { place: "Foça, İzmir", lat: 38.67, lon: 26.75 }, home), WD.widgetRace(r, { place: "Dikili", lat: 39.075, lon: 26.89 }, home), WD.widgetRace(r, null, home), WD.widgetRace(null, { lat: 1, lon: 1 }, home)];
+  }, ok: ([a, b, c, d]) => a?.place === "Foça" && a.name === "Ege Kupası" && a.end === "2026-10-28" && a.lat === 38.67 && b === null && c === null && d === null }],
   ["widget aidat", { desc: "yalnız bu ayın özeti", fn: () => [WD.widgetDues({ ym: "2026-10", paidCount: 9, count: 14 }, "2026-10"), WD.widgetDues({ ym: "2026-09", paidCount: 9, count: 14 }, "2026-10")], ok: ([a, b]) => a.paid === 9 && a.count === 14 && b === null }],
   ["titreşim türü", { desc: "8 hafif, 14 orta, 30 güçlü, [10,40,10] başarı, uzun dizi hata", fn: () => [8, 14, 30, [10, 40, 10], [30, 50, 30, 50, 30], 0].map(HP.kindOf).join(), ok: (r) => r === "light,medium,heavy,success,error," }],
 ]);

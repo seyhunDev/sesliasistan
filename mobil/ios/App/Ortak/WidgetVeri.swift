@@ -51,6 +51,16 @@ struct WidgetVeri: Codable {
         var day: Int?
     }
 
+    // Bugünlerde süren uzak yarış (evden 10 km'den uzak): o günlerde büyük rüzgâr yarışın yerinin, altında ev satırı
+    struct Yaris: Codable, Hashable {
+        var name: String
+        var place: String
+        var lat: Double
+        var lon: Double
+        var start: String // YYYY-MM-DD
+        var end: String
+    }
+
     var plans: [Plan]
     var place: String?
     var lat: Double?
@@ -61,6 +71,7 @@ struct WidgetVeri: Codable {
     var money: Para?
     var dues: Aidat?
     var word: Kelime?
+    var race: Yaris? // eski veride yok
 
     static let grup = "group.com.seyhunyildiz.sesliasistan"
     private static let anahtar = "widgetVeri"
@@ -105,5 +116,15 @@ struct WidgetVeri: Codable {
             guard let s = WidgetVeri.baslangic(Plan(title: a.title, date: a.date, time: "", important: nil)) else { return false }
             return s >= bugun
         }
+    }
+
+    // Bugün yarış günü mü (start…end arasında)
+    func yaris(_ now: Date = Date()) -> Yaris? {
+        guard let y = race else { return nil }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        let bugun = f.string(from: now)
+        return y.start <= bugun && bugun <= (y.end.isEmpty ? y.start : y.end) ? y : nil
     }
 }

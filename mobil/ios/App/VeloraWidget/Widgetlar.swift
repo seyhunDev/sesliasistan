@@ -198,7 +198,7 @@ private func yonAdi(_ d: Double) -> String {
 private struct RuzgarKafasi: View {
     let r: GunRuzgar
     let now: Date
-    let yer: String
+    let baslik: String
     var body: some View {
         let s = r.simdi(now)
         let d = r.yon(now)
@@ -208,7 +208,7 @@ private struct RuzgarKafasi: View {
                     + Text(" kn").font(.system(size: 15, weight: .semibold)).foregroundColor(wAcik))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Etiket(yazi: "Rüzgâr · \(yer)\(r.bugun ? "" : " · Yarın")")
+                Etiket(yazi: baslik)
             }
             Spacer(minLength: 4)
             VStack(spacing: 2) {
@@ -235,18 +235,29 @@ private struct RuzgarBolumu: View {
     var body: some View {
         if let r = e.r {
             let s = r.simdi(e.date)
+            let ev = e.v?.place ?? "Dikili"
+            // Yarış günü: "Foça · Ege Kupası", altında evin tek satırı "Dikili · 17° · 6–10 kn"
+            let y = e.ev != nil ? e.v?.yaris(e.date) : nil
+            let baslik = y.map { "\($0.place) · \($0.name)" } ?? "Rüzgâr · \(ev)\(r.bugun ? "" : " · Yarın")"
             VStack(alignment: .leading, spacing: 4) {
                 if buyuk {
-                    RuzgarKafasi(r: r, now: e.date, yer: e.v?.place ?? "Dikili").padding(.bottom, 2)
+                    RuzgarKafasi(r: r, now: e.date, baslik: baslik).padding(.bottom, 2)
                 } else {
                     HStack(alignment: .firstTextBaseline) {
-                        Etiket(yazi: "Rüzgâr · \(e.v?.place ?? "Dikili")\(r.bugun ? "" : " · Yarın")")
+                        Etiket(yazi: baslik)
                         Spacer()
                         Sayi(deger: knYazi(s.wind, s.gust), ek: "kn", boy: 20)
                     }
                 }
                 RuzgarGrafik(g: r, now: e.date).frame(minHeight: 48, maxHeight: 80)
                 RuzgarEtiket(g: r)
+                if y != nil, let h = e.ev {
+                    let hs = h.simdi(e.date)
+                    Text("\(ev) · \(h.sicaklik(e.date))° · \(knYazi(hs.wind, hs.gust)) kn")
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(1)
+                }
             }
         } else {
             VStack(alignment: .leading, spacing: 4) {
