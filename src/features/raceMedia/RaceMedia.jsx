@@ -23,6 +23,7 @@ import { DaySummarySheet } from "./DaySummarySheet";
 import { DaySheet } from "./DaySheet";
 import { ResetSheet } from "./ResetSheet";
 import { useLiveSync } from "./useLiveSync";
+import { takeShot } from "./handoff";
 import { useTabInUrl } from "@/hooks/useTabInUrl";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
@@ -42,7 +43,7 @@ export function RaceMedia({ orgId, id }) {
   const q = useSearchParams();
   const [tabPick, setTab] = useState(TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
   useTabInUrl(tabPick);
-  const [shot, setShot] = useState(null); // alttaki Kayıt ile iPhone kamerasında çekilen dosya (Medya işler)
+  const [shot, setShot] = useState(() => takeShot(id)); // alttaki Kayıt (ya da ana sayfadaki yarış şeridi) ile iPhone kamerasında çekilen dosya (Medya işler)
   const [race, setRace] = useState(null);
   const [missing, setMissing] = useState(false);
   const [live, setLive] = useState(() => cleanLive({}));

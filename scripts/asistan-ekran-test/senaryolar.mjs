@@ -55,6 +55,8 @@ function seedData() {
       { path: "orgs/{owner}/tasks/t-motor", data: { ...who("owner"), title: "Motor bakımı", due: TODAY, done: false, doneAt: null, planId: null } },
       // Yarış multimedya: yarış yarın başlar, dün elle eklenmiş antrenman günü (açılışta bugün seçili olmalı, son gün değil)
       { path: "orgs/{owner}/races/test-yaris", data: { name: "Test Kupası", city: "İzmir", district: "Foça", startDate: TOMORROW, endDate: TOMORROW, athleteIds: [], createdByUid: "{owner}" } },
+      // Ana sayfa yarış şeridi: bugün süren yarış (Dikili; büyük hava değişmez)
+      { path: "orgs/{owner}/races/test-canli", data: { name: "Canlı Kupa", city: "İzmir", district: "Dikili", startDate: TODAY, endDate: TODAY, athleteIds: [], createdByUid: "{owner}" } },
       { path: "orgs/{owner}/raceLive/test-yaris", data: { days: [ymd(new Date(Date.now() - 864e5))] } },
       { path: "orgs/{owner}/members/{athlete}", data: { uid: "{athlete}", name: "Ege Demir", email: ATHLETE, role: "staff", kind: "athlete", createdAt: now } },
     ],
