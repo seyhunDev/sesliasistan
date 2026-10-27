@@ -1,8 +1,8 @@
-Commit: 8358dd5 · Rüzgâr grafiği: ölçülen beyaz noktalı çizgi, yağmur mavi alan grafiği (#844)
-Zaman: 2026-10-27-1902 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40535272334
+Commit: 5846aca · Ana sayfa: yarış günü büyük hava yarışın yerinin, ev yeri tek satır (#845)
+Zaman: 2026-10-27-1912 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40536870073
 
-TAM TEST · 27.10.2026 18:52:46
+TAM TEST · 27.10.2026 19:02:48
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -19,6 +19,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Kameralar sayfası…
     Hava: yağış şeridi…
     Hava: ölçülen / beklenen yağmur…
+    Ana sayfa: yarış günü havası…
     Çevrimdışı çalışma (internet kesilip açılır)…
     Çevrimdışı: 21/21 geçti
     Yarış sayfası (sporcu seçili, yarış günü)…
@@ -28,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1403/1403 geçti · 0 kalan · 534 sn
+SONUÇ: 1405/1405 geçti · 0 kalan · 527 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -138,16 +139,16 @@ SONUÇ: 1403/1403 geçti · 0 kalan · 534 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 125/125
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 127/127
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 1/1
+  ✓ Ana sayfa: 2/2
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 3/3
   ✓ Kısa dokun yaz: 1/1
-  ✓ Sayfa hataları: 11/11
+  ✓ Sayfa hataları: 12/12
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
