@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { canSeeAthletes } from "@/features/athletes/access";
+import { DayChart, Wait } from "@/features/athletes/RaceWx";
+import { lastForecastDay, loadRaceDay } from "@/features/athletes/raceWeather";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
-import { dayHours, kn, nowOf, sky, windName } from "@/features/weather/weather";
+import { dayHours, getPlace, kn, nowOf, sky, windName } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
 import { isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
@@ -24,7 +27,10 @@ import { BirthdayBadge } from "./PeopleStrip";
 // 2026-10-23 (Seyhun "günler en üstte", örnek gunler.html): üstte tarih başlığı yok (tarih yalnız gün şeridinde); sağ üstte doğum günü, zil, Ayarlar;
 // altında gün şeridi (days, HomeDays), sonra seçilen günün (sel) havası ve rüzgâr grafiği. Bugün seçiliyse şimdiki rüzgâr ve sıradaki plan;
 // başka gün seçiliyse o günün gündüz rüzgârı ve o günün planları (DayPlans; "Günü aç" o günün penceresini açar, onOpenDay).
-export function Cockpit({ weather, inbox, onInbox, days, live, sel, onOpenDay, children }) {
+// Yarış günü (Seyhun 2026-10-27 "A · Yarışın yeri büyük", örnek yaris-yeri-hava): seçilen gün bir yarışın günleri içindeyse (away, OwnerHome awayRace)
+// büyük hava ve rüzgâr grafiği yarışın yerinin (raceWeather.loadRaceDay, yarış sayfasıyla aynı DayChart); üstte yerin adı, altta tek satır ev yeri
+// (hava yeri, ör. Dikili: sıcaklık · yön · kn), ona dokununca hava sayfası. Yarışın yeri ev yerine 10 km'den yakınsa ya da hava alınamazsa her şey eskisi gibi.
+export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpenDay, children }) {
   const { profile } = useAuth();
   const router = useRouter();
   const now = useNow();
@@ -37,6 +43,9 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onOpenDay, c
   const n = isToday ? nowOf(w) : dw && { t: dw.max, code: dw.code, day: true, wind: dw.wind, gust: dw.gust, dir: dw.dir };
   const dname = cap(new Date(`${date}T12:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""));
   const goWeather = () => (w ? router.push("/weather") : refresh(true));
+  const ar = useAway(away, date);
+  const home = getPlace();
+  const far = ar && !ar.err && !(ar.at && km(ar.at, home) < 10);
 
   return (
     <section className="ck ck-top -mx-4 px-4 pb-4 pt-[calc(0.875rem+env(safe-area-inset-top))]" aria-label="Bugün">
@@ -52,32 +61,57 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onOpenDay, c
       <div className="mt-3">{days}</div>
       {live}
 
-      <button type="button" onClick={goWeather} aria-label="Hava ayrıntısı" className="mt-4 block w-full text-left">
-        {n ? (
-          <span className="flex items-center gap-3">
-            <span className="shrink-0 text-[2.5rem] font-bold leading-none tracking-[-.04em] tabular-nums">{n.t}°</span>
-            <span className="min-w-0 flex-1 leading-tight">
-              <b className="block truncate text-[0.9375rem] font-semibold">{isToday ? "" : `${dname} · `}{sky(n.code, n.day).label}</b>
-              <small className="block truncate text-[0.8125rem] text-white/65 tabular-nums">
-                {dw ? `${dw.min}° / ${dw.max}°` : ""}
-              </small>
+      {far ? (
+        <>
+          <p className="mt-4 truncate text-[0.8125rem] font-semibold text-[#67e8f9]">{(ar.place || away.place || away.name || "").split(",")[0]}</p>
+          {ar.rows ? (
+            <button type="button" onClick={() => router.push(`/athletes/races/${away.id}`)} aria-label="Yarış yerinin havası" className="mt-1 block w-full text-left">
+              <DayChart rows={ar.rows} day={date} at={ar.at} />
+            </button>
+          ) : (
+            <div className="mt-1">
+              <Wait />
+            </div>
+          )}
+          <button type="button" onClick={goWeather} aria-label={`${home.name} havası`} data-press className="mt-2.5 flex w-full items-center gap-2 rounded-xl bg-white/6 px-3 py-2.5 text-left text-[0.8125rem]">
+            <span className="min-w-0 flex-1 truncate text-white/75">
+              <b className="font-semibold text-white">{home.name}</b>
+              {n ? ` · ${n.t}° · ${windName(n.dir)[0]}` : ""}
             </span>
-            <span className="shrink-0 text-right leading-tight">
-              <small className="block text-[0.75rem] text-white/65">{windName(n.dir)[0]} · {isToday ? "şimdi" : "gün içi"}</small>
-              <b className="text-[1.375rem] font-bold tracking-[-.02em] tabular-nums">
-                {kn(n.wind, n.gust)}
-                <span className="text-[0.8125rem] font-medium text-white/60"> kn</span>
-              </b>
-            </span>
-          </span>
-        ) : (
-          <span className="block py-2 text-[0.875rem] text-white/70">{err ? "Hava durumu alınamadı · dokun, yenile" : w ? "Bu gün için hava tahmini yok" : "Hava yükleniyor…"}</span>
-        )}
-      </button>
-      {rows?.length > 0 && (
-        <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className="mt-2 block w-full text-left">
-          <CockpitWind key={date} rows={rows} date={date} />
-        </button>
+            {n && <b className="shrink-0 font-semibold tabular-nums">{kn(n.wind, n.gust)} kn</b>}
+            <span className="shrink-0 text-white/45">›</span>
+          </button>
+        </>
+      ) : (
+        <>
+          <button type="button" onClick={goWeather} aria-label="Hava ayrıntısı" className="mt-4 block w-full text-left">
+            {n ? (
+              <span className="flex items-center gap-3">
+                <span className="shrink-0 text-[2.5rem] font-bold leading-none tracking-[-.04em] tabular-nums">{n.t}°</span>
+                <span className="min-w-0 flex-1 leading-tight">
+                  <b className="block truncate text-[0.9375rem] font-semibold">{isToday ? "" : `${dname} · `}{sky(n.code, n.day).label}</b>
+                  <small className="block truncate text-[0.8125rem] text-white/65 tabular-nums">
+                    {dw ? `${dw.min}° / ${dw.max}°` : ""}
+                  </small>
+                </span>
+                <span className="shrink-0 text-right leading-tight">
+                  <small className="block text-[0.75rem] text-white/65">{windName(n.dir)[0]} · {isToday ? "şimdi" : "gün içi"}</small>
+                  <b className="text-[1.375rem] font-bold tracking-[-.02em] tabular-nums">
+                    {kn(n.wind, n.gust)}
+                    <span className="text-[0.8125rem] font-medium text-white/60"> kn</span>
+                  </b>
+                </span>
+              </span>
+            ) : (
+              <span className="block py-2 text-[0.875rem] text-white/70">{err ? "Hava durumu alınamadı · dokun, yenile" : w ? "Bu gün için hava tahmini yok" : "Hava yükleniyor…"}</span>
+            )}
+          </button>
+          {rows?.length > 0 && (
+            <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className="mt-2 block w-full text-left">
+              <CockpitWind key={date} rows={rows} date={date} />
+            </button>
+          )}
+        </>
       )}
       {isToday ? <NextPlan now={now} /> : <DayPlans date={date} onOpen={onOpenDay} />}
       {children}
@@ -181,3 +215,30 @@ function DayPlans({ date, onOpen }) {
 }
 
 const cap = (t) => t.charAt(0).toLocaleUpperCase("tr-TR") + t.slice(1);
+
+// Yarışın yerinin o günkü saatleri (loadRaceDay 1 saat saklar); tahmin ufku dışındaki günlerde istenmez
+function useAway(r, day) {
+  const key = r && day <= lastForecastDay(todayStr()) ? `${r.id}|${day}|${r.spot?.lat ?? ""}` : "";
+  const [got, setGot] = useState({ key: "" });
+  useEffect(() => {
+    if (!key) return;
+    let on = true;
+    loadRaceDay(r, day).then(
+      (d) => on && setGot({ key, rows: d.rows, place: d.place, at: d.lat != null ? { lat: d.lat, lon: d.lon } : null }),
+      () => on && setGot({ key, err: true }),
+    );
+    return () => {
+      on = false;
+    };
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!key) return null;
+  return got.key === key ? got : { loading: true };
+}
+
+// İki nokta arası km (yaklaşık)
+function km(a, b) {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLon = (b.lon - a.lon) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}

@@ -32,7 +32,7 @@ function useDay(r, day, tick = 0) {
 const nowHH = () => String(new Date().getHours()).padStart(2, "0");
 
 // Sıcaklık · gök · rüzgâr satırı ve grafik (lacivert zeminde)
-function DayChart({ rows, day, at }) {
+export function DayChart({ rows, day, at }) {
   const today = todayStr();
   const isToday = day === today;
   const top = rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]);
@@ -64,7 +64,7 @@ function DayChart({ rows, day, at }) {
 }
 
 // Yüklenirken: DayChart'ın biçiminde (sıcaklık satırı + grafik) yanıp sönen yer tutucu
-function Wait() {
+export function Wait() {
   return (
     <div className="animate-pulse" role="status" aria-label="Hava yükleniyor">
       <div className="flex h-[2.6875rem] items-center gap-3">
