@@ -1092,7 +1092,7 @@ async function rainStrip(h) {
   });
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
-  await check("Hava", "yağış şeridi", "yağışlı günde grafiğin altında saat saat renkli kutu, kuvvetli yağışta kehribar uyarı", async () => {
+  await check("Hava", "yağış çubukları", "yağışlı günde grafiğin altında saat saat mavi çubuk (1 mm+ sayılı), kuvvetli yağışta kehribar uyarı", async () => {
     const ok = await waitFor(() => page.locator("svg[aria-label='Saatlik yağış, mm']").count(), 15000);
     const warn = await page.getByText(/Kuvvetli yağış 14:00–16:00 · günde 21 mm/).count();
     const nums = await page.locator("svg[aria-label='Saatlik yağış, mm'] text").count();
@@ -1104,7 +1104,7 @@ async function rainStrip(h) {
   await rainSplit(h);
 }
 
-// Ölçülen yağmur (dolu kutu, şimdiden önce) ile beklenen yağmur (içi boş kesik çerçeve, şimdiden sonra) ayrımı (Seyhun 2026-10-26 "B · Tek satır")
+// Ölçülen yağmur (açık mavi çubuk, şimdiden önce) ile beklenen yağmur (mavi çubuk, şimdiden sonra) ayrımı (Seyhun 2026-10-27 "A · Mavi çubuk")
 async function rainSplit(h) {
   const { check, newPage, waitFor, log } = h;
   log("    Hava: ölçülen / beklenen yağmur…");
@@ -1134,20 +1134,21 @@ async function rainSplit(h) {
   });
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
-  await check("Hava", "ölçülen / beklenen yağmur", "şimdiden önce dolu ölçülen kutu, sonra kesik çerçeveli tahmin; etiket ve açıklama satırı", async () => {
+  await check("Hava", "ölçülen / beklenen yağmur", "şimdiden önce açık mavi ölçülen çubuklar (üstünde toplam), sonra mavi tahmin çubukları; etiket, tek satır açıklama", async () => {
     const S = "svg[aria-label='Saatlik yağış, mm']";
     await waitFor(() => page.locator(`${S} [data-kind='olculen']`).count(), 15000);
     const olc = await page.locator(`${S} [data-kind='olculen']`).count();
     const tah = await page.locator(`${S} [data-kind='tahmin']`).count();
     const txt = await page.locator(`${S} text`).allTextContents();
-    const wantOlc = nowH >= 1 ? 1 : 0;
+    const wantOlc = Math.min(3, nowH);
     const wantTah = 23 - nowH;
     // Etiketler kenara sığmazsa çıkmaz (gece yarısına yakın "tahmin →" yok)
     const lbl = ((await page.getByText("← ölçülen").count()) > 0) === nowH >= 2 && ((await page.getByText("tahmin →").count()) > 0) === nowH < 21;
     const leg = await page.locator("[aria-label='Grafik açıklaması']").first().textContent().catch(() => "");
-    const legOk = /Ölçülen yağmur/.test(leg || "") === !!wantOlc && /Beklenen yağmur/.test(leg || "") === wantTah > 0;
+    const legOk = /Ölçülen/.test(leg || "") === !!wantOlc && /Yağmur/.test(leg || "") === wantTah > 0;
+    const legH = (await page.locator("[aria-label='Grafik açıklaması']").first().boundingBox())?.height ?? 99;
     if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-ayrim.png`, fullPage: true }));
-    return [olc === wantOlc && tah === wantTah && (!wantOlc || txt.includes("4 mm") || txt.includes("4")) && lbl && legOk, `ölçülen ${olc}/${wantOlc} · tahmin ${tah}/${wantTah} · yazı ${txt.join(",")} · etiket ${lbl} · açıklama ${legOk}`];
+    return [olc === wantOlc && tah === wantTah && (!wantOlc || txt.includes("4 mm")) && lbl && legOk && legH < 20, `ölçülen ${olc}/${wantOlc} · tahmin ${tah}/${wantTah} · yazı ${txt.join(",")} · etiket ${lbl} · açıklama ${legOk} (${Math.round(legH)} px)`];
   });
   await check("Sayfa hataları", "hava ölçülen yağmur", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
