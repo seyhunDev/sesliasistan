@@ -3,7 +3,6 @@
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
 import { useWindObs } from "@/features/weather/useWindObs";
-import { OBS } from "@/features/weather/DaySheet";
 import { PLACE, getPlace, heavyRain, kn, sky } from "@/features/weather/weather";
 
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
@@ -13,7 +12,7 @@ const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23
 // yön, hava durumu; hangi saatte ne olduğunu net bilmem gerek"; onaylanan örnek ana-sayfa/futuristik/c2-kokpit-ruzgar.png).
 // Dolu mor alan rüzgâr, açık mor alan ve kesik çizgi sağanak; üstte 2 saatte bir yön oku (rüzgârın estiği yöne bakar, 17 kn ve üstü turuncu),
 // altında 3 saatte bir saat, gökyüzü, sıcaklık ve "rüzgâr–sağanak" kn. Kırmızı "şimdi" noktası dakikaya göre saatler arasında durur.
-// Yakında istasyon varsa geçmiş saatlerde ölçülen rüzgâr mavi gölge + kesik mavi sağanak; o saatlerin altındaki yazı da ölçülen "rüzgâr–sağanak" (mavi).
+// Yakında istasyon varsa geçmiş saatlerde ölçülen rüzgâr noktalı beyaz çizgi + ince beyaz kesik sağanak; o saatlerin altındaki yazı da ölçülen "rüzgâr–sağanak".
 // Ayrı "en sert sağanak" yazısı yok (Seyhun 2026-10-24: rüzgâr ve sağanak tek yerde, "2–4 kn").
 // Açılışta grafik soldan sağa 0,9 sn'de çizilir (globals.css .ck-draw); hareket azaltılmışsa çizilmeden gelir. Hava sayfasındaki grafik (WindChart) değişmez.
 const W = 340, L = 6, R = 22, T = 26, H = 132, B = 4;
@@ -42,30 +41,39 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
   const ni = Math.floor(nowAt);
   const nowV = nowAt >= 0 ? rows[ni].wind + ((rows[ni + 1]?.wind ?? rows[ni].wind) - rows[ni].wind) * (nowAt - ni) : null;
   const ticks = [5, 10, 15, 20, 25, 30].filter((v) => v < top);
-  // Yağış (Seyhun 2026-10-27 "A · Mavi çubuk"; önce 10-26 şerit): grafiğin altında saat saat çubuk, boyu mm kadar. Beklenen yağmur (tahmin) MAVİ
-  // çubuk, 1 mm ve üstünde üstünde sayı; ölçülen yağmur (istasyon raporu, çoğunlukla 3/6 saatlik toplam) o saatlere bölünmüş AÇIK MAVİ çubuk
-  // (ölçülen rüzgârla aynı renk), üstünde toplam "N mm". İstasyon yağmur bildiriyorsa şimdiden önceki tahmin çubukları çizilmez (ölçülen önde).
-  // Saatte 4 mm ve üstü beklenirse grafiğin üstünde kehribar uyarı satırı (gerçek uyarı). Eski önbellekte mm yoksa tahmin çubuğu çıkmaz.
-  // İlk bakışta anlaşılsın diye (Seyhun: "ilk defa bakan biri bile neyin ne olduğunu anlamalı") şimdi çizgisinin iki yanında "← ölçülen | tahmin →"
-  // ve altta TEK SATIR açıklama (Rüzgâr · Sağanak · Yağmur · Ölçülen; yalnız grafikte olanlar).
+  // Ölçülen ve tahmin (Seyhun 2026-10-27 "A · Ölçülen beyaz çizgi": "tahmin zaten baştan sona var, ölçülen bulunduğumuz saate kadar; daha net ayıralım"):
+  // tahmin bütün gün dolu renkli alan; ölçülen (rüzgâr ve yağmur) şimdiye kadar üstüne binen noktalı BEYAZ çizgi, ölçülen sağanak ince beyaz kesik çizgi.
+  // Yağmur grafiği (aynı gün "yağmuru da grafik yapalım, kaç mm olduğunu gösterelim"): rüzgârın altında mavi alan (saatlik mm, sağda mm ölçeği),
+  // en yüksek saatte "N mm/sa"; ölçülen yağmur istasyon raporundan (çoğunlukla 3/6 saatlik toplam, o saatlere bölünür) beyaz çizgi + "N mm geldi".
+  // Saatte 4 mm ve üstü beklenirse grafiğin üstünde kehribar uyarı satırı (gerçek uyarı). Eski önbellekte mm yoksa yağmur grafiği çıkmaz.
+  // Altta TEK SATIR açıklama (Rüzgâr · Sağanak · Yağmur · Ölçülen; yalnız grafikte olanlar).
   const heavy = heavyRain(rows);
-  const cw = ((W - L - R) / Math.max(1, n - 1)) * 0.7;
   const spans = obsRain(ob?.rows, rows);
-  const pastCut = spans.length ? (day < today ? n - 1 : hi) : -1;
-  const fc = rows.map((h, i) => (i > pastCut && h.mm >= 0.1 ? h.mm : 0));
-  const oh = rows.map((_, i) => spans.find((sp) => i >= sp.a && i <= sp.b));
-  const ohv = oh.map((sp) => (sp ? sp.mm / (sp.b - sp.a + 1) : 0));
-  const wetObs = spans.some((sp) => sp.mm >= 0.1);
-  const wet = fc.some(Boolean) || wetObs;
-  const split = hi >= 0 && (got.length > 0 || spans.length > 0);
-  const RH = 40, RT = 12;
-  const rmax = Math.max(4, ...fc, ...ohv);
-  const ry = (v) => RT + (1 - v / rmax) * (RH - RT - 2);
+  const fc = rows.map((h) => (h.mm >= 0.1 ? h.mm : 0));
+  const om = rows.map((_, i) => {
+    const sp = spans.find((q) => i >= q.a && i <= q.b);
+    return sp ? sp.mm / (sp.b - sp.a + 1) : null;
+  });
+  const oFrom = spans.length ? spans[0].a : -1, oTo = spans.length ? spans[spans.length - 1].b : -1;
+  const oPts = oFrom < 0 ? [] : rows.map((_, i) => i).filter((i) => i >= oFrom && i <= oTo).map((i) => [i, om[i] ?? 0]);
+  const oSum = Math.round(spans.reduce((t, q) => t + q.mm, 0) * 10) / 10;
+  const wetFc = fc.some(Boolean);
+  const wet = wetFc || oSum >= 0.1;
+  const RH = 84, RT = 16, RB = 3;
+  const rmax = Math.max(4, ...fc, ...oPts.map((q) => q[1]));
+  const ry = (v) => RT + (1 - v / rmax) * (RH - RT - RB);
+  const rTicks = (rmax > 10 ? [5, 10, 15, 20, 30] : [2, 4, 6, 8, 10]).filter((v) => v < rmax);
+  const rPath = (pts) => pts.map(([i, v], k) => `${k ? "L" : "M"}${x(i).toFixed(1)},${ry(v).toFixed(1)}`).join("");
+  const fLine = rPath(fc.map((v, i) => [i, v]));
+  const pk = fc.indexOf(Math.max(...fc));
+  const oTop = oPts.reduce((m, q) => (q[1] > m[1] ? q : m), [oFrom, 0]);
+  const lx = (v) => Math.min(W - R - 26, Math.max(L + 26, v)); // yazı kenardan taşmasın
+  const mmTxt = (v) => (v >= 1 ? String(Math.round(v)) : "<1");
   const legend = [
     ["Rüzgâr", <i key="w" className="inline-block h-2.5 w-3.5 rounded-[3px] bg-[#67e8f9]" />],
     ["Sağanak", <i key="g" className="inline-block w-3.5 border-t-2 border-dashed border-[#c4b5fd]" />],
-    fc.some(Boolean) && ["Yağmur", <i key="r" className="inline-block h-2.5 w-3.5 rounded-[3px] bg-[#3b82f6]" />],
-    (got.length > 1 || wetObs) && ["Ölçülen", <i key="o" className="inline-block h-2.5 w-3.5 rounded-[3px] bg-[#9cc3ee]" />],
+    wetFc && ["Yağmur", <i key="r" className="inline-block h-2.5 w-3.5 rounded-[3px] bg-[#3b82f6]" />],
+    (got.length > 1 || oSum >= 0.1) && ["Ölçülen", <i key="o" className="inline-block w-3.5 border-t-2 border-white" />],
   ].filter(Boolean);
   return (
     <div className="ck-wind">
@@ -90,7 +98,7 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
               d="M0,-5.5L0,5.5M-3.2,2.3L0,5.5L3.2,2.3"
               transform={`translate(${x(i).toFixed(1)},10) rotate(${((obs[i]?.dir ?? h.dir ?? 0) % 360).toFixed(0)})`}
               fill="none"
-              stroke={(obs[i]?.wind ?? h.wind) >= 17 ? "#f4a64a" : obs[i] ? "#9cc3ee" : "#fff"}
+              stroke={(obs[i]?.wind ?? h.wind) >= 17 ? "#f4a64a" : "#fff"}
               strokeOpacity={got.length && !obs[i] ? 0.55 : 1}
               strokeWidth="1.6"
               strokeLinecap="round"
@@ -102,9 +110,9 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
           <path d={close(gust, 0, n - 1)} fill="#67e8f9" fillOpacity=".26" />
           <path d={close(wind, 0, n - 1)} fill="#67e8f9" fillOpacity=".92" />
           <path d={gust} fill="none" stroke="#c4b5fd" strokeWidth="1.3" strokeDasharray="3 3" />
-          {got.length > 1 && <path d={close(oLine, got[0].i, got[got.length - 1].i)} fill={OBS} fillOpacity=".55" />}
-          {got.length > 1 && <path d={oLine} fill="none" stroke="#9cc3ee" strokeWidth="1.3" />}
-          {oGust && <path d={oGust} fill="none" stroke="#9cc3ee" strokeWidth="1.3" strokeDasharray="3 3" />}
+          {oGust && <path d={oGust} fill="none" stroke="#fff" strokeWidth="1.2" strokeDasharray="2 2.5" />}
+          {got.length > 1 && <path d={oLine} fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" data-kind="olculen" />}
+          {got.length > 1 && got.map((o) => <circle key={`d${o.i}`} cx={x(o.i).toFixed(1)} cy={y(o.wind).toFixed(1)} r="2.2" fill="#fff" />)}
         </g>
         {nowV != null && (
           <g>
@@ -114,34 +122,31 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
           </g>
         )}
       </svg>
-      {split && (
-        <div className="relative h-3.5 text-[0.625rem] font-bold leading-none">
-          {hi >= 2 && <span className="absolute top-0.5 -translate-x-full whitespace-nowrap pr-1 text-[#9cc3ee]" style={{ left: `${(x(nowAt) / W) * 100}%` }}>← ölçülen</span>}
-          {hi < n - 3 && <span className="absolute top-0.5 whitespace-nowrap pl-1 text-[#67e8f9]" style={{ left: `${(x(nowAt) / W) * 100}%` }}>tahmin →</span>}
-        </div>
-      )}
       {wet && (
         <svg viewBox={`0 0 ${W} ${RH}`} className="mt-1 block w-full" role="img" aria-label="Saatlik yağış, mm">
-          <line x1={L} x2={W - R} y1={RH - 2} y2={RH - 2} stroke="rgba(255,255,255,.12)" />
-          {rows.map((h, i) => {
-            const o = ohv[i] >= 0.05, v = o ? ohv[i] : fc[i];
-            if (!v || (oh[i] && !o)) return null;
-            const yy = ry(v);
-            return (
-              <g key={`m${h.time}`}>
-                <rect x={(x(i) - cw / 2).toFixed(1)} y={yy.toFixed(1)} width={cw.toFixed(1)} height={Math.max(1.5, RH - 2 - yy).toFixed(1)} rx="2" fill={o ? "#9cc3ee" : "#3b82f6"} data-kind={o ? "olculen" : "tahmin"} />
-                {!o && v >= 1 && <text x={x(i).toFixed(1)} y={(yy - 2.5).toFixed(1)} textAnchor="middle" fontSize="8.5" fontWeight="700" fill="#fff">{Math.round(v)}</text>}
-              </g>
-            );
-          })}
-          {spans.map((sp) =>
-            sp.mm >= 0.1 ? (
-              <text key={`o${sp.a}`} x={((x(sp.a) + x(sp.b)) / 2).toFixed(1)} y={(ry(sp.mm / (sp.b - sp.a + 1)) - 2.5).toFixed(1)} textAnchor="middle" fontSize="8.5" fontWeight="700" fill="#9cc3ee">
-                {sp.mm >= 1 ? `${Math.round(sp.mm)} mm` : "<1 mm"}
-              </text>
-            ) : null,
+          {rTicks.map((v) => (
+            <g key={v}>
+              <line x1={L} x2={W - R} y1={ry(v)} y2={ry(v)} stroke="rgba(255,255,255,.08)" />
+              <text x={W - 2} y={ry(v) + 3} textAnchor="end" fontSize="9" fill="rgba(255,255,255,.5)">{v}</text>
+            </g>
+          ))}
+          <text x={W - 2} y="9" textAnchor="end" fontSize="9" fill="rgba(255,255,255,.5)">mm</text>
+          {wetFc && (
+            <g data-kind="tahmin">
+              <path d={`${fLine}L${x(n - 1)},${ry(0)}L${x(0)},${ry(0)}Z`} fill="#3b82f6" fillOpacity=".75" />
+              <path d={fLine} fill="none" stroke="#60a5fa" strokeWidth="1.4" strokeLinejoin="round" />
+              <text x={lx(x(pk)).toFixed(1)} y={(ry(fc[pk]) - 4).toFixed(1)} textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">{mmTxt(fc[pk])} mm/sa</text>
+            </g>
           )}
-          {nowAt >= 0 && <line x1={x(nowAt)} x2={x(nowAt)} y1="3" y2={RH - 2} stroke="#ff6b6b" strokeWidth="1.3" strokeDasharray="2 2" />}
+          <line x1={L} x2={W - R} y1={ry(0)} y2={ry(0)} stroke="rgba(255,255,255,.15)" />
+          {oPts.length > 0 && (
+            <g data-kind="olculen">
+              <path d={rPath(oPts)} fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
+              {oPts.map(([i, v]) => <circle key={`r${i}`} cx={x(i).toFixed(1)} cy={ry(v).toFixed(1)} r="2.2" fill="#fff" />)}
+              {oSum >= 0.1 && <text x={lx(x(oTop[0])).toFixed(1)} y={(ry(oTop[1]) - 6).toFixed(1)} textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">{mmTxt(oSum)} mm geldi</text>}
+            </g>
+          )}
+          {nowAt >= 0 && <line x1={x(nowAt)} x2={x(nowAt)} y1="4" y2={ry(0)} stroke="#ff6b6b" strokeWidth="1.3" strokeDasharray="2 2" />}
         </svg>
       )}
       {/* 3 saatte bir: saat, gökyüzü, sıcaklık, "rüzgâr-sağanak" (kn, ölçülen de aynı biçimde); grafikteki saatin tam altında */}
@@ -149,13 +154,13 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
         {rows.map((h, k) => {
           if (+h.hh % 3) return null;
           const s = sky(h.code, h.day);
-          const o = obs[k]; // geçmiş saatte ölçülen varsa onu yaz (mavi), yoksa tahmin
+          const o = obs[k]; // geçmiş saatte ölçülen varsa onu yaz (beyaz), yoksa tahmin (soluk)
           return (
             <span key={h.time} className="absolute top-0 flex -translate-x-1/2 flex-col items-center gap-[3px] leading-none tabular-nums" style={{ left: `${(x(k) / W) * 100}%` }}>
               <span className="text-[0.6875rem] font-semibold text-white/55">{h.hh}</span>
               <Icon name={s.icon} className={`size-[1.05rem] ${CK_SKY[s.icon] || "text-white/80"}`} />
               <span className="text-[0.75rem] font-semibold">{h.t}°</span>
-              <span className={`whitespace-nowrap text-[0.6875rem] font-bold ${o ? "text-[#9cc3ee]" : ""}`}>{kn(o ? o.wind : h.wind, o ? o.gust : h.gust)}</span>
+              <span className={`whitespace-nowrap text-[0.6875rem] font-bold ${got.length && !o ? "text-white/70" : ""}`}>{kn(o ? o.wind : h.wind, o ? o.gust : h.gust)}</span>
             </span>
           );
         })}
