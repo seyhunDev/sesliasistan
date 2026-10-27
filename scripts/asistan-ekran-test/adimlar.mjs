@@ -1092,19 +1092,19 @@ async function rainStrip(h) {
   });
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
-  await check("Hava", "yağış çubukları", "yağışlı günde grafiğin altında saat saat mavi çubuk (1 mm+ sayılı), kuvvetli yağışta kehribar uyarı", async () => {
-    const ok = await waitFor(() => page.locator("svg[aria-label='Saatlik yağış, mm']").count(), 15000);
+  await check("Hava", "yağmur grafiği", "yağışlı günde grafiğin altında mavi yağmur alanı, en yüksek saatte \"9 mm/sa\", kuvvetli yağışta kehribar uyarı", async () => {
+    const ok = await waitFor(() => page.locator("svg[aria-label='Saatlik yağış, mm'] [data-kind='tahmin']").count(), 15000);
     const warn = await page.getByText(/Kuvvetli yağış 14:00–16:00 · günde 21 mm/).count();
-    const nums = await page.locator("svg[aria-label='Saatlik yağış, mm'] text").count();
+    const pk = await page.locator("svg[aria-label='Saatlik yağış, mm'] text", { hasText: "9 mm/sa" }).count();
     if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}.png`, fullPage: true }));
-    return [ok > 0 && warn > 0 && nums === 4, `şerit ${ok} · uyarı ${warn} · sayı ${nums}`];
+    return [ok > 0 && warn > 0 && pk === 1, `alan ${ok} · uyarı ${warn} · tepe ${pk}`];
   });
   await check("Sayfa hataları", "hava yağış", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
   await rainSplit(h);
 }
 
-// Ölçülen yağmur (açık mavi çubuk, şimdiden önce) ile beklenen yağmur (mavi çubuk, şimdiden sonra) ayrımı (Seyhun 2026-10-27 "A · Mavi çubuk")
+// Ölçülen yağmur (beyaz noktalı çizgi, şimdiye kadar) ile beklenen yağmur (mavi alan, bütün gün) ayrımı (Seyhun 2026-10-27 "A · Ölçülen beyaz çizgi")
 async function rainSplit(h) {
   const { check, newPage, waitFor, log } = h;
   log("    Hava: ölçülen / beklenen yağmur…");
@@ -1134,21 +1134,18 @@ async function rainSplit(h) {
   });
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
-  await check("Hava", "ölçülen / beklenen yağmur", "şimdiden önce açık mavi ölçülen çubuklar (üstünde toplam), sonra mavi tahmin çubukları; etiket, tek satır açıklama", async () => {
+  await check("Hava", "ölçülen / beklenen yağmur", "tahmin bütün gün mavi alan, ölçülen şimdiye kadar beyaz çizgi + \"4 mm geldi\"; tek satır açıklama", async () => {
     const S = "svg[aria-label='Saatlik yağış, mm']";
-    await waitFor(() => page.locator(`${S} [data-kind='olculen']`).count(), 15000);
+    await waitFor(() => page.locator(`${S} [data-kind='tahmin']`).count(), 15000);
+    const wantOlc = nowH >= 1;
+    if (wantOlc) await waitFor(() => page.locator(`${S} [data-kind='olculen']`).count(), 8000);
     const olc = await page.locator(`${S} [data-kind='olculen']`).count();
-    const tah = await page.locator(`${S} [data-kind='tahmin']`).count();
-    const txt = await page.locator(`${S} text`).allTextContents();
-    const wantOlc = Math.min(3, nowH);
-    const wantTah = 23 - nowH;
-    // Etiketler kenara sığmazsa çıkmaz (gece yarısına yakın "tahmin →" yok)
-    const lbl = ((await page.getByText("← ölçülen").count()) > 0) === nowH >= 2 && ((await page.getByText("tahmin →").count()) > 0) === nowH < 21;
+    const geldi = await page.locator(`${S} text`, { hasText: "4 mm geldi" }).count();
     const leg = await page.locator("[aria-label='Grafik açıklaması']").first().textContent().catch(() => "");
-    const legOk = /Ölçülen/.test(leg || "") === !!wantOlc && /Yağmur/.test(leg || "") === wantTah > 0;
+    const legOk = /Ölçülen/.test(leg || "") && /Yağmur/.test(leg || "");
     const legH = (await page.locator("[aria-label='Grafik açıklaması']").first().boundingBox())?.height ?? 99;
     if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-ayrim.png`, fullPage: true }));
-    return [olc === wantOlc && tah === wantTah && (!wantOlc || txt.includes("4 mm")) && lbl && legOk && legH < 20, `ölçülen ${olc}/${wantOlc} · tahmin ${tah}/${wantTah} · yazı ${txt.join(",")} · etiket ${lbl} · açıklama ${legOk} (${Math.round(legH)} px)`];
+    return [(olc > 0) === wantOlc && (geldi > 0) === wantOlc && legOk && legH < 20, `ölçülen ${olc} · "4 mm geldi" ${geldi} · açıklama ${legOk} (${Math.round(legH)} px)`];
   });
   await check("Sayfa hataları", "hava ölçülen yağmur", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
