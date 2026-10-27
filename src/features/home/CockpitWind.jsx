@@ -4,7 +4,7 @@ import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
 import { useWindObs } from "@/features/weather/useWindObs";
 import { OBS } from "@/features/weather/DaySheet";
-import { PLACE, getPlace, heavyRain, kn, mmTone, sky } from "@/features/weather/weather";
+import { PLACE, getPlace, heavyRain, kn, sky } from "@/features/weather/weather";
 
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
 const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: PLACE.tz });
@@ -42,25 +42,30 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
   const ni = Math.floor(nowAt);
   const nowV = nowAt >= 0 ? rows[ni].wind + ((rows[ni + 1]?.wind ?? rows[ni].wind) - rows[ni].wind) * (nowAt - ni) : null;
   const ticks = [5, 10, 15, 20, 25, 30].filter((v) => v < top);
-  // Yağış (Seyhun 2026-10-26 "A · Altında renkli şerit", sonra "B · Tek satır"): grafiğin altında tek şerit. Ölçülen yağmur (istasyon raporu,
-  // çoğunlukla 3/6 saatlik toplam) birkaç saati kaplayan DOLU kutu; beklenen yağmur (tahmin) içi boş, kesik çerçeveli kutu. İstasyon yağmur
-  // bildiriyorsa şimdiden önceki saatlerde tahmin kutusu çizilmez (ölçülen önde). Renk mmTone, 1 mm ve üstünde sayı.
-  // Saatte 4 mm ve üstü beklenirse grafiğin üstünde kehribar uyarı satırı (gerçek uyarı). Eski önbellekte mm yoksa tahmin kutusu çıkmaz.
+  // Yağış (Seyhun 2026-10-27 "A · Mavi çubuk"; önce 10-26 şerit): grafiğin altında saat saat çubuk, boyu mm kadar. Beklenen yağmur (tahmin) MAVİ
+  // çubuk, 1 mm ve üstünde üstünde sayı; ölçülen yağmur (istasyon raporu, çoğunlukla 3/6 saatlik toplam) o saatlere bölünmüş AÇIK MAVİ çubuk
+  // (ölçülen rüzgârla aynı renk), üstünde toplam "N mm". İstasyon yağmur bildiriyorsa şimdiden önceki tahmin çubukları çizilmez (ölçülen önde).
+  // Saatte 4 mm ve üstü beklenirse grafiğin üstünde kehribar uyarı satırı (gerçek uyarı). Eski önbellekte mm yoksa tahmin çubuğu çıkmaz.
   // İlk bakışta anlaşılsın diye (Seyhun: "ilk defa bakan biri bile neyin ne olduğunu anlamalı") şimdi çizgisinin iki yanında "← ölçülen | tahmin →"
-  // ve altta yalnız grafikte olan şeylerin açıklaması.
+  // ve altta TEK SATIR açıklama (Rüzgâr · Sağanak · Yağmur · Ölçülen; yalnız grafikte olanlar).
   const heavy = heavyRain(rows);
-  const cw = ((W - L - R) / Math.max(1, n - 1)) * 0.86;
+  const cw = ((W - L - R) / Math.max(1, n - 1)) * 0.7;
   const spans = obsRain(ob?.rows, rows);
   const pastCut = spans.length ? (day < today ? n - 1 : hi) : -1;
-  const fc = rows.map((h, i) => (i > pastCut ? mmTone(h.mm) : null));
-  const wet = fc.some(Boolean) || spans.some((sp) => sp.mm >= 0.1);
+  const fc = rows.map((h, i) => (i > pastCut && h.mm >= 0.1 ? h.mm : 0));
+  const oh = rows.map((_, i) => spans.find((sp) => i >= sp.a && i <= sp.b));
+  const ohv = oh.map((sp) => (sp ? sp.mm / (sp.b - sp.a + 1) : 0));
+  const wetObs = spans.some((sp) => sp.mm >= 0.1);
+  const wet = fc.some(Boolean) || wetObs;
   const split = hi >= 0 && (got.length > 0 || spans.length > 0);
+  const RH = 40, RT = 12;
+  const rmax = Math.max(4, ...fc, ...ohv);
+  const ry = (v) => RT + (1 - v / rmax) * (RH - RT - 2);
   const legend = [
-    ["Rüzgâr", <i key="w" className="inline-block h-2.5 w-4 rounded-[3px] bg-[#67e8f9]" />],
-    ["Sağanak", <i key="g" className="inline-block w-4 border-t-2 border-dashed border-[#c4b5fd]" />],
-    got.length > 1 && ["Ölçülen rüzgâr", <i key="o" className="inline-block h-2.5 w-4 rounded-[3px] bg-[#9cc3ee]" />],
-    spans.some((sp) => sp.mm >= 0.1) && ["Ölçülen yağmur", <i key="r" className="inline-block h-2.5 w-4 rounded-[3px] bg-[#4f86c0]" />],
-    fc.some(Boolean) && ["Beklenen yağmur", <i key="f" className="box-border inline-block h-2.5 w-4 rounded-[3px] border-[1.4px] border-dashed border-[#4f86c0] bg-[rgba(79,134,192,.22)]" />],
+    ["Rüzgâr", <i key="w" className="inline-block h-2.5 w-3.5 rounded-[3px] bg-[#67e8f9]" />],
+    ["Sağanak", <i key="g" className="inline-block w-3.5 border-t-2 border-dashed border-[#c4b5fd]" />],
+    fc.some(Boolean) && ["Yağmur", <i key="r" className="inline-block h-2.5 w-3.5 rounded-[3px] bg-[#3b82f6]" />],
+    (got.length > 1 || wetObs) && ["Ölçülen", <i key="o" className="inline-block h-2.5 w-3.5 rounded-[3px] bg-[#9cc3ee]" />],
   ].filter(Boolean);
   return (
     <div className="ck-wind">
@@ -116,32 +121,27 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
         </div>
       )}
       {wet && (
-        <svg viewBox={`0 0 ${W} 18`} className="mt-1 block w-full" role="img" aria-label="Saatlik yağış, mm">
+        <svg viewBox={`0 0 ${W} ${RH}`} className="mt-1 block w-full" role="img" aria-label="Saatlik yağış, mm">
+          <line x1={L} x2={W - R} y1={RH - 2} y2={RH - 2} stroke="rgba(255,255,255,.12)" />
           {rows.map((h, i) => {
-            if (spans.some((sp) => i >= sp.a && i <= sp.b)) return null;
-            const c = fc[i];
-            const bx = (x(i) - cw / 2).toFixed(1);
+            const o = ohv[i] >= 0.05, v = o ? ohv[i] : fc[i];
+            if (!v || (oh[i] && !o)) return null;
+            const yy = ry(v);
             return (
               <g key={`m${h.time}`}>
-                {c ? (
-                  <rect x={bx} y="1.7" width={cw.toFixed(1)} height="14.6" rx="3" fill={c} fillOpacity=".22" stroke={c} strokeWidth="1.4" strokeDasharray="2.5 1.8" data-kind="tahmin" />
-                ) : (
-                  <rect x={bx} y="1" width={cw.toFixed(1)} height="16" rx="3" fill="rgba(255,255,255,.06)" />
-                )}
-                {c && h.mm >= 1 && <text x={x(i).toFixed(1)} y="12.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">{Math.round(h.mm)}</text>}
+                <rect x={(x(i) - cw / 2).toFixed(1)} y={yy.toFixed(1)} width={cw.toFixed(1)} height={Math.max(1.5, RH - 2 - yy).toFixed(1)} rx="2" fill={o ? "#9cc3ee" : "#3b82f6"} data-kind={o ? "olculen" : "tahmin"} />
+                {!o && v >= 1 && <text x={x(i).toFixed(1)} y={(yy - 2.5).toFixed(1)} textAnchor="middle" fontSize="8.5" fontWeight="700" fill="#fff">{Math.round(v)}</text>}
               </g>
             );
           })}
-          {spans.map((sp) => {
-            const x1 = x(sp.a) - cw / 2, x2 = x(sp.b) + cw / 2;
-            const c = mmTone(sp.mm);
-            return (
-              <g key={`o${sp.a}`}>
-                <rect x={x1.toFixed(1)} y="1" width={(x2 - x1).toFixed(1)} height="16" rx="3" fill={c || "rgba(156,195,238,.16)"} data-kind="olculen" />
-                {sp.mm >= 0.1 && <text x={((x1 + x2) / 2).toFixed(1)} y="12.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">{sp.mm >= 1 ? (x2 - x1 > 34 ? `${Math.round(sp.mm)} mm` : Math.round(sp.mm)) : "<1"}</text>}
-              </g>
-            );
-          })}
+          {spans.map((sp) =>
+            sp.mm >= 0.1 ? (
+              <text key={`o${sp.a}`} x={((x(sp.a) + x(sp.b)) / 2).toFixed(1)} y={(ry(sp.mm / (sp.b - sp.a + 1)) - 2.5).toFixed(1)} textAnchor="middle" fontSize="8.5" fontWeight="700" fill="#9cc3ee">
+                {sp.mm >= 1 ? `${Math.round(sp.mm)} mm` : "<1 mm"}
+              </text>
+            ) : null,
+          )}
+          {nowAt >= 0 && <line x1={x(nowAt)} x2={x(nowAt)} y1="3" y2={RH - 2} stroke="#ff6b6b" strokeWidth="1.3" strokeDasharray="2 2" />}
         </svg>
       )}
       {/* 3 saatte bir: saat, gökyüzü, sıcaklık, "rüzgâr-sağanak" (kn, ölçülen de aynı biçimde); grafikteki saatin tam altında */}
@@ -160,7 +160,7 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
           );
         })}
       </div>
-      <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[0.6875rem] text-white/70" aria-label="Grafik açıklaması">
+      <p className="mt-1 flex flex-nowrap gap-2.5 whitespace-nowrap text-[0.6875rem] text-white/70" aria-label="Grafik açıklaması">
         {legend.map(([t, i]) => (
           <span key={t} className="inline-flex items-center gap-1.5">
             {i}
