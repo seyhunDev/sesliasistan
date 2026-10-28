@@ -132,7 +132,15 @@ export function CourseTab({ orgId, race, day }) {
     return () => clearTimeout(id);
   }, [got]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const shape = useMemo(() => courseShape(c, here), [c, here]);
+  // Hesaptaki bir eksik sayfayı çökertmesin (Seyhun 2026-10-28 "e.lat"): şekil çizilmez, ölçümler görünür
+  const shape = useMemo(() => {
+    try {
+      return courseShape(c, here);
+    } catch (e) {
+      console.warn("[parkur] şekil çizilemedi", e);
+      return null;
+    }
+  }, [c, here]);
   const bias = lineBias(c);
   const trend = windTrend(c);
   const listening = sp.status === "listening";

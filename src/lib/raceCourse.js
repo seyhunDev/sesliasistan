@@ -149,7 +149,7 @@ const last = (obs, f) => [...obs].reverse().find(f) || null;
 export function axisOf(c) {
   const o = last(c.obs, (x) => x.kind === "axis") || last(c.obs, (x) => x.kind === "mark" && x.ref === "m1") || last(c.obs, (x) => x.kind === "wind" && x.by === "komite") || last(c.obs, (x) => x.kind === "wind");
   if (o) return { deg: o.deg, src: o.kind };
-  if (c.pts.m1 && (c.pts.komite || c.pts.pin)) return { deg: bearing(lineMid(c) || c.pts.komite, c.pts.m1), src: "pts" };
+  if (c.pts.m1 && (c.pts.komite || c.pts.pin)) return { deg: bearing(lineMid(c) || c.pts.komite || c.pts.pin, c.pts.m1), src: "pts" };
   return null;
 }
 // Pin'den komiteye hat yönü: işaretli iki uçtan, yoksa son line ölçümünden
@@ -204,7 +204,8 @@ export function courseShape(c, here = null) {
   if (axis === null || !base) return null;
   const lineDeg = ln ? ln.deg : norm(axis + 90);
   const est = {};
-  const komite = c.pts.komite || (est.komite = true, dest(c.pts.pin, lineDeg, LINE_M));
+  // Seyhun 2026-10-28 çöktü ("e.lat"): komite ve pin işaretlenmeden (yalnız telefonun yeri) komite telefonun yerine konur
+  const komite = c.pts.komite || ((est.komite = true), c.pts.pin ? dest(c.pts.pin, lineDeg, LINE_M) : base);
   const pin = c.pts.pin || (est.pin = true, dest(komite, norm(lineDeg + 180), LINE_M));
   const mid = { lat: (komite.lat + pin.lat) / 2, lon: (komite.lon + pin.lon) / 2 };
   const L = c.len.orsa || (c.pts.m1 ? dist(mid, c.pts.m1) : ORSA_M);

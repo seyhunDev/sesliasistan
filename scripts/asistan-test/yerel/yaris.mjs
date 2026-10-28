@@ -543,6 +543,12 @@ group("Parkur analizi")([
     const s = PK.courseShape(CC([{ kind: "axis", deg: 0 }], { komite: k }));
     return [s, PK.bearing(s.mid, s.m1), PK.dist(s.mid, s.m1), PK.courseShape(CC([{ kind: "axis", deg: 0 }]))];
   }, ok: ([s, b, d, none]) => s.est.pin && s.est.m1 && !s.est.komite && b === 0 && Math.abs(d - 900) < 2 && none === null }],
+  ["işaretsiz parkur", { desc: "komite ve pin yokken yalnız telefonun yeri ve rüzgârla çökmez (Seyhun 2026-10-28 'e.lat'); yalnız pin + 1 nolu ile eksen", fn: () => {
+    const here = { lat: 39.07, lon: 26.88 };
+    const a = PK.courseShape(CC([{ kind: "wind", deg: 330, kn: 12 }]), here);
+    const b = PK.courseShape(CC([], { pin: here, m1: { lat: 39.078, lon: 26.88 } }));
+    return [a, b];
+  }, ok: ([a, b]) => a.est.komite && a.est.pin && a.komite.lat === 39.07 && a.axis === 330 && b && b.axis === 0 && !b.est.m1 }],
   ["kayıt temizliği", { desc: "bilinmeyen tür ve derecesiz ölçüm atılır, açı 0–359, bozuk konum düşer, kişisel alan yok", fn: () => PK.cleanCourse({ pts: { komite: { lat: 39, lon: 26 }, pin: { lat: "x" }, sen: { lat: 1, lon: 1 } }, obs: [{ kind: "wind", deg: 370, kn: 6, by: "komite", uid: "u1" }, { kind: "x", deg: 1 }, { kind: "axis" }], len: { orsa: 50 } }), ok: (c) => Object.keys(c.pts).join() === "komite" && c.obs.length === 1 && c.obs[0].deg === 10 && c.obs[0].by === "komite" && !("uid" in c.obs[0]) && !c.len.orsa }],
 ]);
 
