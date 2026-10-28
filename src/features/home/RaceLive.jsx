@@ -28,6 +28,8 @@ import { todayStr } from "@/lib/utils/format";
 // 2026-10-27 (Seyhun "Evet, böyle yap", örnek yaris-kontrol): şerit büyüdü; büyük sayaç + Başlat/Durdur/Devam/Bitir · Kayıt · Multimedya.
 // 2026-10-27 (Seyhun "A · Büyük rakam"): "YARIŞ SÜRÜYOR" kalktı; üstte ince satır (canlı nokta, yarış · kaçıncı yarış, Multimedya, ⋯), ortada
 // dev süre ve durumu, beklerken süre çipleri 1 · 2 · 5 · 10 dk, sayarken start dizisi çubuğu ve −1 dk · Eşitle · +1 dk; altta Sıfırla · ana düğme · Kayıt.
+// 2026-10-28 (Seyhun "çok fazla düğme var", seçim "A · Tek ana düğme"): beklerken yalnız Başlat, yuvarlak Kayıt ve ⋯. Süre "5 dk ▾" ile
+// pencereden seçilir; Multimedya ⋯ içinde ve yarış adına dokununca. Sıfırla yalnız dururken, −1 dk · Eşitle · +1 dk yalnız sayarken (yazı gibi).
 // Sayaç telefonun TEK sayacı (Countdown.jsx), yarışın multimedya sayfası adına çalışır (own = /media yolu): oradaki Süre aynı sayacı ve
 // yarışı görür, Bitir/İptal/+30 sn orada da yapılır. Başlat günün sıradaki yarışını açar (useRaceFlow, aynı akış). Kayıt iPhone kamerasını açar
 // (RecPick); çekilen dosya yarışın Medya sayfasına geçer (handoff.js) ve yükleme orada (MediaTab) sürer.
@@ -63,6 +65,7 @@ export function RaceLive({ open }) {
       <Controls id={r.id} orgId={profile?.orgId} title={r.title} onMenu={() => setMenu(true)} />
       <Sheet open={menu} onClose={() => setMenu(false)} title="Yarış kısayolu" navy>
         <RowList>
+          <Row title="Multimedya" sub="Süre, kayıtlar, sonuçlar" href={`/athletes/races/${r.id}/media`} />
           <Row title="Bu yarışta gösterme" sub="Sonraki yarışta yine çıkar" onClick={hideThis} chev={false} />
           <Row title="Hiç gösterme" sub="Ayarlar'dan yeniden açılır" onClick={hideAll} chev={false} />
         </RowList>
@@ -139,84 +142,82 @@ function Controls({ id, orgId, title, onMenu }) {
   const even = () => shift(nowMs() + Math.round(rem / 60) * 60000);
   const choose = (s) => writeTimer({ dur: s, end: null, left: null, zero: t.zero, own: "", where: "" });
   const [label, act] = !ours ? ["Sayaca git", () => router.push(t.own)] : up ? ["Bitir", () => raceFinish(rf.flow, own)] : running ? ["Durdur", pause] : paused ? ["Devam", resume] : ["Başlat", start];
-  const btn = "flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-[0.875rem] px-2 text-[0.9375rem] font-bold shadow-[0_2px_0_rgba(0,0,0,.35)] active:translate-y-px active:shadow-none";
-  const chip = "flex h-9 min-w-0 flex-1 items-center justify-center rounded-full text-[0.8125rem] font-semibold tabular-nums active:translate-y-px";
+  const [pick, setPick] = useState(false);
+  const adj = "h-9 px-2 text-[0.875rem] font-semibold text-white/70 active:text-white disabled:opacity-40";
   return (
     <>
       <div className="flex items-center gap-2">
-        <Link href={`/athletes/races/${id}`} className="flex min-w-0 flex-1 items-center gap-2 text-[0.875rem] font-semibold">
+        <Link href={own} className="flex min-w-0 flex-1 items-center gap-2 text-[0.875rem] font-semibold">
           <span className="size-2 shrink-0 rounded-full bg-[#f05a5a] shadow-[0_0_0_4px_rgba(240,90,90,.25)]" />
           <span className="truncate">
             {title}
             {name && <span className="font-normal text-white/60"> · {name}</span>}
           </span>
         </Link>
-        <Link href={own} data-press className="flex h-8 shrink-0 items-center rounded-full bg-white/12 px-3 text-[0.8125rem] font-semibold">
-          Multimedya
-        </Link>
         <button type="button" data-press aria-label="Yarış kısayolu seçenekleri" onClick={onMenu} className="grid size-8 shrink-0 place-items-center rounded-full bg-white/12 text-white">
           <Icon name="more" className="size-5" />
         </button>
       </div>
-      <div className="mt-3 text-center" onPointerDown={() => running && !up && audio()}>
+      <div className="mt-2.5 text-center" onPointerDown={() => running && !up && audio()}>
         <small className="block text-[0.6875rem] font-semibold uppercase tracking-[.08em] text-white/60">{head}</small>
         <b className={`block font-extrabold leading-[1.05] tracking-[-.04em] tabular-nums ${up ? "text-[4rem]" : "text-[4.6rem]"} ${hot ? "text-[#f4a49c]" : ""}`}>{time}</b>
+        {ours && idle && (
+          <button type="button" data-press aria-label="Süre seç" onClick={() => setPick(true)} className="mt-0.5 inline-flex h-8 items-center gap-1 rounded-full bg-white/10 px-3 text-[0.875rem] font-semibold">
+            {Math.round(t.dur / 60)} dk
+            <Icon name="chev" className="size-3.5 rotate-90 text-white/60" />
+          </button>
+        )}
       </div>
-      {ours && idle && (
-        <div className="mt-2 flex gap-1.5" aria-label="Süre seç">
-          {PRESETS.map((s) => (
-            <button key={s} type="button" aria-pressed={t.dur === s} onClick={() => choose(s)} className={`${chip} ${t.dur === s ? "bg-white text-[#11203a]" : "bg-white/10 text-white/80"}`}>
-              {s / 60} dk
-            </button>
-          ))}
-        </div>
-      )}
       {(running || paused) && !up && steps.length > 1 && <Seq steps={steps} total={total} left={left} />}
       {ours && running && !up && (
-        <div className="mt-3 flex gap-1.5">
-          <button type="button" onClick={() => shift(t.end - 60000)} disabled={rem <= 60} className={`${chip} bg-white/10 text-white disabled:opacity-40`}>
+        <div className="mt-1 flex justify-center gap-5">
+          <button type="button" onClick={() => shift(t.end - 60000)} disabled={rem <= 60} className={adj}>
             −1 dk
           </button>
-          <button type="button" onClick={even} className={`${chip} bg-white/10 text-white`}>
+          <button type="button" onClick={even} className={adj}>
             Eşitle
           </button>
-          <button type="button" onClick={() => shift(t.end + 60000)} className={`${chip} bg-white/10 text-white`}>
+          <button type="button" onClick={() => shift(t.end + 60000)} className={adj}>
             +1 dk
           </button>
         </div>
       )}
-      <div className="mt-3 grid grid-cols-[1fr_1.6fr_1fr] gap-2">
-        <button type="button" data-press onClick={() => raceCancel(rf.flow, own)} disabled={!ours || !paused} className={`${btn} bg-white/12 text-white disabled:opacity-40`}>
-          Sıfırla
-        </button>
-        <button type="button" data-press onClick={act} disabled={!race && label === "Başlat"} className={`${btn} ${running && !up ? "bg-white text-[#11203a]" : "bg-[#0ea5c4] text-white"} disabled:opacity-50`}>
+      <div className="mt-3 flex items-center gap-2.5">
+        {ours && paused && (
+          <button type="button" data-press onClick={() => raceCancel(rf.flow, own)} className="flex h-[3.25rem] shrink-0 items-center rounded-2xl bg-white/12 px-4 text-[0.9375rem] font-bold shadow-[0_2px_0_rgba(0,0,0,.35)] active:translate-y-px active:shadow-none">
+            Sıfırla
+          </button>
+        )}
+        <button type="button" data-press onClick={act} disabled={!race && label === "Başlat"} className={`flex h-[3.25rem] min-w-0 flex-1 items-center justify-center rounded-2xl text-[1.0625rem] font-bold shadow-[0_2px_0_rgba(0,0,0,.35)] active:translate-y-px active:shadow-none disabled:opacity-50 ${running && !up ? "bg-white text-[#11203a]" : "bg-[#0ea5c4] text-white"}`}>
           {label}
         </button>
-        <RecPick onFile={(f) => (handShot(id, f), router.push(`${own}?tab=media`))} aria-label="Kayıt" className={`${btn} bg-white/12 text-white`}>
-          <span className="grid size-3.5 place-items-center rounded-full ring-2 ring-white">
-            <span className="size-2 rounded-full bg-[#f05a5a]" />
-          </span>
-          Kayıt
+        <RecPick onFile={(f) => (handShot(id, f), router.push(`${own}?tab=media`))} aria-label="Kayıt" className="grid size-[3.25rem] shrink-0 place-items-center rounded-full bg-white/12 active:translate-y-px">
+          <span className="size-5 rounded-full bg-[#f05a5a] shadow-[0_0_0_3px_#16263f,0_0_0_5px_#fff]" />
         </RecPick>
       </div>
+      <Sheet open={pick} onClose={() => setPick(false)} title="Süre" navy>
+        <div className="mb-4 grid grid-cols-4 gap-2">
+          {PRESETS.map((s) => (
+            <button key={s} type="button" aria-pressed={t.dur === s} onClick={() => (choose(s), setPick(false))} className={`h-13 rounded-2xl text-[1rem] font-semibold active:scale-95 ${t.dur === s ? "bg-white text-[#11203a]" : "bg-white/10 text-white"}`}>
+              {s / 60} dk
+            </button>
+          ))}
+        </div>
+      </Sheet>
       <VoidSheet ask={rf.ask} onChoose={rf.choose} />
     </>
   );
 }
 
-// Start dizisi çubuğu: dolu kısım geçen süre, işaretler 5 · 4 Hazırlık · 1 Son dk · Start
+// Start dizisi çubuğu: dolu kısım geçen süre, noktalar 5 · 4 · 1 · 0 (adı üstteki durum yazısında)
 function Seq({ steps, total, left }) {
   const at = (m) => `${Math.min(100, Math.max(0, ((total - m * 60) / total) * 100))}%`;
   return (
-    <div className="mx-1 mt-3 pb-4" aria-label="Start dizisi">
+    <div className="mx-1 mt-3" aria-label="Start dizisi">
       <div className="relative h-1.5 rounded-full bg-white/12">
         <div className="absolute inset-y-0 left-0 rounded-full bg-[#0ea5c4]" style={{ width: at(left / 60) }} />
         {steps.map((x) => (
-          <span key={x.m} className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#11203a] bg-white" style={{ left: at(x.m) }}>
-            <small className={`absolute top-3 whitespace-nowrap text-[0.625rem] font-semibold text-white/65 ${x.m === steps[0].m ? "left-0" : x.m === 0 ? "right-0" : "left-1/2 -translate-x-1/2"}`}>
-              {x.m === 0 ? x.name : x.m === steps[0].m ? x.m : `${x.m} ${x.name}`}
-            </small>
-          </span>
+          <span key={x.m} className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#16263f] bg-white/80" style={{ left: at(x.m) }} />
         ))}
       </div>
     </div>
