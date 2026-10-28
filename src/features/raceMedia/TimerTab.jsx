@@ -18,6 +18,13 @@ import { Button } from "@/components/ui/Button";
 const PRESETS = [60, 120, 300, 600];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
+// Büyük sayaç lacivert üstte (RaceMedia Shell top), listesi ve kareler açık alanda
+export function TimerHead({ race, live, rf }) {
+  const tr = useTimerRun();
+  const cur = tr.t.end != null || tr.t.left != null ? live.starts.find((x) => x.id === rf.ridOf(tr.t)) : null;
+  return <Countdown dark mode="start" presets={PRESETS} race={rf.flow} title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} bottom />;
+}
+
 export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
   const tr = useTimerRun();
   const timer = tr.t;
@@ -45,14 +52,6 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
 
   return (
     <>
-      <Countdown
-        mode="start"
-        presets={PRESETS}
-        race={flow}
-        title={cur ? raceName(cur) : ""}
-        where={race?.name || "Yarış"}
-        bottom
-      />
       {!!cur && tr.up && !cur.void && <Marks buoys={live.buoys} s={cur} on onMark={mark} onBuoys={setBuoys} />}
       {/* Günün yarışları sayacın altında liste (Seyhun 2026-10-28; eskiden "Liste ›" ile ayrı pencere): saat, rüzgâr, süre ya da durum */}
       <Label right={today.length || ""}>Yarışlar</Label>
