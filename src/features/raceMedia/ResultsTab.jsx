@@ -11,16 +11,17 @@ import { importResults, importToast } from "@/features/athletes/resultsImport";
 import { saveRaceResults } from "@/features/athletes/races";
 import { Bar } from "@/features/training/Countdown";
 
-// Sonuçlar (Seyhun 2026-10-28 onayı): tek sıra süzgeç: Bizimkiler · Genel · Junior · Kızlar · Junior Kızlar (sınıf birden çoksa üstte sınıf seçimi).
-// Bizimkiler: her sporcu kendi kartında; solda büyük genel sıra, yanında ad, sınıf, kategori, doğum yılı; altında Junior / Kızlar /
-// Junior Kızlar sıraları ayrı kutularda (ilk 3 vurgu renginde), yazı kesilmez. Genel: sonuç PDF'inden bütün liste (sıra, ad, işaret
-// "Junior kız" / "Junior" / "Kız", kulüp, doğum yılı, net puan; bizimkiler açık mavi satır; ilk 10, sonra Tümü).
-// Sonuç yüklüyse en altta küçük "Değiştir"; yoksa büyük "Sonuç PDF'i yükle". Yükleme yarış sayfasındakiyle aynı akış (resultsImport.js).
+// Sonuçlar (Seyhun 2026-10-28 onayı, "tek liste"): tek sıra süzgeç: Bizimkiler · Genel · Junior · Kızlar · Junior Kızlar (sınıf birden
+// çoksa üstte sınıf seçimi). Bizimkiler ve Genel aynı kartta, aynı satır biçiminde: başlıkta "ILCA 4 · 42 kişi" + "Net puan"; satırda solda
+// sıra, ad, altında işaret ("Junior kız" / "Junior" / "Kız") · kulüp · doğum yılı (yıl hiç kesilmez, yalnız kulüp kısalır), sağda net puan.
+// Bizimkiler'de adın altında Junior / Kızlar / Junior Kızlar sıraları küçük etiketler (ilk 3 vurgu renginde); Genel'de bizimkiler açık mavi
+// satır, ilk 10, sonra Tümü. Sonuç yüklüyse en altta küçük "Değiştir"; yoksa büyük "Sonuç PDF'i yükle" (resultsImport.js akışı).
 const TOP = 10;
 // Satırdaki işaret: Genel'de "Junior kız", "Junior", "Kız"; Kızlar'da yalnız kategori; diğer süzgeçlerde yok
 const tagOf = (r, filter) => (filter === "all" ? sheetTag(r) : filter === "girls" && ["Junior", "Bambino"].includes(r.cat) ? r.cat : "");
 const SUB = ["Junior", "Bambino"];
 const shortDay = (s) => (s ? new Date(`${s.slice(0, 10)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "");
+const ptsOf = (p) => (p === "" || p == null ? "" : `${String(p).replace(".", ",")} p`);
 
 // Sporcunun ek sıraları: kategori, kızlar, kategori kızları
 const boxesOf = (x) =>
@@ -30,33 +31,33 @@ const boxesOf = (x) =>
     x?.jp && SUB.includes(x.cat) && [`${x.cat} Kızlar`, x.jp, x.jn],
   ].filter(Boolean);
 
-function OurCard({ a, x, born }) {
-  const boxes = boxesOf(x);
-  const sub = [x?.cls, SUB.includes(x?.cat) ? x.cat : "", born].filter(Boolean).join(" · ");
+// Ortak satır: sıra · ad / işaret · kulüp · yıl · puan
+function Row({ pos, name, tag, club, born, pts, on, hi, children }) {
   return (
-    <li className={`${card} p-3.5`}>
-      <div className="flex items-center gap-3">
-        <span className={`flex size-[3.625rem] shrink-0 flex-col items-center justify-center rounded-2xl ${x?.place ? "bg-accbg text-acc" : "bg-bg text-mut"}`}>
-          <b className="text-[1.5rem] font-bold leading-none tabular-nums">{x?.place || "–"}</b>
-          {x?.place && x.n ? <small className="mt-1 text-[0.6875rem] font-semibold">genel / {x.n}</small> : null}
+    <li className={`flex items-center gap-3 px-4 py-2.5 ${on ? "bg-accbg" : ""}`}>
+      <span className={`w-7 shrink-0 text-center text-[1.0625rem] font-bold tabular-nums ${on || hi ? "text-acc" : ""}`}>{pos || "–"}</span>
+      <span className="min-w-0 flex-1">
+        <b className="block truncate text-[0.9375rem] font-semibold">{name}</b>
+        <span className="flex gap-1 text-[0.8125rem] text-mut">
+          <span className="min-w-0 truncate">
+            {tag && <b className="font-semibold text-acc">{tag}</b>}
+            {tag && club ? " · " : ""}
+            {club}
+          </span>
+          {born && <span className="shrink-0">{tag || club ? "· " : ""}{born}</span>}
         </span>
-        <span className="min-w-0 flex-1">
-          <b className="block text-[1rem] font-bold leading-snug">{a.studentName}</b>
-          <span className="block text-[0.8125rem] leading-snug text-mut">{x?.place ? sub || "Genel sıra" : x?.note || "Sonuç yok"}</span>
-        </span>
-      </div>
-      {boxes.length > 0 && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {boxes.map(([l, p, n]) => (
-            <span key={l} className="rounded-xl bg-bg px-2.5 py-2">
-              <small className="block text-[0.71875rem] font-semibold text-mut">{l}</small>
-              <b className={`text-[1rem] font-bold tabular-nums ${p <= 3 ? "text-acc" : ""}`}>
-                {p}.{n ? <span className="text-[0.78rem] font-medium text-mut"> / {n}</span> : null}
-              </b>
-            </span>
-          ))}
-        </div>
-      )}
+        {children}
+      </span>
+      {pts && <span className="shrink-0 text-[0.875rem] tabular-nums text-fg2">{pts}</span>}
+    </li>
+  );
+}
+
+function Head({ left, pts }) {
+  return (
+    <li className="flex justify-between gap-3 px-4 pb-2 pt-2.5 text-[0.75rem] font-semibold text-mut">
+      <span className="truncate">{left}</span>
+      {pts && <span className="shrink-0">Net puan</span>}
     </li>
   );
 }
@@ -109,10 +110,13 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
   // Bizimkiler: sınıf birden çoksa seçili sınıftakiler; sonucu olmayanlar en sonda
   const mine = ours.filter((a) => fleets.length < 2 || !res.rows?.[a.id]?.cls || res.rows[a.id].cls === fleet?.cls);
   const sorted = [...mine].sort((a, b) => (res.rows?.[a.id]?.place || 999) - (res.rows?.[b.id]?.place || 999));
-  const bornOf = (id) => {
+  const rowOf = (id) => {
     const f = found[id];
-    return f ? fleets[f.fi]?.rows[f.ri]?.born || "" : "";
+    return f ? fleets[f.fi]?.rows[f.ri] : null;
   };
+  const firstX = sorted.map((a) => res.rows?.[a.id]).find((x) => x?.place);
+  const oursCls = fleet?.cls || firstX?.cls || "";
+  const oursN = fleet?.rows.length || firstX?.n || 0;
   const lastFile = (res.files || []).at(-1);
   const loaded = !!fleet || !!lastFile;
   const chip = (on) => `h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${on ? "bg-acc text-white" : "bg-card ring-1 ring-line"}`;
@@ -144,11 +148,37 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
       </div>
 
       {view === "ours" ? (
-        <ul className="mt-3 space-y-2.5">
-          {!sorted.length && <li className={`${card} px-4 py-6 text-center text-[0.875rem] text-mut`}>Yarışta sporcu seçilmedi.</li>}
-          {sorted.map((a) => (
-            <OurCard key={a.id} a={a} x={res.rows?.[a.id]} born={bornOf(a.id)} />
-          ))}
+        <ul className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
+          {sorted.length > 0 && <Head left={[oursCls, oursN ? `${oursN} kişi` : ""].filter(Boolean).join(" · ") || "Bizimkiler"} pts={sorted.some((a) => ptsOf(rowOf(a.id)?.pts))} />}
+          {!sorted.length && <li className="px-4 py-6 text-center text-[0.875rem] text-mut">Yarışta sporcu seçilmedi.</li>}
+          {sorted.map((a) => {
+            const x = res.rows?.[a.id];
+            const r = rowOf(a.id);
+            const boxes = boxesOf(x);
+            return (
+              <Row
+                key={a.id}
+                pos={x?.place}
+                hi={x?.place > 0 && x.place <= 3}
+                name={a.studentName}
+                tag={x?.place ? (r ? sheetTag(r) : SUB.includes(x?.cat) ? x.cat : "") : ""}
+                club={x?.place ? r?.club || "" : x?.note || "Sonuç yok"}
+                born={x?.place ? r?.born || "" : ""}
+                pts={x?.place ? ptsOf(r?.pts) : ""}
+              >
+                {boxes.length > 0 && (
+                  <span className="mt-1.5 flex flex-wrap gap-1.5">
+                    {boxes.map(([l, p, n]) => (
+                      <span key={l} className="whitespace-nowrap rounded-lg bg-bg px-2 py-0.5 text-[0.75rem] font-semibold text-fg2">
+                        {l} <b className={p <= 3 ? "text-acc" : "text-fg"}>{p}.</b>
+                        {n ? ` / ${n}` : ""}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </Row>
+            );
+          })}
         </ul>
       ) : !sheets ? (
         <Loading label="Sonuçlar yükleniyor" className="py-8" />
@@ -156,18 +186,18 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
         <p className={`${card} mt-3 px-4 py-6 text-center text-[0.875rem] text-mut`}>{res.files?.length ? "Genel sıralama için sonuç PDF'ini yeniden yükle." : "Sonuç PDF'i yüklenmedi."}</p>
       ) : (
         <ul className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
+          <Head left={[fleet.cls, filter !== "all" ? filters.find(([k]) => k === view)?.[1] : "", `${rows.length} kişi`].filter(Boolean).join(" · ")} pts={rows.some((r) => ptsOf(r.pts))} />
           {(more ? rows : rows.slice(0, TOP)).map((r) => (
-            <li key={r.i} className={`flex items-center gap-3 px-4 py-2.5 ${hit.has(r.i) ? "bg-accbg" : ""}`}>
-              <span className="w-7 shrink-0 text-[0.9375rem] font-bold tabular-nums text-fg2">{r.pos}</span>
-              <span className="min-w-0 flex-1">
-                <b className="block truncate text-[0.9375rem] font-semibold">{r.name}</b>
-                <span className="block truncate text-[0.8125rem] text-mut">
-                  {tagOf(r, filter) && <b className="font-semibold text-acc">{tagOf(r, filter)} · </b>}
-                  {[r.club, r.born, filter !== "all" ? `genel ${r.rank}.` : ""].filter(Boolean).join(" · ")}
-                </span>
-              </span>
-              {r.pts !== "" && r.pts != null && <span className="shrink-0 text-[0.875rem] text-fg2 tabular-nums">{String(r.pts).replace(".", ",")} p</span>}
-            </li>
+            <Row
+              key={r.i}
+              pos={r.pos}
+              name={r.name}
+              tag={tagOf(r, filter)}
+              club={[r.club, filter !== "all" ? `Genel ${r.rank}.` : ""].filter(Boolean).join(" · ")}
+              born={r.born}
+              pts={ptsOf(r.pts)}
+              on={hit.has(r.i)}
+            />
           ))}
           {!more && rows.length > TOP && (
             <li>
