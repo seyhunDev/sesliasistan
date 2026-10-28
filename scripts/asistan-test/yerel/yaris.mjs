@@ -549,6 +549,13 @@ group("Parkur analizi")([
     const b = PK.courseShape(CC([], { pin: here, m1: { lat: 39.078, lon: 26.88 } }));
     return [a, b];
   }, ok: ([a, b]) => a.est.komite && a.est.pin && a.komite.lat === 39.07 && a.axis === 330 && b && b.axis === 0 && !b.est.m1 }],
+  ["rota kartı", { desc: "rüzgâr, hat ve orsadan apaza ile kart; işaretsiz şamandıra kesik; ölçüm yoksa kart yok", fn: async () => {
+    const K = await import("@/lib/courseCard");
+    const c = CC([{ kind: "wind", deg: 318, kn: 9 }, { kind: "axis", deg: 325 }, { kind: "line", ref: "pin", deg: 52 }, { kind: "leg", ref: "m1m2", deg: 205 }], { komite: { lat: 39.07, lon: 26.88 } });
+    const k = K.cardOf(c);
+    const svg = K.cardSvg(k);
+    return [k, svg, K.cardOf(CC([])), K.cardSvg(null)];
+  }, ok: ([k, svg, none, empty]) => k.axis === 325 && k.wind === 318 && k.reach === 205 && !k.est.komite && k.est.pin && svg.startsWith("<svg") && svg.includes(">1A<") && svg.includes("Rüzgâr 318° · 9 kn") && svg.includes(">205°<") && svg.includes("stroke-dasharray") && none === null && empty === "" }],
   ["kayıt temizliği", { desc: "bilinmeyen tür ve derecesiz ölçüm atılır, açı 0–359, bozuk konum düşer, kişisel alan yok", fn: () => PK.cleanCourse({ pts: { komite: { lat: 39, lon: 26 }, pin: { lat: "x" }, sen: { lat: 1, lon: 1 } }, obs: [{ kind: "wind", deg: 370, kn: 6, by: "komite", uid: "u1" }, { kind: "x", deg: 1 }, { kind: "axis" }], len: { orsa: 50 } }), ok: (c) => Object.keys(c.pts).join() === "komite" && c.obs.length === 1 && c.obs[0].deg === 10 && c.obs[0].by === "komite" && !("uid" in c.obs[0]) && !c.len.orsa }],
 ]);
 
