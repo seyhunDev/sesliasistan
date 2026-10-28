@@ -5,16 +5,19 @@ import { card } from "@/components/ui/Page";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { findOurs, raceYear, resultLine, withCats } from "@/lib/resultSheet";
-import { sheetFilters, sheetRows } from "@/lib/raceLive";
+import { sheetFilters, sheetRows, sheetTag } from "@/lib/raceLive";
 import { loadSheets } from "@/features/athletes/raceLiveStore";
 import { importResults, importToast } from "@/features/athletes/resultsImport";
 import { saveRaceResults } from "@/features/athletes/races";
 import { Bar } from "@/features/training/Countdown";
 
 // Sonuçlar: Genel (sonuç PDF'inden bütün liste: sıra, ad, kulüp, doğum yılı, net puan; bizimkiler yeşil satır; ilk 10, sonra Tümü)
-// ve Bizimkiler (yarıştaki sporcular, sırasıyla). Sınıf birden çoksa sınıf seçilir; Genel · Junior · Bambino · Kızlar süzgeci.
+// ve Bizimkiler (yarıştaki sporcular, sırasıyla). Sınıf birden çoksa sınıf seçilir; Genel · Junior · Bambino · Kızlar · Junior Kızlar süzgeci;
+// Genel listede satırda "Junior kız", "Junior", "Kız" işareti.
 // PDF yükleme yarış sayfasındakiyle aynı akış (resultsImport.js); yarış sayfasından yüklenenler de burada görünür.
 const TOP = 10;
+// Satırdaki işaret: Genel'de "Junior kız", "Junior", "Kız"; Kızlar'da yalnız kategori; diğer süzgeçlerde yok
+const tagOf = (r, filter) => (filter === "all" ? sheetTag(r) : filter === "girls" && ["Junior", "Bambino"].includes(r.cat) ? r.cat : "");
 
 export function ResultsTab({ orgId, race, ours, club, onRace }) {
   const toast = useToast();
@@ -99,7 +102,10 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
                   <span className="w-7 shrink-0 text-[0.9375rem] font-semibold tabular-nums text-fg2">{r.pos}</span>
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[0.9375rem] font-semibold">{r.name}</b>
-                    <span className="block truncate text-[0.8125rem] text-mut">{[r.club, r.born, filter !== "all" ? `genel ${r.rank}.` : ""].filter(Boolean).join(" · ")}</span>
+                    <span className="block truncate text-[0.8125rem] text-mut">
+                      {tagOf(r, filter) && <b className="font-semibold text-acc">{tagOf(r, filter)} · </b>}
+                      {[r.club, r.born, filter !== "all" ? `genel ${r.rank}.` : ""].filter(Boolean).join(" · ")}
+                    </span>
                   </span>
                   {r.pts !== "" && r.pts != null && <span className="shrink-0 text-[0.875rem] text-fg2 tabular-nums">{String(r.pts).replace(".", ",")} p</span>}
                 </li>

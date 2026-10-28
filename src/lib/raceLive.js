@@ -427,15 +427,27 @@ export function beepAt(left, mode = "") {
 }
 
 // Genel sıralama: sınıfın satırları süzülür (Genel, Junior, Bambino, Kızlar), sıra süzgeç içinde yeniden verilir
+// Süzgeçler: all (Genel), Junior, Bambino, girls (Kızlar), Junior-girls (Junior Kızlar), Bambino-girls
+const SUB_CATS = ["Junior", "Bambino"];
 export function sheetRows(fleet, filter = "all") {
   const rows = (fleet?.rows || []).map((r, i) => ({ ...r, i })); // i: sınıf listesindeki yeri (bizimkiler bununla işaretlenir)
-  const pick = filter === "girls" ? rows.filter((r) => r.sex === "K") : filter === "Junior" || filter === "Bambino" ? rows.filter((r) => r.cat === filter) : rows;
+  const [cat, girls] = filter === "girls" ? ["", true] : filter.endsWith("-girls") ? [filter.slice(0, -6), true] : [SUB_CATS.includes(filter) ? filter : "", false];
+  const pick = filter === "all" ? rows : rows.filter((r) => (!cat || r.cat === cat) && (!girls || r.sex === "K"));
   return pick.map((r, k) => ({ ...r, pos: k + 1 }));
 }
 export function sheetFilters(fleet) {
   const rows = fleet?.rows || [];
-  return [["all", "Genel"], ...["Junior", "Bambino"].filter((c) => rows.some((r) => r.cat === c)).map((c) => [c, c]), ...(rows.some((r) => r.sex === "K") ? [["girls", "Kızlar"]] : [])];
+  const cats = SUB_CATS.filter((c) => rows.some((r) => r.cat === c));
+  const girls = rows.some((r) => r.sex === "K");
+  return [
+    ["all", "Genel"],
+    ...cats.map((c) => [c, c]),
+    ...(girls ? [["girls", "Kızlar"]] : []),
+    ...cats.filter((c) => rows.some((r) => r.cat === c && r.sex === "K")).map((c) => [`${c}-girls`, `${c} Kızlar`]),
+  ];
 }
+// Genel listede satırın kısa işareti: "Junior kız", "Junior", "Kız" (Senior ve erkekte boş)
+export const sheetTag = (r) => [SUB_CATS.includes(r?.cat) ? r.cat : "", r?.sex === "K" ? "kız" : ""].filter(Boolean).join(" ").replace(/^kız$/, "Kız");
 
 // ---- Asistan ----
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");

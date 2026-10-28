@@ -134,6 +134,7 @@ export function findOurs(fleets, athletes, club = "dikili") {
 // place/n: genel sıralama (bütün sporcular, kategori ve cinsiyet ayrımı yok).
 // cp/cn: Junior ya da Bambino ise o kategorinin kendi sırası (Senior'a ayrı sıra yok, genel sıra yeter).
 // gp/gn: kızlar sırası, sınıftaki bütün kızlar arasında (kategoriden bağımsız).
+// jp/jn: kategorinin kızlar sırası (Junior Kızlar): Junior ya da Bambino kızlar kendi aralarında.
 // Bizim sporcunun cinsiyeti sporcu kartından (studentGender) alınır, kızlar sıralamasında o geçerli.
 export function rankOurs(fleets, athletes, club) {
   const found = findOurs(fleets, athletes, club);
@@ -152,6 +153,9 @@ export function rankOurs(fleets, athletes, club) {
     const cp = sub.length ? sub.findIndex((x) => x.i === ri) + 1 : 0;
     const girls = f.rows.map((r, i) => i).filter((i) => sexes[fi][i] === "K");
     const gp = sexes[fi][ri] === "K" ? girls.indexOf(ri) + 1 : 0;
+    // Kategorinin kızları (Junior Kızlar): kızlar arasında aynı kategoridekiler
+    const catGirls = cp && gp ? girls.filter((i) => f.rows[i].cat === me.cat) : [];
+    const jp = catGirls.length ? catGirls.indexOf(ri) + 1 : 0;
     out[id] = {
       cls: f.cls,
       cat: me.cat,
@@ -161,6 +165,8 @@ export function rankOurs(fleets, athletes, club) {
       cn: cp ? sub.length : "",
       gp: gp || "",
       gn: gp ? girls.length : "",
+      jp: jp || "",
+      jn: jp ? catGirls.length : "",
     };
   }
   return out;
@@ -169,13 +175,14 @@ export function rankOurs(fleets, athletes, club) {
 // "Optimist Junior", "ILCA 4"
 export const groupName = (x) => [x?.cls, x?.cat].filter(Boolean).join(" ");
 
-// Kısa sonuç: "Optimist genel 56. / 120 · Junior 4. / 38 · Kızlar 7. / 30"
+// Kısa sonuç: "Optimist genel 56. / 120 · Junior 4. / 38 · Kızlar 7. / 30 · Junior Kızlar 2. / 12"
 export function resultLine(x) {
   if (!x?.place) return "";
   const head = `${x.cls ? `${x.cls} genel ` : ""}${x.place}.${x.n ? ` / ${x.n}` : ""}`;
   const cat = x.cp ? `${x.cat} ${x.cp}.${x.cn ? ` / ${x.cn}` : ""}` : "";
   const girls = x.gp ? `Kızlar ${x.gp}.${x.gn ? ` / ${x.gn}` : ""}` : "";
-  return [head, cat, girls].filter(Boolean).join(" · ");
+  const catGirls = x.jp ? `${x.cat} Kızlar ${x.jp}.${x.jn ? ` / ${x.jn}` : ""}` : "";
+  return [head, cat, girls, catGirls].filter(Boolean).join(" · ");
 }
 
 // Sesli/yazılı cevap için: "Optimist genelde 120 sporcu içinde 56., Junior'da 38 sporcu içinde 4., kızlarda 30 sporcu içinde 7."
@@ -184,7 +191,8 @@ export function resultSpeech(x) {
   const head = `${x.cls ? `${x.cls} genelde ` : ""}${x.n ? `${x.n} sporcu içinde ` : ""}${x.place}.`;
   const cat = x.cp ? `, ${x.cat} sıralamasında ${x.cn ? `${x.cn} sporcu içinde ` : ""}${x.cp}.` : "";
   const girls = x.gp ? `, kızlarda ${x.gn ? `${x.gn} sporcu içinde ` : ""}${x.gp}.` : "";
-  return `${head}${cat}${girls}`;
+  const catGirls = x.jp ? `, ${x.cat} kızlarda ${x.jn ? `${x.jn} sporcu içinde ` : ""}${x.jp}.` : "";
+  return `${head}${cat}${girls}${catGirls}`;
 }
 
 // ---- Asistan: "Ali'nin sonuçları", "Ali Kaya kaçıncı oldu", "Foça yarışında Ali kaçıncı oldu" ----
