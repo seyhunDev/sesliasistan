@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { card } from "@/components/ui/Page";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
-import { findOurs, raceYear, withCats } from "@/lib/resultSheet";
+import { findOurs, raceYear, sheetMatch, withCats } from "@/lib/resultSheet";
 import { sheetFilters, sheetRows, sheetTag } from "@/lib/raceLive";
 import { loadSheets } from "@/features/athletes/raceLiveStore";
 import { importResults, importToast } from "@/features/athletes/resultsImport";
@@ -15,7 +15,7 @@ import { Bar } from "@/features/training/Countdown";
 // çoksa üstte sınıf seçimi). Bizimkiler ve Genel aynı kartta, aynı satır biçiminde: başlıkta "ILCA 4 · 42 kişi" + "Net puan"; satırda solda
 // sıra, ad (doğum yılı parantezde, kesilmez), altında işaret ("Junior kız" / "Junior" / "Kız") · kulüp, sağda net puan.
 // Bizimkiler'de adın altında Junior / Kızlar / Junior Kızlar sıraları küçük etiketler (ilk 3 vurgu renginde); Genel'de bizimkiler açık mavi
-// satır, ilk 10, sonra Tümü. Sonuç yüklüyse en altta küçük "Değiştir"; yoksa büyük "Sonuç PDF'i yükle" (resultsImport.js akışı).
+// satır, ilk 10, sonra Tümü. Üstte arama: ad, yelken no ya da kulüp (yazınca o listede eşleşenlerin hepsi). Sonuç yüklüyse en altta küçük "Değiştir"; yoksa büyük "Sonuç PDF'i yükle" (resultsImport.js akışı).
 const TOP = 10;
 // Satırdaki işaret: Genel'de "Junior kız", "Junior", "Kız"; Kızlar'da yalnız kategori; diğer süzgeçlerde yok
 const tagOf = (r, filter) => (filter === "all" ? sheetTag(r) : filter === "girls" && ["Junior", "Bambino"].includes(r.cat) ? r.cat : "");
@@ -31,8 +31,8 @@ const boxesOf = (x) =>
     x?.jp && SUB.includes(x.cat) && [`${x.cat} Kızlar`, x.jp, x.jn],
   ].filter(Boolean);
 
-// Ortak satır: sıra · ad (doğum yılı, kesilmez) / işaret · kulüp · puan (Seyhun 2026-10-28)
-function Row({ pos, name, tag, club, born, pts, on, hi, children }) {
+// Ortak satır: sıra · ad (doğum yılı, kesilmez) / yelken no · işaret · kulüp · puan (Seyhun 2026-10-28)
+function Row({ pos, name, sail, tag, club, born, pts, on, hi, children }) {
   return (
     <li className={`flex items-center gap-3 px-4 py-2.5 ${on ? "bg-accbg" : ""}`}>
       <span className={`w-7 shrink-0 text-center text-[1.0625rem] font-bold tabular-nums ${on || hi ? "text-acc" : ""}`}>{pos || "–"}</span>
@@ -41,11 +41,14 @@ function Row({ pos, name, tag, club, born, pts, on, hi, children }) {
           <b className="min-w-0 truncate text-[0.9375rem] font-semibold">{name}</b>
           {born && <span className="shrink-0 text-[0.8125rem] tabular-nums text-mut">({born})</span>}
         </span>
-        {(tag || club) && (
-          <span className="block truncate text-[0.8125rem] text-mut">
-            {tag && <b className="font-semibold text-acc">{tag}</b>}
-            {tag && club ? " · " : ""}
-            {club}
+        {(sail || tag || club) && (
+          <span className="flex gap-1 text-[0.8125rem] text-mut">
+            {sail && <span className="shrink-0 tabular-nums">{sail}{tag || club ? " ·" : ""}</span>}
+            <span className="min-w-0 truncate">
+              {tag && <b className="font-semibold text-acc">{tag}</b>}
+              {tag && club ? " · " : ""}
+              {club}
+            </span>
           </span>
         )}
         {children}
@@ -71,6 +74,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
   const [sheets, setSheets] = useState(null);
   const [fi, setFi] = useState(0);
   const [more, setMore] = useState(false);
+  const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let on = true;
@@ -104,18 +108,22 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
   const fleets = withCats(sheets?.length ? sheets[sheets.length - 1].fleets || [] : [], raceYear(race));
   const fleet = fleets[Math.min(fi, fleets.length - 1)];
   const filter = view === "ours" ? "all" : view;
-  const rows = sheetRows(fleet, filter);
+  const all = sheetRows(fleet, filter);
+  const rows = q.trim() ? all.filter((r) => sheetMatch(r, q)) : all;
   const pool = [...ours, ...club.filter((a) => !ours.some((o) => o.id === a.id))];
   const found = findOurs(fleets, pool);
   const hit = new Set(Object.values(found).filter((x) => fleets[x.fi] === fleet).map((x) => x.ri));
   const res = race.results || {};
   // Bizimkiler: sınıf birden çoksa seçili sınıftakiler; sonucu olmayanlar en sonda
   const mine = ours.filter((a) => fleets.length < 2 || !res.rows?.[a.id]?.cls || res.rows[a.id].cls === fleet?.cls);
-  const sorted = [...mine].sort((a, b) => (res.rows?.[a.id]?.place || 999) - (res.rows?.[b.id]?.place || 999));
   const rowOf = (id) => {
     const f = found[id];
     return f ? fleets[f.fi]?.rows[f.ri] : null;
   };
+  const sailOf = (a) => rowOf(a.id)?.sail || a.sailNo || "";
+  const sorted = [...mine]
+    .filter((a) => !q.trim() || sheetMatch({ name: a.studentName, club: rowOf(a.id)?.club, sail: sailOf(a) }, q))
+    .sort((a, b) => (res.rows?.[a.id]?.place || 999) - (res.rows?.[b.id]?.place || 999));
   const firstX = sorted.map((a) => res.rows?.[a.id]).find((x) => x?.place);
   const oursCls = fleet?.cls || firstX?.cls || "";
   const oursN = fleet?.rows.length || firstX?.n || 0;
@@ -148,11 +156,22 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
           </button>
         ))}
       </div>
+      {(fleet || mine.length > 0) && (
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => (setQ(e.target.value), setMore(false))}
+          placeholder="Ara: ad, yelken no, kulüp"
+          aria-label="Sonuçlarda ara"
+          enterKeyHint="search"
+          className="mt-3 h-10 w-full rounded-xl bg-card px-3.5 text-[0.9375rem] ring-1 ring-line placeholder:text-mut focus:outline-none focus:ring-acc"
+        />
+      )}
 
       {view === "ours" ? (
         <ul className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
           {sorted.length > 0 && <Head left={[oursCls, oursN ? `${oursN} kişi` : ""].filter(Boolean).join(" · ") || "Bizimkiler"} pts={sorted.some((a) => ptsOf(rowOf(a.id)?.pts))} />}
-          {!sorted.length && <li className="px-4 py-6 text-center text-[0.875rem] text-mut">Yarışta sporcu seçilmedi.</li>}
+          {!sorted.length && <li className="px-4 py-6 text-center text-[0.875rem] text-mut">{q.trim() && mine.length ? "Bulunamadı." : "Yarışta sporcu seçilmedi."}</li>}
           {sorted.map((a) => {
             const x = res.rows?.[a.id];
             const r = rowOf(a.id);
@@ -163,6 +182,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
                 pos={x?.place}
                 hi={x?.place > 0 && x.place <= 3}
                 name={a.studentName}
+                sail={sailOf(a)}
                 tag={x?.place ? (r ? sheetTag(r) : SUB.includes(x?.cat) ? x.cat : "") : ""}
                 club={x?.place ? r?.club || "" : x?.note || "Sonuç yok"}
                 born={x?.place ? r?.born || "" : ""}
@@ -188,12 +208,14 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
         <p className={`${card} mt-3 px-4 py-6 text-center text-[0.875rem] text-mut`}>{res.files?.length ? "Genel sıralama için sonuç PDF'ini yeniden yükle." : "Sonuç PDF'i yüklenmedi."}</p>
       ) : (
         <ul className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
-          <Head left={[fleet.cls, filter !== "all" ? filters.find(([k]) => k === view)?.[1] : "", `${rows.length} kişi`].filter(Boolean).join(" · ")} pts={rows.some((r) => ptsOf(r.pts))} />
-          {(more ? rows : rows.slice(0, TOP)).map((r) => (
+          <Head left={[fleet.cls, filter !== "all" ? filters.find(([k]) => k === view)?.[1] : "", q.trim() ? `${rows.length} / ${all.length} kişi` : `${rows.length} kişi`].filter(Boolean).join(" · ")} pts={rows.some((r) => ptsOf(r.pts))} />
+          {!rows.length && <li className="px-4 py-6 text-center text-[0.875rem] text-mut">Bulunamadı.</li>}
+          {(more || q.trim() ? rows : rows.slice(0, TOP)).map((r) => (
             <Row
               key={r.i}
               pos={r.pos}
               name={r.name}
+              sail={r.sail}
               tag={tagOf(r, filter)}
               club={[r.club, filter !== "all" ? `Genel ${r.rank}.` : ""].filter(Boolean).join(" · ")}
               born={r.born}
@@ -201,7 +223,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
               on={hit.has(r.i)}
             />
           ))}
-          {!more && rows.length > TOP && (
+          {!more && !q.trim() && rows.length > TOP && (
             <li>
               <button type="button" onClick={() => setMore(true)} data-press className="btn btn-text btn-sm w-full text-acc">
                 Tümünü göster · {rows.length}
