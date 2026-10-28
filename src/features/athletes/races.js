@@ -1,6 +1,7 @@
 "use client";
 
 import { cleanResults } from "@/lib/raceResults";
+import { cleanFollow } from "@/lib/resultSheet";
 import { arrayUnion, collection, doc, getDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
@@ -49,6 +50,8 @@ export const RACE_FIELDS = [
   "results",
   // Evrak'ta seçili belgeler (DOCS anahtarları; yoksa DOC_DEFAULT)
   "docs",
+  // Sonuçlarda ☆ ile takip edilen başka kulüplerin sporcuları ["ilca 4|216382", …] (resultSheet.followKey)
+  "follow",
 ];
 
 const NOTICE_KEYS = ["organizer", "venue", "classes", "schedule", "deadlines", "tasks", "fees", "hotels", "contacts", "notes", "summary", "at", "planned"];
@@ -275,6 +278,8 @@ const clean = (r) =>
               ? cleanDocs(r[k])
             : k === "hotels"
               ? cleanHotels(r[k])
+            : k === "follow"
+              ? cleanFollow(r[k])
             : String(r[k] || "").trim(),
     ]),
   );
@@ -369,6 +374,9 @@ export async function saveRace(orgId, uid, r) {
   await soon(setDoc(ref, { ...data, createdByUid: uid, createdAt: serverTimestamp() }), 2500, "Yarış");
   return ref.id;
 }
+
+// Yalnız takip edilen sporcular (Sonuçlar ☆); diğer alanlara dokunulmaz
+export const saveRaceFollow = (orgId, id, follow) => (stale(), updateDoc(doc(col(orgId), id), { follow: cleanFollow(follow), updatedAt: serverTimestamp() }));
 
 // Yalnız yarışın yeri (multimedya Hava sekmesinden); diğer alanlara dokunulmaz
 export const saveRaceSpot = (orgId, id, spot) => (stale(), updateDoc(doc(col(orgId), id), { spot: cleanSpot(spot), updatedAt: serverTimestamp() }));
