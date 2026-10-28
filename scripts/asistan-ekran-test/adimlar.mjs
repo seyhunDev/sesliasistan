@@ -1129,8 +1129,16 @@ async function rainSplit(h) {
   // İstasyon: şimdiki saatte biten 3 saatlik 4.2 mm rapor
   await page.route("**/api/wind-obs**", (route) => {
     const rows = [...Array(nowH + 1)].map((_, i) => ({ hh: p(i), wind: 6, gust: 10, dir: 200, at: `${p(i)}:00`, rain: i === nowH && nowH >= 1 ? { mm: 4.2, h: 3 } : null }));
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ station: { name: "Dikili", km: 1, near: true }, rows }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ station: { name: "Dikili", km: 1, near: true, lat: 39.08, lon: 26.9 }, rows }) });
   });
+  // Radar (2026-10-28): son 2 saat 10 dakikada bir orta şiddet; harita karoları boş resim
+  await page.route("**/api/rain-radar**", (route) => {
+    const t = Date.now();
+    const frames = [...Array(12)].map((_, i) => ({ at: new Date(t - (11 - i) * 600e3).toISOString(), level: i % 4 === 0 ? 0 : 2 }));
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ src: "RainViewer", frames }) });
+  });
+  const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
+  await page.route("**/server.arcgisonline.com/**", (route) => route.fulfill({ status: 200, contentType: "image/png", body: PNG }));
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
   await check("Hava", "ölçülen / beklenen yağmur", "tahmin bütün gün mavi alan, ölçülen şimdiye kadar beyaz çizgi + \"4 mm geldi\"; tek satır açıklama", async () => {
@@ -1145,6 +1153,20 @@ async function rainSplit(h) {
     const legH = (await page.locator("[aria-label='Grafik açıklaması']").first().boundingBox())?.height ?? 99;
     if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-ayrim.png`, fullPage: true }));
     return [(olc > 0) === wantOlc && (geldi > 0) === wantOlc && legOk && legH < 20, `ölçülen ${olc} · "4 mm geldi" ${geldi} · açıklama ${legOk} (${Math.round(legH)} px)`];
+  });
+  // Radar kutuları ve nokta haritası (Seyhun 2026-10-28 "Evet, böyle yap")
+  await check("Hava", "radar ve nokta", "son 2 saat radar kutuları + \"radar · orta\", açıklamada Radar; Nokta başlığı, istasyon adı ve harita açıklaması", async () => {
+    const S = "svg[aria-label='Saatlik yağış, mm']";
+    await waitFor(() => page.locator(`${S} [data-kind='radar'] rect`).count(), 8000);
+    const bars = await page.locator(`${S} [data-kind='radar'] rect`).count();
+    const tx = await page.locator(`${S} text`, { hasText: "radar · orta" }).count();
+    const leg = (await page.locator("[aria-label='Grafik açıklaması']").first().textContent().catch(() => "")) || "";
+    const head = await page.getByRole("heading", { name: "NOKTA" }).count();
+    const st = await page.getByText("Dikili istasyonu · 1 km").count();
+    const mleg = (await page.locator("[aria-label='Harita açıklaması']").textContent().catch(() => "")) || "";
+    const src = await page.getByText(/Radar: RainViewer/).count();
+    if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-radar.png`, fullPage: true }));
+    return [bars >= 6 && tx === 1 && /Radar/.test(leg) && head === 1 && st === 1 && /Seçilen yer/.test(mleg) && /Ölçüm/.test(mleg) && src === 1, `radar kutu ${bars} · yazı ${tx} · açıklama ${/Radar/.test(leg)} · Nokta ${head} · istasyon ${st} · harita açıklaması "${mleg}" · kaynak ${src}`];
   });
   await check("Sayfa hataları", "hava ölçülen yağmur", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
