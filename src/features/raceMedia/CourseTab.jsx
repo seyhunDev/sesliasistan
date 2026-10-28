@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
-import { Label, card } from "@/components/ui/Page";
+import { Label, Seg, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -13,6 +13,7 @@ import { OSM, OSM_ATTR, loadLeaflet } from "@/lib/leaflet";
 import { addCourseObs, courseRef, saveCourse } from "@/features/athletes/raceLiveStore";
 import { canShare, loadSharedCourse, shareCourse } from "@/features/athletes/sharedRaces";
 import { readCourseText } from "@/services/courseService";
+import { cardOf, cardSvg } from "@/lib/courseCard";
 import { BYS, PICKS, PT_NAME, cleanCourse, cleanObs, courseShape, lineBias, nm, norm, obsTitle, obsValue, windTrend } from "@/lib/raceCourse";
 import { CompassSight, askCompass } from "./CompassSight";
 
@@ -144,10 +145,44 @@ export function CourseTab({ orgId, race, day }) {
   const bias = lineBias(c);
   const trend = windTrend(c);
   const listening = sp.status === "listening";
+  // Kart · Harita (Seyhun 2026-10-28: kendi rota kartımız, "A · Rüzgâr yukarıda"); açılışta Kart, seçim bu telefonda hatırlanır
+  // (sekme yarış yüklendikten sonra telefonda açılır; sunucuda çizilmez)
+  const [view, setView] = useState(() => {
+    try {
+      return localStorage.getItem("sa-parkur-view") === "harita" ? "harita" : "kart";
+    } catch {
+      return "kart";
+    }
+  });
+  const pickView = (v) => {
+    setView(v);
+    try {
+      localStorage.setItem("sa-parkur-view", v);
+    } catch {}
+  };
+  const kart = useMemo(() => {
+    try {
+      return cardSvg(cardOf(c));
+    } catch (e) {
+      console.warn("[parkur] kart çizilemedi", e);
+      return "";
+    }
+  }, [c]);
 
   return (
     <>
-      <CourseMap c={c} shape={shape} here={here} spot={race?.spot} onTap={(p) => setAdd(p)} />
+      <Seg value={view} onChange={pickView} options={[["kart", "Kart"], ["harita", "Harita"]]} className="mt-4" />
+      {view === "kart" ? (
+        <div className={`${card} mt-3 px-1 py-1.5`}>
+          {kart ? (
+            <div aria-label="Rota kartı" role="img" dangerouslySetInnerHTML={{ __html: kart }} />
+          ) : (
+            <p className="px-4 py-10 text-center text-[0.875rem] text-mut">Rüzgârı ya da parkur eksenini söyle, kart çizilsin</p>
+          )}
+        </div>
+      ) : (
+        <CourseMap c={c} shape={shape} here={here} spot={race?.spot} onTap={(p) => setAdd(p)} />
+      )}
       {bias && <LineCard b={bias} />}
       {trend && (
         <>
@@ -427,7 +462,7 @@ function CourseMap({ c, shape, here, spot, onTap }) {
   }, [L, c, shape, here]);
 
   return (
-    <div className="relative isolate mt-4 overflow-hidden rounded-[1.25rem] border border-line bg-[#e9f0f4]">
+    <div className="relative isolate mt-3 overflow-hidden rounded-[1.25rem] border border-line bg-[#e9f0f4]">
       <div ref={box} className="h-[26rem] w-full" />
       {!shape && (
         <p className="pointer-events-none absolute inset-x-4 bottom-3 z-[1000] rounded-xl bg-card/90 px-3 py-2 text-center text-[0.8125rem] font-medium">
