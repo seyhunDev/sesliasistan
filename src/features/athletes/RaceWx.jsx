@@ -84,11 +84,12 @@ export function Wait() {
 // Yarış sayfasının üstünde (lacivert) tek hava yeri (Seyhun 2026-10-26: "hava durumunu birçok yerde gösteriyoruz… günlere göre
 // seçebiliyoruz ya, o çok güzel"): yarış günleri gün gün, güne dokununca grafik o güne geçer. Ayrı Hava sekmesi ve Multimedya'daki
 // Hava kalktı. Tahmin henüz çıkmadıysa (ilk gün 16 günden ileride) hiç görünmez.
-export function RaceWx({ r }) {
+// day: açılışta seçili gün (yarış günü akşamı yarın, RaceDayTop)
+export function RaceWx({ r, day = "" }) {
   const today = todayStr();
   const days = raceDays(r);
   const first = days.find((d) => d >= today) || days[days.length - 1] || "";
-  const [sel, setSel] = useState(first);
+  const [sel, setSel] = useState(days.includes(day) ? day : first);
   const [tick, setTick] = useState(0);
   const late = sel && sel > lastForecastDay(today);
   const d = useDay(r, late ? "" : sel, tick);

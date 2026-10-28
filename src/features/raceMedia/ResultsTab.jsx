@@ -11,6 +11,11 @@ import { loadSheets } from "@/features/athletes/raceLiveStore";
 import { importResults, importToast } from "@/features/athletes/resultsImport";
 import { saveRaceFollow, saveRaceResults } from "@/features/athletes/races";
 import { Bar } from "@/features/training/Countdown";
+import { Sheet } from "@/components/ui/Sheet";
+import { RaceResults } from "@/features/athletes/RaceResults";
+import { openFile } from "@/features/athletes/fileActions";
+import { stampResults } from "@/lib/raceDay";
+import { todayStr } from "@/lib/utils/format";
 
 // Sonuçlar (Seyhun 2026-10-28 onayı, "tablo", örnek yaris-tasarim/sonuclar-tablo.png): süzgeçler Bizimkiler · Takip · Genel · Junior ·
 // Kızlar · Junior Kızlar (sınıf birden çoksa üstte sınıf seçimi), altında arama (ad, yelken no, kulüp). Her liste aynı tablo:
@@ -96,6 +101,16 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
   const [more, setMore] = useState(false);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
+  // Elle yaz (2026-10-28, sonuçların tek yeri burası): PDF yoksa sıra ve tekne sayısı, yüklenen belgeler (aç, sil); yazdıkça kısa süre sonra kaydedilir
+  const [hand, setHand] = useState(false);
+  const wait = useRef(null);
+  const edit = (v, add = []) => {
+    const results = stampResults(race.results, v, todayStr());
+    onRace({ ...race, results, athleteIds: add.length ? [...new Set([...race.athleteIds, ...add])] : race.athleteIds });
+    clearTimeout(wait.current);
+    wait.current = setTimeout(() => saveRaceResults(orgId, race.id, results, add).catch(() => toast("Sonuç kaydedilemedi")), add.length ? 0 : 800);
+  };
+  useEffect(() => () => clearTimeout(wait.current), []);
   useEffect(() => {
     let on = true;
     loadSheets(orgId, race.id).then(
@@ -112,6 +127,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
     setBusy(true);
     try {
       const got = await importResults({ orgId, race, athletes: ours, club, file });
+      got.results = stampResults(race.results, got.results, todayStr());
       await saveRaceResults(orgId, race.id, got.results, got.extra);
       onRace({ ...race, results: got.results, athleteIds: [...new Set([...race.athleteIds, ...got.extra])] });
       setSheets(await loadSheets(orgId, race.id).catch(() => sheets));
@@ -294,17 +310,30 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
               ))}
             </div>
           )}
-          <button type="button" disabled={busy} onClick={() => pick.current?.click()} data-press className="btn btn-secondary mt-3 h-12 w-full">
-            {busy ? "Sonuçlar okunuyor…" : "Sonuç PDF'i ekle"}
-          </button>
+          <div className="mt-3 flex gap-2">
+            <button type="button" onClick={() => setHand(true)} data-press className="btn btn-secondary h-12 flex-1">
+              Elle yaz
+            </button>
+            <button type="button" disabled={busy} onClick={() => pick.current?.click()} data-press className="btn btn-secondary h-12 flex-[2]">
+              {busy ? "Sonuçlar okunuyor…" : "Sonuç PDF'i ekle"}
+            </button>
+          </div>
         </>
       ) : (
         <Bar>
+          {ours.length > 0 && (
+            <button type="button" onClick={() => setHand(true)} data-press className="btn btn-text mb-1 w-full text-acc">
+              PDF yok, elle yaz
+            </button>
+          )}
           <button type="button" disabled={busy} onClick={() => pick.current?.click()} data-press className="btn btn-primary h-14 w-full">
             {busy ? "Sonuçlar okunuyor…" : "Sonuç PDF'i yükle"}
           </button>
         </Bar>
       )}
+      <Sheet open={hand} onClose={() => setHand(false)} title="Sonuçlar">
+        <RaceResults orgId={orgId} race={race} athletes={ours} club={club} upload={false} onChange={(v) => edit(v)} onAddAthletes={(ids) => edit(race.results, ids)} onOpen={(f) => openFile(f)} />
+      </Sheet>
     </>
   );
 }
