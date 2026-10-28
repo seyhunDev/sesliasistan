@@ -1,8 +1,8 @@
-Commit: 80a803e · Ana sayfa: deniz trafiği kartı (küçük harita, dokununca /sea) (#767)
-Zaman: 2026-10-23-1451 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39948026289
+Commit: 4405d3c · Merge pull request #850 from seyhunDev/claude/project-thread-82dkge
+Zaman: 2026-10-28-1023 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40648686587
 
-TAM TEST · 23.10.2026 14:43:34
+TAM TEST · 28.10.2026 10:13:57
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -16,12 +16,20 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Asistan: kayıt, onaylar, görev listesi…
     Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
     Deniz trafiği sayfası…
+    Kameralar sayfası…
+    Hava: yağış şeridi…
+    Hava: ölçülen / beklenen yağmur…
+    Ana sayfa: yarış günü havası…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 19/19 geçti
+    Çevrimdışı: 21/21 geçti
+    Yarış sayfası (sporcu seçili, yarış günü)…
+    Yarış günü (sporcu seçili)…
+    Yarıştan önce (sporcu seçili)…
+    Multimedya…
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1386/1386 geçti · 0 kalan · 457 sn
+SONUÇ: 1404/1406 geçti · 2 kalan · 544 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -126,20 +134,27 @@ SONUÇ: 1386/1386 geçti · 0 kalan · 457 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 66/66
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 68/68
   ✓ Sunucu ucu: girişsiz istek reddedilir: 18/18
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 46/46
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 117/117
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 126/128
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
+  ✓ Ana sayfa: 3/3
   ✓ Enerji (boşta): 2/2
-  ✓ Dokun konuş: tam ekran açılış: 5/5
-  ✓ Halka renkleri: 6/6
-  ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
+  ✓ Bas konuş: tam ekran açılış: 4/4
+  ✗ Halka renkleri: 5/6
+      ✗ “cevaptan sonra”
+          beklenen: yeşil halka ve onay (✓ Tamam), durum boşta
+          olan:     mor · onay 0 · idle
+  ✗ Yerel hızlı cevap (Hazır cevaplar açık): 5/6
+      ✗ “notlarımı oku”
+          beklenen: not okunur, yapay zekaya gitmez
+          olan:      · yz isteği 0
   ✓ Kapanış: 3/3
-  ✓ Basılı tut yaz: 1/1
-  ✓ Sayfa hataları: 8/8
+  ✓ Kısa dokun yaz: 1/1
+  ✓ Sayfa hataları: 12/12
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
@@ -154,17 +169,23 @@ SONUÇ: 1386/1386 geçti · 0 kalan · 457 sn
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
   ✓ Instagram gönderisi: 1/1
   ✓ Tam ekran üstte: 1/1
-  ✓ Deniz trafiği: 4/4
+  ✓ Deniz trafiği: 2/2
+  ✓ Kameralar: 5/5
+  ✓ Hava: 2/2
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 19/19
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 21/21
   ✓ İnternet varken: 2/2
   ✓ Yavaş bağlantı: 3/3
+  ✓ Takılan bağlantı: 2/2
   ✓ İnternet yok: 5/5
   ✓ Bağlantı gelince: 2/2
   ✓ Açıkken kopup gelince: 2/2
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
+
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 5/5
+  ✓ Yarış sayfası: 5/5
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
