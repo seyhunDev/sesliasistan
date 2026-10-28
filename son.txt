@@ -1,8 +1,8 @@
-Commit: 44493d1 · Merge pull request #869 from seyhunDev/claude/project-thread-82dkge
-Zaman: 2026-10-28-1927 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40724456857
+Commit: 85817c9 · Merge pull request #872 from seyhunDev/claude/project-thread-o66w67
+Zaman: 2026-10-28-2000 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40729665596
 
-TAM TEST · 28.10.2026 19:17:43
+TAM TEST · 28.10.2026 19:50:44
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1404/1408 geçti · 4 kalan · 557 sn
+SONUÇ: 1408/1409 geçti · 1 kalan · 563 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -139,9 +139,12 @@ SONUÇ: 1404/1408 geçti · 4 kalan · 557 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 130/130
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 130/131
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 4/4
+  ✗ Ana sayfa: 4/5
+      ✗ “yarış şeridinde Süre”
+          beklenen: sayaç 5:00, 2 dk çipi 2:00 yapar, Başlat'a basınca geri sayım, dizi çubuğu ve Durdur, Durdur'da Devam ve Sıfırla (yanlış başlattım: yarış silinir); Kayıt ve Multimedya var
+          olan:     ilk 05:00 · çip 02:00 · geri sayım · dizi 1 · Durdur 1 · Devam 1 · Sıfırla açık · sebep 1 → Başlat 1 · beklerken düğme 3 · Kayıt 1 · Multimedya 0
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
@@ -178,74 +181,8 @@ SONUÇ: 1404/1408 geçti · 4 kalan · 557 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 1/5
-  ✗ Yarış sayfası: 1/5
-      ✗ “yarış günü, sporcu seçili”
-          beklenen: çökmeden açılır, "Yarış günü" görünür
-          olan:     çöktü: Ege Kupası
-
-Dikili, İzmir · 28–30 Eki
-
-Yarış günü
-1 / 3
-Multimedya
-Hava · Dikili
-18°
-Parçalı bulutlu
-18° / 18°
-Yıldız · şimdi
-9–14 kn
-5
-10
-15
-00
-18°
-9–14
-03
-18°
-      ✗ “Sporcu sekmesinde sporcu”
-          beklenen: çökmeden açılır, "Yarış günü" görünür
-          olan:     çöktü: Ege Kupası
-
-Dikili, İzmir · 28–30 Eki
-
-Yarış günü
-1 / 3
-Multimedya
-Hava · Dikili
-18°
-Parçalı bulutlu
-18° / 18°
-Yıldız · şimdi
-9–14 kn
-5
-10
-15
-00
-18°
-9–14
-03
-18°
-      ✗ “yarıştan önce, sporcu seçili”
-          beklenen: çökmeden açılır, "gün kaldı" görünür
-          olan:     çöktü: Bahar Kupası
-
-Dikili, İzmir · 2–3 Kas
-
-5
-gün kaldı
-Multimedya
-Hazırlık
-4 bölüm eksik · 3 iş
-Hava · Dikili
-18°
-Parçalı bulutlu
-18° / 18°
-Yıldız · en sert 00:00
-9
-      ✗ “bütün sekmeler”
-          beklenen: her sekme çökmeden açılır
-          olan:     çöken: Özet, Sporcu, Evrak, Yolculuk, Bütçe, Veli · 
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 5/5
+  ✓ Yarış sayfası: 5/5
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
