@@ -4,7 +4,7 @@
 // yapay zeka listeyi okur, bizim sporcular bulunur, belge saklanır, bütün liste genel sıralama için yarışın raceLive kaydına yazılır.
 // athletes: yarıştaki sporcular (önce bunlar aranır); club: kulübün etkin sporcuları (yarışta olmayan bulunursa yarışa eklenir).
 // Dönüş { results, ranked, extra, n, miss }: results yarışın yeni results alanı, extra yarışa eklenecek sporcular.
-import { mergeSheet, rankOurs } from "@/lib/resultSheet";
+import { mergeSheet, rankOurs, raceYear, withCats } from "@/lib/resultSheet";
 import { readResults } from "./raceResultsRead";
 import { noticePdf, saveNoticeFile } from "./noticeFile";
 import { saveSheet } from "./raceLiveStore";
@@ -14,7 +14,10 @@ const fileName = (race, n) => `${String(race?.name || "Yarış").replace(/[\\/:*
 export async function importResults({ orgId, race, athletes, club = [], file }) {
   const res = race.results || { fleet: "", rows: {} };
   const pool = [...athletes, ...club.filter((a) => !athletes.some((x) => x.id === a.id))];
-  const { kind, fleets } = await readResults(file, athletes.map((a) => a.studentName));
+  const read = await readResults(file, athletes.map((a) => a.studentName));
+  const { kind } = read;
+  // Yaş kategorileri (ILCA 4 Junior) doğum yılından, yarışın yılına göre
+  const fleets = withCats(read.fleets, raceYear(race));
   const ranked = rankOurs(fleets, pool);
   const pdf = await noticePdf(file, kind);
   const meta = await saveNoticeFile(orgId, pdf, fileName(race, (res.files?.length || 0) + 1));

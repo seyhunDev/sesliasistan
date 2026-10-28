@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { card } from "@/components/ui/Page";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
-import { findOurs, resultLine } from "@/lib/resultSheet";
+import { findOurs, raceYear, resultLine, withCats } from "@/lib/resultSheet";
 import { sheetFilters, sheetRows } from "@/lib/raceLive";
 import { loadSheets } from "@/features/athletes/raceLiveStore";
 import { importResults, importToast } from "@/features/athletes/resultsImport";
@@ -53,7 +53,8 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
     setBusy(false);
   };
 
-  const fleets = sheets?.length ? sheets[sheets.length - 1].fleets || [] : [];
+  // Yaş kategorileri (ILCA 4 Junior) doğum yılından; daha önce yüklenen listelerde de
+  const fleets = withCats(sheets?.length ? sheets[sheets.length - 1].fleets || [] : [], raceYear(race));
   const fleet = fleets[Math.min(fi, fleets.length - 1)];
   const rows = sheetRows(fleet, filter);
   const hit = new Set(Object.values(findOurs(fleets, [...ours, ...club.filter((a) => !ours.some((o) => o.id === a.id))])).filter((x) => fleets[x.fi] === fleet).map((x) => x.ri));

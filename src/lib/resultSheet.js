@@ -2,6 +2,7 @@
 // sıralamayı uygulama hesaplar (saf fonksiyonlar, test edilir):
 // - Genel sıra: sınıftaki bütün sporcular (kategori, cinsiyet ayrımı yok).
 // - Optimist'te kategori: yanında Junior ya da Bambino yazmayan Senior; Junior ve Bambino ayrıca kendi içinde sıralanır.
+// - ILCA 4'te Junior doğum yılından (CAT_RULES, withCats): yarışın yılında 15 yaş ve altı.
 // - Kızlar: sınıftaki bütün kızlar kendi içinde sıralanır. Bizim sporcularda cinsiyet sporcu kartından,
 //   diğerlerinde belgeden; belgede yoksa yapay zekanın addan tahmini.
 // - Bizim sporcular listede adından bulunur (aynı adlı iki satır varsa yelken no, sonra kulüp adı ayırır).
@@ -21,14 +22,43 @@ const digits = (s) => String(s || "").replace(/\D/g, "");
 
 export const isOptimist = (cls) => /opti/.test(plain(cls));
 
-// "J", "JR", "Junior", "U12" → Junior; "B", "Bambino" → Bambino; Optimist'te boş → Senior; diğer sınıflarda kategori yok
+// Sınıfa göre yaş kategorileri (doğum yılından): yarışın yılında en çok `age` yaşında olan o kategoriye girer.
+// ILCA 4: 15 yaş ve altı Junior (2026 yarışlarında 2011 ve sonrası doğumlular; her yıl kendiliğinden bir yıl kayar).
+// Yeni sınıfın kuralı (Optimist Junior/Bambino gibi) buraya eklenir; kuralı olan sınıfta belgedeki işaret yalnız doğum yılı yoksa kullanılır.
+export const CAT_RULES = [{ cls: /^ILCA 4$/, cats: [{ cat: "Junior", age: 15 }] }];
+const ruleOf = (cls) => CAT_RULES.find((r) => r.cls.test(String(cls || "")));
+// "2011", "12.03.2011", "2011-03-12" → 2011
+export const bornYear = (s) => {
+  const m = String(s || "").match(/\b(19\d\d|20\d\d)\b/);
+  return m ? +m[1] : 0;
+};
+
+// "J", "JR", "Junior", "U12" → Junior; "B", "Bambino" → Bambino; Optimist'te boş → Senior;
+// kuralı olan sınıfta (CAT_RULES) belgedeki işaret, boşsa kategori yok; diğer sınıflarda kategori yok
 export function catOf(cls, raw) {
   const c = plain(raw);
-  if (!isOptimist(cls)) return "";
+  const opti = isOptimist(cls);
+  if (!opti && !ruleOf(cls)) return "";
   if (/^b$|bamb/.test(c)) return "Bambino";
   if (/^j$|^jr$|junior|^jun|genc/.test(c)) return "Junior";
-  return "Senior";
+  return opti ? "Senior" : "";
 }
+
+// Kuralı olan sınıflarda kategoriyi doğum yılından yazar (year: yarışın yılı). Doğum yılı okunamayan satırda belgedeki işaret kalır.
+export function withCats(fleets, year = new Date().getFullYear()) {
+  return (fleets || []).map((f) => {
+    const rule = ruleOf(f.cls);
+    if (!rule) return f;
+    const rows = f.rows.map((r) => {
+      const b = bornYear(r.born);
+      if (!b) return r;
+      return { ...r, cat: rule.cats.find((c) => year - b <= c.age)?.cat || "" };
+    });
+    return { ...f, rows };
+  });
+}
+// Yarışın yılı (başlangıç tarihinden; yoksa bu yıl)
+export const raceYear = (race) => +String(race?.startDate || "").slice(0, 4) || new Date().getFullYear();
 
 // "K", "F", "W", "Kız", "Kadın", "Female", "Girl" → K; "E", "M", "Erkek", "Male", "Boy" → E
 export function sexOf(raw) {
