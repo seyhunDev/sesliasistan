@@ -1,8 +1,8 @@
-Commit: f86bca9 · Grafikte radar yağışı, hava sayfasında nokta haritası (#859)
-Zaman: 2026-10-28-1421 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40677931186
+Commit: 598a10f · Hava sayfasında bölge haritası: rüzgâr ve yağış, zaman kaydırıcı (#860)
+Zaman: 2026-10-28-1453 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40682166795
 
-TAM TEST · 28.10.2026 14:11:17
+TAM TEST · 28.10.2026 14:43:59
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1407/1407 geçti · 0 kalan · 574 sn
+SONUÇ: 1407/1407 geçti · 0 kalan · 541 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
