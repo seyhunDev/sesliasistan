@@ -1,8 +1,8 @@
-Commit: ab7dbe1 · Merge pull request #867 from seyhunDev/claude/project-thread-nph9kv
-Zaman: 2026-10-28-1855 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40719099999
+Commit: c96f988 · Ana sayfa: Özet yerine İngilizce, Görevler, Medya kartları (#868)
+Zaman: 2026-10-28-1913 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40722127203
 
-TAM TEST · 28.10.2026 18:45:28
+TAM TEST · 28.10.2026 19:03:38
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1403/1407 geçti · 4 kalan · 579 sn
+SONUÇ: 1404/1408 geçti · 4 kalan · 561 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -139,9 +139,9 @@ SONUÇ: 1403/1407 geçti · 4 kalan · 579 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 129/129
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 130/130
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 3/3
+  ✓ Ana sayfa: 4/4
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
