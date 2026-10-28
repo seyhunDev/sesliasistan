@@ -1,8 +1,8 @@
-Commit: c96f988 · Ana sayfa: Özet yerine İngilizce, Görevler, Medya kartları (#868)
-Zaman: 2026-10-28-1913 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40722127203
+Commit: 44493d1 · Merge pull request #869 from seyhunDev/claude/project-thread-82dkge
+Zaman: 2026-10-28-1927 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40724456857
 
-TAM TEST · 28.10.2026 19:03:38
+TAM TEST · 28.10.2026 19:17:43
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1404/1408 geçti · 4 kalan · 561 sn
+SONUÇ: 1404/1408 geçti · 4 kalan · 557 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
