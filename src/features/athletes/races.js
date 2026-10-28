@@ -52,6 +52,8 @@ export const RACE_FIELDS = [
   "docs",
   // Sonuçlarda ☆ ile takip edilen başka kulüplerin sporcuları ["ilca 4|216382", …] (resultSheet.followKey)
   "follow",
+  // Ortak yarış bağı (lib/sharedRace.js): sharedRaces/{shared}; sharedAt ortaktan son alınan sürüm
+  "shared", "sharedAt",
 ];
 
 const NOTICE_KEYS = ["organizer", "venue", "classes", "schedule", "deadlines", "tasks", "fees", "hotels", "contacts", "notes", "summary", "at", "planned"];
@@ -295,7 +297,7 @@ export function freshRace(last = {}, today = "") {
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [],
     departDate: "", departTime: "", departFrom: last.departFrom || "", meetPoint: "", returnDate: "", returnTime: "", note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", hotels: null, entryClass: "", docs: null, notice: null, noticeFile: null, files: [], todos: [], budget: null, around: null, weather: null, spot: null, results: null,
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", hotels: null, entryClass: "", docs: null, notice: null, noticeFile: null, files: [], todos: [], budget: null, around: null, weather: null, spot: null, results: null, shared: "", sharedAt: "",
   };
 }
 
@@ -351,6 +353,13 @@ export async function saveRaceResults(orgId, id, results, addIds = []) {
 let last = null; // { orgId, at, list }
 export const racesNow = (orgId, maxAge = Infinity) => (last?.orgId === orgId && Date.now() - last.at < maxAge ? last.list : null);
 const stale = () => last && (last.at = 0);
+
+// Ortak yarış bağı (sharedRaces.js publishRace): yalnız bağ alanları yazılır, bellekteki liste de güncellenir
+export async function linkRace(orgId, id, link) {
+  const r = last?.orgId === orgId && last.list.find((x) => x.id === id);
+  if (r) Object.assign(r, { shared: link.shared, sharedAt: link.sharedAt || "" });
+  await updateDoc(doc(col(orgId), id), { shared: link.shared, sharedAt: link.sharedAt || "" });
+}
 
 export async function loadRaces(orgId) {
   const snap = await getDocs(col(orgId));

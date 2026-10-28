@@ -34,6 +34,7 @@ import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceF
 import { RACE_FILE_MAX, dropRaceStored, loadRaceFile, moveLocalExtras, uploadRaceFile } from "./raceStore";
 import { cleanDone, cleanNotice, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
 import { initials, leftText, placeText } from "./RaceList";
+import { fromShared } from "@/lib/sharedRace";
 
 const withHotels = (p, n) => (p.notice ? { ...p, notice: cleanNotice({ ...p.notice, hotels: n.hotels }), hotels: mergeHotels(p.hotels, n.hotels) } : p);
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
@@ -151,7 +152,7 @@ function Check({ on, tone = "ok" }) {
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
 // coach: hesabın antrenör bilgileri (users/{uid}.coach), onCoach(bilgi) kaydeder
-export function RaceEditor({ head = null, alert = null, orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
+export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
   const toast = useToast();
   const [r, setR] = useState(start);
   const [noticeInfo, setNoticeInfo] = useState(false);
@@ -920,6 +921,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
         <div className={light}>
         {!form ? (
           <>
+            {sharedList.length > 0 && !reading && <SharedPick list={sharedList} onPick={(s) => (setR((p) => ({ ...p, ...fromShared(s) })), setBegun(true), setTab("sum"))} />}
             <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">Yarış talimatın var mı?</h2>
             <p className="mt-1.5 px-1 text-[0.9375rem] text-mut">Varsa yükle, bilgileri ben doldurayım.</p>
             <div className="mt-4">
@@ -1896,6 +1898,35 @@ function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark }) {
           </ul>
           <p className="mt-2 px-1 text-[0.75rem] text-mut">Yarış bitti, bunlar bilgi için duruyor. Yaptıysan daireye dokun.</p>
         </>
+      )}
+    </>
+  );
+}
+
+// Yeni yarış: başka kulübün (ya da ana hesabın) eklediği yarışlardan seç; talimat, tarih ve yer hazır gelir (lib/sharedRace.js)
+function SharedPick({ list, onPick }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? list : list.slice(0, 5);
+  return (
+    <>
+      <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">Ortak yarışlardan seç</h2>
+      <ul className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
+        {shown.map((s) => (
+          <li key={s.id}>
+            <button type="button" onClick={() => onPick(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
+              <span className="min-w-0 flex-1">
+                <b className="block truncate text-[0.9375rem] font-semibold">{s.name}</b>
+                <span className="block truncate text-[0.8125rem] text-mut">{[placeText(s), rangeText(s.startDate, s.endDate), s.noticeFile && "Talimat var"].filter(Boolean).join(" · ")}</span>
+              </span>
+              <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+            </button>
+          </li>
+        ))}
+      </ul>
+      {list.length > 5 && !all && (
+        <button type="button" onClick={() => setAll(true)} data-press className="btn btn-text btn-sm mt-1 w-full text-acc">
+          Tümü ({list.length})
+        </button>
       )}
     </>
   );

@@ -1,13 +1,15 @@
 "use client";
 
 // Sonuç belgesini yükleme (yarış sayfası › Sporcu › Sonuçlar ve multimedya sayfası › Sonuçlar aynı akışı kullanır):
-// yapay zeka listeyi okur, bizim sporcular bulunur, belge saklanır, bütün liste genel sıralama için yarışın raceLive kaydına yazılır.
+// yapay zeka listeyi okur, bizim sporcular bulunur, belge saklanır, bütün liste genel sıralama için yarışın raceLive kaydına
+// ve yarış ortaksa sharedRaces/{id}/sheets'e yazılır (başka kulüpler sporcularını oradan bulur, sharedRaces.js pullSheets).
 // athletes: yarıştaki sporcular (önce bunlar aranır); club: kulübün etkin sporcuları (yarışta olmayan bulunursa yarışa eklenir).
 // Dönüş { results, ranked, extra, n, miss }: results yarışın yeni results alanı, extra yarışa eklenecek sporcular.
 import { mergeSheet, rankOurs, raceYear, withCats } from "@/lib/resultSheet";
 import { readResults } from "./raceResultsRead";
 import { noticePdf, saveNoticeFile } from "./noticeFile";
 import { saveSheet } from "./raceLiveStore";
+import { saveSharedSheet } from "./sharedRaces";
 
 const fileName = (race, n) => `${String(race?.name || "Yarış").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 60)} sonuçları${n > 1 ? ` ${n}` : ""}.pdf`;
 
@@ -22,6 +24,8 @@ export async function importResults({ orgId, race, athletes, club = [], file }) 
   const pdf = await noticePdf(file, kind);
   const meta = await saveNoticeFile(orgId, pdf, fileName(race, (res.files?.length || 0) + 1));
   if (race.id) await saveSheet(orgId, race.id, meta.id, fleets).catch((e) => console.warn("[sonuç] genel liste kaydedilemedi", e));
+  // Ortak yarışa da (yalnız ekleyen kulüp ve ana hesap yazabilir; diğerlerinde kural reddeder)
+  if (race.shared) saveSharedSheet(race.shared, meta, fleets).catch(() => {});
   const extra = Object.keys(ranked).filter((id) => !(race.athleteIds || []).includes(id));
   return {
     results: mergeSheet(res, ranked, meta),
