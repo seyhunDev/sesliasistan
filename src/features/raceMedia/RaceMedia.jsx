@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -15,7 +15,7 @@ import { mmss } from "@/lib/raceScore";
 import { mineHere, ownHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
 import { VoidSheet, useRaceFlow } from "./useRaceFlow";
-import { TimerTab } from "./TimerTab";
+import { TimerHead, TimerTab } from "./TimerTab";
 import { ResultsTab } from "./ResultsTab";
 import { MediaSettingsButton, MediaTab } from "./MediaTab";
 import { RecPick } from "./RecPick";
@@ -152,41 +152,46 @@ export function RaceMedia({ orgId, id }) {
       back={`/athletes/races/${id}`}
       action={
         <>
-          {tab === "media" && <MediaSettingsButton />}
-          <button type="button" onClick={() => setSum(true)} data-press className="btn btn-secondary btn-sm">
+          {tab === "media" && <MediaSettingsButton dark />}
+          <button type="button" onClick={() => setSum(true)} data-press className="raised h-10 shrink-0 rounded-full border px-3.5 text-[0.875rem] font-semibold">
             Özet
           </button>
         </>
       }
+      top={
+        <>
+          {/* Günler küçük kare: üstte gün, altta "Ant" ya da "1. gün" (Seyhun 2026-10-19: "daha az yazıyla") */}
+          <div ref={strip} className="-mx-5 mt-4 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none]">
+            {days.map((d) => (
+              <button
+                key={d}
+                data-day={d}
+                type="button"
+                onClick={() => setDay(d)}
+                aria-pressed={d === cur}
+                aria-label={`${names[d]} · ${dayLabel(d)}`}
+                className={`raised flex h-[3.25rem] min-w-[3rem] shrink-0 flex-col items-center justify-center rounded-[0.875rem] border px-1.5 ${d === cur ? "ck-sel" : ""}`}
+              >
+                <b className="text-[1.0625rem] font-semibold leading-none tabular-nums">{+d.slice(8)}</b>
+                <small className="mt-1 text-[0.6875rem] leading-none text-white/75">{names[d].replace("Antrenman ", "Ant ")}</small>
+              </button>
+            ))}
+            <button type="button" onClick={() => setAddDay(true)} aria-label="Gün ekle" className="grid h-[3.25rem] w-12 shrink-0 place-items-center rounded-[0.875rem] border border-dashed border-white/30 text-[1.375rem] text-[#67e8f9] active:scale-95">
+              +
+            </button>
+          </div>
+          {tab === "sure" && <TimerHead race={race} live={live} rf={rf} />}
+        </>
+      }
     >
       {timer.running && tab !== "sure" && (
-        <div className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-2">
+        <div className="sticky top-[calc(0.5rem+env(safe-area-inset-top))] z-[5] mt-4">
           <button type="button" onClick={() => setTab("sure")} className={`flex h-11 w-full items-center justify-between rounded-xl px-4 text-white active:translate-y-px ${!timer.up && timer.rem <= 10 ? "bg-rec" : "bg-deep"}`}>
             <span className="text-[0.875rem]">{timer.up ? "Startan beri" : "Start sayacı"}</span>
             <b className="text-[1.25rem] font-semibold tabular-nums">{mmss(timer.up ? upSec(timer.t.end, timer.now) : Math.max(0, timer.rem))}</b>
           </button>
         </div>
       )}
-      {/* Günler küçük kare: üstte gün, altta "Ant" ya da "1. gün" (Seyhun 2026-10-19: "daha az yazıyla") */}
-      <div ref={strip} className="-mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none]">
-        {days.map((d) => (
-          <button
-            key={d}
-            data-day={d}
-            type="button"
-            onClick={() => setDay(d)}
-            aria-pressed={d === cur}
-            aria-label={`${names[d]} · ${dayLabel(d)}`}
-            className={`flex h-[3.25rem] min-w-[3rem] shrink-0 flex-col items-center justify-center rounded-[0.875rem] px-1.5 active:scale-95 ${d === cur ? "bg-deep text-white" : "bg-card ring-1 ring-line"}`}
-          >
-            <b className="text-[1.0625rem] font-semibold leading-none tabular-nums">{+d.slice(8)}</b>
-            <small className={`mt-1 text-[0.6875rem] leading-none ${d === cur ? "text-white/75" : "text-mut"}`}>{names[d].replace("Antrenman ", "Ant ")}</small>
-          </button>
-        ))}
-        <button type="button" onClick={() => setAddDay(true)} aria-label="Gün ekle" className="grid h-[3.25rem] w-12 shrink-0 place-items-center rounded-[0.875rem] border border-dashed border-line text-[1.375rem] text-acc active:scale-95">
-          +
-        </button>
-      </div>
       {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onReset={() => setReset(true)} />}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
       {tab === "media" && (
@@ -281,13 +286,23 @@ export function TabDock({ value, onChange, onRec, extra = null }) {
   );
 }
 
-function Shell({ title, sub, back = "/athletes/races", action, children }) {
+// Lacivert üst (yeni tasarım, Seyhun 2026-10-28 "1" önerisi): geri, yarış adı, Çekim · Özet, gün çipleri ve Süre'de büyük sayaç lacivertte;
+// altındaki açık alan yuvarlak köşeyle başlar (antrenman günü sayfası gibi)
+function Shell({ title, sub, back = "/athletes/races", action, top = null, children }) {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(env(safe-area-inset-bottom)+11rem)]">
-      <PageHeader title={title} sub={sub} back={back}>
-        {action}
-      </PageHeader>
-      {children}
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={title}>
+        <header className="flex items-center gap-2.5">
+          <BackButton href={back} />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{title}</h1>
+            {sub && <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>}
+          </div>
+          {action}
+        </header>
+        {top}
+      </section>
+      <div className="relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-1">{children}</div>
     </main>
   );
 }
