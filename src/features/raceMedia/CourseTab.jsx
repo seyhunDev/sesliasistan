@@ -2,26 +2,24 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
-import { Label, Seg, card } from "@/components/ui/Page";
+import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Bar } from "@/features/training/Countdown";
 import { useSpeech } from "@/hooks/useSpeech";
-import { OSM, OSM_ATTR, loadLeaflet } from "@/lib/leaflet";
 import { addCourseObs, courseRef, saveCourse } from "@/features/athletes/raceLiveStore";
 import { canShare, loadSharedCourse, shareCourse } from "@/features/athletes/sharedRaces";
 import { readCourseText } from "@/services/courseService";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { BYS, PICKS, PT_NAME, cleanCourse, cleanObs, courseShape, lineBias, nm, norm, obsTitle, obsValue, windTrend } from "@/lib/raceCourse";
+import { BYS, PICKS, PT_NAME, cleanCourse, cleanObs, lineBias, nm, norm, obsTitle, obsValue, windTrend } from "@/lib/raceCourse";
 import { CompassSight, askCompass } from "./CompassSight";
 
-// Parkur sekmesi (Seyhun 2026-10-28, onaylı örnekler yaris-tasarim/parkur/parkur-3-harita.png, parkur-3-pusula.png):
-// arkada soluk harita, önde parkur (komite ve pin "burada" ile işaretlenir, işaretlenmeyen şamandıralar kesik çizgiyle tahmini),
-// rüzgâr okları ölçüldüğü yerde. Ekleme: haritaya dokun (o noktada ölçüm), sesle ya da yazarak ("orsada rüzgâr 330, 5 knot";
-// önce telefondaki kural, anlamazsa yapay zekâ; 3 sn içinde İptal edilmezse eklenir), Pusula (telefonun pusulası).
-// Altta start hattı avantajı (hat rüzgâra dik mi), rüzgâr dönüşü ve hız, ölçüm listesi (dokununca sil).
+// Parkur sekmesi (Seyhun 2026-10-28): üstte rota kartı (lib/courseCard.js, rüzgâr yukarıda; harita kaldırıldı).
+// Komite ve pin "burada" ile işaretlenir, işaretlenmeyen şamandıralar kartta kesik çizgiyle tahmini. Ekleme: Elle ekle,
+// sesle ya da yazarak ("orsada rüzgâr 330, 5 knot"; önce telefondaki kural, anlamazsa yapay zekâ; 3 sn içinde İptal edilmezse
+// eklenir), Pusula (telefonun pusulası). Altta start hattı avantajı, rüzgâr dönüşü ve hız, ölçüm listesi (dokununca sil).
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 const BY = Object.fromEntries(BYS);
 
@@ -133,33 +131,10 @@ export function CourseTab({ orgId, race, day }) {
     return () => clearTimeout(id);
   }, [got]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Hesaptaki bir eksik sayfayı çökertmesin (Seyhun 2026-10-28 "e.lat"): şekil çizilmez, ölçümler görünür
-  const shape = useMemo(() => {
-    try {
-      return courseShape(c, here);
-    } catch (e) {
-      console.warn("[parkur] şekil çizilemedi", e);
-      return null;
-    }
-  }, [c, here]);
   const bias = lineBias(c);
   const trend = windTrend(c);
   const listening = sp.status === "listening";
-  // Kart · Harita (Seyhun 2026-10-28: kendi rota kartımız, "A · Rüzgâr yukarıda"); açılışta Kart, seçim bu telefonda hatırlanır
-  // (sekme yarış yüklendikten sonra telefonda açılır; sunucuda çizilmez)
-  const [view, setView] = useState(() => {
-    try {
-      return localStorage.getItem("sa-parkur-view") === "harita" ? "harita" : "kart";
-    } catch {
-      return "kart";
-    }
-  });
-  const pickView = (v) => {
-    setView(v);
-    try {
-      localStorage.setItem("sa-parkur-view", v);
-    } catch {}
-  };
+  // Rota kartı (Seyhun 2026-10-28 "A · Rüzgâr yukarıda"; harita kaldırıldı: "Kart gayet iyi, kart üstüne çalışalım")
   const kart = useMemo(() => {
     try {
       return cardSvg(cardOf(c));
@@ -171,18 +146,13 @@ export function CourseTab({ orgId, race, day }) {
 
   return (
     <>
-      <Seg value={view} onChange={pickView} options={[["kart", "Kart"], ["harita", "Harita"]]} className="mt-4" />
-      {view === "kart" ? (
-        <div className={`${card} mt-3 px-1 py-1.5`}>
-          {kart ? (
-            <div aria-label="Rota kartı" role="img" dangerouslySetInnerHTML={{ __html: kart }} />
-          ) : (
-            <p className="px-4 py-10 text-center text-[0.875rem] text-mut">Rüzgârı ya da parkur eksenini söyle, kart çizilsin</p>
-          )}
-        </div>
-      ) : (
-        <CourseMap c={c} shape={shape} here={here} spot={race?.spot} onTap={(p) => setAdd(p)} />
-      )}
+      <div className={`${card} mt-4 px-1 py-1.5`}>
+        {kart ? (
+          <div aria-label="Rota kartı" role="img" dangerouslySetInnerHTML={{ __html: kart }} />
+        ) : (
+          <p className="px-4 py-10 text-center text-[0.875rem] text-mut">Rüzgârı ya da parkur eksenini söyle, kart çizilsin</p>
+        )}
+      </div>
       {bias && <LineCard b={bias} />}
       {trend && (
         <>
@@ -242,6 +212,7 @@ export function CourseTab({ orgId, race, day }) {
           </div>
         )}
         <div className="mb-2 flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
+          <button type="button" onClick={() => setAdd({})} data-press className="raised h-9 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-semibold">Elle ekle</button>
           <button type="button" onClick={() => markHere("komite")} data-press className="raised h-9 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-semibold">Komite burada</button>
           <button type="button" onClick={() => markHere("pin")} data-press className="raised h-9 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-semibold">Pin burada</button>
           <button type="button" onClick={() => setMarkPick(true)} data-press className="raised h-9 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-semibold">Şamandıra burada</button>
@@ -373,102 +344,5 @@ function LineCard({ b }) {
         </svg>
       </div>
     </>
-  );
-}
-
-// Harita: OpenStreetMap soluk, üstünde parkur. Dokununca o noktaya ölçüm eklenir.
-function CourseMap({ c, shape, here, spot, onTap }) {
-  const box = useRef(null);
-  const map = useRef(null);
-  const layer = useRef(null);
-  const fitKey = useRef("");
-  const tap = useRef(onTap);
-  useEffect(() => {
-    tap.current = onTap;
-  }, [onTap]);
-  const [L, setL] = useState(null);
-
-  useEffect(() => {
-    let on = true;
-    loadLeaflet().then((x) => on && setL(x), () => {});
-    return () => {
-      on = false;
-      map.current?.remove();
-      map.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!L || !box.current || map.current) return;
-    const start = here || spot || { lat: 39.0717, lon: 26.8886 };
-    const m = L.map(box.current, { zoomControl: false, attributionControl: true }).setView([start.lat, start.lon], 15);
-    L.tileLayer(OSM, { attribution: OSM_ATTR, maxZoom: 19, opacity: 0.35 }).addTo(m);
-    m.on("click", (e) => tap.current?.({ lat: e.latlng.lat, lon: e.latlng.lng }));
-    layer.current = L.layerGroup().addTo(m);
-    map.current = m;
-  }, [L, here, spot]);
-
-  useEffect(() => {
-    const m = map.current;
-    if (!L || !m) return;
-    const g = layer.current;
-    g.clearLayers();
-    const ll = (p) => [p.lat, p.lon];
-    const icon = (html, size = [26, 26]) => L.divIcon({ html, className: "", iconSize: size, iconAnchor: [size[0] / 2, size[1] / 2] });
-    const mark = (p, t, est) =>
-      L.marker(ll(p), { icon: icon(`<span style="display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#fcfdfe;border:2px ${est ? "dashed" : "solid"} #26282c;font:700 ${t.length > 1 ? 10 : 12}px system-ui;color:#26282c;opacity:${est ? 0.85 : 1}">${t}</span>`), interactive: false }).addTo(g);
-    if (shape) {
-      const s = shape;
-      L.polyline([ll(s.mid), ll(s.m1), ll(s.m2), ll(s.m3), ll(s.fin)], { color: "#26282c", weight: 2, opacity: 0.7, interactive: false }).addTo(g);
-      L.polyline([ll(s.m1), ll(s.m4)], { color: "#26282c", weight: 2, opacity: 0.5, dashArray: "5 5", interactive: false }).addTo(g);
-      L.polyline([ll(s.pin), ll(s.komite)], { color: "#f59e0b", weight: 4, dashArray: "8 6", interactive: false }).addTo(g);
-      mark(s.m1, "1", s.est.m1);
-      mark(s.m2, "2", s.est.m2);
-      mark(s.m3, "3", s.est.m3);
-      mark(s.m4, "4", s.est.m4);
-      L.marker(ll(s.komite), { icon: icon(`<span style="display:block;width:16px;height:16px;border-radius:3px;background:#26282c;opacity:${s.est.komite ? 0.5 : 1}"></span>`, [16, 16]), interactive: false }).addTo(g);
-      L.marker(ll(s.pin), { icon: icon(`<span style="display:block;width:14px;height:14px;border-radius:50%;background:#f59e0b;border:2px solid #fff;opacity:${s.est.pin ? 0.6 : 1}"></span>`, [14, 14]), interactive: false }).addTo(g);
-      if (s.est.m1) L.marker(ll(s.m1), { icon: L.divIcon({ html: `<span style="position:absolute;right:18px;top:-8px;white-space:nowrap;font:500 11px system-ui;color:#74777d">tahmini · ${nm(s.orsa)}</span>`, className: "", iconSize: [0, 0] }), interactive: false }).addTo(g);
-      // Rüzgâr okları: ölçüldüğü yer, yoksa şamandıra / komite / hattın ortası; aynı yerde son ölçüm
-      const where = (o) => (o.lat != null ? o : o.spot && s[o.spot] ? s[o.spot] : o.by === "komite" ? s.komite : s.mid);
-      const seen = new Set();
-      for (const o of [...c.obs].reverse().filter((x) => x.kind === "wind")) {
-        const p = where(o);
-        const k = `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`;
-        if (seen.has(k) || seen.size >= 8) continue;
-        seen.add(k);
-        L.marker(ll(p), {
-          icon: L.divIcon({
-            className: "",
-            iconSize: [40, 40],
-            iconAnchor: [20, 20],
-            html: `<span style="position:relative;display:block;width:40px;height:40px"><svg width="40" height="40" viewBox="-20 -20 40 40" style="transform:rotate(${o.deg}deg)"><line x1="0" y1="-16" x2="0" y2="9" stroke="#0b7f99" stroke-width="3.5" stroke-linecap="round"/><path d="M-6 6 L0 16 L6 6z" fill="#0b7f99"/></svg><span style="position:absolute;left:34px;top:4px;white-space:nowrap;border-radius:11px;background:#0b7f99;color:#fff;font:700 12px system-ui;padding:3px 8px">${obsValue(o)}</span></span>`,
-          }),
-          interactive: false,
-        }).addTo(g);
-      }
-    }
-    if (here) {
-      L.circle(ll(here), { radius: Math.min(60, here.acc || 10), color: "#3b82f6", weight: 0, fillOpacity: 0.15, interactive: false }).addTo(g);
-      L.marker(ll(here), { icon: icon('<span style="display:block;width:14px;height:14px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.1)"></span>', [14, 14]), interactive: false }).addTo(g);
-    }
-    // Parkur değişince (yeni nokta, eksen) haritaya sığdır; konum her değiştiğinde değil
-    const key = shape ? [shape.komite, shape.pin, shape.m1, shape.m2, shape.m3].map((p) => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`).join("|") : here ? "here" : "";
-    if (key && key !== fitKey.current) {
-      fitKey.current = key;
-      if (shape) m.fitBounds(L.latLngBounds([shape.komite, shape.pin, shape.m1, shape.m2, shape.m3, shape.fin].map(ll)), { padding: [36, 36] });
-      else m.setView(ll(here), 15);
-    }
-  }, [L, c, shape, here]);
-
-  return (
-    <div className="relative isolate mt-3 overflow-hidden rounded-[1.25rem] border border-line bg-[#e9f0f4]">
-      <div ref={box} className="h-[26rem] w-full" />
-      {!shape && (
-        <p className="pointer-events-none absolute inset-x-4 bottom-3 z-[1000] rounded-xl bg-card/90 px-3 py-2 text-center text-[0.8125rem] font-medium">
-          Komitenin yerini işaretle ya da parkur eksenini söyle
-        </p>
-      )}
-    </div>
   );
 }

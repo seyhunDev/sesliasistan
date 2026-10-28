@@ -10,7 +10,12 @@ const add = (p, b, m) => { const [x, y] = dir(b, m); return [p[0] + x, p[1] + y]
 function geom(c) {
   const A = c.axis, L = c.orsa;
   const mid = [0, 0];
-  const lineDeg = c.line ?? nrm(A + 90); // pin → komite
+  // Start hattı her zaman rüzgâra dik (Seyhun 2026-10-28: "yatay olmalı, rüzgâra 90 derece"; pin solda, komite sağda).
+  // Ölçülen hat yalnız avantaj kadar eğer; ters yön (komiteden pin) aynı hat sayılır, 35°'den büyük sapma ölçüm hatası sayılıp düz çizilir.
+  const up = c.wind ?? A;
+  let tilt = c.line == null ? 0 : (((c.line - (up + 90)) % 180) + 270) % 180 - 90;
+  if (Math.abs(tilt) > 35) tilt = 0;
+  const lineDeg = nrm(up + 90 + tilt); // pin → komite
   const lineM = Math.max(c.lineM || 120, L * 0.32); // kartta hat okunur boyda (kağıt kart gibi ölçeksiz)
   const komite = add(mid, lineDeg, lineM / 2), pin = add(mid, lineDeg + 180, lineM / 2);
   const m1 = add(mid, A, L);
@@ -24,7 +29,7 @@ function geom(c) {
   const s4 = add(g4, A - 90, gw), p4 = add(g4, A + 90, gw);
   const fin = add(g3, A + 150, L * 0.45);
   const fA = add(fin, A + 60, L * 0.1), fB = add(fin, A + 240, L * 0.1);
-  return { A, L, mid, komite, pin, m1, m1a, reach, m2, g3, s3, p3, g4, s4, p4, fin, fA, fB, lineDeg };
+  return { A, L, mid, komite, pin, m1, m1a, reach, m2, g3, s3, p3, g4, s4, p4, fin, fA, fB, lineDeg, tilt };
 }
 function svgOf(c, { up = "wind", w = 350, h = 440 } = {}) {
   const g = geom(c);
