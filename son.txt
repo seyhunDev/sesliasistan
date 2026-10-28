@@ -1,8 +1,8 @@
-Commit: f130e39 · Parkur: komite ve pin işaretlenmeden ölçüm girilince çökme (e.lat) düzeltildi (#873)
-Zaman: 2026-10-28-2014 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40732072132
+Commit: 3c9d5c8 · Instagram: paylaşılan görsel artık siyah kaydedilmiyor (dosya çizim bitince alınıyor) (#875)
+Zaman: 2026-10-28-2047 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40737209902
 
-TAM TEST · 28.10.2026 20:04:18
+TAM TEST · 28.10.2026 20:37:26
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1408/1409 geçti · 1 kalan · 568 sn
+SONUÇ: 1409/1409 geçti · 0 kalan · 573 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -139,12 +139,9 @@ SONUÇ: 1408/1409 geçti · 1 kalan · 568 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 130/131
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 131/131
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 4/5
-      ✗ “yarış şeridinde Süre”
-          beklenen: sayaç 5:00, 2 dk çipi 2:00 yapar, Başlat'a basınca geri sayım, dizi çubuğu ve Durdur, Durdur'da Devam ve Sıfırla (yanlış başlattım: yarış silinir); Kayıt ve Multimedya var
-          olan:     ilk 05:00 · çip 02:00 · geri sayım · dizi 1 · Durdur 1 · Devam 1 · Sıfırla açık · sebep 1 → Başlat 1 · beklerken düğme 3 · Kayıt 1 · Multimedya 0
+  ✓ Ana sayfa: 5/5
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
