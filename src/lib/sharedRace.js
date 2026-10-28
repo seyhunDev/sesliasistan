@@ -74,3 +74,52 @@ export function pickable(list, mine, today) {
 
 // Ortakta olup kulübün sonuçlarına henüz işlenmemiş sonuç listeleri
 export const newSheets = (s, race) => (s?.sheets || []).filter((id) => !(race?.results?.files || []).some((f) => f.id === id));
+
+// ---- Yarış takvimi (/races, herkes görür) ----
+const endOf = (s) => s.endDate || s.startDate || "";
+// Yaklaşan (yakın önce) ve geçmiş (yeni önce); arama ad, yer ve sınıflarda (her söz geçmeli)
+export function calendarOf(list, today, q = "") {
+  const want = plain(q).split(" ").filter(Boolean);
+  const hit = (s) => {
+    const hay = plain([s.name, s.district, s.city, ...(s.notice?.classes || [])].join(" "));
+    return want.every((w) => hay.includes(w));
+  };
+  const all = (list || []).filter((s) => s?.name && s.startDate && hit(s));
+  return {
+    up: all.filter((s) => endOf(s) >= today).sort((a, b) => a.startDate.localeCompare(b.startDate)),
+    past: all.filter((s) => endOf(s) < today).sort((a, b) => b.startDate.localeCompare(a.startDate)),
+  };
+}
+
+const MON = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+// "7–9 Kas", "30 Eki–2 Kas", "7 Kas"
+export function shortRange(a, b) {
+  if (!DAY.test(a || "")) return "";
+  const [, am, ad] = a.split("-").map(Number);
+  if (!DAY.test(b || "") || b === a) return `${ad} ${MON[am - 1]}`;
+  const [, bm, bd] = b.split("-").map(Number);
+  return am === bm ? `${ad}–${bd} ${MON[bm - 1]}` : `${ad} ${MON[am - 1]}–${bd} ${MON[bm - 1]}`;
+}
+
+// Sonuçlar: ortaktaki listelerden (sheets: [{ fleets, at }], yeniden eskiye değil, yükleniş sırasıyla) sınıf başına son liste.
+// Dönüş [{ cls, rows }]
+export function fleetsOf(sheets) {
+  const by = new Map();
+  for (const sh of [...(sheets || [])].sort((a, b) => String(a.at).localeCompare(String(b.at)))) for (const f of sh.fleets || []) if (f?.cls && f.rows?.length) by.set(f.cls, f);
+  return [...by.values()];
+}
+// Seçili sınıfın süzgeçleri: Junior / Bambino (varsa) ve Kızlar (varsa)
+export function filtersOf(fleet) {
+  const rows = fleet?.rows || [];
+  return [...["Junior", "Bambino"].filter((c) => rows.some((r) => r.cat === c)), ...(rows.some((r) => r.sex === "K") ? ["Kızlar"] : [])];
+}
+// Süzülmüş sıralama: süzgeçte sıra kendi içinde baştan sayılır; arama sırayı değiştirmez. Dönüş [{ place, ...satır }]
+export function rankView(fleet, filter = "", q = "") {
+  const rows = (fleet?.rows || []).filter((r) => !filter || (filter === "Kızlar" ? r.sex === "K" : r.cat === filter)).map((r, i) => ({ ...r, place: i + 1 }));
+  const want = plain(q).split(" ").filter(Boolean);
+  const num = String(q || "").replace(/\D/g, "");
+  return rows.filter((r) => {
+    const hay = plain([r.name, r.club].join(" "));
+    return want.filter((w) => !/^\d+$/.test(w)).every((w) => hay.includes(w)) && (!num || String(r.sail || "").replace(/\D/g, "").includes(num));
+  });
+}
