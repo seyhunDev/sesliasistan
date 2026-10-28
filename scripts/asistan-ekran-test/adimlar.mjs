@@ -1089,6 +1089,15 @@ async function rainStrip(h) {
     };
     return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
   });
+  await page.goto(page.url().replace(/\/[^/]*$/, "/"), { waitUntil: "load" });
+  await check("Ana sayfa", "özellik kartları", "en altta Özet (Mesajlar) yok; İngilizce kartında sıradaki kelime ve Çalış · Dinle · Biliyorum", async () => {
+    const en = page.locator("section[aria-label='İngilizce']");
+    const ok = await waitFor(() => en.count(), 15000);
+    const btns = ok ? await en.getByRole("button").allTextContents() : [];
+    const ozet = await page.locator("#home-sum", { hasText: /^ÖZET$/ }).count();
+    if (process.env.WX_SHOT) await page.waitForTimeout(1500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-anasayfa.png`, fullPage: true }));
+    return [ok > 0 && ["Çalış", "Dinle", "Biliyorum"].every((b) => btns.some((x) => x.includes(b))) && !ozet, `kart ${ok} · düğmeler ${btns.join(",")} · özet ${ozet}`];
+  });
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
   await check("Hava", "yağmur grafiği", "yağışlı günde grafiğin altında saat saat çubuk ve tek satır özet; kuvvetli yağış bekleniyorsa özette \"kuvvetli\" (kehribar)", async () => {
