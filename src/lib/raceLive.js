@@ -373,7 +373,7 @@ export const mediaOf = (media, athId) => (athId ? (media || []).filter((m) => m.
 // Gün sonu özeti (veliye / Instagram'a paylaşılan kart ve yazı). rows: yarış yerinin saatlik tahmini (yoksa null);
 // elle/cihazla yazılan rüzgâr varsa o, yoksa tahminin start saatleri (yoksa 10–18) arası kullanılır.
 // ours: [{ id, studentName }]; sıra yarış sonucundan (race.results.rows), en iyi sıradan.
-export function daySummary({ race, day, live, ours = [], rows = null, line = null }) {
+export function daySummary({ race, day, live, ours = [], rows = null, obs = null, line = null }) {
   const st = startsOn(live?.starts, day);
   const wl = windOn(live?.wind, day);
   const most = (dirs) => {
@@ -381,20 +381,23 @@ export function daySummary({ race, day, live, ours = [], rows = null, line = nul
     for (const d of dirs) c[dirShort(d)] = (c[dirShort(d)] || 0) + 1;
     return Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
   };
+  // Yarış saatleri (ilk startın saati .. son startın bir saat sonrası); yarış yoksa 10..18
+  const h0 = st.length ? +hm(st[0].at).slice(0, 2) : 10;
+  const h1 = st.length ? +hm(st[st.length - 1].at).slice(0, 2) + 1 : 18;
+  const span = (list) => (list || []).filter((x) => +x.hh >= h0 && +x.hh <= h1 && x.wind != null && x.dir != null);
+  const fromRows = (r, src) => {
+    const kn = r.map((x) => Math.round(x.wind));
+    const g = r.map((x) => x.gust).filter((x) => x != null);
+    return { lo: Math.min(...kn), hi: Math.max(...kn), gust: g.length ? Math.round(Math.max(...g)) : null, dir: most(r.map((x) => x.dir)), src, pts: r.map((x) => ({ hh: `${x.hh}:00`, kn: Math.round(x.wind) })) };
+  };
+  // Önce elle yazılan kayıt (eski Hava sekmesi), sonra en yakın istasyonun ölçümü, yoksa tahmin (Seyhun 2026-10-28)
   let wind = null;
   if (wl.length) {
     const kn = wl.map((w) => w.kn);
     const g = wl.map((w) => w.gust).filter((x) => x !== null);
     wind = { lo: Math.min(...kn), hi: Math.max(...kn), gust: g.length ? Math.max(...g) : null, dir: most(wl.map((w) => w.dir)), src: "ölçülen", pts: wl.map((w) => ({ hh: hm(w.at), kn: w.kn })) };
-  } else if (rows?.length) {
-    const h0 = st.length ? +hm(st[0].at).slice(0, 2) : 10;
-    const h1 = st.length ? +hm(st[st.length - 1].at).slice(0, 2) + 1 : 18;
-    const r = rows.filter((x) => +x.hh >= h0 && +x.hh <= h1);
-    if (r.length) {
-      const kn = r.map((x) => Math.round(x.wind));
-      wind = { lo: Math.min(...kn), hi: Math.max(...kn), gust: Math.round(Math.max(...r.map((x) => x.gust))), dir: most(r.map((x) => x.dir)), src: "tahmin", pts: r.map((x) => ({ hh: `${x.hh}:00`, kn: Math.round(x.wind) })) };
-    }
-  }
+  } else if (span(obs).length) wind = fromRows(span(obs), "ölçülen");
+  else if (span(rows).length) wind = fromRows(span(rows), "tahmin");
   const res = race?.results?.rows || {};
   const team = ours
     .map((a) => ({ name: a.studentName || a.name || "", place: res[a.id]?.place || 0, line: res[a.id]?.place ? (line ? line(res[a.id]) : `${res[a.id].place}.`) : "" }))

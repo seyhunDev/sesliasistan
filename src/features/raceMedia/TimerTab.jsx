@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 // Süre (Seyhun 2026-10-18): yarış akışı (useRaceFlow: Başlat · İptal · Yarışı bitir, sebep sorma, Geri al). Yarışlar bütün seri boyunca
 // numaralanır (2. gün 4. yarıştan devam eder); adı, saatleri ve iptal durumu dokununca değişir. Yarış günü sayfa bu sekmeyle açılır.
 // Düzen (Seyhun 2026-10-19 onayı, örnek yaris-tasarim/multimedya/sure-yeni-2.png): sayaca dokununca başlar; altta Start · Şamandıra ·
-// Finish kareleri; günün yarışları tek satır ("Liste ›" açar). Alt şeritte ana düğme (Başlat · Durdur · Devam · Bitir; rüzgâr Hava sekmesinde, çekim alttaki Kayıt ile; Seyhun 2026-10-22).
+// Finish kareleri; altında seçili günün yarışları liste (2026-10-28). Alt şeritte ana düğme (Başlat · Durdur · Devam · Bitir; rüzgâr Hava sekmesinde, çekim alttaki Kayıt ile; Seyhun 2026-10-22).
 // Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip.
 const PRESETS = [60, 120, 300, 600];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
@@ -22,18 +22,14 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
   const tr = useTimerRun();
   const timer = tr.t;
   const [edit, setEdit] = useState(null); // düzenlenen yarış
-  const [list, setList] = useState(false); // bugünün yarışları (eskiden sayfanın altındaki liste)
   const { flow, ridOf, save, undo } = rf;
   const cur = timer.end != null || timer.left != null ? live.starts.find((x) => x.id === ridOf(timer)) : null; // durmuş geri sayım da (Devam bekler)
   const rdays = raceDays(race);
   const add = () => {
-    setList(false);
     const now = new Date();
     const s = newStart(live.starts, atOf(day, `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`), live.wind, null, rdays);
     if (s) setEdit({ ...s, fresh: true });
   };
-  // Yarışlar gün gün; seçili gün en üstte, sonra öbür günler yeniden eskiye
-  const days = [...new Set(live.starts.map((x) => x.day))].sort((a, b) => (a === day ? -1 : b === day ? 1 : b.localeCompare(a)));
   // Kareye dokununca o yarışın startından beri geçen süre yazılır (8 sn "Geri al")
   const mark = (b) => {
     if (!cur || timer.end == null) return;
@@ -46,7 +42,6 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
   const state = (s) => (s.void ? "" : s.fin ? raceTime(s) : cur?.id === s.id ? (tr.up ? "yarışta" : "geri sayım") : "");
 
   const today = startsOn(live.starts, day);
-  const last = [...today].reverse().find((x) => x.fin && !x.void);
 
   return (
     <>
@@ -59,65 +54,35 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
         bottom
       />
       {!!cur && tr.up && !cur.void && <Marks buoys={live.buoys} s={cur} on onMark={mark} onBuoys={setBuoys} />}
-      <button type="button" onClick={() => setList(true)} data-press="row" className="mt-3 flex w-full items-center justify-between px-1 py-1 text-left text-[0.875rem]">
-        <span className="min-w-0 truncate text-mut">
-          {today.length ? `Bugün ${today.length} yarış${last ? ` · son ${raceName(last)} ${raceTime(last)}` : ""}` : "Bugün yarış yok"}
-        </span>
-        <b className="shrink-0 font-semibold">Liste ›</b>
-      </button>
-      <Sheet open={list} onClose={() => setList(false)} title="Yarışlar">
-        {list && (
-          <div className="-mt-3 pb-2">
-            {!days.includes(day) && (
-              <>
-                <Label>{dayLabel(day)}</Label>
-                <p className={`${card} px-4 py-4 text-center text-[0.875rem] text-mut`}>Bu gün yarış yok. Sıradaki: {flow.label}</p>
-              </>
-            )}
-            {days.map((d) => {
-              const list = startsOn(live.starts, d);
-              return (
-                <section key={d}>
-                  <Label right={list.length}>{dayLabel(d)}</Label>
-                  <ul className={`${card} divide-y divide-line overflow-hidden`}>
-                    {[...list].reverse().map((s) => (
-                      <li key={s.id}>
-                        <button type="button" onClick={() => setEdit(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                          <span className="min-w-0 flex-1">
-                            <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
-                            {(s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
-                              <span className="block truncate text-[0.8125rem] text-mut">{[s.course, s.flag, markLine(live.buoys, s), s.note].filter(Boolean).join(" · ")}</span>
-                            )}
-                          </span>
-                          <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
-                            {[hm(s.at), s.kn != null && s.dir != null ? `${dirShort(s.dir)} ${s.kn} kn` : ""].filter(Boolean).join(" · ")}
-                            {state(s) && <small className={`block text-[0.75rem] ${s.fin ? "" : "font-semibold text-acc"}`}>{state(s)}</small>}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                    {d === day && (
-                      <li>
-                        <button type="button" onClick={add} data-press="row" className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc">
-                          Yarış ekle
-                        </button>
-                      </li>
-                    )}
-                  </ul>
-                </section>
-              );
-            })}
-            {!days.includes(day) && (
-              <button type="button" onClick={add} data-press className="btn btn-text btn-sm mt-2 w-full text-acc">
-                Yarış ekle
-              </button>
-            )}
-            <button type="button" onClick={() => (setList(false), onReset?.())} data-press className="btn btn-danger btn-sm mt-6 w-full">
-              Denemeleri sıfırla
+      {/* Günün yarışları sayacın altında liste (Seyhun 2026-10-28; eskiden "Liste ›" ile ayrı pencere): saat, rüzgâr, süre ya da durum */}
+      <Label right={today.length || ""}>Yarışlar</Label>
+      <ul className={`${card} divide-y divide-line overflow-hidden`}>
+        {!today.length && <li className="px-4 py-3 text-[0.875rem] text-mut">Bu gün yarış yok. Sıradaki: {flow.label}</li>}
+        {[...today].reverse().map((s) => (
+          <li key={s.id}>
+            <button type="button" onClick={() => setEdit(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
+              <span className="min-w-0 flex-1">
+                <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
+                {(s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
+                  <span className="block truncate text-[0.8125rem] text-mut">{[s.course, s.flag, markLine(live.buoys, s), s.note].filter(Boolean).join(" · ")}</span>
+                )}
+              </span>
+              <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
+                {[hm(s.at), s.kn != null && s.dir != null ? `${dirShort(s.dir)} ${s.kn} kn` : ""].filter(Boolean).join(" · ")}
+                {state(s) && <small className={`block text-[0.75rem] ${s.fin ? "" : "font-semibold text-acc"}`}>{state(s)}</small>}
+              </span>
             </button>
-          </div>
-        )}
-      </Sheet>
+          </li>
+        ))}
+        <li>
+          <button type="button" onClick={add} data-press="row" className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc">
+            Yarış ekle
+          </button>
+        </li>
+      </ul>
+      <button type="button" onClick={() => onReset?.()} data-press className="btn btn-text btn-sm mt-4 w-full text-mut">
+        Denemeleri sıfırla
+      </button>
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit ? raceTitle(edit) : ""}>
         {edit && (
           <StartForm
