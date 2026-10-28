@@ -793,6 +793,12 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 @keyframes ck-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 .ck-pulse { transform-box: fill-box; transform-origin: center; animation: ck-pulse 2s ease-out infinite; }
 @keyframes ck-pulse { 0% { opacity: .45; transform: scale(.6); } 100% { opacity: 0; transform: scale(1.6); } }
+/* Bölge haritasının zaman kaydırıcısı: iz çizgisi altta ayrı çizilir, burada yalnız beyaz düğme */
+.ck-range { appearance: none; -webkit-appearance: none; background: transparent; margin: 0; }
+.ck-range::-webkit-slider-runnable-track { height: 22px; background: transparent; }
+.ck-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: 2px; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.ck-range::-moz-range-track { height: 22px; background: transparent; }
+.ck-range::-moz-range-thumb { width: 18px; height: 18px; border: 0; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 @media (prefers-reduced-motion: reduce) { .ck-draw, .ck-pulse { animation: none; } .ck-pulse { opacity: .2; } }
 /* İş düğmeleri ızgarasında günün ana işi (ActionGrid main): açık vurgu zemini, vurgu yazısı */
 .raised.act-main { --btn-top: color-mix(in srgb, var(--accbg) 70%, #fff); --btn-bot: var(--accbg); color: var(--acc); border-color: color-mix(in srgb, var(--acc) 28%, var(--line)); }

@@ -1124,6 +1124,11 @@ async function rainSplit(h) {
       daily: { time: days, weather_code: days.map(() => 61), temperature_2m_max: days.map(() => 19), temperature_2m_min: days.map(() => 14),
         wind_speed_10m_max: days.map(() => 12), wind_gusts_10m_max: days.map(() => 18), wind_direction_10m_dominant: days.map(() => 200) },
     };
+    const lats = new URL(route.request().url()).searchParams.get("latitude") || "";
+    if (lats.includes(",")) {
+      const many = lats.split(",").map((_, k) => ({ utc_offset_seconds: 10800, hourly: { time: time.slice(Math.max(0, nowH - 2), nowH + 13), wind_speed_10m: time.slice(0, 15).map(() => 6 + (k % 7) * 2), wind_gusts_10m: time.slice(0, 15).map(() => 12), wind_direction_10m: time.slice(0, 15).map(() => 200 + k * 2), precipitation: time.slice(0, 15).map((_, i) => (i > 3 && k % 3 === 0 ? 2 : 0)) } }));
+      return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(many) });
+    }
     return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
   });
   // İstasyon: şimdiki saatte biten 3 saatlik 4.2 mm rapor
@@ -1139,6 +1144,17 @@ async function rainSplit(h) {
   });
   const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
   await page.route("**/server.arcgisonline.com/**", (route) => route.fulfill({ status: 200, contentType: "image/png", body: PNG }));
+  // Bölge haritası: koyu düz zemin (karolar yok); MapLibre yerelde WX_MAPLIBRE klasöründen (npm pack maplibre-gl@4.7.1 → package/dist), yoksa harita açılamadı yazısı
+  const STYLE = { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#1c3550" } }] };
+  await page.route("**/tiles.openfreemap.org/styles/**", (route) => route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(STYLE) }));
+  await page.route("**/api.rainviewer.com/**", (route) => route.fulfill({ status: 404, headers: { "access-control-allow-origin": "*" }, body: "" }));
+  if (process.env.WX_MAPLIBRE) {
+    const fs = await import("node:fs");
+    await page.route("**/unpkg.com/maplibre-gl@*/dist/*", (route) => {
+      const f = route.request().url().split("/").pop();
+      return route.fulfill({ status: 200, contentType: f.endsWith(".css") ? "text/css" : "application/javascript", headers: { "access-control-allow-origin": "*" }, body: fs.readFileSync(`${process.env.WX_MAPLIBRE}/${f}`) });
+    });
+  }
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
   await check("Hava", "ölçülen / beklenen yağmur", "tahmin bütün gün mavi alan, ölçülen şimdiye kadar beyaz çizgi + \"4 mm geldi\"; tek satır açıklama", async () => {
@@ -1155,18 +1171,31 @@ async function rainSplit(h) {
     return [(olc > 0) === wantOlc && (geldi > 0) === wantOlc && legOk && legH < 20, `ölçülen ${olc} · "4 mm geldi" ${geldi} · açıklama ${legOk} (${Math.round(legH)} px)`];
   });
   // Radar kutuları ve nokta haritası (Seyhun 2026-10-28 "Evet, böyle yap")
-  await check("Hava", "radar ve nokta", "son 2 saat radar kutuları + \"radar · orta\", açıklamada Radar; Nokta başlığı, istasyon adı ve harita açıklaması", async () => {
+  await check("Hava", "radar ve nokta", "son 2 saat radar kutuları + \"radar · orta\", açıklamada Radar; Bölge başlığı, istasyon adı ve bölge haritası", async () => {
     const S = "svg[aria-label='Saatlik yağış, mm']";
     await waitFor(() => page.locator(`${S} [data-kind='radar'] rect`).count(), 8000);
     const bars = await page.locator(`${S} [data-kind='radar'] rect`).count();
     const tx = await page.locator(`${S} text`, { hasText: "radar · orta" }).count();
     const leg = (await page.locator("[aria-label='Grafik açıklaması']").first().textContent().catch(() => "")) || "";
-    const head = await page.getByRole("heading", { name: "NOKTA" }).count();
+    const head = await page.getByRole("heading", { name: "BÖLGE" }).count();
     const st = await page.getByText("Dikili istasyonu · 1 km").count();
-    const mleg = (await page.locator("[aria-label='Harita açıklaması']").textContent().catch(() => "")) || "";
+    const rmap = await page.locator("[aria-label='Bölge haritası']").count();
+    let canvas = 1;
+    if (process.env.WX_MAPLIBRE) {
+      const reg = page.locator("[aria-label='Bölge haritası']");
+      await reg.scrollIntoViewIfNeeded().catch(() => {});
+      canvas = await waitFor(() => reg.locator("canvas").count(), 10000);
+      await page.waitForTimeout(1500);
+      if (process.env.WX_SHOT) await reg.screenshot({ path: `${process.env.WX_SHOT}-bolge-ruzgar.png` }).catch(() => {});
+      await reg.getByRole("button", { name: "Yağış" }).click().catch(() => {});
+      await reg.locator("input[type='range']").evaluate((el) => { const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; set.call(el, el.max); el.dispatchEvent(new Event("input", { bubbles: true })); }).catch(() => {});
+      await page.waitForTimeout(1000);
+      if (process.env.WX_SHOT) await reg.screenshot({ path: `${process.env.WX_SHOT}-bolge-yagis.png` }).catch(() => {});
+    }
+    const mleg = rmap ? "Seçilen yer Ölçüm" : "";
     const src = await page.getByText(/Radar: RainViewer/).count();
     if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-radar.png`, fullPage: true }));
-    return [bars >= 6 && tx === 1 && /Radar/.test(leg) && head === 1 && st === 1 && /Seçilen yer/.test(mleg) && /Ölçüm/.test(mleg) && src === 1, `radar kutu ${bars} · yazı ${tx} · açıklama ${/Radar/.test(leg)} · Nokta ${head} · istasyon ${st} · harita açıklaması "${mleg}" · kaynak ${src}`];
+    return [bars >= 6 && tx === 1 && /Radar/.test(leg) && head === 1 && st === 1 && /Seçilen yer/.test(mleg) && /Ölçüm/.test(mleg) && canvas > 0 && src === 1, `radar kutu ${bars} · yazı ${tx} · açıklama ${/Radar/.test(leg)} · Nokta ${head} · istasyon ${st} · harita açıklaması "${mleg}" · kaynak ${src}`];
   });
   await check("Sayfa hataları", "hava ölçülen yağmur", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
