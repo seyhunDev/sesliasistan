@@ -4,7 +4,7 @@ import { useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { useWindObs } from "./useWindObs";
 import { useRainRadar } from "./useRainRadar";
-import { PointMap, pointName } from "./PointMap";
+import { RegionMap, pointName } from "./RegionMap";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { db } from "@/lib/firebase/clientApp";
@@ -18,8 +18,8 @@ import { WindArrow } from "./parts";
 
 // Hava sayfası (Seyhun 2026-10-21: "hava durumu sayfasını da ana sayfayla uyumlu yapalım"): üstte ana sayfadaki lacivert kokpit gibi
 // (geri, yer, yenile, büyük sıcaklık, şimdiki rüzgâr, aynı büyük grafik CockpitWind), altında büyük gün seçici; güne dokununca grafik o güne geçer
-// (başka günde sağda o günün en sert rüzgârı). Açık zeminde Nokta haritası (2026-10-28; PointMap: seçilen yer, tahmin alanı, istasyon; dokununca
-// nokta taşınır, Geri al), "Saat saat" listesi (bugün şimdiden sonrası), MGM / Windy ve kaynak satırı.
+// (başka günde sağda o günün en sert rüzgârı). Açık zeminde NOKTA: bölge haritası (2026-10-28; RegionMap: rüzgâr / yağış, −2 sa … +12 kaydırıcı,
+// seçilen yer ve istasyon; dokununca nokta taşınır, Geri al), "Saat saat" listesi (bugün şimdiden sonrası), MGM / Windy ve kaynak satırı.
 const nowHour = () => new Date().getHours();
 const ago = (ms) => {
   const m = Math.round((Date.now() - ms) / 60000);
@@ -37,6 +37,7 @@ export function WeatherTop({ w, refresh }) {
   const top = rows.length ? rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]) : null;
   const place = getPlace();
   const st = useWindObs(place, sel, today)?.station;
+  const obToday = useWindObs(place, today, today);
   const radar = useRainRadar(place);
   const { profile } = useAuth();
   const toast = useToast();
@@ -104,17 +105,10 @@ export function WeatherTop({ w, refresh }) {
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         <section>
           <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
-            <h2 className="text-[0.8125rem] font-bold tracking-[.04em] text-mut">NOKTA</h2>
+            <h2 className="text-[0.8125rem] font-bold tracking-[.04em] text-mut">BÖLGE</h2>
             {st?.lat != null && <small className="truncate text-[0.75rem] text-mut">{st.name} istasyonu · {String(st.km).replace(".", ",")} km</small>}
           </div>
-          <div className="rounded-[1.125rem] border border-line bg-card p-2">
-            <PointMap place={place} model={w.model} station={st} onPick={movePoint} />
-            <p className="mt-2 flex flex-nowrap gap-3 whitespace-nowrap px-1 text-[0.75rem] text-mut" aria-label="Harita açıklaması">
-              <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 rounded-full bg-[#0ea5c4]" />Seçilen yer</span>
-              {w.model?.lat != null && <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 border border-dashed border-mut" />Tahmin alanı</span>}
-              {st?.lat != null && <span className="inline-flex items-center gap-1.5"><i className="inline-block size-2.5 rounded-full border border-mut bg-white" />Ölçüm</span>}
-            </p>
-          </div>
+          <RegionMap place={place} station={obToday?.station || st} obs={obToday?.rows} onPick={movePoint} />
         </section>
         <section>
           <ListHead title="Saat saat" />
