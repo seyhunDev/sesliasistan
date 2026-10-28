@@ -65,7 +65,6 @@ export function RaceLive({ open }) {
       <Controls id={r.id} orgId={profile?.orgId} title={r.title} onMenu={() => setMenu(true)} />
       <Sheet open={menu} onClose={() => setMenu(false)} title="Yarış kısayolu" navy>
         <RowList>
-          <Row title="Multimedya" sub="Süre, kayıtlar, sonuçlar" href={`/athletes/races/${r.id}/media`} />
           <Row title="Bu yarışta gösterme" sub="Sonraki yarışta yine çıkar" onClick={hideThis} chev={false} />
           <Row title="Hiç gösterme" sub="Ayarlar'dan yeniden açılır" onClick={hideAll} chev={false} />
         </RowList>

@@ -9,6 +9,10 @@ import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { loadSharedAll } from "@/features/athletes/sharedRaces";
 import { calendarOf } from "@/lib/sharedRace";
 import { todayStr } from "@/lib/utils/format";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { canSeeAthletes } from "@/features/athletes/access";
+import { loadRaces } from "@/features/athletes/races";
+import { RaceSwitch } from "./RaceSwitch";
 
 // Yarış takvimi (Seyhun 2026-10-28, örnek /mnt/project-files/yaris-tasarim/takvim/ornek.png): ortak yarışlar (sharedRaces) herkese açık.
 // Lacivert üstte başlık, arama, Yaklaşan | Geçmiş; altta ay ay yarışlar. Dokununca /races/{id} (bilgi, talimat, sonuçlar).
@@ -60,6 +64,14 @@ export function RaceCalendar() {
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
   const [tab, setTab] = useState("up");
+  // Kulüp hesabında Kulübüm | Takvim; kulübe eklenmiş ortak yarış kulübün yarış sayfasını açar
+  const { profile } = useAuth();
+  const club = canSeeAthletes(profile?.email) && profile?.orgId ? profile.orgId : "";
+  const [mine, setMine] = useState({});
+  useEffect(() => {
+    if (!club) return;
+    loadRaces(club).then((l) => setMine(Object.fromEntries(l.filter((r) => r.shared).map((r) => [r.shared, r.id]))), () => {});
+  }, [club]);
   useEffect(() => {
     loadSharedAll().then(setList, (e) => (setList([]), setError(e?.code === "permission-denied" ? "Yarış takvimi açılamadı." : "Yarışlar alınamadı.")));
   }, []);
@@ -67,19 +79,20 @@ export function RaceCalendar() {
   const cal = useMemo(() => calendarOf(list, today, q), [list, today, q]);
   const all = useMemo(() => calendarOf(list, today), [list, today]);
   const shown = tab === "up" ? cal.up : cal.past;
-  const open = (s) => router.push(`/races/${s.id}`);
+  const open = (s) => router.push(mine[s.id] ? `/athletes/races/${mine[s.id]}` : `/races/${s.id}`);
   const pill = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.875rem] font-semibold";
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Yarış takvimi">
         <header className="flex items-center gap-2.5">
-          <BackButton href="/" />
+          <BackButton href={club ? "/athletes" : "/"} />
           <div className="min-w-0 flex-1 leading-tight">
-            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Yarış takvimi</h1>
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{club ? "Yarışlar" : "Yarış takvimi"}</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{!list ? "Yükleniyor…" : [`${all.up.length} yaklaşan`, `${all.past.length} geçmiş`].join(" · ")}</p>
           </div>
         </header>
+        {club && <RaceSwitch on="cal" />}
         <label className="ck-glass mt-3.5 flex h-11 items-center gap-2 rounded-xl px-3">
           <Icon name="search" className="size-[1.125rem] shrink-0 text-white/55" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Yarış, yer ya da sınıf ara" enterKeyHint="search" className="min-w-0 flex-1 bg-transparent text-[0.9375rem] text-white outline-none placeholder:text-white/55" />

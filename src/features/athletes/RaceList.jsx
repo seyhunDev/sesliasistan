@@ -159,7 +159,8 @@ function NextTop({ r, onOpen }) {
           )}
         </div>
       )}
-      {r.id && (
+      {/* Multimedya yalnız yarış günü (öncesinde yarış sayfasında; 2026-10-28 tek giriş) */}
+      {r.id && a <= 0 && (
         <Link href={`/athletes/races/${r.id}/media`} data-press className="raised mt-3 flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
           Multimedya
         </Link>
