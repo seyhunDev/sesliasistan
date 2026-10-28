@@ -4,7 +4,7 @@ import { nearestStation, obsRows, parseSynop, utcRange } from "@/lib/windObs";
 
 export const runtime = "nodejs";
 
-// Gerçekleşen rüzgâr: ?lat&lon&date=YYYY-MM-DD → { station: { name, km, near }, rows: [{ hh, wind, gust, dir, at }] }
+// Gerçekleşen rüzgâr: ?lat&lon&date=YYYY-MM-DD → { station: { name, km, near, lat, lon }, rows: [{ hh, wind, gust, dir, at }] }
 // İstasyon 10 km'den uzaksa rapor istenmez (rows boş, near false); &far=1 ile (yarış multimedya) en yakın istasyon FAR_KM'ye kadar kullanılır.
 // Aynı istasyon ve gün 15 dk saklanır.
 const CACHE = new Map();
@@ -20,7 +20,7 @@ export async function GET(req) {
   const date = q.get("date") || "";
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: "Eksik bilgi" }, { status: 400 });
   const st = nearestStation(lat, lon);
-  const station = st && { name: st.name, km: st.km, near: st.near };
+  const station = st && { name: st.name, km: st.km, near: st.near, lat: st.lat, lon: st.lon }; // lat/lon: haritada ölçümün geldiği yer
   const far = q.get("far") === "1" && st && st.km <= FAR_KM;
   if (!st?.near && !far) return NextResponse.json({ station, rows: [] });
 
