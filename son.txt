@@ -1,8 +1,8 @@
-Commit: 247eaf2 · Multimedya: özet rüzgârı ölçümden, Süre'de yarış listesi, Çekim düğmesi (#854)
-Zaman: 2026-10-28-1202 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40660043127
+Commit: 4012e67 · Multimedya sayfası lacivert kokpit: üst, gün çipleri ve büyük sayaç lacivertte (#855)
+Zaman: 2026-10-28-1246 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40665673995
 
-TAM TEST · 28.10.2026 11:53:47
+TAM TEST · 28.10.2026 12:37:39
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1406/1406 geçti · 0 kalan · 484 sn
+SONUÇ: 1406/1406 geçti · 0 kalan · 496 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
