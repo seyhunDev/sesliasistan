@@ -1098,6 +1098,24 @@ async function rainStrip(h) {
     if (process.env.WX_SHOT) await page.waitForTimeout(1500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-anasayfa.png`, fullPage: true }));
     return [ok > 0 && ["Çalış", "Dinle", "Biliyorum"].every((b) => btns.some((x) => x.includes(b))) && !ozet, `kart ${ok} · düğmeler ${btns.join(",")} · özet ${ozet}`];
   });
+  await check("Ana sayfa", "ilk ekran tam oturur", "15 ve Pro Max boyunda günler · sayaç · hava · grafik sekme çubuğuna kadar tam dolar (SE yarış varken biraz taşabilir); iş düğmeleri ekranın altında", async () => {
+    const out = [];
+    for (const [w, h] of [[375, 667], [390, 844], [430, 932]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.waitForTimeout(700);
+      const m = await page.evaluate(() => {
+        const sec = document.querySelector("section[aria-label='Bugün'] > div");
+        const bar = document.querySelector("nav[aria-label='Sekmeler']");
+        const btn = document.querySelector("section[aria-label='Bugün'] [data-press].ck-ibtn, section[aria-label='Bugün'] a[href='/notes']");
+        const svg = document.querySelector("svg[aria-label='Bugünün saatlik rüzgâr grafiği']");
+        return { end: sec ? Math.round(sec.getBoundingClientRect().bottom) : -1, bar: bar ? Math.round(bar.getBoundingClientRect().top) : -1, btn: btn ? Math.round(btn.getBoundingClientRect().top) : -1, svg: svg ? Math.round(svg.getBoundingClientRect().height) : 0 };
+      });
+      if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ilk-${w}.png` });
+      out.push({ w, ...m, ok: m.end > 0 && m.bar > 0 && (w < 380 ? m.end >= m.bar - 24 : Math.abs(m.bar - m.end) <= 24) && (m.btn < 0 || m.btn >= m.bar - 4) && m.svg >= 60 });
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    return [out.every((o) => o.ok), out.map((o) => `${o.w}: son ${o.end} çubuk ${o.bar} düğme ${o.btn} grafik ${o.svg}`).join(" · ")];
+  });
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
   await check("Hava", "yağmur grafiği", "yağışlı günde grafiğin altında saat saat çubuk ve tek satır özet; kuvvetli yağış bekleniyorsa özette \"kuvvetli\" (kehribar)", async () => {

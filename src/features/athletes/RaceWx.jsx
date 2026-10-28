@@ -33,7 +33,7 @@ function useDay(r, day, tick = 0) {
 const nowHH = () => String(new Date().getHours()).padStart(2, "0");
 
 // Sıcaklık · gök · rüzgâr satırı ve grafik (lacivert zeminde)
-export function DayChart({ rows, day, at }) {
+export function DayChart({ rows, day, at, fill = false }) {
   const today = todayStr();
   const isToday = day === today;
   const top = rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]);
@@ -57,8 +57,8 @@ export function DayChart({ rows, day, at }) {
           </b>
         </span>
       </div>
-      <div className="mt-2">
-        <CockpitWind key={day} rows={rows} date={day} place={at} far />
+      <div className={`mt-2 ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}>
+        <CockpitWind key={day} rows={rows} date={day} place={at} far fill={fill} />
       </div>
     </>
   );
