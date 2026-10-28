@@ -13,7 +13,7 @@ import { Bar } from "@/features/training/Countdown";
 
 // Sonuçlar (Seyhun 2026-10-28 onayı, "tek liste"): tek sıra süzgeç: Bizimkiler · Genel · Junior · Kızlar · Junior Kızlar (sınıf birden
 // çoksa üstte sınıf seçimi). Bizimkiler ve Genel aynı kartta, aynı satır biçiminde: başlıkta "ILCA 4 · 42 kişi" + "Net puan"; satırda solda
-// sıra, ad, altında işaret ("Junior kız" / "Junior" / "Kız") · kulüp · doğum yılı (yıl hiç kesilmez, yalnız kulüp kısalır), sağda net puan.
+// sıra, ad (doğum yılı parantezde, kesilmez), altında işaret ("Junior kız" / "Junior" / "Kız") · kulüp, sağda net puan.
 // Bizimkiler'de adın altında Junior / Kızlar / Junior Kızlar sıraları küçük etiketler (ilk 3 vurgu renginde); Genel'de bizimkiler açık mavi
 // satır, ilk 10, sonra Tümü. Sonuç yüklüyse en altta küçük "Değiştir"; yoksa büyük "Sonuç PDF'i yükle" (resultsImport.js akışı).
 const TOP = 10;
@@ -31,21 +31,23 @@ const boxesOf = (x) =>
     x?.jp && SUB.includes(x.cat) && [`${x.cat} Kızlar`, x.jp, x.jn],
   ].filter(Boolean);
 
-// Ortak satır: sıra · ad / işaret · kulüp · yıl · puan
+// Ortak satır: sıra · ad (doğum yılı, kesilmez) / işaret · kulüp · puan (Seyhun 2026-10-28)
 function Row({ pos, name, tag, club, born, pts, on, hi, children }) {
   return (
     <li className={`flex items-center gap-3 px-4 py-2.5 ${on ? "bg-accbg" : ""}`}>
       <span className={`w-7 shrink-0 text-center text-[1.0625rem] font-bold tabular-nums ${on || hi ? "text-acc" : ""}`}>{pos || "–"}</span>
       <span className="min-w-0 flex-1">
-        <b className="block truncate text-[0.9375rem] font-semibold">{name}</b>
-        <span className="flex gap-1 text-[0.8125rem] text-mut">
-          <span className="min-w-0 truncate">
+        <span className="flex items-baseline gap-1.5">
+          <b className="min-w-0 truncate text-[0.9375rem] font-semibold">{name}</b>
+          {born && <span className="shrink-0 text-[0.8125rem] tabular-nums text-mut">({born})</span>}
+        </span>
+        {(tag || club) && (
+          <span className="block truncate text-[0.8125rem] text-mut">
             {tag && <b className="font-semibold text-acc">{tag}</b>}
             {tag && club ? " · " : ""}
             {club}
           </span>
-          {born && <span className="shrink-0">{tag || club ? "· " : ""}{born}</span>}
-        </span>
+        )}
         {children}
       </span>
       {pts && <span className="shrink-0 text-[0.875rem] tabular-nums text-fg2">{pts}</span>}
