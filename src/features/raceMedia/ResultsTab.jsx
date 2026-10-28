@@ -6,6 +6,7 @@ import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { bornYear, findOurs, followKey, raceYear, sheetMatch, withCats } from "@/lib/resultSheet";
 import { sheetFilters, sheetRows, sheetTag } from "@/lib/raceLive";
+import { fleetsOf } from "@/lib/sharedRace";
 import { loadSheets } from "@/features/athletes/raceLiveStore";
 import { importResults, importToast } from "@/features/athletes/resultsImport";
 import { saveRaceFollow, saveRaceResults } from "@/features/athletes/races";
@@ -16,7 +17,8 @@ import { Bar } from "@/features/training/Countdown";
 // başlık "ILCA 4 · 42 kişi", sütunlar Sıra · Sporcu · Doğ. · Net (Genel/Takip'te sağda ☆). Sporcu hücresinde ad, altında işaret
 // (Jun. kız / Junior / Kız) · yelken no · kulüp; hiçbir şey kesilmez, uzun kulüp alt satıra iner. Bizimkiler'de kulüp yok, yerine
 // Junior / Kızlar / Junior Kızlar sıraları. ☆ ile genel listeden sporcu bu yarış için takibe alınır (race.follow, followKey), Takip'te görünür.
-// Genel'de bizimkiler açık mavi, ilk 10, sonra Tümü. Sonuç yüklüyse altta küçük "Değiştir"; yoksa büyük "Sonuç PDF'i yükle" (resultsImport.js).
+// Genel'de bizimkiler açık mavi, ilk 10, sonra Tümü. Üstte sınıf seçici (her yüklenen PDF kendi sınıfıyla; bizimkilerin sınıfı noktalı ve açılışta seçili; o sınıfta bizimkiler yoksa Bizimkiler düğmesi çıkmaz).
+// Altta sınıf başına yükleme günü ve "Sonuç PDF'i ekle" (yeni sınıf eklenir, aynı sınıf güncellenir); hiç yoksa büyük "Sonuç PDF'i yükle" (resultsImport.js).
 const TOP = 10;
 // İşaret: Genel/Takip'te "Jun. kız", "Junior", "Kız"; Kızlar'da yalnız kategori; diğer süzgeçlerde yok
 const short = (t) => t.replace(/^Junior kız$/, "Jun. kız").replace(/^Bambino kız$/, "Bam. kız");
@@ -88,9 +90,9 @@ function Row({ pos, name, tag, sail, club, born, pts, on, hi, star, followed, on
 export function ResultsTab({ orgId, race, ours, club, onRace }) {
   const toast = useToast();
   const pick = useRef(null);
-  const [view, setView] = useState(ours.length ? "ours" : "all"); // ours | all | Junior | girls | Junior-girls …
+  const [want, setView] = useState(ours.length ? "ours" : "all"); // ours | follow | all | Junior | girls | Junior-girls …
   const [sheets, setSheets] = useState(null);
-  const [fi, setFi] = useState(0);
+  const [cls, setCls] = useState(""); // seçili sınıf; boşsa bizimkilerin sınıfı
   const [more, setMore] = useState(false);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
@@ -113,7 +115,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
       await saveRaceResults(orgId, race.id, got.results, got.extra);
       onRace({ ...race, results: got.results, athleteIds: [...new Set([...race.athleteIds, ...got.extra])] });
       setSheets(await loadSheets(orgId, race.id).catch(() => sheets));
-      setFi(0);
+      setCls("");
       setView(ours.length ? "ours" : "all");
       toast(importToast(got));
     } catch (e) {
@@ -122,9 +124,20 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
     setBusy(false);
   };
 
+  // Her sınıfın son yüklenen listesi (birden çok PDF: Optimist, ILCA 4, ILCA 6 …; aynı sınıf yeniden yüklenirse yenisi; sharedRace.fleetsOf).
   // Yaş kategorileri (ILCA 4 Junior) doğum yılından; daha önce yüklenen listelerde de
-  const fleets = withCats(sheets?.length ? sheets[sheets.length - 1].fleets || [] : [], raceYear(race));
-  const fleet = fleets[Math.min(fi, fleets.length - 1)];
+  const fleets = withCats(fleetsOf(sheets || []), raceYear(race));
+  const pool = [...ours, ...club.filter((a) => !ours.some((o) => o.id === a.id))];
+  const found = findOurs(fleets, pool);
+  const res = race.results || {};
+  // Bizimkilerin sınıfları (noktalı); açılışta ilki seçili
+  const oursFi = new Set(ours.map((a) => found[a.id]?.fi).filter((i) => i != null));
+  const fleet = fleets.find((f) => f.cls === cls) || fleets[[...oursFi][0] ?? 0];
+  // Bizimkiler: seçili sınıftakiler (listede bulunanlar ya da sonucu bu sınıfa yazılanlar); sonucu olmayanlar en sonda
+  const inFleet = (a) => (found[a.id] ? fleets[found[a.id].fi] === fleet : !res.rows?.[a.id]?.cls || res.rows[a.id].cls === fleet?.cls);
+  const mine = ours.filter((a) => fleets.length < 2 || inFleet(a));
+  // Bu sınıfta bizimkiler yoksa Bizimkiler düğmesi çıkmaz, Genel açılır
+  const view = want === "ours" && fleet && !mine.length ? "all" : want;
   const filter = view === "ours" ? "all" : view;
   // Takip: bu yarış için yıldızlananlar (sınıf + yelken no ya da ad)
   const follow = new Set(race.follow || []);
@@ -138,12 +151,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
     onRace({ ...race, follow: next });
     saveRaceFollow(orgId, race.id, next).catch(() => toast("Takip kaydedilemedi"));
   };
-  const pool = [...ours, ...club.filter((a) => !ours.some((o) => o.id === a.id))];
-  const found = findOurs(fleets, pool);
   const hit = new Set(Object.values(found).filter((x) => fleets[x.fi] === fleet).map((x) => x.ri));
-  const res = race.results || {};
-  // Bizimkiler: sınıf birden çoksa seçili sınıftakiler; sonucu olmayanlar en sonda
-  const mine = ours.filter((a) => fleets.length < 2 || !res.rows?.[a.id]?.cls || res.rows[a.id].cls === fleet?.cls);
   const rowOf = (id) => {
     const f = found[id];
     return f ? fleets[f.fi]?.rows[f.ri] : null;
@@ -155,25 +163,31 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
   const firstX = sorted.map((a) => res.rows?.[a.id]).find((x) => x?.place);
   const oursCls = fleet?.cls || firstX?.cls || "";
   const oursN = fleet?.rows.length || firstX?.n || 0;
+  // Yüklenenler: sınıf başına son yükleme günü
+  const upAt = new Map();
+  for (const sh of sheets || []) for (const f of sh.fleets || []) if (f?.cls && f.rows?.length) upAt.set(f.cls, sh.at);
   const lastFile = (res.files || []).at(-1);
   const loaded = !!fleet || !!lastFile;
   const chip = (on) => `h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${on ? "bg-acc text-white" : "bg-card ring-1 ring-line"}`;
-  const filters = [["ours", `Bizimkiler · ${mine.length}`], ...(fleet ? [["follow", `Takip · ${nFollow}`], ...sheetFilters(fleet)] : [["all", "Genel"]])];
+  const filters = [...(mine.length || !fleet ? [["ours", `Bizimkiler · ${mine.length}`]] : []), ...(fleet ? [["follow", `Takip · ${nFollow}`], ...sheetFilters(fleet)] : [["all", "Genel"]])];
   const star = view === "all" || view === "follow";
 
   return (
     <>
-      {fleets.length > 1 && (
-        <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
+      {fleets.length > 0 && (
+        <div className="mt-3 flex gap-1 overflow-x-auto rounded-2xl bg-line/60 p-1 [scrollbar-width:none]" role="tablist" aria-label="Sınıf">
           {fleets.map((f, i) => (
             <button
-              key={f.cls + i}
+              key={f.cls}
               type="button"
-              onClick={() => (setFi(i), setView((v) => (v === "ours" ? v : "all")), setMore(false))}
-              aria-pressed={fleet === f}
-              className={`h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${fleet === f ? "bg-deep text-white" : "ring-1 ring-line"}`}
+              role="tab"
+              onClick={() => (setCls(f.cls), setView((v) => (v === "follow" ? v : oursFi.has(i) ? "ours" : "all")), setMore(false))}
+              aria-selected={fleet === f}
+              className={`flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[0.84375rem] font-semibold active:scale-95 ${fleet === f ? "bg-deep text-white" : "text-fg2"}`}
             >
-              {f.cls} · {f.rows.length}
+              {oursFi.has(i) && <i className={`size-1.5 rounded-full ${fleet === f ? "bg-white" : "bg-acc"}`} />}
+              {f.cls}
+              <small className={`text-[0.71875rem] font-semibold ${fleet === f ? "text-white/70" : "text-mut"}`}>{f.rows.length}</small>
             </button>
           ))}
         </div>
@@ -269,12 +283,21 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
 
       <input ref={pick} type="file" accept="application/pdf,image/*,.pdf" className="hidden" onChange={(e) => (upload(e.target.files?.[0]), (e.target.value = ""))} />
       {loaded ? (
-        <div className="mt-3 flex items-center justify-between gap-3 px-1 text-[0.8125rem] text-mut">
-          <span className="truncate">{"Sonuç PDF'i"}{lastFile?.at ? ` · ${shortDay(lastFile.at)}` : ""}</span>
-          <button type="button" disabled={busy} onClick={() => pick.current?.click()} className="shrink-0 py-2 font-semibold text-acc active:opacity-70">
-            {busy ? "Okunuyor…" : "Değiştir"}
+        <>
+          {upAt.size > 0 && (
+            <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1 px-1 text-[0.8125rem] text-mut">
+              {[...upAt].map(([c, at]) => (
+                <span key={c} className="truncate">
+                  {c}
+                  {at ? ` · ${shortDay(at)}` : ""}
+                </span>
+              ))}
+            </div>
+          )}
+          <button type="button" disabled={busy} onClick={() => pick.current?.click()} data-press className="btn btn-secondary mt-3 h-12 w-full">
+            {busy ? "Sonuçlar okunuyor…" : "Sonuç PDF'i ekle"}
           </button>
-        </div>
+        </>
       ) : (
         <Bar>
           <button type="button" disabled={busy} onClick={() => pick.current?.click()} data-press className="btn btn-primary h-14 w-full">
