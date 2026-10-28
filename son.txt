@@ -1,8 +1,8 @@
-Commit: 4d25317 · Yağış saat saat çubuk + tek özet satırı; yarış sayfasında bölge haritası (#863)
-Zaman: 2026-10-28-1721 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40703548691
+Commit: 3116c5f · Merge pull request #864 from seyhunDev/claude/project-thread-82dkge
+Zaman: 2026-10-28-1742 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40706904410
 
-TAM TEST · 28.10.2026 17:13:11
+TAM TEST · 28.10.2026 17:32:44
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1403/1407 geçti · 4 kalan · 486 sn
+SONUÇ: 1403/1407 geçti · 4 kalan · 537 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
