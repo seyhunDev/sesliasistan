@@ -6,11 +6,11 @@
 import { arrayUnion, collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { setDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
-import { canEditShared, sameRace, sameShared, sharedOf } from "@/lib/sharedRace";
+import { canEditShared, fromShared, sameRace, sameShared, sharedOf } from "@/lib/sharedRace";
 import { cleanWind } from "@/lib/raceLive";
 import { mergeSheet, rankOurs } from "@/lib/resultSheet";
 import { loadSheets, saveSheet } from "./raceLiveStore";
-import { linkRace } from "./races";
+import { freshRace, linkRace, loadRaces, saveRace } from "./races";
 
 const col = () => collection(db, "sharedRaces");
 const one = (id) => doc(db, "sharedRaces", id);
@@ -124,4 +124,24 @@ export async function shareAll({ orgId, uid, email, name, races }) {
     if (r.shared || !sharedOf(r)) continue;
     await shareRace({ orgId, uid, email, name, race: r, link: null }).catch((e) => console.warn("[ortak yarış] aktarılamadı", r.name, e?.code || e));
   }
+}
+
+// Yarış takvimi (/races): bütün ortak yarışlar ve bir yarışın sonuç listeleri (herkes okur)
+export async function loadSharedAll() {
+  const snap = await getDocs(col());
+  const list = snap.docs.map((x) => ({ id: x.id, ...x.data() }));
+  for (const s of list) seen.set(s.id, s);
+  return list;
+}
+export async function loadSharedSheets(id) {
+  const snap = await getDocs(collection(one(id), "sheets"));
+  return snap.docs.map((x) => ({ id: x.id, ...x.data() }));
+}
+
+// Kulübüme ekle: kulübün listesinde bu yarış (ya da aynısı) varsa onun kimliği, yoksa ortaktan yeni yarış açılır
+export async function addToClub({ orgId, uid, shared, today }) {
+  const list = await loadRaces(orgId);
+  const have = list.find((r) => r.shared === shared.id) || list.find((r) => sameRace(r, shared));
+  if (have) return have.id;
+  return saveRace(orgId, uid, { ...freshRace(list.find((r) => r.signer) || list[0], today), ...fromShared(shared) });
 }

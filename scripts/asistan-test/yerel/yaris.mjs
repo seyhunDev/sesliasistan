@@ -520,3 +520,16 @@ group("Ortak yarışlar")([
   ["kim değiştirir", { desc: "ekleyen ve ana hesap; başka kulüp değil", fn: () => [SR.canEditShared({ by: "u1" }, "u1", "a@b.c"), SR.canEditShared({ by: "u1" }, "u2", "SEYHUNYILDIZ@gmail.com"), SR.canEditShared({ by: "u1" }, "u2", "x@y.z")], ok: (r) => r.join() === "true,true,false" }],
   ["yeni sonuç listeleri", { desc: "kulübün sonuçlarında olmayan liste kimlikleri", fn: () => SR.newSheets({ sheets: ["f1", "f2"] }, { results: { files: [{ id: "f1" }] } }), ok: (r) => r.join() === "f2" }],
 ]);
+
+// Yarış takvimi (/races): yaklaşan/geçmiş, arama, kısa tarih, sonuç görünümü
+group("Yarış takvimi")([
+  ["yaklaşan ve geçmiş", { desc: "biten geçmişte (yeni önce), süren yaklaşanda (yakın önce)", fn: () => SR.calendarOf([{ id: "a", name: "A", startDate: "2026-11-07" }, { id: "b", name: "B", startDate: "2026-10-27", endDate: "2026-10-29" }, { id: "c", name: "C", startDate: "2026-09-01" }, { id: "d", name: "D", startDate: "2026-10-01" }], "2026-10-28"), ok: (r) => r.up.map((s) => s.id).join() === "b,a" && r.past.map((s) => s.id).join() === "d,c" }],
+  ["arama", { desc: "ad, ilçe ve sınıfta; Türkçe harf farkı yok", fn: () => [SR.calendarOf([{ name: "Kupa", district: "Foça", startDate: "2026-11-01", notice: { classes: ["ILCA 4"] } }], "2026-10-28", "foca ilca").up.length, SR.calendarOf([{ name: "Kupa", startDate: "2026-11-01" }], "2026-10-28", "çeşme").up.length], ok: (r) => r.join() === "1,0" }],
+  ["kısa tarih", { desc: "aynı ay, iki ay, tek gün", fn: () => [SR.shortRange("2026-11-07", "2026-11-09"), SR.shortRange("2026-10-30", "2026-11-02"), SR.shortRange("2026-11-07", "")], ok: (r) => r.join("|") === "7–9 Kas|30 Eki–2 Kas|7 Kas" }],
+  ["sonuç süzgeci", { desc: "sınıfın son listesi; Junior ve Kızlar kendi içinde sıralanır; yelken no ile arama", fn: () => {
+    const old = { at: "1", fleets: [{ cls: "Optimist", rows: [{ name: "Eski", rank: 1 }] }] };
+    const neu = { at: "2", fleets: [{ cls: "Optimist", rows: [{ name: "Ali Kaya", sail: "TUR 1234", club: "Dikili", cat: "Senior" }, { name: "Ece Su", sex: "K", cat: "Junior" }, { name: "Can Ak", cat: "Junior" }] }] };
+    const f = SR.fleetsOf([neu, old])[0];
+    return [f.rows.length, SR.filtersOf(f).join(), SR.rankView(f, "Junior").map((r) => `${r.place}${r.name[0]}`).join(), SR.rankView(f, "Kızlar")[0].place, SR.rankView(f, "", "1234")[0]?.name, SR.rankView(f, "", "dikili kaya").length];
+  }, ok: (r) => r.join("|") === "3|Junior,Kızlar|1E,2C|1|Ali Kaya|1" }],
+]);
