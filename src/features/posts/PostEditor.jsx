@@ -88,6 +88,9 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
   const [usage, setUsage] = useState(null);
   const canvas = useRef(null);
   const file = useRef(null);
+  // Tuvale çizimler sırayla yapılır, dosya ancak çizim bitince alınır: yazı tipi geç yüklenirse
+  // yarım ya da boş tuval kaydediliyordu (iPhone'da paylaş › Görüntüyü kaydet siyah çıkıyordu)
+  const drawing = useRef(Promise.resolve());
   const [autoSave, setAutoSave] = useState(false); // asistanla açılan gönderi hazır olunca kaydedilsin
   const setFiles = useRef({});
   const fileInput = useRef(null);
@@ -145,15 +148,15 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
     };
   }, []);
 
+  const paint = (x) => (drawing.current = drawing.current.catch(() => {}).then(() => canvas.current && drawPost(canvas.current, x, shown)));
   // Önizlemeyi hemen çiz (ayar değişince anında görünsün), paylaşılacak dosyayı kısa gecikmeyle hazırla
   const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.fx, post.zoom, post.shade, post.headline, post.noHead, post.noBrand, post.photoOnly, post.headSize, post.subSize, post.wishSize, post.hide, post.ink, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
   useEffect(() => {
     let live = true;
     file.current = null;
-    const raf = requestAnimationFrame(() => {
-      if (canvas.current && !drag.current) drawPost(canvas.current, cleanPost(p), shown);
-    });
+    if (!drag.current) paint(cleanPost(p));
     const t = setTimeout(async () => {
+      await drawing.current;
       if (!canvas.current || !live) return;
       file.current = await postFile(canvas.current, slug(p.headline)).catch(() => null);
     }, 400);
@@ -172,7 +175,6 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
     }, 900);
     return () => {
       live = false;
-      cancelAnimationFrame(raf);
       clearTimeout(t);
       clearTimeout(t2);
     };
@@ -362,7 +364,11 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSave]);
 
-  const getFile = async () => file.current || (canvas.current && (await postFile(canvas.current, slug(p.headline))));
+  const getFile = async () => {
+    if (file.current) return file.current;
+    await drawing.current;
+    return canvas.current && postFile(canvas.current, slug(p.headline));
+  };
   // Paylaş: açıklama panoya, görsel paylaşım menüsüne (Instagram açıklamayı almaz; yapıştırılır). Kayıt arkada.
   const share = async () => {
     const text = fullCaption(post);
@@ -571,7 +577,7 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
     if (d.raf) return;
     d.raf = requestAnimationFrame(() => {
       d.raf = 0;
-      if (canvas.current && drag.current === d) drawPost(canvas.current, cleanPost({ ...p, ...d.next }), shown);
+      if (drag.current === d) paint(cleanPost({ ...p, ...d.next }));
     });
   };
   const dragEnd = () => {
