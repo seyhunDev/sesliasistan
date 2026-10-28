@@ -170,8 +170,8 @@ const num = (v, max = 1000) => {
 function cleanPlace(x) {
   if (!x || typeof x !== "object" || !num(x.place)) return null;
   const out = { cls: S(x.cls, 30), cat: ["Junior", "Bambino"].includes(x.cat) ? x.cat : "", place: num(x.place) };
-  for (const k of ["n", "cp", "cn", "gp", "gn"]) if (num(x[k])) out[k] = num(x[k]);
-  if (!out.cat) (delete out.cp, delete out.cn);
+  for (const k of ["n", "cp", "cn", "gp", "gn", "jp", "jn"]) if (num(x[k])) out[k] = num(x[k]);
+  if (!out.cat) (delete out.cp, delete out.cn, delete out.jp, delete out.jn);
   return out;
 }
 const cleanAthletes = (a) =>

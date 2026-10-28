@@ -22,7 +22,7 @@ export function cleanResults(v) {
     const row = { place, note };
     const cls = S(x?.cls, 30);
     if (cls) {
-      Object.assign(row, { cls, cat: ["Senior", "Junior", "Bambino"].includes(x?.cat) ? x.cat : "", n: int(x?.n, 1000), cp: int(x?.cp, 500), cn: int(x?.cn, 1000), gp: int(x?.gp, 500), gn: int(x?.gn, 1000) });
+      Object.assign(row, { cls, cat: ["Senior", "Junior", "Bambino"].includes(x?.cat) ? x.cat : "", n: int(x?.n, 1000), cp: int(x?.cp, 500), cn: int(x?.cn, 1000), gp: int(x?.gp, 500), gn: int(x?.gn, 1000), jp: int(x?.jp, 500), jn: int(x?.jn, 1000) });
       if (/^[\w-]{1,40}$/.test(x?.f || "")) row.f = x.f;
     }
     rows[id] = row;
