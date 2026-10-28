@@ -1,8 +1,8 @@
-Commit: 3c9d5c8 · Instagram: paylaşılan görsel artık siyah kaydedilmiyor (dosya çizim bitince alınıyor) (#875)
-Zaman: 2026-10-28-2047 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40737209902
+Commit: 02abca3 · Parkur: rota kartı (rüzgâr yukarıda), Kart · Harita seçimi (#876)
+Zaman: 2026-10-28-2101 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40739822411
 
-TAM TEST · 28.10.2026 20:37:26
+TAM TEST · 28.10.2026 20:52:50
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1409/1409 geçti · 0 kalan · 573 sn
+SONUÇ: 1409/1409 geçti · 0 kalan · 497 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
