@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { CockpitWind } from "@/features/home/CockpitWind";
 import { useWindObs } from "@/features/weather/useWindObs";
+import { RegionMap } from "@/features/weather/RegionMap";
 import { kn, sky, windName } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
 import { cleanSpot, forecastFrom, lastForecastDay, loadRaceDay, raceDays } from "./raceWeather";
@@ -132,6 +133,13 @@ export function RaceWx({ r }) {
             );
           })}
         </nav>
+      )}
+      {/* Bölge haritası (Seyhun 2026-10-28: "yarışların havasında da aynı haritayı görmek istiyorum"): yarış yerinin çevresi, rüzgâr / yağış,
+          −2 sa … +12 kaydırıcı. Dokunmak yarışın yerini değiştirmez. */}
+      {d.at && (
+        <div className="mt-3">
+          <RegionMap place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
+        </div>
       )}
     </section>
   );
