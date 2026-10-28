@@ -1,8 +1,8 @@
-Commit: 2919d95 · Kameralar: seçilen yer kalıcı, YouTube gelmezse nedeni yazılır (#783)
-Zaman: 2026-10-23-2219 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40009323685
+Commit: 87832d6 · Merge pull request #865 from seyhunDev/claude/project-thread-nph9kv
+Zaman: 2026-10-28-1814 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40712239508
 
-TAM TEST · 23.10.2026 22:11:52
+TAM TEST · 28.10.2026 18:04:58
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -17,12 +17,19 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
     Deniz trafiği sayfası…
     Kameralar sayfası…
+    Hava: yağış şeridi…
+    Hava: ölçülen / beklenen yağmur…
+    Ana sayfa: yarış günü havası…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 19/19 geçti
+    Çevrimdışı: 21/21 geçti
+    Yarış sayfası (sporcu seçili, yarış günü)…
+    Yarış günü (sporcu seçili)…
+    Yarıştan önce (sporcu seçili)…
+    Multimedya…
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1391/1391 geçti · 0 kalan · 451 sn
+SONUÇ: 1403/1407 geçti · 4 kalan · 555 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -127,20 +134,21 @@ SONUÇ: 1391/1391 geçti · 0 kalan · 451 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 67/67
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 68/68
   ✓ Sunucu ucu: girişsiz istek reddedilir: 18/18
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 47/47
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 121/121
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 129/129
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
+  ✓ Ana sayfa: 3/3
   ✓ Enerji (boşta): 2/2
-  ✓ Dokun konuş: tam ekran açılış: 5/5
+  ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 3/3
-  ✓ Basılı tut yaz: 1/1
-  ✓ Sayfa hataları: 9/9
+  ✓ Kısa dokun yaz: 1/1
+  ✓ Sayfa hataları: 12/12
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
@@ -157,16 +165,87 @@ SONUÇ: 1391/1391 geçti · 0 kalan · 451 sn
   ✓ Tam ekran üstte: 1/1
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
+  ✓ Hava: 3/3
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 19/19
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 21/21
   ✓ İnternet varken: 2/2
   ✓ Yavaş bağlantı: 3/3
+  ✓ Takılan bağlantı: 2/2
   ✓ İnternet yok: 5/5
   ✓ Bağlantı gelince: 2/2
   ✓ Açıkken kopup gelince: 2/2
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
+
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 1/5
+  ✗ Yarış sayfası: 1/5
+      ✗ “yarış günü, sporcu seçili”
+          beklenen: çökmeden açılır, "Yarış günü" görünür
+          olan:     çöktü: Ege Kupası
+
+Dikili, İzmir · 28–30 Eki
+
+Yarış günü
+1 / 3
+Multimedya
+Hava · Dikili
+18°
+Parçalı bulutlu
+18° / 18°
+Yıldız · şimdi
+9–14 kn
+5
+10
+15
+00
+18°
+9–14
+03
+18°
+      ✗ “Sporcu sekmesinde sporcu”
+          beklenen: çökmeden açılır, "Yarış günü" görünür
+          olan:     çöktü: Ege Kupası
+
+Dikili, İzmir · 28–30 Eki
+
+Yarış günü
+1 / 3
+Multimedya
+Hava · Dikili
+18°
+Parçalı bulutlu
+18° / 18°
+Yıldız · şimdi
+9–14 kn
+5
+10
+15
+00
+18°
+9–14
+03
+18°
+      ✗ “yarıştan önce, sporcu seçili”
+          beklenen: çökmeden açılır, "gün kaldı" görünür
+          olan:     çöktü: Bahar Kupası
+
+Dikili, İzmir · 2–3 Kas
+
+5
+gün kaldı
+Multimedya
+Hazırlık
+4 bölüm eksik · 3 iş
+Hava · Dikili
+18°
+Parçalı bulutlu
+18° / 18°
+Yıldız · en sert 00:00
+9
+      ✗ “bütün sekmeler”
+          beklenen: her sekme çökmeden açılır
+          olan:     çöken: Özet, Sporcu, Evrak, Yolculuk, Bütçe, Veli · 
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
