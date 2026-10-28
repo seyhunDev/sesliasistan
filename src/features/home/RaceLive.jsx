@@ -160,7 +160,7 @@ function Controls({ id, orgId, title, onMenu }) {
       </div>
       <div className="mt-2.5 text-center" onPointerDown={() => running && !up && audio()}>
         <small className="block text-[0.6875rem] font-semibold uppercase tracking-[.08em] text-white/60">{head}</small>
-        <b className={`block font-extrabold leading-[1.05] tracking-[-.04em] tabular-nums ${up ? "text-[4rem]" : "text-[4.6rem]"} ${hot ? "text-[#f4a49c]" : ""}`}>{time}</b>
+        <b className={`block font-extrabold leading-[1.05] tracking-[-.04em] tabular-nums ${up ? "text-[clamp(2.75rem,calc(var(--u,7px)*9.2),4.75rem)]" : "text-[clamp(3rem,calc(var(--u,7px)*10.5),5.5rem)]"} ${hot ? "text-[#f4a49c]" : ""}`}>{time}</b>
         {ours && idle && (
           <button type="button" data-press aria-label="Süre seç" onClick={() => setPick(true)} className="mt-0.5 inline-flex h-8 items-center gap-1 rounded-full bg-white/10 px-3 text-[0.875rem] font-semibold">
             {Math.round(t.dur / 60)} dk
@@ -182,16 +182,16 @@ function Controls({ id, orgId, title, onMenu }) {
           </button>
         </div>
       )}
-      <div className="mt-3 flex items-center gap-2.5">
+      <div className="mt-[clamp(0.5rem,calc(var(--u,7px)*1.7),0.75rem)] flex items-center gap-2.5">
         {ours && paused && (
           <button type="button" data-press onClick={() => raceCancel(rf.flow, own)} className="flex h-[3.25rem] shrink-0 items-center rounded-2xl bg-white/12 px-4 text-[0.9375rem] font-bold shadow-[0_2px_0_rgba(0,0,0,.35)] active:translate-y-px active:shadow-none">
             Sıfırla
           </button>
         )}
-        <button type="button" data-press onClick={act} disabled={!race && label === "Başlat"} className={`flex h-[3.25rem] min-w-0 flex-1 items-center justify-center rounded-2xl text-[1.0625rem] font-bold shadow-[0_2px_0_rgba(0,0,0,.35)] active:translate-y-px active:shadow-none disabled:opacity-50 ${running && !up ? "bg-white text-[#11203a]" : "bg-[#0ea5c4] text-white"}`}>
+        <button type="button" data-press onClick={act} disabled={!race && label === "Başlat"} className={`flex h-[clamp(2.75rem,calc(var(--u,7px)*7.4),3.25rem)] min-w-0 flex-1 items-center justify-center rounded-2xl text-[1.0625rem] font-bold shadow-[0_2px_0_rgba(0,0,0,.35)] active:translate-y-px active:shadow-none disabled:opacity-50 ${running && !up ? "bg-white text-[#11203a]" : "bg-[#0ea5c4] text-white"}`}>
           {label}
         </button>
-        <RecPick onFile={(f) => (handShot(id, f), router.push(`${own}?tab=media`))} aria-label="Kayıt" className="grid size-[3.25rem] shrink-0 place-items-center rounded-full bg-white/12 active:translate-y-px">
+        <RecPick onFile={(f) => (handShot(id, f), router.push(`${own}?tab=media`))} aria-label="Kayıt" className="grid size-[clamp(2.75rem,calc(var(--u,7px)*7.4),3.25rem)] shrink-0 place-items-center rounded-full bg-white/12 active:translate-y-px">
           <span className="size-5 rounded-full bg-[#f05a5a] shadow-[0_0_0_3px_#16263f,0_0_0_5px_#fff]" />
         </RecPick>
       </div>

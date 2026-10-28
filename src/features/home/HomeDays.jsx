@@ -34,9 +34,9 @@ export function HomeDays({ today, fit, att, sel = today, onSel, pick, onPick }) 
           const w = new Date(`${d.date}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
           const open = () => (on ? tap && onPick?.(d.date) : onSel?.(d.date));
           return (
-            <button key={d.date} type="button" data-press aria-pressed={on} onClick={open} className={`raised flex flex-col items-center gap-1 rounded-2xl ${first ? "py-2.5" : "py-2"} ${first ? (on ? "act-main" : "ck-tout") : on ? "ck-sel" : ""}`}>
+            <button key={d.date} type="button" data-press aria-pressed={on} onClick={open} className={`raised flex flex-col items-center gap-1 rounded-2xl ${first ? "py-[clamp(0.625rem,calc(var(--u,7px)*1.6),1.125rem)]" : "py-[clamp(0.5rem,calc(var(--u,7px)*1.35),1rem)]"} ${first ? (on ? "act-main" : "ck-tout") : on ? "ck-sel" : ""}`}>
               <small className={`text-[0.75rem] font-semibold capitalize ${on || first ? "" : "text-white/60"}`}>{w}</small>
-              <b className={`${first ? "text-[1.875rem]" : "text-[1.625rem]"} font-bold leading-none tracking-[-.03em] tabular-nums`}>{d.d}</b>
+              <b className={`${first ? "text-[clamp(1.5rem,calc(var(--u,7px)*4.6),2.5rem)]" : "text-[clamp(1.3125rem,calc(var(--u,7px)*4),2.125rem)]"} font-bold leading-none tracking-[-.03em] tabular-nums`}>{d.d}</b>
               <span className="flex h-1.5 items-center gap-0.5">
                 {tones.map((t) => (
                   <span key={t} className={`tone-${t} tone-bar size-1.5 rounded-full`} />

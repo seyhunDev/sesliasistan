@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { DayChart, Wait } from "@/features/athletes/RaceWx";
@@ -46,9 +46,15 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
   const ar = useAway(away, date);
   const home = getPlace();
   const far = ar && !ar.err && !(ar.at && km(ar.at, home) < 10);
+  const [fitRef, fitH] = useFit();
+  const fill = fitH > 0;
 
   return (
     <section className="ck ck-top -mx-4 px-4 pb-4 pt-[calc(0.875rem+env(safe-area-inset-top))]" aria-label="Bugün">
+      {/* İlk ekran (Seyhun 2026-10-28 "A · Yalnız saydıkların"): günler, yarış sayacı, hava ve grafik (yarış başka yerdeyse altta ev yeri)
+          telefonda ekrana tam oturur; boşluk açılmaz, büyüklükler ekran boyuna göre (--u), kalan yeri grafik doldurur (useFit).
+          Sıradaki plan ve iş düğmeleri kaydırınca gelir. */}
+      <div ref={fitRef} style={fill ? { minHeight: fitH, "--u": `${(fitH / 100).toFixed(2)}px` } : undefined} className="flex flex-col">
       <header className="-mb-1 flex items-center justify-end gap-2">
         <h1 className="sr-only">{now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}</h1>
         <BirthdayBadge />
@@ -65,8 +71,8 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
         <>
           <p className="mt-4 truncate text-[0.8125rem] font-semibold text-[#67e8f9]">{(ar.place || away.place || away.name || "").split(",")[0]}</p>
           {ar.rows ? (
-            <button type="button" onClick={() => router.push(`/athletes/races/${away.id}`)} aria-label="Yarış yerinin havası" className="mt-1 block w-full text-left">
-              <DayChart rows={ar.rows} day={date} at={ar.at} />
+            <button type="button" onClick={() => router.push(`/athletes/races/${away.id}`)} aria-label="Yarış yerinin havası" className={`mt-1 w-full text-left ${fill ? "flex min-h-0 flex-1 flex-col" : "block"}`}>
+              <DayChart rows={ar.rows} day={date} at={ar.at} fill={fill} />
             </button>
           ) : (
             <div className="mt-1">
@@ -87,7 +93,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
           <button type="button" onClick={goWeather} aria-label="Hava ayrıntısı" className="mt-4 block w-full text-left">
             {n ? (
               <span className="flex items-center gap-3">
-                <span className="shrink-0 text-[2.5rem] font-bold leading-none tracking-[-.04em] tabular-nums">{n.t}°</span>
+                <span className="shrink-0 text-[clamp(1.875rem,calc(var(--u,7px)*5.8),3rem)] font-bold leading-none tracking-[-.04em] tabular-nums">{n.t}°</span>
                 <span className="min-w-0 flex-1 leading-tight">
                   <b className="block truncate text-[0.9375rem] font-semibold">{isToday ? "" : `${dname} · `}{sky(n.code, n.day).label}</b>
                   <small className="block truncate text-[0.8125rem] text-white/65 tabular-nums">
@@ -107,12 +113,13 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
             )}
           </button>
           {rows?.length > 0 && (
-            <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className="mt-2 block w-full text-left">
-              <CockpitWind key={date} rows={rows} date={date} />
+            <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className={`mt-2 w-full text-left ${fill ? "flex min-h-0 flex-1 flex-col" : "block"}`}>
+              <CockpitWind key={date} rows={rows} date={date} fill={fill} />
             </button>
           )}
         </>
       )}
+      </div>
       {isToday ? <NextPlan now={now} /> : <DayPlans date={date} onOpen={onOpenDay} />}
       {children}
     </section>
@@ -241,4 +248,35 @@ function km(a, b) {
   const dLat = (b.lat - a.lat) * rad, dLon = (b.lon - a.lon) * rad;
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// İlk ekranın yüksekliği: telefonda (genişlik < 768) pencere yüksekliğinden kutunun sayfadaki yeri ve alttaki sekme çubuğunun kapladığı yer
+// çıkar; kalan en az yükseklik olur (içerik sığmazsa uzar). --u bu yüksekliğin yüzde biri: gün rakamları, sayaç ve sıcaklık onunla büyür.
+// Masaüstünde ya da ölçülemezse eski görünüm (yükseklik yok, --u 7px).
+function useFit() {
+  const ref = useRef(null);
+  const [h, setH] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      if (window.innerWidth >= 768) return setH(0);
+      const vh = window.visualViewport?.height || window.innerHeight;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const bar = document.querySelector("nav[aria-label='Sekmeler']");
+      const cover = bar ? Math.max(0, window.innerHeight - bar.getBoundingClientRect().top) : 0;
+      const v = Math.round(vh - top - cover - 8);
+      setH(v > 360 ? v : 0);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("orientationchange", measure);
+    const t = setTimeout(measure, 400); // sekme çubuğu geç yerleşirse
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("orientationchange", measure);
+      clearTimeout(t);
+    };
+  }, []);
+  return [ref, h];
 }
