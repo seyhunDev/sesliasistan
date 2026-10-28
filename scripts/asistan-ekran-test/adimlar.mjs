@@ -821,10 +821,9 @@ async function scenarios4(h) {
       await page.waitForTimeout(800);
       return [old === 0 && dv === 1 && sf === 1, `eski Başlat ${old} · Devam ${dv} · Sıfırla ${sf}`];
     });
-    await check(GN, "Yarış multimedya: denemeleri sıfırla", "Liste › Denemeleri sıfırla → 1 eklenen gün yazar, Sıfırla'dan sonra dünkü gün kalkar", async () => {
+    await check(GN, "Yarış multimedya: denemeleri sıfırla", "Süre › Denemeleri sıfırla → 1 eklenen gün yazar, Sıfırla'dan sonra dünkü gün kalkar", async () => {
       const before = await page.locator("button[data-day]").count();
       const step = async (name, fn) => fn().catch((e) => { throw new Error(`${name}: ${String(e.message).split("\n")[0]}`); });
-      await step("Liste", () => page.locator("button", { hasText: "Liste ›" }).first().click({ timeout: 5000 }));
       await step("Denemeleri sıfırla", () => page.getByRole("button", { name: "Denemeleri sıfırla" }).click({ timeout: 5000 }));
       const dlg = page.getByRole("dialog", { name: "Denemeleri sıfırla" });
       await dlg.waitFor({ timeout: 4000 });
