@@ -2812,6 +2812,17 @@ group("Sayfa çökmesi")([
 
 // Gerçekleşen rüzgâr (windObs.js): Dikili istasyonunun SYNOP raporu okunur, yalnız 10 km içindeki yere gösterilir
 const WO = await import("@/lib/windObs");
+const RR = await import("@/lib/rainRadar");
+const { deflateSync } = await import("node:zlib");
+// Deneme PNG'si: 4×2 RGBA, 2. satır "Sub" süzgeçli (radar döşemesi gibi)
+const testPng = () => {
+  const crc = (b) => { let c = ~0; for (const x of b) { c ^= x; for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1)); } return ~c >>> 0; };
+  const chunk = (t, d) => { const l = Buffer.alloc(4); l.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([l, td, c]); };
+  const ih = Buffer.alloc(13); ih.writeUInt32BE(4, 0); ih.writeUInt32BE(2, 4); ih[8] = 8; ih[9] = 6;
+  const r0 = [0, 0, 0, 0, 0, 160, 220, 255, 200, 0, 0, 0, 0, 230, 40, 40, 255];
+  const r1 = [1, 30, 60, 120, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", ih), chunk("IDAT", deflateSync(Buffer.from([...r0, ...r1]))), chunk("IEND", Buffer.alloc(0))]);
+};
 const SYN = {
   kn: "17180,2026,10,18,12,00,AAXX 18124 17180 42970 33006 10216 20104 30102 40124 58008 333 91108=",
   ms: "17180,2026,10,18,15,00,AAXX 18151 17180 42970 32510 10216 333 91015=",
@@ -2819,6 +2830,9 @@ const SYN = {
   big: "17180,2026,10,18,09,00,AAXX 18094 17180 42970 33099 00105 10216=",
 };
 group("Ölçülen rüzgâr")([
+  ["radar döşemesi", F("Dikili z7: döşeme 73/48, piksel içeride", () => { const t = RR.tileOf(39.07, 26.89); return t.z === 7 && t.x === 73 && t.y === 48 && t.px >= 0 && t.px < 256 && t.py >= 0 && t.py < 256; })],
+  ["radar rengi", F("saydam yok, açık mavi hafif, koyu mavi orta, kırmızı kuvvetli", () => RR.levelOf(0, 0, 0, 0) === 0 && RR.levelOf(160, 220, 255, 200) === 1 && RR.levelOf(30, 60, 120, 255) === 2 && RR.levelOf(230, 40, 40, 255) === 3)],
+  ["radar PNG", F("RGBA + Sub süzgeci çözülür, 3×3 en şiddetlisi", () => { const img = RR.decodePng(testPng()); return img.w === 4 && img.h === 2 && img.px(2, 0)[3] === 0 && img.px(3, 0)[0] === 230 && img.px(0, 1).join() === "30,60,120,255" && img.px(1, 1).join() === "30,60,120,255" && RR.levelAt(img, 2, 0) === 3 && RR.levelAt(img, 0, 0) === 2; })],
   ["knot raporu", F("300°, 6 kn, sağanak 8", () => { const o = WO.parseSynop(SYN.kn, "17180"); return o.dir === 300 && o.kn === 6 && o.gust === 8 && o.at === "2026-10-18T12:00:00.000Z"; })],
   ["m/s raporu", F("250°, 10 m/s = 19 kn, sağanak 29", () => { const o = WO.parseSynop(SYN.ms, "17180"); return o.dir === 250 && o.kn === 19 && o.gust === 29; })],
   ["sakin", F("yön yok, 0 kn, sağanak yok", () => { const o = WO.parseSynop(SYN.calm, "17180"); return o.dir === null && o.kn === 0 && o.gust === null; })],
