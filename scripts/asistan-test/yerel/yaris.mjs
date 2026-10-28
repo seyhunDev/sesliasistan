@@ -556,6 +556,15 @@ group("Parkur analizi")([
     const svg = K.cardSvg(k);
     return [k, svg, K.cardOf(CC([])), K.cardSvg(null)];
   }, ok: ([k, svg, none, empty]) => k.axis === 325 && k.wind === 318 && k.reach === 205 && !k.est.komite && k.est.pin && svg.startsWith("<svg") && svg.includes(">1A<") && svg.includes("Rüzgâr 318° · 9 kn") && svg.includes(">205°<") && svg.includes("stroke-dasharray") && none === null && empty === "" }],
+  ["rota kartı start hattı", { desc: "hat rüzgâra dik ve yatay (komite sağda, pin solda); rüzgâr yönünde girilen hat dik çizilmez, ters yön aynı hat", fn: async () => {
+    const K = await import("@/lib/courseCard");
+    const ends = (line) => {
+      const svg = K.cardSvg(K.cardOf(CC([{ kind: "wind", deg: 330, kn: 8 }, { kind: "line", ref: "pin", deg: line }])));
+      const [ko, pi] = [...svg.matchAll(/M-7 8 L-7 -2[^>]*translate\(([\d.-]+) ([\d.-]+)\)/g)].map((m) => [+m[1], +m[2]]);
+      return { flat: Math.abs(ko[1] - pi[1]) < 1, right: ko[0] > pi[0], dy: ko[1] - pi[1] };
+    };
+    return [ends(330), ends(150), ends(60), ends(240), ends(70)];
+  }, ok: ([along, back, ideal, flip, tilt]) => along.flat && along.right && back.flat && back.right && ideal.flat && ideal.right && flip.flat && flip.right && tilt.right && !tilt.flat && Math.abs(tilt.dy) < 30 }],
   ["kayıt temizliği", { desc: "bilinmeyen tür ve derecesiz ölçüm atılır, açı 0–359, bozuk konum düşer, kişisel alan yok", fn: () => PK.cleanCourse({ pts: { komite: { lat: 39, lon: 26 }, pin: { lat: "x" }, sen: { lat: 1, lon: 1 } }, obs: [{ kind: "wind", deg: 370, kn: 6, by: "komite", uid: "u1" }, { kind: "x", deg: 1 }, { kind: "axis" }], len: { orsa: 50 } }), ok: (c) => Object.keys(c.pts).join() === "komite" && c.obs.length === 1 && c.obs[0].deg === 10 && c.obs[0].by === "komite" && !("uid" in c.obs[0]) && !c.len.orsa }],
 ]);
 
