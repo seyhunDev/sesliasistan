@@ -49,7 +49,9 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
   // Ölçülen ve tahmin (Seyhun 2026-10-27 "A · Ölçülen beyaz çizgi": "tahmin zaten baştan sona var, ölçülen bulunduğumuz saate kadar; daha net ayıralım"):
   // tahmin bütün gün dolu renkli alan; ölçülen (rüzgâr ve yağmur) şimdiye kadar üstüne binen noktalı BEYAZ çizgi, ölçülen sağanak ince beyaz kesik çizgi.
   // Yağmur grafiği (aynı gün "yağmuru da grafik yapalım, kaç mm olduğunu gösterelim"): rüzgârın altında mavi alan (saatlik mm, sağda mm ölçeği),
-  // en yüksek saatte "N mm/sa"; ölçülen yağmur istasyon raporundan (çoğunlukla 3/6 saatlik toplam, o saatlere bölünür) beyaz çizgi + "N mm geldi".
+  // en yüksek saatte "N mm/sa"; ölçülen yağmur istasyon raporundan (çoğunlukla 3/6/12 saatlik TOPLAM): raporun kapsadığı saatlere yayılan beyaz
+  // çerçeveli kutu, yüksekliği saatlik ortalama, üstünde "8 mm geldi · 6 saatte" (Seyhun 2026-10-28: noktalı düz çizgi tahminin altında kalıp
+  // "8 mm" ile çelişiyordu; toplam ile saatlik tahmin aynı ölçekte değil). Ölçek mm/sa.
   // Saatte 4 mm ve üstü beklenirse grafiğin üstünde kehribar uyarı satırı (gerçek uyarı). Eski önbellekte mm yoksa yağmur grafiği çıkmaz.
   // Altta TEK SATIR açıklama (Rüzgâr · Sağanak · Yağmur · Ölçülen; yalnız grafikte olanlar).
   const heavy = heavyRain(rows);
@@ -81,7 +83,6 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
   const rPath = (pts) => pts.map(([i, v], k) => `${k ? "L" : "M"}${x(i).toFixed(1)},${ry(v).toFixed(1)}`).join("");
   const fLine = rPath(fc.map((v, i) => [i, v]));
   const pk = fc.indexOf(Math.max(...fc));
-  const oTop = oPts.reduce((m, q) => (q[1] > m[1] ? q : m), [oFrom, 0]);
   const lx = (v) => Math.min(W - R - 26, Math.max(L + 26, v)); // yazı kenardan taşmasın
   const mmTxt = (v) => (v >= 1 ? String(Math.round(v)) : "<1");
   const legend = [
@@ -146,7 +147,7 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
               <text x={W - 2} y={ry(v) + 3} textAnchor="end" fontSize="9" fill="rgba(255,255,255,.5)">{v}</text>
             </g>
           ))}
-          <text x={W - 2} y="9" textAnchor="end" fontSize="9" fill="rgba(255,255,255,.5)">mm</text>
+          <text x={W - 2} y="9" textAnchor="end" fontSize="9" fill="rgba(255,255,255,.5)">mm/sa</text>
           {wetFc && (
             <g data-kind="tahmin">
               <path d={`${fLine}L${x(n - 1)},${ry(0)}L${x(0)},${ry(0)}Z`} fill="#3b82f6" fillOpacity=".75" />
@@ -155,11 +156,19 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
             </g>
           )}
           <line x1={L} x2={W - R} y1={ry(0)} y2={ry(0)} stroke="rgba(255,255,255,.15)" />
-          {oPts.length > 0 && (
+          {spans.length > 0 && (
             <g data-kind="olculen">
-              <path d={rPath(oPts)} fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
-              {oPts.map(([i, v]) => <circle key={`r${i}`} cx={x(i).toFixed(1)} cy={ry(v).toFixed(1)} r="2.2" fill="#fff" />)}
-              {oSum >= 0.1 && <text x={lx(x(oTop[0])).toFixed(1)} y={(ry(oTop[1]) - 6).toFixed(1)} textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">{mmTxt(oSum)} mm geldi</text>}
+              {spans.map((sp) => {
+                const hw = (x(1) - x(0)) / 2;
+                const v = sp.mm / (sp.b - sp.a + 1);
+                const x0 = x(sp.a) - hw, x1 = x(sp.b) + hw;
+                return (
+                  <g key={`o${sp.a}`}>
+                    <rect x={x0.toFixed(1)} y={ry(v).toFixed(1)} width={(x1 - x0).toFixed(1)} height={Math.max(1, ry(0) - ry(v)).toFixed(1)} fill="#fff" fillOpacity=".16" stroke="#fff" strokeWidth="1.5" />
+                    {sp.mm >= 0.1 && <text x={lx((x0 + x1) / 2).toFixed(1)} y={Math.max(RT + 2, ry(v) - 5).toFixed(1)} textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">{mmTxt(sp.mm)} mm geldi · {sp.h} saatte</text>}
+                  </g>
+                );
+              })}
             </g>
           )}
           {rad.length > 0 && (
