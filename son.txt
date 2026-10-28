@@ -1,8 +1,8 @@
-Commit: 4012e67 · Multimedya sayfası lacivert kokpit: üst, gün çipleri ve büyük sayaç lacivertte (#855)
-Zaman: 2026-10-28-1246 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40665673995
+Commit: d270a48 · Ana sayfa yarış şeridi sade: Başlat, yuvarlak Kayıt, ⋯; süre penceresi (#858)
+Zaman: 2026-10-28-1337 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40672293231
 
-TAM TEST · 28.10.2026 12:37:39
+TAM TEST · 28.10.2026 13:28:22
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
