@@ -1,7 +1,9 @@
 // Rota kartı (Seyhun 2026-10-28, kendi kartının benzeri; seçtiği "A · Rüzgâr yukarıda", örnek yaris-tasarim/parkur/rota-karti-a.png):
 // Start (komite sağda, pin solda), 4s/4p kapısı, 1 + 1A, 2, 3s/3p kapısı, Finiş. Kağıt kart gibi ölçeksiz şema; açılar girilen
-// ölçümlerden (raceCourse.js axisOf / lineOf / son rüzgâr / orsadan apaza). Rüzgâr hep yukarıdan gelir, hattın eğimi avantajı gösterir.
-import { ORSA_M, axisOf, lineOf } from "@/lib/raceCourse";
+// ölçümlerden (raceCourse.js axisOf / lineOf / son rüzgâr / orsadan apaza).
+// Sabit = komitenin parkur ekseni (Seyhun 2026-10-28: "komite 1'i 140'a göre atar, pin'i komiteden 50°'de görmem gerekir").
+// Kart eksen yukarıda çizilir: 1 eksende, olması gereken hat soluk (eksen − 90°), atılan hat gerçek açısında, rüzgâr oku değişen yönde.
+import { ORSA_M, axisOf, diff, lineOf } from "@/lib/raceCourse";
 
 const rad = (d) => (d * Math.PI) / 180;
 const nrm = (d) => ((Math.round(d) % 360) + 360) % 360;
@@ -9,15 +11,14 @@ const dir = (b, m) => [m * Math.sin(rad(b)), m * Math.cos(rad(b))];
 const add = (p, b, m) => { const [x, y] = dir(b, m); return [p[0] + x, p[1] + y]; };
 function geom(c) {
   const A = c.axis, L = c.orsa;
-  const mid = [0, 0];
-  // Start hattı her zaman rüzgâra dik (Seyhun 2026-10-28: "yatay olmalı, rüzgâra 90 derece"; pin solda, komite sağda).
-  // Ölçülen hat yalnız avantaj kadar eğer; ters yön (komiteden pin) aynı hat sayılır, 35°'den büyük sapma ölçüm hatası sayılıp düz çizilir.
-  const up = c.wind ?? A;
-  let tilt = c.line == null ? 0 : (((c.line - (up + 90)) % 180) + 270) % 180 - 90;
-  if (Math.abs(tilt) > 35) tilt = 0;
-  const lineDeg = nrm(up + 90 + tilt); // pin → komite
-  const lineM = Math.max(c.lineM || 120, L * 0.32); // kartta hat okunur boyda (kağıt kart gibi ölçeksiz)
-  const komite = add(mid, lineDeg, lineM / 2), pin = add(mid, lineDeg + 180, lineM / 2);
+  // komite sabit; pin komiteden ölçülen açıda (yoksa olması gereken eksen − 90°), soluk çizgi olması gereken hat
+  const lineM = Math.max(c.lineM || 120, L * 0.5); // kartta hat okunur boyda (kağıt kart gibi ölçeksiz)
+  const ideal = nrm(A - 90); // komiteden pin
+  const toPin = c.line == null ? ideal : nrm(c.line + 180);
+  const komite = add([0, 0], A + 90, lineM / 2);
+  const pin = add(komite, toPin, lineM), pinIdeal = add(komite, ideal, lineM);
+  const mid = [(komite[0] + pin[0]) / 2, (komite[1] + pin[1]) / 2];
+  const lineDeg = nrm(toPin + 180); // pin → komite
   const m1 = add(mid, A, L);
   const m1a = add(m1, A - 90, L * 0.15);
   const reach = c.reach ?? nrm(A - 120);
@@ -29,16 +30,16 @@ function geom(c) {
   const s4 = add(g4, A - 90, gw), p4 = add(g4, A + 90, gw);
   const fin = add(g3, A + 150, L * 0.45);
   const fA = add(fin, A + 60, L * 0.1), fB = add(fin, A + 240, L * 0.1);
-  return { A, L, mid, komite, pin, m1, m1a, reach, m2, g3, s3, p3, g4, s4, p4, fin, fA, fB, lineDeg, tilt };
+  return { A, L, mid, komite, pin, pinIdeal, ideal, toPin, m1, m1a, reach, m2, g3, s3, p3, g4, s4, p4, fin, fA, fB, lineDeg };
 }
-function svgOf(c, { up = "wind", w = 350, h = 440 } = {}) {
+function svgOf(c, { w = 350, h = 500 } = {}) {
   const g = geom(c);
-  const rot = up === "wind" ? (c.wind ?? g.A) : 0; // rüzgâr yukarıda: hattın eğimi avantajı doğrudan gösterir
+  const rot = g.A; // eksen yukarıda (komitenin sabiti)
   const R = ([x, y]) => [x * Math.cos(rad(rot)) - y * Math.sin(rad(rot)), x * Math.sin(rad(rot)) + y * Math.cos(rad(rot))];
-  const names = ["komite", "pin", "m1", "m1a", "m2", "s3", "p3", "s4", "p4", "fA", "fB"];
+  const names = ["komite", "pin", "pinIdeal", "m1", "m1a", "m2", "s3", "p3", "s4", "p4", "fA", "fB"];
   const P = Object.fromEntries(names.map((k) => [k, R(g[k])]));
   const xs = Object.values(P).map((p) => p[0]), ys = Object.values(P).map((p) => p[1]);
-  const pad = { l: 40, r: 40, t: 70, b: 40 };
+  const pad = { l: 44, r: 44, t: 104, b: 92 };
   const sx = (w - pad.l - pad.r) / (Math.max(...xs) - Math.min(...xs) || 1), sy = (h - pad.t - pad.b) / (Math.max(...ys) - Math.min(...ys) || 1);
   const s = Math.min(sx, sy);
   const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
@@ -68,13 +69,14 @@ function svgOf(c, { up = "wind", w = 350, h = 440 } = {}) {
   // dış rota: start → 1 → 1A → 2 → 3 kapısı → Finiş
   path([mid, m1, m1a, m2, g3, fin]);
   arrowOn(mid, m1, 0.6); arrowOn(m1a, m2); arrowOn(m2, g3); arrowOn(g3, fin, 0.6);
-  // start hattı
-  line(pt("pin"), pt("komite"), `stroke="${amb}" stroke-dasharray="7 5"`, 3);
-  o = o.replace(/stroke="#26282c" stroke-width="3" stroke="#f59e0b"/, `stroke="${amb}" stroke-width="3"`);
-  boat(pt("komite"), c.est?.komite); boat(pt("pin"), c.est?.pin);
-  const ko = pt("komite"), pi = pt("pin");
+  // start hattı: olması gereken (soluk ince), atılan (sarı kesik)
+  const ko = pt("komite"), pi = pt("pin"), pid = pt("pinIdeal");
+  const off = c.line == null ? 0 : diff(g.ideal, g.toPin);
+  if (Math.abs(off) >= 1) o += `<line x1="${f(ko[0])}" y1="${f(ko[1])}" x2="${f(pid[0])}" y2="${f(pid[1])}" stroke="${mut}" stroke-width="1.5" stroke-dasharray="2 4"/>`;
+  o += `<line x1="${f(pi[0])}" y1="${f(pi[1])}" x2="${f(ko[0])}" y2="${f(ko[1])}" stroke="${amb}" stroke-width="3" stroke-dasharray="7 5"/>`;
+  boat(ko, c.est?.komite); boat(pi, c.est?.pin);
   o += `<text x="${f(ko[0] + 12)}" y="${f(ko[1] + 24)}" text-anchor="start" font-size="11" font-weight="600" fill="${ink}">Komite</text>`;
-  o += `<text x="${f(pi[0] - 12)}" y="${f(pi[1] + 24)}" text-anchor="end" font-size="11" font-weight="600" fill="${ink}">Pin</text>`;
+  o += `<text x="${f(pi[0] - 14)}" y="${f(pi[1] + 4)}" text-anchor="end" font-size="11" font-weight="600" fill="${ink}">Pin ${g.toPin}°</text>`;
   // finiş
   line(pt("fA"), pt("fB"), `stroke-width="2"`, 2);
   boat(pt("fA"), true);
@@ -87,24 +89,37 @@ function svgOf(c, { up = "wind", w = 350, h = 440 } = {}) {
   legLabel(g4, m1, `${nrm(g.A)}°`, -1);
   legLabel(m1a, m2, `${nrm(g.reach)}°`, -1);
   legLabel(m2, g3, `${nrm(g.A + 180)}°`, -1);
-  // rüzgâr oku (üstte, gerçek yönüne göre)
-  const wd = c.wind ?? g.A;
-  const wa = up === "wind" ? 0 : wd; // ekrandaki yönü (0 = yukarıdan geliyor)
-  o += `<g transform="translate(${w / 2} 30) rotate(${f(wa)})"><line x1="0" y1="-18" x2="0" y2="12" stroke="${acc}" stroke-width="3"/><path d="M0 20 L-7 8 L7 8 Z" fill="${acc}"/></g>`;
-  o += `<text x="${w / 2 + 16}" y="26" font-size="13" font-weight="600" fill="${acc}">Rüzgâr ${nrm(wd)}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
+  // üstte eksen, yanında rüzgâr oku (eksene göre dönmüş hali)
+  o += `<text x="${w / 2}" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="${ink}">Eksen ${nrm(g.A)}°</text>`;
+  if (c.wind != null) {
+    const sh = diff(g.A, c.wind);
+    o += `<g transform="translate(${w / 2} 50) rotate(${f(sh)})"><line x1="0" y1="-16" x2="0" y2="10" stroke="${acc}" stroke-width="3"/><path d="M0 18 L-7 6 L7 6 Z" fill="${acc}"/></g>`;
+    o += `<text x="${w / 2 + 18}" y="48" font-size="12" font-weight="600" fill="${acc}">Rüzgâr ${nrm(c.wind)}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
+    o += `<text x="${w / 2 + 18}" y="63" font-size="11" fill="${mut}">${Math.abs(sh) < 1 ? "eksende" : `${Math.abs(sh)}° ${sh > 0 ? "sağa" : "sola"}`}</text>`;
+  }
   // kuzey
-  const na = up === "wind" ? -rot : 0;
-  o += `<g transform="translate(26 30) rotate(${f(na)})"><circle r="15" fill="#fff" stroke="#e7e5df"/><path d="M0 -11 L5 4 L0 1 L-5 4 Z" fill="${ink}"/></g><text x="26" y="58" text-anchor="middle" font-size="10" fill="${mut}">K</text>`;
+  o += `<g transform="translate(26 30) rotate(${f(-rot)})"><circle r="15" fill="#fff" stroke="#e7e5df"/><path d="M0 -11 L5 4 L0 1 L-5 4 Z" fill="${ink}"/></g><text x="26" y="58" text-anchor="middle" font-size="10" fill="${mut}">K</text>`;
+  // altta hat özeti: atılan hat olması gerekenden ne kadar sapmış, şimdiki rüzgârda hangi uç önde
+  const rows = [];
+  if (c.line != null) rows.push(Math.abs(off) < 1 ? `Pin ${g.toPin}° · hat eksene dik` : `Pin ${g.toPin}° · olmalı ${g.ideal}° · ${Math.abs(off)}° hata`);
+  if (c.line != null && c.wind != null) {
+    const b = diff(nrm(c.wind + 90), g.lineDeg);
+    rows.push(Math.abs(b) < 1 ? `Rüzgâr ${nrm(c.wind)}°: hat dik, iki uç eşit` : `Rüzgâr ${nrm(c.wind)}°: ${b > 0 ? "Pin" : "Komite"} tarafı ${Math.abs(b)}° önde`);
+  }
+  rows.forEach((t, i) => (o += `<text x="${w / 2}" y="${h - 46 + i * 20}" text-anchor="middle" font-size="${i ? 13 : 12}" font-weight="${i ? 700 : 500}" fill="${i ? ink : mut}">${t}</text>`));
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Inter,sans-serif">${o}</svg>`;
 }
 
 // Parkurun kart bilgisi; eksen ve rüzgâr yoksa null (kart çizilmez)
 export function cardOf(c) {
-  const ax = axisOf(c);
+  // sabit: girilen eksen ya da 1 yönü; yoksa ilk rüzgâr ölçümü (son rüzgâr değişir, eksen değişmez)
+  const ax0 = axisOf(c);
+  const first = c.obs.find((x) => x.kind === "wind");
+  const ax = ax0 && ax0.src !== "wind" ? ax0 : first ? { deg: first.deg } : ax0;
   const w = [...c.obs].reverse().find((x) => x.kind === "wind" && (!x.spot || x.spot === "komite" || x.spot === "pin")) || [...c.obs].reverse().find((x) => x.kind === "wind");
   const ln = lineOf(c);
   if (!ax && !w && !ln) return null;
-  const axis = ax ? ax.deg : w ? w.deg : nrm(ln.deg - 90);
+  const axis = ax ? ax.deg : nrm(ln.deg - 90);
   const leg = [...c.obs].reverse().find((x) => x.kind === "leg");
   return {
     axis,
