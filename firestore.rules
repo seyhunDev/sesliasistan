@@ -79,6 +79,32 @@ service cloud.firestore {
           && ownKey("doneBy") && ownKey("replies") && ownKey("ack");
     }
 
+    // Ortak yarışlar (src/lib/sharedRace.js, src/features/athletes/sharedRaces.js; Seyhun 2026-10-28): yarışın herkese açık kısmı
+    // (ad, tarih, yer, talimat, sonuç listeleri, rüzgâr, parkur). Velora'yı kullanan herkes okur (kurye ve restoran hariç);
+    // kulüp (ana) hesapları ekler; yalnız ekleyen ve Velora ana hesabı değiştirir ya da siler. Sporcu, evrak, bütçe kulüpte kalır.
+    function veloraUser() {
+      let ref = /databases/$(database)/documents/users/$(request.auth.uid);
+      return signedIn() && (!exists(ref) || get(ref).data.get("role", "owner") in ["owner", "staff"]);
+    }
+    function clubAccount() {
+      let ref = /databases/$(database)/documents/users/$(request.auth.uid);
+      return signedIn() && (!exists(ref) || get(ref).data.get("role", "owner") == "owner");
+    }
+    function veloraAdmin() { return signedIn() && request.auth.token.get("email", "") == "seyhunyildiz@gmail.com"; }
+    match /sharedRaces/{rid} {
+      function editor(d) { return d.get("by", "") == request.auth.uid || veloraAdmin(); }
+      allow read: if veloraUser();
+      allow create: if clubAccount() && request.resource.data.get("by", "") == request.auth.uid;
+      allow update: if editor(resource.data) && request.resource.data.get("by", "") == resource.data.get("by", "");
+      allow delete: if editor(resource.data);
+      // sheets: tam sonuç listesi; live: ölçülen rüzgâr; course: parkur (gün gün)
+      match /{sub}/{item} {
+        allow read: if veloraUser();
+        allow write: if sub in ["sheets", "live", "course"]
+                     && editor(get(/databases/$(database)/documents/sharedRaces/$(rid)).data);
+      }
+    }
+
     match /orgs/{orgId} {
       // Ana hesap: kendi işletmesindeki her şey (doğum günleri hariç: kişiye özel, aşağıda)
       match /{col}/{document=**} {

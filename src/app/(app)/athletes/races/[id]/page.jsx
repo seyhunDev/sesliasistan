@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
@@ -9,14 +9,16 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
-import { loadAthletes, message, updateAthlete, useDikili } from "@/features/athletes/data";
+import { isActive, loadAthletes, message, updateAthlete, useDikili } from "@/features/athletes/data";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { RaceEditor } from "@/features/athletes/RaceEditor";
 import { placeText } from "@/features/athletes/RaceList";
 import { Icon } from "@/components/ui/Icon";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { coachStart } from "@/features/athletes/raceDocs";
-import { addRacePlan, deleteRace, freshRace, loadRaces, racesNow, saveRace } from "@/features/athletes/races";
+import { addRacePlan, deleteRace, freshRace, loadRaces, racesNow, saveRace, saveRaceResults } from "@/features/athletes/races";
+import { loadShared, loadSharedList, pullSheets, shareRace } from "@/features/athletes/sharedRaces";
+import { fromShared, newSheets, pickable } from "@/lib/sharedRace";
 import { addNoticePlans } from "@/features/athletes/raceNotice";
 import { dropLive } from "@/features/athletes/raceLiveStore";
 import { mailToMe } from "@/features/mail/outbox";
@@ -40,13 +42,13 @@ export default function RacePage() {
   const mail = profile.mailSeen && profile.orgId === user.uid ? { version: profile.mailOutbox, saved: profile.mailTo } : null;
   // TYF formlarındaki antrenör bilgileri hesabın profilinde (users/{uid}.coach); yoksa ad ve e-posta hesaptan
   const coach = profile.coach || coachStart({ name: profile.name, email: profile.email || user.email });
-  return <Race orgId={profile.orgId} uid={user.uid} by={{ name: profile?.name ?? "Kullanıcı" }} mail={mail} coach={coach} />;
+  return <Race orgId={profile.orgId} uid={user.uid} email={profile.email || user.email} by={{ name: profile?.name ?? "Kullanıcı" }} mail={mail} coach={coach} />;
 }
 
 // Listeden yeni açıldıysa (1 dk içinde okunan liste) yarış bellekten gelir: "yükleniyor" yok, yeniden okuma yok
 const cachedRace = (orgId, id) => (id === "new" ? null : racesNow(orgId, 60e3)?.find((x) => x.id === id) || null);
 
-function Race({ orgId, uid, by, mail, coach }) {
+function Race({ orgId, uid, email, by, mail, coach }) {
   const { id } = useParams();
   const router = useRouter();
   const toast = useToast();
@@ -58,6 +60,15 @@ function Race({ orgId, uid, by, mail, coach }) {
   const [missingRace, setMissingRace] = useState(false);
   const [head0, setHead] = useState(null); // başlık: yarış bilgisi değişince güncellenir
   const [menu, setMenu] = useState(false); // sağ üstteki ⋯ (düzenle, talimat, yarışı sil)
+  // Ortak yarış (lib/sharedRace.js): bağ { shared, sharedAt } kayıtlarda korunur; ortaktan yenilik gelince düzenleyici yeniden kurulur
+  const link = useRef(null);
+  const pub = useRef(Promise.resolve());
+  const [ver, setVer] = useState(0);
+  const [sharedList, setSharedList] = useState([]); // yeni yarışta seçilebilecek ortak yarışlar
+  useEffect(() => {
+    if (id !== "new") return;
+    Promise.all([loadSharedList(todayStr()), loadRaces(orgId)]).then(([l, mine]) => setSharedList(pickable(l, mine, todayStr())), () => {});
+  }, [orgId, id]);
   useEffect(() => {
     if (cachedRace(orgId, id)) return;
     loadRaces(orgId).then(
@@ -71,15 +82,61 @@ function Race({ orgId, uid, by, mail, coach }) {
     );
   }, [orgId, id]);
 
-  // Yeni yarış ilk kaydında adresi kendi kimliğine döner (geri/yenile doğru yarışı açsın)
+  // Bağlı yarış açılınca ortaktaki yenilik (talimat, tarih, yer) kulübün yarışına işlenir (ekleyen kulübün kendisi hariç)
+  const rid = race?.id || "";
+  useEffect(() => {
+    if (!rid || !race.shared) return;
+    let live = true;
+    loadShared(race.shared, true).then(async (s) => {
+      if (!live || !s || s.by === uid || !(s.at > (race.sharedAt || ""))) return;
+      const next = { ...race, ...fromShared(s) };
+      link.current = { shared: s.id, sharedAt: s.at };
+      await saveRace(orgId, uid, next);
+      if (live) (setRace(next), setVer((v) => v + 1));
+    }, () => {});
+    return () => void (live = false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rid, orgId, uid]);
+  // Ortağa yüklenen sonuç listelerinden kulübün sporcuları bulunur (sporcu listesi gelince)
+  const athletes = data?.athletes;
+  useEffect(() => {
+    if (!rid || !race.shared || !athletes) return;
+    let live = true;
+    loadShared(race.shared).then(async (s) => {
+      const ids = newSheets(s, race);
+      if (!live || !ids.length) return;
+      const ours = athletes.filter((a) => (race.athleteIds || []).includes(a.id));
+      const pool = [...ours, ...athletes.filter((a) => isActive(a) && !ours.includes(a))];
+      const got = await pullSheets({ orgId, race, sharedId: s.id, ids, pool });
+      if (!got || !live) return;
+      await saveRaceResults(orgId, race.id, got.results, got.extra);
+      const athleteIds = [...new Set([...(race.athleteIds || []), ...got.extra])];
+      setRace((p) => ({ ...p, results: got.results, athleteIds }));
+      window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: { ...race, results: got.results, athleteIds } }));
+    }, () => {});
+    return () => void (live = false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rid, orgId, athletes]);
+
+  // Yeni yarış ilk kaydında adresi kendi kimliğine döner (geri/yenile doğru yarışı açsın).
+  // Kayıttan sonra ortak kısım arkada yayınlanır (sharedRaces.js; yalnız değişince ve yetki varsa yazar).
   const onSave = useCallback(
     async (r, cur) => {
       setHead({ name: r.name, startDate: r.startDate, endDate: r.endDate, district: r.district, city: r.city });
-      const nid = await saveRace(orgId, uid, { ...r, id: cur });
+      const l = link.current || (r.shared ? { shared: r.shared, sharedAt: r.sharedAt || "" } : null);
+      const data = { ...r, id: cur, shared: l?.shared || "", sharedAt: l?.sharedAt || "" };
+      const nid = await saveRace(orgId, uid, data);
       if (!cur) window.history.replaceState(null, "", `/athletes/races/${nid}`);
+      // Sırayla: ilk yayın bitmeden ikinci kayıt ikinci bir ortak yarış açmasın
+      pub.current = pub.current.then(() =>
+        shareRace({ orgId, uid, email, name: by.name, race: { ...data, id: nid }, link: link.current || l }).then(
+          (n) => n && (link.current = { shared: n.shared, sharedAt: n.sharedAt }),
+          (e) => console.warn("[ortak yarış] yayınlanamadı", e?.code || e),
+        ),
+      );
       return nid;
     },
-    [orgId, uid],
+    [orgId, uid, email, by.name],
   );
   const onCoach = useCallback(
     (c) =>
@@ -136,7 +193,9 @@ function Race({ orgId, uid, by, mail, coach }) {
       ) : (
         <>
           <RaceEditor
+            key={ver}
             head={head}
+            sharedList={id === "new" ? sharedList : []}
             alert={err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
             orgId={orgId}
             start={race}

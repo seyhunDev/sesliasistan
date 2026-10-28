@@ -507,3 +507,16 @@ group("Yarış detayı özeti")([
   }, ok: ([a, b, c, d]) => a === "g2" && b === "o2" && c === null && d === null }],
   ["gönderide yarışın kimliği", { desc: "yarıştan hazırlanan gönderi yarışın kimliğini taşır (yarışın sayfası gönderiyi bununla bulur)", fn: () => PM.postFromRace({ id: "r1", name: "Foça Kupası", startDate: "2026-10-26" }, "2026-10-20").race, ok: (r) => r.id === "r1" && r.name === "Foça Kupası" }],
 ]);
+
+// Ortak yarışlar (lib/sharedRace.js): herkese açık kısım, aynı yarışın tekrar açılmaması, seçilebilenler, yetki
+const SR = await import("@/lib/sharedRace");
+const FOCA = { id: "r1", name: "2026 Foça Optimist Kupası", startDate: "2026-11-07", endDate: "2026-11-09", city: "İzmir", district: "Foça", federation: "Yelken", athleteIds: ["a1"], budget: { x: 1 }, note: "gizli", signer: "Ali", noticeFile: { id: "n1", name: "t.pdf", path: "orgs/u1/noticeFiles/n1", url: "https://firebasestorage.googleapis.com/x" }, notice: { summary: "s" } };
+group("Ortak yarışlar")([
+  ["ortak kısım", { desc: "sporcu, bütçe, not, yetkili gitmez; talimat PDF'i künyesiyle gider", fn: () => SR.sharedOf(FOCA), ok: (r) => r.name === FOCA.name && r.district === "Foça" && r.noticeFile?.url && !("athleteIds" in r) && !("budget" in r) && !("note" in r) && !("signer" in r) }],
+  ["eksik yarış paylaşılmaz", { desc: "adsız ya da tarihsiz: null; eski parçalı talimat paylaşılmaz", fn: () => [SR.sharedOf({ name: "X" }), SR.sharedOf({ startDate: "2026-11-07" }), SR.sharedOf({ ...FOCA, noticeFile: { id: "n", parts: 2 } }).noticeFile], ok: ([a, b, c]) => a === null && b === null && c === null }],
+  ["aynı yarış", { desc: "yıl ve 'kupası' gibi sözler sayılmaz; tarih farklıysa başka yarış", fn: () => [SR.sameRace(FOCA, { name: "Foça Optimist Kupası 2026", startDate: "2026-11-07" }), SR.sameRace(FOCA, { name: "Çeşme Optimist", startDate: "2026-11-07" }), SR.sameRace(FOCA, { name: "Foça Optimist", startDate: "2026-11-08" })], ok: (r) => r.join() === "true,false,false" }],
+  ["seçince gelenler", { desc: "bağ ve ortak alanlar; boş talimat null", fn: () => SR.fromShared({ id: "s1", at: "t", ...SR.sharedOf({ name: "A", startDate: "2026-11-01" }) }), ok: (r) => r.shared === "s1" && r.sharedAt === "t" && r.name === "A" && r.notice === null && r.noticeFile === null && r.abroad === false }],
+  ["seçilebilenler", { desc: "bağlı olan, aynı adlı olan ve bitmiş yarış listede yok; yakın önce", fn: () => SR.pickable([{ id: "s1", name: "X", startDate: "2026-12-01" }, { id: "s2", name: "Y", startDate: "2026-11-01" }, { id: "s3", name: "Foça Optimist", startDate: "2026-11-07" }, { id: "s4", name: "Z", startDate: "2026-10-01", endDate: "2026-10-03" }, { id: "s5", name: "W", startDate: "2026-11-02" }], [FOCA, { id: "r2", name: "W", startDate: "2026-11-02", shared: "s5" }], "2026-10-28").map((s) => s.id).join(), ok: (r) => r === "s2,s1" }],
+  ["kim değiştirir", { desc: "ekleyen ve ana hesap; başka kulüp değil", fn: () => [SR.canEditShared({ by: "u1" }, "u1", "a@b.c"), SR.canEditShared({ by: "u1" }, "u2", "SEYHUNYILDIZ@gmail.com"), SR.canEditShared({ by: "u1" }, "u2", "x@y.z")], ok: (r) => r.join() === "true,true,false" }],
+  ["yeni sonuç listeleri", { desc: "kulübün sonuçlarında olmayan liste kimlikleri", fn: () => SR.newSheets({ sheets: ["f1", "f2"] }, { results: { files: [{ id: "f1" }] } }), ok: (r) => r.join() === "f2" }],
+]);
