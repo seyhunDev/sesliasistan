@@ -11,6 +11,7 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { RaceList, isPast } from "@/features/athletes/RaceList";
 import { loadRaces, racesNow } from "@/features/athletes/races";
 import { shareAll } from "@/features/athletes/sharedRaces";
+import { RaceSwitch } from "@/features/raceCal/RaceSwitch";
 
 // Yarışlar (yeni tasarım 2026-10-21): lacivert üstte başlık ve sıradaki yarış; sıradaki yarış kartı, yaklaşan yarışlar ay ay, geçmiş yarışlar en altta; yarışa dokununca evrak, sporcular, yapılacaklar
 export default function RacesPage() {
@@ -44,6 +45,7 @@ function Races({ orgId, me }) {
   const sub = !races ? "Yükleniyor…" : [up ? `${up} yaklaşan` : "Yaklaşan yarış yok", past && `${past} geçmiş`].filter(Boolean).join(" · ");
 
   const head = (
+    <>
     <header className="flex items-center gap-2.5">
       <BackButton href="/athletes" />
       <div className="min-w-0 flex-1 leading-tight">
@@ -55,6 +57,8 @@ function Races({ orgId, me }) {
         Yarış
       </Link>
     </header>
+    <RaceSwitch on="club" />
+    </>
   );
 
   return (
