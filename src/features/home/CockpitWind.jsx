@@ -3,10 +3,14 @@
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
 import { useWindObs } from "@/features/weather/useWindObs";
+import { useRainRadar } from "@/features/weather/useRainRadar";
 import { PLACE, getPlace, heavyRain, kn, sky } from "@/features/weather/weather";
 
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
 const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: PLACE.tz });
+const MIN = new Intl.DateTimeFormat("en-GB", { minute: "2-digit", timeZone: PLACE.tz });
+const RADAR = ["", "#7dd3fc", "#38bdf8", "#818cf8"]; // hafif · orta · kuvvetli
+const RADAR_TX = ["", "hafif", "orta", "kuvvetli"];
 
 // Ana sayfanın lacivert üst kısmındaki bugünün rüzgâr grafiği (Seyhun 2026-10-21: "rüzgâr grafiği benim için önemli: sağanak, normal rüzgâr,
 // yön, hava durumu; hangi saatte ne olduğunu net bilmem gerek"; onaylanan örnek ana-sayfa/futuristik/c2-kokpit-ruzgar.png).
@@ -22,6 +26,7 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
   const today = YMD.format(now);
   const day = date || today;
   const ob = useWindObs(place || getPlace(), day, today, far); // place: başka yerin grafiği (yarış sayfası); yoksa hava yeri
+  const radar = useRainRadar(day === today ? place || getPlace() : null); // yalnız bugün
   if (!rows?.length) return null;
   const n = rows.length;
   const obs = rows.map((h) => ob?.rows?.find((o) => o.hh === h.hh));
@@ -58,7 +63,17 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
   const oPts = oFrom < 0 ? [] : rows.map((_, i) => i).filter((i) => i >= oFrom && i <= oTo).map((i) => [i, om[i] ?? 0]);
   const oSum = Math.round(spans.reduce((t, q) => t + q.mm, 0) * 10) / 10;
   const wetFc = fc.some(Boolean);
-  const wet = wetFc || oSum >= 0.1;
+  // Radar (Seyhun 2026-10-28 "Evet, böyle yap": istasyon yağışı saatlerce geriden geliyordu): son 2 saat, 10 dakikada bir dolu kutu,
+  // boyu ve rengi şiddet (1 hafif, 2 orta, 3 kuvvetli; mm değil). İstasyonun ölçtüğü yağmur olduğu gibi kalır.
+  const rad = (radar?.frames || [])
+    .map((f) => {
+      const d = new Date(f.at);
+      const k = rows.findIndex((h) => h.hh === HOUR.format(d));
+      return k < 0 ? null : { at: k + +MIN.format(d) / 60, level: Math.max(0, Math.min(3, f.level | 0)) };
+    })
+    .filter((f) => f && f.level > 0);
+  const radTop = rad.reduce((m, f) => Math.max(m, f.level), 0);
+  const wet = wetFc || oSum >= 0.1 || rad.length > 0;
   const RH = 84, RT = 16, RB = 3;
   const rmax = Math.max(4, ...fc, ...oPts.map((q) => q[1]));
   const ry = (v) => RT + (1 - v / rmax) * (RH - RT - RB);
@@ -74,6 +89,7 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
     ["Sağanak", <i key="g" className="inline-block w-3.5 border-t-2 border-dashed border-[#c4b5fd]" />],
     wetFc && ["Yağmur", <i key="r" className="inline-block h-2.5 w-3.5 rounded-[3px] bg-[#3b82f6]" />],
     (got.length > 1 || oSum >= 0.1) && ["Ölçülen", <i key="o" className="inline-block w-3.5 border-t-2 border-white" />],
+    rad.length > 0 && ["Radar", <i key="rd" className="inline-block h-2.5 w-1.5 rounded-[2px] bg-[#38bdf8]" />],
   ].filter(Boolean);
   return (
     <div className="ck-wind">
@@ -144,6 +160,18 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
               <path d={rPath(oPts)} fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
               {oPts.map(([i, v]) => <circle key={`r${i}`} cx={x(i).toFixed(1)} cy={ry(v).toFixed(1)} r="2.2" fill="#fff" />)}
               {oSum >= 0.1 && <text x={lx(x(oTop[0])).toFixed(1)} y={(ry(oTop[1]) - 6).toFixed(1)} textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">{mmTxt(oSum)} mm geldi</text>}
+            </g>
+          )}
+          {rad.length > 0 && (
+            <g data-kind="radar">
+              {rad.map((f) => {
+                const bw = (x(1) - x(0)) / 6;
+                const hgt = f.level * 14;
+                return <rect key={f.at} x={(x(f.at) - bw / 2).toFixed(1)} y={(ry(0) - hgt).toFixed(1)} width={(bw + 0.3).toFixed(1)} height={hgt} fill={RADAR[f.level]} stroke="#0f1f38" strokeOpacity=".35" strokeWidth=".3" />;
+              })}
+              <text x={lx(x((rad[0].at + rad[rad.length - 1].at) / 2)).toFixed(1)} y={(ry(0) - 3 * 14 - 4).toFixed(1)} textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff">
+                radar · {RADAR_TX[radTop]}
+              </text>
             </g>
           )}
           {nowAt >= 0 && <line x1={x(nowAt)} x2={x(nowAt)} y1="4" y2={ry(0)} stroke="#ff6b6b" strokeWidth="1.3" strokeDasharray="2 2" />}
