@@ -1,8 +1,8 @@
-Commit: d270a48 · Ana sayfa yarış şeridi sade: Başlat, yuvarlak Kayıt, ⋯; süre penceresi (#858)
-Zaman: 2026-10-28-1337 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40672293231
+Commit: f86bca9 · Grafikte radar yağışı, hava sayfasında nokta haritası (#859)
+Zaman: 2026-10-28-1421 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40677931186
 
-TAM TEST · 28.10.2026 13:28:22
+TAM TEST · 28.10.2026 14:11:17
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1406/1406 geçti · 0 kalan · 496 sn
+SONUÇ: 1407/1407 geçti · 0 kalan · 574 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -139,7 +139,7 @@ SONUÇ: 1406/1406 geçti · 0 kalan · 496 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 128/128
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 129/129
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Ana sayfa: 3/3
   ✓ Enerji (boşta): 2/2
@@ -165,7 +165,7 @@ SONUÇ: 1406/1406 geçti · 0 kalan · 496 sn
   ✓ Tam ekran üstte: 1/1
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
-  ✓ Hava: 2/2
+  ✓ Hava: 3/3
   ✓ Güvenlik: 1/1
 
 3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 21/21
