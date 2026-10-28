@@ -13,6 +13,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Icon } from "@/components/ui/Icon";
 import { deletePhotos, hasCamera } from "@/lib/nativeIos";
 import { clearKept, dropKept, dropPending, keepLocal, listKept, listPending, putPending } from "./pendingStore";
+import { setShooting, useShooting } from "./shooting";
 
 // Medya: alt sekmelerin yanındaki Kayıt iPhone'un kendi kamerasını açar (RecPick; Seyhun 2026-10-22: sarsıntısız,
 // net görüntü), dosyası olduğu gibi (prepRaceMedia). Başlıktaki ayar düğmesi (MediaSettingsButton): video kalitesi ve telefonda
@@ -67,6 +68,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
   const { ups, mine, kept } = useSyncExternalStore(upSub, upGet, () => blankUps);
   const setUps = (f) => upSet((x) => ({ ...x, ups: f(x.ups) }));
   const setMine = (f) => upSet((x) => ({ ...x, mine: f(x.mine) }));
+  const shooting = useShooting(); // iPhone kamerasında çekilen, hazırlanıyor (shooting.js)
   const [tick, setTick] = useState(0); // eski kayıtların küçük resmi: biri bitince sıradaki
   const up = (id, f) => setUps((u) => (u[id] ? { ...u, [id]: { ...u[id], ...f(u[id]) } } : u));
   const addUp = (rec, err = false) => {
@@ -259,6 +261,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
       toast(e?.message || "Kaydedilemedi");
       setBusy("");
     }
+    setShooting(null);
   };
   // Alttaki Kayıt ile (başka sekmede) çekilen dosya burada işlenir
   useEffect(() => {
@@ -376,10 +379,31 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
       )}
       {/* Yükleme sürerken ne kadarının gittiği yazar (Seyhun 2026-10-22: "yüklenip yüklenmediğini bilmiyorum"); sayfayla kaymaz,
           alttaki sekmelerin hemen üstünde sabit durur (Seyhun 2026-10-23) */}
+      {shooting && !going.length && (
+        <p role="status" style={{ bottom: "calc(var(--bar-b, env(safe-area-inset-bottom)) + 0.5rem)" }} className="pointer-events-none fixed inset-x-0 z-30 mx-auto w-fit max-w-[calc(100%-2rem)] rounded-full border border-line bg-card px-3.5 py-1.5 text-center text-[0.8125rem] font-semibold text-mut shadow-[0_2px_12px_rgba(38,40,44,.08)]">
+          {shooting.kind === "video" ? (app ? "Video Fotoğraflar'a kaydediliyor" : "Video hazırlanıyor") : "Fotoğraf hazırlanıyor"}
+        </p>
+      )}
       {(going.length > 0 || justDone) && (
         <p role="status" style={{ bottom: "calc(var(--bar-b, env(safe-area-inset-bottom)) + 0.5rem)" }} className="pointer-events-none fixed inset-x-0 z-30 mx-auto w-fit max-w-[calc(100%-2rem)] rounded-full border border-line bg-card px-3.5 py-1.5 text-center text-[0.8125rem] font-semibold tabular-nums text-mut shadow-[0_2px_12px_rgba(38,40,44,.08)]">{going.length ? `${going.length} ${going.every((x) => x.kind === "video") ? "video" : going.every((x) => x.kind !== "video") ? "fotoğraf" : "kayıt"} buluta gönderiliyor · %${Math.round((going.reduce((a, x) => a + (x.u.p || 0), 0) / going.length) * 100)}` : "Buluta gönderildi ✓"}</p>
       )}
-      {!groups.length && (
+      {/* Çekim bitti, kayıt hazırlanıyor: hemen bir kare (Seyhun 2026-10-28: "çektim, baktım hiçbir şey yok") */}
+      {shooting && (
+        <section>
+          <div className="mb-1.5 mt-4 px-1">
+            <b className="text-[1.0625rem] font-semibold">Yeni çekim</b>
+          </div>
+          <div className="grid grid-cols-4 gap-1">
+            <div role="status" className="relative grid aspect-square place-items-center overflow-hidden rounded-lg bg-[#11203a] text-white">
+              <span className="flex flex-col items-center gap-1.5">
+                <Icon name="load" className="size-6 animate-spin" />
+                <span className="text-[0.6875rem] font-semibold">Kaydediliyor</span>
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
+      {!groups.length && !shooting && (
         <div className="fade-in px-6 pt-16 text-center">
           <div className="mx-auto mb-4 grid size-[4.75rem] place-items-center rounded-3xl bg-acc/10 text-acc">
             <Icon name="image" className="size-9" />

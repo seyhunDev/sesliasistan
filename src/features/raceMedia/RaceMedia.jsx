@@ -297,7 +297,7 @@ export function TabDock({ tabs = TABS, value, onChange, onRec, extra = null }) {
           ))}
         </div>
         {onRec && (
-          <RecPick onFile={onRec} aria-label="Kayıt" className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[1.25rem] border border-line bg-card text-[0.71875rem] font-semibold shadow-[0_2px_12px_rgba(38,40,44,.06)]">
+          <RecPick onFile={onRec} onTaken={() => onChange("media")} aria-label="Kayıt" className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[1.25rem] border border-line bg-card text-[0.71875rem] font-semibold shadow-[0_2px_12px_rgba(38,40,44,.06)]">
             <span className="grid size-[1.375rem] place-items-center rounded-full border-2 border-rec">
               <span className="size-2.5 rounded-full bg-rec" />
             </span>
