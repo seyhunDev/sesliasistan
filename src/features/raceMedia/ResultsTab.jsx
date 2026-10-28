@@ -4,65 +4,83 @@ import { useEffect, useRef, useState } from "react";
 import { card } from "@/components/ui/Page";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
-import { findOurs, raceYear, sheetMatch, withCats } from "@/lib/resultSheet";
+import { bornYear, findOurs, followKey, raceYear, sheetMatch, withCats } from "@/lib/resultSheet";
 import { sheetFilters, sheetRows, sheetTag } from "@/lib/raceLive";
 import { loadSheets } from "@/features/athletes/raceLiveStore";
 import { importResults, importToast } from "@/features/athletes/resultsImport";
-import { saveRaceResults } from "@/features/athletes/races";
+import { saveRaceFollow, saveRaceResults } from "@/features/athletes/races";
 import { Bar } from "@/features/training/Countdown";
 
-// Sonuçlar (Seyhun 2026-10-28 onayı, "tek liste"): tek sıra süzgeç: Bizimkiler · Genel · Junior · Kızlar · Junior Kızlar (sınıf birden
-// çoksa üstte sınıf seçimi). Bizimkiler ve Genel aynı kartta, aynı satır biçiminde: başlıkta "ILCA 4 · 42 kişi" + "Net puan"; satırda solda
-// sıra, ad (doğum yılı parantezde, kesilmez), altında işaret ("Junior kız" / "Junior" / "Kız") · kulüp, sağda net puan.
-// Bizimkiler'de adın altında Junior / Kızlar / Junior Kızlar sıraları küçük etiketler (ilk 3 vurgu renginde); Genel'de bizimkiler açık mavi
-// satır, ilk 10, sonra Tümü. Üstte arama: ad, yelken no ya da kulüp (yazınca o listede eşleşenlerin hepsi). Sonuç yüklüyse en altta küçük "Değiştir"; yoksa büyük "Sonuç PDF'i yükle" (resultsImport.js akışı).
+// Sonuçlar (Seyhun 2026-10-28 onayı, "tablo", örnek yaris-tasarim/sonuclar-tablo.png): süzgeçler Bizimkiler · Takip · Genel · Junior ·
+// Kızlar · Junior Kızlar (sınıf birden çoksa üstte sınıf seçimi), altında arama (ad, yelken no, kulüp). Her liste aynı tablo:
+// başlık "ILCA 4 · 42 kişi", sütunlar Sıra · Sporcu · Doğ. · Net (Genel/Takip'te sağda ☆). Sporcu hücresinde ad, altında işaret
+// (Jun. kız / Junior / Kız) · yelken no · kulüp; hiçbir şey kesilmez, uzun kulüp alt satıra iner. Bizimkiler'de kulüp yok, yerine
+// Junior / Kızlar / Junior Kızlar sıraları. ☆ ile genel listeden sporcu bu yarış için takibe alınır (race.follow, followKey), Takip'te görünür.
+// Genel'de bizimkiler açık mavi, ilk 10, sonra Tümü. Sonuç yüklüyse altta küçük "Değiştir"; yoksa büyük "Sonuç PDF'i yükle" (resultsImport.js).
 const TOP = 10;
-// Satırdaki işaret: Genel'de "Junior kız", "Junior", "Kız"; Kızlar'da yalnız kategori; diğer süzgeçlerde yok
-const tagOf = (r, filter) => (filter === "all" ? sheetTag(r) : filter === "girls" && ["Junior", "Bambino"].includes(r.cat) ? r.cat : "");
+// İşaret: Genel/Takip'te "Jun. kız", "Junior", "Kız"; Kızlar'da yalnız kategori; diğer süzgeçlerde yok
+const short = (t) => t.replace(/^Junior kız$/, "Jun. kız").replace(/^Bambino kız$/, "Bam. kız");
+const tagOf = (r, filter) => short(filter === "all" || filter === "follow" ? sheetTag(r) : filter === "girls" && ["Junior", "Bambino"].includes(r.cat) ? r.cat : "");
 const SUB = ["Junior", "Bambino"];
 const shortDay = (s) => (s ? new Date(`${s.slice(0, 10)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "");
-const ptsOf = (p) => (p === "" || p == null ? "" : `${String(p).replace(".", ",")} p`);
+const ptsOf = (p) => (p === "" || p == null ? "" : String(p).replace(".", ","));
+const yearOf = (s) => String(bornYear(s) || "");
 
 // Sporcunun ek sıraları: kategori, kızlar, kategori kızları
 const boxesOf = (x) =>
   [
     x?.cp && SUB.includes(x.cat) && [x.cat, x.cp, x.cn],
     x?.gp && ["Kızlar", x.gp, x.gn],
-    x?.jp && SUB.includes(x.cat) && [`${x.cat} Kızlar`, x.jp, x.jn],
+    x?.jp && SUB.includes(x.cat) && [`${x.cat === "Junior" ? "Jun." : x.cat} Kızlar`, x.jp, x.jn],
   ].filter(Boolean);
 
-// Ortak satır: sıra · ad (doğum yılı, kesilmez) / yelken no · işaret · kulüp · puan (Seyhun 2026-10-28)
-function Row({ pos, name, sail, tag, club, born, pts, on, hi, children }) {
+// Tablo sütunları: Sıra · Sporcu · Doğ. · Net (· ☆)
+const cols = (star) => `grid items-center gap-x-2 px-3.5 ${star ? "grid-cols-[2.25rem_1fr_2.75rem_2.5rem_1.75rem]" : "grid-cols-[2.25rem_1fr_2.75rem_2.5rem]"}`;
+
+function Table({ title, count, star, children }) {
   return (
-    <li className={`flex items-center gap-3 px-4 py-2.5 ${on ? "bg-accbg" : ""}`}>
-      <span className={`w-7 shrink-0 text-center text-[1.0625rem] font-bold tabular-nums ${on || hi ? "text-acc" : ""}`}>{pos || "–"}</span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-baseline gap-1.5">
-          <b className="min-w-0 truncate text-[0.9375rem] font-semibold">{name}</b>
-          {born && <span className="shrink-0 text-[0.8125rem] tabular-nums text-mut">({born})</span>}
-        </span>
-        {(sail || tag || club) && (
-          <span className="flex gap-1 text-[0.8125rem] text-mut">
-            {sail && <span className="shrink-0 tabular-nums">{sail}{tag || club ? " ·" : ""}</span>}
-            <span className="min-w-0 truncate">
-              {tag && <b className="font-semibold text-acc">{tag}</b>}
-              {tag && club ? " · " : ""}
-              {club}
-            </span>
+    <div className={`${card} mt-3 overflow-hidden`}>
+      <div className="flex justify-between gap-3 px-3.5 pt-2.5 text-[0.8125rem] font-bold">
+        <span className="truncate">{title}</span>
+        <span className="shrink-0 font-semibold text-mut">{count}</span>
+      </div>
+      <div className={`${cols(star)} border-b border-line pb-1.5 pt-2 text-[0.6875rem] font-semibold text-mut`}>
+        <span>Sıra</span>
+        <span>Sporcu</span>
+        <span className="text-center">Doğ.</span>
+        <span className="text-right">Net</span>
+        {star && <span />}
+      </div>
+      <ul className="divide-y divide-line">{children}</ul>
+    </div>
+  );
+}
+
+// Satır: sıra · ad / işaret · yelken no · kulüp (kesilmez) · doğum yılı · net (· ☆)
+function Row({ pos, name, tag, sail, club, born, pts, on, hi, star, followed, onStar, children }) {
+  return (
+    <li className={`${cols(star)} py-2.5 ${on ? "bg-accbg" : ""}`}>
+      <span className={`text-[0.9375rem] font-bold tabular-nums ${on || hi ? "text-acc" : ""}`}>{pos || "–"}</span>
+      <span className="min-w-0">
+        <b className="block break-words text-[0.9375rem] font-semibold leading-snug">{name}</b>
+        {(tag || sail || club) && (
+          <span className="mt-0.5 block text-[0.78rem] leading-snug text-mut">
+            {tag && <b className="mr-1.5 rounded-md bg-accbg px-1.5 py-px text-[0.6875rem] font-bold text-acc">{tag}</b>}
+            {[sail, club].filter(Boolean).join(" · ")}
           </span>
         )}
         {children}
       </span>
-      {pts && <span className="shrink-0 text-[0.875rem] tabular-nums text-fg2">{pts}</span>}
-    </li>
-  );
-}
-
-function Head({ left, pts }) {
-  return (
-    <li className="flex justify-between gap-3 px-4 pb-2 pt-2.5 text-[0.75rem] font-semibold text-mut">
-      <span className="truncate">{left}</span>
-      {pts && <span className="shrink-0">Net puan</span>}
+      <span className="text-center text-[0.8125rem] tabular-nums text-fg2">{born}</span>
+      <span className="text-right text-[0.875rem] tabular-nums">{pts}</span>
+      {star &&
+        (onStar ? (
+          <button type="button" onClick={onStar} aria-pressed={followed} aria-label={followed ? "Takibi bırak" : "Takip et"} className={`-my-2 py-2 text-center text-[1.125rem] leading-none active:scale-90 ${followed ? "text-acc" : "text-mut"}`}>
+            {followed ? "★" : "☆"}
+          </button>
+        ) : (
+          <span />
+        ))}
     </li>
   );
 }
@@ -108,8 +126,18 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
   const fleets = withCats(sheets?.length ? sheets[sheets.length - 1].fleets || [] : [], raceYear(race));
   const fleet = fleets[Math.min(fi, fleets.length - 1)];
   const filter = view === "ours" ? "all" : view;
-  const all = sheetRows(fleet, filter);
+  // Takip: bu yarış için yıldızlananlar (sınıf + yelken no ya da ad)
+  const follow = new Set(race.follow || []);
+  const isFollowed = (r) => !!fleet && follow.has(followKey(fleet.cls, r));
+  const all = view === "follow" ? sheetRows(fleet, "all").filter(isFollowed).map((r) => ({ ...r, pos: r.rank || r.pos })) : sheetRows(fleet, filter);
   const rows = q.trim() ? all.filter((r) => sheetMatch(r, q)) : all;
+  const nFollow = fleet ? fleet.rows.filter(isFollowed).length : 0;
+  const toggle = (r) => {
+    const k = followKey(fleet.cls, r);
+    const next = follow.has(k) ? [...follow].filter((x) => x !== k) : [...follow, k];
+    onRace({ ...race, follow: next });
+    saveRaceFollow(orgId, race.id, next).catch(() => toast("Takip kaydedilemedi"));
+  };
   const pool = [...ours, ...club.filter((a) => !ours.some((o) => o.id === a.id))];
   const found = findOurs(fleets, pool);
   const hit = new Set(Object.values(found).filter((x) => fleets[x.fi] === fleet).map((x) => x.ri));
@@ -130,7 +158,8 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
   const lastFile = (res.files || []).at(-1);
   const loaded = !!fleet || !!lastFile;
   const chip = (on) => `h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${on ? "bg-acc text-white" : "bg-card ring-1 ring-line"}`;
-  const filters = [["ours", `Bizimkiler · ${mine.length}`], ...(fleet ? sheetFilters(fleet) : [["all", "Genel"]])];
+  const filters = [["ours", `Bizimkiler · ${mine.length}`], ...(fleet ? [["follow", `Takip · ${nFollow}`], ...sheetFilters(fleet)] : [["all", "Genel"]])];
+  const star = view === "all" || view === "follow";
 
   return (
     <>
@@ -169,8 +198,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
       )}
 
       {view === "ours" ? (
-        <ul className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
-          {sorted.length > 0 && <Head left={[oursCls, oursN ? `${oursN} kişi` : ""].filter(Boolean).join(" · ") || "Bizimkiler"} pts={sorted.some((a) => ptsOf(rowOf(a.id)?.pts))} />}
+        <Table title={oursCls || "Bizimkiler"} count={oursN ? `${oursN} kişi` : ""}>
           {!sorted.length && <li className="px-4 py-6 text-center text-[0.875rem] text-mut">{q.trim() && mine.length ? "Bulunamadı." : "Yarışta sporcu seçilmedi."}</li>}
           {sorted.map((a) => {
             const x = res.rows?.[a.id];
@@ -183,17 +211,17 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
                 hi={x?.place > 0 && x.place <= 3}
                 name={a.studentName}
                 sail={sailOf(a)}
-                tag={x?.place ? (r ? sheetTag(r) : SUB.includes(x?.cat) ? x.cat : "") : ""}
-                club={x?.place ? r?.club || "" : x?.note || "Sonuç yok"}
-                born={x?.place ? r?.born || "" : ""}
+                tag={x?.place ? short(r ? sheetTag(r) : SUB.includes(x?.cat) ? x.cat : "") : ""}
+                club={x?.place ? "" : x?.note || "Sonuç yok"}
+                born={yearOf(r?.born)}
                 pts={x?.place ? ptsOf(r?.pts) : ""}
               >
                 {boxes.length > 0 && (
                   <span className="mt-1.5 flex flex-wrap gap-1.5">
                     {boxes.map(([l, p, n]) => (
-                      <span key={l} className="whitespace-nowrap rounded-lg bg-bg px-2 py-0.5 text-[0.75rem] font-semibold text-fg2">
+                      <span key={l} className="whitespace-nowrap rounded-md bg-bg px-1.5 py-0.5 text-[0.71875rem] font-semibold text-fg2">
                         {l} <b className={p <= 3 ? "text-acc" : "text-fg"}>{p}.</b>
-                        {n ? ` / ${n}` : ""}
+                        {n ? `/${n}` : ""}
                       </span>
                     ))}
                   </span>
@@ -201,36 +229,42 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
               </Row>
             );
           })}
-        </ul>
+        </Table>
       ) : !sheets ? (
         <Loading label="Sonuçlar yükleniyor" className="py-8" />
       ) : !fleet ? (
         <p className={`${card} mt-3 px-4 py-6 text-center text-[0.875rem] text-mut`}>{res.files?.length ? "Genel sıralama için sonuç PDF'ini yeniden yükle." : "Sonuç PDF'i yüklenmedi."}</p>
       ) : (
-        <ul className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
-          <Head left={[fleet.cls, filter !== "all" ? filters.find(([k]) => k === view)?.[1] : "", q.trim() ? `${rows.length} / ${all.length} kişi` : `${rows.length} kişi`].filter(Boolean).join(" · ")} pts={rows.some((r) => ptsOf(r.pts))} />
-          {!rows.length && <li className="px-4 py-6 text-center text-[0.875rem] text-mut">Bulunamadı.</li>}
-          {(more || q.trim() ? rows : rows.slice(0, TOP)).map((r) => (
+        <Table
+          title={[fleet.cls, filter !== "all" ? filters.find(([k]) => k === view)?.[1].replace(/ · \d+$/, "") : ""].filter(Boolean).join(" · ")}
+          count={q.trim() ? `${rows.length} / ${all.length} kişi` : `${rows.length} kişi`}
+          star={star}
+        >
+          {!rows.length && <li className="px-4 py-6 text-center text-[0.875rem] text-mut">{view === "follow" && !q.trim() ? "Takip ettiğin sporcu yok." : "Bulunamadı."}</li>}
+          {(more || q.trim() || view === "follow" ? rows : rows.slice(0, TOP)).map((r) => (
             <Row
               key={r.i}
               pos={r.pos}
               name={r.name}
               sail={r.sail}
               tag={tagOf(r, filter)}
-              club={[r.club, filter !== "all" ? `Genel ${r.rank}.` : ""].filter(Boolean).join(" · ")}
-              born={r.born}
+              club={[r.club, filter !== "all" && filter !== "follow" ? `Genel ${r.rank}.` : ""].filter(Boolean).join(" · ")}
+              born={yearOf(r.born)}
               pts={ptsOf(r.pts)}
               on={hit.has(r.i)}
+              star={star}
+              followed={isFollowed(r)}
+              onStar={hit.has(r.i) ? null : () => toggle(r)}
             />
           ))}
-          {!more && !q.trim() && rows.length > TOP && (
+          {!more && !q.trim() && view !== "follow" && rows.length > TOP && (
             <li>
               <button type="button" onClick={() => setMore(true)} data-press className="btn btn-text btn-sm w-full text-acc">
                 Tümünü göster · {rows.length}
               </button>
             </li>
           )}
-        </ul>
+        </Table>
       )}
 
       <input ref={pick} type="file" accept="application/pdf,image/*,.pdf" className="hidden" onChange={(e) => (upload(e.target.files?.[0]), (e.target.value = ""))} />

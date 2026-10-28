@@ -28,6 +28,10 @@ export function sheetMatch(r, q) {
   const hay = plain([r?.name, r?.club, r?.sail].join(" "));
   return words.every((w) => hay.includes(w)) && (!num || digits(r?.sail).includes(num));
 }
+// Yarışta takip edilen sporcunun anahtarı (race.follow): sınıf + yelken no rakamları, yelken no yoksa ad
+const clsKey = (s) => String(s || "").toLowerCase().replace(/ı/g, "i").replace(/[^a-z0-9]+/g, " ").trim();
+export const followKey = (cls, r) => `${clsKey(cls)}|${digits(r?.sail) || plain(r?.name)}`.slice(0, 80);
+export const cleanFollow = (a) => [...new Set((Array.isArray(a) ? a : []).filter((k) => typeof k === "string" && /^[a-z0-9 ]*\|[a-z0-9 ]+$/.test(k) && k.length <= 80))].slice(0, 100);
 export const isOptimist = (cls) => /opti/.test(plain(cls));
 
 // Sınıfa göre yaş kategorileri (doğum yılından): yarışın yılında en çok `age` yaşında olan o kategoriye girer.
