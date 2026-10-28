@@ -10,6 +10,7 @@ import { loadAthletes, isActive } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { loadLive, resetLive, saveDays, saveStarts } from "@/features/athletes/raceLiveStore";
+import { canShare, loadSharedWind, shareWind } from "@/features/athletes/sharedRaces";
 import { cleanLive, dayNames, dayOf, liveDays, ownedBy, pickTimer, resetPatch, upSec, withToday, zeroRace } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
 import { mineHere, ownHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
@@ -25,6 +26,7 @@ import { ResetSheet } from "./ResetSheet";
 import { useLiveSync } from "./useLiveSync";
 import { takeShot } from "./handoff";
 import { useTabInUrl } from "@/hooks/useTabInUrl";
+import { CourseTab } from "./CourseTab";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
 // Süre: start sayacı (5 dk dizisi)
@@ -36,12 +38,14 @@ import { useTabInUrl } from "@/hooks/useTabInUrl";
 // Hava sekmesi kalktı (Seyhun 2026-10-26: "multimedyada artık gerek yok, hava durumuna zaten birçok yerde bakıyoruz"); yarışın havası
 // yarış sayfasının üstünde (RaceWx.jsx).
 const TABS = [["sure", "Süre"], ["media", "Medya"], ["res", "Sonuçlar"]];
+// Parkur yalnız yarışta (Seyhun 2026-10-28 "Parkur analizi"); antrenman günü sayfası TABS'ı kullanır
+const RACE_TABS = [TABS[0], TABS[1], ["course", "Parkur"], TABS[2]]; // örnekteki sıra: Süre · Medya · Parkur · Sonuçlar
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 
 export function RaceMedia({ orgId, id }) {
   const toast = useToast();
   const q = useSearchParams();
-  const [tabPick, setTab] = useState(TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
+  const [tabPick, setTab] = useState(RACE_TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
   useTabInUrl(tabPick);
   const [shot, setShot] = useState(() => takeShot(id)); // alttaki Kayıt (ya da ana sayfadaki yarış şeridi) ile iPhone kamerasında çekilen dosya (Medya işler)
   const [race, setRace] = useState(null);
@@ -90,7 +94,7 @@ export function RaceMedia({ orgId, id }) {
       () => on && setMissing(true),
     );
     loadLive(orgId, id).then(
-      (l) => on && setLive(l),
+      (l) => on && ((liveIn.current = true), setLive(l)),
       () => {},
     );
     loadAthletes()
@@ -100,6 +104,25 @@ export function RaceMedia({ orgId, id }) {
       on = false;
     };
   }, [orgId, id]);
+
+  // Ortak yarış (race.shared, Seyhun 2026-10-28): ekleyen kulüp ölçülen rüzgârı ortağa da yazar (sharedRaces/{id}/live/wind);
+  // başka kulüpte kendi rüzgâr kaydı boşsa ortaktaki gösterilir
+  const liveIn = useRef(false);
+  const windSent = useRef(null);
+  const sid = race?.shared || "";
+  useEffect(() => {
+    if (!sid || !liveIn.current) return;
+    const k = JSON.stringify(live.wind);
+    if (windSent.current === k) return;
+    const first = windSent.current === null;
+    windSent.current = k;
+    if (first && !live.wind.length) {
+      loadSharedWind(sid).then((w) => w.length && setLive((l) => (l.wind.length ? l : ((windSent.current = JSON.stringify(cleanLive({ ...l, wind: w }).wind)), cleanLive({ ...l, wind: w })))));
+      return;
+    }
+    const list = live.wind;
+    canShare(sid).then((ok) => ok && shareWind(sid, list), () => {});
+  }, [sid, live.wind]);
 
   // Asistanla yazılan rüzgâr (isler/yarisMedya.js) açık sayfada hemen görünür
   useEffect(() => {
@@ -193,6 +216,7 @@ export function RaceMedia({ orgId, id }) {
         </div>
       )}
       {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onReset={() => setReset(true)} />}
+      {tab === "course" && <CourseTab orgId={orgId} race={race} day={cur} />}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
       {tab === "media" && (
         <MediaTab
@@ -225,7 +249,7 @@ export function RaceMedia({ orgId, id }) {
           change({ days: next }, () => saveDays(orgId, id, next));
         }}
       />
-      <TabDock value={tab} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} />
+      <TabDock tabs={RACE_TABS} value={tab} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} />
       <ResetSheet
         open={reset}
         onClose={() => setReset(false)}
@@ -253,19 +277,19 @@ export function RaceMedia({ orgId, id }) {
 
 // Sekmeler en altta (Seyhun 2026-10-19: "alttan yönetelim"); sekmenin düğme şeridi (Countdown Bar) bunun üstünde durur (--bar-b).
 // Yanında tek Kayıt düğmesi (Seyhun 2026-10-22: ayrı Fotoğraf/Video düğmeleri kalktı): her sekmeden iPhone kamerasını açar (RecPick), çekilen Medya'da
-const TAB_ICON = { sure: "clock", media: "image", res: "flag" };
+const TAB_ICON = { sure: "clock", media: "image", res: "flag", course: "map" };
 // extra: sağa eklenen düğme (antrenman sayfasında asistan, Seyhun 2026-10-23)
-export function TabDock({ value, onChange, onRec, extra = null }) {
+export function TabDock({ tabs = TABS, value, onChange, onRec, extra = null }) {
   useEffect(() => {
     const r = document.documentElement.style;
     r.setProperty("--bar-b", "calc(env(safe-area-inset-bottom) + 4.75rem)");
     return () => r.removeProperty("--bar-b");
   }, []);
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[30rem] px-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
+    <nav className="fixed inset-x-0 bottom-0 z-[31] mx-auto w-full max-w-[30rem] px-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
       <div className="flex gap-2">
         <div className="grid flex-1 grid-cols-4 rounded-[1.25rem] border border-line bg-card p-1.5 shadow-[0_2px_12px_rgba(38,40,44,.06)]">
-          {TABS.map(([k, l]) => (
+          {tabs.map(([k, l]) => (
             <button key={k} type="button" onClick={() => onChange(k)} aria-pressed={value === k} className={`flex flex-col items-center gap-0.5 rounded-[0.875rem] py-1.5 text-[0.71875rem] ${value === k ? "bg-accbg font-semibold text-deep" : "text-mut"}`}>
               <Icon name={TAB_ICON[k]} className="size-[1.375rem]" />
               {l}
