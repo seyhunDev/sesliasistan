@@ -20,6 +20,14 @@ const plain = (s) =>
 const tokens = (s) => plain(s).split(" ").filter(Boolean);
 const digits = (s) => String(s || "").replace(/\D/g, "");
 
+// Sonuç listesinde arama: ad, kulüp ya da yelken numarası ("dikili", "kaya", "1234", "TUR 1234"); her kelime geçmeli, rakamlar yelken no'da
+export function sheetMatch(r, q) {
+  const words = tokens(q);
+  const num = digits(q);
+  if (!words.length && !num) return true;
+  const hay = plain([r?.name, r?.club, r?.sail].join(" "));
+  return words.every((w) => hay.includes(w)) && (!num || digits(r?.sail).includes(num));
+}
 export const isOptimist = (cls) => /opti/.test(plain(cls));
 
 // Sınıfa göre yaş kategorileri (doğum yılından): yarışın yılında en çok `age` yaşında olan o kategoriye girer.
