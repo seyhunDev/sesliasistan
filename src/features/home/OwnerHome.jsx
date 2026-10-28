@@ -23,6 +23,7 @@ import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
 import { AthletesWidget, ClubRows, FitWidget, NotesWidget } from "./HomeWidgets";
 import { HomeSummary } from "./HomeSummary";
+import { EnglishCard, MediaCard, TasksCard } from "./FeatureCards";
 import { MyAttendanceCard } from "./MyAttendanceCard";
 import { MyFitCard } from "./MyFitCard";
 import { myFit } from "@/lib/fitness/model";
@@ -162,9 +163,13 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         </div>
         {staff && <MyFitCard />}
         {side && <MyAttendanceCard kind={kind} />}
-        {/* Ana hesapta Kulüp yukarıda (kutular); burada yalnız Instagram. Diğer hesaplarda Özet listesi burada */}
+        {/* Özellik kartları (Seyhun 2026-10-28 "A · Büyük kartlar"): eski Özet (Mesajlar) yerine İngilizce, Görevler, Medya; en altta Instagram.
+            Ana hesapta Kulüp yukarıda (kutular). Diğer hesaplarda Özet listesi burada */}
+        {!side && <EnglishCard />}
+        {!side && <TasksCard />}
+        {athletes && <MediaCard />}
         {owner ? (
-          <HomeSummary posts={!staff} />
+          <HomeSummary posts={!staff} tail={false} />
         ) : (
           <HomeSummary
             title="Özet"
