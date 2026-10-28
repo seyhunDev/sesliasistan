@@ -63,6 +63,8 @@ final class KameraYonetici: NSObject, UIImagePickerControllerDelegate, UINavigat
 
     func imagePickerController(_ p: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
         kapat(p)
+        // Seyhun 2026-10-28: "videoyu çektim, galeriye gittim, bomboş". Kopya hazırlanırken Medya'da hemen "Kaydediliyor" karesi görünsün
+        plugin?.notifyListeners("cameraTaken", data: ["kind": info[.mediaURL] != nil ? "video" : "photo"])
         let tmp = FileManager.default.temporaryDirectory
         let ad = "velora-\(Int(Date().timeIntervalSince1970 * 1000))"
         do {

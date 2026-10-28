@@ -5,9 +5,10 @@
 // bağlı yarış açılınca ortaktaki yenilik ve yeni sonuç listeleri kulübün yarışına işlenir.
 import { arrayUnion, collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { setDoc } from "@/lib/firebase/write";
-import { db } from "@/lib/firebase/clientApp";
+import { auth, db } from "@/lib/firebase/clientApp";
 import { canEditShared, fromShared, sameRace, sameShared, sharedOf } from "@/lib/sharedRace";
 import { cleanWind } from "@/lib/raceLive";
+import { cleanCourse } from "@/lib/raceCourse";
 import { mergeSheet, rankOurs } from "@/lib/resultSheet";
 import { loadSheets, saveSheet } from "./raceLiveStore";
 import { freshRace, linkRace, loadRaces, saveRace } from "./races";
@@ -105,6 +106,22 @@ export async function loadSharedWind(sharedId) {
   if (!sharedId) return [];
   const w = await getDoc(doc(one(sharedId), "live", "wind")).catch(() => null);
   return cleanWind(w?.exists() ? w.data().wind : []);
+}
+
+// Ortağa yazabilir mi (ekleyen kulüp ya da ana hesap): başkasının yazması kuralda reddedilir, ret ekranda "kaydedilemedi" uyarısı
+// olurdu (firebase/write.js); bu yüzden yazmadan önce bakılır
+export async function canShare(sharedId) {
+  const u = auth.currentUser;
+  if (!sharedId || !u) return false;
+  const s = await loadShared(sharedId).catch(() => null);
+  return canEditShared(s, u.uid, u.email);
+}
+// Parkur (Parkur sekmesi): gün gün sharedRaces/{id}/course/{gün}, kulübün kaydıyla aynı biçim (raceCourse.js cleanCourse; kişi bilgisi yok)
+export const shareCourse = (sharedId, day, c) => sharedId && day && setDoc(doc(one(sharedId), "course", day), { ...cleanCourse(c), at: now() }).catch(() => {});
+export async function loadSharedCourse(sharedId, day) {
+  if (!sharedId || !day) return null;
+  const s = await getDoc(doc(one(sharedId), "course", day)).catch(() => null);
+  return s?.exists() ? cleanCourse(s.data()) : null;
 }
 
 // Yayınlar; kulübün yarışında kayıtlı bağ (race.shared) yeni bağdan farklıysa yazar. Dönüş yeni bağ ya da null

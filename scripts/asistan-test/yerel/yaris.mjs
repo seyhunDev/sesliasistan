@@ -522,6 +522,30 @@ group("Ortak yarışlar")([
   ["yeni sonuç listeleri", { desc: "kulübün sonuçlarında olmayan liste kimlikleri", fn: () => SR.newSheets({ sheets: ["f1", "f2"] }, { results: { files: [{ id: "f1" }] } }), ok: (r) => r.join() === "f2" }],
 ]);
 
+// Parkur analizi (raceCourse.js): sesle/yazıyla ölçüm, hat avantajı, rüzgâr dönüşü, harita şekli, kayıt temizliği
+const PK = await import("@/lib/raceCourse");
+const CC = (obs, pts = {}) => PK.cleanCourse({ pts, obs: obs.map((o, i) => ({ ...o, at: `2026-10-28T1${i}:00:00.000Z` })) });
+group("Parkur analizi")([
+  ["şamandırada rüzgâr", { desc: "orsa şamandırasında rüzgâr + knot", fn: () => PK.parseCourseText("Orsa şamandırasında rüzgar 330, 5 knot"), ok: (r) => r.obs.kind === "wind" && r.obs.deg === 330 && r.obs.kn === 5 && r.obs.spot === "m1" && r.obs.by === "ben" }],
+  ["yazıyla sayı", { desc: "'üç yüz otuz derece, on iki knot'", fn: () => PK.parseCourseText("rüzgar üç yüz otuz derece on iki knot"), ok: (r) => r.obs.deg === 330 && r.obs.kn === 12 }],
+  ["hat açısı", { desc: "pin'den komite ve komiteden pin", fn: () => [PK.parseCourseText("Pin'den komite 52"), PK.parseCourseText("komiteden pin 232 derece")], ok: ([a, b]) => a.obs.kind === "line" && a.obs.ref === "pin" && a.obs.deg === 52 && b.obs.kind === "line" && b.obs.ref === "komite" }],
+  ["eksen ve hakem", { desc: "hakem botunun verdiği eksen", fn: () => PK.parseCourseText("hakem botu parkur ekseni 320 dedi"), ok: (r) => r.obs.kind === "axis" && r.obs.deg === 320 && r.obs.by === "hakem" }],
+  ["konum ve uzunluk", { desc: "'komite burada', 'birinci şamandıra burada', 'orsa 0,8 mil'", fn: () => [PK.parseCourseText("komite burada"), PK.parseCourseText("birinci şamandıra burada"), PK.parseCourseText("orsa 0,8 mil")], ok: ([a, b, c]) => a.pt === "komite" && b.pt === "m1" && c.len.orsa === 1482 }],
+  ["anlaşılmadı", { desc: "sayısız cümle yapay zekâya kalır", fn: () => PK.parseCourseText("bugün hava güzel"), ok: (r) => r === null }],
+  ["hat avantajı", { desc: "rüzgâr 0°, pin'den komite 100° → pin 10° önde; 80° → komite önde; şamandıradaki rüzgâr hattı etkilemez", fn: () => [
+    PK.lineBias(CC([{ kind: "wind", deg: 0 }, { kind: "line", ref: "pin", deg: 100 }])),
+    PK.lineBias(CC([{ kind: "wind", deg: 0 }, { kind: "line", ref: "komite", deg: 260 }])),
+    PK.lineBias(CC([{ kind: "wind", deg: 0 }, { kind: "wind", deg: 40, spot: "m1" }, { kind: "line", ref: "pin", deg: 90 }])),
+  ], ok: ([a, b, c]) => a.end === "pin" && a.deg === 10 && b.end === "komite" && b.deg === 10 && c.end === "" }],
+  ["rüzgâr dönüşü", { desc: "ilk ve son ölçüm arası derece ve hız farkı", fn: () => PK.windTrend(CC([{ kind: "wind", deg: 350, kn: 8 }, { kind: "wind", deg: 10, kn: 11 }])), ok: (t) => t.deg === 20 && t.kn === 3 }],
+  ["parkur şekli", { desc: "komite + eksen → işaretlenmeyen pin ve şamandıralar tahmini, orsa ≈900 m eksende", fn: () => {
+    const k = { lat: 39.07, lon: 26.88 };
+    const s = PK.courseShape(CC([{ kind: "axis", deg: 0 }], { komite: k }));
+    return [s, PK.bearing(s.mid, s.m1), PK.dist(s.mid, s.m1), PK.courseShape(CC([{ kind: "axis", deg: 0 }]))];
+  }, ok: ([s, b, d, none]) => s.est.pin && s.est.m1 && !s.est.komite && b === 0 && Math.abs(d - 900) < 2 && none === null }],
+  ["kayıt temizliği", { desc: "bilinmeyen tür ve derecesiz ölçüm atılır, açı 0–359, bozuk konum düşer, kişisel alan yok", fn: () => PK.cleanCourse({ pts: { komite: { lat: 39, lon: 26 }, pin: { lat: "x" }, sen: { lat: 1, lon: 1 } }, obs: [{ kind: "wind", deg: 370, kn: 6, by: "komite", uid: "u1" }, { kind: "x", deg: 1 }, { kind: "axis" }], len: { orsa: 50 } }), ok: (c) => Object.keys(c.pts).join() === "komite" && c.obs.length === 1 && c.obs[0].deg === 10 && c.obs[0].by === "komite" && !("uid" in c.obs[0]) && !c.len.orsa }],
+]);
+
 // Yarış takvimi (/races): yaklaşan/geçmiş, arama, kısa tarih, sonuç görünümü
 group("Yarış takvimi")([
   ["yaklaşan ve geçmiş", { desc: "biten geçmişte (yeni önce), süren yaklaşanda (yakın önce)", fn: () => SR.calendarOf([{ id: "a", name: "A", startDate: "2026-11-07" }, { id: "b", name: "B", startDate: "2026-10-27", endDate: "2026-10-29" }, { id: "c", name: "C", startDate: "2026-09-01" }, { id: "d", name: "D", startDate: "2026-10-01" }], "2026-10-28"), ok: (r) => r.up.map((s) => s.id).join() === "b,a" && r.past.map((s) => s.id).join() === "d,c" }],

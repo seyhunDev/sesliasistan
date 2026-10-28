@@ -101,8 +101,9 @@ export async function run(server, log = () => {}) {
   page.on("pageerror", (e) => errs.push(String(e.message || e).split("\n")[0].slice(0, 200)));
   const body = () => page.locator("body").innerText().catch(() => "");
   const crashed = async () => {
+    // çökme ekranı (CrashScreen "Bu sayfa açılamadı"); bölge haritasının "Harita açılamadı" yazısı çökme değil (testte dış adresler kapalı)
     const t = await body();
-    return /açılamadı|Application error|before initialization/i.test(t) || errs.length > 0;
+    return /Bu sayfa açılamadı|Application error|before initialization/i.test(t) || errs.length > 0;
   };
   const open = async (path, wait) => {
     errs.length = 0;

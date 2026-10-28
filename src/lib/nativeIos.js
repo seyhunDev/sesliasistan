@@ -35,9 +35,19 @@ export function showTimer(t) {
 export const hasCamera = () => typeof plugin()?.camera === "function";
 // t: { end (ms), paused, left (sn), title } ya da null (sayaç yok). Sonuç File (lastModified = kaydın bittiği an; asset = videonun
 // Fotoğraflar'daki kimliği) ya da null (vazgeçildi)
-export async function nativeCamera(t) {
-  const r = await plugin().camera(t || {});
+// onTaken(kind): "Videoyu Kullan"a basılınca (uygulama "cameraTaken" der; eski kurulumda kamera dosyayı verince), dosya hazırlanmadan
+export async function nativeCamera(t, onTaken) {
+  const p = plugin();
+  const h = onTaken && p.addListener ? p.addListener("cameraTaken", (e) => onTaken(e?.kind || "video")) : null;
+  const off = () => Promise.resolve(h).then((x) => x?.remove?.()).catch(() => {});
+  let r;
+  try {
+    r = await p.camera(t || {});
+  } finally {
+    off();
+  }
   if (!r || r.cancel || (!r.path && !r.file)) return null;
+  onTaken?.(r.kind || "video");
   const blob = r.file && typeof plugin().cameraRead === "function" ? await readNative(r) : await (await fetch(r.path)).blob();
   const f = new File([blob], r.name || (r.kind === "video" ? "video.mov" : "foto.jpg"), { type: r.type || blob.type, lastModified: Math.round(r.end || Date.now()) });
   if (r.asset) f.asset = r.asset;

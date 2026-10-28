@@ -10,6 +10,7 @@ import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResum
 import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
 import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind } from "@/lib/raceLive";
+import { cleanCourse, cleanObs } from "@/lib/raceCourse";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
 const VIDEO_SEC = 120;
@@ -247,3 +248,13 @@ export async function dropLive(orgId, id) {
   for (const d of sh?.docs || []) await deleteDoc(d.ref).catch(() => {});
   await deleteDoc(live(orgId, id)).catch(() => {});
 }
+
+// Parkur analizi (lib/raceCourse.js): gün gün ayrı belge orgs/{org}/raceLive/{yarış}/course/{gün}; ölçümler arrayUnion ile eklenir
+// (iki telefon aynı anda ekleyince biri kaybolmaz), konumlar ve silme tüm belgeyle yazılır
+export const courseRef = (orgId, id, day) => doc(db, "orgs", orgId, "raceLive", id, "course", day);
+export async function loadCourse(orgId, id, day) {
+  const snap = await getDoc(courseRef(orgId, id, day));
+  return cleanCourse(snap.exists() ? snap.data() : {});
+}
+export const addCourseObs = (orgId, id, day, o) => setDoc(courseRef(orgId, id, day), { obs: arrayUnion(cleanObs(o)), at: new Date().toISOString() }, { merge: true });
+export const saveCourse = (orgId, id, day, c) => setDoc(courseRef(orgId, id, day), { ...cleanCourse(c), at: new Date().toISOString() });
