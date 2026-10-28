@@ -934,12 +934,12 @@ function entryForm(pdf, f, r, c, cls, list) {
   signBox(page, p, f, L + 6, top + 6, up(c.name));
 }
 
-// Otel konaklama izninin bilgileri: otel adı yalnız yazıldıysa (talimattaki oteller öneri olarak seçilir);
+// Otel konaklama izninin bilgileri: otel Yolculuk'taki otellerden seçilir (2026-10-28 tek yer; Yolculuk'ta tek otel varsa o);
 // tarih, ad, yer ve imzalayan kulüp izin yazısıyla aynı yerden gelir
 export function hotelInfo(r) {
   const c = clubInfo(r);
   return {
-    hotel: String(r.hotelName || "").trim(),
+    hotel: String(r.hotelName || "").trim() || (Array.isArray(r.hotels) && r.hotels.filter((h) => h?.name).length === 1 ? String(r.hotels.find((h) => h?.name).name).trim() : ""),
     from: r.hotelFrom || r.startDate,
     to: r.hotelTo || r.hotelFrom || r.endDate || r.startDate,
     event: c.event,

@@ -558,3 +558,26 @@ group("Yarış takvimi")([
     return [f.rows.length, SR.filtersOf(f).join(), SR.rankView(f, "Junior").map((r) => `${r.place}${r.name[0]}`).join(), SR.rankView(f, "Kızlar")[0].place, SR.rankView(f, "", "1234")[0]?.name, SR.rankView(f, "", "dikili kaya").length];
   }, ok: (r) => r.join("|") === "3|Junior,Kızlar|1E,2C|1|Ali Kaya|1" }],
 ]);
+
+// Yarış günü (raceDay.js): yarış sayfasının üstü günün evresine göre (A rüzgâr · B sonuçlar · C gün bitti + yarın)
+const RDY = await import("@/lib/raceDay");
+const RDR = { startDate: "2026-11-07", endDate: "2026-11-09", notice: { schedule: [{ date: "2026-11-08", time: "09:30", title: "Toplanma" }, { date: "2026-11-08", time: "11:00", title: "İlk start" }] } };
+const atH = (h, m = 0) => new Date(2026, 10, 7, h, m);
+group("Yarış günü")([
+  ["yarış dışı", { desc: "önce ve sonra evre yok", fn: () => [RDY.racePhase({ r: RDR, today: "2026-11-06", now: atH(12) }), RDY.racePhase({ r: RDR, today: "2026-11-10", now: atH(12) })], ok: (r) => r.join() === "," }],
+  ["yarışta", { desc: "sonuç yokken A", fn: () => RDY.racePhase({ r: RDR, today: "2026-11-07", now: atH(13) }), ok: (r) => r === "race" }],
+  ["sonuç geldi", { desc: "bugün yazılan sonuç B; dünkü sonuç A", fn: () => [RDY.racePhase({ r: { ...RDR, results: { day: "2026-11-07", rows: { a: { place: 3 } } } }, today: "2026-11-07", now: atH(15) }), RDY.racePhase({ r: { ...RDR, results: { day: "2026-11-06", rows: { a: { place: 3 } } } }, today: "2026-11-07", now: atH(15) })], ok: (r) => r.join() === "results,race" }],
+  ["gün bitti", { desc: "18:00 sonrası ya da son yarış bitip 90 dk geçince C; yarış sürerken değil", fn: () => {
+    const st = [{ day: "2026-11-07", at: atH(11).toISOString(), fin: atH(12).toISOString() }, { day: "2026-11-07", at: atH(13).toISOString(), fin: atH(14).toISOString() }];
+    return [RDY.racePhase({ r: RDR, today: "2026-11-07", now: atH(18, 5) }), RDY.racePhase({ r: RDR, today: "2026-11-07", now: atH(15, 40), starts: st }), RDY.racePhase({ r: RDR, today: "2026-11-07", now: atH(15), starts: st }), RDY.racePhase({ r: RDR, today: "2026-11-07", now: atH(16), starts: [...st, { day: "2026-11-07", at: atH(15).toISOString() }] })];
+  }, ok: (r) => r.join() === "done,done,race,race" }],
+  ["yarının programı", { desc: "ilk start ve ilk saatli satır", fn: () => RDY.dayPlan(RDR, "2026-11-08"), ok: (r) => r.start.time === "11:00" && r.first.title === "Toplanma" }],
+  ["ertesi gün", { desc: "ay sonu", fn: () => RDY.nextDay("2026-10-31"), ok: (r) => r === "2026-11-01" }],
+  ["dünden fark", { desc: "gün değişince eski sıralar prev'e; aynı gün prev korunur; ↑2", fn: () => {
+    const d1 = RDY.stampResults(null, { rows: { a: { place: 5 } } }, "2026-11-07");
+    const d2 = RDY.stampResults(d1, { rows: { a: { place: 3 } } }, "2026-11-08");
+    const d2b = RDY.stampResults(d2, { rows: { a: { place: 4 } } }, "2026-11-08");
+    return [d1.prev.a, d2.prev.a, d2b.prev.a, RDY.placeMove(d2, "a"), RDY.placeMove(d2b, "a"), RR.cleanResults(d2).day, RR.cleanResults(d2).prev.a];
+  }, ok: (r) => r.join() === ",5,5,2,1,2026-11-08,5" }],
+  ["bizimkiler", { desc: "sıralılar, sıraya göre", fn: () => RDY.ourPlaces({ rows: { a: { place: 7 }, b: { place: 3 } } }, [{ id: "a", studentName: "Ayşe" }, { id: "b", studentName: "Ali" }, { id: "c", studentName: "Can" }]).map((x) => x.name).join(), ok: (r) => r === "Ali,Ayşe" }],
+]);

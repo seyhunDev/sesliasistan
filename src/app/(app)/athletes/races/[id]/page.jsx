@@ -19,6 +19,7 @@ import { coachStart } from "@/features/athletes/raceDocs";
 import { addRacePlan, deleteRace, freshRace, loadRaces, racesNow, saveRace, saveRaceResults } from "@/features/athletes/races";
 import { loadShared, loadSharedList, pullSheets, shareRace } from "@/features/athletes/sharedRaces";
 import { fromShared, newSheets, pickable } from "@/lib/sharedRace";
+import { stampResults } from "@/lib/raceDay";
 import { addNoticePlans } from "@/features/athletes/raceNotice";
 import { dropLive } from "@/features/athletes/raceLiveStore";
 import { mailToMe } from "@/features/mail/outbox";
@@ -109,6 +110,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
       const pool = [...ours, ...athletes.filter((a) => isActive(a) && !ours.includes(a))];
       const got = await pullSheets({ orgId, race, sharedId: s.id, ids, pool });
       if (!got || !live) return;
+      got.results = stampResults(race.results, got.results, todayStr());
       await saveRaceResults(orgId, race.id, got.results, got.extra);
       const athleteIds = [...new Set([...(race.athleteIds || []), ...got.extra])];
       setRace((p) => ({ ...p, results: got.results, athleteIds }));

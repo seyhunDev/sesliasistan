@@ -33,7 +33,10 @@ export function cleanResults(v) {
     .slice(0, 8)
     .map((f) => ({ id: f.id, name: S(f.name, 120) || "sonuç.pdf", size: Number(f.size) || 0, parts: Math.max(1, Number(f.parts) || 1), at: S(f.at, 10), ...storedOf(f) }));
   if (!Object.keys(rows).length && !fleet && !files.length) return null;
-  return files.length ? { fleet, rows, files } : { fleet, rows };
+  // day: sonucun son yazıldığı gün; prev: önceki günün sıraları (raceDay.js stampResults; yarış günü "dünden fark")
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(v.day || "") ? v.day : "";
+  const prev = Object.fromEntries(Object.entries(v.prev && typeof v.prev === "object" ? v.prev : {}).filter(([id]) => /^[\w-]{1,80}$/.test(id)).slice(0, 60).map(([id, p]) => [id, int(p, 500)]).filter(([, p]) => p));
+  return { fleet, rows, ...(files.length ? { files } : {}), ...(day ? { day } : {}), ...(Object.keys(prev).length ? { prev } : {}) };
 }
 
 // "3. / 24" ya da "3." ya da not

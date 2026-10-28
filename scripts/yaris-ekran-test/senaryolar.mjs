@@ -16,6 +16,9 @@ const ymd = (d) => d.toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" }
 const TODAY = ymd(now);
 const plus = (n) => ymd(new Date(now.getTime() + n * 864e5));
 
+// Yarış günü üstü günün evresine göre (RaceDayTop): "1. gün · Yarışta" / "1. gün · Sonuçlar" / "1. gün bitti"
+const DAY_TOP = /\d\. gün (· (Yarışta|Sonuçlar)|bitti)/;
+
 async function launch() {
   const { chromium } = await import("playwright-core");
   const tries = [];
@@ -136,7 +139,7 @@ export async function run(server, log = () => {}) {
 
     // Kulüp hesabına bağlan (Sporcular sayfası); sporcular bundan sonra yarış sayfasına gelir
     await page.goto(`${server.url}/athletes/races/r1`, { waitUntil: "load", timeout: 120000 });
-    await page.getByText("Yarış günü").first().waitFor({ timeout: 60000 });
+    await page.getByText(DAY_TOP).first().waitFor({ timeout: 60000 });
     await page.locator("nav[aria-label=Bölümler] button", { hasText: "Sporcu" }).click();
     const form = page.locator("form", { has: page.locator("input[type=password]") }).first();
     await form.waitFor({ timeout: 30000 });
@@ -146,12 +149,13 @@ export async function run(server, log = () => {}) {
     await page.getByText("Bu hesabın sporcuları görme izni yok").waitFor({ state: "detached", timeout: 30000 }).catch(() => {});
 
     log("    Yarış günü (sporcu seçili)…");
-    await okPage("Yarış sayfası", "yarış günü, sporcu seçili", "/athletes/races/r1", "Yarış günü", async () => {
+    await okPage("Yarış sayfası", "yarış günü, sporcu seçili", "/athletes/races/r1", DAY_TOP, async () => {
       const wx = await page.locator("section[aria-label='Yarış havası']").count();
       const row = await page.getByText(/eksik|Hazırlık tamam|iş kaldı/).first().isVisible().catch(() => false);
+      if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO, fullPage: true }).catch(() => {});
       return [wx > 0 && row, `hava ${wx ? "var" : "yok"} · hazırlık satırı ${row ? "var" : "yok"}`];
     });
-    await okPage("Yarış sayfası", "Sporcu sekmesinde sporcu", "/athletes/races/r1", "Yarış günü", async () => {
+    await okPage("Yarış sayfası", "Sporcu sekmesinde sporcu", "/athletes/races/r1", DAY_TOP, async () => {
       await page.locator("nav[aria-label=Bölümler] button", { hasText: "Sporcu" }).click();
       await page.waitForTimeout(1500);
       const name = await page.getByText("Deniz Yılmaz").first().isVisible().catch(() => false);

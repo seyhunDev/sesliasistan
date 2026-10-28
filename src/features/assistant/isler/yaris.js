@@ -14,6 +14,7 @@ import { loadPosts, postHandler } from "@/features/posts/posts";
 import { raceHereCommand, hotelAddCommand } from "@/lib/assistMore";
 import { deleteRace, addRacePlan, matchStep, stepsOf, doneSteps, cleanDone, cleanHotels, raceHotels } from "@/features/athletes/races";
 import { cleanResults } from "@/lib/raceResults";
+import { stampResults } from "@/lib/raceDay";
 import { emptyBudget } from "@/features/athletes/budget";
 
 // Söylenen yarışı bul: kesin eşleşme → puanlama → yapay zeka → en yakın seçenekler (yoksa tarihi en yakın 3 yarış)
@@ -273,7 +274,7 @@ export async function raceHereCmd(ctx, s, viaVoice) {
       return true;
     }
     if (rh.op === "fleet") {
-      await saveHereRace(r, { ...r, results: cleanResults({ ...(r.results || {}), fleet: rh.n }) });
+      await saveHereRace(r, { ...r, results: cleanResults(stampResults(r.results, { ...(r.results || {}), fleet: rh.n }, todayStr())) });
       done(`Tekne sayısı ${rh.n} olarak yazıldı.`, { engine: "local" }, viaVoice);
       return true;
     }
@@ -306,7 +307,7 @@ export async function raceHereCmd(ctx, s, viaVoice) {
         done(`${a.studentName} yarıştan çıkarıldı.`, { engine: "local" }, viaVoice);
       } else if (rh.op === "result") {
         const rows = { ...(r.results?.rows || {}), [a.id]: { ...(r.results?.rows?.[a.id] || {}), place: rh.place } };
-        await saveHereRace(r, { ...r, results: cleanResults({ ...(r.results || {}), rows }) });
+        await saveHereRace(r, { ...r, results: cleanResults(stampResults(r.results, { ...(r.results || {}), rows }, todayStr())) });
         done(`Yazdım: ${a.studentName} ${rh.place}.${r.results?.fleet ? ` / ${r.results.fleet}` : ""}.`, { engine: "local" }, viaVoice);
       } else {
         const b = r.budget || emptyBudget(r);
