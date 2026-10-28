@@ -1,8 +1,8 @@
-Commit: 85817c9 · Merge pull request #872 from seyhunDev/claude/project-thread-o66w67
-Zaman: 2026-10-28-2000 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40729665596
+Commit: f130e39 · Parkur: komite ve pin işaretlenmeden ölçüm girilince çökme (e.lat) düzeltildi (#873)
+Zaman: 2026-10-28-2014 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40732072132
 
-TAM TEST · 28.10.2026 19:50:44
+TAM TEST · 28.10.2026 20:04:18
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1408/1409 geçti · 1 kalan · 563 sn
+SONUÇ: 1408/1409 geçti · 1 kalan · 568 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
