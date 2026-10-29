@@ -1,8 +1,8 @@
-Commit: c217d71 · Pusula: dik tutunca kameranın baktığı yön (üst kenar yerine) (#897)
-Zaman: 2026-10-29-1110 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40839058502
+Commit: cd1a0bd · Pusula: iPhone uygulamasında telefonun kendi pusulası (#898)
+Zaman: 2026-10-29-1238 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40849788122
 
-TAM TEST · 29.10.2026 11:00:33
+TAM TEST · 29.10.2026 12:28:04
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1410/1410 geçti · 0 kalan · 584 sn
+SONUÇ: 1410/1410 geçti · 0 kalan · 608 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
