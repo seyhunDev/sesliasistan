@@ -1221,7 +1221,10 @@ async function rainSplit(h) {
     const leg = (await page.locator("[aria-label='Grafik açıklaması']").first().textContent().catch(() => "")) || "";
     const head = await page.getByRole("heading", { name: "BÖLGE" }).count();
     const st = await page.getByText("Dikili istasyonu · 1 km").count();
-    const rmap = await page.locator("[aria-label='Bölge haritası']").count();
+    // Harita "Harita" düğmesiyle tam ekran açılır (#885): önce düğme, açılınca harita
+    const rbtn = page.getByRole("button", { name: "Bölge haritasını aç" });
+    await rbtn.first().click().catch(() => {});
+    const rmap = await waitFor(() => page.locator("[aria-label='Bölge haritası']").count(), 5000).catch(() => 0);
     let canvas = 1;
     if (process.env.WX_MAPLIBRE) {
       const reg = page.locator("[aria-label='Bölge haritası']");
@@ -1234,6 +1237,7 @@ async function rainSplit(h) {
       await page.waitForTimeout(1000);
       if (process.env.WX_SHOT) await reg.screenshot({ path: `${process.env.WX_SHOT}-bolge-yagis.png` }).catch(() => {});
     }
+    await page.getByRole("button", { name: "Haritayı kapat" }).click().catch(() => {});
     const mleg = rmap ? "Seçilen yer Ölçüm" : "";
     const src = await page.getByText(/Radar: RainViewer/).count();
     if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-radar.png`, fullPage: true }));
