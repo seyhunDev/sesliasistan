@@ -77,17 +77,37 @@ export function prefetchRaces(profile) {
   if (canSeeAthletes(profile?.email) && profile?.orgId && profile.races !== "off") countRaces(profile.orgId);
 }
 
+// Son okunan yarış özeti bu cihazda saklanır: ana sayfa açılınca yarış şeridi (sayaç) ve yarış günü havası beklemeden çizilir,
+// grafik önce uzayıp sonra kısalmaz (Seyhun 2026-10-29: "neden sayaç sonradan yükleniyor"). Okuma bitince güncellenir.
+const SAVED = "sa-race-home";
+function readSaved(orgId) {
+  try {
+    const v = JSON.parse(localStorage.getItem(SAVED) || "null");
+    return v?.orgId === orgId && v.c ? v.c : null;
+  } catch {
+    return null;
+  }
+}
+function save(orgId, c) {
+  try {
+    localStorage.setItem(SAVED, JSON.stringify({ orgId, c }));
+  } catch {
+    /* dolu ya da gizli pencere */
+  }
+}
+
 export function useRaceHome() {
   const { profile } = useAuth();
   const allowed = canSeeAthletes(profile?.email) && !!profile?.orgId;
   const on = allowed && profile?.races !== "off";
-  const [n, setN] = useState(null);
+  const [n, setN] = useState(() => (on ? readSaved(profile.orgId) : null));
 
   useEffect(() => {
     if (!on) return;
     let live = true;
     countRaces(profile.orgId).then((c) => {
-      if (live) setN(c || {}); // okunamazsa da "yükleniyor" bitsin
+      if (c) save(profile.orgId, c);
+      if (live) setN((old) => c || old || {}); // okunamazsa saklanan kalır, yoksa "yükleniyor" biter
     });
     return () => {
       live = false;

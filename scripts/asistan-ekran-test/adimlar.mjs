@@ -1317,6 +1317,9 @@ async function raceDayHome(h) {
     await page.waitForTimeout(600);
     const back = await strip.getByRole("button", { name: "Başlat" }).count();
     const rec = await strip.getByLabel("Kayıt").count();
+    // Süre seçimi sağ üstte ⋯ ile aynı satırda; "N. yarış" yazmaz (Seyhun 2026-10-29)
+    const yOf = async (l) => ((await l.boundingBox().catch(() => null)) || { y: -999 }).y;
+    const topRow = Math.abs((await yOf(strip.getByRole("button", { name: "Süre seç" }))) - (await yOf(strip.getByRole("button", { name: "Yarış kısayolu seçenekleri" })))) < 12;
     // Multimedya'ya tek giriş yarışın adı (#872); ⋯ menüsünde Multimedya satırı yok
     const nameLink = await strip.locator("a[href$='/media']").count();
     await strip.getByRole("button", { name: "Yarış kısayolu seçenekleri" }).click();
@@ -1325,8 +1328,8 @@ async function raceDayHome(h) {
     const old = /YARIŞ SÜRÜYOR/.test(await strip.textContent());
     if (process.env.WX_SHOT) await strip.screenshot({ path: `${process.env.WX_SHOT}-serit-bos.png` }).catch(() => {});
     await page.evaluate(() => localStorage.removeItem("sa-sayac"));
-    const ok = /^0?5:00$/.test(t0) && /^0?2:00$/.test(t2) && /starta kalan/i.test(sub) && seq === 1 && stop === 1 && dev === 1 && reset && asked === 1 && back === 1 && /1\. yarış/.test(await strip.textContent()) && rec >= 1 && nameLink >= 1 && mm === 0 && idleBtns <= 4 && !old;
-    return [ok, `ilk ${t0} · çip ${t2} · ${/starta kalan/i.test(sub) ? "geri sayım" : "sayım yok"} · dizi ${seq} · Durdur ${stop} · Devam ${dev} · Sıfırla ${reset ? "açık" : "kapalı"} · sebep ${asked} → Başlat ${back} · beklerken düğme ${idleBtns} · Kayıt ${rec} · ad bağlantısı ${nameLink} · ⋯ Multimedya ${mm}${old ? " · eski başlık var" : ""}`];
+    const ok = /^0?5:00$/.test(t0) && /^0?2:00$/.test(t2) && /starta kalan/i.test(sub) && seq === 1 && stop === 1 && dev === 1 && reset && asked === 1 && back === 1 && !/\d\. yarış/.test(await strip.textContent()) && topRow && rec >= 1 && nameLink >= 1 && mm === 0 && idleBtns <= 4 && !old;
+    return [ok, `ilk ${t0} · çip ${t2} · ${/starta kalan/i.test(sub) ? "geri sayım" : "sayım yok"} · dizi ${seq} · Durdur ${stop} · Devam ${dev} · Sıfırla ${reset ? "açık" : "kapalı"} · sebep ${asked} → Başlat ${back} · beklerken düğme ${idleBtns} · Kayıt ${rec} · süre üst satırda ${topRow ? "evet" : "hayır"} · ad bağlantısı ${nameLink} · ⋯ Multimedya ${mm}${old ? " · eski başlık var" : ""}`];
   });
   await check("Sayfa hataları", "yarış günü havası", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
