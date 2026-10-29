@@ -21,7 +21,7 @@ import { ResultsTab } from "./ResultsTab";
 import { MediaSettingsButton, MediaTab } from "./MediaTab";
 import { RecPick } from "./RecPick";
 import { DaySummarySheet } from "./DaySummarySheet";
-import { DaySheet } from "./DaySheet";
+import { DayPick, DaySheet } from "./DaySheet";
 import { ResetSheet } from "./ResetSheet";
 import { useLiveSync } from "./useLiveSync";
 import { takeShot } from "./handoff";
@@ -56,6 +56,7 @@ export function RaceMedia({ orgId, id }) {
   const [day, setDay] = useState("");
   const [sum, setSum] = useState(false);
   const [addDay, setAddDay] = useState(false);
+  const [pickDay, setPickDay] = useState(false);
   const [reset, setReset] = useState(false);
   const rdays = useMemo(() => (race ? raceDays(race) : null), [race]);
   // Açılışta bugün seçili (Seyhun 2026-10-19: "açtığım zaman bugün gösterilmesi lazım"). Telefon uygulamayı arkada açık tutar:
@@ -76,17 +77,6 @@ export function RaceMedia({ orgId, id }) {
       window.removeEventListener("pageshow", on);
     };
   }, []);
-  // Seçili gün şeritte görünsün (gün çoksa bugün sağda kalıp gözden kaçmasın)
-  const strip = useRef(null);
-  const shown = useRef("");
-  useEffect(() => {
-    const el = strip.current?.querySelector('[aria-pressed="true"]');
-    if (!el || shown.current === el.dataset.day) return;
-    shown.current = el.dataset.day;
-    const box = strip.current;
-    box.scrollLeft = Math.max(0, el.offsetLeft - box.offsetLeft - (box.clientWidth - el.offsetWidth) / 2);
-  });
-
   useEffect(() => {
     let on = true;
     loadRace(orgId, id).then(
@@ -164,7 +154,7 @@ export function RaceMedia({ orgId, id }) {
   const days = withToday(liveDays(rdays, live), rdays, today);
   const names = dayNames(rdays, days);
   const cur = day || (days.includes(today) ? today : !days.length || today < days[0] ? days[0] || today : days[days.length - 1]);
-  const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" ? names[cur] : "", dayLabel(cur)].filter(Boolean).join(" · ");
+  const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" ? names[cur] : ""].filter(Boolean).join(" · "); // tarih gün düğmesinde
   const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
   const tab = tabPick || (days.includes(today) ? "sure" : "media");
 
@@ -176,6 +166,10 @@ export function RaceMedia({ orgId, id }) {
       action={
         <>
           {tab === "media" && <MediaSettingsButton dark />}
+          <button type="button" data-cur={cur} onClick={() => setPickDay(true)} aria-label={`Gün: ${names[cur]} · ${dayLabel(cur)}`} data-press className="raised flex h-10 shrink-0 items-center gap-1 rounded-full border px-3.5 text-[0.875rem] font-semibold tabular-nums">
+            {cur === today ? "Bugün" : dayLabel(cur)}
+            <span aria-hidden="true" className="text-[0.75rem] opacity-70">▾</span>
+          </button>
           <button type="button" onClick={() => setSum(true)} data-press className="raised h-10 shrink-0 rounded-full border px-3.5 text-[0.875rem] font-semibold">
             Özet
           </button>
@@ -183,26 +177,6 @@ export function RaceMedia({ orgId, id }) {
       }
       top={
         <>
-          {/* Günler küçük kare: üstte gün, altta "Ant" ya da "1. gün" (Seyhun 2026-10-19: "daha az yazıyla") */}
-          <div ref={strip} className="-mx-5 mt-4 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none]">
-            {days.map((d) => (
-              <button
-                key={d}
-                data-day={d}
-                type="button"
-                onClick={() => setDay(d)}
-                aria-pressed={d === cur}
-                aria-label={`${names[d]} · ${dayLabel(d)}`}
-                className={`raised flex h-[3.25rem] min-w-[3rem] shrink-0 flex-col items-center justify-center rounded-[0.875rem] border px-1.5 ${d === cur ? "ck-sel" : ""}`}
-              >
-                <b className="text-[1.0625rem] font-semibold leading-none tabular-nums">{+d.slice(8)}</b>
-                <small className="mt-1 text-[0.6875rem] leading-none text-white/75">{names[d].replace("Antrenman ", "Ant ")}</small>
-              </button>
-            ))}
-            <button type="button" onClick={() => setAddDay(true)} aria-label="Gün ekle" className="grid h-[3.25rem] w-12 shrink-0 place-items-center rounded-[0.875rem] border border-dashed border-white/30 text-[1.375rem] text-[#67e8f9] active:scale-95">
-              +
-            </button>
-          </div>
           {tab === "sure" && <TimerHead race={race} live={live} rf={rf} />}
         </>
       }
@@ -231,6 +205,17 @@ export function RaceMedia({ orgId, id }) {
         />
       )}
       <VoidSheet ask={rf.ask} onChoose={rf.choose} />
+      <DayPick
+        open={pickDay}
+        onClose={() => setPickDay(false)}
+        days={days}
+        names={names}
+        cur={cur}
+        today={today}
+        label={dayLabel}
+        onPick={(d) => (setDay(d), setPickDay(false))}
+        onAdd={() => (setPickDay(false), setAddDay(true))}
+      />
       <DaySheet
         open={addDay}
         onClose={() => setAddDay(false)}

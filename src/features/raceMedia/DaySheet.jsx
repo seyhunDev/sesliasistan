@@ -34,3 +34,25 @@ function Body({ days, today, cur, onAdd, onDrop }) {
     </div>
   );
 }
+
+// Gün seçimi (Seyhun 2026-10-29: şerit yerine Özet'in yanında tek gün düğmesi, dokununca bu liste; bugün açılışta seçili)
+export function DayPick({ open, onClose, days, names, cur, today, label, onPick, onAdd }) {
+  return (
+    <Sheet open={open} onClose={onClose} title="Gün">
+      <ul className="divide-y divide-line border-y border-line">
+        {days.map((d) => (
+          <li key={d}>
+            <button type="button" data-day={d} aria-pressed={d === cur} onClick={() => onPick(d)} data-press="row" className="flex w-full items-center gap-3 py-3 text-left">
+              <b className="w-16 shrink-0 text-[0.9375rem] font-semibold tabular-nums">{label(d)}</b>
+              <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{names[d]}{d === today ? " · Bugün" : ""}</span>
+              {d === cur && <span className="size-2.5 shrink-0 rounded-full bg-acc" />}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button type="button" onClick={onAdd} data-press className="btn btn-secondary mt-4 w-full">
+        Gün ekle
+      </button>
+    </Sheet>
+  );
+}

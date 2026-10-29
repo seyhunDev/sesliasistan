@@ -5,21 +5,17 @@ import { onSnapshot } from "firebase/firestore";
 import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
-import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Bar } from "@/features/training/Countdown";
-import { useSpeech } from "@/hooks/useSpeech";
 import { addCourseObs, courseRef, saveCourse } from "@/features/athletes/raceLiveStore";
 import { canShare, loadSharedCourse, shareCourse } from "@/features/athletes/sharedRaces";
-import { readCourseText } from "@/services/courseService";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { BYS, PICKS, PT_NAME, cleanCourse, cleanObs, lineBias, nm, norm, obsTitle, obsValue, windTrend } from "@/lib/raceCourse";
+import { BYS, PICKS, cleanCourse, cleanObs, lineBias, norm, obsTitle, obsValue, windTrend } from "@/lib/raceCourse";
 import { CompassSight, askCompass } from "./CompassSight";
 
-// Parkur sekmesi (Seyhun 2026-10-28): üstte rota kartı (lib/courseCard.js, rüzgâr yukarıda; harita kaldırıldı).
-// "Burada" düğmeleri kaldırıldı (Seyhun 2026-10-29); işaretlenmeyen şamandıralar kartta kesik çizgiyle tahmini. Ekleme: Elle ekle,
-// sesle ya da yazarak ("orsada rüzgâr 330, 5 knot"; önce telefondaki kural, anlamazsa yapay zekâ; 3 sn içinde İptal edilmezse
-// eklenir), Pusula (telefonun pusulası). Altta start hattı avantajı, rüzgâr dönüşü ve hız, ölçüm listesi (dokununca sil).
+// Parkur sekmesi (Seyhun 2026-10-28): üstte rota kartı (lib/courseCard.js, komitenin ekseni yukarıda; harita kaldırıldı).
+// Ekleme yalnız "Yön ekle" ve "Pusula" (2026-10-29: "burada" düğmeleri ve söyle/yaz kutusu kaldırıldı, sonra asistanla yapılacak).
+// Altta start hattı avantajı, rüzgâr dönüşü ve hız, ölçüm listesi (dokununca sil).
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 const BY = Object.fromEntries(BYS);
 
@@ -28,9 +24,6 @@ export function CourseTab({ orgId, race, day }) {
   const [c, setC] = useState(() => cleanCourse({}));
   const [here, setHere] = useState(null); // telefonun yeri { lat, lon, acc }
   const [add, setAdd] = useState(null); // elle ekleme penceresi { lat, lon } | {}
-  const [got, setGot] = useState(null); // anlaşılan cümle { said, res } (3 sn sonra eklenir)
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
   const [sight, setSight] = useState(false);
   const [open, setOpen] = useState(null); // dokunulan ölçüm
   const latest = useRef(c);
@@ -101,38 +94,8 @@ export function CourseTab({ orgId, race, day }) {
     share(next);
     return x;
   };
-  const markHere = (pt) => {
-    if (!here) return toast("Konum alınamadı. Konum iznini aç.");
-    save({ ...latest.current, pts: { ...latest.current.pts, [pt]: { lat: here.lat, lon: here.lon, at: new Date().toISOString() } } }, `${PT_NAME[pt]} işaretlendi`);
-  };
-  const apply = (res) => {
-    if (res.pt) return markHere(res.pt);
-    if (res.len) return save({ ...latest.current, len: res.len }, `Orsa ${nm(res.len.orsa)}`);
-    if (res.obs) addObs(res.obs);
-  };
-
-  // Söylenen / yazılan cümle
-  const read = async (said) => {
-    const t = said.trim();
-    if (!t) return;
-    setBusy(true);
-    const res = await readCourseText(t);
-    setBusy(false);
-    if (res.error) return toast(res.error);
-    if (res.pt || res.len) return apply(res);
-    setText("");
-    setGot({ said: t, res, at: Date.now() });
-  };
-  const sp = useSpeech({ noLevel: true, terms: ["orsa", "apaz", "pupa", "pin", "komite", "hakem botu", "knot", "derece", "şamandıra"], onFinal: read, onFail: (m) => toast(m) });
-  useEffect(() => {
-    if (!got) return;
-    const id = setTimeout(() => (apply(got.res), setGot(null)), 3000);
-    return () => clearTimeout(id);
-  }, [got]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const bias = lineBias(c);
   const trend = windTrend(c);
-  const listening = sp.status === "listening";
   // Rota kartı (Seyhun 2026-10-28 "A · Rüzgâr yukarıda"; harita kaldırıldı: "Kart gayet iyi, kart üstüne çalışalım")
   const kart = useMemo(() => {
     try {
@@ -199,41 +162,11 @@ export function CourseTab({ orgId, race, day }) {
       <Bar>
         {/* altındaki liste şeridin arkasından görünmesin: sayfa renginde zemin, alt sekmelere kadar */}
         <div className="pointer-events-none absolute inset-x-0 -bottom-8 -top-4 -z-10 bg-gradient-to-b from-bg/0 via-bg via-[1.25rem] to-bg" />
-        {got && (
-          <div className="mb-2 rounded-2xl bg-accbg px-4 py-3">
-            <span className="block truncate text-[0.8125rem] text-mut">“{got.said}”</span>
-            <b className="mt-0.5 block text-[1.0625rem] font-semibold">{obsTitle(cleanObs(got.res.obs))} · {obsValue(cleanObs(got.res.obs))}</b>
-            <span className="mt-2 block h-1 overflow-hidden rounded-full bg-acc/20"><span key={got.at} className="block h-full origin-left animate-[autofill_3s_linear_forwards] bg-acc" /></span>
-            <div className="mt-2.5 grid grid-cols-2 gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setGot(null)}>İptal</Button>
-              <Button size="sm" onClick={() => (apply(got.res), setGot(null))}>Şimdi ekle</Button>
-            </div>
-          </div>
-        )}
-        <div className="mb-2 flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
-          <button type="button" onClick={() => setAdd({})} data-press className="raised h-9 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-semibold">Elle ekle</button>
-          <button type="button" onClick={async () => ((await askCompass()) ? setSight(true) : toast("Pusula izni verilmedi"))} data-press className="raised h-9 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-semibold">Pusula</button>
+        {/* Söyle ya da yaz kutusu kaldırıldı (Seyhun 2026-10-29: "bunu daha sonra asistanla yapacağız") */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" onClick={() => setAdd({})}>Yön ekle</Button>
+          <Button variant="secondary" onClick={async () => ((await askCompass()) ? setSight(true) : toast("Pusula izni verilmedi"))}>Pusula</Button>
         </div>
-        <form onSubmit={(e) => (e.preventDefault(), read(text))} className="flex gap-2">
-          <input
-            value={listening ? sp.finalText || sp.interim || "Dinliyorum…" : text}
-            onChange={(e) => setText(e.target.value)}
-            readOnly={listening}
-            enterKeyHint="send"
-            placeholder="Söyle ya da yaz…"
-            aria-label="Ölçümü söyle ya da yaz"
-            className="h-12 min-w-0 flex-1 rounded-[0.875rem] border border-line bg-card px-3.5 text-[0.9375rem] outline-none placeholder:text-mut focus:border-acc"
-          />
-          <button
-            type={text.trim() && !listening ? "submit" : "button"}
-            disabled={busy || sp.status === "transcribing"}
-            onClick={text.trim() && !listening ? undefined : () => (listening ? sp.stop() : sp.start({ autoStop: 2 }))}
-            aria-label={text.trim() && !listening ? "Ekle" : listening ? "Dinlemeyi bitir" : "Sesle söyle"}
-            className={`grid size-12 shrink-0 place-items-center rounded-[0.875rem] text-white active:translate-y-px disabled:opacity-60 ${listening ? "bg-rec" : "bg-acc shadow-[0_3px_0_#075e72]"}`}
-          >
-            <Icon name={busy || sp.status === "transcribing" ? "load" : text.trim() && !listening ? "up" : listening ? "stop" : "mic"} className={`size-5 ${busy || sp.status === "transcribing" ? "animate-spin" : ""}`} />
-          </button>
-        </form>
       </Bar>
 
       <AddSheet open={!!add} at={add} c={c} onClose={() => setAdd(null)} onAdd={(o) => (addObs(o), setAdd(null))} />
