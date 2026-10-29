@@ -1,8 +1,8 @@
-Commit: cd1a0bd · Pusula: iPhone uygulamasında telefonun kendi pusulası (#898)
-Zaman: 2026-10-29-1238 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40849788122
+Commit: fa13196 · Parkur dereceleri asistanla; multimedya alt çubuğunda asistan (#899)
+Zaman: 2026-10-29-1511 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40869899725
 
-TAM TEST · 29.10.2026 12:28:04
+TAM TEST · 29.10.2026 15:01:54
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1410/1410 geçti · 0 kalan · 608 sn
+SONUÇ: 1409/1410 geçti · 1 kalan · 588 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -139,7 +139,7 @@ SONUÇ: 1410/1410 geçti · 0 kalan · 608 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 131/131
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 130/131
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Ana sayfa: 5/5
   ✓ Enerji (boşta): 2/2
@@ -157,7 +157,10 @@ SONUÇ: 1410/1410 geçti · 0 kalan · 608 sn
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Kişi kare kodu: 4/4
-  ✓ Asistanın gizli olduğu yerler: 8/8
+  ✗ Asistanın gizli olduğu yerler: 7/8
+      ✗ “Yarış multimedya sayfası”
+          beklenen: sekme çubuğu ve asistan düğmesi yok
+          olan:     /athletes/races/test-yaris/media · 1 düğme · sekme çubuğu 0
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
