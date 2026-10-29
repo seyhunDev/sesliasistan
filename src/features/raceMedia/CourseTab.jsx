@@ -17,7 +17,7 @@ import { BYS, PICKS, PT_NAME, cleanCourse, cleanObs, lineBias, nm, norm, obsTitl
 import { CompassSight, askCompass } from "./CompassSight";
 
 // Parkur sekmesi (Seyhun 2026-10-28): üstte rota kartı (lib/courseCard.js, rüzgâr yukarıda; harita kaldırıldı).
-// Komite ve pin "burada" ile işaretlenir, işaretlenmeyen şamandıralar kartta kesik çizgiyle tahmini. Ekleme: Elle ekle,
+// "Burada" düğmeleri kaldırıldı (Seyhun 2026-10-29); işaretlenmeyen şamandıralar kartta kesik çizgiyle tahmini. Ekleme: Elle ekle,
 // sesle ya da yazarak ("orsada rüzgâr 330, 5 knot"; önce telefondaki kural, anlamazsa yapay zekâ; 3 sn içinde İptal edilmezse
 // eklenir), Pusula (telefonun pusulası). Altta start hattı avantajı, rüzgâr dönüşü ve hız, ölçüm listesi (dokununca sil).
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
@@ -32,7 +32,6 @@ export function CourseTab({ orgId, race, day }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [sight, setSight] = useState(false);
-  const [markPick, setMarkPick] = useState(false);
   const [open, setOpen] = useState(null); // dokunulan ölçüm
   const latest = useRef(c);
   useEffect(() => {
@@ -213,9 +212,6 @@ export function CourseTab({ orgId, race, day }) {
         )}
         <div className="mb-2 flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
           <button type="button" onClick={() => setAdd({})} data-press className="raised h-9 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-semibold">Elle ekle</button>
-          <button type="button" onClick={() => markHere("komite")} data-press className="raised h-9 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-semibold">Komite burada</button>
-          <button type="button" onClick={() => markHere("pin")} data-press className="raised h-9 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-semibold">Pin burada</button>
-          <button type="button" onClick={() => setMarkPick(true)} data-press className="raised h-9 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-semibold">Şamandıra burada</button>
           <button type="button" onClick={async () => ((await askCompass()) ? setSight(true) : toast("Pusula izni verilmedi"))} data-press className="raised h-9 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-semibold">Pusula</button>
         </div>
         <form onSubmit={(e) => (e.preventDefault(), read(text))} className="flex gap-2">
@@ -241,13 +237,6 @@ export function CourseTab({ orgId, race, day }) {
       </Bar>
 
       <AddSheet open={!!add} at={add} c={c} onClose={() => setAdd(null)} onAdd={(o) => (addObs(o), setAdd(null))} />
-      <Sheet open={markPick} onClose={() => setMarkPick(false)} title="Hangi şamandıra burada?">
-        <div className="grid grid-cols-2 gap-2 pb-2">
-          {["m1", "m2", "m3", "m4"].map((k) => (
-            <Button key={k} variant="secondary" onClick={() => (setMarkPick(false), markHere(k))}>{PT_NAME[k]}</Button>
-          ))}
-        </div>
-      </Sheet>
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open ? obsTitle(open) : ""}>
         {open && (
           <div className="pb-2">
