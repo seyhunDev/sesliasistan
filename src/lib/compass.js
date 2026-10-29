@@ -40,3 +40,14 @@ export function compassReader() {
     return last;
   };
 }
+
+// Açıların ortalaması (Seyhun 2026-10-29 "10 sn ortalama": rüzgâr yönü sürekli oynar, Al 10 sn ölçer). 350° ve 10° → 0°.
+// Dönüş { deg (0-359), spread (en uzak örneğin ortalamaya farkı) } ya da null
+export function meanDeg(list) {
+  const xs = (list || []).filter((d) => Number.isFinite(d));
+  if (!xs.length) return null;
+  const s = xs.reduce((a, d) => a + Math.sin(d * R), 0);
+  const c = xs.reduce((a, d) => a + Math.cos(d * R), 0);
+  const deg = Math.round(norm(Math.atan2(s, c) / R)) % 360;
+  return { deg, spread: Math.round(Math.max(...xs.map((d) => Math.abs(angDiff(d, deg))))) };
+}
