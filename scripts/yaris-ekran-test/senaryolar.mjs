@@ -151,7 +151,11 @@ export async function run(server, log = () => {}) {
     log("    Yarış günü (sporcu seçili)…");
     await okPage("Yarış sayfası", "yarış günü, sporcu seçili", "/athletes/races/r1", DAY_TOP, async () => {
       const wx = await page.locator("section[aria-label='Yarış havası']").count();
-      const row = await page.getByText(/eksik|Hazırlık tamam|iş kaldı/).first().isVisible().catch(() => false);
+      // yarış günü hazırlık altta görünmez, "Hazırlık" sekmesinde (Seyhun 2026-10-29)
+      const hid = !(await page.getByText(/eksik|Hazırlık tamam|iş kaldı/).first().isVisible().catch(() => false));
+      await page.locator("nav[aria-label=Bölümler] button", { hasText: "Hazırlık" }).click().catch(() => {});
+      await page.waitForTimeout(600);
+      const row = hid && (await page.getByText(/eksik|Hazırlık tamam|iş kaldı/).first().isVisible().catch(() => false));
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO, fullPage: true }).catch(() => {});
       return [wx > 0 && row, `hava ${wx ? "var" : "yok"} · hazırlık satırı ${row ? "var" : "yok"}`];
     });
