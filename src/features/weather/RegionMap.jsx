@@ -235,7 +235,10 @@ export function RegionMap({ place, station, obs, onPick, mini = false, className
   if (!full && mini)
     return (
       <button type="button" onClick={() => (setErr(false), setFull(true))} aria-label="Bölge haritasını aç" className={`relative block w-full overflow-hidden rounded-[1.125rem] bg-[#0f1f38] active:scale-[.98] ${className}`}>
-        <div ref={box} className="pointer-events-none absolute inset-0" />
+        {/* maplibre kabı kendine position:relative verir (absolute ezilir, yükseklik 0 kalıyordu): kap, sabit boyutlu sarmalın içinde h-full */}
+        <div className="pointer-events-none absolute inset-0">
+          <div ref={box} className="h-full w-full" />
+        </div>
         {err && <span className="absolute inset-0 grid place-items-center text-[0.8125rem] text-white/70">Harita açılamadı</span>}
       </button>
     );
