@@ -122,6 +122,17 @@ export function parseCourseText(text) {
   return { obs: o };
 }
 
+// Asistana söylenen parkur derecesi (Seyhun 2026-10-29 "sesli asistanla parkur derecelerini söyleyebilmeliyim"): "parkur ekseni 320",
+// "pinden komite 110", "komiteden pin 280", "rüzgar 330 derece 12 knot", "orsa şamandırası 15 derece". Yalnız dereceli ölçüm;
+// soru ya da tahmin cümlesi değil ("yarın rüzgar kaç derece olacak"). Dönüş { obs } | null
+export function courseCommand(text) {
+  const t = low(text);
+  if (!/r[uü]zg[aâ]r|eksen|parkur|\bpin|komite|hakem|orsa|apaz|şamandıra|line|hat(tan|tı)|esiyor/.test(t)) return null;
+  if (/\?|\bkaç\b|\bne\b|nasıl|olacak|olur mu|tahmin|yarın|dün|haftaya/.test(t)) return null;
+  const r = parseCourseText(text);
+  return r?.obs && Number.isFinite(r.obs.deg) ? r : null;
+}
+
 // ---- Coğrafya
 const R = 6371000;
 const rad = (d) => (d * Math.PI) / 180;

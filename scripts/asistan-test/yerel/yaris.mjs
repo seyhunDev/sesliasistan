@@ -546,6 +546,10 @@ group("Parkur analizi")([
     PK.lineBias(CC([{ kind: "wind", deg: 350 }, { kind: "line", ref: "komite", deg: 260 }])),
     PK.lineBias(CC([{ kind: "wind", deg: 5 }, { kind: "line", ref: "komite", deg: 270 }])),
   ], ok: ([a, b, c, d, e]) => [a, b, c, d].every((x) => x.end === "" && x.deg === 0) && a.ideal === 100 && c.ideal === 80 && e.deg === 5 && e.end === "komite" }],
+  ["asistana parkur", { desc: "Seyhun 2026-10-29: dereceli parkur cümleleri asistana; soru, tahmin ve derecesiz rüzgâr değil", fn: () => [
+    PK.courseCommand("parkur ekseni 320")?.obs, PK.courseCommand("pinden komite 110")?.obs, PK.courseCommand("komiteden pin 280")?.obs, PK.courseCommand("rüzgar 330 derece 12 knot")?.obs,
+    PK.courseCommand("yarın rüzgar kaç derece olacak"), PK.courseCommand("rüzgar 15 knot kuzeybatı"), PK.courseCommand("Ali 3. oldu"),
+  ], ok: ([a, b, c, d, ...no]) => a.kind === "axis" && a.deg === 320 && b.kind === "line" && b.ref === "pin" && c.ref === "komite" && c.deg === 280 && d.kind === "wind" && d.deg === 330 && d.kn === 12 && no.every((x) => x === null) }],
   ["rüzgâr dönüşü", { desc: "ilk ve son ölçüm arası derece ve hız farkı", fn: () => PK.windTrend(CC([{ kind: "wind", deg: 350, kn: 8 }, { kind: "wind", deg: 10, kn: 11 }])), ok: (t) => t.deg === 20 && t.kn === 3 }],
   ["parkur şekli", { desc: "komite + eksen → işaretlenmeyen pin ve şamandıralar tahmini, orsa ≈900 m eksende", fn: () => {
     const k = { lat: 39.07, lon: 26.88 };

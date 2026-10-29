@@ -20,9 +20,7 @@ import { useTrainingFlow } from "@/features/training/useTrainingFlow";
 import { Marks } from "@/features/raceMedia/TimerTab";
 import { MediaSettingsButton, MediaTab } from "@/features/raceMedia/MediaTab";
 import { WeatherTab } from "@/features/raceMedia/WeatherTab";
-import { TabDock } from "@/features/raceMedia/RaceMedia";
-import { VoiceLight } from "@/features/home/TabBar";
-import { useAssistant } from "@/features/assistant/AssistantProvider";
+import { AskButton, TabDock } from "@/features/raceMedia/RaceMedia";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { RaceList, Races } from "@/features/training/Races";
 import { aliasesOf, useNameIndex } from "@/features/athletes/names";
@@ -320,7 +318,7 @@ function Day() {
       )}
       {tabs && (
         <>
-          <TabDock value={shown} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} extra={<AskButton />} />
+          <TabDock value={shown} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} extra={<AskButton examples={ASK_EX} />} />
         </>
       )}
     </main>
@@ -330,12 +328,3 @@ function Day() {
 // Asistan düğmesi (Seyhun 2026-10-23: antrenman sayfasında da kullanılsın): her yerdeki gibi bas-konuş (2026-10-25): basılı
 // tut konuş, bırak gönder; kısa dokunuşta asistan açık ve boşta kalır, dışarı kaydırıp bırakınca iptal
 const ASK_EX = ["1 Ali, 2 Ayşe, 3 Mehmet", "Rüzgar 12 knot kuzeybatı", "Bugünkü antrenman çok iyi geçti, start çalıştık"];
-function AskButton() {
-  const { openAssistant, act } = useAssistant();
-  const release = ({ short, away }) => (short ? (act.current.release || act.current.cancel)?.() : away ? act.current.cancel?.() : (act.current.release || act.current.stop)?.());
-  return (
-    <span className="acenter absolute -top-5 left-1/2 -translate-x-1/2 rounded-full p-1">
-      <VoiceLight state="idle" size="size-[3.75rem]" compact onPress={() => openAssistant({ listen: true, dock: true, examples: ASK_EX })} onRelease={release} />
-    </span>
-  );
-}

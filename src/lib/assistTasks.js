@@ -76,6 +76,7 @@ export const TASKS = [
   { id: "results", group: "Kulüp", name: "Sporcunun yarış sonuçları", say: "Ali'nin sonuçları; Foça yarışında Ali kaçıncı oldu", who: "ana", by: "yerel" },
   { id: "hotel", group: "Kulüp", name: "Açık yarışa otel ekleme", say: "otel ekle: Foça Palas, 0232 812 34 56", who: "sporcu", by: "yerel" },
   { id: "raceWind", group: "Kulüp", name: "Rüzgâr kaydı", say: "rüzgar 15 knot kuzeybatı", who: "ana", by: "yerel" },
+  { id: "raceCourse", group: "Kulüp", name: "Parkur derecesi (eksen, rüzgâr, pin/komite hattı, şamandıra)", say: "parkur ekseni 320; pinden komite 110; rüzgar 330 derece 12 knot", who: "ana", by: "yerel" },
   { id: "raceTimer", group: "Kulüp", name: "Start sayacı", say: "5 dakikalık sayacı başlat", who: "sporcu", by: "yerel" },
   { id: "absent", group: "Kulüp", name: "Gelmeyenlerin velilerine haber (onayla)", say: "gelmeyenlerin velilerine haber ver", who: "ana", by: "yerel", confirm: true },
   { id: "invoiceTask", group: "Kulüp", name: "Faturayı görevliye verme, fatura silme (onayla)", say: "Turkcell faturasını Ali'ye ver; Turkcell faturasını sil", who: "ana", by: "yerel", confirm: true },
