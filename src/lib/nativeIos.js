@@ -151,3 +151,17 @@ export const iosBadgeKind = () => {
 export function setIosBadge(count) {
   return plugin()?.badge?.({ count }).catch(() => {});
 }
+
+// Pusula (Parkur › Pusula; VeloraPlugin.swift Pusula): kameranın baktığı yön, telefonun kendi pusulası gibi (yerçekimi + manyetik alan).
+// fn({ mag, true, acc }): true gerçek kuzey (konum izni yoksa -1), acc 0 ayarsız. Bu parça olmadan kurulmuş eski uygulamada yok (null).
+export const hasCompass = () => typeof plugin()?.compassStart === "function";
+export function startCompass(fn) {
+  const p = plugin();
+  if (typeof p?.compassStart !== "function" || !p.addListener) return null;
+  const h = p.addListener("compass", (e) => fn(e || {}));
+  p.compassStart().catch(() => {});
+  return () => {
+    Promise.resolve(h).then((x) => x?.remove?.()).catch(() => {});
+    p.compassStop?.().catch(() => {});
+  };
+}

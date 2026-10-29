@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { PICKS } from "@/lib/raceCourse";
-import { compassReader } from "@/lib/compass";
+import { compassReader, angDiff } from "@/lib/compass";
+import { hasCompass, startCompass } from "@/lib/nativeIos";
 
 // Pusula ile ölçüm (Seyhun 2026-10-28, örnek yaris-tasarim/parkur/parkur-3-pusula.png): arka kamera açılır, ortada nişangâh,
 // üstte telefonun pusulası: kameranın baktığı yön (lib/compass.js; manyetik, elde tutulan pusulayla aynı; dik tutulunca da doğru). Hedefe nişan alıp "Al"a basınca
@@ -16,6 +17,7 @@ const dirName = (d) => ["K", "KD", "D", "GD", "G", "GB", "B", "KB"][Math.round(d
 export async function askCompass() {
   try {
     const D = typeof window !== "undefined" ? window.DeviceOrientationEvent : null;
+    if (hasCompass()) return true;
     if (D && typeof D.requestPermission === "function") return (await D.requestPermission()) === "granted";
     return !!D;
   } catch {
@@ -46,16 +48,27 @@ function Body({ onClose, onAdd, place }) {
         if (video.current) video.current.srcObject = s;
       })
       .catch(() => on && setCam(false));
+    // iPhone uygulamasında telefonun kendi pusulası (gerçek kuzey, Pusula uygulamasıyla aynı); tarayıcıda deviceorientation
+    let last = null;
+    const stopNative = startCompass((e) => {
+      const h = e.true >= 0 ? e.true : e.mag;
+      if (typeof h !== "number") return;
+      last = last === null ? h : (((last + angDiff(h, last) * 0.35) % 360) + 360) % 360;
+      setDeg(Math.round(last) % 360);
+    });
     const read = compassReader();
     const f = (e) => {
       const h = read(e);
       if (h !== null) setDeg(Math.round(h) % 360);
     };
-    window.addEventListener("deviceorientation", f, true);
-    window.addEventListener("deviceorientationabsolute", f, true);
+    if (!stopNative) {
+      window.addEventListener("deviceorientation", f, true);
+      window.addEventListener("deviceorientationabsolute", f, true);
+    }
     return () => {
       on = false;
       stream?.getTracks().forEach((t) => t.stop());
+      stopNative?.();
       window.removeEventListener("deviceorientation", f, true);
       window.removeEventListener("deviceorientationabsolute", f, true);
     };

@@ -1,5 +1,7 @@
 import ActivityKit
 import Capacitor
+import CoreLocation
+import CoreMotion
 import CryptoKit
 import Foundation
 import SwiftUI
@@ -15,6 +17,7 @@ import AlarmKit
 // - haptic, biometry / unlock (Face ID kilidi), widgetData (ana ekran widget'ı): VeloraDokunus.swift
 // - camera: üstünde sayaç akan iPhone kamerası (Medya › Kayıt): VeloraKamera.swift
 // - pushReady: bildirimler kurulu mu (AppDelegate, Firebase)
+// - compassStart / compassStop: kameranın baktığı pusula yönü ("compass" olayı; Parkur › Pusula), aşağıda Pusula
 // - badge: simgedeki sayı (zildeki okunmamışlar); 0 olunca bildirim merkezindeki Velora bildirimleri de kalkar
 // - watch olayı / watchTake, watchReply, watchState: Apple Watch'tan asistana iş ve tek sayaç (VeloraSaatKoprusu.swift)
 @objc(VeloraPlugin)
@@ -39,6 +42,8 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "watchState", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "pushReady", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "badge", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "compassStart", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "compassStop", returnType: CAPPluginReturnPromise),
     ]
 
     override public func load() {
@@ -97,6 +102,20 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             if n == 0 { c.removeAllDeliveredNotifications() }
             call.resolve(["ok": true])
+        }
+    }
+
+    @objc func compassStart(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let ok = Pusula.shared.basla { [weak self] veri in self?.notifyListeners("compass", data: veri) }
+            call.resolve(["ok": ok])
+        }
+    }
+
+    @objc func compassStop(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            Pusula.shared.dur()
+            call.resolve()
         }
     }
 
@@ -257,3 +276,68 @@ enum SaatAlarmi {
     static func esitle(_ items: [AlarmIstek]) async -> Int { -1 }
 }
 #endif
+
+// Pusula (Seyhun 2026-10-29 "telefondaki pusula gibi çalışsın"): sayfadaki deviceorientation telefon dik tutulunca güvenilmez.
+// Burada yön, telefonun kendi pusulası gibi yerçekimi + manyetik alandan hesaplanır (ikisi de telefonun kendi eksenlerinde,
+// karışıklık yok): arka kameranın baktığı yön; telefon düzken üst kenarın yönü. Gerçek kuzey için sapma CLHeading'den
+// (trueHeading − magneticHeading, konum izni gerekir). Olay: { mag, true (yoksa -1), acc (0 ayarsız, 1-3 iyi) }.
+final class Pusula: NSObject, CLLocationManagerDelegate {
+    static let shared = Pusula()
+    private let hareket = CMMotionManager()
+    private let konum = CLLocationManager()
+    private var sapma: Double?
+    private var gonder: (([String: Any]) -> Void)?
+
+    func basla(_ fn: @escaping ([String: Any]) -> Void) -> Bool {
+        gonder = fn
+        guard hareket.isDeviceMotionAvailable, CMMotionManager.availableAttitudeReferenceFrames().contains(.xMagneticNorthZVertical) else { return false }
+        konum.delegate = self
+        konum.headingFilter = kCLHeadingFilterNone
+        if konum.authorizationStatus == .notDetermined { konum.requestWhenInUseAuthorization() }
+        if CLLocationManager.headingAvailable() { konum.startUpdatingHeading() }
+        if hareket.isDeviceMotionActive { return true }
+        hareket.deviceMotionUpdateInterval = 1.0 / 20
+        hareket.startDeviceMotionUpdates(using: .xMagneticNorthZVertical, to: .main) { [weak self] m, _ in
+            guard let self, let m, let d = Pusula.yon(m) else { return }
+            let mag = d
+            var tr = -1.0
+            if let s = self.sapma { tr = (mag + s).truncatingRemainder(dividingBy: 360); if tr < 0 { tr += 360 } }
+            self.gonder?(["mag": mag, "true": tr, "acc": Int(m.magneticField.accuracy.rawValue) + 1])
+        }
+        return true
+    }
+
+    func dur() {
+        hareket.stopDeviceMotionUpdates()
+        konum.stopUpdatingHeading()
+        gonder = nil
+    }
+
+    // Manyetik yön (0-360): yukarı = −yerçekimi, doğu = alan × yukarı, kuzey = yukarı × doğu; kamera = −z, üst kenar = +y
+    static func yon(_ m: CMDeviceMotion) -> Double? {
+        let g = m.gravity, f = m.magneticField.field
+        let up = (-g.x, -g.y, -g.z)
+        var e = (f.y * up.2 - f.z * up.1, f.z * up.0 - f.x * up.2, f.x * up.1 - f.y * up.0)
+        let en = sqrt(e.0 * e.0 + e.1 * e.1 + e.2 * e.2)
+        guard en > 1e-6 else { return nil }
+        e = (e.0 / en, e.1 / en, e.2 / en)
+        var n = (up.1 * e.2 - up.2 * e.1, up.2 * e.0 - up.0 * e.2, up.0 * e.1 - up.1 * e.0)
+        let nn = sqrt(n.0 * n.0 + n.1 * n.1 + n.2 * n.2)
+        guard nn > 1e-6 else { return nil }
+        n = (n.0 / nn, n.1 / nn, n.2 / nn)
+        let kamera = (e.2 * e.2 + n.2 * n.2).squareRoot() >= 0.5
+        let r = kamera ? atan2(-e.2, -n.2) : atan2(e.1, n.1)
+        var d = r * 180 / .pi
+        if d < 0 { d += 360 }
+        return d
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading h: CLHeading) {
+        guard h.trueHeading >= 0, h.headingAccuracy >= 0 else { return }
+        var s = h.trueHeading - h.magneticHeading
+        if s > 180 { s -= 360 } else if s < -180 { s += 360 }
+        sapma = s
+    }
+
+    func locationManagerShouldDisplayHeadingCalibration(_ manager: CLLocationManager) -> Bool { true }
+}
