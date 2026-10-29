@@ -154,7 +154,7 @@ export function RaceMedia({ orgId, id }) {
   const days = withToday(liveDays(rdays, live), rdays, today);
   const names = dayNames(rdays, days);
   const cur = day || (days.includes(today) ? today : !days.length || today < days[0] ? days[0] || today : days[days.length - 1]);
-  const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" ? names[cur] : ""].filter(Boolean).join(" · "); // tarih gün düğmesinde
+  const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" && !/^\d+\. gün$/.test(names[cur]) ? names[cur] : ""].filter(Boolean).join(" · "); // tarih gün düğmesinde; "4. gün" yazılmaz (2026-10-29)
   const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
   const tab = tabPick || (days.includes(today) ? "sure" : "media");
 

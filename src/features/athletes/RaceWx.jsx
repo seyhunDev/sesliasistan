@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { Sheet } from "@/components/ui/Sheet";
 import { CockpitWind } from "@/features/home/CockpitWind";
 import { useWindObs } from "@/features/weather/useWindObs";
 import { RegionMap } from "@/features/weather/RegionMap";
@@ -91,6 +92,7 @@ export function RaceWx({ r, day = "" }) {
   const first = days.find((d) => d >= today) || days[days.length - 1] || "";
   const [sel, setSel] = useState(days.includes(day) ? day : first);
   const [tick, setTick] = useState(0);
+  const [pick, setPick] = useState(false);
   const late = sel && sel > lastForecastDay(today);
   const d = useDay(r, late ? "" : sel, tick);
   const sp = cleanSpot(r.spot);
@@ -105,6 +107,13 @@ export function RaceWx({ r, day = "" }) {
           Hava · {d.place || sp?.name || r.district || r.city}
           {st && ` · ölçüm ${st.name} ${String(st.km).replace(".", ",")} km`}
         </span>
+        {/* gün seçimi üstte tek düğme (Seyhun 2026-10-29: multimedyadaki gibi; alttaki gün şeridi kalktı) */}
+        {days.length > 1 && (
+          <button type="button" data-cur={sel} onClick={() => setPick(true)} data-press className="raised flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-[0.8125rem] font-semibold tabular-nums">
+            {sel === today ? "Bugün" : new Date(`${sel}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+            <span aria-hidden="true" className="text-[0.6875rem] opacity-70">▾</span>
+          </button>
+        )}
         <button type="button" onClick={() => setTick((n) => n + 1)} aria-label="Yenile" data-press className="btn btn-round size-8">
           <Icon name="load" className="size-4" />
         </button>
@@ -121,20 +130,19 @@ export function RaceWx({ r, day = "" }) {
           <Wait />
         )}
       </div>
-      {days.length > 1 && (
-        <nav aria-label="Günler" className="mt-3 grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(days.length, 6)}, minmax(0, 1fr))` }}>
-          {days.slice(0, 6).map((x) => {
-            const on = x === sel;
-            const dt = new Date(`${x}T12:00:00`);
-            return (
-              <button key={x} type="button" data-press aria-pressed={on} onClick={() => setSel(x)} className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 ${on ? "bg-white text-[#11203a]" : ""}`}>
-                <small className={`text-[0.75rem] font-semibold capitalize ${on ? "" : "text-white/60"}`}>{x === today ? "Bugün" : dt.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "")}</small>
-                <b className="text-[1.5rem] font-bold leading-none tracking-[-.03em] tabular-nums">{dt.getDate()}</b>
+      <Sheet open={pick} onClose={() => setPick(false)} title="Gün">
+        <ul className="divide-y divide-line border-y border-line">
+          {days.map((x, i) => (
+            <li key={x}>
+              <button type="button" data-day={x} aria-pressed={x === sel} onClick={() => (setSel(x), setPick(false))} data-press="row" className="flex w-full items-center gap-3 py-3 text-left">
+                <b className="w-16 shrink-0 text-[0.9375rem] font-semibold tabular-nums">{new Date(`${x}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</b>
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{i + 1}. gün{x === today ? " · Bugün" : ""}</span>
+                {x === sel && <span className="size-2.5 shrink-0 rounded-full bg-acc" />}
               </button>
-            );
-          })}
-        </nav>
-      )}
+            </li>
+          ))}
+        </ul>
+      </Sheet>
       {/* Bölge haritası (Seyhun 2026-10-28: "yarışların havasında da aynı haritayı görmek istiyorum"): yarış yerinin çevresi, rüzgâr / yağış,
           −2 sa … +12 kaydırıcı. Dokunmak yarışın yerini değiştirmez. */}
       {d.at && (
