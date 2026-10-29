@@ -1,8 +1,8 @@
-Commit: fa13196 · Parkur dereceleri asistanla; multimedya alt çubuğunda asistan (#899)
-Zaman: 2026-10-29-1511 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40869899725
+Commit: e2f1312 · Pusula: Al 10 sn ölçer, ortalama yön (#900)
+Zaman: 2026-10-29-1644 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40883227765
 
-TAM TEST · 29.10.2026 15:01:54
+TAM TEST · 29.10.2026 16:35:10
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1409/1410 geçti · 1 kalan · 588 sn
+SONUÇ: 1409/1410 geçti · 1 kalan · 555 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
