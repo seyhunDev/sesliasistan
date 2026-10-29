@@ -1,8 +1,8 @@
-Commit: 3ef5982 · Parkur kartı: hat bilgisi start hattının altında, eksen komite yanında (#886)
-Zaman: 2026-10-29-0453 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40802076191
+Commit: cad9b66 · Parkur: kart kutusuz, düğmeler kartın altında, sade Özet (#887)
+Zaman: 2026-10-29-0504 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40803198859
 
-TAM TEST · 29.10.2026 04:44:16
+TAM TEST · 29.10.2026 04:54:45
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1408/1409 geçti · 1 kalan · 505 sn
+SONUÇ: 1408/1409 geçti · 1 kalan · 537 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
