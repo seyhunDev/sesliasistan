@@ -5,9 +5,10 @@ import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { PICKS } from "@/lib/raceCourse";
+import { compassReader } from "@/lib/compass";
 
 // Pusula ile ölçüm (Seyhun 2026-10-28, örnek yaris-tasarim/parkur/parkur-3-pusula.png): arka kamera açılır, ortada nişangâh,
-// üstte telefonun pusulası (iPhone webkitCompassHeading, manyetik; elde tutulan pusulayla aynı). Hedefe nişan alıp "Al"a basınca
+// üstte telefonun pusulası: kameranın baktığı yön (lib/compass.js; manyetik, elde tutulan pusulayla aynı; dik tutulunca da doğru). Hedefe nişan alıp "Al"a basınca
 // derece donar, "Bu açı ne?" seçilir, Ekle. Kamera açılmazsa yalnız derece görünür.
 const dirName = (d) => ["K", "KD", "D", "GD", "G", "GB", "B", "KB"][Math.round(d / 45) % 8];
 
@@ -45,9 +46,10 @@ function Body({ onClose, onAdd, place }) {
         if (video.current) video.current.srcObject = s;
       })
       .catch(() => on && setCam(false));
+    const read = compassReader();
     const f = (e) => {
-      const h = typeof e.webkitCompassHeading === "number" ? e.webkitCompassHeading : e.absolute && typeof e.alpha === "number" ? 360 - e.alpha : null;
-      if (h !== null) setDeg(((Math.round(h) % 360) + 360) % 360);
+      const h = read(e);
+      if (h !== null) setDeg(Math.round(h) % 360);
     };
     window.addEventListener("deviceorientation", f, true);
     window.addEventListener("deviceorientationabsolute", f, true);
@@ -69,7 +71,7 @@ function Body({ onClose, onAdd, place }) {
           <Icon name="x" className="size-5" />
         </button>
         <b className="block text-[4rem] font-bold leading-none tracking-[-.03em] tabular-nums [text-shadow:0_2px_8px_rgba(0,0,0,.3)]">{shown === null ? "–" : `${shown}°`}</b>
-        <span className="mt-1.5 block text-[0.9375rem] font-semibold text-white/85">{shown === null ? "Pusula okunamadı" : `${dirName(shown)}${held !== null ? " · alındı" : ""}`}</span>
+        <span className="mt-1.5 block text-[0.9375rem] font-semibold text-white/85">{shown === null ? "Telefonu bir an düz tut" : `${dirName(shown)}${held !== null ? " · alındı" : ""}`}</span>
         {shown !== null && (
           <div className="relative mx-auto mt-2.5 h-7 w-64 overflow-hidden rounded-lg bg-[#11203a]/40">
             {ticks.map((t) => (
