@@ -30,8 +30,9 @@ const INFO_KEY = "sa-medya-bilgi3"; // 2026-10-26: iPhone uygulamasında aslı F
 // başlıktaki düğme Medya'nın "Çekim" penceresini açar (video kalitesi, telefonda tutulanlar, Telefondan sil)
 const SET_EV = "sa-medya-ayar";
 // Adlı düğme (Seyhun 2026-10-28: adsız ayar simgesi yerine "Çekim")
+export const openMediaSettings = () => window.dispatchEvent(new Event(SET_EV));
 export function MediaSettingsButton({ dark = false }) {
-  const open = () => window.dispatchEvent(new Event(SET_EV));
+  const open = openMediaSettings;
   if (!dark) return <Button variant="secondary" size="sm" onClick={open}>Çekim</Button>;
   return (
     <button type="button" onClick={open} data-press className="h-10 shrink-0 rounded-full bg-white/15 px-3.5 text-[0.875rem] font-semibold text-white active:translate-y-px active:bg-white/25">

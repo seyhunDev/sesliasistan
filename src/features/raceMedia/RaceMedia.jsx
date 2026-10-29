@@ -18,7 +18,10 @@ import { todayStr } from "@/lib/utils/format";
 import { VoidSheet, useRaceFlow } from "./useRaceFlow";
 import { TimerHead, TimerTab } from "./TimerTab";
 import { ResultsTab } from "./ResultsTab";
-import { MediaSettingsButton, MediaTab } from "./MediaTab";
+import { MediaTab, openMediaSettings } from "./MediaTab";
+import { Sheet } from "@/components/ui/Sheet";
+import { card } from "@/components/ui/Page";
+import { buttonClass } from "@/components/ui/buttonClass";
 import { RecPick } from "./RecPick";
 import { DaySummarySheet } from "./DaySummarySheet";
 import { DayPick, DaySheet } from "./DaySheet";
@@ -55,6 +58,7 @@ export function RaceMedia({ orgId, id }) {
   const today = todayStr();
   const [day, setDay] = useState("");
   const [sum, setSum] = useState(false);
+  const [menu, setMenu] = useState(false); // sağ üstteki ⋯: Gün özeti, Çekim ayarları
   const [addDay, setAddDay] = useState(false);
   const [pickDay, setPickDay] = useState(false);
   const [reset, setReset] = useState(false);
@@ -165,13 +169,13 @@ export function RaceMedia({ orgId, id }) {
       back={`/athletes/races/${id}`}
       action={
         <>
-          {tab === "media" && <MediaSettingsButton dark />}
           <button type="button" data-cur={cur} onClick={() => setPickDay(true)} aria-label={`Gün: ${names[cur]} · ${dayLabel(cur)}`} data-press className="raised flex h-10 shrink-0 items-center gap-1 rounded-full border px-3.5 text-[0.875rem] font-semibold tabular-nums">
             {cur === today ? "Bugün" : dayLabel(cur)}
             <span aria-hidden="true" className="text-[0.75rem] opacity-70">▾</span>
           </button>
-          <button type="button" onClick={() => setSum(true)} data-press className="raised h-10 shrink-0 rounded-full border px-3.5 text-[0.875rem] font-semibold">
-            Özet
+          {/* Özet ve çekim ayarları tek ⋯ düğmesinde (Seyhun 2026-10-29: "çekim düğmesi başlığı kısaltıyor") */}
+          <button type="button" onClick={() => setMenu(true)} aria-label="Multimedya ayarları" data-press className={buttonClass({ variant: "back" })}>
+            <Icon name="more" className="size-5" />
           </button>
         </>
       }
@@ -255,6 +259,21 @@ export function RaceMedia({ orgId, id }) {
           toast("Denemeler sıfırlandı");
         }}
       />
+      <Sheet open={menu} onClose={() => setMenu(false)} title="Multimedya">
+        <ul className={`${card} divide-y divide-line overflow-hidden`}>
+          {[
+            ["sum", "Gün özeti", () => setSum(true)],
+            ["shot", "Çekim ayarları", () => (setTab("media"), setTimeout(openMediaSettings, 150))],
+          ].map(([k, l, fn]) => (
+            <li key={k}>
+              <button type="button" data-menu={k} data-press="row" onClick={() => (setMenu(false), fn())} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
+                <b className="min-w-0 flex-1 text-[1rem] font-medium">{l}</b>
+                <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Sheet>
       <DaySummarySheet open={sum} onClose={() => setSum(false)} race={race} day={cur} live={live} ours={ours} />
     </Shell>
   );

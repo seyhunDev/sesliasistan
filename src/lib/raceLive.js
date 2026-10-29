@@ -398,6 +398,17 @@ export function daySummary({ race, day, live, ours = [], rows = null, obs = null
     wind = { lo: Math.min(...kn), hi: Math.max(...kn), gust: g.length ? Math.max(...g) : null, dir: most(wl.map((w) => w.dir)), src: "ölçülen", pts: wl.map((w) => ({ hh: hm(w.at), kn: w.kn })) };
   } else if (span(obs).length) wind = fromRows(span(obs), "ölçülen");
   else if (span(rows).length) wind = fromRows(span(rows), "tahmin");
+  // Grafik (Seyhun 2026-10-29 "beklenti neydi, gerçekleşen ne oldu"): yarış saatlerinin bir saat önce/sonrası; beklenen = tahmin,
+  // gelen = elle kayıt ya da istasyon ölçümü. h ondalıklı saat; yarışların startı çizgiyle.
+  const c0 = h0 - 1, c1 = h1 + 1;
+  const inC = (h) => h >= c0 && h <= c1;
+  const hr = (iso) => { const t = hm(iso); return +t.slice(0, 2) + +t.slice(3, 5) / 60; };
+  const fc = (rows || []).filter((x) => x.wind != null && inC(+x.hh)).map((x) => ({ h: +x.hh, kn: Math.round(x.wind), g: x.gust != null ? Math.round(x.gust) : null }));
+  const ob = wl.length
+    ? wl.map((w) => ({ h: hr(w.at), kn: w.kn })).filter((x) => inC(x.h))
+    : (obs || []).filter((x) => x.wind != null && inC(+x.hh)).map((x) => ({ h: +x.hh, kn: Math.round(x.wind) }));
+  const rng = (l) => (l.length ? [Math.min(...l.map((x) => x.kn)), Math.max(...l.map((x) => x.kn))] : null);
+  const chart = fc.length || ob.length ? { from: c0, to: c1, fc, ob, exp: rng(fc.filter((x) => x.h >= h0 && x.h <= h1)), got: rng(ob.filter((x) => x.h >= h0 && x.h <= h1)), starts: st.map((x) => ({ n: x.n, h: hr(x.at), flag: !!(x.void || x.flag) })) } : null;
   const res = race?.results?.rows || {};
   const team = ours
     .map((a) => ({ name: a.studentName || a.name || "", place: res[a.id]?.place || 0, line: res[a.id]?.place ? (line ? line(res[a.id]) : `${res[a.id].place}.`) : "" }))
@@ -415,7 +426,7 @@ export function daySummary({ race, day, live, ours = [], rows = null, obs = null
     starts.length && `Yarışlar: ${starts.map((x) => `${x.n}. ${x.time}${x.flag ? ` (${x.flag.toLocaleLowerCase("tr-TR")})` : ""}`).join(" · ")}`,
     ranked.length && `Bizimkiler:\n${ranked.map((a) => `${a.place}. ${a.name}${a.line && a.line !== `${a.place}.` ? ` · ${a.line}` : ""}`).join("\n")}`,
   ].filter(Boolean).join("\n");
-  return { title: race?.name || "Yarış", sub, wind, windText, starts, team, text };
+  return { title: race?.name || "Yarış", sub, wind, windText, starts, team, text, chart };
 }
 
 // Sayaç bipleri. Yarış (start dizisi): başlatınca, 4:00 ve 1:00 kala (süre ondan uzunsa), son 10 saniye her saniye, 0'da uzun.
