@@ -5,7 +5,7 @@ import { card } from "@/components/ui/Page";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { bornYear, findOurs, followKey, raceYear, sheetMatch, withCats } from "@/lib/resultSheet";
-import { sheetFilters, sheetRows, sheetTag } from "@/lib/raceLive";
+import { rowRanks, sheetFilters, sheetRows } from "@/lib/raceLive";
 import { fleetsOf } from "@/lib/sharedRace";
 import { loadSheets } from "@/features/athletes/raceLiveStore";
 import { importResults, importToast } from "@/features/athletes/resultsImport";
@@ -17,76 +17,81 @@ import { openFile } from "@/features/athletes/fileActions";
 import { stampResults } from "@/lib/raceDay";
 import { todayStr } from "@/lib/utils/format";
 
-// Sonuçlar (Seyhun 2026-10-28 onayı, "tablo", örnek yaris-tasarim/sonuclar-tablo.png): süzgeçler Bizimkiler · Takip · Genel · Junior ·
-// Kızlar · Junior Kızlar (sınıf birden çoksa üstte sınıf seçimi), altında arama (ad, yelken no, kulüp). Her liste aynı tablo:
-// başlık "ILCA 4 · 42 kişi", sütunlar Sıra · Sporcu · Doğ. · Net (Genel/Takip'te sağda ☆). Sporcu hücresinde ad, altında işaret
-// (Jun. kız / Junior / Kız) · yelken no · kulüp; hiçbir şey kesilmez, uzun kulüp alt satıra iner. Bizimkiler'de kulüp yok, yerine
-// Junior / Kızlar / Junior Kızlar sıraları. ☆ ile genel listeden sporcu bu yarış için takibe alınır (race.follow, followKey), Takip'te görünür.
-// Genel'de bizimkiler açık mavi, ilk 10, sonra Tümü. Üstte sınıf seçici (her yüklenen PDF kendi sınıfıyla; bizimkilerin sınıfı noktalı ve açılışta seçili; o sınıfta bizimkiler yoksa Bizimkiler düğmesi çıkmaz).
-// Altta sınıf başına yükleme günü ve "Sonuç PDF'i ekle" (yeni sınıf eklenir, aynı sınıf güncellenir); hiç yoksa büyük "Sonuç PDF'i yükle" (resultsImport.js).
+// Sonuçlar (Seyhun 2026-10-29 onayı, örnek yaris-tasarim/sonuclar-genel-sira.png): süzgeçler Bizimkiler · Takip · Genel · Junior · Kızlar ·
+// Junior Kızlar, altında arama (ad, yelken no, kulüp). Her liste lacivert başlıklı ("ILCA 4 · 42 kişi") aynı satırlarla: solda her zaman büyük
+// GENEL sıra (ilk 3 camgöbeği; Junior/Kızlar süzgecinde de genel sıra), ortada 1. satır ad (doğum yılı), 2. satır yelken no · kulüp (kulüp
+// uzunsa "…"), 3. satır Junior / Kızlar / Junior Kızlar sıraları kutularda (birinci dolu camgöbeği); sağda net puan, Genel/Takip'te ☆.
+// ☆ ile genel listeden sporcu bu yarış için takibe alınır (race.follow, followKey), Takip'te görünür. Bizimkiler açık mavi, solda camgöbeği
+// çizgi; Genel'de ilk 10, sonra Tümü. Üstte sınıf seçici (her yüklenen PDF kendi sınıfıyla; bizimkilerin sınıfı noktalı ve açılışta seçili;
+// o sınıfta bizimkiler yoksa Bizimkiler düğmesi çıkmaz). Altta sınıf başına yükleme günü ve "Sonuç PDF'i ekle"; hiç yoksa büyük "Sonuç PDF'i yükle".
 const TOP = 10;
-// İşaret: Genel/Takip'te "Jun. kız", "Junior", "Kız"; Kızlar'da yalnız kategori; diğer süzgeçlerde yok
-const short = (t) => t.replace(/^Junior kız$/, "Jun. kız").replace(/^Bambino kız$/, "Bam. kız");
-const tagOf = (r, filter) => short(filter === "all" || filter === "follow" ? sheetTag(r) : filter === "girls" && ["Junior", "Bambino"].includes(r.cat) ? r.cat : "");
 const SUB = ["Junior", "Bambino"];
 const shortDay = (s) => (s ? new Date(`${s.slice(0, 10)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "");
 const ptsOf = (p) => (p === "" || p == null ? "" : String(p).replace(".", ","));
 const yearOf = (s) => String(bornYear(s) || "");
 
-// Sporcunun ek sıraları: kategori, kızlar, kategori kızları
+// Listede bulunmayan sporcunun ek sıraları (kayıtlı sonuçtan): kategori, kızlar, kategori kızları
 const boxesOf = (x) =>
   [
     x?.cp && SUB.includes(x.cat) && [x.cat, x.cp, x.cn],
     x?.gp && ["Kızlar", x.gp, x.gn],
-    x?.jp && SUB.includes(x.cat) && [`${x.cat === "Junior" ? "Jun." : x.cat} Kızlar`, x.jp, x.jn],
+    x?.jp && SUB.includes(x.cat) && [`${x.cat} Kızlar`, x.jp, x.jn],
   ].filter(Boolean);
 
-// Tablo sütunları: Sıra · Sporcu · Doğ. · Net (· ☆)
-const cols = (star) => `grid items-center gap-x-2 px-3.5 ${star ? "grid-cols-[2.25rem_1fr_2.75rem_2.5rem_1.75rem]" : "grid-cols-[2.25rem_1fr_2.75rem_2.5rem]"}`;
-
-function Table({ title, count, star, children }) {
+function Table({ title, count, children }) {
   return (
     <div className={`${card} mt-3 overflow-hidden`}>
-      <div className="flex justify-between gap-3 px-3.5 pt-2.5 text-[0.8125rem] font-bold">
+      <div className="flex justify-between gap-3 bg-deep px-3.5 py-2.5 text-[0.875rem] font-bold text-white">
         <span className="truncate">{title}</span>
-        <span className="shrink-0 font-semibold text-mut">{count}</span>
-      </div>
-      <div className={`${cols(star)} border-b border-line pb-1.5 pt-2 text-[0.6875rem] font-semibold text-mut`}>
-        <span>Sıra</span>
-        <span>Sporcu</span>
-        <span className="text-center">Doğ.</span>
-        <span className="text-right">Net</span>
-        {star && <span />}
+        <span className="shrink-0 font-semibold text-white/70">{count}</span>
       </div>
       <ul className="divide-y divide-line">{children}</ul>
     </div>
   );
 }
 
-// Satır: sıra · ad / işaret · yelken no · kulüp (kesilmez) · doğum yılı · net (· ☆)
-function Row({ pos, name, tag, sail, club, born, pts, on, hi, star, followed, onStar, children }) {
+// Satır: büyük genel sıra · ad (yıl) / yelken no · kulüp / kategori sıraları · net (· ☆)
+function Row({ pos, name, born, sail, club, ranks = [], pts, mine, star, followed, onStar }) {
   return (
-    <li className={`${cols(star)} py-2.5 ${on ? "bg-accbg" : ""}`}>
-      <span className={`text-[0.9375rem] font-bold tabular-nums ${on || hi ? "text-acc" : ""}`}>{pos || "–"}</span>
-      <span className="min-w-0">
-        <b className="block break-words text-[0.9375rem] font-semibold leading-snug">{name}</b>
-        {(tag || sail || club) && (
-          <span className="mt-0.5 block text-[0.78rem] leading-snug text-mut">
-            {tag && <b className="mr-1.5 rounded-md bg-accbg px-1.5 py-px text-[0.6875rem] font-bold text-acc">{tag}</b>}
-            {[sail, club].filter(Boolean).join(" · ")}
+    <li className={`relative flex items-start gap-2.5 py-2.5 pl-2.5 pr-3 ${mine ? "bg-accbg/60" : ""}`}>
+      {mine && <i className="absolute inset-y-2 left-0 w-1 rounded-r bg-acc" />}
+      <span className={`w-9 shrink-0 text-center text-[1.375rem] font-extrabold leading-tight tabular-nums ${pos && pos <= 3 ? "text-acc" : ""}`}>{pos || "–"}</span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-baseline gap-1">
+          <b className="min-w-0 truncate text-[0.9375rem] font-semibold">{name}</b>
+          {born && <span className="shrink-0 text-[0.8125rem] tabular-nums text-mut">({born})</span>}
+        </span>
+        {(sail || club) && (
+          <span className="mt-0.5 flex gap-1 text-[0.78rem] text-mut">
+            {sail && <span className="shrink-0 tabular-nums">{sail}</span>}
+            {sail && club && <span className="shrink-0">·</span>}
+            {club && <span className="min-w-0 truncate">{club}</span>}
           </span>
         )}
-        {children}
+        {ranks.length > 0 && (
+          <span className="mt-1.5 flex flex-wrap gap-1.5">
+            {ranks.map(([l, p, n]) => (
+              <span key={l} className={`whitespace-nowrap rounded-md px-1.5 py-0.5 text-[0.71875rem] font-semibold ${p === 1 ? "bg-acc text-white" : "bg-accbg text-acc"}`}>
+                {l} <b>{p}.</b>
+                <small className="opacity-70">/{n}</small>
+              </span>
+            ))}
+          </span>
+        )}
       </span>
-      <span className="text-center text-[0.8125rem] tabular-nums text-fg2">{born}</span>
-      <span className="text-right text-[0.875rem] tabular-nums">{pts}</span>
+      {pts && (
+        <span className="shrink-0 text-right leading-tight">
+          <b className="block text-[1.0625rem] font-bold tabular-nums">{pts}</b>
+          <small className="text-[0.65625rem] text-mut">net</small>
+        </span>
+      )}
       {star &&
         (onStar ? (
-          <button type="button" onClick={onStar} aria-pressed={followed} aria-label={followed ? "Takibi bırak" : "Takip et"} className={`-my-2 py-2 text-center text-[1.125rem] leading-none active:scale-90 ${followed ? "text-acc" : "text-mut"}`}>
+          <button type="button" onClick={onStar} aria-pressed={followed} aria-label={followed ? "Takibi bırak" : "Takip et"} className={`-my-1 w-6 shrink-0 self-center py-2 text-center text-[1.125rem] leading-none active:scale-90 ${followed ? "text-acc" : "text-mut"}`}>
             {followed ? "★" : "☆"}
           </button>
         ) : (
-          <span />
+          <span className="w-6 shrink-0" />
         ))}
     </li>
   );
@@ -167,6 +172,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
     onRace({ ...race, follow: next });
     saveRaceFollow(orgId, race.id, next).catch(() => toast("Takip kaydedilemedi"));
   };
+  const ranks = fleet ? rowRanks(fleet) : {};
   const hit = new Set(Object.values(found).filter((x) => fleets[x.fi] === fleet).map((x) => x.ri));
   const rowOf = (id) => {
     const f = found[id];
@@ -233,30 +239,19 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
           {sorted.map((a) => {
             const x = res.rows?.[a.id];
             const r = rowOf(a.id);
-            const boxes = boxesOf(x);
+            const f = found[a.id];
             return (
               <Row
                 key={a.id}
                 pos={x?.place}
-                hi={x?.place > 0 && x.place <= 3}
+                mine
                 name={a.studentName}
-                sail={sailOf(a)}
-                tag={x?.place ? short(r ? sheetTag(r) : SUB.includes(x?.cat) ? x.cat : "") : ""}
-                club={x?.place ? "" : x?.note || "Sonuç yok"}
                 born={yearOf(r?.born)}
+                sail={sailOf(a)}
+                club={x?.place ? r?.club || "" : x?.note || "Sonuç yok"}
+                ranks={x?.place ? (f && fleets[f.fi] === fleet ? ranks[f.ri] : boxesOf(x)) || [] : []}
                 pts={x?.place ? ptsOf(r?.pts) : ""}
-              >
-                {boxes.length > 0 && (
-                  <span className="mt-1.5 flex flex-wrap gap-1.5">
-                    {boxes.map(([l, p, n]) => (
-                      <span key={l} className="whitespace-nowrap rounded-md bg-bg px-1.5 py-0.5 text-[0.71875rem] font-semibold text-fg2">
-                        {l} <b className={p <= 3 ? "text-acc" : "text-fg"}>{p}.</b>
-                        {n ? `/${n}` : ""}
-                      </span>
-                    ))}
-                  </span>
-                )}
-              </Row>
+              />
             );
           })}
         </Table>
@@ -274,14 +269,14 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
           {(more || q.trim() || view === "follow" ? rows : rows.slice(0, TOP)).map((r) => (
             <Row
               key={r.i}
-              pos={r.pos}
+              pos={r.rank || r.pos}
+              mine={hit.has(r.i)}
               name={r.name}
-              sail={r.sail}
-              tag={tagOf(r, filter)}
-              club={[r.club, filter !== "all" && filter !== "follow" ? `Genel ${r.rank}.` : ""].filter(Boolean).join(" · ")}
               born={yearOf(r.born)}
+              sail={r.sail}
+              club={r.club}
+              ranks={ranks[r.i]}
               pts={ptsOf(r.pts)}
-              on={hit.has(r.i)}
               star={star}
               followed={isFollowed(r)}
               onStar={hit.has(r.i) ? null : () => toggle(r)}
