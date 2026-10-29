@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
 import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
@@ -10,7 +10,7 @@ import { Bar } from "@/features/training/Countdown";
 import { addCourseObs, courseRef, saveCourse } from "@/features/athletes/raceLiveStore";
 import { canShare, loadSharedCourse, shareCourse } from "@/features/athletes/sharedRaces";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { BYS, PICKS, cleanCourse, cleanObs, lineBias, norm, obsTitle, obsValue, windTrend } from "@/lib/raceCourse";
+import { BYS, PICKS, cleanCourse, cleanObs, norm, obsTitle, obsValue, windTrend } from "@/lib/raceCourse";
 import { CompassSight, askCompass } from "./CompassSight";
 
 // Parkur sekmesi (Seyhun 2026-10-28): üstte rota kartı (lib/courseCard.js, komitenin ekseni yukarıda; harita kaldırıldı).
@@ -94,17 +94,9 @@ export function CourseTab({ orgId, race, day }) {
     share(next);
     return x;
   };
-  const bias = lineBias(c);
   const trend = windTrend(c);
   // Rota kartı (Seyhun 2026-10-28 "A · Rüzgâr yukarıda"; harita kaldırıldı: "Kart gayet iyi, kart üstüne çalışalım")
-  const kart = useMemo(() => {
-    try {
-      return cardSvg(cardOf(c));
-    } catch (e) {
-      console.warn("[parkur] kart çizilemedi", e);
-      return "";
-    }
-  }, [c]);
+  const kart = kartOf(c);
 
   return (
     <>
@@ -115,7 +107,6 @@ export function CourseTab({ orgId, race, day }) {
           <p className="px-4 py-10 text-center text-[0.875rem] text-mut">Rüzgârı ya da parkur eksenini söyle, kart çizilsin</p>
         )}
       </div>
-      {bias && <LineCard b={bias} />}
       {trend && (
         <>
           <Label>Özet</Label>
@@ -238,33 +229,11 @@ function AddBody({ at, c, onAdd }) {
   );
 }
 
-// Start hattı: pin'den komite açısı rüzgâra dik olandan ne kadar sapmış, hangi uç rüzgâra yakın
-function LineCard({ b }) {
-  const d = b.end === "pin" ? 1 : b.end === "komite" ? -1 : 0; // önde olan uç yukarıda (rüzgâra yakın)
-  const tilt = Math.min(14, b.deg * 2) * d; // çizimde abartılı eğim
-  return (
-    <>
-      <Label>Start hattı</Label>
-      <div className={`${card} px-4 py-3.5`}>
-        <div className="flex items-baseline justify-between gap-3">
-          <b className="text-[1.0625rem] font-semibold">{b.end ? `${b.end === "pin" ? "Pin" : "Komite"} tarafı önde` : "Hat rüzgâra dik"}</b>
-          {b.end && <b className="text-[1.625rem] font-bold leading-none text-acc tabular-nums">{b.deg}°</b>}
-        </div>
-        <p className="mt-0.5 text-[0.875rem] font-semibold text-[#e0700b]">
-          {`Komiteden pin ${norm(b.line + 180)}°, rüzgâra dik olsa ${norm(b.ideal + 180)}°`}{b.m ? ` · ${b.end === "pin" ? "pin" : "komite"} ≈${b.m} m önde` : ""}
-        </p>
-        <svg viewBox="0 0 320 96" className="mt-2 block w-full" aria-hidden="true">
-          <line x1="160" y1="4" x2="160" y2="30" stroke="var(--acc)" strokeWidth="3" />
-          <path d="M153 26 L160 38 L167 26z" fill="var(--acc)" />
-          <text x="174" y="22" fontSize="12" fill="var(--acc)" fontWeight="600">rüzgâr {b.wind}°</text>
-          <line x1="40" y1="68" x2="280" y2="68" stroke="var(--mut)" strokeOpacity=".5" strokeWidth="2" strokeDasharray="5 5" />
-          <line x1="40" y1={68 - tilt} x2="280" y2={68 + tilt} stroke="var(--fg)" strokeWidth="3" />
-          <circle cx="40" cy={68 - tilt} r="7" fill="#f59e0b" />
-          <text x="40" y={52 - tilt} fontSize="12" textAnchor="middle" fontWeight="600" fill="var(--fg)">Pin</text>
-          <rect x="273" y={61 + tilt} width="14" height="14" rx="3" fill="var(--fg)" />
-          <text x="280" y={52 + tilt} fontSize="12" textAnchor="middle" fontWeight="600" fill="var(--fg)">Komite</text>
-        </svg>
-      </div>
-    </>
-  );
+function kartOf(c) {
+  try {
+    return cardSvg(cardOf(c));
+  } catch (e) {
+    console.warn("[parkur] kart çizilemedi", e);
+    return "";
+  }
 }
