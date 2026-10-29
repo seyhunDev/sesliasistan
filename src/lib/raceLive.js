@@ -460,6 +460,18 @@ export function sheetFilters(fleet) {
     ...cats.filter((c) => rows.some((r) => r.cat === c && r.sex === "K")).map((c) => [`${c}-girls`, `${c} Kızlar`]),
   ];
 }
+// Her satırın genel dışındaki sıraları (Sonuçlar 3. satır): { i: [["Junior", 1, 18], ["Kızlar", 2, 12], ["Junior Kızlar", 1, 6]] }
+export function rowRanks(fleet) {
+  const out = {};
+  const add = (filter, label) => {
+    const l = sheetRows(fleet, filter);
+    for (const r of l) (out[r.i] ||= []).push([label, r.pos, l.length]);
+  };
+  for (const c of SUB_CATS) add(c, c);
+  add("girls", "Kızlar");
+  for (const c of SUB_CATS) add(`${c}-girls`, `${c} Kızlar`);
+  return out;
+}
 // Genel listede satırın kısa işareti: "Junior kız", "Junior", "Kız" (Senior ve erkekte boş)
 export const sheetTag = (r) => [SUB_CATS.includes(r?.cat) ? r.cat : "", r?.sex === "K" ? "kız" : ""].filter(Boolean).join(" ").replace(/^kız$/, "Kız");
 
