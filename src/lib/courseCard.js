@@ -34,14 +34,14 @@ function geom(c) {
   const fA = add(fin, A + 60, L * 0.1), fB = add(fin, A + 240, L * 0.1);
   return { A, L, mid, komite, pin, pinIdeal, ideal, should, toPin, m1, m1a, reach, m2, g3, s3, p3, g4, s4, p4, fin, fA, fB, lineDeg };
 }
-function svgOf(c, { w = 350, h = 500 } = {}) {
+function svgOf(c, { w = 350, h = 470 } = {}) {
   const g = geom(c);
   const rot = g.A; // eksen yukarıda (komitenin sabiti)
   const R = ([x, y]) => [x * Math.cos(rad(rot)) - y * Math.sin(rad(rot)), x * Math.sin(rad(rot)) + y * Math.cos(rad(rot))];
   const names = ["komite", "pin", "pinIdeal", "m1", "m1a", "m2", "s3", "p3", "s4", "p4", "fA", "fB"];
   const P = Object.fromEntries(names.map((k) => [k, R(g[k])]));
   const xs = Object.values(P).map((p) => p[0]), ys = Object.values(P).map((p) => p[1]);
-  const pad = { l: 44, r: 44, t: 104, b: 92 };
+  const pad = { l: 44, r: 80, t: 84, b: 58 };
   const sx = (w - pad.l - pad.r) / (Math.max(...xs) - Math.min(...xs) || 1), sy = (h - pad.t - pad.b) / (Math.max(...ys) - Math.min(...ys) || 1);
   const s = Math.min(sx, sy);
   const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
@@ -78,8 +78,11 @@ function svgOf(c, { w = 350, h = 500 } = {}) {
   if (Math.abs(off) >= 1) o += `<line x1="${f(ko[0])}" y1="${f(ko[1])}" x2="${f(pid[0])}" y2="${f(pid[1])}" stroke="${mut}" stroke-width="1.5" stroke-dasharray="2 4"/>`;
   o += `<line x1="${f(pi[0])}" y1="${f(pi[1])}" x2="${f(ko[0])}" y2="${f(ko[1])}" stroke="${amb}" stroke-width="3" stroke-dasharray="7 5"/>`;
   boat(ko, c.est?.komite); boat(pi, c.est?.pin);
-  o += `<text x="${f(ko[0] + 12)}" y="${f(ko[1] + 24)}" text-anchor="start" font-size="12" font-weight="700" fill="${org}">Komite</text>`;
-  o += `<text x="${f(pi[0] - 14)}" y="${f(pi[1] + 4)}" text-anchor="end" font-size="12" font-weight="700" fill="${org}">Pin ${g.toPin}°</text>`;
+  o += `<text x="${f(ko[0] + 14)}" y="${f(ko[1] + 4)}" text-anchor="start" font-size="12" font-weight="700" fill="${org}">Komite</text>`;
+  // eksen komitenin yanında: parkuru komite bu açıya göre atar (Seyhun 2026-10-29)
+  o += `<text x="${f(ko[0] + 14)}" y="${f(ko[1] + 20)}" text-anchor="start" font-size="12" font-weight="700" fill="${ink}">Eksen ${nrm(g.A)}°</text>`;
+  // pin açısı ve önde olan uç hattın hemen altında (Seyhun 2026-10-29: kartın altında değil, pin iki kez yazılmasın)
+  const below = Math.max(ko[1], pi[1], Math.abs(off) >= 1 ? pid[1] : -1e9) + 30, lx = (ko[0] + pi[0]) / 2;
   // finiş
   line(pt("fA"), pt("fB"), `stroke-width="2"`, 2);
   boat(pt("fA"), true);
@@ -92,13 +95,12 @@ function svgOf(c, { w = 350, h = 500 } = {}) {
   legLabel(g4, m1, `${nrm(g.A)}°`, -1);
   legLabel(m1a, m2, `${nrm(g.reach)}°`, -1);
   legLabel(m2, g3, `${nrm(g.A + 180)}°`, -1);
-  // üstte eksen, yanında rüzgâr oku (eksene göre dönmüş hali)
-  o += `<text x="${w / 2}" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="${ink}">Eksen ${nrm(g.A)}°</text>`;
+  // üstte rüzgâr oku (eksene göre dönmüş hali)
   if (c.wind != null) {
     const sh = diff(g.A, c.wind);
-    o += `<g transform="translate(${w / 2} 50) rotate(${f(sh)})"><line x1="0" y1="-16" x2="0" y2="10" stroke="${acc}" stroke-width="3"/><path d="M0 18 L-7 6 L7 6 Z" fill="${acc}"/></g>`;
-    o += `<text x="${w / 2 + 18}" y="48" font-size="12" font-weight="600" fill="${acc}">Rüzgâr ${nrm(c.wind)}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
-    o += `<text x="${w / 2 + 18}" y="64" font-size="12" font-weight="600" fill="${acc}">${Math.abs(sh) < 1 ? "eksende" : `${Math.abs(sh)}° ${sh > 0 ? "sağa" : "sola"}`}</text>`;
+    o += `<g transform="translate(${w / 2} 34) rotate(${f(sh)})"><line x1="0" y1="-16" x2="0" y2="10" stroke="${acc}" stroke-width="3"/><path d="M0 18 L-7 6 L7 6 Z" fill="${acc}"/></g>`;
+    o += `<text x="${w / 2 + 18}" y="32" font-size="12" font-weight="600" fill="${acc}">Rüzgâr ${nrm(c.wind)}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
+    o += `<text x="${w / 2 + 18}" y="48" font-size="12" font-weight="600" fill="${acc}">${Math.abs(sh) < 1 ? "eksende" : `${Math.abs(sh)}° ${sh > 0 ? "sağa" : "sola"}`}</text>`;
   }
   // kuzey
   o += `<g transform="translate(26 30) rotate(${f(-rot)})"><circle r="15" fill="${paper}" stroke="var(--line, #e7e5df)"/><path d="M0 -11 L5 4 L0 1 L-5 4 Z" fill="${ink}"/></g><text x="26" y="58" text-anchor="middle" font-size="10" fill="${mut}">K</text>`;
@@ -107,7 +109,7 @@ function svgOf(c, { w = 350, h = 500 } = {}) {
   // 1. satır: pin kaç derecede, olması gereken (rüzgâr varsa ona dik) · 2. satır: hangi uç önde (pin olması gerekenin üstündeyse pin)
   if (c.line != null) rows.push(`Pin ${g.toPin}° · olmalı ${g.should}°${c.wind == null ? " (eksene dik)" : ""}`);
   if (c.line != null) rows.push(Math.abs(off) < 1 ? "Hat dik, iki uç eşit" : `${off > 0 ? "Pin" : "Komite"} tarafı ${Math.abs(off)}° önde`);
-  rows.forEach((t, i) => (o += `<text x="${w / 2}" y="${h - 46 + i * 20}" text-anchor="middle" font-size="13" font-weight="700" fill="${i ? ink : org}">${t}</text>`));
+  rows.forEach((t, i) => (o += `<text x="${f(lx)}" y="${f(below + i * 19)}" text-anchor="middle" font-size="13" font-weight="700" fill="${i ? ink : org}">${t}</text>`));
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Inter,sans-serif">${o}</svg>`;
 }
 
