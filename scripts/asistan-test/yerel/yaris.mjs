@@ -539,6 +539,13 @@ group("Parkur analizi")([
     PK.lineBias(CC([{ kind: "wind", deg: 0 }, { kind: "line", ref: "komite", deg: 260 }])),
     PK.lineBias(CC([{ kind: "wind", deg: 0 }, { kind: "wind", deg: 40, spot: "m1" }, { kind: "line", ref: "pin", deg: 90 }])),
   ], ok: ([a, b, c]) => a.end === "pin" && a.deg === 10 && b.end === "komite" && b.deg === 10 && c.end === "" }],
+  ["hat kuralı 360", { desc: "Seyhun 2026-10-29: pin'den komiteye bakış = eksen + 90°, komiteden pine = eksen − 90°; 0'ın altı 350, 340… diye sarılır", fn: () => [
+    PK.lineBias(CC([{ kind: "wind", deg: 10 }, { kind: "line", ref: "komite", deg: 280 }])),
+    PK.lineBias(CC([{ kind: "wind", deg: 10 }, { kind: "line", ref: "pin", deg: 100 }])),
+    PK.lineBias(CC([{ kind: "wind", deg: 350 }, { kind: "line", ref: "pin", deg: 80 }])),
+    PK.lineBias(CC([{ kind: "wind", deg: 350 }, { kind: "line", ref: "komite", deg: 260 }])),
+    PK.lineBias(CC([{ kind: "wind", deg: 5 }, { kind: "line", ref: "komite", deg: 270 }])),
+  ], ok: ([a, b, c, d, e]) => [a, b, c, d].every((x) => x.end === "" && x.deg === 0) && a.ideal === 100 && c.ideal === 80 && e.deg === 5 && e.end === "komite" }],
   ["rüzgâr dönüşü", { desc: "ilk ve son ölçüm arası derece ve hız farkı", fn: () => PK.windTrend(CC([{ kind: "wind", deg: 350, kn: 8 }, { kind: "wind", deg: 10, kn: 11 }])), ok: (t) => t.deg === 20 && t.kn === 3 }],
   ["parkur şekli", { desc: "komite + eksen → işaretlenmeyen pin ve şamandıralar tahmini, orsa ≈900 m eksende", fn: () => {
     const k = { lat: 39.07, lon: 26.88 };
