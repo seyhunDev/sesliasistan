@@ -317,7 +317,7 @@ function LineCard({ b }) {
           <b className="text-[1.0625rem] font-semibold">{b.end ? `${b.end === "pin" ? "Pin" : "Komite"} tarafı önde` : "Hat rüzgâra dik"}</b>
           {b.end && <b className="text-[1.625rem] font-bold leading-none text-acc tabular-nums">{b.deg}°</b>}
         </div>
-        <p className="mt-0.5 text-[0.8125rem] text-mut">
+        <p className="mt-0.5 text-[0.875rem] font-semibold text-[#e0700b]">
           {`Komiteden pin ${norm(b.line + 180)}°, rüzgâra dik olsa ${norm(b.ideal + 180)}°`}{b.m ? ` · ${b.end === "pin" ? "pin" : "komite"} ≈${b.m} m önde` : ""}
         </p>
         <svg viewBox="0 0 320 96" className="mt-2 block w-full" aria-hidden="true">
