@@ -835,7 +835,9 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
   // Yarış günü üstü günün evresine göre (RaceDayTop: A rüzgâr · B sonuçlar · C gün bitti + yarın)
   const { phase, races: dayRaces } = useRacePhase(r, orgId, rid, raceDay);
   const tabs = [
-    ["sum", raceDay ? "Bugün" : "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
+    // Yarış günü (Seyhun 2026-10-29): hazırlık, plan ve not altta görünmez; "Hazırlık" sekmesine dokununca açılır, yeniden dokununca kapanır.
+    // Yarıştan önce eskisi gibi Özet.
+    raceDay ? ["prep", "Hazırlık", todoList.length ? `${todoList.length} iş` : "Tamam", false] : ["sum", "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
     ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
     ["docs", "Evrak", file || (!checked && r.docsAt && !stale) ? "Hazır" : stale ? "Yenile" : r.docsAt ? "Bu cihazda yok" : "Hazır değil", !stat[1][4]],
     ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4]],
@@ -886,7 +888,7 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
         {tabs.map(([k, name, , warn]) => {
           const on = tab === k;
           return (
-            <button key={k} type="button" aria-pressed={on} onClick={() => setTab(k)} data-press className={`raised flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[0.875rem] font-semibold ${on ? "ck-sel" : ""}`}>
+            <button key={k} type="button" aria-pressed={on} onClick={() => setTab(k === "prep" && on ? "sum" : k)} data-press className={`raised flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[0.875rem] font-semibold ${on ? "ck-sel" : ""}`}>
               {warn && !over && <span className="size-1.5 rounded-full bg-[#ffd59a]" aria-label="eksik" />}
               {name}
             </button>
@@ -1126,7 +1128,7 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
       {navy(top)}
       <div className={light}>
         {alert}
-      {tab === "sum" && (
+      {(raceDay ? tab === "prep" : tab === "sum") && (
         <>
           {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/media?tab=res` : ""} />}
           {raceDay && (
