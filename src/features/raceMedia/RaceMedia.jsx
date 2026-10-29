@@ -164,6 +164,7 @@ export function RaceMedia({ orgId, id }) {
 
   return (
     <Shell
+      full={tab === "course"}
       title={race.name || "Yarış"}
       sub={sub}
       back={`/athletes/races/${id}`}
@@ -316,10 +317,11 @@ export function TabDock({ tabs = TABS, value, onChange, onRec, extra = null }) {
 
 // Lacivert üst (yeni tasarım, Seyhun 2026-10-28 "1" önerisi): geri, yarış adı, Çekim · Özet, gün çipleri ve Süre'de büyük sayaç lacivertte;
 // altındaki açık alan yuvarlak köşeyle başlar (antrenman günü sayfası gibi)
-function Shell({ title, sub, back = "/athletes/races", action, top = null, children }) {
+function Shell({ title, sub, back = "/athletes/races", action, top = null, full = false, children }) {
+  // full: bütün sayfa lacivert (Parkur, Seyhun 2026-10-29 "arka planı uygulamayla uyumlu"); alt açık bölüm yok
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(env(safe-area-inset-bottom)+11rem)]">
-      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={title}>
+    <main className={`mx-auto max-w-[30rem] px-5 ${full ? "" : "pb-[calc(env(safe-area-inset-bottom)+11rem)]"}`}>
+      <section className={`ck -mx-5 px-5 pt-[calc(0.75rem+env(safe-area-inset-top))] ${full ? "min-h-dvh pb-[calc(env(safe-area-inset-bottom)+11rem)]" : "pb-9"}`} aria-label={title}>
         <header className="flex items-center gap-2.5">
           <BackButton href={back} />
           <div className="min-w-0 flex-1 leading-tight">
@@ -329,8 +331,9 @@ function Shell({ title, sub, back = "/athletes/races", action, top = null, child
           {action}
         </header>
         {top}
+        {full && children}
       </section>
-      <div className="relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-1">{children}</div>
+      {!full && <div className="relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-1">{children}</div>}
     </main>
   );
 }

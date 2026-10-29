@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
-import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -99,53 +98,45 @@ export function CourseTab({ orgId, race, day }) {
 
   return (
     <>
-      {/* kart gri kutusuz, sayfa zemininde; düğmeler hemen altında (Seyhun 2026-10-29) */}
-      <div className="mt-3">
+      {/* Lacivert sayfa (Seyhun 2026-10-29 "arka plan uygulamayla uyumlu, rota kartı ön planda, yazılar ince ve hizalı"):
+          kart kutusuz ve büyük; altında iki ince çerçeveli düğme; Özet ve Ölçümler aynı hizada ince çizgili liste (ad · açıklama · değer) */}
+      <div className="-mx-2 mt-2">
         {kart ? (
           <div aria-label="Rota kartı" role="img" dangerouslySetInnerHTML={{ __html: kart }} />
         ) : (
-          <p className="px-4 py-10 text-center text-[0.875rem] text-mut">Rüzgârı ya da parkur eksenini söyle, kart çizilsin</p>
+          <p className="px-4 py-16 text-center text-[0.9375rem] text-white/60">Rüzgârı ya da parkur eksenini ekle, kart çizilsin</p>
         )}
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <Button variant="secondary" onClick={() => setAdd({})}>Yön ekle</Button>
-        <Button variant="secondary" onClick={async () => ((await askCompass()) ? setSight(true) : toast("Pusula izni verilmedi"))}>Pusula</Button>
+      <div className="mt-3 grid grid-cols-2 gap-2.5">
+        <button type="button" data-press onClick={() => setAdd({})} className="raised ck-pill font-medium">Yön ekle</button>
+        <button type="button" data-press onClick={async () => ((await askCompass()) ? setSight(true) : toast("Pusula izni verilmedi"))} className="raised ck-pill font-medium">Pusula</button>
       </div>
       {trend && (
-        <>
-          <Label>Özet</Label>
-          <ul className="divide-y divide-line border-y border-line">
-            {Math.abs(trend.deg) >= 3 && (
-              <li className="flex items-baseline gap-3 py-2.5">
-                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">Rüzgâr {trend.deg > 0 ? "sağa" : "sola"} dönüyor · <span className="text-mut">{trend.from.deg}° → {trend.to.deg}°</span></span>
-                <b className="shrink-0 font-semibold text-acc tabular-nums">{trend.deg > 0 ? "+" : "−"}{Math.abs(trend.deg)}°</b>
-              </li>
-            )}
-            {trend.kn !== null && Math.abs(trend.kn) >= 1 && (
-              <li className="flex items-baseline gap-3 py-2.5">
-                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">Rüzgâr {trend.kn > 0 ? "artıyor" : "düşüyor"} · <span className="text-mut">{trend.from.kn} → {trend.to.kn} kn</span></span>
-                <b className="shrink-0 font-semibold tabular-nums">{trend.kn > 0 ? "+" : "−"}{String(Math.abs(trend.kn)).replace(".", ",")} kn</b>
-              </li>
-            )}
-            {Math.abs(trend.deg) < 3 && (trend.kn === null || Math.abs(trend.kn) < 1) && <li className="py-2.5 text-[0.9375rem]">Rüzgâr sabit</li>}
+        <section className="mt-7" aria-label="Özet">
+          <h3 className={secHead}>Özet</h3>
+          <ul className={list}>
+            {Math.abs(trend.deg) >= 3 && <Line name={`Rüzgâr ${trend.deg > 0 ? "sağa" : "sola"} dönüyor`} sub={`${trend.from.deg}° → ${trend.to.deg}°`} value={`${trend.deg > 0 ? "+" : "−"}${Math.abs(trend.deg)}°`} acc />}
+            {trend.kn !== null && Math.abs(trend.kn) >= 1 && <Line name={`Rüzgâr ${trend.kn > 0 ? "artıyor" : "düşüyor"}`} sub={`${trend.from.kn} → ${trend.to.kn} kn`} value={`${trend.kn > 0 ? "+" : "−"}${String(Math.abs(trend.kn)).replace(".", ",")} kn`} />}
+            {Math.abs(trend.deg) < 3 && (trend.kn === null || Math.abs(trend.kn) < 1) && <Line name="Rüzgâr sabit" />}
           </ul>
-        </>
+        </section>
       )}
-      <Label right={c.obs.length || ""}>Ölçümler</Label>
-      <ul className={`${card} divide-y divide-line overflow-hidden`}>
-        {!c.obs.length && <li className="px-4 py-3 text-[0.875rem] text-mut">Henüz ölçüm yok</li>}
-        {[...c.obs].reverse().map((o) => (
-          <li key={o.id}>
-            <button type="button" onClick={() => setOpen(o)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-              <span className="min-w-0 flex-1">
-                <b className="block truncate text-[0.9375rem] font-semibold">{obsTitle(o)}</b>
-                <span className="block truncate text-[0.8125rem] text-mut">{BY[o.by]} · {hm(o.at)}</span>
-              </span>
-              <b className="shrink-0 font-semibold tabular-nums">{obsValue(o)}</b>
-            </button>
-          </li>
-        ))}
-      </ul>
+      <section className="mt-7" aria-label="Ölçümler">
+        <h3 className={secHead}>
+          Ölçümler
+          {c.obs.length > 0 && <span className="tabular-nums text-white/45">{c.obs.length}</span>}
+        </h3>
+        <ul className={list}>
+          {!c.obs.length && <li className="py-3 text-[0.9375rem] text-white/55">Henüz ölçüm yok</li>}
+          {[...c.obs].reverse().map((o) => (
+            <li key={o.id}>
+              <button type="button" onClick={() => setOpen(o)} data-press="row" className="w-full text-left">
+                <Line as="span" name={obsTitle(o)} sub={`${BY[o.by]} · ${hm(o.at)}`} value={obsValue(o)} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
       <div className="h-8" />
 
       <AddSheet open={!!add} at={add} c={c} onClose={() => setAdd(null)} onAdd={(o) => (addObs(o), setAdd(null))} />
@@ -219,9 +210,24 @@ function AddBody({ at, c, onAdd }) {
 
 function kartOf(c) {
   try {
-    return cardSvg(cardOf(c));
+    return cardSvg(cardOf(c), { navy: true });
   } catch (e) {
     console.warn("[parkur] kart çizilemedi", e);
     return "";
   }
+}
+
+// Lacivert sayfanın ince listesi: solda ad, ortada soluk açıklama, sağda hizalı değer
+const secHead = "mb-1 flex items-baseline justify-between px-0.5 text-[0.8125rem] font-normal tracking-[.02em] text-white/55";
+const list = "divide-y divide-[rgba(255,255,255,.1)] border-y border-[rgba(255,255,255,.1)] [&>li]:border-[rgba(255,255,255,.1)]";
+function Line({ name, sub = "", value = "", acc = false, as: T = "li" }) {
+  return (
+    <T className="flex items-baseline gap-3 py-3">
+      <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-normal text-white">
+        {name}
+        {sub && <span className="text-white/50"> · {sub}</span>}
+      </span>
+      {value && <span className={`shrink-0 text-[0.9375rem] font-medium tabular-nums ${acc ? "text-[#67e8f9]" : "text-white"}`}>{value}</span>}
+    </T>
+  );
 }
