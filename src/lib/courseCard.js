@@ -45,11 +45,13 @@ function svgOf(c, { w = 350, h = 470 } = {}) {
   const sx = (w - pad.l - pad.r) / (Math.max(...xs) - Math.min(...xs) || 1), sy = (h - pad.t - pad.b) / (Math.max(...ys) - Math.min(...ys) || 1);
   const s = Math.min(sx, sy);
   const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
-  const S = (p) => { const [x, y] = R(p); return [w / 2 + (x - cx) * s, pad.t + (h - pad.t - pad.b) / 2 - (y - cy) * s]; };
+  // yükseklik çizime göre: altta boş kalmasın (Seyhun 2026-10-29 "kart alttan yukarı gelsin")
+  const H = Math.ceil(pad.t + pad.b + (Math.max(...ys) - Math.min(...ys)) * s);
+  const S = (p) => { const [x, y] = R(p); return [w / 2 + (x - cx) * s, pad.t + (H - pad.t - pad.b) / 2 - (y - cy) * s]; };
   const pt = (k) => S(g[k]);
   const f = (n) => n.toFixed(1);
   // renkler temadan (koyu temada da okunsun, Seyhun 2026-10-29 "soluk, okunmuyor"); org: hat yazıları belirgin turuncu
-  const ink = "var(--fg, #26282c)", mut = "var(--fg2, #4a4d52)", acc = "var(--acc, #0b7f99)", amb = "#f59e0b", org = "#e0700b", paper = "var(--card, #fff)";
+  const ink = "var(--fg, #26282c)", mut = "var(--fg2, #4a4d52)", acc = "var(--acc, #0b7f99)", amb = "#f59e0b", org = "#e0700b", paper = "var(--bg, #fff)";
   let o = "";
   const line = (a, b, st = "", sw = 2) => (o += `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${ink}" stroke-width="${sw}" ${st}/>`);
   const path = (pts, st = "") => (o += `<polyline points="${pts.map((p) => `${f(p[0])},${f(p[1])}`).join(" ")}" fill="none" stroke="${ink}" stroke-width="2" stroke-linejoin="round" ${st}/>`);
@@ -110,7 +112,7 @@ function svgOf(c, { w = 350, h = 470 } = {}) {
   if (c.line != null) rows.push(`Pin ${g.toPin}° · olmalı ${g.should}°${c.wind == null ? " (eksene dik)" : ""}`);
   if (c.line != null) rows.push(Math.abs(off) < 1 ? "Hat dik, iki uç eşit" : `${off > 0 ? "Pin" : "Komite"} tarafı ${Math.abs(off)}° önde`);
   rows.forEach((t, i) => (o += `<text x="${f(lx)}" y="${f(below + i * 19)}" text-anchor="middle" font-size="13" font-weight="700" fill="${i ? ink : org}">${t}</text>`));
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Inter,sans-serif">${o}</svg>`;
+  return `<svg viewBox="0 0 ${w} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Inter,sans-serif">${o}</svg>`;
 }
 
 // Parkurun kart bilgisi; eksen ve rüzgâr yoksa null (kart çizilmez)

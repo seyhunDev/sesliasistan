@@ -6,7 +6,6 @@ import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Bar } from "@/features/training/Countdown";
 import { addCourseObs, courseRef, saveCourse } from "@/features/athletes/raceLiveStore";
 import { canShare, loadSharedCourse, shareCourse } from "@/features/athletes/sharedRaces";
 import { cardOf, cardSvg } from "@/lib/courseCard";
@@ -100,36 +99,35 @@ export function CourseTab({ orgId, race, day }) {
 
   return (
     <>
-      <div className={`${card} mt-4 px-1 py-1.5`}>
+      {/* kart gri kutusuz, sayfa zemininde; düğmeler hemen altında (Seyhun 2026-10-29) */}
+      <div className="mt-3">
         {kart ? (
           <div aria-label="Rota kartı" role="img" dangerouslySetInnerHTML={{ __html: kart }} />
         ) : (
           <p className="px-4 py-10 text-center text-[0.875rem] text-mut">Rüzgârı ya da parkur eksenini söyle, kart çizilsin</p>
         )}
       </div>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <Button variant="secondary" onClick={() => setAdd({})}>Yön ekle</Button>
+        <Button variant="secondary" onClick={async () => ((await askCompass()) ? setSight(true) : toast("Pusula izni verilmedi"))}>Pusula</Button>
+      </div>
       {trend && (
         <>
           <Label>Özet</Label>
-          <ul className={`${card} divide-y divide-line overflow-hidden`}>
+          <ul className="divide-y divide-line border-y border-line">
             {Math.abs(trend.deg) >= 3 && (
-              <li className="flex items-center gap-3 px-4 py-3">
-                <span className="min-w-0 flex-1">
-                  <b className="block text-[0.9375rem] font-semibold">Rüzgâr {trend.deg > 0 ? "sağa" : "sola"} dönüyor</b>
-                  <span className="block truncate text-[0.8125rem] text-mut">{hm(trend.from.at)} {trend.from.deg}° → {hm(trend.to.at)} {trend.to.deg}°</span>
-                </span>
+              <li className="flex items-baseline gap-3 py-2.5">
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">Rüzgâr {trend.deg > 0 ? "sağa" : "sola"} dönüyor · <span className="text-mut">{trend.from.deg}° → {trend.to.deg}°</span></span>
                 <b className="shrink-0 font-semibold text-acc tabular-nums">{trend.deg > 0 ? "+" : "−"}{Math.abs(trend.deg)}°</b>
               </li>
             )}
             {trend.kn !== null && Math.abs(trend.kn) >= 1 && (
-              <li className="flex items-center gap-3 px-4 py-3">
-                <span className="min-w-0 flex-1">
-                  <b className="block text-[0.9375rem] font-semibold">Rüzgâr {trend.kn > 0 ? "artıyor" : "düşüyor"}</b>
-                  <span className="block truncate text-[0.8125rem] text-mut">{trend.from.kn} kn → {trend.to.kn} kn</span>
-                </span>
+              <li className="flex items-baseline gap-3 py-2.5">
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">Rüzgâr {trend.kn > 0 ? "artıyor" : "düşüyor"} · <span className="text-mut">{trend.from.kn} → {trend.to.kn} kn</span></span>
                 <b className="shrink-0 font-semibold tabular-nums">{trend.kn > 0 ? "+" : "−"}{String(Math.abs(trend.kn)).replace(".", ",")} kn</b>
               </li>
             )}
-            {Math.abs(trend.deg) < 3 && (trend.kn === null || Math.abs(trend.kn) < 1) && <li className="px-4 py-3 text-[0.9375rem] font-semibold">Rüzgâr sabit</li>}
+            {Math.abs(trend.deg) < 3 && (trend.kn === null || Math.abs(trend.kn) < 1) && <li className="py-2.5 text-[0.9375rem]">Rüzgâr sabit</li>}
           </ul>
         </>
       )}
@@ -148,17 +146,7 @@ export function CourseTab({ orgId, race, day }) {
           </li>
         ))}
       </ul>
-      <div className="h-36" />
-
-      <Bar>
-        {/* altındaki liste şeridin arkasından görünmesin: sayfa renginde zemin, alt sekmelere kadar */}
-        <div className="pointer-events-none absolute inset-x-0 -bottom-8 -top-4 -z-10 bg-gradient-to-b from-bg/0 via-bg via-[1.25rem] to-bg" />
-        {/* Söyle ya da yaz kutusu kaldırıldı (Seyhun 2026-10-29: "bunu daha sonra asistanla yapacağız") */}
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={() => setAdd({})}>Yön ekle</Button>
-          <Button variant="secondary" onClick={async () => ((await askCompass()) ? setSight(true) : toast("Pusula izni verilmedi"))}>Pusula</Button>
-        </div>
-      </Bar>
+      <div className="h-8" />
 
       <AddSheet open={!!add} at={add} c={c} onClose={() => setAdd(null)} onAdd={(o) => (addObs(o), setAdd(null))} />
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open ? obsTitle(open) : ""}>
