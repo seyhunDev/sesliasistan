@@ -16,6 +16,7 @@ import { PLACE, kn as knTxt, windName } from "./weather";
 // haritaya dokununca onPick({ lat, lon }) (seçilen yer oraya taşınır).
 // 2026-10-29 (Seyhun): harita "Harita" düğmesiyle tam ekran açılır (sayfada sürekli durmaz), yere yakın (zoom 12) başlar,
 // tek parmakla her yöne kaydırılır; oklar yaklaştıkça sıklaşır (denseArrows: noktalar arası ara değer), uzağa kayınca o bölgenin verisi yüklenir.
+// mini: sayfada küçük, dokunulmaz önizleme (şimdiki rüzgâr okları); dokununca aynı tam ekran harita açılır (yarış sayfası için).
 const DARK_STYLES = ["https://tiles.openfreemap.org/styles/fiord", "https://tiles.openfreemap.org/styles/dark", MAP_STYLE];
 const RADAR_LIST = "https://api.rainviewer.com/public/weather-maps.json";
 const GRID = new Map(); // yer → { t, v } (30 dk)
@@ -68,7 +69,7 @@ function arrowImage() {
   return g.getImageData(0, 0, 32, 32);
 }
 
-export function RegionMap({ place, station, obs, onPick }) {
+export function RegionMap({ place, station, obs, onPick, mini = false, className = "h-24" }) {
   const box = useRef(null);
   const map = useRef(null);
   const pick = useRef(onPick);
@@ -90,14 +91,15 @@ export function RegionMap({ place, station, obs, onPick }) {
 
   const pk = `${place.lat},${place.lon}`;
   const gc = center?.pk === pk ? center : place; // seçilen yer değişince veri yeniden onun çevresinden
+  const shown = full || mini; // harita çiziliyor mu (kapalı mini: küçük önizleme)
   useEffect(() => {
-    if (!full) return;
+    if (!shown) return;
     let on = true;
     loadGrid(gc).then((v) => on && setGrid(v), () => {});
     return () => {
       on = false;
     };
-  }, [full, gc.lat, gc.lon]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [shown, gc.lat, gc.lon]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!full) return;
     let on = true;
@@ -108,15 +110,15 @@ export function RegionMap({ place, station, obs, onPick }) {
   }, [full]);
 
   useEffect(() => {
-    if (!full) return;
+    if (!shown) return;
     let live = true;
     Promise.all([loadMapLibre(), pickStyle()])
       .then(([ml, style]) => {
         if (!live || !box.current) return;
-        const m = new ml.Map({ container: box.current, style, center: [+place.lon, +place.lat], zoom: 12, attributionControl: false, dragRotate: false, pitchWithRotate: false });
+        const m = new ml.Map({ container: box.current, style, center: [+place.lon, +place.lat], zoom: full ? 12 : 10.5, interactive: full, attributionControl: false, dragRotate: false, pitchWithRotate: false });
         m.addControl(new ml.AttributionControl({ compact: true, customAttribution: `${MAP_ATTR} · Radar RainViewer · Open-Meteo` }));
         m.touchZoomRotate.disableRotation();
-        m.on("click", (e) => pick.current?.({ lat: +e.lngLat.lat.toFixed(4), lon: +e.lngLat.lng.toFixed(4) }));
+        if (full) m.on("click", (e) => pick.current?.({ lat: +e.lngLat.lat.toFixed(4), lon: +e.lngLat.lng.toFixed(4) }));
         // Kaydırınca/yakınlaşınca oklar yeniden dizilir; verinin merkezinden 12 km'den uzağa gidilince o bölgenin verisi yüklenir
         m.on("moveend", () => {
           setView((v) => v + 1);
@@ -144,7 +146,7 @@ export function RegionMap({ place, station, obs, onPick }) {
       map.current = null;
       setReady(false);
     };
-  }, [full]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [full, shown]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const now = useNow().getTime();
   const steps = useMemo(() => regionSteps(grid, radar, mode, now), [grid, radar, mode, now]);
@@ -230,6 +232,13 @@ export function RegionMap({ place, station, obs, onPick }) {
   }, [ready, grid, radar, mode, step, view]);
 
 
+  if (!full && mini)
+    return (
+      <button type="button" onClick={() => (setErr(false), setFull(true))} aria-label="Bölge haritasını aç" className={`relative block w-full overflow-hidden rounded-[1.125rem] bg-[#0f1f38] active:scale-[.98] ${className}`}>
+        <div ref={box} className="pointer-events-none absolute inset-0" />
+        {err && <span className="absolute inset-0 grid place-items-center text-[0.8125rem] text-white/70">Harita açılamadı</span>}
+      </button>
+    );
   if (!full)
     return (
       <button type="button" onClick={() => (setErr(false), setFull(true))} aria-label="Bölge haritasını aç" className="flex h-12 w-full items-center justify-center gap-2 rounded-[1.125rem] bg-[#0f1f38] text-[0.9375rem] font-semibold text-white active:scale-[.98]">

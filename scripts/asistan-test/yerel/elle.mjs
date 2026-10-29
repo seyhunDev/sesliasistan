@@ -2838,7 +2838,7 @@ group("Ölçülen rüzgâr")([
     const near = R.denseArrows(g, 0, [26.85, 39.03, 26.93, 39.1], 13);
     const { readFileSync } = await import("node:fs");
     const rm = readFileSync(new URL("../../../src/features/weather/RegionMap.jsx", import.meta.url), "utf8");
-    return far.length === 49 && near.length > 49 && near.every((a) => a.d <= 10 || a.d >= 350) && near.every((a) => a.w >= 10 && a.w <= 16) && R.denseArrows(g, -1, [0, 0, 1, 1], 12).length === 0 && /zoom: 12/.test(rm) && /Harita\n/.test(rm) && !/dragPan\.disable/.test(rm);
+    return far.length === 49 && near.length > 49 && near.every((a) => a.d <= 10 || a.d >= 350) && near.every((a) => a.w >= 10 && a.w <= 16) && R.denseArrows(g, -1, [0, 0, 1, 1], 12).length === 0 && /zoom: full \? 12/.test(rm) && /Harita\n/.test(rm) && /mini = false/.test(rm) && /interactive: full/.test(rm) && /if \(full\) m\.on\("click"/.test(rm) && /!full && mini/.test(rm) && !/dragPan\.disable/.test(rm);
   })],
   ["radar döşemesi", F("Dikili z7: döşeme 73/48, piksel içeride", () => { const t = RR.tileOf(39.07, 26.89); return t.z === 7 && t.x === 73 && t.y === 48 && t.px >= 0 && t.px < 256 && t.py >= 0 && t.py < 256; })],
   ["radar rengi", F("saydam yok, açık mavi hafif, koyu mavi orta, kırmızı kuvvetli", () => RR.levelOf(0, 0, 0, 0) === 0 && RR.levelOf(160, 220, 255, 200) === 1 && RR.levelOf(30, 60, 120, 255) === 2 && RR.levelOf(230, 40, 40, 255) === 3)],
