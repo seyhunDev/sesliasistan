@@ -5,12 +5,12 @@ import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { PICKS } from "@/lib/raceCourse";
-import { compassReader, angDiff } from "@/lib/compass";
+import { compassReader, angDiff, meanDeg } from "@/lib/compass";
 import { hasCompass, startCompass } from "@/lib/nativeIos";
 
 // Pusula ile ölçüm (Seyhun 2026-10-28, örnek yaris-tasarim/parkur/parkur-3-pusula.png): arka kamera açılır, ortada nişangâh,
 // üstte telefonun pusulası: kameranın baktığı yön (lib/compass.js; manyetik, elde tutulan pusulayla aynı; dik tutulunca da doğru). Hedefe nişan alıp "Al"a basınca
-// derece donar, "Bu açı ne?" seçilir, Ekle. Kamera açılmazsa yalnız derece görünür.
+// 10 sn ölçülür, ortalama derece donar, "Bu açı ne?" seçilir, Ekle. Kamera açılmazsa yalnız derece görünür.
 const dirName = (d) => ["K", "KD", "D", "GD", "G", "GB", "B", "KB"][Math.round(d / 45) % 8];
 
 // iPhone'da pusula izni dokunuşla istenir (Pusula düğmesinin onClick'inde çağrılır)
@@ -34,6 +34,9 @@ function Body({ onClose, onAdd, place }) {
   const video = useRef(null);
   const [deg, setDeg] = useState(null);
   const [held, setHeld] = useState(null); // alınan derece
+  const [left, setLeft] = useState(0); // Al: 10 sn ölçüm, kalan saniye (Seyhun 2026-10-29 "10 sn ortalama")
+  const [spread, setSpread] = useState(null);
+  const samples = useRef([]);
   const [pick, setPick] = useState(0);
   const [cam, setCam] = useState(true);
 
@@ -74,6 +77,21 @@ function Body({ onClose, onAdd, place }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (left > 0 && deg !== null) samples.current.push(deg);
+  }, [deg, left]);
+  useEffect(() => {
+    if (left <= 0) return;
+    const t = setTimeout(() => {
+      if (left > 1) return setLeft(left - 1);
+      setLeft(0);
+      const m = meanDeg(samples.current);
+      if (m) (setHeld(m.deg), setSpread(m.spread));
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [left]);
+  const take = () => ((samples.current = deg === null ? [] : [deg]), setSpread(null), setLeft(10));
+
   const shown = held ?? deg;
   const ticks = shown === null ? [] : [-20, -10, 0, 10, 20].map((k) => ({ k, v: (((Math.round(shown / 10) * 10 + k) % 360) + 360) % 360 }));
   return (
@@ -84,7 +102,7 @@ function Body({ onClose, onAdd, place }) {
           <Icon name="x" className="size-5" />
         </button>
         <b className="block text-[4rem] font-bold leading-none tracking-[-.03em] tabular-nums [text-shadow:0_2px_8px_rgba(0,0,0,.3)]">{shown === null ? "–" : `${shown}°`}</b>
-        <span className="mt-1.5 block text-[0.9375rem] font-semibold text-white/85">{shown === null ? "Telefonu bir an düz tut" : `${dirName(shown)}${held !== null ? " · alındı" : ""}`}</span>
+        <span className="mt-1.5 block text-[0.9375rem] font-semibold text-white/85">{shown === null ? "Telefonu bir an düz tut" : `${dirName(shown)}${held !== null ? ` · 10 sn ortalama${spread ? ` (±${spread}°)` : ""}` : left > 0 ? " · ölçüyor" : ""}`}</span>
         {shown !== null && (
           <div className="relative mx-auto mt-2.5 h-7 w-64 overflow-hidden rounded-lg bg-[#11203a]/40">
             {ticks.map((t) => (
@@ -102,7 +120,7 @@ function Body({ onClose, onAdd, place }) {
         {held === null ? (
           <>
             {place && <p className="mb-3 text-center text-[0.9375rem] text-mut">{place}</p>}
-            <Button full className="h-14" disabled={deg === null} onClick={() => setHeld(deg)}>Al</Button>
+            <Button full className="h-14" disabled={deg === null || left > 0} onClick={take}>{left > 0 ? `Ölçüyor · ${left} sn` : "Al"}</Button>
           </>
         ) : (
           <>
@@ -118,7 +136,7 @@ function Body({ onClose, onAdd, place }) {
               ))}
             </div>
             <div className="mt-3.5 grid grid-cols-[1fr_2fr] gap-2">
-              <Button variant="secondary" onClick={() => setHeld(null)}>Yeniden</Button>
+              <Button variant="secondary" onClick={() => (setHeld(null), setSpread(null))}>Yeniden</Button>
               <Button onClick={() => onAdd({ kind: PICKS[pick][0], ref: PICKS[pick][1], deg: held })}>Ekle</Button>
             </div>
           </>

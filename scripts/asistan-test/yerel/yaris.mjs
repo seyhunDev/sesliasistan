@@ -640,5 +640,6 @@ group("Pusula")([
     return [read({ alpha: 350, beta: 10, gamma: 0, webkitCompassHeading: 10 }), feedN(read, { alpha: 350, beta: 10, gamma: 0, webkitCompassHeading: 10 })];
   }, ok: ([a, b]) => (a > 340 || a < 20) && near(b, 10) }],
   ["Android", { desc: "kuzeye bağlı alpha, dik tutunca kameranın yönü", fn: () => feedN(CP.compassReader(), { alpha: 340, beta: 90, gamma: 0, absolute: true }), ok: (h) => near(h, 20) }],
+  ["10 sn ortalama", { desc: "Seyhun 2026-10-29: Al 10 sn ölçer; 350° ile 10° arası ortalama 0°, oynama ±", fn: () => [CP.meanDeg([350, 0, 10]), CP.meanDeg([20, 24, 28]), CP.meanDeg([])], ok: ([a, b, c]) => a.deg === 0 && a.spread === 10 && b.deg === 24 && b.spread === 4 && c === null }],
   ["fark yokken", { desc: "telefon hiç düz tutulmadıysa okunamadı", fn: () => feedN(CP.compassReader(), { alpha: 240, beta: 90, gamma: 0, webkitCompassHeading: 277 }), ok: (h) => h === null }],
 ]);
