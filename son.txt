@@ -1,8 +1,8 @@
-Commit: 6ac8334 · Ekran testi: bölge haritası Harita düğmesiyle açılıyor (#892)
-Zaman: 2026-10-29-0546 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40807146623
+Commit: b4f3425 · Multimedya: Çekim ve Özet ⋯ menüsünde; gün özeti kartı beklenen/gelen rüzgâr grafiğiyle (#893)
+Zaman: 2026-10-29-0716 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40815899882
 
-TAM TEST · 29.10.2026 05:36:15
+TAM TEST · 29.10.2026 07:07:16
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1410/1410 geçti · 0 kalan · 593 sn
+SONUÇ: 1410/1410 geçti · 0 kalan · 561 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
