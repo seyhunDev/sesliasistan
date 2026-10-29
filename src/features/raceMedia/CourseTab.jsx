@@ -307,7 +307,7 @@ function AddBody({ at, c, onAdd }) {
 
 // Start hattı: pin'den komite açısı rüzgâra dik olandan ne kadar sapmış, hangi uç rüzgâra yakın
 function LineCard({ b }) {
-  const d = b.end === "pin" ? -1 : b.end === "komite" ? 1 : 0;
+  const d = b.end === "pin" ? 1 : b.end === "komite" ? -1 : 0; // önde olan uç yukarıda (rüzgâra yakın)
   const tilt = Math.min(14, b.deg * 2) * d; // çizimde abartılı eğim
   return (
     <>
@@ -318,7 +318,7 @@ function LineCard({ b }) {
           {b.end && <b className="text-[1.625rem] font-bold leading-none text-acc tabular-nums">{b.deg}°</b>}
         </div>
         <p className="mt-0.5 text-[0.8125rem] text-mut">
-          {`Pin'den komite ${b.line}°, rüzgâra dik olsa ${b.ideal}°`}{b.m ? ` · ${b.end === "pin" ? "pin" : "komite"} ≈${b.m} m önde` : ""}
+          {`Komiteden pin ${norm(b.line + 180)}°, rüzgâra dik olsa ${norm(b.ideal + 180)}°`}{b.m ? ` · ${b.end === "pin" ? "pin" : "komite"} ≈${b.m} m önde` : ""}
         </p>
         <svg viewBox="0 0 320 96" className="mt-2 block w-full" aria-hidden="true">
           <line x1="160" y1="4" x2="160" y2="30" stroke="var(--acc)" strokeWidth="3" />

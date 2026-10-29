@@ -7,7 +7,7 @@ Kayıt türleri:
 - "obs": açı ölçümü. obs.kind:
   - "wind": rüzgârın GELDİĞİ yön (derece) ve varsa hızı (knot, kn).
   - "axis": komitenin parkuru kurduğu eksen (orsa yönü).
-  - "line": start hattı açısı. ref "pin": pin (line) botundan komite botunu gördüğü açı; ref "komite": komite botundan pin'i gördüğü açı.
+  - "line": start hattı açısı. ref "pin": pin (line) botundan komite botunu gördüğü açı; ref "komite": komite (ya da hakem) botundan pin'i gördüğü açı; "hakem botundan pin 50", "pin 50" gibi cümleler ref "komite".
   - "mark": bir şamandıraya bakış açısı. ref "m1" orsa/1 nolu, "m2" apaz/2 nolu, "m3" 3 nolu, "m4" 4 nolu.
   - "leg": ayak yönü. ref "m1m2" orsadan apaza, "m2m1" apazdan orsaya.
   obs.by: ölçen "ben" (varsayılan), "komite" (komite/hakem komite botu), "hakem" (hakem botu).
