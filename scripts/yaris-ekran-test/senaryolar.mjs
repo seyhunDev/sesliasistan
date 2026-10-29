@@ -16,8 +16,8 @@ const ymd = (d) => d.toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" }
 const TODAY = ymd(now);
 const plus = (n) => ymd(new Date(now.getTime() + n * 864e5));
 
-// Yarış günü üstü günün evresine göre (RaceDayTop): "1. gün · Yarışta" / "1. gün · Sonuçlar" / "1. gün bitti"
-const DAY_TOP = /\d\. gün (· (Yarışta|Sonuçlar)|bitti)/;
+// Yarış günü üstü günün evresine göre (RaceDayTop): yarışta Multimedya düğmesi / "Sonuçlar" / "Gün bitti" ("N. gün" yazısı yok, 2026-10-29)
+const DAY_TOP = /^(Multimedya|Sonuçlar|(Gün|Yarış) bitti)$/;
 
 async function launch() {
   const { chromium } = await import("playwright-core");

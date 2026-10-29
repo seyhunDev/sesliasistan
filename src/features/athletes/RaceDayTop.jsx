@@ -71,7 +71,8 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
   const last = today >= (r.endDate || r.startDate);
   const tom = nextDay(today);
   const plan = dayPlan(r, tom);
-  const title = phase === "done" ? `${dayAll > 1 ? `${dayNo}. gün` : "Yarış"} bitti` : `${dayAll > 1 ? `${dayNo}. gün · ` : ""}${phase === "results" ? "Sonuçlar" : "Yarışta"}`;
+  // "4. gün · Yarışta" gibi yazı yok (Seyhun 2026-10-29: "o yazıya hiç gerek yok, çok fazla yazı olmasın"); yarış sürerken başlık yok
+  const title = phase === "done" ? (dayAll > 1 && !last ? "Gün bitti" : "Yarış bitti") : phase === "results" ? "Sonuçlar" : "";
   const fin = races.filter((x) => x.fin).length;
   const side =
     phase === "race"
@@ -95,10 +96,12 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
   );
   return (
     <div className="mt-3">
-      <span className="flex items-baseline justify-between gap-3">
-        <b className="truncate text-[1.625rem] font-bold leading-none tracking-tight">{title}</b>
-        {side && <span className="shrink-0 text-[0.8125rem] font-semibold tabular-nums text-white/70">{side}</span>}
-      </span>
+      {(title || side) && (
+        <span className="flex items-baseline justify-between gap-3">
+          {title && <b className="truncate text-[1.625rem] font-bold leading-none tracking-tight">{title}</b>}
+          {side && <span className="shrink-0 text-[0.8125rem] font-semibold tabular-nums text-white/70">{side}</span>}
+        </span>
+      )}
 
       {phase === "race" && (
         <>
