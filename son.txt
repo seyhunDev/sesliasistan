@@ -1,8 +1,8 @@
-Commit: 7b79f28 · Bölge haritasına küçük önizleme (mini) seçeneği (#888)
-Zaman: 2026-10-29-0515 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40804321543
+Commit: 2f1f8b3 · Yarış günü sayfası tek ekran: bölümler ⋯ menüsünde, küçük harita (#890)
+Zaman: 2026-10-29-0533 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40806051457
 
-TAM TEST · 29.10.2026 05:06:12
+TAM TEST · 29.10.2026 05:24:54
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1408/1409 geçti · 1 kalan · 509 sn
+SONUÇ: 1409/1410 geçti · 1 kalan · 505 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -181,8 +181,8 @@ SONUÇ: 1408/1409 geçti · 1 kalan · 509 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 5/5
-  ✓ Yarış sayfası: 5/5
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 6/6
+  ✓ Yarış sayfası: 6/6
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
