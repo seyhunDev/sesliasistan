@@ -52,3 +52,48 @@ export function regionSteps(grid, radar, mode, now) {
 export function mmColor(mm) {
   return mm >= 4 ? "#f43f5e" : mm >= 1.5 ? "#facc15" : mm >= 0.5 ? "#38bdf8" : "#7dd3fc";
 }
+
+// Yaklaştıkça sıklaşan oklar (Seyhun 2026-10-29: "yaklaştıkça oklar daha sık olmalı, koyun içindeki rüzgârı görebilmeliyim").
+// Ekranda ~56 pikselde bir ok; ızgara noktalarının (≈5 km) arası çift doğrusal ara değerle doldurulur: hız düz ortalanır,
+// yön u/v bileşenleriyle (355° ile 5° arası 0° olur, 180° değil). Yeni ölçüm değil: modelin değeri noktalar arasında yumuşatılır.
+// Konumlar adımın katlarına oturur, harita kayınca oklar zıplamaz. bounds: [batı, güney, doğu, kuzey]. Dönen [{ lat, lon, w, d }] (en çok 500)
+export function denseArrows(grid, i, bounds, zoom, px = 56) {
+  if (!grid?.spots?.length || i < 0) return [];
+  const n = Math.round(Math.sqrt(grid.spots.length));
+  const s0 = grid.spots[0];
+  const dLat = n > 1 ? s0.lat - grid.spots[n].lat : 0;
+  const dLon = n > 1 ? grid.spots[1].lon - s0.lon : 0;
+  if (!(dLat > 0 && dLon > 0)) return [];
+  const lonStep = (px * 360) / (256 * 2 ** zoom);
+  const latStep = lonStep * Math.cos((s0.lat * Math.PI) / 180);
+  if (latStep >= dLat * 0.9) return grid.spots.filter((s) => s.w[i] != null && s.d[i] != null).map((s) => ({ lat: s.lat, lon: s.lon, w: s.w[i], d: s.d[i] }));
+  const [w0, so, e0, no] = bounds;
+  const south = Math.max(so, s0.lat - (n - 1) * dLat), north = Math.min(no, s0.lat);
+  const west = Math.max(w0, s0.lon), east = Math.min(e0, s0.lon + (n - 1) * dLon);
+  const out = [];
+  for (let lat = Math.ceil(south / latStep) * latStep; lat <= north; lat += latStep)
+    for (let lon = Math.ceil(west / lonStep) * lonStep; lon <= east; lon += lonStep) {
+      const v = windAt(grid, i, n, dLat, dLon, lat, lon);
+      if (v) out.push({ lat: +lat.toFixed(5), lon: +lon.toFixed(5), ...v });
+      if (out.length >= 500) return out;
+    }
+  return out;
+}
+
+function windAt(grid, i, n, dLat, dLon, lat, lon) {
+  const s0 = grid.spots[0];
+  const fr = (s0.lat - lat) / dLat, fc = (lon - s0.lon) / dLon;
+  const r = Math.min(n - 2, Math.max(0, Math.floor(fr))), c = Math.min(n - 2, Math.max(0, Math.floor(fc)));
+  const tr = fr - r, tc = fc - c;
+  let w = 0, u = 0, v = 0;
+  for (const [dr, dc, k] of [[0, 0, (1 - tr) * (1 - tc)], [0, 1, (1 - tr) * tc], [1, 0, tr * (1 - tc)], [1, 1, tr * tc]]) {
+    const s = grid.spots[(r + dr) * n + c + dc];
+    if (s?.w[i] == null || s?.d[i] == null) return null;
+    const a = (s.d[i] * Math.PI) / 180;
+    w += k * s.w[i];
+    u += k * Math.sin(a);
+    v += k * Math.cos(a);
+  }
+  const d = (Math.round((Math.atan2(u, v) * 180) / Math.PI) + 360) % 360;
+  return { w: Math.round(w), d };
+}
