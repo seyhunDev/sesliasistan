@@ -334,8 +334,8 @@ function AskButton() {
   const { openAssistant, act } = useAssistant();
   const release = ({ short, away }) => (short ? (act.current.release || act.current.cancel)?.() : away ? act.current.cancel?.() : (act.current.release || act.current.stop)?.());
   return (
-    <div className="grid w-[4.25rem] shrink-0 place-items-center rounded-[1.25rem] border border-line bg-card shadow-[0_2px_12px_rgba(38,40,44,.06)]">
-      <VoiceLight state="idle" size="size-12" compact onPress={() => openAssistant({ listen: true, dock: true, examples: ASK_EX })} onRelease={release} />
-    </div>
+    <span className="acenter absolute -top-5 left-1/2 -translate-x-1/2 rounded-full p-1">
+      <VoiceLight state="idle" size="size-[3.75rem]" compact onPress={() => openAssistant({ listen: true, dock: true, examples: ASK_EX })} onRelease={release} />
+    </span>
   );
 }
