@@ -1,8 +1,8 @@
-Commit: e2f1312 · Pusula: Al 10 sn ölçer, ortalama yön (#900)
-Zaman: 2026-10-29-1644 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40883227765
+Commit: b36ecae · Yarış detayı ve Multimedya tek sayfa: alttaki çubukta Yarış sekmesi (#901)
+Zaman: 2026-10-29-2152 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40933252045
 
-TAM TEST · 29.10.2026 16:35:10
+TAM TEST · 29.10.2026 21:42:27
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1409/1410 geçti · 1 kalan · 555 sn
+SONUÇ: 1410/1411 geçti · 1 kalan · 621 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -181,8 +181,8 @@ SONUÇ: 1409/1410 geçti · 1 kalan · 555 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 6/6
-  ✓ Yarış sayfası: 6/6
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 7/7
+  ✓ Yarış sayfası: 7/7
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
