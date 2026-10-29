@@ -793,10 +793,21 @@ async function scenarios4(h) {
       const nav = await page.locator("nav[aria-label='Sekmeler']:visible").count();
       return [n === 0 && nav === 0, `${new URL(page.url()).pathname} · ${n} düğme · sekme çubuğu ${nav}`];
     });
-    const picked = () => page.locator("button[data-day][aria-pressed='true']").getAttribute("data-day").catch(() => "");
+    // gün düğmesi Özet'in yanında (data-cur); günler dokununca açılan listede (Seyhun 2026-10-29)
+    const picked = () => page.locator("button[data-cur]").getAttribute("data-cur").catch(() => "");
+    const dayCount = async () => {
+      await page.locator("button[data-cur]").click({ timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(400);
+      const n = await page.locator("[role=dialog] button[data-day]").count();
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(400);
+      return n;
+    };
     const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
     await check(GN, "Yarış multimedya açılışı", "dün antrenman günü varken bugün seçili, son yarış günü değil", async () => [(await picked()) === today, `${await picked()} · bugün ${today}`]);
-    await page.locator("button[data-day]").last().click().catch(() => {});
+    await page.locator("button[data-cur]").click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    await page.locator("[role=dialog] button[data-day]").last().click().catch(() => {});
     await page.evaluate(() => {
       const n = Date.now;
       Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
@@ -822,7 +833,7 @@ async function scenarios4(h) {
       return [old === 0 && dv === 1 && sf === 1, `eski Başlat ${old} · Devam ${dv} · Sıfırla ${sf}`];
     });
     await check(GN, "Yarış multimedya: denemeleri sıfırla", "Süre › Denemeleri sıfırla → 1 eklenen gün yazar, Sıfırla'dan sonra dünkü gün kalkar", async () => {
-      const before = await page.locator("button[data-day]").count();
+      const before = await dayCount();
       const step = async (name, fn) => fn().catch((e) => { throw new Error(`${name}: ${String(e.message).split("\n")[0]}`); });
       await step("Denemeleri sıfırla", () => page.getByRole("button", { name: "Denemeleri sıfırla" }).click({ timeout: 5000 }));
       const dlg = page.getByRole("dialog", { name: "Denemeleri sıfırla" });
@@ -830,7 +841,7 @@ async function scenarios4(h) {
       const txt = (await dlg.innerText()).replace(/\s+/g, " ");
       await step("Sıfırla", () => dlg.getByRole("button", { name: "Sıfırla", exact: true }).click({ timeout: 5000 }));
       await page.waitForTimeout(1200);
-      const after = await page.locator("button[data-day]").count();
+      const after = await dayCount();
       return [/Eklenen gün 1/.test(txt) && after === before - 1 && (await picked()) === today, `${before} → ${after} gün · ${txt.slice(0, 80)}`];
     });
     await page.context().close();

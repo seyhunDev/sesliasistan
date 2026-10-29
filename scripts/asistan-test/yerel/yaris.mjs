@@ -557,7 +557,7 @@ group("Parkur analizi")([
     return [k, svg, K.cardOf(CC([])), K.cardSvg(null)];
   }, ok: ([k, svg, none, empty]) => k.axis === 325 && k.wind === 318 && k.reach === 205 && !k.est.komite && k.est.pin && svg.startsWith("<svg") && svg.includes(">1A<") && svg.includes("Rüzgâr 318° · 9 kn") && svg.includes(">205°<") && svg.includes("stroke-dasharray") && none === null && empty === "" }],
   ["hakem botundan pin", { desc: "'hakem botundan pin 50', 'pin 40', 'pin end 40' komiteden pin'e bakış (Seyhun 2026-10-29); pin'den komite ayrı", fn: () => ["hakem botundan pin 50'de", "pin 40", "pin end 40 derece", "pin'den komite 40"].map((t) => PK.parseCourseText(t).obs), ok: ([a, b, c, d]) => a.ref === "komite" && a.by === "hakem" && a.deg === 50 && b.ref === "komite" && c.ref === "komite" && d.ref === "pin" }],
-  ["rota kartı eksen", { desc: "sabit eksen 140: pin olmalı 50°, atılan açının hatası ve şimdiki rüzgârda önde olan uç; eksen yoksa ilk rüzgâr sabit", fn: async () => {
+  ["rota kartı eksen", { desc: "sabit eksen 140 yukarıda; pin olmalı = şimdiki rüzgâra dik (150 → 60°), önde olan uç; eksen yoksa ilk rüzgâr sabit", fn: async () => {
     const K = await import("@/lib/courseCard");
     const svg = (obs) => K.cardSvg(K.cardOf(CC(obs)));
     return [
@@ -565,7 +565,7 @@ group("Parkur analizi")([
       svg([{ kind: "axis", deg: 140 }, { kind: "line", ref: "komite", deg: 60 }, { kind: "wind", deg: 110, kn: 12 }]),
       K.cardOf(CC([{ kind: "wind", deg: 140 }, { kind: "wind", deg: 160 }])),
     ];
-  }, ok: ([a, b, k]) => a.includes("Eksen 140°") && a.includes("Pin 40° · olmalı 50° · 10° hata") && a.includes("Komite tarafı 20° önde") && a.includes("10° sağa") && b.includes("Pin tarafı 40° önde") && b.includes("30° sola") && k.axis === 140 && k.wind === 160 }],
+  }, ok: ([a, b, k]) => a.includes("Eksen 140°") && a.includes("Pin 40° · olmalı 60°") && !a.includes("eksene dik") && a.includes("Komite tarafı 20° önde") && a.includes("10° sağa") && b.includes("Pin tarafı 40° önde") && b.includes("30° sola") && k.axis === 140 && k.wind === 160 }],
   ["kayıt temizliği", { desc: "bilinmeyen tür ve derecesiz ölçüm atılır, açı 0–359, bozuk konum düşer, kişisel alan yok", fn: () => PK.cleanCourse({ pts: { komite: { lat: 39, lon: 26 }, pin: { lat: "x" }, sen: { lat: 1, lon: 1 } }, obs: [{ kind: "wind", deg: 370, kn: 6, by: "komite", uid: "u1" }, { kind: "x", deg: 1 }, { kind: "axis" }], len: { orsa: 50 } }), ok: (c) => Object.keys(c.pts).join() === "komite" && c.obs.length === 1 && c.obs[0].deg === 10 && c.obs[0].by === "komite" && !("uid" in c.obs[0]) && !c.len.orsa }],
 ]);
 
