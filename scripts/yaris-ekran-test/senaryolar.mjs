@@ -108,6 +108,12 @@ export async function run(server, log = () => {}) {
     const t = await body();
     return /Bu sayfa açılamadı|Application error|before initialization/i.test(t) || errs.length > 0;
   };
+  // yarış günü bölümü sağ üstteki ⋯ (Yarış ayarları) menüsünden açar
+  const openSec = async (k) => {
+    await page.getByRole("button", { name: "Yarış ayarları" }).click();
+    await page.locator(`[data-sec=${k}]`).click({ timeout: 15000 });
+    await page.waitForTimeout(800);
+  };
   const open = async (path, wait) => {
     errs.length = 0;
     await page.goto(`${server.url}${path}`, { waitUntil: "load", timeout: 120000 });
@@ -140,7 +146,7 @@ export async function run(server, log = () => {}) {
     // Kulüp hesabına bağlan (Sporcular sayfası); sporcular bundan sonra yarış sayfasına gelir
     await page.goto(`${server.url}/athletes/races/r1`, { waitUntil: "load", timeout: 120000 });
     await page.getByText(DAY_TOP).first().waitFor({ timeout: 60000 });
-    await page.locator("nav[aria-label=Bölümler] button", { hasText: "Sporcu" }).click();
+    await openSec("people");
     const form = page.locator("form", { has: page.locator("input[type=password]") }).first();
     await form.waitFor({ timeout: 30000 });
     await form.locator("input").first().fill(OWNER);
@@ -151,21 +157,39 @@ export async function run(server, log = () => {}) {
     log("    Yarış günü (sporcu seçili)…");
     await okPage("Yarış sayfası", "yarış günü, sporcu seçili", "/athletes/races/r1", DAY_TOP, async () => {
       const wx = await page.locator("section[aria-label='Yarış havası']").count();
-      // yarış günü hazırlık altta görünmez, "Hazırlık" sekmesinde (Seyhun 2026-10-29)
-      const hid = !(await page.getByText(/eksik|Hazırlık tamam|iş kaldı/).first().isVisible().catch(() => false));
-      await page.locator("nav[aria-label=Bölümler] button", { hasText: "Hazırlık" }).click().catch(() => {});
-      await page.waitForTimeout(600);
-      const row = hid && (await page.getByText(/eksik|Hazırlık tamam|iş kaldı/).first().isVisible().catch(() => false));
-      if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO, fullPage: true }).catch(() => {});
-      return [wx > 0 && row, `hava ${wx ? "var" : "yok"} · hazırlık satırı ${row ? "var" : "yok"}`];
+      // yarış günü tek ekran (Seyhun 2026-10-29): sekme şeridi yok, Multimedya ekranın içinde; hazırlık ⋯ › Hazırlık penceresinde
+      const nav = await page.locator("nav[aria-label=Bölümler]").count();
+      const mb = await page.getByRole("link", { name: "Multimedya" }).first().boundingBox();
+      const fit = !!mb && mb.y + mb.height <= (page.viewportSize()?.height || 844);
+      if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO }).catch(() => {});
+      await openSec("prep");
+      const row = await page.getByText("Yapılacaklar").first().isVisible().catch(() => false);
+      await page.keyboard.press("Escape").catch(() => {});
+      await page.waitForTimeout(500);
+      return [wx > 0 && !nav && fit && row, `hava ${wx ? "var" : "yok"} · şerit ${nav ? "var" : "yok"} · Multimedya ${fit ? "ekranda" : "ekran dışında"} · hazırlık ${row ? "açıldı" : "açılmadı"}`];
     });
     await okPage("Yarış sayfası", "Sporcu sekmesinde sporcu", "/athletes/races/r1", DAY_TOP, async () => {
-      await page.locator("nav[aria-label=Bölümler] button", { hasText: "Sporcu" }).click();
+      await openSec("people");
       await page.waitForTimeout(1500);
       const name = await page.getByText("Deniz Yılmaz").first().isVisible().catch(() => false);
       const bad = await crashed();
       return [name && !bad, name ? "sporcu görünüyor" : "sporcu görünmedi"];
     });
+    // yarış günü ⋯ içindeki bölümler sırayla açılır
+    try {
+      await page.goto(`${server.url}/athletes/races/r1`, { waitUntil: "load", timeout: 120000 });
+      await page.getByText(DAY_TOP).first().waitFor({ timeout: 60000 });
+      const keys = ["prep", "people", "docs", "trip", "budget"], bad = [];
+      for (const k of keys) {
+        await openSec(k);
+        if (await crashed()) bad.push(k);
+        await page.keyboard.press("Escape").catch(() => {});
+        await page.waitForTimeout(500);
+      }
+      push("Yarış sayfası", "yarış günü ⋯ bölümleri", "her bölüm çökmeden açılır", !bad.length, bad.length ? `çöken: ${bad.join(", ")} · ${errs[0] || ""}` : `${keys.length} bölüm açıldı`);
+    } catch (e) {
+      push("Yarış sayfası", "yarış günü ⋯ bölümleri", "açılır", false, `hata: ${String(e.message).split("\n")[0].slice(0, 200)}`);
+    }
     log("    Yarıştan önce (sporcu seçili)…");
     await okPage("Yarış sayfası", "yarıştan önce, sporcu seçili", "/athletes/races/r2", "gün kaldı");
     // Bütün sekmeler sırayla açılır

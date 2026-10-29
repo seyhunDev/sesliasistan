@@ -719,7 +719,6 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
   const todoList = steps.filter((x) => x.key !== "docs").sort((x, y) => order.indexOf(x.group) - order.indexOf(y.group));
   const doneTasks = doneList.filter((x) => x.key !== "docs");
   const [showDone, setShowDone] = useState(false);
-  const [prepOpen, setPrepOpen] = useState(false); // yarış günü: kalan işler kısa notun altında açılır
   // Yarış kartının satırı: sol ad, sağda durum (ya da mor işlem), altında kısa bilgi
   // Tek satır (Seyhun 2026-10-26: "çok yer kaplıyor, liste gibi"): solda başlık, ortada değer, sağda kısa ek bilgi
   const linkRow = ({ k, title, main, sub, act, onClick, href, right }) => {
@@ -884,7 +883,7 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
       ) : (
         mediaBtn && <div className="mt-4 flex justify-end">{mediaBtn}</div>
       )}
-      <nav aria-label="Bölümler" className="-mx-5 mt-4 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {!raceDay && <nav aria-label="Bölümler" className="-mx-5 mt-4 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map(([k, name, , warn]) => {
           const on = tab === k;
           return (
@@ -894,16 +893,26 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
             </button>
           );
         })}
-      </nav>
+      </nav>}
     </>
   );
+  // yarış günü (Seyhun 2026-10-29): sayfa tek ekran, lacivert alan alt çubuğa kadar iner (altta siyah/açık bölüm başlamaz)
   const navy = (body) => (
-    <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={r.name || "Yarış"}>
+    <section className={`ck -mx-5 px-5 pt-[calc(0.75rem+env(safe-area-inset-top))] ${raceDay && begun ? "flex min-h-dvh flex-col pb-[calc(6.5rem+env(safe-area-inset-bottom))]" : "pb-9"}`} aria-label={r.name || "Yarış"}>
       {head}
       {body}
     </section>
   );
   const light = "relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-0.5";
+  const secName = tabs.find((x) => x[0] === tab)?.[1] || "";
+  const secWrap = (body) =>
+    raceDay ? (
+      <Sheet open={tab !== "sum"} onClose={() => setTab("sum")} title={secName}>
+        <div className="-mt-4">{body}</div>
+      </Sheet>
+    ) : (
+      <div className={light}>{body}</div>
+    );
 
   if (!begun) {
     const form = r.notice || manual;
@@ -980,6 +989,21 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
     <>
       {/* Sağ üstteki ⋯ (Seyhun 2026-10-20: "editleme, silme… bir ayarlar butonuyla ulaşabildiğimiz şeyler olmalı") */}
       <Sheet open={menu} onClose={() => onMenu?.(false)} title="Yarış">
+        {/* yarış günü bölümler burada (Seyhun 2026-10-29: "sporcu, evrak, yolculuk, bütçe… sağ üstteki ayar düğmesine") */}
+        {raceDay && (
+          <ul className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
+            {tabs.map(([k, name, sub, warn]) => (
+              <li key={k}>
+                <button type="button" data-press="row" data-sec={k} onClick={() => (onMenu?.(false), setTab(k))} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <b className="min-w-0 flex-1 text-[1rem] font-medium">{name}</b>
+                  {warn && <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-label="eksik" />}
+                  <span className="shrink-0 text-[0.875rem] text-mut">{sub}</span>
+                  <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         <ul className={`${card} divide-y divide-line overflow-hidden`}>
           {[
             ["Bilgileri düzenle", () => setEdit(true)],
@@ -1126,25 +1150,12 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
       </Sheet>
 
       {navy(top)}
-      <div className={light}>
+      {secWrap(<>
         {alert}
       {(raceDay ? tab === "prep" : tab === "sum") && (
         <>
           {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/media?tab=res` : ""} />}
-          {raceDay && (
-            <button type="button" onClick={() => (!todoList.length && lacking.length ? setTab(lacking[0][0]) : setPrepOpen((v) => !v))} aria-expanded={todoList.length || !lacking.length ? prepOpen : undefined} data-press="row" className={`${card} mt-4 flex min-h-[2.875rem] w-full items-center gap-2.5 px-4 py-2 text-left`}>
-              {todoList.length || lacking.length ? (
-                <span className="size-2 shrink-0 rounded-full bg-amber-500" />
-              ) : (
-                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-ok text-white">
-                  <Icon name="check" className="size-3" />
-                </span>
-              )}
-              <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{todoList.length ? [`${todoList.length} iş kaldı`, missText].filter(Boolean).join(" · ") : missText || "Hazırlık tamam"}</span>
-              <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${prepOpen && (todoList.length || !lacking.length) ? "rotate-90" : ""}`} />
-            </button>
-          )}
-          {!over && (!raceDay || prepOpen) && (
+          {!over && (
             <>
               <Label right={todoList.length ? `${todoList.length} iş` : ""}>Yapılacaklar</Label>
               <ul className={`${card} divide-y divide-line overflow-hidden`}>
@@ -1640,7 +1651,9 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
 
         </>
       )}
+      </>)}
 
+      <div>
       {/* Alt çubuk: belge hazırla → aç / paylaş */}
       <div data-pagebar="" className={`${tab !== "docs" || file ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
         <div className="mx-auto flex max-w-[26rem] gap-2">

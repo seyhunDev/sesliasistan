@@ -86,7 +86,7 @@ export function Wait() {
 // seçebiliyoruz ya, o çok güzel"): yarış günleri gün gün, güne dokununca grafik o güne geçer. Ayrı Hava sekmesi ve Multimedya'daki
 // Hava kalktı. Tahmin henüz çıkmadıysa (ilk gün 16 günden ileride) hiç görünmez.
 // day: açılışta seçili gün (yarış günü akşamı yarın, RaceDayTop)
-export function RaceWx({ r, day = "" }) {
+export function RaceWx({ r, day = "", mini = false }) {
   const today = todayStr();
   const days = raceDays(r);
   const first = days.find((d) => d >= today) || days[days.length - 1] || "";
@@ -101,7 +101,7 @@ export function RaceWx({ r, day = "" }) {
   const st = ob?.rows?.length ? ob.station : null;
   if (!first || first > lastForecastDay(today)) return null;
   return (
-    <section className="mt-4" aria-label="Yarış havası">
+    <section className={`mt-4 ${mini ? "flex flex-1 flex-col" : ""}`} aria-label="Yarış havası">
       <div className="mb-2 flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">
           Hava · {d.place || sp?.name || r.district || r.city}
@@ -146,8 +146,12 @@ export function RaceWx({ r, day = "" }) {
       {/* Bölge haritası (Seyhun 2026-10-28: "yarışların havasında da aynı haritayı görmek istiyorum"): yarış yerinin çevresi, rüzgâr / yağış,
           −2 sa … +12 kaydırıcı. Dokunmak yarışın yerini değiştirmez. */}
       {d.at && (
-        <div className="mt-3">
-          <RegionMap place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
+        <div className={mini ? "mt-3 flex min-h-[4.5rem] flex-1 flex-col" : "mt-3"}>
+          {mini ? (
+            <RegionMap mini className="min-h-[4.5rem] flex-1" place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
+          ) : (
+            <RegionMap place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
+          )}
         </div>
       )}
     </section>

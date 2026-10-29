@@ -82,7 +82,7 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
           : `${races.at(-1).n}. yarış · ${hm(races.at(-1).at)}`
         : ""
       : [races.length && `${races.length} yarış`, fleet && `${fleet} tekne`].filter(Boolean).join(" · ");
-  const wx = <RaceWx key={phase} r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} />;
+  const wx = <RaceWx key={phase} mini r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} />;
   const buttons = (
     <div className="mt-4 flex gap-2">
       <Link href={media} data-press className={`${main} flex-1`}>
@@ -94,8 +94,9 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
       </Link>
     </div>
   );
+  // tek ekran (Seyhun 2026-10-29): kalan yeri harita doldurur, Multimedya · Parkur en altta
   return (
-    <div className="mt-3">
+    <div className="mt-3 flex flex-1 flex-col">
       {(title || side) && (
         <span className="flex items-baseline justify-between gap-3">
           {title && <b className="truncate text-[1.625rem] font-bold leading-none tracking-tight">{title}</b>}
