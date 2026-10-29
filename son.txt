@@ -1,8 +1,8 @@
-Commit: bb2cd85 · Parkur: rota kartı sabit eksene göre (pin hatası, önde olan uç) (#878)
-Zaman: 2026-10-28-2211 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40750468532
+Commit: 6c2b965 · Parkur: hat yazıları belirgin turuncu (#881)
+Zaman: 2026-10-29-0336 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40794068244
 
-TAM TEST · 28.10.2026 22:01:37
+TAM TEST · 29.10.2026 03:27:19
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1409/1409 geçti · 0 kalan · 575 sn
+SONUÇ: 1409/1409 geçti · 0 kalan · 524 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
