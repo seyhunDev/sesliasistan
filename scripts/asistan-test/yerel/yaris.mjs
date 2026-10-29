@@ -606,3 +606,28 @@ group("Yarış günü")([
   }, ok: (r) => r.join() === ",5,5,2,1,2026-11-08,5" }],
   ["bizimkiler", { desc: "sıralılar, sıraya göre", fn: () => RDY.ourPlaces({ rows: { a: { place: 7 }, b: { place: 3 } } }, [{ id: "a", studentName: "Ayşe" }, { id: "b", studentName: "Ali" }, { id: "c", studentName: "Can" }]).map((x) => x.name).join(), ok: (r) => r === "Ali,Ayşe" }],
 ]);
+
+// Pusula (compass.js): dik tutulan telefonda kameranın baktığı yön (Seyhun 2026-10-29: 20° yerine 277° gösteriyordu, dönmüyordu)
+const CP = await import("@/lib/compass");
+const feedN = (read, e, n = 30) => { let h = null; for (let i = 0; i < n; i++) h = read(e); return h; };
+const near = (h, d) => h !== null && Math.abs(CP.angDiff(h, d)) < 1.5;
+group("Pusula")([
+  ["dik tutunca doğru", { desc: "iPhone: düzken kuzey farkı alınır, dikken yanlış webkitCompassHeading (277) dikkate alınmaz → 20°", fn: () => {
+    const read = CP.compassReader();
+    feedN(read, { alpha: 240, beta: 10, gamma: 0, webkitCompassHeading: 20 });
+    return feedN(read, { alpha: 240, beta: 90, gamma: 0, webkitCompassHeading: 277 });
+  }, ok: (h) => near(h, 20) }],
+  ["dikken döner", { desc: "dik tutarak 70° sağa dönünce 90°", fn: () => {
+    const read = CP.compassReader();
+    feedN(read, { alpha: 240, beta: 10, gamma: 0, webkitCompassHeading: 20 });
+    feedN(read, { alpha: 240, beta: 90, gamma: 0, webkitCompassHeading: 277 });
+    return feedN(read, { alpha: 170, beta: 90, gamma: 0, webkitCompassHeading: 277 });
+  }, ok: (h) => near(h, 90) }],
+  ["kuzeyden geçiş", { desc: "350° ile 10° arası yumuşatma 180'e kaçmaz", fn: () => {
+    const read = CP.compassReader();
+    feedN(read, { alpha: 10, beta: 10, gamma: 0, webkitCompassHeading: 350 });
+    return [read({ alpha: 350, beta: 10, gamma: 0, webkitCompassHeading: 10 }), feedN(read, { alpha: 350, beta: 10, gamma: 0, webkitCompassHeading: 10 })];
+  }, ok: ([a, b]) => (a > 340 || a < 20) && near(b, 10) }],
+  ["Android", { desc: "kuzeye bağlı alpha, dik tutunca kameranın yönü", fn: () => feedN(CP.compassReader(), { alpha: 340, beta: 90, gamma: 0, absolute: true }), ok: (h) => near(h, 20) }],
+  ["fark yokken", { desc: "telefon hiç düz tutulmadıysa okunamadı", fn: () => feedN(CP.compassReader(), { alpha: 240, beta: 90, gamma: 0, webkitCompassHeading: 277 }), ok: (h) => h === null }],
+]);
