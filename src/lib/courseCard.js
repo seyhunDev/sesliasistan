@@ -46,7 +46,7 @@ function svgOf(c, { w = 350, h = 500 } = {}) {
   const S = (p) => { const [x, y] = R(p); return [w / 2 + (x - cx) * s, pad.t + (h - pad.t - pad.b) / 2 - (y - cy) * s]; };
   const pt = (k) => S(g[k]);
   const f = (n) => n.toFixed(1);
-  const ink = "#26282c", mut = "#74777d", acc = "#0b7f99", amb = "#f59e0b";
+  const ink = "#26282c", mut = "#74777d", acc = "#0b7f99", amb = "#f59e0b", org = "#e0700b"; // org: hat yazıları belirgin turuncu (Seyhun 2026-10-29)
   let o = "";
   const line = (a, b, st = "", sw = 2) => (o += `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${ink}" stroke-width="${sw}" ${st}/>`);
   const path = (pts, st = "") => (o += `<polyline points="${pts.map((p) => `${f(p[0])},${f(p[1])}`).join(" ")}" fill="none" stroke="${ink}" stroke-width="2" stroke-linejoin="round" ${st}/>`);
@@ -75,8 +75,8 @@ function svgOf(c, { w = 350, h = 500 } = {}) {
   if (Math.abs(off) >= 1) o += `<line x1="${f(ko[0])}" y1="${f(ko[1])}" x2="${f(pid[0])}" y2="${f(pid[1])}" stroke="${mut}" stroke-width="1.5" stroke-dasharray="2 4"/>`;
   o += `<line x1="${f(pi[0])}" y1="${f(pi[1])}" x2="${f(ko[0])}" y2="${f(ko[1])}" stroke="${amb}" stroke-width="3" stroke-dasharray="7 5"/>`;
   boat(ko, c.est?.komite); boat(pi, c.est?.pin);
-  o += `<text x="${f(ko[0] + 12)}" y="${f(ko[1] + 24)}" text-anchor="start" font-size="11" font-weight="600" fill="${ink}">Komite</text>`;
-  o += `<text x="${f(pi[0] - 14)}" y="${f(pi[1] + 4)}" text-anchor="end" font-size="11" font-weight="600" fill="${ink}">Pin ${g.toPin}°</text>`;
+  o += `<text x="${f(ko[0] + 12)}" y="${f(ko[1] + 24)}" text-anchor="start" font-size="12" font-weight="700" fill="${org}">Komite</text>`;
+  o += `<text x="${f(pi[0] - 14)}" y="${f(pi[1] + 4)}" text-anchor="end" font-size="12" font-weight="700" fill="${org}">Pin ${g.toPin}°</text>`;
   // finiş
   line(pt("fA"), pt("fB"), `stroke-width="2"`, 2);
   boat(pt("fA"), true);
@@ -106,7 +106,7 @@ function svgOf(c, { w = 350, h = 500 } = {}) {
     const b = diff(nrm(c.wind + 90), g.lineDeg);
     rows.push(Math.abs(b) < 1 ? `Rüzgâr ${nrm(c.wind)}°: hat dik, iki uç eşit` : `Rüzgâr ${nrm(c.wind)}°: ${b > 0 ? "Pin" : "Komite"} tarafı ${Math.abs(b)}° önde`);
   }
-  rows.forEach((t, i) => (o += `<text x="${w / 2}" y="${h - 46 + i * 20}" text-anchor="middle" font-size="${i ? 13 : 12}" font-weight="${i ? 700 : 500}" fill="${i ? ink : mut}">${t}</text>`));
+  rows.forEach((t, i) => (o += `<text x="${w / 2}" y="${h - 46 + i * 20}" text-anchor="middle" font-size="13" font-weight="700" fill="${i ? ink : org}">${t}</text>`));
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Inter,sans-serif">${o}</svg>`;
 }
 
