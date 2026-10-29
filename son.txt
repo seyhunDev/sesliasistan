@@ -1,8 +1,8 @@
-Commit: c32c1d1 · Yarış günü: hazırlık ve plan Hazırlık sekmesinde, altta görünmez (#884)
-Zaman: 2026-10-29-0420 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40798825192
+Commit: 3ef5982 · Parkur kartı: hat bilgisi start hattının altında, eksen komite yanında (#886)
+Zaman: 2026-10-29-0453 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40802076191
 
-TAM TEST · 29.10.2026 04:11:57
+TAM TEST · 29.10.2026 04:44:16
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1409/1409 geçti · 0 kalan · 515 sn
+SONUÇ: 1408/1409 geçti · 1 kalan · 505 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -139,7 +139,7 @@ SONUÇ: 1409/1409 geçti · 0 kalan · 515 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 131/131
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 130/131
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Ana sayfa: 5/5
   ✓ Enerji (boşta): 2/2
@@ -165,7 +165,10 @@ SONUÇ: 1409/1409 geçti · 0 kalan · 515 sn
   ✓ Tam ekran üstte: 1/1
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
-  ✓ Hava: 3/3
+  ✗ Hava: 2/3
+      ✗ “radar ve nokta”
+          beklenen: son 2 saat radar yağan çubuklarda (beyaz), açıklamada Yağan; Bölge başlığı, istasyon adı ve bölge haritası
+          olan:     yağan çubuk 4 · açıklama true · Nokta 1 · istasyon 1 · harita açıklaması "" · kaynak 1
   ✓ Güvenlik: 1/1
 
 3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 21/21
