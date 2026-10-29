@@ -1,8 +1,8 @@
-Commit: 245caea · Sonuçlar: solda büyük genel sıra, üç satır, kategori sıraları herkes için (#894)
-Zaman: 2026-10-29-0810 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40820791493
+Commit: 65190ea · Parkur: lacivert zemin, ince yazılı rota kartı ön planda, hizalı listeler (#895)
+Zaman: 2026-10-29-0833 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40823005922
 
-TAM TEST · 29.10.2026 07:59:58
+TAM TEST · 29.10.2026 08:22:50
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1410/1410 geçti · 0 kalan · 614 sn
+SONUÇ: 1410/1410 geçti · 0 kalan · 606 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
