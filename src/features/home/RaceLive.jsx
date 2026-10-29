@@ -150,9 +150,17 @@ function Controls({ id, orgId, title, onMenu }) {
           <span className="size-2 shrink-0 rounded-full bg-[#f05a5a] shadow-[0_0_0_4px_rgba(240,90,90,.25)]" />
           <span className="truncate">
             {title}
-            {name && <span className="font-normal text-white/60"> · {name}</span>}
+            {/* Kaçıncı yarış yazılmaz (Seyhun 2026-10-29); başka sayfanın sayacıysa onun adı */}
+            {!ours && name && <span className="font-normal text-white/60"> · {name}</span>}
           </span>
         </Link>
+        {/* Süre seçimi sağ üstte ⋯ yanında (Seyhun 2026-10-29) */}
+        {ours && idle && (
+          <button type="button" data-press aria-label="Süre seç" onClick={() => setPick(true)} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-white/12 px-3 text-[0.8125rem] font-semibold">
+            {Math.round(t.dur / 60)} dk
+            <Icon name="chev" className="size-3.5 rotate-90 text-white/60" />
+          </button>
+        )}
         <button type="button" data-press aria-label="Yarış kısayolu seçenekleri" onClick={onMenu} className="grid size-8 shrink-0 place-items-center rounded-full bg-white/12 text-white">
           <Icon name="more" className="size-5" />
         </button>
@@ -160,12 +168,6 @@ function Controls({ id, orgId, title, onMenu }) {
       <div className="mt-2.5 text-center" onPointerDown={() => running && !up && audio()}>
         <small className="block text-[0.6875rem] font-semibold uppercase tracking-[.08em] text-white/60">{head}</small>
         <b className={`block font-extrabold leading-[1.05] tracking-[-.04em] tabular-nums ${up ? "text-[clamp(2.75rem,calc(var(--u,7px)*9.2),4.75rem)]" : "text-[clamp(3rem,calc(var(--u,7px)*10.5),5.5rem)]"} ${hot ? "text-[#f4a49c]" : ""}`}>{time}</b>
-        {ours && idle && (
-          <button type="button" data-press aria-label="Süre seç" onClick={() => setPick(true)} className="mt-0.5 inline-flex h-8 items-center gap-1 rounded-full bg-white/10 px-3 text-[0.875rem] font-semibold">
-            {Math.round(t.dur / 60)} dk
-            <Icon name="chev" className="size-3.5 rotate-90 text-white/60" />
-          </button>
-        )}
       </div>
       {(running || paused) && !up && steps.length > 1 && <Seq steps={steps} total={total} left={left} />}
       {ours && running && !up && (
