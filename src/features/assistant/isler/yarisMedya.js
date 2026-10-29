@@ -1,8 +1,10 @@
 // Yarış multimedya sayfası işleri (elle yapılanların sesle yapılanı):
-// "rüzgar 15 knot kuzeybatı" → o günün yarışına rüzgâr kaydı (saat şimdi); "5 dakikalık sayacı başlat" → start sayacı başlar,
+// "rüzgar 15 knot kuzeybatı" → o günün yarışına rüzgâr kaydı (saat şimdi); "parkur ekseni 320", "pinden komite 110" → o günün
+// Parkur ölçümü (Parkur sekmesindeki Yön ekle / Pusula ile aynı kayıt, kart hemen çizilir); "5 dakikalık sayacı başlat" → start sayacı başlar,
 // yarışın Süre sekmesi açılır (bugün yarış yoksa antrenman sayfası). Yarış: açık yarış ya da multimedya sayfası, yoksa bugün süren yarış.
 import { liveRace, timerCommand, windCommand, dirShort } from "@/lib/raceLive";
-import { addWind } from "@/features/athletes/raceLiveStore";
+import { addCourseObs, addWind } from "@/features/athletes/raceLiveStore";
+import { cleanObs, courseCommand, obsTitle } from "@/lib/raceCourse";
 import { startTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
 
@@ -43,5 +45,26 @@ export async function timerCmd(ctx, s, viaVoice) {
   const href = r ? `${own}?tab=sure` : own;
   if (`${window.location.pathname}${window.location.search}` !== href) router.push(href);
   done(`Sayaç başladı: ${tc.sec / 60} dakika.`, { engine: "local" }, viaVoice);
+  return true;
+}
+
+export async function courseCmd(ctx, s, viaVoice) {
+  const { owner, racer, raceOrg, reply, done, setPhase } = ctx;
+  const cc = owner && racer ? courseCommand(s) : null;
+  if (!cc) return undefined;
+  const r = raceFor(ctx);
+  if (!r) {
+    reply("Bugün süren bir yarış yok. Parkuru yarışın multimedya sayfasından ekleyebilirsin.", { engine: "local" }, viaVoice);
+    return true;
+  }
+  const o = cleanObs({ ...cc.obs, at: new Date().toISOString() });
+  if (!o) return undefined;
+  setPhase?.("thinking");
+  try {
+    await addCourseObs(raceOrg, r.id, todayStr(), o);
+    done(`Yazdım: ${obsTitle(o)} ${o.deg}°${o.kn != null ? `, ${o.kn} knot` : ""}.`, { engine: "local" }, viaVoice);
+  } catch {
+    reply("Parkura yazamadım, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
+  }
   return true;
 }

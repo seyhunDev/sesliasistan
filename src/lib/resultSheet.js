@@ -212,6 +212,7 @@ const low = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/[?.!…]+
 export function resultsAsk(raw) {
   const t = low(raw);
   if (/(sonuç\p{L}* (yükle|ekle|sil)|pdf)/u.test(t)) return null;
+  if (/\d+\s*derece/u.test(t)) return null; // "orsa şamandırası 15 derece": açı, sıralama değil (parkur)
   let m = t.match(/^(.+?)(?:['’]?n[ıiuü]n)? (?:yarış |son yarış )?(?:sonuçları|sonuçlarını göster|sonuçları neler|derece\p{L}*)(?: (?:neler|ne|nasıl|göster|söyle|oku))?$/u);
   if (m) return { name: nameIn(m[1]), race: "" };
   m = t.match(/^(?:(.+?) yarışında )?(.+?) kaçıncı (?:oldu|geldi|bitirdi|olmuş|gelmiş)$/u);

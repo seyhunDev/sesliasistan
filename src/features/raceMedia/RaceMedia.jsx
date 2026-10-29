@@ -30,6 +30,8 @@ import { useLiveSync } from "./useLiveSync";
 import { takeShot } from "./handoff";
 import { useTabInUrl } from "@/hooks/useTabInUrl";
 import { CourseTab } from "./CourseTab";
+import { VoiceLight } from "@/features/home/TabBar";
+import { useAssistant } from "@/features/assistant/AssistantProvider";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
 // Süre: start sayacı (5 dk dizisi)
@@ -239,7 +241,7 @@ export function RaceMedia({ orgId, id }) {
           change({ days: next }, () => saveDays(orgId, id, next));
         }}
       />
-      <TabDock tabs={RACE_TABS} value={tab} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} />
+      <TabDock tabs={RACE_TABS} value={tab} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} extra={<AskButton examples={tab === "course" ? COURSE_EX : RACE_EX} />} />
       <ResetSheet
         open={reset}
         onClose={() => setReset(false)}
@@ -315,6 +317,19 @@ export function TabDock({ tabs = TABS, value, onChange, onRec, extra = null }) {
         {extra && <div className="relative w-[5rem] shrink-0">{extra}</div>}
       </div>
     </nav>
+  );
+}
+
+// Asistan (Seyhun 2026-10-29 "ses asistanı butonunu da koyalım parkura"): basılı tut konuş, bırak gönder; örnekler sekmeye göre
+const RACE_EX = ["Rüzgar 12 knot kuzeybatı", "5 dakikalık sayacı başlat"];
+const COURSE_EX = ["Parkur ekseni 320", "Pinden komite 110", "Rüzgar 330 derece 12 knot"];
+export function AskButton({ examples = RACE_EX }) {
+  const { openAssistant, act } = useAssistant();
+  const release = ({ short, away }) => (short ? (act.current.release || act.current.cancel)?.() : away ? act.current.cancel?.() : (act.current.release || act.current.stop)?.());
+  return (
+    <span className="acenter absolute -top-5 left-1/2 -translate-x-1/2 rounded-full p-1">
+      <VoiceLight state="idle" size="size-[3.75rem]" compact onPress={() => openAssistant({ listen: true, dock: true, examples })} onRelease={release} />
+    </span>
   );
 }
 

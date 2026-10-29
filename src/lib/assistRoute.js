@@ -41,6 +41,7 @@ import { resultsAsk } from "@/lib/resultSheet";
 import { debtAsk, debtCommand } from "@/lib/debts";
 import { wordCommand } from "@/lib/englishWords";
 import { timerCommand, windCommand } from "@/lib/raceLive";
+import { courseCommand } from "@/lib/raceCourse";
 import { resultCommand } from "@/lib/raceVoice";
 import { attQueryAsk } from "@/lib/attQuery";
 import { clubAsk } from "@/lib/clubAsk";
@@ -76,6 +77,7 @@ export function moreKind(s, c = {}) {
   if (ia && (ia.kind !== "invoices" || owner)) return "infoAsk";
   if (racer && timerCommand(s)) return "raceTimer";
   if (owner && racer && windCommand(s)) return "raceWind";
+  if (owner && racer && courseCommand(s)) return "raceCourse";
   if (onRace && racer && raceHereCommand(s)) return "raceHere";
   if (owner && racer && !onRace && resultCommand(s)) return "trainResult";
   if (owner && receiptPayCommand(s)) return "receiptPay";
