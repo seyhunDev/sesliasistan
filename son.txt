@@ -1,8 +1,8 @@
-Commit: 6c2b965 · Parkur: hat yazıları belirgin turuncu (#881)
-Zaman: 2026-10-29-0336 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40794068244
+Commit: 18314c2 · Yarış multimedya: gün düğmesi Özet yanında; Parkur: söyle/yaz kaldırıldı, Yön ekle, olmalı rüzgâra göre, okunur renkler (#882)
+Zaman: 2026-10-29-0404 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40797128277
 
-TAM TEST · 29.10.2026 03:27:19
+TAM TEST · 29.10.2026 03:55:24
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1409/1409 geçti · 0 kalan · 524 sn
+SONUÇ: 1409/1409 geçti · 0 kalan · 546 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
