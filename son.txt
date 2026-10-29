@@ -1,8 +1,8 @@
-Commit: ca8502e · Multimedya alt sekmeleri uygulamanın alt çubuğuyla aynı, Kayıt yuvarlak düğme (#896)
-Zaman: 2026-10-29-0910 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40826618318
+Commit: c217d71 · Pusula: dik tutunca kameranın baktığı yön (üst kenar yerine) (#897)
+Zaman: 2026-10-29-1110 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40839058502
 
-TAM TEST · 29.10.2026 09:00:51
+TAM TEST · 29.10.2026 11:00:33
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1410/1410 geçti · 0 kalan · 573 sn
+SONUÇ: 1410/1410 geçti · 0 kalan · 584 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
