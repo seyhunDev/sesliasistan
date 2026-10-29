@@ -94,7 +94,8 @@ const RACE = { ph: "Bu yarışla ilgili söyle…", ex: ["Mehmet'i de ekle", "No
 const isRace = (path) => path.startsWith("/athletes/races/");
 // Yarış multimedya ve antrenman sayfası kendi alt sekmelerini (Süre · Medya · Hava · Sonuçlar) gösterir
 // Tam ekran sayfalar (sekme çubuğu yok): yarış multimedya, antrenman günü, gömülü Market /sanal (Seyhun 2026-10-25 "tam ekran olmalı")
-const isMedia = (path) => /^\/athletes\/races\/[^/]+\/media/.test(path) || path === "/training/day" || path === "/sanal";
+// yarış sayfası da (kendi alt çubuğu: Yarış · Süre · Medya · Parkur · Sonuçlar, RaceMedia RACE_DOCK); yeni yarış formu değil
+const isMedia = (path) => /^\/athletes\/races\/[^/]+\/media/.test(path) || /^\/athletes\/races\/(?!new$)[^/]+$/.test(path) || path === "/training/day" || path === "/sanal";
 // Tek gönderi ekranı: söylenen açık gönderiyi değiştirir (PostEditor)
 const POST = { ph: "Gönderiyle ilgili söyle…", ex: ["Daha kısa ve samimi yaz", "Mete ikinci oldu diye ekle", "Gün batımında teknelerle görsel üret"] };
 const isPost = (path) => path.startsWith("/posts/");

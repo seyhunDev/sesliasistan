@@ -16,8 +16,8 @@ const ymd = (d) => d.toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" }
 const TODAY = ymd(now);
 const plus = (n) => ymd(new Date(now.getTime() + n * 864e5));
 
-// Yarış günü üstü günün evresine göre (RaceDayTop): yarışta Multimedya düğmesi / "Sonuçlar" / "Gün bitti" ("N. gün" yazısı yok, 2026-10-29)
-const DAY_TOP = /^(Multimedya|Sonuçlar|(Gün|Yarış) bitti)$/;
+// Yarış günü üstü günün evresine göre (RaceDayTop): yarışta "2. yarış · 12:30" / "Sonuçlar" / "Gün bitti" ("N. gün" yazısı yok, 2026-10-29)
+const DAY_TOP = /^(\d+\. yarış · \d\d:\d\d|\d+ yarış bitti|Sonuçlar|(Gün|Yarış) bitti)$/;
 
 async function launch() {
   const { chromium } = await import("playwright-core");
@@ -157,16 +157,16 @@ export async function run(server, log = () => {}) {
     log("    Yarış günü (sporcu seçili)…");
     await okPage("Yarış sayfası", "yarış günü, sporcu seçili", "/athletes/races/r1", DAY_TOP, async () => {
       const wx = await page.locator("section[aria-label='Yarış havası']").count();
-      // yarış günü tek ekran (Seyhun 2026-10-29): sekme şeridi yok, Multimedya ekranın içinde; hazırlık ⋯ › Hazırlık penceresinde
+      // yarış günü tek ekran (Seyhun 2026-10-29): sekme şeridi yok; Yarış · Süre · Medya · Parkur · Sonuçlar alttaki çubukta (aynı sayfanın sekmeleri); hazırlık ⋯ › Hazırlık penceresinde
       const nav = await page.locator("nav[aria-label=Bölümler]").count();
-      const mb = await page.getByRole("link", { name: "Multimedya" }).first().boundingBox();
+      const mb = await page.locator("nav[aria-label='Multimedya sekmeleri']").getByRole("button", { name: "Medya" }).first().boundingBox();
       const fit = !!mb && mb.y + mb.height <= (page.viewportSize()?.height || 844);
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO }).catch(() => {});
       await openSec("prep");
       const row = await page.getByText("Yapılacaklar").first().isVisible().catch(() => false);
       await page.keyboard.press("Escape").catch(() => {});
       await page.waitForTimeout(500);
-      return [wx > 0 && !nav && fit && row, `hava ${wx ? "var" : "yok"} · şerit ${nav ? "var" : "yok"} · Multimedya ${fit ? "ekranda" : "ekran dışında"} · hazırlık ${row ? "açıldı" : "açılmadı"}`];
+      return [wx > 0 && !nav && fit && row, `hava ${wx ? "var" : "yok"} · şerit ${nav ? "var" : "yok"} · alt çubuk ${fit ? "ekranda" : "ekran dışında"} · hazırlık ${row ? "açıldı" : "açılmadı"}`];
     });
     await okPage("Yarış sayfası", "Sporcu sekmesinde sporcu", "/athletes/races/r1", DAY_TOP, async () => {
       await openSec("people");
@@ -207,6 +207,16 @@ export async function run(server, log = () => {}) {
     }
     log("    Multimedya…");
     await okPage("Yarış sayfası", "Multimedya", "/athletes/races/r1/media", "Start sayacı");
+    // Detay ve Multimedya tek sayfa (Seyhun 2026-10-29): alttaki çubukta Süre → sayaç, Yarış → yarış sayfası
+    await okPage("Yarış sayfası", "alt çubukta Süre ve Yarış sekmesi", "/athletes/races/r1", DAY_TOP, async () => {
+      const bar = page.locator("nav[aria-label='Multimedya sekmeleri']");
+      await bar.getByRole("button", { name: "Süre" }).click();
+      await page.getByText("Start sayacı").first().waitFor({ timeout: 60000 });
+      const sure = page.url().includes("/athletes/races/r1/media");
+      await bar.getByRole("button", { name: "Yarış", exact: true }).click();
+      const back = await page.waitForURL((u) => u.pathname === "/athletes/races/r1", { timeout: 60000 }).then(() => true, () => false);
+      return [sure && back, `Süre ${sure ? "sayacı açtı" : "açmadı"} · Yarış ${back ? "geri döndü" : "dönmedi"}`];
+    });
   } finally {
     await browser.close();
   }

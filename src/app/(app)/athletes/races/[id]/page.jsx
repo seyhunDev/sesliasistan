@@ -28,6 +28,8 @@ import { doc } from "firebase/firestore";
 import { updateDoc } from "@/lib/firebase/write";
 import { todayStr } from "@/lib/utils/format";
 import { goBack } from "@/lib/navTrail";
+import { AskButton, RACE_DOCK, TabDock } from "@/features/raceMedia/RaceMedia";
+import { handShot } from "@/features/raceMedia/handoff";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
 export default function RacePage() {
@@ -220,6 +222,8 @@ function Race({ orgId, uid, email, by, mail, coach }) {
             onCoach={onCoach}
             onMailTo={(list) => updateDoc(doc(db, "users", uid), { mailTo: list }).catch(() => toast("Adres kaydedilemedi"))}
           />
+          {/* Yarış · Süre · Medya · Parkur · Sonuçlar tek sayfanın sekmeleri (Seyhun 2026-10-29 "aynı sayfa farklı sekmeler olsun") */}
+          {race.id && <TabDock tabs={RACE_DOCK} value="race" onChange={(k) => router.replace(`/athletes/races/${race.id}/media?tab=${k}`)} onRec={(f) => (handShot(race.id, f), router.replace(`/athletes/races/${race.id}/media?tab=media`))} extra={<AskButton />} />}
         </>
       )}
     </main>
