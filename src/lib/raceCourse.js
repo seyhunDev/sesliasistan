@@ -16,8 +16,8 @@ export const PT_NAME = { komite: "Komite", pin: "Pin", m1: "1 nolu (orsa)", m2: 
 export const PICKS = [
   ["wind", "", "Rüzgâr"],
   ["axis", "", "Parkur ekseni"],
-  ["line", "pin", "Pin'den komite"],
   ["line", "komite", "Komiteden pin"],
+  ["line", "pin", "Pin'den komite"],
   ["mark", "m1", "Orsa şamandırası"],
   ["mark", "m2", "Apaz şamandırası"],
   ["leg", "m1m2", "Orsadan apaza"],
@@ -112,7 +112,8 @@ export function parseCourseText(text) {
   if (/orsadan apaz/.test(t)) Object.assign(o, { kind: "leg", ref: "m1m2" });
   else if (/apazdan orsa/.test(t)) Object.assign(o, { kind: "leg", ref: "m2m1" });
   else if (/pin(den|'den)? komite|pinden|line(dan|'dan)? komite|hattan komite/.test(t)) Object.assign(o, { kind: "line", ref: "pin" });
-  else if (/komite(den|'den)? (pin|line)|komiteden/.test(t) && !/rüzgar|rüzgâr/.test(t)) Object.assign(o, { kind: "line", ref: "komite" });
+  // komiteden / hakem botundan pin'e bakış; yalnız "pin 40" da komiteden sayılır (Seyhun 2026-10-29: "hakem botundan pin 50'de")
+  else if (/(komite|hakem)\S* (botu\S* )?(pin|line)|komiteden|\bpin(ent| ?end| ucu)?\S* \d/.test(t) && !/rüzgar|rüzgâr/.test(t)) Object.assign(o, { kind: "line", ref: "komite" });
   else if (/eksen|parkur(u)? (\d|şu|derece)|parkuru .*kur/.test(t)) Object.assign(o, { kind: "axis" });
   else if (/rüzgar|rüzgâr|esiyor|geliyor/.test(t) || kn) Object.assign(o, { kind: "wind", kn: kn ? +kn[1] : null });
   else if (mark && /(görüyor|bakıyor|yön|açı|derece)/.test(t)) Object.assign(o, { kind: "mark", ref: mark });

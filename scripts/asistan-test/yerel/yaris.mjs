@@ -556,6 +556,7 @@ group("Parkur analizi")([
     const svg = K.cardSvg(k);
     return [k, svg, K.cardOf(CC([])), K.cardSvg(null)];
   }, ok: ([k, svg, none, empty]) => k.axis === 325 && k.wind === 318 && k.reach === 205 && !k.est.komite && k.est.pin && svg.startsWith("<svg") && svg.includes(">1A<") && svg.includes("Rüzgâr 318° · 9 kn") && svg.includes(">205°<") && svg.includes("stroke-dasharray") && none === null && empty === "" }],
+  ["hakem botundan pin", { desc: "'hakem botundan pin 50', 'pin 40', 'pin end 40' komiteden pin'e bakış (Seyhun 2026-10-29); pin'den komite ayrı", fn: () => ["hakem botundan pin 50'de", "pin 40", "pin end 40 derece", "pin'den komite 40"].map((t) => PK.parseCourseText(t).obs), ok: ([a, b, c, d]) => a.ref === "komite" && a.by === "hakem" && a.deg === 50 && b.ref === "komite" && c.ref === "komite" && d.ref === "pin" }],
   ["rota kartı eksen", { desc: "sabit eksen 140: pin olmalı 50°, atılan açının hatası ve şimdiki rüzgârda önde olan uç; eksen yoksa ilk rüzgâr sabit", fn: async () => {
     const K = await import("@/lib/courseCard");
     const svg = (obs) => K.cardSvg(K.cardOf(CC(obs)));
