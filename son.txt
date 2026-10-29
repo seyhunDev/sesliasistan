@@ -1,8 +1,8 @@
-Commit: cad9b66 · Parkur: kart kutusuz, düğmeler kartın altında, sade Özet (#887)
-Zaman: 2026-10-29-0504 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40803198859
+Commit: 7b79f28 · Bölge haritasına küçük önizleme (mini) seçeneği (#888)
+Zaman: 2026-10-29-0515 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40804321543
 
-TAM TEST · 29.10.2026 04:54:45
+TAM TEST · 29.10.2026 05:06:12
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1408/1409 geçti · 1 kalan · 537 sn
+SONUÇ: 1408/1409 geçti · 1 kalan · 509 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
