@@ -287,29 +287,32 @@ const TAB_ICON = { sure: "clock", media: "image", res: "flag", course: "map" };
 export function TabDock({ tabs = TABS, value, onChange, onRec, extra = null }) {
   useEffect(() => {
     const r = document.documentElement.style;
-    r.setProperty("--bar-b", "calc(env(safe-area-inset-bottom) + 4.75rem)");
+    r.setProperty("--bar-b", "calc(env(safe-area-inset-bottom) + 5rem)");
     return () => r.removeProperty("--bar-b");
   }, []);
+  // Uygulamanın alt sekme çubuğuyla aynı (Seyhun 2026-10-29 "uygulamayla uyumlu"): kenardan kenara bulanık çubuk, seçili sekme camgöbeği,
+  // Kayıt sağ uçta asistan küresinin yerinde yukarı taşan yuvarlak düğme
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-[31] mx-auto w-full max-w-[30rem] px-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
-      <div className="flex gap-2">
-        <div className="grid flex-1 grid-cols-4 rounded-[1.25rem] border border-line bg-card p-1.5 shadow-[0_2px_12px_rgba(38,40,44,.06)]">
+    <nav aria-label="Multimedya sekmeleri" className="atabbar fixed inset-x-0 bottom-0 z-[31] pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-0.5rem))]">
+      <div className="mx-auto flex h-14 max-w-[34rem] items-stretch">
+        <div className="grid min-w-0 flex-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map(([k, l]) => (
-            <button key={k} type="button" onClick={() => onChange(k)} aria-pressed={value === k} className={`flex flex-col items-center gap-0.5 rounded-[0.875rem] py-1.5 text-[0.71875rem] ${value === k ? "bg-accbg font-semibold text-deep" : "text-mut"}`}>
-              <Icon name={TAB_ICON[k]} className="size-[1.375rem]" />
-              {l}
+            <button key={k} type="button" onClick={() => onChange(k)} aria-pressed={value === k} className={`flex h-full min-w-0 touch-manipulation flex-col items-center justify-center gap-1 transition active:scale-95 ${value === k ? "text-acc" : "text-mut"}`}>
+              <Icon name={TAB_ICON[k]} className="size-6" />
+              <span className={`text-[0.6875rem] ${value === k ? "font-bold" : "font-medium"}`}>{l}</span>
             </button>
           ))}
         </div>
         {onRec && (
-          <RecPick onFile={onRec} onTaken={() => onChange("media")} aria-label="Kayıt" className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[1.25rem] border border-line bg-card text-[0.71875rem] font-semibold shadow-[0_2px_12px_rgba(38,40,44,.06)]">
-            <span className="grid size-[1.375rem] place-items-center rounded-full border-2 border-rec">
-              <span className="size-2.5 rounded-full bg-rec" />
+          <div className="relative w-[5rem] shrink-0">
+            <span className="acenter absolute -top-5 left-1/2 -translate-x-1/2 rounded-full p-1">
+              <RecPick onFile={onRec} onTaken={() => onChange("media")} aria-label="Kayıt" className="grid size-[3.75rem] touch-manipulation place-items-center rounded-full border-[3px] border-rec transition active:scale-90">
+                <span className="size-[2.375rem] rounded-full bg-rec" />
+              </RecPick>
             </span>
-            Kayıt
-          </RecPick>
+          </div>
         )}
-        {extra}
+        {extra && <div className="relative w-[5rem] shrink-0">{extra}</div>}
       </div>
     </nav>
   );
