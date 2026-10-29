@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
 import { Icon } from "@/components/ui/Icon";
@@ -45,11 +45,15 @@ import { useAssistant } from "@/features/assistant/AssistantProvider";
 const TABS = [["sure", "Süre"], ["media", "Medya"], ["res", "Sonuçlar"]];
 // Parkur yalnız yarışta (Seyhun 2026-10-28 "Parkur analizi"); antrenman günü sayfası TABS'ı kullanır
 const RACE_TABS = [TABS[0], TABS[1], ["course", "Parkur"], TABS[2]]; // örnekteki sıra: Süre · Medya · Parkur · Sonuçlar
+// Yarış sayfası ve multimedya tek sayfa gibi (Seyhun 2026-10-29 "detay, multimedya aynı sayfa farklı sekmeler olsun"): alt çubukta
+// ilk sekme Yarış (yarış sayfası /athletes/races/<id>), diğerleri multimedya (/media?tab=…); geçiş replace ile, geri tuşu listeye
+export const RACE_DOCK = [["race", "Yarış"], ...RACE_TABS];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 
 export function RaceMedia({ orgId, id }) {
   const toast = useToast();
   const q = useSearchParams();
+  const router = useRouter();
   const [tabPick, setTab] = useState(RACE_TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
   useTabInUrl(tabPick);
   const [shot, setShot] = useState(() => takeShot(id)); // alttaki Kayıt (ya da ana sayfadaki yarış şeridi) ile iPhone kamerasında çekilen dosya (Medya işler)
@@ -169,7 +173,7 @@ export function RaceMedia({ orgId, id }) {
       full={tab === "course"}
       title={race.name || "Yarış"}
       sub={sub}
-      back={`/athletes/races/${id}`}
+      back="/athletes/races"
       action={
         <>
           <button type="button" data-cur={cur} onClick={() => setPickDay(true)} aria-label={`Gün: ${names[cur]} · ${dayLabel(cur)}`} data-press className="raised flex h-10 shrink-0 items-center gap-1 rounded-full border px-3.5 text-[0.875rem] font-semibold tabular-nums">
@@ -241,7 +245,7 @@ export function RaceMedia({ orgId, id }) {
           change({ days: next }, () => saveDays(orgId, id, next));
         }}
       />
-      <TabDock tabs={RACE_TABS} value={tab} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} extra={<AskButton examples={tab === "course" ? COURSE_EX : RACE_EX} />} />
+      <TabDock tabs={RACE_DOCK} value={tab} onChange={(k) => (k === "race" ? router.replace(`/athletes/races/${id}`) : setTab(k))} onRec={(f) => (setShot(f), setTab("media"))} extra={<AskButton examples={tab === "course" ? COURSE_EX : RACE_EX} />} />
       <ResetSheet
         open={reset}
         onClose={() => setReset(false)}
@@ -284,7 +288,7 @@ export function RaceMedia({ orgId, id }) {
 
 // Sekmeler en altta (Seyhun 2026-10-19: "alttan yönetelim"); sekmenin düğme şeridi (Countdown Bar) bunun üstünde durur (--bar-b).
 // Yanında tek Kayıt düğmesi (Seyhun 2026-10-22: ayrı Fotoğraf/Video düğmeleri kalktı): her sekmeden iPhone kamerasını açar (RecPick), çekilen Medya'da
-const TAB_ICON = { sure: "clock", media: "image", res: "flag", course: "map" };
+const TAB_ICON = { race: "cal", sure: "clock", media: "image", res: "flag", course: "map" };
 // extra: sağa eklenen düğme (antrenman sayfasında asistan, Seyhun 2026-10-23)
 export function TabDock({ tabs = TABS, value, onChange, onRec, extra = null }) {
   useEffect(() => {

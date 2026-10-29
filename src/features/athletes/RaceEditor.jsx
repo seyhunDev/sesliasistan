@@ -844,12 +844,6 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
   ];
   // Seyhun 2026-10-26 (örnek A, yaris-tasarim/ozet-liste): üstte kalan gün + yanında Multimedya (ayrı, açık renk), altında tek satır
   // kaydırılabilir sekmeler (eksikse sarı nokta). Talimat yüklüyse düğme yok, ⋯ içinde "Talimatı gör".
-  const mediaBtn = rid && (
-    <Link href={`/athletes/races/${rid}/media`} data-press className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-[#67e8f9] px-4 text-[0.9375rem] font-bold text-[#06283a] shadow-[0_3px_0_#2aa9bd] active:translate-y-px active:shadow-none">
-      <Icon name="video" className="size-[1.125rem]" />
-      Multimedya
-    </Link>
-  );
   const top = (
     <>
       {raceDay && rid ? (
@@ -867,7 +861,6 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
                 <b className="truncate text-[1.75rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
               )}
             </span>
-            {mediaBtn}
           </span>
           <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
             <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round((doneN / stat.length) * 100)}%` }} />
@@ -880,9 +873,7 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
           </span>
           {rid && <RaceWx r={{ ...r, id: rid }} />}
         </div>
-      ) : (
-        mediaBtn && <div className="mt-4 flex justify-end">{mediaBtn}</div>
-      )}
+      ) : null}
       {!raceDay && <nav aria-label="Bölümler" className="-mx-5 mt-4 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map(([k, name, , warn]) => {
           const on = tab === k;

@@ -83,18 +83,7 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
         : ""
       : [races.length && `${races.length} yarış`, fleet && `${fleet} tekne`].filter(Boolean).join(" · ");
   const wx = <RaceWx key={phase} mini r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} />;
-  const buttons = (
-    <div className="mt-4 flex gap-2">
-      <Link href={media} data-press className={`${main} flex-1`}>
-        <Icon name="video" className="size-5" />
-        Multimedya
-      </Link>
-      <Link href={`${media}?tab=course`} data-press className={second}>
-        Parkur
-      </Link>
-    </div>
-  );
-  // tek ekran (Seyhun 2026-10-29): kalan yeri harita doldurur, Multimedya · Parkur en altta
+  // tek ekran (Seyhun 2026-10-29): kalan yeri harita doldurur; Multimedya · Parkur alt çubukta sekme (aynı sayfa gibi)
   return (
     <div className="mt-3 flex flex-1 flex-col">
       {(title || side) && (
@@ -107,7 +96,6 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
       {phase === "race" && (
         <>
           {wx}
-          {buttons}
         </>
       )}
 
@@ -120,7 +108,6 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
             Tüm sonuçlar
           </Link>
           {wx}
-          {buttons}
         </>
       )}
 
@@ -145,7 +132,6 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
             </div>
           )}
           {wx}
-          {buttons}
         </>
       )}
     </div>
