@@ -41,7 +41,7 @@ import { resultsAsk } from "@/lib/resultSheet";
 import { debtAsk, debtCommand } from "@/lib/debts";
 import { wordCommand } from "@/lib/englishWords";
 import { timerCommand, windCommand } from "@/lib/raceLive";
-import { COURSE_WORD, courseAsk, courseCommand, courseRelative } from "@/lib/raceCourse";
+import { COURSE_WORD, courseAsk, courseCommand, courseRelative, courseUndo } from "@/lib/raceCourse";
 import { resultCommand } from "@/lib/raceVoice";
 import { attQueryAsk } from "@/lib/attQuery";
 import { clubAsk } from "@/lib/clubAsk";
@@ -76,6 +76,7 @@ export function moreKind(s, c = {}) {
   const ia = infoAsk(s, c.today || "2000-01-01");
   if (ia && (ia.kind !== "invoices" || owner)) return "infoAsk";
   if (racer && timerCommand(s)) return "raceTimer";
+  if (owner && racer && c.courseJust && courseUndo(s)) return "raceCourse"; // parkura az önce yazılanı "geri al" / "yanlış"
   if (owner && racer && courseCommand(s)?.list.length > 1) return "raceCourse"; // "rüzgar kuzeybatı 12 knot, eksen 320" parkura
   // Parkur sekmesi açık (c.onCourse; uygulamada isler/yarisMedya courseView): soru, göreli cümle, rüzgâr ve sayılı/parkur sözlü her cümle parkura
   if (owner && racer && c.onCourse && (courseCommand(s) || courseAsk(s, {}) || courseRelative(s, {}) || COURSE_WORD.test(s.toLocaleLowerCase("tr-TR")) || /\d/.test(s))) return "raceCourse";
@@ -121,6 +122,8 @@ export function routesOf(s, c = {}) {
   const mf = messageFirst(s);
   const { owner, isStaff, racer, athleteSide, path = "", today = "" } = c;
   const nav = (x) => localNavigate(x, { names: c.names || [] });
+  // Parkura az önce sesle yazılan yanlışsa: "geri al", "yanlış", "sil" (3 dk içinde; isler/yarisMedya courseJust) son eklenen kayıt silmeden önce
+  if (owner && racer && c.courseJust && courseUndo(s)) add("more", { kind: "raceCourse" });
   // Adım adım antrenman ekranı açık: "tamam", "sonraki", "bu hareketi atla" ekrandaki antrenmanı yürütür
   if (c.guide && guideWord(s)) add("guide");
   if ((isEnd(s) && !mf) || (c.askedMore && isNoMore(s))) add("close");
