@@ -187,11 +187,11 @@ private struct MarkaSatiri: View {
     }
 }
 
-// Rüzgârın geldiği yön: K, KD, D, GD, G, GB, B, KB
+// Rüzgârın geldiği yön adı ve derecesi: "Poyraz 45°" (web weather.js windName + dirDeg ile aynı, Seyhun 2026-10-30)
 private func yonAdi(_ d: Double) -> String {
-    let adlar = ["K", "KD", "D", "GD", "G", "GB", "B", "KB"]
-    let i = Int(((d.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360) + 22.5) / 45) % 8
-    return adlar[i]
+    let adlar = ["Yıldız", "Poyraz", "Gündoğusu", "Keşişleme", "Kıble", "Lodos", "Günbatısı", "Karayel"]
+    let derece = Int(((d.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)).rounded()) % 360
+    return "\(adlar[Int((Double(derece) + 22.5) / 45) % 8]) \(derece)°"
 }
 
 // Büyük widget'ın üstü (Seyhun 2026-10-27 onayı, derli toplu): küçük logo + başlık + tarih tek satır; altında büyük "rüzgâr–sağanak kn",
@@ -220,7 +220,7 @@ private struct RuzgarKafasi: View {
                     if let evSatiri { EvSatiri(yazi: evSatiri) }
                 }
                 Spacer(minLength: 4)
-                Text(yonAdi(d)).font(.system(size: 11, weight: .bold)).foregroundStyle(.white.opacity(0.75))
+                Text(yonAdi(d)).font(.system(size: 11, weight: .bold).monospacedDigit()).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
                 ZStack {
                     Circle().fill(wAcik.opacity(0.08))
                     Circle().stroke(wAcik.opacity(0.4), lineWidth: 1.5)
