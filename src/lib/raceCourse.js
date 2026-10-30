@@ -45,12 +45,17 @@ export function cleanObs(o) {
   const refs = { wind: [""], axis: [""], line: ["pin", "komite"], mark: ["m1", "m2", "m3", "m4"], leg: ["m1m2", "m2m1"] }[o.kind];
   const ref = refs.includes(o.ref) ? o.ref : refs[0];
   const at = typeof o.at === "string" && !Number.isNaN(Date.parse(o.at)) ? o.at : new Date().toISOString();
+  // Rüzgâr aralığı (Seyhun 2026-10-30 "20 ile 30 arasında oynuyor"): range [ilk, ikinci] söylendiği sırayla; deg aradaki orta yön
+  // (hat avantajı, kart ve dönüş ortadan hesaplanır). Aynı ya da 180°'den geniş aralık yok sayılır.
+  const r = o.kind === "wind" && Array.isArray(o.range) ? o.range.map(N) : null;
+  const range = r && r[0] !== null && r[1] !== null && Math.abs(diff(r[0], r[1])) >= 2 && Math.abs(diff(r[0], r[1])) < 180 ? [norm(r[0]), norm(r[1])] : null;
   return {
     id: String(o.id || `${Date.parse(at).toString(36)}${Math.random().toString(36).slice(2, 6)}`).slice(0, 24),
     at,
     kind: o.kind,
     ref,
-    deg: norm(deg),
+    deg: range ? norm(range[0] + diff(range[0], range[1]) / 2) : norm(deg),
+    ...(range ? { range } : {}),
     kn: kn === null || kn < 0 || kn > 80 ? null : Math.round(kn * 10) / 10,
     by: BYS.some(([k]) => k === o.by) ? o.by : "ben",
     ...(PTS.includes(o.spot) ? { spot: o.spot } : {}),
@@ -113,7 +118,10 @@ const sttFix = (t) => t
   .replace(/(\d)\s*(?:k?nat|k?nod|knt|konat|kont)(?![a-zçğıöşü])/g, "$1 knot")
   .replace(/(\d+(?:\.\d+)?)\s*(?:-|–|ile|ila|ya da|veya)\s*(\d+(?:\.\d+)?)\s*(?=knot|knots|not|kn|kt)/g, (m, a, b) => (+a < +b && +b <= 60 ? `${Math.round(((+a + +b) / 2) * 2) / 2} ` : m));
 // Söylenen / yazılan cümle: küçük harf, yazıyla sayılar rakam, ondalık virgül nokta, ses tanıma hataları düzeltilmiş
-const prep = (text) => sttFix(wordsToNum(joinFix(low(text))).replace(/(\d),(\d)/g, "$1.$2"));
+const prep = (text) => sttFix(wordsToNum(joinFix(low(text))).replace(/(\d),(\d)/g, "$1.$2")).replace(/(\d)\s*(?:°|derece)?\s+ve\s+(\d{1,3})(?=\s*(?:°|derece)?\s*ara)/g, "$1 ile $2");
+// Rüzgâr yön aralığı: "20 ile 30 arasında", "20-30 arası", "20 ila 30", "20den 30a dönüyor", "30dan 10a oynuyor"
+const RANGE = /(?<!\d)(\d{1,3})\s*(?:°|derece)?\s*(?:-|–|ile|ila|ya da|veya)\s*(\d{1,3})(?!\d)|(?<!\d)(\d{1,3})\s*(?:°|derece)?\s*(?:den|dan|ten|tan)\s+(\d{1,3})\s*(?:°|derece)?\s*(?:a|e|ya|ye)(?![a-zçğıöşü])/;
+const SWING = /ara(sı|sında)|oynuyor|oynadı|salın|gidip geliyor|değişiyor|dönüp duruyor|dönüyor|döndü/;
 const DIR_DEG = [
   [/kuzey ?bat[ıi]|karayel/, 315], [/kuzey ?do[gğ]u|poyraz/, 45], [/g[uü]ney ?bat[ıi]|lodos/, 225], [/g[uü]ney ?do[gğ]u|ke[sş]i[sş]leme/, 135],
   [/kuzey|y[ıi]ld[ıi]z/, 0], [/g[uü]ney|k[ıi]ble/, 180], [/bat[ıi]/, 270], [/do[gğ]u/, 90],
@@ -137,6 +145,9 @@ export function parseCourseText(text) {
   const kn = t.match(/(\d+(?:\.\d+)?)\s*(knot|knots|not|kn|kt|deniz mili)\b/);
   // saat ("saat 11de", "11:30") ve şamandıra numarası derece sanılmaz
   const rest = (kn ? t.replace(kn[0], " ") : t).replace(/[1-4] ?(nolu|numara|numaralı)/g, " ").replace(/saat \d{1,2}(?:[:.]\d{2})?\S*|\d{1,2}[:.]\d{2}/g, " ");
+  const rg = rest.match(RANGE);
+  const range = rg && (/r[uü]zg[aâ]r|esiyor|geliyor/.test(t) || kn || SWING.test(t)) && !/eksen|komite|pin|(?<![a-zçğıöşü])hat|orsadan|apazdan/.test(t) ? [+(rg[1] ?? rg[3]), +(rg[2] ?? rg[4])] : null;
+  if (range && range.every((x) => x <= 360)) return { obs: { kind: "wind", deg: range[0], range, kn: kn ? +kn[1] : null, by, ...(mark ? { spot: mark } : {}) } };
   const degM = rest.match(/(\d{1,3})(?:\s*°|\s*derece)?/);
   // "rüzgar kuzeybatı 12 knot": derece yerine yön adı (yalnız rüzgârda)
   const word = !degM && /r[uü]zg[aâ]r/.test(t) ? DIR_DEG.find(([re]) => re.test(rest))?.[1] : undefined;
@@ -257,7 +268,7 @@ export function courseAsk(text, c) {
     if (!tr) return "Rüzgâr dönüşü için en az iki rüzgâr ölçümü lazım.";
     const turn = tr.deg === 0 ? "yönü aynı" : `${Math.abs(tr.deg)}° ${tr.deg > 0 ? "sağa" : "sola"} döndü`;
     const sp = tr.kn ? `, ${Math.abs(tr.kn)} knot ${tr.kn > 0 ? "arttı" : "azaldı"}` : "";
-    return `İlk ölçümden bu yana rüzgâr ${turn}${sp}. Şimdi ${tr.to.deg}°${kn(tr.to)}.`;
+    return `İlk ölçümden bu yana rüzgâr ${turn}${sp}. Şimdi ${degText(tr.to)}${kn(tr.to)}.`;
   }
   if (/r[uü]zg[aâ]r/.test(t) && /eksen/.test(t)) {
     const w = last(cc.obs, (x) => x.kind === "wind");
@@ -268,7 +279,7 @@ export function courseAsk(text, c) {
   }
   if (/r[uü]zg[aâ]r/.test(t)) {
     const w = last(cc.obs, (x) => x.kind === "wind");
-    return w ? `Son rüzgâr ${w.deg}°${kn(w)}${w.spot ? ` (${PT_NAME[w.spot]})` : ""}.` : "Bugün rüzgâr ölçümü yok.";
+    return w ? `Son rüzgâr ${degText(w)}${w.range ? " arası oynuyor" : ""}${kn(w)}${w.spot ? ` (${PT_NAME[w.spot]})` : ""}.` : "Bugün rüzgâr ölçümü yok.";
   }
   if (/eksen|parkur/.test(t)) {
     const a = last(cc.obs, (x) => x.kind === "axis");
@@ -328,7 +339,9 @@ export function lineBias(c) {
   const ideal = norm(w.deg + 90);
   const d = diff(ideal, l.deg);
   const m = c.pts.pin && c.pts.komite ? dist(c.pts.pin, c.pts.komite) : null;
-  return { wind: w.deg, line: l.deg, ideal, deg: Math.abs(d), end: Math.abs(d) < 1 ? "" : d > 0 ? "pin" : "komite", m: m === null ? null : Math.round(Math.abs(Math.sin(rad(d))) * m) };
+  // aralıklı rüzgârda iki uçtaki avantaj da (−: komite, +: pin önde)
+  const span = w.range ? w.range.map((x) => diff(norm(x + 90), l.deg)) : null;
+  return { wind: w.deg, line: l.deg, ideal, deg: Math.abs(d), end: Math.abs(d) < 1 ? "" : d > 0 ? "pin" : "komite", m: m === null ? null : Math.round(Math.abs(Math.sin(rad(d))) * m), ...(span ? { range: w.range, span } : {}) };
 }
 // Saha (Seyhun 2026-10-30, yaris-yapi "rüzgâr 3 yerden 1 yere"): sesle ya da Hava'dan yazılan rüzgâr (raceLive.wind) o günün parkur
 // ölçümlerine katılır; kayıtta ayrı durur (live: true, silinince raceLive'dan silinir). Saate göre sıralı.
@@ -362,7 +375,8 @@ export function obsTitle(o) {
   if (o.kind === "mark") return `${PT_NAME[o.ref]} yönü`;
   return o.ref === "m1m2" ? "Orsadan apaza" : "Apazdan orsaya";
 }
-export const obsValue = (o) => `${o.deg}°${o.kn !== null ? ` · ${String(o.kn).replace(".", ",")} kn` : ""}`;
+export const degText = (o) => (o.range ? `${o.range[0]}–${o.range[1]}°` : `${o.deg}°`);
+export const obsValue = (o) => `${degText(o)}${o.kn !== null ? ` · ${String(o.kn).replace(".", ",")} kn` : ""}`;
 
 // ---- Çizim: parkurun noktaları (gerçek ya da tahmini). Merkez: komite, yoksa pin, yoksa "here" (telefonun yeri), yoksa null.
 // Kartın düzeni (dış yamuk): Start → 1 (orsa) → 1A → 2 (apaz) → 3s/3p (pupa kapısı) → Finiş; 4s/4p hattın hemen üstünde.

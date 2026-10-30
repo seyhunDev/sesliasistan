@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { addCourseObs, courseRef, saveCourse } from "@/features/athletes/raceLiveStore";
 import { canShare, loadSharedCourse, shareCourse } from "@/features/athletes/sharedRaces";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { BYS, PICKS, cleanCourse, cleanObs, norm, obsTitle, obsValue, windTrend, withLiveWind } from "@/lib/raceCourse";
+import { BYS, PICKS, cleanCourse, cleanObs, degText, norm, obsTitle, obsValue, windTrend, withLiveWind } from "@/lib/raceCourse";
 import { RaceWx } from "@/features/athletes/RaceWx";
 import { CompassSight, askCompass } from "./CompassSight";
 import { setCourseView } from "./courseView";
@@ -128,7 +128,7 @@ export function CourseTab({ orgId, race, day, wind = [], onDropWind }) {
         <section className="mt-7" aria-label="Özet">
           <h3 className={secHead}>Özet</h3>
           <ul className={list}>
-            {Math.abs(trend.deg) >= 3 && <Line name={`Rüzgâr ${trend.deg > 0 ? "sağa" : "sola"} dönüyor`} sub={`${trend.from.deg}° → ${trend.to.deg}°`} value={`${trend.deg > 0 ? "+" : "−"}${Math.abs(trend.deg)}°`} acc />}
+            {Math.abs(trend.deg) >= 3 && <Line name={`Rüzgâr ${trend.deg > 0 ? "sağa" : "sola"} dönüyor`} sub={`${degText(trend.from)} → ${degText(trend.to)}`} value={`${trend.deg > 0 ? "+" : "−"}${Math.abs(trend.deg)}°`} acc />}
             {trend.kn !== null && Math.abs(trend.kn) >= 1 && <Line name={`Rüzgâr ${trend.kn > 0 ? "artıyor" : "düşüyor"}`} sub={`${trend.from.kn} → ${trend.to.kn} kn`} value={`${trend.kn > 0 ? "+" : "−"}${String(Math.abs(trend.kn)).replace(".", ",")} kn`} />}
             {Math.abs(trend.deg) < 3 && (trend.kn === null || Math.abs(trend.kn) < 1) && <Line name="Rüzgâr sabit" />}
           </ul>
@@ -181,6 +181,7 @@ function AddBody({ at, c, onAdd }) {
   const lastOf = (k) => [...c.obs].reverse().find((x) => x.kind === k);
   const [deg, setDeg] = useState(() => lastOf("wind")?.deg ?? 0);
   const [kn, setKn] = useState(() => lastOf("wind")?.kn ?? 8);
+  const [deg2, setDeg2] = useState(null); // rüzgâr aralığının ikinci yönü (Seyhun 2026-10-30 "belli bir aralık seçebilmeliyim")
   const [kind, ref] = PICKS[pick];
   const chip = (on) => `h-9 rounded-full px-3.5 text-[0.875rem] font-medium active:scale-95 ${on ? "bg-acc text-white" : "bg-bg"}`;
   const step = "grid h-10 w-11 place-items-center rounded-xl border border-line bg-card text-[0.875rem] font-semibold shadow-[0_2px_0_var(--line)] active:translate-y-px active:shadow-none";
@@ -206,6 +207,23 @@ function AddBody({ at, c, onAdd }) {
           ))}
         </div>
       </div>
+      {kind === "wind" &&
+        (deg2 === null ? (
+          <button type="button" onClick={() => setDeg2(norm(deg + 10))} className="mt-2 text-[0.875rem] font-semibold text-acc">Aralık ekle</button>
+        ) : (
+          <div className="mt-3 flex items-center justify-between">
+            <span className="flex items-baseline gap-2">
+              <span className="text-[1rem] text-mut">ile</span>
+              <b className="text-[2.25rem] font-bold leading-none tracking-[-.03em] tabular-nums">{deg2}°</b>
+              <button type="button" onClick={() => setDeg2(null)} className="ml-1 text-[0.8125rem] font-semibold text-mut">Kaldır</button>
+            </span>
+            <div className="flex gap-1.5">
+              {[-5, -1, 1, 5].map((d) => (
+                <button key={d} type="button" onClick={() => setDeg2((v) => norm(v + d))} className={step}>{d > 0 ? `+${d}` : `−${-d}`}</button>
+              ))}
+            </div>
+          </div>
+        ))}
       {kind === "wind" && (
         <div className="mt-3 flex items-center justify-between">
           <b className="text-[1.5rem] font-semibold tabular-nums">{kn} kn</b>
@@ -216,7 +234,7 @@ function AddBody({ at, c, onAdd }) {
           </div>
         </div>
       )}
-      <Button className="mt-5 h-14" onClick={() => onAdd({ kind, ref, deg, by, kn: kind === "wind" ? kn : null, ...(at?.lat != null ? { lat: at.lat, lon: at.lon } : {}) })}>Ekle</Button>
+      <Button className="mt-5 h-14" onClick={() => onAdd({ kind, ref, deg, by, kn: kind === "wind" ? kn : null, ...(kind === "wind" && deg2 !== null ? { range: [deg, deg2] } : {}), ...(at?.lat != null ? { lat: at.lat, lon: at.lon } : {}) })}>Ekle</Button>
     </div>
   );
 }

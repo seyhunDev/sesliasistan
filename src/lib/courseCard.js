@@ -79,7 +79,13 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   // start hattı: olması gereken (soluk ince), atılan (sarı kesik)
   const ko = pt("komite"), pi = pt("pin"), pid = pt("pinIdeal");
   const off = c.line == null ? 0 : diff(g.should, g.toPin);
-  if (Math.abs(off) >= 1) o += `<line x1="${f(ko[0])}" y1="${f(ko[1])}" x2="${f(pid[0])}" y2="${f(pid[1])}" stroke="${mut}" stroke-width="1.5" stroke-dasharray="2 4"/>`;
+  if (c.range) {
+    // aralıklı rüzgârda olması gereken hat da rüzgârla birlikte 3 sn'de iki yön arasında gidip gelir (oktaki animasyonla aynı anda)
+    const lineM = Math.max(c.lineM || 120, g.L * 0.5);
+    const [ea, eb] = c.range.map((x) => S(add(g.komite, nrm(x - 90), lineM)));
+    const anim = (at, a, b) => `<animate attributeName="${at}" values="${f(a)};${f(b)};${f(a)}" keyTimes="0;.5;1" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1" dur="6s" repeatCount="indefinite"/>`;
+    o += `<line x1="${f(ko[0])}" y1="${f(ko[1])}" x2="${f(ea[0])}" y2="${f(ea[1])}" stroke="${acc}" stroke-opacity=".8" stroke-width="1.5" stroke-dasharray="2 4">${anim("x2", ea[0], eb[0])}${anim("y2", ea[1], eb[1])}</line>`;
+  } else if (Math.abs(off) >= 1) o += `<line x1="${f(ko[0])}" y1="${f(ko[1])}" x2="${f(pid[0])}" y2="${f(pid[1])}" stroke="${mut}" stroke-width="1.5" stroke-dasharray="2 4"/>`;
   o += `<line x1="${f(pi[0])}" y1="${f(pi[1])}" x2="${f(ko[0])}" y2="${f(ko[1])}" stroke="${amb}" stroke-width="3" stroke-dasharray="7 5"/>`;
   boat(ko, c.est?.komite); boat(pi, c.est?.pin);
   o += `<text x="${f(ko[0] + 14)}" y="${f(ko[1] + 4)}" text-anchor="start" font-size="12" font-weight="${B}" fill="${org}">Komite</text>`;
@@ -103,9 +109,20 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   if (c.wind != null && navy) {
     // sağ üstte hizalı blok: ok, altında büyük değer ve küçük açıklama (sola yaslı değil, sağa hizalı)
     const sh = diff(g.A, c.wind);
-    o += `<g transform="translate(${w - 22} 30) rotate(${f(sh)})"><line x1="0" y1="-14" x2="0" y2="8" stroke="${acc}" stroke-width="2.4" stroke-linecap="round"/><path d="M0 15 L-6 5 L6 5 Z" fill="${acc}"/></g>`;
-    o += `<text x="${w - 44}" y="29" text-anchor="end" font-size="16" font-weight="500" fill="${ink}">${nrm(c.wind)}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
-    o += `<text x="${w - 44}" y="46" text-anchor="end" font-size="11.5" font-weight="400" fill="${mut}">Rüzgâr · ${Math.abs(sh) < 1 ? "eksende" : `eksenden ${Math.abs(sh)}° ${sh > 0 ? "sağa" : "sola"}`}</text>`;
+    const arrow = `<line x1="0" y1="-14" x2="0" y2="8" stroke="${acc}" stroke-width="2.4" stroke-linecap="round"/><path d="M0 15 L-6 5 L6 5 Z" fill="${acc}"/>`;
+    if (c.range) {
+      // aralık (Seyhun 2026-10-30 "20 ile 30 arasında oynuyor, animasyonlu, 3 saniyede bir"): ok iki yön arasında 3 sn'de gidip gelir,
+      // iki uç soluk çizgiyle görünür
+      const [a, b] = c.range.map((x) => f(diff(g.A, x)));
+      for (const r of [a, b]) o += `<line transform="translate(${w - 22} 30) rotate(${r})" x1="0" y1="-16" x2="0" y2="16" stroke="${acc}" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="2 3"/>`;
+      o += `<g transform="translate(${w - 22} 30) scale(1.4)"><g transform="rotate(${a})"><animateTransform attributeName="transform" type="rotate" values="${a};${b};${a}" keyTimes="0;.5;1" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1" dur="6s" repeatCount="indefinite"/>${arrow}</g></g>`;
+      o += `<text x="${w - 44}" y="29" text-anchor="end" font-size="16" font-weight="500" fill="${ink}">${c.range[0]}–${c.range[1]}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
+      o += `<text x="${w - 44}" y="46" text-anchor="end" font-size="11.5" font-weight="400" fill="${mut}">Rüzgâr · ${Math.abs(diff(c.range[0], c.range[1]))}° oynuyor</text>`;
+    } else {
+      o += `<g transform="translate(${w - 22} 30) rotate(${f(sh)})">${arrow}</g>`;
+      o += `<text x="${w - 44}" y="29" text-anchor="end" font-size="16" font-weight="500" fill="${ink}">${nrm(c.wind)}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
+      o += `<text x="${w - 44}" y="46" text-anchor="end" font-size="11.5" font-weight="400" fill="${mut}">Rüzgâr · ${Math.abs(sh) < 1 ? "eksende" : `eksenden ${Math.abs(sh)}° ${sh > 0 ? "sağa" : "sola"}`}</text>`;
+    }
   } else if (c.wind != null) {
     const sh = diff(g.A, c.wind);
     o += `<g transform="translate(${w / 2} 34) rotate(${f(sh)})"><line x1="0" y1="-16" x2="0" y2="10" stroke="${acc}" stroke-width="3"/><path d="M0 18 L-7 6 L7 6 Z" fill="${acc}"/></g>`;
@@ -117,8 +134,12 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   // altta hat özeti: atılan hat olması gerekenden ne kadar sapmış, şimdiki rüzgârda hangi uç önde
   const rows = [];
   // 1. satır: pin kaç derecede, olması gereken (rüzgâr varsa ona dik) · 2. satır: hangi uç önde (pin olması gerekenin üstündeyse pin)
-  if (c.line != null) rows.push(`Pin ${g.toPin}° · olmalı ${g.should}°${c.wind == null ? " (eksene dik)" : ""}`);
-  if (c.line != null) rows.push(Math.abs(off) < 1 ? "Hat dik, iki uç eşit" : `${off > 0 ? "Pin" : "Komite"} tarafı ${Math.abs(off)}° önde`);
+  if (c.line != null) rows.push(`Pin ${g.toPin}° · olmalı ${c.range ? c.range.map((x) => nrm(x - 90)).join("–") : g.should}°${c.wind == null ? " (eksene dik)" : ""}`);
+  // aralıklı rüzgârda iki uçtaki avantaj: "Pin tarafı 5–15° önde", uçlar ayrı tarafta ise "Komite 5° · Pin 5° önde arası"
+  const span = c.line != null && c.range ? c.range.map((x) => diff(nrm(x - 90), g.toPin)) : null;
+  const sideTxt = (v) => (Math.abs(v) < 1 ? "eşit" : `${v > 0 ? "Pin" : "Komite"} ${Math.abs(v)}°`);
+  if (span) rows.push(Math.sign(span[0]) === Math.sign(span[1]) && Math.abs(span[0]) >= 1 && Math.abs(span[1]) >= 1 ? `${span[0] > 0 ? "Pin" : "Komite"} tarafı ${Math.min(...span.map(Math.abs))}–${Math.max(...span.map(Math.abs))}° önde` : `Önde: ${sideTxt(span[0])} ↔ ${sideTxt(span[1])}`);
+  else if (c.line != null) rows.push(Math.abs(off) < 1 ? "Hat dik, iki uç eşit" : `${off > 0 ? "Pin" : "Komite"} tarafı ${Math.abs(off)}° önde`);
   rows.forEach((t, i) => (o += `<text x="${f(lx)}" y="${f(below + i * 19)}" text-anchor="middle" font-size="13" font-weight="${B}" fill="${i ? ink : org}">${t}</text>`));
   return `<svg viewBox="0 0 ${w} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Inter,sans-serif">${o}</svg>`;
 }
@@ -137,6 +158,7 @@ export function cardOf(c) {
   return {
     axis,
     wind: w ? w.deg : null,
+    range: w?.range || null,
     kn: w ? w.kn : null,
     line: ln ? ln.deg : null,
     reach: leg ? (leg.ref === "m1m2" ? leg.deg : nrm(leg.deg + 180)) : null,

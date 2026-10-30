@@ -8,7 +8,8 @@ rüzgâr, eksen, hat ve şamandıra birlikte olabilir). Göreli söylenirse ("r�
 10 derece sola aldı") verilen son değerlerden hesapla: sağa = saat yönü (+), sola (−); son değer yoksa o kaydı yazma.
 Kayıt türleri:
 - "obs": açı ölçümü. obs.kind:
-  - "wind": rüzgârın GELDİĞİ yön (derece) ve varsa hızı (knot, kn).
+  - "wind": rüzgârın GELDİĞİ yön (derece) ve varsa hızı (knot, kn). İki yön arasında oynuyorsa ("20 ile 30 arasında", "20'den 30'a
+    dönüyor", "30'dan 10'a oynuyor") deg ilk söylenen yön, deg2 ikincisi. Hız aralığı ("12-15 knot") kn ortalaması.
   - "axis": komitenin parkuru kurduğu eksen (orsa yönü).
   - "line": start hattı açısı. ref "pin": pin (line) botundan komite botunu gördüğü açı; ref "komite": komite (ya da hakem) botundan pin'i gördüğü açı; "hakem botundan pin 50", "pin 50" gibi cümleler ref "komite".
   - "mark": bir şamandıraya bakış açısı. ref "m1" orsa/1 nolu, "m2" apaz/2 nolu, "m3" 3 nolu, "m4" 4 nolu.
@@ -35,6 +36,7 @@ export const COURSE_ITEM = {
     kind: { type: "string", enum: ["wind", "axis", "line", "mark", "leg"] },
     ref: { type: "string" },
     deg: { type: "number" },
+    deg2: { type: "number" },
     kn: { type: "number" },
     by: { type: "string", enum: ["ben", "komite", "hakem"] },
     spot: { type: "string" },

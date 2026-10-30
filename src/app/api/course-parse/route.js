@@ -19,8 +19,8 @@ function lastOf(l) {
 function itemOf(r) {
   if (r?.type === "pt" && PTS.includes(r.pt)) return { pt: r.pt };
   if (r?.type === "len" && r.orsa >= 100 && r.orsa <= 10000) return { len: { orsa: Math.round(r.orsa) } };
-  const o = r?.type === "obs" ? cleanObs({ kind: r.kind, ref: r.ref, deg: r.deg, kn: r.kn, by: r.by, spot: r.spot }) : null;
-  return o ? { obs: { kind: o.kind, ref: o.ref, deg: o.deg, kn: o.kn, by: o.by, ...(o.spot ? { spot: o.spot } : {}) } } : null;
+  const o = r?.type === "obs" ? cleanObs({ kind: r.kind, ref: r.ref, deg: r.deg, kn: r.kn, by: r.by, spot: r.spot, ...(r.deg2 != null ? { range: [r.deg, r.deg2] } : {}) }) : null;
+  return o ? { obs: { kind: o.kind, ref: o.ref, deg: o.deg, kn: o.kn, by: o.by, ...(o.spot ? { spot: o.spot } : {}), ...(o.range ? { range: o.range } : {}) } } : null;
 }
 const bad = (error, status = 400, reason = "") => NextResponse.json({ error, ...(reason ? { reason } : {}) }, { status });
 
