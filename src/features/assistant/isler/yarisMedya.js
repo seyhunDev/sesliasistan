@@ -3,8 +3,8 @@
 // Parkur ölçümü, bir cümlede birkaçı da (Parkur sekmesindeki Yön ekle / Pusula ile aynı kayıt, kart hemen çizilir); "5 dakikalık sayacı başlat" → start sayacı başlar,
 // yarışın Süre sekmesi açılır (bugün yarış yoksa antrenman sayfası). Yarış: açık yarış ya da multimedya sayfası, yoksa bugün süren yarış.
 import { liveRace, timerCommand, windCommand, dirShort } from "@/lib/raceLive";
-import { addCourseMany, addWind } from "@/features/athletes/raceLiveStore";
-import { COURSE_WORD, cleanCourse, cleanObs, courseAsk, courseCommand, courseRelative, obsTitle } from "@/lib/raceCourse";
+import { addCourseMany, addWind, loadCourse, saveCourse } from "@/features/athletes/raceLiveStore";
+import { COURSE_WORD, cleanCourse, cleanObs, courseAsk, courseCommand, courseRelative, courseUndo, obsTitle } from "@/lib/raceCourse";
 import { courseView } from "@/features/raceMedia/courseView";
 import { askCourseAi } from "@/services/courseService";
 import { startTimer } from "@/features/training/Countdown";
@@ -64,9 +64,27 @@ function lastVals(c) {
 // önce telefondaki kurallar (tek/çoklu ölçüm); Parkur sekmesi açıksa sorular ("hangi taraf avantajlı", "rüzgar ne kadar döndü"),
 // göreli cümleler ("rüzgar 10 derece sağa döndü", "2 knot düştü"), anlaşılmazsa parkur yapay zekâsı (/api/course-parse, ≤5 sn).
 // Yazılan yer: açık Parkur sekmesinin yarışı ve günü (courseView.js), yoksa bugün süren yarış.
+// Son parkur yazımı: hemen ardından "geri al" / "yanlış" denirse o ölçümler silinir (ses yanlış anladıysa)
+export const UNDO_MS = 3 * 60 * 1000;
+let lastWrite = null; // { t, org, id, day, ids, len, prevLen }
+export const courseJust = () => !!lastWrite && Date.now() - lastWrite.t < UNDO_MS;
+
 export async function courseCmd(ctx, s, viaVoice) {
   const { owner, racer, raceOrg, reply, done, setPhase } = ctx;
   if (!owner || !racer) return undefined;
+  if (courseUndo(s) && courseJust()) {
+    const w = lastWrite;
+    lastWrite = null;
+    setPhase?.("thinking");
+    try {
+      const c = await loadCourse(w.org, w.id, w.day);
+      await saveCourse(w.org, w.id, w.day, { ...c, obs: c.obs.filter((o) => !w.ids.includes(o.id)), len: w.len ? w.prevLen || {} : c.len });
+      done("Geri aldım, son yazdığımı sildim.", { engine: "local" }, viaVoice);
+    } catch {
+      reply("Geri alamadım. Saha sekmesinde ölçüme dokunup Sil'e bas.", { fail: true, engine: "local" }, viaVoice);
+    }
+    return true;
+  }
   const v = courseView();
   const cur = v ? v.get() : null;
   let cc = courseCommand(s);
@@ -107,7 +125,8 @@ export async function courseCmd(ctx, s, viaVoice) {
   setPhase?.("thinking");
   try {
     await addCourseMany(raceOrg, r.id, day, list, len);
-    const said = list.map((o) => `${obsTitle(o)} ${o.deg}°${o.kn != null ? `, ${o.kn} knot` : ""}`);
+    lastWrite = { t: Date.now(), org: raceOrg, id: r.id, day, ids: list.map((o) => o.id), len: !!len, prevLen: cur ? cleanCourse(cur).len : null };
+    const said = list.map((o) => `${obsTitle(o)} ${o.deg}°${o.kn != null ? `, ${String(o.kn).replace(".", ",")} knot` : ""}`);
     if (len) said.push(`orsa ayağı ${len.orsa} m`);
     done(`Yazdım: ${said.join(" · ")}.`, { engine: "local" }, viaVoice);
   } catch {

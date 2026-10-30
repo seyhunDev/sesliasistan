@@ -25,6 +25,7 @@ import { routesOf, EARLY } from "@/lib/assistRoute";
 import { foodOrderCmd, foodRecent } from "../isler/yemek";
 import { runSea } from "../isler/deniz";
 import { runCams } from "../isler/kamera";
+import { courseJust } from "../isler/yarisMedya";
 import { quickOn } from "@/lib/quickMode";
 import { routeFromAct, withAct } from "@/lib/actRun";
 import { takeAct } from "./gorevListesi";
@@ -271,7 +272,7 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
     races: races.current, raceNames: raceNames(), names: contacts.map((c) => c.name), logHere: !!logPlan || path === "/training",
     invPage, fitHere: path === "/fitness" || !!fp?.fit, foodHere: path === "/fitness" && /tab=food/.test(window.location.search), foodRecent: foodRecent(), attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
     prefer: preferRef.current, skipRace: skipRace.current, shop: shopLists.length > 0, focus: !!focusRef.current, memo: memo.current, plans, tasks, notes,
-    quick, learned: learnedReady, guide: !!guideHandler(), chatHere: !!openChat(), myFit: mine.length > 0, myFitToday: !!planOf(mine, todayStr()), fitPeople,
+    quick, learned: learnedReady, guide: !!guideHandler(), courseJust: courseJust(), chatHere: !!openChat(), myFit: mine.length > 0, myFitToday: !!planOf(mine, todayStr()), fitPeople,
   });
   // Görev listesinin numaralı işi (4-15): yol önceden belli, komut alanlardan hazır (cümle yeniden okunmaz; actRun.js)
   const routes = chained ? withAct(found, routeFromAct(takeAct(ctx, DIRECT), { today: todayStr() })) : found;

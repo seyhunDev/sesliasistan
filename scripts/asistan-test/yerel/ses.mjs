@@ -318,3 +318,54 @@ group("Ad düzeltmeleri (öğrenilen)")([
   const res = await Promise.all(rows.map(([, t]) => t.fn()));
   group("Ses çevirisi bekleme kaydı")(rows.map(([n, t], i) => [n, { ...t, fn: () => res[i] }]));
 }
+
+// Sesle parkur (Seyhun 2026-10-30 "parkuru daha çok sesle oluşturacağım, hatasız olması lazım"): ses tanımanın gerçekte yazdığı
+// biçimler (yazıyla sayı, "1. şamandıra", "bin'den komite", "12 nat", "12-15 knot", saat) doğru ölçüme dönmeli; yanlış ölçüm yazılmamalı
+const PKS = await import("@/lib/raceCourse");
+const pk = (r) => (r ? r.list.map((x) => (x.obs ? `${x.obs.kind}${x.obs.ref ? `:${x.obs.ref}` : ""} ${x.obs.deg}${x.obs.kn != null ? ` ${x.obs.kn}kn` : ""}${x.obs.spot ? ` @${x.obs.spot}` : ""}${x.obs.by !== "ben" ? ` ~${x.obs.by}` : ""}` : `orsa ${x.len.orsa}m`)).join(" | ") : "-");
+const PV = (want) => ({ desc: want, fn: (s) => pk(PKS.courseCommand(s)), ok: (r) => r === want });
+group("Sesle parkur: ses tanıma biçimleri")([
+  ["rüzgar üç yüz otuz on iki knot", PV("wind 330 12kn")],
+  ["Rüzgar üçyüz otuz 12 knot", PV("wind 330 12kn")],
+  ["rüzgar yüz yirmi derece on beş knot", PV("wind 120 15kn")],
+  ["Rüzgar otuz derece sekiz knot", PV("wind 30 8kn")],
+  ["Rüzgar 330° 12 knot", PV("wind 330 12kn")],
+  ["Rüzgar 330'dan esiyor 12 knot", PV("wind 330 12kn")],
+  ["Rüzgar 330 derece 12 nat", PV("wind 330 12kn")],
+  ["Rüzgar 330 derece 12 knat", PV("wind 330 12kn")],
+  ["Rüzgar 330 derece 12-15 knot", PV("wind 330 13.5kn")],
+  ["Rüzgar 12 ile 15 knot arası 330", PV("wind 330 13.5kn")],
+  ["Rüzgar 12-15 knot", PV("-")],
+  ["Saat 11'de rüzgar 330 12 knot", PV("wind 330 12kn")],
+  ["Bir rüzgar ölçümü 330 derece 12 knot", PV("wind 330 12kn")],
+  ["Hakem botu rüzgar 340 derece 14 knot diyor", PV("wind 340 14kn ~hakem")],
+  ["Orsa şamandırasında rüzgar 330 5 knot", PV("wind 330 5kn @m1")],
+]);
+group("Sesle parkur: şamandıra, hat, eksen")([
+  ["1. şamandıra 15 derece", PV("mark:m1 15")],
+  ["2. şamandıra 200 derece", PV("mark:m2 200")],
+  ["Orsa şamandırası 15", PV("mark:m1 15")],
+  ["Bir numaralı şamandıra 15 derece", PV("mark:m1 15")],
+  ["Bin'den komite 52", PV("line:pin 52")],
+  ["Binden komiteye 52 derece", PV("line:pin 52")],
+  ["Komite botundan pine 232 derece", PV("line:komite 232")],
+  ["Start hattı 52 derece", PV("line:komite 52")],
+  ["Hat 52 derece", PV("line:komite 52")],
+  ["Parkur yönü 320", PV("axis 320")],
+  ["Komite ekseni 320 verdi", PV("axis 320")],
+  ["Orsa ayağı 1200 metre", PV("orsa 1200m")],
+  ["Orsa şamandırası 0,8 mil", PV("-")],
+  ["bin burada", { desc: "pin konumu", fn: (s) => PKS.parseCourseText(s), ok: (r) => r?.pt === "pin" }],
+]);
+group("Sesle parkur: bir nefeste birkaç ölçüm")([
+  ["Rüzgar 330 derece 12 knot, komite ekseni 325 verdi, pinden komite 55, orsa 0,6 mil", PV("wind 330 12kn | axis 325 | line:pin 55 | orsa 1111m")],
+  ["Rüzgar 330 derece 12 knot. Eksen 320.", PV("wind 330 12kn | axis 320")],
+  ["rüzgar 330 derece 12 knot bir de eksen 320", PV("wind 330 12kn | axis 320")],
+  ["Eksen 320 rüzgar 330 12 knot", PV("axis 320 | wind 330 12kn")],
+  ["Komiteden pin 280 pinden komite 100", PV("line:komite 280 | line:pin 100")],
+  ["Rüzgar 330 derece 12 knot start hattı 52", PV("wind 330 12kn | line:komite 52")],
+]);
+group("Sesle parkur: geri alma")([
+  ...["geri al", "Yanlış.", "yanlış anladın", "sil", "sonuncuyu sil", "iptal"].map((s) => [s, { desc: "geri alır", fn: PKS.courseUndo, ok: (r) => r === true }]),
+  ...["Ali'nin planını sil", "rüzgar 330 sil", "geri al bunu Ali'ye gönder"].map((s) => [s, { desc: "geri alma değil", fn: PKS.courseUndo, ok: (r) => r === false }]),
+]);

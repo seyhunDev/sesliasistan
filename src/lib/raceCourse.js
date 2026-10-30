@@ -73,27 +73,54 @@ export function cleanCourse(c) {
 // "parkur ekseni 320", "komite burada", "orsa 0,8 mil". Dönüş { obs } | { pt } | { len } | null (anlaşılmadı → yapay zekâ)
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/[’']/g, "").replace(/\s+/g, " ").trim();
 const numWords = { sıfır: 0, bir: 1, iki: 2, üç: 3, dört: 4, beş: 5, altı: 6, yedi: 7, sekiz: 8, dokuz: 9, on: 10, yirmi: 20, otuz: 30, kırk: 40, elli: 50, altmış: 60, yetmiş: 70, seksen: 80, doksan: 90, yüz: 100 };
-// "üç yüz otuz" → 330 (yazıyla söylenen sayılar)
+// "üç yüz otuz" → 330 (yazıyla söylenen sayılar). Basamak büyükten küçüğe gitmezse yeni sayı başlar: "üç yüz otuz on iki" → "330 12"
+// (Seyhun 2026-10-30 "sesle parkur hatasız olmalı": eskiden 342 oluyordu)
 function wordsToNum(t) {
-  return t.replace(/(?<![a-zçğıöşü])((?:sıfır|bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz|on|yirmi|otuz|kırk|elli|altmış|yetmiş|seksen|doksan|yüz)(?:\s+(?:bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz|on|yirmi|otuz|kırk|elli|altmış|yetmiş|seksen|doksan|yüz))*)(?![a-zçğıöşü])/g, (m) => {
-    let total = 0;
-    let cur = 0;
-    for (const w of m.split(" ")) {
+  return t.replace(/(?<![a-zçğıöşü])((?:sıfır|bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz|on|yirmi|otuz|kırk|elli|altmış|yetmiş|seksen|doksan|yüz)(?:\s+(?:sıfır|bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz|on|yirmi|otuz|kırk|elli|altmış|yetmiş|seksen|doksan|yüz))*)(?![a-zçğıöşü])/g, (m, _g, at, all) => {
+    // tek başına "bir" sayı değil ("bir rüzgar ölçümü 330"); "bir numaralı", "bir knot" sayı
+    if (m === "bir" && !/^\s*(nolu|numara|knot|not|kn|derece|mil|metre)/.test(all.slice(at + 3))) return m;
+    const out = [];
+    let cur = null;
+    let place = 9; // son kullanılan basamak: 2 yüzler, 1 onlar, 0 birler
+    const flush = () => (cur !== null && out.push(cur), (cur = null), (place = 9));
+    for (const w of m.split(/\s+/)) {
       const v = numWords[w];
-      if (v === 100) cur = (cur || 1) * 100;
-      else cur += v;
+      if (w === "sıfır") (flush(), out.push(0));
+      else if (v === 100) {
+        if (cur !== null && (cur >= 10 || place < 0)) flush();
+        cur = (cur || 1) * 100;
+        place = 2;
+      } else if (v >= 10) {
+        if (place <= 1) flush();
+        cur = (cur || 0) + v;
+        place = 1;
+      } else {
+        if (place <= 0) flush();
+        cur = (cur || 0) + v;
+        place = 0;
+      }
     }
-    total += cur;
-    return String(total);
+    flush();
+    return out.join(" ");
   });
 }
+// Ses tanımanın sık hataları (Seyhun 2026-10-30 "muhtemel hatalara önlem"): "üçyüz" bitişik, "1. şamandıra" (iPhone sırayı rakamla yazar),
+// "bin'den komite" / "bin burada" (pin), "12 nat / knat / nod" (knot), "12-15 knot" / "12 ile 15 knot" aralığı (ortalaması; 12 derece sanılmasın)
+const joinFix = (t) => t.replace(/(bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz)yüz(?![a-zçğıöşü])/g, "$1 yüz");
+const sttFix = (t) => t
+  .replace(/(?<![\d.])([1-4])\s*\.\s*(?=şamandıra)/g, "$1 nolu ")
+  .replace(/(?<![a-zçğıöşü])bin(?=(?:den|e|in)?(?![a-zçğıöşü])\s*(?:komite|burada|burası|end|ucu|\d))/g, "pin")
+  .replace(/(\d)\s*(?:k?nat|k?nod|knt|konat|kont)(?![a-zçğıöşü])/g, "$1 knot")
+  .replace(/(\d+(?:\.\d+)?)\s*(?:-|–|ile|ila|ya da|veya)\s*(\d+(?:\.\d+)?)\s*(?=knot|knots|not|kn|kt)/g, (m, a, b) => (+a < +b && +b <= 60 ? `${Math.round(((+a + +b) / 2) * 2) / 2} ` : m));
+// Söylenen / yazılan cümle: küçük harf, yazıyla sayılar rakam, ondalık virgül nokta, ses tanıma hataları düzeltilmiş
+const prep = (text) => sttFix(wordsToNum(joinFix(low(text))).replace(/(\d),(\d)/g, "$1.$2"));
 const DIR_DEG = [
   [/kuzey ?bat[ıi]|karayel/, 315], [/kuzey ?do[gğ]u|poyraz/, 45], [/g[uü]ney ?bat[ıi]|lodos/, 225], [/g[uü]ney ?do[gğ]u|ke[sş]i[sş]leme/, 135],
   [/kuzey|y[ıi]ld[ıi]z/, 0], [/g[uü]ney|k[ıi]ble/, 180], [/bat[ıi]/, 270], [/do[gğ]u/, 90],
 ];
 const BY_RE = [["komite", /komite (botu )?(ölçtü|diyor|veriyor|söyledi)|komiteden gelen/], ["hakem", /hakem/]];
 export function parseCourseText(text) {
-  const t = wordsToNum(low(text)).replace(/(\d),(\d)/g, "$1.$2");
+  const t = prep(text);
   if (!t) return null;
   const by = BY_RE.find(([, re]) => re.test(t))?.[0] || "ben";
   const mark = /or[st]a (şamandıra|şamandırası|şamandırasında|şamandırasının)|1 ?(nolu|numara|numaralı)|birinci şamandıra/.test(t) ? "m1"
@@ -108,7 +135,8 @@ export function parseCourseText(text) {
   const L = t.match(/orsa( ayağı| mesafesi)?\s*(\d+(?:\.\d+)?)\s*(mil|nm|metre|m)\b/);
   if (L && !/rüzgar|rüzgâr|derece/.test(t)) return { len: { orsa: Math.round(+L[2] * (/mil|nm/.test(L[3]) ? NM : 1)) } };
   const kn = t.match(/(\d+(?:\.\d+)?)\s*(knot|knots|not|kn|kt|deniz mili)\b/);
-  const rest = (kn ? t.replace(kn[0], " ") : t).replace(/[1-4] ?(nolu|numara|numaralı)/g, " ");
+  // saat ("saat 11de", "11:30") ve şamandıra numarası derece sanılmaz
+  const rest = (kn ? t.replace(kn[0], " ") : t).replace(/[1-4] ?(nolu|numara|numaralı)/g, " ").replace(/saat \d{1,2}(?:[:.]\d{2})?\S*|\d{1,2}[:.]\d{2}/g, " ");
   const degM = rest.match(/(\d{1,3})(?:\s*°|\s*derece)?/);
   // "rüzgar kuzeybatı 12 knot": derece yerine yön adı (yalnız rüzgârda)
   const word = !degM && /r[uü]zg[aâ]r/.test(t) ? DIR_DEG.find(([re]) => re.test(rest))?.[1] : undefined;
@@ -120,9 +148,12 @@ export function parseCourseText(text) {
   else if (/pin(den|'den)? komite|pinden|line(dan|'dan)? komite|hattan komite/.test(t)) Object.assign(o, { kind: "line", ref: "pin" });
   // komiteden / hakem botundan pin'e bakış; yalnız "pin 40" da komiteden sayılır (Seyhun 2026-10-29: "hakem botundan pin 50'de")
   else if (/(komite|hakem)\S* (botu\S* )?(pin|line)|komiteden|\bpin(ent| ?end| ucu)?\S* \d/.test(t) && !/rüzgar|rüzgâr/.test(t)) Object.assign(o, { kind: "line", ref: "komite" });
-  else if (/eksen|parkur(u)? (\d|şu|derece)|parkuru .*kur/.test(t)) Object.assign(o, { kind: "axis" });
+  else if (/eksen|parkur(u|un)? (yönü |açısı |rotası )?(\d|şu|derece)|parkuru .*kur/.test(t)) Object.assign(o, { kind: "axis" });
   else if (/rüzgar|rüzgâr|esiyor|geliyor/.test(t) || kn) Object.assign(o, { kind: "wind", kn: kn ? +kn[1] : null });
-  else if (mark && /(görüyor|bakıyor|yön|açı|derece)/.test(t)) Object.assign(o, { kind: "mark", ref: mark });
+  // "start hattı 52", "hat açısı 52": komiteden pin'e bakış sayılır ("pin 40" gibi)
+  else if (/(?<![a-zçğıöşü])(start )?hat(tı|ti)?( açısı)? \d/.test(t)) Object.assign(o, { kind: "line", ref: "komite" });
+  // "orsa şamandırası 15" (derece demeden de); uzunluk değil
+  else if (mark && !/\d\s*(mil|nm|metre|m)\b/.test(t)) Object.assign(o, { kind: "mark", ref: mark });
   else return null;
   if (o.kind === "wind" && mark) o.spot = mark; // ölçümün yapıldığı şamandıra (konum yoksa oraya konur)
   return { obs: o };
@@ -132,10 +163,10 @@ export function parseCourseText(text) {
 // eksen 320, pinden komite 110 ve orsa şamandırası 15 derece". Önce virgül / "ve" / "sonra" ile, sonra her ölçüm sözünün (rüzgar, eksen,
 // pin, komite, orsa…) önünden bölünür; sayısı olmayan parça sonrakine ("orsa şamandırasında" + "rüzgar 330"), ölçüm sözü olmayan parça
 // öncekine ("rüzgar 330", "12 knot") eklenir. Dönüş: parseCourseText sonuçları ({ obs } | { len } | { pt }) listesi
-const KEY = /(?<![a-zçğıöşü])(?=r[uü]zg[aâ]r|eksen|parkur|pinden|pin |komite|hakem|orsa|orta şamandıra|apaz|[1-4] ?(?:nolu|numara)|birinci|ikinci|üçüncü|dördüncü)/;
+const KEY = /(?<![a-zçğıöşü])(?=r[uü]zg[aâ]r|eksen|parkur|pinden|pin |komite|hakem|orsa|orta şamandıra|apaz|[1-4] ?(?:nolu|numara)|birinci|ikinci|üçüncü|dördüncü|start hat|hat(?:t[ıi])? (?:açısı )?\d)/;
 export function courseList(text) {
-  const t = wordsToNum(low(text)).replace(/(\d),(\d)/g, "$1.$2");
-  const bits = t.split(/[;.](?!\d)|,|\s(?:ve|sonra|bir de|ayrıca|bir de)\s/).flatMap((b) => b.split(KEY)).map((b) => b.trim()).filter(Boolean);
+  const t = prep(text);
+  const bits = t.split(/[;.](?!\d)|,|\s(?:ve|sonra|bir de|1 de|ayrıca)\s/).flatMap((b) => b.split(KEY)).map((b) => b.trim()).filter(Boolean);
   const out = [];
   let lead = "";
   for (const b of bits) {
@@ -162,10 +193,15 @@ export function courseCommand(text) {
   if (/\?|(?<![a-zçğıöşü])(kaç|ne)(?![a-zçğıöşü])|nasıl|olacak|olur mu|tahmin|yarın|dün|haftaya/.test(t)) return null;
   const list = courseList(text).filter((r) => (r.obs && Number.isFinite(r.obs.deg)) || r.len);
   const obs = list.filter((r) => r.obs);
-  // tek rüzgâr yön adıyla ("rüzgar 15 knot kuzeybatı") rüzgâr kaydı işidir (windCommand), parkur değil
-  if (!obs.length || (list.length === 1 && !/\d/.test(t.replace(/\d+(?:[.,]\d+)?\s*(knot|knots|not|kn|kt)\b/, "")))) return null;
-  return { obs: obs[0].obs, list };
+  // tek rüzgâr yön adıyla ("rüzgar 15 knot kuzeybatı") rüzgâr kaydı işidir (windCommand), parkur değil; yalnız "orsa 1200 metre" de parkura
+  if (!list.length || (!obs.length && !list.some((r) => r.len))) return null;
+  if (obs.length === 1 && list.length === 1 && !/\d/.test(prep(text).replace(/\d+(?:\.\d+)?\s*(knot|knots|not|kn|kt)\b/, ""))) return null;
+  return { obs: obs[0]?.obs || null, list };
 }
+
+// Asistanın az önce parkura yazdığını geri alma (Seyhun 2026-10-30 "sesle parkur hatasız olmalı"): "geri al", "yanlış", "sil",
+// "sonuncuyu sil", "iptal". Yalnız parkura yazdıktan hemen sonra geçerli (isler/yarisMedya UNDO_MS)
+export const courseUndo = (text) => /^(geri al|yanlış( oldu| yazdın| anladın)?|hayır yanlış|onu sil|sil|son(uncu(yu)?)?( ölçümü| yazdığını| yazılanı)? sil|iptal( et)?|vazgeç)$/.test(low(text).replace(/[.!,]/g, "").trim());
 
 // Parkurla ilgili söz (Parkur sekmesinde yapay zekâya sormadan önce bakılır)
 export const COURSE_WORD = /r[uü]zg[aâ]r|eksen|parkur|\bpin|komite|hakem|orsa|apaz|şamandıra|line|hat(tan|tı|ta)?\b|esiyor|start|knot|derece/;
@@ -176,7 +212,7 @@ const FUTURE = /yarın|olacak|tahmin|haftaya|öğleden sonra ne|akşam ne/;
 // "komite ekseni 10 derece sola aldı". Sağa = saat yönü (+). Dayanak son rüzgâr / son eksen; yoksa { need: "wind" | "axis" }.
 // Dönüş { list: [{ obs }] } | { need } | null
 export function courseRelative(text, c) {
-  const t = wordsToNum(low(text)).replace(/(\d),(\d)/g, "$1.$2");
+  const t = prep(text);
   if (FUTURE.test(t) || /\?/.test(t)) return null;
   const turn = t.match(/(\d{1,3})\s*(?:°|derece)?\s*(?:daha\s*)?(sağa|saga|sola|saat yönünde|saat yönünün tersine)/);
   const knCh = t.match(/(\d+(?:\.\d+)?)\s*(?:knot|knots|not|kn|kt)\s*(?:daha\s*)?(art|yüksel|çık|düş|azal|in(?:di|er)|sert|hafifle)/);
