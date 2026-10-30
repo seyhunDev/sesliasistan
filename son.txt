@@ -1,8 +1,8 @@
-Commit: 06d2304 · Ana sayfa: süren yarış tek satır (sayaç kalktı) + yarış takvimi çökmesi (#907)
-Zaman: 2026-10-30-0828 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41007704000
+Commit: bf223e1 · Yarış: tek ⋯ menüsü, yarıştan önce yarışın alt çubuğu yok (#908)
+Zaman: 2026-10-30-0857 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41010399912
 
-TAM TEST · 30.10.2026 08:18:50
+TAM TEST · 30.10.2026 08:48:05
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1411/1411 geçti · 0 kalan · 575 sn
+SONUÇ: 1412/1412 geçti · 0 kalan · 548 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -178,8 +178,8 @@ SONUÇ: 1411/1411 geçti · 0 kalan · 575 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 7/7
-  ✓ Yarış sayfası: 7/7
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 8/8
+  ✓ Yarış sayfası: 8/8
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
