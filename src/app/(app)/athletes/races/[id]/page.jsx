@@ -168,6 +168,15 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     }
   };
 
+  // Alt çubuk yarış başlayınca (TabDock); yarıştan önce uygulamanın çubuğu görünür (TabBar "sa-plain")
+  const docked = !!race?.id && !!race.startDate && todayStr() >= race.startDate;
+  const plain = !!race && !missingRace && !docked;
+  useEffect(() => {
+    if (!plain) return;
+    window.dispatchEvent(new CustomEvent("sa-plain", { detail: true }));
+    return () => window.dispatchEvent(new CustomEvent("sa-plain", { detail: false }));
+  }, [plain]);
+
   // Lacivert üstün başlığı (RaceEditor üst kısmı onun altına koyar): geri, ad, yer · tarih, ⋯
   const head = (
     <header className="flex items-center gap-2.5">
@@ -222,8 +231,9 @@ function Race({ orgId, uid, email, by, mail, coach }) {
             onCoach={onCoach}
             onMailTo={(list) => updateDoc(doc(db, "users", uid), { mailTo: list }).catch(() => toast("Adres kaydedilemedi"))}
           />
-          {/* Yarış · Süre · Medya · Parkur · Sonuçlar tek sayfanın sekmeleri (Seyhun 2026-10-29 "aynı sayfa farklı sekmeler olsun") */}
-          {race.id && <TabDock tabs={RACE_DOCK} value="race" onChange={(k) => router.replace(`/athletes/races/${race.id}/media?tab=${k}`)} onRec={(f) => (handShot(race.id, f), router.replace(`/athletes/races/${race.id}/media?tab=media`))} extra={<AskButton />} />}
+          {/* Yarış · Süre · Medya · Parkur · Sonuçlar tek sayfanın sekmeleri (Seyhun 2026-10-29 "aynı sayfa farklı sekmeler olsun");
+              yarıştan önce alt çubuk yok, sayfa hazırlık (Seyhun 2026-10-30, yaris-yapi) */}
+          {docked && <TabDock tabs={RACE_DOCK} value="race" onChange={(k) => router.replace(`/athletes/races/${race.id}/media?tab=${k}`)} onRec={(f) => (handShot(race.id, f), router.replace(`/athletes/races/${race.id}/media?tab=media`))} extra={<AskButton />} />}
         </>
       )}
     </main>

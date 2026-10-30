@@ -834,10 +834,13 @@ async function scenarios4(h) {
       await page.waitForTimeout(800);
       return [old === 0 && dv === 1 && sf === 1, `eski Başlat ${old} · Devam ${dv} · Sıfırla ${sf}`];
     });
-    await check(GN, "Yarış multimedya: denemeleri sıfırla", "Süre › Denemeleri sıfırla → 1 eklenen gün yazar, Sıfırla'dan sonra dünkü gün kalkar", async () => {
+    await check(GN, "Yarış multimedya: denemeleri sıfırla", "⋯ › Denemeleri sıfırla (Süre'de düğme yok) → 1 eklenen gün yazar, Sıfırla'dan sonra dünkü gün kalkar", async () => {
       const before = await dayCount();
       const step = async (name, fn) => fn().catch((e) => { throw new Error(`${name}: ${String(e.message).split("\n")[0]}`); });
-      await step("Denemeleri sıfırla", () => page.getByRole("button", { name: "Denemeleri sıfırla" }).click({ timeout: 5000 }));
+      const inTab = await page.locator("main button:visible", { hasText: /^Denemeleri sıfırla$/ }).count();
+      if (inTab) throw new Error("Süre sekmesinde hâlâ Denemeleri sıfırla düğmesi var");
+      await step("⋯", () => page.getByRole("button", { name: "Yarış ayarları" }).click({ timeout: 5000 }));
+      await step("Denemeleri sıfırla", () => page.locator("[data-menu='reset']").click({ timeout: 5000 }));
       const dlg = page.getByRole("dialog", { name: "Denemeleri sıfırla" });
       await dlg.waitFor({ timeout: 4000 });
       const txt = (await dlg.innerText()).replace(/\s+/g, " ");

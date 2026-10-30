@@ -30,6 +30,7 @@ import { useLiveSync } from "./useLiveSync";
 import { takeShot } from "./handoff";
 import { useTabInUrl } from "@/hooks/useTabInUrl";
 import { CourseTab } from "./CourseTab";
+import { MEDIA_MENU, RACE_SECS } from "@/lib/raceMenu";
 import { VoiceLight } from "@/features/home/TabBar";
 import { useAssistant } from "@/features/assistant/AssistantProvider";
 
@@ -50,6 +51,14 @@ const RACE_TABS = [TABS[0], TABS[1], ["course", "Parkur"], TABS[2]]; // örnekte
 export const RACE_DOCK = [["race", "Yarış"], ...RACE_TABS];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 
+// ⋯ menüsünün multimedya işleri (lib/raceMenu.js MEDIA_MENU): menüden ya da yarış sayfasının ⋯ menüsünden (?do=)
+function menuAct(k, { setSum, setTab, setAddDay, setReset }) {
+  if (k === "sum") setSum(true);
+  else if (k === "shot") (setTab("media"), setTimeout(openMediaSettings, 150));
+  else if (k === "day") setAddDay(true);
+  else if (k === "reset") setReset(true);
+}
+
 export function RaceMedia({ orgId, id }) {
   const toast = useToast();
   const q = useSearchParams();
@@ -64,7 +73,7 @@ export function RaceMedia({ orgId, id }) {
   const today = todayStr();
   const [day, setDay] = useState("");
   const [sum, setSum] = useState(false);
-  const [menu, setMenu] = useState(false); // sağ üstteki ⋯: Gün özeti, Çekim ayarları
+  const [menu, setMenu] = useState(false); // sağ üstteki tek ⋯ (yarış sayfasındakiyle aynı liste, lib/raceMenu.js)
   const [addDay, setAddDay] = useState(false);
   const [pickDay, setPickDay] = useState(false);
   const [reset, setReset] = useState(false);
@@ -157,6 +166,17 @@ export function RaceMedia({ orgId, id }) {
   const timer = useTimerRun({ onZero });
   useLiveSync({ orgId, raceId: id, setLive });
   const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today });
+  // Yarış sayfasının ⋯ menüsünden gelen iş (?do=sum|shot|day|reset) yarış yüklenince bir kez açılır
+  const todo = useRef(q.get("do") || "");
+  const ready = !!race;
+  const sets = { setSum, setTab, setAddDay, setReset };
+  const run = (k) => menuAct(k, sets);
+  useEffect(() => {
+    const k = todo.current;
+    if (!ready || !k) return;
+    const t = setTimeout(() => ((todo.current = ""), menuAct(k, { setSum, setTab, setAddDay, setReset })), 0);
+    return () => clearTimeout(t);
+  }, [ready]);
 
   if (missing) return <Shell title="Yarış"><p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p></Shell>;
   if (!race) return <Shell title="Yarış"><Loading label="Yarış yükleniyor" /></Shell>;
@@ -180,8 +200,8 @@ export function RaceMedia({ orgId, id }) {
             {cur === today ? "Bugün" : dayLabel(cur)}
             <span aria-hidden="true" className="text-[0.75rem] opacity-70">▾</span>
           </button>
-          {/* Özet ve çekim ayarları tek ⋯ düğmesinde (Seyhun 2026-10-29: "çekim düğmesi başlığı kısaltıyor") */}
-          <button type="button" onClick={() => setMenu(true)} aria-label="Multimedya ayarları" data-press className={buttonClass({ variant: "back" })}>
+          {/* Tek ⋯ (Seyhun 2026-10-30): yarışın bölümleri, multimedya işleri, düzenle, sil; yarış sayfasındakiyle aynı */}
+          <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className={buttonClass({ variant: "back" })}>
             <Icon name="more" className="size-5" />
           </button>
         </>
@@ -200,7 +220,7 @@ export function RaceMedia({ orgId, id }) {
           </button>
         </div>
       )}
-      {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onReset={() => setReset(true)} />}
+      {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} />}
       {tab === "course" && <CourseTab orgId={orgId} race={race} day={cur} />}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
       {tab === "media" && (
@@ -225,7 +245,6 @@ export function RaceMedia({ orgId, id }) {
         today={today}
         label={dayLabel}
         onPick={(d) => (setDay(d), setPickDay(false))}
-        onAdd={() => (setPickDay(false), setAddDay(true))}
       />
       <DaySheet
         open={addDay}
@@ -266,20 +285,24 @@ export function RaceMedia({ orgId, id }) {
           toast("Denemeler sıfırlandı");
         }}
       />
-      <Sheet open={menu} onClose={() => setMenu(false)} title="Multimedya">
-        <ul className={`${card} divide-y divide-line overflow-hidden`}>
-          {[
-            ["sum", "Gün özeti", () => setSum(true)],
-            ["shot", "Çekim ayarları", () => (setTab("media"), setTimeout(openMediaSettings, 150))],
-          ].map(([k, l, fn]) => (
-            <li key={k}>
-              <button type="button" data-menu={k} data-press="row" onClick={() => (setMenu(false), fn())} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
-                <b className="min-w-0 flex-1 text-[1rem] font-medium">{l}</b>
-                <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-              </button>
-            </li>
-          ))}
-        </ul>
+      <Sheet open={menu} onClose={() => setMenu(false)} title={race.name || "Yarış"}>
+        {[
+          RACE_SECS.map(([k, l]) => [k, l, () => router.replace(`/athletes/races/${id}?sec=${k}`)]),
+          MEDIA_MENU.map(([k, l]) => [k, l, () => run(k)]),
+          [["edit", "Bilgileri düzenle", () => router.replace(`/athletes/races/${id}?sec=edit`)]],
+          [["del", "Yarışı sil", () => router.replace(`/athletes/races/${id}?sec=del`), true]],
+        ].map((group, i) => (
+          <ul key={i} className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
+            {group.map(([k, l, fn, red]) => (
+              <li key={k}>
+                <button type="button" data-press="row" data-menu={k} onClick={() => (setMenu(false), fn())} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
+                  <b className={`min-w-0 flex-1 text-[1rem] font-medium ${red ? "text-rec" : ""}`}>{l}</b>
+                  {!red && <Icon name="chev" className="size-4 shrink-0 text-mut/60" />}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ))}
       </Sheet>
       <DaySummarySheet open={sum} onClose={() => setSum(false)} race={race} day={cur} live={live} ours={ours} />
     </Shell>
