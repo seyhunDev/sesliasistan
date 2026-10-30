@@ -29,7 +29,6 @@ import { updateDoc } from "@/lib/firebase/write";
 import { todayStr } from "@/lib/utils/format";
 import { goBack } from "@/lib/navTrail";
 import { AskButton, RACE_DOCK, TabDock } from "@/features/raceMedia/RaceMedia";
-import { handShot } from "@/features/raceMedia/handoff";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
 export default function RacePage() {
@@ -233,7 +232,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
           />
           {/* Yarış · Süre · Medya · Parkur · Sonuçlar tek sayfanın sekmeleri (Seyhun 2026-10-29 "aynı sayfa farklı sekmeler olsun");
               yarıştan önce alt çubuk yok, sayfa hazırlık (Seyhun 2026-10-30, yaris-yapi) */}
-          {docked && <TabDock tabs={RACE_DOCK} value="race" onChange={(k) => router.replace(`/athletes/races/${race.id}/media?tab=${k}`)} onRec={(f) => (handShot(race.id, f), router.replace(`/athletes/races/${race.id}/media?tab=media`))} extra={<AskButton />} />}
+          {docked && <TabDock tabs={RACE_DOCK} value="race" onChange={(k) => router.replace(`/athletes/races/${race.id}/media?tab=${k}`)} extra={<AskButton />} />}
         </>
       )}
     </main>

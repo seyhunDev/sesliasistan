@@ -16,7 +16,7 @@ import { mmss } from "@/lib/raceScore";
 import { mineHere, ownHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
 import { VoidSheet, useRaceFlow } from "./useRaceFlow";
-import { TimerHead, TimerTab } from "./TimerTab";
+import { TimerHead, useStartList } from "./TimerTab";
 import { ResultsTab } from "./ResultsTab";
 import { MediaTab, openMediaSettings } from "./MediaTab";
 import { Sheet } from "@/components/ui/Sheet";
@@ -46,7 +46,8 @@ import { useAssistant } from "@/features/assistant/AssistantProvider";
 const TABS = [["sure", "Süre"], ["media", "Medya"], ["res", "Sonuçlar"]];
 // Parkur yalnız yarışta (Seyhun 2026-10-28 "Parkur analizi"); antrenman günü sayfası TABS'ı kullanır
 // Saha = Parkur + yarışın havası + sesle yazılan rüzgâr (Seyhun 2026-10-30, yaris-yapi); Yarış'ın hemen yanında
-const RACE_TABS = [["course", "Saha"], TABS[0], TABS[1], TABS[2]];
+// Start = Süre + Medya (Seyhun 2026-10-30): sayaç, günün yarışları ve her yarışın çekimleri satırında; Kayıt Başlat'ın yanında
+const RACE_TABS = [["course", "Saha"], ["sure", "Start"], TABS[2]];
 // Yarış sayfası ve multimedya tek sayfa gibi (Seyhun 2026-10-29 "detay, multimedya aynı sayfa farklı sekmeler olsun"): alt çubukta
 // ilk sekme Yarış (yarış sayfası /athletes/races/<id>), diğerleri multimedya (/media?tab=…); geçiş replace ile, geri tuşu listeye
 export const RACE_DOCK = [["race", "Yarış"], ...RACE_TABS];
@@ -55,7 +56,7 @@ const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { 
 // ⋯ menüsünün multimedya işleri (lib/raceMenu.js MEDIA_MENU): menüden ya da yarış sayfasının ⋯ menüsünden (?do=)
 function menuAct(k, { setSum, setTab, setAddDay, setReset }) {
   if (k === "sum") setSum(true);
-  else if (k === "shot") (setTab("media"), setTimeout(openMediaSettings, 150));
+  else if (k === "shot") (setTab("sure"), setTimeout(openMediaSettings, 150));
   else if (k === "day") setAddDay(true);
   else if (k === "reset") setReset(true);
 }
@@ -187,7 +188,7 @@ export function RaceMedia({ orgId, id }) {
   const cur = day || (days.includes(today) ? today : !days.length || today < days[0] ? days[0] || today : days[days.length - 1]);
   const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" && !/^\d+\. gün$/.test(names[cur]) ? names[cur] : ""].filter(Boolean).join(" · "); // tarih gün düğmesinde; "4. gün" yazılmaz (2026-10-29)
   const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
-  const tab = tabPick || (days.includes(today) ? "sure" : "media");
+  const tab = tabPick || "sure";
 
   return (
     <Shell
@@ -209,7 +210,18 @@ export function RaceMedia({ orgId, id }) {
       }
       top={
         <>
-          {tab === "sure" && <TimerHead race={race} live={live} rf={rf} />}
+          {tab === "sure" && (
+            <TimerHead
+              race={race}
+              live={live}
+              rf={rf}
+              rec={
+                <RecPick onFile={setShot} aria-label="Kayıt" className="grid size-[3.25rem] shrink-0 touch-manipulation place-items-center rounded-full border-[3px] border-rec bg-card transition active:scale-90">
+                  <span className="size-[2.125rem] rounded-full bg-rec" />
+                </RecPick>
+              }
+            />
+          )}
         </>
       }
     >
@@ -221,7 +233,7 @@ export function RaceMedia({ orgId, id }) {
           </button>
         </div>
       )}
-      {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} />}
+      {tab === "sure" && <StartTab orgId={orgId} race={race} day={cur} live={live} ours={ours} onChange={change} rf={rf} shot={shot} onShotDone={() => setShot(null)} />}
       {tab === "course" && (
         <CourseTab
           orgId={orgId}
@@ -235,18 +247,6 @@ export function RaceMedia({ orgId, id }) {
         />
       )}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
-      {tab === "media" && (
-        <MediaTab
-          orgId={orgId}
-          race={race}
-          day={cur}
-          live={live}
-          ours={ours}
-          onChange={change}
-          file0={shot}
-          onFileDone={() => setShot(null)}
-        />
-      )}
       <VoidSheet ask={rf.ask} onChoose={rf.choose} />
       <DayPick
         open={pickDay}
@@ -276,7 +276,7 @@ export function RaceMedia({ orgId, id }) {
           change({ days: next }, () => saveDays(orgId, id, next));
         }}
       />
-      <TabDock tabs={RACE_DOCK} value={tab} onChange={(k) => (k === "race" ? router.replace(`/athletes/races/${id}`) : setTab(k))} onRec={(f) => (setShot(f), setTab("media"))} extra={<AskButton examples={tab === "course" ? COURSE_EX : RACE_EX} />} />
+      <TabDock tabs={RACE_DOCK} value={tab} onChange={(k) => (k === "race" ? router.replace(`/athletes/races/${id}`) : setTab(k))} extra={<AskButton examples={tab === "course" ? COURSE_EX : RACE_EX} />} />
       <ResetSheet
         open={reset}
         onClose={() => setReset(false)}
@@ -318,6 +318,17 @@ export function RaceMedia({ orgId, id }) {
       </Sheet>
       <DaySummarySheet open={sum} onClose={() => setSum(false)} race={race} day={cur} live={live} ours={ours} />
     </Shell>
+  );
+}
+
+// Start sekmesi: start kareleri, günün yarışları ve her yarışın çekimleri (MediaTab list); çekim yüklemeleri MediaTab'da
+function StartTab({ orgId, race, day, live, ours, onChange, rf, shot, onShotDone }) {
+  const list = useStartList({ orgId, race, day, live, onChange, rf });
+  return (
+    <>
+      {list.marks}
+      <MediaTab orgId={orgId} race={race} day={day} live={live} ours={ours} onChange={onChange} file0={shot} onFileDone={onShotDone} list={list} />
+    </>
   );
 }
 

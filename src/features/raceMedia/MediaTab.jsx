@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Seg, card } from "@/components/ui/Page";
+import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { VIDEO_Q, addRaceMedia, backfillPoster, cloudCopy, dropRaceMedia, mutedCopy, posterOf, prepRaceMedia, readVideoQ, saveMedia, saveVideoQ } from "@/features/athletes/raceLiveStore";
 import { Button } from "@/components/ui/Button";
@@ -25,6 +25,8 @@ import { setShooting, useShooting } from "./shooting";
 // Yüklenen ve yüklenmekte olan kayıtlar sayfa genelinde tutulur: sekme değişince Medya yeniden açılır, telefonda bekleyen kayıt (yüklemesi
 // eski sekmede sürerken) yeniden sıraya girip ikinci kez yükleniyordu (Seyhun 2026-10-22: "aynı videonun iki kaydı düşüyor")
 const noSub = () => () => {};
+// Galeri bölümü bu yarışın mı (mediaByRace anahtarı: yarışın kimliği, eski kayıtlarda numarası)
+const ofStart = (g, s) => g.key === s.id || g.key === `n${s.n}`;
 const INFO_KEY = "sa-medya-bilgi3"; // 2026-10-26: iPhone uygulamasında aslı Fotoğraflar'da; yeni yazı bir kez daha görünür
 // Çekim ayarları başlıkta (Seyhun 2026-10-22, örnek yaris-tasarim/medya/medya-ust-bos-yukleniyor.png): Kayıt zaten alt sekmelerin yanında;
 // başlıktaki düğme Medya'nın "Çekim" penceresini açar (video kalitesi, telefonda tutulanlar, Telefondan sil)
@@ -58,7 +60,8 @@ const tried = new Set();
 // çıkmıyordu), aynısı yüklemede de kullanılır: kayıt no → Promise<Blob|null>
 const posterJobs = new Map(); // bu açılışta küçük resmi denenen kayıtlar (olmazsa yeniden denenmez)
 
-export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = null, onFileDone }) {
+// list: yarışın Start sekmesi (TimerTab useStartList): çekimler günün yarış listesinde her yarışın kendi satırında, yarışa bağlı olmayanlar altta
+export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = null, onFileDone, list = null }) {
   const toast = useToast();
   const [busy, setBusy] = useState(""); // ilerleme yazısı
   const [pending, setPending] = useState(0); // sırada bekleyen kayıt
@@ -347,6 +350,23 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
   };
 
 
+  // Küçük kare (iPhone galerisi gibi) ve yarışın bölümü (Seyhun 2026-10-22 onayı, yaris-tasarim/medya/galeri-iphone.png: yarışa göre, 4'lü sıkı ızgara)
+  const tile = (m) => (
+    <button key={m.id} type="button" onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden rounded-lg bg-line active:opacity-80">
+      <Thumb kind={m.kind} url={m.url} thumb={m.thumb || m.u?.pic} dur={m.dur} local={m.u?.url || mine[m.id]?.url} up={m.u && !m.u.err ? m.u.p : null} err={!!m.u?.err} done={!!mine[m.id]?.done} />
+      {m.phase && <span className="absolute left-1 top-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums text-white">{momentBadge(m)}</span>}
+    </button>
+  );
+  const section = (g) => (
+    <section key={g.key}>
+      <div className="mb-1.5 mt-4 flex items-baseline justify-between gap-3 px-1">
+        <b className="truncate text-[1.0625rem] font-semibold">{g.title}</b>
+        <span className="shrink-0 text-[0.8125rem] text-mut">{count(g.items)}</span>
+      </div>
+      <div className="grid grid-cols-4 gap-1">{g.items.map(tile)}</div>
+    </section>
+  );
+
   const waitErr = waiting.find((x) => x.err)?.err || "";
   const stock = Object.values(kept);
   const nv = stock.filter((k) => k.kind === "video").length;
@@ -404,7 +424,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
           </div>
         </section>
       )}
-      {!groups.length && !shooting && (
+      {!list && !groups.length && !shooting && (
         <div className="fade-in px-6 pt-16 text-center">
           <div className="mx-auto mb-4 grid size-[4.75rem] place-items-center rounded-3xl bg-acc/10 text-acc">
             <Icon name="image" className="size-9" />
@@ -413,23 +433,28 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
           <p className="mt-1.5 text-[0.9375rem] text-mut">Kayıt&apos;a dokununca iPhone kamerası açılır.</p>
         </div>
       )}
-      {/* iPhone galerisi gibi (Seyhun 2026-10-22 onayı, yaris-tasarim/medya/galeri-iphone.png): yarışa göre, kenardan kenara 4'lü sıkı ızgara */}
-      {gallery.map((g) => (
-        <section key={g.key}>
-          <div className="mb-1.5 mt-4 flex items-baseline justify-between gap-3 px-1">
-            <b className="truncate text-[1.0625rem] font-semibold">{g.title}</b>
-            <span className="shrink-0 text-[0.8125rem] text-mut">{count(g.items)}</span>
-          </div>
-          <div className="grid grid-cols-4 gap-1">
-            {g.items.map((m) => (
-              <button key={m.id} type="button" onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden rounded-lg bg-line active:opacity-80">
-                <Thumb kind={m.kind} url={m.url} thumb={m.thumb || m.u?.pic} dur={m.dur} local={m.u?.url || mine[m.id]?.url} up={m.u && !m.u.err ? m.u.p : null} err={!!m.u?.err} done={!!mine[m.id]?.done} />
-                {m.phase && <span className="absolute left-1 top-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums text-white">{momentBadge(m)}</span>}
-              </button>
-            ))}
-          </div>
-        </section>
-      ))}
+      {list ? (
+        <>
+          <Label right={list.today.length || ""}>Yarışlar</Label>
+          <ul className={`${card} divide-y divide-line overflow-hidden`}>
+            {list.empty}
+            {[...list.today].reverse().map((s) => {
+              const g = gallery.find((x) => ofStart(x, s));
+              return (
+                <li key={s.id}>
+                  {list.row(s)}
+                  {g && <div className="grid grid-cols-4 gap-1 px-1 pb-1">{g.items.map(tile)}</div>}
+                </li>
+              );
+            })}
+            <li>{list.add}</li>
+          </ul>
+          {gallery.filter((g) => !list.today.some((s) => ofStart(g, s))).map(section)}
+          {list.sheet}
+        </>
+      ) : (
+        gallery.map(section)
+      )}
 
       <MediaViewer
         // Yüklenmekte olan da hemen izlenir (Seyhun 2026-10-22: "telefonda tuttuğumuzu kullanamıyoruz"): telefondaki dosyadan oynar

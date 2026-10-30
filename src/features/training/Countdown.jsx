@@ -279,7 +279,8 @@ export function makeRace(race) {
 // İptal. Kartın altında tek ana düğme: Başlat · Durdur · Devam · Bitir (çember yok, yanlış dokunuş sayacı değiştirmez).
 // title: yarışa bağlı sayaçta yarışın adı; where: bu sayfanın adı (sayaç başlatılınca kayda yazılır). beforeStart: Başlat'tan önce (planı yoksa açar).
 // Alt şeritte lead ve tail. bottom: ana düğme kokpitte değil alt şeritte (başparmak yetişsin; Seyhun 2026-10-22), solunda side (Sonucu söyle). dark: lacivert kokpitin içinde (antrenman günü, 2026-10-21 yeni tasarım): kart yok, beyaz yazı.
-export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, lead = null, tail = null, dark = false, bottom = false, side = null }) {
+// rec: ana düğmenin sağında yuvarlak düğme (yarışın Start sekmesinde Kayıt; Seyhun 2026-10-30)
+export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, lead = null, tail = null, dark = false, bottom = false, side = null, rec = null }) {
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
@@ -404,9 +405,10 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
       </section>
       {bottom ? (
         <Bar>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             {left && <div className="min-w-0 flex-1 [&>*]:w-full">{left}</div>}
-            <div className={left ? "min-w-0 flex-1" : "w-full"}>{main(barCls)}</div>
+            <div className="min-w-0 flex-1">{main(barCls)}</div>
+            {rec}
           </div>
         </Bar>
       ) : (
