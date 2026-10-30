@@ -8,7 +8,7 @@ import { lastForecastDay, loadRaceDay } from "@/features/athletes/raceWeather";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
-import { dayHours, getPlace, kn, nowOf, sky, windName } from "@/features/weather/weather";
+import { dayHours, dirDeg, getPlace, kn, nowOf, sky, windName } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
 import { isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
@@ -95,7 +95,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
                   </small>
                 </span>
                 <span className="shrink-0 text-right leading-tight">
-                  <small className="block text-[0.75rem] text-white/65">{windName(n.dir)[0]} · {isToday ? "şimdi" : "gün içi"}</small>
+                  <small className="block text-[0.75rem] text-white/65">{windName(n.dir)[0]} {dirDeg(n.dir)} · {isToday ? "şimdi" : "gün içi"}</small>
                   <b className="text-[1.375rem] font-bold tracking-[-.02em] tabular-nums">
                     {kn(n.wind, n.gust)}
                     <span className="text-[0.8125rem] font-medium text-white/60"> kn</span>
