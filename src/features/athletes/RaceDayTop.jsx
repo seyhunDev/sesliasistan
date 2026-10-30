@@ -70,7 +70,6 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
   const fleet = r.results?.fleet;
   const last = today >= (r.endDate || r.startDate);
   const tom = nextDay(today);
-  const plan = dayPlan(r, tom);
   // "4. gün · Yarışta" gibi yazı yok (Seyhun 2026-10-29: "o yazıya hiç gerek yok, çok fazla yazı olmasın"); yarış sürerken başlık yok
   const title = phase === "done" ? (dayAll > 1 && !last ? "Gün bitti" : "Yarış bitti") : phase === "results" ? "Sonuçlar" : "";
   const fin = races.filter((x) => x.fin).length;
@@ -118,22 +117,34 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
               <Places list={places.slice(0, 4)} short />
             </Link>
           )}
-          {last ? (
-            <div className="ck-glass mt-3 rounded-2xl px-4 py-3">
-              <small className="block text-[0.8125rem] text-white/65">Dönüş</small>
-              <b className="block truncate text-[1.25rem] font-bold">{[r.returnDate && dm(r.returnDate), r.returnTime].filter(Boolean).join(" · ") || "Dönüş saati yazılmadı"}</b>
-              {r.departFrom && <small className="block truncate text-[0.8125rem] text-white/65">{r.departFrom}</small>}
-            </div>
-          ) : (
-            <div className="ck-glass mt-3 rounded-2xl px-4 py-3">
-              <small className="block text-[0.8125rem] text-white/65">Yarın · {dayNo + 1}. gün{dayNo + 1 === dayAll ? " (son)" : ""}</small>
-              <b className="block truncate text-[1.25rem] font-bold">{plan.start ? `İlk start ${plan.start.time}` : plan.first ? `${plan.first.title} ${plan.first.time}` : dm(tom)}</b>
-              {plan.first && plan.first !== plan.start && plan.start && <small className="block truncate text-[0.8125rem] text-white/65">{plan.first.title} {plan.first.time}</small>}
-            </div>
-          )}
+          <NextCard r={r} />
           {wx}
         </>
       )}
+    </div>
+  );
+}
+
+// Gün bitince yarın (talimat programından ilk start, toplanma) ya da son gün dönüş (Sonuç sekmesinin üstü de, Seyhun 2026-10-30)
+export function NextCard({ r }) {
+  const today = todayStr();
+  const last = today >= (r.endDate || r.startDate);
+  const tom = nextDay(today);
+  const plan = dayPlan(r, tom);
+  const gap = (a, b) => Math.round((new Date(`${b}T12:00:00`) - new Date(`${a}T12:00:00`)) / 864e5);
+  const dayNo = gap(r.startDate, today) + 1;
+  const dayAll = gap(r.startDate, r.endDate || r.startDate) + 1;
+  return last ? (
+    <div className="ck-glass mt-3 rounded-2xl px-4 py-3">
+      <small className="block text-[0.8125rem] text-white/65">Dönüş</small>
+      <b className="block truncate text-[1.25rem] font-bold">{[r.returnDate && dm(r.returnDate), r.returnTime].filter(Boolean).join(" · ") || "Dönüş saati yazılmadı"}</b>
+      {r.departFrom && <small className="block truncate text-[0.8125rem] text-white/65">{r.departFrom}</small>}
+    </div>
+  ) : (
+    <div className="ck-glass mt-3 rounded-2xl px-4 py-3">
+      <small className="block text-[0.8125rem] text-white/65">Yarın · {dayNo + 1}. gün{dayNo + 1 === dayAll ? " (son)" : ""}</small>
+      <b className="block truncate text-[1.25rem] font-bold">{plan.start ? `İlk start ${plan.start.time}` : plan.first ? `${plan.first.title} ${plan.first.time}` : dm(tom)}</b>
+      {plan.first && plan.first !== plan.start && plan.start && <small className="block truncate text-[0.8125rem] text-white/65">{plan.first.title} {plan.first.time}</small>}
     </div>
   );
 }
