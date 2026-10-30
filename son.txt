@@ -1,8 +1,8 @@
-Commit: 55af1c1 · Parkur: bir cümlede birden çok ölçüm sesle, Parkur sekmesi anında güncellenir (#904)
-Zaman: 2026-10-30-0627 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40996395946
+Commit: 440f8f8 · Yarış alt çubuğu küçük telefonda sığıyor: Kayıt ve asistan küçüldü (#905)
+Zaman: 2026-10-30-0645 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40998279784
 
-TAM TEST · 30.10.2026 06:16:53
+TAM TEST · 30.10.2026 06:36:17
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1410/1411 geçti · 1 kalan · 613 sn
+SONUÇ: 1410/1411 geçti · 1 kalan · 540 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
