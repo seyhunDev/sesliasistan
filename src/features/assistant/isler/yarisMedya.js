@@ -4,7 +4,7 @@
 // yarışın Süre sekmesi açılır (bugün yarış yoksa antrenman sayfası). Yarış: açık yarış ya da multimedya sayfası, yoksa bugün süren yarış.
 import { liveRace, timerCommand, windCommand, dirShort } from "@/lib/raceLive";
 import { addCourseMany, addWind, loadCourse, saveCourse } from "@/features/athletes/raceLiveStore";
-import { COURSE_WORD, cleanCourse, cleanObs, courseAsk, courseCommand, courseRelative, courseUndo, obsTitle } from "@/lib/raceCourse";
+import { COURSE_WORD, cleanCourse, degText, cleanObs, courseAsk, courseCommand, courseRelative, courseUndo, obsTitle } from "@/lib/raceCourse";
 import { courseView } from "@/features/raceMedia/courseView";
 import { askCourseAi } from "@/services/courseService";
 import { startTimer } from "@/features/training/Countdown";
@@ -126,7 +126,7 @@ export async function courseCmd(ctx, s, viaVoice) {
   try {
     await addCourseMany(raceOrg, r.id, day, list, len);
     lastWrite = { t: Date.now(), org: raceOrg, id: r.id, day, ids: list.map((o) => o.id), len: !!len, prevLen: cur ? cleanCourse(cur).len : null };
-    const said = list.map((o) => `${obsTitle(o)} ${o.deg}°${o.kn != null ? `, ${String(o.kn).replace(".", ",")} knot` : ""}`);
+    const said = list.map((o) => `${obsTitle(o)} ${degText(o)}${o.range ? " arası" : ""}${o.kn != null ? `, ${String(o.kn).replace(".", ",")} knot` : ""}`);
     if (len) said.push(`orsa ayağı ${len.orsa} m`);
     done(`Yazdım: ${said.join(" · ")}.`, { engine: "local" }, viaVoice);
   } catch {

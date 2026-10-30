@@ -570,6 +570,13 @@ group("Parkur analizi")([
     const c = CC([{ kind: "wind", deg: 330, kn: 12 }, { kind: "axis", deg: 320 }, { kind: "line", ref: "pin", deg: 50 }, { kind: "wind", deg: 340, kn: 10 }]);
     return [PK.courseAsk("hangi taraf avantajlı", c), PK.courseAsk("rüzgar ne kadar döndü", c), PK.courseAsk("son rüzgar kaç", c), PK.courseRelative("rüzgar 10 derece sağa döndü", c), PK.courseRelative("rüzgar 2 knot düştü", c), PK.courseRelative("eksen 10 derece sola alındı", c), PK.courseRelative("rüzgar 5 derece sola döndü", PK.cleanCourse({})), PK.courseAsk("yarın rüzgar kaç olacak", c), PK.courseCommand("orta şamandırası 20 derece")?.obs, PK.courseCommand("rüzgar 10 derece sağa döndü")];
   }, ok: ([a, b, c, d, e, f, g, h, i, j]) => j === null && /^Komite tarafı 20° önde/.test(a) && /10° sağa döndü, 2 knot azaldı/.test(b) && /^Son rüzgâr 340°, 10 knot/.test(c) && d.list[0].obs.deg === 350 && e.list[0].obs.kn === 8 && f.list[0].obs.kind === "axis" && f.list[0].obs.deg === 310 && g.need === "wind" && h === null && i.ref === "m1" && i.deg === 20 }],
+  ["rüzgâr aralığı", { desc: "Seyhun 2026-10-30: '20 ile 30 arasında oynuyor', '20-30 arası', '20den 30a dönüyor', '350 ile 10' iki yön (deg orta), '12-15 knot' hız kalır; kartta ok ve olması gereken hat 6 sn'lik döngüde (3 sn bir yön) gidip gelir", fn: async () => {
+    const one = (x) => PK.cleanObs(PK.courseCommand(x)?.list[0]?.obs);
+    const KC = await import("@/lib/courseCard");
+    const c = PK.cleanCourse({ obs: [one("rüzgar 20 ile 30 arasında oynuyor 12 knot"), { kind: "axis", deg: 25, at: "2026-10-30T09:00:00Z" }, { kind: "line", ref: "pin", deg: 115, at: "2026-10-30T09:01:00Z" }] });
+    const svg = KC.cardSvg(KC.cardOf(c), { navy: true });
+    return [one("rüzgar 20 ile 30 arasında oynuyor 12 knot"), one("rüzgar 20-30 arası"), one("rüzgar 20den 30a dönüyor"), one("rüzgar 350 ile 10 arasında 8 knot"), one("rüzgar 12-15 knot 330"), PK.obsValue(one("rüzgar 30dan 10a oynuyor")), svg];
+  }, ok: ([a, b, c, d, e, v, svg]) => a.range.join() === "20,30" && a.deg === 25 && a.kn === 12 && b.range.join() === "20,30" && c.range.join() === "20,30" && d.deg === 0 && d.range.join() === "350,10" && !e.range && e.kn === 13.5 && e.deg === 330 && v === "30–10°" && /animateTransform[^>]*dur="6s"/.test(svg) && /20–30°/.test(svg) && /olmalı 290–300°/.test(svg) }],
   ["rüzgâr dönüşü", { desc: "ilk ve son ölçüm arası derece ve hız farkı", fn: () => PK.windTrend(CC([{ kind: "wind", deg: 350, kn: 8 }, { kind: "wind", deg: 10, kn: 11 }])), ok: (t) => t.deg === 20 && t.kn === 3 }],
   ["parkur şekli", { desc: "komite + eksen → işaretlenmeyen pin ve şamandıralar tahmini, orsa ≈900 m eksende", fn: () => {
     const k = { lat: 39.07, lon: 26.88 };
