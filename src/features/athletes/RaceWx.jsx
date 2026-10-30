@@ -86,11 +86,13 @@ export function Wait() {
 // seçebiliyoruz ya, o çok güzel"): yarış günleri gün gün, güne dokununca grafik o güne geçer. Ayrı Hava sekmesi ve Multimedya'daki
 // Hava kalktı. Tahmin henüz çıkmadıysa (ilk gün 16 günden ileride) hiç görünmez.
 // day: açılışta seçili gün (yarış günü akşamı yarın, RaceDayTop)
-export function RaceWx({ r, day = "", mini = false }) {
+// pinned: gün dışarıdan seçilir (Saha, üstteki tek Bugün ▾; Seyhun 2026-10-30); kendi gün düğmesi çizilmez
+export function RaceWx({ r, day = "", mini = false, pinned = "" }) {
   const today = todayStr();
   const days = raceDays(r);
-  const first = days.find((d) => d >= today) || days[days.length - 1] || "";
-  const [sel, setSel] = useState(days.includes(day) ? day : first);
+  const first = pinned || days.find((d) => d >= today) || days[days.length - 1] || "";
+  const [own, setSel] = useState(days.includes(day) ? day : first);
+  const sel = pinned || own;
   const [tick, setTick] = useState(0);
   const [pick, setPick] = useState(false);
   const late = sel && sel > lastForecastDay(today);
@@ -108,7 +110,7 @@ export function RaceWx({ r, day = "", mini = false }) {
           {st && ` · ölçüm ${st.name} ${String(st.km).replace(".", ",")} km`}
         </span>
         {/* gün seçimi üstte tek düğme (Seyhun 2026-10-29: multimedyadaki gibi; alttaki gün şeridi kalktı) */}
-        {days.length > 1 && (
+        {!pinned && days.length > 1 && (
           <button type="button" data-cur={sel} onClick={() => setPick(true)} data-press className="raised flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-[0.8125rem] font-semibold tabular-nums">
             {sel === today ? "Bugün" : new Date(`${sel}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
             <span aria-hidden="true" className="text-[0.6875rem] opacity-70">▾</span>
