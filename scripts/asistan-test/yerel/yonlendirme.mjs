@@ -28,7 +28,7 @@ function route(s, ctx = {}) {
     owner, isStaff: !owner, racer: owner, att: owner, athleteSide: !!ctx.athlete, path, today, races, raceNames: races.map((r) => r.name), names,
     logHere: path === "/training", fitHere: path === "/fitness", foodHere: !!ctx.food, invPage: path.startsWith("/inventory"), attHere: path === "/athletes/attendance",
     curRace: curRace && curRace !== "new" ? curRace : "", askedMore: !!ctx.askedMore, shop: true,
-    foodRecent: !!ctx.foodRecent, guide: !!ctx.guide, myFit: !!ctx.myFit, myFitToday: !!ctx.myFitToday, fitPeople: ctx.fitPeople || [],
+    onCourse: !!ctx.onCourse, foodRecent: !!ctx.foodRecent, guide: !!ctx.guide, myFit: !!ctx.myFit, myFitToday: !!ctx.myFitToday, fitPeople: ctx.fitPeople || [],
   });
   return got === "person" && !owner ? "person(yetkisiz)" : got;
 }
@@ -145,9 +145,9 @@ const CASES = {
   athleteBody: ["Mete'nin kilosu 52", "Ali Kaya'nın boyu 1.52", "Zeynep'in boyu 148 kilosu 40,5", "Emre 45 kilo", "Ali'nin kilosu kaç", ["Mete'nin kilosu 52", { path: "/fitness" }]],
   invoiceTask: ["Turkcell faturasını Ali'ye ver", "elektrik faturasını sil"],
   raceWind: ["rüzgar 15 knot kuzeybatı", "rüzgarı yaz karayel 12 knot", "kuzeybatıdan 14 knot esiyor yaz", "rüzgar poyraz 18 knot sağanak 24", ["rüzgar 9 knot lodos", { path: "/athletes/races/r1/media" }]],
-  raceCourse: ["parkur ekseni 320", "pinden komite 110", "komiteden pin 280", "rüzgar 330 derece 12 knot", "orsa şamandırası 15 derece", "hakem botu parkur ekseni 320 dedi", "rüzgar 330 derece 12 knot, eksen 320, pinden komite 110 ve orsa şamandırası 15 derece", "rüzgar kuzeybatı 12 knot parkur ekseni 315", "rüzgar 340 derece 9 knot komiteden pin 250", ["parkur ekseni 15", { path: "/athletes/races/r1/media" }]],
+  raceCourse: ["parkur ekseni 320", "pinden komite 110", "komiteden pin 280", "rüzgar 330 derece 12 knot", "orsa şamandırası 15 derece", "hakem botu parkur ekseni 320 dedi", "rüzgar 330 derece 12 knot, eksen 320, pinden komite 110 ve orsa şamandırası 15 derece", "rüzgar kuzeybatı 12 knot parkur ekseni 315", "rüzgar 340 derece 9 knot komiteden pin 250", ["parkur ekseni 15", { path: "/athletes/races/r1/media" }], ["hangi taraf avantajlı", { path: "/athletes/races/r1/media", onCourse: true }], ["pin mi komite mi", { path: "/athletes/races/r1/media", onCourse: true }], ["rüzgar ne kadar döndü", { path: "/athletes/races/r1/media", onCourse: true }], ["son rüzgar kaç", { path: "/athletes/races/r1/media", onCourse: true }], ["rüzgar 10 derece sağa döndü", { path: "/athletes/races/r1/media", onCourse: true }], ["rüzgar 2 knot düştü", { path: "/athletes/races/r1/media", onCourse: true }], ["rüzgar 15 knot kuzeybatı", { path: "/athletes/races/r1/media", onCourse: true }], ["komite parkuru biraz sola aldı galiba", { path: "/athletes/races/r1/media", onCourse: true }], ["orta şamandırası 20 derece", { path: "/athletes/races/r1/media", onCourse: true }]],
   trainResult: ["birinci Ali, ikinci Ayşe, üçüncü Mehmet", "1 Ali 2 Zeynep 3 Emre", "bir Ali oldu, iki Ayşe oldu, üç Gökhan oldu", "Ali birinci Ayşe ikinci Emre DNF", "ikinci yarış: birinci Zeynep ikinci Ali", "yarış sonucu: Ali, Ayşe, Mehmet", "son yarışta Emre bitirmedi", "antrenman yarışında birinci Ali ikinci Ayşe", ["birinci Ali ikinci Ayşe", { path: "/training/day" }]],
-  raceTimer: ["5 dakikalık sayacı başlat", "sayacı başlat", "geri sayımı başlat 2 dakika", "bir dakikalık sayaç başlat", ["sayacı başlat", { path: "/training/day" }]],
+  raceTimer: ["5 dakikalık sayacı başlat", "sayacı başlat", "geri sayımı başlat 2 dakika", "bir dakikalık sayaç başlat", ["sayacı başlat", { path: "/training/day" }], ["5 dakikalık sayacı başlat", { path: "/athletes/races/r1/media", onCourse: true }]],
   foodLog: ["öğlen tavuk pilav ve ayran içtim", "kahvaltıda 2 yumurta ve peynir yedim", "akşam mercimek çorbası yedim", ["öğlen tavuk pilav ve ayran içtim", { path: "/fitness" }], ["öğle mercimek çorbası", { path: "/fitness", food: true }]],
   "Beslenme: su": ["2 bardak su içtim", "yarım litre su içtim", ["bir şişe su içtim", { path: "/fitness" }]],
   "Beslenme: kilo": ["kilom 82", "tartıldım 81,5", ["kilom 81.5", { path: "/fitness" }]],

@@ -788,10 +788,12 @@ async function scenarios4(h) {
     });
     await page.goto(`${base}/athletes/races/test-yaris/media`);
     await page.waitForTimeout(3000);
-    await check(GN, "Yarış multimedya sayfası", "sekme çubuğu ve asistan düğmesi yok", async () => {
+    // uygulamanın sekme çubuğu yok; asistan kendi alt çubuğunda tek küre (Seyhun 2026-10-29 "ses asistanı butonunu da koyalım parkura")
+    await check(GN, "Yarış multimedya sayfası", "uygulamanın sekme çubuğu yok, yarışın alt çubuğunda tek asistan küresi", async () => {
       const n = await page.locator("[data-orb]:visible").count();
       const nav = await page.locator("nav[aria-label='Sekmeler']:visible").count();
-      return [n === 0 && nav === 0, `${new URL(page.url()).pathname} · ${n} düğme · sekme çubuğu ${nav}`];
+      const dock = await page.locator("nav[aria-label='Multimedya sekmeleri'] [data-orb]:visible").count();
+      return [n === 1 && dock === 1 && nav === 0, `${new URL(page.url()).pathname} · ${n} düğme (alt çubukta ${dock}) · sekme çubuğu ${nav}`];
     });
     // gün düğmesi Özet'in yanında (data-cur); günler dokununca açılan listede (Seyhun 2026-10-29)
     const picked = () => page.locator("button[data-cur]").getAttribute("data-cur").catch(() => "");
