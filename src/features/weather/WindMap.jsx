@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
 import { DARK, DARK_ATTR, OSM, loadLeaflet } from "@/lib/leaflet";
 import { LEGEND, colorOf, dayMax, daysOf, fieldOf, frameAt, fresh, gridOf, mapUrl, nowIndex, placeId, rgbOf, sampleField, shapeMap } from "@/lib/windMap";
-import { PLACE, compareLinks, getPlace, placeLabel, samePlace, setPlace, windName } from "./weather";
+import { PLACE, compareLinks, dirDeg, getPlace, placeLabel, samePlace, setPlace, windName } from "./weather";
 import { WindArrow } from "./parts";
 import { useAuth } from "@/features/auth/AuthProvider";
 import Link from "next/link";
@@ -419,7 +419,7 @@ export function WindMapView({ embed = false, date = null }) {
             <span className="text-[0.6875rem] font-semibold text-white/60">kn</span>
             <WindArrow deg={here.dir} className="size-4" />
             <span className="text-[0.8125rem] leading-tight">
-              <b className="font-semibold">{windName(here.dir)[0]}</b>
+              <b className="font-semibold">{windName(here.dir)[0]} {dirDeg(here.dir)}</b>
               <span className="block text-[0.6875rem] text-white/60">sağanak {here.gust}</span>
             </span>
           </div>

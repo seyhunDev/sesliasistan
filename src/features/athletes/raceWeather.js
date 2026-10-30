@@ -1,7 +1,7 @@
 // Yarış günlerinin hava tahmini, rüzgâr önde. Kaynak ana sayfadaki hava durumuyla aynı: Open-Meteo (ücretsiz, anahtarsız, knot).
 // Konum: Çevre'de bulunan yarış alanı, yoksa yarışın ilçesi (Open-Meteo konum arama). Tahmin en çok 16 gün ileriyi kapsar;
 // daha uzaktaki günler "henüz tahmin yok" görünür. Sonuç yarışın `weather` alanına kaydedilir, "Güncelle" ile yenilenir.
-import { sailWindows, windName } from "@/features/weather/weather";
+import { dirDeg, sailWindows, windName } from "@/features/weather/weather";
 
 export const HORIZON = 15; // bugün + 15 gün = Open-Meteo'nun 16 günlük tahmini
 const DAY_FROM = 9; // gündüz rüzgârı: 09–18
@@ -93,7 +93,7 @@ export function cleanWeather(w) {
 }
 
 // Kısa rüzgâr cümlesi: "Karayel (KB) 8–14 kn, sağanak 19 kn"
-export const windLine = (x) => `${windName(x.dir)[0]} (${windName(x.dir)[1]}) ${x.lo === x.hi ? x.hi : `${x.lo}–${x.hi}`} kn, sağanak ${x.gust} kn`;
+export const windLine = (x) => `${windName(x.dir)[0]} (${windName(x.dir)[1]}, ${dirDeg(x.dir)}) ${x.lo === x.hi ? x.hi : `${x.lo}–${x.hi}`} kn, sağanak ${x.gust} kn`;
 
 // --- İstekler (telefondan) ---
 
