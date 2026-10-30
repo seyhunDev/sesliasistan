@@ -1289,53 +1289,21 @@ async function raceDayHome(h) {
     if (process.env.WX_SHOT) await page.waitForTimeout(2000).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-yaris.png` }));
     return [before === 0 && ok > 0 && place === 1 && home === 1, `önce ${before} · yarış havası ${ok} · Foça ${place} · Dikili satırı ${home}`];
   });
-  // Yarış şeridi (Seyhun 2026-10-27 "Evet, böyle yap", sonra "A · Büyük rakam"): bugün süren yarışta dev sayaç, süre çipleri, Başlat → Durdur → Devam,
-  // sayarken start dizisi, durunca Sıfırla; Kayıt ve Multimedya
-  await check("Ana sayfa", "yarış şeridinde Süre", "sayaç 5:00, 2 dk çipi 2:00 yapar, Başlat'a basınca geri sayım, dizi çubuğu ve Durdur, Durdur'da Devam ve Sıfırla (yanlış başlattım: yarış silinir); Kayıt var, Multimedya yarışın adında (⋯ içinde değil)", async () => {
+  // Süren yarış (Seyhun 2026-10-30: "ana sayfadan süreyi kaldıralım, sadece tıklama olsun"): sayaç ve düğme yok, tek satır; dokununca yarış sayfası
+  await check("Ana sayfa", "süren yarış tek satır", "yarış adı ve kısa durum, düğme yok, dokununca yarışın sayfası açılır", async () => {
     await nav0(page);
-    const strip = page.locator("[aria-label='Süren yarış']");
-    await strip.waitFor({ timeout: 12000 });
-    const go = strip.getByRole("button", { name: "Başlat" });
-    await waitFor(async () => ((await go.isEnabled().catch(() => false)) ? 1 : 0), 10000);
-    const big = strip.locator("b.tabular-nums").first();
-    const t0 = await big.textContent();
-    await strip.getByRole("button", { name: "Süre seç" }).click();
-    await page.getByRole("button", { name: "2 dk", exact: true }).click();
-    await page.waitForTimeout(400);
-    const t2 = await big.textContent();
-    await strip.getByRole("button", { name: "Süre seç" }).click();
-    await page.getByRole("button", { name: "5 dk", exact: true }).click();
-    await page.waitForTimeout(400);
-    const idleBtns = await strip.locator("button").count();
-    await go.click();
-    await page.waitForTimeout(1500);
-    const sub = await strip.textContent();
-    const seq = await strip.locator("[aria-label='Start dizisi']").count();
-    const stop = await strip.getByRole("button", { name: "Durdur" }).count();
-    if (process.env.WX_SHOT) await strip.screenshot({ path: `${process.env.WX_SHOT}-serit.png` }).catch(() => {});
-    await strip.getByRole("button", { name: "Durdur" }).click().catch(() => {});
-    const dev = await strip.getByRole("button", { name: "Devam" }).count();
-    const reset = (await strip.getByRole("button", { name: "Sıfırla" }).count()) === 1;
-    await strip.getByRole("button", { name: "Sıfırla" }).click().catch(() => {});
-    const why = page.getByRole("button", { name: /Yanlış başlattım/ });
-    const asked = await why.waitFor({ timeout: 4000 }).then(() => 1, () => 0);
-    await why.click().catch(() => {});
-    await page.waitForTimeout(600);
-    const back = await strip.getByRole("button", { name: "Başlat" }).count();
-    const rec = await strip.getByLabel("Kayıt").count();
-    // Süre seçimi sağ üstte ⋯ ile aynı satırda; "N. yarış" yazmaz (Seyhun 2026-10-29)
-    const yOf = async (l) => ((await l.boundingBox().catch(() => null)) || { y: -999 }).y;
-    const topRow = Math.abs((await yOf(strip.getByRole("button", { name: "Süre seç" }))) - (await yOf(strip.getByRole("button", { name: "Yarış kısayolu seçenekleri" })))) < 12;
-    // Multimedya'ya tek giriş yarışın adı (#872); ⋯ menüsünde Multimedya satırı yok
-    const nameLink = await strip.locator("a[href$='/media']").count();
-    await strip.getByRole("button", { name: "Yarış kısayolu seçenekleri" }).click();
-    const mm = await page.getByRole("link", { name: /Multimedya/ }).count();
-    await page.keyboard.press("Escape").catch(() => {});
-    const old = /YARIŞ SÜRÜYOR/.test(await strip.textContent());
-    if (process.env.WX_SHOT) await strip.screenshot({ path: `${process.env.WX_SHOT}-serit-bos.png` }).catch(() => {});
-    await page.evaluate(() => localStorage.removeItem("sa-sayac"));
-    const ok = /^0?5:00$/.test(t0) && /^0?2:00$/.test(t2) && /starta kalan/i.test(sub) && seq === 1 && stop === 1 && dev === 1 && reset && asked === 1 && back === 1 && !/\d\. yarış/.test(await strip.textContent()) && topRow && rec >= 1 && nameLink >= 1 && mm === 0 && idleBtns <= 4 && !old;
-    return [ok, `ilk ${t0} · çip ${t2} · ${/starta kalan/i.test(sub) ? "geri sayım" : "sayım yok"} · dizi ${seq} · Durdur ${stop} · Devam ${dev} · Sıfırla ${reset ? "açık" : "kapalı"} · sebep ${asked} → Başlat ${back} · beklerken düğme ${idleBtns} · Kayıt ${rec} · süre üst satırda ${topRow ? "evet" : "hayır"} · ad bağlantısı ${nameLink} · ⋯ Multimedya ${mm}${old ? " · eski başlık var" : ""}`];
+    const row = page.locator("a[aria-label='Süren yarış']");
+    await row.waitFor({ timeout: 12000 });
+    const href = (await row.getAttribute("href")) || "";
+    const btns = await row.locator("button").count();
+    const sub = await waitFor(async () => ((await row.locator("small").textContent().catch(() => "")) || "").trim().length, 10000);
+    const text = (await row.textContent()) || "";
+    if (process.env.WX_SHOT) await row.screenshot({ path: `${process.env.WX_SHOT}-satir.png` }).catch(() => {});
+    await row.click();
+    const went = await waitFor(async () => (/\/athletes\/races\/[^/]+$/.test(new URL(page.url()).pathname) ? 1 : 0), 10000);
+    await page.goBack().catch(() => {});
+    const ok = /^\/athletes\/races\/[^/]+$/.test(href) && btns === 0 && sub > 0 && went === 1 && !/Başlat|Kayıt/.test(text);
+    return [ok, `bağlantı ${href} · düğme ${btns} · yazı "${text.trim()}" · açıldı ${went}`];
   });
   await check("Sayfa hataları", "yarış günü havası", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();

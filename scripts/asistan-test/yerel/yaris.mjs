@@ -629,6 +629,23 @@ group("Yarış günü")([
     return [d1.prev.a, d2.prev.a, d2b.prev.a, RDY.placeMove(d2, "a"), RDY.placeMove(d2b, "a"), RR.cleanResults(d2).day, RR.cleanResults(d2).prev.a];
   }, ok: (r) => r.join() === ",5,5,2,1,2026-11-08,5" }],
   ["bizimkiler", { desc: "sıralılar, sıraya göre", fn: () => RDY.ourPlaces({ rows: { a: { place: 7 }, b: { place: 3 } } }, [{ id: "a", studentName: "Ayşe" }, { id: "b", studentName: "Ali" }, { id: "c", studentName: "Can" }]).map((x) => x.name).join(), ok: (r) => r === "Ali,Ayşe" }],
+  ["ana sayfa satırı", { desc: "Seyhun 2026-10-30: sayaç yerine evreye göre tek satır (ilk start, sayaç, sürüyor, sonuç, yarın, dönüş)", fn: () => {
+    const R = { ...RDR, notice: { schedule: [...RDR.notice.schedule, { date: "2026-11-07", time: "10:30", title: "İlk start" }] } };
+    const kids = [{ id: "a", studentName: "Deniz Ak" }, { id: "b", studentName: "Ece Su" }];
+    const st = [{ day: "2026-11-07", n: 1, at: atH(11).toISOString(), fin: atH(12).toISOString() }, { day: "2026-11-07", n: 2, at: atH(13, 5).toISOString() }];
+    const res = { day: "2026-11-07", rows: { a: { place: 4 }, b: { place: 5 } }, prev: { a: 7 } };
+    const L = (o) => RDY.raceLine({ r: R, today: "2026-11-07", now: atH(9), athletes: kids, ...o });
+    return [
+      L({}),
+      L({ timer: "Starta 03:12" }),
+      L({ now: atH(13, 20), starts: st }),
+      L({ now: atH(13, 20), starts: [st[0]] }),
+      L({ r: { ...R, results: res }, now: atH(15) }),
+      L({ now: atH(18, 30) }),
+      L({ r: { ...R, returnTime: "16:00" }, today: "2026-11-09", now: atH(19) }),
+      L({ today: "2026-11-10" }),
+    ];
+  }, ok: (r) => r.join("|") === "1. gün · İlk start 10:30|Starta 03:12|2. yarış sürüyor · 13:05|1 yarış bitti|1. gün · Deniz 4. ↑3 · Ece 5.|1. gün bitti · Yarın ilk start 11:00|Yarış bitti · Dönüş 16:00|" }],
 ]);
 
 // Pusula (compass.js): dik tutulan telefonda kameranın baktığı yön (Seyhun 2026-10-29: 20° yerine 277° gösteriyordu, dönmüyordu)

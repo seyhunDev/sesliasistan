@@ -10,7 +10,8 @@ import { useAdd } from "@/features/add/AddProvider";
 import { useChat, toMs } from "@/features/chat/ChatProvider";
 import { useData } from "@/features/data/DataProvider";
 import { statusOf } from "@/lib/fitness/model";
-import { clubRaceRow, fitHref, fitWeek, homeNotes, lastTraining, personHref, readSum, saveSum } from "@/lib/homeTiles";
+import { clubRaceRow, fitHref, fitWeek, homeNotes, lastTraining, liveRace, personHref, readSum, saveSum } from "@/lib/homeTiles";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { loadAthletes } from "@/features/athletes/data";
 import { noteWhen } from "@/lib/noteState";
 import { initials, todayStr } from "@/lib/utils/format";
@@ -184,7 +185,9 @@ export function useMessagesRow() {
 export function ClubRows({ open, fit }) {
   const { plans } = useData();
   const today = todayStr();
-  const race = clubRaceRow(open, today);
+  const { profile } = useAuth();
+  // Süren yarış ana sayfada üstte tek satır (RaceLive); burada ikinci kez yazılmaz (yalnız o satır Ayarlar'dan kapatıldıysa)
+  const race = profile?.raceLive !== "off" && liveRace(open, today) ? null : clubRaceRow(open, today);
   const train = useLastTraining(plans, today);
   const fw = fitWeek(fit, today);
   const who = train && (train.n ? `${train.names.slice(0, 3).join(", ")}${train.n > 3 ? ` +${train.n - 3}` : ""}` : "");
