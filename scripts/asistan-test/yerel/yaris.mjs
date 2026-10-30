@@ -528,6 +528,14 @@ group("Ortak yarışlar")([
 const PK = await import("@/lib/raceCourse");
 const CC = (obs, pts = {}) => PK.cleanCourse({ pts, obs: obs.map((o, i) => ({ ...o, at: `2026-10-28T1${i}:00:00.000Z` })) });
 group("Parkur analizi")([
+  ["sesle yazılan rüzgâr Saha'da", { desc: "Seyhun 2026-10-30: raceLive rüzgârı o günün ölçümlerine katılır (saat sırası, aynı an iki kez yok, başka gün yok)", fn: () => {
+    const c = CC([{ kind: "wind", deg: 320, kn: 9 }]);
+    const at = (h) => new Date(2026, 9, 28, h).toISOString();
+    const w = [{ at: at(9), dir: 300, kn: 7 }, { at: at(22), dir: 340, kn: 14 }, { at: new Date(2026, 9, 27, 12).toISOString(), dir: 10, kn: 5 }, { at: c.obs[0].at, dir: 320, kn: 9 }];
+    const day = `2026-10-28`;
+    const all = PK.withLiveWind(c, w, day);
+    return [all.obs.length, all.obs.filter((o) => o.live).map((o) => o.deg).join(), all.obs.map((o) => o.at).join() === [...all.obs.map((o) => o.at)].sort().join(), PK.withLiveWind(c, [], day) === c, PK.windTrend(all).to.deg];
+  }, ok: (r) => r.join("|") === "3|300,340|true|true|340" }],
   ["şamandırada rüzgâr", { desc: "orsa şamandırasında rüzgâr + knot", fn: () => PK.parseCourseText("Orsa şamandırasında rüzgar 330, 5 knot"), ok: (r) => r.obs.kind === "wind" && r.obs.deg === 330 && r.obs.kn === 5 && r.obs.spot === "m1" && r.obs.by === "ben" }],
   ["yazıyla sayı", { desc: "'üç yüz otuz derece, on iki knot'", fn: () => PK.parseCourseText("rüzgar üç yüz otuz derece on iki knot"), ok: (r) => r.obs.deg === 330 && r.obs.kn === 12 }],
   ["hat açısı", { desc: "pin'den komite ve komiteden pin", fn: () => [PK.parseCourseText("Pin'den komite 52"), PK.parseCourseText("komiteden pin 232 derece")], ok: ([a, b]) => a.obs.kind === "line" && a.obs.ref === "pin" && a.obs.deg === 52 && b.obs.kind === "line" && b.obs.ref === "komite" }],

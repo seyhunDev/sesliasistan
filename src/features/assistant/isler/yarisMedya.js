@@ -95,7 +95,7 @@ export async function courseCmd(ctx, s, viaVoice) {
   if (!cc) return undefined;
   const r = v ? { id: v.id } : raceFor(ctx);
   if (!r) {
-    reply("Bugün süren bir yarış yok. Parkuru yarışın Parkur sekmesinden ekleyebilirsin.", { engine: "local" }, viaVoice);
+    reply("Bugün süren bir yarış yok. Parkuru yarışın Saha sekmesinden ekleyebilirsin.", { engine: "local" }, viaVoice);
     return true;
   }
   const day = v?.day || todayStr();

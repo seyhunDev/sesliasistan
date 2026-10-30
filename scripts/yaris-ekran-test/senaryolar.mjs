@@ -70,6 +70,8 @@ export async function run(server, log = () => {}) {
       users: [{ key: "owner", email: OWNER, password: PASS, name: "Test Sahip", doc: { name: "Test Sahip", email: OWNER, role: "owner", orgId: "{owner}", onboarded: true, introV: 99, tourDone: true, createdAt: now.toISOString() } }],
       docs: [
         { path: "orgs/{owner}/races/r1", data: { name: "Ege Kupası", city: "İzmir", district: "Dikili", startDate: TODAY, endDate: plus(2), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
+        // sesle yazılmış rüzgâr (Saha ölçümlerinde görünmeli)
+        { path: "orgs/{owner}/raceLive/r1", data: { wind: [{ at: new Date(now.getTime() - 30 * 60e3).toISOString(), dir: 300, kn: 11, src: "elle" }] } },
         { path: "orgs/{owner}/races/r2", data: { name: "Bahar Kupası", city: "İzmir", district: "Dikili", startDate: plus(5), endDate: plus(6), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
       ],
     });
@@ -212,6 +214,14 @@ export async function run(server, log = () => {}) {
     }
     log("    Multimedya…");
     await okPage("Yarış sayfası", "Multimedya", "/athletes/races/r1/media", "Start sayacı");
+    // Saha (Seyhun 2026-10-30): Parkur + yarışın havası (kendi gün düğmesi yok, üstteki Bugün ▾) + sesle yazılan rüzgâr ölçümlerde
+    await okPage("Yarış sayfası", "Saha", "/athletes/races/r1/media?tab=course", "Ölçümler", async () => {
+      const wx = await page.locator("section[aria-label='Yarış havası']").count();
+      const ownDay = await page.locator("section[aria-label='Yarış havası'] button[data-cur]").count();
+      const voice = await page.locator("section[aria-label='Ölçümler']").getByText("300° · 11 kn").count();
+      const tab = await page.locator("nav[aria-label='Multimedya sekmeleri']").getByRole("button", { name: "Saha" }).count();
+      return [wx === 1 && ownDay === 0 && voice === 1 && tab === 1, `hava ${wx} · havanın gün düğmesi ${ownDay} · sesli rüzgâr ${voice} · Saha sekmesi ${tab}`];
+    });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
     // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok
     await okPage("Yarış sayfası", "tek ⋯ menüsü", "/athletes/races/r1/media", "Start sayacı", async () => {

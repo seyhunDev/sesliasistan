@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { loadAthletes, isActive } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { loadLive, resetLive, saveDays, saveStarts } from "@/features/athletes/raceLiveStore";
+import { loadLive, resetLive, saveDays, saveStarts, saveWind } from "@/features/athletes/raceLiveStore";
 import { canShare, loadSharedWind, shareWind } from "@/features/athletes/sharedRaces";
 import { cleanLive, dayNames, dayOf, liveDays, ownedBy, pickTimer, resetPatch, upSec, withToday, zeroRace } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
@@ -45,7 +45,8 @@ import { useAssistant } from "@/features/assistant/AssistantProvider";
 // yarış sayfasının üstünde (RaceWx.jsx).
 const TABS = [["sure", "Süre"], ["media", "Medya"], ["res", "Sonuçlar"]];
 // Parkur yalnız yarışta (Seyhun 2026-10-28 "Parkur analizi"); antrenman günü sayfası TABS'ı kullanır
-const RACE_TABS = [TABS[0], TABS[1], ["course", "Parkur"], TABS[2]]; // örnekteki sıra: Süre · Medya · Parkur · Sonuçlar
+// Saha = Parkur + yarışın havası + sesle yazılan rüzgâr (Seyhun 2026-10-30, yaris-yapi); Yarış'ın hemen yanında
+const RACE_TABS = [["course", "Saha"], TABS[0], TABS[1], TABS[2]];
 // Yarış sayfası ve multimedya tek sayfa gibi (Seyhun 2026-10-29 "detay, multimedya aynı sayfa farklı sekmeler olsun"): alt çubukta
 // ilk sekme Yarış (yarış sayfası /athletes/races/<id>), diğerleri multimedya (/media?tab=…); geçiş replace ile, geri tuşu listeye
 export const RACE_DOCK = [["race", "Yarış"], ...RACE_TABS];
@@ -221,7 +222,18 @@ export function RaceMedia({ orgId, id }) {
         </div>
       )}
       {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} />}
-      {tab === "course" && <CourseTab orgId={orgId} race={race} day={cur} />}
+      {tab === "course" && (
+        <CourseTab
+          orgId={orgId}
+          race={race}
+          day={cur}
+          wind={live.wind}
+          onDropWind={(at) => {
+            const next = live.wind.filter((w) => w.at !== at);
+            change({ wind: next }, () => saveWind(orgId, id, next));
+          }}
+        />
+      )}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
       {tab === "media" && (
         <MediaTab
@@ -311,7 +323,7 @@ export function RaceMedia({ orgId, id }) {
 
 // Sekmeler en altta (Seyhun 2026-10-19: "alttan yönetelim"); sekmenin düğme şeridi (Countdown Bar) bunun üstünde durur (--bar-b).
 // Yanında tek Kayıt düğmesi (Seyhun 2026-10-22: ayrı Fotoğraf/Video düğmeleri kalktı): her sekmeden iPhone kamerasını açar (RecPick), çekilen Medya'da
-const TAB_ICON = { race: "cal", sure: "clock", media: "image", res: "flag", course: "map" };
+const TAB_ICON = { race: "cal", sure: "clock", media: "image", res: "flag", course: "wind" };
 // extra: sağa eklenen düğme (antrenman sayfasında asistan, Seyhun 2026-10-23)
 export function TabDock({ tabs = TABS, value, onChange, onRec, extra = null }) {
   useEffect(() => {

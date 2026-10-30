@@ -8,17 +8,20 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { addCourseObs, courseRef, saveCourse } from "@/features/athletes/raceLiveStore";
 import { canShare, loadSharedCourse, shareCourse } from "@/features/athletes/sharedRaces";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { BYS, PICKS, cleanCourse, cleanObs, norm, obsTitle, obsValue, windTrend } from "@/lib/raceCourse";
+import { BYS, PICKS, cleanCourse, cleanObs, norm, obsTitle, obsValue, windTrend, withLiveWind } from "@/lib/raceCourse";
+import { RaceWx } from "@/features/athletes/RaceWx";
 import { CompassSight, askCompass } from "./CompassSight";
 import { setCourseView } from "./courseView";
 
 // Parkur sekmesi (Seyhun 2026-10-28): üstte rota kartı (lib/courseCard.js, komitenin ekseni yukarıda; harita kaldırıldı).
 // Ekleme yalnız "Yön ekle" ve "Pusula" (2026-10-29: "burada" düğmeleri ve söyle/yaz kutusu kaldırıldı, sonra asistanla yapılacak).
 // Altta start hattı avantajı, rüzgâr dönüşü ve hız, ölçüm listesi (dokununca sil).
+// Saha (Seyhun 2026-10-30 "parkur ve rüzgârı aynı sayfada yapabiliriz", yaris-yapi): üstte seçili günün havası (RaceWx, gün üstteki
+// Bugün ▾'dan), sesle yazılan rüzgâr (raceLive.wind) ölçümlerde ve kartta.
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 const BY = Object.fromEntries(BYS);
 
-export function CourseTab({ orgId, race, day }) {
+export function CourseTab({ orgId, race, day, wind = [], onDropWind }) {
   const toast = useToast();
   const [c, setC] = useState(() => cleanCourse({}));
   const [here, setHere] = useState(null); // telefonun yeri { lat, lon, acc }
@@ -100,15 +103,17 @@ export function CourseTab({ orgId, race, day }) {
     share(next);
     return x;
   };
-  const trend = windTrend(c);
+  const all = withLiveWind(c, wind, day);
+  const trend = windTrend(all);
   // Rota kartı (Seyhun 2026-10-28 "A · Rüzgâr yukarıda"; harita kaldırıldı: "Kart gayet iyi, kart üstüne çalışalım")
-  const kart = kartOf(c);
+  const kart = kartOf(all);
 
   return (
     <>
       {/* Lacivert sayfa (Seyhun 2026-10-29 "arka plan uygulamayla uyumlu, rota kartı ön planda, yazılar ince ve hizalı"):
           kart kutusuz ve büyük; altında iki ince çerçeveli düğme; Özet ve Ölçümler aynı hizada ince çizgili liste (ad · açıklama · değer) */}
-      <div className="-mx-2 mt-2">
+      <RaceWx r={race} pinned={day} />
+      <div className="-mx-2 mt-4">
         {kart ? (
           <div aria-label="Rota kartı" role="img" dangerouslySetInnerHTML={{ __html: kart }} />
         ) : (
@@ -132,11 +137,11 @@ export function CourseTab({ orgId, race, day }) {
       <section className="mt-7" aria-label="Ölçümler">
         <h3 className={secHead}>
           Ölçümler
-          {c.obs.length > 0 && <span className="tabular-nums text-white/45">{c.obs.length}</span>}
+          {all.obs.length > 0 && <span className="tabular-nums text-white/45">{all.obs.length}</span>}
         </h3>
         <ul className={list}>
-          {!c.obs.length && <li className="py-3 text-[0.9375rem] text-white/55">Henüz ölçüm yok</li>}
-          {[...c.obs].reverse().map((o) => (
+          {!all.obs.length && <li className="py-3 text-[0.9375rem] text-white/55">Henüz ölçüm yok</li>}
+          {[...all.obs].reverse().map((o) => (
             <li key={o.id}>
               <button type="button" onClick={() => setOpen(o)} data-press="row" className="w-full text-left">
                 <Line as="span" name={obsTitle(o)} sub={`${BY[o.by]} · ${hm(o.at)}`} value={obsValue(o)} />
@@ -153,7 +158,7 @@ export function CourseTab({ orgId, race, day }) {
           <div className="pb-2">
             <p className="text-[2.25rem] font-bold tabular-nums">{obsValue(open)}</p>
             <p className="text-[0.875rem] text-mut">{BY[open.by]} · {hm(open.at)}</p>
-            <Button variant="danger" className="mt-4" onClick={() => (save({ ...latest.current, obs: latest.current.obs.filter((x) => x.id !== open.id) }, "Ölçüm silindi"), setOpen(null))}>Sil</Button>
+            <Button variant="danger" className="mt-4" onClick={() => (open.live ? onDropWind?.(open.at) : save({ ...latest.current, obs: latest.current.obs.filter((x) => x.id !== open.id) }, "Ölçüm silindi"), setOpen(null))}>Sil</Button>
           </div>
         )}
       </Sheet>

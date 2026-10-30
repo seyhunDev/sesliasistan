@@ -294,6 +294,20 @@ export function lineBias(c) {
   const m = c.pts.pin && c.pts.komite ? dist(c.pts.pin, c.pts.komite) : null;
   return { wind: w.deg, line: l.deg, ideal, deg: Math.abs(d), end: Math.abs(d) < 1 ? "" : d > 0 ? "pin" : "komite", m: m === null ? null : Math.round(Math.abs(Math.sin(rad(d))) * m) };
 }
+// Saha (Seyhun 2026-10-30, yaris-yapi "rüzgâr 3 yerden 1 yere"): sesle ya da Hava'dan yazılan rüzgâr (raceLive.wind) o günün parkur
+// ölçümlerine katılır; kayıtta ayrı durur (live: true, silinince raceLive'dan silinir). Saate göre sıralı.
+const localDay = (iso) => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+export function withLiveWind(c, wind, day) {
+  const extra = (wind || [])
+    .filter((w) => w?.at && localDay(w.at) === day && !c.obs.some((o) => o.kind === "wind" && o.at === w.at))
+    .map((w) => ({ ...cleanObs({ id: `w${Date.parse(w.at).toString(36)}`, at: w.at, kind: "wind", deg: w.dir, kn: w.kn, by: "ben" }), live: true }))
+    .filter((o) => o.deg != null);
+  if (!extra.length) return c;
+  return { ...c, obs: [...c.obs, ...extra].sort((a, b) => a.at.localeCompare(b.at)) };
+}
 // Rüzgâr dönüşü ve hız: ilk ve son rüzgâr ölçümü (ayrı yer ya da ayrı saat)
 export function windTrend(c) {
   const ws = c.obs.filter((x) => x.kind === "wind");
