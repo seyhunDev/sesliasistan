@@ -1,8 +1,8 @@
-Commit: 084bcc1 · Yarış: yarış günü Saha · Start · Sonuç, sayfa evreye göre açılır (#911)
-Zaman: 2026-10-30-0940 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41014425893
+Commit: 2f5030c · Sesle parkur: ses tanıma hatalarına dayanıklı, sesle geri al (#912)
+Zaman: 2026-10-30-1101 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41022663210
 
-TAM TEST · 30.10.2026 09:30:28
+TAM TEST · 30.10.2026 10:51:53
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1415/1415 geçti · 0 kalan · 614 sn
+SONUÇ: 1415/1415 geçti · 0 kalan · 557 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
