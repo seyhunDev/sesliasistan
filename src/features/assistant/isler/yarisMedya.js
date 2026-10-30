@@ -1,9 +1,9 @@
 // Yarış multimedya sayfası işleri (elle yapılanların sesle yapılanı):
 // "rüzgar 15 knot kuzeybatı" → o günün yarışına rüzgâr kaydı (saat şimdi); "parkur ekseni 320", "pinden komite 110" → o günün
-// Parkur ölçümü (Parkur sekmesindeki Yön ekle / Pusula ile aynı kayıt, kart hemen çizilir); "5 dakikalık sayacı başlat" → start sayacı başlar,
+// Parkur ölçümü, bir cümlede birkaçı da (Parkur sekmesindeki Yön ekle / Pusula ile aynı kayıt, kart hemen çizilir); "5 dakikalık sayacı başlat" → start sayacı başlar,
 // yarışın Süre sekmesi açılır (bugün yarış yoksa antrenman sayfası). Yarış: açık yarış ya da multimedya sayfası, yoksa bugün süren yarış.
 import { liveRace, timerCommand, windCommand, dirShort } from "@/lib/raceLive";
-import { addCourseObs, addWind } from "@/features/athletes/raceLiveStore";
+import { addCourseMany, addWind } from "@/features/athletes/raceLiveStore";
 import { cleanObs, courseCommand, obsTitle } from "@/lib/raceCourse";
 import { startTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
@@ -16,7 +16,8 @@ const raceFor = (ctx) => {
 
 export async function windLogCmd(ctx, s, viaVoice) {
   const { owner, racer, raceOrg, reply, done, setPhase } = ctx;
-  const wc = owner && racer ? windCommand(s) : null;
+  // parkur cümlesinde birden çok ölçüm varsa (rüzgâr da içinde) parkura yazılır (courseCmd)
+  const wc = owner && racer && !(courseCommand(s)?.list.length > 1) ? windCommand(s) : null;
   if (!wc) return undefined;
   const r = raceFor(ctx);
   if (!r) {
@@ -57,12 +58,17 @@ export async function courseCmd(ctx, s, viaVoice) {
     reply("Bugün süren bir yarış yok. Parkuru yarışın multimedya sayfasından ekleyebilirsin.", { engine: "local" }, viaVoice);
     return true;
   }
-  const o = cleanObs({ ...cc.obs, at: new Date().toISOString() });
-  if (!o) return undefined;
+  const at = Date.now();
+  // birkaç ölçüm aynı anda söylenince sıraları kalsın diye saatleri 1 ms arayla
+  const list = cc.list.filter((x) => x.obs).map((x, i) => cleanObs({ ...x.obs, at: new Date(at + i).toISOString() })).filter(Boolean);
+  const len = cc.list.find((x) => x.len)?.len || null;
+  if (!list.length) return undefined;
   setPhase?.("thinking");
   try {
-    await addCourseObs(raceOrg, r.id, todayStr(), o);
-    done(`Yazdım: ${obsTitle(o)} ${o.deg}°${o.kn != null ? `, ${o.kn} knot` : ""}.`, { engine: "local" }, viaVoice);
+    await addCourseMany(raceOrg, r.id, todayStr(), list, len);
+    const said = list.map((o) => `${obsTitle(o)} ${o.deg}°${o.kn != null ? `, ${o.kn} knot` : ""}`);
+    if (len) said.push(`orsa ayağı ${len.orsa} m`);
+    done(`Yazdım: ${said.join(" · ")}.`, { engine: "local" }, viaVoice);
   } catch {
     reply("Parkura yazamadım, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
   }

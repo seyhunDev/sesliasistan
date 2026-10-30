@@ -550,6 +550,14 @@ group("Parkur analizi")([
     PK.courseCommand("parkur ekseni 320")?.obs, PK.courseCommand("pinden komite 110")?.obs, PK.courseCommand("komiteden pin 280")?.obs, PK.courseCommand("rüzgar 330 derece 12 knot")?.obs,
     PK.courseCommand("yarın rüzgar kaç derece olacak"), PK.courseCommand("rüzgar 15 knot kuzeybatı"), PK.courseCommand("Ali 3. oldu"),
   ], ok: ([a, b, c, d, ...no]) => a.kind === "axis" && a.deg === 320 && b.kind === "line" && b.ref === "pin" && c.ref === "komite" && c.deg === 280 && d.kind === "wind" && d.deg === 330 && d.kn === 12 && no.every((x) => x === null) }],
+  ["asistana çoklu parkur", { desc: "Seyhun 2026-10-30: bir cümlede rüzgâr, eksen, hat, şamandıra ve orsa uzunluğu birlikte; '1 nolu' derece sayılmaz; tek yön adlı rüzgâr rüzgâr kaydına kalır", fn: () => [
+    PK.courseCommand("rüzgar 330 derece 12 knot, eksen 320, pinden komite 110 ve orsa şamandırası 15 derece")?.list,
+    PK.courseCommand("rüzgar kuzeybatı 12 knot parkur ekseni 320 komiteden pin 230")?.list,
+    PK.courseCommand("orsa 0,8 mil, eksen 300")?.list,
+    PK.courseCommand("1 nolu şamandıra 15 derece")?.obs,
+    PK.courseCommand("orsa şamandırasında rüzgar 330 5 knot")?.list,
+    PK.courseCommand("rüzgar 15 knot kuzeybatı"),
+  ], ok: ([a, b, c, d, e, f]) => a.map((x) => `${x.obs.kind}${x.obs.ref || ""}${x.obs.deg}${x.obs.kn ?? ""}`).join() === "wind33012,axis320,linepin110,markm115" && b.map((x) => `${x.obs.kind}${x.obs.deg}`).join() === "wind315,axis320,line230" && c[0].len.orsa === 1482 && c[1].obs.deg === 300 && d.kind === "mark" && d.deg === 15 && e.length === 1 && e[0].obs.spot === "m1" && f === null }],
   ["rüzgâr dönüşü", { desc: "ilk ve son ölçüm arası derece ve hız farkı", fn: () => PK.windTrend(CC([{ kind: "wind", deg: 350, kn: 8 }, { kind: "wind", deg: 10, kn: 11 }])), ok: (t) => t.deg === 20 && t.kn === 3 }],
   ["parkur şekli", { desc: "komite + eksen → işaretlenmeyen pin ve şamandıralar tahmini, orsa ≈900 m eksende", fn: () => {
     const k = { lat: 39.07, lon: 26.88 };

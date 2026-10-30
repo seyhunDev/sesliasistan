@@ -87,6 +87,10 @@ function wordsToNum(t) {
     return String(total);
   });
 }
+const DIR_DEG = [
+  [/kuzey ?bat[ıi]|karayel/, 315], [/kuzey ?do[gğ]u|poyraz/, 45], [/g[uü]ney ?bat[ıi]|lodos/, 225], [/g[uü]ney ?do[gğ]u|ke[sş]i[sş]leme/, 135],
+  [/kuzey|y[ıi]ld[ıi]z/, 0], [/g[uü]ney|k[ıi]ble/, 180], [/bat[ıi]/, 270], [/do[gğ]u/, 90],
+];
 const BY_RE = [["komite", /komite (botu )?(ölçtü|diyor|veriyor|söyledi)|komiteden gelen/], ["hakem", /hakem/]];
 export function parseCourseText(text) {
   const t = wordsToNum(low(text)).replace(/(\d),(\d)/g, "$1.$2");
@@ -104,9 +108,11 @@ export function parseCourseText(text) {
   const L = t.match(/orsa( ayağı| mesafesi)?\s*(\d+(?:\.\d+)?)\s*(mil|nm|metre|m)\b/);
   if (L && !/rüzgar|rüzgâr|derece/.test(t)) return { len: { orsa: Math.round(+L[2] * (/mil|nm/.test(L[3]) ? NM : 1)) } };
   const kn = t.match(/(\d+(?:\.\d+)?)\s*(knot|knots|not|kn|kt|deniz mili)\b/);
-  const rest = kn ? t.replace(kn[0], " ") : t;
+  const rest = (kn ? t.replace(kn[0], " ") : t).replace(/[1-4] ?(nolu|numara|numaralı)/g, " ");
   const degM = rest.match(/(\d{1,3})(?:\s*°|\s*derece)?/);
-  const deg = degM ? +degM[1] : null;
+  // "rüzgar kuzeybatı 12 knot": derece yerine yön adı (yalnız rüzgârda)
+  const word = !degM && /r[uü]zg[aâ]r/.test(t) ? DIR_DEG.find(([re]) => re.test(rest))?.[1] : undefined;
+  const deg = degM ? +degM[1] : word ?? null;
   if (deg === null || deg > 360) return null;
   const o = { deg, by };
   if (/orsadan apaz/.test(t)) Object.assign(o, { kind: "leg", ref: "m1m2" });
@@ -122,15 +128,42 @@ export function parseCourseText(text) {
   return { obs: o };
 }
 
+// Bir cümlede birden çok ölçüm (Seyhun 2026-10-30 "parkurdaki her şeyi, çoklu söyleyebilmem lazım"): "rüzgar 330 derece 12 knot,
+// eksen 320, pinden komite 110 ve orsa şamandırası 15 derece". Önce virgül / "ve" / "sonra" ile, sonra her ölçüm sözünün (rüzgar, eksen,
+// pin, komite, orsa…) önünden bölünür; sayısı olmayan parça sonrakine ("orsa şamandırasında" + "rüzgar 330"), ölçüm sözü olmayan parça
+// öncekine ("rüzgar 330", "12 knot") eklenir. Dönüş: parseCourseText sonuçları ({ obs } | { len } | { pt }) listesi
+const KEY = /(?<![a-zçğıöşü])(?=r[uü]zg[aâ]r|eksen|parkur|pinden|pin |komite|hakem|orsa|apaz|[1-4] ?(?:nolu|numara)|birinci|ikinci|üçüncü|dördüncü)/;
+export function courseList(text) {
+  const t = wordsToNum(low(text)).replace(/(\d),(\d)/g, "$1.$2");
+  const bits = t.split(/[;.](?!\d)|,|\s(?:ve|sonra|bir de|ayrıca|bir de)\s/).flatMap((b) => b.split(KEY)).map((b) => b.trim()).filter(Boolean);
+  const out = [];
+  let lead = "";
+  for (const b of bits) {
+    const seg = `${lead} ${b}`.trim();
+    if (!/\d|burada|burası/.test(seg) && !(/r[uü]zg[aâ]r/.test(seg) && DIR_DEG.some(([re]) => re.test(seg)))) {
+      lead = seg;
+      continue;
+    }
+    lead = "";
+    if (!KEY.test(` ${seg}`) && out.length) out[out.length - 1] += ` ${seg}`;
+    else out.push(seg);
+  }
+  if (lead && out.length) out[out.length - 1] += ` ${lead}`;
+  return out.map(parseCourseText).filter(Boolean);
+}
+
 // Asistana söylenen parkur derecesi (Seyhun 2026-10-29 "sesli asistanla parkur derecelerini söyleyebilmeliyim"): "parkur ekseni 320",
-// "pinden komite 110", "komiteden pin 280", "rüzgar 330 derece 12 knot", "orsa şamandırası 15 derece". Yalnız dereceli ölçüm;
-// soru ya da tahmin cümlesi değil ("yarın rüzgar kaç derece olacak"). Dönüş { obs } | null
+// "pinden komite 110", "komiteden pin 280", "rüzgar 330 derece 12 knot", "orsa şamandırası 15 derece"; bir cümlede birkaçı da olur.
+// Soru ya da tahmin cümlesi değil ("yarın rüzgar kaç derece olacak"). Dönüş { obs (ilki), list: [{ obs } | { len }] } | null
 export function courseCommand(text) {
   const t = low(text);
   if (!/r[uü]zg[aâ]r|eksen|parkur|\bpin|komite|hakem|orsa|apaz|şamandıra|line|hat(tan|tı)|esiyor/.test(t)) return null;
   if (/\?|\bkaç\b|\bne\b|nasıl|olacak|olur mu|tahmin|yarın|dün|haftaya/.test(t)) return null;
-  const r = parseCourseText(text);
-  return r?.obs && Number.isFinite(r.obs.deg) ? r : null;
+  const list = courseList(text).filter((r) => (r.obs && Number.isFinite(r.obs.deg)) || r.len);
+  const obs = list.filter((r) => r.obs);
+  // tek rüzgâr yön adıyla ("rüzgar 15 knot kuzeybatı") rüzgâr kaydı işidir (windCommand), parkur değil
+  if (!obs.length || (list.length === 1 && !/\d/.test(t.replace(/\d+(?:[.,]\d+)?\s*(knot|knots|not|kn|kt)\b/, "")))) return null;
+  return { obs: obs[0].obs, list };
 }
 
 // ---- Coğrafya

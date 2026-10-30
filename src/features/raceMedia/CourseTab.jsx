@@ -46,7 +46,8 @@ export function CourseTab({ orgId, race, day }) {
     const off = onSnapshot(
       courseRef(orgId, race.id, day),
       (s) => {
-        if (s.metadata.hasPendingWrites) return;
+        // bekleyen yazım da gösterilir (Seyhun 2026-10-30 "anlık değişmeli"): asistanın yazdığı ölçüm sunucu onayı gelmeden çizilir;
+        // önce atlanıyordu, onay yalnız üst bilgi değişikliği olduğundan hiç gelmiyor, sayfa yenilenene dek görünmüyordu
         const own = cleanCourse(s.exists() ? s.data() : {});
         const empty = !own.obs.length && !Object.keys(own.pts).length;
         fromShared.current = false;
