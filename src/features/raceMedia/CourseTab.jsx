@@ -10,6 +10,7 @@ import { canShare, loadSharedCourse, shareCourse } from "@/features/athletes/sha
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { BYS, PICKS, cleanCourse, cleanObs, norm, obsTitle, obsValue, windTrend } from "@/lib/raceCourse";
 import { CompassSight, askCompass } from "./CompassSight";
+import { setCourseView } from "./courseView";
 
 // Parkur sekmesi (Seyhun 2026-10-28): üstte rota kartı (lib/courseCard.js, komitenin ekseni yukarıda; harita kaldırıldı).
 // Ekleme yalnız "Yön ekle" ve "Pusula" (2026-10-29: "burada" düğmeleri ve söyle/yaz kutusu kaldırıldı, sonra asistanla yapılacak).
@@ -28,6 +29,12 @@ export function CourseTab({ orgId, race, day }) {
   useEffect(() => {
     latest.current = c;
   }, [c]);
+  // asistan bu yarışın bu gününe yazar (courseView.js)
+  useEffect(() => {
+    if (!race?.id || !day) return;
+    setCourseView({ id: race.id, day, get: () => latest.current });
+    return () => setCourseView(null);
+  }, [race?.id, day]);
 
   // Ortak yarış (race.shared, Seyhun 2026-10-28): ekleyen kulüp parkuru ortağa da yazar; başka kulüpte kendi kaydı boşsa ortaktaki görünür
   // (ilk eklemede kendi kaydına bütünüyle geçer)

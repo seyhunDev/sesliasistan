@@ -96,7 +96,7 @@ export function parseCourseText(text) {
   const t = wordsToNum(low(text)).replace(/(\d),(\d)/g, "$1.$2");
   if (!t) return null;
   const by = BY_RE.find(([, re]) => re.test(t))?.[0] || "ben";
-  const mark = /orsa (şamandıra|şamandırası|şamandırasında|şamandırasının)|1 ?(nolu|numara|numaralı)|birinci şamandıra/.test(t) ? "m1"
+  const mark = /or[st]a (şamandıra|şamandırası|şamandırasında|şamandırasının)|1 ?(nolu|numara|numaralı)|birinci şamandıra/.test(t) ? "m1"
     : /apaz (şamandıra|şamandırası|şamandırasında)|2 ?(nolu|numara|numaralı)|ikinci şamandıra/.test(t) ? "m2"
       : /3 ?(nolu|numara|numaralı)|üçüncü şamandıra/.test(t) ? "m3" : /4 ?(nolu|numara|numaralı)|dördüncü şamandıra/.test(t) ? "m4" : "";
   // "... burada" → konum
@@ -132,7 +132,7 @@ export function parseCourseText(text) {
 // eksen 320, pinden komite 110 ve orsa şamandırası 15 derece". Önce virgül / "ve" / "sonra" ile, sonra her ölçüm sözünün (rüzgar, eksen,
 // pin, komite, orsa…) önünden bölünür; sayısı olmayan parça sonrakine ("orsa şamandırasında" + "rüzgar 330"), ölçüm sözü olmayan parça
 // öncekine ("rüzgar 330", "12 knot") eklenir. Dönüş: parseCourseText sonuçları ({ obs } | { len } | { pt }) listesi
-const KEY = /(?<![a-zçğıöşü])(?=r[uü]zg[aâ]r|eksen|parkur|pinden|pin |komite|hakem|orsa|apaz|[1-4] ?(?:nolu|numara)|birinci|ikinci|üçüncü|dördüncü)/;
+const KEY = /(?<![a-zçğıöşü])(?=r[uü]zg[aâ]r|eksen|parkur|pinden|pin |komite|hakem|orsa|orta şamandıra|apaz|[1-4] ?(?:nolu|numara)|birinci|ikinci|üçüncü|dördüncü)/;
 export function courseList(text) {
   const t = wordsToNum(low(text)).replace(/(\d),(\d)/g, "$1.$2");
   const bits = t.split(/[;.](?!\d)|,|\s(?:ve|sonra|bir de|ayrıca|bir de)\s/).flatMap((b) => b.split(KEY)).map((b) => b.trim()).filter(Boolean);
@@ -157,13 +157,88 @@ export function courseList(text) {
 // Soru ya da tahmin cümlesi değil ("yarın rüzgar kaç derece olacak"). Dönüş { obs (ilki), list: [{ obs } | { len }] } | null
 export function courseCommand(text) {
   const t = low(text);
-  if (!/r[uü]zg[aâ]r|eksen|parkur|\bpin|komite|hakem|orsa|apaz|şamandıra|line|hat(tan|tı)|esiyor/.test(t)) return null;
-  if (/\?|\bkaç\b|\bne\b|nasıl|olacak|olur mu|tahmin|yarın|dün|haftaya/.test(t)) return null;
+  if (!COURSE_WORD.test(t)) return null;
+  if (REL.test(wordsToNum(t))) return null; // "10 derece sağa döndü" göreli (courseRelative)
+  if (/\?|(?<![a-zçğıöşü])(kaç|ne)(?![a-zçğıöşü])|nasıl|olacak|olur mu|tahmin|yarın|dün|haftaya/.test(t)) return null;
   const list = courseList(text).filter((r) => (r.obs && Number.isFinite(r.obs.deg)) || r.len);
   const obs = list.filter((r) => r.obs);
   // tek rüzgâr yön adıyla ("rüzgar 15 knot kuzeybatı") rüzgâr kaydı işidir (windCommand), parkur değil
   if (!obs.length || (list.length === 1 && !/\d/.test(t.replace(/\d+(?:[.,]\d+)?\s*(knot|knots|not|kn|kt)\b/, "")))) return null;
   return { obs: obs[0].obs, list };
+}
+
+// Parkurla ilgili söz (Parkur sekmesinde yapay zekâya sormadan önce bakılır)
+export const COURSE_WORD = /r[uü]zg[aâ]r|eksen|parkur|\bpin|komite|hakem|orsa|apaz|şamandıra|line|hat(tan|tı|ta)?\b|esiyor|start|knot|derece/;
+const REL = /\d\s*(?:°|derece)?\s*(?:daha\s*)?(sağa|saga|sola|saat yönü)|\d\s*(?:knot|knots|not|kn|kt)\s*(?:daha\s*)?(art|yüksel|çık|düş|azal|in(?:di|er)|sert|hafifle)/;
+const FUTURE = /yarın|olacak|tahmin|haftaya|öğleden sonra ne|akşam ne/;
+
+// Göreli değişim (Seyhun 2026-10-30 "muhtemel insan konuşmaları"): "rüzgar 10 derece sağa döndü", "rüzgar 2 knot düştü",
+// "komite ekseni 10 derece sola aldı". Sağa = saat yönü (+). Dayanak son rüzgâr / son eksen; yoksa { need: "wind" | "axis" }.
+// Dönüş { list: [{ obs }] } | { need } | null
+export function courseRelative(text, c) {
+  const t = wordsToNum(low(text)).replace(/(\d),(\d)/g, "$1.$2");
+  if (FUTURE.test(t) || /\?/.test(t)) return null;
+  const turn = t.match(/(\d{1,3})\s*(?:°|derece)?\s*(?:daha\s*)?(sağa|saga|sola|saat yönünde|saat yönünün tersine)/);
+  const knCh = t.match(/(\d+(?:\.\d+)?)\s*(?:knot|knots|not|kn|kt)\s*(?:daha\s*)?(art|yüksel|çık|düş|azal|in(?:di|er)|sert|hafifle)/);
+  if (!turn && !knCh) return null;
+  const axis = /eksen|parkur/.test(t) && !/r[uü]zg[aâ]r/.test(t);
+  const cc = cleanCourse(c || {});
+  if (axis) {
+    if (!turn) return null;
+    const a = last(cc.obs, (x) => x.kind === "axis");
+    if (!a) return { need: "axis" };
+    const d = +turn[1] * (/sola|tersine/.test(turn[2]) ? -1 : 1);
+    return { list: [{ obs: { kind: "axis", deg: norm(a.deg + d), by: a.by } }] };
+  }
+  const w = last(cc.obs, (x) => x.kind === "wind");
+  if (!w) return { need: "wind" };
+  const d = turn ? +turn[1] * (/sola|tersine/.test(turn[2]) ? -1 : 1) : 0;
+  let kn = w.kn;
+  if (knCh) {
+    if (kn === null) return { need: "wind" };
+    kn = Math.max(0, kn + +knCh[1] * (/art|yüksel|çık|sert/.test(knCh[2]) ? 1 : -1));
+  }
+  return { list: [{ obs: { kind: "wind", deg: norm(w.deg + d), kn, ...(w.spot ? { spot: w.spot } : {}) } }] };
+}
+
+// Parkur soruları (yerel, anında): "hangi taraf avantajlı", "pin mi komite mi", "rüzgar ne kadar döndü", "son rüzgar kaç",
+// "eksen kaç", "rüzgar eksene göre nerede". Dönüş cevap cümlesi | null (tahmin ve yarın soruları değil)
+export function courseAsk(text, c) {
+  const t = low(text);
+  if (FUTURE.test(t)) return null;
+  const cc = cleanCourse(c || {});
+  const kn = (x) => (x.kn != null ? `, ${String(x.kn).replace(".", ",")} knot` : "");
+  if (/avantaj|hangi (taraf|uç|uçtan)|pin mi|komite mi|önde olan|hangi taraftan (başla|çık|kalk)|hat (nasıl|ne durumda|dik mi)/.test(t)) {
+    const b = lineBias(cc);
+    if (!b) return "Hat avantajı için rüzgârın derecesi ve hat açısı lazım. Örneğin “rüzgar 330, pinden komite 60” de.";
+    if (!b.end) return `Hat rüzgâra dik, iki uç da eşit. Rüzgâr ${b.wind}°, hat ${b.line}°.`;
+    return `${b.end === "pin" ? "Pin" : "Komite"} tarafı ${b.deg}° önde${b.m ? ` (yaklaşık ${b.m} m)` : ""}. Rüzgâr ${b.wind}°, hat ${b.line}°.`;
+  }
+  const q = /\?|(?<![a-zçğıöşü])(kaç|ne|nedir|nasıl|nerede|mı|mi|mu|mü|söyle|oku)(?![a-zçğıöşü])/.test(t);
+  if (!q) return null;
+  if (/r[uü]zg[aâ]r/.test(t) && /dön|değiş|art|azal|düş|kaydı/.test(t)) {
+    const tr = windTrend(cc);
+    if (!tr) return "Rüzgâr dönüşü için en az iki rüzgâr ölçümü lazım.";
+    const turn = tr.deg === 0 ? "yönü aynı" : `${Math.abs(tr.deg)}° ${tr.deg > 0 ? "sağa" : "sola"} döndü`;
+    const sp = tr.kn ? `, ${Math.abs(tr.kn)} knot ${tr.kn > 0 ? "arttı" : "azaldı"}` : "";
+    return `İlk ölçümden bu yana rüzgâr ${turn}${sp}. Şimdi ${tr.to.deg}°${kn(tr.to)}.`;
+  }
+  if (/r[uü]zg[aâ]r/.test(t) && /eksen/.test(t)) {
+    const w = last(cc.obs, (x) => x.kind === "wind");
+    const a = axisOf(cc);
+    if (!w || !a || a.src === "wind") return "Bunun için rüzgâr ve parkur ekseni lazım.";
+    const d = diff(a.deg, w.deg);
+    return d === 0 ? `Rüzgâr tam eksende, ${w.deg}°.` : `Rüzgâr eksenden ${Math.abs(d)}° ${d > 0 ? "sağda" : "solda"}. Eksen ${a.deg}°, rüzgâr ${w.deg}°.`;
+  }
+  if (/r[uü]zg[aâ]r/.test(t)) {
+    const w = last(cc.obs, (x) => x.kind === "wind");
+    return w ? `Son rüzgâr ${w.deg}°${kn(w)}${w.spot ? ` (${PT_NAME[w.spot]})` : ""}.` : "Bugün rüzgâr ölçümü yok.";
+  }
+  if (/eksen|parkur/.test(t)) {
+    const a = last(cc.obs, (x) => x.kind === "axis");
+    return a ? `Parkur ekseni ${a.deg}°.` : "Parkur ekseni henüz söylenmedi.";
+  }
+  return null;
 }
 
 // ---- Coğrafya

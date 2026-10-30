@@ -41,7 +41,7 @@ import { resultsAsk } from "@/lib/resultSheet";
 import { debtAsk, debtCommand } from "@/lib/debts";
 import { wordCommand } from "@/lib/englishWords";
 import { timerCommand, windCommand } from "@/lib/raceLive";
-import { courseCommand } from "@/lib/raceCourse";
+import { COURSE_WORD, courseAsk, courseCommand, courseRelative } from "@/lib/raceCourse";
 import { resultCommand } from "@/lib/raceVoice";
 import { attQueryAsk } from "@/lib/attQuery";
 import { clubAsk } from "@/lib/clubAsk";
@@ -77,6 +77,8 @@ export function moreKind(s, c = {}) {
   if (ia && (ia.kind !== "invoices" || owner)) return "infoAsk";
   if (racer && timerCommand(s)) return "raceTimer";
   if (owner && racer && courseCommand(s)?.list.length > 1) return "raceCourse"; // "rüzgar kuzeybatı 12 knot, eksen 320" parkura
+  // Parkur sekmesi açık (c.onCourse; uygulamada isler/yarisMedya courseView): soru, göreli cümle, rüzgâr ve sayılı/parkur sözlü her cümle parkura
+  if (owner && racer && c.onCourse && (courseCommand(s) || courseAsk(s, {}) || courseRelative(s, {}) || COURSE_WORD.test(s.toLocaleLowerCase("tr-TR")) || /\d/.test(s))) return "raceCourse";
   if (owner && racer && windCommand(s)) return "raceWind";
   if (owner && racer && courseCommand(s)) return "raceCourse";
   if (onRace && racer && raceHereCommand(s)) return "raceHere";

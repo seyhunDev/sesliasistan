@@ -2,7 +2,10 @@
 // sesle söylenen ya da yazılan tek cümleyi parkur ölçümüne çevirir (lib/raceCourse.js). Önce telefondaki kural (parseCourseText)
 // dener; anlamazsa bu çağrı yapılır. Dönen yanıt sunucuda cleanObs ile denetlenir.
 
-export const COURSE_SYSTEM = `Sen bir yelken yarışı antrenörünün parkur ölçüm defterisin. Kullanıcı Türkçe tek bir cümle söyler; onu tek bir kayda çevir.
+export const COURSE_SYSTEM = `Sen bir yelken yarışı antrenörünün parkur ölçüm defterisin. Kullanıcı Türkçe konuşur (sesle, gündelik dille, yazım
+hataları olabilir: "orta şamandırası" = orsa şamandırası, "not" = knot). Cümledeki HER ölçümü ayrı kayıt yap ("items" listesi; bir cümlede
+rüzgâr, eksen, hat ve şamandıra birlikte olabilir). Göreli söylenirse ("rüzgar 10 derece sağa döndü", "2 knot düştü", "komite ekseni
+10 derece sola aldı") verilen son değerlerden hesapla: sağa = saat yönü (+), sola (−); son değer yoksa o kaydı yazma.
 Kayıt türleri:
 - "obs": açı ölçümü. obs.kind:
   - "wind": rüzgârın GELDİĞİ yön (derece) ve varsa hızı (knot, kn).
@@ -15,11 +18,17 @@ Kayıt türleri:
 - "pt": "X burada" denince işaretlenen yer: pt "komite", "pin", "m1".."m4".
 - "len": orsa ayağının uzunluğu metre (mil × 1852).
 - "none": cümle bunlardan biri değilse.
-Sayıları yazıyla söylenmiş olabilir ("üç yüz otuz" = 330). Derece 0-359. Tahmin etme; cümlede yoksa alanı boş bırak.`;
+Sayıları yazıyla söylenmiş olabilir ("üç yüz otuz" = 330). Derece 0-359. Yön adı söylenirse derece yaz (kuzey 0, poyraz/kuzeydoğu 45,
+doğu 90, keşişleme/güneydoğu 135, kıble/güney 180, lodos/güneybatı 225, batı 270, karayel/kuzeybatı 315). Tahmin etme; cümlede yoksa alanı
+boş bırak. Soru, sohbet ya da parkurla ilgisiz cümlede items boş.`;
 
-export const courseUser = (text) => `Cümle: """${String(text || "").replace(/\s+/g, " ").trim().slice(0, 300)}"""`;
+// last: ekrandaki parkurun son değerleri { wind: { deg, kn }, axis } (göreli cümleler için)
+export const courseUser = (text, last = null) => {
+  const l = last && (last.wind || last.axis != null) ? `\nSon değerler: ${last.wind ? `rüzgâr ${last.wind.deg}°${last.wind.kn != null ? ` ${last.wind.kn} knot` : ""}` : "rüzgâr yok"}, ${last.axis != null ? `eksen ${last.axis}°` : "eksen yok"}` : "";
+  return `Cümle: """${String(text || "").replace(/\s+/g, " ").trim().slice(0, 300)}"""${l}`;
+};
 
-export const COURSE_SCHEMA = {
+export const COURSE_ITEM = {
   type: "object",
   properties: {
     type: { type: "string", enum: ["obs", "pt", "len", "none"] },
@@ -34,3 +43,4 @@ export const COURSE_SCHEMA = {
   },
   required: ["type"],
 };
+export const COURSE_SCHEMA = { type: "object", properties: { items: { type: "array", items: COURSE_ITEM } }, required: ["items"] };
