@@ -1,8 +1,8 @@
-Commit: 4dcb154 · Sonuçlarda final grupları: Altın / Gümüş / Bronz (#914)
-Zaman: 2026-10-30-1615 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41060287748
+Commit: a16ab58 · Sonuçlar: Altın / Gümüş / Bronz ayrı PDF'lerden tek sıralama (#915)
+Zaman: 2026-10-30-1934 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41088966297
 
-TAM TEST · 30.10.2026 16:05:33
+TAM TEST · 30.10.2026 19:20:46
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1415/1415 geçti · 0 kalan · 603 sn
+SONUÇ: 1411/1415 geçti · 4 kalan · 853 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -178,8 +178,20 @@ SONUÇ: 1415/1415 geçti · 0 kalan · 603 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 11/11
-  ✓ Yarış sayfası: 11/11
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 7/11
+  ✗ Yarış sayfası: 7/11
+      ✗ “yarış günü, sporcu seçili”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     "Start sayacı" görünmedi
+      ✗ “Multimedya”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     "Start sayacı" görünmedi
+      ✗ “Start”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     "Start sayacı" görünmedi
+      ✗ “tek ⋯ menüsü”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     "Start sayacı" görünmedi
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
