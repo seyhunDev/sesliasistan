@@ -170,7 +170,9 @@ const num = (v, max = 1000) => {
 function cleanPlace(x) {
   if (!x || typeof x !== "object" || !num(x.place)) return null;
   const out = { cls: S(x.cls, 30), cat: ["Junior", "Bambino"].includes(x.cat) ? x.cat : "", place: num(x.place) };
-  for (const k of ["n", "cp", "cn", "gp", "gn", "jp", "jn"]) if (num(x[k])) out[k] = num(x[k]);
+  for (const k of ["n", "cp", "cn", "gp", "gn", "jp", "jn", "fp", "fn"]) if (num(x[k])) out[k] = num(x[k]);
+  if (["Altın", "Gümüş", "Bronz", "Zümrüt"].includes(x.grp) && out.fp) out.grp = x.grp;
+  else (delete out.fp, delete out.fn);
   if (!out.cat) (delete out.cp, delete out.cn, delete out.jp, delete out.jn);
   return out;
 }
@@ -461,6 +463,8 @@ export function resultSentence(a) {
   const cls = r?.cls || a?.cls || "";
   if (!r?.place) return `Kulübümüz sporcusu ${name}${cls ? `, ${cls} sınıfında` : ""} kulübümüzü başarıyla temsil etti. 👏`;
   const parts = [{ l: cls, p: r.place }];
+  // Final grubu ayrı cümle parçası ("Optimist Gümüş grubunda 5."); madalya yalnız genel ve kategori sırasından
+  const grp = r.grp && r.fp ? `, ${[cls, r.grp].filter(Boolean).join(" ")} grubunda ${r.fp}.` : "";
   if (r.cp && r.cat) parts.push({ l: [cls, r.cat].filter(Boolean).join(" "), p: r.cp });
   if (r.gp) parts.push({ l: [cls, "Kızlar"].filter(Boolean).join(" "), p: r.gp });
   const groups = [];
@@ -474,8 +478,8 @@ export function resultSentence(a) {
     : `${r.place}.`;
   const best = Math.min(...parts.map((x) => x.p));
   return best <= 3
-    ? `Kulübümüz sporcusu ${name}, ${where} olarak büyük bir başarıya imza attı. ${MEDAL[best]}`
-    : `Kulübümüz sporcusu ${name}, ${where} olarak yarışı tamamladı. 👏`;
+    ? `Kulübümüz sporcusu ${name}, ${where}${grp} olarak büyük bir başarıya imza attı. ${MEDAL[best]}`
+    : `Kulübümüz sporcusu ${name}, ${where}${grp} olarak yarışı tamamladı. 👏`;
 }
 export function resultCaption(race) {
   if (!race) return "";

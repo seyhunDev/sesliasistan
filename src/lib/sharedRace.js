@@ -110,14 +110,15 @@ export function fleetsOf(sheets) {
   for (const sh of [...(sheets || [])].sort((a, b) => String(a.at).localeCompare(String(b.at)))) for (const f of sh.fleets || []) if (f?.cls && f.rows?.length) by.set(f.cls, f);
   return [...by.values()];
 }
-// Seçili sınıfın süzgeçleri: Junior / Bambino (varsa) ve Kızlar (varsa)
+// Seçili sınıfın süzgeçleri: final grupları Altın / Gümüş / Bronz (varsa), Junior / Bambino (varsa) ve Kızlar (varsa)
+const GRPS = ["Altın", "Gümüş", "Bronz", "Zümrüt"];
 export function filtersOf(fleet) {
   const rows = fleet?.rows || [];
-  return [...["Junior", "Bambino"].filter((c) => rows.some((r) => r.cat === c)), ...(rows.some((r) => r.sex === "K") ? ["Kızlar"] : [])];
+  return [...GRPS.filter((g) => rows.some((r) => r.grp === g)), ...["Junior", "Bambino"].filter((c) => rows.some((r) => r.cat === c)), ...(rows.some((r) => r.sex === "K") ? ["Kızlar"] : [])];
 }
 // Süzülmüş sıralama: süzgeçte sıra kendi içinde baştan sayılır; arama sırayı değiştirmez. Dönüş [{ place, ...satır }]
 export function rankView(fleet, filter = "", q = "") {
-  const rows = (fleet?.rows || []).filter((r) => !filter || (filter === "Kızlar" ? r.sex === "K" : r.cat === filter)).map((r, i) => ({ ...r, place: i + 1 }));
+  const rows = (fleet?.rows || []).filter((r) => !filter || (filter === "Kızlar" ? r.sex === "K" : GRPS.includes(filter) ? r.grp === filter : r.cat === filter)).map((r, i) => ({ ...r, place: i + 1 }));
   const want = plain(q).split(" ").filter(Boolean);
   const num = String(q || "").replace(/\D/g, "");
   return rows.filter((r) => {

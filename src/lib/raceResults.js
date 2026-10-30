@@ -1,9 +1,9 @@
 // Yarış sonuçları: yarışın results alanı { fleet: tekne sayısı, rows: { sporcuId: { place, note, … } }, files: [künye] }.
 // Satırda sonuç belgesinden gelenler de durur (resultSheet.js): cls sınıf, cat kategori (Senior/Junior/Bambino),
-// place/n genel sıra ve sınıftaki sporcu sayısı, cp/cn Junior/Bambino sırası, gp/gn kızlar sırası, f belgenin kimliği.
+// grp/fp/fn final grubu (Altın/Gümüş/Bronz) ve gruptaki sırası, place/n genel sıra ve sınıftaki sporcu sayısı, cp/cn Junior/Bambino sırası, gp/gn kızlar sırası, f belgenin kimliği.
 // files: yüklenen sonuç PDF'leri { id, name, size, parts, at, path, url } (noticeFile.js; yeniler Storage'da, eskiler Firestore'da parçalı).
 // Sporcu kartında yarış geçmişi ve Instagram "sonuç" gönderisi buradan beslenir (saf fonksiyonlar, test edilir).
-import { resultLine } from "./resultSheet";
+import { GROUPS, resultLine } from "./resultSheet";
 import { storedOf } from "./storedFile";
 const int = (v, max) => {
   const n = Math.round(Number(String(v ?? "").replace(/[^\d]/g, "")));
@@ -23,6 +23,7 @@ export function cleanResults(v) {
     const cls = S(x?.cls, 30);
     if (cls) {
       Object.assign(row, { cls, cat: ["Senior", "Junior", "Bambino"].includes(x?.cat) ? x.cat : "", n: int(x?.n, 1000), cp: int(x?.cp, 500), cn: int(x?.cn, 1000), gp: int(x?.gp, 500), gn: int(x?.gn, 1000), jp: int(x?.jp, 500), jn: int(x?.jn, 1000) });
+      if (GROUPS.includes(x?.grp) && int(x?.fp, 500)) Object.assign(row, { grp: x.grp, fp: int(x.fp, 500), fn: int(x?.fn, 1000) });
       if (/^[\w-]{1,40}$/.test(x?.f || "")) row.f = x.f;
     }
     rows[id] = row;
@@ -65,7 +66,7 @@ export function withResults(list, ids, res) {
     .map((a, i) => {
       const x = res?.rows?.[ids[i]];
       // r: sıralar (Instagram sonuç açıklaması kategori kategori yazar)
-      const r = x?.place ? { cls: x.cls || "", cat: x.cat || "", place: x.place, n: x.n || "", cp: x.cp || "", cn: x.cn || "", gp: x.gp || "", gn: x.gn || "" } : null;
+      const r = x?.place ? { cls: x.cls || "", cat: x.cat || "", place: x.place, n: x.n || "", cp: x.cp || "", cn: x.cn || "", gp: x.gp || "", gn: x.gn || "", ...(x.grp ? { grp: x.grp, fp: x.fp || "", fn: x.fn || "" } : {}) } : null;
       return { ...a, res: placeText(res, ids[i]), ...(r ? { r } : {}), _p: x?.place || 999 };
     })
     .sort((a, b) => a._p - b._p)

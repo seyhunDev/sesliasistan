@@ -6,7 +6,9 @@
 // - Kızlar: sınıftaki bütün kızlar kendi içinde sıralanır. Bizim sporcularda cinsiyet sporcu kartından,
 //   diğerlerinde belgeden; belgede yoksa yapay zekanın addan tahmini.
 // - Bizim sporcular listede adından bulunur (aynı adlı iki satır varsa yelken no, sonra kulüp adı ayırır).
-// Sonuç yarışın results.rows alanına sporcu başına yazılır: { cls, cat, place, n, cp, cn, gp, gn, f }.
+// - Final serisi gruplara bölünmüşse (Altın / Gümüş / Bronz / Zümrüt; Gold / Silver / Bronze / Emerald) satırda grp yazar; liste
+//   Altın önce gelecek biçimde sıralanır ve sporcunun kendi grubundaki sırası ayrıca verilir (Seyhun 2026-10-30).
+// Sonuç yarışın results.rows alanına sporcu başına yazılır: { cls, cat, grp, fp, fn, place, n, cp, cn, gp, gn, f }.
 
 const plain = (s) =>
   String(s || "")
@@ -72,6 +74,18 @@ export function withCats(fleets, year = new Date().getFullYear()) {
 // Yarışın yılı (başlangıç tarihinden; yoksa bu yıl)
 export const raceYear = (race) => +String(race?.startDate || "").slice(0, 4) || new Date().getFullYear();
 
+// Final grubu (eleme serisinin renk grupları Sarı/Mavi/Kırmızı değil): "Gold", "Altın" → Altın; "Silver", "Gümüş" → Gümüş; "Bronze", "Bronz" → Bronz; "Emerald", "Zümrüt" → Zümrüt
+export const GROUPS = ["Altın", "Gümüş", "Bronz", "Zümrüt"];
+export function grpOf(raw) {
+  const c = plain(raw).replace(/\b(grup|group|fleet|filo|final)\b/g, "").trim();
+  if (!c) return "";
+  if (/^(altin|gold)$/.test(c)) return "Altın";
+  if (/^(gumus|silver)$/.test(c)) return "Gümüş";
+  if (/^(bronz|bronze)$/.test(c)) return "Bronz";
+  if (/^(zumrut|emerald)$/.test(c)) return "Zümrüt";
+  return "";
+}
+
 // "K", "F", "W", "Kız", "Kadın", "Female", "Girl" → K; "E", "M", "Erkek", "Male", "Boy" → E
 export function sexOf(raw) {
   const c = plain(raw);
@@ -90,7 +104,8 @@ export function clsName(raw) {
   return s.slice(0, 30);
 }
 
-// Yapay zekanın okuduğu listeyi temizler: [{ cls, rows: [{ rank, name, sail, club, born, pts, sex, cat }] }] (sıraya göre)
+// Yapay zekanın okuduğu listeyi temizler: [{ cls, rows: [{ rank, name, sail, club, born, pts, sex, cat, grp }] }] (sıraya göre).
+// Gruplu listede sıra Altın, Gümüş, Bronz, Zümrüt, grup içinde sıraya göre; belgede her grubun sırası 1'den başlıyorsa genel sıra yeniden verilir.
 export function cleanSheet(raw) {
   const fleets = [];
   for (const f of (Array.isArray(raw) ? raw : []).slice(0, 12)) {
@@ -106,10 +121,24 @@ export function cleanSheet(raw) {
         pts: Number.isFinite(Number(r?.pts)) && r?.pts !== null && r?.pts !== "" && Number(r.pts) >= 0 ? Math.round(Number(r.pts) * 10) / 10 : "",
         sex: sexOf(r?.sex),
         cat: catOf(cls, r?.cat),
+        grp: grpOf(r?.grp),
       }))
       .filter((r) => r.name)
       .sort((a, b) => a.rank - b.rank);
-    if (cls && rows.length) fleets.push({ cls, rows });
+    if (rows.some((r) => r.grp)) {
+      const gi = (r) => (r.grp ? GROUPS.indexOf(r.grp) : GROUPS.length);
+      rows.sort((a, b) => gi(a) - gi(b) || a.rank - b.rank);
+      if (rows.some((r, i) => i && r.rank <= rows[i - 1].rank)) rows.forEach((r, i) => (r.rank = i + 1));
+    }
+    if (!cls || !rows.length) continue;
+    // Gruplar ayrı liste okunduysa (her grup kendi sayfasında) aynı sınıfın grupları tek listede birleşir
+    const same = rows.some((r) => r.grp) && fleets.find((x) => x.cls === cls && x.rows.some((r) => r.grp));
+    if (!same) fleets.push({ cls, rows });
+    else {
+      const gi = (r) => (r.grp ? GROUPS.indexOf(r.grp) : GROUPS.length);
+      same.rows = [...same.rows, ...rows].sort((a, b) => gi(a) - gi(b) || a.rank - b.rank);
+      if (same.rows.some((r, i) => i && r.rank <= same.rows[i - 1].rank)) same.rows.forEach((r, i) => (r.rank = i + 1));
+    }
   }
   return fleets;
 }
@@ -142,7 +171,8 @@ export function findOurs(fleets, athletes, club = "dikili") {
   return out;
 }
 
-// Sporcu başına sonuç: { sporcuId: { cls, cat, place, n, cp, cn, gp, gn } }
+// Sporcu başına sonuç: { sporcuId: { cls, cat, grp, fp, fn, place, n, cp, cn, gp, gn } }
+// grp/fp/fn: final grubu (Gümüş) ve o gruptaki sırası.
 // place/n: genel sıralama (bütün sporcular, kategori ve cinsiyet ayrımı yok).
 // cp/cn: Junior ya da Bambino ise o kategorinin kendi sırası (Senior'a ayrı sıra yok, genel sıra yeter).
 // gp/gn: kızlar sırası, sınıftaki bütün kızlar arasında (kategoriden bağımsız).
@@ -168,9 +198,11 @@ export function rankOurs(fleets, athletes, club) {
     // Kategorinin kızları (Junior Kızlar): kızlar arasında aynı kategoridekiler
     const catGirls = cp && gp ? girls.filter((i) => f.rows[i].cat === me.cat) : [];
     const jp = catGirls.length ? catGirls.indexOf(ri) + 1 : 0;
+    const flt = me.grp ? f.rows.map((r, i) => i).filter((i) => f.rows[i].grp === me.grp) : [];
     out[id] = {
       cls: f.cls,
       cat: me.cat,
+      ...(flt.length ? { grp: me.grp, fp: flt.indexOf(ri) + 1, fn: flt.length } : {}),
       place: ri + 1,
       n: f.rows.length,
       cp: cp || "",
@@ -188,19 +220,22 @@ export function rankOurs(fleets, athletes, club) {
 export const groupName = (x) => [x?.cls, x?.cat].filter(Boolean).join(" ");
 
 // Kısa sonuç: "Optimist genel 56. / 120 · Junior 4. / 38 · Kızlar 7. / 30 · Junior Kızlar 2. / 12"
+// Gruplu: "Optimist Gümüş grup 5. / 40 · genel 65. / 120 · …"
 export function resultLine(x) {
   if (!x?.place) return "";
-  const head = `${x.cls ? `${x.cls} genel ` : ""}${x.place}.${x.n ? ` / ${x.n}` : ""}`;
+  const grp = x.grp && x.fp ? `${x.cls ? `${x.cls} ` : ""}${x.grp} grup ${x.fp}.${x.fn ? ` / ${x.fn}` : ""}` : "";
+  const head = `${x.cls && !grp ? `${x.cls} ` : ""}${x.cls || grp ? "genel " : ""}${x.place}.${x.n ? ` / ${x.n}` : ""}`;
   const cat = x.cp ? `${x.cat} ${x.cp}.${x.cn ? ` / ${x.cn}` : ""}` : "";
   const girls = x.gp ? `Kızlar ${x.gp}.${x.gn ? ` / ${x.gn}` : ""}` : "";
   const catGirls = x.jp ? `${x.cat} Kızlar ${x.jp}.${x.jn ? ` / ${x.jn}` : ""}` : "";
-  return [head, cat, girls, catGirls].filter(Boolean).join(" · ");
+  return [grp, head, cat, girls, catGirls].filter(Boolean).join(" · ");
 }
 
 // Sesli/yazılı cevap için: "Optimist genelde 120 sporcu içinde 56., Junior'da 38 sporcu içinde 4., kızlarda 30 sporcu içinde 7."
 export function resultSpeech(x) {
   if (!x?.place) return "";
-  const head = `${x.cls ? `${x.cls} genelde ` : ""}${x.n ? `${x.n} sporcu içinde ` : ""}${x.place}.`;
+  const grp = x.grp && x.fp ? `${x.cls ? `${x.cls} ` : ""}${x.grp.toLocaleLowerCase("tr-TR")} grupta ${x.fn ? `${x.fn} sporcu içinde ` : ""}${x.fp}., ` : "";
+  const head = `${grp}${x.cls && !grp ? `${x.cls} ` : ""}${x.cls || grp ? "genelde " : ""}${x.n ? `${x.n} sporcu içinde ` : ""}${x.place}.`;
   const cat = x.cp ? `, ${x.cat} sıralamasında ${x.cn ? `${x.cn} sporcu içinde ` : ""}${x.cp}.` : "";
   const girls = x.gp ? `, kızlarda ${x.gn ? `${x.gn} sporcu içinde ` : ""}${x.gp}.` : "";
   const catGirls = x.jp ? `, ${x.cat} kızlarda ${x.jn ? `${x.jn} sporcu içinde ` : ""}${x.jp}.` : "";

@@ -33,6 +33,7 @@ const yearOf = (s) => String(bornYear(s) || "");
 // Listede bulunmayan sporcunun ek sıraları (kayıtlı sonuçtan): kategori, kızlar, kategori kızları
 const boxesOf = (x) =>
   [
+    x?.grp && x.fp && [x.grp, x.fp, x.fn],
     x?.cp && SUB.includes(x.cat) && [x.cat, x.cp, x.cn],
     x?.gp && ["Kızlar", x.gp, x.gn],
     x?.jp && SUB.includes(x.cat) && [`${x.cat} Kızlar`, x.jp, x.jn],
