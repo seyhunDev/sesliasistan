@@ -1,8 +1,8 @@
-Commit: b4d6694 · Parkur: asistan önce parkura (o günün parkuru, sorular, göreli cümleler, hızlı yapay zekâ) (#906)
-Zaman: 2026-10-30-0715 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41000834104
+Commit: 06d2304 · Ana sayfa: süren yarış tek satır (sayaç kalktı) + yarış takvimi çökmesi (#907)
+Zaman: 2026-10-30-0828 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41007704000
 
-TAM TEST · 30.10.2026 07:04:58
+TAM TEST · 30.10.2026 08:18:50
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1411/1411 geçti · 0 kalan · 614 sn
+SONUÇ: 1411/1411 geçti · 0 kalan · 575 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
