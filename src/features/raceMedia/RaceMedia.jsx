@@ -310,15 +310,15 @@ export function TabDock({ tabs = TABS, value, onChange, onRec, extra = null }) {
           ))}
         </div>
         {onRec && (
-          <div className="relative w-[5rem] shrink-0">
-            <span className="acenter absolute -top-5 left-1/2 -translate-x-1/2 rounded-full p-1">
-              <RecPick onFile={onRec} onTaken={() => onChange("media")} aria-label="Kayıt" className="grid size-[3.75rem] touch-manipulation place-items-center rounded-full border-[3px] border-rec transition active:scale-90">
-                <span className="size-[2.375rem] rounded-full bg-rec" />
+          <div className="relative w-[3.75rem] shrink-0">
+            <span className="acenter absolute -top-4 left-1/2 -translate-x-1/2 rounded-full p-[3px]">
+              <RecPick onFile={onRec} onTaken={() => onChange("media")} aria-label="Kayıt" className="grid size-[3.25rem] touch-manipulation place-items-center rounded-full border-[3px] border-rec transition active:scale-90">
+                <span className="size-[2.125rem] rounded-full bg-rec" />
               </RecPick>
             </span>
           </div>
         )}
-        {extra && <div className="relative w-[5rem] shrink-0">{extra}</div>}
+        {extra && <div className="relative w-[4rem] shrink-0">{extra}</div>}
       </div>
     </nav>
   );
@@ -331,8 +331,8 @@ export function AskButton({ examples = RACE_EX }) {
   const { openAssistant, act } = useAssistant();
   const release = ({ short, away }) => (short ? (act.current.release || act.current.cancel)?.() : away ? act.current.cancel?.() : (act.current.release || act.current.stop)?.());
   return (
-    <span className="acenter absolute -top-5 left-1/2 -translate-x-1/2 rounded-full p-1">
-      <VoiceLight state="idle" size="size-[3.75rem]" compact onPress={() => openAssistant({ listen: true, dock: true, examples })} onRelease={release} />
+    <span className="acenter absolute -top-4 left-1/2 -translate-x-1/2 rounded-full p-[3px]">
+      <VoiceLight state="idle" size="size-[3.25rem]" compact onPress={() => openAssistant({ listen: true, dock: true, examples })} onRelease={release} />
     </span>
   );
 }
