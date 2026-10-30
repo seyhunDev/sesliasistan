@@ -241,7 +241,7 @@ export const wantsWeather = (text) => WX.test(String(text || "").toLocaleLowerCa
 
 const DAYS = new Intl.DateTimeFormat("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: PLACE.tz });
 const dname = (s) => DAYS.format(new Date(`${s}T12:00:00`));
-const wind = (kn, gust, dir) => `${windName(dir)[0]} (${windName(dir)[1]}) ${kn} kn, sağanak ${gust} kn, ${windLevel(kn).label.toLocaleLowerCase("tr-TR")}`;
+const wind = (kn, gust, dir) => `${windName(dir)[0]} (${windName(dir)[1]}, ${dirDeg(dir)}) ${kn} kn, sağanak ${gust} kn, ${windLevel(kn).label.toLocaleLowerCase("tr-TR")}`;
 
 // Yapay zekaya giden hava özeti (düz metin, kısa)
 export function weatherDigest(w) {
@@ -255,7 +255,7 @@ export function weatherDigest(w) {
   if (w.h48?.length) {
     lines.push("SAATLİK (48 saat; saat | °C | gökyüzü | rüzgâr):");
     w.h48.forEach(([t, temp, code, kn, gust, dir]) =>
-      lines.push(`${t.slice(5, 10)} ${t.slice(11, 16)} | ${temp}° | ${sky(code).label} | ${windName(dir)[1]} ${kn}/${gust} kn`),
+      lines.push(`${t.slice(5, 10)} ${t.slice(11, 16)} | ${temp}° | ${sky(code).label} | ${windName(dir)[1]} ${dirDeg(dir)} ${kn}/${gust} kn`),
     );
   }
   lines.push("GÜNLÜK:");

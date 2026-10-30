@@ -7,7 +7,7 @@ import { MAP_ATTR, MAP_STYLE, loadMapLibre } from "@/lib/maplibre";
 import { denseArrows, regionSteps, regionUrl, shapeRegion, mmColor } from "@/lib/regionMap";
 import { colorOf } from "@/lib/windMap";
 import { km } from "@/lib/windObs";
-import { PLACE, kn as knTxt, windName } from "./weather";
+import { PLACE, dirDeg, kn as knTxt, windName } from "./weather";
 
 // Bölge haritası (Seyhun 2026-10-28 "Evet, böyle yap", örnek bolge-haritasi): Yemek'teki gibi akıcı vektör harita (MapLibre, OpenFreeMap)
 // koyu "Fiord" görünümde; bulunduğun yer ortada. Üstte Rüzgâr · Yağış. Rüzgâr: ~5 km'de bir renkli oklar (renk şiddet, yön rüzgârın estiği yön)
@@ -259,7 +259,7 @@ export function RegionMap({ place, station, obs, onPick, mini = false, className
   const ob = step && step.kind !== "fc" && obs?.find((o) => o.hh === step.hh);
   let info = "";
   if (step && here) {
-    if (mode === "wind") info = step.i >= 0 ? `${windName(here.d[step.i])[0]} ${knTxt(here.w[step.i], here.g[step.i])} kn${ob ? ` · ölçüm ${station?.name || ""} ${Math.round(ob.wind)} kn` : ""}` : "";
+    if (mode === "wind") info = step.i >= 0 ? `${windName(here.d[step.i])[0]} ${dirDeg(here.d[step.i])} ${knTxt(here.w[step.i], here.g[step.i])} kn${ob ? ` · ölçüm ${station?.name || ""} ${Math.round(ob.wind)} kn` : ""}` : "";
     else if (step.kind === "radar") info = "Radar";
     else {
       const top = Math.max(0, ...grid.spots.map((s) => s.mm[step.i] ?? 0));

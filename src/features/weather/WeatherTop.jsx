@@ -12,7 +12,7 @@ import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { CockpitWind } from "@/features/home/CockpitWind";
 import { todayStr } from "@/lib/utils/format";
-import { dayHours, getPlace, kn, nowOf, placeLabel, setPlace, sky, windName, compareLinks } from "./weather";
+import { dayHours, dirDeg, getPlace, kn, nowOf, placeLabel, setPlace, sky, windName, compareLinks } from "./weather";
 import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { WindArrow } from "./parts";
 
@@ -78,7 +78,7 @@ export function WeatherTop({ w, refresh }) {
               </small>
             </span>
             <span className="shrink-0 text-right leading-tight">
-              <small className="block text-[0.75rem] text-white/65">{windName(v.dir)[0]} · {isToday ? "şimdi" : `en sert ${top.hh}:00`}</small>
+              <small className="block text-[0.75rem] text-white/65">{windName(v.dir)[0]} {dirDeg(v.dir)} · {isToday ? "şimdi" : `en sert ${top.hh}:00`}</small>
               <b className="text-[1.375rem] font-bold tracking-[-.02em] tabular-nums">
                 {kn(v.wind, v.gust)}
                 <span className="text-[0.8125rem] font-medium text-white/60"> kn</span>
@@ -126,7 +126,7 @@ export function WeatherTop({ w, refresh }) {
                       {h.rain >= 30 && <span className="text-[0.8125rem] font-normal text-mut tabular-nums">%{h.rain}</span>}
                       <span className="flex items-center gap-1 text-[0.8125rem] font-normal text-mut">
                         <WindArrow deg={h.dir} className="size-3" />
-                        {windName(h.dir)[0]}
+                        {windName(h.dir)[0]} {dirDeg(h.dir)}
                       </span>
                     </span>
                   }

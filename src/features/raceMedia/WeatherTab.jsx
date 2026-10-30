@@ -5,7 +5,7 @@ import { Label, card } from "@/components/ui/Page";
 import { Loading } from "@/components/ui/Loader";
 import { Sheet } from "@/components/ui/Sheet";
 import { DayDetail } from "@/features/weather/DaySheet";
-import { windLevel } from "@/features/weather/weather";
+import { dirDeg, windLevel } from "@/features/weather/weather";
 import { cleanSpot, loadRaceDay } from "@/features/athletes/raceWeather";
 import { saveRaceSpot } from "@/features/athletes/races";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -95,7 +95,7 @@ export function WeatherTab({ orgId, race, day, live, onChange, onRace, saveSpot:
                 <button type="button" onClick={() => drop(w)} data-press="row" className="flex w-full flex-wrap items-center gap-x-3 px-4 py-3 text-left">
                   <span className="flex-1 text-[0.9375rem] font-medium tabular-nums">{hm(w.at)}</span>
                   <span className="text-[0.875rem] text-mut tabular-nums">
-                    {dirShort(w.dir)} · <b className={`font-semibold ${windLevel(w.kn).tone}`}>{w.kn} kn</b>
+                    {dirShort(w.dir)} {dirDeg(w.dir)} · <b className={`font-semibold ${windLevel(w.kn).tone}`}>{w.kn} kn</b>
                     {w.gust ? ` · sağanak ${w.gust}` : ""}
                     {w.ckn ? ` · akıntı ${w.ckn} kn${w.cdir !== null ? ` ${dirShort(w.cdir)}` : ""}` : ""}
                     {w.src !== "elle" ? ` · ${w.src}` : ""}

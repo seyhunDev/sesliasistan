@@ -6,7 +6,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { CockpitWind } from "@/features/home/CockpitWind";
 import { useWindObs } from "@/features/weather/useWindObs";
 import { RegionMap } from "@/features/weather/RegionMap";
-import { kn, sky, windName } from "@/features/weather/weather";
+import { dirDeg, kn, sky, windName } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
 import { cleanSpot, forecastFrom, lastForecastDay, loadRaceDay, raceDays } from "./raceWeather";
 
@@ -50,7 +50,7 @@ export function DayChart({ rows, day, at, fill = false }) {
         </span>
         <span className="shrink-0 text-right leading-tight">
           <small className="block text-[0.75rem] text-white/65">
-            {windName(v.dir)[0]} · {isToday && v !== top ? "şimdi" : `en sert ${top.hh}:00`}
+            {windName(v.dir)[0]} {dirDeg(v.dir)} · {isToday && v !== top ? "şimdi" : `en sert ${top.hh}:00`}
           </small>
           <b className="text-[1.375rem] font-bold tracking-[-.02em] tabular-nums">
             {kn(Math.round(v.wind), Math.round(v.gust))}
