@@ -17,7 +17,6 @@ const TODAY = ymd(now);
 const plus = (n) => ymd(new Date(now.getTime() + n * 864e5));
 
 // Yarış günü üstü günün evresine göre (RaceDayTop): yarışta "2. yarış · 12:30" / "Sonuçlar" / "Gün bitti" ("N. gün" yazısı yok, 2026-10-29)
-const DAY_TOP = /^(\d+\. yarış · \d\d:\d\d|\d+ yarış bitti|Sonuçlar|(Gün|Yarış) bitti)$/;
 
 async function launch() {
   const { chromium } = await import("playwright-core");
@@ -111,10 +110,12 @@ export async function run(server, log = () => {}) {
     const t = await body();
     return /Bu sayfa açılamadı|Application error|before initialization/i.test(t) || errs.length > 0;
   };
-  // yarış günü bölümü sağ üstteki ⋯ (Yarış ayarları) menüsünden açar
+  // yarış günü bölümü: tek ⋯ menüsü yarış sayfasını ?sec= ile açar (yarış günleri sayfa kendisi multimedyaya geçer, Seyhun 2026-10-30)
   const openSec = async (k) => {
-    await page.getByRole("button", { name: "Yarış ayarları" }).click();
-    await page.locator(`[data-sec=${k}]`).click({ timeout: 15000 });
+    errs.length = 0;
+    await page.goto(`${server.url}/athletes/races/r1?sec=${k}`, { waitUntil: "load", timeout: 120000 });
+    await page.addStyleTag({ content: "nextjs-portal{display:none!important}" }).catch(() => {});
+    await page.locator("[role=dialog]").first().waitFor({ timeout: 60000 }).catch(() => {});
     await page.waitForTimeout(800);
   };
   const open = async (path, wait) => {
@@ -147,8 +148,6 @@ export async function run(server, log = () => {}) {
     await page.waitForURL((x) => !x.pathname.startsWith("/login"), { timeout: 60000 });
 
     // Kulüp hesabına bağlan (Sporcular sayfası); sporcular bundan sonra yarış sayfasına gelir
-    await page.goto(`${server.url}/athletes/races/r1`, { waitUntil: "load", timeout: 120000 });
-    await page.getByText(DAY_TOP).first().waitFor({ timeout: 60000 });
     await openSec("people");
     const form = page.locator("form", { has: page.locator("input[type=password]") }).first();
     await form.waitFor({ timeout: 30000 });
@@ -158,20 +157,20 @@ export async function run(server, log = () => {}) {
     await page.getByText("Bu hesabın sporcuları görme izni yok").waitFor({ state: "detached", timeout: 30000 }).catch(() => {});
 
     log("    Yarış günü (sporcu seçili)…");
-    await okPage("Yarış sayfası", "yarış günü, sporcu seçili", "/athletes/races/r1", DAY_TOP, async () => {
-      const wx = await page.locator("section[aria-label='Yarış havası']").count();
-      // yarış günü tek ekran (Seyhun 2026-10-29): sekme şeridi yok; Yarış · Süre · Medya · Parkur · Sonuçlar alttaki çubukta (aynı sayfanın sekmeleri); hazırlık ⋯ › Hazırlık penceresinde
-      const nav = await page.locator("nav[aria-label=Bölümler]").count();
-      const mb = await page.locator("nav[aria-label='Multimedya sekmeleri']").getByRole("button", { name: "Sonuçlar" }).first().boundingBox();
+    // yarış günü yarış sayfası multimedyaya geçer; alt çubukta Yarış yok (Saha · Start · Sonuç), yarış sürerken Start açılır
+    await okPage("Yarış sayfası", "yarış günü, sporcu seçili", "/athletes/races/r1", "Start sayacı", async () => {
+      const went = await page.waitForURL((u) => u.pathname === "/athletes/races/r1/media", { timeout: 60000 }).then(() => true, () => false);
+      const bar = page.locator("nav[aria-label='Multimedya sekmeleri']");
+      const tabs = (await bar.locator("button").allInnerTexts()).map((x) => x.trim()).filter(Boolean).join(",");
+      const on = (await bar.locator("button[aria-pressed=true]").allInnerTexts()).join().trim();
+      const mb = await bar.getByRole("button", { name: "Sonuç" }).first().boundingBox();
       const fit = !!mb && mb.y + mb.height <= (page.viewportSize()?.height || 844);
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO }).catch(() => {});
       await openSec("prep");
       const row = await page.getByText("Yapılacaklar").first().isVisible().catch(() => false);
-      await page.keyboard.press("Escape").catch(() => {});
-      await page.waitForTimeout(500);
-      return [wx > 0 && !nav && fit && row, `hava ${wx ? "var" : "yok"} · şerit ${nav ? "var" : "yok"} · alt çubuk ${fit ? "ekranda" : "ekran dışında"} · hazırlık ${row ? "açıldı" : "açılmadı"}`];
+      return [went && tabs === "Saha,Start,Sonuç" && on === "Start" && fit && row, `multimedyaya ${went ? "geçti" : "geçmedi"} · sekmeler ${tabs} · açık ${on} · alt çubuk ${fit ? "ekranda" : "ekran dışında"} · hazırlık ${row ? "açıldı" : "açılmadı"}`];
     });
-    await okPage("Yarış sayfası", "Sporcu sekmesinde sporcu", "/athletes/races/r1", DAY_TOP, async () => {
+    await okPage("Yarış sayfası", "Sporcu sekmesinde sporcu", "/athletes/races/r1?sec=people", "Sporcu", async () => {
       await openSec("people");
       await page.waitForTimeout(1500);
       const name = await page.getByText("Deniz Yılmaz").first().isVisible().catch(() => false);
@@ -180,8 +179,6 @@ export async function run(server, log = () => {}) {
     });
     // yarış günü ⋯ içindeki bölümler sırayla açılır
     try {
-      await page.goto(`${server.url}/athletes/races/r1`, { waitUntil: "load", timeout: 120000 });
-      await page.getByText(DAY_TOP).first().waitFor({ timeout: 60000 });
       const keys = ["prep", "people", "docs", "trip", "budget"], bad = [];
       for (const k of keys) {
         await openSec(k);
@@ -235,7 +232,7 @@ export async function run(server, log = () => {}) {
       const thumb = await row.locator(".grid button").count();
       const loose = await page.locator("main section", { hasText: "1. yarış" }).count();
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-start.png") }).catch(() => {});
-      const ok = tabs === "Yarış,Saha,Start,Sonuçlar" && dockRec === 0 && rec === 1 && go === 1 && thumb === 1 && loose === 0;
+      const ok = tabs === "Saha,Start,Sonuç" && dockRec === 0 && rec === 1 && go === 1 && thumb === 1 && loose === 0;
       return [ok, `sekmeler ${tabs} · alt çubukta Kayıt ${dockRec} · Başlat yanında Kayıt ${rec} · Başlat ${go} · satırda çekim ${thumb} · ayrı bölüm ${loose}`];
     });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
@@ -246,25 +243,29 @@ export async function run(server, log = () => {}) {
       const keys = await page.locator("[role=dialog] [data-menu]").evaluateAll((l) => l.map((x) => x.dataset.menu).join());
       await page.locator("[data-menu=people]").click();
       const went = await page.waitForURL((u) => u.pathname === "/athletes/races/r1", { timeout: 60000 }).then(() => true, () => false);
-      const people = await page.getByRole("dialog", { name: "Sporcu" }).waitFor({ timeout: 20000 }).then(() => true, () => false);
+      const people = await page.getByRole("dialog", { name: "Sporcu" }).first().waitFor({ timeout: 20000 }).then(() => true, () => false);
       await page.keyboard.press("Escape").catch(() => {});
       await page.waitForTimeout(500);
       await page.getByRole("button", { name: "Yarış ayarları" }).click();
       await page.locator("[data-menu=reset]").click();
       const reset = await page.getByRole("dialog", { name: "Denemeleri sıfırla" }).waitFor({ timeout: 60000 }).then(() => true, () => false);
       await page.keyboard.press("Escape").catch(() => {});
-      const ok = inTab === 0 && keys === "prep,people,docs,trip,budget,sum,shot,day,reset,edit,del" && went && people && reset;
+      const ok = inTab === 0 && keys === "prep,people,docs,trip,budget,shot,day,reset,edit,del" && went && people && reset;
       return [ok, `Süre'de sıfırla ${inTab} · menü ${keys} · Sporcu ${went ? "yarış sayfasında" : "gitmedi"}${people ? " açıldı" : " açılmadı"} · sıfırla ${reset ? "açıldı" : "açılmadı"}`];
     });
-    // Detay ve Multimedya tek sayfa (Seyhun 2026-10-29): alttaki çubukta Süre → sayaç, Yarış → yarış sayfası
-    await okPage("Yarış sayfası", "alt çubukta Süre ve Yarış sekmesi", "/athletes/races/r1", DAY_TOP, async () => {
-      const bar = page.locator("nav[aria-label='Multimedya sekmeleri']");
-      await bar.getByRole("button", { name: "Start" }).click();
-      await page.getByText("Start sayacı").first().waitFor({ timeout: 60000 });
-      const sure = page.url().includes("/athletes/races/r1/media");
-      await bar.getByRole("button", { name: "Yarış", exact: true }).click();
-      const back = await page.waitForURL((u) => u.pathname === "/athletes/races/r1", { timeout: 60000 }).then(() => true, () => false);
-      return [sure && back, `Süre ${sure ? "sayacı açtı" : "açmadı"} · Yarış ${back ? "geri döndü" : "dönmedi"}`];
+    // ⋯'den açılan bölüm kapanınca multimedyaya dönülür (yarış günü yarış sayfası yalnız bölümler için)
+    await okPage("Yarış sayfası", "bölüm kapanınca multimedya", "/athletes/races/r1?sec=docs", "Evrak", async () => {
+      await page.keyboard.press("Escape").catch(() => {});
+      const back = await page.waitForURL((u) => u.pathname === "/athletes/races/r1/media", { timeout: 60000 }).then(() => true, () => false);
+      return [back, back ? "multimedyaya döndü" : "dönmedi"];
+    });
+    // Sonuç (Seyhun 2026-10-30): üstte Özeti paylaş (Gün özeti penceresi), altında bizimkiler; ⋯ içinde Gün özeti yok
+    await okPage("Yarış sayfası", "Sonuç", "/athletes/races/r1/media?tab=res", "Özeti paylaş", async () => {
+      await page.getByRole("button", { name: "Özeti paylaş" }).click();
+      const sheet = await page.getByRole("dialog").first().waitFor({ timeout: 20000 }).then(() => true, () => false);
+      await page.keyboard.press("Escape").catch(() => {});
+      const ours = await page.getByText("Deniz Yılmaz").first().isVisible().catch(() => false);
+      return [sheet && ours, `özet ${sheet ? "açıldı" : "açılmadı"} · bizimkiler ${ours ? "görünüyor" : "görünmüyor"}`];
     });
   } finally {
     await browser.close();

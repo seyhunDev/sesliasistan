@@ -24,6 +24,8 @@ import { card } from "@/components/ui/Page";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { RecPick } from "./RecPick";
 import { DaySummarySheet } from "./DaySummarySheet";
+import { NextCard } from "@/features/athletes/RaceDayTop";
+import { racePhase } from "@/lib/raceDay";
 import { DayPick, DaySheet } from "./DaySheet";
 import { ResetSheet } from "./ResetSheet";
 import { useLiveSync } from "./useLiveSync";
@@ -47,10 +49,20 @@ const TABS = [["sure", "Süre"], ["media", "Medya"], ["res", "Sonuçlar"]];
 // Parkur yalnız yarışta (Seyhun 2026-10-28 "Parkur analizi"); antrenman günü sayfası TABS'ı kullanır
 // Saha = Parkur + yarışın havası + sesle yazılan rüzgâr (Seyhun 2026-10-30, yaris-yapi); Yarış'ın hemen yanında
 // Start = Süre + Medya (Seyhun 2026-10-30): sayaç, günün yarışları ve her yarışın çekimleri satırında; Kayıt Başlat'ın yanında
-const RACE_TABS = [["course", "Saha"], ["sure", "Start"], TABS[2]];
+// Sonuç (Seyhun 2026-10-30): bizimkilerin sırası ve dünden farkı, tüm liste, üstte Özeti paylaş ve gün bitince Yarın / Dönüş
+const RACE_TABS = [["course", "Saha"], ["sure", "Start"], ["res", "Sonuç"]];
 // Yarış sayfası ve multimedya tek sayfa gibi (Seyhun 2026-10-29 "detay, multimedya aynı sayfa farklı sekmeler olsun"): alt çubukta
 // ilk sekme Yarış (yarış sayfası /athletes/races/<id>), diğerleri multimedya (/media?tab=…); geçiş replace ile, geri tuşu listeye
-export const RACE_DOCK = [["race", "Yarış"], ...RACE_TABS];
+// Yarış günlerinde Yarış sekmesi yok (Seyhun 2026-10-30, yaris-yapi: altta Saha · Start · Sonuç); hazırlık ⋯ içinde. Yarıştan sonra yine var.
+export const racing = (r) => !!r?.startDate && todayStr() >= r.startDate && todayStr() <= (r.endDate || r.startDate);
+export const raceDock = (r) => (racing(r) ? RACE_TABS : [["race", "Yarış"], ...RACE_TABS]);
+// Sayfa günün evresiyle açılır: sonuç geldiyse, gün bittiyse ya da yarış bittiyse Sonuç; yoksa Start
+export const firstTab = (r, starts, now = new Date()) => {
+  const today = todayStr();
+  if (r?.startDate && today > (r.endDate || r.startDate)) return "res";
+  const p = racePhase({ r, today, now, starts });
+  return p === "results" || p === "done" ? "res" : "sure";
+};
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 
 // ⋯ menüsünün multimedya işleri (lib/raceMenu.js MEDIA_MENU): menüden ya da yarış sayfasının ⋯ menüsünden (?do=)
@@ -67,6 +79,7 @@ export function RaceMedia({ orgId, id }) {
   const router = useRouter();
   const [tabPick, setTab] = useState(RACE_TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
   useTabInUrl(tabPick);
+  const [opened] = useState(() => new Date()); // açılış anı: ilk sekme ve Yarın kartı için evre
   const [shot, setShot] = useState(() => takeShot(id)); // alttaki Kayıt (ya da ana sayfadaki yarış şeridi) ile iPhone kamerasında çekilen dosya (Medya işler)
   const [race, setRace] = useState(null);
   const [missing, setMissing] = useState(false);
@@ -188,7 +201,7 @@ export function RaceMedia({ orgId, id }) {
   const cur = day || (days.includes(today) ? today : !days.length || today < days[0] ? days[0] || today : days[days.length - 1]);
   const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" && !/^\d+\. gün$/.test(names[cur]) ? names[cur] : ""].filter(Boolean).join(" · "); // tarih gün düğmesinde; "4. gün" yazılmaz (2026-10-29)
   const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
-  const tab = tabPick || "sure";
+  const tab = tabPick || firstTab(race, live.starts, opened);
 
   return (
     <Shell
@@ -209,6 +222,14 @@ export function RaceMedia({ orgId, id }) {
         </>
       }
       top={
+        tab === "res" ? (
+          <>
+            {cur === today && racing(race) && racePhase({ r: race, today, now: opened, starts: live.starts }) === "done" && <NextCard r={race} />}
+            <button type="button" onClick={() => setSum(true)} data-press className="raised ck-pill mt-3 w-full font-semibold">
+              Özeti paylaş
+            </button>
+          </>
+        ) :
         <>
           {tab === "sure" && (
             <TimerHead
@@ -276,7 +297,7 @@ export function RaceMedia({ orgId, id }) {
           change({ days: next }, () => saveDays(orgId, id, next));
         }}
       />
-      <TabDock tabs={RACE_DOCK} value={tab} onChange={(k) => (k === "race" ? router.replace(`/athletes/races/${id}`) : setTab(k))} extra={<AskButton examples={tab === "course" ? COURSE_EX : RACE_EX} />} />
+      <TabDock tabs={raceDock(race)} value={tab} onChange={(k) => (k === "race" ? router.replace(`/athletes/races/${id}`) : setTab(k))} extra={<AskButton examples={tab === "course" ? COURSE_EX : RACE_EX} />} />
       <ResetSheet
         open={reset}
         onClose={() => setReset(false)}

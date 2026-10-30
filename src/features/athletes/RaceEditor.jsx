@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { MEDIA_MENU, RACE_SECS } from "@/lib/raceMenu";
@@ -158,15 +159,16 @@ function Check({ on, tone = "ok" }) {
 const SECS = RACE_SECS.map(([k]) => k);
 const inRace = (x) => !!x?.startDate && todayStr() >= x.startDate && todayStr() <= (x.endDate || x.startDate);
 
-export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
+export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
   const toast = useToast();
+  const router = useRouter();
   const [r, setR] = useState(start);
   const [noticeInfo, setNoticeInfo] = useState(false);
   // Yeni yarış önce tek soruyla başlar: talimat var mı? (talimatla ya da elle ad, tarih, yer) → sonra sayfa
   const [begun, setBegun] = useState(!!start.id);
   const [manual, setManual] = useState(false);
   // Tek ⋯ (Seyhun 2026-10-30, yaris-yapi): multimedya sayfasının ⋯ menüsünden gelen bölüm ?sec= ile açılır (prep, people, docs, trip, budget, edit, del)
-  const [sec0] = useState(() => (typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("sec") || ""));
+  const [sec0] = useState(sec);
   const [tab, setTab] = useState(() => (SECS.includes(sec0) && (sec0 !== "prep" || inRace(start)) ? sec0 : "sum"));
   const [edit, setEdit] = useState(sec0 === "edit"); // yarışın adı, tarihi, yeri (başlık kartına dokununca)
   // Sekmeye ya da yarış bilgisi penceresine git
@@ -911,9 +913,12 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
   );
   const light = "relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-0.5";
   const secName = tabs.find((x) => x[0] === tab)?.[1] || "";
+  // Yarış günlerinde sayfanın kendisi multimedyaya geçer (Saha · Start · Sonuç; Seyhun 2026-10-30): ⋯'den açılan bölüm kapanınca oraya dönülür
+  const toMedia = () => rid && router.replace(`/athletes/races/${rid}/media`);
+  const closeSec = () => (setTab("sum"), raceDay && toMedia());
   const secWrap = (body) =>
     raceDay ? (
-      <Sheet open={tab !== "sum"} onClose={() => setTab("sum")} title={secName}>
+      <Sheet open={tab !== "sum"} onClose={closeSec} title={secName}>
         <div className="-mt-4">{body}</div>
       </Sheet>
     ) : (
@@ -1141,7 +1146,7 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
         />
       </Sheet>
 
-      <Sheet open={edit} onClose={() => setEdit(false)} title="Yarış bilgisi">
+      <Sheet open={edit} onClose={() => (setEdit(false), raceDay && toMedia())} title="Yarış bilgisi">
         <Seg value={r.abroad ? "out" : "in"} onChange={(v) => setAbroad(v === "out")} options={[["in", "Yurt içi"], ["out", "Yurt dışı"]]} />
         <Group className="mt-3">
           <Row label="Yarış adı">

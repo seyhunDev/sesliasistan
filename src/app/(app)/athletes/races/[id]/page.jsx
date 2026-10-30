@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -28,7 +28,7 @@ import { doc } from "firebase/firestore";
 import { updateDoc } from "@/lib/firebase/write";
 import { todayStr } from "@/lib/utils/format";
 import { goBack } from "@/lib/navTrail";
-import { AskButton, RACE_DOCK, TabDock } from "@/features/raceMedia/RaceMedia";
+import { AskButton, TabDock, raceDock, racing } from "@/features/raceMedia/RaceMedia";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
 export default function RacePage() {
@@ -52,6 +52,7 @@ const cachedRace = (orgId, id) => (id === "new" ? null : racesNow(orgId, 60e3)?.
 
 function Race({ orgId, uid, email, by, mail, coach }) {
   const { id } = useParams();
+  const q = useSearchParams();
   const router = useRouter();
   const toast = useToast();
   const { saveDrafts, plans } = useData();
@@ -167,6 +168,12 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     }
   };
 
+  // Yarış günlerinde sayfa multimedyaya geçer (Saha · Start · Sonuç, evreye göre sekme; Seyhun 2026-10-30). ⋯'den bölüm (?sec=) açılınca kalır.
+  const [sec] = useState(() => q.get("sec") || ""); // sayfa açılırken bir kez (RaceEditor açınca adresten siler)
+  const away = !!race?.id && !sec && racing(race);
+  useEffect(() => {
+    if (away) router.replace(`/athletes/races/${race.id}/media`);
+  }, [away, race?.id, router]);
   // Alt çubuk yarış başlayınca (TabDock); yarıştan önce uygulamanın çubuğu görünür (TabBar "sa-plain")
   const docked = !!race?.id && !!race.startDate && todayStr() >= race.startDate;
   const plain = !!race && !missingRace && !docked;
@@ -194,7 +201,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      {!race || missingRace ? (
+      {!race || missingRace || away ? (
         <>
           <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]">{head}</section>
           <div className="relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pt-1">
@@ -206,6 +213,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
         <>
           <RaceEditor
             key={ver}
+            sec={sec}
             head={head}
             sharedList={id === "new" ? sharedList : []}
             alert={err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
@@ -232,7 +240,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
           />
           {/* Yarış · Süre · Medya · Parkur · Sonuçlar tek sayfanın sekmeleri (Seyhun 2026-10-29 "aynı sayfa farklı sekmeler olsun");
               yarıştan önce alt çubuk yok, sayfa hazırlık (Seyhun 2026-10-30, yaris-yapi) */}
-          {docked && <TabDock tabs={RACE_DOCK} value="race" onChange={(k) => router.replace(`/athletes/races/${race.id}/media?tab=${k}`)} extra={<AskButton />} />}
+          {docked && <TabDock tabs={raceDock(race)} value="race" onChange={(k) => router.replace(`/athletes/races/${race.id}/media?tab=${k}`)} extra={<AskButton />} />}
         </>
       )}
     </main>

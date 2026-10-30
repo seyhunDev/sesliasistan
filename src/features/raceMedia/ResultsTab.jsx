@@ -14,7 +14,7 @@ import { Bar } from "@/features/training/Countdown";
 import { Sheet } from "@/components/ui/Sheet";
 import { RaceResults } from "@/features/athletes/RaceResults";
 import { openFile } from "@/features/athletes/fileActions";
-import { stampResults } from "@/lib/raceDay";
+import { placeMove, stampResults } from "@/lib/raceDay";
 import { todayStr } from "@/lib/utils/format";
 
 // Sonuçlar (Seyhun 2026-10-29 onayı, örnek yaris-tasarim/sonuclar-genel-sira.png): süzgeçler Bizimkiler · Takip · Genel · Junior · Kızlar ·
@@ -51,7 +51,8 @@ function Table({ title, count, children }) {
 }
 
 // Satır: büyük genel sıra · ad (yıl) / yelken no · kulüp / kategori sıraları · net (· ☆)
-function Row({ pos, name, born, sail, club, ranks = [], pts, mine, star, followed, onStar }) {
+// move: dünden fark (Bizimkiler, ↑2 / ↓1; Seyhun 2026-10-30 Sonuç sekmesi)
+function Row({ pos, name, born, sail, club, ranks = [], pts, mine, star, followed, onStar, move = null }) {
   return (
     <li className={`relative flex items-start gap-2.5 py-2.5 pl-2.5 pr-3 ${mine ? "bg-accbg/60" : ""}`}>
       {mine && <i className="absolute inset-y-2 left-0 w-1 rounded-r bg-acc" />}
@@ -60,6 +61,7 @@ function Row({ pos, name, born, sail, club, ranks = [], pts, mine, star, followe
         <span className="flex items-baseline gap-1">
           <b className="min-w-0 truncate text-[0.9375rem] font-semibold">{name}</b>
           {born && <span className="shrink-0 text-[0.8125rem] tabular-nums text-mut">({born})</span>}
+          {move ? <span className={`shrink-0 text-[0.8125rem] font-semibold tabular-nums ${move > 0 ? "text-acc" : "text-warn"}`}>{move > 0 ? `↑${move}` : `↓${-move}`}</span> : null}
         </span>
         {(sail || club) && (
           <span className="mt-0.5 flex gap-1 text-[0.78rem] text-mut">
@@ -251,6 +253,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
                 club={x?.place ? r?.club || "" : x?.note || "Sonuç yok"}
                 ranks={x?.place ? (f && fleets[f.fi] === fleet ? ranks[f.ri] : boxesOf(x)) || [] : []}
                 pts={x?.place ? ptsOf(r?.pts) : ""}
+                move={placeMove(res, a.id)}
               />
             );
           })}
