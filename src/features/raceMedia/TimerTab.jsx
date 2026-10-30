@@ -25,7 +25,7 @@ export function TimerHead({ race, live, rf }) {
   return <Countdown dark mode="start" presets={PRESETS} race={rf.flow} title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} bottom />;
 }
 
-export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
+export function TimerTab({ orgId, race, day, live, onChange, rf }) {
   const tr = useTimerRun();
   const timer = tr.t;
   const [edit, setEdit] = useState(null); // düzenlenen yarış
@@ -79,9 +79,6 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
           </button>
         </li>
       </ul>
-      <button type="button" onClick={() => onReset?.()} data-press className="btn btn-text btn-sm mt-4 w-full text-mut">
-        Denemeleri sıfırla
-      </button>
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit ? raceTitle(edit) : ""}>
         {edit && (
           <StartForm

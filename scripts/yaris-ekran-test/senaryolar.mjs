@@ -191,7 +191,12 @@ export async function run(server, log = () => {}) {
       push("Yarış sayfası", "yarış günü ⋯ bölümleri", "açılır", false, `hata: ${String(e.message).split("\n")[0].slice(0, 200)}`);
     }
     log("    Yarıştan önce (sporcu seçili)…");
-    await okPage("Yarış sayfası", "yarıştan önce, sporcu seçili", "/athletes/races/r2", "gün kaldı");
+    // yarıştan önce yarışın alt çubuğu yok, uygulamanın çubuğu (asistan küresi) görünür (Seyhun 2026-10-30, yaris-yapi)
+    await okPage("Yarış sayfası", "yarıştan önce, sporcu seçili", "/athletes/races/r2", "gün kaldı", async () => {
+      const dock = await page.locator("nav[aria-label='Multimedya sekmeleri']").count();
+      const orb = await page.locator("[data-orb]:visible").count();
+      return [dock === 0 && orb > 0, `yarış çubuğu ${dock ? "var" : "yok"} · uygulama çubuğu ${orb ? "var" : "yok"}`];
+    });
     // Bütün sekmeler sırayla açılır
     try {
       const tabs = await page.locator("nav[aria-label=Bölümler] button").allInnerTexts();
@@ -207,6 +212,24 @@ export async function run(server, log = () => {}) {
     }
     log("    Multimedya…");
     await okPage("Yarış sayfası", "Multimedya", "/athletes/races/r1/media", "Start sayacı");
+    // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
+    // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok
+    await okPage("Yarış sayfası", "tek ⋯ menüsü", "/athletes/races/r1/media", "Start sayacı", async () => {
+      const inTab = await page.locator("main button:visible", { hasText: /^Denemeleri sıfırla$/ }).count();
+      await page.getByRole("button", { name: "Yarış ayarları" }).click();
+      const keys = await page.locator("[role=dialog] [data-menu]").evaluateAll((l) => l.map((x) => x.dataset.menu).join());
+      await page.locator("[data-menu=people]").click();
+      const went = await page.waitForURL((u) => u.pathname === "/athletes/races/r1", { timeout: 60000 }).then(() => true, () => false);
+      const people = await page.getByRole("dialog", { name: "Sporcu" }).waitFor({ timeout: 20000 }).then(() => true, () => false);
+      await page.keyboard.press("Escape").catch(() => {});
+      await page.waitForTimeout(500);
+      await page.getByRole("button", { name: "Yarış ayarları" }).click();
+      await page.locator("[data-menu=reset]").click();
+      const reset = await page.getByRole("dialog", { name: "Denemeleri sıfırla" }).waitFor({ timeout: 60000 }).then(() => true, () => false);
+      await page.keyboard.press("Escape").catch(() => {});
+      const ok = inTab === 0 && keys === "prep,people,docs,trip,budget,sum,shot,day,reset,edit,del" && went && people && reset;
+      return [ok, `Süre'de sıfırla ${inTab} · menü ${keys} · Sporcu ${went ? "yarış sayfasında" : "gitmedi"}${people ? " açıldı" : " açılmadı"} · sıfırla ${reset ? "açıldı" : "açılmadı"}`];
+    });
     // Detay ve Multimedya tek sayfa (Seyhun 2026-10-29): alttaki çubukta Süre → sayaç, Yarış → yarış sayfası
     await okPage("Yarış sayfası", "alt çubukta Süre ve Yarış sekmesi", "/athletes/races/r1", DAY_TOP, async () => {
       const bar = page.locator("nav[aria-label='Multimedya sekmeleri']");

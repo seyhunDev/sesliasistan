@@ -1164,6 +1164,18 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
   );
 }
 
+// Yarış sayfası alt çubuksuz mu (yarıştan önce TabDock yok): sayfa "sa-plain" olayıyla bildirir; o zaman uygulamanın çubuğu görünür.
+// Yüklenirken gizli kalır (yarış günü çubuk bir an görünüp kaybolmasın).
+function usePlainPage() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const f = (e) => setOn(!!e.detail);
+    window.addEventListener("sa-plain", f);
+    return () => window.removeEventListener("sa-plain", f);
+  }, []);
+  return on;
+}
+
 // Uygulama yerleşiminde tek kez çizilir: sayfa değişince yeniden kurulmaz (geçişte titreme/zıplama olmaz).
 // Her sayfada sekmelerle görünür (ana sayfadaki gibi), sohbet ekranında yalnız asistan çalışırken.
 // Sekmeler görünürken sayfaların alt boşluğu kubbeye göre büyür (globals.css).
@@ -1177,7 +1189,10 @@ function Host() {
   // tasarımı diğer sayfalarda da aynı olsun", 2026-10-06). Önceden dört ana sekme dışında yalnız küreli ince hâliyle duruyordu.
   // Sohbet ekranında yok (kendi yazma satırı var). Yarış multimedya sayfasında da yok: sayfa tam ekran multimedya işlerine
   // ayrılır (Seyhun 2026-10-18), asistan yalnız çalışırken küre olarak görünür.
-  const bar = !(path.startsWith("/messages") && chat) && !isMedia(path);
+  // Yarış sayfası yarıştan önce kendi alt çubuğunu (TabDock) çizmez (Seyhun 2026-10-30, yaris-yapi): o zaman uygulamanın çubuğu görünür
+  const plain = usePlainPage();
+  const media = isMedia(path) && !(plain && /^\/athletes\/races\/(?!new$)[^/]+$/.test(path));
+  const bar = !(path.startsWith("/messages") && chat) && !media;
   const slim = false;
   // Açık kayıt ekranı (AddSheet bildirir): { focus, examples } ya da null
   const [rec, setRec] = useState(null);
@@ -1202,7 +1217,7 @@ function Host() {
   const cfg = rec
     ? { ph: "Bu kayıtla ilgili söyle…", ex: rec.examples, focus: rec.focus }
     : { ...(PAGES[path] || (isPost(path) ? POST : isInv(path) ? INV : race ? RACE : PAGES["/"])), ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
-  return <TabBar cfg={cfg} bar={bar} slim={slim} rec={!!rec} sideNav={!isMedia(path)} />;
+  return <TabBar cfg={cfg} bar={bar} slim={slim} rec={!!rec} sideNav={!media} />;
 }
 export function TabBarHost() {
   return (

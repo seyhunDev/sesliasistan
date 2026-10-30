@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
+import { MEDIA_MENU, RACE_SECS } from "@/lib/raceMenu";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { PdfViewer } from "@/components/ui/PdfViewer";
@@ -153,6 +154,10 @@ function Check({ on, tone = "ok" }) {
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
 // coach: hesabın antrenör bilgileri (users/{uid}.coach), onCoach(bilgi) kaydeder
+// ⋯ menüsünün bölümleri (?sec=) ve multimedya işleri (?do=); liste lib/raceMenu.js
+const SECS = RACE_SECS.map(([k]) => k);
+const inRace = (x) => !!x?.startDate && todayStr() >= x.startDate && todayStr() <= (x.endDate || x.startDate);
+
 export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
   const toast = useToast();
   const [r, setR] = useState(start);
@@ -160,8 +165,10 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
   // Yeni yarış önce tek soruyla başlar: talimat var mı? (talimatla ya da elle ad, tarih, yer) → sonra sayfa
   const [begun, setBegun] = useState(!!start.id);
   const [manual, setManual] = useState(false);
-  const [tab, setTab] = useState("sum");
-  const [edit, setEdit] = useState(false); // yarışın adı, tarihi, yeri (başlık kartına dokununca)
+  // Tek ⋯ (Seyhun 2026-10-30, yaris-yapi): multimedya sayfasının ⋯ menüsünden gelen bölüm ?sec= ile açılır (prep, people, docs, trip, budget, edit, del)
+  const [sec0] = useState(() => (typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("sec") || ""));
+  const [tab, setTab] = useState(() => (SECS.includes(sec0) && (sec0 !== "prep" || inRace(start)) ? sec0 : "sum"));
+  const [edit, setEdit] = useState(sec0 === "edit"); // yarışın adı, tarihi, yeri (başlık kartına dokununca)
   // Sekmeye ya da yarış bilgisi penceresine git
   const go = (t) => (t === "edit" ? setEdit(true) : setTab(t));
   const [pick, setPick] = useState(false);
@@ -585,6 +592,14 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
     } else toast("Planlara eklenemedi");
   };
 
+  useEffect(() => {
+    if (!sec0) return;
+    const u = new URL(window.location.href);
+    u.searchParams.delete("sec");
+    window.history.replaceState(window.history.state, "", u.pathname + u.search);
+    if (sec0 === "del") remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const remove = async () => {
     if (!id.current || !confirm(`"${r.name}" silinsin mi? Sporcu kartları etkilenmez.`)) return;
     dirty.current = false;
@@ -991,6 +1006,19 @@ export function RaceEditor({ head = null, alert = null, sharedList = [], orgId, 
                   <span className="shrink-0 text-[0.875rem] text-mut">{sub}</span>
                   <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
                 </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {/* Yarış başladıktan sonra multimedyanın işleri de bu tek ⋯ içinde (Seyhun 2026-10-30; multimedya sayfasındaki ⋯ ile aynı liste) */}
+        {rid && r.startDate && today >= r.startDate && (
+          <ul className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
+            {MEDIA_MENU.map(([k, l]) => (
+              <li key={k}>
+                <Link href={`/athletes/races/${rid}/media?do=${k}`} replace data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
+                  <b className="min-w-0 flex-1 text-[1rem] font-medium">{l}</b>
+                  <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+                </Link>
               </li>
             ))}
           </ul>

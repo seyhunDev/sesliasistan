@@ -50,9 +50,12 @@ export function DayPick({ open, onClose, days, names, cur, today, label, onPick,
           </li>
         ))}
       </ul>
-      <button type="button" onClick={onAdd} data-press className="btn btn-secondary mt-4 w-full">
-        Gün ekle
-      </button>
+      {/* Gün ekle yarışın ⋯ menüsünde (Seyhun 2026-10-30, tek ⋯) */}
+      {onAdd && (
+        <button type="button" onClick={onAdd} data-press className="btn btn-secondary mt-4 w-full">
+          Gün ekle
+        </button>
+      )}
     </Sheet>
   );
 }
