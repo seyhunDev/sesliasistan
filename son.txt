@@ -1,8 +1,8 @@
-Commit: d65e8ad · Rüzgâr aralığı: sesle ve elle, kartta iki yön arasında 3 sn'lik animasyon (#913)
-Zaman: 2026-10-30-1432 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41047594865
+Commit: 4dcb154 · Sonuçlarda final grupları: Altın / Gümüş / Bronz (#914)
+Zaman: 2026-10-30-1615 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41060287748
 
-TAM TEST · 30.10.2026 14:22:38
+TAM TEST · 30.10.2026 16:05:33
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1415/1415 geçti · 0 kalan · 562 sn
+SONUÇ: 1415/1415 geçti · 0 kalan · 603 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
