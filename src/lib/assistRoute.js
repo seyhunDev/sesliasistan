@@ -76,6 +76,7 @@ export function moreKind(s, c = {}) {
   const ia = infoAsk(s, c.today || "2000-01-01");
   if (ia && (ia.kind !== "invoices" || owner)) return "infoAsk";
   if (racer && timerCommand(s)) return "raceTimer";
+  if (owner && racer && courseCommand(s)?.list.length > 1) return "raceCourse"; // "rüzgar kuzeybatı 12 knot, eksen 320" parkura
   if (owner && racer && windCommand(s)) return "raceWind";
   if (owner && racer && courseCommand(s)) return "raceCourse";
   if (onRace && racer && raceHereCommand(s)) return "raceHere";

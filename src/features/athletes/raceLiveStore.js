@@ -257,4 +257,7 @@ export async function loadCourse(orgId, id, day) {
   return cleanCourse(snap.exists() ? snap.data() : {});
 }
 export const addCourseObs = (orgId, id, day, o) => setDoc(courseRef(orgId, id, day), { obs: arrayUnion(cleanObs(o)), at: new Date().toISOString() }, { merge: true });
+// Asistana bir cümlede söylenen birkaç ölçüm (ve orsa uzunluğu) tek yazımda
+export const addCourseMany = (orgId, id, day, list, len = null) =>
+  setDoc(courseRef(orgId, id, day), { ...(list.length ? { obs: arrayUnion(...list.map(cleanObs)) } : {}), ...(len ? { len } : {}), at: new Date().toISOString() }, { merge: true });
 export const saveCourse = (orgId, id, day, c) => setDoc(courseRef(orgId, id, day), { ...cleanCourse(c), at: new Date().toISOString() });
