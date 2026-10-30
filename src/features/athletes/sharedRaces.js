@@ -6,10 +6,10 @@
 import { arrayUnion, collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { setDoc } from "@/lib/firebase/write";
 import { auth, db } from "@/lib/firebase/clientApp";
-import { canEditShared, fromShared, sameRace, sameShared, sharedOf } from "@/lib/sharedRace";
+import { canEditShared, fromShared, keepFiles, rankWith, sameRace, sameShared, sharedOf } from "@/lib/sharedRace";
 import { cleanWind } from "@/lib/raceLive";
 import { cleanCourse } from "@/lib/raceCourse";
-import { mergeSheet, rankOurs } from "@/lib/resultSheet";
+import { mergeSheet, rankOurs, raceYear } from "@/lib/resultSheet";
 import { loadSheets, saveSheet } from "./raceLiveStore";
 import { freshRace, linkRace, loadRaces, saveRace } from "./races";
 
@@ -87,12 +87,15 @@ export async function saveSharedSheet(sharedId, file, fleets) {
 export async function pullSheets({ orgId, race, sharedId, ids, pool }) {
   let res = race.results || { fleet: "", rows: {} };
   let got = false;
+  // Gruplu sınıfın ayrı PDF'leri (Altın, Gümüş) önceki listelerle birlikte sıralanır (resultsImport.js rankWith)
+  const before = await loadSheets(orgId, race.id).catch(() => []);
   for (const fid of ids) {
     const snap = await getDoc(doc(one(sharedId), "sheets", fid)).catch(() => null);
     const d = snap?.exists() ? snap.data() : null;
     if (!d?.fleets || !d.file?.id) continue;
     await saveSheet(orgId, race.id, d.file.id, d.fleets).catch(() => {});
-    res = mergeSheet(res, rankOurs(d.fleets, pool), d.file);
+    res = keepFiles(mergeSheet(res, rankWith(before, d.fleets, pool, raceYear(race)), d.file), res, rankOurs(d.fleets, pool));
+    before.push({ id: d.file.id, fleets: d.fleets, at: new Date().toISOString() });
     got = true;
   }
   if (!got) return null;

@@ -5,6 +5,8 @@
 // live/wind (ölçülen rüzgâr), course/{gün} (parkur). Yalnız ekleyen kulüp ve Velora ana hesabı değiştirir (firestore.rules).
 // Saf fonksiyonlar (test edilir: scripts/asistan-test/yerel/yaris.mjs).
 
+import { joinGroups, rankOurs, withCats } from "./resultSheet";
+
 export const VELORA_ADMIN = "seyhunyildiz@gmail.com";
 export const SHARED_FIELDS = ["name", "federation", "city", "district", "abroad", "startDate", "endDate", "notice", "noticeFile", "spot"];
 
@@ -105,9 +107,10 @@ export function shortRange(a, b) {
 
 // Sonuçlar: ortaktaki listelerden (sheets: [{ fleets, at }], yeniden eskiye değil, yükleniş sırasıyla) sınıf başına son liste.
 // Dönüş [{ cls, rows }]
+// Gruplu sınıfta (Altın / Gümüş / Bronz ayrı PDF) gruplar tek listede birleşir (resultSheet.js joinGroups).
 export function fleetsOf(sheets) {
   const by = new Map();
-  for (const sh of [...(sheets || [])].sort((a, b) => String(a.at).localeCompare(String(b.at)))) for (const f of sh.fleets || []) if (f?.cls && f.rows?.length) by.set(f.cls, f);
+  for (const sh of [...(sheets || [])].sort((a, b) => String(a.at).localeCompare(String(b.at)))) for (const f of sh.fleets || []) if (f?.cls && f.rows?.length) by.set(f.cls, joinGroups(by.get(f.cls), f));
   return [...by.values()];
 }
 // Seçili sınıfın süzgeçleri: final grupları Altın / Gümüş / Bronz (varsa), Junior / Bambino (varsa) ve Kızlar (varsa)
@@ -125,4 +128,17 @@ export function rankView(fleet, filter = "", q = "") {
     const hay = plain([r.name, r.club].join(" "));
     return want.filter((w) => !/^\d+$/.test(w)).every((w) => hay.includes(w)) && (!num || String(r.sail || "").replace(/\D/g, "").includes(num));
   });
+}
+
+// Yeni listenin sınıflarındaki bizimkiler, önceki listelerle birleşmiş sıralamadan (grup PDF'leri tek sıralama; grupsuz liste eskisinin yerine)
+export function rankWith(before, fleets, pool, year) {
+  const all = withCats(fleetsOf([...before, { at: "\uffff", fleets }]), year);
+  const classes = new Set(fleets.map((f) => f.cls));
+  return Object.fromEntries(Object.entries(rankOurs(all, pool)).filter(([, x]) => classes.has(x.cls)));
+}
+// Yeni PDF'te olmayan (başka grubun PDF'inden gelen) sporcunun satırı kendi belgesine bağlı kalır: o belge silinince satır da gider
+export function keepFiles(next, prev, mine) {
+  const rows = { ...next.rows };
+  for (const [id, x] of Object.entries(rows)) if (!mine[id] && prev?.rows?.[id]?.f) rows[id] = { ...x, f: prev.rows[id].f };
+  return { ...next, rows };
 }

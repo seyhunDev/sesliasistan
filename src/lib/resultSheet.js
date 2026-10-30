@@ -125,22 +125,28 @@ export function cleanSheet(raw) {
       }))
       .filter((r) => r.name)
       .sort((a, b) => a.rank - b.rank);
-    if (rows.some((r) => r.grp)) {
-      const gi = (r) => (r.grp ? GROUPS.indexOf(r.grp) : GROUPS.length);
-      rows.sort((a, b) => gi(a) - gi(b) || a.rank - b.rank);
-      if (rows.some((r, i) => i && r.rank <= rows[i - 1].rank)) rows.forEach((r, i) => (r.rank = i + 1));
-    }
     if (!cls || !rows.length) continue;
     // Gruplar ayrı liste okunduysa (her grup kendi sayfasında) aynı sınıfın grupları tek listede birleşir
-    const same = rows.some((r) => r.grp) && fleets.find((x) => x.cls === cls && x.rows.some((r) => r.grp));
-    if (!same) fleets.push({ cls, rows });
-    else {
-      const gi = (r) => (r.grp ? GROUPS.indexOf(r.grp) : GROUPS.length);
-      same.rows = [...same.rows, ...rows].sort((a, b) => gi(a) - gi(b) || a.rank - b.rank);
-      if (same.rows.some((r, i) => i && r.rank <= same.rows[i - 1].rank)) same.rows.forEach((r, i) => (r.rank = i + 1));
-    }
+    const at = fleets.findIndex((x) => x.cls === cls);
+    if (at < 0) fleets.push({ cls, rows: byGroup(rows) });
+    else fleets[at] = joinGroups(fleets[at], { cls, rows });
   }
   return fleets;
+}
+
+// Gruplu liste: Altın, Gümüş, Bronz, Zümrüt sırasıyla, grup içinde sıraya göre; sıra grup grup 1'den başlıyorsa genel sıra yeniden verilir
+export function byGroup(rows) {
+  if (!rows.some((r) => r.grp)) return rows;
+  const gi = (r) => (r.grp ? GROUPS.indexOf(r.grp) : GROUPS.length);
+  const out = [...rows].sort((a, b) => gi(a) - gi(b) || a.rank - b.rank);
+  return out.some((r, i) => i && r.rank <= out[i - 1].rank) ? out.map((r, i) => ({ ...r, rank: i + 1 })) : out;
+}
+// Aynı sınıfın yeni listesi eskisine (Seyhun 2026-10-30: Altın, Gümüş, Bronz ayrı ayrı PDF): ikisi de gruplu ise yeni listenin
+// grupları eskisindekilerin yerine geçer, diğer gruplar kalır (Altın PDF'i + Gümüş PDF'i = tek sıralama). Grupsuz liste eskisinin yerine geçer.
+export function joinGroups(prev, next) {
+  const grps = new Set(next.rows.map((r) => r.grp).filter(Boolean));
+  if (!prev || !grps.size || !prev.rows.some((r) => r.grp)) return { ...next, rows: byGroup(next.rows) };
+  return { ...next, rows: byGroup([...prev.rows.filter((r) => r.grp && !grps.has(r.grp)), ...next.rows]) };
 }
 
 // Ad eşleşmesi: sporcunun ilk ve son adı satırda geçiyor (sıra fark etmez: "KAYA Ali" = Ali Kaya)
