@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
 import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { loadSharedAll } from "@/features/athletes/sharedRaces";
-import { calendarOf } from "@/lib/sharedRace";
+import { calendarOf, classesOf } from "@/lib/sharedRace";
 import { todayStr } from "@/lib/utils/format";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
@@ -38,7 +38,7 @@ function soon(s, today) {
 function CalRow({ s, past, today, onOpen }) {
   const a = day(s.startDate);
   const b = s.endDate && s.endDate !== s.startDate ? day(s.endDate) : null;
-  const classes = s.notice?.classes?.join(", ");
+  const classes = classesOf(s.notice).join(", ");
   return (
     <Row
       onClick={() => onOpen(s)}

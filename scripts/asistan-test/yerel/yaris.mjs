@@ -598,6 +598,7 @@ group("Parkur analizi")([
 group("Yarış takvimi")([
   ["yaklaşan ve geçmiş", { desc: "biten geçmişte (yeni önce), süren yaklaşanda (yakın önce)", fn: () => SR.calendarOf([{ id: "a", name: "A", startDate: "2026-11-07" }, { id: "b", name: "B", startDate: "2026-10-27", endDate: "2026-10-29" }, { id: "c", name: "C", startDate: "2026-09-01" }, { id: "d", name: "D", startDate: "2026-10-01" }], "2026-10-28"), ok: (r) => r.up.map((s) => s.id).join() === "b,a" && r.past.map((s) => s.id).join() === "d,c" }],
   ["arama", { desc: "ad, ilçe ve sınıfta; Türkçe harf farkı yok", fn: () => [SR.calendarOf([{ name: "Kupa", district: "Foça", startDate: "2026-11-01", notice: { classes: ["ILCA 4"] } }], "2026-10-28", "foca ilca").up.length, SR.calendarOf([{ name: "Kupa", startDate: "2026-11-01" }], "2026-10-28", "çeşme").up.length], ok: (r) => r.join() === "1,0" }],
+  ["talimatta sınıf yok", { desc: "cleanNotice boş sınıfı \"\" yazar: takvim çökmez, sınıf boş", fn: () => [SR.calendarOf([{ name: "Kupa", startDate: "2026-11-01", notice: { classes: "" } }], "2026-10-28").up.length, SR.classesOf({ classes: "" }).join(), SR.classesOf({ classes: ["Optimist", 3] }).join()], ok: (r) => r.join("|") === "1||Optimist" }],
   ["kısa tarih", { desc: "aynı ay, iki ay, tek gün", fn: () => [SR.shortRange("2026-11-07", "2026-11-09"), SR.shortRange("2026-10-30", "2026-11-02"), SR.shortRange("2026-11-07", "")], ok: (r) => r.join("|") === "7–9 Kas|30 Eki–2 Kas|7 Kas" }],
   ["sonuç süzgeci", { desc: "sınıfın son listesi; Junior ve Kızlar kendi içinde sıralanır; yelken no ile arama", fn: () => {
     const old = { at: "1", fleets: [{ cls: "Optimist", rows: [{ name: "Eski", rank: 1 }] }] };
@@ -628,6 +629,23 @@ group("Yarış günü")([
     return [d1.prev.a, d2.prev.a, d2b.prev.a, RDY.placeMove(d2, "a"), RDY.placeMove(d2b, "a"), RR.cleanResults(d2).day, RR.cleanResults(d2).prev.a];
   }, ok: (r) => r.join() === ",5,5,2,1,2026-11-08,5" }],
   ["bizimkiler", { desc: "sıralılar, sıraya göre", fn: () => RDY.ourPlaces({ rows: { a: { place: 7 }, b: { place: 3 } } }, [{ id: "a", studentName: "Ayşe" }, { id: "b", studentName: "Ali" }, { id: "c", studentName: "Can" }]).map((x) => x.name).join(), ok: (r) => r === "Ali,Ayşe" }],
+  ["ana sayfa satırı", { desc: "Seyhun 2026-10-30: sayaç yerine evreye göre tek satır (ilk start, sayaç, sürüyor, sonuç, yarın, dönüş)", fn: () => {
+    const R = { ...RDR, notice: { schedule: [...RDR.notice.schedule, { date: "2026-11-07", time: "10:30", title: "İlk start" }] } };
+    const kids = [{ id: "a", studentName: "Deniz Ak" }, { id: "b", studentName: "Ece Su" }];
+    const st = [{ day: "2026-11-07", n: 1, at: atH(11).toISOString(), fin: atH(12).toISOString() }, { day: "2026-11-07", n: 2, at: atH(13, 5).toISOString() }];
+    const res = { day: "2026-11-07", rows: { a: { place: 4 }, b: { place: 5 } }, prev: { a: 7 } };
+    const L = (o) => RDY.raceLine({ r: R, today: "2026-11-07", now: atH(9), athletes: kids, ...o });
+    return [
+      L({}),
+      L({ timer: "Starta 03:12" }),
+      L({ now: atH(13, 20), starts: st }),
+      L({ now: atH(13, 20), starts: [st[0]] }),
+      L({ r: { ...R, results: res }, now: atH(15) }),
+      L({ now: atH(18, 30) }),
+      L({ r: { ...R, returnTime: "16:00" }, today: "2026-11-09", now: atH(19) }),
+      L({ today: "2026-11-10" }),
+    ];
+  }, ok: (r) => r.join("|") === "1. gün · İlk start 10:30|Starta 03:12|2. yarış sürüyor · 13:05|1 yarış bitti|1. gün · Deniz 4. ↑3 · Ece 5.|1. gün bitti · Yarın ilk start 11:00|Yarış bitti · Dönüş 16:00|" }],
 ]);
 
 // Pusula (compass.js): dik tutulan telefonda kameranın baktığı yön (Seyhun 2026-10-29: 20° yerine 277° gösteriyordu, dönmüyordu)

@@ -77,11 +77,13 @@ export const newSheets = (s, race) => (s?.sheets || []).filter((id) => !(race?.r
 
 // ---- Yarış takvimi (/races, herkes görür) ----
 const endOf = (s) => s.endDate || s.startDate || "";
+// Talimattaki sınıflar: cleanNotice boş alanı "" yazar (dizi değil); takvim "classes.join is not a function" ile çöküyordu (2026-10-28)
+export const classesOf = (n) => (Array.isArray(n?.classes) ? n.classes.filter((c) => typeof c === "string" && c) : []);
 // Yaklaşan (yakın önce) ve geçmiş (yeni önce); arama ad, yer ve sınıflarda (her söz geçmeli)
 export function calendarOf(list, today, q = "") {
   const want = plain(q).split(" ").filter(Boolean);
   const hit = (s) => {
-    const hay = plain([s.name, s.district, s.city, ...(s.notice?.classes || [])].join(" "));
+    const hay = plain([s.name, s.district, s.city, ...classesOf(s.notice)].join(" "));
     return want.every((w) => hay.includes(w));
   };
   const all = (list || []).filter((s) => s?.name && s.startDate && hit(s));

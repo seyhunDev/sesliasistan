@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
+import { classesOf } from "@/lib/sharedRace";
 
 const day = (s) => new Date(`${s}T12:00:00`);
 const short = (s) => day(s).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
@@ -88,11 +89,11 @@ export function NoticeDetails({ n }) {
   return (
     <>
       <Label>TALİMAT BİLGİLERİ</Label>
-      {(n.summary || n.organizer || n.venue || n.classes?.length > 0) && (
+      {(n.summary || n.organizer || n.venue || classesOf(n).length > 0) && (
         <>
           <div className={`${card} space-y-1.5 px-4 py-3 text-[0.875rem]`}>
             {n.summary && <p className="leading-relaxed">{n.summary}</p>}
-            {[["Düzenleyen", n.organizer], ["Yer", n.venue], ["Sınıflar", n.classes?.join(", ")]].map(
+            {[["Düzenleyen", n.organizer], ["Yer", n.venue], ["Sınıflar", classesOf(n).join(", ")]].map(
               ([k, v]) =>
                 v && (
                   <p key={k} className="flex gap-2">
