@@ -1,8 +1,8 @@
-Commit: b36ecae · Yarış detayı ve Multimedya tek sayfa: alttaki çubukta Yarış sekmesi (#901)
-Zaman: 2026-10-29-2152 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40933252045
+Commit: 55af1c1 · Parkur: bir cümlede birden çok ölçüm sesle, Parkur sekmesi anında güncellenir (#904)
+Zaman: 2026-10-30-0627 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40996395946
 
-TAM TEST · 29.10.2026 21:42:27
+TAM TEST · 30.10.2026 06:16:53
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1410/1411 geçti · 1 kalan · 621 sn
+SONUÇ: 1410/1411 geçti · 1 kalan · 613 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
