@@ -1,8 +1,8 @@
-Commit: 440f8f8 · Yarış alt çubuğu küçük telefonda sığıyor: Kayıt ve asistan küçüldü (#905)
-Zaman: 2026-10-30-0645 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/40998279784
+Commit: b4d6694 · Parkur: asistan önce parkura (o günün parkuru, sorular, göreli cümleler, hızlı yapay zekâ) (#906)
+Zaman: 2026-10-30-0715 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41000834104
 
-TAM TEST · 30.10.2026 06:36:17
+TAM TEST · 30.10.2026 07:04:58
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1410/1411 geçti · 1 kalan · 540 sn
+SONUÇ: 1411/1411 geçti · 0 kalan · 614 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -139,7 +139,7 @@ SONUÇ: 1410/1411 geçti · 1 kalan · 540 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 130/131
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 131/131
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Ana sayfa: 5/5
   ✓ Enerji (boşta): 2/2
@@ -157,10 +157,7 @@ SONUÇ: 1410/1411 geçti · 1 kalan · 540 sn
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Kişi kare kodu: 4/4
-  ✗ Asistanın gizli olduğu yerler: 7/8
-      ✗ “Yarış multimedya sayfası”
-          beklenen: sekme çubuğu ve asistan düğmesi yok
-          olan:     /athletes/races/test-yaris/media · 1 düğme · sekme çubuğu 0
+  ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
