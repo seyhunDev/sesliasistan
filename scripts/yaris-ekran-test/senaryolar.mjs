@@ -71,7 +71,8 @@ export async function run(server, log = () => {}) {
       docs: [
         { path: "orgs/{owner}/races/r1", data: { name: "Ege Kupası", city: "İzmir", district: "Dikili", startDate: TODAY, endDate: plus(2), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
         // sesle yazılmış rüzgâr (Saha ölçümlerinde görünmeli)
-        { path: "orgs/{owner}/raceLive/r1", data: { wind: [{ at: new Date(now.getTime() - 30 * 60e3).toISOString(), dir: 300, kn: 11, src: "elle" }] } },
+        // ve bugünün bir yarışı ile o yarışta çekilmiş bir fotoğraf (Start'ta yarışın satırında görünmeli)
+        { path: "orgs/{owner}/raceLive/r1", data: { wind: [{ at: new Date(now.getTime() - 30 * 60e3).toISOString(), dir: 300, kn: 11, src: "elle" }], starts: [{ id: "s1", day: TODAY, n: 1, at: new Date(now.getTime() - 60 * 60e3).toISOString() }], media: [{ id: "m1", kind: "photo", url: "https://example.com/1.jpg", at: new Date(now.getTime() - 40 * 60e3).toISOString() }] } },
         { path: "orgs/{owner}/races/r2", data: { name: "Bahar Kupası", city: "İzmir", district: "Dikili", startDate: plus(5), endDate: plus(6), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
       ],
     });
@@ -161,7 +162,7 @@ export async function run(server, log = () => {}) {
       const wx = await page.locator("section[aria-label='Yarış havası']").count();
       // yarış günü tek ekran (Seyhun 2026-10-29): sekme şeridi yok; Yarış · Süre · Medya · Parkur · Sonuçlar alttaki çubukta (aynı sayfanın sekmeleri); hazırlık ⋯ › Hazırlık penceresinde
       const nav = await page.locator("nav[aria-label=Bölümler]").count();
-      const mb = await page.locator("nav[aria-label='Multimedya sekmeleri']").getByRole("button", { name: "Medya" }).first().boundingBox();
+      const mb = await page.locator("nav[aria-label='Multimedya sekmeleri']").getByRole("button", { name: "Sonuçlar" }).first().boundingBox();
       const fit = !!mb && mb.y + mb.height <= (page.viewportSize()?.height || 844);
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO }).catch(() => {});
       await openSec("prep");
@@ -222,6 +223,21 @@ export async function run(server, log = () => {}) {
       const tab = await page.locator("nav[aria-label='Multimedya sekmeleri']").getByRole("button", { name: "Saha" }).count();
       return [wx === 1 && ownDay === 0 && voice === 1 && tab === 1, `hava ${wx} · havanın gün düğmesi ${ownDay} · sesli rüzgâr ${voice} · Saha sekmesi ${tab}`];
     });
+    // Start = Süre + Medya (Seyhun 2026-10-30): alt çubukta Yarış · Saha · Start · Sonuçlar, Kayıt alt çubukta değil Başlat'ın yanında,
+    // yarışın çekimi kendi satırında (ayrı galeri bölümü yok)
+    await okPage("Yarış sayfası", "Start", "/athletes/races/r1/media", "Start sayacı", async () => {
+      const bar = page.locator("nav[aria-label='Multimedya sekmeleri']");
+      const tabs = (await bar.locator("button").allInnerTexts()).map((x) => x.trim()).filter(Boolean).join(",");
+      const dockRec = await bar.getByLabel("Kayıt").count();
+      const rec = await page.locator("[data-bar]").getByLabel("Kayıt").count();
+      const go = await page.locator("[data-bar]").getByRole("button", { name: "Başlat" }).count();
+      const row = page.locator("main li", { hasText: "1. yarış" }).first();
+      const thumb = await row.locator(".grid button").count();
+      const loose = await page.locator("main section", { hasText: "1. yarış" }).count();
+      if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-start.png") }).catch(() => {});
+      const ok = tabs === "Yarış,Saha,Start,Sonuçlar" && dockRec === 0 && rec === 1 && go === 1 && thumb === 1 && loose === 0;
+      return [ok, `sekmeler ${tabs} · alt çubukta Kayıt ${dockRec} · Başlat yanında Kayıt ${rec} · Başlat ${go} · satırda çekim ${thumb} · ayrı bölüm ${loose}`];
+    });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
     // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok
     await okPage("Yarış sayfası", "tek ⋯ menüsü", "/athletes/races/r1/media", "Start sayacı", async () => {
@@ -243,7 +259,7 @@ export async function run(server, log = () => {}) {
     // Detay ve Multimedya tek sayfa (Seyhun 2026-10-29): alttaki çubukta Süre → sayaç, Yarış → yarış sayfası
     await okPage("Yarış sayfası", "alt çubukta Süre ve Yarış sekmesi", "/athletes/races/r1", DAY_TOP, async () => {
       const bar = page.locator("nav[aria-label='Multimedya sekmeleri']");
-      await bar.getByRole("button", { name: "Süre" }).click();
+      await bar.getByRole("button", { name: "Start" }).click();
       await page.getByText("Start sayacı").first().waitFor({ timeout: 60000 });
       const sure = page.url().includes("/athletes/races/r1/media");
       await bar.getByRole("button", { name: "Yarış", exact: true }).click();

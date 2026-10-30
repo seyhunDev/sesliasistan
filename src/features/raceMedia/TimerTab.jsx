@@ -19,13 +19,34 @@ const PRESETS = [60, 120, 300, 600];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
 // Büyük sayaç lacivert üstte (RaceMedia Shell top), listesi ve kareler açık alanda
-export function TimerHead({ race, live, rf }) {
+// rec: ana düğmenin yanında Kayıt (Start sekmesi, Seyhun 2026-10-30)
+export function TimerHead({ race, live, rf, rec = null }) {
   const tr = useTimerRun();
   const cur = tr.t.end != null || tr.t.left != null ? live.starts.find((x) => x.id === rf.ridOf(tr.t)) : null;
-  return <Countdown dark mode="start" presets={PRESETS} race={rf.flow} title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} bottom />;
+  return <Countdown dark mode="start" presets={PRESETS} race={rf.flow} title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} bottom rec={rec} />;
 }
 
-export function TimerTab({ orgId, race, day, live, onChange, rf }) {
+// Start sekmesi (Seyhun 2026-10-30, yaris-yapi "Süre ve Medya birleşir"): günün yarışları listesi; her yarışın çekimleri kendi satırında
+// (MediaTab list ile). useStartList satırları, Yarış ekle'yi, Start · Şamandıra · Finish karelerini ve düzenleme penceresini verir.
+export function TimerTab(props) {
+  const L = useStartList(props);
+  return (
+    <>
+      {L.marks}
+      <Label right={L.today.length || ""}>Yarışlar</Label>
+      <ul className={`${card} divide-y divide-line overflow-hidden`}>
+        {L.empty}
+        {[...L.today].reverse().map((s) => (
+          <li key={s.id}>{L.row(s)}</li>
+        ))}
+        <li>{L.add}</li>
+      </ul>
+      {L.sheet}
+    </>
+  );
+}
+
+export function useStartList({ orgId, race, day, live, onChange, rf }) {
   const tr = useTimerRun();
   const timer = tr.t;
   const [edit, setEdit] = useState(null); // düzenlenen yarış
@@ -50,35 +71,30 @@ export function TimerTab({ orgId, race, day, live, onChange, rf }) {
 
   const today = startsOn(live.starts, day);
 
-  return (
-    <>
-      {!!cur && tr.up && !cur.void && <Marks buoys={live.buoys} s={cur} on onMark={mark} onBuoys={setBuoys} />}
-      {/* Günün yarışları sayacın altında liste (Seyhun 2026-10-28; eskiden "Liste ›" ile ayrı pencere): saat, rüzgâr, süre ya da durum */}
-      <Label right={today.length || ""}>Yarışlar</Label>
-      <ul className={`${card} divide-y divide-line overflow-hidden`}>
-        {!today.length && <li className="px-4 py-3 text-[0.875rem] text-mut">Bu gün yarış yok. Sıradaki: {flow.label}</li>}
-        {[...today].reverse().map((s) => (
-          <li key={s.id}>
-            <button type="button" onClick={() => setEdit(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-              <span className="min-w-0 flex-1">
-                <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
-                {(s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
-                  <span className="block truncate text-[0.8125rem] text-mut">{[s.course, s.flag, markLine(live.buoys, s), s.note].filter(Boolean).join(" · ")}</span>
-                )}
-              </span>
-              <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
-                {[hm(s.at), s.kn != null && s.dir != null ? `${dirShort(s.dir)} ${s.kn} kn` : ""].filter(Boolean).join(" · ")}
-                {state(s) && <small className={`block text-[0.75rem] ${s.fin ? "" : "font-semibold text-acc"}`}>{state(s)}</small>}
-              </span>
-            </button>
-          </li>
-        ))}
-        <li>
-          <button type="button" onClick={add} data-press="row" className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc">
-            Yarış ekle
-          </button>
-        </li>
-      </ul>
+  return {
+    today,
+    marks: !!cur && tr.up && !cur.void ? <Marks buoys={live.buoys} s={cur} on onMark={mark} onBuoys={setBuoys} /> : null,
+    empty: today.length ? null : <li className="px-4 py-3 text-[0.875rem] text-mut">Bu gün yarış yok. Sıradaki: {flow.label}</li>,
+    row: (s) => (
+      <button type="button" onClick={() => setEdit(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
+        <span className="min-w-0 flex-1">
+          <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
+          {(s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
+            <span className="block truncate text-[0.8125rem] text-mut">{[s.course, s.flag, markLine(live.buoys, s), s.note].filter(Boolean).join(" · ")}</span>
+          )}
+        </span>
+        <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
+          {[hm(s.at), s.kn != null && s.dir != null ? `${dirShort(s.dir)} ${s.kn} kn` : ""].filter(Boolean).join(" · ")}
+          {state(s) && <small className={`block text-[0.75rem] ${s.fin ? "" : "font-semibold text-acc"}`}>{state(s)}</small>}
+        </span>
+      </button>
+    ),
+    add: (
+      <button type="button" onClick={add} data-press="row" className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc">
+        Yarış ekle
+      </button>
+    ),
+    sheet: (
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit ? raceTitle(edit) : ""}>
         {edit && (
           <StartForm
@@ -101,8 +117,8 @@ export function TimerTab({ orgId, race, day, live, onChange, rf }) {
           />
         )}
       </Sheet>
-    </>
-  );
+    ),
+  };
 }
 
 function StartForm({ s, onSave, onDrop }) {
