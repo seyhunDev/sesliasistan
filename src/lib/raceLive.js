@@ -441,10 +441,12 @@ export function beepAt(left, mode = "") {
 }
 
 // Genel sıralama: sınıfın satırları süzülür (Genel, Junior, Bambino, Kızlar), sıra süzgeç içinde yeniden verilir
-// Süzgeçler: all (Genel), Junior, Bambino, girls (Kızlar), Junior-girls (Junior Kızlar), Bambino-girls
+// Süzgeçler: all (Genel), grp:Altın / grp:Gümüş … (final grupları), Junior, Bambino, girls (Kızlar), Junior-girls (Junior Kızlar), Bambino-girls
 const SUB_CATS = ["Junior", "Bambino"];
+const GRPS = ["Altın", "Gümüş", "Bronz", "Zümrüt"];
 export function sheetRows(fleet, filter = "all") {
   const rows = (fleet?.rows || []).map((r, i) => ({ ...r, i })); // i: sınıf listesindeki yeri (bizimkiler bununla işaretlenir)
+  if (filter.startsWith("grp:")) return rows.filter((r) => r.grp === filter.slice(4)).map((r, k) => ({ ...r, pos: k + 1 }));
   const [cat, girls] = filter === "girls" ? ["", true] : filter.endsWith("-girls") ? [filter.slice(0, -6), true] : [SUB_CATS.includes(filter) ? filter : "", false];
   const pick = filter === "all" ? rows : rows.filter((r) => (!cat || r.cat === cat) && (!girls || r.sex === "K"));
   return pick.map((r, k) => ({ ...r, pos: k + 1 }));
@@ -455,18 +457,20 @@ export function sheetFilters(fleet) {
   const girls = rows.some((r) => r.sex === "K");
   return [
     ["all", "Genel"],
+    ...GRPS.filter((g) => rows.some((r) => r.grp === g)).map((g) => [`grp:${g}`, g]),
     ...cats.map((c) => [c, c]),
     ...(girls ? [["girls", "Kızlar"]] : []),
     ...cats.filter((c) => rows.some((r) => r.cat === c && r.sex === "K")).map((c) => [`${c}-girls`, `${c} Kızlar`]),
   ];
 }
-// Her satırın genel dışındaki sıraları (Sonuçlar 3. satır): { i: [["Junior", 1, 18], ["Kızlar", 2, 12], ["Junior Kızlar", 1, 6]] }
+// Her satırın genel dışındaki sıraları (Sonuçlar 3. satır): { i: [["Gümüş", 5, 40], ["Junior", 1, 18], ["Kızlar", 2, 12], ["Junior Kızlar", 1, 6]] }
 export function rowRanks(fleet) {
   const out = {};
   const add = (filter, label) => {
     const l = sheetRows(fleet, filter);
     for (const r of l) (out[r.i] ||= []).push([label, r.pos, l.length]);
   };
+  for (const g of GRPS) add(`grp:${g}`, g);
   for (const c of SUB_CATS) add(c, c);
   add("girls", "Kızlar");
   for (const c of SUB_CATS) add(`${c}-girls`, `${c} Kızlar`);

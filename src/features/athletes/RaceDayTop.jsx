@@ -41,7 +41,7 @@ export function useRacePhase(r, orgId, rid, on) {
 }
 
 // "Optimist / 120 · Junior 4. · Kızlar 7."
-const subOf = (x) => [x.n ? `${x.cls} / ${x.n}` : x.cls, x.cp && `${x.cat} ${x.cp}.`, x.gp && `Kızlar ${x.gp}.`].filter(Boolean).join(" · ");
+const subOf = (x) => [x.n ? `${x.cls} / ${x.n}` : x.cls, x.grp && x.fp && `${x.grp} ${x.fp}.`, x.cp && `${x.cat} ${x.cp}.`, x.gp && `Kızlar ${x.gp}.`].filter(Boolean).join(" · ");
 const btn = "flex h-[3.25rem] items-center justify-center gap-2.5 rounded-2xl text-[1.0625rem] font-bold active:translate-y-px active:shadow-none";
 const main = `${btn} bg-[#67e8f9] text-[#06283a] shadow-[0_3px_0_#2aa9bd]`;
 const second = `${btn} raised border px-5 text-[1rem] font-semibold`;
