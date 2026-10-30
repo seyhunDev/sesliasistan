@@ -1,8 +1,8 @@
-Commit: 57bf5f7 · Yarış: Süre ve Medya tek Start sekmesi, Kayıt Başlat'ın yanında (#910)
-Zaman: 2026-10-30-0922 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41012707681
+Commit: 084bcc1 · Yarış: yarış günü Saha · Start · Sonuç, sayfa evreye göre açılır (#911)
+Zaman: 2026-10-30-0940 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41014425893
 
-TAM TEST · 30.10.2026 09:12:41
+TAM TEST · 30.10.2026 09:30:28
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1414/1414 geçti · 0 kalan · 587 sn
+SONUÇ: 1415/1415 geçti · 0 kalan · 614 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -178,8 +178,8 @@ SONUÇ: 1414/1414 geçti · 0 kalan · 587 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 10/10
-  ✓ Yarış sayfası: 10/10
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 11/11
+  ✓ Yarış sayfası: 11/11
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
