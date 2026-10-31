@@ -13,6 +13,8 @@ import { useNow } from "@/hooks/useNow";
 import { isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
+import { Icon } from "@/components/ui/Icon";
+import { ActionGrid } from "@/components/ui/ActionGrid";
 import { CockpitWind } from "./CockpitWind";
 import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
@@ -120,10 +122,19 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
   );
 }
 
-// Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan. Kokpitin en belirgin parçası
-// (Seyhun 2026-10-22 "A · Mor kart"): logo morunda dolu kart; üstte solda gün ve tür, aynı satırın sonunda kalan süre (Seyhun: "biri başta,
-// biri sonda", altta boş satır kalmasın); büyük saat + tam başlık (2 satıra kadar), altta yalnız yer.
-// Antrenmansa kartın içinde Yoklama ve Süre (widget'taki gibi). Karta dokununca plan açılır.
+// Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan.
+// Görünüm iş düğmeleriyle aynı (Seyhun 2026-10-31 "yazılar alta kayıyor… butonlara benzer olsun"): kabarık kart, solda kartın kenarından
+// giren soluk camgöbeği ikon (türüne göre), üstte tek satır gün · saat · yer, altında tek satır başlık, sağda kalan süre camgöbeği. Hiçbir yazı
+// alt satıra kaymaz (hepsi tek satır, uzunsa "…"). Antrenmansa altında aynı biçimde Yoklama · Süre. Karta dokununca plan açılır.
+const PLAN_ICON = { Yarış: "flag", Antrenman: "wind", Fitness: "dumbbell", Toplantı: "users", Kamp: "tent" };
+export function planWhen(p, now, today) {
+  const days = Math.round((Date.parse(`${p.date}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5);
+  const d = new Date(`${p.date}T12:00`);
+  const day = days === 0 ? "Bugün" : days === 1 ? "Yarın" : `${cap(d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""))} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}`;
+  const mins = days === 0 && p.time ? Math.round((new Date(`${p.date}T${p.time}`) - now) / 60000) : null;
+  const left = days > 1 ? `${days} gün` : days === 1 ? "" : mins == null ? "" : mins <= 0 ? "Şimdi" : mins < 60 ? `${mins} dk` : `${Math.floor(mins / 60)} sa${mins % 60 ? ` ${mins % 60} dk` : ""}`;
+  return { day, left };
+}
 function NextPlan({ now }) {
   const { plans } = useData();
   const { profile } = useAuth();
@@ -131,53 +142,28 @@ function NextPlan({ now }) {
   const today = todayStr();
   const p = nextPlan(plans, now, today);
   if (!p) return null;
-  const mins = p.date === today && p.time ? Math.round((new Date(`${p.date}T${p.time}`) - now) / 60000) : null;
-  // Gün bir kez yazılır: üstte "Bugün" / "Yarın" / "Pazartesi 26 Eki"; altta kalan süre (Seyhun 2026-10-21: tekrar olmasın)
-  const days = Math.round((Date.parse(`${p.date}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5);
-  const d = new Date(`${p.date}T12:00`);
-  const day = days === 0 ? "Bugün" : days === 1 ? "Yarın" : `${cap(d.toLocaleDateString("tr-TR", { weekday: "long" }))} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}`;
-  const left =
-    days > 1
-      ? `${days} gün sonra`
-      : days === 1
-        ? ""
-        : mins == null
-          ? "Gün boyu"
-          : mins <= 0
-            ? "Şimdi"
-            : mins < 60
-              ? `${mins} dk sonra`
-              : `${Math.floor(mins / 60)} sa ${mins % 60 ? `${mins % 60} dk ` : ""}sonra`;
+  const { day, left } = planWhen(p, now, today);
   const sail = isTraining(p);
-  const tag = planTag(p);
+  const tag = planTag(p) || p.cat || p.category || "";
   // Antrenmansa Süre'nin yanında Yoklama (Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
   const att = sail && canSeeAthletes(profile?.email);
+  const acts = [
+    att && { key: "att", icon: "checks", label: "Yoklama", href: attHref(p.date, today) || "/athletes/attendance" },
+    sail && { key: "sure", icon: "clock", label: "Süre", href: `/training/day?id=${p.id}` },
+  ].filter(Boolean);
   return (
-    <div className="ck-plan mt-3 rounded-[1.375rem] p-3.5 pb-3 text-white">
-      <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="block w-full min-w-0 text-left">
-        <span className="flex items-center gap-1.5 text-[0.75rem] font-bold tracking-[.04em] text-white/85">
-          <span className="size-[7px] shrink-0 rounded-full bg-white" />
-          <span className="min-w-0 flex-1 truncate uppercase">{[day, tag].filter(Boolean).join(" · ")}</span>
-          {left && <span className="shrink-0 text-[0.8125rem] font-semibold tracking-normal text-white">{left}</span>}
+    <div className="mt-3">
+      <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} aria-label="Sıradaki plan" className="raised ck-ibtn ck-next flex w-full min-w-0 items-center gap-2 pr-3.5 text-left">
+        <Icon name={PLAN_ICON[tag] || (sail ? "wind" : "cal")} className="ck-icon" />
+        <span className="relative min-w-0 flex-1">
+          <small className="block truncate text-[0.78rem] font-medium tabular-nums text-white/65">{[day, p.time, p.place].filter(Boolean).join(" · ")}</small>
+          <b className="block truncate text-[1rem] font-semibold leading-snug">{p.title || "Plan"}</b>
         </span>
-        <span className="mt-1 flex items-baseline gap-2.5">
-          {p.time && <b className="shrink-0 text-[1.75rem] font-bold leading-tight tracking-[-.03em] tabular-nums">{p.time}</b>}
-          <span className="line-clamp-2 min-w-0 text-[1.0625rem] font-semibold leading-snug">{p.title || "Plan"}</span>
-        </span>
-        {p.place && <small className="mt-0.5 block truncate text-[0.8125rem] text-white/80">{p.place}</small>}
+        {left && <span className="relative shrink-0 text-[0.84375rem] font-semibold tabular-nums text-[#67e8f9]">{left}</span>}
       </button>
-      {(att || sail) && (
-        <div className={`mt-3 grid gap-2 ${att && sail ? "grid-cols-2" : "grid-cols-1"}`}>
-          {att && (
-            <Link href={attHref(p.date, today) || "/athletes/attendance"} data-press className="ck-pbtn ck-pbtn2">
-              Yoklama
-            </Link>
-          )}
-          {sail && (
-            <Link href={`/training/day?id=${p.id}`} data-press className="ck-pbtn">
-              Süre
-            </Link>
-          )}
+      {acts.length > 0 && (
+        <div className="mt-2">
+          <ActionGrid icons items={acts} label="Plan işleri" />
         </div>
       )}
     </div>
