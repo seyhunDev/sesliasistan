@@ -1296,6 +1296,12 @@ async function raceDayHome(h) {
   await check("Ana sayfa", "süren yarış tek satır", "yarış adı ve kısa durum, düğme yok, dokununca yarışın sayfası açılır", async () => {
     await nav0(page);
     const row = page.locator("a[aria-label='Süren yarış']");
+    // Akşam 18'den sonra günün yarışları bitmiş sayılır, satır yoktur (Seyhun 2026-10-31); yerine Sıradaki kartı
+    if (+new Intl.DateTimeFormat("en", { hour: "numeric", hourCycle: "h23", timeZone: "Europe/Istanbul" }).format(new Date()) >= 18) {
+      await page.waitForTimeout(4000);
+      const n = await row.count();
+      return [n === 0, `akşam: satır ${n ? "duruyor" : "yok"}`];
+    }
     await row.waitFor({ timeout: 12000 });
     const href = (await row.getAttribute("href")) || "";
     const btns = await row.locator("button").count();

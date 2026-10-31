@@ -10,7 +10,7 @@ import { raceDays } from "@/features/athletes/raceWeather";
 import { loadLive, saveStarts } from "@/features/athletes/raceLiveStore";
 import { useTimerRun } from "@/features/training/Countdown";
 import { liveRace } from "@/lib/homeTiles";
-import { raceLine } from "@/lib/raceDay";
+import { raceLine, racePhase } from "@/lib/raceDay";
 import { cleanLive, ownedBy, upSec, zeroRace } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
 import { todayStr } from "@/lib/utils/format";
@@ -19,6 +19,8 @@ import { todayStr } from "@/lib/utils/format";
 // gidesin"; yapı haritası yaris-yapi): canlı nokta, yarış adı, altında günün evresine göre kısa durum (raceDay.js raceLine: ilk start, sayaç,
 // "2. yarış sürüyor", bizimkilerin sırası, yarın ilk start, dönüş). Dokununca yarışın sayfası. Sayaç, Kayıt ve süre seçimi yarış sayfasında.
 // Ayarlar › Ana sayfada yarış kısayolu kapatırsa (users.raceLive "off") görünmez; Kulüp listesindeki yarış satırı o zaman yine çıkar.
+// Günün yarışları bitince (18:00 ya da son yarıştan 90 dk sonra, raceDay.js racePhase "done") satır kalkar, yerine en yakın plan
+// (Sıradaki kartı) görünür (Seyhun 2026-10-31: "akşam 8:30 ve hala bu duruyor"); bu yarışın sayacı çalışıyorsa kalır. Ertesi yarış günü yine çıkar.
 // Görünmeyen iş: sayaç 0 olunca yarışın start saati yine yazılır (telefon ana sayfadayken de; yalnız bu yarışın sayacı).
 export function RaceLive({ open }) {
   const { profile } = useAuth();
@@ -76,6 +78,9 @@ function Line({ id, orgId, title }) {
   const { t, now, running, rem, up } = useTimerRun({ onZero });
   const ours = !!t.own && ownedBy(t.own, own);
   const timer = !ours ? "" : up ? `Startan beri ${mmss(upSec(t.end, now))}` : running ? `Starta ${mmss(Math.max(0, rem))}` : t.left != null ? `Sayaç durdu · ${mmss(t.left)}` : "";
+  const today = todayStr();
+  const over = racePhase({ r: race || { startDate: today }, today, now: clock, starts: live.starts }) === "done" && !(ours && (running || up));
+  if (over) return null;
   const sub = race ? raceLine({ r: race, today: todayStr(), now: clock, starts: live.starts, athletes: kids, timer }) : timer;
   return (
     <Link href={`/athletes/races/${id}`} data-press aria-label="Süren yarış" className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-white/10 bg-white/[.06] px-4 py-3 active:translate-y-px">
