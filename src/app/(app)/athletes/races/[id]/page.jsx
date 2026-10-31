@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
+import { LoadFail } from "@/components/ui/LoadFail";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -72,18 +73,33 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     if (id !== "new") return;
     Promise.all([loadSharedList(todayStr()), loadRaces(orgId)]).then(([l, mine]) => setSharedList(pickable(l, mine, todayStr())), () => {});
   }, [orgId, id]);
+  // Önce telefondaki kopya (hemen çizilir), sonra sunucu; sunucudaki farklıysa düzenleyici yeniden kurulur.
+  // Sunucuya ulaşılamazsa kopya kalır; kopya da yoksa sonsuz "yükleniyor" yerine "Tekrar dene" (lib/firebase/fastRead.js)
+  const [fail, setFail] = useState(false);
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
     if (cachedRace(orgId, id)) return;
-    loadRaces(orgId).then(
+    let on = true;
+    let shown = null;
+    const fromCache = (list) => {
+      if (!on || id === "new" || shown) return;
+      const r = list.find((x) => x.id === id);
+      if (r) (shown = r), setRace((p) => p || r);
+    };
+    loadRaces(orgId, fromCache).then(
       (list) => {
+        if (!on) return;
         if (id === "new") return setRace(freshRace(list.find((r) => r.signer) || list[0], todayStr()));
         const r = list.find((x) => x.id === id);
-        if (r) setRace(r);
-        else setMissingRace(true);
+        if (!r) return setMissingRace(true);
+        if (shown && JSON.stringify(shown) === JSON.stringify(r)) return;
+        setRace(r);
+        if (shown) setVer((v) => v + 1);
       },
-      () => setMissingRace(true),
+      () => on && !shown && (id === "new" ? setRace(freshRace(undefined, todayStr())) : setFail(true)),
     );
-  }, [orgId, id]);
+    return () => void (on = false);
+  }, [orgId, id, retry]);
 
   // Bağlı yarış açılınca ortaktaki yenilik (talimat, tarih, yer) kulübün yarışına işlenir (ekleyen kulübün kendisi hariç)
   const rid = race?.id || "";
@@ -206,7 +222,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
           <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]">{head}</section>
           <div className="relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pt-1">
             {err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
-            {missingRace ? <p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p> : <Loading label="Yarış yükleniyor" />}
+            {missingRace ? <p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p> : fail && !race ? <LoadFail onRetry={() => (setFail(false), setRetry((n) => n + 1))} /> : <Loading label="Yarış yükleniyor" />}
           </div>
         </>
       ) : (

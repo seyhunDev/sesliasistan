@@ -2,7 +2,8 @@
 
 import { cleanResults } from "@/lib/raceResults";
 import { cleanFollow } from "@/lib/resultSheet";
-import { arrayUnion, collection, doc, getDoc, getDocs, serverTimestamp } from "firebase/firestore";
+import { arrayUnion, collection, doc, serverTimestamp } from "firebase/firestore";
+import { readCache, readServer } from "@/lib/firebase/fastRead";
 import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { soon } from "@/lib/soon";
@@ -335,9 +336,12 @@ export function tripRows(r) {
 }
 
 // Tek yarış (multimedya sayfası); yoksa null
-export async function loadRace(orgId, id) {
-  const snap = await getDoc(doc(col(orgId), id));
-  return snap.exists() ? { id: snap.id, ...clean(snap.data()) } : null;
+// onCache: telefondaki kopya varsa hemen onunla çağrılır (sayfa beklemeden çizilir); dönen söz sunucudaki hâli (lib/firebase/fastRead.js)
+const raceOf = (snap) => (snap.exists() ? { id: snap.id, ...clean(snap.data()) } : null);
+export async function loadRace(orgId, id, onCache) {
+  const ref = doc(col(orgId), id);
+  if (onCache) readCache(ref).then((s) => s?.exists() && onCache(raceOf(s)));
+  return raceOf(await readServer(ref));
 }
 
 // Yalnız sonuçlar (multimedya sayfasından yükleme): yarışın diğer alanlarına dokunulmaz; bulunan yeni sporcular yarışa eklenir
@@ -361,9 +365,11 @@ export async function linkRace(orgId, id, link) {
   await updateDoc(doc(col(orgId), id), { shared: link.shared, sharedAt: link.sharedAt || "" });
 }
 
-export async function loadRaces(orgId) {
-  const snap = await getDocs(col(orgId));
-  const list = snap.docs.map((d) => ({ id: d.id, ...clean(d.data()) })).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+const listOf = (snap) => snap.docs.map((d) => ({ id: d.id, ...clean(d.data()) })).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+export async function loadRaces(orgId, onCache) {
+  if (onCache) readCache(col(orgId)).then((s) => s && !s.empty && onCache(listOf(s)));
+  const snap = await readServer(col(orgId));
+  const list = listOf(snap);
   rememberRaceNames(list.map((r) => r.name));
   last = { orgId, at: Date.now(), list };
   return list;

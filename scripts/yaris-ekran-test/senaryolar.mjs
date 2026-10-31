@@ -93,8 +93,13 @@ export async function run(server, log = () => {}) {
   }
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "tr-TR", timezoneId: "Europe/Istanbul", serviceWorkers: "block" });
   await ctx.addInitScript(INIT({ sha }));
-  await ctx.route("**/*", (route) => {
+  let hang = false; // true: Firestore okuma bağlantısı asılı kalır (iPhone'da güncelleme/yenileme sonrası; Seyhun 2026-10-31)
+  await ctx.route("**/*", async (route) => {
     const u = new URL(route.request().url());
+    if (hang && /Firestore\/Listen\/channel/.test(u.pathname)) {
+      await new Promise((r) => setTimeout(r, 60000));
+      return route.abort().catch(() => {});
+    }
     if (u.hostname === "api.open-meteo.com") return route.fulfill({ status: 200, headers: { "content-type": "application/json", "access-control-allow-origin": "*" }, body: JSON.stringify(WX) });
     if (u.hostname !== "localhost" && u.hostname !== "127.0.0.1") return route.abort();
     if (u.pathname.startsWith("/api/") && u.pathname !== "/api/version") return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
@@ -267,6 +272,24 @@ export async function run(server, log = () => {}) {
       const ours = await page.getByText("Deniz Yılmaz").first().isVisible().catch(() => false);
       return [sheet && ours, `özet ${sheet ? "açıldı" : "açılmadı"} · bizimkiler ${ours ? "görünüyor" : "görünmüyor"}`];
     });
+    // Sunucu bağlantısı asılı (güncelleme sonrası yenileme): yarış telefondaki kopyayla açılır, "Yarış yükleniyor"da kalmaz
+    hang = true;
+    for (const [say, path, wait] of [
+      ["asılı bağlantıda multimedya", "/athletes/races/r1/media", "Start sayacı"],
+      ["asılı bağlantıda yarıştan önceki sayfa", "/athletes/races/r2", "gün kaldı"],
+    ]) {
+      try {
+        errs.length = 0;
+        const t0 = Date.now();
+        await page.goto(`${server.url}${path}`, { waitUntil: "load", timeout: 120000 });
+        const seen = await page.getByText(wait).first().waitFor({ timeout: 5000 }).then(() => true, () => false);
+        const ms = Date.now() - t0;
+        push("Asılı bağlantı", say, `"${wait}" 5 sn içinde görünür (yükleniyor'da kalmaz)`, seen && !(await crashed()), seen ? `${ms} ms` : `görünmedi: ${(await body()).slice(0, 120)}`);
+      } catch (e) {
+        push("Asılı bağlantı", say, "açılır", false, `hata: ${String(e.message).split("\n")[0].slice(0, 200)}`);
+      }
+    }
+    hang = false;
   } finally {
     await browser.close();
   }
