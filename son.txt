@@ -1,8 +1,8 @@
-Commit: 346d4a3 · Anında açılış: uygulama telefondaki kopyayla hemen açılır, değişiklik arkadan gelir (#916)
-Zaman: 2026-10-31-0710 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41166753216
+Commit: ccc4dbb · Yarış sayfası asılı bağlantıda "yükleniyor"da kalmaz (#918)
+Zaman: 2026-10-31-0730 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41168058811
 
-TAM TEST · 31.10.2026 07:01:00
+TAM TEST · 31.10.2026 07:19:28
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1420/1420 geçti · 0 kalan · 549 sn
+SONUÇ: 1422/1422 geçti · 0 kalan · 622 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -179,8 +179,9 @@ SONUÇ: 1420/1420 geçti · 0 kalan · 549 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 11/11
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 13/13
   ✓ Yarış sayfası: 11/11
+  ✓ Asılı bağlantı: 2/2
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
