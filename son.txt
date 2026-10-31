@@ -1,8 +1,8 @@
-Commit: 07612dc · Yarış havası: kaydırma yönü düzeltildi, tek parça yükleme görünümü (#920)
-Zaman: 2026-10-31-2034 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41223858921
+Commit: 6e5998b · Ana sayfa: günün yarışları bitince süren yarış satırı kalkar (#921)
+Zaman: 2026-10-31-2101 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41226078177
 
-TAM TEST · 31.10.2026 20:18:39
+TAM TEST · 31.10.2026 20:46:04
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1418/1423 geçti · 5 kalan · 872 sn
+SONUÇ: 1418/1423 geçti · 5 kalan · 866 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
