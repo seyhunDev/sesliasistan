@@ -27,8 +27,11 @@ const emit = (next) => {
 export const subscribeNet = (f) => (subs.add(f), () => subs.delete(f));
 export const netState = () => state;
 
-// Asılı bağlantıyı yeniler (okuma yapmaz; dinleyiciler kaldığı yerden sürer)
+// Asılı bağlantıyı yeniler (okuma yapmaz; dinleyiciler kaldığı yerden sürer). Sunucuyu bekleyip cevap alamayan okuma da çağırır (lib/firebase/fastRead.js)
 let kicking = false;
+export function kickNet() {
+  kick();
+}
 function kick() {
   if (kicking) return;
   kicking = true;

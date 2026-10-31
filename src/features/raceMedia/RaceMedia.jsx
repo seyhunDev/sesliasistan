@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
+import { LoadFail } from "@/components/ui/LoadFail";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadAthletes, isActive } from "@/features/athletes/data";
@@ -83,6 +84,8 @@ export function RaceMedia({ orgId, id }) {
   const [shot, setShot] = useState(() => takeShot(id)); // alttaki Kayıt (ya da ana sayfadaki yarış şeridi) ile iPhone kamerasında çekilen dosya (Medya işler)
   const [race, setRace] = useState(null);
   const [missing, setMissing] = useState(false);
+  const [fail, setFail] = useState(false); // sunucuya ulaşılamadı ve telefonda kopya yok
+  const [retry, setRetry] = useState(0);
   const [live, setLive] = useState(() => cleanLive({}));
   const [athletes, setAthletes] = useState([]);
   const today = todayStr();
@@ -113,9 +116,11 @@ export function RaceMedia({ orgId, id }) {
   }, []);
   useEffect(() => {
     let on = true;
-    loadRace(orgId, id).then(
+    // Önce telefondaki kopya (hemen çizilir), sonra sunucu; sunucuya ulaşılamazsa kopya kalır, kopya da yoksa "Tekrar dene"
+    let got = false;
+    loadRace(orgId, id, (r) => on && r && ((got = true), setRace((p) => p || r))).then(
       (r) => on && (r ? setRace(r) : setMissing(true)),
-      () => on && setMissing(true),
+      () => on && !got && setFail(true),
     );
     loadLive(orgId, id).then(
       (l) => on && ((liveIn.current = true), setLive(l)),
@@ -127,7 +132,7 @@ export function RaceMedia({ orgId, id }) {
     return () => {
       on = false;
     };
-  }, [orgId, id]);
+  }, [orgId, id, retry]);
 
   // Ortak yarış (race.shared, Seyhun 2026-10-28): ekleyen kulüp ölçülen rüzgârı ortağa da yazar (sharedRaces/{id}/live/wind);
   // başka kulüpte kendi rüzgâr kaydı boşsa ortaktaki gösterilir
@@ -194,6 +199,7 @@ export function RaceMedia({ orgId, id }) {
   }, [ready]);
 
   if (missing) return <Shell title="Yarış"><p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p></Shell>;
+  if (!race && fail) return <Shell title="Yarış"><LoadFail onRetry={() => (setFail(false), setRetry((n) => n + 1))} /></Shell>;
   if (!race) return <Shell title="Yarış"><Loading label="Yarış yükleniyor" /></Shell>;
 
   const days = withToday(liveDays(rdays, live), rdays, today);

@@ -5,6 +5,7 @@
 // Yarış belgesinden ayrı durur: yarış sayfası kaydedince bu alanlar ezilmez. Fotoğraf ve video Storage'da orgs/{org}/raceMedia/{id}
 // (kural storage.rules: yalnız ana hesap). Fotoğraf 2048 px JPEG; video (en çok 2 dk) iPhone'un çektiği gibi (sesli) saklanır, çok büyükse küçültülür (prepRaceMedia).
 import { arrayUnion, collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { readServer } from "@/lib/firebase/fastRead";
 import { deleteDoc, setDoc } from "@/lib/firebase/write";
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResumable } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
@@ -46,7 +47,7 @@ const mpath = (orgId, id) => `orgs/${orgId}/raceMedia/${id}`;
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 export async function loadLive(orgId, id) {
-  const snap = await getDoc(live(orgId, id));
+  const snap = await readServer(live(orgId, id)); // asılı bağlantıda sonsuz beklemez (lib/firebase/fastRead.js)
   return cleanLive(snap.exists() ? snap.data() : {});
 }
 
