@@ -31,6 +31,25 @@ export function raceDays(r) {
   return out;
 }
 
+// Yarış havasında gezilebilen günler (Seyhun 2026-10-31 "bir gün önce ne olmuş"): yarıştan BEFORE gün önce başlar, yarışın son
+// gününe kadar; 90 günden eskisi yok (tahmin ufkunun ötesindeki gün "Tahmin … sonra çıkar" der). Grafik kaydırılarak ya da gün listesinden seçilir.
+export const WX_BEFORE = 3;
+export function wxDays(r, today) {
+  const days = raceDays(r);
+  if (!days.length) return [];
+  const out = [];
+  const from = addDays(days[0], -WX_BEFORE) < addDays(today, -90) ? addDays(today, -90) : addDays(days[0], -WX_BEFORE);
+  for (let d = from; d < days[0]; d = addDays(d, 1)) out.push(d);
+  return [...out, ...days];
+}
+// Kaydırma: dx parmağın yatay yolu (px), dy dikey. Seyhun'un istediği gibi sola çekince geri (-1), sağa çekince ileri (+1);
+// kısa ya da dikeye yakın hareket 0 (sayfa kayar)
+export const SWIPE_BACK_LEFT = true;
+export function swipeStep(dx, dy) {
+  if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return 0;
+  return (dx < 0) === SWIPE_BACK_LEFT ? -1 : 1;
+}
+
 // Yönlerin ortalaması (rüzgâr hızıyla ağırlıklı)
 function meanDir(rows) {
   let x = 0;

@@ -21,7 +21,7 @@ import { setCourseView } from "./courseView";
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 const BY = Object.fromEntries(BYS);
 
-export function CourseTab({ orgId, race, day, wind = [], onDropWind }) {
+export function CourseTab({ orgId, race, day, wind = [], onDropWind, onDay }) {
   const toast = useToast();
   const [c, setC] = useState(() => cleanCourse({}));
   const [here, setHere] = useState(null); // telefonun yeri { lat, lon, acc }
@@ -112,7 +112,7 @@ export function CourseTab({ orgId, race, day, wind = [], onDropWind }) {
     <>
       {/* Lacivert sayfa (Seyhun 2026-10-29 "arka plan uygulamayla uyumlu, rota kartı ön planda, yazılar ince ve hizalı"):
           kart kutusuz ve büyük; altında iki ince çerçeveli düğme; Özet ve Ölçümler aynı hizada ince çizgili liste (ad · açıklama · değer) */}
-      <RaceWx r={race} pinned={day} />
+      <RaceWx r={race} pinned={day} onDay={onDay} />
       <div className="-mx-2 mt-4">
         {kart ? (
           <div aria-label="Rota kartı" role="img" dangerouslySetInnerHTML={{ __html: kart }} />
