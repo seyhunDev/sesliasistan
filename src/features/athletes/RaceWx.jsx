@@ -65,19 +65,38 @@ export function DayChart({ rows, day, at, fill = false }) {
   );
 }
 
-// Yüklenirken: DayChart'ın biçiminde (sıcaklık satırı + grafik) yanıp sönen yer tutucu
+// Yüklenirken: DayChart'ın bütün biçimi tek parça (Seyhun 2026-10-31 "hepsi bir bütün olarak loading olmalı… veri gelince o alan büyüyor,
+// öyle olmasın"): sıcaklık satırı, grafik (CockpitWind ile aynı en-boy), saat saat derece/rüzgâr sırası ve açıklama satırı aynı yerde
+// soluk kutular; üstlerinden ince ışık geçer (.ck-shim). Bir gün açıldıktan sonra başka güne geçerken alan son yüksekliğini korur.
 export function Wait() {
   return (
-    <div className="animate-pulse" role="status" aria-label="Hava yükleniyor">
+    <div role="status" aria-label="Hava yükleniyor">
       <div className="flex h-[2.6875rem] items-center gap-3">
-        <span className="h-9 w-16 rounded-xl bg-white/12" />
+        <span className="ck-shim h-9 w-16 rounded-xl" />
         <span className="flex-1 space-y-1.5">
-          <span className="block h-3.5 w-28 rounded-full bg-white/12" />
-          <span className="block h-3 w-16 rounded-full bg-white/10" />
+          <span className="ck-shim block h-3.5 w-28 rounded-full" />
+          <span className="ck-shim block h-3 w-16 rounded-full" />
         </span>
-        <span className="h-7 w-20 rounded-xl bg-white/12" />
+        <span className="ck-shim h-7 w-20 rounded-xl" />
       </div>
-      <div className="ck-glass mt-2 h-[13.4375rem] rounded-2xl" />
+      <div className="mt-2">
+        <div className="ck-shim aspect-[340/132] w-full rounded-2xl" />
+        <div className="mt-1.5 flex h-[4.6rem] justify-between px-1">
+          {[0, 1, 2, 3, 4, 5, 6].map((k) => (
+            <span key={k} className="flex flex-col items-center gap-[5px]">
+              <span className="ck-shim h-2.5 w-4 rounded-full" />
+              <span className="ck-shim size-[1.05rem] rounded-full" />
+              <span className="ck-shim h-3 w-6 rounded-full" />
+              <span className="ck-shim h-2.5 w-8 rounded-full" />
+            </span>
+          ))}
+        </div>
+        <div className="mt-1 flex h-4 items-center gap-2.5">
+          {["w-14", "w-16", "w-20"].map((w) => (
+            <span key={w} className={`ck-shim h-2.5 rounded-full ${w}`} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -96,7 +115,13 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null })
   const [own, setSel] = useState(race.includes(day) ? day : first);
   const sel = pinned || own;
   const touch = useRef(null);
+  // Son açılan günün alan yüksekliği: başka gün yüklenirken alan küçülüp büyümesin (sayfa zıplamasın)
+  const area = useRef(null);
+  const [tall, setTall] = useState(0);
+  // gün değişmeden hemen önce (kaydırma, gün listesi) açık günün yüksekliği alınır; ResizeObserver grafiğin kendi ölçümüyle döngüye giriyordu
+  const keep = () => area.current?.dataset.ready === "1" && setTall(Math.round(area.current.offsetHeight));
   const step = (k) => {
+    keep();
     if (pinned) return onDay?.(k);
     const i = days.indexOf(sel) + k;
     if (i >= 0 && i < days.length) setSel(days[i]);
@@ -133,12 +158,12 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null })
             <span aria-hidden="true" className="text-[0.6875rem] opacity-70">▾</span>
           </button>
         )}
-        <button type="button" onClick={() => setTick((n) => n + 1)} aria-label="Yenile" data-press className="btn btn-round size-8">
+        <button type="button" onClick={() => (keep(), setTick((n) => n + 1))} aria-label="Yenile" data-press className="btn btn-round size-8">
           <Icon name="load" className="size-4" />
         </button>
       </div>
       {/* Seyhun 2026-10-26: gün değişince yüklenirken alan küçülüp sayfa zıplıyordu; her durumda grafikle aynı yükseklik */}
-      <div className="flex min-h-[16.625rem] flex-col" data-swipe-day {...swipe}>
+      <div ref={area} data-ready={d.rows?.length && !late ? "1" : "0"} className="flex min-h-[16.625rem] flex-col" style={!d.rows?.length && tall ? { minHeight: tall } : undefined} data-swipe-day {...swipe}>
         {late ? (
           <p className="m-auto text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
         ) : d.rows?.length ? (
@@ -153,7 +178,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null })
         <ul className="divide-y divide-line border-y border-line">
           {days.map((x) => (
             <li key={x}>
-              <button type="button" data-day={x} aria-pressed={x === sel} onClick={() => (setSel(x), setPick(false))} data-press="row" className="flex w-full items-center gap-3 py-3 text-left">
+              <button type="button" data-day={x} aria-pressed={x === sel} onClick={() => (keep(), setSel(x), setPick(false))} data-press="row" className="flex w-full items-center gap-3 py-3 text-left">
                 <b className="w-16 shrink-0 text-[0.9375rem] font-semibold tabular-nums">{new Date(`${x}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</b>
                 <span className="min-w-0 flex-1 truncate text-[0.9375rem]">
                   {race.includes(x) ? `${race.indexOf(x) + 1}. gün` : `Yarıştan ${race[0] && Math.round((new Date(`${race[0]}T12:00:00`) - new Date(`${x}T12:00:00`)) / 864e5)} gün önce`}
@@ -167,6 +192,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null })
       </Sheet>
       {/* Bölge haritası (Seyhun 2026-10-28: "yarışların havasında da aynı haritayı görmek istiyorum"): yarış yerinin çevresi, rüzgâr / yağış,
           −2 sa … +12 kaydırıcı. Dokunmak yarışın yerini değiştirmez. */}
+      {!d.at && !mini && !late && !d.err && <div className="ck-shim mt-3 h-12 rounded-[1.125rem]" aria-hidden="true" />}
       {d.at && (
         <div className={mini ? "mt-3 flex min-h-[4.5rem] flex-1 flex-col" : "mt-3"}>
           {mini ? (

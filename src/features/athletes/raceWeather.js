@@ -42,9 +42,9 @@ export function wxDays(r, today) {
   for (let d = from; d < days[0]; d = addDays(d, 1)) out.push(d);
   return [...out, ...days];
 }
-// Kaydırma: dx parmağın yatay yolu (px), dy dikey. Seyhun'un istediği gibi sola çekince geri (-1), sağa çekince ileri (+1);
+// Kaydırma: dx parmağın yatay yolu (px), dy dikey. Seyhun 2026-10-31 düzeltmesi: sola çekince ileri (+1), sağa çekince geri (-1);
 // kısa ya da dikeye yakın hareket 0 (sayfa kayar)
-export const SWIPE_BACK_LEFT = true;
+export const SWIPE_BACK_LEFT = false;
 export function swipeStep(dx, dy) {
   if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return 0;
   return (dx < 0) === SWIPE_BACK_LEFT ? -1 : 1;
