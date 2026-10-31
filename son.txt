@@ -1,8 +1,8 @@
-Commit: 7ec9a97 · Yarış havası: grafiği kaydırarak gün değişir (#919)
-Zaman: 2026-10-31-1151 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41185467103
+Commit: 07612dc · Yarış havası: kaydırma yönü düzeltildi, tek parça yükleme görünümü (#920)
+Zaman: 2026-10-31-2034 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41223858921
 
-TAM TEST · 31.10.2026 11:39:30
+TAM TEST · 31.10.2026 20:18:39
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1423/1423 geçti · 0 kalan · 637 sn
+SONUÇ: 1418/1423 geçti · 5 kalan · 872 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -179,9 +179,37 @@ SONUÇ: 1423/1423 geçti · 0 kalan · 637 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 14/14
-  ✓ Yarış sayfası: 12/12
-  ✓ Asılı bağlantı: 2/2
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 9/14
+  ✗ Yarış sayfası: 8/12
+      ✗ “yarış günü, sporcu seçili”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     "Start sayacı" görünmedi
+      ✗ “Multimedya”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     "Start sayacı" görünmedi
+      ✗ “Start”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     "Start sayacı" görünmedi
+      ✗ “tek ⋯ menüsü”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     "Start sayacı" görünmedi
+  ✗ Asılı bağlantı: 1/2
+      ✗ “asılı bağlantıda multimedya”
+          beklenen: "Start sayacı" 5 sn içinde görünür (yükleniyor'da kalmaz)
+          olan:     görünmedi: Oluştur
+KAYIT
+Plan
+Tarih ve saat
+Görev
+Yapılacak iş
+Not
+Kısa not
+Doğum günü
+Hatırlat
+KULÜP
+Yoklama
+Bugün kim geldi
+Yarış
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
