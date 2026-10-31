@@ -28,6 +28,9 @@ export const viewport = {
 
 const SIZE_SCRIPT = `document.documentElement.dataset.boot="on";try{var s=localStorage.getItem("sa-size");if(s==="l"||s==="xl")document.documentElement.dataset.size=s}catch(e){}`;
 
+// Anında açılış: önceki açılışın kopyası (lib/warmStart.js, anahtar sa-warm-me) varsa açılış ekranı ilk karede hiç çizilmez (html[data-warm])
+const WARM_SCRIPT = `try{if(localStorage.getItem("sa-warm-me"))document.documentElement.dataset.warm=""}catch(e){}`;
+
 export default function RootLayout({ children }) {
     return (
         <html lang="tr" className={inter.variable} suppressHydrationWarning>
@@ -36,6 +39,8 @@ export default function RootLayout({ children }) {
                 <script dangerouslySetInnerHTML={{ __html: SIZE_SCRIPT }} />
                 {/* Açık / koyu görünüm de ilk çizimden önce (beyaz parlayıp kararmasın) */}
                 <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+                {/* Telefonda önceki açılışın kopyası varsa açılış ekranı hiç çizilmez (lib/warmStart.js) */}
+                <script dangerouslySetInnerHTML={{ __html: WARM_SCRIPT }} />
             </head>
             <body>
                 {/* Tek açılış ekranı: yükleme aşamaları boyunca sabit kalır, sonra sayfaya yumuşak geçer (lib/boot.js) */}

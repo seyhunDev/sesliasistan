@@ -47,6 +47,12 @@ export function BootSplash() {
         setPhase("on");
         return;
       }
+      // Anında açılış: ekran hiç görünmedi, çekilme ve sayfa giriş animasyonu da yok (sayfa olduğu gibi belirir)
+      if ("warm" in document.documentElement.dataset) {
+        setRoot("");
+        setPhase("off");
+        return;
+      }
       const flying = flyTo();
       const out = flying ? FLY : OUT;
       setRoot("enter");

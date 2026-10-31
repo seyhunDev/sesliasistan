@@ -42,6 +42,28 @@ const WATCH = `(() => {
   new MutationObserver(seen).observe(document, { subtree: true, childList: true, characterData: true });
 })();`;
 
+// Anında açılış: açılış ekranı hiç göründü mü, üstte "yenileri alındı" çizgisi (SyncLine) çıktı mı
+const WARM = `(() => {
+  window.__boot = false;
+  window.__sync = false;
+  const seen = () => {
+    const b = document.querySelector(".boot");
+    if (b && b.dataset.phase === "on" && getComputedStyle(b).display !== "none") window.__boot = true;
+    if (document.querySelector(".sync-line")) window.__sync = true;
+  };
+  new MutationObserver(seen).observe(document, { subtree: true, childList: true, attributes: true });
+  document.addEventListener("DOMContentLoaded", seen);
+})();`;
+
+// Sunucudaki görevin başlığını değiştirir (başka cihazdan değişiklik gibi; Bearer owner kuralları atlar)
+async function setTaskTitle(owner, title) {
+  await fetch(`http://${FS_HOST}/v1/projects/${PROJECT}/databases/(default)/documents/orgs/${owner}/tasks/kopya?updateMask.fieldPaths=title`, {
+    method: "PATCH",
+    headers: { Authorization: "Bearer owner", "content-type": "application/json" },
+    body: JSON.stringify({ fields: { title: { stringValue: title } } }),
+  });
+}
+
 // Sunucudaki (emülatör) alışveriş maddeleri; Bearer owner kuralları atlar
 async function serverItems(owner) {
   const r = await fetch(`http://${FS_HOST}/v1/projects/${PROJECT}/databases/(default)/documents/orgs/${owner}/shop?pageSize=100`, { headers: { Authorization: "Bearer owner" } });
@@ -68,7 +90,7 @@ export async function run(server, log = () => {}) {
   try {
     ids = await seed({
       users: [{ key: "owner", email: OWNER, password: PASS, name: "Test Sahip", doc: { name: "Test Sahip", email: OWNER, role: "owner", orgId: "{owner}", onboarded: true, introV: 99, tourDone: true, createdAt: now } }],
-      docs: [],
+      docs: [{ path: "orgs/{owner}/tasks/kopya", data: { title: "Kopya görevi", done: false, due: "", createdByUid: "{owner}", assignees: [], people: ["{owner}"], createdAt: now } }],
     });
   } catch (e) {
     push("Hazırlık", "sahte hesap", "yazılır", false, e.message);
@@ -89,6 +111,7 @@ export async function run(server, log = () => {}) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "tr-TR", timezoneId: "Europe/Istanbul", serviceWorkers: "block" });
   await ctx.addInitScript(INIT({ sha }));
   await ctx.addInitScript(WATCH);
+  await ctx.addInitScript(WARM);
   await ctx.route("**/*", async (route) => {
     const u = new URL(route.request().url());
     if (u.hostname !== "localhost" && u.hostname !== "127.0.0.1") return route.abort();
@@ -127,7 +150,7 @@ export async function run(server, log = () => {}) {
 
   try {
     // Giriş
-    const page = await open("/login");
+    let page = await open("/login");
     // İki adımlı giriş: önce e-posta / kullanıcı adı (Devam = Enter), sonra şifre
     const inputs = page.locator("input[name=username]:not([readonly])");
     await inputs.waitFor({ timeout: 30000 });
@@ -137,8 +160,40 @@ export async function run(server, log = () => {}) {
     await page.locator("input[name=password]").press("Enter");
     await page.waitForURL((x) => !x.pathname.startsWith("/login"), { timeout: 60000 });
 
+    // 0) Anında açılış: ikinci açılışta açılış ekranı yok, ekran telefondaki kopyayla çizilir; sunucuda değişiklik varsa
+    // üstte ince çizgi görünür ve yenisi ekrana gelir; değişiklik yoksa çizgi çıkmaz
+    let G = "Anında açılış";
+    const task = (p, t) => p.getByText(t, { exact: true }).first().isVisible().catch(() => false);
+    await page.goto(`${server.url}/tasks`, { waitUntil: "load" });
+    await check(G, "ilk açılışta görev", "listede", () => until(() => task(page, "Kopya görevi"), 30000));
+    await check(G, "telefona kopya yazılır", "profil + veriler", () =>
+      until(() => page.evaluate(() => !!localStorage.getItem("sa-warm-me") && /Kopya görevi/.test(localStorage.getItem("sa-warm-data") || "")), 8000),
+    );
+    await page.close();
+    const w1 = await open("/tasks");
+    await check(G, "yeniden açılınca açılış ekranı", "hiç görünmez", async () => {
+      await until(() => task(w1, "Kopya görevi"), 20000);
+      const r = await w1.evaluate(() => ({ boot: window.__boot, warm: "warm" in document.documentElement.dataset }));
+      return [!r.boot && r.warm, JSON.stringify(r)];
+    });
+    await sleep(5000);
+    await check(G, "değişiklik yokken üst çizgi", "çıkmaz", async () => {
+      const v = await w1.evaluate(() => window.__sync);
+      return [!v, v ? "çıktı" : "yok"];
+    });
+    await w1.close();
+    await setTaskTitle(ids.owner, "Yeni başlık");
+    const w2 = await open("/tasks");
+    await check(G, "sunucuda değişiklik varken", "üstte çizgi çıkar, yeni başlık gelir", async () => {
+      const ok = await until(async () => (await task(w2, "Yeni başlık")) && (await w2.evaluate(() => window.__sync)), 20000);
+      const r = await w2.evaluate(() => ({ boot: window.__boot, sync: window.__sync }));
+      return [ok && !r.boot, JSON.stringify(r)];
+    });
+    await w2.close();
+    page = await open("/shopping");
+
     // 1) İnternet varken: boşta, uygulamaya dönüşte ve kayıtta şerit çıkmaz
-    let G = "İnternet varken";
+    G = "İnternet varken";
     await page.goto(`${server.url}/shopping`, { waitUntil: "load" });
     await input(page).waitFor({ timeout: 30000 });
     await page.evaluate(() => (window.__net = []));

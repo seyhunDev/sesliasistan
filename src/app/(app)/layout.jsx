@@ -30,6 +30,7 @@ import { Onboarding } from "@/features/onboarding/Onboarding";
 import { TryAssistant } from "@/features/onboarding/TryAssistant";
 import { installTrail } from "@/lib/navTrail";
 import { NavProgress } from "@/components/ui/NavProgress";
+import { SyncLine } from "@/components/ui/SyncLine";
 import { SwipeBack } from "@/components/ui/SwipeBack";
 
 export default function AppLayout({ children }) {
@@ -79,6 +80,7 @@ export default function AppLayout({ children }) {
                 <AssistantProvider>
                  <DockProvider>
                   <NavProgress />
+                  <SyncLine />
                   <SwipeBack />
                   <OfflineBanner />
                   <UpdateNote />
