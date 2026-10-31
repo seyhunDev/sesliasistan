@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { CockpitWind } from "@/features/home/CockpitWind";
@@ -8,7 +8,7 @@ import { useWindObs } from "@/features/weather/useWindObs";
 import { RegionMap } from "@/features/weather/RegionMap";
 import { dirDeg, kn, sky, windName } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
-import { cleanSpot, forecastFrom, lastForecastDay, loadRaceDay, raceDays } from "./raceWeather";
+import { cleanSpot, forecastFrom, lastForecastDay, loadRaceDay, raceDays, swipeStep, wxDays } from "./raceWeather";
 
 // Yarışın havası, hava sayfasıyla aynı tasarım (Seyhun 2026-10-26: "bizim hava durumu sayfamızda kullandığımız tasarımın aynısı"):
 // üstte sıcaklık, gök, rüzgâr; altında aynı büyük grafik (CockpitWind; yarış yerinin ölçümüyle). Veri loadRaceDay (antrenman günü › Hava ile ortak).
@@ -86,13 +86,30 @@ export function Wait() {
 // seçebiliyoruz ya, o çok güzel"): yarış günleri gün gün, güne dokununca grafik o güne geçer. Ayrı Hava sekmesi ve Multimedya'daki
 // Hava kalktı. Tahmin henüz çıkmadıysa (ilk gün 16 günden ileride) hiç görünmez.
 // day: açılışta seçili gün (yarış günü akşamı yarın, RaceDayTop)
-// pinned: gün dışarıdan seçilir (Saha, üstteki tek Bugün ▾; Seyhun 2026-10-30); kendi gün düğmesi çizilmez
-export function RaceWx({ r, day = "", mini = false, pinned = "" }) {
+// pinned: gün dışarıdan seçilir (Saha, üstteki tek Bugün ▾; Seyhun 2026-10-30); kendi gün düğmesi çizilmez, kaydırınca onDay(±1)
+// Grafik sağa sola kaydırılınca gün değişir (Seyhun 2026-10-31; yön raceWeather.js swipeStep); yarıştan önceki 3 gün de gezilir (wxDays)
+export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null }) {
   const today = todayStr();
-  const days = raceDays(r);
-  const first = pinned || days.find((d) => d >= today) || days[days.length - 1] || "";
-  const [own, setSel] = useState(days.includes(day) ? day : first);
+  const race = raceDays(r);
+  const days = wxDays(r, today);
+  const first = pinned || race.find((d) => d >= today) || race[race.length - 1] || "";
+  const [own, setSel] = useState(race.includes(day) ? day : first);
   const sel = pinned || own;
+  const touch = useRef(null);
+  const step = (k) => {
+    if (pinned) return onDay?.(k);
+    const i = days.indexOf(sel) + k;
+    if (i >= 0 && i < days.length) setSel(days[i]);
+  };
+  const swipe = {
+    onTouchStart: (e) => (touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }),
+    onTouchEnd: (e) => {
+      const t = touch.current;
+      touch.current = null;
+      const k = t ? swipeStep(e.changedTouches[0].clientX - t.x, e.changedTouches[0].clientY - t.y) : 0;
+      if (k) step(k);
+    },
+  };
   const [tick, setTick] = useState(0);
   const [pick, setPick] = useState(false);
   const late = sel && sel > lastForecastDay(today);
@@ -121,7 +138,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "" }) {
         </button>
       </div>
       {/* Seyhun 2026-10-26: gün değişince yüklenirken alan küçülüp sayfa zıplıyordu; her durumda grafikle aynı yükseklik */}
-      <div className="flex min-h-[16.625rem] flex-col">
+      <div className="flex min-h-[16.625rem] flex-col" data-swipe-day {...swipe}>
         {late ? (
           <p className="m-auto text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
         ) : d.rows?.length ? (
@@ -134,11 +151,14 @@ export function RaceWx({ r, day = "", mini = false, pinned = "" }) {
       </div>
       <Sheet open={pick} onClose={() => setPick(false)} title="Gün">
         <ul className="divide-y divide-line border-y border-line">
-          {days.map((x, i) => (
+          {days.map((x) => (
             <li key={x}>
               <button type="button" data-day={x} aria-pressed={x === sel} onClick={() => (setSel(x), setPick(false))} data-press="row" className="flex w-full items-center gap-3 py-3 text-left">
                 <b className="w-16 shrink-0 text-[0.9375rem] font-semibold tabular-nums">{new Date(`${x}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</b>
-                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{i + 1}. gün{x === today ? " · Bugün" : ""}</span>
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">
+                  {race.includes(x) ? `${race.indexOf(x) + 1}. gün` : `Yarıştan ${race[0] && Math.round((new Date(`${race[0]}T12:00:00`) - new Date(`${x}T12:00:00`)) / 864e5)} gün önce`}
+                  {x === today ? " · Bugün" : ""}
+                </span>
                 {x === sel && <span className="size-2.5 shrink-0 rounded-full bg-acc" />}
               </button>
             </li>

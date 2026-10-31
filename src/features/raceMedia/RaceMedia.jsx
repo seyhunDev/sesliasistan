@@ -267,6 +267,7 @@ export function RaceMedia({ orgId, id }) {
           race={race}
           day={cur}
           wind={live.wind}
+          onDay={(k) => days[days.indexOf(cur) + k] && setDay(days[days.indexOf(cur) + k])}
           onDropWind={(at) => {
             const next = live.wind.filter((w) => w.at !== at);
             change({ wind: next }, () => saveWind(orgId, id, next));
