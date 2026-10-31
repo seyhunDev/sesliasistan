@@ -4,12 +4,14 @@ import WatchConnectivity
 // Apple Watch köprüsü (saat: VeloraSaat; web: src/features/ios/WatchBridge.jsx). Saatten gelen istek ({ id, json }) sayfaya
 // "watch" olayıyla gider (sayfa yüklenmemişse watchTake ile alınana kadar bekler). Sayfanın cevabı (watchReply) ve sayacın
 // durumu (watchState) saate gönderilir. 40 sn içinde cevap gelmezse saate "cevap gelmedi" denir.
+// Siri ("Velora'ya sor", VeloraShortcuts.swift) da aynı yoldan sorar: sor() isteği sayfaya koyar, cevabı saate değil Siri'ye döner.
 final class SaatKoprusu: NSObject, WCSessionDelegate {
     static let shared = SaatKoprusu()
     static let olay = Notification.Name("VeloraSaatIstegi")
 
     private var bekleyen: [String] = []
     private var acik: Set<String> = []
+    private var yerel: [String: CheckedContinuation<String, Never>] = [:]
 
     func baslat() {
         guard WCSession.isSupported() else { return }
@@ -26,8 +28,27 @@ final class SaatKoprusu: NSObject, WCSessionDelegate {
 
     func cevap(_ id: String, json: String) {
         DispatchQueue.main.async {
+            if let c = self.yerel.removeValue(forKey: id) { return c.resume(returning: json) }
             guard self.acik.remove(id) != nil else { return }
             self.gonder(["cevap": id, "json": json])
+        }
+    }
+
+    // Siri'den: asistana sorar, sayfanın cevabını (json: metin, soru, hata) döner. Sayfa çalışmıyorsa (uygulama kapalı) süre dolunca hata
+    @MainActor
+    func sor(_ metin: String, sure: Double = 40) async -> String {
+        let id = "siri-\(UUID().uuidString)"
+        let veri = (try? JSONSerialization.data(withJSONObject: ["id": id, "tur": "sor", "metin": metin])) ?? Data()
+        let json = String(data: veri, encoding: .utf8) ?? "{}"
+        return await withCheckedContinuation { c in
+            yerel[id] = c
+            bekleyen.append(json)
+            NotificationCenter.default.post(name: Self.olay, object: nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + sure) { [weak self] in
+                guard let self, let c = self.yerel.removeValue(forKey: id) else { return }
+                self.bekleyen.removeAll { $0 == json }
+                c.resume(returning: #"{"metin":"Velora telefonda kapalı görünüyor. Bir kez açıp yeniden sor.","hata":true}"#)
+            }
         }
     }
 
