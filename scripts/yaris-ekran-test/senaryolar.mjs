@@ -202,7 +202,7 @@ export async function run(server, log = () => {}) {
       const orb = await page.locator("[data-orb]:visible").count();
       return [dock === 0 && orb > 0, `yarış çubuğu ${dock ? "var" : "yok"} · uygulama çubuğu ${orb ? "var" : "yok"}`];
     });
-    // Hava grafiği kaydırılınca gün değişir (Seyhun 2026-10-31): sola çek geri (yarıştan önceki günler de), sağa çek ileri
+    // Hava grafiği kaydırılınca gün değişir (Seyhun 2026-10-31): sağa çek geri (yarıştan önceki günler de), sola çek ileri
     await okPage("Yarış sayfası", "havayı kaydırarak gün", "/athletes/races/r2", "gün kaldı", async () => {
       const cur = () => page.locator("section[aria-label='Yarış havası'] button[data-cur]").getAttribute("data-cur").catch(() => "");
       const pull = (dx) =>
@@ -216,13 +216,13 @@ export async function run(server, log = () => {}) {
           el.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [], changedTouches: [t(x0 + dx)] }));
         }, dx);
       const a = await cur();
-      await pull(-120);
-      await page.waitForTimeout(300);
-      const b = await cur();
       await pull(120);
       await page.waitForTimeout(300);
+      const b = await cur();
+      await pull(-120);
+      await page.waitForTimeout(300);
       const c = await cur();
-      return [!!a && b && b < a && c === a, `${a} → sola ${b} → sağa ${c}`];
+      return [!!a && b && b < a && c === a, `${a} → sağa ${b} → sola ${c}`];
     });
     // Bütün sekmeler sırayla açılır
     try {
