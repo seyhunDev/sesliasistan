@@ -451,6 +451,7 @@ select {
    Koyu lacivert zemin (ana ekran simgesiyle aynı; açık ve koyu modda aynı), ortada Velora logosu: 24 ses çubuğu sırayla
    ortadan dışa uzar, ortadaki ışık yanar, altında Velora yazısı belirir; yükleme sürerken çubuklar konuşur gibi kısalıp
    uzar. Bitince logo büyüyüp ekran solar; aynı anda sayfa altından belirir (html[data-boot=enter] main) ve asistan kubbesi yükselir. */
+html[data-warm] .boot { display: none; } /* anında açılış: telefondaki kopyayla sayfa hemen çizilir (lib/warmStart.js) */
 .boot { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; overflow: hidden; color: #e8ecff; }
 .boot-bg { position: absolute; inset: 0; background: radial-gradient(120% 75% at 50% 38%, #1a2e52 0%, #0a1730 55%, #0a1426 100%); }
 .boot::before { content: ""; position: absolute; left: 50%; top: 42%; width: 26rem; height: 26rem; transform: translate(-50%, -50%); border-radius: 9999px;
@@ -644,6 +645,14 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
 }
 .navspin-done { animation: navspin .75s linear infinite; opacity: 0; transition: opacity .15s; }
 @keyframes navspin { to { transform: rotate(360deg); } }
+/* Anında açılışta arkadan değişiklik geldi (SyncLine, lib/warmStart.js): en üstte ince akan çizgi, yumuşakça belirip söner */
+.sync-line { position: fixed; z-index: 95; left: 0; right: 0; top: env(safe-area-inset-top, 0px); height: 2px; overflow: hidden; pointer-events: none;
+  animation: syncin .25s ease-out both; }
+.sync-line::after { content: ""; position: absolute; inset: 0; width: 40%; border-radius: 9999px;
+  background: linear-gradient(90deg, transparent, var(--acc), transparent); animation: syncrun .9s ease-in-out infinite; }
+@keyframes syncin { from { opacity: 0; } }
+@keyframes syncrun { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@media (prefers-reduced-motion: reduce) { .sync-line::after { animation: none; width: 100%; opacity: .6; } }
 @keyframes navspin-in { to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .navspin { animation: navspin-in .2s ease-out .35s forwards; } }
 /* Kubbedeki sohbette senin mesajın: sağda belirgin buzlu balon (mesajlaşma uygulamaları gibi) */

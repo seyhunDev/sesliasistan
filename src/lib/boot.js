@@ -16,7 +16,9 @@ const emit = () => subs.forEach((f) => f(shown));
 
 function schedule() {
   clearTimeout(timer);
-  const wait = Math.max(GAP, MIN - (now() - since));
+  // Anında açılışta (html[data-warm], lib/warmStart.js) ekran zaten çizilmedi: bekleme yok
+  const warm = typeof document !== "undefined" && "warm" in document.documentElement.dataset;
+  const wait = warm ? 0 : Math.max(GAP, MIN - (now() - since));
   timer = setTimeout(() => {
     if (holds || !shown) return;
     shown = false;

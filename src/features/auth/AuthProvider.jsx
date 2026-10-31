@@ -1,10 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { applySize } from "@/lib/textSize";
 import { doc, onSnapshot, setDoc as setDocument } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/clientApp";
+import { clearWarm, readWarmMe, saveWarmMe } from "@/lib/warmStart";
 
 const Ctx = createContext(null);
 
@@ -16,25 +17,46 @@ export function AuthProvider({ children }) {
     const [doc_, setDoc] = useState(null); // users/{uid} içeriği
     const [loading, setLoading] = useState(true);
 
+    // Anında açılış: önceki açılışın profil kopyası varsa (lib/warmStart.js) oturum beklenmeden açılır; ilk çizimden önce
+    // (useLayoutEffect) uygulanır, açılış ekranı hiç görünmez. Firebase oturumu birkaç yüz ms sonra gelip aynı kişiyse yerine geçer.
+    useLayoutEffect(() => {
+        const w = readWarmMe();
+        if (!w || auth.currentUser) return;
+        // Sunucu çizimiyle aynı başlamak için (hidrasyon) ilk durum burada, boyamadan önce değişir
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setUser({ uid: w.uid, email: w.email, displayName: w.name, warm: true });
+        setDoc(w.doc);
+        setLoading(false);
+    }, []);
+
     useEffect(() => {
         let unsubDoc = () => {};
         const unsub = onAuthStateChanged(auth, (firebaseUser) => {
             unsubDoc();
             setUser(firebaseUser ?? null);
-            setDoc(null);
             if (!firebaseUser) {
+                clearWarm();
+                setDoc(null);
                 setLoading(false);
                 return;
             }
-            setLoading(true);
-            // Bağlantı yavaşsa bekletme: 3 sn içinde profil gelmezse varsayılanla aç
-            const t = setTimeout(() => setLoading(false), 3000);
+            // Kopyadaki kişi: ekran kopyayla açık kalır, profil arkada tazelenir
+            const same = firebaseUser.uid === readWarmMe()?.uid;
+            let t = 0;
+            if (!same) {
+                setDoc(null);
+                setLoading(true);
+                // Bağlantı yavaşsa bekletme: 3 sn içinde profil gelmezse varsayılanla aç
+                t = setTimeout(() => setLoading(false), 3000);
+            }
             unsubDoc = onSnapshot(
                 doc(db, "users", firebaseUser.uid),
                 (snap) => {
                     clearTimeout(t);
+                    if (same && !snap.exists() && snap.metadata.fromCache) return; // önbellek boş: kopyadaki profil kalır
                     setDoc(snap.exists() ? snap.data() : {});
                     setLoading(false);
+                    if (snap.exists()) saveWarmMe(firebaseUser, snap.data());
                     // Sunucudan gelen kesin "yok" bilgisinde (önbellekten değil) ana hesap profilini oluştur
                     if (!snap.exists() && !snap.metadata.fromCache) {
                         setDocument(doc(db, "users", firebaseUser.uid), {
@@ -48,7 +70,7 @@ export function AuthProvider({ children }) {
                 },
                 () => {
                     clearTimeout(t);
-                    setDoc({});
+                    if (!same) setDoc({});
                     setLoading(false);
                 },
             );
