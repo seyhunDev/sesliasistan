@@ -107,7 +107,41 @@ export function cleanMedia(list) {
 
 // Elle eklenen günler (antrenman: yarıştan önce ya da sonra; Seyhun 2026-10-18)
 export const cleanDays = (list) => [...new Set((Array.isArray(list) ? list : []).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d || "")))].sort().slice(0, 60);
-export const cleanLive = (d) => ({ wind: cleanWind(d?.wind), starts: cleanStarts(d?.starts), media: cleanMedia(d?.media), days: cleanDays(d?.days), buoys: cleanBuoys(d?.buoys) });
+// Günün programı (Seyhun 2026-11-01 "ilk yönetim sayfası günün start saatini belirlemek"): day günü, at ilk start saati ("11:00"),
+// order start sırası [{ cls, grp }], status: "" bekleniyor · "ap" ertelendi · "none" bugün yarış yok · "done" gün bitti (ekranda özet),
+// next yarının günü ve ilk start saati, showAt ekranın yeni güne geçeceği saat (varsayılan 06:00). Herkese açık ekranın evresi buna göre (livePhase).
+const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+export const PLAN_STATUS = ["", "ap", "none", "done"];
+export function cleanPlan(p) {
+  const hm = (v, d = "") => (HM.test(v || "") ? v : d);
+  const day = DAY.test(p?.day || "") ? p.day : "";
+  const order = (Array.isArray(p?.order) ? p.order : [])
+    .map((o) => ({ cls: String(o?.cls || "").slice(0, 20), grp: String(o?.grp || "").slice(0, 20) }))
+    .filter((o) => o.cls || o.grp)
+    .slice(0, 12);
+  const next = p?.next && DAY.test(p.next.day || "") ? { day: p.next.day, at: hm(p.next.at) } : null;
+  return { day, at: hm(p?.at), order, status: PLAN_STATUS.includes(p?.status) ? p.status : "", next, showAt: hm(p?.showAt, "06:00") };
+}
+export const planLabel = (o) => [o.cls, o.grp].filter(Boolean).join(" · ");
+// Ekranın evresi: "race" sayaç sürüyor ya da bugün start var; "summary" gün bitti (ertesi gün showAt'e kadar); "wait" start bekleniyor
+export function livePhase({ plan, starts, timer, today, now = Date.now() }) {
+  const pl = plan || cleanPlan({});
+  const racing = (timer && timer.end != null) || (starts || []).some((x) => x.day === today && !x.void);
+  if (pl.status === "done" && pl.day) {
+    const nextDay = pl.next?.day || "";
+    const flip = nextDay ? Date.parse(`${nextDay}T${pl.showAt || "06:00"}:00+03:00`) : NaN;
+    return nextDay && now >= flip ? "wait" : "summary";
+  }
+  return racing ? "race" : "wait";
+}
+// Bekleme ekranının saydığı start: bugünün planı ya da yarınki (gün bittiyse next)
+export function planStartMs(plan, today) {
+  const pl = plan || cleanPlan({});
+  const pick = pl.status === "done" && pl.next ? pl.next : pl.day && pl.day >= today ? { day: pl.day, at: pl.at } : null;
+  return pick?.day && pick.at ? Date.parse(`${pick.day}T${pick.at}:00+03:00`) : null;
+}
+export const cleanLive = (d) => ({ wind: cleanWind(d?.wind), starts: cleanStarts(d?.starts), media: cleanMedia(d?.media), days: cleanDays(d?.days), buoys: cleanBuoys(d?.buoys), plan: cleanPlan(d?.plan) });
 
 // Günün kayıtları
 // Sayfadaki günler: yarışın günleri + çekim ya da start olan başka günler (deneme, erteleme). Yoksa o gün çekilen kaydedilir ama

@@ -34,10 +34,11 @@
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(1200px 700px at 72% 42%, rgba(43, 122, 160, 0.5), transparent 60%),
+    radial-gradient(1400px 700px at 60% 0%, rgba(78, 170, 214, 0.45), transparent 60%),
     radial-gradient(900px 600px at 20% 80%, rgba(16, 70, 110, 0.55), transparent 60%),
-    linear-gradient(180deg, #0b2a47 0%, #0a2340 45%, #061a30 100%);
+    linear-gradient(180deg, #1c6a9c 0%, #0f3f66 42%, #07213a 100%);
 }
+.lv-track { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 1; }
 .lv-sea::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55)); }
 .lv-sea svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.6; }
 .lv-wait { color: var(--lv-dim); font-weight: 500; text-align: center; padding: 1.2em 0; }
@@ -91,6 +92,22 @@
 .lv-btn:active { transform: translateY(1px); }
 .lv-btn.on { background: #fff; border-color: #fff; color: var(--lv-ink); }
 .lv-link { background: none; border: 0; padding: 0; font: inherit; color: var(--lv-fg); text-decoration: underline; text-underline-offset: 0.15em; cursor: pointer; }
+/* Bekleme ve özet evreleri: ortada büyük kart, sağda genel sıralama */
+.lv-waitgrid { flex: 1; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: inherit; min-height: 0; align-items: start; }
+.lv-waitc .lv-clock { font-size: clamp(72px, 9vw, 300px); }
+.lv-waitchips { justify-content: flex-start; margin-top: 0.4em; }
+.lv-waitchips .lv-btn { cursor: default; }
+.lv-order { margin-top: 1.2em; }
+.lv-order .lv-r b { display: flex; align-items: center; gap: 0.2em; }
+.lv-next { display: flex; align-items: baseline; gap: 0.6em; flex-wrap: wrap; padding: 0.7em 1.2em; }
+.lv-next > span { color: var(--lv-mut); font-size: 0.88em; }
+.lv-next b { font-size: 1.2em; font-weight: 800; }
+.lv-sumn { display: flex; align-items: baseline; gap: 0.5em; margin: 0.4em 0 0.6em; }
+.lv-sumn b { font-size: 3.4em; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+.lv-sumn span { color: var(--lv-mut); font-size: 1.1em; }
+.lv-sumw { margin-top: 1.2em; }
+.lv-sumw svg { display: block; width: 100%; height: 6em; margin-top: 0.5em; }
+.lv-sumt { display: flex; justify-content: space-between; color: var(--lv-dim); font-size: 0.78em; margin-top: 0.3em; }
 .lv-live { display: inline-flex; align-items: center; gap: 0.5em; background: var(--lv-acc); color: #fff; padding: 0.42em 1em; border-radius: 999px; font-size: 0.9em; letter-spacing: 0.08em; text-transform: uppercase; }
 .lv-live::before { content: ""; width: 0.55em; height: 0.55em; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0.28em rgba(255, 255, 255, 0.3); }
 .lv-card {
@@ -216,6 +233,9 @@
   .lv-live::before { width: 9px; height: 9px; box-shadow: none; }
   .lv-head .lv-btn { padding: 0.45em 0.8em; font-size: 13px; }
   .lv-grid { display: flex; flex-direction: column; gap: 12px; }
+  .lv-waitgrid { display: flex; flex-direction: column; gap: 12px; }
+  .lv-waitc .lv-clock { font-size: 72px; }
+  .lv-next { order: 1; }
   .lv-stack { display: contents; }
   .lv-now { order: 2; padding: 0.7em 1em; }
   .lv-now b { font-size: 1.15em; }

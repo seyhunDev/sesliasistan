@@ -8,7 +8,7 @@ import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseObs, loadCourse, loadLive, loadRoundsOf, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { addCourseObs, loadCourse, loadLive, loadRoundsOf, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { isActive, loadAthletes } from "@/features/athletes/data";
 import { ResultsTab } from "@/features/raceMedia/ResultsTab";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
@@ -20,7 +20,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { cleanLive, dirShort, nextRaceNo, ownedBy, raceName, raceTime, raceTitle, zeroRace } from "@/lib/raceLive";
+import { cleanLive, cleanPlan, dirShort, nextRaceNo, ownedBy, planLabel, raceName, raceTime, raceTitle, zeroRace } from "@/lib/raceLive";
 import { cleanCourse, cleanObs, obsTitle, withLiveWind } from "@/lib/raceCourse";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CLASS_PICK, PREP_PICK, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
@@ -58,6 +58,7 @@ export function BroadcastPage({ orgId, id }) {
   const [cls, setCls] = useState(""); // sıradaki startın sınıfı (uyarı işaretinde sınıf bayrağı)
   const [prep, setPrep] = useState(""); // sıradaki startın hazırlık bayrağı (P, I, Z, U, Kara)
   const [pickId, setPickId] = useState(""); // Yarışlar listesinde seçilen start (boşsa sayacın yarışı)
+  const [plan, setPlan] = useState(() => cleanPlan({})); // günün programı (raceLive.plan; herkese açık ekranın evresi buna göre)
   const file = useRef(null);
   const liveIn = useRef(false); // yarışlar yüklendi mi (yüklenmeden boş listeye yazılırsa günün yarışları silinirdi; multimedya sayfasındaki koruma)
   const rdays = race ? raceDays(race) : null;
@@ -79,6 +80,7 @@ export function BroadcastPage({ orgId, id }) {
     loadAthletes().then((d) => on && setAthletes(d.athletes || []), () => {});
     reload().then((d) => {
       if (!on) return;
+      setPlan(d.plan);
       setYt(d.stream.url);
       setSel(d.screen.kind ? { kind: d.screen.kind, mid: d.screen.mid } : null);
     }, () => toast("Yüklenemedi, tekrar dene."));
@@ -126,6 +128,14 @@ export function BroadcastPage({ orgId, id }) {
     },
   };
   // Biten yarışın grubu / sınıfı / bayrağı düzeltilir (rounds[sid]); sid yoksa sıradaki startın seçimi
+  // Program: değişiklik hemen görünür, kayıt arkada (savePlan)
+  const tomorrow = new Date(Date.parse(`${today}T12:00:00`) + 864e5).toLocaleDateString("sv-SE");
+  const changePlan = (patch) => {
+    const next = cleanPlan({ ...plan, ...patch });
+    setPlan(next);
+    savePlan(orgId, id, next).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
+  };
+  const planDay = plan.day || today;
   const setPickOf = async (sid, patch) => {
     if (!sid) {
       if ("grp" in patch) setGrp(patch.grp);
@@ -303,6 +313,63 @@ export function BroadcastPage({ orgId, id }) {
             </div>
           </section>
         )}
+        {/* Program (Seyhun 2026-11-01): günün ilk start saati, start sırası, erteleme / yarış yok / günü bitir, yarının saati.
+            Herkese açık ekran: sayaç başlayana kadar start saatine geri sayım; gün bitince özet; ertesi gün showAt'te yeni gün */}
+        <section>
+          <Head title="Program" right={plan.status === "done" ? "Gün bitti" : plan.status === "none" ? "Bugün yarış yok" : plan.status === "ap" ? "Start ertelendi" : plan.at ? `İlk start ${plan.at}` : "Start saati yok"} />
+          <div className={`${card} overflow-hidden`}>
+            <div className={`${row} border-b border-line`}>
+              <span className="font-semibold">İlk start</span>
+              <div className="ml-auto flex items-center gap-1.5">
+                {[
+                  [today, "Bugün"],
+                  [tomorrow, "Yarın"],
+                ].map(([d, lab]) => (
+                  <button key={d} type="button" aria-pressed={planDay === d} onClick={() => changePlan({ day: d })} className={`h-8 rounded-full px-3 text-[0.8125rem] font-semibold ${planDay === d ? "bg-acc text-white" : "bg-bg"}`}>
+                    {lab}
+                  </button>
+                ))}
+                <input type="time" value={plan.at} onChange={(e) => changePlan({ day: planDay, at: e.target.value })} aria-label="İlk start saati" className="h-9 rounded-lg bg-bg px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
+              </div>
+            </div>
+            {plan.order.map((o, i) => (
+              <div key={`${i}-${o.cls}-${o.grp}`} className={`${row} border-b border-line`}>
+                <span className="w-6 shrink-0 text-mut">{i + 1}.</span>
+                {o.grp ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(o.grp) }} aria-hidden="true" /> : null}
+                <span className="min-w-0 flex-1 truncate font-semibold">{planLabel(o)}</span>
+                <button type="button" onClick={() => changePlan({ order: plan.order.filter((_, k) => k !== i) })} aria-label="Sıradan çıkar" className="shrink-0 px-2 text-[0.875rem] text-mut">
+                  Çıkar
+                </button>
+              </div>
+            ))}
+            <div className="grid grid-cols-2 gap-2 p-3">
+              <Button variant="secondary" onClick={() => (cls || grp ? changePlan({ order: [...plan.order, { cls, grp }] }) : toast("Üstte sınıf ya da grup seç, sonra sıraya ekle."))}>
+                Sıraya ekle
+              </Button>
+              <Button variant={plan.status === "ap" ? "primary" : "secondary"} onClick={() => changePlan({ day: planDay, status: plan.status === "ap" ? "" : "ap" })}>
+                {plan.status === "ap" ? "Erteleme kalktı" : "Start ertelendi"}
+              </Button>
+              <Button variant={plan.status === "none" ? "primary" : "secondary"} onClick={() => changePlan({ day: planDay, status: plan.status === "none" ? "" : "none" })}>
+                {plan.status === "none" ? "Yarış var" : "Bugün yarış yok"}
+              </Button>
+              <Button variant={plan.status === "done" ? "primary" : "secondary"} onClick={() => changePlan({ day: planDay, status: plan.status === "done" ? "" : "done", next: plan.next || { day: tomorrow, at: plan.at } })}>
+                {plan.status === "done" ? "Günü yeniden aç" : "Günü bitir"}
+              </Button>
+            </div>
+            {plan.status === "done" || plan.status === "none" ? (
+              <div className="space-y-2 border-t border-line px-4 py-3 text-[0.9375rem]">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Yarın ilk start</span>
+                  <input type="time" value={plan.next?.at || ""} onChange={(e) => changePlan({ next: { day: tomorrow, at: e.target.value } })} aria-label="Yarının ilk start saati" className="ml-auto h-9 rounded-lg bg-bg px-2 font-semibold tabular-nums outline-none" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Ekran yeni güne geçer</span>
+                  <input type="time" value={plan.showAt} onChange={(e) => changePlan({ showAt: e.target.value })} aria-label="Ekranın yeni güne geçeceği saat" className="ml-auto h-9 rounded-lg bg-bg px-2 font-semibold tabular-nums outline-none" />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </section>
         <section>
           <Head title="Ekranda" right={onScreen ? (onScreen.kind === "live" ? "Canlı yayın" : "Video") : "Boş"} />
           <div className={`${card} overflow-hidden`}>
