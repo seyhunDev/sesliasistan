@@ -354,7 +354,7 @@ export default function EnglishPage() {
       {deck && (cur || quiz) && (
         <footer className="relative flex items-center justify-between gap-3">
           {quiz ? <span /> : (
-            <Button variant="text" onClick={next} className="!text-white/50">
+            <Button variant="text" onClick={next} className="!px-0 !text-white/50">
               Geç
             </Button>
           )}
@@ -372,7 +372,7 @@ export default function EnglishPage() {
                 primeEn();
                 setTalk(cur);
               }}
-              className="!h-12 !rounded-full !border-0 !bg-[#67e8f9]/14 !px-7 !text-[#67e8f9] !shadow-none"
+              className="!h-12 !rounded-full !border-0 !bg-none !bg-[#67e8f9]/14 !px-7 !text-[#67e8f9] !shadow-none"
             >
               {!quiz ? "Konuş" : quiz.done ? "Sıradaki" : "Devam"}
             </Button>
