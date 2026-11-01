@@ -13,7 +13,6 @@ import { useNow } from "@/hooks/useNow";
 import { isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
-import { Icon } from "@/components/ui/Icon";
 import { ActionGrid } from "@/components/ui/ActionGrid";
 import { CockpitWind } from "./CockpitWind";
 import { InboxBell } from "./Inbox";
@@ -123,17 +122,17 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
 }
 
 // Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan.
-// Görünüm iş düğmeleriyle aynı (Seyhun 2026-10-31 "yazılar alta kayıyor… butonlara benzer olsun"): kabarık kart, solda kartın kenarından
-// giren soluk camgöbeği ikon (türüne göre), üstte tek satır gün · saat · yer, altında tek satır başlık, sağda kalan süre camgöbeği. Hiçbir yazı
-// alt satıra kaymaz (hepsi tek satır, uzunsa "…"). Antrenmansa altında aynı biçimde Yoklama · Süre. Karta dokununca plan açılır.
-const PLAN_ICON = { Yarış: "flag", Antrenman: "wind", Fitness: "dumbbell", Toplantı: "users", Kamp: "tent" };
+// "A · Tarih kutusu" (Seyhun 2026-10-31; iş düğmelerine benzemesin, sade olsun): solda üstteki gün kutularına benzer ince camgöbeği çerçeveli
+// tarih kutusu (gün adı / Bugün / Yarın, büyük gün, ay), yanında tek satır başlık, altında tek satır saat · yer, sağda kalan süre. Zemin yok;
+// hiçbir yazı alt satıra kaymaz. Antrenmansa altında Yoklama · Süre (iş düğmeleri). Dokununca plan açılır.
 export function planWhen(p, now, today) {
   const days = Math.round((Date.parse(`${p.date}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5);
   const d = new Date(`${p.date}T12:00`);
-  const day = days === 0 ? "Bugün" : days === 1 ? "Yarın" : `${cap(d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""))} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}`;
+  const top = days === 0 ? "Bugün" : days === 1 ? "Yarın" : cap(d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""));
+  const mon = cap(d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", ""));
   const mins = days === 0 && p.time ? Math.round((new Date(`${p.date}T${p.time}`) - now) / 60000) : null;
   const left = days > 1 ? `${days} gün` : days === 1 ? "" : mins == null ? "" : mins <= 0 ? "Şimdi" : mins < 60 ? `${mins} dk` : `${Math.floor(mins / 60)} sa${mins % 60 ? ` ${mins % 60} dk` : ""}`;
-  return { day, left };
+  return { top, day: d.getDate(), mon, left };
 }
 function NextPlan({ now }) {
   const { plans } = useData();
@@ -142,27 +141,31 @@ function NextPlan({ now }) {
   const today = todayStr();
   const p = nextPlan(plans, now, today);
   if (!p) return null;
-  const { day, left } = planWhen(p, now, today);
+  const w = planWhen(p, now, today);
   const sail = isTraining(p);
-  const tag = planTag(p) || p.cat || p.category || "";
   // Antrenmansa Süre'nin yanında Yoklama (Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
   const att = sail && canSeeAthletes(profile?.email);
   const acts = [
     att && { key: "att", icon: "checks", label: "Yoklama", href: attHref(p.date, today) || "/athletes/attendance" },
     sail && { key: "sure", icon: "clock", label: "Süre", href: `/training/day?id=${p.id}` },
   ].filter(Boolean);
+  const sub = [p.time, p.place].filter(Boolean).join(" · ");
   return (
-    <div className="mt-3">
-      <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} aria-label="Sıradaki plan" className="raised ck-ibtn ck-next flex w-full min-w-0 items-center gap-2 pr-3.5 text-left">
-        <Icon name={PLAN_ICON[tag] || (sail ? "wind" : "cal")} className="ck-icon" />
-        <span className="relative min-w-0 flex-1">
-          <small className="block truncate text-[0.78rem] font-medium tabular-nums text-white/65">{[day, p.time, p.place].filter(Boolean).join(" · ")}</small>
-          <b className="block truncate text-[1rem] font-semibold leading-snug">{p.title || "Plan"}</b>
+    <div className="mt-4">
+      <button type="button" data-press="row" onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3.5 text-left">
+        <span className="w-[3.375rem] shrink-0 rounded-[0.875rem] border-[1.5px] border-[#67e8f9] pb-1.5 pt-[0.4375rem] text-center leading-none">
+          <small className="block text-[0.75rem] font-semibold text-[#67e8f9]">{w.top}</small>
+          <b className="mt-0.5 block text-[1.5rem] font-bold tabular-nums">{w.day}</b>
+          <small className="mt-0.5 block text-[0.6875rem] text-white/60">{w.mon}</small>
         </span>
-        {left && <span className="relative shrink-0 text-[0.84375rem] font-semibold tabular-nums text-[#67e8f9]">{left}</span>}
+        <span className="min-w-0 flex-1">
+          <b className="block truncate text-[1.0625rem] font-semibold leading-snug">{p.title || "Plan"}</b>
+          {sub && <small className="mt-0.5 block truncate text-[0.8125rem] tabular-nums text-white/65">{sub}</small>}
+        </span>
+        {w.left && <span className="shrink-0 text-[0.8125rem] font-semibold tabular-nums text-[#67e8f9]">{w.left}</span>}
       </button>
       {acts.length > 0 && (
-        <div className="mt-2">
+        <div className="mt-3">
           <ActionGrid icons items={acts} label="Plan işleri" />
         </div>
       )}

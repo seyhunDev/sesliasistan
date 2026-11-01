@@ -1107,7 +1107,7 @@ async function rainStrip(h) {
   });
   await page.goto(page.url().replace(/\/[^/]*$/, "/"), { waitUntil: "load" });
   // Sıradaki plan iş düğmesi biçiminde, yazılar tek satır (Seyhun 2026-10-31 "yazılar alta kayıyor")
-  await check("Ana sayfa", "sıradaki plan tek satır", "kart varsa gün · saat ve başlık birer satır, alt satıra kaymaz", async () => {
+  await check("Ana sayfa", "sıradaki plan tek satır", "A · Tarih kutusu: solda tarih kutusu, başlık ve saat · yer birer satır, alt satıra kaymaz", async () => {
     const card = page.locator("[aria-label='Sıradaki plan']").first();
     if (!(await waitFor(() => card.count(), 8000))) return [true, "7 gün içinde plan yok"];
     if (process.env.WX_SHOT) {
@@ -1116,7 +1116,7 @@ async function rainStrip(h) {
       await page.screenshot({ path: `${process.env.WX_SHOT}-siradaki.png` }).catch(() => {});
       await page.evaluate(() => window.scrollTo(0, 0));
     }
-    const lines = await card.evaluate((el) => [...el.querySelectorAll("small, b")].map((x) => { const st = getComputedStyle(x); const lh = parseFloat(st.lineHeight) || parseFloat(st.fontSize) * 1.3; return Math.round(x.getBoundingClientRect().height / lh); }));
+    const lines = await card.evaluate((el) => [...el.querySelectorAll(":scope > span.flex-1 > *")].map((x) => { const st = getComputedStyle(x); const lh = parseFloat(st.lineHeight) || parseFloat(st.fontSize) * 1.3; return Math.round(x.getBoundingClientRect().height / lh); }));
     return [lines.length === 2 && lines.every((n) => n <= 1), `satırlar ${lines.join(",")}`];
   });
   await check("Ana sayfa", "özellik kartları", "en altta Özet (Mesajlar) yok; İngilizce kartında sıradaki kelime ve Çalış · Dinle · Biliyorum", async () => {
