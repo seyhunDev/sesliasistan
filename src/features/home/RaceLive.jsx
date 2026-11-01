@@ -20,7 +20,8 @@ import { todayStr } from "@/lib/utils/format";
 // "2. yarış sürüyor", bizimkilerin sırası, yarın ilk start, dönüş). Dokununca yarışın sayfası. Sayaç, Kayıt ve süre seçimi yarış sayfasında.
 // Ayarlar › Ana sayfada yarış kısayolu kapatırsa (users.raceLive "off") görünmez; Kulüp listesindeki yarış satırı o zaman yine çıkar.
 // Günün yarışları bitince (18:00 ya da son yarıştan 90 dk sonra, raceDay.js racePhase "done") satır kalkar, yerine en yakın plan
-// (Sıradaki kartı) görünür (Seyhun 2026-10-31: "akşam 8:30 ve hala bu duruyor"); bu yarışın sayacı çalışıyorsa kalır. Ertesi yarış günü yine çıkar.
+// (Sıradaki kartı) görünür (Seyhun 2026-10-31: "akşam 8:30 ve hala bu duruyor"); bu yarışın sayacı çalışıyorsa ya da yarış bugün açıldıysa
+// (deneme yarışı) kalır. Ertesi yarış günü yine çıkar.
 // Görünmeyen iş: sayaç 0 olunca yarışın start saati yine yazılır (telefon ana sayfadayken de; yalnız bu yarışın sayacı).
 export function RaceLive({ open }) {
   const { profile } = useAuth();
@@ -79,7 +80,10 @@ function Line({ id, orgId, title }) {
   const ours = !!t.own && ownedBy(t.own, own);
   const timer = !ours ? "" : up ? `Startan beri ${mmss(upSec(t.end, now))}` : running ? `Starta ${mmss(Math.max(0, rem))}` : t.left != null ? `Sayaç durdu · ${mmss(t.left)}` : "";
   const today = todayStr();
-  const over = racePhase({ r: race || { startDate: today }, today, now: clock, starts: live.starts }) === "done" && !(ours && (running || up));
+  // Bugün açılan yarış (deneme yarışı) akşam da kalır; denemeler multimedyaya buradan girer (Seyhun 2026-11-01)
+  const made = race?.createdAt?.toDate?.() || (race?.createdAt?.seconds ? new Date(race.createdAt.seconds * 1000) : null);
+  const fresh = !!made && made.toLocaleDateString("sv-SE") === today;
+  const over = racePhase({ r: race || { startDate: today }, today, now: clock, starts: live.starts }) === "done" && !(ours && (running || up)) && !fresh;
   if (over) return null;
   const sub = race ? raceLine({ r: race, today: todayStr(), now: clock, starts: live.starts, athletes: kids, timer }) : timer;
   return (
