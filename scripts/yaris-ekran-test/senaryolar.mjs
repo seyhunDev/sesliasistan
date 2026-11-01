@@ -72,6 +72,8 @@ export async function run(server, log = () => {}) {
         // sesle yazılmış rüzgâr (Saha ölçümlerinde görünmeli)
         // ve bugünün bir yarışı ile o yarışta çekilmiş bir fotoğraf (Start'ta yarışın satırında görünmeli)
         { path: "orgs/{owner}/raceLive/r1", data: { wind: [{ at: new Date(now.getTime() - 30 * 60e3).toISOString(), dir: 300, kn: 11, src: "elle" }], starts: [{ id: "s1", day: TODAY, n: 1, at: new Date(now.getTime() - 60 * 60e3).toISOString() }], media: [{ id: "m1", kind: "photo", url: "https://example.com/1.jpg", at: new Date(now.getTime() - 40 * 60e3).toISOString() }] } },
+        // bugünün antrenmanı: iki yarış (biri sonuçlu), günlük yazılmış (Süre kareleri)
+        { path: "orgs/{owner}/plans/t1", data: { ownerId: "{owner}", createdByUid: "{owner}", assignees: [], people: ["{owner}"], createdAt: now.toISOString(), createdBy: { name: "Test Sahip" }, src: "manual", cat: "Antrenman", title: "Optimist antrenmanı", date: TODAY, endDate: "", time: "00:05", allDay: false, durationMin: 120, tz: "Europe/Istanbul", timeSource: "user", place: "Yat limanı", status: "planned", races: [{ id: "y1", name: "Yarış 1", startAt: now.getTime() - 90 * 60e3, fin: 1000, cd: 300, finishes: [{ id: "a1", name: "Deniz Yılmaz" }] }, { id: "y2", name: "Yarış 2", startAt: now.getTime() - 40 * 60e3, fin: 845, cd: 240, marks: { Start: 0, "Şamandıra 1": 252 }, finishes: [] }], log: { wind: "12", dir: "Poyraz", topics: ["Start", "Şamandıra"], min: 120, rating: 3 } } },
         { path: "orgs/{owner}/races/r2", data: { name: "Bahar Kupası", city: "İzmir", district: "Dikili", startDate: plus(5), endDate: plus(6), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
       ],
     });
@@ -278,6 +280,20 @@ export async function run(server, log = () => {}) {
       await dk.filter({ hasText: "5 dk" }).click();
       const ok = chips === "5 dk,4 dk,2 dk,1 dk" && top === 0 && strip === 0 && now === 1 && kept.trim() === "2 dk" && big === 1;
       return [ok, `seçenekler ${chips} · üstte seçim ${top} · şerit ${strip} · 2 dk seçince ${now ? "02:00" : "değişmedi"} · yenileyince ${kept.trim() || "-"}${big ? " 02:00" : ""}`];
+    });
+    // Antrenman Süre kareleri (Seyhun 2026-11-01): Yoklama · Günlük yan yana, Yarışlar tam genişlik (kaç dk start, sıra/şamandıra, süre)
+    await okPage("Antrenman", "Süre kareleri", "/training/day?id=t1", "Yoklama al", async () => {
+      const races = page.locator("section[aria-label='Yarışlar']");
+      const rows = await races.locator("button[data-press]").count();
+      const txt = (await races.innerText().catch(() => "")).replace(/\s+/g, " ");
+      const log = await page.getByRole("button", { name: /Günlük.*Poyraz.*Düzenle/ }).count();
+      const roll = await page.getByRole("button", { name: /Yoklama.*Yoklama al/ }).count();
+      if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-antrenman.png") }).catch(() => {});
+      await races.locator("button[data-press]").first().click();
+      const sheet = await page.getByRole("dialog").first().waitFor({ timeout: 20000 }).then(() => true, () => false);
+      await page.keyboard.press("Escape").catch(() => {});
+      const ok = rows === 2 && /4 dk start · Start 00:00 · Ş1 04:12/.test(txt) && /5 dk start · 1\. Deniz/.test(txt) && /14:05 sürdü/.test(txt) && log === 1 && roll === 1 && sheet;
+      return [ok, `yarış satırı ${rows} · ${txt.slice(0, 160)} · günlük ${log} · yoklama ${roll} · pencere ${sheet ? "açıldı" : "açılmadı"}`];
     });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
     // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok

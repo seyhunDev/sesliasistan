@@ -35,6 +35,7 @@ export function cleanRaces(races) {
         name: str(r?.name, 40) || `Yarış ${i + 1}`,
         ...(Number.isFinite(r?.startAt) ? { startAt: r.startAt } : {}),
         ...(Number.isFinite(r?.fin) && r.fin >= 0 ? { fin: Math.round(r.fin) } : {}),
+        ...(Number.isFinite(r?.cd) && r.cd > 0 && r.cd <= 3600 ? { cd: Math.round(r.cd) } : {}),
         ...(Object.keys(marks).length ? { marks } : {}),
         finishes,
       };

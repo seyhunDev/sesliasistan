@@ -17,6 +17,7 @@ import { RollPanel } from "@/features/athletes/RollPanel";
 import { TrainingLog } from "@/features/add/TrainingLog";
 import { Bar, Countdown, useTimerRun } from "@/features/training/Countdown";
 import { useTrainingFlow } from "@/features/training/useTrainingFlow";
+import { DayTiles } from "@/features/training/DayTiles";
 import { Marks } from "@/features/raceMedia/TimerTab";
 import { MediaSettingsButton, MediaTab } from "@/features/raceMedia/MediaTab";
 import { WeatherTab } from "@/features/raceMedia/WeatherTab";
@@ -39,7 +40,7 @@ import { useTabInUrl } from "@/hooks/useTabInUrl";
 // Hava: multimedyanın WeatherTab'ı; yer planın `spot`u, yoksa Dikili. Sonuçlar: günün yarışları ve puan durumu (Races).
 // Süre'de alt şeritte "Sonucu söyle" ve ana düğme (Başlat…; Seyhun 2026-10-22: "Başlat'ı ve Sonucu söyle'yi aşağı al, Rüzgâr'ı kaldır"): yarış sıralaması sesle ("1 Ali, 2 Ayşe", yalnız adlar da, karışık da), onaysız yazılır, 8 sn Geri al (lib/raceVoice.js voiceResult).
 // Yeni tasarım (Seyhun 2026-10-21 onayı, /mnt/project-files/antrenman-sayfasi/yeni-tasarim/ornek.png): üstte lacivert kokpit (geri, ad, gün;
-// Süre'de sayaç da orada), altında açık zeminde "Sonucu söyle" ve tek liste (Yoklama, Yarışlar, Günlük).
+// Süre'de sayaç da orada), altında açık zeminde kareler (DayTiles: Yoklama · Günlük, Yarışlar; Seyhun 2026-11-01).
 // Açılış: ?id=<antrenman planı> (plan penceresinden, gün penceresinden) ya da bugünün antrenmanı; ?tab=media|wx|res. Sesle: "antrenman sayfasını aç".
 const stamp = () => Date.now();
 const dayText = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
@@ -232,46 +233,24 @@ function Day() {
           {withRaces && !!cur && tr.up && <Marks buoys={buoys} s={cur} on onMark={mark} onBuoys={(next) => updateRecord("plan", plan.id, { buoys: next }, by)} />}
           {withRaces && said && <p className="mb-3 px-1 text-[0.875rem] leading-snug text-fg2">{said}</p>}
 
-          <section>
-            <ListHead title={plan ? "Bugün" : "Plan"} />
-            <RowList>
-              {!plan ? (
+          {!plan ? (
+            <section>
+              <ListHead title="Plan" />
+              <RowList>
                 <Row onClick={adding ? undefined : addPlan} title="Bugün antrenman planı yok" right={<span className="text-acc">Ekle</span>} chev={false} />
-              ) : (
-                <>
-                  {racer && (
-                    <Row
-                      onClick={() => setSheet("roll")}
-                      title="Yoklama"
-                      sub={firstNames(present) || (blank ? `${blank} kişi boş` : "")}
-                      right={<span className={present.length && !blank ? "text-acc" : "font-semibold text-mut"}>{athletes.length ? (present.length ? `${present.length} geldi` : `${blank} boş`) : "Aç"}</span>}
-                    />
-                  )}
-                  {racer && !locked && (
-                    <Row
-                      onClick={() => openRace(null)}
-                      title="Yarışlar"
-                      sub={leader ? `${leader} önde` : ""}
-                      right={<span className={races.length ? "" : "font-semibold text-mut"}>{races.length ? `${races.length} yarış` : "Yok"}</span>}
-                    />
-                  )}
-                  {canLog(plan, today) && !locked && (
-                    <Row
-                      onClick={() => setSheet("log")}
-                      title="Günlük"
-                      right={
-                        plan.log ? (
-                          <span className="rounded-full bg-accbg px-2 py-0.5 text-[0.75rem] font-semibold text-acc">Yazıldı</span>
-                        ) : (
-                          <span className="rounded-full bg-warnbg px-2 py-0.5 text-[0.75rem] font-semibold text-warn">Yazılmadı</span>
-                        )
-                      }
-                    />
-                  )}
-                </>
-              )}
-            </RowList>
-          </section>
+              </RowList>
+            </section>
+          ) : (
+            <DayTiles
+              roll={racer ? { present, blank, total: athletes.length, names: firstNames(present) } : null}
+              log={canLog(plan, today) && !locked ? { rec: plan.log || null } : null}
+              races={racer && !locked ? races : null}
+              leader={leader}
+              onRoll={() => setSheet("roll")}
+              onLog={() => setSheet("log")}
+              onRace={openRace}
+            />
+          )}
         </>
       )}
       {tabs && shown === "media" && (
