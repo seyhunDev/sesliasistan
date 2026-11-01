@@ -64,3 +64,12 @@ export async function moreWord(w) {
   if (!res.ok || !data.more) throw new Error(data.error || "Hazırlayamadım");
   return data.more;
 }
+
+// Konuş: sıradaki yapay zeka cümlesi, ipucu ve son cevabın düzeltmesi. turns: [{ who: "ai" | "me", e }]
+// Dönüş { ok, fix, next: { e, t }, hint: { e, t }, done }
+export async function talkWord(w, turns) {
+  const res = await authFetch("/api/word", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ talk: true, en: w.en, tr: w.tr, kind: w.kind, turns }) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.next) throw new Error(data.error || "Konuşmayı sürdüremedim, tekrar dene.");
+  return data;
+}
