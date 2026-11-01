@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { loadRoundsOf } from "@/features/athletes/raceLiveStore";
 import { raceName } from "@/lib/raceLive";
 import { currentStart, markName, ytId } from "@/lib/raceRounds";
+import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { ensurePublic, liveUrl, recName, roundJust, roundSay, roundUndo, setStream, showOnScreen } from "./liveActions";
 
 // Canlı ekran penceresi (yarış multimedya sayfasının ⋯ menüsünden, yalnız ana hesap; Seyhun 2026-11-01).
@@ -31,6 +32,7 @@ function Body({ orgId, raceId }) {
   const [say, setSay] = useState("");
   const [busy, setBusy] = useState(false);
   const [undo, setUndo] = useState(false);
+  const [voice, setVoice] = useState(false);
   const reload = () =>
     loadRoundsOf(orgId, raceId).then((d) => {
       setL(d);
@@ -170,6 +172,10 @@ function Body({ orgId, raceId }) {
             Yaz
           </Button>
         </div>
+        <Button variant="secondary" className="mt-2" onClick={() => setVoice(true)}>
+          Sesle gir
+        </Button>
+        <RoundsScreen open={voice} onClose={() => (setVoice(false), reload())} orgId={orgId} raceId={raceId} />
         {undo && roundJust() ? (
           <Button
             variant="text"
