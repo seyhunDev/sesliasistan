@@ -28,6 +28,13 @@ let el = null;
 let server = true;
 let job = 0;
 const got = new Map();
+// Dokunuşta çağrılır: ses öğesi iPhone'da açılır, sonradan (yapay zeka cevabı gelince) okunan ses çalabilir
+export function primeEn() {
+  if (el || typeof Audio === "undefined") return;
+  el = new Audio();
+  el.src = silentWav();
+  el.play().catch(() => {});
+}
 export function sayEn(text) {
   const t = String(text || "").replace(/\s+/g, " ").trim().slice(0, 400);
   if (!t || typeof window === "undefined") return;
