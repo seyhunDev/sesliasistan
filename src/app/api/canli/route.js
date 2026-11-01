@@ -100,6 +100,7 @@ async function build(id, y) {
     fleets,
     entries: en.entries,
     groups: en.groups,
+    plan: live.plan,
   };
 }
 

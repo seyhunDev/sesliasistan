@@ -10,7 +10,7 @@ import { deleteDoc, setDoc } from "@/lib/firebase/write";
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResumable } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
-import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind } from "@/lib/raceLive";
+import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan } from "@/lib/raceLive";
 import { cleanCourse, cleanObs } from "@/lib/raceCourse";
 import { cleanEntry, cleanRounds, cleanScreen, cleanStream } from "@/lib/raceRounds";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
@@ -62,6 +62,7 @@ export const saveWind = (orgId, id, list) => setDoc(live(orgId, id), { wind: cle
 export const saveBuoys = (orgId, id, list) => setDoc(live(orgId, id), { buoys: cleanBuoys(list) }, { merge: true });
 export const saveDays = (orgId, id, list) => setDoc(live(orgId, id), { days: cleanDays(list) }, { merge: true });
 export const saveStarts = (orgId, id, list) => setDoc(live(orgId, id), { starts: cleanStarts(list) }, { merge: true });
+export const savePlan = (orgId, id, plan) => setDoc(live(orgId, id), { plan: cleanPlan(plan) }, { merge: true });
 // Bütün künye listesi (sporcu etiketi değişince)
 export const saveMedia = (orgId, id, list) => setDoc(live(orgId, id), { media: cleanMedia(list) }, { merge: true });
 
