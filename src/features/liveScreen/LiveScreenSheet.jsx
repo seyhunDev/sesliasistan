@@ -7,7 +7,7 @@ import { ListHead } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRoundsOf } from "@/features/athletes/raceLiveStore";
 import { raceName } from "@/lib/raceLive";
-import { currentStart, markName, ytId } from "@/lib/raceRounds";
+import { currentStart, markName, ytEmbed } from "@/lib/raceRounds";
 import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { ensurePublic, liveUrl, recName, roundJust, roundSay, roundUndo, setStream, showOnScreen } from "./liveActions";
 
@@ -111,7 +111,8 @@ function Body({ orgId, raceId }) {
   const vids = [...L.media].filter((m) => m.kind === "video").reverse().slice(0, 12);
   const st = currentStart(L.starts, L.timer);
   const entry = st ? L.rounds[st.id] : null;
-  const ytOk = !!ytId(yt);
+  const ytOk = !!ytEmbed(yt);
+  const ytBad = yt.trim() && !ytOk; // yazılan bağlantı tanınmadı (YouTube video, canlı ya da kanal bağlantısı değil)
   const isSel = (k, mid = "") => sel?.kind === k && (k !== "rec" || sel.mid === mid);
   return (
     <div className="space-y-5 pb-2">
@@ -129,8 +130,19 @@ function Body({ orgId, raceId }) {
             <button type="button" className={`min-w-0 flex-1 text-left font-semibold ${isSel("live") ? "text-acc" : ""}`} onClick={() => ytOk && setSel({ kind: "live" })} disabled={!ytOk}>
               Canlı yayın
             </button>
-            <input value={yt} onChange={(e) => setYt(e.target.value)} placeholder="YouTube bağlantısı" inputMode="url" className="w-[55%] min-w-0 rounded-lg bg-bg px-2.5 py-1.5 text-[0.875rem] outline-none" />
+            <input
+              value={yt}
+              onChange={(e) => {
+                // geçerli bağlantı yazılınca Canlı yayın seçilir; Göster yeter (Seyhun 2026-11-01 "link koydum, gösterilmiyor")
+                setYt(e.target.value);
+                if (ytEmbed(e.target.value)) setSel({ kind: "live" });
+              }}
+              placeholder="YouTube bağlantısı"
+              inputMode="url"
+              className="w-[55%] min-w-0 rounded-lg bg-bg px-2.5 py-1.5 text-[0.875rem] outline-none"
+            />
           </div>
+          {ytBad ? <p className="border-b border-line px-4 py-2 text-[0.8125rem] text-warn">Bağlantı tanınmadı. YouTube video, canlı yayın (youtube.com/live/…) ya da kanal (youtube.com/channel/UC…) bağlantısı olmalı; başka siteler gösterilemez.</p> : null}
           {vids.map((m) => (
             <button key={m.id} type="button" onClick={() => setSel({ kind: "rec", mid: m.id })} className={`${rowCls} border-b border-line last:border-0 ${isSel("rec", m.id) ? "bg-accbg text-acc" : ""}`}>
               <span className="min-w-0 flex-1 truncate font-semibold">{recName(m, L.starts)}</span>

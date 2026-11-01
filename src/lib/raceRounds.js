@@ -220,7 +220,23 @@ export function ytId(url) {
   const m = u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|live\/|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
   return m ? m[1] : "";
 }
-export const cleanStream = (s) => (ytId(s?.url) ? { url: String(s.url).trim().slice(0, 200) } : { url: "" });
+// Kanalın canlı yayını (youtube.com/channel/UC…/live, …/embed/live_stream?channel=UC…): kanal kimliği; @ad bağlantısı çözülemez
+export function ytChannel(url) {
+  const m = String(url || "").match(/youtube\.com\/(?:channel\/|embed\/live_stream\?channel=)(UC[\w-]{22})/);
+  return m ? m[1] : "";
+}
+// Gömülecek adres parçası (embed/…): video kimliği ya da kanalın canlı yayını; tanınmazsa ""
+export function ytEmbed(url) {
+  const v = ytId(url);
+  if (v) return v;
+  const c = ytChannel(url);
+  return c ? `live_stream?channel=${c}` : "";
+}
+export const ytSrc = (url, q = "autoplay=1&mute=1&playsinline=1&rel=0") => {
+  const e = ytEmbed(url);
+  return e ? `https://www.youtube-nocookie.com/embed/${e}${e.includes("?") ? "&" : "?"}${q}` : "";
+};
+export const cleanStream = (s) => (ytEmbed(s?.url) ? { url: String(s.url).trim().slice(0, 200) } : { url: "" });
 
 // Ekrandaki "1. yarış startı" gibi başlık: çekimin yarışı (rname) ve evresi
 export function recTitle(m, rname) {
