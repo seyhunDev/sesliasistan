@@ -57,6 +57,7 @@ export function BroadcastPage({ orgId, id }) {
   const [grp, setGrp] = useState(""); // sıradaki startın grubu
   const [pickId, setPickId] = useState(""); // Yarışlar listesinde seçilen start (boşsa sayacın yarışı)
   const file = useRef(null);
+  const liveIn = useRef(false); // yarışlar yüklendi mi (yüklenmeden boş listeye yazılırsa günün yarışları silinirdi; multimedya sayfasındaki koruma)
   const rdays = race ? raceDays(race) : null;
 
   const reload = useCallback(
@@ -70,7 +71,7 @@ export function BroadcastPage({ orgId, id }) {
   useEffect(() => {
     let on = true;
     loadRace(orgId, id).then((r) => on && setRace(r || {}), () => on && setRace({}));
-    loadLive(orgId, id).then((l) => on && setLive(l), () => {});
+    loadLive(orgId, id).then((l) => on && ((liveIn.current = true), setLive(l)), () => {});
     loadCourse(orgId, id, today).then((c) => on && setCourse(c), () => {});
     loadEntryDoc(orgId, id).then((d) => on && (setEntries(d.rows), setGroups(d.groups)), () => {});
     loadAthletes().then((d) => on && setAthletes(d.athletes || []), () => {});
@@ -98,6 +99,7 @@ export function BroadcastPage({ orgId, id }) {
   const onZero = useCallback(
     (end, t) => {
       if (Date.now() - end > 20 * 60e3) return;
+      if (!liveIn.current) return;
       if (t?.mode !== "start" || !t.rid || !ownedBy(t.own, ownHere())) return;
       change((l) => {
         const next = zeroRace(l.starts, t.rid, end, l.wind, rdays);
@@ -116,6 +118,7 @@ export function BroadcastPage({ orgId, id }) {
   const flow = {
     ...rf.flow,
     onStart: (end, rid, prevT) => {
+      if (!liveIn.current) return toast("Yarışlar yükleniyor, bir saniye sonra tekrar başlat.");
       rf.flow.onStart(end, rid, prevT);
       if (rid && grp) saveRounds(orgId, id, rid, { ...(L?.rounds?.[rid] || { route: [], legs: [] }), grp }).then(reload, () => {});
     },
