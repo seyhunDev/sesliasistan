@@ -1,8 +1,8 @@
-Commit: c3863d7 · Merge pull request #937 from seyhunDev/claude/project-thread-lo85ym
-Zaman: 2026-11-01-2011 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41329122177
+Commit: 07ca0f7 · Merge pull request #939 from seyhunDev/claude/project-thread-lo85ym
+Zaman: 2026-11-01-2029 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41330674419
 
-TAM TEST · 01.11.2026 20:00:41
+TAM TEST · 01.11.2026 20:18:15
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1423/1426 geçti · 3 kalan · 617 sn
+SONUÇ: 1425/1427 geçti · 2 kalan · 634 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -179,17 +179,14 @@ SONUÇ: 1423/1426 geçti · 3 kalan · 617 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 13/16
-  ✗ Yarış sayfası: 10/13
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/17
+  ✗ Yarış sayfası: 12/14
       ✗ “yarış günü, sporcu seçili”
           beklenen: çökmeden açılır, "Start sayacı" görünür
-          olan:     multimedyaya geçti · sekmeler Saha,Start,Sonuç,Canlı · açık Start · alt çubuk ekranda · hazırlık açıldı
+          olan:     multimedyaya geçti · sekmeler Saha,Start,Sonuç · açık Start · alt çubuk ekranda · hazırlık açıldı
       ✗ “Start”
           beklenen: çökmeden açılır, "Start sayacı" görünür
-          olan:     sekmeler Saha,Start,Sonuç,Canlı · alt çubukta Kayıt 0 · Başlat yanında Kayıt 1 · Başlat 1 · satırda çekim 1 · ayrı bölüm 0 · satır "1. yarış 5 dk start 12:00 15:00 sürdü" · bilgi kartı 0
-      ✗ “tek ⋯ menüsü”
-          beklenen: çökmeden açılır, "Start sayacı" görünür
-          olan:     Süre'de sıfırla 0 · menü prep,people,docs,trip,budget,canli,shot,day,reset,edit,del · Sporcu yarış sayfasında açıldı · sıfırla açıldı
+          olan:     sekmeler Saha,Start,Sonuç · alt çubukta Kayıt 0 · Başlat yanında Kayıt 1 · Başlat 1 · satırda çekim 1 · ayrı bölüm 0 · satır "1. yarış 5 dk start 12:00 15:00 sürdü" · bilgi kartı 0
   ✓ Antrenman: 1/1
   ✓ Asılı bağlantı: 2/2
 
