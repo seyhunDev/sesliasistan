@@ -4,9 +4,11 @@
 // - Söylenen her şey yapay zekaya gider (api/round-say) ve komutlara çevrilir; yapay zeka yoksa yalnız rakamlar sırayla eklenir.
 // - Dönüşler canlı ekranın kaydına yazılır (lib/raceRounds.js: rounds[startId] = { route, legs }).
 // - Komutlar: add (sona ekle), set (N. sırayı değiştir), del (N. sırayı sil), ins (N'den sonra ekle), move (N'yi M'ye taşı),
-//   next/prev (sonraki/önceki şamandıra), route (parkuru değiştir).
+//   next/prev (sonraki/önceki şamandıra), route (parkuru değiştir), grp (startın grubu: "sarı grup").
 // - Her numara kayıt listesiyle denetlenir: listede yoksa en yakın numaralar önerilir, aynı şamandırada iki kez varsa uyarılır.
 //   Ses tanımanın birleştirdiği numaralar ("24 3542" → "243542") kayıt listesine göre ayrılır.
+
+import { groupOf } from "./roundScore";
 
 const digits = (s) => String(s ?? "").replace(/\D/g, "");
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
@@ -20,10 +22,17 @@ export function cleanEntries(list) {
   for (const r of Array.isArray(list) ? list : []) {
     const sail = sailOf(r?.sail);
     const cls = S(r?.cls, 30);
+    const born = (String(r?.born ?? "").match(/\b(19|20)\d\d\b/) || [""])[0];
     const key = `${cls.toLowerCase()}|${sail}`;
     if (!sail || seen.has(key)) continue;
     seen.add(key);
-    out.push({ sail, name: S(r?.name, 60), club: S(r?.club, 60), cls });
+    const sex = /^(k|f|w|kız|kiz|female|girl)/i.test(String(r?.sex || "")) ? "K" : /^(e|m|erkek|male|boy)/i.test(String(r?.sex || "")) ? "E" : "";
+    const x = { sail, name: S(r?.name, 60), club: S(r?.club, 60), cls };
+    if (born) x.born = born;
+    if (sex) x.sex = sex;
+    if (S(r?.cat, 12)) x.cat = S(r.cat, 12);
+    if (groupOf(r?.grp)) x.grp = groupOf(r.grp);
+    out.push(x);
     if (out.length >= 600) break;
   }
   return out;
@@ -117,6 +126,7 @@ export function applySay(state, ops, known) {
   const legs = (state?.legs || []).map((l) => [...(l || [])]);
   let k = Math.max(0, Number(state?.k) || 0);
   let route = [...(state?.route || [])];
+  let grp = state?.grp || "";
   const set = new Set(known || []);
   const split = (list) => (Array.isArray(list) ? list : [list]).flatMap((x) => splitRun(x, set)).filter(Boolean);
   let done = 0;
@@ -165,10 +175,13 @@ export function applySay(state, ops, known) {
       const r = cleanRoute(o.route);
       if (r.length) (route = r), (k = Math.min(k, r.length - 1)), done++;
       else skip.push(o);
+    } else if (op === "grp") {
+      if (o.grp) (grp = o.grp), done++;
+      else skip.push(o);
     } else if (o) skip.push(o);
   }
   while (legs.length > Math.max(route.length, 1) && !legs[legs.length - 1].length) legs.pop();
-  return { legs, k, route, done, skip, dup: [...new Set(dup)] };
+  return { legs, k, route, grp, done, skip, dup: [...new Set(dup)] };
 }
 
 // Parkur: "1 4 1 2 3 finiş" → ["1","4","1","2","3","F"]; başlangıç/start yazılmaz
@@ -184,20 +197,20 @@ export function cleanRoute(list) {
 // Yapay zeka yokken: yalnız rakamlar sırayla eklenir (komut sözcüğü varsa uygulanmaz, kullanıcıya söylenir)
 export function localSay(text, known) {
   const t = String(text || "").toLocaleLowerCase("tr-TR");
-  if (/sıra|sil|değiş|taşı|sonra|önce|sonraki|önceki|parkur|yap\b/.test(t)) return null;
+  if (/sıra|sil|değiş|taşı|sonra|önce|sonraki|önceki|parkur|grup|yap\b/.test(t)) return null;
   const sails = sailsIn(t, known);
   return sails.length ? [{ op: "add", sails }] : null;
 }
 
 // Komutların temizliği (yapay zekadan gelen)
 export function cleanOps(list) {
-  const OPS = ["add", "set", "del", "ins", "move", "next", "prev", "route"];
+  const OPS = ["add", "set", "del", "ins", "move", "next", "prev", "route", "grp"];
   return (Array.isArray(list) ? list : [])
     .filter((o) => OPS.includes(o?.op))
     .map((o) => {
       const sails = (Array.isArray(o.sails) ? o.sails : o.sail != null ? [o.sail] : []).map(sailOf).filter(Boolean).slice(0, 200);
       const n = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined);
-      return Object.fromEntries(Object.entries({ op: o.op, sails: sails.length ? sails : undefined, pos: n(o.pos), after: n(o.after), to: n(o.to), route: o.op === "route" ? cleanRoute(o.route) : undefined }).filter(([, v]) => v !== undefined));
+      return Object.fromEntries(Object.entries({ op: o.op, sails: sails.length ? sails : undefined, pos: n(o.pos), after: n(o.after), to: n(o.to), route: o.op === "route" ? cleanRoute(o.route) : undefined, grp: o.op === "grp" ? groupOf(o.grp) || undefined : undefined }).filter(([, v]) => v !== undefined));
     })
     .slice(0, 30);
 }

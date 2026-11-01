@@ -9,11 +9,15 @@ import { useSpeech } from "@/hooks/useSpeech";
 import { loadSheets } from "@/features/athletes/raceLiveStore";
 import { sheetMatch } from "@/lib/resultSheet";
 import { entryClasses, mergeEntries } from "@/lib/roundSay";
-import { readEntryFile, readEntryText, saveEntries } from "./roundsStore";
+import { readEntryFile, readEntryText, saveEntries, saveGroups } from "./roundsStore";
+import { cleanGroups, groupColor, groupMap } from "@/lib/roundScore";
 
 // Yarışın kayıt listesi (sesle dönüş girişinin denetimi): organizasyonun listesi PDF, fotoğraf ya da Excel'den yapay zekayla okunur,
+// günün grup listesi (Mavi, Sarı…; satırlarda grup yazan liste) aynı düğmeyle eklenir ve bugüne yazılır,
 // önceki günlerin sonuç listelerinden alınabilir, yazılarak ya da söylenerek eklenir ("1234 Ali Kaya Dikili"). Yeni okunan eskisine eklenir.
-export function EntriesView({ onClose, orgId, raceId, rows, setRows }) {
+const today = () => new Date().toLocaleDateString("sv-SE");
+
+export function EntriesView({ onClose, orgId, raceId, rows, setRows, groups = {}, setGroups }) {
   const toast = useToast();
   const file = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -27,11 +31,18 @@ export function EntriesView({ onClose, orgId, raceId, rows, setRows }) {
 
   useEffect(() => {
     loadSheets(orgId, raceId)
-      .then((s) => setSheetRows(s.flatMap((x) => (x.fleets || []).flatMap((f) => (f.rows || []).map((r) => ({ sail: r.sail, name: r.name, club: r.club, cls: f.cls }))))))
+      .then((s) => setSheetRows(s.flatMap((x) => (x.fleets || []).flatMap((f) => (f.rows || []).map((r) => ({ sail: r.sail, name: r.name, club: r.club, cls: f.cls, born: r.born, sex: r.sex, cat: r.cat }))))))
       .catch(() => {});
   }, [orgId, raceId]);
 
   const put = async (add, what) => {
+    // Grup listesi (satırlarda grup yazıyorsa): bugünün grupları olarak da kaydedilir; gruplar her gün değişir
+    const grouped = add.filter((r) => r.grp);
+    if (grouped.length) {
+      const list = grouped.map((r) => [r.sail, r.grp]);
+      await saveGroups(orgId, raceId, today(), list);
+      setGroups?.((g) => ({ ...g, ...cleanGroups({ [today()]: list }) }));
+    }
     const next = mergeEntries(rows, add);
     const n = next.length - rows.length;
     await saveEntries(orgId, raceId, next);
@@ -68,6 +79,8 @@ export function EntriesView({ onClose, orgId, raceId, rows, setRows }) {
     });
 
   const classes = useMemo(() => entryClasses(rows), [rows]);
+  const gm = groupMap(groups[today()]);
+  const gCount = Object.values(gm).reduce((m, g) => ((m[g] = (m[g] || 0) + 1), m), {});
   const shown = rows.filter((r) => sheetMatch(r, q)).sort((a, b) => Number(a.sail) - Number(b.sail));
 
   return (
@@ -108,6 +121,14 @@ export function EntriesView({ onClose, orgId, raceId, rows, setRows }) {
           </div>
         </div>
 
+        {Object.keys(gCount).length > 0 && (
+          <p className="rounded-xl border border-line bg-card px-3 py-2.5 text-[0.9375rem]">
+            <span className="text-mut">Bugünün grupları: </span>
+            {Object.entries(gCount)
+              .map(([g, n]) => `${g} ${n}`)
+              .join(" · ")}
+          </p>
+        )}
         {rows.length > 0 && <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ara: no, ad, kulüp" className="w-full rounded-xl border border-line bg-card px-3 py-2.5 outline-none" />}
 
         {shown.length > 0 && (
@@ -118,9 +139,10 @@ export function EntriesView({ onClose, orgId, raceId, rows, setRows }) {
                 <div key={key} className="border-b border-line last:border-0">
                   <button type="button" onClick={() => setOpen(open === key ? "" : key)} className="flex w-full items-center gap-3 px-3 py-2 text-left">
                     <span className="w-14 text-[1.0625rem] font-semibold tabular-nums">{r.sail}</span>
+                    {gm[r.sail] ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(gm[r.sail]) }} aria-label={gm[r.sail]} /> : null}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{r.name || "–"}</span>
-                      <span className="block truncate text-[0.8125rem] text-mut">{[r.club, classes.length > 1 ? r.cls : ""].filter(Boolean).join(" · ")}</span>
+                      <span className="block truncate text-[0.8125rem] text-mut">{[r.club, r.born, r.sex === "K" ? "Kız" : "", classes.length > 1 ? r.cls : ""].filter(Boolean).join(" · ")}</span>
                     </span>
                   </button>
                   {open === key && (

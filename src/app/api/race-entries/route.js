@@ -10,17 +10,17 @@ export const runtime = "nodejs";
 
 // Yarışın kayıt listesi (organizasyonun katılımcı listesi; PDF, fotoğraf ya da Excel'den çıkan yazı) → yelken no, ad, kulüp, sınıf.
 // Şamandıra dönüşlerini sesle girerken söylenen numaralar bu listeyle denetlenir (lib/roundSay.js). Belge saklanmaz.
-const SYSTEM = `Sen bir yelken kulübünün antrenörüne yardım eden asistansın. Sana bir yelken yarışının KAYIT (katılımcı) listesi verilir: belge, fotoğraf ya da tablodan çıkmış yazı (Türkçe ya da İngilizce). Sonuç listesi de olabilir; o zaman da sporcuları aynı biçimde çıkar.
+const SYSTEM = `Sen bir yelken kulübünün antrenörüne yardım eden asistansın. Sana bir yelken yarışının KAYIT (katılımcı) listesi ya da günün GRUP listesi verilir: belge, fotoğraf ya da tablodan çıkmış yazı (Türkçe ya da İngilizce). Sonuç listesi de olabilir; o zaman da sporcuları aynı biçimde çıkar.
 Her sporcuyu satır satır, eksiksiz çıkar. Uydurma; okuyamadığın alanı boş bırak.
 - isList: belge bir katılımcı ya da sonuç listesi değilse false.
-- rows: { sail yelken numarası belgede yazdığı gibi ("TUR 1234", "1234"), name ad soyad, club kulüp, cls sınıf ("Optimist", "ILCA 4", "ILCA 6", "420"; belgenin başlığında ya da sütununda) }.`;
+- rows: { sail yelken numarası belgede yazdığı gibi ("TUR 1234", "1234"), name ad soyad, club kulüp, cls sınıf ("Optimist", "ILCA 4", "ILCA 6", "420"; belgenin başlığında ya da sütununda), born doğum yılı ya da tarihi (varsa), sex cinsiyet (K, F, W, Kız, Female → "K"; E, M, Erkek, Male → "E"; belgede yoksa Türkçe addan tahmin et, emin değilsen boş), cat kategori işareti ("Junior", "J", "Bambino" yazıyorsa onu; yoksa boş), grp grup (belge bir GRUP listesiyse: "Mavi", "Sarı", "Yeşil", "Pembe", "Kırmızı" gibi renk grupları ya da "Altın", "Gümüş", "Bronz"; sütundan, satırdaki işaretten ya da grup başlığından; yoksa boş) }.`;
 
 const s = { type: "string" };
 const SCHEMA = {
   type: "object",
   properties: {
     isList: { type: "boolean" },
-    rows: { type: "array", items: { type: "object", properties: { sail: s, name: s, club: s, cls: s }, required: ["sail"] } },
+    rows: { type: "array", items: { type: "object", properties: { sail: s, name: s, club: s, cls: s, born: s, sex: s, cat: s, grp: s }, required: ["sail"] } },
   },
   required: ["isList", "rows"],
 };

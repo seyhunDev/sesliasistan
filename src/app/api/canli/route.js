@@ -5,13 +5,15 @@ import { cleanLive, dayOf, pickTimer } from "@/lib/raceLive";
 import { cleanCourse } from "@/lib/raceCourse";
 import { cleanRounds, cleanScreen, cleanStream, currentStart } from "@/lib/raceRounds";
 import { cleanSheet, joinGroups } from "@/lib/resultSheet";
+import { cleanEntries } from "@/lib/roundSay";
+import { cleanGroups } from "@/lib/roundScore";
 
 export const runtime = "nodejs";
 
 // Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01). Girişsiz okuma burada, yönetici anahtarıyla:
 // Firestore kuralları değişmedi, kulübün geri kalanı açılmaz. Yalnız ana hesabın "Canlı ekran"ı açtığı yarış okunur
 // (canliEkran/{yarış} = { org }). Sayfa 4 sn'de bir sorar; aynı cevap 2 sn bellekte ve CDN'de tutulur (okuma az kalsın).
-// GET ?id=<yarış>&y=<start>  → { race, starts, timer, rounds, screen, stream, media, wind, course, fleets, now }
+// GET ?id=<yarış>&y=<start>  → { race, starts, timer, rounds, screen, stream, media, wind, course, fleets, entries, groups, now }
 // POST { race } (ana hesap) → yarışı canlı ekrana açar, { id }
 const MEMO = 2000;
 const memo = new Map(); // anahtar → { t, body }
@@ -45,9 +47,22 @@ async function fleetsOf(org, id) {
     if (i < 0) all.push(f);
     else all[i] = joinGroups(all[i], f);
   }
-  const fleets = all.map((f) => ({ cls: f.cls, rows: f.rows.map((r) => ({ name: r.name, sail: r.sail, club: r.club, grp: r.grp, ...(r.r ? { r: r.r } : {}) })) }));
+  const fleets = all.map((f) => ({ cls: f.cls, rows: f.rows.map((r) => ({ name: r.name, sail: r.sail, club: r.club, grp: r.grp, rank: r.rank || 0, pts: r.pts ?? null, ...(r.r ? { r: r.r } : {}) })) }));
   sheetMemo.set(k, { t: Date.now(), fleets });
   return fleets;
+}
+
+// Kayıt listesi ve günün grupları (geçici genel sıralama için; lib/roundScore.js): ad, kulüp, sınıf, doğum yılı, cinsiyet, kategori
+const entryMemo = new Map();
+async function entriesOf(org, id) {
+  const k = `${org}/${id}`;
+  const hit = entryMemo.get(k);
+  if (hit && Date.now() - hit.t < 30e3) return hit.v;
+  const snap = await adminDb().collection("orgs").doc(org).collection("raceLive").doc(id).collection("entries").doc("list").get();
+  const d = snap.exists ? snap.data() : {};
+  const v = { entries: cleanEntries(d.rows).map((r) => ({ sail: r.sail, name: r.name, club: r.club, cls: r.cls, born: r.born || "", sex: r.sex || "", cat: r.cat || "" })), groups: cleanGroups(d.groups) };
+  entryMemo.set(k, { t: Date.now(), v });
+  return v;
 }
 
 async function build(id, y) {
@@ -56,6 +71,7 @@ async function build(id, y) {
   const db = adminDb();
   const base = db.collection("orgs").doc(org);
   const [raceSnap, liveSnap, fleets] = await Promise.all([base.collection("races").doc(id).get(), base.collection("raceLive").doc(id).get(), fleetsOf(org, id)]);
+  const en = await entriesOf(org, id).catch(() => ({ entries: [], groups: {} }));
   if (!raceSnap.exists) return null;
   const r = raceSnap.data() || {};
   const d = liveSnap.exists ? liveSnap.data() : {};
@@ -82,6 +98,8 @@ async function build(id, y) {
     day,
     course: cleanCourse(cSnap.exists ? cSnap.data() : {}),
     fleets,
+    entries: en.entries,
+    groups: en.groups,
   };
 }
 

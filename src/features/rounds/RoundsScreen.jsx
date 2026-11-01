@@ -11,12 +11,14 @@ import { ensurePublic } from "@/features/liveScreen/liveActions";
 import { raceName } from "@/lib/raceLive";
 import { cleanEntry, currentStart, markName, nowPos, setRoute, whoBySail, whoOf } from "@/lib/raceRounds";
 import { applySay, checkLeg, cleanRoute, entriesOf, entryClasses, localSay, notYet } from "@/lib/roundSay";
-import { loadEntries, sayOps } from "./roundsStore";
+import { loadEntryDoc, sayOps } from "./roundsStore";
+import { GROUP_PICK, groupColor, groupMap } from "@/lib/roundScore";
 import { EntriesView } from "./EntriesView";
 
 // Şamandıra dönüşlerini sesle girme (Seyhun 2026-11-01, örnek /mnt/project-files/samandira-donus/ornek2.png): tam ekran.
 // "Konuş" ile numaralar sırayla söylenir ("24, 3542, 2"), düzeltme de sesle ("7. sırayı 512 yap", "7'yi sil", "5'ten sonra 88 ekle",
 // "sonraki şamandıra", "parkur 1 4 1 2 3 finiş"). Söylenen yapay zekaya gider (api/round-say), yoksa yalnız numaralar eklenir.
+// Üstte startın grubu (Mavi, Sarı…, Altın; sesle "sarı grup"); günün grup listesi varsa numaralar o grupla denetlenir.
 // Numaralar kayıt listesiyle denetlenir: listede yoksa satır sarı, en yakın numaralar önerilir. Dönüşler canlı ekrana yazılır.
 const noop = () => () => {};
 const clsKey = (raceId) => `rnd-cls-${raceId}`;
@@ -38,6 +40,7 @@ function Body({ orgId, raceId, onClose }) {
   const toast = useToast();
   const [L, setL] = useState(null);
   const [entries, setEntries] = useState([]);
+  const [groups, setGroups] = useState({});
   const [sheetWho, setSheetWho] = useState({});
   const [cls, setCls] = useState(() => readCls(raceId));
   const [entry, setEntry] = useState({ route: [], legs: [] });
@@ -54,11 +57,12 @@ function Body({ orgId, raceId, onClose }) {
 
   useEffect(() => {
     let off = false;
-    Promise.all([loadRoundsOf(orgId, raceId), loadEntries(orgId, raceId).catch(() => [])]).then(
+    Promise.all([loadRoundsOf(orgId, raceId), loadEntryDoc(orgId, raceId).catch(() => ({ rows: [], groups: {} }))]).then(
       ([d, en]) => {
         if (off) return;
         setL(d);
-        setEntries(en);
+        setEntries(en.rows);
+        setGroups(en.groups);
         const st = currentStart(d.starts, d.timer);
         const e = st ? cleanEntry(d.rounds[st.id] || { route: cleanRoute(st.course), legs: [] }) : { route: [], legs: [] };
         setEntry(e);
@@ -79,14 +83,17 @@ function Body({ orgId, raceId, onClose }) {
   const st = L ? currentStart(L.starts, L.timer) : null;
   const classes = useMemo(() => entryClasses(entries), [entries]);
   const pickCls = classes.some((c) => c.cls === cls) ? cls : classes[0]?.cls || "";
-  const pool = useMemo(() => entriesOf(entries, pickCls), [entries, pickCls]);
+  // Günün grup listesi varsa yalnız bu startın grubundakiler (gruplar her gün değişir)
+  const gm = useMemo(() => groupMap(groups[st?.day || ""]), [groups, st?.day]);
+  const inGrp = entry.grp && Object.values(gm).includes(entry.grp);
+  const pool = useMemo(() => entriesOf(entries, pickCls).filter((r) => !inGrp || gm[r.sail] === entry.grp), [entries, pickCls, inGrp, gm, entry.grp]);
   const known = useMemo(() => pool.map((r) => r.sail), [pool]);
   const who = useMemo(() => Object.fromEntries(entries.map((r) => [r.sail, r])), [entries]);
   const leg = entry.legs[k] || [];
   const checks = checkLeg(leg, known);
 
   const commit = async (next, msg) => {
-    const e = cleanEntry(next);
+    const e = cleanEntry({ grp: entry.grp, ...next });
     setHist((h) => [...h.slice(-30), { entry, k }]);
     setEntry(e);
     try {
@@ -132,18 +139,19 @@ function Body({ orgId, raceId, onClose }) {
     let base = entry;
     if (routeOp) base = setRoute(entry, routeOp.route);
     if (!base.route.length) return toast("Önce parkuru söyle: parkur 1 4 1 2 3 finiş");
-    const r = applySay({ legs: base.legs, k: Math.min(k, base.route.length - 1), route: base.route }, ops.filter((o) => o.op !== "route"), known);
+    const r = applySay({ legs: base.legs, k: Math.min(k, base.route.length - 1), route: base.route, grp: entry.grp }, ops.filter((o) => o.op !== "route"), known);
     const notes = [];
     if (r.dup.length) notes.push(`${r.dup.join(", ")} zaten yazılı`);
     if (r.skip.length) notes.push("bir kısmı uygulanamadı");
     if (r.k !== k) notes.unshift(markName(base.route[r.k]));
+    if (r.grp && r.grp !== entry.grp) notes.unshift(`${r.grp} grup`);
     setK(r.k);
     if (!r.done && !routeOp) return toast(notes.join(", ") || "Değişiklik yok");
-    await commit({ route: base.route, legs: r.legs }, notes.join(", "));
+    await commit({ route: base.route, legs: r.legs, grp: r.grp || entry.grp || "" }, notes.join(", "));
     requestAnimationFrame(() => listRef.current?.scrollTo({ top: 1e6, behavior: "smooth" }));
   };
 
-  const sp = useSpeech({ names: [], terms: ["şamandıra", "parkur", "finiş", "sıra"], onFinal: handle, onFail: (m) => toast(m) });
+  const sp = useSpeech({ names: [], terms: ["şamandıra", "parkur", "finiş", "sıra", "grup", ...GROUP_PICK], onFinal: handle, onFail: (m) => toast(m) });
   const listening = sp.status === "listening";
   const talk = () => (listening ? sp.stop("send") : sp.start({ autoStop: 20000 }));
 
@@ -176,14 +184,14 @@ function Body({ orgId, raceId, onClose }) {
     <div className="fixed inset-0 z-50 flex flex-col bg-bg pt-[env(safe-area-inset-top)]">
       {list && (
         <div className="absolute inset-0 z-10 flex flex-col bg-bg pt-[env(safe-area-inset-top)]">
-          <EntriesView onClose={() => setList(false)} orgId={orgId} raceId={raceId} rows={entries} setRows={setEntries} />
+          <EntriesView onClose={() => setList(false)} orgId={orgId} raceId={raceId} rows={entries} setRows={setEntries} groups={groups} setGroups={setGroups} />
         </div>
       )}
       <div className="flex items-center gap-3 px-4 pb-2 pt-3">
         <BackButton onClick={onClose} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[1.25rem] font-bold tracking-tight">{st ? `${raceName(st)} · ${entry.route[k] ? markName(entry.route[k]) : "Parkur"}` : "Dönüşler"}</p>
-          <p className="truncate text-[0.875rem] text-mut">{`${pickCls || "Kayıt listesi yok"}${total ? ` · ${total} tekne` : ""}`}</p>
+          <p className="truncate text-[0.875rem] text-mut">{[pickCls || (entries.length ? "" : "Kayıt listesi yok"), entry.grp ? `${entry.grp} grup` : "", total ? `${total} tekne` : ""].filter(Boolean).join(" · ")}</p>
         </div>
       </div>
 
@@ -202,6 +210,17 @@ function Body({ orgId, raceId, onClose }) {
               ))}
             </div>
           )}
+          <div className="flex gap-1.5 overflow-x-auto px-4 pb-2">
+            {GROUP_PICK.map((g) => {
+              const on = entry.grp === g;
+              return (
+                <button key={g} type="button" onClick={() => commit({ ...entry, grp: on ? "" : g }, on ? "Grup kaldırıldı" : `${g} grup`)} className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.875rem] font-semibold ${on ? "border-acc bg-acc text-white" : "border-line bg-card"}`}>
+                  <span className="size-2.5 rounded-full" style={{ background: groupColor(g) }} />
+                  {g}
+                </button>
+              );
+            })}
+          </div>
           {routeText !== null ? (
             <div className="flex gap-2 px-4 pb-2">
               <input value={routeText} onChange={(e) => setRouteText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveRoute()} placeholder="Parkur: 1 4 1 2 3 F" inputMode="numeric" className="min-w-0 flex-1 rounded-xl border border-line bg-card px-3 py-2.5 outline-none" />

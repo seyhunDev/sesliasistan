@@ -10,14 +10,20 @@ import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { compressImage } from "@/lib/image";
 import { cleanEntries, cleanOps } from "@/lib/roundSay";
+import { cleanGroups } from "@/lib/roundScore";
 import { kindOf } from "@/features/athletes/raceNotice";
 
 const ref = (orgId, id) => doc(db, "orgs", orgId, "raceLive", id, "entries", "list");
-export async function loadEntries(orgId, id) {
+// { rows: kayıt listesi, groups: { gün: [[yelken, grup]] } } (grup listesi günü günü; lib/roundScore.js)
+export async function loadEntryDoc(orgId, id) {
   const snap = await readServer(ref(orgId, id));
-  return snap.exists() ? cleanEntries(snap.data().rows) : [];
+  const d = snap.exists() ? snap.data() : {};
+  return { rows: cleanEntries(d.rows), groups: cleanGroups(d.groups) };
 }
-export const saveEntries = (orgId, id, rows) => setDoc(ref(orgId, id), { rows: cleanEntries(rows), at: new Date().toISOString() });
+export const loadEntries = (orgId, id) => loadEntryDoc(orgId, id).then((d) => d.rows);
+export const saveEntries = (orgId, id, rows) => setDoc(ref(orgId, id), { rows: cleanEntries(rows).map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== "grp"))), at: new Date().toISOString() }, { merge: true });
+// Günün grup listesi (dizi olduğu için o günün eskisi tümüyle değişir)
+export const saveGroups = (orgId, id, day, list) => setDoc(ref(orgId, id), { groups: cleanGroups({ [day]: list }) }, { merge: true });
 
 const MAX = 4 * 1024 * 1024;
 const toBase64 = (file) =>
