@@ -143,11 +143,13 @@ export async function scenarios(h) {
     const ok = await waitFor(async () => /Yelken bezleri|kuru yerde/i.test(await convo(page)), 6000);
     return [!!ok && aiCalls() === before, `${(await convo(page)).replace(/\s+/g, " ").slice(0, 120)} · yz isteği ${aiCalls() - before}`];
   });
-  await check("Halka renkleri", "cevaptan sonra", "yeşil halka ve onay (✓ Tamam), durum boşta", async () => {
+  await check("Halka renkleri", "cevaptan sonra", "yeşil halka ve onay (✓ Tamam) bir kez görünür, sonra asistan düğmesi geri gelir", async () => {
     await waitFor(async () => (await state(page)) === "idle", 5000);
     const c = await ringColor(page);
     const chk = await page.locator("[data-dome] .lring-check").count();
-    return [c === "yeşil" && chk === 1, `${c} · onay ${chk} · ${await state(page)}`];
+    const gone = await waitFor(async () => ((await page.locator("[data-dome] .lring-check").count()) === 0 ? true : null), 3000);
+    const tone = await page.locator("[data-dome] [data-orb]").first().getAttribute("data-tone").catch(() => "");
+    return [c === "yeşil" && chk === 1 && !!gone && tone === "idle", `${c} · onay ${chk} · sonra ${gone ? "kayboldu" : "kalıcı"} · ${tone} · ${await state(page)}`];
   });
   await check("Enerji (boşta)", "asistan açık, boşta", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
     await page.waitForTimeout(800);

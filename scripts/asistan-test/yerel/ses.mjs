@@ -19,7 +19,9 @@ group("Uydurma metin ayıklama")([
 const SP = (want) => ({ desc: want, fn: speechText, ok: (r) => r === want });
 group("Sesli okunuş")([
   ["Yarın saat 14:30'da antrenman var 🚤", SP("Yarın saat on dört otuzda antrenman var")],
-  ["Rüzgar 12 kt, 18°C.", SP("Rüzgar 12 knot, 18 derece.")],
+  ["Rüzgar 12 kt, 18°C.", SP("Rüzgar 12 not, 18 derece.")],
+  ["rüzgâr 2–4 kn, yarın kaç knot? 15 knotluk", SP("rüzgâr 2 ile 4 not, yarın kaç not? 15 notluk")],
+  ["Knot ve 12 knots", SP("not ve 12 not")],
   ["Foça yarışı 7-11 Ekim'de.", SP("Foça yarışı 7 ile 11 Ekim'de.")],
   ["Otel kişi başı 3.500 TL (4 gece).", SP("Otel kişi başı 3.500 lira, 4 gece.")],
   ["**Toplam:** ₺12.400", SP("Toplam: 12.400 lira")],
