@@ -1,8 +1,8 @@
-Commit: 2ebbe3d · İngilizce: Konuş/Sına düğmesinde gri geçiş kalktı, Geç sol hizada, konuşma şeridinde çizgi yok (#926)
-Zaman: 2026-11-01-1009 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41282974651
+Commit: a63d242 · Ana sayfa rüzgâr grafiği alçak: kısa barem aralığı, ölçek güne göre (#927)
+Zaman: 2026-11-01-1021 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41283649593
 
-TAM TEST · 01.11.2026 09:59:52
+TAM TEST · 01.11.2026 10:10:16
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1424/1424 geçti · 0 kalan · 560 sn
+SONUÇ: 1424/1424 geçti · 0 kalan · 589 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
