@@ -25,7 +25,7 @@ export async function liveScreenCmd(ctx, s, viaVoice) {
       await roundUndo();
       done("Geri aldım, son yazdığım dönüşleri sildim.", { engine: "local" }, viaVoice);
     } catch {
-      reply("Geri alamadım, Canlı ekran penceresinden düzelt.", { fail: true, engine: "local" }, viaVoice);
+      reply("Geri alamadım, Yayın sayfasından düzelt.", { fail: true, engine: "local" }, viaVoice);
     }
     return true;
   }

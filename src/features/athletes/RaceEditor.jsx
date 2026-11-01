@@ -882,7 +882,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
             </span>
             {/* Ana hesap: yarışın yönetimi (Canlı sekmesi: link, ekran, dönüşler; Start sayaç; Saha rüzgâr) tek düğmeden, Seyhun 2026-11-01 */}
             {rid && isOwner && (
-              <Link href={`/athletes/races/${rid}/media?tab=canli`} replace data-press className="raised flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.875rem] font-semibold">
+              <Link href={`/athletes/races/${rid}/yayin`} replace data-press className="raised flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.875rem] font-semibold">
                 Yarışı yönet
               </Link>
             )}
@@ -1029,7 +1029,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
           <ul className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
             {MEDIA_MENU.map(([k, l]) => ((k === "canli" ? !isOwner : !(r.startDate && today >= r.startDate)) ? null : (
               <li key={k}>
-                <Link href={`/athletes/races/${rid}/media?do=${k}`} replace data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
+                <Link href={k === "canli" ? `/athletes/races/${rid}/yayin` : `/athletes/races/${rid}/media?do=${k}`} replace data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
                   <b className="min-w-0 flex-1 text-[1rem] font-medium">{l}</b>
                   <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
                 </Link>

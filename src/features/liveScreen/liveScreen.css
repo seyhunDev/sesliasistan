@@ -112,6 +112,8 @@
 .lv-media { display: flex; flex-direction: column; gap: 0.6em; flex: 1; }
 .lv-screen { position: relative; flex: 1; min-height: 10em; border-radius: 0.8em; overflow: hidden; background: #000; }
 .lv-screen :is(video, iframe, img) { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: contain; background: #000; }
+/* Dikey video: kutu dikey (9:16), sol sütunda kalan boyu alır; yatay video 16:9 */
+.lv-screen.tall { aspect-ratio: 9 / 16; flex: none; width: auto; max-height: 60vh; align-self: center; min-height: 0; }
 .lv-thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4em; }
 .lv-thumbs button { aspect-ratio: 4 / 3; border-radius: 0.45em; overflow: hidden; border: 0; padding: 0; background: rgba(255, 255, 255, 0.12); cursor: pointer; }
 .lv-thumbs img, .lv-thumbs span { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -214,6 +216,7 @@
   .lv-rank .lv-lab .lv-chips { justify-content: flex-start; }
   .lv-clock { font-size: 92px; }
   .lv-screen { flex: none; aspect-ratio: 16 / 9; min-height: 0; }
+  .lv-screen.tall { aspect-ratio: 9 / 16; max-height: 70vh; width: auto; align-self: center; }
   .lv-rank :is(th, td).c, .lv-rank :is(th, td).s { display: none; }
   .lv-nm2 { display: block; color: var(--lv-mut); font-weight: 500; font-size: 0.82em; }
   .lv-nm2:empty { display: none; }
