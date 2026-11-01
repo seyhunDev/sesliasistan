@@ -880,10 +880,10 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                 <b className="truncate text-[1.75rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
               )}
             </span>
-            {/* Ana hesap: yarışın yönetimi (Canlı sekmesi: link, ekran, dönüşler; Start sayaç; Saha rüzgâr) tek düğmeden, Seyhun 2026-11-01 */}
+            {/* Ana hesap: yayın sayfası (sayaç, ekran, parkur-rüzgâr, dönüşler, sonuç PDF'i) tek düğmeden, Seyhun 2026-11-01 */}
             {rid && isOwner && (
               <Link href={`/athletes/races/${rid}/yayin`} replace data-press className="raised flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.875rem] font-semibold">
-                Yarışı yönet
+                Yayına git
               </Link>
             )}
           </span>
@@ -1187,7 +1187,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         {alert}
       {(raceDay ? tab === "prep" : tab === "sum") && (
         <>
-          {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/media?tab=res` : ""} />}
+          {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/yayin` : ""} />}
           {!over && (
             <>
               <Label right={todoList.length ? `${todoList.length} iş` : ""}>Yapılacaklar</Label>
@@ -1893,12 +1893,12 @@ function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark, resHref }
         ))}
       </div>
 
-      {/* Sonuçların yeri Multimedya › Sonuçlar (2026-10-28): burada bizimkilerin sırası tek satır */}
+      {/* Sonuçların yeri Yayın sayfası › Sonuçlar (2026-11-01): burada bizimkilerin sırası tek satır */}
       <Label right={r.results?.fleet ? `${r.results.fleet} tekne` : ""}>SONUÇLAR</Label>
       {resHref ? (
         <Link href={resHref} className={`${card} flex min-h-[2.875rem] items-center gap-3 px-4 py-2.5 active:bg-bg`}>
           <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${placed.length ? "font-medium" : "text-mut"}`}>{placed.length ? placed.map((x) => `${x.name.split(" ")[0]} ${x.place}.`).join(" · ") : chosen.length ? "Sonuç yok" : "Sporcu eklenmemiş"}</span>
-          <span className="shrink-0 text-[0.875rem] font-semibold text-acc">{placed.length ? "Tümü" : "Ekle"}</span>
+          <span className="shrink-0 text-[0.875rem] font-semibold text-acc">{placed.length ? "Tümü" : "Yayına git"}</span>
           <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
         </Link>
       ) : (

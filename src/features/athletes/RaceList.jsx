@@ -159,10 +159,10 @@ function NextTop({ r, onOpen }) {
           )}
         </div>
       )}
-      {/* Multimedya yalnız yarış günü (öncesinde yarış sayfasında; 2026-10-28 tek giriş) */}
+      {/* Yayın sayfası yarış günü (multimedya kalktı; Seyhun 2026-11-01) */}
       {r.id && a <= 0 && (
-        <Link href={`/athletes/races/${r.id}/media`} data-press className="raised mt-3 flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
-          Multimedya
+        <Link href={`/athletes/races/${r.id}/yayin`} data-press className="raised mt-3 flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+          Yayın
         </Link>
       )}
     </div>

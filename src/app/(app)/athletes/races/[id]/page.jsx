@@ -29,7 +29,6 @@ import { doc } from "firebase/firestore";
 import { updateDoc } from "@/lib/firebase/write";
 import { todayStr } from "@/lib/utils/format";
 import { goBack } from "@/lib/navTrail";
-import { AskButton, TabDock, raceDock, racing } from "@/features/raceMedia/RaceMedia";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
 export default function RacePage() {
@@ -185,15 +184,10 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     }
   };
 
-  // Yarış günlerinde sayfa multimedyaya geçer (Saha · Start · Sonuç, evreye göre sekme; Seyhun 2026-10-30). ⋯'den bölüm (?sec=) açılınca kalır.
+  // Multimedya sayfası kalktı (Seyhun 2026-11-01 "yarışın multimedyasını kaldır, tek Yayın"): yarış günü de bu sayfa kalır, Yayın düğmesi
+  // yayın sayfasına gider. ⋯'den bölüm (?sec=) açılınca kalır.
   const [sec] = useState(() => q.get("sec") || ""); // sayfa açılırken bir kez (RaceEditor açınca adresten siler)
-  const away = !!race?.id && !sec && racing(race);
-  useEffect(() => {
-    if (away) router.replace(`/athletes/races/${race.id}/media`);
-  }, [away, race?.id, router]);
-  // Alt çubuk yarış başlayınca (TabDock); yarıştan önce uygulamanın çubuğu görünür (TabBar "sa-plain")
-  const docked = !!race?.id && !!race.startDate && todayStr() >= race.startDate;
-  const plain = !!race && !missingRace && !docked;
+  const plain = !!race && !missingRace;
   useEffect(() => {
     if (!plain) return;
     window.dispatchEvent(new CustomEvent("sa-plain", { detail: true }));
@@ -218,7 +212,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      {!race || missingRace || away ? (
+      {!race || missingRace ? (
         <>
           <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]">{head}</section>
           <div className="relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pt-1">
@@ -255,9 +249,6 @@ function Race({ orgId, uid, email, by, mail, coach }) {
             onCoach={onCoach}
             onMailTo={(list) => updateDoc(doc(db, "users", uid), { mailTo: list }).catch(() => toast("Adres kaydedilemedi"))}
           />
-          {/* Yarış · Süre · Medya · Parkur · Sonuçlar tek sayfanın sekmeleri (Seyhun 2026-10-29 "aynı sayfa farklı sekmeler olsun");
-              yarıştan önce alt çubuk yok, sayfa hazırlık (Seyhun 2026-10-30, yaris-yapi) */}
-          {docked && <TabDock tabs={raceDock(race)} value="race" onChange={(k) => router.replace(`/athletes/races/${race.id}/media?tab=${k}`)} extra={<AskButton />} />}
         </>
       )}
     </main>

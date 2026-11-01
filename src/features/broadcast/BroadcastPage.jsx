@@ -8,7 +8,10 @@ import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseObs, loadCourse, loadLive, loadRoundsOf, saveStarts } from "@/features/athletes/raceLiveStore";
+import { addCourseObs, loadCourse, loadLive, loadRoundsOf, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { isActive, loadAthletes } from "@/features/athletes/data";
+import { ResultsTab } from "@/features/raceMedia/ResultsTab";
+import { GROUP_PICK, groupColor } from "@/lib/roundScore";
 import { Countdown, ownHere, useTimerRun } from "@/features/training/Countdown";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { VoidSheet, useRaceFlow } from "@/features/raceMedia/useRaceFlow";
@@ -17,7 +20,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { cleanLive, dirShort, ownedBy, raceName, zeroRace } from "@/lib/raceLive";
+import { cleanLive, dirShort, nextRaceNo, ownedBy, raceName, raceTime, raceTitle, zeroRace } from "@/lib/raceLive";
 import { cleanCourse, cleanObs, obsTitle, withLiveWind } from "@/lib/raceCourse";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { currentStart, markName, ytEmbed } from "@/lib/raceRounds";
@@ -27,7 +30,10 @@ import { todayStr } from "@/lib/utils/format";
 // yöneteceğiz"): herkese açık /canli ekranına giden her şey tek yerde. Lacivert üstte start sayacı (Başlat · İptal · Eşitle; sayaç diğer
 // cihazlara ve herkese açık sayfaya useLiveSync ile gider), Linki kopyala / Ekranı aç. Açık alanda üç bölüm:
 // Ekranda (canlı yayın linki ya da bu yarışın videoları, telefondan seçilen video yüklenir; dikey/yatay yazılır; Göster ekrana verir),
-// Parkur ve rüzgâr (son rüzgâr, parkur kartı, ölçüm ekleme; Parkur sekmesiyle aynı kayıt), Dönüşler (sesle giriş, kayıt listesi).
+// Parkur ve rüzgâr (son rüzgâr, parkur kartı, ölçüm ekleme; Parkur sekmesiyle aynı kayıt), Dönüşler (sesle giriş, kayıt listesi),
+// Sonuçlar (sonuç PDF'i; ResultsTab). Multimedya sayfası kalktı (Seyhun 2026-11-01 "tek bu yayın olanı kullanacağız").
+// Yarış seçimi (Seyhun 2026-11-01 "mavi grup birinci yarış, altın grup beşinci yarış"): üstte grup çipleri sıradaki startın grubunu seçer
+// (Başlat'ta rounds[start].grp yazılır); Yarışlar listesinde günün startları, seçilen yarışın dönüşleri ve grubu düzenlenir.
 const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "");
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const orient = (m) => (m.w && m.h ? (m.h > m.w ? "Dikey" : "Yatay") : "");
@@ -47,6 +53,9 @@ export function BroadcastPage({ orgId, id }) {
   const [list, setList] = useState(false);
   const [entries, setEntries] = useState([]);
   const [groups, setGroups] = useState({});
+  const [athletes, setAthletes] = useState([]);
+  const [grp, setGrp] = useState(""); // sıradaki startın grubu
+  const [pickId, setPickId] = useState(""); // Yarışlar listesinde seçilen start (boşsa sayacın yarışı)
   const file = useRef(null);
   const rdays = race ? raceDays(race) : null;
 
@@ -64,6 +73,7 @@ export function BroadcastPage({ orgId, id }) {
     loadLive(orgId, id).then((l) => on && setLive(l), () => {});
     loadCourse(orgId, id, today).then((c) => on && setCourse(c), () => {});
     loadEntryDoc(orgId, id).then((d) => on && (setEntries(d.rows), setGroups(d.groups)), () => {});
+    loadAthletes().then((d) => on && setAthletes(d.athletes || []), () => {});
     reload().then((d) => {
       if (!on) return;
       setYt(d.stream.url);
@@ -102,6 +112,24 @@ export function BroadcastPage({ orgId, id }) {
   useLiveSync({ orgId, raceId: id, setLive });
   const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today });
   const cur = tr.t.end != null || tr.t.left != null ? live.starts.find((x) => x.id === rf.ridOf(tr.t)) : null;
+  // Başlat: yarış açılır, seçili grup o startın dönüş kaydına yazılır
+  const flow = {
+    ...rf.flow,
+    onStart: (end, rid, prevT) => {
+      rf.flow.onStart(end, rid, prevT);
+      if (rid && grp) saveRounds(orgId, id, rid, { ...(L?.rounds?.[rid] || { route: [], legs: [] }), grp }).then(reload, () => {});
+    },
+  };
+  const setGroupOf = async (sid, g) => {
+    setGrp(g);
+    if (!sid) return;
+    try {
+      await saveRounds(orgId, id, sid, { ...(L?.rounds?.[sid] || { route: [], legs: [] }), grp: g });
+      await reload();
+    } catch {
+      toast("Kaydedilemedi. İnterneti kontrol et.");
+    }
+  };
 
   const copy = async () => {
     try {
@@ -178,8 +206,13 @@ export function BroadcastPage({ orgId, id }) {
       return "";
     }
   })();
-  const st = L ? currentStart(L.starts, L.timer) : null;
-  const entry = st ? L.rounds[st.id] : null;
+  const st = (pickId && live.starts.find((x) => x.id === pickId)) || (L ? currentStart(live.starts, L.timer) : null);
+  const entry = st && L ? L.rounds[st.id] : null;
+  const todays = [...live.starts].filter((x) => x.day === today).reverse();
+  const nextNo = nextRaceNo(live.starts, today, rdays);
+  const stGrp = st ? L?.rounds?.[st.id]?.grp || "" : "";
+  const chipGrp = cur ? stGrp : grp; // sayaç sürerken onun yarışının grubu, yoksa sıradakinin
+  const ours = athletes.filter((a) => race?.athleteIds?.includes(a.id));
   const row = "flex w-full items-center gap-3 px-4 py-3 text-left";
 
   return (
@@ -192,7 +225,18 @@ export function BroadcastPage({ orgId, id }) {
             <p className="truncate text-[0.8125rem] text-white/65">{race?.name || ""}</p>
           </div>
         </header>
-        <Countdown dark mode="start" race={rf.flow} title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} />
+        <div className="mt-3 flex items-center gap-2">
+          <span className="shrink-0 text-[0.8125rem] text-white/65">{cur ? raceName(cur) : `Sıradaki ${nextNo}. yarış`}</span>
+          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
+            {GROUP_PICK.map((g) => (
+              <button key={g} type="button" aria-pressed={chipGrp === g} onClick={() => setGroupOf(cur?.id || "", chipGrp === g ? "" : g)} className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] font-semibold ${chipGrp === g ? "bg-white text-[#141938]" : "ck-glass"}`}>
+                <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" />
+                {g}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Countdown dark mode="start" race={flow} title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} />
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button type="button" onClick={copy} data-press className="raised ck-pill font-semibold">
             Linki kopyala
@@ -204,6 +248,25 @@ export function BroadcastPage({ orgId, id }) {
       </section>
 
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-5">
+        {todays.length > 0 && (
+          <section>
+            <Head title="Yarışlar" right={`${todays.length} yarış`} />
+            <div className={`${card} overflow-hidden`}>
+              {todays.map((x) => {
+                const g = L?.rounds?.[x.id]?.grp || "";
+                const on = st?.id === x.id;
+                const state = cur?.id === x.id ? "Canlı" : x.void ? x.void : x.fin ? `Bitti${raceTime(x) ? ` · ${raceTime(x)}` : ""}` : "";
+                return (
+                  <button key={x.id} type="button" onClick={() => setPickId(on ? "" : x.id)} className={`${row} border-b border-line last:border-0 ${on ? "bg-accbg" : ""}`}>
+                    {g ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
+                    <span className={`min-w-0 flex-1 truncate font-semibold ${on ? "text-acc" : ""}`}>{[raceTitle(x), g].filter(Boolean).join(" · ")}</span>
+                    <span className="shrink-0 text-[0.875rem] text-mut">{[hm(x.at), state].filter(Boolean).join(" · ")}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
         <section>
           <Head title="Ekranda" right={onScreen ? (onScreen.kind === "live" ? "Canlı yayın" : "Video") : "Boş"} />
           <div className={`${card} overflow-hidden`}>
@@ -304,11 +367,16 @@ export function BroadcastPage({ orgId, id }) {
             </div>
           </div>
         </section>
+
+        <section>
+          <Head title="Sonuçlar" right="PDF" />
+          {race?.id ? <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} /> : null}
+        </section>
       </div>
 
       <VoidSheet ask={rf.ask} onChoose={rf.choose} />
       <AddSheet open={add !== null} pick0={add || 0} c={c} onClose={() => setAdd(null)} onAdd={addObs} />
-      <RoundsScreen open={voice} onClose={() => (setVoice(false), reload())} orgId={orgId} raceId={id} />
+      <RoundsScreen open={voice} onClose={() => (setVoice(false), reload())} orgId={orgId} raceId={id} startId={st?.id || ""} />
       {list && typeof document !== "undefined"
         ? createPortal(
             <div className="fixed inset-0 z-50 flex flex-col bg-bg pt-[env(safe-area-inset-top)]">
