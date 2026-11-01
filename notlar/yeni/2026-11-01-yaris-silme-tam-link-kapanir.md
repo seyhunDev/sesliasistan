@@ -10,3 +10,6 @@
 ## Sıradaki işler
 - Telefonda deneme: yarışı sil → Yarış takvimi (ortak) ve /canli linki.
 - Genel sıralamada "Kulübüm" süzgeci (bekliyor).
+
+## Ek (#948)
+- Yarış takvimi › ortak yarış sayfasında açan kulüp ya da Velora ana hesabı için "Sil" (iki dokunuş: Sil → Silinsin mi?), `dropShared`; eskiden silinmiş yarışların ortak kaydı buradan temizlenir.

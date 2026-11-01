@@ -9,8 +9,8 @@ import { Loading } from "@/components/ui/Loader";
 import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { NoticeDetails } from "@/features/athletes/NoticeView";
-import { addToClub, loadShared, loadSharedSheets } from "@/features/athletes/sharedRaces";
-import { filtersOf, fleetsOf, rankView, shortRange } from "@/lib/sharedRace";
+import { addToClub, dropShared, loadShared, loadSharedSheets } from "@/features/athletes/sharedRaces";
+import { canEditShared, filtersOf, fleetsOf, rankView, shortRange } from "@/lib/sharedRace";
 import { todayStr } from "@/lib/utils/format";
 import { placeOf } from "./RaceCalendar";
 
@@ -27,6 +27,7 @@ export function SharedRaceView({ id, club }) {
   const [sheets, setSheets] = useState(null);
   const [view, setView] = useState("info");
   const [busy, setBusy] = useState(false);
+  const [ask, setAsk] = useState(false); // "Sil" → "Silinsin mi?"
   useEffect(() => {
     loadShared(id, true).then(setS, () => setS(null));
     loadSharedSheets(id).then(setSheets, () => setSheets([]));
@@ -45,6 +46,21 @@ export function SharedRaceView({ id, club }) {
     } catch {
       toast("Eklenemedi");
       setBusy(false);
+    }
+  };
+  // Ortak kaydı silme (Seyhun 2026-11-01 "ortak yarışlardan da silebilmeliyim ana hesap olarak"): açan kulüp ya da Velora ana hesabı;
+  // iki dokunuş (Sil → Silinsin mi?), sonra takvime döner. Kulüplerdeki kopyalar durur.
+  const canDrop = !!s && !!club && canEditShared(s, club.uid, club.email);
+  const drop = async () => {
+    if (!ask) return setAsk(true);
+    setBusy(true);
+    try {
+      await dropShared(s.id, club.uid, club.email);
+      router.push("/races");
+    } catch {
+      toast("Silinemedi");
+      setBusy(false);
+      setAsk(false);
     }
   };
   const btn = "raised flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold";
@@ -91,11 +107,18 @@ export function SharedRaceView({ id, club }) {
         {s === null && <p className="pt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p>}
         {s && (s.notice ? <NoticeDetails n={s.notice} /> : <p className="pt-6 text-center text-[0.875rem] text-mut">Talimat bilgisi henüz yok.</p>)}
       </div>
-      {s && club && !ended && (
-        <div className="fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 mx-auto max-w-[30rem] px-5">
-          <Button onClick={add} loading={busy} full>
-            Kulübüme ekle
-          </Button>
+      {s && club && (!ended || canDrop) && (
+        <div className="fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-[30rem] gap-2 px-5">
+          {!ended && (
+            <Button onClick={add} loading={busy && !ask} full>
+              Kulübüme ekle
+            </Button>
+          )}
+          {canDrop && (
+            <Button variant={ask ? "danger" : "secondary"} onClick={drop} loading={busy && ask} full={ended}>
+              {ask ? "Silinsin mi?" : "Sil"}
+            </Button>
+          )}
         </div>
       )}
     </main>
