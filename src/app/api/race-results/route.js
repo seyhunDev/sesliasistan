@@ -21,7 +21,8 @@ Belgedeki sonuç listesini satır satır, eksiksiz çıkar. Uydurma; okuyamadı�
   - grp: final serisi gruplara bölünmüşse (Gold/Altın, Silver/Gümüş, Bronze/Bronz, Emerald/Zümrüt; grup sütunu, satırdaki işaret ya da grup başlığı) sporcunun grubu: "Altın", "Gümüş", "Bronz", "Zümrüt"; grup yoksa boş. Eleme serisinin renk grupları (Sarı, Mavi, Kırmızı) final grubu değildir, onları yazma. Gruplu sınıfı TEK fleet olarak yaz: önce Altın grubun sporcuları, sonra Gümüş, sonra Bronz; rank genel sıra (belgede genel sıra yoksa grup içindeki sıra). Belge yalnız bir grubun listesiyse (başlıkta "Silver Fleet", "Gümüş Grup" gibi) bütün satırlara o grubu yaz.
   - cat: sporcunun yanında ya da kategori sütununda "Junior", "J", "Jr" yazıyorsa "Junior"; "Bambino", "B" yazıyorsa "Bambino"; yazmıyorsa boş.
   - sex: belgede cinsiyet sütunu ya da işareti varsa (K, F, W, Kız, Female, Girl → "K"; E, M, Erkek, Male, Boy → "E"). Belgede yoksa sporcunun adından tahmin et (Türkçe adlarda: Ayşe, Zeynep, Elif, Defne, Ela → "K"; Ali, Mehmet, Can, Ege → "E"); her iki cinsiyette kullanılan ya da emin olmadığın adda boş bırak.
-- Tek tek yarış skorlarını ve diğer sütunları YAZMA (yalnız net puan).`;
+- r: tek tek yarışların puan sütunları (R1, R2, Q1, F1…; belgedeki sırayla, soldan sağa), her biri yazıldığı gibi: "3", "(14)" (atılan), "DNF", "OCS", "UFD". Yarış sütunu yoksa boş dizi.
+- Diğer sütunları YAZMA.`;
 
 const s = { type: "string" };
 const SCHEMA = {
@@ -38,7 +39,7 @@ const SCHEMA = {
             type: "array",
             items: {
               type: "object",
-              properties: { rank: { type: "number" }, name: s, sail: s, club: s, born: s, pts: { type: "number" }, sex: s, cat: s, grp: s },
+              properties: { rank: { type: "number" }, name: s, sail: s, club: s, born: s, pts: { type: "number" }, sex: s, cat: s, grp: s, r: { type: "array", items: s } },
               required: ["rank", "name"],
             },
           },
