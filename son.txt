@@ -1,8 +1,8 @@
-Commit: a63d242 · Ana sayfa rüzgâr grafiği alçak: kısa barem aralığı, ölçek güne göre (#927)
-Zaman: 2026-11-01-1021 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41283649593
+Commit: ab76941 · Ana sayfa: Sıradaki kartında tarih ve kalan gün; yarış bitince yarış havası kalkar (#928)
+Zaman: 2026-11-01-1351 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41298482561
 
-TAM TEST · 01.11.2026 10:10:16
+TAM TEST · 01.11.2026 13:40:29
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1424/1424 geçti · 0 kalan · 589 sn
+SONUÇ: 1425/1425 geçti · 0 kalan · 621 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -139,9 +139,9 @@ SONUÇ: 1424/1424 geçti · 0 kalan · 589 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 131/131
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 132/132
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 5/5
+  ✓ Ana sayfa: 6/6
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
