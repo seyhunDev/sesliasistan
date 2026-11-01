@@ -138,7 +138,7 @@ async function build(id, y) {
 // Açık yarışların listesi (/canli genel sayfası): canliEkran işaretleri → yarış adı/tarihi; bitmişler (bitiş günü geçen) düşer
 let listMemo = null; // { t, list }
 async function openList() {
-  if (listMemo && Date.now() - listMemo.t < 30e3) return listMemo.list;
+  if (listMemo && Date.now() - listMemo.t < 10e3) return listMemo.list;
   const db = adminDb();
   const ptr = await db.collection("canliEkran").limit(60).get();
   const today = trDay();
@@ -146,12 +146,20 @@ async function openList() {
     ptr.docs.map(async (d) => {
       const org = S(d.data()?.org, 80);
       if (!org || !ID.test(d.id)) return null;
-      const r = await db.collection("orgs").doc(org).collection("races").doc(d.id).get();
+      const base = db.collection("orgs").doc(org);
+      const [r, l] = await Promise.all([base.collection("races").doc(d.id).get(), base.collection("raceLive").doc(d.id).get()]);
       if (!r.exists) return null;
       const x = r.data() || {};
       const end = S(x.endDate || x.startDate, 10);
       if (end && end < today) return null;
-      return { id: d.id, name: S(x.name, 120), startDate: S(x.startDate, 10), endDate: S(x.endDate, 10), place: [x.district, x.city].filter(Boolean).join(", ").slice(0, 80) };
+      // Şu an süren yarış (sayaç ya da bitmemiş bugünkü start) → listede "Canlı" (Seyhun 2026-11-01 "yarış varsa anlık gösterilmeli")
+      const ld = l.exists ? l.data() : {};
+      const lv = cleanLive(ld);
+      const timer = ld.timer ? { ...pickTimer(ld.timer), at: Number(ld.timer.at) || 0 } : null;
+      const cur = currentStart(lv.starts, timer);
+      const live = !!cur && cur.day === today;
+      const todayRace = S(x.startDate, 10) <= today && today <= end;
+      return { id: d.id, name: S(x.name, 120), startDate: S(x.startDate, 10), endDate: S(x.endDate, 10), place: [x.district, x.city].filter(Boolean).join(", ").slice(0, 80), live, today: todayRace, status: lv.plan.status };
     }),
   );
   const list = rows.filter(Boolean).sort((a, b) => a.startDate.localeCompare(b.startDate));
@@ -166,7 +174,7 @@ export async function GET(request) {
   if (!adminReady()) return NextResponse.json({ error: "nokey" }, { status: 503 });
   if (!id) {
     try {
-      return NextResponse.json({ list: await openList(), now: Date.now() }, { headers: { "Cache-Control": "public, max-age=0, s-maxage=30" } });
+      return NextResponse.json({ list: await openList(), now: Date.now() }, { headers: { "Cache-Control": "public, max-age=0, s-maxage=10" } });
     } catch (e) {
       console.warn("[canli]", e?.message?.slice(0, 160));
       return NextResponse.json({ error: "fail" }, { status: 502 });

@@ -13,14 +13,20 @@ const when = (r) => (r.endDate && r.endDate !== r.startDate ? `${dayText(r.start
 export function LiveHome() {
   const [list, setList] = useState(null);
   const [err, setErr] = useState(false);
+  // 20 sn'de bir yenilenir: süren yarış "Canlı" olarak anında görünsün
   useEffect(() => {
     let on = true;
-    fetch("/api/canli", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("fail"))))
-      .then((j) => on && setList(Array.isArray(j.list) ? j.list : []))
-      .catch(() => on && setErr(true));
+    let t = 0;
+    const load = () =>
+      fetch("/api/canli", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("fail"))))
+        .then((j) => on && (setList(Array.isArray(j.list) ? j.list : []), setErr(false)))
+        .catch(() => on && setErr(true))
+        .finally(() => on && (t = setTimeout(load, 20000)));
+    load();
     return () => {
       on = false;
+      clearTimeout(t);
     };
   }, []);
   return (
@@ -34,7 +40,7 @@ export function LiveHome() {
           </div>
         </header>
         <div className="lv-card lv-home">
-          {err ? (
+          {err && !list ? (
             <div className="lv-empty">Bağlanılamadı.</div>
           ) : !list ? (
             <div className="lv-empty">Yükleniyor</div>
@@ -42,8 +48,11 @@ export function LiveHome() {
             <div className="lv-empty">Şu an açık yarış yok.</div>
           ) : (
             list.map((r) => (
-              <Link key={r.id} href={`/canli/${r.id}`} className="lv-row">
-                <b>{r.name || "Yarış"}</b>
+              <Link key={r.id} href={`/canli/${r.id}`} className={`lv-row${r.live ? " live" : ""}`}>
+                <b>
+                  {r.name || "Yarış"}
+                  {r.live ? <em className="lv-live">Canlı</em> : r.today ? <em className="lv-tag">{r.status === "ap" ? "Ertelendi" : r.status === "none" ? "Bugün yarış yok" : r.status === "done" ? "Gün bitti" : "Bugün"}</em> : null}
+                </b>
                 <span>{[when(r), r.place].filter(Boolean).join(" · ")}</span>
               </Link>
             ))
