@@ -1108,6 +1108,19 @@ async function rainStrip(h) {
     return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
   });
   await page.goto(page.url().replace(/\/[^/]*$/, "/"), { waitUntil: "load" });
+  // Sıradaki plan iş düğmesi biçiminde, yazılar tek satır (Seyhun 2026-10-31 "yazılar alta kayıyor")
+  await check("Ana sayfa", "sıradaki plan tek satır", "turkuaz kart: solda tarih, sağda kalan süre, plan adı ve tür · saat · yer birer satır, alt satıra kaymaz", async () => {
+    const card = page.locator("[aria-label='Sıradaki plan']").first();
+    if (!(await waitFor(() => card.count(), 8000))) return [true, "7 gün içinde plan yok"];
+    if (process.env.WX_SHOT) {
+      await card.evaluate((el) => el.scrollIntoView({ block: "center" }));
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `${process.env.WX_SHOT}-siradaki.png` }).catch(() => {});
+      await page.evaluate(() => window.scrollTo(0, 0));
+    }
+    const lines = await card.evaluate((el) => [...el.querySelectorAll(":scope > span.flex-1 > *")].map((x) => { const st = getComputedStyle(x); const lh = parseFloat(st.lineHeight) || parseFloat(st.fontSize) * 1.3; return Math.round(x.getBoundingClientRect().height / lh); }));
+    return [lines.length === 2 && lines.every((n) => n <= 1), `satırlar ${lines.join(",")}`];
+  });
   await check("Ana sayfa", "özellik kartları", "en altta Özet (Mesajlar) yok; İngilizce kartında sıradaki kelime ve Çalış · Dinle · Biliyorum", async () => {
     const en = page.locator("section[aria-label='İngilizce']");
     const ok = await waitFor(() => en.count(), 15000);
@@ -1125,7 +1138,7 @@ async function rainStrip(h) {
       const m = await page.evaluate(() => {
         const sec = document.querySelector("section[aria-label='Bugün'] > div");
         const bar = document.querySelector("nav[aria-label='Sekmeler']");
-        const btn = document.querySelector("section[aria-label='Bugün'] [data-press].ck-ibtn, section[aria-label='Bugün'] a[href='/notes']");
+        const btn = document.querySelector("section[aria-label='Bugün'] nav[aria-label='İşler'] .ck-ibtn, section[aria-label='Bugün'] a[href='/notes']");
         const svg = document.querySelector("svg[aria-label='Bugünün saatlik rüzgâr grafiği']");
         return { end: sec ? Math.round(sec.getBoundingClientRect().bottom) : -1, bar: bar ? Math.round(bar.getBoundingClientRect().top) : -1, btn: btn ? Math.round(btn.getBoundingClientRect().top) : -1, svg: svg ? Math.round(svg.getBoundingClientRect().height) : 0 };
       });
