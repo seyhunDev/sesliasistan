@@ -70,6 +70,16 @@
   font-size: clamp(14px, 1.02vw, 26px);
 }
 .lv-msg { margin: auto; font-size: 1.2em; }
+/* Kaldırılan yarışın linki ve genel sayfa /canli (açık yarışların listesi) */
+.lv-gone { display: flex; flex-direction: column; align-items: center; gap: 0.6em; text-align: center; }
+.lv-gone b { font-size: 1.6em; font-weight: 800; }
+.lv-gone span { color: var(--lv-mut); }
+.lv-gone .lv-btn { margin-top: 0.6em; }
+.lv-home { padding: 0.3em 1em; max-width: 46em; width: 100%; }
+.lv-row { display: block; padding: 0.85em 0; border-top: 1px solid var(--lv-line); color: var(--lv-fg); text-decoration: none; }
+.lv-row:first-child { border-top: 0; }
+.lv-row b { display: block; font-size: 1.15em; font-weight: 700; }
+.lv-row span { display: block; color: var(--lv-mut); font-size: 0.9em; margin-top: 0.15em; }
 .lv-mut { color: var(--lv-mut); }
 .lv-head { display: flex; align-items: center; gap: 0.9em; }
 .lv-ttl { min-width: 0; flex: 1; }

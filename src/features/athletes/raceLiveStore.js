@@ -243,12 +243,14 @@ export async function resetLive(orgId, id, patch, media = []) {
   if (patch.media) for (const m of media) for (const p of [mpath(orgId, m.id), tpath(orgId, m.id)]) await deleteObject(sref(store(), p)).catch(() => {});
 }
 
-// Yarış silinince: dosyalar, listeler ve kayıt
+// Yarış silinince: fotoğraf/video dosyaları, sonuç listeleri, parkur günleri, kayıt listesi ve canlı kayıt (raceWipe.js çağırır)
 export async function dropLive(orgId, id) {
   const l = await loadLive(orgId, id).catch(() => null);
   for (const m of l?.media || []) for (const p of [mpath(orgId, m.id), tpath(orgId, m.id)]) await deleteObject(sref(store(), p)).catch(() => {});
-  const sh = await getDocs(sheets(orgId, id)).catch(() => null);
-  for (const d of sh?.docs || []) await deleteDoc(d.ref).catch(() => {});
+  for (const sub of ["sheets", "course", "entries"]) {
+    const snap = await getDocs(collection(db, "orgs", orgId, "raceLive", id, sub)).catch(() => null);
+    for (const d of snap?.docs || []) await deleteDoc(d.ref).catch(() => {});
+  }
   await deleteDoc(live(orgId, id)).catch(() => {});
 }
 

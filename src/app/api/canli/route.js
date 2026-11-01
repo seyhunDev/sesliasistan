@@ -15,6 +15,8 @@ export const runtime = "nodejs";
 // (canliEkran/{yarış} = { org }). Sayfa 4 sn'de bir sorar; aynı cevap 2 sn bellekte ve CDN'de tutulur (okuma az kalsın).
 // GET ?id=<yarış>&y=<start>  → { race, starts, timer, rounds, screen, stream, media, wind, course, fleets, entries, groups, now }
 // POST { race } (ana hesap) → yarışı canlı ekrana açar, { id }
+// GET (id yok) → { list: [{ id, name, startDate, endDate, place }] } açık yarışlar (bitmemiş), genel sayfa /canli için
+// DELETE { race } (ana hesap) → işareti kaldırır (yarış silinince, raceWipe.js); link artık "yarış kaldırıldı" der
 const MEMO = 2000;
 const memo = new Map(); // anahtar → { t, body }
 const sheetMemo = new Map(); // org/yarış → { t, fleets }
@@ -104,12 +106,44 @@ async function build(id, y) {
   };
 }
 
+// Açık yarışların listesi (/canli genel sayfası): canliEkran işaretleri → yarış adı/tarihi; bitmişler (bitiş günü geçen) düşer
+let listMemo = null; // { t, list }
+async function openList() {
+  if (listMemo && Date.now() - listMemo.t < 30e3) return listMemo.list;
+  const db = adminDb();
+  const ptr = await db.collection("canliEkran").limit(60).get();
+  const today = trDay();
+  const rows = await Promise.all(
+    ptr.docs.map(async (d) => {
+      const org = S(d.data()?.org, 80);
+      if (!org || !ID.test(d.id)) return null;
+      const r = await db.collection("orgs").doc(org).collection("races").doc(d.id).get();
+      if (!r.exists) return null;
+      const x = r.data() || {};
+      const end = S(x.endDate || x.startDate, 10);
+      if (end && end < today) return null;
+      return { id: d.id, name: S(x.name, 120), startDate: S(x.startDate, 10), endDate: S(x.endDate, 10), place: [x.district, x.city].filter(Boolean).join(", ").slice(0, 80) };
+    }),
+  );
+  const list = rows.filter(Boolean).sort((a, b) => a.startDate.localeCompare(b.startDate));
+  listMemo = { t: Date.now(), list };
+  return list;
+}
+
 export async function GET(request) {
   const q = new URL(request.url).searchParams;
   const id = q.get("id") || "";
   const y = q.get("y") || "";
-  if (!ID.test(id) || (y && !ID.test(y))) return NextResponse.json({ error: "bad" }, { status: 400 });
   if (!adminReady()) return NextResponse.json({ error: "nokey" }, { status: 503 });
+  if (!id) {
+    try {
+      return NextResponse.json({ list: await openList(), now: Date.now() }, { headers: { "Cache-Control": "public, max-age=0, s-maxage=30" } });
+    } catch (e) {
+      console.warn("[canli]", e?.message?.slice(0, 160));
+      return NextResponse.json({ error: "fail" }, { status: 502 });
+    }
+  }
+  if (!ID.test(id) || (y && !ID.test(y))) return NextResponse.json({ error: "bad" }, { status: 400 });
   const key = `${id}/${y}`;
   const hit = memo.get(key);
   let body = hit && Date.now() - hit.t < MEMO ? hit.body : null;
@@ -153,5 +187,33 @@ export async function POST(request) {
   if (was.exists && was.data()?.org && was.data().org !== org) return NextResponse.json({ error: "Bu yarış başka kulüpte açık." }, { status: 409 });
   if (!was.exists) await ref.set({ org, at: new Date().toISOString() });
   ptrMemo.set(race, { t: Date.now(), org });
+  listMemo = null;
   return NextResponse.json({ id: race });
+}
+
+// Yarış silinince ana hesap işareti kaldırır (başka kulübün işaretine dokunulmaz)
+export async function DELETE(request) {
+  const au = await requireUser(request, { free: true });
+  if (!au.ok) return unauthorized(au);
+  if (!adminReady()) return NextResponse.json({ error: "Sunucu anahtarı tanımlı değil." }, { status: 503 });
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+  const race = S(body?.race, 60);
+  if (!ID.test(race)) return NextResponse.json({ error: "Yarış yok." }, { status: 400 });
+  const p = await profileOf(au.uid);
+  if (p.role !== "owner") return NextResponse.json({ error: "Yalnız ana hesap." }, { status: 403 });
+  const ref = adminDb().collection("canliEkran").doc(race);
+  const was = await ref.get();
+  if (was.exists && was.data()?.org && was.data().org !== p.orgId) return NextResponse.json({ error: "Bu yarış başka kulüpte açık." }, { status: 409 });
+  if (was.exists) await ref.delete();
+  ptrMemo.delete(race);
+  sheetMemo.delete(`${p.orgId}/${race}`);
+  entryMemo.delete(`${p.orgId}/${race}`);
+  for (const k of [...memo.keys()]) if (k.startsWith(`${race}/`)) memo.delete(k);
+  listMemo = null;
+  return NextResponse.json({ ok: true });
 }

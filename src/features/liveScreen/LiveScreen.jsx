@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { dirShort, livePhase, momentRaceName, planLabel, planStartMs, raceTime, raceTitle, seqState, seqSteps } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse } from "@/lib/raceCourse";
@@ -14,6 +15,7 @@ import "./liveScreen.css";
 // ekranda oynayan (canlı yayın ya da tekrar), ortada "şu an hangi şamandıra", sağda tek sıralama listesi (sıra, yelken, ad, kulüp, her şamandıradaki sırası). Grup grup yarışta (Mavi, Sarı…) startın grubu ve aynı yarışın diğer grupları; altta genel sıralama
 // (geçici: grupların yarışları toplanır, Kızlar/Junior; resmî PDF gelince ondan). Resmî sonuç (PDF) gelince liste ondan dizilir, elle finişten farklıysa "Elle 6". Önceki yarışlar ?y=<start>.
 const POLL = 4000;
+const GONE_MS = 6000; // kaldırılan yarışın linki bu kadar sonra /canli sayfasına geçer
 const pad = (n) => String(n).padStart(2, "0");
 const clockOf = (sec) => {
   const s = Math.max(0, Math.round(sec));
@@ -335,7 +337,7 @@ function Now({ data, sel, isCur }) {
 
 // Zemin (Seyhun 2026-11-01 "koyuluktan açıklığa, yarış parkuru havası"): üstte açık deniz mavisi, altta koyu lacivert; arkada soluk bir
 // parkur (şamandıralar, kesik rota, start hattı) ve dalga dokusu. Yazılar öne çıksın diye hepsi çok soluk.
-function Sea() {
+export function Sea() {
   return (
     <div className="lv-sea" aria-hidden="true">
       <svg viewBox="0 0 1600 900" preserveAspectRatio="none">
@@ -793,12 +795,32 @@ export function LiveScreen({ id, y = "" }) {
   const { data, err, skew } = useData(id, y);
   const [list, setList] = useState(false);
   const nowMs = useNow(skew, 1000); // evre ve bekleme sayacı için saat (sunucuyla eşlenmiş)
+  const router = useRouter();
+  // Yarış silinmiş ya da ekranı kapalı (Seyhun 2026-11-01 "sildiğimde linki de kullanılamasın"): paylaşılan link genel sayfaya (/canli) gider
+  const gone = !data && err === "yok";
+  useEffect(() => {
+    if (!gone) return;
+    const t = setTimeout(() => router.replace("/canli"), GONE_MS);
+    return () => clearTimeout(t);
+  }, [gone, router]);
   if (!data) {
     return (
       <div className="lv">
         <Sea />
         <div className="lv-page">
-          {err ? <div className="lv-msg">{err === "yok" ? "Bu yarışın canlı ekranı açık değil." : "Bağlanılamadı, yeniden deneniyor."}</div> : <div className="lv-msg lv-mut">Yükleniyor</div>}
+          {gone ? (
+            <div className="lv-msg lv-gone">
+              <b>Bu yarış kaldırıldı</b>
+              <span>Açık yarışların sayfasına geçiliyor.</span>
+              <Link href="/canli" className="lv-btn">
+                Açık yarışlar
+              </Link>
+            </div>
+          ) : err ? (
+            <div className="lv-msg">Bağlanılamadı, yeniden deneniyor.</div>
+          ) : (
+            <div className="lv-msg lv-mut">Yükleniyor</div>
+          )}
         </div>
       </div>
     );
