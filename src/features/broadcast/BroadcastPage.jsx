@@ -124,8 +124,7 @@ export function BroadcastPage({ orgId, id }) {
     },
   };
   const setGroupOf = async (sid, g) => {
-    setGrp(g);
-    if (!sid) return;
+    if (!sid) return setGrp(g);
     try {
       await saveRounds(orgId, id, sid, { ...(L?.rounds?.[sid] || { route: [], legs: [] }), grp: g });
       await reload();
@@ -214,7 +213,6 @@ export function BroadcastPage({ orgId, id }) {
   const todays = [...live.starts].filter((x) => x.day === today).reverse();
   const nextNo = nextRaceNo(live.starts, today, rdays);
   const stGrp = st ? L?.rounds?.[st.id]?.grp || "" : "";
-  const chipGrp = cur ? stGrp : grp; // sayaç sürerken onun yarışının grubu, yoksa sıradakinin
   const ours = athletes.filter((a) => race?.athleteIds?.includes(a.id));
   const row = "flex w-full items-center gap-3 px-4 py-3 text-left";
 
@@ -228,18 +226,26 @@ export function BroadcastPage({ orgId, id }) {
             <p className="truncate text-[0.8125rem] text-white/65">{race?.name || ""}</p>
           </div>
         </header>
-        <div className="mt-3 flex items-center gap-2">
-          <span className="shrink-0 text-[0.8125rem] text-white/65">{cur ? raceName(cur) : `Sıradaki ${nextNo}. yarış`}</span>
-          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
-            {GROUP_PICK.map((g) => (
-              <button key={g} type="button" aria-pressed={chipGrp === g} onClick={() => setGroupOf(cur?.id || "", chipGrp === g ? "" : g)} className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] font-semibold ${chipGrp === g ? "bg-white text-[#141938]" : "ck-glass"}`}>
-                <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" />
-                {g}
-              </button>
-            ))}
+        {cur ? (
+          // Başlat'tan sonra seçim kilitli: grup ve kaçıncı yarış yalnız yazar (Seyhun 2026-11-01 "yarış seçimi yapılıp kapanmalı")
+          <div className="mt-3 flex h-8 items-center gap-2 text-[0.9375rem] font-semibold">
+            {stGrp ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(stGrp) }} aria-hidden="true" /> : null}
+            <span className="truncate">{[stGrp ? `${stGrp} grup` : "", raceName(cur)].filter(Boolean).join(" · ")}</span>
           </div>
-        </div>
-        <Countdown dark mode="start" race={flow} title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} />
+        ) : (
+          <div className="mt-3 flex items-center gap-2">
+            <span className="shrink-0 text-[0.8125rem] text-white/65">{`Sıradaki ${nextNo}. yarış`}</span>
+            <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
+              {GROUP_PICK.map((g) => (
+                <button key={g} type="button" aria-pressed={grp === g} onClick={() => setGrp(grp === g ? "" : g)} className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] font-semibold ${grp === g ? "bg-white text-[#141938]" : "ck-glass"}`}>
+                  <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" />
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <Countdown dark mode="start" race={flow} startRace title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} />
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button type="button" onClick={copy} data-press className="raised ck-pill font-semibold">
             Linki kopyala
@@ -267,6 +273,20 @@ export function BroadcastPage({ orgId, id }) {
                   </button>
                 );
               })}
+              {st && cur?.id !== st.id && todays.some((x) => x.id === st.id) && (
+                // Biten yarışın grubu yanlış seçildiyse burada düzeltilir (süren yarışta kilitli)
+                <div className="flex items-center gap-2 border-t border-line px-4 py-2.5">
+                  <span className="shrink-0 text-[0.8125rem] text-mut">Grup</span>
+                  <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
+                    {GROUP_PICK.map((g) => (
+                      <button key={g} type="button" aria-pressed={stGrp === g} onClick={() => setGroupOf(st.id, stGrp === g ? "" : g)} className={`flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[0.8125rem] font-semibold ${stGrp === g ? "bg-acc text-white" : "bg-bg"}`}>
+                        <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" />
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         )}

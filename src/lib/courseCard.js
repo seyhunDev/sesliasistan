@@ -80,10 +80,10 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   const ko = pt("komite"), pi = pt("pin"), pid = pt("pinIdeal");
   const off = c.line == null ? 0 : diff(g.should, g.toPin);
   if (c.range) {
-    // aralıklı rüzgârda olması gereken hat da rüzgârla birlikte 3 sn'de iki yön arasında gidip gelir (oktaki animasyonla aynı anda)
+    // aralıklı rüzgârda olması gereken hat da rüzgârla birlikte döner (oktaki animasyonla aynı anda): bir uçta 5 sn durur, 2 sn'de yavaşça öbürüne döner
     const lineM = Math.max(c.lineM || 120, g.L * 0.5);
     const [ea, eb] = c.range.map((x) => S(add(g.komite, nrm(x - 90), lineM)));
-    const anim = (at, a, b) => `<animate attributeName="${at}" values="${f(a)};${f(b)};${f(a)}" keyTimes="0;.5;1" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1" dur="6s" repeatCount="indefinite"/>`;
+    const anim = (at, a, b) => `<animate attributeName="${at}" values="${f(a)};${f(a)};${f(b)};${f(b)};${f(a)}" keyTimes="0;.357;.5;.857;1" calcMode="spline" keySplines="0 0 1 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1" dur="14s" repeatCount="indefinite"/>`;
     o += `<line x1="${f(ko[0])}" y1="${f(ko[1])}" x2="${f(ea[0])}" y2="${f(ea[1])}" stroke="${acc}" stroke-opacity=".8" stroke-width="1.5" stroke-dasharray="2 4">${anim("x2", ea[0], eb[0])}${anim("y2", ea[1], eb[1])}</line>`;
   } else if (Math.abs(off) >= 1) o += `<line x1="${f(ko[0])}" y1="${f(ko[1])}" x2="${f(pid[0])}" y2="${f(pid[1])}" stroke="${mut}" stroke-width="1.5" stroke-dasharray="2 4"/>`;
   o += `<line x1="${f(pi[0])}" y1="${f(pi[1])}" x2="${f(ko[0])}" y2="${f(ko[1])}" stroke="${amb}" stroke-width="3" stroke-dasharray="7 5"/>`;
@@ -111,11 +111,11 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
     const sh = diff(g.A, c.wind);
     const arrow = `<line x1="0" y1="-14" x2="0" y2="8" stroke="${acc}" stroke-width="2.4" stroke-linecap="round"/><path d="M0 15 L-6 5 L6 5 Z" fill="${acc}"/>`;
     if (c.range) {
-      // aralık (Seyhun 2026-10-30 "20 ile 30 arasında oynuyor, animasyonlu, 3 saniyede bir"): ok iki yön arasında 3 sn'de gidip gelir,
+      // aralık (Seyhun 2026-10-30 "20 ile 30 arasında oynuyor, animasyonlu"; 2026-11-01 "bir derecede 5 sn kalsın, yavaşça öbürüne dönsün"): ok bir uçta 5 sn durur, 2 sn'de döner,
       // iki uç soluk çizgiyle görünür
       const [a, b] = c.range.map((x) => f(diff(g.A, x)));
       for (const r of [a, b]) o += `<line transform="translate(${w - 22} 30) rotate(${r})" x1="0" y1="-16" x2="0" y2="16" stroke="${acc}" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="2 3"/>`;
-      o += `<g transform="translate(${w - 22} 30) scale(1.4)"><g transform="rotate(${a})"><animateTransform attributeName="transform" type="rotate" values="${a};${b};${a}" keyTimes="0;.5;1" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1" dur="6s" repeatCount="indefinite"/>${arrow}</g></g>`;
+      o += `<g transform="translate(${w - 22} 30) scale(1.4)"><g transform="rotate(${a})"><animateTransform attributeName="transform" type="rotate" values="${a};${a};${b};${b};${a}" keyTimes="0;.357;.5;.857;1" calcMode="spline" keySplines="0 0 1 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1" dur="14s" repeatCount="indefinite"/>${arrow}</g></g>`;
       o += `<text x="${w - 44}" y="29" text-anchor="end" font-size="16" font-weight="500" fill="${ink}">${c.range[0]}–${c.range[1]}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
       o += `<text x="${w - 44}" y="46" text-anchor="end" font-size="11.5" font-weight="400" fill="${mut}">Rüzgâr · ${Math.abs(diff(c.range[0], c.range[1]))}° oynuyor</text>`;
     } else {
