@@ -885,11 +885,11 @@ group("Ana sayfa kartları")([
     const t = HT.trainingTile(plans, "2026-10-03");
     return t.big === "3 antrenman" && t.sub === "1 günlük yazılmadı" && t.warn;
   })],
-  ["işlemler: ana hesap", F("gruplu, Envanter ve Toplantı var, Instagram Sosyal grubunda, tek tip", () => {
+  ["işlemler: ana hesap", F("6 grup, tek Yarışlar, Rüzgâr yerine Hava, Ant. günlüğü yok, Instagram sosyal grupta, tek tip", () => {
     const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
     const a = g.flatMap((x) => x.items);
     const l = a.map((x) => x.label);
-    return g.map((x) => x.title).join(",") === "Günlük,Kulüp,Yönetim,Sosyal" && l[0] === "Planlar" && l.includes("Envanter") && l.includes("Fiş / Fatura") && l.includes("Aidatlar") && a.find((x) => x.href === "/training/day")?.label === "Antrenman" && a.find((x) => x.href === "/training")?.label === "Ant. günlüğü" && a.find((x) => x.id === "meeting") && g[3].items[0].brand === "instagram" && a.every((x) => x.icon && x.label && x.label.length <= 12 && (x.href || x.id)) && new Set(a.map((x) => x.href || x.id)).size === a.length;
+    return g.map((x) => x.title).join(",") === "Günlük,Kulüp,Para,Hava ve deniz,Kişisel,Kişiler ve sosyal" && l[0] === "Planlar" && l.includes("Görevler") && l.includes("Envanter") && l.includes("Fiş / Fatura") && l.includes("Aidatlar") && l.includes("Hava") && a.find((x) => x.href === "/training/day")?.label === "Antrenman" && !a.some((x) => ["/training", "/races", "/wind"].includes(x.href)) && l.filter((x) => x === "Yarışlar").length === 1 && a.find((x) => x.id === "meeting") && g[5].items[1].brand === "instagram" && HT.homeActions({}).flatMap((x) => x.items).find((x) => x.label === "Yarışlar")?.href === "/races" && a.every((x) => x.icon && x.label && x.label.length <= 12 && (x.href || x.id)) && new Set(a.map((x) => x.href || x.id)).size === a.length;
   })],
   ["işlemler: çalışan ve veli", F("çalışana Envanter/Kişiler yok; veliye Toplantı yok, Yoklama var; boş grup yok", () => {
     const sg = HT.homeActions({ staff: true, receipts: true });
