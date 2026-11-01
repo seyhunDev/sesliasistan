@@ -23,7 +23,7 @@ import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/featu
 import { cleanLive, dirShort, nextRaceNo, ownedBy, raceName, raceTime, raceTitle, zeroRace } from "@/lib/raceLive";
 import { cleanCourse, cleanObs, obsTitle, withLiveWind } from "@/lib/raceCourse";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { currentStart, markName, ytEmbed } from "@/lib/raceRounds";
+import { CLASS_PICK, PREP_PICK, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
 import { todayStr } from "@/lib/utils/format";
 
 // Yarışın yayın sayfası (/athletes/races/<id>/yayin, yalnız ana hesap; Seyhun 2026-11-01 "herkese açık multimedyasını ayrı bir sayfada
@@ -55,6 +55,8 @@ export function BroadcastPage({ orgId, id }) {
   const [groups, setGroups] = useState({});
   const [athletes, setAthletes] = useState([]);
   const [grp, setGrp] = useState(""); // sıradaki startın grubu
+  const [cls, setCls] = useState(""); // sıradaki startın sınıfı (uyarı işaretinde sınıf bayrağı)
+  const [prep, setPrep] = useState(""); // sıradaki startın hazırlık bayrağı (P, I, Z, U, Kara)
   const [pickId, setPickId] = useState(""); // Yarışlar listesinde seçilen start (boşsa sayacın yarışı)
   const file = useRef(null);
   const liveIn = useRef(false); // yarışlar yüklendi mi (yüklenmeden boş listeye yazılırsa günün yarışları silinirdi; multimedya sayfasındaki koruma)
@@ -120,13 +122,19 @@ export function BroadcastPage({ orgId, id }) {
     onStart: (end, rid, prevT) => {
       if (!liveIn.current) return toast("Yarışlar yükleniyor, bir saniye sonra tekrar başlat.");
       rf.flow.onStart(end, rid, prevT);
-      if (rid && grp) saveRounds(orgId, id, rid, { ...(L?.rounds?.[rid] || { route: [], legs: [] }), grp }).then(reload, () => {});
+      if (rid && (grp || cls || prep)) saveRounds(orgId, id, rid, { ...(L?.rounds?.[rid] || { route: [], legs: [] }), grp, cls, prep }).then(reload, () => {});
     },
   };
-  const setGroupOf = async (sid, g) => {
-    if (!sid) return setGrp(g);
+  // Biten yarışın grubu / sınıfı / bayrağı düzeltilir (rounds[sid]); sid yoksa sıradaki startın seçimi
+  const setPickOf = async (sid, patch) => {
+    if (!sid) {
+      if ("grp" in patch) setGrp(patch.grp);
+      if ("cls" in patch) setCls(patch.cls);
+      if ("prep" in patch) setPrep(patch.prep);
+      return;
+    }
     try {
-      await saveRounds(orgId, id, sid, { ...(L?.rounds?.[sid] || { route: [], legs: [] }), grp: g });
+      await saveRounds(orgId, id, sid, { ...(L?.rounds?.[sid] || { route: [], legs: [] }), ...patch });
       await reload();
     } catch {
       toast("Kaydedilemedi. İnterneti kontrol et.");
@@ -212,7 +220,27 @@ export function BroadcastPage({ orgId, id }) {
   const entry = st && L ? L.rounds[st.id] : null;
   const todays = [...live.starts].filter((x) => x.day === today).reverse();
   const nextNo = nextRaceNo(live.starts, today, rdays);
-  const stGrp = st ? L?.rounds?.[st.id]?.grp || "" : "";
+  const stE = st ? L?.rounds?.[st.id] || {} : {};
+  const stGrp = stE.grp || "";
+  // Seçim çipleri: Grup, Sınıf, Bayrak (sıradaki start için ya da biten yarışı düzeltmek için)
+  const chipRows = (val, on, size = "h-8 px-3") => [
+    ["Grup", GROUP_PICK, "grp", true],
+    ["Sınıf", CLASS_PICK, "cls", false],
+    ["Bayrak", PREP_PICK, "prep", false],
+  ].map(([lab, list, key, dot]) => (
+    <div key={key} className="flex items-center gap-2">
+      <span className={`w-11 shrink-0 text-[0.8125rem] ${on ? "text-mut" : "text-white/65"}`}>{lab}</span>
+      <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
+        {list.map((g) => (
+          <button key={g} type="button" aria-pressed={val[key] === g} onClick={() => setPickOf(on ? st.id : "", { [key]: val[key] === g ? "" : g })} className={`flex ${size} shrink-0 items-center gap-1.5 rounded-full text-[0.8125rem] font-semibold ${val[key] === g ? (on ? "bg-acc text-white" : "bg-white text-[#141938]") : on ? "bg-bg" : "ck-glass"}`}>
+            {dot ? <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
+            {key === "prep" && g === "Kara" ? "Kara bayrak" : g}
+          </button>
+        ))}
+      </div>
+    </div>
+  ));
+  const pickText = (e, name) => [e.cls, e.grp ? `${e.grp} grup` : "", name, prepName(e.prep)].filter(Boolean).join(" · ");
   const ours = athletes.filter((a) => race?.athleteIds?.includes(a.id));
   const row = "flex w-full items-center gap-3 px-4 py-3 text-left";
 
@@ -230,19 +258,13 @@ export function BroadcastPage({ orgId, id }) {
           // Başlat'tan sonra seçim kilitli: grup ve kaçıncı yarış yalnız yazar (Seyhun 2026-11-01 "yarış seçimi yapılıp kapanmalı")
           <div className="mt-3 flex h-8 items-center gap-2 text-[0.9375rem] font-semibold">
             {stGrp ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(stGrp) }} aria-hidden="true" /> : null}
-            <span className="truncate">{[stGrp ? `${stGrp} grup` : "", raceName(cur)].filter(Boolean).join(" · ")}</span>
+            <span className="truncate">{pickText(stE, raceName(cur))}</span>
           </div>
         ) : (
-          <div className="mt-3 flex items-center gap-2">
-            <span className="shrink-0 text-[0.8125rem] text-white/65">{`Sıradaki ${nextNo}. yarış`}</span>
-            <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
-              {GROUP_PICK.map((g) => (
-                <button key={g} type="button" aria-pressed={grp === g} onClick={() => setGrp(grp === g ? "" : g)} className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] font-semibold ${grp === g ? "bg-white text-[#141938]" : "ck-glass"}`}>
-                  <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" />
-                  {g}
-                </button>
-              ))}
-            </div>
+          // Sıradaki start: grup, sınıf (Optimist, ILCA 4…) ve hazırlık bayrağı (Seyhun 2026-11-01); Başlat'ta o startın kaydına yazılır
+          <div className="mt-3 space-y-2">
+            <p className="text-[0.8125rem] text-white/65">{`Sıradaki ${nextNo}. yarış`}</p>
+            {chipRows({ grp, cls, prep }, false)}
           </div>
         )}
         <Countdown dark mode="start" race={flow} startRace title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} />
@@ -262,30 +284,21 @@ export function BroadcastPage({ orgId, id }) {
             <Head title="Yarışlar" right={`${todays.length} yarış`} />
             <div className={`${card} overflow-hidden`}>
               {todays.map((x) => {
-                const g = L?.rounds?.[x.id]?.grp || "";
+                const e = L?.rounds?.[x.id] || {};
+                const g = e.grp || "";
                 const on = st?.id === x.id;
                 const state = cur?.id === x.id ? "Canlı" : x.void ? x.void : x.fin ? `Bitti${raceTime(x) ? ` · ${raceTime(x)}` : ""}` : "";
                 return (
                   <button key={x.id} type="button" onClick={() => setPickId(on ? "" : x.id)} className={`${row} border-b border-line last:border-0 ${on ? "bg-accbg" : ""}`}>
                     {g ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
-                    <span className={`min-w-0 flex-1 truncate font-semibold ${on ? "text-acc" : ""}`}>{[raceTitle(x), g].filter(Boolean).join(" · ")}</span>
+                    <span className={`min-w-0 flex-1 truncate font-semibold ${on ? "text-acc" : ""}`}>{[raceTitle(x), e.cls, g].filter(Boolean).join(" · ")}</span>
                     <span className="shrink-0 text-[0.875rem] text-mut">{[hm(x.at), state].filter(Boolean).join(" · ")}</span>
                   </button>
                 );
               })}
               {st && cur?.id !== st.id && todays.some((x) => x.id === st.id) && (
-                // Biten yarışın grubu yanlış seçildiyse burada düzeltilir (süren yarışta kilitli)
-                <div className="flex items-center gap-2 border-t border-line px-4 py-2.5">
-                  <span className="shrink-0 text-[0.8125rem] text-mut">Grup</span>
-                  <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
-                    {GROUP_PICK.map((g) => (
-                      <button key={g} type="button" aria-pressed={stGrp === g} onClick={() => setGroupOf(st.id, stGrp === g ? "" : g)} className={`flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[0.8125rem] font-semibold ${stGrp === g ? "bg-acc text-white" : "bg-bg"}`}>
-                        <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" />
-                        {g}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                // Biten yarışın grubu / sınıfı / bayrağı yanlış seçildiyse burada düzeltilir (süren yarışta kilitli)
+                <div className="space-y-2 border-t border-line px-4 py-2.5">{chipRows(stE, true, "h-7 px-2.5")}</div>
               )}
             </div>
           </section>
