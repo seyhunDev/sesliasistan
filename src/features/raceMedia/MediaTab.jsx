@@ -27,7 +27,6 @@ import { setShooting, useShooting } from "./shooting";
 const noSub = () => () => {};
 // Galeri bölümü bu yarışın mı (mediaByRace anahtarı: yarışın kimliği, eski kayıtlarda numarası)
 const ofStart = (g, s) => g.key === s.id || g.key === `n${s.n}`;
-const INFO_KEY = "sa-medya-bilgi3"; // 2026-10-26: iPhone uygulamasında aslı Fotoğraflar'da; yeni yazı bir kez daha görünür
 // Çekim ayarları başlıkta (Seyhun 2026-10-22, örnek yaris-tasarim/medya/medya-ust-bos-yukleniyor.png): Kayıt zaten alt sekmelerin yanında;
 // başlıktaki düğme Medya'nın "Çekim" penceresini açar (video kalitesi, telefonda tutulanlar, Telefondan sil)
 const SET_EV = "sa-medya-ayar";
@@ -103,20 +102,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
   const titleOf = new Map(groups.flatMap((g) => g.items.map((m) => [m.id, g.title])));
   const gallery = mediaByRace([...mediaOf(live.media, pick), ...upItems], live.starts, day);
   const count = (xs) => [xs.filter((m) => m.kind === "video").length, xs.filter((m) => m.kind !== "video").length].map((n, k) => n && `${n} ${k ? "fotoğraf" : "video"}`).filter(Boolean).join(" · ");
-  // Bilgi kartı bir kez (Seyhun 2026-10-22): ✕'e basınca bu telefonda bir daha çıkmaz
-  const [info, setInfo] = useState(false);
   const app = useSyncExternalStore(noSub, hasCamera, () => false); // iPhone uygulaması: aslı Fotoğraflar'a gider (VeloraKamera)
-  useEffect(() => {
-    try {
-      if (!localStorage.getItem(INFO_KEY)) setInfo(true);
-    } catch {}
-  }, []);
-  const closeInfo = () => {
-    setInfo(false);
-    try {
-      localStorage.setItem(INFO_KEY, "1");
-    } catch {}
-  };
   const first = (a) => (a.studentName || "").split(" ")[0];
 
   // Çekilenin anı (Süre sekmesindeki yarışlara göre: momentAt) ve üstüne basılan yazı ("4. yarış · Son 1 dakika · 0:42 kala" / yarış adı · saat)
@@ -387,17 +373,6 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
           ))}
         </div>
       )}
-      {info && (
-        <div className={`${card} relative mt-3 py-3 pl-3.5 pr-11 text-[0.875rem] leading-snug`}>
-          <b className="mb-0.5 block font-semibold">Videolar nerede saklanır?</b>
-          {app
-            ? "Aslı iPhone'un Fotoğraflar'ına kaydedilir. Buluta 1080p kopyası yüklenir, silinene kadar kalır. Velora'dan silince Fotoğraflar'daki aslı da silinir (iPhone onay sorar)."
-            : `Telefonda 7 gün saklanır, buluta da yüklenir. Bulutta ${VIDEO_Q[vq].label} tutulur. Çekildiği kalitede kalsın istersen 7 gün içinde İndir ile telefonuna kaydet.`}
-          <button type="button" onClick={closeInfo} aria-label="Bilgiyi kapat" className="absolute right-1.5 top-1.5 grid size-9 place-items-center rounded-full text-mut active:bg-bg">
-            <Icon name="x" className="size-5" />
-          </button>
-        </div>
-      )}
       {/* Yükleme sürerken ne kadarının gittiği yazar (Seyhun 2026-10-22: "yüklenip yüklenmediğini bilmiyorum"); sayfayla kaymaz,
           alttaki sekmelerin hemen üstünde sabit durur (Seyhun 2026-10-23) */}
       {shooting && !going.length && (
@@ -479,6 +454,12 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
         </Bar>
       )}
       <Sheet open={more} onClose={() => setMore(false)} title="Çekim">
+        {/* Nerede saklanır (Seyhun 2026-11-01: sayfadaki bilgi kartı yer kaplıyordu ve iPhone uygulamasında yanlış anlaşılıyordu; buraya taşındı) */}
+        <p className="mb-4 px-1 text-[0.875rem] leading-snug text-fg2">
+          {app
+            ? `Çektiğin video ve fotoğrafın aslı iPhone'un Fotoğraflar'ına kaydedilir. Buluta ${VIDEO_Q[vq].label} kopyası yüklenir, sen silene kadar kalır. Velora'dan silince Fotoğraflar'daki aslı da silinir.`
+            : `Safari'den çekince aslı Fotoğraflar'a kaydedilmez: telefonda 7 gün tutulur, buluta ${VIDEO_Q[vq].label} kopyası yüklenir. Aslını saklamak için 7 gün içinde İndir ile kaydet.`}
+        </p>
         <p className="mb-2 px-1 text-[0.9375rem] font-semibold">Video kalitesi</p>
         <Seg value={vq} onChange={(k) => (setVq(k), saveVideoQ(k))} options={[["hi", "1080p"], ["lo", "720p"]]} />
         <p className="mt-4 px-1 text-[0.9375rem] tabular-nums">{stockText}</p>
