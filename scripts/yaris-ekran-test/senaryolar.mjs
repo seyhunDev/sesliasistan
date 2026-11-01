@@ -11,8 +11,13 @@ const K = "yarış ekranı";
 const OWNER = "sahip@ornek.local";
 const PASS = "test-sifre-123";
 const CLUB = "dikili-c7cc8"; // kulüp projesinin adı (dikili.js); emülatörde ayrı proje
-const now = new Date();
 const ymd = (d) => d.toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+// Yarış günü sayfası evreye göre açılır (gün bitince Sonuç): akşam ya da sabah erken çalışınca test tarayıcısının saati bugün 13:00'e alınır,
+// yoksa Start sekmesi açılmaz ve testler saate göre düşer
+const real = new Date();
+const hour = +real.toLocaleString("en-US", { timeZone: "Europe/Istanbul", hour: "numeric", hourCycle: "h23" });
+const SHIFT = hour < 9 || hour >= 16;
+const now = SHIFT ? new Date(`${ymd(real)}T13:00:00+03:00`) : real;
 const TODAY = ymd(now);
 const plus = (n) => ymd(new Date(now.getTime() + n * 864e5));
 
@@ -94,6 +99,7 @@ export async function run(server, log = () => {}) {
     return rows;
   }
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "tr-TR", timezoneId: "Europe/Istanbul", serviceWorkers: "block" });
+  if (SHIFT) await ctx.clock.setSystemTime(now);
   await ctx.addInitScript(INIT({ sha }));
   let hang = false; // true: Firestore okuma bağlantısı asılı kalır (iPhone'da güncelleme/yenileme sonrası; Seyhun 2026-10-31)
   await ctx.route("**/*", async (route) => {
