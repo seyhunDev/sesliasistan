@@ -23,6 +23,11 @@ export function LiveScreenSheet({ open, onClose, orgId, raceId }) {
 
 const rowCls = "flex w-full items-center gap-3 px-4 py-3 text-left text-[0.9375rem]";
 
+// Yarış sayfasının Canlı sekmesinde de aynı gövde (RaceMedia, Seyhun 2026-11-01)
+export function LiveScreenBody({ orgId, raceId }) {
+  return <Body orgId={orgId} raceId={raceId} />;
+}
+
 function Body({ orgId, raceId }) {
   const toast = useToast();
   const [L, setL] = useState(null);

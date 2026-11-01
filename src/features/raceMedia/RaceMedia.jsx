@@ -37,7 +37,7 @@ import { MEDIA_MENU, RACE_SECS } from "@/lib/raceMenu";
 import { VoiceLight } from "@/features/home/TabBar";
 import { useAssistant } from "@/features/assistant/AssistantProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { LiveScreenSheet } from "@/features/liveScreen/LiveScreenSheet";
+import { LiveScreenBody } from "@/features/liveScreen/LiveScreenSheet";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
 // Süre: start sayacı (5 dk dizisi)
@@ -58,7 +58,10 @@ const RACE_TABS = [["course", "Saha"], ["sure", "Start"], ["res", "Sonuç"]];
 // ilk sekme Yarış (yarış sayfası /athletes/races/<id>), diğerleri multimedya (/media?tab=…); geçiş replace ile, geri tuşu listeye
 // Yarış günlerinde Yarış sekmesi yok (Seyhun 2026-10-30, yaris-yapi: altta Saha · Start · Sonuç); hazırlık ⋯ içinde. Yarıştan sonra yine var.
 export const racing = (r) => !!r?.startDate && todayStr() >= r.startDate && todayStr() <= (r.endDate || r.startDate);
-export const raceDock = (r) => (racing(r) ? RACE_TABS : [["race", "Yarış"], ...RACE_TABS]);
+// Canlı sekmesi (yalnız ana hesap, Seyhun 2026-11-01 "bu yarışın bütün şeylerini tek sayfadan yöneteyim"): herkese açık ekranın linki,
+// ekranda oynayan, şamandıra dönüşleri. Sayaç Start'ta, rüzgâr ve parkur Saha'da; hepsi aynı alt çubukta.
+const LIVE_TAB = ["canli", "Canlı"];
+export const raceDock = (r, owner = false) => [...(racing(r) ? [] : [["race", "Yarış"]]), ...RACE_TABS, ...(owner ? [LIVE_TAB] : [])];
 // Sayfa günün evresiyle açılır: sonuç geldiyse, gün bittiyse ya da yarış bittiyse Sonuç; yoksa Start
 export const firstTab = (r, starts, now = new Date()) => {
   const today = todayStr();
@@ -69,9 +72,9 @@ export const firstTab = (r, starts, now = new Date()) => {
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 
 // ⋯ menüsünün multimedya işleri (lib/raceMenu.js MEDIA_MENU): menüden ya da yarış sayfasının ⋯ menüsünden (?do=)
-function menuAct(k, { setSum, setTab, setAddDay, setReset, setCanli }) {
+function menuAct(k, { setSum, setTab, setAddDay, setReset }) {
   if (k === "sum") setSum(true);
-  else if (k === "canli") setCanli?.(true);
+  else if (k === "canli") setTab("canli");
   else if (k === "shot") (setTab("sure"), setTimeout(openMediaSettings, 150));
   else if (k === "day") setAddDay(true);
   else if (k === "reset") setReset(true);
@@ -81,7 +84,7 @@ export function RaceMedia({ orgId, id }) {
   const toast = useToast();
   const q = useSearchParams();
   const router = useRouter();
-  const [tabPick, setTab] = useState(RACE_TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
+  const [tabPick, setTab] = useState([...RACE_TABS, LIVE_TAB].some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
   useTabInUrl(tabPick);
   const [opened] = useState(() => new Date()); // açılış anı: ilk sekme ve Yarın kartı için evre
   const [shot, setShot] = useState(() => takeShot(id)); // alttaki Kayıt (ya da ana sayfadaki yarış şeridi) ile iPhone kamerasında çekilen dosya (Medya işler)
@@ -98,7 +101,6 @@ export function RaceMedia({ orgId, id }) {
   const [addDay, setAddDay] = useState(false);
   const [pickDay, setPickDay] = useState(false);
   const [reset, setReset] = useState(false);
-  const [canli, setCanli] = useState(false); // Canlı ekran penceresi (liveScreen)
   const { isOwner } = useAuth();
   const rdays = useMemo(() => (race ? raceDays(race) : null), [race]);
   // Açılışta bugün seçili (Seyhun 2026-10-19: "açtığım zaman bugün gösterilmesi lazım"). Telefon uygulamayı arkada açık tutar:
@@ -194,12 +196,12 @@ export function RaceMedia({ orgId, id }) {
   // Yarış sayfasının ⋯ menüsünden gelen iş (?do=sum|shot|day|reset) yarış yüklenince bir kez açılır
   const todo = useRef(q.get("do") || "");
   const ready = !!race;
-  const sets = { setSum, setTab, setAddDay, setReset, setCanli };
+  const sets = { setSum, setTab, setAddDay, setReset };
   const run = (k) => menuAct(k, sets);
   useEffect(() => {
     const k = todo.current;
     if (!ready || !k) return;
-    const t = setTimeout(() => ((todo.current = ""), menuAct(k, { setSum, setTab, setAddDay, setReset, setCanli })), 0);
+    const t = setTimeout(() => ((todo.current = ""), menuAct(k, { setSum, setTab, setAddDay, setReset })), 0);
     return () => clearTimeout(t);
   }, [ready]);
 
@@ -280,6 +282,11 @@ export function RaceMedia({ orgId, id }) {
         />
       )}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
+      {tab === "canli" && isOwner && (
+        <div className="mt-4">
+          <LiveScreenBody orgId={orgId} raceId={id} />
+        </div>
+      )}
       <VoidSheet ask={rf.ask} onChoose={rf.choose} />
       <DayPick
         open={pickDay}
@@ -309,7 +316,7 @@ export function RaceMedia({ orgId, id }) {
           change({ days: next }, () => saveDays(orgId, id, next));
         }}
       />
-      <TabDock tabs={raceDock(race)} value={tab} onChange={(k) => (k === "race" ? router.replace(`/athletes/races/${id}`) : setTab(k))} extra={<AskButton examples={tab === "course" ? COURSE_EX : RACE_EX} />} />
+      <TabDock tabs={raceDock(race, isOwner)} value={tab} onChange={(k) => (k === "race" ? router.replace(`/athletes/races/${id}`) : setTab(k))} extra={<AskButton examples={tab === "course" ? COURSE_EX : RACE_EX} />} />
       <ResetSheet
         open={reset}
         onClose={() => setReset(false)}
@@ -330,7 +337,6 @@ export function RaceMedia({ orgId, id }) {
           toast("Denemeler sıfırlandı");
         }}
       />
-      {isOwner && <LiveScreenSheet open={canli} onClose={() => setCanli(false)} orgId={orgId} raceId={id} />}
       <Sheet open={menu} onClose={() => setMenu(false)} title={race.name || "Yarış"}>
         {[
           RACE_SECS.map(([k, l]) => [k, l, () => router.replace(`/athletes/races/${id}?sec=${k}`)]),
@@ -368,7 +374,7 @@ function StartTab({ orgId, race, day, live, ours, onChange, rf, shot, onShotDone
 
 // Sekmeler en altta (Seyhun 2026-10-19: "alttan yönetelim"); sekmenin düğme şeridi (Countdown Bar) bunun üstünde durur (--bar-b).
 // Yanında tek Kayıt düğmesi (Seyhun 2026-10-22: ayrı Fotoğraf/Video düğmeleri kalktı): her sekmeden iPhone kamerasını açar (RecPick), çekilen Medya'da
-const TAB_ICON = { race: "cal", sure: "clock", media: "image", res: "flag", course: "wind" };
+const TAB_ICON = { race: "cal", sure: "clock", media: "image", res: "flag", course: "wind", canli: "video" };
 // extra: sağa eklenen düğme (antrenman sayfasında asistan, Seyhun 2026-10-23)
 export function TabDock({ tabs = TABS, value, onChange, onRec, extra = null }) {
   useEffect(() => {

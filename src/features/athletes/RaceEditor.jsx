@@ -880,6 +880,12 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                 <b className="truncate text-[1.75rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
               )}
             </span>
+            {/* Ana hesap: yarışın yönetimi (Canlı sekmesi: link, ekran, dönüşler; Start sayaç; Saha rüzgâr) tek düğmeden, Seyhun 2026-11-01 */}
+            {rid && isOwner && (
+              <Link href={`/athletes/races/${rid}/media?tab=canli`} replace data-press className="raised flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.875rem] font-semibold">
+                Yarışı yönet
+              </Link>
+            )}
           </span>
           <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
             <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round((doneN / stat.length) * 100)}%` }} />
