@@ -52,6 +52,7 @@ export default function RacePage() {
 const cachedRace = (orgId, id) => (id === "new" ? null : racesNow(orgId, 60e3)?.find((x) => x.id === id) || null);
 
 function Race({ orgId, uid, email, by, mail, coach }) {
+  const { isOwner } = useAuth(); // Canlı sekmesi yalnız ana hesapta
   const { id } = useParams();
   const q = useSearchParams();
   const router = useRouter();
@@ -256,7 +257,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
           />
           {/* Yarış · Süre · Medya · Parkur · Sonuçlar tek sayfanın sekmeleri (Seyhun 2026-10-29 "aynı sayfa farklı sekmeler olsun");
               yarıştan önce alt çubuk yok, sayfa hazırlık (Seyhun 2026-10-30, yaris-yapi) */}
-          {docked && <TabDock tabs={raceDock(race)} value="race" onChange={(k) => router.replace(`/athletes/races/${race.id}/media?tab=${k}`)} extra={<AskButton />} />}
+          {docked && <TabDock tabs={raceDock(race, isOwner)} value="race" onChange={(k) => router.replace(`/athletes/races/${race.id}/media?tab=${k}`)} extra={<AskButton />} />}
         </>
       )}
     </main>
