@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { dirShort, livePhase, momentRaceName, planLabel, planStartMs, raceTime, raceTitle, seqState, seqSteps } from "@/lib/raceLive";
+import { apText, dirShort, livePhase, momentRaceName, planLabel, planStartMs, raceTime, raceTitle, seqState, seqSteps } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse } from "@/lib/raceCourse";
 import { manualFinish, markLabel, markName, nowPos, officialFor, prepName, recTitle, sameSail, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
@@ -337,6 +337,7 @@ function Now({ data, sel, isCur }) {
 
 // Zemin (Seyhun 2026-11-01 "koyuluktan açıklığa, yarış parkuru havası"): üstte açık deniz mavisi, altta koyu lacivert; arkada soluk bir
 // parkur (şamandıralar, kesik rota, start hattı) ve dalga dokusu. Yazılar öne çıksın diye hepsi çok soluk.
+// Zemin: açıktan koyuya deniz, çok soluk dalga deseni; parkur çizgisi kaldırıldı (Seyhun 2026-11-01 "dandik parkur gibi")
 export function Sea() {
   return (
     <div className="lv-sea" aria-hidden="true">
@@ -355,19 +356,6 @@ export function Sea() {
           </mask>
         </defs>
         <rect width="1600" height="900" fill="url(#lvw)" mask="url(#lvk)" />
-      </svg>
-      <svg className="lv-track" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
-        <g fill="none" stroke="#fff" strokeOpacity=".16" strokeWidth="3">
-          <polyline points="800,610 1180,150 420,330 1180,150 800,610" strokeDasharray="10 14" />
-          <line x1="560" y1="640" x2="1040" y2="580" strokeWidth="5" strokeDasharray="16 12" />
-        </g>
-        <g fill="#fff" fillOpacity=".14">
-          <circle cx="1180" cy="150" r="22" />
-          <circle cx="420" cy="330" r="18" />
-          <circle cx="800" cy="610" r="18" />
-          <circle cx="1040" cy="580" r="12" />
-          <path d="M540 652 L560 616 L584 652 Z" />
-        </g>
       </svg>
     </div>
   );
@@ -395,56 +383,131 @@ function Waiting({ data, now, today, starts }) {
       note = `${nextDay ? "Yarın" : dayText(planDay)} ilk start ${at}`;
     }
   } else if (ms) {
-    label = ms > now ? (nextDay ? "Yarın ilk start'a" : "İlk start'a") : "Start bekleniyor";
+    label = ms > now ? (nextDay ? "Yarın ilk start'a" : plan.status === "ap" ? "Ertelenen start'a" : "İlk start'a") : "Start bekleniyor";
     value = ms > now ? clockOf((ms - now) / 1000) : "";
-    note = `${nextDay ? dayText(planDay) : "Bugün"} ${at}${plan.status === "ap" ? " · Start ertelendi" : ""}`;
-  } else if (plan.status === "ap") label = "Start ertelendi";
+    note = plan.status === "ap" ? apText(plan) : `${nextDay ? dayText(planDay) : "Bugün"} ${at}`;
+  } else if (plan.status === "ap") {
+    label = "Start ertelendi";
+    note = apText(plan);
+  }
   const chips = [entries.length ? `${entries.length} tekne` : "", classes.length > 1 ? `${classes.length} sınıf` : classes[0] || "", groups.length ? `${groups.length} grup` : ""].filter(Boolean);
   // Kartsız, ortada (Seyhun 2026-11-01): büyük geri sayım ekranın ortasında, altında küçük "Bugün 11:00"; yanda yalnız ekranda bir yayın
   // ya da genel sıralama varsa kart (boş "Genel sıralama" çizilmez)
   const side = data.screen?.kind || hasOverall(data);
+  const hasCourse = (data.course?.obs || []).length > 0;
   return (
-    <div className={`lv-waitgrid${side ? "" : " one"}`}>
-      <div className="lv-waitc">
-        <div className="lv-waitl">{label}</div>
-        <div className={`lv-clock${value ? "" : " lv-dim"}`}>{value || "--:--"}</div>
-        {note ? <div className="lv-waitn">{note}</div> : null}
-        {chips.length ? (
-          <div className="lv-chips lv-waitchips">
-            {chips.map((c) => (
-              <span key={c} className="lv-btn">
-                {c}
-              </span>
-            ))}
-          </div>
-        ) : null}
-        {plan.order.length ? (
-          <div className="lv-order">
-            <div className="lv-lab">
-              <span>Start sırası</span>
+    <div className="lv-waitwrap">
+      <div className={`lv-waitgrid${side ? "" : " one"}`}>
+        <div className="lv-waitc">
+          <div className="lv-waitl">{label}</div>
+          <div className={`lv-clock${value ? "" : " lv-dim"}`}>{value || "--:--"}</div>
+          {note ? <div className="lv-waitn">{note}</div> : null}
+          {chips.length ? (
+            <div className="lv-chips lv-waitchips">
+              {chips.map((c) => (
+                <span key={c} className="lv-btn">
+                  {c}
+                </span>
+              ))}
             </div>
-            {plan.order.map((o, i) => (
-              <div key={`${i}-${o.cls}-${o.grp}`} className="lv-r">
-                <b>
-                  {`${i + 1}. `}
-                  <Dot g={o.grp} />
-                  {planLabel(o)}
-                </b>
-                <span>{i === 0 && at && !nextDay ? at : ""}</span>
+          ) : null}
+          {plan.order.length ? (
+            <div className="lv-order">
+              <div className="lv-lab">
+                <span>Start sırası</span>
               </div>
-            ))}
+              {plan.order.map((o, i) => (
+                <div key={`${i}-${o.cls}-${o.grp}`} className="lv-r">
+                  <b>
+                    {`${i + 1}. `}
+                    <Dot g={o.grp} />
+                    {planLabel(o)}
+                  </b>
+                  <span>{i === 0 && at && !nextDay ? at : ""}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        {side ? (
+          <div className="lv-stack lv-waitall">
+            <Media key="wait" data={data} sel={null} starts={starts} isCur />
+            <Overall data={data} hideEmpty />
           </div>
         ) : null}
       </div>
-      {side ? (
-        <div className="lv-stack lv-waitall">
-          <Media key="wait" data={data} sel={null} starts={starts} isCur />
-          <Overall data={data} hideEmpty />
-        </div>
-      ) : null}
+      {/* Altta: günün rüzgâr tahmini, bugünkü parkur (ölçüm varsa) ve bu ekranda neler olacağı */}
+      <div className={`lv-waitinfo${hasCourse ? " two" : ""}`}>
+        <WindDay fc={data.forecast} now={now} at={!nextDay ? at : ""} />
+        {hasCourse ? <Course data={data} route="" /> : null}
+      </div>
+      <div className="lv-onscreen">
+        {["Start sayacı ve bayraklar", "Şamandıra sıralaması", "Genel sıralama", "Parkur ve rüzgâr", "Canlı yayın"].map((t) => (
+          <span key={t}>{t}</span>
+        ))}
+      </div>
     </div>
   );
 }
+// Günün rüzgâr tahmini grafiği (bekleme ekranı; Seyhun 2026-11-01 "gün boyu grafiğimiz, güzel bir grafik"): dolu alan rüzgâr, kesik çizgi
+// sağanak, 3 saatte bir saat ve yön, start saati işaretli, şimdi beyaz çizgi
+function WindDay({ fc, now, at }) {
+  const rows = (fc?.rows || []).filter((r) => +r.hh >= 6 && +r.hh <= 20);
+  if (rows.length < 2) return null;
+  const W = 720;
+  const H = 150;
+  const T = 26;
+  const B = 24;
+  const top = Math.max(15, Math.ceil((Math.max(...rows.map((r) => r.gust ?? r.wind)) + 2) / 5) * 5);
+  const x = (i) => 8 + (i * (W - 16)) / (rows.length - 1);
+  const y = (v) => T + (1 - v / top) * (H - T - B);
+  const xh = (hh, mm = 0) => {
+    const i = rows.findIndex((r) => +r.hh === hh);
+    return i < 0 ? null : x(Math.min(rows.length - 1, i + mm / 60));
+  };
+  const line = (key) => rows.map((r, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(r[key] ?? r.wind).toFixed(1)}`).join("");
+  const area = `${line("wind")}L${x(rows.length - 1)},${y(0)}L${x(0)},${y(0)}Z`;
+  const tr = new Date(now + 3 * 3600e3);
+  const nowX = xh(tr.getUTCHours(), tr.getUTCMinutes());
+  const startX = at ? xh(+at.slice(0, 2), +at.slice(3)) : null;
+  const atRow = at ? rows.find((r) => r.hh === at.slice(0, 2)) : null;
+  const lo = Math.min(...rows.map((r) => r.wind));
+  const hi = Math.max(...rows.map((r) => r.wind));
+  return (
+    <div className="lv-card lv-fc">
+      <div className="lv-lab">
+        <span>{`Rüzgâr tahmini${fc.place ? ` · ${fc.place}` : ""}`}</span>
+        <span>{atRow ? `Start saatinde ${dirShort(atRow.dir)} ${atRow.wind} kn, sağanak ${atRow.gust ?? atRow.wind}` : `${lo}–${hi} kn`}</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+        {[5, 10, 15, 20, 25, 30].filter((v) => v < top && (top <= 30 || v % 10 === 0)).map((v) => (
+          <line key={v} x1="0" x2={W} y1={y(v)} y2={y(v)} stroke="#fff" strokeOpacity=".1" />
+        ))}
+        <path d={area} fill="#fff" fillOpacity=".22" />
+        <path d={line("wind")} fill="none" stroke="#fff" strokeWidth="2.5" strokeLinejoin="round" />
+        <path d={line("gust")} fill="none" stroke="#fff" strokeOpacity=".55" strokeWidth="1.5" strokeDasharray="5 5" strokeLinejoin="round" />
+        {startX != null ? <line x1={startX} x2={startX} y1={T - 8} y2={H - B} stroke="var(--lv-acc)" strokeWidth="2.5" /> : null}
+        {nowX != null ? <line x1={nowX} x2={nowX} y1={T - 8} y2={H - B} stroke="#fff" strokeWidth="1.5" strokeDasharray="3 3" /> : null}
+        {rows.map((r, i) =>
+          +r.hh % 3 === 0 ? (
+            <g key={r.hh}>
+              <text x={x(i)} y={H - 6} fill="#fff" fillOpacity=".7" fontSize="13" textAnchor="middle">{`${+r.hh}`}</text>
+              <text x={x(i)} y={y(r.wind) - 10} fill="#fff" fontSize="13" fontWeight="700" textAnchor="middle">{r.wind}</text>
+              <g transform={`translate(${x(i)} 12) rotate(${r.dir ?? 0})`}>
+                <path d="M0 -6 L4 4 L0 2 L-4 4 Z" fill="#fff" fillOpacity=".8" />
+              </g>
+            </g>
+          ) : null,
+        )}
+      </svg>
+      <div className="lv-sumt">
+        <span>Dolu çizgi rüzgâr · kesik çizgi sağanak</span>
+        {at ? <span className="lv-acc">{`Start ${at}`}</span> : null}
+      </div>
+    </div>
+  );
+}
+
 // Genel sıralamada gösterilecek bir şey var mı (resmî PDF ya da bitmiş yarışlardan geçici)
 function hasOverall(data) {
   if ((data.fleets || []).some((f) => f.rows?.some((r) => r.pts != null && r.pts !== ""))) return true;
