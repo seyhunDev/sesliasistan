@@ -103,9 +103,18 @@
 .lv-btn.on { background: #fff; border-color: #fff; color: var(--lv-ink); }
 .lv-link { background: none; border: 0; padding: 0; font: inherit; color: var(--lv-fg); text-decoration: underline; text-underline-offset: 0.15em; cursor: pointer; }
 /* Bekleme ve özet evreleri: ortada büyük kart, sağda genel sıralama */
-.lv-waitgrid { flex: 1; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: inherit; min-height: 0; align-items: start; }
-.lv-waitc .lv-clock { font-size: clamp(72px, 9vw, 300px); }
-.lv-waitchips { justify-content: flex-start; margin-top: 0.4em; }
+.lv-waitgrid { flex: 1; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: inherit; min-height: 0; align-items: center; }
+.lv-waitgrid.one { grid-template-columns: minmax(0, 1fr); }
+/* Bekleme: kartsız, ortada (2026-11-01): başlık küçük, geri sayım büyük, altında saat; start sırası dar bir liste */
+.lv-waitc { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
+.lv-waitc .lv-clock { font-size: clamp(88px, 12vw, 360px); margin: 0; }
+.lv-waitl { color: var(--lv-mut); font-size: 1.15em; font-weight: 600; }
+.lv-waitn { color: var(--lv-mut); font-size: 1.25em; font-weight: 600; margin-top: 0.2em; }
+.lv-waitchips { justify-content: center; margin-top: 0.9em; }
+.lv-waitc .lv-order { width: min(100%, 26em); }
+.lv-waitc .lv-r { text-align: left; }
+.lv-back { color: var(--lv-dim); text-decoration: none; font-size: 1.6em; line-height: 1; padding: 0 0.25em; margin-left: -0.25em; font-weight: 500; }
+.lv-back:hover { color: var(--lv-fg); }
 .lv-waitchips .lv-btn { cursor: default; }
 .lv-order { margin-top: 1.2em; }
 .lv-order .lv-r b { display: flex; align-items: center; gap: 0.2em; }
@@ -244,7 +253,7 @@
   .lv-head .lv-btn { padding: 0.45em 0.8em; font-size: 13px; }
   .lv-grid { display: flex; flex-direction: column; gap: 12px; }
   .lv-waitgrid { display: flex; flex-direction: column; gap: 12px; }
-  .lv-waitc .lv-clock { font-size: 72px; }
+  .lv-waitc .lv-clock { font-size: 80px; }
   .lv-next { order: 1; }
   .lv-stack { display: contents; }
   .lv-now { order: 2; padding: 0.7em 1em; }

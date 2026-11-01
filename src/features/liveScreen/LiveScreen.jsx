@@ -400,14 +400,15 @@ function Waiting({ data, now, today, starts }) {
     note = `${nextDay ? dayText(planDay) : "Bugün"} ${at}${plan.status === "ap" ? " · Start ertelendi" : ""}`;
   } else if (plan.status === "ap") label = "Start ertelendi";
   const chips = [entries.length ? `${entries.length} tekne` : "", classes.length > 1 ? `${classes.length} sınıf` : classes[0] || "", groups.length ? `${groups.length} grup` : ""].filter(Boolean);
+  // Kartsız, ortada (Seyhun 2026-11-01): büyük geri sayım ekranın ortasında, altında küçük "Bugün 11:00"; yanda yalnız ekranda bir yayın
+  // ya da genel sıralama varsa kart (boş "Genel sıralama" çizilmez)
+  const side = data.screen?.kind || hasOverall(data);
   return (
-    <div className="lv-waitgrid">
-      <div className="lv-card lv-cd lv-waitc">
-        <div className="lv-lab">
-          <span>{label}</span>
-          <span>{note}</span>
-        </div>
+    <div className={`lv-waitgrid${side ? "" : " one"}`}>
+      <div className="lv-waitc">
+        <div className="lv-waitl">{label}</div>
         <div className={`lv-clock${value ? "" : " lv-dim"}`}>{value || "--:--"}</div>
+        {note ? <div className="lv-waitn">{note}</div> : null}
         {chips.length ? (
           <div className="lv-chips lv-waitchips">
             {chips.map((c) => (
@@ -435,12 +436,24 @@ function Waiting({ data, now, today, starts }) {
           </div>
         ) : null}
       </div>
-      <div className="lv-stack lv-waitall">
-        <Media key="wait" data={data} sel={null} starts={starts} isCur />
-        <Overall data={data} />
-      </div>
+      {side ? (
+        <div className="lv-stack lv-waitall">
+          <Media key="wait" data={data} sel={null} starts={starts} isCur />
+          <Overall data={data} hideEmpty />
+        </div>
+      ) : null}
     </div>
   );
+}
+// Genel sıralamada gösterilecek bir şey var mı (resmî PDF ya da bitmiş yarışlardan geçici)
+function hasOverall(data) {
+  if ((data.fleets || []).some((f) => f.rows?.some((r) => r.pts != null && r.pts !== ""))) return true;
+  const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
+  try {
+    return provisional({ starts: data.starts || [], rounds: data.rounds || {}, entries: data.entries || [], groups: data.groups || {}, who: whoBySail(data.fleets), year }).length > 0;
+  } catch {
+    return false;
+  }
 }
 
 // Gün özeti (gün bitince, ertesi gün ekran yeni güne geçene kadar): kaç yarış yapıldı, her yarışın birincisi, rüzgâr grafiği, genel sıralama
@@ -501,7 +514,7 @@ function Summary({ data, today }) {
         ) : null}
       </div>
       <div className="lv-stack lv-waitall">
-        <Overall data={data} />
+        <Overall data={data} hideEmpty />
       </div>
     </div>
   );
@@ -634,7 +647,8 @@ function Ranking({ data, sel, isCur, id }) {
 // grup içi sıra puan, eşitlikte birincilik sayısı, sonra son yarış). Kızlar ve Junior kendi içinde.
 // Sade liste (Seyhun 2026-11-01 "genel bilgi tarafını daha sade, liste hâlinde"): sıra, yelken, ad, kulüp, toplam; yarış yarış puan yok.
 // Kendi görünümünde (üstte Bugün · Genel): günün yarışı ana ekran, genel sıralama onu itmez.
-function Overall({ data }) {
+// hideEmpty: bekleme ve özet ekranında sonuç yokken kart çizilmez (Seyhun 2026-11-01 "genel sıralama şu an yok, olunca gösterilecek")
+function Overall({ data, hideEmpty = false }) {
   const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
   const who = useMemo(() => whoBySail(data.fleets), [data.fleets]); // kayıt listesinde olmayanlar için
   const prov = useMemo(() => provisional({ starts: data.starts || [], rounds: data.rounds || {}, entries: data.entries || [], groups: data.groups || {}, who, year }), [data.starts, data.rounds, data.entries, data.groups, who, year]);
@@ -688,6 +702,7 @@ function Overall({ data }) {
       </div>
     );
   }
+  if (!prov.length && hideEmpty) return null;
   if (!prov.length)
     return (
       <div className="lv-card lv-rank lv-all">
@@ -847,6 +862,10 @@ export function LiveScreen({ id, y = "" }) {
       <Sea />
       <div className="lv-page">
         <header className="lv-head">
+          {/* ince geri bağlantısı: açık yarışların listesine (Seyhun 2026-11-01 "göze batmayan bir geri") */}
+          <Link href="/canli" className="lv-back" aria-label="Yarışlar">
+            ‹
+          </Link>
           <div className="lv-ttl">
             <b>{head}</b>
             <span>{headSub}</span>
