@@ -108,7 +108,7 @@ export function cleanMedia(list) {
 // Elle eklenen günler (antrenman: yarıştan önce ya da sonra; Seyhun 2026-10-18)
 export const cleanDays = (list) => [...new Set((Array.isArray(list) ? list : []).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d || "")))].sort().slice(0, 60);
 // Günün programı (Seyhun 2026-11-01 "ilk yönetim sayfası günün start saatini belirlemek"): day günü, at ilk start saati ("11:00"),
-// order start sırası [{ cls, grp }], status: "" bekleniyor · "ap" ertelendi · "none" bugün yarış yok · "done" gün bitti (ekranda özet),
+// order yapılacak startlar [{ cls, grp, prep }] (Başlat ilkini kullanır ve listeden düşer; 2026-11-01), status: "" bekleniyor · "ap" ertelendi · "none" bugün yarış yok · "done" gün bitti (ekranda özet),
 // next yarının günü ve ilk start saati, showAt ekranın yeni güne geçeceği saat (varsayılan 06:00). Herkese açık ekranın evresi buna göre (livePhase).
 const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -117,7 +117,7 @@ export function cleanPlan(p) {
   const hm = (v, d = "") => (HM.test(v || "") ? v : d);
   const day = DAY.test(p?.day || "") ? p.day : "";
   const order = (Array.isArray(p?.order) ? p.order : [])
-    .map((o) => ({ cls: String(o?.cls || "").slice(0, 20), grp: String(o?.grp || "").slice(0, 20) }))
+    .map((o) => ({ cls: String(o?.cls || "").slice(0, 20), grp: String(o?.grp || "").slice(0, 20), prep: String(o?.prep || "").slice(0, 8) }))
     .filter((o) => o.cls || o.grp)
     .slice(0, 12);
   const next = p?.next && DAY.test(p.next.day || "") ? { day: p.next.day, at: hm(p.next.at) } : null;

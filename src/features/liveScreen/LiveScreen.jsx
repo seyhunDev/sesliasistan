@@ -840,9 +840,8 @@ export function LiveScreen({ id, y = "" }) {
   const phase = isCur ? livePhase({ plan: data.plan, starts, timer: data.timer, today, now: nowMs }) : "race";
   const head = phase === "race" ? title : data.race.name || "Yarış";
   const headSub = phase === "race" ? sub : [dayText(today), data.race.place].filter(Boolean).join(" · ");
-  // yarış evresinde sıradaki startlar (program sırasından bugün yapılanlar düşülür)
-  const doneToday = starts.filter((x) => x.day === today && !x.void).length;
-  const upcoming = phase === "race" ? data.plan.order.slice(doneToday) : [];
+  // yarış evresinde sıradaki startlar (Yayın sayfası Başlat'ta yapılan startı program sırasından düşer)
+  const upcoming = phase === "race" ? data.plan.order : [];
   return (
     <div className="lv">
       <Sea />
