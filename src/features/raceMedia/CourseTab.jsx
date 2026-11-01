@@ -168,18 +168,19 @@ export function CourseTab({ orgId, race, day, wind = [], onDropWind, onDay }) {
 }
 
 // Elle ekleme: ne, kim, derece (−5 −1 +1 +5), rüzgârda knot. Haritaya dokunulduysa ölçüm o noktaya konur.
-function AddSheet({ open, at, c, onClose, onAdd }) {
+// pick0: açılışta seçili ölçüm (PICKS sırası; yayın sayfası Rüzgâr / Parkur ekseni ile açar, Seyhun 2026-11-01)
+export function AddSheet({ open, at, c, onClose, onAdd, pick0 = 0 }) {
   return (
     <Sheet open={open} onClose={onClose} title="Ölçüm ekle">
-      {open && <AddBody at={at} c={c} onAdd={onAdd} />}
+      {open && <AddBody at={at} c={c} onAdd={onAdd} pick0={pick0} />}
     </Sheet>
   );
 }
-function AddBody({ at, c, onAdd }) {
-  const [pick, setPick] = useState(0);
+function AddBody({ at, c, onAdd, pick0 = 0 }) {
+  const [pick, setPick] = useState(pick0);
   const [by, setBy] = useState("ben");
   const lastOf = (k) => [...c.obs].reverse().find((x) => x.kind === k);
-  const [deg, setDeg] = useState(() => lastOf("wind")?.deg ?? 0);
+  const [deg, setDeg] = useState(() => lastOf(PICKS[pick0][0])?.deg ?? lastOf("wind")?.deg ?? 0);
   const [kn, setKn] = useState(() => lastOf("wind")?.kn ?? 8);
   const [deg2, setDeg2] = useState(null); // rüzgâr aralığının ikinci yönü (Seyhun 2026-10-30 "belli bir aralık seçebilmeliyim")
   const [kind, ref] = PICKS[pick];

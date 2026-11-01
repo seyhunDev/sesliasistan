@@ -84,7 +84,7 @@ async function build(id, y) {
   const media = live.media
     .filter((m) => m.url)
     .slice(-120)
-    .map((m) => ({ id: m.id, kind: m.kind, url: m.url, thumb: m.thumb || "", at: m.at, dur: m.dur || 0, phase: m.phase || "", sec: m.sec ?? null, end: m.end || "", rid: m.rid || "" }));
+    .map((m) => ({ id: m.id, kind: m.kind, url: m.url, thumb: m.thumb || "", at: m.at, dur: m.dur || 0, w: m.w || 0, h: m.h || 0, phase: m.phase || "", sec: m.sec ?? null, end: m.end || "", rid: m.rid || "" }));
   return {
     race: { name: S(r.name, 120), startDate: S(r.startDate, 10), endDate: S(r.endDate, 10), place: [r.district, r.city].filter(Boolean).join(", ").slice(0, 80) },
     starts: live.starts,

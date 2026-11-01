@@ -143,6 +143,7 @@ function Clock({ sel, isCur, timer, skew }) {
 
 function Media({ data, sel, starts, isCur }) {
   const [pick, setPick] = useState(null); // izleyicinin kendi seçtiği (ekrandakinin yerine)
+  const [tallId, setTallId] = useState(""); // boyu eninden uzun (dikey) olduğu oynarken anlaşılan video
   // canlı yarışta o günün çekimleri, önceki yarışta yalnız o yarışınkiler
   const items = useMemo(() => (data.media || []).filter((m) => (isCur ? (m.rid ? m.rid === sel?.id : m.at.slice(0, 10) === (sel?.day || data.day)) : m.rid === sel?.id)), [data.media, sel, data.day, isCur]);
   const scr = isCur ? data.screen || {} : {};
@@ -150,6 +151,8 @@ function Media({ data, sel, starts, isCur }) {
   const onScreen = scr.kind === "rec" ? (data.media || []).find((m) => m.id === scr.mid) : null;
   const show = pick || (scr.kind === "live" && yt ? { live: true } : onScreen);
   if (!show && !items.length) return null;
+  // Dikey video dikey kutuda tam boy, yatay 16:9 (Seyhun 2026-11-01): kayıttaki en boy, yoksa oynarken ölçülen
+  const tall = !!show && !show.live && (show.w && show.h ? show.h > show.w : tallId === show.id);
   const nameOf = (m) => momentRaceName(m, starts);
   return (
     <div className="lv-card lv-media">
@@ -175,11 +178,11 @@ function Media({ data, sel, starts, isCur }) {
         )}
       </div>
       {show && (
-        <div className="lv-screen">
+        <div className={`lv-screen${tall ? " tall" : ""}`}>
           {show.live ? (
             <iframe title="Canlı yayın" src={yt} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
           ) : show.kind === "video" ? (
-            <video key={show.id} src={show.url} poster={show.thumb || undefined} autoPlay muted playsInline controls loop={pick ? false : !!scr.loop} />
+            <video key={show.id} src={show.url} poster={show.thumb || undefined} autoPlay muted playsInline controls loop={pick ? false : !!scr.loop} onLoadedMetadata={(e) => e.currentTarget.videoHeight > e.currentTarget.videoWidth && setTallId(show.id)} />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={show.url} alt="" />
