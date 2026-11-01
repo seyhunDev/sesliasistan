@@ -1,8 +1,8 @@
-Commit: d6aa8d9 · Merge pull request #945 from seyhunDev/claude/project-thread-lo85ym
-Zaman: 2026-11-01-2129 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41335504760
+Commit: d073126 · Merge pull request #946 from seyhunDev/claude/project-thread-lo85ym
+Zaman: 2026-11-01-2149 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41337203450
 
-TAM TEST · 01.11.2026 21:15:07
+TAM TEST · 01.11.2026 21:33:35
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1425/1427 geçti · 2 kalan · 777 sn
+SONUÇ: 1424/1427 geçti · 3 kalan · 875 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -179,14 +179,17 @@ SONUÇ: 1425/1427 geçti · 2 kalan · 777 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/17
-  ✗ Yarış sayfası: 12/14
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 14/17
+  ✗ Yarış sayfası: 11/14
       ✗ “yarış günü, sporcu seçili”
           beklenen: açılır
           olan:     hata: locator.boundingBox: Timeout 30000ms exceeded.
       ✗ “Start”
           beklenen: çökmeden açılır, "Start sayacı" görünür
           olan:     sekmeler Saha,Start,Sonuç · alt çubukta Kayıt 0 · Başlat yanında Kayıt 1 · Başlat 1 · satırda çekim 1 · ayrı bölüm 0 · satır "1. yarış 5 dk start 12:00 15:00 sürdü" · bilgi kartı 0
+      ✗ “süre seçimi”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
   ✓ Antrenman: 1/1
   ✓ Asılı bağlantı: 2/2
 
