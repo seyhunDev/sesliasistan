@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 // Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01). Girişsiz okuma burada, yönetici anahtarıyla:
 // Firestore kuralları değişmedi, kulübün geri kalanı açılmaz. Yalnız ana hesabın "Canlı ekran"ı açtığı yarış okunur
 // (canliEkran/{yarış} = { org }). Sayfa 4 sn'de bir sorar; aynı cevap 2 sn bellekte ve CDN'de tutulur (okuma az kalsın).
-// GET ?id=<yarış>&y=<start>  → { race, starts, timer, rounds, screen, stream, media, wind, course, fleets, entries, groups, now }
+// GET ?id=<yarış>&y=<start>  → { race, starts, timer, rounds, screen, stream, media, wind, course, fleets, entries, groups, plan, forecast, now }
 // POST { race } (ana hesap) → yarışı canlı ekrana açar, { id }
 // GET (id yok) → { list: [{ id, name, startDate, endDate, place }] } açık yarışlar (bitmemiş), genel sayfa /canli için
 // DELETE { race } (ana hesap) → işareti kaldırır (yarış silinince, raceWipe.js); link artık "yarış kaldırıldı" der
@@ -67,6 +67,34 @@ async function entriesOf(org, id) {
   return v;
 }
 
+// Günün rüzgâr tahmini (bekleme ekranı; Seyhun 2026-11-01 "gün boyu grafiğimiz"): yarış yeri (spot, yoksa kayıtlı tahmin yeri) için
+// Open-Meteo saatlik rüzgâr; org/yarış/gün başına 30 dk bellekte
+const fcMemo = new Map();
+async function forecastOf(org, id, r, day) {
+  const sp = r.spot || r.weather?.place;
+  const lat = Number(sp?.lat);
+  const lon = Number(sp?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const k = `${org}/${id}/${day}`;
+  const hit = fcMemo.get(k);
+  if (hit && Date.now() - hit.t < 30 * 60e3) return hit.v;
+  let v = null;
+  try {
+    const q = new URLSearchParams({ latitude: lat, longitude: lon, timezone: "Europe/Istanbul", wind_speed_unit: "kn", start_date: day, end_date: day, hourly: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code" });
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?${q}`, { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const h = (await res.json()).hourly || {};
+      const N = (x) => (Number.isFinite(Number(x)) && x !== null ? Math.round(Number(x)) : null);
+      const rows = (h.time || []).map((t, i) => ({ hh: t.slice(11, 13), wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]), code: N(h.weather_code?.[i]) })).filter((x) => x.wind != null);
+      if (rows.length) v = { place: S(sp.name, 60), rows };
+    }
+  } catch (e) {
+    console.warn("[canli] tahmin", e?.message?.slice(0, 120));
+  }
+  fcMemo.set(k, { t: Date.now(), v });
+  return v;
+}
+
 async function build(id, y) {
   const org = await orgOf(id);
   if (!org) return null;
@@ -82,7 +110,7 @@ async function build(id, y) {
   const cur = currentStart(live.starts, timer);
   const sel = (y && live.starts.find((x) => x.id === y)) || cur;
   const day = sel?.day || trDay();
-  const cSnap = await base.collection("raceLive").doc(id).collection("course").doc(day).get();
+  const [cSnap, forecast] = await Promise.all([base.collection("raceLive").doc(id).collection("course").doc(day).get(), forecastOf(org, id, r, day)]);
   const media = live.media
     .filter((m) => m.url)
     .slice(-120)
@@ -103,6 +131,7 @@ async function build(id, y) {
     entries: en.entries,
     groups: en.groups,
     plan: live.plan,
+    forecast,
   };
 }
 

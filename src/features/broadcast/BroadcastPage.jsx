@@ -20,7 +20,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { cleanLive, cleanPlan, dirShort, nextRaceNo, ownedBy, raceName, raceTitle, zeroRace } from "@/lib/raceLive";
+import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dirShort, nextRaceNo, ownedBy, raceName, raceTitle, zeroRace } from "@/lib/raceLive";
 import { cleanCourse, cleanObs, obsTitle, withLiveWind } from "@/lib/raceCourse";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CLASS_PICK, PREP_PICK, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
@@ -58,6 +58,7 @@ export function BroadcastPage({ orgId, id }) {
   const [athletes, setAthletes] = useState([]);
   const [pickId, setPickId] = useState(""); // listede seçilen biten start (boşsa sayacın yarışı)
   const [editI, setEditI] = useState(-1); // listede açık olan bekleyen start (plan.order sırası)
+  const [ap, setAp] = useState(null); // tehir penceresi { min, why } (Seyhun 2026-11-01 "bir sebep belirterek tehir, bir saatlik")
   const [plan, setPlan] = useState(() => cleanPlan({})); // günün programı (raceLive.plan; herkese açık ekranın evresi buna göre)
   const file = useRef(null);
   const liveIn = useRef(false); // yarışlar yüklendi mi (yüklenmeden boş listeye yazılırsa günün yarışları silinirdi; multimedya sayfasındaki koruma)
@@ -127,6 +128,13 @@ export function BroadcastPage({ orgId, id }) {
   };
   const planDay = plan.day || today;
   const nextPlan = plan.order[0] || null; // sıradaki start (listenin ilk bekleyeni)
+  // Tehir: start saati min dakika ileri alınır (0 = belirsiz, saat silinir), sebep ekranda yazar; "Erteleme kalktı" eski saati geri getirir
+  const postpone = () => {
+    const from = plan.ap?.from || plan.at;
+    changePlan({ day: planDay, status: "ap", at: ap.min ? addMin(from, ap.min) : "", ap: { from, why: ap.why } });
+    setAp(null);
+  };
+  const unpostpone = () => changePlan({ day: planDay, status: "", at: plan.ap?.from || plan.at, ap: null });
   // Başlat: yarış açılır, sıradaki startın sınıf/grup/bayrağı o startın dönüş kaydına yazılır ve listeden düşer
   const flow = {
     ...rf.flow,
@@ -366,12 +374,47 @@ export function BroadcastPage({ orgId, id }) {
                 </div>
               );
             })}
+            {plan.status === "ap" ? <p className="border-b border-line px-4 py-2.5 text-[0.875rem] font-semibold text-warn">{apText(plan)}</p> : null}
+            {ap && plan.status !== "ap" ? (
+              // Tehir penceresi: süre (30 dk … 2 sa, Belirsiz) ve sebep; Ertele yeni saati yazar, ekranda sebep görünür
+              <div className="space-y-2 border-b border-line px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-11 shrink-0 text-[0.8125rem] text-mut">Süre</span>
+                  <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
+                    {[...AP_MIN, 0].map((m) => (
+                      <button key={m} type="button" aria-pressed={ap.min === m} onClick={() => setAp({ ...ap, min: m })} className={`h-7 shrink-0 rounded-full px-2.5 text-[0.8125rem] font-semibold ${ap.min === m ? "bg-acc text-white" : "bg-bg"}`}>
+                        {m === 0 ? "Belirsiz" : m < 60 ? `${m} dk` : `${m / 60} sa`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-11 shrink-0 text-[0.8125rem] text-mut">Sebep</span>
+                  <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
+                    {AP_WHY.map((w) => (
+                      <button key={w} type="button" aria-pressed={ap.why === w} onClick={() => setAp({ ...ap, why: w })} className={`h-7 shrink-0 rounded-full px-2.5 text-[0.8125rem] font-semibold ${ap.why === w ? "bg-acc text-white" : "bg-bg"}`}>
+                        {w}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="min-w-0 flex-1 truncate text-[0.875rem] text-mut">{ap.min ? `Yeni start ${addMin(plan.at, ap.min) || "—"}` : "Yeni saat sonra belirlenir"}</span>
+                  <Button variant="secondary" size="sm" onClick={() => setAp(null)}>
+                    Vazgeç
+                  </Button>
+                  <Button size="sm" onClick={postpone} disabled={!!ap.min && !plan.at}>
+                    Ertele
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             <div className="flex gap-2 p-3">
               <Button onClick={addRow} className="flex-1">
                 Start ekle
               </Button>
-              <Button variant={plan.status === "ap" ? "primary" : "secondary"} onClick={() => changePlan({ day: planDay, status: plan.status === "ap" ? "" : "ap" })}>
-                {plan.status === "ap" ? "Erteleme kalktı" : "Start ertelendi"}
+              <Button variant={plan.status === "ap" ? "primary" : "secondary"} onClick={() => (plan.status === "ap" ? unpostpone() : setAp(ap ? null : { min: 60, why: AP_WHY[0] }))}>
+                {plan.status === "ap" ? "Erteleme kalktı" : "Tehir"}
               </Button>
               <Button variant={plan.status === "done" ? "primary" : "secondary"} onClick={() => changePlan({ day: planDay, status: plan.status === "done" ? "" : "done", next: plan.next || { day: tomorrow, at: plan.at } })}>
                 {plan.status === "done" ? "Günü aç" : "Günü bitir"}

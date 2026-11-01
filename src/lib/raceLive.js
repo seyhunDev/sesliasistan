@@ -121,8 +121,26 @@ export function cleanPlan(p) {
     .filter((o) => o.cls || o.grp)
     .slice(0, 12);
   const next = p?.next && DAY.test(p.next.day || "") ? { day: p.next.day, at: hm(p.next.at) } : null;
-  return { day, at: hm(p?.at), order, status: PLAN_STATUS.includes(p?.status) ? p.status : "", next, showAt: hm(p?.showAt, "06:00") };
+  const status = PLAN_STATUS.includes(p?.status) ? p.status : "";
+  // Tehir (Seyhun 2026-11-01 "bir sebep belirterek tehir basabilirim, bir saatlik"): from eski saat, why sebep; at yeni saat (belirsizse boş)
+  const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60) } : null;
+  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap };
 }
+// Tehir cümlesi: "Start 12:00'a ertelendi (11:00) · Rüzgâr yok" ya da "Start ertelendi, yeni saat belli değil · Fırtına"
+export function apText(plan) {
+  if (!plan || plan.status !== "ap") return "";
+  const why = plan.ap?.why || "";
+  const base = plan.at ? `Start ${plan.at}'a ertelendi${plan.ap?.from ? ` (${plan.ap.from})` : ""}` : "Start ertelendi, yeni saat belli değil";
+  return why ? `${base} · ${why}` : base;
+}
+export const AP_MIN = [30, 60, 90, 120];
+export const AP_WHY = ["Rüzgâr yok", "Çok rüzgâr", "Yağış", "Fırtına", "Diğer"];
+// Saate dakika ekler: "11:00" + 60 → "12:00" (23:59'u aşmaz)
+export const addMin = (at, min) => {
+  if (!HM.test(at || "")) return "";
+  const t = Math.min(23 * 60 + 59, +at.slice(0, 2) * 60 + +at.slice(3) + min);
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+};
 export const planLabel = (o) => [o.cls, o.grp].filter(Boolean).join(" · ");
 // Ekranın evresi: "race" sayaç sürüyor ya da bugün start var; "summary" gün bitti (ertesi gün showAt'e kadar); "wait" start bekleniyor
 export function livePhase({ plan, starts, timer, today, now = Date.now() }) {
