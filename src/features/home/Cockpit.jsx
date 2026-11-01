@@ -13,7 +13,6 @@ import { useNow } from "@/hooks/useNow";
 import { isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
-import { ActionGrid } from "@/components/ui/ActionGrid";
 import { CockpitWind } from "./CockpitWind";
 import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
@@ -122,16 +121,29 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
 }
 
 // Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan.
-// "A · Tarih kutusu" (Seyhun 2026-10-31; iş düğmelerine benzemesin, sade olsun): solda üstteki gün kutularına benzer ince camgöbeği çerçeveli
-// tarih kutusu (gün adı / Bugün / Yarın, büyük gün, ay), yanında tek satır başlık, altında tek satır saat · yer, sağda kalan süre. Zemin yok;
-// hiçbir yazı alt satıra kaymaz. Antrenmansa altında Yoklama · Süre (iş düğmeleri). Dokununca plan açılır.
+// Turkuaz kart (ck-plan, renk aynı; Seyhun 2026-11-01 "önemli olan tarih… kaç gün kaldı… yanında ne olduğu, altında küçük açıklaması"):
+// solda saatin yerinde tarih (gün adı / Bugün, büyük gün, ay; sağında ince çizgi), ortada tek satır plan adı, altında tek satır küçük
+// tür · saat · yer, sağda büyük kalan süre ("7 gün kaldı", "Yarın", "2 sa kaldı"). Hiçbir yazı alt satıra kaymaz.
+// Antrenmansa kartın içinde Yoklama ve Süre (widget'taki gibi). Karta dokununca plan açılır.
 export function planWhen(p, now, today) {
   const days = Math.round((Date.parse(`${p.date}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5);
   const d = new Date(`${p.date}T12:00`);
-  const top = days === 0 ? "Bugün" : days === 1 ? "Yarın" : cap(d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""));
+  const top = days === 0 ? "Bugün" : cap(d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""));
   const mon = cap(d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", ""));
   const mins = days === 0 && p.time ? Math.round((new Date(`${p.date}T${p.time}`) - now) / 60000) : null;
-  const left = days > 1 ? `${days} gün` : days === 1 ? "" : mins == null ? "" : mins <= 0 ? "Şimdi" : mins < 60 ? `${mins} dk` : `${Math.floor(mins / 60)} sa${mins % 60 ? ` ${mins % 60} dk` : ""}`;
+  // left: [büyük, küçük]
+  const left =
+    days > 1
+      ? [String(days), "gün kaldı"]
+      : days === 1
+        ? ["Yarın", ""]
+        : mins == null
+          ? ["Bugün", ""]
+          : mins <= 0
+            ? ["Şimdi", ""]
+            : mins < 60
+              ? [`${mins} dk`, "kaldı"]
+              : [`${Math.floor(mins / 60)} sa`, "kaldı"];
   return { top, day: d.getDate(), mon, left };
 }
 function NextPlan({ now }) {
@@ -143,30 +155,38 @@ function NextPlan({ now }) {
   if (!p) return null;
   const w = planWhen(p, now, today);
   const sail = isTraining(p);
+  const sub = [planTag(p), p.time, p.place].filter(Boolean).join(" · ");
   // Antrenmansa Süre'nin yanında Yoklama (Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
   const att = sail && canSeeAthletes(profile?.email);
-  const acts = [
-    att && { key: "att", icon: "checks", label: "Yoklama", href: attHref(p.date, today) || "/athletes/attendance" },
-    sail && { key: "sure", icon: "clock", label: "Süre", href: `/training/day?id=${p.id}` },
-  ].filter(Boolean);
-  const sub = [p.time, p.place].filter(Boolean).join(" · ");
   return (
-    <div className="mt-4">
-      <button type="button" data-press="row" onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3.5 text-left">
-        <span className="w-[3.375rem] shrink-0 rounded-[0.875rem] border-[1.5px] border-[#67e8f9] pb-1.5 pt-[0.4375rem] text-center leading-none">
-          <small className="block text-[0.75rem] font-semibold text-[#67e8f9]">{w.top}</small>
-          <b className="mt-0.5 block text-[1.5rem] font-bold tabular-nums">{w.day}</b>
-          <small className="mt-0.5 block text-[0.6875rem] text-white/60">{w.mon}</small>
+    <div className="ck-plan mt-3 rounded-[1.375rem] p-3.5 text-white">
+      <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3.5 text-left">
+        <span className="min-w-[3.375rem] shrink-0 border-r border-white/30 pr-3.5 text-center leading-tight">
+          <small className="block text-[0.75rem] font-semibold text-white/85">{w.top}</small>
+          <b className="block text-[1.75rem] font-bold leading-none tracking-[-.03em] tabular-nums">{w.day}</b>
+          <small className="block text-[0.75rem] font-semibold text-white/85">{w.mon}</small>
         </span>
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[1.0625rem] font-semibold leading-snug">{p.title || "Plan"}</b>
-          {sub && <small className="mt-0.5 block truncate text-[0.8125rem] tabular-nums text-white/65">{sub}</small>}
+          {sub && <small className="mt-0.5 block truncate text-[0.8125rem] tabular-nums text-white/80">{sub}</small>}
         </span>
-        {w.left && <span className="shrink-0 text-[0.8125rem] font-semibold tabular-nums text-[#67e8f9]">{w.left}</span>}
+        <span className="shrink-0 text-right leading-tight">
+          <b className="block text-[1.375rem] font-bold tabular-nums">{w.left[0]}</b>
+          {w.left[1] && <small className="block text-[0.75rem] text-white/85">{w.left[1]}</small>}
+        </span>
       </button>
-      {acts.length > 0 && (
-        <div className="mt-3">
-          <ActionGrid icons items={acts} label="Plan işleri" />
+      {(att || sail) && (
+        <div className={`mt-3 grid gap-2 ${att && sail ? "grid-cols-2" : "grid-cols-1"}`}>
+          {att && (
+            <Link href={attHref(p.date, today) || "/athletes/attendance"} data-press className="ck-pbtn ck-pbtn2">
+              Yoklama
+            </Link>
+          )}
+          {sail && (
+            <Link href={`/training/day?id=${p.id}`} data-press className="ck-pbtn">
+              Süre
+            </Link>
+          )}
         </div>
       )}
     </div>

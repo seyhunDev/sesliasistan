@@ -1109,7 +1109,7 @@ async function rainStrip(h) {
   });
   await page.goto(page.url().replace(/\/[^/]*$/, "/"), { waitUntil: "load" });
   // Sıradaki plan iş düğmesi biçiminde, yazılar tek satır (Seyhun 2026-10-31 "yazılar alta kayıyor")
-  await check("Ana sayfa", "sıradaki plan tek satır", "A · Tarih kutusu: solda tarih kutusu, başlık ve saat · yer birer satır, alt satıra kaymaz", async () => {
+  await check("Ana sayfa", "sıradaki plan tek satır", "turkuaz kart: solda tarih, sağda kalan süre, plan adı ve tür · saat · yer birer satır, alt satıra kaymaz", async () => {
     const card = page.locator("[aria-label='Sıradaki plan']").first();
     if (!(await waitFor(() => card.count(), 8000))) return [true, "7 gün içinde plan yok"];
     if (process.env.WX_SHOT) {
