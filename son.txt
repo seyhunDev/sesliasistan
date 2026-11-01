@@ -1,8 +1,8 @@
-Commit: 73397cb · Merge pull request #935 from seyhunDev/claude/project-thread-lo85ym
-Zaman: 2026-11-01-1948 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41327187921
+Commit: c3863d7 · Merge pull request #937 from seyhunDev/claude/project-thread-lo85ym
+Zaman: 2026-11-01-2011 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41329122177
 
-TAM TEST · 01.11.2026 19:37:39
+TAM TEST · 01.11.2026 20:00:41
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1423/1426 geçti · 3 kalan · 579 sn
+SONUÇ: 1423/1426 geçti · 3 kalan · 617 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
