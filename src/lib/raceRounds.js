@@ -11,6 +11,9 @@ export const digits = (s) => String(s || "").replace(/\D/g, "");
 const MARK = /^(?:[1-9]|F)$/;
 const SAIL = /^\d{1,6}$/;
 
+export const CLASS_PICK = ["Optimist", "ILCA 4", "ILCA 6", "ILCA 7"];
+export const PREP_PICK = ["P", "I", "Z", "U", "Kara"];
+export const prepName = (p) => (p === "Kara" ? "Kara bayrak" : p ? `${p} bayrağı` : "");
 export function cleanEntry(e) {
   const route = (Array.isArray(e?.route) ? e.route : []).map(String).filter((m) => MARK.test(m)).slice(0, 16);
   const legs = route.map((_, k) => {
@@ -19,7 +22,10 @@ export function cleanEntry(e) {
   });
   // grp: startın grubu (Mavi, Sarı…, Altın; lib/roundScore.js), yoksa yazılmaz
   const grp = String(e?.grp || "").replace(/[^\p{L} ]/gu, "").trim().slice(0, 20);
-  return grp ? { route, legs, grp } : { route, legs };
+  // cls: sınıf (Optimist, ILCA 4…; uyarı işaretinde sınıf bayrağı), prep: hazırlık bayrağı (P, I, Z, U, Kara) (Seyhun 2026-11-01)
+  const cls = String(e?.cls || "").replace(/[^\p{L}\d ]/gu, "").trim().slice(0, 20);
+  const prep = PREP_PICK.includes(e?.prep) ? e.prep : "";
+  return { route, legs, ...(grp ? { grp } : {}), ...(cls ? { cls } : {}), ...(prep ? { prep } : {}) };
 }
 export function cleanRounds(r) {
   const out = {};
@@ -122,7 +128,7 @@ export function applyRound(entry0, mark, sails) {
 // Parkur değişince: eski dönüşler sırayla yeni parkura taşınır
 export function setRoute(entry0, route) {
   const old = cleanEntry(entry0);
-  let e = { route: [...route], legs: route.map(() => []), ...(old.grp ? { grp: old.grp } : {}) };
+  let e = { route: [...route], legs: route.map(() => []), ...(old.grp ? { grp: old.grp } : {}), ...(old.cls ? { cls: old.cls } : {}), ...(old.prep ? { prep: old.prep } : {}) };
   old.legs.forEach((l, k) => {
     e = applyRound(e, old.route[k], l).entry;
   });

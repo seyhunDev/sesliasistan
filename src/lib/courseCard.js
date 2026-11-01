@@ -41,7 +41,7 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   const names = ["komite", "pin", "pinIdeal", "m1", "m1a", "m2", "s3", "p3", "s4", "p4", "fA", "fB"];
   const P = Object.fromEntries(names.map((k) => [k, R(g[k])]));
   const xs = Object.values(P).map((p) => p[0]), ys = Object.values(P).map((p) => p[1]);
-  const pad = { l: 44, r: 80, t: 84, b: 58 };
+  const pad = { l: 44, r: 80, t: 84, b: 82 }; // altta iki satır hat özeti
   const sx = (w - pad.l - pad.r) / (Math.max(...xs) - Math.min(...xs) || 1), sy = (h - pad.t - pad.b) / (Math.max(...ys) - Math.min(...ys) || 1);
   const s = Math.min(sx, sy);
   const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
@@ -91,8 +91,7 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   o += `<text x="${f(ko[0] + 14)}" y="${f(ko[1] + 4)}" text-anchor="start" font-size="12" font-weight="${B}" fill="${org}">Komite</text>`;
   // eksen komitenin yanında: parkuru komite bu açıya göre atar (Seyhun 2026-10-29)
   o += `<text x="${f(ko[0] + 14)}" y="${f(ko[1] + 20)}" text-anchor="start" font-size="12" font-weight="${B}" fill="${ink}">Eksen ${nrm(g.A)}°</text>`;
-  // pin açısı ve önde olan uç hattın hemen altında (Seyhun 2026-10-29: kartın altında değil, pin iki kez yazılmasın)
-  const below = Math.max(ko[1], pi[1], Math.abs(off) >= 1 ? pid[1] : -1e9) + 30, lx = (ko[0] + pi[0]) / 2;
+  const lx = w / 2;
   // finiş
   line(pt("fA"), pt("fB"), `stroke-width="2"`, 2);
   boat(pt("fA"), true);
@@ -116,8 +115,10 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
       const [a, b] = c.range.map((x) => f(diff(g.A, x)));
       for (const r of [a, b]) o += `<line transform="translate(${w - 22} 30) rotate(${r})" x1="0" y1="-16" x2="0" y2="16" stroke="${acc}" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="2 3"/>`;
       o += `<g transform="translate(${w - 22} 30) scale(1.4)"><g transform="rotate(${a})"><animateTransform attributeName="transform" type="rotate" values="${a};${a};${b};${b};${a}" keyTimes="0;.357;.5;.857;1" calcMode="spline" keySplines="0 0 1 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1" dur="14s" repeatCount="indefinite"/>${arrow}</g></g>`;
-      o += `<text x="${w - 44}" y="29" text-anchor="end" font-size="16" font-weight="500" fill="${ink}">${c.range[0]}–${c.range[1]}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
-      o += `<text x="${w - 44}" y="46" text-anchor="end" font-size="11.5" font-weight="400" fill="${mut}">Rüzgâr · ${Math.abs(diff(c.range[0], c.range[1]))}° oynuyor</text>`;
+      // büyük sayı okla birlikte değişir (20° ↔ 30°), altında aralık
+      const fadeW = (on) => `<animate attributeName="opacity" values="${on ? "1;1;0;0;1" : "0;0;1;1;0"}" keyTimes="0;.357;.5;.857;1" calcMode="spline" keySplines="0 0 1 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1" dur="14s" repeatCount="indefinite"/>`;
+      c.range.forEach((x, i) => (o += `<text x="${w - 44}" y="29" text-anchor="end" font-size="16" font-weight="500" fill="${ink}" opacity="${i ? 0 : 1}">${fadeW(!i)}${nrm(x)}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`));
+      o += `<text x="${w - 44}" y="46" text-anchor="end" font-size="11.5" font-weight="400" fill="${mut}">Rüzgâr ${c.range[0]}–${c.range[1]}° arası oynuyor</text>`;
     } else {
       o += `<g transform="translate(${w - 22} 30) rotate(${f(sh)})">${arrow}</g>`;
       o += `<text x="${w - 44}" y="29" text-anchor="end" font-size="16" font-weight="500" fill="${ink}">${nrm(c.wind)}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
@@ -131,16 +132,21 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   }
   // kuzey
   o += `<g transform="translate(26 30) rotate(${f(-rot)})"><circle r="15" fill="${paper}" stroke="${navy ? "rgba(255,255,255,.22)" : "var(--line, #e7e5df)"}"/><path d="M0 -11 L5 4 L0 1 L-5 4 Z" fill="${ink}"/></g><text x="26" y="58" text-anchor="middle" font-size="10" fill="${mut}">K</text>`;
-  // altta hat özeti: atılan hat olması gerekenden ne kadar sapmış, şimdiki rüzgârda hangi uç önde
-  const rows = [];
-  // 1. satır: pin kaç derecede, olması gereken (rüzgâr varsa ona dik) · 2. satır: hangi uç önde (pin olması gerekenin üstündeyse pin)
-  if (c.line != null) rows.push(`Pin ${g.toPin}° · olmalı ${c.range ? c.range.map((x) => nrm(x - 90)).join("–") : g.should}°${c.wind == null ? " (eksene dik)" : ""}`);
-  // aralıklı rüzgârda iki uçtaki avantaj: "Pin tarafı 5–15° önde", uçlar ayrı tarafta ise "Komite 5° · Pin 5° önde arası"
-  const span = c.line != null && c.range ? c.range.map((x) => diff(nrm(x - 90), g.toPin)) : null;
-  const sideTxt = (v) => (Math.abs(v) < 1 ? "eşit" : `${v > 0 ? "Pin" : "Komite"} ${Math.abs(v)}°`);
-  if (span) rows.push(Math.sign(span[0]) === Math.sign(span[1]) && Math.abs(span[0]) >= 1 && Math.abs(span[1]) >= 1 ? `${span[0] > 0 ? "Pin" : "Komite"} tarafı ${Math.min(...span.map(Math.abs))}–${Math.max(...span.map(Math.abs))}° önde` : `Önde: ${sideTxt(span[0])} ↔ ${sideTxt(span[1])}`);
-  else if (c.line != null) rows.push(Math.abs(off) < 1 ? "Hat dik, iki uç eşit" : `${off > 0 ? "Pin" : "Komite"} tarafı ${Math.abs(off)}° önde`);
-  rows.forEach((t, i) => (o += `<text x="${f(lx)}" y="${f(below + i * 19)}" text-anchor="middle" font-size="13" font-weight="${B}" fill="${i ? ink : org}">${t}</text>`));
+  // Hat özeti kartın en altında ayrı şeritte (Seyhun 2026-11-01 "yazılar birbirine giriyor"): 1. satır pin açısı ve olması gereken,
+  // 2. satır hangi uç önde. Rüzgâr aralığında iki ucun yazısı okla aynı anda değişir (aynı 14 sn döngü: 5 sn dur, 2 sn geçiş):
+  // "Olmalı 290° · Pin 8° önde" ↔ "Olmalı 300° · Komite 2° önde" (Seyhun 2026-11-01 "ok değişiyor ama alttaki yazılar değişmiyor").
+  const sideTxt = (v) => (Math.abs(v) < 1 ? "İki uç eşit" : `${v > 0 ? "Pin" : "Komite"} ${Math.abs(v)}° önde`);
+  const y1 = H - 40, y2 = H - 18;
+  const row = (y, t, col, extra = "") => `<text x="${f(lx)}" y="${f(y)}" text-anchor="middle" font-size="13" font-weight="${B}" fill="${col}"${extra ? ` ${extra}` : ""}>${t}</text>`;
+  if (c.line != null && c.range) {
+    const ends = c.range.map((x) => ({ should: nrm(x - 90), adv: diff(nrm(x - 90), g.toPin) }));
+    const fade = (on) => `<animate attributeName="opacity" values="${on ? "1;1;0;0;1" : "0;0;1;1;0"}" keyTimes="0;.357;.5;.857;1" calcMode="spline" keySplines="0 0 1 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1" dur="14s" repeatCount="indefinite"/>`;
+    o += row(y1, `Pin ${g.toPin}° · rüzgâr ${c.range[0]}–${c.range[1]}°`, org);
+    ends.forEach((e, i) => (o += `<g opacity="${i ? 0 : 1}">${fade(!i)}${row(y2, `Olmalı ${e.should}° · ${sideTxt(e.adv)}`, ink)}</g>`));
+  } else if (c.line != null) {
+    o += row(y1, `Pin ${g.toPin}° · olmalı ${g.should}°${c.wind == null ? " (eksene dik)" : ""}`, org);
+    o += row(y2, Math.abs(off) < 1 ? "Hat dik, iki uç eşit" : `${off > 0 ? "Pin" : "Komite"} tarafı ${Math.abs(off)}° önde`, ink);
+  }
   return `<svg viewBox="0 0 ${w} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Inter,sans-serif">${o}</svg>`;
 }
 
