@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
 import { useWindObs } from "@/features/weather/useWindObs";
@@ -19,24 +18,13 @@ const RADAR_MM = [0, 0.5, 2, 5]; // radar şiddeti → yaklaşık mm/sa (çubuk 
 // Yakında istasyon varsa geçmiş saatlerde ölçülen rüzgâr noktalı beyaz çizgi + ince beyaz kesik sağanak; o saatlerin altındaki yazı da ölçülen "rüzgâr–sağanak".
 // Ayrı "en sert sağanak" yazısı yok (Seyhun 2026-10-24: rüzgâr ve sağanak tek yerde, "2–4 kn").
 // Açılışta grafik soldan sağa 0,9 sn'de çizilir (globals.css .ck-draw); hareket azaltılmışsa çizilmeden gelir. Hava sayfasındaki grafik (WindChart) değişmez.
-const W = 340, L = 6, R = 22, T = 26, H0 = 132, B = 4;
+const W = 340, L = 6, R = 22, T = 26, B = 4, BAND = 17;
+export const chartH = (top) => T + B + Math.max(64, Math.min(150, (top / 5) * BAND));
 // far: istasyon 10 km'den uzakta da (100 km'ye kadar) ölçüm çizilir (yarış sayfası; Seyhun 2026-10-26: "yarışın olduğu yerdeki gerçekleşmiş rüzgârı göremiyorum")
-// fill (ana sayfa ilk ekranı; Seyhun 2026-10-28 "A · Yalnız saydıkların"): grafik kendisine kalan yüksekliği doldurur; çizim alanı ölçülür,
-// viewBox yüksekliği oranına göre büyür (yazılar bozulmaz). Kutunun altındaki yağış, saatler ve açıklama aynı boyda kalır.
-export function CockpitWind({ rows, date, place = null, far = false, fill = false }) {
-  const box = useRef(null);
-  const [size, setSize] = useState(null);
-  useEffect(() => {
-    const el = box.current;
-    if (!fill || !el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(([e]) => {
-      const { width: w, height: h } = e.contentRect;
-      if (w > 0 && h > 0) setSize((p) => (p && Math.abs(p.w - w) < 1 && Math.abs(p.h - h) < 1 ? p : { w, h }));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [fill]);
-  const H = fill && size ? Math.max(H0, Math.min(H0 * 2.6, Math.round((W * size.h) / size.w))) : H0;
+// Yükseklik (Seyhun 2026-11-01 "ana sayfada hava durumu yüksekliği çok fazla… barem aralarını kısa tutalım, 30-40-50'ye çıkarsa ona göre"):
+// grafik kalan yeri doldurmaz; her 5 kn'lik aralık sabit kısa boyda (BAND), ölçek günün en sert sağanağına göre (15, 20, 25 … kn), çizim alanı
+// en az 64, en çok 150 birim. Rüzgârlı günde grafik kendiliğinden uzar, sakin günde alçak kalır. Her yerde aynı (ana sayfa, Hava, yarış).
+export function CockpitWind({ rows, date, place = null, far = false }) {
   const now = useNow();
   const today = YMD.format(now);
   const day = date || today;
@@ -47,6 +35,7 @@ export function CockpitWind({ rows, date, place = null, far = false, fill = fals
   const obs = rows.map((h) => ob?.rows?.find((o) => o.hh === h.hh));
   const got = obs.map((o, i) => o && { i, ...o }).filter(Boolean);
   const top = Math.max(15, Math.ceil((Math.max(...rows.map((h) => h.gust), ...got.map((o) => o.gust ?? o.wind)) + 2) / 5) * 5);
+  const H = chartH(top);
   const x = (i) => L + (i * (W - L - R)) / Math.max(1, n - 1);
   const y = (v) => T + (1 - v / top) * (H - T - B);
   const path = (pts) => pts.map(([i, v], k) => `${k ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
@@ -60,7 +49,7 @@ export function CockpitWind({ rows, date, place = null, far = false, fill = fals
   const nowAt = hi >= 0 ? Math.min(n - 1, hi + now.getMinutes() / 60) : -1;
   const ni = Math.floor(nowAt);
   const nowV = nowAt >= 0 ? rows[ni].wind + ((rows[ni + 1]?.wind ?? rows[ni].wind) - rows[ni].wind) * (nowAt - ni) : null;
-  const ticks = [5, 10, 15, 20, 25, 30].filter((v) => v < top);
+  const ticks = Array.from({ length: Math.ceil(top / 5) - 1 }, (_, k) => (k + 1) * 5).filter((v) => top <= 30 || v % 10 === 0); // 30 kn üstünde 10'ar
   // Ölçülen ve tahmin (Seyhun 2026-10-27 "A · Ölçülen beyaz çizgi": "tahmin zaten baştan sona var, ölçülen bulunduğumuz saate kadar; daha net ayıralım"):
   // tahmin bütün gün dolu renkli alan; ölçülen (rüzgâr ve yağmur) şimdiye kadar üstüne binen noktalı BEYAZ çizgi, ölçülen sağanak ince beyaz kesik çizgi.
   // Yağmur (Seyhun 2026-10-28 "A · Saat saat çubuk": "orası çok karışık, daha sade ve doğru"): rüzgârın altında her saatte ince çubuk;
@@ -102,9 +91,9 @@ export function CockpitWind({ rows, date, place = null, far = false, fill = fals
     wet && bars.some((q) => q.fell && q.v >= 0.1) && ["Yağan", <i key="y" className="inline-block h-2.5 w-1.5 rounded-[2px] bg-white" />],
   ].filter(Boolean);
   return (
-    <div className={`ck-wind ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}>
-      <div ref={box} className={fill ? "relative min-h-[4.5rem] flex-1" : ""}>
-      <svg viewBox={`0 0 ${W} ${H}`} className={fill ? "absolute inset-0 block size-full" : "block w-full"} role="img" aria-label="Bugünün saatlik rüzgâr grafiği">
+    <div className="ck-wind">
+      <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img" aria-label="Bugünün saatlik rüzgâr grafiği">
         {ticks.map((v) => (
           <g key={v}>
             <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="rgba(255,255,255,.08)" />
