@@ -1,8 +1,8 @@
-Commit: 0f5df66 · Asistan: knot "not" okunur, bitiş onayı 1,5 sn sonra kaybolur (#922)
-Zaman: 2026-11-01-0759 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41274489801
+Commit: e17b44f · Sayaç: süre seçimi altta 5 · 4 · 2 · 1 dk, son seçim saklanır, start sırası şeridi kalktı (#923)
+Zaman: 2026-11-01-0816 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41275576171
 
-TAM TEST · 01.11.2026 07:48:43
+TAM TEST · 01.11.2026 08:06:09
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1423/1423 geçti · 0 kalan · 616 sn
+SONUÇ: 1424/1424 geçti · 0 kalan · 553 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -179,8 +179,8 @@ SONUÇ: 1423/1423 geçti · 0 kalan · 616 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 14/14
-  ✓ Yarış sayfası: 12/12
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/15
+  ✓ Yarış sayfası: 13/13
   ✓ Asılı bağlantı: 2/2
 
 4. GERÇEK YAPAY ZEKA: 0/0
