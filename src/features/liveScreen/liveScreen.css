@@ -60,7 +60,6 @@
 .lv-msg { margin: auto; font-size: 1.2em; }
 .lv-mut { color: var(--lv-mut); }
 .lv-head { display: flex; align-items: center; gap: 0.9em; }
-.lv-logo { width: 2.7em; height: 2.7em; flex: none; }
 .lv-ttl { min-width: 0; flex: 1; }
 .lv-ttl b { display: block; font-size: 1.9em; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4); }
 .lv-ttl span { display: block; color: var(--lv-mut); font-size: 0.95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -194,7 +193,6 @@
 /* Telefon: tek sütun; parkur kartı normal kart olarak en altta (arkada okunmaz) */
 @media (max-width: 760px) {
   .lv-page { font-size: 15px; padding: 14px 16px 24px; gap: 12px; }
-  .lv-logo { width: 34px; height: 34px; }
   .lv-ttl b { font-size: 22px; }
   .lv-ttl span { font-size: 13px; }
   .lv-live { font-size: 0; gap: 0; padding: 0.42em; }

@@ -10,3 +10,5 @@
 ## Sıradaki işler
 - Telefonda denenmedi: video yükleme (iPhone'dan 55 MB altı video), Başlat → 0 → ileri sayım herkese açık ekranda.
 - Genel sıralamada "Kulübüm" süzgeci (istenirse).
+
+- Herkese açık ekranda logo kaldırıldı (Seyhun 2026-11-01); başlık en solda.
