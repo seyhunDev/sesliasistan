@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { BackButton } from "@/components/ui/BackButton";
+import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { addCourseObs, loadCourse, loadLive, loadRoundsOf, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
-import { isActive, loadAthletes } from "@/features/athletes/data";
-import { ResultsTab } from "@/features/raceMedia/ResultsTab";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
 import { Countdown, ownHere, useTimerRun } from "@/features/training/Countdown";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
@@ -31,7 +31,7 @@ import { todayStr } from "@/lib/utils/format";
 // cihazlara ve herkese açık sayfaya useLiveSync ile gider), Linki kopyala / Ekranı aç. Açık alanda üç bölüm:
 // Ekranda (canlı yayın linki ya da bu yarışın videoları, telefondan seçilen video yüklenir; dikey/yatay yazılır; Göster ekrana verir),
 // Parkur ve rüzgâr (son rüzgâr, parkur kartı, ölçüm ekleme; Parkur sekmesiyle aynı kayıt), Dönüşler (sesle giriş, kayıt listesi),
-// Sonuçlar (sonuç PDF'i; ResultsTab). Multimedya sayfası kalktı (Seyhun 2026-11-01 "tek bu yayın olanı kullanacağız").
+// Sonuç PDF'i ayrı sayfada (/sonuclar, 2026-11-01); Linki kopyala, Ekranı aç, Kayıt listesi, gün durumu ⋯ menüsünde. Multimedya sayfası kalktı (Seyhun 2026-11-01 "tek bu yayın olanı kullanacağız").
 // Bugünün startları tek liste (Seyhun 2026-11-01 "sınıf/grup seçimi ile sıra ekleme birbirinden bağımsız olamaz"): biten ve süren startlar
 // saatiyle üstte, sonra yapılacak startlar (raceLive.plan.order [{ cls, grp, prep }]); ilk bekleyen "Sıradaki"dir, sayacın üstünde yazar ve
 // Başlat onun sınıf/grup/bayrağını rounds[start]'a yazıp listeden düşer. "Start ekle" satır ekler; satıra dokununca sınıf, grup, bayrak,
@@ -55,9 +55,10 @@ export function BroadcastPage({ orgId, id }) {
   const [list, setList] = useState(false);
   const [entries, setEntries] = useState([]);
   const [groups, setGroups] = useState({});
-  const [athletes, setAthletes] = useState([]);
   const [pickId, setPickId] = useState(""); // listede seçilen biten start (boşsa sayacın yarışı)
   const [editI, setEditI] = useState(-1); // listede açık olan bekleyen start (plan.order sırası)
+  const [menu, setMenu] = useState(false); // ⋯ menüsü (Seyhun 2026-11-01 "çok fazla buton, yanlışlıkla tıklanmasın": az kullanılan ve riskli işler burada)
+  const [askEnd, setAskEnd] = useState(false); // Günü bitir bir daha sorar
   const [ap, setAp] = useState(null); // tehir penceresi { min, why } (Seyhun 2026-11-01 "bir sebep belirterek tehir, bir saatlik")
   const [plan, setPlan] = useState(() => cleanPlan({})); // günün programı (raceLive.plan; herkese açık ekranın evresi buna göre)
   const file = useRef(null);
@@ -78,7 +79,6 @@ export function BroadcastPage({ orgId, id }) {
     loadLive(orgId, id).then((l) => on && ((liveIn.current = true), setLive(l)), () => {});
     loadCourse(orgId, id, today).then((c) => on && setCourse(c), () => {});
     loadEntryDoc(orgId, id).then((d) => on && (setEntries(d.rows), setGroups(d.groups)), () => {});
-    loadAthletes().then((d) => on && setAthletes(d.athletes || []), () => {});
     reload().then((d) => {
       if (!on) return;
       setPlan(d.plan);
@@ -276,7 +276,6 @@ export function BroadcastPage({ orgId, id }) {
     </div>
   ));
   const pickText = (e, name) => [e.cls, e.grp ? `${e.grp} grup` : "", name, prepName(e.prep)].filter(Boolean).join(" · ");
-  const ours = athletes.filter((a) => race?.athleteIds?.includes(a.id));
   const row = "flex w-full items-center gap-3 px-4 py-3 text-left";
 
   return (
@@ -288,6 +287,9 @@ export function BroadcastPage({ orgId, id }) {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{cur ? `Yayın · ${raceName(cur)}` : "Yayın"}</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{race?.name || ""}</p>
           </div>
+          <button type="button" onClick={() => setMenu(true)} aria-label="Diğer işler" data-press className="ck-glass flex size-9 shrink-0 items-center justify-center rounded-full text-[1.25rem] font-bold leading-none">
+            ⋯
+          </button>
         </header>
         {cur ? (
           // Başlat'tan sonra seçim kilitli: grup ve kaçıncı yarış yalnız yazar (Seyhun 2026-11-01 "yarış seçimi yapılıp kapanmalı")
@@ -306,14 +308,6 @@ export function BroadcastPage({ orgId, id }) {
           </div>
         )}
         <Countdown dark mode="start" race={flow} startRace title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} />
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button type="button" onClick={copy} data-press className="raised ck-pill font-semibold">
-            Linki kopyala
-          </button>
-          <button type="button" onClick={openScreen} data-press className="raised ck-pill font-semibold">
-            Ekranı aç
-          </button>
-        </div>
       </section>
 
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-5">
@@ -416,16 +410,13 @@ export function BroadcastPage({ orgId, id }) {
               <Button variant={plan.status === "ap" ? "primary" : "secondary"} onClick={() => (plan.status === "ap" ? unpostpone() : setAp(ap ? null : { min: 60, why: AP_WHY[0] }))}>
                 {plan.status === "ap" ? "Erteleme kalktı" : "Tehir"}
               </Button>
-              <Button variant={plan.status === "done" ? "primary" : "secondary"} onClick={() => changePlan({ day: planDay, status: plan.status === "done" ? "" : "done", next: plan.next || { day: tomorrow, at: plan.at } })}>
-                {plan.status === "done" ? "Günü aç" : "Günü bitir"}
-              </Button>
             </div>
           </div>
         </section>
         <section>
-          <Head title="Program" />
+          <Head title="Program" right={plan.status === "done" ? "Gün bitti" : plan.status === "none" ? "Bugün yarış yok" : ""} />
           <div className={`${card} overflow-hidden`}>
-            <div className={`${row} border-b border-line`}>
+            <div className={row}>
               <span className="font-semibold">İlk start</span>
               <div className="ml-auto flex items-center gap-1.5">
                 {[
@@ -439,12 +430,8 @@ export function BroadcastPage({ orgId, id }) {
                 <input type="time" value={plan.at} onChange={(e) => changePlan({ day: planDay, at: e.target.value })} aria-label="İlk start saati" className="h-9 rounded-lg bg-bg px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
               </div>
             </div>
-            <button type="button" onClick={() => changePlan({ day: planDay, status: plan.status === "none" ? "" : "none" })} className={`${row} ${plan.status === "done" || plan.status === "none" ? "border-b border-line" : ""}`}>
-              <span className="font-semibold">Bugün yarış yok</span>
-              <span className={`ml-auto text-[0.875rem] ${plan.status === "none" ? "font-semibold text-acc" : "text-mut"}`}>{plan.status === "none" ? "Açık" : "Kapalı"}</span>
-            </button>
             {plan.status === "done" || plan.status === "none" ? (
-              <div className="space-y-2 px-4 py-3 text-[0.9375rem]">
+              <div className="space-y-2 border-t border-line px-4 py-3 text-[0.9375rem]">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">Yarın ilk start</span>
                   <input type="time" value={plan.next?.at || ""} onChange={(e) => changePlan({ next: { day: tomorrow, at: e.target.value } })} aria-label="Yarının ilk start saati" className="ml-auto h-9 rounded-lg bg-bg px-2 font-semibold tabular-nums outline-none" />
@@ -547,22 +534,50 @@ export function BroadcastPage({ orgId, id }) {
             ) : (
               <p className="border-b border-line px-4 py-3 text-[0.875rem] text-mut">{entries.length ? `Kayıt listesi ${entries.length} tekne` : "Henüz dönüş yok"}</p>
             )}
-            <div className="grid grid-cols-2 gap-2 p-3">
-              <Button variant="secondary" onClick={() => setList(true)}>
-                Kayıt listesi
-              </Button>
-              <Button disabled={!st} onClick={() => setVoice(true)}>
+            <div className="p-3">
+              <Button disabled={!st} onClick={() => setVoice(true)} full>
                 Sesle gir
               </Button>
             </div>
           </div>
         </section>
 
-        <section>
-          <Head title="Sonuçlar" right="PDF" />
-          {race?.id ? <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} /> : null}
-        </section>
       </div>
+
+      {/* ⋯ menüsü: ekran ve link, sonuç PDF'i (ayrı sayfa), kayıt listesi, gün durumu; Günü bitir bir daha sorar (yanlış dokunuş) */}
+      <Sheet open={menu} onClose={() => (setMenu(false), setAskEnd(false))} title="Yayın">
+        <div className="divide-y divide-line">
+          {[
+            ["Ekranı aç", () => (setMenu(false), openScreen())],
+            ["Linki kopyala", () => (setMenu(false), copy())],
+          ].map(([t, fn]) => (
+            <button key={t} type="button" onClick={fn} className={`${row} font-semibold`}>
+              {t}
+            </button>
+          ))}
+          <Link href={`/athletes/races/${id}/sonuclar`} className={`${row} font-semibold`}>
+            <span className="flex-1">{"Sonuç PDF'i"}</span>
+            <span className="text-[0.875rem] text-mut">{race?.results?.fleet ? `${race.results.fleet} tekne` : ""}</span>
+          </Link>
+          <button type="button" onClick={() => (setMenu(false), setList(true))} className={`${row} font-semibold`}>
+            <span className="flex-1">Kayıt listesi</span>
+            <span className="text-[0.875rem] text-mut">{entries.length ? `${entries.length} tekne` : ""}</span>
+          </button>
+          <button type="button" onClick={() => (setMenu(false), changePlan({ day: planDay, status: plan.status === "none" ? "" : "none" }))} className={`${row} font-semibold`}>
+            {plan.status === "none" ? "Bugün yarış var" : "Bugün yarış yok"}
+          </button>
+          {plan.status === "done" ? (
+            <button type="button" onClick={() => (setMenu(false), changePlan({ day: planDay, status: "" }))} className={`${row} font-semibold`}>
+              Günü yeniden aç
+            </button>
+          ) : (
+            <button type="button" onClick={() => (askEnd ? (setMenu(false), setAskEnd(false), changePlan({ day: planDay, status: "done", next: plan.next || { day: tomorrow, at: plan.at } })) : setAskEnd(true))} className={`${row} font-semibold text-rec`}>
+              <span className="flex-1">{askEnd ? "Günü bitir, emin misin?" : "Günü bitir"}</span>
+              <span className="text-[0.875rem] font-normal text-mut">{askEnd ? "Ekran gün özetine geçer" : ""}</span>
+            </button>
+          )}
+        </div>
+      </Sheet>
 
       <VoidSheet ask={rf.ask} onChoose={rf.choose} />
       <AddSheet open={add !== null} pick0={add || 0} c={c} onClose={() => setAdd(null)} onAdd={addObs} />
