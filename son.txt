@@ -1,8 +1,8 @@
-Commit: 213c0b2 · İngilizce: Konuş (yapay zekayla 5 tur konuşma, ipucu, yazılı/sesli cevap) (#924)
-Zaman: 2026-11-01-0903 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41278567390
+Commit: 2ebbe3d · İngilizce: Konuş/Sına düğmesinde gri geçiş kalktı, Geç sol hizada, konuşma şeridinde çizgi yok (#926)
+Zaman: 2026-11-01-1009 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41282974651
 
-TAM TEST · 01.11.2026 08:52:34
+TAM TEST · 01.11.2026 09:59:52
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1424/1424 geçti · 0 kalan · 575 sn
+SONUÇ: 1424/1424 geçti · 0 kalan · 560 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
