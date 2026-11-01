@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { MEDIA_MENU, RACE_SECS } from "@/lib/raceMenu";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { PdfViewer } from "@/components/ui/PdfViewer";
@@ -160,6 +161,7 @@ const SECS = RACE_SECS.map(([k]) => k);
 const inRace = (x) => !!x?.startDate && todayStr() >= x.startDate && todayStr() <= (x.endDate || x.startDate);
 
 export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
+  const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
   const toast = useToast();
   const router = useRouter();
   const [r, setR] = useState(start);
@@ -878,6 +880,12 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                 <b className="truncate text-[1.75rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
               )}
             </span>
+            {/* Ana hesap: yarışın yönetimi (Canlı sekmesi: link, ekran, dönüşler; Start sayaç; Saha rüzgâr) tek düğmeden, Seyhun 2026-11-01 */}
+            {rid && isOwner && (
+              <Link href={`/athletes/races/${rid}/media?tab=canli`} replace data-press className="raised flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.875rem] font-semibold">
+                Yarışı yönet
+              </Link>
+            )}
           </span>
           <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
             <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round((doneN / stat.length) * 100)}%` }} />
@@ -1016,16 +1024,17 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
           </ul>
         )}
         {/* Yarış başladıktan sonra multimedyanın işleri de bu tek ⋯ içinde (Seyhun 2026-10-30; multimedya sayfasındaki ⋯ ile aynı liste) */}
-        {rid && r.startDate && today >= r.startDate && (
+        {/* Canlı ekran (ana hesap) yarıştan önce de görünür: dönüş girişi ve kayıt listesi önceden hazırlanır (Seyhun 2026-11-01) */}
+        {rid && ((r.startDate && today >= r.startDate) || isOwner) && (
           <ul className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
-            {MEDIA_MENU.map(([k, l]) => (
+            {MEDIA_MENU.map(([k, l]) => ((k === "canli" ? !isOwner : !(r.startDate && today >= r.startDate)) ? null : (
               <li key={k}>
                 <Link href={`/athletes/races/${rid}/media?do=${k}`} replace data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
                   <b className="min-w-0 flex-1 text-[1rem] font-medium">{l}</b>
                   <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
                 </Link>
               </li>
-            ))}
+            )))}
           </ul>
         )}
         <ul className={`${card} divide-y divide-line overflow-hidden`}>
