@@ -11,8 +11,9 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { askWord, loadDeck, moreWord, updateDeck } from "@/features/words/wordData";
-import { sayEn } from "@/features/words/WordView";
-import { cachedDeck, cleanGaps, findWord, hasMore, knowWord, knownList, missWord, pageCard, quizFor, reviewWord, sentencesOf, setMore, studyRows, studyWord, topicStats } from "@/lib/englishWords";
+import { primeEn, sayEn } from "@/features/words/WordView";
+import { WordTalk } from "@/features/words/WordTalk";
+import { cachedDeck, findWord, hasMore, knowWord, knownList, missWord, pageCard, quizFor, reviewWord, sentencesOf, setMore, studyRows, studyWord, topicStats } from "@/lib/englishWords";
 import { todayStr } from "@/lib/utils/format";
 
 const DAYS = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
@@ -179,6 +180,8 @@ export default function EnglishPage() {
   const [tried, setTried] = useState([]);
   // Sına: { w, qs, step, picked, right, done }
   const [quiz, setQuiz] = useState(null);
+  // Konuş: konuşulan kart (WordTalk); bitince Sına'ya geçilebilir
+  const [talk, setTalk] = useState(null);
 
   useEffect(() => {
     let live = true;
@@ -282,13 +285,23 @@ export default function EnglishPage() {
   const known = deck ? knownList(deck, kind) : [];
   const topics = deck && kind === "phrase" ? topicStats(deck) : [];
   const shown = allKnown ? known : known.slice(0, 5);
-  const gaps = deck ? cleanGaps(deck.gaps).length : 5;
-  const box = cur?.status === "study" ? Math.min(cur.box, gaps) : cur?.status === "known" ? gaps : 0;
   const q = quiz && !quiz.done ? quiz : null;
 
   return (
     <main data-theme="dark" className="navy fit-dark relative mx-auto flex min-h-dvh max-w-[30rem] flex-col px-6 pb-[calc(var(--dome-h,var(--stage-h,6rem))+1rem)]">
       <Photo />
+      {talk ? (
+        <WordTalk
+          w={talk}
+          onClose={() => setTalk(null)}
+          onQuiz={() => {
+            setPin(talk.en);
+            setQuiz({ w: talk, qs: quizFor(deck, talk), step: 0, picked: null, right: 0, done: false });
+            setTalk(null);
+          }}
+        />
+      ) : (
+      <>
       <header className="relative flex items-center justify-between gap-3 pt-[calc(0.75rem+env(safe-area-inset-top))] text-[0.875rem] text-white/45">
         {quiz ? (
           <>
@@ -341,23 +354,32 @@ export default function EnglishPage() {
       {deck && (cur || quiz) && (
         <footer className="relative flex items-center justify-between gap-3">
           {quiz ? <span /> : (
-            <Button variant="text" onClick={next} className="!text-white/50">
+            <Button variant="text" onClick={next} className="!px-0 !text-white/50">
               Geç
             </Button>
           )}
           {!quiz && (
-            <div className="flex gap-1.5" aria-label={`Tekrar ${box} / ${gaps}`}>
-              {Array.from({ length: gaps }, (_, i) => (
-                <i key={i} className={`size-1.5 rounded-full ${i < box ? "bg-[#67e8f9]" : "bg-white/20"}`} />
-              ))}
-            </div>
+            <Button variant="text" onClick={startQuiz} className="!text-white/50">
+              Sına
+            </Button>
           )}
           {(!quiz || quiz.picked != null || quiz.done) && (
-            <Button variant="secondary" full={false} onClick={quiz ? goOn : startQuiz} className="!h-12 !rounded-full !border-0 !bg-[#67e8f9]/14 !px-7 !text-[#67e8f9] !shadow-none">
-              {!quiz ? "Sına" : quiz.done ? "Sıradaki" : "Devam"}
+            <Button
+              variant="secondary"
+              full={false}
+              onClick={() => {
+                if (quiz) return goOn();
+                primeEn();
+                setTalk(cur);
+              }}
+              className="!h-12 !rounded-full !border-0 !bg-none !bg-[#67e8f9]/14 !px-7 !text-[#67e8f9] !shadow-none"
+            >
+              {!quiz ? "Konuş" : quiz.done ? "Sıradaki" : "Devam"}
             </Button>
           )}
         </footer>
+      )}
+      </>
       )}
 
       <Sheet open={menu} onClose={() => setMenu(false)} navy title={kind === "phrase" ? "Cümleler" : "Kelimeler"}>

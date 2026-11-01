@@ -59,7 +59,7 @@ export function DayChart({ rows, day, at, fill = false }) {
         </span>
       </div>
       <div className={`mt-2 ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}>
-        <CockpitWind key={day} rows={rows} date={day} place={at} far fill={fill} />
+        <CockpitWind key={day} rows={rows} date={day} place={at} far />
       </div>
     </>
   );

@@ -64,3 +64,21 @@ export async function moreWord(w) {
   if (!res.ok || !data.more) throw new Error(data.error || "Hazırlayamadım");
   return data.more;
 }
+
+// Konuş: sıradaki yapay zeka cümlesi, ipucu ve son cevabın düzeltmesi. turns: [{ who: "ai" | "me", e }]
+// Dönüş { heard, ok, fix, next: { e, t }, hint: { e, t }, done }
+// audio (Blob): sesli cevap; yapay zeka duyduğunu da döndürür (heard)
+export async function talkWord(w, turns, audio = null) {
+  const data0 = { talk: true, en: w.en, tr: w.tr, kind: w.kind, turns };
+  let init = { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(data0) };
+  if (audio) {
+    const fd = new FormData();
+    fd.append("data", JSON.stringify(data0));
+    fd.append("audio", audio, `cevap.${(audio.type || "").includes("mp4") ? "m4a" : "webm"}`);
+    init = { method: "POST", body: fd };
+  }
+  const res = await authFetch("/api/word", init);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.next) throw new Error(data.error || "Konuşmayı sürdüremedim, tekrar dene.");
+  return data;
+}

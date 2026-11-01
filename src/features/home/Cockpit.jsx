@@ -53,7 +53,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
       {/* İlk ekran (Seyhun 2026-10-28 "A · Yalnız saydıkların"): günler, yarış sayacı, hava ve grafik (yarış başka yerdeyse altta ev yeri)
           telefonda ekrana tam oturur; boşluk açılmaz, büyüklükler ekran boyuna göre (--u), kalan yeri grafik doldurur (useFit).
           Sıradaki plan ve iş düğmeleri kaydırınca gelir. */}
-      <div ref={fitRef} style={fill ? { minHeight: fitH, "--u": `${(fitH / 100).toFixed(2)}px` } : undefined} className="flex flex-col">
+      <div ref={fitRef} style={fill ? { minHeight: far ? fitH : undefined, "--u": `${(fitH / 100).toFixed(2)}px` } : undefined} className="flex flex-col">
       <header className="-mb-1 flex items-center justify-end gap-2">
         <h1 className="sr-only">{now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}</h1>
         <BirthdayBadge />
@@ -108,7 +108,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
           </button>
           {rows?.length > 0 && (
             <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className={`mt-2 w-full text-left ${fill ? "flex min-h-0 flex-1 flex-col" : "block"}`}>
-              <CockpitWind key={date} rows={rows} date={date} fill={fill} />
+              <CockpitWind key={date} rows={rows} date={date} />
             </button>
           )}
         </>
@@ -120,10 +120,32 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
   );
 }
 
-// Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan. Kokpitin en belirgin parçası
-// (Seyhun 2026-10-22 "A · Mor kart"): logo morunda dolu kart; üstte solda gün ve tür, aynı satırın sonunda kalan süre (Seyhun: "biri başta,
-// biri sonda", altta boş satır kalmasın); büyük saat + tam başlık (2 satıra kadar), altta yalnız yer.
+// Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan.
+// Turkuaz kart (ck-plan, renk aynı; Seyhun 2026-11-01 "önemli olan tarih… kaç gün kaldı… yanında ne olduğu, altında küçük açıklaması"):
+// solda saatin yerinde tarih (gün adı / Bugün, büyük gün, ay; sağında ince çizgi), ortada tek satır plan adı, altında tek satır küçük
+// tür · saat · yer, sağda büyük kalan süre ("7 gün kaldı", "Yarın", "2 sa kaldı"). Hiçbir yazı alt satıra kaymaz.
 // Antrenmansa kartın içinde Yoklama ve Süre (widget'taki gibi). Karta dokununca plan açılır.
+export function planWhen(p, now, today) {
+  const days = Math.round((Date.parse(`${p.date}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5);
+  const d = new Date(`${p.date}T12:00`);
+  const top = days === 0 ? "Bugün" : cap(d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""));
+  const mon = cap(d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", ""));
+  const mins = days === 0 && p.time ? Math.round((new Date(`${p.date}T${p.time}`) - now) / 60000) : null;
+  // left: [büyük, küçük]
+  const left =
+    days > 1
+      ? [String(days), "gün kaldı"]
+      : days === 1
+        ? ["Yarın", ""]
+        : mins == null
+          ? ["Bugün", ""]
+          : mins <= 0
+            ? ["Şimdi", ""]
+            : mins < 60
+              ? [`${mins} dk`, "kaldı"]
+              : [`${Math.floor(mins / 60)} sa`, "kaldı"];
+  return { top, day: d.getDate(), mon, left };
+}
 function NextPlan({ now }) {
   const { plans } = useData();
   const { profile } = useAuth();
@@ -131,40 +153,27 @@ function NextPlan({ now }) {
   const today = todayStr();
   const p = nextPlan(plans, now, today);
   if (!p) return null;
-  const mins = p.date === today && p.time ? Math.round((new Date(`${p.date}T${p.time}`) - now) / 60000) : null;
-  // Gün bir kez yazılır: üstte "Bugün" / "Yarın" / "Pazartesi 26 Eki"; altta kalan süre (Seyhun 2026-10-21: tekrar olmasın)
-  const days = Math.round((Date.parse(`${p.date}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5);
-  const d = new Date(`${p.date}T12:00`);
-  const day = days === 0 ? "Bugün" : days === 1 ? "Yarın" : `${cap(d.toLocaleDateString("tr-TR", { weekday: "long" }))} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}`;
-  const left =
-    days > 1
-      ? `${days} gün sonra`
-      : days === 1
-        ? ""
-        : mins == null
-          ? "Gün boyu"
-          : mins <= 0
-            ? "Şimdi"
-            : mins < 60
-              ? `${mins} dk sonra`
-              : `${Math.floor(mins / 60)} sa ${mins % 60 ? `${mins % 60} dk ` : ""}sonra`;
+  const w = planWhen(p, now, today);
   const sail = isTraining(p);
-  const tag = planTag(p);
+  const sub = [planTag(p), p.time, p.place].filter(Boolean).join(" · ");
   // Antrenmansa Süre'nin yanında Yoklama (Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
   const att = sail && canSeeAthletes(profile?.email);
   return (
-    <div className="ck-plan mt-3 rounded-[1.375rem] p-3.5 pb-3 text-white">
-      <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="block w-full min-w-0 text-left">
-        <span className="flex items-center gap-1.5 text-[0.75rem] font-bold tracking-[.04em] text-white/85">
-          <span className="size-[7px] shrink-0 rounded-full bg-white" />
-          <span className="min-w-0 flex-1 truncate uppercase">{[day, tag].filter(Boolean).join(" · ")}</span>
-          {left && <span className="shrink-0 text-[0.8125rem] font-semibold tracking-normal text-white">{left}</span>}
+    <div className="ck-plan mt-3 rounded-[1.375rem] p-3.5 text-white">
+      <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3.5 text-left">
+        <span className="min-w-[3.375rem] shrink-0 border-r border-white/30 pr-3.5 text-center leading-tight">
+          <small className="block text-[0.75rem] font-semibold text-white/85">{w.top}</small>
+          <b className="block text-[1.75rem] font-bold leading-none tracking-[-.03em] tabular-nums">{w.day}</b>
+          <small className="block text-[0.75rem] font-semibold text-white/85">{w.mon}</small>
         </span>
-        <span className="mt-1 flex items-baseline gap-2.5">
-          {p.time && <b className="shrink-0 text-[1.75rem] font-bold leading-tight tracking-[-.03em] tabular-nums">{p.time}</b>}
-          <span className="line-clamp-2 min-w-0 text-[1.0625rem] font-semibold leading-snug">{p.title || "Plan"}</span>
+        <span className="min-w-0 flex-1">
+          <b className="block truncate text-[1.0625rem] font-semibold leading-snug">{p.title || "Plan"}</b>
+          {sub && <small className="mt-0.5 block truncate text-[0.8125rem] tabular-nums text-white/80">{sub}</small>}
         </span>
-        {p.place && <small className="mt-0.5 block truncate text-[0.8125rem] text-white/80">{p.place}</small>}
+        <span className="shrink-0 text-right leading-tight">
+          <b className="block text-[1.375rem] font-bold tabular-nums">{w.left[0]}</b>
+          {w.left[1] && <small className="block text-[0.75rem] text-white/85">{w.left[1]}</small>}
+        </span>
       </button>
       {(att || sail) && (
         <div className={`mt-3 grid gap-2 ${att && sail ? "grid-cols-2" : "grid-cols-1"}`}>

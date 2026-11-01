@@ -1108,6 +1108,19 @@ async function rainStrip(h) {
     return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
   });
   await page.goto(page.url().replace(/\/[^/]*$/, "/"), { waitUntil: "load" });
+  // Sıradaki plan iş düğmesi biçiminde, yazılar tek satır (Seyhun 2026-10-31 "yazılar alta kayıyor")
+  await check("Ana sayfa", "sıradaki plan tek satır", "turkuaz kart: solda tarih, sağda kalan süre, plan adı ve tür · saat · yer birer satır, alt satıra kaymaz", async () => {
+    const card = page.locator("[aria-label='Sıradaki plan']").first();
+    if (!(await waitFor(() => card.count(), 8000))) return [true, "7 gün içinde plan yok"];
+    if (process.env.WX_SHOT) {
+      await card.evaluate((el) => el.scrollIntoView({ block: "center" }));
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `${process.env.WX_SHOT}-siradaki.png` }).catch(() => {});
+      await page.evaluate(() => window.scrollTo(0, 0));
+    }
+    const lines = await card.evaluate((el) => [...el.querySelectorAll(":scope > span.flex-1 > *")].map((x) => { const st = getComputedStyle(x); const lh = parseFloat(st.lineHeight) || parseFloat(st.fontSize) * 1.3; return Math.round(x.getBoundingClientRect().height / lh); }));
+    return [lines.length === 2 && lines.every((n) => n <= 1), `satırlar ${lines.join(",")}`];
+  });
   await check("Ana sayfa", "özellik kartları", "en altta Özet (Mesajlar) yok; İngilizce kartında sıradaki kelime ve Çalış · Dinle · Biliyorum", async () => {
     const en = page.locator("section[aria-label='İngilizce']");
     const ok = await waitFor(() => en.count(), 15000);
@@ -1116,7 +1129,8 @@ async function rainStrip(h) {
     if (process.env.WX_SHOT) await page.waitForTimeout(1500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-anasayfa.png`, fullPage: true }));
     return [ok > 0 && ["Çalış", "Dinle", "Biliyorum"].every((b) => btns.some((x) => x.includes(b))) && !ozet, `kart ${ok} · düğmeler ${btns.join(",")} · özet ${ozet}`];
   });
-  await check("Ana sayfa", "ilk ekran tam oturur", "15 ve Pro Max boyunda günler · sayaç · hava · grafik sekme çubuğuna kadar tam dolar (SE yarış varken biraz taşabilir); iş düğmeleri ekranın altında", async () => {
+  // Seyhun 2026-11-01 "ana sayfada hava durumu yüksekliği çok fazla": grafik kalan yeri doldurmaz, alçak kalır; altındaki plan ve düğmeler yukarı gelir
+  await check("Ana sayfa", "alçak grafik", "her telefon boyunda rüzgâr grafiği alçak (60–170 px), kalan yeri doldurmaz", async () => {
     const out = [];
     for (const [w, h] of [[375, 667], [390, 844], [430, 932]]) {
       await page.setViewportSize({ width: w, height: h });
@@ -1124,12 +1138,12 @@ async function rainStrip(h) {
       const m = await page.evaluate(() => {
         const sec = document.querySelector("section[aria-label='Bugün'] > div");
         const bar = document.querySelector("nav[aria-label='Sekmeler']");
-        const btn = document.querySelector("section[aria-label='Bugün'] [data-press].ck-ibtn, section[aria-label='Bugün'] a[href='/notes']");
+        const btn = document.querySelector("section[aria-label='Bugün'] nav[aria-label='İşler'] .ck-ibtn, section[aria-label='Bugün'] a[href='/notes']");
         const svg = document.querySelector("svg[aria-label='Bugünün saatlik rüzgâr grafiği']");
         return { end: sec ? Math.round(sec.getBoundingClientRect().bottom) : -1, bar: bar ? Math.round(bar.getBoundingClientRect().top) : -1, btn: btn ? Math.round(btn.getBoundingClientRect().top) : -1, svg: svg ? Math.round(svg.getBoundingClientRect().height) : 0 };
       });
       if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ilk-${w}.png` });
-      out.push({ w, ...m, ok: m.end > 0 && m.bar > 0 && (w < 380 ? m.end >= m.bar - 24 : Math.abs(m.bar - m.end) <= 24) && (m.btn < 0 || m.btn >= m.bar - 4) && m.svg >= 60 });
+      out.push({ w, ...m, ok: m.end > 0 && m.bar > 0 && m.svg >= 60 && m.svg <= 170 });
     }
     await page.setViewportSize({ width: 390, height: 844 });
     return [out.every((o) => o.ok), out.map((o) => `${o.w}: son ${o.end} çubuk ${o.bar} düğme ${o.btn} grafik ${o.svg}`).join(" · ")];

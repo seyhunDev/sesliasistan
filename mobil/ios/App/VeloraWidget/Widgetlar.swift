@@ -486,8 +486,33 @@ struct RuzgarGorunum: View {
             }
             .padding(.horizontal, 4)
             .padding(.vertical, 2)
+        } else if family == .systemSmall {
+            RuzgarKucuk(e: e)
         } else {
             RuzgarBolumu(e: e, buyuk: false)
+        }
+    }
+}
+
+// Küçük Rüzgâr: ana ekranda ve iOS 26'dan itibaren CarPlay'in widget ekranında (Seyhun 2026-11-01). Yer (yarış günü yarışın yeri),
+// büyük "12–18 kn", yön "Poyraz 45°" ve grafik; saat etiketleri yok (sığmaz, arabada tek bakışta okunsun)
+private struct RuzgarKucuk: View {
+    let e: VeloraGiris
+    var body: some View {
+        if let r = e.r {
+            let s = r.simdi(e.date)
+            let y = e.ev != nil ? e.v?.yaris(e.date) : nil
+            VStack(alignment: .leading, spacing: 2) {
+                Etiket(yazi: "\(y?.place ?? e.v?.place ?? "Dikili")\(r.bugun ? "" : " · Yarın")")
+                Sayi(deger: knYazi(s.wind, s.gust), ek: "kn", boy: 28)
+                Text(yonAdi(r.yon(e.date))).font(.system(size: 11, weight: .bold).monospacedDigit()).foregroundStyle(wAcik).lineLimit(1)
+                RuzgarGrafik(g: r, now: e.date).frame(maxHeight: .infinity)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                Etiket(yazi: "Rüzgâr")
+                Bos(yazi: "Rüzgâr alınamadı")
+            }
         }
     }
 }
@@ -499,7 +524,7 @@ struct RuzgarWidget: Widget {
         }
         .configurationDisplayName("Rüzgâr")
         .description("Bugünün rüzgâr grafiği")
-        .supportedFamilies([.systemMedium, .accessoryRectangular])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
     }
 }
 
