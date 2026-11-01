@@ -65,6 +65,14 @@ const cleanMarks = (m) =>
   );
 // Yarışın sıradaki noktası (çerçeveli kare): yazılmamış ilk nokta
 export const nextBuoy = (buoys, s) => buoys.find((b) => s?.marks?.[b] == null) || "";
+// Bizim sporcuların bitişi (Seyhun 2026-11-01, yeni akış "Bitiren kim?"): sırayla { id, name, t: startan beri sn }
+const cleanFins = (l) => {
+  const seen = new Set();
+  return l
+    .map((f) => ({ id: S(f?.id, 60), name: S(f?.name, 60), ...(num(f?.t, 36000) !== null ? { t: num(f.t, 36000) } : {}) }))
+    .filter((f) => f.id && f.name && !seen.has(f.id) && seen.add(f.id))
+    .slice(0, 40);
+};
 export function cleanStarts(list) {
   return (Array.isArray(list) ? list : [])
     .map((x) => ({
@@ -82,6 +90,7 @@ export function cleanStarts(list) {
       void: VOIDS.includes(x?.void) ? x.void : OLD_VOID[x?.flag] || "",
       note: S(x?.note, 200),
       marks: cleanMarks(x?.marks),
+      ...(Array.isArray(x?.fins) && x.fins.length ? { fins: cleanFins(x.fins) } : {}),
     }))
     .filter((x) => x.id && x.day && x.at)
     .sort((a, b) => a.at.localeCompare(b.at))

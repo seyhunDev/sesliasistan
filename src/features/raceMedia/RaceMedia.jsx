@@ -173,6 +173,7 @@ export function RaceMedia({ orgId, id }) {
   const onZero = useCallback(
     (end, t) => {
       if (Date.now() - end > 20 * 60e3) return; // çok önce bitmiş sayaç (ör. antrenmanda kalmış) yarış startı sayılmaz
+      if (!liveIn.current) return; // yarışlar henüz yüklenmedi: boş listeye yazılırsa günün diğer yarışları silinirdi (sayfa start sonrası açılınca; 2026-11-01)
       if (t?.mode !== "start" || !t.rid || !ownedBy(t.own, ownHere())) return; // düz start yarış açmaz ("+ Yarış yap" ile); başka sayfanın sayacı bu yarışa yazılmaz
       change((l) => {
         const next = zeroRace(l.starts, t.rid, end, l.wind, rdays);
@@ -351,7 +352,7 @@ export function RaceMedia({ orgId, id }) {
 
 // Start sekmesi: start kareleri, günün yarışları ve her yarışın çekimleri (MediaTab list); çekim yüklemeleri MediaTab'da
 function StartTab({ orgId, race, day, live, ours, onChange, rf, shot, onShotDone }) {
-  const list = useStartList({ orgId, race, day, live, onChange, rf });
+  const list = useStartList({ orgId, race, day, live, onChange, rf, ours });
   return (
     <>
       {list.marks}

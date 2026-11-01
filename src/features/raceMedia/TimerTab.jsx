@@ -7,8 +7,10 @@ import { Countdown, useTimerRun } from "@/features/training/Countdown";
 import { mmss } from "@/lib/raceScore";
 import { saveBuoys } from "@/features/athletes/raceLiveStore";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { COURSES, FLAGS, VOIDS, addBuoy, atOf, dropBuoy, nextBuoy, upSec, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn } from "@/lib/raceLive";
+import { COURSES, FLAGS, VOIDS, addBuoy, atOf, dropBuoy, finishRace, nextBuoy, upSec, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn } from "@/lib/raceLive";
 import { Button } from "@/components/ui/Button";
+import { FinishTap } from "@/features/training/TrainFlow";
+import { raceFinish, readTimer } from "@/features/training/Countdown";
 
 // Süre (Seyhun 2026-10-18): yarış akışı (useRaceFlow: Başlat · İptal · Yarışı bitir, sebep sorma, Geri al). Yarışlar bütün seri boyunca
 // numaralanır (2. gün 4. yarıştan devam eder); adı, saatleri ve iptal durumu dokununca değişir. Yarış günü sayfa bu sekmeyle açılır.
@@ -45,7 +47,7 @@ export function TimerTab(props) {
   );
 }
 
-export function useStartList({ orgId, race, day, live, onChange, rf }) {
+export function useStartList({ orgId, race, day, live, onChange, rf, ours = [] }) {
   const tr = useTimerRun();
   const timer = tr.t;
   const [edit, setEdit] = useState(null); // düzenlenen yarış
@@ -69,17 +71,37 @@ export function useStartList({ orgId, race, day, live, onChange, rf }) {
   const state = (s) => (s.void ? "" : s.fin ? `${raceTime(s)} sürdü` : cur?.id === s.id ? (tr.up ? "yarışta" : "geri sayım") : "");
 
   const today = startsOn(live.starts, day);
+  // Bitiren kim? (yeni akış, Seyhun 2026-11-01): bu yarıştaki sporcularımız; dokununca sıra ve süre start satırına (fins) yazılır,
+  // hepsi dokununca yarış biter
+  const people = ours.map((a) => ({ id: a.id, name: a.studentName || a.name || "" })).filter((a) => a.name);
+  const asRace = (s) => ({ id: s.id, name: raceName(s), startAt: Date.parse(s.at), finishes: s.fins || [] });
+  const withFins = (id, fins, list = live.starts) => list.map((x) => (x.id === id ? { ...x, fins } : x));
+  const finishAll = (x) => {
+    const t = readTimer();
+    const before = live.starts;
+    const next = finishRace(withFins(cur.id, x.finishes), cur.id, stamp(), rdays);
+    save(next);
+    if (ridOf(t) === cur.id) raceFinish(null);
+    const s = next.find((o) => o.id === cur.id);
+    undo(`${raceName(s)} bitti${raceTime(s) ? ` · ${raceTime(s)}` : ""}`, before, t);
+  };
 
   return {
     today,
-    marks: !!cur && tr.up && !cur.void ? <Marks buoys={live.buoys} s={cur} on onMark={mark} onBuoys={setBuoys} /> : null,
+    marks:
+      !!cur && tr.up && !cur.void ? (
+        <>
+          {people.length > 0 && <FinishTap race={asRace(cur)} people={people} onSave={(x) => save(withFins(cur.id, x.finishes))} onAll={finishAll} />}
+          <Marks buoys={live.buoys} s={cur} on onMark={mark} onBuoys={setBuoys} />
+        </>
+      ) : null,
     empty: today.length ? null : <li className="px-4 py-3 text-[0.875rem] text-mut">Bu gün yarış yok. Sıradaki: {flow.label}</li>,
     row: (s) => (
       <button type="button" onClick={() => setEdit(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
         <span className="min-w-0 flex-1">
           <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
-          {(cdText(s) || s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
-            <span className="block truncate text-[0.8125rem] text-mut">{[cdText(s), s.course, s.flag, markLine(live.buoys, s), s.note].filter(Boolean).join(" · ")}</span>
+          {(cdText(s) || s.fins?.length || s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
+            <span className="block truncate text-[0.8125rem] text-mut">{[cdText(s), finLine(s), s.course, s.flag, s.fins?.length ? "" : markLine(live.buoys, s), s.note].filter(Boolean).join(" · ")}</span>
           )}
         </span>
         <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
@@ -207,6 +229,8 @@ const cdText = (s) => {
   const m = s.cd && s.at ? Math.round((Date.parse(s.at) - Date.parse(s.cd)) / 60000) : 0;
   return m > 0 && m <= 60 ? `${m} dk start` : "";
 };
+const stamp = () => Date.now();
+const finLine = (s) => (s.fins || []).map((f, i) => `${i + 1} ${String(f.name).split(" ")[0]}`).join(" · ");
 const markLine = (buoys, s) =>
   buoys
     .filter((b) => s.marks?.[b] != null)

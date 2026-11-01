@@ -76,7 +76,7 @@ export async function run(server, log = () => {}) {
         { path: "orgs/{owner}/races/r1", data: { name: "Ege Kupası", city: "İzmir", district: "Dikili", startDate: TODAY, endDate: plus(2), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
         // sesle yazılmış rüzgâr (Saha ölçümlerinde görünmeli)
         // ve bugünün bir yarışı ile o yarışta çekilmiş bir fotoğraf (Start'ta yarışın satırında görünmeli)
-        { path: "orgs/{owner}/raceLive/r1", data: { wind: [{ at: new Date(now.getTime() - 30 * 60e3).toISOString(), dir: 300, kn: 11, src: "elle" }], starts: [{ id: "s1", day: TODAY, n: 1, cd: new Date(now.getTime() - 65 * 60e3).toISOString(), at: new Date(now.getTime() - 60 * 60e3).toISOString(), fin: new Date(now.getTime() - 45 * 60e3).toISOString() }], media: [{ id: "m1", kind: "photo", url: "https://example.com/1.jpg", at: new Date(now.getTime() - 40 * 60e3).toISOString() }] } },
+        { path: "orgs/{owner}/raceLive/r1", data: { wind: [{ at: new Date(now.getTime() - 30 * 60e3).toISOString(), dir: 300, kn: 11, src: "elle" }], starts: [{ id: "s1", day: TODAY, n: 1, cd: new Date(now.getTime() - 65 * 60e3).toISOString(), at: new Date(now.getTime() - 60 * 60e3).toISOString(), fin: new Date(now.getTime() - 45 * 60e3).toISOString() }, { id: "s2", day: TODAY, n: 2, cd: new Date(now.getTime() - 7 * 60e3).toISOString(), at: new Date(now.getTime() - 2 * 60e3).toISOString() }], media: [{ id: "m1", kind: "photo", url: "https://example.com/1.jpg", at: new Date(now.getTime() - 40 * 60e3).toISOString() }] } },
         // bugünün antrenmanı: iki biten yarış, üçüncüsü 1 dk önce start oldu (yeni akış: Bitiren kim?), günlük yazılmış
         { path: "orgs/{owner}/plans/t1", data: { ownerId: "{owner}", createdByUid: "{owner}", assignees: [], people: ["{owner}"], createdAt: now.toISOString(), createdBy: { name: "Test Sahip" }, src: "manual", cat: "Antrenman", title: "Optimist antrenmanı", date: TODAY, endDate: "", time: "00:05", allDay: false, durationMin: 120, tz: "Europe/Istanbul", timeSource: "user", place: "Yat limanı", status: "planned", races: [{ id: "y1", name: "Yarış 1", startAt: now.getTime() - 90 * 60e3, fin: 1000, cd: 300, finishes: [{ id: "a1", name: "Deniz Yılmaz" }] }, { id: "y2", name: "Yarış 2", startAt: now.getTime() - 40 * 60e3, fin: 845, cd: 240, marks: { Start: 0, "Şamandıra 1": 252 }, finishes: [] }, { id: "y3", name: "Yarış 3", startAt: now.getTime() - 60e3, cd: 300, finishes: [] }], log: { wind: "12", dir: "Poyraz", topics: ["Start", "Şamandıra"], min: 120, rating: 3 } } },
         { path: "orgs/{owner}/races/r2", data: { name: "Bahar Kupası", city: "İzmir", district: "Dikili", startDate: plus(5), endDate: plus(6), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
@@ -272,6 +272,20 @@ export async function run(server, log = () => {}) {
       const ok = tabs === "Saha,Start,Sonuç" && dockRec === 0 && rec === 1 && go === 1 && thumb === 1 && loose === 0 && /5 dk start/.test(rowTxt) && /15:00 sürdü/.test(rowTxt) && info === 0;
       return [ok, `sekmeler ${tabs} · alt çubukta Kayıt ${dockRec} · Başlat yanında Kayıt ${rec} · Başlat ${go} · satırda çekim ${thumb} · ayrı bölüm ${loose} · satır "${rowTxt.slice(0, 80)}" · bilgi kartı ${info}`];
     });
+    // Yarış günü Bitiren kim? (Seyhun 2026-11-01): start olmuş yarışta bizim sporcuların kareleri; dokununca sıra start satırına yazılır,
+    // hepsi dokununca yarış biter (satırda "1 Deniz"); sayaç tarayıcının saatine göre kurulur
+    await okPage("Yarış sayfası", "bitiren kim", "/athletes/races/r1/media?tab=sure", "Start sayacı", async () => {
+      await page.evaluate(() => localStorage.setItem("sa-sayac", JSON.stringify({ dur: 300, end: Date.now() - 2 * 60e3, left: null, mode: "start", rid: "s2", own: "/athletes/races/r1/media", where: "Ege Kupası", at: Date.now() })));
+      await page.goto(page.url());
+      const tile = page.locator("section[aria-label='Bitiren kim'] button[aria-pressed]", { hasText: "Deniz" });
+      const shown = await tile.waitFor({ timeout: 60000 }).then(() => true, () => false);
+      if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-bitiren.png") }).catch(() => {});
+      await tile.click().catch(() => {});
+      const fin = await page.locator("main li").getByText(/1 Deniz/).first().waitFor({ timeout: 20000 }).then(() => true, () => false);
+      const gone = await page.locator("section[aria-label='Bitiren kim']").count();
+      await page.evaluate(() => localStorage.removeItem("sa-sayac"));
+      return [shown && fin && gone === 0, `kare ${shown ? "göründü" : "yok"} · satırda ${fin ? "1 Deniz" : "yok"} · kareler ${gone ? "duruyor" : "kalktı"}`];
+    });
     // Süre seçimi (Seyhun 2026-11-01): sayacın altında 5 · 4 · 2 · 1 dk, üstte "5 dk ▾" ve start sırası şeridi yok; seçilen süre sayfa yenilense de kalır
     await okPage("Yarış sayfası", "süre seçimi", "/athletes/races/r1/media", "Start sayacı", async () => {
       const dk = page.locator("button[aria-pressed]", { hasText: /^\d+ dk$/ });
@@ -292,8 +306,7 @@ export async function run(server, log = () => {}) {
     // Antrenman yeni akış (Seyhun 2026-11-01): alt çubuk Yarış · Videolar, Video Başlat'ın yanında; yarışta "Bitiren kim?" kareleri,
     // herkes dokununca yarış biter ve biten son yarış açık görünür (sıra + süre, Düzelt · Paylaş)
     await okPage("Antrenman", "yeni akış: bitiren kim", "/training/day?id=t1", "Yoklama", async () => {
-      const end = now.getTime() - 60e3;
-      await page.evaluate((t) => localStorage.setItem("sa-sayac", JSON.stringify(t)), { dur: 300, end, left: null, mode: "start", rid: "y3", own: "/training/day?id=t1", where: "Optimist antrenmanı", at: Date.now() });
+      await page.evaluate(() => localStorage.setItem("sa-sayac", JSON.stringify({ dur: 300, end: Date.now() - 60e3, left: null, mode: "start", rid: "y3", own: "/training/day?id=t1", where: "Optimist antrenmanı", at: Date.now() })));
       await page.goto(page.url());
       const tile = page.locator("section[aria-label='Bitiren kim'] button", { hasText: "Deniz" });
       await tile.waitFor({ timeout: 60000 }).catch(() => {});
