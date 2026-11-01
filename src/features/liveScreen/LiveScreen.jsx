@@ -23,21 +23,7 @@ const clockOf = (sec) => {
 const hmOf = (iso) => (iso ? new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "");
 const dayText = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "");
 
-function Mark() {
-  return (
-    <svg className="lv-logo" viewBox="0 0 100 100" aria-hidden="true">
-      <defs>
-        <linearGradient id="lvg" x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0" stopColor="#ff3d77" />
-          <stop offset="1" stopColor="#ff9a4d" />
-        </linearGradient>
-      </defs>
-      <rect width="100" height="100" rx="23" fill="url(#lvg)" />
-      <path d="M20 54 C27 54 28 34 35 34 C43 34 42 70 50 70 C58 70 57 30 65 30 C72 30 73 50 80 50" fill="none" stroke="#fff" strokeWidth="9" strokeLinecap="round" />
-    </svg>
-  );
-}
-
+// Logo kaldırıldı (Seyhun 2026-11-01 "herkese açık sayfadaki logoyu da kaldır"); başlık en solda
 function useData(id, y) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
@@ -631,7 +617,6 @@ export function LiveScreen({ id, y = "" }) {
       <Sea />
       <div className="lv-page">
         <header className="lv-head">
-          <Mark />
           <div className="lv-ttl">
             <b>
               <Dot g={grp} />
