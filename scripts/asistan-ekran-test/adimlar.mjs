@@ -143,11 +143,13 @@ export async function scenarios(h) {
     const ok = await waitFor(async () => /Yelken bezleri|kuru yerde/i.test(await convo(page)), 6000);
     return [!!ok && aiCalls() === before, `${(await convo(page)).replace(/\s+/g, " ").slice(0, 120)} · yz isteği ${aiCalls() - before}`];
   });
-  await check("Halka renkleri", "cevaptan sonra", "yeşil halka ve onay (✓ Tamam), durum boşta", async () => {
+  await check("Halka renkleri", "cevaptan sonra", "yeşil halka ve onay (✓ Tamam) bir kez görünür, sonra asistan düğmesi geri gelir", async () => {
     await waitFor(async () => (await state(page)) === "idle", 5000);
     const c = await ringColor(page);
     const chk = await page.locator("[data-dome] .lring-check").count();
-    return [c === "yeşil" && chk === 1, `${c} · onay ${chk} · ${await state(page)}`];
+    const gone = await waitFor(async () => ((await page.locator("[data-dome] .lring-check").count()) === 0 ? true : null), 3000);
+    const tone = await page.locator("[data-dome] [data-orb]").first().getAttribute("data-tone").catch(() => "");
+    return [c === "yeşil" && chk === 1 && !!gone && tone === "idle", `${c} · onay ${chk} · sonra ${gone ? "kayboldu" : "kalıcı"} · ${tone} · ${await state(page)}`];
   });
   await check("Enerji (boşta)", "asistan açık, boşta", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
     await page.waitForTimeout(800);
@@ -1127,7 +1129,8 @@ async function rainStrip(h) {
     if (process.env.WX_SHOT) await page.waitForTimeout(1500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-anasayfa.png`, fullPage: true }));
     return [ok > 0 && ["Çalış", "Dinle", "Biliyorum"].every((b) => btns.some((x) => x.includes(b))) && !ozet, `kart ${ok} · düğmeler ${btns.join(",")} · özet ${ozet}`];
   });
-  await check("Ana sayfa", "ilk ekran tam oturur", "15 ve Pro Max boyunda günler · sayaç · hava · grafik sekme çubuğuna kadar tam dolar (SE yarış varken biraz taşabilir); iş düğmeleri ekranın altında", async () => {
+  // Seyhun 2026-11-01 "ana sayfada hava durumu yüksekliği çok fazla": grafik kalan yeri doldurmaz, alçak kalır; altındaki plan ve düğmeler yukarı gelir
+  await check("Ana sayfa", "alçak grafik", "her telefon boyunda rüzgâr grafiği alçak (60–170 px), kalan yeri doldurmaz", async () => {
     const out = [];
     for (const [w, h] of [[375, 667], [390, 844], [430, 932]]) {
       await page.setViewportSize({ width: w, height: h });
@@ -1140,7 +1143,7 @@ async function rainStrip(h) {
         return { end: sec ? Math.round(sec.getBoundingClientRect().bottom) : -1, bar: bar ? Math.round(bar.getBoundingClientRect().top) : -1, btn: btn ? Math.round(btn.getBoundingClientRect().top) : -1, svg: svg ? Math.round(svg.getBoundingClientRect().height) : 0 };
       });
       if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ilk-${w}.png` });
-      out.push({ w, ...m, ok: m.end > 0 && m.bar > 0 && (w < 380 ? m.end >= m.bar - 24 : Math.abs(m.bar - m.end) <= 24) && (m.btn < 0 || m.btn >= m.bar - 4) && m.svg >= 60 });
+      out.push({ w, ...m, ok: m.end > 0 && m.bar > 0 && m.svg >= 60 && m.svg <= 170 });
     }
     await page.setViewportSize({ width: 390, height: 844 });
     return [out.every((o) => o.ok), out.map((o) => `${o.w}: son ${o.end} çubuk ${o.bar} düğme ${o.btn} grafik ${o.svg}`).join(" · ")];

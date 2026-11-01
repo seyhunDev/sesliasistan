@@ -54,7 +54,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
       {/* İlk ekran (Seyhun 2026-10-28 "A · Yalnız saydıkların"): günler, yarış sayacı, hava ve grafik (yarış başka yerdeyse altta ev yeri)
           telefonda ekrana tam oturur; boşluk açılmaz, büyüklükler ekran boyuna göre (--u), kalan yeri grafik doldurur (useFit).
           Sıradaki plan ve iş düğmeleri kaydırınca gelir. */}
-      <div ref={fitRef} style={fill ? { minHeight: fitH, "--u": `${(fitH / 100).toFixed(2)}px` } : undefined} className="flex flex-col">
+      <div ref={fitRef} style={fill ? { minHeight: far ? fitH : undefined, "--u": `${(fitH / 100).toFixed(2)}px` } : undefined} className="flex flex-col">
       <header className="-mb-1 flex items-center justify-end gap-2">
         <h1 className="sr-only">{now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}</h1>
         <BirthdayBadge />
@@ -109,7 +109,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
           </button>
           {rows?.length > 0 && (
             <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className={`mt-2 w-full text-left ${fill ? "flex min-h-0 flex-1 flex-col" : "block"}`}>
-              <CockpitWind key={date} rows={rows} date={date} fill={fill} />
+              <CockpitWind key={date} rows={rows} date={date} />
             </button>
           )}
         </>

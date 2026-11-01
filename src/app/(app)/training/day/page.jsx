@@ -196,7 +196,6 @@ function Day() {
           <Countdown
             dark
             mode="start"
-            presets={[60, 120, 300, 600]}
             race={withRaces ? flow : null}
             title={cur ? cur.name : ""}
             where={title}

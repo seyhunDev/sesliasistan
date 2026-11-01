@@ -28,6 +28,7 @@ import { SideNav, useWide } from "./SideNav";
 import { TimerChip } from "@/features/training/TimerChip";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor (bas-konuş olmayan küçük küreler)
+export const CHECK_MS = 1500; // iş bitince küredeki yeşil ✓ bu kadar görünür, sonra asistan düğmesi geri gelir
 // BAS-KONUŞ (Seyhun 2026-10-25, örnek "A · Çubuğun sağ ucunda"): asistan küresi basılı tutulduğu sürece dinler, bırakınca
 // gönderir; kendiliğinden dinleme yok. Çok kısa dokunuş (SHORT_MS) konuşma sayılmaz; parmak küreden uzağa (AWAY_PX) kayıp
 // bırakılırsa gönderilmez. onRelease({ short, away }).
@@ -796,12 +797,21 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
     : mode === "sending" ? heard || "" // yalnız şimdi söylenen: önceki söz (live.said) bir an görünüp kaybolmasın (Seyhun, 2026-10-09)
     : mode === "busy" ? "" // gönderilen söz sohbete balon olarak geçti: kutuda ikinci kez görünmez (Seyhun 2026-10-25)
     : draft;
-  const ring = active ? ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown, saved: live.saved }) : {};
-  // İş bitince (düğmede ✓) kısa "tamam" titreşimi; dinleme başlarken titreşim useSpeech'te
-  const done = !!ring.check;
+  const okRing = active ? ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown, saved: live.saved }) : {};
+  // İş bitince (düğmede ✓) kısa "tamam" titreşimi; dinleme başlarken titreşim useSpeech'te.
+  // Yeşil ✓ bir kez görünür, CHECK_MS sonra kaybolur ve asistan düğmesi geri gelir (Seyhun 2026-11-01)
+  const done = !!okRing.check;
+  const [checkGone, setCheckGone] = useState(false);
   useEffect(() => {
-    if (done) haptic("success");
+    if (!done) return;
+    haptic("success");
+    const t = setTimeout(() => setCheckGone(true), CHECK_MS);
+    return () => {
+      clearTimeout(t);
+      setCheckGone(false);
+    };
   }, [done]);
+  const ring = done && checkGone ? { tone: "idle", fill: 0, label: "", sub: "" } : okRing;
   return (
     <div
       ref={box}
