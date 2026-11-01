@@ -1,8 +1,8 @@
-Commit: ab76941 · Ana sayfa: Sıradaki kartında tarih ve kalan gün; yarış bitince yarış havası kalkar (#928)
-Zaman: 2026-11-01-1351 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41298482561
+Commit: d5483f2 · Merge pull request #932 from seyhunDev/claude/project-thread-lo85ym
+Zaman: 2026-11-01-1857 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41322899397
 
-TAM TEST · 01.11.2026 13:40:29
+TAM TEST · 01.11.2026 18:47:00
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,7 +29,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1425/1425 geçti · 0 kalan · 621 sn
+SONUÇ: 1425/1426 geçti · 1 kalan · 600 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -179,8 +179,12 @@ SONUÇ: 1425/1425 geçti · 0 kalan · 621 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/15
-  ✓ Yarış sayfası: 13/13
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/16
+  ✗ Yarış sayfası: 12/13
+      ✗ “tek ⋯ menüsü”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     Süre'de sıfırla 0 · menü prep,people,docs,trip,budget,canli,shot,day,reset,edit,del · Sporcu yarış sayfasında açıldı · sıfırla açıldı
+  ✓ Antrenman: 1/1
   ✓ Asılı bağlantı: 2/2
 
 4. GERÇEK YAPAY ZEKA: 0/0
