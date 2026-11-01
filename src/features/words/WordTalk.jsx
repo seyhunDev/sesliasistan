@@ -168,7 +168,7 @@ export function WordTalk({ w, onClose, onQuiz }) {
         )}
         {busy && <span aria-label="Yazıyor" className="h-5 w-10 animate-pulse rounded-full bg-white/8" />}
         {failed && !busy && (
-          <Button variant="text" onClick={() => ask([])} className="!px-0 !text-white/60">
+          <Button variant="text" onClick={() => ask([])} className="self-start !px-0 !text-white/60">
             Tekrar dene
           </Button>
         )}
@@ -185,14 +185,14 @@ export function WordTalk({ w, onClose, onQuiz }) {
         <div ref={end} />
       </section>
 
-      <footer className="sticky bottom-[calc(var(--dome-h,var(--stage-h,6rem))+0.5rem)] -mx-6 flex items-center gap-2.5 bg-[#08111f]/90 px-6 pb-1 pt-2 backdrop-blur">
+      <footer className="sticky bottom-[calc(var(--dome-h,var(--stage-h,6rem))+0.5rem)] -mx-6 flex items-center gap-2.5 bg-gradient-to-t from-[#08111f] from-70% to-transparent px-6 pb-1 pt-5">
         {done ? (
           <>
             <Button variant="text" onClick={onClose} className="!text-white/50">
               Bitir
             </Button>
             <span className="flex-1" />
-            <Button variant="secondary" full={false} onClick={onQuiz} className="!h-12 !rounded-full !border-0 !bg-[#67e8f9]/14 !px-7 !text-[#67e8f9] !shadow-none">
+            <Button variant="secondary" full={false} onClick={onQuiz} className="!h-12 !rounded-full !border-0 !bg-none !bg-[#67e8f9]/14 !px-7 !text-[#67e8f9] !shadow-none">
               Sına
             </Button>
           </>
