@@ -5,7 +5,7 @@ import Link from "next/link";
 import { dirShort, momentRaceName, raceTime, raceTitle, seqState, seqSteps } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse } from "@/lib/raceCourse";
-import { manualFinish, markLabel, nowPos, officialFor, recTitle, sameSail, standings, whoBySail, whoOf, ytId } from "@/lib/raceRounds";
+import { manualFinish, markLabel, nowPos, officialFor, recTitle, sameSail, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import "./liveScreen.css";
 
@@ -146,7 +146,7 @@ function Media({ data, sel, starts, isCur }) {
   // canlı yarışta o günün çekimleri, önceki yarışta yalnız o yarışınkiler
   const items = useMemo(() => (data.media || []).filter((m) => (isCur ? (m.rid ? m.rid === sel?.id : m.at.slice(0, 10) === (sel?.day || data.day)) : m.rid === sel?.id)), [data.media, sel, data.day, isCur]);
   const scr = isCur ? data.screen || {} : {};
-  const yt = ytId(data.stream?.url);
+  const yt = ytSrc(data.stream?.url);
   const onScreen = scr.kind === "rec" ? (data.media || []).find((m) => m.id === scr.mid) : null;
   const show = pick || (scr.kind === "live" && yt ? { live: true } : onScreen);
   if (!show && !items.length) return null;
@@ -177,7 +177,7 @@ function Media({ data, sel, starts, isCur }) {
       {show && (
         <div className="lv-screen">
           {show.live ? (
-            <iframe title="Canlı yayın" src={`https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&mute=1&playsinline=1&rel=0`} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+            <iframe title="Canlı yayın" src={yt} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
           ) : show.kind === "video" ? (
             <video key={show.id} src={show.url} poster={show.thumb || undefined} autoPlay muted playsInline controls loop={pick ? false : !!scr.loop} />
           ) : (
@@ -546,7 +546,8 @@ export function LiveScreen({ id, y = "" }) {
   }
   const starts = data.starts || [];
   const sel = (y && starts.find((x) => x.id === y)) || starts.find((x) => x.id === data.cur) || null;
-  const isCur = !!sel && sel.id === data.cur;
+  // Canlı görünüm: önceki yarış seçilmediyse (henüz start kaydı yokken de sayaç ve ekrandaki yayın görünür; Seyhun 2026-11-01 "süre başlattım gösterilmiyor")
+  const isCur = !y || (!!sel && sel.id === data.cur);
   const title = sel ? raceTitle(sel) : data.race.name || "Yarış";
   const sub = [sel ? data.race.name : "", dayText(sel?.day || data.day), data.race.place].filter(Boolean).join(" · ");
   const ongoing = isCur && sel && !sel.fin && !sel.void;

@@ -4,7 +4,7 @@
 import { authFetch } from "@/lib/authFetch";
 import { loadRoundsOf, saveRounds, saveScreen, saveStream } from "@/features/athletes/raceLiveStore";
 import { momentRace, momentRaceName, raceName } from "@/lib/raceLive";
-import { applyRound, currentStart, markName, recTitle, roundCommand, routeCommand, screenCommand, setRoute, ytId } from "@/lib/raceRounds";
+import { applyRound, currentStart, markName, recTitle, roundCommand, routeCommand, screenCommand, setRoute, ytEmbed } from "@/lib/raceRounds";
 
 export const liveUrl = (raceId) => `${window.location.origin}/canli/${raceId}`;
 
@@ -79,7 +79,7 @@ export async function screenSay(orgId, raceId, s) {
   }
   const L = await loadRoundsOf(orgId, raceId);
   if (c.kind === "live") {
-    if (!ytId(L.stream.url)) return { fail: "Önce canlı yayın bağlantısını Canlı ekran penceresine yapıştır." };
+    if (!ytEmbed(L.stream.url)) return { fail: "Önce canlı yayın bağlantısını Canlı sekmesine yapıştır." };
     await showOnScreen(orgId, raceId, { kind: "live" });
     return { text: "Ekranda canlı yayın." };
   }
