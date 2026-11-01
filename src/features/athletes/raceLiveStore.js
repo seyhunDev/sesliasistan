@@ -68,7 +68,7 @@ export const saveMedia = (orgId, id, list) => setDoc(live(orgId, id), { media: c
 // Seçilen ya da çekilen dosya → saklanacak hâl: { blob, type, kind }. onProg(0..1) küçültme ilerlemesi
 // Kurallar (Seyhun 2026-10-20: "iPhone'un kendi kamerası"): fotoğraf 2048 px JPEG; video en çok 2 dakika, iPhone'un çektiği dosya
 // olduğu gibi saklanır (ses, kalite ve yön korunur). Storage sınırını (60 MB) aşarsa 1280 px'e sesli küçültülür (video süresi kadar sürer).
-const RAW_MAX = 55 * 1024 * 1024;
+export const RAW_MAX = 55 * 1024 * 1024;
 export async function prepRaceMedia(file, onProg) {
   if (!isVideoFile(file)) {
     const img = await compressImage(file, 2048, 0.85);

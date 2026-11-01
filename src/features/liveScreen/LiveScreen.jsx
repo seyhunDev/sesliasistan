@@ -100,6 +100,12 @@ function Clock({ sel, isCur, timer, skew }) {
     rem = timer.left;
     label = "Durdu";
     value = clockOf(timer.left);
+  } else if (isCur && running && !sel?.at) {
+    // 0'dan sonra start kaydı henüz yazılmadıysa da sayaçtan ileri sayar, durdurulana kadar (Seyhun 2026-11-01 "geri sayım bitince ileri devam etsin")
+    label = "Start'tan beri";
+    value = clockOf(Math.min(4 * 3600, (now - timer.end) / 1000));
+    right = `Start ${hmOf(new Date(timer.end).toISOString())}`;
+    rem = 0;
   } else if (sel?.void) {
     label = sel.void;
     value = "—";
@@ -438,6 +444,8 @@ function Ranking({ data, sel, isCur, id }) {
 
 // Genel sıralama: resmî sonuç (PDF) varsa ondan; yoksa geçici, bütün grupların yarışları toplanarak (lib/roundScore.js:
 // grup içi sıra puan, eşitlikte birincilik sayısı, sonra son yarış). Kızlar ve Junior kendi içinde.
+// Sade liste (Seyhun 2026-11-01 "genel bilgi tarafını daha sade, liste hâlinde"): sıra, yelken, ad, kulüp, toplam; yarış yarış puan yok.
+// Kendi görünümünde (üstte Bugün · Genel): günün yarışı ana ekran, genel sıralama onu itmez.
 function Overall({ data }) {
   const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
   const who = useMemo(() => whoBySail(data.fleets), [data.fleets]); // kayıt listesinde olmayanlar için
@@ -540,9 +548,6 @@ function Overall({ data }) {
             <th>Ad</th>
             <th className="c">Kulüp</th>
             <th className="k">Kat.</th>
-            {f.races.map((n) => (
-              <th key={n} className="m">{`Y${n}`}</th>
-            ))}
             <th className="t">Toplam</th>
           </tr>
         </thead>
@@ -557,18 +562,6 @@ function Overall({ data }) {
               </td>
               <td className="c">{[r.club, r.born].filter(Boolean).join(" · ")}</td>
               <td className="k">{r.cats.join(" · ")}</td>
-              {f.races.map((n) => (
-                <td key={n} className="m">
-                  {r.sc[n] ? (
-                    <>
-                      <Dot g={r.sc[n].grp} />
-                      {r.sc[n].code || r.sc[n].pts}
-                    </>
-                  ) : (
-                    ""
-                  )}
-                </td>
-              ))}
               <td className="t">{r.total}</td>
             </tr>
           ))}
@@ -613,6 +606,7 @@ function Races({ id, starts, cur, sel, fleets, rounds, onClose }) {
 export function LiveScreen({ id, y = "" }) {
   const { data, err, skew } = useData(id, y);
   const [list, setList] = useState(false);
+  const [view, setView] = useState("gun"); // "gun": günün yarışı (sayaç, sıralama, yayın) · "genel": genel sıralama listesi
   if (!data) {
     return (
       <div className="lv">
@@ -627,7 +621,9 @@ export function LiveScreen({ id, y = "" }) {
   const sel = (y && starts.find((x) => x.id === y)) || starts.find((x) => x.id === data.cur) || null;
   // Canlı görünüm: önceki yarış seçilmediyse (henüz start kaydı yokken de sayaç ve ekrandaki yayın görünür; Seyhun 2026-11-01 "süre başlattım gösterilmiyor")
   const isCur = !y || (!!sel && sel.id === data.cur);
-  const title = sel ? raceTitle(sel) : data.race.name || "Yarış";
+  // Başlıkta grup ve kaçıncı yarış (Seyhun 2026-11-01 "hangi grubun kaçıncı yarışı olduğunu göstermeli"): "Mavi grup · 3. yarış"
+  const grp = sel ? data.rounds?.[sel.id]?.grp || "" : "";
+  const title = sel ? [grp ? `${grp} grup` : "", raceTitle(sel)].filter(Boolean).join(" · ") : data.race.name || "Yarış";
   const sub = [sel ? data.race.name : "", dayText(sel?.day || data.day), data.race.place].filter(Boolean).join(" · ");
   const ongoing = isCur && sel && !sel.fin && !sel.void;
   return (
@@ -637,10 +633,21 @@ export function LiveScreen({ id, y = "" }) {
         <header className="lv-head">
           <Mark />
           <div className="lv-ttl">
-            <b>{title}</b>
+            <b>
+              <Dot g={grp} />
+              {title}
+            </b>
             <span>{sub}</span>
           </div>
           {ongoing ? <span className="lv-live">Canlı</span> : null}
+          <div className="lv-seg" role="tablist">
+            <button type="button" role="tab" aria-selected={view === "gun"} className={view === "gun" ? "on" : ""} onClick={() => setView("gun")}>
+              Bugün
+            </button>
+            <button type="button" role="tab" aria-selected={view === "genel"} className={view === "genel" ? "on" : ""} onClick={() => setView("genel")}>
+              Genel
+            </button>
+          </div>
           {!isCur && data.cur ? (
             <Link href={`/canli/${id}`} className="lv-btn on">
               Canlı yarış
@@ -652,18 +659,23 @@ export function LiveScreen({ id, y = "" }) {
             </button>
           ) : null}
         </header>
-        <div className="lv-grid">
-          <div className="lv-stack lv-a">
-            <Clock sel={sel} isCur={isCur} timer={data.timer} skew={skew} />
-            <Wind data={data} sel={sel} isCur={isCur} />
-            <Media key={sel?.id || "x"} data={data} sel={sel} starts={starts} isCur={isCur} />
-          </div>
-          <Now data={data} sel={sel} isCur={isCur} />
-          <div className="lv-stack lv-b">
-            <Ranking key={sel?.id || "x"} data={data} sel={sel} isCur={isCur} id={id} />
+        {view === "genel" ? (
+          <div className="lv-one">
             <Overall data={data} />
           </div>
-        </div>
+        ) : (
+          <div className="lv-grid">
+            <div className="lv-stack lv-a">
+              <Clock sel={sel} isCur={isCur} timer={data.timer} skew={skew} />
+              <Wind data={data} sel={sel} isCur={isCur} />
+              <Media key={sel?.id || "x"} data={data} sel={sel} starts={starts} isCur={isCur} />
+            </div>
+            <Now data={data} sel={sel} isCur={isCur} />
+            <div className="lv-stack lv-b">
+              <Ranking key={sel?.id || "x"} data={data} sel={sel} isCur={isCur} id={id} />
+            </div>
+          </div>
+        )}
       </div>
       {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} onClose={() => setList(false)} /> : null}
     </div>

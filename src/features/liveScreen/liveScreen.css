@@ -1,5 +1,6 @@
 /* Herkese açık canlı yarış ekranı (/canli). Yayın görünümü (Seyhun 2026-11-01, örnek project-files/samandira-donus/yayin): tam ekran PC için
-   koyu lacivert "yukarıdan deniz" zemin, parkur kartı (gerçek ölçümlerden) arkada soluk, önde sayaç ve sıralama. Az renk: beyaz yazı, tek vurgu
+   koyu lacivert "yukarıdan deniz" zemin, parkur kartı (gerçek ölçümlerden) arkada soluk, önde sayaç ve sıralama. Üstte Bugün · Genel:
+   günün yarışı ana ekran, genel sıralama ayrı sade liste (Seyhun 2026-11-01: "sıralama uzun olacak, genel sıralama kaybolacak"). Az renk: beyaz yazı, tek vurgu
    (pembe, logo rengi), grup renkleri yalnız noktada. Yazı ekran genişliğiyle büyür; 1100 px altı tablet (iki sütun), 760 px altı telefon (tek sütun, parkur kart). */
 .lv {
   --lv-fg: #fff;
@@ -80,6 +81,12 @@
 .lv-btn:active { transform: translateY(1px); }
 .lv-btn.on { background: #fff; border-color: #fff; color: var(--lv-ink); }
 .lv-link { background: none; border: 0; padding: 0; font: inherit; color: var(--lv-fg); text-decoration: underline; text-underline-offset: 0.15em; cursor: pointer; }
+/* Üstte görünüm seçimi: Bugün (günün yarışı) · Genel (genel sıralama listesi). Genel tek sütun, geniş ekranda ortada */
+.lv-seg { display: inline-flex; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 999px; padding: 2px; background: rgba(255, 255, 255, 0.08); flex: none; }
+.lv-seg button { border: 0; background: none; border-radius: 999px; padding: 0.38em 1em; font: inherit; font-size: 0.92em; color: var(--lv-fg); cursor: pointer; white-space: nowrap; }
+.lv-seg button.on { background: #fff; color: var(--lv-ink); }
+.lv-one { flex: 1; display: flex; flex-direction: column; width: min(100%, 52em); margin: 0 auto; }
+.lv-one .lv-all { flex: 1; }
 .lv-live { display: inline-flex; align-items: center; gap: 0.5em; background: var(--lv-acc); color: #fff; padding: 0.42em 1em; border-radius: 999px; font-size: 0.9em; letter-spacing: 0.08em; text-transform: uppercase; }
 .lv-live::before { content: ""; width: 0.55em; height: 0.55em; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0.28em rgba(255, 255, 255, 0.3); }
 .lv-card {
@@ -193,6 +200,9 @@
   .lv-live { font-size: 0; gap: 0; padding: 0.42em; }
   .lv-live::before { width: 9px; height: 9px; box-shadow: none; }
   .lv-head .lv-btn { padding: 0.45em 0.8em; font-size: 13px; }
+  .lv-seg button { padding: 0.4em 0.8em; font-size: 13px; }
+  .lv-head { flex-wrap: wrap; }
+  .lv-head .lv-seg { order: 10; }
   .lv-grid { display: flex; flex-direction: column; gap: 12px; }
   .lv-stack { display: contents; }
   .lv-mid { display: contents; }

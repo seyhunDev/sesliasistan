@@ -2,7 +2,7 @@
 
 // Yayın sayfasının işleri (Seyhun 2026-11-01): telefondan seçilen video yarışa yüklenir ve ekrana verilir; videonun eni boyu kayda yazılır
 // (herkese açık sayfa dikey videoyu dikey kutuda gösterir). Çekim akışının geri kalanı (yerel kopya, küçük resim kuyruğu) MediaTab'da kalır.
-import { addRaceMedia, cloudCopy, prepRaceMedia } from "@/features/athletes/raceLiveStore";
+import { RAW_MAX, addRaceMedia, cloudCopy, prepRaceMedia } from "@/features/athletes/raceLiveStore";
 import { dayOf, momentAt, momentOf } from "@/lib/raceLive";
 import { readTimer } from "@/features/training/Countdown";
 
@@ -29,7 +29,9 @@ export async function uploadForScreen(orgId, raceId, file, starts, onStep) {
   const m = await prepRaceMedia(file, (p) => onStep?.(`Küçültülüyor %${Math.round(p * 100)}`));
   let blob = m.blob;
   let type = m.type;
-  if (m.kind === "video" && m.big) {
+  // Sınıra (55 MB) sığan video olduğu gibi gider; küçültme (video süresi kadar süren yeniden kodlama) yalnız sığmayana
+  // (Seyhun 2026-11-01: "küçültülüyor dedi, öyle kaldı, video yüklenmedi")
+  if (m.kind === "video" && blob.size > RAW_MAX) {
     const c = await cloudCopy(blob, type, (p) => onStep?.(`Küçültülüyor %${Math.round(p * 100)}`));
     blob = c.blob;
     type = c.type;

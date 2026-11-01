@@ -287,9 +287,10 @@ export function makeRace(race) {
 // 5 · 4 · 2 · 1 dk seçimi (start sırası şeridi ve üstteki "5 dk ▾" kalktı, Seyhun 2026-11-01); geri sayımda −1 dk · Eşitle (en yakın tam dakika, komitenin işaretiyle eşitlemek için) · +1 dk; startan sonra "+ Yarış yap" ve
 // İptal. Kartın altında tek ana düğme: Başlat · Durdur · Devam · Bitir (çember yok, yanlış dokunuş sayacı değiştirmez).
 // title: yarışa bağlı sayaçta yarışın adı; where: bu sayfanın adı (sayaç başlatılınca kayda yazılır). beforeStart: Başlat'tan önce (planı yoksa açar).
+// startRace: Başlat yarışı hemen açar (0'da start saati yazılır, herkese açık ekran "Start'tan beri" sayar; Seyhun 2026-11-01).
 // Alt şeritte lead ve tail. bottom: ana düğme kokpitte değil alt şeritte (başparmak yetişsin; Seyhun 2026-10-22), solunda side (Sonucu söyle). dark: lacivert kokpitin içinde (antrenman günü, 2026-10-21 yeni tasarım): kart yok, beyaz yazı.
 // rec: ana düğmenin sağında yuvarlak düğme (yarışın Start sekmesinde Kayıt; Seyhun 2026-10-30)
-export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, lead = null, tail = null, dark = false, bottom = false, side = null, rec = null }) {
+export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, startRace = false, lead = null, tail = null, dark = false, bottom = false, side = null, rec = null }) {
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
@@ -302,7 +303,8 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
   const away = !mine && !!t.rid && !idle && !!t.own;
   const ownHref = t.own?.startsWith("/athletes/races/") ? `${t.own}?tab=sure` : t.own;
 
-  const start = () => (beforeStart?.(), raceStart(null, mode, where));
+  // startRace: Başlat yarışı da açar (Yayın sayfası; yarış belli, "+ Yarış yap" gerekmez), yoksa düz start
+  const start = () => (beforeStart?.(), raceStart(startRace ? all : null, mode, where));
   const pause = () => save({ ...t, end: null, left: Math.max(1, rem) });
   const resume = () => {
     audio();
