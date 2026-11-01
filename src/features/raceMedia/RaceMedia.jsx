@@ -36,6 +36,8 @@ import { CourseTab } from "./CourseTab";
 import { MEDIA_MENU, RACE_SECS } from "@/lib/raceMenu";
 import { VoiceLight } from "@/features/home/TabBar";
 import { useAssistant } from "@/features/assistant/AssistantProvider";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { LiveScreenSheet } from "@/features/liveScreen/LiveScreenSheet";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
 // Süre: start sayacı (5 dk dizisi)
@@ -67,8 +69,9 @@ export const firstTab = (r, starts, now = new Date()) => {
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 
 // ⋯ menüsünün multimedya işleri (lib/raceMenu.js MEDIA_MENU): menüden ya da yarış sayfasının ⋯ menüsünden (?do=)
-function menuAct(k, { setSum, setTab, setAddDay, setReset }) {
+function menuAct(k, { setSum, setTab, setAddDay, setReset, setCanli }) {
   if (k === "sum") setSum(true);
+  else if (k === "canli") setCanli?.(true);
   else if (k === "shot") (setTab("sure"), setTimeout(openMediaSettings, 150));
   else if (k === "day") setAddDay(true);
   else if (k === "reset") setReset(true);
@@ -95,6 +98,8 @@ export function RaceMedia({ orgId, id }) {
   const [addDay, setAddDay] = useState(false);
   const [pickDay, setPickDay] = useState(false);
   const [reset, setReset] = useState(false);
+  const [canli, setCanli] = useState(false); // Canlı ekran penceresi (liveScreen)
+  const { isOwner } = useAuth();
   const rdays = useMemo(() => (race ? raceDays(race) : null), [race]);
   // Açılışta bugün seçili (Seyhun 2026-10-19: "açtığım zaman bugün gösterilmesi lazım"). Telefon uygulamayı arkada açık tutar:
   // ana ekrandan ya da başka uygulamadan geri dönünce (30 sn.den uzun ara ya da gün değişti) elle seçilen gün bırakılır, yeniden bugün görünür.
@@ -189,12 +194,12 @@ export function RaceMedia({ orgId, id }) {
   // Yarış sayfasının ⋯ menüsünden gelen iş (?do=sum|shot|day|reset) yarış yüklenince bir kez açılır
   const todo = useRef(q.get("do") || "");
   const ready = !!race;
-  const sets = { setSum, setTab, setAddDay, setReset };
+  const sets = { setSum, setTab, setAddDay, setReset, setCanli };
   const run = (k) => menuAct(k, sets);
   useEffect(() => {
     const k = todo.current;
     if (!ready || !k) return;
-    const t = setTimeout(() => ((todo.current = ""), menuAct(k, { setSum, setTab, setAddDay, setReset })), 0);
+    const t = setTimeout(() => ((todo.current = ""), menuAct(k, { setSum, setTab, setAddDay, setReset, setCanli })), 0);
     return () => clearTimeout(t);
   }, [ready]);
 
@@ -325,10 +330,11 @@ export function RaceMedia({ orgId, id }) {
           toast("Denemeler sıfırlandı");
         }}
       />
+      {isOwner && <LiveScreenSheet open={canli} onClose={() => setCanli(false)} orgId={orgId} raceId={id} />}
       <Sheet open={menu} onClose={() => setMenu(false)} title={race.name || "Yarış"}>
         {[
           RACE_SECS.map(([k, l]) => [k, l, () => router.replace(`/athletes/races/${id}?sec=${k}`)]),
-          MEDIA_MENU.map(([k, l]) => [k, l, () => run(k)]),
+          MEDIA_MENU.map(([k, l]) => [k, l, () => run(k)]).filter(([k]) => k !== "canli" || isOwner),
           [["edit", "Bilgileri düzenle", () => router.replace(`/athletes/races/${id}?sec=edit`)]],
           [["del", "Yarışı sil", () => router.replace(`/athletes/races/${id}?sec=del`), true]],
         ].map((group, i) => (

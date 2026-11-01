@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { MEDIA_MENU, RACE_SECS } from "@/lib/raceMenu";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { PdfViewer } from "@/components/ui/PdfViewer";
@@ -160,6 +161,7 @@ const SECS = RACE_SECS.map(([k]) => k);
 const inRace = (x) => !!x?.startDate && todayStr() >= x.startDate && todayStr() <= (x.endDate || x.startDate);
 
 export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
+  const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
   const toast = useToast();
   const router = useRouter();
   const [r, setR] = useState(start);
@@ -1018,14 +1020,14 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         {/* Yarış başladıktan sonra multimedyanın işleri de bu tek ⋯ içinde (Seyhun 2026-10-30; multimedya sayfasındaki ⋯ ile aynı liste) */}
         {rid && r.startDate && today >= r.startDate && (
           <ul className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
-            {MEDIA_MENU.map(([k, l]) => (
+            {MEDIA_MENU.map(([k, l]) => (k === "canli" && !isOwner ? null : (
               <li key={k}>
                 <Link href={`/athletes/races/${rid}/media?do=${k}`} replace data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
                   <b className="min-w-0 flex-1 text-[1rem] font-medium">{l}</b>
                   <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
                 </Link>
               </li>
-            ))}
+            )))}
           </ul>
         )}
         <ul className={`${card} divide-y divide-line overflow-hidden`}>

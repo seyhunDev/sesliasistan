@@ -41,6 +41,7 @@ import { resultsAsk } from "@/lib/resultSheet";
 import { debtAsk, debtCommand } from "@/lib/debts";
 import { wordCommand } from "@/lib/englishWords";
 import { timerCommand, windCommand } from "@/lib/raceLive";
+import { roundCommand, routeCommand, screenCommand } from "@/lib/raceRounds";
 import { COURSE_WORD, courseAsk, courseCommand, courseRelative, courseUndo } from "@/lib/raceCourse";
 import { resultCommand } from "@/lib/raceVoice";
 import { attQueryAsk } from "@/lib/attQuery";
@@ -75,6 +76,8 @@ export function moreKind(s, c = {}) {
   // "ödenmemiş faturalar neler", "bu ay ne kadar harcadık", "okunmamış mesajım var mı"
   const ia = infoAsk(s, c.today || "2000-01-01");
   if (ia && (ia.kind !== "invoices" || owner)) return "infoAsk";
+  // Canlı ekran (isler/canliEkran.js): şamandıra dönüşü, parkur sırası, ekranda gösterme; az önce yazılan dönüşü "geri al"
+  if (owner && racer && (routeCommand(s) || roundCommand(s) || screenCommand(s) || (c.roundJust && courseUndo(s)))) return "liveScreen";
   if (racer && timerCommand(s)) return "raceTimer";
   if (owner && racer && c.courseJust && courseUndo(s)) return "raceCourse"; // parkura az önce yazılanı "geri al" / "yanlış"
   if (owner && racer && courseCommand(s)?.list.length > 1) return "raceCourse"; // "rüzgar kuzeybatı 12 knot, eksen 320" parkura
@@ -124,6 +127,10 @@ export function routesOf(s, c = {}) {
   const nav = (x) => localNavigate(x, { names: c.names || [] });
   // Parkura az önce sesle yazılan yanlışsa: "geri al", "yanlış", "sil" (3 dk içinde; isler/yarisMedya courseJust) son eklenen kayıt silmeden önce
   if (owner && racer && c.courseJust && courseUndo(s)) add("more", { kind: "raceCourse" });
+  // Canlı ekrana az önce yazılan dönüş: "geri al" (3 dk; liveScreen/liveActions roundJust); "ekranda 1. yarışın startını göster" yarışı açmaz
+  if (owner && racer && c.roundJust && courseUndo(s)) add("more", { kind: "liveScreen" });
+  const scr = owner && racer && screenCommand(s);
+  if (scr) add("more", { kind: "liveScreen" });
   // Adım adım antrenman ekranı açık: "tamam", "sonraki", "bu hareketi atla" ekrandaki antrenmanı yürütür
   if (c.guide && guideWord(s)) add("guide");
   if ((isEnd(s) && !mf) || (c.askedMore && isNoMore(s))) add("close");
@@ -168,7 +175,7 @@ export function routesOf(s, c = {}) {
   if (!mf && !isStaff && !c.onPost && wantsPost(s)) add("post");
   const ra = !mf && owner && racer ? resultsAsk(s) : null;
   if (ra) add("results", { ra });
-  if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, c.races || [], today)))) add("raceOpen");
+  if (racer && !scr && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, c.races || [], today)))) add("raceOpen");
   if (wantsPerson(s) && !(owner && contactScanCommand(s)) && !(owner && racer && athleteCommand(s)?.op === "add")) add("person");
   // Halka açık kameralar: "kameraları aç", "Ayvalık kameralarını göster" (isler/kamera.js); tekil "kamerayı aç" fiş kamerasıdır
   const cq = !mf && !athleteSide ? camsAsk(s) : null;

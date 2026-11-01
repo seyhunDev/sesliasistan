@@ -122,6 +122,8 @@ export function cleanSheet(raw) {
         sex: sexOf(r?.sex),
         cat: catOf(cls, r?.cat),
         grp: grpOf(r?.grp),
+        // yarış yarış puanları (canlı ekranda resmî sonuç, Seyhun 2026-11-01): ["1", "(14)", "DNF"]; n. yarış = r[n-1]
+        ...(Array.isArray(r?.r) && r.r.some((x) => String(x ?? "").trim()) ? { r: r.r.slice(0, 20).map((x) => String(x ?? "").replace(/\s+/g, "").slice(0, 8)) } : {}),
       }))
       .filter((r) => r.name)
       .sort((a, b) => a.rank - b.rank);

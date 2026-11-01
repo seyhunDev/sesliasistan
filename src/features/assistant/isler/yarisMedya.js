@@ -68,6 +68,7 @@ function lastVals(c) {
 export const UNDO_MS = 3 * 60 * 1000;
 let lastWrite = null; // { t, org, id, day, ids, len, prevLen }
 export const courseJust = () => !!lastWrite && Date.now() - lastWrite.t < UNDO_MS;
+export const courseAt = () => lastWrite?.t || 0; // canlı ekranın "geri al"ı hangisinin son olduğuna bakar (canliEkran.js)
 
 export async function courseCmd(ctx, s, viaVoice) {
   const { owner, racer, raceOrg, reply, done, setPhase } = ctx;

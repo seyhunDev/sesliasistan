@@ -10,6 +10,7 @@ import * as sporcu from "./sporcu";
 import * as arama from "./arama";
 import * as boykilo from "./boykilo";
 import * as yarisMedya from "./yarisMedya";
+import * as canliEkran from "./canliEkran";
 import * as antrenmanYaris from "./antrenmanYaris";
 import * as sorular from "./sorular";
 
@@ -23,8 +24,8 @@ const first = async (list, ctx, s, viaVoice) => {
 
 // Yoklama sorusu, kulüp soruları, yarış sayfası, fiş, yoklama velileri, alışveriş, doğum günü, kişi silme, kişi kare kodu, mesaj grubu
 const EXTRA = [yoklama.attQueryCmd, sorular.clubAskCmd, sorular.infoAskCmd, yaris.raceHereCmd, para.receiptPayCmd, para.receiptScopeCmd, yoklama.absentNotifyCmd, alisveris.shopClearCmd, kisi.birthdayDeleteCmd, kisi.personDeleteCmd, kisi.contactScanCmd, mesaj.groupCreateCmd];
-// Yarış günü (rüzgâr kaydı, parkur derecesi, start sayacı), antrenman yarışı sonucu, sporcu boy/kilo, otel, kişi sayfası, sporcu kartı, fatura görevi, arama, aidat, kasa, nakit gelir, sporcu ekle/arşiv/sil
-const MORE = [yarisMedya.timerCmd, yarisMedya.windLogCmd, yarisMedya.courseCmd, antrenmanYaris.trainingResultCmd, boykilo.athleteBodyCmd, yaris.hotelAddCmd, kisi.personOpenCmd, sporcu.athleteOpenCmd, para.invoiceTaskCmd, arama.callCmd, para.duesCmd, para.cashCmd, para.incomeCmd, sporcu.athleteCmd];
+// Yarış günü (canlı ekran: şamandıra dönüşü, parkur sırası, ekranda gösterme; rüzgâr kaydı, parkur derecesi, start sayacı), antrenman yarışı sonucu, sporcu boy/kilo, otel, kişi sayfası, sporcu kartı, fatura görevi, arama, aidat, kasa, nakit gelir, sporcu ekle/arşiv/sil
+const MORE = [canliEkran.liveScreenCmd, yarisMedya.timerCmd, yarisMedya.windLogCmd, yarisMedya.courseCmd, antrenmanYaris.trainingResultCmd, boykilo.athleteBodyCmd, yaris.hotelAddCmd, kisi.personOpenCmd, sporcu.athleteOpenCmd, para.invoiceTaskCmd, arama.callCmd, para.duesCmd, para.cashCmd, para.incomeCmd, sporcu.athleteCmd];
 
 export function runExtra(ctx, s, viaVoice) {
   return first(EXTRA, ctx, s, viaVoice);
