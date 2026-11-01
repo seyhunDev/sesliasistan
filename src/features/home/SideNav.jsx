@@ -65,7 +65,7 @@ export function SideNav({ path, unread = 0, orb = null }) {
     return () => delete document.body.dataset.side;
   }, []);
   const at = (href) => (href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`));
-  const items = pages.flatMap((g) => g.items);
+  const items = pages.flatMap((g) => g.items).filter((a) => !TABS.some(([h]) => h === a.href)); // Görevler üstte zaten var
   return (
     <nav aria-label="Menü" className="sidenav fixed inset-y-0 left-0 z-[37] hidden w-60 flex-col border-r border-line bg-card pt-[max(1.25rem,env(safe-area-inset-top))]">
       {/* Uygulamanın kimliği: logo ve ad, menünün en üstünde */}

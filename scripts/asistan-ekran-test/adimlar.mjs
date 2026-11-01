@@ -1129,6 +1129,25 @@ async function rainStrip(h) {
     if (process.env.WX_SHOT) await page.waitForTimeout(1500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-anasayfa.png`, fullPage: true }));
     return [ok > 0 && ["Çalış", "Dinle", "Biliyorum"].every((b) => btns.some((x) => x.includes(b))) && !ozet, `kart ${ok} · düğmeler ${btns.join(",")} · özet ${ozet}`];
   });
+  // Seyhun 2026-11-01 "Tümü penceresi gruplara ayrılsın, tıklayınca açılsın" ("A · Açılır gruplar"): 6 grup kapalı, dokununca o grup açılır, öbürü kapanır; tek Yarışlar
+  await check("Ana sayfa", "Tümü grupları", "Tümü penceresinde gruplar kapalı başlar, dokununca tek grup açılır, Yarışlar bir kez", async () => {
+    await page.getByRole("button", { name: "Tümü", exact: true }).first().click();
+    const box = page.locator("[data-all-groups]");
+    await waitFor(() => box.count(), 5000);
+    const heads = box.locator(":scope > section > button");
+    const titles = await heads.locator("b").allTextContents();
+    const shut = await box.locator("[aria-expanded='true']").count();
+    await heads.filter({ hasText: "Kulüp" }).click();
+    const club = await box.locator("section:has([aria-expanded='true']) a").allTextContents();
+    await heads.filter({ hasText: "Hava ve deniz" }).click();
+    const one = await box.locator("[aria-expanded='true']").count();
+    const sea = await box.locator("section:has([aria-expanded='true']) a").allTextContents();
+    if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-tumu.png` });
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+    const races = club.filter((x) => x.includes("Yarışlar")).length;
+    return [titles.length >= 5 && titles[0] === "Günlük" && shut === 0 && races === 1 && !club.some((x) => /Tüm yarışlar|günlüğü/.test(x)) && one === 1 && sea.some((x) => x.includes("Hava")) && !sea.some((x) => x.includes("Rüzgâr")), `gruplar ${titles.join(",")} · açık ${shut}/${one} · kulüp ${club.join(",")} · deniz ${sea.join(",")}`];
+  });
   // Seyhun 2026-11-01 "ana sayfada hava durumu yüksekliği çok fazla": grafik kalan yeri doldurmaz, alçak kalır; altındaki plan ve düğmeler yukarı gelir
   await check("Ana sayfa", "alçak grafik", "her telefon boyunda rüzgâr grafiği alçak (60–170 px), kalan yeri doldurmaz", async () => {
     const out = [];
