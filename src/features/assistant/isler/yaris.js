@@ -12,10 +12,11 @@ import { racePostOf } from "@/features/athletes/raceLinks";
 import { record } from "@/lib/brain/store";
 import { loadPosts, postHandler } from "@/features/posts/posts";
 import { raceHereCommand, hotelAddCommand } from "@/lib/assistMore";
-import { deleteRace, addRacePlan, matchStep, stepsOf, doneSteps, cleanDone, cleanHotels, raceHotels } from "@/features/athletes/races";
+import { addRacePlan, matchStep, stepsOf, doneSteps, cleanDone, cleanHotels, raceHotels } from "@/features/athletes/races";
 import { cleanResults } from "@/lib/raceResults";
 import { stampResults } from "@/lib/raceDay";
 import { emptyBudget } from "@/features/athletes/budget";
+import { wipeRace } from "@/features/athletes/raceWipe";
 
 // Söylenen yarışı bul: kesin eşleşme → puanlama → yapay zeka → en yakın seçenekler (yoksa tarihi en yakın 3 yarış)
 export async function openRace(ctx, s, viaVoice) {
@@ -246,7 +247,7 @@ export async function raceHereCmd(ctx, s, viaVoice) {
     if (rh.op === "delete") {
       askOk(`“${r.name}” yarışı silinsin mi? Bütçesi, evrak bilgisi ve notları da silinir, geri alınamaz.`, "Sil", async (v) => {
         try {
-          await deleteRace(raceOrg, r.id);
+          await wipeRace(raceOrg, r.id);
           races.current = races.current.filter((x) => x.id !== r.id);
           park();
           router.push("/athletes/races");

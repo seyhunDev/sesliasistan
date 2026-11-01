@@ -4,7 +4,7 @@
 // Kulübün yarışı kaydedilince ortak kısım yayınlanır (yalnız ekleyen ve ana hesap yazabilir; diğerlerinde sessizce atlanır),
 // bağlı yarış açılınca ortaktaki yenilik ve yeni sonuç listeleri kulübün yarışına işlenir.
 import { arrayUnion, collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
-import { setDoc } from "@/lib/firebase/write";
+import { deleteDoc, setDoc } from "@/lib/firebase/write";
 import { auth, db } from "@/lib/firebase/clientApp";
 import { canEditShared, fromShared, keepFiles, rankWith, sameRace, sameShared, sharedOf } from "@/lib/sharedRace";
 import { cleanWind } from "@/lib/raceLive";
@@ -25,6 +25,22 @@ export async function loadShared(id, fresh = false) {
   const s = snap.exists() ? { id, ...snap.data() } : null;
   seen.set(id, s);
   return s;
+}
+
+// Ortak yarışı siler (Seyhun 2026-11-01 "yarışı sildiğimde ortak yarışlardan da silebilmeliyim"): yalnız açan kulüp ya da Velora
+// ana hesabı (kural editor). Önce alt belgeler (sheets, live, course; kural üst belgeye bakar), sonra belge. Yetki yoksa false.
+export async function dropShared(id, uid, email) {
+  if (!id) return false;
+  const s = await loadShared(id, true).catch(() => null);
+  if (!s) return true;
+  if (!canEditShared(s, uid, email)) return false;
+  for (const sub of ["sheets", "live", "course"]) {
+    const snap = await getDocs(collection(one(id), sub)).catch(() => null);
+    for (const d of snap?.docs || []) await deleteDoc(d.ref).catch(() => {});
+  }
+  await deleteDoc(one(id));
+  seen.delete(id);
+  return true;
 }
 
 // Yeni yarışta seçilebilecekler: bugünden 10 gün öncesinden başlayanlar

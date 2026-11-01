@@ -17,12 +17,12 @@ import { placeText } from "@/features/athletes/RaceList";
 import { Icon } from "@/components/ui/Icon";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { coachStart } from "@/features/athletes/raceDocs";
-import { addRacePlan, deleteRace, freshRace, loadRaces, racesNow, saveRace, saveRaceResults } from "@/features/athletes/races";
+import { addRacePlan, freshRace, loadRaces, racesNow, saveRace, saveRaceResults } from "@/features/athletes/races";
 import { loadShared, loadSharedList, pullSheets, shareRace } from "@/features/athletes/sharedRaces";
 import { fromShared, newSheets, pickable } from "@/lib/sharedRace";
 import { stampResults } from "@/lib/raceDay";
 import { addNoticePlans } from "@/features/athletes/raceNotice";
-import { dropLive } from "@/features/athletes/raceLiveStore";
+import { wipeRace } from "@/features/athletes/raceWipe";
 import { mailToMe } from "@/features/mail/outbox";
 import { db } from "@/lib/firebase/clientApp";
 import { doc } from "firebase/firestore";
@@ -168,8 +168,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   );
   const onDelete = async (rid) => {
     try {
-      await deleteRace(orgId, rid);
-      dropLive(orgId, rid); // multimedya: rüzgâr, startlar, fotoğraf/video, genel sıralama
+      await wipeRace(orgId, rid); // yarışla birlikte evrak, canlı kayıt, ortak yarış ve açık ekran işareti de gider
       goBack(router, "/athletes/races");
     } catch {
       toast("Silinemedi");
