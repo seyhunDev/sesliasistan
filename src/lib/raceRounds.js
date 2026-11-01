@@ -17,7 +17,9 @@ export function cleanEntry(e) {
     const l = Array.isArray(e?.legs?.[k]) ? e.legs[k] : [];
     return [...new Set(l.map(digits).filter((s) => SAIL.test(s)))].slice(0, 200);
   });
-  return { route, legs };
+  // grp: startın grubu (Mavi, Sarı…, Altın; lib/roundScore.js), yoksa yazılmaz
+  const grp = String(e?.grp || "").replace(/[^\p{L} ]/gu, "").trim().slice(0, 20);
+  return grp ? { route, legs, grp } : { route, legs };
 }
 export function cleanRounds(r) {
   const out = {};
@@ -120,7 +122,7 @@ export function applyRound(entry0, mark, sails) {
 // Parkur değişince: eski dönüşler sırayla yeni parkura taşınır
 export function setRoute(entry0, route) {
   const old = cleanEntry(entry0);
-  let e = { route: [...route], legs: route.map(() => []) };
+  let e = { route: [...route], legs: route.map(() => []), ...(old.grp ? { grp: old.grp } : {}) };
   old.legs.forEach((l, k) => {
     e = applyRound(e, old.route[k], l).entry;
   });

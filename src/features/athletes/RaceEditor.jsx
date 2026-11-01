@@ -1018,9 +1018,10 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
           </ul>
         )}
         {/* Yarış başladıktan sonra multimedyanın işleri de bu tek ⋯ içinde (Seyhun 2026-10-30; multimedya sayfasındaki ⋯ ile aynı liste) */}
-        {rid && r.startDate && today >= r.startDate && (
+        {/* Canlı ekran (ana hesap) yarıştan önce de görünür: dönüş girişi ve kayıt listesi önceden hazırlanır (Seyhun 2026-11-01) */}
+        {rid && ((r.startDate && today >= r.startDate) || isOwner) && (
           <ul className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
-            {MEDIA_MENU.map(([k, l]) => (k === "canli" && !isOwner ? null : (
+            {MEDIA_MENU.map(([k, l]) => ((k === "canli" ? !isOwner : !(r.startDate && today >= r.startDate)) ? null : (
               <li key={k}>
                 <Link href={`/athletes/races/${rid}/media?do=${k}`} replace data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
                   <b className="min-w-0 flex-1 text-[1rem] font-medium">{l}</b>

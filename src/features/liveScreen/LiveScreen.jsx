@@ -6,11 +6,13 @@ import { dirShort, momentRaceName, raceTime, raceTitle, seqState, seqSteps } fro
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse } from "@/lib/raceCourse";
 import { manualFinish, markLabel, nowPos, officialFor, recTitle, sameSail, standings, whoBySail, whoOf, ytId } from "@/lib/raceRounds";
+import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import "./liveScreen.css";
 
 // Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01; örnek project-files/yaris-canli-ekran).
 // Solda sayaç ve ekranda oynayan (canlı yayın ya da tekrar), ortada tek sıralama listesi (genel sıra, yelken, ad, kulüp, her şamandıradaki sırası),
-// sağda rüzgâr ve parkur kartı. Resmî sonuç (PDF) gelince liste ondan dizilir, elle finişten farklıysa "Elle 6". Önceki yarışlar ?y=<start>.
+// sağda rüzgâr ve parkur kartı. Grup grup yarışta (Mavi, Sarı…) startın grubu ve aynı yarışın diğer grupları; altta genel sıralama
+// (geçici: grupların yarışları toplanır, Kızlar/Junior; resmî PDF gelince ondan). Resmî sonuç (PDF) gelince liste ondan dizilir, elle finişten farklıysa "Elle 6". Önceki yarışlar ?y=<start>.
 const POLL = 4000;
 const pad = (n) => String(n).padStart(2, "0");
 const clockOf = (sec) => {
@@ -239,9 +241,31 @@ function Course({ data, sel }) {
   );
 }
 
-function Ranking({ data, sel, isCur }) {
+const Dot = ({ g }) => (g ? <span className="lv-dot" style={{ background: groupColor(g) || "var(--lv-mut)" }} aria-hidden="true" /> : null);
+
+// Aynı yarışın diğer grupları (Mavi 3. yarış, Sarı 3. yarış…): aynı gün, aynı yarış numarası
+function Siblings({ data, sel, id }) {
+  const sib = (data.starts || []).filter((x) => !x.void && x.day === sel?.day && x.n === sel?.n && data.rounds?.[x.id]?.grp);
+  if (sib.length < 2) return null;
+  return (
+    <span className="lv-chips">
+      {sib.map((x) => {
+        const g = data.rounds[x.id].grp;
+        return (
+          <Link key={x.id} href={x.id === data.cur ? `/canli/${id}` : `/canli/${id}?y=${x.id}`} className={`lv-btn${x.id === sel.id ? " on" : ""}`}>
+            <Dot g={g} />
+            {g}
+          </Link>
+        );
+      })}
+    </span>
+  );
+}
+
+function Ranking({ data, sel, isCur, id }) {
   const entry = data.rounds?.[sel?.id] || { route: [], legs: [] };
-  const who = whoBySail(data.fleets);
+  // ad ve kulüp: önce kayıt listesinden, yoksa sonuç PDF'lerinden
+  const who = { ...whoBySail(data.fleets), ...Object.fromEntries((data.entries || []).map((r) => [r.sail, { name: r.name, club: r.club }])) };
   const st = standings(entry);
   const groups = sel?.n ? officialFor(data.fleets, sel.n, manualFinish(entry)) : [];
   const [gk, setGk] = useState("");
@@ -260,8 +284,17 @@ function Ranking({ data, sel, isCur }) {
     <div className="lv-card lv-rank">
       <div className="lv-lab">
         <span className="lv-row">
-          Sıralama {g ? <span className="lv-tag ok">Resmî</span> : st.length ? <span className="lv-tag acc">Geçici</span> : null}
+          {entry.grp ? (
+            <>
+              <Dot g={entry.grp} />
+              {`${entry.grp} grup`}
+            </>
+          ) : (
+            "Sıralama"
+          )}{" "}
+          {g ? <span className="lv-tag ok">Resmî</span> : st.length ? <span className="lv-tag acc">Geçici</span> : null}
         </span>
+        {!groups.length ? <Siblings data={data} sel={sel} id={id} /> : null}
         {groups.length > 1 ? (
           <span className="lv-chips">
             {groups.map((x) => (
@@ -333,7 +366,141 @@ function Ranking({ data, sel, isCur }) {
   );
 }
 
-function Races({ id, starts, cur, sel, fleets, onClose }) {
+// Genel sıralama: resmî sonuç (PDF) varsa ondan; yoksa geçici, bütün grupların yarışları toplanarak (lib/roundScore.js:
+// grup içi sıra puan, eşitlikte birincilik sayısı, sonra son yarış). Kızlar ve Junior kendi içinde.
+function Overall({ data }) {
+  const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
+  const who = useMemo(() => whoBySail(data.fleets), [data.fleets]); // kayıt listesinde olmayanlar için
+  const prov = useMemo(() => provisional({ starts: data.starts || [], rounds: data.rounds || {}, entries: data.entries || [], groups: data.groups || {}, who, year }), [data.starts, data.rounds, data.entries, data.groups, who, year]);
+  const official = (data.fleets || []).filter((f) => f.rows?.some((r) => r.pts != null && r.pts !== ""));
+  const [ci, setCi] = useState(0);
+  const [cat, setCat] = useState("");
+  if (official.length) {
+    const f = official[Math.min(ci, official.length - 1)];
+    return (
+      <div className="lv-card lv-rank lv-all">
+        <div className="lv-lab">
+          <span className="lv-row">
+            Genel sıralama <span className="lv-tag ok">Resmî</span>
+          </span>
+          {official.length > 1 ? (
+            <span className="lv-chips">
+              {official.map((x, i) => (
+                <button key={x.cls} type="button" className={`lv-btn${x === f ? " on" : ""}`} onClick={() => setCi(i)}>
+                  {x.cls}
+                </button>
+              ))}
+            </span>
+          ) : null}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th className="p">Sıra</th>
+              <th className="s">Yelken</th>
+              <th>Ad</th>
+              <th className="c">Kulüp</th>
+              <th className="t">Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {f.rows.map((r) => (
+              <tr key={`${r.sail}${r.name}`}>
+                <td className="p">{r.rank}</td>
+                <td className="s">{String(r.sail || "").replace(/^\D+/, "") || r.sail}</td>
+                <td className="n">
+                  {r.grp ? <Dot g={r.grp} /> : null}
+                  {r.name}
+                  <span className="lv-nm2">{[r.sail, r.club].filter(Boolean).join(" · ")}</span>
+                </td>
+                <td className="c">{r.club}</td>
+                <td className="t">{r.pts}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+  if (!prov.length) return null;
+  const f = prov[Math.min(ci, prov.length - 1)];
+  const cats = ["Kız", "Junior"].filter((c) => f.rows.some((r) => r.cats.includes(c)));
+  const rows = onlyCat(f.rows, cats.includes(cat) ? cat : "");
+  return (
+    <div className="lv-card lv-rank lv-all">
+      <div className="lv-lab">
+        <span className="lv-row">
+          Genel sıralama <span className="lv-tag acc">{`Geçici · ${f.races.length} yarış`}</span>
+        </span>
+        <span className="lv-chips">
+          {prov.length > 1
+            ? prov.map((x, i) => (
+                <button key={x.cls || "-"} type="button" className={`lv-btn${x === f ? " on" : ""}`} onClick={() => setCi(i)}>
+                  {x.cls || "Diğer"}
+                </button>
+              ))
+            : null}
+          {cats.length ? (
+            <>
+              <button type="button" className={`lv-btn${!cats.includes(cat) ? " on" : ""}`} onClick={() => setCat("")}>
+                Genel
+              </button>
+              {cats.map((c) => (
+                <button key={c} type="button" className={`lv-btn${cat === c ? " on" : ""}`} onClick={() => setCat(c)}>
+                  {c === "Kız" ? "Kızlar" : c}
+                </button>
+              ))}
+            </>
+          ) : null}
+        </span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th className="p">Sıra</th>
+            <th className="s">Yelken</th>
+            <th>Ad</th>
+            <th className="c">Kulüp</th>
+            <th className="k">Kat.</th>
+            {f.races.map((n) => (
+              <th key={n} className="m">{`Y${n}`}</th>
+            ))}
+            <th className="t">Toplam</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.sail}>
+              <td className="p">{r.place}</td>
+              <td className="s">{r.sail}</td>
+              <td className="n">
+                {r.name || r.sail}
+                <span className="lv-nm2">{[r.name ? r.sail : "", r.club, r.born].filter(Boolean).join(" · ")}</span>
+              </td>
+              <td className="c">{[r.club, r.born].filter(Boolean).join(" · ")}</td>
+              <td className="k">{r.cats.join(" · ")}</td>
+              {f.races.map((n) => (
+                <td key={n} className="m">
+                  {r.sc[n] ? (
+                    <>
+                      <Dot g={r.sc[n].grp} />
+                      {r.sc[n].code || r.sc[n].pts}
+                    </>
+                  ) : (
+                    ""
+                  )}
+                </td>
+              ))}
+              <td className="t">{r.total}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Races({ id, starts, cur, sel, fleets, rounds, onClose }) {
   const list = [...starts].reverse();
   return (
     <div className="lv-pop" role="dialog" aria-label="Yarışlar" onClick={onClose}>
@@ -349,7 +516,10 @@ function Races({ id, starts, cur, sel, fleets, onClose }) {
           const state = s.id === cur ? "Canlı" : s.void ? s.void : off ? "Resmî sonuç" : s.fin ? "Bitti" : "";
           return (
             <Link key={s.id} href={s.id === cur ? `/canli/${id}` : `/canli/${id}?y=${s.id}`} className={`lv-r${s.id === sel?.id ? " sel" : ""}`} onClick={onClose}>
-              <b>{raceTitle(s)}</b>
+              <b>
+                {raceTitle(s)}
+                {rounds?.[s.id]?.grp ? ` · ${rounds[s.id].grp}` : ""}
+              </b>
               <span>
                 {dayText(s.day)} · {hmOf(s.at)}
                 {state ? ` · ${state}` : ""}
@@ -406,14 +576,17 @@ export function LiveScreen({ id, y = "" }) {
             <Clock sel={sel} isCur={isCur} timer={data.timer} skew={skew} />
             <Media key={sel?.id || "x"} data={data} sel={sel} starts={starts} isCur={isCur} />
           </div>
-          <Ranking key={sel?.id || "x"} data={data} sel={sel} isCur={isCur} />
+          <div className="lv-stack lv-b">
+            <Ranking key={sel?.id || "x"} data={data} sel={sel} isCur={isCur} id={id} />
+            <Overall data={data} />
+          </div>
           <div className="lv-stack lv-c">
             <Wind data={data} sel={sel} isCur={isCur} />
             <Course data={data} sel={sel} />
           </div>
         </div>
       </div>
-      {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} onClose={() => setList(false)} /> : null}
+      {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} onClose={() => setList(false)} /> : null}
     </div>
   );
 }
