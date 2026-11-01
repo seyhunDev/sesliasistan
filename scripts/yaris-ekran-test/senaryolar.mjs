@@ -181,7 +181,7 @@ export async function run(server, log = () => {}) {
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO }).catch(() => {});
       await openSec("prep");
       const row = await page.getByText("Yapılacaklar").first().isVisible().catch(() => false);
-      return [went && tabs === "Saha,Start,Sonuç" && on === "Start" && fit && row, `multimedyaya ${went ? "geçti" : "geçmedi"} · sekmeler ${tabs} · açık ${on} · alt çubuk ${fit ? "ekranda" : "ekran dışında"} · hazırlık ${row ? "açıldı" : "açılmadı"}`];
+      return [went && tabs === "Saha,Start,Sonuç,Canlı" && on === "Start" && fit && row, `multimedyaya ${went ? "geçti" : "geçmedi"} · sekmeler ${tabs} · açık ${on} · alt çubuk ${fit ? "ekranda" : "ekran dışında"} · hazırlık ${row ? "açıldı" : "açılmadı"}`];
     });
     await okPage("Yarış sayfası", "Sporcu sekmesinde sporcu", "/athletes/races/r1?sec=people", "Sporcu", async () => {
       await openSec("people");
@@ -269,7 +269,7 @@ export async function run(server, log = () => {}) {
       const rowTxt = (await row.innerText().catch(() => "")).replace(/\s+/g, " ");
       const info = await page.getByText("Videolar nerede saklanır?").count();
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-start.png") }).catch(() => {});
-      const ok = tabs === "Saha,Start,Sonuç" && dockRec === 0 && rec === 1 && go === 1 && thumb === 1 && loose === 0 && /5 dk start/.test(rowTxt) && /15:00 sürdü/.test(rowTxt) && info === 0;
+      const ok = tabs === "Saha,Start,Sonuç,Canlı" && dockRec === 0 && rec === 1 && go === 1 && thumb === 1 && loose === 0 && /5 dk start/.test(rowTxt) && /15:00 sürdü/.test(rowTxt) && info === 0;
       return [ok, `sekmeler ${tabs} · alt çubukta Kayıt ${dockRec} · Başlat yanında Kayıt ${rec} · Başlat ${go} · satırda çekim ${thumb} · ayrı bölüm ${loose} · satır "${rowTxt.slice(0, 80)}" · bilgi kartı ${info}`];
     });
     // Yarış günü Bitiren kim? (Seyhun 2026-11-01): start olmuş yarışta bizim sporcuların kareleri; dokununca sıra start satırına yazılır,
@@ -339,7 +339,7 @@ export async function run(server, log = () => {}) {
       await page.locator("[data-menu=reset]").click();
       const reset = await page.getByRole("dialog", { name: "Denemeleri sıfırla" }).waitFor({ timeout: 60000 }).then(() => true, () => false);
       await page.keyboard.press("Escape").catch(() => {});
-      const ok = inTab === 0 && keys === "prep,people,docs,trip,budget,shot,day,reset,edit,del" && went && people && reset;
+      const ok = inTab === 0 && keys === "prep,people,docs,trip,budget,canli,shot,day,reset,edit,del" && went && people && reset;
       return [ok, `Süre'de sıfırla ${inTab} · menü ${keys} · Sporcu ${went ? "yarış sayfasında" : "gitmedi"}${people ? " açıldı" : " açılmadı"} · sıfırla ${reset ? "açıldı" : "açılmadı"}`];
     });
     // ⋯'den açılan bölüm kapanınca multimedyaya dönülür (yarış günü yarış sayfası yalnız bölümler için)
