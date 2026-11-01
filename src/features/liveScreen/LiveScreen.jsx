@@ -5,13 +5,13 @@ import Link from "next/link";
 import { dirShort, momentRaceName, raceTime, raceTitle, seqState, seqSteps } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse } from "@/lib/raceCourse";
-import { manualFinish, markLabel, nowPos, officialFor, recTitle, sameSail, standings, whoBySail, whoOf, ytId } from "@/lib/raceRounds";
+import { manualFinish, markLabel, markName, nowPos, officialFor, recTitle, sameSail, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import "./liveScreen.css";
 
-// Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01; örnek project-files/yaris-canli-ekran).
-// Solda sayaç ve ekranda oynayan (canlı yayın ya da tekrar), ortada tek sıralama listesi (genel sıra, yelken, ad, kulüp, her şamandıradaki sırası),
-// sağda rüzgâr ve parkur kartı. Grup grup yarışta (Mavi, Sarı…) startın grubu ve aynı yarışın diğer grupları; altta genel sıralama
+// Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01; yayın görünümü, örnek project-files/samandira-donus/yayin).
+// Koyu deniz zemini; parkur kartı (günün ölçümlerinden, lib/courseCard.js; yeni parkur girilince yenisi) arkada soluk; solda sayaç, rüzgâr ve
+// ekranda oynayan (canlı yayın ya da tekrar), ortada "şu an hangi şamandıra", sağda tek sıralama listesi (sıra, yelken, ad, kulüp, her şamandıradaki sırası). Grup grup yarışta (Mavi, Sarı…) startın grubu ve aynı yarışın diğer grupları; altta genel sıralama
 // (geçici: grupların yarışları toplanır, Kızlar/Junior; resmî PDF gelince ondan). Resmî sonuç (PDF) gelince liste ondan dizilir, elle finişten farklıysa "Elle 6". Önceki yarışlar ?y=<start>.
 const POLL = 4000;
 const pad = (n) => String(n).padStart(2, "0");
@@ -146,7 +146,7 @@ function Media({ data, sel, starts, isCur }) {
   // canlı yarışta o günün çekimleri, önceki yarışta yalnız o yarışınkiler
   const items = useMemo(() => (data.media || []).filter((m) => (isCur ? (m.rid ? m.rid === sel?.id : m.at.slice(0, 10) === (sel?.day || data.day)) : m.rid === sel?.id)), [data.media, sel, data.day, isCur]);
   const scr = isCur ? data.screen || {} : {};
-  const yt = ytId(data.stream?.url);
+  const yt = ytSrc(data.stream?.url);
   const onScreen = scr.kind === "rec" ? (data.media || []).find((m) => m.id === scr.mid) : null;
   const show = pick || (scr.kind === "live" && yt ? { live: true } : onScreen);
   if (!show && !items.length) return null;
@@ -177,7 +177,7 @@ function Media({ data, sel, starts, isCur }) {
       {show && (
         <div className="lv-screen">
           {show.live ? (
-            <iframe title="Canlı yayın" src={`https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&mute=1&playsinline=1&rel=0`} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+            <iframe title="Canlı yayın" src={yt} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
           ) : show.kind === "video" ? (
             <video key={show.id} src={show.url} poster={show.thumb || undefined} autoPlay muted playsInline controls loop={pick ? false : !!scr.loop} />
           ) : (
@@ -211,32 +211,88 @@ function Wind({ data, sel, isCur }) {
   if (!w) return null;
   return (
     <div className="lv-card lv-wind">
-      <div className="lv-lab">
-        <span>Rüzgâr</span>
-        <span>{hmOf(w.at)}</span>
-      </div>
+      <span className="lv-arrow" aria-hidden="true">
+        <svg viewBox="0 0 40 40" style={{ transform: `rotate(${w.dir}deg)` }}>
+          <path d="M20 4 L27 22 L20 17 L13 22 Z" fill="#fff" />
+          <line x1="20" y1="17" x2="20" y2="36" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+        </svg>
+      </span>
       <div className="lv-wv">
         <b>{w.dir}°</b>
         <span>
           {dirShort(w.dir)}
           {w.kn != null ? ` · ${w.kn} kn` : ""}
+          {w.gust ? ` · sağanak ${w.gust}` : ""}
         </span>
       </div>
-      {w.gust ? <div className="lv-sub">Sağanak {w.gust} kn</div> : null}
+      <div className="lv-lab">
+        <span>Rüzgâr</span>
+        <span>{hmOf(w.at)}</span>
+      </div>
     </div>
   );
 }
 
-function Course({ data, sel }) {
-  const svg = useMemo(() => cardSvg(cardOf(cleanCourse(data.course || {}))), [data.course]);
+// Parkur kartı: uygulamadaki Parkur sekmesiyle aynı çizim (günün ölçümleri); geniş ekranda arkada soluk katman, telefonda kart
+function Course({ data, route }) {
+  const svg = useMemo(() => cardSvg(cardOf(cleanCourse(data.course || {})), { navy: true }), [data.course]);
   if (!svg) return null;
   return (
-    <div className="lv-card lv-course">
+    <div className="lv-course" aria-hidden="true">
       <div className="lv-lab">
         <span>Parkur</span>
-        <span>{sel?.course || ""}</span>
+        <span>{route}</span>
       </div>
       <div className="lv-svg" dangerouslySetInnerHTML={{ __html: svg }} />
+    </div>
+  );
+}
+
+// Orta sütun: parkur sırası ve canlı yarışta "Şu an 2. şamandıra · Son geçen 305 Ece Kara"
+function Now({ data, sel, isCur }) {
+  const entry = data.rounds?.[sel?.id];
+  const route = entry?.route || [];
+  const pos = entry ? nowPos(entry) : -1;
+  const last = pos >= 0 ? entry.legs[pos].at(-1) : "";
+  const who = whoOf({ ...whoBySail(data.fleets), ...Object.fromEntries((data.entries || []).map((r) => [r.sail, { name: r.name, club: r.club }])) }, last);
+  const now = isCur && pos >= 0;
+  const routeText = route.length ? route.map((m) => (m === "F" ? "Finish" : m)).join(" · ") : sel?.course || "";
+  return (
+    <div className={`lv-mid${now ? " has-now" : ""}`}>
+      <div className="lv-lab">
+        <span>Parkur</span>
+        <span>{routeText}</span>
+      </div>
+      <Course data={data} route={routeText} />
+      {now ? (
+        <div className="lv-card lv-now">
+          <b>{pos === route.length - 1 && route[pos] === "F" ? "Finish" : `Şu an ${markName(route[pos])}`}</b>
+          <span>{`Son geçen ${last}${who?.name ? ` ${who.name}` : ""}`}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function Sea() {
+  return (
+    <div className="lv-sea" aria-hidden="true">
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="none">
+        <defs>
+          <pattern id="lvw" width="220" height="46" patternUnits="userSpaceOnUse">
+            <path d="M0 19 Q40 4 80 19 T160 19" fill="none" stroke="#9fd7f0" strokeWidth="1.6" opacity=".6" />
+            <path d="M0 34 Q40 19 80 34 T160 34" fill="none" stroke="#9fd7f0" strokeWidth=".8" opacity=".3" />
+          </pattern>
+          <radialGradient id="lvm" cx="60%" cy="45%" r="70%">
+            <stop offset="0" stopColor="#fff" stopOpacity=".9" />
+            <stop offset="1" stopColor="#fff" stopOpacity="0" />
+          </radialGradient>
+          <mask id="lvk">
+            <rect width="1600" height="900" fill="url(#lvm)" />
+          </mask>
+        </defs>
+        <rect width="1600" height="900" fill="url(#lvw)" mask="url(#lvk)" />
+      </svg>
     </div>
   );
 }
@@ -303,8 +359,6 @@ function Ranking({ data, sel, isCur, id }) {
               </button>
             ))}
           </span>
-        ) : route.length ? (
-          <span>Parkur {route.map((m) => (m === "F" ? "Finish" : m)).join(" · ")}</span>
         ) : null}
       </div>
       <table>
@@ -538,6 +592,7 @@ export function LiveScreen({ id, y = "" }) {
   if (!data) {
     return (
       <div className="lv">
+        <Sea />
         <div className="lv-page">
           {err ? <div className="lv-msg">{err === "yok" ? "Bu yarışın canlı ekranı açık değil." : "Bağlanılamadı, yeniden deneniyor."}</div> : <div className="lv-msg lv-mut">Yükleniyor</div>}
         </div>
@@ -546,12 +601,14 @@ export function LiveScreen({ id, y = "" }) {
   }
   const starts = data.starts || [];
   const sel = (y && starts.find((x) => x.id === y)) || starts.find((x) => x.id === data.cur) || null;
-  const isCur = !!sel && sel.id === data.cur;
+  // Canlı görünüm: önceki yarış seçilmediyse (henüz start kaydı yokken de sayaç ve ekrandaki yayın görünür; Seyhun 2026-11-01 "süre başlattım gösterilmiyor")
+  const isCur = !y || (!!sel && sel.id === data.cur);
   const title = sel ? raceTitle(sel) : data.race.name || "Yarış";
   const sub = [sel ? data.race.name : "", dayText(sel?.day || data.day), data.race.place].filter(Boolean).join(" · ");
   const ongoing = isCur && sel && !sel.fin && !sel.void;
   return (
     <div className="lv">
+      <Sea />
       <div className="lv-page">
         <header className="lv-head">
           <Mark />
@@ -574,15 +631,13 @@ export function LiveScreen({ id, y = "" }) {
         <div className="lv-grid">
           <div className="lv-stack lv-a">
             <Clock sel={sel} isCur={isCur} timer={data.timer} skew={skew} />
+            <Wind data={data} sel={sel} isCur={isCur} />
             <Media key={sel?.id || "x"} data={data} sel={sel} starts={starts} isCur={isCur} />
           </div>
+          <Now data={data} sel={sel} isCur={isCur} />
           <div className="lv-stack lv-b">
             <Ranking key={sel?.id || "x"} data={data} sel={sel} isCur={isCur} id={id} />
             <Overall data={data} />
-          </div>
-          <div className="lv-stack lv-c">
-            <Wind data={data} sel={sel} isCur={isCur} />
-            <Course data={data} sel={sel} />
           </div>
         </div>
       </div>
