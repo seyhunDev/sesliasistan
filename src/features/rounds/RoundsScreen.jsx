@@ -30,13 +30,15 @@ const readCls = (raceId) => {
   }
 };
 
-export function RoundsScreen({ open, onClose, orgId, raceId }) {
+// startId: yayın sayfasında seçilen yarış (yoksa sayacın yarışı; Seyhun 2026-11-01 "orada yarış seçmeliyiz")
+export function RoundsScreen({ open, onClose, orgId, raceId, startId = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   if (!client || !open) return null;
-  return createPortal(<Body orgId={orgId} raceId={raceId} onClose={onClose} />, document.body);
+  return createPortal(<Body orgId={orgId} raceId={raceId} startId={startId} onClose={onClose} />, document.body);
 }
 
-function Body({ orgId, raceId, onClose }) {
+function Body({ orgId, raceId, startId = "", onClose }) {
+  const startOf = (d) => (startId && d.starts.find((x) => x.id === startId)) || currentStart(d.starts, d.timer);
   const toast = useToast();
   const [L, setL] = useState(null);
   const [entries, setEntries] = useState([]);
@@ -63,7 +65,7 @@ function Body({ orgId, raceId, onClose }) {
         setL(d);
         setEntries(en.rows);
         setGroups(en.groups);
-        const st = currentStart(d.starts, d.timer);
+        const st = startOf(d);
         const e = st ? cleanEntry(d.rounds[st.id] || { route: cleanRoute(st.course), legs: [] }) : { route: [], legs: [] };
         setEntry(e);
         setK(Math.max(0, nowPos(e)));
@@ -80,7 +82,7 @@ function Body({ orgId, raceId, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, raceId]);
 
-  const st = L ? currentStart(L.starts, L.timer) : null;
+  const st = L ? startOf(L) : null;
   const classes = useMemo(() => entryClasses(entries), [entries]);
   const pickCls = classes.some((c) => c.cls === cls) ? cls : classes[0]?.cls || "";
   // Günün grup listesi varsa yalnız bu startın grubundakiler (gruplar her gün değişir)

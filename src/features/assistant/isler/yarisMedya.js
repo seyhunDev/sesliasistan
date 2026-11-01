@@ -10,7 +10,7 @@ import { askCourseAi } from "@/services/courseService";
 import { startTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
 
-const pageRace = (path) => /^\/athletes\/races\/([\w-]+)(?:\/media)?$/.exec(path || "")?.[1] || "";
+const pageRace = (path) => /^\/athletes\/races\/([\w-]+)(?:\/media|\/yayin)?$/.exec(path || "")?.[1] || "";
 const raceFor = (ctx) => {
   const cur = pageRace(ctx.path);
   return liveRace(ctx.races?.current || [], todayStr(), cur && cur !== "new" ? cur : "");
@@ -44,9 +44,9 @@ export async function timerCmd(ctx, s, viaVoice) {
   const tc = racer ? timerCommand(s) : null;
   if (!tc) return undefined;
   const r = raceFor(ctx);
-  const own = r ? `/athletes/races/${r.id}/media` : "/training/day";
+  const own = r ? `/athletes/races/${r.id}/yayin` : "/training/day";
   startTimer(tc.sec, r ? "start" : "", own); // sayaç gidilen sayfanın (kendi sayfasında görünür)
-  const href = r ? `${own}?tab=sure` : own;
+  const href = own;
   if (`${window.location.pathname}${window.location.search}` !== href) router.push(href);
   done(`Sayaç başladı: ${tc.sec / 60} dakika.`, { engine: "local" }, viaVoice);
   return true;

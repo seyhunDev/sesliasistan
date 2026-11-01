@@ -65,7 +65,7 @@ function Places({ list, short = false }) {
 
 export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
   const today = todayStr();
-  const media = `/athletes/races/${rid}/media`;
+  const media = `/athletes/races/${rid}/yayin`; // Yayın sayfası (multimedya kalktı, Seyhun 2026-11-01)
   const places = ourPlaces(r.results, chosen);
   const fleet = r.results?.fleet;
   const last = today >= (r.endDate || r.startDate);
@@ -94,6 +94,9 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
 
       {phase === "race" && (
         <>
+          <Link href={media} data-press className={`${main} mt-3`}>
+            Yayına git
+          </Link>
           {wx}
         </>
       )}
@@ -103,7 +106,7 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
           <div className="mt-4">
             <Places list={places} />
           </div>
-          <Link href={`${media}?tab=res`} data-press className={`${main} mt-3`}>
+          <Link href={media} data-press className={`${main} mt-3`}>
             Tüm sonuçlar
           </Link>
           {wx}
@@ -113,7 +116,7 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
       {phase === "done" && (
         <>
           {places.length > 0 && (
-            <Link href={`${media}?tab=res`} className="mt-4 block active:opacity-80" aria-label="Tüm sonuçlar">
+            <Link href={media} className="mt-4 block active:opacity-80" aria-label="Tüm sonuçlar">
               <Places list={places.slice(0, 4)} short />
             </Link>
           )}

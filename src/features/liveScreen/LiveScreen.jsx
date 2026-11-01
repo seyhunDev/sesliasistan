@@ -125,7 +125,7 @@ function Clock({ sel, isCur, timer, skew }) {
   return (
     <div className="lv-card lv-cd">
       <div className="lv-lab">
-        <span>{label || "Sayaç"}</span>
+        <span>{label || "Start bekleniyor"}</span>
         <span>{right}</span>
       </div>
       <div className="lv-clock">{value}</div>
@@ -211,7 +211,15 @@ function Wind({ data, sel, isCur }) {
   // önceki yarışta startındaki rüzgâr (yoksa o güne kadarki son kayıt)
   const upto = !isCur && sel ? sel.fin || sel.at : "";
   const w = !isCur && sel?.dir != null ? { at: sel.at, dir: sel.dir, kn: sel.kn, gust: null } : [...(data.wind || []), ...obs].filter((x) => x.dir != null && (!upto || x.at <= upto)).sort((a, b) => String(a.at).localeCompare(String(b.at))).at(-1);
-  if (!w) return null;
+  if (!w)
+    return (
+      <div className="lv-card lv-wind">
+        <div className="lv-wv">
+          <b className="lv-dim">–</b>
+          <span>Rüzgâr henüz girilmedi</span>
+        </div>
+      </div>
+    );
   return (
     <div className="lv-card lv-wind">
       <span className="lv-arrow" aria-hidden="true">
@@ -239,7 +247,12 @@ function Wind({ data, sel, isCur }) {
 // Parkur kartı: uygulamadaki Parkur sekmesiyle aynı çizim (günün ölçümleri); geniş ekranda arkada soluk katman, telefonda kart
 function Course({ data, route }) {
   const svg = useMemo(() => cardSvg(cardOf(cleanCourse(data.course || {})), { navy: true }), [data.course]);
-  if (!svg) return null;
+  if (!svg)
+    return (
+      <div className="lv-course lv-wait" aria-hidden="true">
+        <span>Parkur ölçümü girilince burada çizilir</span>
+      </div>
+    );
   return (
     <div className="lv-course" aria-hidden="true">
       <div className="lv-lab">
@@ -418,7 +431,7 @@ function Ranking({ data, sel, isCur, id }) {
               })}
         </tbody>
       </table>
-      {!g && !st.length ? <div className="lv-empty">Henüz dönüş yok</div> : null}
+      {!g && !st.length ? <div className="lv-empty">{isCur ? "İlk şamandıra dönüşüyle sıralama burada başlar" : "Dönüş yazılmadı"}</div> : null}
     </div>
   );
 }
@@ -479,7 +492,15 @@ function Overall({ data }) {
       </div>
     );
   }
-  if (!prov.length) return null;
+  if (!prov.length)
+    return (
+      <div className="lv-card lv-rank lv-all">
+        <div className="lv-lab">
+          <span>Genel sıralama</span>
+        </div>
+        <div className="lv-empty">Yarışlar bittikçe geçici, resmî sonuç yüklenince kesin</div>
+      </div>
+    );
   const f = prov[Math.min(ci, prov.length - 1)];
   const cats = ["Kız", "Junior"].filter((c) => f.rows.some((r) => r.cats.includes(c)));
   const rows = onlyCat(f.rows, cats.includes(cat) ? cat : "");

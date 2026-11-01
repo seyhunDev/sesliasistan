@@ -9,7 +9,7 @@ import { roundAt, roundJust, roundSay, roundUndo, screenSay } from "@/features/l
 import { courseAt } from "./yarisMedya";
 import { todayStr } from "@/lib/utils/format";
 
-const pageRace = (path) => /^\/athletes\/races\/([\w-]+)(?:\/media)?$/.exec(path || "")?.[1] || "";
+const pageRace = (path) => /^\/athletes\/races\/([\w-]+)(?:\/media|\/yayin)?$/.exec(path || "")?.[1] || "";
 const raceFor = (ctx) => {
   const cur = pageRace(ctx.path);
   return liveRace(ctx.races?.current || [], todayStr(), cur && cur !== "new" ? cur : "");

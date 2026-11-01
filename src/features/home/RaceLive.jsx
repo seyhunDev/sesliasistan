@@ -31,7 +31,7 @@ export function RaceLive({ open }) {
 }
 
 function Line({ id, orgId, title }) {
-  const own = `/athletes/races/${id}/media`;
+  const own = `/athletes/races/${id}/yayin`; // sayaç yayın sayfasının (multimedya kalktı, 2026-11-01)
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
   const [kids, setKids] = useState([]);
