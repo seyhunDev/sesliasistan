@@ -683,16 +683,14 @@ export function LiveScreen({ id, y = "" }) {
             </button>
           ) : null}
         </header>
-        {/* Üç sütun (Seyhun 2026-11-01 "geneli her zaman göstermek istiyorum"): solda sayaç, rüzgâr + parkur, video; ortada günün yarışının
-            sıralaması; sağda genel sıralama hep görünür, biraz küçük */}
+        {/* Üç sütun (Seyhun 2026-11-01 "geneli her zaman göstermek istiyorum"): solda sayaç, rüzgâr tek satır, (ekrandaki video), parkur
+            sütunun sonuna kadar büyük; ortada günün yarışının sıralaması; sağda genel sıralama hep görünür, biraz küçük */}
         <div className="lv-grid">
           <div className="lv-stack lv-a">
             <Clock sel={sel} isCur={isCur} timer={data.timer} skew={skew} entry={entry} />
-            <div className="lv-wc">
-              <Wind data={data} sel={sel} isCur={isCur} />
-              <Course data={data} route={routeOf(data, sel)} />
-            </div>
+            <Wind data={data} sel={sel} isCur={isCur} />
             <Media key={sel?.id || "x"} data={data} sel={sel} starts={starts} isCur={isCur} />
+            <Course data={data} route={routeOf(data, sel)} />
           </div>
           <div className="lv-stack lv-b">
             <Now data={data} sel={sel} isCur={isCur} />

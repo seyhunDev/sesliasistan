@@ -43,12 +43,20 @@
 .lv-wait { color: var(--lv-dim); font-weight: 500; text-align: center; padding: 1.2em 0; }
 .lv-dim { color: var(--lv-dim); }
 .lv-svg { display: flex; justify-content: center; width: 100%; margin-top: 0.4em; }
-.lv-svg svg { display: block; width: 100%; height: auto; }
-/* Parkur kartı küçük (sol sütunda rüzgârın yanında); dokununca tam ekran büyük */
-.lv-course { display: flex; flex-direction: column; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.lv-svg svg { display: block; width: 100%; height: auto; max-height: 100%; }
+/* Parkur kartı rüzgârın altında, sol sütunun sonuna kadar büyür (Seyhun 2026-11-01 "ekranın sonuna yakın büyüklüğe"); dokununca tam ekran */
+.lv-course { display: flex; flex-direction: column; flex: 1; min-height: 14em; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.lv-course .lv-svg { flex: 1; min-height: 0; position: relative; }
+.lv-course .lv-svg svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* Geniş ekranda sayfa ekrana sığar (kaydırma yok, dev ekran): sütunlar ekran boyu, uzun liste kartın içinde kayar */
+@media (min-width: 1100px) {
+  .lv-page { height: 100dvh; }
+  .lv-grid { min-height: 0; }
+  .lv-stack { min-height: 0; overflow: hidden; }
+  .lv-rank { overflow: auto; }
+}
 .lv-course:active { transform: translateY(1px); }
 .lv-bigc { width: min(92vw, 70vh); max-height: 92vh; overflow: auto; background: rgba(5, 18, 34, 0.96); }
-.lv-wc { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: clamp(12px, 1.2vw, 30px); }
 .lv-page {
   position: relative;
   z-index: 2;
@@ -56,6 +64,7 @@
   display: flex;
   flex-direction: column;
   padding: clamp(16px, 1.6vw, 44px);
+  padding-top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top)); /* telefonda üst çubuğun altında kalmasın (Seyhun 2026-11-01) */
   gap: clamp(12px, 1.2vw, 30px);
   font-size: clamp(14px, 1.02vw, 26px);
 }
@@ -123,8 +132,8 @@
 .lv-flag.u { background: linear-gradient(90deg, #e11d48 50%, #fff 50%); }
 .lv-flag.u::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; bottom: 0; background: linear-gradient(90deg, #fff 50%, #e11d48 50%); }
 .lv-flag.z svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.lv-media { display: flex; flex-direction: column; gap: 0.6em; flex: 1; }
-.lv-screen { position: relative; flex: 1; min-height: 10em; border-radius: 0.8em; overflow: hidden; background: #000; }
+.lv-media { display: flex; flex-direction: column; gap: 0.6em; flex: none; }
+.lv-screen { position: relative; flex: none; aspect-ratio: 16 / 9; border-radius: 0.8em; overflow: hidden; background: #000; }
 .lv-screen :is(video, iframe, img) { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: contain; background: #000; }
 /* Dikey video: kutu dikey (9:16), sol sütunda kalan boyu alır; yatay video 16:9 */
 .lv-screen.tall { aspect-ratio: 9 / 16; flex: none; width: auto; max-height: 60vh; align-self: center; min-height: 0; }
@@ -169,12 +178,13 @@
 .lv-lab > .lv-row { white-space: nowrap; flex: none; }
 .lv-rank td.k { color: var(--lv-mut); font-weight: 500; font-size: 0.85em; }
 .lv-empty { color: var(--lv-mut); font-weight: 500; padding: 0.8em 0.35em; }
-.lv-wind { display: flex; align-items: center; align-content: flex-start; gap: 0.9em; flex-wrap: wrap; }
-.lv-wind .lv-lab { flex-basis: 100%; font-size: 0.82em; }
-.lv-arrow { width: 3.2em; height: 3.2em; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.28); display: grid; place-items: center; flex: none; }
+/* Rüzgâr tek satır: ok, derece, yön · hız · sağanak, sağda Rüzgâr saat */
+.lv-wind { display: flex; align-items: center; gap: 0.9em; padding-top: 0.8em; padding-bottom: 0.8em; }
+.lv-wind .lv-lab { flex-direction: column; align-items: flex-end; gap: 0.1em; margin-left: auto; text-align: right; font-size: 0.82em; }
+.lv-arrow { width: 2.8em; height: 2.8em; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.28); display: grid; place-items: center; flex: none; }
 .lv-arrow svg { width: 60%; height: 60%; }
-.lv-wv { display: flex; flex-direction: column; min-width: 0; }
-.lv-wv b { font-size: 2em; font-weight: 800; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; }
+.lv-wv { display: flex; align-items: baseline; gap: 0.6em; min-width: 0; flex-wrap: wrap; }
+.lv-wv b { font-size: 1.9em; font-weight: 800; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; }
 .lv-wv span { color: var(--lv-mut); font-size: 1em; white-space: nowrap; }
 .lv-pop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; justify-content: flex-end; align-items: flex-start; padding: clamp(16px, 1.5vw, 40px); font-size: clamp(14px, 1vw, 26px); z-index: 10; }
 .lv-big { align-items: center; justify-content: center; cursor: pointer; }
@@ -192,11 +202,14 @@
   .lv-rank :is(th, td).c { display: none; }
   .lv-nm2 { display: block; color: var(--lv-mut); font-weight: 500; font-size: 0.82em; }
   .lv-nm2:empty { display: none; }
+  .lv-course { flex: none; }
+  .lv-course .lv-svg { position: static; }
+  .lv-course .lv-svg svg { position: static; height: auto; }
 }
 
 /* Telefon: tek sütun; parkur kartı normal kart olarak en altta (arkada okunmaz) */
 @media (max-width: 760px) {
-  .lv-page { font-size: 15px; padding: 14px 16px 24px; gap: 12px; }
+  .lv-page { font-size: 15px; padding: calc(14px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); gap: 12px; }
   .lv-ttl b { font-size: 22px; white-space: normal; }
   .lv-ttl span { font-size: 13px; }
   .lv-live { font-size: 0; gap: 0; padding: 0.42em; }
@@ -209,9 +222,11 @@
   .lv-cd { order: 1; }
   .lv-rank { order: 3; }
   .lv-all { order: 4; }
-  .lv-wc { order: 5; grid-template-columns: 1fr; gap: 12px; }
+  .lv-wind { order: 5; }
   .lv-media { order: 6; }
-  .lv-svg svg { max-height: 420px; }
+  .lv-course { order: 7; flex: none; min-height: 0; }
+  .lv-course .lv-svg { position: static; }
+  .lv-course .lv-svg svg { position: static; height: auto; }
   .lv-bigc { width: 100%; }
   .lv-rank :is(th, td).k { display: none; }
   .lv-all :is(th, td).m { width: 2.1em; }
@@ -222,7 +237,6 @@
   .lv-rank .lv-lab { flex-wrap: wrap; row-gap: 0.5em; }
   .lv-rank .lv-lab .lv-chips { justify-content: flex-start; }
   .lv-clock { font-size: 92px; }
-  .lv-screen { flex: none; aspect-ratio: 16 / 9; min-height: 0; }
   .lv-screen.tall { aspect-ratio: 9 / 16; max-height: 70vh; width: auto; align-self: center; }
   .lv-rank :is(th, td).c, .lv-rank :is(th, td).s { display: none; }
   .lv-nm2 { display: block; color: var(--lv-mut); font-weight: 500; font-size: 0.82em; }
