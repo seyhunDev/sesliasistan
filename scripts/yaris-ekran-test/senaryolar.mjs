@@ -262,6 +262,23 @@ export async function run(server, log = () => {}) {
       const ok = tabs === "Saha,Start,Sonuç" && dockRec === 0 && rec === 1 && go === 1 && thumb === 1 && loose === 0;
       return [ok, `sekmeler ${tabs} · alt çubukta Kayıt ${dockRec} · Başlat yanında Kayıt ${rec} · Başlat ${go} · satırda çekim ${thumb} · ayrı bölüm ${loose}`];
     });
+    // Süre seçimi (Seyhun 2026-11-01): sayacın altında 5 · 4 · 2 · 1 dk, üstte "5 dk ▾" ve start sırası şeridi yok; seçilen süre sayfa yenilense de kalır
+    await okPage("Yarış sayfası", "süre seçimi", "/athletes/races/r1/media", "Start sayacı", async () => {
+      const dk = page.locator("button[aria-pressed]", { hasText: /^\d+ dk$/ });
+      const chips = (await dk.allInnerTexts()).map((x) => x.trim()).join(",");
+      const top = await page.getByLabel("Süre seç").count();
+      const strip = await page.locator("main").getByText("Hazırlık", { exact: true }).locator("visible=true").count();
+      await dk.filter({ hasText: "2 dk" }).click();
+      const now = await page.locator("main b", { hasText: "02:00" }).count();
+      await page.goto(page.url());
+      await page.getByText("Start sayacı").first().waitFor({ timeout: 60000 });
+      await dk.first().waitFor({ timeout: 20000 }).catch(() => {});
+      const kept = await dk.and(page.locator("[aria-pressed=true]")).innerText().catch(() => "");
+      const big = await page.locator("main b", { hasText: "02:00" }).count();
+      await dk.filter({ hasText: "5 dk" }).click();
+      const ok = chips === "5 dk,4 dk,2 dk,1 dk" && top === 0 && strip === 0 && now === 1 && kept.trim() === "2 dk" && big === 1;
+      return [ok, `seçenekler ${chips} · üstte seçim ${top} · şerit ${strip} · 2 dk seçince ${now ? "02:00" : "değişmedi"} · yenileyince ${kept.trim() || "-"}${big ? " 02:00" : ""}`];
+    });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
     // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok
     await okPage("Yarış sayfası", "tek ⋯ menüsü", "/athletes/races/r1/media", "Start sayacı", async () => {

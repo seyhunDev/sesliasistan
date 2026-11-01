@@ -3,18 +3,26 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Icon } from "@/components/ui/Icon";
-import { Sheet } from "@/components/ui/Sheet";
 import { mmss } from "@/lib/raceScore";
-import { UP_MAX, beepAt, ownedBy, seqState, seqSteps, upSec } from "@/lib/raceLive";
+import { UP_MAX, beepAt, ownedBy, upSec } from "@/lib/raceLive";
 
 // Antrenman sayacı: hazır 2/5/10 dk ya da Ayarla (dakika + saniye). Son 5 saniye her saniye kısa bip, 0'da uzun bip;
 // 0'dan sonra ileri sayar ("Startan beri") ve bu an yarış startı olarak kullanılabilir (readTimer().zero).
 // Durum telefonda saklanır (bitiş zamanı): ekran kilitlenip geri gelince kalan süre doğru görünür. iPhone arka planda
 // ses çalmaz; sayaç çalışırken ekran açık tutulur (Wake Lock, destekleyen tarayıcıda).
 const KEY = "sa-sayac";
-const PRESETS = [120, 300, 600];
+// Süre seçimi sayacın altında 5 · 4 · 2 · 1 dk (Seyhun 2026-11-01); son seçilen bu telefonda saklanır, duran sayaç hep onunla açılır
+const PRESETS = [300, 240, 120, 60];
+const DUR = "sa-sayac-dk";
 const blank = { dur: 300, end: null, left: null };
+const prefDur = () => {
+  try {
+    const v = +localStorage.getItem(DUR);
+    return v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+};
 const noop = () => () => {};
 const useClient = () => useSyncExternalStore(noop, () => true, () => false);
 
@@ -25,7 +33,7 @@ export function lastZero(t = readTimer(), now = Date.now()) {
 const parse = (raw) => {
   try {
     const t = JSON.parse(raw || "null");
-    return t && Number.isFinite(t.dur) ? t : blank;
+    return t && Number.isFinite(t.dur) ? t : { ...blank, dur: prefDur() ?? blank.dur };
   } catch {
     return blank;
   }
@@ -41,8 +49,9 @@ export const readTimer = () => parse(raw());
 // Her yazış olay yayar: aynı sayfadaki bütün okuyucular (sayaç ekranı, sekmelerdeki küçük süre satırı) hemen güncellenir
 // at: bu telefonda son yazılış anı. Yarış sayfası açılırken belgedeki eski sayaç, burada sonradan bitirilmiş sayacı diriltmesin (useLiveSync)
 const write = (t) => {
+  const p = t.end == null && t.left == null ? prefDur() : null; // duran sayaç: asistanın ya da başka cihazın süresi değil, seçili süre
   try {
-    localStorage.setItem(KEY, JSON.stringify({ ...t, at: Date.now() }));
+    localStorage.setItem(KEY, JSON.stringify({ ...t, ...(p ? { dur: p } : {}), at: Date.now() }));
   } catch {}
   window.dispatchEvent(new Event(KEY));
 };
@@ -274,8 +283,8 @@ export function makeRace(race) {
   race.onStart(t.end, rid, t);
 }
 
-// Süre ekranı (Seyhun 2026-10-21 onayı, örnek yaris-tasarim/sayac/tek-sayac.png): kartta üstte durum ve süre seçimi, büyük rakamlar, start
-// sırası şeridi; geri sayımda −1 dk · Eşitle (en yakın tam dakika, komitenin işaretiyle eşitlemek için) · +1 dk; startan sonra "+ Yarış yap" ve
+// Süre ekranı (Seyhun 2026-10-21 onayı, örnek yaris-tasarim/sayac/tek-sayac.png): kartta üstte durum, büyük rakamlar, dururken altında
+// 5 · 4 · 2 · 1 dk seçimi (start sırası şeridi ve üstteki "5 dk ▾" kalktı, Seyhun 2026-11-01); geri sayımda −1 dk · Eşitle (en yakın tam dakika, komitenin işaretiyle eşitlemek için) · +1 dk; startan sonra "+ Yarış yap" ve
 // İptal. Kartın altında tek ana düğme: Başlat · Durdur · Devam · Bitir (çember yok, yanlış dokunuş sayacı değiştirmez).
 // title: yarışa bağlı sayaçta yarışın adı; where: bu sayfanın adı (sayaç başlatılınca kayda yazılır). beforeStart: Başlat'tan önce (planı yoksa açar).
 // Alt şeritte lead ve tail. bottom: ana düğme kokpitte değil alt şeritte (başparmak yetişsin; Seyhun 2026-10-22), solunda side (Sonucu söyle). dark: lacivert kokpitin içinde (antrenman günü, 2026-10-21 yeni tasarım): kart yok, beyaz yazı.
@@ -284,7 +293,6 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
-  const [pick, setPick] = useState(false);
   const save = (x) => write({ ...x, own: x.own || ownHere(), where: x.where || where });
   const mine = !client || mineHere(t);
   const race = flowOf(all, t);
@@ -306,10 +314,13 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
   const shift = (end) => (save({ ...t, end }), race?.onShift(end, t.rid));
   const add = (s) => running && shift(t.end + s * 1000);
   const even = () => running && shift(Date.now() + Math.round(rem / 60) * 60000);
-  const choose = (s) => save({ dur: s, end: null, left: null, zero: t.zero, own: "", where: "" });
+  const choose = (s) => {
+    try {
+      localStorage.setItem(DUR, String(s));
+    } catch {}
+    save({ dur: s, end: null, left: null, zero: t.zero, own: "", where: "" });
+  };
 
-  const steps = mode === "start" ? seqSteps(running || paused ? Math.max(t.dur, rem) : t.dur) : [];
-  const seq = seqState(steps, paused ? t.left : rem, running && !up);
   const hot = running && !up && rem <= 10;
   const head = up ? "Startan beri" : running ? "Starta kalan" : paused ? "Durdu" : "Start sayacı";
   const time = up ? `+${mmss(upSec(t.end, now))}` : mmss(Math.max(0, paused ? t.left : rem));
@@ -348,22 +359,17 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
   );
   const left = sub2 || side;
   const accTx = dark ? "text-[#c4b5fd]" : "text-acc";
-  const stepCls = (st) =>
-    dark
-      ? st === "now" ? "bg-[#0ea5c4] text-white" : st === "done" ? "bg-white/20 text-white" : "ck-glass text-white/80"
-      : st === "now" ? "bg-acc text-white" : st === "done" ? "bg-acc/15 text-acc" : "bg-bg text-mut";
+  const chip = (on) =>
+    `h-11 min-w-0 flex-1 rounded-xl text-[1rem] font-semibold tabular-nums active:translate-y-px ${
+      dark ? (on ? "bg-white text-[#11203a]" : "ck-glass text-white/85") : on ? "bg-acc text-white" : "bg-bg text-fg2"
+    }`;
 
   return (
     <>
       <section onPointerDown={() => running && !up && audio()} className={dark ? "mt-4 text-center" : "mt-3 rounded-3xl border border-line bg-card px-4 pb-4 pt-3.5 text-center"}>
         <div className={`flex h-8 items-center justify-between gap-2 text-[0.9375rem] font-semibold ${dark ? "text-white/70" : "text-fg2"}`}>
           <span>{head}</span>
-          {idle ? (
-            <button type="button" onClick={() => setPick(true)} aria-label="Süre seç" className={`flex h-8 items-center gap-1 rounded-full px-1 active:opacity-60 ${dark ? "text-white" : "text-fg"}`}>
-              {mmss(t.dur).replace(/^0(\d):00$/, "$1 dk").replace(/^(\d\d):00$/, "$1 dk")}
-              <Icon name="chev" className={`size-4 rotate-90 ${dark ? "text-white/60" : "text-mut"}`} />
-            </button>
-          ) : !mine && t.own ? (
+          {idle ? null : !mine && t.own ? (
             <Link href={ownHref} className={`truncate ${accTx}`}>
               {t.where || "Sayacın sayfası"} ›
             </Link>
@@ -372,13 +378,12 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
           )}
         </div>
         <b className={`mt-1 block font-semibold leading-[1.05] tabular-nums tracking-[-0.03em] ${up ? "text-[5.25rem]" : "text-[6.25rem]"} ${hot ? red : ""}`}>{time}</b>
-        {steps.length > 1 && !up && (
-          <div className="mt-4 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
-            {steps.map((x, i) => (
-              <div key={x.m} className={`flex h-11 flex-col items-center justify-center rounded-xl leading-tight ${stepCls(seq[i])}`}>
-                <b className="text-[0.9375rem] font-semibold tabular-nums">{x.m}</b>
-                <small className="text-[0.6875rem] font-semibold">{x.name}</small>
-              </div>
+        {idle && presets?.length > 1 && (
+          <div className="mt-4 flex gap-1.5">
+            {presets.map((s) => (
+              <button key={s} type="button" onClick={() => choose(s)} aria-pressed={t.dur === s} className={chip(t.dur === s)}>
+                {s / 60} dk
+              </button>
             ))}
           </div>
         )}
@@ -414,7 +419,6 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
       ) : (
         main(mainCls)
       )}
-      <Pick open={pick} dur={t.dur} presets={presets} onClose={() => setPick(false)} onPick={(s) => (choose(s), setPick(false))} />
       {(lead || tail) && (
         <Bar>
           <div className="flex gap-2 [&>*]:min-w-0 [&>*]:flex-1">
@@ -433,54 +437,4 @@ export function Bar({ children }) {
   if (!useClient()) return null;
   // --bar-b: sayfanın kendi alt çubuğu varsa (yarış multimedya sekmeleri) şerit onun üstünde durur
   return createPortal(<div data-bar className="fixed inset-x-0 bottom-[calc(var(--bar-b,var(--dome-h,var(--stage-h,5.5rem)))+0.75rem)] z-30 mx-auto w-full max-w-[30rem] px-5">{children}</div>, document.body);
-}
-
-// Ayarla: dakika ve saniye (iPhone'da çark olarak açılır)
-// presets verilirse (compact "⋯"): üstte hazır süreler, altta başka süre
-function Pick({ open, dur, presets, onClose, onPick }) {
-  return (
-    <Sheet open={open} onClose={onClose} title="Süre">
-      {open && presets && (
-        <div className="mb-4 grid grid-cols-4 gap-2">
-          {presets.map((s) => (
-            <button key={s} onClick={() => onPick(s)} className={`h-13 rounded-2xl text-[1rem] font-semibold active:scale-95 ${dur === s ? "bg-acc text-white" : "bg-bg"}`}>
-              {s / 60} dk
-            </button>
-          ))}
-        </div>
-      )}
-      {open && presets && <p className="mb-1 text-left text-[0.875rem] font-semibold text-fg2">Başka süre</p>}
-      {open && <PickBody dur={dur} onPick={onPick} />}
-    </Sheet>
-  );
-}
-function PickBody({ dur, onPick }) {
-  const [m, setM] = useState(Math.floor(dur / 60));
-  const [s, setS] = useState(dur % 60 - ((dur % 60) % 5));
-  const sel = "h-14 w-28 rounded-xl bg-bg px-3 text-center text-[1.5rem] font-semibold tabular-nums";
-  return (
-    <>
-      <div className="flex justify-center gap-4 pt-2">
-        <label className="text-center">
-          <select value={m} onChange={(e) => setM(+e.target.value)} className={sel}>
-            {Array.from({ length: 60 }, (_, i) => (
-              <option key={i} value={i}>{String(i).padStart(2, "0")}</option>
-            ))}
-          </select>
-          <small className="mt-1 block text-[0.8125rem] text-mut">dakika</small>
-        </label>
-        <label className="text-center">
-          <select value={s} onChange={(e) => setS(+e.target.value)} className={sel}>
-            {Array.from({ length: 12 }, (_, i) => (
-              <option key={i} value={i * 5}>{String(i * 5).padStart(2, "0")}</option>
-            ))}
-          </select>
-          <small className="mt-1 block text-[0.8125rem] text-mut">saniye</small>
-        </label>
-      </div>
-      <button onClick={() => onPick(m * 60 + s || 5)} data-press className="btn btn-primary mt-5 w-full">
-        Tamam
-      </button>
-    </>
-  );
 }

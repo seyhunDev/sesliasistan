@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/Button";
 // Düzen (Seyhun 2026-10-19 onayı, örnek yaris-tasarim/multimedya/sure-yeni-2.png): sayaca dokununca başlar; altta Start · Şamandıra ·
 // Finish kareleri; altında seçili günün yarışları liste (2026-10-28). Alt şeritte ana düğme (Başlat · Durdur · Devam · Bitir; rüzgâr Hava sekmesinde, çekim alttaki Kayıt ile; Seyhun 2026-10-22).
 // Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip.
-const PRESETS = [60, 120, 300, 600];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
 // Büyük sayaç lacivert üstte (RaceMedia Shell top), listesi ve kareler açık alanda
@@ -23,7 +22,7 @@ const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { 
 export function TimerHead({ race, live, rf, rec = null }) {
   const tr = useTimerRun();
   const cur = tr.t.end != null || tr.t.left != null ? live.starts.find((x) => x.id === rf.ridOf(tr.t)) : null;
-  return <Countdown dark mode="start" presets={PRESETS} race={rf.flow} title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} bottom rec={rec} />;
+  return <Countdown dark mode="start" race={rf.flow} title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} bottom rec={rec} />;
 }
 
 // Start sekmesi (Seyhun 2026-10-30, yaris-yapi "Süre ve Medya birleşir"): günün yarışları listesi; her yarışın çekimleri kendi satırında
