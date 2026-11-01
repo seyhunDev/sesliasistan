@@ -66,7 +66,7 @@ export function useStartList({ orgId, race, day, live, onChange, rf }) {
     undo(`${b} · ${mmss(sec)}`, before);
   };
   const setBuoys = (next) => onChange({ buoys: next }, () => saveBuoys(orgId, race.id, next));
-  const state = (s) => (s.void ? "" : s.fin ? raceTime(s) : cur?.id === s.id ? (tr.up ? "yarışta" : "geri sayım") : "");
+  const state = (s) => (s.void ? "" : s.fin ? `${raceTime(s)} sürdü` : cur?.id === s.id ? (tr.up ? "yarışta" : "geri sayım") : "");
 
   const today = startsOn(live.starts, day);
 
@@ -78,8 +78,8 @@ export function useStartList({ orgId, race, day, live, onChange, rf }) {
       <button type="button" onClick={() => setEdit(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
         <span className="min-w-0 flex-1">
           <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
-          {(s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
-            <span className="block truncate text-[0.8125rem] text-mut">{[s.course, s.flag, markLine(live.buoys, s), s.note].filter(Boolean).join(" · ")}</span>
+          {(cdText(s) || s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
+            <span className="block truncate text-[0.8125rem] text-mut">{[cdText(s), s.course, s.flag, markLine(live.buoys, s), s.note].filter(Boolean).join(" · ")}</span>
           )}
         </span>
         <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
@@ -202,6 +202,11 @@ export function Marks({ buoys, s, on, onMark, onBuoys }) {
     </div>
   );
 }
+// Kaç dakikalık startla (geri sayımın başladığı an → start anı; Seyhun 2026-11-01)
+const cdText = (s) => {
+  const m = s.cd && s.at ? Math.round((Date.parse(s.at) - Date.parse(s.cd)) / 60000) : 0;
+  return m > 0 && m <= 60 ? `${m} dk start` : "";
+};
 const markLine = (buoys, s) =>
   buoys
     .filter((b) => s.marks?.[b] != null)

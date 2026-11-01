@@ -11,8 +11,13 @@ const K = "yarış ekranı";
 const OWNER = "sahip@ornek.local";
 const PASS = "test-sifre-123";
 const CLUB = "dikili-c7cc8"; // kulüp projesinin adı (dikili.js); emülatörde ayrı proje
-const now = new Date();
 const ymd = (d) => d.toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+// Yarış günü sayfası evreye göre açılır (gün bitince Sonuç): akşam ya da sabah erken çalışınca test tarayıcısının saati bugün 13:00'e alınır,
+// yoksa Start sekmesi açılmaz ve testler saate göre düşer
+const real = new Date();
+const hour = +real.toLocaleString("en-US", { timeZone: "Europe/Istanbul", hour: "numeric", hourCycle: "h23" });
+const SHIFT = hour < 9 || hour >= 16;
+const now = SHIFT ? new Date(`${ymd(real)}T13:00:00+03:00`) : real;
 const TODAY = ymd(now);
 const plus = (n) => ymd(new Date(now.getTime() + n * 864e5));
 
@@ -71,7 +76,9 @@ export async function run(server, log = () => {}) {
         { path: "orgs/{owner}/races/r1", data: { name: "Ege Kupası", city: "İzmir", district: "Dikili", startDate: TODAY, endDate: plus(2), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
         // sesle yazılmış rüzgâr (Saha ölçümlerinde görünmeli)
         // ve bugünün bir yarışı ile o yarışta çekilmiş bir fotoğraf (Start'ta yarışın satırında görünmeli)
-        { path: "orgs/{owner}/raceLive/r1", data: { wind: [{ at: new Date(now.getTime() - 30 * 60e3).toISOString(), dir: 300, kn: 11, src: "elle" }], starts: [{ id: "s1", day: TODAY, n: 1, at: new Date(now.getTime() - 60 * 60e3).toISOString() }], media: [{ id: "m1", kind: "photo", url: "https://example.com/1.jpg", at: new Date(now.getTime() - 40 * 60e3).toISOString() }] } },
+        { path: "orgs/{owner}/raceLive/r1", data: { wind: [{ at: new Date(now.getTime() - 30 * 60e3).toISOString(), dir: 300, kn: 11, src: "elle" }], starts: [{ id: "s1", day: TODAY, n: 1, cd: new Date(now.getTime() - 65 * 60e3).toISOString(), at: new Date(now.getTime() - 60 * 60e3).toISOString(), fin: new Date(now.getTime() - 45 * 60e3).toISOString() }], media: [{ id: "m1", kind: "photo", url: "https://example.com/1.jpg", at: new Date(now.getTime() - 40 * 60e3).toISOString() }] } },
+        // bugünün antrenmanı: iki biten yarış, üçüncüsü 1 dk önce start oldu (yeni akış: Bitiren kim?), günlük yazılmış
+        { path: "orgs/{owner}/plans/t1", data: { ownerId: "{owner}", createdByUid: "{owner}", assignees: [], people: ["{owner}"], createdAt: now.toISOString(), createdBy: { name: "Test Sahip" }, src: "manual", cat: "Antrenman", title: "Optimist antrenmanı", date: TODAY, endDate: "", time: "00:05", allDay: false, durationMin: 120, tz: "Europe/Istanbul", timeSource: "user", place: "Yat limanı", status: "planned", races: [{ id: "y1", name: "Yarış 1", startAt: now.getTime() - 90 * 60e3, fin: 1000, cd: 300, finishes: [{ id: "a1", name: "Deniz Yılmaz" }] }, { id: "y2", name: "Yarış 2", startAt: now.getTime() - 40 * 60e3, fin: 845, cd: 240, marks: { Start: 0, "Şamandıra 1": 252 }, finishes: [] }, { id: "y3", name: "Yarış 3", startAt: now.getTime() - 60e3, cd: 300, finishes: [] }], log: { wind: "12", dir: "Poyraz", topics: ["Start", "Şamandıra"], min: 120, rating: 3 } } },
         { path: "orgs/{owner}/races/r2", data: { name: "Bahar Kupası", city: "İzmir", district: "Dikili", startDate: plus(5), endDate: plus(6), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
       ],
     });
@@ -92,6 +99,7 @@ export async function run(server, log = () => {}) {
     return rows;
   }
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "tr-TR", timezoneId: "Europe/Istanbul", serviceWorkers: "block" });
+  if (SHIFT) await ctx.clock.setSystemTime(now);
   await ctx.addInitScript(INIT({ sha }));
   let hang = false; // true: Firestore okuma bağlantısı asılı kalır (iPhone'da güncelleme/yenileme sonrası; Seyhun 2026-10-31)
   await ctx.route("**/*", async (route) => {
@@ -258,9 +266,11 @@ export async function run(server, log = () => {}) {
       const row = page.locator("main li", { hasText: "1. yarış" }).first();
       const thumb = await row.locator(".grid button").count();
       const loose = await page.locator("main section", { hasText: "1. yarış" }).count();
+      const rowTxt = (await row.innerText().catch(() => "")).replace(/\s+/g, " ");
+      const info = await page.getByText("Videolar nerede saklanır?").count();
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-start.png") }).catch(() => {});
-      const ok = tabs === "Saha,Start,Sonuç" && dockRec === 0 && rec === 1 && go === 1 && thumb === 1 && loose === 0;
-      return [ok, `sekmeler ${tabs} · alt çubukta Kayıt ${dockRec} · Başlat yanında Kayıt ${rec} · Başlat ${go} · satırda çekim ${thumb} · ayrı bölüm ${loose}`];
+      const ok = tabs === "Saha,Start,Sonuç" && dockRec === 0 && rec === 1 && go === 1 && thumb === 1 && loose === 0 && /5 dk start/.test(rowTxt) && /15:00 sürdü/.test(rowTxt) && info === 0;
+      return [ok, `sekmeler ${tabs} · alt çubukta Kayıt ${dockRec} · Başlat yanında Kayıt ${rec} · Başlat ${go} · satırda çekim ${thumb} · ayrı bölüm ${loose} · satır "${rowTxt.slice(0, 80)}" · bilgi kartı ${info}`];
     });
     // Süre seçimi (Seyhun 2026-11-01): sayacın altında 5 · 4 · 2 · 1 dk, üstte "5 dk ▾" ve start sırası şeridi yok; seçilen süre sayfa yenilense de kalır
     await okPage("Yarış sayfası", "süre seçimi", "/athletes/races/r1/media", "Start sayacı", async () => {
@@ -278,6 +288,28 @@ export async function run(server, log = () => {}) {
       await dk.filter({ hasText: "5 dk" }).click();
       const ok = chips === "5 dk,4 dk,2 dk,1 dk" && top === 0 && strip === 0 && now === 1 && kept.trim() === "2 dk" && big === 1;
       return [ok, `seçenekler ${chips} · üstte seçim ${top} · şerit ${strip} · 2 dk seçince ${now ? "02:00" : "değişmedi"} · yenileyince ${kept.trim() || "-"}${big ? " 02:00" : ""}`];
+    });
+    // Antrenman yeni akış (Seyhun 2026-11-01): alt çubuk Yarış · Videolar, Video Başlat'ın yanında; yarışta "Bitiren kim?" kareleri,
+    // herkes dokununca yarış biter ve biten son yarış açık görünür (sıra + süre, Düzelt · Paylaş)
+    await okPage("Antrenman", "yeni akış: bitiren kim", "/training/day?id=t1", "Yoklama", async () => {
+      const end = now.getTime() - 60e3;
+      await page.evaluate((t) => localStorage.setItem("sa-sayac", JSON.stringify(t)), { dur: 300, end, left: null, mode: "start", rid: "y3", own: "/training/day?id=t1", where: "Optimist antrenmanı", at: Date.now() });
+      await page.goto(page.url());
+      const tile = page.locator("section[aria-label='Bitiren kim'] button", { hasText: "Deniz" });
+      await tile.waitFor({ timeout: 60000 }).catch(() => {});
+      const dock = (await page.locator("nav[aria-label='Multimedya sekmeleri'] button").allInnerTexts()).map((x) => x.trim()).filter(Boolean).join(",");
+      const vid = Math.min(1, await page.locator("[data-bar]").getByLabel("Video").count());
+      const tiles = await page.locator("section[aria-label='Bitiren kim'] button[aria-pressed]").count();
+      if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-antrenman-yarista.png") }).catch(() => {});
+      await tile.click().catch(() => {});
+      const done = await page.getByText("Deniz Yılmaz").first().waitFor({ timeout: 20000 }).then(() => true, () => false);
+      await page.waitForTimeout(800);
+      const gone = await page.locator("section[aria-label='Bitiren kim']").count();
+      const fix = await page.getByRole("button", { name: "Düzelt" }).count();
+      const go = await page.locator("[data-bar]").getByRole("button", { name: "Başlat" }).count();
+      if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-antrenman-bitti.png") }).catch(() => {});
+      const ok = dock === "Yarış,Videolar" && vid === 1 && tiles === 1 && done && gone === 0 && fix === 1 && go === 1;
+      return [ok, `alt çubuk ${dock} · Video ${vid} · kare ${tiles} · dokununca ${done ? "sonuç açıldı" : "açılmadı"} · kareler ${gone ? "duruyor" : "kalktı"} · Düzelt ${fix} · Başlat ${go}`];
     });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
     // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok

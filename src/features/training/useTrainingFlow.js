@@ -16,7 +16,7 @@ export function useTrainingFlow({ races, save }) {
   const flow = {
     label: `Yarış ${races.length + 1}`,
     onStart: (end, rid, prevT) => {
-      const r = { id: rid, name: `Yarış ${races.length + 1}`, startAt: end, finishes: [] };
+      const r = { id: rid, name: `Yarış ${races.length + 1}`, startAt: end, ...(prevT?.dur > 0 ? { cd: prevT.dur } : {}), finishes: [] }; // cd: kaç dakikalık startla
       save([...races, r]);
       undo(`${r.name} ${end < Date.now() ? "açıldı" : "geri sayımı başladı"}`, races, prevT);
     },
