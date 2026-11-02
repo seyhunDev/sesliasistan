@@ -23,7 +23,7 @@ export function routePlan(g, route) {
   const r = Math.max(22, g.L * 0.045);
   const way = [];
   for (const t of route) {
-    if (t === "1") way.push({ m: g.m1, side: 1, t: "1" }, { m: g.m1a, side: 1, t: "1A", join: true });
+    if (t === "1") way.push({ m: g.m1, side: 1, t: "1" }, ...(g.up ? [] : [{ m: g.m1a, side: 1, t: "1A", join: true }]));
     else if (t === "2") way.push({ m: g.m2, side: 1, t: "2" });
     else if (t === "3") way.push({ m: g.p3, side: 1, t: "3", gate: [g.s3, g.p3], gm: g.g3 });
     else if (t === "4") way.push({ m: g.p4, side: 1, t: "4", gate: [g.s4, g.p4], gm: g.g4 });
@@ -218,7 +218,7 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
     return `<line x1="${f(A[0])}" y1="${f(A[1])}" x2="${f(B[0])}" y2="${f(B[1])}" stroke="#dfe7f0" stroke-opacity=".8" stroke-width="${f(4 * u * s)}" stroke-linecap="round"/>`;
   };
   const used = new Set(rt);
-  buoy(g.m1, "1"); buoy(g.m1a, "");
+  buoy(g.m1, "1"); if (!g.up) buoy(g.m1a, "");
   buoy(g.m2, "2");
   buoy(g.s3, ""); buoy(g.p3, "3");
   if (used.has("4")) { buoy(g.s4, ""); buoy(g.p4, "4"); }

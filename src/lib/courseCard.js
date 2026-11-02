@@ -9,6 +9,7 @@ const rad = (d) => (d * Math.PI) / 180;
 const nrm = (d) => ((Math.round(d) % 360) + 360) % 360;
 const dir = (b, m) => [m * Math.sin(rad(b)), m * Math.cos(rad(b))];
 const add = (p, b, m) => { const [x, y] = dir(b, m); return [p[0] + x, p[1] + y]; };
+const brgOf = (a, b) => nrm((Math.atan2(b[0] - a[0], b[1] - a[1]) * 180) / Math.PI);
 export function geom(c, { lineK = 0.5 } = {}) {
   const A = c.axis, L = c.orsa;
   // komite sabit; pin komiteden ölçülen açıda (yoksa olması gereken eksen − 90°), soluk çizgi olması gereken hat
@@ -32,9 +33,16 @@ export function geom(c, { lineK = 0.5 } = {}) {
   const s4 = add(g4, A - 90, gw), p4 = add(g4, A + 90, gw);
   // trapez: finiş pupadaki kapının rüzgâr üstünde (kapıdan dönüp orsayla çıkılır), ayakların yolunu kesmesin diye biraz içeride; hat rüzgâra dik
   const up = c.type === "trapez";
-  const fin = up ? add(add(g3, A, L * 0.55), A + 90, L * 0.22) : add(g3, A + 150, L * 0.45);
-  const fA = up ? add(fin, A - 90, L * 0.09) : add(fin, A + 60, L * 0.1), fB = up ? add(fin, A + 90, L * 0.09) : add(fin, A + 240, L * 0.1);
-  return { up, A, L, mid, komite, pin, pinIdeal, ideal, should, toPin, m1, m1a, reach, m2, g3, s3, p3, g4, s4, p4, fin, fA, fB, lineDeg };
+  const fin = add(g3, A + 150, L * 0.45);
+  const fA = add(fin, A + 60, L * 0.1), fB = add(fin, A + 240, L * 0.1);
+  const base = { up, A, L, mid, komite, pin, pinIdeal, ideal, should, toPin, m1, m1a, reach, m2, g3, s3, p3, g4, s4, p4, fin, fA, fB, lineDeg };
+  if (!up) return base;
+  // Trapez (Seyhun 2026-11-02 kartı, yayin-tasarim/rota/trapez-kart-orijinal.png; START-1-2-3S/3P-FINISH): 1 startın tam rüzgâr üstünde
+  // (1A yok), 2 solda ve 1'den aşağıda, 3S/3P kapısı 2'nin tam altında startın da altında, finiş 2'nin hemen sağında; 4 kapısı yok
+  const left = (p, up_, side) => add(add(p, A, L * up_), A - 90, L * side);
+  const t2 = left(mid, 0.45, 1.05), t3 = left(mid, -0.57, 0.98), tf = left(mid, 0.39, 0.86);
+  const tgw = L * 0.11;
+  return { ...base, m1a: m1, m2: t2, reach: brgOf(m1, t2), g3: t3, s3: add(t3, A - 90, tgw), p3: add(t3, A + 90, tgw), fin: tf, fA: add(tf, A - 90, L * 0.09), fB: add(tf, A + 90, L * 0.09) };
 }
 function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   const g = geom(c);
@@ -100,7 +108,7 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   const fb = pt("fB"); o += `<circle cx="${f(fb[0])}" cy="${f(fb[1])}" r="6" fill="${ink}"/>`;
   o += `<text x="${f(fin[0] + 14)}" y="${f(fin[1] + 18)}" font-size="11" font-weight="${M}" fill="${mut}">Finiş</text>`;
   // şamandıralar
-  buoy(m1, "1", c.est?.m1); buoy(m1a, "1A", c.est?.m1); buoy(m2, "2", c.est?.m2);
+  buoy(m1, "1", c.est?.m1); if (!g.up) buoy(m1a, "1A", c.est?.m1); buoy(m2, "2", c.est?.m2);
   buoy(s3, "3s", c.est?.m3); buoy(p3, "3p", c.est?.m3);
   if (!g.up) { buoy(s4, "4s", c.est?.m4); buoy(p4, "4p", c.est?.m4); }
   // ayak açıları
