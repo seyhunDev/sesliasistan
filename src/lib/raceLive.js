@@ -97,10 +97,12 @@ export function cleanStarts(list) {
     .slice(-200);
 }
 
+// ph: yalnız çekildiği telefonda duran büyük video (Seyhun 2026-11-02 "belli boyutun üstündeyse sadece telefonda tutalım"):
+// adresi yok, küçük resmi buluttadır; istenince "Buluta yükle" ile url gelir, ph kalkar
 export function cleanMedia(list) {
   return (Array.isArray(list) ? list : [])
-    .map((m) => ({ id: ID.test(m?.id || "") ? m.id : "", kind: m?.kind === "video" ? "video" : "photo", type: S(m?.type, 40), size: Number(m?.size) || 0, url: /^https:\/\//.test(m?.url || "") ? S(m.url, 600) : "", at: ISO(m?.at), ...(/^https:\/\//.test(m?.thumb || "") ? { thumb: S(m.thumb, 600) } : {}), ath: cleanIds(m?.ath), ...(Number(m?.dur) > 0 ? { dur: Math.min(600, Math.round(m.dur)) } : {}), ...(Number(m?.w) > 0 && Number(m?.h) > 0 ? { w: Math.min(8000, Math.round(m.w)), h: Math.min(8000, Math.round(m.h)) } : {}), ...(typeof m?.asset === "string" && m.asset ? { asset: S(m.asset, 120) } : {}), ...cleanMoment(m) }))
-    .filter((m) => m.id && m.url && m.at)
+    .map((m) => ({ id: ID.test(m?.id || "") ? m.id : "", kind: m?.kind === "video" ? "video" : "photo", type: S(m?.type, 40), size: Number(m?.size) || 0, url: /^https:\/\//.test(m?.url || "") ? S(m.url, 600) : "", at: ISO(m?.at), ...(/^https:\/\//.test(m?.thumb || "") ? { thumb: S(m.thumb, 600) } : {}), ath: cleanIds(m?.ath), ...(Number(m?.dur) > 0 ? { dur: Math.min(600, Math.round(m.dur)) } : {}), ...(Number(m?.w) > 0 && Number(m?.h) > 0 ? { w: Math.min(8000, Math.round(m.w)), h: Math.min(8000, Math.round(m.h)) } : {}), ...(typeof m?.asset === "string" && m.asset ? { asset: S(m.asset, 120) } : {}), ...(m?.ph === true && !/^https:\/\//.test(m?.url || "") ? { ph: true } : {}), ...cleanMoment(m) }))
+    .filter((m) => m.id && (m.url || m.ph) && m.at)
     .sort((a, b) => a.at.localeCompare(b.at))
     .slice(-400);
 }

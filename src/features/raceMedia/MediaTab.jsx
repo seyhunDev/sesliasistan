@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
-import { VIDEO_Q, addRaceMedia, backfillPoster, cloudCopy, dropRaceMedia, mutedCopy, posterOf, prepRaceMedia, readVideoQ, saveMedia, saveVideoQ } from "@/features/athletes/raceLiveStore";
+import { VIDEO_Q, addRaceMedia, backfillPoster, cloudCopy, cloudMedia, dropRaceMedia, mutedCopy, posterOf, prepRaceMedia, readVideoQ, saveMedia, saveVideoQ } from "@/features/athletes/raceLiveStore";
 import { Button } from "@/components/ui/Button";
 import { Bar, readTimer } from "@/features/training/Countdown";
 import { dayOf, fixMedia, hm, mediaByRace, mediaGroups, mediaOf, momentAt, momentBadge, momentOf, tagMedia } from "@/lib/raceLive";
@@ -42,6 +42,10 @@ export function MediaSettingsButton({ dark = false }) {
   );
 }
 const inflight = new Set();
+// Büyük video yalnız telefonda (Seyhun 2026-11-02 "belli bir boyutun üstündeyse sadece telefonda tutalım, istersek yükleriz"): iPhone uygulamasında
+// aslı bu boyutu geçen video buluta gitmez; küçük resmi ve künyesi yazılır (ph), dosya telefonda kalır (aslı Fotoğraflar'da, uygulamada
+// izlemek için de saklanır). Üstünde "Telefonda" yazar; izlerken "Buluta yükle". Safari'de eskisi gibi hepsi yüklenir (telefondaki 7 gün).
+export const PHONE_MB = 50;
 // Yükleme durumu da sayfa genelinde (sekme değişip Medya yeniden açılınca halka kaldığı yerden görünür):
 // ups { [id]: { rec, url, p, err } }; mine: bu telefonda çekilip yüklenen künye → { url: yerel dosya, done: kısa ✓ }
 // kept: telefonda 7 gün tutulan (pendingStore "kept") künye → { kind, size }; Medya › ⋯ içinde toplamı yazar
@@ -117,15 +121,17 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
       addUp(rec);
       up(rec.id, () => ({ p: 0, err: false }));
       // Büyük iPhone videosu: buluta önce akışa uygun 720p kopyası hazırlanır (halkanın ilk yarısı), aslı telefonda kalır
+      const ph = app && rec.kind === "video" && (rec.orig || rec.blob).size > PHONE_MB * 1e6;
       let cl = rec;
-      if (rec.big && rec.kind === "video") {
+      if (ph) cl = { ...rec, blob: rec.orig || rec.blob };
+      else if (rec.big && rec.kind === "video") {
         const c = await cloudCopy(rec.blob, rec.type, (p) => up(rec.id, () => ({ p: p * 0.5 })));
         if (c.blob !== rec.blob) cl = { ...rec, blob: c.blob, type: c.type, orig: rec.blob };
       }
       const half = cl !== rec;
-      const meta = await addRaceMedia(orgId, race.id, { ...cl, posterP: posterJobs.get(rec.id) }, rec.at, (p) => up(rec.id, () => ({ p: half ? 0.5 + p * 0.5 : p })), { ...rec.mom, dur: rec.dur, ...(rec.asset ? { asset: rec.asset } : {}) });
+      const meta = await addRaceMedia(orgId, race.id, { ...cl, posterP: posterJobs.get(rec.id) }, rec.at, (p) => up(rec.id, () => ({ p: half ? 0.5 + p * 0.5 : p })), { ...rec.mom, dur: rec.dur, ...(rec.asset ? { asset: rec.asset } : {}), ...(ph ? { ph: true } : {}) });
       done.add(rec.id);
-      await keepLocal({ id: meta.id, raceId: race.id, kind: rec.kind, size: (cl.orig || cl.blob).size, blob: cl.orig || cl.blob });
+      await keepLocal({ id: meta.id, raceId: race.id, kind: rec.kind, size: (cl.orig || cl.blob).size, blob: cl.orig || cl.blob, ...(ph ? { stay: true } : {}) });
       await dropPending(rec.id);
       upSet((x) => {
         const { [rec.id]: u, ...rest } = x.ups;
@@ -316,9 +322,27 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
       else if (e?.name !== "AbortError") toast("İndirilemedi");
     }
   };
+  // Telefonda duran videoyu buluta yükle: akışa uygun küçük kopyası gider (bilgisayardan da izlenir), aslı telefonda kalır
+  const toCloud = async (m) => {
+    const local = mine[m.id]?.url;
+    if (!local) return toast("Video bu telefonda değil");
+    try {
+      setBusy("Hazırlanıyor");
+      const blob = await (await fetch(local)).blob();
+      const c = await cloudCopy(blob, blob.type || m.type, (p) => setBusy(`Hazırlanıyor %${Math.round(p * 100)}`));
+      const meta = await cloudMedia(orgId, race.id, m, c.blob, c.type, (p) => setBusy(`Buluta yükleniyor %${Math.round(p * 100)}`));
+      setBusy("");
+      if (meta) onChange((l) => ({ media: l.media.map((x) => (x.id === m.id ? meta : x)) }));
+      await keepLocal({ id: m.id, raceId: race.id, kind: m.kind, size: blob.size, blob }); // artık 7 gün (buluttaki var)
+      toast("Buluta yüklendi");
+    } catch (e) {
+      setBusy("");
+      toast(errText(e));
+    }
+  };
   const share = async (m, muted = false) => {
     try {
-      let blob = await (await fetch(m.url)).blob();
+      let blob = await (await fetch(m.local || m.url)).blob();
       if (muted) {
         setBusy("Sessiz kopya hazırlanıyor");
         blob = await mutedCopy(blob, (p) => setBusy(`Sessiz kopya hazırlanıyor %${Math.round(p * 100)}`));
@@ -339,7 +363,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
   // Küçük kare (iPhone galerisi gibi) ve yarışın bölümü (Seyhun 2026-10-22 onayı, yaris-tasarim/medya/galeri-iphone.png: yarışa göre, 4'lü sıkı ızgara)
   const tile = (m) => (
     <button key={m.id} type="button" onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden rounded-lg bg-line active:opacity-80">
-      <Thumb kind={m.kind} url={m.url} thumb={m.thumb || m.u?.pic} dur={m.dur} local={m.u?.url || mine[m.id]?.url} up={m.u && !m.u.err ? m.u.p : null} err={!!m.u?.err} done={!!mine[m.id]?.done} />
+      <Thumb kind={m.kind} url={m.url} thumb={m.thumb || m.u?.pic} dur={m.dur} local={m.u?.url || mine[m.id]?.url} up={m.u && !m.u.err ? m.u.p : null} err={!!m.u?.err} done={!!mine[m.id]?.done} ph={!!m.ph} />
       {m.phase && <span className="absolute left-1 top-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums text-white">{momentBadge(m)}</span>}
     </button>
   );
@@ -442,6 +466,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
         onTag={tag}
         onShare={share}
         onSave={save}
+        onCloud={toCloud}
         busy={busy}
         onDrop={drop}
         starts={live.starts}
@@ -457,7 +482,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
         {/* Nerede saklanır (Seyhun 2026-11-01: sayfadaki bilgi kartı yer kaplıyordu ve iPhone uygulamasında yanlış anlaşılıyordu; buraya taşındı) */}
         <p className="mb-4 px-1 text-[0.875rem] leading-snug text-fg2">
           {app
-            ? `Çektiğin video ve fotoğrafın aslı iPhone'un Fotoğraflar'ına kaydedilir. Buluta ${VIDEO_Q[vq].label} kopyası yüklenir, sen silene kadar kalır. Velora'dan silince Fotoğraflar'daki aslı da silinir.`
+            ? `Çektiğin video ve fotoğrafın aslı iPhone'un Fotoğraflar'ına kaydedilir. Buluta ${VIDEO_Q[vq].label} kopyası yüklenir, sen silene kadar kalır. ${PHONE_MB} MB'tan büyük video buluta gitmez, yalnız bu telefonda kalır (üstünde Telefonda yazar); istersen izlerken Buluta yükle. Velora'dan silince Fotoğraflar'daki aslı da silinir.`
             : `Safari'den çekince aslı Fotoğraflar'a kaydedilmez: telefonda 7 gün tutulur, buluta ${VIDEO_Q[vq].label} kopyası yüklenir. Aslını saklamak için 7 gün içinde İndir ile kaydet.`}
         </p>
         <p className="mb-2 px-1 text-[0.9375rem] font-semibold">Video kalitesi</p>
