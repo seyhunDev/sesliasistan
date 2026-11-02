@@ -81,7 +81,8 @@ export const CARD_IDS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 export const CARD_ROUTE = ["1", "2", "3", "F"];
 // Rota kartı tipleri (Seyhun 2026-11-02 "rota kartlarına isim verelim; şu anki dursun; Optimist'te trapez: pupadaki kapıyı dönüp tekrar
 // yukarı, finiş orada"): şekil koddadır, yeni kart geldikçe buraya eklenir. std = şimdiki (1 + 1A, 2, 3s/3p, 4s/4p, finiş apazda)
-export const CARD_TYPES = { std: "Standart rota", trapez: "Trapez rota" };
+// adlar (Seyhun 2026-11-02 "bu trapez parkur olsun, diğeri ILCA parkuru; ILCA parkurunu adıyla ve şekliyle sonra değiştireceğiz")
+export const CARD_TYPES = { std: "ILCA parkuru", trapez: "Trapez parkur" };
 export const cardType = (k) => (CARD_TYPES[k?.type] ? k.type : "std");
 const ROUTE_OK = ["1", "2", "3", "4", "F"];
 export const cardRoute = (r) => (Array.isArray(r) ? r : []).map((x) => String(x).toUpperCase()).filter((x) => ROUTE_OK.includes(x)).slice(0, 12);
