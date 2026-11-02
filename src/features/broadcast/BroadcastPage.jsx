@@ -13,7 +13,8 @@ import { readProgramFile, readProgramText } from "@/features/broadcast/broadcast
 import { programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCourseShow, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
-import { GROUP_PICK, groupColor } from "@/lib/roundScore";
+import { GROUP_PICK, groupColor, groupMap } from "@/lib/roundScore";
+import { PenSheet } from "./PenSheet";
 import { Countdown, ownHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { ResetSheet } from "@/features/raceMedia/ResetSheet";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
@@ -70,6 +71,7 @@ export function BroadcastPage({ orgId, id }) {
   const [add, setAdd] = useState(null); // ölçüm penceresi: PICKS sırası
   const [voice, setVoice] = useState(false);
   const [list, setList] = useState(false);
+  const [penOpen, setPenOpen] = useState(false); // Dönüşler › Ceza (arayarak seçerek)
   const [entries, setEntries] = useState([]);
   const [groups, setGroups] = useState({});
   const [pickId, setPickId] = useState(""); // listede seçilen biten start (boşsa sayacın yarışı)
@@ -439,6 +441,10 @@ export function BroadcastPage({ orgId, id }) {
   })();
   const st = (pickId && live.starts.find((x) => x.id === pickId)) || (L ? currentStart(live.starts, L.timer) : null);
   const entry = st && L ? L.rounds[st.id] : null;
+  // startın grubu günün grup listesinde varsa ceza aramasında önce o grup (Seyhun 2026-11-02 "mavi grup listesini veririm")
+  const dayGrp = st ? groupMap(groups[st.day]) : {};
+  const penMembers = entry?.grp && Object.keys(dayGrp).length ? Object.keys(dayGrp).filter((s) => dayGrp[s] === entry.grp) : null;
+  const penOf_ = entry?.pen || {};
   const todays = [...live.starts].filter((x) => x.day === today); // eskiden yeniye (listede 1., 2., …)
   const races = dayRaces({ starts: live.starts, order: plan.order, grpOf: (x) => x.grp || L?.rounds?.[x.id]?.grp || "", liveIds: cur ? [cur.id] : [], today, rdays });
   const nextRow = races.flatMap((r) => r.rows).find((x) => x.state === "next");
@@ -1027,9 +1033,20 @@ export function BroadcastPage({ orgId, id }) {
             <p className={`${card} px-4 py-3 text-[0.875rem] text-mut`}>{entries.length ? `Kayıt listesi ${entries.length} tekne · Henüz dönüş yok` : "Henüz dönüş yok"}</p>
           </section>
         )}
+        {st ? (
+          <section>
+            <Head title="Ceza ve sonuç kodları" right={Object.keys(penOf_).length ? `${Object.keys(penOf_).length} tekne` : ""} />
+            <button type="button" onClick={() => setPenOpen(true)} className={`${card} masa-sails w-full text-left`}>
+              {Object.keys(penOf_).length ? Object.entries(penOf_).map(([s, c]) => <span key={s}>{`${s} · ${c}`}</span>) : <span className="!bg-transparent !px-0 font-semibold text-mut">Yok · DNC, DSQ, UFD… eklemek için dokun</span>}
+            </button>
+          </section>
+        ) : null}
         <MasaBar>
           <Button variant="secondary" onClick={() => setList(true)}>
             {entries.length ? `Kayıt listesi · ${entries.length}` : "Kayıt listesi"}
+          </Button>
+          <Button variant="secondary" disabled={!st} onClick={() => setPenOpen(true)}>
+            Ceza
           </Button>
           <Button disabled={!st} onClick={() => setVoice(true)}>
             Sesle gir
@@ -1101,6 +1118,21 @@ export function BroadcastPage({ orgId, id }) {
       {/* geri sayımda İptal › Tehir: yarış silinip programa döner, tehir penceresi 1 dk seçili açılır (sayaç zaten durdu) */}
       <VoidSheet ask={rf.ask} onChoose={chooseVoid} />
       <AddSheet open={add !== null} pick0={add || 0} c={c} onClose={() => setAdd(null)} onAdd={addObs} />
+      <PenSheet
+        open={penOpen}
+        onClose={() => setPenOpen(false)}
+        title={st ? `Ceza · ${raceName(st)}${entry?.grp ? ` · ${entry.grp}` : ""}` : "Ceza"}
+        entries={entries}
+        members={penMembers}
+        pen={penOf_}
+        onSet={(sail, code) => {
+          if (!st) return;
+          const next = { ...penOf_ };
+          if (code) next[sail] = code;
+          else delete next[sail];
+          setPickOf(st.id, { pen: next });
+        }}
+      />
       <RoundsScreen open={voice} onClose={() => (setVoice(false), reload())} orgId={orgId} raceId={id} startId={st?.id || ""} />
       {list && typeof document !== "undefined"
         ? createPortal(

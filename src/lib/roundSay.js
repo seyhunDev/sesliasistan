@@ -209,11 +209,13 @@ export function cleanRoute(list) {
 export function penOf(text) {
   const t = String(text || "").toLocaleLowerCase("tr-TR");
   if (/ceza(sı|si)?\s*(kalk|sil|yok)|cezayı\s*(kaldır|sil)/.test(t)) return "-";
-  const m = t.match(/\b(ocs|bfd|ufd|dsq|dnf|ret|dns)\b/);
+  const m = t.match(/\b(ocs|bfd|ufd|dsq|dnf|ret|dns|dnc|dne)\b/);
   if (m) return m[1].toUpperCase();
   if (/kara\s*bayrak/.test(t)) return "BFD";
   if (/erken\s*(çıktı|start)/.test(t)) return "OCS";
+  if (/atılamaz/.test(t)) return "DNE";
   if (/diskalifiye/.test(t)) return "DSQ";
+  if (/gelmedi|katılmadı/.test(t)) return "DNC";
   if (/bitir(e)?medi|bırakt[ıi]|çekildi/.test(t)) return "RET";
   return "";
 }
@@ -221,7 +223,7 @@ export function localSay(text, known) {
   const t = String(text || "").toLocaleLowerCase("tr-TR");
   const pc = penOf(t);
   if (pc) {
-    const sails = sailsIn(t.replace(/\b(ocs|bfd|ufd|dsq|dnf|ret|dns)\b/g, " "), known);
+    const sails = sailsIn(t.replace(/\b(ocs|bfd|ufd|dsq|dnf|ret|dns|dnc|dne)\b/g, " "), known);
     return sails.length ? [{ op: "pen", code: pc, sails }] : null;
   }
   if (/sıra|sil|değiş|taşı|sonra|önce|sonraki|önceki|parkur|grup|yap\b/.test(t)) return null;

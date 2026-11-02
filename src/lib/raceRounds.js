@@ -15,7 +15,17 @@ export const CLASS_PICK = ["Optimist", "ILCA 4", "ILCA 6", "ILCA 7"];
 export const PREP_PICK = ["P", "I", "Z", "U", "Kara"];
 export const prepName = (p) => (p === "Kara" ? "Kara bayrak" : p ? `${p} bayrağı` : "");
 // Ceza ve sonuç kodları (Seyhun 2026-11-02 yayın incelemesi): puanı grup sayısı + 1, sıralamada en altta
-export const PEN_CODES = ["OCS", "BFD", "UFD", "DSQ", "DNF", "RET", "DNS"];
+// DNC gelmedi ve DNE (atılamaz diskalifiye) 2026-11-02; elle Yayın › Dönüşler › Ceza (arayarak seçerek)
+export const PEN_CODES = ["DNC", "DNS", "OCS", "UFD", "BFD", "DSQ", "DNE", "RET", "DNF"];
+export const PEN_NAME = { DNC: "Gelmedi", DNS: "Start almadı", OCS: "Erken çıktı", UFD: "U bayrağı", BFD: "Kara bayrak", DSQ: "Diskalifiye", DNE: "Atılamaz DSQ", RET: "Bıraktı", DNF: "Bitiremedi" };
+// Ceza aramasının satırları (Yayın › Dönüşler › Ceza): yelken no başı ya da ad; members varsa önce o grup, all ile herkes
+export function penRows({ entries = [], members = null, all = false, q = "" }) {
+  const t = String(q || "").toLocaleLowerCase("tr-TR").trim();
+  const d = t.replace(/\D/g, "");
+  const base = all || !members ? entries : entries.filter((r) => members.includes(r.sail));
+  if (!t) return base;
+  return base.filter((r) => (d && String(r.sail || "").replace(/\D/g, "").startsWith(d)) || (!/^\d+$/.test(t) && String(r.name || "").toLocaleLowerCase("tr-TR").includes(t)));
+}
 // legs: kayıtta { "0": { s: [yelken…], t: [ms…] } } (Firestore iç içe dizi kabul etmez); bellekte legs [[yelken…]] ve tm [{ yelken: ms }]
 // (saat yelkene bağlı: sıra düzeltilince, silinince saat kaymaz)
 const legList = (e, n) => {
