@@ -1211,13 +1211,6 @@ export function dayStats(data, day) {
   const both = span.filter((r) => got(r) != null);
   return { races: done.length, voids, h0, h1, exp: avg(both.map((r) => r.wind)), real: avg(both.map(got)) };
 }
-// yarınki ilk start'a kalan süre: "17 sa 06 dk" (saat zaten alttaki şeritte)
-const untilText = (nx, now) => {
-  const t = nx?.day && nx.at ? Date.parse(`${nx.day}T${nx.at}:00+03:00`) - now : NaN;
-  if (!(t > 0)) return "";
-  const m = Math.floor(t / 60e3);
-  return m >= 60 ? `${Math.floor(m / 60)} sa ${String(m % 60).padStart(2, "0")} dk` : `${m} dk`;
-};
 // Gün sonu (Seyhun 2026-11-02, iki taslaktan sonra "karman çorman; Gün bitti sahnesi olmasın; modern geçiş, yayın gibi"):
 // yayın grafikleri gibi kartlar; her kart soldan sağa açılarak gelir (clip-path), süresi bitince sağa kapanarak gider.
 // Sahneler: Bugün rüzgâr (esen / beklenen, sütunlar) → yarış yarış podyum (geçici) → Genel ilk 10 (geçici, Tümü) → Yarın.
@@ -1252,13 +1245,10 @@ function EndHero({ data, today, now, onAll }) {
   const sc = scenes[i];
   const out = sc && (1 - p) * sc.d < 700; // son 0,7 sn: kart kapanır
   const ew = nx ? expWind(fcn, nx.at) : null;
-  const diff = st.exp != null && st.real != null ? st.real - st.exp : null;
   const race = sc?.k === "race" ? races.find((x) => x.id === sc.id) : null;
-  const tag = [data.race.name, dayText(day), "Gün sonu"].filter(Boolean).join(" · ");
   let head = "", right = "", body = null;
   if (sc?.k === "wind") {
     head = "Bugün rüzgâr";
-    right = `Yarış saatleri ${String(st.h0).padStart(2, "0")}:00–${String(st.h1 + 1).padStart(2, "0")}:00`;
     body = (
       <div className="lv-gw">
         <div className="lv-gstat">
@@ -1276,7 +1266,6 @@ function EndHero({ data, today, now, onAll }) {
               <em>knot</em>
             </b>
           </div>
-          <p>{diff ? `Tahminden ${Math.abs(diff)} knot ${diff > 0 ? "fazla" : "az"} esti` : "Tahmin tuttu"}</p>
         </div>
         <div className="lv-gchart">
           <WindBars rows={trows} obsAt={Object.fromEntries((data.forecast?.obs || []).filter((o) => o.wind != null).map((o) => [o.hh, o]))} man={windByHour(data, now)} pts={windPoints(data, now)} nowH={24} at="" flat />
@@ -1287,7 +1276,7 @@ function EndHero({ data, today, now, onAll }) {
     const e = data.rounds[race.id];
     const t3 = standings(e).slice(0, 3);
     head = [raceTitle(race), grpText(e.grp)].filter(Boolean).join(" · ");
-    right = "Geçici";
+    right = "Geçici sonuç";
     body = (
       <div className="lv-pod">
         {PODIUM.filter((n) => t3[n]).map((n) => {
@@ -1307,7 +1296,7 @@ function EndHero({ data, today, now, onAll }) {
     );
   } else if (sc?.k === "all" && top) {
     head = ["Genel sıralama", top.cls].filter(Boolean).join(" · ");
-    right = top.tag;
+    right = top.tag === "Resmî" ? "" : "Geçici sonuç";
     body = (
       <>
         <ol className="lv-gtab">
@@ -1321,7 +1310,6 @@ function EndHero({ data, today, now, onAll }) {
           ))}
         </ol>
         <div className="lv-gfoot">
-          {top.tag !== "Resmî" ? <span>Hakem kontrolünden sonra kesinleşir</span> : <span />}
           {top.total > top.rows.length ? (
             <button type="button" onClick={onAll}>
               {`Tümü · ${top.total} tekne`}
@@ -1332,7 +1320,6 @@ function EndHero({ data, today, now, onAll }) {
     );
   } else if (sc?.k === "next") {
     head = "Yarın";
-    right = dayText(nx.day);
     body = (
       <div className="lv-gw">
         <div className="lv-gstat">
@@ -1349,7 +1336,6 @@ function EndHero({ data, today, now, onAll }) {
               </b>
             </div>
           ) : null}
-          <p>{[ew?.gust && ew.gust > ew.kn ? `Sağanak ${ew.gust} knot` : "", untilText(nx, now) ? `${untilText(nx, now)} sonra` : ""].filter(Boolean).join(" · ")}</p>
         </div>
         {nrows.length >= 2 ? (
           <div className="lv-gchart">
@@ -1361,7 +1347,6 @@ function EndHero({ data, today, now, onAll }) {
   }
   return (
     <div className="lv-flow">
-      <div className="lv-gtag">{tag}</div>
       {sc ? (
         <section key={`${sc.k}${sc.id || ""}`} className={`lv-gcard${out ? " out" : ""}`}>
           <header>
@@ -1587,12 +1572,12 @@ function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
       {[5, 10, 15, 20, 25].filter((v) => v < top).map((v) => (
         <g key={v}>
           <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="#fff" strokeOpacity=".1" />
-          <text x={L - 10} y={y(v) + 5} textAnchor="end" fontSize="15" fill="#fff" fillOpacity=".5">{v}</text>
+          {!flat ? <text x={L - 10} y={y(v) + 5} textAnchor="end" fontSize="15" fill="#fff" fillOpacity=".5">{v}</text> : null}
         </g>
       ))}
-      {pastEnd > L ? <rect x={L} y={T - 40} width={pastEnd - L} height={H - B - T + 40} fill={OBSC} fillOpacity=".06" /> : null}
-      {pastEnd > L + 60 ? <text x={(L + pastEnd) / 2} y={T - 16} textAnchor="middle" fontSize="16" fontWeight="700" letterSpacing="2" fill="#7cc8ff">NE OLDU</text> : null}
-      {pastEnd < W - R - 60 ? <text x={(pastEnd + W - R) / 2} y={T - 16} textAnchor="middle" fontSize="16" fontWeight="700" letterSpacing="2" fill="#fff" fillOpacity=".7">NE BEKLENİYOR</text> : null}
+      {!flat && pastEnd > L ? <rect x={L} y={T - 40} width={pastEnd - L} height={H - B - T + 40} fill={OBSC} fillOpacity=".06" /> : null}
+      {!flat && pastEnd > L + 60 ? <text x={(L + pastEnd) / 2} y={T - 16} textAnchor="middle" fontSize="16" fontWeight="700" letterSpacing="2" fill="#7cc8ff">NE OLDU</text> : null}
+      {!flat && pastEnd < W - R - 60 ? <text x={(pastEnd + W - R) / 2} y={T - 16} textAnchor="middle" fontSize="16" fontWeight="700" letterSpacing="2" fill="#fff" fillOpacity=".7">NE BEKLENİYOR</text> : null}
       {rows.map((r, i) => {
         const big = +r.hh >= fh;
         const bw = xs[i + 1] - xs[i];
