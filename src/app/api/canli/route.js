@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
-import { aheadWind, cleanLive, dayOf, pickTimer, raceDays, rollPlan } from "@/lib/raceLive";
+import { aheadWind, cleanLive, dayOf, pickTimer, raceDays, rollPlan, screenDay } from "@/lib/raceLive";
 import { cleanCourse, withRaceCards } from "@/lib/raceCourse";
 import { cleanCourseShow, cleanRounds, cleanScreen, cleanStream, currentStart } from "@/lib/raceRounds";
 import { cleanSheet, joinGroups } from "@/lib/resultSheet";
@@ -164,7 +164,9 @@ async function build(id, y) {
   const timer = d.timer ? { ...pickTimer(d.timer), at: Number(d.timer.at) || 0 } : null;
   const cur = currentStart(live.starts, timer);
   const sel = (y && live.starts.find((x) => x.id === y)) || cur;
-  const day = sel?.day || trDay();
+  // ekranın günü: "Ekran yeni güne geçer" akşam saatiyse o saatten sonra yarın (lib/raceLive.js screenDay)
+  const see = screenDay(live.plan, Date.now(), timer);
+  const day = sel?.day || see;
   // Gün bitince alttaki şeritte yarının beklenen rüzgârı (Seyhun 2026-11-02 tasarım 5): yarının tahmini de alınır
   const nd = live.plan.status === "done" && live.plan.next?.day && live.plan.next.day !== day ? live.plan.next.day : "";
   const [cSnap, forecast, forecastNext, ahead] = await Promise.all([base.collection("raceLive").doc(id).collection("course").doc(day).get(), forecastOf(org, id, r, day), nd ? forecastOf(org, id, r, nd) : null, aheadOf(org, id, r, live.plan)]);
@@ -188,7 +190,8 @@ async function build(id, y) {
     fleets,
     entries: en.entries,
     groups: en.groups,
-    plan: rollPlan(live.plan, trDay()),
+    plan: rollPlan(live.plan, see),
+    see,
     forecast,
     forecastNext,
     ahead,

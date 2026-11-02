@@ -32,6 +32,8 @@ const clockOf = (sec) => {
 const hmOf = (iso) => (iso ? new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "");
 const dayText = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "");
 const trDay = (ms) => new Date(ms + 3 * 3600e3).toISOString().slice(0, 10); // Türkiye günü (sunucudaki gibi)
+// Ekranın günü: sunucu "yeni güne geçer" saatinden sonra yarını gönderir (data.see)
+const seeDay = (data, ms) => (data?.see && data.see > trDay(ms) ? data.see : trDay(ms));
 
 // Sunucudan gelen her alan eksik olabilir (Seyhun 2026-11-02 çökme "reading 'status'"): ekranın okuduğu alanlar boş değerle doldurulur
 const arr = (v) => (Array.isArray(v) ? v : []);
@@ -465,7 +467,7 @@ const Dot = ({ g }) => (g ? <span className="lv-dot" style={{ background: groupC
 // (Seyhun 2026-11-02 inceleme: Mavi sürerken Sarı start alınca Mavi ekrandan düşmesin)
 const grpOf = (data, x) => x?.grp || data.rounds?.[x?.id]?.grp || "";
 function Siblings({ data, sel, id }) {
-  const today = data.now ? trDay(data.now) : sel?.day || "";
+  const today = data.now ? seeDay(data, data.now) : sel?.day || "";
   const sib = (data.starts || []).filter((x) => !x.void && x.day === sel?.day && ((x.n === sel?.n && grpOf(data, x)) || (!x.fin && x.day === today && x.id !== sel?.id && !sel?.fin)));
   if (!sib.some((x) => x.id !== sel?.id)) return null;
   if (!sib.some((x) => x.id === sel?.id) && sel) sib.push(sel);
@@ -2037,7 +2039,7 @@ function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
 // Günün programı: yarış yarış grup, durum ve saat
 // Programın maddeleri (Seyhun 2026-11-02 "PDF'teki program: antrenör toplantısı, ilk start, son start saati"): yarış öncesi bütün program,
 // o gün o günün maddeleri (geçen soluk, sıradaki vurgulu); program yüklenmediyse günün startları (dayProgram)
-const agOf = (data, now) => agendaView(data.plan?.agenda, trDay(now), new Date(now + 3 * 3600e3).toISOString().slice(11, 16));
+const agOf = (data, now) => agendaView(data.plan?.agenda, seeDay(data, now), seeDay(data, now) > trDay(now) ? "00:00" : new Date(now + 3 * 3600e3).toISOString().slice(11, 16));
 function AgendaBody({ ag }) {
   if (ag.mode === "day")
     return (
@@ -2190,7 +2192,7 @@ export function LiveScreen({ id, y = "" }) {
   const entry = sel ? data.rounds?.[sel.id] : null;
   const ongoing = isCur && sel && !sel.fin && !sel.void;
   // Evre (lib/raceLive.js livePhase): bekleme (start saatine geri sayım) · yarış (sayaç ya da bugünkü start) · gün özeti
-  const today = trDay(nowMs);
+  const today = seeDay(data, nowMs);
   const phase = isCur ? livePhase({ plan: data.plan, starts, timer: data.timer, today, now: nowMs }) : "race";
   const hasVideo = isCur && ["live", "drone", "rec"].includes(data.screen?.kind);
   const csel = phase === "race" ? sel : null;
