@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apText, cleanPlan, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, bestOffset } from "@/lib/raceLive";
+import { apText, cleanPlan, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
@@ -1312,7 +1312,7 @@ function WindBody({ data, sel, isCur, now }) {
           </div>
         ) : null}
       </div>
-      <WindBars rows={rows} obsAt={obsAt} man={man} nowH={nowH} at={data.plan.at} />
+      <WindBars rows={rows} obsAt={obsAt} man={man} pts={windPoints(data, now)} nowH={nowH} at={data.plan.at} />
       <div className="lv-wleg">
         {hasMan ? (
           <span>
@@ -1340,7 +1340,7 @@ function WindBody({ data, sel, isCur, now }) {
   );
 }
 const MAN = "#ff9a4d", OBSC = "#4fb3ff";
-function WindBars({ rows, obsAt, man = {}, nowH, at }) {
+function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at }) {
   if (rows.length < 2) return null;
   const W = 1000, H = 400, L = 50, R = 12, T = 64, B = 64;
   const i0 = +rows[0].hh;
@@ -1352,7 +1352,7 @@ function WindBars({ rows, obsAt, man = {}, nowH, at }) {
   const xh = (h) => { const k = Math.min(rows.length - 1, Math.max(0, Math.floor(h - i0))); return xs[k] + (xs[k + 1] - xs[k]) * Math.min(1, Math.max(0, h - i0 - k)); };
   const past = (r) => +r.hh + 1 <= nowH + 0.01 || +r.hh <= nowH;
   const got = (r) => (past(r) ? (man[r.hh] ? { v: man[r.hh].wind, c: MAN } : obsAt[r.hh] ? { v: obsAt[r.hh].wind, c: OBSC } : null) : null);
-  const vals = rows.flatMap((r) => [r.wind, got(r)?.v ?? 0]);
+  const vals = [...rows.flatMap((r) => [r.wind, got(r)?.v ?? 0]), ...pts.map((p) => p.kn)];
   const top = Math.max(10, Math.ceil((Math.max(...vals) + 3) / 5) * 5);
   const y = (v) => T + (1 - v / top) * (H - T - B);
   const end = +rows.at(-1).hh + 1;
@@ -1392,11 +1392,16 @@ function WindBars({ rows, obsAt, man = {}, nowH, at }) {
               {v}
             </text>
             {big || +r.hh % 2 === 0 ? (
-              <text x={x + w / 2} y={H - B + 26} textAnchor="middle" fontSize={big ? 18 : 13} fontWeight={big ? 700 : 500} fill="#fff" fillOpacity={big ? 0.85 : 0.6}>{r.hh}</text>
+              <text x={x + w / 2} y={H - B + 24} textAnchor="middle" fontSize={big ? 14 : 12} fontWeight={big ? 600 : 500} fill="#fff" fillOpacity={big ? 0.75 : 0.55}>{`${r.hh}:00`}</text>
             ) : null}
           </g>
         );
       })}
+      {pts
+        .filter((p) => p.h >= i0 && p.h <= Math.min(end, nowH + 0.02))
+        .map((p, k) => (
+          <circle key={k} cx={xh(p.h)} cy={y(p.kn)} r={+p.h >= fh ? 6 : 4} fill={MAN} stroke="#fff" strokeWidth="2" />
+        ))}
       {sx != null ? (
         <g>
           <line x1={sx} x2={sx} y1={T - 40} y2={H - B} stroke="#ff3d77" strokeWidth="2.5" strokeDasharray="4 4" />

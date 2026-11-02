@@ -675,6 +675,18 @@ export function windByHour(data, now) {
   }
   return out;
 }
+// Bugün girilen tüm manuel rüzgâr ölçümleri (Seyhun 2026-11-02 "daha sık saat aralığı varsa onu da gösterelim"): grafikte
+// kendi dakikasına nokta; h = Türkiye saatiyle kesirli saat (14.5 = 14:30)
+export function windPoints(data, now) {
+  const day = new Date(now + 3 * 3600e3).toISOString().slice(0, 10);
+  const obs = (data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, kn: o.kn }));
+  return [...(data.wind || []), ...obs]
+    .filter((x) => x?.kn != null && x.at && !Number.isNaN(Date.parse(x.at)))
+    .map((x) => ({ t: new Date(Date.parse(x.at) + 3 * 3600e3).toISOString(), kn: Math.round(x.kn) }))
+    .filter((x) => x.t.slice(0, 10) === day)
+    .map((x) => ({ h: +x.t.slice(11, 13) + +x.t.slice(14, 16) / 60, kn: x.kn }))
+    .sort((a, b) => a.h - b.h);
+}
 // Saat eşleme (NTP gibi): ölçümlerden en kısa gidiş-dönüşlü olanın ortası; { off: sunucu − cihaz (ms), rtt }
 export function bestOffset(samples) {
   const ok = samples.filter((x) => x && Number.isFinite(x.server) && x.t1 >= x.t0);
