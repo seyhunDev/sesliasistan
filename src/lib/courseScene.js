@@ -3,6 +3,7 @@
 // çizilir, sonra oklar rota boyunca akar. Şamandıra yerleri rota kartıyla aynı (courseCard geom): kart değişince sahne de değişir.
 // Dönüşler: şamandıralar iskeleden (sola dönerek), kapıda (3, 4) iki seçenek: s sancaktan, p iskeleden.
 import { geom } from "@/lib/courseCard";
+import { dirShort } from "@/lib/raceLive";
 
 const rad = (d) => (d * Math.PI) / 180;
 const nrm = (d) => ((d % 360) + 360) % 360;
@@ -303,9 +304,16 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
   o += items.map((it) => it.d()).join("");
   o += labels;
   // rüzgâr: sol üstte ok (ekranda yukarıdan aşağı esen = eksende), değer
+  // rüzgâr (Seyhun 2026-11-02 "parkurda rüzgâr yönü yok"): parkurun sağ üstünde, ekranda rüzgârın estiği yöne dönen büyük ok;
+  // ok parkur eksenine göre çizilir (parkur yukarı bakar), rüzgâr eksenden döndüyse ok da o kadar yatık
   if (wind && card.wind != null) {
     const sh = nrm(card.wind - g.A + 180) - 180;
-    o += `<g transform="translate(${f(70 * u)} ${f(78 * u)})"><g transform="rotate(${f(sh)})"><line x1="0" y1="${f(-26 * u)}" x2="0" y2="${f(16 * u)}" stroke="#fff" stroke-width="${f(4 * u)}" stroke-linecap="round"/><path d="M0 ${f(30 * u)} L${f(-11 * u)} ${f(12 * u)} L${f(11 * u)} ${f(12 * u)} Z" fill="#fff"/></g><text x="${f(34 * u)}" y="${f(-2 * u)}" font-size="${f(26 * u)}" font-weight="700" fill="#fff">${Math.round(card.wind)}°${card.kn != null ? ` · ${card.kn} kn` : ""}</text><text x="${f(34 * u)}" y="${f(24 * u)}" font-size="${f(17 * u)}" font-weight="500" fill="#fff" opacity=".7">Rüzgâr</text></g>`;
+    const pts = ["komite", "pin", "m1", "m1a", "m2", "s3", "p3", "fA", "fB"].map((k) => P(g[k]));
+    const wx = Math.min(W - 190 * u, Math.max(...pts.map((p) => p[0])) + 110 * u), wy = Math.max(70 * u, Math.min(...pts.map((p) => p[1])) + 30 * u);
+    const L = 46 * u;
+    o += `<g transform="translate(${f(wx)} ${f(wy)})"><circle r="${f(L * 1.05)}" fill="#071a2e" fill-opacity=".55" stroke="#fff" stroke-opacity=".25" stroke-width="${f(1.5 * u)}"/><g transform="rotate(${f(sh)})"><line x1="0" y1="${f(-L * 0.8)}" x2="0" y2="${f(L * 0.35)}" stroke="#fff" stroke-width="${f(6 * u)}" stroke-linecap="round"/><path d="M0 ${f(L * 0.82)} L${f(-L * 0.36)} ${f(L * 0.22)} L${f(L * 0.36)} ${f(L * 0.22)} Z" fill="#fff"/></g>`;
+    o += `<text x="0" y="${f(L * 1.05 + 28 * u)}" text-anchor="middle" font-size="${f(24 * u)}" font-weight="800" fill="#fff" stroke="#0b1a2a" stroke-opacity=".55" stroke-width="${f(4 * u)}" paint-order="stroke">${dirShort(card.wind)} · ${Math.round(card.wind)}°</text>`;
+    o += `<text x="0" y="${f(L * 1.05 + 52 * u)}" text-anchor="middle" font-size="${f(18 * u)}" font-weight="600" fill="#fff" fill-opacity=".8" stroke="#0b1a2a" stroke-opacity=".5" stroke-width="${f(3 * u)}" paint-order="stroke">${card.kn != null ? `Rüzgâr ${card.kn} knot` : "Rüzgâr"}</text></g>`;
   }
   if (title) o += `<text x="${f(W / 2)}" y="${f(H - 26 * u)}" text-anchor="middle" font-size="${f(24 * u)}" font-weight="600" letter-spacing="${f(1.5 * u)}" fill="#fff" opacity=".88">${title}</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Inter,sans-serif">${o}</svg>`;
