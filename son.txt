@@ -1,8 +1,8 @@
-Commit: 46f77d2 · Canlı ekran: rüzgâr tek grafik (ölçülen / tahmin), hava ve yağış ölçülen ve tahmin (#1014)
-Zaman: 2026-11-02-2212 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41505736402
+Commit: 55d192b · Canlı ekran: geri sayımda kare bayraklar, start saati tekrarsız (#1018)
+Zaman: 2026-11-02-2239 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41509955532
 
-TAM TEST · 02.11.2026 22:00:03
+TAM TEST · 02.11.2026 22:27:48
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1436/1436 geçti · 0 kalan · 669 sn
+SONUÇ: 1435/1436 geçti · 1 kalan · 656 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -140,9 +140,12 @@ SONUÇ: 1436/1436 geçti · 0 kalan · 669 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 140/140
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 139/140
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 9/9
+  ✗ Ana sayfa: 8/9
+      ✗ “gün penceresi Yapıldı”
+          beklenen: plan satırında Yapıldı işareti: dokununca yapıldı, yeniden dokununca geri alınır
+          olan:     yapıldı 1 · çizili 1 · geri 0
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
