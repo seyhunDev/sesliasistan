@@ -1,8 +1,8 @@
-Commit: 1793c0d · Rüzgâr gösterimi: grafik üstte, şimdi → start bandı, açıklama en altta (#990)
-Zaman: 2026-11-02-1803 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41465816079
+Commit: 7fd63a3 · Parkur: Trapez parkur karta göre, ILCA parkuru adı (#998)
+Zaman: 2026-11-02-1919 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41478195624
 
-TAM TEST · 02.11.2026 17:51:35
+TAM TEST · 02.11.2026 19:07:53
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1435/1435 geçti · 0 kalan · 647 sn
+SONUÇ: 1434/1435 geçti · 1 kalan · 617 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -140,9 +140,12 @@ SONUÇ: 1435/1435 geçti · 0 kalan · 647 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 139/139
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 138/139
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 8/8
+  ✗ Ana sayfa: 7/8
+      ✗ “alçak grafik”
+          beklenen: her telefon boyunda rüzgâr grafiği alçak (60–170 px), kalan yeri doldurmaz
+          olan:     375: son -312 çubuk 607 düğme -198 grafik 99 · 390: son -306 çubuk 784 düğme -192 grafik 103 · 430: son -291 çubuk 872 düğme -177 grafik 115
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
