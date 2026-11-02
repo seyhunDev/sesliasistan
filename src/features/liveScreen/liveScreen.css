@@ -277,30 +277,33 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-pill { display: flex; flex-direction: column; align-items: center; min-width: min(100%, 17em); max-width: 100%; background: var(--lv-panel); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: 0.6em; padding: 0.5em 1.4em 0.7em; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); animation: lv-fade 0.6s both; /* transform geçişle yönetilir (lv-rise'ın transform'u geçişi ezerdi) */ }
 .lv-pillh { display: flex; justify-content: space-between; gap: 1.5em; width: 100%; color: var(--lv-mut); font-size: 0.82em; letter-spacing: 0.06em; text-transform: uppercase; }
 .lv-clock { font-size: clamp(44px, 4.6vw, 150px); font-weight: 800; letter-spacing: -0.05em; line-height: 1; font-variant-numeric: tabular-nums; margin: 0.08em 0 0.06em; white-space: nowrap; }
-.lv-pillf { display: flex; align-items: center; gap: 1.1em; }
+.lv-pillf { display: flex; align-items: flex-start; gap: 1.1em; margin-top: 0.2em; }
+/* Bayraklar kare ve aynı boyda, adları küçük; start saati soluk (Seyhun 2026-11-02) */
+.lv-pillh span + span { opacity: 0.5; }
+.lv-pillf .lv-seq { align-self: center; }
 .lv-fl { display: flex; flex-direction: column; align-items: center; gap: 0.15em; transition: opacity 0.8s; }
 .lv-fl.down { opacity: 0.35; }
-.lv-fl small { font-size: 0.72em; color: var(--lv-mut); white-space: nowrap; }
+.lv-fl small { font-size: 0.56em; font-weight: 600; letter-spacing: 0.04em; color: var(--lv-mut); white-space: nowrap; }
 .lv-seq { display: flex; gap: 0.35em; }
 .lv-seq i { font-style: normal; font-size: 0.78em; width: 1.9em; text-align: center; border-top: 3px solid rgba(255, 255, 255, 0.18); padding-top: 0.25em; color: var(--lv-mut); }
 .lv-seq .done { border-color: rgba(255, 255, 255, 0.7); }
 .lv-seq .now { border-color: var(--lv-acc); color: var(--lv-acc); }
 /* Bayraklar: sınıf (beyaz, harf), P (mavi, beyaz kare), I (sarı, siyah daire), U (kırmızı-beyaz dörtlü), Z (dört üçgen), Kara. İnen bayrak soluk */
-.lv-flag { display: block; width: 2.4em; height: 1.65em; border-radius: 0.2em; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
+.lv-flag { display: block; box-sizing: border-box; width: 1.9em; height: 1.9em; border-radius: 0.2em; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
 .lv-flag.cls { background: #fff; color: #111; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1em; }
 /* Sınıf bayrağı: grup renginde zemin, ortada sınıf işareti, altta kısa ad */
-.lv-flag.cls { width: 3em; height: 2em; flex-direction: column; gap: 0; border: 1.5px solid rgba(255, 255, 255, 0.85); }
+.lv-flag.cls { flex-direction: column; gap: 0; border: 1.5px solid rgba(255, 255, 255, 0.85); }
 .lv-flag.cls svg { width: 100%; height: 100%; }
 .lv-flag.cls b { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.5em; font-weight: 800; letter-spacing: 0.04em; line-height: 1; color: inherit; }
 
 .lv-flags { display: flex; align-items: flex-start; gap: 1.2em; margin-top: 0.9em; font-size: clamp(16px, 1.6vw, 30px); }
-.lv-flags .lv-flag { width: 3em; height: 2em; }
-.lv-flags .lv-fl small { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.55em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.75); }
+.lv-flags .lv-flag { width: 2.4em; height: 2.4em; }
+.lv-flags .lv-fl small { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.45em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.75); }
 .lv-flag.black { background: #111; border: 1.5px solid rgba(255, 255, 255, 0.85); }
 .lv-flag.p { background: #1b4fd6; }
 .lv-flag.p::after { content: ""; position: absolute; inset: 28%; background: #fff; }
 .lv-flag.i { background: #f5c400; }
-.lv-flag.i::after { content: ""; position: absolute; left: 50%; top: 50%; width: 44%; height: 60%; transform: translate(-50%, -50%); border-radius: 50%; background: #111; }
+.lv-flag.i::after { content: ""; position: absolute; left: 50%; top: 50%; width: 56%; height: 56%; transform: translate(-50%, -50%); border-radius: 50%; background: #111; }
 .lv-flag.u { background: linear-gradient(90deg, #e11d48 50%, #fff 50%); }
 .lv-flag.u::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; bottom: 0; background: linear-gradient(90deg, #fff 50%, #e11d48 50%); }
 .lv-flag.z svg, .lv-flag.fs svg { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -318,7 +321,7 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-rc header b { display: flex; align-items: center; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lv-rc header span { color: var(--lv-mut); font-size: 0.85em; white-space: nowrap; }
 .lv-rcf { display: flex; align-items: center; gap: 0.5em; }
-.lv-rcf .lv-flag { width: 2em; height: 1.4em; }
+.lv-rcf .lv-flag { width: 1.5em; height: 1.5em; }
 .lv-rcf .lv-tag { margin-left: auto; }
 .lv-rcb { display: flex; flex-direction: column; gap: 0.1em; }
 .lv-rcb span { color: var(--lv-mut); font-size: 0.85em; }
@@ -728,7 +731,7 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-sflags { display: flex; flex-wrap: wrap; gap: 0.6em 1.4em; padding: 0.2em 1.4em 1.1em; }
 .lv-sfl { display: flex; align-items: center; gap: 0.7em; transition: opacity 0.8s; }
 .lv-sfl.down { opacity: 0.4; }
-.lv-sfl .lv-flag { font-size: 1.5em; width: 2.3em; height: 1.55em; flex: none; }
+.lv-sfl .lv-flag { font-size: 1.5em; width: 1.9em; height: 1.9em; flex: none; }
 .lv-sfl b { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.05em; font-weight: 700; letter-spacing: 0.03em; }
 .lv-sfl small { display: block; font-size: 0.78em; font-weight: 600; color: rgba(255, 255, 255, 0.6); }
 .lv-sroute { display: flex !important; align-items: center; font-size: 1.6em !important; margin-bottom: 0.45em; }

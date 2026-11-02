@@ -171,7 +171,7 @@ function Flag({ kind, cls, down, grp }) {
       <span className={`${c} cls${grp ? " g" : ""}${/^opti/i.test(cls) ? " opti" : ""}`} style={{ background: grp ? groupColor(grp) : "#fff", color: inkOn(grp ? groupColor(grp) : "#fff") }}>
         {/^opti/i.test(cls) ? (
           // Optimist sınıf işareti (Seyhun 2026-11-02 gönderdi, yayin-tasarim/sinif/optimist-isaret.png): halka ve içinden aşağı uzanan I; grup renginin üstünde
-          <svg viewBox="0 0 60 40" aria-label="Optimist">
+          <svg viewBox="10 0 40 40" aria-label="Optimist">
             <circle cx="30" cy="15.4" r="11.2" fill="none" stroke="currentColor" strokeWidth="2.6" />
             <path d="M27.1 14.6 L32.9 14.6 Q31.35 15.4 31.3 16.9 L31.3 35.2 Q31.35 36.6 32.9 37.4 L27.1 37.4 Q28.65 36.6 28.7 35.2 L28.7 16.9 Q28.65 15.4 27.1 14.6 Z" fill="currentColor" />
           </svg>
@@ -1048,7 +1048,6 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, now = 
   // Video varken geri sayım ortada videonun önüne gelmez, şeritte büyük (Seyhun 2026-11-02 "videonun önüne geliyor, öyle olmaması lazım")
   if (clockIn) cells.push(["time clock", cs.value, cs.label]);
   if (phase === "race") {
-    const shm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1];
     if (clockIn) {
       // saat zaten şeritte
     } else if (!counting && sel?.void) {
@@ -1057,7 +1056,7 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, now = 
       const last = (data.starts || []).filter((x) => x.day === today).at(-1);
       if (isCur && last?.id === sel.id) cells.push(["time warn", "Uyarı işareti", "Yeni start bekleniyor"]);
     } else if (!counting && sel) cells.push(["time", cs.value, cs.label]);
-    else if (counting && shm) cells.push(["time", shm, "Start"]); // geri sayım ortada büyük; şeritte start saati
+    // geri sayım ortada büyük, start saati orada soluk; şeritte tekrar edilmez (Seyhun 2026-11-02 "tekrar oluyor")
     // Şamandırada her zaman ilk dönen (lider) ve dönüş saati; finiş yazıldıysa kazanan (Seyhun 2026-11-02 "son geçen olmasın")
     const ld = pos >= 0 ? leaderAt(entry, pos) : null;
     if (ld) {
