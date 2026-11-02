@@ -1,8 +1,8 @@
-Commit: abce13e · Canlı ekran: video yokken bekleme ekranı (solda durum, sağda vitrin) (#979)
-Zaman: 2026-11-02-1646 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41454065082
+Commit: 66bce8e · Canlı ekran saati: NTP gibi eşleme, sayaç geri gitmez (#987)
+Zaman: 2026-11-02-1741 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41462196177
 
-TAM TEST · 02.11.2026 16:34:59
+TAM TEST · 02.11.2026 17:29:38
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1434/1435 geçti · 1 kalan · 613 sn
+SONUÇ: 1435/1435 geçti · 0 kalan · 627 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -140,12 +140,9 @@ SONUÇ: 1434/1435 geçti · 1 kalan · 613 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 138/139
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 139/139
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 7/8
-      ✗ “alçak grafik”
-          beklenen: her telefon boyunda rüzgâr grafiği alçak (60–170 px), kalan yeri doldurmaz
-          olan:     375: son -312 çubuk 607 düğme -198 grafik 99 · 390: son -306 çubuk 784 düğme -192 grafik 103 · 430: son -291 çubuk 872 düğme -177 grafik 115
+  ✓ Ana sayfa: 8/8
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
