@@ -571,6 +571,22 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-tabs { justify-content: flex-start; }
   .lv-showb { justify-content: flex-start; min-height: 22em; }
 }
+/* Yarışın adı soluk (Seyhun 2026-11-02); yarışa günler varken "6 gün" ve yarış günlerinin beklenen rüzgârı */
+.lv-hname { max-width: 100%; margin-bottom: 0.4em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(22px, 2.6vw, 54px); font-weight: 700; line-height: 1.05; text-transform: uppercase; letter-spacing: 0.03em; color: rgba(255, 255, 255, 0.28); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lv-bigd { display: flex; align-items: baseline; gap: 0.12em; }
+.lv-bigd small { font-size: 0.32em; font-weight: 500; letter-spacing: 0.04em; color: var(--lv-mut); }
+.lv-hold .lv-whatd { font-size: 1.35em; }
+.lv-ahead { width: min(100%, 34em); display: flex; flex-direction: column; }
+.lv-ah { display: grid; grid-template-columns: 7.5em 1.8em 5.5em 1fr; align-items: center; gap: 0 0.8em; padding: 0.75em 0; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.lv-ah:last-child { border-bottom: 0; }
+.lv-ah .d b { display: block; font-size: 1.15em; font-weight: 600; }
+.lv-ah .d span { font-size: 0.82em; color: var(--lv-mut); }
+.lv-ah .ar { width: 1.6em; height: 1.6em; fill: #fff; }
+.lv-ah .k { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 2em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lv-ah .k em { font-style: normal; font-size: 0.42em; font-weight: 500; color: var(--lv-mut); margin-left: 0.25em; }
+.lv-ah .w { font-size: 0.9em; color: var(--lv-mut); }
+.lv-ah .w.n { grid-column: 2 / -1; }
+@media (max-width: 760px) { .lv-hname { font-size: 6vw; } .lv-ah { grid-template-columns: 4.6em 1.4em 4.2em 1fr; gap: 0 0.6em; } .lv-ah .k { font-size: 1.6em; } }
 @media (prefers-reduced-motion: reduce) { .lv-hold, .lv-showb, .lv-tabs i.on::after { animation: none; } }
 /* Sıralama panelinde yükseldi/düştü oku ve şamandıra şamandıra kendi sıraları (Seyhun 2026-11-02) */
 .lv-rankp .lv-rl li { grid-template-columns: 1.6em 1.9em 3.2em minmax(0, 1fr) auto auto; }

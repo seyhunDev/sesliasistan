@@ -189,8 +189,11 @@ export const UP_MAX = 3599;
 // Yayın da sıfırlanır (Seyhun 2026-11-02 "denemeden sonra grupları, yarışları sıfırlayabilmeliyim"): program (bekleyen startlar, gruplar,
 // tehir), dönüşler ve ekrandaki görüntü/yazı da baştan başlar. Kayıt listesi (tekneler), parkur kartları ve canlı yayın linki kalır.
 export const resetCounts = (l) => ({ days: l?.days?.length || 0, starts: l?.starts?.length || 0, wind: l?.wind?.length || 0, media: l?.media?.length || 0, plan: l?.plan?.order?.length || 0 });
-export function resetPatch(media, now) {
-  const p = { days: [], starts: [], wind: [], buoys: cleanBuoys(), timer: { ...pickTimer({}), at: now }, plan: cleanPlan({}), rounds: {}, screen: { kind: "", mid: "", loop: false, pause: false, caption: "", at: new Date(now).toISOString() } };
+// Yayını sıfırla (Seyhun 2026-11-02 "yayınla ilgili yaptığım her şey sıfırlanmalı, hazırladığımız her şey aynı kalıyor"): video linki,
+// gösterim de baştan; keep.plan verilirse programın günleri ve saatleri (daily, times, off, showAt) kalır
+export function resetPatch(media, now, keep = {}) {
+  const kp = keep.plan ? { daily: keep.plan.daily, times: keep.plan.times, off: keep.plan.off, showAt: keep.plan.showAt } : {};
+  const p = { days: [], starts: [], wind: [], buoys: cleanBuoys(), timer: { ...pickTimer({}), at: now }, plan: cleanPlan(kp), rounds: {}, screen: { kind: "", mid: "", loop: false, pause: false, caption: "", at: new Date(now).toISOString() }, stream: { url: "" }, courseShow: { auto: true, at: "", one: "" } };
   if (media) p.media = [];
   return p;
 }
@@ -700,3 +703,28 @@ export function bestOffset(samples) {
   const b = ok.reduce((a, x) => (x.t1 - x.t0 < a.t1 - a.t0 ? x : a));
   return { off: Math.round(b.server - (b.t0 + b.t1) / 2), rtt: b.t1 - b.t0 };
 }
+
+// Yarışa günler varken (Seyhun 2026-11-02 "6 gün sonra bir yarış; kaç gün kaldı, o tarihlerdeki beklenen rüzgâr"): yarış günleri
+// (başlangıç–bitiş, programda yarış olmayan günler düşer) ve her gün ilk start saatinden 4 saat boyunca beklenen ortalama rüzgâr, en sert sağanak, start'taki yön.
+// hourly [{ t: "2026-11-08T11", wind, gust, dir }] (open-meteo); tahmini olmayan gün yine listelenir (wind null).
+export function raceDays(start, end, plan) {
+  if (!DAY.test(start || "")) return [];
+  const off = new Set(plan?.off || []);
+  const out = [];
+  const last = DAY.test(end || "") && end >= start ? end : start;
+  for (let d = start; d <= last && out.length < 10; d = plus(d, 1)) if (!off.has(d)) out.push(d);
+  return out;
+}
+export function aheadWind(hourly, days, plan) {
+  const at = (d) => plan?.times?.[d] || plan?.daily || "";
+  return days.map((day) => {
+    const a = at(day);
+    const h0 = a ? +a.slice(0, 2) : 11;
+    const win = (hourly || []).filter((r) => r.t?.slice(0, 10) === day && +r.t.slice(11, 13) >= h0 && +r.t.slice(11, 13) <= h0 + 4 && r.wind != null);
+    const first = win.find((r) => +r.t.slice(11, 13) === h0) || win[0];
+    const gs = win.map((r) => r.gust).filter((g) => g != null);
+    return { day, at: a, wind: win.length ? Math.round(win.reduce((s, r) => s + r.wind, 0) / win.length) : null, gust: gs.length ? Math.max(...gs) : null, dir: first?.dir ?? null };
+  });
+}
+// Bugünden yarışın ilk gününe kaç gün (Türkiye günü); geçtiyse 0
+export const daysUntil = (day, today) => (DAY.test(day || "") && DAY.test(today || "") ? Math.max(0, Math.round((Date.parse(`${day}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 864e5)) : 0);

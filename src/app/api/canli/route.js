@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
-import { cleanLive, dayOf, pickTimer, rollPlan } from "@/lib/raceLive";
-import { cleanCourse } from "@/lib/raceCourse";
+import { aheadWind, cleanLive, dayOf, pickTimer, raceDays, rollPlan } from "@/lib/raceLive";
+import { cleanCourse, withRaceCards } from "@/lib/raceCourse";
 import { cleanCourseShow, cleanRounds, cleanScreen, cleanStream, currentStart } from "@/lib/raceRounds";
 import { cleanSheet, joinGroups } from "@/lib/resultSheet";
 import { cleanEntries } from "@/lib/roundSay";
@@ -117,6 +117,39 @@ async function forecastOf(org, id, r, day) {
   return v;
 }
 
+// Yarışa günler varken yarış günlerinin beklenen rüzgârı (open-meteo en çok 16 gün ileri); 1 saat önbellek
+async function aheadOf(org, id, r, plan) {
+  const today = trDay();
+  const start = S(r.startDate, 10);
+  if (!start || start <= today) return null;
+  const lim = trDay(Date.now() + 15 * 864e5);
+  const days = raceDays(start, S(r.endDate, 10), plan).filter((d) => d <= lim);
+  if (!days.length) return { days: raceDays(start, S(r.endDate, 10), plan).map((day) => ({ day, at: plan?.times?.[day] || plan?.daily || "", wind: null, gust: null, dir: null })) };
+  const k = `${org}/${id}/ahead/${days[0]}/${days.at(-1)}/${plan?.daily || ""}`;
+  const hit = fcMemo.get(k);
+  if (hit && Date.now() - hit.t < 60 * 60e3) return hit.v;
+  let v = null;
+  try {
+    let sp = r.spot || r.weather?.place;
+    if (!Number.isFinite(Number(sp?.lat)) || !Number.isFinite(Number(sp?.lon))) sp = await racePlace(r).catch(() => null);
+    const lat = Number(sp?.lat), lon = Number(sp?.lon);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      const q = new URLSearchParams({ latitude: lat, longitude: lon, timezone: "Europe/Istanbul", wind_speed_unit: "kn", start_date: days[0], end_date: days.at(-1), hourly: "wind_speed_10m,wind_direction_10m,wind_gusts_10m" });
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?${q}`, { signal: AbortSignal.timeout(8000) });
+      if (res.ok) {
+        const h = (await res.json()).hourly || {};
+        const N = (x) => (Number.isFinite(Number(x)) && x !== null ? Math.round(Number(x)) : null);
+        const rows = (h.time || []).map((t, i) => ({ t: S(t, 13), wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]) }));
+        v = { place: S(sp?.name, 60), days: aheadWind(rows, days, plan) };
+      }
+    }
+  } catch (e) {
+    console.warn("[canli] ileri tahmin", e?.message?.slice(0, 120));
+  }
+  fcMemo.set(k, { t: Date.now(), v });
+  return v;
+}
+
 async function build(id, y) {
   const org = await orgOf(id);
   if (!org) return null;
@@ -134,7 +167,7 @@ async function build(id, y) {
   const day = sel?.day || trDay();
   // Gün bitince alttaki şeritte yarının beklenen rüzgârı (Seyhun 2026-11-02 tasarım 5): yarının tahmini de alınır
   const nd = live.plan.status === "done" && live.plan.next?.day && live.plan.next.day !== day ? live.plan.next.day : "";
-  const [cSnap, forecast, forecastNext] = await Promise.all([base.collection("raceLive").doc(id).collection("course").doc(day).get(), forecastOf(org, id, r, day), nd ? forecastOf(org, id, r, nd) : null]);
+  const [cSnap, forecast, forecastNext, ahead] = await Promise.all([base.collection("raceLive").doc(id).collection("course").doc(day).get(), forecastOf(org, id, r, day), nd ? forecastOf(org, id, r, nd) : null, aheadOf(org, id, r, live.plan)]);
   const media = live.media
     .filter((m) => m.url)
     .slice(-120)
@@ -151,13 +184,14 @@ async function build(id, y) {
     media,
     wind: live.wind.filter((w) => dayOf(w.at) === day || trDay(Date.parse(w.at)) === day).slice(-40),
     day,
-    course: cleanCourse(cSnap.exists ? cSnap.data() : {}),
+    course: cleanCourse(withRaceCards(cSnap.exists ? cSnap.data() : {}, d.cards)),
     fleets,
     entries: en.entries,
     groups: en.groups,
     plan: rollPlan(live.plan, trDay()),
     forecast,
     forecastNext,
+    ahead,
   };
 }
 

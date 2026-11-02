@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apText, cleanPlan, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
+import { apText, cleanPlan, daysUntil, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
@@ -1149,16 +1149,30 @@ function WaitHero({ data, today, cs, prog, now }) {
   const first = prog.find((x) => x.state === "next") || null;
   const at = plan.status === "done" && plan.next ? plan.next.at : plan.at;
   const svg = courseSvg(data, sceneRoute(data, null, true, "wait"));
-  const slides = none ? [] : [svg ? "course" : "", windShowable(data) ? "wind" : "", prog.length ? "prog" : ""].filter(Boolean);
+  // Yarışa günler varken (Seyhun 2026-11-02 "6 gün sonra bir yarış; kaç gün kaldı, o tarihlerdeki beklenen rüzgâr"): büyük "6 gün", vitrinde yarış günlerinin rüzgârı
+  const r = data.race || {};
+  const left = !cs.rem && r.startDate > today ? daysUntil(r.startDate, today) : 0;
+  const aDays = left ? data.ahead?.days || raceDays(r.startDate, r.endDate, plan).map((day) => ({ day, at: plan.times?.[day] || plan.daily || "" })) : [];
+  const slides = none ? [] : left ? [svg ? "course" : "", aDays.length ? "ahead" : ""].filter(Boolean) : [svg ? "course" : "", windShowable(data) ? "wind" : "", prog.length ? "prog" : ""].filter(Boolean);
   // vitrin arasız döner; Yayın'dan "Göster" turu baştan başlatır
   const k = slides.length ? showSlide({ show: { ...data.courseShow, auto: false }, now, pre: true, slides }) || slides[Math.floor(now / SHOW_ON) % slides.length] : "";
   return (
     <div className="lv-hold">
       <div className="lv-hst">
-        <div className="lv-kick">{kick}</div>
-        {!none ? <div className="lv-big">{cs.rem ? cs.value : "—:—"}</div> : null}
-        {!none ? <NowWind data={data} now={now} /> : null}
-        {!none && first ? (
+        {/* Yarışın adı soluk, en üstte (Seyhun 2026-11-02 "yarışın adını da göstermemiz gerekiyor, arka planda biraz soluk") */}
+        {r.name ? <div className="lv-hname">{r.name}</div> : null}
+        <div className="lv-kick">{left ? "Yarışa" : kick}</div>
+        {left ? (
+          <div className="lv-big lv-bigd">
+            {left}
+            <small>gün</small>
+          </div>
+        ) : !none ? (
+          <div className="lv-big">{cs.rem ? cs.value : "—:—"}</div>
+        ) : null}
+        {left ? <div className="lv-what lv-whatd">{[r.endDate && r.endDate !== r.startDate ? `${dayText(r.startDate)} – ${dayText(r.endDate)}` : dayText(r.startDate), aDays[0]?.at ? `İlk start ${aDays[0].at}` : "", r.place].filter(Boolean).join(" · ")}</div> : null}
+        {!none && !left ? <NowWind data={data} now={now} /> : null}
+        {!none && !left && first ? (
           <div className="lv-what">
             <Dot g={first.grp} />
             {[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}
@@ -1185,14 +1199,48 @@ function WaitHero({ data, today, cs, prog, now }) {
             ))}
           </div>
           <div key={k} className="lv-showb">
-            {k === "course" ? <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: svg }} /> : k === "wind" ? <WindBody data={data} sel={null} isCur now={now} /> : <ProgBody prog={prog} />}
+            {k === "course" ? <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: svg }} /> : k === "wind" ? <WindBody data={data} sel={null} isCur now={now} /> : k === "ahead" ? <AheadBody days={aDays} /> : <ProgBody prog={prog} />}
           </div>
         </div>
       ) : null}
     </div>
   );
 }
-const SLIDE_NAME = { course: "Parkur", wind: "Rüzgâr", prog: "Program" };
+const SLIDE_NAME = { course: "Parkur", wind: "Rüzgâr", prog: "Program", ahead: "Beklenen rüzgâr" };
+const wdText = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short" });
+// Yarış günlerinin beklenen rüzgârı: gün, ilk start, ok (rüzgârın gittiği yön), knot, yön, sağanak; tahmini olmayan gün "Tahmin yok"
+function AheadBody({ days }) {
+  return (
+    <div className="lv-ahead">
+      {days.map((x) => (
+        <div key={x.day} className="lv-ah">
+          <div className="d">
+            <b>{dayText(x.day)}</b>
+            <span>{[wdText(x.day), x.at].filter(Boolean).join(" · ")}</span>
+          </div>
+          {x.wind != null ? (
+            <>
+              {x.dir != null ? (
+                <svg className="ar" viewBox="0 0 24 24" aria-hidden="true" style={{ transform: `rotate(${x.dir + 180}deg)` }}>
+                  <path d="M12 2 L18 20 L12 16 L6 20 Z" />
+                </svg>
+              ) : (
+                <i className="ar" />
+              )}
+              <b className="k">
+                {x.wind}
+                <em>knot</em>
+              </b>
+              <span className="w">{[x.dir != null ? `${dirShort(x.dir)} ${x.dir}°` : "", x.gust && x.gust > x.wind ? `Sağanak ${x.gust}` : ""].filter(Boolean).join(" · ")}</span>
+            </>
+          ) : (
+            <span className="w n">Tahmin yok</span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // Gün sonu (Seyhun 2026-11-02 "gün bitince ne gösteriyoruz; bugün ne bekleniyordu ne oldu, sonuçlar, yarın beklentisi; geçici olduğu
 // muhakkak yazsın; genel sıralama tümüyle"): bekleme ekranı gibi solda sabit durum (Gün bitti, kaç yarış, yarınki ilk start'a sayaç),
@@ -1478,55 +1526,10 @@ function WindBody({ data, sel, isCur, now }) {
   const obsAt = Object.fromEntries((fc?.obs || []).filter((o) => o.wind != null).map((o) => [o.hh, o]));
   const tr = new Date(now + 3 * 3600e3);
   const nowH = tr.getUTCHours() + tr.getUTCMinutes() / 60;
-  // şimdi: manuel son ölçüm (1 saatten yeni), yoksa istasyonun son saati
-  const cur = curWind(data, sel, isCur, now);
-  const fresh = !!cur?.man;
-  const was = cur ? rows.find((r) => r.hh === cur.hh) : null;
-  const diff = cur && was ? cur.kn - was.wind : null;
-  const ew = expWind(fc, data.plan.at);
-  // şimdiden start'a: rüzgâr artacak mı, ne kadar sonra
-  const dk = cur && ew ? ew.kn - cur.kn : 0;
-  const trend = dk >= 2 ? "Artacak" : dk <= -2 ? "Azalacak" : "Aynı kalacak";
-  const mins = data.plan.at ? Math.round(+data.plan.at.slice(0, 2) * 60 + +data.plan.at.slice(3, 5) - nowH * 60) : 0;
-  const left = mins > 0 ? (mins >= 60 ? `${Math.floor(mins / 60)} sa ${mins % 60} dk sonra` : `${mins} dk sonra`) : "";
   const hasSt = Object.keys(obsAt).length > 0, hasMan = rows.some((r) => man[r.hh]);
   return (
     <>
       <WindBars rows={rows} obsAt={obsAt} man={man} pts={windPoints(data, now)} nowH={nowH} at={data.plan.at} />
-      {cur || ew ? (
-        <div className="lv-wnow">
-          {cur ? (
-            <div className={`a${fresh ? " m" : ""}`}>
-              <span>Şimdi</span>
-              <b>
-                {cur.kn}
-                <em>knot</em>
-                {cur.dir != null ? <i>{`${dirShort(cur.dir)} ${degText(cur)}`}</i> : null}
-              </b>
-              <small>{was ? (diff ? `Tahmin ${was.wind} knot idi · ${Math.abs(diff)} knot ${diff > 0 ? "fazla" : "az"}` : `Tahmin ${was.wind} knot idi · tam tuttu`) : cur.by}</small>
-              {was ? <small className="src">{cur.by}</small> : null}
-            </div>
-          ) : null}
-          {cur && ew ? (
-            <div className="mid" aria-hidden="true">
-              <span>{trend}</span>
-              <svg viewBox="0 0 120 20"><line x1="2" y1="10" x2="104" y2="10" /><path d="M102 3 L118 10 L102 17 Z" /></svg>
-              <small>{left}</small>
-            </div>
-          ) : null}
-          {ew ? (
-            <div className="b">
-              <span>{`Start ${data.plan.at} · beklenen`}</span>
-              <b>
-                {ew.kn}
-                <em>knot</em>
-                {ew.dir != null ? <i>{`${dirShort(ew.dir)} ${Math.round(ew.dir)}°`}</i> : null}
-              </b>
-              <small>{ew.gust && ew.gust > ew.kn ? `Sağanak ${ew.gust} knot` : "Tahmin"}</small>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
       <div className="lv-wleg">
         {hasMan ? (
           <span>
