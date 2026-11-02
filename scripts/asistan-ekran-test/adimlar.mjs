@@ -1396,6 +1396,19 @@ async function raceDayHome(h) {
     const title = n ? ((await dlg.first().textContent()) || "").replace(/\s+/g, " ").slice(0, 60) : "";
     return [n > 0, `pencere ${n} · ${title}`];
   });
+  // Seyhun 2026-11-02 "A · Satırda düğmeler": plan satırında yuvarlak Yapıldı işareti; dokununca yeşil ✓ + üstü çizili, yeniden dokununca geri
+  await check("Ana sayfa", "gün penceresi Yapıldı", "plan satırında Yapıldı işareti: dokununca yapıldı, yeniden dokununca geri alınır", async () => {
+    const dlg = page.getByRole("dialog").first();
+    const mark = dlg.getByRole("button", { name: "Yapıldı", exact: true }).first();
+    if (!(await waitFor(() => mark.count(), 4000))) return [false, "Yapıldı işareti yok"];
+    await mark.click();
+    const on = await waitFor(() => dlg.getByRole("button", { name: "Yapılmadı yap" }).count(), 4000);
+    const struck = await dlg.locator("b.line-through").count();
+    if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-gun.png` });
+    await dlg.getByRole("button", { name: "Yapılmadı yap" }).first().click().catch(() => {});
+    const back = await waitFor(async () => ((await dlg.getByRole("button", { name: "Yapılmadı yap" }).count()) === 0 ? 1 : 0), 4000);
+    return [on > 0 && struck > 0 && back === 1, `yapıldı ${on} · çizili ${struck} · geri ${back}`];
+  });
   // Süren yarış (Seyhun 2026-10-30: "ana sayfadan süreyi kaldıralım, sadece tıklama olsun"): sayaç ve düğme yok, tek satır; dokununca yarış sayfası
   await check("Ana sayfa", "süren yarış tek satır", "yarış adı ve kısa durum, düğme yok, dokununca yarışın sayfası açılır", async () => {
     await nav0(page);
