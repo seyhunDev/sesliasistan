@@ -1293,26 +1293,49 @@ function WindBody({ data, sel, isCur, now }) {
   const was = cur ? rows.find((r) => r.hh === cur.hh) : null;
   const diff = cur && was ? cur.kn - was.wind : null;
   const ew = expWind(fc, data.plan.at);
+  // şimdiden start'a: rüzgâr artacak mı, ne kadar sonra
+  const dk = cur && ew ? ew.kn - cur.kn : 0;
+  const trend = dk >= 2 ? "Artacak" : dk <= -2 ? "Azalacak" : "Aynı kalacak";
+  const mins = data.plan.at ? Math.round(+data.plan.at.slice(0, 2) * 60 + +data.plan.at.slice(3, 5) - nowH * 60) : 0;
+  const left = mins > 0 ? (mins >= 60 ? `${Math.floor(mins / 60)} sa ${mins % 60} dk sonra` : `${mins} dk sonra`) : "";
   const hasSt = Object.keys(obsAt).length > 0, hasMan = rows.some((r) => man[r.hh]);
   return (
     <>
-      <div className="lv-wtop">
-        {cur ? (
-          <div className={`o${fresh ? " m" : ""}`}>
-            <span>Şimdi esiyor</span>
-            <b>{`${cur.kn} knot${cur.dir != null ? ` · ${dirShort(cur.dir)}` : ""}`}</b>
-            <small>{[was ? `Bekleniyordu ${was.wind} knot${diff ? ` · ${Math.abs(diff)} knot ${diff > 0 ? "fazla" : "az"}` : " · tam tuttu"}` : "", cur.by].filter(Boolean).join(" · ")}</small>
-          </div>
-        ) : null}
-        {ew ? (
-          <div className="f">
-            <span>{`Start'ta beklenen · ${data.plan.at}`}</span>
-            <b>{`${ew.kn} knot${ew.dir != null ? ` · ${dirShort(ew.dir)}` : ""}`}</b>
-            <small>{ew.gust && ew.gust > ew.kn ? `Sağanak ${ew.gust} knot` : "Tahmin"}</small>
-          </div>
-        ) : null}
-      </div>
       <WindBars rows={rows} obsAt={obsAt} man={man} nowH={nowH} at={data.plan.at} />
+      {cur || ew ? (
+        <div className="lv-wnow">
+          {cur ? (
+            <div className={`a${fresh ? " m" : ""}`}>
+              <span>Şimdi</span>
+              <b>
+                {cur.kn}
+                <em>knot</em>
+                {cur.dir != null ? <i>{dirShort(cur.dir)}</i> : null}
+              </b>
+              <small>{was ? (diff ? `Tahmin ${was.wind} knot idi · ${Math.abs(diff)} knot ${diff > 0 ? "fazla" : "az"}` : `Tahmin ${was.wind} knot idi · tam tuttu`) : cur.by}</small>
+              {was ? <small className="src">{cur.by}</small> : null}
+            </div>
+          ) : null}
+          {cur && ew ? (
+            <div className="mid" aria-hidden="true">
+              <span>{trend}</span>
+              <svg viewBox="0 0 120 20"><line x1="2" y1="10" x2="104" y2="10" /><path d="M102 3 L118 10 L102 17 Z" /></svg>
+              <small>{left}</small>
+            </div>
+          ) : null}
+          {ew ? (
+            <div className="b">
+              <span>{`Start ${data.plan.at} · beklenen`}</span>
+              <b>
+                {ew.kn}
+                <em>knot</em>
+                {ew.dir != null ? <i>{dirShort(ew.dir)}</i> : null}
+              </b>
+              <small>{ew.gust && ew.gust > ew.kn ? `Sağanak ${ew.gust} knot` : "Tahmin"}</small>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <div className="lv-wleg">
         {hasMan ? (
           <span>
