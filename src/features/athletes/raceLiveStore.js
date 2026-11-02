@@ -314,7 +314,8 @@ export function saveRounds(orgId, id, sid, entry, base = null) {
 }
 export const saveScreen = (orgId, id, s) => setDoc(live(orgId, id), { screen: cleanScreen({ ...s, at: new Date().toISOString() }) }, { merge: true });
 export const saveCourseShow = (orgId, id, c) => setDoc(live(orgId, id), { courseShow: cleanCourseShow(c) }, { merge: true });
-export const saveStream = (orgId, id, url) => setDoc(live(orgId, id), { stream: cleanStream({ url }) }, { merge: true });
+// s: { url, drone } (eski çağrı yalnız bağlantı yazısı verir)
+export const saveStream = (orgId, id, s) => setDoc(live(orgId, id), { stream: cleanStream(typeof s === "string" ? { url: s } : s) }, { merge: true });
 // Dönüşleri canlı dinle (Yayın sayfası: başka telefondan girilen dönüşler hemen görünür; aynı belgeyi useLiveSync de dinler, okuma ortak)
 export function watchRounds(orgId, id, cb) {
   return onSnapshot(
