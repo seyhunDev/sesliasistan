@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
-import { cleanLive, dayOf, pickTimer } from "@/lib/raceLive";
+import { cleanLive, dayOf, pickTimer, rollPlan } from "@/lib/raceLive";
 import { cleanCourse } from "@/lib/raceCourse";
 import { cleanRounds, cleanScreen, cleanStream, currentStart } from "@/lib/raceRounds";
 import { cleanSheet, joinGroups } from "@/lib/resultSheet";
@@ -147,7 +147,7 @@ async function build(id, y) {
     fleets,
     entries: en.entries,
     groups: en.groups,
-    plan: live.plan,
+    plan: rollPlan(live.plan, trDay()),
     forecast,
     forecastNext,
   };
@@ -177,7 +177,7 @@ async function openList() {
       const cur = currentStart(lv.starts, timer);
       const live = !!cur && cur.day === today;
       const todayRace = S(x.startDate, 10) <= today && today <= end;
-      return { id: d.id, name: S(x.name, 120), startDate: S(x.startDate, 10), endDate: S(x.endDate, 10), place: [x.district, x.city].filter(Boolean).join(", ").slice(0, 80), live, today: todayRace, status: lv.plan.status };
+      return { id: d.id, name: S(x.name, 120), startDate: S(x.startDate, 10), endDate: S(x.endDate, 10), place: [x.district, x.city].filter(Boolean).join(", ").slice(0, 80), live, today: todayRace, status: rollPlan(lv.plan, today).status };
     }),
   );
   const list = rows.filter(Boolean).sort((a, b) => a.startDate.localeCompare(b.startDate));
