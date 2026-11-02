@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apText, cleanPlan, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse, selCard } from "@/lib/raceCourse";
-import { routeText, sceneSvg } from "@/lib/courseScene";
+import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { courseShowing, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, sameSail, shortClub, shortName, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import { useDemo } from "./demo";
@@ -908,17 +908,20 @@ function titleOf({ data, sel, phase, today, prog = [] }) {
   let g = "";
   let what = "";
   if (phase === "race" && sel) {
-    head = [entry?.grp ? `${entry.grp} grup` : "", raceTitle(sel)].filter(Boolean).join(" · ") || "Yarış";
+    // Şerit (Seyhun 2026-11-02 serit-yeni onay): büyük "3. yarış · Sarı", altında küçük sınıf
+    head = [raceTitle(sel), entry?.grp || ""].filter(Boolean).join(" · ") || "Yarış";
     g = entry?.grp || "";
     what = entry?.cls || "";
   } else if (phase === "race") {
     head = plan.order[0] ? planLabel(plan.order[0]) : "Yarış günü";
     g = plan.order[0]?.grp || "";
   } else if (phase === "wait") {
-    head = none ? "Bugün yarış yok" : plan.status === "ap" ? "Start ertelendi" : "Yarış öncesi";
-    g = plan.order[0]?.grp || "";
+    // yarış öncesi: büyük "Optimist · Sarı grup", altında "3. yarış · yarışın adı"; start saati ayrı modülde
     const f = prog.find((x) => x.state === "next");
-    what = plan.status === "ap" ? apText(plan) : [at && !none ? `İlk start ${at}` : "", f ? [grpText(f.grp), f.name].filter(Boolean).join(" · ") : ""].filter(Boolean).join(" · ");
+    const o = plan.order[0];
+    head = none ? "Bugün yarış yok" : plan.status === "ap" ? "Start ertelendi" : (o ? [o.cls, grpText(o.grp)].filter(Boolean).join(" · ") : "") || "Yarış öncesi";
+    g = o?.grp || "";
+    what = plan.status === "ap" ? apText(plan) : none ? data.race.name : [f?.name, data.race.name].filter(Boolean).join(" · ");
   } else head = "Gün bitti";
   const sub = phase === "wait" ? what : [what, data.race.name, data.race.place].filter(Boolean).join(" · ");
   return { head, g, sub };
@@ -959,7 +962,7 @@ function TitleLine({ data, isCur, id, starts, onList, auto }) {
 
 // Altta tek bilgi şeridi (TV yayınlarındaki alt bant; grup · yarış hemen üstünde TitleLine'da): süre (start'tan sonra; önce ortada büyük sayaç), nerede (şamandıra,
 // lider ve dönüş saati), rüzgâr (dokununca gün boyu grafik), parkur (dokununca büyük), sıradaki start. Her hücre: üstte değer, altta küçük etiket.
-function InfoBar({ data, sel, isCur, phase, cs, counting, today, ongoing, hasSvg, prog = [], onCourse, onWind }) {
+function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, ongoing, hasSvg, prog = [], onCourse, onWind }) {
   const t = titleOf({ data, sel, phase, today, prog });
   const plan = data.plan;
   const entry = sel ? data.rounds?.[sel.id] : null;
@@ -967,8 +970,14 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, today, ongoing, hasSvg
   const pos = entry ? nowPos(entry) : -1;
   const { w } = lastWind(data, sel, isCur);
   const cells = [];
+  // Video varken geri sayım ortada videonun önüne gelmez, şeritte büyük (Seyhun 2026-11-02 "videonun önüne geliyor, öyle olmaması lazım")
+  if (clockIn) cells.push(["time clock", cs.value, cs.label]);
   if (phase === "race") {
-    if (!counting && sel) cells.push(["time", cs.value, cs.label]);
+    const shm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1];
+    if (clockIn) {
+      // saat zaten şeritte
+    } else if (!counting && sel) cells.push(["time", cs.value, cs.label]);
+    else if (counting && shm) cells.push(["time", shm, "Start"]); // geri sayım ortada büyük; şeritte start saati
     // Şamandırada her zaman ilk dönen (lider) ve dönüş saati; finiş yazıldıysa kazanan (Seyhun 2026-11-02 "son geçen olmasın")
     const ld = pos >= 0 ? leaderAt(entry, pos) : null;
     if (ld) {
@@ -978,7 +987,12 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, today, ongoing, hasSvg
     } else if (sel?.fin) cells.push(["pos", "Bitti", "Yarış"]);
   } else if (phase === "wait") {
     // videolu bekleme (Seyhun 2026-11-02 tasarım 2): geri sayım ve beklenen rüzgâr
-    if (cs.rem) cells.push(["time", cs.value, cs.label]);
+    // büyük geri sayım ortada; şeritte start saati (ör. 14:00 · Start)
+    const hm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1] || (plan.status !== "none" && plan.status !== "ap" ? plan.at : "");
+    if (clockIn) {
+      // saat zaten şeritte
+    } else if (hm) cells.push(["time", hm, "Start"]);
+    else if (cs.rem) cells.push(["time", cs.value, cs.label]);
     const ew = !w ? expWind(data.forecast, plan.at) : null;
     if (ew) cells.push(["exp", expText(ew), "Beklenen rüzgâr", ew]);
   } else {
@@ -986,16 +1000,21 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, today, ongoing, hasSvg
     const ew = expWind(data.forecastNext, plan.next?.at);
     if (ew) cells.push(["exp", expText(ew), "Yarın beklenen rüzgâr", ew]);
   }
+  // Parkur: rota noktaları 1 – 2 – 3 – F; yarışta liderin olduğu şamandıra sarı
+  const croute = cleanRoute(sceneRoute(data, sel, isCur, phase));
+  const cpos = phase === "race" && isCur && sel && croute.length === route.length ? pos : -1;
   return (
     <div className="lv-bar">
-      {ongoing ? <em className="lv-livedot">Canlı</em> : null}
       {phase !== "summary" ? (
         <div className="lv-cell ttl">
           <b>
             <Dot g={t.g} />
             {t.head}
           </b>
-          <span>{t.sub}</span>
+          <span>
+            {ongoing ? <em className="lv-livedot">Canlı</em> : null}
+            {t.sub}
+          </span>
         </div>
       ) : null}
       {cells.map(([k, v, l, ew]) => (
@@ -1018,8 +1037,19 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, today, ongoing, hasSvg
       ) : null}
       {hasSvg ? (
         <button type="button" className="lv-cell course" onClick={onCourse} aria-label="Parkuru göster">
-          <b>Parkur</b>
-          <span>{routeText(sceneRoute(data, sel, isCur, phase)) || "Göster"}</span>
+          {croute.length ? (
+            <b className="lv-route" aria-label={routeText(croute)}>
+              {croute.map((m, i) => (
+                <Fragment key={i}>
+                  {i ? <s /> : null}
+                  <i className={i === cpos ? "on" : i < cpos ? "done" : ""}>{m}</i>
+                </Fragment>
+              ))}
+            </b>
+          ) : (
+            <b>Göster</b>
+          )}
+          <span>Parkur</span>
         </button>
       ) : null}
       {phase === "race" && sel && plan.order[0] ? (
@@ -1287,7 +1317,7 @@ export function LiveScreen({ id, y = "" }) {
             <OverallPanel data={data} n={10} cls="lv-endall" onAll={() => setFull("all")} />
           </div>
         ) : null}
-        <CenterClock show={counting && !hero} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
+        <CenterClock show={counting && !hero && !hasVideo} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
         <CourseFloat data={data} sel={sel} isCur={isCur} show={cOn} phase={phase} onClose={() => setCourseOpen(false)} />
         <div className={`lv-foot${hero ? " off" : ""}`}>
           <TitleLine data={data} isCur={isCur} id={id} starts={starts} onList={() => setList(true)} auto={auto} />
@@ -1296,7 +1326,7 @@ export function LiveScreen({ id, y = "" }) {
               <WindDay fc={data.forecast} now={nowMs} at={data.plan.at} mine={lastWind(data, sel, isCur).obs} />
             </button>
           ) : null}
-          <InfoBar data={data} sel={sel} isCur={isCur} phase={phase} cs={cs} counting={counting} today={today} ongoing={ongoing} hasSvg={hasSvg} prog={prog} onCourse={() => setCourseOpen((v) => !v)} onWind={() => setWindOpen((v) => !v)} />
+          <InfoBar data={data} sel={sel} isCur={isCur} phase={phase} cs={cs} counting={counting} clockIn={counting && hasVideo} today={today} ongoing={ongoing} hasSvg={hasSvg} prog={prog} onCourse={() => setCourseOpen((v) => !v)} onWind={() => setWindOpen((v) => !v)} />
         </div>
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}

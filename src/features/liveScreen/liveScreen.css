@@ -428,7 +428,7 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-cell.ttl b .lv-dot { width: 0.42em; height: 0.42em; }
 .lv-void { display: flex; align-items: center; gap: 0.6em; font-size: 1.25em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #ffd54a; }
 .lv-void .lv-flag { font-size: 1.1em; }
-.lv-cell.next { margin-left: auto; border-left: 0; align-items: flex-end; text-align: right; opacity: 0.8; }
+.lv-cell.next { opacity: 0.8; }
 .lv-cell.next b { font-size: 1.05em; font-weight: 600; text-transform: uppercase; }
 .lv-title { flex-direction: row; align-items: flex-end; justify-content: space-between; }
 .lv-title .lv-titleb { margin-left: auto; }
@@ -504,3 +504,26 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-rank .lv-lab .lv-chips { justify-content: flex-start; }
 }
 .lv-rankp .lv-rl u { font-weight: 600; color: var(--lv-mut); font-variant-numeric: tabular-nums; }
+
+/* Alt şerit (Seyhun 2026-11-02 serit-yeni onay): boydan boya değil, bilgi bitince biter; koyu modüller, ince ayraç, keskin köşe,
+   solda logo renginde ince şerit; her modülde üstte büyük değer, altta küçük etiket. Parkur rota noktaları, yarışta liderin şamandırası sarı */
+.lv-foot { align-items: flex-start; }
+.lv-bar { position: relative; width: max-content; max-width: 100%; align-self: flex-start; background: rgba(7, 11, 20, 0.88); border-radius: 4px; padding-left: 4px; }
+.lv-bar::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, #ff3d77, #ff9a4d); }
+.lv-bar > .lv-cell:first-child { border-left: 0; }
+.lv-cell { padding: 0.55em 1.3em; }
+.lv-cell.ttl { padding-right: 1.6em; }
+.lv-cell.ttl b { font-size: 1.75em; }
+.lv-cell.ttl span { display: flex; align-items: center; gap: 0.8em; }
+.lv-cell.ttl .lv-livedot { font-size: 1em; }
+.lv-route { gap: 0.3em !important; }
+.lv-route i { display: inline-grid; place-items: center; width: 1.25em; height: 1.25em; border-radius: 50%; background: rgba(255, 255, 255, 0.12); font-style: normal; font-size: 0.72em; font-weight: 700; }
+.lv-route s { width: 0.55em; height: 1px; background: rgba(255, 255, 255, 0.35); }
+.lv-route i.done { background: rgba(255, 255, 255, 0.28); }
+.lv-route i.on { background: #ffcf33; color: #0b1220; }
+@media (max-width: 760px) {
+  .lv-bar { width: 100%; }
+  .lv-cell.ttl b { font-size: 1.4em; }
+}
+/* Video varken geri sayım şeritte (ortada videonun önüne gelmez) */
+.lv-cell.clock b { font-size: 2.6em; }
