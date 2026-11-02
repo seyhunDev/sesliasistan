@@ -20,7 +20,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dayRaces, dirShort, finishRace, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
+import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dayRaces, dirShort, finishRace, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
 import { CARD_IDS, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
@@ -73,6 +73,7 @@ export function BroadcastPage({ orgId, id }) {
   const [askEnd, setAskEnd] = useState(false); // Günü bitir bir daha sorar
   const [grpOpen, setGrpOpen] = useState(false); // Gruplar: seçim açık
   const [openN, setOpenN] = useState(0); // açılan biten yarış
+  const [draft, setDraft] = useState({ cls: "Optimist", grps: [], prep: "P" }); // oluşturulacak yarış (plan yüklenince ondan)
   const [ap, setAp] = useState(null); // tehir penceresi { min, why } (Seyhun 2026-11-01 "bir sebep belirterek tehir, bir saatlik")
   const [plan, setPlan] = useState(() => cleanPlan({})); // günün programı (raceLive.plan; herkese açık ekranın evresi buna göre)
   const file = useRef(null);
@@ -96,6 +97,7 @@ export function BroadcastPage({ orgId, id }) {
     reload().then((d) => {
       if (!on) return;
       setPlan(d.plan);
+      setDraft({ cls: d.plan.cls || "Optimist", grps: d.plan.grps, prep: d.plan.prep || "P" });
       setYt(d.stream.url);
       setSel(d.screen.kind ? { kind: d.screen.kind, mid: d.screen.mid } : null);
     }, () => toast("Yüklenemedi, tekrar dene."));
@@ -175,6 +177,11 @@ export function BroadcastPage({ orgId, id }) {
   };
   // Bekleyen start satırı: ekle, düzenle, sırala, çıkar
   const editRow = (i, patch) => changePlan({ order: plan.order.map((o, k) => (k === i ? { ...o, ...patch } : o)) });
+  // Yarış oluştur: seçilen sınıf, gruplar ve bayrak günün ayarı olur; sıradaki yarış bu gruplarla programa eklenir, sayaç açılır
+  const createRace = () => {
+    const p = { cls: draft.cls || "Optimist", grps: draft.grps, prep: draft.prep || "P" };
+    changePlan({ ...p, order: [...plan.order, ...raceOrder(p)] });
+  };
   // + Yarış: sıradaki yarış günün bütün gruplarıyla (grup yoksa tek start)
   const addRace = () => {
     const add = raceOrder(plan);
@@ -349,6 +356,7 @@ export function BroadcastPage({ orgId, id }) {
   const todays = [...live.starts].filter((x) => x.day === today); // eskiden yeniye (listede 1., 2., …)
   const races = dayRaces({ starts: live.starts, order: plan.order, grpOf: (x) => x.grp || L?.rounds?.[x.id]?.grp || "", liveIds: cur ? [cur.id] : [], today, rdays });
   const nextRow = races.flatMap((r) => r.rows).find((x) => x.state === "next");
+  const needRace = !!L && !nextRow && tr.t.end == null && tr.t.left == null && plan.status !== "done";
   const stE = st ? L?.rounds?.[st.id] || {} : {};
   // Seçim çipleri: Sınıf, Grup, Bayrak; set(key, değer) satırın kaydına yazar (bekleyen start: plan.order; biten yarış: rounds[sid])
   const chipRows = (val, set, size = "h-7 px-2.5", keys = ["cls", "grp", "prep"]) => [
@@ -386,40 +394,47 @@ export function BroadcastPage({ orgId, id }) {
         </header>
         {/* Sıradaki start Başlat düğmesinin içinde yazar ("Başlat · Optimist · Mavi" / "Başlat · Start seçilmedi"); start sonrası sayacın
             başlığında sınıf · grup · yarış (Seyhun 2026-11-02 "yukarıdaki yazıyı kaldıralım") */}
-        <Countdown dark mode="start" race={flow} startRace noHead startText={nextRow ? `Başlat · ${nextRow.n}. yarış${nextRow.grp ? ` ${nextRow.grp}` : ""}` : "Başlat · + Yarış ekle"} title={cur ? pickText(stE, raceName(cur)) : ""} where={race?.name || "Yarış"} />
+        {/* Önce yarış, sonra süre (Seyhun 2026-11-02 "süreyi göstermeden ne için olduğunu seçmemiz lazım"): sıradaki yarış yoksa ve sayaç
+            boştaysa sayaç yerine yarış oluşturma (sınıf, gruplar, bayrak); oluşturulunca sayaç "Başlat · 1. yarış Sarı" ile açılır */}
+        {needRace ? (
+          <div className="mt-4 space-y-3">
+            <p className="text-[0.9375rem] font-semibold text-white/70">{`${nextRaceNo(live.starts, today, rdays, draft.grps[0] || "")}. yarışı oluştur`}</p>
+            {[
+              ["Sınıf", CLASS_PICK, "cls", false],
+              ["Grup", GROUP_PICK, "grps", true],
+              ["Bayrak", PREP_PICK, "prep", false],
+            ].map(([lab, list, key, multi]) => (
+              <div key={key} className="flex items-center gap-2">
+                <span className="w-12 shrink-0 text-[0.8125rem] text-white/60">{lab}</span>
+                <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
+                  {list.map((g) => {
+                    const on = multi ? draft.grps.includes(g) : draft[key] === g;
+                    return (
+                      <button key={g} type="button" aria-pressed={on} onClick={() => setDraft((d) => (multi ? { ...d, grps: on ? d.grps.filter((x) => x !== g) : [...d.grps, g] } : { ...d, [key]: g }))} className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-semibold ${on ? "bg-white text-[#11203a]" : "ck-glass text-white/85"}`}>
+                        {multi ? <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
+                        {key === "prep" && g === "Kara" ? "Kara bayrak" : g}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <button type="button" onClick={createRace} className="flex h-16 w-full items-center justify-center rounded-[1.125rem] bg-white text-[1.25rem] font-semibold text-[#11203a] shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-0.5 active:shadow-none">
+              Yarış oluştur
+            </button>
+          </div>
+        ) : (
+          <Countdown dark mode="start" race={flow} startRace noHead startText={nextRow ? `Başlat · ${nextRow.n}. yarış${nextRow.grp ? ` ${nextRow.grp}` : ""}` : "Başlat"} title={cur ? pickText(stE, raceName(cur)) : ""} where={race?.name || "Yarış"} />
+        )}
       </section>
 
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-5">
         <Seg value={tab} onChange={setTab} options={[["sure", "Süre"], ["video", "Video"], ["parkur", "Parkur"], ["donus", "Dönüşler"]]} />
         {tab === "sure" ? (
           <>
-        {/* Gruplar ve Bugün (Seyhun 2026-11-02 tasarım yayin-tasarim/startlar/startlar-yeni.png): gruplar günde bir kez seçilir; liste yarış
+        {/* Bugün (Seyhun 2026-11-02 tasarım yayin-tasarim/startlar/startlar-yeni.png): gruplar yarış oluşturulurken seçilir (üstte); liste yarış
             yarış, her yarışın altında grupları ve tek durum (Bitti · Yarışta · Abandone, Sıradaki, Bekliyor). "+ Yarış" sıradaki yarışı
             bütün gruplarıyla ekler. Biten yarış tek satıra kapanır (dokununca açılır). */}
-        <section>
-          <Head title="Gruplar" right={plan.cls || "Optimist"} />
-          <div className={`${card} overflow-hidden`}>
-            <div className="flex flex-wrap items-center gap-1.5 px-4 py-3">
-              {(grpOpen ? GROUP_PICK : plan.grps).map((g) => {
-                const on = plan.grps.includes(g);
-                return (
-                  <button key={g} type="button" aria-pressed={on} onClick={() => grpOpen && changePlan({ grps: on ? plan.grps.filter((x) => x !== g) : [...plan.grps, g] })} className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-semibold ${on ? "bg-acc text-white" : "bg-bg"}`}>
-                    <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" />
-                    {g}
-                  </button>
-                );
-              })}
-              <button type="button" onClick={() => setGrpOpen((v) => !v)} className="h-8 rounded-full bg-bg px-3 text-[0.875rem] font-semibold">
-                {grpOpen ? "Tamam" : plan.grps.length ? "Değiştir" : "+ Grup"}
-              </button>
-            </div>
-            {grpOpen ? (
-              <div className="space-y-2 border-t border-line px-4 py-2.5">
-                {chipRows({ cls: plan.cls || "Optimist", prep: plan.prep || "P" }, (k, v) => changePlan({ [k]: v }), "h-7 px-2.5", ["cls", "prep"])}
-              </div>
-            ) : null}
-          </div>
-        </section>
         <section>
           <Head title="Bugün" right={plan.status === "done" ? "Gün bitti" : plan.status === "none" ? "Bugün yarış yok" : plan.status === "ap" ? "Start ertelendi" : [races.length ? `${races.length} yarış` : "", plan.at ? `İlk start ${plan.at}` : ""].filter(Boolean).join(" · ")} />
           <div className={`${card} overflow-hidden`}>
