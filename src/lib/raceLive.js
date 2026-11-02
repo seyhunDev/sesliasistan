@@ -547,7 +547,7 @@ const WORD_DIR = [
   [/kuzey|y[ıi]ld[ıi]z|\bk\b/, 0], [/g[uü]ney|k[ıi]ble|\bg\b/, 180], [/bat[ıi]|batı|\bb\b/, 270], [/do[gğ]u|\bd\b/, 90],
 ];
 const NUMS = { bir: 1, iki: 2, üç: 3, dört: 4, beş: 5, altı: 6, yedi: 7, sekiz: 8, dokuz: 9, on: 10, yirmi: 20, otuz: 30 };
-function numberIn(s, unit) {
+export function numberIn(s, unit) {
   const m = s.match(new RegExp(`(\\d{1,2})\\s*(?:${unit})`));
   if (m) return +m[1];
   const w = s.match(new RegExp(`\\b(on|yirmi|otuz)?\\s*(bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz)?\\s*(?:${unit})`));

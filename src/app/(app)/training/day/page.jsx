@@ -319,4 +319,4 @@ function Day() {
 
 // Asistan düğmesi (Seyhun 2026-10-23: antrenman sayfasında da kullanılsın): her yerdeki gibi bas-konuş (2026-10-25): basılı
 // tut konuş, bırak gönder; kısa dokunuşta asistan açık ve boşta kalır, dışarı kaydırıp bırakınca iptal
-const ASK_EX = ["1 Ali, 2 Ayşe, 3 Mehmet", "Rüzgar 12 knot kuzeybatı", "Bugünkü antrenman çok iyi geçti, start çalıştık"];
+const ASK_EX = ["2 dakika başlat", "Yarışı bitir, 1 Ali 2 Ayşe 3 Mehmet", "Bugünkü antrenman çok iyi geçti, start çalıştık"];
