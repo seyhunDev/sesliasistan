@@ -1,8 +1,8 @@
-Commit: 6e75cec · Ana sayfa: güne tek dokunuşta hava değişir ve günün penceresi açılır (#962)
-Zaman: 2026-11-02-1224 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41418283763
+Commit: 61f1cfd · Canlı ekran yayın tasarımı: geri sayım, program, gün sonu, lider ve dönüş saati, bulanık foto, yayın yazısı (#957)
+Zaman: 2026-11-02-1307 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41424654595
 
-TAM TEST · 02.11.2026 12:10:17
+TAM TEST · 02.11.2026 12:56:20
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1433/1435 geçti · 2 kalan · 784 sn
+SONUÇ: 1435/1435 geçti · 0 kalan · 596 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -181,14 +181,8 @@ SONUÇ: 1433/1435 geçti · 2 kalan · 784 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 16/18
-  ✗ Yarış sayfası: 12/14
-      ✗ “yarış günü, sporcu seçili”
-          beklenen: açılır
-          olan:     hata: locator.boundingBox: Timeout 30000ms exceeded.
-      ✗ “Start”
-          beklenen: çökmeden açılır, "Start sayacı" görünür
-          olan:     sekmeler Saha,Start,Sonuç · alt çubukta Kayıt 0 · Başlat yanında Kayıt 1 · Başlat 1 · satırda çekim 1 · ayrı bölüm 0 · satır "1. yarış 5 dk start 11:19 15:00 sürdü" · bilgi kartı 0
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 18/18
+  ✓ Yarış sayfası: 14/14
   ✓ Antrenman: 2/2
   ✓ Asılı bağlantı: 2/2
 
