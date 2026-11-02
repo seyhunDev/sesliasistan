@@ -616,3 +616,21 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-wnow .mid path { fill: #fff; }
 .lv-wnow .mid small { font-size: 0.78em; color: rgba(255, 255, 255, 0.65); }
 @media (max-width: 760px) { .lv-wnow { gap: 0.5em; } .lv-wnow > .a, .lv-wnow > .b { padding: 0.5em 0.7em; } .lv-wnow b { font-size: 2em; } .lv-wnow .mid { flex-basis: 4.5em; } .lv-wnow .mid span { font-size: 0.75em; letter-spacing: 0; } }
+/* Gün sonu (Seyhun 2026-11-02): solda durum, sağda Bugün · Sonuçlar · Genel · Yarın vitrini */
+.lv-endt { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(56px, 6.5vw, 140px); font-weight: 600; line-height: 0.95; text-transform: uppercase; }
+.lv-endt small { display: block; margin-top: 0.25em; font-size: 0.32em; font-weight: 600; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.85); }
+.lv-hbox.lv-next { border-left-color: #ff3d77; }
+.lv-prov { margin-top: 0.4em; font-size: 0.85em; color: #ffcf33; max-width: 26em; }
+.lv-endh .lv-sumraces { display: grid; grid-template-columns: repeat(auto-fill, minmax(14em, 1fr)); width: min(100%, 52em); }
+.lv-endh .lv-sumr { width: auto; }
+.lv-endh .lv-endall { width: min(100%, 32em); }
+.lv-endsum { display: flex; justify-content: center; width: min(100%, 52em); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-endsum > div { padding: 0.6em 1.2em 0.7em; border-radius: 10px; background: rgba(7, 11, 20, 0.62); border-left: 6px solid #4fb3ff; }
+.lv-endsum > div.b { border-left-color: #ff3d77; }
+.lv-endsum span { display: block; font-size: 0.82em; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.72); }
+.lv-endsum b { display: flex; align-items: baseline; gap: 0.25em; font-size: 2.4em; font-weight: 700; line-height: 1.05; }
+.lv-endsum b em { font-style: normal; font-size: 0.45em; font-weight: 600; color: rgba(255, 255, 255, 0.75); }
+.lv-endsum b i { font-style: normal; font-size: 0.45em; font-weight: 700; margin-left: 0.4em; padding: 0.1em 0.45em; border-radius: 4px; background: rgba(255, 255, 255, 0.12); }
+.lv-endsum small { display: block; font-family: var(--lv-font), system-ui, sans-serif; font-size: 0.85em; color: rgba(255, 255, 255, 0.85); }
+@media (max-width: 760px) { .lv-endt { font-size: 15vw; } .lv-endsum b { font-size: 1.7em; } }
+.lv-hbox.lv-next b { color: #fff; }

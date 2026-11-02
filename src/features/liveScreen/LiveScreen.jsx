@@ -887,59 +887,6 @@ function OverallPanel({ data, n = 5, onAll, cls = "" }) {
 }
 
 
-// Gün sonu (Seyhun 2026-11-02 "gün sonu tasarımı kötü, geliştir"): ortada büyük "4 yarış yapıldı", altında her yarışın kartı (grup, sınıf, ilk üç);
-// solda genel ilk 10, altta rüzgâr çizgisi, alt ortada yarınki ilk start'a geri sayım
-function SummaryHero({ data, today }) {
-  const plan = data.plan;
-  const day = plan.day || today;
-  const races = (data.starts || []).filter((x) => x.day === day && !x.void);
-  const who = whoMap(data);
-  return (
-    <div className="lv-sumhero">
-      <h1 className="lv-sumh">
-        <small>{[data.race.name, dayText(day)].filter(Boolean).join(" · ")}</small>
-        {races.length ? `Gün bitti · ${races.length} yarış` : "Gün bitti"}
-      </h1>
-      {races.length ? (
-        <div className="lv-sumraces">
-          {races.map((x) => {
-            const e = data.rounds?.[x.id];
-            const top = e ? standings(e).slice(0, 3) : [];
-            return (
-              <div key={x.id} className="lv-sumr">
-                <header>
-                  <b>
-                    <Dot g={e?.grp} />
-                    {[raceTitle(x), grpText(e?.grp)].filter(Boolean).join(" · ")}
-                  </b>
-                  <span>{x.fin ? raceTime(x) || "" : ""}</span>
-                </header>
-                {top.length ? (
-                  <ol className="lv-rl">
-                    {top.map((t, i) => {
-                      const w = whoOf(who, t.sail);
-                      return (
-                        <li key={t.sail}>
-                          <b>{i + 1}</b>
-                          <i>{t.sail}</i>
-                          <span>{shortName(w?.name)}</span>
-                          <em>{shortClub(w?.club)}</em>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                ) : (
-                  <div className="lv-pe">{x.fin ? "Bitti" : hmOf(x.at)}</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 // Ekranın altındaki yazı (Seyhun 2026-11-02 "olimpiyat yayınlarındaki gibi"): Yayın › Video › Ekranda yazı; altında sınıf · grup · yarış
 // ---- Sade yayın ekranı (Seyhun 2026-11-02 "her yerde bir şey yazıyor, daha sade, bilgi ekranı, alt tarafta") ----
 // Son rüzgâr ölçümü (parkur rüzgâr kayıtları + eski canlı rüzgâr); önceki yarışta startındaki
@@ -1221,6 +1168,157 @@ function WaitHero({ data, today, cs, prog, now }) {
 }
 const SLIDE_NAME = { course: "Parkur", wind: "Rüzgâr", prog: "Program" };
 
+// Gün sonu (Seyhun 2026-11-02 "gün bitince ne gösteriyoruz; bugün ne bekleniyordu ne oldu, sonuçlar, yarın beklentisi; geçici olduğu
+// muhakkak yazsın; genel sıralama tümüyle"): bekleme ekranı gibi solda sabit durum (Gün bitti, kaç yarış, yarınki ilk start'a sayaç),
+// sağda sırayla dönen vitrin: Bugün (rüzgâr beklenen ve gerçekleşen, program planlanan/yapılan), Sonuçlar (yarış yarış ilk üç),
+// Genel (ilk 10, Tümü, geçici uyarısı), Yarın (yarının rüzgâr tahmini, start'ta beklenen)
+const avg = (a) => (a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null);
+export function dayStats(data, day) {
+  const all = (data.starts || []).filter((x) => x.day === day);
+  const done = all.filter((x) => !x.void);
+  const voids = all.filter((x) => x.void).length;
+  const fc = data.forecast;
+  const rows = (fc?.rows || []).filter((r) => +r.hh >= 6 && +r.hh <= 20);
+  const man = windByHour(data, Date.parse(`${day}T12:00:00+03:00`));
+  const obsAt = Object.fromEntries((fc?.obs || []).filter((o) => o.wind != null).map((o) => [o.hh, o]));
+  const hrOf = (iso) => +new Date(Date.parse(iso) + 3 * 3600e3).toISOString().slice(11, 13);
+  const times = all.flatMap((x) => [x.at, x.fin].filter(Boolean)).filter((t) => !Number.isNaN(Date.parse(t)));
+  const h0 = times.length ? Math.min(...times.map(hrOf)) : null, h1 = times.length ? Math.max(...times.map(hrOf)) : null;
+  const span = rows.filter((r) => h0 != null && +r.hh >= h0 && +r.hh <= h1);
+  const got = (r) => man[r.hh]?.wind ?? obsAt[r.hh]?.wind ?? null;
+  const both = span.filter((r) => got(r) != null);
+  return { races: done.length, voids, h0, h1, exp: avg(both.map((r) => r.wind)), real: avg(both.map(got)) };
+}
+// yarınki ilk start'a kalan süre: "17 sa 06 dk" (saat zaten alttaki şeritte)
+const untilText = (nx, now) => {
+  const t = nx?.day && nx.at ? Date.parse(`${nx.day}T${nx.at}:00+03:00`) - now : NaN;
+  if (!(t > 0)) return "";
+  const m = Math.floor(t / 60e3);
+  return m >= 60 ? `${Math.floor(m / 60)} sa ${String(m % 60).padStart(2, "0")} dk` : `${m} dk`;
+};
+function EndHero({ data, today, now, onAll }) {
+  const plan = data.plan;
+  const day = plan.day || today;
+  const st = dayStats(data, day);
+  const who = whoMap(data);
+  const races = (data.starts || []).filter((x) => x.day === day && !x.void);
+  const top = overallTop(data, 10);
+  const nx = plan.next;
+  const fcn = data.forecastNext;
+  const nrows = (fcn?.rows || []).filter((r) => +r.hh >= 6 && +r.hh <= 20);
+  const trows = (data.forecast?.rows || []).filter((r) => +r.hh >= 6 && +r.hh <= 20);
+  const slides = [trows.length >= 2 ? "today" : "", races.length ? "res" : "", top ? "all" : "", nrows.length >= 2 ? "next" : ""].filter(Boolean);
+  const k = slides.length ? slides[Math.floor(now / SHOW_ON) % slides.length] : "";
+  const ew = nx ? expWind(fcn, nx.at) : null;
+  const diff = st.exp != null && st.real != null ? st.real - st.exp : null;
+  return (
+    <div className="lv-hold lv-endh">
+      <div className="lv-hst">
+        <div className="lv-kick">{[data.race.name, dayText(day)].filter(Boolean).join(" · ")}</div>
+        <div className="lv-endt">
+          Gün bitti
+          <small>{[st.races ? `${st.races} yarış yapıldı` : "Yarış yapılmadı", st.voids ? `${st.voids} abandone` : ""].filter(Boolean).join(" · ")}</small>
+        </div>
+        {nx?.at ? (
+          <div className="lv-hbox lv-next">
+            <div>
+              <b>{"Yarın ilk start'a"}</b>
+              <span>{untilText(nx, now) || dayText(nx.day)}</span>
+            </div>
+          </div>
+        ) : null}
+        <p className="lv-prov">Sonuçlar geçicidir. Hakem kontrolünden sonra kesinleşir.</p>
+      </div>
+      {slides.length ? (
+        <div className="lv-show">
+          <div className="lv-tabs">
+            {slides.map((x) => (
+              <i key={x} className={x === k ? "on" : ""}>
+                {END_NAME[x]}
+              </i>
+            ))}
+          </div>
+          <div key={k} className="lv-showb">
+            {k === "today" ? (
+              <>
+                <div className="lv-endsum">
+                  {st.exp != null ? (
+                    <div>
+                      <span>{`Yarış saatlerinde · ${String(st.h0).padStart(2, "0")}:00–${String(st.h1 + 1).padStart(2, "0")}:00`}</span>
+                      <b>
+                        {`Beklenen ${st.exp} · esen ${st.real}`}
+                        <em>knot</em>
+                      </b>
+                      <small>{diff ? `Rüzgâr tahminden ${Math.abs(diff)} knot ${diff > 0 ? "fazla" : "az"} esti` : "Tahmin tuttu"}</small>
+                    </div>
+                  ) : null}
+                </div>
+                <WindBars rows={trows} obsAt={Object.fromEntries((data.forecast?.obs || []).filter((o) => o.wind != null).map((o) => [o.hh, o]))} man={windByHour(data, now)} pts={windPoints(data, now)} nowH={24} at="" flat />
+                <WindLegend data={data} now={now} />
+              </>
+            ) : k === "res" ? (
+              <div className="lv-sumraces">
+                {races.map((x) => {
+                  const e = data.rounds?.[x.id];
+                  const t3 = e ? standings(e).slice(0, 3) : [];
+                  return (
+                    <div key={x.id} className="lv-sumr">
+                      <header>
+                        <b>
+                          <Dot g={e?.grp} />
+                          {[raceTitle(x), grpText(e?.grp)].filter(Boolean).join(" · ")}
+                        </b>
+                        <span>{x.fin ? raceTime(x) || "" : ""}</span>
+                      </header>
+                      {t3.length ? (
+                        <ol className="lv-rl">
+                          {t3.map((t, i) => {
+                            const w = whoOf(who, t.sail);
+                            return (
+                              <li key={t.sail}>
+                                <b>{i + 1}</b>
+                                <i>{t.sail}</i>
+                                <span>{shortName(w?.name)}</span>
+                                <em>{shortClub(w?.club)}</em>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      ) : (
+                        <div className="lv-pe">Sonuç girilmedi</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : k === "all" ? (
+              <OverallPanel data={data} n={10} cls="lv-endall" onAll={onAll} />
+            ) : (
+              <>
+                {ew ? (
+                  <div className="lv-endsum">
+                    <div className="b">
+                      <span>{`Yarın · start ${nx.at}'te beklenen`}</span>
+                      <b>
+                        {ew.kn}
+                        <em>knot</em>
+                        {ew.dir != null ? <i>{dirShort(ew.dir)}</i> : null}
+                      </b>
+                      <small>{ew.gust && ew.gust > ew.kn ? `Sağanak ${ew.gust} knot` : "Tahmin"}</small>
+                    </div>
+                  </div>
+                ) : null}
+                <WindBars rows={nrows} obsAt={{}} nowH={0} at={nx?.at || ""} />
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+const END_NAME = { today: "Bugün", res: "Sonuçlar", all: "Genel", next: "Yarın" };
+
 // Ortada büyük sayaç: yalnız geri sayarken (yarış öncesi ilk start'a, start dizisi); start olunca küçülüp alttaki şeride iner
 function CenterClock({ show, ...p }) {
   const st = useFade(show, 700);
@@ -1362,13 +1460,37 @@ function WindBody({ data, sel, isCur, now }) {
     </>
   );
 }
+function WindLegend({ data, now }) {
+  const fc = data.forecast;
+  const st = (fc?.obs || []).some((o) => o.wind != null);
+  const mn = Object.keys(windByHour(data, now)).length > 0;
+  return (
+    <div className="lv-wleg">
+      {mn ? (
+        <span>
+          <i className="m" />
+          Manuel girildi
+        </span>
+      ) : null}
+      {st ? (
+        <span>
+          <i className="o" />
+          {`Gerçekleşen${fc?.station ? ` (${fc.station} istasyonu)` : ""}`}
+        </span>
+      ) : null}
+      <span>
+        <i className="l" />O saatte beklenen
+      </span>
+    </div>
+  );
+}
 const MAN = "#ff9a4d", OBSC = "#4fb3ff";
-function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at }) {
+function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
   if (rows.length < 2) return null;
   const W = 1000, H = 400, L = 50, R = 12, T = 64, B = 64;
   const i0 = +rows[0].hh;
   // odak: start saati (yoksa şimdi); öncesi dar ve soluk, odak ve sonrası geniş
-  const fh = at ? +at.slice(0, 2) : Math.floor(nowH);
+  const fh = flat ? -1 : at ? +at.slice(0, 2) : Math.floor(nowH);
   const wt = rows.map((r) => (+r.hh < fh ? 0.55 : 1.35));
   const unit = (W - L - R) / wt.reduce((a, b) => a + b, 0);
   const xs = wt.reduce((acc, w, i) => [...acc, acc[i] + w * unit], [L]);
@@ -1603,12 +1725,7 @@ export function LiveScreen({ id, y = "" }) {
         ) : null}
         {phase === "race" || (phase === "wait" && hasVideo) ? <ProgramChips items={prog} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}
-        {phase === "summary" ? (
-          <div className="lv-end">
-            <SummaryHero data={data} today={today} />
-            <OverallPanel data={data} n={10} cls="lv-endall" onAll={() => setFull("all")} />
-          </div>
-        ) : null}
+        {phase === "summary" ? <EndHero data={data} today={today} now={nowMs} onAll={() => setFull("all")} /> : null}
         <CenterClock show={counting && !hero && !hasVideo} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
         <CourseFloat data={data} sel={sel} isCur={isCur} show={cOn} phase={phase} onClose={() => setCourseOpen(false)} />
         <WindFloat data={data} sel={sel} isCur={isCur} show={slide === "wind"} now={nowMs} />
