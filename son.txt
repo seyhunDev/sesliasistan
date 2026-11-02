@@ -1,8 +1,8 @@
-Commit: cbb81ea · Canlı ekran: geri sayım alt şeritte (#1020)
-Zaman: 2026-11-02-2300 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41513013378
+Commit: ecb30b7 · Canlı yayın uçtan uca testi (#1021)
+Zaman: 2026-11-02-2318 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41516015703
 
-TAM TEST · 02.11.2026 22:48:00
+TAM TEST · 02.11.2026 23:06:10
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1436/1436 geçti · 0 kalan · 664 sn
+SONUÇ: 1436/1436 geçti · 0 kalan · 659 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
