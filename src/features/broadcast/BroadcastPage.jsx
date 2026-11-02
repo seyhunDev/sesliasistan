@@ -10,9 +10,10 @@ import { Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseObs, loadCourse, loadLive, loadRoundsOf, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
-import { Countdown, ownHere, useTimerRun } from "@/features/training/Countdown";
+import { Countdown, ownHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
+import { ResetSheet } from "@/features/raceMedia/ResetSheet";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { VoidSheet, useRaceFlow } from "@/features/raceMedia/useRaceFlow";
 import { AddSheet } from "@/features/raceMedia/CourseTab";
@@ -20,7 +21,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
+import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
 import { CARD_IDS, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
@@ -74,6 +75,7 @@ export function BroadcastPage({ orgId, id }) {
   const [grpOpen, setGrpOpen] = useState(false); // Gruplar: seçim açık
   const [openN, setOpenN] = useState(0); // açılan biten yarış
   const [openDay, setOpenDay] = useState(""); // Program: açık gün
+  const [reset, setReset] = useState(false); // Yayını sıfırla penceresi
   const [delId, setDelId] = useState(""); // Program: silinmesi sorulan start
   const [draft, setDraft] = useState({ cls: "Optimist", grps: [], prep: "P" }); // oluşturulacak yarış (plan yüklenince ondan)
   const [ap, setAp] = useState(null); // tehir penceresi { min, why } (Seyhun 2026-11-01 "bir sebep belirterek tehir, bir saatlik")
@@ -842,6 +844,32 @@ export function BroadcastPage({ orgId, id }) {
       </div>
 
       {/* ⋯ menüsü: ekran ve link, sonuç PDF'i (ayrı sayfa), kayıt listesi, gün durumu; Günü bitir bir daha sorar (yanlış dokunuş) */}
+      {/* Yayını sıfırla (Seyhun 2026-11-02 "deneme yaptıkça sıfırlayabilmeliyim"): yarışlar, program, gruplar, dönüşler, sayaç, ekran; fotoğraf/video isteğe bağlı */}
+      <ResetSheet
+        open={reset}
+        onClose={() => setReset(false)}
+        live={{ ...live, plan }}
+        onReset={async (media) => {
+          const patch = resetPatch(media, Date.now());
+          try {
+            await resetLive(orgId, id, patch, live.media);
+          } catch {
+            return toast("Sıfırlanamadı. İnterneti kontrol et.");
+          }
+          const t = readTimer();
+          if (t.mode === "start" && (t.end != null || t.left != null)) writeTimer({ ...pickTimer({}), zero: t.zero });
+          setLive((l) => cleanLive({ ...l, ...patch }));
+          setPlan(cleanPlan({}));
+          setDraft({ cls: "Optimist", grps: [], prep: "P" });
+          setGroups({});
+          setPickId("");
+          setEditI(-1);
+          setCap("");
+          setReset(false);
+          await reload().catch(() => {});
+          toast("Yayın sıfırlandı");
+        }}
+      />
       <Sheet open={menu} onClose={() => (setMenu(false), setAskEnd(false))} title="Yayın">
         <div className="divide-y divide-line">
           {[
@@ -849,6 +877,7 @@ export function BroadcastPage({ orgId, id }) {
             ["Linki kopyala", () => (setMenu(false), copy())],
             // Örnek yarış (Seyhun 2026-11-02): tasarımı görmek için Sarı grup örneği, veriye dokunmaz
             ["Örnek yarışı aç", () => (setMenu(false), window.open("/canli/ornek", "_blank"))],
+            ["Yayını sıfırla", () => (setMenu(false), setReset(true))],
           ].map(([t, fn]) => (
             <button key={t} type="button" onClick={fn} className={`${row} font-semibold`}>
               {t}
