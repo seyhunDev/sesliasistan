@@ -393,6 +393,9 @@ export async function saveRace(orgId, uid, r) {
 // Yalnız takip edilen sporcular (Sonuçlar ☆); diğer alanlara dokunulmaz
 export const saveRaceFollow = (orgId, id, follow) => (stale(), updateDoc(doc(col(orgId), id), { follow: cleanFollow(follow), updatedAt: serverTimestamp() }));
 
+// Yalnız yarışın tarihleri (Yayın › Program › Programı ekle, Seyhun 2026-11-02); diğer alanlara dokunulmaz
+export const saveRaceDates = (orgId, id, { startDate, endDate }) => (stale(), updateDoc(doc(col(orgId), id), { startDate, endDate, updatedAt: serverTimestamp() }));
+
 // Yalnız yarışın yeri (multimedya Hava sekmesinden); diğer alanlara dokunulmaz
 export const saveRaceSpot = (orgId, id, spot) => (stale(), updateDoc(doc(col(orgId), id), { spot: cleanSpot(spot), updatedAt: serverTimestamp() }));
 
