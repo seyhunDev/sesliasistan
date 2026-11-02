@@ -92,7 +92,7 @@ export async function screenSay(orgId, raceId, s) {
     await showOnScreen(orgId, raceId, { kind: "live" });
     return { text: "Ekranda canlı yayın." };
   }
-  const vids = L.media.filter((m) => m.kind === "video");
+  const vids = L.media.filter((m) => m.kind === "video" && m.url); // yalnız telefonda duran (ph) ekrana gidemez
   let pick = null;
   if (c.n) {
     const of = vids.filter((m) => raceNo(m, L.starts) === c.n);

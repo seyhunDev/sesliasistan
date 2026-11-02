@@ -76,6 +76,8 @@ export async function run(server, log = () => {}) {
         { path: "orgs/{owner}/races/r1", data: { name: "Ege Kupası", city: "İzmir", district: "Dikili", startDate: TODAY, endDate: plus(2), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
         // sesle yazılmış rüzgâr (Saha ölçümlerinde görünmeli)
         // ve bugünün bir yarışı ile o yarışta çekilmiş bir fotoğraf (Start'ta yarışın satırında görünmeli)
+        // Antrenmanın Medya'sında yalnız telefonda duran büyük video (Seyhun 2026-11-02): adresi yok, ph
+        { path: "orgs/{owner}/raceLive/ant-t1", data: { media: [{ id: "ph1", kind: "video", url: "", ph: true, dur: 95, at: new Date(now.getTime() - 20 * 60e3).toISOString() }] } },
         { path: "orgs/{owner}/raceLive/r1", data: { wind: [{ at: new Date(now.getTime() - 30 * 60e3).toISOString(), dir: 300, kn: 11, src: "elle" }], starts: [{ id: "s1", day: TODAY, n: 1, cd: new Date(now.getTime() - 65 * 60e3).toISOString(), at: new Date(now.getTime() - 60 * 60e3).toISOString(), fin: new Date(now.getTime() - 45 * 60e3).toISOString() }, { id: "s2", day: TODAY, n: 2, cd: new Date(now.getTime() - 7 * 60e3).toISOString(), at: new Date(now.getTime() - 2 * 60e3).toISOString() }], media: [{ id: "m1", kind: "photo", url: "https://example.com/1.jpg", at: new Date(now.getTime() - 40 * 60e3).toISOString() }] } },
         // bugünün antrenmanı: iki biten yarış, üçüncüsü 1 dk önce start oldu (yeni akış: Bitiren kim?), günlük yazılmış
         { path: "orgs/{owner}/plans/t1", data: { ownerId: "{owner}", createdByUid: "{owner}", assignees: [], people: ["{owner}"], createdAt: now.toISOString(), createdBy: { name: "Test Sahip" }, src: "manual", cat: "Antrenman", title: "Optimist antrenmanı", date: TODAY, endDate: "", time: "00:05", allDay: false, durationMin: 120, tz: "Europe/Istanbul", timeSource: "user", place: "Yat limanı", status: "planned", races: [{ id: "y1", name: "Yarış 1", startAt: now.getTime() - 90 * 60e3, fin: 1000, cd: 300, finishes: [{ id: "a1", name: "Deniz Yılmaz" }] }, { id: "y2", name: "Yarış 2", startAt: now.getTime() - 40 * 60e3, fin: 845, cd: 240, marks: { Start: 0, "Şamandıra 1": 252 }, finishes: [] }, { id: "y3", name: "Yarış 3", startAt: now.getTime() - 60e3, cd: 300, finishes: [] }], log: { wind: "12", dir: "Poyraz", topics: ["Start", "Şamandıra"], min: 120, rating: 3 } } },
@@ -326,6 +328,17 @@ export async function run(server, log = () => {}) {
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-antrenman-bitti.png") }).catch(() => {});
       const ok = dock === "Antrenman,Medya" && vid === 1 && ck === 0 && media === 0 && tiles === 1 && done && gone === 0 && fix === 1 && go === 1;
       return [ok, `alt çubuk ${dock} · Video ${vid} · lacivert ${ck} · çekim ${media} · kare ${tiles} · dokununca ${done ? "sonuç açıldı" : "açılmadı"} · kareler ${gone ? "duruyor" : "kalktı"} · Düzelt ${fix} · Başlat ${go}`];
+    });
+    // Büyük video yalnız telefonda (Seyhun 2026-11-02): Medya'da "Telefonda" yazar; başka cihazda açınca "yalnız çekildiği telefonda", Paylaş/İndir yok
+    await okPage("Antrenman", "telefondaki video", "/training/day?id=t1&tab=media", "Telefonda", async () => {
+      const tile = page.locator("main button", { hasText: "Telefonda" }).first();
+      const seen = await tile.waitFor({ timeout: 30000 }).then(() => true, () => false);
+      if (seen) await tile.click();
+      const msg = await page.getByText("Bu video yalnız çekildiği telefonda").waitFor({ timeout: 10000 }).then(() => true, () => false);
+      const acts = await page.getByRole("button", { name: /^(Paylaş|İndir|Buluta yükle)$/ }).count();
+      if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-telefonda.png") }).catch(() => {});
+      await page.keyboard.press("Escape");
+      return [seen && msg && acts === 0, `kare ${seen ? "Telefonda" : "yok"} · açınca ${msg ? "telefonda yazısı" : "yazı yok"} · Paylaş/İndir/Yükle ${acts}`];
     });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
     // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok

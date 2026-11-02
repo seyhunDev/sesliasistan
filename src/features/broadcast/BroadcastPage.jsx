@@ -291,7 +291,7 @@ export function BroadcastPage({ orgId, id }) {
     setRtId(course.sel);
     setRt(routeText(selCard(course).route));
   }
-  const vids = [...live.media].filter((m) => m.kind === "video").reverse().slice(0, 6);
+  const vids = [...live.media].filter((m) => m.kind === "video" && m.url).reverse().slice(0, 6); // yalnız telefonda duran (ph) ekrana gidemez
   const ytOk = !!ytEmbed(yt);
   const ytBad = !!yt.trim() && !ytOk;
   const onScreen = L?.screen.kind ? L.screen : null;
