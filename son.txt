@@ -1,8 +1,8 @@
-Commit: 80cc7c4 · Merge pull request #955 from seyhunDev/claude/project-thread-lo85ym
-Zaman: 2026-11-02-0812 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41391280890
+Commit: 757ec0c · Yayın sekmeleri, sade canlı ekran, parkur kartları ve animasyonlu parkur, örnek yarış (#956)
+Zaman: 2026-11-02-0854 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41395468889
 
-TAM TEST · 02.11.2026 07:58:05
+TAM TEST · 02.11.2026 08:41:40
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -29,15 +29,11 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1425/1428 geçti · 3 kalan · 787 sn
+SONUÇ: 1426/1428 geçti · 2 kalan · 715 sn
 ======================================================================
 
-1. BİRİM TESTLERİ: 0/1
-  ✗ Birim testleri: 0/1
-      ✗ “4256 test”
-          beklenen: hepsi geçer
-          olan:     4255/4256 geçti
-      ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
+1. BİRİM TESTLERİ: 1/1
+  ✓ Birim testleri: 1/1
 
 2. ANLAMA: temiz cümleler: 121/121
   ✓ Temiz cümle: Plan / takvim: 8/8
