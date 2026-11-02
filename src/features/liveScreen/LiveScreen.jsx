@@ -7,7 +7,7 @@ import { apText, trHm, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, liveP
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, SHOW_ON, shortClub, shortName, showSlide, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
+import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, SHOW_ON, shortClub, shortName, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import { useDemo } from "./demo";
 import { dayProgram, expText, expWind } from "./program";
@@ -776,7 +776,7 @@ function Races({ id, starts, cur, sel, fleets, rounds, entries, onClose }) {
 // sağ üst parkur, sol alt rüzgâr, alt orta sayaç, sağ alt sıradaki start + genel sıralama. Üç evre: yarış öncesi, yarış, gün sonu.
 function Backdrop({ data, isCur }) {
   const scr = isCur ? data.screen || {} : {};
-  const yt = scr.kind === "live" ? ytSrc(data.stream?.url) : "";
+  const yt = ytSrc(screenUrl(scr, data.stream)); // canlı yayın ya da drone
   const rec = scr.kind === "rec" ? (data.media || []).find((m) => m.id === scr.mid) : null;
   const on = !!(yt || rec);
   const st = useFade(on, 900);
@@ -2067,7 +2067,7 @@ export function LiveScreen({ id, y = "" }) {
   // Evre (lib/raceLive.js livePhase): bekleme (start saatine geri sayım) · yarış (sayaç ya da bugünkü start) · gün özeti
   const today = trDay(nowMs);
   const phase = isCur ? livePhase({ plan: data.plan, starts, timer: data.timer, today, now: nowMs }) : "race";
-  const hasVideo = isCur && (data.screen?.kind === "live" || data.screen?.kind === "rec");
+  const hasVideo = isCur && ["live", "drone", "rec"].includes(data.screen?.kind);
   const csel = phase === "race" ? sel : null;
   const ctimer = phase === "race" ? data.timer : null;
   const cs = clockState({ sel: csel, isCur, timer: ctimer, now: nowMs, entry, data, today });

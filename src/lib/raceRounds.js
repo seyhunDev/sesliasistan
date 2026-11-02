@@ -2,7 +2,7 @@
 // resmî sonuçla (PDF) karşılaştırma. Saf işlevler (test: scripts/asistan-test/yerel/yaris.mjs).
 // Kayıt orgs/{org}/raceLive/{yarış} belgesinde:
 //   rounds: { [startId]: { route: ["1","4","1","2","3","F"], legs: [["1302","1287"], …] } } (legs[k]: route[k] noktasını dönüş sırası)
-//   screen: { kind: "live" | "rec" | "", mid: medya id, loop, at }  stream: { url } (YouTube canlı yayın bağlantısı)
+//   screen: { kind: "live" | "drone" | "rec" | "", mid: medya id, loop, at }  stream: { url, drone } (YouTube canlı yayın ve drone yayını bağlantısı)
 // Sıralama: sporcunun en son döndüğü nokta, sonra o noktadaki sırası. Aynı şamandıra parkurda birden çok geçebilir (1 · 4 · 1 · 2 · 3 · F):
 // okunan yelken numarası, o teknenin son döndüğü noktadan sonraki ilk eşleşen noktaya yazılır.
 
@@ -325,7 +325,7 @@ export function whoOf(map, sail) {
 
 // ---- Ekranda oynayan ----
 export function cleanScreen(s) {
-  const kind = ["live", "rec"].includes(s?.kind) ? s.kind : "";
+  const kind = ["live", "drone", "rec"].includes(s?.kind) ? s.kind : "";
   // pause: yayına ara verildi (Seyhun 2026-11-02): video ekranda kalır, önünde "Yayına ara verildi" yazısı
   // caption: ekranın altındaki yazı (Seyhun 2026-11-02 "videonun ne olduğunu yazabileceğimiz bir alan, altta olimpiyat yayını gibi")
   return { kind, mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, caption: String(s?.caption || "").trim().slice(0, 80), at: typeof s?.at === "string" ? s.at.slice(0, 30) : "" };
@@ -385,7 +385,13 @@ export const ytSrc = (url, q = "autoplay=1&mute=1&playsinline=1&rel=0") => {
   const t = ytId(url) ? ytStart(url) : null;
   return e ? `https://www.youtube-nocookie.com/embed/${e}${e.includes("?") ? "&" : "?"}${q}${t != null ? `&start=${t}` : ""}` : "";
 };
-export const cleanStream = (s) => (ytEmbed(s?.url) ? { url: String(s.url).trim().slice(0, 200) } : { url: "" });
+// drone: DJI dronun yayını (Seyhun 2026-11-02): DJI Fly RTMP ile YouTube'a gönderir, burada o yayının (ya da drone kanalının) bağlantısı
+const ytUrl = (u) => (ytEmbed(u) ? String(u).trim().slice(0, 200) : "");
+export const cleanStream = (s) => ({ url: ytUrl(s?.url), drone: ytUrl(s?.drone) });
+// Ekrandaki canlı görüntünün bağlantısı: canlı yayın ya da drone
+export const screenUrl = (scr, stream) => (scr?.kind === "live" ? stream?.url || "" : scr?.kind === "drone" ? stream?.drone || "" : "");
+// DJI Fly › Canlı yayın › RTMP adresinin başı (sonuna YouTube yayın anahtarı eklenir; anahtar burada hiç yazılmaz, saklanmaz)
+export const YT_RTMP = "rtmp://a.rtmp.youtube.com/live2/";
 
 // Ekrandaki "1. yarış startı" gibi başlık: çekimin yarışı (rname) ve evresi
 export function recTitle(m, rname) {
@@ -419,6 +425,7 @@ export function screenCommand(raw) {
   if (/yayın[ıa]?\s*(sürdür|devam)|ekran[ıa]?\s*(sürdür|devam)|duraklatmayı\s*kaldır/.test(s)) return { pause: false };
   if (!/(canlı\s*)?ekran(da|a)\b/.test(s) || !/göster|oynat|\baç\b|ver\b|yayınla/.test(s)) return null;
   const loop = /döngü|tekrar\s*tekrar|sürekli|loop|başa\s*sar/.test(s);
+  if (/\bdron|havadan|hava\s*görüntü/.test(s)) return { kind: "drone", loop: false };
   if (/canlı\s*yayın|yayını\b|canlı\s*görüntü/.test(s)) return { kind: "live", loop: false };
   let n = 0;
   const d = s.match(/(\d{1,2})\s*\.?\s*yarış/);
