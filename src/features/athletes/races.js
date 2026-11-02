@@ -396,7 +396,13 @@ export const saveRaceFollow = (orgId, id, follow) => (stale(), updateDoc(doc(col
 // Yalnız yarışın yeri (multimedya Hava sekmesinden); diğer alanlara dokunulmaz
 export const saveRaceSpot = (orgId, id, spot) => (stale(), updateDoc(doc(col(orgId), id), { spot: cleanSpot(spot), updatedAt: serverTimestamp() }));
 
-export const deleteRace = (orgId, id) => (stale(), deleteDoc(doc(col(orgId), id)));
+// Silinince ana sayfanın yarış özeti (raceHome.js) olayla hemen tazelenir; yarış şeridi ve kartı silinen yarışı göstermez
+export const deleteRace = (orgId, id) => {
+  stale();
+  return deleteDoc(doc(col(orgId), id)).then(() => {
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("sa-race-gone", { detail: { id } }));
+  });
+};
 
 // Gün ekle: "2026-10-07", -1 → "2026-10-06"
 export function shiftDay(s, n) {
