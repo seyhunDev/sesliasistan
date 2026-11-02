@@ -9,7 +9,8 @@ import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, SHOW_ON, shortClub, shortName, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
-import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
+import { groupColor, groupMap, onlyCat, provisional } from "@/lib/roundScore";
+import { BoatMap } from "@/features/tracking/BoatMap";
 import { useDemo } from "./demo";
 import { useVisit } from "./useVisit";
 import { dayProgram, expText, expWind } from "./program";
@@ -2345,6 +2346,8 @@ export function LiveScreen({ id, y = "" }) {
           {phase === "race" ? <RankPanel key="race" data={data} sel={sel} isCur={isCur} id={id} max={hasVideo ? 5 : RANK_MAX} onAll={() => setFull("race")} /> : null}
         </div>
         {ovOn ? <OverallSide data={data} n={hasVideo ? 6 : 10} /> : null}
+        {/* Tekne takibi (Seyhun 2026-11-02): yarışta teknelerin konumu küçük haritada (Yayın › Dönüşler › Yayında harita) */}
+        {phase === "race" && isCur && !side ? <BoatMap boats={data.boats || []} course={data.course} groupOf={groupMap(data.groups?.[today])} /> : null}
         {(phase === "race" || (phase === "wait" && hasVideo)) && !side ? <ProgramChips items={prog} /> : null}
         {side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}

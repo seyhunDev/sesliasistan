@@ -10,13 +10,14 @@ import { cleanCamBy, cleanOnAir, onAirStart } from "@/lib/raceCams";
 import { cleanGroups } from "@/lib/roundScore";
 import { nearestStation, obsRows, parseSynop, utcRange } from "@/lib/windObs";
 import { racePlace } from "@/features/athletes/raceWeather";
+import { GONE_MS, cleanBoats } from "@/lib/boatTrack";
 
 export const runtime = "nodejs";
 
 // Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01). Girişsiz okuma burada, yönetici anahtarıyla:
 // Firestore kuralları değişmedi, kulübün geri kalanı açılmaz. Yalnız ana hesabın "Canlı ekran"ı açtığı yarış okunur
 // (canliEkran/{yarış} = { org }). Sayfa 4 sn'de bir sorar; aynı cevap 2 sn bellekte ve CDN'de tutulur (okuma az kalsın).
-// GET ?id=<yarış>&y=<start>  → { race, starts, timer, rounds, screen, stream, media, wind, course, fleets, entries, groups, plan, forecast, forecastNext, now }
+// GET ?id=<yarış>&y=<start>  → { race, starts, timer, rounds, screen, stream, media, wind, course, fleets, boats, entries, groups, plan, forecast, forecastNext, now }
 // POST { race } (ana hesap) → yarışı canlı ekrana açar, { id }
 // GET (id yok) → { list: [{ id, name, startDate, endDate, place }] } açık yarışlar (bitmemiş), genel sayfa /canli için
 // DELETE { race } (ana hesap) → işareti kaldırır (yarış silinince, raceWipe.js); link artık "yarış kaldırıldı" der
@@ -68,6 +69,25 @@ async function entriesOf(org, id) {
   const v = { entries: cleanEntries(d.rows).map((r) => ({ sail: r.sail, name: r.name, club: r.club, cls: r.cls, born: r.born || "", sex: r.sex || "", cat: r.cat || "" })), groups: cleanGroups(d.groups) };
   entryMemo.set(k, { t: Date.now(), v });
   return v;
+}
+
+// Tekne konumları (lib/boatTrack.js, Seyhun 2026-11-02 tekne takibi): takip açık ve "Yayında harita" açıksa son 5 dk'da konum gönderen
+// tekneler. Takip kaydı 30 sn, konumlar yanıtla birlikte (2 sn) bellekte; anahtar ve doğruluk dışarı verilmez.
+const trackMemo = new Map();
+async function boatsOf(org, id) {
+  const hit = trackMemo.get(id);
+  let head = hit && Date.now() - hit.t < 30e3 ? hit.head : null;
+  const ref = adminDb().collection("takip").doc(id);
+  if (!head) {
+    const s = await ref.get();
+    const d = s.exists ? s.data() : {};
+    head = { on: d.on === true && d.org === org, map: d.map !== false };
+    trackMemo.set(id, { t: Date.now(), head });
+    if (trackMemo.size > 200) trackMemo.delete(trackMemo.keys().next().value);
+  }
+  if (!head.on || !head.map) return [];
+  const snap = await ref.collection("tekne").where("t", ">", Date.now() - GONE_MS).limit(300).get();
+  return cleanBoats(snap.docs.map((d) => ({ sail: d.id, ...d.data() }))).map((b) => ({ sail: b.sail, lat: b.lat, lon: b.lon, hdg: b.hdg, spd: b.spd, t: b.t, old: b.old }));
 }
 
 // Günün rüzgâr tahmini (bekleme ekranı; Seyhun 2026-11-01 "gün boyu grafiğimiz"): yarış yeri (spot, yoksa kayıtlı tahmin yeri) için
@@ -174,7 +194,7 @@ async function build(id, y) {
   const vplan = rollPlan(live.plan, see);
   if (vplan.status === "none" && !vplan.next) vplan.next = nextRaceDay(vplan, see, S(r.startDate, 10), S(r.endDate, 10));
   const nd = (vplan.status === "done" || vplan.status === "none") && vplan.next?.day && vplan.next.day !== day ? vplan.next.day : "";
-  const [cSnap, forecast, forecastNext, ahead] = await Promise.all([base.collection("raceLive").doc(id).collection("course").doc(day).get(), forecastOf(org, id, r, day), nd ? forecastOf(org, id, r, nd) : null, aheadOf(org, id, r, live.plan)]);
+  const [cSnap, forecast, forecastNext, ahead, boats] = await Promise.all([base.collection("raceLive").doc(id).collection("course").doc(day).get(), forecastOf(org, id, r, day), nd ? forecastOf(org, id, r, nd) : null, aheadOf(org, id, r, live.plan), boatsOf(org, id).catch(() => [])]);
   const media = live.media
     .filter((m) => m.url)
     .slice(-120)
@@ -195,6 +215,7 @@ async function build(id, y) {
     day,
     course: cleanCourse(withRaceCards(cSnap.exists ? cSnap.data() : {}, d.cards)),
     fleets,
+    boats,
     entries: en.entries,
     groups: en.groups,
     plan: vplan,
