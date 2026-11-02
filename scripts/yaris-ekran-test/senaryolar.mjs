@@ -172,18 +172,18 @@ export async function run(server, log = () => {}) {
     await page.getByText("Bu hesabın sporcuları görme izni yok").waitFor({ state: "detached", timeout: 30000 }).catch(() => {});
 
     log("    Yarış günü (sporcu seçili)…");
-    // yarış günü yarış sayfası multimedyaya geçer; alt çubukta Yarış yok (Saha · Start · Sonuç), yarış sürerken Start açılır
-    await okPage("Yarış sayfası", "yarış günü, sporcu seçili", "/athletes/races/r1", "Start sayacı", async () => {
-      const went = await page.waitForURL((u) => u.pathname === "/athletes/races/r1/media", { timeout: 60000 }).then(() => true, () => false);
-      const bar = page.locator("nav[aria-label='Multimedya sekmeleri']");
-      const tabs = (await bar.locator("button").allInnerTexts()).map((x) => x.trim()).filter(Boolean).join(",");
-      const on = (await bar.locator("button[aria-pressed=true]").allInnerTexts()).join().trim();
-      const mb = await bar.getByRole("button", { name: "Sonuç" }).first().boundingBox();
-      const fit = !!mb && mb.y + mb.height <= (page.viewportSize()?.height || 844);
+    // Multimedya sayfası kalktı (Seyhun 2026-11-01, tek Yayın): yarış günü sayfa yerinde kalır, "Yayına git" Yayın sayfasına götürür,
+    // yarışın alt çubuğu yok, uygulamanın çubuğu görünür
+    await okPage("Yarış sayfası", "yarış günü, sporcu seçili", "/athletes/races/r1", "Yayına git", async () => {
+      await page.waitForTimeout(1500);
+      const stay = new URL(page.url()).pathname === "/athletes/races/r1";
+      const go = await page.getByRole("link", { name: "Yayına git" }).first().getAttribute("href").catch(() => "");
+      const dock = await page.locator("nav[aria-label='Multimedya sekmeleri']").count();
+      const orb = await page.locator("[data-orb]:visible").count();
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO }).catch(() => {});
       await openSec("prep");
       const row = await page.getByText("Yapılacaklar").first().isVisible().catch(() => false);
-      return [went && tabs === "Saha,Start,Sonuç,Canlı" && on === "Start" && fit && row, `multimedyaya ${went ? "geçti" : "geçmedi"} · sekmeler ${tabs} · açık ${on} · alt çubuk ${fit ? "ekranda" : "ekran dışında"} · hazırlık ${row ? "açıldı" : "açılmadı"}`];
+      return [stay && go === "/athletes/races/r1/yayin" && dock === 0 && orb > 0 && row, `sayfa ${stay ? "yerinde" : "değişti"} · Yayına git ${go || "yok"} · yarış çubuğu ${dock ? "var" : "yok"} · uygulama çubuğu ${orb ? "var" : "yok"} · hazırlık ${row ? "açıldı" : "açılmadı"}`];
     });
     await okPage("Yarış sayfası", "Sporcu sekmesinde sporcu", "/athletes/races/r1?sec=people", "Sporcu", async () => {
       await openSec("people");
@@ -271,7 +271,7 @@ export async function run(server, log = () => {}) {
       const rowTxt = (await row.innerText().catch(() => "")).replace(/\s+/g, " ");
       const info = await page.getByText("Videolar nerede saklanır?").count();
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-start.png") }).catch(() => {});
-      const ok = tabs === "Saha,Start,Sonuç,Canlı" && dockRec === 0 && rec === 1 && go === 1 && thumb === 1 && loose === 0 && /5 dk start/.test(rowTxt) && /15:00 sürdü/.test(rowTxt) && info === 0;
+      const ok = tabs === "Saha,Start,Sonuç" && dockRec === 0 && rec === 1 && go === 1 && thumb === 1 && loose === 0 && /5 dk start/.test(rowTxt) && /15:00 sürdü/.test(rowTxt) && info === 0;
       return [ok, `sekmeler ${tabs} · alt çubukta Kayıt ${dockRec} · Başlat yanında Kayıt ${rec} · Başlat ${go} · satırda çekim ${thumb} · ayrı bölüm ${loose} · satır "${rowTxt.slice(0, 80)}" · bilgi kartı ${info}`];
     });
     // Yarış günü Bitiren kim? (Seyhun 2026-11-01): start olmuş yarışta bizim sporcuların kareleri; dokununca sıra start satırına yazılır,
