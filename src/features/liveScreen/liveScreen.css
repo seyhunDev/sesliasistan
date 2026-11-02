@@ -416,6 +416,22 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-end .lv-sumr { width: auto; }
 .lv-endall { align-self: center; }
 
+/* Tek şerit (Seyhun 2026-11-02 "tek bir çizgi olmalı"): ilk hücre yarışın adı büyük, altında küçük satır; sıradaki yarış en sağda küçük */
+.lv-cell.ttl { min-width: 0; flex: 0 1 auto; padding-right: 1.8em; }
+.lv-cell.ttl b { font-size: 2em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.01em; line-height: 1.05; }
+.lv-cell.ttl b { gap: 0.15em; }
+.lv-cell.ttl b .lv-dot { width: 0.42em; height: 0.42em; }
+.lv-void { display: flex; align-items: center; gap: 0.6em; font-size: 1.25em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #ffd54a; }
+.lv-void .lv-flag { font-size: 1.1em; }
+.lv-cell.next { margin-left: auto; border-left: 0; align-items: flex-end; text-align: right; opacity: 0.8; }
+.lv-cell.next b { font-size: 1.05em; font-weight: 600; text-transform: uppercase; }
+.lv-title { flex-direction: row; align-items: flex-end; justify-content: space-between; }
+.lv-title .lv-titleb { margin-left: auto; }
+/* Genel sıralama yarışta sağda: alttan yukarı sabit yükseklikte, kaydırılır */
+.lv-right { grid-area: right; align-self: end; justify-self: end; width: min(100%, 24em); min-height: 0; max-height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+.lv-rside .lv-pb { max-height: 46vh; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.lv-bc.video .lv-rside .lv-pb { max-height: 30vh; }
+
 /* Tablet (761–1099): paneller biraz dar, orta boşluk küçük */
 @media (max-width: 1099px) and (min-width: 761px) {
   .lv-ov { grid-template-columns: minmax(14em, 19em) minmax(0, 1fr) minmax(0, 18em); }
@@ -454,6 +470,9 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-left { order: 4; overflow: visible; max-height: none; }
   .lv-scene { position: relative; z-index: auto; inset: auto; order: 5; width: 100%; aspect-ratio: 16 / 10; }
   .lv-foot.off { display: none; }
+  .lv-right { order: 5; width: 100%; }
+  .lv-cell.ttl { flex: 1 1 100%; }
+  .lv-cell.next { margin-left: 0; align-items: flex-start; text-align: left; }
   .lv-wait { position: static; order: 1; padding: 12vh 0 2em; }
   .lv-big { font-size: 26vw; }
   .lv-what { font-size: 1.4em; }
