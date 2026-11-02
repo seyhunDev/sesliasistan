@@ -10,3 +10,6 @@
 
 ## Sıradaki işler
 - Seyhun telefonda yeniden dener; hata sürerse "Ayrıntı" metnini ister.
+
+## Ek (2026-11-02)
+- Sıradaki start artık Başlat düğmesinin içinde: "Başlat · Optimist · Mavi" / "Başlat · Start seçilmedi" (`Countdown startText`); üstteki "Sıradaki" satırı ve beklerken "Start sayacı" başlığı kalktı (`noHead`). Start sonrası sayaç başlığında sınıf · grup · yarış.
