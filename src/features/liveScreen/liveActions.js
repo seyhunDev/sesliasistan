@@ -87,6 +87,10 @@ export async function screenSay(orgId, raceId, s) {
     ensurePublic(raceId).catch(() => {});
     return { text: c.orange ? "Turuncu bayrak çekildi, ekran start öncesine geçti." : "Turuncu bayrak indi." };
   }
+  if ("ov" in c) {
+    await saveCourseShow(orgId, raceId, { ...L.courseShow, ov: c.ov });
+    return { text: c.ov ? "Genel sıralama ekranda." : "Genel sıralama kaldırıldı." };
+  }
   if ("side" in c) {
     await saveCourseShow(orgId, raceId, { ...L.courseShow, side: c.side });
     return { text: c.side ? "Sol bilgi açıldı." : "Sol bilgi kapandı." };
