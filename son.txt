@@ -1,8 +1,8 @@
-Commit: 0b450a7 · Yarış silinince planları silinir, ana sayfa yarış satırı hemen kalkar (#971)
-Zaman: 2026-11-02-1515 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41441477316
+Commit: 3ca4eb4 · Yayın: önce yarış oluştur, sonra süre (#972)
+Zaman: 2026-11-02-1526 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41443010670
 
-TAM TEST · 02.11.2026 15:03:25
+TAM TEST · 02.11.2026 15:15:29
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1435/1435 geçti · 0 kalan · 651 sn
+SONUÇ: 1435/1435 geçti · 0 kalan · 580 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
