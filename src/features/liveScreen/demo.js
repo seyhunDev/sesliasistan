@@ -77,9 +77,9 @@ export function demoData(step, t0, s0, now, v0 = s0, vt = 0) {
     r1: done(legsOf(3), Date.parse(`${yday}T08:00:00.000Z`)),
     r2: done(legsOf(7), Date.parse(`${yday}T09:10:00.000Z`)),
   };
-  const rows = Array.from({ length: 24 }, (_, h) => ({ hh: String(h).padStart(2, "0"), wind: Math.max(2, Math.round(5 + 7 * Math.sin((h - 7) / 5) + (h > 12 ? 2 : 0))), gust: Math.max(4, Math.round(8 + 9 * Math.sin((h - 7) / 5) + (h > 12 ? 3 : 0))), dir: 285 + h * 2, code: 1 }));
+  const rows = Array.from({ length: 24 }, (_, h) => ({ hh: String(h).padStart(2, "0"), wind: Math.max(2, Math.round(5 + 7 * Math.sin((h - 7) / 5) + (h > 12 ? 2 : 0))), gust: Math.max(4, Math.round(8 + 9 * Math.sin((h - 7) / 5) + (h > 12 ? 3 : 0))), dir: 285 + h * 2, code: h < 13 ? 1 : h < 16 ? 3 : h < 18 ? 61 : 2, t: Math.round(17 + 6 * Math.sin((h - 9) / 5)), mm: h >= 16 && h < 18 ? 0.6 : 0, pop: h < 13 ? 5 : h < 16 ? 30 : h < 18 ? 70 : 20 }));
   const nowH = +hm(now).slice(0, 2);
-  const obs = rows.filter((r) => +r.hh >= 6 && +r.hh <= nowH).map((r) => ({ hh: r.hh, wind: r.wind + 1, gust: r.gust + 2, dir: r.dir }));
+  const obs = rows.filter((r) => +r.hh >= 6 && +r.hh <= nowH).map((r) => ({ hh: r.hh, wind: r.wind + 1, gust: r.gust + 2, dir: r.dir, temp: r.t + 1, code: +r.hh < 9 ? 0 : 1, rain: +r.hh % 3 === 0 ? { mm: 0, h: 3 } : null }));
   // start: start dizisinde ve start adımında videodaki start anı, sonra adımın başından yarışın o dakikası kadar önce
   const start = step === S.SEQ || step === S.START ? v0 + VID_START : s0 - (RACE_MIN[step] || 0) * 60e3;
   const done_ = step >= S.END;
