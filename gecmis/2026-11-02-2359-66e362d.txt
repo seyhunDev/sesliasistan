@@ -1,8 +1,8 @@
-Commit: bf223e1 · Yarış: tek ⋯ menüsü, yarıştan önce yarışın alt çubuğu yok (#908)
-Zaman: 2026-10-30-0857 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41010399912
+Commit: 66e362d · Yayın: gruplar ayrı başlar, ▶ ile ekrana alınır, kameralar gruplara bağlanır (#1022)
+Zaman: 2026-11-02-2359 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41522393490
 
-TAM TEST · 30.10.2026 08:48:05
+TAM TEST · 02.11.2026 23:47:42
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,8 +20,9 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Hava: yağış şeridi…
     Hava: ölçülen / beklenen yağmur…
     Ana sayfa: yarış günü havası…
+    Antrenman: sesle başlat ve bitir…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 21/21 geçti
+    Çevrimdışı: 26/26 geçti
     Yarış sayfası (sporcu seçili, yarış günü)…
     Yarış günü (sporcu seçili)…
     Yarıştan önce (sporcu seçili)…
@@ -29,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1412/1412 geçti · 0 kalan · 548 sn
+SONUÇ: 1437/1437 geçti · 0 kalan · 664 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -139,16 +140,16 @@ SONUÇ: 1412/1412 geçti · 0 kalan · 548 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 131/131
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 140/140
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 5/5
+  ✓ Ana sayfa: 9/9
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 3/3
   ✓ Kısa dokun yaz: 1/1
-  ✓ Sayfa hataları: 12/12
+  ✓ Sayfa hataları: 13/13
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
@@ -166,9 +167,11 @@ SONUÇ: 1412/1412 geçti · 0 kalan · 548 sn
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
   ✓ Hava: 3/3
+  ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 21/21
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 26/26
+  ✓ Anında açılış: 5/5
   ✓ İnternet varken: 2/2
   ✓ Yavaş bağlantı: 3/3
   ✓ Takılan bağlantı: 2/2
@@ -178,8 +181,11 @@ SONUÇ: 1412/1412 geçti · 0 kalan · 548 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 8/8
-  ✓ Yarış sayfası: 8/8
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 19/19
+  ✓ Yarış sayfası: 14/14
+  ✓ Antrenman: 2/2
+  ✓ Asılı bağlantı: 2/2
+  ✓ Yayın: 1/1
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)

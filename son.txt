@@ -1,8 +1,8 @@
-Commit: ecb30b7 · Canlı yayın uçtan uca testi (#1021)
-Zaman: 2026-11-02-2318 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41516015703
+Commit: 66e362d · Yayın: gruplar ayrı başlar, ▶ ile ekrana alınır, kameralar gruplara bağlanır (#1022)
+Zaman: 2026-11-02-2359 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41522393490
 
-TAM TEST · 02.11.2026 23:06:10
+TAM TEST · 02.11.2026 23:47:42
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1436/1436 geçti · 0 kalan · 659 sn
+SONUÇ: 1437/1437 geçti · 0 kalan · 664 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -181,10 +181,11 @@ SONUÇ: 1436/1436 geçti · 0 kalan · 659 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 18/18
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 19/19
   ✓ Yarış sayfası: 14/14
   ✓ Antrenman: 2/2
   ✓ Asılı bağlantı: 2/2
+  ✓ Yayın: 1/1
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
