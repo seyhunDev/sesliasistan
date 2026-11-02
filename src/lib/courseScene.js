@@ -47,7 +47,7 @@ export function routePlan(g, route) {
       // kapı: önce kapının ortasına (rüzgâr üstünden) gelinir. Sonra rüzgâra dönülüyorsa iki seçenek (olimpiyat çizimindeki gibi):
       // p iskeleden (ana rota), s sancaktan (soluk kanca); finişe gidiliyorsa kapıdan geçilip düz devam edilir
       // finişe gidiliyorsa kapının ortasından düz geçilir (ara nokta yok: çizgi kırılmasın, Seyhun 2026-11-02 "çizgiler düzgün olsun")
-      if (!nx || nx.end) {
+      if (!nx || (nx.end && !g.up)) {
         leg.push(w.gm);
         cur = w.gm;
         return;

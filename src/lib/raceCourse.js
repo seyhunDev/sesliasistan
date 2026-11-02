@@ -79,19 +79,23 @@ export function cleanCourse(c) {
 // gösterir). Şamandıra yerleri ölçümlerden, kartlar ortak; kart rotayı belirler. Başlat'ta seçili kartın rotası o yarışa yazılır.
 export const CARD_IDS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 export const CARD_ROUTE = ["1", "2", "3", "F"];
+// Rota kartı tipleri (Seyhun 2026-11-02 "rota kartlarına isim verelim; şu anki dursun; Optimist'te trapez: pupadaki kapıyı dönüp tekrar
+// yukarı, finiş orada"): şekil koddadır, yeni kart geldikçe buraya eklenir. std = şimdiki (1 + 1A, 2, 3s/3p, 4s/4p, finiş apazda)
+export const CARD_TYPES = { std: "Standart rota", trapez: "Trapez rota" };
+export const cardType = (k) => (CARD_TYPES[k?.type] ? k.type : "std");
 const ROUTE_OK = ["1", "2", "3", "4", "F"];
 export const cardRoute = (r) => (Array.isArray(r) ? r : []).map((x) => String(x).toUpperCase()).filter((x) => ROUTE_OK.includes(x)).slice(0, 12);
 export function cleanCards(c) {
   const seen = new Set();
   const cards = (Array.isArray(c?.cards) ? c.cards : [])
-    .map((k) => ({ id: String(k?.id || ""), route: cardRoute(k?.route) }))
+    .map((k) => ({ id: String(k?.id || ""), route: cardRoute(k?.route), type: cardType(k) }))
     .filter((k) => CARD_IDS.includes(k.id) && !seen.has(k.id) && seen.add(k.id))
     .sort((a, b) => a.id.localeCompare(b.id));
-  if (!cards.length) cards.push({ id: "A", route: [...CARD_ROUTE] });
+  if (!cards.length) cards.push({ id: "A", route: [...CARD_ROUTE], type: "std" });
   const sel = cards.some((k) => k.id === c?.sel) ? c.sel : cards[0].id;
   return { cards, sel, cardAt: typeof c?.cardAt === "string" ? c.cardAt : "" };
 }
-export const selCard = (c) => (c?.cards || []).find((k) => k.id === c?.sel) || (c?.cards || [])[0] || { id: "A", route: [...CARD_ROUTE] };
+export const selCard = (c) => (c?.cards || []).find((k) => k.id === c?.sel) || (c?.cards || [])[0] || { id: "A", route: [...CARD_ROUTE], type: "std" };
 
 // ---- Yazıdan (sesle söylenen ya da yazılan) ölçüm: "orsa şamandırasında rüzgâr 330, 5 knot", "pin'den komite 52",
 // "parkur ekseni 320", "komite burada", "orsa 0,8 mil". Dönüş { obs } | { pt } | { len } | null (anlaşılmadı → yapay zekâ)

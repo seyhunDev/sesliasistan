@@ -212,6 +212,7 @@ function clockState({ sel, isCur, timer, now, entry, data, today }) {
   } else if (sel?.void) {
     label = sel.void;
     value = "—";
+    right = sel.fin ? `${voidShort(sel.void)} ${hmOf(sel.fin)}` : ""; // eski start saati değil (Seyhun 2026-11-02)
   } else if (sel?.fin) {
     label = "Süre";
     value = raceTime(sel) || "--:--";
@@ -976,7 +977,7 @@ function TitleLine({ data, isCur, id, starts, onList, auto }) {
 
 // Altta tek bilgi şeridi (TV yayınlarındaki alt bant; grup · yarış hemen üstünde TitleLine'da): süre (start'tan sonra; önce ortada büyük sayaç), nerede (şamandıra,
 // lider ve dönüş saati), rüzgâr (dokununca gün boyu grafik), parkur (dokununca büyük), sıradaki start. Her hücre: üstte değer, altta küçük etiket.
-function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, ongoing, hasSvg, prog = [], onCourse, onWind }) {
+function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, now = 0, ongoing, hasSvg, prog = [], onCourse, onWind }) {
   const t = titleOf({ data, sel, phase, today, prog });
   const plan = data.plan;
   const entry = sel ? data.rounds?.[sel.id] : null;
@@ -990,6 +991,11 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, ongoin
     const shm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1];
     if (clockIn) {
       // saat zaten şeritte
+    } else if (!counting && sel?.void) {
+      // Abandone / genel geri (Seyhun 2026-11-02): eski start saati değil, abandone saati; son yarışsa yeni start için uyarı işareti bekleniyor
+      cells.push(["time", sel.fin ? hmOf(sel.fin) : "—", voidShort(sel.void)]);
+      const last = (data.starts || []).filter((x) => x.day === today).at(-1);
+      if (isCur && last?.id === sel.id) cells.push(["time warn", "Uyarı işareti", "Yeni start bekleniyor"]);
     } else if (!counting && sel) cells.push(["time", cs.value, cs.label]);
     else if (counting && shm) cells.push(["time", shm, "Start"]); // geri sayım ortada büyük; şeritte start saati
     // Şamandırada her zaman ilk dönen (lider) ve dönüş saati; finiş yazıldıysa kazanan (Seyhun 2026-11-02 "son geçen olmasın")
@@ -1003,8 +1009,13 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, ongoin
     // videolu bekleme (Seyhun 2026-11-02 tasarım 2): geri sayım ve beklenen rüzgâr
     // büyük geri sayım ortada; şeritte start saati (ör. 14:00 · Start)
     const hm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1] || (plan.status !== "none" && plan.status !== "ap" ? plan.at : "");
+    const wt = waitTurn(data, today, cs, now);
     if (clockIn) {
       // saat zaten şeritte
+    } else if (wt) {
+      // Program saati geçti ya da abandone (Seyhun 2026-11-02 "çok geçmiş bir saati gösteriyor… uyarı işareti bekleniyor"): eski saat start gibi yazmaz
+      if (wt.vd) cells.push(["time", wt.at || "—", voidShort(wt.vd)]);
+      cells.push(["time warn", "Uyarı işareti", wt.vd ? "Yeni start bekleniyor" : `Bekleniyor${plan.at ? ` · Program ${plan.at}` : ""}`]);
     } else if (hm) cells.push(["time", hm, "Start"]);
     else if (cs.rem) cells.push(["time", cs.value, cs.label]);
     const ew = !w ? expWind(data.forecast, plan.at) : null;
@@ -1102,6 +1113,16 @@ function ProgramChips({ items }) {
 // Solda durum hep sabit: ne bekleniyor (Start'a / Yeni start bekleniyor / Start ertelendi), büyük süre, hangi yarış ve grup,
 // bayraklı durum kutusu (Abandone · 3. yarış, Genel geri, Tehir). Sağda vitrin: parkur → rüzgâr → program, üstte hangisi; arasız döner.
 // Telefonda durum üstte, vitrin altında. Alttaki program kartları kalktı (program vitrinde).
+const voidShort = (v) => (v === "Genel geri çağırma" ? "Genel geri" : v === "İptal" ? "Abandone" : v);
+// Start saati geçti ama geri sayım yok: son start abandone/genel geri (vd, saati at) ya da programdaki tahmini saat geçti. Yoksa null
+function waitTurn(data, today, cs, now) {
+  const plan = data.plan;
+  if (cs.rem || plan.status === "ap" || plan.status === "none" || plan.status === "done") return null;
+  const last = (data.starts || []).filter((x) => x.day === today).at(-1);
+  if (last?.void && last.void !== "Tehir" && (!last.fin || now - Date.parse(last.fin) < 3 * 3600e3)) return { vd: last.void, at: last.fin ? hmOf(last.fin) : "" };
+  const ms = planStartMs(plan, today);
+  return ms && now > ms ? { vd: "", at: "" } : null;
+}
 function holdState(data, today, cs, now) {
   const plan = data.plan;
   const none = plan.status === "none" && plan.day === today;
@@ -1115,7 +1136,8 @@ function holdState(data, today, cs, now) {
     const why = vd === "Tehir" ? "Start ertelendi" : "Yarış sayılmadı, yeniden start verilecek";
     box = { flag: voidFlag(vd), head, sub: [last.fin ? `${hmOf(last.fin)}` : "", grp ? `${grp} grup` : "", why].filter(Boolean).join(" · ") };
   }
-  const kick = none ? "Bugün yarış yok" : cs.rem ? cs.label : plan.status === "ap" ? "Start ertelendi" : vd ? "Yeni start bekleniyor" : "Start bekleniyor";
+  const late = !cs.rem && !vd && waitTurn(data, today, cs, now);
+  const kick = none ? "Bugün yarış yok" : cs.rem ? cs.label : plan.status === "ap" ? "Start ertelendi" : vd ? "Yeni start için uyarı işareti bekleniyor" : late ? "Uyarı işareti bekleniyor" : "Start bekleniyor";
   return { none, box, kick };
 }
 function WaitHero({ data, today, cs, prog, now }) {
@@ -1136,7 +1158,7 @@ function WaitHero({ data, today, cs, prog, now }) {
           <div className="lv-what">
             <Dot g={first.grp} />
             {[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}
-            <small>{[first.cls, at].filter(Boolean).join(" · ")}</small>
+            <small>{[first.cls, at ? `Program ${at}` : ""].filter(Boolean).join(" · ")}</small>
           </div>
         ) : null}
         {box ? (
@@ -1405,10 +1427,13 @@ const courseSvg = (data, route) => {
 function slideOn({ data, sel, isCur, open, now, phase, pre, prog }) {
   const svg = !!courseSvg(data, sceneRoute(data, sel, isCur, phase));
   if (open && svg) return "course";
-  if (!isCur || !pre) return "";
+  const slides = [svg ? "course" : "", windShowable(data) ? "wind" : "", prog.length ? "prog" : ""].filter(Boolean);
+  // Yayın'dan elle açılan (courseShow.one) her evrede, gün sonunda da ekranda
+  const one = isCur ? data.courseShow?.one : "";
+  if (one && slides.includes(one)) return one;
+  if (!isCur || !pre || phase === "summary") return "";
   const latest = Math.max(0, Date.parse(data.course?.cardAt || "") || 0, ...(data.course?.obs || []).map((o) => Date.parse(o.at) || 0));
   if (svg && latest > 0 && now - latest < COURSE_MS) return "course";
-  const slides = [svg ? "course" : "", windShowable(data) ? "wind" : "", prog.length ? "prog" : ""].filter(Boolean);
   return showSlide({ show: data.courseShow, now, pre, slides });
 }
 const windShowable = (data) => (data.forecast?.rows || []).length >= 2 || (data.course?.obs || []).some((o) => o.kind === "wind");
@@ -1755,7 +1780,7 @@ export function LiveScreen({ id, y = "" }) {
   const prog = isCur ? dayProgram(data, today) : [];
   // Yarış öncesi gösterim (parkur → rüzgâr → program); süren yarış varken yok (Seyhun 2026-11-02 "yarış başladığında gösterilmemeli")
   const pre = !ongoing && (phase === "wait" || (cs.rem != null && cs.rem > 0));
-  const slide = phase !== "summary" && !(phase === "wait" && !hasVideo) ? slideOn({ data, sel, isCur, open: courseOpen, now: nowMs, phase, pre, prog }) : "";
+  const slide = !(phase === "wait" && !hasVideo) ? slideOn({ data, sel, isCur, open: courseOpen, now: nowMs, phase, pre, prog }) : "";
   const cOn = slide === "course";
   // Yarış öncesi video yokken sade sayfa (Seyhun 2026-11-02 "geri sayım sayfası sade temiz"): ortada sayaç, altta program; şerit yok
   const hero = phase === "wait" && !hasVideo;
@@ -1789,7 +1814,7 @@ export function LiveScreen({ id, y = "" }) {
               <WindDay fc={data.forecast} now={nowMs} at={data.plan.at} mine={lastWind(data, sel, isCur).obs} />
             </button>
           ) : null}
-          <InfoBar data={data} sel={sel} isCur={isCur} phase={phase} cs={cs} counting={counting} clockIn={counting && hasVideo} today={today} ongoing={ongoing} hasSvg={hasSvg} prog={prog} onCourse={() => setCourseOpen((v) => !v)} onWind={() => setWindOpen((v) => !v)} />
+          <InfoBar data={data} sel={sel} isCur={isCur} phase={phase} cs={cs} counting={counting} clockIn={counting && hasVideo} today={today} now={nowMs} ongoing={ongoing} hasSvg={hasSvg} prog={prog} onCourse={() => setCourseOpen((v) => !v)} onWind={() => setWindOpen((v) => !v)} />
         </div>
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
