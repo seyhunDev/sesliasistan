@@ -13,3 +13,8 @@
 
 ## Ek (2026-11-02)
 - Sıradaki start artık Başlat düğmesinin içinde: "Başlat · Optimist · Mavi" / "Başlat · Start seçilmedi" (`Countdown startText`); üstteki "Sıradaki" satırı ve beklerken "Start sayacı" başlığı kalktı (`noHead`). Start sonrası sayaç başlığında sınıf · grup · yarış.
+
+## Ek 2 (2026-11-02): bekleme ekranında parkur
+- Seyhun: start saatine geri sayım sürerken parkur kurulunca saat animasyonla bir tarafa kaysın, parkur büyük ve kartsız gösterilsin; sola yaslı ve geniş ekranda yanlarda boşluk olmasın.
+- Yapılan: `Waiting` içinde parkur varsa (`course.obs`) `lv-waitgrid course` iki sütun: sol sayaç `lv-slide` ile kayar, sağda `CourseFlat` (kartsız SVG, `lv-rise`, yükseklik `min(78vh,60vw)`). Yayın/sıralama varsa alta iner. Telefonda alt alta, parkur tam genişlik. Hareket azaltma tercihinde animasyon yok.
+- Test: yaris.mjs "bekleme ekranında parkur kurulunca sayaç yana kayar…". Örnekler `/mnt/project-files/samandira-donus/yayin3/parkur-{pc,laptop,telefon}.png`.

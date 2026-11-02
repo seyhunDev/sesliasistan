@@ -395,9 +395,10 @@ function Waiting({ data, now, today, starts }) {
   // ya da genel sıralama varsa kart (boş "Genel sıralama" çizilmez)
   const side = data.screen?.kind || hasOverall(data);
   const hasCourse = (data.course?.obs || []).length > 0;
+  // Parkur kurulunca (Seyhun 2026-11-02): sayaç sola kayar, parkur sağ yarıda kartsız ve ekran boyunca büyük çizilir (lv-waitgrid.course)
   return (
     <div className="lv-waitwrap">
-      <div className={`lv-waitgrid${side ? "" : " one"}`}>
+      <div className={`lv-waitgrid${hasCourse ? " course" : side ? "" : " one"}`}>
         <div className="lv-waitc">
           <div className="lv-waitl">{label}</div>
           <div className={`lv-clock${value ? "" : " lv-dim"}`}>{value || "--:--"}</div>
@@ -429,17 +430,24 @@ function Waiting({ data, now, today, starts }) {
             </div>
           ) : null}
         </div>
-        {side ? (
+        {hasCourse ? (
+          <CourseFlat data={data} />
+        ) : side ? (
           <div className="lv-stack lv-waitall">
             <Media key="wait" data={data} sel={null} starts={starts} isCur />
             <Overall data={data} hideEmpty />
           </div>
         ) : null}
       </div>
-      {/* Altta: günün rüzgâr tahmini, bugünkü parkur (ölçüm varsa) ve bu ekranda neler olacağı */}
-      <div className={`lv-waitinfo${hasCourse ? " two" : ""}`}>
+      {hasCourse && side ? (
+        <div className="lv-waitinfo">
+          <Media key="wait2" data={data} sel={null} starts={starts} isCur />
+          <Overall data={data} hideEmpty />
+        </div>
+      ) : null}
+      {/* Altta: günün rüzgâr tahmini ve bu ekranda neler olacağı */}
+      <div className="lv-waitinfo">
         <WindDay fc={data.forecast} now={now} at={!nextDay ? at : ""} />
-        {hasCourse ? <Course data={data} route="" /> : null}
       </div>
       <div className="lv-onscreen">
         {["Start sayacı ve bayraklar", "Şamandıra sıralaması", "Genel sıralama", "Parkur ve rüzgâr", "Canlı yayın"].map((t) => (
@@ -449,6 +457,13 @@ function Waiting({ data, now, today, starts }) {
     </div>
   );
 }
+// Bekleme ekranında parkur: kartsız, zeminin üstünde, sütunu dolduracak kadar büyük; altında hat özeti (kartın kendisinde)
+function CourseFlat({ data }) {
+  const svg = useMemo(() => cardSvg(cardOf(cleanCourse(data.course || {})), { navy: true }), [data.course]);
+  if (!svg) return null;
+  return <div className="lv-cflat" dangerouslySetInnerHTML={{ __html: svg }} />;
+}
+
 // Günün rüzgâr tahmini grafiği (bekleme ekranı; Seyhun 2026-11-01 "gün boyu grafiğimiz, güzel bir grafik"): dolu alan rüzgâr, kesik çizgi
 // sağanak, 3 saatte bir saat ve yön, start saati işaretli, şimdi beyaz çizgi
 function WindDay({ fc, now, at }) {

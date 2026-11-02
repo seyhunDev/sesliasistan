@@ -119,6 +119,14 @@
 /* Bekleme ve özet evreleri: ortada büyük kart, sağda genel sıralama */
 .lv-waitgrid { flex: 1; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: inherit; min-height: 0; align-items: center; }
 .lv-waitgrid.one { grid-template-columns: minmax(0, 1fr); }
+/* Parkur kurulunca: sayaç sol yarıya kayar, parkur sağ yarıda kartsız ve büyük (2026-11-02) */
+.lv-waitgrid.course { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; min-height: 0; }
+.lv-waitgrid.course .lv-waitc { animation: lv-slide 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.lv-cflat { display: flex; justify-content: center; align-items: center; min-height: 0; height: 100%; animation: lv-rise 0.7s 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.lv-cflat svg { display: block; width: auto; height: min(78vh, 60vw); max-width: 100%; }
+@keyframes lv-slide { from { transform: translateX(50%); } to { transform: translateX(0); } }
+@keyframes lv-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .lv-waitgrid.course .lv-waitc, .lv-cflat { animation: none; } }
 /* Bekleme: kartsız, ortada (2026-11-01): başlık küçük, geri sayım büyük, altında saat; start sırası dar bir liste */
 .lv-waitc { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
 .lv-waitc .lv-clock { font-size: clamp(88px, 12vw, 360px); margin: 0; }
@@ -269,6 +277,9 @@
   .lv-waitgrid { display: flex; flex-direction: column; gap: 12px; }
   .lv-waitc .lv-clock { font-size: 80px; }
   .lv-waitinfo.two { grid-template-columns: minmax(0, 1fr); }
+  .lv-waitgrid.course { display: flex; flex-direction: column; }
+  .lv-cflat { height: auto; }
+  .lv-cflat svg { width: 100%; height: auto; }
   .lv-waitwrap .lv-waitgrid { flex: none; }
   .lv-waitwrap { flex: none; }
   .lv-next { order: 1; }
