@@ -321,15 +321,19 @@ export function cleanScreen(s) {
   return { kind, mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, caption: String(s?.caption || "").trim().slice(0, 80), at: typeof s?.at === "string" ? s.at.slice(0, 30) : "" };
 }
 // Parkur gösterimi (Seyhun 2026-11-02): auto = yarış öncesi 30 sn'de bir kendiliğinden (varsayılan açık), at = Yayın'dan "Parkuru göster"e basılan an
-export const cleanCourseShow = (c) => ({ auto: c?.auto !== false, at: typeof c?.at === "string" ? c.at.slice(0, 30) : "" });
+// one = Yayın'dan elle açılan tek gösterim ("course" | "wind" | "prog"): kaldırılana kadar ekranda kalır, yarış öncesi, sırasında ve sonrasında
+// (Seyhun 2026-11-02 "starttan sonra manuel yönetim… parkur, rüzgâr, program gösterme butonları ayrı olsun")
+export const SHOW_ONE = ["course", "wind", "prog"];
+export const cleanCourseShow = (c) => ({ auto: c?.auto !== false, at: typeof c?.at === "string" ? c.at.slice(0, 30) : "", one: SHOW_ONE.includes(c?.one) ? c.one : "" });
 // Yarış öncesi gösterim sırası (Seyhun 2026-11-02 "parkuru gösterdik, sonra rüzgâr grafiği, sonra başka ne gösterebiliyorsak; yarış başlayınca gösterilmemeli"):
 // slides = ekranda olanlar sırayla (ör. ["course","wind","prog"]), her biri SHOW_ON. Otomatikte her SHOW_CYCLE'da bir tur;
 // Yayın'dan "Göster" (at) o andan bir tur. pre değilse (yarış başladı) hiçbiri. Döndürür: o an gösterilen ("" yok)
 export const SHOW_ON = 12000;
 export const SHOW_CYCLE = 60000;
 export function showSlide({ show, now, pre, slides = ["course"] }) {
-  if (!pre || !slides.length) return "";
   const c = cleanCourseShow(show);
+  if (c.one && slides.includes(c.one)) return c.one;
+  if (!pre || !slides.length) return "";
   const at = Date.parse(c.at) || 0;
   if (at && now >= at - 2000) {
     const k = Math.floor(Math.max(0, now - at) / SHOW_ON);

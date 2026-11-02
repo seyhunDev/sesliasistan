@@ -22,7 +22,7 @@ import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
 import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
-import { CARD_IDS, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
+import { CARD_IDS, CARD_TYPES, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CLASS_PICK, PREP_PICK, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
@@ -332,13 +332,14 @@ export function BroadcastPage({ orgId, id }) {
   const newCard = () => {
     const cid = CARD_IDS.find((x) => !course.cards.some((k) => k.id === x));
     if (!cid) return toast("En çok 8 kart.");
-    putCards({ cards: [...course.cards, { id: cid, route: selCard(course).route }], sel: cid }, `Kart ${cid} açıldı, rotasını yaz`);
+    putCards({ cards: [...course.cards, { id: cid, route: selCard(course).route, type: selCard(course).type }], sel: cid }, `Kart ${cid} açıldı, rotasını yaz`);
   };
   const dropCard = () => {
     if (course.cards.length < 2) return;
     const left = course.cards.filter((k) => k.id !== course.sel);
     putCards({ cards: left, sel: left[0].id }, `Kart ${course.sel} silindi`);
   };
+  const setType = (t) => t !== selCard(course).type && putCards({ cards: course.cards.map((k) => (k.id === course.sel ? { ...k, type: t } : k)) }, `Kart ${course.sel}: ${CARD_TYPES[t]}`);
   const saveRoute = () => {
     const r = cleanRoute(rt);
     if (!r.length) return toast("Rota boş. Örn. 1 2 3 F");
@@ -732,17 +733,23 @@ export function BroadcastPage({ orgId, id }) {
         ) : null}
         {tab === "parkur" ? (
           <>
-        {/* Ekranda gösterim (Seyhun 2026-11-02): yarış öncesi sırayla parkur → rüzgâr → program; otomatik dakikada bir (kapatılabilir),
-            "Göster" bir tur gösterir; yarış başlayınca hiçbiri */}
+        {/* Ekranda gösterim (Seyhun 2026-11-02 "otomatik starttan önce; starttan sonra manuel; starttan önce de manuel"):
+            Otomatik = yarış öncesi dakikada bir parkur → rüzgâr → program; Parkur / Rüzgâr / Program elle açılır, kaldırılana kadar
+            ekranda kalır (yarış öncesi, sırasında, sonrasında) */}
         <section>
-          <Head title="Ekranda gösterim" right={cShow.auto ? "Yarış öncesi dakikada bir" : "Elle"} />
-          <div className={`${card} flex gap-2 p-3`}>
-            <Button variant={cShow.auto ? "primary" : "secondary"} className="flex-1" onClick={() => putCourseShow({ ...cShow, auto: !cShow.auto })}>
-              {cShow.auto ? "Otomatik açık" : "Otomatik kapalı"}
-            </Button>
-            <Button variant="secondary" className="flex-1" onClick={() => (putCourseShow({ ...cShow, at: new Date().toISOString() }), toast("Parkur, rüzgâr, program sırayla ekranda"))}>
-              Göster
-            </Button>
+          <Head title="Ekranda gösterim" right={cShow.one ? `${SHOW_NAME[cShow.one]} ekranda` : ""} />
+          <div className={`${card} overflow-hidden`}>
+            <div className="grid grid-cols-3 gap-2 p-3">
+              {Object.entries(SHOW_NAME).map(([k, t]) => (
+                <Button key={k} variant={cShow.one === k ? "primary" : "secondary"} onClick={() => putCourseShow({ ...cShow, one: cShow.one === k ? "" : k })}>
+                  {t}
+                </Button>
+              ))}
+            </div>
+            <button type="button" onClick={() => putCourseShow({ ...cShow, auto: !cShow.auto })} className={`${row} border-t border-line`}>
+              <span className="min-w-0 flex-1 font-semibold">Starttan önce otomatik</span>
+              <span className={`text-[0.875rem] font-semibold ${cShow.auto ? "text-acc" : "text-mut"}`}>{cShow.auto ? "Açık" : "Kapalı"}</span>
+            </button>
           </div>
         </section>
         <section>
@@ -794,10 +801,18 @@ export function BroadcastPage({ orgId, id }) {
             {course.cards.map((k) => (
               <button key={k.id} type="button" onClick={() => pickCard(k.id)} className="flex w-full items-center gap-3 border-t border-line px-4 py-2.5 text-left text-[0.9375rem]">
                 <b className={k.id === course.sel ? "text-acc" : ""}>{`Kart ${k.id}`}</b>
+                <span className="shrink-0 font-semibold">{CARD_TYPES[k.type] || CARD_TYPES.std}</span>
                 <span className="min-w-0 flex-1 truncate tabular-nums text-mut">{routeText(k.route) || "Rota yok"}</span>
                 {k.id === course.sel ? <span className="text-[0.8125rem] font-semibold text-acc">Seçili</span> : null}
               </button>
             ))}
+            <div className="flex flex-wrap gap-1.5 border-t border-line px-4 py-3">
+              {Object.entries(CARD_TYPES).map(([t, n]) => (
+                <button key={t} type="button" onClick={() => setType(t)} className={`h-8 rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${selCard(course).type === t ? "bg-acc text-white" : "bg-line/60"}`}>
+                  {n}
+                </button>
+              ))}
+            </div>
             <div className="flex items-center gap-2 border-t border-line px-4 py-3">
               <span className="text-[0.875rem] font-semibold">Rota</span>
               <input value={rt} onChange={(e) => setRt(e.target.value.slice(0, 40))} placeholder="1 2 3 F" className="min-w-0 flex-1 rounded-lg bg-bg px-2.5 py-1.5 text-[0.9375rem] font-semibold tabular-nums outline-none" />
@@ -931,6 +946,7 @@ function Head({ title, right = "" }) {
 
 // Yarış oluşturma adım adım (Seyhun 2026-11-02 "çok dandik; seçe seçe ilerleyelim: önce sınıflar (hepsi seçili, çıkarırım), sonra seçili
 // sınıfların grupları, sonra bayrak"): 1 Sınıf → 2 Grup → 3 Bayrak ve özet; sonunda o yarışın startları programa eklenir
+const SHOW_NAME = { course: "Parkur", wind: "Rüzgâr", prog: "Program" };
 function draftOf(plan) {
   const sets = plan?.sets?.length ? plan.sets : plan?.cls ? [{ cls: plan.cls, grps: plan.grps || [] }] : [];
   return { step: 1, clss: sets.length ? sets.map((x) => x.cls) : [...CLASS_PICK], grps: Object.fromEntries(sets.map((x) => [x.cls, x.grps])), prep: plan?.prep || "P" };

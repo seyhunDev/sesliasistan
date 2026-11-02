@@ -3,7 +3,7 @@
 // ölçümlerden (raceCourse.js axisOf / lineOf / son rüzgâr / orsadan apaza).
 // Sabit = komitenin parkur ekseni (Seyhun 2026-10-28: "komite 1'i 140'a göre atar, pin'i komiteden 50°'de görmem gerekir").
 // Kart eksen yukarıda çizilir: 1 eksende, olması gereken hat soluk (eksen − 90°), atılan hat gerçek açısında, rüzgâr oku değişen yönde.
-import { ORSA_M, axisOf, diff, lineOf } from "@/lib/raceCourse";
+import { ORSA_M, axisOf, cardType, diff, lineOf, selCard } from "@/lib/raceCourse";
 
 const rad = (d) => (d * Math.PI) / 180;
 const nrm = (d) => ((Math.round(d) % 360) + 360) % 360;
@@ -30,15 +30,17 @@ export function geom(c, { lineK = 0.5 } = {}) {
   const s3 = add(g3, A - 90, gw), p3 = add(g3, A + 90, gw); // pupada sancak solda (rüzgâr yukarıda bakınca)
   const g4 = add(mid, A, L * 0.24);
   const s4 = add(g4, A - 90, gw), p4 = add(g4, A + 90, gw);
-  const fin = add(g3, A + 150, L * 0.45);
-  const fA = add(fin, A + 60, L * 0.1), fB = add(fin, A + 240, L * 0.1);
-  return { A, L, mid, komite, pin, pinIdeal, ideal, should, toPin, m1, m1a, reach, m2, g3, s3, p3, g4, s4, p4, fin, fA, fB, lineDeg };
+  // trapez: finiş pupadaki kapının rüzgâr üstünde (kapıdan dönüp orsayla çıkılır), ayakların yolunu kesmesin diye biraz içeride; hat rüzgâra dik
+  const up = c.type === "trapez";
+  const fin = up ? add(add(g3, A, L * 0.55), A + 90, L * 0.22) : add(g3, A + 150, L * 0.45);
+  const fA = up ? add(fin, A - 90, L * 0.09) : add(fin, A + 60, L * 0.1), fB = up ? add(fin, A + 90, L * 0.09) : add(fin, A + 240, L * 0.1);
+  return { up, A, L, mid, komite, pin, pinIdeal, ideal, should, toPin, m1, m1a, reach, m2, g3, s3, p3, g4, s4, p4, fin, fA, fB, lineDeg };
 }
 function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   const g = geom(c);
   const rot = g.A; // eksen yukarıda (komitenin sabiti)
   const R = ([x, y]) => [x * Math.cos(rad(rot)) - y * Math.sin(rad(rot)), x * Math.sin(rad(rot)) + y * Math.cos(rad(rot))];
-  const names = ["komite", "pin", "pinIdeal", "m1", "m1a", "m2", "s3", "p3", "s4", "p4", "fA", "fB"];
+  const names = ["komite", "pin", "pinIdeal", "m1", "m1a", "m2", "s3", "p3", ...(g.up ? [] : ["s4", "p4"]), "fA", "fB"];
   const P = Object.fromEntries(names.map((k) => [k, R(g[k])]));
   const xs = Object.values(P).map((p) => p[0]), ys = Object.values(P).map((p) => p[1]);
   const pad = { l: 44, r: 80, t: 84, b: 82 }; // altta iki satır hat özeti
@@ -72,7 +74,7 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   const boat = (p, est) => (o += `<path d="M-7 8 L-7 -2 L0 -9 L7 -2 L7 8 Z" fill="${paper}" stroke="${ink}" stroke-width="${SW}" ${est ? 'stroke-dasharray="3 2"' : ""} transform="translate(${f(p[0])} ${f(p[1])})"/>`);
   const mid = S(g.mid), m1 = pt("m1"), m1a = pt("m1a"), m2 = pt("m2"), s3 = pt("s3"), p3 = pt("p3"), s4 = pt("s4"), p4 = pt("p4"), fin = S(g.fin), g3 = S(g.g3), g4 = S(g.g4);
   // iç rota (kesik): start → 4 kapısı → 1 → 1A → 4 → 1 …
-  path([mid, g4, m1], 'stroke-dasharray="2 4" opacity=".7"');
+  if (!g.up) path([mid, g4, m1], 'stroke-dasharray="2 4" opacity=".7"');
   // dış rota: start → 1 → 1A → 2 → 3 kapısı → Finiş
   path([mid, m1, m1a, m2, g3, fin]);
   arrowOn(mid, m1, 0.6); arrowOn(m1a, m2); arrowOn(m2, g3); arrowOn(g3, fin, 0.6);
@@ -99,9 +101,10 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   o += `<text x="${f(fin[0] + 14)}" y="${f(fin[1] + 18)}" font-size="11" font-weight="${M}" fill="${mut}">Finiş</text>`;
   // şamandıralar
   buoy(m1, "1", c.est?.m1); buoy(m1a, "1A", c.est?.m1); buoy(m2, "2", c.est?.m2);
-  buoy(s3, "3s", c.est?.m3); buoy(p3, "3p", c.est?.m3); buoy(s4, "4s", c.est?.m4); buoy(p4, "4p", c.est?.m4);
+  buoy(s3, "3s", c.est?.m3); buoy(p3, "3p", c.est?.m3);
+  if (!g.up) { buoy(s4, "4s", c.est?.m4); buoy(p4, "4p", c.est?.m4); }
   // ayak açıları
-  legLabel(g4, m1, `${nrm(g.A)}°`, -1);
+  legLabel(g.up ? mid : g4, m1, `${nrm(g.A)}°`, -1);
   legLabel(m1a, m2, `${nrm(g.reach)}°`, -1);
   legLabel(m2, g3, `${nrm(g.A + 180)}°`, -1);
   // üstte rüzgâr oku (eksene göre dönmüş hali)
@@ -169,6 +172,7 @@ export function cardOf(c) {
     line: ln ? ln.deg : null,
     reach: leg ? (leg.ref === "m1m2" ? leg.deg : nrm(leg.deg + 180)) : null,
     orsa: c.len?.orsa || ORSA_M,
+    type: cardType(selCard(c)),
     est: { komite: !c.pts.komite, pin: !c.pts.pin, m1: !c.pts.m1, m2: !c.pts.m2, m3: !c.pts.m3, m4: !c.pts.m4 },
   };
 }
