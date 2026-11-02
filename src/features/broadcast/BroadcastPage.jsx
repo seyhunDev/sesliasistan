@@ -77,7 +77,7 @@ export function BroadcastPage({ orgId, id }) {
   const [openDay, setOpenDay] = useState(""); // Program: açık gün
   const [reset, setReset] = useState(false); // Yayını sıfırla penceresi
   const [delId, setDelId] = useState(""); // Program: silinmesi sorulan start
-  const [draft, setDraft] = useState({ cls: "Optimist", grps: [], prep: "P" }); // oluşturulacak yarış (plan yüklenince ondan)
+  const [draft, setDraft] = useState(() => draftOf(null)); // oluşturulacak yarış: adım, sınıflar, sınıf sınıf gruplar, bayrak (plan yüklenince ondan)
   const [ap, setAp] = useState(null); // tehir penceresi { min, why } (Seyhun 2026-11-01 "bir sebep belirterek tehir, bir saatlik")
   const [plan, setPlan] = useState(() => cleanPlan({})); // günün programı (raceLive.plan; herkese açık ekranın evresi buna göre)
   const file = useRef(null);
@@ -104,7 +104,7 @@ export function BroadcastPage({ orgId, id }) {
       const rp = rollPlan(d.plan, today);
       setPlan(rp);
       if (rp.day !== d.plan.day) savePlan(orgId, id, rp).catch(() => {});
-      setDraft({ cls: d.plan.cls || "Optimist", grps: d.plan.grps, prep: d.plan.prep || "P" });
+      setDraft(draftOf(d.plan));
       setYt(d.stream.url);
       setSel(d.screen.kind ? { kind: d.screen.kind, mid: d.screen.mid } : null);
     }, () => toast("Yüklenemedi, tekrar dene."));
@@ -212,8 +212,11 @@ export function BroadcastPage({ orgId, id }) {
   const editRow = (i, patch) => changePlan({ order: plan.order.map((o, k) => (k === i ? { ...o, ...patch } : o)) });
   // Yarış oluştur: seçilen sınıf, gruplar ve bayrak günün ayarı olur; sıradaki yarış bu gruplarla programa eklenir, sayaç açılır
   const createRace = () => {
-    const p = { cls: draft.cls || "Optimist", grps: draft.grps, prep: draft.prep || "P" };
+    const sets = draft.clss.map((c) => ({ cls: c, grps: GROUP_PICK.filter((g) => (draft.grps[c] || []).includes(g)) }));
+    if (!sets.length) return;
+    const p = { sets, cls: sets[0].cls, grps: sets[0].grps, prep: draft.prep || "P" };
     changePlan({ ...p, order: [...plan.order, ...raceOrder(p)] });
+    setDraft((d) => ({ ...d, step: 1 }));
   };
   // + Yarış: sıradaki yarış günün bütün gruplarıyla (grup yoksa tek start)
   const addRace = () => {
@@ -431,32 +434,12 @@ export function BroadcastPage({ orgId, id }) {
         {/* Önce yarış, sonra süre (Seyhun 2026-11-02 "süreyi göstermeden ne için olduğunu seçmemiz lazım"): sıradaki yarış yoksa ve sayaç
             boştaysa sayaç yerine yarış oluşturma (sınıf, gruplar, bayrak); oluşturulunca sayaç "Başlat · 1. yarış Sarı" ile açılır */}
         {needRace ? (
-          <div className="mt-4 space-y-3">
-            <p className="text-[0.9375rem] font-semibold text-white/70">{`${nextRaceNo(live.starts, today, rdays, draft.grps[0] || "")}. yarışı oluştur`}</p>
-            {[
-              ["Sınıf", CLASS_PICK, "cls", false],
-              ["Grup", GROUP_PICK, "grps", true],
-              ["Bayrak", PREP_PICK, "prep", false],
-            ].map(([lab, list, key, multi]) => (
-              <div key={key} className="flex items-center gap-2">
-                <span className="w-12 shrink-0 text-[0.8125rem] text-white/60">{lab}</span>
-                <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
-                  {list.map((g) => {
-                    const on = multi ? draft.grps.includes(g) : draft[key] === g;
-                    return (
-                      <button key={g} type="button" aria-pressed={on} onClick={() => setDraft((d) => (multi ? { ...d, grps: on ? d.grps.filter((x) => x !== g) : [...d.grps, g] } : { ...d, [key]: g }))} className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-semibold ${on ? "bg-white text-[#11203a]" : "ck-glass text-white/85"}`}>
-                        {multi ? <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
-                        {key === "prep" && g === "Kara" ? "Kara bayrak" : g}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-            <button type="button" onClick={createRace} className="flex h-16 w-full items-center justify-center rounded-[1.125rem] bg-white text-[1.25rem] font-semibold text-[#11203a] shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-0.5 active:shadow-none">
-              Yarış oluştur
-            </button>
-          </div>
+          <NewRace
+            no={nextRaceNo(live.starts, today, rdays, draft.grps[draft.clss[0]]?.[0] || "")}
+            draft={draft}
+            setDraft={setDraft}
+            onCreate={createRace}
+          />
         ) : (
           <Countdown dark mode="start" race={flow} startRace noHead startText={nextRow ? `Başlat · ${nextRow.n}. yarış${nextRow.grp ? ` ${nextRow.grp}` : ""}` : "Başlat"} title={cur ? pickText(stE, raceName(cur)) : ""} where={race?.name || "Yarış"} />
         )}
@@ -878,7 +861,7 @@ export function BroadcastPage({ orgId, id }) {
           if (t.mode === "start" && (t.end != null || t.left != null)) writeTimer({ ...pickTimer({}), zero: t.zero });
           setLive((l) => cleanLive({ ...l, ...patch }));
           setPlan(cleanPlan({}));
-          setDraft({ cls: "Optimist", grps: [], prep: "P" });
+          setDraft(draftOf(null));
           setGroups({});
           setPickId("");
           setEditI(-1);
@@ -942,6 +925,106 @@ function Head({ title, right = "" }) {
     <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1 text-[0.8125rem] font-semibold text-mut">
       <span>{title}</span>
       <span className="min-w-0 truncate">{right}</span>
+    </div>
+  );
+}
+
+// Yarış oluşturma adım adım (Seyhun 2026-11-02 "çok dandik; seçe seçe ilerleyelim: önce sınıflar (hepsi seçili, çıkarırım), sonra seçili
+// sınıfların grupları, sonra bayrak"): 1 Sınıf → 2 Grup → 3 Bayrak ve özet; sonunda o yarışın startları programa eklenir
+function draftOf(plan) {
+  const sets = plan?.sets?.length ? plan.sets : plan?.cls ? [{ cls: plan.cls, grps: plan.grps || [] }] : [];
+  return { step: 1, clss: sets.length ? sets.map((x) => x.cls) : [...CLASS_PICK], grps: Object.fromEntries(sets.map((x) => [x.cls, x.grps])), prep: plan?.prep || "P" };
+}
+const STEPS = ["Sınıf", "Grup", "Bayrak"];
+function NewRace({ no, draft, setDraft, onCreate }) {
+  const { step, clss, grps, prep } = draft;
+  const go = (n) => setDraft((d) => ({ ...d, step: n }));
+  const starts = clss.flatMap((c) => ((grps[c] || []).length ? GROUP_PICK.filter((g) => grps[c].includes(g)).map((g) => [c, g]) : [[c, ""]]));
+  const chip = (on) => `flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.9375rem] font-semibold ${on ? "bg-white text-[#11203a]" : "ck-glass text-white/85"}`;
+  const next = "flex h-14 w-full items-center justify-center rounded-[1.125rem] bg-white text-[1.125rem] font-semibold text-[#11203a] shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-0.5 active:shadow-none disabled:opacity-40";
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[1.0625rem] font-semibold">{`${no}. yarışı oluştur`}</p>
+        <ol className="flex items-center gap-1.5 text-[0.8125rem] font-semibold">
+          {STEPS.map((x, i) => (
+            <li key={x}>
+              <button type="button" disabled={i + 1 > step} onClick={() => go(i + 1)} className={`rounded-full px-2.5 py-1 ${i + 1 === step ? "bg-white text-[#11203a]" : i + 1 < step ? "ck-glass text-white" : "text-white/40"}`}>
+                {`${i + 1} ${x}`}
+              </button>
+            </li>
+          ))}
+        </ol>
+      </div>
+      {step === 1 ? (
+        <>
+          <p className="text-[0.875rem] text-white/65">Bu yarışta hangi sınıflar var?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {CLASS_PICK.map((c) => {
+              const on = clss.includes(c);
+              return (
+                <button key={c} type="button" aria-pressed={on} onClick={() => setDraft((d) => ({ ...d, clss: on ? d.clss.filter((x) => x !== c) : CLASS_PICK.filter((x) => x === c || d.clss.includes(x)) }))} className={`flex h-12 items-center gap-2.5 rounded-[0.875rem] px-3.5 text-left text-[1rem] font-semibold ${on ? "bg-white text-[#11203a]" : "ck-glass text-white/60"}`}>
+                  <span className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 text-[0.75rem] ${on ? "border-[#11203a] bg-[#11203a] text-white" : "border-white/40"}`} aria-hidden="true">
+                    {on ? "✓" : ""}
+                  </span>
+                  {c}
+                </button>
+              );
+            })}
+          </div>
+          <button type="button" disabled={!clss.length} onClick={() => go(2)} className={next}>
+            {clss.length ? `Devam · ${clss.length === 1 ? clss[0] : `${clss.length} sınıf`}` : "Sınıf seç"}
+          </button>
+        </>
+      ) : step === 2 ? (
+        <>
+          <p className="text-[0.875rem] text-white/65">Gruplar (grup yoksa boş bırak)</p>
+          <div className="space-y-2">
+            {clss.map((c) => (
+              <div key={c} className="ck-glass rounded-[0.875rem] p-3">
+                <p className="mb-2 text-[0.9375rem] font-semibold">{c}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {GROUP_PICK.map((g) => {
+                    const on = (grps[c] || []).includes(g);
+                    return (
+                      <button key={g} type="button" aria-pressed={on} onClick={() => setDraft((d) => ({ ...d, grps: { ...d.grps, [c]: on ? (d.grps[c] || []).filter((x) => x !== g) : [...(d.grps[c] || []), g] } }))} className={chip(on)}>
+                        <span className="size-2.5 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" />
+                        {g}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={() => go(3)} className={next}>
+            {`Devam · ${starts.length} start`}
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-[0.875rem] text-white/65">Hazırlık bayrağı</p>
+          <div className="flex flex-wrap gap-1.5">
+            {PREP_PICK.map((g) => (
+              <button key={g} type="button" aria-pressed={prep === g} onClick={() => setDraft((d) => ({ ...d, prep: g }))} className={chip(prep === g)}>
+                {g === "Kara" ? "Kara bayrak" : g}
+              </button>
+            ))}
+          </div>
+          <div className="ck-glass rounded-[0.875rem] px-3.5 py-2.5">
+            {starts.map(([c, g], i) => (
+              <div key={`${c}${g}`} className="flex items-center gap-2 py-1 text-[0.9375rem]">
+                <span className="w-14 shrink-0 text-white/55">{`${i + 1}. start`}</span>
+                {g ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
+                <span className="font-semibold">{[c, g ? `${g} grup` : ""].filter(Boolean).join(" · ")}</span>
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={onCreate} className={`${next} h-16 text-[1.25rem]`}>
+            Yarışı oluştur
+          </button>
+        </>
+      )}
     </div>
   );
 }
