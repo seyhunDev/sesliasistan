@@ -571,3 +571,10 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-showb { justify-content: flex-start; min-height: 22em; }
 }
 @media (prefers-reduced-motion: reduce) { .lv-hold, .lv-showb, .lv-tabs i.on::after { animation: none; } }
+/* Sıralama panelinde yükseldi/düştü oku ve şamandıra şamandıra kendi sıraları (Seyhun 2026-11-02) */
+.lv-rankp .lv-rl li { grid-template-columns: 1.6em 1.9em 3.2em minmax(0, 1fr) auto auto; }
+.lv-rankp .lv-rl li.h { grid-template-columns: 1.6em 1.9em 3.2em minmax(0, 1fr) auto auto auto; }
+.lv-mv { text-decoration: none; font-size: 0.72em; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--lv-mut); }
+.lv-mv.up { color: #3ddc84; }
+.lv-mv.down { color: #ff6b6b; }
+.lv-hist { font-size: 0.72em; font-weight: 600; color: var(--lv-mut); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }

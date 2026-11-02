@@ -7,7 +7,7 @@ import { apText, cleanPlan, dirShort, livePhase, planLabel, planStartMs, raceNam
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, sameSail, SHOW_ON, shortClub, shortName, showSlide, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
+import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, SHOW_ON, shortClub, shortName, showSlide, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import { useDemo } from "./demo";
 import { dayProgram, expText, expWind } from "./program";
@@ -752,21 +752,29 @@ function RankPanel({ data, sel, isCur, id, max = RANK_MAX, onAll }) {
     : st.map((x, i) => {
         const w = whoOf(who, x.sail);
         const gap = x.pen ? null : x.pos === top?.pos ? gapAt(entry, x.pos, x.ranks[x.pos] - 1) : null;
-        return { p: x.pen || i + 1, sail: x.sail, name: w?.name || "", club: w?.club || "", gap: gap ? `+${Math.floor(gap / 60)}:${String(gap % 60).padStart(2, "0")}` : "" };
+        const mv = x.pen ? { hist: [], move: null } : rankMove(x.ranks);
+        return { p: x.pen || i + 1, sail: x.sail, name: w?.name || "", club: w?.club || "", gap: gap ? `+${Math.floor(gap / 60)}:${String(gap % 60).padStart(2, "0")}` : "", ...mv };
       });
   // ilk şamandıra dönüşü yazılana kadar sıralama hiç görünmez (Seyhun 2026-11-02)
   if (!rows.length) return null;
+  const hist = !g && rows.some((r) => (r.hist || []).length > 1);
   const leg = g ? "Resmî" : pos >= 0 ? (route[pos] === "F" && pos === route.length - 1 ? "Finish" : `${markName(route[pos])} · ${pos + 1}/${route.length}`) : route.length ? route.map(markLabel).join(" · ") : "";
   return (
     <Panel cls="lv-rankp" head="Sıralama" right={leg} onClick={rows.length ? onAll : undefined} label="Tam sıralama">
       {rows.length ? (
         <ol className="lv-rl">
           {rows.slice(0, max).map((r) => (
-            <li key={`${r.sail}${r.name}`} className={r.isNew ? "new" : ""}>
+            <li key={`${r.sail}${r.name}`} className={`${r.isNew ? "new" : ""}${hist ? " h" : ""}`}>
               <b>{r.p}</b>
+              {/* bir önceki yazılan şamandıraya göre yükseldi / düştü (Seyhun 2026-11-02) */}
+              <s className={`lv-mv${r.move > 0 ? " up" : r.move < 0 ? " down" : ""}`} aria-label={r.move ? `${Math.abs(r.move)} sıra ${r.move > 0 ? "yükseldi" : "düştü"}` : undefined}>
+                {r.move > 0 ? `▲${r.move}` : r.move < 0 ? `▼${-r.move}` : ""}
+              </s>
               <i>{r.sail}</i>
               <span>{shortName(r.name) || ""}</span>
               <em>{shortClub(r.club)}</em>
+              {/* şamandıra şamandıra kendi sıraları: 3 · 2 · 1, atlanan "–" */}
+              {hist ? <small className="lv-hist">{(r.hist || []).length > 1 ? r.hist.map((h) => (h == null ? "–" : h)).join(" · ") : ""}</small> : null}
               {r.gap ? <u>{r.gap}</u> : null}
             </li>
           ))}
