@@ -96,6 +96,9 @@ export function cleanCards(c) {
   const sel = cards.some((k) => k.id === c?.sel) ? c.sel : cards[0].id;
   return { cards, sel, cardAt: typeof c?.cardAt === "string" ? c.cardAt : "" };
 }
+// Yarış boyu parkur (Seyhun 2026-11-02 "bir yarışta bir parkuru seçiyorsun, hep o parkuru kullanıyorsun; seçilince seçili parkur o olsun"):
+// kartlar ve seçili kart yarışın canlı belgesinde (raceLive.cards) tutulur, her gün aynı; yoksa eski gün belgesindeki kartlar
+export const withRaceCards = (course, rc) => (rc && Array.isArray(rc.cards) && rc.cards.length ? { ...course, ...cleanCards(rc) } : course);
 export const selCard = (c) => (c?.cards || []).find((k) => k.id === c?.sel) || (c?.cards || [])[0] || { id: "A", route: [...CARD_ROUTE], type: "std" };
 
 // ---- Yazıdan (sesle söylenen ya da yazılan) ölçüm: "orsa şamandırasında rüzgâr 330, 5 knot", "pin'den komite 52",

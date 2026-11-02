@@ -24,7 +24,7 @@ import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
 import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
-import { CARD_IDS, CARD_TYPES, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
+import { CARD_IDS, CARD_TYPES, withRaceCards, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CLASS_PICK, PREP_PICK, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
@@ -53,6 +53,7 @@ export function BroadcastPage({ orgId, id }) {
   const today = todayStr();
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
+  const [measOpen, setMeasOpen] = useState(false); // Parkur ölçümleri (kapalı başlar)
   const [L, setL] = useState(null); // rounds, screen, stream (loadRoundsOf)
   const [course, setCourse] = useState(() => cleanCourse({}));
   const [obsOpen, setObsOpen] = useState(false); // ölçüm listesi (silmek için)
@@ -98,7 +99,8 @@ export function BroadcastPage({ orgId, id }) {
     let on = true;
     loadRace(orgId, id).then((r) => on && setRace(r || {}), () => on && setRace({}));
     loadLive(orgId, id).then((l) => on && ((liveIn.current = true), setLive(l)), () => {});
-    loadCourse(orgId, id, today).then((c) => on && setCourse(c), () => {});
+    // parkur kartları yarış boyu (raceLive.cards); ölçümler günün belgesinde
+    Promise.all([loadCourse(orgId, id, today), loadRoundsOf(orgId, id).catch(() => ({}))]).then(([c, d]) => on && setCourse(cleanCourse(withRaceCards(c, d.cards)))).catch(() => {});
     loadEntryDoc(orgId, id).then((d) => on && (setEntries(d.rows), setGroups(d.groups)), () => {});
     reload().then((d) => {
       if (!on) return;
@@ -811,49 +813,7 @@ export function BroadcastPage({ orgId, id }) {
         {tab === "parkur" ? (
           <>
         <section>
-          <Head title="Parkur ve rüzgâr" right={entry?.route?.length ? entry.route.map((m) => (m === "F" ? "Finish" : m)).join(" · ") : ""} />
-          <div className={`${card} overflow-hidden`}>
-            <div className="flex items-baseline gap-2 px-4 pt-3">
-              {wind ? (
-                <>
-                  <b className="text-[1.75rem] font-bold tabular-nums">{wind.deg}°</b>
-                  <span className="text-mut">
-                    {dirShort(wind.deg)}
-                    {wind.kn != null ? ` · ${wind.kn} kn` : ""}
-                  </span>
-                  <span className="ml-auto text-[0.875rem] text-mut">{hm(wind.at)}</span>
-                </>
-              ) : (
-                <span className="text-mut">Rüzgâr yazılmadı</span>
-              )}
-            </div>
-            {svg ? <div className="px-3 pt-2 [&>svg]:mx-auto [&>svg]:block [&>svg]:max-h-[22rem] [&>svg]:w-auto" dangerouslySetInnerHTML={{ __html: svg }} /> : <p className="px-4 pt-2 text-[0.875rem] text-mut">Parkur ölçümü yok</p>}
-            {obsOpen
-              ? [...course.obs].reverse().map((o) => (
-                  <div key={o.id} className="flex items-center gap-3 border-t border-line px-4 py-2 text-[0.9375rem]">
-                    <span className="min-w-0 flex-1 truncate font-semibold">{`${obsTitle(o)} · ${o.deg}°${o.kn != null ? ` · ${o.kn} kn` : ""}`}</span>
-                    <span className="text-[0.8125rem] tabular-nums text-mut">{hm(o.at)}</span>
-                    <button type="button" onClick={() => dropObs(o)} className="text-[0.875rem] font-semibold text-rec">
-                      Sil
-                    </button>
-                  </div>
-                ))
-              : null}
-            <div className="grid grid-cols-3 gap-2 p-3">
-              <Button variant="secondary" onClick={() => setAdd(0)}>
-                Rüzgâr
-              </Button>
-              <Button variant="secondary" onClick={() => setAdd(1)}>
-                Parkur ölçümü
-              </Button>
-              <Button variant="secondary" disabled={!course.obs.length} onClick={() => setObsOpen((v) => !v)}>
-                {obsOpen ? "Gizle" : `Ölçümler${course.obs.length ? ` · ${course.obs.length}` : ""}`}
-              </Button>
-            </div>
-          </div>
-        </section>
-        <section>
-          <Head title="Parkur kartları" right={`Ekranda Kart ${course.sel}`} />
+          <Head title="Parkur" right={`Seçili: ${CARD_TYPES[selCard(course).type] || ""}`} />
           <div className={`${card} overflow-hidden`}>
             {scene ? <div className="[&>svg]:block" dangerouslySetInnerHTML={{ __html: scene }} /> : <p className="px-4 pt-3 text-[0.875rem] text-mut">Rüzgâr ya da parkur ölçümü girince kart çizilir</p>}
             {course.cards.map((k) => (
@@ -884,6 +844,54 @@ export function BroadcastPage({ orgId, id }) {
               </Button>
               <Button disabled={routeText(cleanRoute(rt)) === routeText(selCard(course).route)} onClick={saveRoute}>
                 Kaydet
+              </Button>
+            </div>
+          </div>
+        </section>
+        <section>
+          {/* Seyhun 2026-11-02 "parkur ve rüzgârı şimdilik gizle, alta koy, istersek açarız; parkur kartları aynı şeyi animasyonla gösteriyor":
+              kapalıyken yalnız Rüzgâr / Parkur ölçümü girişi */}
+          <Head title="Parkur ölçümleri" right={wind ? `${wind.deg}° ${dirShort(wind.deg)}${wind.kn != null ? ` · ${wind.kn} kn` : ""}` : ""} />
+          <div className={`${card} overflow-hidden`}>
+            {measOpen ? (
+            <>
+            <div className="flex items-baseline gap-2 px-4 pt-3">
+              {wind ? (
+                <>
+                  <b className="text-[1.75rem] font-bold tabular-nums">{wind.deg}°</b>
+                  <span className="text-mut">
+                    {dirShort(wind.deg)}
+                    {wind.kn != null ? ` · ${wind.kn} kn` : ""}
+                  </span>
+                  <span className="ml-auto text-[0.875rem] text-mut">{hm(wind.at)}</span>
+                </>
+              ) : (
+                <span className="text-mut">Rüzgâr yazılmadı</span>
+              )}
+            </div>
+            {svg ? <div className="px-3 pt-2 [&>svg]:mx-auto [&>svg]:block [&>svg]:max-h-[22rem] [&>svg]:w-auto" dangerouslySetInnerHTML={{ __html: svg }} /> : <p className="px-4 pt-2 text-[0.875rem] text-mut">Parkur ölçümü yok</p>}
+            </>
+            ) : null}
+            {obsOpen
+              ? [...course.obs].reverse().map((o) => (
+                  <div key={o.id} className="flex items-center gap-3 border-t border-line px-4 py-2 text-[0.9375rem]">
+                    <span className="min-w-0 flex-1 truncate font-semibold">{`${obsTitle(o)} · ${o.deg}°${o.kn != null ? ` · ${o.kn} kn` : ""}`}</span>
+                    <span className="text-[0.8125rem] tabular-nums text-mut">{hm(o.at)}</span>
+                    <button type="button" onClick={() => dropObs(o)} className="text-[0.875rem] font-semibold text-rec">
+                      Sil
+                    </button>
+                  </div>
+                ))
+              : null}
+            <div className="grid grid-cols-3 gap-2 p-3">
+              <Button variant="secondary" onClick={() => setAdd(0)}>
+                Rüzgâr
+              </Button>
+              <Button variant="secondary" onClick={() => setAdd(1)}>
+                Parkur ölçümü
+              </Button>
+              <Button variant="secondary" onClick={() => (setMeasOpen((v) => !v), setObsOpen(!measOpen && course.obs.length > 0))}>
+                {measOpen ? "Gizle" : `Aç${course.obs.length ? ` · ${course.obs.length}` : ""}`}
               </Button>
             </div>
           </div>
@@ -924,7 +932,7 @@ export function BroadcastPage({ orgId, id }) {
         onClose={() => setReset(false)}
         live={{ ...live, plan }}
         onReset={async (media) => {
-          const patch = resetPatch(media, Date.now());
+          const patch = resetPatch(media, Date.now(), { plan });
           try {
             await resetLive(orgId, id, patch, live.media);
           } catch {
@@ -933,7 +941,7 @@ export function BroadcastPage({ orgId, id }) {
           const t = readTimer();
           if (t.mode === "start" && (t.end != null || t.left != null)) writeTimer({ ...pickTimer({}), zero: t.zero });
           setLive((l) => cleanLive({ ...l, ...patch }));
-          setPlan(cleanPlan({}));
+          setPlan(cleanPlan(patch.plan));
           setDraft(draftOf(null));
           setGroups({});
           setPickId("");

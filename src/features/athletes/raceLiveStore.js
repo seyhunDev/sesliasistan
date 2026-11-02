@@ -257,6 +257,14 @@ export async function resetLive(orgId, id, patch, media = []) {
   // mergeFields: her alan bütünüyle yazılır (rounds ve plan iç içe birleşmez, boşalır); günün grup listeleri de silinir
   await setDoc(live(orgId, id), patch, { mergeFields: Object.keys(patch) });
   await setDoc(doc(db, "orgs", orgId, "raceLive", id, "entries", "list"), { groups: {} }, { mergeFields: ["groups"] }).catch(() => {});
+  // parkur ölçümleri (rüzgâr, konumlar, ayak açıları) silinir; parkur kartları ve seçili parkur kalır
+  if (patch.stream) {
+    const snap = await getDocs(collection(db, "orgs", orgId, "raceLive", id, "course")).catch(() => null);
+    for (const d of snap?.docs || []) {
+      const x = d.data() || {};
+      await setDoc(d.ref, { ...(x.cards ? { cards: x.cards, sel: x.sel || "", cardAt: x.cardAt || "" } : {}), at: new Date().toISOString() }).catch(() => {});
+    }
+  }
   if (patch.media) for (const m of media) for (const p of [mpath(orgId, m.id), tpath(orgId, m.id)]) await deleteObject(sref(store(), p)).catch(() => {});
 }
 
@@ -283,7 +291,12 @@ export const addCourseObs = (orgId, id, day, o) => setDoc(courseRef(orgId, id, d
 export const addCourseMany = (orgId, id, day, list, len = null) =>
   setDoc(courseRef(orgId, id, day), { ...(list.length ? { obs: arrayUnion(...list.map(cleanObs)) } : {}), ...(len ? { len } : {}), at: new Date().toISOString() }, { merge: true });
 // Parkur kartları: yalnız kartlar ve seçili kart yazılır (ölçümlere dokunmaz)
-export const saveCards = (orgId, id, day, c) => { const k = cleanCards(c); return setDoc(courseRef(orgId, id, day), { cards: k.cards, sel: k.sel, cardAt: new Date().toISOString() }, { merge: true }); };
+// kartlar yarış boyu (raceLive.cards, lib/raceCourse.js withRaceCards); gün belgesine de yazılır (eski sürümler okur)
+export const saveCards = (orgId, id, day, c) => {
+  const k = cleanCards(c);
+  const at = new Date().toISOString();
+  return Promise.all([setDoc(live(orgId, id), { cards: { cards: k.cards, sel: k.sel, cardAt: at } }, { mergeFields: ["cards"] }), setDoc(courseRef(orgId, id, day), { cards: k.cards, sel: k.sel, cardAt: at }, { merge: true })]);
+};
 export const saveCourse = (orgId, id, day, c) => setDoc(courseRef(orgId, id, day), { ...cleanCourse(c), at: new Date().toISOString() });
 
 // Canlı ekran (lib/raceRounds.js, Seyhun 2026-11-01): start başına şamandıra dönüşleri, ekranda oynayan kayıt, canlı yayın bağlantısı.
@@ -317,5 +330,5 @@ export function watchRounds(orgId, id, cb) {
 export async function loadRoundsOf(orgId, id) {
   const snap = await readServer(live(orgId, id));
   const d = snap.exists() ? snap.data() : {};
-  return { ...cleanLive(d), timer: d.timer || null, rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), courseShow: cleanCourseShow(d.courseShow) };
+  return { ...cleanLive(d), timer: d.timer || null, rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), courseShow: cleanCourseShow(d.courseShow), cards: d.cards || null };
 }

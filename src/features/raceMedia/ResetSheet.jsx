@@ -15,7 +15,7 @@ export function ResetSheet({ open, onClose, live, onReset }) {
 }
 
 function Body({ live, onReset }) {
-  const [media, setMedia] = useState(false);
+  const [media, setMedia] = useState(true);
   const [busy, setBusy] = useState(false);
   const n = resetCounts(live);
   const rows = [
@@ -40,7 +40,7 @@ function Body({ live, onReset }) {
           </label>
         </li>
       </ul>
-      <p className="mt-3 px-1 text-[0.8125rem] text-mut">Sayaç, program, gruplar, dönüşler ve ekran da baştan başlar. Kayıt listesi, parkur kartları, yarışın bilgileri, sonuçlar, evrak ve bütçe kalır.</p>
+      <p className="mt-3 px-1 text-[0.8125rem] text-mut">Sayaç, gruplar, dönüşler, ekran, video linki ve parkur ölçümleri de baştan başlar. Kayıt listesi, program günleri ve saatleri, seçili parkur, yarışın bilgileri, sonuçlar, evrak ve bütçe kalır.</p>
       <button
         type="button"
         disabled={busy}
