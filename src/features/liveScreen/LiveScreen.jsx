@@ -11,6 +11,7 @@ import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import { useDemo } from "./demo";
 import { dayProgram, expText, expWind } from "./program";
+import { autoCaption } from "@/lib/raceCaption";
 import "./liveScreen.css";
 
 // Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01; yayın görünümü 2026-11-02 SailGP örneği, project-files/samandira-donus/yayin4).
@@ -924,14 +925,17 @@ function titleOf({ data, sel, phase, today, prog = [] }) {
 }
 
 // Şeridin üstünde yalnız yayıncının alt yazısı (screen.caption) ve önceki yarışlar düğmeleri; yarışın adı şeridin içinde (Seyhun 2026-11-02 "tek bir çizgi olmalı")
-function TitleLine({ data, isCur, id, starts, onList }) {
-  const cap = isCur ? data.screen?.caption || "" : "";
+// Yayıncı yazmadıysa yazı kendiliğinden (lib/raceCaption.js): Start, Son dakika, Tehir, Genel geri, Bireysel geri, Finiş; uyarılar kehribar
+function TitleLine({ data, isCur, id, starts, onList, auto }) {
+  const own = isCur ? data.screen?.caption || "" : "";
+  const cap = own || (isCur ? auto?.text || "" : "");
+  const warn = !own && auto?.kind === "warn";
   const btns = (!isCur && data.cur) || starts.length > 1 || (!isCur && starts.length);
   if (!cap && !btns) return null;
   return (
     <div className="lv-title">
       {cap ? (
-        <em key={cap} className="lv-cap">
+        <em key={cap} className={`lv-cap${warn ? " warn" : ""}`}>
           {cap}
         </em>
       ) : null}
@@ -1237,6 +1241,7 @@ export function LiveScreen({ id, y = "" }) {
   const ctimer = phase === "race" ? data.timer : null;
   const cs = clockState({ sel: csel, isCur, timer: ctimer, now: nowMs, entry, data, today });
   // Ortada büyük sayaç yalnız geri sayarken (start'a ya da ilk start'a) ve sayaç durdurulmuşken; sonra şeritte "Süre"
+  const auto = isCur && phase !== "summary" ? autoCaption({ plan: data.plan, starts, timer: data.timer, rounds: data.rounds, now: nowMs, today }) : null;
   const counting = phase !== "summary" && ((cs.rem != null && cs.rem > 0) || cs.label === "Durdu");
   const hasSvg = (data.course?.obs || []).length > 0;
   // Genel sıralama yarışta sağda, alttan yukarı sabit alanda, kaydırılır (Seyhun 2026-11-02 "genel sıralama varsa sağ tarafta")
@@ -1271,7 +1276,7 @@ export function LiveScreen({ id, y = "" }) {
         <CenterClock show={counting && !hero} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
         {hero ? null : <CourseFloat data={data} sel={sel} isCur={isCur} open={courseOpen} now={nowMs} phase={phase} onClose={() => setCourseOpen(false)} />}
         <div className={`lv-foot${hero ? " off" : ""}`}>
-          <TitleLine data={data} isCur={isCur} id={id} starts={starts} onList={() => setList(true)} />
+          <TitleLine data={data} isCur={isCur} id={id} starts={starts} onList={() => setList(true)} auto={auto} />
           {windOpen && (data.forecast?.rows || []).length ? (
             <button type="button" className="lv-p lv-windpop" onClick={() => setWindOpen(false)} aria-label="Grafiği kapat">
               <WindDay fc={data.forecast} now={nowMs} at={data.plan.at} mine={lastWind(data, sel, isCur).obs} />

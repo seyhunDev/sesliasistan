@@ -26,6 +26,7 @@ import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CLASS_PICK, PREP_PICK, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
 import { todayStr } from "@/lib/utils/format";
+import { autoCaption } from "@/lib/raceCaption";
 
 // Yarışın yayın sayfası (/athletes/races/<id>/yayin, yalnız ana hesap; Seyhun 2026-11-01 "herkese açık multimedyasını ayrı bir sayfada
 // yöneteceğiz"): herkese açık /canli ekranına giden her şey tek yerde. Lacivert üstte start sayacı (Başlat · İptal · Eşitle; sayaç diğer
@@ -41,6 +42,9 @@ const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const orient = (m) => (m.w && m.h ? (m.h > m.w ? "Dikey" : "Yatay") : "");
 
+// Elle yazılacak hazır yazılar: olaylar (start, tehir, genel geri, finiş) kendiliğinden yazar, grup ve yarış zaten şeritte
+const CAP_PICKS = ["Ödül töreni", "Kısa ara", "Protesto saati"];
+
 export function BroadcastPage({ orgId, id }) {
   const toast = useToast();
   const today = todayStr();
@@ -54,6 +58,7 @@ export function BroadcastPage({ orgId, id }) {
   const [tab, setTab] = useState("sure"); // Sekmeler (Seyhun 2026-11-02): Süre · Video · Parkur · Dönüşler
   const [cap, setCap] = useState(""); // ekranın altındaki yazı (screen.caption)
   const [capInit, setCapInit] = useState(false);
+  const [capNow, setCapNow] = useState(0); // otomatik yazının önizlemesi için saat (5 sn)
   const [yt, setYt] = useState("");
   const [sel, setSel] = useState(null); // ekrana verilecek seçim { kind, mid }
   const [busy, setBusy] = useState("");
@@ -100,6 +105,12 @@ export function BroadcastPage({ orgId, id }) {
   }, [orgId, id, today]);
 
   // Dönüşler canlı (iki görevli: biri şamandırada, biri finişte; Seyhun 2026-11-02 inceleme)
+  useEffect(() => {
+    const tick = () => setCapNow(Date.now());
+    tick();
+    const t = setInterval(tick, 5000);
+    return () => clearInterval(t);
+  }, []);
   useEffect(() => watchRounds(orgId, id, (d) => setL((p) => (p ? { ...p, ...d } : p))), [orgId, id]);
   // Bu sayfada yapılan değişiklik hemen görünür; kayıt arkada gider
   const change = useCallback(
@@ -319,6 +330,8 @@ export function BroadcastPage({ orgId, id }) {
       toast("Kaydedilemedi, tekrar dene.");
     }
   };
+  // Elle yazı yoksa ekran kendiliğinden yazar (lib/raceCaption.js): Start, Son dakika, Tehir, Genel geri, Bireysel geri, Finiş
+  const autoCap = autoCaption({ plan, starts: live.starts, timer: tr.t, rounds: L?.rounds || {}, now: capNow, today });
   const isOn = (k, mid = "") => onScreen?.kind === k && (k !== "rec" || onScreen.mid === mid);
   const isSel = (k, mid = "") => sel?.kind === k && (k !== "rec" || sel.mid === mid);
   const c = withLiveWind(course, live.wind, today);
@@ -586,10 +599,10 @@ export function BroadcastPage({ orgId, id }) {
         </section>
         <section>
           {/* Ekranın altındaki yazı (olimpiyat / SailGP alt yazısı gibi): ne gösterildiği; öneriler günün startından */}
-          <Head title="Ekranda yazı" right={cap ? "Yazılı" : "Boş"} />
+          <Head title="Ekranda yazı" right={cap ? "Elle" : autoCap.text ? `Otomatik · ${autoCap.text}` : "Otomatik"} />
           <div className={`${card} overflow-hidden`}>
             <div className="flex items-center gap-2 px-4 py-3">
-              <input value={cap} onChange={(e) => setCap(e.target.value.slice(0, 80))} onBlur={() => cap !== (L?.screen.caption || "") && capSave(cap.trim())} placeholder="Örn. Optimist · Mavi grup · 2. yarış startı" className="min-w-0 flex-1 rounded-lg bg-bg px-2.5 py-1.5 text-[0.9375rem] font-semibold outline-none" />
+              <input value={cap} onChange={(e) => setCap(e.target.value.slice(0, 80))} onBlur={() => cap !== (L?.screen.caption || "") && capSave(cap.trim())} placeholder={autoCap.text ? `Otomatik: ${autoCap.text}` : "Boşken kendiliğinden yazar"} className="min-w-0 flex-1 rounded-lg bg-bg px-2.5 py-1.5 text-[0.9375rem] font-semibold outline-none" />
               {cap ? (
                 <button type="button" onClick={() => capSave("")} className="text-[0.875rem] font-semibold text-rec">
                   Kaldır
@@ -597,9 +610,7 @@ export function BroadcastPage({ orgId, id }) {
               ) : null}
             </div>
             <div className="flex flex-wrap gap-1.5 px-4 pb-3">
-              {[st ? [stE.cls, stE.grp ? `${stE.grp} grup` : "", raceName(st)].filter(Boolean).join(" · ") : "", nextPlan ? `Sıradaki start · ${[nextPlan.cls, nextPlan.grp].filter(Boolean).join(" · ")}` : "", "Start", "Finish", "Ödül töreni"]
-                .filter(Boolean)
-                .map((t) => (
+              {CAP_PICKS.map((t) => (
                   <button key={t} type="button" onClick={() => capSave(t)} className={`h-8 rounded-full px-3 text-[0.8125rem] font-medium active:scale-95 ${cap === t ? "bg-acc text-white" : "bg-line/60"}`}>
                     {t}
                   </button>
