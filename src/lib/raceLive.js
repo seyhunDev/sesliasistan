@@ -187,6 +187,17 @@ export const addMin = (at, min) => {
   return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 };
 export const planLabel = (o) => [o.cls, o.grp].filter(Boolean).join(" · ");
+// Ekranın günü (Seyhun 2026-11-02 "ekran yeni güne geçer'i 22.10 yaptım, geçmedi"): "Ekran yeni güne geçer" öğleden sonra bir saatse
+// (ör. 22:10) o saatten sonra ekran ertesi güne geçer (bugün yarış yok ya da gün bittiyse yarının programı, saati, rüzgârı); sabah bir
+// saatse (06:00) gün bittikten sonra ertesi sabah o saatte geçer (livePhase). Sayaç sürerken geçmez.
+export function screenDay(plan, now, timer = null) {
+  const tr = new Date(now + 3 * 3600e3).toISOString();
+  const today = tr.slice(0, 10);
+  const sa = cleanPlan(plan).showAt || "06:00";
+  if (sa < "12:00" || tr.slice(11, 16) < sa) return today;
+  if (timer && ((timer.end != null && now < timer.end + 3600e3) || timer.left != null)) return today;
+  return new Date(Date.parse(`${today}T12:00:00Z`) + 864e5).toISOString().slice(0, 10);
+}
 // Ekranın evresi: "race" sayaç sürüyor ya da bugün start var; "summary" gün bitti (ertesi gün showAt'e kadar); "wait" start bekleniyor
 export function livePhase({ plan, starts, timer, today, now = Date.now() }) {
   const pl = plan || cleanPlan({});
