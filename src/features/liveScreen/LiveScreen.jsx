@@ -7,7 +7,7 @@ import { apText, cleanPlan, dirShort, livePhase, planLabel, planStartMs, raceNam
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { courseShowing, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, sameSail, shortClub, shortName, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
+import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, sameSail, shortClub, shortName, showSlide, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import { useDemo } from "./demo";
 import { dayProgram, expText, expWind } from "./program";
@@ -1171,10 +1171,70 @@ const courseSvg = (data, route) => {
     return "";
   }
 };
-function courseOn({ data, sel, isCur, open, now, phase, pre }) {
+// Yarış öncesi gösterim (Seyhun 2026-11-02): parkur → rüzgâr (şimdi + beklenen, gün boyu grafik) → günün programı, sırayla 12'şer sn;
+// otomatikte dakikada bir tur, Yayın'dan "Göster" ile bir tur. Yarış başlayınca (pre değil) hiçbiri, yeni ölçüm de parkuru açmaz.
+// İzleyici şeritteki "Parkur"a dokunursa parkur her zaman açılır.
+function slideOn({ data, sel, isCur, open, now, phase, pre, prog }) {
+  const svg = !!courseSvg(data, sceneRoute(data, sel, isCur, phase));
+  if (open && svg) return "course";
+  if (!isCur || !pre) return "";
   const latest = Math.max(0, Date.parse(data.course?.cardAt || "") || 0, ...(data.course?.obs || []).map((o) => Date.parse(o.at) || 0));
-  const fresh = latest > 0 && now - latest < COURSE_MS;
-  return !!courseSvg(data, sceneRoute(data, sel, isCur, phase)) && (open || fresh || (isCur && courseShowing({ show: data.courseShow, now, pre })));
+  if (svg && latest > 0 && now - latest < COURSE_MS) return "course";
+  const slides = [svg ? "course" : "", windShowable(data) ? "wind" : "", prog.length ? "prog" : ""].filter(Boolean);
+  return showSlide({ show: data.courseShow, now, pre, slides });
+}
+const windShowable = (data) => (data.forecast?.rows || []).length >= 2 || (data.course?.obs || []).some((o) => o.kind === "wind");
+// Rüzgâr gösterimi: üstte şimdiki rüzgâr (ölçüm) ve start saatinde beklenen, altta gün boyu grafik
+function WindFloat({ data, sel, isCur, show, now }) {
+  const st = useFade(show, 600);
+  if (!st) return null;
+  const { w, obs } = lastWind(data, sel, isCur);
+  const ew = expWind(data.forecast, data.plan.at);
+  return (
+    <div className={`lv-scene lv-slide ${st}`}>
+      <span className="lv-scenet">Rüzgâr</span>
+      <div className="lv-slnow">
+        {w ? (
+          <div>
+            <b>
+              <WindArrow w={w} />
+              {w.range ? `${w.range[0]}–${w.range[1]}°` : `${w.dir}°`}
+            </b>
+            <span>{`Şimdi · ${dirShort(w.dir)}${w.kn != null ? ` · ${w.kn} knot` : ""}`}</span>
+          </div>
+        ) : null}
+        {ew ? (
+          <div>
+            <b>
+              <WindArrow w={{ dir: ew.dir }} />
+              {expText(ew)}
+            </b>
+            <span>{`Beklenen · Start ${data.plan.at}`}</span>
+          </div>
+        ) : null}
+      </div>
+      <WindDay fc={data.forecast} now={now} at={data.plan.at} mine={obs} />
+    </div>
+  );
+}
+// Günün programı: yarış yarış grup, durum ve saat
+function ProgFloat({ prog, show }) {
+  const st = useFade(show, 600);
+  if (!st) return null;
+  return (
+    <div className={`lv-scene lv-slide ${st}`}>
+      <span className="lv-scenet">Bugünün programı</span>
+      <div className="lv-slprog">
+        {prog.slice(0, 8).map((x) => (
+          <div key={x.key} className={x.state}>
+            <Dot g={x.grp} />
+            <b>{[x.name, x.grp ? `${x.grp} grup` : ""].filter(Boolean).join(" · ")}</b>
+            <span>{x.state === "done" ? "Bitti" : x.state === "now" ? "Canlı" : x.state === "next" ? (x.at ? `Sıradaki · ${x.at}` : "Sıradaki") : x.at || ""}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 function CourseFloat({ data, sel, isCur, show, phase, onClose }) {
   const route = sceneRoute(data, sel, isCur, phase);
@@ -1285,16 +1345,19 @@ export function LiveScreen({ id, y = "" }) {
   // Ortada büyük sayaç yalnız geri sayarken (start'a ya da ilk start'a) ve sayaç durdurulmuşken; sonra şeritte "Süre"
   const auto = isCur && phase !== "summary" ? autoCaption({ plan: data.plan, starts, timer: data.timer, rounds: data.rounds, now: nowMs, today }) : null;
   // Parkur: yarış öncesi (bekleme ya da start'a geri sayım) otomatik; açıkken arka plan bulanık (lv-bc.course)
-  const cOn = phase !== "summary" && courseOn({ data, sel, isCur, open: courseOpen, now: nowMs, phase, pre: phase === "wait" || (cs.rem != null && cs.rem > 0) });
   const counting = phase !== "summary" && ((cs.rem != null && cs.rem > 0) || cs.label === "Durdu");
   const hasSvg = (data.course?.obs || []).length > 0;
   // Genel sıralama yarışta sağda, alttan yukarı sabit alanda, kaydırılır (Seyhun 2026-11-02 "genel sıralama varsa sağ tarafta")
   const ov = phase === "race" && isCur ? overallTop(data, 1) : null;
   const prog = isCur ? dayProgram(data, today) : [];
+  // Yarış öncesi gösterim (parkur → rüzgâr → program); süren yarış varken yok (Seyhun 2026-11-02 "yarış başladığında gösterilmemeli")
+  const pre = !ongoing && (phase === "wait" || (cs.rem != null && cs.rem > 0));
+  const slide = phase !== "summary" ? slideOn({ data, sel, isCur, open: courseOpen, now: nowMs, phase, pre, prog }) : "";
+  const cOn = slide === "course";
   // Yarış öncesi video yokken sade sayfa (Seyhun 2026-11-02 "geri sayım sayfası sade temiz"): ortada sayaç, altta program; şerit yok
   const hero = phase === "wait" && !hasVideo;
   return (
-    <div className={`lv lv-bc${cOn ? " course" : ""}${hasVideo ? " video" : ""}${counting ? " counting" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
+    <div className={`lv lv-bc${slide ? " course" : ""}${hasVideo ? " video" : ""}${counting ? " counting" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
       <Backdrop data={data} isCur={isCur} />
       <div className="lv-page lv-ov">
         {/* Geri tek başına en solda (Seyhun 2026-11-02) */}
@@ -1319,6 +1382,8 @@ export function LiveScreen({ id, y = "" }) {
         ) : null}
         <CenterClock show={counting && !hero && !hasVideo} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
         <CourseFloat data={data} sel={sel} isCur={isCur} show={cOn} phase={phase} onClose={() => setCourseOpen(false)} />
+        <WindFloat data={data} sel={sel} isCur={isCur} show={slide === "wind"} now={nowMs} />
+        <ProgFloat prog={prog} show={slide === "prog"} />
         <div className={`lv-foot${hero ? " off" : ""}`}>
           <TitleLine data={data} isCur={isCur} id={id} starts={starts} onList={() => setList(true)} auto={auto} />
           {windOpen && (data.forecast?.rows || []).length ? (

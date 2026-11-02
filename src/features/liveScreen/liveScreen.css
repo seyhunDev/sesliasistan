@@ -527,3 +527,21 @@ button.lv-p:active { transform: translateY(1px); }
 }
 /* Video varken geri sayım şeritte (ortada videonun önüne gelmez) */
 .lv-cell.clock b { font-size: 2.6em; }
+/* Yarış öncesi gösterim: parkur → rüzgâr → program (Seyhun 2026-11-02); parkurla aynı yer, arka plan bulanık, kart yok */
+.lv-slide { cursor: default; gap: 1.2em; justify-content: center; }
+.lv-slnow { display: flex; gap: 3em; justify-content: center; flex-wrap: wrap; }
+.lv-slnow > div { display: flex; flex-direction: column; align-items: center; gap: 0.3em; }
+.lv-slnow b { display: flex; align-items: center; gap: 0.35em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 2.8em; font-weight: 700; line-height: 1; }
+.lv-slnow b .lv-arrow { width: 1em; height: 1em; }
+.lv-slnow span, .lv-slprog span { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.8em; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lv-mut); }
+.lv-slide .lv-fc { width: min(100%, 46em); }
+.lv-slprog { display: flex; flex-direction: column; width: min(100%, 30em); }
+.lv-slprog > div { display: flex; align-items: center; gap: 0.7em; padding: 0.7em 0.2em; border-bottom: 1px solid var(--lv-line); }
+.lv-slprog b { flex: 1; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.5em; font-weight: 700; text-transform: uppercase; }
+.lv-slprog .done { opacity: 0.55; }
+.lv-slprog .next span, .lv-slprog .now span { color: var(--lv-acc); }
+/* gösterim açıkken yarış öncesi sayfa (ortadaki sayaç ve program kartları) gizlenir; lv-fade animasyonu opaklığı ezmesin */
+.lv-bc.course :is(.lv-wait, .lv-prog) { animation: none; opacity: 0; visibility: hidden; }
+@media (max-width: 760px) {
+  .lv-slide { background: rgba(4, 10, 20, 0.94); }
+}
