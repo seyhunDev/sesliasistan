@@ -1,8 +1,8 @@
-Commit: 56dfd36 · Yayını sıfırla (#974)
-Zaman: 2026-11-02-1552 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41446639304
+Commit: 325f101 · Canlı ekran: rüzgâr yazısı ve parkur gösterimi (#975)
+Zaman: 2026-11-02-1608 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41448744992
 
-TAM TEST · 02.11.2026 15:41:25
+TAM TEST · 02.11.2026 15:56:47
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1435/1435 geçti · 0 kalan · 634 sn
+SONUÇ: 1435/1435 geçti · 0 kalan · 646 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
