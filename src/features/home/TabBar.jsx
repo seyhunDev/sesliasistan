@@ -813,6 +813,9 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   }, [done]);
   const ring = done && checkGone ? { tone: "idle", fill: 0, label: "", sub: "" } : okRing;
   return (
+    <>
+    {/* Asistan açıkken arkadaki sayfa görünür, hafifçe kararır; dışına dokununca kapanır (dinlerken ya da bekleyen söz varken değil) */}
+    {active && !typing && <div data-adim="" aria-hidden="true" onClick={() => mode !== "listening" && !draft && onClose?.()} className="adim fixed inset-0 z-[37]" />}
     <div
       ref={box}
       data-dome=""
@@ -827,13 +830,13 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
           düğmesi (dokun: konuş, basılı tut: yaz). Asistan açılınca çubuğun yerine alttan beyaz bir sayfa (ChatGPT, Gemini
           gibi) gelir: üstte tutamaç ve kapat, ortada sohbet balonları, altta Oluştur, yazı kutusu ve ses düğmesi. Durum
           yalnız ses düğmesinin renginden anlaşılır (yeşil bekliyor, kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor). */}
-      <div ref={inner} className={`absolute inset-x-0 bottom-0 ${active ? "h-[var(--vvh,100dvh)]" : ""}`}>
+      <div ref={inner} className="absolute inset-x-0 bottom-0">
         {sheet ? (
           // Asistan açıkken tam sayfa (Seyhun, 2026-10-14): arkada animasyonlu zemin, önde sohbet ve görevler, altta aynı kutu;
           // açık ya da koyu görünümden bağımsız tek koyu tasarım (data-theme="dark": içindeki dark: sınıfları da koyu)
-          <div data-theme={active ? "dark" : undefined} data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? `afull ${leaving ? "afull-out" : "afull-in"} relative flex h-full flex-col` : "contents"}>
+          <div data-theme={active ? "dark" : undefined} data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? `afull afull-sm ${leaving ? "afull-out" : "afull-in"} relative flex flex-col` : "contents"}>
           {active && <AssistBg />}
-          <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col pt-[env(safe-area-inset-top)]" : ""}`}>
+          <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex flex-col" : ""}`}>
             {active && (
               <div className="relative flex h-12 shrink-0 items-center px-5">
                 {/* Durum yazısı (Düşünüyorum, Yapıyorum 2 / 3, Kaydedildi): sol üstte tek satır; sağda sesli yanıt */}
@@ -853,11 +856,11 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                 data-apane=""
                 // Tek kutu (2026-10-23): kapat düğmesi yok, dinlerken ve taslak varken dışında boş alana dokununca kapanır
                 onClick={(e) => (e.target === pane.current || e.target === body.current) && mode !== "listening" && !draft && onClose?.()}
-                // Sohbet alanı ekranın kalanını kaplar; mesajlar alttan dolar, fazlası içeride kayar
-                // Üstte boşluk ve yukarı doğru soluklaşma (Seyhun: "yazı yukarı gittikçe soluklaşsın, üstte biraz boşluk", 2026-10-14)
-                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 [mask-image:linear-gradient(to_bottom,transparent,rgba(0,0,0,.35)_2.5rem,#000_40%)] [scrollbar-width:none]"
+                // Küçük pencere (Seyhun 2026-11-02 "A · İçeriğe göre büyür"): sohbet içeriği kadar, en çok ekranın yarısı kadar
+                // pencere; fazlası içeride kayar, yeni mesajda kendiliğinden en alta iner (yukarıdaki kaydırma). Üstte kısa soluklaşma.
+                className="max-h-[max(9rem,calc(var(--vvh,100dvh)*.55-8rem))] overflow-y-auto overscroll-contain px-5 [mask-image:linear-gradient(to_bottom,transparent,#000_1.5rem)] [scrollbar-width:none]"
               >
-                <div ref={body} className="flex min-h-full flex-col justify-end pb-5 pt-10">
+                <div ref={body} className="flex flex-col justify-end pb-3 pt-3">
                   <div ref={feed}>
                     <div ref={setSlot} />
                   </div>
@@ -923,6 +926,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
         )}
       </div>
     </div>
+    </>
   );
 }
 

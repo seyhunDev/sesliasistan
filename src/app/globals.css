@@ -363,6 +363,11 @@ select {
 @keyframes afullin { from { translate: 0 0; } }
 @keyframes afbgin { from { opacity: 0; } }
 @keyframes afpartin { from { opacity: 0; transform: translate3d(0, 1.25rem, 0); } }
+/* Küçük pencere (Seyhun 2026-11-02 "A · İçeriğe göre büyür"): asistan alttan içeriği kadar açılır, arkadaki sayfa görünür ve
+   hafifçe kararır (.adim, dokununca kapanır); bulanık koyu zemin (.abg) yalnız pencerenin içinde */
+.afull-sm { border-radius: 1.75rem 1.75rem 0 0; overflow: hidden; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 -14px 40px -18px rgba(0, 0, 0, .55); }
+.afull-sm > .abg { background: rgba(10, 13, 34, .86); }
+.adim { background: rgba(10, 13, 34, .22); animation: afbgin .25s ease-out both; }
 .afull-in { animation: afullin .3s linear; }
 .afull-in > .abg { animation: afbgin .3s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .aorb canvas, .aorb .vl-disc { animation: none; } }
