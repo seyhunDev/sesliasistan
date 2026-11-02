@@ -9,7 +9,7 @@ const rad = (d) => (d * Math.PI) / 180;
 const nrm = (d) => ((Math.round(d) % 360) + 360) % 360;
 const dir = (b, m) => [m * Math.sin(rad(b)), m * Math.cos(rad(b))];
 const add = (p, b, m) => { const [x, y] = dir(b, m); return [p[0] + x, p[1] + y]; };
-function geom(c) {
+export function geom(c) {
   const A = c.axis, L = c.orsa;
   // komite sabit; pin komiteden ölçülen açıda (yoksa olması gereken eksen − 90°), soluk çizgi olması gereken hat
   const lineM = Math.max(c.lineM || 120, L * 0.5); // kartta hat okunur boyda (kağıt kart gibi ölçeksiz)

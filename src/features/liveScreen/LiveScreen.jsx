@@ -8,6 +8,7 @@ import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse } from "@/lib/raceCourse";
 import { manualFinish, markLabel, markName, nowPos, officialFor, prepName, sameSail, shortClub, shortName, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
+import { useDemo } from "./demo";
 import "./liveScreen.css";
 
 // Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01; yayın görünümü 2026-11-02 SailGP örneği, project-files/samandira-donus/yayin4).
@@ -34,6 +35,7 @@ function useData(id, y) {
   const [err, setErr] = useState("");
   const skew = useRef(0);
   useEffect(() => {
+    if (!id) return undefined; // örnek yarış (/canli/ornek) sunucuya sormaz
     let on = true;
     let t = 0;
     const load = async () => {
@@ -781,78 +783,7 @@ function PlanPanel({ data, today }) {
   );
 }
 
-// Üst orta: yarış adı, yer ve tarih; altında mesaj şeridi (yarışta sınıf · grup · kaçıncı yarış ve "Şu an 2. şamandıra · Son geçen 305 E. Kara";
-// beklemede ilk start ya da tehir; gün sonunda özet)
-function MsgStrip({ data, sel, isCur, id, phase, today, ongoing, starts, onList }) {
-  const plan = data.plan;
-  const entry = sel ? data.rounds?.[sel.id] : null;
-  const route = entry?.route || [];
-  const pos = entry ? nowPos(entry) : -1;
-  const last = isCur && pos >= 0 ? entry.legs[pos].at(-1) : "";
-  const who = last ? whoOf(whoMap(data), last) : null;
-  let line = "";
-  let note = "";
-  if (phase === "race") {
-    line = sel ? [entry?.cls || "", entry?.grp ? `${entry.grp} grup` : "", raceTitle(sel)].filter(Boolean).join(" · ") : plan.order[0] ? `Sıradaki start · ${planLabel(plan.order[0])}` : "Yarış günü";
-    note = pos >= 0 ? `${pos === route.length - 1 && route[pos] === "F" ? "Finish" : `Şu an ${markName(route[pos])}`} · Son geçen ${last}${who?.name ? ` ${shortName(who.name)}` : ""}` : sel?.fin ? "Yarış bitti" : "";
-  } else if (phase === "wait") {
-    const planDay = plan.status === "done" && plan.next ? plan.next.day : plan.day || today;
-    const at = plan.status === "done" && plan.next ? plan.next.at : plan.at;
-    const nextDay = planDay > today;
-    if (plan.status === "none" && plan.day === today) line = "Bugün yarış yok";
-    else if (plan.status === "ap") line = `Start ertelendi · ${apText(plan)}`;
-    else line = at ? `${nextDay ? dayText(planDay) : "Bugün"} ilk start ${at}` : "Start saati henüz belli değil";
-    note = plan.status === "ap" ? "" : plan.order.length ? `${plan.order.length} start` : "";
-  } else {
-    const races = starts.filter((x) => x.day === (plan.day || today) && !x.void);
-    line = `${dayText(plan.day || today)} · Gün bitti · ${races.length} yarış`;
-    note = plan.next?.at ? `Yarın ilk start ${plan.next.at}` : "";
-  }
-  return (
-    <div className="lv-msg2">
-      {/* Üst satır (Seyhun 2026-11-02 "yarış adı soluk, arka plana gömülü, profesyonel"): büyük harf, çok soluk; yanında hayalet düğmeler */}
-      <div className="lv-msgh">
-        <span className="lv-ttl2">{data.race.name || "Yarış"}</span>
-        <span className="lv-sub2">{[data.race.place, dayText(sel?.day || data.day || today)].filter(Boolean).join(" · ")}</span>
-        {!isCur && data.cur ? (
-          <Link href={`/canli/${id}`} className="lv-ghost on">
-            Canlı yarış
-          </Link>
-        ) : null}
-        {starts.length > 1 || (!isCur && starts.length) ? (
-          <button type="button" className="lv-ghost" onClick={onList}>
-            Önceki yarışlar
-          </button>
-        ) : null}
-      </div>
-      <div className={`lv-msgb${plan.status === "ap" && phase === "wait" ? " ap" : ""}`}>
-        {ongoing ? <em className="lv-livedot">Canlı</em> : null}
-        <b>{line}</b>
-        {note ? <span>{note}</span> : null}
-      </div>
-    </div>
-  );
-}
 
-// Sağ üst: parkur (günün ölçümlerinden, lib/courseCard.js), başlıkta rota; dokununca büyük. Ölçüm yoksa panel yok (video temiz kalsın).
-function CoursePanel({ data, route }) {
-  const svg = useMemo(() => cardSvg(cardOf(cleanCourse(data.course || {})), { navy: true }), [data.course]);
-  const [big, setBig] = useState(false);
-  const st = useFade(!!svg);
-  if (!st) return null;
-  return (
-    <>
-      <Panel cls={`lv-coursep ${st}`} head="Parkur" right={route} onClick={() => setBig(true)} label="Parkuru büyüt">
-        <div className="lv-svg" dangerouslySetInnerHTML={{ __html: svg }} />
-      </Panel>
-      {big ? (
-        <div className="lv-pop lv-big" onClick={() => setBig(false)} role="dialog" aria-label="Parkur">
-          <div className="lv-cflat" dangerouslySetInnerHTML={{ __html: svg }} />
-        </div>
-      ) : null}
-    </>
-  );
-}
 
 // Sol alt: rüzgâr. Yarışta son ölçüm (ok, derece, yön, hız, sağanak); beklemede günün tahmini grafiği (WindDay); gün sonunda günün ölçümleri çizgi.
 function WindPanel({ data, sel, isCur, phase, now, today }) {
@@ -949,25 +880,6 @@ function OverallPanel({ data, n = 5, onAll, cls = "" }) {
   );
 }
 
-// Sağ alt: sıradaki start (yarışta), altında genel sıralamanın ilk beşi (gün sonunda genel sol üstte, yarışlar ortada)
-function SidePanel({ data, phase, today, onAll }) {
-  const plan = data.plan;
-  const up = phase === "race" ? plan.order : [];
-  return (
-    <div className="lv-side">
-      {up.length ? (
-        <Panel cls="lv-nextp" head="Sıradaki start" right={up.length > 1 ? `+${up.length - 1}` : ""}>
-          <b>
-            <Dot g={up[0].grp} />
-            {planLabel(up[0]) || "Start"}
-          </b>
-          {up.length > 1 ? <span>{`sonra ${up.slice(1, 3).map(planLabel).join(" · ")}`}</span> : null}
-        </Panel>
-      ) : null}
-      {phase !== "summary" ? <OverallPanel data={data} onAll={onAll} /> : null}
-    </div>
-  );
-}
 
 // Gün sonu (Seyhun 2026-11-02 "gün sonu tasarımı kötü, geliştir"): ortada büyük "4 yarış yapıldı", altında her yarışın kartı (grup, sınıf, ilk üç);
 // solda genel ilk 10, altta rüzgâr çizgisi, alt ortada yarınki ilk start'a geri sayım
@@ -1038,6 +950,162 @@ function LowerThird({ data, isCur, line }) {
   );
 }
 
+
+// ---- Sade yayın ekranı (Seyhun 2026-11-02 "her yerde bir şey yazıyor, daha sade, bilgi ekranı, alt tarafta") ----
+// Son rüzgâr ölçümü (parkur rüzgâr kayıtları + eski canlı rüzgâr); önceki yarışta startındaki
+function lastWind(data, sel, isCur) {
+  const obs = (data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, dir: o.deg, kn: o.kn, gust: null, range: o.range || null }));
+  const upto = !isCur && sel ? sel.fin || sel.at : "";
+  const all = [...(data.wind || []), ...obs].filter((x) => x.dir != null && (!upto || x.at <= upto)).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+  return { w: !isCur && sel?.dir != null ? { at: sel.at, dir: sel.dir, kn: sel.kn, gust: null } : all.at(-1), obs };
+}
+function WindArrow({ w }) {
+  const span = w?.range ? ((w.range[1] - w.range[0] + 540) % 360) - 180 : 0;
+  const style = w?.range ? { "--lv-a": `${w.range[0]}deg`, "--lv-b": `${w.range[0] + span}deg` } : { transform: `rotate(${w?.dir ?? 0}deg)` };
+  return (
+    <span className={`lv-arrow${w?.range ? " swing" : ""}`} aria-hidden="true">
+      <svg viewBox="0 0 40 40" style={style}>
+        <path d="M20 4 L27 22 L20 17 L13 22 Z" fill="#fff" />
+        <line x1="20" y1="17" x2="20" y2="36" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    </span>
+  );
+}
+
+// Üstte tek soluk satır: yarış adı · yer · tarih, yanında hayalet düğmeler (geri ayrı, sol köşede)
+function TopLine({ data, sel, isCur, id, today, starts, onList }) {
+  return (
+    <div className="lv-top">
+      <span className="lv-ttl2">{data.race.name || "Yarış"}</span>
+      <span className="lv-sub2">{[data.race.place, dayText(sel?.day || data.day || today)].filter(Boolean).join(" · ")}</span>
+      {!isCur && data.cur ? (
+        <Link href={`/canli/${id}`} className="lv-ghost on">
+          Canlı yarış
+        </Link>
+      ) : null}
+      {starts.length > 1 || (!isCur && starts.length) ? (
+        <button type="button" className="lv-ghost" onClick={onList}>
+          Önceki yarışlar
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+// Altta tek bilgi şeridi (TV yayınlarındaki alt bant): ne (grup · yarış), süre (start'tan sonra; önce ortada büyük sayaç), nerede (şamandıra,
+// son geçen), rüzgâr (dokununca gün boyu grafik), parkur (dokununca büyük), sıradaki start. Her hücre: üstte değer, altta küçük etiket.
+function InfoBar({ data, sel, isCur, phase, cs, counting, today, ongoing, hasSvg, onCourse, onWind }) {
+  const plan = data.plan;
+  const entry = sel ? data.rounds?.[sel.id] : null;
+  const route = entry?.route || [];
+  const pos = entry ? nowPos(entry) : -1;
+  const last = isCur && pos >= 0 ? entry.legs[pos].at(-1) : "";
+  const who = last ? whoOf(whoMap(data), last) : null;
+  const { w } = lastWind(data, sel, isCur);
+  const at = plan.status === "done" && plan.next ? plan.next.at : plan.at;
+  const cells = [];
+  if (phase === "race") {
+    cells.push(["what", sel ? [entry?.grp ? `${entry.grp} grup` : "", raceTitle(sel)].filter(Boolean).join(" · ") || "Yarış" : plan.order[0] ? planLabel(plan.order[0]) : "Yarış günü", sel ? entry?.cls || "Yarış" : "Sıradaki start", entry?.grp]);
+    if (!counting && sel) cells.push(["time", cs.value, cs.label]);
+    if (pos >= 0) cells.push(["pos", route[pos] === "F" && pos === route.length - 1 ? "Finish" : markName(route[pos]), `Son geçen ${last}${who?.name ? ` ${shortName(who.name)}` : ""}`]);
+    else if (sel?.fin) cells.push(["pos", "Bitti", "Yarış"]);
+  } else if (phase === "wait") {
+    const none = plan.status === "none" && plan.day === today;
+    cells.push(["what", none ? "Bugün yarış yok" : plan.status === "ap" ? "Start ertelendi" : "Yarış öncesi", plan.status === "ap" ? apText(plan) : at ? `İlk start ${at}` : "Start saati belli değil", plan.order[0]?.grp]);
+    if ((data.entries || []).length) cells.push(["n", `${data.entries.length}`, "Tekne"]);
+  } else {
+    const races = (data.starts || []).filter((x) => x.day === (plan.day || today) && !x.void);
+    cells.push(["what", "Gün bitti", `${races.length} yarış yapıldı`]);
+    if (plan.next?.at) cells.push(["time", plan.next.at, "Yarın ilk start"]);
+  }
+  return (
+    <div className="lv-bar">
+      {ongoing ? <em className="lv-livedot">Canlı</em> : null}
+      {cells.map(([k, v, l, g]) => (
+        <div key={k} className={`lv-cell ${k}`}>
+          <b key={v}>
+            {k === "what" ? <Dot g={g} /> : null}
+            {v}
+          </b>
+          <span>{l}</span>
+        </div>
+      ))}
+      {w ? (
+        <button type="button" className="lv-cell wind" onClick={onWind} aria-label="Gün boyu rüzgâr">
+          <b key={w.at}>
+            <WindArrow w={w} />
+            {w.range ? `${w.range[0]}–${w.range[1]}°` : `${w.dir}°`}
+          </b>
+          <span>{`${dirShort(w.dir)}${w.kn != null ? ` · ${w.kn} kn` : ""}${w.range ? " · oynuyor" : ""}`}</span>
+        </button>
+      ) : null}
+      {hasSvg ? (
+        <button type="button" className="lv-cell course" onClick={onCourse} aria-label="Parkuru göster">
+          <b>Parkur</b>
+          <span>{routeOf(data, sel) || "Göster"}</span>
+        </button>
+      ) : null}
+      {phase === "race" && sel && plan.order[0] ? (
+        <div className="lv-cell next">
+          <b>
+            <Dot g={plan.order[0].grp} />
+            {planLabel(plan.order[0]) || "Start"}
+          </b>
+          <span>Sıradaki start</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Ortada büyük sayaç: yalnız geri sayarken (yarış öncesi ilk start'a, start dizisi); start olunca küçülüp alttaki şeride iner
+function CenterClock({ show, ...p }) {
+  const st = useFade(show, 700);
+  if (!st) return null;
+  return (
+    <div className={`lv-center ${st}`}>
+      <Clock {...p} />
+    </div>
+  );
+}
+
+// Parkur sürekli ekranda değil (Seyhun 2026-11-02): yarış öncesinde görünür; yarışta yalnız yeni ölçüm girilince 20 sn büyük çıkar, sonra
+// şeritteki "Parkur"a çekilir; şeritten dokununca açılır. Kartsız, sağda.
+const COURSE_MS = 20000;
+function CourseFloat({ data, open, now, phase, onClose }) {
+  const svg = useMemo(() => cardSvg(cardOf(cleanCourse(data.course || {})), { navy: true }), [data.course]);
+  const latest = Math.max(0, ...(data.course?.obs || []).map((o) => Date.parse(o.at) || 0));
+  const fresh = latest > 0 && now - latest < COURSE_MS;
+  const st = useFade(!!svg && (open || fresh || phase === "wait"), 600);
+  if (!st || !svg) return null;
+  return (
+    <button type="button" className={`lv-cfloat ${st}`} onClick={onClose} aria-label="Parkuru kapat">
+      <div className="lv-cflat" dangerouslySetInnerHTML={{ __html: svg }} />
+    </button>
+  );
+}
+
+// Örnek yarışın oynatıcısı (yalnız /canli/ornek): adım adı, ‹ ›, durdur, baştan
+function DemoBar({ ctl }) {
+  return (
+    <div className="lv-demo">
+      <span>{`Örnek · ${ctl.step + 1}/${ctl.n} · ${ctl.name}`}</span>
+      <button type="button" onClick={ctl.prev} aria-label="Önceki adım">
+        ‹
+      </button>
+      <button type="button" onClick={ctl.toggle}>
+        {ctl.play ? "Durdur" : "Oynat"}
+      </button>
+      <button type="button" onClick={ctl.next} aria-label="Sonraki adım">
+        ›
+      </button>
+      <button type="button" onClick={ctl.restart}>
+        Baştan
+      </button>
+    </div>
+  );
+}
+
 // Tam liste penceresi: günün yarışının şamandıra şamandıra tablosu ya da genel sıralamanın tamamı
 function FullList({ kind, data, sel, isCur, id, onClose }) {
   return (
@@ -1056,9 +1124,14 @@ function FullList({ kind, data, sel, isCur, id, onClose }) {
 }
 
 export function LiveScreen({ id, y = "" }) {
-  const { data, err, skew } = useData(id, y);
+  const demoOn = id === "ornek";
+  const real = useData(demoOn ? "" : id, y);
+  const demo = useDemo(demoOn);
+  const { data, err, skew } = demoOn ? { data: demo.data, err: "", skew: real.skew } : real;
   const [list, setList] = useState(false);
   const [full, setFull] = useState(""); // "race" | "all": tam liste penceresi
+  const [courseOpen, setCourseOpen] = useState(false);
+  const [windOpen, setWindOpen] = useState(false);
   const nowMs = useNow(skew, 1000); // evre ve bekleme sayacı için saat (sunucuyla eşlenmiş)
   const router = useRouter();
   // Yarış silinmiş ya da ekranı kapalı (Seyhun 2026-11-01 "sildiğimde linki de kullanılamasın"): paylaşılan link genel sayfaya (/canli) gider
@@ -1100,29 +1173,52 @@ export function LiveScreen({ id, y = "" }) {
   const today = trDay(nowMs);
   const phase = isCur ? livePhase({ plan: data.plan, starts, timer: data.timer, today, now: nowMs }) : "race";
   const hasVideo = isCur && (data.screen?.kind === "live" || data.screen?.kind === "rec");
-  const hasCourse = (data.course?.obs || []).length > 0;
-  // Yayın görünümü (Seyhun 2026-11-02): arka plan tam ekran video ya da deniz; köşelerde paneller, alt ortada sayaç.
-  // Düzen durumları (video / course / pause / evre) sınıf olarak: videosuzken sayaç ortada büyük, video gelince alta kayar (CSS geçişi);
-  // parkur ve rüzgâr panelleri girip çıkarken solar (useFade); duraklatılınca görüntü kalır, önünde "Yayına ara verildi".
+  const csel = phase === "race" ? sel : null;
+  const ctimer = phase === "race" ? data.timer : null;
+  const cs = clockState({ sel: csel, isCur, timer: ctimer, now: nowMs, entry, data, today });
+  // Ortada büyük sayaç yalnız geri sayarken (start'a ya da ilk start'a) ve sayaç durdurulmuşken; sonra şeritte "Süre"
+  const counting = phase !== "summary" && ((cs.rem != null && cs.rem > 0) || cs.label === "Durdu");
+  const hasSvg = (data.course?.obs || []).length > 0;
+  const ov = phase === "race" && isCur ? overallTop(data, 6) : null;
+  // Sol panel: yarışta günün yarışı ile genel sıralama 12 sn'de bir sırayla (yayınlardaki gibi); dokununca tam liste
+  const leftAll = !!ov && Math.floor(nowMs / 12000) % 2 === 1;
   return (
-    <div className={`lv lv-bc${hasVideo ? " video" : ""}${hasCourse ? " course" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
+    <div className={`lv lv-bc${hasVideo ? " video" : ""}${counting ? " counting" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
       <Backdrop data={data} isCur={isCur} />
       <div className="lv-page lv-ov">
         {/* Geri tek başına en solda (Seyhun 2026-11-02) */}
         <Link href="/canli" className="lv-back lv-backc" aria-label="Yarışlar">
           ‹
         </Link>
-        <MsgStrip data={data} sel={sel} isCur={isCur} id={id} phase={phase} today={today} ongoing={ongoing} starts={starts} onList={() => setList(true)} />
-        {phase === "wait" ? <PlanPanel data={data} today={today} /> : phase === "summary" ? <OverallPanel data={data} n={RANK_MAX} cls="lv-rankp" onAll={() => setFull("all")} /> : <RankPanel data={data} sel={sel} isCur={isCur} id={id} onAll={() => setFull("race")} />}
-        <CoursePanel data={data} route={routeOf(data, sel)} />
-        <WindPanel data={data} sel={sel} isCur={isCur} phase={phase} now={nowMs} today={today} />
-        {phase === "summary" ? <SummaryHero data={data} today={today} /> : null}
-        <div className="lv-bottomc">
-          <LowerThird data={data} isCur={isCur} line={sel ? [entry?.cls || "", entry?.grp ? `${entry.grp} grup` : "", raceTitle(sel)].filter(Boolean).join(" · ") : ""} />
-          <Clock sel={phase === "race" ? sel : null} isCur={isCur} timer={phase === "race" ? data.timer : null} skew={skew} entry={entry} data={data} today={today} />
+        <TopLine data={data} sel={sel} isCur={isCur} id={id} today={today} starts={starts} onList={() => setList(true)} />
+        <div className="lv-left">
+          {phase === "wait" ? (
+            <>
+              <PlanPanel data={data} today={today} />
+              <WindPanel data={data} sel={sel} isCur={isCur} phase={phase} now={nowMs} today={today} />
+            </>
+          ) : phase === "summary" ? (
+            <OverallPanel data={data} n={RANK_MAX} cls="lv-rankp" onAll={() => setFull("all")} />
+          ) : leftAll ? (
+            <OverallPanel key="all" data={data} n={6} cls="lv-rankp" onAll={() => setFull("all")} />
+          ) : (
+            <RankPanel key="race" data={data} sel={sel} isCur={isCur} id={id} onAll={() => setFull("race")} />
+          )}
         </div>
-        <SidePanel data={data} phase={phase} today={today} onAll={() => setFull("all")} />
+        {phase === "summary" ? <SummaryHero data={data} today={today} /> : null}
+        <CenterClock show={counting} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
+        <CourseFloat data={data} open={courseOpen} now={nowMs} phase={phase} onClose={() => setCourseOpen(false)} />
+        <div className="lv-foot">
+          <LowerThird data={data} isCur={isCur} line={sel ? [entry?.cls || "", entry?.grp ? `${entry.grp} grup` : "", raceTitle(sel)].filter(Boolean).join(" · ") : ""} />
+          {windOpen && (data.forecast?.rows || []).length ? (
+            <button type="button" className="lv-p lv-windpop" onClick={() => setWindOpen(false)} aria-label="Grafiği kapat">
+              <WindDay fc={data.forecast} now={nowMs} at={data.plan.at} mine={lastWind(data, sel, isCur).obs} />
+            </button>
+          ) : null}
+          <InfoBar data={data} sel={sel} isCur={isCur} phase={phase} cs={cs} counting={counting} today={today} ongoing={ongoing} hasSvg={hasSvg} onCourse={() => setCourseOpen((v) => !v)} onWind={() => setWindOpen((v) => !v)} />
+        </div>
       </div>
+      {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
       {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}
       {full ? <FullList kind={full} data={data} sel={sel} isCur={isCur} id={id} onClose={() => setFull("")} /> : null}
     </div>

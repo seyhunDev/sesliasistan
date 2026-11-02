@@ -99,33 +99,57 @@
 .lv-live { display: inline-flex; align-items: center; gap: 0.5em; background: var(--lv-acc); color: #fff; padding: 0.42em 1em; border-radius: 999px; font-size: 0.9em; letter-spacing: 0.08em; text-transform: uppercase; }
 .lv-live::before { content: ""; width: 0.55em; height: 0.55em; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0.28em rgba(255, 255, 255, 0.3); }
 
-/* ---- Yayın yerleşimi: köşelerde paneller, orta boş (video görünsün) ---- */
+/* ---- Sade yayın yerleşimi (Seyhun 2026-11-02 "daha sade, bilgi ekranı alt tarafta") ----
+   Üstte tek soluk satır; solda tek panel (yarışta günün yarışı ⇄ genel, 12 sn'de bir); ortada yalnız geri sayarken büyük sayaç; sağda
+   parkur yalnız kurulunca / değişince / dokununca; altta tek bilgi şeridi (ne, süre, nerede, rüzgâr, parkur, sıradaki). */
 .lv-ov {
   display: grid;
-  grid-template-columns: minmax(16em, 23em) minmax(0, 1fr) minmax(13em, 19em);
+  grid-template-columns: minmax(16em, 23em) minmax(0, 1fr) minmax(0, 26em);
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "rank msg course"
-    "rank mid course"
-    "wind clock side";
-  align-items: start;
+    "top top top"
+    "left center right"
+    "foot foot foot";
   height: 100dvh;
   min-height: 0;
 }
-.lv-ov > .lv-rankp { grid-area: rank; align-self: start; max-height: 100%; }
-.lv-ov > .lv-msg2 { grid-area: msg; }
-.lv-ov > .lv-coursep { grid-area: course; justify-self: end; }
-.lv-ov > .lv-windp { grid-area: wind; align-self: end; }
-.lv-ov > .lv-bottomc { grid-area: clock; align-self: end; justify-self: center; display: flex; flex-direction: column; align-items: center; gap: 0.6em; max-width: 100%; transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.lv-ov > .lv-side { grid-area: side; align-self: end; justify-self: end; }
-.lv-ov > .lv-sumhero { grid-area: mid; align-self: center; justify-self: center; }
-/* Alt yazı (olimpiyat / SailGP): ortada, sayacın üstünde; solda vurgu şeridi, büyük yazı, altında sınıf · grup · yarış */
-.lv-third { display: flex; flex-direction: column; max-width: min(100%, 34em); background: var(--lv-panel); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-left: 0.45em solid var(--lv-acc); border-radius: 0.5em; padding: 0.55em 1.3em 0.6em 1em; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.lv-top { grid-area: top; display: flex; align-items: baseline; justify-content: center; gap: 0.9em; min-width: 0; padding: 0 3em; animation: lv-fade 0.6s both; }
+.lv-left { grid-area: left; display: flex; flex-direction: column; gap: 0.7em; align-self: start; min-height: 0; max-height: 100%; overflow: hidden; }
+.lv-center { grid-area: center; align-self: center; justify-self: center; transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.lv-center .lv-pill { animation: none; transform: scale(1.35); padding: 0.6em 1.8em 0.9em; }
+.lv-center .lv-clock { font-size: clamp(56px, 5.6vw, 170px); }
+/* Video varken sayaç ortadan aşağı kayıp küçülür (görüntüyü kapatmasın); start olunca alttaki şeride iner ve kaybolur */
+.lv-bc.video .lv-center { transform: translateY(22vh) scale(0.72); }
+.lv-center.out { animation: lv-tobar 0.7s cubic-bezier(0.5, 0, 0.75, 0) both; }
+@keyframes lv-tobar { to { opacity: 0; transform: translateY(32vh) scale(0.35); } }
+.lv-ov > .lv-sumhero { grid-area: center; align-self: center; justify-self: center; }
+.lv-cfloat { grid-area: right; align-self: center; justify-self: end; background: none; border: 0; padding: 0; cursor: pointer; animation: lv-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.lv-cfloat .lv-cflat svg { height: min(62vh, 30vw); width: auto; max-width: 100%; }
+.lv-cfloat.out { animation: lv-sink 0.6s ease-in both; }
+.lv-foot { grid-area: foot; display: flex; flex-direction: column; align-items: center; gap: 0.6em; min-width: 0; }
+.lv-windpop { width: min(100%, 34em); padding: 0.6em 0.9em; align-self: flex-start; }
+/* Alt bant: tek koyu şerit, hücreler ince çizgiyle ayrılır; üstte değer, altında küçük etiket */
+.lv-bar { display: flex; align-items: stretch; width: 100%; min-height: 3.8em; background: var(--lv-panel); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: 0.6em; overflow: hidden; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.lv-bar > .lv-livedot { align-self: center; padding: 0 1.1em; }
+.lv-cell { display: flex; flex-direction: column; justify-content: center; gap: 0.1em; padding: 0.5em 1.4em; min-width: 0; border: 0; border-left: 1px solid var(--lv-line); background: none; color: inherit; font: inherit; text-align: left; }
+.lv-bar > .lv-cell:first-child, .lv-bar > .lv-livedot + .lv-cell { border-left: 0; }
+.lv-cell.what { flex: 1 1 auto; }
+button.lv-cell { cursor: pointer; }
+button.lv-cell:hover { background: rgba(255, 255, 255, 0.06); }
+.lv-cell b { display: flex; align-items: center; gap: 0.45em; font-size: 1.3em; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: lv-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.lv-cell span { font-size: 0.72em; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lv-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-cell.time b { font-size: 1.9em; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1; }
+.lv-cell.time { animation: lv-rise 0.7s 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.lv-cell .lv-arrow { width: 1.6em; height: 1.6em; border-width: 1.5px; }
+/* Örnek yarışın oynatıcısı (yalnız /canli/ornek) */
+.lv-demo { position: fixed; top: calc(10px + env(safe-area-inset-top)); right: 12px; z-index: 20; display: flex; align-items: center; gap: 0.3em; padding: 0.3em 0.4em 0.3em 0.9em; border-radius: 999px; background: rgba(0, 0, 0, 0.62); font-size: 13px; color: rgba(255, 255, 255, 0.85); }
+.lv-demo span { margin-right: 0.4em; white-space: nowrap; }
+.lv-demo button { border: 1px solid rgba(255, 255, 255, 0.2); background: none; color: #fff; border-radius: 999px; padding: 0.2em 0.75em; font: inherit; cursor: pointer; }
+/* Alt yazı (olimpiyat / SailGP): şeridin üstünde; solda vurgu şeridi, büyük yazı, altında sınıf · grup · yarış */
+.lv-third { display: flex; flex-direction: column; align-self: flex-start; max-width: min(100%, 40em); background: var(--lv-panel); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-left: 0.45em solid var(--lv-acc); border-radius: 0.5em; padding: 0.55em 1.3em 0.6em 1em; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .lv-third b { font-size: 1.45em; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
 .lv-third span { color: var(--lv-mut); font-size: 0.9em; margin-top: 0.1em; text-transform: uppercase; letter-spacing: 0.06em; }
 .lv-third.out { animation: lv-sink 0.5s ease-in both; }
-/* Geçişler (Seyhun 2026-11-02): videosuzken sayaç ortada büyük; video gelince alt ortaya kayıp küçülür. Gün sonunda orta hero'nun, sayaç altta. */
-.lv-bc:not(.video):not(.summary) .lv-ov > .lv-bottomc { transform: translateY(-24vh) scale(1.3); }
 /* Panel girişi/çıkışı: in = yukarı süzülür, out = solup aşağı iner, sonra kaldırılır (useFade) */
 .lv-p.out, .lv-bg.out { animation: lv-sink 0.5s ease-in both; pointer-events: none; }
 @keyframes lv-sink { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(14px); } }
@@ -194,8 +218,6 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-rl li.new { background: var(--lv-accbg); margin: 0 -0.9em; padding-left: 0.9em; padding-right: 0.9em; }
 .lv-rankp .lv-chips { justify-content: flex-start; margin-top: 0.5em; }
 /* Üst orta: yarış adı satırı ve mesaj şeridi */
-.lv-msg2 { display: flex; flex-direction: column; align-items: center; gap: 0.5em; min-width: 0; animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.lv-msgh { display: flex; align-items: baseline; gap: 0.9em; min-width: 0; max-width: 100%; }
 /* Yarış adı: büyük harf, aralıklı, çok soluk (zemine gömülü); yer ve tarih daha soluk */
 .lv-ttl2 { font-size: 1.25em; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.42); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lv-sub2 { font-size: 0.8em; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -207,22 +229,15 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-livedot::before { content: ""; width: 0.6em; height: 0.6em; border-radius: 50%; background: var(--lv-acc); animation: lv-pulse 1.4s ease-in-out infinite; }
 /* Geri tek başına sol üst köşede; sıralama paneli onun altından başlar */
 .lv-backc { position: absolute; top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top) - 0.2em); left: clamp(16px, 1.6vw, 44px); z-index: 3; margin: 0; }
-.lv-ov > .lv-rankp { margin-top: 2.1em; }
-.lv-msgb { display: flex; align-items: center; gap: 0.8em; max-width: 100%; background: var(--lv-panel); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: 0.5em; padding: 0.5em 1.1em; border-left: 0.35em solid #fff; }
-.lv-msgb b { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-msgb span { color: var(--lv-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-msgb.ap { border-left-color: var(--lv-acc); }
 /* Sağ üst: parkur, dokununca büyük (kartsız, ekran boyunca) */
-.lv-coursep { width: min(100%, 19em); }
 .lv-svg { display: flex; justify-content: center; width: 100%; }
 .lv-svg svg { display: block; width: 100%; height: auto; }
 .lv-cflat { display: flex; justify-content: center; align-items: center; min-height: 0; animation: lv-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .lv-cflat svg { display: block; width: auto; height: min(88vh, 70vw); max-width: 100%; }
 @keyframes lv-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-@media (prefers-reduced-motion: reduce) { .lv-p, .lv-msg2, .lv-cflat, .lv-pill, .lv-bg, .lv-sumhero, .lv-pause { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .lv-p, .lv-top, .lv-cflat, .lv-cfloat, .lv-pill, .lv-bg, .lv-sumhero, .lv-pause, .lv-center, .lv-bar, .lv-cell, .lv-cell b { animation: none; transition: none; } }
 /* Sol alt: rüzgâr (ok, derece, yön · hız); beklemede altında günün tahmini */
 .lv-windp.fc { width: min(100%, 23em); }
-.lv-bc.race .lv-windp.fc { width: min(100%, 21em); }
 .lv-wv { display: flex; align-items: center; gap: 0.6em; min-width: 0; flex-wrap: wrap; }
 .lv-wv b { font-size: 1.9em; font-weight: 800; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; }
 .lv-wv > span:not(.lv-arrow) { color: var(--lv-mut); white-space: nowrap; }
@@ -284,10 +299,6 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-rcb b { font-weight: 700; min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Sağ alt: sıradaki start + genel ilk 5 (puan sağda) */
 .lv-allp .lv-rl li { padding: 0.2em 0; }
-.lv-side { display: flex; flex-direction: column; gap: 0.6em; width: min(100%, 19em); }
-.lv-nextp .lv-pb { gap: 0.1em; }
-.lv-nextp b { display: flex; align-items: center; font-size: 1.2em; font-weight: 800; }
-.lv-nextp span { color: var(--lv-mut); font-size: 0.85em; }
 /* Tam liste penceresi ve kartlar (tablo: sıra, yelken, ad, kulüp, şamandıra şamandıra) */
 .lv-card {
   background: var(--lv-card);
@@ -344,7 +355,7 @@ button.lv-p:active { transform: translateY(1px); }
 
 /* Tablet (761–1099): paneller biraz dar, orta boşluk küçük */
 @media (max-width: 1099px) and (min-width: 761px) {
-  .lv-ov { grid-template-columns: minmax(14em, 19em) minmax(0, 1fr) minmax(11em, 15em); }
+  .lv-ov { grid-template-columns: minmax(14em, 19em) minmax(0, 1fr) minmax(0, 18em); }
   .lv-rl li { grid-template-columns: 1.4em 3em minmax(0, 1fr) auto; }
 }
 
@@ -361,16 +372,11 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-bc.video .lv-sea { display: none; }
   .lv-ov > * { width: 100%; max-width: none; justify-self: stretch; }
   .lv-backc { position: static; order: 0; align-self: flex-start; }
-  .lv-ov > .lv-rankp { margin-top: 0; }
-  .lv-msg2 { order: 1; align-items: stretch; }
-  .lv-msgh { flex-wrap: wrap; }
-  .lv-msgh b { white-space: normal; }
+  .lv-top { order: 1; justify-content: flex-start; flex-wrap: wrap; padding: 0; }
   .lv-live { font-size: 0; gap: 0; padding: 0.42em; }
   .lv-live::before { width: 9px; height: 9px; box-shadow: none; }
-  .lv-msgb { flex-direction: column; align-items: flex-start; gap: 0.1em; }
-  .lv-msgb b, .lv-msgb span { white-space: normal; }
-  .lv-bottomc { order: 2; width: 100%; transform: none !important; }
-  .lv-pill { width: 100%; }
+  .lv-center { order: 2; transform: none !important; }
+  .lv-center .lv-pill { transform: none; width: 100%; }
   .lv-third { max-width: none; width: 100%; }
   .lv-sumhero { order: 2; padding: 0; }
   .lv-sumbig b { font-size: 64px; }
@@ -378,11 +384,14 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-pause { position: absolute; inset: auto 0; height: 56.25vw; top: 0; }
   .lv-pausec { font-size: 14px; padding: 0.8em 1.4em; }
   .lv-clock { font-size: 64px; }
-  .lv-rankp { order: 3; }
-  .lv-coursep { order: 4; width: 100%; }
-  .lv-coursep .lv-svg svg { max-height: 60vw; width: auto; margin: 0 auto; }
-  .lv-windp { order: 5; }
-  .lv-side { order: 6; }
+  .lv-foot { order: 3; }
+  .lv-bar { flex-wrap: wrap; }
+  .lv-cell { flex: 1 1 40%; padding: 0.5em 0.9em; border-left: 0; border-top: 1px solid var(--lv-line); }
+  .lv-cell.what { flex-basis: 100%; border-top: 0; }
+  .lv-left { order: 4; overflow: visible; max-height: none; }
+  .lv-cfloat { order: 5; justify-self: stretch; width: 100%; }
+  .lv-cfloat .lv-cflat svg { width: 100%; height: auto; max-height: 70vw; }
+  .lv-demo { top: auto; bottom: calc(10px + env(safe-area-inset-bottom)); right: 8px; left: 8px; justify-content: center; }
   .lv-bigc, .lv-full, .lv-list, .lv-races { width: 100%; }
   .lv-rgrid { grid-template-columns: 1fr; }
   .lv-cflat svg { width: 100%; height: auto; }
