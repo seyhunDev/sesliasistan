@@ -10,7 +10,7 @@ import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseObs, loadCourse, loadLive, loadRoundsOf, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { addCourseObs, loadCourse, loadLive, loadRoundsOf, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
 import { Countdown, ownHere, useTimerRun } from "@/features/training/Countdown";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
@@ -47,6 +47,7 @@ export function BroadcastPage({ orgId, id }) {
   const [live, setLive] = useState(() => cleanLive({}));
   const [L, setL] = useState(null); // rounds, screen, stream (loadRoundsOf)
   const [course, setCourse] = useState(() => cleanCourse({}));
+  const [obsOpen, setObsOpen] = useState(false); // ölçüm listesi (silmek için)
   const [yt, setYt] = useState("");
   const [sel, setSel] = useState(null); // ekrana verilecek seçim { kind, mid }
   const [busy, setBusy] = useState("");
@@ -236,6 +237,17 @@ export function BroadcastPage({ orgId, id }) {
     }
   };
 
+  // Hatalı ölçümü silme (Seyhun 2026-11-02 "hatalı bir giriş olursa onu silmem gerekiyor"): Ölçümler listesinde satır başına Sil
+  const dropObs = async (o) => {
+    const next = cleanCourse({ ...course, obs: course.obs.filter((x) => x.id !== o.id) });
+    setCourse(next);
+    try {
+      await saveCourse(orgId, id, today, next);
+      toast("Ölçüm silindi");
+    } catch {
+      toast("Silinemedi. İnterneti kontrol et.");
+    }
+  };
   const vids = [...live.media].filter((m) => m.kind === "video").reverse().slice(0, 6);
   const ytOk = !!ytEmbed(yt);
   const ytBad = !!yt.trim() && !ytOk;
@@ -429,7 +441,7 @@ export function BroadcastPage({ orgId, id }) {
           </div>
         </section>
         <section>
-          <Head title="Ekranda" right={onScreen ? (onScreen.kind === "live" ? "Canlı yayın" : "Video") : "Boş"} />
+          <Head title="Ekranda" right={onScreen ? `${onScreen.kind === "live" ? "Canlı yayın" : "Video"}${onScreen.pause ? " · Ara" : ""}` : "Boş"} />
           <div className={`${card} overflow-hidden`}>
             <div className={`${row} border-b border-line ${isSel("live") ? "bg-accbg" : ""}`}>
               <button type="button" disabled={!ytOk} onClick={() => setSel({ kind: "live" })} className={`min-w-0 flex-1 text-left font-semibold ${isSel("live") ? "text-acc" : ""}`}>
@@ -465,10 +477,16 @@ export function BroadcastPage({ orgId, id }) {
               <span className="min-w-0 flex-1 truncate">{busy && busy !== "x" ? busy : "Telefondan video seç"}</span>
             </button>
             <input ref={file} type="file" accept="video/*" className="hidden" onChange={pick} />
-            <div className="grid grid-cols-2 gap-2 p-3">
+            <div className={`grid gap-2 p-3 ${onScreen ? "grid-cols-3" : "grid-cols-2"}`}>
               <Button variant="secondary" disabled={!!busy || !onScreen} onClick={() => show({ kind: "" })}>
                 Ekrandan kaldır
               </Button>
+              {onScreen ? (
+                // Duraklat (Seyhun 2026-11-02): görüntü ekranda kalır, önünde "Yayına ara verildi"; Sürdür geri açar
+                <Button variant="secondary" disabled={!!busy} onClick={() => show({ ...onScreen, pause: !onScreen.pause })}>
+                  {onScreen.pause ? "Sürdür" : "Duraklat"}
+                </Button>
+              ) : null}
               <Button disabled={!!busy || !sel || (sel.kind === "live" && !ytOk)} onClick={() => show({ ...sel, loop: false })}>
                 Göster
               </Button>
@@ -494,12 +512,26 @@ export function BroadcastPage({ orgId, id }) {
               )}
             </div>
             {svg ? <div className="px-3 pt-2 [&>svg]:mx-auto [&>svg]:block [&>svg]:max-h-[22rem] [&>svg]:w-auto" dangerouslySetInnerHTML={{ __html: svg }} /> : <p className="px-4 pt-2 text-[0.875rem] text-mut">Parkur ölçümü yok</p>}
-            <div className="grid grid-cols-2 gap-2 p-3">
+            {obsOpen
+              ? [...course.obs].reverse().map((o) => (
+                  <div key={o.id} className="flex items-center gap-3 border-t border-line px-4 py-2 text-[0.9375rem]">
+                    <span className="min-w-0 flex-1 truncate font-semibold">{`${obsTitle(o)} · ${o.deg}°${o.kn != null ? ` · ${o.kn} kn` : ""}`}</span>
+                    <span className="text-[0.8125rem] tabular-nums text-mut">{hm(o.at)}</span>
+                    <button type="button" onClick={() => dropObs(o)} className="text-[0.875rem] font-semibold text-rec">
+                      Sil
+                    </button>
+                  </div>
+                ))
+              : null}
+            <div className="grid grid-cols-3 gap-2 p-3">
               <Button variant="secondary" onClick={() => setAdd(0)}>
                 Rüzgâr
               </Button>
               <Button variant="secondary" onClick={() => setAdd(1)}>
                 Parkur ölçümü
+              </Button>
+              <Button variant="secondary" disabled={!course.obs.length} onClick={() => setObsOpen((v) => !v)}>
+                {obsOpen ? "Gizle" : `Ölçümler${course.obs.length ? ` · ${course.obs.length}` : ""}`}
               </Button>
             </div>
           </div>
