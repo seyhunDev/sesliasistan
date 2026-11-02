@@ -25,8 +25,20 @@ export function cleanEntry(e) {
   // cls: sınıf (Optimist, ILCA 4…; uyarı işaretinde sınıf bayrağı), prep: hazırlık bayrağı (P, I, Z, U, Kara) (Seyhun 2026-11-01)
   const cls = String(e?.cls || "").replace(/[^\p{L}\d ]/gu, "").trim().slice(0, 20);
   const prep = PREP_PICK.includes(e?.prep) ? e.prep : "";
-  return { route, legs, ...(grp ? { grp } : {}), ...(cls ? { cls } : {}), ...(prep ? { prep } : {}) };
+  // at: her noktada ilk teknenin yazıldığı an (Seyhun 2026-11-02 "lider tekne ve dönüş saati"); card: o yarışın parkur kartı
+  const at = route.map((_, k) => (typeof e?.at?.[k] === "string" && e.at[k].length <= 30 && legs[k].length ? e.at[k] : ""));
+  const card = /^[A-H]$/.test(e?.card || "") ? e.card : "";
+  return { route, legs, ...(at.some(Boolean) ? { at } : {}), ...(grp ? { grp } : {}), ...(cls ? { cls } : {}), ...(prep ? { prep } : {}), ...(card ? { card } : {}) };
 }
+// Kaydederken: ilk teknesi yeni yazılan noktaya o anın saati konur (önceden yazılmış saat kalır)
+export function stampLegs(e0, now = Date.now()) {
+  const e = cleanEntry(e0);
+  const iso = new Date(now).toISOString();
+  const at = e.route.map((_, k) => e.at?.[k] || (e.legs[k].length ? iso : ""));
+  return at.some(Boolean) ? { ...e, at } : e;
+}
+// Noktayı ilk dönen tekne ve saati: { sail, at } | null
+export const leaderAt = (e, k) => (e?.legs?.[k]?.length ? { sail: e.legs[k][0], at: e.at?.[k] || "" } : null);
 export function cleanRounds(r) {
   const out = {};
   for (const [id, e] of Object.entries(r && typeof r === "object" ? r : {}).slice(-60)) if (/^[\w-]{1,40}$/.test(id)) out[id] = cleanEntry(e);
@@ -114,6 +126,7 @@ export function applyRound(entry0, mark, sails) {
       }
       e.route.splice(k, 0, mark);
       e.legs.splice(k, 0, []);
+      if (e.at) e.at.splice(k, 0, "");
       added.forEach((a) => a[0] >= k && a[0]++);
     }
     if (e.legs[k].includes(sail)) {
@@ -128,7 +141,7 @@ export function applyRound(entry0, mark, sails) {
 // Parkur değişince: eski dönüşler sırayla yeni parkura taşınır
 export function setRoute(entry0, route) {
   const old = cleanEntry(entry0);
-  let e = { route: [...route], legs: route.map(() => []), ...(old.grp ? { grp: old.grp } : {}), ...(old.cls ? { cls: old.cls } : {}), ...(old.prep ? { prep: old.prep } : {}) };
+  let e = { route: [...route], legs: route.map(() => []), ...(old.grp ? { grp: old.grp } : {}), ...(old.cls ? { cls: old.cls } : {}), ...(old.prep ? { prep: old.prep } : {}), ...(old.card ? { card: old.card } : {}) };
   old.legs.forEach((l, k) => {
     e = applyRound(e, old.route[k], l).entry;
   });
