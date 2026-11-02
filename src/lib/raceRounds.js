@@ -325,7 +325,8 @@ export function cleanScreen(s) {
 // (Seyhun 2026-11-02 "starttan sonra manuel yönetim… parkur, rüzgâr, program gösterme butonları ayrı olsun")
 export const SHOW_ONE = ["course", "wind", "prog"];
 // side: videolu yarış öncesi ekranda soldaki bilgi şeridi (Seyhun 2026-11-02 "istersem kaldırabilmeliyim"), varsayılan açık
-export const cleanCourseShow = (c) => ({ auto: c?.auto !== false, at: typeof c?.at === "string" ? c.at.slice(0, 30) : "", one: SHOW_ONE.includes(c?.one) ? c.one : "", side: c?.side !== false });
+// ov: yarışta (start'tan sonra) sağdaki genel sıralama (Seyhun 2026-11-02 "göster ya da kaldır yapabilmeliyim"), varsayılan açık
+export const cleanCourseShow = (c) => ({ auto: c?.auto !== false, at: typeof c?.at === "string" ? c.at.slice(0, 30) : "", one: SHOW_ONE.includes(c?.one) ? c.one : "", side: c?.side !== false, ov: c?.ov !== false });
 // Yarış öncesi gösterim sırası (Seyhun 2026-11-02 "parkuru gösterdik, sonra rüzgâr grafiği, sonra başka ne gösterebiliyorsak; yarış başlayınca gösterilmemeli"):
 // slides = ekranda olanlar sırayla (ör. ["course","wind","prog"]), her biri SHOW_ON. Otomatikte her SHOW_CYCLE'da bir tur;
 // Yayın'dan "Göster" (at) o andan bir tur. pre değilse (yarış başladı) hiçbiri. Döndürür: o an gösterilen ("" yok)
@@ -389,6 +390,8 @@ export function recTitle(m, rname) {
 // "ekranda birinci yarışın startını döngüde göster", "ekranda canlı yayını göster", "ekrandan kaldır" → { kind, n, loop } | { clear }
 export function screenCommand(raw) {
   const s = low(raw);
+  // "geneli göster", "genel sıralamayı ekrandan kaldır" (ekranı temizlemeden önce bakılır)
+  if (/\bgenel(i|in)?\b|genel\s*(sıralama|durum)/.test(s) && /kapat|kaldır|gizle|\baç\b|göster/.test(s)) return { ov: !/kapat|kaldır|gizle/.test(s) };
   if (/ekran(dan|ı)\s*(kaldır|kapat|temizle|boşalt)|ekrandakini\s*kaldır/.test(s)) return { clear: true };
   // "ekrana yaz: Optimist Mavi grup start" → { caption }; "ekrandaki yazıyı kaldır" → { caption: "" }
   if (/ekran(daki|ın altındaki)\s*yazıyı\s*(kaldır|sil|temizle)/.test(s)) return { caption: "" };

@@ -860,6 +860,11 @@ export function BroadcastPage({ orgId, id }) {
               <span className="min-w-0 flex-1 font-semibold">Sol bilgi (videoluyken)</span>
               <span className={`masa-sw${cShow.side ? " on" : ""}`} aria-hidden="true" />
             </button>
+            {/* Yarışta sağdaki genel sıralama (Seyhun 2026-11-02 "göster ya da kaldır"); start'tan önce hiç görünmez */}
+            <button type="button" onClick={() => putCourseShow({ ...cShow, ov: cShow.ov === false })} className={`${row} border-t border-line`} aria-pressed={cShow.ov !== false}>
+              <span className="min-w-0 flex-1 font-semibold">Genel sıralama (yarışta)</span>
+              <span className={`masa-sw${cShow.ov !== false ? " on" : ""}`} aria-hidden="true" />
+            </button>
           </div>
         </section>
         <MasaBar>

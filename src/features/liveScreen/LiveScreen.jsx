@@ -898,27 +898,34 @@ function overallTop(data, n = 5) {
   const f = prov[0];
   return { tag: `Geçici · ${f.races.length} yarış`, cls: f.cls || "", rows: f.rows.slice(0, n).map((r, i) => ({ p: r.rank || i + 1, sail: r.sail, name: r.name, club: r.club, t: r.total })), total: f.rows.length };
 }
-function OverallPanel({ data, n = 5, onAll, cls = "" }) {
-  const top = useMemo(() => overallTop(data, n), [data, n]);
+
+
+// Yarışta genel sıralama (Seyhun 2026-11-02 "arka planları olmasın, zaten arka plan flu; şamandıra dönüşleriyle karışmasın"):
+// kutu yok, sağ kenarda bulanık şerit; sıra, ad, kulüp ve büyük puan. Şamandıra sıralaması solda başka biçimde (lv-rankp)
+function OverallSide({ data }) {
+  const top = useMemo(() => overallTop(data, 200), [data]);
   if (!top) return null;
   return (
-    <Panel cls={`lv-allp ${cls}`} head={["Genel", top.cls].filter(Boolean).join(" · ")} right={top.tag} onClick={onAll} label="Genel sıralama">
-      <ol className="lv-rl">
+    <aside className="lv-ovs" aria-label="Genel sıralama">
+      <header>
+        <b>Genel sıralama</b>
+        <span>{[top.cls, top.tag].filter(Boolean).join(" · ")}</span>
+      </header>
+      <ol>
         {top.rows.map((r) => (
           <li key={`${r.sail}${r.name}`}>
             <b>{r.p}</b>
-            <i>{r.sail}</i>
-            <span>{shortName(r.name)}</span>
-            <em>{shortClub(r.club)}</em>
+            <span>
+              {shortName(r.name) || r.sail}
+              <em>{[r.sail, shortClub(r.club)].filter(Boolean).join(" · ")}</em>
+            </span>
             <u>{r.t}</u>
           </li>
         ))}
       </ol>
-      {top.total > n ? <div className="lv-pm">{`${top.total} tekne · Tümü`}</div> : null}
-    </Panel>
+    </aside>
   );
 }
-
 
 // Ekranın altındaki yazı (Seyhun 2026-11-02 "olimpiyat yayınlarındaki gibi"): Yayın › Video › Ekranda yazı; altında sınıf · grup · yarış
 // ---- Sade yayın ekranı (Seyhun 2026-11-02 "her yerde bir şey yazıyor, daha sade, bilgi ekranı, alt tarafta") ----
@@ -2000,10 +2007,11 @@ export function LiveScreen({ id, y = "" }) {
   const counting = phase !== "summary" && ((cs.rem != null && cs.rem > 0) || cs.label === "Durdu");
   const hasSvg = (data.course?.obs || []).length > 0;
   // Genel sıralama yarışta sağda, alttan yukarı sabit alanda, kaydırılır (Seyhun 2026-11-02 "genel sıralama varsa sağ tarafta")
-  const ov = phase === "race" && isCur ? overallTop(data, 1) : null;
   const prog = isCur ? dayProgram(data, today) : [];
   // Yarış öncesi gösterim (parkur → rüzgâr → program); süren yarış varken yok (Seyhun 2026-11-02 "yarış başladığında gösterilmemeli")
   const pre = !ongoing && (phase === "wait" || (cs.rem != null && cs.rem > 0));
+  // start'tan önce (geri sayımda) yok; Yayın › Video › Genel sıralama ya da sesle "geneli kaldır" ile kapanır (Seyhun 2026-11-02)
+  const ovOn = phase === "race" && isCur && !!sel && !pre && data.courseShow?.ov !== false;
   // Videolu yarış öncesi (Seyhun 2026-11-02 videolu/1-yaris-oncesi.png, 2-start-oncesi-turuncu.png onay): solda bulanık şeritte bilgiler,
   // turuncu bayrak çekiliyse "Start öncesi"; Yayın › Video › Sol bilgi ile kapanır. Açıkken gösterim kartları ve alt şerit yok
   const side = isCur && hasVideo && pre && data.courseShow?.side !== false;
@@ -2022,11 +2030,7 @@ export function LiveScreen({ id, y = "" }) {
         <div className="lv-left">
           {phase === "race" ? <RankPanel key="race" data={data} sel={sel} isCur={isCur} id={id} max={hasVideo ? 5 : RANK_MAX} onAll={() => setFull("race")} /> : null}
         </div>
-        {ov ? (
-          <div className="lv-right">
-            <OverallPanel data={data} n={200} cls="lv-rside" />
-          </div>
-        ) : null}
+        {ovOn ? <OverallSide data={data} /> : null}
         {(phase === "race" || (phase === "wait" && hasVideo)) && !side ? <ProgramChips items={prog} /> : null}
         {side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}
