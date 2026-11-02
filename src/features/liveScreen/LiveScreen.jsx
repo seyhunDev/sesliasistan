@@ -290,44 +290,6 @@ function FlagRow({ flags }) {
     </div>
   );
 }
-function Clock({ sel, isCur, timer, skew, entry, data, today }) {
-  const now = useNow(skew);
-  const { label, value, rem, right } = clockState({ sel, isCur, timer, now, entry, data, today });
-  const steps = seqSteps(timer?.dur || 300);
-  const st = rem == null ? steps.map(() => (sel?.at && !sel.void ? "done" : "")) : seqState(steps, rem, true);
-  if (rem === 0 || (rem == null && sel?.at && !sel.void)) st[st.length - 1] = "now";
-  const started = rem === 0 || (rem == null && !!sel?.at && !sel.void);
-  const lastMin = started || (rem != null && rem <= 60);
-  const flags = startFlags(entry, started, lastMin);
-  return (
-    <div className="lv-pill lv-cd">
-      <div className="lv-pillh">
-        <span>{label}</span>
-        <span>{right}</span>
-      </div>
-      <div className="lv-clock">{value}</div>
-      {flags.length || (rem != null && (timer?.mode === "start" || sel?.at)) ? (
-        <div className="lv-pillf">
-          {flags.map((f) => (
-            <span key={f.kind} className={`lv-fl${f.down ? " down" : ""}`}>
-              <Flag {...f} />
-              <small>{f.name}</small>
-            </span>
-          ))}
-          {timer?.mode === "start" || sel?.at ? (
-            <span className="lv-seq">
-              {steps.map((x, i) => (
-                <i key={x.m} className={st[i]}>
-                  {x.m}
-                </i>
-              ))}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 
 // Parkur panelinin başlığındaki rota: "1 · 4 · 1 · 2 · 3 · Finish"
@@ -1081,8 +1043,11 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, now = 
   const pos = entry ? nowPos(entry) : -1;
   const { w } = lastWind(data, sel, isCur);
   const cells = [];
-  // Video varken geri sayım ortada videonun önüne gelmez, şeritte büyük (Seyhun 2026-11-02 "videonun önüne geliyor, öyle olmaması lazım")
-  if (clockIn) cells.push(["time clock", cs.value, cs.label]);
+  // Geri sayım hep şeritte (Seyhun 2026-11-02 örnek A "Şeritte saat", yayin-tasarim/videolu-geri-sayim/vcd-a.png): ortada kutu yok, beyaz
+  // blokta büyük sayı, yanında kare bayraklar ve 5·4·1·0 çubuğu; start saati ve "Start" alt yazısı tekrar edilmez
+  const steps = seqSteps(data.timer?.dur || 300);
+  const sst = cs.rem != null ? seqState(steps, cs.rem, true) : steps.map(() => "");
+  const sflags = clockIn ? startFlags(entry || (phase === "wait" ? plan.order[0] : null), false, cs.rem != null && cs.rem <= 60) : [];
   if (phase === "race") {
     if (clockIn) {
       // saat zaten şeritte
@@ -1135,6 +1100,31 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, now = 
             {ongoing ? <em className="lv-livedot">Canlı</em> : null}
             {t.sub}
           </span>
+        </div>
+      ) : null}
+      {clockIn ? (
+        <div className="lv-cell lv-sclock">
+          <span>{cs.label}</span>
+          <b>{cs.value}</b>
+        </div>
+      ) : null}
+      {clockIn && (sflags.length || data.timer?.mode === "start") ? (
+        <div className="lv-cell lv-sflag">
+          {sflags.map((f) => (
+            <span key={f.kind} className={`lv-fl${f.down ? " down" : ""}`} title={f.name}>
+              <Flag {...f} />
+            </span>
+          ))}
+          {data.timer?.mode === "start" ? (
+            <span className="lv-sseg">
+              {steps.map((x, i) => (
+                <i key={x.m} className={sst[i]}>
+                  <s />
+                  {x.m}
+                </i>
+              ))}
+            </span>
+          ) : null}
         </div>
       ) : null}
       {cells.map(([k, v, l, ew]) => (
@@ -1764,16 +1754,6 @@ function EndHero({ data, today, now, onAll }) {
   );
 }
 
-// Ortada büyük sayaç: yalnız geri sayarken (yarış öncesi ilk start'a, start dizisi); start olunca küçülüp alttaki şeride iner
-function CenterClock({ show, ...p }) {
-  const st = useFade(show, 700);
-  if (!st) return null;
-  return (
-    <div className={`lv-center ${st}`}>
-      <Clock {...p} />
-    </div>
-  );
-}
 
 // Parkur sürekli ekranda değil (Seyhun 2026-11-02): yarış öncesinde görünür; yarışta yeni ölçüm girilince ya da kart değişince 20 sn çıkar,
 // sonra şeritteki "Parkur"a çekilir; şeritten dokununca açılır. Çizim olimpiyat yayınındaki gibi sahne (lib/courseScene.js): denizde komite,
@@ -2331,9 +2311,11 @@ export function LiveScreen({ id, y = "" }) {
   const ctimer = phase === "race" ? data.timer : null;
   const cs = clockState({ sel: csel, isCur, timer: ctimer, now: nowMs, entry, data, today });
   // Ortada büyük sayaç yalnız geri sayarken (start'a ya da ilk start'a) ve sayaç durdurulmuşken; sonra şeritte "Süre"
-  const auto = isCur && phase !== "summary" ? autoCaption({ plan: data.plan, starts, timer: data.timer, rounds: data.rounds, now: nowMs, today }) : null;
+  const auto0 = isCur && phase !== "summary" ? autoCaption({ plan: data.plan, starts, timer: data.timer, rounds: data.rounds, now: nowMs, today }) : null;
   // Parkur: yarış öncesi (bekleme ya da start'a geri sayım) otomatik; açıkken arka plan bulanık (lv-bc.course)
   const counting = phase !== "summary" && ((cs.rem != null && cs.rem > 0) || cs.label === "Durdu");
+  // geri sayımda "Start" / "Son dakika" alt yazısı yok: şeritteki saat bloğu zaten söylüyor (Seyhun 2026-11-02 örnek A)
+  const auto = counting && auto0?.kind === "start" ? null : auto0;
   const hasSvg = (data.course?.obs || []).length > 0;
   // Genel sıralama yarışta sağda, alttan yukarı sabit alanda, kaydırılır (Seyhun 2026-11-02 "genel sıralama varsa sağ tarafta")
   const prog = isCur ? dayProgram(data, today) : [];
@@ -2364,7 +2346,6 @@ export function LiveScreen({ id, y = "" }) {
         {side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}
         {phase === "summary" ? <EndHero data={data} today={today} now={nowMs} onAll={() => setFull("all")} /> : null}
-        <CenterClock show={counting && !hero && !hasVideo} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
         <CourseFloat data={data} sel={sel} isCur={isCur} show={cOn} phase={phase} onClose={() => setCourseOpen(false)} />
         <WindFloat data={data} sel={sel} isCur={isCur} show={slide === "wind"} now={nowMs} />
         <ProgFloat prog={prog} show={slide === "prog"} data={data} now={nowMs} />
@@ -2375,7 +2356,7 @@ export function LiveScreen({ id, y = "" }) {
               <WindDay fc={data.forecast} now={nowMs} at={data.plan.at} mine={lastWind(data, sel, isCur).obs} />
             </button>
           ) : null}
-          <InfoBar data={data} sel={sel} isCur={isCur} phase={phase} cs={cs} counting={counting} clockIn={counting && hasVideo} today={today} now={nowMs} ongoing={ongoing} hasSvg={hasSvg} prog={prog} onCourse={() => setCourseOpen((v) => !v)} onWind={() => setWindOpen((v) => !v)} />
+          <InfoBar data={data} sel={sel} isCur={isCur} phase={phase} cs={cs} counting={counting} clockIn={counting && !hero} today={today} now={nowMs} ongoing={ongoing} hasSvg={hasSvg} prog={prog} onCourse={() => setCourseOpen((v) => !v)} onWind={() => setWindOpen((v) => !v)} />
         </div>
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
