@@ -3,7 +3,7 @@
 // Yayıncının elle yazdığı yazı (screen.caption) her zaman önce gelir; boşsa bu kullanılır.
 //  - Start geri sayımı: "Start", son dakikada "Son dakika"; sayaç durdurulduysa yazı yok
 //  - Tehir (plan.status "ap" ya da yarış "Tehir" sayıldı): "Tehir"; yeni geri sayım başlayınca "Start"
-//  - Genel geri çağırma: "Genel geri"; abandone (N bayrağı): "Abandone" (yeni geri sayım başlayana kadar, en çok 60 dk)
+//  - Genel geri çağırma: "Genel geri · 3. yarış · Sarı grup"; abandone (N bayrağı): "Abandone · 3. yarış · Sarı grup" (yeni geri sayım başlayana kadar, en çok 60 dk)
 //  - Start'tan sonraki 3 dk içinde OCS/UFD/BFD varsa: "Bireysel geri · 512 · 88"
 //  - Lider finişe geldi, yarış bitmedi: "Finiş"
 // Döndürür: { text, kind } kind "start" | "warn" | "" (warn: tehir / genel geri / iptal kehribar)
@@ -18,7 +18,12 @@ export function autoCaption({ plan, starts = [], timer = null, rounds = {}, now 
   if (timer?.mode === "start" && timer?.end == null && timer?.left != null) return none; // durduruldu: sebebi seçilince yazar
   const day = (starts || []).filter((x) => !today || x.day === today).sort((a, b) => ms(a.cd || a.at) - ms(b.cd || b.at));
   const last = day[day.length - 1];
-  if (last?.void && now - ms(last.fin) < 60 * 60e3) return { text: VOID_TEXT[last.void] || last.void, kind: "warn" };
+  // hangi yarış olduğu da yazar: "Abandone · 3. yarış · Sarı grup" (Seyhun 2026-11-02 "sadece abone yazıyor, ne abone olduğunu belirtelim")
+  if (last?.void && now - ms(last.fin) < 60 * 60e3) {
+    const grp = last.grp || rounds?.[last.id]?.grp || "";
+    const what = [last.name || (last.n ? `${last.n}. yarış` : ""), grp ? `${grp} grup` : ""].filter(Boolean).join(" · ");
+    return { text: [VOID_TEXT[last.void] || last.void, what].filter(Boolean).join(" · "), kind: "warn" };
+  }
   if (plan?.status === "ap" && (!plan.day || !today || plan.day === today)) return { text: "Tehir", kind: "warn" };
   // Süren yarışlar (aynı anda iki grup olabilir): en son başlayandan geriye
   for (const s of [...day].reverse()) {
