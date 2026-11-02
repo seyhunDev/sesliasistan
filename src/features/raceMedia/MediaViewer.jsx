@@ -134,7 +134,7 @@ function Clip({ m, bar, onTap, tools = null }) {
   );
 }
 
-function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, onSave, onDrop, starts = [], onFix, busy = "" }) {
+function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, onSave, onDrop, starts = [], onFix, onCloud, busy = "" }) {
   const [ui, setUi] = useState(true);
   // Videoyu paylaşırken sorulur: sesli ya da sessiz (Seyhun 2026-10-20)
   const [ask, setAsk] = useState(false);
@@ -170,9 +170,12 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
   const title = label(m);
   // Alt araç çubuğu (iPhone Fotoğraflar gibi; Seyhun 2026-10-22: "iPhone tasarımına benzetelim, daha kullanışlı olur").
   // Yüklenmekte olan kayıtta yok (künyesi henüz yok)
+  // Yalnız telefonda duran video (m.ph): bu telefonda varsa (m.local) izlenir, paylaşılır, "Buluta yükle"; yoksa yalnız bilgi
+  const away = m.ph && !m.local;
   const acts = m.up != null ? [] : [
-    onShare && ["Paylaş", "share", () => shareIt(m)],
-    onSave && ["İndir", "download", () => onSave(m)],
+    m.ph && m.local && onCloud && ["Buluta yükle", "cloud", () => onCloud(m)],
+    !away && onShare && ["Paylaş", "share", () => shareIt(m)],
+    !away && onSave && ["İndir", "download", () => onSave(m)],
     ours.length > 0 && onTag && ["Kimler", "users", () => setPanel("tag")],
     onFix && ["Düzelt", "edit", () => setPanel("fix")],
     onDrop && ["Sil", "trash", () => onDrop(m)],
@@ -191,7 +194,14 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
 
   return (
     <div className="fixed inset-0 z-[70] overflow-hidden bg-black text-white" onTouchStart={down} onTouchEnd={up}>
-      {m.kind === "video" ? (
+      {away ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {m.thumb && <img src={m.thumb} alt="" className="absolute inset-0 size-full object-contain opacity-50" />}
+          <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-[1rem] font-semibold">Bu video yalnız çekildiği telefonda</p>
+          {ui && !panel && tools && <div className={`absolute inset-x-0 bottom-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] ${side}`}>{tools}</div>}
+        </>
+      ) : m.kind === "video" ? (
         // Düzenleme paneli açıkken dikte video panelin üstünde biter (yan çevrilince bütün ekran)
         <div className={`absolute inset-0 ${panel ? "portrait:bottom-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
           <Clip key={m.local || m.id} m={m} bar={ui && !panel} onTap={() => setUi((v) => !v)} tools={tools} />
@@ -211,7 +221,7 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
           </button>
           <div className="min-w-0 flex-1 text-center leading-tight [text-shadow:0_1px_2px_rgba(0,0,0,.6)]">
             <p className="truncate text-[0.9375rem] font-semibold">{title || when}</p>
-            {m.up != null && <p className="truncate text-[0.75rem] text-white/60">{m.up < 0 ? "Telefonda · buluta gönderilemedi" : `Buluta gönderiliyor %${Math.round(m.up * 100)}`}</p>}
+            {m.up != null ? <p className="truncate text-[0.75rem] text-white/60">{m.up < 0 ? "Telefonda · buluta gönderilemedi" : `Buluta gönderiliyor %${Math.round(m.up * 100)}`}</p> : m.ph && <p className="truncate text-[0.75rem] text-white/60">Yalnız telefonda</p>}
           </div>
           <span className="size-10 shrink-0" />
         </div>

@@ -48,6 +48,7 @@ async function idleCost(page, ms = 2500) {
 }
 
 export async function scenarios(h) {
+  if (process.env.ASISTAN_TEK === "antrenman") return trainVoice(h); // yalnız antrenman sesle bölümü
   const { check, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI, setTasks, setTranscript, setLive, TODAY, TOMORROW, log } = h;
 
   // ================================================================ 1. Sekme çubuğu ve açılış
@@ -92,12 +93,15 @@ export async function scenarios(h) {
   const srBefore = await page.evaluate(() => window.__t.srStarts);
   await h.hold(page);
   const G2 = "Bas konuş: tam ekran açılış";
-  await check(G2, "düğmeye bas", "tam ekran koyu açılır (afull-in, data-theme=dark), ekranı kaplar", async () => {
+  // Seyhun 2026-11-02 "A · İçeriğe göre büyür": tam ekran değil, alttan küçük pencere (en çok ekranın ~yarısı), arkası görünür ve hafif kararır
+  await check(G2, "düğmeye bas", "alttan küçük koyu pencere açılır (afull-in, data-theme=dark), ekranın yarısını geçmez, arkada karartma", async () => {
     await full(page).waitFor({ timeout: 4000 });
     const cls = await full(page).getAttribute("class");
     const theme = await full(page).getAttribute("data-theme");
     const box = await full(page).boundingBox();
-    return [/afull-in/.test(cls) && theme === "dark" && box.height >= 800, `${cls.match(/afull-\w+/)?.[0]} · ${theme} · ${Math.round(box.height)} px`];
+    const vh = page.viewportSize().height;
+    const dim = await page.locator("[data-adim]").count();
+    return [/afull-in/.test(cls) && /afull-sm/.test(cls) && theme === "dark" && box.height >= 100 && box.height <= vh * 0.6 && dim === 1, `${cls.match(/afull-(in|out)/)?.[0]} · ${theme} · ${Math.round(box.height)}/${vh} px · karartma ${dim}`];
   });
   await check(G2, "açılış animasyonu", "afull-in animasyonu tanımlı ve çalışıyor", async () => {
     const a = await full(page).evaluate((el) => getComputedStyle(el).animationName);
@@ -159,7 +163,7 @@ export async function scenarios(h) {
 
   // Kapat (×): aşağı kayarak kapanır, sekmeler geri gelir
   const G4 = "Kapanış";
-  await page.locator("[data-dome] [data-apane]").click({ position: { x: 20, y: 20 } });
+  await page.locator("[data-adim]").click({ position: { x: 20, y: 20 } }); // pencerenin dışı (arkadaki sayfa)
   await check(G4, "boş alana dokun", "afull-out ile aşağı kayarak kapanır", async () => {
     const cls = await waitFor(async () => {
       const c = await full(page).getAttribute("class", { timeout: 300 }).catch(() => "");
@@ -184,6 +188,7 @@ export async function scenarios(h) {
   await typeAsk(page, "bugün planda neler var");
   await check(G5, "kısa dokun → Yaz → gönder", "yazı kutusu açılır, gönderince tam ekran asistan cevaplar", async () => {
     const ok = await waitFor(async () => /Dişçi/i.test(await convo(page)), 6000);
+    if (process.env.WX_SHOT) await page.waitForTimeout(800).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-asistan.png` }));
     return [!!ok, (await convo(page)).replace(/\s+/g, " ").slice(0, 140)];
   });
   await check(G3, "bugün planda neler var", "bugünün planı yerelde sayılır, yapay zekaya gitmez", async () => [aiCalls() === before, `yz isteği ${aiCalls() - before}`]);
@@ -1054,6 +1059,57 @@ async function scenarios4(h) {
   await seaPage(h);
   await camsPage(h);
   await rainStrip(h);
+  await trainVoice(h);
+}
+
+// ================================================================ Antrenman yarışı sesle (Seyhun 2026-11-02): "2 dakika başlat" → 3·2·1 sonra sayaç ve yarış; "yarışı bitir"
+async function trainVoice(h) {
+  const { check, newPage, waitFor, typeAsk, closeAll, convo, log } = h;
+  log("    Antrenman: sesle başlat ve bitir…");
+  const { page, errs } = await newPage();
+  const G = "Antrenman yarışı sesle";
+  const home = async () => {
+    await page.goto(new URL(page.url()).origin + "/training", { waitUntil: "load" }); // bugün yarış da var: antrenman sözleri Antrenman'da antrenmanın
+    await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
+    await page.waitForTimeout(1200);
+  };
+  await home();
+  const timer = () => page.evaluate(() => JSON.parse(localStorage.getItem("sa-sayac") || "null"));
+  await typeAsk(page, "2 dakika başlat");
+  await check(G, "2 dakika başlat", "önce ekranda 3 · 2 · 1, sayaç henüz başlamadı", async () => {
+    const seen = await waitFor(async () => (await page.locator("[role=status][aria-label^='Başlıyor']").count()) > 0, 8000);
+    const t = await timer();
+    return [!!seen && !(t?.end > 0), `${seen ? "3·2·1 göründü" : "3·2·1 yok"} · sayaç ${t?.end ? "başlamış" : "bekliyor"}`];
+  });
+  await check(G, "3 sn sonra", "2 dakikalık geri sayım başladı, yarış açıldı", async () => {
+    const ok = await waitFor(async () => ((await timer())?.end || 0) > Date.now() + 100000, 7000);
+    const t = await timer();
+    const gone = await page.locator("[role=status][aria-label^='Başlıyor']").count();
+    const left = t?.end ? Math.round((t.end - Date.now()) / 1000) : null;
+    return [!!ok && t.rid && t.mode === "start" && gone === 0 && left > 100 && left <= 120, `kalan ${left} sn · yarış ${t?.rid ? "var" : "yok"} · mod ${t?.mode} · 3·2·1 ${gone ? "duruyor" : "kalktı"}`];
+  });
+  await check(G, "antrenman sayfası", "antrenman günü açıldı, Yarış 1 sayacın başlığında", async () => {
+    const went = await waitFor(async () => new URL(page.url()).pathname === "/training/day", 30000);
+    const ok = await waitFor(async () => /Yarış 1/.test(await page.locator("main").first().innerText().catch(() => "")), 15000);
+    return [!!went && !!ok, `sayfa ${new URL(page.url()).pathname} · ${ok ? "Yarış 1 var" : "Yarış 1 yok"}`];
+  });
+  await closeAll(page);
+  await home();
+  // Start geçmiş gibi: sayacın 0'ı 30 sn önce
+  await page.evaluate(() => {
+    const t = JSON.parse(localStorage.getItem("sa-sayac"));
+    localStorage.setItem("sa-sayac", JSON.stringify({ ...t, end: Date.now() - 30000 }));
+    window.dispatchEvent(new Event("sa-sayac"));
+  });
+  await typeAsk(page, "yarışı bitir");
+  await check(G, "yarışı bitir", "sayaç durur, “Yarış 1 bitti” denir", async () => {
+    const ok = await waitFor(async () => /Yarış 1 bitti/.test(await convo(page)), 8000);
+    const t = await timer();
+    return [!!ok && t?.end == null, `${ok ? "bitti dendi" : `cevap: ${(await convo(page)).slice(-80)}`} · sayaç ${t?.end == null ? "durdu" : "sürüyor"}`];
+  });
+  await closeAll(page);
+  await check("Sayfa hataları", "antrenman sesle", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
 }
 
 // ================================================================ Deniz trafiği (/sea): tam ekran MarineTraffic haritası
@@ -1289,7 +1345,13 @@ async function rainSplit(h) {
 }
 
 // Yarış günü ana sayfa (Seyhun 2026-10-27 "A · Yarışın yeri büyük"): yarın Foça'da test yarışı; yarın seçilince büyük hava Foça'nın, Dikili tek satır
-const nav0 = async (page) => page.locator("nav[aria-label='Günler'] button").first().click().catch(() => {});
+const nav0 = async (page) => {
+  await page.keyboard.press("Escape"); // güne dokununca açılan gün penceresi kapansın
+  await page.waitForTimeout(400);
+  await page.locator("nav[aria-label='Günler'] button").first().click().catch(() => {});
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+};
 async function raceDayHome(h) {
   const { check, newPage, waitFor, log } = h;
   log("    Ana sayfa: yarış günü havası…");
@@ -1326,6 +1388,13 @@ async function raceDayHome(h) {
     const home = await page.getByRole("button", { name: "Dikili havası" }).count();
     if (process.env.WX_SHOT) await page.waitForTimeout(2000).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-yaris.png` }));
     return [before === 0 && ok > 0 && place === 1 && home === 1, `önce ${before} · yarış havası ${ok} · Foça ${place} · Dikili satırı ${home}`];
+  });
+  // Seyhun 2026-11-02: güne tek dokunuşta hem hava o güne geçer hem alttan o günün penceresi (planlar) açılır
+  await check("Ana sayfa", "güne dokun: pencere", "yarına tek dokunuşta hava değişti ve alttan o günün penceresi açık", async () => {
+    const dlg = page.getByRole("dialog");
+    const n = await waitFor(() => dlg.count(), 4000);
+    const title = n ? ((await dlg.first().textContent()) || "").replace(/\s+/g, " ").slice(0, 60) : "";
+    return [n > 0, `pencere ${n} · ${title}`];
   });
   // Süren yarış (Seyhun 2026-10-30: "ana sayfadan süreyi kaldıralım, sadece tıklama olsun"): sayaç ve düğme yok, tek satır; dokununca yarış sayfası
   await check("Ana sayfa", "süren yarış tek satır", "yarış adı ve kısa durum, düğme yok, dokununca yarışın sayfası açılır", async () => {

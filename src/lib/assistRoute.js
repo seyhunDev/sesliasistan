@@ -44,6 +44,7 @@ import { timerCommand, windCommand } from "@/lib/raceLive";
 import { roundCommand, routeCommand, screenCommand } from "@/lib/raceRounds";
 import { COURSE_WORD, courseAsk, courseCommand, courseRelative, courseUndo } from "@/lib/raceCourse";
 import { resultCommand } from "@/lib/raceVoice";
+import { trainCommand, raceToday } from "@/lib/trainVoice";
 import { attQueryAsk } from "@/lib/attQuery";
 import { clubAsk } from "@/lib/clubAsk";
 import { infoAsk } from "@/lib/infoAsk";
@@ -78,6 +79,8 @@ export function moreKind(s, c = {}) {
   if (ia && (ia.kind !== "invoices" || owner)) return "infoAsk";
   // Canlı ekran (isler/canliEkran.js): şamandıra dönüşü, parkur sırası, ekranda gösterme; az önce yazılan dönüşü "geri al"
   if (owner && racer && (routeCommand(s) || roundCommand(s) || screenCommand(s) || (c.roundJust && courseUndo(s)))) return "liveScreen";
+  // Antrenman yarışı sesle (isler/antrenmanSes.js): "2 dakika başlat", "yarışı bitir, birinci Ali …"; yarış günü antrenman sayfası dışında Yayın'ın
+  if (owner && racer && trainCommand(s) && (path.startsWith("/training") || (!path.startsWith("/athletes/races/") && !raceToday(c.races || [], c.today || "2000-01-01")))) return "trainVoice";
   if (racer && timerCommand(s)) return "raceTimer";
   if (owner && racer && c.courseJust && courseUndo(s)) return "raceCourse"; // parkura az önce yazılanı "geri al" / "yanlış"
   if (owner && racer && courseCommand(s)?.list.length > 1) return "raceCourse"; // "rüzgar kuzeybatı 12 knot, eksen 320" parkura
@@ -148,7 +151,7 @@ export function routesOf(s, c = {}) {
   // Fitness sayfasında ya da açık fitness planında "bugünkü antrenmanı yaptım" fitness'tır, yelken günlüğü değil
   const fitFirst = c.fitHere && owner && !isStaff && wantsFitness(s, true);
   if (!mf && !athleteSide && !fitFirst && wantsLog(s) && bareLog(s)) add("logBare");
-  if (!mf && !athleteSide && !fitFirst && (wantsLog(s) || (c.logHere && isLogAnswer(s)))) add("log");
+  if (!mf && !athleteSide && !fitFirst && (wantsLog(s) || (c.logHere && isLogAnswer(s) && !trainCommand(s)))) add("log"); // Antrenman sayfasında "2 dakika başlat" günlük değil
   if (!mf && !isStaff && wantsEvent(s)) add("event");
   if (!mf && !isStaff && wantsInventory(s, !!c.invPage) && !nav(s)) add("inventory");
   // "Mete'nin kilosu 52" sporcunun ölçümüdür: Fitness sayfasında da beslenme/fitness'a gitmez

@@ -34,7 +34,7 @@ import { useTabInUrl } from "@/hooks/useTabInUrl";
 
 // Antrenman sayfası (kulüp antrenmanı günü), yarış multimedya sayfasının düzeninde (Seyhun 2026-10-20 onayı,
 // /mnt/project-files/antrenman-sayfasi/medya-ornek.png): altta Süre · Medya · Hava · Sonuçlar.
-// Süre: multimedyanın sayacı (Countdown compact + Marks, useTrainingFlow; her start bir yarış açar) ve Yoklama, Yarışlar, Günlük satırları.
+// Antrenman sekmesi (2026-11-02 yeni tasarım): başlıksız, sol üstte geri + Yoklama · Günlük; sayaç açık kartta (useTrainingFlow; her start bir yarış açar), yarışta Bitiren kim? kartta; altında Bugünkü yarışlar. Videolar yalnız Medya sekmesinde.
 // Medya: multimedyanın MediaTab'ı; fotoğraf/video bu antrenmana bağlı (raceLive/ant-<planId>, Storage raceMedia), antrenman yarışlarına göre gruplu.
 // Hava: multimedyanın WeatherTab'ı; yer planın `spot`u, yoksa Dikili. Sonuçlar: günün yarışları ve puan durumu (Races).
 // Süre'de alt şeritte "Sonucu söyle" ve ana düğme (Başlat…; Seyhun 2026-10-22: "Başlat'ı ve Sonucu söyle'yi aşağı al, Rüzgâr'ı kaldır"): yarış sıralaması sesle ("1 Ali, 2 Ayşe", yalnız adlar da, karışık da), onaysız yazılır, 8 sn Geri al (lib/raceVoice.js voiceResult).
@@ -46,7 +46,7 @@ const stamp = () => Date.now();
 const dayText = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
 const TABS = ["sure", "media"];
 // Yeni akış (Seyhun 2026-11-01): Sonuçlar ve Hava sekmeleri kalktı; sonuç Yarış ekranında (TrainFlow), Kayıt yerine Başlat'ın yanında Video
-const DOCK = [["sure", "Yarış"], ["media", "Videolar"]];
+const DOCK = [["sure", "Antrenman"], ["media", "Medya"]];
 const iso = (ms) => new Date(ms).toISOString();
 
 // Antrenman yarışları → multimedyanın start satırları (medyanın yarışı ve anı bunlara göre bulunur)
@@ -175,7 +175,6 @@ function Day() {
     openRace(r.id);
   };
 
-  const sub = plan ? [date === today ? "Bugün" : "", dayText(date), plan.time, plan.place].filter(Boolean).join(" · ") : `Bugün · ${dayText(today)}`;
   const tabs = !!liveId && !locked;
   const shown = tabs ? tab : "sure";
   // Bitiren kim? kareleri: yoklamada gelenler, yoklama yoksa bütün sporcular, onlar da yoksa bugünkü yarışlara girenler
@@ -204,37 +203,30 @@ function Day() {
   const pill = "h-9 rounded-full border border-line bg-card px-3.5 text-[0.875rem] font-semibold text-fg2 active:translate-y-px";
 
   return (
-    <main className={`mx-auto max-w-[30rem] px-5 ${tabs ? "pb-[calc(env(safe-area-inset-bottom)+11rem)]" : "pb-[calc(var(--dome-h,var(--stage-h,6rem))+6rem)]"}`}>
-      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={title}>
-        <header className="flex items-center gap-2.5">
-          <BackButton href="/training" />
-          <div className="min-w-0 flex-1 leading-tight">
-            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{title}</h1>
-            <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
-          </div>
-          {shown === "media" && <MediaSettingsButton dark />}
-        </header>
-        {shown === "sure" && (
-          <Countdown
-            dark
-            mode="start"
-            race={withRaces ? flow : null}
-            title={cur ? cur.name : ""}
-            where={title}
-            beforeStart={!plan && racer ? addPlan : undefined}
-            bottom={tabs}
-            rec={
-              tabs && (
-                <RecPick onFile={setShot} aria-label="Video" className="flex h-14 shrink-0 touch-manipulation items-center gap-2 rounded-2xl border border-line bg-card px-4 text-[1.0625rem] font-semibold shadow-[0_3px_0_var(--line)] active:translate-y-0.5 active:shadow-none">
-                  <span className="size-5 rounded-full bg-rec" />
-                  Video
-                </RecPick>
-              )
-            }
-          />
-        )}
-      </section>
-      <div className="relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+    <main className={`mx-auto max-w-[30rem] px-4 ${tabs ? "pb-[calc(env(safe-area-inset-bottom)+8rem)]" : "pb-[calc(var(--dome-h,var(--stage-h,6rem))+6rem)]"}`}>
+      {/* Başlık yok (Seyhun 2026-11-02 "çok yer kaplıyor"): sol üstte geri, yanında Yoklama · Günlük; sayaç hemen altında */}
+      <header className="flex items-center gap-2 pb-1 pt-[calc(0.5rem+env(safe-area-inset-top))]">
+        <BackButton href="/training" />
+        <h1 className="sr-only">{title}</h1>
+        <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
+          {date !== today && <span className={`${pill} flex shrink-0 items-center`}>{dayText(date)}</span>}
+          {shown === "sure" && plan && (racer || canLog(plan, today)) && (
+            <>
+              {racer && (
+                <button type="button" onClick={() => setSheet("roll")} className={`${pill} shrink-0`}>
+                  {athletes.length ? (present.length ? `${present.length} kişi geldi` : "Yoklama") : "Yoklama"} ›
+                </button>
+              )}
+              {canLog(plan, today) && !locked && (
+                <button type="button" onClick={() => setSheet("log")} className={`${pill} shrink-0`}>
+                  {plan.log ? "Günlük" : "Günlük yazılmadı"} ›
+                </button>
+              )}
+            </>
+          )}
+        </div>
+        {shown === "media" && <MediaSettingsButton />}
+      </header>
       {tabs && tr.running && shown !== "sure" && (
         <div className="sticky top-[calc(0.5rem+env(safe-area-inset-top))] z-[5] mb-3">
           <button type="button" onClick={() => setTab("sure")} className={`flex h-11 w-full items-center justify-between rounded-xl px-4 text-white active:translate-y-px ${!tr.up && tr.rem <= 10 ? "bg-rec" : "bg-deep"}`}>
@@ -246,37 +238,52 @@ function Day() {
 
       {shown === "sure" && (
         <>
-          {plan && (racer || canLog(plan, today)) && (
-            <div className="flex gap-2">
-              {racer && (
-                <button type="button" onClick={() => setSheet("roll")} className={pill}>
-                  {athletes.length ? (present.length ? `${present.length} kişi geldi` : "Yoklama") : "Yoklama"} ›
-                </button>
-              )}
-              {canLog(plan, today) && !locked && (
-                <button type="button" onClick={() => setSheet("log")} className={pill}>
-                  {plan.log ? "Günlük" : "Günlük yazılmadı"} ›
-                </button>
-              )}
-            </div>
-          )}
-          {withRaces && !!cur && tr.up && (
-            <>
-              <FinishTap race={cur} people={people} onSave={(x) => saveRaces(races.map((o) => (o.id === x.id ? x : o)))} onAll={finishAll} voice={voiceBtn} />
-              <Marks buoys={buoys} s={cur} on onMark={mark} onBuoys={(next) => updateRecord("plan", plan.id, { buoys: next }, by)} />
-            </>
-          )}
+          <Countdown
+            mode="start"
+            race={withRaces ? flow : null}
+            title={cur ? cur.name : withRaces ? flow.label : ""}
+            where={title}
+            beforeStart={!plan && racer ? addPlan : undefined}
+            mid={withRaces && !!cur && tr.up && <FinishTap race={cur} people={people} onSave={(x) => saveRaces(races.map((o) => (o.id === x.id ? x : o)))} onAll={finishAll} voice={voiceBtn} />}
+            rec={
+              tabs && (
+                <RecPick onFile={(f) => (setShot(f), setTab("media"))} aria-label="Video" className="flex h-16 shrink-0 touch-manipulation items-center gap-2 rounded-[1.125rem] border border-line bg-card px-5 text-[1.0625rem] font-semibold shadow-[0_3px_0_var(--line)] active:translate-y-0.5 active:shadow-none">
+                  <span className="size-4 rounded-full bg-rec" />
+                  Video
+                </RecPick>
+              )
+            }
+          />
+          {withRaces && !!cur && tr.up && <Marks buoys={buoys} s={cur} on onMark={mark} onBuoys={(next) => updateRecord("plan", plan.id, { buoys: next }, by)} />}
           {withRaces && said && <p className="mt-3 px-1 text-[0.875rem] leading-snug text-fg2">{said}</p>}
 
           {!plan ? (
-            <section>
+            <section className="mt-6">
               <ListHead title="Plan" />
               <RowList>
                 <Row onClick={adding ? undefined : addPlan} title="Bugün antrenman planı yok" right={<span className="text-acc">Ekle</span>} chev={false} />
               </RowList>
             </section>
           ) : (
-            tabs && <MediaTab orgId={orgId} race={place} day={date} live={{ ...live, starts: startsOf(races, date) }} ours={ours} onChange={change} file0={shot} onFileDone={() => setShot(null)} list={list} />
+            withRaces && (
+              <section className="mt-6" aria-label="Bugünkü yarışlar">
+                <div className="mb-1.5 flex items-baseline justify-between px-2">
+                  <h2 className="text-[0.9375rem] font-semibold">Bugünkü yarışlar</h2>
+                  {table.races.length > 1 && (
+                    <button type="button" onClick={() => openRace("")} className="text-[0.875rem] font-semibold text-acc">
+                      Genel durum ›
+                    </button>
+                  )}
+                </div>
+                <ul className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
+                  {list.empty}
+                  {[...list.today].reverse().map((x) => (
+                    <li key={x.id}>{list.row(x)}</li>
+                  ))}
+                  <li>{list.add}</li>
+                </ul>
+              </section>
+            )
           )}
         </>
       )}
@@ -292,8 +299,6 @@ function Day() {
           onFileDone={() => setShot(null)}
         />
       )}
-
-      </div>
 
       {racer && (
         <Sheet open={sheet === "roll"} onClose={() => setSheet("")} title="Yoklama">
@@ -319,4 +324,4 @@ function Day() {
 
 // Asistan düğmesi (Seyhun 2026-10-23: antrenman sayfasında da kullanılsın): her yerdeki gibi bas-konuş (2026-10-25): basılı
 // tut konuş, bırak gönder; kısa dokunuşta asistan açık ve boşta kalır, dışarı kaydırıp bırakınca iptal
-const ASK_EX = ["1 Ali, 2 Ayşe, 3 Mehmet", "Rüzgar 12 knot kuzeybatı", "Bugünkü antrenman çok iyi geçti, start çalıştık"];
+const ASK_EX = ["2 dakika başlat", "Yarışı bitir, 1 Ali 2 Ayşe 3 Mehmet", "Bugünkü antrenman çok iyi geçti, start çalıştık"];

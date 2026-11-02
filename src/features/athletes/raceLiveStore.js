@@ -198,16 +198,31 @@ export async function addRaceMedia(orgId, id, m, at, onProg, extra = null) {
   const r = sref(store(), mpath(orgId, mid));
   // Küçük resim yüklemeyle aynı anda hazırlanır (önce yapılınca iPhone'da yükleme 10 sn'ye kadar %0'da bekliyordu; Seyhun 2026-10-22)
   const posterP = (m.posterP || posterOf(m.blob, m.kind)).catch(() => null); // posterP: MediaTab çekilir çekilmez başlattı
-  const task = uploadBytesResumable(r, m.blob, { contentType: m.type, cacheControl: "private, max-age=31536000" });
-  await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
+  // extra.ph: yalnız telefonda (büyük video): dosya yüklenmez, küçük resim ve künye yazılır
+  if (!extra?.ph) {
+    const task = uploadBytesResumable(r, m.blob, { contentType: m.type, cacheControl: "private, max-age=31536000" });
+    await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
+  }
   const thumb = await putPoster(orgId, mid, await posterP);
-  const meta = cleanMedia([{ id: mid, kind: m.kind, type: m.type, size: m.blob.size, url: await getDownloadURL(r), at, thumb, ...extra }])[0];
+  const meta = cleanMedia([{ id: mid, kind: m.kind, type: m.type, size: m.blob.size, url: extra?.ph ? "" : await getDownloadURL(r), at, thumb, ...extra }])[0];
   // Kayıt telefondaki Firestore önbelleğine hemen yazılır; sunucunun onayı zayıf bağlantıda uzun sürer, beklenmez (halka %100'de takılı
   // kalıyordu). Yazma arkada tamamlanır.
   const w = setDoc(live(orgId, id), { media: arrayUnion(meta) }, { merge: true });
   w.catch((e) => console.warn("[raceMedia] künye yazılamadı", e));
   await Promise.race([w, new Promise((res) => setTimeout(res, 3000))]);
   return meta;
+}
+
+// Telefonda duran videoyu sonradan buluta yükle: dosya künyenin yerine gider, künyede url olur, ph kalkar
+export async function cloudMedia(orgId, id, meta, blob, type, onProg) {
+  const r = sref(store(), mpath(orgId, meta.id));
+  const task = uploadBytesResumable(r, blob, { contentType: type || meta.type, cacheControl: "private, max-age=31536000" });
+  await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
+  const url = await getDownloadURL(r);
+  const l = await loadLive(orgId, id);
+  const next = l.media.map((x) => (x.id === meta.id ? { ...x, url, type: type || x.type, size: blob.size, ph: false } : x));
+  await saveMedia(orgId, id, next);
+  return cleanMedia(next).find((x) => x.id === meta.id) || null;
 }
 
 // rest: kalan liste (arrayRemove birebir aynı nesneyi ister; etiket alanı eklenince eski künyeler eşleşmez)
