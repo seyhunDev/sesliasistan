@@ -860,3 +860,37 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-noag span { padding: 0.35em 0.9em; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-size: clamp(13px, 1vw, 18px); font-weight: 700; }
 .lv-noag span.s { background: rgba(255, 61, 119, 0.25); }
 @media (max-width: 760px) { .lv-nocard { padding: 1em; } .lv-hold .lv-nobig { font-size: 22vw; } }
+/* Yükleniyor iskeleti (Seyhun 2026-11-02 örnek B): dalgasız düz zemin, gerçek yerleşimin soluk kutuları, kayan parlaklık, ortada CANLI */
+.lv-sea.lv-plain { background: radial-gradient(120% 90% at 30% 20%, #1d4a72 0%, #123352 45%, #0b2038 100%); }
+.lv-sea.lv-plain::after { display: none; }
+.lv-skel { position: fixed; inset: 0; z-index: 2; pointer-events: none; animation: lv-fade 0.5s ease-out both; }
+.lv-skel i { display: block; border-radius: 8px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.14) 50%, rgba(255, 255, 255, 0.06) 100%) 0 0 / 300% 100%; animation: lv-shim 1.6s linear infinite; }
+@keyframes lv-shim { from { background-position: 100% 0; } to { background-position: -200% 0; } }
+.lv-skp { position: absolute; right: 26px; top: 26px; display: flex; gap: 10px; }
+.lv-skp i { width: 140px; height: 34px; border-radius: 999px; }
+.lv-skr { position: absolute; right: 26px; top: 76px; width: 366px; display: flex; flex-direction: column; gap: 22px; padding: 22px; border-radius: 14px; background: rgba(14, 30, 52, 0.55); border: 1px solid rgba(255, 255, 255, 0.12); }
+.lv-skr .h { width: 90px; height: 22px; }
+.lv-skr > div { display: flex; align-items: center; gap: 14px; }
+.lv-skr .n { width: 18px; height: 18px; border-radius: 50%; }
+.lv-skr .t { flex: 1; height: 18px; }
+.lv-skr .s { width: 36px; height: 26px; }
+.lv-skl { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 10px; padding: 8px 18px; border-radius: 6px; background: #ff3d77; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 0.2em; color: #fff; }
+.lv-skl b { width: 10px; height: 10px; border-radius: 50%; background: #fff; animation: lv-skdot 1.4s ease-in-out infinite; }
+@keyframes lv-skdot { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5); } 50% { box-shadow: 0 0 0 7px rgba(255, 255, 255, 0); } }
+.lv-skb { position: absolute; left: 26px; bottom: 26px; width: min(900px, calc(100% - 52px)); height: 70px; display: flex; align-items: center; gap: 30px; padding: 0 26px; border-radius: 6px; border-left: 4px solid #ff3d77; background: rgba(14, 30, 52, 0.55); }
+.lv-skb > div { display: flex; flex-direction: column; gap: 8px; }
+.lv-skb .a { width: 260px; height: 24px; }
+.lv-skb .b { width: 340px; height: 12px; }
+.lv-skb .c { width: 90px; height: 30px; }
+.lv-skb .d { width: 120px; height: 30px; }
+.lv-skb .e { width: 180px; height: 24px; }
+@media (max-width: 760px) {
+  .lv-skp { left: 16px; right: auto; top: calc(16px + env(safe-area-inset-top)); }
+  .lv-skp i { width: 100px; }
+  .lv-skr { left: 16px; right: 16px; top: auto; bottom: 100px; width: auto; gap: 16px; padding: 16px; }
+  .lv-skr > div:nth-child(n + 7) { display: none; }
+  .lv-skl { top: 22%; }
+  .lv-skb { left: 16px; bottom: 16px; width: calc(100% - 32px); gap: 14px; padding: 0 14px; }
+  .lv-skb .a { width: 150px; } .lv-skb .b { width: 190px; } .lv-skb .d, .lv-skb .e { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .lv-skel i, .lv-skl b { animation: none; } }

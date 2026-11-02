@@ -339,6 +339,42 @@ function Clock({ sel, isCur, timer, skew, entry, data, today }) {
 // yalnız deniz rengi kalır (CSS arka planı, kırık resim görünmez). Video gelince video, duraklatılınca da o video görünür.
 // Seyhun 2026-11-02 seçti (sail-world.com Optimist fotoğrafı; sunucumuza indirilemedi, tarayıcı doğrudan oradan yükler)
 export const BG_PHOTO = "https://www.sail-world.com/photos/optimist/yysw256373.jpg";
+// Yükleniyor (Seyhun 2026-11-02 örnek B "İskelet", yayin-tasarim/yukleniyor/yuk-b.png): düz koyu lacivert zemin, ekranın gerçek yerleşimi
+// soluk kutularla (üstte yarış çipleri, sağda sıralama paneli, altta şerit), parlaklık kayar; ortada CANLI rozeti, yazı yok
+function LoadSkel() {
+  return (
+    <div className="lv-skel" role="status" aria-label="Yükleniyor">
+      <div className="lv-skp">
+        <i />
+        <i />
+        <i />
+      </div>
+      <div className="lv-skr">
+        <i className="h" />
+        {Array.from({ length: 9 }, (_, n) => (
+          <div key={n}>
+            <i className="n" />
+            <i className="t" />
+            <i className="s" />
+          </div>
+        ))}
+      </div>
+      <span className="lv-skl">
+        <b />
+        CANLI
+      </span>
+      <div className="lv-skb">
+        <div>
+          <i className="a" />
+          <i className="b" />
+        </div>
+        <i className="c" />
+        <i className="d" />
+        <i className="e" />
+      </div>
+    </div>
+  );
+}
 export function Sea({ photo = "" }) {
   return (
     <div className={`lv-sea${photo ? " photo" : ""}`} aria-hidden="true">
@@ -2261,7 +2297,7 @@ export function LiveScreen({ id, y = "" }) {
   if (!data) {
     return (
       <div className="lv">
-        <Sea />
+        {gone || err ? <Sea /> : <div className="lv-sea lv-plain" aria-hidden="true" />}
         <div className="lv-page">
           {gone ? (
             <div className="lv-msg lv-gone">
@@ -2274,7 +2310,7 @@ export function LiveScreen({ id, y = "" }) {
           ) : err ? (
             <div className="lv-msg">Bağlanılamadı, yeniden deneniyor.</div>
           ) : (
-            <div className="lv-msg lv-mut">Yükleniyor</div>
+            <LoadSkel />
           )}
         </div>
       </div>
