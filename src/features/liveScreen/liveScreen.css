@@ -894,3 +894,18 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-skb .a { width: 150px; } .lv-skb .b { width: 190px; } .lv-skb .d, .lv-skb .e { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .lv-skel i, .lv-skl b { animation: none; } }
+/* Şeritte saat (Seyhun 2026-11-02 örnek A): beyaz blokta büyük sayı, yanında kare bayraklar ve 5·4·1·0 çubuğu */
+.lv-cell.lv-sclock { background: #fff; color: #0b1a2a; border-left: 0; padding: 0.35em 1.3em; gap: 0; }
+.lv-cell.lv-sclock span { color: #ff3d77; font-weight: 700; letter-spacing: 0.16em; }
+.lv-cell.lv-sclock b { font-size: 2.6em; font-weight: 700; line-height: 0.95; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: #0b1a2a; }
+.lv-cell.lv-sflag { flex-direction: row; align-items: center; gap: 0.6em; }
+.lv-cell.lv-sflag span { font-size: 1em; letter-spacing: 0; text-transform: none; overflow: visible; }
+.lv-sflag .lv-flag { width: 2.4em; height: 2.4em; }
+.lv-sseg { display: flex; gap: 0.35em; margin-left: 0.6em; }
+.lv-sseg i { display: flex; flex-direction: column; align-items: center; gap: 0.3em; width: 3em; font-style: normal; font-size: 0.95em; font-weight: 700; color: rgba(255, 255, 255, 0.55); }
+.lv-sseg s { display: block; width: 100%; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.22); text-decoration: none; }
+.lv-sseg i.done { color: #fff; }
+.lv-sseg i.done s { background: #fff; }
+.lv-sseg i.now { color: #ff5c8f; }
+.lv-sseg i.now s { background: #ff3d77; }
+@media (max-width: 760px) { .lv-cell.lv-sclock b { font-size: 2.1em; } .lv-sseg i { width: 1.8em; } }
