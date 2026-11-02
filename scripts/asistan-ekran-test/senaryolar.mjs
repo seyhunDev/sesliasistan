@@ -267,7 +267,7 @@ export async function run(server, log = () => {}) {
       const x = btn(page, "Asistanı kapat");
       if ((await state(page)) === "listening") await page.locator("[data-dome] [data-orb]:visible").first().click().catch(() => {});
       else if (await x.count()) await x.click().catch(() => {});
-      else await page.locator("[data-dome] [data-apane]").click({ position: { x: 20, y: 20 } }).catch(() => {});
+      else await page.locator("[data-adim]").click({ position: { x: 20, y: 20 } }).catch(() => {});
       await page.waitForTimeout(400);
     }
     await waitFor(async () => !(await full(page).count()), 1500);
