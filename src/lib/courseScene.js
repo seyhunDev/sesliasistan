@@ -45,13 +45,14 @@ function routePlan(g, route) {
     if (w.gate) {
       // kapı: önce kapının ortasına (rüzgâr üstünden) gelinir. Sonra rüzgâra dönülüyorsa iki seçenek (olimpiyat çizimindeki gibi):
       // p iskeleden (ana rota), s sancaktan (soluk kanca); finişe gidiliyorsa kapıdan geçilip düz devam edilir
-      const entry = add(w.gm, g.A, g.L * 0.16);
-      leg.push(entry);
+      // finişe gidiliyorsa kapının ortasından düz geçilir (ara nokta yok: çizgi kırılmasın, Seyhun 2026-11-02 "çizgiler düzgün olsun")
       if (!nx || nx.end) {
         leg.push(w.gm);
         cur = w.gm;
         return;
       }
+      const entry = add(w.gm, g.A, g.L * 0.16);
+      leg.push(entry);
       const hook = (m, s) => {
         // kapının içinden rüzgâr altına inip dışa doğru döner, rüzgâra çıkar
         const hin = nrm(g.A + 180), hout = nrm(g.A);
@@ -147,13 +148,24 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
     s2 += `<path d="M${f(x)} ${f(y - mh)} L${f(x + L * 0.38)} ${f(y - mh + L * 0.1)} L${f(x)} ${f(y - mh + L * 0.22)} Z" fill="${flag}"/>`;
     return `<g>${s2}</g>`;
   } });
-  // hat: iki uç arası ince açık çizgi + üstüne eğik yazı
-  const lineLab = (a, b, txt, at = 0.72) => {
+  // hat: iki uç arası ince açık çizgi; yazı hattın ORTASINDA, hattın hemen altında (kameraya doğru), nesnelerin üstünde, koyu kenarlı
+  // (Seyhun 2026-11-02 "start ve finiş yazıları ortada olmalı, turuncu işaretin arkasına düşüyor")
+  let labels = "";
+  const lineLab = (a, b, txt) => {
     const A = P(a), B = P(b);
     const ang = (Math.atan2(B[1] - A[1], B[0] - A[0]) * 180) / Math.PI;
     const fl = Math.abs(ang) > 90 ? ang + 180 : ang;
-    const m = [A[0] + (B[0] - A[0]) * at, A[1] + (B[1] - A[1]) * at], s = (A[2] + B[2]) / 2;
-    return `<line x1="${f(A[0])}" y1="${f(A[1])}" x2="${f(B[0])}" y2="${f(B[1])}" stroke="#dfe7f0" stroke-opacity=".75" stroke-width="${f(5 * u * s)}" stroke-linecap="round"/><text transform="translate(${f(m[0])} ${f(m[1] - 14 * u * s)}) rotate(${f(fl)})" text-anchor="middle" font-size="${f(Math.max(14, 26 * u * s))}" font-weight="800" font-style="italic" letter-spacing="1" fill="#fff">${txt}</text>`;
+    const s = (A[2] + B[2]) / 2;
+    const m = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+    const fs = Math.max(15, 24 * u * s);
+    // ekranda aşağı bakan dik yön (yazı hattın altına)
+    let nx = -(B[1] - A[1]), ny = B[0] - A[0];
+    const nl = Math.hypot(nx, ny) || 1;
+    if (ny < 0) { nx = -nx; ny = -ny; }
+    const off = 10 * u * s + fs * 0.9;
+    const tx = m[0] + (nx / nl) * off, ty = m[1] + (ny / nl) * off;
+    labels += `<text transform="translate(${f(tx)} ${f(ty)}) rotate(${f(fl)})" text-anchor="middle" dominant-baseline="middle" font-size="${f(fs)}" font-weight="800" letter-spacing="${f(2 * u)}" fill="#fff" stroke="#0b1a2a" stroke-opacity=".55" stroke-width="${f(4 * u)}" paint-order="stroke" stroke-linejoin="round">${txt}</text>`;
+    return `<line x1="${f(A[0])}" y1="${f(A[1])}" x2="${f(B[0])}" y2="${f(B[1])}" stroke="#dfe7f0" stroke-opacity=".8" stroke-width="${f(4 * u * s)}" stroke-linecap="round"/>`;
   };
   const used = new Set(rt);
   buoy(g.m1, "1"); buoy(g.m1a, "");
@@ -170,7 +182,7 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
     return `<g><ellipse cx="${f(x)}" cy="${f(y + r * 0.2)}" rx="${f(r * 1.5)}" ry="${f(r * 0.45)}" fill="#000" opacity=".22"/><circle cx="${f(x)}" cy="${f(y - r * 0.6)}" r="${f(r)}" fill="#ff7a1a"/><circle cx="${f(x - r * 0.3)}" cy="${f(y - r * 0.95)}" r="${f(r * 0.35)}" fill="#fff" opacity=".35"/></g>`;
   } });
   // çizgiler ve rota (nesnelerin altında)
-  let under = lineLab(g.pin, g.komite, "START", 0.3) + lineLab(g.fB, g.fA, "FİNİŞ", 0.25);
+  let under = lineLab(g.pin, g.komite, "START") + lineLab(g.fB, g.fA, "FİNİŞ");
   if (rt.length) {
     const { legs, alt } = routePlan(g, rt);
     const n = legs.length;
@@ -178,7 +190,7 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
     const drawEnd = (n * 1.6 + 0.4) / T;
     let css = "";
     const pathOf = (pts) => pts.map((p, i) => { const [x, y] = P(p); return `${i ? "L" : "M"}${f(x)} ${f(y)}`; }).join(" ");
-    const sw = (p) => f(Math.max(3, 9 * u * P(p)[2]));
+    const sw = () => f(Math.max(3, 7 * u)); // tek kalınlık: ayaklar arasında kalınlık farkı yamuk gösteriyordu
     legs.forEach((leg, i) => {
       const a = ((i * 1.6) / T) * 100, b = (((i + 1) * 1.6) / T) * 100;
       css += `@keyframes ${pre}-l${i}{0%,${f(a)}%{stroke-dashoffset:1;opacity:1}${f(b)}%{stroke-dashoffset:0;opacity:1}92%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}.${pre}-l${i}{animation:${pre}-l${i} ${f(T)}s linear infinite}`;
@@ -189,7 +201,7 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
       // ayak sonu ok başı
       const e = P(leg.at(-1)), e0 = P(leg.at(-2));
       const ang = (Math.atan2(e[1] - e0[1], e[0] - e0[0]) * 180) / Math.PI;
-      const hs = Math.max(8, 20 * u * e[2]);
+      const hs = Math.max(8, 16 * u);
       css += `@keyframes ${pre}-h${i}{0%,${f(b - 0.1)}%{opacity:0}${f(b)}%,92%{opacity:1}100%{opacity:0}}.${pre}-h${i}{animation:${pre}-h${i} ${f(T)}s linear infinite}`;
       under += `<path class="${pre}-h${i}" d="M${f(hs)} 0 L${f(-hs * 0.6)} ${f(-hs * 0.75)} L${f(-hs * 0.6)} ${f(hs * 0.75)} Z" fill="${Y_}" transform="translate(${f(e[0])} ${f(e[1])}) rotate(${f(ang)})"/>`;
     });
@@ -199,7 +211,7 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
       css += `@keyframes ${pre}-a${i}{0%,${f(at * 100 - 7)}%{stroke-dashoffset:1;opacity:1}${f(at * 100)}%,92%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}.${pre}-a${i}{animation:${pre}-a${i} ${f(T)}s linear infinite}`;
       under += `<path class="${pre}-a${i}" pathLength="1" stroke-dasharray="1 1" d="${pathOf(pts)}" fill="none" stroke="${Y_}" stroke-width="${sw(pts[1])}" stroke-linecap="round" stroke-linejoin="round" stroke-opacity=".75"/>`;
       const e = P(pts.at(-1)), e0 = P(pts.at(-2));
-      const ang = (Math.atan2(e[1] - e0[1], e[0] - e0[0]) * 180) / Math.PI, hs = Math.max(8, 20 * u * e[2]);
+      const ang = (Math.atan2(e[1] - e0[1], e[0] - e0[0]) * 180) / Math.PI, hs = Math.max(8, 16 * u);
       css += `@keyframes ${pre}-ah${i}{0%,${f(at * 100 - 0.1)}%{opacity:0}${f(at * 100)}%,92%{opacity:.6}100%{opacity:0}}.${pre}-ah${i}{animation:${pre}-ah${i} ${f(T)}s linear infinite}`;
       under += `<path class="${pre}-ah${i}" d="M${f(hs)} 0 L${f(-hs * 0.6)} ${f(-hs * 0.75)} L${f(-hs * 0.6)} ${f(hs * 0.75)} Z" fill="${Y_}" transform="translate(${f(e[0])} ${f(e[1])}) rotate(${f(ang)})"/>`;
     });
@@ -215,6 +227,7 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
   o += under;
   items.sort((a, b) => a.z - b.z);
   o += items.map((it) => it.d()).join("");
+  o += labels;
   // rüzgâr: sol üstte ok (ekranda yukarıdan aşağı esen = eksende), değer
   if (wind && card.wind != null) {
     const sh = nrm(card.wind - g.A + 180) - 180;
