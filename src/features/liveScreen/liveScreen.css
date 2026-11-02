@@ -594,7 +594,6 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-wleg i.m { background: #ff9a4d; }
 .lv-wleg i.f { border: 2px dashed #fff; background: rgba(255, 255, 255, 0.18); }
 .lv-wleg i.l { height: 0; border-top: 3px dashed #fff; border-radius: 0; vertical-align: 0.25em; }
-@media (max-width: 760px) { 
 /* Rüzgâr: grafiğin altında şimdi → start bandı (Seyhun 2026-11-02 "grafik üstte, açıklama en altta, beklenti daha güzel") */
 .lv-wnow { display: flex; align-items: stretch; justify-content: center; gap: 1em; width: min(100%, 52em); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
 .lv-wnow > .a, .lv-wnow > .b { flex: 1 1 0; min-width: 0; padding: 0.7em 1.1em 0.8em; border-radius: 10px; background: rgba(7, 11, 20, 0.62); }
