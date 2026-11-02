@@ -1345,7 +1345,13 @@ async function rainSplit(h) {
 }
 
 // Yarış günü ana sayfa (Seyhun 2026-10-27 "A · Yarışın yeri büyük"): yarın Foça'da test yarışı; yarın seçilince büyük hava Foça'nın, Dikili tek satır
-const nav0 = async (page) => page.locator("nav[aria-label='Günler'] button").first().click().catch(() => {});
+const nav0 = async (page) => {
+  await page.keyboard.press("Escape"); // güne dokununca açılan gün penceresi kapansın
+  await page.waitForTimeout(400);
+  await page.locator("nav[aria-label='Günler'] button").first().click().catch(() => {});
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+};
 async function raceDayHome(h) {
   const { check, newPage, waitFor, log } = h;
   log("    Ana sayfa: yarış günü havası…");
@@ -1382,6 +1388,13 @@ async function raceDayHome(h) {
     const home = await page.getByRole("button", { name: "Dikili havası" }).count();
     if (process.env.WX_SHOT) await page.waitForTimeout(2000).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-yaris.png` }));
     return [before === 0 && ok > 0 && place === 1 && home === 1, `önce ${before} · yarış havası ${ok} · Foça ${place} · Dikili satırı ${home}`];
+  });
+  // Seyhun 2026-11-02: güne tek dokunuşta hem hava o güne geçer hem alttan o günün penceresi (planlar) açılır
+  await check("Ana sayfa", "güne dokun: pencere", "yarına tek dokunuşta hava değişti ve alttan o günün penceresi açık", async () => {
+    const dlg = page.getByRole("dialog");
+    const n = await waitFor(() => dlg.count(), 4000);
+    const title = n ? ((await dlg.first().textContent()) || "").replace(/\s+/g, " ").slice(0, 60) : "";
+    return [n > 0, `pencere ${n} · ${title}`];
   });
   // Süren yarış (Seyhun 2026-10-30: "ana sayfadan süreyi kaldıralım, sadece tıklama olsun"): sayaç ve düğme yok, tek satır; dokununca yarış sayfası
   await check("Ana sayfa", "süren yarış tek satır", "yarış adı ve kısa durum, düğme yok, dokununca yarışın sayfası açılır", async () => {
