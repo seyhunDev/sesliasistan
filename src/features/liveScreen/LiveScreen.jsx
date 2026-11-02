@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apText, trHm, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
+import { apText, trHm, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
@@ -1201,6 +1201,105 @@ function holdState(data, today, cs, now) {
   const kick = none ? "Bugün yarış yok" : cs.rem ? cs.label : plan.status === "ap" ? "Start ertelendi" : vd ? "Yeni start için uyarı işareti bekleniyor" : late ? "Uyarı işareti bekleniyor" : "Start bekleniyor";
   return { none, box, kick };
 }
+// Bugün yarış yok (Seyhun 2026-11-02 örnek A, yayin-tasarim/yaris-yok/yok-a.png): solda bir sonraki yarış gününün ilk start'ına geri
+// sayım ve tarih, altında genel sıralamanın ilk üçü; sağda o günün beklenen rüzgârı (startta, en çok, kesik tahmin çizgisi) ve programı
+function NoneHero({ data, today, now }) {
+  const r = data.race || {};
+  const nx = data.plan.next;
+  const ms = nx.at ? Date.parse(`${nx.day}T${nx.at}:00+03:00`) : null;
+  const rem = ms ? Math.max(0, Math.floor((ms - now) / 1000)) : null;
+  const tomorrow = nx.day === new Date(Date.parse(`${today}T12:00:00Z`) + 864e5).toISOString().slice(0, 10);
+  const wd = new Date(`${nx.day}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
+  const no = nextRaceNo(data.starts || [], nx.day, raceDays(r.startDate, r.endDate, data.plan), "");
+  const fc = (data.forecastNext?.rows || []).filter((x) => +x.hh >= 8 && +x.hh <= 18 && x.wind != null);
+  const max = fc.length ? Math.max(...fc.map((x) => x.wind)) : null;
+  const maxH = fc.find((x) => x.wind === max)?.hh;
+  const ag = (data.plan.agenda?.[nx.day] || []).slice(0, 6);
+  const top = overallTop(data, 3);
+  const W = 720, H = 190, L = 24, R = 24, T = 34, B = 34;
+  const x = (h) => L + ((h - 8) / 10) * (W - L - R);
+  const top_ = Math.max(10, Math.ceil(((max ?? 0) + 3) / 5) * 5);
+  const y = (v) => T + (1 - v / top_) * (H - T - B);
+  const d = fc.map((q, i) => `${i ? "L" : "M"}${x(+q.hh).toFixed(1)} ${y(q.wind).toFixed(1)}`).join(" ");
+  const atH = nx.at ? +nx.at.slice(0, 2) + +nx.at.slice(3, 5) / 60 : null;
+  return (
+    <div className="lv-hold">
+      <div className="lv-hst">
+        {r.name ? <div className="lv-hname">{r.name}</div> : null}
+        <span className="lv-nopill">Bugün yarış yok</span>
+        <div className="lv-kick">{`${tomorrow ? "Yarın" : wd} ilk start'a`}</div>
+        {rem != null ? (
+          <div className="lv-big lv-nobig">
+            {rem >= 86400 ? (
+              <>
+                {Math.floor(rem / 86400)}
+                <small>gün</small>
+              </>
+            ) : (
+              <>
+                {`${String(Math.floor(rem / 3600)).padStart(2, "0")}:${String(Math.floor((rem % 3600) / 60)).padStart(2, "0")}`}
+                <small>{`:${String(rem % 60).padStart(2, "0")}`}</small>
+              </>
+            )}
+          </div>
+        ) : null}
+        <div className="lv-what lv-whatd">{[wd, nx.at ? `İlk start ${nx.at}` : "", `${no}. yarış`].filter(Boolean).join(" · ")}</div>
+        {top ? (
+          <div className="lv-notop">
+            <b>Genel</b>
+            {top.rows.map((x) => (
+              <span key={x.sail}>{`${x.p}. ${x.name || x.sail} ${x.t}`}</span>
+            ))}
+            <i>{top.tag}</i>
+          </div>
+        ) : null}
+      </div>
+      <div className="lv-show">
+        <div className="lv-nocard">
+          {fc.length >= 2 ? (
+            <>
+              <small>Rüzgâr tahmini</small>
+              <div className="lv-nokn">
+                {max != null ? (
+                  <span>
+                    {`En çok ${max} kn`}
+                    <i>{` ${maxH}:00`}</i>
+                  </span>
+                ) : null}
+              </div>
+              <svg viewBox={`0 0 ${W} ${H}`} className="lv-nochart" role="img" aria-label="Beklenen rüzgâr">
+                <path d={`${d} L${x(+fc.at(-1).hh)} ${y(0)} L${x(+fc[0].hh)} ${y(0)} Z`} fill="#fff" fillOpacity=".08" />
+                <path d={d} fill="none" stroke="#fff" strokeOpacity=".8" strokeWidth="3" strokeDasharray="9 7" />
+                {fc.map((q) => (
+                  <g key={q.hh}>
+                    <text x={x(+q.hh)} y={y(q.wind) - 10} textAnchor="middle" fontSize="19" fontWeight="800" fill="#fff">{q.wind}</text>
+                    <text x={x(+q.hh)} y={H - 8} textAnchor="middle" fontSize="14" fontWeight="600" fill="#fff" fillOpacity=".6">{`${q.hh}:00`}</text>
+                  </g>
+                ))}
+                {atH != null && atH >= 8 && atH <= 18 ? (
+                  <g>
+                    <line x1={x(atH)} x2={x(atH)} y1="12" y2={y(0)} stroke="#ff3d77" strokeWidth="2.5" strokeDasharray="4 4" />
+                    <text x={x(atH) + 8} y="22" fontSize="15" fontWeight="800" fill="#ff5c8f">{`START ${nx.at}`}</text>
+                  </g>
+                ) : null}
+              </svg>
+            </>
+          ) : null}
+          {ag.length ? (
+            <>
+              <small>{`${tomorrow ? "Yarının" : `${wd}`} programı`}</small>
+              <div className="lv-noag">
+                {ag.map((a) => (
+                  <span key={`${a.at}${a.text}`} className={/start/i.test(a.text) ? "s" : ""}>{[a.at, a.text].filter(Boolean).join(" ")}</span>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
 function WaitHero({ data, today, cs, prog, now }) {
   const plan = data.plan;
   const { none, box, kick } = holdState(data, today, cs, now);
@@ -1216,6 +1315,7 @@ function WaitHero({ data, today, cs, prog, now }) {
   // vitrin arasız döner; Yayın'dan "Göster" turu baştan başlatır
   // yeni parkur ölçümü (komite parkuru attı) gelince önce parkur (Seyhun 2026-11-02 "parkur eksenini güzelce gösterelim")
   const cNew = Math.max(0, Date.parse(data.course?.cardAt || "") || 0, ...(data.course?.obs || []).map((o) => Date.parse(o.at) || 0));
+  if (none && !left && plan.next?.day) return <NoneHero data={data} today={today} now={now} />;
   const k = svg && slides.includes("course") && cNew > 0 && now - cNew < COURSE_MS ? "course" : slides.length ? showSlide({ show: { ...data.courseShow, auto: false }, now, pre: true, slides }) || slides[Math.floor(now / SHOW_ON) % slides.length] : "";
   return (
     <div className="lv-hold">
@@ -1731,8 +1831,8 @@ function NowWind({ data, now }) {
   );
 }
 // Rüzgâr ve hava (Seyhun 2026-11-02 "anlaşılabilir değil; o saatte beklenen'i sıfır saatte beklenen gibi okuyorum" → örnek A onay,
-// yayin-tasarim/ruzgar-anlasilir/ruzgar-a.png; "yağmuru da, hava durumunu da göster, beklenen ve gerçekleşen"). Üstte üç kutu: Şu an esen
-// (ölçülen), Startta beklenen (tahmin), Bugün en çok (tahmin). Altta tek grafik: tahmin kesik beyaz çizgi (bütün gün), ölçülen mavi düz
+// yayin-tasarim/ruzgar-anlasilir/ruzgar-a.png; "yağmuru da, hava durumunu da göster, beklenen ve gerçekleşen"). Üstte (arka plansız) Şu an esen
+// (ölçülen) ve Bugün en çok (tahmin); start saati yalnız grafikteki pembe çizgi (Seyhun 2026-11-02 "o yazıyı kaldır"). Altta tek grafik: tahmin kesik beyaz çizgi (bütün gün), ölçülen mavi düz
 // çizgi (istasyon) ve turuncu noktalar (elle girilen); şimdi ve start çizgisi. Grafiğin altında iki saatte bir yön, hava (simge + sıcaklık)
 // ve yağış: geçmiş saatte ölçülen (mavi), sonra tahmin (beyaz; yağış olasılığı).
 const hh2 = (h) => String(h).padStart(2, "0");
@@ -1763,10 +1863,12 @@ function WindBody({ data, sel, isCur, now }) {
   const rows = (fc?.rows || []).filter((r) => +r.hh >= 6 && +r.hh <= 20 && r.wind != null);
   const obsAt = Object.fromEntries((fc?.obs || []).filter((o) => o.wind != null || o.code != null || o.temp != null).map((o) => [o.hh, o]));
   const tr = new Date(now + 3 * 3600e3);
-  const nowH = tr.getUTCHours() + tr.getUTCMinutes() / 60;
+  // Akşam ekran ertesi güne geçince (see) grafik o günün tahminidir: şimdi çizgisi, ölçülen ve "Şu an esen" yok; başlıkta tarih (Seyhun 2026-11-02
+  // "yarını gösteriyor ama tarih olmadığı için anlamıyorum")
+  const other = !sel && data.see && data.see > trDay(now) ? data.see : "";
+  const nowH = other ? -1 : tr.getUTCHours() + tr.getUTCMinutes() / 60;
   const at = data.plan?.at || "";
-  const c = curWind(data, sel, isCur, now);
-  const atRow = at ? rows.find((r) => +r.hh === +at.slice(0, 2)) : null;
+  const c = other ? null : curWind(data, sel, isCur, now);
   const rest = rows.filter((r) => +r.hh >= Math.floor(nowH));
   const max = rest.length ? Math.max(...rest.map((r) => r.wind)) : null;
   const maxH = rest.filter((r) => r.wind === max).map((r) => +r.hh);
@@ -1800,16 +1902,9 @@ function WindBody({ data, sel, isCur, now }) {
             <i>{c.by}</i>
           </div>
         ) : null}
-        {atRow ? (
-          <div>
-            <small>{`Startta beklenen · ${at}`}</small>
-            <b>{`${atRow.wind} kn`}</b>
-            <i>Tahmin</i>
-          </div>
-        ) : null}
         {max != null ? (
           <div>
-            <small>Bugün en çok</small>
+            <small>{other ? `${new Date(`${other}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" })} · en çok` : "Bugün en çok"}</small>
             <b>{`${max} kn`}</b>
             <i>{`Tahmin · ${maxH.length > 1 ? `${hh2(maxH[0])}:00–${hh2(maxH.at(-1))}:00` : `${hh2(maxH[0])}:00`}`}</i>
           </div>
