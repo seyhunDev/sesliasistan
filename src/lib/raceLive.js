@@ -772,3 +772,8 @@ export const daysUntil = (day, today) => (DAY.test(day || "") && DAY.test(today 
 
 // Turuncu bayrak çekili mi (bugün, gün bitmemiş): canlı ekran "Start öncesi"ne geçer
 export const orangeUp = (plan, today) => !!plan?.orange && plan.status !== "done" && new Date(Date.parse(plan.orange) + 3 * 3600e3).toISOString().slice(0, 10) === today;
+// "Bugün yarış yok" ekranı (Seyhun 2026-11-02 örnek A): bugünden sonraki ilk yarış günü ve ilk start saati (yarış yok günleri atlanır)
+export function nextRaceDay(plan, today, start, end) {
+  const d = raceDays(start, end, plan).find((x) => x > today);
+  return d ? { day: d, at: dayTime(plan, d) || plan?.at || "" } : null;
+}

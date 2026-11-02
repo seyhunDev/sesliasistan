@@ -827,7 +827,8 @@ button.lv-p:active { transform: translateY(1px); }
 /* Rüzgâr ve hava tek grafik (Seyhun 2026-11-02 örnek A, yayin-tasarim/ruzgar-anlasilir/ruzgar-a.png) */
 .lv-wa { width: min(100%, 52em); display: flex; flex-direction: column; gap: 0.8em; }
 .lv-wkh { display: flex; gap: 0.6em; }
-.lv-wkh > div { flex: 1; min-width: 0; border-radius: 0.7em; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 0.6em 0.8em; }
+.lv-wkh { gap: 2.4em; }
+.lv-wkh > div { min-width: 0; }
 .lv-wkh small { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.62em; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lv-wkh b { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.75em; font-weight: 700; line-height: 1.1; margin-top: 0.1em; white-space: nowrap; }
 .lv-wkh b span { font-size: 0.62em; color: #fff; }
@@ -839,3 +840,20 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-wa .lv-wleg i.lm { width: 0.8em; height: 0.8em; border-radius: 50%; background: #ff9a4d; }
 .lv-wa .lv-wleg i.lf { height: 0; border-top: 3px dashed rgba(255, 255, 255, 0.8); border-radius: 0; vertical-align: 0.25em; }
 @media (max-width: 700px) { .lv-wkh { gap: 0.4em; } .lv-wkh > div { padding: 0.5em 0.6em; } .lv-wkh b { font-size: 1.45em; } .lv-wkh b span { display: block; font-size: 0.55em; } }
+/* Bugün yarış yok (örnek A) */
+.lv-nopill { display: inline-flex; padding: 0.35em 0.9em; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-size: clamp(14px, 1.1vw, 20px); font-weight: 700; color: #ffd166; }
+.lv-hold .lv-nobig { font-size: clamp(72px, 9vw, 180px); }
+.lv-nobig small { font-size: 0.45em; color: rgba(255, 255, 255, 0.55); }
+.lv-notop { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3em 1.1em; margin-top: 0.6em; font-size: clamp(14px, 1.15vw, 21px); font-weight: 600; color: rgba(255, 255, 255, 0.85); }
+.lv-notop b { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #ff5c8f; }
+.lv-notop i { font-style: normal; color: rgba(255, 255, 255, 0.5); }
+.lv-show:has(.lv-nocard) { justify-content: center; }
+.lv-nocard { display: flex; flex-direction: column; gap: 0.7em; border-radius: 18px; background: rgba(14, 30, 52, 0.55); border: 1px solid rgba(255, 255, 255, 0.14); padding: 1.4em 1.6em; }
+.lv-nocard > small { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(11px, 0.85vw, 15px); font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
+.lv-nokn { display: flex; flex-wrap: wrap; gap: 0.3em 1.4em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(22px, 2vw, 38px); font-weight: 700; }
+.lv-nokn i { font-family: var(--lv-font); font-style: normal; font-size: 0.5em; font-weight: 600; color: rgba(255, 255, 255, 0.6); }
+.lv-nochart { width: 100%; height: auto; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-noag { display: flex; flex-wrap: wrap; gap: 0.6em; }
+.lv-noag span { padding: 0.35em 0.9em; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-size: clamp(13px, 1vw, 18px); font-weight: 700; }
+.lv-noag span.s { background: rgba(255, 61, 119, 0.25); }
+@media (max-width: 760px) { .lv-nocard { padding: 1em; } .lv-hold .lv-nobig { font-size: 22vw; } }

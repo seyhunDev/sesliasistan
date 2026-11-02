@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
-import { aheadWind, cleanLive, dayOf, pickTimer, raceDays, rollPlan, screenDay } from "@/lib/raceLive";
+import { aheadWind, cleanLive, dayOf, pickTimer, raceDays, rollPlan, screenDay, nextRaceDay } from "@/lib/raceLive";
 import { cleanCourse, withRaceCards } from "@/lib/raceCourse";
 import { cleanCourseShow, cleanRounds, cleanScreen, cleanStream, currentStart } from "@/lib/raceRounds";
 import { cleanSheet, joinGroups } from "@/lib/resultSheet";
@@ -168,7 +168,10 @@ async function build(id, y) {
   const see = screenDay(live.plan, Date.now(), timer);
   const day = sel?.day || see;
   // Gün bitince alttaki şeritte yarının beklenen rüzgârı (Seyhun 2026-11-02 tasarım 5): yarının tahmini de alınır
-  const nd = live.plan.status === "done" && live.plan.next?.day && live.plan.next.day !== day ? live.plan.next.day : "";
+  // ekrandaki plan: bugün yarış yoksa bir sonraki yarış günü next'e yazılır (Seyhun 2026-11-02 "bugün yarış yok" sayfası, örnek A)
+  const vplan = rollPlan(live.plan, see);
+  if (vplan.status === "none" && !vplan.next) vplan.next = nextRaceDay(vplan, see, S(r.startDate, 10), S(r.endDate, 10));
+  const nd = (vplan.status === "done" || vplan.status === "none") && vplan.next?.day && vplan.next.day !== day ? vplan.next.day : "";
   const [cSnap, forecast, forecastNext, ahead] = await Promise.all([base.collection("raceLive").doc(id).collection("course").doc(day).get(), forecastOf(org, id, r, day), nd ? forecastOf(org, id, r, nd) : null, aheadOf(org, id, r, live.plan)]);
   const media = live.media
     .filter((m) => m.url)
@@ -190,7 +193,7 @@ async function build(id, y) {
     fleets,
     entries: en.entries,
     groups: en.groups,
-    plan: rollPlan(live.plan, see),
+    plan: vplan,
     see,
     forecast,
     forecastNext,
