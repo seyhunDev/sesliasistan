@@ -225,10 +225,10 @@ export function BroadcastPage({ orgId, id }) {
       const back = rid ? apBack(rid) : null;
       if (back) order = [back, ...order];
     }
-    changePlan({ day: planDay, order, ...apRaise(plan, Date.now(), ap.min, ap.why, readTimer().dur || 300) });
+    changePlan({ day: planDay, order, ...apRaise(plan, Date.now(), ap.min, ap.why, ap.land) });
     setAp(null);
   };
-  const lowerAp = () => changePlan({ day: planDay, ...apLower(Date.now(), readTimer().dur || 300, dev) });
+  const lowerAp = () => changePlan({ day: planDay, ...apLower(Date.now(), readTimer().dur || 300, dev, plan.ap?.land) });
   // Program sekmesi: her günün saati (o güne özel saat yoksa bugünün ilk start'ı da değişir), güne özel saat, yarış olmayan gün, start silme
   const setDaily = (v) => changePlan({ daily: v, ...(!plan.times[planDay] && plan.status !== "ap" ? { at: v } : {}), ...(plan.next && !plan.times[plan.next.day] ? { next: { ...plan.next, at: v } } : {}) });
   const setDayTime = (d, v) => {
@@ -279,7 +279,7 @@ export function BroadcastPage({ orgId, id }) {
   const autoRef = useRef(null);
   useEffect(() => {
     autoRef.current = (now) => {
-      if (apDue(plan, now)) return changePlan({ day: planDay, ...apLower(Date.parse(plan.ap.down), readTimer().dur || 300, dev) });
+      if (apDue(plan, now)) return changePlan({ day: planDay, ...apLower(Date.parse(plan.ap.down), readTimer().dur || 300, dev, plan.ap.land) });
       if (!warnDue(plan, now)) return;
       const mine = !plan.warnBy || plan.warnBy === dev || now - Date.parse(plan.warn) > 4000;
       if (!mine) return;
@@ -563,9 +563,9 @@ export function BroadcastPage({ orgId, id }) {
           <div className="ck-glass mt-4 flex items-center gap-3 rounded-[1rem] px-3.5 py-3">
             <span className="h-6 w-9 shrink-0 rounded-[3px] bg-[repeating-linear-gradient(90deg,#e11d48_0_20%,#fff_20%_40%)]" aria-hidden="true" />
             <span className="min-w-0 flex-1 leading-tight">
-              <b className="block text-[1rem] font-semibold">{plan.status === "ap" ? (plan.ap?.down ? `Tehir · ${trHm(plan.ap.down)}'de iner` : "Tehir · belirsiz") : "Tehir indi"}</b>
+              <b className="block text-[1rem] font-semibold">{plan.status === "ap" ? (plan.ap?.down ? `Tehir · iniş ${trHm(plan.ap.down)}` : "Tehir · belirsiz") : "Tehir indi"}</b>
               <span className="block truncate text-[0.8125rem] text-white/65">
-                {plan.status === "ap" ? [plan.ap?.why, plan.at ? `Start ${plan.at}` : ""].filter(Boolean).join(" · ") : plan.order.length ? "Uyarı işaretinde geri sayım kendiliğinden başlar" : "Önce yarışı oluştur"}
+                {plan.status === "ap" ? [plan.ap?.land ? "Karada" : "Denizde", plan.ap?.why].filter(Boolean).join(" · ") : plan.order.length ? "Uyarı işaretinde geri sayım kendiliğinden başlar" : "Önce yarışı oluştur"}
               </span>
             </span>
             {plan.status === "ap" && plan.ap?.down ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.ap.down) - (tick || capNow)) / 1000)))}</b> : null}
@@ -691,6 +691,17 @@ export function BroadcastPage({ orgId, id }) {
                     ))}
                   </div>
                 </div>
+                {/* Denizde (AP): inince 1 dk sonra uyarı işareti; Karada (AP üstünde H): geri sayım kendiliğinden başlamaz */}
+                <div className="flex items-center gap-2">
+                  <span className="w-11 shrink-0 text-[0.8125rem] text-mut">Yer</span>
+                  <div className="flex min-w-0 flex-1 gap-1.5">
+                    {[[false, "Denizde"], [true, "Karada"]].map(([v, t]) => (
+                      <button key={t} type="button" aria-pressed={!!ap.land === v} onClick={() => setAp({ ...ap, land: v })} className={`h-7 shrink-0 rounded-full px-2.5 text-[0.8125rem] font-semibold ${!!ap.land === v ? "bg-acc text-white" : "bg-bg"}`}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex items-center gap-2">
                   <span className="w-11 shrink-0 text-[0.8125rem] text-mut">Sebep</span>
                   <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
@@ -702,7 +713,7 @@ export function BroadcastPage({ orgId, id }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-1">
-                  <span className="min-w-0 flex-1 truncate text-[0.875rem] text-mut">{ap.min ? `${ap.live ? "Sayaç durur · " : ""}${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}'de iner, 1 dk sonra geri sayım` : "İndirince 1 dk sonra geri sayım"}</span>
+                  <span className="min-w-0 flex-1 truncate text-[0.875rem] text-mut">{[ap.live ? "Sayaç durur" : "", ap.min ? `İniş ${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}` : "", ap.land ? "Geri sayımı sen başlatırsın" : "İnince 1 dk sonra geri sayım"].filter(Boolean).join(" · ")}</span>
                   <Button variant="secondary" size="sm" onClick={() => setAp(null)}>
                     Vazgeç
                   </Button>
