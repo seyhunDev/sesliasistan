@@ -1236,36 +1236,125 @@ function WindFloat({ data, sel, isCur, show, now }) {
     </div>
   );
 }
+// Rüzgâr gösterimi (Seyhun 2026-11-02 ruzgar-yeni.png onay, "çocuklar bile anlayabilmeli, ne bekleniyordu ne gerçekleşti"):
+// üstte iki kutu (şimdi esen + o saatte beklenen ve fark; start'ta beklenen), altta saat saat sütunlar: geçmiş saatler dolu mavi
+// (gerçekleşen, üstünde o saatte beklenen beyaz kesik çizgi), gelecek saatler kesik kenarlı soluk (tahmin); şimdi çizgisi, start çizgisi
 function WindBody({ data, sel, isCur, now }) {
-  const { w: mine, obs } = lastWind(data, sel, isCur);
-  // şimdi: bizim son ölçümümüz, yoksa istasyonun son gerçekleşen saati
-  const so = (data.forecast?.obs || []).filter((o) => o.wind != null && o.dir != null).at(-1);
-  const w = mine || (so ? { dir: so.dir, kn: so.wind, at: "", st: `${data.forecast.station || "İstasyon"} ${so.hh}:00` } : null);
-  const ew = expWind(data.forecast, data.plan.at);
+  const { w: mine } = lastWind(data, sel, isCur);
+  const fc = data.forecast;
+  const rows = (fc?.rows || []).filter((r) => +r.hh >= 6 && +r.hh <= 20);
+  const obsAt = Object.fromEntries((fc?.obs || []).filter((o) => o.wind != null).map((o) => [o.hh, o]));
+  const tr = new Date(now + 3 * 3600e3);
+  const nowH = tr.getUTCHours() + tr.getUTCMinutes() / 60;
+  // şimdi: bizim son ölçümümüz (1 saatten yeni), yoksa istasyonun son saati
+  const so = (fc?.obs || []).filter((o) => o.wind != null).at(-1);
+  const fresh = mine?.kn != null && mine.at && now - Date.parse(mine.at) < 3600e3;
+  const cur = fresh ? { kn: mine.kn, dir: mine.dir, hh: tr.toISOString().slice(11, 13), by: "Bizim ölçüm" } : so ? { kn: so.wind, dir: so.dir, hh: so.hh, by: `${fc.station || "İstasyon"} ${so.hh}:00` } : null;
+  const was = cur ? rows.find((r) => r.hh === cur.hh) : null;
+  const diff = cur && was ? cur.kn - was.wind : null;
+  const ew = expWind(fc, data.plan.at);
   return (
     <>
-      <div className="lv-slnow">
-        {w ? (
-          <div>
-            <b>
-              <WindArrow w={w} />
-              {w.range ? `${w.range[0]}–${w.range[1]}°` : `${w.dir}°`}
-            </b>
-            <span>{`${w.st ? `Gerçekleşen · ${w.st}` : "Şimdi"} · ${dirShort(w.dir)}${w.kn != null ? ` · ${w.kn} knot` : ""}`}</span>
+      <div className="lv-wtop">
+        {cur ? (
+          <div className="o">
+            <span>Şimdi esiyor</span>
+            <b>{`${cur.kn} knot${cur.dir != null ? ` · ${dirShort(cur.dir)}` : ""}`}</b>
+            <small>{[was ? `Bekleniyordu ${was.wind} knot${diff ? ` · ${Math.abs(diff)} knot ${diff > 0 ? "fazla" : "az"}` : " · tam tuttu"}` : "", cur.by].filter(Boolean).join(" · ")}</small>
           </div>
         ) : null}
         {ew ? (
-          <div>
-            <b>
-              <WindArrow w={{ dir: ew.dir }} />
-              {expText(ew)}
-            </b>
-            <span>{`Beklenen rüzgâr · Start ${data.plan.at}`}</span>
+          <div className="f">
+            <span>{`Start'ta beklenen · ${data.plan.at}`}</span>
+            <b>{`${ew.kn} knot${ew.dir != null ? ` · ${dirShort(ew.dir)}` : ""}`}</b>
+            <small>{ew.gust && ew.gust > ew.kn ? `Sağanak ${ew.gust} knot` : "Tahmin"}</small>
           </div>
         ) : null}
       </div>
-      <WindDay fc={data.forecast} now={now} at={data.plan.at} mine={obs} />
+      <WindBars rows={rows} obsAt={obsAt} nowH={nowH} at={data.plan.at} />
+      <div className="lv-wleg">
+        {Object.keys(obsAt).length ? (
+          <span>
+            <i className="o" />
+            {`Gerçekleşen${fc?.station ? ` (${fc.station} istasyonu)` : ""}`}
+          </span>
+        ) : null}
+        <span>
+          <i className="f" />
+          Beklenen (tahmin)
+        </span>
+        {Object.keys(obsAt).length ? (
+          <span>
+            <i className="l" />O saatte beklenen
+          </span>
+        ) : null}
+      </div>
     </>
+  );
+}
+function WindBars({ rows, obsAt, nowH, at }) {
+  if (rows.length < 2) return null;
+  const W = 1000, H = 400, L = 50, R = 12, T = 64, B = 64;
+  const n = rows.length;
+  const bw = (W - L - R) / n;
+  const past = (r) => +r.hh + 1 <= nowH + 0.01 || (+r.hh <= nowH && obsAt[r.hh]);
+  const vals = rows.flatMap((r) => [r.wind, obsAt[r.hh]?.wind ?? 0]);
+  const top = Math.max(10, Math.ceil((Math.max(...vals) + 3) / 5) * 5);
+  const y = (v) => T + (1 - v / top) * (H - T - B);
+  const xi = (i) => L + bw * i;
+  const i0 = +rows[0].hh;
+  const nowX = nowH >= i0 && nowH <= +rows.at(-1).hh + 1 ? L + bw * (nowH - i0) : null;
+  const sx = at ? L + bw * (+at.slice(0, 2) - i0 + +at.slice(3, 5) / 60) : null;
+  const pastEnd = nowX ?? (nowH > +rows.at(-1).hh ? W - R : L);
+  return (
+    <svg className="lv-wbars" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Saat saat rüzgâr: gerçekleşen ve beklenen">
+      {[5, 10, 15, 20, 25].filter((v) => v < top).map((v) => (
+        <g key={v}>
+          <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="#fff" strokeOpacity=".1" />
+          <text x={L - 10} y={y(v) + 5} textAnchor="end" fontSize="15" fill="#fff" fillOpacity=".5">{v}</text>
+        </g>
+      ))}
+      {pastEnd > L ? <rect x={L} y={T - 40} width={pastEnd - L} height={H - B - T + 40} fill="#4fb3ff" fillOpacity=".06" /> : null}
+      {pastEnd > L + 60 ? <text x={(L + pastEnd) / 2} y={T - 16} textAnchor="middle" fontSize="16" fontWeight="700" letterSpacing="2" fill="#7cc8ff">NE OLDU</text> : null}
+      {pastEnd < W - R - 60 ? <text x={(pastEnd + W - R) / 2} y={T - 16} textAnchor="middle" fontSize="16" fontWeight="700" letterSpacing="2" fill="#fff" fillOpacity=".7">NE BEKLENİYOR</text> : null}
+      {rows.map((r, i) => {
+        const x = xi(i) + bw * 0.18, w = bw * 0.64;
+        const o = obsAt[r.hh];
+        const done = o && past(r);
+        const v = done ? o.wind : r.wind;
+        return (
+          <g key={r.hh}>
+            {done ? (
+              <>
+                <rect x={x} y={y(v)} width={w} height={y(0) - y(v)} rx="4" fill="#4fb3ff" />
+                <line x1={x - 3} x2={x + w + 3} y1={y(r.wind)} y2={y(r.wind)} stroke="#fff" strokeWidth="3" strokeDasharray="5 4" />
+              </>
+            ) : (
+              <rect x={x} y={y(v)} width={w} height={Math.max(0, y(0) - y(v))} rx="4" fill="#fff" fillOpacity=".16" stroke="#fff" strokeOpacity=".55" strokeWidth="2" strokeDasharray="5 4" />
+            )}
+            <text x={x + w / 2} y={y(Math.max(v, done ? r.wind : 0)) - 10} textAnchor="middle" fontSize="17" fontWeight={done ? 800 : 700} fill="#fff" fillOpacity={done ? 1 : 0.75}>
+              {v}
+            </text>
+            {+r.hh % 2 === 0 ? (
+              <text x={x + w / 2} y={H - B + 26} textAnchor="middle" fontSize="16" fill="#fff" fillOpacity=".6">{r.hh}</text>
+            ) : null}
+          </g>
+        );
+      })}
+      {sx != null && sx >= L && sx <= W - R ? (
+        <g>
+          <line x1={sx} x2={sx} y1={T - 40} y2={H - B} stroke="#ff3d77" strokeWidth="2.5" strokeDasharray="4 4" />
+          <text x={sx + 8} y={T - 30} fontSize="15" fontWeight="800" fill="#ff6b8f">{`START ${at}`}</text>
+        </g>
+      ) : null}
+      {nowX != null ? (
+        <g>
+          <line x1={nowX} x2={nowX} y1={T - 40} y2={H - B} stroke="#fff" strokeWidth="2" />
+          <rect x={nowX - 30} y={H - B + 34} width="60" height="24" rx="12" fill="#fff" />
+          <text x={nowX} y={H - B + 51} textAnchor="middle" fontSize="14" fontWeight="800" fill="#0b1a2a">ŞİMDİ</text>
+        </g>
+      ) : null}
+    </svg>
   );
 }
 // Günün programı: yarış yarış grup, durum ve saat
