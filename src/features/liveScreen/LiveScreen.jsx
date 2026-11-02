@@ -850,13 +850,17 @@ function RankPanel({ data, sel, isCur, id, max = RANK_MAX, onAll }) {
   // ilk şamandıra dönüşü yazılana kadar sıralama hiç görünmez (Seyhun 2026-11-02)
   if (!rows.length) return null;
   const hist = !g && rows.some((r) => (r.hist || []).length > 1);
-  const leg = g ? "Resmî" : pos >= 0 ? (route[pos] === "F" && pos === route.length - 1 ? "Finish" : `${markName(route[pos])} · ${pos + 1}/${route.length}`) : route.length ? route.map(markLabel).join(" · ") : "";
+  // cam kart (Seyhun 2026-11-02 cam-kart/ onay): başlık şamandıranın adı büyük, sağda kaç teknenin döndüğü; lider sarı
+  const fin = pos >= 0 && route[pos] === "F" && pos === route.length - 1;
+  const head = g ? "Resmî sonuç" : pos >= 0 ? (fin ? "Finiş" : markName(route[pos])) : "Sıralama";
+  const n = pos >= 0 ? (entry.legs?.[pos] || []).length : 0;
+  const leg = g ? "" : n ? `Sıralama · ${n} tekne ${fin ? "bitirdi" : "döndü"}` : "";
   return (
-    <Panel cls="lv-rankp" head="Sıralama" right={leg} onClick={rows.length ? onAll : undefined} label="Tam sıralama">
+    <Panel cls="lv-rankp lv-glass" head={head} right={leg} onClick={rows.length ? onAll : undefined} label="Tam sıralama">
       {rows.length ? (
         <ol className="lv-rl">
-          {rows.slice(0, max).map((r) => (
-            <li key={`${r.sail}${r.name}`} className={`${r.isNew ? "new" : ""}${hist ? " h" : ""}`}>
+          {rows.slice(0, max).map((r, i) => (
+            <li key={`${r.sail}${r.name}`} className={`${r.isNew ? "new" : ""}${hist ? " h" : ""}${i === 0 && !g ? " l" : ""}`}>
               <b>{r.p}</b>
               {/* bir önceki yazılan şamandıraya göre yükseldi / düştü (Seyhun 2026-11-02) */}
               <s className={`lv-mv${r.move > 0 ? " up" : r.move < 0 ? " down" : ""}`} aria-label={r.move ? `${Math.abs(r.move)} sıra ${r.move > 0 ? "yükseldi" : "düştü"}` : undefined}>
@@ -867,7 +871,7 @@ function RankPanel({ data, sel, isCur, id, max = RANK_MAX, onAll }) {
               <em>{shortClub(r.club)}</em>
               {/* şamandıra şamandıra kendi sıraları: 3 · 2 · 1, atlanan "–" */}
               {hist ? <small className="lv-hist">{(r.hist || []).length > 1 ? r.hist.map((h) => (h == null ? "–" : h)).join(" · ") : ""}</small> : null}
-              {r.gap ? <u>{r.gap}</u> : null}
+              {r.gap ? <u>{r.gap}</u> : !g && i === 0 && rows.length > 1 ? <u className="ld">Lider</u> : null}
             </li>
           ))}
         </ol>
@@ -902,13 +906,13 @@ function overallTop(data, n = 5) {
 
 // Yarışta genel sıralama (Seyhun 2026-11-02 "arka planları olmasın, zaten arka plan flu; şamandıra dönüşleriyle karışmasın"):
 // kutu yok, sağ kenarda bulanık şerit; sıra, ad, kulüp ve büyük puan. Şamandıra sıralaması solda başka biçimde (lv-rankp)
-function OverallSide({ data }) {
-  const top = useMemo(() => overallTop(data, 200), [data]);
+function OverallSide({ data, n = 10 }) {
+  const top = useMemo(() => overallTop(data, n), [data, n]);
   if (!top) return null;
   return (
-    <aside className="lv-ovs" aria-label="Genel sıralama">
+    <aside className="lv-ovs lv-glass" aria-label="Genel sıralama">
       <header>
-        <b>Genel sıralama</b>
+        <b>Genel</b>
         <span>{[top.cls, top.tag].filter(Boolean).join(" · ")}</span>
       </header>
       <ol>
@@ -923,6 +927,7 @@ function OverallSide({ data }) {
           </li>
         ))}
       </ol>
+      {top.total > top.rows.length ? <div className="lv-ovf">{`${top.total} tekne · ilk ${top.rows.length}`}</div> : null}
     </aside>
   );
 }
@@ -1275,67 +1280,90 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
   const entryNow = entry?.cls || entry?.prep || entry?.grp ? entry : data.plan.order?.[0] || null;
   // bayraklar yalnız start dizisinde (Yayın'da sayaç çalışırken); o zaman küçük parkur çizimi yer açmak için gizlenir
   const seq = !!(data.timer && cs.rem && entryNow);
+  const flags = seq ? startFlags(entryNow, false, cs.rem <= 60) : [];
+  const ww = c || ew;
   return (
     <aside className="lv-side">
-      {r.name ? <div className="lv-sname">{r.name}</div> : null}
-      <div>
+      <div className="lv-stop">
+        {r.name ? <div className="lv-sname">{r.name}</div> : null}
         <div className={`lv-skick${orange ? " o" : ""}`}>
           {orange ? <span className="lv-oflag" aria-hidden="true" /> : null}
           {orange ? "Start öncesi" : "Yarış öncesi"}
         </div>
         <div className="lv-sbig">{cs.rem ? cs.value : "—:—"}</div>
         <div className="lv-ssub">{[cs.label, cs.right].filter(Boolean).join(" · ")}</div>
-        {seq ? <FlagRow flags={startFlags(entryNow, false, cs.rem <= 60)} /> : null}
         {orange && first && !seq ? (
-          <>
-            <div className="lv-swhat">
-              <Dot g={first.grp} />
-              {[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}
-            </div>
-            <div className="lv-ssub">{[first.cls, prep ? prepName(prep) : ""].filter(Boolean).join(" · ")}</div>
-          </>
+          <div className="lv-swhat">
+            <Dot g={first.grp} />
+            {[first.name, grpText(first.grp), first.cls, prep ? prepName(prep) : ""].filter(Boolean).join(" · ")}
+          </div>
         ) : null}
       </div>
-      {c || ew ? (
-        <div className="lv-ssec">
-          <div className="lv-sh">{orange ? "Start hattında rüzgâr" : "Rüzgâr"}</div>
-          <div className="lv-swind">
-            {(c || ew).dir != null ? <WindArrow w={c || ew} /> : null}
-            <div className="v">
-              <b>
-                {(c || ew).kn}
-                <em>knot</em>
-              </b>
-              <small>
-                {c ? <span className={c.man ? "m" : ""}>{c.by}</span> : <span>Tahmin</span>}
-                {c && ew && !orange ? ` · Start'ta ${ew.kn} knot` : ""}
-                {orange && ew?.gust && ew.gust > (c || ew).kn ? ` · Sağanak ${ew.gust}` : ""}
-              </small>
+      {flags.length ? (
+        <div className="lv-sflags">
+          {flags.map((f) => (
+            <div key={f.kind} className={`lv-sfl${f.down ? " down" : ""}`}>
+              <Flag {...f} />
+              <div>
+                <b>{f.kind === "cls" ? f.cls : prepName(f.kind)}</b>
+                <small>{f.kind === "cls" ? (f.grp ? `${f.grp} grup` : "Sınıf") : f.down ? "İndi" : "1 dk'da iner"}</small>
+              </div>
             </div>
-            {(c || ew).dir != null ? <div className="d">{`${dirShort((c || ew).dir)} ${degText(c || ew)}`}</div> : null}
-          </div>
-          {bias?.end ? <div className="lv-sbias">{`${bias.end === "pin" ? "Pin" : "Komite"} avantajlı · ${Math.round(bias.deg)}°`}</div> : null}
+          ))}
         </div>
       ) : null}
-      {svg ? (
-        <div className="lv-ssec">
-          <div className="lv-sh">Parkur</div>
-          <div className="lv-scrs">
-            <div>
-              <b>{CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}</b>
-              <span>{routeText(route)}</span>
-            </div>
-            {ax ? (
-              <div className="lv-sax">
-                <i style={{ transform: `rotate(${ax.deg}deg)` }} aria-hidden="true" />
-                <div>
-                  <b>{`Eksen ${ax.deg}° ${dirShort(ax.deg)}`}</b>
-                  <span>{shiftText(ax.sh)}</span>
-                </div>
+      {ww ? (
+        <div className={`lv-ssec lv-s2${bias?.end ? "" : " one"}`}>
+          <div>
+            <div className="lv-sh">{orange ? "Start hattında rüzgâr" : "Rüzgâr"}</div>
+            <div className="lv-swind">
+              {ww.dir != null ? <WindArrow w={ww} /> : null}
+              <div className="v">
+                <b>
+                  {ww.kn}
+                  <em>knot</em>
+                </b>
+                <small>
+                  {[ww.dir != null ? `${dirShort(ww.dir)} ${degText(ww)}` : "", orange && ew?.gust && ew.gust > ww.kn ? `Sağanak ${ew.gust}` : "", c && ew && !orange ? `Start'ta ${ew.kn} knot` : ""].filter(Boolean).join(" · ")}
+                </small>
+                <small>{c ? <span className={c.man ? "m" : ""}>{c.by}</span> : "Tahmin"}</small>
               </div>
-            ) : null}
-            {seq ? null : <div className="s" dangerouslySetInnerHTML={{ __html: svg }} />}
+            </div>
           </div>
+          {bias?.end ? (
+            <div>
+              <div className="lv-sh">Start hattı</div>
+              <div className="lv-sbias">
+                {bias.end === "pin" ? "Pin" : "Komite"}
+                <br />
+                {`avantajlı ${Math.round(bias.deg)}°`}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {svg || ax ? (
+        <div className="lv-ssec">
+          <div className="lv-sh">{`Parkur · ${CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}`}</div>
+          {route.length ? (
+            <b className="lv-route lv-sroute" aria-label={routeText(route)}>
+              {cleanRoute(route).map((m, k) => (
+                <Fragment key={k}>
+                  {k ? <s /> : null}
+                  <i>{m}</i>
+                </Fragment>
+              ))}
+            </b>
+          ) : null}
+          {ax ? (
+            <div className="lv-sax">
+              <i style={{ transform: `rotate(${ax.deg}deg)` }} aria-hidden="true" />
+              <div>
+                <b>{`Eksen ${ax.deg}° ${dirShort(ax.deg)}`}</b>
+                <span>{["Komitenin attığı yön", shiftText(ax.sh).replace(/^Rüzgâr /, "rüzgâr ")].filter(Boolean).join(" · ")}</span>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
       {ag && !orange ? (
@@ -2030,7 +2058,7 @@ export function LiveScreen({ id, y = "" }) {
         <div className="lv-left">
           {phase === "race" ? <RankPanel key="race" data={data} sel={sel} isCur={isCur} id={id} max={hasVideo ? 5 : RANK_MAX} onAll={() => setFull("race")} /> : null}
         </div>
-        {ovOn ? <OverallSide data={data} /> : null}
+        {ovOn ? <OverallSide data={data} n={hasVideo ? 6 : 10} /> : null}
         {(phase === "race" || (phase === "wait" && hasVideo)) && !side ? <ProgramChips items={prog} /> : null}
         {side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}
