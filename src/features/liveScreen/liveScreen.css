@@ -285,6 +285,14 @@ button.lv-p:active { transform: translateY(1px); }
 /* Bayraklar: sınıf (beyaz, harf), P (mavi, beyaz kare), I (sarı, siyah daire), U (kırmızı-beyaz dörtlü), Z (dört üçgen), Kara. İnen bayrak soluk */
 .lv-flag { display: block; width: 2.4em; height: 1.65em; border-radius: 0.2em; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
 .lv-flag.cls { background: #fff; color: #111; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1em; }
+/* Sınıf bayrağı: grup renginde zemin, ortada sınıf işareti, altta kısa ad */
+.lv-flag.cls { width: 3em; height: 2em; flex-direction: column; gap: 0; border: 1.5px solid rgba(255, 255, 255, 0.85); }
+.lv-flag.cls svg { width: 100%; height: 72%; }
+.lv-flag.cls b { margin-top: -0.15em; font-size: 0.34em; font-weight: 800; letter-spacing: 0.06em; line-height: 1; }
+.lv-flag.cls.g b { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+.lv-flags { display: flex; align-items: flex-start; gap: 1.2em; margin-top: 0.9em; font-size: clamp(16px, 1.6vw, 30px); }
+.lv-flags .lv-flag { width: 3em; height: 2em; }
+.lv-flags .lv-fl small { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.55em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.75); }
 .lv-flag.black { background: #111; border: 1.5px solid rgba(255, 255, 255, 0.85); }
 .lv-flag.p { background: #1b4fd6; }
 .lv-flag.p::after { content: ""; position: absolute; inset: 28%; background: #fff; }

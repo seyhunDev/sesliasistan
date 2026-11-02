@@ -150,9 +150,23 @@ function useFade(on, ms = 500) {
   return on ? "in" : gone ? "" : "out";
 }
 
-function Flag({ kind, cls, down }) {
+// Sınıf bayrağı (Seyhun 2026-11-02 "mavi grupsa mavi bayrağın üstünde Optimist işareti"): grup renginde zemin, ortada sınıfın işareti
+// (beyaz daire içinde; gerçek sınıf işaretleri gelene kadar sade yelken + sınıf kısaltması). Grup yoksa beyaz zemin.
+const CLASS_SHORT = (cls) => (/^opti/i.test(cls) ? "OPTİ" : /^ilca\s*(\d)/i.test(cls) ? `ILCA ${/^ilca\s*(\d)/i.exec(cls)[1]}` : String(cls || "").slice(0, 5).toUpperCase());
+function Flag({ kind, cls, down, grp }) {
   const c = `lv-flag${down ? " down" : ""}`;
-  if (kind === "cls") return <span className={`${c} cls`}>{/^ilca\s*(\d)/i.exec(cls)?.[1] || cls.slice(0, 1).toUpperCase()}</span>;
+  if (kind === "cls")
+    return (
+      <span className={`${c} cls${grp ? " g" : ""}`} style={grp ? { background: groupColor(grp) } : undefined}>
+        <svg viewBox="0 0 60 40" aria-hidden="true">
+          <circle cx="30" cy="20" r="15" fill="#fff" />
+          <path d="M29 8 L29 27 L19 27 Z" fill="#0b2a4a" />
+          <path d="M31 10 L31 27 L39 27 Z" fill="#0b2a4a" />
+          <path d="M17 29 L43 29 L40 32 L20 32 Z" fill="#0b2a4a" />
+        </svg>
+        <b>{CLASS_SHORT(cls)}</b>
+      </span>
+    );
   if (kind === "P") return <span className={`${c} p`} />;
   if (kind === "I") return <span className={`${c} i`} />;
   if (kind === "U") return <span className={`${c} u`} />;
@@ -244,17 +258,34 @@ function clockState({ sel, isCur, timer, now, entry, data, today }) {
   }
   return { label: label || "Start bekleniyor", value, rem, right };
 }
+// Start bayrakları (Seyhun 2026-11-02 "startta yarış bayraklarını göster; yönetimde seçtiğim sınıf ve kural bayrakları"):
+// sınıf bayrağı grup renginde (uyarıda çekilir, startta iner), hazırlık bayrağı P / I / U / Z / Kara (son dakikada iner)
+function startFlags(entry, started, lastMin) {
+  const cls = entry?.cls || "", prep = entry?.prep || "", grp = entry?.grp || "";
+  return [cls || grp ? { kind: "cls", cls: cls || "Sınıf", grp, down: started, name: [cls, grp ? `${grp} grup` : ""].filter(Boolean).join(" · ") } : null, prep ? { kind: prep, down: lastMin, name: prepName(prep) } : null].filter(Boolean);
+}
+function FlagRow({ flags }) {
+  if (!flags.length) return null;
+  return (
+    <div className="lv-flags">
+      {flags.map((f) => (
+        <span key={f.kind} className={`lv-fl${f.down ? " down" : ""}`}>
+          <Flag {...f} />
+          <small>{f.name}</small>
+        </span>
+      ))}
+    </div>
+  );
+}
 function Clock({ sel, isCur, timer, skew, entry, data, today }) {
   const now = useNow(skew);
   const { label, value, rem, right } = clockState({ sel, isCur, timer, now, entry, data, today });
   const steps = seqSteps(timer?.dur || 300);
   const st = rem == null ? steps.map(() => (sel?.at && !sel.void ? "done" : "")) : seqState(steps, rem, true);
   if (rem === 0 || (rem == null && sel?.at && !sel.void)) st[st.length - 1] = "now";
-  const cls = entry?.cls || "";
-  const prep = entry?.prep || "";
   const started = rem === 0 || (rem == null && !!sel?.at && !sel.void);
   const lastMin = started || (rem != null && rem <= 60);
-  const flags = [cls ? { kind: "cls", cls, down: started, name: cls } : null, prep ? { kind: prep, down: lastMin, name: prepName(prep) } : null].filter(Boolean);
+  const flags = startFlags(entry, started, lastMin);
   return (
     <div className="lv-pill lv-cd">
       <div className="lv-pillh">
@@ -1211,7 +1242,7 @@ function WaitHero({ data, today, cs, prog, now }) {
 // Videolu yarış öncesi sol şerit (Seyhun 2026-11-02 "solda olmalı bilgiler, arka fon blur olabilir sadece bu alanın, bilgilere arka plan ekleme"):
 // yarışın adı soluk, durum (Yarış öncesi / turuncu bayrakla Start öncesi), büyük süre, rüzgâr (şimdi + start'ta beklenen; start öncesinde hat avantajı),
 // parkur (çizim, adı, rota), program (start öncesinde yalnız sıradakiler)
-function SidePanel({ data, today, cs, prog, now }) {
+function SidePanel({ data, today, cs, prog, now, entry }) {
   const orange = orangeUp(data.plan, today);
   const r = data.race || {};
   const c = curWind(data, null, true, now);
@@ -1230,6 +1261,8 @@ function SidePanel({ data, today, cs, prog, now }) {
   const rows = orange ? left.slice(1, 3) : left.slice(0, 4);
   const prep = data.plan.order?.[0]?.prep || "";
   const ag = agOf(data, now);
+  // geri sayımda bayraklar: süren startın kaydı, yoksa sıradaki bekleyen (Yayın'da seçilen sınıf, grup, bayrak)
+  const entryNow = entry?.cls || entry?.prep || entry?.grp ? entry : data.plan.order?.[0] || null;
   return (
     <aside className="lv-side">
       {r.name ? <div className="lv-sname">{r.name}</div> : null}
@@ -1240,7 +1273,8 @@ function SidePanel({ data, today, cs, prog, now }) {
         </div>
         <div className="lv-sbig">{cs.rem ? cs.value : "—:—"}</div>
         <div className="lv-ssub">{[cs.label, cs.right].filter(Boolean).join(" · ")}</div>
-        {orange && first ? (
+        {cs.rem && entryNow ? <FlagRow flags={startFlags(entryNow, false, cs.rem <= 60)} /> : null}
+        {orange && first && !(cs.rem && entryNow) ? (
           <>
             <div className="lv-swhat">
               <Dot g={first.grp} />
@@ -1968,7 +2002,7 @@ export function LiveScreen({ id, y = "" }) {
           </div>
         ) : null}
         {(phase === "race" || (phase === "wait" && hasVideo)) && !side ? <ProgramChips items={prog} /> : null}
-        {side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}
+        {side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}
         {phase === "summary" ? <EndHero data={data} today={today} now={nowMs} onAll={() => setFull("all")} /> : null}
         <CenterClock show={counting && !hero && !hasVideo} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
