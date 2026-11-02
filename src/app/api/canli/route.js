@@ -8,6 +8,7 @@ import { cleanSheet, joinGroups } from "@/lib/resultSheet";
 import { cleanEntries } from "@/lib/roundSay";
 import { cleanGroups } from "@/lib/roundScore";
 import { nearestStation, obsRows, parseSynop, utcRange } from "@/lib/windObs";
+import { racePlace } from "@/features/athletes/raceWeather";
 
 export const runtime = "nodejs";
 
@@ -71,14 +72,20 @@ async function entriesOf(org, id) {
 // Günün rüzgâr tahmini (bekleme ekranı; Seyhun 2026-11-01 "gün boyu grafiğimiz"): yarış yeri (spot, yoksa kayıtlı tahmin yeri) için
 // Open-Meteo saatlik rüzgâr; org/yarış/gün başına 30 dk bellekte
 const fcMemo = new Map();
+// Yer yoksa (spot ya da kayıtlı tahmin yeri) yarış sayfasının hava sekmesindeki gibi: Çevre'deki yarış alanı, sonra ilçe/il
+// (Seyhun 2026-11-02 "her yarışın rüzgârını alıyorum, yarış neredeyse onun grafiği"; önceden yer kaydedilmemiş yarışta grafik hiç gelmiyordu)
 async function forecastOf(org, id, r, day) {
-  const sp = r.spot || r.weather?.place;
-  const lat = Number(sp?.lat);
-  const lon = Number(sp?.lon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
   const k = `${org}/${id}/${day}`;
   const hit = fcMemo.get(k);
   if (hit && Date.now() - hit.t < 30 * 60e3) return hit.v;
+  let sp = r.spot || r.weather?.place;
+  if (!Number.isFinite(Number(sp?.lat)) || !Number.isFinite(Number(sp?.lon))) sp = await racePlace(r).catch(() => null);
+  const lat = Number(sp?.lat);
+  const lon = Number(sp?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    fcMemo.set(k, { t: Date.now(), v: null });
+    return null;
+  }
   let v = null;
   try {
     const q = new URLSearchParams({ latitude: lat, longitude: lon, timezone: "Europe/Istanbul", wind_speed_unit: "kn", start_date: day, end_date: day, hourly: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code" });
