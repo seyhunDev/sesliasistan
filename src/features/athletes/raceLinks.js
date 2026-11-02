@@ -38,3 +38,15 @@ export function racePostOf(r, posts = []) {
   const mine = posts.filter((p) => p.race && ((r.id && p.race.id === r.id) || (!p.race.id && n && loose(p.race.name) === n && sameYear(p))));
   return mine.find((p) => !p.archived) || mine[0] || null;
 }
+
+// Ana sayfa gün penceresindeki hızlı işlemler (Seyhun 2026-11-02 "A · Satırda düğmeler"): planın türü ve bağlı yarış.
+// kind: "race" (yarışın kendi planı: Yarış sayfası + Plan), "deadline" ("Yarış adı: iş": Yapıldı + Yarış sayfası), "plan" (diğer: Yapıldı).
+// race: adı tutan yarış (races: [{ id, name }], ör. useRaceHome().open) ya da null
+export function planKindOf(p, races = []) {
+  if ((p?.cat || p?.category) !== "Yarış") return { kind: "plan", race: null };
+  const t = String(p.title || "");
+  const i = t.indexOf(":");
+  const head = loose(i > 0 ? t.slice(0, i) : t);
+  const race = (races || []).find((r) => r?.id && head && loose(r.name) === head) || null;
+  return { kind: i > 0 ? "deadline" : "race", race };
+}
