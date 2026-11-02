@@ -578,3 +578,11 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-mv.up { color: #3ddc84; }
 .lv-mv.down { color: #ff6b6b; }
 .lv-hist { font-size: 0.72em; font-weight: 600; color: var(--lv-mut); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+/* Rüzgâr grafiği açıklaması: beklenen (tahmin, beyaz çizgi), gerçekleşen (istasyon, mavi alan), bizim ölçüm (nokta) */
+.lv-leg { display: inline-flex; align-items: center; gap: 0.45em; flex-wrap: wrap; }
+.lv-leg i { display: inline-block; width: 1.4em; height: 0.7em; margin-left: 0.6em; border-radius: 2px; }
+.lv-leg i:first-child { margin-left: 0; }
+.lv-leg i.f { height: 0; border-top: 2.5px solid #fff; border-radius: 0; }
+.lv-leg i.o { background: rgba(143, 214, 255, 0.45); border-top: 2.5px solid #8fd6ff; }
+.lv-leg i.m { width: 0.7em; height: 0.7em; border-radius: 50%; background: #fff; }
+.lv-showb .lv-fc svg, .lv-slide .lv-fc svg { height: clamp(130px, 13vw, 250px); }
