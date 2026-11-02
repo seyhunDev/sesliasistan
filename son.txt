@@ -1,8 +1,8 @@
-Commit: e88aa31 · Canlı yarış sayfası eksik yanıtta çökmüyor (#967)
-Zaman: 2026-11-02-1423 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41434732885
+Commit: 3a37080 · Yarış abandone (N bayrağı) (#969)
+Zaman: 2026-11-02-1441 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41437075429
 
-TAM TEST · 02.11.2026 14:11:25
+TAM TEST · 02.11.2026 14:29:39
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1435/1435 geçti · 0 kalan · 655 sn
+SONUÇ: 1435/1435 geçti · 0 kalan · 630 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
