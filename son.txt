@@ -1,8 +1,8 @@
-Commit: 1a5ac5b · Parkur sahnesi: finiş hattının öbür ucunda turuncu şamandıra (#964)
-Zaman: 2026-11-02-1328 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41427548867
+Commit: a4dfcc6 · Canlı ekran: tek şerit, sıralama ilk dönüşte, genel sağda, tehir bilgisi (#965)
+Zaman: 2026-11-02-1346 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41430036628
 
-TAM TEST · 02.11.2026 13:18:05
+TAM TEST · 02.11.2026 13:36:02
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1435/1435 geçti · 0 kalan · 584 sn
+SONUÇ: 1435/1435 geçti · 0 kalan · 585 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
