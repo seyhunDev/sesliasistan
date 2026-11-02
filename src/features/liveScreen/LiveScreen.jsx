@@ -895,11 +895,14 @@ function lastWind(data, sel, isCur) {
   const obs = (data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, dir: o.deg, kn: o.kn, gust: null, range: o.range || null }));
   const upto = !isCur && sel ? sel.fin || sel.at : "";
   const all = [...(data.wind || []), ...obs].filter((x) => x.dir != null && (!upto || x.at <= upto)).sort((a, b) => String(a.at).localeCompare(String(b.at)));
-  return { w: !isCur && sel?.dir != null ? { at: sel.at, dir: sel.dir, kn: sel.kn, gust: null } : all.at(-1), obs };
+  // parkurda / Yayın'dan elle girilen ölçümler (istasyon değil): şeritte "Manuel" yazar
+  const last = all.at(-1);
+  return { w: !isCur && sel?.dir != null ? { at: sel.at, dir: sel.dir, kn: sel.kn, gust: null, man: true } : last ? { ...last, man: true } : last, obs };
 }
 function WindArrow({ w }) {
   const span = w?.range ? ((w.range[1] - w.range[0] + 540) % 360) - 180 : 0;
-  const style = w?.range ? { "--lv-a": `${w.range[0]}deg`, "--lv-b": `${w.range[0] + span}deg` } : { transform: `rotate(${w?.dir ?? 0}deg)` };
+  // ok rüzgârın gittiği yönü gösterir (parkur sahnesindeki ok gibi): KB 310°'den esen rüzgârda ok güneydoğuya
+  const style = w?.range ? { "--lv-a": `${w.range[0] + 180}deg`, "--lv-b": `${w.range[0] + 180 + span}deg` } : { transform: `rotate(${(w?.dir ?? 0) + 180}deg)` };
   return (
     <span className={`lv-arrow${w?.range ? " swing" : ""}`} aria-hidden="true">
       <svg viewBox="0 0 40 40" style={style}>
@@ -1057,7 +1060,7 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, now = 
             <WindArrow w={w} />
             {w.range ? `${w.range[0]}–${w.range[1]}°` : `${w.dir}°`}
           </b>
-          <span>{`${dirShort(w.dir)}${w.kn != null ? ` · ${w.kn} knot` : ""}`}</span>
+          <span>{`${dirShort(w.dir)}${w.kn != null ? ` · ${w.kn} knot` : ""}${w.man ? " · Manuel" : ""}`}</span>
         </button>
       ) : null}
       {hasSvg ? (
@@ -1154,6 +1157,7 @@ function WaitHero({ data, today, cs, prog, now }) {
       <div className="lv-hst">
         <div className="lv-kick">{kick}</div>
         {!none ? <div className="lv-big">{cs.rem ? cs.value : "—:—"}</div> : null}
+        {!none ? <NowWind data={data} now={now} /> : null}
         {!none && first ? (
           <div className="lv-what">
             <Dot g={first.grp} />
@@ -1438,8 +1442,36 @@ const trOf = (iso) => new Date(Date.parse(iso) + 3 * 3600e3).toISOString();
 // üstte iki kutu (şimdi esen + o saatte beklenen ve fark; start'ta beklenen), altta saat saat sütunlar: geçmiş saatler dolu
 // (gerçekleşen: istasyon mavi, manuel girilen turuncu; üstünde o saatte beklenen beyaz kesik çizgi), gelecek saatler kesik kenarlı
 // soluk (tahmin); start saati ve sonrası geniş ve canlı, öncesi dar ve soluk (Seyhun 2026-11-02); şimdi çizgisi, start çizgisi
-function WindBody({ data, sel, isCur, now }) {
+// Şimdiki rüzgâr: son 1 saatte elle girilen ölçüm (parkurda, Yayın'dan), yoksa istasyonun son saati. man: elle girildi
+function curWind(data, sel, isCur, now) {
   const { w: mine } = lastWind(data, sel, isCur);
+  const fc = data.forecast;
+  const tr = new Date(now + 3 * 3600e3);
+  const so = (fc?.obs || []).filter((o) => o.wind != null).at(-1);
+  const fresh = mine?.kn != null && mine.at && now - Date.parse(mine.at) < 3600e3;
+  if (fresh) return { kn: mine.kn, dir: mine.dir, range: mine.range || null, hh: tr.toISOString().slice(11, 13), man: true, by: `Manuel girildi ${trOf(mine.at).slice(11, 16)}` };
+  return so ? { kn: so.wind, dir: so.dir, range: null, hh: so.hh, man: false, by: `${fc.station || "İstasyon"} ${so.hh}:00` } : null;
+}
+const degText = (w) => (w?.range ? `${w.range[0]}–${w.range[1]}°` : w?.dir != null ? `${Math.round(w.dir)}°` : "");
+// Bekleme ekranında şimdiki rüzgâr (Seyhun 2026-11-02 "rüzgâr yönü daha doğru ve profesyonel; manuel girildiyse gösterilsin"):
+// akış yönünü gösteren ok, derece ve pusula, knot; altında kaynak (Manuel girildi 14:05 turuncu ya da istasyon)
+function NowWind({ data, now }) {
+  const c = curWind(data, null, true, now);
+  if (!c || (c.dir == null && c.kn == null)) return null;
+  return (
+    <div className={`lv-hwind${c.man ? " m" : ""}`}>
+      {c.dir != null ? <WindArrow w={c} /> : null}
+      <div>
+        <b>
+          {c.dir != null ? <span>{`${dirShort(c.dir)} ${degText(c)}`}</span> : null}
+          {c.kn != null ? <span>{`${c.kn} knot`}</span> : null}
+        </b>
+        <small>{c.man ? <i /> : null}{c.by}</small>
+      </div>
+    </div>
+  );
+}
+function WindBody({ data, sel, isCur, now }) {
   const fc = data.forecast;
   const rows = (fc?.rows || []).filter((r) => +r.hh >= 6 && +r.hh <= 20);
   const man = windByHour(data, now);
@@ -1447,9 +1479,8 @@ function WindBody({ data, sel, isCur, now }) {
   const tr = new Date(now + 3 * 3600e3);
   const nowH = tr.getUTCHours() + tr.getUTCMinutes() / 60;
   // şimdi: manuel son ölçüm (1 saatten yeni), yoksa istasyonun son saati
-  const so = (fc?.obs || []).filter((o) => o.wind != null).at(-1);
-  const fresh = mine?.kn != null && mine.at && now - Date.parse(mine.at) < 3600e3;
-  const cur = fresh ? { kn: mine.kn, dir: mine.dir, hh: tr.toISOString().slice(11, 13), by: `Manuel girildi ${trOf(mine.at).slice(11, 16)}` } : so ? { kn: so.wind, dir: so.dir, hh: so.hh, by: `${fc.station || "İstasyon"} ${so.hh}:00` } : null;
+  const cur = curWind(data, sel, isCur, now);
+  const fresh = !!cur?.man;
   const was = cur ? rows.find((r) => r.hh === cur.hh) : null;
   const diff = cur && was ? cur.kn - was.wind : null;
   const ew = expWind(fc, data.plan.at);
@@ -1470,7 +1501,7 @@ function WindBody({ data, sel, isCur, now }) {
               <b>
                 {cur.kn}
                 <em>knot</em>
-                {cur.dir != null ? <i>{dirShort(cur.dir)}</i> : null}
+                {cur.dir != null ? <i>{`${dirShort(cur.dir)} ${degText(cur)}`}</i> : null}
               </b>
               <small>{was ? (diff ? `Tahmin ${was.wind} knot idi · ${Math.abs(diff)} knot ${diff > 0 ? "fazla" : "az"}` : `Tahmin ${was.wind} knot idi · tam tuttu`) : cur.by}</small>
               {was ? <small className="src">{cur.by}</small> : null}
@@ -1489,7 +1520,7 @@ function WindBody({ data, sel, isCur, now }) {
               <b>
                 {ew.kn}
                 <em>knot</em>
-                {ew.dir != null ? <i>{dirShort(ew.dir)}</i> : null}
+                {ew.dir != null ? <i>{`${dirShort(ew.dir)} ${Math.round(ew.dir)}°`}</i> : null}
               </b>
               <small>{ew.gust && ew.gust > ew.kn ? `Sağanak ${ew.gust} knot` : "Tahmin"}</small>
             </div>
@@ -1549,7 +1580,9 @@ function WindLegend({ data, now }) {
 const MAN = "#ff9a4d", OBSC = "#4fb3ff";
 function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
   if (rows.length < 2) return null;
-  const W = 1000, H = 400, L = 50, R = 12, T = 64, B = 64;
+  // yön satırı (Seyhun 2026-11-02 "ne oldu ne bekleniyor grafiğinde yönler derece olarak da gösterilmeli"): saatin altında ok + derece
+  const hasDir = rows.some((r) => r.dir != null);
+  const W = 1000, H = hasDir ? 470 : 400, L = 50, R = 12, T = 64, B = hasDir ? 136 : 64;
   const i0 = +rows[0].hh;
   // odak: start saati (yoksa şimdi); öncesi dar ve soluk, odak ve sonrası geniş
   const fh = flat ? -1 : at ? +at.slice(0, 2) : Math.floor(nowH);
@@ -1558,7 +1591,7 @@ function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
   const xs = wt.reduce((acc, w, i) => [...acc, acc[i] + w * unit], [L]);
   const xh = (h) => { const k = Math.min(rows.length - 1, Math.max(0, Math.floor(h - i0))); return xs[k] + (xs[k + 1] - xs[k]) * Math.min(1, Math.max(0, h - i0 - k)); };
   const past = (r) => +r.hh + 1 <= nowH + 0.01 || +r.hh <= nowH;
-  const got = (r) => (past(r) ? (man[r.hh] ? { v: man[r.hh].wind, c: MAN } : obsAt[r.hh] ? { v: obsAt[r.hh].wind, c: OBSC } : null) : null);
+  const got = (r) => (past(r) ? (man[r.hh] ? { v: man[r.hh].wind, c: MAN, d: man[r.hh].dir } : obsAt[r.hh] ? { v: obsAt[r.hh].wind, c: OBSC, d: obsAt[r.hh].dir } : null) : null);
   const vals = [...rows.flatMap((r) => [r.wind, got(r)?.v ?? 0]), ...pts.map((p) => p.kn)];
   const top = Math.max(10, Math.ceil((Math.max(...vals) + 3) / 5) * 5);
   const y = (v) => T + (1 - v / top) * (H - T - B);
@@ -1598,6 +1631,15 @@ function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
             <text x={x + w / 2} y={y(Math.max(v, g ? r.wind : 0)) - 10} textAnchor="middle" fontSize={fs} fontWeight={g || big ? 800 : 700} fill="#fff">
               {v}
             </text>
+            {hasDir && (big || +r.hh % 2 === 0) && (g?.d ?? r.dir) != null ? (
+              <g>
+                <g transform={`translate(${x + w / 2} ${H - B + 50}) rotate(${(g?.d ?? r.dir) + 180}) scale(${big ? 1 : 0.8})`}>
+                  <path d="M0 -11 L6 3 L0 0 L-6 3 Z" fill={g?.d != null ? "#fff" : "rgba(255,255,255,.7)"} />
+                  <line x1="0" y1="0" x2="0" y2="11" stroke={g?.d != null ? "#fff" : "rgba(255,255,255,.7)"} strokeWidth="2.2" strokeLinecap="round" />
+                </g>
+                <text x={x + w / 2} y={H - B + 88} textAnchor="middle" fontSize={big ? 15 : 12} fontWeight={big ? 700 : 600} fill="#fff" fillOpacity={g?.d != null ? 0.95 : 0.7}>{`${Math.round(g?.d ?? r.dir)}°`}</text>
+              </g>
+            ) : null}
             {big || +r.hh % 2 === 0 ? (
               <text x={x + w / 2} y={H - B + 24} textAnchor="middle" fontSize={big ? 14 : 12} fontWeight={big ? 600 : 500} fill="#fff" fillOpacity={big ? 0.75 : 0.55}>{`${r.hh}:00`}</text>
             ) : null}
@@ -1618,8 +1660,8 @@ function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
       {nowX != null ? (
         <g>
           <line x1={nowX} x2={nowX} y1={T - 40} y2={H - B} stroke="#fff" strokeWidth="2" />
-          <rect x={nowX - 30} y={H - B + 34} width="60" height="24" rx="12" fill="#fff" />
-          <text x={nowX} y={H - B + 51} textAnchor="middle" fontSize="14" fontWeight="800" fill="#0b1a2a">ŞİMDİ</text>
+          <rect x={nowX - 30} y={H - B + (hasDir ? 104 : 34)} width="60" height="24" rx="12" fill="#fff" />
+          <text x={nowX} y={H - B + (hasDir ? 121 : 51)} textAnchor="middle" fontSize="14" fontWeight="800" fill="#0b1a2a">ŞİMDİ</text>
         </g>
       ) : null}
     </svg>
