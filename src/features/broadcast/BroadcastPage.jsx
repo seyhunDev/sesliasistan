@@ -28,7 +28,7 @@ import { AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apTex
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { CLASS_PICK, PREP_PICK, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
+import { CLASS_PICK, PREP_PICK, YT_RTMP, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
 import { todayStr } from "@/lib/utils/format";
 import { autoCaption } from "@/lib/raceCaption";
 import "./masa.css";
@@ -66,6 +66,8 @@ export function BroadcastPage({ orgId, id }) {
   const [capInit, setCapInit] = useState(false);
   const [capNow, setCapNow] = useState(0); // otomatik yazının önizlemesi için saat (5 sn)
   const [yt, setYt] = useState("");
+  const [drone, setDrone] = useState(""); // drone yayınının YouTube bağlantısı (stream.drone; sıfırlamada kalır, yeni yarışta son kullanılan gelir)
+  const [howOpen, setHowOpen] = useState(false); // Drone › Nasıl bağlanır
   const [sel, setSel] = useState(null); // ekrana verilecek seçim { kind, mid }
   const [busy, setBusy] = useState("");
   const [add, setAdd] = useState(null); // ölçüm penceresi: PICKS sırası
@@ -118,6 +120,7 @@ export function BroadcastPage({ orgId, id }) {
       setPlan(rp);
       if (rp.day !== d.plan.day) savePlan(orgId, id, rp).catch(() => {});
       setYt(d.stream.url);
+      setDrone(d.stream.drone || lastDrone());
       setSel(d.screen.kind ? { kind: d.screen.kind, mid: d.screen.mid } : null);
     }, () => toast("Yüklenemedi, tekrar dene."));
     ensurePublic(id).catch(() => {});
@@ -369,7 +372,8 @@ export function BroadcastPage({ orgId, id }) {
   const show = async (s) => {
     setBusy("x");
     try {
-      if (s.kind === "live" && yt !== (L?.stream.url || "")) await setStream(orgId, id, yt);
+      if ((s.kind === "live" || s.kind === "drone") && (yt !== (L?.stream.url || "") || drone !== (L?.stream.drone || ""))) await setStream(orgId, id, { url: yt, drone });
+      if (s.kind === "drone") keepDrone(drone);
       await showOnScreen(orgId, id, s);
       setSel(s.kind ? { kind: s.kind, mid: s.mid } : null);
       toast(s.kind ? "Ekranda" : "Ekrandan kaldırıldı");
@@ -455,6 +459,8 @@ export function BroadcastPage({ orgId, id }) {
   const vids = [...live.media].filter((m) => m.kind === "video" && m.url).reverse().slice(0, 6); // yalnız telefonda duran (ph) ekrana gidemez
   const ytOk = !!ytEmbed(yt);
   const ytBad = !!yt.trim() && !ytOk;
+  const droneOk = !!ytEmbed(drone);
+  const droneBad = !!drone.trim() && !droneOk;
   const onScreen = L?.screen.kind ? L.screen : null;
   if (L && !capInit) {
     setCapInit(true);
@@ -534,7 +540,7 @@ export function BroadcastPage({ orgId, id }) {
     ["donus", "Dönüşler", entry?.route?.length ? `${legsDone}/${entry.route.length}` : entries.length ? `${entries.length} tekne` : "—", false],
   ];
   const monRec = onScreen?.kind === "rec" ? live.media.find((m) => m.id === onScreen.mid) : null;
-  const monImg = onScreen?.kind === "live" ? ytThumb(yt) : monRec?.thumb || "";
+  const monImg = onScreen?.kind === "live" ? ytThumb(yt) : onScreen?.kind === "drone" ? ytThumb(drone) : monRec?.thumb || "";
   const monName = monRec ? recName(monRec, live.starts) : "Video";
   const pDay = days.includes(openDay) ? openDay : days.includes(planDay) ? planDay : days[0];
   const groupRows = plan.sets.flatMap((x) => (x.grps.length ? x.grps.map((g) => [x.cls, g]) : [[x.cls, ""]]));
@@ -868,12 +874,12 @@ export function BroadcastPage({ orgId, id }) {
               {onScreen && !onScreen.pause ? <i /> : null}
               {onScreen ? (onScreen.pause ? "ARA VERİLDİ" : "EKRANDA") : "BOŞ"}
             </span>
-            {onScreen ? <span className="src">{onScreen.kind === "live" ? "Canlı yayın · YouTube" : monName}</span> : null}
+            {onScreen ? <span className="src">{onScreen.kind === "live" ? "Canlı yayın · YouTube" : onScreen.kind === "drone" ? "Drone · canlı" : monName}</span> : null}
             {cap || autoCap.text ? <span className="lt">{cap || autoCap.text}</span> : null}
           </div>
         </section>
         <section>
-          <Head title="Kaynak" right={sel ? (sel.kind === "live" ? "Canlı yayın seçili" : "Video seçili") : "Seç, sonra Göster"} />
+          <Head title="Kaynak" right={sel ? (sel.kind === "live" ? "Canlı yayın seçili" : sel.kind === "drone" ? "Drone seçili" : "Video seçili") : "Seç, sonra Göster"} />
           <div className={`${card} overflow-hidden`}>
             <div className="masa-tiles">
               <button type="button" aria-pressed={isSel("live")} onClick={() => setSel({ kind: "live" })} className="masa-tile">
@@ -882,6 +888,14 @@ export function BroadcastPage({ orgId, id }) {
                   {ytThumb(yt) ? <img src={ytThumb(yt)} alt="" /> : "YouTube"}
                 </span>
                 <b>{isOn("live") ? "Canlı · Ekranda" : "Canlı yayın"}</b>
+              </button>
+              {/* Drone (Seyhun 2026-11-02 "DJI dronundan canlı yayın; sistem hazır olsun, sadece bağlanması kalsın"): DJI Fly RTMP ile YouTube'a, buradan ekrana */}
+              <button type="button" aria-pressed={isSel("drone")} onClick={() => setSel({ kind: "drone" })} className="masa-tile">
+                <span className="th">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {ytThumb(drone) ? <img src={ytThumb(drone)} alt="" /> : "Drone"}
+                </span>
+                <b>{isOn("drone") ? "Drone · Ekranda" : "Drone"}</b>
               </button>
               {vids.map((m) => (
                 <button key={m.id} type="button" aria-pressed={isSel("rec", m.id)} onClick={() => setSel({ kind: "rec", mid: m.id })} className="masa-tile">
@@ -899,7 +913,23 @@ export function BroadcastPage({ orgId, id }) {
               </button>
             </div>
             <input ref={file} type="file" accept="video/*" className="hidden" onChange={pick} />
-            {isSel("live") || !ytOk ? (
+            {isSel("drone") ? (
+              <div className="border-t border-line px-3.5 py-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    value={drone}
+                    onChange={(e) => setDrone(e.target.value)}
+                    placeholder="Drone yayınının YouTube bağlantısı"
+                    inputMode="url"
+                    className="h-10 w-full min-w-0 flex-1 rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.875rem] outline-none"
+                  />
+                  <button type="button" onClick={() => setHowOpen(true)} className="h-10 shrink-0 rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.8125rem] font-semibold">
+                    Nasıl bağlanır
+                  </button>
+                </div>
+                {droneBad ? <p className="pt-2 text-[0.8125rem] text-warn">Bağlantı tanınmadı: YouTube canlı yayın ya da kanal bağlantısı olmalı.</p> : null}
+              </div>
+            ) : isSel("live") || !ytOk ? (
               <div className="border-t border-line px-3.5 py-3">
                 <input
                   value={yt}
@@ -977,7 +1007,7 @@ export function BroadcastPage({ orgId, id }) {
               {onScreen.pause ? "Sürdür" : "Duraklat"}
             </Button>
           ) : null}
-          <Button disabled={!!busy || !sel || (sel.kind === "live" && !ytOk)} onClick={() => show({ ...sel, loop: false, caption: cap })}>
+          <Button disabled={!!busy || !sel || (sel.kind === "live" && !ytOk) || (sel.kind === "drone" && !droneOk)} onClick={() => show({ ...sel, loop: false, caption: cap })}>
             Göster
           </Button>
         </MasaBar>
@@ -1185,7 +1215,7 @@ export function BroadcastPage({ orgId, id }) {
         onClose={() => setReset(false)}
         live={{ ...live, plan }}
         onReset={async (media) => {
-          const patch = resetPatch(media, Date.now(), { plan });
+          const patch = resetPatch(media, Date.now(), { plan, drone: L?.stream.drone || drone });
           try {
             await resetLive(orgId, id, patch, live.media);
           } catch {
@@ -1204,6 +1234,36 @@ export function BroadcastPage({ orgId, id }) {
           toast("Yayın sıfırlandı");
         }}
       />
+      {/* Drone › Nasıl bağlanır (Seyhun 2026-11-02): DJI Fly yalnız RTMP verir; en kolayı YouTube'a gönderip buradan göstermek */}
+      <Sheet open={howOpen} onClose={() => setHowOpen(false)} title="Drone'u bağla">
+        <div className="space-y-4 px-4 pb-5 text-[0.9375rem]">
+          <div>
+            <b className="block pb-1.5">Bir kez</b>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>YouTube&apos;da canlı yayını aç (YouTube Studio › Canlı yayın). İlk seferde 24 saate kadar sürebilir.</li>
+              <li>Yayın sekmesinde yayın anahtarını kopyala. Gecikme: Ultra düşük.</li>
+              <li>Kanal ya da yayın bağlantısını buraya yapıştır.</li>
+            </ol>
+          </div>
+          <div>
+            <b className="block pb-1.5">Yarışta</b>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>Kumandayı internete bağla (telefonun erişim noktası ya da Wi-Fi).</li>
+              <li>DJI Fly › ⋯ › Aktarım › Canlı yayın › RTMP.</li>
+              <li>Adres: aşağıdaki satır + yayın anahtarı. Başlat.</li>
+              <li>Burada Drone&apos;u seç, Göster.</li>
+            </ol>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigator.clipboard?.writeText(YT_RTMP).then(() => toast("Kopyalandı"), () => toast("Kopyalanamadı"))}
+            className="flex w-full items-center gap-2 rounded-[0.6875rem] bg-[var(--chip)] px-3 py-2.5 text-left"
+          >
+            <span className="min-w-0 flex-1 truncate font-mono text-[0.8125rem]">{YT_RTMP}</span>
+            <span className="shrink-0 text-[0.8125rem] font-semibold text-acc">Kopyala</span>
+          </button>
+        </div>
+      </Sheet>
       <Sheet open={menu} onClose={() => (setMenu(false), setAskEnd(false))} title="Yayın">
         <div className="divide-y divide-line">
           {[
@@ -1272,6 +1332,19 @@ const dayLong = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { w
 
 // Yayın masası sekmeleri: ad + kısa durum (canlıysa kırmızı nokta)
 // YouTube bağlantısından küçük resim (video ya da canlı yayın kimliği varsa; kanal bağlantısında yok)
+// Son kullanılan drone bağlantısı bu telefonda kalır: yeni yarışta Drone kutucuğu hazır gelir
+const lastDrone = () => {
+  try {
+    return localStorage.getItem("yayin-drone") || "";
+  } catch {
+    return "";
+  }
+};
+const keepDrone = (u) => {
+  try {
+    if (ytEmbed(u)) localStorage.setItem("yayin-drone", u.trim());
+  } catch {}
+};
 const ytThumb = (u) => {
   const m = String(u || "").match(/(?:youtu\.be\/|[?&]v=|\/live\/|\/embed\/|\/shorts\/)([\w-]{11})/);
   return m ? `https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg` : "";

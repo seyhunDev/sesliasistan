@@ -62,12 +62,12 @@ export async function roundSay(orgId, raceId, s) {
   return { text: `${markName(rd.mark)}: ${r.added.map((a) => a[1]).join(", ")}.${skip}` };
 }
 
-// Ekrandaki kaydı seç: { kind: "live" } | { kind: "rec", mid, loop } | { kind: "" }
+// Ekrandaki kaydı seç: { kind: "live" } | { kind: "drone" } | { kind: "rec", mid, loop } | { kind: "" }
 export async function showOnScreen(orgId, raceId, s) {
   await saveScreen(orgId, raceId, s);
   ensurePublic(raceId).catch(() => {});
 }
-export const setStream = (orgId, raceId, url) => saveStream(orgId, raceId, url);
+export const setStream = (orgId, raceId, s) => saveStream(orgId, raceId, s);
 
 // "ekranda birinci yarışın startını döngüde göster", "ekranda canlı yayını göster", "ekrandan kaldır"
 export async function screenSay(orgId, raceId, s) {
@@ -99,6 +99,11 @@ export async function screenSay(orgId, raceId, s) {
     if (!L.screen.kind) return { fail: "Ekranda yayın yok." };
     await showOnScreen(orgId, raceId, { ...L.screen, pause: c.pause });
     return { text: c.pause ? "Yayına ara verildi, ekranda görüntü kalır." : "Yayın sürüyor." };
+  }
+  if (c.kind === "drone") {
+    if (!ytEmbed(L.stream.drone)) return { fail: "Önce drone yayınının bağlantısını Yayın › Video › Drone'a yapıştır." };
+    await showOnScreen(orgId, raceId, { kind: "drone" });
+    return { text: "Ekranda drone yayını." };
   }
   if (c.kind === "live") {
     if (!ytEmbed(L.stream.url)) return { fail: "Önce canlı yayın bağlantısını Canlı sekmesine yapıştır." };
