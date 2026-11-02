@@ -74,7 +74,7 @@ export function demoData(step, t0, s0, now) {
   const ahead = step >= 3 ? (step - 3) * 4 * 60e3 : 0; // her adım yarışta ~4 dk ilerler
   const shift = (ms) => ms - ahead;
   const start = step === 2 ? s0 + 65e3 : shift(s0 - 1000); // start dizisinde 1:05 kalır; sonraki her adım süreyi ~4 dk ileri gösterir
-  const plan = { day: today, at: hm(now + 3 * 60e3 + 59e3), order: step < 3 ? [{ cls: "Optimist", grp: "Sarı", prep: "P" }] : [], status: step >= 12 ? "done" : "", next: step >= 12 ? { day: tom, at: "11:00" } : null, showAt: "06:00", ap: null };
+  const plan = { day: today, at: hm(now + 3 * 60e3 + 59e3), order: [...(step < 3 ? [{ cls: "Optimist", grp: "Sarı", prep: "P" }] : []), ...(step < 12 ? [{ cls: "Optimist", grp: "Mavi", prep: "P" }, { cls: "Optimist", grp: "Mavi", prep: "P" }] : [])], status: step >= 12 ? "done" : "", next: step >= 12 ? { day: tom, at: "11:00" } : null, showAt: "06:00", ap: null };
   const course = step >= 1 ? { pts: {}, obs: [{ id: "w1", kind: "wind", deg: 295, kn: 12, at: iso(step === 1 ? s0 : t0 - 700e3), by: "ben", ref: "" }, { id: "a1", kind: "axis", deg: 300, at: iso(step === 1 ? s0 : t0 - 700e3), by: "ben", ref: "" }, { id: "l1", kind: "line", ref: "pin", deg: 32, at: iso(step === 1 ? s0 : t0 - 700e3), by: "ben" }], len: { orsa: 900 }, cards: [{ id: "A", route: ROUTE }, { id: "B", route: ["1", "4", "1", "2", "3", "F"] }], sel: "A" } : { pts: {}, obs: [], len: {} };
   if (step >= 7) course.obs.push({ id: "w2", kind: "wind", deg: 298, kn: 14, range: [285, 312], at: iso(step === 7 ? s0 : t0 - 600e3), by: "ben", ref: "" });
   const legs = step >= 11 ? ORDER : step >= 10 ? ORDER.slice(0, 3) : step >= 8 ? ORDER.slice(0, 2) : step >= 4 ? ORDER.slice(0, 1) : [];
@@ -100,6 +100,7 @@ export function demoData(step, t0, s0, now) {
     groups: grp,
     plan,
     forecast: { place: "Dikili", station: "Dikili", rows, obs },
+    forecastNext: step >= 12 ? { place: "Dikili", rows: rows.map((r) => ({ ...r, wind: r.wind - 2, gust: r.gust - 1 })) } : null,
     now,
   };
 }

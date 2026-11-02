@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 // Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01). Girişsiz okuma burada, yönetici anahtarıyla:
 // Firestore kuralları değişmedi, kulübün geri kalanı açılmaz. Yalnız ana hesabın "Canlı ekran"ı açtığı yarış okunur
 // (canliEkran/{yarış} = { org }). Sayfa 4 sn'de bir sorar; aynı cevap 2 sn bellekte ve CDN'de tutulur (okuma az kalsın).
-// GET ?id=<yarış>&y=<start>  → { race, starts, timer, rounds, screen, stream, media, wind, course, fleets, entries, groups, plan, forecast, now }
+// GET ?id=<yarış>&y=<start>  → { race, starts, timer, rounds, screen, stream, media, wind, course, fleets, entries, groups, plan, forecast, forecastNext, now }
 // POST { race } (ana hesap) → yarışı canlı ekrana açar, { id }
 // GET (id yok) → { list: [{ id, name, startDate, endDate, place }] } açık yarışlar (bitmemiş), genel sayfa /canli için
 // DELETE { race } (ana hesap) → işareti kaldırır (yarış silinince, raceWipe.js); link artık "yarış kaldırıldı" der
@@ -125,7 +125,9 @@ async function build(id, y) {
   const cur = currentStart(live.starts, timer);
   const sel = (y && live.starts.find((x) => x.id === y)) || cur;
   const day = sel?.day || trDay();
-  const [cSnap, forecast] = await Promise.all([base.collection("raceLive").doc(id).collection("course").doc(day).get(), forecastOf(org, id, r, day)]);
+  // Gün bitince alttaki şeritte yarının beklenen rüzgârı (Seyhun 2026-11-02 tasarım 5): yarının tahmini de alınır
+  const nd = live.plan.status === "done" && live.plan.next?.day && live.plan.next.day !== day ? live.plan.next.day : "";
+  const [cSnap, forecast, forecastNext] = await Promise.all([base.collection("raceLive").doc(id).collection("course").doc(day).get(), forecastOf(org, id, r, day), nd ? forecastOf(org, id, r, nd) : null]);
   const media = live.media
     .filter((m) => m.url)
     .slice(-120)
@@ -147,6 +149,7 @@ async function build(id, y) {
     groups: en.groups,
     plan: live.plan,
     forecast,
+    forecastNext,
   };
 }
 

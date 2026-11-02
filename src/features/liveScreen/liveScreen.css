@@ -39,7 +39,9 @@
     linear-gradient(180deg, #1c6a9c 0%, #0f3f66 42%, #07213a 100%);
 }
 .lv-sea::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55)); }
-.lv-photo { position: absolute; inset: 0; background: center / cover no-repeat; opacity: 0.3; filter: saturate(0.8) blur(1.5px); transform: scale(1.03); animation: lv-fade 1.2s ease-out both; }
+/* Fotoğraf iyice bulanık ve koyu (Seyhun 2026-11-02 "arkadaki fotoğrafı biraz blurlaştırmalıyız"): yazılar önde, foto yalnız hava verir */
+.lv-photo { position: absolute; inset: -40px; background: center / cover no-repeat; opacity: 0.55; filter: saturate(0.85) blur(18px); animation: lv-fade 1.2s ease-out both; }
+.lv-sea.photo::after { background: linear-gradient(180deg, rgba(6, 24, 43, 0.55) 0%, rgba(6, 24, 43, 0.35) 40%, rgba(6, 24, 43, 0.85) 100%); }
 .lv-sea.photo svg { display: none; }
 .lv-sea svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.35; }
 /* Video zemini: tam ekranı kaplar (16:9 kutu ekrandan büyük kesilir), 1.2 sn'de açılır; üst ve alt kenar yazılar okunsun diye koyulaşır */
@@ -147,7 +149,7 @@ button.lv-cell:hover { background: rgba(255, 255, 255, 0.06); }
 .lv-cell.time b { font-size: 1.9em; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1; }
 .lv-cell .lv-arrow { width: 1.6em; height: 1.6em; border-width: 1.5px; }
 /* Örnek yarışın oynatıcısı (yalnız /canli/ornek) */
-.lv-demo { position: fixed; top: calc(10px + env(safe-area-inset-top)); right: 12px; z-index: 20; display: flex; align-items: center; gap: 0.3em; padding: 0.3em 0.4em 0.3em 0.9em; border-radius: 999px; background: rgba(0, 0, 0, 0.62); font-size: 13px; color: rgba(255, 255, 255, 0.85); }
+.lv-demo { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 0.3em; padding: 0.3em 0.4em 0.3em 0.9em; border-radius: 999px; background: rgba(0, 0, 0, 0.62); font-size: 13px; color: rgba(255, 255, 255, 0.85); }
 .lv-demo span { margin-right: 0.4em; white-space: nowrap; }
 .lv-demo button { border: 1px solid rgba(255, 255, 255, 0.2); background: none; color: #fff; border-radius: 999px; padding: 0.2em 0.75em; font: inherit; cursor: pointer; }
 /* Alt yazı (olimpiyat / SailGP): şeridin üstünde; solda vurgu şeridi, büyük yazı, altında sınıf · grup · yarış */
@@ -362,6 +364,58 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-r span { color: var(--lv-mut); font-weight: 500; font-size: 0.9em; white-space: nowrap; }
 .lv-r.sel b { color: var(--lv-acc); }
 
+/* ---- Yayın yazısı ve yeni evreler (Seyhun 2026-11-02 onay, project-files/samandira-donus/tasarim7; "profesyonel yelken yarışı yayını gibi yazı") ----
+   Tek yazı ailesi: satırlar Barlow, başlık / sayı / etiket Barlow Condensed (src/app/canli/layout.jsx); etiketler büyük harf ve aralıklı, rakamlar eşit genişlikte. */
+.lv { font-family: var(--lv-font), var(--font-sans), system-ui, sans-serif; font-feature-settings: "tnum" 1; }
+.lv :is(.lv-clock, .lv-big, .lv-kick, .lv-what, .lv-expw, .lv-ph, .lv-pillh, .lv-cell, .lv-titlem, .lv-cap, .lv-p2, .lv-pt .h, .lv-sumh, .lv-sumr header, .lv-rl b, .lv-rl i, .lv-livedot, .lv-pm, .lv-scenet, .lv-btn, .lv-ghost) { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-titlem > b { font-size: 2.3em; font-weight: 700; letter-spacing: 0; text-transform: uppercase; }
+.lv-titlem > span, .lv-cell span, .lv-ph { font-weight: 600; letter-spacing: 0.12em; }
+.lv-cell b { font-size: 1.55em; font-weight: 700; letter-spacing: 0.01em; }
+.lv-cell.time b { font-size: 2.1em; font-weight: 600; line-height: 1; }
+.lv-clock { font-weight: 600; letter-spacing: -0.01em; }
+.lv-rl { font-size: 1.05em; }
+.lv-rl b { font-weight: 700; }
+.lv-rl i { font-weight: 600; }
+.lv-cap { font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+/* Yarış öncesi, video yok: ortada geri sayım, ilk yarış, beklenen rüzgâr; altta program kartları; şerit gizli */
+.lv-foot.off { visibility: hidden; }
+/* gün sonunda başlık büyük yazıda; alttaki satırda yalnız düğmeler */
+.lv-titlem.bare { background: none; }
+.lv-titlem.bare > :not(.lv-titleb) { display: none; }
+.lv-titlem > b { gap: 0.25em; }
+.lv-what { gap: 0.2em 0.35em; }
+.lv-wait { position: absolute; inset: 0; z-index: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.9em; padding: 0 2em 9em; text-align: center; animation: lv-fade 0.8s ease-out both; }
+.lv-kick { font-size: 1.15em; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: var(--lv-mut); }
+.lv-big { font-family: var(--lv-font-c), system-ui, sans-serif; font-size: clamp(110px, 13vw, 360px); font-weight: 300; line-height: 0.85; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; text-shadow: 0 10px 50px rgba(0, 0, 0, 0.35); }
+.lv-what { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 0.2em 0.5em; font-size: 2em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+.lv-what .lv-dot { width: 0.45em; height: 0.45em; }
+.lv-what small { font-size: 0.55em; font-weight: 600; color: var(--lv-mut); letter-spacing: 0.12em; }
+.lv-ap { font-size: 1.15em; color: var(--lv-mut); }
+.lv-expw { display: flex; align-items: center; gap: 0.9em; margin-top: 1em; padding: 0.7em 1.5em; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 999px; background: rgba(6, 24, 43, 0.35); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.lv-expw b { font-size: 1.6em; font-weight: 700; }
+.lv-expw span:last-child { font-size: 0.85em; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lv-mut); }
+.lv-prog { position: absolute; left: clamp(16px, 1.6vw, 44px); right: clamp(16px, 1.6vw, 44px); bottom: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-bottom)); z-index: 1; display: flex; gap: 0.9em; animation: lv-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.lv-pt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3em; padding: 0.9em 1.2em; border-radius: 0.6em; background: rgba(6, 24, 43, 0.55); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+.lv-pt .h { display: flex; align-items: center; gap: 0.2em; font-size: 1.3em; font-weight: 600; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+.lv-pt .h em { margin-left: auto; padding-left: 0.6em; font-style: normal; font-size: 0.8em; letter-spacing: 0.08em; color: var(--lv-mut); }
+.lv-pt .b { color: var(--lv-mut); font-weight: 500; }
+.lv-pt.next { border-color: var(--lv-acc); background: rgba(255, 61, 119, 0.14); }
+.lv-pt.next .h em, .lv-pt.now .h em { color: var(--lv-acc); }
+.lv-pt.done .h em { color: #86efac; }
+/* Program etiketleri sağ üstte (yarışta ve videolu beklemede) */
+.lv-prog2 { position: absolute; top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top)); right: clamp(16px, 1.6vw, 44px); z-index: 3; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5em; max-width: 60%; }
+.lv-p2 { display: inline-flex; align-items: center; gap: 0.1em; padding: 0.4em 0.9em; border-radius: 999px; background: rgba(6, 24, 43, 0.55); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.95em; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255, 255, 255, 0.78); white-space: nowrap; }
+.lv-p2.now { border-color: var(--lv-acc); color: #fff; }
+.lv-p2.done { color: rgba(255, 255, 255, 0.45); }
+/* Gün sonu: solda başlık ve yarış kartları (ilk üç), sağda genel sıralama; altta yarının ilk startı ve beklenen rüzgârı */
+.lv-end { grid-row: 2; grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(18em, 26em); gap: 2em; align-items: center; min-height: 0; padding-top: 2em; }
+.lv-end .lv-sumhero { align-items: stretch; padding: 0; }
+.lv-sumh { margin: 0; font-family: var(--lv-font-c), system-ui, sans-serif; font-size: clamp(40px, 4.2vw, 120px); font-weight: 700; line-height: 1; text-transform: uppercase; }
+.lv-sumh small { display: block; margin-bottom: 0.5em; font-size: 0.26em; font-weight: 600; letter-spacing: 0.16em; color: var(--lv-mut); }
+.lv-end .lv-sumraces { display: grid; grid-template-columns: repeat(auto-fill, minmax(14em, 1fr)); justify-content: stretch; }
+.lv-end .lv-sumr { width: auto; }
+.lv-endall { align-self: center; }
+
 /* Tablet (761–1099): paneller biraz dar, orta boşluk küçük */
 @media (max-width: 1099px) and (min-width: 761px) {
   .lv-ov { grid-template-columns: minmax(14em, 19em) minmax(0, 1fr) minmax(0, 18em); }
@@ -399,6 +453,14 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-cell { flex: 1 1 40%; padding: 0.5em 0.9em; border-left: 0; border-top: 1px solid var(--lv-line); }
   .lv-left { order: 4; overflow: visible; max-height: none; }
   .lv-scene { position: relative; z-index: auto; inset: auto; order: 5; width: 100%; aspect-ratio: 16 / 10; }
+  .lv-foot.off { display: none; }
+  .lv-wait { position: static; order: 1; padding: 12vh 0 2em; }
+  .lv-big { font-size: 26vw; }
+  .lv-what { font-size: 1.4em; }
+  .lv-prog { position: static; order: 2; flex-direction: column; gap: 0.5em; }
+  .lv-prog2 { position: static; order: 1; max-width: none; justify-content: flex-start; }
+  .lv-end { order: 2; display: flex; flex-direction: column; align-items: stretch; padding-top: 0; }
+  .lv-sumh { font-size: 34px; }
   .lv-demo { top: auto; bottom: calc(10px + env(safe-area-inset-bottom)); right: 8px; left: 8px; justify-content: center; }
   .lv-bigc, .lv-full, .lv-list, .lv-races { width: 100%; }
   .lv-rgrid { grid-template-columns: 1fr; }
