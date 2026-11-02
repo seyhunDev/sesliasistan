@@ -659,3 +659,19 @@ export function rollPlan(plan, today) {
   const status = pl.off.includes(today) ? "none" : "";
   return { ...pl, day: today, at: dayTime(pl, today) || (pl.next?.day === today ? pl.next.at : ""), order: pl.day ? [] : pl.order, status, next: null, ap: null };
 }
+
+// Manuel girilen rüzgâr (Seyhun 2026-11-02): Yayın/parkurda o saat için girilen ölçüm (parkur rüzgâr kaydı ya da canlı rüzgâr)
+// istasyonun yerine o saatin sütunu olur; saat başına son ölçüm. Saat ve gün Türkiye saatiyle.
+export function windByHour(data, now) {
+  const day = new Date(now + 3 * 3600e3).toISOString().slice(0, 10);
+  const obs = (data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, dir: o.deg, kn: o.kn }));
+  const out = {};
+  for (const x of [...(data.wind || []), ...obs]) {
+    if (x?.kn == null || !x.at || Number.isNaN(Date.parse(x.at))) continue;
+    const t = new Date(Date.parse(x.at) + 3 * 3600e3).toISOString();
+    if (t.slice(0, 10) !== day) continue;
+    const hh = t.slice(11, 13);
+    if (!out[hh] || out[hh].at < x.at) out[hh] = { at: x.at, wind: Math.round(x.kn), dir: x.dir ?? null };
+  }
+  return out;
+}
