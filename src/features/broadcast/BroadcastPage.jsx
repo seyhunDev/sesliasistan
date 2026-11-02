@@ -20,7 +20,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dirShort, finishRace, ownedBy, raceName, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
+import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dayRaces, dirShort, finishRace, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
 import { CARD_IDS, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
@@ -71,6 +71,8 @@ export function BroadcastPage({ orgId, id }) {
   const [editI, setEditI] = useState(-1); // listede açık olan bekleyen start (plan.order sırası)
   const [menu, setMenu] = useState(false); // ⋯ menüsü (Seyhun 2026-11-01 "çok fazla buton, yanlışlıkla tıklanmasın": az kullanılan ve riskli işler burada)
   const [askEnd, setAskEnd] = useState(false); // Günü bitir bir daha sorar
+  const [grpOpen, setGrpOpen] = useState(false); // Gruplar: seçim açık
+  const [openN, setOpenN] = useState(0); // açılan biten yarış
   const [ap, setAp] = useState(null); // tehir penceresi { min, why } (Seyhun 2026-11-01 "bir sebep belirterek tehir, bir saatlik")
   const [plan, setPlan] = useState(() => cleanPlan({})); // günün programı (raceLive.plan; herkese açık ekranın evresi buna göre)
   const file = useRef(null);
@@ -173,21 +175,13 @@ export function BroadcastPage({ orgId, id }) {
   };
   // Bekleyen start satırı: ekle, düzenle, sırala, çıkar
   const editRow = (i, patch) => changePlan({ order: plan.order.map((o, k) => (k === i ? { ...o, ...patch } : o)) });
-  const moveRow = (i, d) => {
-    const j = i + d;
-    if (j < 0 || j >= plan.order.length) return;
-    const order = [...plan.order];
-    [order[i], order[j]] = [order[j], order[i]];
-    changePlan({ order });
-    setEditI(j);
-  };
-  const addRow = () => {
-    if (plan.order.length >= 12) return toast("En çok 12 start.");
-    const last = plan.order.at(-1);
-    const o = { cls: last?.cls || "Optimist", grp: "", prep: last?.prep || "" };
-    changePlan({ order: [...plan.order, o] });
+  // + Yarış: sıradaki yarış günün bütün gruplarıyla (grup yoksa tek start)
+  const addRace = () => {
+    const add = raceOrder(plan);
+    if (plan.order.length + add.length > 24) return toast("Programda en çok 24 start.");
+    changePlan({ order: [...plan.order, ...add] });
     setPickId("");
-    setEditI(plan.order.length);
+    setEditI(-1);
   };
   // Biten yarışın grubu / sınıfı / bayrağı düzeltilir (rounds[sid])
   const setPickOf = async (sid, patch) => {
@@ -353,13 +347,15 @@ export function BroadcastPage({ orgId, id }) {
   const st = (pickId && live.starts.find((x) => x.id === pickId)) || (L ? currentStart(live.starts, L.timer) : null);
   const entry = st && L ? L.rounds[st.id] : null;
   const todays = [...live.starts].filter((x) => x.day === today); // eskiden yeniye (listede 1., 2., …)
+  const races = dayRaces({ starts: live.starts, order: plan.order, grpOf: (x) => x.grp || L?.rounds?.[x.id]?.grp || "", liveIds: cur ? [cur.id] : [], today, rdays });
+  const nextRow = races.flatMap((r) => r.rows).find((x) => x.state === "next");
   const stE = st ? L?.rounds?.[st.id] || {} : {};
   // Seçim çipleri: Sınıf, Grup, Bayrak; set(key, değer) satırın kaydına yazar (bekleyen start: plan.order; biten yarış: rounds[sid])
-  const chipRows = (val, set, size = "h-7 px-2.5") => [
+  const chipRows = (val, set, size = "h-7 px-2.5", keys = ["cls", "grp", "prep"]) => [
     ["Sınıf", CLASS_PICK, "cls", false],
     ["Grup", GROUP_PICK, "grp", true],
     ["Bayrak", PREP_PICK, "prep", false],
-  ].map(([lab, list, key, dot]) => (
+  ].filter(([, , key]) => keys.includes(key)).map(([lab, list, key, dot]) => (
     <div key={key} className="flex items-center gap-2">
       <span className="w-11 shrink-0 text-[0.8125rem] text-mut">{lab}</span>
       <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
@@ -390,77 +386,101 @@ export function BroadcastPage({ orgId, id }) {
         </header>
         {/* Sıradaki start Başlat düğmesinin içinde yazar ("Başlat · Optimist · Mavi" / "Başlat · Start seçilmedi"); start sonrası sayacın
             başlığında sınıf · grup · yarış (Seyhun 2026-11-02 "yukarıdaki yazıyı kaldıralım") */}
-        <Countdown dark mode="start" race={flow} startRace noHead startText={nextPlan ? `Başlat · ${[nextPlan.cls, nextPlan.grp].filter(Boolean).join(" · ")}` : "Başlat · Start seçilmedi"} title={cur ? pickText(stE, raceName(cur)) : ""} where={race?.name || "Yarış"} />
+        <Countdown dark mode="start" race={flow} startRace noHead startText={nextRow ? `Başlat · ${nextRow.n}. yarış${nextRow.grp ? ` ${nextRow.grp}` : ""}` : "Başlat · + Yarış ekle"} title={cur ? pickText(stE, raceName(cur)) : ""} where={race?.name || "Yarış"} />
       </section>
 
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-5">
         <Seg value={tab} onChange={setTab} options={[["sure", "Süre"], ["video", "Video"], ["parkur", "Parkur"], ["donus", "Dönüşler"]]} />
         {tab === "sure" ? (
           <>
-        {/* Bugünün startları (Seyhun 2026-11-01): biten/süren startlar saatiyle, sonra bekleyenler; ilk bekleyen Sıradaki. Satıra dokununca
-            sınıf, grup, bayrak, sıra ve çıkar aynı yerde. Program: ilk start saati, erteleme / yarış yok / günü bitir, yarının saati. */}
+        {/* Gruplar ve Bugün (Seyhun 2026-11-02 tasarım yayin-tasarim/startlar/startlar-yeni.png): gruplar günde bir kez seçilir; liste yarış
+            yarış, her yarışın altında grupları ve tek durum (Bitti · Yarışta · Abandone, Sıradaki, Bekliyor). "+ Yarış" sıradaki yarışı
+            bütün gruplarıyla ekler. Biten yarış tek satıra kapanır (dokununca açılır). */}
         <section>
-          <Head title="Bugünün startları" right={plan.status === "done" ? "Gün bitti" : plan.status === "none" ? "Bugün yarış yok" : plan.status === "ap" ? "Start ertelendi" : plan.at ? `İlk start ${plan.at}` : `${todays.length + plan.order.length} start`} />
+          <Head title="Gruplar" right={plan.cls || "Optimist"} />
           <div className={`${card} overflow-hidden`}>
-            {todays.map((x, i) => {
-              const e = L?.rounds?.[x.id] || {};
-              const g = e.grp || "";
-              const on = st?.id === x.id && cur?.id !== x.id;
-              const state = cur?.id === x.id ? "Canlı" : x.void ? x.void : x.fin ? "Bitti" : "";
-              return (
-                <div key={x.id} className={`border-b border-line ${on ? "bg-accbg" : ""}`}>
-                  <button type="button" onClick={() => (setEditI(-1), setPickId(on ? "" : x.id))} className={row}>
-                    <span className="w-6 shrink-0 text-mut">{i + 1}.</span>
-                    {g ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
-                    <span className={`min-w-0 flex-1 truncate font-semibold ${on ? "text-acc" : ""}`}>{[e.cls, g, e.prep].filter(Boolean).join(" · ") || raceTitle(x)}</span>
-                    <span className={`shrink-0 text-[0.875rem] ${cur?.id === x.id ? "font-semibold text-acc" : "text-mut"}`}>{[hm(x.at), state].filter(Boolean).join(" · ")}</span>
+            <div className="flex flex-wrap items-center gap-1.5 px-4 py-3">
+              {(grpOpen ? GROUP_PICK : plan.grps).map((g) => {
+                const on = plan.grps.includes(g);
+                return (
+                  <button key={g} type="button" aria-pressed={on} onClick={() => grpOpen && changePlan({ grps: on ? plan.grps.filter((x) => x !== g) : [...plan.grps, g] })} className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-semibold ${on ? "bg-acc text-white" : "bg-bg"}`}>
+                    <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" />
+                    {g}
                   </button>
-                  {on && (
-                    // Biten yarışın sınıfı / grubu / bayrağı yanlış seçildiyse burada düzeltilir (süren yarışta kilitli)
-                    <div className="space-y-2 border-t border-line px-4 py-2.5">
-                      {chipRows(e, (k, v) => setPickOf(x.id, { [k]: v }))}
-                      {/* Aynı anda iki yarış (Mavi sürerken Sarı start aldı): sayaç yenisinde, öncekisi buradan biter */}
-                      {!x.fin && !x.void ? (
-                        <div className="flex justify-end pt-1">
-                          <Button size="sm" onClick={() => change((l) => { const next = finishRace(l.starts, x.id, Date.now(), rdays); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; })}>
-                            Yarış bitti
-                          </Button>
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {plan.order.map((o, i) => {
-              const on = editI === i;
+                );
+              })}
+              <button type="button" onClick={() => setGrpOpen((v) => !v)} className="h-8 rounded-full bg-bg px-3 text-[0.875rem] font-semibold">
+                {grpOpen ? "Tamam" : plan.grps.length ? "Değiştir" : "+ Grup"}
+              </button>
+            </div>
+            {grpOpen ? (
+              <div className="space-y-2 border-t border-line px-4 py-2.5">
+                {chipRows({ cls: plan.cls || "Optimist", prep: plan.prep || "P" }, (k, v) => changePlan({ [k]: v }), "h-7 px-2.5", ["cls", "prep"])}
+              </div>
+            ) : null}
+          </div>
+        </section>
+        <section>
+          <Head title="Bugün" right={plan.status === "done" ? "Gün bitti" : plan.status === "none" ? "Bugün yarış yok" : plan.status === "ap" ? "Start ertelendi" : [races.length ? `${races.length} yarış` : "", plan.at ? `İlk start ${plan.at}` : ""].filter(Boolean).join(" · ")} />
+          <div className={`${card} overflow-hidden`}>
+            {races.map((r) => {
+              const open = r.state !== "done" || openN === r.n;
               return (
-                <div key={i} className={`border-b border-line ${on || i === 0 ? "bg-accbg" : ""}`}>
-                  <button type="button" onClick={() => (setPickId(""), setEditI(on ? -1 : i))} className={row}>
-                    <span className="w-6 shrink-0 text-mut">{todays.length + i + 1}.</span>
-                    {o.grp ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(o.grp) }} aria-hidden="true" /> : null}
-                    <span className="min-w-0 flex-1 truncate font-semibold">{[o.cls, o.grp, o.prep].filter(Boolean).join(" · ") || "Start"}</span>
-                    <span className={`shrink-0 text-[0.875rem] ${i === 0 && !on ? "font-semibold text-acc" : "text-mut"}`}>{on ? "Düzenle" : i === 0 ? "Sıradaki" : ""}</span>
+                <div key={r.n} className="border-b border-line">
+                  <button type="button" onClick={() => r.state === "done" && setOpenN(openN === r.n ? 0 : r.n)} className="flex w-full items-center px-4 pb-1 pt-2.5 text-left text-[0.8125rem] font-bold tracking-[0.02em] text-mut">
+                    <span className="flex-1">{r.n}. YARIŞ</span>
+                    <span>{r.state === "done" ? "Bitti" : r.state === "live" ? "Sürüyor" : ""}</span>
                   </button>
-                  {on && (
-                    <div className="space-y-2 border-t border-line px-4 py-2.5">
-                      {chipRows(o, (k, v) => editRow(i, { [k]: v }))}
-                      <div className="flex gap-2 pt-1">
-                        <Button variant="secondary" size="sm" disabled={i === 0} onClick={() => moveRow(i, -1)}>
-                          Yukarı
-                        </Button>
-                        <Button variant="secondary" size="sm" disabled={i === plan.order.length - 1} onClick={() => moveRow(i, 1)}>
-                          Aşağı
-                        </Button>
-                        <Button variant="secondary" size="sm" onClick={() => (setEditI(-1), changePlan({ order: plan.order.filter((_, k) => k !== i) }))}>
-                          Çıkar
-                        </Button>
-                        <Button size="sm" className="ml-auto" onClick={() => setEditI(-1)}>
-                          Tamam
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                  {open
+                    ? r.rows.map((x) => {
+                        const s = x.start;
+                        const e = s ? L?.rounds?.[s.id] || {} : x.plan;
+                        const isOpen = s ? pickId === s.id : editI === x.i;
+                        const live = x.state === "live";
+                        const right =
+                          x.state === "done" ? [hm(s.at), raceTime(s)].filter(Boolean).join(" · ")
+                          : x.state === "void" ? `${s.void} ${hm(s.fin || s.at)}`
+                          : live ? (Date.parse(s.at) > capNow ? "Geri sayım" : cur?.id === s.id ? "Yarışta" : `Yarışta · ${hm(s.at)}`)
+                          : x.state === "next" ? "Sıradaki" : "Bekliyor";
+                        return (
+                          <div key={x.key} className={live || x.state === "next" ? "bg-accbg" : ""}>
+                            <button type="button" onClick={() => (s ? (setEditI(-1), setPickId(isOpen ? "" : s.id)) : (setPickId(""), setEditI(isOpen ? -1 : x.i)))} className="flex w-full items-center gap-2.5 px-4 py-2 text-left">
+                              <span className="size-2.5 shrink-0 rounded-full" style={{ background: x.grp ? groupColor(x.grp) : "var(--mut)" }} aria-hidden="true" />
+                              <span className={`min-w-0 flex-1 truncate font-semibold ${x.state === "void" ? "text-mut line-through" : ""}`}>
+                                {[x.grp || e?.cls || "Start", x.retry ? "tekrar" : ""].filter(Boolean).join(" · ")}
+                              </span>
+                              <span className={`shrink-0 text-[0.875rem] tabular-nums ${x.state === "done" ? "font-semibold text-ok" : x.state === "void" ? "font-semibold text-warn" : live || x.state === "next" ? "font-bold text-acc" : "text-mut"}`}>{right}</span>
+                            </button>
+                            {isOpen && s ? (
+                              // Biten yarışın sınıfı / grubu / bayrağı düzeltilir; aynı anda iki yarışta sayacın olmayanı buradan biter
+                              <div className="space-y-2 px-4 pb-2.5">
+                                {chipRows(e, (k, v) => setPickOf(s.id, { [k]: v }))}
+                                {live && cur?.id !== s.id ? (
+                                  <div className="flex justify-end pt-1">
+                                    <Button size="sm" onClick={() => change((l) => { const next = finishRace(l.starts, s.id, Date.now(), rdays); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; })}>
+                                      Bitti
+                                    </Button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+                            {isOpen && !s ? (
+                              <div className="space-y-2 px-4 pb-2.5">
+                                {chipRows(e, (k, v) => editRow(x.i, { [k]: v }), "h-7 px-2.5", ["prep"])}
+                                <div className="flex gap-2 pt-1">
+                                  <Button variant="secondary" size="sm" onClick={() => (setEditI(-1), changePlan({ order: plan.order.filter((_, k) => k !== x.i) }))}>
+                                    Çıkar
+                                  </Button>
+                                  <Button size="sm" className="ml-auto" onClick={() => setEditI(-1)}>
+                                    Tamam
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })
+                    : null}
                 </div>
               );
             })}
@@ -500,12 +520,17 @@ export function BroadcastPage({ orgId, id }) {
               </div>
             ) : null}
             <div className="flex gap-2 p-3">
-              <Button onClick={addRow} className="flex-1">
-                Start ekle
+              <Button variant="secondary" onClick={addRace} className="flex-1">
+                + Yarış
               </Button>
-              <Button variant={plan.status === "ap" ? "primary" : "secondary"} onClick={() => (plan.status === "ap" ? unpostpone() : setAp(ap ? null : { min: 60, why: AP_WHY[0] }))}>
+              <Button variant={plan.status === "ap" ? "primary" : "secondary"} className="flex-1" onClick={() => (plan.status === "ap" ? unpostpone() : setAp(ap ? null : { min: 60, why: AP_WHY[0] }))}>
                 {plan.status === "ap" ? "Erteleme kalktı" : "Tehir"}
               </Button>
+              {plan.status === "done" ? null : (
+                <Button variant="secondary" className="flex-1" onClick={() => (askEnd ? (setAskEnd(false), changePlan({ day: planDay, status: "done", next: plan.next || { day: tomorrow, at: plan.at } })) : setAskEnd(true))}>
+                  {askEnd ? "Emin misin?" : "Günü bitir"}
+                </Button>
+              )}
             </div>
           </div>
         </section>
@@ -749,12 +774,7 @@ export function BroadcastPage({ orgId, id }) {
             <button type="button" onClick={() => (setMenu(false), changePlan({ day: planDay, status: "" }))} className={`${row} font-semibold`}>
               Günü yeniden aç
             </button>
-          ) : (
-            <button type="button" onClick={() => (askEnd ? (setMenu(false), setAskEnd(false), changePlan({ day: planDay, status: "done", next: plan.next || { day: tomorrow, at: plan.at } })) : setAskEnd(true))} className={`${row} font-semibold text-rec`}>
-              <span className="flex-1">{askEnd ? "Günü bitir, emin misin?" : "Günü bitir"}</span>
-              <span className="text-[0.875rem] font-normal text-mut">{askEnd ? "Ekran gün özetine geçer" : ""}</span>
-            </button>
-          )}
+          ) : null}
         </div>
       </Sheet>
 

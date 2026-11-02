@@ -124,12 +124,14 @@ export function cleanPlan(p) {
   const order = (Array.isArray(p?.order) ? p.order : [])
     .map((o) => ({ cls: String(o?.cls || "").slice(0, 20), grp: String(o?.grp || "").slice(0, 20), prep: String(o?.prep || "").slice(0, 8) }))
     .filter((o) => o.cls || o.grp)
-    .slice(0, 12);
+    .slice(0, 24);
   const next = p?.next && DAY.test(p.next.day || "") ? { day: p.next.day, at: hm(p.next.at) } : null;
   const status = PLAN_STATUS.includes(p?.status) ? p.status : "";
   // Tehir (Seyhun 2026-11-01 "bir sebep belirterek tehir basabilirim, bir saatlik"): from eski saat, why sebep; at yeni saat (belirsizse boş)
   const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60) } : null;
-  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap };
+  // Günün grupları (Seyhun 2026-11-02 "startlar-yeni"): bir kez seçilir, "+ Yarış" bunlarla bir yarışın startlarını ekler
+  const grps = [...new Set((Array.isArray(p?.grps) ? p.grps : []).map((g) => String(g || "").slice(0, 20)).filter(Boolean))].slice(0, 6);
+  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8) };
 }
 // Tehir cümlesi: "Start 12:00'a ertelendi (11:00) · Rüzgâr yok" ya da "Start ertelendi, yeni saat belli değil · Fırtına"
 export function apText(plan) {
@@ -606,3 +608,38 @@ export function liveRace(races, today, cur = "") {
   const on = (r) => r.startDate && r.startDate <= today && (r.endDate || r.startDate) >= today;
   return (races || []).find(on) || null;
 }
+
+// Yayın sayfasının "Bugün" listesi yarış yarış (Seyhun 2026-11-02 tasarım startlar-yeni): bugünün startları (biten, süren, abandone) ve
+// programda bekleyenler (plan.order) yarış numarasına göre toplanır. Bekleyenlerin numarası sırayla eklenmiş gibi hesaplanır
+// (grup grup yarışta aynı yarışın grupları ortak numara). Satır: { key, grp, state: done|live|void|next|wait, start?, i? (order sırası), retry }
+// Yarış: { n, state: done|live|"" , rows }
+export function dayRaces({ starts = [], order = [], grpOf = (x) => x.grp || "", liveIds = [], today = "", rdays = null }) {
+  const todays = starts.filter((x) => x.day === today);
+  const rows = todays.map((x) => {
+    const grp = grpOf(x);
+    const state = x.void ? "void" : liveIds.includes(x.id) || !x.fin ? "live" : "done";
+    return { key: x.id, n: x.n, grp, state, start: x };
+  });
+  let acc = [...starts];
+  order.forEach((o, i) => {
+    const n = nextRaceNo(acc, today, rdays, o.grp || "");
+    const at = new Date(Math.max(Date.now(), ...acc.map((x) => Date.parse(x.at) || 0)) + 60e3).toISOString();
+    acc = [...acc, { id: `zzp${i}`, day: today, at, ...(o.grp ? { grp: o.grp } : {}) }];
+    rows.push({ key: `p${i}`, n, grp: o.grp || "", state: i === 0 ? "next" : "wait", i, plan: o });
+  });
+  // aynı yarışta aynı grubun abandone'dan sonraki startı "tekrar"
+  rows.forEach((r, k) => {
+    r.retry = rows.slice(0, k).some((p) => p.n === r.n && p.grp === r.grp && p.state === "void");
+  });
+  const ns = [...new Set(rows.map((r) => r.n))].sort((a, b) => a - b);
+  return ns.map((n) => {
+    const rs = rows.filter((r) => r.n === n);
+    const state = rs.some((r) => r.state === "live") ? "live" : rs.every((r) => r.state === "done" || r.state === "void") && rs.some((r) => r.state === "done") ? "done" : "";
+    return { n, state, rows: rs };
+  });
+}
+// "+ Yarış": günün gruplarıyla bir sonraki yarışın startları (grup yoksa tek start)
+export const raceOrder = (plan) => {
+  const g = plan?.grps?.length ? plan.grps : [""];
+  return g.map((grp) => ({ cls: plan?.cls || "Optimist", grp, prep: plan?.prep || "P" }));
+};
