@@ -236,9 +236,13 @@ function Clock({ sel, isCur, timer, skew, entry, data, today }) {
 // Zemin (Seyhun 2026-11-01 "koyuluktan açıklığa, yarış parkuru havası"): üstte açık deniz mavisi, altta koyu lacivert; arkada soluk bir
 // parkur (şamandıralar, kesik rota, start hattı) ve dalga dokusu. Yazılar öne çıksın diye hepsi çok soluk.
 // Zemin: açıktan koyuya deniz, çok soluk dalga deseni; parkur çizgisi kaldırıldı (Seyhun 2026-11-01 "dandik parkur gibi")
-export function Sea() {
+// Video yokken arkada soluk yarış fotoğrafı (Seyhun 2026-11-02 "video yoksa arkada güzel bir yarış fotoğrafı, soluk"); dosya yoksa
+// yalnız deniz rengi kalır (CSS arka planı, kırık resim görünmez). Video gelince video, duraklatılınca da o video görünür.
+export const BG_PHOTO = "/canli/yaris-arka.jpg";
+export function Sea({ photo = "" }) {
   return (
-    <div className="lv-sea" aria-hidden="true">
+    <div className={`lv-sea${photo ? " photo" : ""}`} aria-hidden="true">
+      {photo ? <div className="lv-photo" style={{ backgroundImage: `url(${photo})` }} /> : null}
       <svg viewBox="0 0 1600 900" preserveAspectRatio="none">
         <defs>
           <pattern id="lvw" width="220" height="46" patternUnits="userSpaceOnUse">
@@ -667,7 +671,7 @@ function Backdrop({ data, isCur }) {
   const tall = !!(show?.rec?.w && show.rec.h > show.rec.w);
   return (
     <>
-      <Sea />
+      <Sea photo={on ? "" : BG_PHOTO} />
       {st && show ? (
         <div className={`lv-bg ${st}${tall ? " tall" : ""}`} aria-hidden="true">
           {tall && show.rec?.kind === "video" ? <video className="lv-bgblur" src={show.rec.url} autoPlay muted playsInline loop /> : null}

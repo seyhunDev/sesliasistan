@@ -39,6 +39,8 @@
     linear-gradient(180deg, #1c6a9c 0%, #0f3f66 42%, #07213a 100%);
 }
 .lv-sea::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55)); }
+.lv-photo { position: absolute; inset: 0; background: center / cover no-repeat; opacity: 0.3; filter: saturate(0.8) blur(1.5px); transform: scale(1.03); animation: lv-fade 1.2s ease-out both; }
+.lv-sea.photo svg { display: none; }
 .lv-sea svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.35; }
 /* Video zemini: tam ekranı kaplar (16:9 kutu ekrandan büyük kesilir), 1.2 sn'de açılır; üst ve alt kenar yazılar okunsun diye koyulaşır */
 .lv-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: #000; animation: lv-fade 1.2s ease-out both; }
