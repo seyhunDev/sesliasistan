@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apText, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
@@ -153,18 +153,28 @@ function useFade(on, ms = 500) {
 // Sınıf bayrağı (Seyhun 2026-11-02 "mavi grupsa mavi bayrağın üstünde Optimist işareti"): grup renginde zemin, ortada sınıfın işareti
 // (beyaz daire içinde; gerçek sınıf işaretleri gelene kadar sade yelken + sınıf kısaltması). Grup yoksa beyaz zemin.
 const CLASS_SHORT = (cls) => (/^opti/i.test(cls) ? "OPTİ" : /^ilca\s*(\d)/i.test(cls) ? `ILCA ${/^ilca\s*(\d)/i.exec(cls)[1]}` : String(cls || "").slice(0, 5).toUpperCase());
+// Bayrak zemininde okunur yazı/işaret rengi: açık zeminde (sarı, beyaz) koyu, koyuda beyaz
+const inkOn = (hex) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ""));
+  if (!m) return "#fff";
+  const n = parseInt(m[1], 16);
+  const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return l > 0.6 ? "#111" : "#fff";
+};
 function Flag({ kind, cls, down, grp }) {
   const c = `lv-flag${down ? " down" : ""}`;
   if (kind === "cls")
     return (
-      <span className={`${c} cls${grp ? " g" : ""}`} style={grp ? { background: groupColor(grp) } : undefined}>
-        <svg viewBox="0 0 60 40" aria-hidden="true">
-          <circle cx="30" cy="20" r="15" fill="#fff" />
-          <path d="M29 8 L29 27 L19 27 Z" fill="#0b2a4a" />
-          <path d="M31 10 L31 27 L39 27 Z" fill="#0b2a4a" />
-          <path d="M17 29 L43 29 L40 32 L20 32 Z" fill="#0b2a4a" />
-        </svg>
-        <b>{CLASS_SHORT(cls)}</b>
+      <span className={`${c} cls${grp ? " g" : ""}${/^opti/i.test(cls) ? " opti" : ""}`} style={{ background: grp ? groupColor(grp) : "#fff", color: inkOn(grp ? groupColor(grp) : "#fff") }}>
+        {/^opti/i.test(cls) ? (
+          // Optimist sınıf işareti (Seyhun 2026-11-02 gönderdi, yayin-tasarim/sinif/optimist-isaret.png): halka ve içinden aşağı uzanan I; grup renginin üstünde
+          <svg viewBox="0 0 60 40" aria-label="Optimist">
+            <circle cx="30" cy="15.4" r="11.2" fill="none" stroke="currentColor" strokeWidth="2.6" />
+            <path d="M27.1 14.6 L32.9 14.6 Q31.35 15.4 31.3 16.9 L31.3 35.2 Q31.35 36.6 32.9 37.4 L27.1 37.4 Q28.65 36.6 28.7 35.2 L28.7 16.9 Q28.65 15.4 27.1 14.6 Z" fill="currentColor" />
+          </svg>
+        ) : (
+          <b>{CLASS_SHORT(cls)}</b>
+        )}
       </span>
     );
   if (kind === "P") return <span className={`${c} p`} />;
@@ -1778,7 +1788,12 @@ function WindLegend({ data, now }) {
   );
 }
 const MAN = "#ff9a4d", OBSC = "#4fb3ff";
+// rüzgâr gücüne göre tepe rengi (Seyhun 2026-11-02 "grafik biraz daha canlı olabilir"): hafif camgöbeği, orta yeşil, kuvvetli sarı, sert pembe
+const knColor = (v) => (v < 6 ? "#7fdcff" : v < 12 ? "#3fe0a0" : v < 17 ? "#ffd23f" : "#ff5d8a");
+// yumuşak eğri (Catmull-Rom → Bezier)
+const smooth = (p) => p.map((q, i) => { if (!i) return `M${q[0]} ${q[1]}`; const a = p[i - 2] || p[i - 1], b = p[i - 1], c = q, d = p[i + 1] || q; return ` C${b[0] + (c[0] - a[0]) / 6} ${b[1] + (c[1] - a[1]) / 6} ${c[0] - (d[0] - b[0]) / 6} ${c[1] - (d[1] - b[1]) / 6} ${c[0]} ${c[1]}`; }).join("");
 function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   if (rows.length < 2) return null;
   // yön satırı (Seyhun 2026-11-02 "ne oldu ne bekleniyor grafiğinde yönler derece olarak da gösterilmeli"): saatin altında ok + derece
   const hasDir = rows.some((r) => r.dir != null);
@@ -1802,6 +1817,20 @@ function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
   const pastEnd = nowX ?? (nowH > end ? W - R : L);
   return (
     <svg className="lv-wbars" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Saat saat rüzgâr: gerçekleşen ve beklenen">
+      <defs>
+        <linearGradient id={`${uid}f`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity=".34" />
+          <stop offset="1" stopColor="#fff" stopOpacity=".04" />
+        </linearGradient>
+        <linearGradient id={`${uid}o`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#7cc8ff" />
+          <stop offset="1" stopColor="#2f7fd0" />
+        </linearGradient>
+        <linearGradient id={`${uid}m`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffb06b" />
+          <stop offset="1" stopColor="#e9722a" />
+        </linearGradient>
+      </defs>
       {[5, 10, 15, 20, 25].filter((v) => v < top).map((v) => (
         <g key={v}>
           <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="#fff" strokeOpacity=".1" />
@@ -1819,15 +1848,21 @@ function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
         const v = g ? g.v : r.wind;
         const fs = big ? 22 : 13;
         return (
-          <g key={r.hh} opacity={big ? 1 : 0.5}>
-            {g ? (
-              <>
-                <rect x={x} y={y(v)} width={w} height={y(0) - y(v)} rx="4" fill={g.c} />
-                <line x1={x - 3} x2={x + w + 3} y1={y(r.wind)} y2={y(r.wind)} stroke="#fff" strokeWidth={big ? 3 : 2} strokeDasharray="5 4" />
-              </>
-            ) : (
-              <rect x={x} y={y(v)} width={w} height={Math.max(0, y(0) - y(v))} rx="4" fill="#fff" fillOpacity={big ? 0.2 : 0.14} stroke="#fff" strokeOpacity={big ? 0.75 : 0.5} strokeWidth="2" strokeDasharray="5 4" />
-            )}
+          <g key={r.hh} opacity={big ? 1 : 0.55}>
+            {/* çubuklar soldan sağa sırayla yükselir; gerçekleşen dolu renkli, beklenen buzlu cam ve tepesinde rüzgâr gücü rengi */}
+            <g className="lv-wb" style={{ "--i": i }}>
+              {g ? (
+                <>
+                  <rect x={x} y={y(v)} width={w} height={y(0) - y(v)} rx="5" fill={`url(#${uid}${g.c === MAN ? "m" : "o"})`} />
+                  <line x1={x - 3} x2={x + w + 3} y1={y(r.wind)} y2={y(r.wind)} stroke="#fff" strokeWidth={big ? 3 : 2} strokeDasharray="5 4" />
+                </>
+              ) : (
+                <>
+                  <rect x={x} y={y(v)} width={w} height={Math.max(0, y(0) - y(v))} rx="5" fill={`url(#${uid}f)`} stroke="#fff" strokeOpacity={big ? 0.35 : 0.25} strokeWidth="1.5" />
+                  <rect x={x} y={y(v)} width={w} height="5" rx="2.5" fill={knColor(v)} />
+                </>
+              )}
+            </g>
             <text x={x + w / 2} y={y(Math.max(v, g ? r.wind : 0)) - 10} textAnchor="middle" fontSize={fs} fontWeight={g || big ? 800 : 700} fill="#fff">
               {v}
             </text>
@@ -1846,6 +1881,11 @@ function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
           </g>
         );
       })}
+      {(() => {
+        // beklenen rüzgârın akan eğrisi (odak saatinden sonra), parlak
+        const q = rows.map((r, i) => [r, i]).filter(([r]) => +r.hh >= fh && !got(r)).map(([r, i]) => [(xs[i] + xs[i + 1]) / 2, y(r.wind) - 2]);
+        return !flat && q.length >= 2 ? <path className="lv-wcurve" d={smooth(q)} fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeOpacity=".85" /> : null;
+      })()}
       {pts
         .filter((p) => p.h >= i0 && p.h <= Math.min(end, nowH + 0.02))
         .map((p, k) => (
@@ -1860,6 +1900,7 @@ function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
       {nowX != null ? (
         <g>
           <line x1={nowX} x2={nowX} y1={T - 40} y2={H - B} stroke="#fff" strokeWidth="2" />
+          <circle className="lv-wpulse" cx={nowX} cy={T - 40} r="7" fill="#fff" />
           <rect x={nowX - 30} y={H - B + (hasDir ? 104 : 34)} width="60" height="24" rx="12" fill="#fff" />
           <text x={nowX} y={H - B + (hasDir ? 121 : 51)} textAnchor="middle" fontSize="14" fontWeight="800" fill="#0b1a2a">ŞİMDİ</text>
         </g>
