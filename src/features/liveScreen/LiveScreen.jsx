@@ -7,7 +7,7 @@ import { apText, cleanPlan, dirShort, livePhase, planLabel, planStartMs, raceNam
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse, selCard } from "@/lib/raceCourse";
 import { routeText, sceneSvg } from "@/lib/courseScene";
-import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, sameSail, shortClub, shortName, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
+import { courseShowing, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, sameSail, shortClub, shortName, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import { useDemo } from "./demo";
 import { dayProgram, expText, expWind } from "./program";
@@ -1013,7 +1013,7 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, today, ongoing, hasSvg
             <WindArrow w={w} />
             {w.range ? `${w.range[0]}–${w.range[1]}°` : `${w.dir}°`}
           </b>
-          <span>{`${dirShort(w.dir)}${w.kn != null ? ` · ${w.kn} kn` : ""}${w.range ? " · oynuyor" : ""}`}</span>
+          <span>{`${dirShort(w.dir)}${w.kn != null ? ` · ${w.kn} knot` : ""}`}</span>
         </button>
       ) : null}
       {hasSvg ? (
@@ -1132,13 +1132,25 @@ export const sceneRoute = (data, sel, isCur, phase) => {
   const r = phase === "race" && isCur && sel ? data.rounds?.[sel.id]?.route || [] : [];
   return r.length ? r : selCard(cleanCourse(data.course || {})).route;
 };
-function CourseFloat({ data, sel, isCur, open, now, phase, onClose }) {
-  const route = sceneRoute(data, sel, isCur, phase);
-  // aynı yazı üretilince React innerHTML'i yeniden yazmaz, animasyon baştan başlamaz
-  const svg = sceneSvg(cardOf(cleanCourse(data.course || {})), route, { pre: "lv", wind: false });
+// Gösterim (Seyhun 2026-11-02): yarış öncesi 30 sn'de bir 12 sn kendiliğinden (Yayın'dan kapatılabilir), Yayın'dan "Parkuru göster" ile 15 sn;
+// kartsız, arka plan (video ya da deniz/fotoğraf) bulanıklaşır, parkur sağda; bitince bulanıklık kalkar
+const courseSvg = (data, route) => {
+  try {
+    return sceneSvg(cardOf(cleanCourse(data.course || {})), route, { pre: "lv", wind: false });
+  } catch {
+    return "";
+  }
+};
+function courseOn({ data, sel, isCur, open, now, phase, pre }) {
   const latest = Math.max(0, Date.parse(data.course?.cardAt || "") || 0, ...(data.course?.obs || []).map((o) => Date.parse(o.at) || 0));
   const fresh = latest > 0 && now - latest < COURSE_MS;
-  const st = useFade(!!svg && (open || fresh), 600);
+  return !!courseSvg(data, sceneRoute(data, sel, isCur, phase)) && (open || fresh || (isCur && courseShowing({ show: data.courseShow, now, pre })));
+}
+function CourseFloat({ data, sel, isCur, show, phase, onClose }) {
+  const route = sceneRoute(data, sel, isCur, phase);
+  // aynı yazı üretilince React innerHTML'i yeniden yazmaz, animasyon baştan başlamaz
+  const svg = courseSvg(data, route);
+  const st = useFade(!!svg && show, 600);
   if (!st || !svg) return null;
   return (
     <button type="button" className={`lv-scene ${st}`} onClick={onClose} aria-label="Parkuru kapat">
@@ -1242,6 +1254,8 @@ export function LiveScreen({ id, y = "" }) {
   const cs = clockState({ sel: csel, isCur, timer: ctimer, now: nowMs, entry, data, today });
   // Ortada büyük sayaç yalnız geri sayarken (start'a ya da ilk start'a) ve sayaç durdurulmuşken; sonra şeritte "Süre"
   const auto = isCur && phase !== "summary" ? autoCaption({ plan: data.plan, starts, timer: data.timer, rounds: data.rounds, now: nowMs, today }) : null;
+  // Parkur: yarış öncesi (bekleme ya da start'a geri sayım) otomatik; açıkken arka plan bulanık (lv-bc.course)
+  const cOn = phase !== "summary" && courseOn({ data, sel, isCur, open: courseOpen, now: nowMs, phase, pre: phase === "wait" || (cs.rem != null && cs.rem > 0) });
   const counting = phase !== "summary" && ((cs.rem != null && cs.rem > 0) || cs.label === "Durdu");
   const hasSvg = (data.course?.obs || []).length > 0;
   // Genel sıralama yarışta sağda, alttan yukarı sabit alanda, kaydırılır (Seyhun 2026-11-02 "genel sıralama varsa sağ tarafta")
@@ -1250,7 +1264,7 @@ export function LiveScreen({ id, y = "" }) {
   // Yarış öncesi video yokken sade sayfa (Seyhun 2026-11-02 "geri sayım sayfası sade temiz"): ortada sayaç, altta program; şerit yok
   const hero = phase === "wait" && !hasVideo;
   return (
-    <div className={`lv lv-bc${hasVideo ? " video" : ""}${counting ? " counting" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
+    <div className={`lv lv-bc${cOn ? " course" : ""}${hasVideo ? " video" : ""}${counting ? " counting" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
       <Backdrop data={data} isCur={isCur} />
       <div className="lv-page lv-ov">
         {/* Geri tek başına en solda (Seyhun 2026-11-02) */}
@@ -1274,7 +1288,7 @@ export function LiveScreen({ id, y = "" }) {
           </div>
         ) : null}
         <CenterClock show={counting && !hero} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
-        {hero ? null : <CourseFloat data={data} sel={sel} isCur={isCur} open={courseOpen} now={nowMs} phase={phase} onClose={() => setCourseOpen(false)} />}
+        <CourseFloat data={data} sel={sel} isCur={isCur} show={cOn} phase={phase} onClose={() => setCourseOpen(false)} />
         <div className={`lv-foot${hero ? " off" : ""}`}>
           <TitleLine data={data} isCur={isCur} id={id} starts={starts} onList={() => setList(true)} auto={auto} />
           {windOpen && (data.forecast?.rows || []).length ? (

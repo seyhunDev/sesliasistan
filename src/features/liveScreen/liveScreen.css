@@ -129,11 +129,15 @@
 @keyframes lv-off { to { opacity: 0; } }
 .lv-ov > .lv-sumhero { grid-area: center; align-self: center; justify-self: center; }
 /* Parkur sahnesi: büyük, sağda ve ortada (sol panelin yanında); videoda koyu camın üstünde */
-.lv-scene { position: fixed; z-index: -1; left: 27vw; right: 1.5vw; top: 9vh; bottom: 13vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4em; background: none; border: 0; padding: 0; color: #fff; cursor: pointer; animation: lv-fade 0.8s ease-out both; }
+.lv-scene { position: fixed; z-index: -1; left: 40vw; right: 1.5vw; top: 9vh; bottom: 13vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4em; background: none; border: 0; padding: 0; color: #fff; cursor: pointer; animation: lv-fade 0.8s ease-out both; }
 .lv-sceneb { width: 100%; min-height: 0; flex: 1; display: flex; align-items: center; justify-content: center; }
 .lv-sceneb svg { width: 100%; height: 100%; max-height: 100%; }
 .lv-scenet { font-size: 0.82em; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.8; }
-.lv-bc.video .lv-scene { background: rgba(6, 18, 34, 0.78); border-radius: 18px; padding: 1em; backdrop-filter: blur(8px); }
+/* Parkur gösterilirken (Seyhun 2026-11-02): kart yok; arka plan (video ya da deniz/fotoğraf) bulanıklaşır, ortadaki sayaç ve bekleme yazısı çekilir */
+.lv-bc :is(.lv-bg, .lv-sea) { transition: filter 0.8s ease; }
+.lv-bc.course :is(.lv-bg, .lv-sea) { filter: blur(18px) brightness(0.6); }
+.lv-bc :is(.lv-center, .lv-wait) { transition: opacity 0.6s ease; }
+.lv-bc.course :is(.lv-center, .lv-wait) { opacity: 0; }
 .lv-scene.out { animation: lv-sink 0.6s ease-in both; }
 .lv-foot { grid-area: foot; display: flex; flex-direction: column; align-items: center; gap: 0.6em; min-width: 0; }
 .lv-windpop { width: min(100%, 34em); padding: 0.6em 0.9em; align-self: flex-start; }
@@ -469,7 +473,9 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-bar { flex-wrap: wrap; }
   .lv-cell { flex: 1 1 40%; padding: 0.5em 0.9em; border-left: 0; border-top: 1px solid var(--lv-line); }
   .lv-left { order: 4; overflow: visible; max-height: none; }
-  .lv-scene { position: relative; z-index: auto; inset: auto; order: 5; width: 100%; aspect-ratio: 16 / 10; }
+  /* telefonda parkur bütün ekranın önünde, arkası bulanık (sayfa akışını itmez) */
+  .lv-bc.course :is(.lv-foot, .lv-left, .lv-right, .lv-title) { opacity: 0; transition: opacity 0.5s ease; }
+  .lv-scene { position: fixed; z-index: 40; inset: 0; padding: 18vh 3vw; backdrop-filter: blur(16px) brightness(0.6); -webkit-backdrop-filter: blur(16px) brightness(0.6); }
   .lv-foot.off { display: none; }
   .lv-right { order: 5; width: 100%; }
   .lv-cell.ttl { flex: 1 1 100%; }

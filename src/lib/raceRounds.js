@@ -311,6 +311,17 @@ export function cleanScreen(s) {
   // caption: ekranın altındaki yazı (Seyhun 2026-11-02 "videonun ne olduğunu yazabileceğimiz bir alan, altta olimpiyat yayını gibi")
   return { kind, mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, caption: String(s?.caption || "").trim().slice(0, 80), at: typeof s?.at === "string" ? s.at.slice(0, 30) : "" };
 }
+// Parkur gösterimi (Seyhun 2026-11-02): auto = yarış öncesi 30 sn'de bir kendiliğinden (varsayılan açık), at = Yayın'dan "Parkuru göster"e basılan an
+export const cleanCourseShow = (c) => ({ auto: c?.auto !== false, at: typeof c?.at === "string" ? c.at.slice(0, 30) : "" });
+// Ekranda parkur görünüyor mu: elle 15 sn, yarış öncesinde otomatik her 30 sn'nin ilk 12 sn'si
+export const COURSE_CYCLE = 30000;
+export const COURSE_ON = 12000;
+export function courseShowing({ show, now, pre }) {
+  const c = cleanCourseShow(show);
+  const at = Date.parse(c.at) || 0;
+  if (at && now >= at - 2000 && now - at < 15000) return true;
+  return !!pre && c.auto && now % COURSE_CYCLE < COURSE_ON;
+}
 // YouTube bağlantısından video kimliği (watch?v=, youtu.be/, /live/, /embed/)
 export function ytId(url) {
   const u = String(url || "").trim();
