@@ -233,6 +233,15 @@ export function standings(entry0) {
     })
     .sort((a, b) => !!a.pen - !!b.pen || b.pos - a.pos || a.ranks[a.pos] - b.ranks[b.pos]);
 }
+// Sporcunun kendi dönüş sıraları (Seyhun 2026-11-02 "yan yana kendi dönüş sıralamalarını görmeli, yükselmiş düşmüş ok"):
+// ranks içinden yazılan son iki noktanın farkı; atlanan şamandıra (null) sayılmaz (3 atlanıp finişte yazılabilir).
+// Döndürür: { hist: [sıra|null…] (rotanın başından son yazılan noktaya kadar), move: >0 yükseldi, <0 düştü, 0 aynı, null tek nokta }
+export function rankMove(ranks = []) {
+  const idx = ranks.map((r, k) => (r != null ? k : -1)).filter((k) => k >= 0);
+  const hist = idx.length ? ranks.slice(0, idx.at(-1) + 1) : [];
+  if (idx.length < 2) return { hist, move: null };
+  return { hist, move: ranks[idx.at(-2)] - ranks[idx.at(-1)] };
+}
 // Şu an dönülen nokta (en ileri dolu nokta), yoksa -1
 export const nowPos = (entry0) => {
   const e = cleanEntry(entry0);
