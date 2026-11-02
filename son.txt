@@ -1,8 +1,8 @@
-Commit: 4417f36 · Gün penceresi: plan satırında Yapıldı işareti ve türe göre hızlı düğmeler (#999)
-Zaman: 2026-11-02-1943 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41482217201
+Commit: 79b729e · Yayın: yarışa kaç gün ve beklenen rüzgâr, yarış adı, Yayını sıfırla, parkur yarış boyunca (#1000)
+Zaman: 2026-11-02-1954 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41484113722
 
-TAM TEST · 02.11.2026 19:31:20
+TAM TEST · 02.11.2026 19:43:43
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1436/1436 geçti · 0 kalan · 659 sn
+SONUÇ: 1436/1436 geçti · 0 kalan · 598 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
