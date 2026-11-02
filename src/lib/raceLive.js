@@ -675,3 +675,10 @@ export function windByHour(data, now) {
   }
   return out;
 }
+// Saat eşleme (NTP gibi): ölçümlerden en kısa gidiş-dönüşlü olanın ortası; { off: sunucu − cihaz (ms), rtt }
+export function bestOffset(samples) {
+  const ok = samples.filter((x) => x && Number.isFinite(x.server) && x.t1 >= x.t0);
+  if (!ok.length) return null;
+  const b = ok.reduce((a, x) => (x.t1 - x.t0 < a.t1 - a.t0 ? x : a));
+  return { off: Math.round(b.server - (b.t0 + b.t1) / 2), rtt: b.t1 - b.t0 };
+}

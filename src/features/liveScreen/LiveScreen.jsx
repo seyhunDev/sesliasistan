@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apText, cleanPlan, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour } from "@/lib/raceLive";
+import { apText, cleanPlan, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
@@ -49,7 +49,7 @@ export const fillData = (j) => ({
 function useData(id, y) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
-  const skew = useRef(0);
+  const skew = useClockSync(!!id);
   useEffect(() => {
     if (!id) return undefined; // örnek yarış (/canli/ornek) sunucuya sormaz
     let on = true;
@@ -63,7 +63,6 @@ function useData(id, y) {
         if (!on) return;
         // Yarım/boş yanıt (yayın sırasında eski sürüm, kesilen bağlantı) ekranı çökertmez: race yoksa hata sayılır, plan her zaman dolu
         if (res.ok && j?.race) {
-          skew.current = (j.now || Date.now()) - Date.now();
           setData(fillData(j));
           setErr("");
         } else setErr(j?.error || "fail");
@@ -84,13 +83,51 @@ function useData(id, y) {
   return { data, err, skew };
 }
 
-function useNow(skew, ms = 250) {
-  const [now, setNow] = useState(() => Date.now());
+// Saat eşleme (Seyhun 2026-11-02 "sayılar şaşıyor, 57 56 57 55"): eskiden her 4 sn'lik veri yanıtındaki sunucu saati farkı
+// yeniden alınıyordu; yanıt CDN önbelleğinden 2-4 sn eski gelebildiği için fark her seferinde değişiyor, sayaç geri gidiyordu.
+// Şimdi yayın saatleri gibi (NTP): önbelleksiz ayrı saat isteği (?saat=1), 3 deneme, en kısa gidiş-dönüşlü olanın ortası alınır;
+// 10 dakikada bir tazelenir, ufak farkta (< 0,5 sn) dokunulmaz. Sayaç cihaz saatine değil tekdüze saate (performance.now) bağlı:
+// cihazın saati değişse de geri gitmez. Start, bitiş gibi anlar veriyle bir kez gelir; saniyeler cihazda sayılır.
+const mono = () => (typeof performance !== "undefined" && performance.timeOrigin ? performance.timeOrigin + performance.now() : Date.now());
+function useClockSync(on) {
+  const off = useRef(0);
+  const synced = useRef(false);
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), ms);
+    if (!on) return undefined;
+    let live = true;
+    let t = 0;
+    const sync = async () => {
+      const samples = [];
+      for (let i = 0; i < 3 && live; i++) {
+        try {
+          const t0 = mono();
+          const res = await fetch(`/api/canli?saat=1&r=${Math.random().toString(36).slice(2)}`, { cache: "no-store" });
+          const j = await res.json();
+          samples.push({ t0, t1: mono(), server: +j.now });
+        } catch {
+          /* ağ yoksa eski fark kalır */
+        }
+      }
+      const b = bestOffset(samples);
+      if (live && b && (!synced.current || Math.abs(b.off - off.current) >= 500)) off.current = b.off;
+      if (b) synced.current = true;
+      if (live) t = setTimeout(sync, synced.current ? 10 * 60e3 : 15e3);
+    };
+    sync();
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [on]);
+  return off;
+}
+function useNow(skew, ms = 250) {
+  const [now, setNow] = useState(() => mono());
+  useEffect(() => {
+    const t = setInterval(() => setNow(mono()), ms);
     return () => clearInterval(t);
   }, [ms]);
-  return now + (skew.current || 0);
+  return Math.round(now + (skew.current || 0));
 }
 
 // Sayaç: start öncesi geri sayım, startan sonra geçen süre, bitince yarışın süresi
