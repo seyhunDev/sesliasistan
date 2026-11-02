@@ -198,6 +198,8 @@ export async function GET(request) {
   const q = new URL(request.url).searchParams;
   const id = q.get("id") || "";
   const y = q.get("y") || "";
+  // canlı ekranın saat eşlemesi: yalnız sunucu saati, hiç önbelleğe alınmaz (Firestore okumaz)
+  if (q.get("saat")) return NextResponse.json({ now: Date.now() }, { headers: { "Cache-Control": "no-store", "Netlify-CDN-Cache-Control": "no-store" } });
   if (!adminReady()) return NextResponse.json({ error: "nokey" }, { status: 503 });
   if (!id) {
     try {
