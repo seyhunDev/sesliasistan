@@ -21,6 +21,7 @@ function Body({ live, onReset }) {
   const rows = [
     ["Eklenen gün", n.days],
     ["Yarış ve süreleri", n.starts],
+    ["Bekleyen start", n.plan],
     ["Rüzgâr kaydı", n.wind],
   ];
   return (
@@ -39,7 +40,7 @@ function Body({ live, onReset }) {
           </label>
         </li>
       </ul>
-      <p className="mt-3 px-1 text-[0.8125rem] text-mut">Sayaç ve parkur noktaları da baştan başlar. Yarışın bilgileri, sonuçlar, evrak ve bütçe kalır.</p>
+      <p className="mt-3 px-1 text-[0.8125rem] text-mut">Sayaç, program, gruplar, dönüşler ve ekran da baştan başlar. Kayıt listesi, parkur kartları, yarışın bilgileri, sonuçlar, evrak ve bütçe kalır.</p>
       <button
         type="button"
         disabled={busy}

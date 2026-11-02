@@ -254,7 +254,9 @@ export async function loadSheets(orgId, id) {
 
 // Denemeleri sıfırla: patch (lib/raceLive.js resetPatch) belgeye yazılır; media boşaltılıyorsa dosyalar da silinir
 export async function resetLive(orgId, id, patch, media = []) {
-  await setDoc(live(orgId, id), patch, { merge: true });
+  // mergeFields: her alan bütünüyle yazılır (rounds ve plan iç içe birleşmez, boşalır); günün grup listeleri de silinir
+  await setDoc(live(orgId, id), patch, { mergeFields: Object.keys(patch) });
+  await setDoc(doc(db, "orgs", orgId, "raceLive", id, "entries", "list"), { groups: {} }, { mergeFields: ["groups"] }).catch(() => {});
   if (patch.media) for (const m of media) for (const p of [mpath(orgId, m.id), tpath(orgId, m.id)]) await deleteObject(sref(store(), p)).catch(() => {});
 }
 
