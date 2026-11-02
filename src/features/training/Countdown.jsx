@@ -290,7 +290,9 @@ export function makeRace(race) {
 // startRace: Başlat yarışı hemen açar (0'da start saati yazılır, herkese açık ekran "Start'tan beri" sayar; Seyhun 2026-11-01).
 // Alt şeritte lead ve tail. bottom: ana düğme kokpitte değil alt şeritte (başparmak yetişsin; Seyhun 2026-10-22), solunda side (Sonucu söyle). dark: lacivert kokpitin içinde (antrenman günü, 2026-10-21 yeni tasarım): kart yok, beyaz yazı.
 // rec: ana düğmenin sağında yuvarlak düğme (yarışın Start sekmesinde Kayıt; Seyhun 2026-10-30)
-export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, startRace = false, lead = null, tail = null, dark = false, bottom = false, side = null, rec = null }) {
+// startText: Başlat düğmesinin yazısı (Yayın: "Başlat · Optimist · Mavi" ya da "Başlat · Start seçilmedi"); noHead: sayaç beklerken üstteki
+// "Start sayacı" satırı çizilmez (Seyhun 2026-11-02 "boşuna yer kaplıyor").
+export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, startRace = false, lead = null, tail = null, dark = false, bottom = false, side = null, rec = null, startText = "", noHead = false }) {
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
@@ -349,7 +351,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
       </Link>
     ) : (
       <button type="button" onClick={idle ? start : up ? (race ? () => raceFinish(race) : reset) : running ? pause : resume} className={cls(!running || up)}>
-        {idle ? "Başlat" : up ? "Bitir" : running ? "Durdur" : "Devam"}
+        <span className="truncate px-3">{idle ? startText || "Başlat" : up ? "Bitir" : running ? "Durdur" : "Devam"}</span>
       </button>
     );
   const red = dark ? "text-[#f4a49c]" : "text-rec"; // lacivertte koyu kırmızı okunmuyor
@@ -370,7 +372,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
     <>
       <section onPointerDown={() => running && !up && audio()} className={dark ? "mt-4 text-center" : "mt-3 rounded-3xl border border-line bg-card px-4 pb-4 pt-3.5 text-center"}>
         <div className={`flex h-8 items-center justify-between gap-2 text-[0.9375rem] font-semibold ${dark ? "text-white/70" : "text-fg2"}`}>
-          <span>{head}</span>
+          <span>{idle && noHead ? "" : head}</span>
           {idle ? null : !mine && t.own ? (
             <Link href={ownHref} className={`truncate ${accTx}`}>
               {t.where || "Sayacın sayfası"} ›

@@ -20,7 +20,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dirShort, nextRaceNo, ownedBy, raceName, raceTitle, zeroRace } from "@/lib/raceLive";
+import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dirShort, ownedBy, raceName, raceTitle, zeroRace } from "@/lib/raceLive";
 import { cleanCourse, cleanObs, obsTitle, withLiveWind } from "@/lib/raceCourse";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CLASS_PICK, PREP_PICK, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
@@ -254,9 +254,7 @@ export function BroadcastPage({ orgId, id }) {
   const st = (pickId && live.starts.find((x) => x.id === pickId)) || (L ? currentStart(live.starts, L.timer) : null);
   const entry = st && L ? L.rounds[st.id] : null;
   const todays = [...live.starts].filter((x) => x.day === today); // eskiden yeniye (listede 1., 2., …)
-  const nextNo = nextRaceNo(live.starts, today, rdays);
   const stE = st ? L?.rounds?.[st.id] || {} : {};
-  const stGrp = stE.grp || "";
   // Seçim çipleri: Sınıf, Grup, Bayrak; set(key, değer) satırın kaydına yazar (bekleyen start: plan.order; biten yarış: rounds[sid])
   const chipRows = (val, set, size = "h-7 px-2.5") => [
     ["Sınıf", CLASS_PICK, "cls", false],
@@ -291,23 +289,9 @@ export function BroadcastPage({ orgId, id }) {
             ⋯
           </button>
         </header>
-        {cur ? (
-          // Başlat'tan sonra seçim kilitli: grup ve kaçıncı yarış yalnız yazar (Seyhun 2026-11-01 "yarış seçimi yapılıp kapanmalı")
-          <div className="mt-3 flex h-8 items-center gap-2 text-[0.9375rem] font-semibold">
-            {stGrp ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(stGrp) }} aria-hidden="true" /> : null}
-            <span className="truncate">{pickText(stE, raceName(cur))}</span>
-          </div>
-        ) : (
-          // Sıradaki start listeden gelir (Bugünün startları'nın ilk bekleyeni); Başlat'ta o startın kaydına yazılır
-          <div className="mt-3">
-            <p className="text-[0.8125rem] text-white/65">{`Sıradaki · ${nextNo}. yarış`}</p>
-            <div className="flex h-7 items-center gap-2 text-[1.0625rem] font-semibold">
-              {nextPlan?.grp ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(nextPlan.grp) }} aria-hidden="true" /> : null}
-              <span className={`truncate ${nextPlan ? "" : "text-white/65"}`}>{nextPlan ? pickText(nextPlan, "") : "Start seçilmedi"}</span>
-            </div>
-          </div>
-        )}
-        <Countdown dark mode="start" race={flow} startRace title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} />
+        {/* Sıradaki start Başlat düğmesinin içinde yazar ("Başlat · Optimist · Mavi" / "Başlat · Start seçilmedi"); start sonrası sayacın
+            başlığında sınıf · grup · yarış (Seyhun 2026-11-02 "yukarıdaki yazıyı kaldıralım") */}
+        <Countdown dark mode="start" race={flow} startRace noHead startText={nextPlan ? `Başlat · ${[nextPlan.cls, nextPlan.grp].filter(Boolean).join(" · ")}` : "Başlat · Start seçilmedi"} title={cur ? pickText(stE, raceName(cur)) : ""} where={race?.name || "Yarış"} />
       </section>
 
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-5">
