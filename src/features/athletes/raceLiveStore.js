@@ -12,7 +12,7 @@ import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
 import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan } from "@/lib/raceLive";
 import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
-import { cleanEntry, cleanRounds, cleanScreen, cleanStream } from "@/lib/raceRounds";
+import { cleanRounds, cleanScreen, cleanStream, stampLegs } from "@/lib/raceRounds";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
 const VIDEO_SEC = 120;
@@ -271,7 +271,7 @@ export const saveCourse = (orgId, id, day, c) => setDoc(courseRef(orgId, id, day
 
 // Canlı ekran (lib/raceRounds.js, Seyhun 2026-11-01): start başına şamandıra dönüşleri, ekranda oynayan kayıt, canlı yayın bağlantısı.
 // Herkese açık sayfa bunları /api/canli üzerinden okur (Firestore kuralı değişmedi).
-export const saveRounds = (orgId, id, sid, entry) => setDoc(live(orgId, id), { rounds: { [sid]: cleanEntry(entry) } }, { merge: true });
+export const saveRounds = (orgId, id, sid, entry) => setDoc(live(orgId, id), { rounds: { [sid]: stampLegs(entry) } }, { merge: true });
 export const saveScreen = (orgId, id, s) => setDoc(live(orgId, id), { screen: cleanScreen({ ...s, at: new Date().toISOString() }) }, { merge: true });
 export const saveStream = (orgId, id, url) => setDoc(live(orgId, id), { stream: cleanStream({ url }) }, { merge: true });
 export async function loadRoundsOf(orgId, id) {
