@@ -679,3 +679,12 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-flbar { position: static; transform: none; width: 100%; margin-top: 1.2em; }
 }
 @media (prefers-reduced-motion: reduce) { .lv-gcard, .lv-gcard.out, .lv-gbody > *, .lv-gw > *, .lv-gtab li, .lv-pod .blk, .lv-pod .who, .lv-gchart .lv-wbars rect { animation: none; } }
+/* Bekleme ekranında şimdiki rüzgâr (Seyhun 2026-11-02): ok (akış yönü), pusula + derece, knot; kaynak altta, manuel turuncu nokta */
+.lv-hwind { display: flex; align-items: center; gap: 0.8em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-hwind .lv-arrow { width: 3.2em; height: 3.2em; }
+.lv-hwind b { display: flex; gap: 0.6em; font-size: clamp(22px, 2.2vw, 44px); font-weight: 700; line-height: 1.1; }
+.lv-hwind b span + span { color: rgba(255, 255, 255, 0.8); font-weight: 600; }
+.lv-hwind small { display: flex; align-items: center; gap: 0.4em; margin-top: 0.2em; font-size: clamp(13px, 1vw, 19px); font-weight: 600; letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.6); }
+.lv-hwind.m small { color: #ffb37a; }
+.lv-hwind small i { width: 0.6em; height: 0.6em; border-radius: 50%; background: #ff9a4d; }
+.lv-hold .lv-hwind { margin: 0.5em 0 0.6em; }
