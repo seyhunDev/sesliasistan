@@ -3,11 +3,11 @@
 // Yayıncının elle yazdığı yazı (screen.caption) her zaman önce gelir; boşsa bu kullanılır.
 //  - Start geri sayımı: "Start", son dakikada "Son dakika"; sayaç durdurulduysa yazı yok
 //  - Tehir (plan.status "ap" ya da yarış "Tehir" sayıldı): "Tehir"; yeni geri sayım başlayınca "Start"
-//  - Genel geri çağırma: "Genel geri"; iptal: "Yarış iptal" (yeni geri sayım başlayana kadar, en çok 60 dk)
+//  - Genel geri çağırma: "Genel geri"; abandone (N bayrağı): "Abandone" (yeni geri sayım başlayana kadar, en çok 60 dk)
 //  - Start'tan sonraki 3 dk içinde OCS/UFD/BFD varsa: "Bireysel geri · 512 · 88"
 //  - Lider finişe geldi, yarış bitmedi: "Finiş"
 // Döndürür: { text, kind } kind "start" | "warn" | "" (warn: tehir / genel geri / iptal kehribar)
-const VOID_TEXT = { Tehir: "Tehir", "Genel geri çağırma": "Genel geri", İptal: "Yarış iptal" };
+const VOID_TEXT = { Tehir: "Tehir", "Genel geri çağırma": "Genel geri", Abandone: "Abandone", İptal: "Abandone" };
 const EARLY = ["OCS", "UFD", "BFD"];
 const ms = (iso) => Date.parse(iso || "") || 0;
 

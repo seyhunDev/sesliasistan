@@ -9,7 +9,7 @@ import { VOIDS, beginRace, dropRace, finishRace, nextRaceNo, raceName, raceTime,
 
 // Yarış akışı (Seyhun 2026-10-18): Süre sekmesi ve uygulama içi kamera aynı akışı kullanır (RaceMedia'da bir kez).
 // "Başlat · 4. yarış" geri sayımı başlatır ve yarışı açar; +30 sn/+1 dk start anını kaydırır; "Yarışı bitir" bitiş saatini yazar.
-// İptal: geri sayımda ya da startan sonra sebep sorulur (Tehir, Genel geri çağırma, İptal; kapatınca İptal). Yarış geçersiz sayılır,
+// İptal: geri sayımda ya da startan sonra sebep sorulur (Tehir, Genel geri çağırma, Abandone; startan sonra yalnız Abandone ve genel geri; kapatınca Abandone). Yarış geçersiz sayılır,
 // numarası tekrarına geçer. Geri sayımda "Yanlış başlattım" yarışı siler. Her adımdan sonra 8 sn "Geri al" (liste ve sayaç geri yazılır).
 // nextGrp: sıradaki startın grubu (Yayın sayfasının programı); grup grup yarışta aynı yarışın gruplarına ortak numara
 export function useRaceFlow({ orgId, raceId, live, onChange, rdays = null, today = "", nextGrp = "" }) {
@@ -68,9 +68,10 @@ export function VoidChoices({ ask, onChoose, dark = false }) {
   const btn = dark ? "h-12 rounded-2xl bg-white/15 text-[1rem] font-semibold text-white active:bg-white/25" : "h-12 rounded-2xl bg-bg text-[1rem] font-semibold ring-1 ring-line active:translate-y-px";
   return (
     <div className="grid gap-2 pb-2">
-      {VOIDS.map((v) => (
+      {/* Start'tan sonra tehir olmaz: Abandone (N) ya da genel geri; yarış sayılmaz, verisi kalır, numarası tekrar startına geçer */}
+      {(ask.canDrop ? VOIDS : ["Abandone", "Genel geri çağırma"]).map((v) => (
         <button key={v} type="button" onClick={() => onChoose(v)} className={btn}>
-          {v === "İptal" ? "İptal (sebepsiz)" : v}
+          {v === "Abandone" ? "Abandone · N bayrağı" : v}
         </button>
       ))}
       {ask.canDrop && (
@@ -84,7 +85,7 @@ export function VoidChoices({ ask, onChoose, dark = false }) {
 
 export function VoidSheet({ ask, onChoose }) {
   return (
-    <Sheet open={!!ask} onClose={() => onChoose("İptal")} title="Neden iptal?">
+    <Sheet open={!!ask} onClose={() => onChoose("Abandone")} title={ask && !ask.canDrop ? "Yarış sayılmasın" : "Neden iptal?"}>
       {ask && <VoidChoices ask={ask} onChoose={onChoose} />}
     </Sheet>
   );
