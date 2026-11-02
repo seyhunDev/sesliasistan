@@ -1,8 +1,8 @@
-Commit: 79b729e · Yayın: yarışa kaç gün ve beklenen rüzgâr, yarış adı, Yayını sıfırla, parkur yarış boyunca (#1000)
-Zaman: 2026-11-02-1954 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41484113722
+Commit: 4a6ae08 · Yayın sayfası: koyu yayın masası (#1001)
+Zaman: 2026-11-02-2005 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41485741594
 
-TAM TEST · 02.11.2026 19:43:43
+TAM TEST · 02.11.2026 19:54:35
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1436/1436 geçti · 0 kalan · 598 sn
+SONUÇ: 1436/1436 geçti · 0 kalan · 664 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
