@@ -26,7 +26,8 @@ export const COLORS = [
 ];
 const FINALS = { Altın: "#d4a017", Gümüş: "#9aa3ad", Bronz: "#b07040", Zümrüt: "#1f9e74" };
 // Dönüş ekranında seçilen gruplar (sırayla)
-export const GROUP_PICK = ["Mavi", "Sarı", "Yeşil", "Pembe", "Altın", "Gümüş", "Bronz"];
+// sıra: Sarı, Mavi, Yeşil, Pembe (Seyhun 2026-11-02 "önce sarı, sonra mavi, yeşil, pembe")
+export const GROUP_PICK = ["Sarı", "Mavi", "Yeşil", "Pembe", "Altın", "Gümüş", "Bronz"];
 
 // "mavi grup", "Blue fleet", "GOLD" → "Mavi", "Altın"; tanınmazsa ""
 export function groupOf(raw) {

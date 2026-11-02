@@ -160,9 +160,52 @@ export function BroadcastPage({ orgId, id }) {
   const planDay = plan.day || today;
   const nextPlan = plan.order[0] || null; // sıradaki start (listenin ilk bekleyeni)
   // Tehir: start saati min dakika ileri alınır (0 = belirsiz, saat silinir), sebep ekranda yazar; "Erteleme kalktı" eski saati geri getirir
+  // Geri sayımda tehir (Seyhun 2026-11-02 "tehir yaptım ama süre durmadı"): sayaç durur, start verilmemiş yarış silinir ve programın
+  // başına geri döner (aynı grup, aynı numara); yeni saat şimdiden ileri (varsayılan 1 dk). Yarış öncesi tehirde varsayılan 1 saat.
+  const countingAt = (now) => tr.t.mode === "start" && ((tr.t.end != null && tr.t.end > now) || tr.t.left != null);
+  const apBack = (rid, drop = true) => {
+    const s = live.starts.find((x) => x.id === rid);
+    if (!s) return;
+    const e = L?.rounds?.[rid] || {};
+    const back = { cls: e.cls || "", grp: e.grp || s.grp || "", prep: e.prep || plan.prep || "" };
+    if (!drop) return back;
+    change((l) => {
+      const next = dropRace(l.starts, rid, rdays);
+      saveStarts(orgId, id, next).catch(() => {});
+      return { starts: next };
+    });
+    return back;
+  };
+  const stopCount = () => {
+    const t = readTimer();
+    if (t.mode === "start" && (t.end != null || t.left != null)) writeTimer({ ...pickTimer({}), zero: t.zero });
+  };
+  const openAp = () => {
+    const c = countingAt(Date.now());
+    setAp(ap ? null : { min: c ? 1 : 60, why: AP_WHY[0], live: c });
+  };
+  const chooseVoid = (v) => {
+    if (v !== "Tehir" || !rf.ask?.canDrop) return rf.choose(v);
+    const back = apBack(rf.ask.id, false);
+    if (back) changePlan({ order: [back, ...plan.order] });
+    rf.choose("");
+    setTab("sure");
+    setAp({ min: 1, why: AP_WHY[0], live: false, now: true });
+  };
   const postpone = () => {
     const from = plan.ap?.from || plan.at;
-    changePlan({ day: planDay, status: "ap", at: ap.min ? addMin(from, ap.min) : "", ap: { from, why: ap.why } });
+    let base = from;
+    let order = plan.order;
+    if (ap.live) {
+      const rid = rf.ridOf(tr.t);
+      stopCount();
+      const back = rid ? apBack(rid) : null;
+      if (back) order = [back, ...order];
+    }
+    if (ap.live || ap.now) {
+      base = new Date(Date.now() + 3 * 3600e3).toISOString().slice(11, 16);
+    }
+    changePlan({ day: planDay, status: "ap", order, at: ap.min ? addMin(base, ap.min) : "", ap: { from, why: ap.why } });
     setAp(null);
   };
   // Program sekmesi: her günün saati (o güne özel saat yoksa bugünün ilk start'ı da değişir), güne özel saat, yarış olmayan gün, start silme
@@ -542,11 +585,11 @@ export function BroadcastPage({ orgId, id }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-1">
-                  <span className="min-w-0 flex-1 truncate text-[0.875rem] text-mut">{ap.min ? `Yeni start ${addMin(plan.at, ap.min) || "—"}` : "Yeni saat sonra belirlenir"}</span>
+                  <span className="min-w-0 flex-1 truncate text-[0.875rem] text-mut">{ap.min ? (ap.live ? `Sayaç durur · ${ap.min < 60 ? `${ap.min} dk` : `${ap.min / 60} sa`} sonra yeniden` : `Yeni start ${addMin(plan.at, ap.min) || "—"}`) : "Yeni saat sonra belirlenir"}</span>
                   <Button variant="secondary" size="sm" onClick={() => setAp(null)}>
                     Vazgeç
                   </Button>
-                  <Button size="sm" onClick={postpone} disabled={!!ap.min && !plan.at}>
+                  <Button size="sm" onClick={postpone} disabled={!!ap.min && !plan.at && !ap.live}>
                     Ertele
                   </Button>
                 </div>
@@ -556,7 +599,7 @@ export function BroadcastPage({ orgId, id }) {
               <Button variant="secondary" onClick={addRace} className="flex-1">
                 + Yarış
               </Button>
-              <Button variant={plan.status === "ap" ? "primary" : "secondary"} className="flex-1" onClick={() => (plan.status === "ap" ? unpostpone() : setAp(ap ? null : { min: 60, why: AP_WHY[0] }))}>
+              <Button variant={plan.status === "ap" ? "primary" : "secondary"} className="flex-1" onClick={() => (plan.status === "ap" ? unpostpone() : openAp())}>
                 {plan.status === "ap" ? "Erteleme kalktı" : "Tehir"}
               </Button>
               {plan.status === "done" ? null : (
@@ -918,7 +961,8 @@ export function BroadcastPage({ orgId, id }) {
         </div>
       </Sheet>
 
-      <VoidSheet ask={rf.ask} onChoose={rf.choose} />
+      {/* geri sayımda İptal › Tehir: yarış silinip programa döner, tehir penceresi 1 dk seçili açılır (sayaç zaten durdu) */}
+      <VoidSheet ask={rf.ask} onChoose={chooseVoid} />
       <AddSheet open={add !== null} pick0={add || 0} c={c} onClose={() => setAdd(null)} onAdd={addObs} />
       <RoundsScreen open={voice} onClose={() => (setVoice(false), reload())} orgId={orgId} raceId={id} startId={st?.id || ""} />
       {list && typeof document !== "undefined"

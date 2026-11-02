@@ -148,7 +148,8 @@ export function apText(plan) {
   const base = plan.at ? `Start ${plan.at}'a ertelendi${plan.ap?.from ? ` (${plan.ap.from})` : ""}` : "Start ertelendi, yeni saat belli değil";
   return why ? `${base} · ${why}` : base;
 }
-export const AP_MIN = [30, 60, 90, 120];
+// 1 dk: geri sayımda tehir (AP inince 1 dk sonra uyarı işareti; Seyhun 2026-11-02 "geri sayımda tehir 1 dakikalık olmalı")
+export const AP_MIN = [1, 30, 60, 90, 120];
 export const AP_WHY = ["Rüzgâr yok", "Çok rüzgâr", "Yağış", "Fırtına", "Diğer"];
 // Saate dakika ekler: "11:00" + 60 → "12:00" (23:59'u aşmaz)
 export const addMin = (at, min) => {
