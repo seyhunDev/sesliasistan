@@ -18,7 +18,7 @@ export const cleanRoute = (r) => (Array.isArray(r) ? r : String(r || "").split(/
 export const routeText = (r) => cleanRoute(r).map((x) => (x === "F" ? "Finiş" : x)).join(" · ");
 
 // Rotanın plan üzerindeki noktaları: her ayak bir önceki dönüşün çıkışından bu dönüşün çıkışına (yay dahil)
-function routePlan(g, route) {
+export function routePlan(g, route) {
   const r = Math.max(22, g.L * 0.045);
   const way = [];
   for (const t of route) {
@@ -85,8 +85,57 @@ function routePlan(g, route) {
   return { legs, alt, way };
 }
 
+// Örnek tekne (Seyhun 2026-11-02 "avantajlı taraftan bir nokta başlasın, iz bıraksın, tramola atsın"): start hattının avantajlı
+// ucundan (şimdiki rüzgâra göre hat açısı) kalkar, rüzgâra 45° ile orsa çıkar, gerekirse bir tramola daha atar; pupada 30° açıkla
+// kavança atar; apaz düz. Şamandıra dönüşleri rota okundaki gibi. Dönüş: { start, end: "pin"|"komite"|"", deg, pts }
+const BEAT = 45, RUN = 30;
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
+function zig(a, b, h1, h2, prefer, long) {
+  // b − a = s·u1 + t·u2 (iki kontra); s, t ≥ 0 olmalı
+  const [u1, u2] = [dirv(h1, 1), dirv(h2, 1)];
+  const [dx, dy] = sub(b, a);
+  const det = u1[0] * u2[1] - u1[1] * u2[0];
+  if (Math.abs(det) < 1e-9) return [b];
+  let s = (dx * u2[1] - dy * u2[0]) / det, t = (u1[0] * dy - u1[1] * dx) / det;
+  if (s < 0 || t < 0) return [b];
+  let [p, q, us, ut] = prefer === 2 ? [t, s, u2, u1] : [s, t, u1, u2];
+  const len = p + q;
+  const go = (pt, u, m) => [pt[0] + u[0] * m, pt[1] + u[1] * m];
+  // uzun ayakta iki tramola daha (ortada bir kez kontra değiştirir), kısa ayakta tek dönüş
+  if (len > long) {
+    const A = go(a, us, p * 0.6), B = go(A, ut, q * 0.5), C = go(B, us, p * 0.4);
+    return [A, B, C, b];
+  }
+  return [go(a, us, p), b];
+}
+export function sailPlan(g, route, wind) {
+  const rt = cleanRoute(route);
+  const W = wind ?? g.A;
+  const d = nrm(nrm(W + 90) - g.lineDeg + 180) - 180; // − komite, + pin önde (raceCourse lineBias ile aynı)
+  const end = Math.abs(d) < 2 ? "" : d < 0 ? "pin" : "komite";
+  const inset = (from, to) => [from[0] + (to[0] - from[0]) * 0.12, from[1] + (to[1] - from[1]) * 0.12];
+  const start = end === "pin" ? inset(g.pin, g.komite) : end === "komite" ? inset(g.komite, g.pin) : g.mid;
+  if (!rt.length) return { start, end, deg: Math.round(Math.abs(d)), pts: [start] };
+  const { legs } = routePlan(g, rt);
+  const pts = [start];
+  let head = nrm(W - BEAT); // starttan sancak kontra
+  legs.forEach((leg, li) => {
+    for (let k = 1; k < leg.length; k++) {
+      const a = pts.at(-1), b = leg[k];
+      const dist = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const hb = brg(a, b);
+      const off = Math.abs(nrm(hb - W + 180) - 180);
+      let run = [b];
+      if (dist > g.L * 0.12 && off < BEAT) run = zig(a, b, nrm(W - BEAT), nrm(W + BEAT), li === 0 && k === 1 ? 1 : Math.abs(nrm(head - (W - BEAT) + 180) - 180) < 20 ? 1 : 2, g.L * 0.7);
+      else if (dist > g.L * 0.12 && off > 180 - RUN) run = zig(a, b, nrm(W + 180 - RUN), nrm(W + 180 + RUN), Math.abs(nrm(head - (W + 180 - RUN) + 180) - 180) < 60 ? 1 : 2, g.L * 0.7);
+      for (const p of run) { head = brg(pts.at(-1), p); pts.push(p); }
+    }
+  });
+  return { start, end, deg: Math.round(Math.abs(d)), pts };
+}
+
 // Sahne: { W, H } piksel, rota, isteğe bağlı pre (animasyon adları için önek), title (alt yazı)
-export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "", wind = true, sea = false } = {}) {
+export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "", wind = true, sea = false, sail = false } = {}) {
   if (!card) return "";
   const g = geom(card, { lineK: 0.38 }); // start hattı rota kartındaki gibi orsanın üçte biri kadar (Seyhun 2026-11-02 "start çok büyük")
   const rt = cleanRoute(route);
@@ -223,6 +272,31 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
     for (let i = 0; i < 4; i++) chev += `<path d="M7 0 L-5 -6 L-2 0 L-5 6 Z" fill="#fff"><animateMotion dur="6s" begin="${f(-i * 1.5)}s" repeatCount="indefinite" rotate="auto" path="${d}"/></path>`;
     under += `<g class="${pre}-flow">${chev}</g>`;
     o += `<style>${css}@media (prefers-reduced-motion: reduce){[class^="${pre}-"]{animation:none!important}}</style>`;
+  }
+  if (sail && rt.length) {
+    // örnek tekne: sarı rota soluk ve sabit kalır, beyaz nokta avantajlı uçtan kalkıp iz bırakarak gider (iz ve nokta aynı hızda)
+    under = under.replace(new RegExp(`class="${pre}-(l|h|a|ah)\\d+"`, "g"), 'opacity=".6"').replace(/<g class="[^"]*-flow">[\s\S]*?<\/g>/, "");
+    o = o.replace(/<style>[\s\S]*?<\/style>/, "");
+    const sp = sailPlan(g, rt, card.wind);
+    // köşeler yuvarlatılır (tramola ve kavança kısa yay gibi görünsün)
+    const q = sp.pts.map((p) => P(p));
+    let d = `M${f(q[0][0])} ${f(q[0][1])}`;
+    for (let i = 1; i < q.length; i++) {
+      const [a, b, c] = [q[i - 1], q[i], q[i + 1]];
+      if (!c) { d += ` L${f(b[0])} ${f(b[1])}`; break; }
+      const la = Math.hypot(b[0] - a[0], b[1] - a[1]), lc = Math.hypot(c[0] - b[0], c[1] - b[1]);
+      const r = Math.min(14 * u, la / 3, lc / 3);
+      if (r < 1) { d += ` L${f(b[0])} ${f(b[1])}`; continue; }
+      d += ` L${f(b[0] - ((b[0] - a[0]) / la) * r)} ${f(b[1] - ((b[1] - a[1]) / la) * r)} Q${f(b[0])} ${f(b[1])} ${f(b[0] + ((c[0] - b[0]) / lc) * r)} ${f(b[1] + ((c[1] - b[1]) / lc) * r)}`;
+    }
+    const T = 16;
+    const anim = `dur="${T}s" repeatCount="indefinite"`;
+    under += `<path d="${d}" pathLength="1" stroke-dasharray="1 1" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="${f(Math.max(2, 3.5 * u))}" stroke-linecap="round" stroke-linejoin="round"><animate attributeName="stroke-dashoffset" values="1;0;0" keyTimes="0;.88;1" ${anim}/></path>`;
+    under += `<g><circle r="${f(13 * u)}" fill="#fff" opacity=".25"/><circle r="${f(7 * u)}" fill="#fff"/><animateMotion ${anim} keyPoints="0;1;1" keyTimes="0;.88;1" calcMode="linear" path="${d}"/></g>`;
+    if (sp.end) {
+      const e = P(sp.start);
+      labels += `<text x="${f(e[0])}" y="${f(e[1] + 58 * u)}" text-anchor="middle" font-size="${f(19 * u)}" font-weight="700" letter-spacing="${f(1.5 * u)}" fill="#ffd400" stroke="#0b1a2a" stroke-opacity=".55" stroke-width="${f(4 * u)}" paint-order="stroke">${sp.end === "pin" ? "PİN" : "KOMİTE"} AVANTAJLI · ${sp.deg}°</text>`;
+    }
   }
   o += under;
   items.sort((a, b) => a.z - b.z);
