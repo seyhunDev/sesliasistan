@@ -135,7 +135,7 @@ export function sailPlan(g, route, wind) {
 }
 
 // Sahne: { W, H } piksel, rota, isteğe bağlı pre (animasyon adları için önek), title (alt yazı)
-export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "", wind = true, sea = false, sail = false } = {}) {
+export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "", wind = true, sea = false, sail = false, sailT = 16 } = {}) {
   if (!card) return "";
   const g = geom(card, { lineK: 0.38 }); // start hattı rota kartındaki gibi orsanın üçte biri kadar (Seyhun 2026-11-02 "start çok büyük")
   const rt = cleanRoute(route);
@@ -289,7 +289,7 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
       if (r < 1) { d += ` L${f(b[0])} ${f(b[1])}`; continue; }
       d += ` L${f(b[0] - ((b[0] - a[0]) / la) * r)} ${f(b[1] - ((b[1] - a[1]) / la) * r)} Q${f(b[0])} ${f(b[1])} ${f(b[0] + ((c[0] - b[0]) / lc) * r)} ${f(b[1] + ((c[1] - b[1]) / lc) * r)}`;
     }
-    const T = 16;
+    const T = sailT;
     const anim = `dur="${T}s" repeatCount="indefinite"`;
     under += `<path d="${d}" pathLength="1" stroke-dasharray="1 1" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="${f(Math.max(2, 3.5 * u))}" stroke-linecap="round" stroke-linejoin="round"><animate attributeName="stroke-dashoffset" values="1;0;0" keyTimes="0;.88;1" ${anim}/></path>`;
     under += `<g><circle r="${f(13 * u)}" fill="#fff" opacity=".25"/><circle r="${f(7 * u)}" fill="#fff"/><animateMotion ${anim} keyPoints="0;1;1" keyTimes="0;.88;1" calcMode="linear" path="${d}"/></g>`;

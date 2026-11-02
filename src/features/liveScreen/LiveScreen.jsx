@@ -1207,7 +1207,7 @@ export const sceneRoute = (data, sel, isCur, phase) => {
 // kartsız, arka plan (video ya da deniz/fotoğraf) bulanıklaşır, parkur sağda; bitince bulanıklık kalkar
 const courseSvg = (data, route) => {
   try {
-    return sceneSvg(cardOf(cleanCourse(data.course || {})), route, { pre: "lv", wind: false });
+    return sceneSvg(cardOf(cleanCourse(data.course || {})), route, { pre: "lv", wind: false, sail: true, sailT: 12 });
   } catch {
     return "";
   }

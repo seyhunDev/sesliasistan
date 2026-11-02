@@ -379,7 +379,7 @@ export function BroadcastPage({ orgId, id }) {
   })();
   const scene = (() => {
     try {
-      return sceneSvg(cardOf(c), selCard(course).route, { W: 960, H: 540, pre: "yp", wind: false, sea: true });
+      return sceneSvg(cardOf(c), selCard(course).route, { W: 960, H: 540, pre: "yp", wind: false, sea: true, sail: true });
     } catch {
       return "";
     }
