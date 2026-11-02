@@ -11,6 +11,7 @@ import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import { useDemo } from "./demo";
 import { dayProgram, expText, expWind } from "./program";
+import { agendaView } from "@/lib/raceProgram";
 import { autoCaption } from "@/lib/raceCaption";
 import "./liveScreen.css";
 
@@ -1153,7 +1154,8 @@ function WaitHero({ data, today, cs, prog, now }) {
   const r = data.race || {};
   const left = !cs.rem && r.startDate > today ? daysUntil(r.startDate, today) : 0;
   const aDays = left ? data.ahead?.days || raceDays(r.startDate, r.endDate, plan).map((day) => ({ day, at: plan.times?.[day] || plan.daily || "" })) : [];
-  const slides = none ? [] : left ? [svg ? "course" : "", aDays.length ? "ahead" : ""].filter(Boolean) : [svg ? "course" : "", windShowable(data) ? "wind" : "", prog.length ? "prog" : ""].filter(Boolean);
+  const ag = agOf(data, now);
+  const slides = none ? [] : left ? [svg ? "course" : "", aDays.length ? "ahead" : "", ag ? "prog" : ""].filter(Boolean) : [svg ? "course" : "", windShowable(data) ? "wind" : "", prog.length || ag ? "prog" : ""].filter(Boolean);
   // vitrin arasız döner; Yayın'dan "Göster" turu baştan başlatır
   const k = slides.length ? showSlide({ show: { ...data.courseShow, auto: false }, now, pre: true, slides }) || slides[Math.floor(now / SHOW_ON) % slides.length] : "";
   return (
@@ -1199,7 +1201,7 @@ function WaitHero({ data, today, cs, prog, now }) {
             ))}
           </div>
           <div key={k} className="lv-showb">
-            {k === "course" ? <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: svg }} /> : k === "wind" ? <WindBody data={data} sel={null} isCur now={now} /> : k === "ahead" ? <AheadBody days={aDays} /> : <ProgBody prog={prog} />}
+            {k === "course" ? <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: svg }} /> : k === "wind" ? <WindBody data={data} sel={null} isCur now={now} /> : k === "ahead" ? <AheadBody days={aDays} /> : ag ? <AgendaBody ag={ag} /> : <ProgBody prog={prog} />}
           </div>
         </div>
       ) : null}
@@ -1227,6 +1229,7 @@ function SidePanel({ data, today, cs, prog, now }) {
   const first = left[0] || null;
   const rows = orange ? left.slice(1, 3) : left.slice(0, 4);
   const prep = data.plan.order?.[0]?.prep || "";
+  const ag = agOf(data, now);
   return (
     <aside className="lv-side">
       {r.name ? <div className="lv-sname">{r.name}</div> : null}
@@ -1280,7 +1283,17 @@ function SidePanel({ data, today, cs, prog, now }) {
           </div>
         </div>
       ) : null}
-      {rows.length ? (
+      {ag && !orange ? (
+        <div className="lv-ssec lv-sprog">
+          <div className="lv-sh">{ag.mode === "all" ? "Program" : "Bugünün programı"}</div>
+          {(ag.mode === "day" ? ag.rows : ag.days.flatMap((d) => d.rows.map((x) => ({ ...x, at: `${new Date(`${d.day}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} ${x.at}`.trim() })))).slice(0, 6).map((x, i) => (
+            <div key={i} className={x.state || ""}>
+              <span className="t">{x.text}</span>
+              <i>{x.at || ""}</i>
+            </div>
+          ))}
+        </div>
+      ) : rows.length ? (
         <div className="lv-ssec lv-sprog">
           <div className="lv-sh">{orange ? "Sıradaki" : "Program"}</div>
           {rows.map((x) => (
@@ -1553,7 +1566,7 @@ const courseSvg = (data, route) => {
 function slideOn({ data, sel, isCur, open, now, phase, pre, prog }) {
   const svg = !!courseSvg(data, sceneRoute(data, sel, isCur, phase));
   if (open && svg) return "course";
-  const slides = [svg ? "course" : "", windShowable(data) ? "wind" : "", prog.length ? "prog" : ""].filter(Boolean);
+  const slides = [svg ? "course" : "", windShowable(data) ? "wind" : "", prog.length || agOf(data, now) ? "prog" : ""].filter(Boolean);
   // Yayın'dan elle açılan (courseShow.one) her evrede, gün sonunda da ekranda
   const one = isCur ? data.courseShow?.one : "";
   if (one && slides.includes(one)) return one;
@@ -1760,13 +1773,45 @@ function WindBars({ rows, obsAt, man = {}, pts = [], nowH, at, flat = false }) {
   );
 }
 // Günün programı: yarış yarış grup, durum ve saat
-function ProgFloat({ prog, show }) {
+// Programın maddeleri (Seyhun 2026-11-02 "PDF'teki program: antrenör toplantısı, ilk start, son start saati"): yarış öncesi bütün program,
+// o gün o günün maddeleri (geçen soluk, sıradaki vurgulu); program yüklenmediyse günün startları (dayProgram)
+const agOf = (data, now) => agendaView(data.plan?.agenda, trDay(now), new Date(now + 3 * 3600e3).toISOString().slice(11, 16));
+function AgendaBody({ ag }) {
+  if (ag.mode === "day")
+    return (
+      <div className="lv-slprog lv-agenda">
+        {ag.rows.map((x, i) => (
+          <div key={i} className={x.state}>
+            <i>{x.at || ""}</i>
+            <b>{x.text}</b>
+            <span>{x.state === "done" ? "Yapıldı" : x.state === "next" ? "Sıradaki" : ""}</span>
+          </div>
+        ))}
+      </div>
+    );
+  return (
+    <div className="lv-slprog lv-agenda all">
+      {ag.days.map((d) => (
+        <section key={d.day}>
+          <h4>{new Date(`${d.day}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" })}</h4>
+          {d.rows.map((x, i) => (
+            <div key={i}>
+              <i>{x.at || ""}</i>
+              <b>{x.text}</b>
+            </div>
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
+function ProgFloat({ prog, show, data, now }) {
   const st = useFade(show, 600);
   if (!st) return null;
   return (
     <div className={`lv-scene lv-slide ${st}`}>
-      <span className="lv-scenet">Bugünün programı</span>
-      <ProgBody prog={prog} />
+      <span className="lv-scenet">{agOf(data, now)?.mode === "all" ? "Program" : "Bugünün programı"}</span>
+      {agOf(data, now) ? <AgendaBody ag={agOf(data, now)} /> : <ProgBody prog={prog} />}
     </div>
   );
 }
@@ -1929,7 +1974,7 @@ export function LiveScreen({ id, y = "" }) {
         <CenterClock show={counting && !hero && !hasVideo} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
         <CourseFloat data={data} sel={sel} isCur={isCur} show={cOn} phase={phase} onClose={() => setCourseOpen(false)} />
         <WindFloat data={data} sel={sel} isCur={isCur} show={slide === "wind"} now={nowMs} />
-        <ProgFloat prog={prog} show={slide === "prog"} />
+        <ProgFloat prog={prog} show={slide === "prog"} data={data} now={nowMs} />
         <div className={`lv-foot${hero || side ? " off" : ""}`}>
           <TitleLine data={data} isCur={isCur} id={id} starts={starts} onList={() => setList(true)} auto={auto} />
           {windOpen && (data.forecast?.rows || []).length ? (
