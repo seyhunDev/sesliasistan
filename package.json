@@ -23,7 +23,8 @@
     "test:hepsi": "node --no-warnings scripts/tam-test/calistir.mjs",
     "test:asistan-ekran": "node --no-warnings scripts/asistan-ekran-test/calistir.mjs",
     "test:cevrimdisi": "node --no-warnings scripts/cevrimdisi-test/calistir.mjs",
-    "test:yaris-ekran": "node --no-warnings scripts/yaris-ekran-test/calistir.mjs"
+    "test:yaris-ekran": "node --no-warnings scripts/yaris-ekran-test/calistir.mjs",
+    "test:canli-ekran": "node --no-warnings scripts/canli-ekran-test/calistir.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^11.1.6",

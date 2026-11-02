@@ -1047,7 +1047,7 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, now = 
   // blokta büyük sayı, yanında kare bayraklar ve 5·4·1·0 çubuğu; start saati ve "Start" alt yazısı tekrar edilmez
   const steps = seqSteps(data.timer?.dur || 300);
   const sst = cs.rem != null ? seqState(steps, cs.rem, true) : steps.map(() => "");
-  const sflags = clockIn ? startFlags(entry || (phase === "wait" ? plan.order[0] : null), false, cs.rem != null && cs.rem <= 60) : [];
+  const sflags = clockIn ? startFlags(entry || data.rounds?.[data.timer?.rid] || (phase === "wait" ? plan.order[0] : null), false, cs.rem != null && cs.rem <= 60) : [];
   if (phase === "race") {
     if (clockIn) {
       // saat zaten şeritte
