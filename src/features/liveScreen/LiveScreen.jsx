@@ -1196,17 +1196,12 @@ const untilText = (nx, now) => {
   const m = Math.floor(t / 60e3);
   return m >= 60 ? `${Math.floor(m / 60)} sa ${String(m % 60).padStart(2, "0")} dk` : `${m} dk`;
 };
-// Akış (Seyhun 2026-11-02 "çok detay, karman çorman; akışkan, modern, profesyonel olsun: rüzgâr aksın, sonra sonuçlar aksın"):
-// tam ekran sahneler sırayla gelir, her sahnede tek fikir: Gün bitti → Bugünün rüzgârı → yarış yarış ilk üç → Genel (geçici) → Yarın.
-// Altta hikâye çizgisi hangi sahnede olduğunu gösterir; sahne değişince içerik alttan süzülerek gelir, sütunlar soldan sağa büyür.
+// Gün sonu (Seyhun 2026-11-02, iki taslaktan sonra "karman çorman; Gün bitti sahnesi olmasın; modern geçiş, yayın gibi"):
+// yayın grafikleri gibi kartlar; her kart soldan sağa açılarak gelir (clip-path), süresi bitince sağa kapanarak gider.
+// Sahneler: Bugün rüzgâr (esen / beklenen, sütunlar) → yarış yarış podyum (geçici) → Genel ilk 10 (geçici, Tümü) → Yarın.
+// Sol üstte küçük künye (yarış · gün · Gün sonu), altta hikâye çizgisi.
 export function endScenes({ wind, races, all, next }) {
-  return [
-    { k: "title", d: 6000 },
-    ...(wind ? [{ k: "wind", d: 10000 }] : []),
-    ...races.map((id) => ({ k: "race", id, d: 7000 })),
-    ...(all ? [{ k: "all", d: 11000 }] : []),
-    ...(next ? [{ k: "next", d: 9000 }] : []),
-  ];
+  return [...(wind ? [{ k: "wind", d: 10000 }] : []), ...races.map((id) => ({ k: "race", id, d: 8000 })), ...(all ? [{ k: "all", d: 12000 }] : []), ...(next ? [{ k: "next", d: 9000 }] : [])];
 }
 export function sceneAt(scenes, now) {
   const T = scenes.reduce((a, x) => a + x.d, 0);
@@ -1218,6 +1213,7 @@ export function sceneAt(scenes, now) {
   }
   return { i: 0, p: 0 };
 }
+const PODIUM = [1, 0, 2]; // ekranda 2 · 1 · 3
 function EndHero({ data, today, now, onAll }) {
   const plan = data.plan;
   const day = plan.day || today;
@@ -1229,74 +1225,81 @@ function EndHero({ data, today, now, onAll }) {
   const fcn = data.forecastNext;
   const nrows = (fcn?.rows || []).filter((r) => +r.hh >= 6 && +r.hh <= 20);
   const trows = (data.forecast?.rows || []).filter((r) => +r.hh >= 6 && +r.hh <= 20);
-  const scenes = endScenes({ wind: trows.length >= 2, races: races.map((x) => x.id), all: !!top, next: !!nx?.at });
+  const scenes = endScenes({ wind: trows.length >= 2 && st.exp != null, races: races.map((x) => x.id), all: !!top, next: !!nx?.at });
   const { i, p } = sceneAt(scenes, now);
-  const sc = scenes[i] || scenes[0];
+  const sc = scenes[i];
+  const out = sc && (1 - p) * sc.d < 700; // son 0,7 sn: kart kapanır
   const ew = nx ? expWind(fcn, nx.at) : null;
   const diff = st.exp != null && st.real != null ? st.real - st.exp : null;
-  const race = sc.k === "race" ? races.find((x) => x.id === sc.id) : null;
-  const key = `${sc.k}${sc.id || ""}`;
-  let body = null;
-  if (sc.k === "title") {
+  const race = sc?.k === "race" ? races.find((x) => x.id === sc.id) : null;
+  const tag = [data.race.name, dayText(day), "Gün sonu"].filter(Boolean).join(" · ");
+  let head = "", right = "", body = null;
+  if (sc?.k === "wind") {
+    head = "Bugün rüzgâr";
+    right = `Yarış saatleri ${String(st.h0).padStart(2, "0")}:00–${String(st.h1 + 1).padStart(2, "0")}:00`;
     body = (
-      <>
-        <div className="lv-flk">{[data.race.name, dayText(day)].filter(Boolean).join(" · ")}</div>
-        <h1 className="lv-flh big">Gün bitti</h1>
-        <div className="lv-fls">{[st.races ? `${st.races} yarış yapıldı` : "Yarış yapılmadı", st.voids ? `${st.voids} abandone` : ""].filter(Boolean).join(" · ")}</div>
-      </>
-    );
-  } else if (sc.k === "wind") {
-    body = (
-      <>
-        <div className="lv-flk">Bugün rüzgâr</div>
-        <h1 className="lv-flh">{diff == null ? "Günün rüzgârı" : diff ? `Tahminden ${Math.abs(diff)} knot ${diff > 0 ? "fazla" : "az"} esti` : "Tahmin tuttu"}</h1>
-        {st.exp != null ? <div className="lv-fls">{`Yarış saatlerinde beklenen ${st.exp}, esen ${st.real} knot`}</div> : null}
-        <div className="lv-flg">
+      <div className="lv-gw">
+        <div className="lv-gstat">
+          <div className="o">
+            <span>Esen</span>
+            <b>
+              {st.real}
+              <em>knot</em>
+            </b>
+          </div>
+          <div className="f">
+            <span>Beklenen</span>
+            <b>
+              {st.exp}
+              <em>knot</em>
+            </b>
+          </div>
+          <p>{diff ? `Tahminden ${Math.abs(diff)} knot ${diff > 0 ? "fazla" : "az"} esti` : "Tahmin tuttu"}</p>
+        </div>
+        <div className="lv-gchart">
           <WindBars rows={trows} obsAt={Object.fromEntries((data.forecast?.obs || []).filter((o) => o.wind != null).map((o) => [o.hh, o]))} man={windByHour(data, now)} pts={windPoints(data, now)} nowH={24} at="" flat />
         </div>
-      </>
+      </div>
     );
   } else if (race) {
     const e = data.rounds[race.id];
+    const t3 = standings(e).slice(0, 3);
+    head = [raceTitle(race), grpText(e.grp)].filter(Boolean).join(" · ");
+    right = "Geçici";
     body = (
-      <>
-        <div className="lv-flk">Sonuç · geçici</div>
-        <h1 className="lv-flh">
-          <Dot g={e.grp} />
-          {[raceTitle(race), grpText(e.grp)].filter(Boolean).join(" · ")}
-        </h1>
-        <ol className="lv-flr">
-          {standings(e)
-            .slice(0, 3)
-            .map((t, n) => {
-              const w = whoOf(who, t.sail);
-              return (
-                <li key={t.sail} style={{ "--d": `${0.5 + n * 0.35}s` }}>
-                  <b>{n + 1}</b>
-                  <span>{w?.name || t.sail}</span>
-                  <em>{[t.sail, shortClub(w?.club)].filter(Boolean).join(" · ")}</em>
-                </li>
-              );
-            })}
-        </ol>
-      </>
+      <div className="lv-pod">
+        {PODIUM.filter((n) => t3[n]).map((n) => {
+          const t = t3[n];
+          const w = whoOf(who, t.sail);
+          return (
+            <div key={t.sail} className={`c p${n + 1}`} style={{ "--d": `${0.35 + (2 - n) * 0.25}s` }}>
+              <div className="who">
+                <b>{w?.name || t.sail}</b>
+                <span>{[t.sail, shortClub(w?.club)].filter(Boolean).join(" · ")}</span>
+              </div>
+              <div className="blk">{n + 1}</div>
+            </div>
+          );
+        })}
+      </div>
     );
-  } else if (sc.k === "all" && top) {
+  } else if (sc?.k === "all" && top) {
+    head = ["Genel sıralama", top.cls].filter(Boolean).join(" · ");
+    right = top.tag;
     body = (
       <>
-        <div className="lv-flk">{["Genel sıralama", top.cls, top.tag].filter(Boolean).join(" · ")}</div>
-        <ol className="lv-fla">
+        <ol className="lv-gtab">
           {top.rows.map((r, n) => (
-            <li key={`${r.sail}${r.name}`} style={{ "--d": `${0.3 + n * 0.12}s` }}>
+            <li key={`${r.sail}${r.name}`} style={{ "--d": `${0.25 + n * 0.07}s` }}>
               <b>{r.p}</b>
               <span>{shortName(r.name) || r.sail}</span>
-              <em>{r.sail}</em>
+              <em>{[r.sail, shortClub(r.club)].filter(Boolean).join(" · ")}</em>
               <u>{r.t}</u>
             </li>
           ))}
         </ol>
-        <div className="lv-flf">
-          {top.tag !== "Resmî" ? <span>Hakem kontrolünden sonra kesinleşir</span> : null}
+        <div className="lv-gfoot">
+          {top.tag !== "Resmî" ? <span>Hakem kontrolünden sonra kesinleşir</span> : <span />}
           {top.total > top.rows.length ? (
             <button type="button" onClick={onAll}>
               {`Tümü · ${top.total} tekne`}
@@ -1305,32 +1308,65 @@ function EndHero({ data, today, now, onAll }) {
         </div>
       </>
     );
-  } else if (sc.k === "next") {
+  } else if (sc?.k === "next") {
+    head = "Yarın";
+    right = dayText(nx.day);
     body = (
-      <>
-        <div className="lv-flk">Yarın</div>
-        <h1 className="lv-flh">{ew ? `${nx.at}'de ${ew.kn} knot${ew.dir != null ? ` ${dirShort(ew.dir)}` : ""} bekleniyor` : `İlk start ${nx.at}`}</h1>
-        <div className="lv-fls">{[untilText(nx, now) ? `İlk start'a ${untilText(nx, now)}` : "", ew?.gust && ew.gust > ew.kn ? `sağanak ${ew.gust} knot` : ""].filter(Boolean).join(" · ")}</div>
+      <div className="lv-gw">
+        <div className="lv-gstat">
+          <div className="s">
+            <span>İlk start</span>
+            <b>{nx.at}</b>
+          </div>
+          {ew ? (
+            <div className="n">
+              <span>Beklenen rüzgâr</span>
+              <b>
+                {ew.kn}
+                <em>{`knot${ew.dir != null ? ` ${dirShort(ew.dir)}` : ""}`}</em>
+              </b>
+            </div>
+          ) : null}
+          <p>{[ew?.gust && ew.gust > ew.kn ? `Sağanak ${ew.gust} knot` : "", untilText(nx, now) ? `${untilText(nx, now)} sonra` : ""].filter(Boolean).join(" · ")}</p>
+        </div>
         {nrows.length >= 2 ? (
-          <div className="lv-flg">
+          <div className="lv-gchart">
             <WindBars rows={nrows} obsAt={{}} nowH={0} at={nx.at} />
           </div>
         ) : null}
-      </>
+      </div>
     );
   }
   return (
     <div className="lv-flow">
-      <div key={key} className="lv-fl">
-        {body}
-      </div>
-      <div className="lv-flbar" aria-hidden="true">
-        {scenes.map((x, n) => (
-          <i key={`${x.k}${x.id || ""}`}>
-            <s style={{ width: n < i ? "100%" : n === i ? `${Math.round(p * 100)}%` : "0%", transition: n === i ? "width 1s linear" : "none" }} />
-          </i>
-        ))}
-      </div>
+      <div className="lv-gtag">{tag}</div>
+      {sc ? (
+        <section key={`${sc.k}${sc.id || ""}`} className={`lv-gcard${out ? " out" : ""}`}>
+          <header>
+            <h2>
+              {race ? <Dot g={data.rounds[race.id].grp} /> : null}
+              {head}
+            </h2>
+            {right ? <span>{right}</span> : null}
+          </header>
+          <div className="lv-gbody">{body}</div>
+        </section>
+      ) : (
+        <section className="lv-gcard">
+          <header>
+            <h2>Gün sonu</h2>
+          </header>
+        </section>
+      )}
+      {scenes.length > 1 ? (
+        <div className="lv-flbar" aria-hidden="true">
+          {scenes.map((x, n) => (
+            <i key={`${x.k}${x.id || ""}`}>
+              <s style={{ width: n < i ? "100%" : n === i ? `${Math.round(p * 100)}%` : "0%", transition: n === i ? "width 1s linear" : "none" }} />
+            </i>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
