@@ -105,6 +105,26 @@ service cloud.firestore {
       }
     }
 
+    // Tekne takibi (lib/boatTrack.js, Seyhun 2026-11-02): ana hesap yarışın takibini açar (anahtar k); teknedeki telefon giriş yapmadan,
+    // linkteki anahtarla yalnız kendi konumunu yazar, okuyamaz. Herkese açık yayın konumları sunucudan (/api/canli) okur.
+    match /takip/{rid} {
+      allow read, delete: if isOwner(resource.data.org);
+      allow create: if isOwner(request.resource.data.org);
+      allow update: if isOwner(resource.data.org) && request.resource.data.org == resource.data.org;
+      match /tekne/{sail} {
+        function head() { return get(/databases/$(database)/documents/takip/$(rid)).data; }
+        allow read, delete: if isOwner(head().org);
+        allow create, update: if sail.matches('^[0-9]{1,6}$')
+                              && request.resource.data.keys().hasOnly(['k', 'lat', 'lon', 'acc', 'spd', 'hdg', 't'])
+                              && request.resource.data.k is string
+                              && head().on == true
+                              && request.resource.data.k == head().k
+                              && request.resource.data.lat is number
+                              && request.resource.data.lon is number
+                              && request.resource.data.t is number;
+      }
+    }
+
     match /orgs/{orgId} {
       // Ana hesap: kendi işletmesindeki her şey (doğum günleri hariç: kişiye özel, aşağıda)
       match /{col}/{document=**} {

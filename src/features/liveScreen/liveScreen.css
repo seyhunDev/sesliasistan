@@ -909,3 +909,7 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-sseg i.now { color: #ff5c8f; }
 .lv-sseg i.now s { background: #ff3d77; }
 @media (max-width: 760px) { .lv-cell.lv-sclock b { font-size: 2.1em; } .lv-sseg i { width: 1.8em; } }
+
+/* Tekne takibi haritası (features/tracking/BoatMap.jsx, Seyhun 2026-11-02): sağ altta, alttaki şeridin üstünde */
+.lv-map { position: absolute; right: 1.6vw; bottom: calc(1.6vw + 5.5em); z-index: 2; width: min(18vw, 300px); min-width: 150px; aspect-ratio: 1; padding: 0.4em; font-size: clamp(12px, 1vw, 20px); animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.lv-map svg { display: block; }

@@ -864,3 +864,50 @@ group("Canlı yayın ziyaretleri")([
   ["günleri birleştirme", { desc: "aynı kişi iki günde bir kez sayılır, gün gün liste", fn: () => { const a = VS.summarize([vis({ s: 1, v: 1 })]); const b = VS.summarize([{ ...vis({ s: 2, v: 1 }), day: "2026-11-03" }, { ...vis({ s: 3, v: 2 }), day: "2026-11-03" }]); return VS.viewOf(VS.mergeSums([a, b])); }, ok: (v) => v.people === 2 && v.n === 3 && v.days.length === 2 && v.days[1].people === 2 }],
   ["yarış grupları", { desc: "süren, yaklaşan (yakından uzağa), biten (yeniden eskiye)", fn: () => VS.raceGroups([{ id: "a", startDate: "2026-11-01", endDate: "2026-11-03", pub: true }, { id: "b", startDate: "2026-11-20" }, { id: "c", startDate: "2026-11-08" }, { id: "d", startDate: "2026-10-01" }, { id: "e", startDate: "2026-10-20" }], "2026-11-02"), ok: (g) => g.now.map((r) => r.id).join() === "a" && g.now[0].pub && g.soon.map((r) => r.id).join() === "c,b" && g.past.map((r) => r.id).join() === "e,d" }],
 ]);
+
+// Tekne takibi (lib/boatTrack.js, Seyhun 2026-11-02 "her tekneye takip cihazı; şamandıranın yanından geçince dönüş yazılsın")
+{
+const BT = await import("@/lib/boatTrack");
+const TC = await import("@/lib/raceCourse");
+const M1 = { lat: 38.9, lon: 26.9 };
+const KOM = { lat: 38.89, lon: 26.9 };
+const PIN = { lat: 38.89, lon: 26.902 };
+const T0 = Date.parse("2026-11-02T10:00:00Z");
+// şamandıranın 100 m güneyinden kuzeye, 10 m doğusundan geçip kuzeybatıya 100 m: 5 sn'de bir konum
+const pass = () => {
+  const out = [];
+  for (let i = 0; i <= 20; i++) {
+    const p = i <= 10 ? TC.dest(TC.dest(M1, 90, 10), 180, (10 - i) * 10) : TC.dest(TC.dest(M1, 90, 10), 315, (i - 10) * 10);
+    out.push({ ...p, acc: 5, spd: 4, hdg: i <= 10 ? 0 : 315, t: T0 + i * 5000 });
+  }
+  return out;
+};
+const run = (fixes, target, place) => {
+  let w = null;
+  const hits = [];
+  for (const f of fixes) {
+    const r = BT.stepWatch(w, BT.cleanFix(f), target, place);
+    w = r.watch;
+    if (r.hit) hits.push(r.hit);
+  }
+  return hits;
+};
+group("Tekne takibi")([
+  ["konum temizliği", { desc: "bozuk konum atılır, hız/yön/doğruluk sınırlanır, 6 hane", fn: () => [BT.cleanFix({ lat: 91, lon: 1, t: 1 }), BT.cleanFix({ lat: 38.1234567, lon: 26.7, t: 5, acc: 4.4, spd: 99, hdg: 370 })], ok: ([a, b]) => a === null && b.lat === 38.123457 && b.acc === 4 && b.spd === null && b.hdg === 10 }],
+  ["telefon ne sıklıkla yazar", { desc: "ilk konum hemen; 3 sn ve 3 m kımıldayınca; durursa 15 sn'de bir", fn: () => { const a = { ...M1, t: T0 }; const near = { ...TC.dest(M1, 0, 1), t: T0 + 4000 }; const far = { ...TC.dest(M1, 0, 8), t: T0 + 4000 }; const early = { ...TC.dest(M1, 0, 8), t: T0 + 1000 }; const idle = { ...M1, t: T0 + 15000 }; return [BT.shouldSend(null, a), BT.shouldSend(a, near), BT.shouldSend(a, far), BT.shouldSend(a, early), BT.shouldSend(a, idle)]; }, ok: (r) => r.join() === "true,false,true,false,true" }],
+  ["tekne listesi", { desc: "5 dk'dan eski düşer, 1 dk'dan eski soluk, yeni önce, yelken no rakam", fn: () => BT.cleanBoats([{ sail: "TUR 512", lat: 38, lon: 26, t: T0 - 10e3 }, { sail: "88", lat: 38, lon: 26, t: T0 - 90e3 }, { sail: "7", lat: 38, lon: 26, t: T0 - 6 * 60e3 }, { sail: "x", lat: 38, lon: 26, t: T0 }], T0), ok: (r) => r.length === 2 && r[0].sail === "512" && !r[0].old && r[1].sail === "88" && r[1].old }],
+  ["sıradaki şamandıra", { desc: "son döndüğü noktadan sonraki; parkur bitince yok", fn: () => { const e = { route: ["1", "2", "1", "F"], legs: [["512"], ["512"], [], []] }; return [BT.nextMark(e, "512"), BT.nextMark(e, "88"), BT.nextMark({ route: ["1"], legs: [["5"]] }, "5")]; }, ok: ([a, b, c]) => a.k === 2 && a.mark === "1" && b.k === 0 && b.mark === "1" && c === null }],
+  ["şamandıranın yeri", { desc: "yalnız işaretli yer (tahmin yok); finiş komite–pin hattı", fn: () => { const c = { pts: { m1: M1, komite: KOM, pin: PIN } }; return [BT.markPlace(c, "1"), BT.markPlace(c, "2"), BT.markPlace(c, "F"), BT.markPlace({ pts: { komite: KOM } }, "F")]; }, ok: ([a, b, f, g]) => a.at === M1 && b === null && f.a === KOM && f.b === PIN && g === null }],
+  ["yanından geçince dönüş", { desc: "30 m içine girip 45 m'den uzaklaşınca bir kez; an en yakın geçtiği konum", fn: () => run(pass(), { k: 0, mark: "1" }, { at: M1 }), ok: (h) => h.length === 1 && h[0].k === 0 && h[0].t >= T0 + 50000 && h[0].t <= T0 + 55000 && h[0].near <= 11 }],
+  ["uzaktan geçen dönmüş sayılmaz", { desc: "şamandıraya 60 m'den geçen tekne", fn: () => run(pass().map((f) => ({ ...f, ...TC.dest(f, 90, 50) })), { k: 0, mark: "1" }, { at: M1 }), ok: (h) => h.length === 0 }],
+  ["kötü konum yok sayılır", { desc: "doğruluğu 40 m'den kötü konumlar", fn: () => run(pass().map((f) => ({ ...f, acc: 80 })), { k: 0, mark: "1" }, { at: M1 }), ok: (h) => h.length === 0 }],
+  ["finiş hattı", { desc: "komite–pin hattını geçiş anı (arada)", fn: () => { const mid = { lat: 38.89, lon: 26.901 }; const a = { ...TC.dest(mid, 0, 20), t: T0 }; const b = { ...TC.dest(mid, 180, 20), t: T0 + 4000 }; return run([a, b], { k: 3, mark: "F" }, { a: KOM, b: PIN }); }, ok: (h) => h.length === 1 && h[0].mark === "F" && Math.abs(h[0].t - (T0 + 2000)) < 50 }],
+  ["hattın dışından geçen finiş değil", { desc: "pin'in 200 m ötesinden", fn: () => { const out = TC.dest(PIN, 90, 200); return run([{ ...TC.dest(out, 0, 20), t: T0 }, { ...TC.dest(out, 180, 20), t: T0 + 4000 }], { k: 3, mark: "F" }, { a: KOM, b: PIN }); }, ok: (h) => h.length === 0 }],
+  ["dönüş saat sırasıyla yazılır", { desc: "geç onaylanan öneri daha önce dönmüşse öne girer; aynı tekne iki kez yazılmaz", fn: () => { const e = { route: ["1", "F"], legs: [["10", "30"], []], tm: [{ 10: 100, 30: 300 }, {}] }; return [BT.placeRound(e, 0, "20", 200), BT.placeRound(e, 0, "10", 150), BT.placeRound(e, 0, "40", 400)]; }, ok: ([a, b, c]) => a.legs[0].join() === "10,20,30" && a.tm[0][20] === 200 && b === null && c.legs[0].join() === "10,30,40" }],
+  ["teknenin startı", { desc: "tek start varsa o; gruplu startlarda günün grubu", fn: () => { const s = [{ id: "a", grp: "Sarı" }, { id: "b", grp: "Mavi" }]; return [BT.startOfBoat("1", [s[0]], {})?.id, BT.startOfBoat("1", s, { 1: "Mavi" })?.id, BT.startOfBoat("2", s, {})]; }, ok: ([a, b, c]) => a === "a" && b === "b" && c === null }],
+  ["harita sığdırma", { desc: "kutuya sığar; eksen yukarı (orsa şamandırası komitenin üstünde)", fn: () => BT.fitMap([{ id: "k", ...KOM }, { id: "m", ...TC.dest(KOM, 90, 800) }], { up: 90 }), ok: (r) => r.pts.every((p) => p.x >= 0 && p.x <= 240 && p.y >= 0 && p.y <= 240) && r.pts[1].y < r.pts[0].y && Math.abs(r.pts[1].x - r.pts[0].x) < 1 }],
+  ["sesle aç/kapat", { desc: "tekne takibi ve harita komutları; başka cümle değil", fn: () => ["tekne takibini aç", "Tekne takibini kapat.", "takip haritasını göster", "tekne haritasını kaldır", "takvimi aç", "teknelerin takibini başlat"].map(BT.trackCommand), ok: (r) => r[0].on === true && r[1].on === false && r[2].map === true && r[3].map === false && r[4] === null && r[5].on === true }],
+  ["anahtar ve link", { desc: "rastgele 12 harf, link biçimi", fn: () => [BT.newKey(), BT.trackUrl("https://x", "r1", "abc")], ok: ([k, u]) => BT.KEY.test(k) && u === "https://x/takip/r1?k=abc" }],
+  ["kurallar ve bağlantılar", { desc: "telefon anahtarla yalnız yazar; yayın konumu sunucudan; Yayın'da panel sekmeden bağımsız; asistanda komut", fn: async () => { const fs = await import("node:fs"); const r = (f) => fs.readFileSync(new URL(`../../../${f}`, import.meta.url), "utf8"); const ru = r("firestore.rules"); const api = r("src/app/api/canli/route.js"); const bp = r("src/features/broadcast/BroadcastPage.jsx"); const ko = r("src/features/assistant/isler/komutlar.js"); return [/match \/takip\/\{rid\}/.test(ru) && /request\.resource\.data\.k == head\(\)\.k/.test(ru) && /head\(\)\.on == true/.test(ru), /boatsOf\(org, id\)/.test(api) && /boats,\n/.test(api), /<TrackPanel /.test(bp) && /tab === "donus" \? "" : "hidden"/.test(bp), /tekneTakip\.trackCmd/.test(ko)]; }, ok: (a) => a.every(Boolean) }],
+]);
+}

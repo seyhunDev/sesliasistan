@@ -23,13 +23,14 @@ import { VoidSheet, useRaceFlow } from "@/features/raceMedia/useRaceFlow";
 import { AddSheet } from "@/features/raceMedia/CourseTab";
 import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
+import { TrackPanel } from "@/features/tracking/TrackPanel";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
 import { AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { CLASS_PICK, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
+import { CLASS_PICK, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { autoCaption } from "@/lib/raceCaption";
@@ -1369,6 +1370,12 @@ export function BroadcastPage({ orgId, id }) {
         </MasaBar>
           </>
         ) : null}
+        {/* Tekne takibi (Seyhun 2026-11-02): teknedeki telefonların konumu, şamandıra yanından geçince dönüş (features/tracking).
+            Sekme değişince de takılı kalır (algılama sayfa açıkken sürer), yalnız Dönüşler'de görünür */}
+        <section className={!needSetup && tab === "donus" ? "" : "hidden"}>
+          <Head title="Tekne takibi" />
+          <TrackPanel orgId={orgId} raceId={id} starts={liveStarts(live.starts, L?.timer, today).map((x) => ({ ...x, grp: x.grp || L?.rounds?.[x.id]?.grp || "" }))} rounds={L?.rounds || {}} groupOf={groupMap(groups[today])} course={course} />
+        </section>
       </div>
 
       {/* ⋯ menüsü: ekran ve link, sonuç PDF'i (ayrı sayfa), kayıt listesi, gün durumu; Günü bitir bir daha sorar (yanlış dokunuş) */}
