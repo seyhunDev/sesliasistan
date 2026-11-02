@@ -295,7 +295,7 @@ export const addCourseMany = (orgId, id, day, list, len = null) =>
 export const saveCards = (orgId, id, day, c) => {
   const k = cleanCards(c);
   const at = new Date().toISOString();
-  return Promise.all([setDoc(live(orgId, id), { cards: { cards: k.cards, sel: k.sel, cardAt: at } }, { mergeFields: ["cards"] }), setDoc(courseRef(orgId, id, day), { cards: k.cards, sel: k.sel, cardAt: at }, { merge: true })]);
+  return Promise.all([setDoc(live(orgId, id), { cards: { cards: k.cards, sel: k.sel, by: k.by, cardAt: at } }, { mergeFields: ["cards"] }), setDoc(courseRef(orgId, id, day), { cards: k.cards, sel: k.sel, by: k.by, cardAt: at }, { merge: true })]);
 };
 export const saveCourse = (orgId, id, day, c) => setDoc(courseRef(orgId, id, day), { ...cleanCourse(c), at: new Date().toISOString() });
 

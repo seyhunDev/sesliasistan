@@ -193,9 +193,9 @@ export const UP_MAX = 3599;
 // tehir), dönüşler ve ekrandaki görüntü/yazı da baştan başlar. Kayıt listesi (tekneler), parkur kartları ve canlı yayın linki kalır.
 export const resetCounts = (l) => ({ days: l?.days?.length || 0, starts: l?.starts?.length || 0, wind: l?.wind?.length || 0, media: l?.media?.length || 0, plan: l?.plan?.order?.length || 0 });
 // Yayını sıfırla (Seyhun 2026-11-02 "yayınla ilgili yaptığım her şey sıfırlanmalı, hazırladığımız her şey aynı kalıyor"): video linki,
-// gösterim de baştan; keep.plan verilirse programın günleri ve saatleri (daily, times, off, showAt) kalır
+// gösterim de baştan; keep.plan verilirse programın günleri ve saatleri (daily, times, off, showAt) ve yarışın kurulumu (sınıflar, gruplar) kalır
 export function resetPatch(media, now, keep = {}) {
-  const kp = keep.plan ? { daily: keep.plan.daily, times: keep.plan.times, off: keep.plan.off, showAt: keep.plan.showAt, agenda: keep.plan.agenda } : {};
+  const kp = keep.plan ? { daily: keep.plan.daily, times: keep.plan.times, off: keep.plan.off, showAt: keep.plan.showAt, agenda: keep.plan.agenda, sets: keep.plan.sets, cls: keep.plan.cls, grps: keep.plan.grps } : {};
   const p = { days: [], starts: [], wind: [], buoys: cleanBuoys(), timer: { ...pickTimer({}), at: now }, plan: cleanPlan(kp), rounds: {}, screen: { kind: "", mid: "", loop: false, pause: false, caption: "", at: new Date(now).toISOString() }, stream: { url: "" }, courseShow: { auto: true, at: "", one: "" } };
   if (media) p.media = [];
   return p;
