@@ -105,12 +105,29 @@ export function useRaceHome() {
   useEffect(() => {
     if (!on) return;
     let live = true;
-    countRaces(profile.orgId).then((c) => {
-      if (c) save(profile.orgId, c);
-      if (live) setN((old) => c || old || {}); // okunamazsa saklanan kalır, yoksa "yükleniyor" biter
-    });
+    const read = () =>
+      countRaces(profile.orgId).then((c) => {
+        if (c) save(profile.orgId, c);
+        if (live) setN((old) => c || old || {}); // okunamazsa saklanan kalır, yoksa "yükleniyor" biter
+      });
+    read();
+    // Yarış silinince (races.js deleteRace): silinen yarış hemen düşer, saklanan özet ve 5 dakikalık bellek tazelenir
+    const gone = (e) => {
+      const id = e.detail?.id;
+      setN((old) => {
+        if (!old || !id) return old;
+        const next = { ...old, open: (old.open || []).filter((r) => r.id !== id), next: old.next?.id === id ? null : old.next };
+        next.up = next.open.length;
+        save(profile.orgId, next);
+        return next;
+      });
+      cache = null;
+      read();
+    };
+    window.addEventListener("sa-race-gone", gone);
     return () => {
       live = false;
+      window.removeEventListener("sa-race-gone", gone);
     };
   }, [on, profile?.orgId]);
 
