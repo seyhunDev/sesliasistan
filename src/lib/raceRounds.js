@@ -278,3 +278,20 @@ export function currentStart(starts, timer) {
   if (t) return t;
   return [...list].sort((a, b) => String(a.at).localeCompare(String(b.at))).at(-1) || null;
 }
+
+// Yayın görünümünde kısa ad ve kulüp (Seyhun 2026-11-02 "yelken no, isim, kulüp ama kısa olsun"): "Deniz Aydın" → "D. Aydın",
+// "Dikili Yelken Kulübü" / "Dikili YK" → "DYK", tek kelime → ilk 4 harf
+export function shortName(name) {
+  const w = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (w.length < 2) return w[0] || "";
+  return `${w[0][0].toLocaleUpperCase("tr-TR")}. ${w.slice(1).join(" ")}`;
+}
+export function shortClub(club) {
+  const w = String(club || "").trim().split(/\s+/).filter(Boolean);
+  if (!w.length) return "";
+  if (w.length === 1) return w[0].length <= 4 ? w[0].toLocaleUpperCase("tr-TR") : w[0].slice(0, 4).toLocaleUpperCase("tr-TR");
+  const last = w.at(-1);
+  const abbr = /^[A-ZÇĞİÖŞÜ]{2,4}$/.test(last) ? last : "";
+  const head = (abbr ? w.slice(0, -1) : w).filter((x) => !/^(ve|and|of|the)$/i.test(x)).map((x) => x[0].toLocaleUpperCase("tr-TR")).join("");
+  return (head + abbr).slice(0, 5);
+}
