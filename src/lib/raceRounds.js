@@ -325,10 +325,11 @@ export function whoOf(map, sail) {
 
 // ---- Ekranda oynayan ----
 export function cleanScreen(s) {
-  const kind = ["live", "drone", "rec"].includes(s?.kind) ? s.kind : "";
+  const kind = ["live", "drone", "src", "rec"].includes(s?.kind) ? s.kind : "";
   // pause: yayına ara verildi (Seyhun 2026-11-02): video ekranda kalır, önünde "Yayına ara verildi" yazısı
   // caption: ekranın altındaki yazı (Seyhun 2026-11-02 "videonun ne olduğunu yazabileceğimiz bir alan, altta olimpiyat yayını gibi")
-  return { kind, mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, caption: String(s?.caption || "").trim().slice(0, 80), at: typeof s?.at === "string" ? s.at.slice(0, 30) : "" };
+  // src: Yayın › Video'daki canlı kaynaklardan biri (stream.sources id; Seyhun 2026-11-02 "Drone 1, 2, 3, telefon; seçip ekrana alayım")
+  return { kind, src: kind === "src" && SRC_ID.test(s?.src || "") ? s.src : "", mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, caption: String(s?.caption || "").trim().slice(0, 80), at: typeof s?.at === "string" ? s.at.slice(0, 30) : "" };
 }
 // Parkur gösterimi (Seyhun 2026-11-02): auto = yarış öncesi 30 sn'de bir kendiliğinden (varsayılan açık), at = Yayın'dan "Parkuru göster"e basılan an
 // one = Yayın'dan elle açılan tek gösterim ("course" | "wind" | "prog"): kaldırılana kadar ekranda kalır, yarış öncesi, sırasında ve sonrasında
@@ -387,9 +388,47 @@ export const ytSrc = (url, q = "autoplay=1&mute=1&playsinline=1&rel=0") => {
 };
 // drone: DJI dronun yayını (Seyhun 2026-11-02): DJI Fly RTMP ile YouTube'a gönderir, burada o yayının (ya da drone kanalının) bağlantısı
 const ytUrl = (u) => (ytEmbed(u) ? String(u).trim().slice(0, 200) : "");
-export const cleanStream = (s) => ({ url: ytUrl(s?.url), drone: ytUrl(s?.drone) });
-// Ekrandaki canlı görüntünün bağlantısı: canlı yayın ya da drone
-export const screenUrl = (scr, stream) => (scr?.kind === "live" ? stream?.url || "" : scr?.kind === "drone" ? stream?.drone || "" : "");
+// sources: canlı kaynaklar [{ id, name, kind: "drone"|"phone"|"camera", url }] (en çok 8; bağlantısı boş olabilir, sonra yapıştırılır).
+// Eski tek alanlar (url = Kamera 1, drone = Drone 1) yazılırken listeden doldurulur; okuyan: lib/raceCams.js sourcesOf
+const SRC_ID = /^[A-Za-z0-9_-]{1,40}$/;
+export const SRC_KINDS = { drone: "Drone", phone: "Telefon", camera: "Kamera" };
+export const cleanSources = (list) =>
+  (Array.isArray(list) ? list : [])
+    .filter((x) => x && SRC_ID.test(x.id || ""))
+    .slice(0, 8)
+    .map((x) => ({ id: x.id, name: String(x.name || "").trim().slice(0, 30) || x.id, kind: SRC_KINDS[x.kind] ? x.kind : "camera", url: ytUrl(x.url) }));
+export const cleanStream = (s) => {
+  const sources = cleanSources(s?.sources);
+  const of = (id) => sources.find((x) => x.id === id)?.url;
+  return { url: sources.length ? of("c1") ?? ytUrl(s?.url) : ytUrl(s?.url), drone: sources.length ? of("d1") ?? ytUrl(s?.drone) : ytUrl(s?.drone), sources };
+};
+// Kaynak listesi: kayıtlı liste, yoksa eski alanlardan Kamera 1 + Drone 1
+export const streamSources = (stream) => {
+  const l = cleanSources(stream?.sources);
+  return l.length ? l : [{ id: "c1", name: "Kamera 1", kind: "camera", url: ytUrl(stream?.url) }, { id: "d1", name: "Drone 1", kind: "drone", url: ytUrl(stream?.drone) }];
+};
+// Yeni kaynak: türün sıradaki numarası ("Drone 2", id d2)
+export function addSource(list, kind) {
+  const k = SRC_KINDS[kind] ? kind : "camera";
+  const p = { drone: "d", phone: "p", camera: "c" }[k];
+  let n = 1;
+  while (list.some((x) => x.id === `${p}${n}`)) n++;
+  return [...list, { id: `${p}${n}`, name: `${SRC_KINDS[k]} ${n}`, kind: k, url: "" }].slice(0, 8);
+}
+// Ekrandaki canlı görüntünün bağlantısı: canlı yayın, drone ya da seçilen kaynak
+export const screenUrl = (scr, stream) => {
+  if (scr?.kind === "live") return stream?.url || "";
+  if (scr?.kind === "drone") return stream?.drone || streamSources(stream).find((x) => x.kind === "drone" && x.url)?.url || "";
+  if (scr?.kind === "src") return streamSources(stream).find((x) => x.id === scr.src)?.url || "";
+  return "";
+};
+// Sesle "drone 2", "telefon 1", "kamera 2" → kaynak (adı ya da türü + numarası)
+export function sourceBySay(list, say) {
+  const s = low(say).replace(/dron\b/g, "drone");
+  const m = s.match(/(drone|telefon|kamera)\s*'?\s*(\d)/);
+  if (!m) return null;
+  return list.find((x) => low(x.name) === `${m[1]} ${m[2]}`) || null;
+}
 // DJI Fly › Canlı yayın › RTMP adresinin başı (sonuna YouTube yayın anahtarı eklenir; anahtar burada hiç yazılmaz, saklanmaz)
 export const YT_RTMP = "rtmp://a.rtmp.youtube.com/live2/";
 
@@ -425,6 +464,8 @@ export function screenCommand(raw) {
   if (/yayın[ıa]?\s*(sürdür|devam)|ekran[ıa]?\s*(sürdür|devam)|duraklatmayı\s*kaldır/.test(s)) return { pause: false };
   if (!/(canlı\s*)?ekran(da|a)\b/.test(s) || !/göster|oynat|\baç\b|ver\b|yayınla/.test(s)) return null;
   const loop = /döngü|tekrar\s*tekrar|sürekli|loop|başa\s*sar/.test(s);
+  // "ekranda drone 2'yi göster", "telefon 1'i ekrana ver" → { kind: "src", say } (adıyla bulunur); numarasız drone → ilk drone
+  if (/(dron|drone|telefon|kamera)\s*'?\s*\d/.test(s)) return { kind: "src", say: s, loop: false };
   if (/\bdron|havadan|hava\s*görüntü/.test(s)) return { kind: "drone", loop: false };
   if (/canlı\s*yayın|yayını\b|canlı\s*görüntü/.test(s)) return { kind: "live", loop: false };
   let n = 0;

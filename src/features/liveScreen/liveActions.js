@@ -4,7 +4,7 @@
 import { authFetch } from "@/lib/authFetch";
 import { loadRoundsOf, saveCourseShow, savePlan, saveRounds, saveScreen, saveStream } from "@/features/athletes/raceLiveStore";
 import { momentRace, momentRaceName, raceName } from "@/lib/raceLive";
-import { applyRound, currentStart, markName, recTitle, roundCommand, routeCommand, screenCommand, setRoute, ytEmbed } from "@/lib/raceRounds";
+import { applyRound, currentStart, markName, recTitle, roundCommand, routeCommand, screenCommand, setRoute, sourceBySay, streamSources, ytEmbed } from "@/lib/raceRounds";
 
 export const liveUrl = (raceId) => `${window.location.origin}/canli/${raceId}`;
 
@@ -62,7 +62,7 @@ export async function roundSay(orgId, raceId, s) {
   return { text: `${markName(rd.mark)}: ${r.added.map((a) => a[1]).join(", ")}.${skip}` };
 }
 
-// Ekrandaki kaydı seç: { kind: "live" } | { kind: "drone" } | { kind: "rec", mid, loop } | { kind: "" }
+// Ekrandaki kaydı seç: { kind: "live" } | { kind: "src", src } | { kind: "drone" } | { kind: "rec", mid, loop } | { kind: "" }
 export async function showOnScreen(orgId, raceId, s) {
   await saveScreen(orgId, raceId, s);
   ensurePublic(raceId).catch(() => {});
@@ -100,10 +100,13 @@ export async function screenSay(orgId, raceId, s) {
     await showOnScreen(orgId, raceId, { ...L.screen, pause: c.pause });
     return { text: c.pause ? "Yayına ara verildi, ekranda görüntü kalır." : "Yayın sürüyor." };
   }
-  if (c.kind === "drone") {
-    if (!ytEmbed(L.stream.drone)) return { fail: "Önce drone yayınının bağlantısını Yayın › Video › Drone'a yapıştır." };
-    await showOnScreen(orgId, raceId, { kind: "drone" });
-    return { text: "Ekranda drone yayını." };
+  if (c.kind === "drone" || c.kind === "src") {
+    const list = streamSources(L.stream);
+    const x = c.kind === "src" ? sourceBySay(list, c.say) : list.find((k) => k.kind === "drone" && k.url) || list.find((k) => k.kind === "drone");
+    if (!x) return { fail: "Bu adla bir kaynak yok. Yayın › Video › Canlı kaynaklar'a bak." };
+    if (!ytEmbed(x.url)) return { fail: `Önce ${x.name} için YouTube bağlantısını Yayın › Video'ya yapıştır.` };
+    await showOnScreen(orgId, raceId, { kind: "src", src: x.id });
+    return { text: `Ekranda ${x.name}.` };
   }
   if (c.kind === "live") {
     if (!ytEmbed(L.stream.url)) return { fail: "Önce canlı yayın bağlantısını Canlı sekmesine yapıştır." };

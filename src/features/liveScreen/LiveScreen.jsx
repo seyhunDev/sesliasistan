@@ -2308,7 +2308,7 @@ export function LiveScreen({ id, y = "" }) {
   // Evre (lib/raceLive.js livePhase): bekleme (start saatine geri sayım) · yarış (sayaç ya da bugünkü start) · gün özeti
   const today = seeDay(data, nowMs);
   const phase = isCur ? livePhase({ plan: data.plan, starts, timer: data.timer, today, now: nowMs }) : "race";
-  const hasVideo = isCur && ["live", "drone", "rec"].includes(data.screen?.kind);
+  const hasVideo = isCur && ["live", "drone", "src", "rec"].includes(data.screen?.kind);
   const csel = phase === "race" ? sel : null;
   // sayaç başka grubun startını sayıyorsa (ekranda Sarı yarışta, Mavi geri sayımda) ekrandaki yarışın saati sayaçtan okunmaz
   const ctimer = phase === "race" && (!data.timer?.rid || !sel || data.timer.rid === sel.id) ? data.timer : null;
