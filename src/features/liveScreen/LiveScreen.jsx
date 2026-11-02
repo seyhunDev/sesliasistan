@@ -318,7 +318,7 @@ function WindDay({ fc, now, at, mine = [], mini = false }) {
   return (
     <div className={`lv-fc${mini ? " mini" : ""}`}>
       <div className="lv-lab">
-        <span>{`Gün boyu${fc.station && got.length ? ` · ${fc.station}` : ""}`}</span>
+        <span>Gün boyu</span>
         <span>{atRow ? `Start'ta ${dirShort(atRow.dir)} ${atRow.wind} kn, sağanak ${atRow.gust ?? atRow.wind}` : `${lo}–${hi} kn`}</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
@@ -335,20 +335,42 @@ function WindDay({ fc, now, at, mine = [], mini = false }) {
         {dots.map((d, k) => (
           <circle key={k} cx={d.px} cy={d.py} r="4.5" fill="#fff" stroke="var(--lv-ink)" strokeWidth="2" />
         ))}
+        {/* her saat yön oku (hava durumu sayfasındaki gibi): ölçülen saat mavi ve koyu, tahmin soluk beyaz */}
+        {rows.map((r, i) => {
+          const o = got.find((g) => g.i === i);
+          return (
+            <g key={`a${r.hh}`} transform={`translate(${x(i)} 12) rotate(${o?.dir ?? r.dir ?? 0})`}>
+              <path d="M0 -6 L4 4 L0 2 L-4 4 Z" fill={o ? OBS : "#fff"} fillOpacity={o ? 1 : got.length ? 0.45 : 0.8} />
+            </g>
+          );
+        })}
         {rows.map((r, i) =>
           +r.hh % 3 === 0 ? (
             <g key={r.hh}>
               <text x={x(i)} y={H - 6} fill="#fff" fillOpacity=".7" fontSize="13" textAnchor="middle">{`${+r.hh}`}</text>
               <text x={x(i)} y={y(r.wind) - 10} fill="#fff" fontSize="13" fontWeight="700" textAnchor="middle">{r.wind}</text>
-              <g transform={`translate(${x(i)} 12) rotate(${r.dir ?? 0})`}>
-                <path d="M0 -6 L4 4 L0 2 L-4 4 Z" fill="#fff" fillOpacity=".8" />
-              </g>
             </g>
           ) : null,
         )}
       </svg>
       <div className="lv-sumt">
-        <span>{`Beyaz tahmin${got.length ? " · mavi ölçülen" : ""}${dots.length ? " · nokta bizim" : ""}`}</span>
+        {/* açıklama: renkli işaretlerle beklenen (tahmin) ve gerçekleşen (istasyon) (Seyhun 2026-11-02 "beklenti ve gerçekleşen, hava durumundaki gibi") */}
+        <span className="lv-leg">
+          <i className="f" />
+          Beklenen
+          {got.length ? (
+            <>
+              <i className="o" />
+              {`Gerçekleşen${fc.station ? ` · ${fc.station}` : ""}`}
+            </>
+          ) : null}
+          {dots.length ? (
+            <>
+              <i className="m" />
+              Bizim ölçüm
+            </>
+          ) : null}
+        </span>
         {at ? <span className="lv-acc">{`Start ${at}`}</span> : null}
       </div>
     </div>
@@ -1215,7 +1237,10 @@ function WindFloat({ data, sel, isCur, show, now }) {
   );
 }
 function WindBody({ data, sel, isCur, now }) {
-  const { w, obs } = lastWind(data, sel, isCur);
+  const { w: mine, obs } = lastWind(data, sel, isCur);
+  // şimdi: bizim son ölçümümüz, yoksa istasyonun son gerçekleşen saati
+  const so = (data.forecast?.obs || []).filter((o) => o.wind != null && o.dir != null).at(-1);
+  const w = mine || (so ? { dir: so.dir, kn: so.wind, at: "", st: `${data.forecast.station || "İstasyon"} ${so.hh}:00` } : null);
   const ew = expWind(data.forecast, data.plan.at);
   return (
     <>
@@ -1226,7 +1251,7 @@ function WindBody({ data, sel, isCur, now }) {
               <WindArrow w={w} />
               {w.range ? `${w.range[0]}–${w.range[1]}°` : `${w.dir}°`}
             </b>
-            <span>{`Şimdi · ${dirShort(w.dir)}${w.kn != null ? ` · ${w.kn} knot` : ""}`}</span>
+            <span>{`${w.st ? `Gerçekleşen · ${w.st}` : "Şimdi"} · ${dirShort(w.dir)}${w.kn != null ? ` · ${w.kn} knot` : ""}`}</span>
           </div>
         ) : null}
         {ew ? (
