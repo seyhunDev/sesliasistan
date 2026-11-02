@@ -25,6 +25,8 @@ export function autoCaption({ plan, starts = [], timer = null, rounds = {}, now 
     return { text: [VOID_TEXT[last.void] || last.void, what].filter(Boolean).join(" · "), kind: "warn" };
   }
   if (plan?.status === "ap" && (!plan.day || !today || plan.day === today)) return { text: "Tehir", kind: "warn" };
+  // Tehir indi, 1 dk sonra uyarı işareti (geri sayım başlayınca "Start")
+  if (plan?.warn && now < Date.parse(plan.warn) && now > Date.parse(plan.warn) - 2 * 60e3) return { text: "Tehir indi", kind: "warn" };
   // Süren yarışlar (aynı anda iki grup olabilir): en son başlayandan geriye
   for (const s of [...day].reverse()) {
     if (s.void || s.fin || !s.at) continue;

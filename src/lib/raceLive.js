@@ -129,7 +129,12 @@ export function cleanPlan(p) {
   const next = p?.next && DAY.test(p.next.day || "") ? { day: p.next.day, at: hm(p.next.at) } : null;
   const status = PLAN_STATUS.includes(p?.status) ? p.status : "";
   // Tehir (Seyhun 2026-11-01 "bir sebep belirterek tehir basabilirim, bir saatlik"): from eski saat, why sebep; at yeni saat (belirsizse boş)
-  const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60) } : null;
+  // down (Seyhun 2026-11-02 "1 dk sonra indir, 5 dk sonra indir ya da belirsiz"): AP'nin ineceği an (ISO; "" belirsiz). İnince 1 dk sonra
+  // uyarı işareti, yani geri sayım: warn o an (ISO), warnBy kuran cihaz (geri sayımı o başlatır, aynı anda iki start açılmasın)
+  const iso = (v) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? v.slice(0, 30) : "");
+  const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60), down: iso(p.ap.down) } : null;
+  const warn = status === "ap" ? "" : iso(p?.warn);
+  const warnBy = warn ? String(p?.warnBy || "").slice(0, 12) : "";
   // Günün grupları (Seyhun 2026-11-02 "startlar-yeni"): bir kez seçilir, "+ Yarış" bunlarla bir yarışın startlarını ekler
   const grps = [...new Set((Array.isArray(p?.grps) ? p.grps : []).map((g) => String(g || "").slice(0, 20)).filter(Boolean))].slice(0, 6);
   // Birden çok sınıf (Seyhun 2026-11-02 "bir iki sınıf seçerim, sınıf seçiliyse grup seçerek başlarım"): sets [{ cls, grps }]; yoksa cls + grps
@@ -142,17 +147,34 @@ export function cleanPlan(p) {
   const off = [...new Set((Array.isArray(p?.off) ? p.off : []).filter((d) => DAY.test(d || "")))].slice(0, 20);
   // Turuncu bayrak (Seyhun 2026-11-02 "turuncu bayrak basılınca artık start öncesi"): çekildiği an (ISO); "" indi. Ekran yalnız o gün ve gün bitmemişken sayar
   const orange = typeof p?.orange === "string" && !Number.isNaN(Date.parse(p.orange)) ? p.orange.slice(0, 30) : "";
-  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off, orange, agenda: cleanAgenda(p?.agenda) };
+  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off, orange, warn, warnBy, agenda: cleanAgenda(p?.agenda) };
 }
 // Tehir cümlesi: "Start 12:00'a ertelendi (11:00) · Rüzgâr yok" ya da "Start ertelendi, yeni saat belli değil · Fırtına"
 export function apText(plan) {
   if (!plan || plan.status !== "ap") return "";
   const why = plan.ap?.why || "";
-  const base = plan.at ? `Start ${plan.at}'a ertelendi${plan.ap?.from ? ` (${plan.ap.from})` : ""}` : "Start ertelendi, yeni saat belli değil";
+  const base = plan.ap?.down
+    ? `Tehir ${trHm(plan.ap.down)}'de iner${plan.at ? `, start ${plan.at}` : ""}`
+    : plan.at ? `Start ${plan.at}'a ertelendi${plan.ap?.from ? ` (${plan.ap.from})` : ""}` : "Start ertelendi, yeni saat belli değil";
   return why ? `${base} · ${why}` : base;
 }
-// 1 dk: geri sayımda tehir (AP inince 1 dk sonra uyarı işareti; Seyhun 2026-11-02 "geri sayımda tehir 1 dakikalık olmalı")
-export const AP_MIN = [1, 30, 60, 90, 120];
+// ISO an → Türkiye saatiyle "12:31"
+export const trHm = (iso) => (Date.parse(iso || "") ? new Date(Date.parse(iso) + 3 * 3600e3).toISOString().slice(11, 16) : "");
+// Tehir (AP) çekilir: down dakika sonra iner (0 = belirsiz); start = iniş + 1 dk + geri sayım (dur sn). Döndürür plan yaması.
+export function apRaise(plan, now, min, why, dur = 300) {
+  const down = min ? new Date(now + min * 60e3).toISOString() : "";
+  return { status: "ap", at: down ? trHm(new Date(Date.parse(down) + 60e3 + dur * 1000).toISOString()) : "", ap: { from: plan?.ap?.from || plan?.at || "", why, down }, warn: "" };
+}
+// Tehir iner (zamanı gelince kendiliğinden ya da "Tehiri indir"): 1 dk sonra uyarı işareti, geri sayım başlar
+export function apLower(now, dur = 300, by = "") {
+  const warn = new Date(now + 60e3).toISOString();
+  return { status: "", ap: null, warn, warnBy: by, at: trHm(new Date(now + 60e3 + dur * 1000).toISOString()) };
+}
+// İnişi gelmiş tehir / gelmiş uyarı işareti
+export const apDue = (plan, now) => plan?.status === "ap" && !!plan.ap?.down && Date.parse(plan.ap.down) <= now;
+export const warnDue = (plan, now) => !!plan?.warn && Date.parse(plan.warn) <= now;
+// Tehirin inişi: 1 dk, 5 dk… sonra (Seyhun 2026-11-02); 1 dk: geri sayımda tehir (AP inince 1 dk sonra uyarı işareti; Seyhun 2026-11-02 "geri sayımda tehir 1 dakikalık olmalı")
+export const AP_MIN = [1, 5, 15, 30, 60];
 export const AP_WHY = ["Rüzgâr yok", "Çok rüzgâr", "Yağış", "Fırtına", "Diğer"];
 // Saate dakika ekler: "11:00" + 60 → "12:00" (23:59'u aşmaz)
 export const addMin = (at, min) => {
