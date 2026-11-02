@@ -239,7 +239,45 @@ export function TimerSound() {
     };
   }, [active]);
 
-  return null;
+  return <LeadIn />;
+}
+
+// Sesle başlatmada 3 · 2 · 1 (Seyhun 2026-11-02 "önce kendi geri sayım yapacak, 3, 2, 1 sonra başlatacak"): ekranın ortasında büyük
+// rakam ve her saniye kısa bip; başlatmayı asistan yapar (isler/antrenmanSes.js). Uygulama düzeninde TimerSound'la bir kez durur.
+const LEAD = "sa-lead";
+export function leadIn(ms = 3000) {
+  audio();
+  const at = Date.now() + ms;
+  window.dispatchEvent(new CustomEvent(LEAD, { detail: at }));
+  return at;
+}
+function LeadIn() {
+  const [at, setAt] = useState(0);
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const on = (e) => setAt(e.detail || 0);
+    window.addEventListener(LEAD, on);
+    return () => window.removeEventListener(LEAD, on);
+  }, []);
+  useEffect(() => {
+    if (!at) return;
+    let last = 0;
+    const tick = () => {
+      const k = Math.ceil((at - Date.now()) / 1000);
+      if (k <= 0) return beep("mid"), setAt(0); // başladı
+      if (k !== last) (last = k), setN(k), beep("short");
+    };
+    tick();
+    const id = setInterval(tick, 100);
+    return () => clearInterval(id);
+  }, [at]);
+  if (!at || !n) return null;
+  return createPortal(
+    <div role="status" aria-label={`Başlıyor ${n}`} className="pointer-events-none fixed inset-0 z-[90] flex items-center justify-center bg-black/55">
+      <span className="text-[9rem] font-bold leading-none text-white tabular-nums">{n}</span>
+    </div>,
+    document.body,
+  );
 }
 
 // mode "start" (yarış multimedya sayfası, Seyhun 2026-10-18): yelken start dizisi; başlatınca, 4:00 ve 1:00 kala bip, son 10 saniye

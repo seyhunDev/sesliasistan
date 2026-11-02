@@ -48,6 +48,7 @@ async function idleCost(page, ms = 2500) {
 }
 
 export async function scenarios(h) {
+  if (process.env.ASISTAN_TEK === "antrenman") return trainVoice(h); // yalnız antrenman sesle bölümü
   const { check, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI, setTasks, setTranscript, setLive, TODAY, TOMORROW, log } = h;
 
   // ================================================================ 1. Sekme çubuğu ve açılış
@@ -1054,6 +1055,57 @@ async function scenarios4(h) {
   await seaPage(h);
   await camsPage(h);
   await rainStrip(h);
+  await trainVoice(h);
+}
+
+// ================================================================ Antrenman yarışı sesle (Seyhun 2026-11-02): "2 dakika başlat" → 3·2·1 sonra sayaç ve yarış; "yarışı bitir"
+async function trainVoice(h) {
+  const { check, newPage, waitFor, typeAsk, closeAll, convo, log } = h;
+  log("    Antrenman: sesle başlat ve bitir…");
+  const { page, errs } = await newPage();
+  const G = "Antrenman yarışı sesle";
+  const home = async () => {
+    await page.goto(new URL(page.url()).origin + "/training", { waitUntil: "load" }); // bugün yarış da var: antrenman sözleri Antrenman'da antrenmanın
+    await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
+    await page.waitForTimeout(1200);
+  };
+  await home();
+  const timer = () => page.evaluate(() => JSON.parse(localStorage.getItem("sa-sayac") || "null"));
+  await typeAsk(page, "2 dakika başlat");
+  await check(G, "2 dakika başlat", "önce ekranda 3 · 2 · 1, sayaç henüz başlamadı", async () => {
+    const seen = await waitFor(async () => (await page.locator("[role=status][aria-label^='Başlıyor']").count()) > 0, 8000);
+    const t = await timer();
+    return [!!seen && !(t?.end > 0), `${seen ? "3·2·1 göründü" : "3·2·1 yok"} · sayaç ${t?.end ? "başlamış" : "bekliyor"}`];
+  });
+  await check(G, "3 sn sonra", "2 dakikalık geri sayım başladı, yarış açıldı", async () => {
+    const ok = await waitFor(async () => ((await timer())?.end || 0) > Date.now() + 100000, 7000);
+    const t = await timer();
+    const gone = await page.locator("[role=status][aria-label^='Başlıyor']").count();
+    const left = t?.end ? Math.round((t.end - Date.now()) / 1000) : null;
+    return [!!ok && t.rid && t.mode === "start" && gone === 0 && left > 100 && left <= 120, `kalan ${left} sn · yarış ${t?.rid ? "var" : "yok"} · mod ${t?.mode} · 3·2·1 ${gone ? "duruyor" : "kalktı"}`];
+  });
+  await check(G, "antrenman sayfası", "antrenman günü açıldı, Yarış 1 sayacın başlığında", async () => {
+    const went = await waitFor(async () => new URL(page.url()).pathname === "/training/day", 30000);
+    const ok = await waitFor(async () => /Yarış 1/.test(await page.locator("main").first().innerText().catch(() => "")), 15000);
+    return [!!went && !!ok, `sayfa ${new URL(page.url()).pathname} · ${ok ? "Yarış 1 var" : "Yarış 1 yok"}`];
+  });
+  await closeAll(page);
+  await home();
+  // Start geçmiş gibi: sayacın 0'ı 30 sn önce
+  await page.evaluate(() => {
+    const t = JSON.parse(localStorage.getItem("sa-sayac"));
+    localStorage.setItem("sa-sayac", JSON.stringify({ ...t, end: Date.now() - 30000 }));
+    window.dispatchEvent(new Event("sa-sayac"));
+  });
+  await typeAsk(page, "yarışı bitir");
+  await check(G, "yarışı bitir", "sayaç durur, “Yarış 1 bitti” denir", async () => {
+    const ok = await waitFor(async () => /Yarış 1 bitti/.test(await convo(page)), 8000);
+    const t = await timer();
+    return [!!ok && t?.end == null, `${ok ? "bitti dendi" : `cevap: ${(await convo(page)).slice(-80)}`} · sayaç ${t?.end == null ? "durdu" : "sürüyor"}`];
+  });
+  await closeAll(page);
+  await check("Sayfa hataları", "antrenman sesle", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
 }
 
 // ================================================================ Deniz trafiği (/sea): tam ekran MarineTraffic haritası
