@@ -1,8 +1,8 @@
-Commit: 3a37080 · Yarış abandone (N bayrağı) (#969)
-Zaman: 2026-11-02-1441 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41437075429
+Commit: 0b450a7 · Yarış silinince planları silinir, ana sayfa yarış satırı hemen kalkar (#971)
+Zaman: 2026-11-02-1515 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41441477316
 
-TAM TEST · 02.11.2026 14:29:39
+TAM TEST · 02.11.2026 15:03:25
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1435/1435 geçti · 0 kalan · 630 sn
+SONUÇ: 1435/1435 geçti · 0 kalan · 651 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
