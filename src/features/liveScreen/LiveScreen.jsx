@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apText, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { cleanCourse } from "@/lib/raceCourse";
+import { cleanCourse, selCard } from "@/lib/raceCourse";
+import { routeText, sceneSvg } from "@/lib/courseScene";
 import { manualFinish, markLabel, markName, nowPos, officialFor, prepName, sameSail, shortClub, shortName, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import { useDemo } from "./demo";
@@ -231,10 +232,6 @@ function Clock({ sel, isCur, timer, skew, entry, data, today }) {
 
 
 // Parkur panelinin başlığındaki rota: "1 · 4 · 1 · 2 · 3 · Finish"
-const routeOf = (data, sel) => {
-  const route = data.rounds?.[sel?.id]?.route || [];
-  return route.length ? route.map((m) => (m === "F" ? "Finish" : m)).join(" · ") : sel?.course || "";
-};
 
 // Zemin (Seyhun 2026-11-01 "koyuluktan açıklığa, yarış parkuru havası"): üstte açık deniz mavisi, altta koyu lacivert; arkada soluk bir
 // parkur (şamandıralar, kesik rota, start hattı) ve dalga dokusu. Yazılar öne çıksın diye hepsi çok soluk.
@@ -666,11 +663,14 @@ function Backdrop({ data, isCur }) {
     else v.play?.().catch?.(() => {});
   }, [scr.pause, on]);
   const show = on ? { yt, rec, loop: !!scr.loop } : last;
+  // dikey telefon videosu (h > w) kırpılmaz: ortada tam boy, iki yanı bulanık kopyası (Seyhun 2026-11-01 "dikey ve yatay video güzel gösterilsin")
+  const tall = !!(show?.rec?.w && show.rec.h > show.rec.w);
   return (
     <>
       <Sea />
       {st && show ? (
-        <div className={`lv-bg ${st}`} aria-hidden="true">
+        <div className={`lv-bg ${st}${tall ? " tall" : ""}`} aria-hidden="true">
+          {tall && show.rec?.kind === "video" ? <video className="lv-bgblur" src={show.rec.url} autoPlay muted playsInline loop /> : null}
           {show.yt ? (
             <iframe title="Canlı yayın" src={show.yt} allow="autoplay; encrypted-media; picture-in-picture" />
           ) : show.rec?.kind === "video" ? (
@@ -1042,7 +1042,7 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, today, ongoing, hasSvg
       {hasSvg ? (
         <button type="button" className="lv-cell course" onClick={onCourse} aria-label="Parkuru göster">
           <b>Parkur</b>
-          <span>{routeOf(data, sel) || "Göster"}</span>
+          <span>{routeText(sceneRoute(data, sel, isCur, phase)) || "Göster"}</span>
         </button>
       ) : null}
       {phase === "race" && sel && plan.order[0] ? (
@@ -1069,18 +1069,26 @@ function CenterClock({ show, ...p }) {
   );
 }
 
-// Parkur sürekli ekranda değil (Seyhun 2026-11-02): yarış öncesinde görünür; yarışta yalnız yeni ölçüm girilince 20 sn büyük çıkar, sonra
-// şeritteki "Parkur"a çekilir; şeritten dokununca açılır. Kartsız, sağda.
+// Parkur sürekli ekranda değil (Seyhun 2026-11-02): yarış öncesinde görünür; yarışta yeni ölçüm girilince ya da kart değişince 20 sn çıkar,
+// sonra şeritteki "Parkur"a çekilir; şeritten dokununca açılır. Çizim olimpiyat yayınındaki gibi sahne (lib/courseScene.js): denizde komite,
+// pin ve finiş botu, sarı şamandıralar, rota sarı okla çizilip akar. Rota: süren yarışın rotası, yoksa seçili parkur kartınınki.
 const COURSE_MS = 20000;
-function CourseFloat({ data, open, now, phase, onClose }) {
-  const svg = useMemo(() => cardSvg(cardOf(cleanCourse(data.course || {})), { navy: true }), [data.course]);
-  const latest = Math.max(0, ...(data.course?.obs || []).map((o) => Date.parse(o.at) || 0));
+export const sceneRoute = (data, sel, isCur, phase) => {
+  const r = phase === "race" && isCur && sel ? data.rounds?.[sel.id]?.route || [] : [];
+  return r.length ? r : selCard(cleanCourse(data.course || {})).route;
+};
+function CourseFloat({ data, sel, isCur, open, now, phase, onClose }) {
+  const route = sceneRoute(data, sel, isCur, phase);
+  // aynı yazı üretilince React innerHTML'i yeniden yazmaz, animasyon baştan başlamaz
+  const svg = sceneSvg(cardOf(cleanCourse(data.course || {})), route, { pre: "lv", wind: false });
+  const latest = Math.max(0, Date.parse(data.course?.cardAt || "") || 0, ...(data.course?.obs || []).map((o) => Date.parse(o.at) || 0));
   const fresh = latest > 0 && now - latest < COURSE_MS;
   const st = useFade(!!svg && (open || fresh || phase === "wait"), 600);
   if (!st || !svg) return null;
   return (
-    <button type="button" className={`lv-cfloat ${st}`} onClick={onClose} aria-label="Parkuru kapat">
-      <div className="lv-cflat" dangerouslySetInnerHTML={{ __html: svg }} />
+    <button type="button" className={`lv-scene ${st}`} onClick={onClose} aria-label="Parkuru kapat">
+      <span className="lv-scenet">{`Parkur · ${routeText(route)}`}</span>
+      <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: svg }} />
     </button>
   );
 }
@@ -1207,7 +1215,7 @@ export function LiveScreen({ id, y = "" }) {
         </div>
         {phase === "summary" ? <SummaryHero data={data} today={today} /> : null}
         <CenterClock show={counting} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
-        <CourseFloat data={data} open={courseOpen} now={nowMs} phase={phase} onClose={() => setCourseOpen(false)} />
+        <CourseFloat data={data} sel={sel} isCur={isCur} open={courseOpen} now={nowMs} phase={phase} onClose={() => setCourseOpen(false)} />
         <div className="lv-foot">
           <LowerThird data={data} isCur={isCur} line={sel ? [entry?.cls || "", entry?.grp ? `${entry.grp} grup` : "", raceTitle(sel)].filter(Boolean).join(" · ") : ""} />
           {windOpen && (data.forecast?.rows || []).length ? (

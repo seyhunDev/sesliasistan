@@ -58,6 +58,10 @@ export function LiveHome() {
             ))
           )}
         </div>
+        {/* Örnek yarış (Seyhun 2026-11-02 "örnek yarışı eklemek için bir buton"): ekranın baştan sona nasıl göründüğü, veriye dokunmaz */}
+        <Link href="/canli/ornek" className="lv-btn lv-demob">
+          Örnek yarışı izle
+        </Link>
       </div>
     </div>
   );
