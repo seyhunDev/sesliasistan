@@ -1,8 +1,8 @@
-Commit: 61f1cfd · Canlı ekran yayın tasarımı: geri sayım, program, gün sonu, lider ve dönüş saati, bulanık foto, yayın yazısı (#957)
-Zaman: 2026-11-02-1307 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41424654595
+Commit: 1a5ac5b · Parkur sahnesi: finiş hattının öbür ucunda turuncu şamandıra (#964)
+Zaman: 2026-11-02-1328 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41427548867
 
-TAM TEST · 02.11.2026 12:56:20
+TAM TEST · 02.11.2026 13:18:05
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1435/1435 geçti · 0 kalan · 596 sn
+SONUÇ: 1435/1435 geçti · 0 kalan · 584 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
