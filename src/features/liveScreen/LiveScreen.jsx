@@ -3,9 +3,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apText, cleanPlan, daysUntil, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
+import { apText, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { cleanCourse, selCard } from "@/lib/raceCourse";
+import { CARD_TYPES, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, SHOW_ON, shortClub, shortName, showSlide, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
@@ -1206,6 +1206,95 @@ function WaitHero({ data, today, cs, prog, now }) {
     </div>
   );
 }
+// Videolu yarış öncesi sol şerit (Seyhun 2026-11-02 "solda olmalı bilgiler, arka fon blur olabilir sadece bu alanın, bilgilere arka plan ekleme"):
+// yarışın adı soluk, durum (Yarış öncesi / turuncu bayrakla Start öncesi), büyük süre, rüzgâr (şimdi + start'ta beklenen; start öncesinde hat avantajı),
+// parkur (çizim, adı, rota), program (start öncesinde yalnız sıradakiler)
+function SidePanel({ data, today, cs, prog, now }) {
+  const orange = orangeUp(data.plan, today);
+  const r = data.race || {};
+  const c = curWind(data, null, true, now);
+  const ew = expWind(data.forecast, data.plan.at);
+  const crs = cleanCourse(data.course || {});
+  const route = sceneRoute(data, null, true, "wait");
+  const svg = courseSvg(data, route);
+  let bias = null;
+  try {
+    bias = orange ? lineBias(crs) : null;
+  } catch {
+    bias = null;
+  }
+  const left = prog.filter((x) => x.state !== "done");
+  const first = left[0] || null;
+  const rows = orange ? left.slice(1, 3) : left.slice(0, 4);
+  const prep = data.plan.order?.[0]?.prep || "";
+  return (
+    <aside className="lv-side">
+      {r.name ? <div className="lv-sname">{r.name}</div> : null}
+      <div>
+        <div className={`lv-skick${orange ? " o" : ""}`}>
+          {orange ? <span className="lv-oflag" aria-hidden="true" /> : null}
+          {orange ? "Start öncesi" : "Yarış öncesi"}
+        </div>
+        <div className="lv-sbig">{cs.rem ? cs.value : "—:—"}</div>
+        <div className="lv-ssub">{[cs.label, cs.right].filter(Boolean).join(" · ")}</div>
+        {orange && first ? (
+          <>
+            <div className="lv-swhat">
+              <Dot g={first.grp} />
+              {[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}
+            </div>
+            <div className="lv-ssub">{[first.cls, prep ? prepName(prep) : ""].filter(Boolean).join(" · ")}</div>
+          </>
+        ) : null}
+      </div>
+      {c || ew ? (
+        <div className="lv-ssec">
+          <div className="lv-sh">{orange ? "Start hattında rüzgâr" : "Rüzgâr"}</div>
+          <div className="lv-swind">
+            {(c || ew).dir != null ? <WindArrow w={c || ew} /> : null}
+            <div className="v">
+              <b>
+                {(c || ew).kn}
+                <em>knot</em>
+              </b>
+              <small>
+                {c ? <span className={c.man ? "m" : ""}>{c.by}</span> : <span>Tahmin</span>}
+                {c && ew && !orange ? ` · Start'ta ${ew.kn} knot` : ""}
+                {orange && ew?.gust && ew.gust > (c || ew).kn ? ` · Sağanak ${ew.gust}` : ""}
+              </small>
+            </div>
+            {(c || ew).dir != null ? <div className="d">{`${dirShort((c || ew).dir)} ${degText(c || ew)}`}</div> : null}
+          </div>
+          {bias?.end ? <div className="lv-sbias">{`${bias.end === "pin" ? "Pin" : "Komite"} avantajlı · ${Math.round(bias.deg)}°`}</div> : null}
+        </div>
+      ) : null}
+      {svg ? (
+        <div className="lv-ssec">
+          <div className="lv-sh">Parkur</div>
+          <div className="lv-scrs">
+            <div>
+              <b>{CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}</b>
+              <span>{routeText(route)}</span>
+            </div>
+            <div className="s" dangerouslySetInnerHTML={{ __html: svg }} />
+          </div>
+        </div>
+      ) : null}
+      {rows.length ? (
+        <div className="lv-ssec lv-sprog">
+          <div className="lv-sh">{orange ? "Sıradaki" : "Program"}</div>
+          {rows.map((x) => (
+            <div key={x.key} className={x.state}>
+              <Dot g={x.grp} />
+              <span className="t">{[x.name, x.grp].filter(Boolean).join(" · ")}</span>
+              <i>{x.state === "now" ? "Canlı" : x.at || "Sonra"}</i>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </aside>
+  );
+}
 const SLIDE_NAME = { course: "Parkur", wind: "Rüzgâr", prog: "Program", ahead: "Beklenen rüzgâr" };
 const wdText = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short" });
 // Yarış günlerinin beklenen rüzgârı: gün, ilk start, ok (rüzgârın gittiği yön), knot, yön, sağanak; tahmini olmayan gün "Tahmin yok"
@@ -1810,7 +1899,10 @@ export function LiveScreen({ id, y = "" }) {
   const prog = isCur ? dayProgram(data, today) : [];
   // Yarış öncesi gösterim (parkur → rüzgâr → program); süren yarış varken yok (Seyhun 2026-11-02 "yarış başladığında gösterilmemeli")
   const pre = !ongoing && (phase === "wait" || (cs.rem != null && cs.rem > 0));
-  const slide = !(phase === "wait" && !hasVideo) ? slideOn({ data, sel, isCur, open: courseOpen, now: nowMs, phase, pre, prog }) : "";
+  // Videolu yarış öncesi (Seyhun 2026-11-02 videolu/1-yaris-oncesi.png, 2-start-oncesi-turuncu.png onay): solda bulanık şeritte bilgiler,
+  // turuncu bayrak çekiliyse "Start öncesi"; Yayın › Video › Sol bilgi ile kapanır. Açıkken gösterim kartları ve alt şerit yok
+  const side = isCur && hasVideo && pre && data.courseShow?.side !== false;
+  const slide = !(phase === "wait" && !hasVideo) && !side ? slideOn({ data, sel, isCur, open: courseOpen, now: nowMs, phase, pre, prog }) : "";
   const cOn = slide === "course";
   // Yarış öncesi video yokken sade sayfa (Seyhun 2026-11-02 "geri sayım sayfası sade temiz"): ortada sayaç, altta program; şerit yok
   const hero = phase === "wait" && !hasVideo;
@@ -1830,14 +1922,15 @@ export function LiveScreen({ id, y = "" }) {
             <OverallPanel data={data} n={200} cls="lv-rside" />
           </div>
         ) : null}
-        {phase === "race" || (phase === "wait" && hasVideo) ? <ProgramChips items={prog} /> : null}
+        {(phase === "race" || (phase === "wait" && hasVideo)) && !side ? <ProgramChips items={prog} /> : null}
+        {side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}
         {phase === "summary" ? <EndHero data={data} today={today} now={nowMs} onAll={() => setFull("all")} /> : null}
         <CenterClock show={counting && !hero && !hasVideo} sel={csel} isCur={isCur} timer={ctimer} skew={skew} entry={entry} data={data} today={today} />
         <CourseFloat data={data} sel={sel} isCur={isCur} show={cOn} phase={phase} onClose={() => setCourseOpen(false)} />
         <WindFloat data={data} sel={sel} isCur={isCur} show={slide === "wind"} now={nowMs} />
         <ProgFloat prog={prog} show={slide === "prog"} />
-        <div className={`lv-foot${hero ? " off" : ""}`}>
+        <div className={`lv-foot${hero || side ? " off" : ""}`}>
           <TitleLine data={data} isCur={isCur} id={id} starts={starts} onList={() => setList(true)} auto={auto} />
           {windOpen && (data.forecast?.rows || []).length ? (
             <button type="button" className="lv-p lv-windpop" onClick={() => setWindOpen(false)} aria-label="Grafiği kapat">

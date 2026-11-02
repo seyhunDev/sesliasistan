@@ -324,7 +324,8 @@ export function cleanScreen(s) {
 // one = Yayın'dan elle açılan tek gösterim ("course" | "wind" | "prog"): kaldırılana kadar ekranda kalır, yarış öncesi, sırasında ve sonrasında
 // (Seyhun 2026-11-02 "starttan sonra manuel yönetim… parkur, rüzgâr, program gösterme butonları ayrı olsun")
 export const SHOW_ONE = ["course", "wind", "prog"];
-export const cleanCourseShow = (c) => ({ auto: c?.auto !== false, at: typeof c?.at === "string" ? c.at.slice(0, 30) : "", one: SHOW_ONE.includes(c?.one) ? c.one : "" });
+// side: videolu yarış öncesi ekranda soldaki bilgi şeridi (Seyhun 2026-11-02 "istersem kaldırabilmeliyim"), varsayılan açık
+export const cleanCourseShow = (c) => ({ auto: c?.auto !== false, at: typeof c?.at === "string" ? c.at.slice(0, 30) : "", one: SHOW_ONE.includes(c?.one) ? c.one : "", side: c?.side !== false });
 // Yarış öncesi gösterim sırası (Seyhun 2026-11-02 "parkuru gösterdik, sonra rüzgâr grafiği, sonra başka ne gösterebiliyorsak; yarış başlayınca gösterilmemeli"):
 // slides = ekranda olanlar sırayla (ör. ["course","wind","prog"]), her biri SHOW_ON. Otomatikte her SHOW_CYCLE'da bir tur;
 // Yayın'dan "Göster" (at) o andan bir tur. pre değilse (yarış başladı) hiçbiri. Döndürür: o an gösterilen ("" yok)
@@ -385,6 +386,13 @@ export function screenCommand(raw) {
   if (/ekran(dan|ı)\s*(kaldır|kapat|temizle|boşalt)|ekrandakini\s*kaldır/.test(s)) return { clear: true };
   // "ekrana yaz: Optimist Mavi grup start" → { caption }; "ekrandaki yazıyı kaldır" → { caption: "" }
   if (/ekran(daki|ın altındaki)\s*yazıyı\s*(kaldır|sil|temizle)/.test(s)) return { caption: "" };
+  // "turuncu bayrak çekildi" → { orange: true }; "turuncu bayrak indi" → { orange: false }
+  if (/turuncu\s*bayra[kğ]/.test(s)) {
+    if (/\bin(di|dir|sin|iyor)|indiril|kapat|yok/.test(s)) return { orange: false };
+    if (/çek|kalk|kaldır|aç|bas|var|yukarı/.test(s)) return { orange: true };
+  }
+  // "sol bilgiyi kapat" / "sol bilgiyi aç" (videolu ekrandaki sol şerit)
+  if (/sol\s*(bilgi|şerit|panel)/.test(s) && /kapat|kaldır|gizle|aç|göster/.test(s)) return { side: !/kapat|kaldır|gizle/.test(s) };
   const cy = String(raw || "").match(/ekran(?:a|ın altına)\s*yaz(?:ın)?\s*[:,]?\s*(.+)$/i);
   if (cy && cy[1].trim()) return { caption: cy[1].trim().replace(/[.!]+$/, "").slice(0, 80) };
   // "yayını duraklat", "yayına ara ver" → { pause: true }; "yayını sürdür", "yayına devam" → { pause: false }

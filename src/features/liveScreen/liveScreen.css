@@ -704,3 +704,41 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-hwind.m small { color: #ffb37a; }
 .lv-hwind small i { width: 0.6em; height: 0.6em; border-radius: 50%; background: #ff9a4d; }
 .lv-hold .lv-hwind { margin: 0.5em 0 0.6em; }
+/* Videolu yarış öncesi sol şerit (Seyhun 2026-11-02 videolu/ onay): yalnız şeridin arkası bulanık ve koyu, bilgilerin kendi zemini yok;
+   sağ kenarı videoya yumuşak geçer. Turuncu bayrakla "Start öncesi" */
+.lv-side { position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; width: min(33vw, 560px); display: flex; flex-direction: column; justify-content: flex-start; gap: 1em; padding: 4.2em 2.6em 1.6em 3.2vw; backdrop-filter: blur(22px) saturate(1.1); -webkit-backdrop-filter: blur(22px) saturate(1.1); background: linear-gradient(90deg, rgba(6, 12, 24, 0.62), rgba(6, 12, 24, 0.42)); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); animation: lv-fade 0.8s ease-out both; overflow: hidden; }
+.lv-side > * { flex: none; }
+.lv-side :is(.lv-sname, .lv-skick, .lv-sbig, .lv-ssub, .lv-swhat, .lv-sh, .lv-swind b, .lv-swind .d, .lv-scrs b, .lv-scrs span, .lv-sprog, .lv-sbias) { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-sname { font-size: clamp(16px, 1.6vw, 34px); font-weight: 700; line-height: 1.05; letter-spacing: 0.03em; text-transform: uppercase; color: rgba(255, 255, 255, 0.42); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lv-skick { display: flex; align-items: center; gap: 0.65em; font-size: clamp(13px, 1.2vw, 24px); font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255, 255, 255, 0.75); }
+.lv-skick.o { color: #ff9a4d; }
+.lv-oflag { width: 1.8em; height: 1.15em; flex: none; border-radius: 2px; background: #ff7a1a; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
+.lv-sbig { margin-top: 0.08em; font-size: clamp(56px, min(7.4vw, 13vh), 160px); font-weight: 300; line-height: 0.86; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.lv-ssub { margin-top: 0.55em; font-size: clamp(12px, 1.1vw, 22px); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); }
+.lv-swhat { display: flex; align-items: center; gap: 0.45em; margin-top: 0.6em; font-size: clamp(16px, 1.5vw, 30px); font-weight: 700; text-transform: uppercase; }
+.lv-ssec { border-top: 1px solid rgba(255, 255, 255, 0.14); padding-top: 1em; }
+.lv-sh { margin-bottom: 0.6em; font-size: clamp(11px, 0.9vw, 17px); font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+.lv-swind { display: flex; align-items: center; gap: 1em; }
+.lv-swind .lv-arrow { width: 3.2em; height: 3.2em; flex: none; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 50%; }
+.lv-swind .v { min-width: 0; }
+.lv-swind b { display: block; font-size: clamp(28px, 2.8vw, 56px); font-weight: 600; line-height: 1; }
+.lv-swind b em { margin-left: 0.3em; font-size: 0.45em; font-style: normal; font-weight: 500; color: rgba(255, 255, 255, 0.65); }
+.lv-swind small { display: block; margin-top: 0.3em; font-size: clamp(11px, 0.95vw, 18px); font-weight: 500; color: rgba(255, 255, 255, 0.6); }
+.lv-swind small .m { color: #ff9a4d; }
+.lv-swind small .m::before { content: "● "; }
+.lv-swind .d { margin-left: auto; white-space: nowrap; font-size: clamp(16px, 1.4vw, 28px); font-weight: 600; color: rgba(255, 255, 255, 0.85); }
+.lv-sbias { margin-top: 0.7em; font-size: clamp(11px, 0.95vw, 18px); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #f5c518; }
+.lv-scrs { display: flex; flex-direction: column; gap: 0.5em; }
+.lv-scrs .s { min-height: 0; }
+.lv-scrs .s svg { display: block; width: 100%; height: auto; max-height: 13vh; }
+.lv-scrs b { display: inline; margin-right: 0.6em; font-size: clamp(16px, 1.5vw, 30px); font-weight: 700; text-transform: uppercase; }
+.lv-scrs b + span { font-size: clamp(12px, 1.05vw, 20px); font-weight: 600; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.65); }
+.lv-sprog > div:not(.lv-sh) { display: flex; align-items: center; gap: 0.7em; padding: 0.3em 0; font-size: clamp(14px, 1.25vw, 25px); font-weight: 600; text-transform: uppercase; }
+.lv-sprog > div .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-sprog > div i { font-style: normal; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.75); }
+.lv-sprog > div.next i, .lv-sprog > div.now i { color: #ff9a4d; }
+@media (max-width: 760px) {
+  .lv-side { position: relative; width: auto; order: 1; padding: 1.4em 1.2em; gap: 1.1em; -webkit-mask-image: none; mask-image: none; border-radius: 1em; margin-top: 4em; }
+  .lv-sbig { font-size: 18vw; }
+}
+@media (prefers-reduced-motion: reduce) { .lv-side { animation: none; } }

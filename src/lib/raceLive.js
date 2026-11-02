@@ -139,7 +139,9 @@ export function cleanPlan(p) {
   // Günler (Seyhun 2026-11-02 "her gün startı 11 yapacağım"): daily her günün ilk start saati, times[gün] o güne özel saat, off yarış olmayan günler
   const times = Object.fromEntries(Object.entries(p?.times && typeof p.times === "object" ? p.times : {}).filter(([d, v]) => DAY.test(d) && HM.test(v || "")).slice(0, 20));
   const off = [...new Set((Array.isArray(p?.off) ? p.off : []).filter((d) => DAY.test(d || "")))].slice(0, 20);
-  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off };
+  // Turuncu bayrak (Seyhun 2026-11-02 "turuncu bayrak basılınca artık start öncesi"): çekildiği an (ISO); "" indi. Ekran yalnız o gün ve gün bitmemişken sayar
+  const orange = typeof p?.orange === "string" && !Number.isNaN(Date.parse(p.orange)) ? p.orange.slice(0, 30) : "";
+  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off, orange };
 }
 // Tehir cümlesi: "Start 12:00'a ertelendi (11:00) · Rüzgâr yok" ya da "Start ertelendi, yeni saat belli değil · Fırtına"
 export function apText(plan) {
@@ -728,3 +730,6 @@ export function aheadWind(hourly, days, plan) {
 }
 // Bugünden yarışın ilk gününe kaç gün (Türkiye günü); geçtiyse 0
 export const daysUntil = (day, today) => (DAY.test(day || "") && DAY.test(today || "") ? Math.max(0, Math.round((Date.parse(`${day}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 864e5)) : 0);
+
+// Turuncu bayrak çekili mi (bugün, gün bitmemiş): canlı ekran "Start öncesi"ne geçer
+export const orangeUp = (plan, today) => !!plan?.orange && plan.status !== "done" && new Date(Date.parse(plan.orange) + 3 * 3600e3).toISOString().slice(0, 10) === today;

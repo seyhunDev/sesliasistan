@@ -23,7 +23,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
+import { AP_MIN, AP_WHY, addMin, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, withRaceCards, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
@@ -226,7 +226,7 @@ export function BroadcastPage({ orgId, id }) {
     const on = plan.off.includes(d);
     changePlan({ off: on ? plan.off.filter((x) => x !== d) : [...plan.off, d], ...(d === planDay && (plan.status === "" || plan.status === "none") ? { status: on ? "" : "none" } : {}) });
   };
-  const cShow = L?.courseShow || { auto: true, at: "" };
+  const cShow = L?.courseShow || { auto: true, at: "", one: "", side: true };
   const putCourseShow = (c) => {
     setL((p) => (p ? { ...p, courseShow: c } : p));
     saveCourseShow(orgId, id, c).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
@@ -515,6 +515,15 @@ export function BroadcastPage({ orgId, id }) {
         {/* Bugün (Seyhun 2026-11-02 tasarım yayin-tasarim/startlar/startlar-yeni.png): gruplar yarış oluşturulurken seçilir (üstte); liste yarış
             yarış, her yarışın altında grupları ve tek durum (Bitti · Yarışta · Abandone, Sıradaki, Bekliyor). "+ Yarış" sıradaki yarışı
             bütün gruplarıyla ekler. Biten yarış tek satıra kapanır (dokununca açılır). */}
+        {/* Turuncu bayrak (Seyhun 2026-11-02): çekilince canlı ekran "Start öncesi"ne geçer (videoluda soldaki şeritte bayrak, uyarıya kalan süre, hattaki rüzgâr) */}
+        {plan.status !== "done" ? (
+          <button type="button" data-press onClick={() => changePlan({ orange: orangeUp(plan, today) ? "" : new Date().toISOString() })} aria-pressed={orangeUp(plan, today)} className={`${card} ${row} rounded-[1.125rem]`}>
+            <span className="h-4 w-6 shrink-0 rounded-[2px] bg-[#ff7a1a]" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate font-semibold">Turuncu bayrak</span>
+            <span className={`text-[0.875rem] font-semibold ${orangeUp(plan, today) ? "text-[#ff9a4d]" : "text-mut"}`}>{orangeUp(plan, today) ? `Çekili · ${hm(plan.orange)}` : "İnik"}</span>
+            <span className={`masa-sw${orangeUp(plan, today) ? " on" : ""}`} aria-hidden="true" />
+          </button>
+        ) : null}
         <section>
           <Head title="Bugün" right={plan.status === "done" ? "Gün bitti" : plan.status === "none" ? "Bugün yarış yok" : plan.status === "ap" ? "Start ertelendi" : [races.length ? `${races.length} yarış` : "", plan.at ? `İlk start ${plan.at}` : ""].filter(Boolean).join(" · ")} />
           <div className={`${card} overflow-hidden`}>
@@ -624,7 +633,7 @@ export function BroadcastPage({ orgId, id }) {
                 {plan.status === "ap" ? "Erteleme kalktı" : "Tehir"}
               </Button>
               {plan.status === "done" ? null : (
-                <Button variant="secondary" onClick={() => (askEnd ? (setAskEnd(false), changePlan({ day: planDay, status: "done", next: plan.next || { day: tomorrow, at: dayTime(plan, tomorrow) || plan.at } })) : setAskEnd(true))}>
+                <Button variant="secondary" onClick={() => (askEnd ? (setAskEnd(false), changePlan({ day: planDay, status: "done", orange: "", next: plan.next || { day: tomorrow, at: dayTime(plan, tomorrow) || plan.at } })) : setAskEnd(true))}>
                   {askEnd ? "Emin misin?" : "Günü bitir"}
                 </Button>
               )}
@@ -838,6 +847,11 @@ export function BroadcastPage({ orgId, id }) {
             <button type="button" onClick={() => putCourseShow({ ...cShow, auto: !cShow.auto })} className={`${row} border-t border-line`} aria-pressed={cShow.auto}>
               <span className="min-w-0 flex-1 font-semibold">Starttan önce otomatik</span>
               <span className={`masa-sw${cShow.auto ? " on" : ""}`} aria-hidden="true" />
+            </button>
+            {/* Videolu yarış öncesi ekranda soldaki bilgi şeridi (Seyhun 2026-11-02 "istersem kaldırabilmeliyim") */}
+            <button type="button" onClick={() => putCourseShow({ ...cShow, side: !cShow.side })} className={`${row} border-t border-line`} aria-pressed={cShow.side}>
+              <span className="min-w-0 flex-1 font-semibold">Sol bilgi (videoluyken)</span>
+              <span className={`masa-sw${cShow.side ? " on" : ""}`} aria-hidden="true" />
             </button>
           </div>
         </section>
