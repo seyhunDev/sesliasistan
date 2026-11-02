@@ -545,3 +545,29 @@ button.lv-p:active { transform: translateY(1px); }
 @media (max-width: 760px) {
   .lv-slide { background: rgba(4, 10, 20, 0.94); }
 }
+/* Video yokken bekleme ekranı (Seyhun 2026-11-02 bekleme.png onay): solda durum sabit, sağda vitrin (parkur → rüzgâr → program) */
+.lv-hold { position: absolute; inset: 0; z-index: 0; display: grid; grid-template-columns: 42% 58%; animation: lv-fade 0.8s ease-out both; }
+.lv-hst { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 0.6em; padding: 0 1em 3em 4vw; min-width: 0; }
+.lv-hold .lv-big { font-size: clamp(72px, 10vw, 200px); line-height: 0.9; }
+.lv-hold .lv-what { flex-wrap: wrap; justify-content: flex-start; text-align: left; }
+.lv-hbox { display: flex; align-items: center; gap: 0.9em; margin-top: 0.6em; padding: 0.7em 1.1em 0.7em 0.9em; background: rgba(7, 11, 20, 0.7); border-left: 4px solid #ffcf33; border-radius: 0 4px 4px 0; max-width: 100%; }
+.lv-hbox .lv-flag { font-size: 1.4em; flex: none; }
+.lv-hbox b { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.35em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #ffcf33; }
+.lv-hbox span { display: block; font-size: 0.85em; color: rgba(255, 255, 255, 0.72); margin-top: 0.15em; }
+.lv-show { display: flex; flex-direction: column; min-width: 0; padding: 4.5vh 3vw 6vh 1vw; }
+.lv-tabs { display: flex; justify-content: center; gap: 1.6em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.85em; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.4); }
+.lv-tabs i { font-style: normal; position: relative; padding-bottom: 0.5em; transition: color 0.4s ease; }
+.lv-tabs i.on { color: #fff; }
+.lv-tabs i.on::after { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, #ff3d77, #ff9a4d); animation: lv-tabbar 12s linear both; }
+@keyframes lv-tabbar { from { width: 0; } to { width: 100%; } }
+.lv-showb { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2em; animation: lv-fade 0.7s ease-out both; }
+.lv-showb .lv-fc { width: min(100%, 46em); }
+@media (max-width: 760px) {
+  .lv-hold { position: static; order: 1; display: flex; flex-direction: column; gap: 1.6em; padding: 9vh 0 2em; }
+  .lv-hst { padding: 0; }
+  .lv-hold .lv-big { font-size: 24vw; }
+  .lv-show { padding: 0; }
+  .lv-tabs { justify-content: flex-start; }
+  .lv-showb { justify-content: flex-start; min-height: 22em; }
+}
+@media (prefers-reduced-motion: reduce) { .lv-hold, .lv-showb, .lv-tabs i.on::after { animation: none; } }
