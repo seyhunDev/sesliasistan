@@ -110,6 +110,7 @@ export default function SettingsPage() {
         <WeatherPlaceRow />
         <RacesRow />
         <RaceLiveRow />
+        <Row title="Yayın" href="/settings/yayin" />
       </Group>
 
       <Group title="Bildirimler">

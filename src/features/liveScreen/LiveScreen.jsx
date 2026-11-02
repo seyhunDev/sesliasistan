@@ -10,6 +10,7 @@ import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, SHOW_ON, shortClub, shortName, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import { useDemo } from "./demo";
+import { useVisit } from "./useVisit";
 import { dayProgram, expText, expWind } from "./program";
 import { agendaView } from "@/lib/raceProgram";
 import { autoCaption } from "@/lib/raceCaption";
@@ -2146,6 +2147,7 @@ function FullList({ kind, data, sel, isCur, id, onClose }) {
 
 export function LiveScreen({ id, y = "" }) {
   const demoOn = id === "ornek";
+  useVisit(id); // isimsiz ziyaret haberi (Ayarlar › Yayın)
   const real = useData(demoOn ? "" : id, y);
   const demo = useDemo(demoOn);
   const { data, err, skew } = demoOn ? { data: demo.data, err: "", skew: real.skew } : real;

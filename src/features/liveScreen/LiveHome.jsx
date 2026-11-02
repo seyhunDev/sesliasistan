@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Sea } from "./LiveScreen";
+import { useVisit } from "./useVisit";
 import "./liveScreen.css";
 
 // Herkese açık genel sayfa /canli (Seyhun 2026-11-01 "bir tane genel kullanıcı arayüzü yap, kullanıcıyı oraya yönlendirelim"):
@@ -13,6 +14,7 @@ const when = (r) => (r.endDate && r.endDate !== r.startDate ? `${dayText(r.start
 export function LiveHome() {
   const [list, setList] = useState(null);
   const [err, setErr] = useState(false);
+  useVisit(""); // genel sayfanın ziyaretleri (Ayarlar › Yayın)
   // 20 sn'de bir yenilenir: süren yarış "Canlı" olarak anında görünsün
   useEffect(() => {
     let on = true;
