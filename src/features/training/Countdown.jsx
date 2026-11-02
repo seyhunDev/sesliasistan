@@ -398,7 +398,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
   // iPhone saati gibi: ikinci düğme (Sıfırla / İptal) ana düğmenin hemen solunda; varken side (Sonucu söyle) yer açar
   const sub2 = bottom && !away && (paused || up) && (
     <button type="button" onClick={paused ? (race ? () => raceCancel(race) : reset) : race ? () => raceVoid(race) : reset} className={barCls(false).replace("text-fg", "text-rec")}>
-      {paused ? "Sıfırla" : "İptal"}
+      {paused ? "Sıfırla" : race ? "Abandone" : "İptal"}
     </button>
   );
   const left = sub2 || side;
@@ -460,7 +460,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
             {all && !race && mine && (
               <button type="button" onClick={() => makeRace(all)} className={`${btn} ${accTx}`}>+ Yarış yap</button>
             )}
-            {!bottom && <button type="button" onClick={race ? () => raceVoid(race) : reset} className={`${btn} ${red}`}>İptal</button>}
+            {!bottom && <button type="button" onClick={race ? () => raceVoid(race) : reset} className={`${btn} ${red}`}>{race ? "Abandone" : "İptal"}</button>}
           </div>
         )}
         {!dark && !bottom && (

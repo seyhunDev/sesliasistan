@@ -44,8 +44,9 @@ export const COURSES = ["Trapez", "Up-down", "Üçgen"];
 // Bayrak: yarış geçerli kalır. Geçersiz sayılan yarış (VOIDS, Seyhun 2026-10-18): tehir, genel geri çağırma ya da iptal; numarası sıradaki
 // yarışa geçer (tekrar koşulan yarış yine "2. yarış"), çekimlerinin başlığına sebep eklenir ("Genel geri çağırma · 2. yarış")
 export const FLAGS = ["Bireysel geri çağırma"];
-export const VOIDS = ["Tehir", "Genel geri çağırma", "İptal"];
-const OLD_VOID = { Ertelendi: "Tehir", "Genel geri çağırma": "Genel geri çağırma", İptal: "İptal" }; // eskiden bayrak olarak yazılanlar
+// Abandone (N bayrağı; Seyhun 2026-11-02 "abandone edilince yarış sayılmıyor, datası tutulur, aynı yarış tekrar start"): eskiden "İptal"
+export const VOIDS = ["Tehir", "Genel geri çağırma", "Abandone"];
+const OLD_VOID = { Ertelendi: "Tehir", "Genel geri çağırma": "Genel geri çağırma", İptal: "Abandone" }; // eskiden bayrak olarak yazılanlar
 // Parkur noktaları (Seyhun 2026-10-19): Süre'de Start · Şamandıra 1 · Şamandıra 2 · Finish kareleri; şamandıra eklenip çıkarılır.
 // Kareye dokununca o yarışın startından beri geçen saniye yazılır (yarış satırında marks: { "Şamandıra 1": 580 }).
 export const BUOYS = ["Start", "Şamandıra 1", "Şamandıra 2", "Finish"];
@@ -87,7 +88,7 @@ export function cleanStarts(list) {
       kn: num(x?.kn, 80),
       course: S(x?.course, 30),
       flag: FLAGS.includes(x?.flag) ? x.flag : "",
-      void: VOIDS.includes(x?.void) ? x.void : OLD_VOID[x?.flag] || "",
+      void: VOIDS.includes(x?.void) ? x.void : OLD_VOID[x?.void] || OLD_VOID[x?.flag] || "",
       note: S(x?.note, 200),
       // grp: startın grubu (Mavi, Sarı…; grup grup yarışta aynı yarışın her grubu ayrı start, numara ortak)
       ...(x?.grp ? { grp: S(String(x.grp).replace(/[^\p{L} ]/gu, ""), 20) } : {}),
