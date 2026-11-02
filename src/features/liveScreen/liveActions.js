@@ -25,7 +25,7 @@ const raceNo = (m, starts) => (m.phase ? momentRace(m, starts) : [...(starts || 
 export const recName = (m, starts) => recTitle(m, m.phase ? momentRaceName(m, starts) : raceNo(m, starts) ? `${raceNo(m, starts)}. yarış` : "");
 
 // Son dönüş yazımı (hemen ardından "geri al")
-let last = null; // { t, org, id, sid, prev }
+let last = null; // { t, org, id, sid, prev, cur }
 export const UNDO_MS = 3 * 60 * 1000;
 export const roundJust = () => !!last && Date.now() - last.t < UNDO_MS;
 export const roundAt = () => last?.t || 0;
@@ -33,7 +33,7 @@ export async function roundUndo() {
   if (!last) return false;
   const w = last;
   last = null;
-  await saveRounds(w.org, w.id, w.sid, w.prev);
+  await saveRounds(w.org, w.id, w.sid, w.prev, w.cur);
   return true;
 }
 
@@ -48,15 +48,15 @@ export async function roundSay(orgId, raceId, s) {
   const prev = L.rounds[st.id] || { route: [], legs: [] };
   if (rc) {
     const e = setRoute(prev, rc.route);
-    await saveRounds(orgId, raceId, st.id, e);
-    last = { t: Date.now(), org: orgId, id: raceId, sid: st.id, prev };
+    await saveRounds(orgId, raceId, st.id, e, prev);
+    last = { t: Date.now(), org: orgId, id: raceId, sid: st.id, prev, cur: e };
     ensurePublic(raceId).catch(() => {});
     return { text: `${raceName(st)} parkuru: ${e.route.map((m) => (m === "F" ? "Finish" : m)).join(", ")}.` };
   }
   const r = applyRound(prev, rd.mark, rd.sails);
   if (!r.added.length) return { fail: `${rd.sails.join(", ")} bu noktada zaten yazılı.` };
-  await saveRounds(orgId, raceId, st.id, r.entry);
-  last = { t: Date.now(), org: orgId, id: raceId, sid: st.id, prev };
+  await saveRounds(orgId, raceId, st.id, r.entry, prev);
+  last = { t: Date.now(), org: orgId, id: raceId, sid: st.id, prev, cur: r.entry };
   ensurePublic(raceId).catch(() => {});
   const skip = r.skipped.length ? ` ${r.skipped.join(", ")} zaten yazılıydı.` : "";
   return { text: `${markName(rd.mark)}: ${r.added.map((a) => a[1]).join(", ")}.${skip}` };

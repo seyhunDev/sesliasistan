@@ -4,7 +4,7 @@
 // ve sonuç belgesinden okunan bütün liste orgs/{org}/raceLive/{yarışId}/sheets/{belgeId} (genel sıralama; kulüp, doğum yılı, puan).
 // Yarış belgesinden ayrı durur: yarış sayfası kaydedince bu alanlar ezilmez. Fotoğraf ve video Storage'da orgs/{org}/raceMedia/{id}
 // (kural storage.rules: yalnız ana hesap). Fotoğraf 2048 px JPEG; video (en çok 2 dk) iPhone'un çektiği gibi (sesli) saklanır, çok büyükse küçültülür (prepRaceMedia).
-import { arrayUnion, collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { FieldPath, arrayUnion, collection, deleteField, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
 import { readServer } from "@/lib/firebase/fastRead";
 import { deleteDoc, setDoc } from "@/lib/firebase/write";
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResumable } from "firebase/storage";
@@ -12,7 +12,7 @@ import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
 import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan } from "@/lib/raceLive";
 import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
-import { cleanRounds, cleanScreen, cleanStream, stampLegs } from "@/lib/raceRounds";
+import { cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
 const VIDEO_SEC = 120;
@@ -286,9 +286,31 @@ export const saveCourse = (orgId, id, day, c) => setDoc(courseRef(orgId, id, day
 
 // Canlı ekran (lib/raceRounds.js, Seyhun 2026-11-01): start başına şamandıra dönüşleri, ekranda oynayan kayıt, canlı yayın bağlantısı.
 // Herkese açık sayfa bunları /api/canli üzerinden okur (Firestore kuralı değişmedi).
-export const saveRounds = (orgId, id, sid, entry) => setDoc(live(orgId, id), { rounds: { [sid]: stampLegs(entry) } }, { merge: true });
+// base: telefonun yazmadan önce bildiği kayıt. Verilirse yalnız değişen noktalar yazılır (iki görevli aynı startın farklı şamandıralarına
+// aynı anda yazarken birbirini silmez; Seyhun 2026-11-02 inceleme). Parkur değişince ya da base yoksa startın kaydı bütünüyle değişir.
+// Kayıtta legs { "0": { s, t } } (Firestore iç içe diziyi reddeder: eski [[…]] biçimi hiç kaydedilemiyordu).
+export function saveRounds(orgId, id, sid, entry, base = null) {
+  const p = entryPatch(base, entry);
+  if (p.all) return setDoc(live(orgId, id), { rounds: { [sid]: p.doc } }, { mergeFields: [new FieldPath("rounds", sid)] });
+  const patch = { ...p.patch };
+  if (p.drop.length) patch.pen = { ...(patch.pen || {}), ...Object.fromEntries(p.drop.map((s) => [s, deleteField()])) };
+  if (!Object.keys(patch).length) return Promise.resolve();
+  return setDoc(live(orgId, id), { rounds: { [sid]: patch } }, { merge: true });
+}
 export const saveScreen = (orgId, id, s) => setDoc(live(orgId, id), { screen: cleanScreen({ ...s, at: new Date().toISOString() }) }, { merge: true });
 export const saveStream = (orgId, id, url) => setDoc(live(orgId, id), { stream: cleanStream({ url }) }, { merge: true });
+// Dönüşleri canlı dinle (Yayın sayfası: başka telefondan girilen dönüşler hemen görünür; aynı belgeyi useLiveSync de dinler, okuma ortak)
+export function watchRounds(orgId, id, cb) {
+  return onSnapshot(
+    live(orgId, id),
+    (snap) => {
+      if (snap.metadata.hasPendingWrites) return;
+      const d = snap.exists() ? snap.data() : {};
+      cb({ rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), timer: d.timer || null });
+    },
+    () => {},
+  );
+}
 export async function loadRoundsOf(orgId, id) {
   const snap = await readServer(live(orgId, id));
   const d = snap.exists() ? snap.data() : {};

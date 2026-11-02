@@ -42,8 +42,9 @@ export const groupMap = (list) => Object.fromEntries((Array.isArray(list) ? list
 export function cleanGroups(g) {
   const out = {};
   for (const [day, list] of Object.entries(g && typeof g === "object" ? g : {}).slice(-20)) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Array.isArray(list)) continue;
-    out[day] = list
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !list || typeof list !== "object") continue;
+    // kayıtta { yelken: grup } (Firestore iç içe diziyi reddeder), bellekte [[yelken, grup]]
+    out[day] = (Array.isArray(list) ? list : Object.entries(list))
       .filter((x) => Array.isArray(x))
       .map(([s, gr]) => [String(s || "").replace(/\D/g, "").slice(0, 6), groupOf(gr)])
       .filter(([s, gr]) => s && gr)
@@ -68,13 +69,17 @@ export function startScores(st, entry, members = null) {
   const route = entry?.route || [];
   const legs = entry?.legs || [];
   const fk = route.lastIndexOf("F");
-  const fin = fk >= 0 ? legs[fk] || [] : [];
-  const seen = new Set(legs.flat());
+  const pen = entry?.pen || {};
+  const fin0 = fk >= 0 ? legs[fk] || [] : [];
+  const seen = new Set([...legs.flat(), ...Object.keys(pen)]);
   const group = members && members.length ? members : null;
-  const size = Math.max(group ? group.length : seen.size, fin.length);
+  const size = Math.max(group ? group.length : seen.size, fin0.length);
   const done = !!st?.fin;
   const scores = {};
+  // cezalı (OCS, BFD, DSQ…) finiş sırasından çıkar, arkasındakiler bir sıra öne gelir; puanı grup sayısı + 1 (UFD/BFD/DSQ da)
+  const fin = fin0.filter((s) => !pen[s]);
   fin.forEach((s, i) => (scores[s] = { pts: i + 1, code: "" }));
+  for (const [s, c] of Object.entries(pen)) scores[s] = { pts: size + 1, code: c };
   if (done) {
     for (const s of new Set([...(group || []), ...seen])) if (!scores[s]) scores[s] = { pts: size + 1, code: seen.has(s) ? "DNF" : "DNC" };
   }

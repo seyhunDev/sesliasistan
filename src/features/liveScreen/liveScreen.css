@@ -496,3 +496,4 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-rank .lv-lab { flex-wrap: wrap; row-gap: 0.5em; }
   .lv-rank .lv-lab .lv-chips { justify-content: flex-start; }
 }
+.lv-rankp .lv-rl u { font-weight: 600; color: var(--lv-mut); font-variant-numeric: tabular-nums; }

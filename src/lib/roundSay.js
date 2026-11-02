@@ -4,11 +4,12 @@
 // - Söylenen her şey yapay zekaya gider (api/round-say) ve komutlara çevrilir; yapay zeka yoksa yalnız rakamlar sırayla eklenir.
 // - Dönüşler canlı ekranın kaydına yazılır (lib/raceRounds.js: rounds[startId] = { route, legs }).
 // - Komutlar: add (sona ekle), set (N. sırayı değiştir), del (N. sırayı sil), ins (N'den sonra ekle), move (N'yi M'ye taşı),
-//   next/prev (sonraki/önceki şamandıra), route (parkuru değiştir), grp (startın grubu: "sarı grup").
+//   next/prev (sonraki/önceki şamandıra), route (parkuru değiştir), grp (startın grubu: "sarı grup"), pen (ceza: "OCS 512").
 // - Her numara kayıt listesiyle denetlenir: listede yoksa en yakın numaralar önerilir, aynı şamandırada iki kez varsa uyarılır.
 //   Ses tanımanın birleştirdiği numaralar ("24 3542" → "243542") kayıt listesine göre ayrılır.
 
 import { groupOf } from "./roundScore";
+import { PEN_CODES } from "./raceRounds";
 
 const digits = (s) => String(s ?? "").replace(/\D/g, "");
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
@@ -127,6 +128,7 @@ export function applySay(state, ops, known) {
   let k = Math.max(0, Number(state?.k) || 0);
   let route = [...(state?.route || [])];
   let grp = state?.grp || "";
+  const pen = { ...(state?.pen || {}) }; // ceza: { yelken: OCS | BFD | … } (Seyhun 2026-11-02 inceleme)
   const set = new Set(known || []);
   const split = (list) => (Array.isArray(list) ? list : [list]).flatMap((x) => splitRun(x, set)).filter(Boolean);
   let done = 0;
@@ -175,13 +177,21 @@ export function applySay(state, ops, known) {
       const r = cleanRoute(o.route);
       if (r.length) (route = r), (k = Math.min(k, r.length - 1)), done++;
       else skip.push(o);
+    } else if (op === "pen") {
+      const list = split(o.sails);
+      if (!list.length || !(PEN_CODES.includes(o.code) || o.code === "-")) skip.push(o);
+      else {
+        for (const x of list) if (o.code === "-") delete pen[x];
+        else pen[x] = o.code;
+        done++;
+      }
     } else if (op === "grp") {
       if (o.grp) (grp = o.grp), done++;
       else skip.push(o);
     } else if (o) skip.push(o);
   }
   while (legs.length > Math.max(route.length, 1) && !legs[legs.length - 1].length) legs.pop();
-  return { legs, k, route, grp, done, skip, dup: [...new Set(dup)] };
+  return { legs, k, route, grp, pen, done, skip, dup: [...new Set(dup)] };
 }
 
 // Parkur: "1 4 1 2 3 finiş" → ["1","4","1","2","3","F"]; başlangıç/start yazılmaz
@@ -195,8 +205,25 @@ export function cleanRoute(list) {
 }
 
 // Yapay zeka yokken: yalnız rakamlar sırayla eklenir (komut sözcüğü varsa uygulanmaz, kullanıcıya söylenir)
+// Ceza sözcükleri: "OCS 512", "kara bayrak 88", "512 diskalifiye", "88'in cezası kalksın"
+export function penOf(text) {
+  const t = String(text || "").toLocaleLowerCase("tr-TR");
+  if (/ceza(sı|si)?\s*(kalk|sil|yok)|cezayı\s*(kaldır|sil)/.test(t)) return "-";
+  const m = t.match(/\b(ocs|bfd|ufd|dsq|dnf|ret|dns)\b/);
+  if (m) return m[1].toUpperCase();
+  if (/kara\s*bayrak/.test(t)) return "BFD";
+  if (/erken\s*(çıktı|start)/.test(t)) return "OCS";
+  if (/diskalifiye/.test(t)) return "DSQ";
+  if (/bitir(e)?medi|bırakt[ıi]|çekildi/.test(t)) return "RET";
+  return "";
+}
 export function localSay(text, known) {
   const t = String(text || "").toLocaleLowerCase("tr-TR");
+  const pc = penOf(t);
+  if (pc) {
+    const sails = sailsIn(t.replace(/\b(ocs|bfd|ufd|dsq|dnf|ret|dns)\b/g, " "), known);
+    return sails.length ? [{ op: "pen", code: pc, sails }] : null;
+  }
   if (/sıra|sil|değiş|taşı|sonra|önce|sonraki|önceki|parkur|grup|yap\b/.test(t)) return null;
   const sails = sailsIn(t, known);
   return sails.length ? [{ op: "add", sails }] : null;
@@ -204,13 +231,13 @@ export function localSay(text, known) {
 
 // Komutların temizliği (yapay zekadan gelen)
 export function cleanOps(list) {
-  const OPS = ["add", "set", "del", "ins", "move", "next", "prev", "route", "grp"];
+  const OPS = ["add", "set", "del", "ins", "move", "next", "prev", "route", "grp", "pen"];
   return (Array.isArray(list) ? list : [])
     .filter((o) => OPS.includes(o?.op))
     .map((o) => {
       const sails = (Array.isArray(o.sails) ? o.sails : o.sail != null ? [o.sail] : []).map(sailOf).filter(Boolean).slice(0, 200);
       const n = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined);
-      return Object.fromEntries(Object.entries({ op: o.op, sails: sails.length ? sails : undefined, pos: n(o.pos), after: n(o.after), to: n(o.to), route: o.op === "route" ? cleanRoute(o.route) : undefined, grp: o.op === "grp" ? groupOf(o.grp) || undefined : undefined }).filter(([, v]) => v !== undefined));
+      return Object.fromEntries(Object.entries({ op: o.op, sails: sails.length ? sails : undefined, pos: n(o.pos), after: n(o.after), to: n(o.to), route: o.op === "route" ? cleanRoute(o.route) : undefined, grp: o.op === "grp" ? groupOf(o.grp) || undefined : undefined, code: o.op === "pen" ? ([...PEN_CODES, "-"].includes(String(o.code || "").toUpperCase()) ? String(o.code).toUpperCase() : undefined) : undefined }).filter(([, v]) => v !== undefined));
     })
     .slice(0, 30);
 }

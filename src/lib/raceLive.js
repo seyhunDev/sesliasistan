@@ -89,6 +89,8 @@ export function cleanStarts(list) {
       flag: FLAGS.includes(x?.flag) ? x.flag : "",
       void: VOIDS.includes(x?.void) ? x.void : OLD_VOID[x?.flag] || "",
       note: S(x?.note, 200),
+      // grp: startın grubu (Mavi, Sarı…; grup grup yarışta aynı yarışın her grubu ayrı start, numara ortak)
+      ...(x?.grp ? { grp: S(String(x.grp).replace(/[^\p{L} ]/gu, ""), 20) } : {}),
       marks: cleanMarks(x?.marks),
       ...(Array.isArray(x?.fins) && x.fins.length ? { fins: cleanFins(x.fins) } : {}),
     }))
@@ -264,13 +266,24 @@ export function newStart(starts, at, wind = [], forecast = null, rdays = null) {
 // Geçersiz yarış numara almaz: sıradaki geçerli yarışın numarasını taşır (tekrar koşulan yarışla aynı numara)
 // rdays (yarışın günleri) verilirse yarış dışındaki günler (antrenman) kendi içinde 1'den başlar, yarış serisini kaydırmaz
 const group = (day, rdays) => (rdays?.length && !rdays.includes(day) ? day : "seri");
+// Grup grup yarış (Seyhun 2026-11-02 inceleme): Sarı ve Mavi aynı "3. yarış"ı ayrı startlarla koşar. Gruplu start, aynı gün hemen
+// önceki startlar gruplu ve bu grup o numarada henüz yoksa önceki numarayı paylaşır (Sarı 3, Mavi 3, Sarı 4, Mavi 4).
 export function renumber(starts, rdays = null) {
-  const n = {};
+  const st = {};
   return cleanStarts(starts).map((x) => {
     const g = group(x.day, rdays);
-    const c = n[g] || 0;
-    if (!x.void) n[g] = c + 1;
-    return { ...x, n: c + 1 };
+    const s = (st[g] ||= { n: 0, used: new Set(), day: "" });
+    const share = !!x.grp && s.n > 0 && s.day === x.day && s.used.size > 0 && !s.used.has("") && !s.used.has(x.grp);
+    const n = share ? s.n : s.n + 1;
+    if (!x.void) {
+      if (!share) {
+        s.n = n;
+        s.used = new Set();
+      }
+      s.used.add(x.grp || "");
+      s.day = x.day;
+    }
+    return { ...x, n };
   });
 }
 // Yarışın adı: elle verilen ad, yoksa "4. yarış"
@@ -278,14 +291,20 @@ export const raceName = (s) => (s ? s.name || `${s.n}. yarış` : "");
 // Başlık: geçersiz yarışın önüne sebebi ("Genel geri çağırma · 2. yarış")
 export const raceTitle = (s) => (s?.void ? `${s.void} · ${raceName(s)}` : raceName(s));
 // Serinin sıradaki yarışının numarası
-export const nextRaceNo = (starts, day = "", rdays = null) => (starts || []).filter((x) => !x.void && group(x.day, rdays) === group(day, rdays)).length + 1;
+// grp verilirse o grubun sıradaki startı (aynı yarışın diğer grubu numarayı paylaşır)
+export function nextRaceNo(starts, day = "", rdays = null, grp = "") {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : dayOf(new Date().toISOString());
+  const at = new Date(Math.max(Date.now(), ...(starts || []).map((x) => Date.parse(x.at) || 0)) + 60e3).toISOString();
+  const all = renumber([...(starts || []), { id: "zzznext", day: d, at, ...(grp ? { grp } : {}) }], rdays);
+  return all.find((x) => x.id === "zzznext")?.n || 1;
+}
 
 // ---- Yarış akışı (Süre sekmesi): Başlat yarışı açar (geri sayım), 0'da yarış başlar, "Yarışı bitir" bitirir ----
 // Her adım yeni liste döndürür; çağıran kaydeder ve önceki listeyi "Geri al" için saklar.
 // Başlat: geri sayım başlar, yarış satırı açılır (at: planlanan start anı, cd: geri sayımın başladığı an)
-export function beginRace(starts, nowMs, endMs, rdays = null) {
+export function beginRace(starts, nowMs, endMs, rdays = null, grp = "") {
   const id = `s${Math.round(endMs).toString(36)}`;
-  const s = { id, day: dayOf(new Date(endMs).toISOString()), n: 1, name: "", cd: new Date(nowMs).toISOString(), at: new Date(endMs).toISOString(), fin: "", dir: null, kn: null, course: "", flag: "", note: "" };
+  const s = { id, day: dayOf(new Date(endMs).toISOString()), n: 1, name: "", cd: new Date(nowMs).toISOString(), at: new Date(endMs).toISOString(), fin: "", dir: null, kn: null, course: "", flag: "", note: "", ...(grp ? { grp } : {}) };
   return { id, starts: renumber([...(starts || []).filter((x) => x.id !== id), s], rdays) };
 }
 // +30 sn / +1 dk: start anı kayar
