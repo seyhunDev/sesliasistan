@@ -6,7 +6,7 @@
 - Dönüş saati: kaydederken her noktanın ilk teknesine o anın saati yazılır (raceRounds stampLegs, `rounds[sid].at`), leaderAt ile okunur.
 - Örnek yarış 14 sporcu; sıralama paneli 15 satıra kadar.
 
-- Video yokken arkada soluk yarış fotoğrafı (BG_PHOTO /canli/yaris-arka.jpg; dosya Seyhun'un linkinden eklenecek). Video gelince ve duraklatılınca video kalır.
+- Video yokken arkada soluk yarış fotoğrafı (BG_PHOTO = Seyhun'un verdiği sail-world.com Optimist fotoğrafı, doğrudan oradan yüklenir; site engellerse kendi fotoğrafımız public/canli'ye konur). Video gelince ve duraklatılınca video kalır.
 
 ## Sıradaki işler
 

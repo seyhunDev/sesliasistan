@@ -238,7 +238,8 @@ function Clock({ sel, isCur, timer, skew, entry, data, today }) {
 // Zemin: açıktan koyuya deniz, çok soluk dalga deseni; parkur çizgisi kaldırıldı (Seyhun 2026-11-01 "dandik parkur gibi")
 // Video yokken arkada soluk yarış fotoğrafı (Seyhun 2026-11-02 "video yoksa arkada güzel bir yarış fotoğrafı, soluk"); dosya yoksa
 // yalnız deniz rengi kalır (CSS arka planı, kırık resim görünmez). Video gelince video, duraklatılınca da o video görünür.
-export const BG_PHOTO = "/canli/yaris-arka.jpg";
+// Seyhun 2026-11-02 seçti (sail-world.com Optimist fotoğrafı; sunucumuza indirilemedi, tarayıcı doğrudan oradan yükler)
+export const BG_PHOTO = "https://www.sail-world.com/photos/optimist/yysw256373.jpg";
 export function Sea({ photo = "" }) {
   return (
     <div className={`lv-sea${photo ? " photo" : ""}`} aria-hidden="true">
