@@ -1,8 +1,8 @@
-Commit: 66bce8e · Canlı ekran saati: NTP gibi eşleme, sayaç geri gitmez (#987)
-Zaman: 2026-11-02-1741 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41462196177
+Commit: 1793c0d · Rüzgâr gösterimi: grafik üstte, şimdi → start bandı, açıklama en altta (#990)
+Zaman: 2026-11-02-1803 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41465816079
 
-TAM TEST · 02.11.2026 17:29:38
+TAM TEST · 02.11.2026 17:51:35
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1435/1435 geçti · 0 kalan · 627 sn
+SONUÇ: 1435/1435 geçti · 0 kalan · 647 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
