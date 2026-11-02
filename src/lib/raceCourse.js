@@ -94,8 +94,21 @@ export function cleanCards(c) {
     .sort((a, b) => a.id.localeCompare(b.id));
   if (!cards.length) cards.push({ id: "A", route: [...CARD_ROUTE], type: "std" });
   const sel = cards.some((k) => k.id === c?.sel) ? c.sel : cards[0].id;
-  return { cards, sel, cardAt: typeof c?.cardAt === "string" ? c.cardAt : "" };
+  // Grup grup parkur (Seyhun 2026-11-02 "sarı grubu trapezde, mavi grubu başka parkurda yarıştırırım; 1 2 1 2 3 finiş gibi değiştirebilmeliyim"):
+  // by { "Optimist|Sarı": "B" } sınıf ve grubun kartı; atanmamış grup seçili kartla yarışır
+  const by = Object.fromEntries(
+    Object.entries(c?.by && typeof c.by === "object" ? c.by : {})
+      .filter(([key, v]) => /^[^|]{1,20}\|[^|]{0,20}$/.test(key) && cards.some((k) => k.id === v))
+      .slice(0, 24),
+  );
+  return { cards, sel, by, cardAt: typeof c?.cardAt === "string" ? c.cardAt : "" };
 }
+export const cardKey = (cls, grp) => `${cls || ""}|${grp || ""}`;
+// Startın kartı: önce sınıf+grubun, sonra sınıfın (grupsuz), yoksa seçili kart
+export const cardFor = (c, cls, grp) => {
+  const id = c?.by?.[cardKey(cls, grp)] || c?.by?.[cardKey(cls, "")] || "";
+  return (c?.cards || []).find((k) => k.id === id) || selCard(c);
+};
 // Yarış boyu parkur (Seyhun 2026-11-02 "bir yarışta bir parkuru seçiyorsun, hep o parkuru kullanıyorsun; seçilince seçili parkur o olsun"):
 // kartlar ve seçili kart yarışın canlı belgesinde (raceLive.cards) tutulur, her gün aynı; yoksa eski gün belgesindeki kartlar
 export const withRaceCards = (course, rc) => (rc && Array.isArray(rc.cards) && rc.cards.length ? { ...course, ...cleanCards(rc) } : course);
