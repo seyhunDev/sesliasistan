@@ -6,7 +6,7 @@ import Link from "next/link";
 import { BackButton } from "@/components/ui/BackButton";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
-import { card } from "@/components/ui/Page";
+import { Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
@@ -48,6 +48,9 @@ export function BroadcastPage({ orgId, id }) {
   const [L, setL] = useState(null); // rounds, screen, stream (loadRoundsOf)
   const [course, setCourse] = useState(() => cleanCourse({}));
   const [obsOpen, setObsOpen] = useState(false); // ölçüm listesi (silmek için)
+  const [tab, setTab] = useState("sure"); // Sekmeler (Seyhun 2026-11-02): Süre · Video · Parkur · Dönüşler
+  const [cap, setCap] = useState(""); // ekranın altındaki yazı (screen.caption)
+  const [capInit, setCapInit] = useState(false);
   const [yt, setYt] = useState("");
   const [sel, setSel] = useState(null); // ekrana verilecek seçim { kind, mid }
   const [busy, setBusy] = useState("");
@@ -252,6 +255,20 @@ export function BroadcastPage({ orgId, id }) {
   const ytOk = !!ytEmbed(yt);
   const ytBad = !!yt.trim() && !ytOk;
   const onScreen = L?.screen.kind ? L.screen : null;
+  if (L && !capInit) {
+    setCapInit(true);
+    setCap(L.screen.caption || "");
+  }
+  const capSave = async (text) => {
+    setCap(text);
+    try {
+      await showOnScreen(orgId, id, { ...(L?.screen || { kind: "" }), caption: text });
+      toast(text ? "Ekrana yazıldı" : "Yazı kaldırıldı");
+      await reload();
+    } catch {
+      toast("Kaydedilemedi, tekrar dene.");
+    }
+  };
   const isOn = (k, mid = "") => onScreen?.kind === k && (k !== "rec" || onScreen.mid === mid);
   const isSel = (k, mid = "") => sel?.kind === k && (k !== "rec" || sel.mid === mid);
   const c = withLiveWind(course, live.wind, today);
@@ -307,6 +324,9 @@ export function BroadcastPage({ orgId, id }) {
       </section>
 
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-5">
+        <Seg value={tab} onChange={setTab} options={[["sure", "Süre"], ["video", "Video"], ["parkur", "Parkur"], ["donus", "Dönüşler"]]} />
+        {tab === "sure" ? (
+          <>
         {/* Bugünün startları (Seyhun 2026-11-01): biten/süren startlar saatiyle, sonra bekleyenler; ilk bekleyen Sıradaki. Satıra dokununca
             sınıf, grup, bayrak, sıra ve çıkar aynı yerde. Program: ilk start saati, erteleme / yarış yok / günü bitir, yarının saati. */}
         <section>
@@ -440,6 +460,10 @@ export function BroadcastPage({ orgId, id }) {
             ) : null}
           </div>
         </section>
+          </>
+        ) : null}
+        {tab === "video" ? (
+          <>
         <section>
           <Head title="Ekranda" right={onScreen ? `${onScreen.kind === "live" ? "Canlı yayın" : "Video"}${onScreen.pause ? " · Ara" : ""}` : "Boş"} />
           <div className={`${card} overflow-hidden`}>
@@ -478,7 +502,7 @@ export function BroadcastPage({ orgId, id }) {
             </button>
             <input ref={file} type="file" accept="video/*" className="hidden" onChange={pick} />
             <div className={`grid gap-2 p-3 ${onScreen ? "grid-cols-3" : "grid-cols-2"}`}>
-              <Button variant="secondary" disabled={!!busy || !onScreen} onClick={() => show({ kind: "" })}>
+              <Button variant="secondary" disabled={!!busy || !onScreen} onClick={() => show({ kind: "", caption: cap })}>
                 Ekrandan kaldır
               </Button>
               {onScreen ? (
@@ -487,13 +511,38 @@ export function BroadcastPage({ orgId, id }) {
                   {onScreen.pause ? "Sürdür" : "Duraklat"}
                 </Button>
               ) : null}
-              <Button disabled={!!busy || !sel || (sel.kind === "live" && !ytOk)} onClick={() => show({ ...sel, loop: false })}>
+              <Button disabled={!!busy || !sel || (sel.kind === "live" && !ytOk)} onClick={() => show({ ...sel, loop: false, caption: cap })}>
                 Göster
               </Button>
             </div>
           </div>
         </section>
-
+        <section>
+          {/* Ekranın altındaki yazı (olimpiyat / SailGP alt yazısı gibi): ne gösterildiği; öneriler günün startından */}
+          <Head title="Ekranda yazı" right={cap ? "Yazılı" : "Boş"} />
+          <div className={`${card} overflow-hidden`}>
+            <div className="flex items-center gap-2 px-4 py-3">
+              <input value={cap} onChange={(e) => setCap(e.target.value.slice(0, 80))} onBlur={() => cap !== (L?.screen.caption || "") && capSave(cap.trim())} placeholder="Örn. Optimist · Mavi grup · 2. yarış startı" className="min-w-0 flex-1 rounded-lg bg-bg px-2.5 py-1.5 text-[0.9375rem] font-semibold outline-none" />
+              {cap ? (
+                <button type="button" onClick={() => capSave("")} className="text-[0.875rem] font-semibold text-rec">
+                  Kaldır
+                </button>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-1.5 px-4 pb-3">
+              {[st ? [stE.cls, stE.grp ? `${stE.grp} grup` : "", raceName(st)].filter(Boolean).join(" · ") : "", nextPlan ? `Sıradaki start · ${[nextPlan.cls, nextPlan.grp].filter(Boolean).join(" · ")}` : "", "Start", "Finish", "Ödül töreni"]
+                .filter(Boolean)
+                .map((t) => (
+                  <button key={t} type="button" onClick={() => capSave(t)} className={`h-8 rounded-full px-3 text-[0.8125rem] font-medium active:scale-95 ${cap === t ? "bg-acc text-white" : "bg-line/60"}`}>
+                    {t}
+                  </button>
+                ))}
+            </div>
+          </div>
+        </section>
+          </>
+        ) : null}
+        {tab === "parkur" ? (
         <section>
           <Head title="Parkur ve rüzgâr" right={entry?.route?.length ? entry.route.map((m) => (m === "F" ? "Finish" : m)).join(" · ") : ""} />
           <div className={`${card} overflow-hidden`}>
@@ -536,7 +585,8 @@ export function BroadcastPage({ orgId, id }) {
             </div>
           </div>
         </section>
-
+        ) : null}
+        {tab === "donus" ? (
         <section>
           <Head title="Dönüşler" right={st ? `${raceName(st)}${entry?.grp ? ` · ${entry.grp}` : ""}` : "Önce yarışı başlat"} />
           <div className={`${card} overflow-hidden`}>
@@ -550,14 +600,17 @@ export function BroadcastPage({ orgId, id }) {
             ) : (
               <p className="border-b border-line px-4 py-3 text-[0.875rem] text-mut">{entries.length ? `Kayıt listesi ${entries.length} tekne` : "Henüz dönüş yok"}</p>
             )}
-            <div className="p-3">
-              <Button disabled={!st} onClick={() => setVoice(true)} full>
+            <div className="grid grid-cols-2 gap-2 p-3">
+              <Button variant="secondary" onClick={() => setList(true)}>
+                {entries.length ? `Kayıt listesi · ${entries.length}` : "Kayıt listesi"}
+              </Button>
+              <Button disabled={!st} onClick={() => setVoice(true)}>
                 Sesle gir
               </Button>
             </div>
           </div>
         </section>
-
+        ) : null}
       </div>
 
       {/* ⋯ menüsü: ekran ve link, sonuç PDF'i (ayrı sayfa), kayıt listesi, gün durumu; Günü bitir bir daha sorar (yanlış dokunuş) */}
