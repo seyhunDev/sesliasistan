@@ -57,10 +57,17 @@ const LIVE = {
   // Yayın'da Başlat'ın yazdığı gibi: start kaydı (at = start anı), sayaç rid ile ona bağlı (useRaceFlow beginRace)
   // geri sayım 10 dk (test iki boyda bitmeden açılır)
   sayim: { plan: { day: TODAY, status: "" }, starts: [{ id: "s1", day: TODAY, n: 1, cd: iso(NOW - 60e3), at: iso(NOW + 540e3) }], timer: { mode: "start", end: NOW + 540e3, dur: 600, at: NOW - 60e3, rid: "s1" }, rounds: { s1: ROUND } },
+  // Sarı yarışta, Mavi geri sayımda (sayaç Mavi'nin); Yayın'da ▶ ile Sarı ekranda (onAir), Mavi Kamera 1'e bağlı
   yarista: {
     plan: { day: TODAY, status: "" },
-    starts: [{ id: "s1", day: TODAY, n: 1, cd: iso(NOW - 11 * 60e3), at: iso(NOW - 6 * 60e3) }],
-    rounds: { s1: { ...ROUND, legs: { 0: { s: ["512", "88", "1287"], t: [NOW - 2 * 60e3, NOW - 110e3, NOW - 100e3] } } } },
+    starts: [
+      { id: "s1", day: TODAY, n: 1, cd: iso(NOW - 11 * 60e3), at: iso(NOW - 6 * 60e3) },
+      { id: "s2", day: TODAY, n: 1, cd: iso(NOW - 60e3), at: iso(NOW + 540e3), grp: "Mavi" },
+    ],
+    timer: { mode: "start", end: NOW + 540e3, dur: 600, at: NOW - 60e3, rid: "s2" },
+    rounds: { s1: { ...ROUND, legs: { 0: { s: ["512", "88", "1287"], t: [NOW - 2 * 60e3, NOW - 110e3, NOW - 100e3] } } }, s2: { ...ROUND, grp: "Mavi" } },
+    onAir: { sid: "s1" },
+    camBy: { "Optimist|Mavi": "c1" },
   },
   tehir: { plan: { day: TODAY, status: "ap", at: "", ap: { from: iso(NOW - 60e3), why: "Rüzgâr yok", land: false } }, starts: [] },
   yok: { plan: { day: TODAY, status: "none", daily: "11:00" }, starts: [] },
@@ -100,6 +107,8 @@ export async function run(server, log = () => {}) {
     push("Sunucu", "saat eşlemesi (?saat=1)", "sunucu saati, önbelleksiz", s.status === 200 && Math.abs(s.j.now - t) < 30000, `${s.status} · fark ${Math.round((s.j.now - t) / 1000)} sn`);
     const a = await api("id=sayim");
     push("Sunucu", "yarış verisi (/api/canli?id=sayim)", "200; yarış adı, start, sayaç, Sarı grup", a.status === 200 && a.j.race?.name === "Sayım Kupası" && a.j.cur === "s1" && a.j.timer?.end > 0 && a.j.rounds?.s1?.grp === "Sarı", `${a.status} · ${a.j.race?.name || a.j.error} · cur ${a.j.cur} · grp ${a.j.rounds?.s1?.grp}`);
+    const g = await api("id=yarista");
+    push("Sunucu", "gruplar ayrı: ekranda seçilen yarış", "Mavi geri sayarken ▶ ile seçilen Sarı ekranda; kamera bağı gelir", g.status === 200 && g.j.cur === "s1" && g.j.timer?.rid === "s2" && g.j.camBy?.["Optimist|Mavi"] === "c1" && g.j.onAir?.sid === "s1", `cur ${g.j.cur} · sayaç ${g.j.timer?.rid} · ${JSON.stringify(g.j.camBy)}`);
     const y = await api("id=yok");
     push("Sunucu", "yarış olmayan gün", "plan none, sonraki gün yarın 11:00", y.status === 200 && y.j.plan?.status === "none" && y.j.plan?.next?.day === plusDay(1) && y.j.plan?.next?.at === "11:00", `${y.j.plan?.status} · ${JSON.stringify(y.j.plan?.next)}`);
     const n = await api("id=boyleyok");
@@ -177,7 +186,7 @@ export async function run(server, log = () => {}) {
         const b = await page.locator(".lv-sclock b").innerText().catch(() => "");
         return [a && b && a !== b && b < a, `${a} → ${b}`];
       });
-      await check("Yarışta", "start'tan sonra sıralama", "yelken numaraları ve Canlı görünür, geri sayım bloğu yok", "/canli/yarista", ".lv-bar", async () => {
+      await check("Yarışta", "start'tan sonra sıralama", "yelken numaraları ve Canlı görünür; başka grubun geri sayımı ekrandaki yarışa karışmaz", "/canli/yarista", ".lv-bar", async () => {
         const t = await text();
         return [/512/.test(t) && /88/.test(t) && /canlı/i.test(t) && !(await vis(".lv-sclock")), t.replace(/\s+/g, " ").slice(0, 160)];
       });

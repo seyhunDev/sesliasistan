@@ -12,7 +12,7 @@ import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
 import { programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCourseShow, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { Countdown, ownHere, raceStart, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
@@ -31,6 +31,7 @@ import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CLASS_PICK, PREP_PICK, YT_RTMP, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
 import { todayStr } from "@/lib/utils/format";
 import { autoCaption } from "@/lib/raceCaption";
+import { bindCam, camOf, groupsOf, sourcesOf } from "@/lib/raceCams";
 import "./masa.css";
 
 // Yarışın yayın sayfası (/athletes/races/<id>/yayin, yalnız ana hesap; Seyhun 2026-11-01 "herkese açık multimedyasını ayrı bir sayfada
@@ -95,6 +96,9 @@ export function BroadcastPage({ orgId, id }) {
   const [ap, setAp] = useState(null); // tehir penceresi { min, why } (Seyhun 2026-11-01 "bir sebep belirterek tehir, bir saatlik")
   const [plan, setPlan] = useState(() => cleanPlan({})); // günün programı (raceLive.plan; herkese açık ekranın evresi buna göre)
   const file = useRef(null);
+  const pickRef = useRef(-1); // Süre: satırdan başlatılan bekleyen start (plan.order sırası; -1 = sıradaki)
+  const [camOpen, setCamOpen] = useState(""); // Kameralar: grupları seçilen kaynak
+  const [camPick, setCamPick] = useState([]);
   const liveIn = useRef(false); // yarışlar yüklendi mi (yüklenmeden boş listeye yazılırsa günün yarışları silinirdi; multimedya sayfasındaki koruma)
   const rdays = race ? raceDays(race) : null;
 
@@ -163,7 +167,7 @@ export function BroadcastPage({ orgId, id }) {
   );
   const tr = useTimerRun({ onZero });
   useLiveSync({ orgId, raceId: id, setLive });
-  const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today, nextGrp: plan.order[0]?.grp || "" });
+  const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today, nextGrp: () => plan.order[pickRef.current]?.grp ?? plan.order[0]?.grp ?? "" });
   const cur = tr.t.end != null || tr.t.left != null ? live.starts.find((x) => x.id === rf.ridOf(tr.t)) : null;
   // Program: değişiklik hemen görünür, kayıt arkada (savePlan)
   const tomorrow = new Date(Date.parse(`${today}T12:00:00`) + 864e5).toLocaleDateString("sv-SE");
@@ -265,8 +269,11 @@ export function BroadcastPage({ orgId, id }) {
     onStart: (end, rid, prevT) => {
       if (!liveIn.current) return toast("Yarışlar yükleniyor, bir saniye sonra tekrar başlat.");
       rf.flow.onStart(end, rid, prevT);
-      if (!nextPlan) return;
-      const { cls, grp, prep } = nextPlan;
+      const pk = plan.order[pickRef.current] ? pickRef.current : 0;
+      pickRef.current = -1;
+      const np = plan.order[pk];
+      if (!np) return;
+      const { cls, grp, prep } = np;
       // seçili parkur kartı ve rotası o yarışa yazılır (rota daha önce söylendiyse o kalır)
       const prev = L?.rounds?.[rid] || { route: [], legs: [] };
       // grubun parkuru (Parkur › Grupların parkuru), yoksa seçili kart
@@ -275,8 +282,30 @@ export function BroadcastPage({ orgId, id }) {
       setEditI(-1);
       setMade(0);
       setRetryPick(false);
-      changePlan({ order: plan.order.slice(1), warn: "" });
+      changePlan({ order: plan.order.filter((_, k) => k !== pk), warn: "" });
     },
+  };
+  // Gruplar ayrı ayrı (Seyhun 2026-11-02 "sarı başladı, mavi de başlayabilir; grupları ayrı yönetebilmeliyim"): bekleyen her satırın kendi
+  // Başlat'ı; başka grubun geri sayımı sürerken başlamaz (yarışta olan grup sürer, Bitti ile ayrı biter)
+  const startRow = (i) => {
+    if (countingAt(new Date().valueOf())) return toast("Önce süren geri sayım bitsin");
+    if (!plan.order[i]?.prep) return toast("Önce bayrağı seç");
+    pickRef.current = i;
+    raceStart(flow, "start", race?.name || "Yarış");
+  };
+  // Ekranda hangi yarış (▶; tekrar dokununca en son başlayana döner) ve kameraların grupları
+  const onAir = L?.onAir?.sid || "";
+  const putOnAir = (sid) => {
+    const o = { sid: onAir === sid ? "" : sid };
+    setL((p) => (p ? { ...p, onAir: o } : p));
+    saveOnAir(orgId, id, o).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
+  };
+  const srcs = sourcesOf(L?.stream);
+  const saveCams = () => {
+    const m = bindCam(L?.camBy, camOpen, camPick);
+    setL((p) => (p ? { ...p, camBy: m } : p));
+    setCamOpen("");
+    saveCamBy(orgId, id, m).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
   };
   // Takip: saniyede bir; tehirin inişi geldiyse iner, uyarı işareti geldiyse geri sayım başlar (başka telefon kurduysa 4 sn sonra bu da başlatabilir)
   const autoRef = useRef(null);
@@ -546,6 +575,14 @@ export function BroadcastPage({ orgId, id }) {
   const groupRows = plan.sets.flatMap((x) => (x.grps.length ? x.grps.map((g) => [x.cls, g]) : [[x.cls, ""]]));
   const pickText = (e, name) => [e.cls, e.grp ? `${e.grp} grup` : "", name, prepName(e.prep)].filter(Boolean).join(" · ");
   const row = "flex w-full items-center gap-3 px-4 py-3 text-left";
+  // Ekrandaki yarış: ▶ ile seçilen, yoksa en son başlayan (sunucu da böyle seçer, /api/canli onAirStart)
+  const airStart = live.starts.find((x) => x.id === onAir && !x.void) || currentStart(live.starts.filter((x) => x.day === today), L?.timer);
+  const airId = airStart?.id || "";
+  const airE = airStart ? L?.rounds?.[airStart.id] || {} : {};
+  const airCam = airStart ? srcs.find((c) => c.id === camOf(L?.camBy, airE.cls || "", airE.grp || airStart.grp || "")) : null;
+  // satırdan başlatma: geri sayım sürmüyor, tehir yok, gün bitmedi
+  const canRow = plan.status !== "ap" && plan.status !== "done" && tr.t.left == null && !(cur && Date.parse(cur.at) > capNow);
+  const grpName = (k) => { const [c, g] = k.split("|"); return g || c; };
 
   return (
     <main className="masa mx-auto max-w-[30rem] px-5 pb-[calc(env(safe-area-inset-bottom)+7rem)]">
@@ -611,6 +648,22 @@ export function BroadcastPage({ orgId, id }) {
             yarış, her yarışın altında grupları ve tek durum (Bitti · Yarışta · Abandone, Sıradaki, Bekliyor). "+ Yarış" sıradaki yarışı
             bütün gruplarıyla ekler. Biten yarış tek satıra kapanır (dokununca açılır). */}
         {/* Turuncu bayrak (Seyhun 2026-11-02): çekilince canlı ekran "Start öncesi"ne geçer (videoluda soldaki şeritte bayrak, uyarıya kalan süre, hattaki rüzgâr) */}
+        {/* Ekranda (Seyhun 2026-11-02 gruplar-kamera/grup-a.png): canlı ekranın gösterdiği yarış ve kamerası; ▶ ile seçildiyse "Otomatik" en son başlayana döner */}
+        {airStart ? (
+          <div className="masa-onair flex items-center gap-3 rounded-[1.125rem] px-3.5 py-3">
+            <span className="masa-onair-tag">Ekranda</span>
+            <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(airE.grp || airStart.grp || "") }} aria-hidden="true" />
+            <span className="min-w-0 flex-1 leading-tight">
+              <b className="block truncate font-semibold">{[airE.grp || airStart.grp || airE.cls, `${airStart.n}. yarış`].filter(Boolean).join(" · ")}</b>
+              <span className="block truncate text-[0.8125rem] text-mut">{[airCam?.name, airStart.void ? airStart.void : airStart.fin ? "Bitti" : Date.parse(airStart.at) > capNow ? "Geri sayım" : "Yarışta"].filter(Boolean).join(" · ")}</span>
+            </span>
+            {onAir ? (
+              <Button size="sm" variant="secondary" full={false} onClick={() => putOnAir(onAir)}>
+                Otomatik
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         {plan.status !== "done" ? (
           <button type="button" data-press onClick={() => changePlan({ orange: orangeUp(plan, today) ? "" : new Date().toISOString() })} aria-pressed={orangeUp(plan, today)} className={`${card} ${row} rounded-[1.125rem]`}>
             <span className="h-4 w-6 shrink-0 rounded-[2px] bg-[#ff7a1a]" aria-hidden="true" />
@@ -643,24 +696,37 @@ export function BroadcastPage({ orgId, id }) {
                           : x.state === "next" ? "Sıradaki" : "Bekliyor";
                         return (
                           <div key={x.key} className={live || x.state === "next" ? "bg-accbg" : ""}>
-                            <button type="button" onClick={() => (s ? (setEditI(-1), setPickId(isOpen ? "" : s.id)) : (setPickId(""), setEditI(isOpen ? -1 : x.i)))} className="flex w-full items-center gap-2.5 px-4 py-2 text-left">
-                              <span className="size-2.5 shrink-0 rounded-full" style={{ background: x.grp ? groupColor(x.grp) : "var(--mut)" }} aria-hidden="true" />
-                              <span className={`min-w-0 flex-1 truncate font-semibold ${x.state === "void" ? "text-mut line-through" : ""}`}>
-                                {[x.grp || e?.cls || "Start", x.retry ? "tekrar" : ""].filter(Boolean).join(" · ")}
-                              </span>
-                              <span className={`shrink-0 text-[0.875rem] tabular-nums ${x.state === "done" ? "font-semibold text-ok" : x.state === "void" ? "font-semibold text-warn" : live || x.state === "next" ? "font-bold text-acc" : "text-mut"}`}>{right}</span>
-                            </button>
+                            <div className="flex items-center gap-2 pl-2.5 pr-3">
+                              {/* ▶ ekrana al (pembe = ekranda); bekleyen startın yerinde boşluk */}
+                              {s && x.state !== "void" ? (
+                                <button type="button" aria-pressed={airId === s.id} aria-label={`${x.grp || e?.cls || "Start"} ekrana`} onClick={() => putOnAir(s.id)} data-press className={`masa-air${airId === s.id ? " on" : ""}`}>
+                                  <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 2l5 3-5 3z" fill="currentColor" /></svg>
+                                </button>
+                              ) : (
+                                <span className="masa-air off" aria-hidden="true" />
+                              )}
+                              <button type="button" onClick={() => (s ? (setEditI(-1), setPickId(isOpen ? "" : s.id)) : (setPickId(""), setEditI(isOpen ? -1 : x.i)))} className="flex min-w-0 flex-1 items-center gap-2.5 py-2 text-left">
+                                <span className="size-2.5 shrink-0 rounded-full" style={{ background: x.grp ? groupColor(x.grp) : "var(--mut)" }} aria-hidden="true" />
+                                <span className={`min-w-0 flex-1 truncate font-semibold ${x.state === "void" ? "text-mut line-through" : ""}`}>
+                                  {[x.grp || e?.cls || "Start", x.retry ? "tekrar" : ""].filter(Boolean).join(" · ")}
+                                </span>
+                                <span className={`shrink-0 text-[0.875rem] tabular-nums ${x.state === "done" ? "font-semibold text-ok" : x.state === "void" ? "font-semibold text-warn" : live || x.state === "next" ? "font-bold text-acc" : "text-mut"}`}>{right}</span>
+                              </button>
+                              {live && cur?.id !== s.id ? (
+                                <Button size="sm" variant="secondary" full={false} onClick={() => change((l) => { const next = finishRace(l.starts, s.id, Date.now(), rdays); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; })}>
+                                  Bitti
+                                </Button>
+                              ) : null}
+                              {!s && canRow ? (
+                                <Button size="sm" variant={x.state === "next" ? "primary" : "secondary"} full={false} onClick={() => startRow(x.i)}>
+                                  Başlat
+                                </Button>
+                              ) : null}
+                            </div>
                             {isOpen && s ? (
                               // Biten yarışın sınıfı / grubu / bayrağı düzeltilir; aynı anda iki yarışta sayacın olmayanı buradan biter
                               <div className="space-y-2 px-4 pb-2.5">
                                 {chipRows(e, (k, v) => setPickOf(s.id, { [k]: v }))}
-                                {live && cur?.id !== s.id ? (
-                                  <div className="flex justify-end pt-1">
-                                    <Button size="sm" onClick={() => change((l) => { const next = finishRace(l.starts, s.id, Date.now(), rdays); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; })}>
-                                      Bitti
-                                    </Button>
-                                  </div>
-                                ) : null}
                               </div>
                             ) : null}
                             {isOpen && !s ? (
@@ -729,6 +795,24 @@ export function BroadcastPage({ orgId, id }) {
                 </div>
               </div>
             ) : null}
+          </div>
+        </section>
+        {/* Kameralar: her kaynağın çektiği gruplar (bir kez seçilir); grup ekrana alınınca canlı görüntü o grubun kamerasına geçer */}
+        <section>
+          <Head title="Kameralar" />
+          <div className={`${card} divide-y divide-line overflow-hidden`}>
+            {srcs.map((c) => {
+              const gs = groupsOf(L?.camBy, c.id);
+              return (
+                <button key={c.id} type="button" onClick={() => (setCamPick(gs), setCamOpen(c.id))} className={row}>
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <b className="block truncate font-semibold">{c.name}</b>
+                    <span className="block truncate text-[0.8125rem] text-mut">{gs.length ? gs.map(grpName).join(" · ") : "Grup yok"}</span>
+                  </span>
+                  <span className={`masa-pill${c.url ? " on" : ""}`}>{c.url ? "Yayında" : "Yayın yok"}</span>
+                </button>
+              );
+            })}
           </div>
         </section>
         <MasaBar>
@@ -1262,6 +1346,25 @@ export function BroadcastPage({ orgId, id }) {
             <span className="min-w-0 flex-1 truncate font-mono text-[0.8125rem]">{YT_RTMP}</span>
             <span className="shrink-0 text-[0.8125rem] font-semibold text-acc">Kopyala</span>
           </button>
+        </div>
+      </Sheet>
+      <Sheet open={!!camOpen} onClose={() => setCamOpen("")} title={`${srcs.find((c) => c.id === camOpen)?.name || "Kamera"} hangi grupları çekiyor?`}>
+        <div className="space-y-2 px-4 pb-5">
+          {groupRows.map(([c, g]) => {
+            const k = cardKey(c, g);
+            const on = camPick.includes(k);
+            const other = L?.camBy?.[k] && L.camBy[k] !== camOpen ? srcs.find((x) => x.id === L.camBy[k]) : null;
+            return (
+              <button key={k} type="button" aria-pressed={on} onClick={() => setCamPick(on ? camPick.filter((x) => x !== k) : [...camPick, k])} className={`masa-pick flex w-full items-center gap-3 rounded-[0.875rem] px-3.5 py-3 text-left${on ? " on" : ""}`}>
+                <span className="size-2.5 shrink-0 rounded-full" style={{ background: g ? groupColor(g) : "var(--mut)" }} aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate font-semibold">{groupRows.some(([c2]) => c2 !== c) ? [c, g].filter(Boolean).join(" · ") : g || c}</span>
+                <span className="shrink-0 text-[0.8125rem] text-mut">{on ? "✓" : other ? `${other.name}'de` : ""}</span>
+              </button>
+            );
+          })}
+          <Button className="mt-2 w-full" onClick={saveCams}>
+            Kaydet
+          </Button>
         </div>
       </Sheet>
       <Sheet open={menu} onClose={() => (setMenu(false), setAskEnd(false))} title="Yayın">

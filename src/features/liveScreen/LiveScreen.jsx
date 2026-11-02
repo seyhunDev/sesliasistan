@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { liveUrl } from "@/lib/raceCams";
 import { apText, trHm, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
@@ -775,9 +776,10 @@ function Races({ id, starts, cur, sel, fleets, rounds, entries, onClose }) {
 // Arka plan tam ekran: ekranda canlı yayın ya da tekrar varsa video (yumuşak açılır, kenarlar koyulaşır), yoksa deniz zemini.
 // Üstüne köşelerde ince paneller: sol üst sıralama (sıra, yelken, kısa ad, kulüp kısaltması), üst orta yarış adı ve mesaj,
 // sağ üst parkur, sol alt rüzgâr, alt orta sayaç, sağ alt sıradaki start + genel sıralama. Üç evre: yarış öncesi, yarış, gün sonu.
-function Backdrop({ data, isCur }) {
+function Backdrop({ data, isCur, entry }) {
   const scr = isCur ? data.screen || {} : {};
-  const yt = ytSrc(screenUrl(scr, data.stream)); // canlı yayın ya da drone
+  // canlı yayın ya da drone; ekrandaki yarışın grubuna kamera bağlıysa o kamera (lib/raceCams.js)
+  const yt = ytSrc(liveUrl(screenUrl(scr, data.stream), scr, data.stream, data.camBy, entry));
   const rec = scr.kind === "rec" ? (data.media || []).find((m) => m.id === scr.mid) : null;
   const on = !!(yt || rec);
   const st = useFade(on, 900);
@@ -2308,7 +2310,8 @@ export function LiveScreen({ id, y = "" }) {
   const phase = isCur ? livePhase({ plan: data.plan, starts, timer: data.timer, today, now: nowMs }) : "race";
   const hasVideo = isCur && ["live", "drone", "rec"].includes(data.screen?.kind);
   const csel = phase === "race" ? sel : null;
-  const ctimer = phase === "race" ? data.timer : null;
+  // sayaç başka grubun startını sayıyorsa (ekranda Sarı yarışta, Mavi geri sayımda) ekrandaki yarışın saati sayaçtan okunmaz
+  const ctimer = phase === "race" && (!data.timer?.rid || !sel || data.timer.rid === sel.id) ? data.timer : null;
   const cs = clockState({ sel: csel, isCur, timer: ctimer, now: nowMs, entry, data, today });
   // Ortada büyük sayaç yalnız geri sayarken (start'a ya da ilk start'a) ve sayaç durdurulmuşken; sonra şeritte "Süre"
   const auto0 = isCur && phase !== "summary" ? autoCaption({ plan: data.plan, starts, timer: data.timer, rounds: data.rounds, now: nowMs, today }) : null;
@@ -2332,7 +2335,7 @@ export function LiveScreen({ id, y = "" }) {
   const hero = phase === "wait" && !hasVideo;
   return (
     <div className={`lv lv-bc${slide ? " course" : ""}${hasVideo ? " video" : ""}${counting ? " counting" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
-      <Backdrop data={data} isCur={isCur} />
+      <Backdrop data={data} isCur={isCur} entry={entry} />
       <div className="lv-page lv-ov">
         {/* Geri tek başına en solda (Seyhun 2026-11-02) */}
         <Link href="/canli" className="lv-back lv-backc" aria-label="Yarışlar">
