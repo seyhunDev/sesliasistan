@@ -14,31 +14,99 @@ const SAIL = /^\d{1,6}$/;
 export const CLASS_PICK = ["Optimist", "ILCA 4", "ILCA 6", "ILCA 7"];
 export const PREP_PICK = ["P", "I", "Z", "U", "Kara"];
 export const prepName = (p) => (p === "Kara" ? "Kara bayrak" : p ? `${p} bayrağı` : "");
+// Ceza ve sonuç kodları (Seyhun 2026-11-02 yayın incelemesi): puanı grup sayısı + 1, sıralamada en altta
+export const PEN_CODES = ["OCS", "BFD", "UFD", "DSQ", "DNF", "RET", "DNS"];
+// legs: kayıtta { "0": { s: [yelken…], t: [ms…] } } (Firestore iç içe dizi kabul etmez); bellekte legs [[yelken…]] ve tm [{ yelken: ms }]
+// (saat yelkene bağlı: sıra düzeltilince, silinince saat kaymaz)
+const legList = (e, n) => {
+  const L = e?.legs;
+  if (Array.isArray(L)) return Array.from({ length: n }, (_, k) => L[k]);
+  if (L && typeof L === "object") return Array.from({ length: n }, (_, k) => L[k] ?? L[String(k)]);
+  return Array.from({ length: n }, () => null);
+};
 export function cleanEntry(e) {
   const route = (Array.isArray(e?.route) ? e.route : []).map(String).filter((m) => MARK.test(m)).slice(0, 16);
-  const legs = route.map((_, k) => {
-    const l = Array.isArray(e?.legs?.[k]) ? e.legs[k] : [];
-    return [...new Set(l.map(digits).filter((s) => SAIL.test(s)))].slice(0, 200);
+  const raw = legList(e, route.length);
+  const legs = [];
+  const tm = [];
+  raw.forEach((x, k) => {
+    const list = Array.isArray(x) ? x : Array.isArray(x?.s) ? x.s : [];
+    const arr = Array.isArray(x?.t) ? x.t : null;
+    const map = e?.tm?.[k] && typeof e.tm[k] === "object" && !Array.isArray(e.tm[k]) ? e.tm[k] : {};
+    const seen = new Set();
+    const l = [];
+    const t = {};
+    list.forEach((v, i) => {
+      const s = digits(v);
+      if (!SAIL.test(s) || seen.has(s) || l.length >= 200) return;
+      seen.add(s);
+      l.push(s);
+      const ms = Number(arr ? arr[i] : map[s]);
+      if (Number.isFinite(ms) && ms > 0) t[s] = Math.round(ms);
+    });
+    legs.push(l);
+    tm.push(t);
   });
   // grp: startın grubu (Mavi, Sarı…, Altın; lib/roundScore.js), yoksa yazılmaz
   const grp = String(e?.grp || "").replace(/[^\p{L} ]/gu, "").trim().slice(0, 20);
   // cls: sınıf (Optimist, ILCA 4…; uyarı işaretinde sınıf bayrağı), prep: hazırlık bayrağı (P, I, Z, U, Kara) (Seyhun 2026-11-01)
   const cls = String(e?.cls || "").replace(/[^\p{L}\d ]/gu, "").trim().slice(0, 20);
   const prep = PREP_PICK.includes(e?.prep) ? e.prep : "";
-  // at: her noktada ilk teknenin yazıldığı an (Seyhun 2026-11-02 "lider tekne ve dönüş saati"); card: o yarışın parkur kartı
-  const at = route.map((_, k) => (typeof e?.at?.[k] === "string" && e.at[k].length <= 30 && legs[k].length ? e.at[k] : ""));
+  // at: her noktada ilk teknenin saati (eski kayıt) ya da ilk teknenin tm'si; card: o yarışın parkur kartı
+  const at = route.map((_, k) => (tm[k][legs[k][0]] ? new Date(tm[k][legs[k][0]]).toISOString() : typeof e?.at?.[k] === "string" && e.at[k].length <= 30 && legs[k].length ? e.at[k] : ""));
   const card = /^[A-H]$/.test(e?.card || "") ? e.card : "";
-  return { route, legs, ...(at.some(Boolean) ? { at } : {}), ...(grp ? { grp } : {}), ...(cls ? { cls } : {}), ...(prep ? { prep } : {}), ...(card ? { card } : {}) };
+  // pen: { yelken: kod } (OCS, BFD, DSQ…)
+  const pen = {};
+  for (const [k, v] of Object.entries(e?.pen && typeof e.pen === "object" ? e.pen : {}).slice(0, 200)) {
+    const s = digits(k);
+    const c = String(v || "").toUpperCase();
+    if (SAIL.test(s) && PEN_CODES.includes(c)) pen[s] = c;
+  }
+  const hasTm = tm.some((t) => Object.keys(t).length);
+  return { route, legs, ...(hasTm ? { tm } : {}), ...(at.some(Boolean) ? { at } : {}), ...(grp ? { grp } : {}), ...(cls ? { cls } : {}), ...(prep ? { prep } : {}), ...(card ? { card } : {}), ...(Object.keys(pen).length ? { pen } : {}) };
 }
-// Kaydederken: ilk teknesi yeni yazılan noktaya o anın saati konur (önceden yazılmış saat kalır)
+// Kaydederken: yeni yazılan her numaraya o anın saati (önceden yazılmış saat kalır; Seyhun 2026-11-02 "lidere fark")
 export function stampLegs(e0, now = Date.now()) {
   const e = cleanEntry(e0);
-  const iso = new Date(now).toISOString();
-  const at = e.route.map((_, k) => e.at?.[k] || (e.legs[k].length ? iso : ""));
-  return at.some(Boolean) ? { ...e, at } : e;
+  const tm = e.legs.map((l, k) => Object.fromEntries(l.map((s) => [s, e.tm?.[k]?.[s] || now])));
+  const at = e.route.map((_, k) => (e.legs[k].length ? new Date(tm[k][e.legs[k][0]]).toISOString() : ""));
+  return { ...e, tm, ...(at.some(Boolean) ? { at } : {}) };
+}
+// Firestore'a yazılacak biçim: legs { "0": { s, t } } (iç içe dizi yok); at yazılmaz (t'den çıkar)
+const legDoc = (e, k) => ({ s: e.legs[k], t: e.legs[k].map((s) => e.tm?.[k]?.[s] || 0) });
+export function toStore(e0) {
+  const e = cleanEntry(e0);
+  const { tm: _t, at: _a, legs: _l, pen, ...meta } = e;
+  return { ...meta, legs: Object.fromEntries(e.legs.map((_, k) => [String(k), legDoc(e, k)])), pen: pen || {} };
+}
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+// İki görevli aynı startın farklı noktalarına yazarken birbirini silmesin (Seyhun 2026-11-02 inceleme): base (telefonun bildiği) ile
+// next (telefonun yeni hâli) arasında değişen parçalar. Parkur değiştiyse bütün kayıt. Dönüş: { all: true, doc } | { patch, drop: [ceza silinen yelken] }
+export function entryPatch(base0, next0) {
+  const next = stampLegs(next0);
+  if (!base0) return { all: true, doc: toStore(next) };
+  const base = cleanEntry(base0);
+  if (!same(base.route, next.route)) return { all: true, doc: toStore(next) };
+  const patch = {};
+  next.legs.forEach((l, k) => {
+    if (!same(l, base.legs[k])) (patch.legs ||= {})[String(k)] = legDoc(next, k);
+  });
+  for (const f of ["grp", "cls", "prep", "card"]) if ((next[f] || "") !== (base[f] || "")) patch[f] = next[f] || "";
+  const bp = base.pen || {};
+  const np = next.pen || {};
+  for (const [s, c] of Object.entries(np)) if (bp[s] !== c) (patch.pen ||= {})[s] = c;
+  const drop = Object.keys(bp).filter((s) => !np[s]);
+  return { patch, drop };
 }
 // Noktayı ilk dönen tekne ve saati: { sail, at } | null
 export const leaderAt = (e, k) => (e?.legs?.[k]?.length ? { sail: e.legs[k][0], at: e.at?.[k] || "" } : null);
+// Lidere fark (sn): noktada lider ile teknenin yazıldığı an arası; saat yoksa null
+export function gapAt(e, k, i) {
+  const l = e?.legs?.[k] || [];
+  const t0 = e?.tm?.[k]?.[l[0]];
+  const t = e?.tm?.[k]?.[l[i]];
+  return t0 && t && i > 0 ? Math.max(0, Math.round((t - t0) / 1000)) : null;
+}
 export function cleanRounds(r) {
   const out = {};
   for (const [id, e] of Object.entries(r && typeof r === "object" ? r : {}).slice(-60)) if (/^[\w-]{1,40}$/.test(id)) out[id] = cleanEntry(e);
@@ -127,6 +195,7 @@ export function applyRound(entry0, mark, sails) {
       e.route.splice(k, 0, mark);
       e.legs.splice(k, 0, []);
       if (e.at) e.at.splice(k, 0, "");
+      if (e.tm) e.tm.splice(k, 0, {});
       added.forEach((a) => a[0] >= k && a[0]++);
     }
     if (e.legs[k].includes(sail)) {
@@ -141,9 +210,12 @@ export function applyRound(entry0, mark, sails) {
 // Parkur değişince: eski dönüşler sırayla yeni parkura taşınır
 export function setRoute(entry0, route) {
   const old = cleanEntry(entry0);
-  let e = { route: [...route], legs: route.map(() => []), ...(old.grp ? { grp: old.grp } : {}), ...(old.cls ? { cls: old.cls } : {}), ...(old.prep ? { prep: old.prep } : {}), ...(old.card ? { card: old.card } : {}) };
+  let e = { route: [...route], legs: route.map(() => []), tm: route.map(() => ({})), ...(old.grp ? { grp: old.grp } : {}), ...(old.cls ? { cls: old.cls } : {}), ...(old.prep ? { prep: old.prep } : {}), ...(old.card ? { card: old.card } : {}), ...(old.pen ? { pen: old.pen } : {}) };
   old.legs.forEach((l, k) => {
-    e = applyRound(e, old.route[k], l).entry;
+    const r = applyRound(e, old.route[k], l);
+    e = r.entry;
+    e.tm ||= e.legs.map(() => ({}));
+    for (const [k2, sail] of r.added) if (old.tm?.[k]?.[sail]) e.tm[k2][sail] = old.tm[k][sail];
   });
   return e;
 }
@@ -157,9 +229,9 @@ export function standings(entry0) {
     .map((sail) => {
       const ranks = e.legs.map((l) => (l.includes(sail) ? l.indexOf(sail) + 1 : null));
       const pos = lastPos(e.legs, sail);
-      return { sail, pos, ranks };
+      return { sail, pos, ranks, ...(e.pen?.[sail] ? { pen: e.pen[sail] } : {}) };
     })
-    .sort((a, b) => b.pos - a.pos || a.ranks[a.pos] - b.ranks[b.pos]);
+    .sort((a, b) => !!a.pen - !!b.pen || b.pos - a.pos || a.ranks[a.pos] - b.ranks[b.pos]);
 }
 // Şu an dönülen nokta (en ileri dolu nokta), yoksa -1
 export const nowPos = (entry0) => {
@@ -182,9 +254,10 @@ export const scoreNum = (v) => {
   const m = String(v ?? "").match(/\d+(?:[.,]\d+)?/);
   return m ? Number(m[0].replace(",", ".")) : null;
 };
+// Aynı tekne: rakamlar aynı (TUR 1312 = 1312). Sondan eşleşme yok: 312 ile 1312 başka tekneler (inceleme 2026-11-02)
 export const sameSail = (a, b) => {
-  const x = digits(a), y = digits(b);
-  return !!x && !!y && (x === y || (x.length >= 3 && y.length >= 3 && (x.endsWith(y) || y.endsWith(x))));
+  const x = digits(a).replace(/^0+(?=\d)/, ""), y = digits(b).replace(/^0+(?=\d)/, "");
+  return !!x && x === y;
 };
 export function officialFor(fleets, n, manual = {}) {
   const groups = new Map();
@@ -225,7 +298,10 @@ export function whoOf(map, sail) {
   const d = digits(sail);
   if (map[d]) return map[d];
   const k = Object.keys(map).find((x) => sameSail(x, d));
-  return k ? map[k] : null;
+  if (k) return map[k];
+  // listede ülke ön ekiyle ya da eksik yazılmışsa: sondan tek bir eşleşme varsa o (birden çoksa kimse)
+  const near = d.length >= 3 ? Object.keys(map).filter((x) => x.length >= 3 && (x.endsWith(d) || d.endsWith(x))) : [];
+  return near.length === 1 ? map[near[0]] : null;
 }
 
 // ---- Ekranda oynayan ----
@@ -299,6 +375,12 @@ export function currentStart(starts, timer) {
   const t = timer?.rid && list.find((x) => x.id === timer.rid);
   if (t) return t;
   return [...list].sort((a, b) => String(a.at).localeCompare(String(b.at))).at(-1) || null;
+}
+
+// Şu an süren startlar (Seyhun 2026-11-02 inceleme: Mavi start aldıktan sonra Sarı start alınca Mavi ekrandan düşmesin):
+// bugünün, bitmemiş, geçersiz olmayan, start anı gelmiş (ya da sayacın) startları; en son başlayan sonda
+export function liveStarts(starts, timer, today, now = Date.now()) {
+  return (starts || []).filter((x) => !x.void && !x.fin && x.day === today && (Date.parse(x.at) <= now || x.id === timer?.rid));
 }
 
 // Yayın görünümünde kısa ad ve kulüp (Seyhun 2026-11-02 "yelken no, isim, kulüp ama kısa olsun"): "Deniz Aydın" → "D. Aydın",

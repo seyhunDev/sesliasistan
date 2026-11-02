@@ -7,7 +7,7 @@ import { apText, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse, selCard } from "@/lib/raceCourse";
 import { routeText, sceneSvg } from "@/lib/courseScene";
-import { leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, sameSail, shortClub, shortName, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
+import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, sameSail, shortClub, shortName, standings, whoBySail, whoOf, ytSrc } from "@/lib/raceRounds";
 import { groupColor, onlyCat, provisional } from "@/lib/roundScore";
 import { useDemo } from "./demo";
 import { dayProgram, expText, expWind } from "./program";
@@ -344,14 +344,19 @@ function WindDay({ fc, now, at, mine = [], mini = false }) {
 
 const Dot = ({ g }) => (g ? <span className="lv-dot" style={{ background: groupColor(g) || "var(--lv-mut)" }} aria-hidden="true" /> : null);
 
-// Aynı yarışın diğer grupları (Mavi 3. yarış, Sarı 3. yarış…): aynı gün, aynı yarış numarası
+// Aynı yarışın diğer grupları (Mavi 3. yarış, Sarı 3. yarış…: aynı gün, aynı yarış numarası) ve aynı anda süren öbür startlar
+// (Seyhun 2026-11-02 inceleme: Mavi sürerken Sarı start alınca Mavi ekrandan düşmesin)
+const grpOf = (data, x) => x?.grp || data.rounds?.[x?.id]?.grp || "";
 function Siblings({ data, sel, id }) {
-  const sib = (data.starts || []).filter((x) => !x.void && x.day === sel?.day && x.n === sel?.n && data.rounds?.[x.id]?.grp);
-  if (sib.length < 2) return null;
+  const today = data.now ? trDay(data.now) : sel?.day || "";
+  const sib = (data.starts || []).filter((x) => !x.void && x.day === sel?.day && ((x.n === sel?.n && grpOf(data, x)) || (!x.fin && x.day === today && x.id !== sel?.id && !sel?.fin)));
+  if (!sib.some((x) => x.id !== sel?.id)) return null;
+  if (!sib.some((x) => x.id === sel?.id) && sel) sib.push(sel);
+  sib.sort((a, b) => a.at.localeCompare(b.at));
   return (
     <span className="lv-chips">
       {sib.map((x) => {
-        const g = data.rounds[x.id].grp;
+        const g = grpOf(data, x) || raceName(x);
         return (
           <Link key={x.id} href={x.id === data.cur ? `/canli/${id}` : `/canli/${id}?y=${x.id}`} className={`lv-btn${x.id === sel.id ? " on" : ""}`}>
             <Dot g={g} />
@@ -725,11 +730,14 @@ function RankPanel({ data, sel, isCur, id, max = RANK_MAX, onAll }) {
   const pos = nowPos(entry);
   const route = entry.route || [];
   // "son geçen" vurgusu yok (Seyhun 2026-11-02); grup ve yarış adı alttaki başlıkta, burada yalnız "Sıralama"
+  // Lidere fark (Seyhun 2026-11-02 inceleme): aynı noktadaki liderden kaç sn sonra yazıldığı; cezalının yerine kodu (OCS, BFD…)
+  const top = st[0];
   const rows = g
     ? g.rows.map((r) => ({ p: r.place || r.code, sail: r.sail.replace(/^\D+/, "") || r.sail, name: r.name, club: r.club }))
     : st.map((x, i) => {
         const w = whoOf(who, x.sail);
-        return { p: i + 1, sail: x.sail, name: w?.name || "", club: w?.club || "" };
+        const gap = x.pen ? null : x.pos === top?.pos ? gapAt(entry, x.pos, x.ranks[x.pos] - 1) : null;
+        return { p: x.pen || i + 1, sail: x.sail, name: w?.name || "", club: w?.club || "", gap: gap ? `+${Math.floor(gap / 60)}:${String(gap % 60).padStart(2, "0")}` : "" };
       });
   // ilk şamandıra dönüşü yazılana kadar sıralama hiç görünmez (Seyhun 2026-11-02)
   if (!rows.length) return null;
@@ -744,6 +752,7 @@ function RankPanel({ data, sel, isCur, id, max = RANK_MAX, onAll }) {
               <i>{r.sail}</i>
               <span>{shortName(r.name) || ""}</span>
               <em>{shortClub(r.club)}</em>
+              {r.gap ? <u>{r.gap}</u> : null}
             </li>
           ))}
         </ol>
@@ -1201,8 +1210,9 @@ export function LiveScreen({ id, y = "" }) {
   }
   const starts = data.starts || [];
   const sel = (y && starts.find((x) => x.id === y)) || starts.find((x) => x.id === data.cur) || null;
-  // Canlı görünüm: önceki yarış seçilmediyse (henüz start kaydı yokken de sayaç ve ekrandaki yayın görünür; Seyhun 2026-11-01 "süre başlattım gösterilmiyor")
-  const isCur = !y || (!!sel && sel.id === data.cur);
+  // Canlı görünüm: önceki yarış seçilmediyse (henüz start kaydı yokken de sayaç ve ekrandaki yayın görünür; Seyhun 2026-11-01 "süre başlattım gösterilmiyor");
+  // aynı anda süren öbür grubun startı da canlıdır (bugün, bitmemiş)
+  const isCur = !y || (!!sel && (sel.id === data.cur || (!sel.fin && !sel.void && sel.day === trDay(nowMs))));
   const entry = sel ? data.rounds?.[sel.id] : null;
   const ongoing = isCur && sel && !sel.fin && !sel.void;
   // Evre (lib/raceLive.js livePhase): bekleme (start saatine geri sayım) · yarış (sayaç ya da bugünkü start) · gün özeti

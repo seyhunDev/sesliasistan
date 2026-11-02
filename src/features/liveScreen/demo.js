@@ -81,7 +81,12 @@ export function demoData(step, t0, s0, now) {
   const starts = [r1, r2];
   if (step >= 2 && step < 12) starts.push({ id: "r3", day: today, at: iso(start), n: 3, ...(step >= 11 ? { fin: iso(now - 10e3) } : {}) });
   if (step >= 12) starts.push({ id: "r3", day: today, at: iso(now - 40 * 60e3), fin: iso(now - 5 * 60e3), n: 3 });
-  if (step >= 2) rounds.r3 = { route: ROUTE, legs, at: times(step >= 12 ? now - 40 * 60e3 : start, legs.length), grp: "Sarı", cls: "Optimist", prep: "P" };
+  if (step >= 2) {
+    const at = times(step >= 12 ? now - 40 * 60e3 : start, legs.length);
+    // her teknenin dönüş anı (lidere fark): liderden birkaç saniye arayla
+    const tm = legs.map((l, k) => Object.fromEntries(l.map((sl, i) => [sl, Date.parse(at[k]) + i * 6000 + i * i * 400])));
+    rounds.r3 = { route: ROUTE, legs, at, tm, grp: "Sarı", cls: "Optimist", prep: "P", ...(step >= 11 ? { pen: { [ORDER[3][5]]: "DSQ" } } : {}) };
+  }
   const video = step >= 5 && step < 12;
   return {
     race: { name: "Örnek Kupa", startDate: yday, endDate: tom, place: "Dikili, İzmir" },

@@ -19,6 +19,7 @@ Sana şu anki şamandıranın listesi (sıra. numara), parkur ve yarışa kayıt
 - move {pos, to}: sırayı taşı ("9'u 3. sıraya al").
 - next / prev: sonraki / önceki şamandıraya geç ("sonraki şamandıra", "diğer şamandıra", "bitişe geç" → next).
 - grp {grp}: bu startın grubu ("sarı grup", "mavi grubun startı", "altın filo" → "Sarı", "Mavi", "Altın"). "Sarı grup 3. yarış" → grp Sarı (yarış numarası yazılmaz).
+- pen {code, sails}: ceza ya da sonuç kodu. code: OCS (erken çıktı), BFD (kara bayrak), UFD (U bayrağı), DSQ (diskalifiye), DNF (bitiremedi), RET (yarışı bıraktı), DNS (start almadı); cezayı kaldırmak için "-" ("OCS 512" → pen OCS ["512"]; "kara bayrak 88 ve 1302" → pen BFD ["88","1302"]; "512'nin cezası kalksın" → pen "-" ["512"]). Ceza söylenen numarayı add yapma.
 - route {route}: parkuru değiştir ("parkur 1 4 1 2 3 finiş" → ["1","4","1","2","3","F"]).
 Kurallar:
 - Numaraları yalnız rakam olarak yaz ("yirmi dört" → "24", "üç bin beş yüz yirmi dört" → "3524", "TUR 1234" → "1234").
@@ -33,7 +34,7 @@ const SCHEMA = {
   properties: {
     ops: {
       type: "array",
-      items: { type: "object", properties: { op: { type: "string", enum: ["add", "set", "del", "ins", "move", "next", "prev", "route", "grp"] }, grp: s, sails: { type: "array", items: s }, pos: n, after: n, to: n, route: { type: "array", items: s } }, required: ["op"] },
+      items: { type: "object", properties: { op: { type: "string", enum: ["add", "set", "del", "ins", "move", "next", "prev", "route", "grp", "pen"] }, grp: s, code: s, sails: { type: "array", items: s }, pos: n, after: n, to: n, route: { type: "array", items: s } }, required: ["op"] },
     },
   },
   required: ["ops"],

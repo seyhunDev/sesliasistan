@@ -9,7 +9,7 @@ import { useSpeech } from "@/hooks/useSpeech";
 import { loadRoundsOf, loadSheets, saveRounds } from "@/features/athletes/raceLiveStore";
 import { ensurePublic } from "@/features/liveScreen/liveActions";
 import { raceName } from "@/lib/raceLive";
-import { cleanEntry, currentStart, markName, nowPos, setRoute, whoBySail, whoOf } from "@/lib/raceRounds";
+import { cleanEntry, currentStart, stampLegs, markName, nowPos, setRoute, whoBySail, whoOf } from "@/lib/raceRounds";
 import { applySay, checkLeg, cleanRoute, entriesOf, entryClasses, localSay, notYet } from "@/lib/roundSay";
 import { loadEntryDoc, sayOps } from "./roundsStore";
 import { GROUP_PICK, groupColor, groupMap } from "@/lib/roundScore";
@@ -95,11 +95,11 @@ function Body({ orgId, raceId, startId = "", onClose }) {
   const checks = checkLeg(leg, known);
 
   const commit = async (next, msg) => {
-    const e = cleanEntry({ grp: entry.grp, ...next });
+    const e = stampLegs({ grp: entry.grp, pen: entry.pen, tm: entry.tm, ...next }); // her numaraya söylendiği an (lidere fark)
     setHist((h) => [...h.slice(-30), { entry, k }]);
     setEntry(e);
     try {
-      await saveRounds(orgId, raceId, st.id, e);
+      await saveRounds(orgId, raceId, st.id, e, entry);
       ensurePublic(raceId).catch(() => {});
       if (msg) toast(msg);
     } catch {
@@ -113,7 +113,7 @@ function Body({ orgId, raceId, startId = "", onClose }) {
     setEntry(last.entry);
     setK(last.k);
     try {
-      await saveRounds(orgId, raceId, st.id, last.entry);
+      await saveRounds(orgId, raceId, st.id, last.entry, entry);
       toast("Geri alındı");
     } catch {
       toast("Kaydedilemedi, tekrar dene.");
@@ -141,19 +141,20 @@ function Body({ orgId, raceId, startId = "", onClose }) {
     let base = entry;
     if (routeOp) base = setRoute(entry, routeOp.route);
     if (!base.route.length) return toast("Önce parkuru söyle: parkur 1 4 1 2 3 finiş");
-    const r = applySay({ legs: base.legs, k: Math.min(k, base.route.length - 1), route: base.route, grp: entry.grp }, ops.filter((o) => o.op !== "route"), known);
+    const r = applySay({ legs: base.legs, k: Math.min(k, base.route.length - 1), route: base.route, grp: entry.grp, pen: entry.pen }, ops.filter((o) => o.op !== "route"), known);
     const notes = [];
     if (r.dup.length) notes.push(`${r.dup.join(", ")} zaten yazılı`);
     if (r.skip.length) notes.push("bir kısmı uygulanamadı");
     if (r.k !== k) notes.unshift(markName(base.route[r.k]));
     if (r.grp && r.grp !== entry.grp) notes.unshift(`${r.grp} grup`);
+    for (const o of ops) if (o.op === "pen" && o.sails?.length) notes.unshift(o.code === "-" ? `${o.sails.join(", ")} cezası kalktı` : `${o.code} ${o.sails.join(", ")}`);
     setK(r.k);
     if (!r.done && !routeOp) return toast(notes.join(", ") || "Değişiklik yok");
-    await commit({ route: base.route, legs: r.legs, grp: r.grp || entry.grp || "" }, notes.join(", "));
+    await commit({ route: base.route, legs: r.legs, grp: r.grp || entry.grp || "", pen: r.pen }, notes.join(", "));
     requestAnimationFrame(() => listRef.current?.scrollTo({ top: 1e6, behavior: "smooth" }));
   };
 
-  const sp = useSpeech({ names: [], terms: ["şamandıra", "parkur", "finiş", "sıra", "grup", ...GROUP_PICK], onFinal: handle, onFail: (m) => toast(m) });
+  const sp = useSpeech({ names: [], terms: ["şamandıra", "parkur", "finiş", "sıra", "grup", "OCS", "BFD", "DSQ", "DNF", "kara bayrak", ...GROUP_PICK], onFinal: handle, onFail: (m) => toast(m) });
   const listening = sp.status === "listening";
   const talk = () => (listening ? sp.stop("send") : sp.start({ autoStop: 20000 }));
 

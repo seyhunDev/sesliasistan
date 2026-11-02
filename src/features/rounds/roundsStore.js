@@ -3,7 +3,7 @@
 // Sesle şamandıra dönüşü (lib/roundSay.js): yarışın kayıt listesi ve yapay zeka çağrıları.
 // Kayıt listesi orgs/{org}/raceLive/{yarış}/entries/list belgesinde { rows: [{ sail, name, club, cls }], at } (yalnız ana hesap; kural değişmedi).
 // Dönüşlerin kendisi canlı ekranın kaydında (raceLiveStore.saveRounds, lib/raceRounds.js).
-import { doc } from "firebase/firestore";
+import { FieldPath, doc } from "firebase/firestore";
 import { readServer } from "@/lib/firebase/fastRead";
 import { setDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
@@ -22,8 +22,11 @@ export async function loadEntryDoc(orgId, id) {
 }
 export const loadEntries = (orgId, id) => loadEntryDoc(orgId, id).then((d) => d.rows);
 export const saveEntries = (orgId, id, rows) => setDoc(ref(orgId, id), { rows: cleanEntries(rows).map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== "grp"))), at: new Date().toISOString() }, { merge: true });
-// Günün grup listesi (dizi olduğu için o günün eskisi tümüyle değişir)
-export const saveGroups = (orgId, id, day, list) => setDoc(ref(orgId, id), { groups: cleanGroups({ [day]: list }) }, { merge: true });
+// Günün grup listesi: o günün eskisi tümüyle değişir. Kayıtta { yelken: grup } (eski [[yelken, grup]] biçimini Firestore reddediyordu)
+export const saveGroups = (orgId, id, day, list) => {
+  const g = Object.fromEntries(cleanGroups({ [day]: list })[day] || []);
+  return setDoc(ref(orgId, id), { groups: { [day]: g } }, { mergeFields: [new FieldPath("groups", day)] });
+};
 
 const MAX = 4 * 1024 * 1024;
 const toBase64 = (file) =>

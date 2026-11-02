@@ -10,7 +10,7 @@ import { Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseObs, loadCourse, loadLive, loadRoundsOf, saveCards, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { addCourseObs, loadCourse, loadLive, loadRoundsOf, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
 import { Countdown, ownHere, useTimerRun } from "@/features/training/Countdown";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
@@ -20,7 +20,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dirShort, ownedBy, raceName, raceTitle, zeroRace } from "@/lib/raceLive";
+import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dirShort, finishRace, ownedBy, raceName, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
 import { CARD_IDS, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
@@ -99,6 +99,8 @@ export function BroadcastPage({ orgId, id }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, id, today]);
 
+  // Dönüşler canlı (iki görevli: biri şamandırada, biri finişte; Seyhun 2026-11-02 inceleme)
+  useEffect(() => watchRounds(orgId, id, (d) => setL((p) => (p ? { ...p, ...d } : p))), [orgId, id]);
   // Bu sayfada yapılan değişiklik hemen görünür; kayıt arkada gider
   const change = useCallback(
     (patch, job) => {
@@ -124,7 +126,7 @@ export function BroadcastPage({ orgId, id }) {
   );
   const tr = useTimerRun({ onZero });
   useLiveSync({ orgId, raceId: id, setLive });
-  const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today });
+  const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today, nextGrp: plan.order[0]?.grp || "" });
   const cur = tr.t.end != null || tr.t.left != null ? live.starts.find((x) => x.id === rf.ridOf(tr.t)) : null;
   // Program: değişiklik hemen görünür, kayıt arkada (savePlan)
   const tomorrow = new Date(Date.parse(`${today}T12:00:00`) + 864e5).toLocaleDateString("sv-SE");
@@ -153,7 +155,7 @@ export function BroadcastPage({ orgId, id }) {
       // seçili parkur kartı ve rotası o yarışa yazılır (rota daha önce söylendiyse o kalır)
       const prev = L?.rounds?.[rid] || { route: [], legs: [] };
       const k = selCard(course);
-      if (rid) saveRounds(orgId, id, rid, { ...prev, grp, cls, prep, card: k.id, route: prev.route?.length ? prev.route : k.route }).then(reload, () => {});
+      if (rid) saveRounds(orgId, id, rid, { ...prev, grp, cls, prep, card: k.id, route: prev.route?.length ? prev.route : k.route }, prev).then(reload, () => {});
       setEditI(-1);
       changePlan({ order: plan.order.slice(1) });
     },
@@ -178,8 +180,16 @@ export function BroadcastPage({ orgId, id }) {
   };
   // Biten yarışın grubu / sınıfı / bayrağı düzeltilir (rounds[sid])
   const setPickOf = async (sid, patch) => {
+    // grup değişince startın grubu ve yarış numaraları da (grup grup yarışta aynı yarışın grupları ortak numara)
+    if ("grp" in patch)
+      change((l) => {
+        const next = renumber(l.starts.map((x) => (x.id === sid ? { ...x, grp: patch.grp || "" } : x)), rdays);
+        saveStarts(orgId, id, next).catch(() => {});
+        return { starts: next };
+      });
     try {
-      await saveRounds(orgId, id, sid, { ...(L?.rounds?.[sid] || { route: [], legs: [] }), ...patch });
+      const prev = L?.rounds?.[sid] || { route: [], legs: [] };
+      await saveRounds(orgId, id, sid, { ...prev, ...patch }, prev);
       await reload();
     } catch {
       toast("Kaydedilemedi. İnterneti kontrol et.");
@@ -394,7 +404,17 @@ export function BroadcastPage({ orgId, id }) {
                   </button>
                   {on && (
                     // Biten yarışın sınıfı / grubu / bayrağı yanlış seçildiyse burada düzeltilir (süren yarışta kilitli)
-                    <div className="space-y-2 border-t border-line px-4 py-2.5">{chipRows(e, (k, v) => setPickOf(x.id, { [k]: v }))}</div>
+                    <div className="space-y-2 border-t border-line px-4 py-2.5">
+                      {chipRows(e, (k, v) => setPickOf(x.id, { [k]: v }))}
+                      {/* Aynı anda iki yarış (Mavi sürerken Sarı start aldı): sayaç yenisinde, öncekisi buradan biter */}
+                      {!x.fin && !x.void ? (
+                        <div className="flex justify-end pt-1">
+                          <Button size="sm" onClick={() => change((l) => { const next = finishRace(l.starts, x.id, Date.now(), rdays); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; })}>
+                            Yarış bitti
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
                   )}
                 </div>
               );
