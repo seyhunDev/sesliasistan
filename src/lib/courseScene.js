@@ -164,6 +164,11 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
   boat(g.komite, 72, "#ff8a3d", true);
   boat(g.pin, 38, "#ff8a3d", false);
   boat(g.fA, 42, "#3d8bff", false);
+  // finiş hattının öbür ucu: küçük turuncu yuvarlak şamandıra (Seyhun 2026-11-02 "çizginin ucu boş kalmasın")
+  items.push({ z: P(g.fB)[2], d: () => {
+    const [x, y, s] = P(g.fB); const r = Math.max(6, 11 * u * s);
+    return `<g><ellipse cx="${f(x)}" cy="${f(y + r * 0.2)}" rx="${f(r * 1.5)}" ry="${f(r * 0.45)}" fill="#000" opacity=".22"/><circle cx="${f(x)}" cy="${f(y - r * 0.6)}" r="${f(r)}" fill="#ff7a1a"/><circle cx="${f(x - r * 0.3)}" cy="${f(y - r * 0.95)}" r="${f(r * 0.35)}" fill="#fff" opacity=".35"/></g>`;
+  } });
   // çizgiler ve rota (nesnelerin altında)
   let under = lineLab(g.pin, g.komite, "START", 0.3) + lineLab(g.fB, g.fA, "FİNİŞ", 0.25);
   if (rt.length) {

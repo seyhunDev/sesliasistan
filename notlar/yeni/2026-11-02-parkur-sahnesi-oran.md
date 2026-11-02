@@ -3,3 +3,4 @@
 
 ## Sıradaki işler
 - Büyük ekranda gerçek parkur ölçümüyle bak; 2 numaranın yeri karttan farklı görünürse geom'da reach/0.6 oranını ayarla.
+- Finiş hattının öbür ucunda küçük turuncu yuvarlak şamandıra (Seyhun 2026-11-02 "çizginin ucu boş").
