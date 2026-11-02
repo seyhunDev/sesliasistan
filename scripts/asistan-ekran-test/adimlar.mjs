@@ -93,12 +93,15 @@ export async function scenarios(h) {
   const srBefore = await page.evaluate(() => window.__t.srStarts);
   await h.hold(page);
   const G2 = "Bas konuş: tam ekran açılış";
-  await check(G2, "düğmeye bas", "tam ekran koyu açılır (afull-in, data-theme=dark), ekranı kaplar", async () => {
+  // Seyhun 2026-11-02 "A · İçeriğe göre büyür": tam ekran değil, alttan küçük pencere (en çok ekranın ~yarısı), arkası görünür ve hafif kararır
+  await check(G2, "düğmeye bas", "alttan küçük koyu pencere açılır (afull-in, data-theme=dark), ekranın yarısını geçmez, arkada karartma", async () => {
     await full(page).waitFor({ timeout: 4000 });
     const cls = await full(page).getAttribute("class");
     const theme = await full(page).getAttribute("data-theme");
     const box = await full(page).boundingBox();
-    return [/afull-in/.test(cls) && theme === "dark" && box.height >= 800, `${cls.match(/afull-\w+/)?.[0]} · ${theme} · ${Math.round(box.height)} px`];
+    const vh = page.viewportSize().height;
+    const dim = await page.locator("[data-adim]").count();
+    return [/afull-in/.test(cls) && /afull-sm/.test(cls) && theme === "dark" && box.height >= 100 && box.height <= vh * 0.6 && dim === 1, `${cls.match(/afull-(in|out)/)?.[0]} · ${theme} · ${Math.round(box.height)}/${vh} px · karartma ${dim}`];
   });
   await check(G2, "açılış animasyonu", "afull-in animasyonu tanımlı ve çalışıyor", async () => {
     const a = await full(page).evaluate((el) => getComputedStyle(el).animationName);
@@ -160,7 +163,7 @@ export async function scenarios(h) {
 
   // Kapat (×): aşağı kayarak kapanır, sekmeler geri gelir
   const G4 = "Kapanış";
-  await page.locator("[data-dome] [data-apane]").click({ position: { x: 20, y: 20 } });
+  await page.locator("[data-adim]").click({ position: { x: 20, y: 20 } }); // pencerenin dışı (arkadaki sayfa)
   await check(G4, "boş alana dokun", "afull-out ile aşağı kayarak kapanır", async () => {
     const cls = await waitFor(async () => {
       const c = await full(page).getAttribute("class", { timeout: 300 }).catch(() => "");
@@ -185,6 +188,7 @@ export async function scenarios(h) {
   await typeAsk(page, "bugün planda neler var");
   await check(G5, "kısa dokun → Yaz → gönder", "yazı kutusu açılır, gönderince tam ekran asistan cevaplar", async () => {
     const ok = await waitFor(async () => /Dişçi/i.test(await convo(page)), 6000);
+    if (process.env.WX_SHOT) await page.waitForTimeout(800).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-asistan.png` }));
     return [!!ok, (await convo(page)).replace(/\s+/g, " ").slice(0, 140)];
   });
   await check(G3, "bugün planda neler var", "bugünün planı yerelde sayılır, yapay zekaya gitmez", async () => [aiCalls() === before, `yz isteği ${aiCalls() - before}`]);
