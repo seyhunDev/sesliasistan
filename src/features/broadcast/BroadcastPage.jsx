@@ -8,7 +8,9 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
-import { loadRace } from "@/features/athletes/races";
+import { loadRace, saveRaceDates } from "@/features/athletes/races";
+import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
+import { programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCourseShow, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
@@ -616,6 +618,19 @@ export function BroadcastPage({ orgId, id }) {
           <>
         {/* Program (Seyhun 2026-11-02 "yarışları, günleri, günlerin start saatlerini organize ettiğimiz bir sekme"): her günün ilk start saati,
             gün gün özel saat, yarış olmayan gün, o günün startları (yanlış açılanı Sil, iki kez sorar) ve bekleyenler (Çıkar). */}
+        <ProgramImport
+          ctx={{ today, race: [race?.name, race?.place].filter(Boolean).join(" · ") }}
+          onApply={async (days) => {
+            const pp = programPatch(days, plan);
+            if (!pp) return toast("Programda yarış günü yok.");
+            changePlan({ ...pp.plan, ...(plan.status !== "ap" && plan.status !== "done" ? { at: pp.plan.times[planDay] || pp.plan.daily } : {}) });
+            if (race && (race.startDate !== pp.startDate || race.endDate !== pp.endDate)) {
+              setRace((r) => ({ ...r, startDate: pp.startDate, endDate: pp.endDate }));
+              await saveRaceDates(orgId, id, pp).catch(() => toast("Yarış tarihleri kaydedilemedi."));
+            }
+            toast("Program yazıldı");
+          }}
+        />
         <section>
           <Head title="Her gün" />
           <div className={`${card} overflow-hidden`}>
@@ -1086,5 +1101,80 @@ function NewRace({ no, draft, setDraft, onCreate }) {
         </>
       )}
     </div>
+  );
+}
+
+// Programı ekle (Seyhun 2026-11-02 "böyle bir program ekleyerek yarış günlerini ve programı oluşturabilmeliyim, yapay zekâ"): yarış
+// talimatındaki program tablosunun fotoğrafı, PDF'i ya da yazısı → günler (tarih, ilk start, yarış var mı, not). Önizlenir, "Programa yaz"
+// her günün saatini (en sık saat), farklı günleri, yarış olmayan günleri ve yarışın tarihlerini yazar.
+function ProgramImport({ ctx, onApply }) {
+  const [st, setSt] = useState({ busy: false, days: null, err: "", paste: false, text: "" });
+  const file = useRef(null);
+  const run = async (p) => {
+    setSt((x) => ({ ...x, busy: true, err: "" }));
+    try {
+      const days = await p;
+      setSt((x) => ({ ...x, busy: false, days, paste: false, text: "" }));
+    } catch (e) {
+      setSt((x) => ({ ...x, busy: false, err: e.message || "Program okunamadı" }));
+    }
+  };
+  const pick = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (f) run(readProgramFile(f, ctx));
+  };
+  return (
+    <section>
+      <Head title="Programı ekle" right={st.busy ? "Okunuyor…" : ""} />
+      <div className={`${card} overflow-hidden`}>
+        {st.days ? (
+          <>
+            {st.days.map((d) => (
+              <div key={d.day} className="flex items-center gap-3 border-b border-line px-4 py-2.5 text-[0.9375rem]">
+                <span className="w-24 shrink-0 font-semibold">{dayLong(d.day)}</span>
+                <span className="min-w-0 flex-1 truncate text-mut">{d.note}</span>
+                <b className={`shrink-0 tabular-nums ${d.race ? "" : "font-semibold text-mut"}`}>{d.race ? d.at || "Saat yok" : "Yarış yok"}</b>
+              </div>
+            ))}
+            <div className="grid grid-cols-2 gap-2 p-3">
+              <Button variant="secondary" onClick={() => setSt((x) => ({ ...x, days: null }))}>
+                Vazgeç
+              </Button>
+              <Button onClick={() => (onApply(st.days), setSt((x) => ({ ...x, days: null })))}>Programa yaz</Button>
+            </div>
+          </>
+        ) : (
+          <>
+            {st.paste ? (
+              <textarea value={st.text} onChange={(e) => setSt((x) => ({ ...x, text: e.target.value.slice(0, 30000) }))} rows={5} placeholder="Programı buraya yapıştır" className="block w-full resize-none border-b border-line bg-transparent px-4 py-3 text-[0.9375rem] outline-none" />
+            ) : null}
+            {st.err ? <p className="border-b border-line px-4 py-2.5 text-[0.875rem] font-semibold text-warn">{st.err}</p> : null}
+            <div className="grid grid-cols-2 gap-2 p-3">
+              {st.paste ? (
+                <>
+                  <Button variant="secondary" disabled={st.busy} onClick={() => setSt((x) => ({ ...x, paste: false, text: "" }))}>
+                    Vazgeç
+                  </Button>
+                  <Button disabled={st.busy || st.text.trim().length < 10} onClick={() => run(readProgramText(st.text, ctx))}>
+                    {st.busy ? "Okunuyor…" : "Oku"}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button disabled={st.busy} onClick={() => file.current?.click()}>
+                    {st.busy ? "Okunuyor…" : "Fotoğraf / PDF"}
+                  </Button>
+                  <Button variant="secondary" disabled={st.busy} onClick={() => setSt((x) => ({ ...x, paste: true }))}>
+                    Yazı yapıştır
+                  </Button>
+                </>
+              )}
+            </div>
+            <input ref={file} type="file" accept="image/*,application/pdf" className="hidden" onChange={pick} />
+          </>
+        )}
+      </div>
+    </section>
   );
 }
