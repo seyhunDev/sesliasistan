@@ -6,7 +6,7 @@ import Link from "next/link";
 import { BackButton } from "@/components/ui/BackButton";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
-import { Seg, card } from "@/components/ui/Page";
+import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
@@ -30,6 +30,7 @@ import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CLASS_PICK, PREP_PICK, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
 import { todayStr } from "@/lib/utils/format";
 import { autoCaption } from "@/lib/raceCaption";
+import "./masa.css";
 
 // Yarışın yayın sayfası (/athletes/races/<id>/yayin, yalnız ana hesap; Seyhun 2026-11-01 "herkese açık multimedyasını ayrı bir sayfada
 // yöneteceğiz"): herkese açık /canli ekranına giden her şey tek yerde. Lacivert üstte start sayacı (Başlat · İptal · Eşitle; sayaç diğer
@@ -77,7 +78,8 @@ export function BroadcastPage({ orgId, id }) {
   const [askEnd, setAskEnd] = useState(false); // Günü bitir bir daha sorar
   const [grpOpen, setGrpOpen] = useState(false); // Gruplar: seçim açık
   const [openN, setOpenN] = useState(0); // açılan biten yarış
-  const [openDay, setOpenDay] = useState(""); // Program: açık gün
+  const [openDay, setOpenDay] = useState(""); // Program: seçili gün
+  const [impOpen, setImpOpen] = useState(false); // Program: Programı ekle açık
   const [reset, setReset] = useState(false); // Yayını sıfırla penceresi
   const [delId, setDelId] = useState(""); // Program: silinmesi sorulan start
   const [draft, setDraft] = useState(() => draftOf(null)); // oluşturulacak yarış: adım, sınıflar, sınıf sınıf gruplar, bayrak (plan yüklenince ondan)
@@ -461,11 +463,23 @@ export function BroadcastPage({ orgId, id }) {
       </div>
     </div>
   ));
+  const legsDone = entry?.route?.length ? entry.route.filter((_, k) => (entry.legs[k] || []).length).length : 0;
+  const tabInfo = [
+    ["sure", "Süre", cur ? (Date.parse(cur.at) > capNow ? "Geri sayım" : "Yarışta") : plan.status === "ap" ? "Tehir" : plan.status === "done" ? "Gün bitti" : races.length ? `${races.length} yarış` : "Boş", !!cur],
+    ["program", "Program", `${days.length} gün`, false],
+    ["video", "Video", onScreen ? (onScreen.pause ? "Ara" : "Ekranda") : "Boş", !!onScreen && !onScreen.pause],
+    ["parkur", "Parkur", (CARD_TYPES[selCard(course).type] || "").split(" ")[0], false],
+    ["donus", "Dönüşler", entry?.route?.length ? `${legsDone}/${entry.route.length}` : entries.length ? `${entries.length} tekne` : "—", false],
+  ];
+  const monRec = onScreen?.kind === "rec" ? live.media.find((m) => m.id === onScreen.mid) : null;
+  const monImg = onScreen?.kind === "live" ? ytThumb(yt) : monRec?.thumb || "";
+  const monName = monRec ? recName(monRec, live.starts) : "Video";
+  const pDay = days.includes(openDay) ? openDay : days.includes(planDay) ? planDay : days[0];
   const pickText = (e, name) => [e.cls, e.grp ? `${e.grp} grup` : "", name, prepName(e.prep)].filter(Boolean).join(" · ");
   const row = "flex w-full items-center gap-3 px-4 py-3 text-left";
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
+    <main className="masa mx-auto max-w-[30rem] px-5 pb-[calc(env(safe-area-inset-bottom)+7rem)]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Yayın">
         <header className="flex items-center gap-2.5">
           <BackButton href={`/athletes/races/${id}`} />
@@ -494,7 +508,8 @@ export function BroadcastPage({ orgId, id }) {
       </section>
 
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-5">
-        <Seg value={tab} onChange={setTab} options={[["sure", "Süre"], ["program", "Program"], ["video", "Video"], ["parkur", "Parkur"], ["donus", "Dönüşler"]]} />
+        {/* Yayın masası (Seyhun 2026-11-02, masa/B-koyu-masa.png): sekmeler tek kartta, altında kısa durum; iş düğmeleri altta sabit */}
+        <MasaTabs value={tab} onChange={setTab} tabs={tabInfo} />
         {tab === "sure" ? (
           <>
         {/* Bugün (Seyhun 2026-11-02 tasarım yayin-tasarim/startlar/startlar-yeni.png): gruplar yarış oluşturulurken seçilir (üstte); liste yarış
@@ -599,74 +614,70 @@ export function BroadcastPage({ orgId, id }) {
                 </div>
               </div>
             ) : null}
-            <div className="flex gap-2 p-3">
-              <Button variant="secondary" onClick={addRace} className="flex-1">
+          </div>
+        </section>
+        <MasaBar>
+              <Button variant="secondary" onClick={addRace}>
                 + Yarış
               </Button>
-              <Button variant={plan.status === "ap" ? "primary" : "secondary"} className="flex-1" onClick={() => (plan.status === "ap" ? unpostpone() : openAp())}>
+              <Button variant={plan.status === "ap" ? "primary" : "secondary"} onClick={() => (plan.status === "ap" ? unpostpone() : openAp())}>
                 {plan.status === "ap" ? "Erteleme kalktı" : "Tehir"}
               </Button>
               {plan.status === "done" ? null : (
-                <Button variant="secondary" className="flex-1" onClick={() => (askEnd ? (setAskEnd(false), changePlan({ day: planDay, status: "done", next: plan.next || { day: tomorrow, at: dayTime(plan, tomorrow) || plan.at } })) : setAskEnd(true))}>
+                <Button variant="secondary" onClick={() => (askEnd ? (setAskEnd(false), changePlan({ day: planDay, status: "done", next: plan.next || { day: tomorrow, at: dayTime(plan, tomorrow) || plan.at } })) : setAskEnd(true))}>
                   {askEnd ? "Emin misin?" : "Günü bitir"}
                 </Button>
               )}
-            </div>
-          </div>
-        </section>
+            </MasaBar>
           </>
         ) : null}
         {tab === "program" ? (
           <>
-        {/* Program (Seyhun 2026-11-02 "yarışları, günleri, günlerin start saatlerini organize ettiğimiz bir sekme"): her günün ilk start saati,
-            gün gün özel saat, yarış olmayan gün, o günün startları (yanlış açılanı Sil, iki kez sorar) ve bekleyenler (Çıkar). */}
+        {/* Program (Seyhun 2026-11-02): günler yan yana kutular, seçili günün ilk start saati, startları (Sil) ve bekleyenleri (Çıkar) altta;
+            Her gün saatleri; "Programı ekle" altta sabit (fotoğraf, PDF ya da yazı → yapay zekâ) */}
+        {impOpen ? (
         <ProgramImport
-          ctx={{ today, race: [race?.name, race?.place].filter(Boolean).join(" · ") }}
-          onApply={async (days) => {
-            const pp = programPatch(days, plan);
-            if (!pp) return toast("Programda yarış günü yok.");
-            changePlan({ ...pp.plan, ...(plan.status !== "ap" && plan.status !== "done" ? { at: pp.plan.times[planDay] || pp.plan.daily } : {}) });
-            if (race && (race.startDate !== pp.startDate || race.endDate !== pp.endDate)) {
-              setRace((r) => ({ ...r, startDate: pp.startDate, endDate: pp.endDate }));
-              await saveRaceDates(orgId, id, pp).catch(() => toast("Yarış tarihleri kaydedilemedi."));
-            }
-            toast("Program yazıldı");
-          }}
-        />
-        <section>
-          <Head title="Her gün" />
-          <div className={`${card} overflow-hidden`}>
-            <div className={`${row} border-b border-line`}>
-              <span className="flex-1 font-semibold">İlk start</span>
-              <input type="time" value={plan.daily} onChange={(e) => setDaily(e.target.value)} aria-label="Her günün ilk start saati" className="h-9 rounded-lg bg-bg px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
-            </div>
-            <div className={row}>
-              <span className="flex-1 font-semibold">Ekran yeni güne geçer</span>
-              <input type="time" value={plan.showAt} onChange={(e) => changePlan({ showAt: e.target.value })} aria-label="Ekranın yeni güne geçeceği saat" className="h-9 rounded-lg bg-bg px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
-            </div>
-          </div>
-        </section>
-        <section>
-          <Head title="Günler" right={days.length > 1 ? `${days.length} gün` : ""} />
-          <div className={`${card} overflow-hidden`}>
-            {days.map((d, k) => {
-              const ds = live.starts.filter((x) => x.day === d);
-              const nRaces = new Set(ds.filter((x) => !x.void).map((x) => x.n)).size;
-              const off = plan.off.includes(d);
-              const isOpen = openDay === d;
-              const pend = d === planDay ? races.flatMap((r) => r.rows).filter((x) => !x.start) : [];
-              return (
-                <div key={d} className="border-b border-line last:border-b-0">
-                  <button type="button" onClick={() => (setDelId(""), setOpenDay(isOpen ? "" : d))} className={`${row} ${isOpen ? "bg-accbg" : ""}`}>
-                    <span className="w-12 shrink-0 text-mut">{`${k + 1}. gün`}</span>
-                    <span className={`min-w-0 flex-1 truncate font-semibold ${isOpen ? "text-acc" : ""}`}>{[dayLong(d), d === today ? "Bugün" : ""].filter(Boolean).join(" · ")}</span>
-                    <span className="shrink-0 text-[0.875rem] tabular-nums text-mut">{off ? "Yarış yok" : [dayTime(plan, d) || "--:--", nRaces ? `${nRaces} yarış` : ""].filter(Boolean).join(" · ")}</span>
-                  </button>
-                  {isOpen ? (
-                    <div className="border-t border-line">
+              ctx={{ today, race: [race?.name, race?.place].filter(Boolean).join(" · ") }}
+            onApply={async (days) => {
+              const pp = programPatch(days, plan);
+              if (!pp) return toast("Programda yarış günü yok.");
+              changePlan({ ...pp.plan, ...(plan.status !== "ap" && plan.status !== "done" ? { at: pp.plan.times[planDay] || pp.plan.daily } : {}) });
+              if (race && (race.startDate !== pp.startDate || race.endDate !== pp.endDate)) {
+                setRace((r) => ({ ...r, startDate: pp.startDate, endDate: pp.endDate }));
+                await saveRaceDates(orgId, id, pp).catch(() => toast("Yarış tarihleri kaydedilemedi."));
+              }
+              toast("Program yazıldı");
+              setImpOpen(false);
+            }}
+          />
+        ) : null}
+        <div className="masa-days">
+          {days.map((d, k) => {
+            const ds = live.starts.filter((x) => x.day === d);
+            const nRaces = new Set(ds.filter((x) => !x.void).map((x) => x.n)).size;
+            const off = plan.off.includes(d);
+            return (
+              <button key={d} type="button" aria-pressed={pDay === d} onClick={() => (setDelId(""), setOpenDay(d))} className={`masa-day${off ? " off" : ""}`}>
+                <small>{`${k + 1}. GÜN`}</small>
+                <b>{dayLong(d)}</b>
+                <span>{off ? "Yarış yok" : [d === today ? "Bugün" : "", dayTime(plan, d) || "--:--", nRaces ? `${nRaces} yarış` : ""].filter(Boolean).join(" · ")}</span>
+              </button>
+            );
+          })}
+        </div>
+        {(() => {
+          const d = pDay;
+          const ds = live.starts.filter((x) => x.day === d);
+          const off = plan.off.includes(d);
+          const pend = d === planDay ? races.flatMap((r) => r.rows).filter((x) => !x.start) : [];
+          return (
+            <section>
+              <Head title={dayLong(d)} right={off ? "Yarış yok" : ds.length + pend.length ? `${ds.length + pend.length} start` : ""} />
+              <div className={`${card} overflow-hidden`}>
+                    <div>
                       <div className={`${row} border-b border-line`}>
                         <span className="flex-1 font-semibold">İlk start</span>
-                        <input type="time" value={plan.times[d] || plan.daily} onChange={(e) => setDayTime(d, e.target.value)} aria-label="Bu günün ilk start saati" className="h-9 rounded-lg bg-bg px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
+                        <input type="time" value={plan.times[d] || plan.daily} onChange={(e) => setDayTime(d, e.target.value)} aria-label="Bu günün ilk start saati" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
                       </div>
                       {ds.map((x) => {
                         const g = x.grp || L?.rounds?.[x.id]?.grp || "";
@@ -705,67 +716,88 @@ export function BroadcastPage({ orgId, id }) {
                         ) : null}
                       </div>
                     </div>
-                  ) : null}
-                </div>
-              );
-            })}
+              </div>
+            </section>
+          );
+        })()}
+        <section>
+          <Head title="Her gün" />
+          <div className={`${card} overflow-hidden`}>
+            <div className={`${row} border-b border-line`}>
+              <span className="flex-1 font-semibold">İlk start</span>
+              <input type="time" value={plan.daily} onChange={(e) => setDaily(e.target.value)} aria-label="Her günün ilk start saati" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
+            </div>
+            <div className={row}>
+              <span className="flex-1 font-semibold">Ekran yeni güne geçer</span>
+              <input type="time" value={plan.showAt} onChange={(e) => changePlan({ showAt: e.target.value })} aria-label="Ekranın yeni güne geçeceği saat" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
+            </div>
           </div>
         </section>
+        <MasaBar>
+          <Button variant={impOpen ? "secondary" : "primary"} onClick={() => setImpOpen((v) => !v)}>
+            {impOpen ? "Kapat" : "Programı ekle"}
+          </Button>
+        </MasaBar>
           </>
         ) : null}
         {tab === "video" ? (
           <>
+        {/* Video (Seyhun 2026-11-02 yayın masası): üstte ekranda ne var (önizleme, alt yazı), altında kaynaklar yan yana kutucuk */}
         <section>
-          <Head title="Ekranda" right={onScreen ? `${onScreen.kind === "live" ? "Canlı yayın" : "Video"}${onScreen.pause ? " · Ara" : ""}` : "Boş"} />
+          <div className="masa-mon">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {monImg ? <img src={monImg} alt="" /> : null}
+            {onScreen ? null : <div className="mid">Ekranda video yok</div>}
+            <span className={`air${onScreen && !onScreen.pause ? "" : " off"}`}>
+              {onScreen && !onScreen.pause ? <i /> : null}
+              {onScreen ? (onScreen.pause ? "ARA VERİLDİ" : "EKRANDA") : "BOŞ"}
+            </span>
+            {onScreen ? <span className="src">{onScreen.kind === "live" ? "Canlı yayın · YouTube" : monName}</span> : null}
+            {cap || autoCap.text ? <span className="lt">{cap || autoCap.text}</span> : null}
+          </div>
+        </section>
+        <section>
+          <Head title="Kaynak" right={sel ? (sel.kind === "live" ? "Canlı yayın seçili" : "Video seçili") : "Seç, sonra Göster"} />
           <div className={`${card} overflow-hidden`}>
-            <div className={`${row} border-b border-line ${isSel("live") ? "bg-accbg" : ""}`}>
-              <button type="button" disabled={!ytOk} onClick={() => setSel({ kind: "live" })} className={`min-w-0 flex-1 text-left font-semibold ${isSel("live") ? "text-acc" : ""}`}>
-                Canlı yayın
-                {isOn("live") ? <span className="ml-2 text-[0.75rem] font-semibold text-acc">Ekranda</span> : null}
-              </button>
-              <input
-                value={yt}
-                onChange={(e) => {
-                  setYt(e.target.value);
-                  if (ytEmbed(e.target.value)) setSel({ kind: "live" });
-                }}
-                placeholder="YouTube bağlantısı"
-                inputMode="url"
-                className="w-[52%] min-w-0 rounded-lg bg-bg px-2.5 py-1.5 text-[0.875rem] outline-none"
-              />
-            </div>
-            {ytBad ? <p className="border-b border-line px-4 py-2 text-[0.8125rem] text-warn">Bağlantı tanınmadı: YouTube video, canlı yayın ya da kanal bağlantısı olmalı.</p> : null}
-            {vids.map((m) => (
-              <button key={m.id} type="button" onClick={() => setSel({ kind: "rec", mid: m.id })} className={`${row} border-b border-line ${isSel("rec", m.id) ? "bg-accbg text-acc" : ""}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {m.thumb ? <img src={m.thumb} alt="" className={`shrink-0 rounded-lg bg-deep object-cover ${orient(m) === "Dikey" ? "h-14 w-10" : "h-10 w-14"}`} /> : <span className="h-10 w-14 shrink-0 rounded-lg bg-deep" />}
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold">
-                    {recName(m, live.starts)}
-                    {isOn("rec", m.id) ? <span className="ml-2 text-[0.75rem] text-acc">Ekranda</span> : null}
-                  </span>
-                  <span className="block truncate text-[0.8125rem] font-medium text-mut">{[orient(m), m.dur ? mmss(m.dur) : "", hm(m.at)].filter(Boolean).join(" · ")}</span>
+            <div className="masa-tiles">
+              <button type="button" aria-pressed={isSel("live")} onClick={() => setSel({ kind: "live" })} className="masa-tile">
+                <span className="th">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {ytThumb(yt) ? <img src={ytThumb(yt)} alt="" /> : "YouTube"}
                 </span>
+                <b>{isOn("live") ? "Canlı · Ekranda" : "Canlı yayın"}</b>
               </button>
-            ))}
-            <button type="button" disabled={!!busy} onClick={() => file.current?.click()} className={`${row} border-b border-line font-semibold`}>
-              <span className="min-w-0 flex-1 truncate">{busy && busy !== "x" ? busy : "Telefondan video seç"}</span>
-            </button>
-            <input ref={file} type="file" accept="video/*" className="hidden" onChange={pick} />
-            <div className={`grid gap-2 p-3 ${onScreen ? "grid-cols-3" : "grid-cols-2"}`}>
-              <Button variant="secondary" disabled={!!busy || !onScreen} onClick={() => show({ kind: "", caption: cap })}>
-                Ekrandan kaldır
-              </Button>
-              {onScreen ? (
-                // Duraklat (Seyhun 2026-11-02): görüntü ekranda kalır, önünde "Yayına ara verildi"; Sürdür geri açar
-                <Button variant="secondary" disabled={!!busy} onClick={() => show({ ...onScreen, pause: !onScreen.pause })}>
-                  {onScreen.pause ? "Sürdür" : "Duraklat"}
-                </Button>
-              ) : null}
-              <Button disabled={!!busy || !sel || (sel.kind === "live" && !ytOk)} onClick={() => show({ ...sel, loop: false, caption: cap })}>
-                Göster
-              </Button>
+              {vids.map((m) => (
+                <button key={m.id} type="button" aria-pressed={isSel("rec", m.id)} onClick={() => setSel({ kind: "rec", mid: m.id })} className="masa-tile">
+                  <span className="th">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {m.thumb ? <img src={m.thumb} alt="" /> : null}
+                    {m.dur ? <em>{mmss(m.dur)}</em> : null}
+                  </span>
+                  <b>{isOn("rec", m.id) ? `Ekranda · ${recName(m, live.starts)}` : recName(m, live.starts)}</b>
+                </button>
+              ))}
+              <button type="button" disabled={!!busy} onClick={() => file.current?.click()} className="masa-tile">
+                <span className="th">{busy && busy !== "x" ? busy : "+ Video"}</span>
+                <b>Telefondan</b>
+              </button>
             </div>
+            <input ref={file} type="file" accept="video/*" className="hidden" onChange={pick} />
+            {isSel("live") || !ytOk ? (
+              <div className="border-t border-line px-3.5 py-3">
+                <input
+                  value={yt}
+                  onChange={(e) => {
+                    setYt(e.target.value);
+                    if (ytEmbed(e.target.value)) setSel({ kind: "live" });
+                  }}
+                  placeholder="YouTube canlı yayın bağlantısı"
+                  inputMode="url"
+                  className="h-10 w-full min-w-0 rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.875rem] outline-none"
+                />
+                {ytBad ? <p className="pt-2 text-[0.8125rem] text-warn">Bağlantı tanınmadı: YouTube video, canlı yayın ya da kanal bağlantısı olmalı.</p> : null}
+              </div>
+            ) : null}
           </div>
         </section>
         <section>
@@ -793,61 +825,81 @@ export function BroadcastPage({ orgId, id }) {
             Otomatik = yarış öncesi dakikada bir parkur → rüzgâr → program; Parkur / Rüzgâr / Program elle açılır, kaldırılana kadar
             ekranda kalır (yarış öncesi, sırasında, sonrasında); Video sekmesinde (Seyhun 2026-11-02 "video sekmesine alalım") */}
         <section>
-          <Head title="Ekranda gösterim" right={cShow.one ? `${SHOW_NAME[cShow.one]} ekranda` : ""} />
+          <Head title="Ekranda göster" right={cShow.one ? `${SHOW_NAME[cShow.one]} ekranda` : ""} />
           <div className={`${card} overflow-hidden`}>
             <div className="grid grid-cols-3 gap-2 p-3">
               {Object.entries(SHOW_NAME).map(([k, t]) => (
-                <Button key={k} variant={cShow.one === k ? "primary" : "secondary"} onClick={() => putCourseShow({ ...cShow, one: cShow.one === k ? "" : k })}>
+                <button key={k} type="button" data-press aria-pressed={cShow.one === k} className="masa-tog" onClick={() => putCourseShow({ ...cShow, one: cShow.one === k ? "" : k })}>
                   {t}
-                </Button>
+                  <small>{cShow.one === k ? "Ekranda" : "Kapalı"}</small>
+                </button>
               ))}
             </div>
-            <button type="button" onClick={() => putCourseShow({ ...cShow, auto: !cShow.auto })} className={`${row} border-t border-line`}>
+            <button type="button" onClick={() => putCourseShow({ ...cShow, auto: !cShow.auto })} className={`${row} border-t border-line`} aria-pressed={cShow.auto}>
               <span className="min-w-0 flex-1 font-semibold">Starttan önce otomatik</span>
-              <span className={`text-[0.875rem] font-semibold ${cShow.auto ? "text-acc" : "text-mut"}`}>{cShow.auto ? "Açık" : "Kapalı"}</span>
+              <span className={`masa-sw${cShow.auto ? " on" : ""}`} aria-hidden="true" />
             </button>
           </div>
         </section>
+        <MasaBar>
+          <Button variant="secondary" disabled={!!busy || !onScreen} onClick={() => show({ kind: "", caption: cap })}>
+            Kaldır
+          </Button>
+          {onScreen ? (
+            // Duraklat (Seyhun 2026-11-02): görüntü ekranda kalır, önünde "Yayına ara verildi"; Sürdür geri açar
+            <Button variant="secondary" disabled={!!busy} onClick={() => show({ ...onScreen, pause: !onScreen.pause })}>
+              {onScreen.pause ? "Sürdür" : "Duraklat"}
+            </Button>
+          ) : null}
+          <Button disabled={!!busy || !sel || (sel.kind === "live" && !ytOk)} onClick={() => show({ ...sel, loop: false, caption: cap })}>
+            Göster
+          </Button>
+        </MasaBar>
           </>
         ) : null}
         {tab === "parkur" ? (
           <>
+        {/* Parkur (Seyhun 2026-11-02 yayın masası): büyük çizim, adı üstünde; kartlar yan yana kutu (yarış boyunca seçili olan); rota */}
         <section>
-          <Head title="Parkur" right={`Seçili: ${CARD_TYPES[selCard(course).type] || ""}`} />
           <div className={`${card} overflow-hidden`}>
-            {scene ? <div className="[&>svg]:block" dangerouslySetInnerHTML={{ __html: scene }} /> : <p className="px-4 pt-3 text-[0.875rem] text-mut">Rüzgâr ya da parkur ölçümü girince kart çizilir</p>}
-            {course.cards.map((k) => (
-              <button key={k.id} type="button" onClick={() => pickCard(k.id)} className="flex w-full items-center gap-3 border-t border-line px-4 py-2.5 text-left text-[0.9375rem]">
-                <b className={k.id === course.sel ? "text-acc" : ""}>{`Kart ${k.id}`}</b>
-                <span className="shrink-0 font-semibold">{CARD_TYPES[k.type] || CARD_TYPES.std}</span>
-                <span className="min-w-0 flex-1 truncate tabular-nums text-mut">{routeText(k.route) || "Rota yok"}</span>
-                {k.id === course.sel ? <span className="text-[0.8125rem] font-semibold text-acc">Seçili</span> : null}
-              </button>
-            ))}
-            <div className="flex flex-wrap gap-1.5 border-t border-line px-4 py-3">
-              {Object.entries(CARD_TYPES).map(([t, n]) => (
-                <button key={t} type="button" onClick={() => setType(t)} className={`h-8 rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${selCard(course).type === t ? "bg-acc text-white" : "bg-line/60"}`}>
-                  {n}
-                </button>
-              ))}
+            <div className="relative">
+              {scene ? <div className="[&>svg]:block" dangerouslySetInnerHTML={{ __html: scene }} /> : <p className="px-4 py-6 text-[0.875rem] text-mut">Rüzgâr ya da parkur ölçümü girince kart çizilir</p>}
+              <div className="pointer-events-none absolute left-3 top-2.5 leading-tight text-white">
+                <b className="block text-[0.9375rem] font-bold">{CARD_TYPES[selCard(course).type] || CARD_TYPES.std}</b>
+                <span className="text-[0.75rem] font-semibold text-white/65">Yarış boyunca bu parkur</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 border-t border-line px-4 py-3">
-              <span className="text-[0.875rem] font-semibold">Rota</span>
-              <input value={rt} onChange={(e) => setRt(e.target.value.slice(0, 40))} placeholder="1 2 3 F" className="min-w-0 flex-1 rounded-lg bg-bg px-2.5 py-1.5 text-[0.9375rem] font-semibold tabular-nums outline-none" />
-            </div>
-            <div className="grid grid-cols-3 gap-2 px-3 pb-3">
-              <Button variant="secondary" onClick={newCard}>
-                Yeni kart
-              </Button>
-              <Button variant="secondary" disabled={course.cards.length < 2} onClick={dropCard}>
-                Kartı sil
-              </Button>
-              <Button disabled={routeText(cleanRoute(rt)) === routeText(selCard(course).route)} onClick={saveRoute}>
-                Kaydet
-              </Button>
+            <div className="flex items-center gap-2 border-t border-line px-3.5 py-3">
+              <span className="text-[0.8125rem] font-bold text-mut">Rota</span>
+              <input value={rt} onChange={(e) => setRt(e.target.value.slice(0, 40))} placeholder="1 2 3 F" aria-label="Rota" className="h-9 min-w-0 flex-1 rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.9375rem] font-bold tabular-nums tracking-[0.06em] outline-none" />
+              {course.cards.length > 1 ? (
+                <Button size="sm" variant="secondary" onClick={dropCard}>
+                  Kartı sil
+                </Button>
+              ) : null}
             </div>
           </div>
         </section>
+        <div className="masa-cards">
+          {course.cards.map((k) => (
+            <button key={k.id} type="button" aria-pressed={k.id === course.sel} onClick={() => pickCard(k.id)} className="masa-card" data-press>
+              <b>{CARD_TYPES[k.type] || CARD_TYPES.std}</b>
+              <span>{[`Kart ${k.id}`, routeText(k.route) || "Rota yok"].join(" · ")}</span>
+            </button>
+          ))}
+          <button type="button" onClick={newCard} className="masa-card" data-press>
+            <b className="text-acc">+ Yeni kart</b>
+            <span>Boş parkur</span>
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-[0.8125rem] font-bold text-mut">Seçili kartın türü</span>
+          {Object.entries(CARD_TYPES).map(([t, n]) => (
+            <button key={t} type="button" onClick={() => setType(t)} aria-pressed={selCard(course).type === t} className={`h-8 rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${selCard(course).type === t ? "bg-acc text-white" : "bg-[var(--chip)]"}`}>
+              {n}
+            </button>
+          ))}
+        </div>
         <section>
           {/* Seyhun 2026-11-02 "parkur ve rüzgârı şimdilik gizle, alta koy, istersek açarız; parkur kartları aynı şeyi animasyonla gösteriyor":
               kapalıyken yalnız Rüzgâr / Parkur ölçümü girişi */}
@@ -883,45 +935,81 @@ export function BroadcastPage({ orgId, id }) {
                   </div>
                 ))
               : null}
-            <div className="grid grid-cols-3 gap-2 p-3">
-              <Button variant="secondary" onClick={() => setAdd(0)}>
-                Rüzgâr
-              </Button>
-              <Button variant="secondary" onClick={() => setAdd(1)}>
-                Parkur ölçümü
-              </Button>
-              <Button variant="secondary" onClick={() => (setMeasOpen((v) => !v), setObsOpen(!measOpen && course.obs.length > 0))}>
-                {measOpen ? "Gizle" : `Aç${course.obs.length ? ` · ${course.obs.length}` : ""}`}
+            <div className={`${row} ${measOpen ? "border-t border-line" : ""}`}>
+              <span className="min-w-0 flex-1 truncate text-[0.875rem] font-semibold text-mut">{course.obs.length ? `${course.obs.length} ölçüm` : "Ölçüm yok"}</span>
+              <Button size="sm" variant="secondary" onClick={() => (setMeasOpen((v) => !v), setObsOpen(!measOpen && course.obs.length > 0))}>
+                {measOpen ? "Gizle" : "Aç"}
               </Button>
             </div>
           </div>
         </section>
+        <MasaBar>
+          <Button variant="secondary" onClick={() => setAdd(0)}>
+            Rüzgâr
+          </Button>
+          <Button variant="secondary" onClick={() => setAdd(1)}>
+            Ölçüm
+          </Button>
+          <Button disabled={routeText(cleanRoute(rt)) === routeText(selCard(course).route)} onClick={saveRoute}>
+            Kaydet
+          </Button>
+        </MasaBar>
           </>
         ) : null}
         {tab === "donus" ? (
-        <section>
-          <Head title="Dönüşler" right={st ? `${raceName(st)}${entry?.grp ? ` · ${entry.grp}` : ""}` : "Önce yarışı başlat"} />
-          <div className={`${card} overflow-hidden`}>
-            {entry?.route?.length ? (
-              entry.route.map((m, k) => (
-                <div key={k} className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 text-[0.9375rem]">
-                  <span className="font-semibold">{markName(m)}</span>
-                  <span className="min-w-0 truncate tabular-nums text-mut">{entry.legs[k]?.join(" ") || "–"}</span>
-                </div>
-              ))
-            ) : (
-              <p className="border-b border-line px-4 py-3 text-[0.875rem] text-mut">{entries.length ? `Kayıt listesi ${entries.length} tekne` : "Henüz dönüş yok"}</p>
-            )}
-            <div className="grid grid-cols-2 gap-2 p-3">
-              <Button variant="secondary" onClick={() => setList(true)}>
-                {entries.length ? `Kayıt listesi · ${entries.length}` : "Kayıt listesi"}
-              </Button>
-              <Button disabled={!st} onClick={() => setVoice(true)}>
-                Sesle gir
-              </Button>
-            </div>
-          </div>
-        </section>
+          <>
+        {/* Dönüşler (Seyhun 2026-11-02 yayın masası): şamandıralar adım adım (geçen tekne sayısı), son şamandıra üstte, lider sarı */}
+        {entry?.route?.length ? (
+          <>
+            <section>
+              <Head title={st ? `${raceName(st)}${entry?.grp ? ` · ${entry.grp}` : ""}` : ""} right={entries.length ? `Kayıt listesi ${entries.length}` : ""} />
+              <div className={`${card} masa-steps`}>
+                {entry.route.map((m, k) => {
+                  const n = (entry.legs[k] || []).length;
+                  const tot = (entry.legs[0] || []).length;
+                  const last = entry.route.reduce((a, _, j) => ((entry.legs[j] || []).length ? j : a), -1);
+                  const cls = k < last ? "dn" : k === last ? "cu" : "";
+                  return (
+                    <div key={k} className={cls}>
+                      <b>{m}</b>
+                      <span>{n ? (k && tot ? `${n}/${tot}` : n) : "–"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+            {entry.route
+              .map((m, k) => ({ m, k, legs: entry.legs[k] || [] }))
+              .filter((x) => x.legs.length)
+              .reverse()
+              .map((x) => (
+                <section key={x.k}>
+                  <Head title={markName(x.m)} right={`${x.legs.length} tekne`} />
+                  <div className={`${card} masa-sails`}>
+                    {x.legs.map((sl, i) => (
+                      <span key={sl} className={i ? "" : "f"}>
+                        {sl}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              ))}
+          </>
+        ) : (
+          <section>
+            <Head title="Dönüşler" right={st ? raceName(st) : "Önce yarışı başlat"} />
+            <p className={`${card} px-4 py-3 text-[0.875rem] text-mut`}>{entries.length ? `Kayıt listesi ${entries.length} tekne · Henüz dönüş yok` : "Henüz dönüş yok"}</p>
+          </section>
+        )}
+        <MasaBar>
+          <Button variant="secondary" onClick={() => setList(true)}>
+            {entries.length ? `Kayıt listesi · ${entries.length}` : "Kayıt listesi"}
+          </Button>
+          <Button disabled={!st} onClick={() => setVoice(true)}>
+            Sesle gir
+          </Button>
+        </MasaBar>
+          </>
         ) : null}
       </div>
 
@@ -1002,6 +1090,35 @@ export function BroadcastPage({ orgId, id }) {
 
 const dayLong = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
 
+// Yayın masası sekmeleri: ad + kısa durum (canlıysa kırmızı nokta)
+// YouTube bağlantısından küçük resim (video ya da canlı yayın kimliği varsa; kanal bağlantısında yok)
+const ytThumb = (u) => {
+  const m = String(u || "").match(/(?:youtu\.be\/|[?&]v=|\/live\/|\/embed\/|\/shorts\/)([\w-]{11})/);
+  return m ? `https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg` : "";
+};
+function MasaTabs({ value, onChange, tabs }) {
+  return (
+    <div className="masa-tabs">
+      {tabs.map(([k, name, sub, dot]) => (
+        <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)} data-press>
+          <b>{name}</b>
+          <small>
+            {dot ? <i aria-hidden="true" /> : null}
+            {sub}
+          </small>
+        </button>
+      ))}
+    </div>
+  );
+}
+// Sekmenin iş düğmeleri: ekranın altında sabit (en çok üç, ana iş pembe)
+function MasaBar({ children }) {
+  return (
+    <div data-pagebar="" className="masa-bar fixed inset-x-0 bottom-0 z-30">
+      <div className="mx-auto flex max-w-[30rem] gap-2 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3">{children}</div>
+    </div>
+  );
+}
 function Head({ title, right = "" }) {
   return (
     <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1 text-[0.8125rem] font-semibold text-mut">
