@@ -132,7 +132,7 @@ export function cleanPlan(p) {
   // down (Seyhun 2026-11-02 "1 dk sonra indir, 5 dk sonra indir ya da belirsiz"): AP'nin ineceği an (ISO; "" belirsiz). İnince 1 dk sonra
   // uyarı işareti, yani geri sayım: warn o an (ISO), warnBy kuran cihaz (geri sayımı o başlatır, aynı anda iki start açılmasın)
   const iso = (v) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? v.slice(0, 30) : "");
-  const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60), down: iso(p.ap.down) } : null;
+  const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60), down: iso(p.ap.down), land: !!p.ap.land } : null;
   const warn = status === "ap" ? "" : iso(p?.warn);
   const warnBy = warn ? String(p?.warnBy || "").slice(0, 12) : "";
   // Günün grupları (Seyhun 2026-11-02 "startlar-yeni"): bir kez seçilir, "+ Yarış" bunlarla bir yarışın startlarını ekler
@@ -153,20 +153,24 @@ export function cleanPlan(p) {
 export function apText(plan) {
   if (!plan || plan.status !== "ap") return "";
   const why = plan.ap?.why || "";
+  // Start saati yazılmaz (Seyhun 2026-11-02 "orada yanlış bilgi veriliyor"): denizde inişten 1 dk sonra, karada çok sonra start olabilir
   const base = plan.ap?.down
-    ? `Tehir ${trHm(plan.ap.down)}'de iner${plan.at ? `, start ${plan.at}` : ""}`
+    ? `Tehir iniş ${trHm(plan.ap.down)}`
     : plan.at ? `Start ${plan.at}'a ertelendi${plan.ap?.from ? ` (${plan.ap.from})` : ""}` : "Start ertelendi, yeni saat belli değil";
-  return why ? `${base} · ${why}` : base;
+  return [base, plan.ap?.land ? "Karada" : "", why].filter(Boolean).join(" · ");
 }
 // ISO an → Türkiye saatiyle "12:31"
 export const trHm = (iso) => (Date.parse(iso || "") ? new Date(Date.parse(iso) + 3 * 3600e3).toISOString().slice(11, 16) : "");
-// Tehir (AP) çekilir: down dakika sonra iner (0 = belirsiz); start = iniş + 1 dk + geri sayım (dur sn). Döndürür plan yaması.
-export function apRaise(plan, now, min, why, dur = 300) {
+// Tehir (AP) çekilir: down dakika sonra iner (0 = belirsiz). Start saati belli değil (at boş). land: karada tehir (AP üstünde H; Seyhun
+// 2026-11-02 "karada çekiliyorsa indikten bir saat sonra, denizde bir dakika sonra start verilebilir"). Döndürür plan yaması.
+export function apRaise(plan, now, min, why, land = false) {
   const down = min ? new Date(now + min * 60e3).toISOString() : "";
-  return { status: "ap", at: down ? trHm(new Date(Date.parse(down) + 60e3 + dur * 1000).toISOString()) : "", ap: { from: plan?.ap?.from || plan?.at || "", why, down }, warn: "" };
+  return { status: "ap", at: "", ap: { from: plan?.ap?.from || plan?.at || "", why, down, land: !!land }, warn: "" };
 }
-// Tehir iner (zamanı gelince kendiliğinden ya da "Tehiri indir"): 1 dk sonra uyarı işareti, geri sayım başlar
-export function apLower(now, dur = 300, by = "") {
+// Tehir iner (zamanı gelince kendiliğinden ya da "Tehiri indir"). Denizde: 1 dk sonra uyarı işareti, geri sayım kendiliğinden başlar;
+// start saati o an belli olur. Karada: geri sayım kendiliğinden başlamaz, start saati yazılmaz (komite denize çıkınca Başlat).
+export function apLower(now, dur = 300, by = "", land = false) {
+  if (land) return { status: "", ap: null, warn: "", at: "" };
   const warn = new Date(now + 60e3).toISOString();
   return { status: "", ap: null, warn, warnBy: by, at: trHm(new Date(now + 60e3 + dur * 1000).toISOString()) };
 }
