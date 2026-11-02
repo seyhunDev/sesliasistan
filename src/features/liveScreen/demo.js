@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 
 // Örnek yarış (/canli/ornek; Seyhun 2026-11-02 "sarı grup, 3 yarış, şamandıra dönüşleri, genel sıralama, fazla sporcu koyma, tasarımı görmek
-// için"): veritabanına dokunmaz, ekran adım adım oynar: yarış öncesi geri sayım → parkur kuruldu → start dizisi → start → dönüşler → video →
-// alt yazı → rüzgâr değişti → yayına ara → sürdür → finiş → gün sonu. 1. ve 2. yarış dün yapılmış (genel sıralama onlardan), 3. yarış bugün.
+// için"): veritabanına dokunmaz, ekran adım adım oynar: yarış öncesi → parkur kuruldu → videolu bekleme → turuncu bayrak → start dizisi →
+// start → dönüşler → rüzgâr değişti → finiş → gün sonu. 1. ve 2. yarış dün yapılmış (genel sıralama onlardan), 3. yarış bugün.
+// Video (Seyhun 2026-11-02): gerçek bir start videosu; videonun 1:04'ünde start olur. Start dizisi video 0:00'dan başlarken sayaç 1:04'te
+// olacak şekilde kurulur, start'tan 40 sn sonra video kalkar, dönüşler ve genel sıralama gelir.
 
 const SAILS = [
   ["305", "Ece Kara", "Foça YK", "2011", "K"],
@@ -45,15 +47,22 @@ const legsOf = (seed) => {
   });
 };
 const ORDER = legsOf(11);
-export const DEMO_STEPS = ["Yarış öncesi", "Parkur kuruldu", "Start dizisi", "Start", "1. şamandıra", "Video", "Alt yazı", "Rüzgâr değişti", "2. şamandıra", "Yayına ara", "Sürdür", "Finiş", "Gün sonu"];
-const STEP_MS = 9000;
+export const DEMO_STEPS = ["Yarış öncesi", "Parkur kuruldu", "Videolu bekleme", "Turuncu bayrak", "Start dizisi", "Start", "1. şamandıra", "Rüzgâr değişti", "2. şamandıra", "3. şamandıra", "Finiş", "Gün sonu"];
+export const DEMO_S = { PRE: 0, COURSE: 1, VID: 2, ORANGE: 3, SEQ: 4, START: 5, M1: 6, WIND: 7, M2: 8, M3: 9, FIN: 10, END: 11 };
+const S = DEMO_S;
+// adımların süresi: start dizisi videonun startına (1:04) kadar, start adımı start'tan 40 sn sonrasına kadar
+const STEP_MS = [9000, 12000, 10000, 10000, 64000, 40000, 9000, 9000, 9000, 9000, 9000, 12000];
+export const DEMO_VIDEO = "https://www.youtube.com/watch?v=uapbv0UL-G4";
+const VID_START = 64e3; // videoda start anı
+// yarışta her adımın başında yarışın kaçıncı dakikasında olunduğu (dönüşler 8,5 dk arayla)
+const RACE_MIN = { [S.M1]: 9.5, [S.WIND]: 12, [S.M2]: 18, [S.M3]: 26.5, [S.FIN]: 35 };
 
 const iso = (ms) => new Date(ms).toISOString();
 const ymd = (ms) => new Date(ms + 3 * 3600e3).toISOString().slice(0, 10);
 const hm = (ms) => new Date(ms + 3 * 3600e3).toISOString().slice(11, 16);
 
-// Bir adımın verisi: t0 örneğin başladığı an, s0 adımın başladığı an, now şimdi
-export function demoData(step, t0, s0, now) {
+// Bir adımın verisi: t0 örneğin başladığı an, s0 adımın başladığı an, now şimdi; v0 videonun 0:00'ı, vt videonun açıldığı saniye
+export function demoData(step, t0, s0, now, v0 = s0, vt = 0) {
   const today = ymd(now);
   const yday = ymd(now - 864e5);
   const tom = ymd(now + 864e5);
@@ -71,31 +80,35 @@ export function demoData(step, t0, s0, now) {
   const rows = Array.from({ length: 24 }, (_, h) => ({ hh: String(h).padStart(2, "0"), wind: Math.max(2, Math.round(5 + 7 * Math.sin((h - 7) / 5) + (h > 12 ? 2 : 0))), gust: Math.max(4, Math.round(8 + 9 * Math.sin((h - 7) / 5) + (h > 12 ? 3 : 0))), dir: 285 + h * 2, code: 1 }));
   const nowH = +hm(now).slice(0, 2);
   const obs = rows.filter((r) => +r.hh >= 6 && +r.hh <= nowH).map((r) => ({ hh: r.hh, wind: r.wind + 1, gust: r.gust + 2, dir: r.dir }));
-  const ahead = step >= 3 ? (step - 3) * 4 * 60e3 : 0; // her adım yarışta ~4 dk ilerler
-  const shift = (ms) => ms - ahead;
-  const start = step === 2 ? s0 + 65e3 : shift(s0 - 1000); // start dizisinde 1:05 kalır; sonraki her adım süreyi ~4 dk ileri gösterir
-  const plan = { day: today, at: hm(now + 3 * 60e3 + 59e3), order: [...(step < 2 ? [{ cls: "Optimist", grp: "Sarı", prep: "P" }] : []), ...(step < 12 ? [{ cls: "Optimist", grp: "Mavi", prep: "P" }, { cls: "Optimist", grp: "Mavi", prep: "P" }] : [])], status: step >= 12 ? "done" : "", next: step >= 12 ? { day: tom, at: "11:00" } : null, showAt: "06:00", ap: null };
-  const course = step >= 1 ? { pts: {}, obs: [{ id: "w1", kind: "wind", deg: 295, kn: 12, at: iso(step === 1 ? s0 : t0 - 700e3), by: "ben", ref: "" }, { id: "a1", kind: "axis", deg: 300, at: iso(step === 1 ? s0 : t0 - 700e3), by: "ben", ref: "" }, { id: "l1", kind: "line", ref: "pin", deg: 32, at: iso(step === 1 ? s0 : t0 - 700e3), by: "ben" }], len: { orsa: 900 }, cards: [{ id: "A", route: ROUTE }, { id: "B", route: ["1", "4", "1", "2", "3", "F"] }], sel: "A" } : { pts: {}, obs: [], len: {} };
-  if (step >= 7) course.obs.push({ id: "w2", kind: "wind", deg: 298, kn: 14, range: [285, 312], at: iso(step === 7 ? s0 : t0 - 600e3), by: "ben", ref: "" });
-  const legs = step >= 11 ? ORDER : step >= 10 ? ORDER.slice(0, 3) : step >= 8 ? ORDER.slice(0, 2) : step >= 4 ? ORDER.slice(0, 1) : [];
+  // start: start dizisinde ve start adımında videodaki start anı, sonra adımın başından yarışın o dakikası kadar önce
+  const start = step === S.SEQ || step === S.START ? v0 + VID_START : s0 - (RACE_MIN[step] || 0) * 60e3;
+  const done_ = step >= S.END;
+  const plan = { day: today, at: hm(now + 3 * 60e3 + 59e3), order: [...(step < S.START ? [{ cls: "Optimist", grp: "Sarı", prep: "P" }] : []), ...(!done_ ? [{ cls: "Optimist", grp: "Mavi", prep: "P" }, { cls: "Optimist", grp: "Mavi", prep: "P" }] : [])], status: done_ ? "done" : "", next: done_ ? { day: tom, at: "11:00" } : null, showAt: "06:00", ap: null, orange: step >= S.ORANGE && !done_ ? iso(now) : "" };
+  // parkur: komite parkuru 300°'ye attı (eksen), rüzgâr 295°
+  const cAt = iso(step === S.COURSE ? s0 : t0 - 700e3);
+  const course = step >= S.COURSE ? { pts: {}, obs: [{ id: "w1", kind: "wind", deg: 295, kn: 12, at: cAt, by: "ben", ref: "" }, { id: "a1", kind: "axis", deg: 300, at: cAt, by: "ben", ref: "" }, { id: "l1", kind: "line", ref: "pin", deg: 32, at: cAt, by: "ben" }], len: { orsa: 900 }, cards: [{ id: "A", route: ROUTE }, { id: "B", route: ["1", "4", "1", "2", "3", "F"] }], sel: "A" } : { pts: {}, obs: [], len: {} };
+  if (step >= S.WIND) course.obs.push({ id: "w2", kind: "wind", deg: 298, kn: 14, range: [285, 312], at: iso(step === S.WIND ? s0 : t0 - 600e3), by: "ben", ref: "" });
+  const legs = step >= S.FIN ? ORDER : step >= S.M3 ? ORDER.slice(0, 3) : step >= S.M2 ? ORDER.slice(0, 2) : step >= S.M1 ? ORDER.slice(0, 1) : [];
   const starts = [r1, r2];
-  if (step >= 2 && step < 12) starts.push({ id: "r3", day: today, at: iso(start), n: 3, ...(step >= 11 ? { fin: iso(now - 10e3) } : {}) });
-  if (step >= 12) starts.push({ id: "r3", day: today, at: iso(now - 40 * 60e3), fin: iso(now - 5 * 60e3), n: 3 });
-  if (step >= 2) {
-    const at = times(step >= 12 ? now - 40 * 60e3 : start, legs.length);
+  // start kaydı start anında açılır (Yayın'daki gibi); start dizisinde sayaç ve bayraklar plan.order'ın ilkinden
+  if (step >= S.START && !done_) starts.push({ id: "r3", day: today, at: iso(start), n: 3, ...(step >= S.FIN ? { fin: iso(now - 10e3) } : {}) });
+  if (done_) starts.push({ id: "r3", day: today, at: iso(now - 40 * 60e3), fin: iso(now - 5 * 60e3), n: 3 });
+  if (step >= S.START) {
+    const at = times(done_ ? now - 40 * 60e3 : start, legs.length);
     // her teknenin dönüş anı (lidere fark): liderden birkaç saniye arayla
     const tm = legs.map((l, k) => Object.fromEntries(l.map((sl, i) => [sl, Date.parse(at[k]) + i * 6000 + i * i * 400])));
-    rounds.r3 = { route: ROUTE, legs, at, tm, grp: "Sarı", cls: "Optimist", prep: "P", ...(step >= 11 ? { pen: { [ORDER[3][5]]: "DSQ" } } : {}) };
+    rounds.r3 = { route: ROUTE, legs, at, tm, grp: "Sarı", cls: "Optimist", prep: "P", ...(step >= S.FIN ? { pen: { [ORDER[3][5]]: "DSQ" } } : {}) };
   }
-  const video = step >= 5 && step < 12;
+  const video = step >= S.VID && step <= S.START;
+  // start dizisinde video baştan açılır (bağlantıda t=); bekleme adımlarında da aynı video arkada
   return {
     race: { name: "Örnek Kupa", startDate: yday, endDate: tom, place: "Dikili, İzmir" },
     starts,
-    cur: step >= 2 && step < 12 ? "r3" : "",
-    timer: step === 2 ? { end: start, mode: "start", dur: 300 } : step >= 3 && step < 11 ? { end: start, mode: "start", dur: 300 } : null,
+    cur: step >= S.SEQ && !done_ ? "r3" : "",
+    timer: step >= S.SEQ && step < S.FIN ? { end: start, mode: "start", dur: 300 } : null,
     rounds,
-    screen: video ? { kind: "rec", mid: "m1", loop: true, pause: step === 9, caption: step >= 6 ? (step >= 8 ? "Rüzgâr sola döndü, sol taraf kazançlı" : "1. şamandıra dönüşleri") : "" } : { kind: "" },
-    stream: { url: "" },
+    screen: video ? { kind: "live", caption: step === S.START ? "Sarı grup startı" : "" } : { kind: "" },
+    stream: { url: video ? (step >= S.SEQ ? `${DEMO_VIDEO}&t=${vt}s` : DEMO_VIDEO) : "" },
     media: [{ id: "m1", kind: "photo", url: "/canli/ornek-deniz.svg", at: iso(t0), thumb: "" }],
     wind: [],
     day: today,
@@ -110,9 +123,16 @@ export function demoData(step, t0, s0, now) {
   };
 }
 
-// Adım adım oynatıcı: 9 sn'de bir sonraki adım; ‹ › ile elle, ❚❚ ile durdur
+// Adıma geçiş: start dizisinden kendiliğinden starta geçince video sürer (aynı bağlantı); elle starta atlanırsa video 1:04'ten açılır
+const toStep = (s, n, auto) => {
+  const now = Date.now();
+  const keep = auto && s.step === S.SEQ && n === S.START;
+  return { ...s, step: n, s0: now, v0: keep ? s.v0 : n === S.START ? now - VID_START : now, vt: keep ? s.vt : n === S.START ? VID_START / 1000 : 0 };
+};
+
+// Adım adım oynatıcı: adım süresi dolunca sonraki adım; ‹ › ile elle, ❚❚ ile durdur
 export function useDemo(on) {
-  const [st, setSt] = useState(() => ({ step: 0, t0: Date.now(), s0: Date.now(), play: true }));
+  const [st, setSt] = useState(() => ({ step: 0, t0: Date.now(), s0: Date.now(), play: true, v0: Date.now(), vt: 0 }));
   // sunucuda çizilmez (saat farkı hidrasyon hatası verir): ilk tıkta açılır
   const [now, setNow] = useState(0);
   useEffect(() => {
@@ -123,10 +143,11 @@ export function useDemo(on) {
   }, [on]);
   useEffect(() => {
     if (!on || !st.play) return undefined;
-    const t = setTimeout(() => setSt((s) => (s.step >= DEMO_STEPS.length - 1 ? { ...s, play: false } : { ...s, step: s.step + 1, s0: Date.now() })), STEP_MS - (Date.now() - st.s0));
+    const t = setTimeout(() => setSt((s) => (s.step >= DEMO_STEPS.length - 1 ? { ...s, play: false } : toStep(s, s.step + 1, true))), STEP_MS[st.step] - (Date.now() - st.s0));
     return () => clearTimeout(t);
   }, [on, st]);
-  const go = (d) => setSt((s) => ({ ...s, step: Math.max(0, Math.min(DEMO_STEPS.length - 1, s.step + d)), s0: Date.now() }));
-  const ctl = { step: st.step, name: DEMO_STEPS[st.step], n: DEMO_STEPS.length, play: st.play, prev: () => go(-1), next: () => go(1), toggle: () => setSt((s) => ({ ...s, play: !s.play, s0: Date.now() })), restart: () => setSt({ step: 0, t0: Date.now(), s0: Date.now(), play: true }) };
-  return { data: on && now ? demoData(st.step, st.t0, st.s0, now) : null, ctl };
+  // durdurunca video durmaz: start dizisi ve start saatle sürer (s0 korunur)
+  const go = (d) => setSt((s) => toStep(s, Math.max(0, Math.min(DEMO_STEPS.length - 1, s.step + d)), false));
+  const ctl = { step: st.step, name: DEMO_STEPS[st.step], n: DEMO_STEPS.length, play: st.play, prev: () => go(-1), next: () => go(1), toggle: () => setSt((s) => ({ ...s, play: !s.play, s0: s.step === S.SEQ || s.step === S.START ? s.s0 : Date.now() })), restart: () => setSt({ step: 0, t0: Date.now(), s0: Date.now(), play: true, v0: Date.now(), vt: 0 }) };
+  return { data: on && now ? demoData(st.step, st.t0, st.s0, now, st.v0, st.vt) : null, ctl };
 }
