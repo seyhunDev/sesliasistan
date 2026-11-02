@@ -78,6 +78,11 @@ export async function screenSay(orgId, raceId, s) {
     return { text: "Ekrandan kaldırdım." };
   }
   const L = await loadRoundsOf(orgId, raceId);
+  if ("pause" in c) {
+    if (!L.screen.kind) return { fail: "Ekranda yayın yok." };
+    await showOnScreen(orgId, raceId, { ...L.screen, pause: c.pause });
+    return { text: c.pause ? "Yayına ara verildi, ekranda görüntü kalır." : "Yayın sürüyor." };
+  }
   if (c.kind === "live") {
     if (!ytEmbed(L.stream.url)) return { fail: "Önce canlı yayın bağlantısını Canlı sekmesine yapıştır." };
     await showOnScreen(orgId, raceId, { kind: "live" });

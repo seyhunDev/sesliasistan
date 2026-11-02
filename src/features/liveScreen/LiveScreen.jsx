@@ -77,6 +77,22 @@ function useNow(skew, ms = 250) {
 // Sayaç: start öncesi geri sayım, startan sonra geçen süre, bitince yarışın süresi
 // Start dizisindeki bayraklar (Seyhun 2026-11-01): Uyarı'da sınıf bayrağı (Optimist, ILCA 4…), Hazırlık'ta seçilen bayrak (P, I, Z, U, Kara).
 // Son dakikada hazırlık bayrağı iner (soluklaşır), startla sınıf bayrağı iner.
+// Panel girip çıkarken yumuşak geçiş (Seyhun 2026-11-02 "animasyonla geçiş"): açılınca "in", kapanınca ms boyunca "out", sonra kaldırılır
+function useFade(on, ms = 500) {
+  const [gone, setGone] = useState(!on);
+  const [prev, setPrev] = useState(on);
+  if (on !== prev) {
+    setPrev(on);
+    if (on) setGone(false);
+  }
+  useEffect(() => {
+    if (on) return undefined;
+    const t = setTimeout(() => setGone(true), ms);
+    return () => clearTimeout(t);
+  }, [on, ms]);
+  return on ? "in" : gone ? "" : "out";
+}
+
 function Flag({ kind, cls, down }) {
   const c = `lv-flag${down ? " down" : ""}`;
   if (kind === "cls") return <span className={`${c} cls`}>{/^ilca\s*(\d)/i.exec(cls)?.[1] || cls.slice(0, 1).toUpperCase()}</span>;
@@ -586,18 +602,44 @@ function Backdrop({ data, isCur }) {
   const scr = isCur ? data.screen || {} : {};
   const yt = scr.kind === "live" ? ytSrc(data.stream?.url) : "";
   const rec = scr.kind === "rec" ? (data.media || []).find((m) => m.id === scr.mid) : null;
-  if (!yt && !rec) return <Sea />;
+  const on = !!(yt || rec);
+  const st = useFade(on, 900);
+  const vref = useRef(null);
+  const [last, setLast] = useState(null); // kapanırken solarken gösterilen son görüntü
+  if (on && (last?.yt !== yt || last?.rec?.id !== rec?.id || last?.loop !== !!scr.loop)) setLast({ yt, rec, loop: !!scr.loop });
+  // Duraklatılınca tekrar videosu durur, sürdürülünce devam eder (canlı yayın iframe'i yalnız karartılır)
+  useEffect(() => {
+    const v = vref.current;
+    if (!v) return;
+    if (scr.pause) v.pause();
+    else v.play?.().catch?.(() => {});
+  }, [scr.pause, on]);
+  const show = on ? { yt, rec, loop: !!scr.loop } : last;
   return (
-    <div className="lv-bg" aria-hidden="true">
-      {yt ? (
-        <iframe title="Canlı yayın" src={yt} allow="autoplay; encrypted-media; picture-in-picture" />
-      ) : rec.kind === "video" ? (
-        <video key={rec.id} src={rec.url} poster={rec.thumb || undefined} autoPlay muted playsInline loop={!!scr.loop} />
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={rec.url} alt="" />
-      )}
-    </div>
+    <>
+      <Sea />
+      {st && show ? (
+        <div className={`lv-bg ${st}`} aria-hidden="true">
+          {show.yt ? (
+            <iframe title="Canlı yayın" src={show.yt} allow="autoplay; encrypted-media; picture-in-picture" />
+          ) : show.rec?.kind === "video" ? (
+            <video ref={vref} key={show.rec.id} src={show.rec.url} poster={show.rec.thumb || undefined} autoPlay muted playsInline loop={show.loop} />
+          ) : show.rec ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={show.rec.url} alt="" />
+          ) : null}
+        </div>
+      ) : null}
+      {on && scr.pause ? (
+        <div className="lv-pause" role="status">
+          <div className="lv-pausec">
+            <span className="lv-pulse" aria-hidden="true" />
+            <b>Yayına ara verildi</b>
+            <span>Görüntü düzeltiliyor, birazdan sürer</span>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -749,10 +791,11 @@ function MsgStrip({ data, sel, isCur, id, phase, today, ongoing, starts, onList 
 function CoursePanel({ data, route }) {
   const svg = useMemo(() => cardSvg(cardOf(cleanCourse(data.course || {})), { navy: true }), [data.course]);
   const [big, setBig] = useState(false);
-  if (!svg) return null;
+  const st = useFade(!!svg);
+  if (!st) return null;
   return (
     <>
-      <Panel cls="lv-coursep" head="Parkur" right={route} onClick={() => setBig(true)} label="Parkuru büyüt">
+      <Panel cls={`lv-coursep ${st}`} head="Parkur" right={route} onClick={() => setBig(true)} label="Parkuru büyüt">
         <div className="lv-svg" dangerouslySetInnerHTML={{ __html: svg }} />
       </Panel>
       {big ? (
@@ -793,9 +836,10 @@ function WindPanel({ data, sel, isCur, phase, now, today }) {
   ) : null;
   const showFc = phase === "wait" && (data.forecast?.rows || []).length > 0;
   const showLine = phase === "summary" && pts.length > 1;
-  if (!w && !showFc) return null;
+  const st = useFade(!!w || showFc);
+  if (!st) return null;
   return (
-    <Panel cls={`lv-windp${showFc ? " fc" : ""}`} head="Rüzgâr" right={w ? hmOf(w.at) : data.forecast?.place ? `Tahmin · ${data.forecast.place}` : ""}>
+    <Panel cls={`lv-windp${showFc ? " fc" : ""} ${st}`} head="Rüzgâr" right={w ? hmOf(w.at) : data.forecast?.place ? `Tahmin · ${data.forecast.place}` : ""}>
       {head}
       {showFc ? <WindDay fc={data.forecast} now={now} at={at} /> : null}
       {showLine ? (
@@ -853,13 +897,10 @@ function OverallPanel({ data, n = 5, onAll, cls = "" }) {
   );
 }
 
-// Sağ alt: sıradaki start (yarışta) ya da günün yarışları ve birincileri (gün sonunda); altında genel sıralamanın ilk beşi
+// Sağ alt: sıradaki start (yarışta), altında genel sıralamanın ilk beşi (gün sonunda genel sol üstte, yarışlar ortada)
 function SidePanel({ data, phase, today, onAll }) {
   const plan = data.plan;
   const up = phase === "race" ? plan.order : [];
-  const day = plan.day || today;
-  const races = phase === "summary" ? (data.starts || []).filter((x) => x.day === day && !x.void) : [];
-  const who = whoMap(data);
   return (
     <div className="lv-side">
       {up.length ? (
@@ -871,28 +912,63 @@ function SidePanel({ data, phase, today, onAll }) {
           {up.length > 1 ? <span>{`sonra ${up.slice(1, 3).map(planLabel).join(" · ")}`}</span> : null}
         </Panel>
       ) : null}
-      {races.length ? (
-        <Panel cls="lv-rankp" head="Bugünün yarışları" right={`${races.length} yarış`}>
-          <ol className="lv-rl">
-            {races.map((x, i) => {
-              const e = data.rounds?.[x.id];
-              const first = e ? standings(e)[0] : null;
-              const w = first ? whoOf(who, first.sail) : null;
-              return (
-                <li key={x.id} className="w">
-                  <b>{i + 1}</b>
-                  <span>
-                    <Dot g={e?.grp} />
-                    {[e?.cls, e?.grp].filter(Boolean).join(" · ") || raceTitle(x)}
-                  </span>
-                  <em>{first ? `1. ${first.sail}${w?.name ? ` ${shortName(w.name)}` : ""}` : x.fin ? raceTime(x) || "Bitti" : hmOf(x.at)}</em>
-                </li>
-              );
-            })}
-          </ol>
-        </Panel>
-      ) : null}
       {phase !== "summary" ? <OverallPanel data={data} onAll={onAll} /> : null}
+    </div>
+  );
+}
+
+// Gün sonu (Seyhun 2026-11-02 "gün sonu tasarımı kötü, geliştir"): ortada büyük "4 yarış yapıldı", altında her yarışın kartı (grup, sınıf, ilk üç);
+// solda genel ilk 10, altta rüzgâr çizgisi, alt ortada yarınki ilk start'a geri sayım
+function SummaryHero({ data, today }) {
+  const plan = data.plan;
+  const day = plan.day || today;
+  const races = (data.starts || []).filter((x) => x.day === day && !x.void);
+  const who = whoMap(data);
+  return (
+    <div className="lv-sumhero">
+      <div className="lv-sumbig">
+        <b>{races.length}</b>
+        <span>
+          {races.length === 1 ? "yarış yapıldı" : "yarış yapıldı"}
+          <small>{[dayText(day), data.race.name].filter(Boolean).join(" · ")}</small>
+        </span>
+      </div>
+      {races.length ? (
+        <div className="lv-sumraces">
+          {races.map((x) => {
+            const e = data.rounds?.[x.id];
+            const top = e ? standings(e).slice(0, 3) : [];
+            return (
+              <div key={x.id} className="lv-sumr">
+                <header>
+                  <b>
+                    <Dot g={e?.grp} />
+                    {[e?.cls, e?.grp].filter(Boolean).join(" · ") || "Yarış"}
+                  </b>
+                  <span>{raceTitle(x)}</span>
+                </header>
+                {top.length ? (
+                  <ol className="lv-rl">
+                    {top.map((t, i) => {
+                      const w = whoOf(who, t.sail);
+                      return (
+                        <li key={t.sail}>
+                          <b>{i + 1}</b>
+                          <i>{t.sail}</i>
+                          <span>{shortName(w?.name)}</span>
+                          <em>{shortClub(w?.club)}</em>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                ) : (
+                  <div className="lv-pe">{x.fin ? raceTime(x) || "Bitti" : hmOf(x.at)}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -959,26 +1035,20 @@ export function LiveScreen({ id, y = "" }) {
   const today = trDay(nowMs);
   const phase = isCur ? livePhase({ plan: data.plan, starts, timer: data.timer, today, now: nowMs }) : "race";
   const hasVideo = isCur && (data.screen?.kind === "live" || data.screen?.kind === "rec");
+  const hasCourse = (data.course?.obs || []).length > 0;
   // Yayın görünümü (Seyhun 2026-11-02): arka plan tam ekran video ya da deniz; köşelerde paneller, alt ortada sayaç.
+  // Düzen durumları (video / course / pause / evre) sınıf olarak: videosuzken sayaç ortada büyük, video gelince alta kayar (CSS geçişi);
+  // parkur ve rüzgâr panelleri girip çıkarken solar (useFade); duraklatılınca görüntü kalır, önünde "Yayına ara verildi".
   return (
-    <div className={`lv lv-bc${hasVideo ? " video" : ""} ${phase}`}>
+    <div className={`lv lv-bc${hasVideo ? " video" : ""}${hasCourse ? " course" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
       <Backdrop data={data} isCur={isCur} />
       <div className="lv-page lv-ov">
         <MsgStrip data={data} sel={sel} isCur={isCur} id={id} phase={phase} today={today} ongoing={ongoing} starts={starts} onList={() => setList(true)} />
         {phase === "wait" ? <PlanPanel data={data} today={today} /> : phase === "summary" ? <OverallPanel data={data} n={RANK_MAX} cls="lv-rankp" onAll={() => setFull("all")} /> : <RankPanel data={data} sel={sel} isCur={isCur} id={id} onAll={() => setFull("race")} />}
         <CoursePanel data={data} route={routeOf(data, sel)} />
         <WindPanel data={data} sel={sel} isCur={isCur} phase={phase} now={nowMs} today={today} />
-        {phase === "summary" ? (
-          <div className="lv-pill lv-cd">
-            <div className="lv-pillh">
-              <span>Gün bitti</span>
-              <span>{data.plan.next?.at ? `Yarın ${data.plan.next.at}` : ""}</span>
-            </div>
-            <div className="lv-clock">{`${starts.filter((x) => x.day === (data.plan.day || today) && !x.void).length} yarış`}</div>
-          </div>
-        ) : (
-          <Clock sel={phase === "wait" ? null : sel} isCur={isCur} timer={phase === "wait" ? null : data.timer} skew={skew} entry={entry} data={data} today={today} />
-        )}
+        {phase === "summary" ? <SummaryHero data={data} today={today} /> : null}
+        <Clock sel={phase === "race" ? sel : null} isCur={isCur} timer={phase === "race" ? data.timer : null} skew={skew} entry={entry} data={data} today={today} />
         <SidePanel data={data} phase={phase} today={today} onAll={() => setFull("all")} />
       </div>
       {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} onClose={() => setList(false)} /> : null}

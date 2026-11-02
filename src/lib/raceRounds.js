@@ -218,7 +218,8 @@ export function whoOf(map, sail) {
 // ---- Ekranda oynayan ----
 export function cleanScreen(s) {
   const kind = ["live", "rec"].includes(s?.kind) ? s.kind : "";
-  return { kind, mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, at: typeof s?.at === "string" ? s.at.slice(0, 30) : "" };
+  // pause: yayına ara verildi (Seyhun 2026-11-02): video ekranda kalır, önünde "Yayına ara verildi" yazısı
+  return { kind, mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, at: typeof s?.at === "string" ? s.at.slice(0, 30) : "" };
 }
 // YouTube bağlantısından video kimliği (watch?v=, youtu.be/, /live/, /embed/)
 export function ytId(url) {
@@ -258,6 +259,9 @@ export function recTitle(m, rname) {
 export function screenCommand(raw) {
   const s = low(raw);
   if (/ekran(dan|ı)\s*(kaldır|kapat|temizle|boşalt)|ekrandakini\s*kaldır/.test(s)) return { clear: true };
+  // "yayını duraklat", "yayına ara ver" → { pause: true }; "yayını sürdür", "yayına devam" → { pause: false }
+  if (/yayın[ıa]?\s*(duraklat|ara\s*ver|beklet)|ekran[ıa]?\s*(duraklat|beklet)/.test(s)) return { pause: true };
+  if (/yayın[ıa]?\s*(sürdür|devam)|ekran[ıa]?\s*(sürdür|devam)|duraklatmayı\s*kaldır/.test(s)) return { pause: false };
   if (!/(canlı\s*)?ekran(da|a)\b/.test(s) || !/göster|oynat|\baç\b|ver\b|yayınla/.test(s)) return null;
   const loop = /döngü|tekrar\s*tekrar|sürekli|loop|başa\s*sar/.test(s);
   if (/canlı\s*yayın|yayını\b|canlı\s*görüntü/.test(s)) return { kind: "live", loop: false };
