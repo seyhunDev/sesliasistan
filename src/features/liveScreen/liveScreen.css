@@ -377,6 +377,7 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-rl b { font-weight: 700; }
 .lv-rl i { font-weight: 600; }
 .lv-cap { font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+.lv-cap.warn { border-left-color: var(--lv-warn, #f5b942); }
 /* Yarış öncesi, video yok: ortada geri sayım, ilk yarış, beklenen rüzgâr; altta program kartları; şerit gizli */
 .lv-foot.off { visibility: hidden; }
 /* gün sonunda başlık büyük yazıda; alttaki satırda yalnız düğmeler */
