@@ -328,9 +328,11 @@ export function makeRace(race) {
 // startRace: Başlat yarışı hemen açar (0'da start saati yazılır, herkese açık ekran "Start'tan beri" sayar; Seyhun 2026-11-01).
 // Alt şeritte lead ve tail. bottom: ana düğme kokpitte değil alt şeritte (başparmak yetişsin; Seyhun 2026-10-22), solunda side (Sonucu söyle). dark: lacivert kokpitin içinde (antrenman günü, 2026-10-21 yeni tasarım): kart yok, beyaz yazı.
 // rec: ana düğmenin sağında yuvarlak düğme (yarışın Start sekmesinde Kayıt; Seyhun 2026-10-30)
+// Açık zeminde (dark ve bottom yok; antrenman günü 2026-11-02 yeni tasarım): tek kart, üstte ortada durum ("Yarış 3 hazır", "Yarış 3 · Starta kalan"),
+// geri sayım vurgu renginde; kartın altında mid (Bitiren kim? kareleri) ve ana düğme + rec yan yana.
 // startText: Başlat düğmesinin yazısı (Yayın: "Başlat · Optimist · Mavi" ya da "Başlat · Start seçilmedi"); noHead: sayaç beklerken üstteki
 // "Start sayacı" satırı çizilmez (Seyhun 2026-11-02 "boşuna yer kaplıyor").
-export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, startRace = false, lead = null, tail = null, dark = false, bottom = false, side = null, rec = null, startText = "", noHead = false }) {
+export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, startRace = false, lead = null, tail = null, dark = false, bottom = false, side = null, rec = null, startText = "", noHead = false, mid = null }) {
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
@@ -408,7 +410,18 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
 
   return (
     <>
-      <section onPointerDown={() => running && !up && audio()} className={dark ? "mt-4 text-center" : "mt-3 rounded-3xl border border-line bg-card px-4 pb-4 pt-3.5 text-center"}>
+      <section onPointerDown={() => running && !up && audio()} className={dark ? "mt-4 text-center" : "mt-2 rounded-3xl border border-line bg-card px-4 pb-4 pt-3 text-center"}>
+        {!dark && !bottom ? (
+          <div className="flex h-7 items-center justify-center gap-1.5 truncate text-[0.9375rem] font-semibold text-mut">
+            {idle ? (
+              <span className="truncate">{title ? `${title} hazır` : "Start sayacı"}</span>
+            ) : !mine && t.own ? (
+              <Link href={ownHref} className="truncate text-acc">{t.where || "Sayacın sayfası"} ›</Link>
+            ) : (
+              <span className="truncate">{title && <b className="font-semibold text-fg">{title} · </b>}{head}</span>
+            )}
+          </div>
+        ) : (
         <div className={`flex h-8 items-center justify-between gap-2 text-[0.9375rem] font-semibold ${dark ? "text-white/70" : "text-fg2"}`}>
           <span>{idle && noHead ? "" : head}</span>
           {idle ? null : !mine && t.own ? (
@@ -419,7 +432,8 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
             <span className="truncate">{title}</span>
           )}
         </div>
-        <b className={`mt-1 block font-semibold leading-[1.05] tabular-nums tracking-[-0.03em] ${up ? "text-[5.25rem]" : "text-[6.25rem]"} ${hot ? red : ""}`}>{time}</b>
+        )}
+        <b className={`mt-1 block font-semibold leading-[1.05] tabular-nums tracking-[-0.03em] ${up ? "text-[5.25rem]" : "text-[6.25rem]"} ${hot ? red : !dark && running && !up ? "text-acc" : ""}`}>{time}</b>
         {idle && presets?.length > 1 && (
           <div className="mt-4 flex gap-1.5">
             {presets.map((s) => (
@@ -449,6 +463,15 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
             {!bottom && <button type="button" onClick={race ? () => raceVoid(race) : reset} className={`${btn} ${red}`}>İptal</button>}
           </div>
         )}
+        {!dark && !bottom && (
+          <>
+            {mid}
+            <div className="mt-4 flex items-stretch gap-2">
+              {main((on) => mainCls(on).replace("mt-3 ", "").replace("w-full", "min-w-0 flex-1"))}
+              {rec}
+            </div>
+          </>
+        )}
       </section>
       {bottom ? (
         <Bar>
@@ -459,7 +482,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
           </div>
         </Bar>
       ) : (
-        main(mainCls)
+        dark && main(mainCls)
       )}
       {(lead || tail) && (
         <Bar>

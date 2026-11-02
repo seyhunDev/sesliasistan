@@ -303,7 +303,8 @@ export async function run(server, log = () => {}) {
       const ok = chips === "5 dk,4 dk,2 dk,1 dk" && top === 0 && strip === 0 && now === 1 && kept.trim() === "2 dk" && big === 1;
       return [ok, `seçenekler ${chips} · üstte seçim ${top} · şerit ${strip} · 2 dk seçince ${now ? "02:00" : "değişmedi"} · yenileyince ${kept.trim() || "-"}${big ? " 02:00" : ""}`];
     });
-    // Antrenman yeni akış (Seyhun 2026-11-01): alt çubuk Yarış · Videolar, Video Başlat'ın yanında; yarışta "Bitiren kim?" kareleri,
+    // Antrenman yeni akış (Seyhun 2026-11-01; yeni tasarım 2026-11-02 açık zemin, tek kart): alt çubuk Antrenman · Medya, Video ana düğmenin yanında kartta,
+    // Antrenman sekmesinde video/fotoğraf yok (yalnız Medya'da); yarışta "Bitiren kim?" kareleri,
     // herkes dokununca yarış biter ve biten son yarış açık görünür (sıra + süre, Düzelt · Paylaş)
     await okPage("Antrenman", "yeni akış: bitiren kim", "/training/day?id=t1", "Yoklama", async () => {
       await page.evaluate(() => localStorage.setItem("sa-sayac", JSON.stringify({ dur: 300, end: Date.now() - 60e3, left: null, mode: "start", rid: "y3", own: "/training/day?id=t1", where: "Optimist antrenmanı", at: Date.now() })));
@@ -311,7 +312,8 @@ export async function run(server, log = () => {}) {
       const tile = page.locator("section[aria-label='Bitiren kim'] button", { hasText: "Deniz" });
       await tile.waitFor({ timeout: 60000 }).catch(() => {});
       const dock = (await page.locator("nav[aria-label='Multimedya sekmeleri'] button").allInnerTexts()).map((x) => x.trim()).filter(Boolean).join(",");
-      const vid = Math.min(1, await page.locator("[data-bar]").getByLabel("Video").count());
+      const vid = Math.min(1, await page.locator("main").getByLabel("Video").count());
+      const ck = await page.locator("main .ck").count();
       const tiles = await page.locator("section[aria-label='Bitiren kim'] button[aria-pressed]").count();
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-antrenman-yarista.png") }).catch(() => {});
       await tile.click().catch(() => {});
@@ -319,10 +321,11 @@ export async function run(server, log = () => {}) {
       await page.waitForTimeout(800);
       const gone = await page.locator("section[aria-label='Bitiren kim']").count();
       const fix = await page.getByRole("button", { name: "Düzelt" }).count();
-      const go = await page.locator("[data-bar]").getByRole("button", { name: "Başlat" }).count();
+      const go = await page.locator("main").getByRole("button", { name: "Başlat" }).count();
+      const media = await page.locator("main img, main video").count();
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, "-antrenman-bitti.png") }).catch(() => {});
-      const ok = dock === "Yarış,Videolar" && vid === 1 && tiles === 1 && done && gone === 0 && fix === 1 && go === 1;
-      return [ok, `alt çubuk ${dock} · Video ${vid} · kare ${tiles} · dokununca ${done ? "sonuç açıldı" : "açılmadı"} · kareler ${gone ? "duruyor" : "kalktı"} · Düzelt ${fix} · Başlat ${go}`];
+      const ok = dock === "Antrenman,Medya" && vid === 1 && ck === 0 && media === 0 && tiles === 1 && done && gone === 0 && fix === 1 && go === 1;
+      return [ok, `alt çubuk ${dock} · Video ${vid} · lacivert ${ck} · çekim ${media} · kare ${tiles} · dokununca ${done ? "sonuç açıldı" : "açılmadı"} · kareler ${gone ? "duruyor" : "kalktı"} · Düzelt ${fix} · Başlat ${go}`];
     });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
     // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok
