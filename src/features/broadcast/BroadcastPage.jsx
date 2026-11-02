@@ -772,13 +772,9 @@ export function BroadcastPage({ orgId, id }) {
             </div>
           </div>
         </section>
-          </>
-        ) : null}
-        {tab === "parkur" ? (
-          <>
         {/* Ekranda gösterim (Seyhun 2026-11-02 "otomatik starttan önce; starttan sonra manuel; starttan önce de manuel"):
             Otomatik = yarış öncesi dakikada bir parkur → rüzgâr → program; Parkur / Rüzgâr / Program elle açılır, kaldırılana kadar
-            ekranda kalır (yarış öncesi, sırasında, sonrasında) */}
+            ekranda kalır (yarış öncesi, sırasında, sonrasında); Video sekmesinde (Seyhun 2026-11-02 "video sekmesine alalım") */}
         <section>
           <Head title="Ekranda gösterim" right={cShow.one ? `${SHOW_NAME[cShow.one]} ekranda` : ""} />
           <div className={`${card} overflow-hidden`}>
@@ -795,6 +791,10 @@ export function BroadcastPage({ orgId, id }) {
             </button>
           </div>
         </section>
+          </>
+        ) : null}
+        {tab === "parkur" ? (
+          <>
         <section>
           <Head title="Parkur ve rüzgâr" right={entry?.route?.length ? entry.route.map((m) => (m === "F" ? "Finish" : m)).join(" · ") : ""} />
           <div className={`${card} overflow-hidden`}>
