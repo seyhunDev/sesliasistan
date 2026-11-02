@@ -131,7 +131,10 @@ export function cleanPlan(p) {
   const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60) } : null;
   // Günün grupları (Seyhun 2026-11-02 "startlar-yeni"): bir kez seçilir, "+ Yarış" bunlarla bir yarışın startlarını ekler
   const grps = [...new Set((Array.isArray(p?.grps) ? p.grps : []).map((g) => String(g || "").slice(0, 20)).filter(Boolean))].slice(0, 6);
-  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8) };
+  // Günler (Seyhun 2026-11-02 "her gün startı 11 yapacağım"): daily her günün ilk start saati, times[gün] o güne özel saat, off yarış olmayan günler
+  const times = Object.fromEntries(Object.entries(p?.times && typeof p.times === "object" ? p.times : {}).filter(([d, v]) => DAY.test(d) && HM.test(v || "")).slice(0, 20));
+  const off = [...new Set((Array.isArray(p?.off) ? p.off : []).filter((d) => DAY.test(d || "")))].slice(0, 20);
+  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off };
 }
 // Tehir cümlesi: "Start 12:00'a ertelendi (11:00) · Rüzgâr yok" ya da "Start ertelendi, yeni saat belli değil · Fırtına"
 export function apText(plan) {
@@ -643,3 +646,14 @@ export const raceOrder = (plan) => {
   const g = plan?.grps?.length ? plan.grps : [""];
   return g.map((grp) => ({ cls: plan?.cls || "Optimist", grp, prep: plan?.prep || "P" }));
 };
+
+// Bir günün ilk start saati: o güne özel saat, yoksa her günün saati
+export const dayTime = (plan, d) => plan?.times?.[d] || plan?.daily || "";
+// Yeni güne geçiş: plan eski bir günde kaldıysa bugünün planı (ilk start günün saatinden, bekleyenler düşer; yarış yok günü "none").
+// Sunucu (/api/canli) ve Yayın sayfası kullanır; böylece Yayın açılmadan da ekran bugünün saatini sayar.
+export function rollPlan(plan, today) {
+  const pl = cleanPlan(plan);
+  if (!today || (pl.day && pl.day >= today)) return pl;
+  const status = pl.off.includes(today) ? "none" : "";
+  return { ...pl, day: today, at: dayTime(pl, today) || (pl.next?.day === today ? pl.next.at : ""), order: pl.day ? [] : pl.order, status, next: null, ap: null };
+}

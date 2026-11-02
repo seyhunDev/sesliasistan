@@ -20,7 +20,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dayRaces, dirShort, finishRace, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
+import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
 import { CARD_IDS, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
@@ -73,6 +73,8 @@ export function BroadcastPage({ orgId, id }) {
   const [askEnd, setAskEnd] = useState(false); // Günü bitir bir daha sorar
   const [grpOpen, setGrpOpen] = useState(false); // Gruplar: seçim açık
   const [openN, setOpenN] = useState(0); // açılan biten yarış
+  const [openDay, setOpenDay] = useState(""); // Program: açık gün
+  const [delId, setDelId] = useState(""); // Program: silinmesi sorulan start
   const [draft, setDraft] = useState({ cls: "Optimist", grps: [], prep: "P" }); // oluşturulacak yarış (plan yüklenince ondan)
   const [ap, setAp] = useState(null); // tehir penceresi { min, why } (Seyhun 2026-11-01 "bir sebep belirterek tehir, bir saatlik")
   const [plan, setPlan] = useState(() => cleanPlan({})); // günün programı (raceLive.plan; herkese açık ekranın evresi buna göre)
@@ -96,7 +98,10 @@ export function BroadcastPage({ orgId, id }) {
     loadEntryDoc(orgId, id).then((d) => on && (setEntries(d.rows), setGroups(d.groups)), () => {});
     reload().then((d) => {
       if (!on) return;
-      setPlan(d.plan);
+      // yeni gün: plan eski günde kaldıysa bugünün planı (günün saati, bekleyenler düşer) yazılır
+      const rp = rollPlan(d.plan, today);
+      setPlan(rp);
+      if (rp.day !== d.plan.day) savePlan(orgId, id, rp).catch(() => {});
       setDraft({ cls: d.plan.cls || "Optimist", grps: d.plan.grps, prep: d.plan.prep || "P" });
       setYt(d.stream.url);
       setSel(d.screen.kind ? { kind: d.screen.kind, mid: d.screen.mid } : null);
@@ -157,6 +162,27 @@ export function BroadcastPage({ orgId, id }) {
     const from = plan.ap?.from || plan.at;
     changePlan({ day: planDay, status: "ap", at: ap.min ? addMin(from, ap.min) : "", ap: { from, why: ap.why } });
     setAp(null);
+  };
+  // Program sekmesi: her günün saati (o güne özel saat yoksa bugünün ilk start'ı da değişir), güne özel saat, yarış olmayan gün, start silme
+  const setDaily = (v) => changePlan({ daily: v, ...(!plan.times[planDay] && plan.status !== "ap" ? { at: v } : {}), ...(plan.next && !plan.times[plan.next.day] ? { next: { ...plan.next, at: v } } : {}) });
+  const setDayTime = (d, v) => {
+    const times = { ...plan.times };
+    if (v && v !== plan.daily) times[d] = v;
+    else delete times[d];
+    changePlan({ times, ...(d === planDay && plan.status !== "ap" ? { at: v || plan.daily } : {}), ...(plan.next?.day === d ? { next: { day: d, at: v || plan.daily } } : {}) });
+  };
+  const toggleOff = (d) => {
+    const on = plan.off.includes(d);
+    changePlan({ off: on ? plan.off.filter((x) => x !== d) : [...plan.off, d], ...(d === planDay && (plan.status === "" || plan.status === "none") ? { status: on ? "" : "none" } : {}) });
+  };
+  const dropStart = (sid) => {
+    setDelId("");
+    change((l) => {
+      const next = dropRace(l.starts, sid, rdays);
+      saveStarts(orgId, id, next).catch(() => {});
+      return { starts: next };
+    });
+    toast("Start silindi");
   };
   const unpostpone = () => changePlan({ day: planDay, status: "", at: plan.ap?.from || plan.at, ap: null });
   // Başlat: yarış açılır, sıradaki startın sınıf/grup/bayrağı o startın dönüş kaydına yazılır ve listeden düşer
@@ -356,6 +382,7 @@ export function BroadcastPage({ orgId, id }) {
   const todays = [...live.starts].filter((x) => x.day === today); // eskiden yeniye (listede 1., 2., …)
   const races = dayRaces({ starts: live.starts, order: plan.order, grpOf: (x) => x.grp || L?.rounds?.[x.id]?.grp || "", liveIds: cur ? [cur.id] : [], today, rdays });
   const nextRow = races.flatMap((r) => r.rows).find((x) => x.state === "next");
+  const days = rdays?.length ? rdays : [today];
   const needRace = !!L && !nextRow && tr.t.end == null && tr.t.left == null && plan.status !== "done";
   const stE = st ? L?.rounds?.[st.id] || {} : {};
   // Seçim çipleri: Sınıf, Grup, Bayrak; set(key, değer) satırın kaydına yazar (bekleyen start: plan.order; biten yarış: rounds[sid])
@@ -429,7 +456,7 @@ export function BroadcastPage({ orgId, id }) {
       </section>
 
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-5">
-        <Seg value={tab} onChange={setTab} options={[["sure", "Süre"], ["video", "Video"], ["parkur", "Parkur"], ["donus", "Dönüşler"]]} />
+        <Seg value={tab} onChange={setTab} options={[["sure", "Süre"], ["program", "Program"], ["video", "Video"], ["parkur", "Parkur"], ["donus", "Dönüşler"]]} />
         {tab === "sure" ? (
           <>
         {/* Bugün (Seyhun 2026-11-02 tasarım yayin-tasarim/startlar/startlar-yeni.png): gruplar yarış oluşturulurken seçilir (üstte); liste yarış
@@ -542,42 +569,95 @@ export function BroadcastPage({ orgId, id }) {
                 {plan.status === "ap" ? "Erteleme kalktı" : "Tehir"}
               </Button>
               {plan.status === "done" ? null : (
-                <Button variant="secondary" className="flex-1" onClick={() => (askEnd ? (setAskEnd(false), changePlan({ day: planDay, status: "done", next: plan.next || { day: tomorrow, at: plan.at } })) : setAskEnd(true))}>
+                <Button variant="secondary" className="flex-1" onClick={() => (askEnd ? (setAskEnd(false), changePlan({ day: planDay, status: "done", next: plan.next || { day: tomorrow, at: dayTime(plan, tomorrow) || plan.at } })) : setAskEnd(true))}>
                   {askEnd ? "Emin misin?" : "Günü bitir"}
                 </Button>
               )}
             </div>
           </div>
         </section>
+          </>
+        ) : null}
+        {tab === "program" ? (
+          <>
+        {/* Program (Seyhun 2026-11-02 "yarışları, günleri, günlerin start saatlerini organize ettiğimiz bir sekme"): her günün ilk start saati,
+            gün gün özel saat, yarış olmayan gün, o günün startları (yanlış açılanı Sil, iki kez sorar) ve bekleyenler (Çıkar). */}
         <section>
-          <Head title="Program" right={plan.status === "done" ? "Gün bitti" : plan.status === "none" ? "Bugün yarış yok" : ""} />
+          <Head title="Her gün" />
           <div className={`${card} overflow-hidden`}>
-            <div className={row}>
-              <span className="font-semibold">İlk start</span>
-              <div className="ml-auto flex items-center gap-1.5">
-                {[
-                  [today, "Bugün"],
-                  [tomorrow, "Yarın"],
-                ].map(([d, lab]) => (
-                  <button key={d} type="button" aria-pressed={planDay === d} onClick={() => changePlan({ day: d })} className={`h-8 rounded-full px-3 text-[0.8125rem] font-semibold ${planDay === d ? "bg-acc text-white" : "bg-bg"}`}>
-                    {lab}
-                  </button>
-                ))}
-                <input type="time" value={plan.at} onChange={(e) => changePlan({ day: planDay, at: e.target.value })} aria-label="İlk start saati" className="h-9 rounded-lg bg-bg px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
-              </div>
+            <div className={`${row} border-b border-line`}>
+              <span className="flex-1 font-semibold">İlk start</span>
+              <input type="time" value={plan.daily} onChange={(e) => setDaily(e.target.value)} aria-label="Her günün ilk start saati" className="h-9 rounded-lg bg-bg px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
             </div>
-            {plan.status === "done" || plan.status === "none" ? (
-              <div className="space-y-2 border-t border-line px-4 py-3 text-[0.9375rem]">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">Yarın ilk start</span>
-                  <input type="time" value={plan.next?.at || ""} onChange={(e) => changePlan({ next: { day: tomorrow, at: e.target.value } })} aria-label="Yarının ilk start saati" className="ml-auto h-9 rounded-lg bg-bg px-2 font-semibold tabular-nums outline-none" />
+            <div className={row}>
+              <span className="flex-1 font-semibold">Ekran yeni güne geçer</span>
+              <input type="time" value={plan.showAt} onChange={(e) => changePlan({ showAt: e.target.value })} aria-label="Ekranın yeni güne geçeceği saat" className="h-9 rounded-lg bg-bg px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
+            </div>
+          </div>
+        </section>
+        <section>
+          <Head title="Günler" right={days.length > 1 ? `${days.length} gün` : ""} />
+          <div className={`${card} overflow-hidden`}>
+            {days.map((d, k) => {
+              const ds = live.starts.filter((x) => x.day === d);
+              const nRaces = new Set(ds.filter((x) => !x.void).map((x) => x.n)).size;
+              const off = plan.off.includes(d);
+              const isOpen = openDay === d;
+              const pend = d === planDay ? races.flatMap((r) => r.rows).filter((x) => !x.start) : [];
+              return (
+                <div key={d} className="border-b border-line last:border-b-0">
+                  <button type="button" onClick={() => (setDelId(""), setOpenDay(isOpen ? "" : d))} className={`${row} ${isOpen ? "bg-accbg" : ""}`}>
+                    <span className="w-12 shrink-0 text-mut">{`${k + 1}. gün`}</span>
+                    <span className={`min-w-0 flex-1 truncate font-semibold ${isOpen ? "text-acc" : ""}`}>{[dayLong(d), d === today ? "Bugün" : ""].filter(Boolean).join(" · ")}</span>
+                    <span className="shrink-0 text-[0.875rem] tabular-nums text-mut">{off ? "Yarış yok" : [dayTime(plan, d) || "--:--", nRaces ? `${nRaces} yarış` : ""].filter(Boolean).join(" · ")}</span>
+                  </button>
+                  {isOpen ? (
+                    <div className="border-t border-line">
+                      <div className={`${row} border-b border-line`}>
+                        <span className="flex-1 font-semibold">İlk start</span>
+                        <input type="time" value={plan.times[d] || plan.daily} onChange={(e) => setDayTime(d, e.target.value)} aria-label="Bu günün ilk start saati" className="h-9 rounded-lg bg-bg px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
+                      </div>
+                      {ds.map((x) => {
+                        const g = x.grp || L?.rounds?.[x.id]?.grp || "";
+                        const ask = delId === x.id;
+                        return (
+                          <div key={x.id} className={`${row} border-b border-line`}>
+                            {g ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
+                            <span className={`min-w-0 flex-1 truncate font-semibold ${x.void ? "text-mut" : ""}`}>{[raceTitle(x), g].filter(Boolean).join(" · ")}</span>
+                            <span className="shrink-0 text-[0.875rem] tabular-nums text-mut">{[hm(x.at), cur?.id === x.id ? "Sürüyor" : x.fin && !x.void ? raceTime(x) : ""].filter(Boolean).join(" · ")}</span>
+                            {cur?.id === x.id ? null : (
+                              <Button size="sm" variant={ask ? "danger" : "secondary"} onClick={() => (ask ? dropStart(x.id) : setDelId(x.id))}>
+                                {ask ? "Emin misin?" : "Sil"}
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {pend.map((x) => (
+                        <div key={x.key} className={`${row} border-b border-line`}>
+                          {x.grp ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(x.grp) }} aria-hidden="true" /> : null}
+                          <span className="min-w-0 flex-1 truncate font-semibold">{[`${x.n}. yarış`, x.grp].filter(Boolean).join(" · ")}</span>
+                          <span className="shrink-0 text-[0.875rem] text-mut">{x.state === "next" ? "Sıradaki" : "Bekliyor"}</span>
+                          <Button size="sm" variant="secondary" onClick={() => changePlan({ order: plan.order.filter((_, k2) => k2 !== x.i) })}>
+                            Çıkar
+                          </Button>
+                        </div>
+                      ))}
+                      <div className="flex gap-2 p-3">
+                        <Button variant="secondary" className="flex-1" onClick={() => toggleOff(d)}>
+                          {off ? "Yarış var" : "Bu gün yarış yok"}
+                        </Button>
+                        {pend.length > 1 ? (
+                          <Button variant="secondary" className="flex-1" onClick={() => changePlan({ order: [] })}>
+                            Bekleyenleri çıkar
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">Ekran yeni güne geçer</span>
-                  <input type="time" value={plan.showAt} onChange={(e) => changePlan({ showAt: e.target.value })} aria-label="Ekranın yeni güne geçeceği saat" className="ml-auto h-9 rounded-lg bg-bg px-2 font-semibold tabular-nums outline-none" />
-                </div>
-              </div>
-            ) : null}
+              );
+            })}
           </div>
         </section>
           </>
@@ -807,6 +887,8 @@ export function BroadcastPage({ orgId, id }) {
     </main>
   );
 }
+
+const dayLong = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
 
 function Head({ title, right = "" }) {
   return (
