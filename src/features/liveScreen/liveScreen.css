@@ -290,9 +290,9 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-flag.cls { background: #fff; color: #111; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1em; }
 /* Sınıf bayrağı: grup renginde zemin, ortada sınıf işareti, altta kısa ad */
 .lv-flag.cls { width: 3em; height: 2em; flex-direction: column; gap: 0; border: 1.5px solid rgba(255, 255, 255, 0.85); }
-.lv-flag.cls svg { width: 100%; height: 72%; }
-.lv-flag.cls b { margin-top: -0.15em; font-size: 0.34em; font-weight: 800; letter-spacing: 0.06em; line-height: 1; }
-.lv-flag.cls.g b { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+.lv-flag.cls svg { width: 100%; height: 100%; }
+.lv-flag.cls b { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.5em; font-weight: 800; letter-spacing: 0.04em; line-height: 1; color: inherit; }
+
 .lv-flags { display: flex; align-items: flex-start; gap: 1.2em; margin-top: 0.9em; font-size: clamp(16px, 1.6vw, 30px); }
 .lv-flags .lv-flag { width: 3em; height: 2em; }
 .lv-flags .lv-fl small { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.55em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.75); }
@@ -620,7 +620,7 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-wleg i { display: inline-block; width: 1.3em; height: 0.9em; border-radius: 3px; margin-right: 0.45em; vertical-align: -0.1em; }
 .lv-wleg i.o { background: #4fb3ff; }
 .lv-wleg i.m { background: #ff9a4d; }
-.lv-wleg i.f { border: 2px dashed #fff; background: rgba(255, 255, 255, 0.18); }
+.lv-wleg i.f { border: 1.5px solid rgba(255, 255, 255, 0.4); border-top: 4px solid #3fe0a0; background: linear-gradient(rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.04)); }
 .lv-wleg i.l { height: 0; border-top: 3px dashed #fff; border-radius: 0; vertical-align: 0.25em; }
 /* Rüzgâr: grafiğin altında şimdi → start bandı (Seyhun 2026-11-02 "grafik üstte, açıklama en altta, beklenti daha güzel") */
 .lv-wnow { display: flex; align-items: stretch; justify-content: center; gap: 1em; width: min(100%, 52em); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
@@ -815,3 +815,11 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-bc.course .lv-ovs { opacity: 0; transition: opacity 0.5s ease; }
 @media (max-width: 760px) { .lv-ovs { position: relative; right: auto; top: auto; width: auto; order: 3; font-size: 14px; } }
 @media (prefers-reduced-motion: reduce) { .lv-ovs { animation: none; } }
+/* Rüzgâr grafiği canlı (Seyhun 2026-11-02 "biraz daha canlı olabilir"): çubuklar sırayla yükselir, beklenen eğri akar, şimdi noktası atar */
+.lv-wb { transform-box: fill-box; transform-origin: 50% 100%; animation: lv-wgrow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+@keyframes lv-wgrow { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+.lv-wcurve { filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.55)); stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: lv-wdraw 1.6s 0.5s ease-out forwards; }
+@keyframes lv-wdraw { to { stroke-dashoffset: 0; } }
+.lv-wpulse { transform-box: fill-box; transform-origin: center; animation: lv-wpulse 1.8s ease-in-out infinite; }
+@keyframes lv-wpulse { 0%, 100% { transform: scale(0.7); opacity: 1; } 50% { transform: scale(1.3); opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .lv-wb, .lv-wcurve, .lv-wpulse { animation: none; stroke-dashoffset: 0; } }
