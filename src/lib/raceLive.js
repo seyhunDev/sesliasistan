@@ -1,6 +1,7 @@
 // Yarış multimedya sayfası (/athletes/races/<id>/media) saf parçaları: rüzgâr kayıtları, startlar, fotoğraf/video künyeleri,
 // genel sıralama süzgeci ve asistan cümleleri. Kayıt orgs/{org}/raceLive/{yarışId} belgesinde (raceLiveStore.js):
 // { wind: [{ at, dir, kn, gust, src }], starts: [{ id, day, n, at, dir, kn, course, flag, note }], media: [{ id, kind, type, size, url, at, ath }] }
+import { cleanAgenda } from "./raceProgram";
 // (ath: fotoğrafta/videoda etiketlenen sporcuların id'leri; phase/sec/end: çekildiği an start sayacına göre, momentOf).
 // Rüzgâr kaydının `src` alanı "elle" ya da ileride bağlanacak ölçüm cihazının adı: grafik ikisini aynı noktalarla çizer.
 
@@ -141,7 +142,7 @@ export function cleanPlan(p) {
   const off = [...new Set((Array.isArray(p?.off) ? p.off : []).filter((d) => DAY.test(d || "")))].slice(0, 20);
   // Turuncu bayrak (Seyhun 2026-11-02 "turuncu bayrak basılınca artık start öncesi"): çekildiği an (ISO); "" indi. Ekran yalnız o gün ve gün bitmemişken sayar
   const orange = typeof p?.orange === "string" && !Number.isNaN(Date.parse(p.orange)) ? p.orange.slice(0, 30) : "";
-  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off, orange };
+  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off, orange, agenda: cleanAgenda(p?.agenda) };
 }
 // Tehir cümlesi: "Start 12:00'a ertelendi (11:00) · Rüzgâr yok" ya da "Start ertelendi, yeni saat belli değil · Fırtına"
 export function apText(plan) {
@@ -194,7 +195,7 @@ export const resetCounts = (l) => ({ days: l?.days?.length || 0, starts: l?.star
 // Yayını sıfırla (Seyhun 2026-11-02 "yayınla ilgili yaptığım her şey sıfırlanmalı, hazırladığımız her şey aynı kalıyor"): video linki,
 // gösterim de baştan; keep.plan verilirse programın günleri ve saatleri (daily, times, off, showAt) kalır
 export function resetPatch(media, now, keep = {}) {
-  const kp = keep.plan ? { daily: keep.plan.daily, times: keep.plan.times, off: keep.plan.off, showAt: keep.plan.showAt } : {};
+  const kp = keep.plan ? { daily: keep.plan.daily, times: keep.plan.times, off: keep.plan.off, showAt: keep.plan.showAt, agenda: keep.plan.agenda } : {};
   const p = { days: [], starts: [], wind: [], buoys: cleanBuoys(), timer: { ...pickTimer({}), at: now }, plan: cleanPlan(kp), rounds: {}, screen: { kind: "", mid: "", loop: false, pause: false, caption: "", at: new Date(now).toISOString() }, stream: { url: "" }, courseShow: { auto: true, at: "", one: "" } };
   if (media) p.media = [];
   return p;

@@ -742,3 +742,13 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-sbig { font-size: 18vw; }
 }
 @media (prefers-reduced-motion: reduce) { .lv-side { animation: none; } }
+/* Program maddeleri (Seyhun 2026-11-02): saat solda, geçen soluk, sıradaki vurgulu; yarış öncesinde gün gün */
+.lv-agenda i { width: 3.6em; flex: none; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-style: normal; font-size: 1.25em; font-weight: 600; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.8); }
+.lv-agenda .next i, .lv-agenda .next b { color: #fff; }
+.lv-agenda .next { border-left: 3px solid var(--lv-acc); padding-left: 0.6em; }
+.lv-agenda.all { max-height: 70vh; overflow: hidden; }
+.lv-agenda.all section + section { margin-top: 0.8em; }
+.lv-agenda.all h4 { margin: 0 0 0.2em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.9em; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--lv-acc); }
+.lv-agenda.all > section > div { display: flex; align-items: center; gap: 0.7em; padding: 0.4em 0.2em; border-bottom: 1px solid var(--lv-line); }
+.lv-agenda.all b { font-size: 1.2em; }
+.lv-sprog > div.done { opacity: 0.5; }

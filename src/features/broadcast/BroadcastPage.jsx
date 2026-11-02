@@ -688,6 +688,13 @@ export function BroadcastPage({ orgId, id }) {
                         <span className="flex-1 font-semibold">İlk start</span>
                         <input type="time" value={plan.times[d] || plan.daily} onChange={(e) => setDayTime(d, e.target.value)} aria-label="Bu günün ilk start saati" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
                       </div>
+                      {/* Programdan okunan maddeler (antrenör toplantısı, ilk start, son start saati…); canlı ekranda Program'da görünür */}
+                      {(plan.agenda?.[d] || []).map((x, i) => (
+                        <div key={`ag${i}`} className={`${row} border-b border-line`}>
+                          <span className="w-12 shrink-0 text-[0.875rem] font-semibold tabular-nums text-mut">{x.at || "—"}</span>
+                          <span className="min-w-0 flex-1 truncate font-semibold">{x.text}</span>
+                        </div>
+                      ))}
                       {ds.map((x) => {
                         const g = x.grp || L?.rounds?.[x.id]?.grp || "";
                         const ask = delId === x.id;
@@ -1272,7 +1279,7 @@ function ProgramImport({ ctx, onApply }) {
             {st.days.map((d) => (
               <div key={d.day} className="flex items-center gap-3 border-b border-line px-4 py-2.5 text-[0.9375rem]">
                 <span className="w-24 shrink-0 font-semibold">{dayLong(d.day)}</span>
-                <span className="min-w-0 flex-1 truncate text-mut">{d.note}</span>
+                <span className="min-w-0 flex-1 truncate text-mut">{[d.note, d.items?.length ? `${d.items.length} madde` : ""].filter(Boolean).join(" · ")}</span>
                 <b className={`shrink-0 tabular-nums ${d.race ? "" : "font-semibold text-mut"}`}>{d.race ? d.at || "Saat yok" : "Yarış yok"}</b>
               </div>
             ))}

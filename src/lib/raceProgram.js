@@ -9,10 +9,54 @@ const hmOf = (v) => {
   const t = `${m[1].padStart(2, "0")}:${m[2]}`;
   return HM.test(t) ? t : "";
 };
+// Günün program maddeleri (Seyhun 2026-11-02 "antrenör toplantısı, her gün ilk start, son gün son start saati"): { at "HH:MM" ya da "", text }, saat sırasıyla
+export function cleanItems(list) {
+  return (Array.isArray(list) ? list : [])
+    .map((x) => ({ at: hmOf(x?.at), text: String(x?.text || "").replace(/\s+/g, " ").trim().slice(0, 40) }))
+    .filter((x) => x.text)
+    .slice(0, 12)
+    .map((x, i) => ({ ...x, i }))
+    .sort((a, b) => (a.at && b.at ? a.at.localeCompare(b.at) : 0) || a.i - b.i)
+    .map(({ at, text }) => ({ at, text }));
+}
+// Plan içindeki program: { "2026-11-08": [{ at, text }] } (en çok 20 gün)
+export function cleanAgenda(a) {
+  return Object.fromEntries(
+    Object.entries(a && typeof a === "object" ? a : {})
+      .filter(([d]) => DAY.test(d))
+      .map(([d, v]) => [d, cleanItems(v)])
+      .filter(([, v]) => v.length)
+      .sort((x, y) => x[0].localeCompare(y[0]))
+      .slice(0, 20),
+  );
+}
+// Ekrandaki program (Seyhun 2026-11-02 "yarış öncesi ise bütün programı, o günde ise o gün ne varsa; süresi geçtiyse soluklaştır"):
+// bugün programda varsa { mode: "day", rows: [{ at, text, state }] } (state "done" saati geçti, "next" sıradaki); bugün ilk günden önceyse
+// { mode: "all", days: [{ day, rows }] }; yoksa null. hm şimdiki saat "HH:MM" (Türkiye)
+export function agendaView(agenda, today, hm) {
+  const a = cleanAgenda(agenda);
+  const days = Object.keys(a);
+  if (!days.length) return null;
+  if (a[today]) {
+    const rows = a[today].map((x) => ({ ...x, state: "" }));
+    let last = -1;
+    rows.forEach((x, i) => {
+      if (x.at && x.at <= hm) last = i;
+    });
+    rows.forEach((x, i) => {
+      if (i <= last) x.state = "done";
+    });
+    const nx = rows.find((x) => x.state !== "done");
+    if (nx) nx.state = "next";
+    return { mode: "day", rows };
+  }
+  if (today < days[0]) return { mode: "all", days: days.map((day) => ({ day, rows: a[day] })) };
+  return null;
+}
 export function cleanProgram(raw) {
   const seen = new Set();
   const days = (Array.isArray(raw?.days) ? raw.days : [])
-    .map((d) => ({ day: DAY.test(d?.date || "") ? d.date : "", at: hmOf(d?.first), race: d?.race !== false, note: String(d?.note || "").trim().slice(0, 60) }))
+    .map((d) => ({ day: DAY.test(d?.date || "") ? d.date : "", at: hmOf(d?.first), race: d?.race !== false, note: String(d?.note || "").trim().slice(0, 60), items: cleanItems(d?.items) }))
     .filter((d) => d.day && !seen.has(d.day) && seen.add(d.day))
     .map((d) => (d.race ? d : { ...d, at: "" }))
     .sort((a, b) => a.day.localeCompare(b.day))
@@ -30,5 +74,6 @@ export function programPatch(days, plan = {}) {
   const times = Object.fromEntries(race.filter((d) => d.at && d.at !== daily).map((d) => [d.day, d.at]));
   const startDate = race[0].day, endDate = race.at(-1).day;
   const off = days.filter((d) => !d.race && d.day > startDate && d.day < endDate).map((d) => d.day);
-  return { plan: { daily, times, off }, startDate, endDate };
+  const agenda = cleanAgenda(Object.fromEntries(days.map((d) => [d.day, d.items || []])));
+  return { plan: { daily, times, off, agenda }, startDate, endDate };
 }
