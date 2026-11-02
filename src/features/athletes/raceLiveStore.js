@@ -13,6 +13,7 @@ import { compressImage } from "@/lib/image";
 import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan } from "@/lib/raceLive";
 import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
 import { cleanCourseShow, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
+import { cleanCamBy, cleanOnAir } from "@/lib/raceCams";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
 const VIDEO_SEC = 120;
@@ -314,6 +315,9 @@ export function saveRounds(orgId, id, sid, entry, base = null) {
 }
 export const saveScreen = (orgId, id, s) => setDoc(live(orgId, id), { screen: cleanScreen({ ...s, at: new Date().toISOString() }) }, { merge: true });
 export const saveCourseShow = (orgId, id, c) => setDoc(live(orgId, id), { courseShow: cleanCourseShow(c) }, { merge: true });
+// Ekrandaki yarış (sid boş = en son başlayan) ve kameraların grupları (alan bütün yazılır: çözülen grup silinir)
+export const saveOnAir = (orgId, id, o) => setDoc(live(orgId, id), { onAir: cleanOnAir(o) }, { merge: true });
+export const saveCamBy = (orgId, id, m) => setDoc(live(orgId, id), { camBy: cleanCamBy(m) }, { mergeFields: ["camBy"] });
 // s: { url, drone } (eski çağrı yalnız bağlantı yazısı verir)
 export const saveStream = (orgId, id, s) => setDoc(live(orgId, id), { stream: cleanStream(typeof s === "string" ? { url: s } : s) }, { merge: true });
 // Dönüşleri canlı dinle (Yayın sayfası: başka telefondan girilen dönüşler hemen görünür; aynı belgeyi useLiveSync de dinler, okuma ortak)
@@ -323,7 +327,7 @@ export function watchRounds(orgId, id, cb) {
     (snap) => {
       if (snap.metadata.hasPendingWrites) return;
       const d = snap.exists() ? snap.data() : {};
-      cb({ rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), timer: d.timer || null });
+      cb({ rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), timer: d.timer || null, camBy: cleanCamBy(d.camBy), onAir: cleanOnAir(d.onAir) });
     },
     () => {},
   );
@@ -331,5 +335,5 @@ export function watchRounds(orgId, id, cb) {
 export async function loadRoundsOf(orgId, id) {
   const snap = await readServer(live(orgId, id));
   const d = snap.exists() ? snap.data() : {};
-  return { ...cleanLive(d), timer: d.timer || null, rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), courseShow: cleanCourseShow(d.courseShow), cards: d.cards || null };
+  return { ...cleanLive(d), timer: d.timer || null, rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), courseShow: cleanCourseShow(d.courseShow), camBy: cleanCamBy(d.camBy), onAir: cleanOnAir(d.onAir), cards: d.cards || null };
 }

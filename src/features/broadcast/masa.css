@@ -94,3 +94,17 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-sails { display: flex; flex-wrap: wrap; gap: 0.3125rem; padding: 0.75rem 0.875rem; }
 .masa-sails span { padding: 0.25rem 0.4375rem; border-radius: 0.4375rem; background: var(--chip); font-size: 0.78125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .masa-sails span.f { background: #f5c518; color: #1a1a1a; }
+
+/* Gruplar ve kameralar (Seyhun 2026-11-02 gruplar-kamera/grup-a.png): ekrandaki yarış pembe kartta; satırda ▶ ekrana alır */
+.masa-onair { background: linear-gradient(90deg, rgba(255, 61, 119, 0.2), rgba(255, 61, 119, 0.06)); border: 1px solid rgba(255, 61, 119, 0.55); }
+.masa-onair-tag { flex: none; border-radius: 4px; background: var(--acc); color: #fff; padding: 0.2rem 0.45rem; font-size: 0.656rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.masa-air { display: flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; flex: none; border-radius: 0.45rem; border: 1px solid #2a3d5e; color: var(--mut); }
+.masa-air svg { width: 0.875rem; height: 0.875rem; }
+.masa-air.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+.masa-air.off { border-color: transparent; }
+.masa-pill { flex: none; display: flex; align-items: center; gap: 0.35rem; border-radius: 1rem; background: var(--chip); padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 600; color: var(--mut); }
+.masa-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mut); }
+.masa-pill.on { color: var(--fg); }
+.masa-pill.on::before { background: var(--ok); }
+.masa-pick { background: var(--card); border: 1px solid var(--line); }
+.masa-pick.on { background: var(--accbg); border-color: var(--acc); }

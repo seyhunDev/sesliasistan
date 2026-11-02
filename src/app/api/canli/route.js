@@ -6,6 +6,7 @@ import { cleanCourse, withRaceCards } from "@/lib/raceCourse";
 import { cleanCourseShow, cleanRounds, cleanScreen, cleanStream, currentStart } from "@/lib/raceRounds";
 import { cleanSheet, joinGroups } from "@/lib/resultSheet";
 import { cleanEntries } from "@/lib/roundSay";
+import { cleanCamBy, cleanOnAir, onAirStart } from "@/lib/raceCams";
 import { cleanGroups } from "@/lib/roundScore";
 import { nearestStation, obsRows, parseSynop, utcRange } from "@/lib/windObs";
 import { racePlace } from "@/features/athletes/raceWeather";
@@ -162,7 +163,8 @@ async function build(id, y) {
   const d = liveSnap.exists ? liveSnap.data() : {};
   const live = cleanLive(d);
   const timer = d.timer ? { ...pickTimer(d.timer), at: Number(d.timer.at) || 0 } : null;
-  const cur = currentStart(live.starts, timer);
+  // ekranda gösterilen yarış: Yayın'da ▶ ile seçilen (onAir), yoksa en son başlayan (Seyhun 2026-11-02 grupları ayrı yönet)
+  const cur = onAirStart(live.starts, cleanOnAir(d.onAir), currentStart(live.starts, timer));
   const sel = (y && live.starts.find((x) => x.id === y)) || cur;
   // ekranın günü: "Ekran yeni güne geçer" akşam saatiyse o saatten sonra yarın (lib/raceLive.js screenDay)
   const see = screenDay(live.plan, Date.now(), timer);
@@ -185,6 +187,8 @@ async function build(id, y) {
     rounds: cleanRounds(d.rounds),
     screen: cleanScreen(d.screen),
     courseShow: cleanCourseShow(d.courseShow),
+    camBy: cleanCamBy(d.camBy),
+    onAir: cleanOnAir(d.onAir),
     stream: cleanStream(d.stream),
     media,
     wind: live.wind.filter((w) => dayOf(w.at) === day || trDay(Date.parse(w.at)) === day).slice(-40),

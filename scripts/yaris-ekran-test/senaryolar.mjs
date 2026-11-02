@@ -81,6 +81,8 @@ export async function run(server, log = () => {}) {
         { path: "orgs/{owner}/raceLive/r1", data: { wind: [{ at: new Date(now.getTime() - 30 * 60e3).toISOString(), dir: 300, kn: 11, src: "elle" }], starts: [{ id: "s1", day: TODAY, n: 1, cd: new Date(now.getTime() - 65 * 60e3).toISOString(), at: new Date(now.getTime() - 60 * 60e3).toISOString(), fin: new Date(now.getTime() - 45 * 60e3).toISOString() }, { id: "s2", day: TODAY, n: 2, cd: new Date(now.getTime() - 7 * 60e3).toISOString(), at: new Date(now.getTime() - 2 * 60e3).toISOString() }], media: [{ id: "m1", kind: "photo", url: "https://example.com/1.jpg", at: new Date(now.getTime() - 40 * 60e3).toISOString() }] } },
         // bugünün antrenmanı: iki biten yarış, üçüncüsü 1 dk önce start oldu (yeni akış: Bitiren kim?), günlük yazılmış
         { path: "orgs/{owner}/plans/t1", data: { ownerId: "{owner}", createdByUid: "{owner}", assignees: [], people: ["{owner}"], createdAt: now.toISOString(), createdBy: { name: "Test Sahip" }, src: "manual", cat: "Antrenman", title: "Optimist antrenmanı", date: TODAY, endDate: "", time: "00:05", allDay: false, durationMin: 120, tz: "Europe/Istanbul", timeSource: "user", place: "Yat limanı", status: "planned", races: [{ id: "y1", name: "Yarış 1", startAt: now.getTime() - 90 * 60e3, fin: 1000, cd: 300, finishes: [{ id: "a1", name: "Deniz Yılmaz" }] }, { id: "y2", name: "Yarış 2", startAt: now.getTime() - 40 * 60e3, fin: 845, cd: 240, marks: { Start: 0, "Şamandıra 1": 252 }, finishes: [] }, { id: "y3", name: "Yarış 3", startAt: now.getTime() - 60e3, cd: 300, finishes: [] }], log: { wind: "12", dir: "Poyraz", topics: ["Start", "Şamandıra"], min: 120, rating: 3 } } },
+        // Yayın: grupları ayrı (Seyhun 2026-11-02): Sarı yarışta, Mavi sırada; ▶ ile Sarı ekranda, Sarı Kamera 1'e bağlı
+        { path: "orgs/{owner}/raceLive/r2", data: { plan: { day: TODAY, sets: [{ cls: "Optimist", grps: ["Sarı", "Mavi"] }], order: [{ cls: "Optimist", grp: "Mavi", prep: "P" }] }, starts: [{ id: "g1", day: TODAY, n: 1, cd: new Date(now.getTime() - 10 * 60e3).toISOString(), at: new Date(now.getTime() - 5 * 60e3).toISOString(), grp: "Sarı" }], rounds: { g1: { route: [], legs: {}, cls: "Optimist", grp: "Sarı", prep: "P" } }, onAir: { sid: "g1" }, camBy: { "Optimist|Sarı": "c1" } } },
         { path: "orgs/{owner}/races/r2", data: { name: "Bahar Kupası", city: "İzmir", district: "Dikili", startDate: plus(5), endDate: plus(6), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
       ],
     });
@@ -390,6 +392,21 @@ export async function run(server, log = () => {}) {
       }
     }
     hang = false;
+    // Yayın › Süre: her grup kendi satırında (▶ ekrana alır, bekleyen grubun Başlat'ı), üstte Ekranda kartı, altta Kameralar
+    await okPage("Yayın", "gruplar ayrı, ekranda seçim, kameralar", "/athletes/races/r2/yayin", "Kameralar", async () => {
+      const on = await page.locator(".masa-onair").innerText().catch(() => "");
+      const air = await page.locator(".masa-air.on").count();
+      const go = await page.getByRole("button", { name: "Başlat", exact: true }).count();
+      const cam = await page.locator(".masa button", { hasText: "Kamera 1" }).first().innerText().catch(() => "");
+      if (process.env.YAYIN_FOTO) await page.screenshot({ path: process.env.YAYIN_FOTO, fullPage: true }).catch(() => {});
+      const extra = await page.locator("[role=dialog]").count();
+      await page.getByRole("button", { name: "Kapat" }).first().click({ timeout: 3000 }).catch(() => {});
+      await page.waitForTimeout(600);
+      await page.locator(".masa button", { hasText: "Kamera 1" }).first().click({ timeout: 10000 });
+      const sheet = await page.getByText("Kamera 1 hangi grupları çekiyor?").first().isVisible({ timeout: 5000 }).catch(() => false);
+      if (process.env.YAYIN_FOTO) await page.screenshot({ path: process.env.YAYIN_FOTO.replace(/\.png$/, "-kamera.png") }).catch(() => {});
+      return [/Sarı/.test(on) && /Kamera 1/.test(on) && air === 1 && go >= 1 && /Sarı/.test(cam) && /Yayın yok/.test(cam) && sheet, `ekranda "${on.replace(/\s+/g, " ")}" · ▶ ${air} · Başlat ${go} · kamera "${cam.replace(/\s+/g, " ")}" · pencere ${sheet ? "açıldı" : "açılmadı"} · önceden açık pencere ${extra}`];
+    });
   } finally {
     await browser.close();
   }
