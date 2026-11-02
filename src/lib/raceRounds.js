@@ -364,9 +364,15 @@ export function ytEmbed(url) {
   const c = ytChannel(url);
   return c ? `live_stream?channel=${c}` : "";
 }
+// Bağlantıdaki başlama saniyesi (…&t=64s, ?t=1m4s, &start=64); yoksa null
+export function ytStart(url) {
+  const m = String(url || "").match(/[?&#](?:t|start)=(?:(\d+)m)?(\d+)s?(?:&|$)/);
+  return m ? (+m[1] || 0) * 60 + +m[2] : null;
+}
 export const ytSrc = (url, q = "autoplay=1&mute=1&playsinline=1&rel=0") => {
   const e = ytEmbed(url);
-  return e ? `https://www.youtube-nocookie.com/embed/${e}${e.includes("?") ? "&" : "?"}${q}` : "";
+  const t = ytId(url) ? ytStart(url) : null;
+  return e ? `https://www.youtube-nocookie.com/embed/${e}${e.includes("?") ? "&" : "?"}${q}${t != null ? `&start=${t}` : ""}` : "";
 };
 export const cleanStream = (s) => (ytEmbed(s?.url) ? { url: String(s.url).trim().slice(0, 200) } : { url: "" });
 

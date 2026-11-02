@@ -1109,7 +1109,7 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, now = 
           ) : (
             <b>Göster</b>
           )}
-          <span>Parkur</span>
+          <span>{axisInfo(data) ? `Parkur · Eksen ${axisInfo(data).deg}°` : "Parkur"}</span>
         </button>
       ) : null}
       {phase === "race" && sel && plan.order[0] ? (
@@ -1188,7 +1188,9 @@ function WaitHero({ data, today, cs, prog, now }) {
   const ag = agOf(data, now);
   const slides = none ? [] : left ? [svg ? "course" : "", aDays.length ? "ahead" : "", ag ? "prog" : ""].filter(Boolean) : [svg ? "course" : "", windShowable(data) ? "wind" : "", prog.length || ag ? "prog" : ""].filter(Boolean);
   // vitrin arasız döner; Yayın'dan "Göster" turu baştan başlatır
-  const k = slides.length ? showSlide({ show: { ...data.courseShow, auto: false }, now, pre: true, slides }) || slides[Math.floor(now / SHOW_ON) % slides.length] : "";
+  // yeni parkur ölçümü (komite parkuru attı) gelince önce parkur (Seyhun 2026-11-02 "parkur eksenini güzelce gösterelim")
+  const cNew = Math.max(0, Date.parse(data.course?.cardAt || "") || 0, ...(data.course?.obs || []).map((o) => Date.parse(o.at) || 0));
+  const k = svg && slides.includes("course") && cNew > 0 && now - cNew < COURSE_MS ? "course" : slides.length ? showSlide({ show: { ...data.courseShow, auto: false }, now, pre: true, slides }) || slides[Math.floor(now / SHOW_ON) % slides.length] : "";
   return (
     <div className="lv-hold">
       <div className="lv-hst">
@@ -1249,7 +1251,8 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
   const ew = expWind(data.forecast, data.plan.at);
   const crs = cleanCourse(data.course || {});
   const route = sceneRoute(data, null, true, "wait");
-  const svg = courseSvg(data, route);
+  const svg = courseSvg(data, route, { axis: false });
+  const ax = axisInfo(data);
   let bias = null;
   try {
     bias = orange ? lineBias(crs) : null;
@@ -1263,6 +1266,8 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
   const ag = agOf(data, now);
   // geri sayımda bayraklar: süren startın kaydı, yoksa sıradaki bekleyen (Yayın'da seçilen sınıf, grup, bayrak)
   const entryNow = entry?.cls || entry?.prep || entry?.grp ? entry : data.plan.order?.[0] || null;
+  // bayraklar yalnız start dizisinde (Yayın'da sayaç çalışırken); o zaman küçük parkur çizimi yer açmak için gizlenir
+  const seq = !!(data.timer && cs.rem && entryNow);
   return (
     <aside className="lv-side">
       {r.name ? <div className="lv-sname">{r.name}</div> : null}
@@ -1273,8 +1278,8 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
         </div>
         <div className="lv-sbig">{cs.rem ? cs.value : "—:—"}</div>
         <div className="lv-ssub">{[cs.label, cs.right].filter(Boolean).join(" · ")}</div>
-        {cs.rem && entryNow ? <FlagRow flags={startFlags(entryNow, false, cs.rem <= 60)} /> : null}
-        {orange && first && !(cs.rem && entryNow) ? (
+        {seq ? <FlagRow flags={startFlags(entryNow, false, cs.rem <= 60)} /> : null}
+        {orange && first && !seq ? (
           <>
             <div className="lv-swhat">
               <Dot g={first.grp} />
@@ -1313,7 +1318,16 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
               <b>{CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}</b>
               <span>{routeText(route)}</span>
             </div>
-            <div className="s" dangerouslySetInnerHTML={{ __html: svg }} />
+            {ax ? (
+              <div className="lv-sax">
+                <i style={{ transform: `rotate(${ax.deg}deg)` }} aria-hidden="true" />
+                <div>
+                  <b>{`Eksen ${ax.deg}° ${dirShort(ax.deg)}`}</b>
+                  <span>{shiftText(ax.sh)}</span>
+                </div>
+              </div>
+            ) : null}
+            {seq ? null : <div className="s" dangerouslySetInnerHTML={{ __html: svg }} />}
           </div>
         </div>
       ) : null}
@@ -1587,13 +1601,25 @@ export const sceneRoute = (data, sel, isCur, phase) => {
 };
 // Gösterim (Seyhun 2026-11-02): yarış öncesi 30 sn'de bir 12 sn kendiliğinden (Yayın'dan kapatılabilir), Yayın'dan "Parkuru göster" ile 15 sn;
 // kartsız, arka plan (video ya da deniz/fotoğraf) bulanıklaşır, parkur sağda; bitince bulanıklık kalkar
-const courseSvg = (data, route) => {
+const courseSvg = (data, route, o = {}) => {
   try {
-    return sceneSvg(cardOf(cleanCourse(data.course || {})), route, { pre: "lv", sail: true, sailT: 12 });
+    return sceneSvg(cardOf(cleanCourse(data.course || {})), route, { pre: "lv", sail: true, sailT: 12, ...o });
   } catch {
     return "";
   }
 };
+// Parkur ekseni (komitenin parkuru attığı yön) ve son rüzgârın eksenden farkı (+ sağa); ölçüm yoksa null
+const axisInfo = (data) => {
+  try {
+    const k = cardOf(cleanCourse(data.course || {}));
+    if (!k || k.axis == null) return null;
+    const sh = k.wind == null ? null : ((((Math.round(k.wind) - Math.round(k.axis)) % 360) + 540) % 360) - 180;
+    return { deg: Math.round(k.axis), sh };
+  } catch {
+    return null;
+  }
+};
+const shiftText = (sh) => (sh == null ? "" : Math.abs(sh) < 1 ? "Rüzgâr eksende" : `Rüzgâr eksenden ${Math.abs(sh)}° ${sh > 0 ? "sağa" : "sola"}`);
 // Yarış öncesi gösterim (Seyhun 2026-11-02): parkur → rüzgâr (şimdi + beklenen, gün boyu grafik) → günün programı, sırayla 12'şer sn;
 // otomatikte dakikada bir tur, Yayın'dan "Göster" ile bir tur. Yarış başlayınca (pre değil) hiçbiri, yeni ölçüm de parkuru açmaz.
 // İzleyici şeritteki "Parkur"a dokunursa parkur her zaman açılır.

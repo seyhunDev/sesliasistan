@@ -136,7 +136,7 @@ export function sailPlan(g, route, wind) {
 }
 
 // Sahne: { W, H } piksel, rota, isteğe bağlı pre (animasyon adları için önek), title (alt yazı)
-export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "", wind = true, sea = false, sail = false, sailT = 16 } = {}) {
+export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "", wind = true, sea = false, sail = false, sailT = 16, axis = true } = {}) {
   if (!card) return "";
   const g = geom(card, { lineK: 0.38 }); // start hattı rota kartındaki gibi orsanın üçte biri kadar (Seyhun 2026-11-02 "start çok büyük")
   const rt = cleanRoute(route);
@@ -233,6 +233,15 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
   } });
   // çizgiler ve rota (nesnelerin altında)
   let under = lineLab(g.pin, g.komite, "START") + lineLab(g.fB, g.fA, "FİNİŞ");
+  // parkur ekseni (Seyhun 2026-11-02 "komitenin parkuru attığı derece, güzelce gösterelim"): start ortasından 1'e kesik açık mavi çizgi,
+  // yanında açı; parkur bu yöne kurulur, rüzgâr okuyla farkı görünür
+  if (axis) {
+    const A0 = P(g.mid), A1 = P(g.m1);
+    const k = 0.3, mx = A0[0] + (A1[0] - A0[0]) * k, my = A0[1] + (A1[1] - A0[1]) * k;
+    under += `<line x1="${f(A0[0])}" y1="${f(A0[1])}" x2="${f(A1[0])}" y2="${f(A1[1])}" stroke="#8fd3ff" stroke-opacity=".85" stroke-width="${f(Math.max(2, 3 * u))}" stroke-dasharray="${f(16 * u)} ${f(11 * u)}" stroke-linecap="round"/>`;
+    const st = `fill="#fff" stroke="#0b1a2a" stroke-opacity=".55" stroke-width="${f(4 * u)}" paint-order="stroke" stroke-linejoin="round"`;
+    labels += `<g transform="translate(${f(mx + 20 * u)} ${f(my)})"><text text-anchor="start" font-size="${f(15 * u)}" font-weight="700" letter-spacing="${f(2 * u)}" ${st} fill-opacity=".8">PARKUR EKSENİ</text><text y="${f(28 * u)}" text-anchor="start" font-size="${f(26 * u)}" font-weight="800" ${st}><tspan fill="#8fd3ff">${Math.round(g.A)}°</tspan> ${dirShort(g.A)}</text></g>`;
+  }
   if (rt.length) {
     const { legs, alt } = routePlan(g, rt);
     const n = legs.length;
