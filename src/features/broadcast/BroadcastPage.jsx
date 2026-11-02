@@ -749,15 +749,16 @@ export function BroadcastPage({ orgId, id }) {
         ) : null}
         {tab === "parkur" ? (
           <>
-        {/* Ekranda parkur (Seyhun 2026-11-02): yarış öncesi 30 sn'de bir kendiliğinden (kapatılabilir); "Parkuru göster" 15 sn gösterir */}
+        {/* Ekranda gösterim (Seyhun 2026-11-02): yarış öncesi sırayla parkur → rüzgâr → program; otomatik dakikada bir (kapatılabilir),
+            "Göster" bir tur gösterir; yarış başlayınca hiçbiri */}
         <section>
-          <Head title="Ekranda parkur" right={cShow.auto ? "Yarış öncesi 30 sn'de bir" : "Elle"} />
+          <Head title="Ekranda gösterim" right={cShow.auto ? "Yarış öncesi dakikada bir" : "Elle"} />
           <div className={`${card} flex gap-2 p-3`}>
             <Button variant={cShow.auto ? "primary" : "secondary"} className="flex-1" onClick={() => putCourseShow({ ...cShow, auto: !cShow.auto })}>
               {cShow.auto ? "Otomatik açık" : "Otomatik kapalı"}
             </Button>
-            <Button variant="secondary" className="flex-1" onClick={() => (putCourseShow({ ...cShow, at: new Date().toISOString() }), toast("Parkur ekranda"))}>
-              Parkuru göster
+            <Button variant="secondary" className="flex-1" onClick={() => (putCourseShow({ ...cShow, at: new Date().toISOString() }), toast("Parkur, rüzgâr, program sırayla ekranda"))}>
+              Göster
             </Button>
           </div>
         </section>

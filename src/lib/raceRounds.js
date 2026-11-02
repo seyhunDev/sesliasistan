@@ -313,15 +313,25 @@ export function cleanScreen(s) {
 }
 // Parkur gösterimi (Seyhun 2026-11-02): auto = yarış öncesi 30 sn'de bir kendiliğinden (varsayılan açık), at = Yayın'dan "Parkuru göster"e basılan an
 export const cleanCourseShow = (c) => ({ auto: c?.auto !== false, at: typeof c?.at === "string" ? c.at.slice(0, 30) : "" });
-// Ekranda parkur görünüyor mu: elle 15 sn, yarış öncesinde otomatik her 30 sn'nin ilk 12 sn'si
-export const COURSE_CYCLE = 30000;
-export const COURSE_ON = 12000;
-export function courseShowing({ show, now, pre }) {
+// Yarış öncesi gösterim sırası (Seyhun 2026-11-02 "parkuru gösterdik, sonra rüzgâr grafiği, sonra başka ne gösterebiliyorsak; yarış başlayınca gösterilmemeli"):
+// slides = ekranda olanlar sırayla (ör. ["course","wind","prog"]), her biri SHOW_ON. Otomatikte her SHOW_CYCLE'da bir tur;
+// Yayın'dan "Göster" (at) o andan bir tur. pre değilse (yarış başladı) hiçbiri. Döndürür: o an gösterilen ("" yok)
+export const SHOW_ON = 12000;
+export const SHOW_CYCLE = 60000;
+export function showSlide({ show, now, pre, slides = ["course"] }) {
+  if (!pre || !slides.length) return "";
   const c = cleanCourseShow(show);
   const at = Date.parse(c.at) || 0;
-  if (at && now >= at - 2000 && now - at < 15000) return true;
-  return !!pre && c.auto && now % COURSE_CYCLE < COURSE_ON;
+  if (at && now >= at - 2000) {
+    const k = Math.floor(Math.max(0, now - at) / SHOW_ON);
+    if (k < slides.length) return slides[k];
+  }
+  if (!c.auto) return "";
+  const k = Math.floor((now % SHOW_CYCLE) / SHOW_ON);
+  return k < slides.length ? slides[k] : "";
 }
+// Eski ad: parkur ekranda mı (yalnız parkur)
+export const courseShowing = ({ show, now, pre }) => showSlide({ show, now, pre, slides: ["course"] }) === "course";
 // YouTube bağlantısından video kimliği (watch?v=, youtu.be/, /live/, /embed/)
 export function ytId(url) {
   const u = String(url || "").trim();
