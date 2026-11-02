@@ -10,7 +10,7 @@ import { Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCourseShow, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
 import { Countdown, ownHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { ResetSheet } from "@/features/raceMedia/ResetSheet";
@@ -176,6 +176,11 @@ export function BroadcastPage({ orgId, id }) {
   const toggleOff = (d) => {
     const on = plan.off.includes(d);
     changePlan({ off: on ? plan.off.filter((x) => x !== d) : [...plan.off, d], ...(d === planDay && (plan.status === "" || plan.status === "none") ? { status: on ? "" : "none" } : {}) });
+  };
+  const cShow = L?.courseShow || { auto: true, at: "" };
+  const putCourseShow = (c) => {
+    setL((p) => (p ? { ...p, courseShow: c } : p));
+    saveCourseShow(orgId, id, c).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
   };
   const dropStart = (sid) => {
     setDelId("");
@@ -744,6 +749,18 @@ export function BroadcastPage({ orgId, id }) {
         ) : null}
         {tab === "parkur" ? (
           <>
+        {/* Ekranda parkur (Seyhun 2026-11-02): yarış öncesi 30 sn'de bir kendiliğinden (kapatılabilir); "Parkuru göster" 15 sn gösterir */}
+        <section>
+          <Head title="Ekranda parkur" right={cShow.auto ? "Yarış öncesi 30 sn'de bir" : "Elle"} />
+          <div className={`${card} flex gap-2 p-3`}>
+            <Button variant={cShow.auto ? "primary" : "secondary"} className="flex-1" onClick={() => putCourseShow({ ...cShow, auto: !cShow.auto })}>
+              {cShow.auto ? "Otomatik açık" : "Otomatik kapalı"}
+            </Button>
+            <Button variant="secondary" className="flex-1" onClick={() => (putCourseShow({ ...cShow, at: new Date().toISOString() }), toast("Parkur ekranda"))}>
+              Parkuru göster
+            </Button>
+          </div>
+        </section>
         <section>
           <Head title="Parkur ve rüzgâr" right={entry?.route?.length ? entry.route.map((m) => (m === "F" ? "Finish" : m)).join(" · ") : ""} />
           <div className={`${card} overflow-hidden`}>

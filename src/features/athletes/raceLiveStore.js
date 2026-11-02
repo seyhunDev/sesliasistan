@@ -12,7 +12,7 @@ import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
 import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan } from "@/lib/raceLive";
 import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
-import { cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
+import { cleanCourseShow, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
 const VIDEO_SEC = 120;
@@ -300,6 +300,7 @@ export function saveRounds(orgId, id, sid, entry, base = null) {
   return setDoc(live(orgId, id), { rounds: { [sid]: patch } }, { merge: true });
 }
 export const saveScreen = (orgId, id, s) => setDoc(live(orgId, id), { screen: cleanScreen({ ...s, at: new Date().toISOString() }) }, { merge: true });
+export const saveCourseShow = (orgId, id, c) => setDoc(live(orgId, id), { courseShow: cleanCourseShow(c) }, { merge: true });
 export const saveStream = (orgId, id, url) => setDoc(live(orgId, id), { stream: cleanStream({ url }) }, { merge: true });
 // Dönüşleri canlı dinle (Yayın sayfası: başka telefondan girilen dönüşler hemen görünür; aynı belgeyi useLiveSync de dinler, okuma ortak)
 export function watchRounds(orgId, id, cb) {
@@ -316,5 +317,5 @@ export function watchRounds(orgId, id, cb) {
 export async function loadRoundsOf(orgId, id) {
   const snap = await readServer(live(orgId, id));
   const d = snap.exists() ? snap.data() : {};
-  return { ...cleanLive(d), timer: d.timer || null, rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream) };
+  return { ...cleanLive(d), timer: d.timer || null, rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), courseShow: cleanCourseShow(d.courseShow) };
 }

@@ -3,7 +3,7 @@ import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
 import { cleanLive, dayOf, pickTimer, rollPlan } from "@/lib/raceLive";
 import { cleanCourse } from "@/lib/raceCourse";
-import { cleanRounds, cleanScreen, cleanStream, currentStart } from "@/lib/raceRounds";
+import { cleanCourseShow, cleanRounds, cleanScreen, cleanStream, currentStart } from "@/lib/raceRounds";
 import { cleanSheet, joinGroups } from "@/lib/resultSheet";
 import { cleanEntries } from "@/lib/roundSay";
 import { cleanGroups } from "@/lib/roundScore";
@@ -139,6 +139,7 @@ async function build(id, y) {
     timer,
     rounds: cleanRounds(d.rounds),
     screen: cleanScreen(d.screen),
+    courseShow: cleanCourseShow(d.courseShow),
     stream: cleanStream(d.stream),
     media,
     wind: live.wind.filter((w) => dayOf(w.at) === day || trDay(Date.parse(w.at)) === day).slice(-40),
