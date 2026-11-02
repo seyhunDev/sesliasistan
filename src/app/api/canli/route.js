@@ -7,6 +7,7 @@ import { cleanRounds, cleanScreen, cleanStream, currentStart } from "@/lib/raceR
 import { cleanSheet, joinGroups } from "@/lib/resultSheet";
 import { cleanEntries } from "@/lib/roundSay";
 import { cleanGroups } from "@/lib/roundScore";
+import { nearestStation, obsRows, parseSynop, utcRange } from "@/lib/windObs";
 
 export const runtime = "nodejs";
 
@@ -87,6 +88,20 @@ async function forecastOf(org, id, r, day) {
       const N = (x) => (Number.isFinite(Number(x)) && x !== null ? Math.round(Number(x)) : null);
       const rows = (h.time || []).map((t, i) => ({ hh: t.slice(11, 13), wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]), code: N(h.weather_code?.[i]) })).filter((x) => x.wind != null);
       if (rows.length) v = { place: S(sp.name, 60), rows };
+    }
+    // Gerçekleşen rüzgâr (Seyhun 2026-11-02 "tahmin ve gerçekleşen grafiğimiz neden gösterilmiyor"): en yakın istasyon (100 km'ye kadar, /api/wind-obs far gibi)
+    const st = v && nearestStation(lat, lon);
+    if (st && st.km <= 100) {
+      try {
+        const { begin, end } = utcRange(day);
+        const res = await fetch(`https://www.ogimet.com/cgi-bin/getsynop?${new URLSearchParams({ block: st.id, begin, end })}`, { signal: AbortSignal.timeout(8000) });
+        if (res.ok) {
+          v.obs = obsRows((await res.text()).split("\n").map((l) => parseSynop(l, st.id)), day).map((o) => ({ hh: o.hh, wind: o.wind, gust: o.gust ?? null, dir: o.dir ?? null }));
+          v.station = S(st.name, 40);
+        }
+      } catch (e) {
+        console.warn("[canli] ölçüm", e?.message?.slice(0, 120));
+      }
     }
   } catch (e) {
     console.warn("[canli] tahmin", e?.message?.slice(0, 120));

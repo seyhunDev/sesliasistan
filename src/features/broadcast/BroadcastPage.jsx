@@ -6,11 +6,11 @@ import Link from "next/link";
 import { BackButton } from "@/components/ui/BackButton";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
-import { card } from "@/components/ui/Page";
+import { Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseObs, loadCourse, loadLive, loadRoundsOf, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { addCourseObs, loadCourse, loadLive, loadRoundsOf, saveCards, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
 import { Countdown, ownHere, useTimerRun } from "@/features/training/Countdown";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
@@ -21,7 +21,8 @@ import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
 import { AP_MIN, AP_WHY, addMin, apText, cleanLive, cleanPlan, dirShort, ownedBy, raceName, raceTitle, zeroRace } from "@/lib/raceLive";
-import { cleanCourse, cleanObs, obsTitle, withLiveWind } from "@/lib/raceCourse";
+import { CARD_IDS, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
+import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CLASS_PICK, PREP_PICK, currentStart, markName, prepName, ytEmbed } from "@/lib/raceRounds";
 import { todayStr } from "@/lib/utils/format";
@@ -48,6 +49,11 @@ export function BroadcastPage({ orgId, id }) {
   const [L, setL] = useState(null); // rounds, screen, stream (loadRoundsOf)
   const [course, setCourse] = useState(() => cleanCourse({}));
   const [obsOpen, setObsOpen] = useState(false); // ölçüm listesi (silmek için)
+  const [rt, setRt] = useState(""); // seçili parkur kartının rotası (yazı: "1 2 3 F")
+  const [rtId, setRtId] = useState("");
+  const [tab, setTab] = useState("sure"); // Sekmeler (Seyhun 2026-11-02): Süre · Video · Parkur · Dönüşler
+  const [cap, setCap] = useState(""); // ekranın altındaki yazı (screen.caption)
+  const [capInit, setCapInit] = useState(false);
   const [yt, setYt] = useState("");
   const [sel, setSel] = useState(null); // ekrana verilecek seçim { kind, mid }
   const [busy, setBusy] = useState("");
@@ -144,7 +150,10 @@ export function BroadcastPage({ orgId, id }) {
       rf.flow.onStart(end, rid, prevT);
       if (!nextPlan) return;
       const { cls, grp, prep } = nextPlan;
-      if (rid) saveRounds(orgId, id, rid, { ...(L?.rounds?.[rid] || { route: [], legs: [] }), grp, cls, prep }).then(reload, () => {});
+      // seçili parkur kartı ve rotası o yarışa yazılır (rota daha önce söylendiyse o kalır)
+      const prev = L?.rounds?.[rid] || { route: [], legs: [] };
+      const k = selCard(course);
+      if (rid) saveRounds(orgId, id, rid, { ...prev, grp, cls, prep, card: k.id, route: prev.route?.length ? prev.route : k.route }).then(reload, () => {});
       setEditI(-1);
       changePlan({ order: plan.order.slice(1) });
     },
@@ -248,10 +257,58 @@ export function BroadcastPage({ orgId, id }) {
       toast("Silinemedi. İnterneti kontrol et.");
     }
   };
+  // Parkur kartları (Seyhun 2026-11-02): varsayılan A seçili; Yeni kart seçilinin rotasıyla açılır; rota yazılıp kaydedilir.
+  // Canlı ekran seçili kartın sahnesini gösterir (değişince 20 sn), Başlat o kartı yarışa yazar.
+  const putCards = async (next, msg) => {
+    const k = cleanCourse({ ...course, ...next });
+    setCourse((c) => ({ ...c, cards: k.cards, sel: k.sel }));
+    try {
+      await saveCards(orgId, id, today, k);
+      ensurePublic(id).catch(() => {});
+      if (msg) toast(msg);
+    } catch {
+      toast("Kaydedilemedi. İnterneti kontrol et.");
+    }
+  };
+  const pickCard = (cid) => cid !== course.sel && putCards({ sel: cid }, `Kart ${cid} seçildi`);
+  const newCard = () => {
+    const cid = CARD_IDS.find((x) => !course.cards.some((k) => k.id === x));
+    if (!cid) return toast("En çok 8 kart.");
+    putCards({ cards: [...course.cards, { id: cid, route: selCard(course).route }], sel: cid }, `Kart ${cid} açıldı, rotasını yaz`);
+  };
+  const dropCard = () => {
+    if (course.cards.length < 2) return;
+    const left = course.cards.filter((k) => k.id !== course.sel);
+    putCards({ cards: left, sel: left[0].id }, `Kart ${course.sel} silindi`);
+  };
+  const saveRoute = () => {
+    const r = cleanRoute(rt);
+    if (!r.length) return toast("Rota boş. Örn. 1 2 3 F");
+    putCards({ cards: course.cards.map((k) => (k.id === course.sel ? { ...k, route: r } : k)) }, `Kart ${course.sel}: ${routeText(r)}`);
+    setRt(routeText(r));
+  };
+  if (rtId !== course.sel) {
+    setRtId(course.sel);
+    setRt(routeText(selCard(course).route));
+  }
   const vids = [...live.media].filter((m) => m.kind === "video").reverse().slice(0, 6);
   const ytOk = !!ytEmbed(yt);
   const ytBad = !!yt.trim() && !ytOk;
   const onScreen = L?.screen.kind ? L.screen : null;
+  if (L && !capInit) {
+    setCapInit(true);
+    setCap(L.screen.caption || "");
+  }
+  const capSave = async (text) => {
+    setCap(text);
+    try {
+      await showOnScreen(orgId, id, { ...(L?.screen || { kind: "" }), caption: text });
+      toast(text ? "Ekrana yazıldı" : "Yazı kaldırıldı");
+      await reload();
+    } catch {
+      toast("Kaydedilemedi, tekrar dene.");
+    }
+  };
   const isOn = (k, mid = "") => onScreen?.kind === k && (k !== "rec" || onScreen.mid === mid);
   const isSel = (k, mid = "") => sel?.kind === k && (k !== "rec" || sel.mid === mid);
   const c = withLiveWind(course, live.wind, today);
@@ -259,6 +316,13 @@ export function BroadcastPage({ orgId, id }) {
   const svg = (() => {
     try {
       return cardSvg(cardOf(c));
+    } catch {
+      return "";
+    }
+  })();
+  const scene = (() => {
+    try {
+      return sceneSvg(cardOf(c), selCard(course).route, { W: 960, H: 540, pre: "yp", wind: false, sea: true });
     } catch {
       return "";
     }
@@ -307,6 +371,9 @@ export function BroadcastPage({ orgId, id }) {
       </section>
 
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-5">
+        <Seg value={tab} onChange={setTab} options={[["sure", "Süre"], ["video", "Video"], ["parkur", "Parkur"], ["donus", "Dönüşler"]]} />
+        {tab === "sure" ? (
+          <>
         {/* Bugünün startları (Seyhun 2026-11-01): biten/süren startlar saatiyle, sonra bekleyenler; ilk bekleyen Sıradaki. Satıra dokununca
             sınıf, grup, bayrak, sıra ve çıkar aynı yerde. Program: ilk start saati, erteleme / yarış yok / günü bitir, yarının saati. */}
         <section>
@@ -440,6 +507,10 @@ export function BroadcastPage({ orgId, id }) {
             ) : null}
           </div>
         </section>
+          </>
+        ) : null}
+        {tab === "video" ? (
+          <>
         <section>
           <Head title="Ekranda" right={onScreen ? `${onScreen.kind === "live" ? "Canlı yayın" : "Video"}${onScreen.pause ? " · Ara" : ""}` : "Boş"} />
           <div className={`${card} overflow-hidden`}>
@@ -478,7 +549,7 @@ export function BroadcastPage({ orgId, id }) {
             </button>
             <input ref={file} type="file" accept="video/*" className="hidden" onChange={pick} />
             <div className={`grid gap-2 p-3 ${onScreen ? "grid-cols-3" : "grid-cols-2"}`}>
-              <Button variant="secondary" disabled={!!busy || !onScreen} onClick={() => show({ kind: "" })}>
+              <Button variant="secondary" disabled={!!busy || !onScreen} onClick={() => show({ kind: "", caption: cap })}>
                 Ekrandan kaldır
               </Button>
               {onScreen ? (
@@ -487,13 +558,39 @@ export function BroadcastPage({ orgId, id }) {
                   {onScreen.pause ? "Sürdür" : "Duraklat"}
                 </Button>
               ) : null}
-              <Button disabled={!!busy || !sel || (sel.kind === "live" && !ytOk)} onClick={() => show({ ...sel, loop: false })}>
+              <Button disabled={!!busy || !sel || (sel.kind === "live" && !ytOk)} onClick={() => show({ ...sel, loop: false, caption: cap })}>
                 Göster
               </Button>
             </div>
           </div>
         </section>
-
+        <section>
+          {/* Ekranın altındaki yazı (olimpiyat / SailGP alt yazısı gibi): ne gösterildiği; öneriler günün startından */}
+          <Head title="Ekranda yazı" right={cap ? "Yazılı" : "Boş"} />
+          <div className={`${card} overflow-hidden`}>
+            <div className="flex items-center gap-2 px-4 py-3">
+              <input value={cap} onChange={(e) => setCap(e.target.value.slice(0, 80))} onBlur={() => cap !== (L?.screen.caption || "") && capSave(cap.trim())} placeholder="Örn. Optimist · Mavi grup · 2. yarış startı" className="min-w-0 flex-1 rounded-lg bg-bg px-2.5 py-1.5 text-[0.9375rem] font-semibold outline-none" />
+              {cap ? (
+                <button type="button" onClick={() => capSave("")} className="text-[0.875rem] font-semibold text-rec">
+                  Kaldır
+                </button>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-1.5 px-4 pb-3">
+              {[st ? [stE.cls, stE.grp ? `${stE.grp} grup` : "", raceName(st)].filter(Boolean).join(" · ") : "", nextPlan ? `Sıradaki start · ${[nextPlan.cls, nextPlan.grp].filter(Boolean).join(" · ")}` : "", "Start", "Finish", "Ödül töreni"]
+                .filter(Boolean)
+                .map((t) => (
+                  <button key={t} type="button" onClick={() => capSave(t)} className={`h-8 rounded-full px-3 text-[0.8125rem] font-medium active:scale-95 ${cap === t ? "bg-acc text-white" : "bg-line/60"}`}>
+                    {t}
+                  </button>
+                ))}
+            </div>
+          </div>
+        </section>
+          </>
+        ) : null}
+        {tab === "parkur" ? (
+          <>
         <section>
           <Head title="Parkur ve rüzgâr" right={entry?.route?.length ? entry.route.map((m) => (m === "F" ? "Finish" : m)).join(" · ") : ""} />
           <div className={`${card} overflow-hidden`}>
@@ -536,7 +633,37 @@ export function BroadcastPage({ orgId, id }) {
             </div>
           </div>
         </section>
-
+        <section>
+          <Head title="Parkur kartları" right={`Ekranda Kart ${course.sel}`} />
+          <div className={`${card} overflow-hidden`}>
+            {scene ? <div className="[&>svg]:block" dangerouslySetInnerHTML={{ __html: scene }} /> : <p className="px-4 pt-3 text-[0.875rem] text-mut">Rüzgâr ya da parkur ölçümü girince kart çizilir</p>}
+            {course.cards.map((k) => (
+              <button key={k.id} type="button" onClick={() => pickCard(k.id)} className="flex w-full items-center gap-3 border-t border-line px-4 py-2.5 text-left text-[0.9375rem]">
+                <b className={k.id === course.sel ? "text-acc" : ""}>{`Kart ${k.id}`}</b>
+                <span className="min-w-0 flex-1 truncate tabular-nums text-mut">{routeText(k.route) || "Rota yok"}</span>
+                {k.id === course.sel ? <span className="text-[0.8125rem] font-semibold text-acc">Seçili</span> : null}
+              </button>
+            ))}
+            <div className="flex items-center gap-2 border-t border-line px-4 py-3">
+              <span className="text-[0.875rem] font-semibold">Rota</span>
+              <input value={rt} onChange={(e) => setRt(e.target.value.slice(0, 40))} placeholder="1 2 3 F" className="min-w-0 flex-1 rounded-lg bg-bg px-2.5 py-1.5 text-[0.9375rem] font-semibold tabular-nums outline-none" />
+            </div>
+            <div className="grid grid-cols-3 gap-2 px-3 pb-3">
+              <Button variant="secondary" onClick={newCard}>
+                Yeni kart
+              </Button>
+              <Button variant="secondary" disabled={course.cards.length < 2} onClick={dropCard}>
+                Kartı sil
+              </Button>
+              <Button disabled={routeText(cleanRoute(rt)) === routeText(selCard(course).route)} onClick={saveRoute}>
+                Kaydet
+              </Button>
+            </div>
+          </div>
+        </section>
+          </>
+        ) : null}
+        {tab === "donus" ? (
         <section>
           <Head title="Dönüşler" right={st ? `${raceName(st)}${entry?.grp ? ` · ${entry.grp}` : ""}` : "Önce yarışı başlat"} />
           <div className={`${card} overflow-hidden`}>
@@ -550,14 +677,17 @@ export function BroadcastPage({ orgId, id }) {
             ) : (
               <p className="border-b border-line px-4 py-3 text-[0.875rem] text-mut">{entries.length ? `Kayıt listesi ${entries.length} tekne` : "Henüz dönüş yok"}</p>
             )}
-            <div className="p-3">
-              <Button disabled={!st} onClick={() => setVoice(true)} full>
+            <div className="grid grid-cols-2 gap-2 p-3">
+              <Button variant="secondary" onClick={() => setList(true)}>
+                {entries.length ? `Kayıt listesi · ${entries.length}` : "Kayıt listesi"}
+              </Button>
+              <Button disabled={!st} onClick={() => setVoice(true)}>
                 Sesle gir
               </Button>
             </div>
           </div>
         </section>
-
+        ) : null}
       </div>
 
       {/* ⋯ menüsü: ekran ve link, sonuç PDF'i (ayrı sayfa), kayıt listesi, gün durumu; Günü bitir bir daha sorar (yanlış dokunuş) */}
@@ -566,6 +696,8 @@ export function BroadcastPage({ orgId, id }) {
           {[
             ["Ekranı aç", () => (setMenu(false), openScreen())],
             ["Linki kopyala", () => (setMenu(false), copy())],
+            // Örnek yarış (Seyhun 2026-11-02): tasarımı görmek için Sarı grup örneği, veriye dokunmaz
+            ["Örnek yarışı aç", () => (setMenu(false), window.open("/canli/ornek", "_blank"))],
           ].map(([t, fn]) => (
             <button key={t} type="button" onClick={fn} className={`${row} font-semibold`}>
               {t}

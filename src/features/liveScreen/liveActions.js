@@ -78,6 +78,10 @@ export async function screenSay(orgId, raceId, s) {
     return { text: "Ekrandan kaldırdım." };
   }
   const L = await loadRoundsOf(orgId, raceId);
+  if ("caption" in c) {
+    await showOnScreen(orgId, raceId, { ...L.screen, caption: c.caption });
+    return { text: c.caption ? `Ekrana yazdım: ${c.caption}.` : "Ekrandaki yazıyı kaldırdım." };
+  }
   if ("pause" in c) {
     if (!L.screen.kind) return { fail: "Ekranda yayın yok." };
     await showOnScreen(orgId, raceId, { ...L.screen, pause: c.pause });

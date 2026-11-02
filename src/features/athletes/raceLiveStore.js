@@ -11,7 +11,7 @@ import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResum
 import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
 import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan } from "@/lib/raceLive";
-import { cleanCourse, cleanObs } from "@/lib/raceCourse";
+import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
 import { cleanEntry, cleanRounds, cleanScreen, cleanStream } from "@/lib/raceRounds";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
@@ -265,6 +265,8 @@ export const addCourseObs = (orgId, id, day, o) => setDoc(courseRef(orgId, id, d
 // Asistana bir cümlede söylenen birkaç ölçüm (ve orsa uzunluğu) tek yazımda
 export const addCourseMany = (orgId, id, day, list, len = null) =>
   setDoc(courseRef(orgId, id, day), { ...(list.length ? { obs: arrayUnion(...list.map(cleanObs)) } : {}), ...(len ? { len } : {}), at: new Date().toISOString() }, { merge: true });
+// Parkur kartları: yalnız kartlar ve seçili kart yazılır (ölçümlere dokunmaz)
+export const saveCards = (orgId, id, day, c) => { const k = cleanCards(c); return setDoc(courseRef(orgId, id, day), { cards: k.cards, sel: k.sel, cardAt: new Date().toISOString() }, { merge: true }); };
 export const saveCourse = (orgId, id, day, c) => setDoc(courseRef(orgId, id, day), { ...cleanCourse(c), at: new Date().toISOString() });
 
 // Canlı ekran (lib/raceRounds.js, Seyhun 2026-11-01): start başına şamandıra dönüşleri, ekranda oynayan kayıt, canlı yayın bağlantısı.
