@@ -2,7 +2,7 @@
 
 // Canlı ekranın işleri: hem uygulamadaki "Canlı ekran" penceresi hem asistan (isler/canliEkran.js) bunları kullanır (sesle = elle).
 import { authFetch } from "@/lib/authFetch";
-import { loadRoundsOf, saveRounds, saveScreen, saveStream } from "@/features/athletes/raceLiveStore";
+import { loadRoundsOf, saveCourseShow, savePlan, saveRounds, saveScreen, saveStream } from "@/features/athletes/raceLiveStore";
 import { momentRace, momentRaceName, raceName } from "@/lib/raceLive";
 import { applyRound, currentStart, markName, recTitle, roundCommand, routeCommand, screenCommand, setRoute, ytEmbed } from "@/lib/raceRounds";
 
@@ -81,6 +81,15 @@ export async function screenSay(orgId, raceId, s) {
   if ("caption" in c) {
     await showOnScreen(orgId, raceId, { ...L.screen, caption: c.caption });
     return { text: c.caption ? `Ekrana yazdım: ${c.caption}.` : "Ekrandaki yazıyı kaldırdım." };
+  }
+  if ("orange" in c) {
+    await savePlan(orgId, raceId, { ...L.plan, orange: c.orange ? new Date().toISOString() : "" });
+    ensurePublic(raceId).catch(() => {});
+    return { text: c.orange ? "Turuncu bayrak çekildi, ekran start öncesine geçti." : "Turuncu bayrak indi." };
+  }
+  if ("side" in c) {
+    await saveCourseShow(orgId, raceId, { ...L.courseShow, side: c.side });
+    return { text: c.side ? "Sol bilgi açıldı." : "Sol bilgi kapandı." };
   }
   if ("pause" in c) {
     if (!L.screen.kind) return { fail: "Ekranda yayın yok." };
