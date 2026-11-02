@@ -87,7 +87,7 @@ function routePlan(g, route) {
 // Sahne: { W, H } piksel, rota, isteğe bağlı pre (animasyon adları için önek), title (alt yazı)
 export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "", wind = true, sea = false } = {}) {
   if (!card) return "";
-  const g = geom(card);
+  const g = geom(card, { lineK: 0.38 }); // start hattı rota kartındaki gibi orsanın üçte biri kadar (Seyhun 2026-11-02 "start çok büyük")
   const rt = cleanRoute(route);
   const rot = g.A;
   const R = ([x, y]) => [x * Math.cos(rad(rot)) - y * Math.sin(rad(rot)), x * Math.sin(rad(rot)) + y * Math.cos(rad(rot))];
@@ -95,15 +95,25 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
   const xs = key.map((p) => p[0]), ys = key.map((p) => p[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const xc = (x0 + x1) / 2, span = Math.max(1, y1 - y0);
-  // kamera startın arkasında, yüksekte, rüzgâra (1'e) bakar: yakın taraf altta büyük, uzak taraf ufka doğru küçük
-  const D = span * 0.75;
-  const near = H * 0.86, far = H * 0.2;
-  const k = (near - far) / (1 / D - 1 / (D + span));
-  const H0 = near - k / D;
+  // kamera startın arkasında, yüksekte, rüzgâra (1'e) bakar; eğim hafif (Seyhun 2026-11-02 "rota kartındaki gibi gerçekçi olsun"):
+  // en ve boy aynı ölçekte (kart oranları korunur), derinlik yalnız biraz kısalır, uzak taraf biraz küçülür
+  const D = span * 2.6;
   const zOf = (Y) => D + (Y - y0);
-  let F = Infinity;
-  for (const [X, Y] of key) if (Math.abs(X - xc) > 1) F = Math.min(F, (W * 0.4 * zOf(Y)) / Math.abs(X - xc));
-  if (!isFinite(F)) F = W;
+  const zm = D + span / 2;
+  let near = H * 0.84, far = H * 0.16;
+  let k = (near - far) / (1 / D - 1 / (D + span));
+  let F = k / (zm * 0.78); // ortada yatay ölçek = dikey ölçek / 0.78
+  let half = 0;
+  for (const [X, Y] of key) half = Math.max(half, (Math.abs(X - xc) * F) / zOf(Y));
+  if (half > W * 0.44) {
+    const q = (W * 0.44) / half;
+    F *= q;
+    k *= q;
+    const c = (near + far) / 2, b = (near - far) * q;
+    near = c + b / 2;
+    far = c - b / 2;
+  }
+  const H0 = near - k / D;
   const P = (p) => { const [X, Y] = R(p); const z = zOf(Y); return [W / 2 + ((X - xc) * F) / z, H0 + k / z, D / z]; };
   const u = W / 1600;
   let o = "";
@@ -150,11 +160,12 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
   buoy(g.m2, "2");
   buoy(g.s3, ""); buoy(g.p3, "3");
   if (used.has("4")) { buoy(g.s4, ""); buoy(g.p4, "4"); }
-  boat(g.komite, 120, "#ff8a3d", true);
-  boat(g.pin, 54, "#ff8a3d", false);
-  boat(g.fA, 60, "#3d8bff", false);
+  // tekneler parkura göre küçük (rota kartındaki gibi hat ve ayaklar öne çıksın)
+  boat(g.komite, 72, "#ff8a3d", true);
+  boat(g.pin, 38, "#ff8a3d", false);
+  boat(g.fA, 42, "#3d8bff", false);
   // çizgiler ve rota (nesnelerin altında)
-  let under = lineLab(g.pin, g.komite, "START") + lineLab(g.fB, g.fA, "FİNİŞ", 0.25);
+  let under = lineLab(g.pin, g.komite, "START", 0.3) + lineLab(g.fB, g.fA, "FİNİŞ", 0.25);
   if (rt.length) {
     const { legs, alt } = routePlan(g, rt);
     const n = legs.length;
