@@ -185,6 +185,7 @@ async function openList() {
   return list;
 }
 
+// Netlify-Vary: query: CDN önbelleği ?id= ve ?y= ile ayrılır; yoksa genel liste yanıtı yarış sayfasına gidebilir (2026-11-02 çökme)
 export async function GET(request) {
   const q = new URL(request.url).searchParams;
   const id = q.get("id") || "";
@@ -192,7 +193,7 @@ export async function GET(request) {
   if (!adminReady()) return NextResponse.json({ error: "nokey" }, { status: 503 });
   if (!id) {
     try {
-      return NextResponse.json({ list: await openList(), now: Date.now() }, { headers: { "Cache-Control": "public, max-age=0, s-maxage=10" } });
+      return NextResponse.json({ list: await openList(), now: Date.now() }, { headers: { "Cache-Control": "public, max-age=0, s-maxage=10", "Netlify-Vary": "query" } });
     } catch (e) {
       console.warn("[canli]", e?.message?.slice(0, 160));
       return NextResponse.json({ error: "fail" }, { status: 502 });
@@ -215,7 +216,7 @@ export async function GET(request) {
   }
   return NextResponse.json(
     { ...body, now: Date.now() },
-    { headers: { "Cache-Control": "public, max-age=0, s-maxage=2", "Netlify-CDN-Cache-Control": "public, s-maxage=2, stale-while-revalidate=2" } },
+    { headers: { "Cache-Control": "public, max-age=0, s-maxage=2", "Netlify-CDN-Cache-Control": "public, s-maxage=2, stale-while-revalidate=2", "Netlify-Vary": "query" } },
   );
 }
 

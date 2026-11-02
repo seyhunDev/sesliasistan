@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apText, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps } from "@/lib/raceLive";
+import { apText, cleanPlan, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { cleanCourse, selCard } from "@/lib/raceCourse";
 import { routeText, sceneSvg } from "@/lib/courseScene";
@@ -31,6 +31,19 @@ const hmOf = (iso) => (iso ? new Date(iso).toLocaleTimeString("tr-TR", { hour: "
 const dayText = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "");
 const trDay = (ms) => new Date(ms + 3 * 3600e3).toISOString().slice(0, 10); // Türkiye günü (sunucudaki gibi)
 
+// Sunucudan gelen her alan eksik olabilir (Seyhun 2026-11-02 çökme "reading 'status'"): ekranın okuduğu alanlar boş değerle doldurulur
+const arr = (v) => (Array.isArray(v) ? v : []);
+export const fillData = (j) => ({
+  ...j,
+  plan: cleanPlan(j.plan),
+  starts: arr(j.starts),
+  media: arr(j.media),
+  wind: arr(j.wind),
+  entries: arr(j.entries),
+  fleets: arr(j.fleets),
+  rounds: j.rounds && typeof j.rounds === "object" ? j.rounds : {},
+});
+
 // Logo kaldırıldı (Seyhun 2026-11-01 "herkese açık sayfadaki logoyu da kaldır"); başlık en solda
 function useData(id, y) {
   const [data, setData] = useState(null);
@@ -47,11 +60,12 @@ function useData(id, y) {
         const res = await fetch(`/api/canli?id=${encodeURIComponent(id)}${y ? `&y=${encodeURIComponent(y)}` : ""}`, { cache: "no-store" });
         const j = await res.json().catch(() => ({}));
         if (!on) return;
-        if (res.ok) {
+        // Yarım/boş yanıt (yayın sırasında eski sürüm, kesilen bağlantı) ekranı çökertmez: race yoksa hata sayılır, plan her zaman dolu
+        if (res.ok && j?.race) {
           skew.current = (j.now || Date.now()) - Date.now();
-          setData(j);
+          setData(fillData(j));
           setErr("");
-        } else setErr(j.error || "fail");
+        } else setErr(j?.error || "fail");
       } catch {
         if (on) setErr((e) => e || "net");
       }
