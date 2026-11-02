@@ -9,10 +9,10 @@ const rad = (d) => (d * Math.PI) / 180;
 const nrm = (d) => ((Math.round(d) % 360) + 360) % 360;
 const dir = (b, m) => [m * Math.sin(rad(b)), m * Math.cos(rad(b))];
 const add = (p, b, m) => { const [x, y] = dir(b, m); return [p[0] + x, p[1] + y]; };
-export function geom(c) {
+export function geom(c, { lineK = 0.5 } = {}) {
   const A = c.axis, L = c.orsa;
   // komite sabit; pin komiteden ölçülen açıda (yoksa olması gereken eksen − 90°), soluk çizgi olması gereken hat
-  const lineM = Math.max(c.lineM || 120, L * 0.5); // kartta hat okunur boyda (kağıt kart gibi ölçeksiz)
+  const lineM = Math.max(c.lineM || 120, L * lineK); // kartta hat okunur boyda (kağıt kart gibi ölçeksiz); sahnede kağıt karttaki oranla (0.38)
   const ideal = nrm(A - 90); // komiteden pin
   const toPin = c.line == null ? ideal : nrm(c.line + 180);
   const komite = add([0, 0], A + 90, lineM / 2);
