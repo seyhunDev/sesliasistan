@@ -1,8 +1,8 @@
-Commit: 7f95999 · Yayın: tehir iniş zamanı, 1 dk sonra kendiliğinden geri sayım, tekrar startta resimli bayrak (#1011)
-Zaman: 2026-11-02-2136 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41500279096
+Commit: dd9456e · Yayın: tehirde start saati yazılmaz, Denizde / Karada seçimi (#1013)
+Zaman: 2026-11-02-2159 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41503698364
 
-TAM TEST · 02.11.2026 21:25:45
+TAM TEST · 02.11.2026 21:47:30
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1435/1436 geçti · 1 kalan · 608 sn
+SONUÇ: 1436/1436 geçti · 0 kalan · 664 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -140,12 +140,9 @@ SONUÇ: 1435/1436 geçti · 1 kalan · 608 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 139/140
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 140/140
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 8/9
-      ✗ “alçak grafik”
-          beklenen: her telefon boyunda rüzgâr grafiği alçak (60–170 px), kalan yeri doldurmaz
-          olan:     375: son -312 çubuk 607 düğme -198 grafik 99 · 390: son -306 çubuk 784 düğme -192 grafik 103 · 430: son -291 çubuk 872 düğme -177 grafik 115
+  ✓ Ana sayfa: 9/9
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
