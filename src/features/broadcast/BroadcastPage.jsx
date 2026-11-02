@@ -15,7 +15,7 @@ import { raceDays } from "@/features/athletes/raceWeather";
 import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCourseShow, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
-import { Countdown, ownHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
+import { Countdown, ownHere, raceStart, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { ResetSheet } from "@/features/raceMedia/ResetSheet";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { VoidSheet, useRaceFlow } from "@/features/raceMedia/useRaceFlow";
@@ -24,7 +24,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { AP_MIN, AP_WHY, addMin, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
+import { AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, cardSvg } from "@/lib/courseCard";
@@ -85,8 +85,11 @@ export function BroadcastPage({ orgId, id }) {
   const [reset, setReset] = useState(false); // Yayını sıfırla penceresi
   const [delId, setDelId] = useState(""); // Program: silinmesi sorulan start
   const [prep, setPrep] = useState(""); // oluşturulacak yarışın bayrağı (Seyhun 2026-11-02 "hiçbir şey seçili olmasın, seçince ilerlesin")
+  const [retryPick, setRetryPick] = useState(false); // tekrar startın bayrağı burada seçildi ("Geri" boşaltır)
   const [made, setMade] = useState(0); // son oluşturulan yarışın programa eklenen start sayısı ("Geri" onları çıkarıp bayrağa döner)
   const [setupOpen, setSetupOpen] = useState(false); // ⋯ › Sınıf ve gruplar (yarışın sınıfları ve grupları bir kez seçilir)
+  const [tick, setTick] = useState(0); // tehir takibinin saniyesi
+  const [dev] = useState(() => Math.random().toString(36).slice(2, 10)); // bu telefon (tehirden sonra geri sayımı kim başlatır)
   const [ap, setAp] = useState(null); // tehir penceresi { min, why } (Seyhun 2026-11-01 "bir sebep belirterek tehir, bir saatlik")
   const [plan, setPlan] = useState(() => cleanPlan({})); // günün programı (raceLive.plan; herkese açık ekranın evresi buna göre)
   const file = useRef(null);
@@ -194,6 +197,16 @@ export function BroadcastPage({ orgId, id }) {
     setAp(ap ? null : { min: c ? 1 : 60, why: AP_WHY[0], live: c });
   };
   const chooseVoid = (v) => {
+    // Genel geri / Abandone (Seyhun 2026-11-02 "sınıf aynı, sadece bayrak değiştirebilmeliyim; sorun olunca kara bayrağa gidiliyor"): aynı start
+    // aynı numarayla programın başına döner, bayrağı boş; sayaç yerine resimli bayrak seçimi çıkar
+    if ((v === "Genel geri çağırma" || v === "Abandone") && rf.ask) {
+      const back = apBack(rf.ask.id, false);
+      rf.choose(v);
+      if (back) changePlan({ order: [{ ...back, prep: "" }, ...plan.order] });
+      setRetryPick(false);
+      setTab("sure");
+      return;
+    }
     if (v !== "Tehir" || !rf.ask?.canDrop) return rf.choose(v);
     const back = apBack(rf.ask.id, false);
     if (back) changePlan({ order: [back, ...plan.order] });
@@ -201,9 +214,10 @@ export function BroadcastPage({ orgId, id }) {
     setTab("sure");
     setAp({ min: 1, why: AP_WHY[0], live: false, now: true });
   };
+  // Tehir (Seyhun 2026-11-02 "geri sayımın herhangi bir yerinde tehir; 1 dk sonra indir, 5 dk sonra indir ya da belirsiz; indikten 1 dk sonra
+  // 5 dakikalık geri sayımı vermem gerekiyor, takibini yapalım"): AP şimdi çekilir, seçilen dakikada kendiliğinden iner (belirsizde
+  // "Tehiri indir"); inince 1 dk sonra uyarı işareti = sıradaki yarışın geri sayımı kendiliğinden başlar (tehiri kuran telefonda).
   const postpone = () => {
-    const from = plan.ap?.from || plan.at;
-    let base = from;
     let order = plan.order;
     if (ap.live) {
       const rid = rf.ridOf(tr.t);
@@ -211,12 +225,10 @@ export function BroadcastPage({ orgId, id }) {
       const back = rid ? apBack(rid) : null;
       if (back) order = [back, ...order];
     }
-    if (ap.live || ap.now) {
-      base = new Date(Date.now() + 3 * 3600e3).toISOString().slice(11, 16);
-    }
-    changePlan({ day: planDay, status: "ap", order, at: ap.min ? addMin(base, ap.min) : "", ap: { from, why: ap.why } });
+    changePlan({ day: planDay, order, ...apRaise(plan, Date.now(), ap.min, ap.why, readTimer().dur || 300) });
     setAp(null);
   };
+  const lowerAp = () => changePlan({ day: planDay, ...apLower(Date.now(), readTimer().dur || 300, dev) });
   // Program sekmesi: her günün saati (o güne özel saat yoksa bugünün ilk start'ı da değişir), güne özel saat, yarış olmayan gün, start silme
   const setDaily = (v) => changePlan({ daily: v, ...(!plan.times[planDay] && plan.status !== "ap" ? { at: v } : {}), ...(plan.next && !plan.times[plan.next.day] ? { next: { ...plan.next, at: v } } : {}) });
   const setDayTime = (d, v) => {
@@ -243,7 +255,7 @@ export function BroadcastPage({ orgId, id }) {
     });
     toast("Start silindi");
   };
-  const unpostpone = () => changePlan({ day: planDay, status: "", at: plan.ap?.from || plan.at, ap: null });
+
   // Başlat: yarış açılır, sıradaki startın sınıf/grup/bayrağı o startın dönüş kaydına yazılır ve listeden düşer
   const flow = {
     ...rf.flow,
@@ -259,9 +271,32 @@ export function BroadcastPage({ orgId, id }) {
       if (rid) saveRounds(orgId, id, rid, { ...prev, grp, cls, prep, card: k.id, route: prev.route?.length ? prev.route : k.route }, prev).then(reload, () => {});
       setEditI(-1);
       setMade(0);
-      changePlan({ order: plan.order.slice(1) });
+      setRetryPick(false);
+      changePlan({ order: plan.order.slice(1), warn: "" });
     },
   };
+  // Takip: saniyede bir; tehirin inişi geldiyse iner, uyarı işareti geldiyse geri sayım başlar (başka telefon kurduysa 4 sn sonra bu da başlatabilir)
+  const autoRef = useRef(null);
+  useEffect(() => {
+    autoRef.current = (now) => {
+      if (apDue(plan, now)) return changePlan({ day: planDay, ...apLower(Date.parse(plan.ap.down), readTimer().dur || 300, dev) });
+      if (!warnDue(plan, now)) return;
+      const mine = !plan.warnBy || plan.warnBy === dev || now - Date.parse(plan.warn) > 4000;
+      if (!mine) return;
+      if (countingAt(now) || !plan.order.length) return changePlan({ warn: "" });
+      if (!plan.order[0].prep) return (changePlan({ warn: "" }), toast("Bayrak seçilmedi, geri sayım başlamadı"));
+      raceStart(flow, "start", race?.name || "Yarış");
+    };
+  });
+  const tracking = (plan.status === "ap" && !!plan.ap?.down) || !!plan.warn;
+  useEffect(() => {
+    if (!tracking) return;
+    const t = setInterval(() => {
+      setTick(Date.now());
+      autoRef.current?.(Date.now());
+    }, 1000);
+    return () => clearInterval(t);
+  }, [tracking]);
   // Bekleyen start satırı: ekle, düzenle, sırala, çıkar
   const editRow = (i, patch) => changePlan({ order: plan.order.map((o, k) => (k === i ? { ...o, ...patch } : o)) });
   // Yarış oluştur (Seyhun 2026-11-02): sınıflar ve gruplar yarışın kurulumunda bir kez seçilir (plan.sets); burada yalnız bayrak.
@@ -274,6 +309,7 @@ export function BroadcastPage({ orgId, id }) {
     changePlan({ prep: g, order: [...plan.order, ...add] });
   };
   const undoRace = () => {
+    if (retryPick) return (setRetryPick(false), editRow(0, { prep: "" }));
     if (!made || plan.order.length < made) return setMade(0);
     changePlan({ order: plan.order.slice(0, -made) });
     setMade(0);
@@ -468,6 +504,8 @@ export function BroadcastPage({ orgId, id }) {
   const needRace = !!L && !nextRow && idle && plan.status !== "done";
   // Kurulum önce (Seyhun 2026-11-02 "önce sınıfları, sonra grupları seçelim; bir kere seçip kapatalım; sonra süre, program, video… gösterilsin")
   const needSetup = !!L && (setupOpen || !plan.sets.length);
+  // Sıradaki startın bayrağı boşsa (genel geri / abandone sonrası tekrar) önce bayrak
+  const needFlag = !!L && idle && !!nextPlan && !nextPlan.prep && plan.status !== "done";
   const stE = st ? L?.rounds?.[st.id] || {} : {};
   // Seçim çipleri: Sınıf, Grup, Bayrak; set(key, değer) satırın kaydına yazar (bekleyen start: plan.order; biten yarış: rounds[sid])
   const chipRows = (val, set, size = "h-7 px-2.5", keys = ["cls", "grp", "prep"]) => [
@@ -520,16 +558,37 @@ export function BroadcastPage({ orgId, id }) {
             başlığında sınıf · grup · yarış (Seyhun 2026-11-02 "yukarıdaki yazıyı kaldıralım") */}
         {/* Önce yarış, sonra süre (Seyhun 2026-11-02 "süreyi göstermeden ne için olduğunu seçmemiz lazım"): sıradaki yarış yoksa ve sayaç
             boştaysa sayaç yerine yarış oluşturma (sınıf, gruplar, bayrak); oluşturulunca sayaç "Başlat · 1. yarış Sarı" ile açılır */}
+        {/* Tehir takibi: AP çekili (iniş saati ve kalan, belirsizse "Tehiri indir") ya da indi (uyarı işaretine kalan; geri sayım kendiliğinden) */}
+        {!needSetup && (plan.status === "ap" || plan.warn) ? (
+          <div className="ck-glass mt-4 flex items-center gap-3 rounded-[1rem] px-3.5 py-3">
+            <span className="h-6 w-9 shrink-0 rounded-[3px] bg-[repeating-linear-gradient(90deg,#e11d48_0_20%,#fff_20%_40%)]" aria-hidden="true" />
+            <span className="min-w-0 flex-1 leading-tight">
+              <b className="block text-[1rem] font-semibold">{plan.status === "ap" ? (plan.ap?.down ? `Tehir · ${trHm(plan.ap.down)}'de iner` : "Tehir · belirsiz") : "Tehir indi"}</b>
+              <span className="block truncate text-[0.8125rem] text-white/65">
+                {plan.status === "ap" ? [plan.ap?.why, plan.at ? `Start ${plan.at}` : ""].filter(Boolean).join(" · ") : plan.order.length ? "Uyarı işaretinde geri sayım kendiliğinden başlar" : "Önce yarışı oluştur"}
+              </span>
+            </span>
+            {plan.status === "ap" && plan.ap?.down ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.ap.down) - (tick || capNow)) / 1000)))}</b> : null}
+            {plan.status !== "ap" && plan.warn ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.warn) - (tick || capNow)) / 1000)))}</b> : null}
+            {plan.status !== "ap" && plan.warn ? (
+              <button type="button" onClick={() => changePlan({ warn: "" })} className="shrink-0 text-[0.875rem] font-semibold text-white/70">
+                Bekle
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {needSetup ? (
           <Setup sets={plan.sets} onSave={saveSetup} onCancel={plan.sets.length ? () => setSetupOpen(false) : null} />
         ) : needRace ? (
           <FlagPick no={nextRaceNo(live.starts, today, rdays, plan.sets[0]?.grps?.[0] || "")} sets={plan.sets} value={prep} onPick={createRace} />
+        ) : needFlag ? (
+          <FlagPick no={nextRow?.n || 1} again={!!nextRow?.retry} sets={[{ cls: nextPlan.cls, grps: nextPlan.grp ? [nextPlan.grp] : [] }]} value="" onPick={(g) => (editRow(0, { prep: g }), setRetryPick(true))} />
         ) : (
           <>
-          {made && idle ? (
+          {(made || retryPick) && idle ? (
             <button type="button" onClick={undoRace} data-press className="ck-glass mt-3 flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[0.875rem] font-semibold">
               <span aria-hidden="true">‹</span>
-              {`Geri · ${prepName(plan.prep) || "Bayrak"}`}
+              {`Geri · ${prepName(nextPlan?.prep || plan.prep) || "Bayrak"}`}
             </button>
           ) : null}
           <Countdown dark mode="start" race={flow} startRace noHead startText={nextRow ? `Başlat · ${nextRow.n}. yarış${nextRow.grp ? ` ${nextRow.grp}` : ""}` : "Başlat"} title={cur ? pickText(stE, raceName(cur)) : ""} where={race?.name || "Yarış"} />
@@ -623,11 +682,11 @@ export function BroadcastPage({ orgId, id }) {
               // Tehir penceresi: süre (30 dk … 2 sa, Belirsiz) ve sebep; Ertele yeni saati yazar, ekranda sebep görünür
               <div className="space-y-2 border-b border-line px-4 py-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="w-11 shrink-0 text-[0.8125rem] text-mut">Süre</span>
+                  <span className="w-11 shrink-0 text-[0.8125rem] text-mut">İner</span>
                   <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
                     {[...AP_MIN, 0].map((m) => (
                       <button key={m} type="button" aria-pressed={ap.min === m} onClick={() => setAp({ ...ap, min: m })} className={`h-7 shrink-0 rounded-full px-2.5 text-[0.8125rem] font-semibold ${ap.min === m ? "bg-acc text-white" : "bg-bg"}`}>
-                        {m === 0 ? "Belirsiz" : m < 60 ? `${m} dk` : `${m / 60} sa`}
+                        {m === 0 ? "Belirsiz" : m < 60 ? `${m} dk sonra` : `${m / 60} sa sonra`}
                       </button>
                     ))}
                   </div>
@@ -643,12 +702,12 @@ export function BroadcastPage({ orgId, id }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-1">
-                  <span className="min-w-0 flex-1 truncate text-[0.875rem] text-mut">{ap.min ? (ap.live ? `Sayaç durur · ${ap.min < 60 ? `${ap.min} dk` : `${ap.min / 60} sa`} sonra yeniden` : `Yeni start ${addMin(plan.at, ap.min) || "—"}`) : "Yeni saat sonra belirlenir"}</span>
+                  <span className="min-w-0 flex-1 truncate text-[0.875rem] text-mut">{ap.min ? `${ap.live ? "Sayaç durur · " : ""}${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}'de iner, 1 dk sonra geri sayım` : "İndirince 1 dk sonra geri sayım"}</span>
                   <Button variant="secondary" size="sm" onClick={() => setAp(null)}>
                     Vazgeç
                   </Button>
-                  <Button size="sm" onClick={postpone} disabled={!!ap.min && !plan.at && !ap.live}>
-                    Ertele
+                  <Button size="sm" onClick={postpone}>
+                    Tehir çek
                   </Button>
                 </div>
               </div>
@@ -659,8 +718,8 @@ export function BroadcastPage({ orgId, id }) {
               <Button variant="secondary" onClick={addRace}>
                 + Yarış
               </Button>
-              <Button variant={plan.status === "ap" ? "primary" : "secondary"} onClick={() => (plan.status === "ap" ? unpostpone() : openAp())}>
-                {plan.status === "ap" ? "Erteleme kalktı" : "Tehir"}
+              <Button variant={plan.status === "ap" ? "primary" : "secondary"} onClick={() => (plan.status === "ap" ? lowerAp() : openAp())}>
+                {plan.status === "ap" ? "Tehiri indir" : "Tehir"}
               </Button>
               {plan.status === "done" ? null : (
                 <Button variant="secondary" onClick={() => (askEnd ? (setAskEnd(false), changePlan({ day: planDay, status: "done", orange: "", next: plan.next || { day: tomorrow, at: dayTime(plan, tomorrow) || plan.at } })) : setAskEnd(true))}>
@@ -1358,12 +1417,12 @@ function FlagArt({ p }) {
 }
 // Yarışı oluştur (Seyhun 2026-11-02 "bayrak seçimini bayrakları göstererek tıklayarak yapalım; hiçbir şey seçili olmasın, seçince
 // ilerlesin; geri de olsun"): bayraklar resimli; dokununca yarış programa eklenir ve Başlat açılır (Başlat'ın üstündeki "Geri" buraya döner)
-function FlagPick({ no, sets, value, onPick }) {
+function FlagPick({ no, sets, value, onPick, again = false }) {
   const who = sets.flatMap((x) => (x.grps.length ? x.grps.map((g) => [x.cls, g]) : [[x.cls, ""]]));
   return (
     <div className="mt-4 space-y-3">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[1.0625rem] font-semibold">{`${no}. yarışın bayrağı`}</p>
+        <p className="text-[1.0625rem] font-semibold">{again ? `${no}. yarış tekrar · bayrak` : `${no}. yarışın bayrağı`}</p>
         <p className="min-w-0 truncate text-[0.8125rem] text-white/65">{who.map(([c, g]) => g || c).join(" · ")}</p>
       </div>
       <div className="grid grid-cols-3 gap-2">
