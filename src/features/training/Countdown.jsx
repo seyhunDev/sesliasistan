@@ -391,7 +391,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
       </Link>
     ) : (
       <button type="button" onClick={idle ? start : up ? (race ? () => raceFinish(race) : reset) : running ? pause : resume} className={cls(!running || up)}>
-        <span className="truncate px-3">{idle ? startText || "Başlat" : up ? "Bitir" : running ? "Durdur" : "Devam"}</span>
+        <span className="truncate px-3">{idle ? startText || "Başlat" : up ? (race ? "Bitti" : "Bitir") : running ? "Durdur" : "Devam"}</span>
       </button>
     );
   const red = dark ? "text-[#f4a49c]" : "text-rec"; // lacivertte koyu kırmızı okunmuyor
@@ -460,7 +460,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
             {all && !race && mine && (
               <button type="button" onClick={() => makeRace(all)} className={`${btn} ${accTx}`}>+ Yarış yap</button>
             )}
-            {!bottom && <button type="button" onClick={race ? () => raceVoid(race) : reset} className={`${btn} ${red}`}>{race ? "Abandone" : "İptal"}</button>}
+            {!bottom && !(dark && race) && <button type="button" onClick={race ? () => raceVoid(race) : reset} className={`${btn} ${red}`}>{race ? "Abandone" : "İptal"}</button>}
           </div>
         )}
         {!dark && !bottom && (
@@ -481,6 +481,14 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
             {rec}
           </div>
         </Bar>
+      ) : dark && race && up && !away ? (
+        // Yarışta yalnız iki düğme yan yana (Seyhun 2026-11-02 tasarım "startlar-yeni"): Abandone · Bitti
+        <div className="mt-3 flex gap-2">
+          <button type="button" onClick={() => raceVoid(race)} className={mainCls(false).replace("mt-3 ", "").replace("w-full", "min-w-0 flex-1").replace("text-fg", "text-rec")}>
+            <span className="truncate px-3 text-[#f4a49c]">Abandone</span>
+          </button>
+          {main((on) => mainCls(on).replace("mt-3 ", "").replace("w-full", "min-w-0 flex-1"))}
+        </div>
       ) : (
         dark && main(mainCls)
       )}
