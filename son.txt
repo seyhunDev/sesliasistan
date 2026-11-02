@@ -1,8 +1,8 @@
-Commit: 072a17d · Canlı ekran: startta grup renkli sınıf bayrağı ve kural bayrağı (#1004)
-Zaman: 2026-11-02-2029 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41489546199
+Commit: 6d6e43b · Örnek yarış gerçek start videosuyla, parkur ekseni gösterimi (#1005)
+Zaman: 2026-11-02-2042 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41491599749
 
-TAM TEST · 02.11.2026 20:17:34
+TAM TEST · 02.11.2026 20:30:07
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1435/1436 geçti · 1 kalan · 657 sn
+SONUÇ: 1436/1436 geçti · 0 kalan · 684 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -140,12 +140,9 @@ SONUÇ: 1435/1436 geçti · 1 kalan · 657 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 139/140
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 140/140
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 8/9
-      ✗ “gün penceresi Yapıldı”
-          beklenen: plan satırında Yapıldı işareti: dokununca yapıldı, yeniden dokununca geri alınır
-          olan:     yapıldı 1 · çizili 0 · geri 1
+  ✓ Ana sayfa: 9/9
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
