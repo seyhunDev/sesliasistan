@@ -9,7 +9,7 @@ import { DayPick } from "./DayPick";
 // açık penceredeki gün mor (Seyhun 2026-10-21: "seçili olana renk, buton gibi tıklama hissi"). Güne dokununca o günün penceresi açılır
 // (DayPick: planlar, yelken/yoklama, fitness; Seyhun: "ne varsa o gün onları göstermeliyiz", kaydırma yok). att: yoklama yetkisi; fit: fitDays().
 // 2026-10-23 (Seyhun "günler en üstte"): şerit kokpitin en üstünde, bugün diğerlerinden geniş ve büyük. Güne dokununca o gün seçilir (sel/onSel;
-// kokpitteki hava, grafik ve planlar o güne geçer), seçili güne yeniden dokununca o günün penceresi açılır. Seçili gün camgöbeği; başka gün
+// kokpitteki hava, grafik ve planlar o güne geçer), aynı dokunuşla o günün penceresi de açılır (2026-11-02). Seçili gün camgöbeği; başka gün
 // seçiliyken bugün beyaz çerçeveli kalır, bugüne dokununca geri döner.
 // pick / onPick: penceresi açık günün tarihi (kokpitteki "Günü aç" da açar)
 export function HomeDays({ today, fit, att, sel = today, onSel, pick, onPick }) {
@@ -32,7 +32,12 @@ export function HomeDays({ today, fit, att, sel = today, onSel, pick, onPick }) 
           const on = sel === d.date;
           const first = i === 0;
           const w = new Date(`${d.date}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
-          const open = () => (on ? tap && onPick?.(d.date) : onSel?.(d.date));
+          // Tek dokunuş (Seyhun 2026-11-02 "güne tıklayınca hem rüzgâr değişmeli hem alttan planlar"): gün seçilir (hava, grafik o güne geçer)
+          // ve o günün penceresi alttan açılır (gösterecek bir şey ya da yoklama yetkisi varsa)
+          const open = () => {
+            if (!on) onSel?.(d.date);
+            if (tap) onPick?.(d.date);
+          };
           return (
             <button key={d.date} type="button" data-press aria-pressed={on} onClick={open} className={`raised flex flex-col items-center gap-1 rounded-2xl ${first ? "py-[clamp(0.625rem,calc(var(--u,7px)*1.6),1.125rem)]" : "py-[clamp(0.5rem,calc(var(--u,7px)*1.35),1rem)]"} ${first ? (on ? "act-main" : "ck-tout") : on ? "ck-sel" : ""}`}>
               <small className={`text-[0.75rem] font-semibold capitalize ${on || first ? "" : "text-white/60"}`}>{w}</small>
