@@ -1875,13 +1875,17 @@ function SkyIcon({ code, x, y, c }) {
     </g>
   );
 }
+// Hava tablosu (Seyhun 2026-11-03 "yağış yüzde değil mm; rüzgâr, sağanak da gösterilsin, ana sayfadaki hava gibi" → örnek B): grafik yok,
+// 06:00–20:00 saat saat sütunlar: hava + sıcaklık, yağış mm (yağan saat mavi zeminde), rüzgâr, sağanak (renkli şerit), yön. Geçen saatte istasyon
+// ölçümü varsa o; şimdiki saat açık zeminde, start saati pembe çizgi.
+const GUST_COL = [[8, "#3aa0ff"], [11, "#2fb8b0"], [14, "#3fcf6a"], [17, "#9ad43a"], [20, "#e7c73a"], [24, "#f08a3a"], [99, "#e8485a"]];
+const gustCol = (k) => GUST_COL.find(([m]) => k < m)[1];
 function WindBody({ data, sel, isCur, now }) {
-  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const fc = data.forecast;
   const rows = (fc?.rows || []).filter((r) => +r.hh >= 6 && +r.hh <= 20 && r.wind != null);
   const obsAt = Object.fromEntries((fc?.obs || []).filter((o) => o.wind != null || o.code != null || o.temp != null).map((o) => [o.hh, o]));
   const tr = new Date(now + 3 * 3600e3);
-  // Akşam ekran ertesi güne geçince (see) grafik o günün tahminidir: şimdi çizgisi, ölçülen ve "Şu an esen" yok; başlıkta tarih (Seyhun 2026-11-02
+  // Akşam ekran ertesi güne geçince (see) tablo o günün tahminidir: şimdi sütunu ve ölçülen yok; başlıkta tarih (Seyhun 2026-11-02
   // "yarını gösteriyor ama tarih olmadığı için anlamıyorum")
   const other = !sel && data.see && data.see > trDay(now) ? data.see : "";
   const nowH = other ? -1 : tr.getUTCHours() + tr.getUTCMinutes() / 60;
@@ -1890,23 +1894,18 @@ function WindBody({ data, sel, isCur, now }) {
   const rest = rows.filter((r) => +r.hh >= Math.floor(nowH));
   const max = rest.length ? Math.max(...rest.map((r) => r.wind)) : null;
   const maxH = rest.filter((r) => r.wind === max).map((r) => +r.hh);
-  const hasSt = Object.values(obsAt).some((o) => o.wind != null);
-  const pts = windPoints(data, now);
-  const W = 1000, L = 112, R = 26, T = 34, YB = 290, Hh = 486;
-  const x = (h) => L + ((h - 6) / 14) * (W - L - R);
-  const vals = [...rows.map((r) => r.wind), ...Object.values(obsAt).map((o) => o.wind ?? 0), ...pts.map((p) => p.kn), c?.kn ?? 0];
-  const top = Math.max(10, Math.ceil((Math.max(...vals) + 3) / 5) * 5);
-  const y = (v) => T + (1 - v / top) * (YB - T);
-  const line = (p) => p.map((q, i) => `${i ? "L" : "M"}${q[0].toFixed(1)} ${q[1].toFixed(1)}`).join(" ");
-  const fpts = rows.map((r) => [x(+r.hh), y(r.wind)]);
-  const opts = rows.filter((r) => +r.hh <= nowH && obsAt[r.hh]?.wind != null).map((r) => [x(+r.hh), y(obsAt[r.hh].wind)]);
-  const inDay = nowH >= 6 && nowH <= 20;
-  const nowPt = inDay && c?.kn != null ? [x(nowH), y(c.kn)] : null;
-  const mline = nowPt && opts.length ? [...opts, nowPt] : opts;
+  const W = 1000, L = 112, R = 8, Hh = 440;
+  const cw = (W - L - R) / 15;
+  const x = (h) => L + (h - 6) * cw + cw / 2;
   const atH = at ? +at.slice(0, 2) + +at.slice(3, 5) / 60 : null;
-  const evens = rows.filter((r) => +r.hh % 2 === 0);
-  const lab = (r) => [x(+r.hh), y(r.wind) - 12];
-  const peak = rest.find((r) => r.wind === max);
+  const nowCol = Math.floor(nowH);
+  const Y = { h: 56, sky: 112, temp: 172, rain: 222, wind: 282, gust: 336, dir: 396 };
+  const lab = (t, u, y) => (
+    <>
+      <text x={L - 14} y={y + 5} textAnchor="end" fontSize="14" fontWeight="700" letterSpacing="1" fill="#fff" fillOpacity=".6">{t}</text>
+      {u ? <text x={L - 14} y={y + 22} textAnchor="end" fontSize="12" fill="#fff" fillOpacity=".4">{u}</text> : null}
+    </>
+  );
   return (
     <div className="lv-wa">
       <div className="lv-wkh">
@@ -1929,96 +1928,61 @@ function WindBody({ data, sel, isCur, now }) {
         ) : null}
       </div>
       {rows.length >= 2 ? (
-        <svg className="lv-wchart" viewBox={`0 0 ${W} ${Hh}`} role="img" aria-label="Rüzgâr ve hava: ölçülen ve tahmin">
-          <defs>
-            <linearGradient id={`${uid}a`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#4fb3ff" stopOpacity=".35" />
-              <stop offset="1" stopColor="#4fb3ff" stopOpacity=".03" />
-            </linearGradient>
-          </defs>
-          {[5, 10, 15, 20, 25].filter((v) => v < top).map((v) => (
-            <g key={v}>
-              <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="#fff" strokeOpacity=".1" />
-              <text x={L - 10} y={y(v) + 5} textAnchor="end" fontSize="15" fill="#fff" fillOpacity=".5">{`${v} kn`}</text>
-            </g>
-          ))}
-          {inDay ? <rect x={L} y={T - 10} width={x(nowH) - L} height={YB - T + 10} fill="#4fb3ff" fillOpacity=".07" /> : null}
-          <path d={line(fpts)} fill="none" stroke="#fff" strokeOpacity=".75" strokeWidth="3" strokeDasharray="9 7" />
-          {mline.length >= 2 ? <path d={`${line(mline)} L${mline.at(-1)[0]} ${y(0)} L${mline[0][0]} ${y(0)} Z`} fill={`url(#${uid}a)`} /> : null}
-          {mline.length >= 2 ? <path d={line(mline)} fill="none" stroke="#6cc4ff" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" /> : null}
-          {opts.map(([px, py]) => <circle key={px} cx={px} cy={py} r="6" fill="#6cc4ff" stroke="#0b2038" strokeWidth="2" />)}
-          {pts.filter((p) => p.h >= 6 && p.h <= Math.min(20, nowH + 0.02)).map((p) => <circle key={p.h} cx={x(p.h)} cy={y(p.kn)} r="6" fill={MAN} stroke="#0b2038" strokeWidth="2" />)}
-          {nowPt ? (
-            <>
-              <circle className="lv-wpulse" cx={nowPt[0]} cy={nowPt[1]} r="9" fill={c.man ? MAN : "#6cc4ff"} stroke="#fff" strokeWidth="3" />
-              <text x={nowPt[0] - 14} y={nowPt[1] - 16} textAnchor="end" fontSize="26" fontWeight="800" fill={c.man ? "#ffab66" : "#9ed6ff"}>{`${c.kn} kn şimdi`}</text>
-            </>
-          ) : null}
-          {opts.length >= 2 ? (
-            <text x={(opts[0][0] + opts.at(-1)[0]) / 2} y={Math.min(...opts.map((q) => q[1])) - 34} textAnchor="middle" fontSize="17" fontWeight="700" letterSpacing="1.5" fill="#6cc4ff">ÖLÇÜLEN</text>
-          ) : null}
-          {peak ? (
-            <>
-              <text x={lab(peak)[0]} y={lab(peak)[1]} textAnchor="middle" fontSize="20" fontWeight="700" fill="#fff">{peak.wind}</text>
-              <text x={lab(peak)[0]} y={lab(peak)[1] - 26} textAnchor="middle" fontSize="17" fontWeight="700" letterSpacing="1.5" fill="#fff" fillOpacity=".8">TAHMİN</text>
-            </>
-          ) : null}
-          {rest.filter((r) => r !== peak && +r.hh > nowH + 0.6 && Math.abs(+r.hh - +peak?.hh) > 1 && +r.hh % 3 === 2).map((r) => (
-            <text key={r.hh} x={lab(r)[0]} y={lab(r)[1]} textAnchor="middle" fontSize="18" fontWeight="700" fill="#fff" fillOpacity=".85">{r.wind}</text>
-          ))}
-          {inDay ? (
-            <g>
-              <line x1={x(nowH)} x2={x(nowH)} y1={T - 14} y2={y(0)} stroke="#fff" strokeWidth="2" />
-              <rect x={x(nowH) - 30} y={YB + 6} width="60" height="22" rx="11" fill="#fff" />
-              <text x={x(nowH)} y={YB + 22} textAnchor="middle" fontSize="14" fontWeight="800" fill="#0b2038">ŞİMDİ</text>
-            </g>
-          ) : null}
-          {atH != null && atH >= 6 && atH <= 20 ? (
-            <g>
-              <line x1={x(atH)} x2={x(atH)} y1={T - 14} y2={y(0)} stroke="#ff3d77" strokeWidth="2.5" strokeDasharray="4 4" />
-              <text x={x(atH) + 8} y={T + 2} fontSize="16" fontWeight="800" fill="#ff5c8f">{`START ${at}`}</text>
-            </g>
-          ) : null}
-          <text x="4" y={YB + 110} fontSize="13" fontWeight="700" letterSpacing="1" fill="#fff" fillOpacity=".55">HAVA</text>
-          <text x="4" y={YB + 176} fontSize="13" fontWeight="700" letterSpacing="1" fill="#fff" fillOpacity=".55">YAĞIŞ</text>
-          {evens.map((r) => {
+        <svg className="lv-wchart" viewBox={`0 0 ${W} ${Hh}`} role="img" aria-label="Saat saat hava, yağış, rüzgâr ve sağanak">
+          {nowH >= 6 && nowH < 21 ? <rect x={L + (nowCol - 6) * cw + 2} y={Y.h - 30} width={cw - 4} height={Y.dir - Y.h + 52} rx="8" fill="#fff" fillOpacity=".10" /> : null}
+          {nowH >= 6 && nowH < 21 ? <text x={x(nowCol)} y={Y.h - 40} textAnchor="middle" fontSize="14" fontWeight="800" fill="#fff">ŞİMDİ</text> : null}
+          {lab("HAVA", "", Y.sky + 14)}
+          {lab("YAĞIŞ", "mm", Y.rain)}
+          {lab("RÜZGÂR", "kn", Y.wind)}
+          {lab("SAĞANAK", "kn", Y.gust)}
+          {lab("YÖN", "", Y.dir)}
+          {rows.map((r) => {
             const h = +r.hh, px = x(h);
             const o = h <= nowH ? obsAt[r.hh] : null;
             const code = o?.code ?? r.code;
             const temp = o?.temp ?? r.t;
             const meas = o && (o.code != null || o.temp != null);
             const col = meas ? "#9ed6ff" : "rgba(255,255,255,.8)";
-            const rain = h <= nowH && o?.rain ? (o.rain.mm ? `${String(o.rain.mm).replace(".", ",")} mm` : "Yok") : h > nowH && r.pop != null ? `%${r.pop}` : r.mm != null && h <= nowH ? (r.mm ? `${String(r.mm).replace(".", ",")} mm` : "Yok") : "";
-            const rMeas = h <= nowH && !!o?.rain;
+            const mm = o?.rain ? o.rain.mm || 0 : r.mm;
+            const w = o?.wind ?? r.wind;
+            const g = o?.gust ?? r.gust;
+            const dir = o?.dir ?? r.dir;
             return (
               <g key={r.hh}>
-                <text x={px} y={YB + 50} textAnchor="middle" fontSize="15" fontWeight="600" fill="#fff" fillOpacity={h >= nowH ? 0.8 : 0.6}>{`${r.hh}:00`}</text>
-                {r.dir != null || o?.dir != null ? (
-                  <g transform={`translate(${px - 18} ${YB + 70}) rotate(${(o?.dir ?? r.dir) + 180}) scale(.75)`}>
+                <text x={px} y={Y.h} textAnchor="middle" fontSize="15" fontWeight="600" fill="#fff" fillOpacity={h >= nowH ? 0.85 : 0.55}>{`${r.hh}:00`}</text>
+                <SkyIcon code={code} x={px} y={Y.sky} c={col} />
+                {temp != null ? <text x={px} y={Y.temp} textAnchor="middle" fontSize="17" fontWeight="700" fill={col}>{`${temp}°`}</text> : null}
+                {mm ? <rect x={px - cw / 2 + 2} y={Y.rain - 17} width={cw - 4} height="30" rx="7" fill="#4fb3ff" fillOpacity={Math.min(0.75, 0.3 + mm / 5)} /> : null}
+                {mm != null ? <text x={px} y={Y.rain + 5} textAnchor="middle" fontSize="16" fontWeight="700" fill={mm ? "#e6f4ff" : "#fff"} fillOpacity={mm ? 1 : 0.4}>{mm ? String(mm).replace(".", ",") : "–"}</text> : null}
+                <text x={px} y={Y.wind + 7} textAnchor="middle" fontSize="22" fontWeight="700" fill={meas || o?.wind != null ? "#9ed6ff" : "#fff"}>{w}</text>
+                {g != null ? (
+                  <>
+                    <rect x={px - cw / 2} y={Y.gust - 16} width={cw} height="32" fill={gustCol(g)} fillOpacity=".9" />
+                    <text x={px} y={Y.gust + 6} textAnchor="middle" fontSize="17" fontWeight="800" fill="#06182b">{g}</text>
+                  </>
+                ) : null}
+                {dir != null ? (
+                  <g transform={`translate(${px} ${Y.dir}) rotate(${dir + 180}) scale(.85)`}>
                     <path d="M0 -10 L6 3 L0 0 L-6 3 Z" fill="#fff" fillOpacity=".85" />
                     <line x1="0" y1="0" x2="0" y2="10" stroke="#fff" strokeOpacity=".85" strokeWidth="2.2" strokeLinecap="round" />
                   </g>
                 ) : null}
-                {r.dir != null || o?.dir != null ? <text x={px - 6} y={YB + 75} fontSize="13" fontWeight="600" fill="#fff" fillOpacity=".75">{`${Math.round(o?.dir ?? r.dir)}°`}</text> : null}
-                <SkyIcon code={code} x={px} y={YB + 106} c={col} />
-                {temp != null ? <text x={px} y={YB + 144} textAnchor="middle" fontSize="16" fontWeight="700" fill={col}>{`${temp}°`}</text> : null}
-                {rain ? <text x={px} y={YB + 176} textAnchor="middle" fontSize="15" fontWeight="700" fill={rMeas ? "#9ed6ff" : "rgba(255,255,255,.75)"}>{rain}</text> : null}
               </g>
             );
           })}
+          {atH != null && atH >= 6 && atH <= 21 ? (
+            <g>
+              <rect x={L + (atH - 6) * cw + cw / 2 - 1.5} y={Y.h - 30} width="3" height={Y.dir - Y.h + 52} fill="#ff3d77" />
+              <text x={L + (atH - 6) * cw + cw / 2 + 8} y={Y.dir + 36} fontSize="15" fontWeight="800" fill="#ff5c8f">{`START ${at}`}</text>
+            </g>
+          ) : null}
         </svg>
       ) : null}
       <div className="lv-wleg">
-        {hasSt ? (
+        {Object.values(obsAt).some((o) => o.wind != null) ? (
           <span>
             <i className="lo" />
             {`Ölçülen${fc?.station ? ` (${fc.station} istasyonu)` : ""}`}
-          </span>
-        ) : null}
-        {pts.length ? (
-          <span>
-            <i className="lm" />
-            Elle girilen (parkurda)
           </span>
         ) : null}
         <span>
