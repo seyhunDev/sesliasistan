@@ -1,8 +1,8 @@
-Commit: 2922778 · Hava verisi: saatlik hissedilen sıcaklık ve günlük yağış toplamı (#1025)
-Zaman: 2026-11-03-0642 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41572669533
+Commit: a057a1b · Ana sayfa iyice sade: alttaki kartlar ve alışveriş düğmeleri kalktı (#1026)
+Zaman: 2026-11-03-0655 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41573833502
 
-TAM TEST · 03.11.2026 06:31:31
+TAM TEST · 03.11.2026 06:43:30
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1436/1437 geçti · 1 kalan · 638 sn
+SONUÇ: 1436/1437 geçti · 1 kalan · 672 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
