@@ -1,8 +1,8 @@
-Commit: 4d3a7ae · Canlı senaryo 1: yarış günü, videosuz üç sütun ve videolu alt bant (#1050)
-Zaman: 2026-11-03-1054 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41598153351
+Commit: 716311e · Ana sayfa geniş ekran: Mac ve iPad'de çok sütunlu düzen, telefon aynı (#1052)
+Zaman: 2026-11-03-1122 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41601167961
 
-TAM TEST · 03.11.2026 10:43:24
+TAM TEST · 03.11.2026 11:10:30
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,21 +30,21 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1439/1440 geçti · 1 kalan · 624 sn
+SONUÇ: 1439/1440 geçti · 1 kalan · 675 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4372 test”
+      ✗ “4382 test”
           beklenen: hepsi geçer
-          olan:     4364/4372 geçti
+          olan:     4374/4382 geçti
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
       ✗ “tehir (süre + sebep) ve bekleme ekranında rüzgâr tahmini” → [true,false,true,true,true,true] (beklenen: Seyhun 2026-11-01: Yayın'da Tehir → süre (30 dk…2 sa, belirsiz) + sebep; plan.ap { from, why }, at yeni saat; apText ekranda; /api/canli forecast (Open-Meteo, yarış yeri) → WindDay grafiği, parkur ölçüm varsa, 'ekranda neler' şeridi; zeminde parkur çizgisi yok)
       ✗ “yayın sayfası sade: ⋯ menüsü, sonuç PDF'i ayrı sayfa; /canli canlı etiketi” → [true,true,true,false,false,true] (beklenen: Seyhun 2026-11-01: Yayın'da az düğme (Başlat; Start ekle + Tehir; Sesle gir), Linki kopyala / Ekranı aç / Sonuç PDF'i / Kayıt listesi / Bugün yarış yok / Günü bitir (bir daha sorar) ⋯ menüsünde; sonuçlar /athletes/races/<id>/sonuclar; /canli listesinde süren yarış Canlı, 20 sn yenilenir; çökme ekranı /canli'de 'Canlı yarışlara dön')
       ✗ “rüzgâr gösterimi: beklenen ve gerçekleşen” → [true,true,true,false,true] (beklenen: Seyhun 2026-11-02: yarış öncesi rüzgâr gösteriminde beklenti (tahmin) ve gerçekleşen (en yakın istasyon) grafiği hava durumundaki gibi; renkli açıklama, ölçülen saatin oku mavi; şimdi bizim ölçüm yoksa istasyonun son saati)
       ✗ “rüzgâr yönü: bekleme ekranında şimdiki rüzgâr, grafikte saat saat derece, ok akış yönünde” → [false,true,true,true,true] (beklenen: Seyhun 2026-11-02: start beklerken şimdiki rüzgâr ve yönü profesyonel (pusula + derece + knot), manuel girildiyse yazsın; ne oldu / ne bekleniyor grafiğinde yönler derece olarak)
       ✗ “bekleme: yarışın adı soluk, günler varken gün sayısı ve beklenen rüzgâr” → [true,true,true,true,true,false] (beklenen: Seyhun 2026-11-02: start bekleme / yarış öncesi sayfasında yarışın adı soluk; yarışa günler varken 'Yarışa 6 gün', yarış günlerinin beklenen rüzgârı (ilk start'tan 4 saat ortalama, sağanak, yön); rüzgârda 'Şimdi' bandı yok)
-      ✗ “örnek yarış gerçek start videosuyla, parkur ekseni” → [true,true,true,true,true,true,false] (beklenen: Seyhun 2026-11-02: örnekte gerçek video (DEMO_VIDEO); start dizisi video 0:00'dan açılırken sayaç 1:04, start'tan 40 sn sonra video kalkar, dönüşler ve genel sıralama; turuncu bayrak adımı; YouTube bağlantısındaki t= başlama saniyesi gömmeye geçer; parkur ekseni sahnede kesik çizgi + açı, sol bilgide 'Eksen 300° KB' ve rüzgârın eksenden farkı)
+      ✗ “videolu yarış öncesi: sol şerit ve turuncu bayrak” → [true,true,true,true,false,true,true] (beklenen: Seyhun 2026-11-02 (videolu/ onay): video varken yarış öncesinde solda bulanık şerit (yarış adı, Yarış öncesi / turuncu bayrakla Start öncesi, süre, rüzgâr, hat avantajı, parkur, program); Yayın › Süre'de Turuncu bayrak, Video'da Sol bilgi anahtarı; sesle 'turuncu bayrak çekildi/indi', 'sol bilgiyi kapat/aç'; şerit açıkken gösterim kartları ve alt şerit yok)
       ✗ “bekleme örnek H, tehir: bayrak + sebep, inişe geri sayım” → [false,true,true,true] (beklenen: Seyhun 2026-11-03: videosuz bekleme solda geri sayım + program + rüzgâr, sağ üstte parkur, vitrin dönmez; tehirde iki ekranda AP bayrağı ve sebep, iniş / uyarı işareti saati yok, süre belliyse 'Tehir inişine' geri sayım; Yayın'da inince 1 dk sonra geri sayım seçilebilir)
 
 2. ANLAMA: temiz cümleler: 121/121
