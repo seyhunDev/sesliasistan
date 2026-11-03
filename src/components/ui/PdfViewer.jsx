@@ -9,7 +9,7 @@ import { Icon } from "./Icon";
 // pdf.js yüklenemezse dosya çerçevede gösterilir. Paylaş düğmesi dosya hazır olunca çalışır (dokunuş taze).
 const PDFJS = "/pdfjs/pdf.min.js";
 let loading = null;
-function loadPdfjs() {
+export function loadPdfjs() {
   if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
   loading ||= new Promise((ok, fail) => {
     const s = document.createElement("script");
