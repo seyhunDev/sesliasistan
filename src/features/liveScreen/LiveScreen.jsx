@@ -3054,6 +3054,33 @@ function GSig({ sig, today }) {
     </div>
   );
 }
+// yarışa katılan sporcular (Seyhun 2026-11-03 19:59): sıradaki/ekrandaki startın grubu (günün grup listesi), yoksa sınıfın kayıt listesi
+function GBoats({ data, e, today }) {
+  const all = data.entries || [];
+  if (!all.length) return null;
+  const gm = groupMap(groupsOn(data.groups, today));
+  const grp = e?.grp || "";
+  const cls = e?.cls || "";
+  const inGrp = grp && Object.keys(gm).length ? all.filter((x) => gm[x.sail] === grp) : [];
+  const rows = (inGrp.length ? inGrp : all.filter((x) => !cls || !x.cls || x.cls === cls)).slice().sort((a, b) => Number(a.sail) - Number(b.sail));
+  if (!rows.length) return null;
+  const n = 8;
+  return (
+    <GCard cls="gr-res gr-boats" tone="t" head="Sporcular" tag={[inGrp.length ? `${grp} grup` : cls, `${rows.length} tekne`].filter(Boolean).join(" · ")}>
+      <ol className="gr-rows">
+        {rows.slice(0, n).map((x) => (
+          <li key={x.sail}>
+            <b>{x.sex === "K" ? "K" : ""}</b>
+            <i>{x.sail}</i>
+            <span>{shortName(x.name) || ""}</span>
+            <em>{shortClub(x.club) || ""}</em>
+          </li>
+        ))}
+      </ol>
+      {rows.length > n ? <div className="gr-more">{`+${rows.length - n} tekne`}</div> : null}
+    </GCard>
+  );
+}
 function GStart({ t }) {
   if (!t) return null;
   const w = t.who;
@@ -3656,44 +3683,39 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     panel = rk === "wind" ? null : rk === "course" && crs ? <GCourse data={data} sel={null} racing={false} /> : <GProg prog={prog} />;
     if (!left && top && have.length) drw = <GDrawer rk={rk} have={have} sec={pc.sec} auto={pc.auto} data={data} now={now} prog={prog} />;
   } else if (!right && ["wait", "between", "ap"].includes(mode) && !vd) right = <GProg prog={prog} />;
-  const tl = !left && !!top;
+  // Rüzgâr · Parkur · Program paneli her durumda solda en altta (Seyhun 2026-11-03 19:59)
+  if (!drw && mode !== "none") {
+    const route = sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait");
+    const have = [hasHours(data) || windAhead(data, now).length >= 2 ? "wind" : "", courseSvg(data, route) ? "course" : "", prog.length ? "prog" : ""].filter(Boolean);
+    if (have.length) {
+      const pc = cleanCourseShow(sh);
+      rk = preStep({ show: sh, now, have }) || have[0];
+      drw = <GDrawer rk={rk} have={have} sec={pc.sec} auto={pc.auto} data={data} now={now} prog={prog} />;
+    }
+  }
   const sigUp = !!plan?.sig && sigOnCard(signalOf(plan.sig.id));
+  // sol sütun (Seyhun 2026-11-03 19:59): üstte start, altında sporcular / şamandıra sırası / sonuç, en altta rüzgâr · parkur · program; dar
+  const mid = left || <GBoats data={data} e={entry?.grp ? entry : mode === "race" && sel ? { grp: sel.grp, cls: sel.cls } : e} today={today} />;
   return (
     <div className="gr">
-      {left ? <div className="gr-l">{left}</div> : null}
-      {right && !tl ? (
-        <div className="gr-r" key={rk === "wind" ? "course" : rk}>
-          {right}
-          {sigUp ? <GSig sig={plan.sig} today={today} /> : null}
-        </div>
-      ) : null}
-      {/* start kartı sağ üstte (Seyhun 2026-11-03 19:12; sağ kart varsa altında); sol üstte sonuç varken (yarışta) eskisi gibi rüzgârın üstünde */}
-      {tl || (sigUp && !right) ? (
-        <div className="gr-tl">
-          {tl ? <GStart t={top} /> : null}
-          {right && tl ? (
-            <div className="gr-tlr" key={rk === "wind" ? "course" : rk}>
-              {right}
-            </div>
-          ) : null}
-          {sigUp ? <GSig sig={plan.sig} today={today} /> : null}
-        </div>
-      ) : null}
-      <div className="gr-lb">
-        <div className="gr-col">
-          {tl ? null : <GStart t={top} />}
-          <GClock c={clock} />
-          {drw ? drw : panel ? (
-            <div className="gr-pn" key={rk}>
-              {panel}
-            </div>
-          ) : (
+      <div className="gr-lc">
+        <GStart t={top} />
+        <GClock c={clock} />
+        {mid ? <div className="gr-mid">{mid}</div> : null}
+        <div className="gr-lcb">
+          {drw ? drw : (
             <div className="gr-pn" key={preOn ? "wind" : "w"}>
               <GWind data={data} now={now} mode={mode} today={today} can={wCan} open={wOpen} />
             </div>
           )}
         </div>
       </div>
+      {right || sigUp ? (
+        <div className="gr-rc" key={rk === "wind" ? "course" : rk}>
+          {right}
+          {sigUp ? <GSig sig={plan.sig} today={today} /> : null}
+        </div>
+      ) : null}
       {/* geri düğmesi yok (Seyhun 2026-11-03 19:12 "geri tuşunu kaldıralım") */}
       {/* sağ altta yarışın adı | Velora işareti */}
       <div className="gr-name">
