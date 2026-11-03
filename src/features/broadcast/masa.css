@@ -27,7 +27,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa input, .masa textarea { color: var(--fg); }
 
 /* Sekmeler: tek kartta beş sekme, her birinin altında kısa durum; seçili pembe. Kaydırınca üstte kalır */
-.masa-tabs { position: sticky; top: calc(env(safe-area-inset-top) + 0.5rem); z-index: 20; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 5px; border-radius: 1.125rem; background: var(--card); border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); }
+.masa-tabs { position: sticky; top: calc(env(safe-area-inset-top) + 0.5rem); z-index: 20; display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; padding: 5px; border-radius: 1.125rem; background: var(--card); border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); }
 .masa-tabs button { min-width: 0; border-radius: 0.8rem; padding: 0.5rem 0.125rem 0.45rem; text-align: center; transition: background-color 0.2s ease; }
 .masa-tabs b { display: block; font-size: 0.8125rem; font-weight: 700; white-space: nowrap; }
 .masa-tabs small { display: flex; align-items: center; justify-content: center; gap: 0.25rem; margin-top: 0.125rem; font-size: 0.656rem; font-weight: 600; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

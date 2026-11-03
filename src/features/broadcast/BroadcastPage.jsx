@@ -17,6 +17,7 @@ import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy,
 import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { NearCams } from "./NearCams";
+import { AthletesTab } from "./AthletesTab";
 import { audio, chooseDur, ownHere, raceCancel, raceFinish, raceStart, raceVoid, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { ResetSheet } from "@/features/raceMedia/ResetSheet";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
@@ -653,7 +654,8 @@ export function BroadcastPage({ orgId, id }) {
     ["program", "Program", `${days.length} gün`, false],
     ["video", "Video", onScreen ? (onScreen.pause ? "Ara" : "Ekranda") : "Boş", !!onScreen && !onScreen.pause],
     ["parkur", "Parkur", (CARD_TYPES[selCard(course).type] || "").split(" ")[0], false],
-    ["donus", "Dönüşler", entry?.route?.length ? `${legsDone}/${entry.route.length}` : entries.length ? `${entries.length} tekne` : "—", false],
+    ["sporcu", "Sporcu", entries.length ? `${entries.length}` : "—", false],
+    ["donus", "Dönüş", entry?.route?.length ? `${legsDone}/${entry.route.length}` : entries.length ? `${entries.length} tekne` : "—", false],
   ];
   const monRec = onScreen?.kind === "rec" ? live.media.find((m) => m.id === onScreen.mid) : null;
   const pDay = days.includes(openDay) ? openDay : days.includes(planDay) ? planDay : days[0];
@@ -1375,6 +1377,18 @@ export function BroadcastPage({ orgId, id }) {
             Kaydet
           </Button>
         </MasaBar>
+          </>
+        ) : null}
+        {!needSetup && tab === "sporcu" ? (
+          <>
+            {/* Sporcu (Seyhun 2026-11-03): gruplar, sporcu listesi, gün gün renk listesi, sonuçlar; Dönüşler bu listeyi kullanır */}
+            <AthletesTab orgId={orgId} raceId={id} plan={plan} onSets={(sets) => changePlan({ sets, cls: sets[0]?.cls || "", grps: sets[0]?.grps || [] })} entries={entries} groups={groups} today={today} days={days} />
+            <MasaBar>
+              <Link href={`/athletes/races/${id}/sonuclar`} className="flex h-12 flex-1 items-center justify-center rounded-[0.875rem] border border-line bg-[var(--chip)] text-[0.9375rem] font-semibold active:scale-[0.98]">
+                Sonuç yükle
+              </Link>
+              <Button onClick={() => setList(true)}>Liste yükle</Button>
+            </MasaBar>
           </>
         ) : null}
         {!needSetup && tab === "donus" ? (
