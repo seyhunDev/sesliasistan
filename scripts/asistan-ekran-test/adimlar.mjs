@@ -1177,13 +1177,15 @@ async function rainStrip(h) {
     const lines = await card.evaluate((el) => [...el.querySelectorAll(":scope > span.flex-1 > *")].map((x) => { const st = getComputedStyle(x); const lh = parseFloat(st.lineHeight) || parseFloat(st.fontSize) * 1.3; return Math.round(x.getBoundingClientRect().height / lh); }));
     return [lines.length === 2 && lines.every((n) => n <= 1), `satırlar ${lines.join(",")}`];
   });
-  await check("Ana sayfa", "özellik kartları", "en altta Özet (Mesajlar) yok; İngilizce kartında sıradaki kelime ve Çalış · Dinle · Biliyorum", async () => {
-    const en = page.locator("section[aria-label='İngilizce']");
-    const ok = await waitFor(() => en.count(), 15000);
-    const btns = ok ? await en.getByRole("button").allTextContents() : [];
-    const ozet = await page.locator("#home-sum", { hasText: /^ÖZET$/ }).count();
-    if (process.env.WX_SHOT) await page.waitForTimeout(1500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-anasayfa.png`, fullPage: true }));
-    return [ok > 0 && ["Çalış", "Dinle", "Biliyorum"].every((b) => btns.some((x) => x.includes(b))) && !ozet, `kart ${ok} · düğmeler ${btns.join(",")} · özet ${ozet}`];
+  // Seyhun 2026-11-03 "A · İyice sade": iş düğmelerinin altında yalnız notlar; İngilizce, Görevler, Medya, Kulüp, Yemek · Market · Giyim, Deniz trafiği yok
+  await check("Ana sayfa", "sade ana sayfa", "İngilizce/Görevler/Medya kartları, Yemek · Market · Giyim ve Deniz trafiği · Kameralar düğmeleri yok", async () => {
+    await page.locator("nav[aria-label='Günler']").waitFor({ timeout: 15000 });
+    await page.waitForTimeout(2500);
+    const cards = await page.locator("section[aria-label='İngilizce'], section[aria-label='Görevler'], section[aria-label='Medya']").count();
+    const shop = await page.getByText(/^(Yemek|Giyim)$/).count();
+    const links = await page.locator("main a[href='/sea'], main a[href='/cams']").count();
+    if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-anasayfa.png`, fullPage: true });
+    return [cards === 0 && shop === 0 && links === 0, `kart ${cards} · alışveriş ${shop} · deniz/kamera ${links}`];
   });
   // Seyhun 2026-11-01 "Tümü penceresi gruplara ayrılsın, tıklayınca açılsın" ("A · Açılır gruplar"): 6 grup kapalı, dokununca o grup açılır, öbürü kapanır; tek Yarışlar
   await check("Ana sayfa", "Tümü grupları", "Tümü penceresinde gruplar kapalı başlar, dokununca tek grup açılır, Yarışlar bir kez", async () => {
