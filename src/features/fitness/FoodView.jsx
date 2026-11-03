@@ -4,14 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
-import { card } from "@/components/ui/Page";
+import { ListHead, RowList } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage } from "@/lib/image";
 import { todayStr } from "@/lib/utils/format";
 import { GLASS_ML, SLOTS, cleanWeights, dayOf, frequent, monthKey, slotOf, targets, totals, weekKcal, weightTrend } from "@/lib/fitness/food";
 import { FOOD_SAVED, addMeals, askFood, dropMeal, loadMonths, saveWeight, setWater, updateMeal } from "./foodData";
 
-// Fitness › Beslenme: günün kalorisi ve makroları (koyu kart), su (bardak bardak), öğünler, kilo (grafik), bu hafta.
+// Fitness › Beslenme (yeni tasarım, 2026-11-03: koyu fitness zemininde, bölümler ListHead ile): günün kalorisi ve makroları, su (bardak bardak), öğünler, kilo (grafik), bu hafta.
 // Yemek fotoğrafla ya da elle eklenir (yapay zeka kaloriyi tahmin eder, kullanıcı düzeltir); sesle asistana söylenir
 // ("öğlen tavuk pilav ve ayran içtim", "2 bardak su içtim", "kilom 82"). Okuma: ay belgesi (son 7 gün iki aya yayılırsa 2).
 
@@ -25,12 +25,15 @@ const dayTitle = (d, today) =>
 const fmt = (n) => Math.round(n).toLocaleString("tr-TR");
 const nowTime = () => new Date().toTimeString().slice(0, 5);
 
+// Bölüm (yeni tasarım, 2026-11-03): başlık ListHead ile listenin dışında, sağında kısa değer
 function Section({ title, right, children }) {
   return (
-    <section className="mt-6">
-      <div className="mb-2 flex items-center justify-between px-1">
-        <h2 className="text-[1.0625rem] font-bold">{title}</h2>
-        {right}
+    <section className="mt-7">
+      <div className="flex items-start justify-between gap-3">
+        <span className="min-w-0 flex-1">
+          <ListHead title={title} />
+        </span>
+        {right && <span className="-mt-0.5 shrink-0 px-1">{right}</span>}
       </div>
       {children}
     </section>
@@ -84,13 +87,13 @@ export function FoodView({ orgId, uid, fit = {}, fitW = [], trainDays = 3, onBod
       <WaterCard n={day.water} goal={tg?.water || 8} onSet={water} />
 
       <Section title="Öğünler" right={<span className="text-[0.8125rem] text-mut">{day.meals.length ? `${fmt(tot.kcal)} kcal` : ""}</span>}>
-        <div className={`${card} divide-y divide-line`}>
+        <RowList>
           {SLOTS.map(([k, name]) => {
             const list = day.meals.filter((m) => m.slot === k);
             const kc = totals(list).kcal;
             return (
-              <div key={k} className="px-4 py-3">
-                <div className="flex items-center gap-3">
+              <div key={k} className="border-t border-line py-2.5 first:border-t-0">
+                <div className="flex min-h-[2.25rem] items-center gap-3">
                   <span className="min-w-0 flex-1">
                     <b className="block text-[0.9375rem] font-semibold">{name}</b>
                     {!list.length && <small className="text-[0.8125rem] text-mut">Eklenmedi</small>}
@@ -101,7 +104,7 @@ export function FoodView({ orgId, uid, fit = {}, fitW = [], trainDays = 3, onBod
                   </button>
                 </div>
                 {list.map((m) => (
-                  <button key={m.id} type="button" onClick={() => setEdit(m)} className="mt-2 flex w-full items-center gap-3 rounded-xl bg-bg px-3 py-2.5 text-left">
+                  <button key={m.id} type="button" onClick={() => setEdit(m)} data-press="row" className="mt-1.5 flex w-full items-center gap-3 rounded-xl bg-white/[.06] px-3 py-2.5 text-left">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[0.9375rem]">{m.name}</span>
                       <small className="block truncate text-[0.75rem] text-mut">{[m.qty, m.p ? `P ${Math.round(m.p)} g` : ""].filter(Boolean).join(" · ")}</small>
@@ -112,8 +115,7 @@ export function FoodView({ orgId, uid, fit = {}, fitW = [], trainDays = 3, onBod
               </div>
             );
           })}
-        </div>
-        <p className="mt-2 px-1 text-[0.8125rem] leading-snug text-mut">Asistana söyle: “öğlen tavuk pilav ve ayran içtim”.</p>
+        </RowList>
       </Section>
 
       <WeightCard list={weights} trend={trend} onAdd={() => setWOpen(true)} />
@@ -149,20 +151,20 @@ export function FoodView({ orgId, uid, fit = {}, fitW = [], trainDays = 3, onBod
   );
 }
 
-// Koyu kart: gün seçimi, kalori halkası, kalan, makrolar
+// Üst (yeni tasarım, 2026-11-03): kart yok, doğrudan koyu zeminde gün seçimi, kalori halkası, kalan, makrolar
 function Hero({ date, today, setDate, tot, tg, onBody }) {
   const r = 52;
   const c = 2 * Math.PI * r;
   const k = tg ? Math.min(tot.kcal / tg.kcal, 1) : 0;
   const over = tg && tot.kcal > tg.kcal;
   return (
-    <section className="mt-2 overflow-hidden rounded-[1.625rem] bg-deep p-5 text-white">
+    <section className="mt-4 text-white">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={() => setDate(addDay(date, -1))} aria-label="Önceki gün" className="grid size-9 place-items-center rounded-full bg-white/10">
+        <button type="button" onClick={() => setDate(addDay(date, -1))} aria-label="Önceki gün" data-press className="btn btn-round btn-sm">
           <Icon name="back" className="size-4" />
         </button>
-        <b className="text-[0.9375rem] font-semibold">{dayTitle(date, today)}</b>
-        <button type="button" disabled={date >= today} onClick={() => setDate(addDay(date, 1))} aria-label="Sonraki gün" className="grid size-9 place-items-center rounded-full bg-white/10 disabled:opacity-30">
+        <b className="min-w-0 truncate text-[0.9375rem] font-semibold">{dayTitle(date, today)}</b>
+        <button type="button" disabled={date >= today} onClick={() => setDate(addDay(date, 1))} aria-label="Sonraki gün" data-press className="btn btn-round btn-sm disabled:opacity-30">
           <Icon name="chev" className="size-4" />
         </button>
       </div>
@@ -185,10 +187,8 @@ function Hero({ date, today, setDate, tot, tg, onBody }) {
             </>
           ) : (
             <button type="button" onClick={onBody} className="text-left">
-              <b className="block text-[1rem] font-semibold leading-snug">Hedefin için boy ve kilonu ekle</b>
-              <small className="mt-1 flex items-center gap-1 text-[0.8125rem] text-white/60">
-                Ekle <Icon name="chev" className="size-3.5" />
-              </small>
+              <b className="block text-[1rem] font-semibold leading-snug">Boy ve kilo yok</b>
+              <span className="ck-glass mt-2 inline-flex h-9 items-center rounded-xl px-3.5 text-[0.875rem] font-semibold">Ekle</span>
             </button>
           )}
         </span>
@@ -223,7 +223,7 @@ function WaterCard({ n, goal, onSet }) {
   const litre = ((n * GLASS_ML) / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
   return (
     <Section title="Su" right={<span className="text-[0.8125rem] text-mut tabular-nums">{n}/{goal} bardak · {litre} L</span>}>
-      <div className={`${card} p-4`}>
+      <div className="rounded-[1.25rem] border border-line bg-card p-4">
         <div className="flex flex-wrap gap-1.5">
           {Array.from({ length: shown }, (_, i) => (
             <button key={i} type="button" onClick={() => onSet(i + 1 === n ? i : i + 1)} aria-label={`${i + 1} bardak`} className="active:scale-90">
@@ -258,7 +258,7 @@ function WeightCard({ list, trend, onAdd }) {
   const pts = list.slice(-30);
   return (
     <Section title="Kilo" right={<button type="button" onClick={onAdd} data-press className="btn btn-text btn-sm text-acc">Kilo yaz</button>}>
-      <div className={`${card} p-4`}>
+      <div className="rounded-[1.25rem] border border-line bg-card p-4">
         {trend ? (
           <>
             <div className="flex items-end gap-3">
@@ -276,14 +276,9 @@ function WeightCard({ list, trend, onAdd }) {
             <Line pts={pts} />
           </>
         ) : (
-          <button type="button" onClick={onAdd} className="flex w-full items-center gap-3 text-left">
-            <span className="grid size-10 place-items-center rounded-full bg-acc/10 text-acc">
-              <Icon name="trend" className="size-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <b className="block text-[0.9375rem] font-semibold">Kilonu yaz, değişimi gör</b>
-              <small className="block text-[0.8125rem] text-mut">Asistana da söyleyebilirsin: “kilom 82”.</small>
-            </span>
+          <button type="button" onClick={onAdd} data-press="row" className="flex w-full items-center gap-3 text-left">
+            <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">Kilo yok</b>
+            <Icon name="chev" className="size-4 shrink-0 text-mut" />
           </button>
         )}
       </div>
@@ -291,7 +286,7 @@ function WeightCard({ list, trend, onAdd }) {
   );
 }
 function Line({ pts }) {
-  if (pts.length < 2) return <p className="mt-3 text-[0.8125rem] text-mut">Grafik için birkaç gün daha kilo yaz.</p>;
+  if (pts.length < 2) return null;
   const kg = pts.map((p) => p.kg);
   const lo = Math.min(...kg) - 0.5;
   const hi = Math.max(...kg) + 0.5;
@@ -315,7 +310,7 @@ function WeekBars({ week, goal, today }) {
   const avg = Math.round(days.reduce((a, d) => a + d.kcal, 0) / days.length);
   return (
     <Section title="Bu hafta" right={<span className="text-[0.8125rem] text-mut">ortalama {fmt(avg)} kcal</span>}>
-      <div className={`${card} p-4`}>
+      <div className="rounded-[1.25rem] border border-line bg-card p-4">
         <div className="relative flex h-28 items-end gap-2">
           {goal > 0 && <span className="absolute inset-x-0 border-t border-dashed border-acc/50" style={{ bottom: `${(goal / top) * 100}%` }} />}
           {week.map((d) => (

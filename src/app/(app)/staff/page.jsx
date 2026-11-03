@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
+import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { useData } from "@/features/data/DataProvider";
 import { PersonSheet } from "@/features/people/PersonSheet";
 import { seenText } from "@/features/staff/StaffCard";
 import { PEOPLE_GROUPS, kindOf, missingOf } from "@/lib/kinds";
 import { initials } from "@/lib/utils/format";
 
-// Kişiler (yalnızca ana hesap): Çalışanlar, Aile, Sporcular ayrı sayfalar. Her kutuda kişi/hesap sayısı, çevrimiçi, eksik bilgi.
+// Kişiler (yalnızca ana hesap): Çalışanlar, Aile, Sporcular ayrı sayfalar. Her satırda kişi/hesap sayısı, çevrimiçi, eksik bilgi.
+// Yeni tasarım (2026-11-03): lacivert üstte ad, kişi · hesap sayısı ve "+ Kişi"; altta Gruplar listesi.
 export default function PeopleHub() {
   const { isStaff, members } = useData();
   const router = useRouter();
@@ -25,59 +26,52 @@ export default function PeopleHub() {
   const accounts = members.filter((m) => m.account !== false).length;
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(6rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Kişiler" sub={members.length ? `${members.length} kişi · ${accounts} hesap` : "Henüz kişi yok"} />
-      <div className="mt-2 space-y-3">
-        {groups.map(([g, def]) => {
-          const list = members.filter((m) => def.kinds.includes(kindOf(m)));
-          const acc = list.filter((m) => m.account !== false);
-          const online = acc.filter((m) => seenText(m.lastSeen) === "Çevrimiçi").length;
-          const miss = list.filter((m) => missingOf(m).length).length;
-          return (
-            <Link
-              key={g}
-              href={`/people/${g}`}
-              className="flex items-center gap-3.5 rounded-[1.25rem] bg-card p-4 shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.25)] transition active:scale-[.99]"
-            >
-              <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-deep text-white">
-                <Icon name={def.icon} className="size-6" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex items-baseline gap-2">
-                  <b className="text-[1.0625rem] font-semibold">{def.title}</b>
-                  <span className="text-[0.9375rem] font-semibold tabular-nums text-mut">{list.length}</span>
-                </span>
-                <small className="block truncate text-[0.8125rem] text-mut">
-                  {list.length ? `${acc.length} hesap${online ? ` · ${online} çevrimiçi` : ""}` : "Henüz kimse yok"}
-                </small>
-                {miss > 0 && <small className="block text-[0.75rem] font-medium text-amber-700">{miss} kişide eksik bilgi</small>}
-              </span>
-              {list.length > 0 && (
-                <span className="flex shrink-0 items-center">
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Kişiler">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Kişiler</h1>
+            <p className="truncate text-[0.8125rem] text-white/65">{members.length ? `${members.length} kişi · ${accounts} hesap` : "Henüz kişi yok"}</p>
+          </div>
+          <button type="button" onClick={() => setAdd(true)} data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+            <Icon name="plus" className="size-4" />
+            Kişi
+          </button>
+        </header>
+      </section>
+
+      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        <section>
+          <ListHead title="Gruplar" count={groups.length} />
+          <RowList>
+            {groups.map(([g, def]) => {
+              const list = members.filter((m) => def.kinds.includes(kindOf(m)));
+              const acc = list.filter((m) => m.account !== false);
+              const online = acc.filter((m) => seenText(m.lastSeen) === "Çevrimiçi").length;
+              const miss = list.filter((m) => missingOf(m).length).length;
+              const sub = list.length ? (
+                <>
+                  {`${acc.length} hesap${online ? ` · ${online} çevrimiçi` : ""}`}
+                  {miss > 0 && <span className="text-warn">{` · ${miss} eksik bilgi`}</span>}
+                </>
+              ) : (
+                "Kimse yok"
+              );
+              // Solda ilk üç kişinin baş harfleri üst üste
+              const lead = (
+                <span className="flex w-[3.25rem] shrink-0 items-center">
                   {list.slice(0, 3).map((m, i) => (
-                    <span key={m.uid} className={`grid size-8 place-items-center rounded-full bg-card ring-2 ring-card ${i ? "-ml-2" : ""}`} style={{ zIndex: 3 - i }}>
-                      <span className="grid size-full place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-bold text-acc">{initials(m.name)}</span>
+                    <span key={m.uid} className={`grid size-8 place-items-center rounded-full bg-card ring-2 ring-card ${i ? "-ml-3" : ""}`} style={{ zIndex: 3 - i }}>
+                      <span className="grid size-full place-items-center rounded-full bg-accbg text-[0.6875rem] font-bold text-acc">{initials(m.name)}</span>
                     </span>
                   ))}
                 </span>
-              )}
-              <Icon name="chev" className="size-4 shrink-0 text-mut" />
-            </Link>
-          );
-        })}
-      </div>
-      <p className="mt-4 px-1 text-[0.8125rem] leading-snug text-mut">
-        Her sayfada kişinin giriş bilgisi ve yanında <b className="font-semibold">Gönder</b> var: yeni şifre oluşturup giriş bilgilerini WhatsApp ile iletir.
-      </p>
-
-      <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-10 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
-        <button
-          type="button"
-          onClick={() => setAdd(true)}
-          className="mx-auto flex h-12 w-full max-w-[26rem] items-center justify-center gap-2 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(31,90,75,.8)] active:scale-[.98]"
-        >
-          <Icon name="plus" className="size-5" /> Kişi ekle
-        </button>
+              );
+              return <Row key={g} href={`/people/${g}`} lead={lead} title={def.title} sub={sub} right={list.length} />;
+            })}
+          </RowList>
+        </section>
       </div>
       {add && <PersonSheet key="new" open onClose={() => setAdd(false)} person={null} />}
     </main>

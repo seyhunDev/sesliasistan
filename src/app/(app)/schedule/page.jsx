@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Empty, Hero, HeroLabel, Label, card } from "@/components/ui/Page";
+import { BackButton } from "@/components/ui/BackButton";
+import { ListHead, Row, RowList } from "@/components/ui/Row";
+import { Empty } from "@/components/ui/Page";
 import { useNow } from "@/hooks/useNow";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
@@ -24,6 +25,8 @@ const span = (l) => (l.end ? `${l.start}–${l.end}` : l.start);
 
 // Ders programı: haftalık tekrarlanan dersler. Ekleme: tek tek, fotoğrafla ya da ana asistana söyleyerek ("salı 13:00 fizik B-204");
 // yapay zeka önizler, sen kaydedersin. Sayfanın kendi dinleyicisi yok: söylenen ana asistana gider (AssistantSheet `runSchedule`).
+// Yeni tasarım (2026-11-03): lacivert üstte ad, ⋯ (Fotoğraftan, Tüm programı sil), "+ Ders", bugünün şu anki/sıradaki dersi büyük ve Pzt–Paz gün düğmeleri;
+// altta seçili günün dersleri tek liste.
 export default function SchedulePage() {
   const { lessons, saveLessons, updateLesson, clearLessons, removeWithUndo, myUid } = useData();
   const toast = useToast();
@@ -32,6 +35,7 @@ export default function SchedulePage() {
   const [preview, setPreview] = useState(null); // { lessons, message } | null
   const [busy, setBusy] = useState(""); // "photo" | "text" | ""
   const [askClear, setAskClear] = useState(false); // "Tüm programı sil" onayı
+  const [more, setMore] = useState(false); // ⋯ penceresi
   const fileRef = useRef(null);
   const now = useNow();
   const mine = lessons.filter((l) => l.createdByUid === myUid);
@@ -85,7 +89,6 @@ export default function SchedulePage() {
   const todays = lessons.filter((l) => l.day === today).sort(byTime);
   const cur = todays.find((l) => l.start <= nowHM && (l.end || l.start) > nowHM);
   const nxt = todays.find((l) => l.start > nowHM);
-  const max = Math.max(1, ...counts);
   const live = (l) => day === today && l.start <= nowHM && (l.end || l.start) > nowHM;
   useDock({
     create: [
@@ -95,28 +98,47 @@ export default function SchedulePage() {
     ],
   });
 
+  const show = cur || nxt;
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Ders programı" sub={lessons.length ? `Haftada ${lessons.length} ders` : "Henüz ders yok"} />
       <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPhoto} />
-
-      {/* Üst: bugün şu an / sıradaki ders, altında haftanın günleri (ders yoğunluğu çubuğu; dokununca o gün) */}
-      <Hero className="mt-2">
-        <HeroLabel>BUGÜN · {DAYS[today - 1].toLocaleUpperCase("tr-TR")}</HeroLabel>
-        {cur || nxt ? (
-          <button type="button" onClick={() => setEdit(cur || nxt)} className="mt-1.5 flex w-full items-center gap-3 text-left">
-            <span className="min-w-0 flex-1">
-              <b className="block truncate text-[1.375rem] font-semibold leading-tight tracking-tight">{(cur || nxt).title}</b>
-              <small className="block truncate text-[0.8125rem] text-white/80">{[span(cur || nxt), (cur || nxt).place, (cur || nxt).teacher].filter(Boolean).join(" · ")}</small>
-            </span>
-            <span className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-[0.75rem] font-semibold">{cur ? "Şu an" : "Sıradaki"}</span>
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Ders programı">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Ders programı</h1>
+            <p className="truncate text-[0.8125rem] text-white/65">{lessons.length ? `Haftada ${lessons.length} ders` : "Ders yok"}</p>
+          </div>
+          <button type="button" onClick={() => setMore(true)} aria-label="Diğer" data-press className="btn btn-round size-10">
+            <Icon name="more" className="size-5" />
           </button>
-        ) : (
-          <p className="mt-1.5 text-[0.9375rem] text-white/85">{todays.length ? "Bugünün dersleri bitti." : "Bugün ders yok."}</p>
-        )}
-        <div className="mt-4 grid grid-cols-7 gap-1">
+          <button type="button" onClick={newLesson} data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+            <Icon name="plus" className="size-4" />
+            Ders
+          </button>
+        </header>
+
+        {/* Bugün: şu anki ya da sıradaki ders (dokununca açılır) */}
+        <div className="mt-5">
+          <small className="text-[0.75rem] font-bold tracking-[.06em] text-white/60">{`BUGÜN · ${SHORT[today - 1].toLocaleUpperCase("tr-TR")}`}</small>
+          {show ? (
+            <button type="button" onClick={() => setEdit(show)} className="mt-0.5 flex w-full items-center gap-3 text-left active:opacity-80">
+              <span className="min-w-0 flex-1">
+                <b className="block truncate text-[1.625rem] font-bold leading-tight tracking-[-.02em]">{show.title}</b>
+                <small className="block truncate text-[0.875rem] text-white/75">{[span(show), show.place, show.teacher].filter(Boolean).join(" · ")}</small>
+              </span>
+              <span className="shrink-0 rounded-full bg-white px-2 py-px text-[0.6875rem] font-extrabold text-deep">{cur ? "ŞU AN" : "SIRADAKİ"}</span>
+            </button>
+          ) : (
+            <b className="mt-0.5 block truncate text-[1.625rem] font-bold leading-tight tracking-[-.02em]">{todays.length ? "Dersler bitti" : "Ders yok"}</b>
+          )}
+        </div>
+
+        {/* Pzt–Paz: dokununca o gün; altında o günün ders sayısı */}
+        <div className="mt-4 grid grid-cols-7 gap-1.5">
           {SHORT.map((s, i) => {
             const on = day === i + 1;
+            const isToday = i + 1 === today;
             return (
               <button
                 key={s}
@@ -124,67 +146,69 @@ export default function SchedulePage() {
                 onClick={() => setDay(i + 1)}
                 aria-pressed={on}
                 aria-label={`${DAYS[i]}: ${counts[i]} ders`}
-                className={`flex flex-col items-center rounded-2xl pb-2 pt-1.5 transition active:scale-95 ${on ? "bg-white text-deep" : "bg-white/10"}`}
+                data-press
+                className={`raised flex flex-col items-center gap-0.5 rounded-xl border py-2 ${on ? (isToday ? "act-main" : "ck-sel") : isToday ? "ck-tout" : ""}`}
               >
-                <span className="flex h-7 items-end">
-                  <i className={`block w-2 rounded-full ${on ? "bg-deep" : "bg-white/70"}`} style={{ height: `${counts[i] ? Math.max(5, (counts[i] / max) * 28) : 3}px` }} />
-                </span>
-                <span className={`mt-1 text-[0.75rem] font-semibold ${on ? "" : i + 1 === today ? "text-white" : "text-white/75"}`}>{s}</span>
-                <span className={`text-[0.625rem] tabular-nums ${on ? "text-deep/70" : "text-white/60"}`}>{counts[i] || "–"}</span>
+                <span className="text-[0.75rem] font-semibold">{s}</span>
+                <span className="text-[0.9375rem] font-bold tabular-nums">{counts[i] || "–"}</span>
               </button>
             );
           })}
         </div>
-      </Hero>
+      </section>
 
-      {/* O günün dersleri */}
-      <Label right={list.length ? `${list.length} ders` : ""}>
-        <span className={day === today ? "text-acc" : ""}>
-          {DAYS[day - 1].toLocaleUpperCase("tr-TR")}
-          {day === today ? " · BUGÜN" : ""}
-        </span>
-      </Label>
-      {busy ? (
-        <div className={`${card} flex items-center gap-3 px-4 py-5 text-[0.875rem] text-mut`}>
-          <Loader size="sm" />
-          {busy === "photo" ? "Fotoğraftaki program okunuyor…" : "Ders programı hazırlanıyor…"}
-        </div>
-      ) : list.length ? (
-        <ul className={`${card} divide-y divide-line overflow-hidden`}>
-          {list.map((l) => (
-            <li key={l.id}>
-              <button onClick={() => setEdit(l)} className={`flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg ${live(l) ? "bg-acc/5" : ""}`}>
-                <span className="w-14 shrink-0 whitespace-nowrap">
-                  <b className="block text-[0.9375rem] font-bold tabular-nums">{l.start}</b>
-                  <small className="block text-[0.6875rem] tabular-nums text-mut">{l.end || ""}</small>
-                </span>
-                <span className={`h-8 w-[3px] shrink-0 rounded-full ${live(l) ? "bg-acc" : "bg-line"}`} />
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[0.9375rem] font-semibold">{l.title}</b>
-                  {(l.place || l.teacher) && <small className="block truncate text-[0.75rem] text-mut">{[l.place, l.teacher].filter(Boolean).join(" · ")}</small>}
-                </span>
-                {live(l) ? <span className="shrink-0 rounded-full bg-acc/10 px-2 py-0.5 text-[0.6875rem] font-semibold text-acc">şu an</span> : <Icon name="chev" className="size-4 shrink-0 text-mut/70" />}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : lessons.length ? (
-        <Empty icon="book" title="Bu gün ders yok" />
-      ) : (
-        /* Hiç ders yok: iki yol (sesle ekleme ana asistanla, sayfada ayrı giriş yok) */
-        <div className="space-y-2">
-          <Way icon="camera" title="Fotoğrafını çek" sub="Ders programının fotoğrafından çıkarırım" onClick={pickPhoto} />
-          <Way icon="plus" title="Tek tek ekle" sub="Ders, gün ve saatleri kendin gir" onClick={newLesson} />
-        </div>
-      )}
+      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        {busy ? (
+          <RowList>
+            <div className="flex min-h-[3.5rem] items-center gap-3 py-2.5 text-[0.875rem] font-semibold text-mut">
+              <Loader size="sm" />
+              {busy === "photo" ? "Fotoğraf okunuyor…" : "Program hazırlanıyor…"}
+            </div>
+          </RowList>
+        ) : list.length ? (
+          <section>
+            <ListHead title={`${DAYS[day - 1]}${day === today ? " · Bugün" : ""}`} count={list.length} />
+            <RowList>
+              {list.map((l) => (
+                <button key={l.id} type="button" onClick={() => setEdit(l)} data-press="row" className="flex min-h-[3.5rem] w-full items-center gap-3 border-t border-line py-2.5 text-left first:border-t-0">
+                  <span className="w-12 shrink-0 whitespace-nowrap">
+                    <b className={`block text-[0.9375rem] font-bold tabular-nums ${live(l) ? "text-acc" : ""}`}>{l.start}</b>
+                    <small className="block text-[0.75rem] tabular-nums text-mut">{l.end || ""}</small>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.9375rem] font-semibold">{l.title}</b>
+                    {(l.place || l.teacher) && <small className="block truncate text-[0.8125rem] text-mut">{[l.place, l.teacher].filter(Boolean).join(" · ")}</small>}
+                  </span>
+                  {live(l) ? <span className="shrink-0 rounded-full bg-accbg px-2 py-0.5 text-[0.75rem] font-semibold text-acc">Şu an</span> : <Icon name="chev" className="size-4 shrink-0 text-mut" />}
+                </button>
+              ))}
+            </RowList>
+          </section>
+        ) : lessons.length ? (
+          <Empty icon="book" title={`${DAYS[day - 1]} ders yok`} />
+        ) : (
+          /* Hiç ders yok: iki yol (sesle ekleme ana asistanla, sayfada ayrı giriş yok) */
+          <section>
+            <ListHead title="Program ekle" />
+            <RowList>
+              <Row onClick={pickPhoto} title="Fotoğraftan" />
+              <Row onClick={newLesson} title="Tek tek ekle" />
+            </RowList>
+          </section>
+        )}
+      </div>
 
-      {mine.length > 0 && !busy && (
-        <button type="button" onClick={() => setAskClear(true)} data-press className="btn btn-danger btn-sm mx-auto mt-6 flex">
-          <Icon name="trash" className="size-4" />
-          Tüm programı sil
-        </button>
-      )}
-
+      {/* ⋯: seyrek işler */}
+      <Sheet open={more} onClose={() => setMore(false)} title="Ders programı">
+        <RowList>
+          <Row onClick={() => (setMore(false), pickPhoto())} title="Fotoğraftan ekle" />
+        </RowList>
+        {mine.length > 0 && !busy && (
+          <button type="button" onClick={() => (setMore(false), setAskClear(true))} data-press className="btn btn-danger mt-3 w-full">
+            Tüm programı sil
+          </button>
+        )}
+      </Sheet>
 
       {edit && (
         <LessonSheet
@@ -241,21 +265,6 @@ export default function SchedulePage() {
         )}
       </Screen>
     </main>
-  );
-}
-
-// Boş programda ekleme yollarından biri
-function Way({ icon, title, sub, onClick }) {
-  return (
-    <button onClick={onClick} className={`${card} flex w-full items-center gap-3 px-4 py-3.5 text-left active:scale-[.99]`}>
-      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc">
-        <Icon name={icon} className="size-5" />
-      </span>
-      <span className="min-w-0">
-        <b className="block text-[0.9375rem] font-semibold">{title}</b>
-        <small className="block truncate text-[0.8125rem] text-mut">{sub}</small>
-      </span>
-    </button>
   );
 }
 
