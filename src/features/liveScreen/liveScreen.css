@@ -169,7 +169,7 @@ button.lv-cell:hover { background: rgba(255, 255, 255, 0.06); }
 .lv-titleb { margin-left: auto; display: flex; gap: 0.5em; text-shadow: none; }
 .lv-cap { align-self: flex-start; font-style: normal; font-size: 1.05em; font-weight: 700; padding: 0.3em 0.8em; border-left: 0.3em solid var(--lv-acc); background: rgba(4, 14, 28, 0.45); border-radius: 0 0.4em 0.4em 0; animation: lv-fade 0.6s ease both; }
 /* Panel girişi/çıkışı: in = yukarı süzülür, out = solup aşağı iner, sonra kaldırılır (useFade) */
-.lv-bg.tall :is(video, img):not(.lv-bgblur) { object-fit: contain; }
+.lv-bg .lv-bgl.tall :is(video, img):not(.lv-bgblur) { object-fit: contain; }
 .lv-bg .lv-bgblur { filter: blur(28px) brightness(0.55); transform: translate(-50%, -50%) scale(1.15); }
 .lv-p.out, .lv-bg.out { animation: lv-sink 0.5s ease-in both; pointer-events: none; }
 @keyframes lv-sink { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(14px); } }
@@ -959,3 +959,9 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-sprog > div.next { flex-wrap: nowrap; }
 .lv-sprog > div.next i { color: rgba(255, 255, 255, 0.85); }
 .lv-sprog > div .lv-pill { font-size: 0.65em; }
+
+/* Arka plan katmanları: yeni kaynak görünmez yüklenir, hazır olunca eskisinin üstüne çapraz geçişle gelir (Seyhun 2026-11-03) */
+.lv-bgl { position: absolute; inset: 0; opacity: 0; transition: opacity 1.1s cubic-bezier(0.4, 0, 0.2, 1); }
+.lv-bgl.in { opacity: 1; z-index: 1; }
+.lv-bgl.out { opacity: 0; z-index: 0; }
+.lv-bgl.load { z-index: 0; }

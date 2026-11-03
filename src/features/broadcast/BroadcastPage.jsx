@@ -469,7 +469,9 @@ export function BroadcastPage({ orgId, id }) {
       const meta = await uploadForScreen(orgId, id, f, live.starts, setBusy);
       setLive((l) => cleanLive({ ...l, media: [...l.media, meta] }));
       setBusy("");
-      await show({ kind: "rec", mid: meta.id, loop: false });
+      // yüklenen video hemen yayına alınmaz: önizlemede seçilir, hazır olunca "Ekrana al" (Seyhun 2026-11-03)
+      setSel({ kind: "rec", mid: meta.id });
+      toast("Video yüklendi, önizlemede");
     } catch (err) {
       toast(err?.message || "Yüklenemedi");
       setBusy("");
@@ -1469,12 +1471,16 @@ export function BroadcastPage({ orgId, id }) {
         }}
       />
       <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Kaynak ekle">
-        <div className="grid grid-cols-3 gap-2 px-4 pb-5">
+        <div className="grid grid-cols-2 gap-2 px-4 pb-5">
           {Object.entries(SRC_KINDS).map(([k, t]) => (
             <button key={k} type="button" data-press className="masa-tog" onClick={() => (setAddOpen(false), addSrc(k))}>
               {t}
             </button>
           ))}
+          {/* Sade video (Seyhun 2026-11-03 "önceden hazırlanmış videoları ekleyip gösterebilmeliyim"): dosyadan yüklenir, Kayıtlar'a girer */}
+          <button type="button" data-press className="masa-tog" disabled={!!busy} onClick={() => (setAddOpen(false), file.current?.click())}>
+            Sade video
+          </button>
         </div>
       </Sheet>
       {/* Drone › Nasıl bağlanır (Seyhun 2026-11-02): DJI Fly yalnız RTMP verir; en kolayı YouTube'a gönderip buradan göstermek */}
