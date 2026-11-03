@@ -970,3 +970,24 @@ group("Tekne takibi")([
     ["sayfa ve bağlantılar", { desc: "/canli/<yarış>/konum, örnek yarışta 'Tekneler', yayındaki haritada grup süzmesi", fn: () => { const r = (f) => fs.readFileSync(new URL(`../../../src/${f}`, import.meta.url), "utf8"); const ls = r("features/liveScreen/LiveScreen.jsx"); return [fs.existsSync(new URL("../../../src/app/canli/[id]/konum/page.jsx", import.meta.url)), /href="\/canli\/ornek\/konum"/.test(ls), /grp=\{entry\?\.grp \|\| ""\}/.test(ls), /groupOf\[b\.sail\] === grp/.test(r("features/tracking/BoatMap.jsx"))]; }, ok: (a) => a.every(Boolean) }],
   ]);
 }
+
+// Yarış sitesi belgeleri (lib/siteDocs.js, Seyhun 2026-11-03): türü addan, anahtar ad + yüklenme zamanı, en yeni ek talimat, sezon
+{
+  const SD = await import("@/lib/siteDocs");
+  const L = [
+    { name: "RENK LİSTESİ-04.11.2026.pdf", time: "03.11.2026 21:10", url: "u1" },
+    { name: "PROTESTO.pdf", time: "04.11.2026 16:00", url: "u2" },
+    { name: "PROTESTO.pdf", time: "04.11.2026 17:30", url: "u3" },
+    { name: "EK TALİMAT_V3.pdf", time: "02.11.2026 09:00", url: "u4" },
+    { name: "EK TALİMAT_V2.pdf", time: "03.11.2026 09:00", url: "u5" },
+  ];
+  group("Yarış sitesi belgeleri")([
+    ["tür addan", { desc: "renk, filo, sporcu, sonuç, ek talimat, talimat, program, diğer", fn: () => ["RENK LİSTESİ-04.11.pdf", "ALTIN-GÜMÜŞ-BRONZ LİSTESİ.pdf", "SPORCU LİSTESİ.pdf", "GEÇİCİ SONUÇLAR.pdf", "EK TALİMAT_V2.pdf", "YARIŞ TALİMATI.pdf", "YARIŞ İLANI.pdf", "PROGRAM.pdf", "PROTESTO.pdf", "GÜN BATIMI.pdf"].map(SD.docKind), ok: (r) => r.join() === "groups,fleets,entries,results,amend,notice,notice,program,other,other" }],
+    ["sonuç durumu ve sürüm", { desc: "geçici/kesin, V3 → 3, sürümsüz 1", fn: () => [SD.resultState("GEÇİCİ SONUÇ.pdf"), SD.resultState("KESİN SONUÇLAR.pdf"), SD.version("EK TALİMAT_V3.pdf"), SD.version("EK TALİMAT.pdf")], ok: (r) => r.join() === "gecici,kesin,3,1" }],
+    ["gün ve zaman", { desc: "addaki gün, yüklenme zamanı iki biçim", fn: () => [SD.dayOf("RENK LİSTESİ-04.11.2026.pdf"), SD.dayOf("RENK 5-11", "2026-11-03T10:00"), SD.uploadedAt("03.11.2026 21:10"), SD.uploadedAt("2026-11-03 9:05:10")], ok: (r) => r.join() === "2026-11-04,2026-11-05,2026-11-03T21:10,2026-11-03T09:05" }],
+    ["aynı ad iki kez", { desc: "PROTESTO iki ayrı belge; alınmış olan yeniden gelmez; eskiden yeniye", fn: () => { const a = SD.newDocs(L, []); return [a.length, a.filter((d) => d.kind === "other").length, SD.newDocs(L, a.slice(0, 4).map((d) => d.key)).length, a[0].name.startsWith("EK TALİMAT_V3")]; }, ok: (r) => r.join() === "5,2,1,true" }],
+    ["en yeni ek talimat", { desc: "en büyük sürüm (sonra yüklenen V2 değil V3)", fn: () => SD.currentAmend(SD.newDocs(L, [])).name, ok: (n) => n === "EK TALİMAT_V3.pdf" }],
+    ["bildirim yazısı", { desc: "renk listesinde gün", fn: () => SD.docNote("1. Ayak Optimist", SD.newDocs(L, [])[2]), ok: (t) => t === "1. Ayak Optimist · Renk listesi (4 Kas) geldi" }],
+    ["sezon", { desc: "Eylül'den yeni sezon; sitede varsa şimdiki varsayılan", fn: () => [SD.seasonOf("2026-11-03"), SD.seasonOf("2027-05-01"), SD.pickSeason(["2025-2026", "2026-2027", "2027-2028"], "2026-11-03"), SD.pickSeason(["2025-2026"], "2026-11-03")], ok: (r) => r.join() === "2026-2027,2026-2027,2026-2027,2025-2026" }],
+  ]);
+}
