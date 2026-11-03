@@ -209,7 +209,9 @@ export function howText(l, t) {
     const calc = [l.cap > 1 ? `${tl(l.amount)} ÷ ${l.cap} × ${l.beds}` : tl(l.amount)];
     if (l.rooms > 1) calc.push(`${l.rooms} oda`);
     if (l.qty > 1) calc.push(`${l.qty} gece`);
-    return `${roomText(l)} · ${calc.join(" × ")}`;
+    // Antrenörün odası sporculara bölünür: kaç sporcuya bölündüğü yazar
+    const split = l.who === "staff" && !l.club && t?.athletes ? ` · ${l.only?.length || t.athletes} sporcuya bölünür` : "";
+    return `${roomText(l)} · ${calc.join(" × ")}${split}`;
   }
   const parts = [tl(l.amount)];
   if (l.qty > 1) parts.push(`${l.qty} ${l.cat === "Konaklama" ? "gece" : "adet"}`);

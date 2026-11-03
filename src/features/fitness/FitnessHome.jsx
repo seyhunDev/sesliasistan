@@ -448,7 +448,7 @@ export function FitnessHome() {
       <button type="button" onClick={() => setMenuOpen(true)} aria-label="Diğer" data-press className="btn btn-round size-10 text-fg">
         <Icon name="more" className="size-5" />
       </button>
-      <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" className={`grid size-10 place-items-center rounded-full text-white ${dark ? "bg-[#0ea5c4]" : "bg-acc shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)]"}`}>
+      <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" className={`grid size-10 place-items-center rounded-full ${dark ? "bg-[#0ea5c4] text-[#06283a]" : "bg-acc text-white shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)]"}`}>
         <Icon name="plus" className="size-5" />
       </button>
     </>
@@ -567,7 +567,7 @@ function Tabs({ tab, setTab, withAth, dark }) {
   return (
     <div className={`relative mb-3 grid gap-1 rounded-full p-1 ${dark ? "bg-white/10 ring-1 ring-white/15" : "bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)]"} ${tabs.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
       {tabs.map(([k, n]) => (
-        <button key={k} type="button" onClick={() => setTab(k)} className={`h-10 rounded-full text-[0.9375rem] font-semibold transition-colors ${tab === k ? (dark ? "bg-[#0ea5c4] text-white" : "bg-acc text-white") : dark ? "text-white/70" : "text-mut"}`}>
+        <button key={k} type="button" onClick={() => setTab(k)} className={`h-10 rounded-full text-[0.9375rem] font-semibold transition-colors ${tab === k ? (dark ? "bg-[#0ea5c4] text-[#06283a]" : "bg-acc text-white") : dark ? "text-white/70" : "text-mut"}`}>
           {n}
         </button>
       ))}

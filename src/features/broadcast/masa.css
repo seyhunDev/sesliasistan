@@ -32,7 +32,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-tabs b { display: block; font-size: 0.8125rem; font-weight: 700; white-space: nowrap; }
 .masa-tabs small { display: flex; align-items: center; justify-content: center; gap: 0.25rem; margin-top: 0.125rem; font-size: 0.656rem; font-weight: 600; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .masa-tabs small i { width: 6px; height: 6px; flex: none; border-radius: 50%; background: #ff453a; }
-.masa-tabs [aria-pressed="true"] { background: var(--acc); color: #fff; }
+.masa-tabs [aria-pressed="true"] { background: var(--acc); color: var(--on-acc); }
 .masa-tabs [aria-pressed="true"] small { color: rgba(255, 255, 255, 0.85); }
 .masa-tabs [aria-pressed="true"] small i { background: #fff; }
 
@@ -60,7 +60,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-tile[aria-pressed="true"] b { color: var(--acc); }
 .masa-tog { border-radius: 0.8rem; background: var(--chip); padding: 0.625rem 0.625rem 0.5625rem; text-align: left; font-size: 0.875rem; font-weight: 700; }
 .masa-tog small { display: block; margin-top: 0.125rem; font-size: 0.6875rem; font-weight: 600; color: var(--mut); }
-.masa-tog[aria-pressed="true"] { background: var(--acc); color: #fff; }
+.masa-tog[aria-pressed="true"] { background: var(--acc); color: var(--on-acc); }
 .masa-tog[aria-pressed="true"] small { color: rgba(255, 255, 255, 0.85); }
 .masa-sw { position: relative; width: 2.75rem; height: 1.625rem; flex: none; border-radius: 1rem; background: #33445f; transition: background-color 0.2s ease; }
 .masa-sw::after { content: ""; position: absolute; left: 3px; top: 3px; width: 1.25rem; height: 1.25rem; border-radius: 50%; background: #fff; transition: transform 0.2s ease; }
@@ -91,17 +91,17 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-steps b { display: flex; width: 2.375rem; height: 2.375rem; margin: 0 auto; align-items: center; justify-content: center; border-radius: 50%; background: var(--chip); font-size: 0.875rem; font-weight: 800; }
 .masa-steps span { display: block; margin-top: 0.375rem; font-size: 0.71875rem; font-weight: 700; color: var(--mut); }
 .masa-steps .dn b { background: var(--ok); color: #fff; }
-.masa-steps .cu b { background: var(--acc); color: #fff; box-shadow: 0 0 0 5px var(--accbg); }
+.masa-steps .cu b { background: var(--acc); color: var(--on-acc); box-shadow: 0 0 0 5px var(--accbg); }
 .masa-sails { display: flex; flex-wrap: wrap; gap: 0.3125rem; padding: 0.75rem 0.875rem; }
 .masa-sails span { padding: 0.25rem 0.4375rem; border-radius: 0.4375rem; background: var(--chip); font-size: 0.78125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .masa-sails span.f { background: #f5c518; color: #1a1a1a; }
 
 /* Gruplar ve kameralar (Seyhun 2026-11-02 gruplar-kamera/grup-a.png): ekrandaki yarış pembe kartta; satırda ▶ ekrana alır */
 .masa-onair { background: linear-gradient(90deg, rgba(255, 61, 119, 0.2), rgba(255, 61, 119, 0.06)); border: 1px solid rgba(255, 61, 119, 0.55); }
-.masa-onair-tag { flex: none; border-radius: 4px; background: var(--acc); color: #fff; padding: 0.2rem 0.45rem; font-size: 0.656rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.masa-onair-tag { flex: none; border-radius: 4px; background: var(--acc); color: var(--on-acc); padding: 0.2rem 0.45rem; font-size: 0.656rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 .masa-air { display: flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; flex: none; border-radius: 0.45rem; border: 1px solid #2a3d5e; color: var(--mut); }
 .masa-air svg { width: 0.875rem; height: 0.875rem; }
-.masa-air.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+.masa-air.on { background: var(--acc); border-color: var(--acc); color: var(--on-acc); }
 .masa-air.off { border-color: transparent; }
 .masa-pill { flex: none; display: flex; align-items: center; gap: 0.35rem; border-radius: 1rem; background: var(--chip); padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 600; color: var(--mut); }
 .masa-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mut); }

@@ -310,7 +310,7 @@ export function RegionMap({ place, station, obs, onPick, openAt = null, startOpe
       </div>
       <div className="px-3 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] text-white">
         <div className="flex items-center gap-2.5">
-          <button type="button" onClick={() => (setSel(ix >= steps.length - 1 ? 0 : ix), setPlay((p) => !p))} aria-label={play ? "Durdur" : "Oynat"} className="grid size-9 shrink-0 place-items-center rounded-full bg-[#0ea5c4] text-white">
+          <button type="button" onClick={() => (setSel(ix >= steps.length - 1 ? 0 : ix), setPlay((p) => !p))} aria-label={play ? "Durdur" : "Oynat"} className="grid size-9 shrink-0 place-items-center rounded-full bg-[#0ea5c4] text-[#06283a]">
             <Icon name={play ? "pause" : "play"} className="size-4" />
           </button>
           <div className="relative h-8 min-w-0 flex-1">
