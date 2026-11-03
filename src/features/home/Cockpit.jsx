@@ -49,11 +49,11 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
   const fill = fitH > 0;
 
   return (
-    <section className="ck ck-top -mx-4 px-4 pb-4 pt-[calc(0.875rem+env(safe-area-inset-top))]" aria-label="Bugün">
+    <section className="ck ck-top home-ck -mx-4 px-4 pb-4 pt-[calc(0.875rem+env(safe-area-inset-top))]" aria-label="Bugün">
       {/* İlk ekran (Seyhun 2026-10-28 "A · Yalnız saydıkların"): günler, yarış sayacı, hava ve grafik (yarış başka yerdeyse altta ev yeri)
           telefonda ekrana tam oturur; boşluk açılmaz, büyüklükler ekran boyuna göre (--u), kalan yeri grafik doldurur (useFit).
           Sıradaki plan ve iş düğmeleri kaydırınca gelir. */}
-      <div ref={fitRef} style={fill ? { minHeight: far ? fitH : undefined, "--u": `${(fitH / 100).toFixed(2)}px` } : undefined} className="flex flex-col">
+      <div ref={fitRef} style={fill ? { minHeight: far ? fitH : undefined, "--u": `${(fitH / 100).toFixed(2)}px` } : undefined} className="ck-a flex flex-col">
       <header className="-mb-1 flex items-center justify-end gap-2">
         <h1 className="sr-only">{now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}</h1>
         <BirthdayBadge />
@@ -157,7 +157,7 @@ function NextPlan({ now }) {
   // Antrenmansa Süre'nin yanında Yoklama (Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
   const att = sail && canSeeAthletes(profile?.email);
   return (
-    <div className="ck-plan mt-3 rounded-[1.375rem] p-3.5 text-white">
+    <div className="ck-plan ck-b mt-3 rounded-[1.375rem] p-3.5 text-white">
       <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3.5 text-left">
         <span className="min-w-[3.375rem] shrink-0 border-r border-white/30 pr-3.5 text-center leading-tight">
           <small className="block text-[0.75rem] font-semibold text-white/85">{w.top}</small>
@@ -199,7 +199,7 @@ function DayPlans({ date, onOpen }) {
   const d = new Date(`${date}T12:00`);
   const title = `${cap(d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""))} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "long" })}`;
   return (
-    <div className="mt-3 overflow-hidden rounded-[1.375rem] border border-white/10 bg-[#182a48]">
+    <div className="ck-b mt-3 overflow-hidden rounded-[1.375rem] border border-white/10 bg-[#182a48]">
       <div className="flex items-center gap-2 px-3.5 pb-1.5 pt-3 text-[0.75rem] font-bold tracking-[.05em] text-[#9fb0cc]">
         <span className="min-w-0 flex-1 truncate">{title.toLocaleUpperCase("tr-TR")}{list.length ? ` · ${list.length} PLAN` : ""}</span>
         <button type="button" data-press onClick={onOpen} className="shrink-0 text-[0.8125rem] font-semibold tracking-normal text-[#67e8f9]">Günü aç ›</button>

@@ -752,6 +752,28 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
   body[data-side] [data-sheet] > div { border-radius: 1.5rem; max-height: calc(100dvh - 3rem); padding-bottom: 1.25rem; }
   body[data-side] [data-sheet].translate-y-full { translate: 0 calc(100% + 2rem); }
 }
+/* Ana sayfa geniş ekranda (Seyhun 2026-11-03 "geniş ekrana göre hazırla, hem Mac hem iPad"; örnek /mnt/project-files/genis-ekran):
+   sayfa ekranı doldurur. Dik iPad: hava ve günler tam genişlik, altında plan | iş düğmeleri, sonra Kulüp. Yatay iPad ve Mac (sol menü):
+   solda hava tablosu, günler, canlı yarış; sağ sütunda plan, iş düğmeleri, Kulüp. Notlar altta, kartlar dar (daha çok not görünür). Telefonda değişiklik yok. */
+@media (min-width: 48rem) {
+  body main.home-wide.max-w-\[30rem\] { max-width: 80rem; padding-left: 1.5rem; padding-right: 1.5rem; }
+  main.home-wide .home-ck, main.home-wide .home-navy { margin-left: -1.5rem; margin-right: -1.5rem; padding-left: 1.5rem; padding-right: 1.5rem; }
+  .home-ck { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 1rem; align-items: start; }
+  .home-ck > .ck-a { grid-column: 1 / -1; min-height: 0 !important; }
+  .home-ck > .ck-b { grid-column: 1; grid-row: 2; }
+  .home-ck > .ck-c { grid-column: 2; grid-row: 2; margin-top: 0.75rem; }
+  .home-ck > .ck-d { grid-column: 1 / -1; grid-row: 3; }
+  main.home-wide .note-card { width: 12.5rem; }
+}
+@media (min-width: 64rem) {
+  .home-ck { grid-template-columns: minmax(0, 1fr) 22rem; grid-template-rows: auto auto 1fr; column-gap: 1.25rem; }
+  .home-ck > .ck-a { grid-column: 1; grid-row: 1 / span 3; }
+  .home-ck > .ck-b { grid-column: 2; grid-row: 1; margin-top: 2.75rem; }
+  .home-ck > .ck-c { grid-column: 2; grid-row: 2; }
+  .home-ck > .ck-d { grid-column: 2; grid-row: 3; }
+  .home-ck > .ck-b + .ck-c { margin-top: 1rem; }
+  .home-ck > .ck-c:not(.ck-b + .ck-c) { margin-top: 2.75rem; }
+}
 
 /* KOKPİT (ana sayfanın lacivert üst kısmı; Seyhun 2026-10-21 "C · Lacivert kokpit"; features/home/Cockpit.jsx): logonun gecesi, sağ üstte camgöbeği,
    sol altta çivit hafif ışık; iki temada aynı. İçindeki yuvarlak düğmeler (zil, doğum günü) yarı saydam beyaz. */
