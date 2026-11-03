@@ -1213,3 +1213,21 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-top3 em { font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.72); }
 .lv-band .lv-top3 { font-size: 1.05em; margin-top: 0.4em; }
 .lv-band .lv-apk { font-size: 0.9em; letter-spacing: 0.1em; white-space: nowrap; }
+/* Senaryo 6, gün bitti (2026-11-03): solda gün bitti + yarın, ortada bugünün sonuçları, sağda yarının rüzgârı */
+.lv-dres { display: flex; flex-direction: column; gap: 1.1em; min-width: 0; padding: 11vh 0 3vh; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-dr > b { display: flex; align-items: center; gap: 0.4em; font-size: 1.35em; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; }
+.lv-dr ol { list-style: none; margin: 0.45em 0 0; padding: 0; display: grid; gap: 0.25em; }
+.lv-dr li { display: grid; grid-template-columns: 1.6em 3.4em minmax(0, 1fr); align-items: center; gap: 0.5em; font-size: 1.2em; font-weight: 700; }
+.lv-dr li i { display: inline-flex; align-items: center; justify-content: center; height: 1.45em; border-radius: 0.3em; font-style: normal; font-size: 0.85em; background: rgba(255, 255, 255, 0.14); }
+.lv-dr li i.p1 { background: #ffcf33; color: #1b2233; }
+.lv-dr li em { font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-dr.ov > b { font-size: 1em; letter-spacing: 0.2em; color: rgba(255, 255, 255, 0.55); }
+.lv-dr.ov li { font-size: 1.05em; }
+.lv-dend .lv-bigt { color: #fff; }
+.lv-band .lv-dres { padding: 0; gap: 0.7em; font-size: 0.85em; flex: 1 1 0; }
+.lv-dendb .lv-bclock { flex: 0 0 24%; }
+.lv-dendb .lv-dwnd { flex: 0 0 34%; padding: 0; }
+@media (max-width: 47.99rem) { .lv-dres { padding: 0; } }
+.lv-bc.summary.video :is(.lv-bg, .lv-sea) { filter: none; }
+.lv-dendb .lv-bclock { display: flex; flex-direction: column; align-items: flex-start; gap: 0.4em; }
+.lv-dendb .lv-bclock .lv-apk { margin-bottom: 0.2em; }

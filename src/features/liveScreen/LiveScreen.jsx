@@ -1532,6 +1532,116 @@ const voidLast = (data, today, now) => {
   const last = (data.starts || []).filter((x) => x.day === today).at(-1);
   return last?.void && (!last.fin || now - Date.parse(last.fin) < 3 * 3600e3) ? last : null;
 };
+// ---- Senaryo 6, gün bitti (Seyhun 2026-11-03): diğer adımlarla aynı düzen, hiçbir şey dönmez. Solda "Gün bitti" ve yarının ilk startı;
+// ortada bugünün yarışları (her biri ilk üç) ve genel sıralamanın ilk beşi; sağda yarının beklenen rüzgârı ve saat saat tahmin. Videoda alt bantta.
+function nextText(plan, today) {
+  const nx = plan.next;
+  if (!nx?.day) return { big: "Yarış bitti", sub: "" };
+  const tom = new Date(Date.parse(`${today}T12:00:00Z`) + 864e5).toISOString().slice(0, 10);
+  const d = nx.day === tom ? "Yarın" : `${wdText(nx.day)} ${dayText(nx.day)}`;
+  return { big: [d, nx.at].filter(Boolean).join(" "), sub: nx.at ? "İlk start" : "Sıradaki yarış günü" };
+}
+function DayResults({ data, day, max = 4, ov = true }) {
+  const who = whoMap(data);
+  const races = (data.starts || []).filter((x) => x.day === day && !x.void && data.rounds?.[x.id] && standings(data.rounds[x.id]).length).slice(-max);
+  const top = ov ? overallTop(data, 5) : null;
+  if (!races.length && !top) return null;
+  return (
+    <div className="lv-dres">
+      {races.length ? <div className="lv-hlab">Bugünün sonuçları</div> : null}
+      {races.map((r) => {
+        const e = data.rounds[r.id];
+        return (
+          <div key={r.id} className="lv-dr">
+            <b>
+              <Dot g={e.grp || r.grp} />
+              {[raceName(r), grpText(e.grp || r.grp)].filter(Boolean).join(" · ")}
+            </b>
+            <ol>
+              {standings(e)
+                .slice(0, 3)
+                .map((t, i) => {
+                  const w = whoOf(who, t.sail);
+                  return (
+                    <li key={t.sail}>
+                      <i className={`p${i + 1}`}>{i + 1}</i>
+                      <span>{t.sail}</span>
+                      <em>{w?.name ? shortName(w.name) : ""}</em>
+                    </li>
+                  );
+                })}
+            </ol>
+          </div>
+        );
+      })}
+      {top ? (
+        <div className="lv-dr ov">
+          <b>{["Genel sıralama", top.cls, top.tag === "Resmî" ? "" : "geçici"].filter(Boolean).join(" · ")}</b>
+          <ol>
+            {top.rows.map((r, i) => (
+              <li key={`${r.sail}${r.name}`}>
+                <i className={`p${i + 1}`}>{r.p}</i>
+                <span>{r.sail}</span>
+                <em>{shortName(r.name) || ""}</em>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+function NextWind({ data, now, scale = 1, big = false }) {
+  const nx = data.plan.next;
+  const fc = data.forecastNext;
+  const rows = (fc?.rows || []).filter((r) => r.wind != null);
+  const w = nx?.at ? expWind(fc, nx.at) : null;
+  if (!w && rows.length < 2) return null;
+  return (
+    <div className="lv-hwnd lv-dwnd">
+      <div className="lv-hlab">{nx?.day ? `${nextText(data.plan, trDay(now)).big.split(" ")[0] === "Yarın" ? "Yarın" : dayText(nx.day)} rüzgâr` : "Rüzgâr"}</div>
+      {w ? <WindNow w={w} by={nx?.at ? `${nx.at} tahmin` : "tahmin"} cls={big ? "big" : ""} /> : null}
+      {rows.length >= 2 ? <HourTable className="lv-wh" rows={rows} date={nx?.day || trDay(now)} nowMs={now} obs={[]} station={null} marks={nx?.at ? [{ at: nx.at, label: "Start" }] : []} scale={scale} /> : null}
+    </div>
+  );
+}
+function DayEndHero({ data, today, now }) {
+  const r = data.race || {};
+  const t = nextText(data.plan, today);
+  const day = data.plan.day || today;
+  const n = (data.starts || []).filter((x) => x.day === day && !x.void).length;
+  const res = <DayResults data={data} day={day} />;
+  const wind = <NextWind data={data} now={now} scale={1.05} big />;
+  const cols = 1 + (res ? 1 : 0) + (wind ? 1 : 0);
+  return (
+    <div className="lv-hold lv-hold3 lv-dend" data-cols={cols}>
+      <div className="lv-topr">{[dayText(day) ? `${wdText(day)} ${dayText(day)}` : "", r.place].filter(Boolean).join(" · ")}</div>
+      <div className="lv-hst">
+        <div className="lv-apk f">{["Gün bitti", n ? `${n} yarış` : ""].filter(Boolean).join(" · ")}</div>
+        <div className="lv-kick">{t.sub}</div>
+        <div className="lv-bigt f">{t.big}</div>
+      </div>
+      {res}
+      {wind}
+    </div>
+  );
+}
+function DayEndBand({ data, today, now }) {
+  const t = nextText(data.plan, today);
+  const day = data.plan.day || today;
+  const n = (data.starts || []).filter((x) => x.day === day && !x.void).length;
+  return (
+    <aside className="lv-side lv-band lv-dendb">
+      <div className="lv-bclock">
+        <div className="lv-apk f">{["Gün bitti", n ? `${n} yarış` : ""].filter(Boolean).join(" · ")}</div>
+        <div className="lv-kick">{t.sub}</div>
+        <div className="lv-bigt f">{t.big}</div>
+      </div>
+      <DayResults data={data} day={day} max={2} ov={false} />
+      <NextWind data={data} now={now} scale={0.85} />
+    </aside>
+  );
+}
 function WaitHero({ data, today, cs, prog, now, fin = null }) {
   const plan = data.plan;
   const { none, box, kick } = holdState(data, today, cs, now);
@@ -2865,7 +2975,7 @@ export function LiveScreen({ id, y = "" }) {
   const ovOn = phase === "race" && isCur && !!sel && !pre && !near && !between && data.courseShow?.ov !== false;
   // Videolu yarış öncesi (Seyhun 2026-11-02 videolu/1-yaris-oncesi.png, 2-start-oncesi-turuncu.png onay): solda bulanık şeritte bilgiler,
   // turuncu bayrak çekiliyse "Start öncesi"; Yayın › Video › Sol bilgi ile kapanır. Açıkken gösterim kartları ve alt şerit yok
-  const side = isCur && hasVideo && (pre || between || !!seqMode || (ongoing && phase === "race")) && data.courseShow?.side !== false;
+  const side = isCur && hasVideo && phase !== "summary" && (pre || between || !!seqMode || (ongoing && phase === "race")) && data.courseShow?.side !== false;
   const slide = !(phase === "wait" && !hasVideo) && !side && !near && !between ? slideOn({ data, sel, isCur, open: courseOpen, now: nowMs, phase, pre, prog }) : "";
   const cOn = slide === "course";
   // Yarış öncesi video yokken sade sayfa (Seyhun 2026-11-02 "geri sayım sayfası sade temiz"): ortada sayaç, altta program; şerit yok
@@ -2896,11 +3006,11 @@ export function LiveScreen({ id, y = "" }) {
         {hero2 && seqMode ? <SeqHero data={data} cs={cs} prog={prog} now={nowMs} entry={entry} mode={seqMode} last={fsLast} /> : null}
         {hero2 && !seqMode ? <StartHero data={data} cs={cs} prog={prog} now={nowMs} entry={entry} racing={racing} sel={sel} id={id} onAll={() => setFull("race")} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} fin={fin} /> : null}
-        {phase === "summary" ? <EndHero data={data} today={today} now={nowMs} onAll={() => setFull("all")} /> : null}
+        {phase === "summary" ? hasVideo ? <DayEndBand data={data} today={today} now={nowMs} /> : <DayEndHero data={data} today={today} now={nowMs} /> : null}
         <CourseFloat data={data} sel={sel} isCur={isCur} show={cOn} phase={phase} onClose={() => setCourseOpen(false)} />
         <WindFloat data={data} sel={sel} isCur={isCur} show={slide === "wind"} now={nowMs} />
         <ProgFloat prog={prog} show={slide === "prog"} data={data} now={nowMs} />
-        <div className={`lv-foot${hero || hero2 || side ? " off" : ""}`}>
+        <div className={`lv-foot${hero || hero2 || side || (isCur && phase === "summary") ? " off" : ""}`}>
           <TitleLine data={data} isCur={isCur} id={id} starts={starts} onList={() => setList(true)} auto={auto} />
           {windOpen && (data.forecast?.rows || []).length ? (
             <button type="button" className="lv-p lv-windpop" onClick={() => setWindOpen(false)} aria-label="Grafiği kapat">
