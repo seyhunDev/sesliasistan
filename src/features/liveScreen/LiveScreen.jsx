@@ -2631,12 +2631,12 @@ function curWind(data, sel, isCur, now) {
   const tr = new Date(now + 3 * 3600e3);
   const so = (fc?.obs || []).filter((o) => o.wind != null).at(-1);
   const fresh = mine?.kn != null && mine.at && now - Date.parse(mine.at) < 3600e3;
-  if (fresh) return { kn: mine.kn, dir: mine.dir, gust: mine.gust ?? null, range: mine.range || null, hh: tr.toISOString().slice(11, 13), man: true, by: `Manuel girildi ${trOf(mine.at).slice(11, 16)}` };
+  if (fresh) return { kn: mine.kn, dir: mine.dir, gust: mine.gust ?? null, range: mine.range || null, hh: tr.toISOString().slice(11, 13), man: true, by: `Parkur verisi ${trOf(mine.at).slice(11, 16)}` };
   return so ? { kn: so.wind, dir: so.dir, gust: so.gust ?? null, range: null, hh: so.hh, man: false, by: `${fc.station || "İstasyon"} ${so.hh}:00` } : null;
 }
 const degText = (w) => (w?.range ? `${w.range[0]}–${w.range[1]}°` : w?.dir != null ? `${Math.round(w.dir)}°` : "");
 // Bekleme ekranında şimdiki rüzgâr (Seyhun 2026-11-02 "rüzgâr yönü daha doğru ve profesyonel; manuel girildiyse gösterilsin"):
-// akış yönünü gösteren ok, derece ve pusula, knot; altında kaynak (Manuel girildi 14:05 turuncu ya da istasyon)
+// akış yönünü gösteren ok, derece ve pusula, knot; altında kaynak (Parkur verisi 14:05 turuncu ya da istasyon)
 // Yarış öncesi sol altta yatay rüzgâr şeridi (Seyhun 2026-11-03 "rüzgâr sol altta yatay uzansın"): ok, knot, yön, start'ta beklenen, sağanak, kaynak
 function WindStrip({ data, now }) {
   const c = curWind(data, null, true, now);
@@ -3137,13 +3137,14 @@ function GWind({ data, now, mode, today }) {
     const w = nx?.at ? expWind(data.forecastNext, nx.at) : null;
     if (w) rows.push({ lab: `${nextText(plan, today).big} beklenen`, w, by: "tahmin" });
   } else {
-    if (c) rows.push({ lab: "Şimdi", w: c, by: c.man ? "elle" : "" });
+    if (c) rows.push({ lab: "Şimdi", w: c, by: "" });
     if (["wait", "ap", "none"].includes(mode) && plan.at) {
       const e = expWind(data.forecast, plan.at);
       if (e) rows.push({ lab: "Start'ta beklenen", w: e, by: "tahmin" });
     }
   }
   if (!rows.length) return null;
+  // kaynak başlığın yanında küçük; elle girilen ölçüm "Parkur verisi" (Seyhun 2026-11-03 17:31)
   const src = c && mode !== "summary" ? c.by : "";
   return (
     <GCard cls="gr-wind" head="Rüzgâr" tone="t" tag={src}>

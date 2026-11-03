@@ -1494,3 +1494,5 @@ button.gr-card { cursor: pointer; }
 .gr-back:hover, .gr-back:focus-visible { background: none; color: #fff; }
 /* kırmızı kartta (abandone, genel geri) yarış bilgisi sağda kalır */
 .gr-st.r .gr-stb { grid-template-columns: minmax(0, 1fr) auto; }
+/* rüzgâr kaynağı (yer ve saat) başlıkta küçük */
+.gr-wind .gr-tag { font-size: 0.8em; letter-spacing: 0.06em; }
