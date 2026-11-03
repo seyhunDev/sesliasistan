@@ -6,7 +6,10 @@ import { arrayRemove, doc } from "firebase/firestore";
 import { updateDoc } from "@/lib/firebase/write";
 import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
+import { ListHead } from "@/components/ui/Row";
+import { Empty } from "@/components/ui/Page";
+import { buttonClass } from "@/components/ui/buttonClass";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { convertToCash, loadCashMoves, loadConv, loadMovementsRange } from "@/features/dues/duesData";
@@ -16,7 +19,6 @@ import { money } from "@/lib/bankSheet";
 import { canConv, withoutConv } from "@/lib/cashbook";
 import { monthName, nameMoves, payeeCsv, payeeMoves, payeeOf, payeeSummary, whoIn } from "@/lib/payee";
 
-const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
 const thisMonth = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date()).slice(0, 7);
 const dayText = (m) => new Date((m.ts || 0) + 3 * 3600e3).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short", timeZone: "UTC" });
 const hmOf = (m) => /\d{1,2}:\d{2}/.exec(m.date)?.[0] || "";
@@ -103,140 +105,146 @@ function Payments() {
       .catch(() => toast("Kaydedilemedi, internet bağlantını kontrol et"));
   const shown = open || sum.byMonth[0]?.ym || "";
   const title = named || payee.name || "Kişisel hesap";
+  const nIn = list.filter((m) => m.amount > 0).length;
+  const nOut = list.filter((m) => m.amount < 0).length;
+  // Lacivertte iki büyük sayı yan yana
+  const big = (label, value, sub, line) => (
+    <div className={`min-w-0 ${line ? "border-l border-white/15 pl-3" : ""}`}>
+      <small className="block truncate text-[0.8125rem] text-white/65">{label}</small>
+      <b className="block truncate text-[1.625rem] font-bold leading-tight tracking-[-.02em] tabular-nums text-white">{value}</b>
+      <small className="block truncate text-[0.8125rem] text-white/65">{sub}</small>
+    </div>
+  );
 
+  // Yeni tasarım (velora-tasarim, 2026-11-03): lacivert üstte ad, Yenile ve ayar düğmeleri, büyük tutarlar, Excel; altta ay ay ödemeler
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <PageHeader title={title} sub={named ? "Bu adla gelen ve giden ödemeler" : "Aldığı ödemeler · banka hesaplarından"} back="/mail">
-        <button type="button" disabled={busy} onClick={refresh} aria-label="Yenile" data-press className="btn btn-round size-10 text-fg">
-          <Icon name="repeat" className={`size-5 ${busy ? "animate-spin" : ""}`} />
-        </button>
-        {named ? (
-          <button type="button" onClick={() => setEdit((v) => !v)} aria-label="İsmi kaldır" data-press className="btn btn-round size-10 text-rec">
-            <Icon name="trash" className="size-5" />
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={title}>
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/mail" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{title}</h1>
+            <p className="truncate text-[0.8125rem] text-white/65">{data && !data.error ? `${data.sources || 0} banka hareketi` : named ? "Gelen ve giden" : "Aldığı ödemeler"}</p>
+          </div>
+          <button type="button" disabled={busy} onClick={refresh} aria-label="Yenile" data-press className={`${buttonClass({ variant: "round" })} size-10`}>
+            <Icon name="repeat" className={`size-5 ${busy ? "animate-spin" : ""}`} />
           </button>
-        ) : (
-          <button type="button" onClick={() => setEdit((v) => !v)} aria-label="Hesap ayarı" data-press className="btn btn-round size-10 text-fg">
-            <Icon name="edit" className="size-5" />
+          {named ? (
+            <button type="button" onClick={() => setEdit((v) => !v)} aria-label="İsmi kaldır" data-press className={`${buttonClass({ variant: "round" })} size-10`}>
+              <Icon name="trash" className="size-5" />
+            </button>
+          ) : (
+            <button type="button" onClick={() => setEdit((v) => !v)} aria-label="Hesap ayarı" data-press className={`${buttonClass({ variant: "round" })} size-10`}>
+              <Icon name="edit" className="size-5" />
+            </button>
+          )}
+        </header>
+
+        {data && (
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {named ? (
+              <>
+                {big("Gelen", money(sum.in), `${nIn} ödeme · ₺`)}
+                {big("Giden", money(sum.out), `${nOut} ödeme · ₺`, true)}
+              </>
+            ) : (
+              <>
+                {big("Bu ay", money(sum.month.total), `${sum.month.count} ödeme · ₺`)}
+                {big("Bugüne kadar", money(sum.total), `${sum.count} ödeme · ₺`, true)}
+              </>
+            )}
+          </div>
+        )}
+
+        {data && !data.error && list.length > 0 && (
+          <button
+            type="button"
+            onClick={() => download(`${title}-odemeler.csv`, named ? payeeCsv(list, named, "gelen ve giden ödemeler") : payeeCsv(list, payee.name))}
+            data-press
+            className="raised mt-4 flex h-10 w-full items-center justify-center rounded-xl border text-[0.9375rem] font-semibold"
+          >
+            Excel indir
           </button>
         )}
-      </PageHeader>
+      </section>
 
-      {edit &&
-        (named ? (
-          <section className={`${card} fade-in mt-2 space-y-3 px-4 py-4`}>
-            <p className="text-[0.875rem] leading-snug">“{named}” Hesaplar sayfasından kaldırılsın mı? Banka hareketleri silinmez.</p>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setEdit(false)} data-press className="btn btn-secondary flex-1">
-                Vazgeç
-              </button>
-              <button type="button" onClick={drop} data-press className="btn btn-danger flex-1">
-                Kaldır
-              </button>
-            </div>
-          </section>
-        ) : (
-          <Settings payee={payee} accounts={accounts} onSave={save} onClose={() => setEdit(false)} />
-        ))}
-
-      {!data ? (
-        <Loading />
-      ) : (
-        <>
-          <section className={`${card} mt-2`}>
-            {named ? (
-              <div className="grid grid-cols-2 bg-acc px-4 py-4 text-white">
-                <div className="min-w-0">
-                  <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">GELEN</p>
-                  <p className="mt-0.5 truncate text-[1.5rem] font-bold leading-tight tabular-nums tracking-tight">{money(sum.in)}</p>
-                  <p className="mt-0.5 text-[0.75rem] text-white/75">{list.filter((m) => m.amount > 0).length} ödeme · TL</p>
-                </div>
-                <div className="min-w-0 border-l border-white/20 pl-4">
-                  <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">GİDEN</p>
-                  <p className="mt-0.5 truncate text-[1.5rem] font-bold leading-tight tabular-nums tracking-tight">{money(sum.out)}</p>
-                  <p className="mt-0.5 text-[0.75rem] text-white/75">{list.filter((m) => m.amount < 0).length} ödeme · TL</p>
-                </div>
+      <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        {edit &&
+          (named ? (
+            <section className="fade-in space-y-3 rounded-[1.25rem] border border-line bg-card px-4 py-4">
+              <p className="text-[0.875rem] leading-snug">“{named}” Hesaplar sayfasından kaldırılsın mı? Banka hareketleri silinmez.</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setEdit(false)} data-press className="btn btn-secondary flex-1">
+                  Vazgeç
+                </button>
+                <button type="button" onClick={drop} data-press className="btn btn-danger flex-1">
+                  Kaldır
+                </button>
               </div>
-            ) : (
-            <div className="grid grid-cols-2 bg-acc px-4 py-4 text-white">
-              <div className="min-w-0">
-                <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">BU AY</p>
-                <p className="mt-0.5 truncate text-[1.5rem] font-bold leading-tight tabular-nums tracking-tight">{money(sum.month.total)}</p>
-                <p className="mt-0.5 text-[0.75rem] text-white/75">{sum.month.count} ödeme · TL</p>
-              </div>
-              <div className="min-w-0 border-l border-white/20 pl-4">
-                <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">BUGÜNE KADAR</p>
-                <p className="mt-0.5 truncate text-[1.5rem] font-bold leading-tight tabular-nums tracking-tight">{money(sum.total)}</p>
-                <p className="mt-0.5 text-[0.75rem] text-white/75">{sum.count} ödeme · TL</p>
-              </div>
-            </div>
-            )}
-            <p className="px-4 py-2.5 text-[0.75rem] leading-snug text-mut">
-              {named ? `Hesap adında ya da açıklamasında “${named}” geçen hareketler. Banka defterinde ${data.sources || 0} hareket var.` : <>{payee.name ? `Hesaplardan “${payee.name}” adına giden paralar (maaş, huzur hakkı…)` : "Seçili hesaba gelen bütün paralar"}
-              {payee.account ? ` ve ${accounts.find((a) => a.key === payee.account)?.label || "seçili hesaba"} gelenler` : ""}. Banka defterinde {data.sources || 0} hareket var{data.fromFiles ? ` (${data.fromFiles}'i yüklenen Excel'den)` : ""}. Değiştirmek için sağ üstteki kaleme dokun.</>}
-            </p>
-          </section>
-
-          {data.error ? (
-            <p className={`${card} mt-4 px-4 py-6 text-center text-[0.875rem] text-mut`}>Banka hareketleri okunamadı. İnternet bağlantını kontrol edip sayfayı yeniden aç.</p>
-          ) : !list.length ? (
-            <p className={`${card} mt-4 px-4 py-6 text-center text-[0.875rem] leading-snug text-mut`}>
-              {data.sources ? `Banka hareketlerinde ${named || payee.name ? `${named || payee.name} adına ` : ""}ödeme bulunamadı.` : "Henüz banka hesap özeti yok. Gmail bağlanınca İş Bankası mailleri buraya gelir."}
-            </p>
-          ) : (
-            <section className="mt-5">
-              <h2 className="px-1 pb-2 text-[0.8125rem] font-semibold text-mut">Aylar</h2>
-              <div className={card}>
-                <ul className="divide-y divide-line">
-                  {sum.byMonth.map((mo) => (
-                    <li key={mo.ym}>
-                      <button type="button" onClick={() => setOpen(mo.ym === shown ? "-" : mo.ym)} aria-expanded={mo.ym === shown} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                        <span className="min-w-0 flex-1">
-                          <b className="block truncate text-[0.9375rem] font-semibold first-letter:uppercase">{monthName(mo.ym)}</b>
-                          <small className="block text-[0.75rem] text-mut">{mo.count} ödeme</small>
-                        </span>
-                        {named ? (
-                          <span className="shrink-0 text-right text-[0.8125rem] font-semibold tabular-nums leading-tight">
-                            {mo.in > 0 && <b className="block font-semibold text-ok">+{money(mo.in)}</b>}
-                            {mo.out > 0 && <b className="block font-semibold">−{money(mo.out)}</b>}
-                          </span>
-                        ) : (
-                          <b className="shrink-0 text-[0.9375rem] font-semibold tabular-nums text-ok">+{money(mo.total)} TL</b>
-                        )}
-                        <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${mo.ym === shown ? "rotate-90" : ""}`} />
-                      </button>
-                      {mo.ym === shown && (
-                        <ul className="fade-in border-t border-line bg-bg/40">
-                          {mo.list.map((m) => (
-                            <li key={m.id || `${m.date}|${m.amount}|${m.desc}`} onClick={!named && canConv(m) ? () => setAct((v) => (v === m.id ? "" : m.id)) : undefined} className={`flex flex-wrap items-start gap-x-3 px-4 py-2.5 ${!named && canConv(m) ? "cursor-pointer" : ""}`}>
-                              <span className="w-[4.5rem] shrink-0 pt-0.5 text-[0.75rem] leading-tight text-mut">
-                                {dayText(m)}
-                                {hmOf(m) && <span className="block tabular-nums">{hmOf(m)}</span>}
-                              </span>
-                              <span className="min-w-0 flex-1 break-words text-[0.875rem] leading-snug">
-                                <b className="block font-semibold">{m.note || (m.out ? "Hesaptan gönderildi" : whoIn(m) || m.desc)}</b>
-                                <span className="block text-[0.8125rem] text-mut">{m.cash ? "Nakit ödendi" : [m.out || m.amount < 0 ? "Giden" : "Gelen", m.accountLabel, m.out || named ? "" : whoIn(m)].filter(Boolean).join(" · ")}</span>
-                              </span>
-                              <b className={`shrink-0 text-[0.875rem] font-semibold tabular-nums ${m.amount < 0 ? "" : "text-ok"}`}>{m.amount < 0 ? `−${money(-m.amount)}` : `+${money(m.amount)}`}</b>
-                              {act === m.id && (
-                                <button type="button" onClick={(e) => (e.stopPropagation(), toCash(m))} data-press className="btn btn-primary btn-sm fade-in mt-2 w-full">
-                                  Nakite çevir · kulüp kasasına
-                                </button>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <button type="button" onClick={() => download(`${title}-odemeler.csv`, named ? payeeCsv(list, named, "gelen ve giden ödemeler") : payeeCsv(list, payee.name))} data-press className="btn btn-secondary mt-3 w-full text-acc">
-                <Icon name="download" className="size-4" /> Excel olarak indir
-              </button>
             </section>
-          )}
-        </>
-      )}
+          ) : (
+            <Settings payee={payee} accounts={accounts} onSave={save} onClose={() => setEdit(false)} />
+          ))}
+
+        {!data ? (
+          <Loading />
+        ) : data.error ? (
+          <Empty icon="wallet" title="Banka hareketleri okunamadı" />
+        ) : !list.length ? (
+          <Empty icon="wallet" title={data.sources ? `${named || payee.name ? `${named || payee.name} adına ` : ""}ödeme yok` : "Banka hesap özeti yok"} />
+        ) : (
+          <section>
+            <ListHead title="Aylar" count={sum.byMonth.length} />
+            <ul className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
+              {sum.byMonth.map((mo) => (
+                <li key={mo.ym}>
+                  <button type="button" onClick={() => setOpen(mo.ym === shown ? "-" : mo.ym)} aria-expanded={mo.ym === shown} data-press="row" className="flex min-h-[3.5rem] w-full items-center gap-3 px-3.5 py-2.5 text-left">
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate text-[0.9375rem] font-semibold first-letter:uppercase">{monthName(mo.ym)}</b>
+                      <small className="block truncate text-[0.8125rem] text-mut">{mo.count} ödeme</small>
+                    </span>
+                    {named ? (
+                      <span className="shrink-0 text-right text-[0.8125rem] font-semibold tabular-nums leading-tight">
+                        {mo.in > 0 && <b className="block font-bold text-ok">+{money(mo.in)}</b>}
+                        {mo.out > 0 && <b className="block font-bold">−{money(mo.out)}</b>}
+                      </span>
+                    ) : (
+                      <b className="shrink-0 text-[0.9375rem] font-bold tabular-nums text-ok">+{money(mo.total)} ₺</b>
+                    )}
+                    <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${mo.ym === shown ? "rotate-90" : ""}`} />
+                  </button>
+                  {mo.ym === shown && (
+                    <ul className="fade-in divide-y divide-line border-t border-line bg-bg/40">
+                      {mo.list.map((m) => (
+                        <li
+                          key={m.id || `${m.date}|${m.amount}|${m.desc}`}
+                          onClick={!named && canConv(m) ? () => setAct((v) => (v === m.id ? "" : m.id)) : undefined}
+                          className={`flex flex-wrap items-center gap-x-3 px-3.5 py-2.5 ${!named && canConv(m) ? "cursor-pointer" : ""}`}
+                        >
+                          <span className="w-[3.75rem] shrink-0 text-[0.75rem] font-semibold leading-tight text-mut">
+                            {dayText(m)}
+                            {hmOf(m) && <span className="block font-normal tabular-nums">{hmOf(m)}</span>}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <b className="block truncate text-[0.875rem] font-semibold">{m.note || (m.out ? "Hesaptan gönderildi" : whoIn(m) || m.desc)}</b>
+                            <small className="block truncate text-[0.8125rem] text-mut">{m.cash ? "Nakit ödendi" : [m.out || m.amount < 0 ? "Giden" : "Gelen", m.accountLabel, m.out || named ? "" : whoIn(m)].filter(Boolean).join(" · ")}</small>
+                          </span>
+                          <b className={`shrink-0 text-[0.875rem] font-bold tabular-nums ${m.amount < 0 ? "" : "text-ok"}`}>{m.amount < 0 ? `−${money(-m.amount)}` : `+${money(m.amount)}`}</b>
+                          {act === m.id && (
+                            <button type="button" onClick={(e) => (e.stopPropagation(), toCash(m))} data-press className="btn btn-primary btn-sm fade-in mt-2 w-full">
+                              Nakite çevir · kulüp kasasına
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
     </main>
   );
 }
@@ -246,7 +254,7 @@ function Settings({ payee, accounts, onSave, onClose }) {
   const [name, setName] = useState(payee.name);
   const [account, setAccount] = useState(payee.account);
   return (
-    <section className={`${card} fade-in mt-2 space-y-3 px-4 py-4`}>
+    <section className="fade-in space-y-3 rounded-[1.25rem] border border-line bg-card px-4 py-4">
       <label className="block">
         <span className="text-[0.8125rem] font-semibold text-mut">Ad (bankada alıcı olarak yazılan)</span>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" className="mt-1 h-11 w-full rounded-xl bg-bg px-3.5 text-[1rem] outline-none" />
@@ -256,14 +264,13 @@ function Settings({ payee, accounts, onSave, onClose }) {
           <p className="text-[0.8125rem] font-semibold text-mut">Banka hesabı</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {[{ key: "", label: "Hepsi" }, ...accounts].map((a) => (
-              <button key={a.key} type="button" onClick={() => setAccount(a.key)} aria-pressed={account === a.key} className={`h-8 rounded-full px-3 text-[0.8125rem] font-semibold ${account === a.key ? "bg-fg text-card" : "bg-bg text-fg"}`}>
+              <button key={a.key} type="button" onClick={() => setAccount(a.key)} aria-pressed={account === a.key} className={`h-8 max-w-full truncate rounded-full px-3 text-[0.8125rem] font-semibold ${account === a.key ? "bg-acc text-white" : "bg-bg text-fg"}`}>
                 {a.label}
               </button>
             ))}
           </div>
         </div>
       )}
-      <p className="text-[0.75rem] leading-snug text-mut">Hesaplardan bu ada giden paralar sayılır. Kendi hesabını seçersen o hesaba gelenler de sayılır; ad boşsa yalnız seçili hesaba gelenler.</p>
       <div className="flex gap-2">
         <button type="button" onClick={onClose} data-press className="btn btn-secondary flex-1">
           Vazgeç

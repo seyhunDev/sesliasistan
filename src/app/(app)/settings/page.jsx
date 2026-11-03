@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
+import { ListHead } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { BrainCard } from "@/features/brain/BrainCard";
@@ -22,15 +23,31 @@ import { FaceIdRow } from "@/features/ios/AppLock";
 import { KIND_LABEL, kindOf } from "@/lib/kinds";
 import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 
-// Profil kartı (ana hesap ve kişiler ortak)
-function Profile({ profile, label }) {
+// Lacivert üst: geri, Ayarlar, altında ad · hesap türü, sağda fotoğraf (yeni tasarım, 2026-11-03)
+function Top({ profile, label }) {
   return (
-    <section className="mt-2 flex items-center gap-4 rounded-2xl border border-line bg-card px-4 py-3.5">
-      <ProfilePhoto orgId={profile.orgId} uid={profile.uid} name={profile.name} photo={profile.photo} photoPath={profile.photoPath} size="size-14" text="text-[1.1875rem]" tone="bg-acc text-white" />
-      <span className="min-w-0 flex-1">
-        <b className="block truncate text-[1.1875rem] font-semibold tracking-tight">{profile.name}</b>
-        <span className="block truncate text-[0.875rem] text-mut">{label}</span>
-      </span>
+    <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Ayarlar">
+      <header className="flex items-center gap-2.5">
+        <BackButton href="/" />
+        <div className="min-w-0 flex-1 leading-tight">
+          <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Ayarlar</h1>
+          <p className="truncate text-[0.8125rem] text-white/65">{[profile.name, label].filter(Boolean).join(" · ")}</p>
+        </div>
+        <ProfilePhoto orgId={profile.orgId} uid={profile.uid} name={profile.name} photo={profile.photo} photoPath={profile.photoPath} size="size-10" text="text-[0.9375rem]" tone="bg-acc text-white" />
+      </header>
+    </section>
+  );
+}
+
+// Açık alan ve bölüm: başlık listenin dışında (ListHead), satırlar ince çizgili beyaz kartta (yeni tasarım, 2026-11-03)
+function Body({ children }) {
+  return <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">{children}</div>;
+}
+function Sec({ title, children }) {
+  return (
+    <section>
+      {title && <ListHead title={title} />}
+      <div className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">{children}</div>
     </section>
   );
 }
@@ -55,23 +72,24 @@ function PersonSettings({ profile, n }) {
   const ai = kind !== "athlete" && kind !== "student";
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Ayarlar" />
-      <Profile profile={profile} label={KIND_LABEL[kind] || "Kişi"} />
-      <Group title="Ayarlar">
-        <SizeRow />
-        <ThemeRow />
-        <NotifyRow n={n} />
-        <NotifyMoreRow n={n} />
-        {ai && <SummaryRow />}
-        {ai && <VoiceRow />}
-        <WeatherPlaceRow />
-      </Group>
-      <Group title="Hesap">
-        <PasswordRow />
-        <FaceIdRow />
-        <VersionRow />
-        <Row title="Çıkış yap" danger onClick={() => logout()} />
-      </Group>
+      <Top profile={profile} label={KIND_LABEL[kind] || "Kişi"} />
+      <Body>
+        <Sec title="Ayarlar">
+          <SizeRow />
+          <ThemeRow />
+          <NotifyRow n={n} />
+          <NotifyMoreRow n={n} />
+          {ai && <SummaryRow />}
+          {ai && <VoiceRow />}
+          <WeatherPlaceRow />
+        </Sec>
+        <Sec title="Hesap">
+          <PasswordRow />
+          <FaceIdRow />
+          <VersionRow />
+          <Row title="Çıkış yap" danger onClick={() => logout()} />
+        </Sec>
+      </Body>
     </main>
   );
 }
@@ -100,66 +118,65 @@ export default function SettingsPage() {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Ayarlar" />
+      <Top profile={profile} label="Ana hesap" />
+      <Body>
+        <Sec title="Genel">
+          <SizeRow />
+          <ThemeRow />
+          <WeatherPlaceRow />
+          <RacesRow />
+          <RaceLiveRow />
+          <Row title="Yayın" href="/settings/yayin" />
+        </Sec>
 
-      <Profile profile={profile} label="Ana hesap" />
+        <Sec title="Bildirimler">
+          <NotifyRow n={n} />
+          <NotifyMoreRow n={n} />
+          <SummaryRow />
+        </Sec>
 
-      <Group title="Genel">
-        <SizeRow />
-        <ThemeRow />
-        <WeatherPlaceRow />
-        <RacesRow />
-        <RaceLiveRow />
-        <Row title="Yayın" href="/settings/yayin" />
-      </Group>
+        <Sec title="Ses ve asistan">
+          <VoiceRow />
+          <PowerRow />
+          <PastChatsRow />
+          <PermissionsRow />
+        </Sec>
 
-      <Group title="Bildirimler">
-        <NotifyRow n={n} />
-        <NotifyMoreRow n={n} />
-        <SummaryRow />
-      </Group>
+        <Sec title="Veri ve cihaz">
+          <EnergyRow />
+          <UsageRow />
+          <DeviceDataRow />
+          <BackupRow />
+          <Row title="Gmail ve banka mailleri" href="/mail/setup" />
+          <CalendarFeedRow />
+        </Sec>
 
-      <Group title="Ses ve asistan">
-        <VoiceRow />
-        <PowerRow />
-        <PastChatsRow />
-        <PermissionsRow />
-      </Group>
+        <Sec>
+          <Row title="Testler" href="/settings/tests" />
+        </Sec>
 
-      <Group title="Veri ve cihaz">
-        <EnergyRow />
-        <UsageRow />
-        <DeviceDataRow />
-        <BackupRow />
-        <Row title="Gmail ve banka mailleri" href="/mail/setup" />
-        <CalendarFeedRow />
-      </Group>
+        <Sec title="Hesap">
+          <PasswordRow />
+          <FaceIdRow />
+          <VersionRow />
+          <Row title="Çıkış yap" danger onClick={() => logout()} />
+        </Sec>
 
-      <Group>
-        <Row title="Testler" href="/settings/tests" />
-      </Group>
-
-      <Group title="Hesap">
-        <PasswordRow />
-        <FaceIdRow />
-        <VersionRow />
-        <Row title="Çıkış yap" danger onClick={() => logout()} />
-      </Group>
-
-      <Group>
-        <SheetRow title="Arşivlenenler" sub="6">
-          <Group>
-            <LedgerRow />
-            <Fold title="Öğrenme" sub={profile.brainOff ? "Kapalı" : "Açık"}>
-              <BrainCard bare owner />
-            </Fold>
-            <CallsRow />
-            <MoveAllRow />
-            <MailFilesRow />
-            <Row title="Kişiler" sub={members.length ? `${members.length} kişi` : ""} href="/staff" />
-          </Group>
-        </SheetRow>
-      </Group>
+        <Sec>
+          <SheetRow title="Arşivlenenler" sub="6">
+            <Group>
+              <LedgerRow />
+              <Fold title="Öğrenme" sub={profile.brainOff ? "Kapalı" : "Açık"}>
+                <BrainCard bare owner />
+              </Fold>
+              <CallsRow />
+              <MoveAllRow />
+              <MailFilesRow />
+              <Row title="Kişiler" sub={members.length ? `${members.length} kişi` : ""} href="/staff" />
+            </Group>
+          </SheetRow>
+        </Sec>
+      </Body>
     </main>
   );
 }
