@@ -1,0 +1,150 @@
+"use client";
+
+// Yarış sayfasında "Siteden belgeler" (Seyhun 2026-11-03): yarış sitesinden alınan bütün belgeler, yeni önce.
+// Açılınca yeni gelenler türüne göre işlenir (raceSite.js): renk listesi ve final grupları günün gruplarına, sporcu listesi
+// kayıt listesine, sonuçlar yarışın sonuçlarına (onResults, page.jsx). Her satır açılır (PDF); işlenen belge "Geri al" ile döner.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { PdfViewer } from "@/components/ui/PdfViewer";
+import { Sheet } from "@/components/ui/Sheet";
+import { ListHead, Row, RowList, Tag } from "@/components/ui/Row";
+import { useToast } from "@/components/ui/ToastProvider";
+import { getStored } from "@/lib/firebase/fileStore";
+import { currentAmend, kindLabel, resultState, version } from "@/lib/siteDocs";
+import { LIST_KINDS, applyList, checkSite, loadSiteDocs, redoDoc, saveDocState, undoDoc, unfollowSite } from "./raceSite";
+
+const when = (at) => {
+  const d = new Date(`${String(at).slice(0, 10)}T12:00:00`);
+  return `${d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} ${String(at).slice(11, 16)}`;
+};
+const kindText = (d) => (d.kind === "results" && resultState(d.name) ? `${kindLabel(d.kind)} (${resultState(d.name) === "kesin" ? "kesin" : "geçici"})` : d.kind === "amend" ? `${kindLabel(d.kind)} V${version(d.name)}` : kindLabel(d.kind));
+const work = (d) => LIST_KINDS.includes(d.kind) || d.kind === "results";
+
+export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndoResults, ready = true }) {
+  const toast = useToast();
+  const [docs, setDocs] = useState(null);
+  const [open, setOpen] = useState(open0);
+  const [view, setView] = useState(null);
+  const [busy, setBusy] = useState("");
+  const running = useRef(false);
+
+  const load = useCallback(() => loadSiteDocs(orgId, race.id).then(setDocs, () => setDocs((d) => d || [])), [orgId, race.id]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Yeni gelenler sırayla işlenir (eskiden yeniye: aynı günün yeni renk listesi eskisinin yerine geçsin)
+  useEffect(() => {
+    if (!docs || running.current) return;
+    // Sonuç belgesi sporcular yüklenince (bizimkiler aranır); listeler hemen
+    const todo = docs.filter((d) => d.state === "new" && work(d) && (d.kind !== "results" || ready)).reverse();
+    if (!todo.length) return;
+    running.current = true;
+    (async () => {
+      let n = 0;
+      for (const d of todo) {
+        try {
+          const patch = d.kind === "results" ? await onResults(d) : await applyList(orgId, race.id, d);
+          if (!patch) continue;
+          await saveDocState(orgId, race.id, d.id, patch);
+          n++;
+        } catch (e) {
+          await saveDocState(orgId, race.id, d.id, { state: "kept", note: e?.message?.slice(0, 80) || "Okunamadı" }).catch(() => {});
+        }
+      }
+      running.current = false;
+      if (n) toast(`Siteden ${n} belge işlendi`);
+      load();
+    })();
+  }, [docs, ready, orgId, race.id, onResults, toast, load]);
+
+  const undo = async (d) => {
+    setBusy(d.id);
+    try {
+      const r = await undoDoc(orgId, race, d);
+      if (r.results) onUndoResults?.(r.results);
+      toast("Geri alındı");
+      await load();
+    } catch {
+      toast("Geri alınamadı");
+    }
+    setBusy("");
+  };
+  const redo = async (d) => {
+    setBusy(d.id);
+    await redoDoc(orgId, race.id, d).catch(() => {});
+    await load();
+    setBusy("");
+  };
+  const check = async () => {
+    setBusy("check");
+    try {
+      const r = await checkSite(race.id);
+      toast(r.error || (r.got ? `${r.got} yeni belge alındı` : "Yeni belge yok"));
+      await load();
+    } catch (e) {
+      toast(e.message);
+    }
+    setBusy("");
+  };
+  const stop = async () => {
+    if (!confirm("Bu yarış siteden izlenmesin mi? Alınmış belgeler kalır.")) return;
+    setBusy("stop");
+    try {
+      await unfollowSite(race.id);
+      toast("İzleme bırakıldı");
+    } catch (e) {
+      toast(e.message);
+    }
+    setBusy("");
+  };
+
+  const fresh = (docs || []).filter((d) => d.state === "new").length;
+  const amend = currentAmend(docs || []);
+  return (
+    <>
+      <section className="mt-6">
+        <ListHead title="Siteden belgeler" count={docs?.length || 0} />
+        <RowList>
+          <Row onClick={() => setOpen(true)} title={docs?.[0]?.name || (docs ? "Henüz belge yok" : "Yükleniyor…")} sub={docs?.[0] ? `${kindText(docs[0])} · ${when(docs[0].at)}` : ""} right={fresh ? <Tag tone="gen">{fresh} yeni</Tag> : null} />
+        </RowList>
+      </section>
+      <Sheet open={open} onClose={() => setOpen(false)} title="Siteden belgeler">
+        {amend && (
+          <RowList>
+            <Row onClick={() => setView(amend)} title={amend.name} sub={`Geçerli ek talimat · ${when(amend.at)}`} />
+          </RowList>
+        )}
+        <RowList className={amend ? "mt-3" : ""}>
+          {(docs || []).map((d) => (
+            <div key={d.id} className="flex min-h-[3.5rem] items-center gap-2 border-t border-line py-2 first:border-t-0">
+              <button type="button" data-press="row" onClick={() => setView(d)} className="min-w-0 flex-1 text-left">
+                <b className="block truncate text-[0.9375rem] font-semibold">{d.name}</b>
+                <small className="block truncate text-[0.8125rem] text-mut">{[kindText(d), when(d.at), d.state === "undone" ? "Geri alındı" : d.note].filter(Boolean).join(" · ")}</small>
+              </button>
+              {d.state === "used" && d.undo && (
+                <Button variant="secondary" size="sm" loading={busy === d.id} onClick={() => undo(d)}>
+                  Geri al
+                </Button>
+              )}
+              {d.state === "undone" && (
+                <Button variant="secondary" size="sm" loading={busy === d.id} onClick={() => redo(d)}>
+                  Yeniden işle
+                </Button>
+              )}
+            </div>
+          ))}
+        </RowList>
+        <div className="mt-4 flex gap-2">
+          <Button variant="primary" full loading={busy === "check"} onClick={check}>
+            Şimdi bak
+          </Button>
+          <Button variant="secondary" full loading={busy === "stop"} onClick={stop}>
+            İzlemeyi bırak
+          </Button>
+        </div>
+      </Sheet>
+      {view && <PdfViewer title={view.name} load={() => getStored(view.file, "application/pdf")} onClose={() => setView(null)} />}
+    </>
+  );
+}
