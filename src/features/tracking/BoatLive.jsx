@@ -11,7 +11,7 @@ import { BoatRace } from "./BoatRace";
 
 let cache = null;
 
-export function BoatLive({ grp = "", bare = true }) {
+export function BoatLive({ grp = "", bare = true, tag }) {
   const [set, setSet] = useState(cache);
   useEffect(() => {
     if (cache) return;
@@ -30,5 +30,5 @@ export function BoatLive({ grp = "", bare = true }) {
   }, []);
   if (!set) return <div className="br" />;
   const g = liveGroup(set, grp);
-  return <BoatRace key={g} set={set} grp={g} bare={bare} />;
+  return <BoatRace key={g} set={set} grp={g} bare={bare} tag={tag} />;
 }

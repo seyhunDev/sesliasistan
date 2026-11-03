@@ -27,7 +27,7 @@ import { TrackPanel } from "@/features/tracking/TrackPanel";
 import { BoatLive } from "@/features/tracking/BoatLive";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
+import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf } from "@/lib/courseCard";
@@ -94,7 +94,6 @@ export function BroadcastPage({ orgId, id }) {
   const [impOpen, setImpOpen] = useState(false); // Program: Programı ekle açık
   const [reset, setReset] = useState(false); // Yayını sıfırla penceresi
   const [delId, setDelId] = useState(""); // Program: silinmesi sorulan start
-  const [prep, setPrep] = useState(""); // oluşturulacak yarışın bayrağı (Seyhun 2026-11-02 "hiçbir şey seçili olmasın, seçince ilerlesin")
   const [retryPick, setRetryPick] = useState(false); // tekrar startın bayrağı burada seçildi ("Geri" boşaltır)
   const [made, setMade] = useState(0); // son oluşturulan yarışın programa eklenen start sayısı ("Geri" onları çıkarıp bayrağa döner)
   const [setupOpen, setSetupOpen] = useState(false); // ⋯ › Sınıf ve gruplar (yarışın sınıfları ve grupları bir kez seçilir)
@@ -363,15 +362,6 @@ export function BroadcastPage({ orgId, id }) {
   }, [tracking]);
   // Bekleyen start satırı: ekle, düzenle, sırala, çıkar
   const editRow = (i, patch) => changePlan({ order: plan.order.map((o, k) => (k === i ? { ...o, ...patch } : o)) });
-  // Yarış oluştur (Seyhun 2026-11-02): sınıflar ve gruplar yarışın kurulumunda bir kez seçilir (plan.sets); burada yalnız bayrak.
-  // Bayrağa dokununca yarışın startları programa eklenir ve Başlat açılır; "Geri" eklenenleri çıkarıp bayrak seçimine döner.
-  const createRace = (g) => {
-    if (!plan.sets.length) return;
-    const add = raceOrder({ ...plan, prep: g });
-    setPrep(g);
-    setMade(add.length);
-    changePlan({ prep: g, order: [...plan.order, ...add] });
-  };
   const undoRace = () => {
     if (retryPick) return (setRetryPick(false), editRow(0, { prep: "" }));
     if (!made || plan.order.length < made) return setMade(0);
@@ -591,6 +581,19 @@ export function BroadcastPage({ orgId, id }) {
   const needSetup = !!L && (setupOpen || !plan.sets.length);
   // Sıradaki startın bayrağı boşsa (genel geri / abandone sonrası tekrar) önce bayrak
   const needFlag = !!L && idle && !!nextPlan && !nextPlan.prep && plan.status !== "done";
+  // Yarış bayrak sorulmadan oluşur (Seyhun 2026-11-03 "sınıf ve grup seçildikten sonra bayrak seçimi fazlalık; U seçili olsun"):
+  // sıradaki yarış yoksa startları U bayrağıyla programa eklenir; bayrak her startın satırındaki karede değiştirilir
+  const raceRef = useRef("");
+  const autoKey = needRace && !needSetup ? `${today}/${live.starts.length}/${plan.order.length}` : "";
+  useEffect(() => {
+    if (!autoKey || raceRef.current === autoKey) return undefined;
+    raceRef.current = autoKey;
+    const add = raceOrder({ ...plan, prep: "U" });
+    if (!add.length) return undefined;
+    const t = setTimeout(() => changePlan({ prep: "U", order: [...plan.order, ...add] }), 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoKey]);
   // Seçim kareleri (Seyhun 2026-11-03 "sınıf, grup, bayrak yan yana kare butonlar, görselleriyle; hangisine tıklanırsa onu değiştirelim"):
   // üç kare seçili değeri gösterir (sınıf işareti grup renginde, grup rengi, bayrak resmi); dokununca yalnız o seçimin seçenekleri açılır
   const pickSquares = (val, set, keys = ["cls", "grp", "prep"]) => {
@@ -719,8 +722,6 @@ export function BroadcastPage({ orgId, id }) {
         ) : null}
         {needSetup ? (
           <Setup sets={plan.sets} onSave={saveSetup} onCancel={plan.sets.length ? () => setSetupOpen(false) : null} />
-        ) : needRace ? (
-          <FlagPick no={nextRaceNo(live.starts, today, rdays, plan.sets[0]?.grps?.[0] || "")} sets={plan.sets} value={prep} onPick={createRace} />
         ) : needFlag ? (
           <FlagPick no={nextRow?.n || 1} again={!!nextRow?.retry} sets={[{ cls: nextPlan.cls, grps: nextPlan.grp ? [nextPlan.grp] : [] }]} value="" onPick={(g) => (editRow(0, { prep: g }), setRetryPick(true))} />
         ) : (

@@ -1231,3 +1231,50 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-bc.summary.video :is(.lv-bg, .lv-sea) { filter: none; }
 .lv-dendb .lv-bclock { display: flex; flex-direction: column; align-items: flex-start; gap: 0.4em; }
 .lv-dendb .lv-bclock .lv-apk { margin-bottom: 0.2em; }
+/* Örnek I (2026-11-03): ilk starta 1 saatten fazla. Solda sabit başlık + durum, sağda yandan kayan tek alan */
+.lv-hold4 { grid-template-columns: 38fr 62fr; column-gap: 3vw; padding: 0 clamp(16px, 2.5vw, 44px) 0 0; }
+.lv-hold4 .lv-hst { justify-content: flex-start; gap: 0.3em; padding: 12vh 0 3vh 4vw; }
+.lv-hold4 .lv-big { font-size: clamp(56px, 7.5vw, 136px); margin-top: 0.15em; }
+.lv-hold4 .lv-what { font-size: 1.25em; }
+.lv-hold4 .lv-what small { display: block; margin-top: 0.25em; }
+.lv-htitle { display: flex; flex-direction: column; gap: 0.35em; margin-bottom: 3.2vh; max-width: 100%; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-htitle b { font-size: clamp(24px, 2.3vw, 42px); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.1; }
+.lv-htitle span { font-size: 1em; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
+.lv-bc:has(.lv-hold4) .lv-rname { display: none; }
+.lv-slides { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 12vh 0 4vh; overflow: hidden; }
+.lv-slide { flex: 1; display: flex; flex-direction: column; min-height: 0; animation: lv-slidein 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.lv-slide > * { flex: 1; padding: 0; min-height: 0; }
+.lv-slide .lv-hwnd .lv-wrows, .lv-slide .lv-hwnd .lv-wnow { max-width: none; }
+.lv-slide .lv-hprog .lv-slprog { width: 100%; font-size: 1.05em; }
+.lv-hboats { display: flex; flex-direction: column; min-height: 0; }
+.lv-hboats .br { flex: 1; min-height: 0; position: relative; border-radius: 0.8em; overflow: hidden; margin-top: 0.4em; }
+@keyframes lv-slidein { from { transform: translateX(8%); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 47.99rem) { .lv-hold4 { display: flex; flex-direction: column; gap: 1.5em; padding: 0; } .lv-hold4 .lv-hst, .lv-hold4 .lv-slides { padding: 0; } .lv-hold4 .lv-slides { min-height: 60vh; } .lv-band .lv-slides { height: auto; min-height: 30vh; } }
+.lv-band .lv-slides { flex: 1 1 0; height: 34vh; padding: 0; }
+.lv-band .lv-slides .lv-dots { position: absolute; right: 0; top: 0; margin: 0; }
+.lv-band .lv-slide > .lv-bcrs, .lv-band .lv-slide > .lv-bwnd, .lv-band .lv-slide > .lv-bprog { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.lv-band .lv-slide .lv-bcrs .lv-sceneb { flex: 1; min-height: 0; }
+.lv-band .lv-slide .lv-slprog { font-size: 0.95em; }
+.lv-band .lv-bclock .lv-htitle { margin-bottom: 1.4vh; }
+.lv-band .lv-bclock .lv-htitle b { font-size: clamp(18px, 1.6vw, 30px); }
+.lv-band .lv-bclock .lv-htitle span { font-size: 0.8em; }
+.lv-band .lv-bclock { flex: 0 0 30%; }
+.lv-bc:has(.lv-band .lv-htitle) .lv-rname { display: none; }
+.lv-band .lv-slide > .lv-bwnd { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: 2vw; align-items: start; }
+.lv-band .lv-slide > .lv-bwnd > .lv-hlab { grid-column: 1 / -1; }
+.lv-band .lv-slide > .lv-bcrs { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); column-gap: 2vw; }
+.lv-band .lv-slide > .lv-bcrs > .lv-hlab { grid-column: 1 / -1; }
+.lv-band .lv-slide > .lv-bcrs .lv-sceneb { height: 100%; }
+.lv-band .lv-slide > .lv-bcrs .lv-sceneb svg { width: 100%; height: 100%; }
+.lv-band .lv-slide > .lv-bcrs .lv-cinfo { flex-direction: column; justify-content: center; gap: 1.2em; margin: 0; border: 0; }
+/* Videolu (Seyhun 2026-11-03 "orantısız; ad ve başlık yukarıda soluk; parkur yok; şerit gibi alçak") */
+.lv-rsub { font-size: 0.85em; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-topl:has(.lv-rsub) { max-width: 80%; }
+.lv-side.lv-band:has(.lv-slides) { align-items: stretch; padding-top: 1.4em; }
+.lv-band .lv-slides { height: 21vh; }
+.lv-band:has(.lv-slides) .lv-sbig { font-size: clamp(40px, 4.6vw, 84px); }
+.lv-band:has(.lv-slides) .lv-bclock { flex: 0 0 26%; }
+.lv-band .lv-slide > .lv-bwnd .lv-wnow { font-size: 0.85em; }
+.lv-band .lv-slide .lv-slprog { font-size: 0.85em; }
+.lv-band .lv-hboats .br-live { left: 0.6em; top: 0.5em; bottom: auto; transform: none; font-size: 13px; }
+@media (max-width: 47.99rem) { .lv-band .lv-slides { height: 30vh; } }

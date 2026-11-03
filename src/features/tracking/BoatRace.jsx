@@ -83,7 +83,7 @@ function Pin({ x, y }) {
 
 // set: cleanSet; grp: gösterilen grup ("" = hepsi); loop: bitince baştan
 // bare: yayının içinde (canlı ekranın kendi rüzgâr ve sayaç şeridi var): rüzgâr, şamandıra yazısı ve alttaki sayaç yerine üstte "CANLI KONUM" rozeti
-export function BoatRace({ set, grp = "", loop = true, bare = false }) {
+export function BoatRace({ set, grp = "", loop = true, bare = false, tag = "CANLI KONUM" }) {
   const box = useRef(null);
   const [size, setSize] = useState(() => sizeOf(0, 0));
   useEffect(() => {
@@ -168,7 +168,7 @@ export function BoatRace({ set, grp = "", loop = true, bare = false }) {
       </svg>
       {bare ? (
         <div className="br-live">
-          <b>CANLI KONUM</b>
+          <b>{tag}</b>
           <span>{`${ck.label === "SÜRE" ? "START +" : "START'A "}${ck.n}`}</span>
         </div>
       ) : (
