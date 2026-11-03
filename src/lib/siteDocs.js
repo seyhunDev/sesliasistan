@@ -15,18 +15,27 @@ const plain = (s) =>
 
 // Türler: kind, ekranda görünen ad. Sıra önemli: ilk eşleşen kazanır ("EK TALİMAT" talimattan, "GEÇİCİ SONUÇ" sonuçtan önce)
 export const KINDS = [
-  ["groups", "Renk listesi", /\brenk\b|\bgrup listesi\b|\bgruplar\b/],
-  ["fleets", "Final filoları", /\baltin\b.*\bgumus\b|\bgumus\b.*\bbronz\b|\bfinal filo|\bfilo listesi\b/],
-  ["entries", "Sporcu listesi", /\bsporcu\b|\bkatilim(ci)?\b|\bkayit listesi\b|\bentry\b|\bentries\b/],
+  ["groups", "Renk listesi", /\brenk\b|\bgrup listesi\b|\b(mavi|sari|kirmizi|yesil|pembe|turuncu|mor) (grup |sporcu )?liste/],
   ["results", "Sonuçlar", /\bsonuc|\bresults?\b|\bsiralama/],
-  ["amend", "Ek talimat", /\bek talimat|\bdegisiklik\b|\bamendment\b/],
+  ["fleets", "Final grupları", /\baltin\b.*\b(gumus|bronz|liste|lst)\b|\bgumus\b.*\bbronz\b|\bfinal (filo|grup)/],
+  ["entries", "Sporcu listesi", /\bsporcu listesi?\b|\bkatilim(ci)? listesi?\b|\bkayit listesi\b|\bentry list\b|\bentries\b/],
+  ["amend", "Ek talimat", /\bek (yaris )?talimat|\bdegisiklik\b|\bamendment\b/],
   ["notice", "Yarış talimatı", /\btalimat|\bilani?\b|\bsailing instructions\b|\bnotice of race\b/],
   ["program", "Program", /\bprogram\b|\bschedule\b/],
 ];
-export function docKind(name) {
+// src: "results" (sitenin Sonuçlar sayfası): adında tür yoksa ("RS Feva 4 YARIS.pdf") sonuç sayılır; ödül formu değil
+export function docKind(name, src = "") {
   const p = plain(name);
   const k = KINDS.find(([, , re]) => re.test(p));
-  return k ? k[0] : "other";
+  if (k) return k[0];
+  return src === "results" && !/\bodul\b/.test(p) ? "results" : "other";
+}
+// Tek renkli liste ("8.10.2025 MAVİ SPORCU LİSTESİ"): satırlarda grup yoksa adındaki renk
+const COLOR_WORDS = [["mavi", "Mavi"], ["sari", "Sarı"], ["kirmizi", "Kırmızı"], ["yesil", "Yeşil"], ["pembe", "Pembe"], ["turuncu", "Turuncu"], ["mor", "Mor"], ["altin", "Altın"], ["gumus", "Gümüş"], ["bronz", "Bronz"]];
+export function colorOf(name) {
+  const w = plain(name).split(" ");
+  const hit = COLOR_WORDS.filter(([k]) => w.includes(k));
+  return hit.length === 1 ? hit[0][1] : "";
 }
 export const kindLabel = (k) => KINDS.find(([x]) => x === k)?.[1] || "Belge";
 
@@ -38,7 +47,8 @@ export function resultState(name) {
 
 // Ek talimat sürümü: "EK TALİMAT_V3" → 3, yoksa 1
 export function version(name) {
-  const m = plain(name).match(/\bv ?(\d{1,3})\b/);
+  const p = plain(name);
+  const m = p.match(/\bv ?(\d{1,3})\b/) || p.match(/\btalimati? (\d{1,3})$/);
   return m ? +m[1] : 1;
 }
 
@@ -76,7 +86,7 @@ export function docKey(name, at) {
 export function newDocs(list, seen) {
   const have = new Set(seen || []);
   return (list || [])
-    .map((d) => ({ ...d, at: d.at || uploadedAt(d.time), kind: docKind(d.name) }))
+    .map((d) => ({ ...d, at: d.at || uploadedAt(d.time), kind: d.kind || docKind(d.name, d.src) }))
     .filter((d) => d.name && d.url && d.at)
     .map((d) => ({ ...d, key: docKey(d.name, d.at) }))
     .filter((d) => !have.has(d.key))

@@ -29,6 +29,9 @@ import { doc } from "firebase/firestore";
 import { updateDoc } from "@/lib/firebase/write";
 import { todayStr } from "@/lib/utils/format";
 import { goBack } from "@/lib/navTrail";
+import { getStored } from "@/lib/firebase/fileStore";
+import { SiteDocs } from "@/features/athletes/SiteDocs";
+import { importResults, importToast } from "@/features/athletes/resultsImport";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
 export default function RacePage() {
@@ -137,6 +140,37 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     return () => void (live = false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rid, orgId, athletes]);
+
+  // Yarış sitesinden gelen sonuç belgesi (SiteDocs, raceSite.js): elle yüklenen sonuç gibi işlenir; dönüş belgenin yeni durumu
+  const raceNow = useRef(race);
+  useEffect(() => {
+    raceNow.current = race;
+  }, [race]);
+  const onSiteResults = useCallback(
+    async (d) => {
+      const cur = raceNow.current;
+      if (!athletes || !cur?.id) return null;
+      const ours = athletes.filter((a) => (cur.athleteIds || []).includes(a.id));
+      const club = athletes.filter((a) => isActive(a) && !ours.includes(a));
+      const file = new File([await getStored(d.file, "application/pdf")], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" });
+      const got = await importResults({ orgId, race: cur, athletes: ours, club, file });
+      got.results = stampResults(cur.results, got.results, todayStr());
+      await saveRaceResults(orgId, cur.id, got.results, got.extra);
+      const athleteIds = [...new Set([...(cur.athleteIds || []), ...got.extra])];
+      const next = { ...cur, results: got.results, athleteIds };
+      raceNow.current = next;
+      setRace(next);
+      window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: next }));
+      return { state: "used", note: importToast(got), undo: { file: got.results.files?.at(-1)?.id || "" } };
+    },
+    [athletes, orgId],
+  );
+  const onSiteUndo = useCallback((results) => {
+    const next = { ...raceNow.current, results };
+    raceNow.current = next;
+    setRace(next);
+    window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: next }));
+  }, []);
 
   // Yeni yarış ilk kaydında adresi kendi kimliğine döner (geri/yenile doğru yarışı açsın).
   // Kayıttan sonra ortak kısım arkada yayınlanır (sharedRaces.js; yalnız değişince ve yetki varsa yazar).
@@ -248,6 +282,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
             onCoach={onCoach}
             onMailTo={(list) => updateDoc(doc(db, "users", uid), { mailTo: list }).catch(() => toast("Adres kaydedilemedi"))}
           />
+          {race.id && race.site?.act && <SiteDocs orgId={orgId} race={race} open={sec === "site"} ready={!!athletes} onResults={onSiteResults} onUndoResults={onSiteUndo} />}
         </>
       )}
     </main>

@@ -991,3 +991,31 @@ group("Tekne takibi")([
     ["sezon", { desc: "Eylül'den yeni sezon; sitede varsa şimdiki varsayılan", fn: () => [SD.seasonOf("2026-11-03"), SD.seasonOf("2027-05-01"), SD.pickSeason(["2025-2026", "2026-2027", "2027-2028"], "2026-11-03"), SD.pickSeason(["2025-2026"], "2026-11-03")], ok: (r) => r.join() === "2026-2027,2026-2027,2026-2027,2025-2026" }],
   ]);
 }
+
+// Yarış sitesi sayfası (lib/siteBoard.js): İlan Tahtası'nın HTML'i (2026-11-03'teki biçim, kısaltılmış)
+{
+  const SB = await import("@/lib/siteBoard");
+  const SD = await import("@/lib/siteDocs");
+  const SS = await import("@/lib/server/raceSiteSync");
+  const row = (t, fid, name) => `<tr><th scope="row" class="colId">1</th><td class="colUploadTime">${t}</td><td><a class="activityDoc" href="https://www.tyf.org.tr/faaliyetdosyasi/${fid}/" target="_blank" title="${name}">${name}</a></td></tr>`;
+  const cls = (id, name, rows) => [`<li class="nav-item" role="presentation"><button class="nav-link " id="_${id}" data-bs-toggle="tab" data-bs-target="#tab-${id}" type="button" role="tab" aria-controls="home" aria-selected="true">\n${name}\n</button></li>`, `<div class="tab-pane fade " id="tab-${id}" role="tabpanel"><table class="table table-hover"><thead><tr><th>#</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`];
+  const opt = cls("285510", "OPTIMIST", [row("04.11.2026 18:05", "300002", "RENK L&#x130;STES&#x130;-05.11.2026.pdf"), row("31.08.2026 15:25", "288999", "TYF YELKEN L&#x130;G&#x130; 1. AYAK OPT&#x130;M&#x130;ST YARI&#x15E; &#x130;LANI")]);
+  const ilca = cls("285512", "ILCA", [row("03.10.2026 16:00", "292893", "PROTESTO.pdf")]);
+  const HTML = `<div id="noticeBoardWrapper"><ul class="nav nav-tabs">
+<li><button class="nav-link active" id="p2627" data-bs-toggle="tab" data-bs-target="#tab-p2627" type="button">\n2026-2027\n</button></li>
+<li><button class="nav-link" id="p2526" data-bs-toggle="tab" data-bs-target="#tab-p2526" type="button">\n2025-2026\n</button></li></ul>
+<div class="tab-content"><div class="tab-pane fade active show" id="tab-p2627" role="tabpanel"><ul><li><button class="nav-link active" id="league1-2627" data-bs-toggle="tab" data-bs-target="#tab-league1-2627" type="button" aria-selected="true">\n1. AYAK\n</button></li></ul>
+<div class="tab-content"><div class="tab-pane fade active show" id="tab-league1-2627" role="tabpanel"><ul class="nav nav-tabs">${opt[0]}${ilca[0]}</ul><div class="tab-content">${opt[1]}${ilca[1]}</div></div></div></div>
+<div class="tab-pane fade" id="tab-p2526" role="tabpanel"><ul><li><button class="nav-link active" id="league1-2526" type="button">\n1. AYAK\n</button></li><li><button class="nav-link" id="league2-2526" type="button">\n2. AYAK\n</button></li></ul>
+<div class="tab-content"><div class="tab-pane fade active show" id="tab-league1-2526" role="tabpanel"><div class="js-leg-content" data-leg-number="9" data-loaded="false"></div></div>
+<div class="tab-pane fade" id="tab-league2-2526" role="tabpanel"><div class="js-leg-content" data-leg-number="10" data-loaded="false"></div></div></div></div></div></div>`;
+  const B = SB.parseBoard(HTML);
+  group("Yarış sitesi sayfası")([
+    ["sezon ve ayaklar", { desc: "şimdiki sezon sayfada, eski sezon ayakları numarayla sonradan", fn: () => B.seasons.map((s) => `${s.name}:${s.legs.map((l) => `${l.name}/${l.legNo || "in"}`).join("+")}`).join(" "), ok: (t) => t === "2026-2027:1. AYAK/in 2025-2026:1. AYAK/9+2. AYAK/10" }],
+    ["sınıflar ve belgeler", { desc: "sınıf kimliği (faaliyet), Türkçe harfler, zaman, PDF kimliği", fn: () => B.seasons[0].legs[0].classes, ok: (c) => c.length === 2 && c[0].act === "285510" && c[0].cls === "OPTIMIST" && c[0].docs[0].name === "RENK LİSTESİ-05.11.2026.pdf" && c[0].docs[0].at === "2026-11-04T18:05" && c[0].docs[0].url === "https://www.tyf.org.tr/faaliyetdosyasi/300002/" && c[1].docs.length === 1 }],
+    ["yarış ilanı", { desc: "sınıfın ilanı yarışın açılacağı belge", fn: () => SB.noticeDoc(B.seasons[0].legs[0].classes[0])?.fid, ok: (f) => f === "288999" }],
+    ["iki sayfa birlikte", { desc: "İlan Tahtası ve Sonuçlar aynı sınıfta birleşir; Sonuçlar'daki adsız belge sonuç", fn: async () => { const res = HTML.replace("RENK L&#x130;STES&#x130;-05.11.2026.pdf", "RS Feva 4 YARIS.pdf").replace("300002", "300009"); const get = async (u) => (u === SS.RESULTS_URL ? res : HTML); const c = await SS.legClasses(get, { season: "2026-2027", n: 1, legNo: "" }); return c[0].docs.map((d) => `${d.src}:${d.kind}`).join(); }, ok: (t) => t === "board:groups,results:results,board:notice,results:notice" }],
+    ["ne zaman bakılır", { desc: "yarıştan bir gün önce – bir gün sonra her çalışmada, yoksa günde bir", fn: () => { const now = new Date("2026-11-03T20:00Z"); return [SS.dueNow({ startDate: "2026-11-04", endDate: "2026-11-06" }, now), SS.dueNow({ startDate: "2026-12-04", checkedAt: "2026-11-03T10:00Z" }, now), SS.dueNow({ startDate: "2026-12-04", checkedAt: "2026-11-02T10:00Z" }, now), SS.dueNow({}, now)]; }, ok: (a) => a.join() === "true,false,true,true" }],
+    ["tek renkli liste", { desc: "adındaki renk grubu olur", fn: () => [SD.colorOf("8.10.2025 kırmızı sporcu listesi"), SD.docKind("8.10.2025 MAVİ SPORCU LİSTESİ"), SD.colorOf("RENK LİSTESİ")], ok: (a) => a.join() === "Kırmızı,groups," }],
+  ]);
+}

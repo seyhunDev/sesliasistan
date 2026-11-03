@@ -55,6 +55,8 @@ export const RACE_FIELDS = [
   "follow",
   // Ortak yarış bağı (lib/sharedRace.js): sharedRaces/{shared}; sharedAt ortaktan son alınan sürüm
   "shared", "sharedAt",
+  // Yarış sitesinden izleme (raceSite.js): { act, cls, season, n, legNo } TYF İlan Tahtası'ndaki sınıf sekmesi
+  "site",
 ];
 
 const NOTICE_KEYS = ["organizer", "venue", "classes", "schedule", "deadlines", "tasks", "fees", "hotels", "contacts", "notes", "summary", "at", "planned"];
@@ -283,9 +285,15 @@ const clean = (r) =>
               ? cleanHotels(r[k])
             : k === "follow"
               ? cleanFollow(r[k])
+            : k === "site"
+              ? cleanSite(r[k])
             : String(r[k] || "").trim(),
     ]),
   );
+
+// Yarış sitesi bağı (raceSite.js): yoksa null
+export const cleanSite = (s) =>
+  s && /^\d{1,9}$/.test(String(s.act || "")) ? { act: String(s.act), cls: String(s.cls || "").slice(0, 40), season: String(s.season || "").slice(0, 9), n: Number(s.n) || 1, legNo: /^\d{1,4}$/.test(String(s.legNo || "")) ? String(s.legNo) : "" } : null;
 
 // Yeni yarışın boş hali (evrak tarihi boş: belgeler ilk hazırlanınca o gün yazılır, sonra değişmez): yetkili, il, federasyon gibi bilgiler son yarıştan gelir.
 // Kulüp izin yazısının sayısı son yarışın son sayısından devam eder.
