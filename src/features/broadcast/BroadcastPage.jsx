@@ -24,6 +24,7 @@ import { AddSheet } from "@/features/raceMedia/CourseTab";
 import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { TrackPanel } from "@/features/tracking/TrackPanel";
+import { BoatReplay } from "@/features/tracking/BoatReplay";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
 import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
@@ -652,11 +653,11 @@ export function BroadcastPage({ orgId, id }) {
   const airCam = airStart ? srcs.find((c) => c.id === camOf(L?.camBy, airE.cls || "", airE.grp || airStart.grp || "")) : null;
   // Ekranda: canlıysa küçük oynatıcı (sessiz), kayıtsa küçük resmi; Önizleme: seçilen kaynak (yalnız burada)
   const airUrl = onScreen && onScreen.kind !== "rec" ? (onScreen.kind === "live" && airCam?.url ? airCam.url : screenUrl(onScreen, { ...L?.stream, sources: srcList })) : "";
-  const monName = monRec ? recName(monRec, live.starts) : onScreen?.kind === "src" ? srcOf(onScreen.src)?.name || "Canlı" : onScreen?.kind === "live" ? airCam?.name || "Grubun kamerası" : onScreen?.kind === "drone" ? "Drone" : "Video";
+  const monName = monRec ? recName(monRec, live.starts) : onScreen?.kind === "boats" ? "Tekneler · Replay" : onScreen?.kind === "src" ? srcOf(onScreen.src)?.name || "Canlı" : onScreen?.kind === "live" ? airCam?.name || "Grubun kamerası" : onScreen?.kind === "drone" ? "Drone" : "Video";
   const pvRec = sel?.kind === "rec" ? live.media.find((m) => m.id === sel.mid) : null;
   const pvUrl = selSrc?.url || (sel?.kind === "live" ? airCam?.url || L?.stream.url || "" : "");
-  const pvName = selSrc?.name || (sel?.kind === "live" ? "Grubun kamerası" : pvRec ? recName(pvRec, live.starts) : "");
-  const takeOk = !!sel && (sel.kind === "rec" || !!ytEmbed(pvUrl));
+  const pvName = selSrc?.name || (sel?.kind === "live" ? "Grubun kamerası" : sel?.kind === "boats" ? "Tekneler" : pvRec ? recName(pvRec, live.starts) : "");
+  const takeOk = !!sel && (sel.kind === "rec" || sel.kind === "boats" || !!ytEmbed(pvUrl));
   const nLive = srcList.filter((x) => stat[x.url]?.live).length;
   // satırdan başlatma: geri sayım sürmüyor, tehir yok, gün bitmedi
   const canRow = plan.status !== "ap" && plan.status !== "done" && tr.t.left == null && !(cur && Date.parse(cur.at) > capNow);
@@ -1054,7 +1055,7 @@ export function BroadcastPage({ orgId, id }) {
         <section>
           <div className="masa-mons">
             <div className="masa-mon pv">
-              {pvUrl && ytEmbed(pvUrl) ? <iframe key={pvUrl} src={ytSrc(pvUrl)} title="Önizleme" allow="autoplay; encrypted-media" /> : pvRec?.thumb ? <img src={pvRec.thumb} alt="" /> : <div className="mid">{sel ? "Bağlantı yok" : "Kaynak seç"}</div>}
+              {sel?.kind === "boats" ? <BoatReplay grp={airE.grp || airStart?.grp || ""} /> : pvUrl && ytEmbed(pvUrl) ? <iframe key={pvUrl} src={ytSrc(pvUrl)} title="Önizleme" allow="autoplay; encrypted-media" /> : pvRec?.thumb ? <img src={pvRec.thumb} alt="" /> : <div className="mid">{sel ? "Bağlantı yok" : "Kaynak seç"}</div>}
               <span className="lb">ÖNİZLEME</span>
               {pvName ? <span className="sn">{pvName}</span> : null}
             </div>
@@ -1147,6 +1148,11 @@ export function BroadcastPage({ orgId, id }) {
                   <b>{isOn("rec", m.id) ? `Ekranda · ${recName(m, live.starts)}` : recName(m, live.starts)}</b>
                 </button>
               ))}
+              {/* Tekne replay'i (Seyhun 2026-11-03 "video yerine bunu da seçebilmeliyim; gruba göre otomatik; döngü, replay"): ekrandaki yarışın grubu */}
+              <button type="button" aria-pressed={isSel("boats")} onClick={() => setSel({ kind: "boats" })} className="masa-tile">
+                <span className="th">Replay</span>
+                <b>{isOn("boats") ? "Ekranda · Tekneler" : "Tekneler"}</b>
+              </button>
               <button type="button" disabled={!!busy} onClick={() => file.current?.click()} className="masa-tile">
                 <span className="th">{busy && busy !== "x" ? busy : "+ Video"}</span>
                 <b>Telefondan</b>
@@ -1233,7 +1239,7 @@ export function BroadcastPage({ orgId, id }) {
               {onScreen.pause ? "Sürdür" : "Duraklat"}
             </Button>
           ) : null}
-          <Button disabled={!!busy || !takeOk || (!!onScreen && isOn(sel.kind, sel.mid || sel.src || ""))} onClick={() => show({ ...sel, loop: false, caption: cap })}>
+          <Button disabled={!!busy || !takeOk || (!!onScreen && isOn(sel.kind, sel.mid || sel.src || ""))} onClick={() => show({ ...sel, loop: sel.kind === "boats", caption: cap })}>
             {pvName ? `${pvName.length > 14 ? "Ekrana al" : `${pvName}'i ekrana al`}` : "Ekrana al"}
           </Button>
         </MasaBar>

@@ -11,6 +11,7 @@ import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { groupColor, groupMap, onlyCat, provisional } from "@/lib/roundScore";
 import { BoatMap } from "@/features/tracking/BoatMap";
+import { BoatReplay } from "@/features/tracking/BoatReplay";
 import { HourTable } from "@/features/weather/HourTable";
 import { useDemo } from "./demo";
 import { useVisit } from "./useVisit";
@@ -848,6 +849,12 @@ function Backdrop({ data, isCur, entry }) {
   return (
     <>
       <Sea photo={on ? "" : BG_PHOTO} />
+      {/* Tekne replay'i (Seyhun 2026-11-03): Yayın › Video › Tekneler; ekrandaki yarışın grubu, döngüde */}
+      {scr.kind === "boats" ? (
+        <div className="lv-boats" aria-hidden="true">
+          <BoatReplay grp={entry?.grp || ""} />
+        </div>
+      ) : null}
       {st && layers.length ? (
         <div className={`lv-bg ${st}`} aria-hidden="true">
           {layers.map((l) => {
@@ -2557,7 +2564,7 @@ export function LiveScreen({ id, y = "" }) {
   // Evre (lib/raceLive.js livePhase): bekleme (start saatine geri sayım) · yarış (sayaç ya da bugünkü start) · gün özeti
   const today = seeDay(data, nowMs);
   const phase = isCur ? livePhase({ plan: data.plan, starts, timer: data.timer, today, now: nowMs }) : "race";
-  const hasVideo = isCur && ["live", "drone", "src", "rec"].includes(data.screen?.kind);
+  const hasVideo = isCur && ["live", "drone", "src", "rec", "boats"].includes(data.screen?.kind);
   const csel = phase === "race" ? sel : null;
   // sayaç başka grubun startını sayıyorsa (ekranda Sarı yarışta, Mavi geri sayımda) ekrandaki yarışın saati sayaçtan okunmaz
   const ctimer = phase === "race" && (!data.timer?.rid || !sel || data.timer.rid === sel.id) ? data.timer : null;

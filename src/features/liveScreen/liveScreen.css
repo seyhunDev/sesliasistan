@@ -1144,3 +1144,6 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-one .lv-sceneb svg { width: 100%; height: auto; max-height: 50vh; }
 .lv-band2 .lv-one .lv-sceneb svg { max-height: 15em; }
 .lv-band2 .lv-one .lv-wh { zoom: 0.9; }
+
+/* Tekne replay'i (Yayın › Video › Tekneler, features/tracking/BoatReplay; Seyhun 2026-11-03) */
+.lv-boats { position: fixed; inset: 0; z-index: 0; animation: lv-fade 1.2s ease-out both; }
