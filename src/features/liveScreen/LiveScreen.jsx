@@ -4,11 +4,11 @@ import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { liveUrl } from "@/lib/raceCams";
-import { apText, trHm, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
+import { apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, SHOW_ON, shortClub, shortName, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
+import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { groupColor, groupMap, onlyCat, provisional } from "@/lib/roundScore";
 import { BoatMap } from "@/features/tracking/BoatMap";
 import { HourTable } from "@/features/weather/HourTable";
@@ -53,6 +53,25 @@ export const fillData = (j) => ({
 });
 
 // Logo kaldırıldı (Seyhun 2026-11-01 "herkese açık sayfadaki logoyu da kaldır"); başlık en solda
+// Son veri bu tarayıcıda saklanır (Seyhun 2026-11-03 "loading mantığı yanlış"): yarış yeniden açılınca ekran hemen son haliyle gelir,
+// arkadan tazelenir; ilk açılışta yalnız yarışın adı (listeden) ve ince yükleme çizgisi, sahte yerleşim yok
+const cacheKey = (id) => `lv-data:${id}`;
+export const PRE_KEY = (id) => `lv-pre:${id}`;
+const readStore = (k) => {
+  try {
+    const v = sessionStorage.getItem(k);
+    return v ? JSON.parse(v) : null;
+  } catch {
+    return null;
+  }
+};
+const writeStore = (k, v) => {
+  try {
+    sessionStorage.setItem(k, JSON.stringify(v));
+  } catch {
+    /* yer yok, özel pencere: önbelleksiz sürer */
+  }
+};
 function useData(id, y) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
@@ -61,6 +80,10 @@ function useData(id, y) {
     if (!id) return undefined; // örnek yarış (/canli/ornek) sunucuya sormaz
     let on = true;
     let t = 0;
+    if (!y) {
+      const c = readStore(cacheKey(id));
+      if (c?.race) setData((d) => d || fillData(c));
+    }
     const load = async () => {
       clearTimeout(t);
       if (document.hidden) return (t = setTimeout(load, POLL));
@@ -72,6 +95,7 @@ function useData(id, y) {
         if (res.ok && j?.race) {
           setData(fillData(j));
           setErr("");
+          if (!y) writeStore(cacheKey(id), j);
         } else setErr(j?.error || "fail");
       } catch {
         if (on) setErr((e) => e || "net");
@@ -265,7 +289,14 @@ function clockState({ sel, isCur, timer, now, entry, data, today }) {
     const ms = planStartMs(plan, today);
     const pick = plan.status === "done" && plan.next ? plan.next : { day: plan.day, at: plan.at };
     const nextDay = pick.day > today;
-    if (ms && ms > now) {
+    const apDown = plan.status === "ap" && plan.ap?.down ? Date.parse(plan.ap.down) : 0;
+    if (apDown && apDown > now) {
+      // Tehir süresi belliyse inişine geri sayım (Seyhun 2026-11-03 "bir saatlik tehirse bir saat geri sayımda göstermeliyiz")
+      rem = (apDown - now) / 1000;
+      label = "Tehir inişine";
+      value = clockOf(Math.ceil(rem));
+      right = apText(plan);
+    } else if (ms && ms > now) {
       rem = (ms - now) / 1000;
       label = plan.status === "ap" ? "Ertelenen start'a" : nextDay ? "Yarın ilk start'a" : "İlk start'a";
       value = clockOf(Math.ceil(rem));
@@ -304,38 +335,18 @@ function FlagRow({ flags }) {
 // yalnız deniz rengi kalır (CSS arka planı, kırık resim görünmez). Video gelince video, duraklatılınca da o video görünür.
 // Seyhun 2026-11-02 seçti (sail-world.com Optimist fotoğrafı; sunucumuza indirilemedi, tarayıcı doğrudan oradan yükler)
 export const BG_PHOTO = "https://www.sail-world.com/photos/optimist/yysw256373.jpg";
-// Yükleniyor (Seyhun 2026-11-02 örnek B "İskelet", yayin-tasarim/yukleniyor/yuk-b.png): düz koyu lacivert zemin, ekranın gerçek yerleşimi
-// soluk kutularla (üstte yarış çipleri, sağda sıralama paneli, altta şerit), parlaklık kayar; ortada CANLI rozeti, yazı yok
-function LoadSkel() {
+// Yükleniyor (Seyhun 2026-11-03 "o loading tasarımı yanlış, daha doğru mantıkla"): eski iskelet (sahte sıralama paneli, CANLI rozeti) yarış
+// başlamamışken yanlış bir ekran vaat ediyordu. Şimdi: düz zemin, sol üstte geri ve yarışın adı (listeden geldiyse hemen), üstte ince kayan
+// çizgi; başka bir şey yok. Daha önce açıldıysa veri önbellekten anında gelir, bu ekran hiç görünmez.
+function LoadSkel({ name = "" }) {
   return (
     <div className="lv-skel" role="status" aria-label="Yükleniyor">
-      <div className="lv-skp">
-        <i />
-        <i />
-        <i />
-      </div>
-      <div className="lv-skr">
-        <i className="h" />
-        {Array.from({ length: 9 }, (_, n) => (
-          <div key={n}>
-            <i className="n" />
-            <i className="t" />
-            <i className="s" />
-          </div>
-        ))}
-      </div>
-      <span className="lv-skl">
-        <b />
-        CANLI
-      </span>
-      <div className="lv-skb">
-        <div>
-          <i className="a" />
-          <i className="b" />
-        </div>
-        <i className="c" />
-        <i className="d" />
-        <i className="e" />
+      <i className="lv-loadline" />
+      <div className="lv-topl">
+        <Link href="/canli" className="lv-back lv-backc" aria-label="Yarışlar">
+          ‹
+        </Link>
+        {name ? <span className="lv-rname">{name}</span> : null}
       </div>
     </div>
   );
@@ -1264,8 +1275,9 @@ function holdState(data, today, cs, now) {
   const last = (data.starts || []).filter((x) => x.day === today).at(-1);
   const vd = last?.void && (!last.fin || now - Date.parse(last.fin) < 3 * 3600e3) ? last.void : "";
   let box = null;
-  if (plan.status === "ap") box = { flag: "AP", head: "Tehir", sub: apText(plan) || "Start ertelendi" };
-  else if (plan.warn && now < Date.parse(plan.warn)) box = { flag: "AP", head: "Tehir indi", sub: `Uyarı işareti ${trHm(plan.warn)}` };
+  // İniş ve uyarı işareti saati yazılmaz (Seyhun 2026-11-03); bayrak + sebep
+  if (plan.status === "ap") box = { flag: "AP", head: "Tehir", sub: apText(plan) };
+  else if (plan.warn && now < Date.parse(plan.warn)) box = { flag: "AP", head: "Tehir indi", sub: "Start yakında" };
   else if (vd) {
     const grp = last.grp || data.rounds?.[last.id]?.grp || "";
     const head = [vd === "Genel geri çağırma" ? "Genel geri" : vd, raceName(last)].filter(Boolean).join(" · ");
@@ -1379,20 +1391,22 @@ function WaitHero({ data, today, cs, prog, now }) {
   const { none, box, kick } = holdState(data, today, cs, now);
   const first = prog.find((x) => x.state === "next") || null;
   const at = plan.status === "done" && plan.next ? plan.next.at : plan.at;
-  const svg = courseSvg(data, sceneRoute(data, null, true, "wait"));
+  const route = sceneRoute(data, null, true, "wait");
+  const svg = courseSvg(data, route);
   // Yarışa günler varken (Seyhun 2026-11-02 "6 gün sonra bir yarış; kaç gün kaldı, o tarihlerdeki beklenen rüzgâr"): büyük "6 gün", vitrinde yarış günlerinin rüzgârı
   const r = data.race || {};
   const left = !cs.rem && r.startDate > today ? daysUntil(r.startDate, today) : 0;
   const aDays = left ? data.ahead?.days || raceDays(r.startDate, r.endDate, plan).map((day) => ({ day, at: plan.times?.[day] || plan.daily || "" })) : [];
   const ag = agOf(data, now);
-  const slides = none ? [] : left ? [svg ? "course" : "", aDays.length ? "ahead" : "", ag ? "prog" : ""].filter(Boolean) : [prog.length || ag ? "prog" : "", svg ? "course" : "", windShowable(data) ? "wind" : ""].filter(Boolean);
-  // vitrin arasız döner; Yayın'dan "Göster" turu baştan başlatır
-  // yeni parkur ölçümü (komite parkuru attı) gelince önce parkur (Seyhun 2026-11-02 "parkur eksenini güzelce gösterelim")
-  const cNew = Math.max(0, Date.parse(data.course?.cardAt || "") || 0, ...(data.course?.obs || []).map((o) => Date.parse(o.at) || 0));
   if (none && !left && plan.next?.day) return <NoneHero data={data} today={today} now={now} />;
-  const k = svg && slides.includes("course") && cNew > 0 && now - cNew < COURSE_MS ? "course" : slides.length ? showSlide({ show: { ...data.courseShow, auto: false }, now, pre: true, slides }) || slides[Math.floor(now / SHOW_ON) % slides.length] : "";
+  // Örnek H (Seyhun 2026-11-03 onay): vitrin dönmez. Solda geri sayım, program ve rüzgâr; sağ üstte parkur. Parkur yoksa günler varken
+  // yarış günlerinin beklenen rüzgârı, yoksa rüzgâr grafiği. Yayın'dan "Göster" ile rüzgâr ya da program seçilirse sağda o görünür
+  const one = data.courseShow?.one;
+  const hasProg = !none && !!(ag || prog.length);
+  const k = one === "wind" && windShowable(data) ? "wind" : one === "prog" && hasProg ? "prog" : svg ? "course" : left && aDays.length ? "ahead" : windShowable(data) ? "wind" : "";
+  const progBody = ag ? <AgendaBody ag={ag} /> : <ProgBody prog={prog} />;
   return (
-    <div className="lv-hold">
+    <div className="lv-hold lv-holdh">
       <div className="lv-hst">
         <div className="lv-kick">{left ? "Yarışa" : kick}</div>
         {left ? (
@@ -1420,19 +1434,19 @@ function WaitHero({ data, today, cs, prog, now }) {
             </div>
           </div>
         ) : null}
+        {hasProg && k !== "prog" ? (
+          <div className="lv-hprog">
+            <div className="lv-hlab">Program</div>
+            {progBody}
+          </div>
+        ) : null}
         {!none && !left ? <WindStrip data={data} now={now} /> : null}
       </div>
-      {slides.length ? (
-        <div className="lv-show">
-          <div className="lv-tabs">
-            {slides.map((x) => (
-              <i key={x} className={x === k ? "on" : ""}>
-                {SLIDE_NAME[x]}
-              </i>
-            ))}
-          </div>
+      {k ? (
+        <div className="lv-show lv-showh">
+          <div className="lv-hlab">{k === "course" ? `Parkur · ${routeText(route)}` : SLIDE_NAME[k]}</div>
           <div key={k} className="lv-showb">
-            {k === "course" ? <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: svg }} /> : k === "wind" ? <WindBody data={data} sel={null} isCur now={now} /> : k === "ahead" ? <AheadBody days={aDays} /> : ag ? <AgendaBody ag={ag} /> : <ProgBody prog={prog} />}
+            {k === "course" ? <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: svg }} /> : k === "wind" ? <WindBody data={data} sel={null} isCur now={now} /> : k === "ahead" ? <AheadBody days={aDays} /> : progBody}
           </div>
         </div>
       ) : null}
@@ -1470,14 +1484,17 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
   const flags = seq ? startFlags(entryNow, false, cs.rem <= 60) : [];
   const ww = c || ew;
   const rt = cleanRoute(route);
+  // Tehir (Seyhun 2026-11-03 "videolu ekranda da tehir bayrağı ve sebebi"): etikette AP bayrağı, altında sebep; iniş / uyarı işareti saati yok
+  const ap = data.plan.status === "ap";
+  const apDown = !ap && !!data.plan.warn && now < Date.parse(data.plan.warn);
   return (
     <aside className="lv-side">
       <div className="lv-stop">
-        <div className={`lv-skick${orange ? " o" : ""}`}>
-          {orange ? <span className="lv-oflag" aria-hidden="true" /> : null}
-          {orange ? "Start öncesi" : "Yarış öncesi"}
+        <div className={`lv-skick${orange ? " o" : ""}${ap || apDown ? " ap" : ""}`}>
+          {ap || apDown ? <Flag kind="AP" /> : orange ? <span className="lv-oflag" aria-hidden="true" /> : null}
+          {ap ? "Tehir" : apDown ? "Tehir indi" : orange ? "Start öncesi" : "Yarış öncesi"}
         </div>
-        <div className="lv-ssub">{[cs.label, cs.right].filter(Boolean).join(" · ")}</div>
+        <div className="lv-ssub">{(ap ? [cs.rem ? cs.label : "", apText(data.plan)] : [cs.label, cs.right]).filter(Boolean).join(" · ")}</div>
         <div className="lv-sbig">{cs.rem ? cs.value : "—:—"}</div>
         {first ? (
           <div className="lv-swhat">
@@ -2202,6 +2219,12 @@ export function LiveScreen({ id, y = "" }) {
     const t = setTimeout(() => router.replace("/canli"), GONE_MS);
     return () => clearTimeout(t);
   }, [gone, router]);
+  // listeden gelen yarışın adı (yüklenirken yazılır)
+  const [preName, setPreName] = useState("");
+  useEffect(() => {
+    if (data || !id) return;
+    setPreName(readStore(PRE_KEY(id))?.name || "");
+  }, [data, id]);
   if (!data) {
     return (
       <div className="lv">
@@ -2218,7 +2241,7 @@ export function LiveScreen({ id, y = "" }) {
           ) : err ? (
             <div className="lv-msg">Bağlanılamadı, yeniden deneniyor.</div>
           ) : (
-            <LoadSkel />
+            <LoadSkel name={preName} />
           )}
         </div>
       </div>

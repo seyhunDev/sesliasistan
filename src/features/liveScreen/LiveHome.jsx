@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { dirShort } from "@/lib/raceLive";
-import { Sea } from "./LiveScreen";
+import { PRE_KEY, Sea } from "./LiveScreen";
 import { useVisit } from "./useVisit";
 import "./liveScreen.css";
 
@@ -51,8 +51,16 @@ export function LiveHome() {
   const rest = all.filter((r) => r !== hero);
   const coming = rest.filter((r) => r.startDate >= today || (r.today && r.status !== "done"));
   const over = rest.filter((r) => !coming.includes(r));
+  // yarışın adı açılan ekranda yüklenirken hemen yazılsın (Seyhun 2026-11-03 "loading mantığı")
+  const pre = (r) => {
+    try {
+      sessionStorage.setItem(PRE_KEY(r.id), JSON.stringify({ name: r.name || "" }));
+    } catch {
+      /* özel pencere */
+    }
+  };
   const Row = ({ r, dim }) => (
-    <Link href={`/canli/${r.id}`} className={`lv-row lv-hrow${dim ? " dn" : ""}`}>
+    <Link href={`/canli/${r.id}`} onClick={() => pre(r)} className={`lv-row lv-hrow${dim ? " dn" : ""}`}>
       <span className="d">
         <b>{new Date(`${r.startDate}T12:00:00`).getDate()}</b>
         <small>{new Date(`${r.startDate}T12:00:00`).toLocaleDateString("tr-TR", { month: "short" })}</small>
@@ -80,7 +88,7 @@ export function LiveHome() {
           <div className="lv-empty">Şu an açık yarış yok.</div>
         ) : null}
         {hero ? (
-          <Link href={`/canli/${hero.id}`} className={`lv-hero${hero.live ? " live" : ""}`}>
+          <Link href={`/canli/${hero.id}`} onClick={() => pre(hero)} className={`lv-hero${hero.live ? " live" : ""}`}>
             <div className="hl">
               {hero.live ? <em className="lv-live">Canlı</em> : null}
               <span>{heroText(hero, today)}</span>
