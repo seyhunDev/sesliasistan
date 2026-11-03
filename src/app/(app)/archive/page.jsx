@@ -3,7 +3,9 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
+import { Empty } from "@/components/ui/Page";
+import { ListHead, RowList } from "@/components/ui/Row";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -14,7 +16,14 @@ import { noteReopenPatch, noteStateText } from "@/lib/noteState";
 import { planReopenPatch } from "@/lib/planActions";
 
 const KIND = { plan: "Plan", task: "Görev", note: "Not" };
-const ICON = { plan: "cal", task: "task", note: "note" };
+const MON = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+// Kaydın günü (yerel saat): "2026-11-03" ya da tam zaman; okunamazsa null
+const dayOf = (v) => {
+  const s = String(v || "");
+  if (!s) return null;
+  const d = new Date(s.length <= 10 ? `${s}T12:00:00` : s);
+  return isNaN(d) ? null : d;
+};
 const fold = (s = "") => s.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normalize("NFD").replace(/\p{M}/gu, "");
 const fmt = (iso) => {
   if (!iso) return "";
@@ -30,8 +39,9 @@ export default function ArchivePage() {
   );
 }
 
-// Arşiv: tamamlanan görevler, biten ("Bitti") ve geçmiş planlar ve arşivlenen notlar tek tabloda. Hiçbir kayıt silinmez;
+// Arşiv: tamamlanan görevler, biten ("Bitti") ve geçmiş planlar ve arşivlenen notlar tek listede. Hiçbir kayıt silinmez;
 // yalnızca ana listelerden kalkar. Tür süzgeci, arama, Excel'e (CSV) aktarma; satıra dokun → kayıt açılır.
+// Yeni tasarım (2026-11-03): lacivert üstte ad, Excel, arama ve tür çipleri; altta aylara göre satırlar (eski geniş tablo yerine)
 function Archive() {
   const initial = useSearchParams().get("t") || "all";
   const { plans, tasks, notes, nameOf, toggleTask, updateRecord, myUid } = useData();
@@ -78,111 +88,102 @@ function Archive() {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  return (
-    <main className="mx-auto max-w-[60rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Arşiv" sub={`${rows.length} kayıt · hiçbiri silinmez`}>
-        <button
-          type="button"
-          onClick={exportCsv}
-          disabled={!shown.length}
-          data-press className="btn btn-secondary btn-sm text-acc"
-        >
-          <Icon name="up" className="size-4 rotate-180" /> Excel’e aktar
+  // Aylara göre bölümler (en yeni üstte); satır: başlık, altında tür · gün · kişiler · ayrıntı, sağda durum ve geri alma
+  const ymOf = (x) => {
+    const d = dayOf(x.date);
+    return d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` : "";
+  };
+  const months = [...new Set(shown.map(ymOf))];
+  const short = (x) => {
+    const d = dayOf(x.date);
+    return d ? `${d.getDate()} ${MON[d.getMonth()]}` : "";
+  };
+  const monthName = (ym) => (ym ? new Date(`${ym}-01T12:00:00`).toLocaleDateString("tr-TR", { month: "long", year: "numeric" }) : "Tarihsiz");
+  // Geri alma: görev yeniden açılır, biten plan Planlar'a, not Notlar'a döner (geçmiş planda yok)
+  const back = (x) =>
+    x.kind === "task" ? ["Yeniden aç", () => toggleTask(x.r.id)] : x.kind === "plan" && x.r.done ? ["Planlara geri al", () => updateRecord("plan", x.r.id, planReopenPatch(), by)] : x.kind === "note" ? ["Notlara geri al", () => updateRecord("note", x.r.id, noteReopenPatch(), by)] : null;
+  const row = (x) => {
+    const b = back(x);
+    const done = x.kind === "task" || x.r.done;
+    const status = x.status.split(" · ")[0];
+    const doers = x.status.split(" · ").slice(1).join(" · ");
+    const sub = [KIND[x.kind], short(x), doers || x.assignees, x.creator && `Ekleyen ${x.creator}`, x.detail].filter(Boolean).join(" · ");
+    return (
+      <div key={`${x.kind}-${x.r.id}`} className="flex min-h-[3.5rem] items-center gap-2 border-t border-line py-2.5 first:border-t-0">
+        <button type="button" onClick={() => openAdd({ edit: { kind: x.kind, id: x.r.id } })} data-press="row" className="min-w-0 flex-1 text-left">
+          <b className="block truncate text-[0.9375rem] font-semibold">{x.r.title || "Başlıksız"}</b>
+          <small className="block truncate text-[0.8125rem] text-mut">{sub}</small>
         </button>
-      </PageHeader>
-
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {[
-          ["all", "Tümü", rows.length],
-          ["plan", "Planlar", count("plan")],
-          ["task", "Görevler", count("task")],
-          ["note", "Notlar", count("note")],
-        ].map(([k, label, n]) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setType(k)}
-            aria-pressed={type === k}
-            className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[0.875rem] font-semibold active:scale-95 ${type === k ? "bg-deep text-white" : "bg-card text-fg ring-1 ring-line"}`}
-          >
-            {label} <span className={`tabular-nums ${type === k ? "text-white/75" : "text-mut"}`}>{n}</span>
+        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[0.75rem] font-semibold ${done ? "bg-ok/10 text-ok" : "bg-line text-mut"}`}>{status}</span>
+        {b && (
+          <button type="button" onClick={b[1]} aria-label={b[0]} data-press className="btn btn-text btn-sm shrink-0">
+            Geri al
           </button>
-        ))}
-        <label className="ml-auto flex h-9 min-w-[12rem] flex-1 items-center gap-2 rounded-full bg-card px-3.5 ring-1 ring-line sm:flex-none">
-          <Icon name="search" className="size-4 text-mut" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} type="search" placeholder="Arşivde ara" className="min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut" />
-        </label>
+        )}
       </div>
+    );
+  };
+  const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
 
-      {shown.length ? (
-        <div className="mt-4 overflow-x-auto rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.25)]">
-          <table className="w-full min-w-[42rem] border-collapse text-left text-[0.875rem]">
-            <thead>
-              <tr className="border-b border-line text-[0.6875rem] font-bold uppercase tracking-[.08em] text-mut">
-                <th className="px-4 py-3 font-bold">Tür</th>
-                <th className="px-3 py-3 font-bold">Başlık</th>
-                <th className="px-3 py-3 font-bold">Tarih</th>
-                <th className="px-3 py-3 font-bold">Ekleyen</th>
-                <th className="px-3 py-3 font-bold">Sorumlu</th>
-                <th className="px-3 py-3 font-bold">Durum</th>
-                <th className="px-3 py-3 font-bold">
-                  <span className="sr-only">İşlem</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((x) => (
-                <tr key={`${x.kind}-${x.r.id}`} className="border-b border-line/70 last:border-0 hover:bg-bg/60">
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[0.8125rem] font-semibold text-acc">
-                      <Icon name={ICON[x.kind]} className="size-4" /> {KIND[x.kind]}
-                    </span>
-                  </td>
-                  <td className="max-w-[16rem] px-3 py-3">
-                    <button type="button" onClick={() => openAdd({ edit: { kind: x.kind, id: x.r.id } })} className="block w-full text-left">
-                      <b className="block truncate font-semibold hover:underline">{x.r.title}</b>
-                      {x.detail && <small className="block truncate text-[0.75rem] text-mut">{x.detail}</small>}
-                    </button>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 tabular-nums text-mut">{x.when}</td>
-                  <td className="whitespace-nowrap px-3 py-3">{x.creator || "—"}</td>
-                  <td className="px-3 py-3 text-mut">{x.assignees || "—"}</td>
-                  <td className="px-3 py-3">
-                    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-[0.75rem] font-semibold ${x.kind === "task" || x.r.done ? "bg-ok/10 text-ok" : "bg-line/70 text-mut"}`}>{x.status}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right">
-                    {x.kind === "task" && (
-                      <button type="button" onClick={() => toggleTask(x.r.id)} data-press className="btn btn-text btn-sm">
-                        Yeniden aç
-                      </button>
-                    )}
-                    {x.kind === "plan" && x.r.done && (
-                      <button type="button" onClick={() => updateRecord("plan", x.r.id, planReopenPatch(), by)} data-press className="btn btn-text btn-sm">
-                        Planlara geri al
-                      </button>
-                    )}
-                    {x.kind === "note" && (
-                      <button type="button" onClick={() => updateRecord("note", x.r.id, noteReopenPatch(), by)} data-press className="btn btn-text btn-sm">
-                        Notlara geri al
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+  return (
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Arşiv">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Arşiv</h1>
+            <p className="truncate text-[0.8125rem] text-white/65">{rows.length ? `${rows.length} kayıt` : "Kayıt yok"}</p>
+          </div>
+          <button type="button" onClick={exportCsv} disabled={!shown.length} data-press className="raised flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold disabled:opacity-50">
+            Excel
+          </button>
+        </header>
+
+        <label className="ck-glass mt-4 flex h-11 items-center gap-2 rounded-2xl px-3.5">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            type="search"
+            placeholder="Arşivde ara"
+            enterKeyHint="search"
+            className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-white/50"
+          />
+          {q && (
+            <button type="button" onClick={() => setQ("")} aria-label="Aramayı temizle" data-press className="grid size-7 place-items-center rounded-full text-white/70">
+              <Icon name="x" className="size-4" />
+            </button>
+          )}
+        </label>
+        <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
+          {[
+            ["all", "Tümü", rows.length],
+            ["plan", "Planlar", count("plan")],
+            ["task", "Görevler", count("task")],
+            ["note", "Notlar", count("note")],
+          ].map(([k, label, n]) => (
+            <button key={k} type="button" onClick={() => setType(k)} aria-pressed={type === k} data-press className={`${pill0} ${type === k ? "border-white bg-white text-deep" : "ck-glass text-white"}`}>
+              {label}
+              <span className="ml-1.5 tabular-nums opacity-70">{n}</span>
+            </button>
+          ))}
         </div>
-      ) : (
-        <div className="mt-10 flex flex-col items-center text-center">
-          <span className="grid size-14 place-items-center rounded-full bg-acc/10 text-acc">
-            <Icon name="archive" className="size-7" />
-          </span>
-          <p className="mt-3 max-w-[18rem] text-[0.9375rem] leading-snug text-mut">
-            {q ? `“${q}” bulunamadı.` : "Arşiv boş. Tamamlanan görevler, biten ve geçmiş planlar ve “Yapıldı” dediğin ya da arşivlediğin notlar burada toplanır."}
-          </p>
-        </div>
-      )}
-      <p className="mt-4 text-center text-[0.75rem] text-mut">Tablo sağa kaydırılabilir. Kayda dokununca ayrıntısı açılır.</p>
+      </section>
+
+      <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        {shown.length ? (
+          months.map((m) => {
+            const items = shown.filter((x) => ymOf(x) === m);
+            return (
+              <section key={m || "none"}>
+                <ListHead title={monthName(m)} count={items.length} />
+                <RowList>{items.map(row)}</RowList>
+              </section>
+            );
+          })
+        ) : (
+          <Empty icon="archive" title={q ? `“${q}” bulunamadı` : "Arşiv boş"} />
+        )}
+      </div>
     </main>
   );
 }

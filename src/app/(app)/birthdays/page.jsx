@@ -1,17 +1,20 @@
 "use client";
 
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Empty, Hero, HeroLabel, Label, card } from "@/components/ui/Page";
-import { Icon } from "@/components/ui/Icon";
+import { BackButton } from "@/components/ui/BackButton";
+import { Empty } from "@/components/ui/Page";
+import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { useData } from "@/features/data/DataProvider";
 import { daysBetween, leftLabel, monthYear, nextBirthday, upcomingBirthdays } from "@/lib/agenda";
 import { todayStr } from "@/lib/utils/format";
 
 const MON = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
-const longDay = (s) => new Date(`${s}T00:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+const DAY = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+const wd = (s) => DAY[new Date(`${s}T12:00`).getDay()];
+const shortDay = (s) => `${wd(s)} ${+s.slice(8, 10)} ${MON[+s.slice(5, 7) - 1]}`;
 
-// Doğum günleri: üstte sıradaki (kaç gün kaldı, kaç yaşına giriyor), altında yıl boyunca aya göre sıralı liste
+// Doğum günleri (yeni tasarım, 2026-11-03): lacivert üstte sıradaki (ad, gün, kaç gün kaldı), altta aylara göre liste.
+// Satır: solda gün kutusu, ad, altında yaş · not, sağda kalan gün; dokununca düzenleme penceresi.
 export default function BirthdaysPage() {
   const { birthdays } = useData();
   const { openBirthday } = useBirthday();
@@ -21,67 +24,69 @@ export default function BirthdaysPage() {
   const soon = upcomingBirthdays(birthdays, today, 30).length;
   const left = next ? daysBetween(today, next.date) : 0;
   const months = [...new Set(all.map((b) => b.date.slice(0, 7)))];
+  const sub = birthdays.length ? [`${birthdays.length} kişi`, soon && `30 günde ${soon}`].filter(Boolean).join(" · ") : "Henüz yok";
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Doğum günleri" sub={birthdays.length ? `${birthdays.length} kişi` : "Henüz yok"} />
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Doğum günleri">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Doğum günleri</h1>
+            <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
+          </div>
+        </header>
 
-      {next && (
-        <Hero className="mt-2">
-          <button type="button" onClick={() => openBirthday({ edit: next.id })} className="flex w-full items-center gap-4 text-left">
+        {next && (
+          <button type="button" onClick={() => openBirthday({ edit: next.id })} data-press className="ck-glass mt-4 flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left">
             <span className="min-w-0 flex-1">
-              <HeroLabel>{left === 0 ? "BUGÜN" : "SIRADAKİ"}</HeroLabel>
-              <b className="mt-1.5 block truncate text-[1.5rem] font-semibold leading-tight tracking-tight">{next.name}</b>
-              <small className="mt-1 block truncate text-[0.8125rem] text-white/80">
-                {[longDay(next.date), next.age && `${next.age} yaşına giriyor`].filter(Boolean).join(" · ")}
-              </small>
+              <small className="block truncate text-[0.8125rem] font-semibold text-white/65">{left === 0 ? "Bugün" : "Sıradaki"}</small>
+              <b className="block truncate text-[1.375rem] font-bold leading-tight tracking-[-.02em]">{next.name}</b>
+              <small className="block truncate text-[0.8125rem] text-white/65">{[shortDay(next.date), next.age && `${next.age} yaşına giriyor`].filter(Boolean).join(" · ")}</small>
             </span>
-            <span className="grid size-[5.5rem] shrink-0 place-items-center rounded-full bg-white/10 text-center ring-4 ring-white/15">
-              {left === 0 ? (
-                <Icon name="cake" className="size-9" />
-              ) : (
-                <span>
-                  <b className="block text-[1.75rem] font-semibold leading-none tabular-nums">{left}</b>
-                  <small className="text-[0.6875rem] text-white/75">gün</small>
-                </span>
-              )}
-            </span>
+            {left > 0 && (
+              <span className="shrink-0 text-right leading-none">
+                <b className="block text-[2rem] font-bold tabular-nums tracking-[-.02em]">{left}</b>
+                <small className="text-[0.75rem] text-white/65">gün</small>
+              </span>
+            )}
           </button>
-          <p className="mt-3 rounded-2xl bg-white/10 px-3 py-2 text-[0.75rem] text-white/85">
-            {soon ? `Önümüzdeki 30 günde ${soon} doğum günü var.` : "Önümüzdeki 30 günde doğum günü yok."}
-          </p>
-        </Hero>
-      )}
+        )}
+      </section>
 
-      {!next && <Empty icon="cake" title="Doğum günü eklenmedi" sub="Aşağıdaki + ile ekle ya da “Ayşe’nin doğum günü 12 Mart” de." />}
+      <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        {!next && <Empty icon="cake" title="Doğum günü eklenmedi" />}
 
-      {months.map((m) => {
-        const items = all.filter((b) => b.date.startsWith(m));
-        return (
-          <section key={m}>
-            <Label right={items.length}>{monthYear(`${m}-01`).toLocaleUpperCase("tr-TR")}</Label>
-            <div className={`${card} divide-y divide-line overflow-hidden`}>
-              {items.map((b) => {
-                const isToday = b.date === today;
-                return (
-                  <button key={b.id} type="button" onClick={() => openBirthday({ edit: b.id })} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                    <span className={`flex w-11 shrink-0 flex-col items-center rounded-xl py-1.5 ${isToday ? "bg-acc text-white" : "bg-acc/10 text-acc"}`}>
-                      <b className="text-[1.0625rem] font-bold leading-none tabular-nums">{+b.date.slice(8, 10)}</b>
-                      <small className="mt-0.5 text-[0.625rem] font-semibold uppercase">{MON[+b.date.slice(5, 7) - 1]}</small>
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <b className="block truncate text-[0.9375rem] font-semibold">{b.name}</b>
-                      <small className="block truncate text-[0.75rem] text-mut">{[b.age && `${b.age} yaşına giriyor`, b.note].filter(Boolean).join(" · ") || "Doğum günü"}</small>
-                    </span>
-                    <span className={`shrink-0 text-[0.75rem] font-semibold ${isToday ? "text-acc" : "text-mut"}`}>{isToday ? "Bugün 🎂" : leftLabel(b.date, today)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
-
+        {months.map((m) => {
+          const items = all.filter((b) => b.date.startsWith(m));
+          return (
+            <section key={m}>
+              <ListHead title={monthYear(`${m}-01`)} count={items.length} />
+              <RowList>
+                {items.map((b) => {
+                  const isToday = b.date === today;
+                  return (
+                    <Row
+                      key={b.id}
+                      onClick={() => openBirthday({ edit: b.id })}
+                      chev={false}
+                      lead={
+                        <span className={`flex w-11 shrink-0 flex-col items-center rounded-xl py-1.5 ${isToday ? "bg-acc text-white" : "bg-accbg text-acc"}`}>
+                          <b className="text-[1.0625rem] font-bold leading-none tabular-nums">{+b.date.slice(8, 10)}</b>
+                          <small className="mt-0.5 text-[0.625rem] font-semibold">{wd(b.date)}</small>
+                        </span>
+                      }
+                      title={b.name}
+                      sub={[b.age && `${b.age} yaşına giriyor`, b.note].filter(Boolean).join(" · ") || "Doğum günü"}
+                      right={<span className={`text-[0.8125rem] font-semibold ${isToday ? "text-acc" : "text-mut"}`}>{leftLabel(b.date, today)}</span>}
+                    />
+                  );
+                })}
+              </RowList>
+            </section>
+          );
+        })}
+      </div>
     </main>
   );
 }
