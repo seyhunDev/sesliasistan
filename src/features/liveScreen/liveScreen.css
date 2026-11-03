@@ -924,3 +924,38 @@ button.lv-p:active { transform: translateY(1px); }
 .lv.has-live .lv-prog2 { right: calc(clamp(16px, 1.6vw, 44px) + 7.5em); max-width: 50%; }
 @media (prefers-reduced-motion: reduce) { .lv-onairw { animation: none; } }
 @media (max-width: 760px) { .lv-onairw { --w: 10em; } .lv-rname { max-width: 32%; } }
+
+/* Yarış öncesi yeni düzen (Seyhun 2026-11-03, yayin-tasarim/oncesi-yeni): geri ve yarış adı aynı satırda hizalı; sol altta yatay rüzgâr şeridi;
+   program çizgili zaman akışı, "Sıradaki" dolu pembe-turuncu etiket. Videosuz ve videolu aynı dil */
+.lv-topl { position: absolute; top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top)); left: clamp(16px, 1.6vw, 44px); z-index: 3; display: flex; align-items: center; gap: 0.7em; max-width: 44%; }
+.lv-topl .lv-backc { position: static; margin: 0; flex: none; }
+.lv-topl .lv-rname { position: static; max-width: none; min-width: 0; font-size: 1.05em; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
+@media (max-width: 760px) { .lv-topl { position: static; order: 0; align-self: flex-start; max-width: 100%; } }
+.lv-pill { flex: none; font-style: normal; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.8em; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #fff; background: linear-gradient(135deg, #ff3d77, #ff9a4d); padding: 0.3em 0.9em; border-radius: 999px; }
+.lv-wstrip { align-self: stretch; margin-top: 1.2em; display: flex; align-items: center; gap: 1.1em; padding: 0.8em 1.2em; border-radius: 16px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-wstrip .lv-arrow { width: 3em; height: 3em; flex: none; }
+.lv-wstrip .kn { font-size: clamp(30px, 3vw, 60px); font-weight: 700; line-height: 1; white-space: nowrap; }
+.lv-wstrip .kn em { margin-left: 0.25em; font-size: 0.4em; font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.65); }
+.lv-wstrip .g { flex: 1; min-width: 0; display: flex; justify-content: space-around; gap: 1em; }
+.lv-wstrip .g small { display: block; font-size: 0.78em; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
+.lv-wstrip .g b { display: block; font-size: 1.5em; font-weight: 700; white-space: nowrap; }
+.lv-wstrip .src { font-size: 0.85em; font-weight: 600; color: rgba(255, 255, 255, 0.6); white-space: nowrap; }
+.lv-wstrip .src.m { color: #ffa45c; }
+.lv-wstrip .src.m::before { content: "● "; }
+@media (max-width: 760px) { .lv-wstrip { flex-wrap: wrap; gap: 0.7em 1em; } }
+/* program zaman akışı */
+.lv-slprog { width: min(100%, 38em); }
+.lv-slprog > div { position: relative; display: grid; grid-template-columns: 3.6em 1.1em 1fr auto; align-items: center; column-gap: 0.7em; padding: 0.55em 0.5em; border-bottom: 0; border-radius: 14px; }
+.lv-slprog > div:not(:last-child)::after { content: ""; position: absolute; left: calc(0.5em + 3.6em + 0.7em + 0.55em - 1px); top: 62%; height: 100%; width: 2px; background: rgba(255, 255, 255, 0.2); }
+.lv-slprog > div > i { font-style: normal; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.6em; font-weight: 600; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.9); }
+.lv-slprog > div > s { width: 0.7em; height: 0.7em; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.55); background: #0a2744; z-index: 1; text-decoration: none; justify-self: center; }
+.lv-slprog > div > b { font-size: 1.45em; font-weight: 600; text-transform: none; min-width: 0; }
+.lv-slprog > div.done > s { background: rgba(255, 255, 255, 0.4); border-color: transparent; }
+.lv-slprog > div.next { background: linear-gradient(90deg, rgba(255, 61, 119, 0.22), rgba(255, 154, 77, 0.14)); }
+.lv-slprog > div.next > s { background: #ff7a4d; border-color: #ff7a4d; box-shadow: 0 0 0 5px rgba(255, 122, 77, 0.25); }
+.lv-slprog .next span, .lv-slprog .now span { color: #ffb37a; }
+.lv-agenda .next { border-left: 0; padding-left: 0.5em; }
+/* videolu sol şerit: "Sıradaki" etiketi */
+.lv-sprog > div.next { flex-wrap: nowrap; }
+.lv-sprog > div.next i { color: rgba(255, 255, 255, 0.85); }
+.lv-sprog > div .lv-pill { font-size: 0.65em; }
