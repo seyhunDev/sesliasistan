@@ -1695,3 +1695,19 @@ button.gr-card { cursor: pointer; }
 .gr-sgt p { margin: 0.3em 0 0; font-size: 0.95em; line-height: 1.3; color: rgba(255, 255, 255, 0.78); }
 .gr-sgt small { display: block; margin-top: 0.35em; font-weight: 700; font-size: 0.85em; color: #ffd23f; }
 .gr-r > .gr-sig { margin-top: 0.6em; }
+/* Sol sütun (Seyhun 2026-11-03 19:59): üstte start, altında sporcular / şamandıra sırası / sonuç, en altta rüzgâr · parkur · program; dar (19em) */
+.gr-lc { position: absolute; left: 2em; top: calc(2em + env(safe-area-inset-top)); bottom: calc(1.8em + env(safe-area-inset-bottom)); width: 19em; display: flex; flex-direction: column; gap: 0.6em; pointer-events: none; }
+.gr-lc > * { pointer-events: auto; flex: none; }
+.gr-lc .gr-st .gr-tm { font-size: 3.4em; }
+.gr-lc .gr-who b { font-size: 1.2em; }
+.gr-mid { flex: 0 1 auto; min-height: 0; overflow: hidden; animation: gr-in 0.5s ease both; }
+.gr-mid > .gr-card { width: 100%; }
+.gr-lcb { margin-top: auto; }
+.gr-lcb > .gr-dr, .gr-lcb > .gr-pn, .gr-lcb .gr-wind { width: 100%; min-width: 0; }
+.gr-rc { position: absolute; right: 2em; top: calc(2em + env(safe-area-inset-top)); width: 21em; display: flex; flex-direction: column; gap: 0.6em; animation: gr-in 0.5s ease both; }
+.gr-rc > * { width: 100%; }
+.gr-boats .gr-rows li > b { color: #ff8ab0; }
+@media (max-width: 47.99rem) {
+  .gr-lc { position: static; width: auto; margin: 0.8em; }
+  .gr-rc { position: static; width: auto; margin: 0 0.8em 0.8em; }
+}
