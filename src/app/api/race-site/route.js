@@ -3,7 +3,8 @@ import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady } from "@/lib/server/admin";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { fileUrl } from "@/lib/siteBoard";
-import { pageCache, siteList } from "@/lib/server/raceSiteSync";
+import { FieldValue } from "firebase-admin/firestore";
+import { KNOWN, pageCache, siteList } from "@/lib/server/raceSiteSync";
 import { ackSig } from "@/lib/server/ackSign";
 
 export const runtime = "nodejs";
@@ -36,6 +37,8 @@ export async function GET(request) {
     if (buf.byteLength > 25 * 1024 * 1024) return bad("Belge çok büyük.", 413);
     return new NextResponse(buf, { headers: { "content-type": r.headers.get("content-type") || "application/pdf", "cache-control": "private, max-age=600" } });
   }
+  // Siteden ekranını açan ana hesap yeni yarış bildirimini alır (raceSiteSync.scanNew)
+  if (adminReady()) adminDb().collection("raceSite").doc(KNOWN).set({ owners: FieldValue.arrayUnion(au.uid) }, { merge: true }).catch(() => {});
   try {
     return NextResponse.json(await siteList(pageCache(), q.get("season") || ""));
   } catch (e) {

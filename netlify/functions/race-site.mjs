@@ -2,14 +2,14 @@
 // İzlenen yarışlar raceSite/{org}_{yarış} kayıtlarında (Yarışlar › Siteden ekranından seçilir, /api/race-site yazar).
 // Yarış günlerinde (başlangıçtan bir gün önce – bitişten bir gün sonra) her çalışmada, diğer günlerde günde bir bakılır.
 // İş arka plan işlevinde (race-site-background.mjs: indirme, yapay zeka, bildirim 30 saniyeye sığmaz); burası yalnız sırası
-// gelenleri seçer ve imzalı istekle onu çağırır.
+// gelenleri seçer ve imzalı istekle onu çağırır. Saatte bir de sitede yeni yarış taraması ister (bildirim).
 // Gerekli ortam değişkenleri: FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, NEXT_PUBLIC_FIREBASE_PROJECT_ID,
 // NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET, VAPID anahtarları (bildirim ve imza), GEMINI_API_KEY + GEMINI_MODEL (talimat okuma)
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 import { ackSig } from "../../src/lib/server/ackSign.js";
-import { dueNow } from "../../src/lib/server/raceSiteSync.js";
+import { KNOWN, dueNow } from "../../src/lib/server/raceSiteSync.js";
 
 export const config = { schedule: "*/10 * * * *" };
 
@@ -35,9 +35,12 @@ export default async function raceSite() {
     const r = race?.data() || {};
     if (dueNow({ ...e, startDate: r.startDate || e.startDate, endDate: r.endDate || e.endDate })) ids.push(d.id);
   }
-  if (!ids.length) return new Response("sırası gelen yok");
+  // Sitede yeni yarış taraması saatte bir
+  const known = (await db.collection("raceSite").doc(KNOWN).get()).data() || {};
+  const scan = Date.now() - (Date.parse(known.scanAt || "") || 0) >= 55 * 60e3;
+  if (!ids.length && !scan) return new Response("sırası gelen yok");
   const base = env.URL || "https://sesliasistan.netlify.app";
   const t = String(Date.now());
-  const res = await fetch(`${base}/.netlify/functions/race-site-background`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids, t, s: ackSig("race-site", "run", t, ids.join(",")) }) }).catch((e) => ({ status: e.message }));
+  const res = await fetch(`${base}/.netlify/functions/race-site-background`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids, scan, t, s: ackSig("race-site", scan ? "scan" : "run", t, ids.join(",")) }) }).catch((e) => ({ status: e.message }));
   return new Response(`çağrıldı ${ids.length} (${res.status})`);
 }
