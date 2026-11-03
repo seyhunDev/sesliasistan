@@ -29,7 +29,7 @@ import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/featu
 import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { cardOf, cardSvg } from "@/lib/courseCard";
+import { cardOf } from "@/lib/courseCard";
 import { CLASS_PICK, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
@@ -59,10 +59,9 @@ export function BroadcastPage({ orgId, id }) {
   const today = todayStr();
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
-  const [measOpen, setMeasOpen] = useState(false); // Parkur ölçümleri (kapalı başlar)
   const [L, setL] = useState(null); // rounds, screen, stream (loadRoundsOf)
   const [course, setCourse] = useState(() => cleanCourse({}));
-  const [obsOpen, setObsOpen] = useState(false); // ölçüm listesi (silmek için)
+  const [rtEdit, setRtEdit] = useState(false); // rotayı düzelt (yazı kutusu)
   const [rt, setRt] = useState(""); // seçili parkur kartının rotası (yazı: "1 2 3 F")
   const [rtId, setRtId] = useState("");
   const [tab, setTab] = useState("sure"); // Sekmeler (Seyhun 2026-11-02): Süre · Video · Parkur · Dönüşler
@@ -560,13 +559,6 @@ export function BroadcastPage({ orgId, id }) {
   const isSel = (k, mid = "") => sel?.kind === k && (k === "rec" ? sel.mid === mid : k === "src" ? sel.src === mid : true);
   const c = withLiveWind(course, live.wind, today);
   const wind = [...c.obs].reverse().find((x) => x.kind === "wind");
-  const svg = (() => {
-    try {
-      return cardSvg(cardOf(c));
-    } catch {
-      return "";
-    }
-  })();
   const scene = (() => {
     try {
       return sceneSvg(cardOf(c), selCard(course).route, { W: 960, H: 540, pre: "yp", sea: true, sail: true });
@@ -1278,12 +1270,18 @@ export function BroadcastPage({ orgId, id }) {
               {scene ? <div className="[&>svg]:block" dangerouslySetInnerHTML={{ __html: scene }} /> : <p className="px-4 py-6 text-[0.875rem] text-mut">Rüzgâr ya da parkur ölçümü girince kart çizilir</p>}
               <div className="pointer-events-none absolute left-3 top-2.5 leading-tight text-white">
                 <b className="block text-[0.9375rem] font-bold">{CARD_TYPES[selCard(course).type] || CARD_TYPES.std}</b>
-                <span className="text-[0.75rem] font-semibold text-white/65">Yarış boyunca bu parkur</span>
               </div>
             </div>
             <div className="flex items-center gap-2 border-t border-line px-3.5 py-3">
               <span className="text-[0.8125rem] font-bold text-mut">Rota</span>
-              <input value={rt} onChange={(e) => setRt(e.target.value.slice(0, 40))} placeholder="1 2 3 F" aria-label="Rota" className="h-9 min-w-0 flex-1 rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.9375rem] font-bold tabular-nums tracking-[0.06em] outline-none" />
+              {rtEdit ? (
+                <input autoFocus value={rt} onChange={(e) => setRt(e.target.value.slice(0, 40))} placeholder="1 2 3 F" aria-label="Rota" className="h-9 min-w-0 flex-1 rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.9375rem] font-bold tabular-nums tracking-[0.06em] outline-none" />
+              ) : (
+                <b className="min-w-0 flex-1 truncate text-[1rem] tabular-nums tracking-[0.06em]">{routeText(cleanRoute(rt)) || "Yok"}</b>
+              )}
+              <Button size="sm" variant="secondary" onClick={() => setRtEdit((v) => !v)}>
+                {rtEdit ? "Tamam" : "Düzelt"}
+              </Button>
               {course.cards.length > 1 ? (
                 <Button size="sm" variant="secondary" onClick={dropCard}>
                   Kartı sil
@@ -1343,52 +1341,26 @@ export function BroadcastPage({ orgId, id }) {
         <section>
           {/* Seyhun 2026-11-02 "parkur ve rüzgârı şimdilik gizle, alta koy, istersek açarız; parkur kartları aynı şeyi animasyonla gösteriyor":
               kapalıyken yalnız Rüzgâr / Parkur ölçümü girişi */}
-          <Head title="Parkur ölçümleri" right={wind ? `${wind.deg}° ${dirShort(wind.deg)}${wind.kn != null ? ` · ${wind.kn} kn` : ""}` : ""} />
+          <Head title="Ölçümler" right={wind ? `${wind.deg}° ${dirShort(wind.deg)}${wind.kn != null ? ` · ${wind.kn} kn` : ""}` : ""} />
           <div className={`${card} overflow-hidden`}>
-            {measOpen ? (
-            <>
-            <div className="flex items-baseline gap-2 px-4 pt-3">
-              {wind ? (
-                <>
-                  <b className="text-[1.75rem] font-bold tabular-nums">{wind.deg}°</b>
-                  <span className="text-mut">
-                    {dirShort(wind.deg)}
-                    {wind.kn != null ? ` · ${wind.kn} kn` : ""}
-                  </span>
-                  <span className="ml-auto text-[0.875rem] text-mut">{hm(wind.at)}</span>
-                </>
-              ) : (
-                <span className="text-mut">Rüzgâr yazılmadı</span>
-              )}
-            </div>
-            {svg ? <div className="px-3 pt-2 [&>svg]:mx-auto [&>svg]:block [&>svg]:max-h-[22rem] [&>svg]:w-auto" dangerouslySetInnerHTML={{ __html: svg }} /> : <p className="px-4 pt-2 text-[0.875rem] text-mut">Parkur ölçümü yok</p>}
-            </>
-            ) : null}
-            {obsOpen
-              ? [...course.obs].reverse().map((o) => (
-                  <div key={o.id} className="flex items-center gap-3 border-t border-line px-4 py-2 text-[0.9375rem]">
-                    <span className="min-w-0 flex-1 truncate font-semibold">{`${obsTitle(o)} · ${o.deg}°${o.kn != null ? ` · ${o.kn} kn` : ""}`}</span>
-                    <span className="text-[0.8125rem] tabular-nums text-mut">{hm(o.at)}</span>
-                    <button type="button" onClick={() => dropObs(o)} className="text-[0.875rem] font-semibold text-rec">
-                      Sil
-                    </button>
-                  </div>
-                ))
-              : null}
-            <div className={`${row} ${measOpen ? "border-t border-line" : ""}`}>
-              <span className="min-w-0 flex-1 truncate text-[0.875rem] font-semibold text-mut">{course.obs.length ? `${course.obs.length} ölçüm` : "Ölçüm yok"}</span>
-              <Button size="sm" variant="secondary" onClick={() => (setMeasOpen((v) => !v), setObsOpen(!measOpen && course.obs.length > 0))}>
-                {measOpen ? "Gizle" : "Aç"}
-              </Button>
-            </div>
+            {course.obs.length ? (
+              [...course.obs].reverse().map((o) => (
+                <div key={o.id} className="flex items-center gap-3 border-b border-line px-4 py-2 text-[0.9375rem] last:border-b-0">
+                  <span className="min-w-0 flex-1 truncate font-semibold">{`${obsTitle(o)} · ${o.deg}°${o.kn != null ? ` · ${o.kn} kn` : ""}`}</span>
+                  <span className="text-[0.8125rem] tabular-nums text-mut">{hm(o.at)}</span>
+                  <button type="button" onClick={() => dropObs(o)} className="text-[0.875rem] font-semibold text-rec">
+                    Sil
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="px-4 py-3 text-[0.875rem] text-mut">Ölçüm yok</p>
+            )}
           </div>
         </section>
         <MasaBar>
           <Button variant="secondary" onClick={() => setAdd(0)}>
-            Rüzgâr
-          </Button>
-          <Button variant="secondary" onClick={() => setAdd(1)}>
-            Ölçüm
+            Ölçüm ekle
           </Button>
           <Button disabled={routeText(cleanRoute(rt)) === routeText(selCard(course).route)} onClick={saveRoute}>
             Kaydet
