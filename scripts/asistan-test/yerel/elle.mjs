@@ -623,6 +623,18 @@ group("Aidat tablosu")([
     const d2 = DU.dropGroup(DA[0], m, h.find((g) => g.key === "m9"));
     return h.length === 2 && h[0].key === "m9" && h[1].amt === 3000 && h[1].months.join() === "2026-09,2026-10" && !d["2026-09"].paid.a1 && d["2026-10"].paid.a1.length === 1 && d2["2026-10"].used.length === 0;
   })],
+  ["ödemenin ayını değiştir", F("Kasım'a yazılmış 1 Ekim ödemesi Ekim'e taşınır; tarih ve banka hareketi aynı kalır", () => {
+    const m = { "2026-10": {}, "2026-11": { paid: { a1: [{ amt: 1500, via: "eft", date: "01.10.2026", mov: "m1", at: "x3" }] } } };
+    const g = DU.historyOf(DA[0], m, ["2026-10", "2026-11"])[0];
+    const out = DU.moveGroup(DA[0], m, g, ["2026-10"], DCFG);
+    const p = out["2026-10"].paid.a1[0];
+    return !out["2026-11"].paid.a1 && p.amt === 1500 && p.mov === "m1" && p.date === "01.10.2026";
+  })],
+  ["sonraki aya kendiliğinden yazılmaz", F("ödeme ayına kadar borç yoksa ödeme ayına yazılır", () => {
+    const m = { "2026-10": { paid: { a1: [{ amt: 1500 }] } } };
+    const r = DU.allocate(1500, DA[0], DCFG, m, ["2026-10", "2026-11"].filter((x) => x <= "2026-10"), null, "2026-10");
+    return r.length === 1 && r[0].ym === "2026-10";
+  })],
 ]);
 
 // Ana sayfadaki özet kartları (Aidat, Yarış, Instagram, Antrenman) ve İşlemler düğmeleri
