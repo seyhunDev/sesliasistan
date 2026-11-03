@@ -89,7 +89,7 @@ export function FoodHome({ orgId, tabs }) {
         <div className="-mx-5 mt-3.5 flex gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
           {CUISINES.map(([k, name, photo]) => (
             <button key={k} type="button" onClick={() => setCuisine((c) => (c === k ? "" : k))} aria-pressed={cuisine === k} className="flex w-16 shrink-0 flex-col items-center gap-1.5 active:scale-95">
-              <Img src={photo} w={160} className={`size-14 rounded-full ring-2 ${cuisine === k ? "ring-[#67e8f9]" : "ring-white/20"}`} />
+              <Img src={photo} w={160} className={`size-14 rounded-full ring-2 ${cuisine === k ? "ring-[#8fb3ff]" : "ring-white/20"}`} />
               <span className={`w-full truncate text-center text-[0.75rem] font-semibold ${cuisine === k ? "text-white" : "text-white/75"}`}>{name}</span>
             </button>
           ))}

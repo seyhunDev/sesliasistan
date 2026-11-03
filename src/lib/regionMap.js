@@ -50,7 +50,7 @@ export function regionSteps(grid, radar, mode, now) {
 
 // Yağış ihtimali (%) rengi ve saydamlığı (Seyhun 2026-11-03: "%80 demek bölgenin neresine yağacak"): %30 altı görünmez, %30–49 açık, %50–79 mavi, %80 üstü koyu mavi
 export function pTone(p) {
-  return p >= 80 ? { c: "#2563eb", o: 0.62 } : p >= 50 ? { c: "#38bdf8", o: 0.5 } : p >= 30 ? { c: "#7dd3fc", o: 0.34 } : { c: "#7dd3fc", o: 0 };
+  return p >= 80 ? { c: "#2563eb", o: 0.62 } : p >= 50 ? { c: "#5b8cff", o: 0.5 } : p >= 30 ? { c: "#7dd3fc", o: 0.34 } : { c: "#7dd3fc", o: 0 };
 }
 
 // Verilen saatte (ızgara sırası i) çevrede yağış bekleyen noktaların oranı (%): mm ≥ 0,1 olan nokta / bütün noktalar
@@ -61,7 +61,7 @@ export function rainShare(spots, i) {
 
 // Saatlik yağış rengi (hafif mavi → orta sarı → kuvvetli kırmızı; radar renklerine yakın)
 export function mmColor(mm) {
-  return mm >= 4 ? "#f43f5e" : mm >= 1.5 ? "#facc15" : mm >= 0.5 ? "#38bdf8" : "#7dd3fc";
+  return mm >= 4 ? "#f43f5e" : mm >= 1.5 ? "#facc15" : mm >= 0.5 ? "#5b8cff" : "#7dd3fc";
 }
 
 // Yaklaştıkça sıklaşan oklar (Seyhun 2026-10-29: "yaklaştıkça oklar daha sık olmalı, koyun içindeki rüzgârı görebilmeliyim").

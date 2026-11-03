@@ -12,8 +12,8 @@ export function Gauge({ value = 0, max = 100, label, sub, dark = false, size = 9
       <svg viewBox="0 0 100 56" width={size} height={size * 0.56} aria-hidden="true">
         <defs>
           <linearGradient id={id} x1="0" x2="1">
-            <stop offset="0" stopColor={dark ? "#0ea5c4" : "var(--acc)"} />
-            <stop offset="1" stopColor={dark ? "#22d3ee" : "var(--acc)"} />
+            <stop offset="0" stopColor={dark ? "#3d7bff" : "var(--acc)"} />
+            <stop offset="1" stopColor={dark ? "#5b8cff" : "var(--acc)"} />
           </linearGradient>
         </defs>
         <path d="M10 50a40 40 0 0 1 80 0" fill="none" stroke={dark ? "rgba(255,255,255,.14)" : "var(--line)"} strokeWidth="8" strokeLinecap="round" />

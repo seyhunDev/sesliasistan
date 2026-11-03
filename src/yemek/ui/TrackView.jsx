@@ -86,7 +86,7 @@ export function TrackView({ orgId, id }) {
         {done && (
           <>
             <Img src={photo} w={900} className="absolute inset-0 size-full !bg-transparent" />
-            <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,32,58,.55),rgba(17,32,58,.35)_40%,#11203a)]" aria-hidden="true" />
+            <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11, 26, 51,.55),rgba(11, 26, 51,.35)_40%,#0b1a33)]" aria-hidden="true" />
           </>
         )}
         <header className="relative flex items-center gap-2.5">
@@ -101,7 +101,7 @@ export function TrackView({ orgId, id }) {
         {!cancelled && (
           <div className="relative">
             <div className="mt-4 grid grid-cols-4 gap-1">
-              {STEPS.map(([k], i) => <span key={k} className={`h-1.5 rounded-full ${i < step ? "bg-[#67e8f9]" : "bg-white/20"}`} />)}
+              {STEPS.map(([k], i) => <span key={k} className={`h-1.5 rounded-full ${i < step ? "bg-[#8fb3ff]" : "bg-white/20"}`} />)}
             </div>
             <div className="mt-1.5 grid grid-cols-4 gap-1 text-[0.6875rem] font-semibold text-white/60">
               {STEPS.map(([k, n], i) => <span key={k} className={`truncate ${i === step - 1 ? "text-white" : ""}`}>{k === "onTheWay" && v.courier && i === step - 1 ? `Yolda · ${v.courier.name}` : n}</span>)}

@@ -51,7 +51,7 @@ export default function Sanal() {
     };
   }, []);
   return (
-    <main className="fixed inset-0 z-30 bg-[#11203a]">
+    <main className="fixed inset-0 z-30 bg-[#0b1a33]">
       <span ref={probe} aria-hidden="true" className="invisible absolute pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]" />
       {src && (
         <iframe

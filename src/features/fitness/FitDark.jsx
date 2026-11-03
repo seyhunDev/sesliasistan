@@ -15,7 +15,7 @@ export function FitPhoto() {
     <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[27rem] overflow-hidden">
       {/* eslint-disable-next-line @next/next/no-img-element -- dış bağlantı (Unsplash), Next görüntü sunucusu yok */}
       {!off && <img src={FIT_BG} alt="" onError={() => setOff(true)} className="size-full object-cover opacity-80" />}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,22,40,.3)_0%,rgba(11,22,40,.72)_45%,#0b1628_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,22,40,.3)_0%,rgba(11,22,40,.72)_45%,#081429_100%)]" />
     </div>
   );
 }
@@ -33,10 +33,10 @@ export function WeekBoxes({ days, today, onOpen, className = "" }) {
         const d = days.find((x) => x.date === date);
         const look = !d
           ? "text-white/25"
-          : { done: "bg-[#9fe7c6] text-[#0b2a20]", missed: "bg-[#f3a39a] text-[#5a1610]", skip: "bg-white/12 text-white/70", today: "border-2 border-[#67e8f9] text-[#67e8f9]" }[d.st] || "border border-white/30 text-white";
+          : { done: "bg-[#9fe7c6] text-[#0b2a20]", missed: "bg-[#f3a39a] text-[#5a1610]", skip: "bg-white/12 text-white/70", today: "border-2 border-[#8fb3ff] text-[#8fb3ff]" }[d.st] || "border border-white/30 text-white";
         return (
           <button key={date} type="button" disabled={!d} aria-label={d ? `${dn} ${d.name} · ${STATUS[d.st]}` : dn} onClick={() => d && onOpen(d)} className="flex flex-col items-center gap-1">
-            <small className={`text-[0.6875rem] ${date === today ? "font-bold text-white" : "text-[#9fb0cc]"}`}>{dn}</small>
+            <small className={`text-[0.6875rem] ${date === today ? "font-bold text-white" : "text-[#9fadc6]"}`}>{dn}</small>
             <span className={`grid h-10 w-full place-items-center rounded-xl text-[0.8125rem] font-bold ${look}`}>
               {!d ? "·" : d.st === "done" ? <Icon name="check" className="size-4" /> : d.st === "missed" ? "✕" : d.st === "skip" ? "–" : +date.slice(8)}
             </span>

@@ -82,7 +82,7 @@ function Camera({ onCode }) {
   }, []);
   if (err) return <p className="py-10 text-center text-[0.9375rem] text-white/70">Kamera açılamadı</p>;
   return (
-    <div className="relative aspect-square w-full max-w-[24rem] overflow-hidden rounded-[1.25rem] bg-[#11203a]">
+    <div className="relative aspect-square w-full max-w-[24rem] overflow-hidden rounded-[1.25rem] bg-[#0b1a33]">
       <video ref={video} playsInline muted className="size-full object-cover" />
       <span className="pointer-events-none absolute inset-[18%] rounded-3xl border-[3px] border-white/85" aria-hidden="true" />
     </div>

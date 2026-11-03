@@ -77,14 +77,14 @@ export function AthleteFitness() {
               <div className="mt-3.5 flex items-center gap-2.5 text-[0.8125rem]">
                 <span className="text-white/75">Bu hafta</span>
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/15">
-                  <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round((week.done / week.planned) * 100)}%` }} />
+                  <span className="block h-full rounded-full bg-[#8fb3ff]" style={{ width: `${Math.round((week.done / week.planned) * 100)}%` }} />
                 </span>
                 <b className="tabular-nums">{`${week.done}/${week.planned}`}</b>
               </div>
             )}
             <WeekBoxes days={week.days} today={today} onOpen={open} className="mt-3" />
             {plan && (
-              <Button full onClick={() => open(plan)} className="mt-4 [--acc:#0ea5c4]">
+              <Button full onClick={() => open(plan)} className="mt-4 [--acc:#3d7bff]">
                 {st === "done" || st === "skip" ? "Sonucu aç" : began(plan) ? "Devam et" : "Antrenmana başla"}
               </Button>
             )}

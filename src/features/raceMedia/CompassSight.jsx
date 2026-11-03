@@ -97,18 +97,18 @@ function Body({ onClose, onAdd, place }) {
   return (
     <div className="fixed inset-0 z-[60] bg-[#0b1626] text-white">
       {cam && <video ref={video} autoPlay playsInline muted className="absolute inset-0 size-full object-cover" />}
-      <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-[#11203a]/80 to-transparent px-5 pb-6 pt-[calc(env(safe-area-inset-top)+0.75rem)] text-center">
+      <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-[#0b1a33]/80 to-transparent px-5 pb-6 pt-[calc(env(safe-area-inset-top)+0.75rem)] text-center">
         <button type="button" onClick={onClose} aria-label="Kapat" className="absolute left-5 top-[calc(env(safe-area-inset-top)+0.75rem)] grid size-10 place-items-center rounded-full bg-white/20 active:bg-white/30">
           <Icon name="x" className="size-5" />
         </button>
         <b className="block text-[4rem] font-bold leading-none tracking-[-.03em] tabular-nums [text-shadow:0_2px_8px_rgba(0,0,0,.3)]">{shown === null ? "–" : `${shown}°`}</b>
         <span className="mt-1.5 block text-[0.9375rem] font-semibold text-white/85">{shown === null ? "Telefonu bir an düz tut" : `${dirName(shown)}${held !== null ? ` · 10 sn ortalama${spread ? ` (±${spread}°)` : ""}` : left > 0 ? " · ölçüyor" : ""}`}</span>
         {shown !== null && (
-          <div className="relative mx-auto mt-2.5 h-7 w-64 overflow-hidden rounded-lg bg-[#11203a]/40">
+          <div className="relative mx-auto mt-2.5 h-7 w-64 overflow-hidden rounded-lg bg-[#0b1a33]/40">
             {ticks.map((t) => (
               <span key={t.k} className="absolute top-1.5 -translate-x-1/2 text-[0.6875rem] font-semibold text-white/80" style={{ left: `${50 + (t.k - (shown - Math.round(shown / 10) * 10)) * 2.2}%` }}>{t.v}</span>
             ))}
-            <span className="absolute inset-y-0 left-1/2 w-0.5 bg-[#67e8f9]" />
+            <span className="absolute inset-y-0 left-1/2 w-0.5 bg-[#8fb3ff]" />
           </div>
         )}
       </div>

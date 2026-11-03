@@ -10,9 +10,9 @@ import { primeEn, sayEn } from "./WordView";
 import { useEnMic } from "./useEnMic";
 
 const TURNS = 5;
-const CYAN = "text-[#67e8f9]";
+const CYAN = "text-[#8fb3ff]";
 
-// Cümlede kelimenin geçtiği yer camgöbeği
+// Cümlede kelimenin geçtiği yer mavi
 function Marked({ text, word }) {
   const i = word ? text.toLowerCase().indexOf(word.toLowerCase()) : -1;
   if (i < 0) return text;
@@ -134,7 +134,7 @@ export function WordTalk({ w, onClose, onQuiz }) {
           <b className="font-semibold text-white/85">{w.en}</b>
           <span className="tabular-nums">{` · ${Math.min(answers + (done ? 0 : 1), TURNS)} / ${TURNS}`}</span>
         </span>
-        <Button variant="icon" size="sm" aria-label={voice ? "Sesli okumayı kapat" : "Sesli oku"} aria-pressed={voice} onClick={toggleVoice} className={voice ? "!text-[#67e8f9]" : "!text-white/40"}>
+        <Button variant="icon" size="sm" aria-label={voice ? "Sesli okumayı kapat" : "Sesli oku"} aria-pressed={voice} onClick={toggleVoice} className={voice ? "!text-[#8fb3ff]" : "!text-white/40"}>
           <Icon name={voice ? "volume" : "mute"} className="size-5" />
         </Button>
       </header>
@@ -173,7 +173,7 @@ export function WordTalk({ w, onClose, onQuiz }) {
           </Button>
         )}
         {hint && !busy && !done && (showHint ? (
-          <button type="button" onClick={() => sayEn(hint.e)} className="block border-l-2 border-[#67e8f9]/40 pl-3 text-left">
+          <button type="button" onClick={() => sayEn(hint.e)} className="block border-l-2 border-[#8fb3ff]/40 pl-3 text-left">
             <span className="block text-[1rem] leading-snug text-white/75">{hint.e}</span>
             <span className="mt-0.5 block text-[0.8125rem] text-white/40">{hint.t}</span>
           </button>
@@ -192,7 +192,7 @@ export function WordTalk({ w, onClose, onQuiz }) {
               Bitir
             </Button>
             <span className="flex-1" />
-            <Button variant="secondary" full={false} onClick={onQuiz} className="!h-12 !rounded-full !border-0 !bg-none !bg-[#67e8f9]/14 !px-7 !text-[#67e8f9] !shadow-none">
+            <Button variant="secondary" full={false} onClick={onQuiz} className="!h-12 !rounded-full !border-0 !bg-none !bg-[#8fb3ff]/14 !px-7 !text-[#8fb3ff] !shadow-none">
               Sına
             </Button>
           </>
@@ -211,7 +211,7 @@ export function WordTalk({ w, onClose, onQuiz }) {
               className="h-12 min-w-0 flex-1 rounded-full bg-white/7 px-5 text-[1rem] text-white outline-none placeholder:text-white/35"
             />
             {text.trim() ? (
-              <button type="button" data-press onClick={send} disabled={busy} aria-label="Gönder" className="grid size-12 shrink-0 place-items-center rounded-full bg-[#67e8f9]/14 disabled:opacity-50">
+              <button type="button" data-press onClick={send} disabled={busy} aria-label="Gönder" className="grid size-12 shrink-0 place-items-center rounded-full bg-[#8fb3ff]/14 disabled:opacity-50">
                 <Icon name="up" className={`size-5 ${CYAN}`} />
               </button>
             ) : (
@@ -222,7 +222,7 @@ export function WordTalk({ w, onClose, onQuiz }) {
                 onContextMenu={(e) => e.preventDefault()}
                 disabled={busy}
                 aria-label={mic.on ? "Gönder" : "Sesle cevapla"}
-                className={`grid size-12 shrink-0 touch-none select-none place-items-center rounded-full disabled:opacity-50 ${mic.on ? "bg-[#67e8f9] text-[#0b1628]" : `bg-[#67e8f9]/14 ${CYAN}`}`}
+                className={`grid size-12 shrink-0 touch-none select-none place-items-center rounded-full disabled:opacity-50 ${mic.on ? "bg-[#8fb3ff] text-[#081429]" : `bg-[#8fb3ff]/14 ${CYAN}`}`}
               >
                 <Icon name={mic.on ? "up" : "mic"} className="size-5" />
               </button>

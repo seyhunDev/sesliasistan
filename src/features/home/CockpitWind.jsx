@@ -84,7 +84,7 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
   const pk = bars.reduce((m, q, i) => (!q.fell && q.v >= 0.1 && (nowAt < 0 || i > nowAt) && (m < 0 || q.v > bars[m].v) ? i : m), -1); // en yüksek tahmin saati
   const lx = (v) => Math.min(W - R - 8, Math.max(L + 8, v)); // yazı kenardan taşmasın
   const legend = [
-    ["Rüzgâr", <i key="w" className="inline-block h-2.5 w-3.5 rounded-[3px] bg-[#67e8f9]" />],
+    ["Rüzgâr", <i key="w" className="inline-block h-2.5 w-3.5 rounded-[3px] bg-[#8fb3ff]" />],
     ["Sağanak", <i key="g" className="inline-block w-3.5 border-t-2 border-dashed border-[#c4b5fd]" />],
     got.length > 1 && ["Ölçülen", <i key="o" className="inline-block w-3.5 border-t-2 border-white" />],
     wet && wetFc && ["Yağmur", <i key="r" className="inline-block h-2.5 w-1.5 rounded-[2px] bg-[#60a5fa]" />],
@@ -117,8 +117,8 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
           ) : null,
         )}
         <g className="ck-draw">
-          <path d={close(gust, 0, n - 1)} fill="#67e8f9" fillOpacity=".26" />
-          <path d={close(wind, 0, n - 1)} fill="#67e8f9" fillOpacity=".92" />
+          <path d={close(gust, 0, n - 1)} fill="#8fb3ff" fillOpacity=".26" />
+          <path d={close(wind, 0, n - 1)} fill="#8fb3ff" fillOpacity=".92" />
           <path d={gust} fill="none" stroke="#c4b5fd" strokeWidth="1.3" strokeDasharray="3 3" />
           {oGust && <path d={oGust} fill="none" stroke="#fff" strokeWidth="1.2" strokeDasharray="2 2.5" />}
           {got.length > 1 && <path d={oLine} fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" data-kind="olculen" />}
@@ -128,7 +128,7 @@ export function CockpitWind({ rows, date, place = null, far = false }) {
           <g>
             <line x1={x(nowAt)} x2={x(nowAt)} y1={T - 6} y2={y(0)} stroke="#ff6b6b" strokeWidth="1.3" strokeDasharray="2 2" />
             <circle cx={x(nowAt)} cy={y(nowV)} r="9" fill="#ff6b6b" className="ck-pulse" />
-            <circle cx={x(nowAt)} cy={y(nowV)} r="4.5" fill="#ff6b6b" stroke="#11203a" strokeWidth="2" />
+            <circle cx={x(nowAt)} cy={y(nowV)} r="4.5" fill="#ff6b6b" stroke="#0b1a33" strokeWidth="2" />
           </g>
         )}
       </svg>

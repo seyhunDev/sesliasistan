@@ -1,12 +1,12 @@
 "use client";
 
 // Gün sonu kartı: daySummary (lib/raceLive.js) → 1080×1350 PNG (Instagram dikey gönderi boyu, veliye de resim olarak gider).
-// Uygulamanın rengi (Seyhun 2026-10-29 "daha profesyonel; beklenti neydi, gerçekleşen ne oldu"): gece mavisi zemin, camgöbeği vurgu.
+// Uygulamanın rengi (Seyhun 2026-10-29 "daha profesyonel; beklenti neydi, gerçekleşen ne oldu"): lacivert zemin, mavi vurgu.
 // Rüzgâr grafiği: beklenen (tahmin) dolu alan, gelen (ölçülen/elle) beyaz noktalı çizgi, yarışların startı dikey çizgiyle;
 // altında tek satır karşılaştırma. Sonra yarışlar ve bizimkilerin sırası.
 const W = 1080;
 const H = 1350;
-const C = { bg0: "#0a1730", bg1: "#11294d", card: "rgba(255,255,255,0.06)", line: "rgba(255,255,255,0.12)", fg: "#ffffff", mut: "rgba(255,255,255,0.62)", acc: "#67e8f9", accbg: "rgba(103,232,249,0.16)", warn: "#fbbf24" };
+const C = { bg0: "#081429", bg1: "#11294d", card: "rgba(255,255,255,0.06)", line: "rgba(255,255,255,0.12)", fg: "#ffffff", mut: "rgba(255,255,255,0.62)", acc: "#8fb3ff", accbg: "rgba(143, 179, 255,0.16)", warn: "#fbbf24" };
 const FONT = `-apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif`;
 
 const font = (ctx, px, w = 400) => (ctx.font = `${w} ${px}px ${FONT}`);
@@ -76,11 +76,11 @@ function chart(ctx, c, x, y, w, h) {
     ctx.fillText(String(s.n), sx, y - 20);
     ctx.textAlign = "left";
   }
-  // beklenen: dolu alan (üstte açık camgöbeği, aşağı doğru solar)
+  // beklenen: dolu alan (üstte açık mavi, aşağı doğru solar)
   if (c.fc.length > 1) {
     const g = ctx.createLinearGradient(0, y, 0, y + h);
-    g.addColorStop(0, "rgba(103,232,249,0.55)");
-    g.addColorStop(1, "rgba(103,232,249,0.08)");
+    g.addColorStop(0, "rgba(143, 179, 255,0.55)");
+    g.addColorStop(1, "rgba(143, 179, 255,0.08)");
     ctx.beginPath();
     ctx.moveTo(X(c.fc[0].h), y + h);
     c.fc.forEach((p) => ctx.lineTo(X(p.h), Y(p.kn)));
