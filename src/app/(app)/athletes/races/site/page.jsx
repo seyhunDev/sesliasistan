@@ -100,7 +100,7 @@ function Site({ orgId, uid }) {
       const same = races.find((x) => !x.site && sameRace(x, r));
       const id = await saveRace(orgId, uid, same ? { ...same, site } : { ...r, site });
       const got = await followSite(id, site);
-      toast(got.error || `Yarış alındı${got.got ? ` · ${got.got} belge` : ""}`);
+      toast(got.error || "Yarış alındı, belgeler alınıyor");
       router.push(`/athletes/races/${id}?sec=site`);
     } catch (e) {
       toast(e?.message || "Yarış alınamadı");

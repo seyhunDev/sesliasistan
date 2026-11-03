@@ -118,3 +118,28 @@ export function pickSeason(list, day) {
   const now = seasonOf(day);
   return all.includes(now) ? now : all.find((s) => s > now) || all.at(-1) || now;
 }
+
+// Program satırları (talimat, ek talimat; lib/server/raceSiteTake.js)
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME = /^\d{2}:\d{2}$/;
+const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+const loose = (t) =>
+  String(t || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[^a-zçğıöşü0-9]/g, "");
+export const cleanSchedule = (a) =>
+  (Array.isArray(a) ? a : [])
+    .filter((x) => DATE.test(x?.date || "") && S(x?.title, 120))
+    .map((x) => ({ date: x.date, time: TIME.test(x?.time || "") ? x.time : "", title: S(x.title, 120) }))
+    .slice(0, 40);
+// Programa yeni satırlar: aynı gün ve aynı başlıklı satır yenisiyle değişir, olmayan eklenir; tarihe göre sıralı
+export function mergeSchedule(old, add) {
+  const out = cleanSchedule(old);
+  for (const x of cleanSchedule(add)) {
+    const i = out.findIndex((y) => y.date === x.date && loose(y.title) === loose(x.title));
+    if (i > -1) out[i] = x;
+    else out.push(x);
+  }
+  return out.sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)).slice(0, 40);
+}
+
