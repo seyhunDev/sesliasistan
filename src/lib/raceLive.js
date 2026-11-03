@@ -133,7 +133,9 @@ export function cleanPlan(p) {
   // uyarı işareti, yani geri sayım: warn o an (ISO), warnBy kuran cihaz (geri sayımı o başlatır, aynı anda iki start açılmasın)
   const iso = (v) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? v.slice(0, 30) : "");
   // auto (Seyhun 2026-11-03 "tehir indikten 1 dk sonra sürenin otomatik başlatılıp başlatılmayacağını seçebilmeliyim"): false ise inince geri sayım kendiliğinden başlamaz
-  const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60), down: iso(p.ap.down), land: !!p.ap.land, auto: p.ap.auto !== false } : null;
+  // seq/dur (Seyhun 2026-11-03 start geri sayımı şeridi): tehir start dizisi sürerken çekildiyse dizinin durduğu an kalan saniye ve dizi süresi
+  const seq = Number.isFinite(p?.ap?.seq) ? { seq: Math.min(3600, Math.max(0, Math.round(p.ap.seq))), dur: Number.isFinite(p.ap.dur) ? Math.min(900, Math.max(60, Math.round(p.ap.dur))) : 300 } : {};
+  const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60), down: iso(p.ap.down), land: !!p.ap.land, auto: p.ap.auto !== false, ...seq } : null;
   const warn = status === "ap" ? "" : iso(p?.warn);
   const warnBy = warn ? String(p?.warnBy || "").slice(0, 12) : "";
   // Günün grupları (Seyhun 2026-11-02 "startlar-yeni"): bir kez seçilir, "+ Yarış" bunlarla bir yarışın startlarını ekler
