@@ -3153,8 +3153,14 @@ function GWind({ data, now, mode, today, can = false, open = false }) {
   const src = c && mode !== "summary" ? c.by : "";
   return (
     // beklenen saatler ayrı kart değil: rüzgâr kartının kendisi yana genişleyip açılır, sonra kapanır (Seyhun 2026-11-03 17:44)
-    <GCard cls={`gr-wind${can ? " x" : ""}${open ? " on" : ""}`} head="Rüzgâr" tone="t" tag={src}>
+    // açılan kısmın kendi başlığı var: "Beklenen" (Seyhun 2026-11-03 18:18; parkur verisi başlığının altında gibi duruyordu); başlık şeridi tek parça
+    <GCard cls={`gr-wind${can ? " x" : ""}${open ? " on" : ""}`}>
       <div className="gr-wb">
+        <div className="gr-wa">
+        <div className="gr-hd">
+          <span className="gr-bd t">Rüzgâr</span>
+          {src ? <span className="gr-tag">{src}</span> : null}
+        </div>
         <div className="gr-wrs">
           {rows.map((r) => (
             <div key={r.lab} className="gr-wr">
@@ -3173,9 +3179,16 @@ function GWind({ data, now, mode, today, can = false, open = false }) {
             </div>
           ))}
         </div>
+        </div>
         {can ? (
           <div className="gr-wx" aria-hidden={!open}>
-            <WindHours data={data} now={now} scale={0.82} ahead />
+            <div className="gr-hd">
+              <span className="gr-bd t">Beklenen</span>
+              <span className="gr-hs">Saatlik tahmin</span>
+            </div>
+            <div className="gr-wt">
+              <WindHours data={data} now={now} scale={1} ahead />
+            </div>
           </div>
         ) : null}
       </div>
