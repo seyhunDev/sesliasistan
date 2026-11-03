@@ -3028,7 +3028,7 @@ function GStart({ t }) {
   if (!t) return null;
   const w = t.who;
   const tm = hasTm(t.tm);
-  if (!tm && !w && !t.sub && !t.seq) return null;
+  if (!tm && !w && !t.sub && !t.rule) return null;
   return (
     <div className={`gr-card gr-st ${t.cls || ""}`} role="timer">
       <div className="gr-hd">
@@ -3052,15 +3052,14 @@ function GStart({ t }) {
         ) : null}
       </div>
       {t.sub ? <div className="gr-sub">{t.sub}</div> : null}
-      {t.seq ? (
-        <ol className="gr-sq">
-          {t.seq.map((x) => (
-            <li key={x.m} className={x.st}>
-              <b>{x.m}</b>
-              {x.flag}
-            </li>
-          ))}
-        </ol>
+      {t.rule ? (
+        <div className="gr-rl">
+          <Flag kind={t.rule.prep} />
+          <div>
+            <b>{t.rule.name}</b>
+            {t.rule.info ? <small>{t.rule.info}</small> : null}
+          </div>
+        </div>
       ) : null}
       {t.bar != null ? (
         <div className="gr-bar">
@@ -3071,15 +3070,17 @@ function GStart({ t }) {
   );
 }
 // Start dizisi şeridi: 5 sınıf bayrağı çekilir · 4 kural bayrağı · 1 kural bayrağı iner · 0 sınıf bayrağı iner (sade: rakam + bayrak)
-function seqStrip(data, cs, e, ap) {
-  const dur = ap ? data.plan.ap?.dur || 300 : data.timer?.dur || 300;
-  const rem = ap ? data.plan.ap?.seq ?? null : cs.rem;
-  const steps = seqSteps(dur);
-  const sts = rem != null ? seqState(steps, rem, true) : steps.map(() => "");
-  const nextI = sts.findIndex((x) => !x);
-  const cls = e?.cls || "", grp = e?.grp || "", prep = e?.prep || "";
-  const flag = (m) => (m === 1 || m === 4 ? (prep ? <Flag kind={prep} down={m === 1} /> : null) : cls || grp ? <Flag kind="cls" cls={cls || "Sınıf"} grp={grp} down={m === 0} /> : null);
-  return steps.map((x, i) => ({ m: x.m, flag: flag(x.m), st: sts[i] ? "ok" : i === nextI && !ap ? "nx" : "" }));
+// Start dizisinde 5·4·1·0 şeridi yok (Seyhun 2026-11-03 18:07): yalnız uygulanan kural bayrağı ve küçük yazıyla ne demek olduğu; altta ilerleme çubuğu kalır
+const PREP_INFO = {
+  P: "Hazırlık bayrağı · özel ceza yok",
+  I: "Son dakikada hattın üstündeki tekne uçlardan dolaşıp döner",
+  Z: "Son dakikada üçgende olan tekneye %20 puan cezası",
+  U: "Son dakikada üçgende olan tekne diskalifiye (UFD)",
+  Kara: "Son dakikada üçgende olan tekne diskalifiye (BFD), genel geride de",
+};
+function seqRule(e) {
+  const prep = e?.prep || "";
+  return prep ? { prep, name: prepName(prep), info: PREP_INFO[prep] || "" } : null;
 }
 // Yarışta süre kartı (Seyhun 2026-11-03 16:45): starttan sonra üst ortadan kalkar, rüzgârın hemen üstünde küçük skor bandı olur;
 // solda grubun rengi, yarışın adı ve grup/sınıf, sağda "Starttan beri" süre. Üst orta boşalır, arkadaki video net görünür.
@@ -3326,11 +3327,11 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     const ap = seqMode === "ap" || mode === "ap";
     // start dizisi sade: bayraklar start kartının içinde şerit, sağda dizi kartı yok (Seyhun 2026-11-03 17:02)
     if (ap) {
-      top = { cls: "r", flag: "AP", bd: "Tehir", lab: "Dizi durdu", tm: plan.ap?.why || "Start ertelendi", sub: "Start dizisi durduruldu", seq: seqStrip(data, cs, e, true) };
+      top = { cls: "r", flag: "AP", bd: "Tehir", lab: "Dizi durdu", tm: plan.ap?.why || "Start ertelendi", sub: "Start dizisi durduruldu", rule: seqRule(e) };
     } else {
       const hm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1] || "";
       const dur = data.timer?.dur || 300;
-      top = { bd: "Start", lab: cs.rem != null && cs.rem <= 60 ? "Son dakika" : cs.label, at: hm, tm: cs.rem === 0 ? "" : cs.value, who: gWho(e), seq: seqStrip(data, cs, e, false), bar: cs.rem != null ? (1 - cs.rem / dur) * 100 : null, cls: cs.rem != null && cs.rem <= 60 ? "o" : "" };
+      top = { bd: "Start", lab: cs.rem != null && cs.rem <= 60 ? "Son dakika" : cs.label, at: hm, tm: cs.rem === 0 ? "" : cs.value, who: gWho(e), rule: seqRule(e), bar: cs.rem != null ? (1 - cs.rem / dur) * 100 : null, cls: cs.rem != null && cs.rem <= 60 ? "o" : "" };
     }
     right = <GProg prog={prog} />;
     left = sel ? <GEarly data={data} rid={sel.id} /> : null;
