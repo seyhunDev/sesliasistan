@@ -4,7 +4,7 @@
 // ilerleme yönüne dönen burun, rüzgâr açısına göre açılan yelken, yelken numarası, arkada grup renginde kısa iz. Kamera sabit:
 // start hattı ve klipteki bütün konumlar ekrana sığar, parkur ekseni (rüzgâr) yukarıda. Yalnız seçili grubun tekneleri.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { boomOf, clockText, frameOf, groupSet, poseAt, spanOf, tracksOf } from "@/lib/boatPlay";
+import { boomOf, cleanZoom, clockText, frameMix, frameOf, groupSet, poseAt, spanOf, tracksOf } from "@/lib/boatPlay";
 import { groupColor } from "@/lib/roundScore";
 import "./boatRace.css";
 
@@ -83,7 +83,8 @@ function Pin({ x, y }) {
 
 // set: cleanSet; grp: gösterilen grup ("" = hepsi); loop: bitince baştan
 // bare: yayının içinde (canlı ekranın kendi rüzgâr ve sayaç şeridi var): rüzgâr, şamandıra yazısı ve alttaki sayaç yerine üstte "CANLI KONUM" rozeti
-export function BoatRace({ set, grp = "", loop = true, bare = false, tag = "CANLI KONUM" }) {
+// zoom: 0 start yakın … 100 bütün parkur (Yayın › Video'dan; değişince yumuşakça kayar). Verilmezse eski görünüm (start çerçevesi).
+export function BoatRace({ set, grp = "", loop = true, bare = false, tag = "CANLI KONUM", zoom = null }) {
   const box = useRef(null);
   const [size, setSize] = useState(() => sizeOf(0, 0));
   useEffect(() => {
@@ -95,13 +96,40 @@ export function BoatRace({ set, grp = "", loop = true, bare = false, tag = "CANL
     return () => ro.disconnect();
   }, []);
   const { W, H } = size;
-  const s = W < 1600 ? 2.2 : 1.6;
+  const want = zoom === null ? 0 : cleanZoom(zoom) / 100;
+  const [z, setZ] = useState(want);
+  const zr = useRef(want);
+  useEffect(() => {
+    let id = 0;
+    const from = zr.current;
+    const t00 = performance.now();
+    const step = (now) => {
+      const f = Math.min(1, (now - t00) / 1200);
+      const e = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
+      zr.current = from + (want - from) * e;
+      setZ(zr.current);
+      if (f < 1) id = requestAnimationFrame(step);
+    };
+    id = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(id);
+  }, [want]);
+  // uzaklaştıkça tekneler biraz küçülür (parkurda üst üste binmesin)
+  const s = (W < 1600 ? 2.2 : 1.6) * (1 - 0.45 * z);
   const view = useMemo(() => groupSet(set, grp), [set, grp]);
   const tracks = useMemo(() => tracksOf(view), [view]);
   const { t0, t1 } = useMemo(() => spanOf(view), [view]);
   const up = set.wind.dir;
   // kamera: start hattı + gruptaki bütün konumlar (şamandıra uzaksa kenarda okla gösterilir)
-  const frame = useMemo(() => frameOf([set.marks.pin, set.marks.komite, ...view.fixes].filter(Boolean), { W, H, up, pad: W < 1600 ? 50 : 170 }), [set, view, up, W, H]);
+  // parkur çerçevesi: bütün şamandıralar + finiş + konumlar; ikisi aynı başlangıç noktasıyla, aradaki yakınlık frameMix
+  const frames = useMemo(() => {
+    const near = [set.marks.pin, set.marks.komite, ...view.fixes].filter(Boolean);
+    const origin = set.marks.pin && set.marks.komite ? { lat: (set.marks.pin.lat + set.marks.komite.lat) / 2, lon: (set.marks.pin.lon + set.marks.komite.lon) / 2 } : near[0] || null;
+    const a = frameOf(near, { W, H, up, pad: W < 1600 ? 50 : 170, origin });
+    // yayında (bare) alttaki bilgi şeridi ekranın ~%30'u: parkur onun üstüne sığar
+    const b = frameOf([...Object.values(set.marks), ...view.fixes], { W, H, up, pad: W < 1600 ? 60 : 110, padB: bare ? H * 0.32 : null, origin });
+    return { a, b, origin };
+  }, [set, view, up, W, H, bare]);
+  const frame = frameMix(frames.a, frames.b, z, frames.origin);
   const [t, setT] = useState(t0);
   const raf = useRef(0);
   useEffect(() => {
@@ -127,6 +155,14 @@ export function BoatRace({ set, grp = "", loop = true, bare = false, tag = "CANL
   const kom = set.marks.komite && P(set.marks.komite);
   const m1 = set.marks.m1 && P(set.marks.m1);
   const m1Off = m1 && (m1.y < 0 || m1.y > H || m1.x < 0 || m1.x > W);
+  // trapez şamandıraları ve finiş (veri setinde varsa)
+  const mk = (k) => set.marks[k] && P(set.marks[k]);
+  const buoys = [["m1", "1"], ["m2", "2"], ["m3s", "3S"], ["m3p", "3P"]].map(([k, n]) => ({ k, n, p: mk(k) })).filter((b) => b.p);
+  const f1 = mk("fin1");
+  const f2 = mk("fin2");
+  const half = (a, b) => (a && b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } : a || b);
+  const route = pin && kom && mk("m1") ? [half(pin, kom), mk("m1"), mk("m2"), half(mk("m3s"), mk("m3p")), half(f1, f2)].filter(Boolean) : [];
+  const ms = 0.7 + 0.3 * (1 - z); // şamandıra boyu
   const m1Dist = m1Off && pin && kom ? Math.round(frame.m * Math.hypot(m1.x - (pin.x + kom.x) / 2, m1.y - (pin.y + kom.y) / 2)) : 0;
   const ck = clockText(t);
   const who = Object.fromEntries(view.boats.map((b) => [b.sail, b]));
@@ -153,17 +189,33 @@ export function BoatRace({ set, grp = "", loop = true, bare = false, tag = "CANL
             <Committee x={kom.x + 10} y={kom.y} />
           </>
         ) : null}
-        {m1 && !m1Off ? (
-          <g transform={`translate(${m1.x},${m1.y})`}>
-            <path d="M-12 12 L-11 -8 Q0 -18 11 -8 L12 12 Z" fill="#f5c518" />
-            <text x="0" y="-26" textAnchor="middle" className="br-mk">
-              1
+        {route.length > 2 ? <polyline points={route.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="2" strokeDasharray="3 9" strokeLinecap="round" /> : null}
+        {f1 && f2 ? (
+          <>
+            <line x1={f1.x} y1={f1.y} x2={f2.x} y2={f2.y} stroke="rgba(255,255,255,.55)" strokeWidth="2" strokeDasharray="6 6" />
+            <g transform={`translate(${f1.x},${f1.y}) scale(${(ms * 0.6).toFixed(2)})`}>
+              <Committee x={0} y={0} />
+            </g>
+            <circle cx={f2.x} cy={f2.y} r={7 * ms} fill="#5ad1ff" />
+            <text x={(f1.x + f2.x) / 2} y={Math.min(f1.y, f2.y) - 18 * ms} textAnchor="middle" className="br-mk br-fin">
+              Finiş
             </text>
-          </g>
+          </>
         ) : null}
+        {buoys
+          .filter((b) => !(b.k === "m1" && m1Off))
+          .map((b) => (
+            <g key={b.k} transform={`translate(${b.p.x.toFixed(1)},${b.p.y.toFixed(1)}) scale(${ms.toFixed(2)})`}>
+              <ellipse cx="0" cy="12" rx="13" ry="4" fill="rgba(0,0,0,.25)" />
+              <path d="M-12 12 L-11 -8 Q0 -18 11 -8 L12 12 Z" fill="#f5c518" />
+              <text x="0" y="-26" textAnchor="middle" className="br-mk">
+                {b.n}
+              </text>
+            </g>
+          ))}
         {rows.map((r) => (r.trail.length > 1 ? <polyline key={`t${r.sail}`} points={r.trail.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} fill="none" stroke={r.col} strokeOpacity=".45" strokeWidth={2.5 * (s / 1.6)} strokeLinecap="round" strokeLinejoin="round" /> : null))}
         {rows.map((r) => (
-          <Boat key={r.sail} x={r.x} y={r.y} hdg={r.hdg} wind={set.wind.dir} up={up} col={r.col} sail={r.sail} s={s} />
+          <Boat key={r.sail} x={r.x} y={r.y} hdg={r.hdg} wind={set.wind.dir} up={up} col={r.col} sail={r.sail} s={s} label={z < 0.8} />
         ))}
       </svg>
       {bare ? (

@@ -11,7 +11,8 @@ import { BoatRace } from "./BoatRace";
 
 let cache = null;
 
-export function BoatLive({ grp = "", bare = true, tag }) {
+// zoom: Yayın › Video görünümü (screen.zoom 0–100); verilmezse eski start görünümü
+export function BoatLive({ grp = "", bare = true, tag, zoom = null }) {
   const [set, setSet] = useState(cache);
   useEffect(() => {
     if (cache) return;
@@ -30,5 +31,5 @@ export function BoatLive({ grp = "", bare = true, tag }) {
   }, []);
   if (!set) return <div className="br" />;
   const g = liveGroup(set, grp);
-  return <BoatRace key={g} set={set} grp={g} bare={bare} tag={tag} />;
+  return <BoatRace key={g} set={set} grp={g} bare={bare} tag={tag} zoom={zoom} />;
 }

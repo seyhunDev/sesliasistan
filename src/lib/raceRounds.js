@@ -330,7 +330,8 @@ export function cleanScreen(s) {
   // pause: yayına ara verildi (Seyhun 2026-11-02): video ekranda kalır, önünde "Yayına ara verildi" yazısı
   // caption: ekranın altındaki yazı (Seyhun 2026-11-02 "videonun ne olduğunu yazabileceğimiz bir alan, altta olimpiyat yayını gibi")
   // src: Yayın › Video'daki canlı kaynaklardan biri (stream.sources id; Seyhun 2026-11-02 "Drone 1, 2, 3, telefon; seçip ekrana alayım")
-  return { kind, src: kind === "src" && SRC_ID.test(s?.src || "") ? s.src : "", mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, caption: String(s?.caption || "").trim().slice(0, 80), at: typeof s?.at === "string" ? s.at.slice(0, 30) : "" };
+  // zoom: tekne ekranının yakınlığı (0 start … 100 bütün parkur; Seyhun 2026-11-03 "yönetimden ayarlayabileyim")
+  return { kind, src: kind === "src" && SRC_ID.test(s?.src || "") ? s.src : "", mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, caption: String(s?.caption || "").trim().slice(0, 80), at: typeof s?.at === "string" ? s.at.slice(0, 30) : "", ...(kind === "boats" ? { zoom: Number.isFinite(+s?.zoom) && s?.zoom !== null && s?.zoom !== "" ? Math.max(0, Math.min(100, Math.round(+s.zoom))) : 100 } : {}) };
 }
 // Parkur gösterimi (Seyhun 2026-11-02): auto = yarış öncesi 30 sn'de bir kendiliğinden (varsayılan açık), at = Yayın'dan "Parkuru göster"e basılan an
 // one = Yayın'dan elle açılan tek gösterim ("course" | "wind" | "prog"): kaldırılana kadar ekranda kalır, yarış öncesi, sırasında ve sonrasında

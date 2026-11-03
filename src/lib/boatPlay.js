@@ -1,7 +1,7 @@
 // Tekne konum oynatıcısı (Seyhun 2026-11-03 "canlı veri akışını sonra kuracağım, altyapı ona uygun olsun; önce hazır data setiyle
 // start'tan 5 sn önce, 10 sn sonra animasyon"): animasyon yalnız bu biçimi okur; veri dosyadan da (public/veri/ornek-start.json)
 // canlı akıştan da (tekne takibi takip/{yarış}/tekne: lat, lon, hdg, spd, t) aynı gelir. Biçim project-files/tekne-animasyon/veri-bicimi.md.
-//   { v: 1, race, start (ISO), wind: { dir, kn }, marks: { komite, pin, m1… }, boats: [{ sail, name, grp }],
+//   { v: 1, race, start (ISO), wind: { dir, kn }, marks: { komite, pin, m1, m2, m3s, m3p (kapı), fin1 (finiş teknesi), fin2 }, boats: [{ sail, name, grp }],
 //     fixes: [{ t (start'a göre ms), sail, lat, lon, hdg?, spd? }] }
 // Saf işlevler (test: scripts/asistan-test/yerel/yaris.mjs "Tekne animasyonu").
 import { cleanFix, cleanSail } from "@/lib/boatTrack";
@@ -17,7 +17,7 @@ export function cleanSet(j) {
   const marks = {};
   for (const [k, v] of Object.entries(j?.marks && typeof j.marks === "object" ? j.marks : {}).slice(0, 12)) {
     const g = geo(v);
-    if (g && /^(komite|pin|m[1-9])$/.test(k)) marks[k] = g;
+    if (g && /^(komite|pin|m[1-9][sp]?|fin[12])$/.test(k)) marks[k] = g;
   }
   const seen = new Set();
   const boats = (Array.isArray(j?.boats) ? j.boats : [])
@@ -94,10 +94,13 @@ export function boomOf(hdg, windDir) {
 }
 
 // Sabit çerçeve (klip boyunca kamera kımıldamaz): verilen noktaları W×H'ye sığdıran izdüşüm; up yukarıdaki yön (parkur ekseni)
-export function frameOf(points, { W = 1600, H = 900, pad = 120, up = 0, min = 60 } = {}) {
+// origin: iki çerçeve karışacaksa (frameMix) ortak başlangıç noktası
+// padB: alttaki boşluk (canlı ekranda alt şeridin altında kalmasın)
+export function frameOf(points, { W = 1600, H = 900, pad = 120, padB = null, up = 0, min = 60, origin = null } = {}) {
+  const pb = padB ?? pad;
   const ok = (points || []).filter(geo);
   if (!ok.length) return null;
-  const o = { lat: ok.reduce((s, p) => s + p.lat, 0) / ok.length, lon: ok.reduce((s, p) => s + p.lon, 0) / ok.length };
+  const o = origin || { lat: ok.reduce((s, p) => s + p.lat, 0) / ok.length, lon: ok.reduce((s, p) => s + p.lon, 0) / ok.length };
   const a = (up * Math.PI) / 180;
   const k = Math.cos((o.lat * Math.PI) / 180);
   const rot = (p) => {
@@ -110,16 +113,40 @@ export function frameOf(points, { W = 1600, H = 900, pad = 120, up = 0, min = 60
   const ys = r.map((p) => p.y);
   const cx = (Math.max(...xs) + Math.min(...xs)) / 2;
   const cy = (Math.max(...ys) + Math.min(...ys)) / 2;
-  const m = Math.max(Math.max(min, Math.max(...xs) - Math.min(...xs)) / (W - pad * 2), Math.max(min, Math.max(...ys) - Math.min(...ys)) / (H - pad * 2));
-  return {
-    m,
-    up,
-    at: (p) => {
-      const q = rot(p);
-      return { x: W / 2 + (q.x - cx) / m, y: H / 2 - (q.y - cy) / m };
-    },
-  };
+  const m = Math.max(Math.max(min, Math.max(...xs) - Math.min(...xs)) / (W - pad * 2), Math.max(min, Math.max(...ys) - Math.min(...ys)) / Math.max(40, H - pad - pb));
+  return mkFrame({ m, up, cx, cy, W, H, Y0: (pad + H - pb) / 2, rot });
 }
+const mkFrame = (f) => ({
+  ...f,
+  at: (p) => {
+    const q = f.rot(p);
+    return { x: f.W / 2 + (q.x - f.cx) / f.m, y: f.Y0 - (q.y - f.cy) / f.m };
+  },
+});
+// Yakınlık (Seyhun 2026-11-03 "tepeden startı ve parkuru; zoomlayıp uzaklaşmak mümkün olsun, yönetimden ayarlayayım"):
+// z 0 = start çerçevesi (a), 1 = bütün parkur (b); ölçek logaritmik geçer. anchor (start hattının ortası) ekranda a'daki yerinden b'dekine
+// doğru kayar, böylece arada da start görünür kalır. a ve b aynı origin ile kurulmalı.
+export function frameMix(a, b, z, anchor = null) {
+  if (!a || !b) return a || b;
+  const k = Math.max(0, Math.min(1, z));
+  const m = Math.exp(Math.log(a.m) + (Math.log(b.m) - Math.log(a.m)) * k);
+  if (!anchor || !geo(anchor)) return mkFrame({ ...a, m, cx: a.cx + (b.cx - a.cx) * k, cy: a.cy + (b.cy - a.cy) * k, Y0: a.Y0 + (b.Y0 - a.Y0) * k });
+  const sa = a.at(anchor);
+  const sb = b.at(anchor);
+  const sx = sa.x + (sb.x - sa.x) * k;
+  const sy = sa.y + (sb.y - sa.y) * k;
+  const q = a.rot(anchor);
+  return mkFrame({ ...a, m, cx: q.x - (sx - a.W / 2) * m, cy: q.y + (sy - a.Y0) * m });
+}
+// Yayın'daki görünüm düğmeleri: screen.zoom (0–100)
+export const ZOOMS = [
+  ["Start", 0],
+  ["Yakın", 35],
+  ["Orta", 65],
+  ["Parkur", 100],
+];
+export const ZOOM_DEF = 100;
+export const cleanZoom = (z) => (Number.isFinite(+z) && z !== null && z !== "" ? Math.max(0, Math.min(100, Math.round(+z))) : ZOOM_DEF);
 
 // Sayaç yazısı: start'tan önce "Start'a 00:03", sonra "Süre 00:08"
 export function clockText(t) {
