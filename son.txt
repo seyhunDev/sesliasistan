@@ -1,8 +1,8 @@
-Commit: a057a1b · Ana sayfa iyice sade: alttaki kartlar ve alışveriş düğmeleri kalktı (#1026)
-Zaman: 2026-11-03-0655 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41573833502
+Commit: 3409aec · Canlı ekran: rüzgâr grafiği yerine saat saat hava tablosu (#1027)
+Zaman: 2026-11-03-0708 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41575105591
 
-TAM TEST · 03.11.2026 06:43:30
+TAM TEST · 03.11.2026 06:56:33
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,15 +30,11 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1436/1437 geçti · 1 kalan · 672 sn
+SONUÇ: 1437/1437 geçti · 0 kalan · 664 sn
 ======================================================================
 
-1. BİRİM TESTLERİ: 0/1
-  ✗ Birim testleri: 0/1
-      ✗ “4364 test”
-          beklenen: hepsi geçer
-          olan:     4363/4364 geçti
-      ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
+1. BİRİM TESTLERİ: 1/1
+  ✓ Birim testleri: 1/1
 
 2. ANLAMA: temiz cümleler: 121/121
   ✓ Temiz cümle: Plan / takvim: 8/8
