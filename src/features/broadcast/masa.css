@@ -145,3 +145,13 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-live { flex: none; display: flex; align-items: center; gap: 0.4rem; border-radius: 1rem; border: 1px solid rgba(255, 61, 119, 0.45); background: rgba(255, 61, 119, 0.14); padding: 0.25rem 0.65rem; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #ff8ab0; }
 .masa-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); animation: masa-pulse 1.4s ease-in-out infinite; }
 @keyframes masa-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 61, 119, 0.6); } 50% { box-shadow: 0 0 0 5px rgba(255, 61, 119, 0); } }
+
+/* Seçim kareleri: sınıf · grup · bayrak (Seyhun 2026-11-03) */
+.masa-sq { display: flex; width: 4.5rem; flex: none; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; aspect-ratio: 1; border-radius: 0.875rem; background: var(--chip); border: 2px solid transparent; }
+.masa-sq.on { border-color: var(--acc); }
+.masa-sq.sel { background: var(--acc); }
+.masa-sq.sel small { color: #fff; }
+.masa-sq .art { display: block; width: 2.5rem; height: 1.75rem; overflow: hidden; border-radius: 0.25rem; background: rgba(255, 255, 255, 0.08); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18); }
+.masa-sq .art:empty { background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08) 0 4px, transparent 4px 8px); }
+.masa-sq small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.6875rem; font-weight: 700; color: var(--mut); }
+.masa-sq.sm { width: 3.75rem; }
