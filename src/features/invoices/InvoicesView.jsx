@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
-import { Empty, Hero, HeroLabel, Label, Seg, Stat, card } from "@/components/ui/Page";
+import { Empty, card } from "@/components/ui/Page";
+import { ListHead } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -16,7 +17,6 @@ import { bankCheck, createInvoice, deleteInvoice, ensureTask, loadInvoices, open
 
 const lab = "block text-[0.75rem] font-medium text-mut";
 const dateFix = "appearance-none [&::-webkit-date-and-time-value]:text-left";
-const TONE = { paid: "bg-ok/10 text-ok", late: "bg-rec/10 text-rec", open: "bg-proc/15 text-fg" };
 const blank = () => ({ seller: "", no: "", date: todayStr(), due: "", amount: "", currency: "TL", iban: "", taxId: "", desc: "", note: "" });
 const toNum = (v) => {
   const s = String(v ?? "").replace(/[^\d.,]/g, "");
@@ -272,110 +272,81 @@ export function useInvoiceDesk(orgId) {
   return { list, sum, today, pick, check, checking, guesses, confirmGuess, open: setOpenId, whoOf, sheets };
 }
 
-// Faturalar seçiliyken: ödenmemiş toplam, yükle / bankada kontrol, olası ödemeler, liste
-export function InvoicePanel({ desk }) {
-  const { list, sum, pick, check, checking, guesses, confirmGuess } = desk;
-  const [tab, setTab] = useState("open");
+// Faturalar seçiliyken açık alan (yeni tasarım, 2026-11-03): tutar, Fatura ekle / Bankada kontrol ve Ödenmedi · Ödendi · Tümü lacivert üstte
+// (ReceiptBook); burada bankada olası ödemeler ve liste. tab: open | paid | all
+export function InvoicePanel({ desk, tab = "open" }) {
+  const { list, guesses, confirmGuess } = desk;
   const shown = useMemo(() => (list || []).filter((x) => (tab === "all" ? true : tab === "paid" ? x.status === "paid" : x.status !== "paid")), [list, tab]);
   return (
     <>
-      <Hero className="mt-3">
-        <HeroLabel>ÖDENMEMİŞ</HeroLabel>
-        <div className="mt-1 text-[1.75rem] font-bold leading-tight tabular-nums">{TL(sum.sum)}</div>
-        <div className="mt-3 flex gap-2">
-          <Stat n={sum.open} label="Ödenmedi" />
-          <Stat n={sum.late} label="Son günü geçti" tone={sum.late ? "rec" : ""} />
-        </div>
-      </Hero>
-
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <button onClick={pick} data-press className="btn btn-secondary text-acc">
-          <Icon name="plus" className="size-5" /> Fatura ekle
-        </button>
-        <button onClick={check} disabled={checking || !sum.open} data-press className="btn btn-secondary">
-          <Icon name={checking ? "load" : "wallet"} className={`size-5 ${checking ? "animate-spin" : ""}`} /> Bankada kontrol et
-        </button>
-      </div>
-
       {guesses.length > 0 && (
-        <>
-          <Label right={guesses.length}>BANKADA OLASI ÖDEMELER</Label>
-          <div className="space-y-2">
+        <section>
+          <ListHead title="Bankada olası ödemeler" count={guesses.length} />
+          <div className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
             {guesses.map((g) => (
-              <div key={`${g.inv.id}${g.m.date}`} className={`${card} p-4`}>
-                <p className="text-[0.875rem] leading-snug">
-                  <b className="font-semibold">{g.inv.seller}</b> · {amountText(g.inv)}
-                </p>
-                <p className="mt-1 text-[0.8125rem] leading-snug text-mut">
+              <div key={`${g.inv.id}${g.m.date}`} className="px-3.5 py-3">
+                <div className="flex items-center gap-3">
+                  <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{g.inv.seller}</b>
+                  <b className="shrink-0 text-[0.9375rem] font-bold tabular-nums">{amountText(g.inv)}</b>
+                </div>
+                <p className="truncate text-[0.8125rem] text-mut">
                   {g.m.date} · {g.m.desc}
                 </p>
-                <p className="mt-0.5 text-[0.75rem] text-mut">Tutar ve tarih tutuyor, açıklamada firma adı yok.</p>
-                <div className="mt-3 flex gap-2">
-                  <button onClick={() => confirmGuess(g, true)} data-press className="btn btn-primary btn-sm h-10 flex-1">
-                    Bu ödeme, ödendi
-                  </button>
+                <div className="mt-2.5 flex gap-2">
                   <button onClick={() => confirmGuess(g, false)} data-press className="btn btn-secondary btn-sm h-10 flex-1">
                     Değil
+                  </button>
+                  <button onClick={() => confirmGuess(g, true)} data-press className="btn btn-primary btn-sm h-10 flex-1">
+                    Ödendi
                   </button>
                 </div>
               </div>
             ))}
           </div>
-        </>
+        </section>
       )}
-
-      <Seg
-        className="mt-5"
-        value={tab}
-        onChange={setTab}
-        options={[
-          ["open", "Ödenmedi", sum.open],
-          ["paid", "Ödendi", (list || []).length - sum.open],
-          ["all", "Tümü"],
-        ]}
-      />
 
       {!list ? (
         <Loading />
       ) : !shown.length ? (
-        <Empty icon="receipt" title={list.length ? "Bu listede fatura yok" : "Henüz fatura yok"} sub={list.length ? "" : "Faturanın PDF'ini ya da fotoğrafını yükle; firma, tutar ve son gün kendiliğinden okunur, görevlere de eklenir."} />
+        <Empty icon="receipt" title={list.length ? "Bu listede fatura yok" : "Henüz fatura yok"} />
       ) : (
-        <div className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
-          {shown.map((inv) => (
-            <InvoiceRow key={inv.id} inv={inv} desk={desk} />
-          ))}
-        </div>
+        <section>
+          <ListHead title={{ open: "Ödenmedi", paid: "Ödendi", all: "Faturalar" }[tab] || "Faturalar"} count={shown.length} />
+          <div className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
+            {shown.map((inv) => (
+              <InvoiceRow key={inv.id} inv={inv} desk={desk} />
+            ))}
+          </div>
+        </section>
       )}
     </>
   );
 }
 
-// Listede bir fatura: firma, son gün/ödendi, görevli, tutar ve durum; badge "Fatura" işareti (karışık listede)
+// Listede bir fatura (yeni tasarım, 2026-11-03): solda durum çizgisi, firma, altında son gün/ödendi ve görevli, sağda tutar ve durum;
+// badge: karışık listede alt satırın başında "Fatura"
+const BAR = { paid: "bg-ok", late: "bg-rec", open: "bg-acc" };
+const STATE_TX = { paid: "text-ok", late: "text-rec", open: "text-mut" };
 export function InvoiceRow({ inv, desk, badge }) {
   const st = stateOf(inv, desk.today);
   const who = desk.whoOf(inv);
   return (
-    <button onClick={() => desk.open(inv.id)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-      <span className={`grid size-9 shrink-0 place-items-center rounded-[0.625rem] ${st === "paid" ? "bg-bg text-fg" : st === "late" ? "bg-rec/10 text-rec" : "bg-proc/20 text-fg"}`}>
-        <Icon name="receipt" className="size-[1.125rem]" />
-      </span>
+    <button onClick={() => desk.open(inv.id)} data-press="row" className="flex min-h-[3.5rem] w-full items-center gap-3 bg-card px-3.5 py-2.5 text-left">
+      <span className={`w-[3px] self-stretch rounded-full ${BAR[st] || "bg-line"}`} aria-hidden="true" />
       <span className="min-w-0 flex-1">
-        <b className="block truncate text-[0.9375rem] font-semibold">
-          {badge && <span className="mr-1.5 rounded-md bg-proc/20 px-1.5 py-0.5 align-[1px] text-[0.6875rem] font-bold uppercase tracking-wide text-fg">Fatura</span>}
-          {inv.seller || "Fatura"}
-        </b>
-        <span className="block truncate text-[0.8125rem] text-mut">
-          {[st === "paid" ? inv.paidAt && `Ödendi ${shortDay(inv.paidAt)}` : inv.due && `Son gün ${shortDay(inv.due)}`, who ? `Görevli: ${who}` : st !== "paid" && "Görevli yok", inv.desc].filter(Boolean).join(" · ")}
-        </span>
+        <b className="block truncate text-[0.9375rem] font-semibold">{inv.seller || "Fatura"}</b>
+        <small className="block truncate text-[0.8125rem] text-mut">
+          {[badge && "Fatura", st === "paid" ? inv.paidAt && `Ödendi ${shortDay(inv.paidAt)}` : inv.due && `Son gün ${shortDay(inv.due)}`, who ? `Görevli: ${who}` : st !== "paid" && "Görevli yok", inv.desc].filter(Boolean).join(" · ")}
+        </small>
       </span>
       <span className="shrink-0 text-right">
-        <b className="block text-[0.9375rem] font-semibold tabular-nums">{amountText(inv)}</b>
-        <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold ${TONE[st]}`}>{STATE[st]}</span>
+        <b className="block text-[0.9375rem] font-bold tabular-nums">{amountText(inv)}</b>
+        <small className={`block text-[0.75rem] font-semibold ${STATE_TX[st] || "text-mut"}`}>{STATE[st]}</small>
       </span>
     </button>
   );
 }
-
 
 function InvoiceForm({ form, set }) {
   const f = (k) => ({ value: form[k] ?? "", onChange: (e) => set({ ...form, [k]: e.target.value }) });

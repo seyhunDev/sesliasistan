@@ -3,13 +3,16 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Tile } from "@/components/dashboard/Row";
+import { BackButton } from "@/components/ui/BackButton";
+import { ListHead, Row, RowList } from "@/components/ui/Row";
+import { Sheet } from "@/components/ui/Sheet";
+import { Empty } from "@/components/ui/Page";
+import { buttonClass } from "@/components/ui/buttonClass";
 import { useData } from "@/features/data/DataProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { PendingPayments } from "@/features/receipts/Payment";
 import { whoText } from "@/lib/people";
-import { CAT, CATS, DOC, PAYS, TLk, accountingName, accountingSheets, catOf, needsCheck, noText, parseTL, payOf, totalOf } from "@/lib/receipts";
+import { CATS, DOC, PAYS, TLk, accountingName, accountingSheets, catOf, needsCheck, noText, parseTL, payOf, totalOf } from "@/lib/receipts";
 import { useToast } from "@/components/ui/ToastProvider";
 import { doc } from "firebase/firestore";
 import { updateDoc } from "@/lib/firebase/write";
@@ -68,6 +71,8 @@ export function ReceiptBook({ kind: start = "" }) {
   // "" | personal | club; /receipts?scope=kisisel Kişisel'i açar (Hesaplar › Kişisel'deki kart harcamaları)
   const [scope, setScope] = useState(() => (typeof window !== "undefined" ? ({ kisisel: "personal", kulup: "club" })[new URLSearchParams(window.location.search).get("scope")] || "" : ""));
   const [open, setOpen] = useState(false);
+  const [more, setMore] = useState(false); // ⋯ penceresi (Excel, mail, yazdır)
+  const [invTab, setInvTab] = useState("open"); // Faturalar: open | paid | all
   // Faturalar yalnız ana hesapta; çalışan yalnız fişleri görür
   const owner = !!profile && profile.role !== "staff";
   const desk = useInvoiceDesk(owner ? profile.orgId : null);
@@ -247,262 +252,319 @@ export function ReceiptBook({ kind: start = "" }) {
     ],
   });
 
+  const monthText = month ? monthLabel(month) : "Tüm zamanlar";
+  const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
+  const chip = (on) => `${pill0} ${on ? "border-white bg-white text-[#0b1a33]" : "ck-glass text-white"}`;
+  const raised = "raised flex h-10 min-w-0 disabled:opacity-50 items-center justify-center gap-1.5 rounded-xl border px-3 text-[0.9375rem] font-semibold";
+  const listCls = "divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card";
+  // ⋯ penceresindeki işler: pencere kapanır, iş başlar
+  const run = (fn) => () => (setMore(false), fn());
+
+  // Yeni tasarım (velora-tasarim, 2026-11-03): lacivert üstte ad, büyük tutar, ekleme düğmeleri, ay, arama ve süzgeç çipleri; altta gün gün liste
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
-      {/* Başlık */}
-      <PageHeader title={owner ? "Fişler ve faturalar" : "Fişler"}>
-        {shownKind !== "invoice" && (
-          <>
-        <button onClick={excel} disabled={!list.length} aria-label="Muhasebe Excel'i" data-press className="btn btn-secondary btn-sm">
-          <Icon name="download" className="size-4" /> Excel
-        </button>
-        <button onClick={mail} disabled={!list.length || mailing} aria-label="Excel'i mail at" data-press className="btn btn-round btn-sm text-fg">
-          <Icon name="mail" className="size-[1.125rem]" />
-        </button>
-        <button onClick={print} disabled={!list.length} aria-label="Yazdır" data-press className="btn btn-round btn-sm text-fg">
-          <Icon name="print" className="size-[1.125rem]" />
-        </button>
-          </>
-        )}
-      </PageHeader>
-      {owner && (
-        <div className="mt-1 flex rounded-full bg-line/60 p-1">
-          {KINDS.map(([k, l]) => (
-            <button
-              key={k || "all"}
-              onClick={() => (setKind(k), setCats([]))}
-              aria-pressed={kind === k}
-              className={`flex-1 rounded-full py-2 text-[0.875rem] font-semibold transition ${kind === k ? "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.1)]" : "text-mut"}`}
-            >
-              {l}
-              {k === "invoice" && desk.sum.open > 0 && <span className="ml-1.5 rounded-full bg-rec/10 px-1.5 text-[0.75rem] text-rec tabular-nums">{desk.sum.open}</span>}
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={owner ? "Fişler ve faturalar" : "Fişler"}>
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{owner ? "Fişler ve faturalar" : "Fişler"}</h1>
+            {shownKind !== "invoice" && <p className="truncate text-[0.8125rem] capitalize text-white/65">{monthText}</p>}
+          </div>
+          {shownKind !== "invoice" && (
+            <button type="button" onClick={() => setMore(true)} disabled={!list.length} aria-label="Excel, mail, yazdır" data-press className={`${buttonClass({ variant: "round" })} size-10`}>
+              <Icon name="more" className="size-5" />
             </button>
-          ))}
-        </div>
-      )}
-      {owner && desk.sheets}
-
-      {shownKind === "invoice" ? (
-        <InvoicePanel desk={desk} />
-      ) : (
-      <>
-
-      {/* Ay seçici */}
-      <div className="mt-2 flex items-center justify-between rounded-2xl border border-line bg-card p-1">
-        <button onClick={() => setMonth((m) => shiftMonth(m || todayStr().slice(0, 7), -1))} aria-label="Önceki ay" data-press className="btn btn-icon size-10">
-          <Icon name="back" className="size-5" />
-        </button>
-        <button onClick={() => setMonth((m) => (m ? "" : todayStr().slice(0, 7)))} className="text-[0.9375rem] font-semibold capitalize">
-          {month ? monthLabel(month) : "Tüm zamanlar"}
-        </button>
-        <button onClick={() => setMonth((m) => shiftMonth(m || todayStr().slice(0, 7), 1))} aria-label="Sonraki ay" data-press className="btn btn-icon size-10">
-          <Icon name="chev" className="size-5" />
-        </button>
-      </div>
-
-      {/* Özet: Tümü'de fişler ve ödenecek faturalar yan yana; Fişler'de kategorili toplam */}
-      {shownKind === "" ? (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button onClick={() => setKind("receipt")} className="rounded-2xl bg-acc p-3.5 text-left text-white active:scale-[.98]">
-            <small className="block text-[0.75rem] font-semibold opacity-80">Fişler · {month ? monthLabel(month) : "tümü"}</small>
-            <b className="mt-1 block text-[1.375rem] font-bold leading-tight tabular-nums">{TLk(total)}</b>
-            <small className="block text-[0.75rem] opacity-80">{list.length} fiş</small>
-          </button>
-          <button onClick={() => setKind("invoice")} className={`rounded-2xl p-3.5 text-left active:scale-[.98] ${desk.sum.late ? "bg-rec text-white" : desk.sum.open ? "bg-deep text-white" : "border border-line bg-card"}`}>
-            <small className="block text-[0.75rem] font-semibold opacity-80">Ödenecek faturalar</small>
-            <b className="mt-1 block text-[1.375rem] font-bold leading-tight tabular-nums">{desk.sum.open ? TL(desk.sum.sum) : "Yok"}</b>
-            <small className="block text-[0.75rem] opacity-80">{desk.sum.open ? [`${desk.sum.open} fatura`, desk.sum.late && `${desk.sum.late} gecikti`].filter(Boolean).join(" · ") : "Hepsi ödendi"}</small>
-          </button>
-        </div>
-      ) : (
-      <div className="mt-3 rounded-2xl bg-acc p-4 text-white">
-        <div className="text-[1.75rem] font-bold leading-tight tracking-tight tabular-nums">{TLk(total)}</div>
-        <p className="text-[0.8125rem] opacity-80">
-          {list.length} fiş · KDV {TLk(vat)}
-        </p>
-        {total > 0 && (
-          <>
-            <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-white/20">
-              {catRank.map(([c, v]) => (
-                <span key={c} style={{ width: `${(v / total) * 100}%`, background: catOf(c).color }} />
-              ))}
-            </div>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.75rem] opacity-90">
-              {catRank.slice(0, 3).map(([c, v]) => (
-                <span key={c} className="flex items-center gap-1">
-                  <i className="size-2 rounded-full" style={{ background: catOf(c).color }} /> {c} {TLk(v)}
-                </span>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-      )}
-
-      {owner && (
-        // Ekleme düğmeleri altta sabit, alt çubuğun hemen üstünde (globals.css body[data-dock] .fixed[data-pagebar])
-        <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
-        <div className={`mx-auto grid max-w-[26.25rem] gap-2 ${shownKind === "" ? "grid-cols-2" : ""}`}>
-          <button onClick={() => openReceipt()} data-press className="btn btn-secondary text-acc">
-            <Icon name="camera" className="size-5" /> Fiş ekle
-          </button>
-          {shownKind === "" && (
-          <button onClick={desk.pick} data-press className="btn btn-secondary text-acc">
-            <Icon name="plus" className="size-5" /> Fatura ekle
-          </button>
           )}
-        </div>
-        </div>
-      )}
+        </header>
 
-      <PendingPayments />
-
-      {pending > 0 && !review && (
-        <button onClick={showReview} className="mt-3 flex w-full items-center gap-2.5 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-amber-900 active:scale-[.98]">
-          <Icon name="alert" className="size-5" />
-          <span className="flex-1 text-[0.9375rem] font-semibold">{pending} fiş kontrol bekliyor</span>
-          <Icon name="chev" className="size-4" />
-        </button>
-      )}
-
-      {/* Arama + filtre */}
-      <div className="mt-3 flex gap-2">
-        <div className="relative flex-1">
-          <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 size-[1.125rem] -translate-y-1/2 text-mut" />
-          <input className={`${inp} pl-10`} type="search" placeholder="Ara" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <button
-          onClick={() => setOpen((o) => !o)}
-          aria-label="Filtreler"
-          className={`relative grid size-11 shrink-0 place-items-center rounded-xl border transition active:scale-95 ${open || active ? "border-acc bg-acc/10 text-acc" : "border-line bg-card"}`}
-        >
-          <Icon name="filter" className="size-5" />
-          {active > 0 && <span className="absolute -right-1 -top-1 grid size-[1.125rem] place-items-center rounded-full bg-acc text-[0.6875rem] font-bold text-white">{active}</span>}
-        </button>
-      </div>
-
-      {open && (
-        <div className="fade-in mt-2 space-y-2 rounded-2xl border border-line bg-card p-3">
-          <div className="flex rounded-xl bg-bg p-[0.1875rem]">
-            {["", ...PAYS].map((p) => (
-              <button key={p || "all"} onClick={() => setPay(p)} className={`flex-1 rounded-[0.625rem] py-2 text-sm font-semibold transition ${pay === p ? "bg-card shadow-sm" : "text-mut"}`}>
-                {p || "Tümü"}
-              </button>
-            ))}
-          </div>
-          {users.length > 1 && (
-            <select className={inp} value={by} onChange={(e) => setBy(e.target.value)} aria-label="Ekleyen">
-              <option value="">Herkes</option>
-              {users.map((u) => <option key={u}>{u}</option>)}
-            </select>
-          )}
-          <div className="flex rounded-xl bg-bg p-[0.1875rem]">
-            {[["", "Hepsi"], ["pending", "Ödeme bekleyen"], ["paid", "Ödenen"]].map(([v, l]) => (
-              <button key={v || "all"} onClick={() => setState(v)} className={`flex-1 rounded-[0.625rem] py-2 text-sm font-semibold transition ${state === v ? "bg-card shadow-sm" : "text-mut"}`}>
+        {/* Tümü · Fişler · Faturalar (ana hesap) */}
+        {owner && (
+          <div className="-mx-5 mt-4 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
+            {KINDS.map(([k, l]) => (
+              <button key={k || "all"} type="button" onClick={() => (setKind(k), setCats([]))} aria-pressed={kind === k} data-press className={chip(kind === k)}>
                 {l}
+                {k === "invoice" && desk.sum.open > 0 && <span className="ml-1.5 tabular-nums opacity-70">{desk.sum.open}</span>}
               </button>
             ))}
           </div>
-          {owner && (
-            <div className="flex rounded-xl bg-bg p-[0.1875rem]">
-              {[["", "Hepsi"], ["club", "Kulüp"], ["personal", "Kişisel"]].map(([v, l]) => (
-                <button key={v || "all"} onClick={() => setScope(v)} className={`flex-1 rounded-[0.625rem] py-2 text-sm font-semibold transition ${scope === v ? "bg-card shadow-sm" : "text-mut"}`}>
+        )}
+
+        {shownKind === "invoice" ? (
+          <>
+            <div className="mt-4">
+              <b className="block truncate text-[2.125rem] font-bold leading-none tracking-[-.02em] tabular-nums text-white">{TL(desk.sum.sum)}</b>
+              <p className="mt-1.5 truncate text-[0.8125rem] text-white/65">
+                {desk.sum.open} ödenmedi
+                {desk.sum.late > 0 && <span className="text-warn"> · {desk.sum.late} gecikti</span>}
+              </p>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={desk.pick} data-press className={`${raised} act-main`}>
+                Fatura ekle
+              </button>
+              <button type="button" onClick={desk.check} disabled={desk.checking || !desk.sum.open} data-press className={raised}>
+                {desk.checking && <Icon name="load" className="size-4 animate-spin" />}
+                <span className="truncate">Bankada kontrol</span>
+              </button>
+            </div>
+            <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
+              {[
+                ["open", "Ödenmedi", desk.sum.open],
+                ["paid", "Ödendi", (desk.list || []).length - desk.sum.open],
+                ["all", "Tümü"],
+              ].map(([k, l, c]) => (
+                <button key={k} type="button" onClick={() => setInvTab(k)} aria-pressed={invTab === k} data-press className={chip(invTab === k)}>
                   {l}
+                  {c > 0 && <span className="ml-1.5 tabular-nums opacity-70">{c}</span>}
                 </button>
               ))}
             </div>
-          )}
-          <div className="grid grid-cols-2 gap-2">
-            <input className={inp} inputMode="decimal" placeholder="En az ₺" value={min} onChange={(e) => setMin(e.target.value)} />
-            <input className={inp} inputMode="decimal" placeholder="En çok ₺" value={max} onChange={(e) => setMax(e.target.value)} />
-          </div>
-          <label className="flex items-center justify-between px-1 py-1 text-[0.9375rem]">
-            Yalnızca kontrol bekleyenler
-            <input type="checkbox" className="size-5 accent-[var(--acc)]" checked={review} onChange={(e) => setReview(e.target.checked)} />
-          </label>
-          {active > 0 && (
-            <button onClick={clear} data-press className="btn btn-text btn-sm w-full text-acc">
-              Filtreleri temizle
-            </button>
-          )}
-        </div>
-      )}
+          </>
+        ) : (
+          <>
+            {/* Özet: Tümü'de fişler ve ödenecek faturalar yan yana; Fişler'de kategorili toplam */}
+            {shownKind === "" ? (
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => setKind("receipt")} data-press className="min-w-0 text-left">
+                  <small className="block truncate text-[0.8125rem] text-white/65">Fişler</small>
+                  <b className="block truncate text-[1.625rem] font-bold leading-tight tracking-[-.02em] tabular-nums text-white">{TLk(total)}</b>
+                  <small className="block truncate text-[0.8125rem] text-white/65">{list.length} fiş</small>
+                </button>
+                <button type="button" onClick={() => setKind("invoice")} data-press className="min-w-0 border-l border-white/15 pl-3 text-left">
+                  <small className="block truncate text-[0.8125rem] text-white/65">Ödenecek</small>
+                  <b className="block truncate text-[1.625rem] font-bold leading-tight tracking-[-.02em] tabular-nums text-white">{desk.sum.open ? TL(desk.sum.sum) : "Yok"}</b>
+                  <small className={`block truncate text-[0.8125rem] ${desk.sum.late ? "text-warn" : "text-white/65"}`}>
+                    {desk.sum.open ? [`${desk.sum.open} fatura`, desk.sum.late && `${desk.sum.late} gecikti`].filter(Boolean).join(" · ") : "Hepsi ödendi"}
+                  </small>
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4">
+                <b className="block truncate text-[2.125rem] font-bold leading-none tracking-[-.02em] tabular-nums text-white">{TLk(total)}</b>
+                <p className="mt-1.5 truncate text-[0.8125rem] text-white/65">
+                  {list.length} fiş · KDV {TLk(vat)}
+                </p>
+                {total > 0 && (
+                  <>
+                    <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-white/15">
+                      {catRank.map(([c, v]) => (
+                        <span key={c} style={{ width: `${(v / total) * 100}%`, background: catOf(c).color }} />
+                      ))}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.75rem] text-white/75">
+                      {catRank.slice(0, 3).map(([c, v]) => (
+                        <span key={c} className="flex min-w-0 items-center gap-1">
+                          <i className="size-2 shrink-0 rounded-full" style={{ background: catOf(c).color }} />
+                          <span className="truncate">
+                            {c} {TLk(v)}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
-      {/* Kategoriler (yalnız fişler) */}
-      {shownKind === "receipt" && (
-      <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
-        {CATS.map((c) => {
-          const on = cats.includes(c);
-          return (
-            <button key={c} onClick={() => toggleCat(c)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition active:scale-95 ${on ? "border-acc bg-acc text-white" : "border-line bg-card"}`}>
-              <Icon name={CAT[c].icon} className="size-4" /> {c}
-            </button>
-          );
-        })}
-      </div>
-      )}
+            {/* Ekleme düğmeleri (ana hesap; çalışan alt çubuktan ekler) */}
+            {owner && (
+              <div className={`mt-4 grid gap-2 ${shownKind === "" ? "grid-cols-2" : ""}`}>
+                <button type="button" onClick={() => openReceipt()} data-press className={`${raised} act-main`}>
+                  Fiş ekle
+                </button>
+                {shownKind === "" && (
+                  <button type="button" onClick={desk.pick} data-press className={raised}>
+                    Fatura ekle
+                  </button>
+                )}
+              </div>
+            )}
 
-      {/* Ödenecek faturalar (Tümü): son güne göre, ay seçiminden bağımsız */}
-      {invOpen.length > 0 && (
-        <section>
-          <h3 className="mb-2 mt-5 flex justify-between px-1 text-[0.8125rem] font-semibold text-mut">
-            <span>Ödenecek faturalar</span>
-            <span className="tabular-nums">{TL(invOpen.reduce((a, x) => a + (x.amount || 0), 0))}</span>
-          </h3>
-          <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
-            {invOpen.map((x) => (
-              <InvoiceRow key={x.id} inv={x} desk={desk} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Liste */}
-      {loading ? (
-        <Loading />
-      ) : days.length === 0 && invOpen.length ? null : days.length === 0 ? (
-        <div className="py-14 text-center">
-          <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-card text-mut ring-1 ring-line">
-            <Icon name="receipt" className="size-7" />
-          </span>
-          <p className="mt-3 text-[0.9375rem] text-mut">{receipts.length || desk.list?.length ? "Bu filtrede kayıt yok" : "Henüz fiş yok"}</p>
-          {!receipts.length && <p className="mt-1 text-[0.8125rem] text-mut">Aşağıdan fotoğrafını çek ya da elle ekle.</p>}
-        </div>
-      ) : (
-        days.map((d) => (
-          <section key={d}>
-            <h3 className="mb-2 mt-5 px-1 text-[0.8125rem] font-medium text-mut">{fdate(d)}</h3>
-            <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
-              {groups[d].map((r) =>
-                r.inv ? (
-                  <InvoiceRow key={r.id} inv={r.inv} desk={desk} badge />
-                ) : (
-                <Link key={r.id} href={`/receipts/${r.id}`} className="flex items-center gap-3 px-4 py-3 transition active:bg-bg">
-                  <Tile icon={catOf(r.cat).icon} />
-                  <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.9375rem] font-medium">
-                      {shownKind === "" && <span className="mr-1.5 rounded-md bg-acc/10 px-1.5 py-0.5 align-[1px] text-[0.6875rem] font-bold uppercase tracking-wide text-acc">Fiş</span>}
-                      {r.no > 0 && <span className="mr-1.5 font-mono text-[0.8125rem] font-semibold text-acc">{noText(r.no)}</span>}
-                      {r.merchant || "İsimsiz"}
-                    </b>
-                    <small className="block truncate text-[0.8125rem] text-mut">
-                      {[r.time, r.cat, r.pay, r.scope === "personal" && "Kişisel"].filter(Boolean).join(" · ")}
-                      {whoText(r, myUid, nameOf) && <span className="text-acc"> · {whoText(r, myUid, nameOf)}</span>}
-                    </small>
-                    {payOf(r) === "pending" ? <small className="block text-[0.75rem] font-semibold text-amber-700">Ödeme bekliyor</small> : <small className="block text-[0.75rem] font-semibold text-ok">Ödendi</small>}
-                  </span>
-                  {needsCheck(r) && <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-label="Kontrol bekliyor" />}
-                  <span className="shrink-0 text-[0.9375rem] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
-                </Link>
-                ),
-              )}
+            {/* Ay seçici */}
+            <div className="ck-glass mt-3 flex h-11 items-center justify-between rounded-2xl px-1">
+              <button type="button" onClick={() => setMonth((m) => shiftMonth(m || todayStr().slice(0, 7), -1))} aria-label="Önceki ay" data-press className="grid size-9 place-items-center rounded-full text-white/80">
+                <Icon name="back" className="size-5" />
+              </button>
+              <button type="button" onClick={() => setMonth((m) => (m ? "" : todayStr().slice(0, 7)))} className="min-w-0 truncate text-[0.9375rem] font-semibold capitalize text-white">
+                {monthText}
+              </button>
+              <button type="button" onClick={() => setMonth((m) => shiftMonth(m || todayStr().slice(0, 7), 1))} aria-label="Sonraki ay" data-press className="grid size-9 place-items-center rounded-full text-white/80">
+                <Icon name="chev" className="size-5" />
+              </button>
             </div>
-          </section>
-        ))
-      )}
 
-      </>
-      )}
+            {/* Arama + süzgeç */}
+            <div className="mt-3 flex gap-2">
+              <label className="ck-glass flex h-11 min-w-0 flex-1 items-center gap-2 rounded-2xl px-3.5">
+                <input
+                  type="search"
+                  placeholder="Ara"
+                  enterKeyHint="search"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-white/50"
+                />
+                {q && (
+                  <button type="button" onClick={() => setQ("")} aria-label="Aramayı temizle" data-press className="grid size-7 place-items-center rounded-full text-white/70">
+                    <Icon name="x" className="size-4" />
+                  </button>
+                )}
+              </label>
+              <button
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                aria-label="Filtreler"
+                aria-pressed={open || active > 0}
+                data-press
+                className={`relative grid size-11 shrink-0 place-items-center rounded-2xl border ${open || active ? "border-white bg-white text-[#0b1a33]" : "ck-glass text-white"}`}
+              >
+                <Icon name="filter" className="size-5" />
+                {active > 0 && <span className="absolute -right-1 -top-1 grid size-[1.125rem] place-items-center rounded-full bg-acc text-[0.6875rem] font-bold text-white">{active}</span>}
+              </button>
+            </div>
+
+            {/* Kategoriler (yalnız fişler) */}
+            {shownKind === "receipt" && (
+              <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
+                {CATS.map((c) => (
+                  <button key={c} type="button" onClick={() => toggleCat(c)} aria-pressed={cats.includes(c)} data-press className={chip(cats.includes(c))}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        {shownKind === "invoice" ? (
+          <InvoicePanel desk={desk} tab={invTab} />
+        ) : (
+          <>
+            {open && (
+              <div className="fade-in space-y-2 rounded-[1.25rem] border border-line bg-card p-3">
+                <div className="flex rounded-xl bg-bg p-[0.1875rem]">
+                  {["", ...PAYS].map((p) => (
+                    <button key={p || "all"} onClick={() => setPay(p)} className={`flex-1 truncate rounded-[0.625rem] py-2 text-sm font-semibold transition ${pay === p ? "bg-card shadow-sm" : "text-mut"}`}>
+                      {p || "Tümü"}
+                    </button>
+                  ))}
+                </div>
+                {users.length > 1 && (
+                  <select className={inp} value={by} onChange={(e) => setBy(e.target.value)} aria-label="Ekleyen">
+                    <option value="">Herkes</option>
+                    {users.map((u) => <option key={u}>{u}</option>)}
+                  </select>
+                )}
+                <div className="flex rounded-xl bg-bg p-[0.1875rem]">
+                  {[["", "Hepsi"], ["pending", "Bekleyen"], ["paid", "Ödenen"]].map(([v, l]) => (
+                    <button key={v || "all"} onClick={() => setState(v)} className={`flex-1 truncate rounded-[0.625rem] py-2 text-sm font-semibold transition ${state === v ? "bg-card shadow-sm" : "text-mut"}`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                {owner && (
+                  <div className="flex rounded-xl bg-bg p-[0.1875rem]">
+                    {[["", "Hepsi"], ["club", "Kulüp"], ["personal", "Kişisel"]].map(([v, l]) => (
+                      <button key={v || "all"} onClick={() => setScope(v)} className={`flex-1 truncate rounded-[0.625rem] py-2 text-sm font-semibold transition ${scope === v ? "bg-card shadow-sm" : "text-mut"}`}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <input className={inp} inputMode="decimal" placeholder="En az ₺" value={min} onChange={(e) => setMin(e.target.value)} />
+                  <input className={inp} inputMode="decimal" placeholder="En çok ₺" value={max} onChange={(e) => setMax(e.target.value)} />
+                </div>
+                <label className="flex items-center justify-between gap-3 px-1 py-1 text-[0.9375rem]">
+                  <span className="truncate">Kontrol bekleyenler</span>
+                  <input type="checkbox" className="size-5 shrink-0 accent-[var(--acc)]" checked={review} onChange={(e) => setReview(e.target.checked)} />
+                </label>
+                {active > 0 && (
+                  <button onClick={clear} data-press className="btn btn-text btn-sm w-full">
+                    Temizle
+                  </button>
+                )}
+              </div>
+            )}
+
+            {pending > 0 && !review && (
+              <RowList>
+                <Row title={`${pending} fiş`} sub="Kontrol bekliyor" warn onClick={showReview} />
+              </RowList>
+            )}
+
+            <PendingPayments />
+
+            {/* Ödenecek faturalar (Tümü): son güne göre, ay seçiminden bağımsız */}
+            {invOpen.length > 0 && (
+              <section>
+                <ListHead title="Ödenecek faturalar" count={invOpen.length} />
+                <div className={listCls}>
+                  {invOpen.map((x) => (
+                    <InvoiceRow key={x.id} inv={x} desk={desk} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Liste: gün gün */}
+            {loading ? (
+              <Loading />
+            ) : days.length === 0 && invOpen.length ? null : days.length === 0 ? (
+              <Empty icon="receipt" title={receipts.length || desk.list?.length ? "Bu filtrede kayıt yok" : "Henüz fiş yok"} />
+            ) : (
+              days.map((d) => (
+                <section key={d}>
+                  <ListHead title={fdate(d)} count={groups[d].length} />
+                  <div className={listCls}>
+                    {groups[d].map((r) =>
+                      r.inv ? (
+                        <InvoiceRow key={r.id} inv={r.inv} desk={desk} badge />
+                      ) : (
+                        <Link key={r.id} href={`/receipts/${r.id}`} data-press="row" className="flex min-h-[3.5rem] items-center gap-3 px-3.5 py-2.5">
+                          <span className="w-[3px] self-stretch rounded-full" style={{ background: catOf(r.cat).color }} aria-hidden="true" />
+                          <span className="min-w-0 flex-1">
+                            <b className="block truncate text-[0.9375rem] font-semibold">
+                              {r.no > 0 && <span className="mr-1.5 font-mono text-[0.8125rem] text-acc">{noText(r.no)}</span>}
+                              {r.merchant || "İsimsiz"}
+                            </b>
+                            <small className="block truncate text-[0.8125rem] text-mut">
+                              {[shownKind === "" && "Fiş", r.time, r.cat, r.pay, r.scope === "personal" && "Kişisel"].filter(Boolean).join(" · ")}
+                              {whoText(r, myUid, nameOf) && <span className="text-acc"> · {whoText(r, myUid, nameOf)}</span>}
+                            </small>
+                          </span>
+                          <span className="shrink-0 text-right">
+                            <b className="block text-[0.9375rem] font-bold tabular-nums">{TLk(totalOf(r))}</b>
+                            <small className={`flex items-center justify-end gap-1 text-[0.75rem] font-semibold ${payOf(r) === "pending" ? "text-warn" : "text-ok"}`}>
+                              {needsCheck(r) && <i className="size-1.5 rounded-full bg-warn" aria-label="Kontrol bekliyor" />}
+                              {payOf(r) === "pending" ? "Bekliyor" : "Ödendi"}
+                            </small>
+                          </span>
+                        </Link>
+                      ),
+                    )}
+                  </div>
+                </section>
+              ))
+            )}
+          </>
+        )}
+      </div>
+
+      {owner && desk.sheets}
+
+      {/* ⋯: muhasebe Excel'i, mail, yazdır */}
+      <Sheet open={more} onClose={() => setMore(false)} title={`Fişler · ${monthText}`}>
+        <div className="pb-4">
+          <RowList>
+            <Row title="Excel indir" sub={`${list.length} belge`} onClick={run(excel)} />
+            {!mailing && <Row title="Mail at" onClick={run(mail)} />}
+            <Row title="Yazdır" onClick={run(print)} />
+          </RowList>
+        </div>
+      </Sheet>
 
       {mailSet && (
         <MailTo
