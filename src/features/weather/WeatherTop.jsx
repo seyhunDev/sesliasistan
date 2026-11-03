@@ -10,16 +10,16 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { db } from "@/lib/firebase/clientApp";
 import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
-import { CockpitWind } from "@/features/home/CockpitWind";
+import { DayStrip } from "./DayStrip";
+import { HourTable } from "./HourTable";
+import { nextDay } from "./hourCols";
 import { todayStr } from "@/lib/utils/format";
 import { dayHours, dirDeg, getPlace, kn, nowOf, placeLabel, setPlace, sky, windName, compareLinks } from "./weather";
-import { ListHead, Row, RowList } from "@/components/ui/Row";
-import { WindArrow } from "./parts";
 
-// Hava sayfası (Seyhun 2026-10-21: "hava durumu sayfasını da ana sayfayla uyumlu yapalım"): üstte ana sayfadaki lacivert kokpit gibi
-// (geri, yer, yenile, büyük sıcaklık, şimdiki rüzgâr, aynı büyük grafik CockpitWind), altında büyük gün seçici; güne dokununca grafik o güne geçer
-// (başka günde sağda o günün en sert rüzgârı). Açık zeminde NOKTA: bölge haritası (2026-10-28; RegionMap: rüzgâr / yağış, −2 sa … +12 kaydırıcı,
-// seçilen yer ve istasyon; dokununca nokta taşınır, Geri al), "Saat saat" listesi (bugün şimdiden sonrası), MGM / Windy ve kaynak satırı.
+// Hava sayfası (Seyhun 2026-11-03 Windy görseli, örnek hava-sayfasi-ornek.png "Böyle yap"): lacivert üstte geri, yer, yenile, büyük sıcaklık ve şimdiki rüzgâr;
+// altında 5 günlük şerit (DayStrip: sıcaklık, yağış mm, rüzgâr; güne dokununca tablo o güne geçer); açık zeminde saat saat tablo (HourTable, tone="light":
+// 3 saatte bir sütun, geçmişte istasyon ölçümü açık mavi) ve BÖLGE haritası ("Harita" düğmesi, tam ekran; RegionMap: rüzgâr / yağış, −2 sa … +12,
+// dokununca nokta taşınır, Geri al), MGM / Windy ve kaynak satırı. Aynı tablo ana sayfada, yarış havasında ve canlı ekranda kullanılır.
 const nowHour = () => new Date().getHours();
 const ago = (ms) => {
   const m = Math.round((Date.now() - ms) / 60000);
@@ -28,7 +28,7 @@ const ago = (ms) => {
 
 export function WeatherTop({ w, refresh }) {
   const today = todayStr();
-  const all = [{ date: w.today?.date, code: w.today?.code, min: w.today?.min, max: w.today?.max, wind: w.today?.wind, gust: w.today?.gust }, ...(w.days || [])].filter((d) => d.date && d.date >= today);
+  const all = [{ date: w.today?.date, code: w.today?.code, min: w.today?.min, max: w.today?.max, wind: w.today?.wind, gust: w.today?.gust, mm: w.today?.mm }, ...(w.days || [])].filter((d) => d.date && d.date >= today);
   const [sel, setSel] = useState(all[0]?.date || today);
   const rows = dayHours(w, sel) || [];
   const info = all.find((d) => d.date === sel) || all[0];
@@ -86,21 +86,9 @@ export function WeatherTop({ w, refresh }) {
             </span>
           </div>
         )}
-        <div className="mt-2">{rows.length > 0 && <CockpitWind key={sel} rows={rows} date={sel} />}</div>
-        <nav aria-label="Günler" className="mt-4 grid grid-cols-6 gap-1">
-          {all.slice(0, 6).map((d, i) => {
-            const on = d.date === sel;
-            const dt = new Date(`${d.date}T12:00:00`);
-            return (
-              <button key={d.date} type="button" data-press aria-pressed={on} onClick={() => setSel(d.date)} className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 ${on ? "bg-white text-[#11203a]" : ""}`}>
-                <small className={`text-[0.75rem] font-semibold capitalize ${on ? "" : "text-white/60"}`}>{i === 0 ? "Bugün" : dt.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "")}</small>
-                <b className="text-[1.5rem] font-bold leading-none tracking-[-.03em] tabular-nums">{dt.getDate()}</b>
-                <Icon name={sky(d.code).icon} className="mt-0.5 size-4" />
-                <span className={`text-[0.75rem] font-semibold tabular-nums ${on ? "" : "text-white/80"}`}>{d.wind} kn</span>
-              </button>
-            );
-          })}
-        </nav>
+        <div className="mt-4">
+          <DayStrip days={all.slice(0, 5)} sel={sel} onSel={setSel} today={today} />
+        </div>
       </section>
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         <section>
@@ -110,35 +98,8 @@ export function WeatherTop({ w, refresh }) {
           </div>
           <RegionMap place={place} station={obToday?.station || st} obs={obToday?.rows} onPick={movePoint} />
         </section>
-        <section>
-          <ListHead title="Saat saat" />
-          <RowList>
-            {rows
-              .filter((h) => !n || +h.hh >= +nowHour(w))
-              .map((h) => (
-                <Row
-                  key={h.time}
-                  lead={<b className="w-9 text-[0.9375rem] font-semibold tabular-nums">{h.hh}</b>}
-                  title={
-                    <span className="flex items-center gap-2">
-                      <Icon name={sky(h.code, h.day).icon} className="size-5 text-acc" />
-                      <span className="tabular-nums">{h.t}°</span>
-                      {h.rain >= 30 && <span className="text-[0.8125rem] font-normal text-mut tabular-nums">%{h.rain}</span>}
-                      <span className="flex items-center gap-1 text-[0.8125rem] font-normal text-mut">
-                        <WindArrow deg={h.dir} className="size-3" />
-                        {windName(h.dir)[0]} {dirDeg(h.dir)}
-                      </span>
-                    </span>
-                  }
-                  right={
-                    <b className={`text-[0.9375rem] font-semibold tabular-nums ${h.wind >= 17 ? "text-warn" : ""}`}>
-                      {kn(h.wind, h.gust)}
-                      <span className="text-[0.75rem] font-normal text-mut"> kn</span>
-                    </b>
-                  }
-                />
-              ))}
-          </RowList>
+        <section aria-label="Saat saat">
+          {rows.length > 0 && <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} tone="light" />}
         </section>
         <div className="flex gap-2">
           <a href={links.mgm} target="_blank" rel="noopener noreferrer" data-press className="raised flex h-11 flex-1 items-center justify-center rounded-2xl text-[0.875rem] font-semibold">MGM</a>
