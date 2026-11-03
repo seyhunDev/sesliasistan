@@ -1567,3 +1567,16 @@ button.gr-card { cursor: pointer; }
 .gr-prg .gr-pg li.next small { color: rgba(255, 255, 255, 0.5); }
 .gr-prg .gr-pg li.now small { color: #2fd6c3; }
 .gr-prg .gr-pg li.done { color: rgba(255, 255, 255, 0.38); }
+/* açılış kapanış kadar yumuşak (Seyhun 2026-11-03 18:25): max-width yerine 0fr → 1fr; içerik genişliği kadar açılır, hız iki yönde aynı */
+.gr-wx { display: grid; grid-template-columns: 0fr; max-width: none; transition: grid-template-columns 1s cubic-bezier(0.45, 0, 0.2, 1), opacity 0.6s ease; }
+.gr-wind.on .gr-wx { grid-template-columns: 1fr; max-width: none; }
+.gr-wxi { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+.gr-wxi > .gr-hd { flex: none; white-space: nowrap; }
+.gr-wxi .lv-wh { max-width: min(54em, calc(100vw - 30em)); }
+@media (max-width: 47.99rem) {
+  .gr-wx { grid-template-columns: none; grid-template-rows: 0fr; transition: grid-template-rows 1s cubic-bezier(0.45, 0, 0.2, 1), opacity 0.6s ease; max-height: none; }
+  .gr-wind.on .gr-wx { grid-template-columns: none; grid-template-rows: 1fr; max-height: none; }
+  .gr-wxi { min-height: 0; }
+  .gr-wxi .lv-wh { max-width: none; }
+}
+.gr-prg .gr-more { border-top: 1px solid rgba(255, 255, 255, 0.1); padding: 0.5em 0.95em; font-size: 0.8em; color: rgba(255, 255, 255, 0.45); }
