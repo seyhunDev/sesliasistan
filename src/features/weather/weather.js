@@ -120,6 +120,12 @@ export function shape(j, now = new Date()) {
       wind: r(d.wind_speed_10m_max[i]), gust: r(d.wind_gusts_10m_max[i]), dir: d.wind_direction_10m_dominant[i], mm: d.precipitation_sum?.[i] ?? null }))
     .filter((x) => x.date > today)
     .slice(0, 5);
+  // Önceki 5 gün (Seyhun 2026-11-03): kapalı başlar, hava sayfasında "Önceki 5 gün" ile açılır; Open-Meteo'nun o günkü model değerleri (tahmin), gerçekleşen istasyondan
+  const past = d.time
+    .map((t, i) => ({ date: t, code: d.weather_code[i], min: r(d.temperature_2m_min[i]), max: r(d.temperature_2m_max[i]),
+      wind: r(d.wind_speed_10m_max[i]), gust: r(d.wind_gusts_10m_max[i]), dir: d.wind_direction_10m_dominant[i], mm: d.precipitation_sum?.[i] ?? null }))
+    .filter((x) => x.date < today)
+    .slice(-5);
   const todayRow = d.time.indexOf(today) >= 0 ? d.time.indexOf(today) : 0;
   // Yapay zeka için: önümüzdeki 48 saat, saat saat (kısa biçim)
   const h48 = h.time.slice(i0, i0 + 48).map((t, k) => {
@@ -140,6 +146,7 @@ export function shape(j, now = new Date()) {
     },
     hours,
     days,
+    past,
   };
 }
 
@@ -198,7 +205,7 @@ export function sailWindows(rows) {
 
 function url(p) {
   const q = new URLSearchParams({
-    latitude: p.lat, longitude: p.lon, timezone: p.tz, wind_speed_unit: "kn", forecast_days: "7",
+    latitude: p.lat, longitude: p.lon, timezone: p.tz, wind_speed_unit: "kn", forecast_days: "7", past_days: "5",
     current: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m",
     hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,precipitation,apparent_temperature",
     daily: "weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,precipitation_sum",

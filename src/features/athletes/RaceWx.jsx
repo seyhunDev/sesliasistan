@@ -87,7 +87,7 @@ export function Wait() {
 // Hava kalktı. Tahmin henüz çıkmadıysa (ilk gün 16 günden ileride) hiç görünmez.
 // day: açılışta seçili gün (yarış günü akşamı yarın, RaceDayTop)
 // pinned: gün dışarıdan seçilir (Saha, üstteki tek Bugün ▾; Seyhun 2026-10-30); kendi gün düğmesi çizilmez, kaydırınca onDay(±1)
-// Grafik sağa sola kaydırılınca gün değişir (Seyhun 2026-10-31; yön raceWeather.js swipeStep); yarıştan önceki 3 gün de gezilir (wxDays)
+// Grafik sağa sola kaydırılınca gün değişir (Seyhun 2026-10-31; yön raceWeather.js swipeStep); yarıştan önceki 5 gün de gezilir (wxDays)
 // fill: yarış günü sayfası (RaceDayTop) tek ekran; bölge haritası düğme yerine açık önizleme olarak kalan yeri doldurur, dokununca tam ekran
 // (Seyhun 2026-11-03: "harita butonunu daha açık kullanalım, sayfa sığsın")
 export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, marks = [], fill = false }) {
@@ -180,7 +180,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
         <div className="relative mt-3 flex min-h-[7rem] flex-1 flex-col">
           {d.at ? (
             <>
-              <RegionMap mini className="flex-1" place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
+              <RegionMap mini className="flex-1" place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} openAt={mapAt} />
               <span className="pointer-events-none absolute bottom-2.5 left-2.5 rounded-full bg-[rgba(15,31,56,.78)] px-3 py-1 text-[0.8125rem] font-semibold">Harita</span>
             </>
           ) : (
