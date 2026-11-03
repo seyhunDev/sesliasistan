@@ -3038,7 +3038,7 @@ function GStart({ t }) {
         {t.at ? <span className="gr-tag">{t.at}</span> : null}
       </div>
       <div className={`gr-stb${tm ? "" : " nt"}`}>
-        {tm ? <div className="gr-tm">{t.tm}</div> : null}
+        {tm ? <div className={`gr-tm${/\d/.test(String(t.tm)) ? "" : " tx"}`}>{t.tm}</div> : null}
         {w ? (
           <div className="gr-who">
             {w.name ? <b>{w.name}</b> : null}
@@ -3332,8 +3332,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
         </GCard>
       );
   } else if (mode === "seq" && seqMode === "fs") {
-    top = { cls: "r", flag: "FS", bd: "Genel geri", lab: fsLast?.fin ? hmOf(fsLast.fin) : "", tm: "Yeniden start", sub: "Uyarı işareti bekleniyor" };
-    right = <GBig flag="FS" title="Genel geri çağırma" lines={[gWhat({ name: fsLast ? raceName(fsLast) : "", grp: fsLast?.grp || data.rounds?.[fsLast?.id]?.grp }), "Start yeniden verilecek"]} />;
+    top = { cls: "r", flag: "FS", bd: "Genel geri", lab: fsLast?.fin ? hmOf(fsLast.fin) : "", tm: "Yeniden start", who: fsLast ? gWho({ name: raceName(fsLast), grp: fsLast.grp || data.rounds?.[fsLast.id]?.grp || "", cls: data.rounds?.[fsLast.id]?.cls || "" }) : null, sub: "Uyarı işareti bekleniyor" };
   } else if (mode === "seq" || (mode === "ap" && plan.ap?.seq != null)) {
     const ap = seqMode === "ap" || mode === "ap";
     // start dizisi sade: bayraklar start kartının içinde şerit, sağda dizi kartı yok (Seyhun 2026-11-03 17:02)
@@ -3366,8 +3365,8 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
   } else if (vd) {
     const g = vd.grp || data.rounds?.[vd.id]?.grp || "";
     const fl = voidFlag(vd.void);
-    top = { cls: "r", flag: fl, bd: voidShort(vd.void), lab: vd.fin ? hmOf(vd.fin) : "", tm: cs.rem ? cs.value : "Yeniden start", sub: cs.rem ? cs.label : "Uyarı işareti bekleniyor" };
-    right = <GBig flag={fl} title={vd.void === "Genel geri çağırma" ? "Genel geri çağırma" : voidShort(vd.void)} lines={[gWhat({ name: raceName(vd), grp: g }), vd.void === "Tehir" ? "Start ertelendi" : "Yarış sayılmadı, yeniden start verilecek"]} />;
+    // abandone / genel geri (Seyhun 2026-11-03 17:20): sağ üstte ayrı kart yok; start kartında hangi yarış, hangi grup
+    top = { cls: "r", flag: fl, bd: voidShort(vd.void), lab: vd.fin ? hmOf(vd.fin) : "", tm: cs.rem ? cs.value : "Yeniden start", who: gWho({ name: raceName(vd), grp: g, cls: data.rounds?.[vd.id]?.cls || vd.cls || "" }), sub: cs.rem ? cs.label : "Uyarı işareti bekleniyor" };
   } else if (mode === "between" && sel?.fin) {
     const rr = raceRows(data, sel);
     top = { bd: "Bitti", lab: gWhat({ name: raceName(sel), grp: entry?.grp || sel.grp }), at: hmOf(sel.fin), tm: raceTime(sel) || "—", sub: first ? `Sıradaki · ${gWhat(first)}${first.at ? ` · ${first.at}` : ""}` : "Start bekleniyor" };
@@ -3411,7 +3410,9 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
       </div>
       {/* Geri düğmesi sol üst köşede, soluk (Seyhun 2026-11-03 17:03); altta yalnız yarışın adı, kaçıncı yarış / grup yazılmaz */}
       <Link href="/canli" className="gr-back" aria-label="Yarışlar">
-        ‹
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </Link>
       {/* sağ altta yarışın adı | Velora işareti */}
       <div className="gr-name">

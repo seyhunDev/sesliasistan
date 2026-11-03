@@ -1434,7 +1434,7 @@ button.gr-card { cursor: pointer; }
 .gr-st { text-align: left; }
 .gr-stb { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.6em; padding: 0.3em 0.9em 0.5em; }
 .gr-st .gr-tm { padding: 0; font-weight: 700; font-size: 4.2em; line-height: 0.95; }
-.gr-st.r .gr-tm { font-size: 2.4em; line-height: 1.1; padding: 0.15em 0; color: #ffd23f; white-space: normal; }
+.gr-st .gr-tm.tx { font-size: 2.4em; line-height: 1.1; padding: 0.15em 0; color: #ffd23f; white-space: normal; }
 .gr-who { min-width: 0; text-align: right; font-family: var(--lv-font-c), var(--lv-font), sans-serif; text-transform: uppercase; }
 .gr-who b { display: block; font-weight: 800; font-size: 1.45em; letter-spacing: 0.04em; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gr-who span { display: inline-block; margin-top: 0.35em; padding: 0.12em 0.55em; border-radius: 0.25em; background: var(--g); color: #10203a; font-weight: 700; font-size: 0.95em; letter-spacing: 0.1em; }
@@ -1488,3 +1488,9 @@ button.gr-card { cursor: pointer; }
 /* süre yokken start kartında yalnız yarış bilgisi (sola yaslı) */
 .gr-stb.nt { grid-template-columns: minmax(0, 1fr); }
 .gr-stb.nt .gr-who { text-align: left; }
+/* geri: zeminsiz, biraz büyük ok, tam ortalı (Seyhun 2026-11-03 17:20) */
+.gr-back { width: 2em; height: 2em; font-size: 1em; background: none; color: rgba(255, 255, 255, 0.5); filter: drop-shadow(0 0.05em 0.3em rgba(0, 0, 0, 0.5)); }
+.gr-back svg { display: block; width: 1.5em; height: 1.5em; }
+.gr-back:hover, .gr-back:focus-visible { background: none; color: #fff; }
+/* kırmızı kartta (abandone, genel geri) yarış bilgisi sağda kalır */
+.gr-st.r .gr-stb { grid-template-columns: minmax(0, 1fr) auto; }
