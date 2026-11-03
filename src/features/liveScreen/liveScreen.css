@@ -1329,7 +1329,8 @@ button.gr-card { cursor: pointer; }
 .gr-lb { position: absolute; left: 2em; bottom: calc(1.8em + env(safe-area-inset-bottom)); width: 23em; }
 .gr-name { position: absolute; right: 2em; bottom: calc(1.8em + env(safe-area-inset-bottom)); max-width: 40vw; text-align: right; text-shadow: 0 0.1em 0.6em rgba(0, 0, 0, 0.45); }
 .gr-name b { display: flex; align-items: center; justify-content: flex-end; gap: 0.4em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 800; font-size: 2em; line-height: 1.05; letter-spacing: 0.05em; text-transform: uppercase; }
-.gr-back { color: rgba(255, 255, 255, 0.6); text-decoration: none; font-weight: 600; padding: 0 0.2em; }
+.gr-back { position: absolute; left: 0.45em; top: calc(0.35em + env(safe-area-inset-top)); z-index: 3; display: grid; place-items: center; width: 1.4em; height: 1.4em; border-radius: 50%; font-size: 1.1em; line-height: 1; color: rgba(255, 255, 255, 0.4); background: rgba(8, 18, 34, 0.25); text-decoration: none; font-weight: 600; transition: color 0.2s ease, background-color 0.2s ease; }
+.gr-back:hover, .gr-back:focus-visible { color: #fff; background: rgba(8, 18, 34, 0.7); }
 .gr-name > span { display: block; margin-top: 0.35em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255, 255, 255, 0.78); }
 .gr-live { display: inline-flex; align-items: center; gap: 0.45em; margin-bottom: 0.6em; padding: 0.25em 0.75em; border-radius: 99em; background: rgba(225, 29, 72, 0.92); font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.9em; letter-spacing: 0.16em; text-transform: uppercase; text-shadow: none; }
 .gr-live::before { content: ""; width: 0.5em; height: 0.5em; border-radius: 50%; background: #fff; animation: lv-pulse 1.6s ease-in-out infinite; }
@@ -1384,6 +1385,8 @@ button.gr-card { cursor: pointer; }
   .gr-top { order: 1; } .gr-r { order: 2; } .gr-l { order: 3; } .gr-lb { order: 4; } .gr-name { order: 0; text-align: left; }
   .gr-name b { justify-content: flex-start; font-size: 1.3em; }
   .gr-name > span { font-size: 0.8em; letter-spacing: 0.12em; }
+  .gr-back { position: absolute; left: 0.5em; }
+  .gr-name { padding-left: 1.6em; }
   .gr-live { position: absolute; right: 1em; top: calc(0.9em + env(safe-area-inset-top)); margin: 0; }
   .gr-tm { font-size: 3.6em; }
 }

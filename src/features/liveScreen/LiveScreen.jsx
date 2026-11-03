@@ -3213,7 +3213,6 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
   const plan = data.plan;
   const r = data.race || {};
   const first = prog.find((x) => x.state === "next") || null;
-  const dayLine = [dayText(today) ? `${wdText(today)} ${dayText(today)}` : "", r.place].filter(Boolean).join(" · ");
   const vd = mode === "wait" || mode === "between" ? voidLast(data, today, now) : null;
   const e = entry?.cls || entry?.grp ? { ...entry, name: sel ? raceName(sel) : first?.name } : plan.order?.[0] ? { ...plan.order[0], name: first?.name || "" } : first;
   const sh = data.courseShow || {};
@@ -3221,7 +3220,6 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
   let left = null;
   let right = null;
   let clock = null;
-  let sub = dayLine ? `Yarış günü · ${dayLine}` : "Yarış günü";
   if (mode === "summary") {
     const t = nextText(plan, today);
     const day = plan.day || today;
@@ -3251,11 +3249,9 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
           </ul>
         </GCard>
       );
-    sub = dayLine;
   } else if (mode === "seq" && seqMode === "fs") {
     top = { cls: "r", flag: "FS", lab: ["Genel geri", fsLast?.fin ? hmOf(fsLast.fin) : ""].filter(Boolean).join(" · "), tm: "Yeniden start", sub: "Uyarı işareti bekleniyor" };
     right = <GBig flag="FS" title="Genel geri çağırma" lines={[gWhat({ name: fsLast ? raceName(fsLast) : "", grp: fsLast?.grp || data.rounds?.[fsLast?.id]?.grp }), "Start yeniden verilecek"]} />;
-    sub = gWhat(e) || sub;
   } else if (mode === "seq" || (mode === "ap" && plan.ap?.seq != null)) {
     const ap = seqMode === "ap" || mode === "ap";
     if (ap) {
@@ -3267,7 +3263,6 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     }
     right = <GSeq data={data} cs={cs} e={e} mode={ap ? "ap" : "run"} />;
     left = sel ? <GEarly data={data} rid={sel.id} /> : null;
-    sub = gWhat(e) || sub;
   } else if (mode === "ap") {
     const apDown = plan.status !== "ap";
     const counting = !apDown && cs.label === "Tehir inişine";
@@ -3282,11 +3277,9 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
       if (ov) left = <GCard cls="gr-res" head="Genel sıralama" tag={[ov.cls, "geçici"].filter(Boolean).join(" · ")} onClick={() => onFull("all")}><GRows rows={ov.rows.map((x) => ({ p: x.p, sail: x.sail, name: shortName(x.name) || "", gap: x.t != null && x.t !== "" ? `${x.t} p` : "" }))} /></GCard>;
     }
     if (sel?.at && now - Date.parse(sel.at) < 10 * 60e3) right = <GEarly data={data} rid={sel.id} />;
-    sub = ""; // yarışın adı ve grubu süre kartında, altta tekrar yazılmaz
   } else if (mode === "none") {
     const t = nextText(plan, today);
     top = { lab: "Bugün yarış yok", tm: t.big, sub: t.sub };
-    sub = dayLine;
   } else if (vd) {
     const g = vd.grp || data.rounds?.[vd.id]?.grp || "";
     const fl = voidFlag(vd.void);
@@ -3303,7 +3296,6 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     const { kick } = holdState(data, today, cs, now);
     if (left0) top = { lab: "Yarışa", tm: `${left0} gün`, sub: [r.endDate && r.endDate !== r.startDate ? `${dayText(r.startDate)} – ${dayText(r.endDate)}` : dayText(r.startDate), r.place].filter(Boolean).join(" · ") };
     else top = { cls: orange ? "o" : "", orange, lab: orange ? `Start öncesi · ${kick}` : kick, tm: cs.rem ? cs.value : "—:—", sub: first ? [gWhat(first), first.cls, first.at].filter(Boolean).join(" · ") : "" };
-    if (left0) sub = "";
   }
   // sağ kart: parkur elle açıldıysa o (Yayın › Ekranda göster › Parkur), yoksa duruma göre; bekleme ve ara verirken program
   if (sh.one === "course" && courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"))) right = <GCourse data={data} sel={sel} racing={mode === "race"} />;
@@ -3317,15 +3309,13 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
         <GClock c={clock} />
         <GWind data={data} now={now} mode={mode} today={today} />
       </div>
+      {/* Geri düğmesi sol üst köşede, soluk (Seyhun 2026-11-03 17:03); altta yalnız yarışın adı, kaçıncı yarış / grup yazılmaz */}
+      <Link href="/canli" className="gr-back" aria-label="Yarışlar">
+        ‹
+      </Link>
       <div className="gr-name">
         {racing ? <span className="gr-live">Canlı</span> : null}
-        <b>
-          <Link href="/canli" className="gr-back" aria-label="Yarışlar">
-            ‹
-          </Link>
-          {r.name || "Yarış"}
-        </b>
-        {sub ? <span>{sub}</span> : null}
+        <b>{r.name || "Yarış"}</b>
       </div>
     </div>
   );
