@@ -247,6 +247,32 @@ export function allocate(amount, a, cfg = {}, months = {}, yms = [], picked = nu
   }
   return out;
 }
+// Ödeme grubunu seçilen ay(lar)a taşır (tutar, tarih, nakit/banka, banka hareketi aynı kalır) → { ym: yeni ay kaydı }
+// Seçilen her aya kalan aidatı kadar yazılır, artan son aya eklenir (allocate).
+export function moveGroup(a, months = {}, g, picked = [], cfg = {}) {
+  if (!picked.length) return {};
+  const out = {};
+  let base = null;
+  for (const ym of Object.keys(months)) {
+    const month = months[ym] || {};
+    const list = month.paid?.[a.id] || [];
+    const hit = (p, i) => g.parts.some((x) => x.ym === ym && (x.at ? x.at === p.at : x.i === i) && (x.mov || "") === (p.mov || ""));
+    const keep = list.filter((p, i) => !hit(p, i));
+    if (keep.length === list.length) continue;
+    base = base || list.find((p, i) => hit(p, i));
+    const paid = { ...(month.paid || {}) };
+    if (keep.length) paid[a.id] = keep;
+    else delete paid[a.id];
+    out[ym] = { ...month, paid };
+  }
+  if (!base) return {};
+  const grp = base.grp || g.key;
+  for (const part of allocate(g.amt, a, cfg, { ...months, ...out }, picked, picked)) {
+    const mo = out[part.ym] || months[part.ym] || {};
+    out[part.ym] = { ...mo, paid: { ...(mo.paid || {}), [a.id]: [...(mo.paid?.[a.id] || []), { ...base, amt: part.amt, grp }] } };
+  }
+  return out;
+}
 // Sporcunun ödemeleri (en yeni önce): aynı ödemeden birden çok aya yazılanlar tek satır (grp ya da banka hareketi)
 // → [{ key, date "YYYY-MM-DD", amt, via, desc, months [ym], parts [{ ym, at, mov }] }]
 export function historyOf(a, months = {}, yms = []) {
