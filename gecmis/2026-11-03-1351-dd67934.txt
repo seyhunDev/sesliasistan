@@ -1,8 +1,8 @@
-Commit: d5483f2 · Merge pull request #932 from seyhunDev/claude/project-thread-lo85ym
-Zaman: 2026-11-01-1857 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41322899397
+Commit: dd67934 · Canlı ilk start: kayan alandan start animasyonu kalktı (#1067)
+Zaman: 2026-11-03-1351 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41621227502
 
-TAM TEST · 01.11.2026 18:47:00
+TAM TEST · 03.11.2026 13:40:52
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,6 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Hava: yağış şeridi…
     Hava: ölçülen / beklenen yağmur…
     Ana sayfa: yarış günü havası…
+    Antrenman: sesle başlat ve bitir…
     Çevrimdışı çalışma (internet kesilip açılır)…
     Çevrimdışı: 26/26 geçti
     Yarış sayfası (sporcu seçili, yarış günü)…
@@ -29,11 +30,22 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1425/1426 geçti · 1 kalan · 600 sn
+SONUÇ: 1439/1440 geçti · 1 kalan · 618 sn
 ======================================================================
 
-1. BİRİM TESTLERİ: 1/1
-  ✓ Birim testleri: 1/1
+1. BİRİM TESTLERİ: 0/1
+  ✗ Birim testleri: 0/1
+      ✗ “çalıştırma”
+          beklenen: çalışır
+          olan:     yntaxError: Unexpected token '<<'
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:110:18)
+    at #translate (node:internal/modules/esm/loader:559:20)
+    at afterLoad (node:internal/modules/esm/loader:612:29)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:162:19)
+
+Node.js v22.23.4
+
 
 2. ANLAMA: temiz cümleler: 121/121
   ✓ Temiz cümle: Plan / takvim: 8/8
@@ -139,16 +151,16 @@ SONUÇ: 1425/1426 geçti · 1 kalan · 600 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 132/132
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 141/141
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 6/6
+  ✓ Ana sayfa: 10/10
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 3/3
   ✓ Kısa dokun yaz: 1/1
-  ✓ Sayfa hataları: 12/12
+  ✓ Sayfa hataları: 13/13
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
@@ -166,6 +178,7 @@ SONUÇ: 1425/1426 geçti · 1 kalan · 600 sn
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
   ✓ Hava: 3/3
+  ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
 3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 26/26
@@ -179,13 +192,11 @@ SONUÇ: 1425/1426 geçti · 1 kalan · 600 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/16
-  ✗ Yarış sayfası: 12/13
-      ✗ “tek ⋯ menüsü”
-          beklenen: çökmeden açılır, "Start sayacı" görünür
-          olan:     Süre'de sıfırla 0 · menü prep,people,docs,trip,budget,canli,shot,day,reset,edit,del · Sporcu yarış sayfasında açıldı · sıfırla açıldı
-  ✓ Antrenman: 1/1
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 21/21
+  ✓ Yarış sayfası: 14/14
+  ✓ Antrenman: 2/2
   ✓ Asılı bağlantı: 2/2
+  ✓ Yayın: 3/3
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
