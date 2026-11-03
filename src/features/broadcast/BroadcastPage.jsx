@@ -211,7 +211,7 @@ export function BroadcastPage({ orgId, id }) {
   const nextPlan = plan.order[0] || null; // sıradaki start (listenin ilk bekleyeni)
   // Tehir: start saati min dakika ileri alınır (0 = belirsiz, saat silinir), sebep ekranda yazar; "Erteleme kalktı" eski saati geri getirir
   // Geri sayımda tehir (Seyhun 2026-11-02 "tehir yaptım ama süre durmadı"): sayaç durur, start verilmemiş yarış silinir ve programın
-  // başına geri döner (aynı grup, aynı numara); yeni saat şimdiden ileri (varsayılan 1 dk). Yarış öncesi tehirde varsayılan 1 saat.
+  // başına geri döner (aynı grup, aynı numara); yeni saat şimdiden ileri (denizde varsayılan Belirsiz).
   const countingAt = (now) => tr.t.mode === "start" && ((tr.t.end != null && tr.t.end > now) || tr.t.left != null);
   const apBack = (rid, drop = true) => {
     const s = live.starts.find((x) => x.id === rid);
@@ -232,7 +232,8 @@ export function BroadcastPage({ orgId, id }) {
   };
   const openAp = () => {
     const c = countingAt(Date.now());
-    setAp(ap ? null : { min: c ? 1 : 60, why: AP_WHY[0], live: c });
+    // denizde tehir varsayılan "Belirsiz" (Seyhun 2026-11-03 11:47); inince 1 dk sonra geri sayım seçeneği aynen kalır
+    setAp(ap ? null : { min: 0, why: AP_WHY[0], live: c });
   };
   // Çekili tehiri düzelt: iniş (seçildiyse şimdiden), yer, inince, sebep; seçilmeyen iniş aynı kalır
   const fixAp = () => {
@@ -1505,7 +1506,7 @@ export function BroadcastPage({ orgId, id }) {
               <div className="masa-aplab">Yer</div>
               <div className="masa-apgrid two">
                 {[[false, "Denizde", "AP"], [true, "Karada", "AP + H"]].map(([v, t, f]) => (
-                  <button key={t} type="button" data-press aria-pressed={!!ap.land === v} onClick={() => setAp({ ...ap, land: v })} className="masa-ap">
+                  <button key={t} type="button" data-press aria-pressed={!!ap.land === v} onClick={() => setAp({ ...ap, land: v, ...(!v && !ap.edit ? { min: 0 } : {}) })} className="masa-ap">
                     <b>{t}</b>
                     <small>{f}</small>
                   </button>

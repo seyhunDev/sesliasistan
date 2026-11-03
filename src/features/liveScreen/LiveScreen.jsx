@@ -2049,14 +2049,53 @@ function SeqHero({ data, cs, prog, now, entry, mode, last }) {
     </div>
   );
 }
-function SeqBand({ data, cs, prog, now, entry, mode, last }) {
+// Erken start yapanlar (OCS, UFD, BFD): yelken no ve ad; yoksa boş
+const EARLY = ["OCS", "UFD", "BFD"];
+function earlyOf(data, rid) {
+  const pen = (rid && data.rounds?.[rid]?.pen) || {};
+  const who = { ...whoBySail(data.fleets), ...Object.fromEntries((data.entries || []).map((r) => [r.sail, { name: r.name, club: r.club }])) };
+  return Object.entries(pen)
+    .filter(([, c]) => EARLY.includes(c))
+    .map(([sail, c]) => ({ sail, c, name: shortName(whoOf(who, sail)?.name || "") }));
+}
+function EarlyList({ list }) {
+  if (!list.length) return null;
+  return (
+    <div className="lv-early">
+      <small>Erken start</small>
+      {list.slice(0, 6).map((x) => (
+        <div key={x.sail} className="lv-erow">
+          <b>{x.sail}</b>
+          <span>{x.name}</span>
+          <em>{x.c}</em>
+        </div>
+      ))}
+      {list.length > 6 ? <span className="lv-emore">+{list.length - 6}</span> : null}
+    </div>
+  );
+}
+// Videolu start geri sayımı (Seyhun 2026-11-03 11:47 "starta odaklanalım"): yalnız sayaç, kural bayrağıyla dizi şeridi ve varsa erken
+// start yapanlar; parkur, rüzgâr tahmini, sıradaki yarış yok
+function SeqBand({ data, cs, prog, now, entry, mode, last, rid }) {
+  const early = earlyOf(data, mode === "fs" ? last?.id : rid);
+  const c = curWind(data, null, true, now); // yalnız anlık ölçüm, tahmin yok (Seyhun 2026-11-03 11:50)
   return (
     <aside className="lv-side lv-band lv-sqb">
       <div className="lv-sqc">
         <SeqClock data={data} cs={cs} prog={prog} entry={entry} mode={mode} last={last} big="lv-sbig" />
       </div>
       <SeqStripOf data={data} cs={cs} entry={entry} mode={mode} />
-      <SeqSide data={data} now={now} />
+      {c || early.length ? (
+        <div className="lv-sqside">
+          {c ? (
+            <div>
+              <small>Rüzgâr</small>
+              <WindNow w={c} by={c.by} />
+            </div>
+          ) : null}
+          <EarlyList list={early} />
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -2080,6 +2119,9 @@ function nearItems(data, prog, now, race = null) {
   if (race?.sel) {
     const e = data.rounds?.[race.sel.id];
     if (e && standings(e).length) items.push({ k: "rank", lab: "", race, data });
+    // start'tan sonraki 10 dk erken start yapanlar en başta
+    const ea = earlyOf(data, race.sel.id);
+    if (ea.length && race.sel.at && now - Date.parse(race.sel.at) < 10 * 60e3) items.unshift({ k: "early", lab: "Erken start", big: ea.map((x) => x.sail).join(" · "), y: true, sub: ea.map((x) => [x.name, x.c].filter(Boolean).join(" ")).join(" · ") });
   }
   if (bias && !race) {
     const sub = [`Hat ${Math.round(bias.line)}°`, bias.wind != null ? `rüzgâr ${Math.round(bias.wind)}° ${dirShort(bias.wind)}` : ""].filter(Boolean).join(" · ");
@@ -2966,7 +3008,10 @@ export function LiveScreen({ id, y = "" }) {
   // aynı anda süren öbür grubun startı da canlıdır (bugün, bitmemiş)
   const isCur = !y || (!!sel && (sel.id === data.cur || (!sel.fin && !sel.void && sel.day === trDay(nowMs))));
   const entry = sel ? data.rounds?.[sel.id] : null;
-  const ongoing = isCur && sel && !sel.fin && !sel.void;
+  // Başlat'la yarış kaydı açılır, start saati 0'da yazılır: geri sayım sürerken yarış henüz başlamadı (start dizisi şeridi görünür)
+  const tm = data.timer;
+  const preStart = isCur && !!sel && tm?.mode === "start" && (!tm.rid || tm.rid === sel.id) && ((tm.end != null && tm.end > nowMs) || tm.left != null) && (!sel.at || Date.parse(sel.at) > nowMs);
+  const ongoing = isCur && sel && !sel.fin && !sel.void && !preStart;
   // Evre (lib/raceLive.js livePhase): bekleme (start saatine geri sayım) · yarış (sayaç ya da bugünkü start) · gün özeti
   const today = seeDay(data, nowMs);
   const phase = isCur ? livePhase({ plan: data.plan, starts, timer: data.timer, today, now: nowMs }) : "race";
@@ -3034,7 +3079,7 @@ export function LiveScreen({ id, y = "" }) {
         {phase === "race" && isCur && !side && !between && (!near || racing) ? <BoatMap boats={data.boats || []} course={data.course} groupOf={groupMap(data.groups?.[today])} grp={entry?.grp || ""} /> : null}
         {/* Yarış sürerken diğer yarışlar çip olarak gösterilmez (Seyhun 2026-11-03: ekrandaki yarış neyse o; sıradaki start alt şeritte) */}
         {(phase === "race" || (phase === "wait" && hasVideo)) && !side && !near && !between && !(ongoing && phase === "race") ? <ProgramChips items={prog} /> : null}
-        {side && seqMode ? <SeqBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} mode={seqMode} last={fsLast} /> : side && near ? <NearBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} racing={racing} sel={sel} id={id} onAll={() => setFull("race")} /> : side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} fin={fin} /> : null}
+        {side && seqMode ? <SeqBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} mode={seqMode} last={fsLast} rid={sel?.id} /> : side && near ? <NearBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} racing={racing} sel={sel} id={id} onAll={() => setFull("race")} /> : side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} fin={fin} /> : null}
         {hero2 && seqMode ? <SeqHero data={data} cs={cs} prog={prog} now={nowMs} entry={entry} mode={seqMode} last={fsLast} /> : null}
         {hero2 && !seqMode ? <StartHero data={data} cs={cs} prog={prog} now={nowMs} entry={entry} racing={racing} sel={sel} id={id} onAll={() => setFull("race")} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} fin={fin} /> : null}
