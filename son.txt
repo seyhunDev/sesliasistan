@@ -1,8 +1,8 @@
-Commit: 38fe363 · Canlı ekran: dar sol sütun (start, sporcular, rüzgâr·parkur·program) (#1115)
-Zaman: 2026-11-03-2320 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41709742332
+Commit: 46c5f95 · Canlı ekran: rüzgâr, parkur, program paneli yeniden (#1116)
+Zaman: 2026-11-03-2340 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41712866887
 
-TAM TEST · 03.11.2026 23:09:15
+TAM TEST · 03.11.2026 23:28:51
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1438/1440 geçti · 2 kalan · 634 sn
+SONUÇ: 1439/1440 geçti · 1 kalan · 647 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -158,12 +158,9 @@ SONUÇ: 1438/1440 geçti · 2 kalan · 634 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 140/141
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 141/141
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 9/10
-      ✗ “gün penceresi Yapıldı”
-          beklenen: plan satırında Yapıldı işareti: dokununca yapıldı, yeniden dokununca geri alınır
-          olan:     yapıldı 1 · çizili 1 · geri 0
+  ✓ Ana sayfa: 10/10
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
