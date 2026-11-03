@@ -49,8 +49,8 @@ export function groupSet(set, grp) {
   return { ...set, boats: set.boats.filter((b) => keep.has(b.sail)), fixes: set.fixes.filter((f) => keep.has(f.sail)) };
 }
 export const groupsOf = (set) => [...new Set(set.boats.map((b) => b.grp).filter(Boolean))];
-// Yayındaki replay (BoatReplay): ekrandaki yarışın grubu veri setinde varsa o, yoksa ilk grup
-export const replayGroup = (set, grp) => (set && groupsOf(set).includes(grp) ? grp : (set && groupsOf(set)[0]) || "");
+// Yayındaki canlı konum (BoatLive): ekrandaki yarışın grubu veri setinde varsa o, yoksa ilk grup
+export const liveGroup = (set, grp) => (set && groupsOf(set).includes(grp) ? grp : (set && groupsOf(set)[0]) || "");
 // Klibin başı ve sonu (ms)
 export function spanOf(set) {
   if (!set.fixes.length) return { t0: 0, t1: 0 };
