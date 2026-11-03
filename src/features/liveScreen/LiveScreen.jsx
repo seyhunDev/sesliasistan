@@ -1439,17 +1439,16 @@ function WaitHero({ data, today, cs, prog, now }) {
     </div>
   );
 }
-// Videolu yarış öncesi sol şerit (Seyhun 2026-11-02 "solda olmalı bilgiler, arka fon blur olabilir sadece bu alanın, bilgilere arka plan ekleme"):
-// yarışın adı soluk, durum (Yarış öncesi / turuncu bayrakla Start öncesi), büyük süre, rüzgâr (şimdi + start'ta beklenen; start öncesinde hat avantajı),
-// parkur (çizim, adı, rota), program (start öncesinde yalnız sıradakiler)
+// Videolu yarış öncesi sol alan (Seyhun 2026-11-03 örnek E, yayin-tasarim/oncesi-yeni/E-videolu-bulanik.png: "şekilleri kaldırıp bulanık
+// gösterelim, içerik yerleşimi daha önemli"): kutu ve şekil yok, sol taraf videonun bulanık hali sağa doğru netleşir. Üstte Yarış öncesi /
+// turuncu bayrakla Start öncesi etiketi, büyük süre, yarış ve grup, start dizisinde bayraklar; altta ince çizgi ve üç sütun:
+// Rüzgâr (tek ok, knot, yön, start'ta beklenen), Parkur (rota, eksen yazıyla), Sıradaki (start öncesinde hat avantajı). Program listesi yok.
 function SidePanel({ data, today, cs, prog, now, entry }) {
   const orange = orangeUp(data.plan, today);
-  const r = data.race || {};
   const c = curWind(data, null, true, now);
   const ew = expWind(data.forecast, data.plan.at);
   const crs = cleanCourse(data.course || {});
   const route = sceneRoute(data, null, true, "wait");
-  const svg = courseSvg(data, route, { axis: false });
   const ax = axisInfo(data);
   let bias = null;
   try {
@@ -1459,15 +1458,18 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
   }
   const left = prog.filter((x) => x.state !== "done");
   const first = left[0] || null;
-  const rows = orange ? left.slice(1, 3) : left.slice(0, 4);
   const prep = data.plan.order?.[0]?.prep || "";
   const ag = agOf(data, now);
+  const agNext = ag?.mode === "day" ? ag.rows.filter((x) => x.state === "next" || !x.state) : [];
+  // Sıradaki: ekrandaki start'tan sonraki start; yoksa programın sıradaki maddesi
+  const nx = left[1] ? { at: left[1].at || "Sonra", text: [left[1].name, grpText(left[1].grp)].filter(Boolean).join(" · "), grp: left[1].grp } : agNext[0] ? { at: agNext[0].at || "", text: agNext[0].text, grp: "" } : null;
   // geri sayımda bayraklar: süren startın kaydı, yoksa sıradaki bekleyen (Yayın'da seçilen sınıf, grup, bayrak)
   const entryNow = entry?.cls || entry?.prep || entry?.grp ? entry : data.plan.order?.[0] || null;
-  // bayraklar yalnız start dizisinde (Yayın'da sayaç çalışırken); o zaman küçük parkur çizimi yer açmak için gizlenir
+  // bayraklar yalnız start dizisinde (Yayın'da sayaç çalışırken)
   const seq = !!(data.timer && cs.rem && entryNow);
   const flags = seq ? startFlags(entryNow, false, cs.rem <= 60) : [];
   const ww = c || ew;
+  const rt = cleanRoute(route);
   return (
     <aside className="lv-side">
       <div className="lv-stop">
@@ -1475,12 +1477,13 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
           {orange ? <span className="lv-oflag" aria-hidden="true" /> : null}
           {orange ? "Start öncesi" : "Yarış öncesi"}
         </div>
-        <div className="lv-sbig">{cs.rem ? cs.value : "—:—"}</div>
         <div className="lv-ssub">{[cs.label, cs.right].filter(Boolean).join(" · ")}</div>
-        {orange && first && !seq ? (
+        <div className="lv-sbig">{cs.rem ? cs.value : "—:—"}</div>
+        {first ? (
           <div className="lv-swhat">
             <Dot g={first.grp} />
-            {[first.name, grpText(first.grp), first.cls, prep ? prepName(prep) : ""].filter(Boolean).join(" · ")}
+            {[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}
+            <small>{[first.cls, prep && orange ? prepName(prep) : "", first.at].filter(Boolean).join(" · ")}</small>
           </div>
         ) : null}
       </div>
@@ -1497,84 +1500,42 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
           ))}
         </div>
       ) : null}
-      {ww ? (
-        <div className={`lv-ssec lv-s2${bias?.end ? "" : " one"}`}>
+      <div className="lv-sgrid">
+        {ww ? (
           <div>
-            <div className="lv-sh">{orange ? "Start hattında rüzgâr" : "Rüzgâr"}</div>
-            <div className="lv-swind">
+            <small>{orange ? "Start hattında rüzgâr" : "Rüzgâr"}</small>
+            <b>
               {ww.dir != null ? <WindArrow w={ww} /> : null}
-              <div className="v">
-                <b>
-                  {ww.kn}
-                  <em>knot</em>
-                </b>
-                <small>
-                  {[ww.dir != null ? `${dirShort(ww.dir)} ${degText(ww)}` : "", orange && ew?.gust && ew.gust > ww.kn ? `Sağanak ${ew.gust}` : "", c && ew && !orange ? `Start'ta ${ew.kn} knot` : ""].filter(Boolean).join(" · ")}
-                </small>
-                <small>{c ? <span className={c.man ? "m" : ""}>{c.by}</span> : "Tahmin"}</small>
-              </div>
-            </div>
-          </div>
-          {bias?.end ? (
-            <div>
-              <div className="lv-sh">Start hattı</div>
-              <div className="lv-sbias">
-                {bias.end === "pin" ? "Pin" : "Komite"}
-                <br />
-                {`avantajlı ${Math.round(bias.deg)}°`}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      {svg || ax ? (
-        <div className="lv-ssec">
-          <div className="lv-sh">{`Parkur · ${CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}`}</div>
-          {route.length ? (
-            <b className="lv-route lv-sroute" aria-label={routeText(route)}>
-              {cleanRoute(route).map((m, k) => (
-                <Fragment key={k}>
-                  {k ? <s /> : null}
-                  <i>{m}</i>
-                </Fragment>
-              ))}
+              {ww.kn != null ? ww.kn : "—"}
+              <em>kn</em>
             </b>
-          ) : null}
-          {ax ? (
-            <div className="lv-sax">
-              <i style={{ transform: `rotate(${ax.deg}deg)` }} aria-hidden="true" />
-              <div>
-                <b>{`Eksen ${ax.deg}° ${dirShort(ax.deg)}`}</b>
-                <span>{["Komitenin attığı yön", shiftText(ax.sh).replace(/^Rüzgâr /, "rüzgâr ")].filter(Boolean).join(" · ")}</span>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      {ag && !orange ? (
-        <div className="lv-ssec lv-sprog">
-          <div className="lv-sh">{ag.mode === "all" ? "Program" : "Bugünün programı"}</div>
-          {(ag.mode === "day" ? ag.rows : ag.days.flatMap((d) => d.rows.map((x) => ({ ...x, at: `${new Date(`${d.day}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} ${x.at}`.trim() })))).slice(0, 6).map((x, i) => (
-            <div key={i} className={x.state || ""}>
-              <span className="t">{x.text}</span>
-              <i>{x.at || ""}</i>
-              {x.state === "next" ? <em className="lv-pill">Sıradaki</em> : null}
-            </div>
-          ))}
-        </div>
-      ) : rows.length ? (
-        <div className="lv-ssec lv-sprog">
-          <div className="lv-sh">{orange ? "Sıradaki" : "Program"}</div>
-          {rows.map((x) => (
-            <div key={x.key} className={x.state}>
-              <Dot g={x.grp} />
-              <span className="t">{[x.name, x.grp].filter(Boolean).join(" · ")}</span>
-              <i>{x.state === "now" ? "Canlı" : x.at || "Sonra"}</i>
-              {x.state === "next" ? <em className="lv-pill">Sıradaki</em> : null}
-            </div>
-          ))}
-        </div>
-      ) : null}
+            <span>{[ww.dir != null ? `${dirShort(ww.dir)} ${degText(ww)}` : "", orange && ew?.gust && ew.gust > ww.kn ? `sağanak ${ew.gust}` : "", c && ew?.kn != null && !orange ? `start'ta ${ew.kn}` : "", c ? "" : "tahmin"].filter(Boolean).join(" · ")}</span>
+          </div>
+        ) : null}
+        {rt.length || ax ? (
+          <div>
+            <small>{`Parkur${rt.length ? ` · ${CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}` : ""}`}</small>
+            <b aria-label={rt.length ? routeText(route) : undefined}>{rt.length ? rt.join(" – ") : ax ? `${ax.deg}°` : ""}</b>
+            <span>{ax ? [`Eksen ${ax.deg}° ${dirShort(ax.deg)}`, shiftText(ax.sh).replace(/^Rüzgâr /, "rüzgâr ")].filter(Boolean).join(" · ") : "Eksen ölçülmedi"}</span>
+          </div>
+        ) : null}
+        {bias?.end ? (
+          <div>
+            <small>Start hattı</small>
+            <b>{bias.end === "pin" ? "Pin" : "Komite"}</b>
+            <span>{`avantajlı ${Math.round(bias.deg)}°`}</span>
+          </div>
+        ) : nx ? (
+          <div>
+            <small>Sıradaki</small>
+            <b>
+              {nx.grp ? <Dot g={nx.grp} /> : null}
+              {nx.at}
+            </b>
+            <span>{nx.text}</span>
+          </div>
+        ) : null}
+      </div>
     </aside>
   );
 }
