@@ -1,8 +1,8 @@
-Commit: 6e5998b · Ana sayfa: günün yarışları bitince süren yarış satırı kalkar (#921)
-Zaman: 2026-10-31-2101 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41226078177
+Commit: 2b91695 · Yayın: tehir takip çubuğu iki satır, yazılar kaymıyor (#1049)
+Zaman: 2026-11-03-1034 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41595804059
 
-TAM TEST · 31.10.2026 20:46:04
+TAM TEST · 03.11.2026 10:22:37
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,6 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Hava: yağış şeridi…
     Hava: ölçülen / beklenen yağmur…
     Ana sayfa: yarış günü havası…
+    Antrenman: sesle başlat ve bitir…
     Çevrimdışı çalışma (internet kesilip açılır)…
     Çevrimdışı: 26/26 geçti
     Yarış sayfası (sporcu seçili, yarış günü)…
@@ -29,11 +30,17 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1418/1423 geçti · 5 kalan · 866 sn
+SONUÇ: 1439/1440 geçti · 1 kalan · 661 sn
 ======================================================================
 
-1. BİRİM TESTLERİ: 1/1
-  ✓ Birim testleri: 1/1
+1. BİRİM TESTLERİ: 0/1
+  ✗ Birim testleri: 0/1
+      ✗ “4372 test”
+          beklenen: hepsi geçer
+          olan:     4369/4372 geçti
+      ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
+      ✗ “tehir (süre + sebep) ve bekleme ekranında rüzgâr tahmini” → [true,false,true,true,true,true] (beklenen: Seyhun 2026-11-01: Yayın'da Tehir → süre (30 dk…2 sa, belirsiz) + sebep; plan.ap { from, why }, at yeni saat; apText ekranda; /api/canli forecast (Open-Meteo, yarış yeri) → WindDay grafiği, parkur ölçüm varsa, 'ekranda neler' şeridi; zeminde parkur çizgisi yok)
+      ✗ “yayın sayfası sade: ⋯ menüsü, sonuç PDF'i ayrı sayfa; /canli canlı etiketi” → [true,true,true,false,false,true] (beklenen: Seyhun 2026-11-01: Yayın'da az düğme (Başlat; Start ekle + Tehir; Sesle gir), Linki kopyala / Ekranı aç / Sonuç PDF'i / Kayıt listesi / Bugün yarış yok / Günü bitir (bir daha sorar) ⋯ menüsünde; sonuçlar /athletes/races/<id>/sonuclar; /canli listesinde süren yarış Canlı, 20 sn yenilenir; çökme ekranı /canli'de 'Canlı yarışlara dön')
 
 2. ANLAMA: temiz cümleler: 121/121
   ✓ Temiz cümle: Plan / takvim: 8/8
@@ -139,16 +146,16 @@ SONUÇ: 1418/1423 geçti · 5 kalan · 866 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 131/131
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 141/141
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 5/5
+  ✓ Ana sayfa: 10/10
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 3/3
   ✓ Kısa dokun yaz: 1/1
-  ✓ Sayfa hataları: 12/12
+  ✓ Sayfa hataları: 13/13
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
@@ -166,6 +173,7 @@ SONUÇ: 1418/1423 geçti · 5 kalan · 866 sn
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
   ✓ Hava: 3/3
+  ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
 3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 26/26
@@ -179,37 +187,11 @@ SONUÇ: 1418/1423 geçti · 5 kalan · 866 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 9/14
-  ✗ Yarış sayfası: 8/12
-      ✗ “yarış günü, sporcu seçili”
-          beklenen: çökmeden açılır, "Start sayacı" görünür
-          olan:     "Start sayacı" görünmedi
-      ✗ “Multimedya”
-          beklenen: çökmeden açılır, "Start sayacı" görünür
-          olan:     "Start sayacı" görünmedi
-      ✗ “Start”
-          beklenen: çökmeden açılır, "Start sayacı" görünür
-          olan:     "Start sayacı" görünmedi
-      ✗ “tek ⋯ menüsü”
-          beklenen: çökmeden açılır, "Start sayacı" görünür
-          olan:     "Start sayacı" görünmedi
-  ✗ Asılı bağlantı: 1/2
-      ✗ “asılı bağlantıda multimedya”
-          beklenen: "Start sayacı" 5 sn içinde görünür (yükleniyor'da kalmaz)
-          olan:     görünmedi: Oluştur
-KAYIT
-Plan
-Tarih ve saat
-Görev
-Yapılacak iş
-Not
-Kısa not
-Doğum günü
-Hatırlat
-KULÜP
-Yoklama
-Bugün kim geldi
-Yarış
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 21/21
+  ✓ Yarış sayfası: 14/14
+  ✓ Antrenman: 2/2
+  ✓ Asılı bağlantı: 2/2
+  ✓ Yayın: 3/3
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
