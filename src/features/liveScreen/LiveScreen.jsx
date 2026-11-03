@@ -2959,6 +2959,335 @@ function FullList({ kind, data, sel, isCur, id, onClose }) {
   );
 }
 
+// ---- Yayın grafiği (Seyhun 2026-11-03 14:41 "yap", örnek yayin-tasarim/yayin-grafik/): videolu ve videosuz aynı düzen. Arka planda yayın
+// varsa video, yoksa bulanık fotoğraf. Üst ortada süre; sol üstte yalnız sonuç varken sonuçlar; sağ üstte duruma göre tek kart (program,
+// start dizisi bayrakları, tehir, genel geri / abandone, gün sonu); parkur Yayın › Ekranda göster › Parkur ile elle açılır; sol altta
+// rüzgâr; sağ altta yarışın adı. Alt orta boş. Hepsi aynı anda çıkmaz: kartlar duruma göre gelir.
+const gWhat = (x) => [x?.name, grpText(x?.grp)].filter(Boolean).join(" · ");
+const gArrow = (dir) => (
+  <svg className="gr-arr" viewBox="0 0 48 48" aria-hidden="true">
+    <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2.4" />
+    {dir != null ? (
+      <g transform={`rotate(${dir + 180} 24 24)`}>
+        <path d="M24 7 L31 25 L24 20 L17 25 Z" fill="#fff" />
+        <line x1="24" y1="20" x2="24" y2="40" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
+      </g>
+    ) : null}
+  </svg>
+);
+function GCard({ cls = "", head, tag, children, onClick }) {
+  const Tag = onClick ? "button" : "div";
+  return (
+    <Tag type={onClick ? "button" : undefined} className={`gr-card ${cls}`} onClick={onClick}>
+      {head ? (
+        <div className="gr-hd">
+          {head}
+          {tag ? <span className="gr-tag">{tag}</span> : null}
+        </div>
+      ) : null}
+      {children}
+    </Tag>
+  );
+}
+function GTop({ t }) {
+  if (!t) return null;
+  return (
+    <div className={`gr-card gr-top ${t.cls || ""}`} role="timer">
+      <div className="gr-hd">
+        {t.flag ? <Flag kind={t.flag} /> : t.orange ? <i className="gr-of" aria-hidden="true" /> : null}
+        {t.lab}
+      </div>
+      <div className="gr-tm">{t.tm}</div>
+      {t.sub ? <div className="gr-sub">{t.sub}</div> : null}
+      {t.bar != null ? (
+        <div className="gr-bar">
+          <i style={{ width: `${Math.max(0, Math.min(100, t.bar))}%` }} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+function GRows({ rows }) {
+  return (
+    <ol className="gr-rows">
+      {rows.map((r, i) => (
+        <li key={`${r.sail}${r.name}${i}`} className={r.pen ? "pen" : i === 0 ? "l" : ""}>
+          <b>{r.p}</b>
+          <i>{r.sail}</i>
+          <span>{r.name}</span>
+          <em className={r.gap === "Lider" ? "y" : ""}>{r.gap || ""}</em>
+        </li>
+      ))}
+    </ol>
+  );
+}
+// bir yarışın sıralaması: resmî sonuç yoksa şamandıra dönüşleri (lidere fark), cezalılar sonda kodlarıyla
+function raceRows(data, sel) {
+  const entry = data.rounds?.[sel?.id] || { route: [], legs: [] };
+  const who = whoMap(data);
+  const g = sel?.n ? officialFor(data.fleets, sel.n, manualFinish(entry))[0] : null;
+  if (g) return { rows: g.rows.map((r) => ({ p: r.place || r.code, sail: r.sail.replace(/^\D+/, "") || r.sail, name: shortName(r.name) || "", gap: "" })), head: "Resmî sonuç", n: g.rows.length };
+  const st = standings(entry);
+  const top = st[0];
+  const pos = nowPos(entry);
+  const route = entry.route || [];
+  const fin = pos >= 0 && route[pos] === "F" && pos === route.length - 1;
+  const rows = st.map((x, i) => {
+    const gap = x.pen ? null : x.pos === top?.pos && i ? gapAt(entry, x.pos, x.ranks[x.pos] - 1) : null;
+    return { p: x.pen || i + 1, pen: !!x.pen, sail: x.sail, name: shortName(whoOf(who, x.sail)?.name || ""), gap: !i && !x.pen ? (st.length > 1 ? "Lider" : "") : gap ? `+${Math.floor(gap / 60)}:${String(gap % 60).padStart(2, "0")}` : "" };
+  });
+  const n = pos >= 0 ? (entry.legs?.[pos] || []).length : 0;
+  return { rows, head: pos >= 0 ? (fin ? "Finiş" : markName(route[pos])) : "Sıralama", tag: n ? `${n} tekne ${fin ? "bitirdi" : "döndü"}` : "", n: rows.length };
+}
+function GWind({ data, now, mode, today }) {
+  const c = curWind(data, null, true, now);
+  const plan = data.plan;
+  const rows = [];
+  if (mode === "summary") {
+    const nx = plan.next;
+    const w = nx?.at ? expWind(data.forecastNext, nx.at) : null;
+    if (w) rows.push({ lab: `${nextText(plan, today).big} beklenen`, w, by: "tahmin" });
+  } else {
+    if (c) rows.push({ lab: "Şimdi", w: c, by: c.man ? "elle" : "" });
+    if (["wait", "ap", "none"].includes(mode) && plan.at) {
+      const e = expWind(data.forecast, plan.at);
+      if (e) rows.push({ lab: "Start'ta beklenen", w: e, by: "tahmin" });
+    }
+  }
+  if (!rows.length) return null;
+  const src = c && mode !== "summary" ? c.by : "";
+  return (
+    <GCard cls="gr-wind" head="Rüzgâr" tag={src}>
+      {rows.map((r) => (
+        <div key={r.lab} className="gr-wr">
+          <div>
+            <small>{r.lab}</small>
+            <span>{[r.w.dir != null ? `${dirShort(r.w.dir)} ${degText(r.w)}` : "", r.by].filter(Boolean).join(" · ")}</span>
+          </div>
+          {gArrow(r.w.dir)}
+          <div className="gr-kn">
+            <b>
+              {r.w.kn}
+              <em>kn</em>
+            </b>
+            {r.w.gust != null && r.w.gust > r.w.kn ? <i>{`sağanak ${r.w.gust}`}</i> : null}
+          </div>
+        </div>
+      ))}
+    </GCard>
+  );
+}
+function GProg({ prog }) {
+  if (!prog.length) return null;
+  return (
+    <GCard cls="gr-side" head="Bugünün programı">
+      <ul className="gr-pg">
+        {prog.slice(0, 7).map((x) => (
+          <li key={x.key} className={x.state}>
+            <b>{x.at || ""}</b>
+            <span>
+              <Dot g={x.grp} />
+              {gWhat(x) || x.name}
+            </span>
+            {x.state === "next" ? <em className="lv-pill">Sıradaki</em> : <small>{x.state === "done" ? "Bitti" : x.state === "now" ? "Canlı" : ""}</small>}
+          </li>
+        ))}
+      </ul>
+    </GCard>
+  );
+}
+// Start dizisi: 5 Uyarı (sınıf bayrağı) · 4 Hazırlık (kural bayrağı) · 1 Son dakika (kural bayrağı iner) · 0 Start (sınıf bayrağı iner)
+function GSeq({ data, cs, e, mode }) {
+  const dur = mode === "ap" ? data.plan.ap?.dur || 300 : data.timer?.dur || 300;
+  const rem = mode === "ap" ? data.plan.ap?.seq ?? null : cs.rem;
+  const steps = seqSteps(dur);
+  const sts = rem != null ? seqState(steps, rem, true) : steps.map(() => "");
+  const nextI = sts.findIndex((s) => !s);
+  const cls = e?.cls || "", grp = e?.grp || "", prep = e?.prep || "";
+  const what = (m) => (m === 0 ? "Sınıf bayrağı iner" : m === 1 ? `${prepName(prep) || "Kural bayrağı"} iner` : m === 4 ? `${prepName(prep) || "Kural bayrağı"} çekilir` : "Sınıf bayrağı çekilir");
+  const flag = (m) => (m === 1 || m === 4 ? (prep ? <Flag kind={prep} down={m === 1} /> : null) : cls || grp ? <Flag kind="cls" cls={cls || "Sınıf"} grp={grp} down={m === 0} /> : null);
+  return (
+    <GCard
+      cls="gr-side"
+      head={
+        <>
+          {cls || grp ? <Flag kind="cls" cls={cls || "Sınıf"} grp={grp} /> : null}
+          {gWhat({ name: e?.name, grp }) || "Start dizisi"}
+        </>
+      }
+      tag={mode === "ap" ? "Dizi durdu" : "Start dizisi"}
+    >
+      <ul className="gr-seq">
+        {steps.map((s, i) => (
+          <li key={s.m} className={`${sts[i] ? "ok" : ""}${i === nextI && mode !== "ap" ? " nx" : ""}`}>
+            <b>{s.m}</b>
+            <span>
+              {s.name}
+              <small>{what(s.m)}</small>
+            </span>
+            <i>{flag(s.m)}</i>
+          </li>
+        ))}
+      </ul>
+    </GCard>
+  );
+}
+function GBig({ flag, title, lines = [] }) {
+  return (
+    <GCard cls="gr-side">
+      <div className="gr-big">
+        <div className="gr-bt">
+          {flag ? <Flag kind={flag} /> : null}
+          <h3>{title}</h3>
+        </div>
+        {lines.filter(Boolean).map((l, i) => (
+          <p key={i} className={i ? "m" : ""}>
+            {l}
+          </p>
+        ))}
+      </div>
+    </GCard>
+  );
+}
+function GCourse({ data, sel, racing }) {
+  const route = sceneRoute(data, racing ? sel : null, true, racing ? "race" : "wait");
+  const svg = courseSvg(data, route);
+  if (!svg) return null;
+  return (
+    <GCard cls="gr-side gr-crs" head="Parkur" tag={routeText(route)}>
+      <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: svg }} />
+    </GCard>
+  );
+}
+function GEarly({ data, rid }) {
+  const ea = earlyOf(data, rid);
+  if (!ea.length) return null;
+  return (
+    <GCard cls="gr-side" head="Erken start" tag={`${ea.length} tekne`}>
+      <GRows rows={ea.map((x) => ({ p: x.c, pen: true, sail: x.sail, name: x.name, gap: "" }))} />
+    </GCard>
+  );
+}
+function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, racing, ovOn, onFull }) {
+  const plan = data.plan;
+  const r = data.race || {};
+  const first = prog.find((x) => x.state === "next") || null;
+  const dayLine = [dayText(today) ? `${wdText(today)} ${dayText(today)}` : "", r.place].filter(Boolean).join(" · ");
+  const vd = mode === "wait" || mode === "between" ? voidLast(data, today, now) : null;
+  const e = entry?.cls || entry?.grp ? { ...entry, name: sel ? raceName(sel) : first?.name } : plan.order?.[0] ? { ...plan.order[0], name: first?.name || "" } : first;
+  const sh = data.courseShow || {};
+  let top = null;
+  let left = null;
+  let right = null;
+  let sub = dayLine ? `Yarış günü · ${dayLine}` : "Yarış günü";
+  if (mode === "summary") {
+    const t = nextText(plan, today);
+    const day = plan.day || today;
+    const n = (data.starts || []).filter((x) => x.day === day && !x.void).length;
+    top = { lab: ["Gün bitti", n ? `${n} yarış` : ""].filter(Boolean).join(" · "), tm: t.big, sub: t.sub };
+    const ov = overallTop(data, 6);
+    if (ov) left = <GCard cls="gr-res" head="Genel sıralama" tag={[ov.cls, ov.tag === "Resmî" ? "resmî" : "geçici"].filter(Boolean).join(" · ")} onClick={() => onFull("all")}><GRows rows={ov.rows.map((x) => ({ p: x.p, sail: x.sail, name: shortName(x.name) || "", gap: x.t != null && x.t !== "" ? `${x.t} p` : "" }))} />{ov.total > 6 ? <div className="gr-more">{`+${ov.total - 6} tekne · Tümü`}</div> : null}</GCard>;
+    const races = (data.starts || []).filter((x) => x.day === day && !x.void && data.rounds?.[x.id] && standings(data.rounds[x.id]).length);
+    const who = whoMap(data);
+    if (races.length)
+      right = (
+        <GCard cls="gr-side" head="Bugünün yarışları" tag="Kazanan">
+          <ul className="gr-pg w">
+            {races.slice(-6).map((x) => {
+              const en = data.rounds[x.id];
+              const w = standings(en)[0];
+              return (
+                <li key={x.id}>
+                  <span>
+                    <Dot g={en.grp || x.grp} />
+                    {gWhat({ name: raceName(x), grp: en.grp || x.grp })}
+                  </span>
+                  <small>{w ? [w.sail, shortName(whoOf(who, w.sail)?.name || "")].filter(Boolean).join(" ") : ""}</small>
+                </li>
+              );
+            })}
+          </ul>
+        </GCard>
+      );
+    sub = dayLine;
+  } else if (mode === "seq" && seqMode === "fs") {
+    top = { cls: "r", flag: "FS", lab: ["Genel geri", fsLast?.fin ? hmOf(fsLast.fin) : ""].filter(Boolean).join(" · "), tm: "Yeniden start", sub: "Uyarı işareti bekleniyor" };
+    right = <GBig flag="FS" title="Genel geri çağırma" lines={[gWhat({ name: fsLast ? raceName(fsLast) : "", grp: fsLast?.grp || data.rounds?.[fsLast?.id]?.grp }), "Start yeniden verilecek"]} />;
+    sub = gWhat(e) || sub;
+  } else if (mode === "seq" || (mode === "ap" && plan.ap?.seq != null)) {
+    const ap = seqMode === "ap" || mode === "ap";
+    if (ap) {
+      top = { cls: "r", flag: "AP", lab: "Tehir · dizi durdu", tm: plan.ap?.why || "Start ertelendi", sub: "Start dizisi durduruldu" };
+    } else {
+      const hm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1] || "";
+      const dur = data.timer?.dur || 300;
+      top = { lab: cs.rem != null && cs.rem <= 60 ? "Son dakika" : cs.label, tm: cs.value, sub: [gWhat(e), hm ? `Start ${hm}` : ""].filter(Boolean).join(" · "), bar: cs.rem != null ? (1 - cs.rem / dur) * 100 : null, cls: cs.rem != null && cs.rem <= 60 ? "o" : "" };
+    }
+    right = <GSeq data={data} cs={cs} e={e} mode={ap ? "ap" : "run"} />;
+    left = sel ? <GEarly data={data} rid={sel.id} /> : null;
+    sub = gWhat(e) || sub;
+  } else if (mode === "ap") {
+    const apDown = plan.status !== "ap";
+    const counting = !apDown && cs.label === "Tehir inişine";
+    top = { cls: "r", flag: "AP", lab: apDown ? "Tehir indi" : "Tehir", tm: apDown ? "Start yakında" : counting ? cs.value : "Belirsiz", sub: apDown ? "Uyarı işareti bekleniyor" : plan.ap?.land ? "Karada · uyarı işaretini komite verir" : plan.ap?.auto === false ? "Uyarı işareti bekleniyor" : "Tehir inince 1 dk sonra uyarı işareti" };
+    right = <GBig flag="AP" title={plan.ap?.why || "Start ertelendi"} lines={[first ? `${gWhat(first)} bekliyor` : "", plan.ap?.from ? `Tehir ${plan.ap.from}'de çekildi` : ""]} />;
+  } else if (mode === "race") {
+    const rr = raceRows(data, sel);
+    top = { lab: cs.label, tm: cs.value, sub: [gWhat({ name: sel ? raceName(sel) : "", grp: entry?.grp || sel?.grp }), rr.rows.length && rr.head !== "Sıralama" ? rr.head : ""].filter(Boolean).join(" · ") };
+    if (rr.rows.length) left = <GCard cls="gr-res" head={rr.head} tag={rr.tag} onClick={() => onFull("race")}><GRows rows={rr.rows.slice(0, 8)} />{rr.rows.length > 8 ? <div className="gr-more">{`+${rr.rows.length - 8} tekne · Tümü`}</div> : null}</GCard>;
+    else if (ovOn) {
+      const ov = overallTop(data, 6);
+      if (ov) left = <GCard cls="gr-res" head="Genel sıralama" tag={[ov.cls, "geçici"].filter(Boolean).join(" · ")} onClick={() => onFull("all")}><GRows rows={ov.rows.map((x) => ({ p: x.p, sail: x.sail, name: shortName(x.name) || "", gap: x.t != null && x.t !== "" ? `${x.t} p` : "" }))} /></GCard>;
+    }
+    if (sel?.at && now - Date.parse(sel.at) < 10 * 60e3) right = <GEarly data={data} rid={sel.id} />;
+    sub = gWhat({ name: sel ? raceName(sel) : "", grp: entry?.grp || sel?.grp });
+  } else if (mode === "none") {
+    const t = nextText(plan, today);
+    top = { lab: "Bugün yarış yok", tm: t.big, sub: t.sub };
+    sub = dayLine;
+  } else if (vd) {
+    const g = vd.grp || data.rounds?.[vd.id]?.grp || "";
+    const fl = voidFlag(vd.void);
+    top = { cls: "r", flag: fl, lab: [voidShort(vd.void), vd.fin ? hmOf(vd.fin) : ""].filter(Boolean).join(" · "), tm: cs.rem ? cs.value : "Yeniden start", sub: cs.rem ? cs.label : "Uyarı işareti bekleniyor" };
+    right = <GBig flag={fl} title={vd.void === "Genel geri çağırma" ? "Genel geri çağırma" : voidShort(vd.void)} lines={[gWhat({ name: raceName(vd), grp: g }), vd.void === "Tehir" ? "Start ertelendi" : "Yarış sayılmadı, yeniden start verilecek"]} />;
+  } else if (mode === "between" && sel?.fin) {
+    const rr = raceRows(data, sel);
+    top = { lab: ["Bitti", hmOf(sel.fin)].filter(Boolean).join(" · "), tm: raceTime(sel) || "—", sub: first ? `Sıradaki · ${gWhat(first)}${first.at ? ` · ${first.at}` : ""}` : "Start bekleniyor" };
+    if (rr.rows.length) left = <GCard cls="gr-res" head={gWhat({ name: raceName(sel), grp: entry?.grp || sel.grp })} tag={rr.head === "Resmî sonuç" ? "Resmî" : "Sonuç"} onClick={() => onFull("race")}><GRows rows={rr.rows.slice(0, 6)} />{rr.rows.length > 6 ? <div className="gr-more">{`+${rr.rows.length - 6} tekne · Tümü`}</div> : null}</GCard>;
+  } else {
+    // bekleme: yarışa günler var / start saatine geri sayım (turuncu bayrak çekiliyse "Start öncesi")
+    const left0 = !cs.rem && r.startDate > today ? daysUntil(r.startDate, today) : 0;
+    const orange = orangeUp(plan, today);
+    const { kick } = holdState(data, today, cs, now);
+    if (left0) top = { lab: "Yarışa", tm: `${left0} gün`, sub: [r.endDate && r.endDate !== r.startDate ? `${dayText(r.startDate)} – ${dayText(r.endDate)}` : dayText(r.startDate), r.place].filter(Boolean).join(" · ") };
+    else top = { cls: orange ? "o" : "", orange, lab: orange ? `Start öncesi · ${kick}` : kick, tm: cs.rem ? cs.value : "—:—", sub: first ? [gWhat(first), first.cls, first.at].filter(Boolean).join(" · ") : "" };
+    if (left0) sub = "";
+  }
+  // sağ kart: parkur elle açıldıysa o (Yayın › Ekranda göster › Parkur), yoksa duruma göre; bekleme ve ara verirken program
+  if (sh.one === "course" && courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"))) right = <GCourse data={data} sel={sel} racing={mode === "race"} />;
+  else if (!right && ["wait", "between", "ap"].includes(mode) && !vd) right = <GProg prog={prog} />;
+  return (
+    <div className="gr">
+      <GTop t={top} />
+      {left ? <div className="gr-l">{left}</div> : null}
+      {right ? <div className="gr-r">{right}</div> : null}
+      <div className="gr-lb">
+        <GWind data={data} now={now} mode={mode} today={today} />
+      </div>
+      <div className="gr-name">
+        {racing ? <span className="gr-live">Canlı</span> : null}
+        <b>
+          <Link href="/canli" className="gr-back" aria-label="Yarışlar">
+            ‹
+          </Link>
+          {r.name || "Yarış"}
+        </b>
+        {sub ? <span>{sub}</span> : null}
+      </div>
+    </div>
+  );
+}
+
 export function LiveScreen({ id, y = "" }) {
   const demoOn = id === "ornek";
   useVisit(id); // isimsiz ziyaret haberi (Ayarlar › Yayın)
@@ -3057,6 +3386,22 @@ export function LiveScreen({ id, y = "" }) {
   // Yarış öncesi video yokken sade sayfa (Seyhun 2026-11-02 "geri sayım sayfası sade temiz"): ortada sayaç, altta program; şerit yok
   const hero = (phase === "wait" || between) && !hasVideo && !near;
   const hero2 = near && !hasVideo;
+  // Yayın grafiği (Seyhun 2026-11-03 14:41): canlı görünümde videolu ve videosuz aynı düzen
+  if (isCur) {
+    const apDown = st !== "ap" && !!data.plan.warn && nowMs < Date.parse(data.plan.warn);
+    const mode = phase === "summary" ? "summary" : seqMode ? "seq" : st === "ap" || apDown ? "ap" : racing ? "race" : between ? "between" : st === "none" && data.plan.day === today ? "none" : "wait";
+    return (
+      <div className={`lv lv-bc lv-grx${hasVideo ? " video" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
+        <Backdrop data={data} isCur={isCur} entry={entry} />
+        <div className="lv-page lv-ov">
+          <Grafik data={data} id={id} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} racing={racing} ovOn={ovOn} onFull={setFull} />
+        </div>
+        {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
+        {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}
+        {full ? <FullList kind={full} data={data} sel={sel} isCur={isCur} id={id} onClose={() => setFull("")} /> : null}
+      </div>
+    );
+  }
   return (
     <div className={`lv lv-bc${ongoing && phase === "race" ? " has-live" : ""}${slide ? " course" : ""}${hasVideo ? " video" : ""}${counting ? " counting" : ""}${near ? " near" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
       <Backdrop data={data} isCur={isCur} entry={entry} />

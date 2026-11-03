@@ -1231,12 +1231,12 @@ export function BroadcastPage({ orgId, id }) {
           <div className={`${card} overflow-hidden`}>
             <button type="button" onClick={() => setVOpen(vOpen === "show" ? "" : "show")} aria-expanded={vOpen === "show"} className={row}>
               <span className="min-w-0 flex-1 font-semibold">Ekranda göster</span>
-              <span className="min-w-0 max-w-[60%] truncate text-[0.875rem] text-mut">{cShow.one ? `${SHOW_NAME[cShow.one]} ekranda` : cShow.auto ? "Otomatik" : "Kapalı"}</span>
+              <span className="min-w-0 max-w-[60%] truncate text-[0.875rem] text-mut">{cShow.one === "course" ? "Parkur ekranda" : "Kapalı"}</span>
               <span className="text-mut" aria-hidden="true">{vOpen === "show" ? "⌃" : "›"}</span>
             </button>
             {vOpen === "show" ? (
               <div className="border-t border-line">
-            <div className="grid grid-cols-3 gap-2 p-3">
+            <div className="grid grid-cols-1 gap-2 p-3">
               {Object.entries(SHOW_NAME).map(([k, t]) => (
                 <button key={k} type="button" data-press aria-pressed={cShow.one === k} className="masa-tog" onClick={() => putCourseShow({ ...cShow, one: cShow.one === k ? "" : k })}>
                   {t}
@@ -1244,15 +1244,6 @@ export function BroadcastPage({ orgId, id }) {
                 </button>
               ))}
             </div>
-            <button type="button" onClick={() => putCourseShow({ ...cShow, auto: !cShow.auto })} className={`${row} border-t border-line`} aria-pressed={cShow.auto}>
-              <span className="min-w-0 flex-1 font-semibold">Starttan önce otomatik</span>
-              <span className={`masa-sw${cShow.auto ? " on" : ""}`} aria-hidden="true" />
-            </button>
-            {/* Videolu yarış öncesi ekranda soldaki bilgi şeridi (Seyhun 2026-11-02 "istersem kaldırabilmeliyim") */}
-            <button type="button" onClick={() => putCourseShow({ ...cShow, side: !cShow.side })} className={`${row} border-t border-line`} aria-pressed={cShow.side}>
-              <span className="min-w-0 flex-1 font-semibold">Sol bilgi (videoluyken)</span>
-              <span className={`masa-sw${cShow.side ? " on" : ""}`} aria-hidden="true" />
-            </button>
             {/* Yarışta sağdaki genel sıralama (Seyhun 2026-11-02 "göster ya da kaldır"); start'tan önce hiç görünmez */}
             <button type="button" onClick={() => putCourseShow({ ...cShow, ov: cShow.ov === false })} className={`${row} border-t border-line`} aria-pressed={cShow.ov !== false}>
               <span className="min-w-0 flex-1 font-semibold">Genel sıralama (yarışta)</span>
@@ -1754,7 +1745,8 @@ function Head({ title, right = "", onAdd = null, addLabel = "Ekle", busy = false
 
 // Yarışın kurulumu (Seyhun 2026-11-02 "önce bu yarış için sınıfları, sonra uygulanacak grupları seçelim; bunlar fix, bir kere seçip
 // kapatalım; ayarlardan değiştirebilelim"): 1 Sınıf (birden çok) → 2 Gruplar (sınıf sınıf; grup yoksa boş) → Kaydet. Geri ile bir adım geri.
-const SHOW_NAME = { course: "Parkur", wind: "Rüzgâr", prog: "Program" };
+// Canlı ekranın sağ kartında elle gösterilen (Seyhun 2026-11-03 14:41 yayın grafiği: parkur alanını yönetimden elle açarım)
+const SHOW_NAME = { course: "Parkur" };
 const STEPS = ["Sınıflar", "Gruplar"];
 const bigBtn = "flex h-14 w-full items-center justify-center rounded-[1.125rem] bg-white text-[1.125rem] font-semibold text-[#11203a] shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-0.5 active:shadow-none disabled:opacity-40";
 const backBtn = "ck-glass flex h-14 shrink-0 items-center justify-center rounded-[1.125rem] px-5 text-[1.0625rem] font-semibold";
