@@ -75,6 +75,8 @@ export function BroadcastPage({ orgId, id }) {
   const [srcList, setSrcList] = useState([]);
   const [stat, setStat] = useState({}); // bağlantı → { live, vid } (/api/yayin-durum)
   const [addOpen, setAddOpen] = useState(false);
+  const [addKind, setAddKind] = useState("drone");
+  const [addUrl, setAddUrl] = useState("");
   const [howOpen, setHowOpen] = useState(false); // Drone › Nasıl bağlanır
   const [sel, setSel] = useState(null); // ekrana verilecek seçim { kind, mid }
   const [zoom, setZoom] = useState(null); // tekne ekranının yakınlığı (seçilmediyse ekrandaki ya da 100)
@@ -445,8 +447,12 @@ export function BroadcastPage({ orgId, id }) {
       toast("Kaydedilemedi. İnterneti kontrol et.");
     }
   };
-  const addSrc = (k) => {
-    const l = addSource(srcList, k);
+  const addSrc = (k, url = "") => {
+    const u = String(url || "").trim();
+    if (u && !ytEmbed(u)) return toast("Bağlantı tanınmadı: YouTube canlı yayın ya da kanal bağlantısı olmalı.");
+    const l = addSource(srcList, k).map((x, i, a) => (i === a.length - 1 && u ? { ...x, url: u } : x));
+    setAddOpen(false);
+    setAddUrl("");
     setSel({ kind: "src", src: l.at(-1).id });
     putSources(l);
   };
@@ -1089,7 +1095,7 @@ export function BroadcastPage({ orgId, id }) {
           </p>
         </section>
         <section>
-          <Head title="Canlı kaynaklar" right={nLive ? `${nLive} yayında` : ""} />
+          <Head title="Canlı kaynaklar" right={nLive ? `${nLive} yayında` : ""} onAdd={srcList.length < 8 ? () => setAddOpen(true) : null} addLabel="Canlı kaynak ekle" />
           <div className={`${card} overflow-hidden`}>
             <div className="masa-srcs">
               {autoOn ? (
@@ -1110,26 +1116,18 @@ export function BroadcastPage({ orgId, id }) {
                 return (
                   <button key={x.id} type="button" onClick={() => setSel({ kind: "src", src: x.id })} className={`masa-src${isSel("src", x.id) ? " pv" : ""}${isOn("src", x.id) ? " pg" : ""}`}>
                     <span className="th">
-                      {th && st?.live !== false ? <img src={th} alt="" /> : <span className="no">{x.url ? "Yayın yok" : "Bağlantı yok"}</span>}
+                      {/* Yayında olmayanın da kapağı (Seyhun 2026-11-03 "canlı olmayanın görüntüsü yok"): son karesi soluk + Yayın yok */}
+                      {th ? <img src={th} alt="" /> : null}
+                      {!x.url ? <span className="no">Bağlantı yok</span> : st?.live === false ? <span className="no off">Yayın yok</span> : !th ? <span className="no">{x.name}</span> : null}
                       {isOn("src", x.id) ? <em className="tg pg">EKRANDA</em> : isSel("src", x.id) ? <em className="tg pv">ÖNİZLEME</em> : null}
                     </span>
                     <span className="nm">
                       <b>{x.name}</b>
-                      {x.url ? <span className={`st${st?.live ? " on" : ""}`}>{st?.live ? <i /> : null}{st?.live ? "Yayında" : st?.live === false ? "Yayın yok" : ""}</span> : null}
+                      {x.url ? <span className={`st${st?.live ? " on" : ""}`}>{st?.live ? <i /> : null}{st?.live ? "Yayında" : ""}</span> : null}
                     </span>
                   </button>
                 );
               })}
-              {srcList.length < 8 ? (
-                <button type="button" onClick={() => setAddOpen(true)} className="masa-src">
-                  <span className="th">
-                    <span className="no plus">+ Kaynak</span>
-                  </span>
-                  <span className="nm">
-                    <b className="text-mut">Drone, telefon, kamera</b>
-                  </span>
-                </button>
-              ) : null}
             </div>
             {selSrc ? (
               <div className="border-t border-line px-3.5 py-3">
@@ -1159,13 +1157,14 @@ export function BroadcastPage({ orgId, id }) {
           </div>
         </section>
         <section>
-          <Head title="Kayıtlar" />
-          <div className={`${card} overflow-hidden`}>
+          <Head title="Kayıtlar" right={busy && busy !== "x" ? busy : ""} onAdd={() => file.current?.click()} addLabel="Telefondan video ekle" busy={!!busy} />
+          <div>
             <div className="masa-tiles">
               {vids.map((m) => (
                 <button key={m.id} type="button" aria-pressed={isSel("rec", m.id)} onClick={() => setSel({ kind: "rec", mid: m.id })} className="masa-tile">
                   <span className="th">
-                    {m.thumb ? <img src={m.thumb} alt="" /> : null}
+                    {/* Kapak (Seyhun 2026-11-03): küçük resmi yoksa videonun ilk karesi */}
+                    {m.thumb ? <img src={m.thumb} alt="" /> : <video src={`${m.url}#t=0.5`} preload="metadata" muted playsInline />}
                     {m.dur ? <em>{mmss(m.dur)}</em> : null}
                   </span>
                   <b>{isOn("rec", m.id) ? `Ekranda · ${recName(m, live.starts)}` : recName(m, live.starts)}</b>
@@ -1175,10 +1174,6 @@ export function BroadcastPage({ orgId, id }) {
               <button type="button" aria-pressed={isSel("boats")} onClick={() => setSel({ kind: "boats" })} className="masa-tile">
                 <span className="th">Canlı konum</span>
                 <b>{isOn("boats") ? "Ekranda · Tekneler" : "Tekneler"}</b>
-              </button>
-              <button type="button" disabled={!!busy} onClick={() => file.current?.click()} className="masa-tile">
-                <span className="th">{busy && busy !== "x" ? busy : "+ Video"}</span>
-                <b>Telefondan</b>
               </button>
             </div>
             <input ref={file} type="file" accept="video/*" className="hidden" onChange={pick} />
@@ -1537,17 +1532,29 @@ export function BroadcastPage({ orgId, id }) {
           </div>
         ) : null}
       </Sheet>
-      <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Kaynak ekle">
-        <div className="grid grid-cols-2 gap-2 px-4 pb-5">
-          {Object.entries(SRC_KINDS).map(([k, t]) => (
-            <button key={k} type="button" data-press className="masa-tog" onClick={() => (setAddOpen(false), addSrc(k))}>
-              {t}
-            </button>
-          ))}
-          {/* Sade video (Seyhun 2026-11-03 "önceden hazırlanmış videoları ekleyip gösterebilmeliyim"): dosyadan yüklenir, Kayıtlar'a girer */}
-          <button type="button" data-press className="masa-tog" disabled={!!busy} onClick={() => (setAddOpen(false), file.current?.click())}>
-            Sade video
+      {/* Canlı kaynak ekle (Seyhun 2026-11-03 video-sekme/ornek.png): tür + YouTube bağlantısı + Ekle; ad kendiliğinden (Drone 2) */}
+      <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Canlı kaynak ekle">
+        <div className="px-4 pb-5">
+          <div className="grid grid-cols-3 gap-2">
+            {Object.entries(SRC_KINDS).map(([k, t]) => (
+              <button key={k} type="button" data-press aria-pressed={addKind === k} className="masa-tog text-center" onClick={() => setAddKind(k)}>
+                {t}
+                <small>{addSource(srcList, k).at(-1).name}</small>
+              </button>
+            ))}
+          </div>
+          <input value={addUrl} onChange={(e) => setAddUrl(e.target.value)} placeholder="YouTube canlı yayın bağlantısı" inputMode="url" className="mt-3 h-11 w-full rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.9375rem] outline-none" />
+          <button type="button" onClick={() => (setAddOpen(false), setHowOpen(true))} className="mt-2.5 text-[0.875rem] font-semibold text-[#7fb6ff]">
+            Nasıl bağlanır
           </button>
+          <div className="mt-3 flex gap-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setAddOpen(false)}>
+              Vazgeç
+            </Button>
+            <Button className="flex-[1.6]" onClick={() => addSrc(addKind, addUrl)}>
+              Ekle
+            </Button>
+          </div>
         </div>
       </Sheet>
       {/* Drone › Nasıl bağlanır (Seyhun 2026-11-02): DJI Fly yalnız RTMP verir; en kolayı YouTube'a gönderip buradan göstermek */}
@@ -1711,11 +1718,19 @@ function MasaBar({ children }) {
     </div>
   );
 }
-function Head({ title, right = "" }) {
+function Head({ title, right = "", onAdd = null, addLabel = "Ekle", busy = false }) {
   return (
-    <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1 text-[0.8125rem] font-semibold text-mut">
-      <span>{title}</span>
-      <span className="min-w-0 truncate">{right}</span>
+    <div className={`mb-1.5 flex justify-between gap-3 px-1 text-[0.8125rem] font-semibold text-mut ${onAdd ? "items-center" : "items-baseline"}`}>
+      <span className="min-w-0 truncate">
+        {title}
+        {right ? <em className={`ml-1.5 not-italic ${onAdd ? "text-ok" : ""}`}>{right}</em> : null}
+      </span>
+      {/* Ekleme başlığın yanında (Seyhun 2026-11-03 "kaynak eklemeyi canlı kaynaklar yazısının yanında artı koyarak") */}
+      {onAdd ? (
+        <button type="button" data-press aria-label={addLabel} disabled={busy} onClick={onAdd} className="masa-plus">
+          +
+        </button>
+      ) : null}
     </div>
   );
 }
