@@ -975,6 +975,7 @@ function WindArrow({ w }) {
 // Yarışın adı ve şu an ne olduğu alt şeridin hemen üstünde, şeffaf zeminde, hep orada (Seyhun 2026-11-02 "yukarıdaki yazıyı kaldıralım,
 // hangi grup, yarış adı altta şeridin üstünde, arka fonu şeffaf"). Yayıncının yazdığı alt yazı (screen.caption) bunun üstünde vurgulu satır.
 // Yarışın adı (şeridin ilk hücresi, büyük) ve altında küçük satır: sınıf · yarış adı · yer
+const f0 = (prog) => (prog || []).find((x) => x.state === "next");
 function titleOf({ data, sel, phase, today, prog = [] }) {
   const plan = data.plan;
   const entry = sel ? data.rounds?.[sel.id] : null;
@@ -999,8 +1000,25 @@ function titleOf({ data, sel, phase, today, prog = [] }) {
     g = o?.grp || "";
     what = plan.status === "ap" ? apText(plan) : none ? data.race.name : [f?.name, data.race.name].filter(Boolean).join(" · ");
   } else head = "Gün bitti";
-  const sub = phase === "wait" ? what : [what, data.race.name, data.race.place].filter(Boolean).join(" · ");
+  // Yarışın adı artık geri düğmesinin yanında soluk (Seyhun 2026-11-03); burada yalnız sınıf / program
+  const sub = phase === "wait" ? (none || plan.status === "ap" ? what : f0(prog)?.name || "") : what;
   return { head, g, sub };
+}
+
+// Sağ üstte "Canlı" rozeti (Seyhun 2026-11-03): ekrandaki yarış sürüyorsa küçük nabız atan nokta; arada bir (40 sn'de bir, 6 sn) hangi yarış olduğunu
+// yazarak açılır, sonra kapanır. Yalnız ekrandaki yarış (aynı anda birkaç yarışta yayın hangisini gösteriyorsa o); anahtar yarış değişince animasyonu baştan başlatır
+function LiveBadge({ sel, data }) {
+  const entry = data.rounds?.[sel.id] || {};
+  const what = [raceTitle(sel), entry.grp ? `${entry.grp} grup` : ""].filter(Boolean).join(" · ");
+  return (
+    <div className="lv-onair" key={sel.id} role="status" aria-label={`Canlı yayın: ${what}`}>
+      <i className="lv-pulse" aria-hidden="true" />
+      <b>Canlı</b>
+      <span className="lv-onairw">
+        <span>{what}</span>
+      </span>
+    </div>
+  );
 }
 
 // Şeridin üstünde yalnız yayıncının alt yazısı (screen.caption) ve önceki yarışlar düğmeleri; yarışın adı şeridin içinde (Seyhun 2026-11-02 "tek bir çizgi olmalı")
@@ -1038,7 +1056,7 @@ function TitleLine({ data, isCur, id, starts, onList, auto }) {
 
 // Altta tek bilgi şeridi (TV yayınlarındaki alt bant; grup · yarış hemen üstünde TitleLine'da): süre (start'tan sonra; önce ortada büyük sayaç), nerede (şamandıra,
 // lider ve dönüş saati), rüzgâr (dokununca gün boyu grafik), parkur (dokununca büyük), sıradaki start. Her hücre: üstte değer, altta küçük etiket.
-function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, now = 0, ongoing, hasSvg, prog = [], onCourse, onWind }) {
+function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, now = 0, hasSvg, prog = [], onCourse, onWind }) {
   const t = titleOf({ data, sel, phase, today, prog });
   const plan = data.plan;
   const entry = sel ? data.rounds?.[sel.id] : null;
@@ -1099,10 +1117,7 @@ function InfoBar({ data, sel, isCur, phase, cs, counting, clockIn, today, now = 
             <Dot g={t.g} />
             {t.head}
           </b>
-          <span>
-            {ongoing ? <em className="lv-livedot">Canlı</em> : null}
-            {t.sub}
-          </span>
+          <span>{t.sub}</span>
         </div>
       ) : null}
       {clockIn ? (
@@ -2294,20 +2309,23 @@ export function LiveScreen({ id, y = "" }) {
   // Yarış öncesi video yokken sade sayfa (Seyhun 2026-11-02 "geri sayım sayfası sade temiz"): ortada sayaç, altta program; şerit yok
   const hero = phase === "wait" && !hasVideo;
   return (
-    <div className={`lv lv-bc${slide ? " course" : ""}${hasVideo ? " video" : ""}${counting ? " counting" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
+    <div className={`lv lv-bc${ongoing && phase === "race" ? " has-live" : ""}${slide ? " course" : ""}${hasVideo ? " video" : ""}${counting ? " counting" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
       <Backdrop data={data} isCur={isCur} entry={entry} />
       <div className="lv-page lv-ov">
         {/* Geri tek başına en solda (Seyhun 2026-11-02) */}
         <Link href="/canli" className="lv-back lv-backc" aria-label="Yarışlar">
           ‹
         </Link>
+        {!hero && data.race?.name ? <span className="lv-rname">{data.race.name}</span> : null}
+        {ongoing && phase === "race" ? <LiveBadge sel={sel} data={data} /> : null}
         <div className="lv-left">
           {phase === "race" ? <RankPanel key="race" data={data} sel={sel} isCur={isCur} id={id} max={hasVideo ? 5 : RANK_MAX} onAll={() => setFull("race")} /> : null}
         </div>
         {ovOn ? <OverallSide data={data} n={hasVideo ? 6 : 10} /> : null}
         {/* Tekne takibi (Seyhun 2026-11-02): yarışta teknelerin konumu küçük haritada (Yayın › Dönüşler › Yayında harita) */}
         {phase === "race" && isCur && !side ? <BoatMap boats={data.boats || []} course={data.course} groupOf={groupMap(data.groups?.[today])} /> : null}
-        {(phase === "race" || (phase === "wait" && hasVideo)) && !side ? <ProgramChips items={prog} /> : null}
+        {/* Yarış sürerken diğer yarışlar çip olarak gösterilmez (Seyhun 2026-11-03: ekrandaki yarış neyse o; sıradaki start alt şeritte) */}
+        {(phase === "race" || (phase === "wait" && hasVideo)) && !side && !(ongoing && phase === "race") ? <ProgramChips items={prog} /> : null}
         {side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}
         {phase === "summary" ? <EndHero data={data} today={today} now={nowMs} onAll={() => setFull("all")} /> : null}
@@ -2321,7 +2339,7 @@ export function LiveScreen({ id, y = "" }) {
               <WindDay fc={data.forecast} now={nowMs} at={data.plan.at} mine={lastWind(data, sel, isCur).obs} />
             </button>
           ) : null}
-          <InfoBar data={data} sel={sel} isCur={isCur} phase={phase} cs={cs} counting={counting} clockIn={counting && !hero} today={today} now={nowMs} ongoing={ongoing} hasSvg={hasSvg} prog={prog} onCourse={() => setCourseOpen((v) => !v)} onWind={() => setWindOpen((v) => !v)} />
+          <InfoBar data={data} sel={sel} isCur={isCur} phase={phase} cs={cs} counting={counting} clockIn={counting && !hero} today={today} now={nowMs} hasSvg={hasSvg} prog={prog} onCourse={() => setCourseOpen((v) => !v)} onWind={() => setWindOpen((v) => !v)} />
         </div>
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}

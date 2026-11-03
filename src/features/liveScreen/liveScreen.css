@@ -913,3 +913,14 @@ button.lv-p:active { transform: translateY(1px); }
 /* Tekne takibi haritası (features/tracking/BoatMap.jsx, Seyhun 2026-11-02): sağ altta, alttaki şeridin üstünde */
 .lv-map { position: absolute; right: 1.6vw; bottom: calc(1.6vw + 5.5em); z-index: 2; width: min(18vw, 300px); min-width: 150px; aspect-ratio: 1; padding: 0.4em; font-size: clamp(12px, 1vw, 20px); animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .lv-map svg { display: block; }
+
+/* Yarışın adı geri düğmesinin yanında soluk (Seyhun 2026-11-03); sağ üstte Canlı rozeti arada bir hangi yarış olduğunu yazarak açılıp kapanır */
+.lv-rname { position: absolute; top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top) + 0.15em); left: calc(clamp(16px, 1.6vw, 44px) + 2.6em); z-index: 2; max-width: 38%; font-size: 0.95em; font-weight: 600; color: rgba(255, 255, 255, 0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-onair { position: absolute; left: auto; width: max-content; max-width: calc(100% - 32px); top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top)); right: clamp(16px, 1.6vw, 44px); z-index: 4; display: flex; align-items: center; gap: 0.5em; padding: 0.4em 0.85em; border-radius: 2em; background: rgba(8, 20, 36, 0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.14); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-onair b { font-size: 0.8em; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; }
+.lv-onairw { display: block; max-width: 0; overflow: hidden; opacity: 0; white-space: nowrap; font-size: 0.95em; font-weight: 700; color: #fff; animation: lv-onairw 40s ease-in-out infinite; }
+.lv-onairw > span { display: block; overflow: hidden; text-overflow: ellipsis; padding-left: 0.5em; border-left: 1px solid rgba(255, 255, 255, 0.25); }
+@keyframes lv-onairw { 0% { max-width: 0; opacity: 0; } 2% { max-width: var(--w, 24em); opacity: 1; } 15% { max-width: var(--w, 24em); opacity: 1; } 17.5%, 100% { max-width: 0; opacity: 0; } }
+.lv.has-live .lv-prog2 { right: calc(clamp(16px, 1.6vw, 44px) + 7.5em); max-width: 50%; }
+@media (prefers-reduced-motion: reduce) { .lv-onairw { animation: none; } }
+@media (max-width: 760px) { .lv-onairw { --w: 10em; } .lv-rname { max-width: 32%; } }
