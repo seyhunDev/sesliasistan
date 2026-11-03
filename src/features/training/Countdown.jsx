@@ -381,7 +381,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
     `mt-3 flex h-16 w-full items-center justify-center rounded-[1.125rem] text-[1.25rem] font-semibold active:translate-y-0.5 active:shadow-none ${
       dark
         ? on
-          ? "bg-white text-[#11203a] shadow-[0_3px_0_rgba(0,0,0,.35)]"
+          ? "bg-white text-[#0b1a33] shadow-[0_3px_0_rgba(0,0,0,.35)]"
           : "ck-glass text-white shadow-[0_3px_0_rgba(0,0,0,.35)]"
         : on
           ? "bg-acc text-white shadow-[0_3px_0_color-mix(in_srgb,var(--acc)_70%,#000)]"
@@ -413,7 +413,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
   const accTx = dark ? "text-[#c4b5fd]" : "text-acc";
   const chip = (on) =>
     `h-11 min-w-0 flex-1 rounded-xl text-[1rem] font-semibold tabular-nums active:translate-y-px ${
-      dark ? (on ? "bg-white text-[#11203a]" : "ck-glass text-white/85") : on ? "bg-acc text-white" : "bg-bg text-fg2"
+      dark ? (on ? "bg-white text-[#0b1a33]" : "ck-glass text-white/85") : on ? "bg-acc text-white" : "bg-bg text-fg2"
     }`;
 
   return (

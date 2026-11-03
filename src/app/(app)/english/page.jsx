@@ -28,7 +28,7 @@ function dueText(due, today) {
 }
 const dayText = (d) => (d ? `${at(d).getDate()} ${MONTHS[at(d).getMonth()]}` : "");
 
-const CYAN = "text-[#67e8f9]";
+const CYAN = "text-[#8fb3ff]";
 // Arka plan: soluk şehir fotoğrafı (ücretsiz lisanslı Unsplash), aşağı doğru koyu zemine karışır. Yüklenemezse yalnız koyu zemin.
 const BG = "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=900&q=60&auto=format&fit=crop";
 // Arka plan resmi CSS ile: yüklenemezse kırık resim simgesi çıkmaz, koyu zemin kalır
@@ -36,12 +36,12 @@ function Photo() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] overflow-hidden">
       <div style={{ backgroundImage: `url(${BG})` }} className="size-full bg-cover bg-center opacity-35" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,22,40,.55)_0%,rgba(11,22,40,.85)_55%,#0b1628_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,22,40,.55)_0%,rgba(11,22,40,.85)_55%,#081429_100%)]" />
     </div>
   );
 }
 
-// Cümlede kelimenin geçtiği yer camgöbeği
+// Cümlede kelimenin geçtiği yer mavi
 function Marked({ text, word }) {
   if (!word) return text;
   const i = text.toLowerCase().indexOf(word.toLowerCase());
@@ -116,7 +116,7 @@ function Quiz({ qs, step, picked, onPick }) {
     <div className="py-6">
       <small className="text-[0.8125rem] tracking-[.04em] text-white/45">{ASK[q.kind]}</small>
       {q.kind === "listen" ? (
-        <button type="button" onClick={() => sayEn(q.say)} aria-label="Dinle" className="mt-4 grid size-20 place-items-center rounded-full bg-[#67e8f9]/14">
+        <button type="button" onClick={() => sayEn(q.say)} aria-label="Dinle" className="mt-4 grid size-20 place-items-center rounded-full bg-[#8fb3ff]/14">
           <Icon name="volume" className={`size-9 ${CYAN}`} />
         </button>
       ) : (
@@ -124,7 +124,7 @@ function Quiz({ qs, step, picked, onPick }) {
           {parts ? (
             <>
               {parts[0]}
-              <span className="mx-1 inline-block w-28 border-b-2 border-[#67e8f9] align-baseline" />
+              <span className="mx-1 inline-block w-28 border-b-2 border-[#8fb3ff] align-baseline" />
               {parts[1]}
             </>
           ) : (
@@ -372,7 +372,7 @@ export default function EnglishPage() {
                 primeEn();
                 setTalk(cur);
               }}
-              className="!h-12 !rounded-full !border-0 !bg-none !bg-[#67e8f9]/14 !px-7 !text-[#67e8f9] !shadow-none"
+              className="!h-12 !rounded-full !border-0 !bg-none !bg-[#8fb3ff]/14 !px-7 !text-[#8fb3ff] !shadow-none"
             >
               {!quiz ? "Konuş" : quiz.done ? "Sıradaki" : "Devam"}
             </Button>

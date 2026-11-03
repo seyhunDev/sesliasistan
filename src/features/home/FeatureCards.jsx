@@ -60,13 +60,13 @@ export function EnglishCard() {
       <ListHead title="İngilizce" href="/english" />
       <div className={CARD}>
         <Link href="/english" data-press="row" className="relative block px-4 pb-3 pt-3.5">
-          <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(14,165,196,.18),rgba(14,165,196,0)_60%)]" />
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(61, 123, 255,.18),rgba(61, 123, 255,0)_60%)]" />
           <small className="relative block text-[0.75rem] font-semibold text-mut">{w.study ? "Sıradaki kelime · tekrar bugün" : "Sıradaki kelime"}</small>
           <b className="relative mt-0.5 block truncate text-[1.875rem] font-bold leading-tight tracking-[-.02em]">
             {w.en}
             {w.type && <span className="ml-2 text-[0.875rem] font-medium text-mut">{w.type}</span>}
           </b>
-          {w.tr && <span className="relative block text-[1rem] font-semibold text-[#67e8f9]">{w.tr}</span>}
+          {w.tr && <span className="relative block text-[1rem] font-semibold text-[#8fb3ff]">{w.tr}</span>}
           {w.ex && <span className="relative mt-2 block text-[0.875rem] leading-snug text-mut">{w.ex}</span>}
         </Link>
         <div className="flex gap-2 px-4 pb-3.5">

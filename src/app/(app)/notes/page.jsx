@@ -164,7 +164,7 @@ export default function NotesPage() {
             {chips.length > 1 && (
               <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
                 {chips.map(([k, l, c]) => (
-                  <button key={k} type="button" onClick={() => setF(k)} aria-pressed={f === k} data-press className={`${pill0} ${f === k ? "border-white bg-white text-[#11203a]" : "ck-glass text-white"}`}>
+                  <button key={k} type="button" onClick={() => setF(k)} aria-pressed={f === k} data-press className={`${pill0} ${f === k ? "border-white bg-white text-[#0b1a33]" : "ck-glass text-white"}`}>
                     {l}
                     <span className="ml-1.5 tabular-nums opacity-70">{c}</span>
                   </button>

@@ -309,7 +309,7 @@ function Dues({ uid, duesAt }) {
             <span className="text-[1rem] text-white/60">/ {TL(inc.now.expected)}</span>
           </p>
           <span aria-hidden="true" className="mt-3 block h-1.5 overflow-hidden rounded-full bg-white/15">
-            <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round(pct * 100)}%` }} />
+            <span className="block h-full rounded-full bg-[#8fb3ff]" style={{ width: `${Math.round(pct * 100)}%` }} />
           </span>
           <p className="mt-1.5 flex justify-between gap-3 text-[0.8125rem] text-white/65">
             <span className="truncate capitalize">

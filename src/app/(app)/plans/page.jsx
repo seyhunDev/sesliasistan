@@ -104,7 +104,7 @@ export default function PlansPage() {
             <Icon name="cal" className="size-4" />
           </Link>
           {people.length > 0 && (
-            <label aria-label="Kimin planları" className={`btn btn-round relative size-9 ${who !== "all" ? "!border-[#67e8f9] !bg-[#0ea5c4]" : ""}`}>
+            <label aria-label="Kimin planları" className={`btn btn-round relative size-9 ${who !== "all" ? "!border-[#8fb3ff] !bg-[#3d7bff]" : ""}`}>
               <Icon name="users" className="size-4" />
               <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Kimin planları" className="absolute inset-0 cursor-pointer appearance-none opacity-0">
                 {people.map(([k, l]) => (
@@ -153,7 +153,7 @@ export default function PlansPage() {
                   <button key={p.id} type="button" onClick={() => open(p)} className="flex w-full gap-3 border-b border-white/15 py-3.5 text-left last:border-b-0 active:opacity-80">
                     <b className="w-12 shrink-0 pt-6 text-[0.9375rem] font-bold tabular-nums">{lead}</b>
                     <span className="min-w-0 flex-1">
-                      <span className="inline-block rounded-full bg-white px-2 py-px text-[0.6875rem] font-extrabold text-[#0b4f6c]">{focus.state === "now" ? "ŞU AN" : "SIRADAKİ"}</span>
+                      <span className="inline-block rounded-full bg-white px-2 py-px text-[0.6875rem] font-extrabold text-[#16305e]">{focus.state === "now" ? "ŞU AN" : "SIRADAKİ"}</span>
                       <b className="mt-1 block truncate text-[1.5rem] font-bold leading-tight tracking-[-.02em]">{p.title}</b>
                       {sub && <span className="mt-0.5 block truncate text-[0.84375rem] opacity-85">{sub}</span>}
                     </span>

@@ -15,23 +15,24 @@ Ana sayfa (2026-10-21, "C · Lacivert kokpit") bu kuralların örneğidir. Yeni 
 - Düğmelerin kısa bir adı olur ("Yoklama", "Günlük yaz"). Çıplak ok kullanılmaz. Ek işler "⋯" içine konur.
 - Boş alan bırakılmaz, sayfa sıkı durur. Yazı taşmaz (`truncate`).
 - Kısaltmalar kullanılır: Pzt, 17 Eki, ₺. Başlıklar normal harfle yazılır (büyük harf değil), yazılar semibold.
-- Tek vurgu rengi camgöbeği (Okyanus). Yeşil yalnız bitti/ödendi için. Amber yalnız gerçek uyarı için. Renk yanıp sönmez.
+- Tek vurgu rengi elektrik mavisi (Velora V, 2026-11-03). Yeşil yalnız bitti/ödendi için. Amber yalnız gerçek uyarı için. Renk yanıp sönmez.
 - Yapay zekâ yapımı görünümden kaçın: degrade, parıltı, gölgeli süs kartları yok. Kartlar düz ve ince çizgili olur.
 
-## Renkler (`src/app/globals.css` `:root`): "Okyanus" paleti (Seyhun 2026-10-22)
+## Renkler (`src/app/globals.css` `:root`): "Velora V" paleti (Seyhun 2026-11-03, logo 3: lacivert zeminde beyaz daire içinde V)
 
-Lacivert kokpit ve `.navy` sayfalar gece mavisi `#11203a` (kart `#182a48`, çizgi `#26395c`), lacivertte vurgu `#67e8f9`, seçili/ana iş `#0ea5c4`. Logo: gece mavisi zeminde camgöbeği → açık turkuaz çubuklar (`#0ea5c4` → `#a5f3fc`).
+Logo lacivert ve beyaz. Lacivert kokpit ve `.navy` sayfalar logonun laciverti `#0b1a33` (kart `#13243f`, çizgi `#24375a`), lacivertte vurgu açık mavi `#8fb3ff`, seçili/ana iş elektrik mavisi `#3d7bff`. Açık sayfalar Apple gibi: açık gri zemin, beyaz kartlar.
 
 | Token | Değer | Kullanım |
 |---|---|---|
-| `--bg` | #f2f4f6 | serin açık zemin |
-| `--card` | #fcfdfe | kart / liste zemini |
+| `--bg` | #f5f5f7 | açık zemin |
+| `--card` | #ffffff | kart / liste zemini |
 | `--fg` | #26282c | yazı |
-| `--mut` | #74777d | ikinci yazı |
-| `--line` | #e7e5df | ince çizgi |
-| `--acc` | #0b7f99 | tek vurgu (camgöbeği) |
-| `--accbg` | #e2f2f6 | açık vurgu zemini |
-| `--deep` | #0f2c45 | koyu gece mavisi |
+| `--mut` | #6e6e73 | ikinci yazı |
+| `--line` | #e5e5ea | ince çizgi |
+| `--acc` | #2563eb | tek vurgu (mavi; açık zeminde okunur tonu) |
+| `--accbg` | #e8effe | açık vurgu zemini |
+| `--deep` | #0b1a33 | logonun laciverti |
+| `--brand` | #2f6bff → #6b9bff | yalnız asistan düğmesi |
 | `--ok` | #4a8a64 | bitti / ödendi |
 | `--warn` / `--warnbg` | #a8742a / #f6eedf | uyarı |
 | `--rec` | #c8574f | kayıt / tehlike |
@@ -57,7 +58,7 @@ Tailwind'de `bg-bg`, `text-mut`, `text-acc`, `border-line` gibi sınıflarla yaz
 
 - `.ck .raised`: yarı saydam beyaz kabarık düğme.
 - `.act-main`: beyaz zemin, en önemli düğme ya da bugün.
-- `.ck-sel`: seçili olan camgöbeği (#0ea5c4). `aria-pressed` ile birlikte kullanılır.
+- `.ck-sel`: seçili olan elektrik mavisi (#3d7bff). `aria-pressed` ile birlikte kullanılır.
 - `.ck-glass`: yarı saydam kutu (şerit, ikincil düğme).
 - `.ck :is(.btn-round,.btn-back)`: yarı saydam yuvarlak düğme. Basınca açık renkte yanıp sönmez.
 

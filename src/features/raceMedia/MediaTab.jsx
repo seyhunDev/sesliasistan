@@ -414,7 +414,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
             <b className="text-[1.0625rem] font-semibold">Yeni çekim</b>
           </div>
           <div className="grid grid-cols-4 gap-1">
-            <div role="status" className="relative grid aspect-square place-items-center overflow-hidden rounded-lg bg-[#11203a] text-white">
+            <div role="status" className="relative grid aspect-square place-items-center overflow-hidden rounded-lg bg-[#0b1a33] text-white">
               <span className="flex flex-col items-center gap-1.5">
                 <Icon name="load" className="size-6 animate-spin" />
                 <span className="text-[0.6875rem] font-semibold">Kaydediliyor</span>

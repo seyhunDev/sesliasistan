@@ -6,7 +6,7 @@ import Link from "next/link";
 // (/athletes/races), Takvim ortak yarışlar (/races). Yalnız sporcu yetkisi olanda görünür; diğerleri yalnız Takvim'i görür.
 export function RaceSwitch({ on }) {
   const seg = (k, l, href) => (
-    <Link href={href} replace aria-current={on === k ? "page" : undefined} data-press className={`flex h-[2.125rem] flex-1 items-center justify-center rounded-[0.6rem] text-[0.875rem] font-semibold ${on === k ? "bg-white text-[#11203a]" : "text-white/80"}`}>
+    <Link href={href} replace aria-current={on === k ? "page" : undefined} data-press className={`flex h-[2.125rem] flex-1 items-center justify-center rounded-[0.6rem] text-[0.875rem] font-semibold ${on === k ? "bg-white text-[#0b1a33]" : "text-white/80"}`}>
       {l}
     </Link>
   );

@@ -25,7 +25,7 @@ export function RowTiles({ children }) {
 function Tile({ href, onClick, title, sub, right, warn, label }) {
   const body = (
     <>
-      <span className="truncate text-[0.75rem] font-semibold text-[#22d3ee]">{title}</span>
+      <span className="truncate text-[0.75rem] font-semibold text-[#5b8cff]">{title}</span>
       {right != null && <span className="truncate text-[1.25rem] font-bold leading-tight tracking-[-.02em] tabular-nums">{right}</span>}
       {sub && <small className={`truncate text-[0.75rem] ${warn ? "text-warn" : "text-white/60"}`}>{sub}</small>}
     </>

@@ -62,7 +62,7 @@ function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   const f = (n) => n.toFixed(1);
   // renkler temadan (koyu temada da okunsun, Seyhun 2026-10-29 "soluk, okunmuyor"); org: hat yazıları belirgin turuncu
   // navy: Parkur sekmesi lacivert zeminde (Seyhun 2026-10-29 "arka plan uygulamayla uyumlu, yazılar ince, hizalı"): sabit açık renkler, ince yazı
-  const ink = navy ? "#e6eef7" : "var(--fg, #26282c)", mut = navy ? "rgba(230,238,247,.62)" : "var(--fg2, #4a4d52)", acc = navy ? "#67e8f9" : "var(--acc, #0b7f99)", amb = "#f59e0b", org = navy ? "#fb923c" : "#e0700b", paper = navy ? "#11203a" : "var(--bg, #fff)";
+  const ink = navy ? "#eef2f8" : "var(--fg, #26282c)", mut = navy ? "rgba(230,238,247,.62)" : "var(--fg2, #4a4d52)", acc = navy ? "#8fb3ff" : "var(--acc, #2563eb)", amb = "#f59e0b", org = navy ? "#fb923c" : "#e0700b", paper = navy ? "#0b1a33" : "var(--bg, #fff)";
   const B = navy ? 500 : 700, M = navy ? 500 : 600, SW = navy ? 1.6 : 2;
   let o = "";
   const line = (a, b, st = "", sw = 2) => (o += `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${ink}" stroke-width="${sw}" ${st}/>`);
