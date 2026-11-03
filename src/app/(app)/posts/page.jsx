@@ -4,16 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
+import { ListHead } from "@/components/ui/Row";
 import { Loading } from "@/components/ui/Loader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { PostList } from "@/features/posts/PostList";
 import { archivePost, loadPosts, postsNow } from "@/features/posts/posts";
-import { Seg } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { saveSum } from "@/lib/homeTiles";
 
-// Instagram gönderileri: görsel + açıklama hazırla, kaydet, paylaş (yalnız ana hesap)
+// Instagram gönderileri (yeni tasarım, 2026-11-03): görsel + açıklama hazırla, kaydet, paylaş (yalnız ana hesap)
 export default function PostsPage() {
   const { profile } = useAuth();
   const router = useRouter();
@@ -64,17 +64,49 @@ function Posts({ orgId }) {
     }
   };
 
+  // Yeni tasarım (2026-11-03): lacivert üstte ad, sayı, "+ Gönderi" ve Gönderiler · Arşiv; altta gönderi ızgarası
+  const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
+  const shown = tab === "old" ? old : live;
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Instagram" sub={posts ? (live.length ? `${live.length} gönderi` : "Gönderi yok") + (old.length ? ` · arşivde ${old.length}` : "") : "Yükleniyor…"}>
-        <Link href="/posts/new" className="flex h-10 items-center gap-1.5 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
-          <Icon name="plus" className="size-[1.125rem]" />
-          Gönderi
-        </Link>
-      </PageHeader>
-      {error && <p className="mt-3 text-center text-[0.875rem] text-rec">{error}</p>}
-      {posts && (old.length > 0 || tab === "old") && <Seg value={tab} onChange={setTab} options={[["live", "Gönderiler", live.length], ["old", "Arşiv", old.length]]} className="mt-3" />}
-      {!posts ? <Loading label="Gönderiler yükleniyor" /> : <PostList posts={tab === "old" ? old : live} archive={tab === "old"} onArchive={flip} onOpen={(p) => router.push(`/posts/${p.id}`)} />}
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Instagram">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Instagram</h1>
+            <p className="truncate text-[0.8125rem] text-white/65">{posts ? (live.length ? `${live.length} gönderi` : "Gönderi yok") : "Yükleniyor…"}</p>
+          </div>
+          <Link href="/posts/new" data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+            <Icon name="plus" className="size-4" />
+            Gönderi
+          </Link>
+        </header>
+        {posts && (old.length > 0 || tab === "old") && (
+          <div className="-mx-5 mt-4 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
+            {[
+              ["live", "Gönderiler", live.length],
+              ["old", "Arşiv", old.length],
+            ].map(([k, l, c]) => (
+              <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={tab === k} data-press className={`${pill0} ${tab === k ? "border-white bg-white text-deep" : "ck-glass text-white"}`}>
+                {l}
+                <span className="ml-1.5 tabular-nums opacity-70">{c}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div className="relative -mx-5 -mt-6 min-h-[50vh] rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        {error && <p className="mb-3 text-center text-[0.875rem] text-rec">{error}</p>}
+        {!posts ? (
+          <Loading label="Gönderiler yükleniyor" />
+        ) : (
+          <section>
+            {shown.length > 0 && <ListHead title={tab === "old" ? "Arşiv" : "Gönderiler"} count={shown.length} />}
+            <PostList posts={shown} archive={tab === "old"} onArchive={flip} onOpen={(p) => router.push(`/posts/${p.id}`)} />
+          </section>
+        )}
+      </div>
     </main>
   );
 }

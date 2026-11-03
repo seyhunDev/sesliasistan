@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { db } from "@/lib/firebase/clientApp";
@@ -357,59 +357,65 @@ export default function MailPage() {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Hesaplar">
-        <Link href="/mail/setup" className="flex h-10 items-center rounded-full border border-line bg-card px-4 text-[0.875rem] font-semibold text-fg active:scale-95">
-          Ayarlar
-        </Link>
-      </PageHeader>
+      {/* Yeni tasarım (2026-11-03): lacivert üstte ad, Ayarlar, tek toplam (kulüp: banka + kasa; Kişisel'de gelir − gider), sekmeler ve Banka'da arama */}
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Hesaplar">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/" />
+          <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold leading-tight tracking-[-.02em]">Hesaplar</h1>
+          <Link href="/mail/setup" data-press className="raised flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+            Ayarlar
+          </Link>
+        </header>
 
-      {/* Üstte tek toplam: kulüp (banka + kasa); Kişisel sekmesinde kendi gelir − gider */}
-      {tab === "kisi" ? (
-        <section className={`${card} mt-3 px-4 py-3.5`}>
-          <p className="text-[0.8125rem] font-semibold text-mut">Kişisel toplam</p>
-          <p className="mt-0.5 text-[1.875rem] font-semibold leading-tight tabular-nums tracking-tight">
-            {personal.net < 0 ? "−" : ""}
-            {para(Math.abs(personal.net))} ₺
-          </p>
-          <p className="mt-1 text-[0.8125rem] tabular-nums text-mut">
-            Gelir {para(personal.in)} ₺ · Gider {para(personal.out)} ₺
-          </p>
-        </section>
-      ) : (
-        <button type="button" onClick={() => allAccts.length > 1 && setAcctPick(true)} className={`${card} mt-3 block w-full px-4 py-3.5 text-left`}>
-          <span className="block text-[0.8125rem] font-semibold text-mut">Kulüp toplam</span>
-          <span className="mt-0.5 block text-[1.875rem] font-semibold leading-tight tabular-nums tracking-tight">{mails === null ? "…" : `${para(bankTL + kasa.total)} ₺`}</span>
-          <span className="mt-1 block truncate text-[0.8125rem] tabular-nums text-mut">
-            {[`Banka ${para(bankTL)} ₺`, `Kasa ${para(kasa.total)} ₺`, ...otherCur.map((t) => `${para(t.total)} ${t.currency}`)].join(" · ")}
-          </span>
-        </button>
-      )}
-
-      <div role="tablist" className="mt-3 grid grid-cols-5 gap-1 rounded-xl bg-line/50 p-1">
-        {TABS.map(([k, l]) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => (setTab(k), k === "fis" && setFisSeen(true))} className={`h-9 rounded-lg text-[0.8125rem] font-semibold ${tab === k ? "bg-card text-fg shadow-[0_1px_2px_rgba(38,40,44,.08)]" : "text-mut"}`}>
-            {l}
+        {tab === "kisi" ? (
+          <div className="mt-4">
+            <p className="text-[0.8125rem] font-semibold text-white/65">Kişisel toplam</p>
+            <p className="text-[2.125rem] font-bold leading-tight tabular-nums tracking-[-.02em]">
+              {personal.net < 0 ? "−" : ""}
+              {para(Math.abs(personal.net))} ₺
+            </p>
+            <p className="truncate text-[0.8125rem] tabular-nums text-white/65">
+              Gelir {para(personal.in)} ₺ · Gider {para(personal.out)} ₺
+            </p>
+          </div>
+        ) : (
+          <button type="button" onClick={() => allAccts.length > 1 && setAcctPick(true)} className="mt-4 block w-full text-left">
+            <span className="block text-[0.8125rem] font-semibold text-white/65">Kulüp toplam</span>
+            <span className="block text-[2.125rem] font-bold leading-tight tabular-nums tracking-[-.02em]">{mails === null ? "…" : `${para(bankTL + kasa.total)} ₺`}</span>
+            <span className="block truncate text-[0.8125rem] tabular-nums text-white/65">
+              {[`Banka ${para(bankTL)} ₺`, `Kasa ${para(kasa.total)} ₺`, ...otherCur.map((t) => `${para(t.total)} ${t.currency}`)].join(" · ")}
+            </span>
           </button>
-        ))}
-      </div>
+        )}
 
-      <div className="mt-4">
+        <div role="tablist" className="mt-4 grid grid-cols-5 gap-1.5">
+          {TABS.map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => (setTab(k), k === "fis" && setFisSeen(true))} data-press className={`h-9 truncate rounded-xl border px-1 text-[0.8125rem] font-semibold ${tab === k ? "border-white bg-white text-deep" : "ck-glass text-white"}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {tab === "banka" && mails !== null && (
+          <label className="ck-glass mt-3 flex h-11 items-center gap-2 rounded-2xl px-3.5">
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ad ya da açıklama ara" enterKeyHint="search" className="h-full min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-white/50 [&::-webkit-search-cancel-button]:hidden" />
+            {q && (
+              <button type="button" onClick={() => setQ("")} aria-label="Aramayı temizle" data-press className="grid size-7 shrink-0 place-items-center rounded-full text-white/70">
+                <Icon name="x" className="size-4" />
+              </button>
+            )}
+          </label>
+        )}
+      </section>
+
+      <div className="relative -mx-5 -mt-6 min-h-[50vh] rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {tab === "banka" &&
           (mails === null ? (
             <Loading />
           ) : (
             <>
-              <label className={`${card} flex h-11 items-center gap-2 px-3.5`}>
-                <Icon name="search" className="size-4 shrink-0 text-mut" />
-                <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ad ya da açıklama ara" enterKeyHint="search" className="h-full min-w-0 flex-1 bg-transparent text-[1rem] outline-none [&::-webkit-search-cancel-button]:hidden" />
-                {q && (
-                  <button type="button" onClick={() => setQ("")} aria-label="Aramayı temizle" data-press className="btn btn-round btn-sm size-7 shrink-0 text-mut">
-                    <Icon name="x" className="size-3.5" />
-                  </button>
-                )}
-              </label>
               {q.trim() && (
-                <div className={`${card} mt-3 flex items-center gap-3 px-4 py-3`}>
+                <div className={`${card} mb-6 flex items-center gap-3 px-3.5 py-3`}>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[0.9375rem] font-medium">{q.trim()}</span>
                     <span className="block text-[0.8125rem] text-mut">{bankShown.length} hareket</span>
@@ -420,9 +426,7 @@ export default function MailPage() {
                   </span>
                 </div>
               )}
-              <div className="mt-4">
-                <MonthList key={q} rows={bankShown.map(bankRow)} empty={q.trim() ? "Bu aramayla hareket yok" : "Banka hareketi yok"} />
-              </div>
+              <MonthList key={q} rows={bankShown.map(bankRow)} empty={q.trim() ? "Bu aramayla hareket yok" : "Banka hareketi yok"} />
             </>
           ))}
 
@@ -447,18 +451,18 @@ export default function MailPage() {
             <Loading />
           ) : (
             <>
-              <Group title="Ödenecek" total={toPaySum} rows={toPay} className="mb-5" />
+              <Group title="Ödenecek" total={toPaySum} rows={toPay} className="mb-6" />
               <MonthList rows={fisRows} empty={toPay.length ? "" : "Fiş ya da fatura yok"} />
-              <Link href="/receipts" className={`${card} mt-5 flex h-11 items-center justify-center text-[0.875rem] font-semibold text-acc`}>
-                Filtre ve Excel
+              <Link href="/receipts" className="mt-6 block text-center text-[0.875rem] font-semibold text-acc active:opacity-70">
+                Filtre ve Excel ›
               </Link>
             </>
           ))}
 
         {tab === "borc" && (
           <>
-            <Group title="Geri gelecek" total={lentSum} rows={lentOpen.map(debtRow)} className="mb-5" />
-            <Group title="Benim borcum" total={personal.debt} rows={personal.debts.map(personalRow)} className="mb-5" />
+            <Group title="Geri gelecek" total={lentSum} rows={lentOpen.map(debtRow)} className="mb-6" />
+            <Group title="Benim borcum" total={personal.debt} rows={personal.debts.map(personalRow)} className="mb-6" />
             {!lentOpen.length && !personal.debts.length && <p className={`${card} px-4 py-5 text-center text-[0.9375rem] text-mut`}>Açık borç yok</p>}
             <Fold title="Ödenenler" rows={lentClosed.map(debtRow)} />
           </>
@@ -541,17 +545,17 @@ export default function MailPage() {
       <Sheet open={!!manual} onClose={() => setManual(null)} title={manual?.book === "personal" ? (manual.dir === "debt" ? "Borcum" : manual.dir === "out" ? "Kişisel gider" : "Kişisel gelir") : manual?.amount < 0 ? "Nakit çıkış" : "Nakit giriş"}>
         {manual && (
           <div className="space-y-3 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
-            <p className={`text-[1.5rem] font-semibold tabular-nums ${manual.amount > 0 ? "text-ok" : manual.dir === "debt" ? "text-amber-700" : ""}`}>{amt(manual.dir === "debt" ? -Math.abs(manual.amount) : manual.amount)} ₺</p>
+            <p className={`text-[1.5rem] font-semibold tabular-nums ${manual.amount > 0 ? "text-ok" : manual.dir === "debt" ? "text-warn" : ""}`}>{amt(manual.dir === "debt" ? -Math.abs(manual.amount) : manual.amount)} ₺</p>
             {manual.conv && <p className="text-[0.8125rem] text-mut">Bankadan nakite çevrildi.</p>}
             <p className="text-[0.9375rem]">{[manual.who && <b key="w" className="font-semibold">{manual.who}</b>, manual.note, manual.date].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, " · ", x] : [x]), [])}</p>
             {manual.cash && manual.key && <p className="text-[0.8125rem] text-mut">{inKasa(manual, cashData.meta) ? "Kasaya sayılıyor." : kasa.archived.some((x) => x.key === manual.key) ? "Arşivde, kasaya sayılmıyor." : "Kasaya sayılmıyor."}</p>}
             {manual.dir === "debt" && (
-              <button type="button" onClick={() => payMyDebt(manual)} className="h-11 w-full rounded-xl bg-ok/10 text-[0.875rem] font-semibold text-ok">
+              <button type="button" onClick={() => payMyDebt(manual)} data-press className="btn btn-secondary w-full">
                 {manual.paid ? "Ödenmedi olarak işaretle" : "Borcu ödedim"}
               </button>
             )}
             {manual.cash && manual.key && !kasa.archived.some((x) => x.key === manual.key) && (
-              <button type="button" onClick={() => include(manual, !inKasa(manual, cashData.meta))} className="h-11 w-full rounded-xl bg-acc/10 text-[0.875rem] font-semibold text-acc">
+              <button type="button" onClick={() => include(manual, !inKasa(manual, cashData.meta))} data-press className="btn btn-secondary w-full">
                 {inKasa(manual, cashData.meta) ? "Kasadan çıkar" : "Kasaya ekle"}
               </button>
             )}
@@ -571,12 +575,12 @@ export default function MailPage() {
               </button>
             )}
             {kasaLink(manual) && (
-              <button type="button" onClick={() => (kasaLink(manual).kind === "invoice" ? (setManual(null), setTab("fis"), setFisSeen(true)) : router.push(kasaLink(manual).href))} className="h-11 w-full rounded-xl bg-acc/10 text-[0.875rem] font-semibold text-acc">
+              <button type="button" onClick={() => (kasaLink(manual).kind === "invoice" ? (setManual(null), setTab("fis"), setFisSeen(true)) : router.push(kasaLink(manual).href))} data-press className="btn btn-secondary w-full">
                 {kasaLink(manual).kind === "receipt" ? "Fişi aç" : "Faturaları aç"}
               </button>
             )}
             {canEditCash(manual) && (
-              <button type="button" onClick={() => (setManual(null), setAdd({ book: manual.book, dir: manual.dir, edit: { incomeId: manual.incomeId, dir: manual.dir, cat: manual.cat, who: manual.who, amount: manual.amount, day: dayOf(manual), memo: manual.memo } }))} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+              <button type="button" onClick={() => (setManual(null), setAdd({ book: manual.book, dir: manual.dir, edit: { incomeId: manual.incomeId, dir: manual.dir, cat: manual.cat, who: manual.who, amount: manual.amount, day: dayOf(manual), memo: manual.memo } }))} data-press className="btn btn-secondary w-full">
                 Düzenle
               </button>
             )}

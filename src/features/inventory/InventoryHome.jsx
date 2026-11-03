@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
-import { Label, card } from "@/components/ui/Page";
+import { ListHead, RowList } from "@/components/ui/Row";
+import { Empty } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { Field } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
@@ -44,50 +45,57 @@ export function InventoryHome({ orgId }) {
     }
   };
 
+  // Yeni tasarım (2026-11-03): lacivert üstte ad, sayı ve "+ Envanter"; altta Envanterler listesi (ad · ürün/adet · kategoriler)
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Envanter" sub={list ? `${list.length} envanter` : "Yükleniyor…"}>
-        <button type="button" onClick={() => setAdd({ name: "", kind: "normal" })} data-press className="btn btn-primary btn-sm">
-          <Icon name="plus" className="size-[1.125rem]" />
-          Envanter
-        </button>
-      </PageHeader>
-      {error && <p className="mt-3 text-center text-[0.875rem] text-rec">{error}</p>}
-      {!list ? (
-        <Loading label="Envanter yükleniyor" />
-      ) : (
-        <>
-          <Label right={list.length}>ENVANTERLER</Label>
-          <ul className="space-y-2.5">
-            {list.map((v) => (
-              <li key={v.id}>
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Envanter">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Envanter</h1>
+            <p className="truncate text-[0.8125rem] text-white/65">{list ? `${list.length} envanter` : "Yükleniyor…"}</p>
+          </div>
+          <button type="button" onClick={() => setAdd({ name: "", kind: "normal" })} data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+            <Icon name="plus" className="size-4" />
+            Envanter
+          </button>
+        </header>
+      </section>
+
+      <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        {error && <p className="text-center text-[0.875rem] text-rec">{error}</p>}
+        {!list ? (
+          <Loading label="Envanter yükleniyor" />
+        ) : !list.length ? (
+          !error && <Empty icon="box" title="Envanter yok" />
+        ) : (
+          <section>
+            <ListHead title="Envanterler" count={list.length} />
+            <RowList>
+              {list.map((v) => (
                 <button
+                  key={v.id}
                   type="button"
                   onClick={() => {
                     if (going) return;
                     setGoing(v.id);
                     router.push(`/inventory/${v.id}`);
                   }}
-                  className={`${card} flex w-full items-center gap-3 p-3.5 text-left transition duration-150 active:scale-[.97] active:bg-acc/10 ${going === v.id ? "scale-[.98] bg-acc/10 ring-2 ring-acc/40" : ""}`}
+                  data-press="row"
+                  className={`flex min-h-[3.5rem] w-full items-center gap-3 border-t border-line py-2.5 text-left first:border-t-0 ${going === v.id ? "text-acc" : ""}`}
                 >
-                  <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-acc/10 text-acc">
-                    <Icon name={kindOf(v.kind)[2]} className="size-6" />
-                  </span>
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[0.9375rem] font-semibold">{v.name}</b>
-                    <span className="block truncate text-[0.8125rem] text-mut">{statsText(v)}</span>
-                    <span className="mt-0.5 block truncate text-[0.75rem] text-mut">{v.cats.slice(0, 6).join(", ")}</span>
+                    <small className="block truncate text-[0.8125rem] text-mut">{[statsText(v), v.cats.slice(0, 6).join(", ")].filter(Boolean).join(" · ")}</small>
                   </span>
+                  <span className="shrink-0 text-[0.8125rem] font-semibold text-mut">{kindOf(v.kind)[1]}</span>
                   <Icon name={going === v.id ? "load" : "chev"} className={`size-4 shrink-0 ${going === v.id ? "animate-spin text-acc" : "text-mut"}`} />
                 </button>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-5 px-1 text-[0.8125rem] leading-relaxed text-mut">
-            Asistana söyle: “Envantere 3 Optimist teknesi ekle”, “envanterden 2 şamandıra çıkar”, “kulüp envanterinde kaç telsiz var”. Envanter sayfasındayken “envanter” demene gerek yok.
-          </p>
-        </>
-      )}
+              ))}
+            </RowList>
+          </section>
+        )}
+      </div>
 
       <Sheet open={!!add} onClose={() => setAdd(null)} title="Yeni envanter">
         {add && (
