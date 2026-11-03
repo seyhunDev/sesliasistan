@@ -187,3 +187,14 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-tile b { font-size: 0.875rem; font-weight: 700; }
 /* Alt düğme çubuğu ekranın en altına oturur, altında boşluk kalmaz (Seyhun 2026-11-03) */
 .masa-bar { bottom: 0 !important; padding-bottom: 0 !important; box-shadow: 0 30vh 0 #0e1829; }
+
+/* Parkur sekmesi (Seyhun 2026-11-03): kart seçici A · B · + ve son ölçüm kutuları */
+.masa-seg { display: flex; flex-shrink: 0; gap: 0.125rem; border-radius: 999px; background: var(--chip); padding: 0.1875rem; }
+.masa-seg > button { height: 2rem; min-width: 2.25rem; border-radius: 999px; padding: 0 0.625rem; font-size: 0.875rem; font-weight: 700; color: var(--mut); }
+.masa-seg > button:active { transform: scale(0.95); }
+.masa-seg > button[aria-pressed="true"] { background: var(--acc); color: #fff; }
+.masa-meas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.masa-meas > div { padding: 0.625rem 0.75rem; min-width: 0; }
+.masa-meas small { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--mut); }
+.masa-meas b { display: block; margin-top: 0.125rem; font-size: 0.9375rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.masa-meas span { display: block; font-size: 0.75rem; font-weight: 600; color: var(--mut); font-variant-numeric: tabular-nums; }
