@@ -1065,3 +1065,60 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-wcells > div > b { font-size: 1.15em; font-weight: 700; }
 .lv-wcells > div.on { background: linear-gradient(180deg, rgba(255, 61, 119, 0.3), rgba(255, 154, 77, 0.14)); }
 @media (max-width: 760px) { .lv-side.lv-band { position: static; flex-direction: column; gap: 1.2em; padding: 1em 0; mask-image: none; -webkit-mask-image: none; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; } .lv-band > div { flex: none; width: 100%; } }
+/* Senaryo 2 (yayin-tasarim/senaryo/2b-videosuz-donen.png): start'a 1 saatten az. Solda sayaç + sıradaki yarış + bayraklar sabit, sağda tek
+   dönen panel (8 sn'de bir kayar, altında noktalar), altta 5·4·1·0 çubuğu. Videoda (2b-videolu-donen.png) hepsi alt bantta */
+.lv-topr2 { display: flex; align-items: center; gap: 1em; z-index: 3; }
+.lv-opill { display: inline-flex; align-items: center; gap: 0.5em; padding: 0.3em 0.7em 0.3em 0.5em; border-radius: 0.4em; background: rgba(255, 122, 26, 0.18); color: #ffa45c; font-weight: 700; letter-spacing: 0.16em; }
+.lv-opill i { width: 1.3em; height: 0.9em; border-radius: 2px; background: #ff7a1a; }
+.lv-hold2 { grid-template-columns: 46fr 54fr; grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "clock one" "seq seq"; column-gap: 2vw; padding: 11vh clamp(16px, 2.5vw, 44px) 4vh 4vw; }
+.lv-nclock { grid-area: clock; display: flex; flex-direction: column; align-items: flex-start; gap: 0.3em; min-width: 0; }
+.lv-hold2 .lv-big { font-size: clamp(90px, 13vw, 270px); line-height: 0.88; margin-left: -0.03em; }
+.lv-hold2 .lv-what { flex-wrap: wrap; justify-content: flex-start; text-align: left; font-size: 1.6em; }
+.lv-nclock .lv-sflags { margin-top: 0.8em; }
+.lv-nclock .lv-sfl .lv-flag { font-size: 1.9em; }
+.lv-nclock .lv-sfl b { font-size: 1.2em; }
+.lv-nclock .lv-sfl small { font-size: 0.85em; }
+.lv-one { grid-area: one; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; text-align: right; min-width: 0; }
+.lv-oneb { max-width: 100%; animation: lv-slidein 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes lv-slidein { from { opacity: 0; transform: translateX(1.5em); } to { opacity: 1; transform: none; } }
+.lv-oneb small { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.95em; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+.lv-oneb b { display: flex; align-items: center; justify-content: flex-end; gap: 0.2em; margin-top: 0.2em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(40px, 4.8vw, 96px); font-weight: 700; line-height: 1.05; overflow-wrap: anywhere; }
+.lv-oneb b.y { color: #ffd23f; }
+.lv-oneb b em { font-style: normal; font-size: 0.32em; font-weight: 600; color: rgba(255, 255, 255, 0.65); margin-left: 0.25em; }
+.lv-oneb b .lv-arrow { width: 0.85em; height: 0.85em; margin-right: 0.15em; border-color: rgba(255, 255, 255, 0.45); }
+.lv-oneb b .lv-dot { width: 0.4em; height: 0.4em; margin-right: 0.15em; }
+.lv-oneb span { display: block; margin-top: 0.45em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.35em; font-weight: 600; letter-spacing: 0.03em; color: rgba(255, 255, 255, 0.75); }
+.lv-oneb .lv-route { display: flex; justify-content: flex-end; align-items: center; margin-top: 0.5em; }
+.lv-oneb .lv-route span { display: inline-flex; align-items: center; }
+.lv-oneb .lv-route i { display: grid; place-items: center; width: 2.6em; height: 2.6em; border-radius: 50%; background: rgba(255, 255, 255, 0.16); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.3em; font-style: normal; font-weight: 700; }
+.lv-oneb .lv-route s { display: block; width: 1em; height: 2px; background: rgba(255, 255, 255, 0.35); }
+.lv-dots { display: flex; justify-content: flex-end; gap: 0.5em; margin-top: 1.2em; }
+.lv-dots i { display: block; width: 0.55em; height: 0.55em; border-radius: 0.3em; background: rgba(255, 255, 255, 0.3); transition: width 0.4s, background 0.4s; }
+.lv-dots i.on { width: 1.6em; background: #fff; }
+.lv-seq { grid-area: seq; display: flex; gap: 0.5em; margin-top: 1.5em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-seq > div { flex: 1; min-width: 0; }
+.lv-seq s { display: block; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.18); text-decoration: none; }
+.lv-seq > div.done s { background: #fff; }
+.lv-seq > div.now s { background: linear-gradient(90deg, #ff3d77, #ff9a4d var(--lv-f, 0%), rgba(255, 255, 255, 0.18) var(--lv-f, 0%)); }
+.lv-seq span { display: block; margin-top: 0.6em; font-size: 0.95em; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-seq > div.done span { color: rgba(255, 255, 255, 0.7); }
+.lv-seq > div.now span { color: #fff; }
+.lv-side.lv-band2 { flex-direction: column; align-items: stretch; gap: 0; padding-top: 1.6em; background: linear-gradient(180deg, rgba(6, 22, 43, 0.5), rgba(6, 22, 43, 0.82) 30%); mask-image: none; -webkit-mask-image: none; }
+.lv-brow { display: flex; align-items: flex-start; justify-content: space-between; gap: 2vw; }
+.lv-band2 .lv-nclock { flex: 0 1 auto; }
+.lv-band2 .lv-big { font-size: clamp(56px, 7.4vw, 150px); line-height: 0.9; }
+.lv-band2 .lv-what { font-size: 1.35em; }
+.lv-band2 .lv-nclock .lv-sfl .lv-flag { font-size: 1.5em; }
+.lv-band2 .lv-one { flex: 1 1 0; padding-top: 1.2em; justify-content: flex-start; }
+.lv-band2 .lv-oneb b { font-size: clamp(34px, 4vw, 80px); }
+.lv-band2 .lv-seq { margin-top: 1em; }
+@media (max-width: 760px) {
+  .lv-hold2 { display: flex; padding: 9vh 0 2em; }
+  .lv-hold2 .lv-big { font-size: 24vw; }
+  .lv-one, .lv-band2 .lv-one { align-items: flex-start; text-align: left; padding-top: 0; }
+  .lv-oneb b, .lv-oneb .lv-route { justify-content: flex-start; }
+  .lv-dots { justify-content: flex-start; }
+  .lv-brow { flex-direction: column; gap: 1.2em; }
+  .lv-topr2 { position: static; order: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .lv-oneb { animation: none; } }
