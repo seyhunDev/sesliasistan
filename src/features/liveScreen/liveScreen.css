@@ -999,3 +999,69 @@ button.lv-p:active { transform: translateY(1px); }
 /* Videolu yarış öncesi tehir etiketi (Seyhun 2026-11-03): AP bayrağı + "Tehir" */
 .lv-skick.ap { color: #ffcf33; background: rgba(255, 207, 51, 0.14); padding-left: 0.45em; }
 .lv-skick.ap .lv-flag { font-size: 0.9em; }
+/* Senaryo 1 (Seyhun 2026-11-03 onay): yarış günü, videosuz üç sütun — geri sayım + program | parkur | rüzgâr; olmayan sütun çizilmez */
+.lv-hold3 { grid-template-columns: 30fr 40fr 30fr; column-gap: 2vw; padding: 0 clamp(16px, 2.5vw, 44px) 0 0; }
+.lv-hold3[data-cols="2"] { grid-template-columns: 38fr 62fr; }
+.lv-hold3 .lv-hwnd .lv-wrows, .lv-hold3 .lv-hwnd .lv-wnow { max-width: 26em; }
+.lv-hold3[data-cols="1"] { grid-template-columns: 1fr; }
+.lv-hold3 .lv-hst { justify-content: flex-start; gap: 0.3em; padding: 11vh 0 3vh 4vw; }
+.lv-hold3 .lv-big { font-size: clamp(56px, 7vw, 126px); }
+.lv-hold3 .lv-what { font-size: 1.25em; }
+.lv-hold3 .lv-hprog { margin-top: 1.4em; }
+.lv-hold3 .lv-hst .lv-slprog { width: 100%; font-size: 0.74em; }
+.lv-hold3 .lv-hst .lv-slprog > div:nth-child(n + 8) { display: none; }
+.lv-hold3 .lv-hst .lv-slprog > div.done { opacity: 0.4; }
+.lv-topr { position: absolute; right: clamp(16px, 2.5vw, 44px); top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top) + 0.2em); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.05em; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+.lv-hcrs, .lv-hwnd { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 11vh 0 3vh; }
+.lv-hcrs .lv-sceneb { flex: 1; min-height: 0; margin-top: 0.4em; }
+.lv-hcrs .lv-sceneb svg { width: 100%; height: 100%; }
+.lv-cinfo { display: flex; gap: 1.6em; margin-top: 0.8em; padding-top: 0.8em; border-top: 1px solid rgba(255, 255, 255, 0.18); }
+.lv-cinfo small { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.72em; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+.lv-cinfo b { display: block; margin-top: 0.15em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.5em; font-weight: 700; white-space: nowrap; }
+.lv-hlab.sm { margin-top: 1.4em; font-size: 0.72em; color: rgba(255, 255, 255, 0.45); }
+.lv-wnow { display: flex; align-items: center; gap: 0.8em; margin-top: 0.5em; }
+.lv-wnow .lv-arrow { width: 3.2em; height: 3.2em; flex: none; margin: 0; }
+.lv-wnow { justify-content: flex-start; }
+.lv-wnow .kn { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(34px, 3.2vw, 64px); font-weight: 700; line-height: 1; }
+.lv-wnow .kn em { margin-left: 0.2em; font-size: 0.36em; font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.65); }
+.lv-wnow span { display: block; margin-top: 0.2em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1em; font-weight: 600; letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.7); white-space: nowrap; }
+.lv-wrows { margin-top: 0.3em; display: flex; flex-direction: column; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-wrows > div { display: grid; grid-template-columns: 3.4em 1.6em 1fr 2.8em; align-items: center; column-gap: 0.5em; padding: 0.3em 0.4em; border-radius: 0.6em; }
+.lv-wrows > div > span { font-size: 1.1em; font-weight: 600; color: rgba(255, 255, 255, 0.6); }
+.lv-wrows > div > i { display: block; width: 1.2em; height: 1.2em; background: #fff; clip-path: polygon(50% 0, 85% 85%, 50% 68%, 15% 85%); }
+.lv-wrows > div > i.no { visibility: hidden; }
+.lv-wrows > div > b { font-size: 1.4em; font-weight: 700; }
+.lv-wrows > div > small { font-size: 0.9em; color: rgba(255, 255, 255, 0.55); text-align: right; }
+.lv-wrows > div.got > b { color: #7fdcff; }
+.lv-wrows > div.on { background: linear-gradient(90deg, rgba(255, 61, 119, 0.25), rgba(255, 154, 77, 0.12)); }
+.lv-wrows > div.on > span { color: #fff; }
+@media (max-width: 760px) {
+  .lv-hold3, .lv-hold3[data-cols="2"] { display: flex; }
+  .lv-hold3 .lv-hst, .lv-hcrs, .lv-hwnd { padding: 0; }
+  .lv-hcrs .lv-sceneb { flex: none; }
+  .lv-hcrs .lv-sceneb svg { height: auto; }
+  .lv-topr { position: static; order: 0; }
+}
+/* Senaryo 1 videolu (yayin-tasarim/senaryo/1-videolu.png): altta bulanık bant, dört blok yan yana */
+.lv-side.lv-band { top: auto; right: 0; bottom: 0; left: 0; width: auto; height: auto; flex-direction: row; align-items: flex-start; gap: 2.5vw; padding: 2.2em clamp(16px, 2.5vw, 44px) calc(1.6em + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(6, 22, 43, 0), rgba(6, 22, 43, 0.55) 22%, rgba(6, 22, 43, 0.78)); mask-image: linear-gradient(0deg, #000 78%, transparent); -webkit-mask-image: linear-gradient(0deg, #000 78%, transparent); }
+.lv-band > div { min-width: 0; }
+.lv-band .lv-bclock { flex: 0 0 25%; }
+.lv-band .lv-bprog { flex: 1 1 0; }
+.lv-band .lv-bcrs { flex: 0 0 22%; }
+.lv-band .lv-bwnd { flex: 0 0 19%; }
+.lv-band .lv-sbig { font-size: clamp(48px, 6.4vw, 118px); line-height: 0.95; }
+.lv-band .lv-slprog { width: 100%; font-size: 0.72em; margin-top: 0.3em; }
+.lv-band .lv-route { display: flex; align-items: center; margin-top: 0.5em; }
+.lv-band .lv-route span { display: inline-flex; align-items: center; }
+.lv-band .lv-route i { display: grid; place-items: center; width: 2em; height: 2em; border-radius: 50%; background: rgba(255, 255, 255, 0.16); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.1em; font-style: normal; font-weight: 700; }
+.lv-band .lv-route s { display: block; width: 0.9em; height: 2px; background: rgba(255, 255, 255, 0.35); }
+.lv-band .lv-cinfo { border-top: 0; padding-top: 0; margin-top: 0.9em; gap: 1.3em; }
+.lv-band .lv-wnow .kn { font-size: clamp(30px, 2.6vw, 50px); }
+.lv-wcells { display: flex; gap: 0.3em; margin-top: 0.7em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-wcells > div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.15em; padding: 0.3em 0.1em; border-radius: 0.5em; }
+.lv-wcells > div > span { font-size: 0.8em; font-weight: 600; color: rgba(255, 255, 255, 0.55); }
+.lv-wcells > div > i { display: block; width: 0.9em; height: 0.9em; background: #fff; clip-path: polygon(50% 0, 85% 85%, 50% 68%, 15% 85%); }
+.lv-wcells > div > i.no { visibility: hidden; }
+.lv-wcells > div > b { font-size: 1.15em; font-weight: 700; }
+.lv-wcells > div.on { background: linear-gradient(180deg, rgba(255, 61, 119, 0.3), rgba(255, 154, 77, 0.14)); }
+@media (max-width: 760px) { .lv-side.lv-band { position: static; flex-direction: column; gap: 1.2em; padding: 1em 0; mask-image: none; -webkit-mask-image: none; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; } .lv-band > div { flex: none; width: 100%; } }
