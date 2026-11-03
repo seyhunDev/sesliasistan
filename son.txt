@@ -1,8 +1,8 @@
-Commit: e757517 · Tekne takibi: teknedeki telefondan konum, şamandıra yanından geçince dönüş, yayında harita (#1024)
-Zaman: 2026-11-03-0025 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41525837247
+Commit: 2922778 · Hava verisi: saatlik hissedilen sıcaklık ve günlük yağış toplamı (#1025)
+Zaman: 2026-11-03-0642 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41572669533
 
-TAM TEST · 03.11.2026 00:12:07
+TAM TEST · 03.11.2026 06:31:31
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1433/1437 geçti · 4 kalan · 738 sn
+SONUÇ: 1436/1437 geçti · 1 kalan · 638 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4363 test”
+      ✗ “4364 test”
           beklenen: hepsi geçer
-          olan:     4362/4363 geçti
+          olan:     4363/4364 geçti
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
 
 2. ANLAMA: temiz cümleler: 121/121
@@ -144,12 +144,9 @@ SONUÇ: 1433/1437 geçti · 4 kalan · 738 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 137/140
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 140/140
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 8/9
-      ✗ “gün penceresi Yapıldı”
-          beklenen: plan satırında Yapıldı işareti: dokununca yapıldı, yeniden dokununca geri alınır
-          olan:     yapıldı 1 · çizili 1 · geri 0
+  ✓ Ana sayfa: 9/9
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
@@ -173,13 +170,7 @@ SONUÇ: 1433/1437 geçti · 4 kalan · 738 sn
   ✓ Tam ekran üstte: 1/1
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
-  ✗ Hava: 1/3
-      ✗ “yağmur grafiği”
-          beklenen: yağışlı günde grafiğin altında saat saat çubuk ve tek satır özet; kuvvetli yağış bekleniyorsa özette "kuvvetli" (kehribar)
-          olan:     çubuk 0 · özet ""
-      ✗ “ölçülen / beklenen yağmur”
-          beklenen: şimdiye kadar beyaz çubuk (yağan), sonrası mavi (tahmin); özette "4 mm yağdı"; tek satır açıklama
-          olan:     yağan 1 · tahmin 0 · özet "YağmurŞimdi yağıyor · sonra beklenmiyor" · açıklama false (16 px)
+  ✓ Hava: 3/3
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
