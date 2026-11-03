@@ -15,6 +15,7 @@
   --line: #e7e5df;
   --acc: #0b7f99;
   --acc2: #0b7f99; /* gradyan kullanan eski dosyalar düz renk görünsün */
+  --on-acc: #fff; /* camgöbeği zemin üstündeki yazı: açık temada beyaz, koyu temada ve lacivertte koyu lacivert (açık camgöbeğinde beyaz okunmuyor) */
   --deep: #0f2c45;
   --brand: linear-gradient(140deg, #0ea5c4 8%, #38bdf8 55%, #a5f3fc 100%);
   --rec: #c8574f;
@@ -38,6 +39,7 @@ html[data-theme="dark"] {
   --line: #2e3236;
   --acc: #4fc8e0;
   --acc2: #4fc8e0;
+  --on-acc: #06283a;
   --rec: #e0675e;
   --ok: #55a374;
   --fg2: #b3b4b1;
@@ -607,11 +609,11 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
     --btn-top: #ffffff;
     --btn-bot: color-mix(in srgb, var(--card) 80%, var(--line));
   }
-  html[data-theme="dark"] .btn { --btn-top: color-mix(in srgb, var(--card) 88%, var(--fg)); --btn-bot: var(--card); }
+  html[data-theme="dark"] .btn, .navy .btn { --btn-top: color-mix(in srgb, var(--card) 88%, var(--fg)); --btn-bot: var(--card); }
   .btn-sm { height: 2.25rem; padding: 0 .75rem; border-radius: .75rem; font-size: .84375rem; }
   .btn:disabled { opacity: .5; }
   .btn-primary {
-    color: #fff;
+    color: var(--on-acc);
     border: 1px solid color-mix(in srgb, var(--acc) 72%, #000);
     background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 82%, #fff) 0%, var(--acc) 100%);
   }
@@ -796,8 +798,8 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .food-fade { background: linear-gradient(90deg, #182a48 30%, rgba(24, 42, 72, .85) 48%, rgba(24, 42, 72, 0) 80%); }
 /* Yan yana Yemek · Market · Giyim kartları (ShopCards; Seyhun 2026-10-25): fotoğraf alttaki yazıya doğru solar */
 .shop-fade { background: linear-gradient(180deg, rgba(24, 42, 72, .1) 10%, rgba(24, 42, 72, .75) 55%, #182a48 92%); }
-.food-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.95rem; border-radius: 0.6875rem; background: #0ea5c4; color: #fff; font-size: 0.875rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
-.food-btn2 { background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); }
+.food-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.95rem; border-radius: 0.6875rem; background: #0ea5c4; color: #06283a; font-size: 0.875rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+.food-btn2 { background: rgba(255, 255, 255, .08); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); }
 .food-step { height: 5px; border-radius: 5px; background: rgba(255, 255, 255, .12); }
 .food-step.on { background: #22d3ee; }
 /* Kokpitteki beyaz küçük düğme (Süre) */
@@ -821,7 +823,7 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 /* Kokpitteki iş düğmeleri (HomeGrid › ActionGrid pill): ince camgöbeği çerçeveli, alçak, yuvarlak; tarih kutularına benzemez. Günün ana işi dolu camgöbeği */
 .ck .raised.ck-pill { height: 2.5rem; border-radius: 9999px; background: transparent; border: 1.5px solid rgba(103, 232, 249, .55); box-shadow: none; color: #fff; font-size: 0.875rem; }
 .ck .raised.ck-pill[data-pressed] { background: rgba(103, 232, 249, .16); transform: scale(.97); }
-.ck .raised.ck-pill.act-main { background: #0ea5c4; border-color: #0ea5c4; color: #fff; }
+.ck .raised.ck-pill.act-main { background: #0ea5c4; border-color: #0ea5c4; color: #06283a; }
 /* İkonlu iş düğmesi (HomeGrid › ActionGrid icons; Seyhun 2026-10-25 "B · İki sütun, camgöbeği ikon"): solda büyük camgöbeği ikon kartın kenarından içeri
    girer ve sağa doğru solar, yazı sağında. Hepsi aynı görünür, Yoklama da vurgusuz (Seyhun 2026-10-25) */
 .ck .raised.ck-ibtn { position: relative; overflow: hidden; height: 3.5rem; padding-left: 4rem; border-radius: 1rem; font-size: 0.9375rem; color: #fff; }
@@ -852,7 +854,7 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 /* Kokpitte yarı saydam kutu (antrenman sayacının şeridi ve düğmeleri, training/Countdown dark) */
 .ck-glass { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); }
 /* Kokpitteki seçili gün (HomeDays: penceresi açık gün) */
-.ck .raised.ck-sel { background: #0ea5c4; color: #fff; border-color: #67e8f9; }
+.ck .raised.ck-sel { background: #0ea5c4; color: #06283a; border-color: #67e8f9; }
 /* Başka gün seçiliyken bugün: beyaz çerçeveli (HomeDays) */
 .ck .raised.ck-tout { background: rgba(255, 255, 255, .08); color: #fff; border-color: #fff; box-shadow: inset 0 0 0 0.5px #fff, 0 2px 0 rgba(0, 0, 0, .35); }
 /* LACİVERT BÖLÜM (ana sayfanın alt kısmı, gün penceresi; Seyhun 2026-10-22): kokpitin devamı. Değişkenler lacivert tonlara çevrilir,
@@ -866,6 +868,7 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
   --line: #26395c;
   --acc: #67e8f9;
   --acc2: #67e8f9;
+  --on-acc: #06283a;
   --accbg: #143a52;
   --fg2: #c4d0e2;
   --ok: #5fbf86;
@@ -896,3 +899,7 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #060d1a !important; }
 .afull-in .apill { animation: apillin .4s cubic-bezier(.22, .8, .24, 1) .06s both; }
 @keyframes apillin { from { opacity: 0; transform: translateY(.75rem); } }
 @media (prefers-reduced-motion: reduce) { .afull-in .apill { animation: none; } }
+
+/* Camgöbeği zemin + beyaz yazı (Seyhun 2026-11-03: gün penceresinde düğme yazısı okunmuyordu): koyu temada ve lacivert bölümde
+   vurgu açık camgöbeği olduğu için yazı koyu lacivert olur; açık temada beyaz kalır */
+.bg-acc.text-white { color: var(--on-acc); }
