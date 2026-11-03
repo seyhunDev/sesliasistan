@@ -778,6 +778,10 @@ function Races({ id, starts, cur, sel, fleets, rounds, entries, onClose }) {
 // Arka plan tam ekran: ekranda canlı yayın ya da tekrar varsa video (yumuşak açılır, kenarlar koyulaşır), yoksa deniz zemini.
 // Üstüne köşelerde ince paneller: sol üst sıralama (sıra, yelken, kısa ad, kulüp kısaltması), üst orta yarış adı ve mesaj,
 // sağ üst parkur, sol alt rüzgâr, alt orta sayaç, sağ alt sıradaki start + genel sıralama. Üç evre: yarış öncesi, yarış, gün sonu.
+// Arka plan görüntüsü ve geçiş (Seyhun 2026-11-03 "video yüklenirken hemen yayına alma; önce arka planda yüklensin, sonra profesyonel geçiş"):
+// yeni kaynak görünmez katmanda yüklenir (iframe/video/resim hazır olunca ya da en geç LOAD_MS sonra), sonra eskisiyle çapraz geçişle öne gelir
+const LOAD_MS = 8000;
+const FADE_MS = 1100;
 function Backdrop({ data, isCur, entry }) {
   const scr = isCur ? data.screen || {} : {};
   // canlı yayın ya da drone; ekrandaki yarışın grubuna kamera bağlıysa o kamera (lib/raceCams.js)
@@ -786,8 +790,30 @@ function Backdrop({ data, isCur, entry }) {
   const on = !!(yt || rec);
   const st = useFade(on, 900);
   const vref = useRef(null);
-  const [last, setLast] = useState(null); // kapanırken solarken gösterilen son görüntü
-  if (on && (last?.yt !== yt || last?.rec?.id !== rec?.id || last?.loop !== !!scr.loop)) setLast({ yt, rec, loop: !!scr.loop });
+  const key = yt ? `y:${yt}` : rec ? `r:${rec.id}:${scr.loop ? 1 : 0}` : "";
+  const [layers, setLayers] = useState([]); // {k, yt, rec, loop, s: "load" | "in" | "out"}
+  const [seen, setSeen] = useState("");
+  if (key !== seen) {
+    setSeen(key);
+    if (key) {
+      const nl = { k: key, yt, rec, loop: !!scr.loop };
+      setLayers((ls) => (ls.some((l) => l.k === key) ? ls : [...ls.filter((l) => l.s !== "load"), { ...nl, s: st && ls.length ? "load" : "in" }]));
+    }
+  }
+  if (!on && !st && layers.length) setLayers([]);
+  const ready = (k) => setLayers((ls) => (ls.some((l) => l.k === k && l.s === "load") ? ls.map((l) => (l.k === k ? { ...l, s: "in" } : l.s === "in" ? { ...l, s: "out" } : l)) : ls));
+  const loadK = layers.find((l) => l.s === "load")?.k || "";
+  const outN = layers.filter((l) => l.s === "out").length;
+  useEffect(() => {
+    if (!loadK) return undefined;
+    const t = setTimeout(() => ready(loadK), LOAD_MS);
+    return () => clearTimeout(t);
+  }, [loadK]);
+  useEffect(() => {
+    if (!outN) return undefined;
+    const t = setTimeout(() => setLayers((ls) => ls.filter((l) => l.s !== "out")), FADE_MS + 200);
+    return () => clearTimeout(t);
+  }, [outN]);
   // Duraklatılınca tekrar videosu durur, sürdürülünce devam eder (canlı yayın iframe'i yalnız karartılır)
   useEffect(() => {
     const v = vref.current;
@@ -795,23 +821,28 @@ function Backdrop({ data, isCur, entry }) {
     if (scr.pause) v.pause();
     else v.play?.().catch?.(() => {});
   }, [scr.pause, on]);
-  const show = on ? { yt, rec, loop: !!scr.loop } : last;
-  // dikey telefon videosu (h > w) kırpılmaz: ortada tam boy, iki yanı bulanık kopyası (Seyhun 2026-11-01 "dikey ve yatay video güzel gösterilsin")
-  const tall = !!(show?.rec?.w && show.rec.h > show.rec.w);
   return (
     <>
       <Sea photo={on ? "" : BG_PHOTO} />
-      {st && show ? (
-        <div className={`lv-bg ${st}${tall ? " tall" : ""}`} aria-hidden="true">
-          {tall && show.rec?.kind === "video" ? <video className="lv-bgblur" src={show.rec.url} autoPlay muted playsInline loop /> : null}
-          {show.yt ? (
-            <iframe title="Canlı yayın" src={show.yt} allow="autoplay; encrypted-media; picture-in-picture" />
-          ) : show.rec?.kind === "video" ? (
-            <video ref={vref} key={show.rec.id} src={show.rec.url} poster={show.rec.thumb || undefined} autoPlay muted playsInline loop={show.loop} />
-          ) : show.rec ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={show.rec.url} alt="" />
-          ) : null}
+      {st && layers.length ? (
+        <div className={`lv-bg ${st}`} aria-hidden="true">
+          {layers.map((l) => {
+            // dikey telefon videosu (h > w) kırpılmaz: ortada tam boy, iki yanı bulanık kopyası (Seyhun 2026-11-01 "dikey ve yatay video güzel gösterilsin")
+            const tall = !!(l.rec?.w && l.rec.h > l.rec.w);
+            return (
+              <div key={l.k} className={`lv-bgl ${l.s}${tall ? " tall" : ""}`}>
+                {tall && l.rec?.kind === "video" ? <video className="lv-bgblur" src={l.rec.url} autoPlay muted playsInline loop /> : null}
+                {l.yt ? (
+                  <iframe title="Canlı yayın" src={l.yt} allow="autoplay; encrypted-media; picture-in-picture" onLoad={() => ready(l.k)} />
+                ) : l.rec?.kind === "video" ? (
+                  <video ref={l.s === "in" ? vref : undefined} src={l.rec.url} poster={l.rec.thumb || undefined} autoPlay muted playsInline loop={l.loop} onCanPlay={() => ready(l.k)} />
+                ) : l.rec ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={l.rec.url} alt="" onLoad={() => ready(l.k)} />
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       ) : null}
       {on && scr.pause ? (
