@@ -63,9 +63,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
         </Link>
       </header>
 
-      <div className="mt-3">{days}</div>
-      {live}
-
+      {/* Sıra (Seyhun 2026-11-03 "A · Günlerin altında"): hava ve saat tablosu en üstte, altında günler, sonra canlı yarış şeridi, sonra plan */}
       {far ? (
         // Yarış başka yerde (Seyhun 2026-10-28 "A · Alt alta ince"): iki ince şerit üst üste, yarış yeri ve ev yeri; dokununca ayrıntı
         // İki şerit aynı ölçekte (7 kn ile 15 kn aynı boyda görünmesin)
@@ -110,6 +108,9 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
           {rows?.length > 0 && <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} className="mt-2.5" />}
         </>
       )}
+
+      <div className="mt-3">{days}</div>
+      {live}
       </div>
       {isToday ? <NextPlan now={now} /> : <DayPlans date={date} onOpen={onOpenDay} />}
       {children}
