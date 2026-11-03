@@ -287,6 +287,14 @@ function LeadIn() {
 // race: o sayfanın yarış akışı; yalnız sayaç o sayfanın ve yarışa bağlıysa (rid) çağrılır. Akışa önceki kayıt verilir (Geri al için).
 // own: sayacın sahibi sayfa (ana sayfadaki yarış şeridi yarışın multimedya sayfası adına başlatır/bitirir; Seyhun 2026-10-27)
 const flowOf = (race, t, own) => (race && t.rid && (own ? ownedBy(t.own, own) : mineHere(t)) ? race : null);
+// Süre seçimi (Yayın satırlarındaki 5 · 4 · 2 · 1 dk): duran sayacın süresi, bu telefonda saklanır (Countdown'daki choose ile aynı)
+export function chooseDur(sec) {
+  try {
+    localStorage.setItem(DUR, String(sec));
+  } catch {}
+  const t = readTimer();
+  write({ dur: sec, end: null, left: null, zero: t.zero, own: "", where: "" });
+}
 export function raceStart(race, mode = "start", where = "", own = ownHere()) { // race yoksa düz start (yarış açılmaz)
   const t = { ...readTimer(), own, where };
   audio();
