@@ -339,7 +339,41 @@ export function cleanScreen(s) {
 export const SHOW_ONE = ["course", "wind", "prog"];
 // side: videolu yarış öncesi ekranda soldaki bilgi şeridi (Seyhun 2026-11-02 "istersem kaldırabilmeliyim"), varsayılan açık
 // ov: yarışta (start'tan sonra) sağdaki genel sıralama (Seyhun 2026-11-02 "göster ya da kaldır yapabilmeliyim"), varsayılan açık
-export const cleanCourseShow = (c) => ({ auto: c?.auto !== false, at: typeof c?.at === "string" ? c.at.slice(0, 30) : "", one: SHOW_ONE.includes(c?.one) ? c.one : "", side: c?.side !== false, ov: c?.ov !== false });
+// Yarış öncesi gösterim akışı (Seyhun 2026-11-03 17:10 sol-alt onayı): beklenen rüzgâr (rüzgârın yanında açılır) → parkur → rota → program.
+// Yayın'da Otomatik (sec saniyede bir sıradaki, döner) ya da Elle (hold: ekrandaki adımın adı); pre: açık adımlar
+export const PRE_STEPS = ["wind", "course", "route", "prog"];
+export const PRE_NAME = { wind: "Beklenen rüzgâr", course: "Parkur", route: "Rota", prog: "Program" };
+export const PRE_SECS = [8, 12, 20, 30];
+export const cleanCourseShow = (c) => ({
+  auto: c?.auto !== false,
+  at: typeof c?.at === "string" ? c.at.slice(0, 30) : "",
+  one: SHOW_ONE.includes(c?.one) ? c.one : "",
+  side: c?.side !== false,
+  ov: c?.ov !== false,
+  sec: PRE_SECS.includes(Number(c?.sec)) ? Number(c.sec) : 12,
+  pre: Array.isArray(c?.pre) ? PRE_STEPS.filter((k) => c.pre.includes(k)) : [...PRE_STEPS],
+  hold: PRE_STEPS.includes(c?.hold) ? c.hold : "wind",
+});
+// Akışta o an gösterilen adım; have: ekranda gösterilebilenler (veri yoksa adım atlanır). Otomatikte "at"tan (Yayın'da Başa al) itibaren döner.
+export function preSteps(show, have = PRE_STEPS) {
+  return cleanCourseShow(show).pre.filter((k) => have.includes(k));
+}
+export function preStep({ show, now, have = PRE_STEPS }) {
+  const c = cleanCourseShow(show);
+  const steps = preSteps(c, have);
+  if (!steps.length) return "";
+  if (!c.auto) return steps.find((k) => PRE_STEPS.indexOf(k) >= PRE_STEPS.indexOf(c.hold)) || steps[0];
+  const at = Date.parse(c.at) || 0;
+  return steps[Math.floor(Math.max(0, now - at) / (c.sec * 1000)) % steps.length];
+}
+// Yayın'da Geri / İleri / Durdur: o anki adımdan elle sürdür
+export function preMove(show, now, by = 0, have = PRE_STEPS) {
+  const c = cleanCourseShow(show);
+  const steps = preSteps(c, have);
+  if (!steps.length) return c;
+  const cur = Math.max(0, steps.indexOf(preStep({ show: c, now, have })));
+  return { ...c, auto: false, hold: steps[(cur + by + steps.length) % steps.length] };
+}
 // Yarış öncesi gösterim sırası (Seyhun 2026-11-02 "parkuru gösterdik, sonra rüzgâr grafiği, sonra başka ne gösterebiliyorsak; yarış başlayınca gösterilmemeli"):
 // slides = ekranda olanlar sırayla (ör. ["course","wind","prog"]), her biri SHOW_ON. Otomatikte her SHOW_CYCLE'da bir tur;
 // Yayın'dan "Göster" (at) o andan bir tur. pre değilse (yarış başladı) hiçbiri. Döndürür: o an gösterilen ("" yok)
