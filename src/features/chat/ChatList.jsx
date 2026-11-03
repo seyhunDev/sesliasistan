@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
+import { RowList, ListHead, SkelRow } from "@/components/ui/Row";
+import { Empty } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useNow } from "@/hooks/useNow";
 import { toMs, useChat } from "./ChatProvider";
@@ -28,7 +30,6 @@ export function ChatList() {
   const [resetting, setResetting] = useState(false);
   const [filter, setFilter] = useState("all"); // all | unread | groups
   const [q, setQ] = useState("");
-  const [find, setFind] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
 
   const now = useNow(3000).getTime();
@@ -61,7 +62,7 @@ export function ChatList() {
       unread: c.unread,
       group: c.type !== "dm",
       open: () => router.push(`/messages?c=${c.id}`),
-      avatar: <Avatar name={c.title} photo={c.type === "dm" ? other?.photo : undefined} icon={GROUPS[c.id]?.icon || (c.type === "group" ? "chat" : null)} online={isOnline(other)} size="size-[3.25rem]" tone={GROUPS[c.id] ? "bg-deep text-white" : undefined} />,
+      avatar: <Avatar name={c.title} photo={c.type === "dm" ? other?.photo : undefined} icon={GROUPS[c.id]?.icon || (c.type === "group" ? "chat" : null)} online={isOnline(other)} size="size-11" tone={GROUPS[c.id] ? "bg-deep text-white" : undefined} />,
       preview: typers.length ? (
         <span className="font-medium text-acc">{c.type === "dm" ? "yazıyor…" : `${typers.join(", ")} yazıyor…`}</span>
       ) : c.last ? (
@@ -115,15 +116,15 @@ export function ChatList() {
 
   const row = (x) => (
     <li key={x.key}>
-      <button type="button" onPointerDown={() => x.c && warm(x.c.id)} onClick={x.open} data-press="row" className="flex w-full items-center gap-3.5 px-5 text-left transition">
-        <span className="py-2.5">{x.avatar}</span>
-        <span className="min-w-0 flex-1 self-stretch border-b border-line/80 py-3">
+      <button type="button" onPointerDown={() => x.c && warm(x.c.id)} onClick={x.open} data-press="row" className="flex min-h-[3.5rem] w-full items-center gap-3 px-3.5 py-2.5 text-left">
+        {x.avatar}
+        <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
-            <b className={`min-w-0 flex-1 truncate text-[1rem] leading-snug ${x.unread ? "font-bold" : "font-semibold"}`}>{x.title}</b>
+            <b className={`min-w-0 flex-1 truncate text-[0.9375rem] leading-snug ${x.unread ? "font-bold" : "font-semibold"}`}>{x.title}</b>
             <time className={`shrink-0 text-[0.75rem] tabular-nums ${x.unread ? "font-semibold text-acc" : "text-mut"}`}>{x.at ? listTime(x.at) : ""}</time>
           </span>
-          <span className="mt-1 flex items-center gap-2">
-            <span className={`line-clamp-1 min-w-0 flex-1 text-[0.875rem] leading-snug ${x.unread ? "text-fg" : "text-mut"}`}>{x.preview}</span>
+          <span className="mt-0.5 flex items-center gap-2">
+            <span className={`line-clamp-1 min-w-0 flex-1 text-[0.8125rem] leading-snug ${x.unread ? "text-fg" : "text-mut"}`}>{x.preview}</span>
             {x.muted && <Icon name="mute" className="size-4 shrink-0 text-mut" />}
             {x.unread > 0 && (
               <span className={`grid h-[1.375rem] min-w-[1.375rem] shrink-0 place-items-center rounded-full px-1.5 text-[0.75rem] font-bold tabular-nums text-white ${x.muted ? "bg-mut" : "bg-acc"}`}>
@@ -136,138 +137,116 @@ export function ChatList() {
       </button>
     </li>
   );
+  const listCls = "overflow-hidden rounded-[1.25rem] border border-line bg-card [&>*+*]:border-t [&>*+*]:border-line";
+  const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
 
   return (
     // min-h-lvh: liste kısa olsa da sayfa en az ekran boyu; Safari alt çubuğu küçülmüş kalır, alt menü yerinden oynamaz
-    <main className="mx-auto min-h-lvh max-w-[30rem] pb-[calc(8rem+env(safe-area-inset-bottom))]">
-      {/* Başlık: diğer sayfalardaki PageHeader ile aynı (geri, başlık + kısa alt satır, sağda yeni sohbet); altında arama ve süzgeç */}
-      <header className="sticky top-0 z-10 bg-bg/90 px-4 pb-2.5 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur">
-        <div className="flex items-center gap-2.5">
-          <BackButton href="/" className="-my-0.5 touch-manipulation" />
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[1.375rem] font-semibold leading-tight tracking-tight">Mesajlar</h1>
-            <p className="truncate text-[0.8125rem] text-mut">{chatCount ? `${chatCount} sohbet` : "Henüz sohbet yok"}</p>
+    <main className="mx-auto min-h-lvh max-w-[30rem] px-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      {/* Yeni tasarım (2026-11-03): lacivert üstte geri, ad, "+ Sohbet", arama, Tümü · Okunmamış · Gruplar ve sabit grup kısa yolları */}
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Mesajlar">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/" className="touch-manipulation" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-semibold tracking-[-.02em]">Mesajlar</h1>
+            <p className="truncate text-[0.8125rem] text-white/65">{chatCount ? `${chatCount} sohbet` : "Henüz sohbet yok"}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setNewOpen(true)}
-            aria-label="Yeni sohbet"
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-card text-acc shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-90"
-          >
-            <Icon name="edit" className="size-[1.125rem]" />
+          <button type="button" onClick={() => setNewOpen(true)} data-press className="ck-btn shrink-0 !flex items-center gap-1">
+            <Icon name="plus" className="size-4" />
+            Sohbet
           </button>
-        </div>
-        {find ? (
-          <label className="mt-2.5 flex h-10 items-center gap-2.5 rounded-xl bg-line/60 px-3.5">
-            <Icon name="search" className="size-[1.125rem] text-mut" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} type="search" placeholder="Ara" autoFocus className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-mut" />
-            <button type="button" onClick={() => (setQ(""), setFind(false))} aria-label="Aramayı kapat" data-press className="btn btn-icon btn-sm size-8 -mr-1.5 text-mut">
+        </header>
+
+        <label className="ck-glass mt-4 flex h-11 items-center gap-2 rounded-2xl px-3.5">
+          <Icon name="search" className="size-[1.125rem] shrink-0 text-white/55" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} type="search" placeholder="Ara" enterKeyHint="search" className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-white/50" />
+          {q && (
+            <button type="button" onClick={() => setQ("")} aria-label="Aramayı temizle" data-press className="grid size-7 place-items-center rounded-full text-white/70">
               <Icon name="x" className="size-4" />
             </button>
-          </label>
-        ) : (
-          <div className="mt-2.5 flex items-center gap-1.5">
-            <button type="button" onClick={() => setFind(true)} aria-label="Ara" className="grid h-9 w-10 shrink-0 place-items-center rounded-xl bg-line/60 text-mut">
-              <Icon name="search" className="size-[1.125rem]" />
+          )}
+        </label>
+        <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
+          {[
+            ["all", "Tümü"],
+            ["unread", "Okunmamış", unreadCount],
+            ["groups", "Gruplar"],
+          ].map(([k, label, n]) => (
+            <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={filter === k} data-press className={`${pill0} ${filter === k ? "border-white bg-white text-deep" : "ck-glass text-white"}`}>
+              {label}
+              {n > 0 && <span className="ml-1.5 tabular-nums opacity-70">{n}</span>}
             </button>
-            <div className="flex min-w-0 flex-1 rounded-xl bg-line/60 p-[3px]">
-              {[
-                ["all", "Tümü"],
-                ["unread", "Okunmamış", unreadCount],
-                ["groups", "Gruplar"],
-              ].map(([k, label, n]) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setFilter(k)}
-                  aria-pressed={filter === k}
-                  className={`flex h-[1.875rem] min-w-0 flex-1 items-center justify-center gap-1 rounded-[0.5625rem] text-[0.8125rem] font-semibold transition ${
-                    filter === k ? "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.14)]" : "text-mut"
-                  }`}
-                >
-                  <span className="truncate">{label}</span>
-                  {n > 0 && <span className="tabular-nums text-acc">{n}</span>}
+          ))}
+        </div>
+
+        {/* Sabit gruplar (Ekip, Aile, Sporcular): türüne uyan herkes otomatik üye; kişiye "+ Sohbet" ya da aramayla yazılır */}
+        {cardIds.length > 0 && (
+          <div className={`mt-3 grid gap-2 ${cardIds.length >= 3 ? "grid-cols-3" : cardIds.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
+            {cardIds.map((g) => {
+              const c = chats.find((x) => x.id === g);
+              const at = toMs(c?.last?.at);
+              return (
+                <button key={g} type="button" onPointerDown={() => c && !c._ghost && warm(g)} onClick={() => router.push(`/messages?c=${g}`)} data-press className="ck-glass relative flex min-w-0 items-center gap-2 rounded-2xl p-2.5 text-left">
+                  <Avatar icon={GROUPS[g].icon} size="size-[2.125rem]" tone="bg-white/10 text-white" />
+                  <span className="min-w-0">
+                    <b className="block truncate text-[0.8125rem] font-semibold leading-tight text-white">{GROUPS[g].name}</b>
+                    <small className={`block truncate text-[0.6875rem] ${c?.unread ? "font-semibold text-white" : "text-white/60"}`}>{at ? listTime(at) : "Yaz"}</small>
+                  </span>
+                  {c?.unread > 0 && !c.mutedByMe && (
+                    <span className="absolute -right-1 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-rec px-1 text-[0.6875rem] font-bold tabular-nums text-white ring-2 ring-deep">{c.unread > 99 ? "99+" : c.unread}</span>
+                  )}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
-      </header>
+      </section>
 
-      {denied && (
-        <div className="mx-5 mb-2 rounded-2xl bg-amber-50 px-4 py-3 text-[0.8125rem] leading-snug text-amber-900 ring-1 ring-amber-200">
-          <b className="block font-semibold">Mesajlaşma henüz açılmadı</b>
-          {orgId === uid
-            ? "Firebase kuralları güncel değil. Terminalde firebase deploy --only firestore:rules çalıştır ya da Console › Firestore › Rules'dan yayınla."
-            : "Ana hesabın Firebase kurallarını güncellemesi gerekiyor. Güncellenince kişiler ve sohbetler burada görünür."}
-        </div>
-      )}
+      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        {denied && (
+          <div className="rounded-[1.25rem] border border-line bg-warnbg px-3.5 py-3 text-[0.8125rem] leading-snug text-warn">
+            <b className="block font-semibold">Mesajlaşma henüz açılmadı</b>
+            {orgId === uid
+              ? "Firebase kuralları güncel değil. Terminalde firebase deploy --only firestore:rules çalıştır ya da Console › Firestore › Rules'dan yayınla."
+              : "Ana hesabın Firebase kurallarını güncellemesi gerekiyor. Güncellenince kişiler ve sohbetler burada görünür."}
+          </div>
+        )}
 
-      {/* Sabit gruplar (Ekip, Aile, Sporcular): türüne uyan herkes otomatik üye; kişiye kalemle ya da aramayla yazılır */}
-      {cardIds.length > 0 && (
-        <div className={`grid gap-2 px-5 pb-1 pt-1.5 ${cardIds.length >= 3 ? "grid-cols-3" : cardIds.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
-          {cardIds.map((g) => {
-            const c = chats.find((x) => x.id === g);
-            const at = toMs(c?.last?.at);
-            return (
-              <button key={g} type="button" onPointerDown={() => c && !c._ghost && warm(g)} onClick={() => router.push(`/messages?c=${g}`)} className="relative flex min-w-0 items-center gap-2 rounded-2xl bg-card p-2.5 text-left shadow-[0_1px_2px_rgba(38,40,44,.06)]">
-                <Avatar icon={GROUPS[g].icon} size="size-[2.125rem]" tone="bg-deep text-white" />
-                <span className="min-w-0">
-                  <b className="block truncate text-[0.8125rem] font-semibold leading-tight">{GROUPS[g].name}</b>
-                  <small className={`block truncate text-[0.6875rem] ${c?.unread ? "font-semibold text-acc" : "text-mut"}`}>{at ? listTime(at) : "Yaz"}</small>
-                </span>
-                {c?.unread > 0 && !c.mutedByMe && (
-                  <span className="absolute -right-1 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-rec px-1 text-[0.6875rem] font-bold tabular-nums text-white ring-2 ring-bg">{c.unread > 99 ? "99+" : c.unread}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      {cardIds.length > 0 && rows.length > 0 && <p className="px-5 pb-1 pt-3.5 text-[0.6875rem] font-bold tracking-[0.06em] text-mut">SOHBETLER</p>}
+        {rows.length ? (
+          <section>
+            <ListHead title="Sohbetler" count={rows.length} />
+            <ul className={listCls}>{rows.map(row)}</ul>
+          </section>
+        ) : !ready ? (
+          <RowList>
+            {[0, 1, 2].map((i) => (
+              <SkelRow key={i} />
+            ))}
+          </RowList>
+        ) : (
+          <Empty icon="chat" title={q ? `“${q}” bulunamadı` : filter === "unread" ? "Okunmamış mesaj yok" : "Henüz sohbet yok"} />
+        )}
 
-      {rows.length ? (
-        <ul className="mt-1">{rows.map(row)}</ul>
-      ) : !ready ? (
-        <ul className="mt-1" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <li key={i} className="flex items-center gap-3.5 px-5 py-2.5">
-              <span className="size-[3.25rem] shrink-0 animate-pulse rounded-full bg-line/70" />
-              <span className="flex-1 space-y-2">
-                <span className="block h-3.5 w-2/5 animate-pulse rounded-full bg-line/70" />
-                <span className="block h-3 w-3/4 animate-pulse rounded-full bg-line/50" />
+        {archRows.length > 0 && (
+          <section>
+            <button type="button" onClick={() => setShowArch((v) => !v)} aria-expanded={showArch} data-press className="mb-1.5 flex w-full items-center justify-between gap-3 px-1">
+              <span className="text-[0.8125rem] font-bold tracking-[.04em] text-mut">
+                ARŞİV<span className="ml-1.5 font-semibold tabular-nums">{archRows.length}</span>
               </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="mx-5 mt-10 flex flex-col items-center text-center">
-          <span className="grid size-14 place-items-center rounded-full bg-acc/10 text-acc">
-            <Icon name="chat" className="size-7" />
-          </span>
-          <p className="mt-3 max-w-[16rem] text-[0.9375rem] leading-snug text-mut">
-            {q ? `“${q}” bulunamadı.` : filter === "unread" ? "Okunmamış mesaj yok." : "Henüz sohbet yok. Kalemle yeni sohbet başlat."}
-          </p>
-        </div>
-      )}
+              <span className="text-[0.8125rem] font-semibold text-acc">{showArch ? "Gizle" : "Göster"}</span>
+            </button>
+            {showArch && <ul className={listCls}>{archRows.map(row)}</ul>}
+          </section>
+        )}
 
-      {archRows.length > 0 && (
-        <>
-          <button type="button" onClick={() => setShowArch((v) => !v)} aria-expanded={showArch} data-press className="btn btn-text btn-sm w-full text-mut">
-            <span>Arşiv · {archRows.length}</span>
-            <span className="text-acc">{showArch ? "Gizle" : "Göster"}</span>
-          </button>
-          {showArch && <ul>{archRows.map(row)}</ul>}
-        </>
-      )}
-
-      {owner && ready && !denied && (
-        <div className="px-5 pt-10">
-          <button type="button" disabled={resetting} onClick={reset} data-press className="btn btn-danger w-full">
-            {resetting ? "Bekle…" : "Mesajları sıfırla"}
-          </button>
-        </div>
-      )}
+        {owner && ready && !denied && (
+          <div className="pt-4">
+            <button type="button" disabled={resetting} onClick={reset} data-press className="btn btn-danger w-full">
+              {resetting ? "Bekle…" : "Mesajları sıfırla"}
+            </button>
+          </div>
+        )}
+      </div>
 
       <NewChatSheet open={newOpen} onClose={() => setNewOpen(false)} />
     </main>
