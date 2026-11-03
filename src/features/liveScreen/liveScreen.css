@@ -1156,3 +1156,6 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-band .lv-sbig + .lv-swhat { margin-top: 0.3em; }
 .lv-band .lv-slprog b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lv-band .lv-wh { max-width: 100%; overflow: hidden; }
+
+/* Tekne replay'i (Yayın › Video › Tekneler, features/tracking/BoatReplay; Seyhun 2026-11-03) */
+.lv-boats { position: fixed; inset: 0; z-index: 0; animation: lv-fade 1.2s ease-out both; }
