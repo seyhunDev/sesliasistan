@@ -264,35 +264,54 @@ struct Hap: ButtonStyle {
     }
 }
 
-// Logo "Ses halkası" (widget'taki Logo): 24 çubuk, ortada beyaz nokta; koyu lacivert kürenin içinde
-private struct LogoCubuklari: Shape {
+// Velora logosu (Seyhun 2026-11-03): beyaz dairenin içinden oyulmuş dolu V, üstü açık.
+// Ölçüler src/components/ui/AppLogo.jsx (MARK_DISC, MARK_V) ile aynı; işaret kutusu x 18…82, y 18…86 (64 × 68 birim).
+private struct LogoV: Shape {
     func path(in rect: CGRect) -> Path {
-        let boy: [CGFloat] = [60, 100, 140, 90, 120, 70, 150, 85]
-        let o = rect.width / 760
-        let m = CGPoint(x: rect.midX, y: rect.midY)
+        let o = rect.width / 64
+        func n(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: rect.minX + (x - 18) * o, y: rect.minY + (y - 18) * o) }
         var p = Path()
-        for i in 0..<24 {
-            let a = CGFloat(i) * .pi / 12
-            let (sn, cs) = (sin(a), -cos(a))
-            p.move(to: CGPoint(x: m.x + sn * 200 * o, y: m.y + cs * 200 * o))
-            p.addLine(to: CGPoint(x: m.x + sn * (200 + boy[i % 8]) * o, y: m.y + cs * (200 + boy[i % 8]) * o))
-        }
+        p.move(to: n(26, 19))
+        p.addLine(to: n(35.6, 19))
+        p.addCurve(to: n(50, 55.8), control1: n(42, 35), control2: n(46, 47.8))
+        p.addLine(to: n(59.6, 19))
+        p.addLine(to: n(74, 19))
+        p.addLine(to: n(56.4, 67))
+        p.addLine(to: n(43.6, 67))
+        p.closeSubpath()
         return p
     }
 }
 
+private struct LogoDaire: Shape {
+    func path(in rect: CGRect) -> Path {
+        let o = rect.width / 64
+        return Path(ellipseIn: CGRect(x: rect.minX + 2 * o, y: rect.minY + 4 * o, width: 60 * o, height: 60 * o))
+    }
+}
+
+// Zeminsiz işaret: daire beyaz, V boşluğundan arkası görünür
+private struct LogoIsaret: View {
+    var boy: CGFloat
+    var body: some View {
+        ZStack {
+            LogoDaire().fill(Color.white)
+            LogoV().fill(Color.black).blendMode(.destinationOut)
+        }
+        .compositingGroup()
+        .frame(width: boy, height: boy * 68 / 64)
+    }
+}
+
+// Saat ana ekranındaki logo: koyu lacivert (#0b1a33) kürenin içinde beyaz işaret
 struct LogoKure: View {
     var body: some View {
         GeometryReader { g in
             let w = min(g.size.width, g.size.height)
             ZStack {
-                Circle().fill(RadialGradient(colors: [Color(red: 0.078, green: 0.22, blue: 0.353), Color(red: 0.043, green: 0.11, blue: 0.2)], center: .center, startRadius: 0, endRadius: w / 2))
-                Circle().stroke(Color(red: 0.12, green: 0.3, blue: 0.42), lineWidth: 1.5)
-                LogoCubuklari()
-                    .stroke(LinearGradient(colors: [vurgu, Color(red: 0.647, green: 0.953, blue: 0.988)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                            style: StrokeStyle(lineWidth: w * 0.78 * 30 / 760, lineCap: .round))
-                    .frame(width: w * 0.78, height: w * 0.78)
-                Circle().fill(.white).frame(width: w * 0.78 * 128 / 760, height: w * 0.78 * 128 / 760)
+                Circle().fill(Color(red: 0.043, green: 0.102, blue: 0.2))
+                Circle().stroke(Color.white.opacity(0.14), lineWidth: 1.5)
+                LogoIsaret(boy: w * 0.56)
             }
             .frame(width: w, height: w)
         }

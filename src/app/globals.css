@@ -463,22 +463,20 @@ select {
 .vlight.vl-sm .vl-wave i { width: 2.5px; }
 
 /* AÇILIŞ EKRANI (BootSplash, lib/boot.js): tek katman, yükleme aşamaları boyunca yerinde durur.
-   Koyu lacivert zemin (ana ekran simgesiyle aynı; açık ve koyu modda aynı), ortada Velora logosu: 24 ses çubuğu sırayla
-   ortadan dışa uzar, ortadaki ışık yanar, altında Velora yazısı belirir; yükleme sürerken çubuklar konuşur gibi kısalıp
-   uzar. Bitince logo büyüyüp ekran solar; aynı anda sayfa altından belirir (html[data-boot=enter] main) ve asistan kubbesi yükselir. */
+   Koyu lacivert zemin (ana ekran simgesiyle aynı #0b1a33; açık ve koyu modda aynı), ortada Velora logosu (daire içinde V),
+   altında Velora yazısı belirir; yükleme sürerken daire hafifçe nefes alır. Bitince logo büyüyüp ekran solar; aynı anda sayfa altından belirir (html[data-boot=enter] main) ve asistan kubbesi yükselir. */
 html[data-warm] .boot { display: none; } /* anında açılış: telefondaki kopyayla sayfa hemen çizilir (lib/warmStart.js) */
 .boot { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; overflow: hidden; color: #e8ecff; }
-.boot-bg { position: absolute; inset: 0; background: radial-gradient(120% 75% at 50% 38%, #1a2e52 0%, #0a1730 55%, #0a1426 100%); }
+.boot-bg { position: absolute; inset: 0; background: radial-gradient(120% 75% at 50% 38%, #172a4d 0%, #0b1a33 55%, #08142a 100%); }
 .boot::before { content: ""; position: absolute; left: 50%; top: 42%; width: 26rem; height: 26rem; transform: translate(-50%, -50%); border-radius: 9999px;
-  background: radial-gradient(closest-side, rgba(14, 165, 196, .22), rgba(34, 211, 238, .08) 60%, transparent); animation: bootglow 2.6s ease-in-out infinite; }
+  background: radial-gradient(closest-side, rgba(61, 123, 255, .2), rgba(61, 123, 255, .06) 60%, transparent); animation: bootglow 2.6s ease-in-out infinite; }
 .boot-mark { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: -6vh; }
-.boot-logo { display: block; width: 9.5rem; height: 9.5rem; overflow: visible; }
-/* her çubuk iç ucundan büyür (çizimde 512,312; view-box 132'den başladığı için köken 380px 180px; döndürme dıştaki g'de) */
-.boot-ray { transform-origin: 380px 180px; transform-box: view-box;
-  animation: bootray .5s cubic-bezier(.2, .9, .3, 1) calc(var(--i) * 28ms) both, boottalk 1.3s ease-in-out calc(1.2s + var(--i) * 70ms) infinite; }
-.boot-core { transform-origin: 380px 380px; transform-box: view-box; animation: bootcore .6s cubic-bezier(.2, .9, .3, 1.4) .15s both; }
-.boot-core-glow { opacity: .5; filter: blur(14px); transform-origin: 380px 380px; transform-box: view-box;
-  animation: bootcore .6s cubic-bezier(.2, .9, .3, 1) .15s both, bootbeat 1.3s ease-in-out 1.2s infinite; }
+.boot-logo { display: block; width: 8rem; height: 8.5rem; overflow: visible; }
+/* Logo (2026-11-03): daire büyüyerek gelir, V yukarıdan inip daireyi oyar; yükleme sürerken daire hafifçe nefes alır */
+.boot-disc { transform-origin: 50px 52px; transform-box: view-box; animation: bootcore .6s cubic-bezier(.2, .9, .3, 1.3) .1s both, bootbreath 2.4s ease-in-out 1.4s infinite; }
+.boot-v { transform-box: view-box; animation: bootvin .55s cubic-bezier(.2, .9, .3, 1) .45s both; }
+.boot-disc-glow { opacity: .35; filter: blur(6px); transform-origin: 50px 52px; transform-box: view-box;
+  animation: bootcore .6s cubic-bezier(.2, .9, .3, 1) .1s both, bootbeat 2.4s ease-in-out 1.4s infinite; }
 .boot-word { margin-top: 1.4rem; font-size: 1.75rem; font-weight: 600; letter-spacing: .01em; color: #f1f3ff;
   animation: bootin .7s cubic-bezier(.2, .9, .3, 1) .75s both; }
 .boot-sub { margin-top: .7rem; font-size: .75rem; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: rgba(230, 240, 250, .5);
@@ -488,13 +486,14 @@ html[data-warm] .boot { display: none; } /* anında açılış: telefondaki kopy
 /* Giriş ekranına uçuş (BootSplash flyTo): logo giriş ekranındaki yerine kayıp küçülür, zemin ve yazılar solar, alttaki lacivert giriş ekranı görünür */
 .boot-logo { transition: transform .72s cubic-bezier(.65, 0, .35, 1); }
 .boot[data-phase="out"][data-fly] { animation: none; }
-.boot[data-fly] .boot-mark, .boot[data-fly] .boot-ray, .boot[data-fly] .boot-core, .boot[data-fly] .boot-core-glow { animation: none; }
+.boot[data-fly] .boot-mark, .boot[data-fly] .boot-disc, .boot[data-fly] .boot-v { animation: none; }
+.boot[data-fly] .boot-disc-glow { animation: bootout .3s ease-out forwards; }
 .boot[data-fly] .boot-logo { transform: var(--fly); }
 .boot[data-fly] .boot-bg, .boot[data-fly]::before { animation: bootout .5s ease-out forwards; }
 .boot[data-fly] :is(.boot-word, .boot-sub) { animation: bootout .25s ease-out forwards; }
 html[data-boot-fly] [data-boot-target] { visibility: hidden; }
-@keyframes bootray { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
-@keyframes boottalk { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.55); } }
+@keyframes bootvin { from { transform: translateY(-46px); } }
+@keyframes bootbreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 @keyframes bootcore { from { transform: scale(0); opacity: 0; } }
 @keyframes bootbeat { 0%, 100% { transform: scale(1); opacity: .5; } 50% { transform: scale(1.18); opacity: .8; } }
 @keyframes bootin { from { opacity: 0; transform: translateY(8px); } }
@@ -520,7 +519,7 @@ html[data-boot="on"] :is(.auth-rise, .auth-pop) { animation-play-state: paused; 
 @keyframes authstep { from { opacity: 0; transform: translateX(28px); } }
 @keyframes authback { from { opacity: 0; transform: translateX(-28px); } }
 @media (prefers-reduced-motion: reduce) {
-  .boot::before, .boot-word, .boot-sub, .boot-mark, .boot-ray, .boot-core, .boot-core-glow { animation: none; }
+  .boot::before, .boot-word, .boot-sub, .boot-mark, .boot-disc, .boot-v, .boot-disc-glow { animation: none; }
   .boot[data-phase="out"] .boot-mark { animation: none; }
   html[data-boot="enter"] :is(main, [data-boot-enter]) { animation: softin .3s ease-out backwards; }
   .auth-rise, .auth-pop, .auth-step { animation: softin .3s ease-out backwards; }
