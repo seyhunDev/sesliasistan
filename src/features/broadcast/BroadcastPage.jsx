@@ -234,6 +234,14 @@ export function BroadcastPage({ orgId, id }) {
     const c = countingAt(Date.now());
     setAp(ap ? null : { min: c ? 1 : 60, why: AP_WHY[0], live: c });
   };
+  // Çekili tehiri düzelt: iniş (seçildiyse şimdiden), yer, inince, sebep; seçilmeyen iniş aynı kalır
+  const fixAp = () => {
+    if (plan.status !== "ap" || !ap) return setAp(null);
+    const down = ap.min == null ? plan.ap?.down || "" : ap.min ? new Date(Date.now() + ap.min * 60e3).toISOString() : "";
+    changePlan({ ap: { ...plan.ap, why: ap.why, land: !!ap.land, auto: !ap.land && ap.auto !== false, down } });
+    setAp(null);
+    toast("Tehir düzeltildi");
+  };
   const chooseVoid = (v) => {
     // Genel geri / Abandone (Seyhun 2026-11-02 "sınıf aynı, sadece bayrak değiştirebilmeliyim; sorun olunca kara bayrağa gidiliyor"): aynı start
     // aynı numarayla programın başına döner, bayrağı boş; sayaç yerine resimli bayrak seçimi çıkar
@@ -715,6 +723,12 @@ export function BroadcastPage({ orgId, id }) {
               <span className="h-6 w-9 shrink-0 rounded-[3px] bg-[repeating-linear-gradient(90deg,#e11d48_0_20%,#fff_20%_40%)]" aria-hidden="true" />
               <b className="min-w-0 flex-1 truncate text-[1rem] font-semibold">{plan.status === "ap" ? (plan.ap?.down ? `Tehir · iniş ${trHm(plan.ap.down)}` : "Tehir · belirsiz") : "Tehir indi"}</b>
               {plan.status === "ap" && plan.ap?.down ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.ap.down) - (tick || capNow)) / 1000)))}</b> : null}
+              {/* Tehir çekildikten sonra düzeltme (Seyhun 2026-11-03 "hatalı bir şey olursa değişim yapılabilmeli"): iniş, yer, inince, sebep */}
+              {plan.status === "ap" ? (
+                <button type="button" data-press onClick={() => setAp({ min: null, why: plan.ap?.why || AP_WHY[0], land: !!plan.ap?.land, auto: plan.ap?.auto !== false, edit: true })} className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-[0.8125rem] font-semibold">
+                  Düzelt
+                </button>
+              ) : null}
               {plan.status !== "ap" && plan.warn ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.warn) - (tick || capNow)) / 1000)))}</b> : null}
               {plan.status !== "ap" && plan.warn ? (
                 <button type="button" onClick={() => changePlan({ warn: "" })} className="shrink-0 text-[0.875rem] font-semibold text-white/70">
@@ -1472,7 +1486,7 @@ export function BroadcastPage({ orgId, id }) {
         }}
       />
       {/* Tehir (Seyhun 2026-11-03 "alt çubuktan yukarı açılsın, kare belirgin düğmeler: İner, Yer, İnince, Sebep, Tamam") */}
-      <Sheet open={!!ap && plan.status !== "ap"} onClose={() => setAp(null)} title="Tehir" navy>
+      <Sheet open={!!ap && (plan.status !== "ap" || !!ap.edit)} onClose={() => setAp(null)} title={ap?.edit ? "Tehiri düzelt" : "Tehir"} navy>
         {ap ? (
           <div className="space-y-4 pb-3">
             <div>
@@ -1521,13 +1535,13 @@ export function BroadcastPage({ orgId, id }) {
                 ))}
               </div>
             </div>
-            <p className="text-[0.875rem] text-mut">{[ap.live ? "Sayaç durur" : "", ap.min ? `İniş ${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}` : "İniş belirsiz, Tehiri indir ile iner", ap.land || ap.auto === false ? "Geri sayımı sen başlatırsın" : "İnince 1 dk sonra geri sayım"].filter(Boolean).join(" · ")}</p>
+            <p className="text-[0.875rem] text-mut">{ap.edit && ap.min == null ? [plan.ap?.down ? `İniş ${trHm(plan.ap.down)} (değişmez)` : "İniş belirsiz (değişmez)", ap.land || ap.auto === false ? "Geri sayımı sen başlatırsın" : "İnince 1 dk sonra geri sayım"].join(" · ") : [ap.live ? "Sayaç durur" : "", ap.min ? `İniş ${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}` : "İniş belirsiz, Tehiri indir ile iner", ap.land || ap.auto === false ? "Geri sayımı sen başlatırsın" : "İnince 1 dk sonra geri sayım"].filter(Boolean).join(" · ")}</p>
             <div className="flex gap-2">
               <Button variant="secondary" className="flex-1" onClick={() => setAp(null)}>
                 Vazgeç
               </Button>
-              <Button className="flex-1" onClick={postpone}>
-                Tehir çek
+              <Button className="flex-1" onClick={ap.edit ? fixAp : postpone}>
+                {ap.edit ? "Kaydet" : "Tehir çek"}
               </Button>
             </div>
           </div>

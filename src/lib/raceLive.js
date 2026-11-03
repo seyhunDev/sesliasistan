@@ -179,7 +179,8 @@ export const apDue = (plan, now) => plan?.status === "ap" && !!plan.ap?.down && 
 export const warnDue = (plan, now) => !!plan?.warn && Date.parse(plan.warn) <= now;
 // Tehirin inişi: 1 dk, 5 dk… sonra (Seyhun 2026-11-02); 1 dk: geri sayımda tehir (AP inince 1 dk sonra uyarı işareti; Seyhun 2026-11-02 "geri sayımda tehir 1 dakikalık olmalı")
 export const AP_MIN = [1, 5, 15, 30, 60];
-export const AP_WHY = ["Rüzgâr yok", "Çok rüzgâr", "Yağış", "Fırtına", "Diğer"];
+// "Rüzgâr değişken" (Seyhun 2026-11-03 "rüzgâr çok değişiyor ya, onu da koymamız lazım")
+export const AP_WHY = ["Rüzgâr yok", "Çok rüzgâr", "Rüzgâr değişken", "Yağış", "Fırtına", "Diğer"];
 // Saate dakika ekler: "11:00" + 60 → "12:00" (23:59'u aşmaz)
 export const addMin = (at, min) => {
   if (!HM.test(at || "")) return "";

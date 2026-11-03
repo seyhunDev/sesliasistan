@@ -1278,3 +1278,6 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-band .lv-slide .lv-slprog { font-size: 0.85em; }
 .lv-band .lv-hboats .br-live { left: 0.6em; top: 0.5em; bottom: auto; transform: none; font-size: 13px; }
 @media (max-width: 47.99rem) { .lv-band .lv-slides { height: 30vh; } }
+/* Tehirde sıradaki start: sınıf işareti + "1. yarış · Sarı grup bekliyor" (hazırlık bayrağı yok) */
+.lv-why small.lv-who { display: flex; align-items: center; gap: 0.5em; }
+.lv-who .lv-flag { width: 1.6em; height: 1.6em; flex: none; }
