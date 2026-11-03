@@ -912,9 +912,10 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
       </nav>}
     </>
   );
-  // yarış günü (Seyhun 2026-10-29): sayfa tek ekran, lacivert alan alt çubuğa kadar iner (altta siyah/açık bölüm başlamaz)
+  // yarış günü (Seyhun 2026-10-29): sayfa tek ekran, lacivert alan alt çubuğa kadar iner (altta siyah/açık bölüm başlamaz);
+  // data-fit: sayfanın kendi alt boşluğu (main pb) kalkar (globals.css), yoksa ekran 7rem fazla kayıp altta siyah boşluk kalıyordu (Seyhun 2026-11-03)
   const navy = (body) => (
-    <section className={`ck -mx-5 px-5 pt-[calc(0.75rem+env(safe-area-inset-top))] ${raceDay && begun ? "flex min-h-dvh flex-col pb-[calc(6.5rem+env(safe-area-inset-bottom))]" : "pb-9"}`} aria-label={r.name || "Yarış"}>
+    <section data-fit={raceDay && begun ? "" : undefined} className={`ck -mx-5 px-5 pt-[calc(0.75rem+env(safe-area-inset-top))] ${raceDay && begun ? "flex min-h-dvh flex-col pb-[calc(6.5rem+env(safe-area-inset-bottom))]" : "pb-9"}`} aria-label={r.name || "Yarış"}>
       {head}
       {body}
     </section>
