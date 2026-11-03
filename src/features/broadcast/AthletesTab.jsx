@@ -5,6 +5,7 @@ import { card } from "@/components/ui/Page";
 import { COLORS, groupColor, groupOf, groupsOn } from "@/lib/roundScore";
 import { entryClasses } from "@/lib/roundSay";
 import { fleetsOf } from "@/lib/sharedRace";
+import { sheetMatch } from "@/lib/resultSheet";
 import { loadSheets } from "@/features/athletes/raceLiveStore";
 
 // Yayın › Sporcu (Seyhun 2026-11-03 16:30, örnek parkur-katilimci/ornek.png onaylandı 16:49): yarışın grupları (+ ekle, × çıkar),
@@ -31,6 +32,8 @@ export function AthletesTab({ orgId, raceId, plan, onSets, entries, groups, toda
   const [adding, setAdding] = useState(""); // "<sınıf>|e" ya da "<sınıf>|f": o sınıfa grup ekleme açık
   const [day, setDay] = useState(today);
   const [sheets, setSheets] = useState([]);
+  const [q, setQ] = useState("");
+  const [only, setOnly] = useState(""); // listede yalnız bu grup
   useEffect(() => {
     let on = true;
     loadSheets(orgId, raceId).then((s) => on && setSheets(s), () => {});
@@ -54,6 +57,11 @@ export function AthletesTab({ orgId, raceId, plan, onSets, entries, groups, toda
   const cn = counts(list);
   const total = Object.values(cn).reduce((a, b) => a + b, 0);
   const cnOrder = Object.keys(cn).sort((a, b) => order(a) - order(b));
+  // sporcular (Seyhun 2026-11-03 19:53 "neden sporcular gösterilmiyor"): seçili günün grubuyla, ara + grup süzgeci
+  const gm = Object.fromEntries((Array.isArray(list) ? list : Object.entries(list || {})).map((x) => [String(x[0]), groupOf(x[1] || "")]));
+  const fil = cn[only] ? only : "";
+  const shown = entries.filter((r) => (!fil || gm[r.sail] === fil) && sheetMatch(r, q)).sort((a, b) => Number(a.sail) - Number(b.sail));
+  const multi = classes.length > 1;
 
   // sonuçlar: belgeler gün gün (yükleme günü), hangi gruplar ve kaç yarış
   const resDays = useMemo(() => {
@@ -163,6 +171,43 @@ export function AthletesTab({ orgId, raceId, plan, onSets, entries, groups, toda
           {total && !own ? <p className="-mt-2 px-4 pb-3 text-[0.8125rem] font-semibold text-mut">Önceki günün final listesi geçerli</p> : null}
         </div>
       </section>
+      {entries.length ? (
+        <section>
+          <div className="mb-1.5 flex justify-between px-1 text-[0.8125rem] font-semibold text-mut">
+            <span>Sporcular</span>
+            <span>{`${shown.length}${fil || q ? ` / ${entries.length}` : ""}`}</span>
+          </div>
+          <div className={`${card} overflow-hidden`}>
+            <div className="space-y-2 border-b border-line px-3 py-2.5">
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ara: no, ad, kulüp" className="h-10 w-full rounded-[0.75rem] border border-line bg-[var(--deep)] px-3 text-[0.9375rem] outline-none" />
+              {cnOrder.length ? (
+                <div className="flex gap-1.5 overflow-x-auto">
+                  <button type="button" onClick={() => setOnly("")} aria-pressed={!fil} className={`${chip} pr-3 ${!fil ? "!border-[var(--acc)] !bg-[var(--accbg)]" : ""}`}>
+                    Hepsi
+                  </button>
+                  {cnOrder.map((g) => (
+                    <button key={g} type="button" onClick={() => setOnly(fil === g ? "" : g)} aria-pressed={fil === g} className={`${chip} pr-3 ${fil === g ? "!border-[var(--acc)] !bg-[var(--accbg)]" : ""}`}>
+                      {dot(g)}
+                      {`${g} ${cn[g]}`}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            {shown.map((r) => (
+              <div key={`${r.cls}|${r.sail}`} className="flex items-center gap-3 border-b border-line px-4 py-2 last:border-b-0">
+                <span className="w-12 shrink-0 text-[1rem] font-semibold tabular-nums">{r.sail}</span>
+                {gm[r.sail] ? dot(gm[r.sail]) : <span className="size-2.5 shrink-0" />}
+                <span className="min-w-0 flex-1 leading-tight">
+                  <b className="block truncate text-[0.9375rem] font-semibold">{r.name || "–"}</b>
+                  <span className="block truncate text-[0.8125rem] text-mut">{[r.club, r.born, r.sex === "K" ? "Kız" : "", multi ? r.cls : ""].filter(Boolean).join(" · ")}</span>
+                </span>
+              </div>
+            ))}
+            {!shown.length ? <p className="px-4 py-3 text-[0.875rem] text-mut">Bulunamadı</p> : null}
+          </div>
+        </section>
+      ) : null}
       <section>
         <div className="mb-1.5 flex justify-between px-1 text-[0.8125rem] font-semibold text-mut">
           <span>Sonuçlar</span>
