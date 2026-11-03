@@ -54,6 +54,28 @@ export function cleanGroups(g) {
   return out;
 }
 
+// Günün grup listesi (Seyhun 2026-11-03): o güne liste yüklenmediyse ve önceki son liste final grupları (Altın, Gümüş, Bronz…)
+// ise o geçerli; final listesi kalan günlerde değişmez. Eleme grupları (Mavi, Sarı…) her gün yeniden yüklenir, ertesi güne geçmez.
+export function groupsOn(groups, day) {
+  if (!groups || !day) return [];
+  if (groups[day]) return groups[day];
+  const prev = Object.keys(groups).filter((d) => d < day).sort().pop();
+  const list = prev ? groups[prev] : null;
+  const gs = (Array.isArray(list) ? list : Object.entries(list || {})).map((x) => (Array.isArray(x) ? x[1] : ""));
+  return gs.length && gs.every((g) => FINALS[groupOf(g)]) ? list : [];
+}
+
+// Günün yeni grup listesi eskisine nasıl yazılır (Seyhun 2026-11-03): birden çok grup varsa liste günün tamamıdır (eskisi
+// tümüyle değişir); tek grup varsa ("Mavi grup listesi" ayrı dosya) yalnız o grubun tekneleri yazılır, diğer gruplar kalır.
+export function dayGroups(old, list) {
+  const add = cleanGroups({ "2000-01-01": list })["2000-01-01"] || [];
+  if (new Set(add.map(([, g]) => g)).size !== 1) return add;
+  const g = add[0][1];
+  const sails = new Set(add.map(([s]) => s));
+  const keep = (cleanGroups({ "2000-01-01": old || [] })["2000-01-01"] || []).filter(([s, x]) => x !== g && !sails.has(s));
+  return [...keep, ...add];
+}
+
 // Sporcunun kategorisi: Kız ("K") ve Junior (Optimist'te belgedeki işaret, ILCA 4'te doğum yılından)
 export function catsOf(row, year) {
   const out = [];
@@ -113,7 +135,7 @@ export function provisional({ starts = [], rounds = {}, entries = [], groups = {
   for (const st of starts || []) {
     if (st.void || !rounds[st.id]) continue;
     const e = rounds[st.id];
-    const day = groupMap(groups[st.day]);
+    const day = groupMap(groupsOn(groups, st.day));
     const members = e.grp && Object.keys(day).length ? Object.keys(day).filter((s) => day[s] === e.grp) : null;
     const r = startScores(st, e, members);
     for (const [sail, v] of Object.entries(r.scores)) {

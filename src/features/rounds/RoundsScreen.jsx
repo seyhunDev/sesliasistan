@@ -12,7 +12,7 @@ import { raceName } from "@/lib/raceLive";
 import { cleanEntry, currentStart, stampLegs, markName, nowPos, setRoute, whoBySail, whoOf } from "@/lib/raceRounds";
 import { applySay, checkLeg, cleanRoute, entriesOf, entryClasses, localSay, notYet } from "@/lib/roundSay";
 import { loadEntryDoc, sayOps } from "./roundsStore";
-import { GROUP_PICK, groupColor, groupMap } from "@/lib/roundScore";
+import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { EntriesView } from "./EntriesView";
 
 // Şamandıra dönüşlerini sesle girme (Seyhun 2026-11-01, örnek /mnt/project-files/samandira-donus/ornek2.png): tam ekran.
@@ -86,7 +86,7 @@ function Body({ orgId, raceId, startId = "", onClose }) {
   const classes = useMemo(() => entryClasses(entries), [entries]);
   const pickCls = classes.some((c) => c.cls === cls) ? cls : classes[0]?.cls || "";
   // Günün grup listesi varsa yalnız bu startın grubundakiler (gruplar her gün değişir)
-  const gm = useMemo(() => groupMap(groups[st?.day || ""]), [groups, st?.day]);
+  const gm = useMemo(() => groupMap(groupsOn(groups, st?.day || "")), [groups, st?.day]);
   const inGrp = entry.grp && Object.values(gm).includes(entry.grp);
   const pool = useMemo(() => entriesOf(entries, pickCls).filter((r) => !inGrp || gm[r.sail] === entry.grp), [entries, pickCls, inGrp, gm, entry.grp]);
   const known = useMemo(() => pool.map((r) => r.sail), [pool]);

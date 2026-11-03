@@ -1,5 +1,6 @@
 // PDF sayfasındaki yazı parçaları (pdf.js getTextContent items) → satırlar ve kayıt listesi tablosu.
 // Uzun kayıt listeleri (200+ tekne) yapay zekaya tek seferde gidince okunamıyordu (Seyhun 2026-11-03, 9 sayfalık TYF sporcu listesi):
+// Grup listesi üç biçimde gelir: grup sütunlu tek liste (sütun başlığı tarih ya da "Grup"), "MAVİ GRUP" başlıklı bölümler, ya da her grup ayrı dosya.
 // sütun başlıkları tanınırsa liste yapay zekasız, sütun sütun okunur (tableOf); tanınmazsa yazı parça parça yapay zekaya gider (chunkLines).
 
 // Aynı yükseklikteki parçalar bir satır: [{ y, parts: [{ x, s }] }] (yukarıdan aşağı, soldan sağa)
@@ -33,6 +34,8 @@ export function chunkLines(lines, n = 45) {
   for (let i = 0; i < body.length; i += n) out.push([...top, ...body.slice(i, i + n)].join("\n"));
   return out;
 }
+
+import { groupOf } from "./roundScore";
 
 const plain = (s) =>
   String(s || "")
@@ -80,12 +83,23 @@ const clsName = (s) => CLASSES.find((c) => plain(c) === plain(s)) || String(s ||
 export function tableOf(pages) {
   const out = [];
   let cols = null;
+  let cur = "";
   for (const items of pages || []) {
     for (const row of rowsOf(items)) {
       const h = headOf(row);
       if (h) {
         cols = h;
         continue;
+      }
+      // "MAVİ GRUP", "Sarı Grup Listesi", "BLUE FLEET": sonraki satırların grubu (grup sütunu yoksa)
+      const words = row.parts.map((p) => p.s).join(" ").split(/\s+/);
+      const named = words.some((w) => /^(grup|grubu|group|fleet|filo|liste|listesi)$/.test(plain(w)));
+      if (words.length <= 6 && (named || words.length === 1)) {
+        const g = words.map(groupOf).find(Boolean);
+        if (g) {
+          cur = g;
+          continue;
+        }
       }
       if (!cols) continue;
       const cell = {};
@@ -97,7 +111,7 @@ export function tableOf(pages) {
       }
       const sail = String(cell.sail || "").replace(/\D/g, "");
       if (!sail || !cell.name) continue;
-      out.push({ sail, name: titleCase(cell.name), club: cell.club || "", cls: clsName(cell.cls), born: cell.born || "", sex: cell.sex || "", grp: cell.grp || "" });
+      out.push({ sail, name: titleCase(cell.name), club: cell.club || "", cls: clsName(cell.cls), born: cell.born || "", sex: cell.sex || "", grp: cell.grp || cur });
     }
   }
   return out;

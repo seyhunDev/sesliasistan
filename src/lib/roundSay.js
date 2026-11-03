@@ -50,8 +50,11 @@ export function mergeEntries(old, add) {
   const key = (r) => `${(r.cls || "").toLowerCase()}|${r.sail}`;
   const m = new Map((old || []).map((r) => [key(r), r]));
   for (const r of cleanEntries(add)) {
-    const o = m.get(key(r));
-    m.set(key(r), o ? { ...o, ...Object.fromEntries(Object.entries(r).filter(([, v]) => v)) } : r);
+    // sınıfsız satır (grup listesinde sınıf sütunu yok): aynı numaralı tek kayda eklenir
+    const same = r.cls ? [] : [...m.entries()].filter(([, x]) => x.sail === r.sail);
+    const k = same.length === 1 ? same[0][0] : key(r);
+    const o = m.get(k);
+    m.set(k, o ? { ...o, ...Object.fromEntries(Object.entries(r).filter(([, v]) => v)) } : r);
   }
   return cleanEntries([...m.values()]);
 }

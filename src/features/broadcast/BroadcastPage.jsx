@@ -14,7 +14,7 @@ import { readProgramFile, readProgramText } from "@/features/broadcast/broadcast
 import { programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
-import { GROUP_PICK, groupColor, groupMap } from "@/lib/roundScore";
+import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { NearCams } from "./NearCams";
 import { audio, chooseDur, ownHere, raceCancel, raceFinish, raceStart, raceVoid, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
@@ -592,7 +592,7 @@ export function BroadcastPage({ orgId, id }) {
   const st = (pickId && live.starts.find((x) => x.id === pickId)) || (L ? currentStart(live.starts, L.timer) : null);
   const entry = st && L ? L.rounds[st.id] : null;
   // startın grubu günün grup listesinde varsa ceza aramasında önce o grup (Seyhun 2026-11-02 "mavi grup listesini veririm")
-  const dayGrp = st ? groupMap(groups[st.day]) : {};
+  const dayGrp = st ? groupMap(groupsOn(groups, st.day)) : {};
   const penMembers = entry?.grp && Object.keys(dayGrp).length ? Object.keys(dayGrp).filter((s) => dayGrp[s] === entry.grp) : null;
   const penOf_ = entry?.pen || {};
   const todays = [...live.starts].filter((x) => x.day === today); // eskiden yeniye (listede 1., 2., …)
@@ -1447,7 +1447,7 @@ export function BroadcastPage({ orgId, id }) {
             Sekme değişince de takılı kalır (algılama sayfa açıkken sürer), yalnız Dönüşler'de görünür */}
         <section className={!needSetup && tab === "donus" ? "" : "hidden"}>
           <Head title="Tekne takibi" />
-          <TrackPanel orgId={orgId} raceId={id} starts={liveStarts(live.starts, L?.timer, today).map((x) => ({ ...x, grp: x.grp || L?.rounds?.[x.id]?.grp || "" }))} rounds={L?.rounds || {}} groupOf={groupMap(groups[today])} course={course} />
+          <TrackPanel orgId={orgId} raceId={id} starts={liveStarts(live.starts, L?.timer, today).map((x) => ({ ...x, grp: x.grp || L?.rounds?.[x.id]?.grp || "" }))} rounds={L?.rounds || {}} groupOf={groupMap(groupsOn(groups, today))} course={course} />
         </section>
       </div>
 
