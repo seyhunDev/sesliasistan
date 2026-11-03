@@ -3,7 +3,7 @@
 // Yarış sayfasında "Siteden belgeler" (Seyhun 2026-11-03): yarış sitesinden alınan bütün belgeler, yeni önce.
 // Açılınca yeni gelenler türüne göre işlenir (raceSite.js): renk listesi ve final grupları günün gruplarına, sporcu listesi
 // kayıt listesine, sonuçlar yarışın sonuçlarına (onResults, page.jsx). Her satır açılır (PDF); işlenen belge "Geri al" ile döner.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { Sheet } from "@/components/ui/Sheet";
@@ -11,7 +11,7 @@ import { ListHead, Row, RowList, Tag } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { getStored } from "@/lib/firebase/fileStore";
 import { currentAmend, kindLabel, resultState, version } from "@/lib/siteDocs";
-import { LIST_KINDS, applyList, checkSite, loadSiteDocs, redoDoc, saveDocState, undoDoc, unfollowSite } from "./raceSite";
+import { LIST_KINDS, applyList, checkSite, redoDoc, saveDocState, undoDoc, unfollowSite, watchSiteDocs } from "./raceSite";
 
 const when = (at) => {
   const d = new Date(`${String(at).slice(0, 10)}T12:00:00`);
@@ -20,7 +20,7 @@ const when = (at) => {
 const kindText = (d) => (d.kind === "results" && resultState(d.name) ? `${kindLabel(d.kind)} (${resultState(d.name) === "kesin" ? "kesin" : "geçici"})` : d.kind === "amend" ? `${kindLabel(d.kind)} V${version(d.name)}` : kindLabel(d.kind));
 const work = (d) => LIST_KINDS.includes(d.kind) || d.kind === "results";
 
-export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndoResults, ready = true }) {
+export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndo, onRefresh, ready = true }) {
   const toast = useToast();
   const [docs, setDocs] = useState(null);
   const [open, setOpen] = useState(open0);
@@ -28,10 +28,15 @@ export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndoRe
   const [busy, setBusy] = useState("");
   const running = useRef(false);
 
-  const load = useCallback(() => loadSiteDocs(orgId, race.id).then(setDocs, () => setDocs((d) => d || [])), [orgId, race.id]);
+  useEffect(() => watchSiteDocs(orgId, race.id, setDocs, () => setDocs((d) => d || [])), [orgId, race.id]);
+  // Sayfa açıkken sunucu talimatı / ek talimatı işlerse yarış yeniden okunur (program ekranda güncel kalsın)
+  const used = useRef(null);
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!docs) return;
+    const now = new Set(docs.filter((d) => d.state === "used" && !work(d)).map((d) => d.id));
+    if (used.current && [...now].some((id) => !used.current.has(id))) onRefresh?.();
+    used.current = now;
+  }, [docs, onRefresh]);
 
   // Yeni gelenler sırayla işlenir (eskiden yeniye: aynı günün yeni renk listesi eskisinin yerine geçsin)
   useEffect(() => {
@@ -54,17 +59,15 @@ export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndoRe
       }
       running.current = false;
       if (n) toast(`Siteden ${n} belge işlendi`);
-      load();
     })();
-  }, [docs, ready, orgId, race.id, onResults, toast, load]);
+  }, [docs, ready, orgId, race.id, onResults, toast]);
 
   const undo = async (d) => {
     setBusy(d.id);
     try {
       const r = await undoDoc(orgId, race, d);
-      if (r.results) onUndoResults?.(r.results);
+      if (r.results || r.notice) onUndo?.(r);
       toast("Geri alındı");
-      await load();
     } catch {
       toast("Geri alınamadı");
     }
@@ -72,16 +75,15 @@ export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndoRe
   };
   const redo = async (d) => {
     setBusy(d.id);
+    // Talimat ve ek talimat sunucuda yeniden okunur (Şimdi bak gibi); listeler ve sonuçlar burada
     await redoDoc(orgId, race.id, d).catch(() => {});
-    await load();
     setBusy("");
   };
   const check = async () => {
     setBusy("check");
     try {
       const r = await checkSite(race.id);
-      toast(r.error || (r.got ? `${r.got} yeni belge alındı` : "Yeni belge yok"));
-      await load();
+      toast(r.error || "Siteye bakılıyor, yeni belge gelirse burada görünür");
     } catch (e) {
       toast(e.message);
     }
@@ -127,7 +129,7 @@ export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndoRe
                   Geri al
                 </Button>
               )}
-              {d.state === "undone" && (
+              {d.state === "undone" && work(d) && (
                 <Button variant="secondary" size="sm" loading={busy === d.id} onClick={() => redo(d)}>
                   Yeniden işle
                 </Button>

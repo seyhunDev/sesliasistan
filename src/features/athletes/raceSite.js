@@ -4,9 +4,10 @@
 // Sunucu (/api/race-site, netlify/functions/race-site.mjs) sitedeki yeni belgeyi Storage'a koyar ve
 // orgs/{org}/raceLive/{yarış}/site/{anahtar} kaydını "new" olarak yazar. Yarış sayfası açılınca burada türüne göre işlenir:
 //   renk listesi / final grupları → o günün grupları (+ kayıt listesine eklenir), sporcu listesi → kayıt listesi,
-//   sonuçlar → yarışın sonuçları (page.jsx, resultsImport.js). Diğerleri yalnız listede durur, açılır.
+//   sonuçlar → yarışın sonuçları (page.jsx, resultsImport.js). Listeler, talimat ve ek talimat çoğunlukla sunucuda hemen işlenir
+//   (lib/server/raceSiteTake.js); burada yalnız sunucunun okuyamadığı listeler (yapay zekayla) ve sonuçlar işlenir.
 // Her işlenen belge "used" olur ve öncesini (undo) saklar: "Geri al" eski hâline döndürür.
-import { FieldPath, collection, deleteField, doc, getDocs } from "firebase/firestore";
+import { FieldPath, collection, deleteField, doc, getDocs, onSnapshot } from "firebase/firestore";
 import { setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
@@ -42,11 +43,10 @@ export const followSite = (raceId, site) => post({ raceId, site });
 export const unfollowSite = (raceId) => post({ raceId, off: true });
 export const checkSite = (raceId) => post({ raceId, now: true });
 
-// Yarışın sitedeki belgeleri, yeni yüklenen önce
-export async function loadSiteDocs(orgId, raceId) {
-  const snap = await getDocs(col(orgId, raceId));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.at).localeCompare(String(a.at)));
-}
+// Yarışın sitedeki belgeleri, yeni yüklenen önce; canlı (sunucu belge alıp işledikçe liste kendiliğinden yenilenir)
+const sorted = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+export const loadSiteDocs = (orgId, raceId) => getDocs(col(orgId, raceId)).then(sorted);
+export const watchSiteDocs = (orgId, raceId, cb, onErr) => onSnapshot(col(orgId, raceId), (snap) => cb(sorted(snap)), onErr);
 const mark = (orgId, raceId, key, patch) => setDoc(doc(col(orgId, raceId), key), patch, { merge: true });
 
 const fileOf = async (d) => new File([await getStored(d.file, "application/pdf")], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" });
@@ -89,6 +89,12 @@ export async function undoDoc(orgId, race, d) {
     if (fid) await dropSheetDoc(orgId, race.id, fid);
     await mark(orgId, race.id, d.id, { state: "undone", undo: deleteField() });
     return { results: res };
+  }
+  // Talimat / ek talimat: yarışın talimat bilgisi (program) öncesine döner
+  if (u.notice) {
+    await updateDoc(doc(db, "orgs", orgId, "races", race.id), { notice: u.notice });
+    await mark(orgId, race.id, d.id, { state: "undone", undo: deleteField() });
+    return { notice: u.notice };
   }
   if (u.rows) await saveEntries(orgId, race.id, u.rows);
   if (u.day) {

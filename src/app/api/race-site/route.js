@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { getStorage } from "firebase-admin/storage";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady } from "@/lib/server/admin";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { fileUrl } from "@/lib/siteBoard";
-import { pageCache, siteList, syncRace } from "@/lib/server/raceSiteSync";
+import { pageCache, siteList } from "@/lib/server/raceSiteSync";
+import { ackSig } from "@/lib/server/ackSign";
 
 export const runtime = "nodejs";
 
 // Yarış sitesi (TYF Yelken Ligi, lib/siteBoard.js; Seyhun 2026-11-03), yalnız ana hesap:
 // GET ?season=2026-2027        → sezonlar, ayaklar, sınıflar ve belgeleri (Yarışlar › Siteden ekranı)
 // GET ?file=292893             → sitedeki belgenin kendisi (yarış ilanı telefonda okunur, yarış ondan açılır)
-// POST { raceId, site }         → yarışı izlemeye al (raceSite/{org}_{yarış}) ve sitedeki belgeleri hemen al
+// POST { raceId, site }         → yarışı izlemeye al (raceSite/{org}_{yarış}); belgeler arka planda hemen alınır ve kullanılır
 // POST { raceId, off: true }    → izlemeyi bırak (alınmış belgeler yarışta kalır)
 // POST { raceId, now: true }    → hemen bak (yarış sayfasındaki "Şimdi bak")
 const bad = (error, status = 400) => NextResponse.json({ error }, { status });
@@ -49,7 +49,7 @@ const S = (v, n) => String(v ?? "").trim().slice(0, n);
 export async function POST(request) {
   const { au, res } = await who(request);
   if (!au) return res;
-  if (!adminReady() || !process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET) return bad("Sunucu ayarı eksik.", 500);
+  if (!adminReady()) return bad("Sunucu ayarı eksik.", 500);
   const body = await request.json().catch(() => ({}));
   const raceId = S(body.raceId, 40);
   if (!/^[A-Za-z0-9]{6,40}$/.test(raceId)) return bad("Yarış yok.");
@@ -82,11 +82,11 @@ export async function POST(request) {
     entry = { ...snap.data(), name: S(r.name, 120) || snap.data().name, startDate: S(r.startDate, 10), endDate: S(r.endDate, 10) };
     await ref.set({ name: entry.name, startDate: entry.startDate, endDate: entry.endDate }, { merge: true });
   }
-  try {
-    const got = await syncRace({ db, bucket: getStorage(db.app).bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET), ref, entry, get: pageCache(), limit: 12 });
-    return NextResponse.json({ ok: true, got: got.length });
-  } catch (e) {
-    console.warn("[race-site] alma", e.message);
-    return NextResponse.json({ ok: true, got: 0, error: "Belgeler şimdi alınamadı; birazdan kendiliğinden alınır." });
-  }
+  // İş arka plan işlevinde (indirme, yapay zeka; netlify/functions/race-site-background.mjs)
+  const t = String(Date.now());
+  const ids = [ref.id];
+  const origin = process.env.URL || new URL(request.url).origin;
+  const r2 = await fetch(`${origin}/.netlify/functions/race-site-background`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids, t, s: ackSig("race-site", "run", t, ids.join(",")) }) }).catch(() => null);
+  if (!r2 || r2.status >= 400) return NextResponse.json({ ok: true, started: false, error: "Belgeler şimdi alınamadı; birazdan kendiliğinden alınır." });
+  return NextResponse.json({ ok: true, started: true });
 }

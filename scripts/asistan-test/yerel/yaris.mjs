@@ -1019,3 +1019,16 @@ group("Tekne takibi")([
     ["tek renkli liste", { desc: "adındaki renk grubu olur", fn: () => [SD.colorOf("8.10.2025 kırmızı sporcu listesi"), SD.docKind("8.10.2025 MAVİ SPORCU LİSTESİ"), SD.colorOf("RENK LİSTESİ")], ok: (a) => a.join() === "Kırmızı,groups," }],
   ]);
 }
+
+// Yarış sitesi belgelerini kullanma (Seyhun 2026-11-03 "artık manuel yok"): ek talimat programı günceller, sunucu belge gelir gelmez işler
+{
+  const SD = await import("@/lib/siteDocs");
+  const fs = await import("node:fs");
+  const r = (f) => fs.readFileSync(new URL(`../../../${f}`, import.meta.url), "utf8");
+  const OLD = [{ date: "2026-11-04", time: "11:00", title: "İlk start" }, { date: "2026-11-06", time: "16:00", title: "Ödül töreni" }];
+  group("Yarış sitesi belgelerini kullanma")([
+    ["ek talimat programı", { desc: "aynı gün aynı başlık yenisiyle değişir, yeni satır eklenir, sıralı; bozuk satır atılır", fn: () => SD.mergeSchedule(OLD, [{ date: "2026-11-04", time: "12:00", title: "ilk start" }, { date: "2026-11-05", time: "", title: "Son start saati 15:00" }, { date: "bozuk", title: "x" }]), ok: (a) => a.length === 3 && a[0].time === "12:00" && a[1].date === "2026-11-05" && a[2].title === "Ödül töreni" }],
+    ["sunucuda hemen", { desc: "zamanlayıcı yalnız sırası gelenleri arka plan işlevine imzalı yollar; arka plan listeleri, talimatı ve ek talimatı işler, ilk alışta bildirim yok", fn: () => { const z = r("netlify/functions/race-site.mjs"); const b = r("netlify/functions/race-site-background.mjs"); const t = r("src/lib/server/raceSiteTake.js"); return [/race-site-background/.test(z) && /ackSig\(/.test(z), /ackOk\(/.test(b) && /makeTake\(/.test(b) && /if \(!first\) await notifyDocs/.test(b), /kind === "results"\) return null/.test(t) && /takeNotice/.test(t) && /takeList/.test(t), /globalThis\.DOMMatrix/.test(t)]; }, ok: (a) => a.every(Boolean) }],
+    ["talimat okuyucusu tek", { desc: "telefondan yükleme ve siteden gelen belge aynı okuyucu (lib/ai/raceNoticeAi.js)", fn: () => [/from "@\/lib\/ai\/raceNoticeAi"/.test(r("src/app/api/race-notice/route.js")), /readNoticeAi/.test(r("netlify/functions/race-site-background.mjs"))], ok: (a) => a.every(Boolean) }],
+  ]);
+}

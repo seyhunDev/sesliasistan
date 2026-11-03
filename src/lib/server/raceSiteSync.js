@@ -71,7 +71,7 @@ async function keep(bucket, orgId, raceId, d) {
   const token = randomUUID();
   await bucket.file(path).save(buf, { contentType: type, metadata: { cacheControl: "private, max-age=31536000", metadata: { firebaseStorageDownloadTokens: token } } });
   const name = `${d.name.replace(/\.pdf$/i, "").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 110)}${pdf ? ".pdf" : ""}`;
-  return { id, name, size: buf.length, path, url: tokenUrl(bucket, path, token), at: new Date().toISOString(), type };
+  return { file: { id, name, size: buf.length, path, url: tokenUrl(bucket, path, token), at: new Date().toISOString(), type }, buf };
 }
 
 // Yarış günü mü (başlangıçtan bir gün önce, bitişten bir gün sonra dahil): o zaman 10 dakikada bir, yoksa günde bir bakılır
@@ -89,7 +89,8 @@ export function dueNow(e, now = new Date()) {
 }
 
 // Bir yarışın yeni belgeleri: indirir, kaydeder, raceSite kaydını günceller. Dönüş yeni belgeler [{ key, name, kind, … }]
-export async function syncRace({ db, bucket, ref, entry, get, limit = PER_RUN }) {
+// take(d, buf): belgeyi hemen kullanır (raceSiteTake.js), dönüş kaydın durumu { state, note, undo } ya da null (telefon işler)
+export async function syncRace({ db, bucket, ref, entry, get, limit = PER_RUN, take = null }) {
   const { orgId, raceId } = entry;
   const classes = await legClasses(get, entry);
   const c = classes.find((x) => x.act === entry.act);
@@ -97,20 +98,32 @@ export async function syncRace({ db, bucket, ref, entry, get, limit = PER_RUN })
   const fresh = all.slice(0, limit);
   const got = [];
   const site = db.collection("orgs").doc(orgId).collection("raceLive").doc(raceId).collection("site");
-  // Aynı anda 4 belge (Netlify isteğinin süresi kısa)
-  for (let i = 0; i < fresh.length; i += 4)
-    await Promise.all(
-      fresh.slice(i, i + 4).map(async (d) => {
-        try {
-          const file = await keep(bucket, orgId, raceId, d);
-          const rec = { key: d.key, fid: d.fid, name: d.name, at: d.at, kind: d.kind, src: d.src, file, state: "new", got: new Date().toISOString() };
-          await site.doc(d.key).set(rec);
-          got.push(rec);
-        } catch (e) {
+  // İndirme aynı anda 4 belge (Netlify isteğinin süresi kısa); kullanma sırayla, eskiden yeniye (aynı günün yeni listesi eskisinin yerine)
+  for (let i = 0; i < fresh.length; i += 4) {
+    const files = await Promise.all(
+      fresh.slice(i, i + 4).map((d) =>
+        keep(bucket, orgId, raceId, d).catch((e) => {
           console.warn("[yarış sitesi] belge alınamadı", d.name, e.message);
-        }
-      }),
+          return null;
+        }),
+      ),
     );
+    for (const [j, k] of files.entries()) {
+      if (!k) continue;
+      const d = fresh[i + j];
+      let done = null;
+      if (take)
+        try {
+          done = await take(d, k.buf);
+        } catch (e) {
+          console.warn("[yarış sitesi] kullanılamadı", d.name, e.message);
+          done = ["groups", "fleets", "entries", "results"].includes(d.kind) ? null : { state: "kept", note: "Okunamadı" };
+        }
+      const rec = { key: d.key, fid: d.fid, name: d.name, at: d.at, kind: d.kind, src: d.src, file: k.file, state: "new", ...(done || {}), got: new Date().toISOString() };
+      await site.doc(d.key).set(rec);
+      got.push(rec);
+    }
+  }
   got.sort((a, b) => a.at.localeCompare(b.at));
   const seen = [...new Set([...(entry.seen || []), ...got.map((d) => d.key)])].slice(-600);
   // Kalan varsa checkedAt yazılmaz: sonraki çalışma (10 dk) kalanları alır
@@ -124,7 +137,8 @@ export async function notifyDocs({ db, entry, got, recordInbox, sendDevice, docN
   if (!got.length) return 0;
   const race = entry.name || entry.cls || "Yarış";
   const title = got.length === 1 ? docNote(race, got[0]) : `${race} · ${got.length} yeni belge geldi`;
-  const payload = { title, body: got.length === 1 ? "" : got.map((d) => d.name).slice(0, 4).join(", "), tag: `site-${entry.raceId}`, url: `/athletes/races/${entry.raceId}?sec=site` };
+  const body = got.length === 1 ? got[0].note || "" : got.map((d) => d.name).slice(0, 4).join(", ");
+  const payload = { title, body, tag: `site-${entry.raceId}`, url: `/athletes/races/${entry.raceId}?sec=site` };
   const ref = db.collection("users").doc(entry.orgId);
   const badge = await recordInbox(db, entry.orgId, payload);
   const push = (await ref.get()).data()?.push || {};

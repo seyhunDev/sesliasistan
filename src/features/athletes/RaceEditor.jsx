@@ -340,7 +340,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
       const p = latest.current;
       if (n.startDate !== p.startDate || n.endDate !== p.endDate || n.athleteIds.join() !== p.athleteIds.join()) dropFile();
       first.current = !dirty.current; // asistanın değişikliği kaydedildi; sayfada bekleyen değişiklik varsa birlikte yazılır
-      setR({ ...p, athleteIds: n.athleteIds, note: n.note, city: n.city, district: n.district, startDate: n.startDate, endDate: n.endDate, leaveStart: n.leaveStart, leaveEnd: n.leaveEnd, budget: n.budget, results: n.results });
+      setR({ ...p, athleteIds: n.athleteIds, note: n.note, city: n.city, district: n.district, startDate: n.startDate, endDate: n.endDate, leaveStart: n.leaveStart, leaveEnd: n.leaveEnd, budget: n.budget, results: n.results, notice: n.notice === undefined ? p.notice : n.notice });
     };
     window.addEventListener("sa-race-saved", on);
     return () => window.removeEventListener("sa-race-saved", on);

@@ -17,7 +17,7 @@ import { placeText } from "@/features/athletes/RaceList";
 import { Icon } from "@/components/ui/Icon";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { coachStart } from "@/features/athletes/raceDocs";
-import { addRacePlan, freshRace, loadRaces, racesNow, saveRace, saveRaceResults } from "@/features/athletes/races";
+import { addRacePlan, freshRace, loadRace, loadRaces, racesNow, saveRace, saveRaceResults } from "@/features/athletes/races";
 import { loadShared, loadSharedList, pullSheets, shareRace } from "@/features/athletes/sharedRaces";
 import { fromShared, newSheets, pickable } from "@/lib/sharedRace";
 import { stampResults } from "@/lib/raceDay";
@@ -165,8 +165,20 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     },
     [athletes, orgId],
   );
-  const onSiteUndo = useCallback((results) => {
-    const next = { ...raceNow.current, results };
+  // Sunucu siteden gelen talimatı işledi: yarış yeniden okunur
+  const onSiteRefresh = useCallback(async () => {
+    const cur = raceNow.current;
+    if (!cur?.id) return;
+    const fresh = await loadRace(orgId, cur.id).catch(() => null);
+    if (!fresh?.notice) return;
+    const next = { ...raceNow.current, notice: fresh.notice };
+    raceNow.current = next;
+    setRace(next);
+    window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: next }));
+  }, [orgId]);
+  // Geri al: sonuç ya da talimat bilgisi (program) öncesine döner
+  const onSiteUndo = useCallback((patch) => {
+    const next = { ...raceNow.current, ...patch };
     raceNow.current = next;
     setRace(next);
     window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: next }));
@@ -282,7 +294,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
             onCoach={onCoach}
             onMailTo={(list) => updateDoc(doc(db, "users", uid), { mailTo: list }).catch(() => toast("Adres kaydedilemedi"))}
           />
-          {race.id && race.site?.act && <SiteDocs orgId={orgId} race={race} open={sec === "site"} ready={!!athletes} onResults={onSiteResults} onUndoResults={onSiteUndo} />}
+          {race.id && race.site?.act && <SiteDocs orgId={orgId} race={race} open={sec === "site"} ready={!!athletes} onResults={onSiteResults} onUndo={onSiteUndo} onRefresh={onSiteRefresh} />}
         </>
       )}
     </main>
