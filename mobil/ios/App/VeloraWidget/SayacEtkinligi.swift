@@ -4,7 +4,7 @@ import WidgetKit
 
 // Kilit ekranında yarı saydam koyu cam: duvar kâğıdıyla uyumlu (iOS saat rengini vermez)
 private let cam = Color(red: 0.04, green: 0.047, blue: 0.11).opacity(0.42)
-private let vurgu = Color(red: 0.133, green: 0.827, blue: 0.933) // Okyanus camgöbeği #22d3ee
+private let vurgu = Color(red: 0.357, green: 0.549, blue: 1) // Velora mavisi #5b8cff
 
 // Süre: durduysa kalan sabit; çalışıyorsa sistem kendisi sayar (0'a kadar geri, sonra ileri: "Startan beri")
 private struct Sure: View {

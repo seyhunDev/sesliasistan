@@ -5,14 +5,14 @@ import WidgetKit
 // Velora widget'ları (Seyhun 2026-10-22 onayı: /mnt/project-files/iphone/widget-ornek-4.png, "daha sade, tek parça"):
 // - Velora (büyük, iOS 17+): rüzgâr grafiği, antrenman / sayaç ("Süre" doğrudan antrenmanın sayacı, "Yoklama" o günün yoklaması), banka ve aidat;
 //   widget'a basılı tut › Edit Widget ile bölümler seçilir (sıradaki planlar ve kelime de eklenebilir)
-// - Rüzgâr (orta, kilit ekranı), Antrenman (küçük, kilit ekranı; sayaç çalışırken koyu camgöbeği ve canlı), Banka ve aidat (küçük, kilit ekranı),
+// - Rüzgâr (orta, kilit ekranı), Antrenman (küçük, kilit ekranı; sayaç çalışırken koyu mavi ve canlı), Banka ve aidat (küçük, kilit ekranı),
 //   Kelime (orta, kilit ekranı), Özet (kilit ekranında saatin üstü: "Antrenman 16:00 · 12 kn")
 // Banka tutarı telefon kilitliyken gizlenir (privacySensitive).
 
 private func url(_ yol: String) -> URL { URL(string: "velora://ac\(yol)")! }
 private let sayacURL = URL(string: "velora://sayac")!
-private let vurguDugme = Color(red: 0.055, green: 0.647, blue: 0.769) // Okyanus vurgusu #0ea5c4
-private let sayacZemin = Color(red: 0.043, green: 0.498, blue: 0.6) // sayaç çalışırken koyu camgöbeği #0b7f99
+private let vurguDugme = Color(red: 0.239, green: 0.482, blue: 1) // Velora vurgusu #3d7bff
+private let sayacZemin = Color(red: 0.145, green: 0.388, blue: 0.922) // sayaç çalışırken koyu mavi #2563eb
 private let yesil = Color(red: 0.56, green: 0.82, blue: 0.65)
 private let soluk = Color.white.opacity(0.55)
 
@@ -104,7 +104,7 @@ private struct Cubuk: View {
     }
 }
 
-// Antrenmanın düğmeleri: Yoklama (o günün yoklaması) ve Süre (antrenmanın sayacı, ana düğme camgöbeği)
+// Antrenmanın düğmeleri: Yoklama (o günün yoklaması) ve Süre (antrenmanın sayacı, ana düğme mavi)
 private struct Dugme: View {
     let yazi: String
     let hedef: URL
