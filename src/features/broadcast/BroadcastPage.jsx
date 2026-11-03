@@ -685,27 +685,30 @@ export function BroadcastPage({ orgId, id }) {
             boştaysa sayaç yerine yarış oluşturma (sınıf, gruplar, bayrak); oluşturulunca sayaç "Başlat · 1. yarış Sarı" ile açılır */}
         {/* Tehir takibi: AP çekili (iniş saati ve kalan, belirsizse "Tehiri indir") ya da indi (uyarı işaretine kalan; geri sayım kendiliğinden) */}
         {!needSetup && (plan.status === "ap" || plan.warn) ? (
-          <div className="ck-glass mt-4 flex items-center gap-3 rounded-[1rem] px-3.5 py-3">
-            <span className="h-6 w-9 shrink-0 rounded-[3px] bg-[repeating-linear-gradient(90deg,#e11d48_0_20%,#fff_20%_40%)]" aria-hidden="true" />
-            <span className="min-w-0 flex-1 leading-tight">
-              <b className="block text-[1rem] font-semibold">{plan.status === "ap" ? (plan.ap?.down ? `Tehir · iniş ${trHm(plan.ap.down)}` : "Tehir · belirsiz") : "Tehir indi"}</b>
-              <span className="block truncate text-[0.8125rem] text-white/65">
+          // İki satır (Seyhun 2026-11-03 "yazılar kayıyor"): üstte bayrak, başlık ve kalan süre; altta yer · sebep ve geri sayım seçimi
+          <div className="ck-glass mt-4 rounded-[1rem] px-3.5 py-3">
+            <div className="flex items-center gap-3">
+              <span className="h-6 w-9 shrink-0 rounded-[3px] bg-[repeating-linear-gradient(90deg,#e11d48_0_20%,#fff_20%_40%)]" aria-hidden="true" />
+              <b className="min-w-0 flex-1 truncate text-[1rem] font-semibold">{plan.status === "ap" ? (plan.ap?.down ? `Tehir · iniş ${trHm(plan.ap.down)}` : "Tehir · belirsiz") : "Tehir indi"}</b>
+              {plan.status === "ap" && plan.ap?.down ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.ap.down) - (tick || capNow)) / 1000)))}</b> : null}
+              {plan.status !== "ap" && plan.warn ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.warn) - (tick || capNow)) / 1000)))}</b> : null}
+              {plan.status !== "ap" && plan.warn ? (
+                <button type="button" onClick={() => changePlan({ warn: "" })} className="shrink-0 text-[0.875rem] font-semibold text-white/70">
+                  Bekle
+                </button>
+              ) : null}
+            </div>
+            <div className="mt-1.5 flex items-center gap-2 pl-12">
+              <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">
                 {plan.status === "ap" ? [plan.ap?.land ? "Karada" : "Denizde", plan.ap?.why].filter(Boolean).join(" · ") : plan.order.length ? "Uyarı işaretinde geri sayım kendiliğinden başlar" : "Önce yarışı oluştur"}
               </span>
-            </span>
-            {/* İnince geri sayım kendiliğinden mi (Seyhun 2026-11-03 seçilebilir); tehir çekiliyken de değiştirilir */}
-            {plan.status === "ap" && !plan.ap?.land ? (
-              <button type="button" aria-pressed={!!plan.ap?.auto} onClick={() => changePlan({ ap: { ...plan.ap, auto: !plan.ap?.auto } })} className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${plan.ap?.auto ? "bg-acc text-white" : "bg-white/15 text-white/80"}`}>
-                {plan.ap?.auto ? "İnince 1 dk sonra geri sayım" : "Geri sayımı sen başlatırsın"}
-              </button>
-            ) : null}
-            {plan.status === "ap" && plan.ap?.down ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.ap.down) - (tick || capNow)) / 1000)))}</b> : null}
-            {plan.status !== "ap" && plan.warn ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.warn) - (tick || capNow)) / 1000)))}</b> : null}
-            {plan.status !== "ap" && plan.warn ? (
-              <button type="button" onClick={() => changePlan({ warn: "" })} className="shrink-0 text-[0.875rem] font-semibold text-white/70">
-                Bekle
-              </button>
-            ) : null}
+              {/* İnince geri sayım kendiliğinden mi (Seyhun 2026-11-03 seçilebilir); tehir çekiliyken de değiştirilir */}
+              {plan.status === "ap" && !plan.ap?.land ? (
+                <button type="button" aria-pressed={!!plan.ap?.auto} onClick={() => changePlan({ ap: { ...plan.ap, auto: !plan.ap?.auto } })} className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${plan.ap?.auto ? "bg-acc text-white" : "bg-white/15 text-white/80"}`}>
+                  {plan.ap?.auto ? "İnince 1 dk sonra geri sayım" : "Geri sayımı sen başlatırsın"}
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : null}
         {needSetup ? (
