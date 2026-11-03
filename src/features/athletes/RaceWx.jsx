@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
-import { CockpitWind } from "@/features/home/CockpitWind";
+import { HourTable } from "@/features/weather/HourTable";
 import { useWindObs } from "@/features/weather/useWindObs";
 import { RegionMap } from "@/features/weather/RegionMap";
 import { dirDeg, kn, sky, windName } from "@/features/weather/weather";
@@ -11,7 +11,7 @@ import { todayStr } from "@/lib/utils/format";
 import { cleanSpot, forecastFrom, lastForecastDay, loadRaceDay, raceDays, swipeStep, wxDays } from "./raceWeather";
 
 // Yarışın havası, hava sayfasıyla aynı tasarım (Seyhun 2026-10-26: "bizim hava durumu sayfamızda kullandığımız tasarımın aynısı"):
-// üstte sıcaklık, gök, rüzgâr; altında aynı büyük grafik (CockpitWind; yarış yerinin ölçümüyle). Veri loadRaceDay (antrenman günü › Hava ile ortak).
+// üstte sıcaklık, gök, rüzgâr; altında aynı saat saat tablo (HourTable; yarış yerinin ölçümüyle; Seyhun 2026-11-03 "her yerde ortak tasarım"). Veri loadRaceDay (antrenman günü › Hava ile ortak).
 
 function useDay(r, day, tick = 0) {
   const [got, setGot] = useState({ key: "", rows: null, place: "", err: "" });
@@ -34,7 +34,7 @@ function useDay(r, day, tick = 0) {
 const nowHH = () => String(new Date().getHours()).padStart(2, "0");
 
 // Sıcaklık · gök · rüzgâr satırı ve grafik (lacivert zeminde)
-export function DayChart({ rows, day, at, fill = false }) {
+export function DayChart({ rows, day, at, marks = [] }) {
   const today = todayStr();
   const isToday = day === today;
   const top = rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]);
@@ -58,15 +58,13 @@ export function DayChart({ rows, day, at, fill = false }) {
           </b>
         </span>
       </div>
-      <div className={`mt-2 ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}>
-        <CockpitWind key={day} rows={rows} date={day} place={at} far />
-      </div>
+      <HourTable key={day} rows={rows} date={day} place={at} far marks={marks} className="mt-2.5" />
     </>
   );
 }
 
 // Yüklenirken: DayChart'ın bütün biçimi tek parça (Seyhun 2026-10-31 "hepsi bir bütün olarak loading olmalı… veri gelince o alan büyüyor,
-// öyle olmasın"): sıcaklık satırı, grafik (CockpitWind ile aynı en-boy), saat saat derece/rüzgâr sırası ve açıklama satırı aynı yerde
+// öyle olmasın"): sıcaklık satırı ve saat saat tablo aynı yerde
 // soluk kutular; üstlerinden ince ışık geçer (.ck-shim). Bir gün açıldıktan sonra başka güne geçerken alan son yüksekliğini korur.
 export function Wait() {
   return (
@@ -79,24 +77,7 @@ export function Wait() {
         </span>
         <span className="ck-shim h-7 w-20 rounded-xl" />
       </div>
-      <div className="mt-2">
-        <div className="ck-shim aspect-[340/132] w-full rounded-2xl" />
-        <div className="mt-1.5 flex h-[4.6rem] justify-between px-1">
-          {[0, 1, 2, 3, 4, 5, 6].map((k) => (
-            <span key={k} className="flex flex-col items-center gap-[5px]">
-              <span className="ck-shim h-2.5 w-4 rounded-full" />
-              <span className="ck-shim size-[1.05rem] rounded-full" />
-              <span className="ck-shim h-3 w-6 rounded-full" />
-              <span className="ck-shim h-2.5 w-8 rounded-full" />
-            </span>
-          ))}
-        </div>
-        <div className="mt-1 flex h-4 items-center gap-2.5">
-          {["w-14", "w-16", "w-20"].map((w) => (
-            <span key={w} className={`ck-shim h-2.5 rounded-full ${w}`} />
-          ))}
-        </div>
-      </div>
+      <div className="ck-shim mt-2.5 h-[15.25rem] w-full rounded-[1.125rem]" />
     </div>
   );
 }
@@ -107,7 +88,7 @@ export function Wait() {
 // day: açılışta seçili gün (yarış günü akşamı yarın, RaceDayTop)
 // pinned: gün dışarıdan seçilir (Saha, üstteki tek Bugün ▾; Seyhun 2026-10-30); kendi gün düğmesi çizilmez, kaydırınca onDay(±1)
 // Grafik sağa sola kaydırılınca gün değişir (Seyhun 2026-10-31; yön raceWeather.js swipeStep); yarıştan önceki 3 gün de gezilir (wxDays)
-export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null }) {
+export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, marks = [] }) {
   const today = todayStr();
   const race = raceDays(r);
   const days = wxDays(r, today);
@@ -145,7 +126,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null })
   const st = ob?.rows?.length ? ob.station : null;
   if (!first || first > lastForecastDay(today)) return null;
   return (
-    <section className={`mt-4 ${mini ? "flex flex-1 flex-col" : ""}`} aria-label="Yarış havası">
+    <section className="mt-4" aria-label="Yarış havası">
       <div className="mb-2 flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">
           Hava · {d.place || sp?.name || r.district || r.city}
@@ -163,11 +144,11 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null })
         </button>
       </div>
       {/* Seyhun 2026-10-26: gün değişince yüklenirken alan küçülüp sayfa zıplıyordu; her durumda grafikle aynı yükseklik */}
-      <div ref={area} data-ready={d.rows?.length && !late ? "1" : "0"} className="flex min-h-[16.625rem] flex-col" style={!d.rows?.length && tall ? { minHeight: tall } : undefined} data-swipe-day {...swipe}>
+      <div ref={area} data-ready={d.rows?.length && !late ? "1" : "0"} className="flex min-h-[18.5rem] flex-col" style={!d.rows?.length && tall ? { minHeight: tall } : undefined} data-swipe-day {...swipe}>
         {late ? (
           <p className="m-auto text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
         ) : d.rows?.length ? (
-          <DayChart rows={d.rows} day={sel} at={d.at} />
+          <DayChart rows={d.rows} day={sel} at={d.at} marks={marks} />
         ) : d.err ? (
           <p className="m-auto text-center text-[0.875rem] text-white/70">Hava tahmini alınamadı.</p>
         ) : (
@@ -194,12 +175,8 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null })
           −2 sa … +12 kaydırıcı. Dokunmak yarışın yerini değiştirmez. */}
       {!d.at && !mini && !late && !d.err && <div className="ck-shim mt-3 h-12 rounded-[1.125rem]" aria-hidden="true" />}
       {d.at && (
-        <div className={mini ? "mt-3 flex min-h-[4.5rem] flex-1 flex-col" : "mt-3"}>
-          {mini ? (
-            <RegionMap mini className="min-h-[4.5rem] flex-1" place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
-          ) : (
-            <RegionMap place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
-          )}
+        <div className="mt-3">
+          <RegionMap place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
         </div>
       )}
     </section>
