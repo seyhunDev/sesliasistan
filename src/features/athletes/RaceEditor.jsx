@@ -27,7 +27,7 @@ import { MailTo } from "@/features/mail/MailTo";
 import { openFile, shareFile } from "./fileActions";
 import { BudgetView } from "./BudgetView";
 import { tl, totals } from "./budget";
-import { buildAthleteSheet, sheetParts } from "./athleteSheet";
+import { BUDGET_ONLY, buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
 import { RaceWx } from "./RaceWx";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
@@ -636,14 +636,14 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     } catch {}
   };
   const sheetList = sheetIds ? chosen.filter((a) => sheetIds.includes(a.id)) : chosen;
-  const makeSheet = async (list = sheetList) => {
+  const makeSheet = async (list = sheetList, money = false) => {
     if (!list.length) return toast("En az bir sporcu seç");
     setSheetBusy(true);
     try {
-      const bytes = await buildAthleteSheet(latest.current, list, await loadFonts(), chosen.length, sheetShow);
+      const bytes = await buildAthleteSheet(latest.current, list, await loadFonts(), chosen.length, money ? BUDGET_ONLY : sheetShow);
       const base = `${(latest.current.name || "yaris").trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}`;
       const who = list.length === 1 ? `-${list[0].studentName.replace(/[^\p{L}\p{N}]+/gu, "-")}` : "";
-      setDocView(new File([bytes], `${base}${who}-bilgi-notu.pdf`, { type: "application/pdf" }));
+      setDocView(new File([bytes], `${base}${who}-${money ? "butce" : "bilgi-notu"}.pdf`, { type: "application/pdf" }));
     } catch (e) {
       toast(e?.message || "Bilgi notu hazırlanamadı");
     }
@@ -655,19 +655,23 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     const on = (e) => {
       const d = e.detail || {};
       if (d.id && d.id !== id.current) return;
-      setTab("docs");
-      setSheetOpen(true);
-      setSheetIds(d.ids?.length ? d.ids : null);
-      sheetAsk.current = d.ids?.length ? d.ids : "all";
+      // "Ali'nin bütçesini gönder": Bütçe sekmesi açılır, yalnız bütçe payı hazırlanır (Paylaş ile gönderilir)
+      if (d.only === "budget") setTab("budget");
+      else {
+        setTab("docs");
+        setSheetOpen(true);
+        setSheetIds(d.ids?.length ? d.ids : null);
+      }
+      sheetAsk.current = { ids: d.ids?.length ? d.ids : "all", money: d.only === "budget" };
     };
     window.addEventListener("sa-race-sheet", on);
     return () => window.removeEventListener("sa-race-sheet", on);
   }, []);
   useEffect(() => {
     if (!sheetAsk.current || !chosen.length) return;
-    const ids = sheetAsk.current;
+    const { ids, money } = sheetAsk.current;
     sheetAsk.current = null;
-    makeSheet(ids === "all" ? chosen : chosen.filter((a) => ids.includes(a.id)));
+    makeSheet(ids === "all" ? chosen : chosen.filter((a) => ids.includes(a.id)), money);
   });
   const parts4 = sheetParts(r, chosen.length);
 

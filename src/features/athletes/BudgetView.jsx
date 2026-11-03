@@ -11,6 +11,7 @@ import { CATS, UNITS, WHO, cleanBudget, cleanItem, cleanRooms, emptyBudget, forA
 import { useData } from "@/features/data/DataProvider";
 import { totalTL } from "@/lib/receipts";
 import { buildBudgetPdf } from "./budgetDoc";
+import { BUDGET_ONLY, buildAthleteSheet } from "./athleteSheet";
 import { shareFile } from "./fileActions";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { loadFonts } from "./raceDocs";
@@ -44,6 +45,7 @@ export function BudgetView({ r, athletes, onChange }) {
   const [busy, setBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [view, setView] = useState(null); // açık çıktı (uygulama içinde, kapat düğmesiyle)
+  const [viewTitle, setViewTitle] = useState("Bütçe çıktısı");
   const [link, setLink] = useState(false); // fiş bağlama
   const { receipts = [] } = useData();
   const spent = b.spent || [];
@@ -84,11 +86,29 @@ export function BudgetView({ r, athletes, onChange }) {
       const name = `${r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}-butce.pdf`;
       const f = new File([bytes], name, { type: "application/pdf" });
       if (share) await shareFile(f);
-      else setView(f);
+      else {
+        setViewTitle("Bütçe çıktısı");
+        setView(f);
+      }
     } catch (e) {
       toast(e?.message || "Çıktı hazırlanamadı");
     }
     setPdfBusy(false);
+  };
+
+  // Tek sporcunun bütçesi: yalnız onun payı, kalem kalem (bilgi notunun bütçe bölümü); açılır, Paylaş ile gönderilir
+  const [oneBusy, setOneBusy] = useState("");
+  const onePdf = async (a) => {
+    setOneBusy(a.id);
+    try {
+      const bytes = await buildAthleteSheet({ ...r, budget: b }, [a], await loadFonts(), athletes.length, BUDGET_ONLY);
+      const base = `${r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}`;
+      setViewTitle(`${a.studentName} · bütçe`);
+      setView(new File([bytes], `${base}-${a.studentName.replace(/[^\p{L}\p{N}]+/gu, "-")}-butce.pdf`, { type: "application/pdf" }));
+    } catch (e) {
+      toast(e?.message || "Çıktı hazırlanamadı");
+    }
+    setOneBusy("");
   };
 
   const groups = CATS.map((c) => [c, t.lines.filter((l) => l.cat === c)]).filter(([, l]) => l.length);
@@ -213,16 +233,19 @@ export function BudgetView({ r, athletes, onChange }) {
             {athletes.map((a) => {
               const on = !!b.paid?.[a.id];
               return (
-                <li key={a.id}>
+                <li key={a.id} className="flex items-center">
                   <button
                     type="button"
                     onClick={() => set({ paid: Object.fromEntries(Object.entries({ ...b.paid, [a.id]: !on }).filter(([, v]) => v)) })}
                     aria-pressed={on}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg"
+                    className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2 text-left active:bg-bg"
                   >
                     <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${on ? "bg-ok text-white ring-ok" : "ring-line"}`}>{on && <Icon name="check" className="size-4 [stroke-width:3]" />}</span>
                     <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${on ? "text-mut" : "font-medium"}`}>{a.studentName}</span>
                     <span className="shrink-0 text-[0.875rem] tabular-nums text-mut">{tl(forAthlete(t, a.id))}</span>
+                  </button>
+                  <button type="button" onClick={() => onePdf(a)} disabled={!!oneBusy} data-press className="btn btn-text btn-sm mr-2 shrink-0 text-acc">
+                    {oneBusy === a.id ? "…" : "Çıktı"}
                   </button>
                 </li>
               );
@@ -245,7 +268,7 @@ export function BudgetView({ r, athletes, onChange }) {
         </div>
       </div>
 
-      {view && <PdfViewer title="Bütçe çıktısı" load={() => Promise.resolve(view)} onClose={() => setView(null)} />}
+      {view && <PdfViewer title={viewTitle} load={() => Promise.resolve(view)} onClose={() => setView(null)} />}
 
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Kalemi düzenle" : "Kalem ekle"}>
         {edit && <ItemForm key={edit.id || "new"} item={edit} athletes={athletes} nights={b.nights} hotels={raceHotels(r)} onSave={saveItem} onRemove={edit.id ? () => removeItem(edit.id) : null} />}
