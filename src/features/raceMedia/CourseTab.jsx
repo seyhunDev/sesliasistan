@@ -259,7 +259,7 @@ function Line({ name, sub = "", value = "", acc = false, as: T = "li" }) {
         {name}
         {sub && <span className="text-white/50"> · {sub}</span>}
       </span>
-      {value && <span className={`shrink-0 text-[0.9375rem] font-medium tabular-nums ${acc ? "text-[#67e8f9]" : "text-white"}`}>{value}</span>}
+      {value && <span className={`shrink-0 text-[0.9375rem] font-medium tabular-nums ${acc ? "text-[#8fb3ff]" : "text-white"}`}>{value}</span>}
     </T>
   );
 }

@@ -7,7 +7,7 @@ import { mmText } from "./hourCols";
 const DARK_SKY = { sun: "text-amber-300", cloudSun: "text-amber-200", moon: "text-indigo-200", cloud: "text-slate-300", fog: "text-slate-300", rain: "text-sky-300", snow: "text-sky-100", storm: "text-amber-300" };
 
 // Günler şeridi (Seyhun 2026-11-03 Windy görseli, örnek hava-sayfasi-ornek.png "Böyle yap"): lacivert üstte yan yana günler; her günde ad, gökyüzü,
-// en düşük / en yüksek sıcaklık, günlük yağış mm (sayıyla, mavi) ve rüzgâr–sağanak kn. Arkada en yüksek sıcaklığın soluk eğrisi. Seçili gün camgöbeği çerçeveli;
+// en düşük / en yüksek sıcaklık, günlük yağış mm (sayıyla, mavi) ve rüzgâr–sağanak kn. Arkada en yüksek sıcaklığın soluk eğrisi. Seçili gün mavi çerçeveli;
 // dokununca altındaki saat saat tablo o güne geçer.
 export function DayStrip({ days, sel, onSel, today }) {
   if (!days?.length) return null;
@@ -33,7 +33,7 @@ export function DayStrip({ days, sel, onSel, today }) {
             data-press
             aria-pressed={on}
             onClick={() => onSel(d.date)}
-            className={`relative flex min-w-0 flex-col items-center gap-0.5 py-2 tabular-nums ${i ? "border-l border-white/10" : ""} ${on ? "rounded-[1rem] bg-[#0ea5c4]/25 shadow-[inset_0_0_0_2px_#0ea5c4]" : ""}`}
+            className={`relative flex min-w-0 flex-col items-center gap-0.5 py-2 tabular-nums ${i ? "border-l border-white/10" : ""} ${on ? "rounded-[1rem] bg-[#3d7bff]/25 shadow-[inset_0_0_0_2px_#3d7bff]" : ""}`}
           >
             <small className={`text-[0.75rem] font-semibold capitalize ${on ? "text-white" : "text-white/70"}`}>{name}</small>
             <Icon name={s.icon} className={`my-0.5 size-5 ${DARK_SKY[s.icon] || "text-white/80"}`} />

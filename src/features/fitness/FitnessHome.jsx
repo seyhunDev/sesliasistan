@@ -448,7 +448,7 @@ export function FitnessHome() {
       <button type="button" onClick={() => setMenuOpen(true)} aria-label="Diğer" data-press className="btn btn-round size-10 text-fg">
         <Icon name="more" className="size-5" />
       </button>
-      <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" className={`grid size-10 place-items-center rounded-full ${dark ? "bg-[#0ea5c4] text-[#06283a]" : "bg-acc text-white shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)]"}`}>
+      <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" className={`grid size-10 place-items-center rounded-full ${dark ? "bg-[#3d7bff] text-[#06283a]" : "bg-acc text-white shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)]"}`}>
         <Icon name="plus" className="size-5" />
       </button>
     </>
@@ -567,7 +567,7 @@ function Tabs({ tab, setTab, withAth, dark }) {
   return (
     <div className={`relative mb-3 grid gap-1 rounded-full p-1 ${dark ? "bg-white/10 ring-1 ring-white/15" : "bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)]"} ${tabs.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
       {tabs.map(([k, n]) => (
-        <button key={k} type="button" onClick={() => setTab(k)} className={`h-10 rounded-full text-[0.9375rem] font-semibold transition-colors ${tab === k ? (dark ? "bg-[#0ea5c4] text-[#06283a]" : "bg-acc text-white") : dark ? "text-white/70" : "text-mut"}`}>
+        <button key={k} type="button" onClick={() => setTab(k)} className={`h-10 rounded-full text-[0.9375rem] font-semibold transition-colors ${tab === k ? (dark ? "bg-[#3d7bff] text-[#06283a]" : "bg-acc text-white") : dark ? "text-white/70" : "text-mut"}`}>
           {n}
         </button>
       ))}
@@ -634,7 +634,7 @@ function AthTab({ today, todayRows, wk, rows, rest, onDay, onAth, onOpen, onNew 
           <div className="mt-3.5 flex items-center gap-2.5 text-[0.8125rem]">
             <span className="text-white/75">Bu hafta</span>
             <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/15">
-              <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round((wk.done / wk.planned) * 100)}%` }} />
+              <span className="block h-full rounded-full bg-[#8fb3ff]" style={{ width: `${Math.round((wk.done / wk.planned) * 100)}%` }} />
             </span>
             <b className="tabular-nums">{`${wk.done}/${wk.planned}`}</b>
           </div>
@@ -658,12 +658,12 @@ function AthTab({ today, todayRows, wk, rows, rest, onDay, onAth, onOpen, onNew 
       {rest.length > 0 && (
         <>
           <SecHead title="Programı yok" n={rest.length} />
-          <ul className="divide-y divide-white/[.08] overflow-hidden rounded-[1.375rem] border border-white/[.08] bg-[#13233d]">
+          <ul className="divide-y divide-white/[.08] overflow-hidden rounded-[1.375rem] border border-white/[.08] bg-[#11223c]">
             {rest.map((a) => (
               <li key={a.uid} className="flex items-center gap-3 px-3.5 py-2.5">
                 <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/[.08] text-[0.8125rem] font-bold text-[#c5d2e6]">{initialsOf(a.name)}</span>
                 <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.name}</span>
-                <button type="button" onClick={() => onNew(a.uid)} className="h-9 shrink-0 rounded-full bg-[#67e8f9]/15 px-3.5 text-[0.875rem] font-semibold text-[#67e8f9]">
+                <button type="button" onClick={() => onNew(a.uid)} className="h-9 shrink-0 rounded-full bg-[#8fb3ff]/15 px-3.5 text-[0.875rem] font-semibold text-[#8fb3ff]">
                   + Program
                 </button>
               </li>
@@ -696,7 +696,7 @@ function athLine(r, today) {
   if (all) return { text: "Bu hafta", tag: ["Tamam", "ok"] };
   return { text: "Bu hafta antrenman yok", tag: null };
 }
-const TAG = { ok: "bg-[#9fe7c6]/15 text-[#9fe7c6]", miss: "bg-[#f3a39a]/15 text-[#f3a39a]", wait: "bg-[#67e8f9]/15 text-[#67e8f9]", skip: "bg-white/10 text-white/70" };
+const TAG = { ok: "bg-[#9fe7c6]/15 text-[#9fe7c6]", miss: "bg-[#f3a39a]/15 text-[#f3a39a]", wait: "bg-[#8fb3ff]/15 text-[#8fb3ff]", skip: "bg-white/10 text-white/70" };
 
 // Sporcu kartı: üstte baş harfler, ad, hedef · kaçıncı hafta, sağda bu haftanın halkası (dokununca sporcu sayfası);
 // ortada bugünün ya da kaçırılan günün antrenmanı ve durumu; altta Pzt–Paz: ✓ yaptı, ✕ yapmadı, – atladı, çerçeveli bugün,
@@ -712,16 +712,16 @@ function AthCard({ row, today, onAth, onOpen }) {
     if (plan) onOpen(plan);
   };
   return (
-    <div className="rounded-[1.5rem] border border-white/[.08] bg-[#13233d] p-4">
+    <div className="rounded-[1.5rem] border border-white/[.08] bg-[#11223c] p-4">
       <button type="button" onClick={onAth} className="flex w-full items-center gap-3 text-left">
-        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#67e8f9]/15 text-[1rem] font-bold text-[#67e8f9]">{initialsOf(row.name)}</span>
+        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#8fb3ff]/15 text-[1rem] font-bold text-[#8fb3ff]">{initialsOf(row.name)}</span>
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[1.0625rem] font-semibold">{row.name}</b>
-          {sub && <small className="block truncate text-[0.8125rem] text-[#9fb0cc]">{sub}</small>}
+          {sub && <small className="block truncate text-[0.8125rem] text-[#9fadc6]">{sub}</small>}
         </span>
         {row.week.planned > 0 && (
-          <span className="grid size-[3.25rem] shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#67e8f9 ${pct}%, rgb(255 255 255 / .12) 0)` }}>
-            <span className="grid size-[2.625rem] place-items-center rounded-full bg-[#13233d] text-[0.875rem] font-bold tabular-nums">{`${row.week.done}/${row.week.planned}`}</span>
+          <span className="grid size-[3.25rem] shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#8fb3ff ${pct}%, rgb(255 255 255 / .12) 0)` }}>
+            <span className="grid size-[2.625rem] place-items-center rounded-full bg-[#11223c] text-[0.875rem] font-bold tabular-nums">{`${row.week.done}/${row.week.planned}`}</span>
           </span>
         )}
       </button>

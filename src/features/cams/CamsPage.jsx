@@ -113,7 +113,7 @@ export function CamsPage() {
           </button>
         </header>
         <div className="mt-4">
-          {top ? <BigCam c={top} onOpen={() => setOpen(top)} /> : <div className={`aspect-video rounded-[1.125rem] border border-[#26395c] ${cur ? "" : "shimmer"}`} />}
+          {top ? <BigCam c={top} onOpen={() => setOpen(top)} /> : <div className={`aspect-video rounded-[1.125rem] border border-[#24375a] ${cur ? "" : "shimmer"}`} />}
         </div>
       </section>
 
@@ -176,7 +176,7 @@ export function CamsPage() {
 function Img({ src, className = "" }) {
   const [bad, setBad] = useState(false);
   return (
-    <span className={`block overflow-hidden bg-[#182a48] ${className}`}>
+    <span className={`block overflow-hidden bg-[#13243f] ${className}`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- dış bağlantı (Windy), Next görüntü sunucusu yok */}
       {!bad && <img src={src} alt="" loading="lazy" decoding="async" onError={() => setBad(true)} className="size-full object-cover" />}
     </span>
@@ -185,10 +185,10 @@ function Img({ src, className = "" }) {
 
 function BigCam({ c, onOpen }) {
   return (
-    <button type="button" data-press onClick={onOpen} className="relative block w-full overflow-hidden rounded-[1.125rem] border border-[#26395c] text-left">
+    <button type="button" data-press onClick={onOpen} className="relative block w-full overflow-hidden rounded-[1.125rem] border border-[#24375a] text-left">
       <Img src={c.preview} className="aspect-video" />
-      {c.live && <span className="absolute left-2.5 top-2.5 rounded-full bg-[#11203a]/80 px-2 py-0.5 text-[0.75rem] font-semibold text-[#67e8f9]">Canlı</span>}
-      <span className="absolute inset-x-0 bottom-0 flex items-baseline gap-2 bg-[#11203a]/80 px-3 py-2">
+      {c.live && <span className="absolute left-2.5 top-2.5 rounded-full bg-[#0b1a33]/80 px-2 py-0.5 text-[0.75rem] font-semibold text-[#8fb3ff]">Canlı</span>}
+      <span className="absolute inset-x-0 bottom-0 flex items-baseline gap-2 bg-[#0b1a33]/80 px-3 py-2">
         <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{c.title}</b>
         <small className="shrink-0 text-[0.8125rem] font-semibold text-white/65 tabular-nums">
           {meta(c)}
@@ -218,7 +218,7 @@ function CamSheet({ c, onClose }) {
     <Sheet open={!!c} onClose={onClose} title={c?.title || ""}>
       {c && (
         <div className="space-y-3 px-5">
-          <div className="aspect-video overflow-hidden rounded-2xl bg-[#182a48]">
+          <div className="aspect-video overflow-hidden rounded-2xl bg-[#13243f]">
             {c.player ? <iframe src={c.player} title={c.title} allow="autoplay; fullscreen" allowFullScreen className="block size-full border-0" /> : <Img src={c.preview} className="size-full" />}
           </div>
           <p className="px-1 text-[0.8125rem] font-semibold text-mut tabular-nums">

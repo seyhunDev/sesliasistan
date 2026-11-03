@@ -104,7 +104,7 @@ export function RaceCalendar() {
         </label>
         <div className="mt-3 flex gap-2">
           {[["up", "Yaklaşan"], ["past", "Geçmiş"]].map(([k, l]) => (
-            <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={tab === k} data-press className={`${pill} ${tab === k ? "border-white bg-white text-[#11203a]" : "ck-glass text-white"}`}>
+            <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={tab === k} data-press className={`${pill} ${tab === k ? "border-white bg-white text-[#0b1a33]" : "ck-glass text-white"}`}>
               {l}
             </button>
           ))}

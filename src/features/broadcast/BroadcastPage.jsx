@@ -1748,21 +1748,21 @@ function Head({ title, right = "", onAdd = null, addLabel = "Ekle", busy = false
 // Canlı ekranın sağ kartında elle gösterilen (Seyhun 2026-11-03 14:41 yayın grafiği: parkur alanını yönetimden elle açarım)
 const SHOW_NAME = { course: "Parkur" };
 const STEPS = ["Sınıflar", "Gruplar"];
-const bigBtn = "flex h-14 w-full items-center justify-center rounded-[1.125rem] bg-white text-[1.125rem] font-semibold text-[#11203a] shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-0.5 active:shadow-none disabled:opacity-40";
+const bigBtn = "flex h-14 w-full items-center justify-center rounded-[1.125rem] bg-white text-[1.125rem] font-semibold text-[#0b1a33] shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-0.5 active:shadow-none disabled:opacity-40";
 const backBtn = "ck-glass flex h-14 shrink-0 items-center justify-center rounded-[1.125rem] px-5 text-[1.0625rem] font-semibold";
 function Setup({ sets, onSave, onCancel }) {
   const [step, setStep] = useState(1);
   const [clss, setClss] = useState(() => sets.map((x) => x.cls));
   const [grps, setGrps] = useState(() => Object.fromEntries(sets.map((x) => [x.cls, x.grps])));
   const starts = clss.reduce((n, c) => n + Math.max(1, (grps[c] || []).length), 0);
-  const chip = (on) => `flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.9375rem] font-semibold ${on ? "bg-white text-[#11203a]" : "ck-glass text-white/85"}`;
+  const chip = (on) => `flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.9375rem] font-semibold ${on ? "bg-white text-[#0b1a33]" : "ck-glass text-white/85"}`;
   return (
     <div className="mt-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[1.0625rem] font-semibold">Yarışın sınıfları ve grupları</p>
         <ol className="flex items-center gap-1.5 text-[0.8125rem] font-semibold">
           {STEPS.map((x, i) => (
-            <li key={x} className={`rounded-full px-2.5 py-1 ${i + 1 === step ? "bg-white text-[#11203a]" : i + 1 < step ? "ck-glass text-white" : "text-white/40"}`}>
+            <li key={x} className={`rounded-full px-2.5 py-1 ${i + 1 === step ? "bg-white text-[#0b1a33]" : i + 1 < step ? "ck-glass text-white" : "text-white/40"}`}>
               {`${i + 1} ${x}`}
             </li>
           ))}
@@ -1774,8 +1774,8 @@ function Setup({ sets, onSave, onCancel }) {
             {CLASS_PICK.map((c) => {
               const on = clss.includes(c);
               return (
-                <button key={c} type="button" aria-pressed={on} onClick={() => setClss((l) => (on ? l.filter((x) => x !== c) : CLASS_PICK.filter((x) => x === c || l.includes(x))))} className={`flex h-12 items-center gap-2.5 rounded-[0.875rem] px-3.5 text-left text-[1rem] font-semibold ${on ? "bg-white text-[#11203a]" : "ck-glass text-white/70"}`}>
-                  <span className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 text-[0.75rem] ${on ? "border-[#11203a] bg-[#11203a] text-white" : "border-white/40"}`} aria-hidden="true">
+                <button key={c} type="button" aria-pressed={on} onClick={() => setClss((l) => (on ? l.filter((x) => x !== c) : CLASS_PICK.filter((x) => x === c || l.includes(x))))} className={`flex h-12 items-center gap-2.5 rounded-[0.875rem] px-3.5 text-left text-[1rem] font-semibold ${on ? "bg-white text-[#0b1a33]" : "ck-glass text-white/70"}`}>
+                  <span className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 text-[0.75rem] ${on ? "border-[#0b1a33] bg-[#0b1a33] text-white" : "border-white/40"}`} aria-hidden="true">
                     {on ? "✓" : ""}
                   </span>
                   {c}
@@ -1895,7 +1895,7 @@ function FlagPick({ no, sets, value, onPick, again = false }) {
       </div>
       <div className="grid grid-cols-3 gap-2">
         {PREP_PICK.map((g) => (
-          <button key={g} type="button" aria-pressed={value === g} onClick={() => onPick(g)} data-press className={`flex flex-col items-center gap-2 rounded-[1rem] p-3 ${value === g ? "bg-white text-[#11203a]" : "ck-glass text-white"}`}>
+          <button key={g} type="button" aria-pressed={value === g} onClick={() => onPick(g)} data-press className={`flex flex-col items-center gap-2 rounded-[1rem] p-3 ${value === g ? "bg-white text-[#0b1a33]" : "ck-glass text-white"}`}>
             <span className="block h-10 w-[3.75rem] overflow-hidden rounded-[4px] ring-1 ring-white/70 shadow-[0_2px_6px_rgba(0,0,0,.35)]">
               <FlagArt p={g} />
             </span>

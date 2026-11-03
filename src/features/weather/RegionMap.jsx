@@ -191,7 +191,7 @@ export function RegionMap({ place, station, obs, onPick, openAt = null, startOpe
     else {
       m.addSource("grid", { type: "geojson", data: fc });
       m.addLayer({ id: "wind-heat", type: "circle", source: "grid", paint: { "circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 8, 18, 10, 70, 12, 280], "circle-blur": 1, "circle-opacity": 0.35, "circle-color": "#7aa6d6" } });
-      m.addLayer({ id: "rain-fc", type: "circle", source: "grid", paint: { "circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 8, 16, 10, 64, 12, 256], "circle-blur": 1, "circle-opacity": 0, "circle-color": "#38bdf8" } });
+      m.addLayer({ id: "rain-fc", type: "circle", source: "grid", paint: { "circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 8, 16, 10, 64, 12, 256], "circle-blur": 1, "circle-opacity": 0, "circle-color": "#5b8cff" } });
       m.addSource("arrows", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       m.addLayer({ id: "wind-arrow", type: "symbol", source: "arrows", layout: { "icon-image": "ok", "icon-size": 0.75, "icon-allow-overlap": true, "icon-rotation-alignment": "map", "icon-rotate": ["get", "d"] }, paint: { "icon-color": ["get", "c"] } });
     }
@@ -200,7 +200,7 @@ export function RegionMap({ place, station, obs, onPick, openAt = null, startOpe
     if (m.getSource("pts")) m.getSource("pts").setData(pts);
     else {
       m.addSource("pts", { type: "geojson", data: pts });
-      m.addLayer({ id: "pts", type: "circle", source: "pts", paint: { "circle-radius": ["match", ["get", "kind"], "place", 7, 4.5], "circle-color": ["match", ["get", "kind"], "place", "#0ea5c4", "#fff"], "circle-stroke-width": 3, "circle-stroke-color": ["match", ["get", "kind"], "place", "#fff", "#1c3550"] } });
+      m.addLayer({ id: "pts", type: "circle", source: "pts", paint: { "circle-radius": ["match", ["get", "kind"], "place", 7, 4.5], "circle-color": ["match", ["get", "kind"], "place", "#3d7bff", "#fff"], "circle-stroke-width": 3, "circle-stroke-color": ["match", ["get", "kind"], "place", "#fff", "#1c3550"] } });
     }
   }, [ready, grid, place.lat, place.lon, station?.lat, station?.lon]);
   useEffect(() => {
@@ -290,7 +290,7 @@ export function RegionMap({ place, station, obs, onPick, openAt = null, startOpe
         <div ref={box} className="h-full w-full" />
         <div className="absolute left-2.5 top-2.5 flex rounded-full bg-[rgba(15,31,56,.78)] p-[3px] backdrop-blur" role="group" aria-label="Katman">
           {[["wind", "Rüzgâr"], ["rain", "Yağış"]].map(([k, t]) => (
-            <button key={k} type="button" aria-pressed={mode === k} onClick={() => (setMode(k), setSel(null), setWant(null), setPlay(false))} className={`h-7 rounded-full px-3 text-[0.8125rem] font-semibold ${mode === k ? "bg-white text-[#11203a]" : "text-white/75"}`}>
+            <button key={k} type="button" aria-pressed={mode === k} onClick={() => (setMode(k), setSel(null), setWant(null), setPlay(false))} className={`h-7 rounded-full px-3 text-[0.8125rem] font-semibold ${mode === k ? "bg-white text-[#0b1a33]" : "text-white/75"}`}>
               {t}
             </button>
           ))}
@@ -298,7 +298,7 @@ export function RegionMap({ place, station, obs, onPick, openAt = null, startOpe
         {mode === "rain" && step?.kind === "fc" && (
           <div className="absolute left-2.5 top-12 flex rounded-full bg-[rgba(15,31,56,.78)] p-[3px] backdrop-blur" role="group" aria-label="Yağış gösterimi">
             {[["p", "İhtimal"], ["mm", "Miktar"]].map(([k, t]) => (
-              <button key={k} type="button" aria-pressed={by === k} onClick={() => setBy(k)} className={`h-7 rounded-full px-3 text-[0.8125rem] font-semibold ${by === k ? "bg-white text-[#11203a]" : "text-white/75"}`}>
+              <button key={k} type="button" aria-pressed={by === k} onClick={() => setBy(k)} className={`h-7 rounded-full px-3 text-[0.8125rem] font-semibold ${by === k ? "bg-white text-[#0b1a33]" : "text-white/75"}`}>
                 {t}
               </button>
             ))}
@@ -310,7 +310,7 @@ export function RegionMap({ place, station, obs, onPick, openAt = null, startOpe
       </div>
       <div className="px-3 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] text-white">
         <div className="flex items-center gap-2.5">
-          <button type="button" onClick={() => (setSel(ix >= steps.length - 1 ? 0 : ix), setPlay((p) => !p))} aria-label={play ? "Durdur" : "Oynat"} className="grid size-9 shrink-0 place-items-center rounded-full bg-[#0ea5c4] text-[#06283a]">
+          <button type="button" onClick={() => (setSel(ix >= steps.length - 1 ? 0 : ix), setPlay((p) => !p))} aria-label={play ? "Durdur" : "Oynat"} className="grid size-9 shrink-0 place-items-center rounded-full bg-[#3d7bff] text-[#06283a]">
             <Icon name={play ? "pause" : "play"} className="size-4" />
           </button>
           <div className="relative h-8 min-w-0 flex-1">

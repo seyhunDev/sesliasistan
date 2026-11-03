@@ -27,7 +27,7 @@ function Tile({ photo, title, sub, href, off = false }) {
       <span className="shop-fade absolute inset-0" />
       <span className="relative mt-auto block min-w-0 px-3 pb-2.5">
         <b className="block truncate text-[1.0625rem] font-semibold tracking-[-.01em]">{title}</b>
-        <small className="block truncate text-[0.75rem] font-semibold text-[#22d3ee]">{sub}</small>
+        <small className="block truncate text-[0.75rem] font-semibold text-[#5b8cff]">{sub}</small>
       </span>
     </>
   );
@@ -64,9 +64,9 @@ function MarketOrderCard() {
   return (
     <div className="food-card overflow-hidden rounded-[1.5rem]">
       <button type="button" data-press="row" onClick={() => setShow(true)} className="block w-full px-3.5 pt-3.5 text-left">
-        <small className="block text-[0.75rem] font-semibold text-[#22d3ee]">Market siparişi</small>
+        <small className="block text-[0.75rem] font-semibold text-[#5b8cff]">Market siparişi</small>
         <b className="mt-0.5 block text-[1.5rem] font-bold leading-tight tracking-[-.02em]">{STATUS_NAMES[o.status]}</b>
-        <small className="mt-0.5 block truncate text-[0.78rem] text-[#9fb0cc]">{[`${cartCount(o.lines || [])} ürün`, tl(o.total || 0), PAY[o.pay]].filter(Boolean).join(" · ")}</small>
+        <small className="mt-0.5 block truncate text-[0.78rem] text-[#9fadc6]">{[`${cartCount(o.lines || [])} ürün`, tl(o.total || 0), PAY[o.pay]].filter(Boolean).join(" · ")}</small>
         <span className="mt-3 grid grid-cols-4 gap-1">
           {STATUSES.map((s, i) => <i key={s} className={`food-step ${i <= at ? "on" : ""}`} />)}
         </span>

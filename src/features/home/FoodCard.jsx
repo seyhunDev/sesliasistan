@@ -67,22 +67,22 @@ function OrderCard({ o, v, now, orgId }) {
           <TrackMap small from={place.pos} to={o.address.pos} courier={c} route={o.route} photo={place.cover && photoUrl(place.cover, 120)} f={v.f} onFail={() => setNoMap(true)}
             info={c ? `${c.name} · ${VEHICLES[c.vehicle || "motor"]}${o.route ? ` · ${String(o.route.km).replace(".", ",")} km` : ""}` : CHIP[v.status]} />
         )}
-        <span className={`relative block px-3.5 ${map ? "-mt-16 bg-gradient-to-b from-transparent to-[#182a48] to-70% pt-5" : "pt-3.5"}`}>
+        <span className={`relative block px-3.5 ${map ? "-mt-16 bg-gradient-to-b from-transparent to-[#13243f] to-70% pt-5" : "pt-3.5"}`}>
           <b className="text-[2.5rem] font-extrabold leading-none tracking-[-.04em] tabular-nums">{minutesLeft(v.eta, now)}</b>
-          <span className="ml-1 text-[0.9375rem] font-semibold text-[#9fb0cc]">dk</span>
-          <small className="mt-1 block text-[0.75rem] text-[#9fb0cc]">Tahmini varış {hm(v.eta)}</small>
+          <span className="ml-1 text-[0.9375rem] font-semibold text-[#9fadc6]">dk</span>
+          <small className="mt-1 block text-[0.75rem] text-[#9fadc6]">Tahmini varış {hm(v.eta)}</small>
         </span>
         <span className="mt-2.5 flex items-center gap-2.5 px-3.5">
           <Img src={place?.cover} w={120} className="size-[2.375rem] shrink-0 rounded-xl !bg-white/10" />
           <span className="min-w-0 flex-1 leading-tight">
             <b className="block truncate text-[1rem] font-semibold">{o.placeName}</b>
-            <small className="block truncate text-[0.78rem] text-[#9fb0cc]">{[count && `${count} ürün`, o.total && tl(o.total), PAY[o.pay]].filter(Boolean).join(" · ")}</small>
+            <small className="block truncate text-[0.78rem] text-[#9fadc6]">{[count && `${count} ürün`, o.total && tl(o.total), PAY[o.pay]].filter(Boolean).join(" · ")}</small>
           </span>
         </span>
         <span className="mt-3 grid grid-cols-4 gap-1 px-3.5">
           {STEPS.map((s, i) => <i key={s} className={`food-step ${i <= at ? "on" : ""}`} />)}
         </span>
-        <span className="mt-1.5 grid grid-cols-4 px-3.5 text-[0.7rem] text-[#9fb0cc]">
+        <span className="mt-1.5 grid grid-cols-4 px-3.5 text-[0.7rem] text-[#9fadc6]">
           {STEPS.map((s, i) => <span key={s} className={i === at ? "font-semibold text-white" : ""}>{at < 0 && i === 0 ? STATUS_NAMES.sent : STEP_NAMES[s]}</span>)}
         </span>
       </Link>

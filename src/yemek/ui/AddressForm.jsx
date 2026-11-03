@@ -169,7 +169,7 @@ function MapPick({ at, onMove, onFound }) {
       <div ref={box} className="h-[22rem] w-full overflow-hidden rounded-[1.25rem] border border-line bg-line" />
       <svg aria-hidden="true" width="36" height="46" viewBox="0 0 36 46" className={`pointer-events-none absolute left-1/2 top-1/2 z-[500] -translate-x-1/2 transition-transform duration-200 ${moving ? "-translate-y-[calc(100%+10px)]" : "-translate-y-full"}`}>
         <ellipse cx="18" cy="44" rx="6" ry="2" fill="rgba(0,0,0,.2)" />
-        <path d="M18 2C9 2 3 8.5 3 17c0 11 15 26 15 26s15-15 15-26C33 8.5 27 2 18 2z" fill="#0f2c45" />
+        <path d="M18 2C9 2 3 8.5 3 17c0 11 15 26 15 26s15-15 15-26C33 8.5 27 2 18 2z" fill="#0b1a33" />
         <circle cx="18" cy="17" r="6" fill="#fff" />
       </svg>
       <button type="button" onClick={() => setAbout(!about)} aria-label="Harita kaynağı" className="absolute bottom-3 left-3 z-[500] grid size-6 place-items-center rounded-full bg-white/85 text-[0.75rem] font-bold text-mut">i</button>

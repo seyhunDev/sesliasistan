@@ -160,7 +160,7 @@ function Results({ s, sheets, onBack }) {
             {chips.map(([k, v]) => {
               const on = k === "c" ? fleet?.cls === v && !filter : filter === v;
               return (
-                <button key={k + v} type="button" onClick={() => (k === "c" ? (setCls(v), setFilter("")) : setFilter(on ? "" : v))} aria-pressed={on} data-press className={`${pill} ${on ? "border-white bg-white text-[#11203a]" : "ck-glass text-white"}`}>
+                <button key={k + v} type="button" onClick={() => (k === "c" ? (setCls(v), setFilter("")) : setFilter(on ? "" : v))} aria-pressed={on} data-press className={`${pill} ${on ? "border-white bg-white text-[#0b1a33]" : "ck-glass text-white"}`}>
                   {v}
                 </button>
               );

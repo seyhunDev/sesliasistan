@@ -199,24 +199,24 @@ function DayPlans({ date, onOpen }) {
   const d = new Date(`${date}T12:00`);
   const title = `${cap(d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""))} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "long" })}`;
   return (
-    <div className="ck-b mt-3 overflow-hidden rounded-[1.375rem] border border-white/10 bg-[#182a48]">
-      <div className="flex items-center gap-2 px-3.5 pb-1.5 pt-3 text-[0.75rem] font-bold tracking-[.05em] text-[#9fb0cc]">
+    <div className="ck-b mt-3 overflow-hidden rounded-[1.375rem] border border-white/10 bg-[#13243f]">
+      <div className="flex items-center gap-2 px-3.5 pb-1.5 pt-3 text-[0.75rem] font-bold tracking-[.05em] text-[#9fadc6]">
         <span className="min-w-0 flex-1 truncate">{title.toLocaleUpperCase("tr-TR")}{list.length ? ` · ${list.length} PLAN` : ""}</span>
-        <button type="button" data-press onClick={onOpen} className="shrink-0 text-[0.8125rem] font-semibold tracking-normal text-[#67e8f9]">Günü aç ›</button>
+        <button type="button" data-press onClick={onOpen} className="shrink-0 text-[0.8125rem] font-semibold tracking-normal text-[#8fb3ff]">Günü aç ›</button>
       </div>
       {list.length ? (
         list.map((p) => (
-          <button key={p.id} type="button" data-press="row" onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="flex w-full items-center gap-2.5 border-t border-[#26395c] px-3.5 py-2.5 text-left">
+          <button key={p.id} type="button" data-press="row" onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="flex w-full items-center gap-2.5 border-t border-[#24375a] px-3.5 py-2.5 text-left">
             <span className={`tone-${planTone(p)} tone-bar w-1 self-stretch rounded-full`} />
             <b className="w-11 shrink-0 text-[0.9375rem] font-semibold tabular-nums">{p.time || "Gün"}</b>
             <span className="min-w-0 flex-1 leading-tight">
               <span className="block truncate text-[0.9375rem]">{p.title || "Plan"}</span>
-              {p.place && <small className="block truncate text-[0.78rem] text-[#9fb0cc]">{p.place}</small>}
+              {p.place && <small className="block truncate text-[0.78rem] text-[#9fadc6]">{p.place}</small>}
             </span>
           </button>
         ))
       ) : (
-        <p className="border-t border-[#26395c] px-3.5 py-3 text-[0.875rem] text-[#9fb0cc]">Bu gün plan yok</p>
+        <p className="border-t border-[#24375a] px-3.5 py-3 text-[0.875rem] text-[#9fadc6]">Bu gün plan yok</p>
       )}
     </div>
   );
@@ -290,7 +290,7 @@ function PlaceTable({ label, name, race = false, rows, next, date, place = null,
   return (
     <section aria-label={label}>
       <button type="button" data-press onClick={onClick} className="mb-1.5 flex w-full items-center gap-1 px-1 text-left">
-        <b className={`min-w-0 truncate text-[0.8125rem] font-bold ${race ? "text-[#67e8f9]" : "text-white"}`}>{name}</b>
+        <b className={`min-w-0 truncate text-[0.8125rem] font-bold ${race ? "text-[#8fb3ff]" : "text-white"}`}>{name}</b>
         <span className="shrink-0 text-white/45">›</span>
       </button>
       <HourTable key={date} rows={rows} next={race ? null : next} date={date} place={place} far={race} onClick={onClick} />
