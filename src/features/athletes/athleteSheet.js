@@ -73,7 +73,14 @@ export const leftText = (n) => (n === 0 ? "bugün" : n === 1 ? "yarın" : `${n} 
 export function sheetData(r, athlete, count, show = ALL) {
   const on = { ...ALL, ...show };
   const t = totals(r?.budget, count, r?.athleteIds);
-  const mine = (athlete?.id ? linesFor(t, athlete.id) : t.lines.filter((l) => l.share > 0 && !l.only)).map((l) => ({ cat: l.cat, title: l.title, amount: l.share, est: !!l.est }));
+  // Antrenörün odası sporculara bölünür: çıktıda "antrenör" yazar ve kaç sporcuya bölündüğü görünür (Seyhun 2026-11-03)
+  const mine = (athlete?.id ? linesFor(t, athlete.id) : t.lines.filter((l) => l.share > 0 && !l.only)).map((l) => ({
+    cat: l.cat,
+    title: l.unit === "room" && l.who === "staff" && !/antrenör/i.test(l.title) ? `${l.title} (antrenör)` : l.title,
+    amount: l.share,
+    est: !!l.est,
+    ...(l.unit === "room" && l.who === "staff" ? { note: `Antrenörün odası, ${l.only?.length || t.athletes} sporcu arasında bölüşüldü` } : {}),
+  }));
   const club = t.lines.filter((l) => l.club).map((l) => l.title);
   return {
     name: athlete?.studentName || "",
@@ -208,7 +215,7 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
     y += 24;
 
     // Bütçe ve konaklama sabit yer kaplar; program kalan yere sığdırılır
-    const moneyH = d.money.lines.length ? 20 + d.money.lines.length * 16 + 26 + (d.money.club.length ? 14 : 0) : 0;
+    const moneyH = d.money.lines.length ? 20 + d.money.lines.length * 16 + d.money.lines.filter((l) => l.note).length * 11 + 26 + (d.money.club.length ? 14 : 0) : 0;
     const stayH = d.stay.hotels.length ? 28 + d.stay.hotels.reduce((n, h) => n + 28 + (h.rooms.length ? 16 + Math.ceil(h.rooms.length / (h.rooms.length > 2 ? 2 : 1)) * 12.5 : 0), 0) : 0;
     const datesH = d.deadlines.length ? 30 + d.deadlines.length * 16 : 0;
 
@@ -306,6 +313,10 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
         text(l.cat, L, y, f.r, 9, { color: MUT, max: 80 });
         text(l.title + (l.est ? " (tahmini)" : ""), L + 90, y, f.r, 10, { max: R - L - 200 });
         text(tl(l.amount), R, y, f.r, 10, { align: "right" });
+        if (l.note) {
+          y += 11;
+          text(l.note, L + 90, y, f.r, 8, { color: MUT, max: R - L - 200 });
+        }
         y += 16;
         rule(y - 11, L + 90);
       }
