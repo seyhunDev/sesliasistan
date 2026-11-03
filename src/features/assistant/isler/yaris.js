@@ -292,8 +292,9 @@ export async function raceHereCmd(ctx, s, viaVoice) {
         reply("Bu yarışa önce sporcu ekle.", { engine: "local" }, viaVoice);
         return true;
       }
-      window.dispatchEvent(new CustomEvent("sa-race-sheet", { detail: { id: r.id, ids: one ? [one.id] : [] } }));
-      done(one ? `${one.studentName} için bilgi notunu hazırlıyorum.` : `${mine.length} sporcunun bilgi notunu hazırlıyorum, her sporcuya bir sayfa.`, { engine: "local" }, viaVoice);
+      window.dispatchEvent(new CustomEvent("sa-race-sheet", { detail: { id: r.id, ids: one ? [one.id] : [], only: rh.only || "" } }));
+      const what = rh.only === "budget" ? "bütçesini" : "bilgi notunu";
+      done(one ? `${one.studentName} için ${rh.only === "budget" ? "bütçeyi" : "bilgi notunu"} hazırlıyorum.` : `${mine.length} sporcunun ${what} hazırlıyorum, her sporcuya bir sayfa.`, { engine: "local" }, viaVoice);
       return true;
     }
     const hit = rh.name ? matchPerson(rh.name, mine.map((a) => a.studentName)) : "";

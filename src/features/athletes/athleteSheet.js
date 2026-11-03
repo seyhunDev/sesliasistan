@@ -46,6 +46,8 @@ export const SHEET_KEYS = [
   ["budget", "Bütçe"],
 ];
 const ALL = Object.fromEntries(SHEET_KEYS.map(([k]) => [k, true]));
+// Yalnız sporcunun bütçe payı (Bütçe sekmesindeki sporcu çıktısı, "Ali'nin bütçesini gönder")
+export const BUDGET_ONLY = Object.fromEntries(SHEET_KEYS.map(([k]) => [k, k === "budget"]));
 
 // Yaklaşan son tarihler: talimattaki son tarihler + tarihli talimat işleri + elle eklenen tarihli işler (bugün ve sonrası, en çok 6)
 export function upcomingDates(r, today = todayStr()) {
@@ -194,7 +196,7 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
     if (logo) page.drawImage(logo, { x: L, y: H - 86, width: 42, height: 42 });
     const hx = logo ? L + 54 : L;
     text(CLUB.name, hx, 60, f.b, 12.5, { color: NAVY });
-    text("SPORCU BİLGİ NOTU", hx, 77, f.r, 9, { color: MUT });
+    text(Object.entries({ ...ALL, ...show }).every(([k, v]) => k === "budget" || !v) ? "SPORCU BÜTÇESİ" : "SPORCU BİLGİ NOTU", hx, 77, f.r, 9, { color: MUT });
     text(new Date().toLocaleDateString("tr-TR"), R, 60, f.r, 9, { align: "right", color: MUT });
     page.drawLine({ start: { x: L, y: H - 98 }, end: { x: R, y: H - 98 }, thickness: 1.4, color: NAVY });
     let y = 128;
