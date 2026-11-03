@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
+import { ListHead, Row as LRow, RowList } from "@/components/ui/Row";
+import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { age, byId, deleteAthlete, fmtDate, isActive, loadAthlete, message, setArchived, useDikili } from "@/features/athletes/data";
@@ -32,6 +34,7 @@ const STATE = {
 const LOG = { class_change: "Sınıf", coach_change: "Antrenör", status_change: "Durum" };
 
 // Tek sporcu: bilgiler, düzenle, arşive al, sil. Yalnızca izinli hesap görür.
+// Yeni tasarım (2026-11-03): lacivert üstte geri, ad, durum · sınıf · antrenör, ⋯ (Arşive al, Sil) ve Düzenle; altta bölüm bölüm ListHead + beyaz kart.
 export default function AthletePage() {
   const { profile } = useAuth();
   const router = useRouter();
@@ -43,26 +46,22 @@ export default function AthletePage() {
   return <Detail />;
 }
 
-function Card({ title, icon, children, tone = "" }) {
+// Bölüm (yeni tasarım): başlık ListHead ile kartın dışında, içerik düz ince çizgili beyaz kartta
+function Card({ title, children }) {
   return (
-    <section className={`mt-3 rounded-2xl px-4 py-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)] ${tone || "bg-card"}`}>
-      {title && (
-        <h2 className="mb-2 flex items-center gap-1.5 text-[0.75rem] font-semibold uppercase tracking-wide text-mut">
-          {icon && <Icon name={icon} className="size-4" />}
-          {title}
-        </h2>
-      )}
-      {children}
+    <section>
+      {title && <ListHead title={title} />}
+      <RowList className="py-1">{children}</RowList>
     </section>
   );
 }
 
-// Etiket solda, değer sağda; değer yoksa satır gösterilmez
+// Etiket solda, değer sağda; satırlar arasında ince çizgi; değer yoksa satır gösterilmez
 function Row({ label, value, href, mono }) {
   if (!value) return null;
-  const v = <span className={`min-w-0 text-right text-[0.875rem] ${mono ? "tabular-nums" : ""} ${href ? "font-medium text-acc" : ""}`}>{value}</span>;
+  const v = <span className={`min-w-0 text-right text-[0.9375rem] font-semibold ${mono ? "tabular-nums" : ""} ${href ? "text-acc" : ""}`}>{value}</span>;
   return (
-    <div className="flex items-baseline justify-between gap-4 py-1.5">
+    <div className="flex min-h-[2.75rem] items-center justify-between gap-4 border-t border-line py-2 first:border-t-0">
       <span className="shrink-0 text-[0.8125rem] text-mut">{label}</span>
       {href ? <a href={href} className="min-w-0 break-words text-right">{v}</a> : v}
     </div>
@@ -94,20 +93,18 @@ function BodyCard({ a }) {
   const rows = [...list].reverse();
   const field = "w-full min-w-0 appearance-none rounded-xl bg-bg px-3 py-2.5 text-[0.9375rem] tabular-nums outline-none";
   return (
-    <Card>
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[0.75rem] font-semibold uppercase tracking-wide text-mut">Boy / Kilo</p>
-          <p className="mt-0.5 text-[1.0625rem] font-semibold tabular-nums">{bodyText(last) || "—"}</p>
-        </div>
+    <Card title="Boy / Kilo">
+      <div className="flex min-h-[3rem] items-center justify-between gap-3 py-1.5">
+        <p className="min-w-0 truncate text-[1.0625rem] font-bold tabular-nums">{bodyText(last) || "—"}</p>
         {!form && (
-          <button onClick={open} aria-label="Ölçüm ekle" className="grid size-9 shrink-0 place-items-center rounded-full bg-acc text-white">
-            <Icon name="plus" className="size-5" />
+          <button onClick={open} data-press className="btn btn-secondary btn-sm shrink-0">
+            <Icon name="plus" className="size-4" />
+            Ölçüm
           </button>
         )}
       </div>
       {form && (
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 pb-2">
           <input type="date" value={form.d} onChange={(e) => setForm({ ...form, d: e.target.value })} className={`${field} col-span-3`} />
           <input inputMode="numeric" placeholder="Boy cm" value={form.h} onChange={(e) => setForm({ ...form, h: e.target.value })} className={field} />
           <input inputMode="decimal" placeholder="Kilo kg" value={form.kg} onChange={(e) => setForm({ ...form, kg: e.target.value })} className={field} autoFocus />
@@ -120,7 +117,7 @@ function BodyCard({ a }) {
         </div>
       )}
       {rows.length > 0 && (
-        <div className="mt-2 border-t border-line pt-1">
+        <div className="border-t border-line pt-1">
           {(all ? rows : rows.slice(0, 4)).map((m) => (
             <div key={m.d} className="flex items-center justify-between gap-3 py-1.5 text-[0.875rem]">
               <span className="text-mut">{fmtDate(m.d)}</span>
@@ -160,8 +157,8 @@ function DuesCard({ a }) {
   const now = d.now.state === "paid" ? ["Ödendi", "text-ok"] : d.now.state === "part" ? [`Eksik · ${TLx(d.now.paid)}`, "text-amber-700"] : d.now.state === "burs" ? ["Burslu", "text-mut"] : d.now.state === "free" ? ["Sayılmıyor", "text-mut"] : d.now.state === "none" ? ["Henüz başlamadı", "text-mut"] : ["Ödenmedi", "text-rec"];
   const mon = (ym, f = "long") => new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: f }).replace(".", "");
   return (
-    <Card title="Aidat" icon="wallet">
-      <Link href="/dues" className="block active:opacity-70">
+    <Card title="Aidat">
+      <Link href="/dues" data-press="row" className="block py-2.5">
         <div className="flex items-baseline justify-between gap-4">
           <span className="text-[0.875rem] capitalize">{mon(d.now.ym)}</span>
           <b className={`text-[0.9375rem] font-semibold ${now[1]}`}>{now[0]}</b>
@@ -207,23 +204,40 @@ function RaceHistory({ athleteId }) {
   }, [owner, profile?.orgId, profile?.uid, athleteId]);
   if (!owner || !rows?.length) return null;
   return (
-    <Card title="Yarışlar" icon="flag">
+    <Card title="Yarışlar">
       {rows.map((x) => (
-        <Link key={x.id} href={`/athletes/races/${x.id}`} className="flex items-center gap-3 py-2">
-          <span className={`grid size-9 shrink-0 place-items-center rounded-full text-[0.875rem] font-bold tabular-nums ${x.place && x.place <= 3 ? "bg-amber-400/20 text-amber-700 dark:text-amber-300" : x.place ? "bg-acc/10 text-acc" : "bg-bg text-mut"}`}>
-            {x.place ? `${x.place}.` : "–"}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.875rem] font-medium">
-              {x.name} <small className="font-normal text-mut">{x.date ? fmtDate(x.date) : ""}</small>
+        <LRow
+          key={x.id}
+          href={`/athletes/races/${x.id}`}
+          lead={
+            <span className={`grid size-9 shrink-0 place-items-center rounded-full text-[0.875rem] font-bold tabular-nums ${x.place && x.place <= 3 ? "bg-amber-400/20 text-amber-700 dark:text-amber-300" : x.place ? "bg-accbg text-acc" : "bg-bg text-mut"}`}>
+              {x.place ? `${x.place}.` : "–"}
             </span>
-            <span className="block truncate text-[0.8125rem] text-mut">{x.text || "Sonuç yok"}</span>
-          </span>
-        </Link>
+          }
+          title={x.name}
+          sub={[x.date ? fmtDate(x.date, { day: "numeric", month: "short", year: "numeric" }) : "", x.text || "Sonuç yok"].filter(Boolean).join(" · ")}
+        />
       ))}
     </Card>
   );
 }
+
+// Lacivert üst: geri (sporcular), ad, kısa alt satır, sağda düğmeler; altında açık alan
+function Top({ title, sub, children }) {
+  return (
+    <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Sporcu">
+      <header className="flex items-center gap-2.5">
+        <BackButton href="/athletes" />
+        <div className="min-w-0 flex-1 leading-tight">
+          <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{title}</h1>
+          {sub && <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>}
+        </div>
+        {children}
+      </header>
+    </section>
+  );
+}
+const LIGHT = "relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5";
 
 function Detail() {
   const { id } = useParams();
@@ -231,22 +245,24 @@ function Detail() {
   const { data, err, reload } = useDikili(`a:${id}`, load);
   const user = useDikiliUser();
   const [edit, setEdit] = useState(false);
+  const [more, setMore] = useState(false); // ⋯: Arşive al, Sil
   const a = err ? null : data?.athlete;
 
   if (!a) {
     return (
       <main className="mx-auto max-w-[30rem] px-5">
-        <PageHeader title="Sporcu" back="/athletes" />
-        {err?.code === "permission-denied" ? (
-          <DikiliLogin denied={!!user} onDone={reload} />
-        ) : err ? (
-          <button onClick={reload} className="mt-4 w-full rounded-2xl bg-card px-4 py-4 text-left text-[0.875rem]">
-            <b className="block font-semibold text-rec">{err.text}</b>
-            <span className="text-mut">Tekrar denemek için dokun</span>
-          </button>
-        ) : (
-          <Loading />
-        )}
+        <Top title="Sporcu" />
+        <div className={LIGHT}>
+          {err?.code === "permission-denied" ? (
+            <DikiliLogin denied={!!user} onDone={reload} />
+          ) : err ? (
+            <RowList>
+              <LRow onClick={reload} title={<span className="text-rec">{err.text}</span>} sub="Tekrar dene" />
+            </RowList>
+          ) : (
+            <Loading />
+          )}
+        </div>
       </main>
     );
   }
@@ -258,11 +274,14 @@ function Detail() {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
-      <PageHeader title={a.studentName} sub={[isActive(a) ? "Aktif" : "Arşivde", cls, coach].filter(Boolean).join(" · ")} back="/athletes">
-        <button onClick={() => setEdit(true)} aria-label="Düzenle" data-press className="btn btn-round size-10 text-acc">
-          <Icon name="edit" className="size-5" />
+      <Top title={a.studentName} sub={[isActive(a) ? "Aktif" : "Arşivde", cls, coach].filter(Boolean).join(" · ")}>
+        <button type="button" onClick={() => setMore(true)} aria-label="Diğer" data-press className="btn btn-round size-10">
+          <Icon name="more" className="size-5" />
         </button>
-      </PageHeader>
+        <button type="button" onClick={() => setEdit(true)} data-press className="raised act-main flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+          Düzenle
+        </button>
+      </Top>
       <EditAthlete
         athlete={a}
         names={{ classes: data.classes, coaches: data.coaches }}
@@ -274,8 +293,9 @@ function Detail() {
         }}
       />
 
+      <div className={LIGHT}>
       {/* Kimlik */}
-      <Card>
+      <Card title="Bilgiler">
         <Row label="T.C." value={a.studentTc} mono />
         <Row label="Doğum" value={a.studentBirthDate && `${fmtDate(a.studentBirthDate)}${yrs != null ? ` · ${yrs} yaş` : ""}`} />
         <Row label="Cinsiyet" value={a.studentGender} />
@@ -287,22 +307,22 @@ function Detail() {
       <BodyCard a={a} />
 
       {/* Sağlık */}
-      <Card title="Sağlık" icon="alert" tone={a.studentHealthNotes ? "bg-rec/10" : ""}>
-        <p className={`text-[0.875rem] leading-relaxed ${a.studentHealthNotes ? "font-medium text-rec" : "text-mut"}`}>
+      <Card title="Sağlık">
+        <p className={`py-2.5 text-[0.9375rem] leading-relaxed ${a.studentHealthNotes ? "font-semibold text-rec" : "text-mut"}`}>
           {a.studentHealthNotes || "Belirtilen sağlık notu yok"}
         </p>
       </Card>
 
       {/* Acil durum */}
       {(a.emergencyContactName || a.emergencyContactPhone) && (
-        <Card title="Acil durumda" icon="bell">
+        <Card title="Acil durumda">
           <Row label="Aranacak kişi" value={a.emergencyContactName} />
           <Row label="Telefon" value={a.emergencyContactPhone} href={tel(a.emergencyContactPhone)} mono />
         </Card>
       )}
 
       {/* Veli */}
-      <Card title="Veli ve iletişim" icon="users">
+      <Card title="Veli ve iletişim">
         <Row label="Veli" value={a.parentName || "—"} />
         <Row label="Telefon" value={a.parentPhone} href={tel(a.parentPhone)} mono />
         <Row label="E-posta" value={a.parentEmail} href={a.parentEmail && `mailto:${a.parentEmail}`} />
@@ -313,7 +333,7 @@ function Detail() {
 
       {/* Eğitim ve spor */}
       {(a.studentSchoolAndClass || a.otherLicensedSports || a.swimmingSkill || a.seaFear) && (
-        <Card title="Eğitim ve spor" icon="book">
+        <Card title="Eğitim ve spor">
           <Row label="Okul / sınıf" value={a.studentSchoolAndClass} />
           <Row label="Diğer lisanslar" value={a.otherLicensedSports} />
           <Row label="Yüzme" value={a.swimmingSkill} />
@@ -324,11 +344,11 @@ function Detail() {
 
       {/* Lisans vizesi, sağlık raporu, sigorta bitişi */}
       {expiryOf(a, todayStr()).some((x) => x.date) && (
-        <Card title="Belgeler" icon="clip">
+        <Card title="Belgeler">
           {expiryOf(a, todayStr()).filter((x) => x.date).map((x) => (
-            <div key={x.key} className="flex items-baseline justify-between gap-4 py-1.5">
+            <div key={x.key} className="flex min-h-[2.75rem] items-center justify-between gap-4 border-t border-line py-2 first:border-t-0">
               <span className="shrink-0 text-[0.8125rem] text-mut">{x.label}</span>
-              <span className={`min-w-0 text-right text-[0.875rem] tabular-nums ${x.state === "expired" ? "font-semibold text-rec" : x.state === "soon" ? "font-medium text-amber-700" : ""}`}>
+              <span className={`min-w-0 text-right text-[0.9375rem] font-semibold tabular-nums ${x.state === "expired" ? "font-semibold text-rec" : x.state === "soon" ? "font-medium text-amber-700" : ""}`}>
                 {x.state === "ok" ? new Date(`${x.date}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }) : alertText(x).replace(`${x.label} `, "")}
               </span>
             </div>
@@ -338,7 +358,7 @@ function Detail() {
 
       {/* Yarış evrakında kullanılan bilgiler */}
       {(a.licenseNo || a.studentBirthPlace || a.parentTc || a.studentSchoolPlace || a.studentNo) && (
-        <Card title="Yarış evrakı" icon="flag">
+        <Card title="Yarış evrakı">
           <Row label="Lisans no" value={a.licenseNo} mono />
           <Row label="Okul (belgede)" value={[a.studentSchool, a.studentSchoolPlace].filter(Boolean).join(" · ")} />
           <Row label="Okul no · sınıf" value={[a.studentNo, a.studentClass].filter(Boolean).join(" · ")} />
@@ -353,7 +373,11 @@ function Detail() {
       <RaceHistory athleteId={a.id} />
       <Attendance a={a} />
       <History items={data.history} />
-      <Manage a={a} names={{ classes: data.classes, coaches: data.coaches }} onChanged={reload} />
+      </div>
+      {/* Seyrek işler ⋯ penceresinde */}
+      <Sheet open={more} onClose={() => setMore(false)} title={a.studentName}>
+        <Manage a={a} names={{ classes: data.classes, coaches: data.coaches }} onChanged={() => (setMore(false), reload())} />
+      </Sheet>
     </main>
   );
 }
@@ -399,13 +423,10 @@ function Manage({ a, names, onChanged }) {
   };
 
   return (
-    <section className="mt-6 space-y-2">
-      <button type="button" disabled={busy} onClick={archive} data-press className="btn btn-secondary w-full text-acc">
-        <Icon name="archive" className="size-5" /> {active ? "Arşive al" : "Arşivden çıkar"}
+    <section className="space-y-2 pb-2">
+      <button type="button" disabled={busy} onClick={archive} data-press className="btn btn-secondary w-full">
+        {active ? "Arşive al" : "Arşivden çıkar"}
       </button>
-      <p className="px-1 text-[0.75rem] text-mut">
-        {active ? "Arşivdeki sporcu listede, yoklamada ve aidat listesinde görünmez; geçmişi kalır. Sonra arşivden çıkarabilirsin." : "Arşivden çıkınca listede, yoklamada ve aidatta yeniden görünür."}
-      </p>
       {ask ? (
         <div className="rounded-2xl bg-rec/10 p-3.5">
           <p className="text-[0.875rem] font-semibold text-rec">{a.studentName} silinsin mi?</p>
@@ -422,7 +443,7 @@ function Manage({ a, names, onChanged }) {
         </div>
       ) : (
         <button type="button" onClick={() => setAsk(true)} data-press className="btn btn-danger w-full">
-          <Icon name="trash" className="size-5" /> Sporcuyu sil
+          Sporcuyu sil
         </button>
       )}
     </section>
@@ -452,12 +473,12 @@ function Attendance({ a }) {
   const pct = total ? Math.round((c.present / total) * 100) : 0;
 
   return (
-    <Card title="Devam" icon="check">
+    <Card title="Devam">
       {!years.length ? (
-        <p className="text-[0.875rem] text-mut">Devam kaydı yok</p>
+        <p className="py-2.5 text-[0.9375rem] text-mut">Devam kaydı yok</p>
       ) : (
         <>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pt-2">
             <select value={year} onChange={(e) => { setYear(+e.target.value); setMonth(null); }} className="h-9 rounded-lg bg-bg px-3 text-[0.875rem] font-medium">
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
@@ -481,7 +502,7 @@ function Attendance({ a }) {
 
           {month == null ? (
             // Yıl: ay ay çubuk; aya dokununca o ayın günleri
-            <div className="mt-3 space-y-1.5">
+            <div className="mt-3 space-y-1.5 pb-2.5">
               {byMonth.map((e, i) => {
                 const m = count(e);
                 const t = m.present + m.absent + m.excused;
@@ -497,7 +518,7 @@ function Attendance({ a }) {
               })}
             </div>
           ) : (
-            <ul className="mt-3 divide-y divide-line">
+            <ul className="mt-2 divide-y divide-line">
               {[...shown].sort((x, y) => x[0].localeCompare(y[0])).map(([k, v]) => {
                 const [m, d] = k.split("-");
                 const day = new Date(year, +m - 1, +d).toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "short" });
@@ -519,8 +540,8 @@ function Attendance({ a }) {
 function History({ items }) {
   if (!items?.length) return null;
   return (
-    <Card title="Geçmiş" icon="clock">
-      <ol className="relative space-y-3 pl-4 before:absolute before:inset-y-1 before:left-[0.1875rem] before:w-px before:bg-line">
+    <Card title="Geçmiş">
+      <ol className="relative space-y-3 py-2.5 pl-4 before:absolute before:inset-y-3.5 before:left-[0.1875rem] before:w-px before:bg-line">
         {items.map((h) => (
           <li key={h.id} className="relative">
             <span className="absolute -left-4 top-1.5 size-[0.4375rem] rounded-full bg-acc" />

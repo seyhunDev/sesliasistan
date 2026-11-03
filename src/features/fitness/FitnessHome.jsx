@@ -7,13 +7,14 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
+import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { todayStr } from "@/lib/utils/format";
 import {
-  GOALS, LEVEL_MAX, SPORTS, STATUS, addDays, ageFrom, copyFor, levelUp, progEnd, athleteRows, upcomingList, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, labelOf, monthStats, programText, progWeek, records, statusOf, weekStats,
+  GOALS, LEVEL_MAX, SPORTS, STATUS, addDays, ageFrom, copyFor, levelUp, progEnd, athleteRows, upcomingList, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, itemLine, labelOf, monthStats, programText, progWeek, records, resLine, statusOf, weekStats,
 } from "@/lib/fitness/model";
 import { libList } from "@/lib/fitness/library";
 import { useFitLib } from "./useFitLib";
@@ -25,7 +26,7 @@ import { TEMPLATES, fromTemplate } from "@/lib/fitness/templates";
 import { ProgramEditor } from "./ProgramEditor";
 import { ExerciseLibrary } from "./ExerciseLibrary";
 import { BodyStep, FitIntro } from "./FitIntro";
-import { HistoryCard, MonthCard, ProgramCard, ProgressCard, RowButton, TodayCard, WeekCard, WeekStrip, progSub } from "./FitDashboard";
+import { HistoryCard, MonthCard, ProgramCard, ProgressCard, WeekCard, progSub } from "./FitDashboard";
 import { FoodView } from "./FoodView";
 import { DOW, FitPhoto, WeekBoxes } from "./FitDark";
 import { FitReview } from "./FitReview";
@@ -147,7 +148,6 @@ export function FitnessHome() {
   const recs = records(plans);
   const all = fitPlans(plans);
   const todays = all.filter((p) => p.date === today);
-  const nextOne = all.find((p) => p.date > today);
   const history = all.filter((p) => p.date < today || p.fit?.res?.st).reverse().slice(0, 12);
   const onCal = prog && all.filter((p) => p.fit?.prog === prog.id && p.date >= today).length;
   const open = (p) => openAdd({ edit: { kind: "plan", id: p.id } });
@@ -328,12 +328,27 @@ export function FitnessHome() {
     </Sheet>
   );
 
+  // Benim ve Beslenme de Sporcular gibi baştan sona koyu (yeni tasarım, 2026-11-03): üstte salon fotoğrafı, Fitness başlığı, sekmeler
+  const darkTop = (btns) => (
+    <>
+      <FitPhoto />
+      <div className="relative flex items-center gap-2.5 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+        <BackButton href="/" className="-my-0.5 touch-manipulation" />
+        <h1 className="min-w-0 flex-1 truncate text-[1.875rem] font-bold leading-tight tracking-[-.02em]">Fitness</h1>
+        {btns}
+      </div>
+      <Tabs tab={tab} setTab={setTab} withAth={athletes.length > 0} dark />
+    </>
+  );
+  const darkMain = "navy fit-dark relative mx-auto min-h-dvh max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]";
+
   if (tab === "food") {
     return (
-      <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-        <PageHeader title="Fitness" sub="Beslenme ve kilo takibin" />
-        <Tabs tab={tab} setTab={setTab} withAth={athletes.length > 0} />
-        <FoodView orgId={orgId} uid={uid} fit={fitProf} fitW={profile.fitW} trainDays={prog?.days?.length || 3} onBody={() => setBodyOpen(true)} />
+      <main data-theme="dark" className={darkMain}>
+        {darkTop(null)}
+        <div className="relative">
+          <FoodView orgId={orgId} uid={uid} fit={fitProf} fitW={profile.fitW} trainDays={prog?.days?.length || 3} onBody={() => setBodyOpen(true)} />
+        </div>
         {bodySheet}
       </main>
     );
@@ -343,13 +358,12 @@ export function FitnessHome() {
   // ikisinden birini çizip sonra değiştirmek yerine aynı yerde sakin bir iskelet (zıplama olmasın)
   if (!list && !all.length) {
     return (
-      <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-        <PageHeader title="Fitness" sub="Antrenman programın ve takibin" />
-        <Tabs tab={tab} setTab={setTab} withAth={athletes.length > 0} />
-        <div aria-hidden="true" className="grid gap-3">
-          <div className="shimmer h-36 rounded-2xl" />
-          <div className="shimmer h-20 rounded-2xl" />
-          <div className="shimmer h-14 rounded-2xl" />
+      <main data-theme="dark" className={darkMain}>
+        {darkTop(null)}
+        <div aria-hidden="true" className="relative mt-4 grid gap-3">
+          <div className="ck-shim h-36 rounded-2xl" />
+          <div className="ck-shim h-20 rounded-2xl" />
+          <div className="ck-shim h-14 rounded-2xl" />
         </div>
       </main>
     );
@@ -358,9 +372,9 @@ export function FitnessHome() {
   // Hiç programı, fitness antrenmanı ve program verilecek sporcusu yoksa: tek ekran tanıtım, "Programımı hazırla" (hedef ve hafta pencerede sorulur)
   if (mine && !mine.length && !all.length && !rows.length && !athletes.length) {
     return (
-      <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-        <PageHeader title="Fitness" sub="Antrenman programın ve takibin" />
-        <Tabs tab={tab} setTab={setTab} withAth={athletes.length > 0} />
+      <main data-theme="dark" className={darkMain}>
+        {darkTop(null)}
+        <div className="relative">
         <FitIntro
           name={profile.name}
           onStart={(g) => {
@@ -368,6 +382,7 @@ export function FitnessHome() {
             setNewOpen(true);
           }}
         />
+        </div>
         <NewProgram key={newOpen ? "o" : "c"} goal={newGoal} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} onImport={importProg} onTemplate={template} busy={busy === "ask" || busy === "import"} error={askErr} />
       </main>
     );
@@ -442,67 +457,112 @@ export function FitnessHome() {
 
   const todayRows = dayRows(fitOthers, athletes, today, today);
   const wk = rows.reduce((t, r) => ({ done: t.done + r.week.done, planned: t.planned + r.week.planned, missed: t.missed + r.week.missed }), { done: 0, planned: 0, missed: 0 });
-  const dark = tab === "ath";
   const headBtns = (
     <>
       <button type="button" onClick={() => setMenuOpen(true)} aria-label="Diğer" data-press className="btn btn-round size-10 text-fg">
         <Icon name="more" className="size-5" />
       </button>
-      <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" className={`grid size-10 place-items-center rounded-full ${dark ? "bg-[#3d7bff] text-[#06283a]" : "bg-acc text-white shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)]"}`}>
+      <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" className="grid size-10 place-items-center rounded-full bg-[#3d7bff] text-[#06283a]">
         <Icon name="plus" className="size-5" />
       </button>
     </>
   );
+  // Benim (yeni tasarım, 2026-11-03; sporcunun Fitness sayfası gibi): bugünün antrenmanı büyük, bu hafta çubuğu ve Pzt–Paz kutuları, tek ana düğme;
+  // altta bugünkü hareketler, sıradaki antrenmanlar, Program (Programım · Gelişim · Geçmiş pencereleri)
+  const plan = todays[0];
+  const st = plan && statusOf(plan, today);
+  const moves = (plan?.fit?.items || []).filter((it) => !["warmup", "stretch"].includes(it.ex));
+  const started = plan?.fit?.res?.ex?.some((e) => e.sets?.some((x) => x.ok));
+  const nexts = [...todays.slice(1), ...all.filter((p) => p.date > today).slice(0, 5)];
+  const sub = !plan
+    ? null
+    : st === "done"
+      ? [["Yaptın", "text-[#9fe7c6]"], plan.fit?.res?.min && [`${plan.fit.res.min} dk`], resLine(plan.fit) && [resLine(plan.fit)]]
+      : st === "skip"
+        ? [["Atladın"]]
+        : [[`${moves.length} hareket`], [`${moves.reduce((t, it) => t + (+it.sets || 1), 0)} set`]];
 
   return (
-    <main data-theme={dark ? "dark" : undefined} className={`mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)] ${dark ? "navy fit-dark relative min-h-dvh" : ""}`}>
-      {dark && <FitPhoto />}
-      {dark ? (
-        <div className="relative flex items-center gap-2.5 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-          <BackButton href="/" className="-my-0.5 touch-manipulation" />
-          <h1 className="min-w-0 flex-1 truncate text-[1.875rem] font-bold leading-tight tracking-[-.02em]">Fitness</h1>
-          {headBtns}
-        </div>
-      ) : (
-        <PageHeader title="Fitness" sub="Antrenman programın ve takibin">
-          {headBtns}
-        </PageHeader>
-      )}
-      <Tabs tab={tab} setTab={setTab} withAth={athletes.length > 0} dark={dark} />
+    <main data-theme="dark" className={darkMain}>
+      {darkTop(headBtns)}
 
       {tab === "ath" ? (
         <AthTab today={today} todayRows={todayRows} wk={wk} rows={rows} rest={rest} onDay={() => (setDayDate(today), setDayOpen(true))} onAth={(uid) => (setRevOpen(false), setAth(uid))} onOpen={open} onNew={newFor} />
       ) : list && !prog && !todays.length && !all.length ? (
-        <div className={`${card} flex flex-col items-center gap-3 px-5 py-8 text-center`}>
-          <span className="grid size-14 place-items-center rounded-full bg-acc/10 text-acc">
-            <Icon name="dumbbell" className="size-7" />
-          </span>
-          <b className="text-[1.0625rem] font-semibold">Kendi programın yok</b>
-          <p className="text-[0.875rem] text-mut">Hedefini ve günlerini seç, yapay zeka haftalık programını hazırlasın.</p>
-          <Button onClick={() => newFor("")}>
-            <Icon name="spark" className="size-5" />
+        <section className="relative mt-4">
+          <b className="block text-[1.625rem] font-bold leading-tight tracking-[-.02em]">Kendi programın yok</b>
+          <Button full onClick={() => newFor("")} className="mt-4 [--acc:#3d7bff]">
             Programımı hazırla
           </Button>
-        </div>
+        </section>
       ) : (
-        <>
-          <TodayCard plan={todays[0]} next={nextOne} week={prog && progWeek(prog, today)} today={today} onOpen={open} />
-          {todays.slice(1).map((p) => (
-            <button key={p.id} type="button" onClick={() => open(p)} className={`${card} mt-2 flex w-full items-center gap-3 px-4 py-3 text-left`}>
-              <Icon name="dumbbell" className="size-5 shrink-0 text-acc" />
-              <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{p.fit?.name || p.title}</span>
-              <span className="shrink-0 text-[0.8125rem] text-mut">{p.time || STATUS[statusOf(p, today)]}</span>
-            </button>
-          ))}
-          <WeekStrip week={week} strip={strip} today={today} onOpen={open} />
-          {prog ? (
-            <RowButton icon="cal" title={prog.title || "Programım"} sub={progSub(prog, today, onCal)} onClick={() => setProgOpen(true)} />
-          ) : (
-            <RowButton icon="spark" title="Programımı hazırla" sub="Kendi programın yok" onClick={() => newFor("")} />
+        <div className="relative">
+          <section className="mt-4">
+            <small className="text-[0.75rem] font-bold tracking-[.06em] text-white/60">{`BUGÜN · ${shortDay(today).toLocaleUpperCase("tr-TR")}${plan?.time ? ` · ${plan.time}` : ""}`}</small>
+            <b className="mt-0.5 block truncate text-[1.625rem] font-bold leading-tight tracking-[-.02em]">{plan ? plan.fit?.name || plan.title : "Dinlenme günü"}</b>
+            {sub && (
+              <p className="mt-1 truncate text-[0.875rem] text-white/75">
+                {sub.filter(Boolean).map(([t, cl], i) => (
+                  <span key={t} className={cl}>
+                    {i ? " · " : ""}
+                    {t}
+                  </span>
+                ))}
+              </p>
+            )}
+            {week.planned > 0 && (
+              <div className="mt-3.5 flex items-center gap-2.5 text-[0.8125rem]">
+                <span className="text-white/75">Bu hafta</span>
+                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/15">
+                  <span className="block h-full rounded-full bg-[#8fb3ff]" style={{ width: `${Math.round((week.done / week.planned) * 100)}%` }} />
+                </span>
+                <b className="tabular-nums">{`${week.done}/${week.planned}`}</b>
+              </div>
+            )}
+            <WeekBoxes days={week.days} today={today} onOpen={open} className="mt-3" />
+            {plan && (
+              <Button full onClick={() => open(plan)} className="mt-4 [--acc:#3d7bff]">
+                {st === "done" || st === "skip" ? "Sonucu aç" : started ? "Devam et" : "Antrenmana başla"}
+              </Button>
+            )}
+          </section>
+
+          {plan && st !== "done" && st !== "skip" && moves.length > 0 && (
+            <section className="mt-7">
+              <ListHead title="Bugünkü hareketler" count={moves.length} />
+              <RowList>
+                {moves.map((it, i) => (
+                  <Row
+                    key={i}
+                    lead={<span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/[.08] text-[0.75rem] font-bold tabular-nums">{i + 1}</span>}
+                    title={it.name}
+                    right={<span className="text-[0.8125rem] font-semibold text-mut">{itemLine(it)}</span>}
+                  />
+                ))}
+              </RowList>
+            </section>
           )}
-          {(recs.length > 0 || week.planned > 0 || month.done > 0) && <RowButton icon="trend" title="Gelişim" sub="Bu hafta, en iyiler, bu ay" onClick={() => setGrowOpen(true)} />}
-          {history.length > 0 && <RowButton icon="check" title="Geçmiş" sub={`${history.length} antrenman`} onClick={() => setHistOpen(true)} />}
-        </>
+
+          {nexts.length > 0 && (
+            <section className="mt-7">
+              <ListHead title="Sıradaki" count={nexts.length} />
+              <RowList>
+                {nexts.map((p) => (
+                  <Row key={p.id} onClick={() => open(p)} title={p.fit?.name || p.title} sub={[p.date === today ? STATUS[statusOf(p, today)] : shortDay(p.date), p.time].filter(Boolean).join(" · ")} />
+                ))}
+              </RowList>
+            </section>
+          )}
+
+          <section className="mt-7">
+            <ListHead title="Program" />
+            <RowList>
+              {prog ? <Row onClick={() => setProgOpen(true)} title={prog.title || "Programım"} sub={progSub(prog, today, onCal)} /> : <Row onClick={() => newFor("")} title="Programımı hazırla" />}
+              {(recs.length > 0 || week.planned > 0 || month.done > 0) && <Row onClick={() => setGrowOpen(true)} title="Gelişim" />}
+              {history.length > 0 && <Row onClick={() => setHistOpen(true)} title="Geçmiş" right={<span className="text-[0.8125rem] font-semibold text-mut">{history.length}</span>} />}
+            </RowList>
+          </section>
+        </div>
       )}
 
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Fitness">
