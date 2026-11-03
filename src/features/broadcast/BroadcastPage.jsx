@@ -24,7 +24,7 @@ import { AddSheet } from "@/features/raceMedia/CourseTab";
 import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { TrackPanel } from "@/features/tracking/TrackPanel";
-import { BoatReplay } from "@/features/tracking/BoatReplay";
+import { BoatLive } from "@/features/tracking/BoatLive";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
 import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, nextRaceNo, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
@@ -653,7 +653,7 @@ export function BroadcastPage({ orgId, id }) {
   const airCam = airStart ? srcs.find((c) => c.id === camOf(L?.camBy, airE.cls || "", airE.grp || airStart.grp || "")) : null;
   // Ekranda: canlıysa küçük oynatıcı (sessiz), kayıtsa küçük resmi; Önizleme: seçilen kaynak (yalnız burada)
   const airUrl = onScreen && onScreen.kind !== "rec" ? (onScreen.kind === "live" && airCam?.url ? airCam.url : screenUrl(onScreen, { ...L?.stream, sources: srcList })) : "";
-  const monName = monRec ? recName(monRec, live.starts) : onScreen?.kind === "boats" ? "Tekneler · Replay" : onScreen?.kind === "src" ? srcOf(onScreen.src)?.name || "Canlı" : onScreen?.kind === "live" ? airCam?.name || "Grubun kamerası" : onScreen?.kind === "drone" ? "Drone" : "Video";
+  const monName = monRec ? recName(monRec, live.starts) : onScreen?.kind === "boats" ? "Tekneler · Canlı konum" : onScreen?.kind === "src" ? srcOf(onScreen.src)?.name || "Canlı" : onScreen?.kind === "live" ? airCam?.name || "Grubun kamerası" : onScreen?.kind === "drone" ? "Drone" : "Video";
   const pvRec = sel?.kind === "rec" ? live.media.find((m) => m.id === sel.mid) : null;
   const pvUrl = selSrc?.url || (sel?.kind === "live" ? airCam?.url || L?.stream.url || "" : "");
   const pvName = selSrc?.name || (sel?.kind === "live" ? "Grubun kamerası" : sel?.kind === "boats" ? "Tekneler" : pvRec ? recName(pvRec, live.starts) : "");
@@ -1055,7 +1055,7 @@ export function BroadcastPage({ orgId, id }) {
         <section>
           <div className="masa-mons">
             <div className="masa-mon pv">
-              {sel?.kind === "boats" ? <BoatReplay grp={airE.grp || airStart?.grp || ""} /> : pvUrl && ytEmbed(pvUrl) ? <iframe key={pvUrl} src={ytSrc(pvUrl)} title="Önizleme" allow="autoplay; encrypted-media" /> : pvRec?.thumb ? <img src={pvRec.thumb} alt="" /> : <div className="mid">{sel ? "Bağlantı yok" : "Kaynak seç"}</div>}
+              {sel?.kind === "boats" ? <BoatLive grp={airE.grp || airStart?.grp || ""} /> : pvUrl && ytEmbed(pvUrl) ? <iframe key={pvUrl} src={ytSrc(pvUrl)} title="Önizleme" allow="autoplay; encrypted-media" /> : pvRec?.thumb ? <img src={pvRec.thumb} alt="" /> : <div className="mid">{sel ? "Bağlantı yok" : "Kaynak seç"}</div>}
               <span className="lb">ÖNİZLEME</span>
               {pvName ? <span className="sn">{pvName}</span> : null}
             </div>
@@ -1148,9 +1148,9 @@ export function BroadcastPage({ orgId, id }) {
                   <b>{isOn("rec", m.id) ? `Ekranda · ${recName(m, live.starts)}` : recName(m, live.starts)}</b>
                 </button>
               ))}
-              {/* Tekne replay'i (Seyhun 2026-11-03 "video yerine bunu da seçebilmeliyim; gruba göre otomatik; döngü, replay"): ekrandaki yarışın grubu */}
+              {/* Canlı tekne konumları (Seyhun 2026-11-03 "video yerine bunu da seçebilmeliyim; gruba göre otomatik"; replay değil, o ayrı yapılacak): ekrandaki yarışın grubu */}
               <button type="button" aria-pressed={isSel("boats")} onClick={() => setSel({ kind: "boats" })} className="masa-tile">
-                <span className="th">Replay</span>
+                <span className="th">Canlı konum</span>
                 <b>{isOn("boats") ? "Ekranda · Tekneler" : "Tekneler"}</b>
               </button>
               <button type="button" disabled={!!busy} onClick={() => file.current?.click()} className="masa-tile">
