@@ -1522,3 +1522,9 @@ button.gr-card { cursor: pointer; }
 .gr-wx [class*="border-[color:var(--ht-line)]"] { border: 0 !important; background: transparent !important; border-radius: 0 !important; }
 .gr-wx [class*="border-[color:var(--ht-now)]"] { display: none; }
 @media (max-width: 47.99rem) { .gr-wx { border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.08); } }
+/* kart yüksekliği açılacak tabloya göre (Seyhun 2026-11-03 17:54): kapalıyken de aynı boy, rüzgâr satırları boyu eşit paylaşır, altta boşluk kalmaz;
+   başlık şeridi açılan kısım dahil kartın tamamında tek parça */
+.gr-wind.x .gr-wrs { display: flex; flex-direction: column; }
+.gr-wind.x .gr-wr { flex: 1; }
+.gr-wrs > .gr-wr:first-child { border-top: 0; }
+.gr-wind.x .gr-hd { width: 100%; }
