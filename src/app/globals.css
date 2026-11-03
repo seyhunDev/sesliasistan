@@ -173,6 +173,9 @@ body {
 .eq i:nth-child(4) { animation-delay: .45s; }
 
 /* Alt çubuk (yazma satırı + sekmeler) görünen sayfalarda içerik çubuğun altında kalmasın */
+/* Tek ekran sayfa (yarış günü, RaceEditor data-fit): lacivert alan alt çubuğun altına kadar kendisi iner; main'in alt boşluğu ekranı kaydırıp
+   altta siyah boşluk bırakıyordu (Seyhun 2026-11-03) */
+main:has(> [data-fit]) { padding-bottom: 0 !important; }
 body[data-dock] main { padding-bottom: calc(var(--stage-h, 20rem) + 1.25rem); }
 /* Kubbeli sayfada sayfanın kendi alt düğme çubuğu (yarış: evrak, bütçe) kubbenin hemen üstüne oturur */
 body[data-dock] .fixed[data-pagebar] { bottom: var(--dome-h, var(--stage-h, 7rem)); padding-bottom: 0.5rem; transition: bottom .5s cubic-bezier(.22, .8, .24, 1); }

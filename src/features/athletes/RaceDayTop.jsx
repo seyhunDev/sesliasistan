@@ -81,8 +81,8 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
           : `${races.at(-1).n}. yarış · ${hm(races.at(-1).at)}`
         : ""
       : [races.length && `${races.length} yarış`, fleet && `${fleet} tekne`].filter(Boolean).join(" · ");
-  const wx = <RaceWx key={phase} mini r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} />;
-  // tek ekran (Seyhun 2026-10-29): kalan yeri harita doldurur; Multimedya · Parkur alt çubukta sekme (aynı sayfa gibi)
+  const wx = <RaceWx key={phase} mini fill r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} />;
+  // tek ekran (Seyhun 2026-10-29, 2026-11-03): kalan yeri açık bölge haritası doldurur (RaceWx fill); Multimedya · Parkur alt çubukta sekme (aynı sayfa gibi)
   return (
     <div className="mt-3 flex flex-1 flex-col">
       {(title || side) && (
@@ -94,10 +94,11 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
 
       {phase === "race" && (
         <>
+          {wx}
+          {/* Seyhun 2026-11-03: "Yayına git" alta; üstte hava, ortada harita kalan yeri doldurur */}
           <Link href={media} data-press className={`${main} mt-3`}>
             Yayına git
           </Link>
-          {wx}
         </>
       )}
 
