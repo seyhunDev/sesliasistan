@@ -12,7 +12,7 @@ import { compressImage } from "@/lib/image";
 import { cleanEntries, cleanOps } from "@/lib/roundSay";
 import { cleanGroups } from "@/lib/roundScore";
 import { kindOf } from "@/features/athletes/raceNotice";
-import { loadPdfjs } from "@/components/ui/PdfViewer";
+import { pdfPages } from "@/lib/pdfText";
 import { chunkLines, linesOf, tableOf } from "@/lib/pdfLines";
 
 const ref = (orgId, id) => doc(db, "orgs", orgId, "raceLive", id, "entries", "list");
@@ -45,14 +45,6 @@ async function askEntries(body) {
   const p = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(p.error || "Liste okunamadı, tekrar dene.");
   return cleanEntries(p.rows);
-}
-// PDF'in sayfa sayfa yazı parçaları (pdf.js)
-async function pdfPages(file) {
-  const lib = await loadPdfjs();
-  const pdf = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-  const pages = [];
-  for (let p = 1; p <= Math.min(pdf.numPages, 40); p++) pages.push((await (await pdf.getPage(p)).getTextContent()).items);
-  return pages;
 }
 // PDF, fotoğraf ya da Excel → kayıt listesi satırları (yapay zeka okur)
 export async function readEntryFile(file) {
