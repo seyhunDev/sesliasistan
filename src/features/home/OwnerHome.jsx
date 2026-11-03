@@ -44,7 +44,7 @@ export function OwnerHome() {
   }, [setSheet]);
 
   return (
-    <main className="calm grouped relative mx-auto max-w-[30rem] px-4">
+    <main className="calm grouped home-wide relative mx-auto max-w-[30rem] px-4">
       <HomeFeed weather={weather} inbox={inbox} onInbox={() => setSheet(true)} quota={staff && qa && qr ? { qa, qr } : null} />
       <InboxSheet inbox={inbox} open={inbox.open} onClose={() => setSheet(false)} />
     </main>
@@ -101,12 +101,12 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         away={athletes && !(sel === today && racePhase({ r: { startDate: today }, today, now: new Date() }) === "done") ? awayRace(race.open, sel) : null}
         days={<HomeDays today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
       >
-        <div className="mt-4">
+        <div className="ck-c mt-4">
           <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
         </div>
         {/* Kulüp kutuları kalır (Seyhun 2026-11-03: "ana sayfadaki kulüp kutuları kalsın"); Yemek · Market · Giyim, Deniz trafiği · Kameralar yok, "Tümü" içinde */}
         {owner && (
-          <div className="mt-5 empty:hidden">
+          <div className="ck-d mt-5 empty:hidden">
             <HomeSummary
               tiles
               title={athletes || race.on ? "Kulüp" : "Özet"}
