@@ -1456,8 +1456,6 @@ button.gr-card { cursor: pointer; }
 .gr-wind .gr-arr { width: 3em; height: 3em; }
 .gr-kn b { font-size: 2.5em; }
 /* beklenen rüzgâr tablosu (rüzgârın yanında açılır, geçmiş saatler soluk) */
-.gr-whc { width: min(34em, calc(100vw - 54em)); animation: gr-open 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.gr-whc .lv-wh { margin: 0; padding: 0.45em 0.5em 0.55em; background: none; border: 0; }
 @keyframes gr-open { from { clip-path: inset(0 100% 0 0); opacity: 0.4; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
 /* sağ üst kart değişince yumuşak geçiş */
 .gr-r { animation: gr-in 0.5s ease both; }
@@ -1476,10 +1474,10 @@ button.gr-card { cursor: pointer; }
 .gr-vl { display: flex; flex-direction: column; align-items: center; gap: 0.25em; padding-left: 1em; border-left: 2px solid rgba(255, 255, 255, 0.55); }
 .gr-vl svg { width: 2.4em; height: auto; filter: drop-shadow(0 0.1em 0.5em rgba(0, 0, 0, 0.45)); }
 .gr-name .gr-vl small { margin: 0; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.75em; letter-spacing: 0.28em; text-transform: uppercase; color: #fff; }
-@media (prefers-reduced-motion: reduce) { .gr-whc, .gr-r { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .gr-r { animation: none; } }
 @media (max-width: 47.99rem) {
   .gr-lb { flex-direction: column; align-items: stretch; }
-  .gr-col, .gr-whc { width: auto; }
+  .gr-col { width: auto; }
   .gr-nm { justify-content: flex-start; }
   .gr-vl { display: none; }
   .gr-st .gr-tm { font-size: 3.4em; }
@@ -1495,14 +1493,32 @@ button.gr-card { cursor: pointer; }
 .gr-st.r .gr-stb { grid-template-columns: minmax(0, 1fr) auto; }
 /* rüzgâr kaynağı (yer ve saat) başlıkta küçük */
 .gr-wind .gr-tag { font-size: 0.8em; letter-spacing: 0.06em; }
-/* beklenen rüzgâr: rüzgâr kartından yana açılan uzantı, başlıksız; yalnız önümüzdeki saatler (Seyhun 2026-11-03 17:34) */
 .gr-lb { gap: 0; }
-.gr-whc { align-self: flex-end; margin-left: -0.3em; border-radius: 0 0.55em 0.55em 0; box-shadow: 0.6em 0.6em 2em rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(47, 214, 195, 0.25); }
-.gr-whc .lv-wh { padding: 0.5em 0.6em; }
-@media (max-width: 47.99rem) { .gr-lb { gap: 0.5em; } .gr-whc { margin-left: 0; border-radius: 0.55em; } }
 /* süre yokken (Seyhun 2026-11-03 17:35): yarış bilgisi tek satır, solda büyük yarış adı, yanında grup rozeti ve sınıf */
 .gr-stb.nt { padding: 0.55em 0.9em 0.6em; }
 .gr-stb.nt .gr-who { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35em 0.7em; text-align: left; }
 .gr-stb.nt .gr-who b { font-size: 1.9em; }
 .gr-stb.nt .gr-who span, .gr-stb.nt .gr-who small { margin-top: 0; }
-.gr-whc { width: fit-content; max-width: min(40em, calc(100vw - 56em)); }
+/* beklenen rüzgâr: ayrı kart yok, rüzgâr kartının kendisi yana genişleyip açılır, sonra kapanır (Seyhun 2026-11-03 17:44);
+   yalnız önümüzdeki saatler, ayrı başlık yok */
+.gr-col { width: auto; align-items: flex-start; }
+.gr-col > * { width: 23em; }
+.gr-col > .gr-wind { width: auto; min-width: 23em; }
+.gr-wb { display: flex; align-items: stretch; }
+.gr-wrs { width: 23em; flex: none; }
+.gr-wx { max-width: 0; overflow: hidden; opacity: 0; transition: max-width 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease 0.1s; }
+.gr-wind.on .gr-wx { max-width: min(40em, calc(100vw - 56em)); opacity: 1; }
+.gr-wx .lv-wh { margin: 0; padding: 0.15em 0.7em 0.55em 0.4em; background: none; border: 0; width: max-content; }
+@media (prefers-reduced-motion: reduce) { .gr-wx { transition: none; } }
+@media (max-width: 47.99rem) {
+  .gr-col > *, .gr-col > .gr-wind { width: 100%; min-width: 0; }
+  .gr-wb { flex-direction: column; }
+  .gr-wrs { width: auto; }
+  .gr-wx { max-width: none; max-height: 0; transition: max-height 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s; }
+  .gr-wind.on .gr-wx { max-width: none; max-height: 14em; overflow-x: auto; }
+}
+/* açılan tablo kartın parçası: kendi çerçevesi, zemini ve "şimdi" çerçevesi yok; rüzgâr satırlarından ince bir çizgiyle ayrılır */
+.gr-wx { border-left: 1px solid rgba(255, 255, 255, 0.08); }
+.gr-wx [class*="border-[color:var(--ht-line)]"] { border: 0 !important; background: transparent !important; border-radius: 0 !important; }
+.gr-wx [class*="border-[color:var(--ht-now)]"] { display: none; }
+@media (max-width: 47.99rem) { .gr-wx { border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.08); } }

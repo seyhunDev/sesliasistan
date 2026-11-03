@@ -3130,7 +3130,7 @@ function raceRows(data, sel) {
   const n = pos >= 0 ? (entry.legs?.[pos] || []).length : 0;
   return { rows, head: pos >= 0 ? (fin ? "Finiş" : markName(route[pos])) : "Sıralama", tag: n ? `${n} tekne ${fin ? "bitirdi" : "döndü"}` : "", n: rows.length };
 }
-function GWind({ data, now, mode, today }) {
+function GWind({ data, now, mode, today, can = false, open = false }) {
   const c = curWind(data, null, true, now);
   const plan = data.plan;
   const rows = [];
@@ -3151,23 +3151,33 @@ function GWind({ data, now, mode, today }) {
   // kaynak başlığın yanında küçük; elle girilen ölçüm "Parkur verisi" (Seyhun 2026-11-03 17:31)
   const src = c && mode !== "summary" ? c.by : "";
   return (
-    <GCard cls="gr-wind" head="Rüzgâr" tone="t" tag={src}>
-      {rows.map((r) => (
-        <div key={r.lab} className="gr-wr">
-          <div>
-            <small>{r.lab}</small>
-            <span>{[r.w.dir != null ? `${dirShort(r.w.dir)} ${degText(r.w)}` : "", r.by].filter(Boolean).join(" · ")}</span>
-          </div>
-          {gArrow(r.w.dir)}
-          <div className="gr-kn">
-            <b>
-              {r.w.kn}
-              <em>kn</em>
-            </b>
-            {r.w.gust != null && r.w.gust > r.w.kn ? <i>{`sağanak ${r.w.gust}`}</i> : null}
-          </div>
+    // beklenen saatler ayrı kart değil: rüzgâr kartının kendisi yana genişleyip açılır, sonra kapanır (Seyhun 2026-11-03 17:44)
+    <GCard cls={`gr-wind${can ? " x" : ""}${open ? " on" : ""}`} head="Rüzgâr" tone="t" tag={src}>
+      <div className="gr-wb">
+        <div className="gr-wrs">
+          {rows.map((r) => (
+            <div key={r.lab} className="gr-wr">
+              <div>
+                <small>{r.lab}</small>
+                <span>{[r.w.dir != null ? `${dirShort(r.w.dir)} ${degText(r.w)}` : "", r.by].filter(Boolean).join(" · ")}</span>
+              </div>
+              {gArrow(r.w.dir)}
+              <div className="gr-kn">
+                <b>
+                  {r.w.kn}
+                  <em>kn</em>
+                </b>
+                {r.w.gust != null && r.w.gust > r.w.kn ? <i>{`sağanak ${r.w.gust}`}</i> : null}
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+        {can ? (
+          <div className="gr-wx" aria-hidden={!open}>
+            <WindHours data={data} now={now} scale={0.82} ahead />
+          </div>
+        ) : null}
+      </div>
     </GCard>
   );
 }
@@ -3255,14 +3265,6 @@ function GCourse({ data, sel, racing }) {
 }
 // Beklenen rüzgâr (yarış öncesi akışın ilk adımı): rüzgâr kartının yanında açılır; ortak saatlik tablo, geçmiş saatler soluk
 const hasHours = (data) => (data.forecast?.rows || []).filter((r) => r.wind != null).length >= 2;
-// Rüzgâr kartından yana açılan uzantı (ayrı başlık yok): önümüzdeki saatlerin beklenen rüzgârı, ortak saatlik tablo
-function GHours({ data, now }) {
-  return (
-    <div className="gr-card gr-whc" aria-label="Beklenen rüzgâr">
-      <WindHours data={data} now={now} scale={0.82} ahead />
-    </div>
-  );
-}
 function GEarly({ data, rid }) {
   const ea = earlyOf(data, rid);
   if (!ea.length) return null;
@@ -3284,7 +3286,8 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
   let left = null;
   let right = null;
   let clock = null;
-  let hours = null;
+  let wOpen = false;
+  let wCan = false;
   let left0 = 0;
   let preOn = false;
   if (mode === "summary") {
@@ -3374,7 +3377,8 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     const crs = !!courseSvg(data, route);
     const have = [hasHours(data) ? "wind" : "", crs ? "course" : "", prog.length ? "prog" : ""].filter(Boolean);
     rk = preStep({ show: sh, now, have }) || "prog";
-    if (rk === "wind") hours = <GHours data={data} now={now} />;
+    wCan = have.includes("wind");
+    wOpen = wCan && rk === "wind";
     right = (rk === "course" || rk === "wind") && crs ? <GCourse data={data} sel={null} racing={false} /> : <GProg prog={prog} />;
   } else if (!right && ["wait", "between", "ap"].includes(mode) && !vd) right = <GProg prog={prog} />;
   return (
@@ -3389,9 +3393,8 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
         <div className="gr-col">
           <GStart t={top} />
           <GClock c={clock} />
-          <GWind data={data} now={now} mode={mode} today={today} />
+          <GWind data={data} now={now} mode={mode} today={today} can={wCan} open={wOpen} />
         </div>
-        {hours}
       </div>
       {/* Geri düğmesi sol üst köşede, soluk (Seyhun 2026-11-03 17:03); altta yalnız yarışın adı, kaçıncı yarış / grup yazılmaz */}
       <Link href="/canli" className="gr-back" aria-label="Yarışlar">
