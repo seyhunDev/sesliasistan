@@ -20,6 +20,7 @@ import { useVisit } from "./useVisit";
 import { dayProgram, expText, expWind } from "./program";
 import { agendaView } from "@/lib/raceProgram";
 import { autoCaption } from "@/lib/raceCaption";
+import { flagSvg, signalOf, sigOnCard, soundText } from "@/lib/raceSignals";
 import "./liveScreen.css";
 
 // Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01; yayın görünümü 2026-11-02 SailGP örneği, project-files/samandira-donus/yayin4).
@@ -3025,6 +3026,34 @@ function GCard({ cls = "", head, tone = "", sub, tag, children, onClick }) {
 // 5·4·1·0 bayrak şeridi (sağdaki dizi kartı yok), en altta ilerleme çubuğu. Üst orta videoya kalır.
 // süre yoksa (geri / ileri sayım yok: "—:—", "—") süre alanı hiç gösterilmez (Seyhun 2026-11-03 17:19); kartta başka bilgi de yoksa kart yok
 const hasTm = (v) => !!v && !/^[\s—–:.\-]*$/.test(String(v));
+// İşaret kartı (Seyhun 2026-11-03 "bayrakları kullanabiliyor olmalıyız"): Yayın'da çekilen bayrak; bayraklar üst üste, kısa ad, anlamı, ses
+function GSig({ sig, today }) {
+  const s = sig ? signalOf(sig.id) : null;
+  if (!s || !sigOnCard(s)) return null;
+  const d = new Date(Date.parse(sig.at) + 3 * 3600e3).toISOString().slice(0, 10);
+  if (d !== today) return null;
+  const snd = soundText(s);
+  return (
+    <div className="gr-card gr-sig">
+      <div className="gr-hd">
+        <span className="gr-bd y">İşaret</span>
+        <span className="gr-hs">{sig.grp || ""}</span>
+      </div>
+      <div className="gr-sgb">
+        <span className="gr-sgf" aria-hidden="true">
+          {s.flags.map((f) => (
+            <i key={f} dangerouslySetInnerHTML={{ __html: flagSvg(f) }} />
+          ))}
+        </span>
+        <div className="gr-sgt">
+          <b>{s.short}</b>
+          <p>{s.info}</p>
+          {snd ? <small>{snd}</small> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
 function GStart({ t }) {
   if (!t) return null;
   const w = t.who;
@@ -3628,23 +3657,26 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     if (!left && top && have.length) drw = <GDrawer rk={rk} have={have} sec={pc.sec} auto={pc.auto} data={data} now={now} prog={prog} />;
   } else if (!right && ["wait", "between", "ap"].includes(mode) && !vd) right = <GProg prog={prog} />;
   const tl = !left && !!top;
+  const sigUp = !!plan?.sig && sigOnCard(signalOf(plan.sig.id));
   return (
     <div className="gr">
       {left ? <div className="gr-l">{left}</div> : null}
       {right && !tl ? (
         <div className="gr-r" key={rk === "wind" ? "course" : rk}>
           {right}
+          {sigUp ? <GSig sig={plan.sig} today={today} /> : null}
         </div>
       ) : null}
       {/* start kartı sağ üstte (Seyhun 2026-11-03 19:12; sağ kart varsa altında); sol üstte sonuç varken (yarışta) eskisi gibi rüzgârın üstünde */}
-      {tl ? (
+      {tl || (sigUp && !right) ? (
         <div className="gr-tl">
-          <GStart t={top} />
-          {right ? (
+          {tl ? <GStart t={top} /> : null}
+          {right && tl ? (
             <div className="gr-tlr" key={rk === "wind" ? "course" : rk}>
               {right}
             </div>
           ) : null}
+          {sigUp ? <GSig sig={plan.sig} today={today} /> : null}
         </div>
       ) : null}
       <div className="gr-lb">

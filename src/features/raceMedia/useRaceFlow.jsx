@@ -60,7 +60,15 @@ export function useRaceFlow({ orgId, raceId, live, onChange, rdays = null, today
     const s = next.find((x) => x.id === ask.id);
     undo(s ? raceTitle(s) : reason, before, ask.prevT);
   };
-  return { flow, ask, choose, ridOf, save, undo };
+  // Bayrakla abandone / genel geri (Seyhun 2026-11-03 "bayrakları tıklayarak, onayla"): sebep sorulmaz, seçilen yarışlar hemen geçersiz
+  const voidNow = (ids, reason) => {
+    const before = live.starts;
+    let next = live.starts;
+    for (const id of ids) next = voidRace(next, id, reason, Date.now(), rdays);
+    save(next);
+    undo(ids.length > 1 ? `${ids.length} yarış · ${reason}` : raceTitle(next.find((x) => x.id === ids[0])) || reason, before, null);
+  };
+  return { flow, ask, choose, ridOf, save, undo, voidNow };
 }
 
 // "Neden iptal?" seçenekleri; Sheet içinde (sayfada) ve kameranın üstünde (koyu) aynı düğmeler
