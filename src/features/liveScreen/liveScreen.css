@@ -1458,7 +1458,6 @@ button.gr-card { cursor: pointer; }
 /* beklenen rüzgâr tablosu (rüzgârın yanında açılır, geçmiş saatler soluk) */
 .gr-whc { width: min(34em, calc(100vw - 54em)); animation: gr-open 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .gr-whc .lv-wh { margin: 0; padding: 0.45em 0.5em 0.55em; background: none; border: 0; }
-.gr-whc .w-11:has(~ .w-11 > span.border-2) { opacity: 0.4; }
 @keyframes gr-open { from { clip-path: inset(0 100% 0 0); opacity: 0.4; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
 /* sağ üst kart değişince yumuşak geçiş */
 .gr-r { animation: gr-in 0.5s ease both; }
@@ -1496,3 +1495,14 @@ button.gr-card { cursor: pointer; }
 .gr-st.r .gr-stb { grid-template-columns: minmax(0, 1fr) auto; }
 /* rüzgâr kaynağı (yer ve saat) başlıkta küçük */
 .gr-wind .gr-tag { font-size: 0.8em; letter-spacing: 0.06em; }
+/* beklenen rüzgâr: rüzgâr kartından yana açılan uzantı, başlıksız; yalnız önümüzdeki saatler (Seyhun 2026-11-03 17:34) */
+.gr-lb { gap: 0; }
+.gr-whc { align-self: flex-end; margin-left: -0.3em; border-radius: 0 0.55em 0.55em 0; box-shadow: 0.6em 0.6em 2em rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(47, 214, 195, 0.25); }
+.gr-whc .lv-wh { padding: 0.5em 0.6em; }
+@media (max-width: 47.99rem) { .gr-lb { gap: 0.5em; } .gr-whc { margin-left: 0; border-radius: 0.55em; } }
+/* süre yokken (Seyhun 2026-11-03 17:35): yarış bilgisi tek satır, solda büyük yarış adı, yanında grup rozeti ve sınıf */
+.gr-stb.nt { padding: 0.55em 0.9em 0.6em; }
+.gr-stb.nt .gr-who { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35em 0.7em; text-align: left; }
+.gr-stb.nt .gr-who b { font-size: 1.9em; }
+.gr-stb.nt .gr-who span, .gr-stb.nt .gr-who small { margin-top: 0; }
+.gr-whc { width: fit-content; max-width: min(40em, calc(100vw - 56em)); }
