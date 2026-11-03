@@ -15,7 +15,9 @@ const MARKS = [
   ["m4", "4"],
 ];
 
-export function BoatMap({ boats = [], course, groupOf = {} }) {
+// grp: ekrandaki yarışın grubu; verilirse yalnız o grubun tekneleri (Seyhun 2026-11-03 "sarı grubun yarışında sadece sarılar")
+export function BoatMap({ boats: all = [], course, groupOf = {}, grp = "" }) {
+  const boats = grp ? all.filter((b) => groupOf[b.sail] === grp) : all;
   if (!boats.length) return null;
   const pts = course?.pts || {};
   const items = [...MARKS.filter(([k]) => pts[k]).map(([k, n]) => ({ id: k, n, kind: "mark", ...pts[k] })), ...["komite", "pin"].filter((k) => pts[k]).map((k) => ({ id: k, kind: "line", ...pts[k] })), ...boats.map((b) => ({ id: `b${b.sail}`, kind: "boat", ...b }))];
