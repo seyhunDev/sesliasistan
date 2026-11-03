@@ -6,3 +6,5 @@
 ## Sıradaki işler
 
 - Seyhun "yap" derse 9d6506a'yı (LiveHome bulanık fotoğraf + kapaklı kart, /api/canli listesinde cover) uygula.
+
+Rüzgâr kutusu (Seyhun 15:56): sağanak yazısı olsa da olmasa da satır sütunları sabit (ok 2,6em, hız 6,6em), "Şimdi" ile "beklenen" satırları hizalı kalır.
