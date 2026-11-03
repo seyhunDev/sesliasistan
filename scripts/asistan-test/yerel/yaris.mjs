@@ -80,6 +80,7 @@ group("Yarış bütçesi: otel odası")([
   ["tam oda", { desc: "3 kişilik 3200, bizden 3, 4 gece → 12800", fn: () => BU.totals(ROOMS, 4).lines[0].total, ok: (r) => r === 12800 }],
   ["bir kişi", { desc: "3 kişilik 3200, bizden 1, 4 gece → 3200/3×4", fn: () => BU.totals(ROOMS, 4).lines[1].total, ok: (r) => Math.abs(r - 3200 / 3 * 4) < 0.01 }],
   ["antrenör odası", { desc: "tek kişilik 2500 × 4 gece = 10000", fn: () => BU.totals(ROOMS, 4).lines[2].total, ok: (r) => r === 10000 }],
+  ["antrenör odası yazısı", { desc: "antrenör odasının satırında kaç sporcuya bölündüğü yazar; sporcu notunda '(antrenör)' ve not", fn: async () => { const S = await import("@/features/athletes/athleteSheet"); const t = BU.totals(ROOMS, 4); const l = t.lines.find((x) => x.who === "staff"); return [BU.howText(l, t), S.sheetData({ budget: ROOMS }, null, 4, S.BUDGET_ONLY).money.lines.find((x) => x.note)]; }, ok: ([h, m]) => /4 sporcuya bölünür/.test(h) && m && /antrenör/i.test(m.title) && /4 sporcu arasında/.test(m.note) }],
   ["odadakiler", { desc: "4 sporcu, 1 antrenör", fn: () => BU.roomPeople(ROOMS), ok: (r) => r.athlete === 4 && r.staff === 1 }],
   ["sınır", { desc: "bizden kalan oda kapasitesini geçmez", fn: () => BU.cleanItem({ unit: "room", cap: 2, beds: 5, amount: 1000 }), ok: (r) => r.beds === 2 && r.rooms === 1 && r.who === "athlete" }],
   ["eski kalem", { desc: "oda olmayan kaleme oda alanı eklenmez", fn: () => BU.cleanItem({ unit: "person", cap: 3, amount: 100 }), ok: (r) => !("cap" in r) && !("beds" in r) }],
