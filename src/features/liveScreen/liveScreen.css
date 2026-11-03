@@ -1485,3 +1485,6 @@ button.gr-card { cursor: pointer; }
   .gr-vl { display: none; }
   .gr-st .gr-tm { font-size: 3.4em; }
 }
+/* süre yokken start kartında yalnız yarış bilgisi (sola yaslı) */
+.gr-stb.nt { grid-template-columns: minmax(0, 1fr); }
+.gr-stb.nt .gr-who { text-align: left; }
