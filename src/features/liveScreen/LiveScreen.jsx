@@ -1670,7 +1670,7 @@ function WaitHero({ data, today, cs, prog, now, fin = null }) {
     // geri sayım + sıradaki yarış + program; ortada parkur büyük (altında eksen, start hattı, ölçüm saati); sağda şimdiki rüzgâr ve gün
     // boyunca saat saat tahmin. Olmayan sütun hiç çizilmez, kalanlar genişler ("Yok" kutusu olmaz). Sağ üstte gün ve yer.
     // Örnek I (Seyhun 2026-11-03 "parkur sürekli gösteriliyor, istemiyorum; sağda rüzgâr, parkur, program ve yarış animasyonu sırayla
-    // yandan kaysın; yarışın adı, yarış günü, tarih ve yer birlikte"): solda sabit başlık + durum, sağda tek büyük alan kayarak değişir
+    // yandan kaysın; yarışın adı, yarış günü, tarih ve yer birlikte"; 10:38 "animasyonu göstermeyelim"): solda sabit başlık + durum, sağda tek alan kayarak değişir
     const items = [
       hasWind ? { k: "wind", ms: 10000, node: <WindCol data={data} now={now} scale={1.35} /> } : null,
       svg ? { k: "course", ms: SCENE_T * 1000 + 2000, node: <CourseCol data={data} route={route} svg={svg} /> } : null,
@@ -1682,18 +1682,6 @@ function WaitHero({ data, today, cs, prog, now, fin = null }) {
               <div className="lv-hprog">
                 <div className="lv-hlab">Program</div>
                 {progBody}
-              </div>
-            ),
-          }
-        : null,
-      !none
-        ? {
-            k: "boats",
-            ms: 20000,
-            node: (
-              <div className="lv-hboats">
-                <div className="lv-hlab">Start animasyonu</div>
-                <BoatLive grp={first?.grp || ""} tag="ÖRNEK" />
               </div>
             ),
           }
@@ -1924,12 +1912,6 @@ function SidePanel({ data, today, cs, prog, now, entry, fin = null }) {
                   </div>
                 ))}
               </div>
-            </div>
-          ) } : null,
-          plain ? { k: "boats", ms: 20000, node: (
-            <div className="lv-hboats">
-              <div className="lv-hlab">Start animasyonu</div>
-              <BoatLive grp={first?.grp || ""} tag="ÖRNEK" />
             </div>
           ) } : null,
         ].filter(Boolean)}
