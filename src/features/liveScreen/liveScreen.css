@@ -1159,3 +1159,5 @@ button.lv-p:active { transform: translateY(1px); }
 
 /* Tekne replay'i (Yayın › Video › Tekneler, features/tracking/BoatReplay; Seyhun 2026-11-03) */
 .lv-boats { position: fixed; inset: 0; z-index: 0; animation: lv-fade 1.2s ease-out both; }
+/* Yarışta dönen panelde sıralama kartı (cam kart) sağa yaslı, yazılar sola */
+.lv-one .lv-rankp { width: min(100%, 34em); margin-left: auto; text-align: left; }
