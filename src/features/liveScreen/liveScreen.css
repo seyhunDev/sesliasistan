@@ -1528,3 +1528,16 @@ button.gr-card { cursor: pointer; }
 .gr-wind.x .gr-wr { flex: 1; }
 .gr-wrs > .gr-wr:first-child { border-top: 0; }
 .gr-wind.x .gr-hd { width: 100%; }
+/* yeni yerleşim (Seyhun 2026-11-03 17:54): start sol üstte; sol altta tek alan rüzgâr → parkur → program sırayla gelir */
+.gr-tl { position: absolute; left: 2em; top: calc(2.6em + env(safe-area-inset-top)); width: 23em; }
+.gr-col > .gr-pn { width: auto; }
+.gr-pn { animation: gr-pn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.gr-pn > .gr-wind { width: auto; min-width: 23em; }
+.gr-pn > .gr-side { width: 25em; }
+.gr-pn > .gr-crs .lv-sceneb { animation: lv-wipe 1.8s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both; }
+@keyframes gr-pn { from { opacity: 0; transform: translateY(0.8em); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .gr-pn, .gr-pn > .gr-crs .lv-sceneb { animation: none; } }
+@media (max-width: 47.99rem) {
+  .gr-tl { position: static; width: auto; order: 1; }
+  .gr-pn, .gr-pn > .gr-side, .gr-pn > .gr-wind { width: 100%; min-width: 0; }
+}
