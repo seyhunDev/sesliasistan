@@ -1,8 +1,8 @@
-Commit: 7ec9a97 · Yarış havası: grafiği kaydırarak gün değişir (#919)
-Zaman: 2026-10-31-1151 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41185467103
+Commit: 2a9e93a · Video geçişi: arka planda yükle, çapraz geçişle yayına al; Kaynak ekle'ye Sade video (#1043)
+Zaman: 2026-11-03-0932 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41589113817
 
-TAM TEST · 31.10.2026 11:39:30
+TAM TEST · 03.11.2026 09:20:02
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,6 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Hava: yağış şeridi…
     Hava: ölçülen / beklenen yağmur…
     Ana sayfa: yarış günü havası…
+    Antrenman: sesle başlat ve bitir…
     Çevrimdışı çalışma (internet kesilip açılır)…
     Çevrimdışı: 26/26 geçti
     Yarış sayfası (sporcu seçili, yarış günü)…
@@ -29,11 +30,15 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1423/1423 geçti · 0 kalan · 637 sn
+SONUÇ: 1438/1440 geçti · 2 kalan · 681 sn
 ======================================================================
 
-1. BİRİM TESTLERİ: 1/1
-  ✓ Birim testleri: 1/1
+1. BİRİM TESTLERİ: 0/1
+  ✗ Birim testleri: 0/1
+      ✗ “4371 test”
+          beklenen: hepsi geçer
+          olan:     4370/4371 geçti
+      ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
 
 2. ANLAMA: temiz cümleler: 121/121
   ✓ Temiz cümle: Plan / takvim: 8/8
@@ -139,16 +144,19 @@ SONUÇ: 1423/1423 geçti · 0 kalan · 637 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 131/131
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 140/141
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 5/5
+  ✗ Ana sayfa: 9/10
+      ✗ “gün penceresi Yapıldı”
+          beklenen: plan satırında Yapıldı işareti: dokununca yapıldı, yeniden dokununca geri alınır
+          olan:     yapıldı 1 · çizili 1 · geri 0
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 3/3
   ✓ Kısa dokun yaz: 1/1
-  ✓ Sayfa hataları: 12/12
+  ✓ Sayfa hataları: 13/13
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
@@ -166,6 +174,7 @@ SONUÇ: 1423/1423 geçti · 0 kalan · 637 sn
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
   ✓ Hava: 3/3
+  ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
 3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 26/26
@@ -179,9 +188,11 @@ SONUÇ: 1423/1423 geçti · 0 kalan · 637 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 14/14
-  ✓ Yarış sayfası: 12/12
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 21/21
+  ✓ Yarış sayfası: 14/14
+  ✓ Antrenman: 2/2
   ✓ Asılı bağlantı: 2/2
+  ✓ Yayın: 3/3
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)

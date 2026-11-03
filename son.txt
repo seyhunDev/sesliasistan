@@ -1,8 +1,8 @@
-Commit: 76b7e88 · Yayın Parkur sekmesi sade: ölçümler her zaman liste, rota düz yazı, tek Ölçüm ekle (#1041)
-Zaman: 2026-11-03-0909 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41586919251
+Commit: 2a9e93a · Video geçişi: arka planda yükle, çapraz geçişle yayına al; Kaynak ekle'ye Sade video (#1043)
+Zaman: 2026-11-03-0932 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41589113817
 
-TAM TEST · 03.11.2026 08:58:05
+TAM TEST · 03.11.2026 09:20:02
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,11 +30,15 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1439/1440 geçti · 1 kalan · 664 sn
+SONUÇ: 1438/1440 geçti · 2 kalan · 681 sn
 ======================================================================
 
-1. BİRİM TESTLERİ: 1/1
-  ✓ Birim testleri: 1/1
+1. BİRİM TESTLERİ: 0/1
+  ✗ Birim testleri: 0/1
+      ✗ “4371 test”
+          beklenen: hepsi geçer
+          olan:     4370/4371 geçti
+      ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
 
 2. ANLAMA: temiz cümleler: 121/121
   ✓ Temiz cümle: Plan / takvim: 8/8
