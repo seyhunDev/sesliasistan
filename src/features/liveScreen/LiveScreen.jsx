@@ -8,7 +8,7 @@ import { apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort,
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
+import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { BoatMap } from "@/features/tracking/BoatMap";
@@ -3288,6 +3288,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
   let clock = null;
   let wOpen = false;
   let wCan = false;
+  let panel = null;
   let left0 = 0;
   let preOn = false;
   if (mode === "summary") {
@@ -3378,9 +3379,13 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     const have = [hasHours(data) ? "wind" : "", crs ? "course" : "", prog.length ? "prog" : ""].filter(Boolean);
     rk = preStep({ show: sh, now, have }) || "prog";
     wCan = have.includes("wind");
-    wOpen = wCan && rk === "wind";
-    right = (rk === "course" || rk === "wind") && crs ? <GCourse data={data} sel={null} racing={false} /> : <GProg prog={prog} />;
+    // sol altta tek alan, sırayla rüzgâr → parkur → program (Seyhun 2026-11-03 17:54); rüzgâr adımında beklenen saatler kartın içinde açılıp adım bitmeden kapanır
+    const pc = cleanCourseShow(sh);
+    const el = pc.auto ? (Math.max(0, now - (Date.parse(pc.at) || 0)) % (pc.sec * 1000)) / 1000 : 99;
+    wOpen = wCan && rk === "wind" && el >= 1.2 && (!pc.auto || el < pc.sec - 1.8);
+    panel = rk === "wind" ? null : rk === "course" && crs ? <GCourse data={data} sel={null} racing={false} /> : <GProg prog={prog} />;
   } else if (!right && ["wait", "between", "ap"].includes(mode) && !vd) right = <GProg prog={prog} />;
+  const tl = !left && !!top;
   return (
     <div className="gr">
       {left ? <div className="gr-l">{left}</div> : null}
@@ -3389,11 +3394,25 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
           {right}
         </div>
       ) : null}
+      {/* start kartı sol üstte (Seyhun 2026-11-03 17:54); sol üstte sonuç varken (yarışta) eskisi gibi rüzgârın üstünde */}
+      {tl ? (
+        <div className="gr-tl">
+          <GStart t={top} />
+        </div>
+      ) : null}
       <div className="gr-lb">
         <div className="gr-col">
-          <GStart t={top} />
+          {tl ? null : <GStart t={top} />}
           <GClock c={clock} />
-          <GWind data={data} now={now} mode={mode} today={today} can={wCan} open={wOpen} />
+          {panel ? (
+            <div className="gr-pn" key={rk}>
+              {panel}
+            </div>
+          ) : (
+            <div className="gr-pn" key={preOn ? "wind" : "w"}>
+              <GWind data={data} now={now} mode={mode} today={today} can={wCan} open={wOpen} />
+            </div>
+          )}
         </div>
       </div>
       {/* Geri düğmesi sol üst köşede, soluk (Seyhun 2026-11-03 17:03); altta yalnız yarışın adı, kaçıncı yarış / grup yazılmaz */}
