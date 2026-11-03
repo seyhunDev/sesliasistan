@@ -1032,3 +1032,13 @@ group("Tekne takibi")([
     ["talimat okuyucusu tek", { desc: "telefondan yükleme ve siteden gelen belge aynı okuyucu (lib/ai/raceNoticeAi.js)", fn: () => [/from "@\/lib\/ai\/raceNoticeAi"/.test(r("src/app/api/race-notice/route.js")), /readNoticeAi/.test(r("netlify/functions/race-site-background.mjs"))], ok: (a) => a.every(Boolean) }],
   ]);
 }
+
+// Sitede yeni yarış bildirimi (Seyhun 2026-11-03 "yeni bir yarış eklenirse bildirim gelmeli")
+{
+  const SD = await import("@/lib/siteDocs");
+  const legs = [{ name: "1. AYAK", classes: [{ act: "1", cls: "ILCA" }, { act: "2", cls: "OPTIMIST" }] }, { name: "2. AYAK", classes: [{ act: "3", cls: "OPTIMIST" }] }];
+  group("Sitede yeni yarış")([
+    ["bilinmeyen sınıf sekmesi", { desc: "bilinen kimlikler yeni sayılmaz", fn: () => SD.newRaces(legs, ["1", "2"]), ok: (a) => a.length === 1 && a[0].act === "3" && a[0].leg === "2. AYAK" }],
+    ["bildirim yazısı", { desc: "tek yarışta ayak ve sınıf, çokta sayı", fn: () => [SD.newRacesNote(SD.newRaces(legs, ["1", "2"]), "2026-2027").title, SD.newRacesNote(SD.newRaces(legs, []), "2026-2027").title, SD.newRacesNote([], "x")], ok: ([a, b, c]) => a === "Sitede yeni yarış: 2. Ayak · OPTIMIST" && b === "Sitede 3 yeni yarış" && c === null }],
+  ]);
+}

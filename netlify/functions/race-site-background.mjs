@@ -1,5 +1,5 @@
 // Yarış sitesi belgeleri, arka plan (en çok 15 dk): race-site.mjs (10 dk zamanlayıcı) ve /api/race-site (yarışı alınca) çağırır.
-// İzlenen yarışın yeni belgelerini indirir, Storage'a koyar, hemen kullanır (renk/sporcu listesi, talimat, ek talimat;
+// Saatte bir sitede yeni yarış var mı bakar (scan). İzlenen yarışın yeni belgelerini indirir, Storage'a koyar, hemen kullanır (renk/sporcu listesi, talimat, ek talimat;
 // lib/server/raceSiteTake.js) ve ana hesaba bildirir. İstek imzalı: { ids, t, s } (lib/server/ackSign.js).
 import webpush from "web-push";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
@@ -9,8 +9,8 @@ import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 import { ackOk } from "../../src/lib/server/ackSign.js";
 import { recordInbox } from "../../src/lib/inbox.js";
 import { sendDevice } from "../../src/lib/server/sendDevice.js";
-import { docNote } from "../../src/lib/siteDocs.js";
-import { notifyDocs, pageCache, syncRace } from "../../src/lib/server/raceSiteSync.js";
+import { docNote, newRaces, newRacesNote } from "../../src/lib/siteDocs.js";
+import { notifyDocs, pageCache, scanNew, syncRace } from "../../src/lib/server/raceSiteSync.js";
 import { makeTake } from "../../src/lib/server/raceSiteTake.js";
 import { callGemini } from "../../src/lib/ai/gemini.js";
 import { readNoticeAi } from "../../src/lib/ai/raceNoticeAi.js";
@@ -21,7 +21,8 @@ export default async function raceSiteRun(req) {
     a = await req.json();
   } catch {}
   const ids = (Array.isArray(a.ids) ? a.ids : []).map(String).filter((x) => /^[A-Za-z0-9]{6,40}_[A-Za-z0-9]{6,40}$/.test(x)).slice(0, 20);
-  if (!ids.length || Math.abs(Date.now() - Number(a.t)) > 10 * 60e3 || !ackOk({ o: "race-site", c: "run", i: String(a.t), u: ids.join(","), s: a.s })) return new Response("izin yok", { status: 403 });
+  const scan = a.scan === true;
+  if ((!ids.length && !scan) || Math.abs(Date.now() - Number(a.t)) > 10 * 60e3 || !ackOk({ o: "race-site", c: scan ? "scan" : "run", i: String(a.t), u: ids.join(","), s: a.s })) return new Response("izin yok", { status: 403 });
   const env = process.env;
   if (!getApps().length)
     initializeApp({ credential: cert({ projectId: env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, clientEmail: cleanEmail(env.FIREBASE_CLIENT_EMAIL), privateKey: cleanKey(env.FIREBASE_PRIVATE_KEY) }) });
@@ -36,6 +37,8 @@ export default async function raceSiteRun(req) {
   const get = pageCache();
   const ai = { callGemini, readNoticeAi };
   let n = 0;
+  // Sitede yeni yarış (saatte bir, zamanlayıcı scan ile çağırır)
+  if (scan) n += await scanNew({ db, get, recordInbox, sendDevice, newRaces, newRacesNote }).catch((e) => (console.warn("[yarış sitesi] tarama", e.message), 0));
   for (const id of ids) {
     const ref = db.collection("raceSite").doc(id);
     const snap = await ref.get();

@@ -132,15 +132,10 @@ export async function syncRace({ db, bucket, ref, entry, get, limit = PER_RUN, t
   return got;
 }
 
-// Yeni belgelerin bildirimi ana hesaba (bildirim kutusu + telefon). Tek belge: "1. Ayak Optimist · Renk listesi (4 Kas) geldi"
-export async function notifyDocs({ db, entry, got, recordInbox, sendDevice, docNote }) {
-  if (!got.length) return 0;
-  const race = entry.name || entry.cls || "Yarış";
-  const title = got.length === 1 ? docNote(race, got[0]) : `${race} · ${got.length} yeni belge geldi`;
-  const body = got.length === 1 ? got[0].note || "" : got.map((d) => d.name).slice(0, 4).join(", ");
-  const payload = { title, body, tag: `site-${entry.raceId}`, url: `/athletes/races/${entry.raceId}?sec=site` };
-  const ref = db.collection("users").doc(entry.orgId);
-  const badge = await recordInbox(db, entry.orgId, payload);
+// Bir kişiye bildirim (bildirim kutusu + telefonları)
+export async function notifyUser({ db, uid, payload, recordInbox, sendDevice }) {
+  const ref = db.collection("users").doc(uid);
+  const badge = await recordInbox(db, uid, payload);
   const push = (await ref.get()).data()?.push || {};
   let sent = 0;
   for (const [key, sub] of Object.entries(push)) {
@@ -153,4 +148,31 @@ export async function notifyDocs({ db, entry, got, recordInbox, sendDevice, docN
     }
   }
   return sent;
+}
+
+// Yeni belgelerin bildirimi ana hesaba. Tek belge: "1. Ayak Optimist · Renk listesi (4 Kas) geldi" + ne yapıldığı
+export async function notifyDocs({ db, entry, got, recordInbox, sendDevice, docNote }) {
+  if (!got.length) return 0;
+  const race = entry.name || entry.cls || "Yarış";
+  const title = got.length === 1 ? docNote(race, got[0]) : `${race} · ${got.length} yeni belge geldi`;
+  const body = got.length === 1 ? got[0].note || "" : got.map((d) => d.name).slice(0, 4).join(", ");
+  return notifyUser({ db, uid: entry.orgId, payload: { title, body, tag: `site-${entry.raceId}`, url: `/athletes/races/${entry.raceId}?sec=site` }, recordInbox, sendDevice });
+}
+
+// Sitede yeni yarış var mı (saatte bir): sezonun sınıf sekmeleri raceSite/_known'daki bilinenlerle karşılaştırılır.
+// İlk taramada yalnız kaydedilir. Bildirim Siteden ekranını açmış ya da yarış izleyen ana hesaplara.
+export const KNOWN = "_known";
+export async function scanNew({ db, get, recordInbox, sendDevice, newRaces, newRacesNote }) {
+  const ref = db.collection("raceSite").doc(KNOWN);
+  const k = (await ref.get()).data() || {};
+  const list = await siteList(get, "");
+  const acts = list.legs.flatMap((l) => (l.classes || []).map((c) => c.act));
+  const fresh = Array.isArray(k.acts) ? newRaces(list.legs, k.acts) : [];
+  await ref.set({ season: list.season, acts: [...new Set([...(k.acts || []), ...acts])].slice(-3000), scanAt: new Date().toISOString() }, { merge: true });
+  const note = newRacesNote(fresh, list.season);
+  if (!note) return 0;
+  const follow = await db.collection("raceSite").where("on", "==", true).get();
+  const owners = [...new Set([...(k.owners || []), ...follow.docs.map((d) => d.data().orgId)])].filter(Boolean);
+  for (const uid of owners) await notifyUser({ db, uid, payload: { ...note, tag: `site-new-${fresh[0].act}`, url: "/athletes/races/site" }, recordInbox, sendDevice }).catch(() => {});
+  return fresh.length;
 }

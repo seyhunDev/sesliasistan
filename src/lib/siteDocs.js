@@ -143,3 +143,18 @@ export function mergeSchedule(old, add) {
   return out.sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)).slice(0, 40);
 }
 
+
+// Sitede yeni açılan yarışlar (Seyhun 2026-11-03 "yeni bir yarış eklenirse bildirim gelmeli"): sezonun ayak × sınıfları,
+// bilinmeyen sınıf sekmesi (faaliyet kimliği) yeni yarıştır. legs: siteList().legs; known: bilinen kimlikler
+export function newRaces(legs, known) {
+  const have = new Set(known || []);
+  return (legs || []).flatMap((l) => (l.classes || []).filter((c) => c.act && !have.has(c.act)).map((c) => ({ act: c.act, cls: c.cls, leg: l.name })));
+}
+const legText = (s) => String(s || "").replace(/AYAK/i, "Ayak");
+// Bildirim: tek yarış "Sitede yeni yarış: 2. Ayak · OPTIMIST", çok yarış "Sitede 11 yeni yarış" + ayaklar ve sınıflar
+export function newRacesNote(list, season) {
+  if (!list.length) return null;
+  if (list.length === 1) return { title: `Sitede yeni yarış: ${legText(list[0].leg)} · ${list[0].cls}`, body: season };
+  const legs = [...new Set(list.map((x) => legText(x.leg)))];
+  return { title: `Sitede ${list.length} yeni yarış`, body: `${season} ${legs.join(", ")}: ${list.map((x) => x.cls).slice(0, 8).join(", ")}${list.length > 8 ? "…" : ""}` };
+}
