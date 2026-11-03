@@ -34,7 +34,7 @@ import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf } from "@/lib/courseCard";
-import { CLASS_PICK, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
+import { PRE_NAME, PRE_SECS, PRE_STEPS, cleanCourseShow, preMove, preStep, CLASS_PICK, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { autoCaption } from "@/lib/raceCaption";
@@ -295,6 +295,7 @@ export function BroadcastPage({ orgId, id }) {
     changePlan({ off: on ? plan.off.filter((x) => x !== d) : [...plan.off, d], ...(d === planDay && (plan.status === "" || plan.status === "none") ? { status: on ? "" : "none" } : {}) });
   };
   const cShow = L?.courseShow || { auto: true, at: "", one: "", side: true };
+  const pre = cleanCourseShow(cShow);
   const putCourseShow = (c) => {
     setL((p) => (p ? { ...p, courseShow: c } : p));
     saveCourseShow(orgId, id, c).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
@@ -1245,6 +1246,53 @@ export function BroadcastPage({ orgId, id }) {
                   <small>{cShow.one === k ? "Ekranda" : "Kapalı"}</small>
                 </button>
               ))}
+            </div>
+            {/* Yarış öncesi gösterim akışı (Seyhun 2026-11-03 17:10 sol-alt onayı): beklenen rüzgâr → parkur → rota → program;
+                Otomatik (saniye) ya da Elle, her adım açılıp kapanır; Geri / Durdur / İleri. Yalnız ilk start'a kadar */}
+            <div className="border-t border-line px-4 pb-3 pt-3">
+              <p className="text-[0.9375rem] font-semibold">Yarış öncesi gösterim</p>
+              <div className="mt-2 grid grid-cols-2 gap-1.5">
+                {[
+                  [true, "Otomatik"],
+                  [false, "Elle"],
+                ].map(([v, t]) => (
+                  <button key={t} type="button" aria-pressed={pre.auto === v} className="masa-tog text-center" onClick={() => putCourseShow(v ? { ...pre, auto: true, at: new Date(capNow).toISOString() } : preMove(pre, capNow))}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+              {pre.auto ? (
+                <div className="mt-2 grid grid-cols-4 gap-1.5">
+                  {PRE_SECS.map((x) => (
+                    <button key={x} type="button" aria-pressed={pre.sec === x} className="masa-tog text-center" onClick={() => putCourseShow({ ...pre, sec: x })}>
+                      {`${x} sn`}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            {PRE_STEPS.map((k, i) => {
+              const on = pre.pre.includes(k);
+              const now_ = preStep({ show: pre, now: capNow }) === k;
+              return (
+                <button key={k} type="button" onClick={() => putCourseShow({ ...pre, pre: on ? pre.pre.filter((x) => x !== k) : [...pre.pre, k] })} className={`${row} border-t border-line ${now_ ? "bg-[rgba(255,61,119,0.12)]" : ""}`} aria-pressed={on}>
+                  <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[0.75rem] font-bold ${now_ ? "bg-[var(--acc)] text-white" : "bg-[var(--chip)]"}`}>{i + 1}</span>
+                  <span className="min-w-0 flex-1 font-semibold">{PRE_NAME[k]}</span>
+                  <span className="text-[0.8125rem] font-semibold text-mut">{now_ ? "Ekranda" : ""}</span>
+                  <span className={`masa-sw${on ? " on" : ""}`} aria-hidden="true" />
+                </button>
+              );
+            })}
+            <div className="grid grid-cols-3 gap-2 border-t border-line p-3">
+              <button type="button" className="masa-tog text-center" disabled={!pre.pre.length} onClick={() => putCourseShow(preMove(pre, capNow, -1))}>
+                Geri
+              </button>
+              <button type="button" className="masa-tog text-center" aria-pressed={pre.auto} disabled={!pre.pre.length} onClick={() => putCourseShow(pre.auto ? preMove(pre, capNow) : { ...pre, auto: true, at: new Date(capNow).toISOString() })}>
+                {pre.auto ? "Durdur" : "Sürdür"}
+              </button>
+              <button type="button" className="masa-tog text-center" disabled={!pre.pre.length} onClick={() => putCourseShow(preMove(pre, capNow, 1))}>
+                İleri
+              </button>
             </div>
             {/* Yarışta sağdaki genel sıralama (Seyhun 2026-11-02 "göster ya da kaldır"); start'tan önce hiç görünmez */}
             <button type="button" onClick={() => putCourseShow({ ...cShow, ov: cShow.ov === false })} className={`${row} border-t border-line`} aria-pressed={cShow.ov !== false}>

@@ -1413,3 +1413,75 @@ button.gr-card { cursor: pointer; }
 .gr-clk-t { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; padding: 0.45em 0.9em; background: rgba(255, 255, 255, 0.06); border-left: 1px solid rgba(255, 255, 255, 0.12); }
 .gr-clk-t small { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.72em; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); white-space: nowrap; }
 .gr-clk-t b { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 2.1em; line-height: 1.05; font-variant-numeric: tabular-nums; color: #ffd23f; white-space: nowrap; }
+/* Canlı grafik görünümü (Seyhun 2026-11-03 17:10 sol-alt onayı, "start ve rüzgâr birlikte, biraz canlı"): kartlar koyu cam, başlıkta solda renkli eğik
+   kesimli rozet; start kartı sol altta rüzgârın üstünde (yarış öncesi büyük, yarışta küçük bant), üst orta videoya kalır; beklenen rüzgâr
+   tablosu rüzgârın yanında açılır; sağ altta yarış adı | Velora işareti */
+.gr-card { background: rgba(7, 17, 33, 0.86); border: 0; border-radius: 0.55em; box-shadow: 0 0.6em 2em rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.08); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.gr-hd { align-items: stretch; gap: 0; height: 2.1em; padding: 0; background: rgba(255, 255, 255, 0.07); border-bottom: 0; letter-spacing: 0.1em; color: #fff; }
+.gr-bd { display: flex; align-items: center; gap: 0.45em; flex: none; padding: 0 1.15em 0 0.7em; background: #ff3d77; color: #fff; clip-path: polygon(0 0, 100% 0, calc(100% - 0.6em) 100%, 0 100%); }
+.gr-bd.t { background: #2fd6c3; color: #06202a; }
+.gr-bd.y { background: #ffd23f; color: #10203a; }
+.gr-bd.r { background: #e11d48; }
+.gr-bd.o { background: #ff7a1a; }
+.gr-bd .lv-flag { font-size: 0.75em; }
+.gr-bd .gr-of { background: #fff; width: 1.2em; height: 0.8em; }
+.gr-hs { display: flex; align-items: center; min-width: 0; padding: 0 0.7em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gr-tag { display: flex; align-items: center; padding: 0 0.85em; }
+.gr-lb { display: flex; align-items: flex-end; gap: 0.6em; width: auto; }
+.gr-col { display: flex; flex-direction: column; gap: 0.5em; width: 23em; }
+.gr-clk { margin-bottom: 0; }
+/* start kartı */
+.gr-st { text-align: left; }
+.gr-stb { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.6em; padding: 0.3em 0.9em 0.5em; }
+.gr-st .gr-tm { padding: 0; font-weight: 700; font-size: 4.2em; line-height: 0.95; }
+.gr-st.r .gr-tm { font-size: 2.4em; line-height: 1.1; padding: 0.15em 0; color: #ffd23f; white-space: normal; }
+.gr-who { min-width: 0; text-align: right; font-family: var(--lv-font-c), var(--lv-font), sans-serif; text-transform: uppercase; }
+.gr-who b { display: block; font-weight: 800; font-size: 1.45em; letter-spacing: 0.04em; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-who span { display: inline-block; margin-top: 0.35em; padding: 0.12em 0.55em; border-radius: 0.25em; background: var(--g); color: #10203a; font-weight: 700; font-size: 0.95em; letter-spacing: 0.1em; }
+.gr-who small { display: block; margin-top: 0.3em; font-weight: 600; font-size: 0.9em; letter-spacing: 0.1em; color: rgba(255, 255, 255, 0.62); }
+.gr-st .gr-sub { padding: 0 0.9em 0.65em; font-size: 1em; }
+.gr-sq { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0; padding: 0; list-style: none; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.gr-sq li { display: flex; align-items: center; justify-content: center; gap: 0.45em; padding: 0.4em 0; color: rgba(255, 255, 255, 0.4); }
+.gr-sq li + li { border-left: 1px solid rgba(255, 255, 255, 0.1); }
+.gr-sq b { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 800; font-size: 1.25em; }
+.gr-sq .lv-flag { font-size: 0.6em; opacity: 0.55; }
+.gr-sq li.ok { color: #fff; }
+.gr-sq li.ok .lv-flag { opacity: 1; }
+.gr-sq li.nx { color: #fff; background: rgba(255, 61, 119, 0.22); box-shadow: inset 0 -0.18em 0 #ff3d77; }
+.gr-sq li.nx .lv-flag { opacity: 1; }
+.gr-bar { height: 0.32em; background: rgba(255, 255, 255, 0.08); }
+.gr-bar i { box-shadow: 0 0 0.8em #ff3d77; }
+/* rüzgâr: ok turkuaz halkada */
+.gr-wr { grid-template-columns: minmax(0, 1fr) 3em 6.4em; gap: 0.6em; }
+.gr-wind .gr-arr { width: 3em; height: 3em; }
+.gr-kn b { font-size: 2.5em; }
+/* beklenen rüzgâr tablosu (rüzgârın yanında açılır, geçmiş saatler soluk) */
+.gr-whc { width: min(34em, calc(100vw - 54em)); animation: gr-open 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.gr-whc .lv-wh { margin: 0; padding: 0.45em 0.5em 0.55em; background: none; border: 0; }
+.gr-whc .w-11:has(~ .w-11 > span.border-2) { opacity: 0.4; }
+@keyframes gr-open { from { clip-path: inset(0 100% 0 0); opacity: 0.4; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+/* sağ üst kart değişince yumuşak geçiş */
+.gr-r { animation: gr-in 0.5s ease both; }
+@keyframes gr-in { from { opacity: 0; transform: translateY(-0.4em); } to { opacity: 1; transform: none; } }
+/* rota */
+.gr-rot { list-style: none; margin: 0; padding: 0.35em 0; }
+.gr-rot li { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); align-items: center; gap: 0.7em; padding: 0.42em 0.95em; font-size: 1.05em; font-weight: 600; }
+.gr-rot i { display: grid; place-items: center; width: 2em; height: 2em; border-radius: 50%; background: #ffb21e; color: #10203a; font-style: normal; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 800; }
+.gr-rot i.s { background: #fff; }
+.gr-rot i.f { background: #e5484d; color: #fff; }
+/* program: sıradaki pembe çizgili */
+.gr-pg li.next { background: linear-gradient(90deg, rgba(255, 61, 119, 0.32), rgba(255, 154, 77, 0.1)); box-shadow: inset 0.25em 0 0 #ff3d77; }
+/* sağ alt: yarış adı | Velora */
+.gr-nm { display: flex; align-items: center; justify-content: flex-end; gap: 1em; }
+.gr-nm b { display: block; }
+.gr-vl { display: flex; flex-direction: column; align-items: center; gap: 0.25em; padding-left: 1em; border-left: 2px solid rgba(255, 255, 255, 0.55); }
+.gr-vl svg { width: 2.4em; height: auto; filter: drop-shadow(0 0.1em 0.5em rgba(0, 0, 0, 0.45)); }
+.gr-name .gr-vl small { margin: 0; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.75em; letter-spacing: 0.28em; text-transform: uppercase; color: #fff; }
+@media (prefers-reduced-motion: reduce) { .gr-whc, .gr-r { animation: none; } }
+@media (max-width: 47.99rem) {
+  .gr-lb { flex-direction: column; align-items: stretch; }
+  .gr-col, .gr-whc { width: auto; }
+  .gr-nm { justify-content: flex-start; }
+  .gr-vl { display: none; }
+  .gr-st .gr-tm { font-size: 3.4em; }
+}
