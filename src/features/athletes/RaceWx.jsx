@@ -34,7 +34,7 @@ function useDay(r, day, tick = 0) {
 const nowHH = () => String(new Date().getHours()).padStart(2, "0");
 
 // Sıcaklık · gök · rüzgâr satırı ve grafik (lacivert zeminde)
-export function DayChart({ rows, day, at, marks = [] }) {
+export function DayChart({ rows, day, at, marks = [], onCol = null }) {
   const today = todayStr();
   const isToday = day === today;
   const top = rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]);
@@ -58,7 +58,7 @@ export function DayChart({ rows, day, at, marks = [] }) {
           </b>
         </span>
       </div>
-      <HourTable key={day} rows={rows} date={day} place={at} far marks={marks} className="mt-2.5" />
+      <HourTable key={day} rows={rows} date={day} place={at} far marks={marks} onCol={onCol} className="mt-2.5" />
     </>
   );
 }
@@ -118,6 +118,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
   };
   const [tick, setTick] = useState(0);
   const [pick, setPick] = useState(false);
+  const [mapAt, setMapAt] = useState(null);
   const late = sel && sel > lastForecastDay(today);
   const d = useDay(r, late ? "" : sel, tick);
   const sp = cleanSpot(r.spot);
@@ -148,7 +149,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
         {late ? (
           <p className="m-auto text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
         ) : d.rows?.length ? (
-          <DayChart rows={d.rows} day={sel} at={d.at} marks={marks} />
+          <DayChart rows={d.rows} day={sel} at={d.at} marks={marks} onCol={(at) => setMapAt({ at, n: Date.now() })} />
         ) : d.err ? (
           <p className="m-auto text-center text-[0.875rem] text-white/70">Hava tahmini alınamadı.</p>
         ) : (
@@ -176,7 +177,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
       {!d.at && !mini && !late && !d.err && <div className="ck-shim mt-3 h-12 rounded-[1.125rem]" aria-hidden="true" />}
       {d.at && (
         <div className="mt-3">
-          <RegionMap place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
+          <RegionMap place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} openAt={mapAt} />
         </div>
       )}
     </section>

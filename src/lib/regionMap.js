@@ -8,11 +8,11 @@ export function regionUrl(p, tz = "Europe/Istanbul") {
   const q = new URLSearchParams({
     latitude: pts.map((x) => x.lat).join(","),
     longitude: pts.map((x) => x.lon).join(","),
-    hourly: "wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation",
+    hourly: "wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,precipitation_probability",
     wind_speed_unit: "kn",
     timezone: tz,
     past_hours: "2",
-    forecast_hours: "13",
+    forecast_hours: "25",
   });
   return { url: `https://api.open-meteo.com/v1/forecast?${q}`, pts };
 }
@@ -27,7 +27,7 @@ export function shapeRegion(j, pts) {
   const spots = pts.map((p, i) => {
     const h = list[i]?.hourly || {};
     const num = (a, round = true) => times.map((_, k) => (Number.isFinite(a?.[k]) ? (round ? Math.round(a[k]) : Math.round(a[k] * 10) / 10) : null));
-    return { lat: p.lat, lon: p.lon, w: num(h.wind_speed_10m), g: num(h.wind_gusts_10m), d: num(h.wind_direction_10m), mm: num(h.precipitation, false) };
+    return { lat: p.lat, lon: p.lon, w: num(h.wind_speed_10m), g: num(h.wind_gusts_10m), d: num(h.wind_direction_10m), mm: num(h.precipitation, false), p: num(h.precipitation_probability) };
   });
   return { times, at, spots };
 }
@@ -46,6 +46,17 @@ export function regionSteps(grid, radar, mode, now) {
     return [...head, ...fut];
   }
   return [...past, ...fut];
+}
+
+// Yağış ihtimali (%) rengi ve saydamlığı (Seyhun 2026-11-03: "%80 demek bölgenin neresine yağacak"): %30 altı görünmez, %30–49 açık, %50–79 mavi, %80 üstü koyu mavi
+export function pTone(p) {
+  return p >= 80 ? { c: "#2563eb", o: 0.62 } : p >= 50 ? { c: "#38bdf8", o: 0.5 } : p >= 30 ? { c: "#7dd3fc", o: 0.34 } : { c: "#7dd3fc", o: 0 };
+}
+
+// Verilen saatte (ızgara sırası i) çevrede yağış bekleyen noktaların oranı (%): mm ≥ 0,1 olan nokta / bütün noktalar
+export function rainShare(spots, i) {
+  const ok = (spots || []).filter((s) => s.mm?.[i] != null);
+  return ok.length ? Math.round((ok.filter((s) => s.mm[i] >= 0.1).length / ok.length) * 100) : 0;
 }
 
 // Saatlik yağış rengi (hafif mavi → orta sarı → kuvvetli kırmızı; radar renklerine yakın)
