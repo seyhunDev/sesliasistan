@@ -7,7 +7,7 @@ import Link from "next/link";
 import { BackButton } from "@/components/ui/BackButton";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
-import { card } from "@/components/ui/Page";
+import { card, Seg } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
@@ -25,6 +25,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { TrackPanel } from "@/features/tracking/TrackPanel";
 import { BoatLive } from "@/features/tracking/BoatLive";
+import { ZOOMS } from "@/lib/boatPlay";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
 import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
@@ -76,6 +77,7 @@ export function BroadcastPage({ orgId, id }) {
   const [addOpen, setAddOpen] = useState(false);
   const [howOpen, setHowOpen] = useState(false); // Drone › Nasıl bağlanır
   const [sel, setSel] = useState(null); // ekrana verilecek seçim { kind, mid }
+  const [zoom, setZoom] = useState(null); // tekne ekranının yakınlığı (seçilmediyse ekrandaki ya da 100)
   const [busy, setBusy] = useState("");
   const [add, setAdd] = useState(null); // ölçüm penceresi: PICKS sırası
   const [voice, setVoice] = useState(false);
@@ -554,6 +556,12 @@ export function BroadcastPage({ orgId, id }) {
   };
   // Elle yazı yoksa ekran kendiliğinden yazar (lib/raceCaption.js): Start, Son dakika, Tehir, Genel geri, Bireysel geri, Finiş
   const autoCap = autoCaption({ plan, starts: live.starts, timer: tr.t, rounds: L?.rounds || {}, now: capNow, today });
+  // Tekneler görünümü (Seyhun 2026-11-03 "tepeden startı ve parkuru, yakınlaşıp uzaklaşmak yönetimden"): ekrandaysa hemen değişir
+  const zoomNow = zoom ?? (onScreen?.kind === "boats" ? (onScreen.zoom ?? 100) : 100);
+  const pickZoom = (v) => {
+    setZoom(v);
+    if (onScreen?.kind === "boats") show({ ...onScreen, zoom: v });
+  };
   const isOn = (k, mid = "") => onScreen?.kind === k && (k === "rec" ? onScreen.mid === mid : k === "src" ? onScreen.src === mid : true);
   const isSel = (k, mid = "") => sel?.kind === k && (k === "rec" ? sel.mid === mid : k === "src" ? sel.src === mid : true);
   const c = withLiveWind(course, live.wind, today);
@@ -1061,11 +1069,12 @@ export function BroadcastPage({ orgId, id }) {
         <section>
           <div className="masa-mons">
             <div className="masa-mon pv">
-              {sel?.kind === "boats" ? <BoatLive grp={airE.grp || airStart?.grp || ""} /> : pvUrl && ytEmbed(pvUrl) ? <iframe key={pvUrl} src={ytSrc(pvUrl)} title="Önizleme" allow="autoplay; encrypted-media" /> : pvRec?.thumb ? <img src={pvRec.thumb} alt="" /> : <div className="mid">{sel ? "Bağlantı yok" : "Kaynak seç"}</div>}
+              {sel?.kind === "boats" ? <BoatLive grp={airE.grp || airStart?.grp || ""} zoom={zoomNow} /> : pvUrl && ytEmbed(pvUrl) ? <iframe key={pvUrl} src={ytSrc(pvUrl)} title="Önizleme" allow="autoplay; encrypted-media" /> : pvRec?.thumb ? <img src={pvRec.thumb} alt="" /> : <div className="mid">{sel ? "Bağlantı yok" : "Kaynak seç"}</div>}
               <span className="lb">ÖNİZLEME</span>
               {pvName ? <span className="sn">{pvName}</span> : null}
             </div>
           </div>
+          {sel?.kind === "boats" ? <Seg className="mt-2" value={String(ZOOMS.reduce((b, x) => (Math.abs(x[1] - zoomNow) < Math.abs(b[1] - zoomNow) ? x : b))[1])} onChange={(v) => pickZoom(+v)} options={ZOOMS.map(([n, v]) => [String(v), n])} /> : null}
           {/* Tek önizleme (Seyhun 2026-11-03 yonetim/ornek-A: video alanı sade); ekrandaki ne olduğu tek satır */}
           <p className="truncate px-1 pt-2 text-[0.8125rem] font-semibold text-mut">
             {`Ekranda: ${onScreen ? (onScreen.pause ? `${monName} · ara verildi` : monName) : "boş"}`}
@@ -1245,7 +1254,7 @@ export function BroadcastPage({ orgId, id }) {
               {onScreen.pause ? "Sürdür" : "Duraklat"}
             </Button>
           ) : null}
-          <Button disabled={!!busy || !takeOk || (!!onScreen && isOn(sel.kind, sel.mid || sel.src || ""))} onClick={() => show({ ...sel, loop: sel.kind === "boats", caption: cap })}>
+          <Button disabled={!!busy || !takeOk || (!!onScreen && isOn(sel.kind, sel.mid || sel.src || ""))} onClick={() => show({ ...sel, loop: sel.kind === "boats", caption: cap, ...(sel.kind === "boats" ? { zoom: zoomNow } : {}) })}>
             {pvName ? `${pvName.length > 14 ? "Ekrana al" : `${pvName}'i ekrana al`}` : "Ekrana al"}
           </Button>
         </MasaBar>

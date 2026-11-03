@@ -852,7 +852,7 @@ function Backdrop({ data, isCur, entry }) {
       {/* Canlı tekne konumları (Seyhun 2026-11-03): Yayın › Video › Tekneler; ekrandaki yarışın grubu (şimdilik start anı, döngüde) */}
       {scr.kind === "boats" ? (
         <div className="lv-boats" aria-hidden="true">
-          <BoatLive grp={entry?.grp || ""} />
+          <BoatLive grp={entry?.grp || ""} zoom={scr.zoom ?? 100} />
         </div>
       ) : null}
       {st && layers.length ? (

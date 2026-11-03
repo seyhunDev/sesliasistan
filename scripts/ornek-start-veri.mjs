@@ -61,12 +61,26 @@ for (const [grp, list] of Object.entries(GROUPS)) {
     }
   });
 }
+// Trapez parkur (Seyhun 2026-11-03 "trapez parkur örneğini al, parkuru görmemiz gerekiyor"; oranlar lib/courseCard.js geom trapez):
+// 1 startın tam rüzgâr üstünde (orsa ORSA m), 2 solda ve aşağıda, 3S/3P kapısı 2'nin altında, finiş 2'nin sağında. Gerçek koordinatları Seyhun verecek.
+const ORSA = 700;
+const pt = (x, y) => (({ lat, lon }) => ({ lat: r6(lat), lon: r6(lon) }))(at(x, y));
+const marks = {
+  pin: pt(-LINE, 0),
+  komite: pt(LINE, 0),
+  m1: pt(0, ORSA),
+  m2: pt(-1.05 * ORSA, 0.45 * ORSA),
+  m3s: pt(-0.98 * ORSA - 0.11 * ORSA, -0.57 * ORSA),
+  m3p: pt(-0.98 * ORSA + 0.11 * ORSA, -0.57 * ORSA),
+  fin1: pt(-0.86 * ORSA + 0.09 * ORSA, 0.39 * ORSA),
+  fin2: pt(-0.86 * ORSA - 0.09 * ORSA, 0.39 * ORSA),
+};
 const set = {
   v: 1,
   race: "ornek",
   start: "2026-11-03T11:00:00+03:00",
   wind: { dir: AX, kn: 11 },
-  marks: { pin: (({ lat, lon }) => ({ lat: r6(lat), lon: r6(lon) }))(at(-LINE, 0)), komite: (({ lat, lon }) => ({ lat: r6(lat), lon: r6(lon) }))(at(LINE, 0)), m1: (({ lat, lon }) => ({ lat: r6(lat), lon: r6(lon) }))(at(0, 700)) },
+  marks,
   boats,
   fixes: fixes.sort((a, b) => a.t - b.t || a.sail.localeCompare(b.sail)),
 };

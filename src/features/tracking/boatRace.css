@@ -15,7 +15,7 @@
 .brp-top a, .brp-top button { border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(14, 30, 52, 0.62); padding: 6px 14px; color: #fff; font: 700 15px var(--lv-font-c, "Barlow Condensed", sans-serif); letter-spacing: 0.04em; text-decoration: none; }
 .brp-top button[aria-pressed="true"] { background: #fff; color: #0a1a2c; }
 .brp-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.7); font-weight: 600; }
-.br-live { position: absolute; left: 50%; top: calc(clamp(14px, 2vw, 32px) + env(safe-area-inset-top)); transform: translateX(-50%); display: flex; align-items: stretch; border-radius: 10px; overflow: hidden; background: rgba(14, 30, 52, 0.62); border: 1px solid rgba(255, 255, 255, 0.09); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); font: 700 clamp(14px, 1.2vw, 20px) var(--lv-font-c, "Barlow Condensed", sans-serif); letter-spacing: 0.06em; }
+.br-live { position: absolute; white-space: nowrap; left: 50%; top: calc(clamp(14px, 2vw, 32px) + env(safe-area-inset-top)); transform: translateX(-50%); display: flex; align-items: stretch; border-radius: 10px; overflow: hidden; background: rgba(14, 30, 52, 0.62); border: 1px solid rgba(255, 255, 255, 0.09); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); font: 700 clamp(14px, 1.2vw, 20px) var(--lv-font-c, "Barlow Condensed", sans-serif); letter-spacing: 0.06em; }
 .br-live b { background: #ff3d77; color: #fff; padding: 4px 12px; }
 .br-live span { padding: 4px 12px; font-variant-numeric: tabular-nums; }
 @media (max-width: 760px) {
@@ -24,3 +24,4 @@
   .br-live { top: auto; bottom: calc(72px + env(safe-area-inset-bottom)); }
   .brp-top { left: 12px; right: 12px; justify-content: flex-end; flex-wrap: wrap; }
 }
+.br-fin { font-size: 18px; fill: rgba(255, 255, 255, 0.8); }
