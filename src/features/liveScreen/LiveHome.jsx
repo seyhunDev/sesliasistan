@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { dirShort } from "@/lib/raceLive";
-import { PRE_KEY, Sea } from "./LiveScreen";
+import { BG_PHOTO, PRE_KEY, Sea } from "./LiveScreen";
 import { useVisit } from "./useVisit";
 import "./liveScreen.css";
 
@@ -22,6 +22,9 @@ function heroText(r, today) {
   const n = daysTo(r.startDate, today);
   return n === 1 ? "Yarın" : `Yarışa ${n} gün`;
 }
+// Yarışın kapak fotoğrafı (Seyhun 2026-11-03 "yarışçılık havası; görsel kullanmak isteyebilirsin, olmayanları örnekle doldur"):
+// yarışta kapak bağlantısı (cover) varsa o, yoksa şimdilik örnek fotoğraf
+const coverOf = (r) => (/^https:\/\//.test(r?.cover || "") ? r.cover : BG_PHOTO);
 const tagText = (r, today) => (r.today ? statusText(r) : r.startDate < today ? "" : daysTo(r.startDate, today) === 1 ? "Yarın" : `${daysTo(r.startDate, today)} gün`);
 
 export function LiveHome() {
@@ -61,7 +64,7 @@ export function LiveHome() {
   };
   const Row = ({ r, dim }) => (
     <Link href={`/canli/${r.id}`} onClick={() => pre(r)} className={`lv-row lv-hrow${dim ? " dn" : ""}`}>
-      <span className="d">
+      <span className="d" style={{ backgroundImage: `linear-gradient(rgba(7, 18, 36, 0.55), rgba(7, 18, 36, 0.55)), url(${coverOf(r)})` }}>
         <b>{new Date(`${r.startDate}T12:00:00`).getDate()}</b>
         <small>{new Date(`${r.startDate}T12:00:00`).toLocaleDateString("tr-TR", { month: "short" })}</small>
       </span>
@@ -73,8 +76,9 @@ export function LiveHome() {
     </Link>
   );
   return (
-    <div className="lv">
-      <Sea />
+    <div className="lv lv-homebg">
+      {/* arka plan: bulanık yarış fotoğrafı, yukarıdan aşağı açıktan koyuya */}
+      <Sea photo={BG_PHOTO} />
       <div className="lv-page lv-homep">
         <header className="lv-head lv-hhead">
           <b>Canlı yarışlar</b>
@@ -88,7 +92,7 @@ export function LiveHome() {
           <div className="lv-empty">Şu an açık yarış yok.</div>
         ) : null}
         {hero ? (
-          <Link href={`/canli/${hero.id}`} onClick={() => pre(hero)} className={`lv-hero${hero.live ? " live" : ""}`}>
+          <Link href={`/canli/${hero.id}`} onClick={() => pre(hero)} className={`lv-hero cv${hero.live ? " live" : ""}`} style={{ "--cv": `url(${coverOf(hero)})` }}>
             <div className="hl">
               {hero.live ? <em className="lv-live">Canlı</em> : null}
               <span>{heroText(hero, today)}</span>

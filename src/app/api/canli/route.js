@@ -257,7 +257,8 @@ async function openList() {
       const grp = cur ? cur.grp || cleanRounds(ld.rounds)?.[cur.id]?.grp || "" : "";
       const w = [...cleanCourse(ld.course || {}).obs].reverse().find((o) => o.kind === "wind");
       const first = todayRace ? pl.at : dayTime(pl, S(x.startDate, 10)) || pl.daily || "";
-      return { id: d.id, name: S(x.name, 120), startDate: S(x.startDate, 10), endDate: S(x.endDate, 10), place: [x.district, x.city].filter(Boolean).join(", ").slice(0, 80), live, today: todayRace, status: pl.status, now: live ? [raceName(cur), grp ? `${grp} grup` : ""].filter(Boolean).join(" · ") : "", at: S(first, 5), wind: w ? { deg: w.deg, kn: w.kn ?? null } : null };
+      const cover = /^https:\/\/[^\s"'()]+$/.test(S(x.cover, 400)) ? S(x.cover, 400) : "";
+      return { id: d.id, cover, name: S(x.name, 120), startDate: S(x.startDate, 10), endDate: S(x.endDate, 10), place: [x.district, x.city].filter(Boolean).join(", ").slice(0, 80), live, today: todayRace, status: pl.status, now: live ? [raceName(cur), grp ? `${grp} grup` : ""].filter(Boolean).join(" · ") : "", at: S(first, 5), wind: w ? { deg: w.deg, kn: w.kn ?? null } : null };
     }),
   );
   const list = rows.filter(Boolean).sort((a, b) => a.startDate.localeCompare(b.startDate));
