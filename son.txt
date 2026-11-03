@@ -1,8 +1,8 @@
-Commit: ebf8aa0 · Canlı ekran senaryo 3 (tehir) ve 4 (yarışta aynı düzen), eksen tahmini, panel süreleri (#1057)
-Zaman: 2026-11-03-1153 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41605089314
+Commit: 5a3c884 · Canlı: ilk starta geri sayım sabit düzende, dönen panel yalnız start dizisinde (#1059)
+Zaman: 2026-11-03-1231 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41610000392
 
-TAM TEST · 03.11.2026 11:41:59
+TAM TEST · 03.11.2026 12:19:15
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1438/1440 geçti · 2 kalan · 652 sn
+SONUÇ: 1439/1440 geçti · 1 kalan · 663 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -40,7 +40,7 @@ SONUÇ: 1438/1440 geçti · 2 kalan · 652 sn
           olan:     4376/4387 geçti
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
       ✗ “parkur kartları: varsayılan seçili, yeni kart, Başlat rotayı yazar, ekranda sahne” → [true,true,true,false,true] (beklenen: Seyhun 2026-11-02: her yarışın kendi parkur kartı olabilir; şimdiki varsayılan (A) ve seçili; Yayın › Parkur'da Yeni kart, rota yazma, seçme, silme; Başlat seçili kartın rotasını o yarışa yazar; canlı ekran süren yarışın rotasını, yoksa seçili kartı animasyonlu sahnede gösterir; /canli ve Yayın ⋯ menüsünde örnek yarış düğmesi)
-      ✗ “canlı ekran ortak rüzgâr bloğu ve parkur sahnesi” → [true,false,true,true,true] (beklenen: Seyhun 2026-11-03 ('rüzgâr gösteriminde çok eksiltmişsin; sağanak, gerçekleşen; ok ortalanmamış; birbirleriyle uyumlu'; 'parkurda sadece sayılar yazıyor, parkur animasyonumuzu kullanalım; veri yoksa rüzgâr 0 kabul'): WindNow (ortalı ok, kn, sağanak, yön, kaynak) + WindHours (ortak HourTable) her adımda; parkur her yerde sahne, ölçüm yokken varsayılan kart eksen 0°; senaryo 2 yalnız sayaç/turuncu/<1 saat)
+      ✗ “canlı ekran ortak rüzgâr bloğu ve parkur sahnesi” → [true,false,true,false,true] (beklenen: Seyhun 2026-11-03 ('rüzgâr gösteriminde çok eksiltmişsin; sağanak, gerçekleşen; ok ortalanmamış; birbirleriyle uyumlu'; 'parkurda sadece sayılar yazıyor, parkur animasyonumuzu kullanalım; veri yoksa rüzgâr 0 kabul'): WindNow (ortalı ok, kn, sağanak, yön, kaynak) + WindHours (ortak HourTable) her adımda; parkur her yerde sahne, ölçüm yokken varsayılan kart eksen 0°; senaryo 2 yalnız sayaç/turuncu/<1 saat)
       ✗ “tehir (süre + sebep) ve bekleme ekranında rüzgâr tahmini” → [true,false,true,true,true,true] (beklenen: Seyhun 2026-11-01: Yayın'da Tehir → süre (30 dk…2 sa, belirsiz) + sebep; plan.ap { from, why }, at yeni saat; apText ekranda; /api/canli forecast (Open-Meteo, yarış yeri) → WindDay grafiği, parkur ölçüm varsa, 'ekranda neler' şeridi; zeminde parkur çizgisi yok)
       ✗ “yayın sayfası sade: ⋯ menüsü, sonuç PDF'i ayrı sayfa; /canli canlı etiketi” → [true,true,true,false,false,true] (beklenen: Seyhun 2026-11-01: Yayın'da az düğme (Başlat; Start ekle + Tehir; Sesle gir), Linki kopyala / Ekranı aç / Sonuç PDF'i / Kayıt listesi / Bugün yarış yok / Günü bitir (bir daha sorar) ⋯ menüsünde; sonuçlar /athletes/races/<id>/sonuclar; /canli listesinde süren yarış Canlı, 20 sn yenilenir; çökme ekranı /canli'de 'Canlı yarışlara dön')
       ✗ “parkur sahnesi: örnek tekne avantajlı uçtan tramolayla” → [true,true,true,false] (beklenen: Seyhun 2026-11-02: parkur rüzgâra göre atılır, rüzgâr dönünce hat avantajı (raceCourse lineBias ile aynı) değişir; örnek nokta avantajlı uçtan kalkar, orsada rüzgâra 45° ile tramola atar (uzun ayakta bir tramola daha), pupada kavança, şamandıraları rota gibi döner, iz bırakır; canlı ekranda ve Yayın önizlemesinde)
@@ -154,12 +154,9 @@ SONUÇ: 1438/1440 geçti · 2 kalan · 652 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 140/141
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 141/141
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 9/10
-      ✗ “gün penceresi Yapıldı”
-          beklenen: plan satırında Yapıldı işareti: dokununca yapıldı, yeniden dokununca geri alınır
-          olan:     yapıldı 1 · çizili 1 · geri 0
+  ✓ Ana sayfa: 10/10
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
