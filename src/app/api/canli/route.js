@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
-import { aheadWind, cleanLive, dayOf, pickTimer, raceDays, rollPlan, screenDay, nextRaceDay } from "@/lib/raceLive";
+import { aheadWind, cleanLive, dayOf, dayTime, pickTimer, raceDays, raceName, rollPlan, screenDay, nextRaceDay } from "@/lib/raceLive";
 import { cleanCourse, withRaceCards } from "@/lib/raceCourse";
 import { cleanCourseShow, cleanRounds, cleanScreen, cleanStream, currentStart } from "@/lib/raceRounds";
 import { cleanSheet, joinGroups } from "@/lib/resultSheet";
@@ -250,7 +250,12 @@ async function openList() {
       const cur = currentStart(lv.starts, timer);
       const live = !!cur && cur.day === today;
       const todayRace = S(x.startDate, 10) <= today && today <= end;
-      return { id: d.id, name: S(x.name, 120), startDate: S(x.startDate, 10), endDate: S(x.endDate, 10), place: [x.district, x.city].filter(Boolean).join(", ").slice(0, 80), live, today: todayRace, status: rollPlan(lv.plan, today).status };
+      // Genel sayfanın büyük kartı için (Seyhun 2026-11-03 örnek F): süren yarışın adı ve grubu, ilk start saati, son rüzgâr
+      const pl = rollPlan(lv.plan, today);
+      const grp = cur ? cur.grp || cleanRounds(ld.rounds)?.[cur.id]?.grp || "" : "";
+      const w = [...cleanCourse(ld.course || {}).obs].reverse().find((o) => o.kind === "wind");
+      const first = todayRace ? pl.at : dayTime(pl, S(x.startDate, 10)) || pl.daily || "";
+      return { id: d.id, name: S(x.name, 120), startDate: S(x.startDate, 10), endDate: S(x.endDate, 10), place: [x.district, x.city].filter(Boolean).join(", ").slice(0, 80), live, today: todayRace, status: pl.status, now: live ? [raceName(cur), grp ? `${grp} grup` : ""].filter(Boolean).join(" · ") : "", at: S(first, 5), wind: w ? { deg: w.deg, kn: w.kn ?? null } : null };
     }),
   );
   const list = rows.filter(Boolean).sort((a, b) => a.startDate.localeCompare(b.startDate));
