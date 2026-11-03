@@ -23,7 +23,7 @@ const DARK_SKY = { sun: "text-amber-300", cloudSun: "text-amber-200", moon: "tex
 // (hourCols), altta tek satır "Ölçülen (Dikili istasyonu) · Tahmin". Bugünse şimdiki saatin sütunu kırmızı çerçeveli ve açılışta solda görünür;
 // başka günde sabah 6'dan başlar. marks: [{ at: "HH:MM", label }] plan / start saatleri pembe dikey çizgi ve altında kısa yazı.
 // Renkler CSS değişkeniyle (--ht-mut, --ht-line, --ht-rain, --ht-now, --ht-obs, --ht-mark, --ht-cell): lacivert kartta varsayılanlar, açık sayfada tone="light".
-export function HourTable({ rows, next = null, date, tone = "dark", onClick, className = "", place = null, far = false, marks = [], onCol = null, obs = null, station = null, nowMs = null, scale = 1 }) {
+export function HourTable({ rows, next = null, date, tone = "dark", onClick, className = "", place = null, far = false, marks = [], obs = null, station = null, nowMs = null, scale = 1 }) {
   const clock = useNow();
   const now = nowMs != null ? new Date(nowMs) : clock;
   const ref = useRef(null);
@@ -76,8 +76,7 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
                   data-col={i}
                   data-now={i === nowAt ? "" : undefined}
                   data-obs={c.obs ? "" : undefined}
-                  {...(onCol ? { role: "button", tabIndex: 0, "aria-label": `${c.hh}:00 yağış haritası`, onClick: (e) => (e.stopPropagation(), onCol(Date.parse(`${c.time}:00+03:00`), c)) } : {})}
-                  className={`relative w-11 shrink-0 text-center tabular-nums ${onCol ? "cursor-pointer" : ""} ${c.first ? "border-l border-[color:var(--ht-line)]" : ""}`}
+                  className={`relative w-11 shrink-0 text-center tabular-nums ${c.first ? "border-l border-[color:var(--ht-line)]" : ""}`}
                 >
                   {i === nowAt && <span aria-hidden className="pointer-events-none absolute -bottom-1 -top-1 inset-x-0 rounded-[0.625rem] border-2 border-[color:var(--ht-now)]" />}
                   <Cell className={`text-[0.75rem] font-semibold ${c.first ? "text-[color:var(--ht-fg)]" : "text-[color:var(--ht-mut)]"}`}>{c.first ? c.dname : c.hh}</Cell>

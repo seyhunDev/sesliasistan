@@ -2851,7 +2851,7 @@ group("Ölçülen rüzgâr")([
     const near = R.denseArrows(g, 0, [26.85, 39.03, 26.93, 39.1], 13);
     const { readFileSync } = await import("node:fs");
     const rm = readFileSync(new URL("../../../src/features/weather/RegionMap.jsx", import.meta.url), "utf8");
-    return far.length === 49 && near.length > 49 && near.every((a) => a.d <= 10 || a.d >= 350) && near.every((a) => a.w >= 10 && a.w <= 16) && R.denseArrows(g, -1, [0, 0, 1, 1], 12).length === 0 && /zoom: full \? 12/.test(rm) && /Harita\n/.test(rm) && /mini = false/.test(rm) && /interactive: full/.test(rm) && /if \(full\) m\.on\("click"/.test(rm) && /!full && mini/.test(rm) && !/dragPan\.disable/.test(rm);
+    return far.length === 49 && near.length > 49 && near.every((a) => a.d <= 10 || a.d >= 350) && near.every((a) => a.w >= 10 && a.w <= 16) && R.denseArrows(g, -1, [0, 0, 1, 1], 12).length === 0 && /zoom: full \? 12/.test(rm) && /inline/.test(rm) && /Harita\n/.test(rm) && /mini = false/.test(rm) && /interactive: full \|\| inline/.test(rm) && /cooperativeGestures: inline/.test(rm) && /if \(full \|\| \(inline && pick\.current\)\) m\.on\("click"/.test(rm) && /!full && !inline && mini/.test(rm) && !/dragPan\.disable/.test(rm);
   })],
   ["radar döşemesi", F("Dikili z7: döşeme 73/48, piksel içeride", () => { const t = RR.tileOf(39.07, 26.89); return t.z === 7 && t.x === 73 && t.y === 48 && t.px >= 0 && t.px < 256 && t.py >= 0 && t.py < 256; })],
   ["radar rengi", F("saydam yok, açık mavi hafif, koyu mavi orta, kırmızı kuvvetli", () => RR.levelOf(0, 0, 0, 0) === 0 && RR.levelOf(160, 220, 255, 200) === 1 && RR.levelOf(30, 60, 120, 255) === 2 && RR.levelOf(230, 40, 40, 255) === 3)],
@@ -3238,7 +3238,7 @@ group("Ortak düğmeler")([
       && /<HourTable key=\{day\}[^>]*far/.test(rw) && /<HourTable[^>]*nowMs=\{now\}/.test(src("features/liveScreen/LiveScreen.jsx")) && !/lv-wchart/.test(src("features/liveScreen/LiveScreen.jsx")) && !/CockpitWind/.test(rw)
       && /useWindObs\(obs \? null : place \|\| getPlace\(\), date, today, far\)/.test(ht) && /--ht-obs/.test(ht) && /data-mark/.test(ht);
   })],
-  ["yağış ihtimali haritası", F("Seyhun 2026-11-03: tablodaki saate dokununca bölge haritası yağış modunda o saatte açılır; noktalar ihtimale (%) göre renklenir, İhtimal | Miktar düğmesi, çevrenin yüzde kaçında yağış var", async () => {
+  ["yağış ihtimali haritası", F("Seyhun 2026-11-03: noktalar yağış ihtimaline (%) göre renklenir, İhtimal | Miktar düğmesi, çevrenin yüzde kaçında yağış var; harita tablonun altında sayfada (inline), tablodaki saate dokunmak harita açmaz (kaydırırken yanlış dokunma)", async () => {
     const R = await import("@/lib/regionMap");
     const { url, pts } = R.regionUrl({ lat: 39.07, lon: 26.88 });
     const h = { time: ["2026-11-03T10:00"], precipitation: [1], precipitation_probability: [80], wind_speed_10m: [3], wind_gusts_10m: [4], wind_direction_10m: [90] };
@@ -3246,7 +3246,9 @@ group("Ortak düğmeler")([
     const half = g.spots.map((s, k) => ({ ...s, mm: [k % 2 ? 0 : 1] }));
     const rm = src("features/weather/RegionMap.jsx"), ht = src("features/weather/HourTable.jsx");
     return /precipitation_probability/.test(url) && g.spots[0].p[0] === 80 && R.pTone(85).o > R.pTone(55).o && R.pTone(55).o > R.pTone(35).o && R.pTone(20).o === 0 && R.rainShare(half, 0) === 51
-      && /openAt/.test(rm) && /\["p", "İhtimal"\], \["mm", "Miktar"\]/.test(rm) && /onCol/.test(ht) && /onCol=\{\(at\) => setMapAt/.test(src("features/weather/WeatherTop.jsx")) && /openAt=\{mapAt\}/.test(src("features/athletes/RaceWx.jsx"));
+      && /\["p", "İhtimal"\], \["mm", "Miktar"\]/.test(rm) && /aria-label=\{play \? "Durdur" : "Oynat"\}/.test(rm) && /type="range"/.test(rm)
+      && !/onCol/.test(ht) && !/onCol|openAt/.test(src("features/weather/WeatherTop.jsx")) && !/onCol|openAt/.test(src("features/athletes/RaceWx.jsx"))
+      && /<RegionMap[^>]*inline/.test(src("features/weather/WeatherTop.jsx")) && /<RegionMap inline/.test(src("features/athletes/RaceWx.jsx"));
   })],
   ["önceki 5 gün", F("Seyhun 2026-11-03: hava sayfasında 'Önceki 5 gün' düğmesi (kapalı başlar) geçmiş 5 günü şeritte açar, saatlik tabloda ölçülen sütunlar; yarış havasında yarıştan 5 gün önce", async () => {
     const W = await import("@/features/weather/weather");

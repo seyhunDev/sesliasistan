@@ -18,7 +18,7 @@ import { dayHours, dirDeg, getPlace, kn, nowOf, placeLabel, setPlace, sky, windN
 
 // Hava sayfası (Seyhun 2026-11-03 Windy görseli, örnek hava-sayfasi-ornek.png "Böyle yap"): lacivert üstte geri, yer, yenile, büyük sıcaklık ve şimdiki rüzgâr;
 // altında 5 günlük şerit (DayStrip: sıcaklık, yağış mm, rüzgâr; güne dokununca tablo o güne geçer); açık zeminde saat saat tablo (HourTable, tone="light":
-// 3 saatte bir sütun, geçmişte istasyon ölçümü açık mavi) ve altında BÖLGE haritası ("Harita" düğmesi tablonun altında, tam ekran, şimdiden başlar; tabloda saate dokunmak o saatte açar; RegionMap: rüzgâr / yağış, −2 sa … +24,
+// 3 saatte bir sütun, geçmişte istasyon ölçümü açık mavi) ve altında BÖLGE haritası (tablonun altında sayfada, saat çubuğu ve Oynat ile; RegionMap: rüzgâr / yağış, −2 sa … +24,
 // dokununca nokta taşınır, Geri al), MGM / Windy ve kaynak satırı. Aynı tablo ana sayfada, yarış havasında ve canlı ekranda kullanılır.
 const nowHour = () => new Date().getHours();
 const ago = (ms) => {
@@ -32,7 +32,6 @@ export function WeatherTop({ w, refresh }) {
   const [sel, setSel] = useState(all[0]?.date || today);
   const [back, setBack] = useState(false); // önceki 5 gün açık mı (kapalı başlar)
   const past = w.past || [];
-  const [mapAt, setMapAt] = useState(null); // tablodan dokunulan saat → harita yağış modunda o saatte açılır
   const rows = dayHours(w, sel) || [];
   const info = [...past, ...all].find((d) => d.date === sel) || all[0];
   const isToday = sel === all[0]?.date;
@@ -102,14 +101,14 @@ export function WeatherTop({ w, refresh }) {
       </section>
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         <section aria-label="Saat saat">
-          {rows.length > 0 && <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} tone="light" onCol={(at) => setMapAt({ at, n: Date.now() })} />}
+          {rows.length > 0 && <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} tone="light" />}
         </section>
         <section>
           <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
             <h2 className="text-[0.8125rem] font-bold tracking-[.04em] text-mut">BÖLGE</h2>
             {st?.lat != null && <small className="truncate text-[0.75rem] text-mut">{st.name} istasyonu · {String(st.km).replace(".", ",")} km</small>}
           </div>
-          <RegionMap place={place} station={obToday?.station || st} obs={obToday?.rows} onPick={movePoint} openAt={mapAt} />
+          <RegionMap place={place} station={obToday?.station || st} obs={obToday?.rows} onPick={movePoint} inline />
         </section>
         <div className="flex gap-2">
           <a href={links.mgm} target="_blank" rel="noopener noreferrer" data-press className="raised flex h-11 flex-1 items-center justify-center rounded-2xl text-[0.875rem] font-semibold">MGM</a>
