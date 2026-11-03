@@ -893,63 +893,6 @@ export function BroadcastPage({ orgId, id }) {
               );
             })}
             {plan.status === "ap" ? <p className="border-b border-line px-4 py-2.5 text-[0.875rem] font-semibold text-warn">{apText(plan)}</p> : null}
-            {ap && plan.status !== "ap" ? (
-              // Tehir penceresi: süre (30 dk … 2 sa, Belirsiz) ve sebep; Ertele yeni saati yazar, ekranda sebep görünür
-              <div className="space-y-2 border-b border-line px-4 py-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-11 shrink-0 text-[0.8125rem] text-mut">İner</span>
-                  <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
-                    {[...AP_MIN, 0].map((m) => (
-                      <button key={m} type="button" aria-pressed={ap.min === m} onClick={() => setAp({ ...ap, min: m })} className={`h-7 shrink-0 rounded-full px-2.5 text-[0.8125rem] font-semibold ${ap.min === m ? "bg-acc text-white" : "bg-bg"}`}>
-                        {m === 0 ? "Belirsiz" : m < 60 ? `${m} dk sonra` : `${m / 60} sa sonra`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Denizde (AP): inince 1 dk sonra uyarı işareti; Karada (AP üstünde H): geri sayım kendiliğinden başlamaz */}
-                <div className="flex items-center gap-2">
-                  <span className="w-11 shrink-0 text-[0.8125rem] text-mut">Yer</span>
-                  <div className="flex min-w-0 flex-1 gap-1.5">
-                    {[[false, "Denizde"], [true, "Karada"]].map(([v, t]) => (
-                      <button key={t} type="button" aria-pressed={!!ap.land === v} onClick={() => setAp({ ...ap, land: v })} className={`h-7 shrink-0 rounded-full px-2.5 text-[0.8125rem] font-semibold ${!!ap.land === v ? "bg-acc text-white" : "bg-bg"}`}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {!ap.land ? (
-                  <div className="flex items-center gap-2">
-                    <span className="w-11 shrink-0 text-[0.8125rem] text-mut">İnince</span>
-                    <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
-                      {[[true, "1 dk sonra geri sayım"], [false, "Ben başlatırım"]].map(([v, t]) => (
-                        <button key={t} type="button" aria-pressed={ap.auto !== false === v} onClick={() => setAp({ ...ap, auto: v })} className={`h-7 shrink-0 rounded-full px-2.5 text-[0.8125rem] font-semibold ${ap.auto !== false === v ? "bg-acc text-white" : "bg-bg"}`}>
-                          {t}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                <div className="flex items-center gap-2">
-                  <span className="w-11 shrink-0 text-[0.8125rem] text-mut">Sebep</span>
-                  <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
-                    {AP_WHY.map((w) => (
-                      <button key={w} type="button" aria-pressed={ap.why === w} onClick={() => setAp({ ...ap, why: w })} className={`h-7 shrink-0 rounded-full px-2.5 text-[0.8125rem] font-semibold ${ap.why === w ? "bg-acc text-white" : "bg-bg"}`}>
-                        {w}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="min-w-0 flex-1 truncate text-[0.875rem] text-mut">{[ap.live ? "Sayaç durur" : "", ap.min ? `İniş ${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}` : "", ap.land || ap.auto === false ? "Geri sayımı sen başlatırsın" : "İnince 1 dk sonra geri sayım"].filter(Boolean).join(" · ")}</span>
-                  <Button variant="secondary" size="sm" onClick={() => setAp(null)}>
-                    Vazgeç
-                  </Button>
-                  <Button size="sm" onClick={postpone}>
-                    Tehir çek
-                  </Button>
-                </div>
-              </div>
-            ) : null}
           </div>
         </section>
         {/* Kameralar: her kaynağın çektiği gruplar (bir kez seçilir); grup ekrana alınınca canlı görüntü o grubun kamerasına geçer */}
@@ -1500,6 +1443,68 @@ export function BroadcastPage({ orgId, id }) {
           toast("Yayın sıfırlandı");
         }}
       />
+      {/* Tehir (Seyhun 2026-11-03 "alt çubuktan yukarı açılsın, kare belirgin düğmeler: İner, Yer, İnince, Sebep, Tamam") */}
+      <Sheet open={!!ap && plan.status !== "ap"} onClose={() => setAp(null)} title="Tehir" navy>
+        {ap ? (
+          <div className="space-y-4 pb-3">
+            <div>
+              <div className="masa-aplab">İner</div>
+              <div className="masa-apgrid">
+                {[...AP_MIN, 0].map((m) => (
+                  <button key={m} type="button" data-press aria-pressed={ap.min === m} onClick={() => setAp({ ...ap, min: m })} className="masa-ap">
+                    <b>{m === 0 ? "?" : m < 60 ? m : m / 60}</b>
+                    <small>{m === 0 ? "Belirsiz" : m < 60 ? "dk sonra" : "saat sonra"}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Denizde (AP): inince 1 dk sonra uyarı işareti; Karada (AP üstünde H): geri sayım kendiliğinden başlamaz */}
+            <div>
+              <div className="masa-aplab">Yer</div>
+              <div className="masa-apgrid two">
+                {[[false, "Denizde", "AP"], [true, "Karada", "AP + H"]].map(([v, t, f]) => (
+                  <button key={t} type="button" data-press aria-pressed={!!ap.land === v} onClick={() => setAp({ ...ap, land: v })} className="masa-ap">
+                    <b>{t}</b>
+                    <small>{f}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {!ap.land ? (
+              <div>
+                <div className="masa-aplab">İnince</div>
+                <div className="masa-apgrid two">
+                  {[[true, "1 dk sonra", "geri sayım kendiliğinden"], [false, "Ben başlatırım", "geri sayım elle"]].map(([v, t, f]) => (
+                    <button key={t} type="button" data-press aria-pressed={ap.auto !== false === v} onClick={() => setAp({ ...ap, auto: v })} className="masa-ap">
+                      <b>{t}</b>
+                      <small>{f}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <div>
+              <div className="masa-aplab">Sebep</div>
+              <div className="masa-apgrid">
+                {AP_WHY.map((w) => (
+                  <button key={w} type="button" data-press aria-pressed={ap.why === w} onClick={() => setAp({ ...ap, why: w })} className="masa-ap">
+                    <b className="sm">{w}</b>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-[0.875rem] text-mut">{[ap.live ? "Sayaç durur" : "", ap.min ? `İniş ${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}` : "İniş belirsiz, Tehiri indir ile iner", ap.land || ap.auto === false ? "Geri sayımı sen başlatırsın" : "İnince 1 dk sonra geri sayım"].filter(Boolean).join(" · ")}</p>
+            <div className="flex gap-2">
+              <Button variant="secondary" className="flex-1" onClick={() => setAp(null)}>
+                Vazgeç
+              </Button>
+              <Button className="flex-1" onClick={postpone}>
+                Tehir çek
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Sheet>
       <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Kaynak ekle">
         <div className="grid grid-cols-2 gap-2 px-4 pb-5">
           {Object.entries(SRC_KINDS).map(([k, t]) => (
@@ -1670,7 +1675,7 @@ function MasaTabs({ value, onChange, tabs }) {
 function MasaBar({ children }) {
   return (
     <div data-pagebar="" className="masa-bar fixed inset-x-0 bottom-0 z-30">
-      <div className="mx-auto flex max-w-[30rem] gap-2 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3">{children}</div>
+      <div className="mx-auto flex max-w-[30rem] gap-2 px-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2.5">{children}</div>
     </div>
   );
 }

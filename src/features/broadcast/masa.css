@@ -37,7 +37,8 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-tabs [aria-pressed="true"] small i { background: #fff; }
 
 /* Alttaki sabit iş düğmeleri (en çok üç; ana iş pembe) */
-.masa-bar { background: rgba(14, 24, 41, 0.94); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line); }
+/* Alt çubuk saydam değil (Seyhun 2026-11-03 "altta boşluk kalmış, kaydırınca arkadan yazılar görünüyor") */
+.masa-bar { background: #0e1829; border-top: 1px solid var(--line); }
 .masa-bar .btn { height: 3.125rem; flex: 1; font-weight: 700; }
 
 /* Video: ekrandaki görüntünün önizlemesi ve kaynak kutucukları */
@@ -155,3 +156,14 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-sq .art:empty { background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08) 0 4px, transparent 4px 8px); }
 .masa-sq small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.6875rem; font-weight: 700; color: var(--mut); }
 .masa-sq.sm { width: 3.75rem; }
+
+/* Tehir penceresi (Seyhun 2026-11-03): kare, belirgin seçim düğmeleri */
+.masa-aplab { margin-bottom: 0.4rem; font-size: 0.8125rem; font-weight: 700; color: var(--mut); }
+.masa-apgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+.masa-apgrid.two { grid-template-columns: repeat(2, 1fr); }
+.masa-ap { display: flex; min-height: 4rem; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; padding: 0.5rem 0.4rem; border-radius: 0.875rem; background: var(--chip); border: 2px solid transparent; color: var(--fg); }
+.masa-ap b { font-size: 1.375rem; font-weight: 800; line-height: 1; }
+.masa-ap b.sm { font-size: 1rem; line-height: 1.15; text-align: center; }
+.masa-ap small { font-size: 0.6875rem; font-weight: 700; color: var(--mut); text-align: center; }
+.masa-ap[aria-pressed="true"] { background: var(--acc); border-color: var(--acc); }
+.masa-ap[aria-pressed="true"] small { color: rgba(255, 255, 255, 0.85); }
