@@ -720,15 +720,15 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-hold .lv-hwind { margin: 0.5em 0 0.6em; }
 /* Videolu yarış öncesi sol şerit (Seyhun 2026-11-02 videolu/ onay): yalnız şeridin arkası bulanık ve koyu, bilgilerin kendi zemini yok;
    sağ kenarı videoya yumuşak geçer. Turuncu bayrakla "Start öncesi" */
-.lv-side { position: absolute; left: 1.6vw; top: calc(1.6vw + 2.4em); z-index: 1; width: min(30vw, 500px); max-height: calc(100% - 3.2vw - 2.4em); display: flex; flex-direction: column; overflow: hidden; border-radius: 16px; border: 1px solid var(--lv-gline); background: var(--lv-glass); backdrop-filter: blur(20px) saturate(1.15); -webkit-backdrop-filter: blur(20px) saturate(1.15); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35); animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; font-size: clamp(12px, 1vw, 20px); }
-.lv-stop { padding: 1.3em 1.4em 0.9em; }
+.lv-side { position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; width: min(48vw, 780px); padding: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top) + 4.2em) 3vw 2em clamp(16px, 1.6vw, 44px); display: flex; flex-direction: column; gap: 1.4em; overflow: hidden; background: linear-gradient(90deg, rgba(6, 22, 43, 0.72), rgba(6, 22, 43, 0.6) 55%, rgba(6, 22, 43, 0)); backdrop-filter: blur(26px) saturate(1.1); -webkit-backdrop-filter: blur(26px) saturate(1.1); mask-image: linear-gradient(90deg, #000 68%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 68%, transparent); animation: lv-fade 0.8s ease-out both; font-size: clamp(12px, 1.05vw, 21px); }
+.lv-stop { padding: 0; }
 .lv-side .lv-ssec { border-top: 1px solid var(--lv-gline); padding: 1em 1.4em; }
 .lv-side .lv-sh { margin-bottom: 0.55em; font-size: 0.8em; font-weight: 600; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.6); }
 .lv-s2 { display: grid; grid-template-columns: 1.2fr 1fr; padding: 0 !important; }
 .lv-s2.one { grid-template-columns: 1fr; }
 .lv-s2 > div { padding: 1em 1.4em; min-width: 0; }
 .lv-s2 > div + div { border-left: 1px solid var(--lv-gline); }
-.lv-sflags { display: flex; flex-wrap: wrap; gap: 0.6em 1.4em; padding: 0.2em 1.4em 1.1em; }
+.lv-sflags { display: flex; flex-wrap: wrap; gap: 0.6em 1.4em; padding: 0; }
 .lv-sfl { display: flex; align-items: center; gap: 0.7em; transition: opacity 0.8s; }
 .lv-sfl.down { opacity: 0.4; }
 .lv-sfl .lv-flag { font-size: 1.5em; width: 1.9em; height: 1.9em; flex: none; }
@@ -742,9 +742,9 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-skick:not(.o) { padding-left: 0.7em; }
 .lv-skick.o { color: #ffa45c; background: rgba(255, 122, 26, 0.16); }
 .lv-oflag { width: 1.6em; height: 1em; flex: none; border-radius: 2px; background: #ff7a1a; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
-.lv-sbig { margin-top: 0.12em; font-size: clamp(56px, min(7vw, 12.5vh), 150px); font-weight: 300; line-height: 0.86; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-.lv-ssub { margin-top: 0.45em; font-size: 1em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); }
-.lv-swhat { display: flex; align-items: center; gap: 0.45em; margin-top: 0.6em; font-size: 1.15em; font-weight: 700; text-transform: uppercase; }
+.lv-sbig { margin: 0.1em 0 0 -0.03em; font-size: clamp(64px, min(10vw, 22vh), 200px); font-weight: 300; line-height: 0.86; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.lv-ssub { margin-top: 1.1em; font-size: 1em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); }
+.lv-swhat { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3em 0.5em; margin-top: 0.7em; font-size: 1.7em; font-weight: 700; text-transform: uppercase; }
 .lv-ssec { border-top: 1px solid rgba(255, 255, 255, 0.14); padding-top: 1em; }
 .lv-sh { margin-bottom: 0.6em; font-size: clamp(11px, 0.9vw, 17px); font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
 .lv-swind { display: flex; align-items: center; gap: 1em; }
@@ -965,3 +965,15 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-bgl.in { opacity: 1; z-index: 1; }
 .lv-bgl.out { opacity: 0; z-index: 0; }
 .lv-bgl.load { z-index: 0; }
+
+/* videolu yarış öncesi: ince çizgi altında üç sütun (Seyhun 2026-11-03 örnek E) */
+.lv-swhat small { font-size: 0.55em; font-weight: 600; letter-spacing: 0.14em; color: rgba(255, 255, 255, 0.6); margin-left: 0.2em; }
+.lv-sgrid { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 1.6em; padding-top: 1.2em; border-top: 1px solid rgba(255, 255, 255, 0.22); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-sgrid > div { min-width: 0; }
+.lv-sgrid small { display: block; font-size: 0.8em; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); white-space: nowrap; }
+.lv-sgrid b { display: flex; align-items: center; gap: 0.3em; margin-top: 0.35em; font-size: 2.2em; font-weight: 700; line-height: 1; white-space: nowrap; }
+.lv-sgrid b em { font-size: 0.5em; font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.65); }
+.lv-sgrid b .lv-arrow { width: 1em; height: 1em; flex: none; border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 50%; margin-right: 0.1em; }
+.lv-sgrid b .lv-dot { width: 0.4em; height: 0.4em; }
+.lv-sgrid span { display: block; margin-top: 0.4em; font-size: 1em; font-weight: 600; letter-spacing: 0.03em; color: rgba(255, 255, 255, 0.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) { .lv-side { width: auto; padding: 1em 0 0; mask-image: none; -webkit-mask-image: none; backdrop-filter: none; -webkit-backdrop-filter: none; } .lv-sgrid { grid-template-columns: 1fr 1fr; } }
