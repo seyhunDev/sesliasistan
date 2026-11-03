@@ -1442,6 +1442,42 @@ function NoneHero({ data, today, now }) {
     </div>
   );
 }
+// Senaryo 3 tehir (Seyhun 2026-11-03 onay, yayin-tasarim/senaryo/3-videosuz.png, 3-videolu.png): AP bayraklı "Tehir" etiketi; tehir süresi
+// belliyse "Tehir inişine" geri sayım, altında sebep · Karada ve bekleyen yarış; süre belli değilse sayaç yerine büyük sebep ve
+// "Karada · uyarı işareti bekleniyor". İniş ve uyarı işareti saati yazılmaz. Tehir inince "Tehir indi" + "Start yakında". Videosuz ve bant aynı
+function ApBlock({ data, cs, first, apDown = false, big = "lv-big" }) {
+  const plan = data.plan;
+  const counting = !apDown && cs.label === "Tehir inişine";
+  const why = plan.ap?.why || "Start ertelendi";
+  const land = plan.ap?.land ? "Karada" : "";
+  const who = first ? `${[first.name, grpText(first.grp)].filter(Boolean).join(" · ")} bekliyor` : "";
+  return (
+    <>
+      <div className="lv-apk">
+        <Flag kind="AP" />
+        {apDown ? "Tehir indi" : "Tehir"}
+      </div>
+      {counting ? (
+        <>
+          <div className="lv-kick">Tehir inişine</div>
+          <div className={big}>{cs.value}</div>
+          <div className="lv-why">
+            {[why, land].filter(Boolean).join(" · ")}
+            {who ? <small>{who}</small> : null}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="lv-bigt">{apDown ? "Start yakında" : why}</div>
+          <div className="lv-why w">
+            {apDown ? "Uyarı işareti bekleniyor" : [land, "Uyarı işareti bekleniyor"].filter(Boolean).join(" · ")}
+            {first ? <small>{[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}</small> : null}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
 function WaitHero({ data, today, cs, prog, now }) {
   const plan = data.plan;
   const { none, box, kick } = holdState(data, today, cs, now);
@@ -1454,6 +1490,8 @@ function WaitHero({ data, today, cs, prog, now }) {
   const left = !cs.rem && r.startDate > today ? daysUntil(r.startDate, today) : 0;
   const aDays = left ? data.ahead?.days || raceDays(r.startDate, r.endDate, plan).map((day) => ({ day, at: plan.times?.[day] || plan.daily || "" })) : [];
   const ag = agOf(data, now);
+  const ap = plan.status === "ap";
+  const apDown = !ap && !!plan.warn && now < Date.parse(plan.warn);
   if (none && !left && plan.next?.day) return <NoneHero data={data} today={today} now={now} />;
   // Örnek H (Seyhun 2026-11-03 onay): vitrin dönmez. Solda geri sayım, program ve rüzgâr; sağ üstte parkur. Parkur yoksa günler varken
   // yarış günlerinin beklenen rüzgârı, yoksa rüzgâr grafiği. Yayın'dan "Göster" ile rüzgâr ya da program seçilirse sağda o görünür
@@ -1470,16 +1508,17 @@ function WaitHero({ data, today, cs, prog, now }) {
       <div className="lv-hold lv-hold3" data-cols={cols}>
         <div className="lv-topr">{[none ? "" : "Yarış günü", dayText(today) ? `${wdText(today)} ${dayText(today)}` : "", r.place].filter(Boolean).join(" · ")}</div>
         <div className="lv-hst">
-          <div className="lv-kick">{kick}</div>
-          {!none ? <div className="lv-big">{cs.rem ? cs.value : "—:—"}</div> : null}
-          {!none && first ? (
+          {ap || apDown ? <ApBlock data={data} cs={cs} first={first} apDown={apDown} /> : null}
+          {!ap && !apDown ? <div className="lv-kick">{kick}</div> : null}
+          {!none && !ap && !apDown ? <div className="lv-big">{cs.rem ? cs.value : "—:—"}</div> : null}
+          {!none && !ap && !apDown && first ? (
             <div className="lv-what">
               <Dot g={first.grp} />
               {[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}
               <small>{[first.cls, at ? `Program ${at}` : ""].filter(Boolean).join(" · ")}</small>
             </div>
           ) : null}
-          {box ? (
+          {box && !ap && !apDown ? (
             <div className="lv-hbox">
               {box.flag ? <Flag kind={box.flag} /> : null}
               <div>
@@ -1559,7 +1598,7 @@ function CourseCol({ data, route, svg }) {
       <div className="lv-cinfo">
         <div>
           <small>Eksen</small>
-          <b>{ax ? `${ax.deg}° ${dirShort(ax.deg)}` : "Ölçülmedi"}</b>
+          <b>{axisText(data)}</b>
         </div>
         {bias?.end ? (
           <div>
@@ -1625,13 +1664,18 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
   return (
     <aside className="lv-side lv-band">
       <div className="lv-bclock">
-        <div className={`lv-skick${orange ? " o" : ""}${ap || apDown ? " ap" : ""}`}>
-          {ap || apDown ? <Flag kind="AP" /> : orange ? <span className="lv-oflag" aria-hidden="true" /> : null}
-          {ap ? "Tehir" : apDown ? "Tehir indi" : orange ? "Start öncesi" : cs.label}
-        </div>
-        <div className="lv-sbig">{cs.rem ? cs.value : "—:—"}</div>
-        {ap ? <div className="lv-ssub">{apText(data.plan)}</div> : null}
-        {first ? (
+        {ap || apDown ? (
+          <ApBlock data={data} cs={cs} first={first} apDown={apDown} big="lv-sbig" />
+        ) : (
+          <>
+            <div className={`lv-skick${orange ? " o" : ""}`}>
+              {orange ? <span className="lv-oflag" aria-hidden="true" /> : null}
+              {orange ? "Start öncesi" : cs.label}
+            </div>
+            <div className="lv-sbig">{cs.rem ? cs.value : "—:—"}</div>
+          </>
+        )}
+        {first && !ap && !apDown ? (
           <div className="lv-swhat">
             <Dot g={first.grp} />
             {[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}
@@ -1677,7 +1721,7 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
           <div className="lv-cinfo">
             <div>
               <small>Eksen</small>
-              <b>{ax ? `${ax.deg}° ${dirShort(ax.deg)}` : "Ölçülmedi"}</b>
+              <b>{axisText(data)}</b>
             </div>
             {bias?.end ? (
               <div>
@@ -1703,7 +1747,7 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
 // (Start hattı → Rüzgâr → Parkur → Sıradaki), altında noktalar; "hepsini aynı anda göstermemize gerek yok". Son dakikada panel kapanır,
 // yalnız sayaç ve bayraklar kalır. Altta 5·4·1·0 çubuğu. Videoda hepsi alt bantta. Olmayan bilgi panele girmez. ----
 const ROTATE_MS = 8000;
-function nearItems(data, prog, now) {
+function nearItems(data, prog, now, race = null) {
   const crs = cleanCourse(data.course || {});
   let bias = null;
   try {
@@ -1716,35 +1760,48 @@ function nearItems(data, prog, now) {
   const ew = expWind(data.forecast, data.plan?.at || "");
   const w = c || ew;
   const route = cleanRoute(sceneRoute(data, null, true, "wait"));
-  const after = prog.filter((x) => x.state !== "done")[1] || null;
+  const after = race ? prog.find((x) => x.state === "next") || null : prog.filter((x) => x.state !== "done")[1] || null;
   const items = [];
-  if (bias) {
+  // yarışta: sıralama (ilk dönüş yazıldıysa) ve yarışın rotası
+  if (race?.sel) {
+    const e = data.rounds?.[race.sel.id];
+    if (e && standings(e).length) items.push({ k: "rank", lab: "", race, data });
+  }
+  if (bias && !race) {
     const sub = [`Hat ${Math.round(bias.line)}°`, bias.wind != null ? `rüzgâr ${Math.round(bias.wind)}° ${dirShort(bias.wind)}` : ""].filter(Boolean).join(" · ");
     items.push(bias.end ? { k: "line", lab: "Start hattı", big: `${bias.end === "pin" ? "Pin" : "Komite"} avantajlı ${Math.round(bias.deg)}°`, y: true, sub } : { k: "line", lab: "Start hattı", big: "Hat dengeli", sub });
   }
+  const svg = courseSvg(data, race ? sceneRoute(data, race.sel, true, "race") : sceneRoute(data, null, true, "wait"));
+  if (svg) items.push({ k: "course", lab: `Parkur · ${CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}${route.length ? ` · ${routeText(route)}` : ""}`, svg, sub: `Eksen ${axisText(data)}` });
   if (w) items.push({ k: "wind", lab: c ? "Rüzgâr" : "Start'ta beklenen rüzgâr", w, by: c ? c.by : "tahmin" });
   if ((data.forecast?.rows || []).filter((r) => r.wind != null).length >= 2) items.push({ k: "whours", lab: "Gün boyunca rüzgâr", data, now });
-  const svg = courseSvg(data, sceneRoute(data, null, true, "wait"));
-  if (svg) items.push({ k: "course", lab: `Parkur · ${CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}${route.length ? ` · ${routeText(route)}` : ""}`, svg, sub: ax ? `Eksen ${ax.deg}° ${dirShort(ax.deg)}` : "" });
   if (after) items.push({ k: "next", lab: "Sıradaki", big: [after.name, grpText(after.grp)].filter(Boolean).join(" · "), grp: after.grp, sub: [after.cls, after.at ? `Start ${after.at}` : "Bu start'tan sonra"].filter(Boolean).join(" · ") });
   return items;
 }
 // Tek panel: her 8 sn'de sıradaki bilgi kayarak gelir; altında noktalar hangisinde olduğunu gösterir
+// Her panelin kendi süresi var: parkur animasyonu bir kez tamamlanana kadar kalır (Seyhun 2026-11-03 "parkur animasyonu tamamlanmadan
+// geçiyor; bir kere tamamlansın"), saatlik tablo biraz daha uzun, diğerleri 8 sn
+const SCENE_T = 12; // sn, courseSvg sailT
+const panelMs = (it) => (it?.k === "course" ? SCENE_T * 1000 + 2000 : it?.k === "whours" || it?.k === "rank" ? 10000 : ROTATE_MS);
 function Rotator({ items }) {
   const [i, setI] = useState(0);
   const n = items.length;
+  const cur = n ? items[i % n] : null;
+  const ms = panelMs(cur);
   useEffect(() => {
     if (n < 2) return undefined;
-    const t = setInterval(() => setI((v) => v + 1), ROTATE_MS);
-    return () => clearInterval(t);
-  }, [n]);
+    const t = setTimeout(() => setI((v) => v + 1), ms);
+    return () => clearTimeout(t);
+  }, [n, i, ms]);
   if (!n) return null;
-  const it = items[i % n];
+  const it = cur;
   return (
     <div className="lv-one">
       <div key={it.k} className="lv-oneb">
-        <small>{it.lab}</small>
-        {it.k === "wind" ? (
+        {it.lab ? <small>{it.lab}</small> : null}
+        {it.k === "rank" ? (
+          <RankPanel data={it.data} sel={it.race.sel} isCur id={it.race.id} max={6} onAll={it.race.onAll} />
+        ) : it.k === "wind" ? (
           <WindNow w={it.w} by={it.by} cls="big" />
         ) : it.k === "whours" ? (
           <WindHours data={it.data} now={it.now} scale={1.1} />
@@ -1789,12 +1846,12 @@ function SeqBar({ data, cs }) {
   );
 }
 // Sabit blok: geri sayım, sıradaki yarış ve (start dizisinde) bayraklar
-function NearClock({ data, cs, prog, entry }) {
-  const first = prog.find((x) => x.state === "next") || prog.find((x) => x.state !== "done") || null;
+function NearClock({ data, cs, prog, entry, racing = false, sel = null }) {
+  const first = racing && sel ? { name: raceName(sel), grp: sel.grp || entry?.grp || "", cls: entry?.cls || "" } : prog.find((x) => x.state === "next") || prog.find((x) => x.state !== "done") || null;
   const entryNow = entry?.cls || entry?.prep || entry?.grp ? entry : data.plan.order?.[0] || null;
-  const seq = !!(data.timer && data.timer.mode === "start" && cs.rem != null && entryNow);
+  const seq = !racing && !!(data.timer && data.timer.mode === "start" && cs.rem != null && entryNow);
   const flags = seq ? startFlags(entryNow, false, cs.rem <= 60) : [];
-  const hm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1] || data.plan.at || "";
+  const hm = racing && sel?.at ? hmOf(sel.at) : /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1] || data.plan.at || "";
   return (
     <div className="lv-nclock">
       <div className="lv-kick">{cs.label}</div>
@@ -1838,26 +1895,26 @@ function TopRight({ data, today }) {
   );
 }
 // Videosuz: solda sayaç, sağda dönen panel, altta çubuk
-function StartHero({ data, cs, prog, now, entry }) {
-  const items = cs.rem != null && cs.rem <= 60 ? [] : nearItems(data, prog, now);
+function StartHero({ data, cs, prog, now, entry, racing = false, sel = null, id = "", onAll }) {
+  const items = !racing && cs.rem != null && cs.rem <= 60 ? [] : nearItems(data, prog, now, racing ? { sel, id, onAll } : null);
   return (
     <div className="lv-hold lv-hold2">
-      <NearClock data={data} cs={cs} prog={prog} entry={entry} />
+      <NearClock data={data} cs={cs} prog={prog} entry={entry} racing={racing} sel={sel} />
       <Rotator items={items} />
-      <SeqBar data={data} cs={cs} />
+      {!racing ? <SeqBar data={data} cs={cs} /> : null}
     </div>
   );
 }
 // Videolu: alt bantta aynı üçlü
-function NearBand({ data, cs, prog, now, entry }) {
-  const items = cs.rem != null && cs.rem <= 60 ? [] : nearItems(data, prog, now);
+function NearBand({ data, cs, prog, now, entry, racing = false, sel = null, id = "", onAll }) {
+  const items = !racing && cs.rem != null && cs.rem <= 60 ? [] : nearItems(data, prog, now, racing ? { sel, id, onAll } : null);
   return (
     <aside className="lv-side lv-band lv-band2">
       <div className="lv-brow">
-        <NearClock data={data} cs={cs} prog={prog} entry={entry} />
+        <NearClock data={data} cs={cs} prog={prog} entry={entry} racing={racing} sel={sel} />
         <Rotator items={items} />
       </div>
-      <SeqBar data={data} cs={cs} />
+      {!racing ? <SeqBar data={data} cs={cs} /> : null}
     </aside>
   );
 }
@@ -2098,11 +2155,19 @@ export const sceneRoute = (data, sel, isCur, phase) => {
 // kartsız, arka plan (video ya da deniz/fotoğraf) bulanıklaşır, parkur sağda; bitince bulanıklık kalkar
 // Ölçüm yokken de parkur sahnesi kurulur (Seyhun 2026-11-03 "hiç verisi yoksa rüzgârı tam kuzey 0 kabul ederek yine parkuru kuralım; önemli
 // olan yarış parkurunun ne olduğunu göstermek"): eksen 0°, rüzgâr ve hat yok, bütün noktalar tahmini; veri girilince gerçek kart
-const defaultCard = (crs) => ({ axis: 0, wind: null, range: null, kn: null, line: null, reach: null, orsa: crs.len?.orsa || ORSA_M, type: cardType(selCard(crs)), est: { komite: true, pin: true, m1: true, m2: true, m3: true, m4: true } });
+// Eksen ölçülmemişse start saatindeki tahmin rüzgârının yönü "tahmin" olarak kullanılır (Seyhun 2026-11-03 "ölçülmedi yerine tahmin"), o da yoksa 0°
+const guessAxis = (data) => expWind(data.forecast, data.plan?.at || "")?.dir ?? null;
+const axisText = (data) => {
+  const ax = axisInfo(data);
+  if (ax) return `${ax.deg}° ${dirShort(ax.deg)}`;
+  const g = guessAxis(data);
+  return g != null ? `${Math.round(g)}° ${dirShort(g)} · tahmin` : "Ölçülmedi";
+};
+const defaultCard = (crs, data) => ({ axis: data ? (guessAxis(data) ?? 0) : 0, wind: null, range: null, kn: null, line: null, reach: null, orsa: crs.len?.orsa || ORSA_M, type: cardType(selCard(crs)), est: { komite: true, pin: true, m1: true, m2: true, m3: true, m4: true } });
 const courseSvg = (data, route, o = {}) => {
   try {
     const crs = cleanCourse(data.course || {});
-    return sceneSvg(cardOf(crs) || defaultCard(crs), route, { pre: "lv", sail: true, sailT: 12, ...o });
+    return sceneSvg(cardOf(crs) || defaultCard(crs, data), route, { pre: "lv", sail: true, sailT: SCENE_T, ...o });
   } catch {
     return "";
   }
@@ -2582,12 +2647,15 @@ export function LiveScreen({ id, y = "" }) {
   const pre = !ongoing && (phase === "wait" || (cs.rem != null && cs.rem > 0));
   // Senaryo 2 (Seyhun 2026-11-03): yarış günü, start'a 1 saatten az, turuncu bayrak ya da start dizisi; tehir, "yarış yok", süren yarış ve
   // yarın hariç. Videosuz StartHero, videolu NearBand; sıralama, çipler, kayan kartlar ve alt şerit yok
-  const near = isCur && !ongoing && phase !== "summary" && !["ap", "none"].includes(data.plan.status) && !/Yarın/.test(cs.label) && (((data.timer?.end != null || data.timer?.left != null) && data.timer.mode === "start" && counting) || orangeUp(data.plan, today) || (cs.rem != null && cs.rem > 0 && cs.rem < 3600));
+  // Start'tan sonra da aynı düzen (Seyhun 2026-11-03 "geri sayım bittiğinde gösterilen ekran diğerlerinden çok farklı olmasın"): sayaç
+  // ileri sayar, sağdaki panel sıralama → parkur → rüzgâr → sıradaki
+  const racing = !!(ongoing && phase === "race");
+  const near = isCur && phase !== "summary" && !["ap", "none"].includes(data.plan.status) && !/Yarın/.test(cs.label) && (racing || (!ongoing && (((data.timer?.end != null || data.timer?.left != null) && data.timer.mode === "start" && counting) || orangeUp(data.plan, today) || (cs.rem != null && cs.rem > 0 && cs.rem < 3600))));
   // start'tan önce (geri sayımda) yok; Yayın › Video › Genel sıralama ya da sesle "geneli kaldır" ile kapanır (Seyhun 2026-11-02)
-  const ovOn = phase === "race" && isCur && !!sel && !pre && data.courseShow?.ov !== false;
+  const ovOn = phase === "race" && isCur && !!sel && !pre && !near && data.courseShow?.ov !== false;
   // Videolu yarış öncesi (Seyhun 2026-11-02 videolu/1-yaris-oncesi.png, 2-start-oncesi-turuncu.png onay): solda bulanık şeritte bilgiler,
   // turuncu bayrak çekiliyse "Start öncesi"; Yayın › Video › Sol bilgi ile kapanır. Açıkken gösterim kartları ve alt şerit yok
-  const side = isCur && hasVideo && pre && data.courseShow?.side !== false;
+  const side = isCur && hasVideo && (pre || (ongoing && phase === "race")) && data.courseShow?.side !== false;
   const slide = !(phase === "wait" && !hasVideo) && !side && !near ? slideOn({ data, sel, isCur, open: courseOpen, now: nowMs, phase, pre, prog }) : "";
   const cOn = slide === "course";
   // Yarış öncesi video yokken sade sayfa (Seyhun 2026-11-02 "geri sayım sayfası sade temiz"): ortada sayaç, altta program; şerit yok
@@ -2605,17 +2673,17 @@ export function LiveScreen({ id, y = "" }) {
           {data.race?.name ? <span className="lv-rname">{data.race.name}</span> : null}
         </div>
         {ongoing && phase === "race" ? <LiveBadge sel={sel} data={data} /> : null}
-        {near ? <TopRight data={data} today={today} /> : null}
+        {near && !racing ? <TopRight data={data} today={today} /> : null}
         <div className="lv-left">
           {phase === "race" && !near ? <RankPanel key="race" data={data} sel={sel} isCur={isCur} id={id} max={hasVideo ? 5 : RANK_MAX} onAll={() => setFull("race")} /> : null}
         </div>
         {ovOn ? <OverallSide data={data} n={hasVideo ? 6 : 10} /> : null}
         {/* Tekne takibi (Seyhun 2026-11-02): yarışta teknelerin konumu küçük haritada (Yayın › Dönüşler › Yayında harita) */}
-        {phase === "race" && isCur && !side && !near ? <BoatMap boats={data.boats || []} course={data.course} groupOf={groupMap(data.groups?.[today])} grp={entry?.grp || ""} /> : null}
+        {phase === "race" && isCur && !side && (!near || racing) ? <BoatMap boats={data.boats || []} course={data.course} groupOf={groupMap(data.groups?.[today])} grp={entry?.grp || ""} /> : null}
         {/* Yarış sürerken diğer yarışlar çip olarak gösterilmez (Seyhun 2026-11-03: ekrandaki yarış neyse o; sıradaki start alt şeritte) */}
         {(phase === "race" || (phase === "wait" && hasVideo)) && !side && !near && !(ongoing && phase === "race") ? <ProgramChips items={prog} /> : null}
-        {side && near ? <NearBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} /> : side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
-        {hero2 ? <StartHero data={data} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
+        {side && near ? <NearBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} racing={racing} sel={sel} id={id} onAll={() => setFull("race")} /> : side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
+        {hero2 ? <StartHero data={data} cs={cs} prog={prog} now={nowMs} entry={entry} racing={racing} sel={sel} id={id} onAll={() => setFull("race")} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}
         {phase === "summary" ? <EndHero data={data} today={today} now={nowMs} onAll={() => setFull("all")} /> : null}
         <CourseFloat data={data} sel={sel} isCur={isCur} show={cOn} phase={phase} onClose={() => setCourseOpen(false)} />
