@@ -116,3 +116,75 @@ export function tableOf(pages) {
   }
   return out;
 }
+
+// Sonuç listesi (Seyhun 2026-11-03, TYF "GEÇİCİ SONUÇLAR · ALTIN 03.11.2025"): Rank, SINIF, grup (tarih başlıklı sütun ya da
+// "ALTIN" başlığı), Y.NO, AD SOYAD, CİNSİYET, D.TARİHİ, KULÜP, yarış sütunları (Q1…Q6, F1, R1…), Total, Nett.
+// Ad ve kulüp alt satırlara taşabilir ("ERENDEMİR", "SPOR KULÜBÜ"), "(74.0" + "RET)" gibi: sırasız satır üstteki sporcuya eklenir.
+// Dönen: cleanSheet'in okuduğu fleets [{ cls, rows: [{ rank, name, sail, club, born, pts, sex, grp, r }] }]; başlık yoksa []
+function resCol(s) {
+  const p = plain(s);
+  if (/^(rank|sira|siralama|pos|position|place|no)$/.test(p) && !/^y/.test(p)) return "rank";
+  if (/^(nett|net|netpuan|nettotal|netpts)$/.test(p)) return "pts";
+  if (/^(total|toplam|brut|gross)$/.test(p)) return "skip";
+  if (/^[qrfmsc]\d{1,2}$/.test(p) || /^race\d{1,2}$/.test(p) || /^\d{1,2}$/.test(p)) return "race";
+  return colOf(s);
+}
+// Yarış puanı: "1.0" → "1", "(9.0)" → "(9)", "(74.0" + "RET)" → "(RET)", "74.0 UFD" → "UFD" (atılan parantezde)
+export function raceCell(v) {
+  const t = String(v || "").replace(/\s+/g, "");
+  const out = t.match(/\(/) ? "(" : "";
+  const code = t.match(/[A-Za-z]{2,4}/)?.[0];
+  if (code) return out ? `(${code.toUpperCase()})` : code.toUpperCase();
+  const n = t.match(/\d+(?:[.,]\d+)?/)?.[0];
+  if (!n) return "";
+  const x = String(Number(n.replace(",", ".")));
+  return out ? `(${x})` : x;
+}
+export function resultTableOf(pages) {
+  const fleets = [];
+  let cols = null;
+  let cur = "";
+  let last = null;
+  for (const items of pages || []) {
+    for (const row of rowsOf(items)) {
+      const ks = row.parts.map((p) => resCol(p.s));
+      if (ks.includes("rank") && ks.includes("name") && ks.includes("race")) {
+        cols = row.parts.map((p, i) => ({ k: ks[i] || "skip", x: p.x }));
+        continue;
+      }
+      // "ALTIN 03.11.2025", "Gümüş Grup": sonraki satırların grubu
+      const words = row.parts.map((p) => p.s).join(" ").split(/\s+/);
+      const g = words.length <= 6 ? words.map(groupOf).find(Boolean) : "";
+      if (g && words.every((w) => groupOf(w) || /^[\d./-]+$/.test(w) || /^(grup|grubu|group|fleet|filo|sonuc|sonuclar|gecici|results)$/.test(plain(w)))) {
+        cur = g;
+        continue;
+      }
+      if (!cols) continue;
+      const cell = {};
+      const races = [];
+      for (const p of row.parts) {
+        let c = 0;
+        cols.forEach((q, i) => q.x <= p.x + 6 && (c = i));
+        const k = cols[c].k;
+        if (k === "race") races[c] = races[c] ? `${races[c]} ${p.s}` : p.s;
+        else cell[k] = cell[k] ? `${cell[k]} ${p.s}` : p.s;
+      }
+      const rank = Number(String(cell.rank || "").replace(/\D/g, ""));
+      if (!rank) {
+        // alt satıra taşan ad, kulüp, yarış puanı
+        if (!last) continue;
+        for (const k of ["name", "club"]) if (cell[k]) last[k] = `${last[k]} ${cell[k]}`.trim();
+        races.forEach((v, i) => v && (last.rc[i] = `${last.rc[i] || ""}${v}`));
+        continue;
+      }
+      const cls = clsName(cell.cls || "");
+      let f = fleets.find((x) => x.cls === cls);
+      if (!f) fleets.push((f = { cls, rows: [] }));
+      last = { rank, name: cell.name || "", sail: String(cell.sail || "").replace(/\D/g, ""), club: cell.club || "", born: cell.born || "", pts: Number(String(cell.pts || "").replace(",", ".")), sex: cell.sex || "", grp: groupOf(cell.grp || "") || cur, rc: races };
+      f.rows.push(last);
+    }
+  }
+  for (const f of fleets)
+    f.rows = f.rows.map(({ rc, ...r }) => ({ ...r, name: titleCase(r.name), r: cols ? cols.map((q, i) => (q.k === "race" ? raceCell(rc[i]) : null)).filter((x) => x !== null) : [] }));
+  return fleets.filter((f) => f.rows.length);
+}

@@ -5,6 +5,8 @@
 import { authFetch } from "@/lib/authFetch";
 import { compressImage } from "@/lib/image";
 import { cleanSheet } from "@/lib/resultSheet";
+import { resultTableOf } from "@/lib/pdfLines";
+import { pdfPages } from "@/lib/pdfText";
 import { kindOf } from "./raceNotice";
 
 const MAX = 4 * 1024 * 1024;
@@ -22,6 +24,10 @@ export async function readResults(file, names = []) {
   const kind = await kindOf(file);
   let body;
   if (kind === "pdf") {
+    // Yazılı PDF'te sütun başlıkları (Rank, Y.NO, AD SOYAD, Q1…F2, Nett) tanınırsa yapay zekasız okunur (Seyhun 2026-11-03)
+    const pages = await pdfPages(file).catch(() => []);
+    const fleets = cleanSheet(resultTableOf(pages));
+    if (fleets.reduce((n, f) => n + f.rows.length, 0) >= 3) return { kind, fleets };
     if (file.size > MAX) throw new Error("PDF 4 MB'tan büyük. Yalnız sonuç sayfalarını ayrı PDF yap ya da fotoğrafını yükle.");
     body = { mimeType: "application/pdf", data: await toBase64(file) };
   } else if (kind === "image") {
