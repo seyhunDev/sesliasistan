@@ -11,6 +11,7 @@ import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
+import { colorOf as windColor } from "@/lib/windMap";
 import { BoatMap } from "@/features/tracking/BoatMap";
 import { BoatLive } from "@/features/tracking/BoatLive";
 import { HourTable } from "@/features/weather/HourTable";
@@ -3206,13 +3207,17 @@ function GWind({ data, now, mode, today, can = false, open: want = false }) {
 }
 // uzun program (3 yarış × 3 grup) kısalır (Seyhun 2026-11-03 18:25): bitenler tek satırda sayı, önümüzdeki en çok 4 start, kalanı "+N start daha"
 const PROG_MAX = 4;
-function GProg({ prog }) {
-  if (!prog.length) return null;
+function progRows(prog) {
   const done = prog.filter((x) => x.state === "done").length;
   const up = prog.filter((x) => x.state !== "done");
   const rows = up.length ? up.slice(0, PROG_MAX) : prog.slice(-1);
   const more = up.length - rows.length;
   const foot = [done && up.length ? `${done} start bitti` : "", more > 0 ? `+${more} start daha${up[up.length - 1]?.at ? ` · son ${up[up.length - 1].at}` : ""}` : ""].filter(Boolean).join(" · ");
+  return { rows, foot };
+}
+function GProg({ prog }) {
+  if (!prog.length) return null;
+  const { rows, foot } = progRows(prog);
   return (
     // sade program (Seyhun 2026-11-03 18:20): rüzgâr ve parkurla aynı satır dili, pembe dolgu ve hap yok; sıradaki satır yalnız parlak + grup rengi çizgisi
     <GCard cls="gr-side gr-prg" head="Program" tone="b" tag={`Bugün · ${prog.length} start`}>
@@ -3306,6 +3311,124 @@ function GEarly({ data, rid }) {
     </GCard>
   );
 }
+// Start çekmecesi (Seyhun 2026-11-03 18:30 "hep start alanının altından açılsın", örnek cekmece onayı 18:35): yarıştan önce start kartının
+// altından açılan tek gövde; sekmeler Rüzgâr · Parkur · Program, her bölüm değişirken çekmece kapanıp yeniden açılır, süre üstte akar.
+const DR_NAME = { wind: "Rüzgâr", course: "Parkur", prog: "Program" };
+const DR_TONE = { wind: "#2fd6c3", course: "#ffd23f", prog: "#8fc3ff" };
+function DrWind({ data, now }) {
+  const c = curWind(data, null, true, now);
+  const h0 = new Date(now + 3 * 3600e3).getUTCHours();
+  const hrs = (data.forecast?.rows || []).filter((r) => r.wind != null && +r.hh >= h0).slice(0, 6);
+  const sh = data.plan?.at ? +data.plan.at.slice(0, 2) : -1;
+  return (
+    <>
+      {c ? (
+        <div className="gr-dw">
+          <div className="gr-dl">
+            Şimdi
+            <small>{[c.by, c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""].filter(Boolean).join(" · ")}</small>
+          </div>
+          {gArrow(c.dir)}
+          <div className="gr-dk">
+            <b>
+              {c.kn}
+              <em>kn</em>
+            </b>
+            {c.gust != null && c.gust > c.kn ? <span>{`sağanak ${c.gust}`}</span> : null}
+          </div>
+        </div>
+      ) : null}
+      {hrs.length >= 2 ? (
+        <>
+          <div className="gr-dh">Beklenen · saatlik tahmin</div>
+          <div className="gr-hrs" style={{ gridTemplateColumns: `repeat(${hrs.length}, 1fr)` }}>
+            {hrs.map((r, i) => (
+              <div key={r.hh} className={+r.hh === sh ? "st" : ""} style={{ animationDelay: `${0.8 + i * 0.1}s` }}>
+                <small>{+r.hh === sh ? "Start" : `${r.hh}:00`}</small>
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  {r.dir != null ? <path d="M8 1 L12 14 L8 11 L4 14 Z" fill="currentColor" transform={`rotate(${r.dir + 180} 8 8)`} /> : null}
+                </svg>
+                <b>{Math.round(r.wind)}</b>
+                {r.gust != null ? <i style={{ background: windColor(r.gust) }}>{Math.round(r.gust)}</i> : <i className="no" />}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </>
+  );
+}
+function DrCourse({ data }) {
+  const route = sceneRoute(data, null, true, "wait");
+  const svg = courseSvg(data, route);
+  if (!svg) return null;
+  return (
+    <>
+      <div className="gr-dc">
+        <span>{axisText(data) ? `Eksen ${axisText(data)}` : "Parkur"}</span>
+        <small>{routeText(route)}</small>
+      </div>
+      <div className="lv-sceneb gr-dsc" dangerouslySetInnerHTML={{ __html: svg }} />
+    </>
+  );
+}
+function DrProg({ prog }) {
+  const { rows, foot } = progRows(prog);
+  return (
+    <ul className="gr-dp">
+      {rows.map((x, i) => (
+        <li key={x.key} className={x.state} style={{ "--g": groupColor(x.grp) || "rgba(255,255,255,.4)", animationDelay: `${0.8 + i * 0.1}s` }}>
+          <b>{x.at || ""}</b>
+          <i />
+          <span>{gWhat(x) || x.name}</span>
+          <small>{x.state === "now" ? "Yarışta" : ""}</small>
+        </li>
+      ))}
+      {foot ? <li className="more">{foot}</li> : null}
+    </ul>
+  );
+}
+function GDrawer({ rk, have, sec, auto, data, now, prog }) {
+  // bir kez açılır ve açık kalır; bölümler yerinde sakince değişir, boy oynamaz (Seyhun 2026-11-03 18:38 "sürekli açılıp kapanan şeyler hoş olmuyor")
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setOpen(true), 500);
+    return () => clearTimeout(t);
+  }, []);
+  const shown = rk;
+  // kutu boyu içeriğe göre yumuşakça uzar/kısalır: kısa programda altta boşluk kalmaz (Seyhun 2026-11-03 18:43)
+  const inRef = useRef(null);
+  const [h, setH] = useState(0);
+  useEffect(() => {
+    const el = inRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const body = shown === "wind" ? <DrWind data={data} now={now} /> : shown === "course" ? <DrCourse data={data} /> : shown === "prog" ? <DrProg prog={prog} /> : null;
+  return (
+    <div className={`gr-dr${open && body ? " on" : ""}`} aria-live="polite">
+      <div className="gr-dri">
+        <div className="gr-tabs" style={{ gridTemplateColumns: `repeat(${have.length}, 1fr)` }}>
+          {have.map((k) => (
+            <span key={k} className={k === shown ? "on" : ""} style={{ "--c": DR_TONE[k] }}>
+              {DR_NAME[k]}
+              {k === shown ? <i key={shown} className={auto ? "run" : "full"} style={{ animationDuration: `${sec}s` }} /> : null}
+            </span>
+          ))}
+        </div>
+        <div className="gr-dbox" style={h ? { height: h } : undefined}>
+          <div ref={inRef}>
+            <div className="gr-dpn" key={shown}>
+              {body}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 const gWho = (x) => (x ? { name: x.name || "", grp: x.grp || "", cls: x.cls || "" } : null);
 function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, racing, ovOn, onFull }) {
   const plan = data.plan;
@@ -3321,6 +3444,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
   let wOpen = false;
   let wCan = false;
   let panel = null;
+  let drw = null;
   let left0 = 0;
   let preOn = false;
   if (mode === "summary") {
@@ -3416,6 +3540,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     const el = pc.auto ? (Math.max(0, now - (Date.parse(pc.at) || 0)) % (pc.sec * 1000)) / 1000 : 99;
     wOpen = wCan && rk === "wind" && el >= 1.2 && (!pc.auto || el < pc.sec - 1.8);
     panel = rk === "wind" ? null : rk === "course" && crs ? <GCourse data={data} sel={null} racing={false} /> : <GProg prog={prog} />;
+    if (!left && top && have.length) drw = <GDrawer rk={rk} have={have} sec={pc.sec} auto={pc.auto} data={data} now={now} prog={prog} />;
   } else if (!right && ["wait", "between", "ap"].includes(mode) && !vd) right = <GProg prog={prog} />;
   const tl = !left && !!top;
   return (
@@ -3428,15 +3553,16 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
       ) : null}
       {/* start kartı sol üstte (Seyhun 2026-11-03 17:54); sol üstte sonuç varken (yarışta) eskisi gibi rüzgârın üstünde */}
       {tl ? (
-        <div className="gr-tl">
+        <div className={`gr-tl${drw ? " dr" : ""}`}>
           <GStart t={top} />
+          {drw}
         </div>
       ) : null}
       <div className="gr-lb">
         <div className="gr-col">
           {tl ? null : <GStart t={top} />}
           <GClock c={clock} />
-          {panel ? (
+          {drw ? null : panel ? (
             <div className="gr-pn" key={rk}>
               {panel}
             </div>
