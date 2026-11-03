@@ -142,7 +142,8 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
   const rt = cleanRoute(route);
   const rot = g.A;
   const R = ([x, y]) => [x * Math.cos(rad(rot)) - y * Math.sin(rad(rot)), x * Math.sin(rad(rot)) + y * Math.cos(rad(rot))];
-  const key = ["komite", "pin", "m1", "m1a", "m2", "s3", "p3", "s4", "p4", "fA", "fB"].map((k) => R(g[k]));
+  const ghosts = Object.entries(g.ghost || {});
+  const key = [...["komite", "pin", "m1", "m1a", "m2", "s3", "p3", "s4", "p4", "fA", "fB"].map((k) => g[k]), ...ghosts.map(([, p]) => p)].map(R);
   const xs = key.map((p) => p[0]), ys = key.map((p) => p[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const xc = (x0 + x1) / 2, span = Math.max(1, y1 - y0);
@@ -180,14 +181,17 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
     o += `<line x1="${f(x)}" y1="${f(y)}" x2="${f(x - 3 * d * u)}" y2="${f(y + 16 * d * u)}" stroke="#fff" stroke-opacity="${f(0.08 + 0.18 * d)}" stroke-width="${f(1.2 * d * u + 0.4)}" stroke-linecap="round"/>`;
   }
   const Y_ = "#ffd400", Yd = "#c9a400", WH = "#f4f7fb";
+  // olması gereken yer (konumla girilen nokta rüzgâra göre kaymışsa): bulanık ve soluk (Seyhun 2026-11-03)
+  if (ghosts.length) o += `<defs><filter id="${pre}-gh" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="${f(Math.max(2, 5 * u))}"/></filter></defs>`;
+  const ghostWrap = (gh, m) => (gh ? `<g filter="url(#${pre}-gh)" opacity=".5">${m}</g>` : m);
   // nesneler derinliğe göre sıralanır (uzak önce)
   const items = [];
-  const buoy = (p, t) => items.push({ z: P(p)[2], d: () => {
+  const buoy = (p, t, gh = false) => items.push({ z: P(p)[2], d: () => {
     const [x, y, s] = P(p); const w = Math.max(9, 15 * u * s), h = Math.max(20, 36 * u * s);
-    return `<g><ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(w * 1.7)}" ry="${f(w * 0.5)}" fill="#000" opacity=".22"/><path d="M${f(x - w)} ${f(y)} L${f(x - w * 0.8)} ${f(y - h)} Q${f(x)} ${f(y - h - w * 0.6)} ${f(x + w * 0.8)} ${f(y - h)} L${f(x + w)} ${f(y)} Z" fill="${Y_}"/><path d="M${f(x + w * 0.15)} ${f(y)} L${f(x + w * 0.2)} ${f(y - h)} Q${f(x + w * 0.6)} ${f(y - h - w * 0.3)} ${f(x + w * 0.8)} ${f(y - h)} L${f(x + w)} ${f(y)} Z" fill="${Yd}" opacity=".7"/>${t ? `<text x="${f(x)}" y="${f(y - h - 12 * u * s - 4)}" text-anchor="middle" font-size="${f(Math.max(19, 26 * u * s))}" font-weight="700" fill="#fff" opacity=".92">${t}</text>` : ""}</g>`;
+    return ghostWrap(gh, `<g><ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(w * 1.7)}" ry="${f(w * 0.5)}" fill="#000" opacity=".22"/><path d="M${f(x - w)} ${f(y)} L${f(x - w * 0.8)} ${f(y - h)} Q${f(x)} ${f(y - h - w * 0.6)} ${f(x + w * 0.8)} ${f(y - h)} L${f(x + w)} ${f(y)} Z" fill="${Y_}"/><path d="M${f(x + w * 0.15)} ${f(y)} L${f(x + w * 0.2)} ${f(y - h)} Q${f(x + w * 0.6)} ${f(y - h - w * 0.3)} ${f(x + w * 0.8)} ${f(y - h)} L${f(x + w)} ${f(y)} Z" fill="${Yd}" opacity=".7"/>${t ? `<text x="${f(x)}" y="${f(y - h - 12 * u * s - 4)}" text-anchor="middle" font-size="${f(Math.max(19, 26 * u * s))}" font-weight="700" fill="#fff" opacity=".92">${t}</text>` : ""}</g>`);
   } });
   // tekne: rüzgâra bakar (ekranda yukarı), uzunluk perspektifte kısalır; komitede turuncu bayrak, pin botu küçük, finiş botu mavi bayrak
-  const boat = (p, len, flag, cab) => items.push({ z: P(p)[2], d: () => {
+  const boat = (p, len, flag, cab, gh = false) => items.push({ z: P(p)[2], d: () => {
     const [x, y, s] = P(p); const L = len * u * s, B = L * 0.42, fy = 0.5;
     const hull = `M${f(x)} ${f(y - L * fy)} Q${f(x + B * 0.7)} ${f(y - L * fy * 0.5)} ${f(x + B / 2)} ${f(y + L * fy * 0.45)} L${f(x - B / 2)} ${f(y + L * fy * 0.45)} Q${f(x - B * 0.7)} ${f(y - L * fy * 0.5)} ${f(x)} ${f(y - L * fy)} Z`;
     let s2 = `<ellipse cx="${f(x)}" cy="${f(y + L * 0.2)}" rx="${f(B * 0.9)}" ry="${f(L * 0.16)}" fill="#000" opacity=".25"/>`;
@@ -196,7 +200,7 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
     const mh = L * (cab ? 1.1 : 0.9);
     s2 += `<line x1="${f(x)}" y1="${f(y)}" x2="${f(x)}" y2="${f(y - mh)}" stroke="#e8edf3" stroke-width="${f(Math.max(1.2, 2 * u * s))}"/>`;
     s2 += `<path d="M${f(x)} ${f(y - mh)} L${f(x + L * 0.38)} ${f(y - mh + L * 0.1)} L${f(x)} ${f(y - mh + L * 0.22)} Z" fill="${flag}"/>`;
-    return `<g>${s2}</g>`;
+    return ghostWrap(gh, `<g>${s2}</g>`);
   } });
   // hat: iki uç arası ince açık çizgi; yazı hattın ORTASINDA, hattın hemen altında (kameraya doğru), nesnelerin üstünde, koyu kenarlı
   // (Seyhun 2026-11-02 "start ve finiş yazıları ortada olmalı, turuncu işaretin arkasına düşüyor")
@@ -231,8 +235,18 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
     const [x, y, s] = P(g.fB); const r = Math.max(6, 11 * u * s);
     return `<g><ellipse cx="${f(x)}" cy="${f(y + r * 0.2)}" rx="${f(r * 1.5)}" ry="${f(r * 0.45)}" fill="#000" opacity=".22"/><circle cx="${f(x)}" cy="${f(y - r * 0.6)}" r="${f(r)}" fill="#ff7a1a"/><circle cx="${f(x - r * 0.3)}" cy="${f(y - r * 0.95)}" r="${f(r * 0.35)}" fill="#fff" opacity=".35"/></g>`;
   } });
+  // olması gereken yerler: bulanık nesne + girilen yere ince kesik çizgi
+  const REAL_AT = { pin: "pin", m1: "m1", m2: "m2", m3: "g3", m4: "g4", fin: "fA" };
+  let ghostLines = "";
+  for (const [k, p] of ghosts) {
+    if (k === "pin") boat(p, 38, "#ff8a3d", false, true);
+    else if (k === "fin") boat(p, 42, "#3d8bff", false, true);
+    else buoy(p, k.slice(1), true);
+    const a = P(p), b = P(g[REAL_AT[k]]);
+    ghostLines += `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="#fff" stroke-opacity=".45" stroke-width="${f(Math.max(1.2, 2 * u))}" stroke-dasharray="${f(6 * u)} ${f(6 * u)}"/>`;
+  }
   // çizgiler ve rota (nesnelerin altında)
-  let under = lineLab(g.pin, g.komite, "START") + lineLab(g.fB, g.fA, "FİNİŞ");
+  let under = ghostLines + lineLab(g.pin, g.komite, "START") + lineLab(g.fB, g.fA, "FİNİŞ");
   // parkur ekseni (Seyhun 2026-11-02 "komitenin parkuru attığı derece, güzelce gösterelim"): start ortasından 1'e kesik açık mavi çizgi,
   // yanında açı; parkur bu yöne kurulur, rüzgâr okuyla farkı görünür
   if (axis) {

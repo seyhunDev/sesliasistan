@@ -1,6 +1,6 @@
 // Parkur analizi (Seyhun 2026-10-28, örnek yaris-tasarim/parkur/parkur-3-harita.png): yarış gününün parkuru harita üstünde.
 // Kayıt orgs/{org}/raceLive/{yarış}/course/{gün} (gün gün ayrı; kişi uid'si ve sporcu bilgisi yok, ortak yarışa aynen taşınabilir):
-//   pts: { komite, pin, m1, m2, m3, m4 } → { lat, lon, at } "burada" ile işaretlenen yerler
+//   pts: { komite, pin, m1, m2, m3, m4, fin } → { lat, lon, at, acc } "Buradayım" ile işaretlenen yerler (fin: finiş teknesi)
 //   obs: [{ id, at, kind, ref, deg, kn, by, lat, lon }] ölçümler
 //     kind "wind" (rüzgârın geldiği yön, kn hız) · "axis" (parkur ekseni) · "line" (ref "pin": pin'den komiteyi görüş,
 //     ref "komite": komiteden pin'i görüş) · "mark" (ref "m1" orsa / "m2" apaz şamandırasına bakış) · "leg" (ref "m1m2" orsadan apaza,
@@ -10,8 +10,8 @@
 
 export const KINDS = ["wind", "axis", "line", "mark", "leg"];
 export const BYS = [["ben", "Ben"], ["komite", "Komite"], ["hakem", "Hakem botu"]];
-export const PTS = ["komite", "pin", "m1", "m2", "m3", "m4"];
-export const PT_NAME = { komite: "Komite", pin: "Pin", m1: "1 nolu (orsa)", m2: "2 nolu (apaz)", m3: "3 nolu", m4: "4 nolu" };
+export const PTS = ["komite", "pin", "m1", "m2", "m3", "m4", "fin"];
+export const PT_NAME = { komite: "Komite", pin: "Pin", m1: "1 nolu (orsa)", m2: "2 nolu (apaz)", m3: "3 nolu", m4: "4 nolu", fin: "Finiş" };
 // "Bu açı ne?" seçenekleri (pusula ve elle ekleme aynı listeyi kullanır)
 export const PICKS = [
   ["wind", "", "Rüzgâr"],

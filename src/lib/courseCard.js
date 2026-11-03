@@ -3,17 +3,18 @@
 // ölçümlerden (raceCourse.js axisOf / lineOf / son rüzgâr / orsadan apaza).
 // Sabit = komitenin parkur ekseni (Seyhun 2026-10-28: "komite 1'i 140'a göre atar, pin'i komiteden 50°'de görmem gerekir").
 // Kart eksen yukarıda çizilir: 1 eksende, olması gereken hat soluk (eksen − 90°), atılan hat gerçek açısında, rüzgâr oku değişen yönde.
-import { ORSA_M, axisOf, cardType, diff, lineOf, selCard } from "@/lib/raceCourse";
+import { ORSA_M, axisOf, bearing, cardType, diff, dist, lineOf, selCard } from "@/lib/raceCourse";
 
 const rad = (d) => (d * Math.PI) / 180;
 const nrm = (d) => ((Math.round(d) % 360) + 360) % 360;
 const dir = (b, m) => [m * Math.sin(rad(b)), m * Math.cos(rad(b))];
 const add = (p, b, m) => { const [x, y] = dir(b, m); return [p[0] + x, p[1] + y]; };
 const brgOf = (a, b) => nrm((Math.atan2(b[0] - a[0], b[1] - a[1]) * 180) / Math.PI);
-export function geom(c, { lineK = 0.5 } = {}) {
+export const geom = (c, o) => withReal(geom0(c, o), c);
+function geom0(c, { lineK = 0.5 } = {}) {
   const A = c.axis, L = c.orsa;
   // komite sabit; pin komiteden ölçülen açıda (yoksa olması gereken eksen − 90°), soluk çizgi olması gereken hat
-  const lineM = Math.max(c.lineM || 120, L * lineK); // kartta hat okunur boyda (kağıt kart gibi ölçeksiz); sahnede kağıt karttaki oranla (0.38)
+  const lineM = c.real?.lineM || Math.max(c.lineM || 120, L * lineK); // kartta hat okunur boyda (kağıt kart gibi ölçeksiz); sahnede kağıt karttaki oranla (0.38)
   const ideal = nrm(A - 90); // komiteden pin
   const toPin = c.line == null ? ideal : nrm(c.line + 180);
   const komite = add([0, 0], A + 90, lineM / 2);
@@ -43,6 +44,65 @@ export function geom(c, { lineK = 0.5 } = {}) {
   const t2 = left(mid, 0.45, 1.05), t3 = left(mid, -0.57, 0.98), tf = left(mid, 0.39, 0.86);
   const tgw = L * 0.11;
   return { ...base, m1a: m1, m2: t2, reach: brgOf(m1, t2), g3: t3, s3: add(t3, A - 90, tgw), p3: add(t3, A + 90, tgw), fin: tf, fA: add(tf, A - 90, L * 0.09), fB: add(tf, A + 90, L * 0.09) };
+}
+
+// Konumla girilen noktalar (Seyhun 2026-11-03 "hakem botunun yanına gidip koordinatını eklerim; girilen varsa o geçerli; girilenin yeri
+// olması gerekenden farklıysa olması gereken bulanık görünsün, mesafe aynı, yalnız rüzgâra göre açı farklı"):
+// c.real = { at: "komite" | "pin" (dayanak), p: { komite, pin, m1, m2, m3, m4, fin: [doğu m, kuzey m] dayanağa göre } }.
+// Girilen nokta çizimde gerçek yerine taşınır (kapı ve finiş ikilisi de birlikte); olması gereken = start ortasından, kartın şekline göre
+// rüzgâr yönünde (rüzgâr yoksa eksende) aynı mesafede. Açı farkı GHOST_DEG ve üstündeyse g.ghost[ad] olur (çizimde bulanık).
+export const GHOST_DEG = 5;
+const MOVE = { m1: ["m1"], m2: ["m2"], m3: ["g3", "s3", "p3"], m4: ["g4", "s4", "p4"], fin: ["fin", "fA", "fB"] };
+function withReal(g, c) {
+  const r = c.real;
+  if (!r?.p?.[r.at]) return { ...g, ghost: {}, off: {} };
+  const out = { ...g, ghost: {}, off: {} };
+  const base = g[r.at];
+  const at = (k) => [base[0] + r.p[k][0] - r.p[r.at][0], base[1] + r.p[k][1] - r.p[r.at][1]];
+  const turn = c.wind == null ? 0 : diff(g.A, c.wind);
+  if (r.at === "pin" && r.p.komite) out.komite = at("komite");
+  if (r.at === "komite" && r.p.pin) out.pin = at("pin");
+  if (r.p.pin || r.p.komite) {
+    // pin'in olması gereken yeri: komiteden rüzgâra dik, aynı mesafede
+    const want = c.wind == null ? g.ideal : nrm(c.wind - 90);
+    const real = brgOf(out.komite, out.pin);
+    const m = Math.hypot(out.pin[0] - out.komite[0], out.pin[1] - out.komite[1]);
+    if (r.p.pin && r.p.komite && Math.abs(diff(want, real)) >= GHOST_DEG) {
+      out.ghost.pin = add(out.komite, want, m);
+      out.off.pin = diff(want, real);
+    }
+    out.mid = [(out.komite[0] + out.pin[0]) / 2, (out.komite[1] + out.pin[1]) / 2];
+  }
+  for (const [k, keys] of Object.entries(MOVE)) {
+    if (!r.p[k]) continue;
+    const head = keys[0];
+    const p = at(k);
+    const want = nrm(brgOf(g.mid, g[head]) + turn);
+    const m = Math.hypot(p[0] - out.mid[0], p[1] - out.mid[1]);
+    const real = brgOf(out.mid, p);
+    const dx = p[0] - g[head][0], dy = p[1] - g[head][1];
+    for (const x of keys) out[x] = [g[x][0] + dx, g[x][1] + dy];
+    if (k === "m1" && !g.up) out.m1a = [g.m1a[0] + dx, g.m1a[1] + dy];
+    if (Math.abs(diff(want, real)) >= GHOST_DEG) {
+      out.ghost[k] = add(out.mid, want, m);
+      out.off[k] = diff(want, real);
+    }
+  }
+  return out;
+}
+// enlem/boylamdan dayanağa göre metre (kısa mesafede düz kabul)
+const M_LAT = 110540;
+const toXY = (o, p) => [(p.lon - o.lon) * Math.cos(rad(o.lat)) * 111320, (p.lat - o.lat) * M_LAT];
+const toGeo = (o, [x, y]) => ({ lat: Math.round((o.lat + y / M_LAT) * 1e6) / 1e6, lon: Math.round((o.lon + x / (Math.cos(rad(o.lat)) * 111320)) * 1e6) / 1e6 });
+export const REAL_PTS = ["komite", "pin", "m1", "m2", "m3", "m4", "fin"];
+function realOf(c) {
+  const at = c.pts.komite ? "komite" : c.pts.pin ? "pin" : "";
+  if (!at) return null;
+  const o = c.pts[at];
+  const p = {};
+  for (const k of REAL_PTS) if (c.pts[k]) p[k] = toXY(o, c.pts[k]);
+  if (Object.keys(p).length < 2) return null;
+  return { at, p, ...(c.pts.komite && c.pts.pin ? { lineM: Math.max(20, dist(c.pts.komite, c.pts.pin)) } : {}) };
 }
 function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
   const g = geom(c);
@@ -166,7 +226,10 @@ export function cardOf(c) {
   // sabit: girilen eksen ya da 1 yönü; yoksa ilk rüzgâr ölçümü (son rüzgâr değişir, eksen değişmez)
   const ax0 = axisOf(c);
   const first = c.obs.find((x) => x.kind === "wind");
-  const ax = ax0 && ax0.src !== "wind" ? ax0 : first ? { deg: first.deg } : ax0;
+  // konumla girilen 1 (Seyhun 2026-11-03): eksen ölçülmemişse eksen startın ortasından girilen 1'e (parkur gerçekte o yöne kurulmuş)
+  const base = c.pts.komite && c.pts.pin ? { lat: (c.pts.pin.lat + c.pts.komite.lat) / 2, lon: (c.pts.pin.lon + c.pts.komite.lon) / 2 } : c.pts.komite || c.pts.pin;
+  const ptsAx = c.pts.m1 && base ? { deg: bearing(base, c.pts.m1) } : null;
+  const ax = ax0 && ax0.src !== "wind" && ax0.src !== "pts" ? ax0 : ptsAx || (first ? { deg: first.deg } : ax0);
   const w = [...c.obs].reverse().find((x) => x.kind === "wind" && (!x.spot || x.spot === "komite" || x.spot === "pin")) || [...c.obs].reverse().find((x) => x.kind === "wind");
   const ln = lineOf(c);
   if (!ax && !w && !ln) return null;
@@ -179,9 +242,31 @@ export function cardOf(c) {
     kn: w ? w.kn : null,
     line: ln ? ln.deg : null,
     reach: leg ? (leg.ref === "m1m2" ? leg.deg : nrm(leg.deg + 180)) : null,
-    orsa: c.len?.orsa || ORSA_M,
+    orsa: c.len?.orsa || (ptsAx ? Math.max(100, dist(base, c.pts.m1)) : ORSA_M),
     type: cardType(selCard(c)),
-    est: { komite: !c.pts.komite, pin: !c.pts.pin, m1: !c.pts.m1, m2: !c.pts.m2, m3: !c.pts.m3, m4: !c.pts.m4 },
+    real: realOf(c),
+    est: { komite: !c.pts.komite, pin: !c.pts.pin, m1: !c.pts.m1, m2: !c.pts.m2, m3: !c.pts.m3, m4: !c.pts.m4, fin: !c.pts.fin },
   };
 }
 export const cardSvg = (k, o) => (k ? svgOf(k, o) : "");
+
+// Parkurun noktaları gerçek konumda (Seyhun 2026-11-03; tekne takibi ve canlı tekne ekranı da bunu çağırır): girilenler aynen, girilmeyenler
+// rüzgâr ve rota kartına göre. Dayanak (komite ya da pin) girilmemişse null. Dönüş:
+// { pts: { komite, pin, m1, m2, m3s, m3p, fin1, fin2 (+ m1a, m4s, m4p) → { lat, lon, manual } }, ghost: { ad → { lat, lon } }, off: { ad → derece } }
+export function coursePoints(c) {
+  const k = cardOf(c);
+  if (!k?.real) return null;
+  const g = geom(k, { lineK: 0 });
+  const o = c.pts[k.real.at];
+  const z = g[k.real.at];
+  const G = (p) => toGeo(o, [p[0] - z[0], p[1] - z[1]]);
+  const own = { komite: "komite", pin: "pin", m1: "m1", m1a: "m1", m2: "m2", m3s: "m3", m3p: "m3", m4s: "m4", m4p: "m4", fin1: "fin", fin2: "fin" };
+  const from = { komite: "komite", pin: "pin", m1: "m1", m1a: "m1a", m2: "m2", m3s: "s3", m3p: "p3", m4s: "s4", m4p: "p4", fin1: "fA", fin2: "fB" };
+  const pts = {};
+  for (const [n, key] of Object.entries(from)) {
+    if (g.up && (n === "m1a" || n === "m4s" || n === "m4p")) continue;
+    pts[n] = { ...G(g[key]), manual: !!c.pts[own[n]] };
+  }
+  const ghost = Object.fromEntries(Object.entries(g.ghost).map(([n, p]) => [n, G(p)]));
+  return { pts, ghost, off: g.off };
+}
