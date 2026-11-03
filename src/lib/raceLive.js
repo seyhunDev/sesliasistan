@@ -2,6 +2,7 @@
 // genel sıralama süzgeci ve asistan cümleleri. Kayıt orgs/{org}/raceLive/{yarışId} belgesinde (raceLiveStore.js):
 // { wind: [{ at, dir, kn, gust, src }], starts: [{ id, day, n, at, dir, kn, course, flag, note }], media: [{ id, kind, type, size, url, at, ath }] }
 import { cleanAgenda } from "./raceProgram";
+import { cleanSig } from "./raceSignals";
 // (ath: fotoğrafta/videoda etiketlenen sporcuların id'leri; phase/sec/end: çekildiği an start sayacına göre, momentOf).
 // Rüzgâr kaydının `src` alanı "elle" ya da ileride bağlanacak ölçüm cihazının adı: grafik ikisini aynı noktalarla çizer.
 
@@ -150,7 +151,7 @@ export function cleanPlan(p) {
   const off = [...new Set((Array.isArray(p?.off) ? p.off : []).filter((d) => DAY.test(d || "")))].slice(0, 20);
   // Turuncu bayrak (Seyhun 2026-11-02 "turuncu bayrak basılınca artık start öncesi"): çekildiği an (ISO); "" indi. Ekran yalnız o gün ve gün bitmemişken sayar
   const orange = typeof p?.orange === "string" && !Number.isNaN(Date.parse(p.orange)) ? p.orange.slice(0, 30) : "";
-  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off, orange, warn, warnBy, agenda: cleanAgenda(p?.agenda) };
+  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off, orange, warn, warnBy, agenda: cleanAgenda(p?.agenda), sig: cleanSig(p?.sig) };
 }
 // Tehir cümlesi: "Rüzgâr yok · Karada" (sebep ve yer). Start saati yazılmaz (Seyhun 2026-11-02 "orada yanlış bilgi veriliyor"); iniş saati ve
 // uyarı işareti saati de yazılmaz (Seyhun 2026-11-03 "tehirin ineceği saati, uyarı işareti saatini göstermeyelim"): inişe kalan geri sayımda

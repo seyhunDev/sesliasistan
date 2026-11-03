@@ -198,3 +198,20 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-meas small { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--mut); }
 .masa-meas b { display: block; margin-top: 0.125rem; font-size: 0.9375rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .masa-meas span { display: block; font-size: 0.75rem; font-weight: 600; color: var(--mut); font-variant-numeric: tabular-nums; }
+
+/* Bayrakla işlem (2026-11-03): bayraklar üst üste (üstteki ilk), kutular 3'lü / 5'li ızgara, onay paneli altta yapışık */
+.masa-fl { display: inline-block; width: 1.5rem; height: 1rem; margin-right: 0.375rem; vertical-align: -0.125rem; }
+.masa-fl svg, .masa-flags svg { display: block; width: 100%; height: 100%; }
+.masa-flags { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
+.masa-flags > i { display: block; width: 2.25rem; height: 1.5rem; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12); }
+.masa-flags.sm > i { width: 1.75rem; height: 1.1667rem; }
+.masa-flags.lg > i { width: 3rem; height: 2rem; }
+.masa-flaggrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.375rem; }
+.masa-flaggrid.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.masa-flagt { display: flex; min-height: 4.5rem; flex-direction: column; align-items: center; justify-content: center; gap: 0.375rem; border-radius: 0.75rem; border: 1px solid var(--line); background: var(--chip); padding: 0.5rem 0.25rem; }
+.masa-flagt.sm { min-height: 3.5rem; }
+.masa-flagt > b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8125rem; font-weight: 700; color: var(--fg2); }
+.masa-flagt:active { transform: scale(0.96); }
+.masa-flagt[aria-pressed="true"] { border-color: var(--acc); background: var(--accbg); }
+.masa-flagt[aria-pressed="true"] > b { color: var(--fg); }
+.masa-flagc { position: sticky; bottom: 0; z-index: 2; border-radius: 1rem; border: 1px solid var(--acc); background: #132036; padding: 0.875rem; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5); }
