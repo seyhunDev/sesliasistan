@@ -13,7 +13,7 @@ import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
 import { programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseMany, addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { NearCams } from "./NearCams";
@@ -35,7 +35,7 @@ import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/featu
 import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { cardOf } from "@/lib/courseCard";
+import { cardOf, coursePoints } from "@/lib/courseCard";
 import { PRE_NAME, PRE_SECS, PRE_STEPS, cleanCourseShow, preMove, preStep, CLASS_PICK, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
@@ -550,6 +550,38 @@ export function BroadcastPage({ orgId, id }) {
     putCards({ cards: course.cards.map((k) => (k.id === course.sel ? { ...k, route: r } : k)) }, `Kart ${course.sel}: ${routeText(r)}`);
     setRt(routeText(r));
   };
+  // Konumla parkur (Seyhun 2026-11-03 "hakem botunun yanına gidip koordinatını eklerim"): Buradayım telefonun konumunu o noktaya yazar
+  const [ptBusy, setPtBusy] = useState("");
+  const putPt = async (k, p) => {
+    setCourse((x) => {
+      const pts = { ...x.pts };
+      if (p) pts[k] = p;
+      else delete pts[k];
+      return { ...x, pts };
+    });
+    try {
+      await saveCoursePt(orgId, id, today, k, p);
+    } catch {
+      toast("Kaydedilemedi. İnterneti kontrol et.");
+    }
+  };
+  const hereFor = (k) => {
+    if (!navigator.geolocation) return toast("Bu telefonda konum yok.");
+    setPtBusy(k);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setPtBusy("");
+        const acc = Math.round(pos.coords.accuracy || 0);
+        putPt(k, { lat: Math.round(pos.coords.latitude * 1e6) / 1e6, lon: Math.round(pos.coords.longitude * 1e6) / 1e6, at: new Date().toISOString() });
+        toast(`${PT_LABEL[k]} yazıldı${acc ? ` · ±${acc} m` : ""}${acc > 30 ? ". Konum zayıf, biraz bekleyip yeniden bas" : ""}`);
+      },
+      () => {
+        setPtBusy("");
+        toast("Konum alınamadı. Konum iznini aç.");
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+    );
+  };
   // Sesle parkur (Seyhun 2026-11-03 18:43): Konuş'a bas, söyle: "rüzgâr 20 ile 35 arası 12 knot", "eksen 320", "rota 1 2 3 2 3 finiş", "trapez"
   const [heard, setHeard] = useState("");
   const [obsAll, setObsAll] = useState(false);
@@ -706,6 +738,13 @@ export function BroadcastPage({ orgId, id }) {
   const bias = (() => {
     try {
       return lineBias(c);
+    } catch {
+      return null;
+    }
+  })();
+  const cpts = (() => {
+    try {
+      return coursePoints(c);
     } catch {
       return null;
     }
@@ -1493,6 +1532,32 @@ export function BroadcastPage({ orgId, id }) {
             ) : null}
           </div>
         </section>
+        {/* Konumlar (Seyhun 2026-11-03): teknenin/şamandıranın yanında Buradayım; girilen yer geçerli, rüzgâra göre kaymışsa kaç derece */}
+        <section>
+          <Head title="Konumlar" />
+          <div className={`${card} overflow-hidden`}>
+            {PT_ROWS.map((k) => {
+              const p = course.pts[k];
+              const off = cpts?.off?.[k];
+              return (
+                <div key={k} className="flex items-center gap-2.5 border-b border-line px-4 py-2.5 last:border-b-0">
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <b className="block truncate font-semibold">{PT_LABEL[k]}</b>
+                    <span className="block truncate text-[0.75rem] text-mut">{p ? `${p.at ? `${hm(p.at)} · ` : ""}${off ? `Rüzgâra göre ${Math.abs(off)}° ${off > 0 ? "sağda" : "solda"}` : "Girildi"}` : "Girilmedi"}</span>
+                  </span>
+                  {p ? (
+                    <button type="button" onClick={() => putPt(k, null)} className="px-1 text-[0.8125rem] font-semibold text-rec">
+                      Sil
+                    </button>
+                  ) : null}
+                  <Button size="sm" variant="secondary" disabled={!!ptBusy} onClick={() => hereFor(k)}>
+                    {ptBusy === k ? "Bekle…" : "Buradayım"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
         <section>
           <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1 text-[0.8125rem] font-semibold text-mut">
             <span>Son ölçümler</span>
@@ -1923,6 +1988,9 @@ function Head({ title, right = "", onAdd = null, addLabel = "Ekle", busy = false
 // kapatalım; ayarlardan değiştirebilelim"): 1 Sınıf (birden çok) → 2 Gruplar (sınıf sınıf; grup yoksa boş) → Kaydet. Geri ile bir adım geri.
 // Canlı ekranın sağ kartında elle gösterilen (Seyhun 2026-11-03 14:41 yayın grafiği: parkur alanını yönetimden elle açarım)
 const SHOW_NAME = { course: "Parkur" };
+// Konumla girilen noktalar (lib/courseCard.js coursePoints)
+const PT_ROWS = ["komite", "pin", "m1", "m2", "m3", "fin"];
+const PT_LABEL = { komite: "Komite", pin: "Pin", m1: "1 (orsa)", m2: "2 (apaz)", m3: "3 (pupa)", m4: "4", fin: "Finiş" };
 const STEPS = ["Sınıflar", "Gruplar"];
 const bigBtn = "flex h-14 w-full items-center justify-center rounded-[1.125rem] bg-white text-[1.125rem] font-semibold text-[#0b1a33] shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-0.5 active:shadow-none disabled:opacity-40";
 const backBtn = "ck-glass flex h-14 shrink-0 items-center justify-center rounded-[1.125rem] px-5 text-[1.0625rem] font-semibold";

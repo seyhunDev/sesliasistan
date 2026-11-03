@@ -288,6 +288,8 @@ export async function loadCourse(orgId, id, day) {
   return cleanCourse(snap.exists() ? snap.data() : {});
 }
 export const addCourseObs = (orgId, id, day, o) => setDoc(courseRef(orgId, id, day), { obs: arrayUnion(cleanObs(o)), at: new Date().toISOString() }, { merge: true });
+// Konumla girilen nokta (Seyhun 2026-11-03 "Buradayım"): pts.<ad> yazılır ya da silinir (p null); ölçümlere dokunmaz
+export const saveCoursePt = (orgId, id, day, k, p) => setDoc(courseRef(orgId, id, day), { pts: { [k]: p ? { lat: p.lat, lon: p.lon, at: p.at } : deleteField() }, at: new Date().toISOString() }, { merge: true });
 // Asistana bir cümlede söylenen birkaç ölçüm (ve orsa uzunluğu) tek yazımda
 export const addCourseMany = (orgId, id, day, list, len = null) =>
   setDoc(courseRef(orgId, id, day), { ...(list.length ? { obs: arrayUnion(...list.map(cleanObs)) } : {}), ...(len ? { len } : {}), at: new Date().toISOString() }, { merge: true });
