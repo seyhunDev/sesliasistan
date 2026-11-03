@@ -913,3 +913,24 @@ group("Tekne takibi")([
   ["kurallar ve bağlantılar", { desc: "telefon anahtarla yalnız yazar; yayın konumu sunucudan; Yayın'da panel sekmeden bağımsız; asistanda komut", fn: async () => { const fs = await import("node:fs"); const r = (f) => fs.readFileSync(new URL(`../../../${f}`, import.meta.url), "utf8"); const ru = r("firestore.rules"); const api = r("src/app/api/canli/route.js"); const bp = r("src/features/broadcast/BroadcastPage.jsx"); const ko = r("src/features/assistant/isler/komutlar.js"); return [/match \/takip\/\{rid\}/.test(ru) && /request\.resource\.data\.k == head\(\)\.k/.test(ru) && /head\(\)\.on == true/.test(ru), /boatsOf\(org, id\)/.test(api) && /boats,\n/.test(api), /<TrackPanel /.test(bp) && /tab === "donus" \? "" : "hidden"/.test(bp), /tekneTakip\.trackCmd/.test(ko)]; }, ok: (a) => a.every(Boolean) }],
 ]);
 }
+
+// Tekne animasyonu (lib/boatPlay.js, Seyhun 2026-11-03 "hazır data setinden start animasyonu; sarı grubun yarışında sadece sarılar")
+{
+  const BP = await import("@/lib/boatPlay");
+  const fs = await import("node:fs");
+  const raw = JSON.parse(fs.readFileSync(new URL("../../../public/veri/ornek-start.json", import.meta.url), "utf8"));
+  const set = BP.cleanSet(raw);
+  const A = { lat: 39, lon: 26 };
+  const B = { lat: 39.0001, lon: 26 }; // ~11 m kuzey
+  group("Tekne animasyonu")([
+    ["örnek veri seti", { desc: "20 tekne (Sarı 10, Mavi 10), start'tan 5 sn önce 10 sn sonra, yarım saniyede bir; hat ve 1. şamandıra", fn: () => ({ set, span: BP.spanOf(set) }), ok: ({ set, span }) => set.boats.length === 20 && BP.groupsOf(set).join() === "Sarı,Mavi" && span.t0 === -5000 && span.t1 === 10000 && set.fixes.length === 620 && set.marks.pin && set.marks.komite && set.marks.m1 && set.wind.dir === 350 }],
+    ["yalnız ekrandaki grup", { desc: "Sarı seçilince Mavi tekneler ve konumları yok; grup boşsa hepsi", fn: () => [BP.groupSet(set, "Sarı"), BP.groupSet(set, "")], ok: ([s, all]) => s.boats.length === 10 && s.boats.every((b) => b.grp === "Sarı") && s.fixes.every((f) => s.boats.some((b) => b.sail === f.sail)) && all.boats.length === 20 }],
+    ["startta hattı geçerler", { desc: "her tekne start'tan önce hattın altında, 10. sn'de üstünde (eksen yukarı)", fn: () => { const fr = BP.frameOf([set.marks.pin, set.marks.komite, ...set.fixes], { up: set.wind.dir }); const line = (fr.at(set.marks.pin).y + fr.at(set.marks.komite).y) / 2; const tr = BP.tracksOf(set); return [...tr.values()].map((l) => [fr.at(BP.poseAt(l, -5000)).y > line, fr.at(BP.poseAt(l, 10000)).y < line]); }, ok: (r) => r.length === 20 && r.every(([a, b]) => a && b) }],
+    ["ara konum", { desc: "iki konum arası doğrusal; yön verilmezse gidişten; aralık dışı yok", fn: () => { const l = [{ t: 0, ...A, hdg: null, spd: 2 }, { t: 1000, ...B, hdg: null, spd: 4 }]; return [BP.poseAt(l, 500), BP.poseAt(l, -1), BP.poseAt(l, 5000)]; }, ok: ([m, a, b]) => Math.abs(m.lat - 39.00005) < 1e-9 && m.hdg === 0 && m.spd === 3 && a === null && b === null }],
+    ["yön kısa yoldan döner", { desc: "350°'den 10°'ye geçerken 0°'dan geçer", fn: () => BP.poseAt([{ t: 0, ...A, hdg: 350 }, { t: 1000, ...A, hdg: 10 }], 500).hdg, ok: (h) => h === 0 }],
+    ["yelken açısı", { desc: "rüzgâra karşı boşta, orsa dar, pupa en açık; rüzgâraltı tarafa", fn: () => [BP.boomOf(0, 0), BP.boomOf(45, 0), BP.boomOf(180, 0), BP.boomOf(315, 0)], ok: ([a, o, p, i]) => a.luff && !o.luff && o.b < 20 && p.b === 85 && o.side === 1 && i.side === -1 }],
+    ["sayaç", { desc: "start'tan önce geri, sonra ileri", fn: () => [BP.clockText(-3200), BP.clockText(8400)], ok: ([a, b]) => a.label === "START'A" && a.n === "00:04" && b.label === "SÜRE" && b.n === "00:08" }],
+    ["canlı satır aynı biçim", { desc: "gerçek saatli konum start'a göre ms olur", fn: () => BP.liveRow({ sail: "5", lat: 1, lon: 2, t: 1000500 }, 1000000).t, ok: (t) => t === 500 }],
+    ["sayfa ve bağlantılar", { desc: "/canli/<yarış>/konum, örnek yarışta 'Tekneler', yayındaki haritada grup süzmesi", fn: () => { const r = (f) => fs.readFileSync(new URL(`../../../src/${f}`, import.meta.url), "utf8"); const ls = r("features/liveScreen/LiveScreen.jsx"); return [fs.existsSync(new URL("../../../src/app/canli/[id]/konum/page.jsx", import.meta.url)), /href="\/canli\/ornek\/konum"/.test(ls), /grp=\{entry\?\.grp \|\| ""\}/.test(ls), /groupOf\[b\.sail\] === grp/.test(r("features/tracking/BoatMap.jsx"))]; }, ok: (a) => a.every(Boolean) }],
+  ]);
+}
