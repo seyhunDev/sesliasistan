@@ -1,8 +1,8 @@
-Commit: 18999d1 · Start geri sayımı sade; denizde tehir Belirsiz; videolu şerit sağa yaslı (#1072)
-Zaman: 2026-11-03-1506 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41631230559
+Commit: 2f78221 · Canlı ekran deneme turu: telefon düzeltmeleri (#1073)
+Zaman: 2026-11-03-1521 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41633335059
 
-TAM TEST · 03.11.2026 14:55:08
+TAM TEST · 03.11.2026 15:09:49
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1439/1440 geçti · 1 kalan · 650 sn
+SONUÇ: 1438/1440 geçti · 2 kalan · 645 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -156,9 +156,12 @@ SONUÇ: 1439/1440 geçti · 1 kalan · 650 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 141/141
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 140/141
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 10/10
+  ✗ Ana sayfa: 9/10
+      ✗ “gün penceresi Yapıldı”
+          beklenen: plan satırında Yapıldı işareti: dokununca yapıldı, yeniden dokununca geri alınır
+          olan:     yapıldı 1 · çizili 1 · geri 0
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
