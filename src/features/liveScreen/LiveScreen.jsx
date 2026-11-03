@@ -9,7 +9,7 @@ import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
-import { groupColor, groupMap, onlyCat, provisional } from "@/lib/roundScore";
+import { groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { BoatMap } from "@/features/tracking/BoatMap";
 import { BoatLive } from "@/features/tracking/BoatLive";
 import { HourTable } from "@/features/weather/HourTable";
@@ -3437,7 +3437,7 @@ export function LiveScreen({ id, y = "" }) {
         </div>
         {ovOn ? <OverallSide data={data} n={hasVideo ? 6 : 10} /> : null}
         {/* Tekne takibi (Seyhun 2026-11-02): yarışta teknelerin konumu küçük haritada (Yayın › Dönüşler › Yayında harita) */}
-        {phase === "race" && isCur && !side && !between && (!near || racing) ? <BoatMap boats={data.boats || []} course={data.course} groupOf={groupMap(data.groups?.[today])} grp={entry?.grp || ""} /> : null}
+        {phase === "race" && isCur && !side && !between && (!near || racing) ? <BoatMap boats={data.boats || []} course={data.course} groupOf={groupMap(groupsOn(data.groups, today))} grp={entry?.grp || ""} /> : null}
         {/* Yarış sürerken diğer yarışlar çip olarak gösterilmez (Seyhun 2026-11-03: ekrandaki yarış neyse o; sıradaki start alt şeritte) */}
         {(phase === "race" || (phase === "wait" && hasVideo)) && !side && !near && !between && !(ongoing && phase === "race") ? <ProgramChips items={prog} /> : null}
         {side && seqMode ? <SeqBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} mode={seqMode} last={fsLast} rid={sel?.id} /> : side && near ? <NearBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} racing={racing} sel={sel} id={id} onAll={() => setFull("race")} /> : side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} fin={fin} /> : null}

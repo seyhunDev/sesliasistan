@@ -10,7 +10,7 @@ import { loadSheets } from "@/features/athletes/raceLiveStore";
 import { sheetMatch } from "@/lib/resultSheet";
 import { entryClasses, mergeEntries } from "@/lib/roundSay";
 import { readEntryFile, readEntryText, saveEntries, saveGroups } from "./roundsStore";
-import { cleanGroups, groupColor, groupMap } from "@/lib/roundScore";
+import { cleanGroups, dayGroups, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 
 // Yarışın kayıt listesi (sesle dönüş girişinin denetimi): organizasyonun listesi PDF, fotoğraf ya da Excel'den yapay zekayla okunur,
 // günün grup listesi (Mavi, Sarı…; satırlarda grup yazan liste) aynı düğmeyle eklenir ve bugüne yazılır,
@@ -39,7 +39,7 @@ export function EntriesView({ onClose, orgId, raceId, rows, setRows, groups = {}
     // Grup listesi (satırlarda grup yazıyorsa): bugünün grupları olarak da kaydedilir; gruplar her gün değişir
     const grouped = add.filter((r) => r.grp);
     if (grouped.length) {
-      const list = grouped.map((r) => [r.sail, r.grp]);
+      const list = dayGroups(groups[today()], grouped.map((r) => [r.sail, r.grp]));
       await saveGroups(orgId, raceId, today(), list);
       setGroups?.((g) => ({ ...g, ...cleanGroups({ [today()]: list }) }));
     }
@@ -79,7 +79,7 @@ export function EntriesView({ onClose, orgId, raceId, rows, setRows, groups = {}
     });
 
   const classes = useMemo(() => entryClasses(rows), [rows]);
-  const gm = groupMap(groups[today()]);
+  const gm = groupMap(groupsOn(groups, today()));
   const gCount = Object.values(gm).reduce((m, g) => ((m[g] = (m[g] || 0) + 1), m), {});
   const shown = rows.filter((r) => sheetMatch(r, q)).sort((a, b) => Number(a.sail) - Number(b.sail));
 
