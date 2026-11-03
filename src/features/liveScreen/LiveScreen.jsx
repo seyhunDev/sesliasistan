@@ -1771,10 +1771,10 @@ function nearItems(data, prog, now, race = null) {
     const sub = [`Hat ${Math.round(bias.line)}°`, bias.wind != null ? `rüzgâr ${Math.round(bias.wind)}° ${dirShort(bias.wind)}` : ""].filter(Boolean).join(" · ");
     items.push(bias.end ? { k: "line", lab: "Start hattı", big: `${bias.end === "pin" ? "Pin" : "Komite"} avantajlı ${Math.round(bias.deg)}°`, y: true, sub } : { k: "line", lab: "Start hattı", big: "Hat dengeli", sub });
   }
-  if (w) items.push({ k: "wind", lab: c ? "Rüzgâr" : "Start'ta beklenen rüzgâr", w, by: c ? c.by : "tahmin" });
-  if ((data.forecast?.rows || []).filter((r) => r.wind != null).length >= 2) items.push({ k: "whours", lab: "Gün boyunca rüzgâr", data, now });
   const svg = courseSvg(data, race ? sceneRoute(data, race.sel, true, "race") : sceneRoute(data, null, true, "wait"));
   if (svg) items.push({ k: "course", lab: `Parkur · ${CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}${route.length ? ` · ${routeText(route)}` : ""}`, svg, sub: `Eksen ${axisText(data)}` });
+  if (w) items.push({ k: "wind", lab: c ? "Rüzgâr" : "Start'ta beklenen rüzgâr", w, by: c ? c.by : "tahmin" });
+  if ((data.forecast?.rows || []).filter((r) => r.wind != null).length >= 2) items.push({ k: "whours", lab: "Gün boyunca rüzgâr", data, now });
   if (after) items.push({ k: "next", lab: "Sıradaki", big: [after.name, grpText(after.grp)].filter(Boolean).join(" · "), grp: after.grp, sub: [after.cls, after.at ? `Start ${after.at}` : "Bu start'tan sonra"].filter(Boolean).join(" · ") });
   return items;
 }
