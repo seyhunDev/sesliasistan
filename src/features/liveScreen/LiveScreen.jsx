@@ -823,6 +823,7 @@ function Races({ id, starts, cur, sel, fleets, rounds, entries, onClose }) {
 // yeni kaynak görünmez katmanda yüklenir (iframe/video/resim hazır olunca ya da en geç LOAD_MS sonra), sonra eskisiyle çapraz geçişle öne gelir
 const LOAD_MS = 8000;
 const FADE_MS = 1100;
+const noSub = () => () => {};
 function Backdrop({ data, isCur, entry }) {
   const scr = isCur ? data.screen || {} : {};
   // canlı yayın ya da drone; ekrandaki yarışın grubuna kamera bağlıysa o kamera (lib/raceCams.js)
@@ -862,8 +863,15 @@ function Backdrop({ data, isCur, entry }) {
     if (scr.pause) v.pause();
     else v.play?.().catch?.(() => {});
   }, [scr.pause, on]);
+  // Tanı (Seyhun 2026-11-03: Yayın'da seçilen video canlı ekranda görünmüyor, tekneler görünüyor): /canli/<yarış>?tani=1 ekranda ne geldiğini yazar
+  const tani = useSyncExternalStore(noSub, () => /[?&]tani=1/.test(window.location.search), () => false);
   return (
     <>
+      {tani ? (
+        <pre style={{ position: "fixed", left: 8, right: 8, top: 8, zIndex: 99, maxHeight: "60vh", overflow: "auto", background: "rgba(0,0,0,0.85)", color: "#9f9", font: "11px/1.4 monospace", padding: 8, borderRadius: 8, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+          {JSON.stringify({ isCur, screen: data.screen, raw: screenUrl(scr, data.stream), yt, rec: rec ? rec.id : null, on, st, layers: layers.map((l) => `${l.k}:${l.s}`), sources: (data.stream?.sources || []).map((x) => `${x.id} ${x.url}`), url: data.stream?.url, drone: data.stream?.drone, camBy: data.camBy, entry: entry ? { cls: entry.cls, grp: entry.grp } : null }, null, 1)}
+        </pre>
+      ) : null}
       <Sea photo={on ? "" : BG_PHOTO} />
       {/* Canlı tekne konumları (Seyhun 2026-11-03): Yayın › Video › Tekneler; ekrandaki yarışın grubu (şimdilik start anı, döngüde) */}
       {scr.kind === "boats" ? (
