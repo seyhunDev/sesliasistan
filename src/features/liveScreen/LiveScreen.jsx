@@ -3020,9 +3020,13 @@ function GCard({ cls = "", head, tone = "", sub, tag, children, onClick }) {
 // Start kartı (sol altta, rüzgârın hemen üstünde; Seyhun 2026-11-03 "startla alakalı olanı her zaman rüzgârın üst tarafında gösterelim,
 // yarış başlayınca küçük haline getiririz"): rozet + durum + saat, büyük süre, sağda yarış / grup / sınıf; start dizisinde altta sade
 // 5·4·1·0 bayrak şeridi (sağdaki dizi kartı yok), en altta ilerleme çubuğu. Üst orta videoya kalır.
+// süre yoksa (geri / ileri sayım yok: "—:—", "—") süre alanı hiç gösterilmez (Seyhun 2026-11-03 17:19); kartta başka bilgi de yoksa kart yok
+const hasTm = (v) => !!v && !/^[\s—–:.\-]*$/.test(String(v));
 function GStart({ t }) {
   if (!t) return null;
   const w = t.who;
+  const tm = hasTm(t.tm);
+  if (!tm && !w && !t.sub && !t.seq) return null;
   return (
     <div className={`gr-card gr-st ${t.cls || ""}`} role="timer">
       <div className="gr-hd">
@@ -3033,8 +3037,8 @@ function GStart({ t }) {
         <span className="gr-hs">{t.lab}</span>
         {t.at ? <span className="gr-tag">{t.at}</span> : null}
       </div>
-      <div className="gr-stb">
-        <div className="gr-tm">{t.tm}</div>
+      <div className={`gr-stb${tm ? "" : " nt"}`}>
+        {tm ? <div className="gr-tm">{t.tm}</div> : null}
         {w ? (
           <div className="gr-who">
             {w.name ? <b>{w.name}</b> : null}
@@ -3078,7 +3082,7 @@ function seqStrip(data, cs, e, ap) {
 // Yarışta süre kartı (Seyhun 2026-11-03 16:45): starttan sonra üst ortadan kalkar, rüzgârın hemen üstünde küçük skor bandı olur;
 // solda grubun rengi, yarışın adı ve grup/sınıf, sağda "Starttan beri" süre. Üst orta boşalır, arkadaki video net görünür.
 function GClock({ c }) {
-  if (!c) return null;
+  if (!c || !hasTm(c.tm)) return null;
   return (
     <div className="gr-card gr-clk" role="timer" style={{ "--g": c.grp ? groupColor(c.grp) || "#ff3d77" : "#ff3d77" }}>
       <div className="gr-clk-w">
@@ -3338,7 +3342,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     } else {
       const hm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1] || "";
       const dur = data.timer?.dur || 300;
-      top = { bd: "Start", lab: cs.rem != null && cs.rem <= 60 ? "Son dakika" : cs.label, at: hm, tm: cs.value, who: gWho(e), seq: seqStrip(data, cs, e, false), bar: cs.rem != null ? (1 - cs.rem / dur) * 100 : null, cls: cs.rem != null && cs.rem <= 60 ? "o" : "" };
+      top = { bd: "Start", lab: cs.rem != null && cs.rem <= 60 ? "Son dakika" : cs.label, at: hm, tm: cs.rem === 0 ? "" : cs.value, who: gWho(e), seq: seqStrip(data, cs, e, false), bar: cs.rem != null ? (1 - cs.rem / dur) * 100 : null, cls: cs.rem != null && cs.rem <= 60 ? "o" : "" };
     }
     right = <GProg prog={prog} />;
     left = sel ? <GEarly data={data} rid={sel.id} /> : null;
