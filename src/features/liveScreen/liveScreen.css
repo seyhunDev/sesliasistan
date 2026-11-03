@@ -1402,3 +1402,11 @@ button.gr-card { cursor: pointer; }
   .lv-grx .lv-bg::after { display: block; }
   .lv-grx .lv-page { position: relative; z-index: 1; }
 }
+/* Yarışta süre: rüzgârın üstünde skor bandı (Seyhun 2026-11-03 16:45) */
+.gr-clk { display: flex; align-items: stretch; margin-bottom: 0.6em; border-left: 0.32em solid var(--g); }
+.gr-clk-w { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 0.15em; padding: 0.55em 0.9em; }
+.gr-clk-w b { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 1.35em; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-clk-w span { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 0.85em; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-clk-t { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; padding: 0.45em 0.9em; background: rgba(255, 255, 255, 0.06); border-left: 1px solid rgba(255, 255, 255, 0.12); }
+.gr-clk-t small { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.72em; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); white-space: nowrap; }
+.gr-clk-t b { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 2.1em; line-height: 1.05; font-variant-numeric: tabular-nums; color: #ffd23f; white-space: nowrap; }

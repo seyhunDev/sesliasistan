@@ -3023,6 +3023,23 @@ function GTop({ t }) {
     </div>
   );
 }
+// Yarışta süre kartı (Seyhun 2026-11-03 16:45): starttan sonra üst ortadan kalkar, rüzgârın hemen üstünde küçük skor bandı olur;
+// solda grubun rengi, yarışın adı ve grup/sınıf, sağda "Starttan beri" süre. Üst orta boşalır, arkadaki video net görünür.
+function GClock({ c }) {
+  if (!c) return null;
+  return (
+    <div className="gr-card gr-clk" role="timer" style={{ "--g": c.grp ? groupColor(c.grp) || "#ff3d77" : "#ff3d77" }}>
+      <div className="gr-clk-w">
+        <b>{c.name || "Yarış"}</b>
+        <span>{[c.grp ? `${c.grp} grup` : "", c.cls].filter(Boolean).join(" · ")}</span>
+      </div>
+      <div className="gr-clk-t">
+        <small>{c.lab}</small>
+        <b>{c.tm}</b>
+      </div>
+    </div>
+  );
+}
 function GRows({ rows }) {
   return (
     <ol className="gr-rows">
@@ -3195,6 +3212,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
   let top = null;
   let left = null;
   let right = null;
+  let clock = null;
   let sub = dayLine ? `Yarış günü · ${dayLine}` : "Yarış günü";
   if (mode === "summary") {
     const t = nextText(plan, today);
@@ -3249,14 +3267,14 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     right = <GBig flag="AP" title={plan.ap?.why || "Start ertelendi"} lines={[first ? `${gWhat(first)} bekliyor` : "", plan.ap?.from ? `Tehir ${plan.ap.from}'de çekildi` : ""]} />;
   } else if (mode === "race") {
     const rr = raceRows(data, sel);
-    top = { lab: cs.label, tm: cs.value, sub: [gWhat({ name: sel ? raceName(sel) : "", grp: entry?.grp || sel?.grp }), rr.rows.length && rr.head !== "Sıralama" ? rr.head : ""].filter(Boolean).join(" · ") };
+    clock = { lab: cs.label, tm: cs.value, name: sel ? raceName(sel) : "", grp: entry?.grp || sel?.grp || "", cls: entry?.cls || sel?.cls || "" };
     if (rr.rows.length) left = <GCard cls="gr-res" head={rr.head} tag={rr.tag} onClick={() => onFull("race")}><GRows rows={rr.rows.slice(0, 8)} />{rr.rows.length > 8 ? <div className="gr-more">{`+${rr.rows.length - 8} tekne · Tümü`}</div> : null}</GCard>;
     else if (ovOn) {
       const ov = overallTop(data, 6);
       if (ov) left = <GCard cls="gr-res" head="Genel sıralama" tag={[ov.cls, "geçici"].filter(Boolean).join(" · ")} onClick={() => onFull("all")}><GRows rows={ov.rows.map((x) => ({ p: x.p, sail: x.sail, name: shortName(x.name) || "", gap: x.t != null && x.t !== "" ? `${x.t} p` : "" }))} /></GCard>;
     }
     if (sel?.at && now - Date.parse(sel.at) < 10 * 60e3) right = <GEarly data={data} rid={sel.id} />;
-    sub = gWhat({ name: sel ? raceName(sel) : "", grp: entry?.grp || sel?.grp });
+    sub = ""; // yarışın adı ve grubu süre kartında, altta tekrar yazılmaz
   } else if (mode === "none") {
     const t = nextText(plan, today);
     top = { lab: "Bugün yarış yok", tm: t.big, sub: t.sub };
@@ -3288,6 +3306,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
       {left ? <div className="gr-l">{left}</div> : null}
       {right ? <div className="gr-r">{right}</div> : null}
       <div className="gr-lb">
+        <GClock c={clock} />
         <GWind data={data} now={now} mode={mode} today={today} />
       </div>
       <div className="gr-name">
