@@ -1,14 +1,12 @@
 "use client";
 
-import { PageHeader } from "@/components/ui/PageHeader";
-import { WindMapView } from "@/features/weather/WindMap";
+import { useRouter } from "next/navigation";
+import { RegionMap } from "@/features/weather/RegionMap";
+import { getPlace } from "@/features/weather/weather";
 
-// Rüzgâr haritası (Windy gibi): Dikili körfezi saat saat rüzgâr okları. Herkes açabilir; veri Open-Meteo'dan, Firestore'a dokunmaz.
+// Rüzgâr haritası (Seyhun 2026-11-03: tek harita): hava sayfasındaki bölge haritasının aynısı, şimdiden başlayıp tam ekran açılır; kapatınca geri döner.
+// Eski ayrı WindMap kalktı. Veri Open-Meteo'dan, Firestore'a dokunmaz.
 export default function WindPage() {
-  return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-      <PageHeader title="Rüzgâr haritası" />
-      <WindMapView />
-    </main>
-  );
+  const router = useRouter();
+  return <RegionMap place={getPlace()} startOpen onClose={() => router.back()} />;
 }
