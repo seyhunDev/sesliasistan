@@ -1853,7 +1853,6 @@ function NowWind({ data, now }) {
 // (ölçülen) ve Bugün en çok (tahmin); start saati yalnız grafikteki pembe çizgi (Seyhun 2026-11-02 "o yazıyı kaldır"). Altta tek grafik: tahmin kesik beyaz çizgi (bütün gün), ölçülen mavi düz
 // çizgi (istasyon) ve turuncu noktalar (elle girilen); şimdi ve start çizgisi. Grafiğin altında iki saatte bir yön, hava (simge + sıcaklık)
 // ve yağış: geçmiş saatte ölçülen (mavi), sonra tahmin (beyaz; yağış olasılığı).
-const hh2 = (h) => String(h).padStart(2, "0");
 function SkyIcon({ code, x, y, c }) {
   const k = code == null ? "" : code === 0 ? "sun" : code <= 2 ? "part" : code === 3 ? "cloud" : code <= 48 ? "fog" : code >= 95 ? "storm" : "rain";
   if (!k) return null;
@@ -1891,9 +1890,6 @@ function WindBody({ data, sel, isCur, now }) {
   const nowH = other ? -1 : tr.getUTCHours() + tr.getUTCMinutes() / 60;
   const at = data.plan?.at || "";
   const c = other ? null : curWind(data, sel, isCur, now);
-  const rest = rows.filter((r) => +r.hh >= Math.floor(nowH));
-  const max = rest.length ? Math.max(...rest.map((r) => r.wind)) : null;
-  const maxH = rest.filter((r) => r.wind === max).map((r) => +r.hh);
   const W = 1000, L = 112, R = 8, Hh = 440;
   const cw = (W - L - R) / 15;
   const x = (h) => L + (h - 6) * cw + cw / 2;
@@ -1919,11 +1915,10 @@ function WindBody({ data, sel, isCur, now }) {
             <i>{c.by}</i>
           </div>
         ) : null}
-        {max != null ? (
+        {other ? (
           <div>
-            <small>{other ? `${new Date(`${other}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" })} · en çok` : "Bugün en çok"}</small>
-            <b>{`${max} kn`}</b>
-            <i>{`Tahmin · ${maxH.length > 1 ? `${hh2(maxH[0])}:00–${hh2(maxH.at(-1))}:00` : `${hh2(maxH[0])}:00`}`}</i>
+            <small>Tahmin</small>
+            <b>{new Date(`${other}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" })}</b>
           </div>
         ) : null}
       </div>
