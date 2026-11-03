@@ -117,7 +117,7 @@ export function demoData(step, t0, s0, now, v0 = s0, vt = 0) {
     entries,
     groups: grp,
     plan,
-    forecast: { place: "Dikili", station: "Dikili", rows, obs },
+    forecast: { place: "Dikili", station: "Dikili", rows, obs, next: rows.map((r) => ({ hh: r.hh, wind: r.wind - 1, gust: r.gust, dir: r.dir })) },
     forecastNext: step >= 12 ? { place: "Dikili", rows: rows.map((r) => ({ ...r, wind: r.wind - 2, gust: r.gust - 1 })) } : null,
     now,
   };

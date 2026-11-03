@@ -8,7 +8,7 @@ import { apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort,
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
+import { windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
@@ -3315,44 +3315,129 @@ function GEarly({ data, rid }) {
 // altından açılan tek gövde; sekmeler Rüzgâr · Parkur · Program, her bölüm değişirken çekmece kapanıp yeniden açılır, süre üstte akar.
 const DR_NAME = { wind: "Rüzgâr", course: "Parkur", prog: "Program" };
 const DR_TONE = { wind: "#2fd6c3", course: "#ffd23f", prog: "#8fc3ff" };
-function DrWind({ data, now }) {
+// Beklenen rüzgâr grafiği (Seyhun 2026-11-03 19:12 "güzel bir grafik olsun; bugün bitiyorsa yarına geçsin"): şimdiki saatten 12 saat,
+// rüzgâr dolu alan, sağanak kesik çizgi, start anı pembe çizgi, gece yarısından sonrası "Yarın", altta saat saat yön okları
+function WindChart({ rows, at }) {
+  const W = 760, H = 250, l = 34, r = 12, t = 34, bt = 70;
+  const n = rows.length;
+  const xs = (i) => l + (i * (W - l - r)) / (n - 1);
+  const top = Math.max(10, ...rows.map((x) => Math.max(x.wind || 0, x.gust || 0)));
+  const max = Math.ceil((top + 2) / 5) * 5;
+  const ys = (v) => t + (H - t - bt) * (1 - v / max);
+  const curve = (pts) => pts.reduce((d, [x, y], i) => (i ? `${d} C${(pts[i - 1][0] + x) / 2} ${pts[i - 1][1]} ${(pts[i - 1][0] + x) / 2} ${y} ${x} ${y}` : `M${x} ${y}`), "");
+  const k = rows.map((x, i) => [xs(i), ys(x.wind)]);
+  const gs = rows.every((x) => x.gust != null) ? rows.map((x, i) => [xs(i), ys(x.gust)]) : null;
+  const mi = rows.findIndex((x) => x.tm);
+  const mx = mi > 0 ? (xs(mi - 1) + xs(mi)) / 2 : mi === 0 ? l : null;
+  // start anı: bugünün saatlerinde kesirli konum
+  let sx = null;
+  let sk = null;
+  if (at && /^\d\d:\d\d$/.test(at)) {
+    const hf = +at.slice(0, 2) + +at.slice(3) / 60;
+    const i = rows.findIndex((x, j) => !x.tm && +x.hh <= hf && (rows[j + 1] ? rows[j + 1].tm || +rows[j + 1].hh > hf : false));
+    if (i >= 0) {
+      const f = hf - +rows[i].hh;
+      sx = xs(i) + (xs(i + 1) - xs(i)) * f;
+      sk = Math.round((rows[i].wind + (rows[i + 1].wind - rows[i].wind) * f) * 10) / 10;
+    }
+  }
+  const fs = { fontFamily: "var(--lv-font-c), var(--lv-font), sans-serif", fontWeight: 700 };
+  return (
+    <svg className="gr-wc" viewBox={`0 0 ${W} ${H}`} aria-label="Beklenen rüzgâr">
+      <defs>
+        <linearGradient id="gr-wca" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2fd6c3" stopOpacity=".55" />
+          <stop offset="1" stopColor="#2fd6c3" stopOpacity=".02" />
+        </linearGradient>
+      </defs>
+      {[5, 10, 15, 20, 25, 30].filter((v) => v < max).map((v) => (
+        <g key={v}>
+          <line x1={l} x2={W - r} y1={ys(v)} y2={ys(v)} stroke="rgba(255,255,255,.07)" />
+          <text x={l - 8} y={ys(v) + 5} textAnchor="end" fontSize="16" fill="rgba(255,255,255,.45)" style={fs}>
+            {v}
+          </text>
+        </g>
+      ))}
+      {mx != null ? (
+        <g>
+          <rect x={mx} y={t - 34} width={W - r - mx} height={H - t - bt + 34} fill="rgba(255,255,255,.035)" />
+          <line x1={mx} x2={mx} y1={t - 34} y2={H - bt} stroke="rgba(255,255,255,.35)" strokeDasharray="3 4" />
+          <text x={sx != null && sx > mx - 40 && sx < mx + 110 ? sx + 40 : mx + 8} y={t - 14} fontSize="18" fill="#fff" letterSpacing="2" style={fs}>
+            YARIN
+          </text>
+        </g>
+      ) : null}
+      <path className="gr-wca" d={`${curve(k)} L${xs(n - 1)} ${ys(0)} L${xs(0)} ${ys(0)} Z`} fill="url(#gr-wca)" />
+      {gs ? <path className="gr-wcl" d={curve(gs)} fill="none" stroke="#ffd23f" strokeWidth="2.5" strokeDasharray="6 5" opacity=".85" pathLength="1" /> : null}
+      <path className="gr-wcl" d={curve(k)} fill="none" stroke="#2fd6c3" strokeWidth="4" strokeLinecap="round" pathLength="1" />
+      {sx != null ? (
+        <g className="gr-wcs">
+          <line x1={sx} x2={sx} y1={t - 4} y2={H - bt} stroke="#ff3d77" strokeWidth="3" />
+          <rect x={sx - 32} y={t - 30} width="64" height="24" rx="4" fill="#ff3d77" />
+          <text x={sx} y={t - 12} textAnchor="middle" fontSize="17" fill="#fff" letterSpacing="1" style={{ ...fs, fontWeight: 800 }}>
+            START
+          </text>
+          <circle cx={sx} cy={ys(sk)} r="6" fill="#fff" stroke="#ff3d77" strokeWidth="3" />
+          <text x={sx + 12} y={ys(sk) - 12} fontSize="21" fill="#fff" style={{ ...fs, fontWeight: 800 }}>
+            {`${String(sk).replace(".", ",")} kn`}
+          </text>
+        </g>
+      ) : null}
+      {rows.map((x, i) => (
+        <g key={`${x.tm ? "y" : "b"}${x.hh}`}>
+          {x.dir != null ? (
+            <g transform={`translate(${xs(i)} ${H - 40}) rotate(${x.dir + 180})`}>
+              <path d="M0 -9 L6 6 L0 3 L-6 6 Z" fill="rgba(255,255,255,.75)" />
+            </g>
+          ) : null}
+          {i % 2 === 0 || +x.hh === 0 ? (
+            <text x={xs(i)} y={H - 6} textAnchor="middle" fontSize="17" fill={+x.hh === 0 ? "#fff" : "rgba(255,255,255,.55)"} style={fs}>
+              {x.hh}
+            </text>
+          ) : null}
+        </g>
+      ))}
+    </svg>
+  );
+}
+function DrWind({ data, now, prog }) {
   const c = curWind(data, null, true, now);
-  const h0 = new Date(now + 3 * 3600e3).getUTCHours();
-  const hrs = (data.forecast?.rows || []).filter((r) => r.wind != null && +r.hh >= h0).slice(0, 6);
-  const sh = data.plan?.at ? +data.plan.at.slice(0, 2) : -1;
+  const rows = windAhead(data, now);
+  const at = (prog || []).find((x) => x.state === "next")?.at || "";
   return (
     <>
       {c ? (
         <div className="gr-dw">
-          <div className="gr-dl">
-            Şimdi
-            <small>{[c.by, c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""].filter(Boolean).join(" · ")}</small>
-          </div>
           {gArrow(c.dir)}
           <div className="gr-dk">
             <b>
               {c.kn}
               <em>kn</em>
             </b>
-            {c.gust != null && c.gust > c.kn ? <span>{`sağanak ${c.gust}`}</span> : null}
+            <span>
+              {c.dir != null ? `${dirShort(c.dir)} · ${degText(c)}` : ""}
+              {c.gust != null && c.gust > c.kn ? <i>{`${c.dir != null ? " · " : ""}sağanak ${c.gust}`}</i> : null}
+            </span>
           </div>
+          <div className="gr-dl">{c.by || "Şimdi"}</div>
         </div>
       ) : null}
-      {hrs.length >= 2 ? (
+      {rows.length >= 2 ? (
         <>
-          <div className="gr-dh">Beklenen · saatlik tahmin</div>
-          <div className="gr-hrs" style={{ gridTemplateColumns: `repeat(${hrs.length}, 1fr)` }}>
-            {hrs.map((r, i) => (
-              <div key={r.hh} className={+r.hh === sh ? "st" : ""} style={{ animationDelay: `${0.8 + i * 0.1}s` }}>
-                <small>{+r.hh === sh ? "Start" : `${r.hh}:00`}</small>
-                <svg viewBox="0 0 16 16" aria-hidden="true">
-                  {r.dir != null ? <path d="M8 1 L12 14 L8 11 L4 14 Z" fill="currentColor" transform={`rotate(${r.dir + 180} 8 8)`} /> : null}
-                </svg>
-                <b>{Math.round(r.wind)}</b>
-                {r.gust != null ? <i style={{ background: windColor(r.gust) }}>{Math.round(r.gust)}</i> : <i className="no" />}
-              </div>
-            ))}
+          <div className="gr-dh">
+            Beklenen · saatlik
+            <span>
+              <i className="a" />
+              Rüzgâr
+            </span>
+            {rows.every((x) => x.gust != null) ? (
+              <span>
+                <i className="b" />
+                Sağanak
+              </span>
+            ) : null}
           </div>
+          <WindChart rows={rows} at={at} />
         </>
       ) : null}
     </>
@@ -3381,7 +3466,7 @@ function DrProg({ prog }) {
           <b>{x.at || ""}</b>
           <i />
           <span>{gWhat(x) || x.name}</span>
-          <small>{x.state === "now" ? "Yarışta" : ""}</small>
+          <small>{x.state === "now" ? "Yarışta" : x.state === "next" ? "Sıradaki" : x.state === "done" ? "Bitti" : ""}</small>
         </li>
       ))}
       {foot ? <li className="more">{foot}</li> : null}
@@ -3406,10 +3491,17 @@ function GDrawer({ rk, have, sec, auto, data, now, prog }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const body = shown === "wind" ? <DrWind data={data} now={now} /> : shown === "course" ? <DrCourse data={data} /> : shown === "prog" ? <DrProg prog={prog} /> : null;
+  const body = shown === "wind" ? <DrWind data={data} now={now} prog={prog} /> : shown === "course" ? <DrCourse data={data} /> : shown === "prog" ? <DrProg prog={prog} /> : null;
   return (
-    <div className={`gr-dr${open && body ? " on" : ""}`} aria-live="polite">
+    <div className={`gr-dr${open && body ? " on" : ""}`} aria-live="polite" style={{ "--c": DR_TONE[shown] || "#2fd6c3" }}>
       <div className="gr-dri">
+        <div className="gr-dbox" style={h ? { height: h } : undefined}>
+          <div ref={inRef}>
+            <div className="gr-dpn" key={shown}>
+              {body}
+            </div>
+          </div>
+        </div>
         <div className="gr-tabs" style={{ gridTemplateColumns: `repeat(${have.length}, 1fr)` }}>
           {have.map((k) => (
             <span key={k} className={k === shown ? "on" : ""} style={{ "--c": DR_TONE[k] }}>
@@ -3417,13 +3509,6 @@ function GDrawer({ rk, have, sec, auto, data, now, prog }) {
               {k === shown ? <i key={shown} className={auto ? "run" : "full"} style={{ animationDuration: `${sec}s` }} /> : null}
             </span>
           ))}
-        </div>
-        <div className="gr-dbox" style={h ? { height: h } : undefined}>
-          <div ref={inRef}>
-            <div className="gr-dpn" key={shown}>
-              {body}
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -3532,7 +3617,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
   else if (preOn) {
     const route = sceneRoute(data, null, true, "wait");
     const crs = !!courseSvg(data, route);
-    const have = [hasHours(data) ? "wind" : "", crs ? "course" : "", prog.length ? "prog" : ""].filter(Boolean);
+    const have = [hasHours(data) || windAhead(data, now).length >= 2 ? "wind" : "", crs ? "course" : "", prog.length ? "prog" : ""].filter(Boolean);
     rk = preStep({ show: sh, now, have }) || "prog";
     wCan = have.includes("wind");
     // sol altta tek alan, sırayla rüzgâr → parkur → program (Seyhun 2026-11-03 17:54); rüzgâr adımında beklenen saatler kartın içinde açılıp adım bitmeden kapanır
@@ -3546,23 +3631,27 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
   return (
     <div className="gr">
       {left ? <div className="gr-l">{left}</div> : null}
-      {right ? (
+      {right && !tl ? (
         <div className="gr-r" key={rk === "wind" ? "course" : rk}>
           {right}
         </div>
       ) : null}
-      {/* start kartı sol üstte (Seyhun 2026-11-03 17:54); sol üstte sonuç varken (yarışta) eskisi gibi rüzgârın üstünde */}
+      {/* start kartı sağ üstte (Seyhun 2026-11-03 19:12; sağ kart varsa altında); sol üstte sonuç varken (yarışta) eskisi gibi rüzgârın üstünde */}
       {tl ? (
-        <div className={`gr-tl${drw ? " dr" : ""}`}>
+        <div className="gr-tl">
           <GStart t={top} />
-          {drw}
+          {right ? (
+            <div className="gr-tlr" key={rk === "wind" ? "course" : rk}>
+              {right}
+            </div>
+          ) : null}
         </div>
       ) : null}
       <div className="gr-lb">
         <div className="gr-col">
           {tl ? null : <GStart t={top} />}
           <GClock c={clock} />
-          {drw ? null : panel ? (
+          {drw ? drw : panel ? (
             <div className="gr-pn" key={rk}>
               {panel}
             </div>
@@ -3573,12 +3662,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
           )}
         </div>
       </div>
-      {/* Geri düğmesi sol üst köşede, soluk (Seyhun 2026-11-03 17:03); altta yalnız yarışın adı, kaçıncı yarış / grup yazılmaz */}
-      <Link href="/canli" className="gr-back" aria-label="Yarışlar">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </Link>
+      {/* geri düğmesi yok (Seyhun 2026-11-03 19:12 "geri tuşunu kaldıralım") */}
       {/* sağ altta yarışın adı | Velora işareti */}
       <div className="gr-name">
         {racing ? <span className="gr-live">Canlı</span> : null}

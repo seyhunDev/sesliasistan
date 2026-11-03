@@ -544,3 +544,12 @@ export function shortClub(club) {
   const head = (abbr ? w.slice(0, -1) : w).filter((x) => !/^(ve|and|of|the)$/i.test(x)).map((x) => x[0].toLocaleUpperCase("tr-TR")).join("");
   return (head + abbr).slice(0, 5);
 }
+
+// Beklenen rüzgâr grafiğinin saatleri (Seyhun 2026-11-03 19:12 "bugün bitiyorsa yarına geçsin"): şimdiki saatten (İstanbul) 12 saat;
+// bugünün satırları, sonra ertesi günün (forecast.next, tm: true)
+export function windAhead(data, now) {
+  const h0 = new Date(now + 3 * 3600e3).getUTCHours();
+  const a = (data?.forecast?.rows || []).filter((r) => r.wind != null && +r.hh >= h0).map((r) => ({ ...r, tm: false }));
+  const b = (data?.forecast?.next || []).filter((r) => r.wind != null).map((r) => ({ ...r, tm: true }));
+  return [...a, ...b].slice(0, 12);
+}

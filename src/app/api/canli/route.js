@@ -111,13 +111,17 @@ async function forecastOf(org, id, r, day) {
   }
   let v = null;
   try {
-    const q = new URLSearchParams({ latitude: lat, longitude: lon, timezone: "Europe/Istanbul", wind_speed_unit: "kn", start_date: day, end_date: day, hourly: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,temperature_2m,precipitation,precipitation_probability" });
+    // ertesi gün de alınır (Seyhun 2026-11-03 19:12 "bugün bitiyorsa beklenen rüzgâr yarına geçsin"): rows yalnız bu gün, next ertesi günün rüzgârı
+    const d2 = new Date(Date.parse(`${day}T12:00:00Z`) + 864e5).toISOString().slice(0, 10);
+    const q = new URLSearchParams({ latitude: lat, longitude: lon, timezone: "Europe/Istanbul", wind_speed_unit: "kn", start_date: day, end_date: d2, hourly: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,temperature_2m,precipitation,precipitation_probability" });
     const res = await fetch(`https://api.open-meteo.com/v1/forecast?${q}`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const h = (await res.json()).hourly || {};
       const N = (x) => (Number.isFinite(Number(x)) && x !== null ? Math.round(Number(x)) : null);
-      const rows = (h.time || []).map((t, i) => ({ hh: t.slice(11, 13), wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]), code: N(h.weather_code?.[i]), t: N(h.temperature_2m?.[i]), mm: Number.isFinite(Number(h.precipitation?.[i])) && h.precipitation[i] !== null ? Math.round(Number(h.precipitation[i]) * 10) / 10 : null, pop: N(h.precipitation_probability?.[i]) })).filter((x) => x.wind != null);
-      if (rows.length) v = { place: S(sp.name, 60), rows };
+      const all = (h.time || []).map((t, i) => ({ d: t.slice(0, 10), hh: t.slice(11, 13), wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]), code: N(h.weather_code?.[i]), t: N(h.temperature_2m?.[i]), mm: Number.isFinite(Number(h.precipitation?.[i])) && h.precipitation[i] !== null ? Math.round(Number(h.precipitation[i]) * 10) / 10 : null, pop: N(h.precipitation_probability?.[i]) })).filter((x) => x.wind != null);
+      const rows = all.filter((x) => x.d === day).map(({ d, ...x }) => x);
+      const next = all.filter((x) => x.d === d2).map((x) => ({ hh: x.hh, wind: x.wind, gust: x.gust, dir: x.dir }));
+      if (rows.length) v = { place: S(sp.name, 60), rows, ...(next.length ? { next } : {}) };
     }
     // Gerçekleşen rüzgâr (Seyhun 2026-11-02 "tahmin ve gerçekleşen grafiğimiz neden gösterilmiyor"): en yakın istasyon (100 km'ye kadar, /api/wind-obs far gibi)
     const st = v && nearestStation(lat, lon);
