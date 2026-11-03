@@ -13,13 +13,13 @@ import { useNow } from "@/hooks/useNow";
 import { isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
-import { CockpitWind } from "./CockpitWind";
+import { HourTable } from "@/features/weather/HourTable";
 import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
 
 // Ana sayfanın lacivert üst kısmı ("kokpit"; Seyhun 2026-10-21 "C · Lacivert kokpit" seçti, örnek ana-sayfa/futuristik/c2-kokpit-ruzgar.png):
 // logo + tarih + doğum günü + zil + Ayarlar; altında bugünün havası tek satırda (sıcaklık, gökyüzü, en düşük/en yüksek;
-// günün en sert sağanağı grafikte soluk çizgiyle (CockpitWind); sağda şimdiki rüzgâr "rüzgâr–sağanak kn"), büyük rüzgâr grafiği (CockpitWind) ve sıradaki iş (nextPlan). Hava satırı ya da grafiğe dokununca
+// sağda şimdiki rüzgâr "rüzgâr–sağanak kn"), saat saat hava tablosu (HourTable; 2026-11-03 rüzgâr grafiği CockpitWind yerine) ve sıradaki iş (nextPlan). Hava satırı ya da grafiğe dokununca
 // hava sayfası açılır. Lacivert her iki temada aynı (logonun gecesi); altındaki açık zemin üstüne yuvarlak köşeyle biner (OwnerHome).
 // children (iş düğmeleri, büyük günler) en altta, araya boşluk konmaz (Seyhun 2026-10-21: "çok boşluklar oldu"; tam ekran uzatma kaldırıldı).
 // Alt boşluk küçük ve sol alttaki mor ışık yok (ck-top; Seyhun 2026-10-23 "niye notların arka planı farklı"): altındaki lacivert notlar kesintisiz devam eder.
@@ -106,11 +106,8 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
               <span className="block py-2 text-[0.875rem] text-white/70">{err ? "Hava durumu alınamadı · dokun, yenile" : w ? "Bu gün için hava tahmini yok" : "Hava yükleniyor…"}</span>
             )}
           </button>
-          {rows?.length > 0 && (
-            <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className={`mt-2 w-full text-left ${fill ? "flex min-h-0 flex-1 flex-col" : "block"}`}>
-              <CockpitWind key={date} rows={rows} date={date} />
-            </button>
-          )}
+          {/* Saat saat tablo (Seyhun 2026-11-03 Windy görseli, HourTable): kaydırılır, dokununca hava sayfası */}
+          {rows?.length > 0 && <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} className="mt-2.5" />}
         </>
       )}
       </div>
@@ -333,4 +330,11 @@ function WindStrip({ label, name, race = false, rows, date, max, fill, onClick }
       </span>
     </button>
   );
+}
+
+// "YYYY-AA-GG" → ertesi gün (öğlen üzerinden, saat dilimi kaymasın)
+function nextDay(date) {
+  const d = new Date(`${date}T12:00`);
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }

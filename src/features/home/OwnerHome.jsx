@@ -17,7 +17,8 @@ import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
-import { NotesWidget } from "./HomeWidgets";
+import { ClubRows, NotesWidget } from "./HomeWidgets";
+import { HomeSummary } from "./HomeSummary";
 import { MyAttendanceCard } from "./MyAttendanceCard";
 import { MyFitCard } from "./MyFitCard";
 import { myFit } from "@/lib/fitness/model";
@@ -103,8 +104,20 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         <div className="mt-4">
           <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
         </div>
-        {/* Sade ana sayfa (Seyhun 2026-11-03 "A · İyice sade"): iş düğmelerinin altında Kulüp kutuları, Yemek · Market · Giyim, Deniz trafiği ·
-            Kameralar yok; hepsi "Tümü" içinde */}
+        {/* Kulüp kutuları kalır (Seyhun 2026-11-03: "ana sayfadaki kulüp kutuları kalsın"); Yemek · Market · Giyim, Deniz trafiği · Kameralar yok, "Tümü" içinde */}
+        {owner && (
+          <div className="mt-5 empty:hidden">
+            <HomeSummary
+              tiles
+              title={athletes || race.on ? "Kulüp" : "Özet"}
+              money={canReceipts(kind)}
+              race={null}
+              dues={!!athletes}
+              invoices
+              lead={athletes ? <ClubRows open={race.open} fit={fit} /> : null}
+            />
+          </div>
+        )}
       </Cockpit>
       {/* Alt kısım da lacivert (Seyhun 2026-10-22: "yukarısı daha güzel, bu tasarımı devam ettirelim"): kartlar kokpitteki gibi
           yarı saydam lacivert, yazılar açık; renkler globals.css .navy değişkenlerinden (koyu görünüm sınıfları da çalışır) */}
