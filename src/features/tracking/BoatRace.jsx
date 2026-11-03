@@ -82,7 +82,8 @@ function Pin({ x, y }) {
 }
 
 // set: cleanSet; grp: gösterilen grup ("" = hepsi); loop: bitince baştan
-export function BoatRace({ set, grp = "", loop = true }) {
+// bare: yayının içinde (canlı ekranın kendi rüzgâr ve sayaç şeridi var): rüzgâr, şamandıra yazısı ve alttaki sayaç yerine üstte "REPLAY" rozeti
+export function BoatRace({ set, grp = "", loop = true, bare = false }) {
   const box = useRef(null);
   const [size, setSize] = useState(() => sizeOf(0, 0));
   useEffect(() => {
@@ -165,6 +166,13 @@ export function BoatRace({ set, grp = "", loop = true }) {
           <Boat key={r.sail} x={r.x} y={r.y} hdg={r.hdg} wind={set.wind.dir} up={up} col={r.col} sail={r.sail} s={s} />
         ))}
       </svg>
+      {bare ? (
+        <div className="br-replay">
+          <b>REPLAY</b>
+          <span>{`${ck.label === "SÜRE" ? "START +" : "START'A "}${ck.n}`}</span>
+        </div>
+      ) : (
+        <>
       <div className="br-wind">
         <svg width="34" height="60" viewBox="0 0 34 60" aria-hidden="true">
           <path d="M17 4v44M7 38l10 14 10-14" stroke="#fff" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -179,6 +187,8 @@ export function BoatRace({ set, grp = "", loop = true }) {
         <div>{ck.label}</div>
         <div className="n">{ck.n}</div>
       </div>
+        </>
+      )}
     </div>
   );
 }
