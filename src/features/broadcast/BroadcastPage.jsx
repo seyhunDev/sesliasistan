@@ -13,11 +13,13 @@ import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
 import { programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { addCourseMany, addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { NearCams } from "./NearCams";
 import { AthletesTab } from "./AthletesTab";
+import { courseVoice } from "./courseVoice";
+import { useSpeech } from "@/hooks/useSpeech";
 import { audio, chooseDur, ownHere, raceCancel, raceFinish, raceStart, raceVoid, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { ResetSheet } from "@/features/raceMedia/ResetSheet";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
@@ -548,6 +550,39 @@ export function BroadcastPage({ orgId, id }) {
     putCards({ cards: course.cards.map((k) => (k.id === course.sel ? { ...k, route: r } : k)) }, `Kart ${course.sel}: ${routeText(r)}`);
     setRt(routeText(r));
   };
+  // Sesle parkur (Seyhun 2026-11-03 18:43): Konuş'a bas, söyle: "rüzgâr 20 ile 35 arası 12 knot", "eksen 320", "rota 1 2 3 2 3 finiş", "trapez"
+  const [heard, setHeard] = useState("");
+  const onCourseSay = async (text) => {
+    setHeard(text);
+    const r = await courseVoice(text, course);
+    if (r.error) return toast("Anlaşılamadı, tekrar söyle ya da Ölçüm ekle'yi kullan.");
+    if (r.need) return toast(r.need === "axis" ? "Önce ekseni söyle: “eksen 320”" : "Önce rüzgârı söyle: “rüzgâr 330, 12 knot”");
+    if (r.none) return toast("Parkurla ilgili bir şey duyamadım. Örn. “rüzgâr 20 ile 35 arası”");
+    const said = [];
+    if (r.route || r.type) {
+      const cards = course.cards.map((k) => (k.id === course.sel ? { ...k, ...(r.route ? { route: r.route } : {}), ...(r.type ? { type: r.type } : {}) } : k));
+      await putCards({ cards });
+      if (r.route) setRt(routeText(r.route));
+      if (r.type) said.push(CARD_TYPES[r.type]);
+      if (r.route) said.push(`rota ${routeText(r.route)}`);
+    }
+    if (r.list.length || r.len) {
+      const at = Date.now();
+      const list = r.list.map((o, i) => cleanObs({ ...o, at: new Date(at + i).toISOString() })).filter(Boolean);
+      setCourse((c) => cleanCourse({ ...c, obs: [...c.obs, ...list], ...(r.len ? { len: { ...(c.len || {}), ...r.len } } : {}) }));
+      try {
+        await addCourseMany(orgId, id, today, list, r.len);
+      } catch {
+        return toast("Kaydedilemedi. İnterneti kontrol et.");
+      }
+      for (const o of list) said.push(`${obsTitle(o)} ${o.range ? `${o.range[0]}–${o.range[1]}°` : `${o.deg}°`}${o.kn != null ? ` · ${o.kn} kn` : ""}`);
+      if (r.len) said.push(`orsa ${r.len.orsa} m`);
+    }
+    toast(`Yazdım: ${said.join(" · ")}`);
+  };
+  const csp = useSpeech({ names: [], terms: ["rüzgâr", "eksen", "rota", "parkur", "trapez", "orsa", "pin", "komite", "knot", "derece", "arası", "finiş"], onFinal: (t) => void onCourseSay(t), onFail: (m) => toast(m) });
+  const cListen = csp.status === "listening";
+  const courseTalk = () => (cListen ? csp.stop("send") : csp.start({ autoStop: 15000 }));
   if (rtId !== course.sel) {
     setRtId(course.sel);
     setRt(routeText(selCard(course).route));
@@ -1417,12 +1452,22 @@ export function BroadcastPage({ orgId, id }) {
             )}
           </div>
         </section>
+        {cListen || heard ? (
+          <p className="px-1 text-[0.875rem] text-mut" aria-live="polite">
+            {cListen ? `${csp.finalText || ""}${csp.interim || ""}` || "Dinliyorum…" : `“${heard}”`}
+          </p>
+        ) : null}
         <MasaBar>
           <Button variant="secondary" onClick={() => setAdd(0)}>
             Ölçüm ekle
           </Button>
-          <Button disabled={routeText(cleanRoute(rt)) === routeText(selCard(course).route)} onClick={saveRoute}>
-            Kaydet
+          {routeText(cleanRoute(rt)) !== routeText(selCard(course).route) ? (
+            <Button variant="secondary" onClick={saveRoute}>
+              Kaydet
+            </Button>
+          ) : null}
+          <Button variant={cListen ? "danger" : "primary"} onClick={courseTalk}>
+            {cListen ? "Bitti" : "Konuş"}
           </Button>
         </MasaBar>
           </>
