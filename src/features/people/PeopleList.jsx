@@ -4,7 +4,9 @@ import { FadeImg } from "@/components/ui/FadeImg";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
+import { ListHead } from "@/components/ui/Row";
+import { Empty } from "@/components/ui/Page";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { useData } from "@/features/data/DataProvider";
@@ -19,7 +21,8 @@ import { KIND_LABEL, PEOPLE_GROUPS, kindOf, missingOf, shownLogin } from "@/lib/
 import { initials } from "@/lib/utils/format";
 import { personPath } from "@/lib/personPage";
 
-// Bir grubun kişileri (Çalışanlar / Aile / Sporcular / Diğer): giriş bilgisi ve "Gönder" (WhatsApp), hesap aç, düzenle
+// Bir grubun kişileri (Çalışanlar / Aile / Sporcular / Diğer): giriş bilgisi ve "Gönder" (WhatsApp), hesap aç, düzenle.
+// Yeni tasarım (2026-11-03): lacivert üstte ad, kişi sayısı ve "+ Sporcu/Çalışan…"; altta Hesabı var / Hesabı yok listeleri.
 export function PeopleList({ group }) {
   const g = PEOPLE_GROUPS[group];
   const { members } = useData();
@@ -27,7 +30,6 @@ export function PeopleList({ group }) {
   const [edit, setEdit] = useState(null); // { person, step } | { person: null }
   const [send, setSend] = useState(null);
   const list = members.filter((m) => g.kinds.includes(kindOf(m))).sort((a, b) => (a.name || "").localeCompare(b.name || "", "tr"));
-  const accounts = list.filter((m) => m.account !== false).length;
   // Asistandan açılış: { uid, step } (kişi kartı / hesap ekranı) ya da { prefill } (yeni kişi formu dolu)
   const [want, setWant] = useState(null);
   useEffect(() => {
@@ -45,73 +47,73 @@ export function PeopleList({ group }) {
   const close = () => (setEdit(null), setWant(null));
   const childNames = (m) => (m.children || []).map((c) => members.find((x) => x.uid === c)?.name?.split(" ")[0]).filter(Boolean).join(", ");
 
+  const addCls = "ck-btn shrink-0 !flex items-center gap-1";
+  const row = (m) => {
+    const k = kindOf(m);
+    const acc = m.account !== false;
+    const online = acc && seenText(m.lastSeen) === "Çevrimiçi";
+    const miss = missingOf(m).filter((x) => x !== "e-posta" || !acc);
+    const login = shownLogin(m.loginName || m.email);
+    const info = [g.kinds.length > 1 && KIND_LABEL[k], m.relation, m.title, k === "parent" && childNames(m)].filter(Boolean).join(" · ") || KIND_LABEL[k];
+    return (
+      <li key={m.uid} className="flex items-center gap-2 pr-3.5">
+        <Link href={personPath(m.uid)} data-press="row" className="flex min-h-[3.5rem] min-w-0 flex-1 items-center gap-3 py-2.5 pl-3.5 text-left">
+          <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-accbg text-[0.8125rem] font-bold text-acc">
+            {initials(m.name)}
+            {m.photo && <FadeImg src={m.photo} className="size-full rounded-full object-cover" />}
+            {acc && <span className={`absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-card ${online ? "bg-ok" : "bg-line"}`} />}
+          </span>
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[0.9375rem] font-semibold">{m.name}</b>
+            <small className="block truncate text-[0.8125rem] text-mut">{[info, acc && `Giriş: ${login || "—"}`].filter(Boolean).join(" · ")}</small>
+            {miss.length > 0 && <small className="block truncate text-[0.8125rem] text-warn">Eksik: {miss.join(", ")}</small>}
+          </span>
+        </Link>
+        {acc ? (
+          <button type="button" onClick={() => setSend(m)} data-press className="btn btn-secondary btn-sm shrink-0">
+            Gönder
+          </button>
+        ) : (
+          <button type="button" onClick={() => setEdit({ person: m, step: "account" })} data-press className="btn btn-secondary btn-sm shrink-0">
+            Hesap aç
+          </button>
+        )}
+      </li>
+    );
+  };
+  const section = (title, items) =>
+    items.length > 0 && (
+      <section>
+        <ListHead title={title} count={items.length} />
+        <ul className="overflow-hidden rounded-[1.25rem] border border-line bg-card [&>*+*]:border-t [&>*+*]:border-line">{items.map(row)}</ul>
+      </section>
+    );
+
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(6rem+env(safe-area-inset-bottom))]">
-      <PageHeader title={g.title} sub={list.length ? `${list.length} kişi · ${accounts} hesap` : "Henüz kimse yok"} back="/staff">
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={g.title}>
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/staff" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{g.title}</h1>
+            {list.length > 0 && <p className="truncate text-[0.8125rem] text-white/65">{list.length} kişi</p>}
+          </div>
+          <button type="button" onClick={() => setEdit({ person: null })} data-press className={addCls}>
+            <Icon name="plus" className="size-4" />
+            {group === "family" ? "Aile" : group === "athletes" ? "Sporcu" : group === "staff" ? "Çalışan" : "Kişi"}
+          </button>
+        </header>
         {group === "athletes" && canSeeAthletes(profile?.email) && (
-          <Link href="/athletes" className="flex h-10 items-center gap-1.5 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc ring-1 ring-line active:scale-95">
-            <Icon name="anchor" className="size-4" /> Kulüpten ekle
+          <Link href="/athletes" data-press className="raised mt-4 flex h-10 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+            Kulüpten ekle
           </Link>
         )}
-      </PageHeader>
+      </section>
 
-      {list.length ? (
-        <ul className="mt-2 divide-y divide-line overflow-hidden rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.25)]">
-          {list.map((m) => {
-            const k = kindOf(m);
-            const acc = m.account !== false;
-            const online = acc && seenText(m.lastSeen) === "Çevrimiçi";
-            const miss = missingOf(m).filter((x) => x !== "e-posta" || !acc);
-            const login = shownLogin(m.loginName || m.email);
-            return (
-              <li key={m.uid} className="flex items-center gap-2 pr-3">
-                <Link href={personPath(m.uid)} className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left active:bg-bg">
-                  <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.875rem] font-bold text-acc">
-                    {initials(m.name)}
-                    {m.photo && <FadeImg src={m.photo} className="size-full rounded-full object-cover" />}
-                    {acc && <span className={`absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-card ${online ? "bg-ok" : "bg-line"}`} />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.9375rem] font-semibold">{m.name}</b>
-                    <small className="block truncate text-[0.75rem] text-mut">
-                      {[g.kinds.length > 1 && KIND_LABEL[k], m.relation, m.title, k === "parent" && childNames(m)].filter(Boolean).join(" · ") || KIND_LABEL[k]}
-                    </small>
-                    <small className={`block truncate text-[0.8125rem] ${acc ? "font-medium text-fg" : "text-mut"}`}>{acc ? `Giriş: ${login || "—"}` : "Uygulama hesabı yok"}</small>
-                    {miss.length > 0 && <small className="block truncate text-[0.75rem] font-medium text-amber-700">Eksik: {miss.join(", ")}</small>}
-                  </span>
-                </Link>
-                {acc ? (
-                  <button type="button" onClick={() => setSend(m)} className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-[#25d366]/12 px-3 text-[0.8125rem] font-semibold text-[#128c4a] active:scale-95">
-                    <Icon name="whatsapp" className="size-4" /> Gönder
-                  </button>
-                ) : (
-                  <button type="button" onClick={() => setEdit({ person: m, step: "account" })} className="h-9 shrink-0 rounded-full bg-acc/10 px-3 text-[0.8125rem] font-semibold text-acc active:scale-95">
-                    Hesap aç
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <div className="mt-10 flex flex-col items-center text-center">
-          <span className="grid size-14 place-items-center rounded-full bg-acc/10 text-acc">
-            <Icon name={g.icon} className="size-7" />
-          </span>
-          <p className="mt-3 max-w-[18rem] text-[0.9375rem] leading-snug text-mut">
-            {group === "athletes" ? "Sporcuları kulüp listesinden ekleyebilir ya da tek tek ekleyebilirsin." : "Kişi ekle; istersen uygulama hesabı açıp giriş bilgilerini WhatsApp ile gönder."}
-          </p>
-        </div>
-      )}
-
-      <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-10 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
-        <button
-          type="button"
-          onClick={() => setEdit({ person: null })}
-          className="mx-auto flex h-12 w-full max-w-[26rem] items-center justify-center gap-2 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(31,90,75,.8)] active:scale-[.98]"
-        >
-          <Icon name="plus" className="size-5" /> {group === "family" ? "Aile bireyi ekle" : group === "athletes" ? "Sporcu ekle" : group === "staff" ? "Çalışan ekle" : "Kişi ekle"}
-        </button>
+      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        {list.length === 0 && <Empty icon={g.icon} title="Henüz kimse yok" />}
+        {section("Hesabı var", list.filter((m) => m.account !== false))}
+        {section("Hesabı yok", list.filter((m) => m.account === false))}
       </div>
 
       {shown && <PersonSheet key={`${shown.person?.uid || "new"}-${shown.step || ""}`} open onClose={close} person={shown.person} defaultKind={g.add} initialStep={shown.step} prefill={shown.prefill} />}
