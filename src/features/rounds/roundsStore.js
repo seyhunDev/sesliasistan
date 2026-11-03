@@ -12,6 +12,8 @@ import { compressImage } from "@/lib/image";
 import { cleanEntries, cleanOps } from "@/lib/roundSay";
 import { cleanGroups } from "@/lib/roundScore";
 import { kindOf } from "@/features/athletes/raceNotice";
+import { loadPdfjs } from "@/components/ui/PdfViewer";
+import { chunkLines, linesOf } from "@/lib/pdfLines";
 
 const ref = (orgId, id) => doc(db, "orgs", orgId, "raceLive", id, "entries", "list");
 // { rows: kayıt listesi, groups: { gün: [[yelken, grup]] } } (grup listesi günü günü; lib/roundScore.js)
@@ -44,6 +46,16 @@ async function askEntries(body) {
   if (!res.ok) throw new Error(p.error || "Liste okunamadı, tekrar dene.");
   return cleanEntries(p.rows);
 }
+async function pdfLines(file) {
+  const lib = await loadPdfjs();
+  const pdf = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const lines = [];
+  for (let p = 1; p <= Math.min(pdf.numPages, 40); p++) {
+    const page = await pdf.getPage(p);
+    lines.push(...linesOf((await page.getTextContent()).items));
+  }
+  return lines;
+}
 // PDF, fotoğraf ya da Excel → kayıt listesi satırları (yapay zeka okur)
 export async function readEntryFile(file) {
   if (isSheet(file)) {
@@ -54,6 +66,14 @@ export async function readEntryFile(file) {
   }
   const kind = await kindOf(file);
   if (kind === "pdf") {
+    // Yazılı PDF: yazı burada çıkarılır, parça parça (aynı anda 4) okunur; taranmış (yazısız) PDF eskisi gibi tek seferde gider
+    const lines = await pdfLines(file).catch(() => []);
+    if (lines.length >= 15) {
+      const parts = chunkLines(lines);
+      const out = [];
+      for (let i = 0; i < parts.length; i += 4) out.push(...(await Promise.all(parts.slice(i, i + 4).map((text) => askEntries({ text })))).flat());
+      return cleanEntries(out);
+    }
     if (file.size > MAX) throw new Error("PDF 4 MB'tan büyük. Liste sayfalarını ayrı PDF yap ya da fotoğrafını yükle.");
     return askEntries({ mimeType: "application/pdf", data: await toBase64(file) });
   }
