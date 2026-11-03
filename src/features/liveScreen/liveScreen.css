@@ -1044,12 +1044,12 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-topr { position: static; order: 0; }
 }
 /* Senaryo 1 videolu (yayin-tasarim/senaryo/1-videolu.png): altta bulanık bant, dört blok yan yana */
-.lv-side.lv-band { top: auto; right: 0; bottom: 0; left: 0; width: auto; height: auto; flex-direction: row; align-items: flex-start; gap: 2.5vw; padding: 2.2em clamp(16px, 2.5vw, 44px) calc(1.6em + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(6, 22, 43, 0), rgba(6, 22, 43, 0.55) 22%, rgba(6, 22, 43, 0.78)); mask-image: linear-gradient(0deg, #000 78%, transparent); -webkit-mask-image: linear-gradient(0deg, #000 78%, transparent); }
+.lv-side.lv-band { top: auto; right: 0; bottom: 0; left: 0; width: auto; height: auto; flex-direction: row; align-items: flex-start; gap: 2.5vw; padding: 2.2em clamp(16px, 2.5vw, 44px) calc(1.6em + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(6, 22, 43, 0.5), rgba(6, 22, 43, 0.82) 30%); mask-image: none; -webkit-mask-image: none; }
 .lv-band > div { min-width: 0; }
-.lv-band .lv-bclock { flex: 0 0 25%; }
+.lv-band .lv-bclock { flex: 0 0 21%; }
 .lv-band .lv-bprog { flex: 1 1 0; }
-.lv-band .lv-bcrs { flex: 0 0 22%; }
-.lv-band .lv-bwnd { flex: 0 0 19%; }
+.lv-band .lv-bcrs { flex: 0 0 23%; }
+.lv-band .lv-bwnd { flex: 0 0 30%; }
 .lv-band .lv-sbig { font-size: clamp(48px, 6.4vw, 118px); line-height: 0.95; }
 .lv-band .lv-slprog { width: 100%; font-size: 0.72em; margin-top: 0.3em; }
 .lv-band .lv-route { display: flex; align-items: center; margin-top: 0.5em; }
@@ -1080,7 +1080,7 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-nclock .lv-sfl b { font-size: 1.2em; }
 .lv-nclock .lv-sfl small { font-size: 0.85em; }
 .lv-one { grid-area: one; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; text-align: right; min-width: 0; }
-.lv-oneb { max-width: 100%; animation: lv-slidein 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.lv-oneb { width: 100%; animation: lv-slidein 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 @keyframes lv-slidein { from { opacity: 0; transform: translateX(1.5em); } to { opacity: 1; transform: none; } }
 .lv-oneb small { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.95em; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
 .lv-oneb b { display: flex; align-items: center; justify-content: flex-end; gap: 0.2em; margin-top: 0.2em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(40px, 4.8vw, 96px); font-weight: 700; line-height: 1.05; overflow-wrap: anywhere; }
@@ -1123,3 +1123,24 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-topr2 { position: static; order: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .lv-oneb { animation: none; } }
+/* Ortak rüzgâr bloğu (Seyhun 2026-11-03): ortalı ok, knot + sağanak, yön, kaynak; altında ortak saatlik tablo */
+.lv-wn { display: flex; align-items: center; gap: 0.8em; margin-top: 0.5em; }
+.lv-wna { width: 3.4em; height: 3.4em; flex: none; }
+.lv-wn.big .lv-wna { width: 4.6em; height: 4.6em; }
+.lv-wnt { min-width: 0; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-wnt b { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 0.3em; font-size: clamp(34px, 3.2vw, 64px); font-weight: 700; line-height: 1; }
+.lv-wn.big .lv-wnt b { font-size: clamp(44px, 4.4vw, 90px); }
+.lv-wnt b em { font-size: 0.4em; font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.65); }
+.lv-wnt b i { font-size: 0.38em; font-style: normal; font-weight: 700; color: #ffd23f; }
+.lv-wnt span { display: block; margin-top: 0.25em; font-size: 1.05em; font-weight: 600; letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.7); white-space: nowrap; }
+.lv-wh { margin-top: 1em; max-width: 100%; }
+.lv-one .lv-wn { justify-content: flex-end; text-align: left; }
+.lv-one .lv-wh { margin-top: 0.4em; width: min(100%, 46em); }
+.lv-band .lv-wh { margin-top: 0.6em; }
+/* Parkur her yerde sahneyle (Seyhun 2026-11-03 "sadece sayılar yazıyor; parkur animasyonumuzu kullanmamız lazım") */
+.lv-band .lv-bcrs .lv-sceneb { flex: none; margin-top: 0.3em; }
+.lv-band .lv-bcrs .lv-sceneb svg { width: 100%; height: auto; max-height: 11em; }
+.lv-one .lv-sceneb { width: min(100%, 58em); flex: none; margin-top: 0.3em; }
+.lv-one .lv-sceneb svg { width: 100%; height: auto; max-height: 50vh; }
+.lv-band2 .lv-one .lv-sceneb svg { max-height: 15em; }
+.lv-band2 .lv-one .lv-wh { zoom: 0.9; }
