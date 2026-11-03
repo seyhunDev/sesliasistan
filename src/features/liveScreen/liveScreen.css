@@ -1389,3 +1389,7 @@ button.gr-card { cursor: pointer; }
 }
 .gr-name > .gr-live { display: inline-flex; margin-top: 0; letter-spacing: 0.16em; color: #fff; }
 .gr-pg.w li { grid-template-columns: minmax(0, 1fr) auto; }
+/* Tam liste pencereleri (genel sıralama, yarış sıralaması, yarışlar) ortada değil, üstten sabit mesafede başlar: az tekne olunca
+   pencere kısalır ama Kapat düğmesi yerinde kalır (Seyhun 2026-11-03 15:55) */
+.lv-pop { align-items: flex-start; padding-top: max(6vh, calc(16px + env(safe-area-inset-top))); }
+.lv-pop > .lv-full { max-height: calc(100vh - 12vh); }
