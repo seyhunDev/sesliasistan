@@ -3,6 +3,7 @@
 // Sunucu /api/cams, sayfa src/features/cams, asistan isler/kamera.js.
 
 export const CAMS_RADIUS = 100; // km; Dikili'nin kendisinde kamera yok, Ayvalık, Bergama, Midilli, Foça, İzmir bu çemberde
+export const GEO_KM = 30; // km; Yayın › Bölgede ara: YouTube konumlu canlı yayınlar bu çemberde
 export const CAMS_FIRST = 6; // büyük kartın altında ilk görünen; kalanı "Daha fazla"
 
 // Hazır yerler (yer penceresi ve sesli komut). İlki varsayılan (konum izni yoksa).

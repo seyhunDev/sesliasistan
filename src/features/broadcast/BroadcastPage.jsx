@@ -16,6 +16,7 @@ import { raceDays } from "@/features/athletes/raceWeather";
 import { addCourseObs, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
+import { NearCams } from "./NearCams";
 import { audio, chooseDur, ownHere, raceCancel, raceFinish, raceStart, raceVoid, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { ResetSheet } from "@/features/raceMedia/ResetSheet";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
@@ -455,10 +456,10 @@ export function BroadcastPage({ orgId, id }) {
       toast("Kaydedilemedi. İnterneti kontrol et.");
     }
   };
-  const addSrc = (k, url = "") => {
+  const addSrc = (k, url = "", name = "") => {
     const u = String(url || "").trim();
     if (u && !ytEmbed(u)) return toast("Bağlantı tanınmadı: YouTube canlı yayın ya da kanal bağlantısı olmalı.");
-    const l = addSource(srcList, k).map((x, i, a) => (i === a.length - 1 && u ? { ...x, url: u } : x));
+    const l = addSource(srcList, k).map((x, i, a) => (i === a.length - 1 && u ? { ...x, url: u, ...(name ? { name: String(name).slice(0, 30) } : {}) } : x));
     setAddOpen(false);
     setAddUrl("");
     setSel({ kind: "src", src: l.at(-1).id });
@@ -1561,6 +1562,7 @@ export function BroadcastPage({ orgId, id }) {
           <button type="button" onClick={() => (setAddOpen(false), setHowOpen(true))} className="mt-2.5 text-[0.875rem] font-semibold text-[#7fb6ff]">
             Nasıl bağlanır
           </button>
+          {addOpen && <NearCams race={race} onPick={(u, n) => addSrc("camera", u, n)} />}
           <div className="mt-3 flex gap-2">
             <Button variant="secondary" className="flex-1" onClick={() => setAddOpen(false)}>
               Vazgeç
