@@ -1,8 +1,8 @@
-Commit: 67d9e1e · Sonuç PDF'i sütun başlıklarından yapay zekasız okunur (#1087)
-Zaman: 2026-11-03-1934 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41673748742
+Commit: fd5e484 · Canlı ekran: yarış adı sade, geri düğmesi sol üstte (#1093)
+Zaman: 2026-11-03-2018 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41680800917
 
-TAM TEST · 03.11.2026 19:24:27
+TAM TEST · 03.11.2026 20:07:33
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1439/1440 geçti · 1 kalan · 580 sn
+SONUÇ: 1439/1440 geçti · 1 kalan · 653 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4407 test”
+      ✗ “4409 test”
           beklenen: hepsi geçer
-          olan:     4394/4407 geçti
+          olan:     4396/4409 geçti
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
       ✗ “parkur kartları: varsayılan seçili, yeni kart, Başlat rotayı yazar, ekranda sahne” → [true,true,true,false,true] (beklenen: Seyhun 2026-11-02: her yarışın kendi parkur kartı olabilir; şimdiki varsayılan (A) ve seçili; Yayın › Parkur'da Yeni kart, rota yazma, seçme, silme; Başlat seçili kartın rotasını o yarışa yazar; canlı ekran süren yarışın rotasını, yoksa seçili kartı animasyonlu sahnede gösterir; /canli ve Yayın ⋯ menüsünde örnek yarış düğmesi)
       ✗ “canlı ekran yayın tasarımı: program, beklenen rüzgâr, yayın yazısı” → [true,true,true,false,true,true] (beklenen: Seyhun 2026-11-02 (tasarim7 onayı, 'profesyonel yelken yayını gibi yazı'): yarış öncesi video yokken ortada büyük geri sayım, ilk yarış + grup, beklenen rüzgâr (tahminin start saati), altta program kartları (1. yarış Mavi grup…); yarışta ve videolu beklemede sağ üstte program etiketleri (Bitti · Canlı · saat); gün sonu 'Gün bitti · N yarış' + yarış kartları + genel, şeritte yarının ilk startı ve beklenen rüzgârı (/api/canli forecastNext); Barlow / Barlow Condensed; arka foto 18px bulanık)
