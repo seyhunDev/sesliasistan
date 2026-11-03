@@ -1669,19 +1669,49 @@ function WaitHero({ data, today, cs, prog, now, fin = null }) {
     // Senaryo 1 (Seyhun 2026-11-03 onay, yayin-tasarim/senaryo/1-videosuz.png): yarış günü, start'a 1 saatten fazla. Üç sütun: solda
     // geri sayım + sıradaki yarış + program; ortada parkur büyük (altında eksen, start hattı, ölçüm saati); sağda şimdiki rüzgâr ve gün
     // boyunca saat saat tahmin. Olmayan sütun hiç çizilmez, kalanlar genişler ("Yok" kutusu olmaz). Sağ üstte gün ve yer.
-    const cols = 1 + (svg ? 1 : 0) + (hasWind ? 1 : 0);
+    // Örnek I (Seyhun 2026-11-03 "parkur sürekli gösteriliyor, istemiyorum; sağda rüzgâr, parkur, program ve yarış animasyonu sırayla
+    // yandan kaysın; yarışın adı, yarış günü, tarih ve yer birlikte"): solda sabit başlık + durum, sağda tek büyük alan kayarak değişir
+    const items = [
+      hasWind ? { k: "wind", ms: 10000, node: <WindCol data={data} now={now} scale={1.35} /> } : null,
+      svg ? { k: "course", ms: SCENE_T * 1000 + 2000, node: <CourseCol data={data} route={route} svg={svg} /> } : null,
+      hasProg
+        ? {
+            k: "prog",
+            ms: 10000,
+            node: (
+              <div className="lv-hprog">
+                <div className="lv-hlab">Program</div>
+                {progBody}
+              </div>
+            ),
+          }
+        : null,
+      !none
+        ? {
+            k: "boats",
+            ms: 20000,
+            node: (
+              <div className="lv-hboats">
+                <div className="lv-hlab">Start animasyonu</div>
+                <BoatLive grp={first?.grp || ""} tag="ÖRNEK" />
+              </div>
+            ),
+          }
+        : null,
+    ].filter(Boolean);
     return (
-      <div className="lv-hold lv-hold3" data-cols={cols}>
-        <div className="lv-topr lv-topr2">
+      <div className="lv-hold lv-hold4">
+        <div className="lv-hst">
+          <div className="lv-htitle">
+            <b>{r.name || "Yarış"}</b>
+            <span>{[none ? "" : "Yarış günü", dayText(today) ? `${wdText(today)} ${dayText(today)}` : "", r.place].filter(Boolean).join(" · ")}</span>
+          </div>
           {orangeUp(plan, today) ? (
             <span className="lv-opill">
               <i aria-hidden="true" />
               Start öncesi
             </span>
           ) : null}
-          <span>{[none ? "" : "Yarış günü", dayText(today) ? `${wdText(today)} ${dayText(today)}` : "", r.place].filter(Boolean).join(" · ")}</span>
-        </div>
-        <div className="lv-hst">
           {ap || apDown ? <ApBlock data={data} cs={cs} first={first} apDown={apDown} /> : vd ? <VoidBlock data={data} last={vd} first={first} /> : fin ? <FinBlock data={data} sel={fin} first={first} /> : null}
           {plain ? <div className="lv-kick">{kick}</div> : null}
           {!none && plain ? <div className="lv-big">{cs.rem ? cs.value : "—:—"}</div> : null}
@@ -1701,15 +1731,8 @@ function WaitHero({ data, today, cs, prog, now, fin = null }) {
               </div>
             </div>
           ) : null}
-          {hasProg ? (
-            <div className="lv-hprog">
-              <div className="lv-hlab">Program</div>
-              {progBody}
-            </div>
-          ) : null}
         </div>
-        {svg ? <CourseCol data={data} route={route} svg={svg} /> : null}
-        {hasWind ? <WindCol data={data} now={now} /> : null}
+        <Slides items={items} />
       </div>
     );
   }
@@ -1792,7 +1815,7 @@ function CourseCol({ data, route, svg }) {
 }
 // Rüzgâr sütunu: şimdiki rüzgâr (ölçüm yoksa start saatinin tahmini, "tahmin" yazar), altında gün boyunca saat saat: geçen saatler
 // ölçülen (istasyon ya da manuel), gelecek saatler tahmin; start saati vurgulu
-function WindCol({ data, now }) {
+function WindCol({ data, now, scale = 1.05 }) {
   const c = curWind(data, null, true, now);
   const ew = expWind(data.forecast, data.plan?.at || "");
   const w = c || ew;
@@ -1800,7 +1823,7 @@ function WindCol({ data, now }) {
     <div className="lv-hwnd">
       <div className="lv-hlab">Rüzgâr</div>
       <WindNow w={w} by={c ? c.by : "Start'ta tahmin"} cls="big" />
-      <WindHours data={data} now={now} scale={1.05} />
+      <WindHours data={data} now={now} scale={scale} />
     </div>
   );
 }
@@ -1876,49 +1899,41 @@ function SidePanel({ data, today, cs, prog, now, entry, fin = null }) {
           </div>
         ) : null}
       </div>
-      {hasProg ? (
-        <div className="lv-bprog">
-          <div className="lv-hlab">Program</div>
-          <div className="lv-slprog">
-            {progRows.map((x) => (
-              <div key={x.key} className={x.state}>
-                <i>{x.at || ""}</i>
-                <s />
-                <b>
-                  {x.grp ? <Dot g={x.grp} /> : null}
-                  {[x.name, x.grp ? `${x.grp} grup` : ""].filter(Boolean).join(" · ")}
-                </b>
-                {x.state === "next" ? <em className="lv-pill">Sıradaki</em> : <span />}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      {svg ? (
-        <div className="lv-bcrs">
-          <div className="lv-hlab">{`Parkur · ${CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}${rt.length ? ` · ${routeText(route)}` : ""}`}</div>
-          <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: svg }} />
-          <div className="lv-cinfo">
-            <div>
-              <small>Eksen</small>
-              <b>{axisText(data)}</b>
+      <Slides
+        items={[
+          ww ? { k: "wind", ms: 10000, node: (
+            <div className="lv-bwnd">
+              <div className="lv-hlab">Rüzgâr</div>
+              <WindNow w={ww} by={c ? c.by : "Start'ta tahmin"} />
+              <WindHours data={data} now={now} scale={0.72} />
             </div>
-            {bias?.end ? (
-              <div>
-                <small>Start hattı</small>
-                <b>{`${bias.end === "pin" ? "Pin" : "Komite"} ${Math.round(bias.deg)}°`}</b>
+          ) } : null,
+          hasProg ? { k: "prog", ms: 10000, node: (
+            <div className="lv-bprog">
+              <div className="lv-hlab">Program</div>
+              <div className="lv-slprog">
+                {progRows.map((x) => (
+                  <div key={x.key} className={x.state}>
+                    <i>{x.at || ""}</i>
+                    <s />
+                    <b>
+                      {x.grp ? <Dot g={x.grp} /> : null}
+                      {[x.name, x.grp ? `${x.grp} grup` : ""].filter(Boolean).join(" · ")}
+                    </b>
+                    {x.state === "next" ? <em className="lv-pill">Sıradaki</em> : <span />}
+                  </div>
+                ))}
               </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-      {ww ? (
-        <div className="lv-bwnd">
-          <div className="lv-hlab">Rüzgâr</div>
-          <WindNow w={ww} by={c ? c.by : "Start'ta tahmin"} />
-          <WindHours data={data} now={now} scale={0.85} />
-        </div>
-      ) : null}
+            </div>
+          ) } : null,
+          plain ? { k: "boats", ms: 20000, node: (
+            <div className="lv-hboats">
+              <div className="lv-hlab">Start animasyonu</div>
+              <BoatLive grp={first?.grp || ""} tag="ÖRNEK" />
+            </div>
+          ) } : null,
+        ].filter(Boolean)}
+      />
     </aside>
   );
 }
@@ -2124,6 +2139,33 @@ function Rotator({ items }) {
           </b>
         )}
         {it.sub ? <span>{it.sub}</span> : null}
+      </div>
+      {n > 1 ? (
+        <div className="lv-dots" aria-hidden="true">
+          {items.map((x, j) => (
+            <i key={x.k} className={j === i % n ? "on" : ""} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+// Yandan kayan tek alan (örnek I): her içerik kendi süresi kadar kalır, sonra sağdan gelen bir sonrakine yer verir; altta noktalar
+function Slides({ items }) {
+  const [i, setI] = useState(0);
+  const n = items.length;
+  const cur = n ? items[i % n] : null;
+  const ms = cur?.ms || ROTATE_MS;
+  useEffect(() => {
+    if (n < 2) return undefined;
+    const t = setTimeout(() => setI((v) => v + 1), ms);
+    return () => clearTimeout(t);
+  }, [n, i, ms]);
+  if (!n) return null;
+  return (
+    <div className="lv-slides">
+      <div key={`${cur.k}${i}`} className="lv-slide">
+        {cur.node}
       </div>
       {n > 1 ? (
         <div className="lv-dots" aria-hidden="true">
@@ -2991,6 +3033,7 @@ export function LiveScreen({ id, y = "" }) {
             ‹
           </Link>
           {data.race?.name ? <span className="lv-rname">{data.race.name}</span> : null}
+          {side && pre && !near ? <span className="lv-rsub">{["Yarış günü", dayText(today) ? `${wdText(today)} ${dayText(today)}` : "", data.race?.place].filter(Boolean).join(" · ")}</span> : null}
         </div>
         {ongoing && phase === "race" ? <LiveBadge sel={sel} data={data} /> : null}
         {near && !racing ? <TopRight data={data} today={today} /> : null}
