@@ -1088,12 +1088,14 @@ function WindNow({ w, by = "", cls = "" }) {
     </div>
   );
 }
-function WindHours({ data, now, scale = 1, cls = "" }) {
+// ahead: yalnız şu saatten sonrası, ölçüm yok (Seyhun 2026-11-03 17:34 "önümüzdeki saatler; geçmişi göstermeye gerek yok")
+function WindHours({ data, now, scale = 1, cls = "", ahead = false }) {
   const fc = data.forecast;
-  const rows = (fc?.rows || []).filter((r) => r.wind != null);
+  const h0 = new Date(now + 3 * 3600e3).getUTCHours();
+  const rows = (fc?.rows || []).filter((r) => r.wind != null && (!ahead || +r.hh >= h0));
   if (rows.length < 2) return null;
   const at = data.plan?.at || "";
-  return <HourTable className={`lv-wh ${cls}`} rows={rows} date={trDay(now)} nowMs={now} obs={fc?.obs || []} station={fc?.station ? { name: fc.station } : null} marks={at ? [{ at, label: "Start" }] : []} scale={scale} />;
+  return <HourTable className={`lv-wh ${cls}`} rows={rows} date={trDay(now)} nowMs={now} obs={ahead ? [] : fc?.obs || []} station={!ahead && fc?.station ? { name: fc.station } : null} marks={at ? [{ at, label: "Start" }] : []} scale={scale} />;
 }
 // Üstte tek soluk satır: yarış adı · yer · tarih, yanında hayalet düğmeler (geri ayrı, sol köşede)
 // Yarışın adı ve şu an ne olduğu alt şeridin hemen üstünde, şeffaf zeminde, hep orada (Seyhun 2026-11-02 "yukarıdaki yazıyı kaldıralım,
@@ -3249,34 +3251,14 @@ function GCourse({ data, sel, racing }) {
     </GCard>
   );
 }
-// Rota kartı (yarış öncesi akışta parkurun yerine): Start, sırayla şamandıralar, Finiş
-function GRoute({ route }) {
-  const r = cleanRoute(route);
-  if (!r.length) return null;
-  return (
-    <GCard cls="gr-side" head="Rota" tone="y" sub={`${r.filter((x) => x !== "F").length} dönüş`}>
-      <ol className="gr-rot">
-        <li>
-          <i className="s">S</i>
-          <span>Start</span>
-        </li>
-        {r.map((m, i) => (
-          <li key={`${m}${i}`}>
-            <i className={m === "F" ? "f" : ""}>{markLabel(m)}</i>
-            <span>{m === "F" ? "Finiş" : markName(m)}</span>
-          </li>
-        ))}
-      </ol>
-    </GCard>
-  );
-}
 // Beklenen rüzgâr (yarış öncesi akışın ilk adımı): rüzgâr kartının yanında açılır; ortak saatlik tablo, geçmiş saatler soluk
 const hasHours = (data) => (data.forecast?.rows || []).filter((r) => r.wind != null).length >= 2;
+// Rüzgâr kartından yana açılan uzantı (ayrı başlık yok): önümüzdeki saatlerin beklenen rüzgârı, ortak saatlik tablo
 function GHours({ data, now }) {
   return (
-    <GCard cls="gr-whc" head="Beklenen rüzgâr" tone="t" tag={data.forecast?.station ? `Gerçekleşen · ${data.forecast.station}` : "Saat saat"}>
-      <WindHours data={data} now={now} scale={0.82} />
-    </GCard>
+    <div className="gr-card gr-whc" aria-label="Beklenen rüzgâr">
+      <WindHours data={data} now={now} scale={0.82} ahead />
+    </div>
   );
 }
 function GEarly({ data, rid }) {
@@ -3382,16 +3364,16 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     else top = { cls: orange ? "o" : "", orange, bd: "Start", lab: orange ? `Start öncesi · ${kick}` : kick, at: first?.at || "", tm: cs.rem ? cs.value : "—:—", who: gWho(first) };
   }
   // sağ kart: parkur elle açıldıysa o (Yayın › Ekranda göster › Parkur), yoksa duruma göre; bekleme ve ara verirken program
-  // Yarış öncesi akış (Seyhun 2026-11-03 17:10): beklenen rüzgâr (rüzgârın yanında açılır) → parkur → rota → program; Yayın'da Otomatik / Elle
+  // Yarış öncesi akış (Seyhun 2026-11-03 17:10, rota 17:34'te çıktı: parkur zaten rotayı anlatır): beklenen rüzgâr (rüzgârın yanında açılır) → parkur → program; Yayın'da Otomatik / Elle
   let rk = "";
   if (sh.one === "course" && courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"))) right = <GCourse data={data} sel={sel} racing={mode === "race"} />;
   else if (preOn) {
     const route = sceneRoute(data, null, true, "wait");
     const crs = !!courseSvg(data, route);
-    const have = [hasHours(data) ? "wind" : "", crs ? "course" : "", cleanRoute(route).length ? "route" : "", prog.length ? "prog" : ""].filter(Boolean);
+    const have = [hasHours(data) ? "wind" : "", crs ? "course" : "", prog.length ? "prog" : ""].filter(Boolean);
     rk = preStep({ show: sh, now, have }) || "prog";
     if (rk === "wind") hours = <GHours data={data} now={now} />;
-    right = rk === "route" ? <GRoute route={route} /> : (rk === "course" || rk === "wind") && crs ? <GCourse data={data} sel={null} racing={false} /> : <GProg prog={prog} />;
+    right = (rk === "course" || rk === "wind") && crs ? <GCourse data={data} sel={null} racing={false} /> : <GProg prog={prog} />;
   } else if (!right && ["wait", "between", "ap"].includes(mode) && !vd) right = <GProg prog={prog} />;
   return (
     <div className="gr">

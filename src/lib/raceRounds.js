@@ -339,10 +339,10 @@ export function cleanScreen(s) {
 export const SHOW_ONE = ["course", "wind", "prog"];
 // side: videolu yarış öncesi ekranda soldaki bilgi şeridi (Seyhun 2026-11-02 "istersem kaldırabilmeliyim"), varsayılan açık
 // ov: yarışta (start'tan sonra) sağdaki genel sıralama (Seyhun 2026-11-02 "göster ya da kaldır yapabilmeliyim"), varsayılan açık
-// Yarış öncesi gösterim akışı (Seyhun 2026-11-03 17:10 sol-alt onayı): beklenen rüzgâr (rüzgârın yanında açılır) → parkur → rota → program.
+// Yarış öncesi gösterim akışı (Seyhun 2026-11-03 17:10 sol-alt onayı; rota 17:34'te çıktı): beklenen rüzgâr (rüzgârın yanında açılır) → parkur → program.
 // Yayın'da Otomatik (sec saniyede bir sıradaki, döner) ya da Elle (hold: ekrandaki adımın adı); pre: açık adımlar
-export const PRE_STEPS = ["wind", "course", "route", "prog"];
-export const PRE_NAME = { wind: "Beklenen rüzgâr", course: "Parkur", route: "Rota", prog: "Program" };
+export const PRE_STEPS = ["wind", "course", "prog"];
+export const PRE_NAME = { wind: "Beklenen rüzgâr", course: "Parkur", prog: "Program" };
 export const PRE_SECS = [8, 12, 20, 30];
 export const cleanCourseShow = (c) => ({
   auto: c?.auto !== false,
