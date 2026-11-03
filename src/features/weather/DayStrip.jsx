@@ -24,7 +24,8 @@ export function DayStrip({ days, sel, onSel, today }) {
         const on = d.date === sel;
         const s = sky(d.code);
         const dt = new Date(`${d.date}T12:00:00`);
-        const name = d.date === today ? "Bugün" : dt.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
+        const wd = dt.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
+        const name = d.date === today ? "Bugün" : d.date < today ? `${wd} ${dt.getDate()}` : wd;
         return (
           <button
             key={d.date}

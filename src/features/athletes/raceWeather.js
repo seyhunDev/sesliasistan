@@ -33,7 +33,7 @@ export function raceDays(r) {
 
 // Yarış havasında gezilebilen günler (Seyhun 2026-10-31 "bir gün önce ne olmuş"): yarıştan BEFORE gün önce başlar, yarışın son
 // gününe kadar; 90 günden eskisi yok (tahmin ufkunun ötesindeki gün "Tahmin … sonra çıkar" der). Grafik kaydırılarak ya da gün listesinden seçilir.
-export const WX_BEFORE = 3;
+export const WX_BEFORE = 5; // Seyhun 2026-11-03: önceki 5 gün (tahmin ve gerçekleşen), kapalı başlar, günler listesinden / kaydırarak
 export function wxDays(r, today) {
   const days = raceDays(r);
   if (!days.length) return [];

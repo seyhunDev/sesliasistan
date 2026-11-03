@@ -30,9 +30,11 @@ export function WeatherTop({ w, refresh }) {
   const today = todayStr();
   const all = [{ date: w.today?.date, code: w.today?.code, min: w.today?.min, max: w.today?.max, wind: w.today?.wind, gust: w.today?.gust, mm: w.today?.mm }, ...(w.days || [])].filter((d) => d.date && d.date >= today);
   const [sel, setSel] = useState(all[0]?.date || today);
+  const [back, setBack] = useState(false); // önceki 5 gün açık mı (kapalı başlar)
+  const past = w.past || [];
   const [mapAt, setMapAt] = useState(null); // tablodan dokunulan saat → harita yağış modunda o saatte açılır
   const rows = dayHours(w, sel) || [];
-  const info = all.find((d) => d.date === sel) || all[0];
+  const info = [...past, ...all].find((d) => d.date === sel) || all[0];
   const isToday = sel === all[0]?.date;
   const n = isToday ? nowOf(w) : null;
   const top = rows.length ? rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]) : null;
@@ -88,7 +90,14 @@ export function WeatherTop({ w, refresh }) {
           </div>
         )}
         <div className="mt-4">
-          <DayStrip days={all.slice(0, 5)} sel={sel} onSel={setSel} today={today} />
+          {past.length > 0 && (
+            <div className="mb-1.5 flex justify-end">
+              <button type="button" data-press aria-pressed={back} onClick={() => (setBack((b) => !b), setSel(back ? all[0]?.date || today : past[past.length - 1].date))} className="h-7 rounded-full border border-white/15 px-3 text-[0.75rem] font-semibold text-white/80">
+                {back ? "Önümüzdeki günler ›" : "‹ Önceki 5 gün"}
+              </button>
+            </div>
+          )}
+          <DayStrip days={back ? past : all.slice(0, 5)} sel={sel} onSel={setSel} today={today} />
         </div>
       </section>
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
