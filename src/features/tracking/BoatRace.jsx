@@ -82,7 +82,7 @@ function Pin({ x, y }) {
 }
 
 // set: cleanSet; grp: gösterilen grup ("" = hepsi); loop: bitince baştan
-// bare: yayının içinde (canlı ekranın kendi rüzgâr ve sayaç şeridi var): rüzgâr, şamandıra yazısı ve alttaki sayaç yerine üstte "REPLAY" rozeti
+// bare: yayının içinde (canlı ekranın kendi rüzgâr ve sayaç şeridi var): rüzgâr, şamandıra yazısı ve alttaki sayaç yerine üstte "CANLI KONUM" rozeti
 export function BoatRace({ set, grp = "", loop = true, bare = false }) {
   const box = useRef(null);
   const [size, setSize] = useState(() => sizeOf(0, 0));
@@ -167,8 +167,8 @@ export function BoatRace({ set, grp = "", loop = true, bare = false }) {
         ))}
       </svg>
       {bare ? (
-        <div className="br-replay">
-          <b>REPLAY</b>
+        <div className="br-live">
+          <b>CANLI KONUM</b>
           <span>{`${ck.label === "SÜRE" ? "START +" : "START'A "}${ck.n}`}</span>
         </div>
       ) : (

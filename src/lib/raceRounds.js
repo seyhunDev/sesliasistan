@@ -325,7 +325,7 @@ export function whoOf(map, sail) {
 
 // ---- Ekranda oynayan ----
 export function cleanScreen(s) {
-  // boats: tekne replay'i (Seyhun 2026-11-03; features/tracking/BoatReplay, ekrandaki yarışın grubu, döngü)
+  // boats: canlı tekne konumları (Seyhun 2026-11-03; features/tracking/BoatLive, ekrandaki yarışın grubu, döngü)
   const kind = ["live", "drone", "src", "rec", "boats"].includes(s?.kind) ? s.kind : "";
   // pause: yayına ara verildi (Seyhun 2026-11-02): video ekranda kalır, önünde "Yayına ara verildi" yazısı
   // caption: ekranın altındaki yazı (Seyhun 2026-11-02 "videonun ne olduğunu yazabileceğimiz bir alan, altta olimpiyat yayını gibi")
