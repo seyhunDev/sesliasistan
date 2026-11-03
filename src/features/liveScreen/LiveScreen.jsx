@@ -1445,7 +1445,7 @@ function NoneHero({ data, today, now }) {
 // Senaryo 3 tehir (Seyhun 2026-11-03 onay, yayin-tasarim/senaryo/3-videosuz.png, 3-videolu.png): AP bayraklı "Tehir" etiketi; tehir süresi
 // belliyse "Tehir inişine" geri sayım, altında sebep · Karada ve bekleyen yarış; süre belli değilse sayaç yerine büyük sebep ve
 // "Karada · uyarı işareti bekleniyor". İniş ve uyarı işareti saati yazılmaz. Tehir inince "Tehir indi" + "Start yakında". Videosuz ve bant aynı
-function ApBlock({ data, cs, first, apDown = false, big = "lv-big" }) {
+function ApBlock({ data, cs, first, apDown = false, big = "lv-big", seq = false }) {
   const plan = data.plan;
   const counting = !apDown && cs.label === "Tehir inişine";
   const why = plan.ap?.why || "Start ertelendi";
@@ -1455,7 +1455,7 @@ function ApBlock({ data, cs, first, apDown = false, big = "lv-big" }) {
     <>
       <div className="lv-apk">
         <Flag kind="AP" />
-        {apDown ? "Tehir indi" : "Tehir"}
+        {apDown ? "Tehir indi" : seq ? "Tehir · dizi durdu" : "Tehir"}
       </div>
       {counting ? (
         <>
@@ -1470,7 +1470,7 @@ function ApBlock({ data, cs, first, apDown = false, big = "lv-big" }) {
         <>
           <div className="lv-bigt">{apDown ? "Start yakında" : why}</div>
           <div className="lv-why w">
-            {apDown ? "Uyarı işareti bekleniyor" : [land, "Uyarı işareti bekleniyor"].filter(Boolean).join(" · ")}
+            {apDown ? "Uyarı işareti bekleniyor" : seq ? "Start dizisi durduruldu" : [land, "Uyarı işareti bekleniyor"].filter(Boolean).join(" · ")}
             {first ? <small>{[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}</small> : null}
           </div>
         </>
@@ -1754,6 +1754,136 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
 // turuncu bayrak ya da start dizisi. Sayaç, sıradaki yarış ve bayraklar sabit; sağda TEK bilgi paneli 8 sn'de bir kayarak değişir
 // (Start hattı → Rüzgâr → Parkur → Sıradaki), altında noktalar; "hepsini aynı anda göstermemize gerek yok". Son dakikada panel kapanır,
 // yalnız sayaç ve bayraklar kalır. Altta 5·4·1·0 çubuğu. Videoda hepsi alt bantta. Olmayan bilgi panele girmez. ----
+// ---- Start geri sayımı (Seyhun 2026-11-03 onay, yayin-tasarim/senaryo/2e-*): ilk starta geri sayımdan ayrı; önemli olan süre. Büyük sayaç,
+// altında 5·4·1·0 şeridi (süreye orantılı; her noktada çekilen/inen bayrak, geçilenler parlak), sağda sabit rüzgâr ve start hattı. Hiçbir şey dönmez.
+// Dizide tehir: AP + sebep, şerit gri ve durduğu yerde kırmızı nokta. Genel geri: 1. tekrar bayrağı, "Yeniden start", şerit boş. Videoda alt bantta.
+function SeqStrip({ dur = 300, rem = null, entry = null, stop = false }) {
+  const steps = seqSteps(dur);
+  const top = (steps[0]?.m || 5) * 60;
+  const pos = (s) => Math.min(100, Math.max(0, ((top - s) / top) * 100));
+  const prep = entry?.prep || "";
+  const cf = { kind: "cls", cls: entry?.cls || "Sınıf", grp: entry?.grp || "" };
+  const ev = (m, i) => (i === 0 ? [{ ...cf, up: true }] : m === 0 ? [{ ...cf, up: false }] : prep && m === 4 ? [{ kind: prep, up: true }] : prep && m === 1 ? [{ kind: prep, up: false }] : []);
+  const fill = rem == null ? 0 : pos(rem);
+  return (
+    <div className={`lv-strip${stop ? " stop" : ""}`}>
+      <div className="lv-strk">
+        <b style={{ width: `${fill}%` }} />
+      </div>
+      {steps.map((x, i) => {
+        const done = rem != null && rem <= x.m * 60;
+        return (
+          <div key={x.m} className={`lv-spt${done ? " done" : ""}${i === 0 ? " first" : ""}${i === steps.length - 1 ? " last" : ""}`} style={{ left: `${pos(x.m * 60)}%` }}>
+            <div className="lv-sevs">
+              {ev(x.m, i).map((f) => (
+                <span key={`${f.kind}${f.up}`} className="lv-sev">
+                  <Flag kind={f.kind} cls={f.cls} grp={f.grp} />
+                  <i>{f.up ? "↑" : "↓"}</i>
+                </span>
+              ))}
+            </div>
+            <s />
+            <small>
+              {x.m}
+              <span>{` · ${x.name}`}</span>
+            </small>
+          </div>
+        );
+      })}
+      {rem != null ? <em className="lv-sknob" style={{ left: `${fill}%` }} /> : null}
+    </div>
+  );
+}
+function SeqSide({ data, now }) {
+  const c = curWind(data, null, true, now);
+  const w = c || expWind(data.forecast, data.plan?.at || "");
+  let bias = null;
+  try {
+    bias = lineBias(cleanCourse(data.course || {}));
+  } catch {
+    bias = null;
+  }
+  if (!w && !bias) return null;
+  const sub = bias ? [`Hat ${Math.round(bias.line)}°`, bias.wind != null ? `rüzgâr ${Math.round(bias.wind)}° ${dirShort(bias.wind)}` : ""].filter(Boolean).join(" · ") : "";
+  return (
+    <div className="lv-sqside">
+      {w ? (
+        <div>
+          <small>Rüzgâr</small>
+          <WindNow w={w} by={c ? c.by : "tahmin"} />
+        </div>
+      ) : null}
+      {bias ? (
+        <div className="lv-sqline">
+          <small>Start hattı</small>
+          <b>{bias.end ? `${bias.end === "pin" ? "Pin" : "Komite"} avantajlı ${Math.round(bias.deg)}°` : "Hat dengeli"}</b>
+          <span>{sub}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+function SeqClock({ data, cs, prog, entry, mode, last, big = "lv-big" }) {
+  const first = prog.find((x) => x.state === "next") || prog.find((x) => x.state !== "done") || null;
+  const e = entry?.cls || entry?.grp ? entry : data.plan.order?.[0] || null;
+  const name = first?.name || (last ? raceName(last) : "");
+  const grp = e?.grp || first?.grp || last?.grp || "";
+  const hm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1] || "";
+  const who = name || grp ? (
+    <div className="lv-what">
+      <Dot g={grp} />
+      {[name, grpText(grp)].filter(Boolean).join(" · ")}
+      <small>{[e?.cls || first?.cls, mode === "run" && hm ? `Start ${hm}` : ""].filter(Boolean).join(" · ")}</small>
+    </div>
+  ) : null;
+  if (mode === "ap") return <ApBlock data={data} cs={cs} first={first} big={big} seq />;
+  if (mode === "fs")
+    return (
+      <>
+        <div className="lv-apk">
+          <Flag kind="FS" />
+          {["Genel geri", last?.fin ? hmOf(last.fin) : ""].filter(Boolean).join(" · ")}
+        </div>
+        <div className="lv-bigt">Yeniden start</div>
+        <div className="lv-why w">Uyarı işareti bekleniyor</div>
+        {who}
+      </>
+    );
+  const lastMin = cs.rem != null && cs.rem <= 60;
+  return (
+    <>
+      <div className={`lv-kick${lastMin ? " o" : ""}`}>{lastMin ? "Son dakika" : cs.label}</div>
+      <div className={big}>{cs.value}</div>
+      {who}
+    </>
+  );
+}
+function SeqStripOf({ data, cs, entry, mode }) {
+  if (mode === "ap") return <SeqStrip dur={data.plan.ap?.dur || 300} rem={data.plan.ap?.seq ?? null} entry={entry || data.plan.order?.[0]} stop />;
+  return <SeqStrip dur={data.timer?.dur || 300} rem={mode === "run" ? cs.rem : null} entry={entry || data.plan.order?.[0]} />;
+}
+function SeqHero({ data, cs, prog, now, entry, mode, last }) {
+  return (
+    <div className="lv-hold lv-sq">
+      <div className="lv-sqc">
+        <SeqClock data={data} cs={cs} prog={prog} entry={entry} mode={mode} last={last} />
+      </div>
+      <SeqSide data={data} now={now} />
+      <SeqStripOf data={data} cs={cs} entry={entry} mode={mode} />
+    </div>
+  );
+}
+function SeqBand({ data, cs, prog, now, entry, mode, last }) {
+  return (
+    <aside className="lv-side lv-band lv-sqb">
+      <div className="lv-sqc">
+        <SeqClock data={data} cs={cs} prog={prog} entry={entry} mode={mode} last={last} big="lv-sbig" />
+      </div>
+      <SeqStripOf data={data} cs={cs} entry={entry} mode={mode} />
+      <SeqSide data={data} now={now} />
+    </aside>
+  );
+}
 const ROTATE_MS = 8000;
 function nearItems(data, prog, now, race = null) {
   const crs = cleanCourse(data.course || {});
@@ -2658,12 +2788,19 @@ export function LiveScreen({ id, y = "" }) {
   // Start'tan sonra da aynı düzen (Seyhun 2026-11-03 "geri sayım bittiğinde gösterilen ekran diğerlerinden çok farklı olmasın"): sayaç
   // ileri sayar, sağdaki panel sıralama → parkur → rüzgâr → sıradaki
   const racing = !!(ongoing && phase === "race");
-  const near = isCur && phase !== "summary" && !["ap", "none"].includes(data.plan.status) && !/Yarın/.test(cs.label) && (racing || (!ongoing && (data.timer?.end != null || data.timer?.left != null) && data.timer.mode === "start" && counting));
+  // Start geri sayımı (Seyhun 2026-11-03 şerit onayı): Yayın sayacı start modunda sayarken "run"; dizide tehir "ap" (plan.ap.seq); son start
+  // genel geri ise (30 dk içinde, yeni dizi başlayana kadar) "fs". Hepsi SeqHero / SeqBand
+  const tSeq = (data.timer?.end != null || data.timer?.left != null) && data.timer?.mode === "start" && counting;
+  const lastToday = starts.filter((x) => x.day === today).at(-1) || null;
+  const fsLast = lastToday?.void === "Genel geri çağırma" && (!lastToday.fin || nowMs - Date.parse(lastToday.fin) < 30 * 60e3) ? lastToday : null;
+  const st = data.plan.status;
+  const seqMode = !isCur || phase === "summary" || ongoing ? "" : st === "ap" ? (data.plan.ap?.seq != null ? "ap" : "") : st === "none" || /Yarın/.test(cs.label) ? "" : tSeq ? "run" : fsLast ? "fs" : "";
+  const near = isCur && phase !== "summary" && (!!seqMode || (racing && !["ap", "none"].includes(st) && !/Yarın/.test(cs.label)));
   // start'tan önce (geri sayımda) yok; Yayın › Video › Genel sıralama ya da sesle "geneli kaldır" ile kapanır (Seyhun 2026-11-02)
   const ovOn = phase === "race" && isCur && !!sel && !pre && !near && data.courseShow?.ov !== false;
   // Videolu yarış öncesi (Seyhun 2026-11-02 videolu/1-yaris-oncesi.png, 2-start-oncesi-turuncu.png onay): solda bulanık şeritte bilgiler,
   // turuncu bayrak çekiliyse "Start öncesi"; Yayın › Video › Sol bilgi ile kapanır. Açıkken gösterim kartları ve alt şerit yok
-  const side = isCur && hasVideo && (pre || (ongoing && phase === "race")) && data.courseShow?.side !== false;
+  const side = isCur && hasVideo && (pre || !!seqMode || (ongoing && phase === "race")) && data.courseShow?.side !== false;
   const slide = !(phase === "wait" && !hasVideo) && !side && !near ? slideOn({ data, sel, isCur, open: courseOpen, now: nowMs, phase, pre, prog }) : "";
   const cOn = slide === "course";
   // Yarış öncesi video yokken sade sayfa (Seyhun 2026-11-02 "geri sayım sayfası sade temiz"): ortada sayaç, altta program; şerit yok
@@ -2690,8 +2827,9 @@ export function LiveScreen({ id, y = "" }) {
         {phase === "race" && isCur && !side && (!near || racing) ? <BoatMap boats={data.boats || []} course={data.course} groupOf={groupMap(data.groups?.[today])} grp={entry?.grp || ""} /> : null}
         {/* Yarış sürerken diğer yarışlar çip olarak gösterilmez (Seyhun 2026-11-03: ekrandaki yarış neyse o; sıradaki start alt şeritte) */}
         {(phase === "race" || (phase === "wait" && hasVideo)) && !side && !near && !(ongoing && phase === "race") ? <ProgramChips items={prog} /> : null}
-        {side && near ? <NearBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} racing={racing} sel={sel} id={id} onAll={() => setFull("race")} /> : side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
-        {hero2 ? <StartHero data={data} cs={cs} prog={prog} now={nowMs} entry={entry} racing={racing} sel={sel} id={id} onAll={() => setFull("race")} /> : null}
+        {side && seqMode ? <SeqBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} mode={seqMode} last={fsLast} /> : side && near ? <NearBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} racing={racing} sel={sel} id={id} onAll={() => setFull("race")} /> : side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
+        {hero2 && seqMode ? <SeqHero data={data} cs={cs} prog={prog} now={nowMs} entry={entry} mode={seqMode} last={fsLast} /> : null}
+        {hero2 && !seqMode ? <StartHero data={data} cs={cs} prog={prog} now={nowMs} entry={entry} racing={racing} sel={sel} id={id} onAll={() => setFull("race")} /> : null}
         {hero ? <WaitHero data={data} today={today} cs={cs} prog={prog} now={nowMs} /> : null}
         {phase === "summary" ? <EndHero data={data} today={today} now={nowMs} onAll={() => setFull("all")} /> : null}
         <CourseFloat data={data} sel={sel} isCur={isCur} show={cOn} phase={phase} onClose={() => setCourseOpen(false)} />

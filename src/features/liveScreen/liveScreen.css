@@ -1161,3 +1161,45 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-boats { position: fixed; inset: 0; z-index: 0; animation: lv-fade 1.2s ease-out both; }
 /* Yarışta dönen panelde sıralama kartı (cam kart) sağa yaslı, yazılar sola */
 .lv-one .lv-rankp { width: min(100%, 34em); margin-left: auto; text-align: left; }
+/* Start geri sayımı (2026-11-03, senaryo/2e): büyük sayaç, 5·4·1·0 şeridi, sağda sabit rüzgâr ve start hattı */
+.lv-sq { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "clock side" "strip strip"; column-gap: 3vw; padding: 11vh 4vw 6vh; }
+.lv-sqc { grid-area: clock; display: flex; flex-direction: column; align-items: flex-start; gap: 0.35em; min-width: 0; }
+.lv-sq .lv-big { font-size: clamp(110px, 19vw, 360px); line-height: 0.85; margin-left: -0.03em; }
+.lv-sq .lv-what, .lv-sqb .lv-what { justify-content: flex-start; text-align: left; font-size: 1.6em; }
+.lv-kick.o { color: #ff9a4d; }
+.lv-sqside { grid-area: side; display: flex; flex-direction: column; gap: 2em; align-items: flex-end; text-align: right; }
+.lv-sqside small { display: block; margin-bottom: 0.4em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.85em; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+.lv-sqside .lv-wn { justify-content: flex-end; text-align: left; }
+.lv-sqline b { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(30px, 3.4vw, 64px); font-weight: 700; line-height: 1; color: #ffd23f; }
+.lv-sqline span { display: block; margin-top: 0.35em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.15em; font-weight: 600; color: rgba(255, 255, 255, 0.7); }
+.lv-strip { grid-area: strip; position: relative; height: 9.5em; margin: 0 0.4em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
+.lv-strk { position: absolute; left: 0; right: 0; top: 5em; height: 0.85em; border-radius: 0.45em; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.lv-strk b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0.45em; background: linear-gradient(90deg, #ff3d77, #ff9a4d); transition: width 1s linear; }
+.lv-strip.stop .lv-strk b { background: rgba(255, 255, 255, 0.35); }
+.lv-spt { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+.lv-spt.first { transform: none; align-items: flex-start; }
+.lv-spt.last { transform: translateX(-100%); align-items: flex-end; }
+.lv-sevs { display: flex; gap: 0.4em; height: 2.9em; align-items: flex-end; }
+.lv-sev { display: inline-flex; align-items: flex-end; gap: 0.15em; opacity: 0.35; filter: grayscale(0.6); }
+.lv-spt.done .lv-sev { opacity: 1; filter: none; }
+.lv-sev .lv-flag { font-size: 1.15em; }
+.lv-sev i { font-style: normal; font-size: 0.85em; font-weight: 700; color: rgba(255, 255, 255, 0.7); }
+.lv-spt > s { display: block; width: 3px; height: 1.9em; margin-top: 0.4em; border-radius: 2px; background: rgba(255, 255, 255, 0.35); }
+.lv-spt.done > s { background: #fff; }
+.lv-spt > small { margin-top: 1.4em; font-size: 1.05em; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; color: rgba(255, 255, 255, 0.45); }
+.lv-spt.done > small { color: rgba(255, 255, 255, 0.85); }
+.lv-sknob { position: absolute; top: 4.5em; width: 1.9em; height: 1.9em; margin-left: -0.95em; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0.4em rgba(255, 154, 77, 0.35), 0 2px 10px rgba(0, 0, 0, 0.5); transition: left 1s linear; }
+.lv-strip.stop .lv-sknob { background: #e11d48; box-shadow: 0 0 0 0.4em rgba(225, 29, 72, 0.3); }
+.lv-side.lv-sqb { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "clock strip side"; align-items: start; column-gap: 3vw; }
+.lv-sqb .lv-sqc { gap: 0.25em; }
+.lv-sqb .lv-strip { margin-top: 2.6em; height: 8em; font-size: 0.9em; }
+.lv-sqb .lv-sqside { gap: 1.1em; }
+.lv-sqb .lv-sqline b { font-size: clamp(24px, 2.4vw, 44px); }
+@media (max-width: 47.99rem) {
+  .lv-sq { grid-template-columns: 1fr; grid-template-areas: "clock" "strip" "side"; row-gap: 1.5em; }
+  .lv-sqside { align-items: flex-start; text-align: left; }
+  .lv-side.lv-sqb { grid-template-columns: 1fr; grid-template-areas: "clock" "strip" "side"; row-gap: 1em; }
+  .lv-spt > small { font-size: 0.9em; letter-spacing: 0.06em; }
+  .lv-spt > small span, .lv-sev i { display: none; }
+  .lv-sev .lv-flag { font-size: 0.8em; }
+}

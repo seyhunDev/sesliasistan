@@ -253,13 +253,18 @@ export function BroadcastPage({ orgId, id }) {
   // "Tehiri indir"); inince 1 dk sonra uyarı işareti = sıradaki yarışın geri sayımı kendiliğinden başlar (tehiri kuran telefonda).
   const postpone = () => {
     let order = plan.order;
+    // dizinin durduğu yer (canlı ekranda şerit orada kırmızı noktayla durur)
+    const t0 = readTimer();
+    const seq = ap.live && t0.mode === "start" ? (t0.end != null ? Math.max(0, Math.ceil((t0.end - Date.now()) / 1000)) : t0.left ?? null) : null;
     if (ap.live) {
       const rid = rf.ridOf(tr.t);
       stopCount();
       const back = rid ? apBack(rid) : null;
       if (back) order = [back, ...order];
     }
-    changePlan({ day: planDay, order, ...apRaise(plan, Date.now(), ap.min, ap.why, ap.land, ap.auto) });
+    const raised = apRaise(plan, Date.now(), ap.min, ap.why, ap.land, ap.auto);
+    if (seq != null) raised.ap = { ...raised.ap, seq, dur: t0.dur || 300 };
+    changePlan({ day: planDay, order, ...raised });
     setAp(null);
   };
   const lowerAp = () => changePlan({ day: planDay, ...apLower(Date.now(), readTimer().dur || 300, dev, plan.ap?.land, plan.ap?.auto) });
