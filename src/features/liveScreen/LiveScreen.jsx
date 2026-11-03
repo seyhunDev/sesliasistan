@@ -3374,7 +3374,7 @@ const DR_TONE = { wind: "#2fd6c3", course: "#ffd23f", prog: "#8fc3ff" };
 // Beklenen rüzgâr grafiği (Seyhun 2026-11-03 19:12 "güzel bir grafik olsun; bugün bitiyorsa yarına geçsin"): şimdiki saatten 12 saat,
 // rüzgâr dolu alan, sağanak kesik çizgi, start anı pembe çizgi, gece yarısından sonrası "Yarın", altta saat saat yön okları
 function WindChart({ rows, at }) {
-  const W = 760, H = 250, l = 34, r = 12, t = 34, bt = 70;
+  const W = 400, H = 190, l = 26, r = 8, t = 30, bt = 50;
   const n = rows.length;
   const xs = (i) => l + (i * (W - l - r)) / (n - 1);
   const top = Math.max(10, ...rows.map((x) => Math.max(x.wind || 0, x.gust || 0)));
@@ -3409,32 +3409,32 @@ function WindChart({ rows, at }) {
       {[5, 10, 15, 20, 25, 30].filter((v) => v < max).map((v) => (
         <g key={v}>
           <line x1={l} x2={W - r} y1={ys(v)} y2={ys(v)} stroke="rgba(255,255,255,.07)" />
-          <text x={l - 8} y={ys(v) + 5} textAnchor="end" fontSize="16" fill="rgba(255,255,255,.45)" style={fs}>
+          <text x={l - 6} y={ys(v) + 4} textAnchor="end" fontSize="12" fill="rgba(255,255,255,.45)" style={fs}>
             {v}
           </text>
         </g>
       ))}
       {mx != null ? (
         <g>
-          <rect x={mx} y={t - 34} width={W - r - mx} height={H - t - bt + 34} fill="rgba(255,255,255,.035)" />
-          <line x1={mx} x2={mx} y1={t - 34} y2={H - bt} stroke="rgba(255,255,255,.35)" strokeDasharray="3 4" />
-          <text x={sx != null && sx > mx - 40 && sx < mx + 110 ? sx + 40 : mx + 8} y={t - 14} fontSize="18" fill="#fff" letterSpacing="2" style={fs}>
+          <rect x={mx} y={t - 28} width={W - r - mx} height={H - t - bt + 28} fill="rgba(255,255,255,.035)" />
+          <line x1={mx} x2={mx} y1={t - 28} y2={H - bt} stroke="rgba(255,255,255,.35)" strokeDasharray="3 4" />
+          <text x={sx != null && sx > mx - 30 && sx < mx + 80 ? sx + 32 : mx + 6} y={t - 12} fontSize="12" fill="#fff" letterSpacing="2" style={fs}>
             YARIN
           </text>
         </g>
       ) : null}
       <path className="gr-wca" d={`${curve(k)} L${xs(n - 1)} ${ys(0)} L${xs(0)} ${ys(0)} Z`} fill="url(#gr-wca)" />
-      {gs ? <path className="gr-wcl" d={curve(gs)} fill="none" stroke="#ffd23f" strokeWidth="2.5" strokeDasharray="6 5" opacity=".85" pathLength="1" /> : null}
-      <path className="gr-wcl" d={curve(k)} fill="none" stroke="#2fd6c3" strokeWidth="4" strokeLinecap="round" pathLength="1" />
+      {gs ? <path className="gr-wcl" d={curve(gs)} fill="none" stroke="#ffd23f" strokeWidth="1.8" strokeDasharray="5 4" opacity=".85" pathLength="1" /> : null}
+      <path className="gr-wcl" d={curve(k)} fill="none" stroke="#2fd6c3" strokeWidth="3" strokeLinecap="round" pathLength="1" />
       {sx != null ? (
         <g className="gr-wcs">
-          <line x1={sx} x2={sx} y1={t - 4} y2={H - bt} stroke="#ff3d77" strokeWidth="3" />
-          <rect x={sx - 32} y={t - 30} width="64" height="24" rx="4" fill="#ff3d77" />
-          <text x={sx} y={t - 12} textAnchor="middle" fontSize="17" fill="#fff" letterSpacing="1" style={{ ...fs, fontWeight: 800 }}>
+          <line x1={sx} x2={sx} y1={t - 6} y2={H - bt} stroke="#ff3d77" strokeWidth="2" />
+          <rect x={sx - 25} y={t - 26} width="50" height="19" rx="3" fill="#ff3d77" />
+          <text x={sx} y={t - 12} textAnchor="middle" fontSize="13" fill="#fff" letterSpacing="1" style={{ ...fs, fontWeight: 800 }}>
             START
           </text>
-          <circle cx={sx} cy={ys(sk)} r="6" fill="#fff" stroke="#ff3d77" strokeWidth="3" />
-          <text x={sx + 12} y={ys(sk) - 12} fontSize="21" fill="#fff" style={{ ...fs, fontWeight: 800 }}>
+          <circle cx={sx} cy={ys(sk)} r="4.5" fill="#fff" stroke="#ff3d77" strokeWidth="2.5" />
+          <text x={sx + 9} y={ys(sk) - 9} fontSize="15" fill="#fff" style={{ ...fs, fontWeight: 800 }}>
             {`${String(sk).replace(".", ",")} kn`}
           </text>
         </g>
@@ -3442,12 +3442,12 @@ function WindChart({ rows, at }) {
       {rows.map((x, i) => (
         <g key={`${x.tm ? "y" : "b"}${x.hh}`}>
           {x.dir != null ? (
-            <g transform={`translate(${xs(i)} ${H - 40}) rotate(${x.dir + 180})`}>
+            <g transform={`translate(${xs(i)} ${H - 30}) rotate(${x.dir + 180}) scale(0.75)`}>
               <path d="M0 -9 L6 6 L0 3 L-6 6 Z" fill="rgba(255,255,255,.75)" />
             </g>
           ) : null}
-          {i % 2 === 0 || +x.hh === 0 ? (
-            <text x={xs(i)} y={H - 6} textAnchor="middle" fontSize="17" fill={+x.hh === 0 ? "#fff" : "rgba(255,255,255,.55)"} style={fs}>
+          {i % 3 === 0 || +x.hh === 0 ? (
+            <text x={xs(i)} y={H - 4} textAnchor="middle" fontSize="13" fill={+x.hh === 0 ? "#fff" : "rgba(255,255,255,.55)"} style={fs}>
               {x.hh}
             </text>
           ) : null}
@@ -3456,6 +3456,7 @@ function WindChart({ rows, at }) {
     </svg>
   );
 }
+// Rüzgâr (Seyhun 2026-11-03 20:23): kaynak ve saat sol üstte küçük, soluk; hız ve yön tek satır; sağanak ayrı satır; grafik dar sütuna göre
 function DrWind({ data, now, prog }) {
   const c = curWind(data, null, true, now);
   const rows = windAhead(data, now);
@@ -3463,25 +3464,23 @@ function DrWind({ data, now, prog }) {
   return (
     <>
       {c ? (
-        <div className="gr-dw">
-          {gArrow(c.dir)}
-          <div className="gr-dk">
+        <div className="gr-dw2">
+          <div className="gr-dsrc">{c.by || "Şimdi"}</div>
+          <div className="gr-dw2m">
+            {gArrow(c.dir)}
             <b>
               {c.kn}
               <em>kn</em>
             </b>
-            <span>
-              {c.dir != null ? `${dirShort(c.dir)} · ${degText(c)}` : ""}
-              {c.gust != null && c.gust > c.kn ? <i>{`${c.dir != null ? " · " : ""}sağanak ${c.gust}`}</i> : null}
-            </span>
+            <span>{c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""}</span>
           </div>
-          <div className="gr-dl">{c.by || "Şimdi"}</div>
+          {c.gust != null && c.gust > c.kn ? <div className="gr-dgu">{`Sağanak ${c.gust} kn`}</div> : null}
         </div>
       ) : null}
       {rows.length >= 2 ? (
         <>
-          <div className="gr-dh">
-            Beklenen · saatlik
+          <div className="gr-dh2">
+            <span>Beklenen</span>
             <span>
               <i className="a" />
               Rüzgâr
@@ -3501,28 +3500,26 @@ function DrWind({ data, now, prog }) {
 }
 function DrCourse({ data }) {
   const route = sceneRoute(data, null, true, "wait");
-  const svg = courseSvg(data, route);
+  const svg = courseSvg(data, route, { W: 760, H: 820 });
   if (!svg) return null;
+  // parkur büyük, yazı küçük; rota (1 2 3 finiş) yazılmaz (Seyhun 2026-11-03 20:23)
   return (
-    <>
-      <div className="gr-dc">
-        <span>{axisText(data) ? `Eksen ${axisText(data)}` : "Parkur"}</span>
-        <small>{routeText(route)}</small>
-      </div>
+    <div className="gr-dc2">
+      {axisText(data) ? <div className="gr-dsrc">{`Eksen ${axisText(data)}`}</div> : null}
       <div className="lv-sceneb gr-dsc" dangerouslySetInnerHTML={{ __html: svg }} />
-    </>
+    </div>
   );
 }
 function DrProg({ prog }) {
   const { rows, foot } = progRows(prog);
   return (
-    <ul className="gr-dp">
+    <ul className="gr-dp gr-dp2">
       {rows.map((x, i) => (
         <li key={x.key} className={x.state} style={{ "--g": groupColor(x.grp) || "rgba(255,255,255,.4)", animationDelay: `${0.8 + i * 0.1}s` }}>
           <b>{x.at || ""}</b>
           <i />
-          <span>{gWhat(x) || x.name}</span>
-          <small>{x.state === "now" ? "Yarışta" : x.state === "next" ? "Sıradaki" : x.state === "done" ? "Bitti" : ""}</small>
+          <span>{x.name || gWhat(x)}</span>
+          {x.state === "now" ? <small className="on">Yarışta</small> : x.state === "next" ? <small>Sıradaki</small> : null}
         </li>
       ))}
       {foot ? <li className="more">{foot}</li> : null}

@@ -1711,3 +1711,27 @@ button.gr-card { cursor: pointer; }
   .gr-lc { position: static; width: auto; margin: 0.8em; }
   .gr-rc { position: static; width: auto; margin: 0 0.8em 0.8em; }
 }
+/* Panel bölümleri yeniden (Seyhun 2026-11-03 20:23): kaynak/saat küçük soluk sol üstte; hız + yön tek satır; sağanak ayrı satır;
+   parkur büyük, rota yazısı yok; program sade (saat, grup çizgisi, yarış; yalnız yarışta/sıradaki işaretli) */
+.gr-dsrc { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 0.72em; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.42); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-dw2m { display: flex; align-items: center; gap: 0.6em; margin-top: 0.35em; white-space: nowrap; font-family: var(--lv-font-c), var(--lv-font), sans-serif; }
+.gr-dw2m .gr-arr { width: 2.4em; height: 2.4em; flex: none; }
+.gr-dw2m b { font-weight: 800; font-size: 2.6em; line-height: 0.95; }
+.gr-dw2m b em { font-style: normal; font-size: 0.4em; margin-left: 0.15em; color: rgba(255, 255, 255, 0.65); }
+.gr-dw2m span { margin-left: auto; font-weight: 700; font-size: 1.05em; letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.8); }
+.gr-dgu { margin-top: 0.3em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.95em; letter-spacing: 0.04em; color: #ffd23f; }
+.gr-dh2 { display: flex; align-items: center; gap: 0.9em; margin-top: 0.8em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 0.72em; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.42); }
+.gr-dh2 span { display: flex; align-items: center; gap: 0.35em; }
+.gr-dh2 span:nth-child(2) { margin-left: auto; }
+.gr-dh2 i { width: 1.2em; height: 0; border-top: 0.22em solid #2fd6c3; }
+.gr-dh2 i.b { border-top: 0.16em dashed #ffd23f; }
+.gr-dri .gr-dpn:has(.gr-dc2) { padding: 0.6em 0.6em 0.4em; }
+.gr-dc2 { position: relative; }
+.gr-dc2 > .gr-dsrc { position: absolute; left: 0.4em; top: 0.1em; z-index: 1; }
+.gr-dc2 .gr-dsc { margin-top: 0; }
+.gr-dc2 .gr-dsc svg { display: block; width: 100%; height: auto; max-height: 22em; }
+.gr-dri .gr-dp2 li { grid-template-columns: 3em 0.25em minmax(0, 1fr) auto; gap: 0.7em; padding: 0.45em 0; font-size: 1em; }
+.gr-dri .gr-dp2 li + li { border-top: 0; }
+.gr-dri .gr-dp2 li small { font-size: 0.72em; letter-spacing: 0.1em; color: #ff3d77; }
+.gr-dri .gr-dp2 li small.on { color: #2fd6c3; }
+.gr-dri .gr-dp2 li.next span, .gr-dri .gr-dp2 li.now span { color: #fff; }
