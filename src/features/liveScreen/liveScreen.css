@@ -159,6 +159,7 @@ button.lv-cell:hover { background: rgba(255, 255, 255, 0.06); }
 .lv-demo { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 0.3em; padding: 0.3em 0.4em 0.3em 0.9em; border-radius: 999px; background: rgba(0, 0, 0, 0.62); font-size: 13px; color: rgba(255, 255, 255, 0.85); }
 .lv-demo span { margin-right: 0.4em; white-space: nowrap; }
 .lv-demo button { border: 1px solid rgba(255, 255, 255, 0.2); background: none; color: #fff; border-radius: 999px; padding: 0.2em 0.75em; font: inherit; cursor: pointer; }
+.lv-demo a { border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; border-radius: 999px; padding: 0.2em 0.75em; text-decoration: none; }
 /* Alt yazı (olimpiyat / SailGP): şeridin üstünde; solda vurgu şeridi, büyük yazı, altında sınıf · grup · yarış */
 /* Şeridin üstünde, şeffaf zeminde yarışın adı ve şimdi ne olduğu (hep orada); üstünde yayıncının alt yazısı */
 .lv-title { align-self: stretch; display: flex; flex-direction: column; gap: 0.35em; padding: 0.2em 0.4em 0; min-width: 0; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55); }

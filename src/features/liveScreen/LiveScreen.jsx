@@ -2527,6 +2527,8 @@ function DemoBar({ ctl }) {
       <button type="button" onClick={ctl.restart}>
         Baştan
       </button>
+      {/* Tekne animasyonu (Seyhun 2026-11-03, features/tracking/BoatRace): hazır veri setinden start */}
+      <Link href="/canli/ornek/konum">Tekneler</Link>
     </div>
   );
 }
@@ -2648,7 +2650,7 @@ export function LiveScreen({ id, y = "" }) {
         </div>
         {ovOn ? <OverallSide data={data} n={hasVideo ? 6 : 10} /> : null}
         {/* Tekne takibi (Seyhun 2026-11-02): yarışta teknelerin konumu küçük haritada (Yayın › Dönüşler › Yayında harita) */}
-        {phase === "race" && isCur && !side && !near ? <BoatMap boats={data.boats || []} course={data.course} groupOf={groupMap(data.groups?.[today])} /> : null}
+        {phase === "race" && isCur && !side && !near ? <BoatMap boats={data.boats || []} course={data.course} groupOf={groupMap(data.groups?.[today])} grp={entry?.grp || ""} /> : null}
         {/* Yarış sürerken diğer yarışlar çip olarak gösterilmez (Seyhun 2026-11-03: ekrandaki yarış neyse o; sıradaki start alt şeritte) */}
         {(phase === "race" || (phase === "wait" && hasVideo)) && !side && !near && !(ongoing && phase === "race") ? <ProgramChips items={prog} /> : null}
         {side && near ? <NearBand data={data} cs={cs} prog={prog} now={nowMs} entry={entry} /> : side ? <SidePanel data={data} today={today} cs={cs} prog={prog} now={nowMs} entry={entry} /> : null}
