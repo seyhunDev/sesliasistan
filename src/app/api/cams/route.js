@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
-import { CAMS_RADIUS, camList, ytList } from "@/lib/cams";
+import { CAMS_RADIUS, GEO_KM, camList, ytList } from "@/lib/cams";
 
 export const runtime = "nodejs";
 
@@ -35,6 +35,17 @@ async function youtube(key, place) {
   return ytList((await r.json()).items, place);
 }
 
+// Konumla arama (Yayın › Kaynak ekle › Bölgede ara, Seyhun 2026-11-03): yayıncının konum eklediği canlı yayınlar, GEO_KM çevresinde.
+// Ad süzgeci yok (otel/marina kamerasının adında yer adı geçmeyebilir); haber yine elenir.
+async function youtubeNear(key, at) {
+  const u = `${YT}?${new URLSearchParams({ part: "snippet", type: "video", eventType: "live", videoEmbeddable: "true", maxResults: "25", location: `${at.lat},${at.lon}`, locationRadius: `${GEO_KM}km`, key })}`;
+  const r = await fetch(u, { signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error(`youtube ${r.status}`);
+  return ytList((await r.json()).items, "");
+}
+
+const mergeYt = (a, b) => [...a, ...b.filter((x) => !a.some((z) => z.id === x.id))];
+
 export async function GET(req) {
   const au = await requireUser(req, { free: true });
   if (!au.ok) return unauthorized(au);
@@ -45,22 +56,25 @@ export async function GET(req) {
   const lat = +q.get("lat");
   const lon = +q.get("lon");
   const place = String(q.get("q") || "").trim().slice(0, 40);
+  const geo = q.get("geo") === "1";
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return NextResponse.json({ error: "fail", why: "konum" }, { status: 400 });
   const at = { lat: +lat.toFixed(2), lon: +lon.toFixed(2) };
-  const [w, y] = await Promise.allSettled([
-    wk ? cached(`w:${at.lat},${at.lon}`, 5 * 60e3, () => windy(wk, at)) : Promise.resolve([]),
+  const [w, y, g] = await Promise.allSettled([
+    wk && !geo ? cached(`w:${at.lat},${at.lon}`, 5 * 60e3, () => windy(wk, at)) : Promise.resolve([]),
     yk && place ? cached(`y:${place.toLocaleLowerCase("tr-TR")}`, 30 * 60e3, () => youtube(yk, place)) : Promise.resolve([]),
+    yk && geo ? cached(`g:${at.lat},${at.lon}`, 30 * 60e3, () => youtubeNear(yk, at)) : Promise.resolve([]),
   ]);
+  if (g.status === "rejected") console.error("cams geo", g.reason?.message);
   for (const x of [w, y]) if (x.status === "rejected") console.error("cams", x.reason?.message);
   const cams = w.status === "fulfilled" ? w.value : [];
-  const yt = y.status === "fulfilled" ? y.value : [];
+  const yt = mergeYt(y.status === "fulfilled" ? y.value : [], g.status === "fulfilled" ? g.value : []);
   // YouTube durumu sayfada yazılır (Seyhun: "YouTube gelmedi, yoksa yok yazısı gösterelim"): nokey · noplace · fail · ok
-  const ytState = !yk ? "nokey" : !place ? "noplace" : y.status === "rejected" ? "fail" : "ok";
+  const ytState = !yk ? "nokey" : !place && !geo ? "noplace" : (y.status === "rejected" || !place) && (g.status === "rejected" || !geo) ? "fail" : "ok";
   const out = { cams, yt, ytState };
-  if (ytState === "fail") out.ytWhy = String(y.reason?.message || "").slice(0, 80);
-  if (!cams.length && !yt.length && (w.status === "rejected" || y.status === "rejected")) {
+  if (ytState === "fail") out.ytWhy = String((y.reason || g.reason)?.message || "").slice(0, 80);
+  if (!cams.length && !yt.length && (w.status === "rejected" || y.status === "rejected" || g.status === "rejected")) {
     out.error = w.reason?.bad ? "badkey" : "fail";
-    out.why = String((w.reason || y.reason)?.message || "").slice(0, 120);
+    out.why = String((w.reason || y.reason || g.reason)?.message || "").slice(0, 120);
   }
   return NextResponse.json(out, { headers: { "cache-control": "no-store" } });
 }
