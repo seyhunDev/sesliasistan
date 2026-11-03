@@ -1203,3 +1203,13 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-spt > small span, .lv-sev i { display: none; }
   .lv-sev .lv-flag { font-size: 0.8em; }
 }
+/* Senaryo 5 (2026-11-03): startlar arası "Bitti" etiketi ve ilk üç; abandone tehir etiketiyle aynı */
+.lv-apk.f { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.lv-bigt.f { color: #fff; }
+.lv-top3 { display: grid; gap: 0.3em; margin-top: 0.7em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.35em; font-weight: 700; }
+.lv-top3 > div { display: flex; align-items: center; gap: 0.6em; }
+.lv-top3 b { display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 0.3em; background: rgba(255, 255, 255, 0.14); font-size: 0.85em; }
+.lv-top3 b.p1 { background: #ffcf33; color: #1b2233; }
+.lv-top3 em { font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.72); }
+.lv-band .lv-top3 { font-size: 1.05em; margin-top: 0.4em; }
+.lv-band .lv-apk { font-size: 0.9em; letter-spacing: 0.1em; white-space: nowrap; }
