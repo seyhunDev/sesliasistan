@@ -1269,7 +1269,6 @@ function NoneHero({ data, today, now }) {
   return (
     <div className="lv-hold">
       <div className="lv-hst">
-        {r.name ? <div className="lv-hname">{r.name}</div> : null}
         <span className="lv-nopill">Bugün yarış yok</span>
         <div className="lv-kick">{`${tomorrow ? "Yarın" : wd} ilk start'a`}</div>
         {rem != null ? (
@@ -1355,7 +1354,7 @@ function WaitHero({ data, today, cs, prog, now }) {
   const left = !cs.rem && r.startDate > today ? daysUntil(r.startDate, today) : 0;
   const aDays = left ? data.ahead?.days || raceDays(r.startDate, r.endDate, plan).map((day) => ({ day, at: plan.times?.[day] || plan.daily || "" })) : [];
   const ag = agOf(data, now);
-  const slides = none ? [] : left ? [svg ? "course" : "", aDays.length ? "ahead" : "", ag ? "prog" : ""].filter(Boolean) : [svg ? "course" : "", windShowable(data) ? "wind" : "", prog.length || ag ? "prog" : ""].filter(Boolean);
+  const slides = none ? [] : left ? [svg ? "course" : "", aDays.length ? "ahead" : "", ag ? "prog" : ""].filter(Boolean) : [prog.length || ag ? "prog" : "", svg ? "course" : "", windShowable(data) ? "wind" : ""].filter(Boolean);
   // vitrin arasız döner; Yayın'dan "Göster" turu baştan başlatır
   // yeni parkur ölçümü (komite parkuru attı) gelince önce parkur (Seyhun 2026-11-02 "parkur eksenini güzelce gösterelim")
   const cNew = Math.max(0, Date.parse(data.course?.cardAt || "") || 0, ...(data.course?.obs || []).map((o) => Date.parse(o.at) || 0));
@@ -1364,8 +1363,6 @@ function WaitHero({ data, today, cs, prog, now }) {
   return (
     <div className="lv-hold">
       <div className="lv-hst">
-        {/* Yarışın adı soluk, en üstte (Seyhun 2026-11-02 "yarışın adını da göstermemiz gerekiyor, arka planda biraz soluk") */}
-        {r.name ? <div className="lv-hname">{r.name}</div> : null}
         <div className="lv-kick">{left ? "Yarışa" : kick}</div>
         {left ? (
           <div className="lv-big lv-bigd">
@@ -1376,7 +1373,6 @@ function WaitHero({ data, today, cs, prog, now }) {
           <div className="lv-big">{cs.rem ? cs.value : "—:—"}</div>
         ) : null}
         {left ? <div className="lv-what lv-whatd">{[r.endDate && r.endDate !== r.startDate ? `${dayText(r.startDate)} – ${dayText(r.endDate)}` : dayText(r.startDate), aDays[0]?.at ? `İlk start ${aDays[0].at}` : "", r.place].filter(Boolean).join(" · ")}</div> : null}
-        {!none && !left ? <NowWind data={data} now={now} /> : null}
         {!none && !left && first ? (
           <div className="lv-what">
             <Dot g={first.grp} />
@@ -1393,6 +1389,7 @@ function WaitHero({ data, today, cs, prog, now }) {
             </div>
           </div>
         ) : null}
+        {!none && !left ? <WindStrip data={data} now={now} /> : null}
       </div>
       {slides.length ? (
         <div className="lv-show">
@@ -1443,7 +1440,6 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
   return (
     <aside className="lv-side">
       <div className="lv-stop">
-        {r.name ? <div className="lv-sname">{r.name}</div> : null}
         <div className={`lv-skick${orange ? " o" : ""}`}>
           {orange ? <span className="lv-oflag" aria-hidden="true" /> : null}
           {orange ? "Start öncesi" : "Yarış öncesi"}
@@ -1531,6 +1527,7 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
             <div key={i} className={x.state || ""}>
               <span className="t">{x.text}</span>
               <i>{x.at || ""}</i>
+              {x.state === "next" ? <em className="lv-pill">Sıradaki</em> : null}
             </div>
           ))}
         </div>
@@ -1542,6 +1539,7 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
               <Dot g={x.grp} />
               <span className="t">{[x.name, x.grp].filter(Boolean).join(" · ")}</span>
               <i>{x.state === "now" ? "Canlı" : x.at || "Sonra"}</i>
+              {x.state === "next" ? <em className="lv-pill">Sıradaki</em> : null}
             </div>
           ))}
         </div>
@@ -1848,19 +1846,43 @@ function curWind(data, sel, isCur, now) {
 const degText = (w) => (w?.range ? `${w.range[0]}–${w.range[1]}°` : w?.dir != null ? `${Math.round(w.dir)}°` : "");
 // Bekleme ekranında şimdiki rüzgâr (Seyhun 2026-11-02 "rüzgâr yönü daha doğru ve profesyonel; manuel girildiyse gösterilsin"):
 // akış yönünü gösteren ok, derece ve pusula, knot; altında kaynak (Manuel girildi 14:05 turuncu ya da istasyon)
-function NowWind({ data, now }) {
+// Yarış öncesi sol altta yatay rüzgâr şeridi (Seyhun 2026-11-03 "rüzgâr sol altta yatay uzansın"): ok, knot, yön, start'ta beklenen, sağanak, kaynak
+function WindStrip({ data, now }) {
   const c = curWind(data, null, true, now);
-  if (!c || (c.dir == null && c.kn == null)) return null;
+  const ew = expWind(data.forecast, data.plan.at);
+  const w = c || ew;
+  if (!w || (w.dir == null && w.kn == null)) return null;
+  const gust = ew?.gust && ew.gust > (w.kn ?? 0) ? ew.gust : null;
   return (
-    <div className={`lv-hwind${c.man ? " m" : ""}`}>
-      {c.dir != null ? <WindArrow w={c} /> : null}
-      <div>
-        <b>
-          {c.dir != null ? <span>{`${dirShort(c.dir)} ${degText(c)}`}</span> : null}
-          {c.kn != null ? <span>{`${c.kn} knot`}</span> : null}
+    <div className="lv-wstrip">
+      {w.dir != null ? <WindArrow w={w} /> : null}
+      {w.kn != null ? (
+        <b className="kn">
+          {w.kn}
+          <em>knot</em>
         </b>
-        <small>{c.man ? <i /> : null}{c.by}</small>
+      ) : null}
+      <div className="g">
+        {w.dir != null ? (
+          <div>
+            <small>Yön</small>
+            <b>{`${dirShort(w.dir)} ${degText(w)}`}</b>
+          </div>
+        ) : null}
+        {c && ew?.kn != null ? (
+          <div>
+            <small>Start&apos;ta</small>
+            <b>{`${ew.kn} knot`}</b>
+          </div>
+        ) : null}
+        {gust ? (
+          <div>
+            <small>Sağanak</small>
+            <b>{gust}</b>
+          </div>
+        ) : null}
       </div>
+      <span className={`src${c?.man ? " m" : ""}`}>{c ? c.by : "Tahmin"}</span>
     </div>
   );
 }
@@ -2067,8 +2089,9 @@ function AgendaBody({ ag }) {
         {ag.rows.map((x, i) => (
           <div key={i} className={x.state}>
             <i>{x.at || ""}</i>
+            <s />
             <b>{x.text}</b>
-            <span>{x.state === "done" ? "Yapıldı" : x.state === "next" ? "Sıradaki" : ""}</span>
+            {x.state === "next" ? <em className="lv-pill">Sıradaki</em> : <span>{x.state === "done" ? "Yapıldı" : ""}</span>}
           </div>
         ))}
       </div>
@@ -2104,9 +2127,13 @@ function ProgBody({ prog }) {
     <div className="lv-slprog">
       {prog.slice(0, 8).map((x) => (
         <div key={x.key} className={x.state}>
-          <Dot g={x.grp} />
-          <b>{[x.name, x.grp ? `${x.grp} grup` : ""].filter(Boolean).join(" · ")}</b>
-          <span>{x.state === "done" ? "Bitti" : x.state === "now" ? "Canlı" : x.state === "next" ? (x.at ? `Sıradaki · ${x.at}` : "Sıradaki") : x.at || ""}</span>
+          <i>{x.at || ""}</i>
+          <s />
+          <b>
+            <Dot g={x.grp} />
+            {[x.name, x.grp ? `${x.grp} grup` : ""].filter(Boolean).join(" · ")}
+          </b>
+          {x.state === "next" ? <em className="lv-pill">Sıradaki</em> : <span>{x.state === "done" ? "Bitti" : x.state === "now" ? "Canlı" : ""}</span>}
         </div>
       ))}
     </div>
@@ -2244,11 +2271,13 @@ export function LiveScreen({ id, y = "" }) {
     <div className={`lv lv-bc${ongoing && phase === "race" ? " has-live" : ""}${slide ? " course" : ""}${hasVideo ? " video" : ""}${counting ? " counting" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
       <Backdrop data={data} isCur={isCur} entry={entry} />
       <div className="lv-page lv-ov">
-        {/* Geri tek başına en solda (Seyhun 2026-11-02) */}
-        <Link href="/canli" className="lv-back lv-backc" aria-label="Yarışlar">
-          ‹
-        </Link>
-        {!hero && data.race?.name ? <span className="lv-rname">{data.race.name}</span> : null}
+        {/* Geri ve yarışın adı aynı satırda, bir kez (Seyhun 2026-11-03: iki yerde yazıyordu, hizalı değildi) */}
+        <div className="lv-topl">
+          <Link href="/canli" className="lv-back lv-backc" aria-label="Yarışlar">
+            ‹
+          </Link>
+          {data.race?.name ? <span className="lv-rname">{data.race.name}</span> : null}
+        </div>
         {ongoing && phase === "race" ? <LiveBadge sel={sel} data={data} /> : null}
         <div className="lv-left">
           {phase === "race" ? <RankPanel key="race" data={data} sel={sel} isCur={isCur} id={id} max={hasVideo ? 5 : RANK_MAX} onAll={() => setFull("race")} /> : null}
