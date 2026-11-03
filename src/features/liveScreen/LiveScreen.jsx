@@ -11,6 +11,7 @@ import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, SHOW_ON, shortClub, shortName, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { groupColor, groupMap, onlyCat, provisional } from "@/lib/roundScore";
 import { BoatMap } from "@/features/tracking/BoatMap";
+import { HourTable } from "@/features/weather/HourTable";
 import { useDemo } from "./demo";
 import { useVisit } from "./useVisit";
 import { dayProgram, expText, expWind } from "./program";
@@ -1874,34 +1875,17 @@ function SkyIcon({ code, x, y, c }) {
     </g>
   );
 }
-// Hava tablosu (Seyhun 2026-11-03 "yağış yüzde değil mm; rüzgâr, sağanak da gösterilsin, ana sayfadaki hava gibi" → örnek B): grafik yok,
-// 06:00–20:00 saat saat sütunlar: hava + sıcaklık, yağış mm (yağan saat mavi zeminde), rüzgâr, sağanak (renkli şerit), yön. Geçen saatte istasyon
-// ölçümü varsa o; şimdiki saat açık zeminde, start saati pembe çizgi.
-const GUST_COL = [[8, "#3aa0ff"], [11, "#2fb8b0"], [14, "#3fcf6a"], [17, "#9ad43a"], [20, "#e7c73a"], [24, "#f08a3a"], [99, "#e8485a"]];
-const gustCol = (k) => GUST_COL.find(([m]) => k < m)[1];
+// Hava tablosu (Seyhun 2026-11-03 "yağış yüzde değil mm; rüzgâr, sağanak da gösterilsin, ana sayfadaki hava gibi" → örnek B; sonra "nerede hava durumu
+// gösteriyorsak hepsi aynı tasarım"): uygulamanın her yerindeki ortak HourTable (src/features/weather/HourTable.jsx): her saat bir sütun, geçmişte istasyon
+// ölçümü açık mavi, şimdi kırmızı çerçeve, start saati pembe çizgi. Büyük ekranda CSS zoom (scale), saat canlı ekranın eşlenmiş saati (nowMs).
 function WindBody({ data, sel, isCur, now }) {
   const fc = data.forecast;
-  const rows = (fc?.rows || []).filter((r) => +r.hh >= 6 && +r.hh <= 20 && r.wind != null);
-  const obsAt = Object.fromEntries((fc?.obs || []).filter((o) => o.wind != null || o.code != null || o.temp != null).map((o) => [o.hh, o]));
-  const tr = new Date(now + 3 * 3600e3);
+  const rows = (fc?.rows || []).filter((r) => r.wind != null);
   // Akşam ekran ertesi güne geçince (see) tablo o günün tahminidir: şimdi sütunu ve ölçülen yok; başlıkta tarih (Seyhun 2026-11-02
   // "yarını gösteriyor ama tarih olmadığı için anlamıyorum")
   const other = !sel && data.see && data.see > trDay(now) ? data.see : "";
-  const nowH = other ? -1 : tr.getUTCHours() + tr.getUTCMinutes() / 60;
   const at = data.plan?.at || "";
   const c = other ? null : curWind(data, sel, isCur, now);
-  const W = 1000, L = 112, R = 8, Hh = 440;
-  const cw = (W - L - R) / 15;
-  const x = (h) => L + (h - 6) * cw + cw / 2;
-  const atH = at ? +at.slice(0, 2) + +at.slice(3, 5) / 60 : null;
-  const nowCol = Math.floor(nowH);
-  const Y = { h: 56, sky: 112, temp: 172, rain: 222, wind: 282, gust: 336, dir: 396 };
-  const lab = (t, u, y) => (
-    <>
-      <text x={L - 14} y={y + 5} textAnchor="end" fontSize="14" fontWeight="700" letterSpacing="1" fill="#fff" fillOpacity=".6">{t}</text>
-      {u ? <text x={L - 14} y={y + 22} textAnchor="end" fontSize="12" fill="#fff" fillOpacity=".4">{u}</text> : null}
-    </>
-  );
   return (
     <div className="lv-wa">
       <div className="lv-wkh">
@@ -1923,68 +1907,16 @@ function WindBody({ data, sel, isCur, now }) {
         ) : null}
       </div>
       {rows.length >= 2 ? (
-        <svg className="lv-wchart" viewBox={`0 0 ${W} ${Hh}`} role="img" aria-label="Saat saat hava, yağış, rüzgâr ve sağanak">
-          {nowH >= 6 && nowH < 21 ? <rect x={L + (nowCol - 6) * cw + 2} y={Y.h - 30} width={cw - 4} height={Y.dir - Y.h + 52} rx="8" fill="#fff" fillOpacity=".10" /> : null}
-          {nowH >= 6 && nowH < 21 ? <text x={x(nowCol)} y={Y.h - 40} textAnchor="middle" fontSize="14" fontWeight="800" fill="#fff">ŞİMDİ</text> : null}
-          {lab("HAVA", "", Y.sky + 14)}
-          {lab("YAĞIŞ", "mm", Y.rain)}
-          {lab("RÜZGÂR", "kn", Y.wind)}
-          {lab("SAĞANAK", "kn", Y.gust)}
-          {lab("YÖN", "", Y.dir)}
-          {rows.map((r) => {
-            const h = +r.hh, px = x(h);
-            const o = h <= nowH ? obsAt[r.hh] : null;
-            const code = o?.code ?? r.code;
-            const temp = o?.temp ?? r.t;
-            const meas = o && (o.code != null || o.temp != null);
-            const col = meas ? "#9ed6ff" : "rgba(255,255,255,.8)";
-            const mm = o?.rain ? o.rain.mm || 0 : r.mm;
-            const w = o?.wind ?? r.wind;
-            const g = o?.gust ?? r.gust;
-            const dir = o?.dir ?? r.dir;
-            return (
-              <g key={r.hh}>
-                <text x={px} y={Y.h} textAnchor="middle" fontSize="15" fontWeight="600" fill="#fff" fillOpacity={h >= nowH ? 0.85 : 0.55}>{`${r.hh}:00`}</text>
-                <SkyIcon code={code} x={px} y={Y.sky} c={col} />
-                {temp != null ? <text x={px} y={Y.temp} textAnchor="middle" fontSize="17" fontWeight="700" fill={col}>{`${temp}°`}</text> : null}
-                {mm ? <rect x={px - cw / 2 + 2} y={Y.rain - 17} width={cw - 4} height="30" rx="7" fill="#4fb3ff" fillOpacity={Math.min(0.75, 0.3 + mm / 5)} /> : null}
-                {mm != null ? <text x={px} y={Y.rain + 5} textAnchor="middle" fontSize="16" fontWeight="700" fill={mm ? "#e6f4ff" : "#fff"} fillOpacity={mm ? 1 : 0.4}>{mm ? String(mm).replace(".", ",") : "–"}</text> : null}
-                <text x={px} y={Y.wind + 7} textAnchor="middle" fontSize="22" fontWeight="700" fill={meas || o?.wind != null ? "#9ed6ff" : "#fff"}>{w}</text>
-                {g != null ? (
-                  <>
-                    <rect x={px - cw / 2} y={Y.gust - 16} width={cw} height="32" fill={gustCol(g)} fillOpacity=".9" />
-                    <text x={px} y={Y.gust + 6} textAnchor="middle" fontSize="17" fontWeight="800" fill="#06182b">{g}</text>
-                  </>
-                ) : null}
-                {dir != null ? (
-                  <g transform={`translate(${px} ${Y.dir}) rotate(${dir + 180}) scale(.85)`}>
-                    <path d="M0 -10 L6 3 L0 0 L-6 3 Z" fill="#fff" fillOpacity=".85" />
-                    <line x1="0" y1="0" x2="0" y2="10" stroke="#fff" strokeOpacity=".85" strokeWidth="2.2" strokeLinecap="round" />
-                  </g>
-                ) : null}
-              </g>
-            );
-          })}
-          {atH != null && atH >= 6 && atH <= 21 ? (
-            <g>
-              <rect x={L + (atH - 6) * cw + cw / 2 - 1.5} y={Y.h - 30} width="3" height={Y.dir - Y.h + 52} fill="#ff3d77" />
-              <text x={L + (atH - 6) * cw + cw / 2 + 8} y={Y.dir + 36} fontSize="15" fontWeight="800" fill="#ff5c8f">{`START ${at}`}</text>
-            </g>
-          ) : null}
-        </svg>
+        <HourTable
+          rows={rows}
+          date={other || trDay(now)}
+          nowMs={now}
+          obs={other ? [] : fc?.obs || []}
+          station={fc?.station ? { name: fc.station } : null}
+          marks={at && !other ? [{ at, label: "Start" }] : []}
+          scale={1.45}
+        />
       ) : null}
-      <div className="lv-wleg">
-        {Object.values(obsAt).some((o) => o.wind != null) ? (
-          <span>
-            <i className="lo" />
-            {`Ölçülen${fc?.station ? ` (${fc.station} istasyonu)` : ""}`}
-          </span>
-        ) : null}
-        <span>
-          <i className="lf" />
-          Tahmin
-        </span>
-      </div>
     </div>
   );
 }

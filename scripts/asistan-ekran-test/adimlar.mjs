@@ -1238,14 +1238,13 @@ async function rainStrip(h) {
   });
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
-  await check("Hava", "yağmur grafiği", "yağışlı günde grafiğin altında saat saat çubuk ve tek satır özet; kuvvetli yağış bekleniyorsa özette \"kuvvetli\" (kehribar)", async () => {
-    const S = "svg[aria-label='Saatlik yağış']";
-    const ok = await waitFor(() => page.locator(`${S} rect`).count(), 15000);
-    const sum = (await page.locator("[aria-label='Yağmur özeti']").first().textContent().catch(() => "")) || "";
-    const hourNow = +new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: "Europe/Istanbul" }).format(new Date());
-    const want = hourNow < 15 ? /kuvvetli/.test(sum) : sum.length > 6;
+  await check("Hava", "yağmur grafiği", "saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; günler şeridi var", async () => {
+    const T = "[data-hour-table]";
+    const ok = await waitFor(() => page.locator(`${T} [data-col]`).count(), 15000);
+    const txt = (await page.locator(T).first().textContent().catch(() => "")) || "";
+    const days = await page.locator("nav[aria-label='Günler'] button").count();
     if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}.png`, fullPage: true }));
-    return [ok > 0 && want, `çubuk ${ok} · özet "${sum}"`];
+    return [ok >= 24 && /5,5/.test(txt) && /9/.test(txt) && days >= 5, `sütun ${ok} · gün ${days} · 5,5 ${/5,5/.test(txt)}`];
   });
   await check("Sayfa hataları", "hava yağış", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
@@ -1306,28 +1305,24 @@ async function rainSplit(h) {
   }
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
-  await check("Hava", "ölçülen / beklenen yağmur", "şimdiye kadar beyaz çubuk (yağan), sonrası mavi (tahmin); özette \"4 mm yağdı\"; tek satır açıklama", async () => {
-    const S = "svg[aria-label='Saatlik yağış']";
-    await waitFor(() => page.locator(`${S} [data-kind='tahmin'] rect`).count(), 15000);
+  await check("Hava", "ölçülen / beklenen yağmur", "geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama", async () => {
+    const T = "[data-hour-table]";
+    await waitFor(() => page.locator(`${T} [data-col]`).count(), 15000);
     const wantOlc = nowH >= 1;
-    if (wantOlc) await waitFor(() => page.locator(`${S} [data-kind='olculen'] rect`).count(), 8000);
-    const olc = await page.locator(`${S} [data-kind='olculen'] rect`).count();
-    const fcN = await page.locator(`${S} [data-kind='tahmin'] rect`).count();
-    const sum = (await page.locator("[aria-label='Yağmur özeti']").first().textContent().catch(() => "")) || "";
-    const geldi = /4 mm yağdı/.test(sum);
-    const leg = await page.locator("[aria-label='Grafik açıklaması']").first().textContent().catch(() => "");
-    const legOk = /Yağmur/.test(leg || "") && (!wantOlc || /Yağan/.test(leg || ""));
-    const legH = (await page.locator("[aria-label='Grafik açıklaması']").first().boundingBox())?.height ?? 99;
+    if (wantOlc) await waitFor(() => page.locator(`${T} [data-obs]`).count(), 8000);
+    const olc = await page.locator(`${T} [data-obs]`).count();
+    const txt = (await page.locator(T).first().textContent().catch(() => "")) || "";
+    const leg = (await page.locator("[aria-label='Tablo açıklaması']").first().textContent().catch(() => "")) || "";
+    const legOk = wantOlc ? /Ölçülen \(Dikili istasyonu\)/.test(leg) : true;
+    const split = nowH >= 3 ? /1,4/.test(txt) : true;
     if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-ayrim.png`, fullPage: true }));
-    return [(olc > 0) === wantOlc && geldi === wantOlc && (nowH >= 23 || fcN > 0) && legOk && legH < 20, `yağan ${olc} · tahmin ${fcN} · özet "${sum}" · açıklama ${legOk} (${Math.round(legH)} px)`];
+    return [(olc > 0) === wantOlc && legOk && split, `ölçülen sütun ${olc} · açıklama "${leg}" · bölünmüş ${split}`];
   });
   // Radar kutuları ve nokta haritası (Seyhun 2026-10-28 "Evet, böyle yap")
-  await check("Hava", "radar ve nokta", "son 2 saat radar yağan çubuklarda (beyaz), açıklamada Yağan; Bölge başlığı, istasyon adı ve bölge haritası", async () => {
-    const S = "svg[aria-label='Saatlik yağış']";
-    await waitFor(() => page.locator(`${S} [data-kind='olculen'] rect`).count(), 8000);
-    const bars = await page.locator(`${S} [data-kind='olculen'] rect`).count();
+  await check("Hava", "radar ve nokta", "ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası", async () => {
+    await waitFor(() => page.locator("[data-hour-table] [data-col]").count(), 8000);
+    const bars = await page.locator("[data-hour-table] [data-obs]").count();
     const tx = 1;
-    const leg = (await page.locator("[aria-label='Grafik açıklaması']").first().textContent().catch(() => "")) || "";
     const head = await page.getByRole("heading", { name: "BÖLGE" }).count();
     const st = await page.getByText("Dikili istasyonu · 1 km").count();
     // Harita "Harita" düğmesiyle tam ekran açılır (#885): önce düğme, açılınca harita
@@ -1350,7 +1345,7 @@ async function rainSplit(h) {
     const mleg = rmap ? "Seçilen yer Ölçüm" : "";
     const src = await page.getByText(/Radar: RainViewer/).count();
     if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-radar.png`, fullPage: true }));
-    return [bars >= 1 && tx === 1 && /Yağan/.test(leg) && head === 1 && st === 1 && /Seçilen yer/.test(mleg) && /Ölçüm/.test(mleg) && canvas > 0 && src === 1, `yağan çubuk ${bars} · açıklama ${/Yağan/.test(leg)} · Nokta ${head} · istasyon ${st} · harita açıklaması "${mleg}" · kaynak ${src}`];
+    return [(bars >= 1 || nowH < 1) && tx === 1 && head === 1 && st === 1 && /Seçilen yer/.test(mleg) && /Ölçüm/.test(mleg) && canvas > 0 && src === 1, `yağan çubuk ${bars} · açıklama ${bars} · Nokta ${head} · istasyon ${st} · harita açıklaması "${mleg}" · kaynak ${src}`];
   });
   await check("Sayfa hataları", "hava ölçülen yağmur", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
