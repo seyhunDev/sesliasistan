@@ -3198,16 +3198,17 @@ function GWind({ data, now, mode, today, can = false, open = false }) {
 function GProg({ prog }) {
   if (!prog.length) return null;
   return (
-    <GCard cls="gr-side" head="Program" sub="Bugün">
+    // sade program (Seyhun 2026-11-03 18:20): rüzgâr ve parkurla aynı satır dili, pembe dolgu ve hap yok; sıradaki satır yalnız parlak + grup rengi çizgisi
+    <GCard cls="gr-side gr-prg" head="Program" tone="b" tag="Bugün">
       <ul className="gr-pg">
         {prog.slice(0, 7).map((x) => (
-          <li key={x.key} className={x.state}>
+          <li key={x.key} className={x.state} style={{ "--g": groupColor(x.grp) || "rgba(255,255,255,.4)" }}>
             <b>{x.at || ""}</b>
             <span>
               <Dot g={x.grp} />
               {gWhat(x) || x.name}
             </span>
-            {x.state === "next" ? <em className="lv-pill">Sıradaki</em> : <small>{x.state === "done" ? "Bitti" : x.state === "now" ? "Canlı" : ""}</small>}
+            <small>{x.state === "next" ? "Sıradaki" : x.state === "done" ? "Bitti" : x.state === "now" ? "Yarışta" : ""}</small>
           </li>
         ))}
       </ul>
