@@ -1,8 +1,8 @@
-Commit: 06a192e · /canli start dizisi: kural bayrağı ve kısa açıklaması (#1103)
-Zaman: 2026-11-03-2121 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41691146537
+Commit: 9c7ba18 · /canli: beklenen rüzgâr açılışı yumuşak, uzun program kısalır (#1106)
+Zaman: 2026-11-03-2140 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41694041222
 
-TAM TEST · 03.11.2026 21:11:04
+TAM TEST · 03.11.2026 21:29:32
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1438/1440 geçti · 2 kalan · 642 sn
+SONUÇ: 1439/1440 geçti · 1 kalan · 631 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -158,12 +158,9 @@ SONUÇ: 1438/1440 geçti · 2 kalan · 642 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 140/141
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 141/141
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 9/10
-      ✗ “gün penceresi Yapıldı”
-          beklenen: plan satırında Yapıldı işareti: dokununca yapıldı, yeniden dokununca geri alınır
-          olan:     yapıldı 1 · çizili 1 · geri 0
+  ✓ Ana sayfa: 10/10
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
