@@ -407,6 +407,33 @@ export async function run(server, log = () => {}) {
       if (process.env.YAYIN_FOTO) await page.screenshot({ path: process.env.YAYIN_FOTO.replace(/\.png$/, "-kamera.png") }).catch(() => {});
       return [/Sarı/.test(on) && /Kamera 1/.test(on) && air === 1 && go >= 1 && /Sarı/.test(cam) && /Yayın yok/.test(cam) && sheet, `ekranda "${on.replace(/\s+/g, " ")}" · ▶ ${air} · Başlat ${go} · kamera "${cam.replace(/\s+/g, " ")}" · pencere ${sheet ? "açıldı" : "açılmadı"} · önceden açık pencere ${extra}`];
     });
+    // Yayın › Video: tek önizleme, kaynaklar tek liste, alt yazı ve gösterim ayarı satıra dokununca açılır
+    await okPage("Yayın", "video sekmesi sade", "/athletes/races/r2/yayin", "Kameralar", async () => {
+      await page.getByRole("button", { name: /^Video/ }).first().click();
+      await page.getByText("Ekranda:").first().waitFor({ timeout: 10000 }).catch(() => {});
+      const mons = await page.locator(".masa-mon").count();
+      const srcs = await page.locator(".masa-src").count();
+      const line = await page.getByText(/^Ekranda: /).first().innerText().catch(() => "");
+      const capRow = page.getByRole("button", { name: /Ekranda yazı/ }).first();
+      const closed = (await page.getByPlaceholder(/Boşken|Otomatik:/).count()) === 0;
+      await capRow.click({ timeout: 5000 }).catch(() => {});
+      const opened = (await page.getByPlaceholder(/Boşken|Otomatik:/).count()) > 0;
+      if (process.env.YAYIN_FOTO) await page.screenshot({ path: process.env.YAYIN_FOTO.replace(/\.png$/, "-video.png"), fullPage: true }).catch(() => {});
+      return [mons === 1 && srcs >= 2 && /Ekranda/.test(line) && closed && opened, `önizleme ${mons} · kaynak ${srcs} · "${line}" · alt yazı kapalı ${closed} → açık ${opened}`];
+    });
+    // Yayın › Süre: Sarı yarıştayken Mavi'nin satırından geri sayım başlar; satırda süre ve Dur / Devam, Sarı'nın Bitti'si ayrı
+    await okPage("Yayın", "satırdan başlat, dur, devam", "/athletes/races/r2/yayin", "Kameralar", async () => {
+      await page.getByRole("button", { name: "5", exact: true }).first().click({ timeout: 10000 }).catch(() => {});
+      await page.getByRole("button", { name: "Başlat", exact: true }).first().click({ timeout: 10000 });
+      const dur = page.getByRole("button", { name: "Dur", exact: true }).first();
+      const seen = await dur.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+      const t1 = await page.locator(".tabular-nums.text-acc").first().innerText().catch(() => "");
+      const sariBitti = await page.getByRole("button", { name: "Bitti", exact: true }).count();
+      await dur.click({ timeout: 5000 }).catch(() => {});
+      const resume = await page.getByRole("button", { name: "Devam", exact: true }).first().waitFor({ timeout: 8000 }).then(() => true).catch(() => false);
+      if (process.env.YAYIN_FOTO) await page.screenshot({ path: process.env.YAYIN_FOTO.replace(/\.png$/, "-sure.png") }).catch(() => {});
+      return [seen && /^\d+:\d\d$/.test(t1.trim()) && sariBitti >= 1 && resume, `Dur ${seen ? "göründü" : "yok"} · süre "${t1.trim()}" · Bitti ${sariBitti} · Devam ${resume ? "göründü" : "yok"}`];
+    });
   } finally {
     await browser.close();
   }
