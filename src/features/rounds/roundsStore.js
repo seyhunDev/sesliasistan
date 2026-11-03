@@ -13,7 +13,7 @@ import { cleanEntries, cleanOps } from "@/lib/roundSay";
 import { cleanGroups } from "@/lib/roundScore";
 import { kindOf } from "@/features/athletes/raceNotice";
 import { loadPdfjs } from "@/components/ui/PdfViewer";
-import { chunkLines, linesOf } from "@/lib/pdfLines";
+import { chunkLines, linesOf, tableOf } from "@/lib/pdfLines";
 
 const ref = (orgId, id) => doc(db, "orgs", orgId, "raceLive", id, "entries", "list");
 // { rows: kayıt listesi, groups: { gün: [[yelken, grup]] } } (grup listesi günü günü; lib/roundScore.js)
@@ -46,15 +46,13 @@ async function askEntries(body) {
   if (!res.ok) throw new Error(p.error || "Liste okunamadı, tekrar dene.");
   return cleanEntries(p.rows);
 }
-async function pdfLines(file) {
+// PDF'in sayfa sayfa yazı parçaları (pdf.js)
+async function pdfPages(file) {
   const lib = await loadPdfjs();
   const pdf = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-  const lines = [];
-  for (let p = 1; p <= Math.min(pdf.numPages, 40); p++) {
-    const page = await pdf.getPage(p);
-    lines.push(...linesOf((await page.getTextContent()).items));
-  }
-  return lines;
+  const pages = [];
+  for (let p = 1; p <= Math.min(pdf.numPages, 40); p++) pages.push((await (await pdf.getPage(p)).getTextContent()).items);
+  return pages;
 }
 // PDF, fotoğraf ya da Excel → kayıt listesi satırları (yapay zeka okur)
 export async function readEntryFile(file) {
@@ -66,8 +64,12 @@ export async function readEntryFile(file) {
   }
   const kind = await kindOf(file);
   if (kind === "pdf") {
-    // Yazılı PDF: yazı burada çıkarılır, parça parça (aynı anda 4) okunur; taranmış (yazısız) PDF eskisi gibi tek seferde gider
-    const lines = await pdfLines(file).catch(() => []);
+    // Yazılı PDF: sütun başlıkları (Y.NO, AD SOYAD, D.TARİHİ…) tanınırsa yapay zekasız okunur; tanınmazsa yazı parça parça
+    // (aynı anda 4) yapay zekaya gider; taranmış (yazısız) PDF eskisi gibi tek seferde
+    const pages = await pdfPages(file).catch(() => []);
+    const table = cleanEntries(tableOf(pages));
+    if (table.length >= 3) return table;
+    const lines = pages.flatMap(linesOf);
     if (lines.length >= 15) {
       const parts = chunkLines(lines);
       const out = [];
