@@ -145,33 +145,50 @@ private struct SayacYazi: View {
 
 // MARK: Büyük widget'ın üstü: logo, rüzgâr başlığı
 
-// Velora logosu: ortadaki beyaz ışığın çevresinde 24 ses çubuğu (src/components/ui/AppLogo.jsx RAYS ile aynı; Okyanus degradesi #0ea5c4→#a5f3fc)
-private struct LogoCubuklari: Shape {
+// Velora logosu (Seyhun 2026-11-03): beyaz dairenin içinden oyulmuş dolu V, üstü açık.
+// Ölçüler src/components/ui/AppLogo.jsx (MARK_DISC, MARK_V) ile aynı; işaret kutusu x 18…82, y 18…86 (64 × 68 birim).
+private struct LogoV: Shape {
     func path(in rect: CGRect) -> Path {
-        let boy: [CGFloat] = [60, 100, 140, 90, 120, 70, 150, 85]
-        let o = rect.width / 760 // logo 760 birimlik kutuda, merkez 380
-        let m = CGPoint(x: rect.midX, y: rect.midY)
+        let o = rect.width / 64
+        func n(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: rect.minX + (x - 18) * o, y: rect.minY + (y - 18) * o) }
         var p = Path()
-        for i in 0..<24 {
-            let a = CGFloat(i) * .pi / 12
-            let (sn, cs) = (sin(a), -cos(a))
-            p.move(to: CGPoint(x: m.x + sn * 200 * o, y: m.y + cs * 200 * o))
-            p.addLine(to: CGPoint(x: m.x + sn * (200 + boy[i % 8]) * o, y: m.y + cs * (200 + boy[i % 8]) * o))
-        }
+        p.move(to: n(26, 19))
+        p.addLine(to: n(35.6, 19))
+        p.addCurve(to: n(50, 55.8), control1: n(42, 35), control2: n(46, 47.8))
+        p.addLine(to: n(59.6, 19))
+        p.addLine(to: n(74, 19))
+        p.addLine(to: n(56.4, 67))
+        p.addLine(to: n(43.6, 67))
+        p.closeSubpath()
         return p
+    }
+}
+
+private struct LogoDaire: Shape {
+    func path(in rect: CGRect) -> Path {
+        let o = rect.width / 64
+        return Path(ellipseIn: CGRect(x: rect.minX + 2 * o, y: rect.minY + 4 * o, width: 60 * o, height: 60 * o))
+    }
+}
+
+// Zeminsiz işaret: daire beyaz, V boşluğundan arkası görünür
+private struct LogoIsaret: View {
+    var boy: CGFloat
+    var body: some View {
+        ZStack {
+            LogoDaire().fill(Color.white)
+            LogoV().fill(Color.black).blendMode(.destinationOut)
+        }
+        .compositingGroup()
+        .frame(width: boy, height: boy * 68 / 64)
     }
 }
 
 private struct Logo: View {
     var boy: CGFloat = 20
     var body: some View {
-        ZStack {
-            LogoCubuklari()
-                .stroke(LinearGradient(colors: [vurguDugme, Color(red: 0.647, green: 0.953, blue: 0.988)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                        style: StrokeStyle(lineWidth: boy * 30 / 760, lineCap: .round))
-            Circle().fill(.white).frame(width: boy * 128 / 760, height: boy * 128 / 760)
-        }
-        .frame(width: boy, height: boy)
+        LogoIsaret(boy: boy * 0.9)
+            .frame(width: boy, height: boy)
     }
 }
 

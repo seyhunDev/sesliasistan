@@ -1,9 +1,11 @@
-/** Uygulama logosu (Velora): ortadaki ışığın çevresinde ses çubukları (public/brand/velora-mark.svg).
- *  variant "mark": yalnız simge, "full": simge + Velora yazısı (geniş yerler). Zemin saydam; size simgenin genişliğidir. */
+/** Uygulama logosu (Velora, Seyhun 2026-11-03): beyaz dairenin içinden oyulmuş dolu V, üstü açık. Sol kolun iç kenarı
+ *  rüzgârla dolan yelken gibi kavisli. Simge: koyu lacivert (#0b1a33) yuvarlak kare üstünde (public/brand/velora-mark.svg);
+ *  koyu zeminlerde yalnız işaret (VeloraGlyph, zemin saydam, V boşluğundan arkası görünür).
+ *  variant "mark": yalnız simge, "full": simge + Velora yazısı (geniş yerler). size simgenin genişliğidir. */
 
-// Çubukların boyu (24 çubuk bu sırayla tekrarlar); açılış ekranı aynı çizimi canlandırır (BootSplash)
-export const RAY_LENGTHS = [60, 100, 140, 90, 120, 70, 150, 85];
-export const RAYS = Array.from({ length: 24 }, (_, i) => ({ angle: i * 15, len: RAY_LENGTHS[i % 8] }));
+// İşaretin çizimi (100 birimlik kutu): daire ve içinden oyulan V. Açılış ekranı, iPhone widget'ı ve saat aynı ölçüleri kullanır.
+export const MARK_DISC = { cx: 50, cy: 52, r: 30 };
+export const MARK_V = "M26 19 L35.6 19 C 42 35, 46 47.8, 50 55.8 L59.6 19 L74 19 L56.4 67 L43.6 67 Z";
 
 export function AppLogo({ size = 56, variant = "mark", className = "" }) {
   const mark = <img src="/brand/velora-mark.svg" alt={variant === "full" ? "" : "Velora"} width={size} height={size} draggable={false} />;
@@ -16,23 +18,18 @@ export function AppLogo({ size = 56, variant = "mark", className = "" }) {
   );
 }
 
-// Açılış ekranındaki logonun durgun hali (beyaz ışık + hafif hale): giriş ekranında açılış logosu buraya uçar ve yerine geçer
-export function GlowMark({ size = 84, ...p }) {
+// Zeminsiz işaret (koyu zeminde beyaz): giriş ekranında açılış logosu buraya uçar ve yerine geçer
+export function VeloraGlyph({ size = 84, color = "#fff", ...p }) {
+  const id = "vg-cut";
   return (
-    <svg viewBox="132 132 760 760" width={size} height={size} aria-hidden="true" {...p}>
+    <svg viewBox="18 18 64 68" width={size} height={size * (68 / 64)} aria-hidden="true" {...p}>
       <defs>
-        <linearGradient id="glow-g" gradientUnits="userSpaceOnUse" x1="160" y1="160" x2="864" y2="864">
-          <stop offset="0" stopColor="#0ea5c4" />
-          <stop offset="1" stopColor="#a5f3fc" />
-        </linearGradient>
+        <mask id={id} maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+          <rect width="100" height="100" fill="#fff" />
+          <path d={MARK_V} fill="#000" />
+        </mask>
       </defs>
-      <g stroke="url(#glow-g)" strokeWidth="30" strokeLinecap="round">
-        {RAYS.map((r, i) => (
-          <line key={i} x1="512" y1="312" x2="512" y2={312 - r.len} transform={`rotate(${r.angle} 512 512)`} />
-        ))}
-      </g>
-      <circle cx="512" cy="512" r="96" fill="url(#glow-g)" opacity=".5" style={{ filter: "blur(8px)" }} />
-      <circle cx="512" cy="512" r="64" fill="#fff" />
+      <circle {...MARK_DISC} fill={color} mask={`url(#${id})`} />
     </svg>
   );
 }

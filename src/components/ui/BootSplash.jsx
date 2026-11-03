@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { bootShown, kickBoot, onBoot } from "@/lib/boot";
-import { RAYS } from "@/components/ui/AppLogo";
+import { MARK_DISC, MARK_V } from "@/components/ui/AppLogo";
 
 const OUT = 560; // çekilme animasyonu (globals.css › .boot[data-phase=out])
 const FLY = 720; // giriş ekranında logonun yerine uçuşu (globals.css › .boot[data-fly])
@@ -30,8 +30,8 @@ function setRoot(v) {
 }
 
 // Uygulamanın tek açılış ekranı: sunucu çiziminde de var (ilk karede boş ekran yok), yükleme aşamaları boyunca
-// aynı kalır. Koyu lacivert zemin, ortada Velora logosu: ses çubukları sırayla ortadan dışa uzar,
-// yükleme sürerken konuşur gibi kısalıp uzar ve ortadaki ışık nabız gibi atar, bitince büyür, ekran solarken sayfa altından belirir; asistan kubbesi o an yükselir.
+// aynı kalır. Koyu lacivert zemin, ortada Velora logosu (2026-11-03): beyaz daire büyüyerek gelir, V yukarıdan inip
+// daireyi oyar; yükleme sürerken daire hafifçe nefes alır. Bitince büyür, ekran solarken sayfa altından belirir; asistan kubbesi o an yükselir.
 export function BootSplash() {
   const [phase, setPhase] = useState("on"); // on | out | off
   const [fly, setFly] = useState(false);
@@ -80,23 +80,18 @@ export function BootSplash() {
     <div className="boot" data-phase={phase} data-fly={fly || undefined} role="status" aria-label="Yükleniyor" aria-hidden={phase === "out" || undefined}>
       <div className="boot-bg" />
       <div className="boot-mark">
-        {/* Velora logosu (public/brand/velora-mark.svg ile aynı çizim): çubuklar sırayla açılır, sonra ses gibi kısalıp uzar */}
-        <svg className="boot-logo" viewBox="132 132 760 760" aria-hidden="true">
+        {/* Velora logosu (public/brand/velora-glyph.svg ile aynı çizim): daire gelir, V inip daireyi oyar */}
+        <svg className="boot-logo" viewBox="18 18 64 68" aria-hidden="true">
           <defs>
-            <linearGradient id="boot-g" gradientUnits="userSpaceOnUse" x1="160" y1="160" x2="864" y2="864">
-              <stop offset="0" stopColor="#0ea5c4" />
-              <stop offset="1" stopColor="#a5f3fc" />
-            </linearGradient>
+            <mask id="boot-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+              <rect width="100" height="100" fill="#fff" />
+              <path className="boot-v" d={MARK_V} fill="#000" />
+            </mask>
           </defs>
-          <g stroke="url(#boot-g)" strokeWidth="30" strokeLinecap="round">
-            {RAYS.map((r, i) => (
-              <g key={i} transform={`rotate(${r.angle} 512 512)`}>
-                <line className="boot-ray" x1="512" y1="312" x2="512" y2={312 - r.len} style={{ "--i": i }} />
-              </g>
-            ))}
+          <g mask="url(#boot-cut)">
+            <circle className="boot-disc-glow" {...MARK_DISC} fill="#3d7bff" />
+            <circle className="boot-disc" {...MARK_DISC} fill="#fff" />
           </g>
-          <circle className="boot-core-glow" cx="512" cy="512" r="96" fill="url(#boot-g)" />
-          <circle className="boot-core" cx="512" cy="512" r="64" fill="#fff" />
         </svg>
         <p className="boot-word">Velora</p>
         <p className="boot-sub">Hazırlanıyor</p>
