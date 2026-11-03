@@ -10,3 +10,7 @@
 - Bekleme ekranında sağ üst alan hep parkur; Seyhun: oraya rüzgâr değişimi gibi başka bilgiler de gelsin (ne istediği netleşince).
 - Örnek G (parkur sahnesi sade) onay bekliyor; yama /mnt/project-files/yayin-tasarim/oncesi-yeni/ornek-g.patch.
 - Telefonda denenmedi.
+
+## Ek (aynı gün)
+
+- Süre sekmesindeki tehir takip çubuğu iki satır: üstte bayrak, "Tehir · iniş 11:16", kalan süre; altta Denizde · sebep ve "İnince 1 dk sonra geri sayım" düğmesi (yazılar artık kaymıyor).
