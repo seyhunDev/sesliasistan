@@ -69,7 +69,7 @@ function arrowImage() {
   return g.getImageData(0, 0, 32, 32);
 }
 
-export function RegionMap({ place, station, obs, onPick, openAt = null, mini = false, className = "h-24" }) {
+export function RegionMap({ place, station, obs, onPick, openAt = null, startOpen = false, onClose, mini = false, className = "h-24" }) {
   const box = useRef(null);
   const map = useRef(null);
   const pick = useRef(onPick);
@@ -79,7 +79,7 @@ export function RegionMap({ place, station, obs, onPick, openAt = null, mini = f
   const [grid, setGrid] = useState(null);
   const [radar, setRadar] = useState([]);
   const [mode, setMode] = useState("wind");
-  const [full, setFull] = useState(false); // açık: tam ekran harita; kapalıyken yalnız "Harita" düğmesi
+  const [full, setFull] = useState(startOpen); // açık: tam ekran harita; kapalıyken yalnız "Harita" düğmesi
   const [center, setCenter] = useState(null); // verinin yüklendiği merkez (harita uzağa kayınca değişir)
   const [view, setView] = useState(0); // harita kaydı/yakınlaştı: oklar yeniden dizilir
   const [play, setPlay] = useState(false);
@@ -304,7 +304,7 @@ export function RegionMap({ place, station, obs, onPick, openAt = null, mini = f
             ))}
           </div>
         )}
-        <button type="button" onClick={() => (setFull(false), setPlay(false), setSel(null), setWant(null))} aria-label="Haritayı kapat" className="absolute right-2.5 top-2.5 grid size-9 place-items-center rounded-full bg-[rgba(15,31,56,.78)] text-white">
+        <button type="button" onClick={() => (setFull(false), setPlay(false), setSel(null), setWant(null), onClose?.())} aria-label="Haritayı kapat" className="absolute right-2.5 top-2.5 grid size-9 place-items-center rounded-full bg-[rgba(15,31,56,.78)] text-white">
           <Icon name="x" className="size-4" />
         </button>
       </div>
