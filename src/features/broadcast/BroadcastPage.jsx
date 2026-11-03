@@ -7,7 +7,7 @@ import Link from "next/link";
 import { BackButton } from "@/components/ui/BackButton";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
-import { card, Seg } from "@/components/ui/Page";
+import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
@@ -1074,7 +1074,15 @@ export function BroadcastPage({ orgId, id }) {
               {pvName ? <span className="sn">{pvName}</span> : null}
             </div>
           </div>
-          {sel?.kind === "boats" ? <Seg className="mt-2" value={String(ZOOMS.reduce((b, x) => (Math.abs(x[1] - zoomNow) < Math.abs(b[1] - zoomNow) ? x : b))[1])} onChange={(v) => pickZoom(+v)} options={ZOOMS.map(([n, v]) => [String(v), n])} /> : null}
+          {sel?.kind === "boats" ? (
+            <div className="grid grid-cols-4 gap-2 pt-2" aria-label="Görünüm">
+              {ZOOMS.map(([n, v]) => (
+                <button key={v} type="button" data-press aria-pressed={ZOOMS.reduce((b, x) => (Math.abs(x[1] - zoomNow) < Math.abs(b[1] - zoomNow) ? x : b))[1] === v} className="masa-tog text-center" disabled={!!busy} onClick={() => pickZoom(v)}>
+                  {n}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {/* Tek önizleme (Seyhun 2026-11-03 yonetim/ornek-A: video alanı sade); ekrandaki ne olduğu tek satır */}
           <p className="truncate px-1 pt-2 text-[0.8125rem] font-semibold text-mut">
             {`Ekranda: ${onScreen ? (onScreen.pause ? `${monName} · ara verildi` : monName) : "boş"}`}
