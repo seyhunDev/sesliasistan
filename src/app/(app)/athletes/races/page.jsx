@@ -11,6 +11,7 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { RaceList, isPast } from "@/features/athletes/RaceList";
 import { loadRaces, racesNow } from "@/features/athletes/races";
 import { shareAll } from "@/features/athletes/sharedRaces";
+import { sweepLive } from "@/features/athletes/raceWipe";
 import { RaceSwitch } from "@/features/raceCal/RaceSwitch";
 
 // Yarışlar (yeni tasarım 2026-10-21): lacivert üstte başlık ve sıradaki yarış; sıradaki yarış kartı, yaklaşan yarışlar ay ay, geçmiş yarışlar en altta; yarışa dokununca evrak, sporcular, yapılacaklar
@@ -35,6 +36,8 @@ function Races({ orgId, me }) {
         setRaces(list);
         // Kulübün yarışları ortak yarışlara (lib/sharedRace.js; oturumda bir kez, yalnız bağı olmayanlar)
         if (me.uid && me.uid === orgId) shareAll({ orgId, uid: me.uid, email: me.email, name: me.name, races: list });
+        // Silinmiş yarışlardan kalan yayın verisi (oturumda bir kez, yalnız ana hesap; raceWipe.js sweepLive)
+        if (me.uid && me.uid === orgId) sweepLive();
       },
       (e) => (setRaces((r) => r || []), setError(e?.message || "Yarışlar alınamadı.")),
     );

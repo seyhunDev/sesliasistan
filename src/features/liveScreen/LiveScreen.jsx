@@ -80,6 +80,13 @@ function useStored(key) {
     }
   }, [raw]);
 }
+const dropStore = (k) => {
+  try {
+    sessionStorage.removeItem(k);
+  } catch {
+    /* özel pencere */
+  }
+};
 const writeStore = (k, v) => {
   try {
     sessionStorage.setItem(k, JSON.stringify(v));
@@ -90,6 +97,7 @@ const writeStore = (k, v) => {
 function useData(id, y) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
+  const [gone, setGone] = useState(false);
   const skew = useClockSync(!!id);
   useEffect(() => {
     if (!id) return undefined; // örnek yarış (/canli/ornek) sunucuya sormaz
@@ -105,8 +113,16 @@ function useData(id, y) {
         // Yarım/boş yanıt (yayın sırasında eski sürüm, kesilen bağlantı) ekranı çökertmez: race yoksa hata sayılır, plan her zaman dolu
         if (res.ok && j?.race) {
           setData(fillData(j));
+          setGone(false);
           setErr("");
           if (!y) writeStore(cacheKey(id), j);
+        } else if (res.status === 404 && j?.error === "yok") {
+          // Yarış silinmiş ya da ekranı kapalı (Seyhun 2026-11-03 "sildim ama link hâlâ çalışıyor"): tarayıcıdaki son kopya da
+          // silinir, ekranda eski veri kalmaz; "Bu yarış kaldırıldı" sayfası çıkar
+          dropStore(cacheKey(id));
+          setData(null);
+          setGone(true);
+          setErr("yok");
         } else setErr(j?.error || "fail");
       } catch {
         if (on) setErr((e) => e || "net");
@@ -125,7 +141,7 @@ function useData(id, y) {
   // sunucu yanıtı gelene kadar önbellekteki son veri
   const cached = useStored(id && !y ? cacheKey(id) : "");
   const fromCache = useMemo(() => (cached?.race ? fillData(cached) : null), [cached]);
-  return { data: data || fromCache, err, skew };
+  return { data: gone ? null : data || fromCache, err, skew };
 }
 
 // Saat eşleme (Seyhun 2026-11-02 "sayılar şaşıyor, 57 56 57 55"): eskiden her 4 sn'lik veri yanıtındaki sunucu saati farkı

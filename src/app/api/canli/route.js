@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getStorage } from "firebase-admin/storage";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
 import { aheadWind, cleanLive, dayOf, dayTime, pickTimer, raceDays, raceName, rollPlan, screenDay, nextRaceDay } from "@/lib/raceLive";
@@ -20,7 +21,8 @@ export const runtime = "nodejs";
 // GET ?id=<yarış>&y=<start>  → { race, starts, timer, rounds, screen, stream, media, wind, course, fleets, boats, entries, groups, plan, forecast, forecastNext, now }
 // POST { race } (ana hesap) → yarışı canlı ekrana açar, { id }
 // GET (id yok) → { list: [{ id, name, startDate, endDate, place }] } açık yarışlar (bitmemiş), genel sayfa /canli için
-// DELETE { race } (ana hesap) → işareti kaldırır (yarış silinince, raceWipe.js); link artık "yarış kaldırıldı" der
+// DELETE { race } (ana hesap) → yarış silinince (raceWipe.js) işaret ve yarışın bütün yayın verisi silinir; link "yarış kaldırıldı" der
+// DELETE { sweep: true } (ana hesap) → yarışı silinmiş ama yayın verisi kalmış (yetim) kayıtları bulur ve siler, { n, ids }
 const MEMO = 2000;
 const memo = new Map(); // anahtar → { t, body }
 const sheetMemo = new Map(); // org/yarış → { t, fleets }
@@ -327,7 +329,74 @@ export async function POST(request) {
   return NextResponse.json({ id: race });
 }
 
-// Yarış silinince ana hesap işareti kaldırır (başka kulübün işaretine dokunulmaz)
+// Yarışın bütün yayın verisi (Seyhun 2026-11-03 "yarışı silince datalar silinmiyor; veri belki lazım olur diye tutulmasın"):
+// canlı kayıt orgs/{org}/raceLive/{yarış} ve alt belgeleri (sonuç listeleri, parkur, kayıt listesi), fotoğraf/video dosyaları
+// (Storage orgs/{org}/raceMedia/{id} ve küçük resmi), tekne takibi takip/{yarış} ve tekne konumları, herkese açık ekran işareti
+// canliEkran/{yarış}, isimsiz ziyaret sayıları. Yalnız yarış belgesi yoksa çağrılır (yarış silinmiş).
+async function wipeLive(org, race) {
+  const db = adminDb();
+  const lref = db.collection("orgs").doc(org).collection("raceLive").doc(race);
+  const l = await lref.get().catch(() => null);
+  const media = (l?.exists ? l.data()?.media : null) || [];
+  const name = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  if (name && media.length) {
+    const b = getStorage().bucket(name);
+    for (const m of media) {
+      const mid = S(m?.id, 80);
+      if (!/^[\w-]{1,80}$/.test(mid)) continue;
+      for (const path of [`orgs/${org}/raceMedia/${mid}`, `orgs/${org}/raceMedia/${mid}-k`]) await b.file(path).delete({ ignoreNotFound: true }).catch(() => {});
+    }
+  }
+  await db.recursiveDelete(lref).catch((e) => console.warn("[canli] canlı kayıt silinemedi", race, e?.message?.slice(0, 120)));
+  const tref = db.collection("takip").doc(race);
+  const t = await tref.get().catch(() => null);
+  if (t?.exists && t.data()?.org === org) await db.recursiveDelete(tref).catch(() => {});
+  const pref = db.collection("canliEkran").doc(race);
+  const ptr = await pref.get().catch(() => null);
+  if (ptr?.exists && ptr.data()?.org === org) await pref.delete().catch(() => {});
+  await dropVisits(race);
+  ptrMemo.delete(race);
+  sheetMemo.delete(`${org}/${race}`);
+  entryMemo.delete(`${org}/${race}`);
+  trackMemo.delete(race);
+  for (const k of [...memo.keys()]) if (k.startsWith(`${race}/`)) memo.delete(k);
+  listMemo = null;
+}
+// Herkese açık sayfanın isimsiz ziyaret sayıları (Netlify Blobs "canli-iz", api/canli-iz): o yarışın ham oturumları (z/<gün>/<yarış>/…)
+// ve gün özetlerindeki satırı (o/<gün>)
+async function dropVisits(race) {
+  try {
+    const { getStore } = await import("@netlify/blobs");
+    const st = getStore({ name: "canli-iz" });
+    const { blobs: z } = await st.list({ prefix: "z/" });
+    for (const b of z) if (b.key.split("/")[2] === race) await st.delete(b.key).catch(() => {});
+    const { blobs: o } = await st.list({ prefix: "o/" });
+    for (const b of o) {
+      const v = await st.get(b.key, { type: "json" }).catch(() => null);
+      if (v && typeof v === "object" && race in v) {
+        delete v[race];
+        await st.setJSON(b.key, v).catch(() => {});
+      }
+    }
+  } catch {
+    /* Netlify dışında (yerelde) depo yok */
+  }
+}
+// Yetimler: işareti, canlı kaydı ya da tekne takibi olup yarış belgesi olmayanlar. Antrenman kayıtları (ant-…) ve ortak yarışlar dokunulmaz.
+async function orphansOf(org) {
+  const db = adminDb();
+  const base = db.collection("orgs").doc(org);
+  const [ptr, lives, tr] = await Promise.all([db.collection("canliEkran").where("org", "==", org).get(), base.collection("raceLive").listDocuments(), db.collection("takip").where("org", "==", org).get()]);
+  const ids = [...new Set([...ptr.docs.map((d) => d.id), ...lives.map((d) => d.id), ...tr.docs.map((d) => d.id)])].filter((x) => ID.test(x) && !x.startsWith("ant-"));
+  const out = [];
+  for (const id of ids) {
+    const [r, sh] = await Promise.all([base.collection("races").doc(id).get(), db.collection("sharedRaces").doc(id).get()]);
+    if (!r.exists && !sh.exists) out.push(id);
+  }
+  return out;
+}
+
+// Yarış silinince ana hesap yayın verisini siler (başka kulübün kaydına dokunulmaz); sweep ile kalmış eski kayıtları temizler
 export async function DELETE(request) {
   const au = await requireUser(request, { free: true });
   if (!au.ok) return unauthorized(au);
@@ -338,18 +407,28 @@ export async function DELETE(request) {
   } catch {
     body = {};
   }
-  const race = S(body?.race, 60);
-  if (!ID.test(race)) return NextResponse.json({ error: "Yarış yok." }, { status: 400 });
   const p = await profileOf(au.uid);
   if (p.role !== "owner") return NextResponse.json({ error: "Yalnız ana hesap." }, { status: 403 });
+  const org = p.orgId;
+  if (body?.sweep === true) {
+    const ids = await orphansOf(org);
+    for (const id of ids) await wipeLive(org, id);
+    return NextResponse.json({ ok: true, n: ids.length, ids });
+  }
+  const race = S(body?.race, 60);
+  if (!ID.test(race)) return NextResponse.json({ error: "Yarış yok." }, { status: 400 });
   const ref = adminDb().collection("canliEkran").doc(race);
   const was = await ref.get();
-  if (was.exists && was.data()?.org && was.data().org !== p.orgId) return NextResponse.json({ error: "Bu yarış başka kulüpte açık." }, { status: 409 });
-  if (was.exists) await ref.delete();
-  ptrMemo.delete(race);
-  sheetMemo.delete(`${p.orgId}/${race}`);
-  entryMemo.delete(`${p.orgId}/${race}`);
-  for (const k of [...memo.keys()]) if (k.startsWith(`${race}/`)) memo.delete(k);
-  listMemo = null;
-  return NextResponse.json({ ok: true });
+  if (was.exists && was.data()?.org && was.data().org !== org) return NextResponse.json({ error: "Bu yarış başka kulüpte açık." }, { status: 409 });
+  // yarış hâlâ duruyorsa yalnız işaret kalkar (ekran kapatılır); silinmişse her şey gider
+  const r = await adminDb().collection("orgs").doc(org).collection("races").doc(race).get();
+  if (r.exists) {
+    if (was.exists) await ref.delete();
+    ptrMemo.delete(race);
+    for (const k of [...memo.keys()]) if (k.startsWith(`${race}/`)) memo.delete(k);
+    listMemo = null;
+    return NextResponse.json({ ok: true });
+  }
+  await wipeLive(org, race);
+  return NextResponse.json({ ok: true, wiped: true });
 }
