@@ -3131,7 +3131,14 @@ function raceRows(data, sel) {
   const n = pos >= 0 ? (entry.legs?.[pos] || []).length : 0;
   return { rows, head: pos >= 0 ? (fin ? "Finiş" : markName(route[pos])) : "Sıralama", tag: n ? `${n} tekne ${fin ? "bitirdi" : "döndü"}` : "", n: rows.length };
 }
-function GWind({ data, now, mode, today, can = false, open = false }) {
+function GWind({ data, now, mode, today, can = false, open: want = false }) {
+  // takılır takılmaz açık gelmesin (elle "Rüzgâr"da durunca da açılışı görünsün)
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 700);
+    return () => clearTimeout(t);
+  }, []);
+  const open = want && ready;
   const c = curWind(data, null, true, now);
   const plan = data.plan;
   const rows = [];
@@ -3182,6 +3189,7 @@ function GWind({ data, now, mode, today, can = false, open = false }) {
         </div>
         {can ? (
           <div className="gr-wx" aria-hidden={!open}>
+            <div className="gr-wxi">
             <div className="gr-hd">
               <span className="gr-bd t">Beklenen</span>
               <span className="gr-hs">Saatlik tahmin</span>
@@ -3189,19 +3197,27 @@ function GWind({ data, now, mode, today, can = false, open = false }) {
             <div className="gr-wt">
               <WindHours data={data} now={now} scale={1} ahead />
             </div>
+            </div>
           </div>
         ) : null}
       </div>
     </GCard>
   );
 }
+// uzun program (3 yarış × 3 grup) kısalır (Seyhun 2026-11-03 18:25): bitenler tek satırda sayı, önümüzdeki en çok 4 start, kalanı "+N start daha"
+const PROG_MAX = 4;
 function GProg({ prog }) {
   if (!prog.length) return null;
+  const done = prog.filter((x) => x.state === "done").length;
+  const up = prog.filter((x) => x.state !== "done");
+  const rows = up.length ? up.slice(0, PROG_MAX) : prog.slice(-1);
+  const more = up.length - rows.length;
+  const foot = [done && up.length ? `${done} start bitti` : "", more > 0 ? `+${more} start daha${up[up.length - 1]?.at ? ` · son ${up[up.length - 1].at}` : ""}` : ""].filter(Boolean).join(" · ");
   return (
     // sade program (Seyhun 2026-11-03 18:20): rüzgâr ve parkurla aynı satır dili, pembe dolgu ve hap yok; sıradaki satır yalnız parlak + grup rengi çizgisi
-    <GCard cls="gr-side gr-prg" head="Program" tone="b" tag="Bugün">
+    <GCard cls="gr-side gr-prg" head="Program" tone="b" tag={`Bugün · ${prog.length} start`}>
       <ul className="gr-pg">
-        {prog.slice(0, 7).map((x) => (
+        {rows.map((x) => (
           <li key={x.key} className={x.state} style={{ "--g": groupColor(x.grp) || "rgba(255,255,255,.4)" }}>
             <b>{x.at || ""}</b>
             <span>
@@ -3212,6 +3228,7 @@ function GProg({ prog }) {
           </li>
         ))}
       </ul>
+      {foot ? <div className="gr-more">{foot}</div> : null}
     </GCard>
   );
 }
