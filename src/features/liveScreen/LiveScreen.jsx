@@ -1767,16 +1767,22 @@ function nearItems(data, prog, now) {
   return items;
 }
 // Tek panel: her 8 sn'de sıradaki bilgi kayarak gelir; altında noktalar hangisinde olduğunu gösterir
+// Her panelin kendi süresi var: parkur animasyonu bir kez tamamlanana kadar kalır (Seyhun 2026-11-03 "parkur animasyonu tamamlanmadan
+// geçiyor; bir kere tamamlansın"), saatlik tablo biraz daha uzun, diğerleri 8 sn
+const SCENE_T = 12; // sn, courseSvg sailT
+const panelMs = (it) => (it?.k === "course" ? SCENE_T * 1000 + 2000 : it?.k === "whours" ? 10000 : ROTATE_MS);
 function Rotator({ items }) {
   const [i, setI] = useState(0);
   const n = items.length;
+  const cur = n ? items[i % n] : null;
+  const ms = panelMs(cur);
   useEffect(() => {
     if (n < 2) return undefined;
-    const t = setInterval(() => setI((v) => v + 1), ROTATE_MS);
-    return () => clearInterval(t);
-  }, [n]);
+    const t = setTimeout(() => setI((v) => v + 1), ms);
+    return () => clearTimeout(t);
+  }, [n, i, ms]);
   if (!n) return null;
-  const it = items[i % n];
+  const it = cur;
   return (
     <div className="lv-one">
       <div key={it.k} className="lv-oneb">
@@ -2139,7 +2145,7 @@ const defaultCard = (crs) => ({ axis: 0, wind: null, range: null, kn: null, line
 const courseSvg = (data, route, o = {}) => {
   try {
     const crs = cleanCourse(data.course || {});
-    return sceneSvg(cardOf(crs) || defaultCard(crs), route, { pre: "lv", sail: true, sailT: 12, ...o });
+    return sceneSvg(cardOf(crs) || defaultCard(crs), route, { pre: "lv", sail: true, sailT: SCENE_T, ...o });
   } catch {
     return "";
   }
