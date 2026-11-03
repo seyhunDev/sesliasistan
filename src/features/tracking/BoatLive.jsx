@@ -5,14 +5,17 @@
 // canlı ekranın arkasında oynar. Şimdilik start anı (örnek veri, döngüde); sonra start'tan bitişe canlı konum akışı.
 // Şimdilik hazır veri seti (public/veri/ornek-start.json); canlı konum akışı gelince aynı oynatıcı o veriyi okur.
 // grp: ekrandaki yarışın grubu; veri setinde o grup yoksa ilk grup.
-import { useEffect, useState } from "react";
-import { cleanSet, liveGroup } from "@/lib/boatPlay";
+import { useEffect, useMemo, useState } from "react";
+import { cleanSet, liveGroup, placeSet } from "@/lib/boatPlay";
+import { coursePoints } from "@/lib/courseCard";
+import { cleanCourse } from "@/lib/raceCourse";
 import { BoatRace } from "./BoatRace";
 
 let cache = null;
 
 // zoom: Yayın › Video görünümü (screen.zoom 0–100); verilmezse eski start görünümü
-export function BoatLive({ grp = "", bare = true, tag, zoom = null }) {
+// course: yarışın parkuru (Yayın › Parkur); komite ve pin girildiyse şamandıralar gerçek yerinde, tekneler o start hattında
+export function BoatLive({ grp = "", bare = true, tag, zoom = null, course = null }) {
   const [set, setSet] = useState(cache);
   useEffect(() => {
     if (cache) return;
@@ -29,7 +32,15 @@ export function BoatLive({ grp = "", bare = true, tag, zoom = null }) {
       on = false;
     };
   }, []);
-  if (!set) return <div className="br" />;
-  const g = liveGroup(set, grp);
-  return <BoatRace key={g} set={set} grp={g} bare={bare} tag={tag} zoom={zoom} />;
+  const placed = useMemo(() => {
+    if (!set || !course) return set;
+    try {
+      return placeSet(set, coursePoints(cleanCourse(course))?.pts);
+    } catch {
+      return set;
+    }
+  }, [set, course]);
+  if (!placed) return <div className="br" />;
+  const g = liveGroup(placed, grp);
+  return <BoatRace key={g} set={placed} grp={g} bare={bare} tag={tag} zoom={zoom} />;
 }
