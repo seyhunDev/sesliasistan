@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { liveUrl } from "@/lib/raceCams";
 import { apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { CARD_TYPES, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
+import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { groupColor, groupMap, onlyCat, provisional } from "@/lib/roundScore";
@@ -1027,6 +1027,42 @@ function WindArrow({ w }) {
   );
 }
 
+// ORTAK rüzgâr bloğu (Seyhun 2026-11-03 "rüzgâr gösteriminde çok eksiltmişsin; sağanak, gerçekleşen, ok ortalanmamış; birbirleriyle uyumlu
+// gitmemiz gerekiyor"): canlı ekranın her adımında aynı iki parça. WindNow: daire içinde ortalı ok (rüzgârın gittiği yön), knot, sağanak, yön ve
+// derece, kaynak (istasyon saati / manuel / start'ta tahmin). WindHours: uygulamanın her yerindeki ortak saatlik tablo (HourTable: rüzgâr, sağanak,
+// yön; geçmiş saatlerde istasyon ölçümü açık mavi, şimdi kırmızı çerçeve, start pembe çizgi).
+function WindNow({ w, by = "", cls = "" }) {
+  if (!w || w.kn == null) return null;
+  const a = (w.dir ?? 0) + 180;
+  return (
+    <div className={`lv-wn ${cls}`}>
+      <svg className="lv-wna" viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" />
+        {w.dir != null ? (
+          <g transform={`rotate(${a} 24 24)`}>
+            <path d="M24 7 L31 25 L24 20 L17 25 Z" fill="#fff" />
+            <line x1="24" y1="20" x2="24" y2="40" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
+          </g>
+        ) : null}
+      </svg>
+      <div className="lv-wnt">
+        <b>
+          {w.kn}
+          <em>kn</em>
+          {w.gust != null && w.gust > w.kn ? <i>{`sağanak ${w.gust}`}</i> : null}
+        </b>
+        <span>{[w.dir != null ? `${dirShort(w.dir)} ${degText(w)}` : "", by].filter(Boolean).join(" · ")}</span>
+      </div>
+    </div>
+  );
+}
+function WindHours({ data, now, scale = 1, cls = "" }) {
+  const fc = data.forecast;
+  const rows = (fc?.rows || []).filter((r) => r.wind != null);
+  if (rows.length < 2) return null;
+  const at = data.plan?.at || "";
+  return <HourTable className={`lv-wh ${cls}`} rows={rows} date={trDay(now)} nowMs={now} obs={fc?.obs || []} station={fc?.station ? { name: fc.station } : null} marks={at ? [{ at, label: "Start" }] : []} scale={scale} />;
+}
 // Üstte tek soluk satır: yarış adı · yer · tarih, yanında hayalet düğmeler (geri ayrı, sol köşede)
 // Yarışın adı ve şu an ne olduğu alt şeridin hemen üstünde, şeffaf zeminde, hep orada (Seyhun 2026-11-02 "yukarıdaki yazıyı kaldıralım,
 // hangi grup, yarış adı altta şeridin üstünde, arka fonu şeffaf"). Yayıncının yazdığı alt yazı (screen.caption) bunun üstünde vurgulu satır.
@@ -1538,50 +1574,13 @@ function CourseCol({ data, route, svg }) {
 // ölçülen (istasyon ya da manuel), gelecek saatler tahmin; start saati vurgulu
 function WindCol({ data, now }) {
   const c = curWind(data, null, true, now);
-  const at = data.plan?.at || "";
-  const ew = expWind(data.forecast, at);
+  const ew = expWind(data.forecast, data.plan?.at || "");
   const w = c || ew;
-  const fc = data.forecast;
-  const man = windByHour(data, now);
-  const obsAt = Object.fromEntries((fc?.obs || []).filter((o) => o.wind != null).map((o) => [o.hh, o]));
-  const nowH = +new Date(now + 3 * 3600e3).toISOString().slice(11, 13);
-  const rows = (fc?.rows || []).filter((r) => r.wind != null && +r.hh >= 8 && +r.hh <= 18).slice(0, 11);
-  const got = (r) => (+r.hh <= nowH ? man[r.hh] || obsAt[r.hh] || null : null);
   return (
     <div className="lv-hwnd">
       <div className="lv-hlab">Rüzgâr</div>
-      {w ? (
-        <div className="lv-wnow">
-          {w.dir != null ? <WindArrow w={w} /> : null}
-          <div>
-            <b className="kn">
-              {w.kn ?? "—"}
-              <em>knot</em>
-            </b>
-            <span>{[w.dir != null ? `${dirShort(w.dir)} ${degText(w)}` : "", c ? c.by : `Start'ta tahmin${ew?.gust && ew.gust > ew.kn ? ` · sağanak ${ew.gust}` : ""}`].filter(Boolean).join(" · ")}</span>
-          </div>
-        </div>
-      ) : null}
-      {rows.length >= 2 ? (
-        <>
-          <div className="lv-hlab sm">Gün boyunca · geçen saatler ölçülen</div>
-          <div className="lv-wrows">
-            {rows.map((r) => {
-              const g = got(r);
-              const kn = g ? g.wind : r.wind;
-              const dir = g ? g.dir ?? r.dir : r.dir;
-              return (
-                <div key={r.hh} className={`${at && r.hh === at.slice(0, 2) ? "on" : ""}${g ? " got" : ""}`}>
-                  <span>{`${r.hh}:00`}</span>
-                  {dir != null ? <i style={{ transform: `rotate(${dir + 180}deg)` }} /> : <i className="no" />}
-                  <b>{kn}</b>
-                  <small>{dir != null ? `${Math.round(dir)}°` : ""}</small>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      ) : null}
+      <WindNow w={w} by={c ? c.by : "Start'ta tahmin"} cls="big" />
+      <WindHours data={data} now={now} scale={1.05} />
     </div>
   );
 }
@@ -1595,6 +1594,7 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
   const ew = expWind(data.forecast, at);
   const crs = cleanCourse(data.course || {});
   const route = sceneRoute(data, null, true, "wait");
+  const svg = courseSvg(data, route);
   const ax = axisInfo(data);
   let bias = null;
   try {
@@ -1613,12 +1613,6 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
   const rt = cleanRoute(route);
   const ap = data.plan.status === "ap";
   const apDown = !ap && !!data.plan.warn && now < Date.parse(data.plan.warn);
-  const fc = data.forecast;
-  const man = windByHour(data, now);
-  const obsAt = Object.fromEntries((fc?.obs || []).filter((o) => o.wind != null).map((o) => [o.hh, o]));
-  const nowH = +new Date(now + 3 * 3600e3).toISOString().slice(11, 13);
-  const h0 = Math.max(8, Math.min(nowH, 13));
-  const rows = (fc?.rows || []).filter((r) => r.wind != null && +r.hh >= h0 && +r.hh <= h0 + 5);
   const hasProg = !!(ag?.rows?.length || left.length);
   const progRows = ag?.mode === "day" ? ag.rows.filter((x) => x.state !== "done").slice(0, 3).map((x) => ({ key: `${x.at}${x.text}`, at: x.at, name: x.text, grp: "", state: x.state })) : left.slice(0, 3);
   return (
@@ -1669,19 +1663,10 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
           </div>
         </div>
       ) : null}
-      {rt.length || ax ? (
+      {svg ? (
         <div className="lv-bcrs">
-          <div className="lv-hlab">{`Parkur${rt.length ? ` · ${CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}` : ""}`}</div>
-          {rt.length ? (
-            <div className="lv-route" aria-label={routeText(route)}>
-              {rt.map((m, i) => (
-                <span key={`${m}${i}`}>
-                  {i ? <s /> : null}
-                  <i>{m}</i>
-                </span>
-              ))}
-            </div>
-          ) : null}
+          <div className="lv-hlab">{`Parkur · ${CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}${rt.length ? ` · ${routeText(route)}` : ""}`}</div>
+          <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: svg }} />
           <div className="lv-cinfo">
             <div>
               <small>Eksen</small>
@@ -1699,31 +1684,8 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
       {ww ? (
         <div className="lv-bwnd">
           <div className="lv-hlab">Rüzgâr</div>
-          <div className="lv-wnow">
-            {ww.dir != null ? <WindArrow w={ww} /> : null}
-            <div>
-              <b className="kn">
-                {ww.kn ?? "—"}
-                <em>knot</em>
-              </b>
-              <span>{[ww.dir != null ? `${dirShort(ww.dir)} ${degText(ww)}` : "", c ? "" : "tahmin"].filter(Boolean).join(" · ")}</span>
-            </div>
-          </div>
-          {rows.length >= 2 ? (
-            <div className="lv-wcells">
-              {rows.map((r) => {
-                const g = +r.hh <= nowH ? man[r.hh] || obsAt[r.hh] || null : null;
-                const dir = g ? g.dir ?? r.dir : r.dir;
-                return (
-                  <div key={r.hh} className={at && r.hh === at.slice(0, 2) ? "on" : ""}>
-                    <span>{r.hh}</span>
-                    {dir != null ? <i style={{ transform: `rotate(${dir + 180}deg)` }} /> : <i className="no" />}
-                    <b>{g ? g.wind : r.wind}</b>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
+          <WindNow w={ww} by={c ? c.by : "Start'ta tahmin"} />
+          <WindHours data={data} now={now} scale={0.85} />
         </div>
       ) : null}
     </aside>
@@ -1753,22 +1715,12 @@ function nearItems(data, prog, now) {
     const sub = [`Hat ${Math.round(bias.line)}°`, bias.wind != null ? `rüzgâr ${Math.round(bias.wind)}° ${dirShort(bias.wind)}` : ""].filter(Boolean).join(" · ");
     items.push(bias.end ? { k: "line", lab: "Start hattı", big: `${bias.end === "pin" ? "Pin" : "Komite"} avantajlı ${Math.round(bias.deg)}°`, y: true, sub } : { k: "line", lab: "Start hattı", big: "Hat dengeli", sub });
   }
-  if (w) items.push({ k: "wind", lab: c ? "Rüzgâr" : "Start'ta beklenen rüzgâr", w, sub: [w.dir != null ? `${dirShort(w.dir)} ${degText(w)}` : "", c ? c.by : ew?.gust && ew.gust > ew.kn ? `sağanak ${ew.gust}` : "tahmin"].filter(Boolean).join(" · ") });
-  if (route.length || ax) items.push({ k: "course", lab: `Parkur${route.length ? ` · ${CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}` : ""}`, route, sub: ax ? `Eksen ${ax.deg}° ${dirShort(ax.deg)}` : "" });
+  if (w) items.push({ k: "wind", lab: c ? "Rüzgâr" : "Start'ta beklenen rüzgâr", w, by: c ? c.by : "tahmin" });
+  if ((data.forecast?.rows || []).filter((r) => r.wind != null).length >= 2) items.push({ k: "whours", lab: "Gün boyunca rüzgâr", data, now });
+  const svg = courseSvg(data, sceneRoute(data, null, true, "wait"));
+  if (svg) items.push({ k: "course", lab: `Parkur · ${CARD_TYPES[selCard(crs).type] || CARD_TYPES.std}${route.length ? ` · ${routeText(route)}` : ""}`, svg, sub: ax ? `Eksen ${ax.deg}° ${dirShort(ax.deg)}` : "" });
   if (after) items.push({ k: "next", lab: "Sıradaki", big: [after.name, grpText(after.grp)].filter(Boolean).join(" · "), grp: after.grp, sub: [after.cls, after.at ? `Start ${after.at}` : "Bu start'tan sonra"].filter(Boolean).join(" · ") });
   return items;
-}
-function RouteChips({ route }) {
-  return (
-    <div className="lv-route" aria-label={routeText(route)}>
-      {route.map((m, i) => (
-        <span key={`${m}${i}`}>
-          {i ? <s /> : null}
-          <i>{m}</i>
-        </span>
-      ))}
-    </div>
-  );
 }
 // Tek panel: her 8 sn'de sıradaki bilgi kayarak gelir; altında noktalar hangisinde olduğunu gösterir
 function Rotator({ items }) {
@@ -1786,13 +1738,11 @@ function Rotator({ items }) {
       <div key={it.k} className="lv-oneb">
         <small>{it.lab}</small>
         {it.k === "wind" ? (
-          <b>
-            {it.w.dir != null ? <WindArrow w={it.w} /> : null}
-            {it.w.kn ?? "—"}
-            <em>knot</em>
-          </b>
-        ) : it.k === "course" && it.route.length ? (
-          <RouteChips route={it.route} />
+          <WindNow w={it.w} by={it.by} cls="big" />
+        ) : it.k === "whours" ? (
+          <WindHours data={it.data} now={it.now} scale={1.1} />
+        ) : it.k === "course" ? (
+          <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: it.svg }} />
         ) : (
           <b className={it.y ? "y" : ""}>
             {it.grp ? <Dot g={it.grp} /> : null}
@@ -2139,9 +2089,13 @@ export const sceneRoute = (data, sel, isCur, phase) => {
 };
 // Gösterim (Seyhun 2026-11-02): yarış öncesi 30 sn'de bir 12 sn kendiliğinden (Yayın'dan kapatılabilir), Yayın'dan "Parkuru göster" ile 15 sn;
 // kartsız, arka plan (video ya da deniz/fotoğraf) bulanıklaşır, parkur sağda; bitince bulanıklık kalkar
+// Ölçüm yokken de parkur sahnesi kurulur (Seyhun 2026-11-03 "hiç verisi yoksa rüzgârı tam kuzey 0 kabul ederek yine parkuru kuralım; önemli
+// olan yarış parkurunun ne olduğunu göstermek"): eksen 0°, rüzgâr ve hat yok, bütün noktalar tahmini; veri girilince gerçek kart
+const defaultCard = (crs) => ({ axis: 0, wind: null, range: null, kn: null, line: null, reach: null, orsa: crs.len?.orsa || ORSA_M, type: cardType(selCard(crs)), est: { komite: true, pin: true, m1: true, m2: true, m3: true, m4: true } });
 const courseSvg = (data, route, o = {}) => {
   try {
-    return sceneSvg(cardOf(cleanCourse(data.course || {})), route, { pre: "lv", sail: true, sailT: 12, ...o });
+    const crs = cleanCourse(data.course || {});
+    return sceneSvg(cardOf(crs) || defaultCard(crs), route, { pre: "lv", sail: true, sailT: 12, ...o });
   } catch {
     return "";
   }
@@ -2197,8 +2151,8 @@ function curWind(data, sel, isCur, now) {
   const tr = new Date(now + 3 * 3600e3);
   const so = (fc?.obs || []).filter((o) => o.wind != null).at(-1);
   const fresh = mine?.kn != null && mine.at && now - Date.parse(mine.at) < 3600e3;
-  if (fresh) return { kn: mine.kn, dir: mine.dir, range: mine.range || null, hh: tr.toISOString().slice(11, 13), man: true, by: `Manuel girildi ${trOf(mine.at).slice(11, 16)}` };
-  return so ? { kn: so.wind, dir: so.dir, range: null, hh: so.hh, man: false, by: `${fc.station || "İstasyon"} ${so.hh}:00` } : null;
+  if (fresh) return { kn: mine.kn, dir: mine.dir, gust: mine.gust ?? null, range: mine.range || null, hh: tr.toISOString().slice(11, 13), man: true, by: `Manuel girildi ${trOf(mine.at).slice(11, 16)}` };
+  return so ? { kn: so.wind, dir: so.dir, gust: so.gust ?? null, range: null, hh: so.hh, man: false, by: `${fc.station || "İstasyon"} ${so.hh}:00` } : null;
 }
 const degText = (w) => (w?.range ? `${w.range[0]}–${w.range[1]}°` : w?.dir != null ? `${Math.round(w.dir)}°` : "");
 // Bekleme ekranında şimdiki rüzgâr (Seyhun 2026-11-02 "rüzgâr yönü daha doğru ve profesyonel; manuel girildiyse gösterilsin"):
@@ -2621,7 +2575,7 @@ export function LiveScreen({ id, y = "" }) {
   const pre = !ongoing && (phase === "wait" || (cs.rem != null && cs.rem > 0));
   // Senaryo 2 (Seyhun 2026-11-03): yarış günü, start'a 1 saatten az, turuncu bayrak ya da start dizisi; tehir, "yarış yok", süren yarış ve
   // yarın hariç. Videosuz StartHero, videolu NearBand; sıralama, çipler, kayan kartlar ve alt şerit yok
-  const near = isCur && !ongoing && phase !== "summary" && !["ap", "none"].includes(data.plan.status) && !/Yarın/.test(cs.label) && (counting || orangeUp(data.plan, today) || (cs.rem != null && cs.rem > 0 && cs.rem < 3600));
+  const near = isCur && !ongoing && phase !== "summary" && !["ap", "none"].includes(data.plan.status) && !/Yarın/.test(cs.label) && (((data.timer?.end != null || data.timer?.left != null) && data.timer.mode === "start" && counting) || orangeUp(data.plan, today) || (cs.rem != null && cs.rem > 0 && cs.rem < 3600));
   // start'tan önce (geri sayımda) yok; Yayın › Video › Genel sıralama ya da sesle "geneli kaldır" ile kapanır (Seyhun 2026-11-02)
   const ovOn = phase === "race" && isCur && !!sel && !pre && data.courseShow?.ov !== false;
   // Videolu yarış öncesi (Seyhun 2026-11-02 videolu/1-yaris-oncesi.png, 2-start-oncesi-turuncu.png onay): solda bulanık şeritte bilgiler,
