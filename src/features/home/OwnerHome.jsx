@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { Icon } from "@/components/ui/Icon";
 import { useEffect, useMemo, useState } from "react";
 import { HomeDays } from "./HomeDays";
 import { todayStr } from "@/lib/utils/format";
@@ -13,18 +11,13 @@ import { useWeather } from "@/features/weather/useWeather";
 import { awayRace, fitDays, homeActions } from "@/lib/homeTiles";
 import { racePhase } from "@/lib/raceDay";
 import { useQuota } from "@/lib/quota";
-import { BirthdayStrip } from "./BirthdayStrip";
 import { InboxSheet, useInbox } from "./Inbox";
-import { WaitRow } from "./WaitRow";
 import { Cockpit } from "./Cockpit";
-import { ShopCards } from "./ShopCards";
 import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
-import { AthletesWidget, ClubRows, FitWidget, NotesWidget } from "./HomeWidgets";
-import { HomeSummary } from "./HomeSummary";
-import { EnglishCard, MediaCard, TasksCard } from "./FeatureCards";
+import { NotesWidget } from "./HomeWidgets";
 import { MyAttendanceCard } from "./MyAttendanceCard";
 import { MyFitCard } from "./MyFitCard";
 import { myFit } from "@/lib/fitness/model";
@@ -110,37 +103,8 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         <div className="mt-4">
           <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
         </div>
-        {/* Kulüp (Seyhun "A · Kutular" 2026-10-24): iş düğmelerinin altında, yemek kartının üstünde ikili kutular */}
-        {owner && (
-          <div className="mt-5 empty:hidden">
-            <HomeSummary
-              tiles
-              title={athletes || race.on ? "Kulüp" : "Özet"}
-              money={canReceipts(kind)}
-              race={null}
-              dues={!!athletes}
-              invoices
-              lead={athletes ? <ClubRows open={race.open} fit={fit} /> : null}
-            />
-          </div>
-        )}
-        {/* Yemek · Market · Giyim yan yana (Seyhun 2026-10-25); açık sipariş kartları üstünde */}
-        {owner && (
-          <div className="mt-5">
-            <ShopCards />
-          </div>
-        )}
-        {/* Deniz trafiği ve Kameralar: yalnız sayfasına giden iki sade düğme, veri çekmez (Seyhun 2026-10-23) */}
-        {!side && (
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            {[["/sea", "anchor", "Deniz trafiği"], ["/cams", "video", "Kameralar"]].map(([href, icon, label]) => (
-              <Link key={href} href={href} data-press className="food-card flex h-14 min-w-0 items-center gap-2.5 rounded-[1.125rem] px-4">
-                <Icon name={icon} className="size-5 shrink-0 text-[#22d3ee]" />
-                <span className="truncate text-[0.9375rem] font-semibold">{label}</span>
-              </Link>
-            ))}
-          </div>
-        )}
+        {/* Sade ana sayfa (Seyhun 2026-11-03 "A · İyice sade"): iş düğmelerinin altında Kulüp kutuları, Yemek · Market · Giyim, Deniz trafiği ·
+            Kameralar yok; hepsi "Tümü" içinde */}
       </Cockpit>
       {/* Alt kısım da lacivert (Seyhun 2026-10-22: "yukarısı daha güzel, bu tasarımı devam ettirelim"): kartlar kokpitteki gibi
           yarı saydam lacivert, yazılar açık; renkler globals.css .navy değişkenlerinden (koyu görünüm sınıfları da çalışır) */}
@@ -151,34 +115,11 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
           </p>
         )}
         <PaidNotice />
-        {/* Takvim listesi yok (Seyhun 2026-10-23 "A"): bir günün planları kokpitteki gün kutusuna dokununca açılır. Notlar kayan kartlar,
-            altında Seni bekleyenler; sonra Sporcular, Fitness, Kulüp */}
-        <div>
-          <NotesWidget notes={notes} />
-          <WaitRow inbox={inbox} onAll={onInbox} />
-        </div>
-        {athletes && owner && <AthletesWidget races={race.open} />}
-        {!side && <FitWidget fit={fit} />}
-        <div className="empty:hidden">
-          <BirthdayStrip />
-        </div>
+        {/* Yalnız notlar (Seyhun 2026-11-03 "A · İyice sade"); Sporcular, Fitness, doğum günü, İngilizce, Görevler, Medya, Özet kartları kalktı
+            (sayfaları "Tümü" içinde). Çalışanın ve sporcunun kendi antrenman/yoklama kartı kalır */}
+        <NotesWidget notes={notes} />
         {staff && <MyFitCard />}
         {side && <MyAttendanceCard kind={kind} />}
-        {/* Özellik kartları (Seyhun 2026-10-28 "A · Büyük kartlar"): eski Özet (Mesajlar) yerine İngilizce, Görevler, Medya; en altta Instagram.
-            Ana hesapta Kulüp yukarıda (kutular). Diğer hesaplarda Özet listesi burada */}
-        {!side && <EnglishCard />}
-        {!side && <TasksCard />}
-        {athletes && <MediaCard />}
-        {owner ? (
-          <HomeSummary posts={!staff} tail={false} />
-        ) : (
-          <HomeSummary
-            title="Özet"
-            money={canReceipts(kind)}
-            race={null /* Sıradaki yarış kartı yok (Seyhun 2026-10-20: "artık ona ihtiyaç yok"; yarışlar listede, Yarışlar düğmesi altta) */}
-            posts={!staff}
-          />
-        )}
       </div>
     </>
   );
