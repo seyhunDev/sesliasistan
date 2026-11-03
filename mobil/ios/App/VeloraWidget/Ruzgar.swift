@@ -1,17 +1,17 @@
 import SwiftUI
 import WidgetKit
 
-// Widget'ların rüzgâr grafiği: ana sayfadaki grafiğin aynısı (src/features/home/CockpitWind.jsx). Dolu camgöbeği alan rüzgâr, açık alan ve
+// Widget'ların rüzgâr grafiği: ana sayfadaki grafiğin aynısı (src/features/home/CockpitWind.jsx). Dolu açık mavi alan rüzgâr, açık alan ve
 // kesik çizgi sağanak; üstte 2 saatte bir yön oku (rüzgârın estiği yöne bakar, 17 kn ve üstü turuncu), altında 3 saatte bir saat, sıcaklık,
 // "rüzgâr–sağanak" kn (tek renk, ana sayfadaki gibi). Kırmızı çizgi ve nokta şimdi ("şimdi" yazısıyla). Saatler 06–23; saat 23'ten sonra yarının günü gösterilir.
 // Veri open-meteo'dan (uygulamanın hava sayfasıyla aynı kaynak, knot); 25 dakika uygulama grubunda saklanır, her widget yeniden çekmez.
 
 // Okyanus renkleri (Seyhun 2026-10-22: uygulama Okyanus'a geçiyor; örnek /mnt/project-files/iphone/widget-okyanus-ornek.png)
-let wZemin = Color(red: 0.067, green: 0.125, blue: 0.227) // gece mavisi #11203a
-let wUst = Color(red: 0.078, green: 0.22, blue: 0.353) // zeminin üstü #14385a (yukarıdan aşağı geçiş)
-let wAcik = Color(red: 0.404, green: 0.91, blue: 0.976) // koyu zeminde okunan camgöbeği #67e8f9
-private let alanRenk = Color(red: 0.133, green: 0.827, blue: 0.933) // #22d3ee
-private let saganakRenk = Color(red: 0.647, green: 0.953, blue: 0.988) // #a5f3fc
+let wZemin = Color(red: 0.043, green: 0.102, blue: 0.2) // lacivert #0b1a33
+let wUst = Color(red: 0.075, green: 0.141, blue: 0.247) // zeminin üstü #13243f (yukarıdan aşağı geçiş)
+let wAcik = Color(red: 0.561, green: 0.702, blue: 1) // koyu zeminde okunan açık mavi #8fb3ff
+private let alanRenk = Color(red: 0.357, green: 0.549, blue: 1) // #5b8cff
+private let saganakRenk = Color(red: 0.78, green: 0.847, blue: 1) // #c7d8ff
 private let turuncu = Color(red: 0.957, green: 0.651, blue: 0.29) // #f4a64a
 private let kirmizi = Color(red: 1.0, green: 0.42, blue: 0.42) // #ff6b6b
 

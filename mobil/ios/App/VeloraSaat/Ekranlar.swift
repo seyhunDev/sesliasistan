@@ -2,8 +2,8 @@ import SwiftUI
 import WatchKit
 
 // Okyanus renkleri (widget'lardaki gibi), siyah saat zemini
-let vurgu = Color(red: 0.055, green: 0.647, blue: 0.769) // #0ea5c4
-let acik = Color(red: 0.404, green: 0.91, blue: 0.976) // #67e8f9
+let vurgu = Color(red: 0.239, green: 0.482, blue: 1) // #3d7bff
+let acik = Color(red: 0.561, green: 0.702, blue: 1) // #8fb3ff
 let yesil = Color(red: 0.29, green: 0.87, blue: 0.5)
 let koyu = Color(white: 0.17)
 
@@ -71,7 +71,7 @@ private struct SayacSeridi: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 14)
         .frame(height: 44)
-        .background(Capsule().fill(s != nil && s?.state != "idle" ? AnyShapeStyle(LinearGradient(colors: [Color(red: 0.043, green: 0.498, blue: 0.6), vurgu], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(koyu)))
+        .background(Capsule().fill(s != nil && s?.state != "idle" ? AnyShapeStyle(LinearGradient(colors: [Color(red: 0.145, green: 0.388, blue: 0.922), vurgu], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(koyu)))
     }
 }
 
