@@ -1038,7 +1038,7 @@ function OverallSide({ data, n = 10 }) {
 // ---- Sade yayın ekranı (Seyhun 2026-11-02 "her yerde bir şey yazıyor, daha sade, bilgi ekranı, alt tarafta") ----
 // Son rüzgâr ölçümü (parkur rüzgâr kayıtları + eski canlı rüzgâr); önceki yarışta startındaki
 function lastWind(data, sel, isCur) {
-  const obs = (data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, dir: o.deg, kn: o.kn, gust: null, range: o.range || null }));
+  const obs = (data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, dir: o.deg, kn: o.kn, gust: o.gust ?? null, range: o.range || null }));
   const upto = !isCur && sel ? sel.fin || sel.at : "";
   const all = [...(data.wind || []), ...obs].filter((x) => x.dir != null && (!upto || x.at <= upto)).sort((a, b) => String(a.at).localeCompare(String(b.at)));
   // parkurda / Yayın'dan elle girilen ölçümler (istasyon değil): şeritte "Manuel" yazar
@@ -3140,7 +3140,9 @@ function GWind({ data, now, mode, today }) {
     if (w) rows.push({ lab: `${nextText(plan, today).big} beklenen`, w, by: "tahmin" });
   } else {
     if (c) rows.push({ lab: "Şimdi", w: c, by: "" });
-    if (["wait", "ap", "none"].includes(mode) && plan.at) {
+    // parkurda elle ölçüm girildiyse "Start'ta beklenen" gösterilmez (Seyhun 2026-11-03 17:39: tahmin ile ölçüm çok farklı olabiliyor;
+    // beklenen rüzgâr zaten yandan açılan tabloda)
+    if (["wait", "ap", "none"].includes(mode) && plan.at && !c?.man) {
       const e = expWind(data.forecast, plan.at);
       if (e) rows.push({ lab: "Start'ta beklenen", w: e, by: "tahmin" });
     }
