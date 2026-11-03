@@ -1,10 +1,13 @@
-// PDF sayfasındaki yazı parçaları (pdf.js getTextContent items) → satırlar. Uzun kayıt listeleri (200+ tekne) yapay zekaya
-// tek seferde gidince süre aşıyordu (Seyhun 2026-11-03, 9 sayfalık TYF sporcu listesi); yazı satır satır çıkarılıp parça parça okunur.
-export function linesOf(items) {
+// PDF sayfasındaki yazı parçaları (pdf.js getTextContent items) → satırlar ve kayıt listesi tablosu.
+// Uzun kayıt listeleri (200+ tekne) yapay zekaya tek seferde gidince okunamıyordu (Seyhun 2026-11-03, 9 sayfalık TYF sporcu listesi):
+// sütun başlıkları tanınırsa liste yapay zekasız, sütun sütun okunur (tableOf); tanınmazsa yazı parça parça yapay zekaya gider (chunkLines).
+
+// Aynı yükseklikteki parçalar bir satır: [{ y, parts: [{ x, s }] }] (yukarıdan aşağı, soldan sağa)
+export function rowsOf(items) {
   const rows = [];
   for (const it of items || []) {
-    const s = String(it?.str ?? "");
-    if (!s.trim()) continue;
+    const s = String(it?.str ?? "").trim();
+    if (!s) continue;
     const x = Number(it.transform?.[4]) || 0;
     const y = Number(it.transform?.[5]) || 0;
     const h = Math.abs(Number(it.height) || Number(it.transform?.[3]) || 8);
@@ -12,13 +15,13 @@ export function linesOf(items) {
     if (!r) rows.push((r = { y, parts: [] }));
     r.parts.push({ x, s });
   }
-  return rows
-    .sort((a, b) => b.y - a.y)
-    .map((r) => r.parts.sort((a, b) => a.x - b.x).map((p) => p.s.trim()).join("  "))
-    .filter(Boolean);
+  for (const r of rows) r.parts.sort((a, b) => a.x - b.x);
+  return rows.sort((a, b) => b.y - a.y);
 }
 
-// Satırlar → en çok n satırlık parçalar; her parçanın başına belgenin başlığı eklenir ki sınıf/sütun adları bilinsin
+export const linesOf = (items) => rowsOf(items).map((r) => r.parts.map((p) => p.s).join("  "));
+
+// Satırlar → en çok n satırlık parçalar; her parçanın başına belgenin başlığı eklenir ki sınıf/sütun adları bilinsin.
 // Başlık: her sayfada tekrar eden sütun satırına kadar (yoksa ilk 3 satır)
 export function chunkLines(lines, n = 45) {
   let head = 3;
@@ -28,5 +31,74 @@ export function chunkLines(lines, n = 45) {
   if (body.length <= n) return [lines.join("\n")];
   const out = [];
   for (let i = 0; i < body.length; i += n) out.push([...top, ...body.slice(i, i + n)].join("\n"));
+  return out;
+}
+
+const plain = (s) =>
+  String(s || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[çğıöşü]/g, (c) => ({ ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u" })[c])
+    .replace(/[^a-z0-9]/g, "");
+// Sütun başlığı → alan ("Y.NO", "Yelken No", "Sail No"; "D.TARİHİ", "Doğum Tarihi"; tarih yazan sütun o günün grubu)
+function colOf(s) {
+  const p = plain(s);
+  if (/^(yno|yelkenno|yelkennumarasi|yelken|sailno|sailnumber|sail|ylkno|no)$/.test(p)) return "sail";
+  if (/^(adsoyad|adisoyadi|adsoyadi|isim|isimsoyisim|sporcu|sporcuadi|name|fullname|helmsman)$/.test(p)) return "name";
+  if (/^(cinsiyet|cins|sex|gender)$/.test(p)) return "sex";
+  if (/^(dtarihi|dtarih|dogumtarihi|dogum|dogumyili|dyili|dt|dob|birth|birthdate|yob)$/.test(p)) return "born";
+  if (/^(kulup|kulubu|kulupadi|club|team)$/.test(p)) return "club";
+  if (/^(sinif|sinifi|class|tekne|boat)$/.test(p)) return "cls";
+  if (/^(grup|group|filo|fleet)$/.test(p) || /^\d{1,2}[./-]\d{1,2}([./-]\d{2,4})?$/.test(String(s).trim())) return "grp";
+  if (/^(il|sehir|city|ulke|country|kat|kategori|category)$/.test(p)) return "skip";
+  return "";
+}
+// Başlık satırı: yelken no ve ad sütunu dahil en az 3 tanınan sütun
+function headOf(row) {
+  const cols = [];
+  for (let i = 0; i < row.parts.length; i++) {
+    const a = row.parts[i];
+    const two = row.parts[i + 1] ? colOf(`${a.s} ${row.parts[i + 1].s}`) : "";
+    const k = two && two !== colOf(a.s) && !colOf(row.parts[i + 1].s) ? two : colOf(a.s);
+    if (k) {
+      cols.push({ k, x: a.x });
+      if (k === two && k !== colOf(a.s)) i++;
+    }
+  }
+  const ks = cols.map((c) => c.k);
+  return ks.includes("sail") && ks.includes("name") && new Set(ks).size >= 3 ? cols : null;
+}
+const titleCase = (s) =>
+  String(s || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/(^|[\s'-])(\p{L})/gu, (m, a, b) => a + b.toLocaleUpperCase("tr-TR"));
+
+// Sınıf adları Latin yazılır ("OPTIMIST" → "Optimist", Türkçe "Optımıst" değil)
+const CLASSES = ["Optimist", "ILCA 4", "ILCA 6", "ILCA 7", "Laser", "420", "470", "29er", "49er", "Nacra 17", "Finn", "Techno 293", "iQFoil", "RS:X", "Kite"];
+const clsName = (s) => CLASSES.find((c) => plain(c) === plain(s)) || String(s || "").trim();
+
+// Sayfalar (her biri items dizisi) → kayıt listesi satırları { sail, name, club, cls, born, sex, grp }; başlık bulunamazsa []
+export function tableOf(pages) {
+  const out = [];
+  let cols = null;
+  for (const items of pages || []) {
+    for (const row of rowsOf(items)) {
+      const h = headOf(row);
+      if (h) {
+        cols = h;
+        continue;
+      }
+      if (!cols) continue;
+      const cell = {};
+      for (const p of row.parts) {
+        // parça, başlangıcı kendisinden en çok 6 birim sağda olan son sütuna düşer
+        let c = cols[0];
+        for (const q of cols) if (q.x <= p.x + 6) c = q;
+        cell[c.k] = cell[c.k] ? `${cell[c.k]} ${p.s}` : p.s;
+      }
+      const sail = String(cell.sail || "").replace(/\D/g, "");
+      if (!sail || !cell.name) continue;
+      out.push({ sail, name: titleCase(cell.name), club: cell.club || "", cls: clsName(cell.cls), born: cell.born || "", sex: cell.sex || "", grp: cell.grp || "" });
+    }
+  }
   return out;
 }
