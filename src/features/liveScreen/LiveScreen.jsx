@@ -823,6 +823,7 @@ function Races({ id, starts, cur, sel, fleets, rounds, entries, onClose }) {
 // yeni kaynak görünmez katmanda yüklenir (iframe/video/resim hazır olunca ya da en geç LOAD_MS sonra), sonra eskisiyle çapraz geçişle öne gelir
 const LOAD_MS = 8000;
 const FADE_MS = 1100;
+const noSub = () => () => {};
 function Backdrop({ data, isCur, entry }) {
   const scr = isCur ? data.screen || {} : {};
   // canlı yayın ya da drone; ekrandaki yarışın grubuna kamera bağlıysa o kamera (lib/raceCams.js)
@@ -863,8 +864,7 @@ function Backdrop({ data, isCur, entry }) {
     else v.play?.().catch?.(() => {});
   }, [scr.pause, on]);
   // Tanı (Seyhun 2026-11-03: Yayın'da seçilen video canlı ekranda görünmüyor, tekneler görünüyor): /canli/<yarış>?tani=1 ekranda ne geldiğini yazar
-  const [tani, setTani] = useState(false);
-  useEffect(() => setTani(/[?&]tani=1/.test(window.location.search)), []);
+  const tani = useSyncExternalStore(noSub, () => /[?&]tani=1/.test(window.location.search), () => false);
   return (
     <>
       {tani ? (
