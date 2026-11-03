@@ -245,7 +245,7 @@ export function BroadcastPage({ orgId, id }) {
     if (back) changePlan({ order: [back, ...plan.order] });
     rf.choose("");
     setTab("sure");
-    setAp({ min: 1, why: AP_WHY[0], live: false, now: true });
+    setAp({ min: 1, why: AP_WHY[0], live: false, now: true, auto: true });
   };
   // Tehir (Seyhun 2026-11-02 "geri sayımın herhangi bir yerinde tehir; 1 dk sonra indir, 5 dk sonra indir ya da belirsiz; indikten 1 dk sonra
   // 5 dakikalık geri sayımı vermem gerekiyor, takibini yapalım"): AP şimdi çekilir, seçilen dakikada kendiliğinden iner (belirsizde
@@ -258,10 +258,10 @@ export function BroadcastPage({ orgId, id }) {
       const back = rid ? apBack(rid) : null;
       if (back) order = [back, ...order];
     }
-    changePlan({ day: planDay, order, ...apRaise(plan, Date.now(), ap.min, ap.why, ap.land) });
+    changePlan({ day: planDay, order, ...apRaise(plan, Date.now(), ap.min, ap.why, ap.land, ap.auto) });
     setAp(null);
   };
-  const lowerAp = () => changePlan({ day: planDay, ...apLower(Date.now(), readTimer().dur || 300, dev, plan.ap?.land) });
+  const lowerAp = () => changePlan({ day: planDay, ...apLower(Date.now(), readTimer().dur || 300, dev, plan.ap?.land, plan.ap?.auto) });
   // Program sekmesi: her günün saati (o güne özel saat yoksa bugünün ilk start'ı da değişir), güne özel saat, yarış olmayan gün, start silme
   const setDaily = (v) => changePlan({ daily: v, ...(!plan.times[planDay] && plan.status !== "ap" ? { at: v } : {}), ...(plan.next && !plan.times[plan.next.day] ? { next: { ...plan.next, at: v } } : {}) });
   const setDayTime = (d, v) => {
@@ -337,7 +337,7 @@ export function BroadcastPage({ orgId, id }) {
   const autoRef = useRef(null);
   useEffect(() => {
     autoRef.current = (now) => {
-      if (apDue(plan, now)) return changePlan({ day: planDay, ...apLower(Date.parse(plan.ap.down), readTimer().dur || 300, dev, plan.ap.land) });
+      if (apDue(plan, now)) return changePlan({ day: planDay, ...apLower(Date.parse(plan.ap.down), readTimer().dur || 300, dev, plan.ap.land, plan.ap.auto) });
       if (!warnDue(plan, now)) return;
       const mine = !plan.warnBy || plan.warnBy === dev || now - Date.parse(plan.warn) > 4000;
       if (!mine) return;
@@ -693,6 +693,12 @@ export function BroadcastPage({ orgId, id }) {
                 {plan.status === "ap" ? [plan.ap?.land ? "Karada" : "Denizde", plan.ap?.why].filter(Boolean).join(" · ") : plan.order.length ? "Uyarı işaretinde geri sayım kendiliğinden başlar" : "Önce yarışı oluştur"}
               </span>
             </span>
+            {/* İnince geri sayım kendiliğinden mi (Seyhun 2026-11-03 seçilebilir); tehir çekiliyken de değiştirilir */}
+            {plan.status === "ap" && !plan.ap?.land ? (
+              <button type="button" aria-pressed={!!plan.ap?.auto} onClick={() => changePlan({ ap: { ...plan.ap, auto: !plan.ap?.auto } })} className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${plan.ap?.auto ? "bg-acc text-white" : "bg-white/15 text-white/80"}`}>
+                {plan.ap?.auto ? "İnince 1 dk sonra geri sayım" : "Geri sayımı sen başlatırsın"}
+              </button>
+            ) : null}
             {plan.status === "ap" && plan.ap?.down ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.ap.down) - (tick || capNow)) / 1000)))}</b> : null}
             {plan.status !== "ap" && plan.warn ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.warn) - (tick || capNow)) / 1000)))}</b> : null}
             {plan.status !== "ap" && plan.warn ? (
@@ -911,6 +917,18 @@ export function BroadcastPage({ orgId, id }) {
                     ))}
                   </div>
                 </div>
+                {!ap.land ? (
+                  <div className="flex items-center gap-2">
+                    <span className="w-11 shrink-0 text-[0.8125rem] text-mut">İnince</span>
+                    <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
+                      {[[true, "1 dk sonra geri sayım"], [false, "Ben başlatırım"]].map(([v, t]) => (
+                        <button key={t} type="button" aria-pressed={ap.auto !== false === v} onClick={() => setAp({ ...ap, auto: v })} className={`h-7 shrink-0 rounded-full px-2.5 text-[0.8125rem] font-semibold ${ap.auto !== false === v ? "bg-acc text-white" : "bg-bg"}`}>
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="flex items-center gap-2">
                   <span className="w-11 shrink-0 text-[0.8125rem] text-mut">Sebep</span>
                   <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
@@ -922,7 +940,7 @@ export function BroadcastPage({ orgId, id }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-1">
-                  <span className="min-w-0 flex-1 truncate text-[0.875rem] text-mut">{[ap.live ? "Sayaç durur" : "", ap.min ? `İniş ${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}` : "", ap.land ? "Geri sayımı sen başlatırsın" : "İnince 1 dk sonra geri sayım"].filter(Boolean).join(" · ")}</span>
+                  <span className="min-w-0 flex-1 truncate text-[0.875rem] text-mut">{[ap.live ? "Sayaç durur" : "", ap.min ? `İniş ${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}` : "", ap.land || ap.auto === false ? "Geri sayımı sen başlatırsın" : "İnince 1 dk sonra geri sayım"].filter(Boolean).join(" · ")}</span>
                   <Button variant="secondary" size="sm" onClick={() => setAp(null)}>
                     Vazgeç
                   </Button>
