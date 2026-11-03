@@ -1,8 +1,8 @@
-Commit: eebf2aa · Yarış sitesinden belgeleri otomatik al (#1117)
-Zaman: 2026-11-03-2356 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41715314544
+Commit: c9ec882 · Yarış sitesinde yeni yarış açılınca bildirim (#1119)
+Zaman: 2026-11-04-0043 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41722478934
 
-TAM TEST · 03.11.2026 23:44:57
+TAM TEST · 04.11.2026 00:32:03
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1438/1440 geçti · 2 kalan · 663 sn
+SONUÇ: 1437/1440 geçti · 3 kalan · 635 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4433 test”
+      ✗ “4438 test”
           beklenen: hepsi geçer
-          olan:     4418/4433 geçti
+          olan:     4423/4438 geçti
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
       ✗ “parkur kartları: varsayılan seçili, yeni kart, Başlat rotayı yazar, ekranda sahne” → [true,true,true,false,true] (beklenen: Seyhun 2026-11-02: her yarışın kendi parkur kartı olabilir; şimdiki varsayılan (A) ve seçili; Yayın › Parkur'da Yeni kart, rota yazma, seçme, silme; Başlat seçili kartın rotasını o yarışa yazar; canlı ekran süren yarışın rotasını, yoksa seçili kartı animasyonlu sahnede gösterir; /canli ve Yayın ⋯ menüsünde örnek yarış düğmesi)
       ✗ “canlı ekran yayın tasarımı: program, beklenen rüzgâr, yayın yazısı” → [true,true,true,false,true,true] (beklenen: Seyhun 2026-11-02 (tasarim7 onayı, 'profesyonel yelken yayını gibi yazı'): yarış öncesi video yokken ortada büyük geri sayım, ilk yarış + grup, beklenen rüzgâr (tahminin start saati), altta program kartları (1. yarış Mavi grup…); yarışta ve videolu beklemede sağ üstte program etiketleri (Bitti · Canlı · saat); gün sonu 'Gün bitti · N yarış' + yarış kartları + genel, şeritte yarının ilk startı ve beklenen rüzgârı (/api/canli forecastNext); Barlow / Barlow Condensed; arka foto 18px bulanık)
@@ -158,7 +158,7 @@ SONUÇ: 1438/1440 geçti · 2 kalan · 663 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 140/141
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 139/141
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✗ Ana sayfa: 9/10
       ✗ “gün penceresi Yapıldı”
@@ -187,7 +187,10 @@ SONUÇ: 1438/1440 geçti · 2 kalan · 663 sn
   ✓ Tam ekran üstte: 1/1
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
-  ✓ Hava: 3/3
+  ✗ Hava: 2/3
+      ✗ “yağmur grafiği”
+          beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; günler şeridi var
+          olan:     sütun 48 · gün 5 · 5,5 false
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
