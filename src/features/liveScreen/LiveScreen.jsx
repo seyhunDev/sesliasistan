@@ -1450,7 +1450,13 @@ function ApBlock({ data, cs, first, apDown = false, big = "lv-big", seq = false 
   const counting = !apDown && cs.label === "Tehir inişine";
   const why = plan.ap?.why || "Start ertelendi";
   const land = plan.ap?.land ? "Karada" : "";
-  const who = first ? `${[first.name, grpText(first.grp)].filter(Boolean).join(" · ")} bekliyor` : "";
+  // Sıradaki yarış: sınıf işareti (grup renginde) + "1. yarış · Sarı grup bekliyor"; hazırlık bayrağı yok (Seyhun 2026-11-03)
+  const who = first ? (
+    <small className="lv-who">
+      {first.cls ? <Flag kind="cls" cls={first.cls} grp={first.grp} /> : <Dot g={first.grp} />}
+      {`${[first.name, grpText(first.grp)].filter(Boolean).join(" · ")} bekliyor`}
+    </small>
+  ) : null;
   return (
     <>
       <div className="lv-apk">
@@ -1463,7 +1469,7 @@ function ApBlock({ data, cs, first, apDown = false, big = "lv-big", seq = false 
           <div className={big}>{cs.value}</div>
           <div className="lv-why">
             {[why, land].filter(Boolean).join(" · ")}
-            {who ? <small>{who}</small> : null}
+            {who}
           </div>
         </>
       ) : (
@@ -1471,7 +1477,7 @@ function ApBlock({ data, cs, first, apDown = false, big = "lv-big", seq = false 
           <div className="lv-bigt">{apDown ? "Start yakında" : why}</div>
           <div className="lv-why w">
             {apDown ? "Uyarı işareti bekleniyor" : seq ? "Start dizisi durduruldu" : [land, "Uyarı işareti bekleniyor"].filter(Boolean).join(" · ")}
-            {first ? <small>{[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}</small> : null}
+            {who}
           </div>
         </>
       )}
@@ -1838,7 +1844,8 @@ function SidePanel({ data, today, cs, prog, now, entry, fin = null }) {
   const prep = data.plan.order?.[0]?.prep || "";
   const ag = agOf(data, now);
   const entryNow = entry?.cls || entry?.prep || entry?.grp ? entry : data.plan.order?.[0] || null;
-  const seq = !!(data.timer && cs.rem && entryNow);
+  // Bayraklar yalnız start dizisinde (Seyhun 2026-11-03 "tehirde, yarıştan önce bayrağı göstermemize gerek yok; geri sayımda tabii ki")
+  const seq = !!(data.timer?.mode === "start" && data.plan.status !== "ap" && !data.plan.warn && cs.rem && entryNow);
   const flags = seq ? startFlags(entryNow, false, cs.rem <= 60) : [];
   const ww = c || ew;
   const rt = cleanRoute(route);
