@@ -117,7 +117,7 @@ export function shape(j, now = new Date()) {
   const today = c.time.slice(0, 10);
   const days = d.time
     .map((t, i) => ({ date: t, code: d.weather_code[i], min: r(d.temperature_2m_min[i]), max: r(d.temperature_2m_max[i]),
-      wind: r(d.wind_speed_10m_max[i]), gust: r(d.wind_gusts_10m_max[i]), dir: d.wind_direction_10m_dominant[i] }))
+      wind: r(d.wind_speed_10m_max[i]), gust: r(d.wind_gusts_10m_max[i]), dir: d.wind_direction_10m_dominant[i], mm: d.precipitation_sum?.[i] ?? null }))
     .filter((x) => x.date > today)
     .slice(0, 5);
   const todayRow = d.time.indexOf(today) >= 0 ? d.time.indexOf(today) : 0;
@@ -128,7 +128,7 @@ export function shape(j, now = new Date()) {
   });
   // Gün detayı için: tüm saatler (bugün 00:00'dan itibaren, 7 gün; ana sayfanın 7 günlük şeridi her güne hava gösterir) kısa biçimde
   const hourly = h.time.map((t, i) => [t, r(h.temperature_2m[i]), h.weather_code[i], h.is_day ? h.is_day[i] : 1,
-    r(h.wind_speed_10m[i]), r(h.wind_gusts_10m[i]), r(h.wind_direction_10m[i]), h.precipitation_probability?.[i] ?? null, h.precipitation?.[i] ?? null]);
+    r(h.wind_speed_10m[i]), r(h.wind_gusts_10m[i]), r(h.wind_direction_10m[i]), h.precipitation_probability?.[i] ?? null, h.precipitation?.[i] ?? null, h.apparent_temperature?.[i] != null ? r(h.apparent_temperature[i]) : null]);
   return {
     at: now.getTime(),
     h48,
@@ -136,7 +136,7 @@ export function shape(j, now = new Date()) {
     now: { t: r(c.temperature_2m), code: c.weather_code, day: c.is_day !== 0, wind: r(c.wind_speed_10m), gust: r(c.wind_gusts_10m), dir: c.wind_direction_10m },
     today: {
       min: r(d.temperature_2m_min[todayRow]), max: r(d.temperature_2m_max[todayRow]), code: d.weather_code[todayRow],
-      wind: r(d.wind_speed_10m_max[todayRow]), gust: r(d.wind_gusts_10m_max[todayRow]), dir: d.wind_direction_10m_dominant[todayRow], date: today,
+      wind: r(d.wind_speed_10m_max[todayRow]), gust: r(d.wind_gusts_10m_max[todayRow]), dir: d.wind_direction_10m_dominant[todayRow], mm: d.precipitation_sum?.[todayRow] ?? null, date: today,
     },
     hours,
     days,
@@ -148,7 +148,7 @@ export function dayHours(w, date) {
   if (!w?.hourly) return null;
   return w.hourly
     .filter(([t]) => t.startsWith(date))
-    .map(([time, t, code, day, wind, gust, dir, rain, mm]) => ({ time, hh: time.slice(11, 13), t, code, day: !!day, wind, gust, dir, rain: rain ?? null, mm: mm ?? null }));
+    .map(([time, t, code, day, wind, gust, dir, rain, mm, feel]) => ({ time, hh: time.slice(11, 13), t, code, day: !!day, wind, gust, dir, rain: rain ?? null, mm: mm ?? null, feel: feel ?? null }));
 }
 
 // Şu anki hava: veri 20 dakikadan yeniyse alındığı andaki değer (w.now); eskiyse (uygulama sabah açıldı, yenileme gelmedi ya da bağlantı yok)
@@ -200,8 +200,8 @@ function url(p) {
   const q = new URLSearchParams({
     latitude: p.lat, longitude: p.lon, timezone: p.tz, wind_speed_unit: "kn", forecast_days: "7",
     current: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m",
-    hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,precipitation",
-    daily: "weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant",
+    hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,precipitation,apparent_temperature",
+    daily: "weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,precipitation_sum",
   });
   return `https://api.open-meteo.com/v1/forecast?${q}`;
 }
