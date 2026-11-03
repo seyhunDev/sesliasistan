@@ -1296,3 +1296,13 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-band .lv-slide > .lv-bcrs { width: min(100%, 40em); }
 .lv-sqb .lv-sqside { justify-self: end; }
 @media (max-width: 47.99rem) { .lv-band .lv-slide { align-items: stretch; } .lv-band .lv-slide > .lv-bprog, .lv-band .lv-slide > .lv-bwnd, .lv-band .lv-slide > .lv-bcrs { width: auto; } }
+/* Deneme turu 2026-11-03 (telefon): start şeridi taşmasın, videolu şeritte rüzgâr tablosu alta, yarış adı ile alt yazı iki satır */
+@media (max-width: 47.99rem) {
+  .lv-sq, .lv-side.lv-sqb { grid-template-columns: minmax(0, 1fr); }
+  .lv-band > .lv-strip { width: auto; margin-right: 1.4em; }
+  .lv-sqb .lv-sqside, .lv-early { align-items: flex-start; text-align: left; justify-self: start; }
+  .lv-band .lv-slide > .lv-bwnd { display: flex; flex-direction: column; gap: 0.6em; }
+  .lv-band .lv-slides { height: 48vh; }
+  .lv-topl:has(.lv-rsub) { flex-wrap: wrap; row-gap: 0.2em; }
+  .lv-topl .lv-rsub { flex-basis: 100%; white-space: normal; padding-left: 1.6em; }
+}
