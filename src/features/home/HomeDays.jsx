@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useData } from "@/features/data/DataProvider";
 import { dayInfo, planTone, trainingWeek } from "@/lib/homeTiles";
 import { DayPick } from "./DayPick";
@@ -22,15 +23,28 @@ export function HomeDays({ today, fit, att, sel = today, onSel, pick, onPick }) 
     d.setDate(d.getDate() + i);
     return { date: d.toLocaleDateString("sv-SE"), d: d.getDate(), state: "none", sail: [], fit: [], other: [] };
   });
-  const picked = days.find((d) => d.date === pick) || null;
+  // Önceki 5 gün (Seyhun 2026-11-03): kapalı başlar; "‹ Önceki 5 gün" şeridi geçmiş 5 güne çevirir, güne dokununca hava o günün tahmini ve ölçümüyle gelir
+  const [back, setBack] = useState(false);
+  const past = Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(`${today}T12:00:00`);
+    d.setDate(d.getDate() - 5 + i);
+    return { date: d.toLocaleDateString("sv-SE"), d: d.getDate(), state: "none", sail: [], fit: [], other: [] };
+  });
+  const shown = back ? past : days;
+  const picked = [...past, ...days].find((d) => d.date === pick) || null;
   return (
     <>
-      <nav aria-label="Günler" className="grid grid-cols-[1.4fr_repeat(6,minmax(0,1fr))] items-end gap-1">
-        {days.map((d, i) => {
+      <div className="mb-1 flex justify-end">
+        <button type="button" data-press aria-pressed={back} onClick={() => (setBack((b) => !b), onSel?.(today))} className="h-6 rounded-full px-2.5 text-[0.75rem] font-semibold text-white/70">
+          {back ? "Önümüzdeki günler ›" : "‹ Önceki 5 gün"}
+        </button>
+      </div>
+      <nav aria-label="Günler" className={`grid items-end gap-1 ${back ? "grid-cols-5" : "grid-cols-[1.4fr_repeat(6,minmax(0,1fr))]"}`}>
+        {shown.map((d, i) => {
           const tones = [...new Set([...d.sail, ...d.other].map(planTone))].slice(0, 2);
           const tap = dayInfo(d, att, today).tap;
           const on = sel === d.date;
-          const first = i === 0;
+          const first = !back && i === 0;
           const w = new Date(`${d.date}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
           // Tek dokunuş (Seyhun 2026-11-02 "güne tıklayınca hem rüzgâr değişmeli hem alttan planlar"): gün seçilir (hava, grafik o güne geçer)
           // ve o günün penceresi alttan açılır (gösterecek bir şey ya da yoklama yetkisi varsa)

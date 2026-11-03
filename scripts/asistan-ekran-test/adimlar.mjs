@@ -1386,16 +1386,17 @@ async function raceDayHome(h) {
   });
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx|rwx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/"), { waitUntil: "load" });
-  await check("Ana sayfa", "yarış günü havası", "yarın (Foça'da yarış) seçilince iki ince şerit: üstte Foça, altta Dikili; bugün eski düzen", async () => {
+  await check("Ana sayfa", "yarış günü havası", "yarın (Foça'da yarış) seçilince iki saat saat tablo alt alta: üstte Foça, altta Dikili; bugün eski düzen", async () => {
     const nav = page.locator("nav[aria-label='Günler']");
     await nav.waitFor({ timeout: 12000 });
-    const before = await page.getByRole("button", { name: "Yarış yerinin havası" }).count();
+    const R = "section[aria-label='Yarış yerinin havası']";
+    const before = await page.locator(R).count();
     await nav.locator("button").nth(1).click();
-    const ok = await waitFor(() => page.getByRole("button", { name: "Yarış yerinin havası" }).count(), 15000);
-    const place = await page.getByRole("button", { name: "Yarış yerinin havası" }).filter({ hasText: "Foça" }).count();
-    const home = await page.getByRole("button", { name: "Dikili havası" }).count();
+    const ok = await waitFor(() => page.locator(`${R} [data-hour-table]`).count(), 15000);
+    const place = await page.locator(R).filter({ hasText: "Foça" }).count();
+    const home = await page.locator("section[aria-label='Dikili havası'] [data-hour-table]").count();
     if (process.env.WX_SHOT) await page.waitForTimeout(2000).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-yaris.png` }));
-    return [before === 0 && ok > 0 && place === 1 && home === 1, `önce ${before} · yarış havası ${ok} · Foça ${place} · Dikili satırı ${home}`];
+    return [before === 0 && ok > 0 && place === 1 && home === 1, `önce ${before} · yarış tablosu ${ok} · Foça ${place} · Dikili tablosu ${home}`];
   });
   // Seyhun 2026-11-02: güne tek dokunuşta hem hava o güne geçer hem alttan o günün penceresi (planlar) açılır
   await check("Ana sayfa", "güne dokun: pencere", "yarına tek dokunuşta hava değişti ve alttan o günün penceresi açık", async () => {

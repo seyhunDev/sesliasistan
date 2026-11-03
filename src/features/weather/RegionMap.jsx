@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
 import { MAP_ATTR, MAP_STYLE, loadMapLibre } from "@/lib/maplibre";
-import { denseArrows, regionSteps, regionUrl, shapeRegion, mmColor } from "@/lib/regionMap";
+import { denseArrows, regionSteps, regionUrl, shapeRegion, mmColor, pTone, rainShare } from "@/lib/regionMap";
 import { colorOf } from "@/lib/windMap";
 import { km } from "@/lib/windObs";
 import { PLACE, dirDeg, kn as knTxt, windName } from "./weather";
@@ -69,7 +69,7 @@ function arrowImage() {
   return g.getImageData(0, 0, 32, 32);
 }
 
-export function RegionMap({ place, station, obs, onPick, mini = false, className = "h-24" }) {
+export function RegionMap({ place, station, obs, onPick, openAt = null, startOpen = false, onClose, mini = false, className = "h-24" }) {
   const box = useRef(null);
   const map = useRef(null);
   const pick = useRef(onPick);
@@ -79,11 +79,24 @@ export function RegionMap({ place, station, obs, onPick, mini = false, className
   const [grid, setGrid] = useState(null);
   const [radar, setRadar] = useState([]);
   const [mode, setMode] = useState("wind");
-  const [full, setFull] = useState(false); // açık: tam ekran harita; kapalıyken yalnız "Harita" düğmesi
+  const [full, setFull] = useState(startOpen); // açık: tam ekran harita; kapalıyken yalnız "Harita" düğmesi
   const [center, setCenter] = useState(null); // verinin yüklendiği merkez (harita uzağa kayınca değişir)
   const [view, setView] = useState(0); // harita kaydı/yakınlaştı: oklar yeniden dizilir
   const [play, setPlay] = useState(false);
   const [sel, setSel] = useState(null); // seçilen adım (null: şimdi)
+  const [by, setBy] = useState("p"); // yağış katmanı: p = ihtimal (%), mm = miktar
+  const [want, setWant] = useState(null); // tablodan dokunulan saat (ms): harita yağış modunda o saatte açılır
+  const [seen, setSeen] = useState(null);
+  if (openAt?.at && openAt.n !== seen) {
+    // Tablodan yeni dokunuş: harita yağış modunda o saatte açılır (render sırasında ayarlanır, etki değil)
+    setSeen(openAt.n);
+    setErr(false);
+    setMode("rain");
+    setPlay(false);
+    setSel(null);
+    setWant(openAt.at);
+    setFull(true);
+  }
   useEffect(() => {
     pick.current = onPick;
     here0.current = place;
@@ -151,7 +164,8 @@ export function RegionMap({ place, station, obs, onPick, mini = false, className
   const now = useNow().getTime();
   const steps = useMemo(() => regionSteps(grid, radar, mode, now), [grid, radar, mode, now]);
   const nowIx = steps.findIndex((s) => s.now);
-  const ix = sel == null || sel >= steps.length ? Math.max(0, nowIx) : sel;
+  const wantIx = want != null && steps.length && mode === "rain" ? steps.reduce((b, st, j) => (Math.abs(st.at - want) < Math.abs(steps[b].at - want) ? j : b), 0) : -1;
+  const ix = sel == null || sel >= steps.length ? (wantIx >= 0 ? wantIx : Math.max(0, nowIx)) : sel;
   const step = steps[ix];
 
   // Oynat: adım adım, sonda durur
@@ -211,7 +225,7 @@ export function RegionMap({ place, station, obs, onPick, mini = false, className
     if (!m || !ready || !grid || !step) return;
     const wind = mode === "wind";
     const i = step.i ?? -1;
-    const by = (f) => ["match", ["get", "k"], ...grid.spots.flatMap((s, k) => [k, f(s)]), f(grid.spots[0])];
+    const paint = (f) => ["match", ["get", "k"], ...grid.spots.flatMap((s, k) => [k, f(s)]), f(grid.spots[0])];
     if (m.getLayer("wind-arrow")) {
       m.setLayoutProperty("wind-arrow", "visibility", wind && i >= 0 ? "visible" : "none");
       m.setLayoutProperty("wind-heat", "visibility", wind && i >= 0 ? "visible" : "none");
@@ -219,17 +233,18 @@ export function RegionMap({ place, station, obs, onPick, mini = false, className
         const b = m.getBounds();
         const list = denseArrows(grid, i, [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], m.getZoom());
         m.getSource("arrows")?.setData({ type: "FeatureCollection", features: list.map((a) => ({ type: "Feature", geometry: { type: "Point", coordinates: [a.lon, a.lat] }, properties: { d: a.d, c: colorOf(a.w) } })) });
-        m.setPaintProperty("wind-heat", "circle-color", by((s) => colorOf(s.w[i] ?? 0)));
+        m.setPaintProperty("wind-heat", "circle-color", paint((s) => colorOf(s.w[i] ?? 0)));
       }
       const rainFc = !wind && step.kind === "fc";
       m.setLayoutProperty("rain-fc", "visibility", rainFc ? "visible" : "none");
       if (rainFc) {
-        m.setPaintProperty("rain-fc", "circle-color", by((s) => mmColor(s.mm[i] ?? 0)));
-        m.setPaintProperty("rain-fc", "circle-opacity", by((s) => ((s.mm[i] ?? 0) >= 0.1 ? 0.5 : 0)));
+        const pr = by === "p" && grid.spots.some((s) => s.p?.[i] != null);
+        m.setPaintProperty("rain-fc", "circle-color", paint((s) => (pr ? pTone(s.p[i] ?? 0).c : mmColor(s.mm[i] ?? 0))));
+        m.setPaintProperty("rain-fc", "circle-opacity", paint((s) => (pr ? pTone(s.p[i] ?? 0).o : (s.mm[i] ?? 0) >= 0.1 ? 0.5 : 0)));
       }
     }
     radar.forEach((_, k) => m.getLayer(`radar${k}`) && m.setPaintProperty(`radar${k}`, "raster-opacity", !wind && step.kind === "radar" && step.r === k ? 0.75 : 0));
-  }, [ready, grid, radar, mode, step, view]);
+  }, [ready, grid, radar, mode, step, view, by]);
 
 
   if (!full && mini)
@@ -263,7 +278,9 @@ export function RegionMap({ place, station, obs, onPick, mini = false, className
     else if (step.kind === "radar") info = "Radar";
     else {
       const top = Math.max(0, ...grid.spots.map((s) => s.mm[step.i] ?? 0));
-      info = top >= 0.1 ? `Tahmin: en çok ${top >= 1 ? Math.round(top) : "<1"} mm/sa` : "Tahmin: yağış yok";
+      const pc = here.p?.[step.i];
+      const share = rainShare(grid.spots, step.i);
+      info = top >= 0.1 ? `${pc != null ? `Burada %${pc} · ` : ""}çevrenin %${share}'inde yağış, en çok ${top >= 1 ? Math.round(top) : "<1"} mm/sa` : `Yağış yok${pc ? ` (ihtimal %${pc})` : ""}`;
     }
   }
   const nowPct = steps.length > 1 ? (Math.max(0, nowIx) / (steps.length - 1)) * 100 : 0;
@@ -273,18 +290,27 @@ export function RegionMap({ place, station, obs, onPick, mini = false, className
         <div ref={box} className="h-full w-full" />
         <div className="absolute left-2.5 top-2.5 flex rounded-full bg-[rgba(15,31,56,.78)] p-[3px] backdrop-blur" role="group" aria-label="Katman">
           {[["wind", "Rüzgâr"], ["rain", "Yağış"]].map(([k, t]) => (
-            <button key={k} type="button" aria-pressed={mode === k} onClick={() => (setMode(k), setSel(null), setPlay(false))} className={`h-7 rounded-full px-3 text-[0.8125rem] font-semibold ${mode === k ? "bg-white text-[#11203a]" : "text-white/75"}`}>
+            <button key={k} type="button" aria-pressed={mode === k} onClick={() => (setMode(k), setSel(null), setWant(null), setPlay(false))} className={`h-7 rounded-full px-3 text-[0.8125rem] font-semibold ${mode === k ? "bg-white text-[#11203a]" : "text-white/75"}`}>
               {t}
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => (setFull(false), setPlay(false), setSel(null))} aria-label="Haritayı kapat" className="absolute right-2.5 top-2.5 grid size-9 place-items-center rounded-full bg-[rgba(15,31,56,.78)] text-white">
+        {mode === "rain" && step?.kind === "fc" && (
+          <div className="absolute left-2.5 top-12 flex rounded-full bg-[rgba(15,31,56,.78)] p-[3px] backdrop-blur" role="group" aria-label="Yağış gösterimi">
+            {[["p", "İhtimal"], ["mm", "Miktar"]].map(([k, t]) => (
+              <button key={k} type="button" aria-pressed={by === k} onClick={() => setBy(k)} className={`h-7 rounded-full px-3 text-[0.8125rem] font-semibold ${by === k ? "bg-white text-[#11203a]" : "text-white/75"}`}>
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
+        <button type="button" onClick={() => (setFull(false), setPlay(false), setSel(null), setWant(null), onClose?.())} aria-label="Haritayı kapat" className="absolute right-2.5 top-2.5 grid size-9 place-items-center rounded-full bg-[rgba(15,31,56,.78)] text-white">
           <Icon name="x" className="size-4" />
         </button>
       </div>
       <div className="px-3 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] text-white">
         <div className="flex items-center gap-2.5">
-          <button type="button" onClick={() => (ix >= steps.length - 1 && setSel(0), setPlay((p) => !p))} aria-label={play ? "Durdur" : "Oynat"} className="grid size-9 shrink-0 place-items-center rounded-full bg-[#0ea5c4] text-white">
+          <button type="button" onClick={() => (setSel(ix >= steps.length - 1 ? 0 : ix), setPlay((p) => !p))} aria-label={play ? "Durdur" : "Oynat"} className="grid size-9 shrink-0 place-items-center rounded-full bg-[#0ea5c4] text-white">
             <Icon name={play ? "pause" : "play"} className="size-4" />
           </button>
           <div className="relative h-8 min-w-0 flex-1">
@@ -295,7 +321,7 @@ export function RegionMap({ place, station, obs, onPick, mini = false, className
             <div className="absolute inset-x-0 top-[1.15rem] text-[0.625rem] text-white/60">
               <span className="absolute left-0">−2 sa</span>
               <span className="absolute -translate-x-1/2" style={{ left: `${nowPct}%` }}>Şimdi</span>
-              <span className="absolute right-0">+12</span>
+              <span className="absolute right-0">+24</span>
             </div>
           </div>
         </div>

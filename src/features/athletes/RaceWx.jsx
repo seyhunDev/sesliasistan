@@ -34,7 +34,7 @@ function useDay(r, day, tick = 0) {
 const nowHH = () => String(new Date().getHours()).padStart(2, "0");
 
 // Sıcaklık · gök · rüzgâr satırı ve grafik (lacivert zeminde)
-export function DayChart({ rows, day, at, marks = [] }) {
+export function DayChart({ rows, day, at, marks = [], onCol = null }) {
   const today = todayStr();
   const isToday = day === today;
   const top = rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]);
@@ -58,7 +58,7 @@ export function DayChart({ rows, day, at, marks = [] }) {
           </b>
         </span>
       </div>
-      <HourTable key={day} rows={rows} date={day} place={at} far marks={marks} className="mt-2.5" />
+      <HourTable key={day} rows={rows} date={day} place={at} far marks={marks} onCol={onCol} className="mt-2.5" />
     </>
   );
 }
@@ -77,7 +77,7 @@ export function Wait() {
         </span>
         <span className="ck-shim h-7 w-20 rounded-xl" />
       </div>
-      <div className="ck-shim mt-2.5 h-[15.25rem] w-full rounded-[1.125rem]" />
+      <div className="ck-shim mt-2.5 h-[12.875rem] w-full rounded-[1.125rem]" />
     </div>
   );
 }
@@ -87,8 +87,10 @@ export function Wait() {
 // Hava kalktı. Tahmin henüz çıkmadıysa (ilk gün 16 günden ileride) hiç görünmez.
 // day: açılışta seçili gün (yarış günü akşamı yarın, RaceDayTop)
 // pinned: gün dışarıdan seçilir (Saha, üstteki tek Bugün ▾; Seyhun 2026-10-30); kendi gün düğmesi çizilmez, kaydırınca onDay(±1)
-// Grafik sağa sola kaydırılınca gün değişir (Seyhun 2026-10-31; yön raceWeather.js swipeStep); yarıştan önceki 3 gün de gezilir (wxDays)
-export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, marks = [] }) {
+// Grafik sağa sola kaydırılınca gün değişir (Seyhun 2026-10-31; yön raceWeather.js swipeStep); yarıştan önceki 5 gün de gezilir (wxDays)
+// fill: yarış günü sayfası (RaceDayTop) tek ekran; bölge haritası düğme yerine açık önizleme olarak kalan yeri doldurur, dokununca tam ekran
+// (Seyhun 2026-11-03: "harita butonunu daha açık kullanalım, sayfa sığsın")
+export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, marks = [], fill = false }) {
   const today = todayStr();
   const race = raceDays(r);
   const days = wxDays(r, today);
@@ -118,6 +120,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
   };
   const [tick, setTick] = useState(0);
   const [pick, setPick] = useState(false);
+  const [mapAt, setMapAt] = useState(null);
   const late = sel && sel > lastForecastDay(today);
   const d = useDay(r, late ? "" : sel, tick);
   const sp = cleanSpot(r.spot);
@@ -126,7 +129,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
   const st = ob?.rows?.length ? ob.station : null;
   if (!first || first > lastForecastDay(today)) return null;
   return (
-    <section className="mt-4" aria-label="Yarış havası">
+    <section className={fill ? "mt-4 flex flex-1 flex-col" : "mt-4"} aria-label="Yarış havası">
       <div className="mb-2 flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">
           Hava · {d.place || sp?.name || r.district || r.city}
@@ -144,11 +147,11 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
         </button>
       </div>
       {/* Seyhun 2026-10-26: gün değişince yüklenirken alan küçülüp sayfa zıplıyordu; her durumda grafikle aynı yükseklik */}
-      <div ref={area} data-ready={d.rows?.length && !late ? "1" : "0"} className="flex min-h-[18.5rem] flex-col" style={!d.rows?.length && tall ? { minHeight: tall } : undefined} data-swipe-day {...swipe}>
+      <div ref={area} data-ready={d.rows?.length && !late ? "1" : "0"} className="flex min-h-[16.25rem] flex-col" style={!d.rows?.length && tall ? { minHeight: tall } : undefined} data-swipe-day {...swipe}>
         {late ? (
           <p className="m-auto text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
         ) : d.rows?.length ? (
-          <DayChart rows={d.rows} day={sel} at={d.at} marks={marks} />
+          <DayChart rows={d.rows} day={sel} at={d.at} marks={marks} onCol={(at) => setMapAt({ at, n: Date.now() })} />
         ) : d.err ? (
           <p className="m-auto text-center text-[0.875rem] text-white/70">Hava tahmini alınamadı.</p>
         ) : (
@@ -173,10 +176,22 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
       </Sheet>
       {/* Bölge haritası (Seyhun 2026-10-28: "yarışların havasında da aynı haritayı görmek istiyorum"): yarış yerinin çevresi, rüzgâr / yağış,
           −2 sa … +12 kaydırıcı. Dokunmak yarışın yerini değiştirmez. */}
-      {!d.at && !mini && !late && !d.err && <div className="ck-shim mt-3 h-12 rounded-[1.125rem]" aria-hidden="true" />}
-      {d.at && (
+      {fill && !late && !d.err && (
+        <div className="relative mt-3 flex min-h-[7rem] flex-1 flex-col">
+          {d.at ? (
+            <>
+              <RegionMap mini className="flex-1" place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} openAt={mapAt} />
+              <span className="pointer-events-none absolute bottom-2.5 left-2.5 rounded-full bg-[rgba(15,31,56,.78)] px-3 py-1 text-[0.8125rem] font-semibold">Harita</span>
+            </>
+          ) : (
+            <div className="ck-shim flex-1 rounded-[1.125rem]" aria-hidden="true" />
+          )}
+        </div>
+      )}
+      {!fill && !d.at && !mini && !late && !d.err && <div className="ck-shim mt-3 h-12 rounded-[1.125rem]" aria-hidden="true" />}
+      {!fill && d.at && (
         <div className="mt-3">
-          <RegionMap place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
+          <RegionMap place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} openAt={mapAt} />
         </div>
       )}
     </section>

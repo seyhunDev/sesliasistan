@@ -17,7 +17,7 @@ import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { monthLabel } from "@/features/athletes/attendanceReport";
 import { EXCEL_UPLOAD } from "@/features/bank/LedgerCard";
 import { deleteStatement, loadDuesRange, loadMovementsRange, loadStatements, saveCfg, saveMonth, saveRoster, uploadStatement } from "@/features/dues/duesData";
-import { allocate, athleteDues, dropGroup, gridOf, historyOf, incomeOf, lastMonths, movKey, payerOf, paymentsOf, pendingOf, splitAmount, words } from "@/lib/dues";
+import { allocate, athleteDues, dropGroup, moveGroup, gridOf, historyOf, incomeOf, lastMonths, movKey, payerOf, paymentsOf, pendingOf, splitAmount, words } from "@/lib/dues";
 import { money } from "@/lib/bankSheet";
 import { todayStr } from "@/lib/utils/format";
 import { saveSum } from "@/lib/homeTiles";
@@ -59,6 +59,8 @@ function dayShort(v) {
 }
 const VIA = (v) => (v === "cash" ? "Nakit" : "Banka");
 const monthsText = (list) => list.map(shortMonth).join(", ");
+// "Eylül, Ekim" (ödemenin yazıldığı aylar, uzun ad)
+const monthsLong = (list) => list.map((ym) => new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" })).join(", ");
 
 function Dues({ uid, duesAt }) {
   const toast = useToast();
@@ -213,7 +215,8 @@ function Dues({ uid, duesAt }) {
       const at = new Date().toISOString();
       let landed = false;
       for (const [a, amt] of splitAmount(m.amount, picks, cfg)) {
-        for (const part of allocate(amt, a, cfg, cur, yms, null, ym)) {
+        // Ödeme geldiği aydan sonraki aylara kendiliğinden yazılmaz (sunucu da böyle; duesAuto.js)
+        for (const part of allocate(amt, a, cfg, cur, yms.filter((x) => x <= ym), null, ym)) {
           const mo = cur[part.ym] || {};
           put(part.ym, { ...mo, paid: { ...(mo.paid || {}), [a.id]: [...(mo.paid?.[a.id] || []), { amt: part.amt, via: "eft", date: m.date, mov: k, desc: String(m.desc).slice(0, 120), at }] } });
           if (part.ym === ym) landed = true;
@@ -260,7 +263,7 @@ function Dues({ uid, duesAt }) {
         <button type="button" onClick={() => setOpenId(on ? "" : r.a.id)} aria-expanded={on} data-press="row" className="flex min-h-[3.5rem] w-full items-center gap-3 py-2.5 text-left">
           <span className="min-w-0 flex-1">
             <b className="block truncate text-[0.9375rem] font-semibold">{r.a.studentName}</b>
-            <small className="block truncate text-[0.8125rem] text-mut">{last ? `Son ödeme ${dayShort(last.date)} · ${VIA(last.via)} · ${TL(last.amt)}` : "Ödeme yok"}</small>
+            <small className="block truncate text-[0.8125rem] text-mut">{last ? `Son ödeme ${dayShort(last.date)} · ${monthsLong(last.months)} aidatı` : "Ödeme yok"}</small>
           </span>
           <span className="shrink-0">{right(r.info, isBurs(r))}</span>
           <Icon name="chev" className={`size-4 shrink-0 text-mut transition-transform ${on ? "rotate-90" : ""}`} />
@@ -275,6 +278,7 @@ function Dues({ uid, duesAt }) {
             yms={yms}
             onPay={() => setPayFor(r.a)}
             onDrop={(g) => writeMonths(dropGroup(r.a, months, g), "Ödeme silindi")}
+            onMove={(g, picked) => writeMonths(moveGroup(r.a, months, g, picked, cfg), `${monthsLong(picked)} aidatına yazıldı`)}
             onStart={(ym) => (writeCfg({ ...cfg, start: { ...(cfg.start || {}), [r.a.id]: ym } }), toast(`${r.a.studentName}: aidat ${monthLabel(ym)} ayından başlıyor`))}
             onFree={(ym, yes) => {
               const free = { ...(months[ym]?.free || {}) };
@@ -478,13 +482,16 @@ const CELL = { paid: "bg-ok text-white", part: "bg-amber-500 text-white", due: "
 const MARK = { paid: "✓", part: "½", due: "", free: "–", burs: "–", none: "–" };
 
 // Açılan satır: 12 aylık şerit, ödemeler, Ödeme ekle, sporcuya özel ayar
-function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onStart, onFree, onFee, onBurs }) {
+function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onMove, onStart, onFree, onFee, onBurs }) {
   const now = yms.at(-1);
   const [sel, setSel] = useState(now);
   const [more, setMore] = useState(false);
   const [own, setOwn] = useState(cfg.fees?.[a.id] ? String(cfg.fees[a.id]) : "");
   const c = info.cells.find((x) => x.ym === sel) || info.now;
-  const status = { paid: "Ödendi", part: `${TL(c.paid)} ödendi · ${TL(c.rest)} eksik`, due: info.fee ? `Ödenmedi · ${TL(c.rest)}` : "Ödenmedi", free: "Bu ay sayılmıyor", burs: "Burslu, aidat ödemiyor", none: "Aidat henüz başlamadı" }[c.state];
+  const [edit, setEdit] = useState(""); // ayı değiştirilen ödeme
+  const [pick, setPick] = useState([]);
+  const paidBy = hist.find((g) => g.months.includes(sel));
+  const status = { paid: paidBy ? `Ödendi · ${dayShort(paidBy.date)} ${VIA(paidBy.via).toLocaleLowerCase("tr-TR")}` : "Ödendi", part: `${TL(c.paid)} ödendi · ${TL(c.rest)} eksik`, due: info.fee ? `Ödenmedi · ${TL(c.rest)}` : "Ödenmedi", free: "Bu ay sayılmıyor", burs: "Burslu, aidat ödemiyor", none: "Aidat henüz başlamadı" }[c.state];
   const btn = "min-h-10 rounded-xl border border-line px-3 py-2 text-[0.8125rem] font-semibold disabled:opacity-50";
   return (
     <div className="border-t border-line px-4 pb-3 pt-3 text-[0.875rem]">
@@ -503,18 +510,50 @@ function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onStart, onFree, 
       {hist.length > 0 ? (
         <ul className="mt-2 divide-y divide-line">
           {hist.map((g) => (
-            <li key={g.key} className="flex items-start gap-2 py-1.5">
-              <span className="min-w-0 flex-1">
-                <span className="text-fg2">
-                  {dayShort(g.date)} · {VIA(g.via)}
-                  {g.by === "auto" ? " · otomatik" : ""} · <span className="capitalize">{monthsText(g.months)}</span>
-                </span>
-                {g.desc && <small className="mt-0.5 block break-words text-[0.75rem] leading-snug text-mut">{g.desc}</small>}
-              </span>
-              <span className="font-semibold tabular-nums">{TL(g.amt)}</span>
-              <button type="button" onClick={() => window.confirm(`${TL(g.amt)} ödeme silinsin mi?`) && onDrop(g)} aria-label="Sil" data-press className="btn btn-icon btn-sm size-7 shrink-0 text-mut">
-                <Icon name="trash" className="size-4" />
-              </button>
+            <li key={g.key} className="py-1.5">
+              <div className="flex items-start gap-2">
+                <button type="button" onClick={() => (setEdit(edit === g.key ? "" : g.key), setPick(g.months))} aria-expanded={edit === g.key} className="min-w-0 flex-1 text-left">
+                  <b className="block font-semibold">
+                    {monthsLong(g.months)} aidatı
+                  </b>
+                  <small className="block text-[0.8125rem] text-mut">
+                    {dayShort(g.date)} ödendi · {VIA(g.via)}
+                    {g.by === "auto" ? " · otomatik" : ""}
+                  </small>
+                  {g.desc && <small className="mt-0.5 block break-words text-[0.75rem] leading-snug text-mut">{g.desc}</small>}
+                </button>
+                <span className="font-semibold tabular-nums">{TL(g.amt)}</span>
+                <button type="button" onClick={() => window.confirm(`${TL(g.amt)} ödeme silinsin mi?`) && onDrop(g)} aria-label="Sil" data-press className="btn btn-icon btn-sm size-7 shrink-0 text-mut">
+                  <Icon name="trash" className="size-4" />
+                </button>
+              </div>
+              {edit === g.key && (
+                <div className="mt-2">
+                  <p className="mb-1.5 text-[0.8125rem] font-semibold text-mut">Hangi ayın aidatı</p>
+                  <div className="grid grid-cols-6 gap-1.5">
+                    {yms.map((ym) => (
+                      <button
+                        key={ym}
+                        type="button"
+                        onClick={() => setPick((p) => (p.includes(ym) ? p.filter((x) => x !== ym) : [...p, ym].sort()))}
+                        aria-pressed={pick.includes(ym)}
+                        className={`h-9 rounded-lg text-[0.8125rem] font-semibold capitalize ${pick.includes(ym) ? "bg-acc text-white" : "border border-line"}`}
+                      >
+                        {shortMonth(ym).slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!pick.length || pick.join() === g.months.join()}
+                    onClick={() => (onMove(g, pick), setEdit(""))}
+                    data-press
+                    className={`${buttonClass({ size: "sm" })} mt-2`}
+                  >
+                    Kaydet
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -568,7 +607,9 @@ function PayForm({ a, cfg, months, yms, onSave }) {
   const [picked, setPicked] = useState(null);
   const n = Number(String(amt).replace(",", ".")) || 0;
   const dateYm = day(date).slice(0, 7);
-  const parts = n > 0 ? allocate(n, a, cfg, months, yms, picked, yms.includes(dateYm) ? dateYm : yms.at(-1)) : [];
+  // Ay seçilmezse ödeme tarihine kadarki en eski borçlu aya; borç yoksa ödeme ayına (sonraki aylar elle seçilir)
+  const upto = yms.filter((ym) => ym <= dateYm);
+  const parts = n > 0 ? allocate(n, a, cfg, months, upto.length ? upto : yms, picked, yms.includes(dateYm) ? dateYm : yms.at(-1)) : [];
   const on = new Set(picked ?? parts.map((p) => p.ym));
   const toggle = (ym) => {
     const next = new Set(on);

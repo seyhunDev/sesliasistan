@@ -65,20 +65,20 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
 
       {/* Sıra (Seyhun 2026-11-03 "A · Günlerin altında"): hava ve saat tablosu en üstte, altında günler, sonra canlı yarış şeridi, sonra plan */}
       {far ? (
-        // Yarış başka yerde (Seyhun 2026-10-28 "A · Alt alta ince"): iki ince şerit üst üste, yarış yeri ve ev yeri; dokununca ayrıntı
-        // İki şerit aynı ölçekte (7 kn ile 15 kn aynı boyda görünmesin)
-        <div className={`mt-3.5 flex flex-col gap-2 ${fill ? "min-h-0 flex-1" : ""}`}>
-          <WindStrip
+        // Yarış başka yerde (Seyhun 2026-11-03 "iki grafiği de yeni hava tarzına çevir"): üst üste iki saat saat tablo, yarış yeri ve ev yeri;
+        // başlıkta yerin adı, dokununca ayrıntı (yarış sayfası / hava sayfası)
+        <div className="mt-3.5 flex flex-col gap-3">
+          <PlaceTable
             label="Yarış yerinin havası"
             name={(ar.place || away.place || away.name || "").split(",")[0]}
             race
             rows={ar.rows}
+            next={dayHours(w, nextDay(date))}
             date={date}
-            max={stripMax(ar.rows, rows)}
-            fill={fill}
+            place={ar.at}
             onClick={() => router.push(`/athletes/races/${away.id}`)}
           />
-          <WindStrip label={`${home.name} havası`} name={home.name} rows={rows} date={date} max={stripMax(ar.rows, rows)} fill={fill} onClick={goWeather} />
+          <PlaceTable label={`${home.name} havası`} name={home.name} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} />
         </div>
       ) : (
         <>
@@ -283,53 +283,18 @@ function useFit() {
 }
 
 
-// İnce hava şeridi (yarış günü, iki yer alt alta): solda yerin adı, şimdiki (başka günde en sert saatin) "rüzgâr–sağanak kn", sıcaklık ve gök;
-// sağda günün rüzgârı dolu eğri, sağanak kesik çizgi, bugünse kırmızı "şimdi" çizgisi; altında 00 · 06 · 12 · 18 · 24. rows yoksa yanıp sönen yer tutucu.
-// fill: ilk ekranda iki şerit kalan yüksekliği paylaşır.
-const stripMax = (...l) => Math.max(10, ...l.flatMap((r) => (r || []).map((h) => h.gust || h.wind || 0))) * 1.1;
-function WindStrip({ label, name, race = false, rows, date, max, fill, onClick }) {
-  const now = useNow();
-  const shell = `flex w-full items-stretch gap-3 rounded-[1.125rem] border border-white/10 bg-white/5 px-3 py-2 text-left ${fill ? "min-h-[4.75rem] flex-1" : "h-[5.5rem]"}`;
-  if (!rows?.length) return <div className={`${shell} animate-pulse`} role="status" aria-label={`${label} yükleniyor`} />;
-  const isToday = date === todayStr();
-  const hh = String(now.getHours()).padStart(2, "0");
-  const top = rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]);
-  const v = (isToday && rows.find((h) => h.hh === hh)) || top;
-  const X = (i) => (i / Math.max(1, rows.length - 1)) * 100;
-  const Y = (w) => 40 - ((w || 0) / max) * 38;
-  const line = (k) => rows.map((h, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(h[k]).toFixed(1)}`).join("");
-  const at = isToday ? rows.findIndex((h) => h.hh === hh) : -1;
-  const nx = at >= 0 ? X(at + now.getMinutes() / 60) : null;
+// Yarış günü, iki yer alt alta (Seyhun 2026-11-03): yerin adı ve ortak saat saat tablo (HourTable). rows yoksa yanıp sönen yer tutucu.
+// Yarış yerinde (race) ölçüm o yerin en yakın istasyonundan (place, far).
+function PlaceTable({ label, name, race = false, rows, next, date, place = null, onClick }) {
+  if (!rows?.length) return <div className="h-[15rem] animate-pulse rounded-[1.125rem] border border-white/10 bg-white/5" role="status" aria-label={`${label} yükleniyor`} />;
   return (
-    <button type="button" data-press onClick={onClick} aria-label={label} className={shell}>
-      <span className="flex w-[34%] min-w-0 shrink-0 flex-col justify-center leading-tight">
-        <span className="flex items-center gap-1">
-          <b className={`min-w-0 truncate text-[0.8125rem] font-bold ${race ? "text-[#67e8f9]" : "text-white"}`}>{name}</b>
-          <span className="shrink-0 text-white/45">›</span>
-        </span>
-        <b className="mt-0.5 whitespace-nowrap text-[clamp(1.375rem,calc(var(--u,7px)*4.2),2rem)] font-extrabold leading-none tracking-[-.03em] tabular-nums">
-          {kn(Math.round(v.wind), Math.round(v.gust))}
-          <span className="ml-0.5 text-[0.75rem] font-medium text-white/60">kn</span>
-        </b>
-        <small className="mt-1 truncate text-[0.75rem] text-white/65">
-          {[v.t != null && `${Math.round(v.t)}°`, v.code != null && sky(v.code, v.day).label, !isToday && `en sert ${top.hh}:00`].filter(Boolean).join(" · ")}
-        </small>
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="relative min-h-0 flex-1">
-          <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden="true">
-            <path d={`${line("wind")}L100,40L0,40Z`} fill="#67e8f9" fillOpacity=".85" />
-            <path d={line("gust")} fill="none" stroke="#c4b5fd" strokeWidth="1.2" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
-            {nx != null && <line x1={nx} x2={nx} y1="0" y2="40" stroke="#ff6b6b" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />}
-          </svg>
-        </span>
-        <span className="mt-0.5 flex justify-between text-[0.625rem] tabular-nums text-white/50">
-          {["00", "06", "12", "18", "24"].map((t) => (
-            <span key={t}>{t}</span>
-          ))}
-        </span>
-      </span>
-    </button>
+    <section aria-label={label}>
+      <button type="button" data-press onClick={onClick} className="mb-1.5 flex w-full items-center gap-1 px-1 text-left">
+        <b className={`min-w-0 truncate text-[0.8125rem] font-bold ${race ? "text-[#67e8f9]" : "text-white"}`}>{name}</b>
+        <span className="shrink-0 text-white/45">›</span>
+      </button>
+      <HourTable key={date} rows={rows} next={race ? null : next} date={date} place={place} far={race} onClick={onClick} />
+    </section>
   );
 }
 
