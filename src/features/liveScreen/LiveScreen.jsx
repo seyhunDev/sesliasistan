@@ -1506,7 +1506,15 @@ function WaitHero({ data, today, cs, prog, now }) {
     const cols = 1 + (svg ? 1 : 0) + (hasWind ? 1 : 0);
     return (
       <div className="lv-hold lv-hold3" data-cols={cols}>
-        <div className="lv-topr">{[none ? "" : "Yarış günü", dayText(today) ? `${wdText(today)} ${dayText(today)}` : "", r.place].filter(Boolean).join(" · ")}</div>
+        <div className="lv-topr lv-topr2">
+          {orangeUp(plan, today) ? (
+            <span className="lv-opill">
+              <i aria-hidden="true" />
+              Start öncesi
+            </span>
+          ) : null}
+          <span>{[none ? "" : "Yarış günü", dayText(today) ? `${wdText(today)} ${dayText(today)}` : "", r.place].filter(Boolean).join(" · ")}</span>
+        </div>
         <div className="lv-hst">
           {ap || apDown ? <ApBlock data={data} cs={cs} first={first} apDown={apDown} /> : null}
           {!ap && !apDown ? <div className="lv-kick">{kick}</div> : null}
@@ -2645,12 +2653,12 @@ export function LiveScreen({ id, y = "" }) {
   const prog = isCur ? dayProgram(data, today) : [];
   // Yarış öncesi gösterim (parkur → rüzgâr → program); süren yarış varken yok (Seyhun 2026-11-02 "yarış başladığında gösterilmemeli")
   const pre = !ongoing && (phase === "wait" || (cs.rem != null && cs.rem > 0));
-  // Senaryo 2 (Seyhun 2026-11-03): yarış günü, start'a 1 saatten az, turuncu bayrak ya da start dizisi; tehir, "yarış yok", süren yarış ve
+  // Senaryo 2 (Seyhun 2026-11-03 09:16 "ilk starta geri sayım ile start geri sayımı farklı olmalı"): yalnız start dizisi (Yayın sayacı start modunda); ilk starta geri sayım (1 saatten az, turuncu dahil) senaryo 1 düzeninde kalır; tehir, "yarış yok", süren yarış ve
   // yarın hariç. Videosuz StartHero, videolu NearBand; sıralama, çipler, kayan kartlar ve alt şerit yok
   // Start'tan sonra da aynı düzen (Seyhun 2026-11-03 "geri sayım bittiğinde gösterilen ekran diğerlerinden çok farklı olmasın"): sayaç
   // ileri sayar, sağdaki panel sıralama → parkur → rüzgâr → sıradaki
   const racing = !!(ongoing && phase === "race");
-  const near = isCur && phase !== "summary" && !["ap", "none"].includes(data.plan.status) && !/Yarın/.test(cs.label) && (racing || (!ongoing && (((data.timer?.end != null || data.timer?.left != null) && data.timer.mode === "start" && counting) || orangeUp(data.plan, today) || (cs.rem != null && cs.rem > 0 && cs.rem < 3600))));
+  const near = isCur && phase !== "summary" && !["ap", "none"].includes(data.plan.status) && !/Yarın/.test(cs.label) && (racing || (!ongoing && (data.timer?.end != null || data.timer?.left != null) && data.timer.mode === "start" && counting));
   // start'tan önce (geri sayımda) yok; Yayın › Video › Genel sıralama ya da sesle "geneli kaldır" ile kapanır (Seyhun 2026-11-02)
   const ovOn = phase === "race" && isCur && !!sel && !pre && !near && data.courseShow?.ov !== false;
   // Videolu yarış öncesi (Seyhun 2026-11-02 videolu/1-yaris-oncesi.png, 2-start-oncesi-turuncu.png onay): solda bulanık şeritte bilgiler,
