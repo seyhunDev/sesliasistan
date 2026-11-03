@@ -1144,3 +1144,15 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-one .lv-sceneb svg { width: 100%; height: auto; max-height: 50vh; }
 .lv-band2 .lv-one .lv-sceneb svg { max-height: 15em; }
 .lv-band2 .lv-one .lv-wh { zoom: 0.9; }
+/* Senaryo 3 tehir (yayin-tasarim/senaryo/3-*.png): AP etiketi, inişe geri sayım ya da büyük sebep, altında yer ve bekleyen yarış */
+.lv-apk { display: inline-flex; align-items: center; gap: 0.6em; padding: 0.3em 0.8em 0.3em 0.5em; border-radius: 0.4em; background: rgba(255, 207, 51, 0.14); color: #ffcf33; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1em; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 0.6em; }
+.lv-apk .lv-flag { font-size: 0.95em; }
+.lv-bigt { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(40px, 5.2vw, 96px); font-weight: 700; line-height: 1; color: #ffcf33; overflow-wrap: anywhere; }
+.lv-why { margin-top: 0.4em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.5em; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: #ffcf33; }
+.lv-why.w { color: #fff; font-size: 1.3em; }
+.lv-why small { display: block; margin-top: 0.3em; font-size: 0.6em; font-weight: 600; letter-spacing: 0.12em; color: rgba(255, 255, 255, 0.6); }
+.lv-band .lv-bigt { font-size: clamp(30px, 3.6vw, 64px); }
+.lv-band .lv-why { font-size: 1.2em; }
+.lv-band .lv-sbig + .lv-swhat { margin-top: 0.3em; }
+.lv-band .lv-slprog b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-band .lv-wh { max-width: 100%; overflow: hidden; }

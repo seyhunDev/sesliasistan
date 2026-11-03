@@ -1435,6 +1435,42 @@ function NoneHero({ data, today, now }) {
     </div>
   );
 }
+// Senaryo 3 tehir (Seyhun 2026-11-03 onay, yayin-tasarim/senaryo/3-videosuz.png, 3-videolu.png): AP bayraklı "Tehir" etiketi; tehir süresi
+// belliyse "Tehir inişine" geri sayım, altında sebep · Karada ve bekleyen yarış; süre belli değilse sayaç yerine büyük sebep ve
+// "Karada · uyarı işareti bekleniyor". İniş ve uyarı işareti saati yazılmaz. Tehir inince "Tehir indi" + "Start yakında". Videosuz ve bant aynı
+function ApBlock({ data, cs, first, apDown = false, big = "lv-big" }) {
+  const plan = data.plan;
+  const counting = !apDown && cs.label === "Tehir inişine";
+  const why = plan.ap?.why || "Start ertelendi";
+  const land = plan.ap?.land ? "Karada" : "";
+  const who = first ? `${[first.name, grpText(first.grp)].filter(Boolean).join(" · ")} bekliyor` : "";
+  return (
+    <>
+      <div className="lv-apk">
+        <Flag kind="AP" />
+        {apDown ? "Tehir indi" : "Tehir"}
+      </div>
+      {counting ? (
+        <>
+          <div className="lv-kick">Tehir inişine</div>
+          <div className={big}>{cs.value}</div>
+          <div className="lv-why">
+            {[why, land].filter(Boolean).join(" · ")}
+            {who ? <small>{who}</small> : null}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="lv-bigt">{apDown ? "Start yakında" : why}</div>
+          <div className="lv-why w">
+            {apDown ? "Uyarı işareti bekleniyor" : [land, "Uyarı işareti bekleniyor"].filter(Boolean).join(" · ")}
+            {first ? <small>{[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}</small> : null}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
 function WaitHero({ data, today, cs, prog, now }) {
   const plan = data.plan;
   const { none, box, kick } = holdState(data, today, cs, now);
@@ -1447,6 +1483,8 @@ function WaitHero({ data, today, cs, prog, now }) {
   const left = !cs.rem && r.startDate > today ? daysUntil(r.startDate, today) : 0;
   const aDays = left ? data.ahead?.days || raceDays(r.startDate, r.endDate, plan).map((day) => ({ day, at: plan.times?.[day] || plan.daily || "" })) : [];
   const ag = agOf(data, now);
+  const ap = plan.status === "ap";
+  const apDown = !ap && !!plan.warn && now < Date.parse(plan.warn);
   if (none && !left && plan.next?.day) return <NoneHero data={data} today={today} now={now} />;
   // Örnek H (Seyhun 2026-11-03 onay): vitrin dönmez. Solda geri sayım, program ve rüzgâr; sağ üstte parkur. Parkur yoksa günler varken
   // yarış günlerinin beklenen rüzgârı, yoksa rüzgâr grafiği. Yayın'dan "Göster" ile rüzgâr ya da program seçilirse sağda o görünür
@@ -1463,16 +1501,17 @@ function WaitHero({ data, today, cs, prog, now }) {
       <div className="lv-hold lv-hold3" data-cols={cols}>
         <div className="lv-topr">{[none ? "" : "Yarış günü", dayText(today) ? `${wdText(today)} ${dayText(today)}` : "", r.place].filter(Boolean).join(" · ")}</div>
         <div className="lv-hst">
-          <div className="lv-kick">{kick}</div>
-          {!none ? <div className="lv-big">{cs.rem ? cs.value : "—:—"}</div> : null}
-          {!none && first ? (
+          {ap || apDown ? <ApBlock data={data} cs={cs} first={first} apDown={apDown} /> : null}
+          {!ap && !apDown ? <div className="lv-kick">{kick}</div> : null}
+          {!none && !ap && !apDown ? <div className="lv-big">{cs.rem ? cs.value : "—:—"}</div> : null}
+          {!none && !ap && !apDown && first ? (
             <div className="lv-what">
               <Dot g={first.grp} />
               {[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}
               <small>{[first.cls, at ? `Program ${at}` : ""].filter(Boolean).join(" · ")}</small>
             </div>
           ) : null}
-          {box ? (
+          {box && !ap && !apDown ? (
             <div className="lv-hbox">
               {box.flag ? <Flag kind={box.flag} /> : null}
               <div>
@@ -1618,13 +1657,18 @@ function SidePanel({ data, today, cs, prog, now, entry }) {
   return (
     <aside className="lv-side lv-band">
       <div className="lv-bclock">
-        <div className={`lv-skick${orange ? " o" : ""}${ap || apDown ? " ap" : ""}`}>
-          {ap || apDown ? <Flag kind="AP" /> : orange ? <span className="lv-oflag" aria-hidden="true" /> : null}
-          {ap ? "Tehir" : apDown ? "Tehir indi" : orange ? "Start öncesi" : cs.label}
-        </div>
-        <div className="lv-sbig">{cs.rem ? cs.value : "—:—"}</div>
-        {ap ? <div className="lv-ssub">{apText(data.plan)}</div> : null}
-        {first ? (
+        {ap || apDown ? (
+          <ApBlock data={data} cs={cs} first={first} apDown={apDown} big="lv-sbig" />
+        ) : (
+          <>
+            <div className={`lv-skick${orange ? " o" : ""}`}>
+              {orange ? <span className="lv-oflag" aria-hidden="true" /> : null}
+              {orange ? "Start öncesi" : cs.label}
+            </div>
+            <div className="lv-sbig">{cs.rem ? cs.value : "—:—"}</div>
+          </>
+        )}
+        {first && !ap && !apDown ? (
           <div className="lv-swhat">
             <Dot g={first.grp} />
             {[first.name, grpText(first.grp)].filter(Boolean).join(" · ")}
