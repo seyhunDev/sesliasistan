@@ -25,9 +25,22 @@ export async function wipeRace(orgId, id) {
     await dropRacePlans(orgId, r).catch(() => {});
     const u = auth.currentUser;
     if (r?.shared) await dropShared(r.shared, u?.uid || "", u?.email || "").catch(() => {});
+    // sunucu yarışın bütün yayın verisini siler (canlı kayıt, alt belgeler, fotoğraf/video, tekne takibi, ekran işareti)
     await authFetch("/api/canli", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ race: id }) }).catch(() => {});
   };
   return rest();
+}
+
+// Silinmiş yarışlardan kalmış yayın verisi (Seyhun 2026-11-03): sunucu bulur ve siler; oturumda bir kez (Yarışlar sayfası açılınca)
+export async function sweepLive(force = false) {
+  try {
+    if (!force && sessionStorage.getItem("canli-sweep")) return null;
+    sessionStorage.setItem("canli-sweep", "1");
+  } catch {
+    /* özel pencere */
+  }
+  const res = await authFetch("/api/canli", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ sweep: true }) }).catch(() => null);
+  return res?.ok ? res.json().catch(() => null) : null;
 }
 
 // Yarışın planları (plan listesi canlı dinlendiği için ana sayfa ve takvim kendiliğinden güncellenir)
