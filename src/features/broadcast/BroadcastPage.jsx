@@ -1188,7 +1188,7 @@ export function BroadcastPage({ orgId, id }) {
         <section>
           <div className="masa-mons">
             <div className="masa-mon pv">
-              {sel?.kind === "boats" ? <BoatLive grp={airE.grp || airStart?.grp || ""} zoom={zoomNow} /> : pvUrl && ytEmbed(pvUrl) ? <iframe key={pvUrl} src={ytSrc(pvUrl)} title="Önizleme" allow="autoplay; encrypted-media" /> : pvRec?.thumb ? <img src={pvRec.thumb} alt="" /> : <div className="mid">{sel ? "Bağlantı yok" : "Kaynak seç"}</div>}
+              {sel?.kind === "boats" ? <BoatLive grp={airE.grp || airStart?.grp || ""} zoom={zoomNow} course={course} /> : pvUrl && ytEmbed(pvUrl) ? <iframe key={pvUrl} src={ytSrc(pvUrl)} title="Önizleme" allow="autoplay; encrypted-media" /> : pvRec?.thumb ? <img src={pvRec.thumb} alt="" /> : <div className="mid">{sel ? "Bağlantı yok" : "Kaynak seç"}</div>}
               <span className="lb">ÖNİZLEME</span>
               {pvName ? <span className="sn">{pvName}</span> : null}
             </div>

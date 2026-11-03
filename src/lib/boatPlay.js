@@ -5,7 +5,7 @@
 //     fixes: [{ t (start'a göre ms), sail, lat, lon, hdg?, spd? }] }
 // Saf işlevler (test: scripts/asistan-test/yerel/yaris.mjs "Tekne animasyonu").
 import { cleanFix, cleanSail } from "@/lib/boatTrack";
-import { bearing, dist } from "@/lib/raceCourse";
+import { bearing, dest, dist } from "@/lib/raceCourse";
 
 const N = (v) => (v === null || v === undefined || v === "" || !Number.isFinite(+v) ? null : +v);
 export const angDiff = (a, b) => ((((b - a) % 360) + 540) % 360) - 180;
@@ -51,6 +51,31 @@ export function groupSet(set, grp) {
 export const groupsOf = (set) => [...new Set(set.boats.map((b) => b.grp).filter(Boolean))];
 // Yayındaki canlı konum (BoatLive): ekrandaki yarışın grubu veri setinde varsa o, yoksa ilk grup
 export const liveGroup = (set, grp) => (set && groupsOf(set).includes(grp) ? grp : (set && groupsOf(set)[0]) || "");
+// Parkurun gerçek yerine taşıma (Seyhun 2026-11-03 "hakem botu, pin, şamandıra koordinatlarını gireceğim"; Yayın › Parkur, courseCard coursePoints):
+// verilen noktalar (komite, pin, m1… {lat, lon}) şamandıra olur; örnek tekneler start hattına göre yerleşir: hattın ortası gerçek ortaya,
+// parkur ekseni gerçek eksene (orta → 1) döner, hat boyunca uzaklık hattın boyuna göre ölçeklenir. Rüzgâr yönü gerçek eksen olur.
+export function placeSet(set, pts) {
+  const g = (k) => geo(pts?.[k]);
+  if (!g("komite") || !g("pin") || !set.marks.pin || !set.marks.komite) return set;
+  const mid = (a, b) => ({ lat: (a.lat + b.lat) / 2, lon: (a.lon + b.lon) / 2 });
+  const sM = mid(set.marks.pin, set.marks.komite);
+  const rM = mid(g("pin"), g("komite"));
+  const sAx = set.wind.dir;
+  const rAx = g("m1") ? bearing(rM, g("m1")) : norm(bearing(g("pin"), g("komite")) - 90);
+  const k = (dist(g("pin"), g("komite")) || 1) / (dist(set.marks.pin, set.marks.komite) || 1);
+  const move = (p) => {
+    const d = dist(sM, p);
+    if (d < 0.01) return { lat: rM.lat, lon: rM.lon };
+    const a = ((bearing(sM, p) - sAx) * Math.PI) / 180; // eksene göre
+    const x = Math.sin(a) * d * k; // hat boyunca, ölçekli
+    const y = Math.cos(a) * d;
+    return dest(rM, norm(rAx + (Math.atan2(x, y) * 180) / Math.PI), Math.hypot(x, y));
+  };
+  const marks = {};
+  for (const n of ["komite", "pin", "m1", "m2", "m3s", "m3p", "fin1", "fin2"]) if (g(n)) marks[n] = g(n);
+  const turn = rAx - sAx;
+  return { ...set, wind: { ...set.wind, dir: Math.round(norm(rAx)) }, marks, fixes: set.fixes.map((f) => ({ ...f, ...move(f), hdg: f.hdg === null || f.hdg === undefined ? f.hdg : norm(f.hdg + turn) })) };
+}
 // Klibin başı ve sonu (ms)
 export function spanOf(set) {
   if (!set.fixes.length) return { t0: 0, t1: 0 };
