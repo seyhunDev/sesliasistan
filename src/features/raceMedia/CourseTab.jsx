@@ -182,6 +182,7 @@ function AddBody({ at, c, onAdd, pick0 = 0 }) {
   const lastOf = (k) => [...c.obs].reverse().find((x) => x.kind === k);
   const [deg, setDeg] = useState(() => lastOf(PICKS[pick0][0])?.deg ?? lastOf("wind")?.deg ?? 0);
   const [kn, setKn] = useState(() => lastOf("wind")?.kn ?? 8);
+  const [gust, setGust] = useState(() => lastOf("wind")?.gust ?? null); // sağanak (Seyhun 2026-11-03 17:39 "sağanak da ekleyelim")
   const [deg2, setDeg2] = useState(null); // rüzgâr aralığının ikinci yönü (Seyhun 2026-10-30 "belli bir aralık seçebilmeliyim")
   const [kind, ref] = PICKS[pick];
   const chip = (on) => `h-9 rounded-full px-3.5 text-[0.875rem] font-medium active:scale-95 ${on ? "bg-acc text-white" : "bg-bg"}`;
@@ -235,7 +236,23 @@ function AddBody({ at, c, onAdd, pick0 = 0 }) {
           </div>
         </div>
       )}
-      <Button className="mt-5 h-14" onClick={() => onAdd({ kind, ref, deg, by, kn: kind === "wind" ? kn : null, ...(kind === "wind" && deg2 !== null ? { range: [deg, deg2] } : {}), ...(at?.lat != null ? { lat: at.lat, lon: at.lon } : {}) })}>Ekle</Button>
+      {kind === "wind" &&
+        (gust === null ? (
+          <button type="button" onClick={() => setGust(Math.min(60, kn + 4))} className="mt-2 text-[0.875rem] font-semibold text-acc">Sağanak ekle</button>
+        ) : (
+          <div className="mt-3 flex items-center justify-between">
+            <span className="flex items-baseline gap-2">
+              <b className="text-[1.5rem] font-semibold tabular-nums">{`sağanak ${gust} kn`}</b>
+              <button type="button" onClick={() => setGust(null)} className="ml-1 text-[0.8125rem] font-semibold text-mut">Kaldır</button>
+            </span>
+            <div className="flex gap-1.5">
+              {[-1, 1].map((d) => (
+                <button key={d} type="button" onClick={() => setGust((v) => Math.max(0, Math.min(60, v + d)))} className={step}>{d > 0 ? "+1" : "−1"}</button>
+              ))}
+            </div>
+          </div>
+        ))}
+      <Button className="mt-5 h-14" onClick={() => onAdd({ kind, ref, deg, by, kn: kind === "wind" ? kn : null, ...(kind === "wind" && gust !== null && gust > kn ? { gust } : {}), ...(kind === "wind" && deg2 !== null ? { range: [deg, deg2] } : {}), ...(at?.lat != null ? { lat: at.lat, lon: at.lon } : {}) })}>Ekle</Button>
     </div>
   );
 }

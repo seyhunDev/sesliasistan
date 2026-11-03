@@ -57,6 +57,8 @@ export function cleanObs(o) {
     deg: range ? norm(range[0] + diff(range[0], range[1]) / 2) : norm(deg),
     ...(range ? { range } : {}),
     kn: kn === null || kn < 0 || kn > 80 ? null : Math.round(kn * 10) / 10,
+    // sağanak (Seyhun 2026-11-03 17:39): yalnız rüzgârda, şiddetten büyükse
+    ...(o.kind === "wind" && N(o.gust) !== null && kn !== null && N(o.gust) > kn && N(o.gust) <= 80 ? { gust: Math.round(N(o.gust) * 10) / 10 } : {}),
     by: BYS.some(([k]) => k === o.by) ? o.by : "ben",
     ...(PTS.includes(o.spot) ? { spot: o.spot } : {}),
     ...(geo(o) || {}),
