@@ -84,6 +84,7 @@ export function BroadcastPage({ orgId, id }) {
   const [groups, setGroups] = useState({});
   const [pickId, setPickId] = useState(""); // listede seçilen biten start (boşsa sayacın yarışı)
   const [editI, setEditI] = useState(-1); // listede açık olan bekleyen start (plan.order sırası)
+  const [pickKey, setPickKey] = useState(""); // satırda açık seçim: cls | grp | prep
   const [menu, setMenu] = useState(false); // ⋯ menüsü (Seyhun 2026-11-01 "çok fazla buton, yanlışlıkla tıklanmasın": az kullanılan ve riskli işler burada)
   const [askEnd, setAskEnd] = useState(false); // Günü bitir bir daha sorar
   const [grpOpen, setGrpOpen] = useState(false); // Gruplar: seçim açık
@@ -584,24 +585,35 @@ export function BroadcastPage({ orgId, id }) {
   const needSetup = !!L && (setupOpen || !plan.sets.length);
   // Sıradaki startın bayrağı boşsa (genel geri / abandone sonrası tekrar) önce bayrak
   const needFlag = !!L && idle && !!nextPlan && !nextPlan.prep && plan.status !== "done";
-  // Seçim çipleri: Sınıf, Grup, Bayrak; set(key, değer) satırın kaydına yazar (bekleyen start: plan.order; biten yarış: rounds[sid])
-  const chipRows = (val, set, size = "h-7 px-2.5", keys = ["cls", "grp", "prep"]) => [
-    ["Sınıf", CLASS_PICK, "cls", false],
-    ["Grup", GROUP_PICK, "grp", true],
-    ["Bayrak", PREP_PICK, "prep", false],
-  ].filter(([, , key]) => keys.includes(key)).map(([lab, list, key, dot]) => (
-    <div key={key} className="flex items-center gap-2">
-      <span className="w-11 shrink-0 text-[0.8125rem] text-mut">{lab}</span>
-      <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
-        {list.map((g) => (
-          <button key={g} type="button" aria-pressed={val[key] === g} onClick={() => set(key, val[key] === g ? "" : g)} className={`flex ${size} shrink-0 items-center gap-1.5 rounded-full text-[0.8125rem] font-semibold ${val[key] === g ? "bg-acc text-white" : "bg-bg"}`}>
-            {dot ? <span className="size-2 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
-            {key === "prep" && g === "Kara" ? "Kara bayrak" : g}
-          </button>
-        ))}
+  // Seçim kareleri (Seyhun 2026-11-03 "sınıf, grup, bayrak yan yana kare butonlar, görselleriyle; hangisine tıklanırsa onu değiştirelim"):
+  // üç kare seçili değeri gösterir (sınıf işareti grup renginde, grup rengi, bayrak resmi); dokununca yalnız o seçimin seçenekleri açılır
+  const pickSquares = (val, set, keys = ["cls", "grp", "prep"]) => {
+    const defs = { cls: ["Sınıf", CLASS_PICK], grp: ["Grup", GROUP_PICK], prep: ["Bayrak", PREP_PICK] };
+    const art = (key, v, g) => (key === "cls" ? <ClsArt cls={v} grp={g} /> : key === "grp" ? <span className="block h-full w-full" style={{ background: groupColor(v) || "var(--chip)" }} /> : v ? <FlagArt p={v} /> : null);
+    const open = keys.includes(pickKey) ? pickKey : "";
+    return (
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          {keys.map((key) => (
+            <button key={key} type="button" aria-expanded={open === key} onClick={() => setPickKey(open === key ? "" : key)} data-press className={`masa-sq${open === key ? " on" : ""}`}>
+              <span className="art">{art(key, val[key], val.grp)}</span>
+              <small>{val[key] ? (key === "prep" ? (val[key] === "Kara" ? "Kara" : val[key]) : val[key]) : defs[key][0]}</small>
+            </button>
+          ))}
+        </div>
+        {open ? (
+          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+            {defs[open][1].map((g) => (
+              <button key={g} type="button" aria-pressed={val[open] === g} onClick={() => (set(open, val[open] === g ? "" : g), setPickKey(""))} data-press className={`masa-sq sm${val[open] === g ? " sel" : ""}`}>
+                <span className="art">{art(open, g, open === "cls" ? val.grp : val.grp)}</span>
+                <small>{open === "prep" && g === "Kara" ? "Kara" : g}</small>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
-    </div>
-  ));
+    );
+  };
   const legsDone = entry?.route?.length ? entry.route.filter((_, k) => (entry.legs[k] || []).length).length : 0;
   const tabInfo = [
     ["sure", "Süre", cur ? (Date.parse(cur.at) > capNow ? "Geri sayım" : "Yarışta") : plan.status === "ap" ? "Tehir" : plan.status === "done" ? "Gün bitti" : races.length ? `${races.length} yarış` : "Boş", !!cur],
@@ -831,7 +843,7 @@ export function BroadcastPage({ orgId, id }) {
                             {isOpen && s ? (
                               // Biten yarışın sınıfı / grubu / bayrağı düzeltilir; aynı anda iki yarışta sayacın olmayanı buradan biter
                               <div className="space-y-2 px-4 pb-2.5">
-                                {chipRows(e, (k, v) => setPickOf(s.id, { [k]: v }))}
+                                {pickSquares(e, (k, v) => setPickOf(s.id, { [k]: v }))}
                                 {isCd || isUp ? (
                                   <div className="flex flex-wrap gap-2 pt-1">
                                     {isCd && !paused ? (
@@ -856,7 +868,7 @@ export function BroadcastPage({ orgId, id }) {
                             ) : null}
                             {isOpen && !s ? (
                               <div className="space-y-2 px-4 pb-2.5">
-                                {chipRows(e, (k, v) => editRow(x.i, { [k]: v }), "h-7 px-2.5", ["prep"])}
+                                {pickSquares(e, (k, v) => editRow(x.i, { [k]: v }))}
                                 <div className="flex gap-2 pt-1">
                                   <Button variant="secondary" size="sm" onClick={() => (setEditI(-1), changePlan({ order: plan.order.filter((_, k) => k !== x.i) }))}>
                                     Çıkar
@@ -1737,6 +1749,27 @@ function Setup({ sets, onSave, onCancel }) {
   );
 }
 
+// Sınıf işareti kare (canlı ekrandaki sınıf bayrağı gibi): grup renginde zemin, Optimist halka + I, diğerleri kısa ad
+function ClsArt({ cls, grp }) {
+  const bg = (grp && groupColor(grp)) || "#fff";
+  const m = /^#?([0-9a-f]{6})$/i.exec(bg);
+  const n = m ? parseInt(m[1], 16) : 0xffffff;
+  const ink = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 > 0.6 ? "#111" : "#fff";
+  const short = /^opti/i.test(cls) ? "" : /^ilca\s*(\d)/i.test(cls) ? `ILCA ${/^ilca\s*(\d)/i.exec(cls)[1]}` : String(cls || "").slice(0, 5).toUpperCase();
+  if (!cls) return null;
+  return (
+    <span className="flex h-full w-full items-center justify-center" style={{ background: bg, color: ink }}>
+      {/^opti/i.test(cls) ? (
+        <svg viewBox="10 0 40 40" className="h-[88%]" aria-label="Optimist">
+          <circle cx="30" cy="15.4" r="11.2" fill="none" stroke="currentColor" strokeWidth="2.6" />
+          <path d="M27.1 14.6 L32.9 14.6 Q31.35 15.4 31.3 16.9 L31.3 35.2 Q31.35 36.6 32.9 37.4 L27.1 37.4 Q28.65 36.6 28.7 35.2 L28.7 16.9 Q28.65 15.4 27.1 14.6 Z" fill="currentColor" />
+        </svg>
+      ) : (
+        <b className="text-[0.6875rem] font-extrabold tracking-tight">{short}</b>
+      )}
+    </span>
+  );
+}
 // Hazırlık bayrağının resmi (canlı ekrandaki bayraklarla aynı renkler)
 const FLAG_NAME = { P: "P bayrağı", I: "I bayrağı", Z: "Z bayrağı", U: "U bayrağı", Kara: "Kara bayrak" };
 function FlagArt({ p }) {
