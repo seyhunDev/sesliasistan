@@ -33,7 +33,7 @@ import { ZOOMS } from "@/lib/boatPlay";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
 import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
-import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, obsTitle, selCard, withLiveWind } from "@/lib/raceCourse";
+import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf } from "@/lib/courseCard";
 import { PRE_NAME, PRE_SECS, PRE_STEPS, cleanCourseShow, preMove, preStep, CLASS_PICK, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
@@ -552,6 +552,7 @@ export function BroadcastPage({ orgId, id }) {
   };
   // Sesle parkur (Seyhun 2026-11-03 18:43): Konuş'a bas, söyle: "rüzgâr 20 ile 35 arası 12 knot", "eksen 320", "rota 1 2 3 2 3 finiş", "trapez"
   const [heard, setHeard] = useState("");
+  const [obsAll, setObsAll] = useState(false);
   const onCourseSay = async (text) => {
     setHeard(text);
     const r = await courseVoice(text, course);
@@ -696,6 +697,25 @@ export function BroadcastPage({ orgId, id }) {
   const monRec = onScreen?.kind === "rec" ? live.media.find((m) => m.id === onScreen.mid) : null;
   const pDay = days.includes(openDay) ? openDay : days.includes(planDay) ? planDay : days[0];
   const groupRows = plan.sets.flatMap((x) => (x.grps.length ? x.grps.map((g) => [x.cls, g]) : [[x.cls, ""]]));
+  // Parkur sekmesi: seçili kartla yarışan gruplar, hat avantajı, son ölçümler (rüzgâr · hat · eksen)
+  const selWho = (() => {
+    if (groupRows.length < 2) return "";
+    const on = groupRows.filter(([x, g]) => cardFor(course, x, g).id === course.sel).map(([x, g]) => g || x);
+    return on.length ? `${on.join(" ve ")} bu kartla` : "";
+  })();
+  const bias = (() => {
+    try {
+      return lineBias(c);
+    } catch {
+      return null;
+    }
+  })();
+  const lastOf = (k) => [...c.obs].reverse().find((x) => x.kind === k) || null;
+  const lastObs = [
+    ["Rüzgâr", lastOf("wind"), wind ? `${degText(wind)} ${dirShort(wind.deg)}${wind.kn != null ? ` · ${wind.kn} kn` : ""}` : ""],
+    ["Hat", lastOf("line"), bias?.end ? `${bias.end === "pin" ? "Pin" : "Komite"} +${bias.deg}°` : bias ? "Dik" : lastOf("line") ? degText(lastOf("line")) : ""],
+    ["Eksen", lastOf("axis"), lastOf("axis") ? degText(lastOf("axis")) : ""],
+  ];
   const row = "flex w-full items-center gap-3 px-4 py-3 text-left";
   // Yayında: bugün süren yarış var. İnce üst çubuk: yalnız sıradan durumlarda (kurulum, bayrak seçimi, tehir, geri düğmesi yokken)
   const anyLive = live.starts.some((x) => x.day === today && !x.fin && !x.void);
@@ -1357,100 +1377,154 @@ export function BroadcastPage({ orgId, id }) {
         ) : null}
         {!needSetup && tab === "parkur" ? (
           <>
-        {/* Parkur (Seyhun 2026-11-02 yayın masası): büyük çizim, adı üstünde; kartlar yan yana kutu (yarış boyunca seçili olan); rota */}
+        {/* Parkur (Seyhun 2026-11-03 "yap"): büyük harita; kart adı, ölçülen rüzgâr ve hat avantajı haritanın üstünde; altında rota
+            kutuları (Düzelt › Kaydet). Kartlar tek listede: seçili kart + tür + her grubun kartı. Son ölçümler üç kutu, hepsi Tümü'nde. */}
         <section>
           <div className={`${card} overflow-hidden`}>
             <div className="relative">
-              {scene ? <div className="[&>svg]:block" dangerouslySetInnerHTML={{ __html: scene }} /> : <p className="px-4 py-6 text-[0.875rem] text-mut">Rüzgâr ya da parkur ölçümü girince kart çizilir</p>}
-              <div className="pointer-events-none absolute left-3 top-2.5 leading-tight text-white">
-                <b className="block text-[0.9375rem] font-bold">{CARD_TYPES[selCard(course).type] || CARD_TYPES.std}</b>
+              {scene ? <div className="[&>svg]:block" dangerouslySetInnerHTML={{ __html: scene }} /> : <p className="px-4 pb-6 pt-14 text-[0.875rem] text-mut">Rüzgâr ya da parkur ölçümü girince kart çizilir</p>}
+              <div className="pointer-events-none absolute left-3 top-2.5 max-w-[58%] leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
+                <b className="block truncate text-[0.9375rem] font-bold">{`Kart ${course.sel} · ${(CARD_TYPES[selCard(course).type] || CARD_TYPES.std).split(" ")[0]}`}</b>
+                {selWho ? <span className="block truncate text-[0.75rem] font-semibold text-white/75">{selWho}</span> : null}
               </div>
+              {wind ? (
+                <div className="pointer-events-none absolute right-3 top-2 text-right leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
+                  <b className="block text-[1.25rem] font-bold tabular-nums">
+                    {degText(wind)}
+                    <small className="ml-0.5 text-[0.75rem]">{dirShort(wind.deg)}</small>
+                  </b>
+                  {wind.kn != null || wind.gust != null ? <span className="block text-[0.75rem] font-semibold text-white/80">{[wind.kn != null ? `${wind.kn} kn` : "", wind.gust != null ? `sağanak ${wind.gust}` : ""].filter(Boolean).join(" · ")}</span> : null}
+                  <span className="block text-[0.75rem] font-semibold text-white/70">{`${hm(wind.at)} ölçüm`}</span>
+                </div>
+              ) : null}
+              {bias?.end ? (
+                <span className="pointer-events-none absolute bottom-2.5 left-3 rounded-[0.5rem] bg-black/45 px-2 py-1 text-[0.75rem] font-bold text-white">
+                  {"Hat avantajı "}
+                  <i className="not-italic text-ok">{`${bias.end === "pin" ? "Pin" : "Komite"} +${bias.deg}°`}</i>
+                </span>
+              ) : null}
             </div>
-            <div className="flex items-center gap-2 border-t border-line px-3.5 py-3">
-              <span className="text-[0.8125rem] font-bold text-mut">Rota</span>
+            <div className="flex items-center gap-2 border-t border-line px-3 py-2.5">
               {rtEdit ? (
                 <input autoFocus value={rt} onChange={(e) => setRt(e.target.value.slice(0, 40))} placeholder="1 2 3 F" aria-label="Rota" className="h-9 min-w-0 flex-1 rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.9375rem] font-bold tabular-nums tracking-[0.06em] outline-none" />
               ) : (
-                <b className="min-w-0 flex-1 truncate text-[1rem] tabular-nums tracking-[0.06em]">{routeText(cleanRoute(rt)) || "Yok"}</b>
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1" aria-label={`Rota ${routeText(cleanRoute(rt)) || "yok"}`}>
+                  {cleanRoute(rt).length ? (
+                    cleanRoute(rt).map((s, i) => (
+                      <span key={i} className="flex items-center gap-1">
+                        {i ? <span className="text-[0.75rem] text-mut">›</span> : null}
+                        <span className={`grid h-8 min-w-8 place-items-center rounded-[0.5rem] border px-1.5 text-[0.9375rem] font-bold tabular-nums ${s === "F" ? "border-ok/50 text-ok" : "border-line bg-[var(--chip)]"}`}>{s}</span>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[0.875rem] font-semibold text-mut">Rota yok</span>
+                  )}
+                </div>
               )}
-              <Button size="sm" variant="secondary" onClick={() => setRtEdit((v) => !v)}>
-                {rtEdit ? "Tamam" : "Düzelt"}
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  if (!rtEdit) return setRtEdit(true);
+                  if (cleanRoute(rt).length) setRtEdit(false);
+                  saveRoute();
+                }}
+              >
+                {rtEdit ? "Kaydet" : "Düzelt"}
               </Button>
-              {course.cards.length > 1 ? (
-                <Button size="sm" variant="secondary" onClick={dropCard}>
-                  Kartı sil
-                </Button>
-              ) : null}
             </div>
           </div>
         </section>
-        <div className="masa-cards">
-          {course.cards.map((k) => (
-            <button key={k.id} type="button" aria-pressed={k.id === course.sel} onClick={() => pickCard(k.id)} className="masa-card" data-press>
-              <b>{CARD_TYPES[k.type] || CARD_TYPES.std}</b>
-              <span>{[`Kart ${k.id}`, routeText(k.route) || "Rota yok"].join(" · ")}</span>
-            </button>
-          ))}
-          <button type="button" onClick={newCard} className="masa-card" data-press>
-            <b className="text-acc">+ Yeni kart</b>
-            <span>Boş parkur</span>
-          </button>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-[0.8125rem] font-bold text-mut">Seçili kartın türü</span>
-          {Object.entries(CARD_TYPES).map(([t, n]) => (
-            <button key={t} type="button" onClick={() => setType(t)} aria-pressed={selCard(course).type === t} className={`h-8 rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${selCard(course).type === t ? "bg-acc text-white" : "bg-[var(--chip)]"}`}>
-              {n}
-            </button>
-          ))}
-        </div>
-        {/* Grupların parkuru (Seyhun 2026-11-02 "sarı grubu trapezde, mavi grubu başka parkurda; 1 2 1 2 3 finiş gibi değiştirebilmeliyim"):
-            her sınıf/grup bir kart seçer (kartın rotası değişirse o grubun rotası da); seçmeyen grup seçili kartla yarışır. Start bu kartla açılır. */}
-        {groupRows.length > 1 || course.cards.length > 1 ? (
-          <section>
-            <Head title="Grupların parkuru" right="Start bu kartla açılır" />
-            <div className={`${card} overflow-hidden`}>
-              {groupRows.map(([c, g]) => {
-                const k = cardFor(course, c, g);
-                return (
-                  <div key={cardKey(c, g)} className="flex items-center gap-2.5 border-b border-line px-4 py-2.5 last:border-b-0">
-                    <span className="size-2.5 shrink-0 rounded-full" style={{ background: g ? groupColor(g) : "var(--mut)" }} aria-hidden="true" />
-                    <span className="min-w-0 flex-1 leading-tight">
-                      <b className="block truncate font-semibold">{g ? `${g}${plan.sets.length > 1 ? ` · ${c}` : ""}` : c}</b>
-                      <span className="block truncate text-[0.75rem] text-mut">{`${CARD_TYPES[k.type] || CARD_TYPES.std} · ${routeText(k.route) || "Rota yok"}`}</span>
-                    </span>
-                    <div className="flex shrink-0 gap-1">
-                      {course.cards.map((x) => (
-                        <button key={x.id} type="button" aria-pressed={k.id === x.id} aria-label={`Kart ${x.id}`} onClick={() => k.id !== x.id && putCards({ by: { ...course.by, [cardKey(c, g)]: x.id } }, `${g || c}: Kart ${x.id}`)} className={`h-8 min-w-8 rounded-full px-2 text-[0.8125rem] font-bold active:scale-95 ${k.id === x.id ? "bg-acc text-white" : "bg-[var(--chip)]"}`}>
-                          {x.id}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
+        {/* Kartlar (Seyhun 2026-11-02 "sarı grubu trapezde, mavi grubu başka parkurda"): her grup bir kart seçer; seçmeyen grup seçili kartla. */}
         <section>
-          {/* Seyhun 2026-11-02 "parkur ve rüzgârı şimdilik gizle, alta koy, istersek açarız; parkur kartları aynı şeyi animasyonla gösteriyor":
-              kapalıyken yalnız Rüzgâr / Parkur ölçümü girişi */}
-          <Head title="Ölçümler" right={wind ? `${wind.deg}° ${dirShort(wind.deg)}${wind.kn != null ? ` · ${wind.kn} kn` : ""}` : ""} />
+          <Head title="Kartlar" right="Seçili kart sıradaki startta açılır" />
           <div className={`${card} overflow-hidden`}>
+            <div className="flex items-center gap-2.5 border-b border-line px-4 py-2.5">
+              <span className="min-w-0 flex-1 leading-tight">
+                <b className="block truncate font-semibold">Kart</b>
+                <span className="block truncate text-[0.75rem] text-mut">{`${CARD_TYPES[selCard(course).type] || CARD_TYPES.std} · ${routeText(selCard(course).route) || "Rota yok"}`}</span>
+              </span>
+              <div className="masa-seg">
+                {course.cards.map((x) => (
+                  <button key={x.id} type="button" aria-pressed={x.id === course.sel} aria-label={`Kart ${x.id}`} onClick={() => pickCard(x.id)}>
+                    {x.id}
+                  </button>
+                ))}
+                <button type="button" aria-label="Yeni kart" onClick={newCard}>
+                  +
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 border-b border-line px-4 py-2.5 last:border-b-0">
+              <b className="min-w-0 flex-1 truncate font-semibold">Tür</b>
+              <div className="masa-seg">
+                {Object.entries(CARD_TYPES).map(([t, n]) => (
+                  <button key={t} type="button" aria-pressed={selCard(course).type === t} onClick={() => setType(t)}>
+                    {n.split(" ")[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {groupRows.length > 1
+              ? groupRows.map(([c, g]) => {
+                  const k = cardFor(course, c, g);
+                  return (
+                    <div key={cardKey(c, g)} className="flex items-center gap-2.5 border-b border-line px-4 py-2.5 last:border-b-0">
+                      <span className="size-2.5 shrink-0 rounded-full" style={{ background: g ? groupColor(g) : "var(--mut)" }} aria-hidden="true" />
+                      <span className="min-w-0 flex-1 leading-tight">
+                        <b className="block truncate font-semibold">{g ? `${g}${plan.sets.length > 1 ? ` · ${c}` : ""}` : c}</b>
+                        {k.id !== course.sel ? <span className="block truncate text-[0.75rem] text-mut">{`${(CARD_TYPES[k.type] || CARD_TYPES.std).split(" ")[0]} · ${routeText(k.route) || "Rota yok"}`}</span> : null}
+                      </span>
+                      <div className="masa-seg">
+                        {course.cards.map((x) => (
+                          <button key={x.id} type="button" aria-pressed={k.id === x.id} aria-label={`Kart ${x.id}`} onClick={() => k.id !== x.id && putCards({ by: { ...course.by, [cardKey(c, g)]: x.id } }, `${g || c}: Kart ${x.id}`)}>
+                            {x.id}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              : null}
+            {course.cards.length > 1 ? (
+              <button type="button" onClick={dropCard} className="block w-full px-4 py-2.5 text-left text-[0.875rem] font-semibold text-rec">
+                {`Kart ${course.sel}'i sil`}
+              </button>
+            ) : null}
+          </div>
+        </section>
+        <section>
+          <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1 text-[0.8125rem] font-semibold text-mut">
+            <span>Son ölçümler</span>
             {course.obs.length ? (
-              [...course.obs].reverse().map((o) => (
+              <button type="button" onClick={() => setObsAll((v) => !v)} className="font-semibold text-mut">
+                {obsAll ? "Kapat" : "Tümü ›"}
+              </button>
+            ) : null}
+          </div>
+          {obsAll ? (
+            <div className={`${card} overflow-hidden`}>
+              {[...course.obs].reverse().map((o) => (
                 <div key={o.id} className="flex items-center gap-3 border-b border-line px-4 py-2 text-[0.9375rem] last:border-b-0">
-                  <span className="min-w-0 flex-1 truncate font-semibold">{`${obsTitle(o)} · ${o.deg}°${o.kn != null ? ` · ${o.kn} kn` : ""}`}</span>
+                  <span className="min-w-0 flex-1 truncate font-semibold">{`${obsTitle(o)} · ${obsValue(o)}`}</span>
                   <span className="text-[0.8125rem] tabular-nums text-mut">{hm(o.at)}</span>
                   <button type="button" onClick={() => dropObs(o)} className="text-[0.875rem] font-semibold text-rec">
                     Sil
                   </button>
                 </div>
-              ))
-            ) : (
-              <p className="px-4 py-3 text-[0.875rem] text-mut">Ölçüm yok</p>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="masa-meas">
+              {lastObs.map(([name, o, val]) => (
+                <div key={name} className={card}>
+                  <small>{name}</small>
+                  <b>{o ? val : "Yok"}</b>
+                  <span>{o ? hm(o.at) : "·"}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
         {cListen || heard ? (
           <p className="px-1 text-[0.875rem] text-mut" aria-live="polite">
@@ -1461,11 +1535,6 @@ export function BroadcastPage({ orgId, id }) {
           <Button variant="secondary" onClick={() => setAdd(0)}>
             Ölçüm ekle
           </Button>
-          {routeText(cleanRoute(rt)) !== routeText(selCard(course).route) ? (
-            <Button variant="secondary" onClick={saveRoute}>
-              Kaydet
-            </Button>
-          ) : null}
           <Button variant={cListen ? "danger" : "primary"} onClick={courseTalk}>
             {cListen ? "Bitti" : "Konuş"}
           </Button>
