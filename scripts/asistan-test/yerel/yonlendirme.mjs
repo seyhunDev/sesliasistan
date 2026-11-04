@@ -120,7 +120,7 @@ const CASES = {
   wordAsk: ["çalıştığım kelimeler neler"],
   wordGaps: ["kelimeleri her gün göster", "kelime tekrarını 1 3 7 gün yap"],
   phraseAdd: ["could you give me a hand cümlesini ekle", "İngilizce yardım eder misin cümlesini çalışma listeme ekle"],
-  englishPage: ["ingilizce sayfasını aç", "ingilizce"],
+  englishPage: ["ingilizce sayfasını aç", "ingilizce", "ingilizce kalıp çalışalım", "kalıplarla ingilizce çalış", "kalıp çalış"],
   seaMove: ["yanaşan gemi var mı", "Dikili'ye gelen gemi var mı?", "limandan ayrılan gemi var mı", "kalkacak gemi var mı"],
   seaPort: ["limanda kaç gemi var", "limanda hangi tekneler bağlı"],
   seaAnchor: ["demirde kaç gemi var", "demirli gemiler hangileri"],

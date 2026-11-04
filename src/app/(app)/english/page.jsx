@@ -13,6 +13,8 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { askWord, loadDeck, moreWord, updateDeck } from "@/features/words/wordData";
 import { primeEn, sayEn } from "@/features/words/WordView";
 import { WordTalk } from "@/features/words/WordTalk";
+import { ChunkStudy } from "@/features/words/ChunkStudy";
+import { chunkById, chunkState, chunkTopics, finishChunk, knowChunk, knownChunkRows, nextChunk, patternText, resetChunk, studyChunkRows } from "@/lib/englishChunkStudy";
 import { cachedDeck, findWord, hasMore, knowWord, knownList, missWord, pageCard, quizFor, reviewWord, sentencesOf, setMore, studyRows, studyWord, topicStats } from "@/lib/englishWords";
 import { todayStr } from "@/lib/utils/format";
 
@@ -40,6 +42,12 @@ function Photo() {
     </div>
   );
 }
+
+// Kalıplar zemini: lacivert üstünde mor ve camgöbeği ışık (fotoğraf yok)
+function Glow() {
+  return <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_45%_at_85%_0%,#3a1d4a_0%,rgba(58,29,74,0)_60%),radial-gradient(90%_40%_at_0%_8%,#123a52_0%,rgba(18,58,82,0)_65%)]" />;
+}
+const patternRow = (c) => patternText(c);
 
 // Cümlede kelimenin geçtiği yer mavi
 function Marked({ text, word }) {
@@ -167,7 +175,12 @@ export default function EnglishPage() {
   const toast = useToast();
   const today = todayStr();
   const [deck, setDeck] = useState(null);
-  const [kind, setKind] = useState("word");
+  // Kalıp (varsayılan, Seyhun 2026-11-02 "kalıp bloklama") · Kelime · Cümle
+  const [kind, setKind] = useState("chunk");
+  const [cTopic, setCTopic] = useState("");
+  const [cSkip, setCSkip] = useState([]);
+  const [cPin, setCPin] = useState("");
+  const [cTalk, setCTalk] = useState(null);
   const [topic, setTopic] = useState("");
   const [skip, setSkip] = useState([]);
   const [pin, setPin] = useState("");
@@ -194,7 +207,16 @@ export default function EnglishPage() {
     };
   }, [orgId]);
 
-  const cur = useMemo(() => (deck ? (pin && findWord(deck, pin)) || pageCard(deck, { kind, today, topic, skip }) : null), [deck, pin, kind, today, topic, skip]);
+  const chunk = useMemo(() => (deck && kind === "chunk" ? (cPin && chunkById(cPin)) || nextChunk(deck, { today, topic: cTopic, skip: cSkip }) : null), [deck, kind, cPin, today, cTopic, cSkip]);
+  const nextC = () => {
+    if (chunk) setCSkip((s) => [...s, chunk.id]);
+    setCPin("");
+  };
+  const openC = (id) => {
+    setCPin(id);
+    setMenu(false);
+  };
+  const cur = useMemo(() => (deck && kind !== "chunk" ? (pin && findWord(deck, pin)) || pageCard(deck, { kind, today, topic, skip }) : null), [deck, pin, kind, today, topic, skip]);
   // Tekrarı gelen çalışma kelimesi gösterilince o günün tekrarı sayılır (kelime kartındaki gibi)
   const curKey = cur?.status === "study" && (!cur.due || cur.due <= today) ? cur.en : "";
   useEffect(() => {
@@ -281,6 +303,10 @@ export default function EnglishPage() {
     }
   };
 
+  const isChunk = kind === "chunk";
+  const cTopics = deck && isChunk ? chunkTopics(deck) : [];
+  const cStudy = deck && isChunk ? studyChunkRows(deck) : [];
+  const cKnown = deck && isChunk ? knownChunkRows(deck) : [];
   const studying = deck ? studyRows(deck, kind) : [];
   const known = deck ? knownList(deck, kind) : [];
   const topics = deck && kind === "phrase" ? topicStats(deck) : [];
@@ -289,8 +315,42 @@ export default function EnglishPage() {
 
   return (
     <main data-theme="dark" className="navy fit-dark relative mx-auto flex min-h-dvh max-w-[30rem] flex-col px-6 pb-[calc(var(--dome-h,var(--stage-h,6rem))+1rem)]">
-      <Photo />
-      {talk ? (
+      {isChunk ? <Glow /> : <Photo />}
+      {isChunk && cTalk ? (
+        <WordTalk w={{ en: patternText(cTalk), tr: cTalk.tr, kind: "phrase" }} onClose={() => setCTalk(null)} />
+      ) : isChunk ? (
+        !deck ? (
+          <section className="relative flex flex-1 items-center justify-center">
+            <Loading label="Yükleniyor" />
+          </section>
+        ) : chunk ? (
+          <ChunkStudy
+            key={chunk.id}
+            c={chunk}
+            deck={deck}
+            today={today}
+            topic={cTopic}
+            onSave={(right) => save((d) => finishChunk(d, chunk.id, today, right))}
+            onNext={nextC}
+            onSkip={nextC}
+            onOpen={openC}
+            onTalk={(c) => setCTalk(c)}
+            onMenu={() => setMenu(true)}
+          />
+        ) : (
+          <>
+            <header className="relative flex items-center justify-between pt-[calc(0.75rem+env(safe-area-inset-top))]">
+              <BackButton href="/" className="opacity-60" />
+              <Button variant="icon" size="sm" aria-label="Konular ve listeler" onClick={() => setMenu(true)} className="!text-white/50">
+                <Icon name="more" className="size-5" />
+              </Button>
+            </header>
+            <section className="relative flex flex-1 items-center">
+              <p className="text-[1.25rem] font-semibold">{cTopic ? "Bu konunun bütün kalıplarını öğrendin." : "Bütün kalıpları öğrendin."}</p>
+            </section>
+          </>
+        )
+      ) : talk ? (
         <WordTalk
           w={talk}
           onClose={() => setTalk(null)}
@@ -316,6 +376,7 @@ export default function EnglishPage() {
             <BackButton href="/" className="opacity-60" />
             <div className="flex items-center gap-1">
               {[
+                ["chunk", "Kalıp"],
                 ["word", "Kelime"],
                 ["phrase", "Cümle"],
               ].map(([k, l], i) => (
@@ -382,7 +443,54 @@ export default function EnglishPage() {
       </>
       )}
 
-      <Sheet open={menu} onClose={() => setMenu(false)} navy title={kind === "phrase" ? "Cümleler" : "Kelimeler"}>
+      <Sheet open={menu && isChunk} onClose={() => setMenu(false)} navy title="Kalıplar">
+        <div className="space-y-6 pb-1">
+          <section>
+            <ListHead title="Konular" />
+            <RowList>
+              <Row title="Hepsi" right={<span className={!cTopic ? "text-acc" : "text-mut"}>{`${cTopics.reduce((n, t) => n + t.done, 0)}/${cTopics.reduce((n, t) => n + t.total, 0)}`}</span>} onClick={() => (setCTopic(""), setCSkip([]), setCPin(""), setMenu(false))} chev={false} />
+              {cTopics.map((t) => (
+                <Row key={t.topic} title={t.topic} right={<span className={cTopic === t.topic ? "text-acc" : "text-mut"}>{`${t.done}/${t.total}`}</span>} onClick={() => (setCTopic(t.topic), setCSkip([]), setCPin(""), setMenu(false))} chev={false} />
+              ))}
+            </RowList>
+          </section>
+          {cStudy.length > 0 && (
+            <section>
+              <ListHead title="Çalışıyorum" count={cStudy.length} />
+              <RowList>
+                {cStudy.map((c) => (
+                  <Row key={c.id} title={patternRow(c)} sub={c.tr} onClick={() => openC(c.id)} chev={false} right={<span className="whitespace-nowrap rounded-full bg-accbg px-2 py-0.5 text-[0.75rem] font-semibold text-acc">{dueText(chunkState(deck, c.id)?.due, today)}</span>} />
+                ))}
+              </RowList>
+            </section>
+          )}
+          {cKnown.length > 0 && (
+            <section>
+              <ListHead title="Öğrendiklerim" count={cKnown.length} />
+              <RowList>
+                {cKnown.map((c) => (
+                  <Row key={c.id} title={patternRow(c)} sub={c.tr} onClick={() => openC(c.id)} chev={false} right={<Tag tone="st">{dayText(chunkState(deck, c.id)?.kd)}</Tag>} />
+                ))}
+              </RowList>
+            </section>
+          )}
+          {chunk && chunkState(deck, chunk.id)?.st !== "known" && (
+            <Button variant="secondary" onClick={() => save((d) => knowChunk(d, chunk.id, today)).then(() => (setMenu(false), nextC()))}>
+              Bu kalıbı zaten biliyorum
+            </Button>
+          )}
+          {chunk && chunkState(deck, chunk.id)?.st === "known" && (
+            <Button variant="secondary" onClick={() => save((d) => resetChunk(d, chunk.id)).then(() => setMenu(false))}>
+              Bu kalıbı yeniden çalış
+            </Button>
+          )}
+          <Button variant="text" onClick={() => (pickKind("word"), setMenu(false))}>
+            Kelimelerim ve cümlelerim
+          </Button>
+        </div>
+      </Sheet>
+
+      <Sheet open={menu && !isChunk} onClose={() => setMenu(false)} navy title={kind === "phrase" ? "Cümleler" : "Kelimeler"}>
         <div className="space-y-6 pb-1">
           <Button
             variant="secondary"

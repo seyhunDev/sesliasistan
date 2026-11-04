@@ -5,6 +5,7 @@
 // Sıra: liste sabit bir karışık sıraya dizilir, bu cihaz kaldığı yeri saklar (localStorage "sa-word-i");
 // her açılışta sıradaki kelime gelir, liste bitmeden aynı kelime tekrar etmez. Çalışılan kelimeler (aşağıda "Deste") önce gelir.
 import { PHRASES, PHRASE_TOPICS } from "@/lib/englishPhrases";
+import { cleanChunkState, cleanDays } from "@/lib/englishChunkStudy";
 
 export const WORDS = [
   ["achieve", "fiil", "başarmak, elde etmek", "She worked hard to achieve her goals this year.", "Bu yıl hedeflerine ulaşmak için çok çalıştı."],
@@ -293,7 +294,10 @@ export function cleanDeck(d = {}) {
     .map(cleanWord)
     .filter((w) => w.en && w.tr && !seen.has(wordKey(w.en)) && seen.add(wordKey(w.en)))
     .slice(0, 2000);
-  return { words, gaps: cleanGaps(d?.gaps), seedV: Math.max(0, Math.round(Number(d?.seedV) || 0)) };
+  // Kalıp ilerlemesi (englishChunkStudy.js): chunks, cdays
+  const chunks = cleanChunkState(d?.chunks);
+  const cdays = cleanDays(d?.cdays);
+  return { words, gaps: cleanGaps(d?.gaps), seedV: Math.max(0, Math.round(Number(d?.seedV) || 0)), chunks, cdays };
 }
 
 const fromRow = ([en, type, tr, ex, exTr]) => ({ en, type, tr, ex, exTr, kind: "word", status: "list", box: 0, due: "", at: "" });
