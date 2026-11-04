@@ -1450,15 +1450,21 @@ export function BroadcastPage({ orgId, id }) {
                             ) : null}
                             {isOpen && !s ? (
                               <div className="space-y-2 px-4 pb-2.5">
-                                {pickSquares(e, (k, v) => editRow(x.i, { [k]: v }))}
-                                <div className="flex gap-2 pt-1">
-                                  <Button variant="secondary" size="sm" onClick={() => (setEditI(-1), changePlan({ order: plan.order.filter((_, k) => k !== x.i) }))}>
-                                    Çıkar
-                                  </Button>
-                                  <Button size="sm" className="ml-auto" onClick={() => setEditI(-1)}>
-                                    Tamam
-                                  </Button>
+                                {/* Bekleyen start (Seyhun 2026-11-04 "sınıfı ve grubu göstermeye gerek yok; kural bayrağı gösterilir ve değiştirilir ya da
+                                    yarış silinir"): yalnız bayrak seçimi (dokununca kaydedilir, pencere kapanır) ve Yarışı sil */}
+                                <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]" aria-label="Kural bayrağı">
+                                  {PREP_PICK.map((f) => (
+                                    <button key={f} type="button" aria-pressed={e?.prep === f} onClick={() => (editRow(x.i, { prep: f }), setEditI(-1))} data-press className={`masa-sq sm${e?.prep === f ? " sel" : ""}`}>
+                                      <span className="art">
+                                        <FlagArt p={f} />
+                                      </span>
+                                      <small>{f}</small>
+                                    </button>
+                                  ))}
                                 </div>
+                                <Button variant="secondary" size="sm" full={false} onClick={() => (setEditI(-1), changePlan({ order: plan.order.filter((_, k) => k !== x.i) }))}>
+                                  Yarışı sil
+                                </Button>
                               </div>
                             ) : null}
                           </div>
@@ -1469,6 +1475,26 @@ export function BroadcastPage({ orgId, id }) {
               );
             })}
             {plan.status === "ap" ? <p className="border-b border-line px-4 py-2.5 text-[0.875rem] font-semibold text-warn">{apText(plan)}</p> : null}
+            {/* Start sırası görünür (Seyhun 2026-11-04 "grup sıralamasını nereden değiştiriyoruz?"): sıra burada yazar, Değiştir kurulumu açar */}
+            {groupRows.length > 1 ? (
+              <div className="flex items-center gap-3 border-t border-line px-4 py-2">
+                <span className="min-w-0 flex-1 leading-tight">
+                  <span className="block text-[0.8125rem] font-semibold text-mut">Start sırası</span>
+                  <span className="flex min-w-0 items-center gap-1.5 truncate text-[0.9375rem] font-semibold">
+                    {groupRows.map(([cl, g], k) => (
+                      <span key={`${cl}|${g}`} className="flex shrink-0 items-center gap-1">
+                        {k ? <span className="text-mut">·</span> : null}
+                        {g ? <span className="size-2.5 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
+                        {g || cl}
+                      </span>
+                    ))}
+                  </span>
+                </span>
+                <Button size="sm" variant="secondary" full={false} onClick={() => (setSetupOpen(true), window.scrollTo({ top: 0 }))}>
+                  Değiştir
+                </Button>
+              </div>
+            ) : null}
           </div>
         </section>
         {plan.sig && signalOf(plan.sig.id)?.kind !== "prep" ? (
