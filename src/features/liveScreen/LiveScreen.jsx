@@ -10,7 +10,7 @@ import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, sceneOf, sceneScreen, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
-import { groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
+import { catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
 import { BoatMap } from "@/features/tracking/BoatMap";
 import { BoatLive } from "@/features/tracking/BoatLive";
@@ -3202,13 +3202,21 @@ function scRound(data, sel) {
 // genel sıralama: resmî (PDF) ya da geçici; sınıf sınıf, yarış yarış puanlar
 function scBoards(data) {
   const official = (data.fleets || []).filter((f) => f.rows?.length); // puansız sonuç PDF'i (geçici sonuçlar) de sırasıyla (Seyhun 2026-11-04)
+  const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
+  // Kız / Junior / Bambino (Seyhun 2026-11-04 "kızları ayırmamız gerekiyor; kızlarda 1, 2, 3; diğer kızların yanında K"): yarış sayfasındaki sıralamayla
+  // aynı kural (roundScore catsOf / onlyCat); sonuç belgesinde yoksa kayıt listesinden. catList: hepsinde olmayan kategoriler (hepsi Junior ise yazılmaz)
+  const bySail = new Map((data.entries || []).map((e) => [e.sail, e]));
+  const withCats = (b) => ({ ...b, catList: ["Kız", "Junior", "Bambino"].filter((c) => b.all.some((r) => r.cats.includes(c)) && !b.all.every((r) => r.cats.includes(c))) });
   if (official.length)
     return official.map((f) => {
       const n = Math.max(0, ...f.rows.map((r) => (Array.isArray(r.r) ? r.r.length : 0)));
-      const all = f.rows.map((r, i) => ({ p: r.rank || r.place || r.code || i + 1, sail: r.sail, name: r.name, club: r.club, sc: (Array.isArray(r.r) ? r.r : []).slice(0, 8).map((v) => String(v ?? "")), t: r.pts }));
-      return { cls: f.cls || "", tag: "Sonuç", races: Array.from({ length: Math.min(n, 8) }, (_, i) => i + 1), all, rows: all.slice(0, SC_RANK), total: f.rows.length };
+      const all = f.rows.map((r, i) => {
+        const en = bySail.get(r.sail) || {};
+        const cats = catsOf({ cls: f.cls || en.cls, sex: r.sex || en.sex, cat: r.cat || en.cat, born: r.born || en.born }, year);
+        return { p: r.rank || r.place || r.code || i + 1, sail: r.sail, name: r.name, club: r.club, cats, sc: (Array.isArray(r.r) ? r.r : []).slice(0, 8).map((v) => String(v ?? "")), t: r.pts };
+      });
+      return withCats({ cls: f.cls || "", tag: "Sonuç", races: Array.from({ length: Math.min(n, 8) }, (_, i) => i + 1), all, rows: all.slice(0, SC_RANK), total: f.rows.length });
     });
-  const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
   let prov = [];
   try {
     prov = provisional({ starts: data.starts || [], rounds: data.rounds || {}, entries: data.entries || [], groups: data.groups || {}, who: whoBySail(data.fleets), year });
@@ -3217,8 +3225,8 @@ function scBoards(data) {
   }
   return prov.map((f) => {
     const races = f.races.slice(-8);
-    return { cls: f.cls || "", tag: `Geçici · ${f.races.length} yarış`, races, all: f.rows.map((r, i) => ({ p: r.rank || i + 1, sail: r.sail, name: r.name, club: r.club, sc: races.map((n) => (r.sc[n] ? r.sc[n].code || String(r.sc[n].pts) : "")), t: r.total })), total: f.rows.length };
-  }).map((b) => ({ ...b, rows: b.all.slice(0, SC_RANK) }));
+    return { cls: f.cls || "", tag: `Geçici · ${f.races.length} yarış`, races, all: f.rows.map((r, i) => ({ p: r.rank || i + 1, sail: r.sail, name: r.name, club: r.club, cats: r.cats || [], sc: races.map((n) => (r.sc[n] ? r.sc[n].code || String(r.sc[n].pts) : "")), t: r.total })), total: f.rows.length };
+  }).map((b) => withCats({ ...b, rows: b.all.slice(0, SC_RANK) }));
 }
 function ScTop({ rep, now }) {
   return (
@@ -3503,14 +3511,18 @@ function Sc02({ t, data, sel, mode, now, today }) {
 // 03: ortada ayrıntılı genel sıralama (Seyhun 2026-11-04 "sıralamayı daha detaylı; uzun bir liste olacak"): sınıf sınıf bütün tekneler,
 // 12'şer satırlık sayfalar 8 sn'de bir ilerler (altta sayfa çizgileri); sıra, yelken, sporcu, kulüp, yarış yarış puan, net. Yarış yeni bittiyse önce o yarışın sonucu.
 // Sahne girince ilk sayfadan başlar; sahnenin ekranda kalma süresi sayfa sayısı kadar (sc03Len → sceneOf dwell)
-const SC_PAGE = 12;
+const SC_PAGE = 11; // satır: ilk 5 sabit + 6 akan (Seyhun 2026-11-04 "ilk 5 her zaman gösterilsin, sonrası ileri doğru aksın")
+const SC_TOP = 5;
 const SC_PAGE_S = 8;
+const scPages = (len) => (len <= SC_PAGE ? 1 : Math.ceil((len - SC_TOP) / (SC_PAGE - SC_TOP)));
 function sc03Slides(data, sel, mode) {
   const rr = mode === "between" && sel?.fin ? raceRows(data, sel) : null;
   const out = rr?.rows.length ? [{ rr }] : [];
   for (const b of scBoards(data)) {
-    const n = Math.max(1, Math.ceil(b.all.length / SC_PAGE));
+    const n = scPages(b.all.length);
     for (let pg = 0; pg < n; pg++) out.push({ b, pg, n });
+    // kategori sayfası: kızlar (Junior, Bambino) kendi içinde ilk 10
+    for (const cat of b.catList) out.push({ b, pg: 0, n: 1, cat });
   }
   return out;
 }
@@ -3547,15 +3559,19 @@ function Sc03({ data, sel, mode, now, onFull }) {
       </button>
     );
   }
-  const { b, pg, n } = cur;
-  const rows = b.all.slice(pg * SC_PAGE, pg * SC_PAGE + SC_PAGE);
-  const from = pg * SC_PAGE + 1;
+  const { b, pg, n, cat } = cur;
+  const inCat = cat ? onlyCat(b.all, cat) : null;
+  const rows = cat ? inCat.slice(0, SC_PAGE).map((r) => ({ ...r, p: r.place })) : n > 1 ? [...b.all.slice(0, SC_TOP), ...b.all.slice(SC_TOP + pg * (SC_PAGE - SC_TOP), SC_TOP + (pg + 1) * (SC_PAGE - SC_TOP))] : b.all.slice(0, SC_PAGE);
+  const from = n > 1 ? SC_TOP + pg * (SC_PAGE - SC_TOP) + 1 : 1;
+  const to = n > 1 ? Math.min(b.all.length, SC_TOP + (pg + 1) * (SC_PAGE - SC_TOP)) : rows.length;
+  const catName = (c) => (c === "Kız" ? "Kızlar" : c);
+  const marks = (r) => b.catList.filter((c) => c !== cat && r.cats.includes(c)).map((c) => c[0]);
   return (
     <button type="button" className="sc-board wide" onClick={() => onFull("all")}>
       <header>
         <b>Genel sıralama</b>
         <div>
-          <strong>{b.cls || "Genel"}</strong>
+          <strong>{[b.cls || "Genel", cat ? catName(cat) : ""].filter(Boolean).join(" · ")}</strong>
           <span>{b.tag}</span>
         </div>
       </header>
@@ -3572,12 +3588,19 @@ function Sc03({ data, sel, mode, now, onFull }) {
             <th className="t">Net</th>
           </tr>
         </thead>
-        <tbody key={`${b.cls}${pg}`}>
+        <tbody key={`${b.cls}${cat || ""}`}>
           {rows.map((r, i) => (
-            <tr key={`${r.sail}${i}`} className={`p${r.p}`}>
+            <tr key={`${r.sail}${i}`} className={`p${r.p}${!cat && n > 1 && i === SC_TOP ? " cut" : ""}${!cat && n > 1 && i >= SC_TOP ? " fl" : ""}`}>
               <td className="r">{r.p}</td>
               <td className="sn">{r.sail}</td>
-              <td className="n">{r.name || ""}</td>
+              <td className="n">
+                {r.name || ""}
+                {marks(r).map((m) => (
+                  <em key={m} className="sc-cat">
+                    {m}
+                  </em>
+                ))}
+              </td>
               <td className="cl">{shortClub(r.club) || ""}</td>
               {b.races.map((x, j) => (
                 <td key={x} className={`y${/^\(.*\)$/.test(r.sc[j] || "") ? " x" : ""}`}>
@@ -3587,7 +3610,7 @@ function Sc03({ data, sel, mode, now, onFull }) {
               <td className="t">{r.t ?? ""}</td>
             </tr>
           ))}
-          {Array.from({ length: n > 1 ? SC_PAGE - rows.length : 0 }, (_, i) => (
+          {Array.from({ length: b.all.length > SC_PAGE ? SC_PAGE - rows.length : 0 }, (_, i) => (
             <tr key={`e${i}`} className="e" aria-hidden="true">
               <td colSpan={b.races.length + 5}>&nbsp;</td>
             </tr>
@@ -3595,7 +3618,7 @@ function Sc03({ data, sel, mode, now, onFull }) {
         </tbody>
       </table>
       <footer>
-        <span>{`${from}–${from + rows.length - 1} · ${b.total} tekne`}</span>
+        <span>{cat ? `${catName(cat)} · ${inCat.length} sporcu` : n > 1 ? `İlk ${SC_TOP} · ${from}–${to} · ${b.total} tekne` : `${b.total} tekne`}</span>
         {n > 1 ? (
           <span className="sc-pgs">
             {Array.from({ length: n }, (_, i) => (

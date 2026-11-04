@@ -226,7 +226,8 @@
 }
 
 /* 03 ayrıntılı genel sıralama (Seyhun 2026-11-04): geniş tablo, 12 satırlık sayfalar, altta sayfa çizgileri (dolan çizgi o sayfanın süresi) */
-.sc-board.wide { width: min(64em, calc(100% - 2em)); }
+.sc-board.wide { width: min(64em, calc(100% - 2em)); top: calc(5.6em + env(safe-area-inset-top)); transform: translateX(-50%); max-height: calc(100% - 13em); } /* sağ üstteki Canlı + saatin altında başlar (üst üste binmez) */
+.sc-cat { display: inline-block; margin-left: 0.5em; padding: 0.18em 0.35em; border-radius: 0.25em; background: rgba(255, 255, 255, 0.14); font: 800 0.6em/1 var(--sc-c); letter-spacing: 0.04em; color: #fff; vertical-align: 0.25em; }
 .sc-board.wide td.n { max-width: 16em; }
 .sc-board.wide tbody { animation: sc-in 0.45s ease both; }
 .sc-board tr.e td { border-top-color: transparent; }
@@ -245,4 +246,10 @@
 .sc-ap span { display: block; margin-top: 0.3em; font: 600 0.85em/1.15 var(--sc-c); letter-spacing: 0.06em; text-transform: uppercase; color: var(--sc-mut); }
 @media (max-aspect-ratio: 1/1) { .sc-ap { right: 1em; top: calc(1em + 2.8em + 0.5em + env(safe-area-inset-top)); max-width: calc(100% - 2em); } }
 /* tehir rozeti sağ üstteyken sıralama tablosu sola yaslanır, rozetin altına girmez */
-@media (min-aspect-ratio: 1/1) { .sc:has(.sc-ap) .sc-board { left: 2em; transform: translate(0, -50%); width: min(60em, calc(100% - 28em)); } }
+@media (min-aspect-ratio: 1/1) { .sc:has(.sc-ap) .sc-board { left: 2em; transform: translate(0, -50%); width: min(60em, calc(100% - 28em)); } .sc:has(.sc-ap) .sc-board.wide { transform: none; } }
+/* ilk 5 sabit, altı akar: ayırıcı çizgi, akan satırlar sağdan kayarak gelir */
+.sc-board tr.cut td { border-top: 2px solid rgba(255, 255, 255, 0.28); }
+.sc-board tr.fl td { animation: sc-fl 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.sc-board tr.fl:nth-child(7) td { animation-delay: 0.04s; } .sc-board tr.fl:nth-child(8) td { animation-delay: 0.08s; } .sc-board tr.fl:nth-child(9) td { animation-delay: 0.12s; } .sc-board tr.fl:nth-child(10) td { animation-delay: 0.16s; } .sc-board tr.fl:nth-child(11) td { animation-delay: 0.2s; }
+@keyframes sc-fl { from { opacity: 0; transform: translateX(1.5em); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sc-board tr.fl td { animation: none; } }
