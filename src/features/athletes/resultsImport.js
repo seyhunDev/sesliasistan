@@ -11,11 +11,15 @@ import { readResults } from "./raceResultsRead";
 import { noticePdf, saveNoticeFile } from "./noticeFile";
 import { loadSheets, saveSheet } from "./raceLiveStore";
 import { saveSharedSheet } from "./sharedRaces";
+import { loadRace } from "./races";
 
 const fileName = (race, n) => `${String(race?.name || "Yarış").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 60)} sonuçları${n > 1 ? ` ${n}` : ""}.pdf`;
 
 export async function importResults({ orgId, race, athletes, club = [], file }) {
-  const res = race.results || { fleet: "", rows: {} };
+  // Sonuçlar üç ekrandan (yarış sayfası, Multimedya › Sonuç, Yayın › Belgeler) yazılır: eldeki eski kopya değil, kayıttaki taze hâl üstüne
+  // eklenir (biri az önce PDF eklediyse silinmesin; yarış sistemi haritası 2026-11-04)
+  const fresh = race.id ? await loadRace(orgId, race.id).catch(() => null) : null;
+  const res = fresh?.results || race.results || { fleet: "", rows: {} };
   const pool = [...athletes, ...club.filter((a) => !athletes.some((x) => x.id === a.id))];
   const read = await readResults(file, athletes.map((a) => a.studentName));
   const { kind } = read;
