@@ -440,6 +440,11 @@ export const SHOW_ITEMS = ["video", "time", "prog", "wind", "course", "rank", "n
 export const ITEM_NAME = { video: "Görüntü", time: "Süre", prog: "Program", wind: "Rüzgâr", course: "Parkur", rank: "Genel sıralama", next: "Sıradaki yarış" };
 export const ITEM_SECS = [8, 10, 15, 20, 30];
 export const EVRE_DEF = { pre: ["video", "time", "prog", "wind", "rank"], prestart: ["video", "time", "wind", "course"], start: ["video"], race: ["video"], post: ["rank", "next"], ap: ["time", "prog", "wind", "rank"] };
+// Sol alttaki liste evre başına (Seyhun 2026-11-04 "genel sıralamayı starttan önce, start dizisinde, starttan sonra da gösterebilmeliyim"):
+// grp = süre kartındaki grubun sporcuları + genel derecesi (yarışta dönüşten sonra dönüş sırası), gen = genel sıralama ilk 10, off = yok
+export const SIDES = ["grp", "gen", "off"];
+export const SIDE_NAME = { grp: "Grup ve sıra", gen: "Genel ilk 10", off: "Yok" };
+export const SIDE_DEF = { pre: "grp", prestart: "grp", start: "grp", race: "grp", post: "off", ap: "grp" };
 // eski sahnenin videosu hangi evreye (01 yarış öncesi videosuz, 02 videolu ve yarışta, 03 sıralama = yarış sonrası)
 const EV_MIG = { pre: "01", prestart: "01", start: "02", race: "02", post: "03", ap: "01" };
 export function cleanEvVid(v) {
@@ -451,7 +456,7 @@ export function cleanEvOne(e, k, old = {}) {
   const has = !!e && typeof e === "object";
   const items = has && Array.isArray(e.items) ? [...new Set(e.items.filter((x) => SHOW_ITEMS.includes(x)))] : [...EVRE_DEF[k]];
   const vid = has ? cleanEvVid(e.vid) : old[EV_MIG[k]] || null;
-  return { items, sec: ITEM_SECS.includes(Number(e?.sec)) ? Number(e.sec) : 15, vid };
+  return { items, sec: ITEM_SECS.includes(Number(e?.sec)) ? Number(e.sec) : 15, vid, side: SIDES.includes(e?.side) ? e.side : SIDE_DEF[k] };
 }
 export function cleanEv(ev, old = {}) {
   return Object.fromEntries(EVRES.map((k) => [k, cleanEvOne(ev?.[k], k, old)]));
