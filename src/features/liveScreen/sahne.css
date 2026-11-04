@@ -218,7 +218,7 @@
   .sc-rcol { display: contents; }
   .sc-tr { position: absolute; right: 1em; top: calc(1em + env(safe-area-inset-top)); }
   .sc-rcol > .sc-c2.col { position: absolute; top: calc(5.2em + env(safe-area-inset-top)); left: 1em; right: 1em; width: auto; }
-  .sc-rcol > .sc-rd { position: absolute; width: 17em; }
+  .sc-rcol > .sc-rd { position: absolute; width: auto; margin-top: 0; }
   .sc-rd { top: auto; bottom: calc(6em + env(safe-area-inset-bottom)); right: 1em; }
   .sc-name { left: 1em; right: 1em; bottom: calc(1em + env(safe-area-inset-bottom)); max-width: none; justify-content: space-between; }
   .sc-nt { text-align: left; }
@@ -270,6 +270,7 @@
 .sc-ci b { font-size: 1.5em; }
 /* Tehir rozeti varken sağ sütundaki liste rozetin altından başlar */
 .sc:has(.sc-ap) .sc-rd { top: calc(10.4em + env(safe-area-inset-top)); }
+.sc:has(.sc-ap) .sc-rcol > .sc-rd { margin-top: 5.3em; } /* sağ üst sütunda: Canlı ile liste arasında tehir rozetinin yeri */
 /* uzun yarış adı kesilmez, iki satıra iner */
 .sc-nt b { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.05; }
 @media (max-aspect-ratio: 1/1) {
