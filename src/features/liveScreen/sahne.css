@@ -397,3 +397,39 @@
   .sc-tcol > .sc-tr { position: absolute; }
   .sc-ck { position: absolute; top: calc(5.2em + env(safe-area-inset-top)); left: 1em; right: 1em; width: auto; font-size: 1em; }
 }
+
+/* TV düzeni (Seyhun 2026-11-04 "her zaman arkada video varmış gibi; tam bir yarış ve TV show kıvamında"): ekranın ortası görüntüye kalır.
+   Sağ üst Canlı + süre kartı, sol alt sporcu listesi, alt bant küçük grafikler (Program, Rüzgâr, Süre), sol panel büyük sıralama ve parkur.
+   Paneller kenardan kayarak girer. */
+@keyframes sc-up { from { opacity: 0; transform: translateY(1.2em); } to { opacity: 1; transform: none; } }
+@keyframes sc-left { from { opacity: 0; transform: translateX(-2.5em); } to { opacity: 1; transform: none; } }
+@keyframes sc-row { from { opacity: 0; transform: translateX(-0.8em); } to { opacity: 1; transform: none; } }
+.s05 .sc-body { background: none; }
+.sc-cpn .sc-crs { background: var(--sc-lite); border-radius: 0.6em; box-shadow: inset 0 0 0 1px var(--sc-lite-line); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.sc-board tbody tr { animation: sc-row 0.4s ease both; }
+.sc-board tbody tr:nth-child(2) { animation-delay: 0.04s; }
+.sc-board tbody tr:nth-child(3) { animation-delay: 0.08s; }
+.sc-board tbody tr:nth-child(4) { animation-delay: 0.12s; }
+.sc-board tbody tr:nth-child(5) { animation-delay: 0.16s; }
+.sc-board tbody tr:nth-child(6) { animation-delay: 0.2s; }
+.sc-board tbody tr:nth-child(7) { animation-delay: 0.24s; }
+.sc-board tbody tr:nth-child(8) { animation-delay: 0.28s; }
+.sc-board tbody tr:nth-child(9) { animation-delay: 0.32s; }
+.sc-board tbody tr:nth-child(n + 10) { animation-delay: 0.36s; }
+.sc-rd li { animation: sc-row 0.35s ease both; }
+@media not all and (max-aspect-ratio: 1/1) {
+  /* alt bant: sol alttaki listenin sağında, yarış adının solunda; küçük ve alçak */
+  .sc-c1 { left: calc(21.5em + env(safe-area-inset-left)); right: auto; top: auto; bottom: calc(2em + env(safe-area-inset-bottom)); transform: none; width: min(36em, calc(100% - 44em)); font-size: 0.72em; box-shadow: inset 0 0 0 1px var(--sc-lite-line); animation: sc-up 0.45s ease both; }
+  .sc-c1 .sc-cb { height: 17em; padding: 1em 1.4em 0.8em; }
+  /* sol panel: genel sıralama, yarış sonucu */
+  .sc-board, .sc-board.wide { left: calc(2em + env(safe-area-inset-left)); top: calc(1.8em + env(safe-area-inset-top)); transform: none; width: min(56em, calc(100% - 25em)); max-height: calc(100% - 7em); animation: sc-left 0.5s ease both; }
+  /* parkur: solda tek cam panel (başlık, bilgiler, çizim) */
+  .sc-cpn { position: absolute; left: calc(2em + env(safe-area-inset-left)); top: calc(1.8em + env(safe-area-inset-top)); bottom: calc(6.5em + env(safe-area-inset-bottom)); width: min(56em, calc(100% - 25em)); display: grid; grid-template: auto 1fr / 17em 1fr; gap: 0.6em; animation: sc-left 0.5s ease both; }
+  .sc-cpn .sc-cbn { position: static; max-width: none; grid-column: 1 / -1; }
+  .sc-cpn .sc-ci { position: static; width: auto; max-width: none; align-self: start; background: var(--sc-lite); border-radius: 0.6em; box-shadow: inset 0 0 0 1px var(--sc-lite-line); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  .sc-cpn .sc-ci b { font-size: 1.1em; }
+  .sc-cpn .sc-crs { position: relative; inset: auto; grid-row: 2; grid-column: 2; min-height: 0; padding: 1em; }
+}
+@media (max-aspect-ratio: 1/1) {
+  .sc-cpn { display: contents; }
+}
