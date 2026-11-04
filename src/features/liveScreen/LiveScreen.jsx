@@ -3743,10 +3743,11 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
           {sigUp ? <GSig sig={plan.sig} today={today} /> : null}
         </div>
       ) : null}
+      {/* Canlı işareti sağ üst köşede, yayın açık olduğu sürece (Seyhun 2026-11-04 "yayına girdiğim için canlı yazısını göstermeliyiz; sağ üstte") */}
+      {mode !== "none" && plan.status !== "done" ? <span className="gr-live gr-onair">Canlı</span> : null}
       {/* geri düğmesi yok (Seyhun 2026-11-03 19:12 "geri tuşunu kaldıralım") */}
       {/* sağ altta yarışın adı | Velora işareti */}
       <div className="gr-name">
-        {racing ? <span className="gr-live">Canlı</span> : null}
         <div className="gr-nm">
           {/* Yayın › Video › Ekrandaki ad: başlık tek satır, alt satır küçük (Seyhun 2026-11-04) */}
           <div className="gr-nt">

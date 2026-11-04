@@ -1759,3 +1759,7 @@ button.gr-card { cursor: pointer; }
 .gr-sp li.more { display: block; padding-top: 0.4em; font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); }
 @media (prefers-reduced-motion: reduce) { .gr-sp { transition: none; } }
 .gr-st.o .gr-of { width: 2.2em; height: 1.45em; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); }
+/* Canlı işareti sağ üst köşede (Seyhun 2026-11-04); sağ kartlar altına iner */
+.gr-onair { position: absolute; right: 2em; top: calc(2em + env(safe-area-inset-top)); margin: 0; z-index: 2; }
+.gr:has(> .gr-onair) > .gr-rc { top: calc(4.6em + env(safe-area-inset-top)); }
+@media (max-width: 700px) { .gr-onair { position: fixed; right: 0.8em; top: calc(0.8em + env(safe-area-inset-top)); } }

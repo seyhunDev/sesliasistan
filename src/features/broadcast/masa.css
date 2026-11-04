@@ -315,3 +315,13 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-pt.w span { color: var(--warn); }
 .masa-pt.no b { color: var(--acc); }
 .masa-pt[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--acc); }
+/* İlk start ve uyarı işareti (Seyhun 2026-11-04) */
+.masa-first { display: grid; grid-template-columns: 1fr 1fr; margin-top: 0.875rem; border-radius: 0.875rem; border: 1px solid #2a3d5e; background: #0f1b2f; }
+.masa-first > div { min-width: 0; padding: 0.625rem 0.875rem; }
+.masa-first > div.r { border-left: 1px solid #2a3d5e; text-align: right; }
+.masa-first small { display: block; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mut); }
+.masa-first b { display: block; margin-top: 0.125rem; font-size: 1.75rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.masa-first span { display: block; font-size: 0.8125rem; font-weight: 600; color: var(--mut); }
+.masa-first.soon .r b { color: var(--warn); }
+.masa-first.now { border-color: var(--acc); }
+.masa-first.now .r b { color: var(--acc); }
