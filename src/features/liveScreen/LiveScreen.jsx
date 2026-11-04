@@ -3120,7 +3120,6 @@ const SC_TAB = 10; // sn, 01'deki kartın her bölümü
 const SC_ROT = 15; // sn, 03 ↔ 06 ve sınıf sınıf sıralama
 const SC_RANK = 10;
 const SC_ROUND_MS = 60e3; // şamandıra dönüşünden sonra ilk 3 bu kadar görünür
-const scHm = (ms) => new Date(ms + 3 * 3600e3).toISOString().slice(11, 16);
 // Süre kartının içeriği (eski Grafik "top" mantığı): kicker, büyük süre, kim, start saati, alt satır, bayrak
 function scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast }) {
   const plan = data.plan;
@@ -3203,11 +3202,13 @@ function scBoards(data) {
     return { cls: f.cls || "", tag: `Geçici · ${f.races.length} yarış`, races, all: f.rows.map((r, i) => ({ p: r.rank || i + 1, sail: r.sail, name: r.name, club: r.club, cats: r.cats || [], sc: races.map((n) => (r.sc[n] ? r.sc[n].code || String(r.sc[n].pts) : "")), t: r.total })), total: f.rows.length };
   }).map((b) => withCats({ ...b, rows: b.all.slice(0, SC_RANK) }));
 }
-function ScTop({ rep, now }) {
+// Sağ üst sütun (Seyhun 2026-11-04 "canlı yazısı sağ üstte, yanındaki saat kalksın; altında hangi yarış, geri sayım, bayrak, rüzgâr; sol üstte
+// olmasın"): Canlı / Tekrar, start dizisinde ve yarışta altında yarışın kartı (Sc02 col), en altta grubun sporcuları / şamandıra dönüşü
+function ScTop({ rep, on, children }) {
   return (
-    <div className="sc-tr">
-      {rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}
-      <span className="sc-clk">{scHm(now)}</span>
+    <div className="sc-rcol">
+      {on ? <div className="sc-tr">{rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}</div> : null}
+      {children}
     </div>
   );
 }
@@ -3457,7 +3458,8 @@ function Sc01({ t, data, prog, now, today, lock, ap = false, only = "" }) {
   );
 }
 // 02: sol üstte tek kart; geri sayımda o an çekili bayrak, yarışta erken çıkanlar; şamandıra dönüşünden sonra sağ üstte ilk 3 (60 sn)
-function Sc02({ t, data, sel, mode, now, today }) {
+// col: kart sağ üst sütunda, Canlı'nın altında (start dizisi ve yarış)
+function Sc02({ t, data, sel, mode, now, today, col = false }) {
   const ea = mode === "race" && sel && now - Date.parse(sel.at) < 15 * 60e3 ? earlyOf(data, sel.id) : [];
   if (!t) {
     return (
@@ -3470,7 +3472,7 @@ function Sc02({ t, data, sel, mode, now, today }) {
   const n = /^(\d+)\./.exec(t.who?.name || "")?.[1];
   return (
     <>
-      <div className="sc-c2">
+      <div className={`sc-c2${col ? " col" : ""}`}>
         <ScWho who={t.who} tag={n ? `Yarış ${n}` : t.who?.name || ""} />
         <ScTime t={t} />
         {t.fl ? (
@@ -3788,9 +3790,11 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
   // Tehir (Seyhun 2026-11-04 "ortada kocaman değil, saatin altında; karada çekildiyse bütün gruplar için; ortada parkur, sıralama, rüzgâr devam")
   const ap = mode === "ap" || (mode === "seq" && seqMode === "ap");
   const lock = !ap && (mode === "seq" || t.tone === "r");
+  // start dizisinde ve yarışta yarışın kartı sağ üstte (Görüntü; yarışta Program / Rüzgâr ortadayken de)
+  const colCard = !ap && (mode === "seq" || mode === "race") && (sc === "02" || (sc === "01" && mode === "race" && item !== "time"));
   const body =
     sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} ap={ap} only={["time", "prog", "wind"].includes(item) ? item : ""} />
-    : sc === "02" ? <Sc02 t={ap ? null : t} data={data} sel={sel} mode={mode} now={now} today={today} />
+    : sc === "02" ? (colCard ? null : <Sc02 t={ap ? null : t} data={data} sel={sel} mode={mode} now={now} today={today} />)
     : sc === "03" ? <Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} />
     : sc === "04" ? <Sc04 data={data} />
     : sc === "05" ? <Sc05 data={data} sel={sel} mode={mode} now={now} />
@@ -3801,8 +3805,10 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       <div className="sc-body" key={sc}>
         {body}
       </div>
-      {(sc === "01" || sc === "02") && (mode === "seq" || mode === "race") ? <ScFleet data={data} sel={sel} mode={mode} now={now} who={t.who} today={today} onFull={onFull} /> : null}
-      {live || sc === "04" ? <ScTop rep={sc === "04"} now={now} /> : null}
+      <ScTop rep={sc === "04"} on={live || sc === "04"}>
+        {colCard ? <Sc02 t={t} data={data} sel={sel} mode={mode} now={now} today={today} col /> : null}
+        {(sc === "01" || sc === "02") && (mode === "seq" || mode === "race") ? <ScFleet data={data} sel={sel} mode={mode} now={now} who={t.who} today={today} onFull={onFull} /> : null}
+      </ScTop>
       {ap && sc !== "04" ? <ScAp t={t} plan={plan} seq={mode === "seq"} /> : null}
       <div className="sc-name">
         <div className="sc-nt">
