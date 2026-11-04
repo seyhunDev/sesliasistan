@@ -105,10 +105,6 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 /* Gruplar ve kameralar (Seyhun 2026-11-02 gruplar-kamera/grup-a.png): ekrandaki yarış pembe kartta; satırda ▶ ekrana alır */
 .masa-onair { background: linear-gradient(90deg, rgba(255, 61, 119, 0.2), rgba(255, 61, 119, 0.06)); border: 1px solid rgba(255, 61, 119, 0.55); }
 .masa-onair-tag { flex: none; border-radius: 4px; background: var(--acc); color: var(--on-acc); padding: 0.2rem 0.45rem; font-size: 0.656rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
-.masa-air { display: flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; flex: none; border-radius: 0.45rem; border: 1px solid #2a3d5e; color: var(--mut); }
-.masa-air svg { width: 0.875rem; height: 0.875rem; }
-.masa-air.on { background: var(--acc); border-color: var(--acc); color: var(--on-acc); }
-.masa-air.off { border-color: transparent; }
 .masa-pill { flex: none; display: flex; align-items: center; gap: 0.35rem; border-radius: 1rem; background: var(--chip); padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 600; color: var(--mut); }
 .masa-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mut); }
 .masa-pill.on { color: var(--fg); }
@@ -254,8 +250,6 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-tog { min-height: 3rem; }
 .masa-hero-d button { height: 3rem; }
 .masa-plus { width: 3rem; height: 3rem; }
-.masa-air { width: 3rem; height: 3rem; border-radius: 0.75rem; }
-.masa-air svg { width: 1.125rem; height: 1.125rem; }
 .masa-ap, .masa-flagt, .masa-flagt.sm { min-height: 4.5rem; }
 .masa-sq, .masa-sq.sm { width: 4.5rem; }
 .masa .btn.masa-hero-go { height: 3.75rem; font-size: 1.1875rem; }
@@ -356,7 +350,9 @@ body:has(main.masa) { --masa-tb: calc(3.875rem + env(safe-area-inset-bottom)); }
 .masa .masa-tabs [aria-pressed="true"]::before { content: ""; position: absolute; top: -0.3125rem; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--acc); }
 .masa .masa-tabs [aria-pressed="true"] small { color: #9cc0ff; }
 .masa .masa-tabs [aria-pressed="true"] small i { background: #ff453a; }
-.masa-bar { bottom: var(--masa-tb, 0px) !important; box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.35); }
+/* Çubuk sekme içeriğiyle aynı space-y-6 kabının içinde: Tailwind 4'te space-y son olmayan çocuğa margin-bottom verir; sabit çubukta bu 24 px
+   çubuğu yukarı itip sekme çubuğuyla arasında boşluk bırakıyordu (Seyhun 2026-11-04 "boşluk hâlâ duruyor"). Margin sıfır. */
+.masa-bar { bottom: var(--masa-tb, 0px) !important; margin: 0 !important; box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.35); }
 .masa-barin { padding-bottom: 0.375rem; } /* sekme çubuğuna bitişik, arada boşluk yok (Seyhun 2026-11-04) */
 main.masa { padding-bottom: calc(var(--masa-tb, 0px) + 5.5rem) !important; }
 @media (min-width: 48rem) { .masa .masa-tabs { padding-left: max(0.5rem, calc((100% - 44rem) / 2)); padding-right: max(0.5rem, calc((100% - 44rem) / 2)); } .masa .masa-tabs b { font-size: 0.875rem; } .masa .masa-tabs small { font-size: 0.6875rem; } .masa .masa-tabs button { min-height: 3.5rem; } }

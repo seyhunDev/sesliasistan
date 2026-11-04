@@ -388,10 +388,10 @@ export async function run(server, log = () => {}) {
       }
     }
     hang = false;
-    // Yayın › Süre: her grup kendi satırında (▶ ekrana alır, bekleyen grubun Başlat'ı), üstte Ekranda kartı, altta Kameralar
+    // Yayın › Süre: her grup kendi satırında (bekleyen grubun Başlat'ı), üstte Ekranda kartı ve grup şeridi, üstte Ekranda kartı, altta Kameralar
     await okPage("Yayın", "gruplar ayrı, ekranda seçim, kameralar", "/athletes/races/r2/yayin", "Kameralar", async () => {
       const on = await page.locator(".masa-onair").innerText().catch(() => "");
-      const air = await page.locator(".masa-air.on").count();
+      const air = await page.locator(".masa-onair button[aria-pressed=true]").count();
       const go = await page.getByRole("button", { name: "Başlat", exact: true }).count();
       const cam = await page.locator(".masa button", { hasText: "Kamera 1" }).first().innerText().catch(() => "");
       if (process.env.YAYIN_FOTO) await page.screenshot({ path: process.env.YAYIN_FOTO, fullPage: true }).catch(() => {});
@@ -401,7 +401,7 @@ export async function run(server, log = () => {}) {
       await page.locator(".masa button", { hasText: "Kamera 1" }).first().click({ timeout: 10000 });
       const sheet = await page.getByText("Kamera 1 hangi grupları çekiyor?").first().isVisible({ timeout: 5000 }).catch(() => false);
       if (process.env.YAYIN_FOTO) await page.screenshot({ path: process.env.YAYIN_FOTO.replace(/\.png$/, "-kamera.png") }).catch(() => {});
-      return [/Sarı/.test(on) && /Kamera 1/.test(on) && air === 1 && go >= 1 && /Sarı/.test(cam) && /Yayın yok/.test(cam) && sheet, `ekranda "${on.replace(/\s+/g, " ")}" · ▶ ${air} · Başlat ${go} · kamera "${cam.replace(/\s+/g, " ")}" · pencere ${sheet ? "açıldı" : "açılmadı"} · önceden açık pencere ${extra}`];
+      return [/Sarı/.test(on) && /Kamera 1/.test(on) && air <= 1 && go >= 1 && /Sarı/.test(cam) && /Yayın yok/.test(cam) && sheet, `ekranda "${on.replace(/\s+/g, " ")}" · ▶ ${air} · Başlat ${go} · kamera "${cam.replace(/\s+/g, " ")}" · pencere ${sheet ? "açıldı" : "açılmadı"} · önceden açık pencere ${extra}`];
     });
     // Yayın › Video: tek önizleme, kaynaklar tek liste, alt yazı ve gösterim ayarı satıra dokununca açılır
     await okPage("Yayın", "video sekmesi sade", "/athletes/races/r2/yayin", "Kameralar", async () => {

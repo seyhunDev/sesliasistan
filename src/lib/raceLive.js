@@ -788,3 +788,31 @@ export function nextRaceDay(plan, today, start, end) {
   const d = raceDays(start, end, plan).find((x) => x > today);
   return d ? { day: d, at: dayTime(plan, d) || plan?.at || "" } : null;
 }
+
+// Start sırası (Seyhun 2026-11-04 "sarı, mavi, kırmızı diye sıralamak istiyorum"): sets'in sırası = sınıf sırası, grps'in sırası = sınıfın içinde
+// grup sırası. setsUp: düz listedeki k. startı bir öne al (sınıfın ilk grubuysa bütün sınıf bir önceki sınıfın önüne geçer)
+export function setsUp(sets, k) {
+  const flat = sets.flatMap((x, i) => (x.grps.length ? x.grps : [""]).map((g, j) => ({ i, j })));
+  const at = flat[k];
+  if (!at || k === 0) return sets;
+  const out = sets.map((x) => ({ ...x, grps: [...x.grps] }));
+  if (at.j > 0) {
+    const g = out[at.i].grps;
+    [g[at.j - 1], g[at.j]] = [g[at.j], g[at.j - 1]];
+  } else [out[at.i - 1], out[at.i]] = [out[at.i], out[at.i - 1]];
+  return out;
+}
+// Bekleyen startları yeni sıraya göre diz: her yarışın startları (bir grup tekrar edince yeni yarış başlar) kendi içinde sıralanır
+export function orderBySets(order, sets) {
+  const key = (x) => `${x.cls || ""}|${x.grp || ""}`;
+  const rank = new Map(raceOrder({ sets }).map((x, i) => [key(x), i]));
+  const chunks = [];
+  let seen = null;
+  for (const x of order) {
+    if (!seen || seen.has(key(x))) chunks.push([]), (seen = new Set());
+    seen.add(key(x));
+    chunks.at(-1).push(x);
+  }
+  const r = (x) => rank.get(key(x)) ?? 999;
+  return chunks.flatMap((c) => c.map((x, i) => ({ x, i })).sort((a, b) => r(a.x) - r(b.x) || a.i - b.i).map((o) => o.x));
+}
