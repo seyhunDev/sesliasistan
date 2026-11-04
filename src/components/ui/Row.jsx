@@ -25,12 +25,12 @@ export function RowTiles({ children }) {
 function Tile({ href, onClick, title, sub, right, warn, label }) {
   const body = (
     <>
-      <span className="truncate text-[0.75rem] font-semibold text-[#5b8cff]">{title}</span>
+      <span className="truncate text-[0.75rem] font-semibold text-mut">{title}</span>
       {right != null && <span className="truncate text-[1.25rem] font-bold leading-tight tracking-[-.02em] tabular-nums">{right}</span>}
-      {sub && <small className={`truncate text-[0.75rem] ${warn ? "text-warn" : "text-white/60"}`}>{sub}</small>}
+      {sub && <small className={`truncate text-[0.75rem] ${warn ? "text-warn" : "text-mut"}`}>{sub}</small>}
     </>
   );
-  const cls = "food-card flex min-h-[5.25rem] min-w-0 flex-col gap-0.5 rounded-[1.125rem] px-3 py-2.5 text-left";
+  const cls = "hb-card flex min-h-[5.25rem] min-w-0 flex-col gap-0.5 rounded-[1.125rem] px-3 py-2.5 text-left";
   if (href) return <Link href={href} data-press aria-label={label} className={cls}>{body}</Link>;
   if (onClick) return <button type="button" data-press aria-label={label} onClick={onClick} className={cls}>{body}</button>;
   return <div className={cls}>{body}</div>;

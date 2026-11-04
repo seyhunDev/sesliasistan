@@ -74,7 +74,7 @@ export async function scenarios(h) {
     const r = await nav.evaluate((n) => {
       const b = [...n.children];
       const xs = new Set(b.map((e) => Math.round(e.getBoundingClientRect().x)));
-      return { n: b.length, cols: xs.size, ic: b.filter((e) => e.querySelector("svg.ck-icon") && e.textContent.trim()).length };
+      return { n: b.length, cols: xs.size, ic: b.filter((e) => e.querySelector("svg.hb-ic") && e.textContent.trim()).length };
     }).catch(() => ({ n: 0, cols: 0, ic: 0 }));
     return [r.n >= 4 && r.cols === 2 && r.ic === r.n, `${r.n} düğme · ${r.cols} sütun · ${r.ic} ikonlu`];
   });
@@ -1189,6 +1189,7 @@ async function rainStrip(h) {
   });
   // Seyhun 2026-11-03 (Windy görseli): ana sayfa hava kartı saat saat tablo; 3 saatte bir sütun, ertesi gün de var, yağmur mm satırı, şimdiki saat çerçeveli
   await check("Ana sayfa", "saat saat hava tablosu", "hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat", async () => {
+    await page.getByRole("button", { name: "Tablo", exact: true }).first().click();
     const t = page.locator("[data-hour-table]").first();
     if (!(await waitFor(() => t.count(), 8000))) return [false, "tablo yok"];
     const cols = await t.locator("[data-col]").count();
@@ -1218,7 +1219,8 @@ async function rainStrip(h) {
     return [titles.length >= 5 && titles[0] === "Günlük" && shut === 0 && races === 1 && !club.some((x) => /Tüm yarışlar|günlüğü/.test(x)) && one === 1 && sea.some((x) => x.includes("Hava")) && !sea.some((x) => x.includes("Rüzgâr")), `gruplar ${titles.join(",")} · açık ${shut}/${one} · kulüp ${club.join(",")} · deniz ${sea.join(",")}`];
   });
   // Seyhun 2026-11-01 "ana sayfada hava durumu yüksekliği çok fazla": grafik kalan yeri doldurmaz, alçak kalır; altındaki plan ve düğmeler yukarı gelir
-  await check("Ana sayfa", "alçak grafik", "her telefon boyunda hava tablosu 150–270 px, kalan yeri doldurmaz", async () => {
+  await page.getByRole("button", { name: "Grafik", exact: true }).first().click();
+  await check("Ana sayfa", "alçak grafik", "her telefon boyunda rüzgâr grafiği alçak (60–170 px), kalan yeri doldurmaz", async () => {
     const out = [];
     for (const [w, h] of [[375, 667], [390, 844], [430, 932]]) {
       await page.setViewportSize({ width: w, height: h });
@@ -1226,12 +1228,12 @@ async function rainStrip(h) {
       const m = await page.evaluate(() => {
         const sec = document.querySelector("section[aria-label='Bugün'] > div");
         const bar = document.querySelector("nav[aria-label='Sekmeler']");
-        const btn = document.querySelector("section[aria-label='Bugün'] nav[aria-label='İşler'] .ck-ibtn, section[aria-label='Bugün'] a[href='/notes']");
-        const svg = document.querySelector("[data-hour-table]");
+        const btn = document.querySelector("section[aria-label='Bugün'] nav[aria-label='İşler'] .hb, section[aria-label='Bugün'] a[href='/notes']");
+        const svg = document.querySelector("svg[aria-label='Bugünün saatlik rüzgâr grafiği']");
         return { end: sec ? Math.round(sec.getBoundingClientRect().bottom) : -1, bar: bar ? Math.round(bar.getBoundingClientRect().top) : -1, btn: btn ? Math.round(btn.getBoundingClientRect().top) : -1, svg: svg ? Math.round(svg.getBoundingClientRect().height) : 0 };
       });
       if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ilk-${w}.png` });
-      out.push({ w, ...m, ok: m.end > 0 && m.bar > 0 && m.svg >= 150 && m.svg <= 270 });
+      out.push({ w, ...m, ok: m.end > 0 && m.bar > 0 && m.svg >= 60 && m.svg <= 170 });
     }
     await page.setViewportSize({ width: 390, height: 844 });
     return [out.every((o) => o.ok), out.map((o) => `${o.w}: son ${o.end} çubuk ${o.bar} düğme ${o.btn} grafik ${o.svg}`).join(" · ")];
