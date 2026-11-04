@@ -31,13 +31,17 @@
 }
 .sc-src { font: 700 0.9em/1 var(--sc-c); letter-spacing: 0.22em; text-transform: uppercase; color: var(--sc-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* sağ üst: Canlı / Tekrar + saat */
-.sc-tr { position: absolute; top: calc(1.8em + env(safe-area-inset-top)); right: calc(2em + env(safe-area-inset-right)); display: flex; gap: 0.4em; height: 2.8em; }
+/* sağ üst sütun: Canlı / Tekrar (saat yok); start dizisinde ve yarışta altında yarışın kartı (.sc-c2.col), sonra sporcular / dönüş (.sc-rd) */
+.sc-rcol { position: absolute; top: calc(1.8em + env(safe-area-inset-top)); right: calc(2em + env(safe-area-inset-right)); display: flex; flex-direction: column; align-items: flex-end; gap: 0.5em; max-height: calc(100% - 9em); }
+.sc-rcol > .sc-rd, .sc-rcol > .sc-c2.col { position: static; }
+.sc-rcol > .sc-c2.col { width: 20em; max-width: none; flex: none; }
+.sc-rcol > .sc-tr { flex: none; }
+.sc-rcol > .sc-rd { width: 20em; min-height: 0; overflow: hidden; }
+.sc-tr { display: flex; gap: 0.4em; height: 2.8em; }
 .sc-live { display: flex; align-items: center; gap: 0.5em; padding: 0 0.9em; background: var(--sc-red); font: 800 1.1em/1 var(--sc-c); letter-spacing: 0.12em; text-transform: uppercase; }
 .sc-live::before { content: ""; width: 0.45em; height: 0.45em; border-radius: 50%; background: #fff; animation: lv-pulse 1.6s ease-in-out infinite; }
 .sc-live.rep { background: #fff; color: #06101f; }
 .sc-live.rep::before { display: none; }
-.sc-clk { display: flex; align-items: center; padding: 0 0.9em; background: var(--sc-pan); font: 700 1.4em/1 var(--sc-c); font-variant-numeric: tabular-nums; }
 
 /* sağ alt: yarışın adı | Velora */
 .sc-name { position: absolute; right: calc(2em + env(safe-area-inset-right)); bottom: calc(2em + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 1.1em; max-width: 46vw; text-shadow: 0 0.1em 0.6em rgba(0, 0, 0, 0.45); }
@@ -211,7 +215,10 @@
 @media (max-aspect-ratio: 1/1) {
   .sc { font-size: clamp(9px, 2.6vw, 16px); }
   .sc-c2, .sc-cbn { top: calc(5.2em + env(safe-area-inset-top)); left: 1em; right: 1em; width: auto; max-width: none; }
-  .sc-tr { right: 1em; top: calc(1em + env(safe-area-inset-top)); }
+  .sc-rcol { display: contents; }
+  .sc-tr { position: absolute; right: 1em; top: calc(1em + env(safe-area-inset-top)); }
+  .sc-rcol > .sc-c2.col { position: absolute; top: calc(5.2em + env(safe-area-inset-top)); left: 1em; right: 1em; width: auto; }
+  .sc-rcol > .sc-rd { position: absolute; width: 17em; }
   .sc-rd { top: auto; bottom: calc(6em + env(safe-area-inset-bottom)); right: 1em; }
   .sc-name { left: 1em; right: 1em; bottom: calc(1em + env(safe-area-inset-bottom)); max-width: none; justify-content: space-between; }
   .sc-nt { text-align: left; }
