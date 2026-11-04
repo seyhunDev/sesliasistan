@@ -5,6 +5,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { setDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { UP_MAX, cleanLive, pickTimer as pick, takeTimer } from "@/lib/raceLive";
+import { noteLive } from "@/features/athletes/raceLiveStore";
 import { mineHere, ownHere, readTimer, writeTimer } from "@/features/training/Countdown";
 
 // Kendi cihazlarım arasında canlı (Seyhun 2026-10-18): yarış multimedya sayfası açıkken raceLive belgesi dinlenir. Başka telefonda ya da
@@ -32,6 +33,7 @@ export function useLiveSync({ orgId, raceId, setLive }) {
         if (snap.metadata.hasPendingWrites || !snap.exists()) return;
         const d = snap.data();
         setLive(cleanLive(d));
+        noteLive(orgId, raceId, d); // aynı anda iki telefon: yazmada birleştirme için son görülen liste
         const r = d.timer;
         const mine = readTimer();
         // Açılışta bu sayfanın süren sayacı belgedekinden yeniyse belgeye yazılır (ana sayfadan ya da sayfa açılmadan önce başlatılan

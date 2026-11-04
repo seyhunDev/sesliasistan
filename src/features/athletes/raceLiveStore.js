@@ -4,13 +4,13 @@
 // ve sonuç belgesinden okunan bütün liste orgs/{org}/raceLive/{yarışId}/sheets/{belgeId} (genel sıralama; kulüp, doğum yılı, puan).
 // Yarış belgesinden ayrı durur: yarış sayfası kaydedince bu alanlar ezilmez. Fotoğraf ve video Storage'da orgs/{org}/raceMedia/{id}
 // (kural storage.rules: yalnız ana hesap). Fotoğraf 2048 px JPEG; video (en çok 2 dk) iPhone'un çektiği gibi (sesli) saklanır, çok büyükse küçültülür (prepRaceMedia).
-import { FieldPath, arrayUnion, collection, deleteField, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
+import { FieldPath, arrayUnion, collection, deleteField, doc, getDoc, getDocs, onSnapshot, runTransaction } from "firebase/firestore";
 import { readServer } from "@/lib/firebase/fastRead";
 import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResumable } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
-import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan } from "@/lib/raceLive";
+import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan, mergeOrder, mergeStarts } from "@/lib/raceLive";
 import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
 import { cleanCourseShow, cleanEvOne, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
 import { cleanCamBy, cleanOnAir } from "@/lib/raceCams";
@@ -62,7 +62,36 @@ export const addWind = (orgId, id, w) => setDoc(live(orgId, id), { wind: arrayUn
 export const saveWind = (orgId, id, list) => setDoc(live(orgId, id), { wind: cleanWind(list) }, { merge: true });
 export const saveBuoys = (orgId, id, list) => setDoc(live(orgId, id), { buoys: cleanBuoys(list) }, { merge: true });
 export const saveDays = (orgId, id, list) => setDoc(live(orgId, id), { days: cleanDays(list) }, { merge: true });
-export const saveStarts = (orgId, id, list) => setDoc(live(orgId, id), { starts: cleanStarts(list) }, { merge: true });
+// Aynı anda iki telefon (Seyhun 2026-11-04): bu telefonun gördüğü son sunucu listesi (useLiveSync noteLive); yazmada sunucudakiyle birleşir
+// (lib/raceLive mergeStarts / mergeOrder). İnternet yokken ya da birleştirme olmazsa eskisi gibi bütün liste yazılır.
+const known = new Map();
+export function noteLive(orgId, id, d) {
+  known.set(`${orgId}/${id}`, { starts: cleanStarts(d?.starts), order: cleanPlan(d?.plan).order });
+}
+const online = () => typeof navigator === "undefined" || navigator.onLine !== false;
+async function mergeTx(orgId, id, field, mine, write) {
+  const k = `${orgId}/${id}`;
+  const base = known.get(k)?.[field];
+  if (!base || !online()) return null;
+  const out = await Promise.race([
+    runTransaction(db, async (tx) => {
+      const snap = await tx.get(live(orgId, id));
+      const d = snap.exists() ? snap.data() : {};
+      const srv = field === "starts" ? cleanStarts(d.starts) : cleanPlan(d.plan).order;
+      const m = field === "starts" ? mergeStarts(base, mine, srv) : mergeOrder(base, mine, srv);
+      write(tx, m);
+      return m;
+    }),
+    new Promise((_, no) => setTimeout(() => no(new Error("yavaş")), 4000)),
+  ]);
+  known.set(k, { ...known.get(k), [field]: out });
+  return out;
+}
+export async function saveStarts(orgId, id, list) {
+  const mine = cleanStarts(list);
+  const out = await mergeTx(orgId, id, "starts", mine, (tx, m) => tx.set(live(orgId, id), { starts: m }, { merge: true })).catch(() => null);
+  if (!out) return setDoc(live(orgId, id), { starts: mine }, { merge: true });
+}
 export const savePlan = (orgId, id, plan) => setDoc(live(orgId, id), { plan: cleanPlan(plan) }, { merge: true });
 // Yalnız değişen plan alanları (plan.<alan> bütünüyle): sunucunun siteden yazdığı daily/times/off/agenda ezilmesin
 // (yarış sistemi haritası 2026-11-04 riski). Belge yoksa bütün plan yazılır.
@@ -70,7 +99,13 @@ export function savePlanKeys(orgId, id, plan, keys) {
   const p = cleanPlan(plan);
   const ks = keys.filter((k) => k in p);
   if (!ks.length) return Promise.resolve();
-  return updateDoc(live(orgId, id), Object.fromEntries(ks.map((k) => [`plan.${k}`, p[k]]))).catch(() => savePlan(orgId, id, plan));
+  const put = (order) => Object.fromEntries(ks.map((k) => [`plan.${k}`, k === "order" && order ? order : p[k]]));
+  // bekleyen startlar: sunucudakiyle birleşir (aynı anda iki telefon)
+  if (ks.includes("order"))
+    return mergeTx(orgId, id, "order", p.order, (tx, m) => tx.update(live(orgId, id), put(m)))
+      .catch(() => null)
+      .then((out) => (out ? undefined : updateDoc(live(orgId, id), put()).catch(() => savePlan(orgId, id, plan))));
+  return updateDoc(live(orgId, id), put()).catch(() => savePlan(orgId, id, plan));
 }
 // Bütün künye listesi (sporcu etiketi değişince)
 export const saveMedia = (orgId, id, list) => setDoc(live(orgId, id), { media: cleanMedia(list) }, { merge: true });

@@ -836,3 +836,37 @@ export function grpRelease(order, grp) {
 export const heldGrps = (order) => [...new Map((order || []).filter((o) => o.ap && o.grp).map((o) => [o.grp, o.ap])).entries()].map(([grp, ap]) => ({ grp, ap }));
 // İnişi gelmiş grup tehirleri
 export const grpDue = (order, now) => heldGrps(order).filter((x) => x.ap.down && Date.parse(x.ap.down) <= now).map((x) => x.grp);
+
+// Aynı anda iki telefon (Seyhun 2026-11-04 "iki telefonun birbirini ezmesi"): starts ve plan.order bütün liste yazılıyordu; biri Kırmızı'yı
+// başlatırken öteki Sarı'yı bitirirse son yazan ötekinin değişikliğini silerdi. Yazmadan önce sunucudaki liste okunur ve yalnız bu telefonun
+// değiştirdikleri uygulanır. known: bu telefonun en son gördüğü sunucu listesi, mine: bu telefonun yazmak istediği, srv: şimdi sunucudaki.
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+export function mergeStarts(known, mine, srv) {
+  if (same(known, srv)) return mine;
+  const K = new Map(known.map((x) => [x.id, x]));
+  const M = new Map(mine.map((x) => [x.id, x]));
+  const S = new Map(srv.map((x) => [x.id, x]));
+  const out = [];
+  for (const x of srv) {
+    if (M.has(x.id)) out.push(K.has(x.id) && same(M.get(x.id), K.get(x.id)) ? x : M.get(x.id)); // ben değiştirmediysem sunucudaki
+    else if (!K.has(x.id)) out.push(x); // başka telefonun yeni startı
+    // ben sildim (gördüğüm listede vardı, benimkinde yok)
+  }
+  for (const x of mine) if (!S.has(x.id) && !(K.has(x.id) && same(x, K.get(x.id)))) out.push(x); // benim yeni startım (öteki sildiyse ve ben dokunmadıysam gelmez)
+  return out.sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0));
+}
+// Bekleyen startlar (kimliksiz satırlar): sunucudakinden benim çıkardıklarım çıkar, eklediklerim sona eklenir; kimse değiştirmediyse benimki
+export function mergeOrder(known, mine, srv) {
+  if (same(known, srv)) return mine;
+  const take = (list, items) => {
+    const out = [...list];
+    for (const it of items) {
+      const k = out.findIndex((x) => same(x, it));
+      if (k >= 0) out.splice(k, 1);
+    }
+    return out;
+  };
+  const removed = take(known, mine);
+  const added = take(mine, known);
+  return [...take(srv, removed), ...added];
+}
