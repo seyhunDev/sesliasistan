@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon } from "@/components/ui/Icon";
+import { SpeakerGlyph } from "./SpeakerGlyph";
 import { useTts } from "./TtsProvider";
 
 // Sesli yanıt açma/kapama düğmesi. withLabel: yanına Açık/Kapalı yazar.
@@ -17,7 +17,7 @@ export function SpeakToggle({ withLabel }) {
         t.enabled ? "bg-acc text-white" : "bg-bg text-mut"
       }`}
     >
-      <Icon name={t.enabled ? "volume" : "mute"} className="size-[1.125rem]" />
+      <SpeakerGlyph on={t.enabled} className="size-[1.125rem]" />
       {withLabel && (t.enabled ? "Açık" : "Kapalı")}
     </button>
   );

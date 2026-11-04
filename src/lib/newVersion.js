@@ -94,14 +94,18 @@ async function onResume(away) {
   await checkVersion(away > 15e3);
 }
 
-// Uygulama arkaya gidince: yeni sürüm biliniyorsa ve uygunsa, kullanıcı görmeden yenilenir (kısa bir an sonra hâlâ arkadaysa)
+// Uygulama arkaya gidince: yeni sürüm biliniyorsa ve uygunsa, kullanıcı görmeden yenilenir; ancak 3 dakikadan uzun arkada kalırsa.
+// Eskiden 0,4 sn sonra yenileniyordu (Seyhun 2026-11-04 "Mac'te yana kayıp geri gelince önce beyaz ekran, sonra sayfa"): gün içinde
+// sık yayın olduğu için masaüstleri arasında kısa bir gidiş-dönüşte bile sayfa arkada baştan yükleniyor, dönüşte boş ekran görünüyordu.
+// Kısa gidiş-dönüşte sayfa olduğu gibi kalır; yeni sürüm sonraki sayfa geçişinde ya da uzun aradan sonra alınır.
+const HIDE_RELOAD = 3 * 60e3;
 let hideTimer = 0;
 function onHide() {
   clearTimeout(hideTimer);
-  if (!latest) return;
+  if (!latest || document.visibilityState !== "hidden") return;
   hideTimer = setTimeout(() => {
     if (document.visibilityState === "hidden" && latest && canAutoUpdate(pageState())) (markTried(), dropPages().then(() => location.reload()));
-  }, 400);
+  }, HIDE_RELOAD);
 }
 
 // Uygulama içi bağlantıya dokunuş: yeni sürüm varsa sayfa geçişi tam yükleme olur (eski kod parçası istenmez)

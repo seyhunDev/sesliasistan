@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { canGoBack, goBack } from "@/lib/navTrail";
 import { edgeStart, swipeAxis, swipeDone } from "@/lib/swipeBack";
+import { setNavKind } from "@/lib/navProgress";
 
 // Kenardan kaydırarak geri (iPhone uygulamaları gibi): ana ekrana eklenen uygulamada (Safari çubuğu yokken)
 // ekranın sol kenarından sağa çekince sayfa parmağı izler, bırakınca önceki sayfaya dönülür. Safari'de ve
@@ -81,6 +82,7 @@ export function SwipeBack() {
       if (!swipeDone(dx, Date.now() - t, window.innerWidth)) return move(el, 0, true);
       move(el, window.innerWidth, true);
       setTimeout(() => {
+        setNavKind("none", 1500); // sayfa parmakla zaten kaydı: geçiş animasyonu ikinci kez oynamasın
         goBack(router, href);
         // Yeni sayfa açılınca bu öğe kalkar; açılmazsa (aynı sayfada kalındıysa) yerine döner
         setTimeout(() => el?.isConnected && clear(el), 900);
