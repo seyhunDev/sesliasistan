@@ -161,7 +161,7 @@ function Check({ on, tone = "ok" }) {
 const SECS = RACE_SECS.map(([k]) => k);
 const inRace = (x) => !!x?.startDate && todayStr() >= x.startDate && todayStr() <= (x.endDate || x.startDate);
 
-export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
+export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0 }) {
   const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
   const toast = useToast();
   const confirmIt = useConfirm();
@@ -931,6 +931,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
             <button key={k} type="button" aria-pressed={on} onClick={() => setTab(k === "prep" && on ? "sum" : k)} data-press className={`raised flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[0.875rem] font-semibold ${on ? "ck-sel" : ""}`}>
               {warn && !over && <span className="size-1.5 rounded-full bg-[#ffd59a]" aria-label="eksik" />}
               {name}
+              {/* Siteden yeni belge (Seyhun 2026-11-04 "yeni evrak olduğunu yarış sayfasında da göstermeliyiz") */}
+              {k === "docs" && siteNew > 0 && <span className="tone-gen tone-chip rounded-full px-1.5 text-[0.6875rem] font-bold tabular-nums">{siteNew} yeni</span>}
             </button>
           );
         })}
@@ -1345,6 +1347,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         </>
       )}
 
+      {/* Siteden gelen belgeler Evrak sekmesinde; sekme kapalıyken de bağlı (yeni gelenler işlenir) */}
+      {siteDocs && <div hidden={tab !== "docs"}>{siteDocs(tab === "docs")}</div>}
       {tab === "docs" && (
         <>
           {/* Hazır evrak bir bilgi değişince (stale) ya da bu telefonda yoksa (başka cihazda hazırlandı / telefon sildi): uyarı */}

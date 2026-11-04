@@ -1,13 +1,15 @@
 "use client";
 
 // Yarış sayfasında "Siteden belgeler" (Seyhun 2026-11-03): yarış sitesinden alınan bütün belgeler, yeni önce.
+// Evrak sekmesinde liste olarak (Seyhun 2026-11-04 "orada hepsini listeleyelim, yeni evrak olduğunu yarış sayfasında da gösterelim"):
+// görülmemiş belge "Yeni" (kayıtta seen yok), sekme açılınca görüldü yazılır; sayısı onNew ile Evrak sekmesinin düğmesine gider.
+// Sekme kapalıyken de bağlı kalır (hidden): yeni gelenler işlenir, sayı güncel kalır.
 // Açılınca yeni gelenler türüne göre işlenir (raceSite.js): renk listesi ve final grupları günün gruplarına, sporcu listesi
 // kayıt listesine, sonuçlar yarışın sonuçlarına (onResults, page.jsx). Her satır açılır (PDF); işlenen belge "Geri al" ile döner.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { PdfViewer } from "@/components/ui/PdfViewer";
-import { Sheet } from "@/components/ui/Sheet";
 import { ListHead, Row, RowList, Tag } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { getStored } from "@/lib/firebase/fileStore";
@@ -21,10 +23,9 @@ const when = (at) => {
 const kindText = (d) => (d.kind === "results" && resultState(d.name) ? `${kindLabel(d.kind)} (${resultState(d.name) === "kesin" ? "kesin" : "geçici"})` : d.kind === "amend" ? `${kindLabel(d.kind)} V${version(d.name)}` : kindLabel(d.kind));
 const work = (d) => LIST_KINDS.includes(d.kind) || d.kind === "results";
 
-export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndo, onRefresh, ready = true }) {
+export function SiteDocs({ orgId, race, shown = false, onNew, onResults, onUndo, onRefresh, ready = true }) {
   const toast = useToast();
   const [docs, setDocs] = useState(null);
-  const [open, setOpen] = useState(open0);
   const [view, setView] = useState(null);
   const [busy, setBusy] = useState("");
   const running = useRef(false);
@@ -104,29 +105,38 @@ export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndo, 
 
   const load = useCallback(() => getStored(view.file, "application/pdf"), [view]);
   const close = useCallback(() => setView(null), []);
-  const fresh = (docs || []).filter((d) => d.state === "new").length;
+  // Görülmemiş sayısı Evrak düğmesine; sekmeden çıkınca (ya da sayfa kapanınca) görüldü yazılır, Yeni yazısı bakarken kalır
+  const unseen = (docs || []).filter((d) => !d.seen);
+  useEffect(() => onNew?.(unseen.length), [unseen.length, onNew]);
+  const seenNow = useRef([]);
+  useEffect(() => {
+    seenNow.current = shown ? unseen.map((d) => d.id) : [];
+  }, [shown, unseen]);
+  useEffect(() => {
+    if (!shown) return;
+    return () => {
+      for (const id of seenNow.current) saveDocState(orgId, race.id, id, { seen: true }).catch(() => {});
+    };
+  }, [shown, orgId, race.id]);
   const amend = currentAmend(docs || []);
   return (
     <>
       <section className="mt-6">
         <ListHead title="Siteden belgeler" count={docs?.length || 0} />
-        <RowList>
-          <Row onClick={() => setOpen(true)} title={docs?.[0]?.name || (docs ? "Henüz belge yok" : "Yükleniyor…")} sub={docs?.[0] ? `${kindText(docs[0])} · ${when(docs[0].at)}` : ""} right={fresh ? <Tag tone="gen">{fresh} yeni</Tag> : null} />
-        </RowList>
-      </section>
-      <Sheet open={open} onClose={() => setOpen(false)} title="Siteden belgeler">
         {amend && (
-          <RowList>
+          <RowList className="mb-3">
             <Row onClick={() => setView(amend)} title={amend.name} sub={`Geçerli ek talimat · ${when(amend.at)}`} />
           </RowList>
         )}
-        <RowList className={amend ? "mt-3" : ""}>
+        <RowList>
+          {!docs?.length && <p className="py-3.5 text-[0.9375rem] text-mut">{docs ? "Henüz belge yok" : "Yükleniyor…"}</p>}
           {(docs || []).map((d) => (
             <div key={d.id} className="flex min-h-[3.5rem] items-center gap-2 border-t border-line py-2 first:border-t-0">
               <button type="button" data-press="row" onClick={() => setView(d)} className="min-w-0 flex-1 text-left">
                 <b className="block truncate text-[0.9375rem] font-semibold">{d.name}</b>
                 <small className="block truncate text-[0.8125rem] text-mut">{[kindText(d), when(d.at), d.state === "undone" ? "Geri alındı" : d.note].filter(Boolean).join(" · ")}</small>
               </button>
+              {!d.seen && <Tag tone="gen">Yeni</Tag>}
               {d.state === "used" && d.undo && (
                 <Button variant="secondary" size="sm" full={false} className="shrink-0" loading={busy === d.id} onClick={() => undo(d)}>
                   Geri al
@@ -140,16 +150,16 @@ export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndo, 
             </div>
           ))}
         </RowList>
-        <div className="mt-4 flex gap-2">
-          <Button variant="primary" full loading={busy === "check"} onClick={check}>
+        <div className="mt-3 flex gap-2">
+          <Button variant="secondary" full loading={busy === "check"} onClick={check}>
             Şimdi bak
           </Button>
           <Button variant="secondary" full loading={busy === "stop"} onClick={stop}>
             İzlemeyi bırak
           </Button>
         </div>
-      </Sheet>
-      {/* Belge pencerenin (Sheet, body'de) üstünde açılsın: o da body'ye (Seyhun 2026-11-04 "tıkladığımda gösterilmiyor evrak") */}
+      </section>
+      {/* Belge sayfanın katmanından (page-in) bağımsız, en üstte açılsın (Seyhun 2026-11-04 "tıkladığımda gösterilmiyor evrak") */}
       {view && createPortal(<PdfViewer title={view.name} load={load} onClose={close} />, document.body)}
     </>
   );
