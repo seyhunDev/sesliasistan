@@ -17,6 +17,7 @@ import { raceDays } from "@/features/athletes/raceWeather";
 import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
+import { DocsTab } from "./DocsTab";
 import { NearCams } from "./NearCams";
 import { AthletesTab } from "./AthletesTab";
 import { courseVoice } from "./courseVoice";
@@ -810,6 +811,7 @@ export function BroadcastPage({ orgId, id }) {
     ["video", "Ekran", `${scNow} ${SCENE_NAME[scNow]}`, !!onScreen && !onScreen.pause],
     ["parkur", "Parkur", (CARD_TYPES[selCard(course).type] || "").split(" ")[0], false],
     ["sporcu", "Sporcu", entries.length ? `${entries.length}` : "—", false],
+    ["belge", "Belgeler", race?.results?.files?.length ? "Sonuç var" : "—", false],
     ["donus", "Dönüş", entry?.route?.length ? `${legsDone}/${entry.route.length}` : entries.length ? `${entries.length} tekne` : "—", false],
   ];
   const monRec = onScreen?.kind === "rec" ? live.media.find((m) => m.id === onScreen.mid) : null;
@@ -1790,6 +1792,7 @@ export function BroadcastPage({ orgId, id }) {
             </MasaBar>
           </>
         ) : null}
+        {!needSetup && tab === "belge" ? <DocsTab orgId={orgId} race={race} onRace={setRace} onShow={() => (putCourseShow({ ...cShow, scene: "03" }), toast("03 Sıralama ekranda"))} showing={scNow === "03"} /> : null}
         {!needSetup && tab === "donus" ? (
           <>
         {/* Dönüşler (Seyhun 2026-11-02 yayın masası): şamandıralar adım adım (geçen tekne sayısı), son şamandıra üstte, lider sarı */}

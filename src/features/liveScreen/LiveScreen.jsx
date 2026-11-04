@@ -646,7 +646,7 @@ function Overall({ data, hideEmpty = false }) {
   const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
   const who = useMemo(() => whoBySail(data.fleets), [data.fleets]); // kayıt listesinde olmayanlar için
   const prov = useMemo(() => provisional({ starts: data.starts || [], rounds: data.rounds || {}, entries: data.entries || [], groups: data.groups || {}, who, year }), [data.starts, data.rounds, data.entries, data.groups, who, year]);
-  const official = (data.fleets || []).filter((f) => f.rows?.some((r) => r.pts != null && r.pts !== ""));
+  const official = (data.fleets || []).filter((f) => f.rows?.length); // puansız sonuç PDF'i (geçici sonuçlar) de sırasıyla (Seyhun 2026-11-04)
   const [ci, setCi] = useState(0);
   const [cat, setCat] = useState("");
   if (official.length) {
@@ -991,7 +991,7 @@ function RankPanel({ data, sel, isCur, id, max = RANK_MAX, onAll }) {
 
 // Genel sıralamanın ilk beşi (sağ alt panel ve gün sonunda sol üst): resmî PDF varsa ondan, yoksa geçici
 function overallTop(data, n = 5) {
-  const official = (data.fleets || []).filter((f) => f.rows?.some((r) => r.pts != null && r.pts !== ""));
+  const official = (data.fleets || []).filter((f) => f.rows?.length); // puansız sonuç PDF'i (geçici sonuçlar) de sırasıyla (Seyhun 2026-11-04)
   if (official.length) {
     const f = official[0];
     return { tag: "Resmî", cls: f.cls || "", rows: f.rows.slice(0, n).map((r, i) => ({ p: r.rank || r.place || r.code || i + 1, sail: r.sail, name: r.name, club: r.club, t: r.pts })), total: f.rows.length };
@@ -3184,11 +3184,11 @@ function scRound(data, sel) {
 }
 // genel sıralama: resmî (PDF) ya da geçici; sınıf sınıf, yarış yarış puanlar
 function scBoards(data) {
-  const official = (data.fleets || []).filter((f) => f.rows?.some((r) => r.pts != null && r.pts !== ""));
+  const official = (data.fleets || []).filter((f) => f.rows?.length); // puansız sonuç PDF'i (geçici sonuçlar) de sırasıyla (Seyhun 2026-11-04)
   if (official.length)
     return official.map((f) => {
       const n = Math.max(0, ...f.rows.map((r) => (Array.isArray(r.r) ? r.r.length : 0)));
-      return { cls: f.cls || "", tag: "Resmî sonuç", races: Array.from({ length: Math.min(n, 8) }, (_, i) => i + 1), rows: f.rows.slice(0, SC_RANK).map((r, i) => ({ p: r.rank || r.place || r.code || i + 1, sail: r.sail, name: r.name, club: r.club, sc: (Array.isArray(r.r) ? r.r : []).slice(0, 8).map((v) => String(v ?? "")), t: r.pts })), total: f.rows.length };
+      return { cls: f.cls || "", tag: "Sonuç", races: Array.from({ length: Math.min(n, 8) }, (_, i) => i + 1), rows: f.rows.slice(0, SC_RANK).map((r, i) => ({ p: r.rank || r.place || r.code || i + 1, sail: r.sail, name: r.name, club: r.club, sc: (Array.isArray(r.r) ? r.r : []).slice(0, 8).map((v) => String(v ?? "")), t: r.pts })), total: f.rows.length };
     });
   const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
   let prov = [];
