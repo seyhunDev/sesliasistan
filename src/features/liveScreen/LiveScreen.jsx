@@ -431,7 +431,7 @@ function WindDay({ fc, now, at, mine = [], mini = false }) {
     <div className={`lv-fc${mini ? " mini" : ""}`}>
       <div className="lv-lab">
         <span>Gün boyu</span>
-        <span>{atRow ? `Start'ta ${dirShort(atRow.dir)} ${atRow.wind} kn, sağanak ${atRow.gust ?? atRow.wind}` : `${lo}–${hi} kn`}</span>
+        <span>{atRow ? `Start'ta ${dirShort(atRow.dir)} ${atRow.wind} kn, sağanak ${atRow.gust ?? atRow.wind} kn` : `${lo}–${hi} kn`}</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
         {[5, 10, 15, 20, 25, 30].filter((v) => v < top && (top <= 30 || v % 10 === 0)).map((v) => (
@@ -1067,7 +1067,7 @@ function WindNow({ w, by = "", cls = "" }) {
         <b>
           {w.kn}
           <em>kn</em>
-          {w.gust != null && w.gust > w.kn ? <i>{`sağanak ${w.gust}`}</i> : null}
+          {w.gust != null && w.gust > w.kn ? <i>{`sağanak ${w.gust} kn`}</i> : null}
         </b>
         <span>{[dirText(w), by].filter(Boolean).join(" · ")}</span>
       </div>
@@ -2339,7 +2339,7 @@ function AheadBody({ days }) {
                 {x.wind}
                 <em>knot</em>
               </b>
-              <span className="w">{[x.dir != null ? `${dirShort(x.dir)} ${x.dir}°` : "", x.gust && x.gust > x.wind ? `Sağanak ${x.gust}` : ""].filter(Boolean).join(" · ")}</span>
+              <span className="w">{[x.dir != null ? `${dirShort(x.dir)} ${x.dir}°` : "", x.gust && x.gust > x.wind ? `Sağanak ${x.gust} kn` : ""].filter(Boolean).join(" · ")}</span>
             </>
           ) : (
             <span className="w n">Tahmin yok</span>
@@ -2639,10 +2639,10 @@ function curWind0(mine, fc, tr, fresh) {
 // yön yazısı: ok yoksa sakin (0 kn) ya da değişken
 const dirText = (w) => (w?.dir != null ? `${dirShort(w.dir)} ${degText(w)}` : w?.kn === 0 ? "Sakin" : w?.kn != null ? "Değişken" : "");
 // sağanak yazısı: ölçülen varsa o, yoksa bu saatin tahmini; rüzgârdan büyük değilse yazılmaz
-const gustText = (c) => (c?.gust != null && c.gust > (c.kn ?? 0) ? `sağanak ${c.gust}` : c?.fg != null && c.fg > (c.kn ?? 0) ? `tahmini sağanak ${c.fg}` : "");
+const gustText = (c) => (c?.gust != null && c.gust > (c.kn ?? 0) ? `sağanak ${c.gust} kn` : c?.fg != null && c.fg > (c.kn ?? 0) ? `tahmini sağanak ${c.fg} kn` : "");
 // beklenen (tahmin) rüzgâr + sağanağı: "12 kn · sağanak 18"
 const cap = (t) => (t ? t[0].toLocaleUpperCase("tr-TR") + t.slice(1) : t);
-const expKn = (w) => (w?.kn != null ? `${w.kn} kn${w.gust != null && w.gust > w.kn ? ` · sağanak ${w.gust}` : ""}` : "");
+const expKn = (w) => (w?.kn != null ? `${w.kn} kn${w.gust != null && w.gust > w.kn ? ` · sağanak ${w.gust} kn` : ""}` : "");
 const degText = (w) => (w?.range ? `${w.range[0]}–${w.range[1]}°` : w?.dir != null ? `${Math.round(w.dir)}°` : "");
 // Bekleme ekranında şimdiki rüzgâr (Seyhun 2026-11-02 "rüzgâr yönü daha doğru ve profesyonel; manuel girildiyse gösterilsin"):
 // akış yönünü gösteren ok, derece ve pusula, knot; altında kaynak (Parkur verisi 14:05 turuncu ya da istasyon)
@@ -2678,7 +2678,7 @@ function WindStrip({ data, now }) {
         {gust ? (
           <div>
             <small>Sağanak</small>
-            <b>{gust}</b>
+            <b>{`${gust} knot`}</b>
           </div>
         ) : null}
       </div>
@@ -3106,7 +3106,7 @@ function WindChart({ rows, at }) {
           <text x={sx > W - 150 ? sx - 9 : sx + 9} y={ys(sk) - 9} textAnchor={sx > W - 150 ? "end" : "start"} fontSize="15" fill="#fff" style={{ ...fs, fontWeight: 800 }}>
             {`${String(sk).replace(".", ",")} kn`}
             {sg != null && sg > sk ? (
-              <tspan fill="#ffd23f" fontSize="13">{` · sağanak ${sg}`}</tspan>
+              <tspan fill="#ffd23f" fontSize="13">{` · sağanak ${sg} kn`}</tspan>
             ) : null}
           </text>
         </g>
@@ -3604,12 +3604,18 @@ function Sc01({ t, data, prog, now, today, lock, ap = false, only = "" }) {
 // Süre kartı, sade (Seyhun 2026-11-04 "daha minimal; ilk starta yazısına gerek yok; geri sayım olduğunu hissettirelim, ileri geri farklı"):
 // üstte tek satır yarış · sınıf · grup · start saati; büyük süre önünde − (geri) ya da + (ileri), geri sayım sarı-turuncu değil mavi tonda,
 // ileri beyaz; altında dakikanın saniyeleri ince çubuk (geride erir, ileride dolar); bayrak, erken çıkan, işaret, rüzgâr birer satır
+const SC_CK0 = new Map(); // geri sayımın bu ekranda ilk görülen kalan süresi (start başına; kart yeniden kurulunca kaybolmasın)
 function ScClock({ t, data, sel, mode, now, today }) {
   const ea = mode === "race" && sel && now - Date.parse(sel.at) < 15 * 60e3 ? earlyOf(data, sel.id) : [];
   const n = /^(\d+)\./.exec(t.who?.name || "")?.[1];
   const num = !t.tx && /^\d{1,2}(:\d\d){1,2}$/.test(String(t.tm || ""));
   const up = mode === "race" || mode === "between";
-  const sec = num ? Number(String(t.tm).slice(-2)) : null;
+  // geri sayım çubuğu sayacın tamamına göre erir (Seyhun 2026-11-04 "dakikalık mı çalışıyor? süreyle çalışmalı"): start dizisinde dizinin
+  // süresi (5 dk), beklerken bu ekranın o start'a saymaya başladığı an; ileri sayımda çubuk yok (sonu belli değil)
+  const rem = num ? String(t.tm).split(":").reduce((a, x) => a * 60 + Number(x), 0) : null;
+  const tk = `${t.at || ""}|${t.who?.cls || ""}|${t.who?.grp || ""}`;
+  if (rem != null && !up && mode !== "seq" && !(SC_CK0.get(tk) >= rem)) SC_CK0.set(tk, rem);
+  const tot = rem == null || up ? 0 : mode === "seq" ? Math.max(rem, data.timer?.dur || 300) : SC_CK0.get(tk) || rem;
   const g = t.who?.grp || "";
   const gc = g ? groupColor(g) || "#ffd23f" : "";
   return (
@@ -3618,7 +3624,7 @@ function ScClock({ t, data, sel, mode, now, today }) {
         <div className="sc-ckw">
           {g ? <span className="sc-ckg" style={{ background: gc, color: inkOn(gc) }}>{g}</span> : null}
           {t.who?.cls ? <span className="sc-ckc">{t.who.cls}</span> : null}
-          {n ? <em>{`${n}. yarış`}</em> : null}
+          {n ? <span className="sc-ckn">{`${n}. yarış`}</span> : null}
         </div>
       ) : null}
       <div className={`sc-ckt${num ? "" : " tx"}`}>
@@ -3632,9 +3638,9 @@ function ScClock({ t, data, sel, mode, now, today }) {
           </span>
         ) : null}
       </div>
-      {num && sec != null ? (
+      {tot > 0 ? (
         <div className="sc-ckb" aria-hidden="true">
-          <u style={{ width: `${(sec / 60) * 100}%` }} />
+          <u style={{ width: `${Math.min(100, (rem / tot) * 100)}%` }} />
         </div>
       ) : null}
       {t.fl ? (
