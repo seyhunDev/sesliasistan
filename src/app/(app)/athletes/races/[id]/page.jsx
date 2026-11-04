@@ -113,7 +113,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
       if (!live || !s || s.by === uid || !(s.at > (race.sharedAt || ""))) return;
       const next = { ...race, ...fromShared(s) };
       link.current = { shared: s.id, sharedAt: s.at };
-      await saveRace(orgId, uid, next);
+      await saveRace(orgId, uid, next, race); // yalnız ortaktan gelen alanlar
       if (live) (setRace(next), setVer((v) => v + 1));
     }, () => {});
     return () => void (live = false);
@@ -187,11 +187,12 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   // Yeni yarış ilk kaydında adresi kendi kimliğine döner (geri/yenile doğru yarışı açsın).
   // Kayıttan sonra ortak kısım arkada yayınlanır (sharedRaces.js; yalnız değişince ve yetki varsa yazar).
   const onSave = useCallback(
-    async (r, cur) => {
+    async (r, cur, base = null) => {
       setHead({ name: r.name, startDate: r.startDate, endDate: r.endDate, district: r.district, city: r.city });
       const l = link.current || (r.shared ? { shared: r.shared, sharedAt: r.sharedAt || "" } : null);
       const data = { ...r, id: cur, shared: l?.shared || "", sharedAt: l?.sharedAt || "" };
-      const nid = await saveRace(orgId, uid, data);
+      // base: sayfanın bildiği son kayıt; yalnız değişen alanlar yazılır (başka yerin yazdığı talimat, sonuç, belgeler ezilmez)
+      const nid = await saveRace(orgId, uid, data, base && cur ? { ...base, id: cur } : null);
       if (!cur) window.history.replaceState(null, "", `/athletes/races/${nid}`);
       // Sırayla: ilk yayın bitmeden ikinci kayıt ikinci bir ortak yarış açmasın
       pub.current = pub.current.then(() =>
