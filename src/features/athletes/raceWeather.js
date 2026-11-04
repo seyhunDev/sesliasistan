@@ -1,7 +1,7 @@
 // Yarış günlerinin hava tahmini, rüzgâr önde. Kaynak ana sayfadaki hava durumuyla aynı: Open-Meteo (ücretsiz, anahtarsız, knot).
 // Konum: Çevre'de bulunan yarış alanı, yoksa yarışın ilçesi (Open-Meteo konum arama). Tahmin en çok 16 gün ileriyi kapsar;
 // daha uzaktaki günler "henüz tahmin yok" görünür. Sonuç yarışın `weather` alanına kaydedilir, "Güncelle" ile yenilenir.
-import { dirDeg, sailWindows, windName } from "@/features/weather/weather";
+import { dirDeg, sailWindows, softCode, windName } from "@/features/weather/weather";
 
 export const HORIZON = 15; // bugün + 15 gün = Open-Meteo'nun 16 günlük tahmini
 const DAY_FROM = 9; // gündüz rüzgârı: 09–18
@@ -60,7 +60,7 @@ export function shapeDays(j, days) {
   const h = j?.hourly || {};
   const d = j?.daily || {};
   const rows = (h.time || []).map((t, i) => ({
-    date: t.slice(0, 10), hh: t.slice(11, 13), t: N(h.temperature_2m?.[i]), code: N(h.weather_code?.[i]), day: h.is_day ? !!h.is_day[i] : true,
+    date: t.slice(0, 10), hh: t.slice(11, 13), t: N(h.temperature_2m?.[i]), code: softCode(N(h.weather_code?.[i]), N(h.precipitation_probability?.[i])), day: h.is_day ? !!h.is_day[i] : true,
     wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]),
   })).filter((x) => x.wind !== null && x.gust !== null && x.dir !== null);
   return days
@@ -158,7 +158,7 @@ const DAY_TTL = 3600e3;
 export function rowsFrom(j, date) {
   const h = j?.hourly || {};
   return (h.time || [])
-    .map((time, i) => ({ time, hh: time.slice(11, 13), t: N(h.temperature_2m?.[i]), code: N(h.weather_code?.[i]), day: h.is_day ? !!h.is_day[i] : true,
+    .map((time, i) => ({ time, hh: time.slice(11, 13), t: N(h.temperature_2m?.[i]), code: softCode(N(h.weather_code?.[i]), N(h.precipitation_probability?.[i])), day: h.is_day ? !!h.is_day[i] : true,
       wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]), rain: N(h.precipitation_probability?.[i]), mm: h.precipitation?.[i] == null ? null : Math.round(h.precipitation[i] * 10) / 10 }))
     .filter((x) => x.time.startsWith(date) && x.wind !== null && x.gust !== null && x.dir !== null);
 }
