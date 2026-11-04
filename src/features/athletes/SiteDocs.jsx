@@ -125,12 +125,12 @@ export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndo, 
                 <small className="block truncate text-[0.8125rem] text-mut">{[kindText(d), when(d.at), d.state === "undone" ? "Geri alındı" : d.note].filter(Boolean).join(" · ")}</small>
               </button>
               {d.state === "used" && d.undo && (
-                <Button variant="secondary" size="sm" loading={busy === d.id} onClick={() => undo(d)}>
+                <Button variant="secondary" size="sm" full={false} className="shrink-0" loading={busy === d.id} onClick={() => undo(d)}>
                   Geri al
                 </Button>
               )}
               {d.state === "undone" && work(d) && (
-                <Button variant="secondary" size="sm" loading={busy === d.id} onClick={() => redo(d)}>
+                <Button variant="secondary" size="sm" full={false} className="shrink-0" loading={busy === d.id} onClick={() => redo(d)}>
                   Yeniden işle
                 </Button>
               )}
