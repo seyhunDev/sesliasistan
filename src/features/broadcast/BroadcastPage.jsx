@@ -35,7 +35,7 @@ import { BoatLive } from "@/features/tracking/BoatLive";
 import { ZOOMS } from "@/lib/boatPlay";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets } from "@/lib/raceLive";
+import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, coursePoints } from "@/lib/courseCard";
@@ -271,16 +271,25 @@ export function BroadcastPage({ orgId, id }) {
     const t = readTimer();
     if (t.mode === "start" && (t.end != null || t.left != null)) writeTimer({ ...pickTimer({}), zero: t.zero });
   };
-  const openAp = () => {
-    const c = countingAt(Date.now());
-    // denizde tehir varsayılan "Belirsiz" (Seyhun 2026-11-03 11:47); inince 1 dk sonra geri sayım seçeneği aynen kalır
-    setAp(ap ? null : { min: 0, why: AP_WHY[0], live: c });
+  // Tehir penceresi: her tehir buradan çekilir (Bayrak › Tehir / AP üzeri H / saatli, geri sayımdaki Tehir, İptal › Tehir). Yer (Karada /
+  // Denizde) her seferinde seçilir (Seyhun 2026-11-04). Denizde varsayılan "Belirsiz" (Seyhun 2026-11-03 11:47)
+  const openAp = (pre = {}) => setAp({ min: 0, why: AP_WHY[0], live: countingAt(Date.now()), land: false, auto: true, hours: 0, ...pre });
+  // Bayraktan tehir: AP denizde, AP üzeri H karada, AP üzeri sayı saatli (planlanan start + n saat; iniş uyarı işaretinden 1 dk önce)
+  const apFromFlag = (id) => {
+    const s = signalOf(id);
+    const pre = { land: !!s?.land };
+    if (s?.hours) {
+      const at2 = addHours(plan.at, s.hours);
+      const t2 = at2 ? Date.parse(`${planDay}T${at2}:00+03:00`) : NaN;
+      Object.assign(pre, { hours: s.hours, min: Number.isFinite(t2) ? Math.max(1, Math.round((t2 - 60e3 - nowMs()) / 60e3)) : 0, why: `${s.hours} saat tehir` });
+    }
+    openAp(pre);
   };
   // Çekili tehiri düzelt: iniş (seçildiyse şimdiden), yer, inince, sebep; seçilmeyen iniş aynı kalır
   const fixAp = () => {
     if (plan.status !== "ap" || !ap) return setAp(null);
     const down = ap.min == null ? plan.ap?.down || "" : ap.min ? new Date(Date.now() + ap.min * 60e3).toISOString() : "";
-    changePlan({ ap: { ...plan.ap, why: ap.why, land: !!ap.land, auto: !ap.land && ap.auto !== false, down } });
+    changePlan({ ap: { ...plan.ap, why: ap.why, land: !!ap.land, auto: ap.auto !== false, hours: ap.min == null ? plan.ap?.hours || 0 : ap.hours || 0, down }, ...apSigOff(plan) });
     setAp(null);
     toast("Tehir düzeltildi");
   };
@@ -316,9 +325,10 @@ export function BroadcastPage({ orgId, id }) {
       const back = rid ? apBack(rid) : null;
       if (back) order = [back, ...order];
     }
-    const raised = apRaise(plan, Date.now(), a.min, a.why, a.land, a.auto);
+    const raised = apRaise(plan, Date.now(), a.min, a.why, a.land, a.auto, a.hours);
     if (seq != null) raised.ap = { ...raised.ap, seq, dur: t0.dur || 300 };
-    const done = changePlan({ day: planDay, order, ...raised, ...extra });
+    // eski tehir işareti (AP/H, AP 3…) plan.sig'de kaldıysa silinir; tehirin bayrağı plan.ap'tan okunur (apSigId)
+    const done = changePlan({ day: planDay, order, ...raised, ...apSigOff(plan), ...extra });
     setAp(null);
     return done;
   };
@@ -337,15 +347,15 @@ export function BroadcastPage({ orgId, id }) {
     if (!s) return;
     const now = nowMs();
     let p = null;
-    if (s.kind === "ap") {
-      const a = { min: 0, why: AP_WHY[0], live: countingAt(now), land: !!s.land, auto: true };
-      if (s.hours) {
-        const at2 = addHours(plan.at, s.hours);
-        const t2 = at2 ? Date.parse(`${planDay}T${at2}:00+03:00`) : NaN;
-        a.min = Number.isFinite(t2) ? Math.max(1, Math.round((t2 - 60e3 - now) / 60e3)) : 0;
-        a.why = `${s.hours} saat tehir`;
-      }
-      p = postpone(a, { ...(s.end ? dayDone() : {}), ...(s.land || s.end || s.hours ? sigNow(id) : {}) });
+    if (s.kind === "ap" && !s.end) {
+      // tehir bayrağı Tehir penceresine gider (yer, iniş, sebep orada seçilir)
+      setFlagPick(null);
+      setFlagOpen(false);
+      setFlagFor("");
+      return apFromFlag(id);
+    } else if (s.kind === "ap") {
+      // AP üzeri A: bugün yarış yok (tehir çekiliyken de çekilebilir)
+      p = plan.status === "ap" ? changePlan({ ...dayDone(), ...sigNow(id) }) : postpone({ min: 0, why: AP_WHY[0], live: countingAt(now) }, { ...dayDone(), ...sigNow(id) });
     } else if (s.kind === "void" || s.kind === "fs") {
       let ids = rid ? [rid] : runningIds(now);
       if (s.kind === "fs" && !rid) {
@@ -373,10 +383,11 @@ export function BroadcastPage({ orgId, id }) {
       toast(`${s.name} çekildi`);
     });
   };
-  const lowerSig = () => changePlan({ sig: null });
   // Tehir inince tehir işareti de (AP/H, AP 6 saat…) ekrandan kalkar (Seyhun 2026-11-04 "tehiri indirmem canlı yayına gitmedi": işaret kartı kalıyordu)
   const apSigOff = (pl) => (signalOf(pl.sig?.id)?.kind === "ap" && !signalOf(pl.sig.id).end ? { sig: null } : {});
-  const lowerAp = () => changePlan({ day: planDay, ...apLower(Date.now(), readTimer().dur || 300, dev, plan.ap?.land, plan.ap?.auto), ...apSigOff(plan) });
+  // Tehiri indir: tek yol (düğme, inişi gelince kendiliğinden, eski tehir işaretinin İndir'i): denizde 1 dk, karada 60 dk sonra uyarı işareti
+  const lowerAp = (at = nowMs()) => changePlan({ day: planDay, ...apLower(at, readTimer().dur || 300, dev, plan.ap?.land, plan.ap?.auto), ...apSigOff(plan) });
+  const lowerSig = () => (plan.status === "ap" && signalOf(plan.sig?.id)?.kind === "ap" && !signalOf(plan.sig.id).end ? lowerAp() : changePlan({ sig: null }));
   // Program sekmesi (Seyhun 2026-11-04 "çok karışık, yeniden tasarla"): her günün tek "İlk start" saati (aynı saat daily, farklı gün times;
   // ilk kez girilen saat bütün günlerin olur), "Her güne" ile bütün günler aynı saat. Bugünün / yarının saati değişirse ekranın saati de;
   // programdaki "İlk start" maddesi de aynı saate geçer (agendaFirst). Yarış olmayan gün, gün ekle/kaldır, programın maddeleri elle.
@@ -499,7 +510,7 @@ export function BroadcastPage({ orgId, id }) {
   const autoRef = useRef(null);
   useEffect(() => {
     autoRef.current = (now) => {
-      if (apDue(plan, now)) return changePlan({ day: planDay, ...apLower(Date.parse(plan.ap.down), readTimer().dur || 300, dev, plan.ap.land, plan.ap.auto), ...apSigOff(plan) });
+      if (apDue(plan, now)) return lowerAp(Date.parse(plan.ap.down));
       if (!warnDue(plan, now)) return;
       const mine = !plan.warnBy || plan.warnBy === dev || now - Date.parse(plan.warn) > 4000;
       if (!mine) return;
@@ -1044,7 +1055,7 @@ export function BroadcastPage({ orgId, id }) {
     return Object.values(gm).filter((g) => g === hero.x.grp).length;
   })();
   const grpName = (k) => { const [c, g] = k.split("|"); return g || c; };
-  const apSig = (signalOf(plan.sig?.id)?.kind === "ap" ? signalOf(plan.sig.id) : null) || signalOf(plan.ap?.land ? "AP/H" : "AP");
+  const apSig = signalOf(apSigId(plan));
 
   return (
     <main className="masa mx-auto max-w-[30rem] px-5 md:max-w-[44rem] pb-[calc(env(safe-area-inset-bottom)+7rem)]">
@@ -1078,7 +1089,7 @@ export function BroadcastPage({ orgId, id }) {
               {plan.status === "ap" && plan.ap?.down ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.ap.down) - (tick || capNow)) / 1000)))}</b> : null}
               {/* Tehir çekildikten sonra düzeltme (Seyhun 2026-11-03 "hatalı bir şey olursa değişim yapılabilmeli"): iniş, yer, inince, sebep */}
               {plan.status === "ap" ? (
-                <button type="button" data-press onClick={() => setAp({ min: null, why: plan.ap?.why || AP_WHY[0], land: !!plan.ap?.land, auto: plan.ap?.auto !== false, edit: true })} className="masa-b gl">
+                <button type="button" data-press onClick={() => setAp({ min: null, why: plan.ap?.why || AP_WHY[0], land: !!plan.ap?.land, auto: plan.ap?.auto !== false, hours: plan.ap?.hours || 0, edit: true })} className="masa-b gl">
                   Düzelt
                 </button>
               ) : null}
@@ -1093,10 +1104,10 @@ export function BroadcastPage({ orgId, id }) {
               <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">
                 {plan.status === "ap" ? [plan.ap?.land ? "Karada" : "Denizde", plan.ap?.why].filter(Boolean).join(" · ") : plan.order.length ? "Uyarı işaretinde geri sayım kendiliğinden başlar" : "Önce yarışı oluştur"}
               </span>
-              {/* İnince geri sayım kendiliğinden mi (Seyhun 2026-11-03 seçilebilir); tehir çekiliyken de değiştirilir */}
-              {plan.status === "ap" && !plan.ap?.land ? (
+              {/* İnince geri sayım kendiliğinden mi (Seyhun 2026-11-03 seçilebilir); tehir çekiliyken de değiştirilir. Denizde 1 dk, karada 60 dk */}
+              {plan.status === "ap" ? (
                 <button type="button" aria-pressed={!!plan.ap?.auto} onClick={() => changePlan({ ap: { ...plan.ap, auto: !plan.ap?.auto } })} className="masa-b gl">
-                  {plan.ap?.auto ? "İnince 1 dk sonra geri sayım" : "Geri sayımı sen başlatırsın"}
+                  {plan.ap?.auto ? `İnince ${apGap(plan.ap?.land)} dk sonra geri sayım` : "Geri sayımı sen başlatırsın"}
                 </button>
               ) : null}
             </div>
@@ -1173,7 +1184,7 @@ export function BroadcastPage({ orgId, id }) {
                       <Button variant="secondary" onClick={heroPaused ? resumeCd : pauseCd}>
                         {heroPaused ? "Devam" : "Dur"}
                       </Button>
-                      <Button variant="danger" onClick={() => setFlagPick({ id: "AP" })}>
+                      <Button variant="danger" onClick={() => openAp()}>
                         Tehir
                       </Button>
                     </div>
@@ -1424,10 +1435,10 @@ export function BroadcastPage({ orgId, id }) {
         </section>
         <MasaBar>
               {plan.status === "ap" ? (
-                <Button onClick={lowerAp}>Tehiri indir</Button>
+                <Button onClick={() => lowerAp()}>Tehiri indir</Button>
               ) : countingAt(capNow) ? (
                 // start dizisi başladıysa tehir bayrağı hazırda (Seyhun 2026-11-03 19:28); yine onay sorar
-                <Button variant="danger" onClick={() => setFlagPick({ id: "AP" })}>
+                <Button variant="danger" onClick={() => openAp()}>
                   <span className="masa-fl" aria-hidden="true" dangerouslySetInnerHTML={{ __html: flagSvg("AP") }} />
                   Tehir
                 </Button>
@@ -2132,7 +2143,7 @@ export function BroadcastPage({ orgId, id }) {
       <FlagSheet
         open={flagOpen || !!flagPick}
         pick={flagPick}
-        onPick={(x) => setFlagPick(flagFor ? { ...x, rid: flagFor } : x)}
+        onPick={(x) => (signalOf(x.id)?.kind === "ap" && !signalOf(x.id).end ? raiseFlag(x.id) : setFlagPick(flagFor ? { ...x, rid: flagFor } : x))}
         onClose={() => (setFlagPick(null), setFlagOpen(false), setFlagFor(""))}
         onBack={() => setFlagPick(null)}
         onRaise={() => flagPick && raiseFlag(flagPick.id, flagPick.rid || "")}
@@ -2146,38 +2157,36 @@ export function BroadcastPage({ orgId, id }) {
               <div className="masa-aplab">İner</div>
               <div className="masa-apgrid">
                 {[...AP_MIN, 0].map((m) => (
-                  <button key={m} type="button" data-press aria-pressed={ap.min === m} onClick={() => setAp({ ...ap, min: m })} className="masa-ap">
+                  <button key={m} type="button" data-press aria-pressed={ap.min === m} onClick={() => setAp({ ...ap, min: m, hours: 0 })} className="masa-ap">
                     <b>{m === 0 ? "?" : m < 60 ? m : m / 60}</b>
                     <small>{m === 0 ? "Belirsiz" : m < 60 ? "dk sonra" : "saat sonra"}</small>
                   </button>
                 ))}
               </div>
             </div>
-            {/* Denizde (AP): inince 1 dk sonra uyarı işareti; Karada (AP üstünde H): geri sayım kendiliğinden başlamaz */}
+            {/* Denizde (AP): inince 1 dk sonra uyarı işareti; Karada (AP üstünde H): inince en az 60 dk sonra (Seyhun 2026-11-04) */}
             <div>
               <div className="masa-aplab">Yer</div>
               <div className="masa-apgrid two">
                 {[[false, "Denizde", "AP"], [true, "Karada", "AP + H"]].map(([v, t, f]) => (
-                  <button key={t} type="button" data-press aria-pressed={!!ap.land === v} onClick={() => setAp({ ...ap, land: v, ...(!v && !ap.edit ? { min: 0 } : {}) })} className="masa-ap">
+                  <button key={t} type="button" data-press aria-pressed={!!ap.land === v} onClick={() => setAp({ ...ap, land: v })} className="masa-ap">
                     <b>{t}</b>
                     <small>{f}</small>
                   </button>
                 ))}
               </div>
             </div>
-            {!ap.land ? (
-              <div>
-                <div className="masa-aplab">İnince</div>
-                <div className="masa-apgrid two">
-                  {[[true, "1 dk sonra", "geri sayım kendiliğinden"], [false, "Ben başlatırım", "geri sayım elle"]].map(([v, t, f]) => (
-                    <button key={t} type="button" data-press aria-pressed={ap.auto !== false === v} onClick={() => setAp({ ...ap, auto: v })} className="masa-ap">
-                      <b>{t}</b>
-                      <small>{f}</small>
-                    </button>
-                  ))}
-                </div>
+            <div>
+              <div className="masa-aplab">İnince</div>
+              <div className="masa-apgrid two">
+                {[[true, `${apGap(ap.land)} dk sonra`, "geri sayım kendiliğinden"], [false, "Ben başlatırım", "geri sayım elle"]].map(([v, t, f]) => (
+                  <button key={String(v)} type="button" data-press aria-pressed={ap.auto !== false === v} onClick={() => setAp({ ...ap, auto: v })} className="masa-ap">
+                    <b>{t}</b>
+                    <small>{f}</small>
+                  </button>
+                ))}
               </div>
-            ) : null}
+            </div>
             <div>
               <div className="masa-aplab">Sebep</div>
               <div className="masa-apgrid">
@@ -2188,7 +2197,7 @@ export function BroadcastPage({ orgId, id }) {
                 ))}
               </div>
             </div>
-            <p className="text-[0.875rem] text-mut">{ap.edit && ap.min == null ? [plan.ap?.down ? `İniş ${trHm(plan.ap.down)} (değişmez)` : "İniş belirsiz (değişmez)", ap.land || ap.auto === false ? "Geri sayımı sen başlatırsın" : "İnince 1 dk sonra geri sayım"].join(" · ") : [ap.live ? "Sayaç durur" : "", ap.min ? `İniş ${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}` : "İniş belirsiz, Tehiri indir ile iner", ap.land || ap.auto === false ? "Geri sayımı sen başlatırsın" : "İnince 1 dk sonra geri sayım"].filter(Boolean).join(" · ")}</p>
+            <p className="text-[0.875rem] text-mut">{ap.edit && ap.min == null ? [plan.ap?.down ? `İniş ${trHm(plan.ap.down)} (değişmez)` : "İniş belirsiz (değişmez)", ap.auto === false ? "Geri sayımı sen başlatırsın" : `İnince ${apGap(ap.land)} dk sonra geri sayım`].join(" · ") : [ap.hours ? `${ap.hours} saat tehir` : "", ap.live ? "Sayaç durur" : "", ap.min ? `İniş ${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}` : "İniş belirsiz, Tehiri indir ile iner", ap.auto === false ? "Geri sayımı sen başlatırsın" : `İnince ${apGap(ap.land)} dk sonra geri sayım`].filter(Boolean).join(" · ")}</p>
             <div className="flex gap-2">
               <Button variant="secondary" className="flex-1" onClick={() => setAp(null)}>
                 Vazgeç
@@ -2538,7 +2547,8 @@ function FlagSheet({ open, pick, onPick, onClose, onBack, onRaise, ctx }) {
   // ctx.one: yalnız bir yarış için (Süre satırının Bayrak kısa yolu): tehir, hazırlık ve genel işaretler yok, abandone yalnız N
   if (ctx.one) groups.push(["Abandone", ["N"]], ["Rota", FLAG_ROWS.rota], ["Geri çağırma", FLAG_ROWS.geri]);
   else if (ctx.racing) groups.push(["Abandone", FLAG_ROWS.abandone], ["Rota", FLAG_ROWS.rota], ["Geri çağırma", FLAG_ROWS.geri]);
-  if (!ctx.apUp && !ctx.one) groups.unshift(["Tehir", FLAG_ROWS.tehir]);
+  // tehir çekiliyken yalnız AP üzeri A (bugün yarış yok); tehirin kendisi Tehiri indir ile iner
+  if (!ctx.one) groups.unshift(["Tehir", ctx.apUp ? ["AP/A"] : FLAG_ROWS.tehir]);
   const hours = !ctx.one && !ctx.apUp && !ctx.counting && !ctx.racing && /^\d\d:\d\d$/.test(ctx.at || "");
   const prep = !ctx.one && !ctx.counting && !ctx.racing;
   const s = pick ? signalOf(pick.id) : null;

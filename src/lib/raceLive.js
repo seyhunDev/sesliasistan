@@ -136,7 +136,7 @@ export function cleanPlan(p) {
   // auto (Seyhun 2026-11-03 "tehir indikten 1 dk sonra sürenin otomatik başlatılıp başlatılmayacağını seçebilmeliyim"): false ise inince geri sayım kendiliğinden başlamaz
   // seq/dur (Seyhun 2026-11-03 start geri sayımı şeridi): tehir start dizisi sürerken çekildiyse dizinin durduğu an kalan saniye ve dizi süresi
   const seq = Number.isFinite(p?.ap?.seq) ? { seq: Math.min(3600, Math.max(0, Math.round(p.ap.seq))), dur: Number.isFinite(p.ap.dur) ? Math.min(900, Math.max(60, Math.round(p.ap.dur))) : 300 } : {};
-  const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60), down: iso(p.ap.down), land: !!p.ap.land, auto: p.ap.auto !== false, ...seq } : null;
+  const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60), down: iso(p.ap.down), land: !!p.ap.land, auto: p.ap.auto !== false, hours: Number.isInteger(p.ap.hours) && p.ap.hours >= 1 && p.ap.hours <= 9 ? p.ap.hours : 0, ...seq } : null;
   const warn = status === "ap" ? "" : iso(p?.warn);
   const warnBy = warn ? String(p?.warnBy || "").slice(0, 12) : "";
   // Günün grupları (Seyhun 2026-11-02 "startlar-yeni"): bir kez seçilir, "+ Yarış" bunlarla bir yarışın startlarını ekler
@@ -156,26 +156,35 @@ export function cleanPlan(p) {
   return { title: one(p?.title, 40), sub: one(p?.sub, 60), day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off, orange, warn, warnBy, agenda: cleanAgenda(p?.agenda), sig: cleanSig(p?.sig) };
 }
 // Tehir cümlesi: "Rüzgâr yok · Karada" (sebep ve yer). Start saati yazılmaz (Seyhun 2026-11-02 "orada yanlış bilgi veriliyor"); iniş saati ve
-// uyarı işareti saati de yazılmaz (Seyhun 2026-11-03 "tehirin ineceği saati, uyarı işareti saatini göstermeyelim"): inişe kalan geri sayımda
+// uyarı işareti saati de yazılmaz (Seyhun 2026-11-03 "tehirin ineceği saati, uyarı işareti saatini göstermeyelim"): inişe kalan geri sayımda.
+// Yer her zaman yazar: Karada ya da Denizde (Seyhun 2026-11-04 "her şekilde karada mı denizde mi seçebilmeliyim")
 export function apText(plan) {
   if (!plan || plan.status !== "ap") return "";
-  return [plan.ap?.why || "", plan.ap?.land ? "Karada" : ""].filter(Boolean).join(" · ") || "Start ertelendi";
+  return [plan.ap?.why || "", apPlace(plan)].filter(Boolean).join(" · ");
 }
+export const apPlace = (plan) => (plan?.status === "ap" ? (plan.ap?.land ? "Karada" : "Denizde") : "");
+// Tehir indikten kaç dakika sonra uyarı işareti (Seyhun 2026-11-02 "karada çekiliyorsa indikten bir saat sonra, denizde bir dakika sonra
+// start verilebilir"; 2026-11-04 "deniz bir dakika, karada en az bir saat")
+export const apGap = (land) => (land ? 60 : 1);
+// Tehirin bayrağı (ekranda ve Yayın kartında): saatli tehir AP + sayı, karada AP üzeri H, denizde yalnız AP. Tehir plan.ap'tan okunur,
+// plan.sig'e yazılmaz (Seyhun 2026-11-04 "tehiri indirmem canlı yayına gitmedi": ayrı işaret kartı inişte kalıyordu)
+export const apSigId = (plan) => (plan?.ap?.hours ? `AP${plan.ap.hours}` : plan?.ap?.land ? "AP/H" : "AP");
 // ISO an → Türkiye saatiyle "12:31"
 export const trHm = (iso) => (Date.parse(iso || "") ? new Date(Date.parse(iso) + 3 * 3600e3).toISOString().slice(11, 16) : "");
-// Tehir (AP) çekilir: down dakika sonra iner (0 = belirsiz). Start saati belli değil (at boş). land: karada tehir (AP üstünde H; Seyhun
-// 2026-11-02 "karada çekiliyorsa indikten bir saat sonra, denizde bir dakika sonra start verilebilir"). Döndürür plan yaması.
-// auto: inince 1 dk sonra geri sayım kendiliğinden (Seyhun 2026-11-03 seçilebilir; karada hep kapalı)
-export function apRaise(plan, now, min, why, land = false, auto = true) {
+// Tehir (AP) çekilir: down dakika sonra iner (0 = belirsiz). Start saati belli değil (at boş). land: karada tehir (AP üstünde H).
+// auto: inince uyarı işareti (denizde 1 dk, karada 60 dk sonra) ve geri sayım kendiliğinden (Seyhun 2026-11-03 seçilebilir).
+// hours: saatli tehir (AP üzeri 1-9). Döndürür plan yaması. Tek yol: Yayın'daki her tehir düğmesi bu pencereden ve bu işlevden geçer.
+export function apRaise(plan, now, min, why, land = false, auto = true, hours = 0) {
   const down = min ? new Date(now + min * 60e3).toISOString() : "";
-  return { status: "ap", at: "", ap: { from: plan?.ap?.from || plan?.at || "", why, down, land: !!land, auto: !land && auto !== false }, warn: "" };
+  return { status: "ap", at: "", ap: { from: plan?.ap?.from || plan?.at || "", why, down, land: !!land, auto: auto !== false, hours: hours || 0 }, warn: "" };
 }
-// Tehir iner (zamanı gelince kendiliğinden ya da "Tehiri indir"). Denizde ve auto açıkken: 1 dk sonra uyarı işareti, geri sayım kendiliğinden
-// başlar; start saati o an belli olur. Karada ya da auto kapalıyken: geri sayım kendiliğinden başlamaz, start saati yazılmaz (komite Başlat'a basar).
+// Tehir iner (zamanı gelince kendiliğinden ya da "Tehiri indir"). auto açıkken: denizde 1 dk, karada 60 dk sonra uyarı işareti, geri sayım
+// kendiliğinden başlar; start saati o an belli olur. auto kapalıyken: geri sayım kendiliğinden başlamaz, start saati yazılmaz (komite Başlat'a basar).
 export function apLower(now, dur = 300, by = "", land = false, auto = true) {
-  if (land || auto === false) return { status: "", ap: null, warn: "", at: "" };
-  const warn = new Date(now + 60e3).toISOString();
-  return { status: "", ap: null, warn, warnBy: by, at: trHm(new Date(now + 60e3 + dur * 1000).toISOString()) };
+  if (auto === false) return { status: "", ap: null, warn: "", at: "" };
+  const gap = apGap(land) * 60e3;
+  const warn = new Date(now + gap).toISOString();
+  return { status: "", ap: null, warn, warnBy: by, at: trHm(new Date(now + gap + dur * 1000).toISOString()) };
 }
 // İnişi gelmiş tehir / gelmiş uyarı işareti
 export const apDue = (plan, now) => plan?.status === "ap" && !!plan.ap?.down && Date.parse(plan.ap.down) <= now;
