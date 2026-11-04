@@ -112,6 +112,10 @@ group("Son yazı: tam çeviri mi parçalar mı")([
   ["tam çeviri var", { desc: "tam çeviri", fn: () => bestText("Yarın onda antrenman ekle", "yarın 10 antrenman ekle"), ok: (r) => r === "Yarın onda antrenman ekle" }],
   ["tam çeviri yok", { desc: "parçalar", fn: () => bestText("", "yarın 10 antrenman ekle"), ok: (r) => r === "yarın 10 antrenman ekle" }],
   ["tam çeviri kısa kalmış", { desc: "parçalar (söylenen kaybolmaz)", fn: () => bestText("Yarış oluştur", "Cumhuriyet yarışı oluştur, yarış için görsel hazırla, Mustafa geldi"), ok: (r) => r.startsWith("Cumhuriyet") }],
+  ["tam çevirinin sonu kesilmiş", { desc: "parçalar (son kelimeler kaybolmaz)", fn: () => bestText("Yarın saat onda antrenman ekle ve", "yarın saat 10 antrenman ekle ve Ali'ye haber ver"), ok: (r) => r.includes("haber ver") }],
+  ["dolgu ve düzeltme silinmiş (kısa ama tam)", { desc: "tam çeviri", fn: () => bestText("Toplantı saat 2'de olsun.", "toplantı şey saat 3'te yok 2'de olsun"), ok: (r) => r === "Toplantı saat 2'de olsun." }],
+  ["tek kelime", { desc: "tam çeviri", fn: () => bestText("Evet.", "evet"), ok: (r) => r === "Evet." }],
+  ["parça yok", { desc: "tam çeviri", fn: () => bestText("Notlarımı oku", ""), ok: (r) => r === "Notlarımı oku" }],
 ]);
 
 // Canlı yazı hattı (Gemini Live): Google'ın listesinden Live destekleyen modeller, yazı cevaplı flash önce

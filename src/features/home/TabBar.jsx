@@ -32,7 +32,7 @@ export const CHECK_MS = 1500; // iş bitince küredeki yeşil ✓ bu kadar gör�
 // BAS-KONUŞ (Seyhun 2026-10-25, örnek "A · Çubuğun sağ ucunda"): asistan küresi basılı tutulduğu sürece dinler, bırakınca
 // gönderir; kendiliğinden dinleme yok. Çok kısa dokunuş (SHORT_MS) konuşma sayılmaz; parmak küreden uzağa (AWAY_PX) kayıp
 // bırakılırsa gönderilmez. onRelease({ short, away }).
-const SHORT_MS = 300;
+const SHORT_MS = 200; // useAssistant PRESS_MIN ile aynı
 const AWAY_PX = 90;
 // Bırakma pencereden dinlenir: kapalı asistanda basınca sekme çubuğundaki küre yerini açık asistanın küresine bırakır
 // (ilk düğme kalkar), parmağın kalkması yine yakalanır.
@@ -53,7 +53,8 @@ function usePress(onPress, onRelease) {
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", end);
         window.removeEventListener("pointercancel", end);
-        rel.current?.({ short: Date.now() - p.t < SHORT_MS, away: p.away || ev.type === "pointercancel" });
+        // pointercancel (iPhone sistem hareketi, bildirim) kullanıcının vazgeçmesi değildir: söylenen gönderilir, atılmaz
+        rel.current?.({ short: Date.now() - p.t < SHORT_MS, away: p.away });
       };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", end);
