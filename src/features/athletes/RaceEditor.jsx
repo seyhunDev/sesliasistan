@@ -297,11 +297,16 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const coachLack = coachOn ? coachMissing(coach, docs) : [];
   // Seçili belgelerde boş kalacak antrenör alanları (sarı görünür)
   // Bilgiler tamamsa antrenör bölümü kapalı gelir (her yarışta yeniden sorulmuyor gibi görünsün diye), Düzenle ile açılır
-  const [coachOpen, setCoachOpen] = useState(() => coachMissing(cleanCoach(savedCoach), startDocs || DOC_DEFAULT).length > 0);
+  const [coachOpen, setCoachOpen] = useState(false); // antrenör formu alttan pencerede (2026-11-04; sayfada uzun liste olmasın)
   const coachLackKeys = coachOn ? COACH_FIELDS.map(([k]) => k).filter((k) => coachMissing({ ...coach, [k]: "" }, docs).length > coachLack.length) : [];
   const expired = chosen.filter((a) => raceExpired(a, r).length); // yarışın son günü itibarıyla süresi geçmiş belge
   const fixList = chosen.filter((a) => incomplete.includes(a) || expired.includes(a));
   const coachRef = useRef(null);
+  const budgetRef = useRef(null);
+  // Bütçe Yolculuk sekmesinin altında: "budget" istenince (⋯, asistan, Özet) oraya kayar
+  useEffect(() => {
+    if (tab === "budget") setTimeout(() => budgetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  }, [tab]);
   // Yetkili adı eksikken Eksikler'de yazılır; yazarken kutu yer değiştirmesin diye bu açılışta orada kalır
   const [signerAsk] = useState(() => !(start.signer || "").trim());
 
@@ -864,11 +869,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   // Lacivert üst (yeni tasarım 2026-10-21; Seyhun: "sekme butonları önemli, ön planda olsun"): kalan gün ve hazırlık çubuğu,
   // Multimedya · Talimat, altında büyük sekme düğmeleri (her birinde kısa durum; eksikse sarı). Özet'teki eski Hazırlık listesi bu düğmelere geçti.
   const left = r.startDate ? daysTo(r.startDate) : null;
-  const doneN = stat.filter((x) => x[4]).length;
   // Seyhun 2026-10-26: "Hazırlık tamam 3/4, niye?" Sayılan dört bölüm (Sporcu, Evrak, Yolculuk, Bütçe); Plan, Not ve çıkarılan işler sayılmaz.
   // Eksik bölüm adıyla yazılır, "tamam" yalnız işler bitip dört bölüm de tamamsa.
-  const lacking = stat.filter((x) => !x[4]);
-  const missText = lacking.length > 2 ? `${lacking.length} bölüm eksik` : lacking.length ? `Eksik: ${lacking.map((x) => x[2]).join(", ")}` : "";
   // Yarış günü (Seyhun 2026-10-26: "önemli olan hava durumu ve multimedya, o ikisini ön planda tutmalıyız"): başlangıçtan bitişe
   // üstte büyük Multimedya ve günün rüzgârı; Özet yerine "Bugün" (kalan iş kısa notta, dokununca açılır)
   const today = todayStr();
@@ -883,8 +885,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     raceDay ? ["prep", "Hazırlık", todoList.length ? `${todoList.length} iş` : "Tamam", false] : ["sum", "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
     ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
     ["docs", "Evrak", file || (!checked && r.docsAt && !stale) ? "Hazır" : stale ? "Yenile" : r.docsAt ? "Bu cihazda yok" : "Hazır değil", !stat[1][4]],
-    ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4]],
-    ["budget", "Bütçe", money.lines.length ? tl(chosen.length ? money.perAthlete : money.total) : "Yok", !stat[3][4]],
+    // Yolculuk ve Bütçe tek sekme (Seyhun 2026-11-04 "sadeleştirelim"): sekmeler tek satıra sığar; "budget" açılınca Bütçe'ye kayar
+    ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4] || !stat[3][4]],
   ];
   // Seyhun 2026-10-26 (örnek A, yaris-tasarim/ozet-liste): üstte kalan gün + yanında Multimedya (ayrı, açık renk), altında tek satır
   // kaydırılabilir sekmeler (eksikse sarı nokta). Talimat yüklüyse düğme yok, ⋯ içinde "Talimatı gör".
@@ -905,28 +907,15 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                 <b className="-mb-[0.2em] truncate pb-[0.2em] text-[1.75rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
               )}
             </span>
-            {/* Ana hesap: yayın sayfası (sayaç, ekran, parkur-rüzgâr, dönüşler, sonuç PDF'i) tek düğmeden, Seyhun 2026-11-01 */}
-            {rid && isOwner && (
-              <Link href={`/athletes/races/${rid}/yayin`} replace data-press className="raised flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.875rem] font-semibold">
-                Yayına git
-              </Link>
-            )}
-          </span>
-          <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
-            <span className="block h-full rounded-full bg-[#8fb3ff]" style={{ width: `${Math.round((doneN / stat.length) * 100)}%` }} />
-          </span>
-          <span className="mt-1.5 flex justify-between text-[0.78rem] text-white/70">
-            <span>Hazırlık</span>
-            <span className="tabular-nums">
-              {[missText || "Hepsi tamam", todoList.length && `${todoList.length} iş`].filter(Boolean).join(" · ")}
-            </span>
+            {/* Sadeleştirme (Seyhun 2026-11-04): Yayına git ⋯ › Yayın'da; ilerleme çubuğu ve "Hazırlık · N bölüm eksik" kalktı
+                (eksik bölüm sekmede sarı nokta, işler Özet'te) */}
           </span>
           {rid && <RaceWx r={{ ...r, id: rid }} />}
         </div>
       ) : null}
       {!raceDay && <nav aria-label="Bölümler" className="-mx-5 mt-4 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map(([k, name, , warn]) => {
-          const on = tab === k;
+          const on = tab === k || (k === "trip" && tab === "budget");
           return (
             <button key={k} type="button" aria-pressed={on} onClick={() => setTab(k === "prep" && on ? "sum" : k)} data-press className={`raised flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[0.875rem] font-semibold ${on ? "ck-sel" : ""}`}>
               {warn && !over && <span className="size-1.5 rounded-full bg-[#ffd59a]" aria-label="eksik" />}
@@ -948,7 +937,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     </section>
   );
   const light = "relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-0.5";
-  const secName = tabs.find((x) => x[0] === tab)?.[1] || "";
+  const secName = tabs.find((x) => x[0] === (tab === "budget" ? "trip" : tab))?.[1] || "";
   // Yarış günlerinde sayfanın kendisi multimedyaya geçer (Saha · Start · Sonuç; Seyhun 2026-10-30): ⋯'den açılan bölüm kapanınca oraya dönülür
   const toMedia = () => rid && router.replace(`/athletes/races/${rid}/media`);
   const closeSec = () => (setTab("sum"), raceDay && toMedia());
@@ -1323,9 +1312,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         </>
       )}
 
-      {tab === "budget" && <BudgetView r={r} athletes={chosen} onChange={(b) => put("budget", b)} />}
-
-      {tab === "trip" && (
+      {(tab === "trip" || tab === "budget") && (
         <>
           <Label>YOLCULUK</Label>
           <Group>
@@ -1344,6 +1331,11 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
           <RaceHotels hotels={raceHotels(r)} onChange={(list) => put("hotels", list)} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
 
           <AroundView r={r} onChange={(a) => put("around", a)} />
+
+          <div ref={budgetRef} className="scroll-mt-4">
+            <Label>BÜTÇE</Label>
+            <BudgetView r={r} athletes={chosen} onChange={(b) => put("budget", b)} />
+          </div>
         </>
       )}
 
@@ -1432,7 +1424,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                   );
                 })}
                 {coachLack.length > 0 && (
-                  <button type="button" onClick={() => (setCoachOpen(true), setTimeout(() => coachRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50))} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <button type="button" onClick={() => setCoachOpen(true)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                     <Icon name="alert" className="size-[1.125rem] shrink-0 text-amber-600" />
                     <span className="min-w-0 flex-1">
                       <b className="block text-[0.875rem] font-medium">Antrenör bilgisi</b>
@@ -1442,7 +1434,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                   </button>
                 )}
               </div>
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">Kırmızılar olmadan evrak hazırlanmaz; diğerleri belgede boş kalır.</p>
             </>
           )}
 
@@ -1588,7 +1579,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
             </span>
             <Icon name="chev" className="size-5 shrink-0 text-mut" />
           </button>
-          {file && <p className="mt-2 px-1 text-[0.75rem] text-mut">Hazır evrak bu telefonda saklanır. Sporcu kartında bir bilgiyi değiştirdiysen {"Yenile'ye bas."}</p>}
 
           <Label>ORTAK BİLGİLER</Label>
           <div className={`${card} overflow-hidden`}>
@@ -1620,17 +1610,16 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
           {coachOn && (
             <div ref={coachRef} className="scroll-mt-4">
               <Label right={coachSaved ? "kaydedildi ✓" : "hesabına kaydedilir"}>{tyf ? "ANTRENÖR VE DESTEK BOTU" : "ANTRENÖR"}</Label>
-              {!coachOpen ? (
-                <button type="button" onClick={() => setCoachOpen(true)} className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg`}>
-                  <Icon name="user" className="size-5 shrink-0 text-acc" />
-                  <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.9375rem] font-semibold">{coach.name || "Antrenör"}</b>
-                    <span className="block text-[0.8125rem] text-mut">{coachLack.length ? `Eksik: ${coachLack.join(", ")}` : "Bilgiler hesabında kayıtlı, belgelere kendiliğinden yazılır"}</span>
-                  </span>
-                  <span className="text-[0.8125rem] font-semibold text-acc">Düzenle</span>
-                </button>
-              ) : (
-              <>
+              <button type="button" onClick={() => setCoachOpen(true)} className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg`}>
+                <Icon name="user" className="size-5 shrink-0 text-acc" />
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate text-[0.9375rem] font-semibold">{coach.name || "Antrenör"}</b>
+                  <span className="block text-[0.8125rem] text-mut">{coachLack.length ? `Eksik: ${coachLack.join(", ")}` : "Bilgiler hesabında kayıtlı, belgelere kendiliğinden yazılır"}</span>
+                </span>
+                <span className="text-[0.8125rem] font-semibold text-acc">Düzenle</span>
+              </button>
+              <Sheet open={coachOpen} onClose={() => setCoachOpen(false)} title={tyf ? "Antrenör ve destek botu" : "Antrenör"}>
+                <div>
               <Group>
                 {COACH_FIELDS.filter(([k]) => tyf || !TYF_ONLY.includes(k)).map(([k, label, mode]) => (
                   <Row key={k} label={label} className={coach[k] || !coachLackKeys.includes(k) ? "" : "bg-amber-500/5"}>
@@ -1645,9 +1634,11 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                   </Row>
                 ))}
               </Group>
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">Bir kez yaz, hesabına kaydedilir; sonraki yarışlarda ve diğer cihazlarda hazır gelir. Boş kalan alan formda boş çıkar.</p>
-              </>
-              )}
+                </div>
+                <button type="button" onClick={() => setCoachOpen(false)} data-press className="btn btn-primary mt-4 w-full">
+                  Tamam
+                </button>
+              </Sheet>
             </div>
           )}
 
@@ -1696,7 +1687,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                 </span>
                 <span className="min-w-0 flex-1">
                   <b className="block text-[0.9375rem] font-semibold text-acc">{upload != null ? `Yükleniyor… %${Math.round(upload * 100)}` : "Evrak ekle"}</b>
-                  <span className="block text-[0.8125rem] text-mut">Kayıt formu, sağlık raporu, dekont… (PDF ya da fotoğraf)</span>
                 </span>
               </button>
               <input
