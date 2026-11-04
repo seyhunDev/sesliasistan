@@ -1369,6 +1369,7 @@ export function BroadcastPage({ orgId, id }) {
             {`Ekranda: ${onScreen ? (onScreen.pause ? `${monName} · ara verildi` : monName) : "boş"}`}
           </p>
         </section>
+        <ScreenName plan={plan} name={race?.name || ""} onSave={(title, sub) => changePlan({ title, sub }).then(() => toast("Ekrandaki ad kaydedildi"))} />
         <section>
           <Head title="Canlı kaynaklar" right={nLive ? `${nLive} yayında` : ""} onAdd={srcList.length < 8 ? () => setAddOpen(true) : null} addLabel="Canlı kaynak ekle" />
           <div className={`${card} overflow-hidden`}>
@@ -2243,6 +2244,38 @@ function MasaBar({ children }) {
     </div>
   );
 }
+// Ekrandaki ad (Seyhun 2026-11-04 "sağ alttaki yarışmanın adını editleyebilmeliyim; başlık ve alt satır gibi ayıralım"):
+// canlı ekranın sağ altında başlık tek satır, alt satır küçük. Başlık boşsa yarışın adı yazar. Kaydet'e basınca gider.
+function ScreenName({ plan, name, onSave }) {
+  const [t, setT] = useState(null);
+  const [s, setS] = useState(null);
+  const title = t ?? plan.title;
+  const sub = s ?? plan.sub;
+  const dirty = title.trim() !== plan.title || sub.trim() !== plan.sub;
+  const inp = "h-11 w-full rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.9375rem] font-semibold outline-none";
+  return (
+    <section>
+      <Head title="Ekrandaki ad" />
+      <div className={`${card} grid gap-2 p-3`}>
+        <input className={inp} value={title} maxLength={40} placeholder={name || "Başlık"} aria-label="Başlık" onChange={(e) => setT(e.target.value)} />
+        <input className={inp} value={sub} maxLength={60} placeholder="Alt satır" aria-label="Alt satır" onChange={(e) => setS(e.target.value)} />
+        <Button
+          size="sm"
+          disabled={!dirty}
+          onClick={() =>
+            onSave(title.trim(), sub.trim()).then(() => {
+              setT(null);
+              setS(null);
+            })
+          }
+        >
+          Kaydet
+        </Button>
+      </div>
+    </section>
+  );
+}
+
 function Head({ title, right = "", onAdd = null, addLabel = "Ekle", busy = false }) {
   return (
     <div className={`mb-1.5 flex justify-between gap-3 px-1 text-[0.8125rem] font-semibold text-mut ${onAdd ? "items-center" : "items-baseline"}`}>

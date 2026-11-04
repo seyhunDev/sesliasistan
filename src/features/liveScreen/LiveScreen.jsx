@@ -3718,7 +3718,11 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
       <div className="gr-name">
         {racing ? <span className="gr-live">Canlı</span> : null}
         <div className="gr-nm">
-          <b>{r.name || "Yarış"}</b>
+          {/* Yayın › Video › Ekrandaki ad: başlık tek satır, alt satır küçük (Seyhun 2026-11-04) */}
+          <div className="gr-nt">
+            <b className={(plan.title || r.name || "").length > 22 ? "lg" : ""}>{plan.title || r.name || "Yarış"}</b>
+            {plan.sub ? <small>{plan.sub}</small> : null}
+          </div>
           <span className="gr-vl">
             <VeloraGlyph size={34} />
             <small>Velora</small>
