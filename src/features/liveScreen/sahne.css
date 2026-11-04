@@ -21,7 +21,7 @@
 .sc-body { position: absolute; inset: 0; pointer-events: none; animation: sc-in 0.5s ease both; }
 @keyframes sc-in { from { opacity: 0; } to { opacity: 1; } }
 .sc button { font: inherit; color: inherit; text-align: left; border: 0; padding: 0; cursor: pointer; }
-.sc-pn, .sc-c1, .sc-c2, .sc-rd, .sc-board, .sc-ci, .sc-later, .sc-nw {
+.sc-pn, .sc-c1, .sc-c2, .sc-rd, .sc-board, .sc-ci, .sc-later, .sc-nw, .sc-og {
   background: var(--sc-pan);
   border-radius: 0.5em;
   box-shadow: 0 0.7em 2em rgba(0, 0, 0, 0.35), inset 0 0 0 1px var(--sc-line);
@@ -36,6 +36,15 @@
 .sc-rcol > .sc-rd, .sc-rcol > .sc-c2.col { position: static; }
 .sc-rcol > .sc-c2.col { width: 20em; max-width: none; flex: none; }
 .sc-rcol > .sc-tr { flex: none; }
+/* diğer gruplar: ekrandaki yarışın kartının altında küçük satırlar (ScOthers) */
+.sc-og { width: 20em; flex: none; animation: sc-in 0.5s ease both; }
+.sc-og > div { display: flex; align-items: center; gap: 0.6em; padding: 0.5em 0.9em; }
+.sc-og > div + div { border-top: 1px solid var(--sc-line); }
+.sc-og i { width: 0.6em; height: 0.6em; border-radius: 50%; flex: none; }
+.sc-og span { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 0.2em; }
+.sc-og b { font: 700 0.95em/1.1 var(--sc-c); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-og em { font: 600 0.75em/1 var(--sc-c); font-style: normal; color: var(--sc-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-og u { text-decoration: none; font: 700 1.1em/1 var(--sc-c); font-variant-numeric: tabular-nums; }
 .sc-rcol > .sc-rd { width: 20em; min-height: 0; overflow: hidden; }
 .sc-tr { display: flex; gap: 0.4em; height: 2.8em; }
 .sc-live { display: flex; align-items: center; gap: 0.5em; padding: 0 0.9em; background: var(--sc-red); font: 800 1.1em/1 var(--sc-c); letter-spacing: 0.12em; text-transform: uppercase; }
@@ -219,6 +228,7 @@
   .sc-tr { position: absolute; right: 1em; top: calc(1em + env(safe-area-inset-top)); }
   .sc-rcol > .sc-c2.col { position: absolute; top: calc(5.2em + env(safe-area-inset-top)); left: 1em; right: 1em; width: auto; }
   .sc-rcol > .sc-rd { position: absolute; width: auto; margin-top: 0; }
+  .sc-og { display: none; } /* telefon dikeyde yer yok: diğer gruplar yalnız geniş ekranda */
   .sc-rd { top: auto; bottom: calc(6em + env(safe-area-inset-bottom)); right: 1em; }
   .sc-name { left: 1em; right: 1em; bottom: calc(1em + env(safe-area-inset-bottom)); max-width: none; justify-content: space-between; }
   .sc-nt { text-align: left; }

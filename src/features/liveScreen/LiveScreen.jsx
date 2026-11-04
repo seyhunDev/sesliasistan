@@ -3204,6 +3204,46 @@ function scBoards(data) {
 }
 // Sağ üst sütun (Seyhun 2026-11-04 "canlı yazısı sağ üstte, yanındaki saat kalksın; altında hangi yarış, geri sayım, bayrak, rüzgâr; sol üstte
 // olmasın"): Canlı / Tekrar, start dizisinde ve yarışta altında yarışın kartı (Sc02 col), en altta grubun sporcuları / şamandıra dönüşü
+// Diğer gruplar (Seyhun 2026-11-04 aynı anda üç grup: "seçili grup büyük, diğerleri küçük satır"): ekrandaki yarışın dışında bugün
+// yarışta ya da start geri sayımında olan her grup bir satır: renk, grup · yarış, son dönülen şamandıra, süre (yarışta ileri, geri sayımda kalan)
+const mmssOf = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+function otherGroups(data, sel, today, now) {
+  const tm = data.timer;
+  return (data.starts || [])
+    .filter((x) => x.id !== sel?.id && x.day === today && !x.void && !x.fin)
+    .map((x) => {
+      const e = data.rounds?.[x.id] || {};
+      const grp = x.grp || e.grp || "";
+      const at = Date.parse(x.at);
+      const paused = tm?.rid === x.id && tm.left != null;
+      const seq = paused || at > now;
+      const last = (e.route || []).reduce((a, _, k) => ((e.legs?.[k] || []).length ? k : a), -1);
+      const where = !seq && last >= 0 ? markName(e.route[last]) : "";
+      const time = paused ? mmssOf(Math.max(0, Math.round(tm.left))) : seq ? `−${mmssOf(Math.max(0, Math.ceil((at - now) / 1000)))}` : mmssOf(Math.max(0, Math.floor((now - at) / 1000)));
+      return { id: x.id, grp, name: raceName(x), what: seq ? (paused ? "Start · durdu" : "Start") : where || "Yarışta", time, at };
+    })
+    .filter((x) => x.grp)
+    .sort((a, b) => a.at - b.at)
+    .slice(0, 4);
+}
+function ScOthers({ data, sel, today, now }) {
+  const rows = otherGroups(data, sel, today, now);
+  if (!rows.length) return null;
+  return (
+    <div className="sc-og">
+      {rows.map((x) => (
+        <div key={x.id}>
+          <i style={{ background: groupColor(x.grp) || "rgba(255,255,255,.45)" }} aria-hidden="true" />
+          <span>
+            <b>{`${x.grp} · ${x.name}`}</b>
+            <em>{x.what}</em>
+          </span>
+          <u>{x.time}</u>
+        </div>
+      ))}
+    </div>
+  );
+}
 function ScTop({ rep, on, children }) {
   return (
     <div className="sc-rcol">
@@ -3870,6 +3910,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       </div>
       <ScTop rep={sc === "04"} on={live || sc === "04"}>
         {colCard ? <Sc02 t={t} data={data} sel={sel} mode={mode} now={now} today={today} col /> : null}
+        {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
         {(sc === "01" || sc === "02") && (mode === "seq" || mode === "race") ? <ScFleet data={data} sel={sel} mode={mode} now={now} who={t.who} today={today} onFull={onFull} /> : null}
       </ScTop>
       {ap && sc !== "04" ? <ScAp t={t} plan={plan} seq={mode === "seq"} /> : null}

@@ -18,7 +18,7 @@ Sana şu anki şamandıranın listesi (sıra. numara), parkur ve yarışa kayıt
 - ins {after, sails}: after. sıradan sonra ekle ("5'ten sonra 88 ekle" → after 5; "başa 88 ekle" → after 0).
 - move {pos, to}: sırayı taşı ("9'u 3. sıraya al").
 - next / prev: sonraki / önceki şamandıraya geç ("sonraki şamandıra", "diğer şamandıra", "bitişe geç" → next).
-- grp {grp}: bu startın grubu ("sarı grup", "mavi grubun startı", "altın filo" → "Sarı", "Mavi", "Altın"). "Sarı grup 3. yarış" → grp Sarı (yarış numarası yazılmaz).
+- grp {grp}: söylenen grup ("sarı grup", "mavi grubun startı", "altın filo" → "Sarı", "Mavi", "Altın"). "Sarı grup 3. yarış" → grp Sarı (yarış numarası yazılmaz). Cümle grup adıyla başlıyorsa ("Sarı birinci şamandıra 12 34", "Mavi finiş 512") önce grp, sonra diğer işler: aynı anda birkaç grup yarışıyor, yazılacak grup budur.
 - pen {code, sails}: ceza ya da sonuç kodu. code: OCS (erken çıktı), BFD (kara bayrak), UFD (U bayrağı), DSQ (diskalifiye), DNF (bitiremedi), RET (yarışı bıraktı), DNS (start almadı), DNC (gelmedi), DNE (atılamaz diskalifiye); cezayı kaldırmak için "-" ("OCS 512" → pen OCS ["512"]; "kara bayrak 88 ve 1302" → pen BFD ["88","1302"]; "512'nin cezası kalksın" → pen "-" ["512"]). Ceza söylenen numarayı add yapma.
 - route {route}: parkuru değiştir ("parkur 1 4 1 2 3 finiş" → ["1","4","1","2","3","F"]).
 Kurallar:

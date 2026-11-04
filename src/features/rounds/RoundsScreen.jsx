@@ -31,14 +31,18 @@ const readCls = (raceId) => {
 };
 
 // startId: yayın sayfasında seçilen yarış (yoksa sayacın yarışı; Seyhun 2026-11-01 "orada yarış seçmeliyiz")
-export function RoundsScreen({ open, onClose, orgId, raceId, startId = "" }) {
+// onStart: sesle başka grup söylenince o grubun yarışına geçildi (yayın sayfası seçimi izler)
+export function RoundsScreen({ open, onClose, orgId, raceId, startId = "", onStart = null }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   if (!client || !open) return null;
-  return createPortal(<Body orgId={orgId} raceId={raceId} startId={startId} onClose={onClose} />, document.body);
+  return createPortal(<Body orgId={orgId} raceId={raceId} startId={startId} onStart={onStart} onClose={onClose} />, document.body);
 }
 
-function Body({ orgId, raceId, startId = "", onClose }) {
-  const startOf = (d) => (startId && d.starts.find((x) => x.id === startId)) || currentStart(d.starts, d.timer);
+function Body({ orgId, raceId, startId = "", onStart = null, onClose }) {
+  // Sesle grup (Seyhun 2026-11-04 aynı anda üç grup): "Sarı birinci şamandıra 12 34" Sarı'nın süren yarışına geçer, sonra yazar
+  const [curId, setCurId] = useState(startId);
+  const pendRef = useRef("");
+  const startOf = (d) => (curId && d.starts.find((x) => x.id === curId)) || currentStart(d.starts, d.timer);
   const toast = useToast();
   const [L, setL] = useState(null);
   const [entries, setEntries] = useState([]);
@@ -137,6 +141,28 @@ function Body({ orgId, raceId, startId = "", onClose }) {
     }
     setBusy(false);
     if (!ops.length) return toast("Anlaşılamadı, tekrar söyle.");
+    // başka grubun adı söylendiyse (bu yarışın grubu değil) o grubun bugünkü yarışı: önce süren, yoksa en son biten
+    const say = ops.find((o) => o.op === "grp")?.grp || "";
+    if (say && say !== (entry.grp || st.grp || "")) {
+      const d = await loadRoundsOf(orgId, raceId).catch(() => null);
+      const gOf = (x) => x.grp || d?.rounds?.[x.id]?.grp || "";
+      const mine = (d?.starts || []).filter((x) => !x.void && x.day === st.day && gOf(x) === say && Date.parse(x.at) <= Date.now());
+      const tgt = mine.filter((x) => !x.fin).at(-1) || mine.at(-1);
+      if (tgt) {
+        const e = cleanEntry(d.rounds[tgt.id] || { route: cleanRoute(tgt.course), legs: [] });
+        setL(d);
+        setEntry(e);
+        setK(Math.max(0, nowPos(e)));
+        setHist([]);
+        onStart?.(tgt.id);
+        toast(`${say} grup · ${raceName(tgt)}`);
+        if (ops.some((o) => o.op !== "grp")) pendRef.current = t;
+        setCurId(tgt.id);
+        return;
+      }
+      // grubu belli yarış başka grubun adıyla yeniden adlanmaz (yanlış gruba yazmasın)
+      if (entry.grp || st.grp) return toast(`${say} grubun bugün başlamış yarışı yok`);
+    }
     const routeOp = ops.find((o) => o.op === "route");
     let base = entry;
     if (routeOp) base = setRoute(entry, routeOp.route);
@@ -154,6 +180,14 @@ function Body({ orgId, raceId, startId = "", onClose }) {
     requestAnimationFrame(() => listRef.current?.scrollTo({ top: 1e6, behavior: "smooth" }));
   };
 
+  // gruba geçtikten sonra aynı cümlenin geri kalanı o grubun yarışına yazılır
+  useEffect(() => {
+    if (!pendRef.current) return;
+    const t = pendRef.current;
+    pendRef.current = "";
+    handle(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curId]);
   const sp = useSpeech({ names: [], terms: ["şamandıra", "parkur", "finiş", "sıra", "grup", "OCS", "BFD", "DSQ", "DNF", "kara bayrak", ...GROUP_PICK], onFinal: handle, onFail: (m) => toast(m) });
   const listening = sp.status === "listening";
   const talk = () => (listening ? sp.stop("send") : sp.start({ autoStop: 20000 }));

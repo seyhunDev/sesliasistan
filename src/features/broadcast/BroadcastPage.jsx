@@ -99,7 +99,9 @@ export function BroadcastPage({ orgId, id }) {
   const [penOpen, setPenOpen] = useState(false); // Dönüşler › Ceza (arayarak seçerek)
   const [entries, setEntries] = useState([]);
   const [groups, setGroups] = useState({});
-  const [pickId, setPickId] = useState(""); // listede seçilen biten start (boşsa sayacın yarışı)
+  const [pickId, setPickId] = useState(""); // Süre'de açık satır (başlamış startın kısa yolları)
+  // Dönüşler, Ceza ve Sesle gir'in yarışı (Seyhun 2026-11-04 aynı anda üç grup): grup şeridinden seçilir, satırın açık/kapalı olmasına bağlı değil
+  const [selId, setSelId] = useState("");
   const [editI, setEditI] = useState(-1); // listede açık olan bekleyen start (plan.order sırası)
   const [pickKey, setPickKey] = useState(""); // satırda açık seçim: cls | grp | prep
   const [menu, setMenu] = useState(false); // ⋯ menüsü (Seyhun 2026-11-01 "çok fazla buton, yanlışlıkla tıklanmasın": az kullanılan ve riskli işler burada)
@@ -324,6 +326,7 @@ export function BroadcastPage({ orgId, id }) {
   // Tehir ailesi tehir akışını, abandone ve birinci tekrar yarışı geçersiz sayar, hazırlık sıradaki startın bayrağı olur, diğerleri ekranda kart.
   const [flagOpen, setFlagOpen] = useState(false);
   const [flagPick, setFlagPick] = useState(null); // { id, rid }
+  const [flagFor, setFlagFor] = useState(""); // bayrak penceresi yalnız bu yarış için açıldı (satırın Bayrak kısa yolu)
   const runningIds = (now) => {
     return live.starts.filter((x) => x.day === today && !x.fin && !x.void && Date.parse(x.at) <= now).map((x) => x.id);
   };
@@ -359,13 +362,14 @@ export function BroadcastPage({ orgId, id }) {
     } else if (s.kind === "prep") {
       p = plan.order.length ? editRow(0, { prep: id }) : changePlan({ prep: id });
     } else {
-      const g = runningIds(now).map((x) => live.starts.find((y) => y.id === x)?.grp || L?.rounds?.[x]?.grp || "").filter(Boolean);
+      const g = (rid ? [rid] : runningIds(now)).map((x) => live.starts.find((y) => y.id === x)?.grp || L?.rounds?.[x]?.grp || "").filter(Boolean);
       p = changePlan(sigNow(id, [...new Set(g)].join(" · ")));
     }
     // onay penceresi veri gidene kadar açık kalır (Çek düğmesinde halka), sonra kapanır ve bildirir
     return Promise.resolve(p).then(() => {
       setFlagPick(null);
       setFlagOpen(false);
+      setFlagFor("");
       toast(`${s.name} çekildi`);
     });
   };
@@ -843,7 +847,12 @@ export function BroadcastPage({ orgId, id }) {
       return "";
     }
   })();
-  const st = (pickId && live.starts.find((x) => x.id === pickId)) || (L ? currentStart(live.starts, L.timer) : null);
+  // "Sarı · 2. yarış" (grup ve grubun kendi yarış numarası)
+  const startLabel = (x) => (x ? [x.grp || L?.rounds?.[x.id]?.grp || "", raceName(x)].filter(Boolean).join(" · ") : "");
+  // Dönüşlerin yarışı: grup şeridinde seçilen; yoksa yarışta olan en son başlayan grup (geri sayımdaki grup değil, henüz startı yok), yoksa sayacın yarışı
+  const racingNow = live.starts.filter((x) => x.day === today && !x.fin && !x.void && Date.parse(x.at) <= capNow);
+  const st = (selId && live.starts.find((x) => x.id === selId)) || racingNow.at(-1) || (L ? currentStart(live.starts, L.timer) : null);
+  const pickable = [...racingNow].reverse().concat(live.starts.filter((x) => x.day === today && x.fin && !x.void).reverse());
   const entry = st && L ? L.rounds[st.id] : null;
   // startın grubu günün grup listesinde varsa ceza aramasında önce o grup (Seyhun 2026-11-02 "mavi grup listesini veririm")
   const dayGrp = st ? groupMap(groupsOn(groups, st.day)) : {};
@@ -1260,7 +1269,7 @@ export function BroadcastPage({ orgId, id }) {
                               <button type="button" onClick={() => (s ? (setEditI(-1), setPickId(isOpen ? "" : s.id)) : (setPickId(""), setEditI(isOpen ? -1 : x.i)))} className="flex min-w-0 flex-1 items-center gap-2.5 py-2 text-left">
                                 <span className="size-2.5 shrink-0 rounded-full" style={{ background: x.grp ? groupColor(x.grp) : "var(--mut)" }} aria-hidden="true" />
                                 <span className="min-w-0 flex-1 leading-tight">
-                                  <b className={`block truncate font-semibold ${x.state === "void" ? "text-mut line-through" : ""}`}>{[x.grp || e?.cls || "Start", x.retry ? "tekrar" : ""].filter(Boolean).join(" · ")}</b>
+                                  <b className={`block truncate font-semibold ${x.state === "void" ? "text-mut line-through" : ""}`}>{[x.grp || e?.cls || "Start", `${r.n}. yarış`, x.retry ? "tekrar" : ""].filter(Boolean).join(" · ")}</b>
                                   <span className={`block truncate text-[0.8125rem] ${x.state === "void" ? "text-warn" : "text-mut"}`}>{sub}</span>
                                 </span>
                                 {time ? <span className={`shrink-0 text-[1.25rem] font-bold tabular-nums ${isCd ? "text-acc" : x.state === "done" ? "text-ok" : ""}`}>{time}</span> : null}
@@ -1298,13 +1307,14 @@ export function BroadcastPage({ orgId, id }) {
                                 </Button>
                               </div>
                             ) : null}
-                            {isOpen && s ? (
-                              // Biten yarışın sınıfı / grubu / bayrağı düzeltilir; aynı anda iki yarışta sayacın olmayanı buradan biter
-                              <div className="space-y-2 px-4 pb-2.5">
-                                {pickSquares(e, (k, v) => setPickOf(s.id, { [k]: v }))}
-                                {isCd || isUp ? (
-                                  <div className="flex flex-wrap gap-2 pt-1">
-                                    {isCd && !paused ? (
+                            {isOpen && s && x.state !== "void" ? (
+                              // Başlamış yarışın kısa yolları (Seyhun 2026-11-04 "başlamış yarışı değiştirmenin mantığı yok; açılınca o yarışı abandone,
+                              // kısa yollar"): sınıf / grup / bayrak burada değişmez. Geri sayımda süre düzeltme ve İptal; yarışta ve bitince ekrana al,
+                              // Dönüşler (bu grubu seçer), yarışta yalnız bu yarışa bayrak (X, S, C…) ve Abandone
+                              <div className="flex flex-wrap gap-2 px-4 pb-2.5 pt-1">
+                                {isCd ? (
+                                  <>
+                                    {!paused ? (
                                       <>
                                         <Button variant="secondary" size="sm" full={false} disabled={tr.rem <= 60} onClick={() => shiftCd(tr.t.end - 60000)}>
                                           −1 dk
@@ -1317,11 +1327,30 @@ export function BroadcastPage({ orgId, id }) {
                                         </Button>
                                       </>
                                     ) : null}
-                                    <Button variant="secondary" size="sm" full={false} className="ml-auto" onClick={() => (isCd ? raceCancel(flow) : setFlagPick({ id: "N", rid: s.id }))}>
-                                      {isCd ? "İptal" : "Abandone"}
+                                    <Button variant="secondary" size="sm" full={false} className="ml-auto" onClick={() => raceCancel(flow)}>
+                                      İptal
                                     </Button>
-                                  </div>
-                                ) : null}
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button variant="secondary" size="sm" full={false} onClick={() => putOnAir(s.id)}>
+                                      {airId === s.id && onAir ? "Ekrandan al" : "Ekrana al"}
+                                    </Button>
+                                    <Button variant="secondary" size="sm" full={false} onClick={() => (setSelId(s.id), setTab("donus"))}>
+                                      Dönüşler
+                                    </Button>
+                                    {live || isUp ? (
+                                      <>
+                                        <Button variant="secondary" size="sm" full={false} onClick={() => (setFlagFor(s.id), setFlagOpen(true))}>
+                                          Bayrak
+                                        </Button>
+                                        <Button variant="secondary" size="sm" full={false} className="ml-auto" onClick={() => setFlagPick({ id: "N", rid: s.id })}>
+                                          Abandone
+                                        </Button>
+                                      </>
+                                    ) : null}
+                                  </>
+                                )}
                               </div>
                             ) : null}
                             {isOpen && !s ? (
@@ -1966,6 +1995,17 @@ export function BroadcastPage({ orgId, id }) {
         {!needSetup && tab === "belge" ? <DocsTab orgId={orgId} race={race} onRace={setRace} onShow={() => (putPin("rank"), toast("Genel sıralama ekranda"))} showing={shNow.item === "rank"} /> : null}
         {!needSetup && tab === "donus" ? (
           <>
+        {/* Grup şeridi (Seyhun 2026-11-04 aynı anda üç grup): Dönüşler, Ceza ve Sesle gir seçili gruba yazar; önce yarışta olanlar, sonra bugün bitenler */}
+        {pickable.length > 1 ? (
+          <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1" aria-label="Grup">
+            {pickable.map((x) => (
+              <button key={x.id} type="button" aria-pressed={st?.id === x.id} onClick={() => setSelId(x.id)} className="masa-b gap-2" data-press>
+                <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(x.grp || L?.rounds?.[x.id]?.grp || "") || "var(--mut)" }} aria-hidden="true" />
+                {[startLabel(x), x.fin ? "bitti" : ""].filter(Boolean).join(" · ")}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {/* Dönüşler (Seyhun 2026-11-02 yayın masası): şamandıralar adım adım (geçen tekne sayısı), son şamandıra üstte, lider sarı */}
         {entry?.route?.length ? (
           <>
@@ -2067,11 +2107,11 @@ export function BroadcastPage({ orgId, id }) {
       <FlagSheet
         open={flagOpen || !!flagPick}
         pick={flagPick}
-        onPick={(x) => setFlagPick(x)}
-        onClose={() => (setFlagPick(null), setFlagOpen(false))}
+        onPick={(x) => setFlagPick(flagFor ? { ...x, rid: flagFor } : x)}
+        onClose={() => (setFlagPick(null), setFlagOpen(false), setFlagFor(""))}
         onBack={() => setFlagPick(null)}
         onRaise={() => flagPick && raiseFlag(flagPick.id, flagPick.rid || "")}
-        ctx={{ counting: countingAt(capNow), racing: runningIds(capNow).length > 0, apUp: plan.status === "ap", at: plan.at, prep: plan.order[0]?.prep || plan.prep || "", ridName: flagPick?.rid ? raceName(live.starts.find((x) => x.id === flagPick.rid) || {}) : "" }}
+        ctx={{ counting: countingAt(capNow), racing: runningIds(capNow).length > 0, apUp: plan.status === "ap", at: plan.at, prep: plan.order[0]?.prep || plan.prep || "", one: !!flagFor, oneName: flagFor ? startLabel(live.starts.find((x) => x.id === flagFor)) : "", ridName: flagPick?.rid ? startLabel(live.starts.find((x) => x.id === flagPick.rid)) : "" }}
       />
       {/* Tehir (Seyhun 2026-11-03 "alt çubuktan yukarı açılsın, kare belirgin düğmeler: İner, Yer, İnince, Sebep, Tamam") */}
       <Sheet open={!!ap && (plan.status !== "ap" || !!ap.edit)} onClose={() => setAp(null)} title={ap?.edit ? "Tehiri düzelt" : "Tehir"} navy>
@@ -2340,7 +2380,7 @@ export function BroadcastPage({ orgId, id }) {
           setPickOf(st.id, { pen: next });
         }}
       />
-      <RoundsScreen open={voice} onClose={() => (setVoice(false), reload())} orgId={orgId} raceId={id} startId={st?.id || ""} />
+      <RoundsScreen open={voice} onClose={() => (setVoice(false), reload())} orgId={orgId} raceId={id} startId={st?.id || ""} onStart={setSelId} />
       {list && typeof document !== "undefined"
         ? createPortal(
             <div className="fixed inset-0 z-50 flex flex-col bg-bg pt-[env(safe-area-inset-top)]">
@@ -2461,12 +2501,14 @@ function FlagIcons({ ids, size = "md" }) {
 }
 function FlagSheet({ open, pick, onPick, onClose, onBack, onRaise, ctx }) {
   const groups = [];
-  if (ctx.racing) groups.push(["Abandone", FLAG_ROWS.abandone], ["Rota", FLAG_ROWS.rota], ["Geri çağırma", FLAG_ROWS.geri]);
-  if (!ctx.apUp) groups.unshift(["Tehir", FLAG_ROWS.tehir]);
-  const hours = !ctx.apUp && !ctx.counting && !ctx.racing && /^\d\d:\d\d$/.test(ctx.at || "");
-  const prep = !ctx.counting && !ctx.racing;
+  // ctx.one: yalnız bir yarış için (Süre satırının Bayrak kısa yolu): tehir, hazırlık ve genel işaretler yok, abandone yalnız N
+  if (ctx.one) groups.push(["Abandone", ["N"]], ["Rota", FLAG_ROWS.rota], ["Geri çağırma", FLAG_ROWS.geri]);
+  else if (ctx.racing) groups.push(["Abandone", FLAG_ROWS.abandone], ["Rota", FLAG_ROWS.rota], ["Geri çağırma", FLAG_ROWS.geri]);
+  if (!ctx.apUp && !ctx.one) groups.unshift(["Tehir", FLAG_ROWS.tehir]);
+  const hours = !ctx.one && !ctx.apUp && !ctx.counting && !ctx.racing && /^\d\d:\d\d$/.test(ctx.at || "");
+  const prep = !ctx.one && !ctx.counting && !ctx.racing;
   const s = pick ? signalOf(pick.id) : null;
-  const info = s ? (s.hours && ctx.at ? `Start ${ctx.at} yerine ${addHours(ctx.at, s.hours) || "yarın"}. ${s.info}` : pick.rid && ctx.ridName ? `${ctx.ridName} abandone edilir. Start alanına dönülür.` : s.info) : "";
+  const info = s ? (s.hours && ctx.at ? `Start ${ctx.at} yerine ${addHours(ctx.at, s.hours) || "yarın"}. ${s.info}` : pick.rid && ctx.ridName ? (s.kind === "void" ? `${ctx.ridName} abandone edilir. Start alanına dönülür.` : `${ctx.ridName}: ${s.info}`) : s.info) : "";
   const tile = (id, label) => {
     const x = signalOf(id);
     return (
@@ -2477,7 +2519,7 @@ function FlagSheet({ open, pick, onPick, onClose, onBack, onRaise, ctx }) {
     );
   };
   return (
-    <Sheet open={open} onClose={onClose} title="Bayrak çek" navy>
+    <Sheet open={open} onClose={onClose} title={ctx.one && ctx.oneName ? `Bayrak · ${ctx.oneName}` : "Bayrak çek"} navy>
       <div className="space-y-3 pb-3">
         {groups.map(([n, ids]) => (
           <div key={n}>
@@ -2507,10 +2549,12 @@ function FlagSheet({ open, pick, onPick, onClose, onBack, onRaise, ctx }) {
             ))}</div>
           </div>
         ) : null}
-        <div>
-          <div className="masa-aplab">Diğer</div>
-          <div className="masa-flaggrid">{[...(ctx.racing ? [] : ["V"]), ...FLAG_ROWS.diger].map((id) => tile(id))}</div>
-        </div>
+        {ctx.one ? null : (
+          <div>
+            <div className="masa-aplab">Diğer</div>
+            <div className="masa-flaggrid">{[...(ctx.racing ? [] : ["V"]), ...FLAG_ROWS.diger].map((id) => tile(id))}</div>
+          </div>
+        )}
         {s ? (
           <div className="masa-flagc">
             <div className="flex items-start gap-3">
@@ -2522,7 +2566,7 @@ function FlagSheet({ open, pick, onPick, onClose, onBack, onRaise, ctx }) {
               </div>
             </div>
             <div className="mt-3 flex gap-2">
-              <Button variant="secondary" className="flex-1" onClick={pick?.rid || pick?.id === "AP" ? onClose : onBack}>
+              <Button variant="secondary" className="flex-1" onClick={!ctx.one && (pick?.rid || pick?.id === "AP") ? onClose : onBack}>
                 Vazgeç
               </Button>
               <Button className="flex-1" onClick={onRaise}>
