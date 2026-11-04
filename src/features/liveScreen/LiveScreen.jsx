@@ -3626,7 +3626,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
       const dur = data.timer?.dur || 300;
       top = { bd: "Start", lab: cs.rem != null && cs.rem <= 60 ? "Son dakika" : cs.label, at: hm, tm: cs.rem === 0 ? "" : cs.value, who: gWho(e), rule: seqRule(e), bar: cs.rem != null ? (1 - cs.rem / dur) * 100 : null, cls: cs.rem != null && cs.rem <= 60 ? "o" : "" };
     }
-    right = <GProg prog={prog} />;
+    // program sol alttaki panelde (Seyhun 2026-11-04 "neden iki program"): sağ üstte ayrıca gösterilmez
     left = sel ? <GEarly data={data} rid={sel.id} /> : null;
   } else if (mode === "ap") {
     const apDown = plan.status !== "ap";
@@ -3679,7 +3679,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     wOpen = wCan && rk === "wind" && el >= 1.2 && (!pc.auto || el < pc.sec - 1.8);
     panel = rk === "wind" ? null : rk === "course" && crs ? <GCourse data={data} sel={null} racing={false} /> : <GProg prog={prog} />;
     if (!left && top && have.length) drw = <GDrawer rk={rk} have={have} sec={pc.sec} auto={pc.auto} data={data} now={now} prog={prog} />;
-  } else if (!right && ["wait", "between", "ap"].includes(mode) && !vd) right = <GProg prog={prog} />;
+  }
   // Rüzgâr · Parkur · Program paneli her durumda solda en altta (Seyhun 2026-11-03 19:59)
   if (!drw && mode !== "none") {
     const route = sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait");
