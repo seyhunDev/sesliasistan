@@ -3398,7 +3398,8 @@ function ScWind({ data, now, prog, big = false }) {
             </b>
             <span>{dirText(c)}</span>
           </div>
-          {gu || ex ? <div className="sc-gu">{cap([gu, ex].filter(Boolean).join(" · "))}</div> : null}
+          {gu ? <div className="sc-gu">{cap(gu)}</div> : null}
+          {ex ? <div className="sc-gx">{cap(ex)}</div> : null}
         </>
       ) : null}
       {rows.length >= 2 ? (
@@ -3496,6 +3497,7 @@ function ScGen({ data, who, onFull }) {
   const bs = scBoards(data);
   const b = bs.find((x) => who?.cls && x.cls === who.cls) || bs[0];
   if (!b?.all.length) return null;
+  const cm = catMarks(b);
   return (
     <button type="button" className="sc-rd" onClick={() => onFull("all")}>
       <div className="sc-rdh">
@@ -3504,16 +3506,20 @@ function ScGen({ data, who, onFull }) {
       </div>
       <ol>
         {b.all.slice(0, SC_GEN).map((r, i) => (
-          <li key={`${r.sail}${i}`}>
+          <li key={`${r.sail}${i}`} className={`p${r.p}`}>
             <u>{r.p}</u>
             <b>{r.sail}</b>
             <em>{shortName(r.name) || ""}</em>
+            <ScMk mk={cm.get(String(r.sail))} />
+            <i className="cl">{shortClub(r.club) || ""}</i>
           </li>
         ))}
       </ol>
     </button>
   );
 }
+// kategori derecesi çipi (K3)
+const ScMk = ({ mk }) => (mk?.length ? <s className="mk">{mk.join(" ")}</s> : null);
 // Grup etiketi (süre kartıyla aynı renk)
 function ScGrp({ g }) {
   if (!g) return null;
@@ -3554,13 +3560,20 @@ function ScFleet({ data, sel, mode, now, who, today, onFull }) {
 }
 // Grubun sporcuları (Seyhun 2026-11-04 "genel sıralamadaki derecesi de gösterilmeli; ilk beş sabit, sonrakiler ileriye doğru; sıralama yoksa
 // baştan itibaren sırayla, tüm tekneler"): 03 genel sıralamayla aynı sayfa mantığı (scPageOf, ScPgs)
+// kız / Junior / Bambino sporcunun kendi kategorisindeki derecesi: yelken → "K3" (hepsinde olan kategori catList'te yok, yazılmaz)
+function catMarks(b) {
+  const m = new Map();
+  for (const c of b?.catList || []) for (const x of onlyCat(b.all, c)) m.set(String(x.sail), [...(m.get(String(x.sail)) || []), `${c[0]}${x.place}`]);
+  return m;
+}
 function scGroupRows(data, who, today) {
   const boats = scBoats(data, who, today);
   if (!boats.length) return { list: [], ranked: false };
   const bs = scBoards(data);
   const b = bs.find((x) => who?.cls && x.cls === who.cls) || (bs.length === 1 ? bs[0] : null);
   const rk = new Map((b?.all || []).map((r) => [String(r.sail), r.p]));
-  const list = boats.map((x) => ({ ...x, p: rk.get(String(x.sail)) ?? null }));
+  const cm = catMarks(b);
+  const list = boats.map((x) => ({ ...x, p: rk.get(String(x.sail)) ?? null, mk: cm.get(String(x.sail)) || [] }));
   const ranked = list.some((x) => x.p != null);
   if (ranked) list.sort((a, c) => (a.p == null) - (c.p == null) || (Number(a.p) || 0) - (Number(c.p) || 0) || Number(a.sail) - Number(c.sail));
   return { list, ranked };
@@ -3605,16 +3618,18 @@ function ScGroup({ data, who, today, now }) {
       </div>
       <ol key={n > 1 ? pg : 0}>
         {rows.map((x, i) => (
-          <li key={x.sail} className={`${n > 1 && top && i === top ? "cut" : ""}${n > 1 && i >= top ? " fl" : ""}`}>
+          <li key={x.sail} className={`p${x.p ?? ""}${n > 1 && top && i === top ? " cut" : ""}${n > 1 && i >= top ? " fl" : ""}`}>
             {ranked ? <u>{x.p ?? ""}</u> : null}
             <b>{x.sail}</b>
             <em>{shortName(x.name) || ""}</em>
+            <ScMk mk={x.mk} />
+            <i className="cl">{shortClub(x.club) || ""}</i>
           </li>
         ))}
       </ol>
       {n > 1 ? (
         <div className="sc-rdm sc-rdp">
-          <span>{top ? `İlk ${top} · ${from}–${to}` : `${from}–${to}`}</span>
+          <span>{`${from}–${to}`}</span>
           <ScPgs n={n} pg={pg} k={k} />
         </div>
       ) : null}
@@ -3654,7 +3669,7 @@ function Sc01({ t, data, prog, now, today, lock, ap = false, only = "" }) {
 // üstte tek satır yarış · sınıf · grup · start saati; büyük süre önünde − (geri) ya da + (ileri), geri sayım sarı-turuncu değil mavi tonda,
 // ileri beyaz; altında dakikanın saniyeleri ince çubuk (geride erir, ileride dolar); bayrak, erken çıkan, işaret, rüzgâr birer satır
 const SC_CK0 = new Map(); // geri sayımın bu ekranda ilk görülen kalan süresi (start başına; kart yeniden kurulunca kaybolmasın)
-function ScClock({ t, data, sel, mode, now, today }) {
+function ScClock({ t, data, sel, mode, now, today, noWind = false }) {
   const ea = mode === "race" && sel && now - Date.parse(sel.at) < 15 * 60e3 ? earlyOf(data, sel.id) : [];
   const n = /^(\d+)\./.exec(t.who?.name || "")?.[1];
   const num = !t.tx && /^\d{1,2}(:\d\d){1,2}$/.test(String(t.tm || ""));
@@ -3674,6 +3689,11 @@ function ScClock({ t, data, sel, mode, now, today }) {
           {g ? <span className="sc-ckg" style={{ background: gc, color: inkOn(gc) }}>{g}</span> : null}
           {t.who?.cls ? <span className="sc-ckc">{t.who.cls}</span> : null}
           {n ? <span className="sc-ckn">{`${n}. yarış`}</span> : null}
+        </div>
+      ) : null}
+      {!(g || t.who?.cls || n) && t.k && !String(t.tm || "").toLocaleLowerCase("tr-TR").includes(String(t.k).toLocaleLowerCase("tr-TR")) ? (
+        <div className="sc-ckw">
+          <span className="sc-ckc">{t.k}</span>
         </div>
       ) : null}
       <div className={`sc-ckt${num ? "" : " tx"}`}>
@@ -3706,7 +3726,7 @@ function ScClock({ t, data, sel, mode, now, today }) {
         </div>
       ) : null}
       <ScSig data={data} today={today} />
-      <ScWindLine data={data} now={now} />
+      {noWind ? null : <ScWindLine data={data} now={now} />}
     </div>
   );
 }
@@ -3825,7 +3845,10 @@ function Sc03({ data, sel, mode, now, onFull }) {
   const rows = cat ? inCat.slice(0, SC_GEN).map((r) => ({ ...r, p: r.place })) : b.all.slice(0, SC_GEN);
   const to = rows.length;
   const catName = (c) => (c === "Kız" ? "Kızlar" : c);
-  const marks = (r) => b.catList.filter((c) => c !== cat && r.cats.includes(c)).map((c) => c[0]);
+  // kız (ve Junior, Bambino) sporcunun kendi kategorisindeki derecesi (Seyhun 2026-11-04 "kızsa kızlar arasındaki derecesini de genel sıralamada
+  // gösterelim; herkes Junior ise göstermiyoruz"): "K3"; hepsinde olan kategori catList'te yok
+  const cm = catMarks(b);
+  const marks = (r) => (cm.get(String(r.sail)) || []).filter((m) => !cat || m[0] !== cat[0]);
   return (
     <button type="button" className="sc-board wide" onClick={() => onFull("all")}>
       <header>
@@ -4096,9 +4119,9 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       <div className="sc-body" key={sc}>
         {body}
       </div>
-      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} /> : null}>
+      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={sc === "01" && item === "wind"} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
-        {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} /> : listOn ? side === "gen" ? <ScGen data={data} who={lwho} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
+        {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} /> : listOn ? side === "gen" || (!lwho?.grp && mode !== "race" && scBoards(data).length) ? <ScGen data={data} who={lwho} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
       {bumpOn ? (
         <div className="sc-bump" key={bump.t} aria-hidden="true">
