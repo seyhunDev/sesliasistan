@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Label, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { dropSheet, resultLine } from "@/lib/resultSheet";
 import { dropNoticeFile, loadNoticeFile } from "./noticeFile";
 import { importResults, importToast } from "./resultsImport";
@@ -18,6 +19,7 @@ const box = "h-10 w-16 rounded-lg bg-bg px-2 text-center text-[0.9375rem] tabula
 // athletes: yarıştaki sporcular; club: kulübün bütün etkin sporcuları (yarışta seçili olmayan bulunursa yarışa eklenir)
 export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddAthletes, onOpen, upload: canUpload = true }) {
   const toast = useToast();
+  const ask = useConfirm();
   const res = race.results || { fleet: "", rows: {} };
   const files = res.files || [];
   const pickRef = useRef(null);
@@ -45,12 +47,15 @@ export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddA
       toast(e?.message || "Belge açılamadı");
     }
   };
-  const drop = (meta) => {
-    if (!confirm("Bu sonuç belgesi ve ondan okunan sıralar silinsin mi?")) return;
-    onChange(dropSheet(res, meta.id));
-    dropNoticeFile(orgId, meta);
-    if (race.id) dropSheetDoc(orgId, race.id, meta.id);
-  };
+  const drop = (meta) =>
+    ask({
+      title: "Sonuç belgesi silinsin mi?",
+      text: "Ondan okunan sıralar da silinir.",
+      run: async () => {
+        await Promise.all([Promise.resolve(dropNoticeFile(orgId, meta)).catch(() => {}), race.id ? dropSheetDoc(orgId, race.id, meta.id) : null]);
+        onChange(dropSheet(res, meta.id));
+      },
+    });
 
   const sorted = [...athletes].sort((a, b) => (res.rows?.[a.id]?.place || 999) - (res.rows?.[b.id]?.place || 999));
   return (
