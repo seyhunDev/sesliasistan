@@ -8,8 +8,9 @@ import { hereLine } from "./rainLine";
 // Gösterilir: burada yağıyorsa, 30 km içinde yağış varsa ya da tahmin bugünün kalanında yağış diyorsa ("Burada ve 30 km içinde şu an yağış yok").
 const HM = (ms) => new Date(ms).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 
-export function NowRain({ place, rows }) {
-  const radar = useRainRadar(place);
+export function NowRain({ place, rows, radar: given }) {
+  const own = useRainRadar(given === undefined ? place : null);
+  const radar = given === undefined ? own : given;
   const h0 = new Date().getHours();
   const text = hereLine(radar, (rows || []).some((r) => +r.hh >= h0 && r.mm >= 0.1), HM);
   if (!text) return null;

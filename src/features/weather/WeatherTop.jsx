@@ -5,6 +5,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { useWindObs } from "./useWindObs";
 import { useRainRadar } from "./useRainRadar";
 import { NowRain } from "./NowRain";
+import { radarNow, radarRows } from "./rainLine";
 import { RegionMap, pointName } from "./RegionMap";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -33,15 +34,17 @@ export function WeatherTop({ w, refresh }) {
   const [sel, setSel] = useState(all[0]?.date || today);
   const past = w.past || [];
   const navDays = [...past, ...all].map((d) => d.date); // önceki 5 gün kapalı sayılır: açılışta bugün, geri gidilebilir
-  const rows = dayHours(w, sel) || [];
+  const place = getPlace();
+  const radar = useRainRadar(place);
   const info = [...past, ...all].find((d) => d.date === sel) || all[0];
   const isToday = sel === all[0]?.date;
-  const n = isToday ? nowOf(w) : null;
+  // Radar burada yağış görmüyorsa şu anki yağmur simgesi ve son saatlerin yağmuru gösterilmez (ana sayfa ile aynı; rainLine radarNow / radarRows)
+  const fcRows = dayHours(w, sel) || [];
+  const rows = isToday ? radarRows(fcRows, radar) : fcRows;
+  const n = isToday ? radarNow(nowOf(w), radar) : null;
   const top = rows.length ? rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]) : null;
-  const place = getPlace();
   const st = useWindObs(place, sel, today)?.station;
   const obToday = useWindObs(place, today, today);
-  const radar = useRainRadar(place);
   const { profile } = useAuth();
   const toast = useToast();
   // Haritada dokunulan nokta seçilen yer olur (Ayarlar › Hava konumu gibi profile de yazılır); "Geri al" eski yeri geri koyar
@@ -98,7 +101,7 @@ export function WeatherTop({ w, refresh }) {
           {rows.length > 0 && (
             <div className="rounded-[1.25rem] bg-[#0b1a33] p-3">
               <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} />
-              {isToday && <NowRain place={place} rows={rows} />}
+              {isToday && <NowRain place={place} rows={fcRows} radar={radar} />}
             </div>
           )}
         </section>
