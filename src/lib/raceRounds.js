@@ -11,7 +11,21 @@ export const digits = (s) => String(s || "").replace(/\D/g, "");
 const MARK = /^(?:[1-9]|F)$/;
 const SAIL = /^\d{1,6}$/;
 
-export const CLASS_PICK = ["Optimist", "ILCA 4", "ILCA 6", "ILCA 7"];
+export const CLASS_PICK = ["Optimist", "Optimist Junior", "ILCA 4", "ILCA 6", "ILCA 7"];
+// Yarışın sınıfları (Seyhun 2026-11-04 "alınan yarışta hangi sınıf varsa direkt seçili olsun"): siteden izlenen sınıf (race.site.cls) ve
+// talimattaki sınıflar (race.notice.classes) CLASS_PICK adlarına çevrilir
+export function raceClasses(race) {
+  const src = [race?.site?.cls, ...(Array.isArray(race?.notice?.classes) ? race.notice.classes : [])].filter(Boolean).map((x) => String(x).toLocaleLowerCase("tr-TR").replace(/ı/g, "i"));
+  const out = new Set();
+  for (const t of src) {
+    if (/optim/.test(t)) out.add(/junior|\bjr\b|genç|minik/.test(t) ? "Optimist Junior" : "Optimist");
+    const m = /ilca\s*([467])/.exec(t) || /laser\s*(4)\.7/.exec(t);
+    if (m) out.add(`ILCA ${m[1]}`);
+    else if (/laser\s*radial/.test(t)) out.add("ILCA 6");
+    else if (/laser\s*(standart|standard)/.test(t)) out.add("ILCA 7");
+  }
+  return CLASS_PICK.filter((c) => out.has(c));
+}
 export const PREP_PICK = ["P", "I", "Z", "U", "Kara"];
 export const prepName = (p) => (p === "Kara" ? "Kara bayrak" : p ? `${p} bayrağı` : "");
 // Ceza ve sonuç kodları (Seyhun 2026-11-02 yayın incelemesi): puanı grup sayısı + 1, sıralamada en altta

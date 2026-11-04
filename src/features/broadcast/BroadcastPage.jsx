@@ -39,7 +39,7 @@ import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, coursePoints } from "@/lib/courseCard";
-import { SCENES, SCENE_NAME, cleanCourseShow, sceneOf, sceneScreen, CLASS_PICK, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
+import { SCENES, SCENE_NAME, cleanCourseShow, sceneOf, sceneScreen, CLASS_PICK, raceClasses, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { autoCaption } from "@/lib/raceCaption";
@@ -459,6 +459,37 @@ export function BroadcastPage({ orgId, id }) {
     setMade(0);
   };
   // Kurulum: yarışın sınıfları ve sınıf sınıf grupları (yarış boyunca aynı; ⋯ › Sınıf ve gruplar ile değişir)
+  // Renk listesi gelince (siteden ya da yüklenen) bugünün grupları sınıfa kendiliğinden eklenir (Seyhun 2026-11-04); hiçbiri silinmez.
+  // Birden çok sınıfta grup, o gruptaki teknelerin kayıt listesindeki sınıfına göre
+  const grpKey = (() => {
+    if (!plan.sets.length) return "";
+    const gm = groupMap(groupsOn(groups, today));
+    const byGrp = {};
+    for (const [sail, g] of Object.entries(gm)) (byGrp[g] = byGrp[g] || []).push(sail);
+    const add = {};
+    for (const [g, sails] of Object.entries(byGrp)) {
+      const cl = plan.sets.length === 1 ? plan.sets[0].cls : (() => {
+        const cs = sails.map((sl) => entries.find((e) => String(e.sail) === sl)?.cls || "").filter(Boolean);
+        const lc = (x) => String(x).toLocaleLowerCase("tr-TR").replace(/ı/g, "i");
+        return plan.sets.find((x) => cs.some((c) => lc(c).startsWith(lc(x.cls)) || lc(x.cls).startsWith(lc(c))))?.cls || "";
+      })();
+      const set = plan.sets.find((x) => x.cls === cl);
+      if (set && !set.grps.includes(g)) (add[cl] = add[cl] || []).push(g);
+    }
+    return Object.keys(add).length ? JSON.stringify(add) : "";
+  })();
+  const grpRef = useRef("");
+  useEffect(() => {
+    if (!grpKey || grpRef.current === grpKey) return undefined;
+    grpRef.current = grpKey;
+    const add = JSON.parse(grpKey);
+    const t = setTimeout(() => {
+      changePlan({ sets: plan.sets.map((x) => (add[x.cls] ? { ...x, grps: [...x.grps, ...add[x.cls]].slice(0, 6) } : x)) });
+      toast(`Renk listesinden gruplar eklendi: ${Object.values(add).flat().join(", ")}`);
+    }, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grpKey]);
   const saveSetup = (sets) => {
     changePlan({ sets, cls: sets[0]?.cls || "", grps: sets[0]?.grps || [] });
     setSetupOpen(false);
@@ -984,7 +1015,7 @@ export function BroadcastPage({ orgId, id }) {
           </div>
         ) : null}
         {needSetup ? (
-          <Setup sets={plan.sets} onSave={saveSetup} onCancel={plan.sets.length ? () => setSetupOpen(false) : null} />
+          <Setup sets={plan.sets} guess={raceClasses(race)} onSave={saveSetup} onCancel={plan.sets.length ? () => setSetupOpen(false) : null} />
         ) : needFlag ? (
           <FlagPick no={nextRow?.n || 1} again={!!nextRow?.retry} sets={[{ cls: nextPlan.cls, grps: nextPlan.grp ? [nextPlan.grp] : [] }]} value="" onPick={(g) => (editRow(0, { prep: g }), setRetryPick(true))} />
         ) : (
@@ -2428,9 +2459,10 @@ const PT_LABEL = { komite: "Komite", pin: "Pin", m1: "1 (orsa)", m2: "2 (apaz)",
 const STEPS = ["Sınıflar", "Gruplar"];
 const bigBtn = "flex h-12 w-full items-center justify-center rounded-[1.125rem] bg-white text-[1.125rem] font-semibold text-[#0b1a33] shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-0.5 active:shadow-none disabled:opacity-40";
 const backBtn = "ck-glass flex h-12 shrink-0 items-center justify-center rounded-[1.125rem] px-5 text-[1.0625rem] font-semibold";
-function Setup({ sets, onSave, onCancel }) {
-  const [step, setStep] = useState(1);
-  const [clss, setClss] = useState(() => sets.map((x) => x.cls));
+function Setup({ sets, guess = [], onSave, onCancel }) {
+  // yarışın sınıfı biliniyorsa seçili gelir, doğrudan grup adımı (gruplar çoğu zaman ilk gün renk listesiyle belli olur)
+  const [step, setStep] = useState(() => (!sets.length && guess.length ? 2 : 1));
+  const [clss, setClss] = useState(() => (sets.length ? sets.map((x) => x.cls) : guess));
   const [grps, setGrps] = useState(() => Object.fromEntries(sets.map((x) => [x.cls, x.grps])));
   const starts = clss.reduce((n, c) => n + Math.max(1, (grps[c] || []).length), 0);
   const chip = (on) => `flex h-12 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.9375rem] font-semibold ${on ? "bg-white text-[#0b1a33]" : "ck-glass text-white/85"}`;
@@ -2479,7 +2511,7 @@ function Setup({ sets, onSave, onCancel }) {
               <div key={c} className="ck-glass rounded-[0.875rem] p-3">
                 <p className="mb-2 text-[0.9375rem] font-semibold">{c}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {GROUP_PICK.map((g) => {
+                  {[...GROUP_PICK, ...(grps[c] || []).filter((g) => !GROUP_PICK.includes(g))].map((g) => {
                     const on = (grps[c] || []).includes(g);
                     return (
                       <button key={g} type="button" aria-pressed={on} onClick={() => setGrps((d) => ({ ...d, [c]: on ? (d[c] || []).filter((x) => x !== g) : [...(d[c] || []), g] }))} className={chip(on)}>
@@ -2496,7 +2528,7 @@ function Setup({ sets, onSave, onCancel }) {
             <button type="button" onClick={() => setStep(1)} className={backBtn}>
               ‹ Geri
             </button>
-            <button type="button" onClick={() => onSave(clss.map((c) => ({ cls: c, grps: GROUP_PICK.filter((g) => (grps[c] || []).includes(g)) })))} className={bigBtn}>
+            <button type="button" onClick={() => onSave(clss.map((c) => ({ cls: c, grps: [...GROUP_PICK.filter((g) => (grps[c] || []).includes(g)), ...(grps[c] || []).filter((g) => !GROUP_PICK.includes(g))] })))} className={bigBtn}>
               {`Kaydet · ${starts} start`}
             </button>
           </div>
