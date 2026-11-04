@@ -1205,9 +1205,6 @@ async function rainStrip(h) {
     if (process.env.WX_SHOT) {
       const hero = page.locator(".ck-hero").first();
       await hero.screenshot({ path: `${process.env.WX_SHOT}-hero-tablo.png` });
-      await page.getByRole("button", { name: "Grafik", exact: true }).first().click();
-      await page.waitForTimeout(900);
-      await hero.screenshot({ path: `${process.env.WX_SHOT}-hero-grafik.png` });
     }
     return [cols >= 9 && rain === 1 && now === 1, `sütun ${cols} · yağmur ${rain} · şimdi ${now} · kaydırma ${Math.round(shift)}`];
   });
@@ -1229,26 +1226,6 @@ async function rainStrip(h) {
     await page.waitForTimeout(400);
     const races = club.filter((x) => x.includes("Yarışlar")).length;
     return [titles.length >= 5 && titles[0] === "Günlük" && shut === 0 && races === 1 && !club.some((x) => /Tüm yarışlar|günlüğü/.test(x)) && one === 1 && sea.some((x) => x.includes("Hava")) && !sea.some((x) => x.includes("Rüzgâr")), `gruplar ${titles.join(",")} · açık ${shut}/${one} · kulüp ${club.join(",")} · deniz ${sea.join(",")}`];
-  });
-  // Seyhun 2026-11-01 "ana sayfada hava durumu yüksekliği çok fazla": grafik kalan yeri doldurmaz, alçak kalır; altındaki plan ve düğmeler yukarı gelir
-  await page.getByRole("button", { name: "Grafik", exact: true }).first().click();
-  await check("Ana sayfa", "alçak grafik", "her telefon boyunda rüzgâr grafiği alçak (60–170 px), kalan yeri doldurmaz", async () => {
-    const out = [];
-    for (const [w, h] of [[375, 667], [390, 844], [430, 932]]) {
-      await page.setViewportSize({ width: w, height: h });
-      await page.waitForTimeout(700);
-      const m = await page.evaluate(() => {
-        const sec = document.querySelector("section[aria-label='Bugün'] > div");
-        const bar = document.querySelector("nav[aria-label='Sekmeler']");
-        const btn = document.querySelector("section[aria-label='Bugün'] nav[aria-label='İşler'] .hb, section[aria-label='Bugün'] a[href='/notes']");
-        const svg = document.querySelector("svg[aria-label='Bugünün saatlik rüzgâr grafiği']");
-        return { end: sec ? Math.round(sec.getBoundingClientRect().bottom) : -1, bar: bar ? Math.round(bar.getBoundingClientRect().top) : -1, btn: btn ? Math.round(btn.getBoundingClientRect().top) : -1, svg: svg ? Math.round(svg.getBoundingClientRect().height) : 0 };
-      });
-      if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ilk-${w}.png` });
-      out.push({ w, ...m, ok: m.end > 0 && m.bar > 0 && m.svg >= 60 && m.svg <= 170 });
-    }
-    await page.setViewportSize({ width: 390, height: 844 });
-    return [out.every((o) => o.ok), out.map((o) => `${o.w}: son ${o.end} çubuk ${o.bar} düğme ${o.btn} grafik ${o.svg}`).join(" · ")];
   });
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });

@@ -14,13 +14,12 @@ import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/li
 import { initials, todayStr } from "@/lib/utils/format";
 import { HourTable } from "@/features/weather/HourTable";
 import { DayTimeline } from "./DayTimeline";
-import { CockpitWind } from "./CockpitWind";
 import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
 
 // Ana sayfanın lacivert üst kısmı ("kokpit"; Seyhun 2026-10-21 "C · Lacivert kokpit" seçti, örnek ana-sayfa/futuristik/c2-kokpit-ruzgar.png):
 // logo + tarih + doğum günü + zil + Ayarlar; altında bugünün havası tek satırda (sıcaklık, gökyüzü, en düşük/en yüksek;
-// sağda şimdiki rüzgâr "rüzgâr–sağanak kn"), saat saat hava tablosu (HourTable; 2026-11-03 rüzgâr grafiği CockpitWind yerine) ve sıradaki iş (nextPlan). Hava satırı ya da grafiğe dokununca
+// sağda şimdiki rüzgâr "rüzgâr–sağanak kn"), saat saat hava tablosu (HourTable) ve sıradaki iş (nextPlan). Hava satırı ya da grafiğe dokununca
 // hava sayfası açılır. Lacivert her iki temada aynı (logonun gecesi); altındaki açık zemin üstüne yuvarlak köşeyle biner (OwnerHome).
 // children (iş düğmeleri, büyük günler) en altta, araya boşluk konmaz (Seyhun 2026-10-21: "çok boşluklar oldu"; tam ekran uzatma kaldırıldı).
 // Alt boşluk küçük ve sol alttaki mor ışık yok (ck-top; Seyhun 2026-10-23 "niye notların arka planı farklı"): altındaki lacivert notlar kesintisiz devam eder.
@@ -44,7 +43,6 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) 
   const dname = cap(new Date(`${date}T12:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""));
   const goWeather = () => (w ? router.push("/weather") : refresh(true));
   const home = getPlace();
-  const [view, setView] = useView();
   // Hissedilen ve günün yağışı: seçili günün saatlik satırlarından (bugünse şimdiki saat, değilse öğle)
   const cur = rows?.find((h) => h.hh === (isToday ? String(now.getHours()).padStart(2, "0") : "13"));
   const mmDay = rows ? rows.reduce((a, h) => a + (h.mm || 0), 0) : 0;
@@ -96,21 +94,8 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) 
           </button>
           {rows?.length > 0 && (
             <>
-              <div role="group" aria-label="Hava görünümü" className="mt-3 grid grid-cols-2 rounded-xl bg-black/25 p-[3px]">
-                {[["grafik", "Grafik"], ["tablo", "Tablo"]].map(([k, l]) => (
-                  <button key={k} type="button" data-press aria-pressed={view === k} onClick={() => setView(k)} className={`h-[1.875rem] rounded-[0.5625rem] text-[0.8125rem] font-semibold ${view === k ? "bg-white text-[#12233f]" : "text-white/80"}`}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-2.5 overflow-hidden rounded-2xl bg-[#0b1a33]/40 p-3 ring-1 ring-inset ring-white/10">
-                {view === "tablo" ? (
-                  <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} className="[&_[data-hour-table]]:!rounded-none [&_[data-hour-table]]:!border-0 [&_[data-hour-table]]:!bg-transparent" />
-                ) : (
-                  <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className="block w-full text-left">
-                    <CockpitWind key={date} rows={rows} date={date} />
-                  </button>
-                )}
+              <div className="mt-2.5 overflow-hidden rounded-2xl">
+                <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} />
               </div>
             </>
           )}
@@ -129,23 +114,6 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) 
   );
 }
 
-// Hava görünümü sekmesi (Grafik / Tablo) cihazda saklanır
-function useView() {
-  const [view, setView] = useState(() => {
-    try {
-      return (typeof localStorage !== "undefined" && localStorage.getItem("sa-home-wx")) === "tablo" ? "tablo" : "grafik";
-    } catch {
-      return "grafik";
-    }
-  });
-  const pick = (v) => {
-    setView(v);
-    try {
-      localStorage.setItem("sa-home-wx", v);
-    } catch {}
-  };
-  return [view, pick];
-}
 // Gökyüzü rengi anahtarı (globals.css .ck-hero[data-sky]): açık gün mavi, gece lacivert, bulut gri, yağmur kurşun, fırtına koyu, kar açık
 function skyKey(n) {
   if (!n) return "cloud";
