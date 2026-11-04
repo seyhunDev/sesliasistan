@@ -53,3 +53,19 @@ export function liveUrl(base, scr, stream, camBy, entry) {
   const src = id ? sourcesOf(stream).find((x) => x.id === id) : null;
   return src?.url || base;
 }
+
+// Ekrandaki görüntünün grubu (Seyhun 2026-11-04 "drone'a sen mavi grup demişimdir; canlı yayında onu seçtiğimde mavi grubun yayını olduğunu
+// göstermek gerekiyor"): Canlı yayın ekrandaki yarışın grubunu çeker; drone ya da belli bir kaynak elle seçildiyse o kaynağa bağlı grup
+// (birkaç gruba bağlıysa ekrandaki yarışın grubu, yoksa şu an yarışan gruplardan ilki). Bağlı grup yoksa "".
+export function videoGroup(scr, stream, camBy, entry, liveGrps = []) {
+  const k = scr?.kind;
+  if (k === "live") return entry?.grp || "";
+  if (k !== "src" && k !== "drone") return "";
+  const list = sourcesOf(stream);
+  const src = k === "src" ? scr.src : (list.find((x) => x.kind === "drone" && x.url) || list.find((x) => x.kind === "drone"))?.id;
+  if (!src) return "";
+  const grps = groupsOf(camBy, src).map((x) => x.split("|")[1]).filter(Boolean);
+  if (!grps.length) return "";
+  if (entry?.grp && grps.includes(entry.grp)) return entry.grp;
+  return grps.find((g) => liveGrps.includes(g)) || grps[0];
+}
