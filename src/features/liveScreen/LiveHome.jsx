@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { dirShort } from "@/lib/raceLive";
-import { PRE_KEY, Sea } from "./LiveScreen";
+import { VeloraGlyph } from "@/components/ui/AppLogo";
+import { BG_PHOTO, PRE_KEY, Sea } from "./LiveScreen";
 import { useVisit } from "./useVisit";
 import "./liveScreen.css";
 
@@ -23,6 +24,40 @@ function heroText(r, today) {
   return n === 1 ? "Yarın" : `Yarışa ${n} gün`;
 }
 const tagText = (r, today) => (r.today ? statusText(r) : r.startDate < today ? "" : daysTo(r.startDate, today) === 1 ? "Yarın" : `${daysTo(r.startDate, today)} gün`);
+
+// Yükleniyor: büyük kart ve satırlar son boyutlarında soluk (veri gelince yerleşim kaymaz)
+function HomeSkel() {
+  return (
+    <div role="status" aria-label="Yükleniyor">
+      <div className="lv-hero sk" aria-hidden="true">
+        <div className="hl">
+          <i style={{ width: "9em" }} />
+        </div>
+        <div className="hn">
+          <i style={{ width: "60%" }} />
+        </div>
+        <div className="hm">
+          <i style={{ width: "14em" }} />
+        </div>
+      </div>
+      <div className="lv-hsec">
+        <i className="sk" style={{ width: "6em" }} />
+      </div>
+      <div className="lv-hlist" aria-hidden="true">
+        {[0, 1, 2].map((k) => (
+          <div key={k} className="lv-row lv-hrow sk">
+            <span className="d" />
+            <span className="nm">
+              <i style={{ width: `${55 - k * 10}%` }} />
+              <i style={{ width: "40%" }} />
+            </span>
+            <span className="tg" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function LiveHome() {
   const [list, setList] = useState(null);
@@ -69,21 +104,26 @@ export function LiveHome() {
         {r.name || "Yarış"}
         <small>{[when(r), r.place, r.at ? `İlk start ${r.at}` : ""].filter(Boolean).join(" · ")}</small>
       </span>
-      <span className="tg">{tagText(r, today)}</span>
+      <span className={`tg${r.today ? " on" : ""}`}>{tagText(r, today)}</span>
     </Link>
   );
+  // Velora markası (Seyhun 2026-11-04 "Velora kullanıyoruz, logomuzu kullanmalıyız; arka planı daha güzel; loading yeni tasarımla"):
+  // yayın ekranının sağ altındaki gibi V daire + Velora | Canlı yayın; zemin bulanık yarış fotoğrafı üstünde lacivert, tek mavi vurgu, kırmızı yalnız Canlı
   return (
-    <div className="lv">
-      <Sea />
+    <div className="lv lv-hm">
+      <Sea photo={BG_PHOTO} />
       <div className="lv-page lv-homep">
-        <header className="lv-head lv-hhead">
-          <b>Canlı yarışlar</b>
-          <span>Velora</span>
+        <header className="lv-hhead">
+          <VeloraGlyph size={34} />
+          <span className="t">
+            <b>Velora</b>
+            <small>Canlı yayın</small>
+          </span>
         </header>
         {err && !list ? (
-          <div className="lv-empty">Bağlanılamadı.</div>
+          <div className="lv-empty">Bağlanılamadı, yeniden deneniyor.</div>
         ) : !list ? (
-          <div className="lv-empty">Yükleniyor</div>
+          <HomeSkel />
         ) : !list.length ? (
           <div className="lv-empty">Şu an açık yarış yok.</div>
         ) : null}
