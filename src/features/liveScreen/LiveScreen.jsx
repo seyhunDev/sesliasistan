@@ -3251,9 +3251,11 @@ function ScOthers({ data, sel, today, now }) {
 // Sol alt sütun (Seyhun 2026-11-04 "sol alt köşeye; altta süre alanı, üstünde sıralama"): Canlı sağ üstte tek başına; sütunda en altta yarışın
 // kartı, üstünde diğer gruplar ve grubun sporcuları / dönüş (sahne.css .sc-rcol column-reverse)
 // Canlı rozetinin yanında görüntünün grubu (grp): drone ya da kamera bir gruba bağlıysa "Mavi grup"
-function ScTop({ rep, on, grp = "", children }) {
+function ScTop({ rep, on, grp = "", card = null, children }) {
   return (
     <>
+      {/* sağ üst: Canlı (+ görüntünün grubu) ve hemen altında süre kartı (Seyhun 2026-11-04 "süre hepsi için geçerli, canlının altına") */}
+      <div className="sc-tcol">
       {on ? (
         <div className="sc-tr">
           {rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}
@@ -3265,6 +3267,8 @@ function ScTop({ rep, on, grp = "", children }) {
           ) : null}
         </div>
       ) : null}
+      {card}
+      </div>
       <div className="sc-rcol">{children}</div>
     </>
   );
@@ -3563,6 +3567,53 @@ function Sc01({ t, data, prog, now, today, lock, ap = false, only = "" }) {
   );
 }
 // 02: sol üstte tek kart; geri sayımda o an çekili bayrak, yarışta erken çıkanlar; şamandıra dönüşünden sonra sağ üstte ilk 3 (60 sn)
+// Süre kartı, sade (Seyhun 2026-11-04 "daha minimal; ilk starta yazısına gerek yok; geri sayım olduğunu hissettirelim, ileri geri farklı"):
+// üstte tek satır yarış · sınıf · grup · start saati; büyük süre önünde − (geri) ya da + (ileri), geri sayım sarı-turuncu değil mavi tonda,
+// ileri beyaz; altında dakikanın saniyeleri ince çubuk (geride erir, ileride dolar); bayrak, erken çıkan, işaret, rüzgâr birer satır
+function ScClock({ t, data, sel, mode, now, today }) {
+  const ea = mode === "race" && sel && now - Date.parse(sel.at) < 15 * 60e3 ? earlyOf(data, sel.id) : [];
+  const n = /^(\d+)\./.exec(t.who?.name || "")?.[1];
+  const num = !t.tx && /^\d{1,2}(:\d\d){1,2}$/.test(String(t.tm || ""));
+  const up = mode === "race" || mode === "between";
+  const sec = num ? Number(String(t.tm).slice(-2)) : null;
+  const who = [n ? `Yarış ${n}` : "", t.who?.cls || "", t.who?.grp ? `${t.who.grp}` : ""].filter(Boolean);
+  return (
+    <div className={`sc-ck ${up ? "up" : "dn"}${t.tone ? ` ${t.tone}` : ""}`}>
+      {who.length || t.at ? (
+        <div className="sc-ckw">
+          {t.who?.grp ? <i style={{ background: groupColor(t.who.grp) || "#fff" }} aria-hidden="true" /> : null}
+          <span>{who.join(" · ")}</span>
+          {t.at ? <em>{t.at}</em> : null}
+        </div>
+      ) : null}
+      <div className={`sc-ckt${num ? "" : " tx"}`}>
+        {num ? <i aria-hidden="true">{up ? "+" : "−"}</i> : null}
+        <b>{t.tm}</b>
+        {t.un ? <small>{t.un}</small> : null}
+      </div>
+      {num && sec != null ? (
+        <div className="sc-ckb" aria-hidden="true">
+          <u style={{ width: `${(sec / 60) * 100}%` }} />
+        </div>
+      ) : null}
+      {t.fl ? (
+        <div className="sc-fl">
+          <Flag kind={t.fl.kind} down={t.fl.down} />
+          <b>{t.fl.t}</b>
+          <em>{t.fl.s}</em>
+        </div>
+      ) : null}
+      {ea.length ? (
+        <div className="sc-ocs">
+          <b>{ea[0].c}</b>
+          <span>{ea.map((x) => `TUR ${x.sail}`).join(" · ")}</span>
+        </div>
+      ) : null}
+      <ScSig data={data} today={today} />
+      <ScWindLine data={data} now={now} />
+    </div>
+  );
+}
 // col: kart sağ üst sütunda, Canlı'nın altında (start dizisi ve yarış)
 function Sc02({ t, data, sel, mode, now, today, col = false }) {
   const ea = mode === "race" && sel && now - Date.parse(sel.at) < 15 * 60e3 ? earlyOf(data, sel.id) : [];
@@ -3914,7 +3965,8 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
   const ap = mode === "ap" || (mode === "seq" && seqMode === "ap");
   const lock = !ap && (mode === "seq" || t.tone === "r");
   // start dizisinde ve yarışta yarışın kartı sağ üstte (Görüntü; yarışta Program / Rüzgâr ortadayken de)
-  const colCard = !ap && (mode === "seq" || mode === "race") && (sc === "02" || (sc === "01" && mode === "race" && item !== "time"));
+  // süre kartı her evrede Canlı'nın altında (ortadaki 01 Süre kartı ekrandayken yok, aynı bilgi iki yerde olmasın); tehirde rozet (ScAp)
+  const colCard = !ap && (sc === "02" || (sc === "01" && item !== "time"));
   const body =
     sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} ap={ap} only={["time", "prog", "wind"].includes(item) ? item : ""} />
     : sc === "02" ? (colCard ? null : <Sc02 t={ap ? null : t} data={data} sel={sel} mode={mode} now={now} today={today} />)
@@ -3933,8 +3985,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       <div className="sc-body" key={sc}>
         {body}
       </div>
-      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp}>
-        {colCard ? <Sc02 t={t} data={data} sel={sel} mode={mode} now={now} today={today} col /> : null}
+      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
         {(sc === "01" || sc === "02") && (mode === "seq" || mode === "race") ? <ScFleet data={data} sel={sel} mode={mode} now={now} who={t.who} today={today} onFull={onFull} /> : null}
       </ScTop>
