@@ -34,14 +34,12 @@ function pick(rows, next, obs, past, mmAt) {
     const block = rows.slice(i, i + STEP).filter((r) => Math.floor(+r.hh / STEP) === blk);
     const mms = block.map((r) => r.mm).filter((v) => v != null);
     const col = { ...h, mm: mms.length ? mms.reduce((a, b) => a + b, 0) : h.mm, next, first: next && !out.length, dname: next ? dayShort(h.time) : "", obs: false };
-    const o = past(h.hh) ? [...(obs || [])].reverse().find((x) => Math.floor(+x.hh / STEP) === blk && (x.wind != null || x.temp != null)) : null;
+    // Ölçülen rüzgâr ayrı "Ölçülen" satırında (Seyhun 2026-11-04 "gerçekleşen rüzgâr çok kötü tasarımla gösteriliyor"): istasyon 3 saatte bir
+    // rapor verdiği için tahmin sütunlarının üstüne yazmak sütunları ölçülen/tahmin diye karışık (zebra) yapıyordu. Tahmin satırları hep tahmin kalır.
+    const o = past(h.hh) ? [...(obs || [])].reverse().find((x) => Math.floor(+x.hh / STEP) === blk && x.wind != null) : null;
     if (o) {
       col.obs = true;
-      if (o.code != null) col.code = o.code;
-      if (o.temp != null) col.t = o.temp;
-      if (o.wind != null) col.wind = o.wind;
-      if (o.wind != null) col.gust = o.gust ?? null;
-      if (o.dir != null) col.dir = o.dir;
+      col.ob = { wind: Math.round(o.wind), gust: o.gust != null ? Math.round(o.gust) : null, dir: o.dir ?? null };
     }
     if (past(h.hh) && mmAt[h.hh] != null) col.mm = mmAt[h.hh];
     out.push(col);
