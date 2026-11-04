@@ -13,7 +13,7 @@ import { PdfViewer } from "@/components/ui/PdfViewer";
 import { ListHead, Row, RowList, Tag } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { currentAmend, kindLabel, resultState, version } from "@/lib/siteDocs";
-import { LIST_KINDS, applyList, siteDocBlob, checkSite, redoDoc, saveDocState, undoDoc, unfollowSite, watchSiteDocs } from "./raceSite";
+import { LIST_KINDS, applyList, claimDoc, siteDocBlob, waiting, checkSite, redoDoc, saveDocState, undoDoc, unfollowSite, watchSiteDocs } from "./raceSite";
 
 const when = (at) => {
   const d = new Date(`${String(at).slice(0, 10)}T12:00:00`);
@@ -43,15 +43,19 @@ export function SiteDocs({ orgId, race, shown = false, onNew, onResults, onUndo,
   useEffect(() => {
     if (!docs || running.current) return;
     // Sonuç belgesi sporcular yüklenince (bizimkiler aranır); listeler hemen
-    const todo = docs.filter((d) => d.state === "new" && work(d) && (d.kind !== "results" || ready)).reverse();
+    const todo = docs.filter((d) => waiting(d) && work(d) && (d.kind !== "results" || ready)).reverse();
     if (!todo.length) return;
     running.current = true;
     (async () => {
       let n = 0;
       for (const d of todo) {
+        if (!(await claimDoc(orgId, race.id, d.id))) continue;
         try {
           const patch = d.kind === "results" ? await onResults(d) : await applyList(orgId, race.id, d);
-          if (!patch) continue;
+          if (!patch) {
+            await saveDocState(orgId, race.id, d.id, { state: "new" }).catch(() => {});
+            continue;
+          }
           await saveDocState(orgId, race.id, d.id, patch);
           n++;
         } catch (e) {

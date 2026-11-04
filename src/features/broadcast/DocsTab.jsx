@@ -14,7 +14,7 @@ import { kindLabel, resultState } from "@/lib/siteDocs";
 import { stampResults } from "@/lib/raceDay";
 import { todayStr } from "@/lib/utils/format";
 import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
-import { LIST_KINDS, applyList, siteDocBlob, checkSite, saveDocState, watchSiteDocs } from "@/features/athletes/raceSite";
+import { LIST_KINDS, applyList, claimDoc, siteDocBlob, waiting, checkSite, saveDocState, watchSiteDocs } from "@/features/athletes/raceSite";
 import { importResults, importToast } from "@/features/athletes/resultsImport";
 import { saveRaceResults } from "@/features/athletes/races";
 
@@ -62,11 +62,13 @@ export function DocsTab({ orgId, race, onRace, onShow, showing }) {
   const going = useRef(false);
   useEffect(() => {
     if (!docs || !athletes || going.current || !race?.id) return;
-    const todo = docs.filter((d) => d.state === "new" && (d.kind === "results" || LIST_KINDS.includes(d.kind))).reverse();
+    const todo = docs.filter((d) => waiting(d) && (d.kind === "results" || LIST_KINDS.includes(d.kind))).reverse();
     if (!todo.length) return;
     going.current = true;
     (async () => {
       for (const d of todo) {
+        // Yarış sayfası da açıksa aynı belgeyi o işler (raceSite.claimDoc)
+        if (!(await claimDoc(orgId, race.id, d.id))) continue;
         try {
           let patch;
           if (d.kind === "results") {
@@ -144,7 +146,7 @@ export function DocsTab({ orgId, race, onRace, onShow, showing }) {
             <button key={d.id} type="button" data-press onClick={() => setView(d)} className="flex w-full min-w-0 items-center gap-3 border-t border-line px-4 py-3 text-left first:border-t-0">
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[0.9375rem] font-semibold">{d.name}</b>
-                <small className="block truncate text-[0.8125rem] text-mut">{[kindText(d), when(d.at), d.state === "new" ? "İşleniyor" : d.state === "kept" ? d.note || "İşlenemedi" : d.note].filter(Boolean).join(" · ")}</small>
+                <small className="block truncate text-[0.8125rem] text-mut">{[kindText(d), when(d.at), d.state === "new" || d.state === "busy" ? "İşleniyor" : d.state === "kept" ? d.note || "İşlenemedi" : d.note].filter(Boolean).join(" · ")}</small>
               </span>
             </button>
           ))}
