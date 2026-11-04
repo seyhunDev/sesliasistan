@@ -16,3 +16,8 @@
 
 - Yarış sayfası başlığı (Seyhun 2026-11-04): geri · ad / yer · tarih · sağda kalan gün ("5 / gün", "Yarın") ya da yanıp sönen "Yarışta", bittiyse "Bitti" (`page.jsx` `Left`) · ⋯. Ayrı "5 gün kaldı" satırı yok.
 - Yarış havası (`RaceWx`): yer, ölçüm istasyonu, gün seçimi ve yenile grafiğin ALTINDA; üstte doğrudan sıcaklık ve tablo.
+
+## Asistan
+
+- Siteden gelen yarış dokümanları (`SiteDocs`) Evrak'tan ayrıldı, kendi sekmesi "Dokümanlar" (Özet'ten sonra; yalnız yarışın sitesi bağlıysa). "N yeni" etiketi bu sekmede. `?sec=site` doğrudan açar. Evrak yalnız bizim hazırladığımız evrak.
+- Seyhun'un aynı mesajdaki ikinci isteği (dokümanlar ve geçici sonuçlar Yayın yönetiminde de görünsün, oradan yüklenebilsin) bu PR'da yok; yayın ve siteden belgeler sohbetlerine.

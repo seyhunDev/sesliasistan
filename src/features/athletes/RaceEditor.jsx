@@ -158,7 +158,7 @@ function Check({ on, tone = "ok" }) {
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
 // coach: hesabın antrenör bilgileri (users/{uid}.coach), onCoach(bilgi) kaydeder
 // ⋯ menüsünün bölümleri (?sec=) ve multimedya işleri (?do=); liste lib/raceMenu.js
-const SECS = RACE_SECS.map(([k]) => k);
+const SECS = [...RACE_SECS.map(([k]) => k), "site"]; // site: siteden gelen yarış dokümanları (?sec=site)
 const inRace = (x) => !!x?.startDate && todayStr() >= x.startDate && todayStr() <= (x.endDate || x.startDate);
 
 export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0 }) {
@@ -883,6 +883,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     // Yarış günü (Seyhun 2026-10-29): hazırlık, plan ve not altta görünmez; "Hazırlık" sekmesine dokununca açılır, yeniden dokununca kapanır.
     // Yarıştan önce eskisi gibi Özet.
     raceDay ? ["prep", "Hazırlık", todoList.length ? `${todoList.length} iş` : "Tamam", false] : ["sum", "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
+    // Yarışın sitesinden gelen dokümanlar (talimat, geçici sonuçlar…) kendi sekmesinde; bizim hazırladığımız evrak Evrak'ta (Seyhun 2026-11-04 "ayrı tutmamız lazım")
+    ...(siteDocs ? [["site", "Dokümanlar", siteNew ? `${siteNew} yeni` : "", false]] : []),
     ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
     ["docs", "Evrak", file || (!checked && r.docsAt && !stale) ? "Hazır" : stale ? "Yenile" : r.docsAt ? "Bu cihazda yok" : "Hazır değil", !stat[1][4]],
     // Yolculuk ve Bütçe tek sekme (Seyhun 2026-11-04 "sadeleştirelim"): sekmeler tek satıra sığar; "budget" açılınca Bütçe'ye kayar
@@ -908,7 +910,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
               {warn && !over && <span className="size-1.5 rounded-full bg-[#ffd59a]" aria-label="eksik" />}
               {name}
               {/* Siteden yeni belge (Seyhun 2026-11-04 "yeni evrak olduğunu yarış sayfasında da göstermeliyiz") */}
-              {k === "docs" && siteNew > 0 && <span className="tone-gen tone-chip rounded-full px-1.5 text-[0.6875rem] font-bold tabular-nums">{siteNew} yeni</span>}
+              {k === "site" && siteNew > 0 && <span className="tone-gen tone-chip rounded-full px-1.5 text-[0.6875rem] font-bold tabular-nums">{siteNew} yeni</span>}
             </button>
           );
         })}
@@ -1326,8 +1328,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         </>
       )}
 
-      {/* Siteden gelen belgeler Evrak sekmesinde; sekme kapalıyken de bağlı (yeni gelenler işlenir) */}
-      {siteDocs && <div hidden={tab !== "docs"}>{siteDocs(tab === "docs")}</div>}
+      {/* Siteden gelen belgeler Dokümanlar sekmesinde (2026-11-04); sekme kapalıyken de bağlı (yeni gelenler işlenir) */}
+      {siteDocs && <div hidden={tab !== "site"}>{siteDocs(tab === "site")}</div>}
       {tab === "docs" && (
         <>
           {/* Hazır evrak bir bilgi değişince (stale) ya da bu telefonda yoksa (başka cihazda hazırlandı / telefon sildi): uyarı */}

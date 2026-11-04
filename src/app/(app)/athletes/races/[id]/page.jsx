@@ -231,7 +231,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
 
   // Multimedya sayfası kalktı (Seyhun 2026-11-01 "yarışın multimedyasını kaldır, tek Yayın"): yarış günü de bu sayfa kalır, Yayın düğmesi
   // yayın sayfasına gider. ⋯'den bölüm (?sec=) açılınca kalır.
-  const [siteNew, setSiteNew] = useState(0); // siteden gelen görülmemiş belgeler (Evrak düğmesinde)
+  const [siteNew, setSiteNew] = useState(0); // siteden gelen görülmemiş belgeler (Dokümanlar sekmesinde)
   const [sec] = useState(() => q.get("sec") || ""); // sayfa açılırken bir kez (RaceEditor açınca adresten siler)
   const plain = !!race && !missingRace;
   useEffect(() => {
@@ -272,7 +272,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
         <>
           <RaceEditor
             key={ver}
-            sec={sec === "site" ? "docs" : sec}
+            sec={sec}
             head={head}
             sharedList={id === "new" ? sharedList : []}
             alert={err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
