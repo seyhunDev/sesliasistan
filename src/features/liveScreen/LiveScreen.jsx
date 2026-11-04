@@ -8,7 +8,7 @@ import { momentRace, momentRaceName, apText, nextRaceNo, cleanPlan, daysUntil, o
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, sceneOf, sceneScreen, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
+import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
@@ -3429,12 +3429,13 @@ function ScFleet({ data, sel, mode, now, who, today, onFull }) {
   );
 }
 // 01: ortada tek kart; Süre · Program · Rüzgâr sırayla (start dizisi, tehir, abandone ve genel geride yalnız Süre)
-function Sc01({ t, data, prog, now, today, lock, ap = false }) {
+function Sc01({ t, data, prog, now, today, lock, ap = false, only = "" }) {
   // Genel sıralama artık burada sekme değil, ayrıntılı 03 sahnesi araya girer (Seyhun 2026-11-04 "sıralamayı daha detaylı, uzun liste").
   // Tehirde Süre sekmesi yalnız tehir inişi sayılırken; tehir saatin altındaki rozette (ScAp)
-  const have0 = [ap && t.tx ? "" : "time", prog.some((x) => x.state !== "done") ? "prog" : "", curWind(data, null, true, now) || windAhead(data, now).length >= 2 ? "wind" : ""].filter(Boolean);
+  // only: Yayın › Ekran'da evreye atanan öğe (Süre, Program ya da Rüzgâr); sıra Yayın'da, kart kendi içinde dönmez
+  const have0 = only ? [only] : [ap && t.tx ? "" : "time", prog.some((x) => x.state !== "done") ? "prog" : "", curWind(data, null, true, now) || windAhead(data, now).length >= 2 ? "wind" : ""].filter(Boolean);
   const have = have0.length ? have0 : ["time"];
-  const k = lock ? "time" : have[Math.floor(now / 1000 / SC_TAB) % have.length];
+  const k = only || (lock ? "time" : have[Math.floor(now / 1000 / SC_TAB) % have.length]);
   const NAME = { time: "Süre", prog: "Program", wind: "Rüzgâr" };
   return (
     <div className="sc-c1">
@@ -3759,16 +3760,28 @@ function Sc06({ data, prog, now, today }) {
     </>
   );
 }
-// Hangi sahne (lib/raceRounds sceneOf; Yayın sayfası da aynı işlevle bakar)
-function scPick({ data, sel, mode, hasVideo, now, far }) {
-  const route = sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait");
-  const rec = data.screen?.kind === "rec";
-  const has = { "01": true, "02": true, "03": mode === "between" || scBoards(data).length > 0, "04": rec || data.courseShow?.vid?.["04"]?.kind === "rec", "05": !!courseSvg(data, route), "06": true };
-  // tehir indiyse (start yakında) sıralama araya girmez
-  const m = mode === "ap" && data.plan?.status !== "ap" ? "wait" : mode;
-  return sceneOf({ show: data.courseShow, rec, mode: m, hasVideo, now, has, far: m === mode ? far : false, dwell: { "03": sc03Len(data, sel, mode) } });
+// Evre ve o an gösterilen öğe (lib/raceRounds showPlan; Yayın › Ekran aynı işlevle bakar). Evrenin görüntüsü (evreScreen) önce seçilir,
+// öğelerden verisi olmayan atlanır: Görüntü yalnız video varken (start ve yarışta fotoğraf üstünde de), Süre tehirde yalnız iniş sayılırken
+function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast }) {
+  const evre = evreOf(mode, seqMode);
+  const sd = { ...data, screen: evreScreen(data.screen, data.courseShow, evre) };
+  const vid = ["live", "drone", "src", "rec", "boats"].includes(sd.screen?.kind);
+  const t = scTime({ data: sd, sel, entry, cs, prog, today, now, mode, seqMode, fsLast });
+  const ap = evre === "ap";
+  const route = sceneRoute(sd, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait");
+  const has = {
+    video: vid || evre === "start" || evre === "race",
+    time: !(ap && t.tx),
+    prog: prog.some((x) => x.state !== "done"),
+    wind: !!curWind(sd, null, true, now) || windAhead(sd, now).length >= 2,
+    course: !!courseSvg(sd, route),
+    rank: mode === "between" || scBoards(sd).length > 0,
+    next: true,
+  };
+  const p = showPlan({ show: sd.courseShow, evre, has, now, dwell: { rank: sc03Len(sd, sel, mode), course: SCENE_T + 2 } });
+  return { ...p, sd, vid, sc: itemScene(p.item, sd.screen?.kind === "rec") };
 }
-function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, onFull }) {
+function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", onFull }) {
   const plan = data.plan;
   const r = data.race || {};
   const t = scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast });
@@ -3776,7 +3789,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
   const ap = mode === "ap" || (mode === "seq" && seqMode === "ap");
   const lock = !ap && (mode === "seq" || t.tone === "r");
   const body =
-    sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} ap={ap} />
+    sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} ap={ap} only={["time", "prog", "wind"].includes(item) ? item : ""} />
     : sc === "02" ? <Sc02 t={ap ? null : t} data={data} sel={sel} mode={mode} now={now} today={today} />
     : sc === "03" ? <Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} />
     : sc === "04" ? <Sc04 data={data} />
@@ -3908,15 +3921,13 @@ export function LiveScreen({ id, y = "" }) {
   if (isCur) {
     const apDown = st !== "ap" && !!data.plan.warn && nowMs < Date.parse(data.plan.warn);
     const mode = phase === "summary" ? "summary" : seqMode ? "seq" : st === "ap" || apDown ? "ap" : racing ? "race" : between ? "between" : st === "none" && data.plan.day === today ? "none" : "wait";
-    const sc = scPick({ data, sel, mode, hasVideo, now: nowMs, far: cs.rem == null || cs.rem > 600 });
-    // sahnenin önceden seçilen videosu (Yayın › Ekran › sahne)
-    const sd = { ...data, screen: sceneScreen(data.screen, data.courseShow, sc) };
-    const vid = ["live", "drone", "src", "rec", "boats"].includes(sd.screen?.kind);
+    // evrenin görüntüsü ve sıradaki öğesi (Yayın › Ekran › evre)
+    const { sd, vid, sc, item } = scPick({ data, sel, entry, cs, prog, today, now: nowMs, mode, seqMode, fsLast });
     return (
       <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
         <Backdrop data={sd} isCur={isCur} entry={entry} />
         <div className="lv-page lv-ov">
-          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} onFull={setFull} />
+          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} onFull={setFull} />
         </div>
         {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
         {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}
