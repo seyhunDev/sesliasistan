@@ -29,7 +29,7 @@ import { doc } from "firebase/firestore";
 import { updateDoc } from "@/lib/firebase/write";
 import { todayStr } from "@/lib/utils/format";
 import { goBack } from "@/lib/navTrail";
-import { getStored } from "@/lib/firebase/fileStore";
+import { siteDocBlob } from "@/features/athletes/raceSite";
 import { SiteDocs } from "@/features/athletes/SiteDocs";
 import { importResults, importToast } from "@/features/athletes/resultsImport";
 
@@ -152,7 +152,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
       if (!athletes || !cur?.id) return null;
       const ours = athletes.filter((a) => (cur.athleteIds || []).includes(a.id));
       const club = athletes.filter((a) => isActive(a) && !ours.includes(a));
-      const file = new File([await getStored(d.file, "application/pdf")], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" });
+      const file = new File([await siteDocBlob(cur.id, d)], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" });
       const got = await importResults({ orgId, race: cur, athletes: ours, club, file });
       got.results = stampResults(cur.results, got.results, todayStr());
       await saveRaceResults(orgId, cur.id, got.results, got.extra);

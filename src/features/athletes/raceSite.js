@@ -49,13 +49,25 @@ export const loadSiteDocs = (orgId, raceId) => getDocs(col(orgId, raceId)).then(
 export const watchSiteDocs = (orgId, raceId, cb, onErr) => onSnapshot(col(orgId, raceId), (snap) => cb(sorted(snap)), onErr);
 const mark = (orgId, raceId, key, patch) => setDoc(doc(col(orgId, raceId), key), patch, { merge: true });
 
-const fileOf = async (d) => new File([await getStored(d.file, "application/pdf")], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" });
+// Alınmış belgenin kendisi: sunucu Storage'dan okur (/api/race-site?race&key). Telefondan doğrudan Storage indirmesi dakikalarca
+// bekleyip "max retry" ile düşüyordu (Seyhun 2026-11-04); hata yazısı PdfViewer'da tam görünür.
+export async function siteDocBlob(raceId, d) {
+  const res = await authFetch(`/api/race-site?race=${encodeURIComponent(raceId)}&key=${encodeURIComponent(d.id || d.key)}`, { timeout: 60000 });
+  if (res.status === 413 && d.file) return getStored(d.file, "application/pdf");
+  if (!res.ok) {
+    const p = await res.json().catch(() => ({}));
+    throw new Error(p.error || `Belge açılamadı (${res.status}).`);
+  }
+  const b = await res.blob();
+  return b.type === "application/pdf" ? b : new Blob([b], { type: "application/pdf" });
+}
+const fileOf = async (d, raceId) => new File([await siteDocBlob(raceId, d)], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" });
 export const LIST_KINDS = ["groups", "fleets", "entries"];
 
 // Liste belgesi (renk, final grupları, sporcu): okunur, kayıt listesine eklenir; grup varsa o günün gruplarına yazılır.
 // Dönüş kaydın yeni alanları { state, note, undo }
 export async function applyList(orgId, raceId, d) {
-  const rows = await readEntryFile(await fileOf(d));
+  const rows = await readEntryFile(await fileOf(d, raceId));
   if (!rows.length) return { state: "kept", note: "Liste okunamadı" };
   const cur = await loadEntryDoc(orgId, raceId);
   const undo = { rows: cur.rows };

@@ -12,9 +12,8 @@ import { Button } from "@/components/ui/Button";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { ListHead, Row, RowList, Tag } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
-import { getStored } from "@/lib/firebase/fileStore";
 import { currentAmend, kindLabel, resultState, version } from "@/lib/siteDocs";
-import { LIST_KINDS, applyList, checkSite, redoDoc, saveDocState, undoDoc, unfollowSite, watchSiteDocs } from "./raceSite";
+import { LIST_KINDS, applyList, siteDocBlob, checkSite, redoDoc, saveDocState, undoDoc, unfollowSite, watchSiteDocs } from "./raceSite";
 
 const when = (at) => {
   const d = new Date(`${String(at).slice(0, 10)}T12:00:00`);
@@ -103,7 +102,7 @@ export function SiteDocs({ orgId, race, shown = false, onNew, onResults, onUndo,
     setBusy("");
   };
 
-  const load = useCallback(() => getStored(view.file, "application/pdf"), [view]);
+  const load = useCallback(() => siteDocBlob(race.id, view), [race.id, view]);
   const close = useCallback(() => setView(null), []);
   // Görülmemiş sayısı Dokümanlar düğmesine; sekmeden çıkınca (ya da sayfa kapanınca) görüldü yazılır, Yeni yazısı bakarken kalır
   const unseen = (docs || []).filter((d) => !d.seen);

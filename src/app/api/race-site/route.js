@@ -4,6 +4,7 @@ import { adminDb, adminReady } from "@/lib/server/admin";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { fileUrl } from "@/lib/siteBoard";
 import { FieldValue } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 import { KNOWN, cachedList, pageCache, siteList } from "@/lib/server/raceSiteSync";
 import { ackSig } from "@/lib/server/ackSign";
 
@@ -12,6 +13,8 @@ export const runtime = "nodejs";
 // Yarış sitesi (TYF Yelken Ligi, lib/siteBoard.js; Seyhun 2026-11-03), yalnız ana hesap:
 // GET ?season=2026-2027        → sezonlar, ayaklar, sınıflar ve belgeleri (Yarışlar › Siteden ekranı; kaydedilmiş listeden)
 // GET ?file=292893             → sitedeki belgenin kendisi (yarış ilanı telefonda okunur, yarış ondan açılır)
+// GET ?race=<yarış>&key=<anahtar> → alınmış belgenin bizdeki kopyası (Storage'dan sunucu okur; telefondan doğrudan indirme
+//                                  "max retry" ile düşüyordu, Seyhun 2026-11-04)
 // POST { raceId, site }         → yarışı izlemeye al (raceSite/{org}_{yarış}); belgeler arka planda hemen alınır ve kullanılır
 // POST { raceId, off: true }    → izlemeyi bırak (alınmış belgeler yarışta kalır)
 // POST { raceId, now: true }    → hemen bak (yarış sayfasındaki "Şimdi bak")
@@ -36,6 +39,24 @@ export async function GET(request) {
     const buf = await r.arrayBuffer();
     if (buf.byteLength > 25 * 1024 * 1024) return bad("Belge çok büyük.", 413);
     return new NextResponse(buf, { headers: { "content-type": r.headers.get("content-type") || "application/pdf", "cache-control": "private, max-age=600" } });
+  }
+  const raceId = q.get("race");
+  const key = q.get("key");
+  if (raceId || key) {
+    if (!/^[A-Za-z0-9]{6,40}$/.test(raceId || "") || !/^[A-Za-z0-9_-]{1,120}$/.test(key || "")) return bad("Belge yok.");
+    if (!adminReady()) return bad("Sunucu ayarı eksik.", 500);
+    const rec = (await adminDb().collection("orgs").doc(au.uid).collection("raceLive").doc(raceId).collection("site").doc(key).get()).data();
+    const path = rec?.file?.path || "";
+    if (!path.startsWith(`orgs/${au.uid}/noticeFiles/`)) return bad("Belge bulunamadı.", 404);
+    // Netlify işlevinin cevabı en çok 6 MB: büyük belge telefondan doğrudan indirilir
+    if ((rec.file.size || 0) > 5.5 * 1024 * 1024) return bad("big", 413);
+    try {
+      const [buf] = await getStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET).file(path).download();
+      return new NextResponse(buf, { headers: { "content-type": rec.file.type || "application/pdf", "cache-control": "private, max-age=3600" } });
+    } catch (e) {
+      console.warn("[race-site] belge", path, e.message);
+      return bad(`Belge depodan okunamadı (${e.code || e.message}).`, 502);
+    }
   }
   // Siteden ekranını açan ana hesap yeni yarış bildirimini alır (raceSiteSync.scanNew)
   if (adminReady()) adminDb().collection("raceSite").doc(KNOWN).set({ owners: FieldValue.arrayUnion(au.uid) }, { merge: true }).catch(() => {});
