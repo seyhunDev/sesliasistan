@@ -385,7 +385,8 @@ export function sceneOf({ show, rec, mode, hasVideo, now, has, far = false }) {
   if (mode === "race") return "02";
   if (mode === "between") return rot("03", "06") || (hasVideo ? "02" : "01");
   const base = hasVideo ? "02" : "01";
-  if (mode === "wait" && far && has["03"]) return Math.floor(now / 1000 / SCENE_ROT) % 3 === 2 ? "03" : base;
+  // videosuzda 01'in Sıralama sekmesi var; arada 03 yalnız videoluda (aynı bilgi iki yerde olmasın)
+  if (mode === "wait" && far && hasVideo && has["03"]) return Math.floor(now / 1000 / SCENE_ROT) % 3 === 2 ? "03" : base;
   return base;
 }
 // Sahnenin görüntüsü: önceden seçilen video varsa o (ara ve alt yazı ekrandakinden), yoksa ekrandaki

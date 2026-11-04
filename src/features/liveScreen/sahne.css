@@ -137,6 +137,13 @@
 .sc-rd li { display: flex; align-items: center; gap: 0.6em; padding: 0.45em 0.9em; border-top: 1px solid var(--sc-line); font: 700 1.1em/1 var(--sc-c); text-transform: uppercase; }
 .sc-rd li u { text-decoration: none; width: 1.3em; color: var(--sc-mut); }
 .sc-rd li em { margin-left: auto; font: 600 0.8em/1 var(--sc-c); font-style: normal; color: var(--sc-mut); }
+.sc-rd li em { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-rdm { padding: 0.5em 0.9em 0.7em; border-top: 1px solid var(--sc-line); font: 700 0.7em/1 var(--sc-c); letter-spacing: 0.18em; text-transform: uppercase; color: var(--sc-mut); }
+/* 01 Sıralama sekmesi: 1–5 solda, 6–10 sağda */
+.sc-rk ol { grid-auto-flow: column; grid-template-rows: repeat(5, auto); }
+.sc-rk li u { width: 1.2em; flex: none; text-decoration: none; color: var(--sc-mut); }
+.sc-rk li b { width: 2.4em; }
+.sc-rk li em { font-size: 0.9em; color: #fff; }
 .sc-x { padding: 0.7em 0.8em; }
 .sc-x b { display: block; font: 700 1.9em/1.05 var(--sc-c); text-transform: uppercase; }
 .sc-x span { display: block; margin-top: 0.35em; font: 600 0.9em/1 var(--sc-c); letter-spacing: 0.12em; color: var(--sc-mut); }
