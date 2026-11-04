@@ -13,7 +13,7 @@ export default function WeatherPage() {
   const { w, refresh } = useWeather();
   const place = getPlace();
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
+    <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
       {w?.today ? (
         <WeatherTop key={w.place || place.name} w={w} refresh={refresh} />
       ) : (

@@ -1053,3 +1053,32 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
   .wide-cols > *, main.split > .bg-bg.split-cols > * { break-inside: avoid; margin: 0 0 1.5rem !important; }
   main.split > .bg-bg.split-cols > .split-span { column-span: all; }
 }
+/* split-even (Yarış detayı): lacivert sol sütun geniş (hava tablosu ve harita), sağda sekmenin içeriği. Lacivert tek başınaysa (yarış günü)
+   bütün genişliği alır. */
+@media (min-width: 64rem) {
+  body[data-side] main.split.split-even.max-w-\[30rem\] { grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 1fr); }
+  body[data-side] main.split:not(:has(> .bg-bg)) > section.ck:first-child { grid-column: 1 / -1; position: static; height: auto; min-height: 100dvh; }
+}
+/* card-grid: tek kartta alt alta satırlar (ul) iPad ve Mac'te ayrı küçük kartlardan ızgara olur (Sporcular gibi uzun listeler) */
+@media (min-width: 48rem) {
+  ul.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0.625rem; border: 0; background: none; border-radius: 0; overflow: visible; }
+  ul.card-grid > li { border: 1px solid var(--line) !important; background: var(--card); border-radius: 1rem; overflow: hidden; }
+}
+
+/* MESAJLAR iki bölme (Mac ve yatay iPad, sol menü ≥64rem; messages/page.jsx): solda sohbet listesi (lacivert üst + liste) ekran boyu,
+   sağda seçili sohbet; sohbet seçili değilken sağ boş. Telefonda ve dik iPad'de ya liste ya sohbet. */
+.chat-blank { display: none; }
+@media (max-width: 63.99rem) { .chat-pane.chat-hide { display: none; } }
+@media (min-width: 64rem) {
+  body:not([data-side]) .chat-pane.chat-hide { display: none; }
+  body[data-side] .chat-pane { position: fixed; top: 0; bottom: 0; left: 15rem; width: 24rem; overflow-y: auto; overscroll-behavior: contain; border-right: 1px solid var(--line); background: var(--bg); z-index: 20; }
+  body[data-side] .chat-pane > main.max-w-\[30rem\] { max-width: none; margin: 0; min-height: 100%; padding-bottom: 2rem; }
+  body[data-side] main.chat-view.fixed { left: 39rem; }
+  body[data-side] main.chat-view > div.max-w-\[30rem\] { max-width: none; }
+  body[data-side] .chat-blank { display: block; position: fixed; top: 0; bottom: 0; left: 39rem; right: 0; background: var(--bg); }
+}
+@media (min-width: 80rem) {
+  body[data-side] .chat-pane { width: 26rem; }
+  body[data-side] main.chat-view.fixed, body[data-side] .chat-blank { left: 41rem; }
+}
+@media (min-width: 48rem) { ul.card-grid.px-3\.5 { padding: 0; } ul.card-grid.px-3\.5 > li { padding-left: 0.875rem; padding-right: 0.875rem; } }
