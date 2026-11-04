@@ -355,7 +355,9 @@ export function BroadcastPage({ orgId, id }) {
     });
   };
   const lowerSig = () => changePlan({ sig: null });
-  const lowerAp = () => changePlan({ day: planDay, ...apLower(Date.now(), readTimer().dur || 300, dev, plan.ap?.land, plan.ap?.auto) });
+  // Tehir inince tehir işareti de (AP/H, AP 6 saat…) ekrandan kalkar (Seyhun 2026-11-04 "tehiri indirmem canlı yayına gitmedi": işaret kartı kalıyordu)
+  const apSigOff = (pl) => (signalOf(pl.sig?.id)?.kind === "ap" && !signalOf(pl.sig.id).end ? { sig: null } : {});
+  const lowerAp = () => changePlan({ day: planDay, ...apLower(Date.now(), readTimer().dur || 300, dev, plan.ap?.land, plan.ap?.auto), ...apSigOff(plan) });
   // Program sekmesi: her günün saati (o güne özel saat yoksa bugünün ilk start'ı da değişir), güne özel saat, yarış olmayan gün, start silme
   const setDaily = (v) => changePlan({ daily: v, ...(!plan.times[planDay] && plan.status !== "ap" ? { at: v } : {}), ...(plan.next && !plan.times[plan.next.day] ? { next: { ...plan.next, at: v } } : {}) });
   const setDayTime = (d, v) => {
@@ -432,7 +434,7 @@ export function BroadcastPage({ orgId, id }) {
   const autoRef = useRef(null);
   useEffect(() => {
     autoRef.current = (now) => {
-      if (apDue(plan, now)) return changePlan({ day: planDay, ...apLower(Date.parse(plan.ap.down), readTimer().dur || 300, dev, plan.ap.land, plan.ap.auto) });
+      if (apDue(plan, now)) return changePlan({ day: planDay, ...apLower(Date.parse(plan.ap.down), readTimer().dur || 300, dev, plan.ap.land, plan.ap.auto), ...apSigOff(plan) });
       if (!warnDue(plan, now)) return;
       const mine = !plan.warnBy || plan.warnBy === dev || now - Date.parse(plan.warn) > 4000;
       if (!mine) return;
@@ -958,6 +960,7 @@ export function BroadcastPage({ orgId, id }) {
     return Object.values(gm).filter((g) => g === hero.x.grp).length;
   })();
   const grpName = (k) => { const [c, g] = k.split("|"); return g || c; };
+  const apSig = (signalOf(plan.sig?.id)?.kind === "ap" ? signalOf(plan.sig.id) : null) || signalOf(plan.ap?.land ? "AP/H" : "AP");
 
   return (
     <main className="masa mx-auto max-w-[30rem] px-5 md:max-w-[44rem] pb-[calc(env(safe-area-inset-bottom)+7rem)]">
@@ -985,8 +988,9 @@ export function BroadcastPage({ orgId, id }) {
           // İki satır (Seyhun 2026-11-03 "yazılar kayıyor"): üstte bayrak, başlık ve kalan süre; altta yer · sebep ve geri sayım seçimi
           <div className="ck-glass mt-4 rounded-[1rem] px-3.5 py-3">
             <div className="flex items-center gap-3">
-              <span className="h-6 w-9 shrink-0 rounded-[3px] bg-[repeating-linear-gradient(90deg,#e11d48_0_20%,#fff_20%_40%)]" aria-hidden="true" />
-              <b className="min-w-0 flex-1 truncate text-[1rem] font-semibold">{plan.status === "ap" ? (plan.ap?.down ? `Tehir · iniş ${trHm(plan.ap.down)}` : "Tehir · belirsiz") : "Tehir indi"}</b>
+              {/* bayrak düğmesindeki bayraklar (raceSignals flagSvg): AP, AP üzeri H, AP üzeri 6… (Seyhun 2026-11-04 "tehir 6 çektim, yalnız Tehir yazıyor") */}
+              <FlagIcons ids={apSig.flags} />
+              <b className="min-w-0 flex-1 truncate text-[1rem] font-semibold">{plan.status === "ap" ? [apSig.short, plan.ap?.down ? `iniş ${trHm(plan.ap.down)}` : apSig.hours ? "" : "belirsiz"].filter(Boolean).join(" · ") : "Tehir indi"}</b>
               {plan.status === "ap" && plan.ap?.down ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.ap.down) - (tick || capNow)) / 1000)))}</b> : null}
               {/* Tehir çekildikten sonra düzeltme (Seyhun 2026-11-03 "hatalı bir şey olursa değişim yapılabilmeli"): iniş, yer, inince, sebep */}
               {plan.status === "ap" ? (

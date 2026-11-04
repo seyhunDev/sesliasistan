@@ -1754,3 +1754,6 @@ button.gr-card { cursor: pointer; }
 @keyframes lv-lbreath { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.94); opacity: 0.8; } }
 @keyframes lv-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) { .lv-lbrand .ring::before, .lv-lbrand .ring svg { animation: none; } }
+/* İşaret bayrakları ortak çizimden (lib/raceSignals flagSvg; Seyhun 2026-11-04 "her yerde aynı tehir bayrağı") */
+.lv-flag.art { background: none; height: auto; aspect-ratio: 3 / 2; border: 0; box-shadow: none; overflow: visible; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4)); }
+.lv-flag.art svg { display: block; width: 100%; height: 100%; }
