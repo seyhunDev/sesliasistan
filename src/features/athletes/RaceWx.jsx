@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Icon } from "@/components/ui/Icon";
-import { Sheet } from "@/components/ui/Sheet";
+import { DayNav } from "@/features/weather/DayNav";
 import { HourTable } from "@/features/weather/HourTable";
 import { useWindObs } from "@/features/weather/useWindObs";
 import { RegionMap } from "@/features/weather/RegionMap";
 import { dirDeg, kn, sky, windName } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
-import { cleanSpot, forecastFrom, lastForecastDay, loadRaceDay, raceDays, swipeStep, wxDays } from "./raceWeather";
+import { forecastFrom, lastForecastDay, loadRaceDay, raceDays, wxDays } from "./raceWeather";
 
 // Yarışın havası, hava sayfasıyla aynı tasarım (Seyhun 2026-10-26: "bizim hava durumu sayfamızda kullandığımız tasarımın aynısı"):
 // üstte sıcaklık, gök, rüzgâr; altında aynı saat saat tablo (HourTable; yarış yerinin ölçümüyle; Seyhun 2026-11-03 "her yerde ortak tasarım"). Veri loadRaceDay (antrenman günü › Hava ile ortak).
@@ -87,7 +86,7 @@ export function Wait() {
 // Hava kalktı. Tahmin henüz çıkmadıysa (ilk gün 16 günden ileride) hiç görünmez.
 // day: açılışta seçili gün (yarış günü akşamı yarın, RaceDayTop)
 // pinned: gün dışarıdan seçilir (Saha, üstteki tek Bugün ▾; Seyhun 2026-10-30); kendi gün düğmesi çizilmez, kaydırınca onDay(±1)
-// Grafik sağa sola kaydırılınca gün değişir (Seyhun 2026-10-31; yön raceWeather.js swipeStep); yarıştan önceki 5 gün de gezilir (wxDays)
+// Gün ‹ Dün · Bugün · Yarın › satırıyla değişir (DayNav; Seyhun 2026-11-04: kaydırmayla gün değişmez, tablo yalnız yana kayar); yarıştan önceki 5 gün de gezilir (wxDays)
 // fill: yarış günü sayfası (RaceDayTop) tek ekran; bölge haritası düğme yerine açık önizleme olarak kalan yeri doldurur, dokununca tam ekran
 // (Seyhun 2026-11-03: "harita butonunu daha açık kullanalım, sayfa sığsın")
 export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, marks = [], fill = false }) {
@@ -97,7 +96,6 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
   const first = pinned || race.find((d) => d >= today) || race[race.length - 1] || "";
   const [own, setSel] = useState(race.includes(day) ? day : first);
   const sel = pinned || own;
-  const touch = useRef(null);
   // Son açılan günün alan yüksekliği: başka gün yüklenirken alan küçülüp büyümesin (sayfa zıplamasın)
   const area = useRef(null);
   const [tall, setTall] = useState(0);
@@ -109,28 +107,18 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
     const i = days.indexOf(sel) + k;
     if (i >= 0 && i < days.length) setSel(days[i]);
   };
-  const swipe = {
-    onTouchStart: (e) => (touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }),
-    onTouchEnd: (e) => {
-      const t = touch.current;
-      touch.current = null;
-      const k = t ? swipeStep(e.changedTouches[0].clientX - t.x, e.changedTouches[0].clientY - t.y) : 0;
-      if (k) step(k);
-    },
-  };
-  const [tick, setTick] = useState(0);
-  const [pick, setPick] = useState(false);
   const late = sel && sel > lastForecastDay(today);
-  const d = useDay(r, late ? "" : sel, tick);
-  const sp = cleanSpot(r.spot);
+  const d = useDay(r, late ? "" : sel);
   // Gerçekleşen rüzgâr en yakın istasyondan (grafikle aynı istek, önbellekten): hangi istasyon ve uzaklığı başlıkta yazar
   const ob = useWindObs(d.at, late ? "" : sel, today, true);
-  const st = ob?.rows?.length ? ob.station : null;
   if (!first || first > lastForecastDay(today)) return null;
   return (
     <section className={fill ? "mt-4 flex flex-1 flex-col" : "mt-4"} aria-label="Yarış havası">
+      {/* Gün değiştirme (Seyhun 2026-11-04 "bugün seçili, yarın / sonraki gün ileri geri"): tek satır ‹ Dün · Bugün · Yarın ›; kaydırmayla gün değişmez, tablo yalnız yana kayar.
+          pinned: gün dışarıdan seçilir (Saha), satır çizilmez */}
+      {!pinned && days.length > 1 && <DayNav sel={sel} days={days} today={today} onStep={step} />}
       {/* Seyhun 2026-10-26: gün değişince yüklenirken alan küçülüp sayfa zıplıyordu; her durumda grafikle aynı yükseklik */}
-      <div ref={area} data-ready={d.rows?.length && !late ? "1" : "0"} className="flex min-h-[16.25rem] flex-col" style={!d.rows?.length && tall ? { minHeight: tall } : undefined} data-swipe-day {...swipe}>
+      <div ref={area} data-ready={d.rows?.length && !late ? "1" : "0"} className="flex min-h-[16.25rem] flex-col" style={!d.rows?.length && tall ? { minHeight: tall } : undefined}>
         {late ? (
           <p className="m-auto text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
         ) : d.rows?.length ? (
@@ -141,39 +129,6 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
           <Wait />
         )}
       </div>
-      {/* yer, ölçüm istasyonu, gün ve yenile grafiğin altında (Seyhun 2026-11-04 "bunları grafiğin altına alalım") */}
-      <div className="mt-2 flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">
-          Hava · {d.place || sp?.name || r.district || r.city}
-          {st && ` · ölçüm ${st.name} ${String(st.km).replace(".", ",")} km`}
-        </span>
-        {/* gün seçimi üstte tek düğme (Seyhun 2026-10-29: multimedyadaki gibi; alttaki gün şeridi kalktı) */}
-        {!pinned && days.length > 1 && (
-          <button type="button" data-cur={sel} onClick={() => setPick(true)} data-press className="raised flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-[0.8125rem] font-semibold tabular-nums">
-            {sel === today ? "Bugün" : new Date(`${sel}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
-            <span aria-hidden="true" className="text-[0.6875rem] opacity-70">▾</span>
-          </button>
-        )}
-        <button type="button" onClick={() => (keep(), setTick((n) => n + 1))} aria-label="Yenile" data-press className="btn btn-round size-8">
-          <Icon name="load" className="size-4" />
-        </button>
-      </div>
-      <Sheet open={pick} onClose={() => setPick(false)} title="Gün">
-        <ul className="divide-y divide-line border-y border-line">
-          {days.map((x) => (
-            <li key={x}>
-              <button type="button" data-day={x} aria-pressed={x === sel} onClick={() => (keep(), setSel(x), setPick(false))} data-press="row" className="flex w-full items-center gap-3 py-3 text-left">
-                <b className="w-16 shrink-0 text-[0.9375rem] font-semibold tabular-nums">{new Date(`${x}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</b>
-                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">
-                  {race.includes(x) ? `${race.indexOf(x) + 1}. gün` : `Yarıştan ${race[0] && Math.round((new Date(`${race[0]}T12:00:00`) - new Date(`${x}T12:00:00`)) / 864e5)} gün önce`}
-                  {x === today ? " · Bugün" : ""}
-                </span>
-                {x === sel && <span className="size-2.5 shrink-0 rounded-full bg-acc" />}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </Sheet>
       {/* Bölge haritası (Seyhun 2026-10-28: "yarışların havasında da aynı haritayı görmek istiyorum"): yarış yerinin çevresi, rüzgâr / yağış,
           −2 sa … +24 kaydırıcı ve Oynat, sayfada tablonun altında (inline; tek parmak sayfayı kaydırır). Dokunmak yarışın yerini değiştirmez. */}
       {fill && !late && !d.err && (

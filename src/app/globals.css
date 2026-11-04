@@ -731,16 +731,18 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 
 /* Geniş ekran (Seyhun 2026-10-18: "cep telefonu, tablet ve web uyumlu olsun"). Telefonda hiçbir şey değişmez.
    Dik tablet: sayfalar ve alt çubuk 40rem'e genişler. Bilgisayar ve yatay tablet (SideNav.jsx WIDE): alt sekme çubuğu yerine
-   solda sabit menü; sayfa, sabit alt düğmeler, alttan açılan pencereler ve tam ekranlar menünün sağında ortalanır.
+   solda sabit menü (2026-11-03: sayfalar 80rem'e kadar genişler); sayfa, sabit alt düğmeler, alttan açılan pencereler ve tam ekranlar menünün sağında ortalanır.
    Tam ekran asistan her yeri kaplar. Sayfaların içi aynı kalır. */
 @media (min-width: 48rem) {
-  main.max-w-\[30rem\], [data-screen] > div, [data-sheet], main.fixed > div.max-w-\[30rem\] { max-width: 40rem; }
+  /* Sayfalar (Seyhun 2026-11-03 "bütün sayfalar uyumlu olsun"): dik iPad'de ekran genişliğinde; alttan pencereler 40rem kalır */
+  main.max-w-\[30rem\], [data-screen] > div, main.fixed > div.max-w-\[30rem\] { max-width: 52rem; }
+  [data-sheet] { max-width: 40rem; }
   .atabbar > div { max-width: 40rem; }
 }
 @media (min-width: 64rem) {
   .sidenav { display: flex; }
   body[data-side] { padding-left: 15rem; }
-  body[data-side] main.max-w-\[30rem\], body[data-side] [data-screen] > div, body[data-side] main.fixed > div.max-w-\[30rem\] { max-width: 44rem; }
+  body[data-side] main.max-w-\[30rem\], body[data-side] [data-screen] > div, body[data-side] main.fixed > div.max-w-\[30rem\] { max-width: 80rem; }
   body[data-side] .atabbar-wrap { display: none; }
   body[data-side] .cartbar { left: 15rem; bottom: -1.5rem; }
   body[data-side] :is(.fixed[data-pagebar], [data-screen], main.fixed), body[data-side] > [data-bar] { left: 15rem; }
@@ -817,8 +819,8 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .ck-hero[data-sky="night"] { --sa: #0b1a33; --sb: #12284a; --sc: #1c3a66; }
 /* Yağmur çizgileri sabit (Velora kuralı: boşta ekranda sürekli hareket yok) */
 .ck-hero[data-sky="rain"]::before, .ck-hero[data-sky="storm"]::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .9;
-  background: repeating-linear-gradient(100deg, transparent 0 13px, rgba(200, 222, 248, .26) 13px 14px, transparent 14px 29px);
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .5;
+  background: repeating-linear-gradient(100deg, transparent 0 13px, rgba(200, 222, 248, .18) 13px 14px, transparent 14px 29px);
 }
 @media (min-width: 48rem) { main.home-wide .ck-hero { margin-left: 0; margin-right: 0; border-radius: 1.5rem; } }
 /* Düz kart (Velora: düz ve ince çizgili, gölge yok); basınca data-press ile hafif içeri */

@@ -10,14 +10,14 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { db } from "@/lib/firebase/clientApp";
 import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
-import { DayStrip } from "./DayStrip";
+import { DayNav } from "./DayNav";
 import { HourTable } from "./HourTable";
 import { nextDay } from "./hourCols";
 import { todayStr } from "@/lib/utils/format";
 import { dayHours, dirDeg, getPlace, kn, nowOf, placeLabel, setPlace, sky, windName, compareLinks } from "./weather";
 
 // Hava sayfası (Seyhun 2026-11-03 Windy görseli, örnek hava-sayfasi-ornek.png "Böyle yap"): lacivert üstte geri, yer, yenile, büyük sıcaklık ve şimdiki rüzgâr;
-// altında 5 günlük şerit (DayStrip: sıcaklık, yağış mm, rüzgâr; güne dokununca tablo o güne geçer); açık zeminde saat saat tablo (HourTable, tone="light":
+// altında gün satırı (DayNav: ‹ Dün · Bugün · Yarın ›, önceki 5 gün ve 7 gün ileri); açık zeminde saat saat tablo (HourTable, tone="light":
 // 3 saatte bir sütun, geçmişte istasyon ölçümü açık mavi) ve altında BÖLGE haritası (tablonun altında sayfada, saat çubuğu ve Oynat ile; RegionMap: rüzgâr / yağış, −2 sa … +24,
 // dokununca nokta taşınır, Geri al), MGM / Windy ve kaynak satırı. Aynı tablo ana sayfada, yarış havasında ve canlı ekranda kullanılır.
 const nowHour = () => new Date().getHours();
@@ -30,8 +30,8 @@ export function WeatherTop({ w, refresh }) {
   const today = todayStr();
   const all = [{ date: w.today?.date, code: w.today?.code, min: w.today?.min, max: w.today?.max, wind: w.today?.wind, gust: w.today?.gust, mm: w.today?.mm }, ...(w.days || [])].filter((d) => d.date && d.date >= today);
   const [sel, setSel] = useState(all[0]?.date || today);
-  const [back, setBack] = useState(false); // önceki 5 gün açık mı (kapalı başlar)
   const past = w.past || [];
+  const navDays = [...past, ...all].map((d) => d.date); // önceki 5 gün kapalı sayılır: açılışta bugün, geri gidilebilir
   const rows = dayHours(w, sel) || [];
   const info = [...past, ...all].find((d) => d.date === sel) || all[0];
   const isToday = sel === all[0]?.date;
@@ -89,14 +89,7 @@ export function WeatherTop({ w, refresh }) {
           </div>
         )}
         <div className="mt-4">
-          {past.length > 0 && (
-            <div className="mb-1.5 flex justify-end">
-              <button type="button" data-press aria-pressed={back} onClick={() => (setBack((b) => !b), setSel(back ? all[0]?.date || today : past[past.length - 1].date))} className="h-7 rounded-full border border-white/15 px-3 text-[0.75rem] font-semibold text-white/80">
-                {back ? "Önümüzdeki günler ›" : "‹ Önceki 5 gün"}
-              </button>
-            </div>
-          )}
-          <DayStrip days={back ? past : all.slice(0, 5)} sel={sel} onSel={setSel} today={today} />
+          <DayNav sel={sel} days={navDays} today={today} onStep={(k) => setSel(navDays[navDays.indexOf(sel) + k] || sel)} />
         </div>
       </section>
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">

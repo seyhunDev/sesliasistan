@@ -214,27 +214,18 @@ export async function run(server, log = () => {}) {
       const orb = await page.locator("[data-orb]:visible").count();
       return [dock === 0 && orb > 0, `yarış çubuğu ${dock ? "var" : "yok"} · uygulama çubuğu ${orb ? "var" : "yok"}`];
     });
-    // Hava grafiği kaydırılınca gün değişir (Seyhun 2026-10-31): sağa çek geri (yarıştan önceki günler de), sola çek ileri
-    await okPage("Yarış sayfası", "havayı kaydırarak gün", "/athletes/races/r2", "gün kaldı", async () => {
-      const cur = () => page.locator("section[aria-label='Yarış havası'] button[data-cur]").getAttribute("data-cur").catch(() => "");
-      const pull = (dx) =>
-        page.evaluate((dx) => {
-          const el = document.querySelector("[data-swipe-day]");
-          if (!el) return;
-          const r = el.getBoundingClientRect();
-          const t = (x) => new Touch({ identifier: 1, target: el, clientX: x, clientY: r.top + 40 });
-          const x0 = r.left + r.width / 2;
-          el.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, touches: [t(x0)], changedTouches: [t(x0)] }));
-          el.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [], changedTouches: [t(x0 + dx)] }));
-        }, dx);
+    // Yarış havasında gün ‹ Dün / Yarın › düğmeleriyle değişir, kaydırmayla değişmez (Seyhun 2026-11-04)
+    await okPage("Yarış sayfası", "havada gün düğmeleri", "/athletes/races/r2", "gün kaldı", async () => {
+      const nav = page.locator("section[aria-label='Yarış havası'] nav[aria-label='Gün']");
+      if (!(await nav.count())) return [false, "gün satırı yok"];
+      const cur = async () => ((await nav.locator("b").textContent().catch(() => "")) || "").trim();
       const a = await cur();
-      await pull(120);
+      const prev = nav.locator("button").first();
+      const had = await prev.count();
+      if (had && /^‹/.test((await prev.textContent()) || "")) await prev.click();
       await page.waitForTimeout(300);
       const b = await cur();
-      await pull(-120);
-      await page.waitForTimeout(300);
-      const c = await cur();
-      return [!!a && b && b < a && c === a, `${a} → sağa ${b} → sola ${c}`];
+      return [!!a && had > 0 && b !== a, `${a} → geri ${b}`];
     });
     // Bütün sekmeler sırayla açılır
     try {
