@@ -1186,7 +1186,7 @@ export function BroadcastPage({ orgId, id }) {
                     <div>
                       <div className={`${row} border-b border-line`}>
                         <span className="flex-1 font-semibold">İlk start</span>
-                        <input type="time" value={plan.times[d] || plan.daily} onChange={(e) => setDayTime(d, e.target.value)} aria-label="Bu günün ilk start saati" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
+                        <TimeIn value={plan.times[d] || plan.daily} onSave={(v) => setDayTime(d, v)} aria-label="Bu günün ilk start saati" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
                       </div>
                       {/* Programdan okunan maddeler (antrenör toplantısı, ilk start, son start saati…); canlı ekranda Program'da görünür */}
                       {(plan.agenda?.[d] || []).map((x, i) => (
@@ -1241,11 +1241,11 @@ export function BroadcastPage({ orgId, id }) {
           <div className={`${card} overflow-hidden`}>
             <div className={`${row} border-b border-line`}>
               <span className="flex-1 font-semibold">İlk start</span>
-              <input type="time" value={plan.daily} onChange={(e) => setDaily(e.target.value)} aria-label="Her günün ilk start saati" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
+              <TimeIn value={plan.daily} onSave={setDaily} aria-label="Her günün ilk start saati" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
             </div>
             <div className={row}>
               <span className="flex-1 font-semibold">Ekran yeni güne geçer</span>
-              <input type="time" value={plan.showAt} onChange={(e) => changePlan({ showAt: e.target.value })} aria-label="Ekranın yeni güne geçeceği saat" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
+              <TimeIn value={plan.showAt} onSave={(v) => changePlan({ showAt: v })} aria-label="Ekranın yeni güne geçeceği saat" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
             </div>
           </div>
         </section>
@@ -1538,6 +1538,7 @@ export function BroadcastPage({ orgId, id }) {
               <Button
                 size="sm"
                 variant="secondary"
+                full={false}
                 onClick={() => {
                   if (!rtEdit) return setRtEdit(true);
                   if (cleanRoute(rt).length) setRtEdit(false);
@@ -1625,7 +1626,7 @@ export function BroadcastPage({ orgId, id }) {
                       Sil
                     </button>
                   ) : null}
-                  <Button size="sm" variant="secondary" disabled={!!ptBusy} onClick={() => hereFor(k)}>
+                  <Button size="sm" variant="secondary" full={false} disabled={!!ptBusy} onClick={() => hereFor(k)}>
                     {ptBusy === k ? "Bekle…" : "Buradayım"}
                   </Button>
                 </div>
@@ -2137,6 +2138,16 @@ function FlagSheet({ open, pick, onPick, onClose, onBack, onRaise, ctx }) {
       </div>
     </Sheet>
   );
+}
+// Saat kutusu (Seyhun 2026-11-04 "dakikayı ayarlarken gönderiliyor; OK'ye basınca gönderilmeli"): yazarken yalnız kutuda değişir,
+// klavyede OK / Enter ya da kutudan çıkınca bir kez kaydedilir
+function TimeIn({ value, onSave, ...p }) {
+  const [draft, setDraft] = useState(null);
+  const save = () => {
+    if (draft != null && draft !== value && /^\d\d:\d\d$/.test(draft)) onSave(draft);
+    setDraft(null);
+  };
+  return <input {...p} type="time" value={draft ?? value ?? ""} onChange={(e) => setDraft(e.target.value)} onBlur={save} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />;
 }
 function MasaBar({ children }) {
   return (
