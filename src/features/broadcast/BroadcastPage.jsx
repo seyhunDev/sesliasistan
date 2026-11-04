@@ -874,7 +874,7 @@ export function BroadcastPage({ orgId, id }) {
   const grpName = (k) => { const [c, g] = k.split("|"); return g || c; };
 
   return (
-    <main className="masa mx-auto max-w-[30rem] px-5 pb-[calc(env(safe-area-inset-bottom)+7rem)]">
+    <main className="masa mx-auto max-w-[30rem] px-5 md:max-w-[44rem] pb-[calc(env(safe-area-inset-bottom)+7rem)]">
       <section className={`ck -mx-5 px-5 ${slim ? "pb-2" : "pb-9"} pt-[calc(0.75rem+env(safe-area-inset-top))]`} aria-label="Yayın">
         {/* Ince üst çubuk (Seyhun 2026-11-03 yonetim/ornek-A): geri, yarış adı, Yayında, ⋯; büyük sayaç kalktı, süre her grubun satırında */}
         <header className="flex items-center gap-2.5">
@@ -886,7 +886,7 @@ export function BroadcastPage({ orgId, id }) {
               Yayında
             </span>
           ) : null}
-          <button type="button" onClick={() => setMenu(true)} aria-label="Diğer işler" data-press className="ck-glass flex size-9 shrink-0 items-center justify-center rounded-full text-[1.25rem] font-bold leading-none">
+          <button type="button" onClick={() => setMenu(true)} aria-label="Diğer işler" data-press className="ck-glass flex size-12 shrink-0 items-center justify-center rounded-full text-[1.25rem] font-bold leading-none">
             ⋯
           </button>
         </header>
@@ -904,24 +904,24 @@ export function BroadcastPage({ orgId, id }) {
               {plan.status === "ap" && plan.ap?.down ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.ap.down) - (tick || capNow)) / 1000)))}</b> : null}
               {/* Tehir çekildikten sonra düzeltme (Seyhun 2026-11-03 "hatalı bir şey olursa değişim yapılabilmeli"): iniş, yer, inince, sebep */}
               {plan.status === "ap" ? (
-                <button type="button" data-press onClick={() => setAp({ min: null, why: plan.ap?.why || AP_WHY[0], land: !!plan.ap?.land, auto: plan.ap?.auto !== false, edit: true })} className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-[0.8125rem] font-semibold">
+                <button type="button" data-press onClick={() => setAp({ min: null, why: plan.ap?.why || AP_WHY[0], land: !!plan.ap?.land, auto: plan.ap?.auto !== false, edit: true })} className="masa-b gl">
                   Düzelt
                 </button>
               ) : null}
               {plan.status !== "ap" && plan.warn ? <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{mmss(Math.max(0, Math.ceil((Date.parse(plan.warn) - (tick || capNow)) / 1000)))}</b> : null}
               {plan.status !== "ap" && plan.warn ? (
-                <button type="button" onClick={() => changePlan({ warn: "" })} className="shrink-0 text-[0.875rem] font-semibold text-white/70">
+                <button type="button" onClick={() => changePlan({ warn: "" })} className="masa-b gl">
                   Bekle
                 </button>
               ) : null}
             </div>
-            <div className="mt-1.5 flex items-center gap-2 pl-12">
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 pl-12">
               <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">
                 {plan.status === "ap" ? [plan.ap?.land ? "Karada" : "Denizde", plan.ap?.why].filter(Boolean).join(" · ") : plan.order.length ? "Uyarı işaretinde geri sayım kendiliğinden başlar" : "Önce yarışı oluştur"}
               </span>
               {/* İnince geri sayım kendiliğinden mi (Seyhun 2026-11-03 seçilebilir); tehir çekiliyken de değiştirilir */}
               {plan.status === "ap" && !plan.ap?.land ? (
-                <button type="button" aria-pressed={!!plan.ap?.auto} onClick={() => changePlan({ ap: { ...plan.ap, auto: !plan.ap?.auto } })} className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${plan.ap?.auto ? "bg-acc text-white" : "bg-white/15 text-white/80"}`}>
+                <button type="button" aria-pressed={!!plan.ap?.auto} onClick={() => changePlan({ ap: { ...plan.ap, auto: !plan.ap?.auto } })} className="masa-b gl">
                   {plan.ap?.auto ? "İnince 1 dk sonra geri sayım" : "Geri sayımı sen başlatırsın"}
                 </button>
               ) : null}
@@ -935,7 +935,7 @@ export function BroadcastPage({ orgId, id }) {
         ) : (
           <>
           {(made || retryPick) && idle ? (
-            <button type="button" onClick={undoRace} data-press className="ck-glass mt-3 flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[0.875rem] font-semibold">
+            <button type="button" onClick={undoRace} data-press className="masa-b gl mt-3 gap-1.5">
               <span aria-hidden="true">‹</span>
               {`Geri · ${prepName(nextPlan?.prep || plan.prep) || "Bayrak"}`}
             </button>
@@ -1109,7 +1109,7 @@ export function BroadcastPage({ orgId, id }) {
                               // Sıradaki grup: süre seçimi ve Başlat (5 · 4 · 2 · 1 dk; son seçilen bu telefonda kalır)
                               <div className="flex items-center gap-1.5 pb-2.5 pl-[3.4rem] pr-3">
                                 {[300, 240, 120, 60].map((d) => (
-                                  <button key={d} type="button" aria-pressed={tr.t.dur === d} onClick={() => chooseDur(d)} className={`h-8 min-w-[2.6rem] rounded-[0.625rem] px-2 text-[0.8125rem] font-bold tabular-nums ${tr.t.dur === d ? "bg-white text-[#0b1322]" : "bg-chip text-fg2"}`}>
+                                  <button key={d} type="button" aria-pressed={tr.t.dur === d} onClick={() => chooseDur(d)} className="masa-b dur tabular-nums">
                                     {d / 60}
                                   </button>
                                 ))}
@@ -1416,14 +1416,14 @@ export function BroadcastPage({ orgId, id }) {
                     inputMode="url"
                     className="h-10 w-full min-w-0 flex-1 rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.875rem] outline-none"
                   />
-                  <button type="button" onClick={() => setHowOpen(true)} className="h-10 shrink-0 rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.8125rem] font-semibold">
+                  <button type="button" onClick={() => setHowOpen(true)} className="masa-b">
                     Nasıl bağlanır
                   </button>
                 </div>
                 <div className="flex items-center pt-2 text-[0.8125rem]">
                   <span className="min-w-0 flex-1 truncate text-mut">{selSrc.url && !ytEmbed(selSrc.url) ? "Bağlantı tanınmadı" : ""}</span>
                   {isOn("src", selSrc.id) ? null : (
-                    <button type="button" onClick={() => dropSrc(selSrc.id)} className="font-semibold text-rec">
+                    <button type="button" onClick={() => dropSrc(selSrc.id)} className="masa-b red">
                       Kaynağı sil
                     </button>
                   )}
@@ -1467,14 +1467,14 @@ export function BroadcastPage({ orgId, id }) {
             <div className="flex items-center gap-2 px-4 py-3">
               <input value={cap} onChange={(e) => setCap(e.target.value.slice(0, 80))} onBlur={() => cap !== (L?.screen.caption || "") && capSave(cap.trim())} placeholder={autoCap.text ? `Otomatik: ${autoCap.text}` : "Boşken kendiliğinden yazar"} className="min-w-0 flex-1 rounded-lg bg-bg px-2.5 py-1.5 text-[0.9375rem] font-semibold outline-none" />
               {cap ? (
-                <button type="button" onClick={() => capSave("")} className="text-[0.875rem] font-semibold text-rec">
+                <button type="button" onClick={() => capSave("")} className="masa-b red">
                   Kaldır
                 </button>
               ) : null}
             </div>
             <div className="flex flex-wrap gap-1.5 px-4 pb-3">
               {CAP_PICKS.map((t) => (
-                  <button key={t} type="button" onClick={() => capSave(t)} className={`h-8 rounded-full px-3 text-[0.8125rem] font-medium active:scale-95 ${cap === t ? "bg-acc text-white" : "bg-line/60"}`}>
+                  <button key={t} type="button" onClick={() => capSave(t)} aria-pressed={cap === t} className="masa-b">
                     {t}
                   </button>
                 ))}
@@ -1710,7 +1710,7 @@ export function BroadcastPage({ orgId, id }) {
                     <span className="block truncate text-[0.75rem] text-mut">{p ? `${p.at ? `${hm(p.at)} · ` : ""}${off ? `Rüzgâra göre ${Math.abs(off)}° ${off > 0 ? "sağda" : "solda"}` : "Girildi"}` : "Girilmedi"}</span>
                   </span>
                   {p ? (
-                    <button type="button" onClick={() => putPt(k, null)} className="px-1 text-[0.8125rem] font-semibold text-rec">
+                    <button type="button" onClick={() => putPt(k, null)} className="masa-b red">
                       Sil
                     </button>
                   ) : null}
@@ -1726,7 +1726,7 @@ export function BroadcastPage({ orgId, id }) {
           <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1 text-[0.8125rem] font-semibold text-mut">
             <span>Son ölçümler</span>
             {course.obs.length ? (
-              <button type="button" onClick={() => setObsAll((v) => !v)} className="font-semibold text-mut">
+              <button type="button" onClick={() => setObsAll((v) => !v)} className="masa-b">
                 {obsAll ? "Kapat" : "Tümü ›"}
               </button>
             ) : null}
@@ -1737,7 +1737,7 @@ export function BroadcastPage({ orgId, id }) {
                 <div key={o.id} className="flex items-center gap-3 border-b border-line px-4 py-2 text-[0.9375rem] last:border-b-0">
                   <span className="min-w-0 flex-1 truncate font-semibold">{`${obsTitle(o)} · ${obsValue(o)}`}</span>
                   <span className="text-[0.8125rem] tabular-nums text-mut">{hm(o.at)}</span>
-                  <button type="button" onClick={() => dropObs(o)} className="text-[0.875rem] font-semibold text-rec">
+                  <button type="button" onClick={() => dropObs(o)} className="masa-b red">
                     Sil
                   </button>
                 </div>
@@ -2301,14 +2301,14 @@ const SHOW_NAME = { course: "Parkur" };
 const PT_ROWS = ["komite", "pin", "m1", "m2", "m3", "fin"];
 const PT_LABEL = { komite: "Komite", pin: "Pin", m1: "1 (orsa)", m2: "2 (apaz)", m3: "3 (pupa)", m4: "4", fin: "Finiş" };
 const STEPS = ["Sınıflar", "Gruplar"];
-const bigBtn = "flex h-14 w-full items-center justify-center rounded-[1.125rem] bg-white text-[1.125rem] font-semibold text-[#0b1a33] shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-0.5 active:shadow-none disabled:opacity-40";
-const backBtn = "ck-glass flex h-14 shrink-0 items-center justify-center rounded-[1.125rem] px-5 text-[1.0625rem] font-semibold";
+const bigBtn = "flex h-12 w-full items-center justify-center rounded-[1.125rem] bg-white text-[1.125rem] font-semibold text-[#0b1a33] shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-0.5 active:shadow-none disabled:opacity-40";
+const backBtn = "ck-glass flex h-12 shrink-0 items-center justify-center rounded-[1.125rem] px-5 text-[1.0625rem] font-semibold";
 function Setup({ sets, onSave, onCancel }) {
   const [step, setStep] = useState(1);
   const [clss, setClss] = useState(() => sets.map((x) => x.cls));
   const [grps, setGrps] = useState(() => Object.fromEntries(sets.map((x) => [x.cls, x.grps])));
   const starts = clss.reduce((n, c) => n + Math.max(1, (grps[c] || []).length), 0);
-  const chip = (on) => `flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.9375rem] font-semibold ${on ? "bg-white text-[#0b1a33]" : "ck-glass text-white/85"}`;
+  const chip = (on) => `flex h-12 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.9375rem] font-semibold ${on ? "bg-white text-[#0b1a33]" : "ck-glass text-white/85"}`;
   return (
     <div className="mt-4 space-y-3">
       <div className="flex items-center justify-between gap-2">

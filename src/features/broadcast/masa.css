@@ -39,7 +39,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 /* Alttaki sabit iş düğmeleri (en çok üç; ana iş pembe) */
 /* Alt çubuk saydam değil (Seyhun 2026-11-03 "altta boşluk kalmış, kaydırınca arkadan yazılar görünüyor") */
 .masa-bar { background: #0e1829; border-top: 1px solid var(--line); }
-.masa-bar .btn { height: 3.125rem; flex: 1; font-weight: 700; }
+.masa-bar .btn { height: 3rem; flex: 1; font-weight: 700; }
 
 /* Video: ekrandaki görüntünün önizlemesi ve kaynak kutucukları */
 .masa-mon { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 1rem; background: linear-gradient(160deg, #1f4f78, #0a2238 60%, #06182a); }
@@ -234,3 +234,22 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-hero-d button[aria-pressed="true"] { border-color: #fff; background: #fff; color: #0b1322; }
 .masa-hero-d button:active { transform: scale(0.96); }
 .masa .masa-hero-go { margin-top: 0.625rem; height: 3.75rem; border-radius: 1rem; font-size: 1.1875rem; font-weight: 800; }
+
+/* Tek boy (Seyhun 2026-11-04 "telefondan, iPad'den rahat kullanılmalı; bazıları küçük, bazıları büyük olmamalı"):
+   Yayın'daki her düğme 3rem (48 px) yükseklikte; kare seçimler (bayrak, tehir, sınıf/grup) tek boy 4.5rem. Tek istisna Süre'deki büyük Başlat. */
+.masa .btn, .masa .btn-sm { height: 3rem; padding: 0 1rem; border-radius: 0.875rem; font-size: 0.9375rem; }
+.masa-b { display: inline-flex; flex: none; align-items: center; justify-content: center; min-width: 3rem; height: 3rem; padding: 0 1rem; border-radius: 0.875rem; background: var(--chip); font-size: 0.9375rem; font-weight: 700; white-space: nowrap; }
+.masa-b:active { transform: scale(0.96); }
+.masa-b.gl { background: rgba(255, 255, 255, 0.15); color: #fff; }
+.masa-b.red { color: var(--rec); }
+.masa-b[aria-pressed="true"] { background: var(--acc); color: var(--on-acc); }
+.masa-b.dur { padding: 0 0.75rem; }
+.masa-b.dur[aria-pressed="true"] { background: #fff; color: #0b1322; }
+.masa-tog { min-height: 3rem; }
+.masa-hero-d button { height: 3rem; }
+.masa-plus { width: 3rem; height: 3rem; }
+.masa-air { width: 3rem; height: 3rem; border-radius: 0.75rem; }
+.masa-air svg { width: 1.125rem; height: 1.125rem; }
+.masa-ap, .masa-flagt, .masa-flagt.sm { min-height: 4.5rem; }
+.masa-sq, .masa-sq.sm { width: 4.5rem; }
+.masa .btn.masa-hero-go { height: 3.75rem; font-size: 1.1875rem; }
