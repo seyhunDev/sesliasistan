@@ -3,6 +3,7 @@
 // (NewVersionBar) ve asistanda "uygulamayı güncelle". Güncelle: service worker yenilenir, sayfa yeniden yüklenir.
 // Uygun anda (arkadan dönüş, sayfa geçişi) kendiliğinden de yenilenir: canAutoUpdate.
 import { BUILD } from "@/lib/buildInfo";
+import { trailFullLoad } from "@/lib/navTrail";
 
 let latest = null; // { sha, at, msg } yayındaki sürüm farklıysa
 const subs = new Set();
@@ -96,6 +97,9 @@ function onClick(e) {
   if (!latest || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   const a = e.target?.closest?.("a[href]");
   if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download")) return;
+  // Geri düğmesi tam yükleme olmaz: gelinen sayfaya döner (BackLink). Önceden yeni sürüm varken geri düğmesi
+  // üst sayfanın adresini (Yarışlar'da Sporcular) baştan açıyordu.
+  if (a.hasAttribute("data-back")) return;
   const url = new URL(a.href, location.href);
   if (url.origin !== location.origin || url.pathname.startsWith("/api/")) return;
   if (url.pathname === location.pathname && url.search === location.search) return;
@@ -103,6 +107,7 @@ function onClick(e) {
   e.preventDefault();
   e.stopPropagation(); // Next'in kendi geçişi başlamasın
   markTried();
+  trailFullLoad(url.href);
   location.assign(url.href);
 }
 
