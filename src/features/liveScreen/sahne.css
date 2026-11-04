@@ -304,7 +304,8 @@
 
 /* Sağdaki grup listesi sayfalı (Seyhun 2026-11-04): 03 ile aynı; sıralama varsa ilk 5 sabit, çizgi, sonrakiler akar */
 .sc-rd li.cut { border-top: 2px solid rgba(255, 255, 255, 0.28); }
-.sc-rd li.fl { animation: sc-fl 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.sc-rd li.fl { animation: sc-soft 0.7s ease both; } /* yalnız alttaki satırlar, sakin solma (ilk 5 kıpırdamaz) */
+@keyframes sc-soft { from { opacity: 0; } to { opacity: 1; } }
 .sc-rd li u { min-width: 1.6em; width: auto; font-variant-numeric: tabular-nums; }
 .sc-rdp { display: flex; align-items: center; justify-content: space-between; gap: 0.8em; }
 @media (prefers-reduced-motion: reduce) { .sc-rd li.fl { animation: none; } }
@@ -417,6 +418,7 @@
 .sc-board tbody tr:nth-child(9) { animation-delay: 0.32s; }
 .sc-board tbody tr:nth-child(n + 10) { animation-delay: 0.36s; }
 .sc-rd li { animation: sc-row 0.35s ease both; }
+.sc-rd ol.st li:not(.fl) { animation: none; } /* sol alt sıra: ilk 5 sabit, kıpırdamaz */
 @media not all and (max-aspect-ratio: 1/1) {
   /* alt bant: sol alttaki listenin sağında, yarış adının solunda; küçük ve alçak */
   .sc-c1 { left: calc(21.5em + env(safe-area-inset-left)); right: auto; top: auto; bottom: calc(2em + env(safe-area-inset-bottom)); transform: none; width: min(36em, calc(100% - 44em)); font-size: 0.72em; box-shadow: inset 0 0 0 1px var(--sc-lite-line); animation: sc-up 0.45s ease both; }
@@ -473,6 +475,8 @@
 .sc-rcol > .sc-rd li em { margin-left: 0; text-align: left; font: 600 0.92em/1 var(--sc-c); color: rgba(255, 255, 255, 0.86); }
 .sc-rcol > .sc-rd li .mk { text-decoration: none; padding: 0.18em 0.35em; border-radius: 0.2em; background: rgba(255, 255, 255, 0.16); font: 800 0.68em/1 var(--sc-c); letter-spacing: 0.04em; color: #fff; }
 .sc-rcol > .sc-rd li .cl { font: 700 0.7em/1 var(--sc-c); font-style: normal; letter-spacing: 0.08em; color: var(--sc-mut); min-width: 3.6em; text-align: right; }
+.sc-rcol > .sc-rd li .cl { width: 6.2em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-rcol > .sc-rd li .cl.no { font-weight: 600; letter-spacing: 0.02em; opacity: 0.6; }
 .sc-rcol > .sc-rd li:not(:has(u)) { grid-template-columns: 6.4ch minmax(0, 1fr) auto auto; }
 /* genel sıralama tablosu: yelken sütunu 6 haneye göre */
 .sc-board td.sn { width: 6.6ch; font-variant-numeric: tabular-nums; }
