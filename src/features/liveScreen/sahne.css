@@ -309,7 +309,7 @@
 /* Hafif panel (Seyhun 2026-11-04 "çok göz yoruyor, arka planı kapatıyor"): görüntü önde; yarı saydam cam, ince çizgi, gölge yok, küçük yazı.
    Ortak: .sc-lite sınıfı ya da --sc-lite rengi; şimdilik sağ üst sütunda (yarış kartı + grup listesi), sonra bütün sahnelere taşınacak */
 .sc { --sc-lite: rgba(6, 14, 28, 0.38); --sc-lite-line: rgba(255, 255, 255, 0.12); }
-.sc-lite, .sc-rcol > .sc-c2.col, .sc-rcol > .sc-rd {
+.sc-lite, .sc-rcol > .sc-c2.col, .sc-rcol > .sc-rd, .sc-rcol > .sc-og {
   background: var(--sc-lite);
   border-radius: 0.6em;
   box-shadow: inset 0 0 0 1px var(--sc-lite-line);
@@ -318,7 +318,9 @@
   text-shadow: 0 0.05em 0.4em rgba(0, 0, 0, 0.35);
 }
 .sc-rcol { font-size: 0.8em; gap: 0.4em; max-height: calc(100% - 12em); }
-.sc-rcol > .sc-c2.col, .sc-rcol > .sc-rd { width: 16em; }
+.sc-rcol > .sc-c2.col, .sc-rcol > .sc-rd, .sc-rcol > .sc-og { width: 16em; }
+.sc-rcol > .sc-og > div + div { border-color: var(--sc-lite-line); }
+.sc-rcol > .sc-og > div { padding: 0.4em 0.75em; }
 .sc-rcol > .sc-c2.col :is(.sc-who, .sc-fl, .sc-ocs, .sc-wl), .sc-rcol > .sc-rd :is(li, .sc-rdm) { border-color: var(--sc-lite-line); }
 .sc-rcol > .sc-c2.col .sc-who { padding: 0.45em 0.7em; }
 .sc-rcol > .sc-c2.col .sc-t { padding: 0.45em 0.7em 0.4em; }
