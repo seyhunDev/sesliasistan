@@ -4,6 +4,7 @@
 // Türü adından anlaşılır: renk listesi o günün grupları, sporcu listesi katılımcılar, altın/gümüş/bronz listesi final filoları,
 // sonuç (geçici/kesin) sonuç listesi, ek talimat (V2, V3…) en yenisi geçerli, gerisi Belgeler'de PDF olarak durur.
 // Saf fonksiyonlar (test: scripts/asistan-test/yerel/yaris.mjs "Yarış sitesi belgeleri").
+import { cleanAgenda, programPatch } from "./raceProgram.js";
 
 const plain = (s) =>
   String(s || "")
@@ -157,4 +158,32 @@ export function newRacesNote(list, season) {
   if (list.length === 1) return { title: `Sitede yeni yarış: ${legText(list[0].leg)} · ${list[0].cls}`, body: season };
   const legs = [...new Set(list.map((x) => legText(x.leg)))];
   return { title: `Sitede ${list.length} yeni yarış`, body: `${season} ${legs.join(", ")}: ${list.map((x) => x.cls).slice(0, 8).join(", ")}${list.length > 8 ? "…" : ""}` };
+}
+
+// Yayın programı (Seyhun 2026-11-04 "Yayın'a PDF yüklemeye gerek kalmasın, siteden aldıklarımızla yapalım"): talimattan ya da ek
+// talimattan okunan günler (lib/ai/raceProgramAi.js) raceLive plan alanlarına { daily, times, off, agenda }. full (yarış talimatı):
+// bütün program yeniden (programPatch); değilse (ek talimat) yalnız belgede geçen günler değişir, ötekiler kalır. Değişen yoksa null.
+export function sitePlan(plan, days, full) {
+  const p = plan && typeof plan === "object" ? plan : {};
+  const old = { daily: p.daily || "", times: p.times || {}, off: p.off || [], agenda: cleanAgenda(p.agenda) };
+  const list = Array.isArray(days) ? days : [];
+  if (!list.length) return null;
+  if (full || !old.daily) return programPatch(list, p)?.plan || null;
+  const times = { ...old.times };
+  const off = new Set(old.off);
+  const agenda = { ...old.agenda };
+  const keys = [...new Set([...Object.keys(old.agenda), ...Object.keys(old.times), ...old.off])].sort();
+  for (const d of list) {
+    if (d.items?.length) agenda[d.day] = d.items;
+    if (d.race) {
+      off.delete(d.day);
+      if (d.at && d.at !== old.daily) times[d.day] = d.at;
+      else if (d.at) delete times[d.day];
+    } else if (d.day > keys[0] && d.day < keys.at(-1)) {
+      // Yarışsız gün yalnız yarış günlerinin arasındaysa "Yarış yok" (kayıt / ödül günü değil)
+      off.add(d.day);
+      delete times[d.day];
+    }
+  }
+  return { daily: old.daily, times, off: [...off].sort(), agenda: cleanAgenda(agenda) };
 }

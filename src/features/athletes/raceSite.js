@@ -90,9 +90,11 @@ export async function undoDoc(orgId, race, d) {
     await mark(orgId, race.id, d.id, { state: "undone", undo: deleteField() });
     return { results: res };
   }
-  // Talimat / ek talimat: yarışın talimat bilgisi (program) öncesine döner
+  // Talimat / ek talimat: yarışın talimat bilgisi (program) ve Yayın programı öncesine döner
   if (u.notice) {
     await updateDoc(doc(db, "orgs", orgId, "races", race.id), { notice: u.notice });
+    // Yayın programı da öncesine (raceLive plan alanları)
+    if (u.plan) await updateDoc(doc(db, "orgs", orgId, "raceLive", race.id), Object.fromEntries(Object.entries(u.plan).map(([k, v]) => [`plan.${k}`, v])));
     await mark(orgId, race.id, d.id, { state: "undone", undo: deleteField() });
     return { notice: u.notice };
   }
