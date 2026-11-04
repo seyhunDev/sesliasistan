@@ -854,6 +854,23 @@ export function BroadcastPage({ orgId, id }) {
   const nLive = srcList.filter((x) => stat[x.url]?.live).length;
   // satırdan başlatma: geri sayım sürmüyor, tehir yok, gün bitmedi
   const canRow = plan.status !== "ap" && plan.status !== "done" && tr.t.left == null && !(cur && Date.parse(cur.at) > capNow);
+  // Büyük kart (Seyhun 2026-11-04 "sıradaki yarış büyük kartta, Başlat büyük; hangisi başlatılırsa o büyür, başladıysa sıradaki büyür"):
+  // geri sayımdaki grup, yoksa sıradaki bekleyen
+  const hero = (() => {
+    for (const r of races) for (const x of r.rows) if (x.start && cdRow(x.start.id)) return { x, n: r.n, cd: true };
+    if (!canRow) return null;
+    for (const r of races) for (const x of r.rows) if (!x.start && x.state === "next") return { x, n: r.n, cd: false };
+    return null;
+  })();
+  const heroX = hero?.x || null;
+  const heroE = hero ? (hero.cd ? L?.rounds?.[heroX.start.id] || {} : heroX.plan || {}) : {};
+  const heroPrep = prepName(heroE?.prep) || "";
+  const heroPaused = !!hero?.cd && tr.t.left != null;
+  const heroCount = (() => {
+    if (!hero?.x.grp) return 0;
+    const gm = groupMap(groupsOn(groups, today));
+    return Object.values(gm).filter((g) => g === hero.x.grp).length;
+  })();
   const grpName = (k) => { const [c, g] = k.split("|"); return g || c; };
 
   return (
@@ -960,6 +977,61 @@ export function BroadcastPage({ orgId, id }) {
             <span className={`masa-sw${orangeUp(plan, today) ? " on" : ""}`} aria-hidden="true" />
           </button>
         ) : null}
+        {hero ? (
+              <section className={`masa-hero${hero.cd ? " cd" : ""}`} aria-live="polite">
+                <div className="masa-hero-h">
+                  <span className="masa-hero-bd">{hero.cd ? (heroPaused ? "Durdu" : "Geri sayım") : "Sıradaki"}</span>
+                  <span>{[`${hero.n}. yarış`, heroE?.cls].filter(Boolean).join(" · ")}</span>
+                </div>
+                <div className="masa-hero-n">
+                  <span className="size-3.5 shrink-0 rounded-full" style={{ background: heroX.grp ? groupColor(heroX.grp) : "var(--mut)" }} aria-hidden="true" />
+                  <b>{heroX.grp ? `${heroX.grp} grup` : heroE?.cls || "Start"}</b>
+                  <small>{hero.cd ? (heroPrep ? `${heroPrep} çekili` : "") : heroCount ? `${heroCount} tekne` : ""}</small>
+                </div>
+                {hero.cd ? (
+                  <>
+                    <div className="masa-hero-t">{mmss(Math.max(0, heroPaused ? tr.t.left : tr.rem))}</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="secondary" onClick={heroPaused ? resumeCd : pauseCd}>
+                        {heroPaused ? "Devam" : "Dur"}
+                      </Button>
+                      <Button variant="danger" onClick={() => setFlagPick({ id: "AP" })}>
+                        Tehir
+                      </Button>
+                    </div>
+                    <div className="mt-2 grid grid-cols-4 gap-1.5">
+                      <Button size="sm" variant="secondary" disabled={heroPaused || tr.rem <= 60} onClick={() => shiftCd(tr.t.end - 60000)}>
+                        −1 dk
+                      </Button>
+                      <Button size="sm" variant="secondary" disabled={heroPaused} onClick={() => shiftCd(Date.now() + Math.round(tr.rem / 60) * 60000)}>
+                        Eşitle
+                      </Button>
+                      <Button size="sm" variant="secondary" disabled={heroPaused} onClick={() => shiftCd(tr.t.end + 60000)}>
+                        +1 dk
+                      </Button>
+                      <Button size="sm" variant="secondary" className="text-rec" onClick={() => raceCancel(flow)}>
+                        İptal
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {heroPrep ? <p className="masa-hero-p">{`Hazırlık: ${heroPrep}${plan.at && !races.some((r) => r.rows.some((y) => y.start)) ? ` · Start ${plan.at}` : ""}`}</p> : null}
+                    <div className="masa-hero-d">
+                      {[300, 240, 120, 60].map((d) => (
+                        <button key={d} type="button" data-press aria-pressed={tr.t.dur === d} onClick={() => chooseDur(d)}>
+                          {d / 60}
+                          <small>dk</small>
+                        </button>
+                      ))}
+                    </div>
+                    <Button className="masa-hero-go" onClick={() => startRow(heroX.i)}>
+                      Başlat
+                    </Button>
+                  </>
+                )}
+              </section>
+        ) : null}
         <section>
           <Head title="Bugün" right={plan.status === "done" ? "Gün bitti" : plan.status === "none" ? "Bugün yarış yok" : plan.status === "ap" ? "Start ertelendi" : [races.length ? `${races.length} yarış` : "", plan.at ? `İlk start ${plan.at}` : ""].filter(Boolean).join(" · ")} />
           <div className={`${card} overflow-hidden`}>
@@ -1014,7 +1086,7 @@ export function BroadcastPage({ orgId, id }) {
                                 </span>
                                 {time ? <span className={`shrink-0 text-[1.25rem] font-bold tabular-nums ${isCd ? "text-acc" : x.state === "done" ? "text-ok" : ""}`}>{time}</span> : null}
                               </button>
-                              {isCd ? (
+                              {isCd && !hero?.cd ? (
                                 <Button size="sm" variant="secondary" full={false} onClick={paused ? resumeCd : pauseCd}>
                                   {paused ? "Devam" : "Dur"}
                                 </Button>
@@ -1033,7 +1105,7 @@ export function BroadcastPage({ orgId, id }) {
                                 </Button>
                               ) : null}
                             </div>
-                            {!s && canRow && x.state === "next" ? (
+                            {!s && canRow && x.state === "next" && !hero ? (
                               // Sıradaki grup: süre seçimi ve Başlat (5 · 4 · 2 · 1 dk; son seçilen bu telefonda kalır)
                               <div className="flex items-center gap-1.5 pb-2.5 pl-[3.4rem] pr-3">
                                 {[300, 240, 120, 60].map((d) => (
