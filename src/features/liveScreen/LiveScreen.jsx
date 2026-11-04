@@ -8,7 +8,7 @@ import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, clean
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
+import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
@@ -4032,7 +4032,8 @@ function Sc06({ data, prog, now, today }) {
 function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast }) {
   // Start öncesi: turuncu bayrak çekili ya da start'a 10 dk'dan az; Yayın'dan elle seçilen evre (courseShow.evre) üstüne yazar
   const soon = mode === "wait" && (orangeUp(data.plan, today) || (cs.rem != null && cs.rem > 0 && cs.rem <= 600));
-  const evre = evreOf(mode, seqMode, soon, cleanCourseShow(data.courseShow).evre);
+  const vd = mode === "wait" || mode === "between" ? voidLast(data, today, now) : null;
+  const evre = evreOf(mode, seqMode, soon, cleanCourseShow(data.courseShow).evre, { fs: /genel/i.test(vd?.void || ""), aban: /abandone|iptal/i.test(vd?.void || "") });
   const sd = { ...data, screen: evreScreen(data.screen, data.courseShow, evre) };
   const vid = ["live", "drone", "src", "rec", "boats"].includes(sd.screen?.kind);
   const t = scTime({ data: sd, sel, entry, cs, prog, today, now, mode, seqMode, fsLast });
@@ -4070,6 +4071,10 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
     : sc === "05" ? <Sc05 data={data} sel={sel} mode={mode} now={now} />
     : <Sc06 data={data} prog={prog} now={now} today={today} />;
   const live = mode !== "none" && plan.status !== "done";
+  // Evre bandı (Seyhun 2026-11-04 "TV show kıvamında; geçişler"): evre değişince altta 3 sn evrenin adı (sayfa ilk açılışında yok)
+  const [bump, setBump] = useState({ e: evre, t: 0 });
+  if (bump.e !== evre) setBump({ e: evre, t: now });
+  const bumpOn = bump.t > 0 && now - bump.t < 3200;
   // Sol alt liste tek kural (Seyhun 2026-11-04 "hangi durumda ne zaman gösteriliyor, karışıklık var"): süre kartındaki grubun listesi;
   // start öncesinden yarış bitene kadar (tehir dahil) her öğede yerinde, yalnız ortada genel sıralama ya da parkur (sol yarıyı kaplar) varken yok; yarış öncesi ve sonrası yok
   // Yayın › Ekran'da evre başına seçilir (Grup ve sıra / Genel ilk 10 / Yok)
@@ -4095,6 +4100,12 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
         {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} /> : listOn ? side === "gen" ? <ScGen data={data} who={lwho} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
+      {bumpOn ? (
+        <div className="sc-bump" key={bump.t} aria-hidden="true">
+          <i />
+          <b>{EVRE_NAME[evre] || ""}</b>
+        </div>
+      ) : null}
       {ap && sc !== "04" ? <ScAp t={t} plan={plan} seq={mode === "seq"} /> : null}
       <div className="sc-name">
         <div className="sc-nt">
