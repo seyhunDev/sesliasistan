@@ -1,8 +1,8 @@
-Commit: 9eee42c · Genel sıralama: final serisinde Altın, Gümüş, Bronz sırası (#1221)
-Zaman: 2026-11-04-1901 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41861483994
+Commit: da3f0b4 · Hava tablosu: ölçülen rüzgâr ayrı satırda ve grafikte nokta (#1222)
+Zaman: 2026-11-04-1928 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41865213538
 
-TAM TEST · 04.11.2026 18:48:21
+TAM TEST · 04.11.2026 19:14:41
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1430/1439 geçti · 9 kalan · 780 sn
+SONUÇ: 1430/1439 geçti · 9 kalan · 835 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -202,7 +202,7 @@ SONUÇ: 1430/1439 geçti · 9 kalan · 780 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 19 · açıklama "Gerçekleşen (Dikili istasyonu)Tahmin" · bölünmüş true
+          olan:     ölçülen sütun 20 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
