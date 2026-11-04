@@ -902,7 +902,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                   <span className="text-[0.9375rem] font-semibold text-white/75">gün kaldı</span>
                 </>
               ) : (
-                <b className="truncate text-[1.75rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
+                <b className="-mb-[0.2em] truncate pb-[0.2em] text-[1.75rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
               )}
             </span>
             {/* Ana hesap: yayın sayfası (sayaç, ekran, parkur-rüzgâr, dönüşler, sonuç PDF'i) tek düğmeden, Seyhun 2026-11-01 */}

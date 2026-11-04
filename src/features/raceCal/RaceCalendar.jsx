@@ -83,8 +83,8 @@ export function RaceCalendar() {
   const pill = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.875rem] font-semibold";
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Yarış takvimi">
+    <main className="race-wide mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+      <section className="ck race-top -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Yarış takvimi">
         <header className="flex items-center gap-2.5">
           <BackButton href={club ? "/athletes" : "/"} />
           <div className="min-w-0 flex-1 leading-tight">
@@ -110,7 +110,7 @@ export function RaceCalendar() {
           ))}
         </div>
       </section>
-      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="race-body relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {error && <p className="text-center text-[0.875rem] text-rec">{error}</p>}
         {!list && <Loading label="Yarışlar yükleniyor" />}
         {list && !shown.length && !error && <p className="pt-4 text-center text-[0.875rem] text-mut">{q ? "Bulunamadı" : tab === "up" ? "Yaklaşan yarış yok" : "Geçmiş yarış yok"}</p>}

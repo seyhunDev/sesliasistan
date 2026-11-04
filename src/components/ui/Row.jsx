@@ -13,7 +13,7 @@ export function RowList({ children, className = "" }) {
 
 // lead: soldaki küçük şey (kişi yuvarlağı); warn: alt satır kehribar (gerçek uyarı)
 // Kutu görünümü (ana sayfa Kulüp, Seyhun "A · Kutular" 2026-10-24): RowTiles içindeki satırlar ikili kutu olur: üstte küçük cyan ad,
-// ortada büyük değer (right), altında tek satır (sub). Sayfalar aynı satırları değiştirmeden iki görünümde kullanır.
+// ortada büyük değer (right), altında tek satır (sub). Büyük değerin altında pay var: kesilen kutuda "14 gün"ün g'si kesilmesin (Seyhun 2026-11-04). Sayfalar aynı satırları değiştirmeden iki görünümde kullanır.
 const TileCtx = createContext(false);
 export function RowTiles({ children }) {
   return (
@@ -26,7 +26,7 @@ function Tile({ href, onClick, title, sub, right, warn, label }) {
   const body = (
     <>
       <span className="truncate text-[0.75rem] font-semibold text-mut">{title}</span>
-      {right != null && <span className="truncate text-[1.25rem] font-bold leading-tight tracking-[-.02em] tabular-nums">{right}</span>}
+      {right != null && <span className="-mb-[0.15em] truncate pb-[0.15em] text-[1.25rem] font-bold leading-tight tracking-[-.02em] tabular-nums">{right}</span>}
       {sub && <small className={`truncate text-[0.75rem] ${warn ? "text-warn" : "text-mut"}`}>{sub}</small>}
     </>
   );

@@ -70,7 +70,7 @@ function Races({ orgId, me }) {
   );
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
+    <main className="race-wide mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
       <RaceList races={races} head={head} onOpen={(r) => router.push(`/athletes/races/${r.id}`)}>
         {error && <p className="text-center text-[0.875rem] text-rec">{error}</p>}
         {!races && <Loading label="Yarışlar yükleniyor" />}

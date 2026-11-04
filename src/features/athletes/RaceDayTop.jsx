@@ -87,7 +87,7 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
     <div className="mt-3 flex flex-1 flex-col">
       {(title || side) && (
         <span className="flex items-baseline justify-between gap-3">
-          {title && <b className="truncate text-[1.625rem] font-bold leading-none tracking-tight">{title}</b>}
+          {title && <b className="-mb-[0.2em] truncate pb-[0.2em] text-[1.625rem] font-bold leading-none tracking-tight">{title}</b>}
           {side && <span className="shrink-0 text-[0.8125rem] font-semibold tabular-nums text-white/70">{side}</span>}
         </span>
       )}
