@@ -105,7 +105,7 @@ export function WeatherTop({ w, refresh }) {
             <h2 className="text-[0.8125rem] font-bold tracking-[.04em] text-mut">BÖLGE</h2>
             {st?.lat != null && <small className="truncate text-[0.75rem] text-mut">{st.name} istasyonu · {String(st.km).replace(".", ",")} km</small>}
           </div>
-          <RegionMap place={place} station={obToday?.station || st} obs={obToday?.rows} onPick={movePoint} inline />
+          <RegionMap place={place} day={sel} station={obToday?.station || st} obs={obToday?.rows} onPick={movePoint} inline />
         </section>
         <div className="flex gap-2">
           <a href={links.mgm} target="_blank" rel="noopener noreferrer" data-press className="raised flex h-11 flex-1 items-center justify-center rounded-2xl text-[0.875rem] font-semibold">MGM</a>
