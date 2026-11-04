@@ -4,11 +4,11 @@ import { Fragment, useEffect, useId, useMemo, useRef, useState, useSyncExternalS
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { liveUrl } from "@/lib/raceCams";
-import { apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
+import { momentRace, momentRaceName, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
+import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
@@ -22,6 +22,7 @@ import { agendaView } from "@/lib/raceProgram";
 import { autoCaption } from "@/lib/raceCaption";
 import { flagSvg, signalOf, sigOnCard, soundText } from "@/lib/raceSignals";
 import "./liveScreen.css";
+import "./sahne.css";
 
 // Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01; yayın görünümü 2026-11-02 SailGP örneği, project-files/samandira-donus/yayin4).
 // Arka plan tam ekran: ekranda canlı yayın ya da tekrar varsa video, yoksa deniz zemini. Üstüne köşelerde ince paneller (Backdrop, Panel…):
@@ -3004,172 +3005,6 @@ const gArrow = (dir) => (
     ) : null}
   </svg>
 );
-// Kart başlığı (Seyhun 2026-11-03 17:10 sol-alt onayı, "biraz canlı olsun"): solda renkli, eğik kesimli rozet (tone: "" pembe, t turkuaz,
-// y sarı, r kırmızı, o turuncu), yanında açıklama, sağda soluk etiket
-function GCard({ cls = "", head, tone = "", sub, tag, children, onClick }) {
-  const Tag = onClick ? "button" : "div";
-  return (
-    <Tag type={onClick ? "button" : undefined} className={`gr-card ${cls}`} onClick={onClick}>
-      {head ? (
-        <div className="gr-hd">
-          <span className={`gr-bd ${tone}`}>{head}</span>
-          {sub ? <span className="gr-hs">{sub}</span> : null}
-          {tag ? <span className="gr-tag">{tag}</span> : null}
-        </div>
-      ) : null}
-      {children}
-    </Tag>
-  );
-}
-// Start kartı (sol altta, rüzgârın hemen üstünde; Seyhun 2026-11-03 "startla alakalı olanı her zaman rüzgârın üst tarafında gösterelim,
-// yarış başlayınca küçük haline getiririz"): rozet + durum + saat, büyük süre, sağda yarış / grup / sınıf; start dizisinde altta sade
-// 5·4·1·0 bayrak şeridi (sağdaki dizi kartı yok), en altta ilerleme çubuğu. Üst orta videoya kalır.
-// süre yoksa (geri / ileri sayım yok: "—:—", "—") süre alanı hiç gösterilmez (Seyhun 2026-11-03 17:19); kartta başka bilgi de yoksa kart yok
-const hasTm = (v) => !!v && !/^[\s—–:.\-]*$/.test(String(v));
-// İşaret kartı (Seyhun 2026-11-03 "bayrakları kullanabiliyor olmalıyız"): Yayın'da çekilen bayrak; bayraklar üst üste, kısa ad, anlamı, ses
-function GSig({ sig, today }) {
-  const s = sig ? signalOf(sig.id) : null;
-  if (!s || !sigOnCard(s)) return null;
-  const d = new Date(Date.parse(sig.at) + 3 * 3600e3).toISOString().slice(0, 10);
-  if (d !== today) return null;
-  const snd = soundText(s);
-  return (
-    <div className="gr-card gr-sig">
-      <div className="gr-hd">
-        <span className="gr-bd y">İşaret</span>
-        <span className="gr-hs">{sig.grp || ""}</span>
-      </div>
-      <div className="gr-sgb">
-        <span className="gr-sgf" aria-hidden="true">
-          {s.flags.map((f) => (
-            <i key={f} dangerouslySetInnerHTML={{ __html: flagSvg(f) }} />
-          ))}
-        </span>
-        <div className="gr-sgt">
-          <b>{s.short}</b>
-          <p>{s.info}</p>
-          {snd ? <small>{snd}</small> : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-// yarışa katılan sporcular (Seyhun 2026-11-03 19:59): sıradaki/ekrandaki startın grubu (günün grup listesi), yoksa sınıfın kayıt listesi
-function GBoats({ data, e, today }) {
-  const all = data.entries || [];
-  if (!all.length) return null;
-  const gm = groupMap(groupsOn(data.groups, today));
-  const grp = e?.grp || "";
-  const cls = e?.cls || "";
-  const inGrp = grp && Object.keys(gm).length ? all.filter((x) => gm[x.sail] === grp) : [];
-  const rows = (inGrp.length ? inGrp : all.filter((x) => !cls || !x.cls || x.cls === cls)).slice().sort((a, b) => Number(a.sail) - Number(b.sail));
-  if (!rows.length) return null;
-  const n = 8;
-  return (
-    <GCard cls="gr-res gr-boats" tone="t" head="Sporcular" tag={[inGrp.length ? `${grp} grup` : cls, `${rows.length} tekne`].filter(Boolean).join(" · ")}>
-      <ol className="gr-rows">
-        {rows.slice(0, n).map((x) => (
-          <li key={x.sail}>
-            <b>{x.sex === "K" ? "K" : ""}</b>
-            <i>{x.sail}</i>
-            <span>{shortName(x.name) || ""}</span>
-            <em>{shortClub(x.club) || ""}</em>
-          </li>
-        ))}
-      </ol>
-      {rows.length > n ? <div className="gr-more">{`+${rows.length - n} tekne`}</div> : null}
-    </GCard>
-  );
-}
-function GStart({ t }) {
-  if (!t) return null;
-  const w = t.who;
-  const tm = hasTm(t.tm);
-  if (!tm && !w && !t.sub && !t.rule) return null;
-  return (
-    <div className={`gr-card gr-st ${t.cls || ""}`} role="timer">
-      <div className="gr-hd">
-        <span className={`gr-bd ${t.cls || ""}`}>
-          {t.flag ? <Flag kind={t.flag} /> : t.orange ? <i className="gr-of" aria-hidden="true" /> : null}
-          {t.bd || "Start"}
-        </span>
-        <span className="gr-hs">{t.lab}</span>
-        {t.at ? <span className="gr-tag">{t.at}</span> : null}
-      </div>
-      <div className={`gr-stb${tm ? "" : " nt"}`}>
-        {tm ? <div className={`gr-tm${/\d/.test(String(t.tm)) ? "" : " tx"}`}>{t.tm}</div> : null}
-        {w ? (
-          <div className="gr-who">
-            {w.name ? <b>{w.name}</b> : null}
-            {w.grp ? (
-              <span style={{ "--g": groupColor(w.grp) || "#ffd23f" }}>{`${w.grp} grup`}</span>
-            ) : null}
-            {w.cls ? <small>{w.cls}</small> : null}
-          </div>
-        ) : null}
-      </div>
-      {t.sub ? <div className="gr-sub">{t.sub}</div> : null}
-      {t.rule ? (
-        <div className="gr-rl">
-          <Flag kind={t.rule.prep} />
-          <div>
-            <b>{t.rule.name}</b>
-            {t.rule.info ? <small>{t.rule.info}</small> : null}
-          </div>
-        </div>
-      ) : null}
-      {t.bar != null ? (
-        <div className="gr-bar">
-          <i style={{ width: `${Math.max(0, Math.min(100, t.bar))}%` }} />
-        </div>
-      ) : null}
-    </div>
-  );
-}
-// Start dizisi şeridi: 5 sınıf bayrağı çekilir · 4 kural bayrağı · 1 kural bayrağı iner · 0 sınıf bayrağı iner (sade: rakam + bayrak)
-// Start dizisinde 5·4·1·0 şeridi yok (Seyhun 2026-11-03 18:07): yalnız uygulanan kural bayrağı ve küçük yazıyla ne demek olduğu; altta ilerleme çubuğu kalır
-const PREP_INFO = {
-  P: "Hazırlık bayrağı · özel ceza yok",
-  I: "Son dakikada hattın üstündeki tekne uçlardan dolaşıp döner",
-  Z: "Son dakikada üçgende olan tekneye %20 puan cezası",
-  U: "Son dakikada üçgende olan tekne diskalifiye (UFD)",
-  Kara: "Son dakikada üçgende olan tekne diskalifiye (BFD), genel geride de",
-};
-function seqRule(e) {
-  const prep = e?.prep || "";
-  return prep ? { prep, name: prepName(prep), info: PREP_INFO[prep] || "" } : null;
-}
-// Yarışta süre kartı (Seyhun 2026-11-03 16:45): starttan sonra üst ortadan kalkar, rüzgârın hemen üstünde küçük skor bandı olur;
-// solda grubun rengi, yarışın adı ve grup/sınıf, sağda "Starttan beri" süre. Üst orta boşalır, arkadaki video net görünür.
-function GClock({ c }) {
-  if (!c || !hasTm(c.tm)) return null;
-  return (
-    <div className="gr-card gr-clk" role="timer" style={{ "--g": c.grp ? groupColor(c.grp) || "#ff3d77" : "#ff3d77" }}>
-      <div className="gr-clk-w">
-        <b>{c.name || "Yarış"}</b>
-        <span>{[c.grp ? `${c.grp} grup` : "", c.cls].filter(Boolean).join(" · ")}</span>
-      </div>
-      <div className="gr-clk-t">
-        <small>{c.lab}</small>
-        <b>{c.tm}</b>
-      </div>
-    </div>
-  );
-}
-function GRows({ rows }) {
-  return (
-    <ol className="gr-rows">
-      {rows.map((r, i) => (
-        <li key={`${r.sail}${r.name}${i}`} className={r.pen ? "pen" : i === 0 ? "l" : ""}>
-          <b>{r.p}</b>
-          <i>{r.sail}</i>
-          <span>{r.name}</span>
-          <em className={r.gap === "Lider" ? "y" : ""}>{r.gap || ""}</em>
-        </li>
-      ))}
-    </ol>
-  );
-}
 // bir yarışın sıralaması: resmî sonuç yoksa şamandıra dönüşleri (lidere fark), cezalılar sonda kodlarıyla
 function raceRows(data, sel) {
   const entry = data.rounds?.[sel?.id] || { route: [], legs: [] };
@@ -3188,79 +3023,6 @@ function raceRows(data, sel) {
   const n = pos >= 0 ? (entry.legs?.[pos] || []).length : 0;
   return { rows, head: pos >= 0 ? (fin ? "Finiş" : markName(route[pos])) : "Sıralama", tag: n ? `${n} tekne ${fin ? "bitirdi" : "döndü"}` : "", n: rows.length };
 }
-function GWind({ data, now, mode, today, can = false, open: want = false }) {
-  // takılır takılmaz açık gelmesin (elle "Rüzgâr"da durunca da açılışı görünsün)
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setReady(true), 700);
-    return () => clearTimeout(t);
-  }, []);
-  const open = want && ready;
-  const c = curWind(data, null, true, now);
-  const plan = data.plan;
-  const rows = [];
-  if (mode === "summary") {
-    const nx = plan.next;
-    const w = nx?.at ? expWind(data.forecastNext, nx.at) : null;
-    if (w) rows.push({ lab: `${nextText(plan, today).big} beklenen`, w, by: "tahmin" });
-  } else {
-    if (c) rows.push({ lab: "Şimdi", w: c, by: "" });
-    // parkurda elle ölçüm girildiyse "Start'ta beklenen" gösterilmez (Seyhun 2026-11-03 17:39: tahmin ile ölçüm çok farklı olabiliyor;
-    // beklenen rüzgâr zaten yandan açılan tabloda)
-    if (["wait", "ap", "none"].includes(mode) && plan.at && !c?.man) {
-      const e = expWind(data.forecast, plan.at);
-      if (e) rows.push({ lab: "Start'ta beklenen", w: e, by: "tahmin" });
-    }
-  }
-  if (!rows.length) return null;
-  // kaynak başlığın yanında küçük; elle girilen ölçüm "Parkur verisi" (Seyhun 2026-11-03 17:31)
-  const src = c && mode !== "summary" ? c.by : "";
-  return (
-    // beklenen saatler ayrı kart değil: rüzgâr kartının kendisi yana genişleyip açılır, sonra kapanır (Seyhun 2026-11-03 17:44)
-    // açılan kısmın kendi başlığı var: "Beklenen" (Seyhun 2026-11-03 18:18; parkur verisi başlığının altında gibi duruyordu); başlık şeridi tek parça
-    <GCard cls={`gr-wind${can ? " x" : ""}${open ? " on" : ""}`}>
-      <div className="gr-wb">
-        <div className="gr-wa">
-        <div className="gr-hd">
-          <span className="gr-bd t">Rüzgâr</span>
-          {src ? <span className="gr-tag">{src}</span> : null}
-        </div>
-        <div className="gr-wrs">
-          {rows.map((r) => (
-            <div key={r.lab} className="gr-wr">
-              <div>
-                <small>{r.lab}</small>
-                <span>{[r.w.dir != null ? `${dirShort(r.w.dir)} ${degText(r.w)}` : "", r.by].filter(Boolean).join(" · ")}</span>
-              </div>
-              {gArrow(r.w.dir)}
-              <div className="gr-kn">
-                <b>
-                  {r.w.kn}
-                  <em>kn</em>
-                </b>
-                {r.w.gust != null && r.w.gust > r.w.kn ? <i>{`sağanak ${r.w.gust}`}</i> : null}
-              </div>
-            </div>
-          ))}
-        </div>
-        </div>
-        {can ? (
-          <div className="gr-wx" aria-hidden={!open}>
-            <div className="gr-wxi">
-            <div className="gr-hd">
-              <span className="gr-bd t">Beklenen</span>
-              <span className="gr-hs">Saatlik tahmin</span>
-            </div>
-            <div className="gr-wt">
-              <WindHours data={data} now={now} scale={1} ahead />
-            </div>
-            </div>
-          </div>
-        ) : null}
-      </div>
-    </GCard>
-  );
-}
 // uzun program (3 yarış × 3 grup) kısalır (Seyhun 2026-11-03 18:25): bitenler tek satırda sayı, önümüzdeki en çok 4 start, kalanı "+N start daha"
 const PROG_MAX = 4;
 function progRows(prog) {
@@ -3271,106 +3033,6 @@ function progRows(prog) {
   const foot = [done && up.length ? `${done} start bitti` : "", more > 0 ? `+${more} start daha${up[up.length - 1]?.at ? ` · son ${up[up.length - 1].at}` : ""}` : ""].filter(Boolean).join(" · ");
   return { rows, foot };
 }
-function GProg({ prog }) {
-  if (!prog.length) return null;
-  const { rows, foot } = progRows(prog);
-  return (
-    // sade program (Seyhun 2026-11-03 18:20): rüzgâr ve parkurla aynı satır dili, pembe dolgu ve hap yok; sıradaki satır yalnız parlak + grup rengi çizgisi
-    <GCard cls="gr-side gr-prg" head="Program" tone="b" tag={`Bugün · ${prog.length} start`}>
-      <ul className="gr-pg">
-        {rows.map((x) => (
-          <li key={x.key} className={x.state} style={{ "--g": groupColor(x.grp) || "rgba(255,255,255,.4)" }}>
-            <b>{x.at || ""}</b>
-            <span>
-              <Dot g={x.grp} />
-              {gWhat(x) || x.name}
-            </span>
-            <small>{x.state === "next" ? "Sıradaki" : x.state === "done" ? "Bitti" : x.state === "now" ? "Yarışta" : ""}</small>
-          </li>
-        ))}
-      </ul>
-      {foot ? <div className="gr-more">{foot}</div> : null}
-    </GCard>
-  );
-}
-// Start dizisi: 5 Uyarı (sınıf bayrağı) · 4 Hazırlık (kural bayrağı) · 1 Son dakika (kural bayrağı iner) · 0 Start (sınıf bayrağı iner)
-function GSeq({ data, cs, e, mode }) {
-  const dur = mode === "ap" ? data.plan.ap?.dur || 300 : data.timer?.dur || 300;
-  const rem = mode === "ap" ? data.plan.ap?.seq ?? null : cs.rem;
-  const steps = seqSteps(dur);
-  const sts = rem != null ? seqState(steps, rem, true) : steps.map(() => "");
-  const nextI = sts.findIndex((s) => !s);
-  const cls = e?.cls || "", grp = e?.grp || "", prep = e?.prep || "";
-  const what = (m) => (m === 0 ? "Sınıf bayrağı iner" : m === 1 ? `${prepName(prep) || "Kural bayrağı"} iner` : m === 4 ? `${prepName(prep) || "Kural bayrağı"} çekilir` : "Sınıf bayrağı çekilir");
-  const flag = (m) => (m === 1 || m === 4 ? (prep ? <Flag kind={prep} down={m === 1} /> : null) : cls || grp ? <Flag kind="cls" cls={cls || "Sınıf"} grp={grp} down={m === 0} /> : null);
-  return (
-    <GCard
-      cls="gr-side"
-      head={
-        <>
-          {cls || grp ? <Flag kind="cls" cls={cls || "Sınıf"} grp={grp} /> : null}
-          {gWhat({ name: e?.name, grp }) || "Start dizisi"}
-        </>
-      }
-      tag={mode === "ap" ? "Dizi durdu" : "Start dizisi"}
-    >
-      <ul className="gr-seq">
-        {steps.map((s, i) => (
-          <li key={s.m} className={`${sts[i] ? "ok" : ""}${i === nextI && mode !== "ap" ? " nx" : ""}`}>
-            <b>{s.m}</b>
-            <span>
-              {s.name}
-              <small>{what(s.m)}</small>
-            </span>
-            <i>{flag(s.m)}</i>
-          </li>
-        ))}
-      </ul>
-    </GCard>
-  );
-}
-function GBig({ flag, title, lines = [] }) {
-  return (
-    <GCard cls="gr-side">
-      <div className="gr-big">
-        <div className="gr-bt">
-          {flag ? <Flag kind={flag} /> : null}
-          <h3>{title}</h3>
-        </div>
-        {lines.filter(Boolean).map((l, i) => (
-          <p key={i} className={i ? "m" : ""}>
-            {l}
-          </p>
-        ))}
-      </div>
-    </GCard>
-  );
-}
-function GCourse({ data, sel, racing }) {
-  const route = sceneRoute(data, racing ? sel : null, true, racing ? "race" : "wait");
-  const svg = courseSvg(data, route);
-  if (!svg) return null;
-  return (
-    <GCard cls="gr-side gr-crs" head="Parkur" tone="y" sub={axisText(data) ? `Eksen ${axisText(data)}` : ""} tag={routeText(route)}>
-      <div className="lv-sceneb" dangerouslySetInnerHTML={{ __html: svg }} />
-    </GCard>
-  );
-}
-// Beklenen rüzgâr (yarış öncesi akışın ilk adımı): rüzgâr kartının yanında açılır; ortak saatlik tablo, geçmiş saatler soluk
-const hasHours = (data) => (data.forecast?.rows || []).filter((r) => r.wind != null).length >= 2;
-function GEarly({ data, rid }) {
-  const ea = earlyOf(data, rid);
-  if (!ea.length) return null;
-  return (
-    <GCard cls="gr-side" head="Erken start" tone="o" tag={`${ea.length} tekne`}>
-      <GRows rows={ea.map((x) => ({ p: x.c, pen: true, sail: x.sail, name: x.name, gap: "" }))} />
-    </GCard>
-  );
-}
-// Start çekmecesi (Seyhun 2026-11-03 18:30 "hep start alanının altından açılsın", örnek cekmece onayı 18:35): yarıştan önce start kartının
-// altından açılan tek gövde; sekmeler Rüzgâr · Parkur · Program, her bölüm değişirken çekmece kapanıp yeniden açılır, süre üstte akar.
-const DR_NAME = { wind: "Rüzgâr", course: "Parkur", prog: "Program" };
-const DR_TONE = { wind: "#2fd6c3", course: "#ffd23f", prog: "#8fc3ff" };
 // Beklenen rüzgâr grafiği (Seyhun 2026-11-03 19:12 "güzel bir grafik olsun; bugün bitiyorsa yarına geçsin"): şimdiki saatten 12 saat,
 // rüzgâr dolu alan, sağanak kesik çizgi, start anı pembe çizgi, gece yarısından sonrası "Yarın", altta saat saat yön okları
 function WindChart({ rows, at }) {
@@ -3456,17 +3118,155 @@ function WindChart({ rows, at }) {
     </svg>
   );
 }
-// Rüzgâr (Seyhun 2026-11-03 20:23): kaynak ve saat sol üstte küçük, soluk; hız ve yön tek satır; sağanak ayrı satır; grafik dar sütuna göre
-function DrWind({ data, now, prog }) {
-  const c = curWind(data, null, true, now);
-  const rows = windAhead(data, now);
-  const at = (prog || []).find((x) => x.state === "next")?.at || "";
+const gWho = (x) => (x ? { name: x.name || "", grp: x.grp || "", cls: x.cls || "" } : null);
+
+// ---- Yayın sahneleri (Seyhun 2026-11-04 "yap", örnek artifact MWmT63Sb1mmtJ4s6izg82N): 01 Yarış öncesi (ortada tek kart: Süre · Program ·
+// Rüzgâr sırayla), 02 Yarışta (görüntü önde, sol üstte tek kart; start'a dakikalar · geri sayım · start sonrası · dönüş), 03 Genel sıralama,
+// 04 Tekrar, 05 Parkur, 06 Sıradaki yarış. Hepsinde sağ üstte Canlı + saat, sağ altta yarışın adı ve Velora. Sahne kendiliğinden seçilir
+// (sceneAuto); Yayın'dan elle seçilen (courseShow.scene) üstüne yazar.
+const SC_TAB = 10; // sn, 01'deki kartın her bölümü
+const SC_ROT = 15; // sn, 03 ↔ 06 ve sınıf sınıf sıralama
+const SC_RANK = 10;
+const SC_ROUND_MS = 60e3; // şamandıra dönüşünden sonra ilk 3 bu kadar görünür
+const scHm = (ms) => new Date(ms + 3 * 3600e3).toISOString().slice(11, 16);
+// Süre kartının içeriği (eski Grafik "top" mantığı): kicker, büyük süre, kim, start saati, alt satır, bayrak
+function scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast }) {
+  const plan = data.plan;
+  const r = data.race || {};
+  const first = prog.find((x) => x.state === "next") || null;
+  const e = entry?.cls || entry?.grp ? { ...entry, name: sel ? raceName(sel) : first?.name } : plan.order?.[0] ? { ...plan.order[0], name: first?.name || "" } : first;
+  const vd = mode === "wait" || mode === "between" ? voidLast(data, today, now) : null;
+  if (mode === "summary") {
+    const t = nextText(plan, today);
+    return { k: "Gün bitti", tm: t.big, sub: t.sub, tx: true };
+  }
+  if (mode === "seq" && seqMode === "fs") return { k: "Genel geri çağırma", tone: "r", flag: "FS", tm: "Yeniden start", tx: true, who: fsLast ? gWho({ name: raceName(fsLast), grp: fsLast.grp || data.rounds?.[fsLast.id]?.grp || "", cls: data.rounds?.[fsLast.id]?.cls || "" }) : null, sub: "Uyarı işareti bekleniyor" };
+  if (mode === "seq" || (mode === "ap" && plan.ap?.seq != null)) {
+    if (seqMode === "ap" || mode === "ap") return { k: "Tehir · dizi durdu", tone: "r", flag: "AP", tm: plan.ap?.why || "Start ertelendi", tx: true, who: gWho(e) };
+    const hm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1] || "";
+    const prep = e?.prep || "";
+    // yalnız o an çekili bayrak (Seyhun 2026-11-04 örnek 02 geri sayım): 4 dk'dan sonra kural bayrağı çekili, son dakikada indi
+    const flag = prep && cs.rem != null && cs.rem <= 240 && cs.rem > 60 ? { kind: prep, t: `${prepName(prep)} çekili`, s: "1 dk kala iner" } : prep && cs.rem != null && cs.rem <= 60 && cs.rem > 0 ? { kind: prep, down: true, t: `${prepName(prep)} indi`, s: "Son dakika" } : null;
+    return { k: cs.rem != null && cs.rem <= 60 ? "Son dakika" : "Start'a", tone: cs.rem != null && cs.rem <= 60 ? "o" : "", tm: cs.rem === 0 ? "Start" : cs.value, at: hm, who: gWho(e), fl: flag };
+  }
+  if (mode === "ap") {
+    const apDown = plan.status !== "ap";
+    const counting = !apDown && cs.label === "Tehir inişine";
+    return { k: apDown ? "Tehir indi" : "Tehir", tone: "r", flag: "AP", tm: apDown ? "Start yakında" : counting ? cs.value : plan.ap?.why || "Belirsiz", tx: !counting, who: first ? gWho(first) : null, sub: apDown ? "Uyarı işareti bekleniyor" : [counting ? plan.ap?.why : "", plan.ap?.land ? "Karada" : ""].filter(Boolean).join(" · ") };
+  }
+  if (mode === "race") return { k: cs.label || "Geçen süre", tm: cs.value, who: gWho({ name: sel ? raceName(sel) : "", grp: entry?.grp || sel?.grp || "", cls: entry?.cls || sel?.cls || "" }) };
+  if (mode === "none") {
+    const t = nextText(plan, today);
+    return { k: "Bugün yarış yok", tm: t.big, sub: t.sub, tx: true };
+  }
+  if (vd) {
+    const g = vd.grp || data.rounds?.[vd.id]?.grp || "";
+    return { k: voidShort(vd.void), tone: "r", flag: voidFlag(vd.void), tm: cs.rem ? cs.value : "Yeniden start", tx: !cs.rem, who: gWho({ name: raceName(vd), grp: g, cls: data.rounds?.[vd.id]?.cls || vd.cls || "" }), sub: cs.rem ? "" : "Uyarı işareti bekleniyor" };
+  }
+  if (mode === "between" && sel?.fin) return { k: "Bitti", tm: raceTime(sel) || "—", who: gWho({ name: raceName(sel), grp: entry?.grp || sel.grp, cls: entry?.cls || "" }), sub: first ? `Sıradaki · ${gWhat(first)}${first.at ? ` · ${first.at}` : ""}` : "" };
+  const left0 = !cs.rem && r.startDate > today ? daysUntil(r.startDate, today) : 0;
+  if (left0) return { k: "Yarışa", tm: `${left0} gün`, sub: [r.endDate && r.endDate !== r.startDate ? `${dayText(r.startDate)} – ${dayText(r.endDate)}` : dayText(r.startDate), r.place].filter(Boolean).join(" · ") };
+  const orange = orangeUp(plan, today);
+  const { kick } = holdState(data, today, cs, now);
+  return { k: orange ? "Turuncu bayrak · start hattı kuruldu" : kick, tone: orange ? "o" : "", orange, tm: cs.rem ? cs.value : "—:—", at: first?.at || "", who: gWho(first) };
+}
+// son şamandıra dönüşü (ms) ve o şamandıradaki ilk 3
+function scRound(data, sel) {
+  const en = sel ? data.rounds?.[sel.id] : null;
+  if (!en) return null;
+  const pos = nowPos(en);
+  if (pos < 0) return null;
+  const t = Math.max(0, ...((en.legs?.[pos]?.t || []).map(Number).filter(Number.isFinite)));
+  const rr = raceRows(data, sel);
+  return rr.rows.length ? { t, head: rr.head, rows: rr.rows.slice(0, 3) } : null;
+}
+// genel sıralama: resmî (PDF) ya da geçici; sınıf sınıf, yarış yarış puanlar
+function scBoards(data) {
+  const official = (data.fleets || []).filter((f) => f.rows?.some((r) => r.pts != null && r.pts !== ""));
+  if (official.length)
+    return official.map((f) => {
+      const n = Math.max(0, ...f.rows.map((r) => (Array.isArray(r.r) ? r.r.length : 0)));
+      return { cls: f.cls || "", tag: "Resmî sonuç", races: Array.from({ length: Math.min(n, 8) }, (_, i) => i + 1), rows: f.rows.slice(0, SC_RANK).map((r) => ({ p: r.place || r.code, sail: r.sail, name: r.name, club: r.club, sc: (Array.isArray(r.r) ? r.r : []).slice(0, 8).map((v) => String(v ?? "")), t: r.pts })), total: f.rows.length };
+    });
+  const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
+  let prov = [];
+  try {
+    prov = provisional({ starts: data.starts || [], rounds: data.rounds || {}, entries: data.entries || [], groups: data.groups || {}, who: whoBySail(data.fleets), year });
+  } catch {
+    prov = [];
+  }
+  return prov.map((f) => {
+    const races = f.races.slice(-8);
+    return { cls: f.cls || "", tag: `Geçici · ${f.races.length} yarış`, races, rows: f.rows.slice(0, SC_RANK).map((r, i) => ({ p: r.rank || i + 1, sail: r.sail, name: r.name, club: r.club, sc: races.map((n) => (r.sc[n] ? r.sc[n].code || String(r.sc[n].pts) : "")), t: r.total })), total: f.rows.length };
+  });
+}
+export const SCENE_NAME = { "01": "Yarış öncesi", "02": "Yarışta", "03": "Sıralama", "04": "Tekrar", "05": "Parkur", "06": "Sıradaki" };
+// Otomatik sahne: tekrar videosu → 04; Parkur elle açık → 05; gün bitti → 03 ↔ 06; yarışta → 02; yarış bitti → 03 ↔ 06;
+// yarış öncesi (bekleme, start dizisi, tehir) videolu → 02, videosuz → 01
+function sceneAuto({ data, mode, hasVideo, now, has }) {
+  if (data.screen?.kind === "rec") return "04";
+  if (data.courseShow?.one === "course" && has["05"]) return "05";
+  const rot = (a, b) => (has[a] && has[b] ? (Math.floor(now / 1000 / SC_ROT) % 2 ? b : a) : has[a] ? a : has[b] ? b : "");
+  if (mode === "summary") return rot("03", "06") || "01";
+  if (mode === "race") return "02";
+  if (mode === "between") return rot("03", "06") || (hasVideo ? "02" : "01");
+  return hasVideo ? "02" : "01";
+}
+function ScTop({ rep, now }) {
   return (
-    <>
+    <div className="sc-tr">
+      {rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}
+      <span className="sc-clk">{scHm(now)}</span>
+    </div>
+  );
+}
+function ScWho({ who, tag }) {
+  if (!who && !tag) return null;
+  return (
+    <div className="sc-who">
+      {tag ? <span className="sc-tag">{tag}</span> : null}
+      {who?.grp || who?.cls ? (
+        <span className="sc-g">
+          {who.grp ? <i style={{ background: groupColor(who.grp) || "#fff" }} /> : null}
+          {[who.cls, who.grp ? `${who.grp} grup` : ""].filter(Boolean).join(" · ")}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+function ScSig({ data, today }) {
+  const sig = data.plan?.sig;
+  const s = sig ? signalOf(sig.id) : null;
+  if (!s || !sigOnCard(s)) return null;
+  if (new Date(Date.parse(sig.at) + 3 * 3600e3).toISOString().slice(0, 10) !== today) return null;
+  return (
+    <div className="sc-fl">
+      <span className="sc-sgf" aria-hidden="true">
+        {s.flags.map((f) => (
+          <i key={f} dangerouslySetInnerHTML={{ __html: flagSvg(f) }} />
+        ))}
+      </span>
+      <b>{s.short}</b>
+      <em>{s.info}</em>
+    </div>
+  );
+}
+// rüzgâr: eski tasarım (halkalı ok, büyük kn, yön sağda, sarı sağanak); big: 01'deki grafikli hali
+function ScWind({ data, now, prog, big = false }) {
+  const c = curWind(data, null, true, now);
+  const rows = big ? windAhead(data, now) : [];
+  const at = (prog || []).find((x) => x.state === "next")?.at || "";
+  if (!c && rows.length < 2) return null;
+  const gu = c && c.gust != null && c.gust > c.kn ? `Sağanak ${c.gust} kn` : "";
+  // elle ölçüm varken start'ta beklenen yazılmaz (Seyhun 2026-11-03 17:39: tahmin ile ölçüm çok farklı olabiliyor)
+  const ew = c && big && data.plan?.at && !c?.man ? expWind(data.forecast, data.plan.at) : null;
+  const ex = ew?.kn != null ? `start'ta ${ew.kn} kn` : "";
+  return (
+    <div className={`sc-w${big ? " big" : ""}`}>
       {c ? (
-        <div className="gr-dw2">
-          <div className="gr-dsrc">{c.by || "Şimdi"}</div>
-          <div className="gr-dw2m">
+        <>
+          <div className="sc-src">{c.by || "Şimdi"}</div>
+          <div className="sc-wm">
             {gArrow(c.dir)}
             <b>
               {c.kn}
@@ -3474,12 +3274,12 @@ function DrWind({ data, now, prog }) {
             </b>
             <span>{c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""}</span>
           </div>
-          {c.gust != null && c.gust > c.kn ? <div className="gr-dgu">{`Sağanak ${c.gust} kn`}</div> : null}
-        </div>
+          {gu || ex ? <div className="sc-gu">{[gu, ex].filter(Boolean).join(" · ")}</div> : null}
+        </>
       ) : null}
       {rows.length >= 2 ? (
         <>
-          <div className="gr-dh2">
+          <div className="sc-wh">
             <span>Beklenen</span>
             <span>
               <i className="a" />
@@ -3495,274 +3295,416 @@ function DrWind({ data, now, prog }) {
           <WindChart rows={rows} at={at} />
         </>
       ) : null}
-    </>
-  );
-}
-function DrCourse({ data }) {
-  const route = sceneRoute(data, null, true, "wait");
-  const svg = courseSvg(data, route, { W: 760, H: 820 });
-  if (!svg) return null;
-  // parkur büyük, yazı küçük; rota (1 2 3 finiş) yazılmaz (Seyhun 2026-11-03 20:23)
-  return (
-    <div className="gr-dc2">
-      {axisText(data) ? <div className="gr-dsrc">{`Eksen ${axisText(data)}`}</div> : null}
-      <div className="lv-sceneb gr-dsc" dangerouslySetInnerHTML={{ __html: svg }} />
     </div>
   );
 }
-function DrProg({ prog }) {
+// tek satır rüzgâr (02 kartının altı)
+function ScWindLine({ data, now }) {
+  const c = curWind(data, null, true, now);
+  if (!c) return null;
+  return (
+    <div className="sc-wl">
+      {gArrow(c.dir)}
+      <b>{`${c.kn} kn`}</b>
+      <span>{c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""}</span>
+      {c.gust != null && c.gust > c.kn ? <em>{`sağanak ${c.gust}`}</em> : null}
+    </div>
+  );
+}
+function ScTime({ t, big = false }) {
+  const tx = t.tx || !/\d/.test(String(t.tm || ""));
+  return (
+    <div className={`sc-t${big ? " big" : ""}${t.tone ? ` ${t.tone}` : ""}`}>
+      <div className="sc-k">
+        {t.flag ? <Flag kind={t.flag} /> : t.orange ? <i className="sc-of" aria-hidden="true" /> : null}
+        {[big && t.who?.name ? t.who.name : "", t.k].filter(Boolean).join(" · ")}
+      </div>
+      <div className={`sc-tm${tx ? " tx" : ""}`}>{t.tm}</div>
+      {big && (t.who?.grp || t.who?.cls || t.at) ? (
+        <div className="sc-tw">
+          {t.who?.cls ? <span>{t.who.cls}</span> : null}
+          {t.who?.grp ? <span className="sc-gp" style={{ background: groupColor(t.who.grp) || "#ffd23f", color: inkOn(groupColor(t.who.grp) || "#ffd23f") }}>{`${t.who.grp} grup`}</span> : null}
+          {t.at ? <em>{`start ${t.at}`}</em> : null}
+        </div>
+      ) : null}
+      {t.sub ? <div className="sc-sub">{t.sub}</div> : null}
+    </div>
+  );
+}
+function ScProg({ prog }) {
   const { rows, foot } = progRows(prog);
   return (
-    <ul className="gr-dp gr-dp2">
-      {rows.map((x, i) => (
-        <li key={x.key} className={x.state} style={{ "--g": groupColor(x.grp) || "rgba(255,255,255,.4)", animationDelay: `${0.8 + i * 0.1}s` }}>
-          <b>{x.at || ""}</b>
-          <i />
-          <span>{x.name || gWhat(x)}</span>
-          {x.state === "now" ? <small className="on">Yarışta</small> : x.state === "next" ? <small>Sıradaki</small> : null}
-        </li>
-      ))}
-      {foot ? <li className="more">{foot}</li> : null}
-    </ul>
-  );
-}
-// Program start kartının altında (Seyhun 2026-11-04 "sol alttan kaldıralım, start'a taşıyalım; 30 saniyede bir açılsın, daha sade"):
-// her 30 sn'de 10 sn aşağı açılır, sonra kapanır. Satır: saat, grup rengi, yarış; sıradaki parlak. Kalan yarış yoksa hiç çıkmaz.
-const SP_EVERY = 30;
-const SP_SHOW = 10;
-function GStProg({ prog, now }) {
-  const up = prog.filter((x) => x.state !== "done");
-  if (!up.length) return null;
-  const rows = up.slice(0, PROG_MAX);
-  const more = up.length - rows.length;
-  const on = Math.floor(now / 1000) % SP_EVERY < SP_SHOW;
-  return (
-    <div className={`gr-sp${on ? " on" : ""}`} aria-hidden={!on}>
-      <div>
-        <ul>
-          {rows.map((x) => (
-            <li key={x.key} className={x.state} style={{ "--g": groupColor(x.grp) || "rgba(255,255,255,.45)" }}>
-              <b>{x.at || ""}</b>
-              <i />
-              <span>{gWhat(x) || x.name}</span>
-              {x.state === "now" ? <small className="on">Yarışta</small> : x.state === "next" ? <small>Sıradaki</small> : null}
-            </li>
-          ))}
-          {more > 0 ? <li className="more">{`+${more} start daha`}</li> : null}
-        </ul>
-      </div>
+    <div className="sc-pg">
+      <div className="sc-src">Program · bugün</div>
+      <ul>
+        {rows.map((x) => (
+          <li key={x.key} className={x.state}>
+            <b>{x.at || ""}</b>
+            <i style={{ background: groupColor(x.grp) || "rgba(255,255,255,.45)" }} />
+            <span>{gWhat(x) || x.name}</span>
+            {x.state === "next" ? <small>Sıradaki</small> : x.state === "now" ? <small>Yarışta</small> : x.state === "done" ? <small className="d">Bitti</small> : null}
+          </li>
+        ))}
+      </ul>
+      {foot ? <div className="sc-more">{foot}</div> : null}
     </div>
   );
 }
-function GDrawer({ rk, have, sec, auto, data, now, prog }) {
-  // bir kez açılır ve açık kalır; bölümler yerinde sakince değişir, boy oynamaz (Seyhun 2026-11-03 18:38 "sürekli açılıp kapanan şeyler hoş olmuyor")
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setOpen(true), 500);
-    return () => clearTimeout(t);
-  }, []);
-  const shown = rk;
-  // kutu boyu içeriğe göre yumuşakça uzar/kısalır: kısa programda altta boşluk kalmaz (Seyhun 2026-11-03 18:43)
-  const inRef = useRef(null);
-  const [h, setH] = useState(0);
-  useEffect(() => {
-    const el = inRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => setH(el.offsetHeight));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  const body = shown === "wind" ? <DrWind data={data} now={now} prog={prog} /> : shown === "course" ? <DrCourse data={data} /> : shown === "prog" ? <DrProg prog={prog} /> : null;
+// sıradaki startın grubundaki sporcular (eski sol sütun, Seyhun 2026-11-03 19:59): günün grup listesi, yoksa sınıfın kayıt listesi
+function scBoats(data, who, today) {
+  const all = data.entries || [];
+  if (!all.length) return [];
+  const gm = groupMap(groupsOn(data.groups, today));
+  const grp = who?.grp || "";
+  const cls = who?.cls || "";
+  const inGrp = grp && Object.keys(gm).length ? all.filter((x) => gm[x.sail] === grp) : [];
+  return (inGrp.length ? inGrp : all.filter((x) => !cls || !x.cls || x.cls === cls)).slice().sort((a, b) => Number(a.sail) - Number(b.sail));
+}
+function ScBoats({ rows, who }) {
+  const n = 12;
   return (
-    <div className={`gr-dr${open && body ? " on" : ""}`} aria-live="polite" style={{ "--c": DR_TONE[shown] || "#2fd6c3" }}>
-      <div className="gr-dri">
-        <div className="gr-dbox" style={h ? { height: h } : undefined}>
-          <div ref={inRef}>
-            <div className="gr-dpn" key={shown}>
-              {body}
-            </div>
-          </div>
-        </div>
-        <div className="gr-tabs" style={{ gridTemplateColumns: `repeat(${have.length}, 1fr)` }}>
-          {have.map((k) => (
-            <span key={k} className={k === shown ? "on" : ""} style={{ "--c": DR_TONE[k] }}>
-              {DR_NAME[k]}
-              {k === shown ? <i key={shown} className={auto ? "run" : "full"} style={{ animationDuration: `${sec}s` }} /> : null}
+    <div className="sc-bt">
+      <div className="sc-src">{["Sporcular", who?.grp ? `${who.grp} grup` : who?.cls || "", `${rows.length} tekne`].filter(Boolean).join(" · ")}</div>
+      <ol>
+        {rows.slice(0, n).map((x) => (
+          <li key={x.sail}>
+            <b>{x.sail}</b>
+            <span>{shortName(x.name) || ""}</span>
+            <em>{shortClub(x.club) || ""}</em>
+          </li>
+        ))}
+      </ol>
+      {rows.length > n ? <div className="sc-more">{`+${rows.length - n} tekne`}</div> : null}
+    </div>
+  );
+}
+// 01: ortada tek kart; Süre · Program · Rüzgâr sırayla (start dizisi, tehir, abandone ve genel geride yalnız Süre)
+function Sc01({ t, data, prog, now, today, lock }) {
+  const boats = scBoats(data, t.who, today);
+  const have = ["time", prog.some((x) => x.state !== "done") ? "prog" : "", curWind(data, null, true, now) || windAhead(data, now).length >= 2 ? "wind" : "", boats.length ? "boats" : ""].filter(Boolean);
+  const k = lock ? "time" : have[Math.floor(now / 1000 / SC_TAB) % have.length];
+  const NAME = { time: "Süre", prog: "Program", wind: "Rüzgâr", boats: "Sporcular" };
+  return (
+    <div className="sc-c1">
+      <div className="sc-cb" key={k}>
+        {k === "time" ? <ScTime t={t} big /> : k === "prog" ? <ScProg prog={prog} /> : k === "boats" ? <ScBoats rows={boats} who={t.who} /> : <ScWind data={data} now={now} prog={prog} big />}
+        {k === "time" ? <ScSig data={data} today={today} /> : null}
+      </div>
+      {have.length > 1 && !lock ? (
+        <div className="sc-tabs" style={{ gridTemplateColumns: `repeat(${have.length}, 1fr)` }}>
+          {have.map((x) => (
+            <span key={x} className={x === k ? "on" : ""}>
+              {NAME[x]}
+              {x === k ? <i key={`${k}${Math.floor(now / 1000 / SC_TAB)}`} style={{ animationDuration: `${SC_TAB}s` }} /> : null}
             </span>
           ))}
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }
-const gWho = (x) => (x ? { name: x.name || "", grp: x.grp || "", cls: x.cls || "" } : null);
-function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, racing, ovOn, onFull }) {
-  const plan = data.plan;
-  const r = data.race || {};
-  const first = prog.find((x) => x.state === "next") || null;
-  const vd = mode === "wait" || mode === "between" ? voidLast(data, today, now) : null;
-  const e = entry?.cls || entry?.grp ? { ...entry, name: sel ? raceName(sel) : first?.name } : plan.order?.[0] ? { ...plan.order[0], name: first?.name || "" } : first;
-  const sh = data.courseShow || {};
-  let top = null;
-  let left = null;
-  let right = null;
-  let clock = null;
-  let wOpen = false;
-  let wCan = false;
-  let panel = null;
-  let drw = null;
-  let left0 = 0;
-  let preOn = false;
-  if (mode === "summary") {
-    const t = nextText(plan, today);
-    const day = plan.day || today;
-    const n = (data.starts || []).filter((x) => x.day === day && !x.void).length;
-    top = { bd: "Gün bitti", lab: n ? `${n} yarış` : "", tm: t.big, sub: t.sub };
-    const ov = overallTop(data, 6);
-    if (ov) left = <GCard cls="gr-res" tone="y" head="Genel sıralama" tag={[ov.cls, ov.tag === "Resmî" ? "resmî" : "geçici"].filter(Boolean).join(" · ")} onClick={() => onFull("all")}><GRows rows={ov.rows.map((x) => ({ p: x.p, sail: x.sail, name: shortName(x.name) || "", gap: x.t != null && x.t !== "" ? `${x.t} p` : "" }))} />{ov.total > 6 ? <div className="gr-more">{`+${ov.total - 6} tekne · Tümü`}</div> : null}</GCard>;
-    const races = (data.starts || []).filter((x) => x.day === day && !x.void && data.rounds?.[x.id] && standings(data.rounds[x.id]).length);
-    const who = whoMap(data);
-    if (races.length)
-      right = (
-        <GCard cls="gr-side" head="Bugünün yarışları" tone="y" tag="Kazanan">
-          <ul className="gr-pg w">
-            {races.slice(-6).map((x) => {
-              const en = data.rounds[x.id];
-              const w = standings(en)[0];
-              return (
-                <li key={x.id}>
-                  <span>
-                    <Dot g={en.grp || x.grp} />
-                    {gWhat({ name: raceName(x), grp: en.grp || x.grp })}
-                  </span>
-                  <small>{w ? [w.sail, shortName(whoOf(who, w.sail)?.name || "")].filter(Boolean).join(" ") : ""}</small>
-                </li>
-              );
-            })}
-          </ul>
-        </GCard>
-      );
-  } else if (mode === "seq" && seqMode === "fs") {
-    top = { cls: "r", flag: "FS", bd: "Genel geri", lab: fsLast?.fin ? hmOf(fsLast.fin) : "", tm: "Yeniden start", who: fsLast ? gWho({ name: raceName(fsLast), grp: fsLast.grp || data.rounds?.[fsLast.id]?.grp || "", cls: data.rounds?.[fsLast.id]?.cls || "" }) : null, sub: "Uyarı işareti bekleniyor" };
-  } else if (mode === "seq" || (mode === "ap" && plan.ap?.seq != null)) {
-    const ap = seqMode === "ap" || mode === "ap";
-    // start dizisi sade: bayraklar start kartının içinde şerit, sağda dizi kartı yok (Seyhun 2026-11-03 17:02)
-    if (ap) {
-      top = { cls: "r", flag: "AP", bd: "Tehir", lab: "Dizi durdu", tm: plan.ap?.why || "Start ertelendi", sub: "Start dizisi durduruldu", rule: seqRule(e) };
-    } else {
-      const hm = /Start (\d\d:\d\d)/.exec(cs.right || "")?.[1] || "";
-      const dur = data.timer?.dur || 300;
-      top = { bd: "Start", lab: cs.rem != null && cs.rem <= 60 ? "Son dakika" : cs.label, at: hm, tm: cs.rem === 0 ? "" : cs.value, who: gWho(e), rule: seqRule(e), bar: cs.rem != null ? (1 - cs.rem / dur) * 100 : null, cls: cs.rem != null && cs.rem <= 60 ? "o" : "" };
-    }
-    // program sol alttaki panelde (Seyhun 2026-11-04 "neden iki program"): sağ üstte ayrıca gösterilmez
-    left = sel ? <GEarly data={data} rid={sel.id} /> : null;
-  } else if (mode === "ap") {
-    const apDown = plan.status !== "ap";
-    const counting = !apDown && cs.label === "Tehir inişine";
-    top = { cls: "r", flag: "AP", bd: "Tehir", lab: apDown ? "Tehir indi" : "", tm: apDown ? "Start yakında" : counting ? cs.value : "Belirsiz", sub: apDown ? "Uyarı işareti bekleniyor" : plan.ap?.land ? "Karada · uyarı işaretini komite verir" : plan.ap?.auto === false ? "Uyarı işareti bekleniyor" : "Tehir inince 1 dk sonra uyarı işareti" };
-    right = <GBig flag="AP" title={plan.ap?.why || "Start ertelendi"} lines={[first ? `${gWhat(first)} bekliyor` : "", plan.ap?.from ? `Tehir ${plan.ap.from}'de çekildi` : ""]} />;
-  } else if (mode === "race") {
-    const rr = raceRows(data, sel);
-    clock = { lab: cs.label, tm: cs.value, name: sel ? raceName(sel) : "", grp: entry?.grp || sel?.grp || "", cls: entry?.cls || sel?.cls || "" };
-    if (rr.rows.length) left = <GCard cls="gr-res" tone="y" head={rr.head} tag={rr.tag} onClick={() => onFull("race")}><GRows rows={rr.rows.slice(0, 8)} />{rr.rows.length > 8 ? <div className="gr-more">{`+${rr.rows.length - 8} tekne · Tümü`}</div> : null}</GCard>;
-    else if (ovOn) {
-      const ov = overallTop(data, 6);
-      if (ov) left = <GCard cls="gr-res" tone="y" head="Genel sıralama" tag={[ov.cls, "geçici"].filter(Boolean).join(" · ")} onClick={() => onFull("all")}><GRows rows={ov.rows.map((x) => ({ p: x.p, sail: x.sail, name: shortName(x.name) || "", gap: x.t != null && x.t !== "" ? `${x.t} p` : "" }))} /></GCard>;
-    }
-    if (sel?.at && now - Date.parse(sel.at) < 10 * 60e3) right = <GEarly data={data} rid={sel.id} />;
-  } else if (mode === "none") {
-    const t = nextText(plan, today);
-    top = { bd: "Bugün", lab: "Yarış yok", tm: t.big, sub: t.sub };
-  } else if (vd) {
-    const g = vd.grp || data.rounds?.[vd.id]?.grp || "";
-    const fl = voidFlag(vd.void);
-    // abandone / genel geri (Seyhun 2026-11-03 17:20): sağ üstte ayrı kart yok; start kartında hangi yarış, hangi grup
-    top = { cls: "r", flag: fl, bd: voidShort(vd.void), lab: vd.fin ? hmOf(vd.fin) : "", tm: cs.rem ? cs.value : "Yeniden start", who: gWho({ name: raceName(vd), grp: g, cls: data.rounds?.[vd.id]?.cls || vd.cls || "" }), sub: cs.rem ? cs.label : "Uyarı işareti bekleniyor" };
-  } else if (mode === "between" && sel?.fin) {
-    const rr = raceRows(data, sel);
-    top = { bd: "Bitti", lab: gWhat({ name: raceName(sel), grp: entry?.grp || sel.grp }), at: hmOf(sel.fin), tm: raceTime(sel) || "—", sub: first ? `Sıradaki · ${gWhat(first)}${first.at ? ` · ${first.at}` : ""}` : "Start bekleniyor" };
-    if (rr.rows.length) left = <GCard cls="gr-res" tone="y" head={gWhat({ name: raceName(sel), grp: entry?.grp || sel.grp })} tag={rr.head === "Resmî sonuç" ? "Resmî" : "Sonuç"} onClick={() => onFull("race")}><GRows rows={rr.rows.slice(0, 6)} />{rr.rows.length > 6 ? <div className="gr-more">{`+${rr.rows.length - 6} tekne · Tümü`}</div> : null}</GCard>;
-  } else {
-    // bekleme: yarışa günler var / start saatine geri sayım (turuncu bayrak çekiliyse "Start öncesi")
-    left0 = !cs.rem && r.startDate > today ? daysUntil(r.startDate, today) : 0;
-    const orange = orangeUp(plan, today);
-    const { kick } = holdState(data, today, cs, now);
-    preOn = !left0;
-    if (left0) top = { bd: "Yarışa", lab: "Kalan", tm: `${left0} gün`, sub: [r.endDate && r.endDate !== r.startDate ? `${dayText(r.startDate)} – ${dayText(r.endDate)}` : dayText(r.startDate), r.place].filter(Boolean).join(" · ") };
-    else top = { cls: orange ? "o" : "", orange, bd: orange ? "Turuncu bayrak" : "Start", lab: orange ? "Start hattı kuruldu" : kick, at: first?.at || "", tm: cs.rem ? cs.value : "—:—", who: gWho(first) };
-  }
-  // sağ kart: parkur elle açıldıysa o (Yayın › Ekranda göster › Parkur), yoksa duruma göre; bekleme ve ara verirken program
-  // Yarış öncesi akış (Seyhun 2026-11-03 17:10, rota 17:34'te çıktı: parkur zaten rotayı anlatır): beklenen rüzgâr (rüzgârın yanında açılır) → parkur → program; Yayın'da Otomatik / Elle
-  let rk = "";
-  if (sh.one === "course" && courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"))) right = <GCourse data={data} sel={sel} racing={mode === "race"} />;
-  else if (preOn) {
-    const route = sceneRoute(data, null, true, "wait");
-    const crs = !!courseSvg(data, route);
-    // program sol alttan kalktı, start kartının altında açılır (Seyhun 2026-11-04, GStProg)
-    const have = [hasHours(data) || windAhead(data, now).length >= 2 ? "wind" : "", crs ? "course" : ""].filter(Boolean);
-    rk = preStep({ show: sh, now, have }) || have[0] || "";
-    wCan = have.includes("wind");
-    // sol altta tek alan, sırayla rüzgâr → parkur → program (Seyhun 2026-11-03 17:54); rüzgâr adımında beklenen saatler kartın içinde açılıp adım bitmeden kapanır
-    const pc = cleanCourseShow(sh);
-    const el = pc.auto ? (Math.max(0, now - (Date.parse(pc.at) || 0)) % (pc.sec * 1000)) / 1000 : 99;
-    wOpen = wCan && rk === "wind" && el >= 1.2 && (!pc.auto || el < pc.sec - 1.8);
-    panel = rk === "course" && crs ? <GCourse data={data} sel={null} racing={false} /> : null;
-    if (!left && top && have.length) drw = <GDrawer rk={rk} have={have} sec={pc.sec} auto={pc.auto} data={data} now={now} prog={prog} />;
-  }
-  // Rüzgâr · Parkur · Program paneli her durumda solda en altta (Seyhun 2026-11-03 19:59)
-  if (!drw && mode !== "none") {
-    const route = sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait");
-    const have = [hasHours(data) || windAhead(data, now).length >= 2 ? "wind" : "", courseSvg(data, route) ? "course" : ""].filter(Boolean);
-    if (have.length) {
-      const pc = cleanCourseShow(sh);
-      rk = preStep({ show: sh, now, have }) || have[0];
-      drw = <GDrawer rk={rk} have={have} sec={pc.sec} auto={pc.auto} data={data} now={now} prog={prog} />;
-    }
-  }
-  const sigUp = !!plan?.sig && sigOnCard(signalOf(plan.sig.id));
-  // sol sütun (Seyhun 2026-11-03 19:59): üstte start, altında sporcular / şamandıra sırası / sonuç, en altta rüzgâr · parkur · program; dar
-  const mid = left || <GBoats data={data} e={entry?.grp ? entry : mode === "race" && sel ? { grp: sel.grp, cls: sel.cls } : e} today={today} />;
+// 02: sol üstte tek kart; geri sayımda o an çekili bayrak, yarışta erken çıkanlar; şamandıra dönüşünden sonra sağ üstte ilk 3 (60 sn)
+function Sc02({ t, data, sel, mode, now, today, onFull }) {
+  const ea = mode === "race" && sel && now - Date.parse(sel.at) < 15 * 60e3 ? earlyOf(data, sel.id) : [];
+  const rd = mode === "race" ? scRound(data, sel) : null;
+  const n = /^(\d+)\./.exec(t.who?.name || "")?.[1];
   return (
-    <div className="gr">
-      <div className="gr-lc">
-        <GStart t={top} />
-        {top ? <GStProg prog={prog} now={now} /> : null}
-        <GClock c={clock} />
-        {mid ? <div className="gr-mid">{mid}</div> : null}
-        <div className="gr-lcb">
-          {drw ? drw : (
-            <div className="gr-pn" key={preOn ? "wind" : "w"}>
-              <GWind data={data} now={now} mode={mode} today={today} can={wCan} open={wOpen} />
-            </div>
-          )}
-        </div>
+    <>
+      <div className="sc-c2">
+        <ScWho who={t.who} tag={n ? `Yarış ${n}` : t.who?.name || ""} />
+        <ScTime t={t} />
+        {t.fl ? (
+          <div className="sc-fl">
+            <Flag kind={t.fl.kind} down={t.fl.down} />
+            <b>{t.fl.t}</b>
+            <em>{t.fl.s}</em>
+          </div>
+        ) : null}
+        {ea.length ? (
+          <div className="sc-ocs">
+            <b>{ea[0].c}</b>
+            <span>{ea.map((x) => `TUR ${x.sail}`).join(" · ")}</span>
+          </div>
+        ) : null}
+        <ScSig data={data} today={today} />
+        <ScWindLine data={data} now={now} />
       </div>
-      {right || sigUp ? (
-        <div className="gr-rc" key={rk === "wind" ? "course" : rk}>
-          {right}
-          {sigUp ? <GSig sig={plan.sig} today={today} /> : null}
+      {rd && rd.t && now - rd.t < SC_ROUND_MS ? (
+        <button type="button" className="sc-rd" onClick={() => onFull("race")}>
+          <div className="sc-rdh">
+            <span>{`${rd.head} · az önce`}</span>
+            <span>Dönüş</span>
+          </div>
+          <ol>
+            {rd.rows.map((r, i) => (
+              <li key={`${r.sail}${i}`}>
+                <u>{r.p}</u>
+                <b>{r.sail}</b>
+                <em>{r.gap || r.name}</em>
+              </li>
+            ))}
+          </ol>
+        </button>
+      ) : null}
+    </>
+  );
+}
+// 03: ortada genel sıralama (ilk 10); birden çok sınıf varsa sırayla. Yarış yeni bittiyse önce o yarışın sonucu
+function Sc03({ data, sel, mode, now, onFull }) {
+  const boards = scBoards(data);
+  const rr = mode === "between" && sel?.fin ? raceRows(data, sel) : null;
+  if (rr?.rows.length && (!boards.length || Math.floor(now / 1000 / SC_ROT) % 4 === 0)) {
+    return (
+      <button type="button" className="sc-board" onClick={() => onFull("race")}>
+        <header>
+          <b>{rr.head === "Resmî sonuç" ? "Sonuç" : "Yarış sonucu"}</b>
+          <div>
+            <strong>{gWhat({ name: raceName(sel), grp: data.rounds?.[sel.id]?.grp || sel.grp })}</strong>
+            <span>{rr.head === "Resmî sonuç" ? "Resmî" : "Geçici"}</span>
+          </div>
+        </header>
+        <table>
+          <tbody>
+            {rr.rows.slice(0, SC_RANK).map((r, i) => (
+              <tr key={`${r.sail}${i}`} className={`p${r.p}`}>
+                <td className="r">{r.p}</td>
+                <td className="sn">{r.sail}</td>
+                <td className="n">{r.name}</td>
+                <td className="t">{r.gap && r.gap !== "Lider" ? r.gap : ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </button>
+    );
+  }
+  if (!boards.length) return null;
+  const b = boards[Math.floor(now / 1000 / SC_ROT) % boards.length];
+  return (
+    <button type="button" className="sc-board" onClick={() => onFull("all")}>
+      <header>
+        <b>Genel sıralama</b>
+        <div>
+          <strong>{b.cls || "Genel"}</strong>
+          <span>{b.tag}</span>
+        </div>
+      </header>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Yelken</th>
+            <th>Sporcu</th>
+            <th className="cl">Kulüp</th>
+            {b.races.map((n) => (
+              <th key={n} className="y">{`Y${n}`}</th>
+            ))}
+            <th className="t">Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          {b.rows.map((r, i) => (
+            <tr key={`${r.sail}${i}`} className={`p${r.p}`}>
+              <td className="r">{r.p}</td>
+              <td className="sn">{r.sail}</td>
+              <td className="n">{shortName(r.name) || r.name || ""}</td>
+              <td className="cl">{shortClub(r.club) || ""}</td>
+              {b.races.map((n, j) => (
+                <td key={n} className={`y${/^\(.*\)$/.test(r.sc[j] || "") ? " x" : ""}`}>
+                  {String(r.sc[j] || "").replace(/^\((.*)\)$/, "$1")}
+                </td>
+              ))}
+              <td className="t">{r.t ?? ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <footer>
+        <span>{b.total > b.rows.length ? `İlk ${b.rows.length} · ${b.total} tekne` : `${b.total} tekne`}</span>
+        <span>{boards.length > 1 ? boards.map((x) => x.cls).filter(Boolean).join(" · ") : ""}</span>
+      </footer>
+    </button>
+  );
+}
+// 04: tekrar videosu; sol üstte yarış ve ekrandaki yazı
+const scRecNo = (m, starts) => (m.phase ? momentRace(m, starts) : [...(starts || [])].filter((x) => !x.void && x.at <= m.at).at(-1)?.n || 0);
+function Sc04({ data }) {
+  const scr = data.screen || {};
+  const starts = data.starts || [];
+  const rec = (data.media || []).find((m) => m.id === scr.mid) || null;
+  const no = rec ? scRecNo(rec, starts) : 0;
+  const st = no ? starts.find((x) => x.n === no && !x.void) || null : null;
+  const en = st ? data.rounds?.[st.id] : null;
+  const title = rec ? recTitle(rec, rec.phase ? momentRaceName(rec, starts) : no ? `${no}. yarış` : "") : "";
+  return (
+    <div className="sc-c2">
+      <ScWho who={st ? { grp: en?.grp || st.grp || "", cls: en?.cls || "" } : null} tag={no ? `Yarış ${no}` : ""} />
+      <div className="sc-x">
+        <b>{title || "Tekrar"}</b>
+        {rec?.at ? <span>{hmOf(rec.at)}</span> : null}
+      </div>
+      {scr.caption ? <div className="sc-note">{scr.caption}</div> : null}
+    </div>
+  );
+}
+// 05: parkur; sol üstte kartın adı büyük şeritte, ortada çizim, sağda rota · eksen · hat
+function Sc05({ data, sel, mode, now }) {
+  const racing = mode === "race";
+  const route = sceneRoute(data, racing ? sel : null, true, racing ? "race" : "wait");
+  const svg = courseSvg(data, route, { W: 900, H: 760 });
+  if (!svg) return null;
+  const crs = cleanCourse(data.course || {});
+  const card = selCard(crs);
+  const ty = CARD_TYPES[card?.type] || "";
+  let bias = null;
+  try {
+    bias = lineBias(crs);
+  } catch {
+    bias = null;
+  }
+  const ax = axisInfo(data);
+  const c = curWind(data, null, true, now);
+  return (
+    <>
+      <div className="sc-cbn">
+        <b>{[ty.split(" ")[0], card?.id ? `Kart ${card.id}` : ""].filter(Boolean).join(" · ") || "Parkur"}</b>
+        <span>{[data.race?.place, data.rounds?.[sel?.id]?.cls].filter(Boolean).join(" · ")}</span>
+      </div>
+      <div className="sc-crs" dangerouslySetInnerHTML={{ __html: svg }} />
+      <div className="sc-ci">
+        {route.length ? (
+          <section>
+            <small>Rota</small>
+            <div className="sc-rt">
+              <span className="s">Start</span>
+              {route.map((m, i) => (
+                <span key={`${m}${i}`}>{m === "F" ? "Finiş" : markLabel(m)}</span>
+              ))}
+            </div>
+          </section>
+        ) : null}
+        <section>
+          <small>Eksen</small>
+          <b>{[axisText(data), ax?.sh != null ? shiftText(ax.sh) : ""].filter(Boolean).join(" · ")}</b>
+        </section>
+        {bias?.end ? (
+          <section>
+            <small>Hat</small>
+            <b>{`${bias.end === "pin" ? "Pin" : "Komite"} tarafı ${Math.round(bias.deg)}° avantajlı`}</b>
+          </section>
+        ) : null}
+        {c ? (
+          <section>
+            <small>Rüzgâr</small>
+            <b>{`${c.kn} kn · ${c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""}`}</b>
+          </section>
+        ) : null}
+      </div>
+    </>
+  );
+}
+// 06: sıradaki yarış; büyük numara, sınıf · grup, tahmini start, kalan, beklenen rüzgâr; sağda sonraki startlar
+function Sc06({ data, prog, now, today }) {
+  const up = prog.filter((x) => x.state !== "done" && x.state !== "now");
+  const nx = up[0] || null;
+  const plan = data.plan;
+  if (!nx) {
+    const t = nextText(plan, today);
+    return (
+      <div className="sc-nx">
+        <div className="sc-k">Sıradaki yarış günü</div>
+        <h1>{t.big}</h1>
+        {t.sub ? <div className="sc-sub">{t.sub}</div> : null}
+      </div>
+    );
+  }
+  const atMs = nx.at && plan.at ? Date.parse(plan.at) : null;
+  const left = atMs && atMs > now ? Math.round((atMs - now) / 60e3) : null;
+  const w = nx.at ? expWind(data.forecast, plan.at) : null;
+  const n = /^(\d+)\./.exec(nx.name || "")?.[1];
+  return (
+    <>
+      <div className="sc-nx">
+        <div className="sc-k">Sıradaki yarış</div>
+        <h1>{n ? `Yarış ${n}` : nx.name}</h1>
+        <ScWho who={{ grp: nx.grp, cls: nx.cls }} />
+        {nx.at || w ? (
+          <div className="sc-nw">
+            {nx.at ? (
+              <div>
+                <small>Tahmini start</small>
+                <b>{nx.at}</b>
+              </div>
+            ) : null}
+            {left != null ? (
+              <div>
+                <small>Kalan</small>
+                <b>{left >= 60 ? `${Math.floor(left / 60)} sa ${left % 60} dk` : `${left} dk`}</b>
+              </div>
+            ) : null}
+            {w?.kn != null ? (
+              <div>
+                <small>Beklenen rüzgâr</small>
+                <b>{`${w.kn} kn`}</b>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      {up.length > 1 ? (
+        <div className="sc-later">
+          <div className="sc-src">Sonra</div>
+          <ul>
+            {up.slice(1, 4).map((x) => (
+              <li key={x.key}>
+                {x.at ? <b>{x.at}</b> : null}
+                <i style={{ background: groupColor(x.grp) || "rgba(255,255,255,.45)" }} />
+                <span>{gWhat(x) || x.name}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
-      {/* Canlı işareti sağ üst köşede, yayın açık olduğu sürece (Seyhun 2026-11-04 "yayına girdiğim için canlı yazısını göstermeliyiz; sağ üstte") */}
-      {mode !== "none" && plan.status !== "done" ? <span className="gr-live gr-onair">Canlı</span> : null}
-      {/* geri düğmesi yok (Seyhun 2026-11-03 19:12 "geri tuşunu kaldıralım") */}
-      {/* sağ altta yarışın adı | Velora işareti */}
-      <div className="gr-name">
-        <div className="gr-nm">
-          {/* Yayın › Video › Ekrandaki ad: başlık tek satır, alt satır küçük (Seyhun 2026-11-04) */}
-          <div className="gr-nt">
-            <b className={(plan.title || r.name || "").length > 22 ? "lg" : ""}>{plan.title || r.name || "Yarış"}</b>
-            {plan.sub ? <small>{plan.sub}</small> : null}
-          </div>
-          <span className="gr-vl">
-            <VeloraGlyph size={34} />
-            <small>Velora</small>
-          </span>
+    </>
+  );
+}
+function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, hasVideo, onFull }) {
+  const plan = data.plan;
+  const r = data.race || {};
+  const route = sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait");
+  const has = { "01": true, "02": true, "03": mode === "between" || scBoards(data).length > 0, "04": data.screen?.kind === "rec", "05": !!courseSvg(data, route), "06": true };
+  const man = data.courseShow?.scene || "";
+  const sc = man && has[man] ? man : sceneAuto({ data, mode, hasVideo, now, has });
+  const t = scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast });
+  const lock = mode === "seq" || mode === "ap" || t.tone === "r";
+  const body =
+    sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} />
+    : sc === "02" ? <Sc02 t={t} data={data} sel={sel} mode={mode} now={now} today={today} onFull={onFull} />
+    : sc === "03" ? <Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} />
+    : sc === "04" ? <Sc04 data={data} />
+    : sc === "05" ? <Sc05 data={data} sel={sel} mode={mode} now={now} />
+    : <Sc06 data={data} prog={prog} now={now} today={today} />;
+  const live = mode !== "none" && plan.status !== "done";
+  return (
+    <div className={`sc s${sc}`} data-scene={sc}>
+      <div className="sc-body" key={sc}>
+        {body}
+      </div>
+      {live || sc === "04" ? <ScTop rep={sc === "04"} now={now} /> : null}
+      <div className="sc-name">
+        <div className="sc-nt">
+          <b className={(plan.title || r.name || "").length > 22 ? "lg" : ""}>{plan.title || r.name || "Yarış"}</b>
+          {plan.sub ? <small>{plan.sub}</small> : null}
         </div>
+        <span className="sc-vl">
+          <VeloraGlyph size={40} />
+          <small>Velora</small>
+        </span>
       </div>
     </div>
   );
 }
+
 
 export function LiveScreen({ id, y = "" }) {
   const demoOn = id === "ornek";
@@ -3870,7 +3812,7 @@ export function LiveScreen({ id, y = "" }) {
       <div className={`lv lv-bc lv-grx${hasVideo ? " video" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
         <Backdrop data={data} isCur={isCur} entry={entry} />
         <div className="lv-page lv-ov">
-          <Grafik data={data} id={id} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} racing={racing} ovOn={ovOn} onFull={setFull} />
+          <Sahne data={data} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} hasVideo={hasVideo} onFull={setFull} />
         </div>
         {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
         {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}

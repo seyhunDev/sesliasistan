@@ -342,6 +342,7 @@ export const SHOW_ONE = ["course", "wind", "prog"];
 // Yarış öncesi gösterim akışı (Seyhun 2026-11-03 17:10 sol-alt onayı; rota 17:34'te çıktı): beklenen rüzgâr (rüzgârın yanında açılır) → parkur → program.
 // Yayın'da Otomatik (sec saniyede bir sıradaki, döner) ya da Elle (hold: ekrandaki adımın adı); pre: açık adımlar
 export const PRE_STEPS = ["wind", "course", "prog"];
+export const SCENES = ["01", "02", "03", "04", "05", "06"];
 export const PRE_NAME = { wind: "Beklenen rüzgâr", course: "Parkur", prog: "Program" };
 export const PRE_SECS = [8, 12, 20, 30];
 export const cleanCourseShow = (c) => ({
@@ -353,6 +354,8 @@ export const cleanCourseShow = (c) => ({
   sec: PRE_SECS.includes(Number(c?.sec)) ? Number(c.sec) : 12,
   pre: Array.isArray(c?.pre) ? PRE_STEPS.filter((k) => c.pre.includes(k)) : [...PRE_STEPS],
   hold: PRE_STEPS.includes(c?.hold) ? c.hold : "wind",
+  // Yayın sahnesi (Seyhun 2026-11-04): "" otomatik (süreye göre), "01"…"06" Yayın'dan elle seçilen
+  scene: SCENES.includes(c?.scene) ? c.scene : "",
 });
 // Akışta o an gösterilen adım; have: ekranda gösterilebilenler (veri yoksa adım atlanır). Otomatikte "at"tan (Yayın'da Başa al) itibaren döner.
 export function preSteps(show, have = PRE_STEPS) {
