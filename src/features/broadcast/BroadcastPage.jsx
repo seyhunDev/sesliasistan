@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- yayın küçük resimleri (YouTube, kayıt) doğrudan */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { BackButton } from "@/components/ui/BackButton";
@@ -869,6 +869,7 @@ export function BroadcastPage({ orgId, id }) {
   const heroPrep = prepName(heroE?.prep) || "";
   const heroPaused = !!hero?.cd && tr.t.left != null;
   const orangeOn = orangeUp(plan, today);
+  const wide = useSyncExternalStore(subWide, isWide, () => false);
   // Turuncu bayrak çek / indir: her bayrak işlemi onay sorar (Seyhun kuralı); onaylanınca kayıt bitene kadar düğmede halka
   const askOrange = (up) =>
     confirmIt({
@@ -2122,6 +2123,37 @@ export function BroadcastPage({ orgId, id }) {
             document.body,
           )
         : null}
+      {/* Geniş ekran (Seyhun 2026-11-04 "MacBook'ta telefondaki gibi duruyor"; örnek onaylandı): solda yönetim sütunu, sağda izleyicinin gördüğü
+          canlı ekran 16:9 ve altında Ekranda · Sıradaki · Durum. Telefonda ve iPad dikte yok (çerçeve hiç yüklenmez) */}
+      {wide ? (
+        <aside className="masa-wide" aria-label="Canlı ekran">
+          <div className="masa-wide-h">
+            <span className="masa-wide-live">Canlı</span>
+            İzleyicinin gördüğü
+            <a href={`/canli/${id}`} target="_blank" rel="noreferrer" className="masa-b ml-auto">
+              Ayrı aç
+            </a>
+          </div>
+          <iframe src={`/canli/${id}`} title="Canlı ekran" className="masa-wide-scr" />
+          <div className="masa-wide-g">
+            <div>
+              <small>Ekranda</small>
+              <b>{onScreen ? monName : "Grafik"}</b>
+              <span>{onScreen ? (onScreen.pause ? "Ara verildi" : "Yayında") : "Video yok"}</span>
+            </div>
+            <div>
+              <small>Sıradaki start</small>
+              <b>{hero ? (hero.cd ? mmss(Math.max(0, heroPaused ? tr.t.left : tr.rem)) : dayTime(plan, planDay) || plan.at || "—") : "—"}</b>
+              <span>{hero ? [`${hero.n}. yarış`, heroX.grp ? `${heroX.grp} grup` : heroE?.cls].filter(Boolean).join(" · ") : "Sırada yarış yok"}</span>
+            </div>
+            <div>
+              <small>Durum</small>
+              <b>{plan.status === "ap" ? "Tehir" : plan.status === "done" ? "Gün bitti" : hero?.cd ? "Geri sayım" : orangeOn ? "Turuncu çekili" : "Bekliyor"}</b>
+              <span>{plan.status === "ap" ? apText(plan) : orangeOn ? `${hm(plan.orange)}'den beri` : ""}</span>
+            </div>
+          </div>
+        </aside>
+      ) : null}
     </main>
   );
 }
@@ -2274,6 +2306,14 @@ function TimeIn({ value, onSave, ...p }) {
 }
 // Alt düğme çubuğu ekranın dibine oturur (Seyhun 2026-11-04 "altta niye boşluk kalıyor"): iPhone'un ev çizgisi için bırakılan
 // boşluk yarıya indi (masa.css .masa-barin), çubuk sayfayla aynı genişlikte
+// Geniş ekran (MacBook, iPad yatay): 64rem ve üstü
+const WIDE_Q = "(min-width: 64rem)";
+const subWide = (cb) => {
+  const m = window.matchMedia(WIDE_Q);
+  m.addEventListener("change", cb);
+  return () => m.removeEventListener("change", cb);
+};
+const isWide = () => window.matchMedia(WIDE_Q).matches;
 function MasaBar({ children }) {
   return (
     <div data-pagebar="" className="masa-bar fixed inset-x-0 bottom-0 z-30">
