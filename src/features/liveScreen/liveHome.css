@@ -1,0 +1,107 @@
+/* /canli genel sayfa (Seyhun 2026-11-04 "2026 yıllarının dijital dünyasına uygun; Velora logomuz; altta soft kayan logolar"):
+   Velora laciverti (#0b1a33 → #050d1c) zemin, üstünde çok bulanık yarış fotoğrafı, yavaş süzülen iki mavi ışık ve ince ızgara;
+   kartlar buzlu cam, ince çizgi. Tek vurgu elektrik mavisi (#3d7bff); kırmızı yalnız Canlı. Yazı Barlow Condensed (yayınla aynı). */
+.lh { --lh-acc: #3d7bff; --lh-acc2: #8fb3ff; --lh-red: #ff3b4e; --lh-pan: rgba(11, 26, 51, 0.62); --lh-line: rgba(255, 255, 255, 0.1); --lh-mut: rgba(255, 255, 255, 0.6); background: #050d1c; }
+
+/* Zemin */
+.lh-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: radial-gradient(120% 80% at 20% 0%, #0f2547 0%, #0b1a33 45%, #050d1c 100%); }
+.lh-photo { position: absolute; inset: -60px; background: center / cover no-repeat; opacity: 0.28; filter: saturate(0.7) blur(28px); animation: lv-fade 1.4s ease-out both; }
+.lh-glow { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(40px); opacity: 0.5; will-change: transform; }
+.lh-glow.a { left: -20vmax; top: -25vmax; background: radial-gradient(circle, rgba(61, 123, 255, 0.45), transparent 62%); animation: lh-drift 22s ease-in-out infinite alternate; }
+.lh-glow.b { right: -25vmax; bottom: -30vmax; background: radial-gradient(circle, rgba(64, 170, 255, 0.28), transparent 62%); animation: lh-drift 28s ease-in-out -9s infinite alternate-reverse; }
+.lh-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px); background-size: 56px 56px; mask-image: radial-gradient(90% 70% at 50% 0%, #000 20%, transparent 80%); -webkit-mask-image: radial-gradient(90% 70% at 50% 0%, #000 20%, transparent 80%); }
+@keyframes lh-drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(14vmax, 10vmax) scale(1.15); } }
+
+/* Sayfa */
+.lh-page { position: relative; z-index: 2; display: flex; flex-direction: column; width: 100%; max-width: 64em; min-height: 100dvh; margin: 0 auto; font-size: clamp(14px, 1.02vw, 22px); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif;
+  padding: calc(clamp(16px, 2vw, 40px) + env(safe-area-inset-top)) max(16px, 2vw, env(safe-area-inset-right)) calc(6.5em + env(safe-area-inset-bottom)) max(16px, 2vw, env(safe-area-inset-left)); }
+.lh-head { display: flex; align-items: center; justify-content: space-between; gap: 1em; animation: lv-fade 0.6s ease-out both; }
+.lh-brand { display: flex; align-items: center; gap: 0.9em; min-width: 0; }
+.lh-brand svg { flex: none; width: 2.4em; height: auto; }
+.lh-brand .t { display: flex; flex-direction: column; gap: 0.3em; padding-left: 0.9em; border-left: 2px solid rgba(255, 255, 255, 0.4); line-height: 1; }
+.lh-brand .t b { font-size: 1.6em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.lh-brand .t small { font-size: 0.75em; font-weight: 700; letter-spacing: 0.26em; text-transform: uppercase; color: var(--lh-mut); }
+.lh-state { flex: none; display: inline-flex; align-items: center; gap: 0.55em; padding: 0.5em 0.95em; border-radius: 999px; background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 0 0 1px var(--lh-line); font-size: 0.85em; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--lh-mut); white-space: nowrap; }
+.lh-state::before { content: ""; width: 0.5em; height: 0.5em; border-radius: 50%; background: rgba(255, 255, 255, 0.35); }
+.lh-state.on { color: #fff; background: rgba(255, 59, 78, 0.14); box-shadow: inset 0 0 0 1px rgba(255, 59, 78, 0.45); }
+.lh-state.on::before { background: var(--lh-red); animation: lh-ping 1.8s ease-out infinite; }
+
+.lh-sec { margin: 2em 0 0.7em; font-size: 0.85em; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
+
+/* Büyük kart (canlı yarışlar ya da sıradaki yayın) */
+.lh-big { display: grid; gap: 0.9em; }
+@media (min-width: 1000px) { .lh-big:has(> :nth-child(2)) { grid-template-columns: 1fr 1fr; } }
+.lh-card { position: relative; display: block; overflow: hidden; padding: 1.5em 1.7em 1.6em; border-radius: 1em; color: #fff; text-decoration: none; background: var(--lh-pan); box-shadow: inset 0 0 0 1px var(--lh-line), 0 1.2em 3em rgba(0, 0, 0, 0.35); -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--i, 0) * 0.08s) both; transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.lh-card:active { transform: scale(0.985); }
+@media (hover: hover) { .lh-card:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px rgba(143, 179, 255, 0.35), 0 1.4em 3.4em rgba(0, 0, 0, 0.4); } }
+/* üst kenarda ince ışık çizgisi: canlıda kırmızı ve yavaşça akar */
+.lh-card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--lh-acc), transparent); opacity: 0.8; }
+.lh-card.live::before { background: linear-gradient(90deg, transparent 0%, var(--lh-red) 50%, transparent 100%) 0 0 / 50% 100% no-repeat; animation: lh-sweep 3.2s ease-in-out infinite; opacity: 1; }
+.lh-card .hl { display: flex; align-items: center; gap: 0.8em; min-height: 1.9em; font-size: 0.95em; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lh-acc2); }
+.lh-card.live .hl { color: rgba(255, 255, 255, 0.85); }
+.lh-card .hn { margin-top: 0.4em; max-width: 82%; font-size: clamp(30px, 4vw, 72px); font-weight: 700; line-height: 0.95; letter-spacing: 0.01em; text-transform: uppercase; overflow-wrap: anywhere; }
+.lh-big:has(> :nth-child(2)) .lh-card .hn { font-size: clamp(28px, 2.6vw, 52px); }
+.lh-card .hf { display: flex; align-items: flex-end; justify-content: space-between; gap: 1em 1.5em; margin-top: 0.9em; }
+.lh-card .hm { min-width: 0; display: flex; flex-wrap: wrap; gap: 0.3em 1.5em; font-family: var(--lv-font), system-ui, sans-serif; font-size: 1em; font-weight: 600; color: rgba(255, 255, 255, 0.75); }
+.lh-card .go { flex: none; padding: 0.6em 1.3em; border-radius: 0.55em; background: var(--lh-acc); color: #fff; font-size: 1em; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 0 0.3em 1.2em rgba(61, 123, 255, 0.4); }
+.lh-card.live .go { background: #fff; color: #0b1a33; box-shadow: 0 0.3em 1.2em rgba(0, 0, 0, 0.3); }
+
+/* Canlı rozeti: kırmızı, dalga gibi yayılan nokta */
+.lh-live { display: inline-flex; align-items: center; gap: 0.5em; padding: 0.4em 0.75em; border-radius: 0.35em; background: var(--lh-red); color: #fff; font-style: normal; font-size: 0.9em; font-weight: 800; letter-spacing: 0.16em; }
+.lh-live::before { content: ""; width: 0.5em; height: 0.5em; border-radius: 50%; background: #fff; animation: lh-ping 1.8s ease-out infinite; }
+@keyframes lh-ping { 0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70%, 100% { box-shadow: 0 0 0 0.55em rgba(255, 255, 255, 0); } }
+.lh-state.on::before { animation-name: lh-pingr; }
+@keyframes lh-pingr { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 78, 0.8); } 70%, 100% { box-shadow: 0 0 0 0.6em rgba(255, 59, 78, 0); } }
+@keyframes lh-sweep { from { background-position: -100% 0; } to { background-position: 300% 0; } }
+
+/* Satırlar (Yaklaşan / Biten) */
+.lh-list { overflow: hidden; border-radius: 1em; background: var(--lh-pan); box-shadow: inset 0 0 0 1px var(--lh-line); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.lh-row { display: grid; grid-template-columns: 3.4em 1fr auto; align-items: center; gap: 1em; padding: 0.85em 1.2em; color: #fff; text-decoration: none; border-top: 1px solid var(--lh-line); animation: lv-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) calc(0.1s + var(--i, 0) * 0.05s) both; transition: background 0.2s ease; }
+.lh-row:first-child { border-top: 0; }
+@media (hover: hover) { .lh-row:hover { background: rgba(255, 255, 255, 0.04); } }
+.lh-row:active { background: rgba(255, 255, 255, 0.06); }
+.lh-row .d { display: block; padding: 0.45em 0; border-radius: 0.5em; text-align: center; line-height: 1; background: rgba(61, 123, 255, 0.16); }
+.lh-row .d b { display: block; font-size: 1.7em; font-weight: 700; }
+.lh-row .d small { display: block; margin-top: 0.1em; font-size: 0.72em; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lh-acc2); }
+.lh-row .nm { display: block; min-width: 0; }
+.lh-row .nm b { display: block; font-size: 1.35em; font-weight: 700; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lh-row .nm small { display: block; margin-top: 0.2em; font-family: var(--lv-font), system-ui, sans-serif; font-size: 0.85em; font-weight: 600; color: var(--lh-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lh-row .tg { font-size: 0.9em; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); white-space: nowrap; }
+.lh-row .tg.on { color: var(--lh-acc2); }
+.lh-row.dn { color: rgba(255, 255, 255, 0.6); }
+.lh-row.dn .d { background: rgba(255, 255, 255, 0.06); }
+.lh-row.dn .d small, .lh-row.dn .tg { color: rgba(255, 255, 255, 0.45); }
+
+.lh-empty { margin-top: 2em; padding: 1.2em 1.4em; border-radius: 1em; background: var(--lh-pan); box-shadow: inset 0 0 0 1px var(--lh-line); font-family: var(--lv-font), system-ui, sans-serif; color: var(--lh-mut); }
+.lh-demo { align-self: flex-start; margin-top: 1.8em; font-size: 0.85em; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--lh-mut); text-underline-offset: 0.3em; }
+
+/* Yükleniyor: son boyutlarında soluk parçalar */
+.lh .sk i, .lh .lh-row.sk .d { display: block; height: 0.9em; border-radius: 0.3em; background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.13) 50%, rgba(255, 255, 255, 0.06) 100%) 0 0 / 200% 100%; animation: lh-shim 1.4s ease-in-out infinite; }
+.lh .lh-card.sk, .lh .lh-row.sk { animation: lv-fade 0.4s ease-out both; }
+.lh .lh-card.sk::before { display: none; }
+.lh .lh-row.sk .d { height: 3.1em; }
+.lh .lh-row.sk .nm { display: flex; flex-direction: column; gap: 0.5em; }
+.lh .lh-row.sk .nm i:first-child { height: 1.05em; }
+.lh .lh-row.sk .nm i:last-child { height: 0.7em; }
+@keyframes lh-shim { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* Alt logo şeridi: yavaş, tek renk, kenarlarda kaybolur */
+.lh-mq { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; overflow: hidden; padding: 1em 0 calc(1em + env(safe-area-inset-bottom)); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(13px, 0.95vw, 20px); background: linear-gradient(180deg, rgba(5, 13, 28, 0) 0%, rgba(5, 13, 28, 0.85) 45%); mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%); -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%); pointer-events: none; }
+.lh-mq-t { display: flex; width: max-content; animation: lh-mq 48s linear infinite; }
+.lh-mq-h { display: flex; flex: none; }
+.lh-logo { display: inline-flex; align-items: center; gap: 0.7em; padding: 0 2.2em; opacity: 0.55; white-space: nowrap; }
+.lh-logo svg, .lh-logo img { flex: none; width: 2.1em; height: 2.1em; object-fit: contain; }
+.lh-logo img { filter: grayscale(1) brightness(2.2) contrast(0.9); border-radius: 50%; }
+.lh-logo b { font-size: 1.05em; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #fff; }
+@keyframes lh-mq { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+@media (max-width: 760px) {
+  .lh-card { padding: 1.2em 1.2em 1.3em; }
+  .lh-card .hn, .lh-big:has(> :nth-child(2)) .lh-card .hn { max-width: 100%; font-size: 8.5vw; }
+  .lh-card .hf { flex-direction: column; align-items: flex-start; }
+  .lh-row { grid-template-columns: 3em 1fr auto; padding: 0.8em 1em; }
+  .lh-state { font-size: 0.75em; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lh-glow, .lh-mq-t, .lh-live::before, .lh-state.on::before, .lh-card.live::before, .lh .sk i, .lh .lh-row.sk .d { animation: none; }
+}
