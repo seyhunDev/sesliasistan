@@ -56,7 +56,7 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
       <div
         data-hour-table
         onClick={onClick}
-        className={`flex overflow-hidden rounded-[1.125rem] border border-[color:var(--ht-line)] bg-[color:var(--ht-card)] ${onClick ? "cursor-pointer" : ""}`}
+        className={`flex overflow-hidden rounded-[1.125rem] bg-[color:var(--ht-card)] ${onClick ? "cursor-pointer" : ""}`}
       >
         <div className="shrink-0 border-r border-[color:var(--ht-line)]">
           <div style={{ height: CH }} aria-hidden="true" />
