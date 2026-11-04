@@ -1949,6 +1949,9 @@ group("Yeni sürüm")([
   ["farklı sürüm", F("yeni sayılır", () => NV.isNewer({ sha: "bbb" }, "aaa") && !NV.isNewer({ sha: "aaa" }, "aaa"))],
   ["bilgi yok", F("geliştirmede ya da yanıtsızda yeni sayılmaz", () => !NV.isNewer({ sha: "bbb" }, "") && !NV.isNewer(null, "aaa") && !NV.isNewer({ sha: "" }, "aaa"))],
   ["güncelleme isteği", F("başka işler sayılmaz", () => NV.updateAsk("uygulamayı güncelle") && NV.updateAsk("güncelle") && !NV.updateAsk("antrenman planını güncelle") && !NV.updateAsk("yarın 10'da antrenman ekle"))],
+  ["kendiliğinden yenileme", F("yeni sürümde boşta yenilenir", () => NV.canAutoUpdate({}, "bbb") && !NV.canAutoUpdate({}, ""))],
+  ["iş sürerken yenilenmez", F("kayıt/sayaç, yazı, açık pencere", () => !NV.canAutoUpdate({ busy: 1 }, "bbb") && !NV.canAutoUpdate({ typing: true }, "bbb") && !NV.canAutoUpdate({ dialog: true }, "bbb"))],
+  ["döngü yok", F("aynı sürüm için bir kez", () => !NV.canAutoUpdate({ tried: "bbb" }, "bbb") && NV.canAutoUpdate({ tried: "aaa" }, "bbb"))],
 ]);
 
 // Fitness (lib/fitness): hareket listesi, program, takvime yazılacak günler, sonuç, takip, otomatik ilerleme, sözler
