@@ -817,8 +817,8 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .ck-hero[data-sky="night"] { --sa: #0b1a33; --sb: #12284a; --sc: #1c3a66; }
 /* Yağmur çizgileri sabit (Velora kuralı: boşta ekranda sürekli hareket yok) */
 .ck-hero[data-sky="rain"]::before, .ck-hero[data-sky="storm"]::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .9;
-  background: repeating-linear-gradient(100deg, transparent 0 13px, rgba(200, 222, 248, .26) 13px 14px, transparent 14px 29px);
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .5;
+  background: repeating-linear-gradient(100deg, transparent 0 13px, rgba(200, 222, 248, .18) 13px 14px, transparent 14px 29px);
 }
 @media (min-width: 48rem) { main.home-wide .ck-hero { margin-left: 0; margin-right: 0; border-radius: 1.5rem; } }
 /* Düz kart (Velora: düz ve ince çizgili, gölge yok); basınca data-press ile hafif içeri */
