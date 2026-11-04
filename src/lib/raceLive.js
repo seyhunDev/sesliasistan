@@ -120,11 +120,14 @@ export const cleanDays = (list) => [...new Set((Array.isArray(list) ? list : [])
 const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 export const PLAN_STATUS = ["", "ap", "none", "done"];
+// Tek gruba tehir (Seyhun 2026-11-04 "tek gruba tehir"): bekleyen startın satırında ap { why, land, down, hours }; gün tehiri (plan.status "ap")
+// değişmez, öbür gruplar sürer. Satır tehirdeyken Başlat yok; down gelince ya da "İndir" ile kalkar.
+const cleanHold = (a) => ({ why: String(a?.why || "").slice(0, 60), land: !!a?.land, down: typeof a?.down === "string" && !Number.isNaN(Date.parse(a.down)) ? a.down.slice(0, 30) : "", hours: Number.isInteger(a?.hours) && a.hours >= 1 && a.hours <= 9 ? a.hours : 0 });
 export function cleanPlan(p) {
   const hm = (v, d = "") => (HM.test(v || "") ? v : d);
   const day = DAY.test(p?.day || "") ? p.day : "";
   const order = (Array.isArray(p?.order) ? p.order : [])
-    .map((o) => ({ cls: String(o?.cls || "").slice(0, 20), grp: String(o?.grp || "").slice(0, 20), prep: String(o?.prep || "").slice(0, 8) }))
+    .map((o) => ({ cls: String(o?.cls || "").slice(0, 20), grp: String(o?.grp || "").slice(0, 20), prep: String(o?.prep || "").slice(0, 8), ...(o?.ap && o.grp ? { ap: cleanHold(o.ap) } : {}) }))
     .filter((o) => o.cls || o.grp)
     .slice(0, 24);
   const next = p?.next && DAY.test(p.next.day || "") ? { day: p.next.day, at: hm(p.next.at) } : null;
@@ -687,11 +690,12 @@ export function dayRaces({ starts = [], order = [], grpOf = (x) => x.grp || "", 
     return { key: x.id, n: x.n, grp, state, start: x };
   });
   let acc = [...starts];
+  const first = order.findIndex((x) => !x.ap);
   order.forEach((o, i) => {
     const n = nextRaceNo(acc, today, rdays, o.grp || "");
     const at = new Date(Math.max(Date.now(), ...acc.map((x) => Date.parse(x.at) || 0)) + 60e3).toISOString();
     acc = [...acc, { id: `zzp${i}`, day: today, at, ...(o.grp ? { grp: o.grp } : {}) }];
-    rows.push({ key: `p${i}`, n, grp: o.grp || "", state: i === 0 ? "next" : "wait", i, plan: o });
+    rows.push({ key: `p${i}`, n, grp: o.grp || "", state: o.ap ? "ap" : i === first ? "next" : "wait", i, plan: o });
   });
   // aynı yarışta aynı grubun abandone'dan sonraki startı "tekrar"
   rows.forEach((r, k) => {
@@ -816,3 +820,19 @@ export function orderBySets(order, sets) {
   const r = (x) => rank.get(key(x)) ?? 999;
   return chunks.flatMap((c) => c.map((x, i) => ({ x, i })).sort((a, b) => r(a.x) - r(b.x) || a.i - b.i).map((o) => o.x));
 }
+
+// Tek gruba tehir: grubun bekleyen startları tehirde, sıranın sonuna gider (sıradaki start tehirde olmayan grup olur)
+export function grpHold(order, grp, a) {
+  const hold = cleanHold(a);
+  const mine = order.filter((o) => o.grp === grp).map((o) => ({ ...o, ap: hold }));
+  return [...order.filter((o) => o.grp !== grp), ...mine];
+}
+// Grubun tehiri iner: satırlar tehirsiz, sıranın başına (en uzun bekleyen); öbür tehirdekiler sonda kalır
+export function grpRelease(order, grp) {
+  const mine = order.filter((o) => o.grp === grp).map(({ ap, ...o }) => o);
+  return [...mine, ...order.filter((o) => o.grp !== grp)];
+}
+// Tehirdeki gruplar: [{ grp, ap }] (her grup bir kez)
+export const heldGrps = (order) => [...new Map((order || []).filter((o) => o.ap && o.grp).map((o) => [o.grp, o.ap])).entries()].map(([grp, ap]) => ({ grp, ap }));
+// İnişi gelmiş grup tehirleri
+export const grpDue = (order, now) => heldGrps(order).filter((x) => x.ap.down && Date.parse(x.ap.down) <= now).map((x) => x.grp);
