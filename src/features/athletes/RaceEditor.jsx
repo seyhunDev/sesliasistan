@@ -317,11 +317,15 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const queue = useRef(Promise.resolve());
   const latest = useRef(r);
   const dirty = useRef(false);
+  // Sayfanın bildiği son kayıt: kaydederken yalnız bundan farklı alanlar yazılır (başka yerin yazdığı alan geri yazılmaz)
+  const base = useRef(start.id ? start : null);
   const save = useCallback(() => {
     const data = latest.current;
     dirty.current = false;
     queue.current = queue.current.then(async () => {
-      id.current = await onSave(data, id.current);
+      const was = id.current ? base.current : null;
+      id.current = await onSave(data, id.current, was);
+      base.current = { ...data, id: id.current };
       setRid(id.current || "");
     });
     return queue.current;
@@ -347,7 +351,9 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
       const p = latest.current;
       if (n.startDate !== p.startDate || n.endDate !== p.endDate || n.athleteIds.join() !== p.athleteIds.join()) dropFile();
       first.current = !dirty.current; // asistanın değişikliği kaydedildi; sayfada bekleyen değişiklik varsa birlikte yazılır
-      setR({ ...p, athleteIds: n.athleteIds, note: n.note, city: n.city, district: n.district, startDate: n.startDate, endDate: n.endDate, leaveStart: n.leaveStart, leaveEnd: n.leaveEnd, budget: n.budget, results: n.results, notice: n.notice === undefined ? p.notice : n.notice });
+      const got = { athleteIds: n.athleteIds, note: n.note, city: n.city, district: n.district, startDate: n.startDate, endDate: n.endDate, leaveStart: n.leaveStart, leaveEnd: n.leaveEnd, budget: n.budget, results: n.results, notice: n.notice === undefined ? p.notice : n.notice };
+      if (base.current) base.current = { ...base.current, ...got }; // başka yerde kaydedildi: sayfa bunları yeniden yazmaz
+      setR({ ...p, ...got });
     };
     window.addEventListener("sa-race-saved", on);
     return () => window.removeEventListener("sa-race-saved", on);

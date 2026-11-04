@@ -383,11 +383,21 @@ export async function loadRaces(orgId, onCache) {
   return list;
 }
 
-// Yeni yarışı ekler ya da var olanı günceller; kimliği döndürür
-export async function saveRace(orgId, uid, r) {
-  const data = { ...clean(r), updatedAt: serverTimestamp() };
-  rememberRaceNames([data.name]);
+// Değişen alanlar: base (sayfanın bildiği son kayıt) ile karşılaştırılır; aynı kalan alan yazılmaz
+export function changedFields(r, base) {
+  const a = clean(r);
+  const b = clean(base);
+  return Object.fromEntries(Object.keys(a).filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k])).map((k) => [k, a[k]]));
+}
+
+// Yeni yarışı ekler ya da var olanı günceller; kimliği döndürür.
+// base verilirse yalnız değişen alanlar yazılır (Seyhun 2026-11-04, yarış sistemi haritası: sayfa açıkken siteden gelen ek talimat,
+// Yayın'dan yüklenen sonuç gibi başka yerin yazdığı alan, sayfa kaydedince eski haliyle geri yazılıyordu)
+export async function saveRace(orgId, uid, r, base = null) {
+  const data = { ...(r.id && base ? changedFields(r, base) : clean(r)), updatedAt: serverTimestamp() };
+  if (data.name !== undefined) rememberRaceNames([data.name]);
   stale();
+  if (r.id && base && Object.keys(data).length === 1) return r.id; // değişen yok
   // Sunucu onayı en çok 2,5 sn beklenir; yazma cihazda yapılmıştır, arkada gider (lib/soon.js, denetim B11)
   if (r.id) {
     await soon(updateDoc(doc(col(orgId), r.id), data), 2500, "Yarış");
