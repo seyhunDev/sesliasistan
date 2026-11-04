@@ -1,6 +1,7 @@
 ## Nerede kaldım
 
 - /canli sağ üst sütun (yarış kartı + grup listesi / dönüş) hafifletildi (Seyhun 2026-11-04 "çok göz yoruyor, arka planı kapatıyor"): yarı saydam cam (`--sc-lite`), ince çizgi, gölge yok, yazı 0.8em, sütun 16em, liste en çok 8 satır (`SC_FLEET_MAX`), sütun altta 12em boş bırakır. "İlk 5 · 18–19" tek satır. Sağ alttaki ad küçüldü. Örnekler /mnt/project-files/yayin-tasarim/hafif-panel/.
+- Geniş ekranda sütun sol altta (Seyhun 2026-11-04 "sol alt köşeye; altta süre alanı, üstünde sıralama"): en altta yarışın kartı, üstünde diğer gruplar ve liste (`column-reverse`); Canlı sağ üstte tek başına. Telefon dikeyde eski yerler.
 - Telefonda denenmedi.
 
 ## Sıradaki işler

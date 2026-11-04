@@ -3244,12 +3244,14 @@ function ScOthers({ data, sel, today, now }) {
     </div>
   );
 }
+// Sol alt sütun (Seyhun 2026-11-04 "sol alt köşeye; altta süre alanı, üstünde sıralama"): Canlı sağ üstte tek başına; sütunda en altta yarışın
+// kartı, üstünde diğer gruplar ve grubun sporcuları / dönüş (sahne.css .sc-rcol column-reverse)
 function ScTop({ rep, on, children }) {
   return (
-    <div className="sc-rcol">
+    <>
       {on ? <div className="sc-tr">{rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}</div> : null}
-      {children}
-    </div>
+      <div className="sc-rcol">{children}</div>
+    </>
   );
 }
 // Tehir rozeti: sağ üstte Canlı + saatin altında; karada (dizi dışı) tehir bütün gruplar için, dizide çekildiyse o start
