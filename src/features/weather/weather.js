@@ -155,7 +155,20 @@ export function dayHours(w, date) {
   if (!w?.hourly) return null;
   return w.hourly
     .filter(([t]) => t.startsWith(date))
-    .map(([time, t, code, day, wind, gust, dir, rain, mm, feel]) => ({ time, hh: time.slice(11, 13), t, code, day: !!day, wind, gust, dir, rain: rain ?? null, mm: mm ?? null, feel: feel ?? null }));
+    .map(([time, t, code, day, wind, gust, dir, rain, mm, feel]) => ({ time, hh: time.slice(11, 13), t, code: softCode(code, rain), day: !!day, wind, gust, dir, rain: rain ?? null, mm: mm ?? null, feel: feel ?? null }));
+}
+
+// Tahminde yağmur simgesi yalnız ihtimal %50 ve üstündeyse (Seyhun 2026-11-04 kart "İkisi de"): model ~10 km'lik karenin ortalamasını verir,
+// düşük ihtimalli "yağmurlu" saat noktada çoğu zaman kuru geçer; o saat "Kapalı" (bulut) gösterilir, mm yine yazılır. Radar şu anı ayrıca düzeltir (rainLine radarRows).
+export const wetCode = (c) => (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95;
+export function softCode(code, p) {
+  return wetCode(code) && p != null && p < 50 ? 3 : code;
+}
+// Günün simgesi (günlük kod): günün hiçbir saatinde ihtimal %50'ye varmıyorsa yağmurlu gösterilmez
+export function dayCode(code, rows) {
+  if (!wetCode(code)) return code;
+  const ps = (rows || []).map((h) => h.rain).filter((v) => v != null);
+  return ps.length && Math.max(...ps) < 50 ? 3 : code;
 }
 
 // Şu anki hava: veri 20 dakikadan yeniyse alındığı andaki değer (w.now); eskiyse (uygulama sabah açıldı, yenileme gelmedi ya da bağlantı yok)

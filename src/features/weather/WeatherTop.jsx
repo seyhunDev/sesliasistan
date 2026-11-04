@@ -16,7 +16,7 @@ import { DayNav } from "./DayNav";
 import { HourTable } from "./HourTable";
 import { nextDay } from "./hourCols";
 import { todayStr } from "@/lib/utils/format";
-import { dayHours, dirDeg, getPlace, kn, nowOf, placeLabel, setPlace, sky, windName, compareLinks } from "./weather";
+import { dayCode, dayHours, dirDeg, getPlace, kn, nowOf, placeLabel, setPlace, sky, windName, compareLinks } from "./weather";
 
 // Hava sayfası (Seyhun 2026-11-03 Windy görseli, örnek hava-sayfasi-ornek.png "Böyle yap"): lacivert üstte geri, yer, yenile, büyük sıcaklık ve şimdiki rüzgâr;
 // altında gün satırı (DayNav: ‹ Dün · Bugün · Yarın ›, önceki 5 gün ve 7 gün ileri); açık zeminde saat saat tablo (HourTable, tone="light":
@@ -60,7 +60,7 @@ export function WeatherTop({ w, refresh }) {
     toast(`Nokta taşındı · ${saved.name}`, { duration: 8000, action: { label: "Geri al", onClick: () => save(prev) } });
   };
   const links = compareLinks(place);
-  const v = n || (top && { t: info?.max, code: info?.code, day: true, wind: top.wind, gust: top.gust, dir: top.dir });
+  const v = n || (top && { t: info?.max, code: dayCode(info?.code, rows), day: true, wind: top.wind, gust: top.gust, dir: top.dir });
   return (
     <>
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Hava">

@@ -5,6 +5,7 @@ import { canLog, isLogNote, isTraining, monthLog } from "./trainingLog";
 import { isFit, statusOf } from "./fitness/model";
 import { monthRows } from "./dues";
 import { planState } from "./agenda";
+import { dayCode } from "@/features/weather/weather";
 
 const KEY = "sa-home-sum";
 export function readSum() {
@@ -595,7 +596,7 @@ export function dayWeather(w, rows, date) {
   return {
     min: info?.min ?? Math.min(...ts),
     max: info?.max ?? Math.max(...ts),
-    code: info?.code ?? noon.code,
+    code: info?.code != null ? dayCode(info.code, rows) : noon.code,
     wind: Math.max(...use.map((h) => h.wind)),
     gust: Math.max(...use.map((h) => h.gust)),
     dir: top.dir,
