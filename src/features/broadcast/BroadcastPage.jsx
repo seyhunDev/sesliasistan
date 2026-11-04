@@ -2228,9 +2228,11 @@ const ytThumb = (u, vid = "") => {
   const v = vid || m?.[1] || "";
   return v ? (vid ? `https://i.ytimg.com/vi/${v}/hqdefault_live.jpg?m=${Math.floor(Date.now() / 60000)}` : `https://i.ytimg.com/vi/${v}/hqdefault.jpg`) : "";
 };
+// Sekmeler ekranın altında sabit çubuk (Seyhun 2026-11-04 "sekme butonlarını alta alalım, sekmedeki butonlar sekme çubuğunun üstünde;
+// telefonda, iPad'de rahat"): başparmakla erişilir, sekmenin iş düğmeleri (MasaBar) hemen üstünde; klavye açılınca gizlenir (data-pagebar)
 function MasaTabs({ value, onChange, tabs }) {
   return (
-    <div className="masa-tabs">
+    <nav data-pagebar="" className="masa-tabs" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }} aria-label="Sekmeler">
       {tabs.map(([k, name, sub, dot]) => (
         <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)} data-press>
           <b>{name}</b>
@@ -2240,7 +2242,7 @@ function MasaTabs({ value, onChange, tabs }) {
           </small>
         </button>
       ))}
-    </div>
+    </nav>
   );
 }
 // Sekmenin iş düğmeleri: ekranın altında sabit (en çok üç, ana iş pembe)
