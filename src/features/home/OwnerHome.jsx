@@ -8,8 +8,7 @@ import { useData } from "@/features/data/DataProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { PaidNotice } from "@/features/receipts/Payment";
 import { useWeather } from "@/features/weather/useWeather";
-import { awayRace, fitDays, homeActions } from "@/lib/homeTiles";
-import { racePhase } from "@/lib/raceDay";
+import { fitDays, homeActions } from "@/lib/homeTiles";
 import { useQuota } from "@/lib/quota";
 import { InboxSheet, useInbox } from "./Inbox";
 import { Cockpit } from "./Cockpit";
@@ -97,7 +96,6 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         onInbox={onInbox}
         sel={sel}
         live={athletes ? <RaceLive open={race.open} /> : null}
-        away={athletes && !(sel === today && racePhase({ r: { startDate: today }, today, now: new Date() }) === "done") ? awayRace(race.open, sel) : null}
         days={<HomeDays wx={weather.w} today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
       >
         <div className="ck-c mt-4">

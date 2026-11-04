@@ -74,7 +74,7 @@ export async function scenarios(h) {
     const r = await nav.evaluate((n) => {
       const b = [...n.children];
       const xs = new Set(b.map((e) => Math.round(e.getBoundingClientRect().x)));
-      return { n: b.length, cols: xs.size, ic: b.filter((e) => e.querySelector("svg.hb-ic") && e.textContent.trim()).length };
+      return { n: b.length, cols: xs.size, ic: b.filter((e) => e.querySelector("svg") && e.textContent.trim()).length };
     }).catch(() => ({ n: 0, cols: 0, ic: 0 }));
     return [r.n >= 4 && r.cols === 2 && r.ic === r.n, `${r.n} düğme · ${r.cols} sütun · ${r.ic} ikonlu`];
   });
@@ -1184,6 +1184,12 @@ async function rainStrip(h) {
     const cards = await page.locator("section[aria-label='İngilizce'], section[aria-label='Görevler'], section[aria-label='Medya']").count();
     const shop = await page.getByText(/^(Yemek|Giyim)$/).count();
     const links = await page.locator("main a[href='/sea'], main a[href='/cams']").count();
+    if (process.env.WX_SHOT) {
+      const nav = page.locator("nav[aria-label='İşler']").first();
+      await nav.scrollIntoViewIfNeeded().catch(() => {});
+      await nav.screenshot({ path: `${process.env.WX_SHOT}-dugmeler.png` }).catch(() => {});
+      await page.locator("section[aria-label='Günün planları']").first().screenshot({ path: `${process.env.WX_SHOT}-cizelge.png` }).catch(() => {});
+    }
     if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-anasayfa.png`, fullPage: true });
     return [cards === 0 && shop === 0 && links === 0, `kart ${cards} · alışveriş ${shop} · deniz/kamera ${links}`];
   });
@@ -1196,7 +1202,13 @@ async function rainStrip(h) {
     const rain = await t.getByText(/^Yağmur/).count();
     const now = await t.locator("[data-now]").count();
     const shift = await t.evaluate((el) => el.querySelector(".overflow-x-auto")?.scrollLeft || 0);
-    if (process.env.WX_SHOT) await t.screenshot({ path: `${process.env.WX_SHOT}-hava-tablo.png` });
+    if (process.env.WX_SHOT) {
+      const hero = page.locator(".ck-hero").first();
+      await hero.screenshot({ path: `${process.env.WX_SHOT}-hero-tablo.png` });
+      await page.getByRole("button", { name: "Grafik", exact: true }).first().click();
+      await page.waitForTimeout(900);
+      await hero.screenshot({ path: `${process.env.WX_SHOT}-hero-grafik.png` });
+    }
     return [cols >= 9 && rain === 1 && now === 1, `sütun ${cols} · yağmur ${rain} · şimdi ${now} · kaydırma ${Math.round(shift)}`];
   });
   // Seyhun 2026-11-01 "Tümü penceresi gruplara ayrılsın, tıklayınca açılsın" ("A · Açılır gruplar"): 6 grup kapalı, dokununca o grup açılır, öbürü kapanır; tek Yarışlar
@@ -1385,21 +1397,24 @@ async function raceDayHome(h) {
   });
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx|rwx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/"), { waitUntil: "load" });
-  await check("Ana sayfa", "yarış günü havası", "yarın (Foça'da yarış) seçilince iki saat saat tablo alt alta: üstte Foça, altta Dikili; bugün eski düzen", async () => {
+  // Seyhun 2026-11-04: yarış olan güne dokununca hava alanı değişmez (yarış yeri tablosu yok); ilk dokunuş günü seçer, pencere açılmaz
+  const TOMORROW = new Date(Date.now() + 864e5).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+  await check("Ana sayfa", "yarış günü havası", "yarın (Foça'da yarış) seçilince hava alanı aynı kalır, yarış yeri tablosu çıkmaz; tek dokunuşta pencere açılmaz", async () => {
     const nav = page.locator("nav[aria-label='Günler']");
     await nav.waitFor({ timeout: 12000 });
-    const R = "section[aria-label='Yarış yerinin havası']";
-    const before = await page.locator(R).count();
     await nav.locator("button").nth(1).click();
-    const ok = await waitFor(() => page.locator(`${R} [data-hour-table]`).count(), 15000);
-    const place = await page.locator(R).filter({ hasText: "Foça" }).count();
-    const home = await page.locator("section[aria-label='Dikili havası'] [data-hour-table]").count();
-    if (process.env.WX_SHOT) await page.waitForTimeout(2000).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-yaris.png` }));
-    return [before === 0 && ok > 0 && place === 1 && home === 1, `önce ${before} · yarış tablosu ${ok} · Foça ${place} · Dikili tablosu ${home}`];
+    await page.waitForTimeout(1500);
+    const race = await page.locator("section[aria-label='Yarış yerinin havası']").count();
+    const tbl = await page.locator("section[aria-label='Bugün'] [data-hour-table], section[aria-label='Bugün'] svg[aria-label='Bugünün saatlik rüzgâr grafiği']").count();
+    const dlg = await page.getByRole("dialog").filter({ hasText: TOMORROW }).count();
+    const sel = await nav.locator("button").nth(1).getAttribute("aria-pressed");
+    if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-yaris.png` });
+    return [race === 0 && tbl === 1 && dlg === 0 && sel === "true", `yarış tablosu ${race} · hava ${tbl} · pencere ${dlg} · seçili ${sel}`];
   });
   // Seyhun 2026-11-02: güne tek dokunuşta hem hava o güne geçer hem alttan o günün penceresi (planlar) açılır
-  await check("Ana sayfa", "güne dokun: pencere", "yarına tek dokunuşta hava değişti ve alttan o günün penceresi açık", async () => {
-    const dlg = page.getByRole("dialog");
+  await check("Ana sayfa", "güne dokun: pencere", "seçili güne ikinci dokunuşta alttan o günün penceresi açılır", async () => {
+    await page.locator("nav[aria-label='Günler']").locator("button").nth(1).click();
+    const dlg = page.getByRole("dialog").filter({ hasText: TOMORROW });
     const n = await waitFor(() => dlg.count(), 4000);
     const title = n ? ((await dlg.first().textContent()) || "").replace(/\s+/g, " ").slice(0, 60) : "";
     return [n > 0, `pencere ${n} · ${title}`];

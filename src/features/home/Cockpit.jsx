@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { canSeeAthletes } from "@/features/athletes/access";
-import { lastForecastDay, loadRaceDay } from "@/features/athletes/raceWeather";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -31,7 +30,7 @@ import { BirthdayBadge } from "./PeopleStrip";
 // Yarış günü (Seyhun 2026-10-27 "A · Yarışın yeri büyük", örnek yaris-yeri-hava): seçilen gün bir yarışın günleri içindeyse (away, OwnerHome awayRace)
 // büyük hava ve rüzgâr grafiği yarışın yerinin (raceWeather.loadRaceDay); 2026-10-28 "A · Alt alta ince": büyük grafik yerine iki ince şerit (WindStrip), üstte yarış yeri, altta ev yeri
 // (hava yeri, ör. Dikili: sıcaklık · yön · kn), ona dokununca hava sayfası. Yarışın yeri ev yerine 10 km'den yakınsa ya da hava alınamazsa her şey eskisi gibi.
-export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, children }) {
+export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) {
   const { profile } = useAuth();
   const router = useRouter();
   const now = useNow();
@@ -44,9 +43,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, childr
   const n = isToday ? nowOf(w) : dw && { t: dw.max, code: dw.code, day: true, wind: dw.wind, gust: dw.gust, dir: dw.dir };
   const dname = cap(new Date(`${date}T12:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""));
   const goWeather = () => (w ? router.push("/weather") : refresh(true));
-  const ar = useAway(away, date);
   const home = getPlace();
-  const far = ar && !ar.err && !(ar.at && km(ar.at, home) < 10);
   const [view, setView] = useView();
   // Hissedilen ve günün yağışı: seçili günün saatlik satırlarından (bugünse şimdiki saat, değilse öğle)
   const cur = rows?.find((h) => h.hh === (isToday ? String(now.getHours()).padStart(2, "0") : "13"));
@@ -72,24 +69,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, childr
         </Link>
       </header>
 
-      {far ? (
-        // Yarış başka yerde (Seyhun 2026-11-03 "iki grafiği de yeni hava tarzına çevir"): üst üste iki saat saat tablo, yarış yeri ve ev yeri;
-        // başlıkta yerin adı, dokununca ayrıntı (yarış sayfası / hava sayfası)
-        <div className="mt-3 flex flex-col gap-3">
-          <PlaceTable
-            label="Yarış yerinin havası"
-            name={(ar.place || away.place || away.name || "").split(",")[0]}
-            race
-            rows={ar.rows}
-            next={dayHours(w, nextDay(date))}
-            date={date}
-            place={ar.at}
-            onClick={() => router.push(`/athletes/races/${away.id}`)}
-          />
-          <PlaceTable label={`${home.name} havası`} name={home.name} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} />
-        </div>
-      ) : (
-        <>
+      <>
           <button type="button" onClick={goWeather} aria-label="Hava ayrıntısı" className="mt-2 block w-full text-left">
             {n ? (
               <span className="flex items-end gap-3">
@@ -118,24 +98,23 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, childr
             <>
               <div role="group" aria-label="Hava görünümü" className="mt-3 grid grid-cols-2 rounded-xl bg-black/25 p-[3px]">
                 {[["grafik", "Grafik"], ["tablo", "Tablo"]].map(([k, l]) => (
-                  <button key={k} type="button" data-press aria-pressed={view === k} onClick={() => setView(k)} className={`h-[1.875rem] rounded-[0.5625rem] text-[0.8125rem] font-semibold ${view === k ? "bg-white text-[#12233f] shadow-[0_1px_3px_rgba(0,0,0,.3)]" : "text-white/80"}`}>
+                  <button key={k} type="button" data-press aria-pressed={view === k} onClick={() => setView(k)} className={`h-[1.875rem] rounded-[0.5625rem] text-[0.8125rem] font-semibold ${view === k ? "bg-white text-[#12233f]" : "text-white/80"}`}>
                     {l}
                   </button>
                 ))}
               </div>
-              <div className="mt-2 overflow-hidden rounded-2xl border border-white/15 bg-[#0a1830]/35 backdrop-blur-sm">
+              <div className="mt-2 overflow-hidden rounded-2xl bg-black/20">
                 {view === "tablo" ? (
                   <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} className="!rounded-none !border-0 !bg-transparent" />
                 ) : (
-                  <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className="block w-full px-1.5 pt-1 text-left">
+                  <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className="block w-full px-1 pb-1 pt-2 text-left">
                     <CockpitWind key={date} rows={rows} date={date} />
                   </button>
                 )}
               </div>
             </>
           )}
-        </>
-      )}
+      </>
       </div>
 
       <div className="mt-3">{days}</div>
@@ -214,7 +193,7 @@ function NextPlan({ now }) {
   // Antrenmansa Süre'nin yanında Yoklama (Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
   const att = sail && canSeeAthletes(profile?.email);
   return (
-    <div className="rounded-[1.25rem] bg-[#0b1a33] p-3 text-white shadow-[0_3px_0_#050d1c]">
+    <div className="rounded-[1.25rem] bg-[#0b1a33] p-3 text-white">
       <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3.5 text-left">
         <span className="min-w-[3.375rem] shrink-0 border-r border-white/30 pr-3.5 text-center leading-tight">
           <small className="block text-[0.75rem] font-semibold text-white/85">{w.top}</small>
@@ -249,48 +228,6 @@ function NextPlan({ now }) {
 }
 
 const cap = (t) => t.charAt(0).toLocaleUpperCase("tr-TR") + t.slice(1);
-
-// Yarışın yerinin o günkü saatleri (loadRaceDay 1 saat saklar); tahmin ufku dışındaki günlerde istenmez
-function useAway(r, day) {
-  const key = r && day <= lastForecastDay(todayStr()) ? `${r.id}|${day}|${r.spot?.lat ?? ""}` : "";
-  const [got, setGot] = useState({ key: "" });
-  useEffect(() => {
-    if (!key) return;
-    let on = true;
-    loadRaceDay(r, day).then(
-      (d) => on && setGot({ key, rows: d.rows, place: d.place, at: d.lat != null ? { lat: d.lat, lon: d.lon } : null }),
-      () => on && setGot({ key, err: true }),
-    );
-    return () => {
-      on = false;
-    };
-  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!key) return null;
-  return got.key === key ? got : { loading: true };
-}
-
-// İki nokta arası km (yaklaşık)
-function km(a, b) {
-  const R = 6371, rad = Math.PI / 180;
-  const dLat = (b.lat - a.lat) * rad, dLon = (b.lon - a.lon) * rad;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-// Yarış günü, iki yer alt alta (Seyhun 2026-11-03): yerin adı ve ortak saat saat tablo (HourTable). rows yoksa yanıp sönen yer tutucu.
-// Yarış yerinde (race) ölçüm o yerin en yakın istasyonundan (place, far).
-function PlaceTable({ label, name, race = false, rows, next, date, place = null, onClick }) {
-  if (!rows?.length) return <div className="h-[15rem] animate-pulse rounded-[1.125rem] border border-white/10 bg-white/5" role="status" aria-label={`${label} yükleniyor`} />;
-  return (
-    <section aria-label={label}>
-      <button type="button" data-press onClick={onClick} className="mb-1.5 flex w-full items-center gap-1 px-1 text-left">
-        <b className={`min-w-0 truncate text-[0.8125rem] font-bold ${race ? "text-[#8fb3ff]" : "text-white"}`}>{name}</b>
-        <span className="shrink-0 text-white/45">›</span>
-      </button>
-      <HourTable key={date} rows={rows} next={race ? null : next} date={date} place={place} far={race} onClick={onClick} />
-    </section>
-  );
-}
 
 // "YYYY-AA-GG" → ertesi gün (öğlen üzerinden, saat dilimi kaymasın)
 function nextDay(date) {

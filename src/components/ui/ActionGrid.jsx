@@ -9,11 +9,11 @@ export function ActionGrid({ items, label = "İşler", pill, icons }) {
   return (
     <nav aria-label={label} className={`grid gap-2 ${icons ? "grid-cols-2" : "grid-cols-4"}`}>
       {items.map((a) => {
-        const shape = icons ? `hb h-[3.25rem] rounded-[0.9375rem] px-3 ${a.main ? "hb-main" : ""}` : pill ? "ck-pill justify-center" : "h-[3.25rem] rounded-2xl justify-center";
-        const cls = icons ? `${shape} flex min-w-0 items-center gap-2.5 text-[0.875rem] font-semibold` : `raised ${shape} flex min-w-0 items-center gap-1 px-1 text-[0.84375rem] font-semibold ${a.done ? "text-[var(--ok)] ck-done" : a.main ? "act-main" : "text-fg"}`;
+        const shape = icons ? `btn ${a.main ? "btn-primary" : "btn-secondary"} !h-[3.25rem] !justify-start !px-3.5` : pill ? "ck-pill justify-center" : "h-[3.25rem] rounded-2xl justify-center";
+        const cls = icons ? `${shape} w-full min-w-0 !gap-2.5 !text-[0.9375rem]` : `raised ${shape} flex min-w-0 items-center gap-1 px-1 text-[0.84375rem] font-semibold ${a.done ? "text-[var(--ok)] ck-done" : a.main ? "act-main" : "text-fg"}`;
         const body = icons ? (
           <>
-            <Icon name={a.done ? "check" : a.icon} className="hb-ic size-5 shrink-0 text-acc" />
+            <Icon name={a.done ? "check" : a.icon} className={`size-5 shrink-0 ${a.main ? "text-[var(--on-acc)]" : "text-acc"}`} />
             <span className="truncate">{a.label}</span>
           </>
         ) : (

@@ -49,14 +49,14 @@ export function HomeDays({ wx, today, fit, att, sel = today, onSel, pick, onPick
           const on = sel === d.date;
           const first = !back && i === 0;
           const w = new Date(`${d.date}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
-          // Tek dokunuş (Seyhun 2026-11-02 "güne tıklayınca hem rüzgâr değişmeli hem alttan planlar"): gün seçilir (hava, grafik o güne geçer)
-          // ve o günün penceresi alttan açılır (gösterecek bir şey ya da yoklama yetkisi varsa)
+          // İlk dokunuş günü seçer (hava, tablo ve planlar o güne geçer); seçili güne ikinci dokunuş o günün penceresini alttan açar
+          // (Seyhun 2026-11-04 "alttan açılan alan iki defa tıklanınca açılsın"; gösterecek bir şey ya da yoklama yetkisi varsa)
           const open = () => {
             if (!on) onSel?.(d.date);
-            if (tap) onPick?.(d.date);
+            else if (tap) onPick?.(d.date);
           };
           return (
-            <button key={d.date} type="button" data-press aria-pressed={on} onClick={open} className={`hb-card flex flex-col items-center gap-0.5 rounded-[0.875rem] pb-1.5 pt-1.5 ${first ? "!border-[#0b1a33] !bg-[#0b1a33] !shadow-[0_2px_0_#050d1c] text-white" : on ? "!border-acc ring-2 ring-acc/25" : ""}`}>
+            <button key={d.date} type="button" data-press aria-pressed={on} onClick={open} className={`hb-card flex flex-col items-center gap-0.5 rounded-[0.875rem] pb-1.5 pt-1.5 ${first ? "!border-[#0b1a33] !bg-[#0b1a33] text-white" : on ? "!border-acc ring-2 ring-acc/25" : ""}`}>
               <small className={`text-[0.6875rem] font-semibold capitalize ${first ? "text-white/70" : "text-mut"}`}>{w}</small>
               <b className={`${first ? "text-[1.375rem]" : "text-[1.0625rem]"} font-bold leading-none tracking-[-.03em] tabular-nums`}>{d.d}</b>
               {dw && (

@@ -8,3 +8,15 @@
 - Telefonda denenmedi; hero yüksekliği ve ilk ekranın sığması denenmeli.
 - Yarış başlangıç çizgisi (Start 12:40) rüzgâr grafiğinde yok (örnekte vardı); yarış verisi ana sayfa grafiğine bağlanmadı.
 - Hava sayfası hava ekibinde.
+
+## Düzeltme turu (2026-11-04)
+- Hava kartı: grafik/tablo paneli kenarlıksız, yanlardan düzgün boşluk; rüzgâr çizgileri sabit (animasyon yok).
+- Yarış günü "yarış yerinin havası" geçişi kaldırıldı; ana sayfadaki hava alanı hiç değişmez (yarış sayfasında kalır).
+- Alttaki gün penceresi güne ikinci dokunuşta açılır (ilk dokunuş yalnız seçer).
+- İş düğmeleri ortak btn (raised, ince kenar, gölgesiz); kartlar düz ve ince kenarlı (Velora kuralı).
+
+## Nerede kaldım
+Düzeltme turu birleştirmeye hazır; telefonda denenmedi.
+
+## Sıradaki işler
+Seyhun telefonda bakınca boşluk/kenar ince ayarı gerekirse yapılır.
