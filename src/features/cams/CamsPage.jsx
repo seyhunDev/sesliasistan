@@ -117,7 +117,7 @@ export function CamsPage() {
         </div>
       </section>
 
-      <div className="relative -mx-5 -mt-6 space-y-3 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="split-cols relative -mx-5 -mt-6 space-y-3 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {!cur ? (
           <div className="grid grid-cols-2 gap-2.5" aria-hidden="true">
             {Array.from({ length: 4 }, (_, i) => (

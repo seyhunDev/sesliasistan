@@ -89,7 +89,7 @@ function Library({ orgId }) {
   };
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Medya">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -99,7 +99,7 @@ function Library({ orgId }) {
           </div>
         </header>
       </section>
-      <div className="relative -mx-5 -mt-6 min-h-[50vh] rounded-t-[1.75rem] bg-bg px-5 pt-4">
+      <div className="split-cols relative -mx-5 -mt-6 min-h-[50vh] rounded-t-[1.75rem] bg-bg px-5 pt-4">
         <Seg value={tab} onChange={setTab} options={[["ant", "Antrenman", n("ant")], ["race", "Yarış", n("race")]]} />
         {error && <p className="mt-4 text-center text-[0.875rem] text-rec">{error}</p>}
         {!docs && <Loading label="Medya yükleniyor" />}

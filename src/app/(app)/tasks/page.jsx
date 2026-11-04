@@ -75,7 +75,7 @@ export default function TasksPage() {
   );
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Görevler">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -128,7 +128,7 @@ export default function TasksPage() {
         )}
       </section>
 
-      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="split-main relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {tasks.length === 0 && <Empty icon="task" title="Henüz görev yok" />}
         {tasks.length > 0 && groups.length === 0 && <Empty icon="check" title="Açık görev kalmadı" />}
         {groups.map((g) => (
@@ -144,7 +144,9 @@ export default function TasksPage() {
           </Link>
         )}
 
-        <WordCard />
+        <div className="split-side">
+          <WordCard />
+        </div>
       </div>
     </main>
   );

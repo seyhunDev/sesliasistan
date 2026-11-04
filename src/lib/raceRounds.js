@@ -436,20 +436,22 @@ export function sceneScreen(screen, show, sc) {
 }
 // ---- Yayın evreleri ve gösterilecekler (Seyhun 2026-11-04 "otomatik geçiş neye geçiyor belli değil; atamaları biz yapalım") ----
 // Evre yarışın durumundan kendiliğinden belli olur (canlı ekran ve Yayın aynı evreOf); her evrenin görüntüsü ve öğe sırası Yayın › Ekran'da seçilir.
-export const EVRES = ["pre", "prestart", "start", "race", "post", "ap"];
-export const EVRE_NAME = { pre: "Yarış öncesi", prestart: "Start öncesi", start: "Start dizisi", race: "Yarışta", post: "Yarış sonrası", ap: "Tehir" };
-export const EVRE_WHEN = { pre: "Start'a 10 dakikadan çok varken", prestart: "Turuncu bayrak çekilince ya da start'a 10 dakikadan az kalınca", start: "Start geri sayımında (5·4·1·0) ve genel geride", race: "Start'tan finişe kadar", post: "Finiş ya da abandone sonrası, gün bitince de", ap: "Tehir bayrağı çekiliyken" };
+// Seyhun 2026-11-04 "evrelerin hepsi: yarış öncesi, start öncesi, start dizisi, start sonrası, yarış sonrası, abandone, tehir": Genel geri,
+// Abandone ve Gün bitti ayrı evre
+export const EVRES = ["pre", "prestart", "start", "fs", "race", "post", "aban", "ap", "done"];
+export const EVRE_NAME = { pre: "Yarış öncesi", prestart: "Start öncesi", start: "Start dizisi", fs: "Genel geri", race: "Yarışta", post: "Yarış sonrası", aban: "Abandone", ap: "Tehir", done: "Gün bitti" };
+export const EVRE_WHEN = { pre: "Start'a 10 dakikadan çok varken", prestart: "Turuncu bayrak çekilince ya da start'a 10 dakikadan az kalınca", start: "Start geri sayımında (5·4·1·0)", fs: "Genel geri çağırma (FS), yeniden start beklenirken", race: "Start'tan finişe kadar", post: "Finişten sonra, sıradaki yarış beklenirken", aban: "Yarış abandone edilince (N)", ap: "Tehir bayrağı çekiliyken", done: "Günün yarışları bitince" };
 export const SHOW_ITEMS = ["video", "time", "prog", "wind", "course", "rank", "next"];
 export const ITEM_NAME = { video: "Görüntü", time: "Süre", prog: "Program", wind: "Rüzgâr", course: "Parkur", rank: "Genel sıralama", next: "Sıradaki yarış" };
 export const ITEM_SECS = [8, 10, 15, 20, 30];
-export const EVRE_DEF = { pre: ["video", "time", "prog", "wind", "rank"], prestart: ["video", "time", "wind", "course"], start: ["video"], race: ["video"], post: ["rank", "next"], ap: ["time", "prog", "wind", "rank"] };
+export const EVRE_DEF = { pre: ["video", "time", "prog", "wind", "rank"], prestart: ["video", "time", "wind", "course"], start: ["video"], fs: ["video"], race: ["video"], post: ["rank", "next"], aban: ["video", "next", "prog"], ap: ["time", "prog", "wind", "rank"], done: ["rank", "next"] };
 // Sol alttaki liste evre başına (Seyhun 2026-11-04 "genel sıralamayı starttan önce, start dizisinde, starttan sonra da gösterebilmeliyim"):
 // grp = süre kartındaki grubun sporcuları + genel derecesi (yarışta dönüşten sonra dönüş sırası), gen = genel sıralama ilk 10, off = yok
 export const SIDES = ["grp", "gen", "off"];
 export const SIDE_NAME = { grp: "Grup ve sıra", gen: "Genel ilk 10", off: "Yok" };
-export const SIDE_DEF = { pre: "grp", prestart: "grp", start: "grp", race: "grp", post: "off", ap: "grp" };
+export const SIDE_DEF = { pre: "grp", prestart: "grp", start: "grp", fs: "grp", race: "grp", post: "off", aban: "grp", ap: "grp", done: "off" };
 // eski sahnenin videosu hangi evreye (01 yarış öncesi videosuz, 02 videolu ve yarışta, 03 sıralama = yarış sonrası)
-const EV_MIG = { pre: "01", prestart: "01", start: "02", race: "02", post: "03", ap: "01" };
+const EV_MIG = { pre: "01", prestart: "01", start: "02", fs: "02", race: "02", post: "03", aban: "01", ap: "01", done: "03" };
 export function cleanEvVid(v) {
   if (!v || typeof v !== "object") return null;
   const s = cleanScreen(v);
@@ -466,12 +468,16 @@ export function cleanEv(ev, old = {}) {
 }
 // Canlı ekranın kipinden evre: seq (dizide tehir "ap" ayrı), summary/between yarış sonrası; wait/none yarış öncesi
 // soon: start'a 10 dk'dan az ya da turuncu bayrak çekili (Start öncesi). man: Yayın'dan elle seçilen evre (courseShow.evre) her şeyin üstünde
-export function evreOf(mode, seqMode = "", soon = false, man = "") {
+// x: son start genel geri (fs) ya da abandone (aban) ise; summary = gün bitti
+export function evreOf(mode, seqMode = "", soon = false, man = "", x = {}) {
   if (EVRES.includes(man)) return man;
   if (mode === "ap" || (mode === "seq" && seqMode === "ap")) return "ap";
-  if (mode === "seq") return "start";
+  if (mode === "seq") return seqMode === "fs" ? "fs" : "start";
   if (mode === "race") return "race";
-  if (mode === "between" || mode === "summary") return "post";
+  if (mode === "summary") return "done";
+  if (x.fs && !soon) return "fs";
+  if (x.aban && !soon) return "aban";
+  if (mode === "between") return "post";
   return soon ? "prestart" : "pre";
 }
 // O an gösterilen öğe: elle sabitlenen (ya da sesle açılan parkur/rüzgâr/program) varsa o; yoksa evrenin sırası, verisi olmayan atlanır.

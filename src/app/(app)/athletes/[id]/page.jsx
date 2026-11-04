@@ -237,7 +237,7 @@ function Top({ title, sub, children }) {
     </section>
   );
 }
-const LIGHT = "relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5";
+const LIGHT = "wide-body wide-cols relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5";
 
 function Detail() {
   const { id } = useParams();
@@ -273,7 +273,7 @@ function Detail() {
   const tel = (p) => (p ? `tel:${String(p).replace(/[^\d+]/g, "")}` : undefined);
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
+    <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
       <Top title={a.studentName} sub={[isActive(a) ? "Aktif" : "Arşivde", cls, coach].filter(Boolean).join(" · ")}>
         <button type="button" onClick={() => setMore(true)} aria-label="Diğer" data-press className="btn btn-round size-10">
           <Icon name="more" className="size-5" />

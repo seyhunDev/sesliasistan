@@ -260,7 +260,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   );
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className="split split-even mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {!race || missingRace ? (
         <>
           <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]">{head}</section>

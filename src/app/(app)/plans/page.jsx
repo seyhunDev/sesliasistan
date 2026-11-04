@@ -95,7 +95,7 @@ export default function PlansPage() {
   const sel = people.find(([k]) => k === who)?.[1] || "";
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-10 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Planlar">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -172,9 +172,9 @@ export default function PlansPage() {
         </div>
       </section>
 
-      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="split-main relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {imp.length > 0 && (
-          <section>
+          <section className="split-span">
             <ListHead title="Önemli" count={imp.length} />
             <div className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
               {imp.map((p) => {
@@ -248,7 +248,9 @@ export default function PlansPage() {
           Arşiv ›
         </Link>
 
-        <WordCard />
+        <div className="split-side">
+          <WordCard />
+        </div>
       </div>
     </main>
   );

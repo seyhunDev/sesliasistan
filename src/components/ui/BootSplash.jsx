@@ -6,6 +6,7 @@ import { MARK_DISC, MARK_V } from "@/components/ui/AppLogo";
 
 const OUT = 560; // çekilme animasyonu (globals.css › .boot[data-phase=out])
 const FLY = 720; // giriş ekranında logonun yerine uçuşu (globals.css › .boot[data-fly])
+const WARM_SHOW = 450; // anında açılışta açılış ekranının saydam beklediği süre (globals.css › bootwarm)
 
 // Altta bekleyen sayfada logo yeri varsa ([data-boot-target], giriş ekranı) açılış logosu oraya uçar ve küçülür;
 // zemin ve yazılar solar, sayfa logosu uçuş bitince görünür (popüler uygulamalardaki gibi tek logo, kesintisiz).
@@ -47,10 +48,13 @@ export function BootSplash() {
         setPhase("on");
         return;
       }
-      // Anında açılış: ekran hiç görünmedi, çekilme ve sayfa giriş animasyonu da yok (sayfa olduğu gibi belirir)
+      // Anında açılış: ekran görünmediyse (globals.css › bootwarm, 0,45 sn saydam bekler) çekilme ve sayfa giriş animasyonu yok,
+      // sayfa olduğu gibi belirir. Kod geç geldiyse logo görünür olmuştur: o zaman yalnız solarak çekilir.
       if ("warm" in document.documentElement.dataset) {
         setRoot("");
-        setPhase("off");
+        if (performance.now() < WARM_SHOW) return setPhase("off");
+        setPhase("out");
+        t1 = setTimeout(() => setPhase("off"), OUT);
         return;
       }
       const flying = flyTo();

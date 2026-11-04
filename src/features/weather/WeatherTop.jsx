@@ -96,7 +96,7 @@ export function WeatherTop({ w, refresh }) {
           <DayNav sel={sel} days={navDays} today={today} onStep={(k) => setSel(navDays[navDays.indexOf(sel) + k] || sel)} />
         </div>
       </section>
-      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="wide-body relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         <section aria-label="Saat saat">
           {rows.length > 0 && (
             <div className="rounded-[1.25rem] bg-[#0b1a33] p-3">

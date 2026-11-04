@@ -20,6 +20,7 @@ import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { ListenWave } from "@/features/speech/ListenWave";
 import { MicDot } from "@/features/speech/MicDot";
 import { useTts } from "@/features/speech/TtsProvider";
+import { SpeakerGlyph } from "@/features/speech/SpeakerGlyph";
 import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { miniText, pullAction } from "@/lib/miniOrb";
@@ -530,7 +531,8 @@ const LEAVE_MS = 340; // globals.css › .afull-out
 
 // Sesli yanıt düğmesi (Seyhun 2026-10-20: "asistan kullanılırken de seslendirmeyi kapatabilmeliyim, uygun ortam olmayabilir"):
 // sağ üstte hoparlör. Kapatınca okuma o an susar, sonraki cevaplar yalnız yazılır; açınca sonraki cevaplar okunur.
-// Ayarlar › Sesli yanıt ile aynı ayar. Simge yumuşak geçişle değişir, alttaki kısa yazı ne olduğunu söyler.
+// Ayarlar › Sesli yanıt ile aynı ayar. "B · Dolu daire" (Seyhun 2026-11-04): açıkken elektrik mavisi dolu daire, kapalıyken soluk daire
+// ve hoparlörün üstünde çizgi; simge yumuşak geçer (SpeakerGlyph).
 function ReadToggle() {
   const tts = useTts();
   const toast = useToast();
@@ -548,10 +550,9 @@ function ReadToggle() {
       onClick={flip}
       aria-pressed={on}
       aria-label={on ? "Sesli yanıtı kapat" : "Sesli yanıtı aç"}
-      className={`absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full border transition-[background-color,border-color,color,transform] duration-200 active:scale-90 ${on ? "border-acc/40 bg-acc/15 text-acc" : "border-white/10 bg-white/5 text-mut"}`}
+      className={`spk-btn absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full transition-[background-color,color,box-shadow,transform] duration-200 active:scale-90 ${on ? "bg-[#3d7bff] text-white" : "spk-btn-off bg-white/10 text-[#e8ecff]/70"}`}
     >
-      <span className={`absolute transition-[opacity,transform] duration-200 ${on ? "scale-100 opacity-100" : "scale-75 opacity-0"}`}><Icon name="volume" className="size-5" /></span>
-      <span className={`absolute transition-[opacity,transform] duration-200 ${on ? "scale-75 opacity-0" : "scale-100 opacity-100"}`}><Icon name="mute" className="size-5" /></span>
+      <SpeakerGlyph on={on} />
     </button>
   );
 }

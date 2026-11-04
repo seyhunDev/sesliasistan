@@ -8,7 +8,7 @@ import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, clean
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
+import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
@@ -812,21 +812,44 @@ function Races({ id, starts, cur, sel, fleets, rounds, entries, onClose }) {
 const LOAD_MS = 8000;
 const FADE_MS = 1100;
 const noSub = () => () => {};
+// Canlı yayın yokken arka plan (Seyhun 2026-11-04 "her zaman canlı yayın yapamayacağım; arkada ne gösterelim"): bugünün kayıtları sırayla
+// (yoksa yarışın son kayıtları), köşede "Tekrar"; kayıt da yoksa yarış yerinin fotoğrafı yavaşça yakınlaşır (Ken Burns)
+const AUTO_MAX = 6;
+const dayIst = (t) => {
+  const ms = typeof t === "number" ? t : Date.parse(t || "");
+  return Number.isFinite(ms) ? new Date(ms).toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" }) : "";
+};
+function autoRecs(data, today) {
+  const vids = (data.media || []).filter((m) => m.kind === "video" && m.url);
+  const day = vids.filter((m) => dayIst(m.at) === today);
+  return (day.length ? day : vids).slice(-AUTO_MAX);
+}
+// ekranda canlı görüntü ya da elle seçilen kayıt yoksa (tekne haritası da değilse) kendiliğinden tekrar açılır mı
+function autoOn(data, isCur, entry, today) {
+  const scr = isCur ? data.screen || {} : {};
+  if (scr.kind === "boats" || scr.kind === "rec") return false;
+  if (ytSrc(liveUrl(screenUrl(scr, data.stream), scr, data.stream, data.camBy, entry))) return false;
+  return autoRecs(data, today).length > 0;
+}
 function Backdrop({ data, isCur, entry, today = "" }) {
   const scr = isCur ? data.screen || {} : {};
   // canlı yayın ya da drone; ekrandaki yarışın grubuna kamera bağlıysa o kamera (lib/raceCams.js)
   const yt = ytSrc(liveUrl(screenUrl(scr, data.stream), scr, data.stream, data.camBy, entry));
-  const rec = scr.kind === "rec" ? (data.media || []).find((m) => m.id === scr.mid) : null;
+  const autos = autoOn(data, isCur, entry, today) ? autoRecs(data, today) : [];
+  const [ai, setAi] = useState(0);
+  const auto = autos.length ? autos[ai % autos.length] : null;
+  const rec = scr.kind === "rec" ? (data.media || []).find((m) => m.id === scr.mid) : auto;
   const on = !!(yt || rec);
   const st = useFade(on, 900);
   const vref = useRef(null);
-  const key = yt ? `y:${yt}` : rec ? `r:${rec.id}:${scr.loop ? 1 : 0}` : "";
+  const loop = auto ? autos.length < 2 : !!scr.loop;
+  const key = yt ? `y:${yt}` : rec ? `r:${rec.id}:${loop ? 1 : 0}` : "";
   const [layers, setLayers] = useState([]); // {k, yt, rec, loop, s: "load" | "in" | "out"}
   const [seen, setSeen] = useState("");
   if (key !== seen) {
     setSeen(key);
     if (key) {
-      const nl = { k: key, yt, rec, loop: !!scr.loop };
+      const nl = { k: key, yt, rec, loop };
       setLayers((ls) => (ls.some((l) => l.k === key) ? ls : [...ls.filter((l) => l.s !== "load"), { ...nl, s: st && ls.length ? "load" : "in" }]));
     }
   }
@@ -879,7 +902,7 @@ function Backdrop({ data, isCur, entry, today = "" }) {
                 {l.yt ? (
                   <iframe title="Canlı yayın" src={l.yt} allow="autoplay; encrypted-media; picture-in-picture" onLoad={() => ready(l.k)} />
                 ) : l.rec?.kind === "video" ? (
-                  <video ref={l.s === "in" ? vref : undefined} src={l.rec.url} poster={l.rec.thumb || undefined} autoPlay muted playsInline loop={l.loop} onCanPlay={() => ready(l.k)} />
+                  <video ref={l.s === "in" ? vref : undefined} src={l.rec.url} poster={l.rec.thumb || undefined} autoPlay muted playsInline loop={l.loop} onCanPlay={() => ready(l.k)} onEnded={auto && l.s === "in" ? () => setAi((i) => i + 1) : undefined} />
                 ) : l.rec ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={l.rec.url} alt="" onLoad={() => ready(l.k)} />
@@ -3271,7 +3294,7 @@ function ScOthers({ data, sel, today, now }) {
 // Sol alt sütun (Seyhun 2026-11-04 "sol alt köşeye; altta süre alanı, üstünde sıralama"): Canlı sağ üstte tek başına; sütunda en altta yarışın
 // kartı, üstünde diğer gruplar ve grubun sporcuları / dönüş (sahne.css .sc-rcol column-reverse)
 // Canlı rozetinin yanında görüntünün grubu (grp): drone ya da kamera bir gruba bağlıysa "Mavi grup"
-function ScTop({ rep, on, grp = "", card = null, children }) {
+function ScTop({ rep, on, grp = "", auto = false, card = null, children }) {
   return (
     <>
       {/* sağ üst: Canlı (+ görüntünün grubu) ve hemen altında süre kartı (Seyhun 2026-11-04 "süre hepsi için geçerli, canlının altına") */}
@@ -3279,6 +3302,7 @@ function ScTop({ rep, on, grp = "", card = null, children }) {
       {on ? (
         <div className="sc-tr">
           {rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}
+          {!rep && auto && !grp ? <span className="sc-lgrp">Tekrar</span> : null}
           {!rep && grp ? (
             <span className="sc-lgrp">
               <i style={{ background: groupColor(grp) || "rgba(255,255,255,.6)" }} aria-hidden="true" />
@@ -3898,8 +3922,9 @@ function Sc05({ data, sel, mode, now }) {
   }
   const ax = axisInfo(data);
   const c = curWind(data, null, true, now);
+  // TV düzeni (Seyhun 2026-11-04 "her zaman arkada video varmış gibi"): parkur tam ekran lacivert değil, solda tek cam panel; video görünür
   return (
-    <>
+    <div className="sc-cpn">
       <div className="sc-cbn">
         <b>{[ty.split(" ")[0], card?.id ? `Kart ${card.id}` : ""].filter(Boolean).join(" · ") || "Parkur"}</b>
         <span>{[data.race?.place, data.rounds?.[sel?.id]?.cls].filter(Boolean).join(" · ")}</span>
@@ -3934,7 +3959,7 @@ function Sc05({ data, sel, mode, now }) {
           </section>
         ) : null}
       </div>
-    </>
+    </div>
   );
 }
 // 06: sıradaki yarış; büyük numara, sınıf · grup, tahmini start, kalan, beklenen rüzgâr; sağda sonraki startlar
@@ -4007,7 +4032,8 @@ function Sc06({ data, prog, now, today }) {
 function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast }) {
   // Start öncesi: turuncu bayrak çekili ya da start'a 10 dk'dan az; Yayın'dan elle seçilen evre (courseShow.evre) üstüne yazar
   const soon = mode === "wait" && (orangeUp(data.plan, today) || (cs.rem != null && cs.rem > 0 && cs.rem <= 600));
-  const evre = evreOf(mode, seqMode, soon, cleanCourseShow(data.courseShow).evre);
+  const vd = mode === "wait" || mode === "between" ? voidLast(data, today, now) : null;
+  const evre = evreOf(mode, seqMode, soon, cleanCourseShow(data.courseShow).evre, { fs: /genel/i.test(vd?.void || ""), aban: /abandone|iptal/i.test(vd?.void || "") });
   const sd = { ...data, screen: evreScreen(data.screen, data.courseShow, evre) };
   const vid = ["live", "drone", "src", "rec", "boats"].includes(sd.screen?.kind);
   const t = scTime({ data: sd, sel, entry, cs, prog, today, now, mode, seqMode, fsLast });
@@ -4034,15 +4060,21 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
   const lock = !ap && (mode === "seq" || t.tone === "r");
   // start dizisinde ve yarışta yarışın kartı sağ üstte (Görüntü; yarışta Program / Rüzgâr ortadayken de)
   // süre kartı her evrede Canlı'nın altında (ortadaki 01 Süre kartı ekrandayken yok, aynı bilgi iki yerde olmasın); tehirde rozet (ScAp)
-  const colCard = !ap && (sc === "02" || (sc === "01" && item !== "time"));
+  // TV düzeni: süre kartı hep sağ üstte; ortadaki "Süre" öğesi ayrıca bir şey göstermez (ortası görüntüye kalır)
+  const colCard = !ap;
   const body =
-    sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} ap={ap} only={["time", "prog", "wind"].includes(item) ? item : ""} />
+    sc === "01" && item === "time" && !ap ? null
+    : sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} ap={ap} only={["time", "prog", "wind"].includes(item) ? item : ""} />
     : sc === "02" ? (colCard ? null : <Sc02 t={ap ? null : t} data={data} sel={sel} mode={mode} now={now} today={today} />)
     : sc === "03" ? <Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} />
     : sc === "04" ? <Sc04 data={data} />
     : sc === "05" ? <Sc05 data={data} sel={sel} mode={mode} now={now} />
     : <Sc06 data={data} prog={prog} now={now} today={today} />;
   const live = mode !== "none" && plan.status !== "done";
+  // Evre bandı (Seyhun 2026-11-04 "TV show kıvamında; geçişler"): evre değişince altta 3 sn evrenin adı (sayfa ilk açılışında yok)
+  const [bump, setBump] = useState({ e: evre, t: 0 });
+  if (bump.e !== evre) setBump({ e: evre, t: now });
+  const bumpOn = bump.t > 0 && now - bump.t < 3200;
   // Sol alt liste tek kural (Seyhun 2026-11-04 "hangi durumda ne zaman gösteriliyor, karışıklık var"): süre kartındaki grubun listesi;
   // start öncesinden yarış bitene kadar (tehir dahil) her öğede yerinde, yalnız ortada genel sıralama ya da parkur (sol yarıyı kaplar) varken yok; yarış öncesi ve sonrası yok
   // Yayın › Ekran'da evre başına seçilir (Grup ve sıra / Genel ilk 10 / Yok)
@@ -4056,6 +4088,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
   // ekrandaki görüntünün grubu (yalnız video gösterilirken; tekrar ve tekne haritası değil)
   const liveGrps = (data.starts || []).filter((x) => x.day === today && !x.void && !x.fin).map((x) => x.grp || data.rounds?.[x.id]?.grp || "");
   const vEntry = { ...entry, cls: entry?.cls || "", grp: entry?.grp || sel?.grp || "" };
+  const autoRep = !bgrp && autoOn(data, true, vEntry, today);
   const vOn = (mode === "seq" || mode === "race") && !!liveUrl(screenUrl(data.screen, data.stream), data.screen, data.stream, data.camBy, vEntry);
   const vgrp = vOn ? videoGroup(data.screen, data.stream, data.camBy, vEntry, liveGrps) : "";
   return (
@@ -4063,10 +4096,16 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       <div className="sc-body" key={sc}>
         {body}
       </div>
-      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} /> : null}>
+      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
         {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} /> : listOn ? side === "gen" ? <ScGen data={data} who={lwho} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
+      {bumpOn ? (
+        <div className="sc-bump" key={bump.t} aria-hidden="true">
+          <i />
+          <b>{EVRE_NAME[evre] || ""}</b>
+        </div>
+      ) : null}
       {ap && sc !== "04" ? <ScAp t={t} plan={plan} seq={mode === "seq"} /> : null}
       <div className="sc-name">
         <div className="sc-nt">
