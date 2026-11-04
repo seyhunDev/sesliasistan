@@ -76,6 +76,12 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-day[aria-pressed="true"] { border-color: var(--acc); }
 .masa-day[aria-pressed="true"] small { color: var(--acc); }
 .masa-day.off { opacity: 0.55; }
+/* Program (2026-11-04): + Gün ekle kutusu; büyük saat ve yazı kutuları (dokunması kolay) */
+.masa-day.add { flex: 0 0 5.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; border-style: dashed; border-color: var(--line); background: transparent; text-align: center; }
+.masa-day.add b { margin: 0; font-size: 1.5rem; line-height: 1; color: var(--acc); }
+.masa-day.add span { margin-top: 0.25rem; }
+.masa-time { height: 2.75rem; min-width: 6rem; flex-shrink: 0; border-radius: 0.75rem; background: var(--chip); padding: 0 0.625rem; font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; outline: none; }
+.masa-text { height: 2.75rem; min-width: 0; flex: 1; border-radius: 0.75rem; background: var(--chip); padding: 0 0.75rem; font-size: 1rem; font-weight: 600; outline: none; }
 
 /* Parkur: kart kutuları */
 .masa-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }

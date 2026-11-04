@@ -77,3 +77,36 @@ export function programPatch(days, plan = {}) {
   const agenda = cleanAgenda(Object.fromEntries(days.map((d) => [d.day, d.items || []])));
   return { plan: { daily, times, off, agenda }, startDate, endDate };
 }
+
+// Elle düzenleme (Seyhun 2026-11-04 "Program sekmesi çok karışık, yeniden tasarla"): bir günün maddeleri değişir (boş kalan gün düşer)
+export function agendaPut(agenda, day, items) {
+  const a = { ...cleanAgenda(agenda) };
+  const v = DAY.test(day || "") ? cleanItems(items) : [];
+  if (v.length) a[day] = v;
+  else delete a[day];
+  return cleanAgenda(a);
+}
+// İlk start saati değişince programdaki "İlk start" / "İlk uyarı işareti" maddesi de aynı saate geçer (canlı ekranda iki ayrı saat görünmesin)
+export const FIRST_ITEM = /[iİI]lk\s*(start|uyar)/i;
+export function agendaFirst(agenda, days, at) {
+  const a = cleanAgenda(agenda);
+  if (!HM.test(at || "")) return a;
+  for (const d of days) if (a[d]) a[d] = cleanItems(a[d].map((x) => (FIRST_ITEM.test(x.text) ? { ...x, at } : x)));
+  return a;
+}
+// Gün ekle / kaldır (Program sekmesi): yarışın tarihleri. Yarışın tarihi yoksa bugün ve yarın; en çok 10 gün. Yalnız ilk ya da son gün kalkar.
+const plusDay = (d, n) => new Date(Date.parse(`${d}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+export function datesAdd(start, end, today) {
+  if (!DAY.test(start || "")) return DAY.test(today || "") ? { startDate: today, endDate: plusDay(today, 1) } : null;
+  const e = DAY.test(end || "") && end >= start ? end : start;
+  const next = plusDay(e, 1);
+  return Math.round((Date.parse(next) - Date.parse(start)) / 864e5) >= 10 ? null : { startDate: start, endDate: next };
+}
+export function datesDrop(start, end, day) {
+  if (!DAY.test(start || "")) return null;
+  const e = DAY.test(end || "") && end >= start ? end : start;
+  if (e === start) return null;
+  if (day === start) return { startDate: plusDay(start, 1), endDate: e };
+  if (day === e) return { startDate: start, endDate: plusDay(e, -1) };
+  return null;
+}

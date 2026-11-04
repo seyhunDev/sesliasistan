@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
-import { programPatch } from "@/lib/raceProgram";
+import { FIRST_ITEM, agendaFirst, agendaPut, datesAdd, datesDrop, programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
@@ -110,6 +110,8 @@ export function BroadcastPage({ orgId, id }) {
   const [impOpen, setImpOpen] = useState(false); // Program: Programı ekle açık
   const [reset, setReset] = useState(false); // Yayını sıfırla penceresi
   const [delId, setDelId] = useState(""); // Program: silinmesi sorulan start
+  const [agEdit, setAgEdit] = useState(null); // Program: düzeltilen madde { d, i (-1 yeni), at, text }
+  const [dayAsk, setDayAsk] = useState(false); // Program: Günü kaldır bir daha sorar
   const [retryPick, setRetryPick] = useState(false); // tekrar startın bayrağı burada seçildi ("Geri" boşaltır)
   const [made, setMade] = useState(0); // son oluşturulan yarışın programa eklenen start sayısı ("Geri" onları çıkarıp bayrağa döner)
   const [setupOpen, setSetupOpen] = useState(false); // ⋯ › Sınıf ve gruplar (yarışın sınıfları ve grupları bir kez seçilir)
@@ -177,6 +179,18 @@ export function BroadcastPage({ orgId, id }) {
     };
   }, [tab, srcUrls]);
 
+  // Program sekmesi açılınca günlerin saati, "yok" günleri ve maddeleri belgeden tazelenir (siteden gelen talimat ya da başka telefon
+  // arada yazdıysa eski hâli üstüne yazılmasın; yarış sistemi haritası 2026-11-04 riski)
+  useEffect(() => {
+    if (tab !== "program") return undefined;
+    let on = true;
+    loadRoundsOf(orgId, id)
+      .then((d) => on && d?.plan && setPlan((p) => cleanPlan({ ...p, daily: d.plan.daily, times: d.plan.times, off: d.plan.off, agenda: d.plan.agenda })))
+      .catch(() => {});
+    return () => {
+      on = false;
+    };
+  }, [tab, orgId, id]);
   // gün değişince (sayfa gece açık kaldıysa) plan bugüne geçer ve kaydedilir
   useEffect(() => {
     if (!plan.day || plan.day >= today) return;
@@ -359,13 +373,59 @@ export function BroadcastPage({ orgId, id }) {
   // Tehir inince tehir işareti de (AP/H, AP 6 saat…) ekrandan kalkar (Seyhun 2026-11-04 "tehiri indirmem canlı yayına gitmedi": işaret kartı kalıyordu)
   const apSigOff = (pl) => (signalOf(pl.sig?.id)?.kind === "ap" && !signalOf(pl.sig.id).end ? { sig: null } : {});
   const lowerAp = () => changePlan({ day: planDay, ...apLower(Date.now(), readTimer().dur || 300, dev, plan.ap?.land, plan.ap?.auto), ...apSigOff(plan) });
-  // Program sekmesi: her günün saati (o güne özel saat yoksa bugünün ilk start'ı da değişir), güne özel saat, yarış olmayan gün, start silme
-  const setDaily = (v) => changePlan({ daily: v, ...(!plan.times[planDay] && plan.status !== "ap" ? { at: v } : {}), ...(plan.next && !plan.times[plan.next.day] ? { next: { ...plan.next, at: v } } : {}) });
-  const setDayTime = (d, v) => {
+  // Program sekmesi (Seyhun 2026-11-04 "çok karışık, yeniden tasarla"): her günün tek "İlk start" saati (aynı saat daily, farklı gün times;
+  // ilk kez girilen saat bütün günlerin olur), "Her güne" ile bütün günler aynı saat. Bugünün / yarının saati değişirse ekranın saati de;
+  // programdaki "İlk start" maddesi de aynı saate geçer (agendaFirst). Yarış olmayan gün, gün ekle/kaldır, programın maddeleri elle.
+  const timePatch = (daily, times, ds, v, agenda = plan.agenda) => {
+    const at = (dd) => times[dd] || daily;
+    return {
+      daily,
+      times,
+      ...(plan.status !== "ap" && at(planDay) !== dayTime(plan, planDay) ? { at: at(planDay) } : {}),
+      ...(plan.next && at(plan.next.day) !== dayTime(plan, plan.next.day) ? { next: { ...plan.next, at: at(plan.next.day) } } : {}),
+      agenda: agendaFirst(agenda, ds, v),
+    };
+  };
+  const dayPatch = (d, v, agenda) => {
+    const daily = plan.daily || v;
     const times = { ...plan.times };
-    if (v && v !== plan.daily) times[d] = v;
+    if (v && v !== daily) times[d] = v;
     else delete times[d];
-    changePlan({ times, ...(d === planDay && plan.status !== "ap" ? { at: v || plan.daily } : {}), ...(plan.next?.day === d ? { next: { day: d, at: v || plan.daily } } : {}) });
+    return timePatch(daily, times, [d], v, agenda);
+  };
+  const setDayTime = (d, v) => changePlan(dayPatch(d, v));
+  const setAllTimes = (v) => changePlan(timePatch(v, {}, days, v));
+  // Programın maddesi kaydedilir; "İlk start" maddesinin saati değiştiyse günün ilk start saati de
+  const saveAg = (d, list, edited) => {
+    setAgEdit(null);
+    const agenda = agendaPut(plan.agenda, d, list);
+    if (edited && FIRST_ITEM.test(edited.text) && /^\d\d:\d\d$/.test(edited.at) && edited.at !== dayTime(plan, d) && !plan.off.includes(d)) return changePlan(dayPatch(d, edited.at, agenda));
+    return changePlan({ agenda });
+  };
+  // Gün ekle (sona) / kaldır (yalnız ilk ya da son gün, yarışı yoksa): yarışın tarihleri, kalkan günün saati, programı ve "yok"u da silinir
+  const putDates = (pp) => {
+    setRace((r) => ({ ...r, ...pp }));
+    return saveRaceDates(orgId, id, pp).catch(() => toast("Yarış tarihleri kaydedilemedi."));
+  };
+  const addDay = () => {
+    const pp = datesAdd(rdays?.length ? race.startDate : "", race?.endDate, today);
+    if (!pp) return toast("En çok 10 gün.");
+    setOpenDay(pp.endDate);
+    setAgEdit(null);
+    return putDates(pp);
+  };
+  const dropDay = (d) => {
+    setDayAsk(false);
+    if (live.starts.some((x) => x.day === d)) return toast("Bu günde yarış var. Önce yarışları sil.");
+    const pp = datesDrop(race?.startDate, race?.endDate, d);
+    if (!pp) return null;
+    const times = { ...plan.times };
+    delete times[d];
+    const agenda = { ...plan.agenda };
+    delete agenda[d];
+    changePlan({ times, agenda, off: plan.off.filter((x) => x !== d) });
+    setOpenDay("");
+    return putDates(pp);
   };
   const toggleOff = (d) => {
     const on = plan.off.includes(d);
@@ -847,7 +907,7 @@ export function BroadcastPage({ orgId, id }) {
   const legsDone = entry?.route?.length ? entry.route.filter((_, k) => (entry.legs[k] || []).length).length : 0;
   const tabInfo = [
     ["sure", "Süre", cur ? (Date.parse(cur.at) > capNow ? "Geri sayım" : "Yarışta") : plan.status === "ap" ? "Tehir" : plan.status === "done" ? "Gün bitti" : races.length ? `${races.length} yarış` : "Boş", !!cur],
-    ["program", "Program", `${days.length} gün`, false],
+    ["program", "Program", plan.off.includes(planDay) ? "Bugün yok" : dayTime(plan, planDay) ? `İlk ${dayTime(plan, planDay)}` : `${days.length} gün`, false],
     ["video", "Ekran", `${EVRE_NAME[evNow]} · ${ITEM_NAME[shNow.item]}`, !!onScreen && !onScreen.pause],
     ["parkur", "Parkur", (CARD_TYPES[selCard(course).type] || "").split(" ")[0], false],
     ["sporcu", "Sporcu", entries.length ? `${entries.length}` : "—", false],
@@ -1348,118 +1408,166 @@ export function BroadcastPage({ orgId, id }) {
         ) : null}
         {!needSetup && tab === "program" ? (
           <>
-        {/* Program (Seyhun 2026-11-02): günler yan yana kutular, seçili günün ilk start saati, startları (Sil) ve bekleyenleri (Çıkar) altta;
-            Her gün saatleri; "Programı ekle" altta sabit (fotoğraf, PDF ya da yazı → yapay zekâ) */}
-        {impOpen ? (
-        <ProgramImport
-              ctx={{ today, race: [race?.name, race?.place].filter(Boolean).join(" · ") }}
-            onApply={async (days) => {
-              const pp = programPatch(days, plan);
-              if (!pp) return toast("Programda yarış günü yok.");
-              changePlan({ ...pp.plan, ...(plan.status !== "ap" && plan.status !== "done" ? { at: pp.plan.times[planDay] || pp.plan.daily } : {}) });
-              if (race && (race.startDate !== pp.startDate || race.endDate !== pp.endDate)) {
-                setRace((r) => ({ ...r, startDate: pp.startDate, endDate: pp.endDate }));
-                await saveRaceDates(orgId, id, pp).catch(() => toast("Yarış tarihleri kaydedilemedi."));
-              }
-              toast("Program yazıldı");
-              setImpOpen(false);
-            }}
-          />
-        ) : null}
+        {/* Program (Seyhun 2026-11-04 "çok karışık, zor; yeniden tasarla"): üstte günler (+ Gün ekle), altta seçili günün kartı: Yarış Var/Yok,
+            tek İlk start saati (günler farklıysa "Her güne"), canlı ekranda görünen programın maddeleri (dokun: düzelt/sil, + ekle), o günün
+            yapılan yarışları (dokun: Sil). Bekleyen startlar Süre'de. "Programı ekle" alttan açılır (fotoğraf, PDF ya da yazı → yapay zekâ) */}
         <div className="masa-days">
           {days.map((d, k) => {
             const ds = live.starts.filter((x) => x.day === d);
             const nRaces = new Set(ds.filter((x) => !x.void).map((x) => x.n)).size;
             const off = plan.off.includes(d);
             return (
-              <button key={d} type="button" aria-pressed={pDay === d} onClick={() => (setDelId(""), setOpenDay(d))} className={`masa-day${off ? " off" : ""}`}>
-                <small>{`${k + 1}. GÜN`}</small>
+              <button key={d} type="button" aria-pressed={pDay === d} onClick={() => (setDelId(""), setAgEdit(null), setDayAsk(false), setOpenDay(d))} className={`masa-day${off ? " off" : ""}`}>
+                <small>{d === today ? "BUGÜN" : `${k + 1}. GÜN`}</small>
                 <b>{dayLong(d)}</b>
-                <span>{off ? "Yarış yok" : [d === today ? "Bugün" : "", dayTime(plan, d) || "--:--", nRaces ? `${nRaces} yarış` : ""].filter(Boolean).join(" · ")}</span>
+                <span>{off ? "Yarış yok" : [dayTime(plan, d) || "--:--", nRaces ? `${nRaces} yarış` : ""].filter(Boolean).join(" · ")}</span>
               </button>
             );
           })}
+          {days.length < 10 ? (
+            <button type="button" onClick={addDay} className="masa-day add">
+              <b aria-hidden="true">+</b>
+              <span>Gün ekle</span>
+            </button>
+          ) : null}
         </div>
         {(() => {
           const d = pDay;
           const ds = live.starts.filter((x) => x.day === d);
           const off = plan.off.includes(d);
-          const pend = d === planDay ? races.flatMap((r) => r.rows).filter((x) => !x.start) : [];
+          const items = plan.agenda?.[d] || [];
+          const ed = agEdit?.d === d ? agEdit : null;
+          const differs = days.some((x) => x !== d && !plan.off.includes(x) && dayTime(plan, x) !== dayTime(plan, d));
+          const canDrop = days.length > 1 && !!rdays?.length && (d === days[0] || d === days.at(-1)) && !ds.length;
+          const editor = (
+            <div key="ed" className="border-b border-line last:border-0">
+              <div className={row}>
+                <input type="time" value={ed?.at || ""} onChange={(e) => setAgEdit((x) => ({ ...x, at: e.target.value }))} aria-label="Maddenin saati" className="masa-time" />
+                <input value={ed?.text || ""} maxLength={40} autoFocus onChange={(e) => setAgEdit((x) => ({ ...x, text: e.target.value }))} placeholder="Ne var?" aria-label="Madde" className="masa-text" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 px-4 pb-3">
+                <Button variant="secondary" onClick={() => (ed.i < 0 ? setAgEdit(null) : saveAg(d, items.filter((_, k) => k !== ed.i)))}>
+                  {ed?.i < 0 ? "Vazgeç" : "Sil"}
+                </Button>
+                <Button disabled={!ed?.text.trim()} onClick={() => saveAg(d, ed.i < 0 ? [...items, { at: ed.at, text: ed.text }] : items.map((y, k) => (k === ed.i ? { at: ed.at, text: ed.text } : y)), ed)}>
+                  Kaydet
+                </Button>
+              </div>
+            </div>
+          );
           return (
-            <section>
-              <Head title={dayLong(d)} right={off ? "Yarış yok" : ds.length + pend.length ? `${ds.length + pend.length} start` : ""} />
-              <div className={`${card} overflow-hidden`}>
-                    <div>
-                      <div className={`${row} border-b border-line`}>
-                        <span className="flex-1 font-semibold">İlk start</span>
-                        <TimeIn value={plan.times[d] || plan.daily} onSave={(v) => setDayTime(d, v)} aria-label="Bu günün ilk start saati" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
-                      </div>
-                      {/* Programdan okunan maddeler (antrenör toplantısı, ilk start, son start saati…); canlı ekranda Program'da görünür */}
-                      {(plan.agenda?.[d] || []).map((x, i) => (
-                        <div key={`ag${i}`} className={`${row} border-b border-line`}>
-                          <span className="w-12 shrink-0 text-[0.875rem] font-semibold tabular-nums text-mut">{x.at || "—"}</span>
-                          <span className="min-w-0 flex-1 truncate font-semibold">{x.text}</span>
-                        </div>
-                      ))}
-                      {ds.map((x) => {
-                        const g = x.grp || L?.rounds?.[x.id]?.grp || "";
-                        const ask = delId === x.id;
-                        return (
-                          <div key={x.id} className={`${row} border-b border-line`}>
+            <>
+              <section>
+                <div className={`${card} overflow-hidden`}>
+                  <div className={`${row} border-b border-line`}>
+                    <span className="flex-1 font-semibold">Yarış</span>
+                    <div className="masa-seg">
+                      <button type="button" aria-pressed={!off} onClick={() => off && toggleOff(d)}>
+                        Var
+                      </button>
+                      <button type="button" aria-pressed={off} onClick={() => !off && toggleOff(d)}>
+                        Yok
+                      </button>
+                    </div>
+                  </div>
+                  {off ? null : (
+                    <div className={`${row} border-b border-line last:border-0`}>
+                      <span className="flex-1 font-semibold">İlk start</span>
+                      {differs && dayTime(plan, d) ? (
+                        <Button size="sm" variant="secondary" full={false} onClick={() => setAllTimes(dayTime(plan, d))}>
+                          Her güne
+                        </Button>
+                      ) : null}
+                      <TimeIn value={dayTime(plan, d)} onSave={(v) => setDayTime(d, v)} aria-label="Bu günün ilk start saati" className="masa-time" />
+                    </div>
+                  )}
+                  {canDrop ? (
+                    <div className="p-3">
+                      <Button variant={dayAsk ? "danger" : "secondary"} onClick={() => (dayAsk ? dropDay(d) : setDayAsk(true))}>
+                        {dayAsk ? "Emin misin?" : "Günü kaldır"}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+              {/* Programın maddeleri (antrenör toplantısı, ilk start, ödül töreni…): canlı ekranda Program'da görünen; plan.agenda?.[d] */}
+              <section>
+                <Head title="Program" onAdd={ed?.i === -1 ? null : () => setAgEdit({ d, i: -1, at: "", text: "" })} addLabel="Madde ekle" />
+                <div className={`${card} overflow-hidden`}>
+                  {items.map((x, i) =>
+                    ed?.i === i ? (
+                      editor
+                    ) : (
+                      <button key={`ag${i}`} type="button" onClick={() => setAgEdit({ d, i, at: x.at, text: x.text })} className={`${row} border-b border-line last:border-0`}>
+                        <span className="w-12 shrink-0 text-[0.9375rem] font-semibold tabular-nums text-mut">{x.at || "—"}</span>
+                        <span className="min-w-0 flex-1 truncate font-semibold">{x.text}</span>
+                      </button>
+                    ),
+                  )}
+                  {ed?.i === -1 ? editor : null}
+                  {!items.length && ed?.i !== -1 ? <div className={`${row} font-semibold text-mut`}>Madde yok</div> : null}
+                </div>
+              </section>
+              {ds.length ? (
+                <section>
+                  <Head title="Yapılan yarışlar" right={`${ds.length}`} />
+                  <div className={`${card} overflow-hidden`}>
+                    {ds.map((x) => {
+                      const g = x.grp || L?.rounds?.[x.id]?.grp || "";
+                      const open = delId === x.id && cur?.id !== x.id;
+                      return (
+                        <div key={x.id} className="border-b border-line last:border-0">
+                          <button type="button" aria-expanded={open} onClick={() => setDelId(open ? "" : x.id)} className={row}>
                             {g ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
                             <span className={`min-w-0 flex-1 truncate font-semibold ${x.void ? "text-mut" : ""}`}>{[raceTitle(x), g].filter(Boolean).join(" · ")}</span>
                             <span className="shrink-0 text-[0.875rem] tabular-nums text-mut">{[hm(x.at), cur?.id === x.id ? "Sürüyor" : x.fin && !x.void ? raceTime(x) : ""].filter(Boolean).join(" · ")}</span>
-                            {cur?.id === x.id ? null : (
-                              <Button size="sm" variant={ask ? "danger" : "secondary"} onClick={() => (ask ? dropStart(x.id) : setDelId(x.id))}>
-                                {ask ? "Emin misin?" : "Sil"}
+                          </button>
+                          {open ? (
+                            <div className="px-4 pb-3">
+                              <Button variant="danger" onClick={() => dropStart(x.id)}>
+                                Yarışı sil
                               </Button>
-                            )}
-                          </div>
-                        );
-                      })}
-                      {pend.map((x) => (
-                        <div key={x.key} className={`${row} border-b border-line`}>
-                          {x.grp ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(x.grp) }} aria-hidden="true" /> : null}
-                          <span className="min-w-0 flex-1 truncate font-semibold">{[`${x.n}. yarış`, x.grp].filter(Boolean).join(" · ")}</span>
-                          <span className="shrink-0 text-[0.875rem] text-mut">{x.state === "next" ? "Sıradaki" : "Bekliyor"}</span>
-                          <Button size="sm" variant="secondary" onClick={() => changePlan({ order: plan.order.filter((_, k2) => k2 !== x.i) })}>
-                            Çıkar
-                          </Button>
+                            </div>
+                          ) : null}
                         </div>
-                      ))}
-                      <div className="flex gap-2 p-3">
-                        <Button variant="secondary" className="flex-1" onClick={() => toggleOff(d)}>
-                          {off ? "Yarış var" : "Bu gün yarış yok"}
-                        </Button>
-                        {pend.length > 1 ? (
-                          <Button variant="secondary" className="flex-1" onClick={() => changePlan({ order: [] })}>
-                            Bekleyenleri çıkar
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-              </div>
-            </section>
+                      );
+                    })}
+                  </div>
+                </section>
+              ) : null}
+            </>
           );
         })()}
         <section>
-          <Head title="Her gün" />
+          <Head title="Canlı ekran" />
           <div className={`${card} overflow-hidden`}>
-            <div className={`${row} border-b border-line`}>
-              <span className="flex-1 font-semibold">İlk start</span>
-              <TimeIn value={plan.daily} onSave={setDaily} aria-label="Her günün ilk start saati" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
-            </div>
             <div className={row}>
-              <span className="flex-1 font-semibold">Ekran yeni güne geçer</span>
-              <TimeIn value={plan.showAt} onSave={(v) => changePlan({ showAt: v })} aria-label="Ekranın yeni güne geçeceği saat" className="h-9 rounded-lg bg-[var(--chip)] px-2 text-[0.9375rem] font-semibold tabular-nums outline-none" />
+              <span className="flex-1 font-semibold">Ertesi güne geçer</span>
+              <TimeIn value={plan.showAt} onSave={(v) => changePlan({ showAt: v })} aria-label="Ekranın yeni güne geçeceği saat" className="masa-time" />
             </div>
           </div>
         </section>
         <MasaBar>
-          <Button variant={impOpen ? "secondary" : "primary"} onClick={() => setImpOpen((v) => !v)}>
-            {impOpen ? "Kapat" : "Programı ekle"}
-          </Button>
+          <Button onClick={() => setImpOpen(true)}>Programı ekle</Button>
         </MasaBar>
+        <Sheet open={impOpen} onClose={() => setImpOpen(false)} title="Programı ekle" navy>
+          {impOpen ? (
+            <ProgramImport
+              ctx={{ today, race: [race?.name, race?.place].filter(Boolean).join(" · ") }}
+              onApply={async (days) => {
+                const pp = programPatch(days, plan);
+                if (!pp) return toast("Programda yarış günü yok.");
+                changePlan({ ...pp.plan, ...(plan.status !== "ap" && plan.status !== "done" ? { at: pp.plan.times[planDay] || pp.plan.daily } : {}) });
+                if (race && (race.startDate !== pp.startDate || race.endDate !== pp.endDate)) {
+                  setRace((r) => ({ ...r, startDate: pp.startDate, endDate: pp.endDate }));
+                  await saveRaceDates(orgId, id, pp).catch(() => toast("Yarış tarihleri kaydedilemedi."));
+                }
+                toast("Program yazıldı");
+                setImpOpen(false);
+              }}
+            />
+          ) : null}
+        </Sheet>
           </>
         ) : null}
         {!needSetup && tab === "video" ? (
@@ -2728,7 +2836,6 @@ function ProgramImport({ ctx, onApply }) {
   };
   return (
     <section>
-      <Head title="Programı ekle" right={st.busy ? "Okunuyor…" : ""} />
       <div className={`${card} overflow-hidden`}>
         {st.days ? (
           <>
