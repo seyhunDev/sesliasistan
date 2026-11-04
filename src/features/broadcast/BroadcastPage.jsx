@@ -2463,7 +2463,7 @@ function MasaTabs({ value, onChange, tabs }) {
     const set = () => st.setProperty("--masa-tb", `${Math.max(0, Math.round(el.getBoundingClientRect().height) - 1)}px`);
     set();
     const ro = new ResizeObserver(set);
-    ro.observe(el);
+    ro.observe(el, { box: "border-box" }); // ev çizgisi payı (padding) değişince de ölçülür
     return () => (ro.disconnect(), st.removeProperty("--masa-tb"));
   }, []);
   return (
