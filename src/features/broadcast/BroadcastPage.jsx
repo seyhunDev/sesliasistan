@@ -9,6 +9,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
 import { programPatch } from "@/lib/raceProgram";
@@ -64,6 +65,7 @@ const CAP_PICKS = ["Ödül töreni", "Kısa ara", "Protesto saati"];
 
 export function BroadcastPage({ orgId, id }) {
   const toast = useToast();
+  const confirmIt = useConfirm();
   const today = todayStr();
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -866,6 +868,16 @@ export function BroadcastPage({ orgId, id }) {
   const heroE = hero ? (hero.cd ? L?.rounds?.[heroX.start.id] || {} : heroX.plan || {}) : {};
   const heroPrep = prepName(heroE?.prep) || "";
   const heroPaused = !!hero?.cd && tr.t.left != null;
+  const orangeOn = orangeUp(plan, today);
+  // Turuncu bayrak çek / indir: her bayrak işlemi onay sorar (Seyhun kuralı); onaylanınca kayıt bitene kadar düğmede halka
+  const askOrange = (up) =>
+    confirmIt({
+      title: up ? "Turuncu bayrak çekilsin mi?" : "Turuncu bayrak indirilsin mi?",
+      text: up ? "Start hattı kuruldu; canlı ekranda start kartı turuncu olur." : "",
+      yes: up ? "Çek" : "İndir",
+      danger: false,
+      run: () => changePlan({ orange: up ? new Date().toISOString() : "" }),
+    });
   const heroCount = (() => {
     if (!hero?.x.grp) return 0;
     const gm = groupMap(groupsOn(groups, today));
@@ -969,14 +981,6 @@ export function BroadcastPage({ orgId, id }) {
             ) : null}
           </div>
         ) : null}
-        {plan.status !== "done" ? (
-          <button type="button" data-press onClick={() => changePlan({ orange: orangeUp(plan, today) ? "" : new Date().toISOString() })} aria-pressed={orangeUp(plan, today)} className={`${card} ${row} rounded-[1.125rem]`}>
-            <span className="h-4 w-6 shrink-0 rounded-[2px] bg-[#ff7a1a]" aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate font-semibold">Turuncu bayrak</span>
-            <span className={`text-[0.875rem] font-semibold ${orangeUp(plan, today) ? "text-[#ff9a4d]" : "text-mut"}`}>{orangeUp(plan, today) ? `Çekili · ${hm(plan.orange)}` : "İnik"}</span>
-            <span className={`masa-sw${orangeUp(plan, today) ? " on" : ""}`} aria-hidden="true" />
-          </button>
-        ) : null}
         {hero ? (
               <section className={`masa-hero${hero.cd ? " cd" : ""}`} aria-live="polite">
                 <div className="masa-hero-h">
@@ -1016,6 +1020,37 @@ export function BroadcastPage({ orgId, id }) {
                   </>
                 ) : (
                   <>
+                    {/* Turuncu bayrak start işlerinin ilk adımı (Seyhun 2026-11-04 örnek onaylandı): inikken büyük turuncu düğme, çekiliyken ne zamandır çekili + İndir; Başlat çekilince büyür */}
+                    <div className="masa-steps">
+                      <span className={orangeOn ? "ok" : "on"}>
+                        {orangeOn ? "✓" : "1"}
+                        <b>Turuncu</b>
+                      </span>
+                      <span className={orangeOn ? "on" : ""}>
+                        2<b>Geri sayım</b>
+                      </span>
+                      <span>
+                        3<b>Start</b>
+                      </span>
+                    </div>
+                    {orangeOn ? (
+                      <div className="masa-oup">
+                        <span className="masa-ofl" aria-hidden="true" />
+                        <span className="min-w-0 flex-1">
+                          <b>Turuncu çekili</b>
+                          <small>{`${hm(plan.orange)}'den beri`}</small>
+                        </span>
+                        <em>{`${Math.max(0, Math.floor((capNow - Date.parse(plan.orange)) / 60000))} dk`}</em>
+                        <button type="button" data-press className="masa-b gl" onClick={() => askOrange(false)}>
+                          İndir
+                        </button>
+                      </div>
+                    ) : (
+                      <Button className="masa-hero-or" onClick={() => askOrange(true)}>
+                        <span className="masa-ofl" aria-hidden="true" />
+                        Turuncu bayrağı çek
+                      </Button>
+                    )}
                     {heroPrep ? <p className="masa-hero-p">{`Hazırlık: ${heroPrep}${plan.at && !races.some((r) => r.rows.some((y) => y.start)) ? ` · Start ${plan.at}` : ""}`}</p> : null}
                     <div className="masa-hero-d">
                       {[300, 240, 120, 60].map((d) => (
@@ -1025,7 +1060,7 @@ export function BroadcastPage({ orgId, id }) {
                         </button>
                       ))}
                     </div>
-                    <Button className="masa-hero-go" onClick={() => startRow(heroX.i)}>
+                    <Button className={orangeOn ? "masa-hero-go" : ""} variant={orangeOn ? "primary" : "secondary"} onClick={() => startRow(heroX.i)}>
                       Başlat
                     </Button>
                   </>

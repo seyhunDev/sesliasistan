@@ -3689,7 +3689,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     const { kick } = holdState(data, today, cs, now);
     preOn = !left0;
     if (left0) top = { bd: "Yarışa", lab: "Kalan", tm: `${left0} gün`, sub: [r.endDate && r.endDate !== r.startDate ? `${dayText(r.startDate)} – ${dayText(r.endDate)}` : dayText(r.startDate), r.place].filter(Boolean).join(" · ") };
-    else top = { cls: orange ? "o" : "", orange, bd: "Start", lab: orange ? `Start öncesi · ${kick}` : kick, at: first?.at || "", tm: cs.rem ? cs.value : "—:—", who: gWho(first) };
+    else top = { cls: orange ? "o" : "", orange, bd: orange ? "Turuncu bayrak" : "Start", lab: orange ? "Start hattı kuruldu" : kick, at: first?.at || "", tm: cs.rem ? cs.value : "—:—", who: gWho(first) };
   }
   // sağ kart: parkur elle açıldıysa o (Yayın › Ekranda göster › Parkur), yoksa duruma göre; bekleme ve ara verirken program
   // Yarış öncesi akış (Seyhun 2026-11-03 17:10, rota 17:34'te çıktı: parkur zaten rotayı anlatır): beklenen rüzgâr (rüzgârın yanında açılır) → parkur → program; Yayın'da Otomatik / Elle

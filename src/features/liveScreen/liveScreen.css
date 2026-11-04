@@ -1755,3 +1755,4 @@ button.gr-card { cursor: pointer; }
 .gr-sp li.next, .gr-sp li.now { color: #fff; }
 .gr-sp li.more { display: block; padding-top: 0.4em; font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); }
 @media (prefers-reduced-motion: reduce) { .gr-sp { transition: none; } }
+.gr-st.o .gr-of { width: 2.2em; height: 1.45em; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); }
