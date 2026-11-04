@@ -94,7 +94,11 @@ export function WeatherTop({ w, refresh }) {
       </section>
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         <section aria-label="Saat saat">
-          {rows.length > 0 && <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} tone="light" />}
+          {rows.length > 0 && (
+            <div className="rounded-[1.25rem] bg-[#0b1a33] p-3">
+              <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} />
+            </div>
+          )}
         </section>
         <section>
           <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
