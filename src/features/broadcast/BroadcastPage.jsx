@@ -2234,9 +2234,22 @@ const ytThumb = (u, vid = "") => {
 };
 // Sekmeler ekranın altında sabit çubuk (Seyhun 2026-11-04 "sekme butonlarını alta alalım, sekmedeki butonlar sekme çubuğunun üstünde;
 // telefonda, iPad'de rahat"): başparmakla erişilir, sekmenin iş düğmeleri (MasaBar) hemen üstünde; klavye açılınca gizlenir (data-pagebar)
+// Düğme çubuğu sekme çubuğuna bitişik (Seyhun 2026-11-04 "arada boşluk var, kaldıralım"): sekme çubuğunun gerçek yüksekliği ölçülür,
+// --masa-tb (masa.css .masa-bar bottom) tahmin yerine bu değer olur; ev çizgisi (safe-area) yüksekliğin içinde
 function MasaTabs({ value, onChange, tabs }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const st = document.body.style;
+    const set = () => st.setProperty("--masa-tb", `${Math.max(0, Math.round(el.getBoundingClientRect().height) - 1)}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => (ro.disconnect(), st.removeProperty("--masa-tb"));
+  }, []);
   return (
-    <nav data-pagebar="" className="masa-tabs" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }} aria-label="Sekmeler">
+    <nav ref={ref} data-pagebar="" className="masa-tabs" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }} aria-label="Sekmeler">
       {tabs.map(([k, name, sub, dot]) => (
         <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)} data-press>
           <b>{name}</b>
