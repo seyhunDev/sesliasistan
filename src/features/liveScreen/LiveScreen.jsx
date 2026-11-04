@@ -3409,23 +3409,71 @@ function ScFleet({ data, sel, mode, now, who, today, onFull }) {
       </button>
     );
   }
+  return <ScGroup data={data} who={who} today={today} now={now} />;
+}
+// Grubun sporcuları (Seyhun 2026-11-04 "genel sıralamadaki derecesi de gösterilmeli; ilk beş sabit, sonrakiler ileriye doğru; sıralama yoksa
+// baştan itibaren sırayla, tüm tekneler"): 03 genel sıralamayla aynı sayfa mantığı (scPageOf, ScPgs)
+function scGroupRows(data, who, today) {
   const boats = scBoats(data, who, today);
-  if (!boats.length) return null;
+  if (!boats.length) return { list: [], ranked: false };
+  const bs = scBoards(data);
+  const b = bs.find((x) => who?.cls && x.cls === who.cls) || (bs.length === 1 ? bs[0] : null);
+  const rk = new Map((b?.all || []).map((r) => [String(r.sail), r.p]));
+  const list = boats.map((x) => ({ ...x, p: rk.get(String(x.sail)) ?? null }));
+  const ranked = list.some((x) => x.p != null);
+  if (ranked) list.sort((a, c) => (a.p == null) - (c.p == null) || (Number(a.p) || 0) - (Number(c.p) || 0) || Number(a.sail) - Number(c.sail));
+  return { list, ranked };
+}
+// Sağ sütunda üstte yarışın kartı varken yer azalır: sayfa boyu sütuna sığan satır sayısı kadar (ölçülür), ilk 5 yine sabit
+function ScGroup({ data, who, today, now }) {
+  const [t0] = useState(now);
+  const [fit, setFit] = useState(SC_PAGE);
+  const ref = useRef(null);
+  const { list, ranked } = scGroupRows(data, who, today);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const col = el.parentElement;
+      const li = el.querySelector("li");
+      if (!col || !li || getComputedStyle(col).display === "contents") return setFit(SC_PAGE);
+      const used = [...col.children].filter((c) => c !== el).reduce((a, c) => a + c.getBoundingClientRect().height, 0);
+      const gap = parseFloat(getComputedStyle(col).rowGap) || 0;
+      const room = (col.parentElement?.clientHeight || 0) - 9 * (parseFloat(getComputedStyle(col).fontSize) || 16); // .sc-rcol max-height: 100% - 9em
+      const head = [...el.children].filter((c) => c.tagName !== "OL").reduce((a, c) => a + c.getBoundingClientRect().height, 0) + (el.querySelector(".sc-rdp") ? 0 : 2.2 * (parseFloat(getComputedStyle(el).fontSize) || 16)); // başlık + sayfa satırı
+      const rows = Math.floor((room - used - gap * (col.children.length - 1) - head - (parseFloat(getComputedStyle(el).marginTop) || 0)) / li.getBoundingClientRect().height);
+      setFit(Math.max(SC_TOP + 2, Math.min(SC_PAGE, rows || SC_PAGE)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el.parentElement?.parentElement || el);
+    return () => ro.disconnect();
+  }, [list.length]);
+  if (!list.length) return null;
+  const top = ranked ? SC_TOP : 0;
+  const k = Math.floor(Math.max(0, now - t0) / 1000 / SC_PAGE_S);
+  const { n, pg, rows, from, to } = scPageOf(list, k, top, fit);
   return (
-    <div className="sc-rd">
+    <div className="sc-rd" ref={ref} data-pg={k}>
       <div className="sc-rdh">
         <span>{who?.grp ? `${who.grp} grup` : who?.cls || "Sporcular"}</span>
-        <span>{`${boats.length} tekne`}</span>
+        <span>{`${list.length} tekne`}</span>
       </div>
-      <ol>
-        {boats.slice(0, SC_FLEET).map((x) => (
-          <li key={x.sail}>
+      <ol key={n > 1 ? pg : 0}>
+        {rows.map((x, i) => (
+          <li key={x.sail} className={`${n > 1 && top && i === top ? "cut" : ""}${n > 1 && i >= top ? " fl" : ""}`}>
+            {ranked ? <u>{x.p ?? ""}</u> : null}
             <b>{x.sail}</b>
             <em>{shortName(x.name) || ""}</em>
           </li>
         ))}
       </ol>
-      {boats.length > SC_FLEET ? <div className="sc-rdm">{`+${boats.length - SC_FLEET} tekne`}</div> : null}
+      {n > 1 ? (
+        <div className="sc-rdm sc-rdp">
+          <span>{top ? `İlk ${top} · ${from}–${to}` : `${from}–${to}`}</span>
+          <ScPgs n={n} pg={pg} k={k} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -3500,7 +3548,28 @@ function Sc02({ t, data, sel, mode, now, today, col = false }) {
 const SC_PAGE = 11; // satır: ilk 5 sabit + 6 akan (Seyhun 2026-11-04 "ilk 5 her zaman gösterilsin, sonrası ileri doğru aksın")
 const SC_TOP = 5;
 const SC_PAGE_S = 8;
-const scPages = (len) => (len <= SC_PAGE ? 1 : Math.ceil((len - SC_TOP) / (SC_PAGE - SC_TOP)));
+const scPages = (len, top = SC_TOP, size = SC_PAGE) => (len <= size ? 1 : Math.ceil((len - top) / (size - top)));
+// Sayfalı liste (03 genel sıralama ve sağdaki grup listesi aynı mantık): sıralama varsa ilk `top` (5) sabit + 6'şar akan,
+// sıralama yoksa top = 0, baştan 11'er; hiçbir tekne atlanmaz. from/to ekranda "6–11" yazısı için.
+function scPageOf(list, pg, top = SC_TOP, size = SC_PAGE) {
+  const n = scPages(list.length, top, size);
+  const step = size - top;
+  if (n <= 1) return { n, rows: list.slice(0, size), from: 1, to: Math.min(list.length, size) };
+  const p = ((pg % n) + n) % n;
+  return { n, pg: p, rows: [...list.slice(0, top), ...list.slice(top + p * step, top + (p + 1) * step)], from: top + p * step + 1, to: Math.min(list.length, top + (p + 1) * step) };
+}
+// Sayfa çizgileri: dolan çizgi o sayfanın süresi
+function ScPgs({ n, pg, k }) {
+  return (
+    <span className="sc-pgs">
+      {Array.from({ length: n }, (_, i) => (
+        <i key={i} className={i === pg ? "on" : ""}>
+          {i === pg ? <u key={k} style={{ animationDuration: `${SC_PAGE_S}s` }} /> : null}
+        </i>
+      ))}
+    </span>
+  );
+}
 function sc03Slides(data, sel, mode) {
   const rr = mode === "between" && sel?.fin ? raceRows(data, sel) : null;
   const out = rr?.rows.length ? [{ rr }] : [];
@@ -3547,9 +3616,9 @@ function Sc03({ data, sel, mode, now, onFull }) {
   }
   const { b, pg, n, cat } = cur;
   const inCat = cat ? onlyCat(b.all, cat) : null;
-  const rows = cat ? inCat.slice(0, SC_PAGE).map((r) => ({ ...r, p: r.place })) : n > 1 ? [...b.all.slice(0, SC_TOP), ...b.all.slice(SC_TOP + pg * (SC_PAGE - SC_TOP), SC_TOP + (pg + 1) * (SC_PAGE - SC_TOP))] : b.all.slice(0, SC_PAGE);
-  const from = n > 1 ? SC_TOP + pg * (SC_PAGE - SC_TOP) + 1 : 1;
-  const to = n > 1 ? Math.min(b.all.length, SC_TOP + (pg + 1) * (SC_PAGE - SC_TOP)) : rows.length;
+  const pgd = scPageOf(b.all, pg);
+  const rows = cat ? inCat.slice(0, SC_PAGE).map((r) => ({ ...r, p: r.place })) : pgd.rows;
+  const { from, to } = pgd;
   const catName = (c) => (c === "Kız" ? "Kızlar" : c);
   const marks = (r) => b.catList.filter((c) => c !== cat && r.cats.includes(c)).map((c) => c[0]);
   return (
@@ -3606,13 +3675,7 @@ function Sc03({ data, sel, mode, now, onFull }) {
       <footer>
         <span>{cat ? `${catName(cat)} · ${inCat.length} sporcu` : n > 1 ? `İlk ${SC_TOP} · ${from}–${to} · ${b.total} tekne` : `${b.total} tekne`}</span>
         {n > 1 ? (
-          <span className="sc-pgs">
-            {Array.from({ length: n }, (_, i) => (
-              <i key={i} className={i === pg ? "on" : ""}>
-                {i === pg ? <u key={k} style={{ animationDuration: `${SC_PAGE_S}s` }} /> : null}
-              </i>
-            ))}
-          </span>
+          <ScPgs n={n} pg={pg} k={k} />
         ) : (
           <span>{scBoards(data).length > 1 ? scBoards(data).map((x) => x.cls).filter(Boolean).join(" · ") : ""}</span>
         )}

@@ -286,3 +286,12 @@
   .sc-rd ol { display: grid; grid-template-columns: 1fr 1fr; column-gap: 0; }
   .sc-c1 { top: 36%; }
 }
+
+/* Sağdaki grup listesi sayfalı (Seyhun 2026-11-04): 03 ile aynı; sıralama varsa ilk 5 sabit, çizgi, sonrakiler akar */
+.sc-rd li.cut { border-top: 2px solid rgba(255, 255, 255, 0.28); }
+.sc-rd li.fl { animation: sc-fl 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.sc-rd li u { min-width: 1.6em; width: auto; font-variant-numeric: tabular-nums; }
+.sc-rdp { display: flex; align-items: center; justify-content: space-between; gap: 0.8em; }
+@media (prefers-reduced-motion: reduce) { .sc-rd li.fl { animation: none; } }
+.sc-rcol > .sc-rd li { padding-top: 0.32em; padding-bottom: 0.32em; } /* sütunda kartın altında daha çok tekne sığsın */
+@media (max-aspect-ratio: 1/1) { .sc-rd li.cut { border-top: 1px solid var(--sc-line); } } /* dikte iki sütun: sabit-akan çizgisi yok */
