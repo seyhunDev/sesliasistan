@@ -3898,8 +3898,9 @@ function Sc05({ data, sel, mode, now }) {
   }
   const ax = axisInfo(data);
   const c = curWind(data, null, true, now);
+  // TV düzeni (Seyhun 2026-11-04 "her zaman arkada video varmış gibi"): parkur tam ekran lacivert değil, solda tek cam panel; video görünür
   return (
-    <>
+    <div className="sc-cpn">
       <div className="sc-cbn">
         <b>{[ty.split(" ")[0], card?.id ? `Kart ${card.id}` : ""].filter(Boolean).join(" · ") || "Parkur"}</b>
         <span>{[data.race?.place, data.rounds?.[sel?.id]?.cls].filter(Boolean).join(" · ")}</span>
@@ -3934,7 +3935,7 @@ function Sc05({ data, sel, mode, now }) {
           </section>
         ) : null}
       </div>
-    </>
+    </div>
   );
 }
 // 06: sıradaki yarış; büyük numara, sınıf · grup, tahmini start, kalan, beklenen rüzgâr; sağda sonraki startlar
@@ -4034,9 +4035,11 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
   const lock = !ap && (mode === "seq" || t.tone === "r");
   // start dizisinde ve yarışta yarışın kartı sağ üstte (Görüntü; yarışta Program / Rüzgâr ortadayken de)
   // süre kartı her evrede Canlı'nın altında (ortadaki 01 Süre kartı ekrandayken yok, aynı bilgi iki yerde olmasın); tehirde rozet (ScAp)
-  const colCard = !ap && (sc === "02" || (sc === "01" && item !== "time"));
+  // TV düzeni: süre kartı hep sağ üstte; ortadaki "Süre" öğesi ayrıca bir şey göstermez (ortası görüntüye kalır)
+  const colCard = !ap;
   const body =
-    sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} ap={ap} only={["time", "prog", "wind"].includes(item) ? item : ""} />
+    sc === "01" && item === "time" && !ap ? null
+    : sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} ap={ap} only={["time", "prog", "wind"].includes(item) ? item : ""} />
     : sc === "02" ? (colCard ? null : <Sc02 t={ap ? null : t} data={data} sel={sel} mode={mode} now={now} today={today} />)
     : sc === "03" ? <Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} />
     : sc === "04" ? <Sc04 data={data} />
