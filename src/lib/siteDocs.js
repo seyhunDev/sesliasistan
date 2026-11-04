@@ -160,6 +160,20 @@ export function newRacesNote(list, season) {
   return { title: `Sitede ${list.length} yeni yarış`, body: `${season} ${legs.join(", ")}: ${list.map((x) => x.cls).slice(0, 8).join(", ")}${list.length > 8 ? "…" : ""}` };
 }
 
+// Ek talimatın getirdiği değişiklik (Seyhun 2026-11-04 "ek talimatla saatler, planlar değişiyor"): eski ve yeni program satırları
+// karşılaştırılır; "5 Kas İlk start 11:00 → 12:00 · 5 Kas Antrenör toplantısı 09:30 eklendi". Değişen yoksa "".
+export function scheduleDiff(old, next) {
+  const a = cleanSchedule(old);
+  const out = [];
+  for (const x of cleanSchedule(next)) {
+    const y = a.find((z) => z.date === x.date && loose(z.title) === loose(x.title));
+    const d = `${+x.date.slice(8)} ${MON[+x.date.slice(5, 7) - 1]}`;
+    if (!y) out.push(`${d} ${x.title}${x.time ? ` ${x.time}` : ""} eklendi`);
+    else if (y.time !== x.time) out.push(`${d} ${x.title} ${y.time || "saatsiz"} → ${x.time || "saatsiz"}`);
+  }
+  return out.slice(0, 6).join(" · ").slice(0, 300);
+}
+
 // Yayın programı (Seyhun 2026-11-04 "Yayın'a PDF yüklemeye gerek kalmasın, siteden aldıklarımızla yapalım"): talimattan ya da ek
 // talimattan okunan günler (lib/ai/raceProgramAi.js) raceLive plan alanlarına { daily, times, off, agenda }. full (yarış talimatı):
 // bütün program yeniden (programPatch); değilse (ek talimat) yalnız belgede geçen günler değişir, ötekiler kalır. Değişen yoksa null.
