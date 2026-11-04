@@ -3882,7 +3882,9 @@ function Sc06({ data, prog, now, today }) {
 // Evre ve o an gösterilen öğe (lib/raceRounds showPlan; Yayın › Ekran aynı işlevle bakar). Evrenin görüntüsü (evreScreen) önce seçilir,
 // öğelerden verisi olmayan atlanır: Görüntü yalnız video varken (start ve yarışta fotoğraf üstünde de), Süre tehirde yalnız iniş sayılırken
 function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast }) {
-  const evre = evreOf(mode, seqMode);
+  // Start öncesi: turuncu bayrak çekili ya da start'a 10 dk'dan az; Yayın'dan elle seçilen evre (courseShow.evre) üstüne yazar
+  const soon = mode === "wait" && (orangeUp(data.plan, today) || (cs.rem != null && cs.rem > 0 && cs.rem <= 600));
+  const evre = evreOf(mode, seqMode, soon, cleanCourseShow(data.courseShow).evre);
   const sd = { ...data, screen: evreScreen(data.screen, data.courseShow, evre) };
   const vid = ["live", "drone", "src", "rec", "boats"].includes(sd.screen?.kind);
   const t = scTime({ data: sd, sel, entry, cs, prog, today, now, mode, seqMode, fsLast });

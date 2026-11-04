@@ -14,7 +14,7 @@ import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
 import { FIRST_ITEM, agendaFirst, agendaPut, datesAdd, datesDrop, programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
+import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, saveEvreMan, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { DocsTab } from "./DocsTab";
@@ -800,7 +800,11 @@ export function BroadcastPage({ orgId, id }) {
   // kural (lib/raceRounds evreOf); evre buradan kabaca: gün bitti, start dizisi, yarışta, yarış bitti, tehir, bekleme
   const lastT = [...live.starts].filter((x) => x.day === today).at(-1) || null;
   const scMode = plan.status === "done" ? "summary" : cur && !cur.fin && !cur.void ? (Date.parse(cur.at) > capNow ? "seq" : "race") : lastT && (lastT.fin || lastT.void) && !cur ? "between" : "wait";
-  const evNow = plan.status === "ap" ? "ap" : evreOf(scMode);
+  const planAt = plan.day === today && plan.at ? Date.parse(`${today}T${plan.at}:00+03:00`) : NaN;
+  const evSoon = scMode === "wait" && (orangeUp(plan, today) || (planAt > capNow && planAt - capNow <= 600e3));
+  // kendiliğinden evre (Yayın › Ekran'da elle seçilmediyse ekrandaki), elle seçilen (pre.evre) üstüne yazar
+  const evAuto = plan.status === "ap" ? "ap" : evreOf(scMode, "", evSoon);
+  const evNow = pre.evre || evAuto;
   // evreye atanan görüntü varsa ekrandaki odur
   const eff = L ? evreScreen(L.screen, pre, evNow) : null;
   const onScreen = eff?.kind ? eff : null;
@@ -811,6 +815,10 @@ export function BroadcastPage({ orgId, id }) {
     saveEvre(orgId, id, k, e).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
   };
   const putVid = (k, v) => putEv(k, { vid: v ? { kind: v.kind || "", src: v.src || "", mid: v.mid || "", ...(v.kind === "boats" ? { zoom: v.zoom ?? 100 } : {}) } : null });
+  const putEvreMan = (k) => {
+    setL((p) => (p ? { ...p, courseShow: { ...p.courseShow, evre: k } } : p));
+    saveEvreMan(orgId, id, k).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
+  };
   const putPin = (item) => {
     setL((p) => (p ? { ...p, courseShow: { ...p.courseShow, pin: item, ...(item ? {} : { one: "" }), scene: "" } } : p));
     savePin(orgId, id, item).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
@@ -1639,9 +1647,22 @@ export function BroadcastPage({ orgId, id }) {
               <span className="block text-[0.8125rem] font-semibold text-mut">
                 {shNow.pin ? `${ITEM_NAME[shNow.item]} sabit, kaldırana kadar ekranda` : shNow.empty ? "Seçilenlerin verisi yok" : shNow.next ? `${shNow.left > 5 ? `${shNow.left} sn sonra ` : "Birazdan "}${ITEM_NAME[shNow.next]}` : "Tek öğe, dönmez"}
               </span>
-              <span className="block text-[0.8125rem] text-mut">{`${EVRE_WHEN[evNow]}`}</span>
+              <span className="block text-[0.8125rem] text-mut">{pre.evre ? `Evre elle seçildi · kendiliğinden ${EVRE_NAME[evAuto]} olurdu` : EVRE_WHEN[evNow]}</span>
             </div>
-            <div className="flex gap-1.5 overflow-x-auto px-4 pb-3 pt-2 [scrollbar-width:none]" aria-label="Ekranda tut">
+            {/* Evreye elle geçiş (Seyhun 2026-11-04 "manuelde tıklayarak da evrelere geçiş yapabilmeliyim"): Otomatik = yarışın durumuna göre */}
+            <div className="flex items-center gap-1.5 overflow-x-auto px-4 pt-2 [scrollbar-width:none]" aria-label="Evre">
+              <small className="w-[4.5rem] flex-none text-[0.75rem] font-semibold text-mut">Evre</small>
+              <button type="button" data-press aria-pressed={!pre.evre} onClick={() => putEvreMan("")} className="masa-b dur">
+                Otomatik
+              </button>
+              {EVRES.map((k) => (
+                <button key={k} type="button" data-press aria-pressed={pre.evre === k} onClick={() => putEvreMan(pre.evre === k ? "" : k)} className="masa-b dur">
+                  {EVRE_NAME[k]}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto px-4 pb-3 pt-2 [scrollbar-width:none]" aria-label="Ekranda tut">
+              <small className="w-[4.5rem] flex-none text-[0.75rem] font-semibold text-mut">Ekranda tut</small>
               <button type="button" data-press aria-pressed={!shNow.pin} onClick={() => putPin("")} className="masa-b dur">
                 Otomatik
               </button>
@@ -2256,6 +2277,15 @@ export function BroadcastPage({ orgId, id }) {
                   ))}
                 </div>
               </div>
+            ) : null}
+            {scOpen === evNow && pre.evre ? (
+              <Button variant="secondary" full onClick={() => (putEvreMan(""), setScOpen(""))}>
+                Otomatiğe dön
+              </Button>
+            ) : scOpen !== evNow ? (
+              <Button full onClick={() => (putEvreMan(scOpen), setScOpen(""), toast(`${EVRE_NAME[scOpen]} ekranda`))}>
+                Bu evreye geç
+              </Button>
             ) : null}
           </div>
         ) : null}
