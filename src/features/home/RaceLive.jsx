@@ -87,13 +87,13 @@ function Line({ id, orgId, title }) {
   if (over) return null;
   const sub = race ? raceLine({ r: race, today: todayStr(), now: clock, starts: live.starts, athletes: kids, timer }) : timer;
   return (
-    <Link href={`/athletes/races/${id}`} data-press aria-label="Süren yarış" className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-white/10 bg-white/[.06] px-4 py-3 active:translate-y-px">
-      <span className="size-2 shrink-0 rounded-full bg-[#f05a5a] shadow-[0_0_0_4px_rgba(240,90,90,.25)]" />
+    <Link href={`/athletes/races/${id}`} data-press aria-label="Süren yarış" className="hb-card mt-3 flex items-center gap-3 rounded-[1.125rem] px-3.5 py-2.5">
+      <span className="size-2 shrink-0 rounded-full bg-[#e5484d] shadow-[0_0_0_4px_rgba(229,72,77,.22)]" />
       <span className="min-w-0 flex-1">
         <b className="block truncate text-[0.9375rem] font-semibold">{title}</b>
-        {sub && <small className="block truncate text-[0.8125rem] tabular-nums text-white/70">{sub}</small>}
+        {sub && <small className="block truncate text-[0.8125rem] tabular-nums text-mut">{sub}</small>}
       </span>
-      <Icon name="chev" className="size-4 shrink-0 text-white/50" />
+      <Icon name="chev" className="size-4 shrink-0 text-mut" />
     </Link>
   );
 }

@@ -14,6 +14,8 @@ import { isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
 import { HourTable } from "@/features/weather/HourTable";
+import { DayTimeline } from "./DayTimeline";
+import { CockpitWind } from "./CockpitWind";
 import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
 
@@ -29,7 +31,7 @@ import { BirthdayBadge } from "./PeopleStrip";
 // Yarış günü (Seyhun 2026-10-27 "A · Yarışın yeri büyük", örnek yaris-yeri-hava): seçilen gün bir yarışın günleri içindeyse (away, OwnerHome awayRace)
 // büyük hava ve rüzgâr grafiği yarışın yerinin (raceWeather.loadRaceDay); 2026-10-28 "A · Alt alta ince": büyük grafik yerine iki ince şerit (WindStrip), üstte yarış yeri, altta ev yeri
 // (hava yeri, ör. Dikili: sıcaklık · yön · kn), ona dokununca hava sayfası. Yarışın yeri ev yerine 10 km'den yakınsa ya da hava alınamazsa her şey eskisi gibi.
-export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpenDay, children }) {
+export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, children }) {
   const { profile } = useAuth();
   const router = useRouter();
   const now = useNow();
@@ -45,29 +47,35 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
   const ar = useAway(away, date);
   const home = getPlace();
   const far = ar && !ar.err && !(ar.at && km(ar.at, home) < 10);
-  const [fitRef, fitH] = useFit();
-  const fill = fitH > 0;
+  const [view, setView] = useView();
+  // Hissedilen ve günün yağışı: seçili günün saatlik satırlarından (bugünse şimdiki saat, değilse öğle)
+  const cur = rows?.find((h) => h.hh === (isToday ? String(now.getHours()).padStart(2, "0") : "13"));
+  const mmDay = rows ? rows.reduce((a, h) => a + (h.mm || 0), 0) : 0;
+  const dateLabel = cap(new Date(`${date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" }));
 
   return (
-    <section className="ck ck-top home-ck -mx-4 px-4 pb-4 pt-[calc(0.875rem+env(safe-area-inset-top))]" aria-label="Bugün">
-      {/* İlk ekran (Seyhun 2026-10-28 "A · Yalnız saydıkların"): günler, yarış sayacı, hava ve grafik (yarış başka yerdeyse altta ev yeri)
-          telefonda ekrana tam oturur; boşluk açılmaz, büyüklükler ekran boyuna göre (--u), kalan yeri grafik doldurur (useFit).
-          Sıradaki plan ve iş düğmeleri kaydırınca gelir. */}
-      <div ref={fitRef} style={fill ? { minHeight: far ? fitH : undefined, "--u": `${(fitH / 100).toFixed(2)}px` } : undefined} className="ck-a flex flex-col">
-      <header className="-mb-1 flex items-center justify-end gap-2">
+    <section className="home-ck -mx-4 px-4" aria-label="Bugün">
+      {/* Hava manzarası (Seyhun 2026-11-04 "A · Hava manzarası", örnek yeni-ana-tam): üstte havanın kendisi, gökyüzü rengi o günün havasına göre
+          (yağmurda çizgiler akar); sıcaklık, rüzgâr, Grafik / Tablo sekmesi. Altında açık zeminde günler, yarış şeridi, plan, çizelge, düğmeler. */}
+      <div className="ck-a">
+      <div className="ck ck-hero -mx-4 px-4 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]" data-sky={skyKey(n)}>
+      <header className="flex items-center gap-2">
         <h1 className="sr-only">{now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}</h1>
+        <span className="min-w-0 flex-1 leading-tight">
+          <b className="block truncate text-[0.8125rem] font-semibold">{home.name}</b>
+          <small className="block truncate text-[0.75rem] text-white/75">{dateLabel}</small>
+        </span>
         <BirthdayBadge />
         <InboxBell inbox={inbox} onOpen={onInbox} />
-        <Link href="/settings" aria-label="Ayarlar" className="grid size-9 shrink-0 place-items-center rounded-full bg-white/12 text-[0.8125rem] font-semibold text-white active:scale-90">
+        <Link href="/settings" aria-label="Ayarlar" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 text-[0.8125rem] font-semibold text-white active:scale-90">
           {initials(profile?.name)}
         </Link>
       </header>
 
-      {/* Sıra (Seyhun 2026-11-03 "A · Günlerin altında"): hava ve saat tablosu en üstte, altında günler, sonra canlı yarış şeridi, sonra plan */}
       {far ? (
         // Yarış başka yerde (Seyhun 2026-11-03 "iki grafiği de yeni hava tarzına çevir"): üst üste iki saat saat tablo, yarış yeri ve ev yeri;
         // başlıkta yerin adı, dokununca ayrıntı (yarış sayfası / hava sayfası)
-        <div className="mt-3.5 flex flex-col gap-3">
+        <div className="mt-3 flex flex-col gap-3">
           <PlaceTable
             label="Yarış yerinin havası"
             name={(ar.place || away.place || away.name || "").split(",")[0]}
@@ -82,41 +90,90 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, away, onOpen
         </div>
       ) : (
         <>
-          <button type="button" onClick={goWeather} aria-label="Hava ayrıntısı" className="mt-4 block w-full text-left">
+          <button type="button" onClick={goWeather} aria-label="Hava ayrıntısı" className="mt-2 block w-full text-left">
             {n ? (
-              <span className="flex items-center gap-3">
-                <span className="shrink-0 text-[clamp(1.875rem,calc(var(--u,7px)*5.8),3rem)] font-bold leading-none tracking-[-.04em] tabular-nums">{n.t}°</span>
-                <span className="min-w-0 flex-1 leading-tight">
+              <span className="flex items-end gap-3">
+                <span className="shrink-0 text-[4.25rem] font-semibold leading-[.9] tracking-[-.05em] tabular-nums">{n.t}°</span>
+                <span className="min-w-0 flex-1 pb-1 leading-tight">
                   <b className="block truncate text-[0.9375rem] font-semibold">{isToday ? "" : `${dname} · `}{sky(n.code, n.day).label}</b>
-                  <small className="block truncate text-[0.8125rem] text-white/65 tabular-nums">
+                  {cur?.feel != null && <small className="block truncate text-[0.8125rem] text-white/80 tabular-nums">Hissedilen {cur.feel}°</small>}
+                  <small className="block truncate text-[0.8125rem] text-white/80 tabular-nums">
                     {dw ? `${dw.min}° / ${dw.max}°` : ""}
+                    {mmDay >= 0.1 ? `${dw ? " · " : ""}${fmtMm(mmDay)} mm` : ""}
                   </small>
                 </span>
-                <span className="shrink-0 text-right leading-tight">
-                  <small className="block text-[0.75rem] text-white/65">{windName(n.dir)[0]} {dirDeg(n.dir)} · {isToday ? "şimdi" : "gün içi"}</small>
-                  <b className="text-[1.375rem] font-bold tracking-[-.02em] tabular-nums">
+                <span className="shrink-0 pb-1 text-right leading-tight">
+                  <small className="block text-[0.75rem] text-white/75">{windName(n.dir)[0]} {dirDeg(n.dir)} · {isToday ? "şimdi" : "gün içi"}</small>
+                  <b className="text-[1.625rem] font-bold tracking-[-.02em] tabular-nums">
                     {kn(n.wind, n.gust)}
-                    <span className="text-[0.8125rem] font-medium text-white/60"> kn</span>
+                    <span className="text-[0.8125rem] font-medium text-white/70"> kn</span>
                   </b>
                 </span>
               </span>
             ) : (
-              <span className="block py-2 text-[0.875rem] text-white/70">{err ? "Hava durumu alınamadı · dokun, yenile" : w ? "Bu gün için hava tahmini yok" : "Hava yükleniyor…"}</span>
+              <span className="block py-2 text-[0.875rem] text-white/80">{err ? "Hava durumu alınamadı · dokun, yenile" : w ? "Bu gün için hava tahmini yok" : "Hava yükleniyor…"}</span>
             )}
           </button>
-          {/* Saat saat tablo (Seyhun 2026-11-03 Windy görseli, HourTable): kaydırılır, dokununca hava sayfası */}
-          {rows?.length > 0 && <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} className="mt-2.5" />}
+          {rows?.length > 0 && (
+            <>
+              <div role="group" aria-label="Hava görünümü" className="mt-3 grid grid-cols-2 rounded-xl bg-black/25 p-[3px]">
+                {[["grafik", "Grafik"], ["tablo", "Tablo"]].map(([k, l]) => (
+                  <button key={k} type="button" data-press aria-pressed={view === k} onClick={() => setView(k)} className={`h-[1.875rem] rounded-[0.5625rem] text-[0.8125rem] font-semibold ${view === k ? "bg-white text-[#12233f] shadow-[0_1px_3px_rgba(0,0,0,.3)]" : "text-white/80"}`}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 overflow-hidden rounded-2xl border border-white/15 bg-[#0a1830]/35 backdrop-blur-sm">
+                {view === "tablo" ? (
+                  <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} className="!rounded-none !border-0 !bg-transparent" />
+                ) : (
+                  <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className="block w-full px-1.5 pt-1 text-left">
+                    <CockpitWind key={date} rows={rows} date={date} />
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
+      </div>
 
       <div className="mt-3">{days}</div>
       {live}
       </div>
-      {isToday ? <NextPlan now={now} /> : <DayPlans date={date} onOpen={onOpenDay} />}
+      <div className="ck-b mt-3 space-y-3">
+        {isToday && <NextPlan now={now} />}
+        <DayTimeline date={date} rows={rows} />
+      </div>
       {children}
     </section>
   );
 }
+
+// Hava görünümü sekmesi (Grafik / Tablo) cihazda saklanır
+function useView() {
+  const [view, setView] = useState(() => {
+    try {
+      return (typeof localStorage !== "undefined" && localStorage.getItem("sa-home-wx")) === "tablo" ? "tablo" : "grafik";
+    } catch {
+      return "grafik";
+    }
+  });
+  const pick = (v) => {
+    setView(v);
+    try {
+      localStorage.setItem("sa-home-wx", v);
+    } catch {}
+  };
+  return [view, pick];
+}
+// Gökyüzü rengi anahtarı (globals.css .ck-hero[data-sky]): açık gün mavi, gece lacivert, bulut gri, yağmur kurşun, fırtına koyu, kar açık
+function skyKey(n) {
+  if (!n) return "cloud";
+  const i = sky(n.code, n.day).icon;
+  return i === "sun" ? "clear" : i === "cloudSun" ? "part" : i === "moon" ? "night" : i === "rain" ? "rain" : i === "storm" ? "storm" : i === "snow" ? "snow" : "cloud";
+}
+const fmtMm = (v) => (v < 10 ? v.toLocaleString("tr-TR", { maximumFractionDigits: 1 }) : String(Math.round(v)));
 
 // Sıradaki iş (nextPlan, lib/homeTiles.js): bugün süren ya da sıradaki plan, yoksa 7 gün içindeki ilk plan.
 // Turkuaz kart (ck-plan, renk aynı; Seyhun 2026-11-01 "önemli olan tarih… kaç gün kaldı… yanında ne olduğu, altında küçük açıklaması"):
@@ -157,7 +214,7 @@ function NextPlan({ now }) {
   // Antrenmansa Süre'nin yanında Yoklama (Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
   const att = sail && canSeeAthletes(profile?.email);
   return (
-    <div className="ck-plan ck-b mt-3 rounded-[1.375rem] p-3.5 text-white">
+    <div className="rounded-[1.25rem] bg-[#0b1a33] p-3 text-white shadow-[0_3px_0_#050d1c]">
       <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3.5 text-left">
         <span className="min-w-[3.375rem] shrink-0 border-r border-white/30 pr-3.5 text-center leading-tight">
           <small className="block text-[0.75rem] font-semibold text-white/85">{w.top}</small>
@@ -191,37 +248,6 @@ function NextPlan({ now }) {
   );
 }
 
-// Seçilen (bugün olmayan) günün planları: başlıkta gün ve sayı, sağda "Günü aç"; satır = renk çizgisi, saat, ad, yer; dokununca plan
-function DayPlans({ date, onOpen }) {
-  const { plans } = useData();
-  const { openAdd } = useAdd();
-  const list = dayPlans(plans, date);
-  const d = new Date(`${date}T12:00`);
-  const title = `${cap(d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""))} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "long" })}`;
-  return (
-    <div className="ck-b mt-3 overflow-hidden rounded-[1.375rem] border border-white/10 bg-[#13243f]">
-      <div className="flex items-center gap-2 px-3.5 pb-1.5 pt-3 text-[0.75rem] font-bold tracking-[.05em] text-[#9fadc6]">
-        <span className="min-w-0 flex-1 truncate">{title.toLocaleUpperCase("tr-TR")}{list.length ? ` · ${list.length} PLAN` : ""}</span>
-        <button type="button" data-press onClick={onOpen} className="shrink-0 text-[0.8125rem] font-semibold tracking-normal text-[#8fb3ff]">Günü aç ›</button>
-      </div>
-      {list.length ? (
-        list.map((p) => (
-          <button key={p.id} type="button" data-press="row" onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="flex w-full items-center gap-2.5 border-t border-[#24375a] px-3.5 py-2.5 text-left">
-            <span className={`tone-${planTone(p)} tone-bar w-1 self-stretch rounded-full`} />
-            <b className="w-11 shrink-0 text-[0.9375rem] font-semibold tabular-nums">{p.time || "Gün"}</b>
-            <span className="min-w-0 flex-1 leading-tight">
-              <span className="block truncate text-[0.9375rem]">{p.title || "Plan"}</span>
-              {p.place && <small className="block truncate text-[0.78rem] text-[#9fadc6]">{p.place}</small>}
-            </span>
-          </button>
-        ))
-      ) : (
-        <p className="border-t border-[#24375a] px-3.5 py-3 text-[0.875rem] text-[#9fadc6]">Bu gün plan yok</p>
-      )}
-    </div>
-  );
-}
-
 const cap = (t) => t.charAt(0).toLocaleUpperCase("tr-TR") + t.slice(1);
 
 // Yarışın yerinin o günkü saatleri (loadRaceDay 1 saat saklar); tahmin ufku dışındaki günlerde istenmez
@@ -250,38 +276,6 @@ function km(a, b) {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
-
-// İlk ekranın yüksekliği: telefonda (genişlik < 768) pencere yüksekliğinden kutunun sayfadaki yeri ve alttaki sekme çubuğunun kapladığı yer
-// çıkar; kalan en az yükseklik olur (içerik sığmazsa uzar). --u bu yüksekliğin yüzde biri: gün rakamları, sayaç ve sıcaklık onunla büyür.
-// Masaüstünde ya da ölçülemezse eski görünüm (yükseklik yok, --u 7px).
-function useFit() {
-  const ref = useRef(null);
-  const [h, setH] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => {
-      if (window.innerWidth >= 768) return setH(0);
-      const vh = window.visualViewport?.height || window.innerHeight;
-      const top = el.getBoundingClientRect().top + window.scrollY;
-      const bar = document.querySelector("nav[aria-label='Sekmeler']");
-      const cover = bar ? Math.max(0, window.innerHeight - bar.getBoundingClientRect().top) : 0;
-      const v = Math.round(vh - top - cover - 8);
-      setH(v > 360 ? v : 0);
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    window.addEventListener("orientationchange", measure);
-    const t = setTimeout(measure, 400); // sekme çubuğu geç yerleşirse
-    return () => {
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("orientationchange", measure);
-      clearTimeout(t);
-    };
-  }, []);
-  return [ref, h];
-}
-
 
 // Yarış günü, iki yer alt alta (Seyhun 2026-11-03): yerin adı ve ortak saat saat tablo (HourTable). rows yoksa yanıp sönen yer tutucu.
 // Yarış yerinde (race) ölçüm o yerin en yakın istasyonundan (place, far).

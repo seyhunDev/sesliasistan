@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useData } from "@/features/data/DataProvider";
-import { dayInfo, planTone, trainingWeek } from "@/lib/homeTiles";
+import { Icon } from "@/components/ui/Icon";
+import { dayHours, sky } from "@/features/weather/weather";
+import { dayInfo, dayWeather, planTone, trainingWeek } from "@/lib/homeTiles";
 import { DayPick } from "./DayPick";
 
 // Kokpitin altındaki büyük gün şeridi (Seyhun 2026-10-21: "tarihleri büyük yapalım"): bugünden 7 gün, gün adı, büyük gün sayısı,
@@ -13,7 +15,7 @@ import { DayPick } from "./DayPick";
 // kokpitteki hava, grafik ve planlar o güne geçer), aynı dokunuşla o günün penceresi de açılır (2026-11-02). Seçili gün camgöbeği; başka gün
 // seçiliyken bugün beyaz çerçeveli kalır, bugüne dokununca geri döner.
 // pick / onPick: penceresi açık günün tarihi (kokpitteki "Günü aç" da açar)
-export function HomeDays({ today, fit, att, sel = today, onSel, pick, onPick }) {
+export function HomeDays({ wx, today, fit, att, sel = today, onSel, pick, onPick }) {
   const { plans } = useData();
   const week = trainingWeek(plans, today, fit || [], 2, true);
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -35,7 +37,7 @@ export function HomeDays({ today, fit, att, sel = today, onSel, pick, onPick }) 
   return (
     <>
       <div className="mb-1 flex justify-end">
-        <button type="button" data-press aria-pressed={back} onClick={() => (setBack((b) => !b), onSel?.(today))} className="h-6 rounded-full px-2.5 text-[0.75rem] font-semibold text-white/70">
+        <button type="button" data-press aria-pressed={back} onClick={() => (setBack((b) => !b), onSel?.(today))} className="h-6 rounded-full px-2.5 text-[0.75rem] font-semibold text-acc">
           {back ? "Önümüzdeki günler ›" : "‹ Önceki 5 gün"}
         </button>
       </div>
@@ -43,6 +45,7 @@ export function HomeDays({ today, fit, att, sel = today, onSel, pick, onPick }) 
         {shown.map((d, i) => {
           const tones = [...new Set([...d.sail, ...d.other].map(planTone))].slice(0, 2);
           const tap = dayInfo(d, att, today).tap;
+          const dw = dayWeather(wx, dayHours(wx, d.date), d.date);
           const on = sel === d.date;
           const first = !back && i === 0;
           const w = new Date(`${d.date}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
@@ -53,9 +56,15 @@ export function HomeDays({ today, fit, att, sel = today, onSel, pick, onPick }) 
             if (tap) onPick?.(d.date);
           };
           return (
-            <button key={d.date} type="button" data-press aria-pressed={on} onClick={open} className={`raised flex flex-col items-center gap-1 rounded-2xl ${first ? "py-[clamp(0.625rem,calc(var(--u,7px)*1.6),1.125rem)]" : "py-[clamp(0.5rem,calc(var(--u,7px)*1.35),1rem)]"} ${first ? (on ? "act-main" : "ck-tout") : on ? "ck-sel" : ""}`}>
-              <small className={`text-[0.75rem] font-semibold capitalize ${on || first ? "" : "text-white/60"}`}>{w}</small>
-              <b className={`${first ? "text-[clamp(1.5rem,calc(var(--u,7px)*4.6),2.5rem)]" : "text-[clamp(1.3125rem,calc(var(--u,7px)*4),2.125rem)]"} font-bold leading-none tracking-[-.03em] tabular-nums`}>{d.d}</b>
+            <button key={d.date} type="button" data-press aria-pressed={on} onClick={open} className={`hb-card flex flex-col items-center gap-0.5 rounded-[0.875rem] pb-1.5 pt-1.5 ${first ? "!border-[#0b1a33] !bg-[#0b1a33] !shadow-[0_2px_0_#050d1c] text-white" : on ? "!border-acc ring-2 ring-acc/25" : ""}`}>
+              <small className={`text-[0.6875rem] font-semibold capitalize ${first ? "text-white/70" : "text-mut"}`}>{w}</small>
+              <b className={`${first ? "text-[1.375rem]" : "text-[1.0625rem]"} font-bold leading-none tracking-[-.03em] tabular-nums`}>{d.d}</b>
+              {dw && (
+                <span className={`flex items-center gap-0.5 text-[0.625rem] tabular-nums ${first ? "text-white/85" : "text-mut"}`}>
+                  <Icon name={sky(dw.code, true).icon} className="size-3" />
+                  {dw.max}°
+                </span>
+              )}
               <span className="flex h-1.5 items-center gap-0.5">
                 {tones.map((t) => (
                   <span key={t} className={`tone-${t} tone-bar size-1.5 rounded-full`} />
