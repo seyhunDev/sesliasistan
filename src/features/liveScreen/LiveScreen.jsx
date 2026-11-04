@@ -1086,7 +1086,7 @@ function WindNow({ w, by = "", cls = "" }) {
           <em>kn</em>
           {w.gust != null && w.gust > w.kn ? <i>{`sağanak ${w.gust}`}</i> : null}
         </b>
-        <span>{[w.dir != null ? `${dirShort(w.dir)} ${degText(w)}` : "", by].filter(Boolean).join(" · ")}</span>
+        <span>{[dirText(w), by].filter(Boolean).join(" · ")}</span>
       </div>
     </div>
   );
@@ -2637,8 +2637,17 @@ function curWind(data, sel, isCur, now) {
   const so = (fc?.obs || []).filter((o) => o.wind != null).at(-1);
   const fresh = mine?.kn != null && mine.at && now - Date.parse(mine.at) < 3600e3;
   if (fresh) return { kn: mine.kn, dir: mine.dir, gust: mine.gust ?? null, range: mine.range || null, hh: tr.toISOString().slice(11, 13), man: true, by: `Parkur verisi ${trOf(mine.at).slice(11, 16)}` };
+  // İstasyon "sakin" (SYNOP 00000: 0 kn, yön yok) bildirince ekranda oksuz "0 kn" kalıyordu (Seyhun 2026-11-04 "rüzgâr sıfır, yön, ok yok"):
+  // o zaman bu saatin tahmini yazılır (ok, yön, kaynak "Tahmin"); tahmin de yoksa "Sakin"
+  if (so && !so.wind && so.dir == null) {
+    const hh = tr.toISOString().slice(11, 13);
+    const f = (fc?.rows || []).find((r) => r.hh === hh && r.wind != null);
+    if (f && f.wind > 0) return { kn: f.wind, dir: f.dir ?? null, gust: f.gust ?? null, range: null, hh, man: false, by: `Tahmin ${hh}:00` };
+  }
   return so ? { kn: so.wind, dir: so.dir, gust: so.gust ?? null, range: null, hh: so.hh, man: false, by: `${fc.station || "İstasyon"} ${so.hh}:00` } : null;
 }
+// yön yazısı: ok yoksa sakin (0 kn) ya da değişken
+const dirText = (w) => (w?.dir != null ? `${dirShort(w.dir)} ${degText(w)}` : w?.kn === 0 ? "Sakin" : w?.kn != null ? "Değişken" : "");
 const degText = (w) => (w?.range ? `${w.range[0]}–${w.range[1]}°` : w?.dir != null ? `${Math.round(w.dir)}°` : "");
 // Bekleme ekranında şimdiki rüzgâr (Seyhun 2026-11-02 "rüzgâr yönü daha doğru ve profesyonel; manuel girildiyse gösterilsin"):
 // akış yönünü gösteren ok, derece ve pusula, knot; altında kaynak (Parkur verisi 14:05 turuncu ya da istasyon)
@@ -2659,10 +2668,10 @@ function WindStrip({ data, now }) {
         </b>
       ) : null}
       <div className="g">
-        {w.dir != null ? (
+        {dirText(w) ? (
           <div>
             <small>Yön</small>
-            <b>{`${dirShort(w.dir)} ${degText(w)}`}</b>
+            <b>{dirText(w)}</b>
           </div>
         ) : null}
         {c && ew?.kn != null ? (
@@ -3262,7 +3271,7 @@ function ScWind({ data, now, prog, big = false }) {
               {c.kn}
               <em>kn</em>
             </b>
-            <span>{c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""}</span>
+            <span>{dirText(c)}</span>
           </div>
           {gu || ex ? <div className="sc-gu">{[gu, ex].filter(Boolean).join(" · ")}</div> : null}
         </>
@@ -3296,7 +3305,7 @@ function ScWindLine({ data, now }) {
     <div className="sc-wl">
       {gArrow(c.dir)}
       <b>{`${c.kn} kn`}</b>
-      <span>{c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""}</span>
+      <span>{dirText(c)}</span>
       {c.gust != null && c.gust > c.kn ? <em>{`sağanak ${c.gust}`}</em> : null}
     </div>
   );
@@ -3619,7 +3628,7 @@ function Sc05({ data, sel, mode, now }) {
         {c ? (
           <section>
             <small>Rüzgâr</small>
-            <b>{`${c.kn} kn · ${c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""}`}</b>
+            <b>{`${c.kn} kn · ${dirText(c)}`}</b>
           </section>
         ) : null}
       </div>
