@@ -35,7 +35,7 @@ import { BoatLive } from "@/features/tracking/BoatLive";
 import { ZOOMS } from "@/lib/boatPlay";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace } from "@/lib/raceLive";
+import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, coursePoints } from "@/lib/courseCard";
@@ -481,7 +481,7 @@ export function BroadcastPage({ orgId, id }) {
     pickRef.current = i;
     raceStart(flow, "start", race?.name || "Yarış");
   };
-  // Ekranda hangi yarış (▶; tekrar dokununca en son başlayana döner) ve kameraların grupları
+  // Ekranda hangi yarış (Ekranda kartındaki grup şeridi; Otomatik en son başlayana döner) ve kameraların grupları
   const onAir = L?.onAir?.sid || "";
   const putOnAir = (sid) => {
     const o = { sid: onAir === sid ? "" : sid };
@@ -558,7 +558,8 @@ export function BroadcastPage({ orgId, id }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grpKey]);
   const saveSetup = (sets) => {
-    changePlan({ sets, cls: sets[0]?.cls || "", grps: sets[0]?.grps || [] });
+    // bekleyen startlar da yeni start sırasına göre dizilir (sınıf sırası, sınıfın içinde grup sırası)
+    changePlan({ sets, cls: sets[0]?.cls || "", grps: sets[0]?.grps || [], order: orderBySets(plan.order, sets) });
     setSetupOpen(false);
     toast("Sınıflar ve gruplar kaydedildi");
   };
@@ -969,9 +970,10 @@ export function BroadcastPage({ orgId, id }) {
     flow.onShift(end, tr.t.rid);
   };
 
-  // Ekrandaki yarış: ▶ ile seçilen, yoksa en son başlayan (sunucu da böyle seçer, /api/canli onAirStart)
+  // Ekrandaki yarış: grup şeridinden seçilen, yoksa en son başlayan (sunucu da böyle seçer, /api/canli onAirStart)
   const airStart = live.starts.find((x) => x.id === onAir && !x.void) || currentStart(live.starts.filter((x) => x.day === today), L?.timer);
-  const airId = airStart?.id || "";
+  // Canlıya alınabilecek yarışlar: bugün süren (yarışta, geri sayımda), sonra bugün bitenler (en yeni önce)
+  const airPick = [...live.starts.filter((x) => x.day === today && !x.void && !x.fin)].reverse().concat(live.starts.filter((x) => x.day === today && !x.void && x.fin).reverse());
   const airE = airStart ? L?.rounds?.[airStart.id] || {} : {};
   const airCam = airStart ? srcs.find((c) => c.id === camOf(L?.camBy, airE.cls || "", airE.grp || airStart.grp || "")) : null;
   // Ekranda: canlıysa küçük oynatıcı (sessiz), kayıtsa küçük resmi; Önizleme: seçilen kaynak (yalnız burada)
@@ -1117,20 +1119,32 @@ export function BroadcastPage({ orgId, id }) {
             yarış, her yarışın altında grupları ve tek durum (Bitti · Yarışta · Abandone, Sıradaki, Bekliyor). "+ Yarış" sıradaki yarışı
             bütün gruplarıyla ekler. Biten yarış tek satıra kapanır (dokununca açılır). */}
         {/* Turuncu bayrak (Seyhun 2026-11-02): çekilince canlı ekran "Start öncesi"ne geçer (videoluda soldaki şeritte bayrak, uyarıya kalan süre, hattaki rüzgâr) */}
-        {/* Ekranda (Seyhun 2026-11-02 gruplar-kamera/grup-a.png): canlı ekranın gösterdiği yarış ve kamerası; ▶ ile seçildiyse "Otomatik" en son başlayana döner */}
+        {/* Ekranda (Seyhun 2026-11-02 gruplar-kamera/grup-a.png): canlı ekranın gösterdiği yarış ve kamerası; altındaki şeritten grup seçilir, "Otomatik" en son başlayana döner */}
         {airStart ? (
-          <div className="masa-onair flex items-center gap-3 rounded-[1.125rem] px-3.5 py-3">
+          <div className="masa-onair rounded-[1.125rem] px-3.5 py-3">
+          <div className="flex items-center gap-3">
             <span className="masa-onair-tag">Ekranda</span>
             <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(airE.grp || airStart.grp || "") }} aria-hidden="true" />
             <span className="min-w-0 flex-1 leading-tight">
               <b className="block truncate font-semibold">{[airE.grp || airStart.grp || airE.cls, `${airStart.n}. yarış`].filter(Boolean).join(" · ")}</b>
               <span className="block truncate text-[0.8125rem] text-mut">{[airCam?.name, airStart.void ? airStart.void : airStart.fin ? "Bitti" : Date.parse(airStart.at) > capNow ? "Geri sayım" : "Yarışta"].filter(Boolean).join(" · ")}</span>
             </span>
-            {onAir ? (
-              <Button size="sm" variant="secondary" full={false} onClick={() => putOnAir(onAir)}>
+          </div>
+          {/* Canlıya hangi grup (Seyhun 2026-11-04 "canlı yayına hangi grubun yarışının alınacağını yönetebilmeliyiz"): seçilen büyük ekranda,
+              diğerleri canlıda küçük satır. Otomatik: geri sayımdaki grup, yoksa en son başlayan */}
+          {airPick.length > 1 || onAir ? (
+            <div className="-mx-3.5 mt-2.5 flex gap-2 overflow-x-auto px-3.5" aria-label="Canlıda gösterilen grup">
+              <button type="button" aria-pressed={!onAir} onClick={() => onAir && putOnAir(onAir)} className="masa-b" data-press>
                 Otomatik
-              </Button>
-            ) : null}
+              </button>
+              {airPick.map((x) => (
+                <button key={x.id} type="button" aria-pressed={onAir === x.id} onClick={() => onAir !== x.id && putOnAir(x.id)} className="masa-b gap-2" data-press>
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(x.grp || L?.rounds?.[x.id]?.grp || "") || "var(--mut)" }} aria-hidden="true" />
+                  {[startLabel(x), x.fin ? "bitti" : Date.parse(x.at) > capNow ? "geri sayım" : ""].filter(Boolean).join(" · ")}
+                </button>
+              ))}
+            </div>
+          ) : null}
           </div>
         ) : null}
         {hero ? (
@@ -1257,15 +1271,8 @@ export function BroadcastPage({ orgId, id }) {
                         const finish = () => change((l) => { const next = finishRace(l.starts, s.id, Date.now(), rdays); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; });
                         return (
                           <div key={x.key} className={live || x.state === "next" ? "bg-accbg" : ""}>
-                            <div className="flex items-center gap-2 pl-2.5 pr-3">
-                              {/* ▶ ekrana al (pembe = ekranda); bekleyen startın yerinde boşluk */}
-                              {s && x.state !== "void" ? (
-                                <button type="button" aria-pressed={airId === s.id} aria-label={`${x.grp || e?.cls || "Start"} ekrana`} onClick={() => putOnAir(s.id)} data-press className={`masa-air${airId === s.id ? " on" : ""}`}>
-                                  <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 2l5 3-5 3z" fill="currentColor" /></svg>
-                                </button>
-                              ) : (
-                                <span className="masa-air off" aria-hidden="true" />
-                              )}
+                            {/* Ekrana alma tek yerde: üstteki Ekranda kartının grup şeridi (Seyhun 2026-11-04) */}
+                            <div className="flex items-center gap-2 pl-3.5 pr-3">
                               <button type="button" onClick={() => (s ? (setEditI(-1), setPickId(isOpen ? "" : s.id)) : (setPickId(""), setEditI(isOpen ? -1 : x.i)))} className="flex min-w-0 flex-1 items-center gap-2.5 py-2 text-left">
                                 <span className="size-2.5 shrink-0 rounded-full" style={{ background: x.grp ? groupColor(x.grp) : "var(--mut)" }} aria-hidden="true" />
                                 <span className="min-w-0 flex-1 leading-tight">
@@ -1295,7 +1302,7 @@ export function BroadcastPage({ orgId, id }) {
                             </div>
                             {!s && canRow && x.state === "next" && !hero ? (
                               // Sıradaki grup: süre seçimi ve Başlat (5 · 4 · 2 · 1 dk; son seçilen bu telefonda kalır)
-                              <div className="flex items-center gap-1.5 pb-2.5 pl-[3.4rem] pr-3">
+                              <div className="flex items-center gap-1.5 pb-2.5 pl-[2.125rem] pr-3">
                                 {[300, 240, 120, 60].map((d) => (
                                   <button key={d} type="button" aria-pressed={tr.t.dur === d} onClick={() => chooseDur(d)} className="masa-b dur tabular-nums">
                                     {d / 60}
@@ -1333,9 +1340,6 @@ export function BroadcastPage({ orgId, id }) {
                                   </>
                                 ) : (
                                   <>
-                                    <Button variant="secondary" size="sm" full={false} onClick={() => putOnAir(s.id)}>
-                                      {airId === s.id && onAir ? "Ekrandan al" : "Ekrana al"}
-                                    </Button>
                                     <Button variant="secondary" size="sm" full={false} onClick={() => (setSelId(s.id), setTab("donus"))}>
                                       Dönüşler
                                     </Button>
@@ -2706,6 +2710,14 @@ function Setup({ sets, guess = [], onSave, onCancel }) {
   const [clss, setClss] = useState(() => (sets.length ? sets.map((x) => x.cls) : guess));
   const [grps, setGrps] = useState(() => Object.fromEntries(sets.map((x) => [x.cls, x.grps])));
   const starts = clss.reduce((n, c) => n + Math.max(1, (grps[c] || []).length), 0);
+  // seçilenler seçim sırasıyla (sınıf sırası, sınıfın içinde grup sırası = start sırası)
+  const cur = clss.map((c) => ({ cls: c, grps: grps[c] || [] }));
+  const flat = raceOrder({ sets: cur });
+  const moveUp = (k) => {
+    const n = setsUp(cur, k);
+    setClss(n.map((x) => x.cls));
+    setGrps((d) => ({ ...d, ...Object.fromEntries(n.map((x) => [x.cls, x.grps])) }));
+  };
   const chip = (on) => `flex h-12 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.9375rem] font-semibold ${on ? "bg-white text-[#0b1a33]" : "ck-glass text-white/85"}`;
   return (
     <div className="mt-4 space-y-3">
@@ -2725,7 +2737,7 @@ function Setup({ sets, guess = [], onSave, onCancel }) {
             {CLASS_PICK.map((c) => {
               const on = clss.includes(c);
               return (
-                <button key={c} type="button" aria-pressed={on} onClick={() => setClss((l) => (on ? l.filter((x) => x !== c) : CLASS_PICK.filter((x) => x === c || l.includes(x))))} className={`flex h-12 items-center gap-2.5 rounded-[0.875rem] px-3.5 text-left text-[1rem] font-semibold ${on ? "bg-white text-[#0b1a33]" : "ck-glass text-white/70"}`}>
+                <button key={c} type="button" aria-pressed={on} onClick={() => setClss((l) => (on ? l.filter((x) => x !== c) : [...l, c]))} className={`flex h-12 items-center gap-2.5 rounded-[0.875rem] px-3.5 text-left text-[1rem] font-semibold ${on ? "bg-white text-[#0b1a33]" : "ck-glass text-white/70"}`}>
                   <span className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 text-[0.75rem] ${on ? "border-[#0b1a33] bg-[#0b1a33] text-white" : "border-white/40"}`} aria-hidden="true">
                     {on ? "✓" : ""}
                   </span>
@@ -2765,11 +2777,30 @@ function Setup({ sets, guess = [], onSave, onCancel }) {
               </div>
             ))}
           </div>
+          {/* Start sırası (Seyhun 2026-11-04 "sarı, mavi, kırmızı diye sıralamak istiyorum"): seçim sırasıyla gelir, "Öne al" ile değişir;
+              sınıfın ilk grubunda "Öne al" bütün sınıfı öne alır */}
+          {flat.length > 1 ? (
+            <div className="ck-glass rounded-[0.875rem] p-3">
+              <p className="mb-1 text-[0.9375rem] font-semibold">Start sırası</p>
+              {flat.map((x, k) => (
+                <div key={`${x.cls}|${x.grp}`} className="flex h-11 items-center gap-2.5">
+                  <b className="w-5 shrink-0 text-center tabular-nums text-white/60">{k + 1}</b>
+                  {x.grp ? <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(x.grp) }} aria-hidden="true" /> : null}
+                  <span className="min-w-0 flex-1 truncate font-semibold">{[x.grp, clss.length > 1 || !x.grp ? x.cls : ""].filter(Boolean).join(" · ")}</span>
+                  {k ? (
+                    <button type="button" onClick={() => moveUp(k)} className="ck-glass h-9 shrink-0 rounded-full px-3.5 text-[0.875rem] font-semibold" data-press>
+                      Öne al
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
           <div className="flex gap-2">
             <button type="button" onClick={() => setStep(1)} className={backBtn}>
               ‹ Geri
             </button>
-            <button type="button" onClick={() => onSave(clss.map((c) => ({ cls: c, grps: [...GROUP_PICK.filter((g) => (grps[c] || []).includes(g)), ...(grps[c] || []).filter((g) => !GROUP_PICK.includes(g))] })))} className={bigBtn}>
+            <button type="button" onClick={() => onSave(cur)} className={bigBtn}>
               {`Kaydet · ${starts} start`}
             </button>
           </div>

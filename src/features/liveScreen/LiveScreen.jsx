@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { liveUrl } from "@/lib/raceCams";
+import { liveUrl, videoGroup } from "@/lib/raceCams";
 import { momentRace, momentRaceName, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
@@ -3246,10 +3246,21 @@ function ScOthers({ data, sel, today, now }) {
 }
 // Sol alt sütun (Seyhun 2026-11-04 "sol alt köşeye; altta süre alanı, üstünde sıralama"): Canlı sağ üstte tek başına; sütunda en altta yarışın
 // kartı, üstünde diğer gruplar ve grubun sporcuları / dönüş (sahne.css .sc-rcol column-reverse)
-function ScTop({ rep, on, children }) {
+// Canlı rozetinin yanında görüntünün grubu (grp): drone ya da kamera bir gruba bağlıysa "Mavi grup"
+function ScTop({ rep, on, grp = "", children }) {
   return (
     <>
-      {on ? <div className="sc-tr">{rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}</div> : null}
+      {on ? (
+        <div className="sc-tr">
+          {rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}
+          {!rep && grp ? (
+            <span className="sc-lgrp">
+              <i style={{ background: groupColor(grp) || "rgba(255,255,255,.6)" }} aria-hidden="true" />
+              {`${grp} grup`}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       <div className="sc-rcol">{children}</div>
     </>
   );
@@ -3906,12 +3917,17 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
     : sc === "05" ? <Sc05 data={data} sel={sel} mode={mode} now={now} />
     : <Sc06 data={data} prog={prog} now={now} today={today} />;
   const live = mode !== "none" && plan.status !== "done";
+  // ekrandaki görüntünün grubu (yalnız video gösterilirken; tekrar ve tekne haritası değil)
+  const liveGrps = (data.starts || []).filter((x) => x.day === today && !x.void && !x.fin).map((x) => x.grp || data.rounds?.[x.id]?.grp || "");
+  const vEntry = { ...entry, cls: entry?.cls || "", grp: entry?.grp || sel?.grp || "" };
+  const vOn = (mode === "seq" || mode === "race") && !!liveUrl(screenUrl(data.screen, data.stream), data.screen, data.stream, data.camBy, vEntry);
+  const vgrp = vOn ? videoGroup(data.screen, data.stream, data.camBy, vEntry, liveGrps) : "";
   return (
     <div className={`sc s${sc}`} data-scene={sc}>
       <div className="sc-body" key={sc}>
         {body}
       </div>
-      <ScTop rep={sc === "04"} on={live || sc === "04"}>
+      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp}>
         {colCard ? <Sc02 t={t} data={data} sel={sel} mode={mode} now={now} today={today} col /> : null}
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
         {(sc === "01" || sc === "02") && (mode === "seq" || mode === "race") ? <ScFleet data={data} sel={sel} mode={mode} now={now} who={t.who} today={today} onFull={onFull} /> : null}
