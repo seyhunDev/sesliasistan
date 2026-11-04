@@ -3594,20 +3594,27 @@ function ScClock({ t, data, sel, mode, now, today }) {
   const num = !t.tx && /^\d{1,2}(:\d\d){1,2}$/.test(String(t.tm || ""));
   const up = mode === "race" || mode === "between";
   const sec = num ? Number(String(t.tm).slice(-2)) : null;
-  const who = [n ? `Yarış ${n}` : "", t.who?.cls || "", t.who?.grp ? `${t.who.grp}` : ""].filter(Boolean);
+  const g = t.who?.grp || "";
+  const gc = g ? groupColor(g) || "#ffd23f" : "";
   return (
     <div className={`sc-ck ${up ? "up" : "dn"}${t.tone ? ` ${t.tone}` : ""}`}>
-      {who.length || t.at ? (
+      {g || t.who?.cls || n ? (
         <div className="sc-ckw">
-          {t.who?.grp ? <i style={{ background: groupColor(t.who.grp) || "#fff" }} aria-hidden="true" /> : null}
-          <span>{who.join(" · ")}</span>
-          {t.at ? <em>{t.at}</em> : null}
+          {g ? <span className="sc-ckg" style={{ background: gc, color: inkOn(gc) }}>{g}</span> : null}
+          {t.who?.cls ? <span className="sc-ckc">{t.who.cls}</span> : null}
+          {n ? <em>{`${n}. yarış`}</em> : null}
         </div>
       ) : null}
       <div className={`sc-ckt${num ? "" : " tx"}`}>
         {num ? <i aria-hidden="true">{up ? "+" : "−"}</i> : null}
         <b>{t.tm}</b>
         {t.un ? <small>{t.un}</small> : null}
+        {t.at ? (
+          <span className="sc-cka">
+            <small>Start</small>
+            {t.at}
+          </span>
+        ) : null}
       </div>
       {num && sec != null ? (
         <div className="sc-ckb" aria-hidden="true">

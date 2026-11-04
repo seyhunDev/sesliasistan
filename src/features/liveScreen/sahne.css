@@ -366,11 +366,13 @@
 /* Sağ üst: Canlı ve altında sade süre kartı (Seyhun 2026-11-04 "süre canlının altında, daha minimal; geri sayım olduğu hissedilsin") */
 .sc-tcol { position: absolute; top: calc(1.8em + env(safe-area-inset-top)); right: calc(2em + env(safe-area-inset-right)); display: flex; flex-direction: column; align-items: flex-end; gap: 0.4em; }
 .sc-tcol > .sc-tr { position: static; }
-.sc-ck { width: 13.5em; font-size: 0.9em; background: var(--sc-lite); border-radius: 0.6em; box-shadow: inset 0 0 0 1px var(--sc-lite-line); -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); text-shadow: 0 0.05em 0.4em rgba(0, 0, 0, 0.35); overflow: hidden; animation: sc-in 0.5s ease both; }
-.sc-ckw { display: flex; align-items: center; gap: 0.45em; padding: 0.55em 0.75em 0; font: 700 0.85em/1 var(--sc-c); letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85); }
-.sc-ckw i { width: 0.55em; height: 0.55em; border-radius: 50%; flex: none; }
-.sc-ckw span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sc-ckw em { margin-left: auto; flex: none; font-style: normal; color: var(--sc-mut); font-variant-numeric: tabular-nums; }
+.sc-ck { width: 16em; font-size: 0.9em; background: var(--sc-lite); border-radius: 0.6em; box-shadow: inset 0 0 0 1px var(--sc-lite-line); -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); text-shadow: 0 0.05em 0.4em rgba(0, 0, 0, 0.35); overflow: hidden; animation: sc-in 0.5s ease both; }
+.sc-ckw { display: flex; align-items: center; gap: 0.5em; padding: 0.6em 0.75em 0; font: 700 0.85em/1 var(--sc-c); letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255, 255, 255, 0.9); }
+.sc-ckg { flex: none; padding: 0.28em 0.55em; border-radius: 0.3em; font-weight: 800; letter-spacing: 0.06em; text-shadow: none; }
+.sc-ckc { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-ckw em { margin-left: auto; flex: none; font-style: normal; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--sc-mut); }
+.sc-cka { margin-left: auto; align-self: center; display: flex; flex-direction: column; align-items: flex-end; gap: 0.15em; font: 600 0.36em/1 var(--sc-c); color: rgba(255, 255, 255, 0.85); }
+.sc-ckt .sc-cka small { font-size: 0.8em; margin: 0; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sc-mut); }
 .sc-ckt { display: flex; align-items: baseline; gap: 0.12em; padding: 0.15em 0.75em 0.2em; font: 600 2.9em/1 var(--sc-c); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sc-ckt i { font-style: normal; font-size: 0.55em; font-weight: 700; opacity: 0.8; transform: translateY(-0.2em); }
 .sc-ckt small { font-size: 0.4em; color: var(--sc-mut); margin-left: 0.3em; }
@@ -384,6 +386,7 @@
 .sc-ck.o .sc-ckb u { background: #ffb36b; }
 .sc-ck.up .sc-ckb u { background: rgba(255, 255, 255, 0.75); }
 .sc-ck .sc-fl, .sc-ck .sc-wl, .sc-ck .sc-ocs { border-top: 1px solid var(--sc-lite-line); padding: 0.45em 0.75em; font-size: 0.9em; }
+.sc-ck .sc-wl > * { white-space: nowrap; }
 @media (max-aspect-ratio: 1/1) {
   .sc-tcol { display: contents; }
   .sc-tcol > .sc-tr { position: absolute; }
