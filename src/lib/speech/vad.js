@@ -31,11 +31,22 @@ export const SEG_MAX = 3000; // aralıksız konuşmada da yazı 3 sn'de bir kutu
 export const segmentDue = (s, now) =>
   !!s.voiceSeen && (s.segBusy || 0) < 2 && s.lastSpeech > (s.segFrom || 0) && (now - s.lastSpeech >= SEG_PAUSE || now - (s.segFrom || s.voiceFrom || s.t0 || 0) >= SEG_MAX);
 // Son yazı: tam kaydın çevirisi, ama parçaların toplamından belirgin kısaysa (bir kısmı düşmüş) parçalar
+// Tam çeviri kısa olabilir:
+// Gemini Transcribe dolguları ve "yok, şöyle olsun" düzeltmelerini siler. Bu yüzden yalnız iki durumda parçalar seçilir:
+// tam çeviri parçaların %60'ından kısaysa (harf) ya da belirgin kısa ve parçaların son iki kelimesi tam çeviride hiç yoksa (sonu kesilmiş)
+const words = (t) => t.toLocaleLowerCase("tr-TR").replace(/[^\p{L}\p{N}\s]+/gu, " ").split(/\s+/).filter(Boolean);
+const hasWord = (list, w) => list.some((x) => x === w || (w.length >= 4 && x.startsWith(w.slice(0, 4))));
 export const bestText = (full, parts) => {
   const f = String(full || "").trim();
   const p = String(parts || "").trim();
   if (!f) return p;
-  return p && f.length < p.length * 0.6 ? p : f;
+  if (!p) return f;
+  const fw = words(f);
+  const pw = words(p);
+  if (f.length < p.length * 0.6) return p;
+  const tail = pw.slice(-2).filter((w) => w.length >= 3);
+  if (fw.length < pw.length * 0.85 && tail.length === 2 && !tail.some((w) => hasWord(fw, w))) return p;
+  return f;
 };
 
 const median = (a) => {

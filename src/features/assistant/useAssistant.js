@@ -63,7 +63,7 @@ export const HANDS_FREE = false;
 // Yalnız bas-konuş (Seyhun 2026-10-25: "otomatik açılma falan yok, sadece bas konuş"): basılı tutarken dinler, bırakınca
 // gönderir; soru sorulunca ya da okuma bitince mikrofon kendiliğinden açılmaz. PRESS_MIN'den kısa basış dokunuştur
 export const PUSH_TALK = true;
-export const PRESS_MIN = 300;
+export const PRESS_MIN = 200; // 300 iken tek kelimelik hızlı cevap ("evet") dokunuş sayılıp atılabiliyordu
 // Eller serbest sohbette: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
 export const ENDPOINT = HANDS_FREE ? 1500 : 0; // canlı yazı yolunda konuşma bitişi (devam edilirse öncekine eklenir)
 export const listenOpts = (auto) => (HANDS_FREE ? { autoStop: SILENCE_MS, auto, endpoint: ENDPOINT, handsFree: true } : {});
@@ -244,7 +244,8 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
         run(merged, true);
       } else run(text ? `${text} ${tx}` : tx, true);
     },
-    onFail: (m) => toast(m),
+    // retry: çevrilemeyen kayıt saklandı; bildirimdeki "Tekrar dene" aynı sesi yeniden gönderir (yeniden konuşmak gerekmez)
+    onFail: (m, retry) => toast(m, retry ? { action: { label: "Tekrar dene", onClick: retry }, duration: 8000 } : undefined),
     onMiss: () => {
       const f = parked.current;
       parked.current = null;
