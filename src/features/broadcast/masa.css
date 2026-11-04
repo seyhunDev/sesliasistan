@@ -215,3 +215,22 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-flagt[aria-pressed="true"] { border-color: var(--acc); background: var(--accbg); }
 .masa-flagt[aria-pressed="true"] > b { color: var(--fg); }
 .masa-flagc { position: sticky; bottom: 0; z-index: 2; border-radius: 1rem; border: 1px solid var(--acc); background: #132036; padding: 0.875rem; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5); }
+
+/* Büyük kart (Süre, Seyhun 2026-11-04): sıradaki yarış ya da geri sayımdaki grup; büyük süre kutuları ve büyük Başlat */
+.masa-hero { border-radius: 1.375rem; border: 1px solid #2a3d5e; background: linear-gradient(160deg, #1a2b4a, #132036 60%); padding: 1rem 1rem 0.875rem; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45); }
+.masa-hero.cd { border-color: rgba(255, 61, 119, 0.55); background: linear-gradient(160deg, #3a1630, #1a2340 65%); }
+.masa-hero-h { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; font-weight: 700; color: var(--mut); }
+.masa-hero-h > span:last-child { margin-left: auto; }
+.masa-hero-bd { border-radius: 0.4375rem; background: rgba(255, 255, 255, 0.1); padding: 0.25rem 0.5rem; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #cfe0f5; }
+.masa-hero.cd .masa-hero-bd { background: var(--acc); color: #fff; }
+.masa-hero-n { display: flex; align-items: center; gap: 0.625rem; margin-top: 0.75rem; }
+.masa-hero-n b { font-size: 1.5rem; font-weight: 800; }
+.masa-hero-n small { font-size: 0.875rem; font-weight: 600; color: var(--mut); }
+.masa-hero-p { margin-top: 0.375rem; font-size: 0.8125rem; font-weight: 700; color: var(--fg2); }
+.masa-hero-t { margin: 0.75rem 0 0.875rem; text-align: center; font-size: 4rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.masa-hero-d { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem; margin-top: 0.875rem; }
+.masa-hero-d button { height: 2.875rem; border-radius: 0.75rem; border: 1px solid #2a3d5e; background: #0f1b2f; font-size: 1.125rem; font-weight: 800; }
+.masa-hero-d button small { margin-left: 0.125rem; font-size: 0.625rem; color: var(--mut); }
+.masa-hero-d button[aria-pressed="true"] { border-color: #fff; background: #fff; color: #0b1322; }
+.masa-hero-d button:active { transform: scale(0.96); }
+.masa .masa-hero-go { margin-top: 0.625rem; height: 3.75rem; border-radius: 1rem; font-size: 1.1875rem; font-weight: 800; }
