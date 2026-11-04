@@ -1022,7 +1022,7 @@ export function BroadcastPage({ orgId, id }) {
                 ) : (
                   <>
                     {/* Turuncu bayrak start işlerinin ilk adımı (Seyhun 2026-11-04 örnek onaylandı): inikken büyük turuncu düğme, çekiliyken ne zamandır çekili + İndir; Başlat çekilince büyür */}
-                    <div className="masa-steps">
+                    <div className="masa-osteps">
                       <span className={orangeOn ? "ok" : "on"}>
                         {orangeOn ? "✓" : "1"}
                         <b>Turuncu</b>
