@@ -349,16 +349,18 @@ export function BroadcastPage({ orgId, id }) {
   // Tehir (Seyhun 2026-11-02 "geri sayımın herhangi bir yerinde tehir; 1 dk sonra indir, 5 dk sonra indir ya da belirsiz; indikten 1 dk sonra
   // 5 dakikalık geri sayımı vermem gerekiyor, takibini yapalım"): AP şimdi çekilir, seçilen dakikada kendiliğinden iner (belirsizde
   // "Tehiri indir"); inince 1 dk sonra uyarı işareti = sıradaki yarışın geri sayımı kendiliğinden başlar (tehiri kuran telefonda).
+  // Geri sayımı süren startlar (start anı henüz gelmemiş; bu telefonun sayacında olsun olmasın): tehirde hepsi durur ve programa döner
+  // (Seyhun 2026-11-04 "bütün sınıflara tehir çektim ama sarı grubun geri sayımı devam ediyor")
+  const startGrp = (x) => x.grp || L?.rounds?.[x.id]?.grp || "";
+  const pendingIds = (now, grp = null) => live.starts.filter((x) => x.day === today && !x.fin && !x.void && Date.parse(x.at) > now && (grp == null || startGrp(x) === grp)).map((x) => x.id);
+  const grpOfTimer = () => (countingAt(nowMs()) ? cdGrp() : null);
   const postpone = (a = ap, extra = {}) => {
     let order = plan.order;
     if (a.grp) {
       // yalnız bir grup: o grubun geri sayımı sürüyorsa durur, start programa döner; grubun bekleyen startları tehirde (gün tehiri yok)
-      const rid = a.live ? rf.ridOf(readTimer()) : "";
-      if (rid && cdGrp() === a.grp) {
-        stopCount();
-        const back = apBack(rid);
-        if (back) order = [back, ...order];
-      }
+      const ids = pendingIds(nowMs(), a.grp);
+      if (grpOfTimer() === a.grp) stopCount();
+      order = [...ids.map((x) => apBack(x)).filter(Boolean), ...order];
       const done = changePlan({ day: planDay, order: grpHold(order, a.grp, { why: a.why, land: a.land, hours: a.hours, down: a.min ? new Date(nowMs() + a.min * 60e3).toISOString() : "" }) });
       setAp(null);
       toast(`${a.grp} grup tehirde`);
@@ -366,13 +368,14 @@ export function BroadcastPage({ orgId, id }) {
     }
     // dizinin durduğu yer (canlı ekranda şerit orada kırmızı noktayla durur)
     const t0 = readTimer();
-    const seq = a.live && t0.mode === "start" ? (t0.end != null ? Math.max(0, Math.ceil((t0.end - Date.now()) / 1000)) : t0.left ?? null) : null;
-    if (a.live) {
-      const rid = rf.ridOf(tr.t);
-      stopCount();
-      const back = rid ? apBack(rid) : null;
-      if (back) order = [back, ...order];
-    }
+    const counting = countingAt(nowMs());
+    const seq = counting && t0.mode === "start" ? (t0.end != null ? Math.max(0, Math.ceil((t0.end - Date.now()) / 1000)) : t0.left ?? null) : null;
+    // tüm gruplar: her grubun süren geri sayımı durur (yalnız bu telefonun sayacındaki değil), startlar programın başına döner
+    const ids = pendingIds(nowMs());
+    const rid = counting ? rf.ridOf(t0) : "";
+    if (rid && !ids.includes(rid)) ids.unshift(rid);
+    if (counting) stopCount();
+    order = [...ids.map((x) => apBack(x)).filter(Boolean), ...order];
     const raised = apRaise(plan, Date.now(), a.min, a.why, a.land, a.auto, a.hours);
     if (seq != null) raised.ap = { ...raised.ap, seq, dur: t0.dur || 300 };
     // eski tehir işareti (AP/H, AP 3…) plan.sig'de kaldıysa silinir; tehirin bayrağı plan.ap'tan okunur (apSigId)
@@ -437,6 +440,12 @@ export function BroadcastPage({ orgId, id }) {
   const lowerAp = (at = nowMs()) => changePlan({ day: planDay, ...apLower(at, readTimer().dur || 300, dev, plan.ap?.land, plan.ap?.auto), ...apSigOff(plan) });
   // Tek grubun tehiri iner: grup sıranın başına döner, geri sayımı komite başlatır
   const lowerGrp = (g) => (changePlan({ order: grpRelease(plan.order, g) }), toast(`${g} grubun tehiri indi`));
+  // tehirdeki bütün grupların tehiri iner (alttaki "Tehiri indir · Sarı")
+  const lowerHeld = () => {
+    const gs = heldGrps(plan.order).map((x) => x.grp);
+    changePlan({ order: gs.reduce((o, g) => grpRelease(o, g), plan.order) });
+    toast(`${gs.join(", ")} grubun tehiri indi`);
+  };
   const lowerSig = () => (plan.status === "ap" && signalOf(plan.sig?.id)?.kind === "ap" && !signalOf(plan.sig.id).end ? lowerAp() : changePlan({ sig: null }));
   // Program sekmesi (Seyhun 2026-11-04 "çok karışık, yeniden tasarla"): her günün tek "İlk start" saati (aynı saat daily, farklı gün times;
   // ilk kez girilen saat bütün günlerin olur), "Her güne" ile bütün günler aynı saat. Bugünün / yarının saati değişirse ekranın saati de;
@@ -567,10 +576,21 @@ export function BroadcastPage({ orgId, id }) {
       if (!warnDue(plan, now)) return;
       const mine = !plan.warnBy || plan.warnBy === dev || now - Date.parse(plan.warn) > 4000;
       if (!mine) return;
-      if (countingAt(now) || !plan.order.length) return changePlan({ warn: "" });
-      if (!plan.order[0].prep) return (changePlan({ warn: "" }), toast("Bayrak seçilmedi, geri sayım başlamadı"));
+      // tek gruba tehirdeki satırlar atlanır: sıradaki tehirde olmayan start başlar (hepsi tehirdeyse geri sayım başlamaz)
+      const nx = plan.order.findIndex((o) => !o.ap);
+      if (countingAt(now) || nx < 0) return changePlan({ warn: "" });
+      if (!plan.order[nx].prep) return (changePlan({ warn: "" }), toast("Bayrak seçilmedi, geri sayım başlamadı"));
+      pickRef.current = nx;
       raceStart(flow, "start", race?.name || "Yarış");
     };
+  });
+  // Başka telefon tehir çektiyse bu telefonun sayacı da durur: gün tehiri ya da sayaçtaki start tehirle programa döndü
+  useEffect(() => {
+    if (!countingAt(nowMs())) return;
+    // sayaçtaki start başka telefonda silindiyse (tehirle programa döndü) bu sayaç da durur
+    const rid = rf.ridOf(readTimer());
+    const gone = !!rid && liveIn.current && !live.starts.some((x) => x.id === rid);
+    if (plan.status === "ap" || gone) stopCount();
   });
   const tracking = (plan.status === "ap" && !!plan.ap?.down) || !!plan.warn || heldGrps(plan.order).some((x) => x.ap.down);
   useEffect(() => {
@@ -1534,6 +1554,11 @@ export function BroadcastPage({ orgId, id }) {
         <MasaBar>
               {plan.status === "ap" ? (
                 <Button onClick={() => lowerAp()}>Tehiri indir</Button>
+              ) : !countingAt(capNow) && heldGrps(plan.order).length ? (
+                // tek gruba tehir çekiliyse alttaki düğme onu indirir (Seyhun 2026-11-04 "tehiri indir dediğimde yine tehir çekme açılıyor")
+                <Button onClick={lowerHeld}>
+                  {`Tehiri indir · ${heldGrps(plan.order).map((x) => x.grp).join(", ")}`}
+                </Button>
               ) : countingAt(capNow) ? (
                 // start dizisi başladıysa tehir bayrağı hazırda (Seyhun 2026-11-03 19:28); yine onay sorar
                 <Button variant="danger" onClick={() => openAp()}>
@@ -2247,7 +2272,8 @@ export function BroadcastPage({ orgId, id }) {
         onClose={() => (setFlagPick(null), setFlagOpen(false), setFlagFor(""))}
         onBack={() => setFlagPick(null)}
         onRaise={() => flagPick && raiseFlag(flagPick.id, flagPick.rid || "")}
-        ctx={{ counting: countingAt(capNow), racing: runningIds(capNow).length > 0, apUp: plan.status === "ap", at: plan.at, prep: plan.order[0]?.prep || plan.prep || "", one: !!flagFor, oneName: flagFor ? startLabel(live.starts.find((x) => x.id === flagFor)) : "", ridName: flagPick?.rid ? startLabel(live.starts.find((x) => x.id === flagPick.rid)) : "" }}
+        onLower={(g) => (lowerGrp(g), setFlagOpen(false))}
+        ctx={{ held: heldGrps(plan.order).map((x) => x.grp), counting: countingAt(capNow), racing: runningIds(capNow).length > 0, apUp: plan.status === "ap", at: plan.at, prep: plan.order[0]?.prep || plan.prep || "", one: !!flagFor, oneName: flagFor ? startLabel(live.starts.find((x) => x.id === flagFor)) : "", ridName: flagPick?.rid ? startLabel(live.starts.find((x) => x.id === flagPick.rid)) : "" }}
       />
       {/* Tehir (Seyhun 2026-11-03 "alt çubuktan yukarı açılsın, kare belirgin düğmeler: İner, Yer, İnince, Sebep, Tamam") */}
       <Sheet open={!!ap && (plan.status !== "ap" || !!ap.edit)} onClose={() => setAp(null)} title={ap?.edit ? "Tehiri düzelt" : "Tehir"} navy>
@@ -2672,7 +2698,7 @@ function FlagIcons({ ids, size = "md" }) {
     </span>
   );
 }
-function FlagSheet({ open, pick, onPick, onClose, onBack, onRaise, ctx }) {
+function FlagSheet({ open, pick, onPick, onClose, onBack, onRaise, onLower, ctx }) {
   const groups = [];
   // ctx.one: yalnız bir yarış için (Süre satırının Bayrak kısa yolu): tehir, hazırlık ve genel işaretler yok, abandone yalnız N
   if (ctx.one) groups.push(["Abandone", ["N"]], ["Rota", FLAG_ROWS.rota], ["Geri çağırma", FLAG_ROWS.geri]);
@@ -2695,6 +2721,18 @@ function FlagSheet({ open, pick, onPick, onClose, onBack, onRaise, ctx }) {
   return (
     <Sheet open={open} onClose={onClose} title={ctx.one && ctx.oneName ? `Bayrak · ${ctx.oneName}` : "Bayrak çek"} navy>
       <div className="space-y-3 pb-3">
+        {/* tehirdeki gruplar: buradan indirilir (Tehir bayrağına dokununca yeniden tehir penceresi açılmasın) */}
+        {!ctx.one && ctx.held?.length ? (
+          <div>
+            <div className="masa-aplab">Tehirde</div>
+            <div className="masa-flaggrid">{ctx.held.map((g) => (
+              <button key={g} type="button" data-press className="masa-flagt" onClick={() => onLower(g)}>
+                <FlagIcons ids={["AP"]} />
+                <b>{`İndir · ${g}`}</b>
+              </button>
+            ))}</div>
+          </div>
+        ) : null}
         {groups.map(([n, ids]) => (
           <div key={n}>
             <div className="masa-aplab">{n}</div>
