@@ -866,6 +866,8 @@ export function BroadcastPage({ orgId, id }) {
   const heroPrep = prepName(heroE?.prep) || "";
   const heroPaused = !!hero?.cd && tr.t.left != null;
   const orangeOn = orangeUp(plan, today);
+  // Günün ilk startı henüz verilmediyse ilk start saati (Süre kartında geri sayım: uyarı işareti = start − süre)
+  const firstAt = plan.status !== "ap" && plan.status !== "done" && !races.some((r) => r.rows.some((y) => y.start)) ? dayTime(plan, planDay) || plan.at : "";
   const wide = useSyncExternalStore(subWide, isWide, () => false);
   // Turuncu bayrak çek / indir: her bayrak işlemi onay sorar (Seyhun kuralı); onaylanınca kayıt bitene kadar düğmede halka
   const askOrange = (up) =>
@@ -1049,7 +1051,8 @@ export function BroadcastPage({ orgId, id }) {
                         Turuncu bayrağı çek
                       </Button>
                     )}
-                    {heroPrep ? <p className="masa-hero-p">{`Hazırlık: ${heroPrep}${plan.at && !races.some((r) => r.rows.some((y) => y.start)) ? ` · Start ${plan.at}` : ""}`}</p> : null}
+                    {firstAt ? <FirstStart day={planDay} at={firstAt} dur={tr.t.dur || 300} /> : null}
+                    {heroPrep ? <p className="masa-hero-p">{`Hazırlık: ${heroPrep}`}</p> : null}
                     <div className="masa-hero-d">
                       {[300, 240, 120, 60].map((d) => (
                         <button key={d} type="button" data-press aria-pressed={tr.t.dur === d} onClick={() => chooseDur(d)}>
@@ -2286,6 +2289,36 @@ function TimeIn({ value, onSave, ...p }) {
 }
 // Alt düğme çubuğu ekranın dibine oturur (Seyhun 2026-11-04 "altta niye boşluk kalıyor"): iPhone'un ev çizgisi için bırakılan
 // boşluk yarıya indi (masa.css .masa-barin), çubuk sayfayla aynı genişlikte
+// İlk start (Seyhun 2026-11-04 "ilk start kaç dakika kaldı, saati ne; 11 dediğimde 10.55'te uyarı işareti, sınıf bayrağı çekilir"):
+// start saati ve uyarı işareti saati (start − seçili süre); büyük sayaç uyarı işaretine, yani Başlat'a kalan süre. Zamanı gelince "Şimdi Başlat".
+function FirstStart({ day, at, dur }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const startMs = Date.parse(`${day}T${at}:00+03:00`);
+  if (!startMs) return null;
+  const warnMs = startMs - dur * 1000;
+  const warnHm = new Date(warnMs + 3 * 3600e3).toISOString().slice(11, 16);
+  const left = Math.ceil((warnMs - now) / 1000);
+  const late = left <= 0;
+  const big = late ? "Şimdi" : left >= 3600 ? `${Math.floor(left / 3600)} sa ${Math.floor((left % 3600) / 60)} dk` : mmss(left);
+  return (
+    <div className={`masa-first${late ? " now" : left <= 120 ? " soon" : ""}`}>
+      <div>
+        <small>İlk start</small>
+        <b>{at}</b>
+        <span>{`Uyarı işareti ${warnHm}`}</span>
+      </div>
+      <div className="r">
+        <small>{late ? "Uyarı işareti zamanı" : "Başlat'a"}</small>
+        <b>{big}</b>
+        <span>{late ? "Başlat'a bas" : `${dur / 60} dk geri sayım`}</span>
+      </div>
+    </div>
+  );
+}
 // Geniş ekran (MacBook, iPad yatay): 64rem ve üstü
 const WIDE_Q = "(min-width: 64rem)";
 const subWide = (cb) => {
