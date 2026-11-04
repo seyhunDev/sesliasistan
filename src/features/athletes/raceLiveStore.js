@@ -6,7 +6,7 @@
 // (kural storage.rules: yalnız ana hesap). Fotoğraf 2048 px JPEG; video (en çok 2 dk) iPhone'un çektiği gibi (sesli) saklanır, çok büyükse küçültülür (prepRaceMedia).
 import { FieldPath, arrayUnion, collection, deleteField, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
 import { readServer } from "@/lib/firebase/fastRead";
-import { deleteDoc, setDoc } from "@/lib/firebase/write";
+import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResumable } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
@@ -64,6 +64,14 @@ export const saveBuoys = (orgId, id, list) => setDoc(live(orgId, id), { buoys: c
 export const saveDays = (orgId, id, list) => setDoc(live(orgId, id), { days: cleanDays(list) }, { merge: true });
 export const saveStarts = (orgId, id, list) => setDoc(live(orgId, id), { starts: cleanStarts(list) }, { merge: true });
 export const savePlan = (orgId, id, plan) => setDoc(live(orgId, id), { plan: cleanPlan(plan) }, { merge: true });
+// Yalnız değişen plan alanları (plan.<alan> bütünüyle): sunucunun siteden yazdığı daily/times/off/agenda ezilmesin
+// (yarış sistemi haritası 2026-11-04 riski). Belge yoksa bütün plan yazılır.
+export function savePlanKeys(orgId, id, plan, keys) {
+  const p = cleanPlan(plan);
+  const ks = keys.filter((k) => k in p);
+  if (!ks.length) return Promise.resolve();
+  return updateDoc(live(orgId, id), Object.fromEntries(ks.map((k) => [`plan.${k}`, p[k]]))).catch(() => savePlan(orgId, id, plan));
+}
 // Bütün künye listesi (sporcu etiketi değişince)
 export const saveMedia = (orgId, id, list) => setDoc(live(orgId, id), { media: cleanMedia(list) }, { merge: true });
 
