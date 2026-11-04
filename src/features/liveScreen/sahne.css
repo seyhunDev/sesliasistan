@@ -224,3 +224,25 @@
   .sc-board td.cl, .sc-board th.cl { display: none; }
   .sc-board td.y, .sc-board th.y { display: none; }
 }
+
+/* 03 ayrıntılı genel sıralama (Seyhun 2026-11-04): geniş tablo, 12 satırlık sayfalar, altta sayfa çizgileri (dolan çizgi o sayfanın süresi) */
+.sc-board.wide { width: min(64em, calc(100% - 2em)); }
+.sc-board.wide td.n { max-width: 16em; }
+.sc-board.wide tbody { animation: sc-in 0.45s ease both; }
+.sc-board tr.e td { border-top-color: transparent; }
+.sc-pgs { display: flex; gap: 0.4em; align-items: center; }
+.sc-pgs i { position: relative; width: 1.6em; height: 0.3em; border-radius: 0.15em; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
+.sc-pgs i.on { background: rgba(255, 255, 255, 0.28); }
+.sc-pgs u { position: absolute; inset: 0; background: var(--sc-acc); transform-origin: left; animation: sc-pg linear both; }
+@keyframes sc-pg { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Tehir rozeti: sağ üstte Canlı + saatin altında, sade (Seyhun 2026-11-04 "ortada kocaman göstermeyelim") */
+.sc-ap { position: absolute; top: calc(1.8em + 2.8em + 0.5em + env(safe-area-inset-top)); right: calc(2em + env(safe-area-inset-right)); display: flex; align-items: center; gap: 0.7em; max-width: 24em; padding: 0.55em 0.9em 0.55em 0.6em; background: var(--sc-pan); border-radius: 0.4em; box-shadow: inset 0 0 0 1px var(--sc-line), inset 0.2em 0 0 var(--sc-red); }
+.sc-ap .lv-flag { flex: none; font-size: 1em; }
+.sc-ap > div { min-width: 0; }
+.sc-ap b { display: flex; align-items: baseline; gap: 0.5em; font: 800 1.2em/1 var(--sc-c); letter-spacing: 0.08em; text-transform: uppercase; }
+.sc-ap b em { font-style: normal; font-variant-numeric: tabular-nums; color: var(--sc-amb); }
+.sc-ap span { display: block; margin-top: 0.3em; font: 600 0.85em/1.15 var(--sc-c); letter-spacing: 0.06em; text-transform: uppercase; color: var(--sc-mut); }
+@media (max-aspect-ratio: 1/1) { .sc-ap { right: 1em; top: calc(1em + 2.8em + 0.5em + env(safe-area-inset-top)); max-width: calc(100% - 2em); } }
+/* tehir rozeti sağ üstteyken sıralama tablosu sola yaslanır, rozetin altına girmez */
+@media (min-aspect-ratio: 1/1) { .sc:has(.sc-ap) .sc-board { left: 2em; transform: translate(0, -50%); width: min(60em, calc(100% - 28em)); } }
