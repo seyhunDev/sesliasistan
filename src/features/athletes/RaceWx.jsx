@@ -5,6 +5,9 @@ import { DayNav } from "@/features/weather/DayNav";
 import { HourTable } from "@/features/weather/HourTable";
 import { useWindObs } from "@/features/weather/useWindObs";
 import { RegionMap } from "@/features/weather/RegionMap";
+import { NowRain } from "@/features/weather/NowRain";
+import { useRainRadar } from "@/features/weather/useRainRadar";
+import { radarRows } from "@/features/weather/rainLine";
 import { dirDeg, kn, sky, windName } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
 import { forecastFrom, lastForecastDay, loadRaceDay, raceDays, wxDays } from "./raceWeather";
@@ -33,9 +36,12 @@ function useDay(r, day, tick = 0) {
 const nowHH = () => String(new Date().getHours()).padStart(2, "0");
 
 // Sıcaklık · gök · rüzgâr satırı ve grafik (lacivert zeminde)
-export function DayChart({ rows, day, at, marks = [] }) {
+export function DayChart({ rows: fcRows, day, at, marks = [] }) {
   const today = todayStr();
   const isToday = day === today;
+  // Bugün: radar yarışın yerinde yağış görmüyorsa şu anki ve son saatlerin yağmuru gösterilmez (ana sayfa ile aynı); altında turuncu "Şu an" satırı
+  const radar = useRainRadar(isToday ? at : null);
+  const rows = isToday ? radarRows(fcRows, radar) : fcRows;
   const top = rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]);
   const v = (isToday && rows.find((h) => h.hh === nowHH())) || top;
   const ts = rows.map((h) => h.t).filter((t) => t != null);
@@ -58,6 +64,7 @@ export function DayChart({ rows, day, at, marks = [] }) {
         </span>
       </div>
       <HourTable key={day} rows={rows} date={day} place={at} far marks={marks} className="mt-2.5" />
+      {isToday && at && <NowRain place={at} rows={fcRows} radar={radar} />}
     </>
   );
 }
