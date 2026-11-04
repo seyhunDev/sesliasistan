@@ -815,21 +815,14 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .ck-hero[data-sky="storm"] { --sa: #1d2634; --sb: #2f3b4f; --sc: #4a5a72; }
 .ck-hero[data-sky="snow"] { --sa: #566a82; --sb: #8aa0b8; --sc: #c3d1df; }
 .ck-hero[data-sky="night"] { --sa: #0b1a33; --sb: #12284a; --sc: #1c3a66; }
+/* Yağmur çizgileri sabit (Velora kuralı: boşta ekranda sürekli hareket yok) */
 .ck-hero[data-sky="rain"]::before, .ck-hero[data-sky="storm"]::before {
   content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .9;
-  background: repeating-linear-gradient(100deg, transparent 0 13px, rgba(200, 222, 248, .3) 13px 14px, transparent 14px 29px);
-  background-size: 100% 140px; animation: ck-rain 1.1s linear infinite;
+  background: repeating-linear-gradient(100deg, transparent 0 13px, rgba(200, 222, 248, .26) 13px 14px, transparent 14px 29px);
 }
-@keyframes ck-rain { to { background-position: -30px 140px; } }
-@media (prefers-reduced-motion: reduce) { .ck-hero::before { animation: none !important; } }
 @media (min-width: 48rem) { main.home-wide .ck-hero { margin-left: 0; margin-right: 0; border-radius: 1.5rem; } }
-/* Kabarık iş düğmesi (açık zeminde): üstten hafif açık, altta kalın kenar; basınca içeri göçer */
-.hb { background: linear-gradient(var(--card), color-mix(in srgb, var(--card) 93%, var(--fg))); border: 1px solid var(--line); box-shadow: 0 3px 0 color-mix(in srgb, var(--line) 80%, var(--fg)); color: var(--fg); transition: transform .08s, box-shadow .08s; }
-.hb[data-pressed] { transform: translateY(3px); box-shadow: 0 0 0 transparent; }
-.hb-main { background: linear-gradient(#3b7bff, #2563eb); border-color: #1e4fc4; box-shadow: 0 3px 0 #173f9d; color: #fff; }
-.hb-main .hb-ic { color: #fff; }
-.hb-card { background: var(--card); border: 1px solid var(--line); box-shadow: 0 2px 0 color-mix(in srgb, var(--line) 85%, var(--fg)); }
-.hb-card[data-pressed] { transform: translateY(2px); box-shadow: none; }
+/* Düz kart (Velora: düz ve ince çizgili, gölge yok); basınca data-press ile hafif içeri */
+.hb-card { background: var(--card); border: 1px solid var(--line); }
 /* Ana sayfa yemek kartı (FoodCard; Seyhun 2026-10-23): lacivert kart; sipariş yokken sağdaki fotoğraf karta doğru solar (food-fade),
    siparişte üstte küçük harita, altta 4 adımlı ilerleme çizgisi */
 .food-card { background: #13243f; border: 1px solid rgba(255, 255, 255, .1); box-shadow: 0 10px 24px -14px rgba(0, 0, 0, .8); color: #eef2f8; }
