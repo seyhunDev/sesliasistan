@@ -3493,30 +3493,71 @@ function scBoats(data, who, today) {
 // (Seyhun 2026-11-04 "starttan önce grubun sporcuları, sonra aynı sporcular şamandıra dönüşleriyle devam")
 const SC_FLEET = 10;
 // Sol altta genel sıralamanın ilk 10'u (kartın sınıfı; yoksa ilk sınıf)
-function ScGen({ data, who, onFull }) {
+function ScGen({ data, who, now, onFull }) {
   const bs = scBoards(data);
   const b = bs.find((x) => who?.cls && x.cls === who.cls) || bs[0];
   if (!b?.all.length) return null;
   const cm = catMarks(b);
+  const list = b.all.map((r) => ({ ...r, mk: cm.get(String(r.sail)) || [] }));
+  const k = Math.floor(now / 1000 / SC_PAGE_S);
+  const pg = scPaged(list, k, SC_TOP, SC_GEN, scCatPages(b));
   return (
     <button type="button" className="sc-rd" onClick={() => onFull("all")}>
       <div className="sc-rdh">
         <span>{[b.cls || "Genel", "Genel sıra"].join(" · ")}</span>
         <span>{`${b.total} tekne`}</span>
       </div>
-      <ol>
-        {b.all.slice(0, SC_GEN).map((r, i) => (
-          <li key={`${r.sail}${i}`} className={`p${r.p}`}>
-            <u>{r.p}</u>
-            <b>{r.sail}</b>
-            <em>{shortName(r.name) || ""}</em>
-            <ScMk mk={cm.get(String(r.sail))} />
-            <i className="cl">{shortClub(r.club) || ""}</i>
-          </li>
-        ))}
-      </ol>
+      <ScRows pg={pg} ranked />
     </button>
   );
+}
+// Sol alt liste satırları (Seyhun 2026-11-04 "ilk 5 hep sabit kalsın, alttakilerin animasyonu olsun; hep birlikte animasyon gözü bozuyor"):
+// sayfa saati sahneden bağımsız (sahne değişince baştan başlamaz); ilk 5 hiç yeniden çizilmez; yalnız alttaki satırlar sayfa değişince sakin solarak gelir. Kulüp her satırda, yoksa "Kulüpsüz".
+function ScRows({ pg, ranked }) {
+  const { n, rows, top } = pg;
+  return (
+    <>
+      <ol className="st">
+        {rows.map((x, i) => {
+          const low = n > 1 && i >= top;
+          return (
+            <li key={low ? `${pg.pg}-${i}-${x.sail}` : x.sail} className={`p${x.p ?? ""}${n > 1 && top && i === top ? " cut" : ""}${low ? " fl" : ""}`} style={low ? { animationDelay: `${(i - top) * 0.07}s` } : undefined}>
+              {ranked ? <u>{x.p ?? ""}</u> : null}
+              <b>{x.sail}</b>
+              <em>{shortName(x.name) || ""}</em>
+              <ScMk mk={x.mk} />
+              <i className={`cl${shortClub(x.club) ? "" : " no"}`}>{shortClub(x.club) || "Kulüpsüz"}</i>
+            </li>
+          );
+        })}
+      </ol>
+      {n > 1 ? (
+        <div className="sc-rdm sc-rdp">
+          <span>{pg.sub ? `${pg.sub} · ilk ${pg.ilk}` : `${pg.from}–${pg.to}`}</span>
+          <ScPgs n={n} pg={pg.pg} k={pg.k} />
+        </div>
+      ) : null}
+    </>
+  );
+}
+// Kategori sayfaları (Seyhun 2026-11-04 "kızlar varsa kız ilk 5'i de görmek istiyorum"): ilk 5 genel sabit kalır, altta kızların ilk 5'i (K1–K5).
+// catList'te olmayan kategori (herkes Junior) gösterilmez. only: yalnız bu yelkenler (grup listesi)
+function scCatPages(b, only) {
+  return (b?.catList || [])
+    .map((c) => ({ sub: c === "Kız" ? "Kızlar" : c, rows: onlyCat(b.all, c).filter((x) => !only || only.has(String(x.sail))).slice(0, SC_TOP).map((x) => ({ ...x, p: `${c[0]}${x.place}`, mk: [] })) }))
+    .filter((x) => x.rows.length);
+}
+// Genel sayfalar (ilk 5 sabit + akanlar) ardından kategori sayfaları
+function scPaged(list, k, top, size, cats = []) {
+  const n0 = scPages(list.length, top, size);
+  const n = n0 + cats.length;
+  const i = ((k % n) + n) % n;
+  if (i < n0) return { ...scPageOf(list, i, top, size), n, pg: i, k, top: n > 1 ? top : 0, sub: "" };
+  // ilk 5'teki kızlar zaten orada (çipte K1); altta kalan kızlar K sırasıyla, böylece kızların ilk 5'i birlikte görünür
+  const c = cats[i - n0];
+  const up = new Set(list.slice(0, top).map((x) => String(x.sail)));
+  const rest = c.rows.filter((x) => !up.has(String(x.sail))).slice(0, Math.max(1, size - top));
+  return { n, pg: i, k, top, rows: [...list.slice(0, top), ...rest], sub: c.sub, ilk: c.rows.length };
 }
 // kategori derecesi çipi (K3)
 const ScMk = ({ mk }) => (mk?.length ? <s className="mk">{mk.join(" ")}</s> : null);
@@ -3576,14 +3617,13 @@ function scGroupRows(data, who, today) {
   const list = boats.map((x) => ({ ...x, p: rk.get(String(x.sail)) ?? null, mk: cm.get(String(x.sail)) || [] }));
   const ranked = list.some((x) => x.p != null);
   if (ranked) list.sort((a, c) => (a.p == null) - (c.p == null) || (Number(a.p) || 0) - (Number(c.p) || 0) || Number(a.sail) - Number(c.sail));
-  return { list, ranked };
+  return { list, ranked, cats: scCatPages(b, new Set(list.map((x) => String(x.sail)))) };
 }
 // Sağ sütunda üstte yarışın kartı varken yer azalır: sayfa boyu sütuna sığan satır sayısı kadar (ölçülür), ilk 5 yine sabit
 function ScGroup({ data, who, today, now }) {
-  const [t0] = useState(now);
   const [fit, setFit] = useState(SC_PAGE);
   const ref = useRef(null);
-  const { list, ranked } = scGroupRows(data, who, today);
+  const { list, ranked, cats } = scGroupRows(data, who, today);
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -3605,8 +3645,8 @@ function ScGroup({ data, who, today, now }) {
   }, [list.length]);
   if (!list.length) return null;
   const top = ranked ? SC_TOP : 0;
-  const k = Math.floor(Math.max(0, now - t0) / 1000 / SC_PAGE_S);
-  const { n, pg, rows, from, to } = scPageOf(list, k, top, fit);
+  const k = Math.floor(now / 1000 / SC_PAGE_S);
+  const pg = scPaged(list, k, top, fit, ranked ? cats : []);
   return (
     <div className="sc-rd" ref={ref} data-pg={k}>
       <div className="sc-rdh">
@@ -3616,23 +3656,7 @@ function ScGroup({ data, who, today, now }) {
         </span>
         <span>{`${list.length} tekne`}</span>
       </div>
-      <ol key={n > 1 ? pg : 0}>
-        {rows.map((x, i) => (
-          <li key={x.sail} className={`p${x.p ?? ""}${n > 1 && top && i === top ? " cut" : ""}${n > 1 && i >= top ? " fl" : ""}`}>
-            {ranked ? <u>{x.p ?? ""}</u> : null}
-            <b>{x.sail}</b>
-            <em>{shortName(x.name) || ""}</em>
-            <ScMk mk={x.mk} />
-            <i className="cl">{shortClub(x.club) || ""}</i>
-          </li>
-        ))}
-      </ol>
-      {n > 1 ? (
-        <div className="sc-rdm sc-rdp">
-          <span>{`${from}–${to}`}</span>
-          <ScPgs n={n} pg={pg} k={k} />
-        </div>
-      ) : null}
+      <ScRows pg={pg} ranked={ranked} />
     </div>
   );
 }
@@ -4121,7 +4145,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       </div>
       <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={sc === "01" && item === "wind"} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
-        {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} /> : listOn ? side === "gen" || (!lwho?.grp && mode !== "race" && scBoards(data).length) ? <ScGen data={data} who={lwho} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
+        {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} /> : listOn ? side === "gen" || (!lwho?.grp && mode !== "race" && scBoards(data).length) ? <ScGen data={data} who={lwho} now={now} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
       {bumpOn ? (
         <div className="sc-bump" key={bump.t} aria-hidden="true">
