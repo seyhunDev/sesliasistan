@@ -1,11 +1,11 @@
 // Sesli Asistan service worker: çevrimdışı açılış + plan hatırlatma bildirimleri.
 // Önbellek yalnızca yayında açık (?dev=1 ile kaydedilirse kapalı; geliştirmede eski dosya sorunu olmasın).
-const VERSION = "sa-v16";
+const VERSION = "sa-v17";
 const PAGES_CACHE = `${VERSION}-pages`;
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES = ["/", "/plans", "/tasks", "/notes", "/receipts", "/calendar", "/schedule", "/staff", "/login"];
 const CACHE_ON = !new URL(self.location).searchParams.has("dev");
-const NAV_TIMEOUT = 4000; // ağ bu sürede cevap vermezse kayıtlı sayfa açılır
+const NAV_TIMEOUT = 4000; // kayıtlı kopyası olmayan sayfada ağ bu sürede cevap vermezse çevrimdışı yazısı
 
 // Sayfayı ve içindeki /_next/static dosyalarını önbelleğe alır (diğer sayfalar da internetsiz açılabilsin)
 async function cachePage(path) {
@@ -61,7 +61,10 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Sayfalar: önce ağ (güncel sürüm), ağ yoksa ya da yavaşsa kayıtlı sayfa
+  // Sayfalar (Seyhun 2026-11-04 "Mac'te uygulama açılırken beyaz ekran"): kayıtlı kopya varsa HEMEN o açılır, ağdan gelen yeni
+  // sayfa arkada kaydedilir (bir sonraki açılışta o). Eskiden önce ağ bekleniyordu (en çok 4 sn): sunucu yavaş ya da uykudaysa
+  // o süre boyunca ekran bomboş (beyaz) kalıyordu. Yeni sürüm yayınlandıysa uygulama yine kendini yeniler (lib/newVersion.js),
+  // eski kod parçası bulunamazsa sayfa kopyası silinip sunucudan yeniden açılır (lib/crash.js reloadOnce).
   if (req.mode === "navigate") {
     const path = url.pathname;
     e.respondWith(
@@ -71,11 +74,14 @@ self.addEventListener("fetch", (e) => {
           if (res.ok && !res.redirected) pages.put(path, res.clone());
           return res;
         });
+        const hit = await pages.match(path);
+        if (hit) {
+          e.waitUntil(net.catch(() => {}));
+          return hit;
+        }
         try {
           return await Promise.race([net.then((r) => r.clone()), timeout(NAV_TIMEOUT)]);
         } catch {
-          const hit = await pages.match(path);
-          if (hit) return hit;
           // Kayıtlı kopya yok: ağ yavaşsa beklemeye devam edilir (eskiden 4 sn'de "İnternet bağlantısı yok" çıkıyordu)
           const late = await net.catch(() => null);
           if (late) return late.clone();
