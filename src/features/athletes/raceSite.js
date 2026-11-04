@@ -7,7 +7,7 @@
 //   sonuçlar → yarışın sonuçları (page.jsx, resultsImport.js). Listeler, talimat ve ek talimat çoğunlukla sunucuda hemen işlenir
 //   (lib/server/raceSiteTake.js); burada yalnız sunucunun okuyamadığı listeler (yapay zekayla) ve sonuçlar işlenir.
 // Her işlenen belge "used" olur ve öncesini (undo) saklar: "Geri al" eski hâline döndürür.
-import { FieldPath, collection, deleteField, doc, getDocs, onSnapshot } from "firebase/firestore";
+import { FieldPath, collection, deleteField, doc, getDocs, onSnapshot, runTransaction } from "firebase/firestore";
 import { setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
@@ -63,6 +63,24 @@ export async function siteDocBlob(raceId, d) {
 }
 const fileOf = async (d, raceId) => new File([await siteDocBlob(raceId, d)], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" });
 export const LIST_KINDS = ["groups", "fleets", "entries"];
+
+// Telefonda işlenecek belge (sonuç, sunucunun okuyamadığı liste): yarış sayfası (SiteDocs) ve Yayın › Belgeler (DocsTab) ikisi de
+// açık olabilir; aynı belge iki kez işlenmesin diye önce kayıt "busy" yapılır (işlem). 5 dakikadan eski "busy" yarım kalmıştır, yeniden alınır.
+const STALE = 5 * 60e3;
+export const waiting = (d) => d.state === "new" || (d.state === "busy" && Date.now() - (Date.parse(d.busyAt || "") || 0) > STALE);
+export async function claimDoc(orgId, raceId, key) {
+  try {
+    return await runTransaction(db, async (tx) => {
+      const ref = doc(col(orgId, raceId), key);
+      const snap = await tx.get(ref);
+      if (!snap.exists() || !waiting(snap.data())) return false;
+      tx.update(ref, { state: "busy", busyAt: new Date().toISOString() });
+      return true;
+    });
+  } catch {
+    return false;
+  }
+}
 
 // Liste belgesi (renk, final grupları, sporcu): okunur, kayıt listesine eklenir; grup varsa o günün gruplarına yazılır.
 // Dönüş kaydın yeni alanları { state, note, undo }
