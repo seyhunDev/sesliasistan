@@ -29,8 +29,18 @@ export function reloadOnce(now = Date.now()) {
   } catch {
     return false;
   }
-  location.reload();
+  dropPages().then(() => location.reload());
   return true;
+}
+
+// Service worker'ın kayıtlı sayfa kopyalarını siler (en çok 1,5 sn beklenir). Service worker kayıtlı kopyayı hemen açtığı için
+// (public/sw.js) yeni sürüme geçerken ya da yükleme hatasında yenileme eski sayfayı getirmesin diye önce bu çağrılır.
+export function dropPages() {
+  let drop = Promise.resolve();
+  try {
+    if (typeof caches !== "undefined") drop = caches.keys().then((ks) => Promise.all(ks.filter((k) => k.endsWith("-pages")).map((k) => caches.delete(k))));
+  } catch {}
+  return Promise.race([drop, new Promise((r) => setTimeout(r, 1500))]).catch(() => {});
 }
 
 export function logCrash(e, where = "") {

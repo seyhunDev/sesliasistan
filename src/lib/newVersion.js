@@ -4,6 +4,7 @@
 // Uygun anda (arkaya gidiş, sayfa geçişi) kendiliğinden de yenilenir: canAutoUpdate.
 import { BUILD } from "@/lib/buildInfo";
 import { trailFullLoad } from "@/lib/navTrail";
+import { dropPages } from "@/lib/crash";
 
 let latest = null; // { sha, at, msg } yayındaki sürüm farklıysa
 const subs = new Set();
@@ -99,7 +100,7 @@ function onHide() {
   clearTimeout(hideTimer);
   if (!latest) return;
   hideTimer = setTimeout(() => {
-    if (document.visibilityState === "hidden" && latest && canAutoUpdate(pageState())) (markTried(), location.reload());
+    if (document.visibilityState === "hidden" && latest && canAutoUpdate(pageState())) (markTried(), dropPages().then(() => location.reload()));
   }, 400);
 }
 
@@ -119,7 +120,7 @@ function onClick(e) {
   e.stopPropagation(); // Next'in kendi geçişi başlamasın
   markTried();
   trailFullLoad(url.href);
-  location.assign(url.href);
+  dropPages().then(() => location.assign(url.href));
 }
 
 export function watchVersion() {
@@ -151,6 +152,7 @@ export async function applyUpdate() {
     const reg = await navigator.serviceWorker?.getRegistration?.();
     if (reg) await Promise.race([reg.update(), new Promise((r) => setTimeout(r, 3000))]);
   } catch {}
+  await dropPages();
   location.reload();
 }
 
