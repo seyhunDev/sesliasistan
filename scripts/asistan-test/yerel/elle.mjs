@@ -3234,7 +3234,7 @@ group("Ortak düğmeler")([
     const c3 = H.hourCols(rows, null, [{ hh: "12", wind: 5, rain: { mm: 6, h: 3 } }], { date: "2026-11-03", today: "2026-11-03", nowH: 12 });
     return c.length === 13 && c[8].obs === true && c[8].wind === 7 && c[8].t === 14 && c[8].dir === 130 && c[8].gust === 12 && c[8].mm === 1 && c[7].mm === 0.6 && c[6].mm === 0.4 && c[7].obs === true && c[7].wind === 6 && c[9].obs === false && c[11].obs === false && fut.every((x) => !x.obs)
       && c3[9].mm === 2 && c3[10].mm === 2 && c3[11].mm === 2 && c3[8].mm === 1 && c3[12].mm === 1 && mk === 10.5 && H.markAt(c, "") === null && H.nextDay("2026-11-30") === "2026-12-01" && H.mmText(0) === "" && H.mmText(2.34) === "2,3" && H.mmText(12.4) === "12"
-      && /<DayNav sel=\{sel\} days=\{navDays\}/.test(wt) && /<HourTable key=\{sel\}[^>]*tone="light"/.test(wt) && !/CockpitWind/.test(wt)
+      && /<DayNav sel=\{sel\} days=\{navDays\}/.test(wt) && /<HourTable key=\{sel\}[^>]*\/>/.test(wt) && !/CockpitWind/.test(wt)
       && /<HourTable key=\{day\}[^>]*far/.test(rw) && /<HourTable[^>]*nowMs=\{now\}/.test(src("features/liveScreen/LiveScreen.jsx")) && !/lv-wchart/.test(src("features/liveScreen/LiveScreen.jsx")) && !/CockpitWind/.test(rw)
       && /useWindObs\(obs \? null : place \|\| getPlace\(\), date, today, far\)/.test(ht) && /--ht-obs/.test(ht) && /data-mark/.test(ht);
   })],
