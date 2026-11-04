@@ -20,3 +20,6 @@ Düzeltme turu birleştirmeye hazır; telefonda denenmedi.
 
 ## Sıradaki işler
 Seyhun telefonda bakınca boşluk/kenar ince ayarı gerekirse yapılır.
+
+## Hava paneli boşluk turu (2026-11-04)
+Ana sayfa hava kartında grafik/tablo paneli dört yandan p-3 iç boşluklu, koyu lacivert yarı saydam zemin + ince yumuşak halka; tablonun kendi iç çerçevesi bu kartta kapalı (ortak HourTable'a dokunulmadı). Yağmur çizgileri daha silik.

@@ -103,11 +103,11 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) 
                   </button>
                 ))}
               </div>
-              <div className="mt-2 overflow-hidden rounded-2xl bg-black/20">
+              <div className="mt-2.5 overflow-hidden rounded-2xl bg-[#0b1a33]/40 p-3 ring-1 ring-inset ring-white/10">
                 {view === "tablo" ? (
-                  <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} className="!rounded-none !border-0 !bg-transparent" />
+                  <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} className="[&_[data-hour-table]]:!rounded-none [&_[data-hour-table]]:!border-0 [&_[data-hour-table]]:!bg-transparent" />
                 ) : (
-                  <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className="block w-full px-1 pb-1 pt-2 text-left">
+                  <button type="button" onClick={goWeather} aria-label="Rüzgâr, ayrıntı" className="block w-full text-left">
                     <CockpitWind key={date} rows={rows} date={date} />
                   </button>
                 )}
