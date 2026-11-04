@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { MEDIA_MENU, RACE_SECS } from "@/lib/raceMenu";
@@ -165,7 +164,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
   const toast = useToast();
   const confirmIt = useConfirm();
-  const router = useRouter();
   const [r, setR] = useState(start);
   const [noticeInfo, setNoticeInfo] = useState(false);
   // Yeni yarış önce tek soruyla başlar: talimat var mı? (talimatla ya da elle ad, tarih, yer) → sonra sayfa
@@ -933,9 +931,9 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   );
   const light = "relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-0.5";
   const secName = tabs.find((x) => x[0] === (tab === "budget" ? "trip" : tab))?.[1] || "";
-  // Yarış günlerinde sayfanın kendisi multimedyaya geçer (Saha · Start · Sonuç; Seyhun 2026-10-30): ⋯'den açılan bölüm kapanınca oraya dönülür
-  const toMedia = () => rid && router.replace(`/athletes/races/${rid}/media`);
-  const closeSec = () => (setTab("sum"), raceDay && toMedia());
+  // Yarış günü ⋯'den açılan bölüm kapanınca yarış sayfasında kalınır; eski multimedya ekranına (/media) dönülmez,
+  // yarış günü işleri Yayın'da (Seyhun 2026-11-04 "bunu kaldırabiliriz artık çünkü başka sistem kullanıyoruz")
+  const closeSec = () => setTab("sum");
   const secWrap = (body) =>
     raceDay ? (
       <Sheet open={tab !== "sum"} onClose={closeSec} title={secName}>
@@ -1039,7 +1037,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         {/* Canlı ekran (ana hesap) yarıştan önce de görünür: dönüş girişi ve kayıt listesi önceden hazırlanır (Seyhun 2026-11-01) */}
         {rid && ((r.startDate && today >= r.startDate) || isOwner) && (
           <ul className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
-            {MEDIA_MENU.map(([k, l]) => ((k === "canli" ? !isOwner : !(r.startDate && today >= r.startDate)) ? null : (
+            {/* Denemeleri sıfırla kalktı: Yayın › ⋯ › Yayını sıfırla aynı işi yapar (2026-11-04) */}
+            {MEDIA_MENU.filter(([k]) => k !== "reset").map(([k, l]) => ((k === "canli" ? !isOwner : !(r.startDate && today >= r.startDate)) ? null : (
               <li key={k}>
                 <Link href={k === "canli" ? `/athletes/races/${rid}/yayin` : `/athletes/races/${rid}/media?do=${k}`} replace data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
                   <b className="min-w-0 flex-1 text-[1rem] font-medium">{l}</b>
@@ -1167,7 +1166,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         />
       </Sheet>
 
-      <Sheet open={edit} onClose={() => (setEdit(false), raceDay && toMedia())} title="Yarış bilgisi">
+      <Sheet open={edit} onClose={() => setEdit(false)} title="Yarış bilgisi">
         <Seg value={r.abroad ? "out" : "in"} onChange={(v) => setAbroad(v === "out")} options={[["in", "Yurt içi"], ["out", "Yurt dışı"]]} />
         <Group className="mt-3">
           <Row label="Yarış adı">

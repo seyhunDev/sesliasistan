@@ -339,23 +339,28 @@ export async function run(server, log = () => {}) {
       const inTab = await page.locator("main button:visible", { hasText: /^Denemeleri sıfırla$/ }).count();
       await page.getByRole("button", { name: "Yarış ayarları" }).click();
       const keys = await page.locator("[role=dialog] [data-menu]").evaluateAll((l) => l.map((x) => x.dataset.menu).join());
+      // Denemeleri sıfırla yalnız bu (eski) ekranın ⋯'sinde; yarış sayfasının ⋯'sinden kalktı (Yayın › Yayını sıfırla, 2026-11-04)
+      await page.locator("[data-menu=reset]").click();
+      const reset = await page.getByRole("dialog", { name: "Denemeleri sıfırla" }).waitFor({ timeout: 60000 }).then(() => true, () => false);
+      await page.keyboard.press("Escape").catch(() => {});
+      await page.waitForTimeout(500);
+      await page.getByRole("button", { name: "Yarış ayarları" }).click();
       await page.locator("[data-menu=people]").click();
       const went = await page.waitForURL((u) => u.pathname === "/athletes/races/r1", { timeout: 60000 }).then(() => true, () => false);
       const people = await page.getByRole("dialog", { name: "Sporcu" }).first().waitFor({ timeout: 20000 }).then(() => true, () => false);
       await page.keyboard.press("Escape").catch(() => {});
-      await page.waitForTimeout(500);
-      await page.getByRole("button", { name: "Yarış ayarları" }).click();
-      await page.locator("[data-menu=reset]").click();
-      const reset = await page.getByRole("dialog", { name: "Denemeleri sıfırla" }).waitFor({ timeout: 60000 }).then(() => true, () => false);
-      await page.keyboard.press("Escape").catch(() => {});
       const ok = inTab === 0 && keys === "prep,people,docs,trip,budget,canli,shot,day,reset,edit,del" && went && people && reset;
       return [ok, `Süre'de sıfırla ${inTab} · menü ${keys} · Sporcu ${went ? "yarış sayfasında" : "gitmedi"}${people ? " açıldı" : " açılmadı"} · sıfırla ${reset ? "açıldı" : "açılmadı"}`];
     });
-    // ⋯'den açılan bölüm kapanınca multimedyaya dönülür (yarış günü yarış sayfası yalnız bölümler için)
-    await okPage("Yarış sayfası", "bölüm kapanınca multimedya", "/athletes/races/r1?sec=docs", "Evrak", async () => {
+    // ⋯'den açılan bölüm kapanınca yarış sayfasında kalınır; eski multimedya ekranına geçilmez (Seyhun 2026-11-04)
+    await okPage("Yarış sayfası", "bölüm kapanınca yarış sayfası", "/athletes/races/r1?sec=docs", "Evrak", async () => {
       await page.keyboard.press("Escape").catch(() => {});
-      const back = await page.waitForURL((u) => u.pathname === "/athletes/races/r1/media", { timeout: 60000 }).then(() => true, () => false);
-      return [back, back ? "multimedyaya döndü" : "dönmedi"];
+      await page.waitForTimeout(3000);
+      const p = new URL(page.url()).pathname;
+      const menu = await page.getByRole("button", { name: "Yarış ayarları" }).click().then(() => page.locator("[role=dialog] [data-menu]").evaluateAll((l) => l.map((x) => x.dataset.menu).join()), () => "");
+      await page.keyboard.press("Escape").catch(() => {});
+      const ok = p === "/athletes/races/r1" && !menu.includes("reset");
+      return [ok, `${p === "/athletes/races/r1" ? "yarış sayfasında kaldı" : `geçti: ${p}`} · menü ${menu}`];
     });
     // Sonuç (Seyhun 2026-10-30): üstte Özeti paylaş (Gün özeti penceresi), altında bizimkiler; ⋯ içinde Gün özeti yok
     await okPage("Yarış sayfası", "Sonuç", "/athletes/races/r1/media?tab=res", "Özeti paylaş", async () => {
