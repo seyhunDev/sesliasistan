@@ -378,6 +378,8 @@ export const cleanCourseShow = (c) => ({
   ev: cleanEv(c?.ev, cleanSceneVid(c?.vid)),
   // Elle sabitlenen öğe (Yayın › Ekran › Sabitle); "Otomatiğe dön" boşaltır
   pin: SHOW_ITEMS.includes(c?.pin) ? c.pin : "",
+  // Elle seçilen evre (Seyhun 2026-11-04 "manuelde tıklayarak evrelere geçebilmeliyim"); boş = kendiliğinden
+  evre: EVRES.includes(c?.evre) ? c.evre : "",
 });
 export function cleanSceneVid(v) {
   const out = {};
@@ -431,15 +433,15 @@ export function sceneScreen(screen, show, sc) {
 }
 // ---- Yayın evreleri ve gösterilecekler (Seyhun 2026-11-04 "otomatik geçiş neye geçiyor belli değil; atamaları biz yapalım") ----
 // Evre yarışın durumundan kendiliğinden belli olur (canlı ekran ve Yayın aynı evreOf); her evrenin görüntüsü ve öğe sırası Yayın › Ekran'da seçilir.
-export const EVRES = ["pre", "start", "race", "post", "ap"];
-export const EVRE_NAME = { pre: "Yarış öncesi", start: "Start", race: "Yarışta", post: "Yarış sonrası", ap: "Tehir" };
-export const EVRE_WHEN = { pre: "Start geri sayımı başlayana kadar", start: "Start geri sayımında ve genel geride", race: "Start'tan finişe kadar", post: "Finiş ya da abandone sonrası, gün bitince de", ap: "Tehir bayrağı çekiliyken" };
+export const EVRES = ["pre", "prestart", "start", "race", "post", "ap"];
+export const EVRE_NAME = { pre: "Yarış öncesi", prestart: "Start öncesi", start: "Start dizisi", race: "Yarışta", post: "Yarış sonrası", ap: "Tehir" };
+export const EVRE_WHEN = { pre: "Start'a 10 dakikadan çok varken", prestart: "Turuncu bayrak çekilince ya da start'a 10 dakikadan az kalınca", start: "Start geri sayımında (5·4·1·0) ve genel geride", race: "Start'tan finişe kadar", post: "Finiş ya da abandone sonrası, gün bitince de", ap: "Tehir bayrağı çekiliyken" };
 export const SHOW_ITEMS = ["video", "time", "prog", "wind", "course", "rank", "next"];
 export const ITEM_NAME = { video: "Görüntü", time: "Süre", prog: "Program", wind: "Rüzgâr", course: "Parkur", rank: "Genel sıralama", next: "Sıradaki yarış" };
 export const ITEM_SECS = [8, 10, 15, 20, 30];
-export const EVRE_DEF = { pre: ["video", "time", "prog", "wind", "rank"], start: ["video"], race: ["video"], post: ["rank", "next"], ap: ["time", "prog", "wind", "rank"] };
+export const EVRE_DEF = { pre: ["video", "time", "prog", "wind", "rank"], prestart: ["video", "time", "wind", "course"], start: ["video"], race: ["video"], post: ["rank", "next"], ap: ["time", "prog", "wind", "rank"] };
 // eski sahnenin videosu hangi evreye (01 yarış öncesi videosuz, 02 videolu ve yarışta, 03 sıralama = yarış sonrası)
-const EV_MIG = { pre: "01", start: "02", race: "02", post: "03", ap: "01" };
+const EV_MIG = { pre: "01", prestart: "01", start: "02", race: "02", post: "03", ap: "01" };
 export function cleanEvVid(v) {
   if (!v || typeof v !== "object") return null;
   const s = cleanScreen(v);
@@ -455,12 +457,14 @@ export function cleanEv(ev, old = {}) {
   return Object.fromEntries(EVRES.map((k) => [k, cleanEvOne(ev?.[k], k, old)]));
 }
 // Canlı ekranın kipinden evre: seq (dizide tehir "ap" ayrı), summary/between yarış sonrası; wait/none yarış öncesi
-export function evreOf(mode, seqMode = "") {
+// soon: start'a 10 dk'dan az ya da turuncu bayrak çekili (Start öncesi). man: Yayın'dan elle seçilen evre (courseShow.evre) her şeyin üstünde
+export function evreOf(mode, seqMode = "", soon = false, man = "") {
+  if (EVRES.includes(man)) return man;
   if (mode === "ap" || (mode === "seq" && seqMode === "ap")) return "ap";
   if (mode === "seq") return "start";
   if (mode === "race") return "race";
   if (mode === "between" || mode === "summary") return "post";
-  return "pre";
+  return soon ? "prestart" : "pre";
 }
 // O an gösterilen öğe: elle sabitlenen (ya da sesle açılan parkur/rüzgâr/program) varsa o; yoksa evrenin sırası, verisi olmayan atlanır.
 // has: verisi olan öğeler; dwell: öğenin en az süresi (sn; uzun sıralama sayfa sayısı kadar). Dönen: item, left (sn), next, list

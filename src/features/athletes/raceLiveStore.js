@@ -326,11 +326,13 @@ export function saveRounds(orgId, id, sid, entry, base = null) {
 export const saveScreen = (orgId, id, s) => setDoc(live(orgId, id), { screen: cleanScreen({ ...s, at: new Date().toISOString() }) }, { merge: true });
 // Evre atamaları (ev) ve sabitlenen öğe (pin) burada yazılmaz: eski kopyayla başka ekranın seçimi ezilmesin (saveEvre, savePin alan alan yazar)
 export const saveCourseShow = (orgId, id, c) => {
-  const { ev: _e, pin: _p, ...rest } = cleanCourseShow(c);
+  const { ev: _e, pin: _p, evre: _v, ...rest } = cleanCourseShow(c);
   return setDoc(live(orgId, id), { courseShow: rest }, { merge: true });
 };
 // Tek evrenin görüntüsü + gösterilecekler + süre (Yayın › Ekran); yalnız courseShow.ev.<evre> değişir
 export const saveEvre = (orgId, id, k, e) => setDoc(live(orgId, id), { courseShow: { ev: { [k]: cleanEvOne(e, k) } } }, { mergeFields: [new FieldPath("courseShow", "ev", k)] });
+// Elle seçilen evre; boş = kendiliğinden (yarışın durumuna göre)
+export const saveEvreMan = (orgId, id, k) => setDoc(live(orgId, id), { courseShow: { evre: k || "" } }, { merge: true });
 // Elle sabitlenen öğe; boş = otomatik (sesle açılan "one" da kalkar)
 export const savePin = (orgId, id, item) => setDoc(live(orgId, id), { courseShow: { pin: item || "", ...(item ? {} : { one: "" }), scene: "" } }, { merge: true });
 // Ekrandaki yarış (sid boş = en son başlayan) ve kameraların grupları (alan bütün yazılır: çözülen grup silinir)
