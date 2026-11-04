@@ -1,8 +1,8 @@
-Commit: 2eea92b · Yayın › Süre: gruplar renkle ayrılır (#1191)
-Zaman: 2026-11-04-1234 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41806563514
+Commit: f695991 · Açılışta beyaz ekran yok: sayfa kayıtlı kopyadan hemen açılır (#1207)
+Zaman: 2026-11-04-1500 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41823504378
 
-TAM TEST · 04.11.2026 12:20:10
+TAM TEST · 04.11.2026 14:46:31
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1433/1439 geçti · 6 kalan · 833 sn
+SONUÇ: 1432/1439 geçti · 7 kalan · 827 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4488 test”
+      ✗ “4498 test”
           beklenen: hepsi geçer
-          olan:     4461/4488 geçti
+          olan:     4471/4498 geçti
       ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
       ✗ “yayın sekmeleri, ekranda alt yazı, rüzgâr aralığı ve gün boyu grafik, üst şerit, yarışlar penceresi” → [false,true,true,true,true,true,true,true] (beklenen: Seyhun 2026-11-02: Yayın sayfası Süre · Video · Parkur · Dönüşler sekmeleri (Seg); Video'da 'Ekranda yazı' (screen.caption) → canlı ekranda alt yazı LowerThird, sesle 'ekrana yaz: …' / 'ekrandaki yazıyı kaldır'; rüzgâr aralığı okta salınır (lv-swing), değişince süzülür; gün boyu grafik her evrede: tahmin + istasyon ölçümü (/api/canli forecast.obs) + bizim ölçümler)
@@ -45,7 +45,7 @@ SONUÇ: 1433/1439 geçti · 6 kalan · 833 sn
       ✗ “canlı ekran yayın tasarımı: program, beklenen rüzgâr, yayın yazısı” → [true,true,true,false,true,true] (beklenen: Seyhun 2026-11-02 (tasarim7 onayı, 'profesyonel yelken yayını gibi yazı'): yarış öncesi video yokken ortada büyük geri sayım, ilk yarış + grup, beklenen rüzgâr (tahminin start saati), altta program kartları (1. yarış Mavi grup…); yarışta ve videolu beklemede sağ üstte program etiketleri (Bitti · Canlı · saat); gün sonu 'Gün bitti · N yarış' + yarış kartları + genel, şeritte yarının ilk startı ve beklenen rüzgârı (/api/canli forecastNext); Barlow / Barlow Condensed; arka foto 18px bulanık)
       ✗ “canlı ekran senaryo 2: start'a 1 saatten az, dönen tek panel” → [true,true,false,true] (beklenen: Seyhun 2026-11-03 (senaryo/2b onayı, 'hepsini aynı anda göstermemize gerek yok'): yarış günü start'a 1 saatten az, turuncu bayrak ya da start dizisi → videosuz StartHero (.lv-hold2), videolu NearBand (.lv-band2): sayaç + sıradaki yarış + bayraklar sabit, sağda tek panel 8 sn'de bir kayar (Start hattı → Rüzgâr → Parkur → Sıradaki, noktalar), son dakikada panel yok, altta 5·4·1·0 çubuğu; sıralama, çipler, alt şerit yok; tehir ve yarın hariç)
       ✗ “canlı ekran ortak rüzgâr bloğu ve parkur sahnesi” → [true,false,true,false,true] (beklenen: Seyhun 2026-11-03 ('rüzgâr gösteriminde çok eksiltmişsin; sağanak, gerçekleşen; ok ortalanmamış; birbirleriyle uyumlu'; 'parkurda sadece sayılar yazıyor, parkur animasyonumuzu kullanalım; veri yoksa rüzgâr 0 kabul'): WindNow (ortalı ok, kn, sağanak, yön, kaynak) + WindHours (ortak HourTable) her adımda; parkur her yerde sahne, ölçüm yokken varsayılan kart eksen 0°; senaryo 2 yalnız sayaç/turuncu/<1 saat)
-      ✗ “tehir: rüzgâr değişken sebebi, çekildikten sonra düzelt” → [true,false,true,true] (beklenen: Seyhun 2026-11-03: 'tehir sebebi olarak rüzgâr çok değişiyor da olsun; hatalı bir şey olursa sonra değişim yapılabilmeli' → AP_WHY'de 'Rüzgâr değişken'; tehir çekiliyken Düzelt aynı pencereyi açar (iniş seçilmezse aynı kalır), Kaydet plan.ap'ı günceller; tehirde/yarıştan önce hazırlık bayrağı gösterilmez, sıradaki start sınıf işaretiyle 'bekliyor')
+      ✗ “tehir: rüzgâr değişken sebebi, çekildikten sonra düzelt” → [true,false,false,true] (beklenen: Seyhun 2026-11-03: 'tehir sebebi olarak rüzgâr çok değişiyor da olsun; hatalı bir şey olursa sonra değişim yapılabilmeli' → AP_WHY'de 'Rüzgâr değişken'; tehir çekiliyken Düzelt aynı pencereyi açar (iniş seçilmezse aynı kalır), Kaydet plan.ap'ı günceller; tehirde/yarıştan önce hazırlık bayrağı gösterilmez, sıradaki start sınıf işaretiyle 'bekliyor')
       ✗ “tehir (süre + sebep) ve bekleme ekranında rüzgâr tahmini” → [true,false,true,true,true,true] (beklenen: Seyhun 2026-11-01: Yayın'da Tehir → süre (30 dk…2 sa, belirsiz) + sebep; plan.ap { from, why }, at yeni saat; apText ekranda; /api/canli forecast (Open-Meteo, yarış yeri) → WindDay grafiği, parkur ölçüm varsa, 'ekranda neler' şeridi; zeminde parkur çizgisi yok)
       ✗ “yayın sayfası sade: ⋯ menüsü, sonuç PDF'i ayrı sayfa; /canli canlı etiketi” → [true,true,true,false,false,true] (beklenen: Seyhun 2026-11-01: Yayın'da az düğme (Başlat; Start ekle + Tehir; Sesle gir), Linki kopyala / Ekranı aç / Sonuç PDF'i / Kayıt listesi / Bugün yarış yok / Günü bitir (bir daha sorar) ⋯ menüsünde; sonuçlar /athletes/races/<id>/sonuclar; /canli listesinde süren yarış Canlı, 20 sn yenilenir; çökme ekranı /canli'de 'Canlı yarışlara dön')
       ✗ “grubun kendi numarası” → ["S1,M1,K1,S2,M2,S3,K2,K2",3,3,false,true,true] (beklenen: Seyhun 2026-11-04 üç grup: Sarı 3. yarışa geçince Kırmızı'nın 2. yarışı 2 kalır; abandone tekrarı aynı numara; Yayın satırı grup · yarış, başlamış yarışta değiştirme yok, kısa yollar; Dönüşler seçili gruba; canlıda diğer gruplar)
@@ -170,7 +170,7 @@ SONUÇ: 1433/1439 geçti · 6 kalan · 833 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 139/140
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 138/140
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✗ Ana sayfa: 8/9
       ✗ “saat saat hava tablosu”
@@ -199,7 +199,10 @@ SONUÇ: 1433/1439 geçti · 6 kalan · 833 sn
   ✓ Tam ekran üstte: 1/1
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
-  ✓ Hava: 3/3
+  ✗ Hava: 2/3
+      ✗ “ölçülen / beklenen yağmur”
+          beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
+          olan:     ölçülen sütun 15 · açıklama "Gerçekleşen (Dikili istasyonu)Tahmin" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
