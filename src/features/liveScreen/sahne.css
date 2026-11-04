@@ -255,3 +255,26 @@
 @media (prefers-reduced-motion: reduce) { .sc-board tr.fl td { animation: none; } }
 .sc-ap .sc-sgf { flex: none; }
 .sc-ap .sc-sgf i { width: 2.2em; }
+
+/* Parkur (05) yeni düzen (Seyhun 2026-11-04, test raporu): çizim sağda, bilgiler solda başlığın altında kutusuz; sağ üst yalnız Canlı + saat + Tehir */
+.sc-crs { left: 34%; right: 2%; top: 17%; bottom: 10%; }
+.sc-ci { left: calc(2em + env(safe-area-inset-left)); right: auto; top: calc(9.6em + env(safe-area-inset-top)); width: 21em; max-width: 32%; background: none; border-radius: 0; box-shadow: inset 0.15em 0 0 var(--sc-acc); -webkit-backdrop-filter: none; backdrop-filter: none; text-shadow: 0 0.1em 0.5em rgba(0, 0, 0, 0.45); }
+.sc-ci section { padding: 0.9em 1.2em; }
+.sc-ci b { font-size: 1.5em; }
+/* Tehir rozeti varken sağ sütundaki liste rozetin altından başlar */
+.sc:has(.sc-ap) .sc-rd { top: calc(10.4em + env(safe-area-inset-top)); }
+/* uzun yarış adı kesilmez, iki satıra iner */
+.sc-nt b { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.05; }
+@media (max-aspect-ratio: 1/1) {
+  .sc-crs { left: 2%; right: 2%; top: 17%; bottom: 34%; }
+  .sc-ci { top: auto; bottom: calc(5.5em + env(safe-area-inset-bottom)); left: 1em; right: 1em; width: auto; max-width: none; }
+  .sc-ci section { padding: 0.6em 1em; }
+  .sc-ci b { font-size: 1.3em; }
+  .sc:has(.sc-ap) :is(.sc-c2, .sc-cbn, .sc-board.wide) { top: calc(9.2em + env(safe-area-inset-top)); }
+  .sc:has(.sc-ap) .sc-board.wide { max-height: calc(100% - 16.6em); }
+  .sc:has(.sc-ap) .sc-crs { top: 24%; }
+  .sc:has(.sc-ap) .sc-rd { top: auto; }
+  .sc-rd { left: 1em; width: auto; }
+  .sc-rd ol { display: grid; grid-template-columns: 1fr 1fr; column-gap: 0; }
+  .sc-c1 { top: 36%; }
+}
