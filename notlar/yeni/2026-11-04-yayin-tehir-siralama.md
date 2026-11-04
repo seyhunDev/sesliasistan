@@ -1,0 +1,6 @@
+## Nerede kaldım
+- Tehir (Seyhun 2026-11-04 "ortada kocaman göstermeyelim, saatin altında; karada çekildiyse bütün gruplar için; ortada parkur, sıralama, rüzgâr devam"): canlı ekranda tehir artık sağ üstte Canlı + saatin altında küçük rozet (LiveScreen.jsx `ScAp`, sahne.css `.sc-ap`): AP bayrağı, "Tehir" (iniş sayılıyorsa süre), sebep · Karada · Tüm gruplar (dizide çekildiyse o start). scTime karada tehirde ilk grubu yazmaz (`who: null`). Ortadaki 01 kartı kilitlenmez: Program · Rüzgâr döner (Süre yalnız tehir inişi sayılırken); 02'de (videolu) sol üst kart yalnız rüzgâr.
+- Ayrıntılı genel sıralama (Seyhun "yarış öncesi, tehirde, yarış sonrası sıralama daha detaylı; uzun liste"): 03 sahnesi bütün tekneleri 12'şer satırlık sayfalarda 8 sn'de bir gösterir (sıra, yelken, ad, kulüp, Y1..Y8, net; altta sayfa çizgileri), sınıf sınıf. scBoards `all` tam liste. sceneOf `dwell` ile 03 sayfa sayısı kadar ekranda kalır (lib/raceRounds `sceneCycle`). 01'deki Sıralama sekmesi kalktı; yarış öncesi (start'a 10 dk'dan çok) ve tehirde videolu/videosuz 03 araya girer (30 sn 01/02, sonra 03), gün sonu ve yarış arası 03 ↔ 06. Tehir rozeti varken tablo sola yaslanır.
+
+## Sıradaki işler
+- Telefonda/TV'de denenmedi. Yayın sayfasındaki sahne tahmini 03'ün uzun süresini bilmez (yaklaşık).

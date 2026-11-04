@@ -380,7 +380,17 @@ function LoadSkel({ name = "" }) {
         <Link href="/canli" className="lv-back lv-backc" aria-label="Yarışlar">
           ‹
         </Link>
-        {name ? <span className="lv-rname">{name}</span> : null}
+      </div>
+      {/* yayın ekranının sağ altındaki yer (sc-name): yarışın adı + Velora; veri gelince aynı yerde kalır (Seyhun 2026-11-04 yeni tasarım) */}
+      <div className="lv-lname">
+        <div className="t">
+          {name ? <b>{name}</b> : null}
+          <small>Yükleniyor</small>
+        </div>
+        <span className="v">
+          <VeloraGlyph size={40} />
+          <small>Velora</small>
+        </span>
       </div>
     </div>
   );
@@ -1086,7 +1096,7 @@ function WindNow({ w, by = "", cls = "" }) {
           <em>kn</em>
           {w.gust != null && w.gust > w.kn ? <i>{`sağanak ${w.gust}`}</i> : null}
         </b>
-        <span>{[w.dir != null ? `${dirShort(w.dir)} ${degText(w)}` : "", by].filter(Boolean).join(" · ")}</span>
+        <span>{[dirText(w), by].filter(Boolean).join(" · ")}</span>
       </div>
     </div>
   );
@@ -2637,8 +2647,17 @@ function curWind(data, sel, isCur, now) {
   const so = (fc?.obs || []).filter((o) => o.wind != null).at(-1);
   const fresh = mine?.kn != null && mine.at && now - Date.parse(mine.at) < 3600e3;
   if (fresh) return { kn: mine.kn, dir: mine.dir, gust: mine.gust ?? null, range: mine.range || null, hh: tr.toISOString().slice(11, 13), man: true, by: `Parkur verisi ${trOf(mine.at).slice(11, 16)}` };
+  // İstasyon "sakin" (SYNOP 00000: 0 kn, yön yok) bildirince ekranda oksuz "0 kn" kalıyordu (Seyhun 2026-11-04 "rüzgâr sıfır, yön, ok yok"):
+  // o zaman bu saatin tahmini yazılır (ok, yön, kaynak "Tahmin"); tahmin de yoksa "Sakin"
+  if (so && !so.wind && so.dir == null) {
+    const hh = tr.toISOString().slice(11, 13);
+    const f = (fc?.rows || []).find((r) => r.hh === hh && r.wind != null);
+    if (f && f.wind > 0) return { kn: f.wind, dir: f.dir ?? null, gust: f.gust ?? null, range: null, hh, man: false, by: `Tahmin ${hh}:00` };
+  }
   return so ? { kn: so.wind, dir: so.dir, gust: so.gust ?? null, range: null, hh: so.hh, man: false, by: `${fc.station || "İstasyon"} ${so.hh}:00` } : null;
 }
+// yön yazısı: ok yoksa sakin (0 kn) ya da değişken
+const dirText = (w) => (w?.dir != null ? `${dirShort(w.dir)} ${degText(w)}` : w?.kn === 0 ? "Sakin" : w?.kn != null ? "Değişken" : "");
 const degText = (w) => (w?.range ? `${w.range[0]}–${w.range[1]}°` : w?.dir != null ? `${Math.round(w.dir)}°` : "");
 // Bekleme ekranında şimdiki rüzgâr (Seyhun 2026-11-02 "rüzgâr yönü daha doğru ve profesyonel; manuel girildiyse gösterilsin"):
 // akış yönünü gösteren ok, derece ve pusula, knot; altında kaynak (Parkur verisi 14:05 turuncu ya da istasyon)
@@ -2659,10 +2678,10 @@ function WindStrip({ data, now }) {
         </b>
       ) : null}
       <div className="g">
-        {w.dir != null ? (
+        {dirText(w) ? (
           <div>
             <small>Yön</small>
-            <b>{`${dirShort(w.dir)} ${degText(w)}`}</b>
+            <b>{dirText(w)}</b>
           </div>
         ) : null}
         {c && ew?.kn != null ? (
@@ -3152,7 +3171,7 @@ function scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast 
   if (mode === "ap") {
     const apDown = plan.status !== "ap";
     const counting = !apDown && cs.label === "Tehir inişine";
-    return { k: apDown ? "Tehir indi" : "Tehir", tone: "r", flag: "AP", tm: apDown ? "Start yakında" : counting ? cs.value : plan.ap?.why || "Belirsiz", tx: !counting, who: first ? gWho(first) : null, sub: apDown ? "Uyarı işareti bekleniyor" : [counting ? plan.ap?.why : "", plan.ap?.land ? "Karada" : ""].filter(Boolean).join(" · ") };
+    return { k: apDown ? "Tehir indi" : "Tehir", tone: "r", flag: "AP", tm: apDown ? "Start yakında" : counting ? cs.value : plan.ap?.why || "Belirsiz", tx: !counting, who: null, sub: apDown ? "Uyarı işareti bekleniyor" : [counting ? plan.ap?.why : "", plan.ap?.land ? "Karada" : ""].filter(Boolean).join(" · ") };
   }
   if (mode === "race") return { k: cs.label || "Geçen süre", tm: cs.value, who: gWho({ name: sel ? raceName(sel) : "", grp: entry?.grp || sel?.grp || "", cls: entry?.cls || sel?.cls || "" }) };
   if (mode === "none") {
@@ -3188,7 +3207,8 @@ function scBoards(data) {
   if (official.length)
     return official.map((f) => {
       const n = Math.max(0, ...f.rows.map((r) => (Array.isArray(r.r) ? r.r.length : 0)));
-      return { cls: f.cls || "", tag: "Sonuç", races: Array.from({ length: Math.min(n, 8) }, (_, i) => i + 1), rows: f.rows.slice(0, SC_RANK).map((r, i) => ({ p: r.rank || r.place || r.code || i + 1, sail: r.sail, name: r.name, club: r.club, sc: (Array.isArray(r.r) ? r.r : []).slice(0, 8).map((v) => String(v ?? "")), t: r.pts })), total: f.rows.length };
+      const all = f.rows.map((r, i) => ({ p: r.rank || r.place || r.code || i + 1, sail: r.sail, name: r.name, club: r.club, sc: (Array.isArray(r.r) ? r.r : []).slice(0, 8).map((v) => String(v ?? "")), t: r.pts }));
+      return { cls: f.cls || "", tag: "Sonuç", races: Array.from({ length: Math.min(n, 8) }, (_, i) => i + 1), all, rows: all.slice(0, SC_RANK), total: f.rows.length };
     });
   const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
   let prov = [];
@@ -3199,14 +3219,33 @@ function scBoards(data) {
   }
   return prov.map((f) => {
     const races = f.races.slice(-8);
-    return { cls: f.cls || "", tag: `Geçici · ${f.races.length} yarış`, races, rows: f.rows.slice(0, SC_RANK).map((r, i) => ({ p: r.rank || i + 1, sail: r.sail, name: r.name, club: r.club, sc: races.map((n) => (r.sc[n] ? r.sc[n].code || String(r.sc[n].pts) : "")), t: r.total })), total: f.rows.length };
-  });
+    return { cls: f.cls || "", tag: `Geçici · ${f.races.length} yarış`, races, all: f.rows.map((r, i) => ({ p: r.rank || i + 1, sail: r.sail, name: r.name, club: r.club, sc: races.map((n) => (r.sc[n] ? r.sc[n].code || String(r.sc[n].pts) : "")), t: r.total })), total: f.rows.length };
+  }).map((b) => ({ ...b, rows: b.all.slice(0, SC_RANK) }));
 }
 function ScTop({ rep, now }) {
   return (
     <div className="sc-tr">
       {rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}
       <span className="sc-clk">{scHm(now)}</span>
+    </div>
+  );
+}
+// Tehir rozeti: sağ üstte Canlı + saatin altında; karada (dizi dışı) tehir bütün gruplar için, dizide çekildiyse o start
+function ScAp({ t, plan, seq }) {
+  const down = plan.status !== "ap";
+  const counting = !down && !t.tx && /\d/.test(String(t.tm || ""));
+  const why = plan.ap?.why || "";
+  const line = down ? ["Start yakında", "Uyarı işareti bekleniyor"] : [why || "Belirsiz", plan.ap?.land ? "Karada" : "", seq && t.who ? gWhat(t.who) || t.who.name : "Tüm gruplar"];
+  return (
+    <div className="sc-ap">
+      <Flag kind="AP" />
+      <div>
+        <b>
+          {down ? "Tehir indi" : "Tehir"}
+          {counting ? <em>{t.tm}</em> : null}
+        </b>
+        <span>{line.filter(Boolean).join(" · ")}</span>
+      </div>
     </div>
   );
 }
@@ -3262,7 +3301,7 @@ function ScWind({ data, now, prog, big = false }) {
               {c.kn}
               <em>kn</em>
             </b>
-            <span>{c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""}</span>
+            <span>{dirText(c)}</span>
           </div>
           {gu || ex ? <div className="sc-gu">{[gu, ex].filter(Boolean).join(" · ")}</div> : null}
         </>
@@ -3296,7 +3335,7 @@ function ScWindLine({ data, now }) {
     <div className="sc-wl">
       {gArrow(c.dir)}
       <b>{`${c.kn} kn`}</b>
-      <span>{c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""}</span>
+      <span>{dirText(c)}</span>
       {c.gust != null && c.gust > c.kn ? <em>{`sağanak ${c.gust}`}</em> : null}
     </div>
   );
@@ -3354,24 +3393,6 @@ function scBoats(data, who, today) {
   return (inGrp.length ? inGrp : all.filter((x) => !cls || !x.cls || x.cls === cls)).slice().sort((a, b) => Number(a.sail) - Number(b.sail));
 }
 // 01 Sıralama sekmesi: genel sıralamanın ilk 10'u, iki sütun (1–5, 6–10)
-function ScRank({ b }) {
-  if (!b) return null;
-  return (
-    <div className="sc-bt sc-rk">
-      <div className="sc-src">{["Genel sıralama", b.cls, b.tag].filter(Boolean).join(" · ")}</div>
-      <ol>
-        {b.rows.slice(0, 10).map((r, i) => (
-          <li key={`${r.sail}${i}`}>
-            <u>{r.p}</u>
-            <b>{String(r.sail || "").replace(/^\D+/, "")}</b>
-            <span>{shortName(r.name) || ""}</span>
-            <em>{r.t ?? ""}</em>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}
 // Sağ üstte grubun sporcuları (start dizisinde ve ilk dönüşe kadar), şamandıra dönüşünden sonra aynı yerde dönüş sırası
 // (Seyhun 2026-11-04 "starttan önce grubun sporcuları, sonra aynı sporcular şamandıra dönüşleriyle devam")
 const SC_FLEET = 10;
@@ -3419,16 +3440,17 @@ function ScFleet({ data, sel, mode, now, who, today, onFull }) {
   );
 }
 // 01: ortada tek kart; Süre · Program · Rüzgâr sırayla (start dizisi, tehir, abandone ve genel geride yalnız Süre)
-function Sc01({ t, data, prog, now, today, lock }) {
-  // Sporcular yerine genel sıralama (Seyhun 2026-11-04 "orası genel sıralama olsun"); grubun sporcuları start dizisinde sağdaki panelde
-  const boards = scBoards(data);
-  const have = ["time", prog.some((x) => x.state !== "done") ? "prog" : "", curWind(data, null, true, now) || windAhead(data, now).length >= 2 ? "wind" : "", boards.length ? "rank" : ""].filter(Boolean);
+function Sc01({ t, data, prog, now, today, lock, ap = false }) {
+  // Genel sıralama artık burada sekme değil, ayrıntılı 03 sahnesi araya girer (Seyhun 2026-11-04 "sıralamayı daha detaylı, uzun liste").
+  // Tehirde Süre sekmesi yalnız tehir inişi sayılırken; tehir saatin altındaki rozette (ScAp)
+  const have0 = [ap && t.tx ? "" : "time", prog.some((x) => x.state !== "done") ? "prog" : "", curWind(data, null, true, now) || windAhead(data, now).length >= 2 ? "wind" : ""].filter(Boolean);
+  const have = have0.length ? have0 : ["time"];
   const k = lock ? "time" : have[Math.floor(now / 1000 / SC_TAB) % have.length];
-  const NAME = { time: "Süre", prog: "Program", wind: "Rüzgâr", rank: "Sıralama" };
+  const NAME = { time: "Süre", prog: "Program", wind: "Rüzgâr" };
   return (
     <div className="sc-c1">
       <div className="sc-cb" key={k}>
-        {k === "time" ? <ScTime t={t} big /> : k === "prog" ? <ScProg prog={prog} /> : k === "rank" ? <ScRank b={boards[Math.floor(now / 1000 / (SC_TAB * have.length)) % boards.length]} /> : <ScWind data={data} now={now} prog={prog} big />}
+        {k === "time" ? <ScTime t={t} big /> : k === "prog" ? <ScProg prog={prog} /> : <ScWind data={data} now={now} prog={prog} big />}
         {k === "time" ? <ScSig data={data} today={today} /> : null}
       </div>
       {have.length > 1 && !lock ? (
@@ -3447,6 +3469,14 @@ function Sc01({ t, data, prog, now, today, lock }) {
 // 02: sol üstte tek kart; geri sayımda o an çekili bayrak, yarışta erken çıkanlar; şamandıra dönüşünden sonra sağ üstte ilk 3 (60 sn)
 function Sc02({ t, data, sel, mode, now, today }) {
   const ea = mode === "race" && sel && now - Date.parse(sel.at) < 15 * 60e3 ? earlyOf(data, sel.id) : [];
+  if (!t) {
+    return (
+      <div className="sc-c2">
+        <ScSig data={data} today={today} />
+        <ScWindLine data={data} now={now} />
+      </div>
+    );
+  }
   const n = /^(\d+)\./.exec(t.who?.name || "")?.[1];
   return (
     <>
@@ -3472,11 +3502,29 @@ function Sc02({ t, data, sel, mode, now, today }) {
     </>
   );
 }
-// 03: ortada genel sıralama (ilk 10); birden çok sınıf varsa sırayla. Yarış yeni bittiyse önce o yarışın sonucu
-function Sc03({ data, sel, mode, now, onFull }) {
-  const boards = scBoards(data);
+// 03: ortada ayrıntılı genel sıralama (Seyhun 2026-11-04 "sıralamayı daha detaylı; uzun bir liste olacak"): sınıf sınıf bütün tekneler,
+// 12'şer satırlık sayfalar 8 sn'de bir ilerler (altta sayfa çizgileri); sıra, yelken, sporcu, kulüp, yarış yarış puan, net. Yarış yeni bittiyse önce o yarışın sonucu.
+// Sahne girince ilk sayfadan başlar; sahnenin ekranda kalma süresi sayfa sayısı kadar (sc03Len → sceneOf dwell)
+const SC_PAGE = 12;
+const SC_PAGE_S = 8;
+function sc03Slides(data, sel, mode) {
   const rr = mode === "between" && sel?.fin ? raceRows(data, sel) : null;
-  if (rr?.rows.length && (!boards.length || Math.floor(now / 1000 / SC_ROT) % 4 === 0)) {
+  const out = rr?.rows.length ? [{ rr }] : [];
+  for (const b of scBoards(data)) {
+    const n = Math.max(1, Math.ceil(b.all.length / SC_PAGE));
+    for (let pg = 0; pg < n; pg++) out.push({ b, pg, n });
+  }
+  return out;
+}
+const sc03Len = (data, sel, mode) => Math.max(15, sc03Slides(data, sel, mode).length * SC_PAGE_S);
+function Sc03({ data, sel, mode, now, onFull }) {
+  const [t0] = useState(now);
+  const slides = sc03Slides(data, sel, mode);
+  if (!slides.length) return null;
+  const k = Math.floor(Math.max(0, now - t0) / 1000 / SC_PAGE_S);
+  const cur = slides[k % slides.length];
+  if (cur.rr) {
+    const rr = cur.rr;
     return (
       <button type="button" className="sc-board" onClick={() => onFull("race")}>
         <header>
@@ -3488,7 +3536,7 @@ function Sc03({ data, sel, mode, now, onFull }) {
         </header>
         <table>
           <tbody>
-            {rr.rows.slice(0, SC_RANK).map((r, i) => (
+            {rr.rows.slice(0, SC_PAGE).map((r, i) => (
               <tr key={`${r.sail}${i}`} className={`p${r.p}`}>
                 <td className="r">{r.p}</td>
                 <td className="sn">{r.sail}</td>
@@ -3501,10 +3549,11 @@ function Sc03({ data, sel, mode, now, onFull }) {
       </button>
     );
   }
-  if (!boards.length) return null;
-  const b = boards[Math.floor(now / 1000 / SC_ROT) % boards.length];
+  const { b, pg, n } = cur;
+  const rows = b.all.slice(pg * SC_PAGE, pg * SC_PAGE + SC_PAGE);
+  const from = pg * SC_PAGE + 1;
   return (
-    <button type="button" className="sc-board" onClick={() => onFull("all")}>
+    <button type="button" className="sc-board wide" onClick={() => onFull("all")}>
       <header>
         <b>Genel sıralama</b>
         <div>
@@ -3519,32 +3568,47 @@ function Sc03({ data, sel, mode, now, onFull }) {
             <th>Yelken</th>
             <th>Sporcu</th>
             <th className="cl">Kulüp</th>
-            {b.races.map((n) => (
-              <th key={n} className="y">{`Y${n}`}</th>
+            {b.races.map((x) => (
+              <th key={x} className="y">{`Y${x}`}</th>
             ))}
             <th className="t">Net</th>
           </tr>
         </thead>
-        <tbody>
-          {b.rows.map((r, i) => (
+        <tbody key={`${b.cls}${pg}`}>
+          {rows.map((r, i) => (
             <tr key={`${r.sail}${i}`} className={`p${r.p}`}>
               <td className="r">{r.p}</td>
               <td className="sn">{r.sail}</td>
-              <td className="n">{shortName(r.name) || r.name || ""}</td>
+              <td className="n">{r.name || ""}</td>
               <td className="cl">{shortClub(r.club) || ""}</td>
-              {b.races.map((n, j) => (
-                <td key={n} className={`y${/^\(.*\)$/.test(r.sc[j] || "") ? " x" : ""}`}>
+              {b.races.map((x, j) => (
+                <td key={x} className={`y${/^\(.*\)$/.test(r.sc[j] || "") ? " x" : ""}`}>
                   {String(r.sc[j] || "").replace(/^\((.*)\)$/, "$1")}
                 </td>
               ))}
               <td className="t">{r.t ?? ""}</td>
             </tr>
           ))}
+          {Array.from({ length: n > 1 ? SC_PAGE - rows.length : 0 }, (_, i) => (
+            <tr key={`e${i}`} className="e" aria-hidden="true">
+              <td colSpan={b.races.length + 5}>&nbsp;</td>
+            </tr>
+          ))}
         </tbody>
       </table>
       <footer>
-        <span>{b.total > b.rows.length ? `İlk ${b.rows.length} · ${b.total} tekne` : `${b.total} tekne`}</span>
-        <span>{boards.length > 1 ? boards.map((x) => x.cls).filter(Boolean).join(" · ") : ""}</span>
+        <span>{`${from}–${from + rows.length - 1} · ${b.total} tekne`}</span>
+        {n > 1 ? (
+          <span className="sc-pgs">
+            {Array.from({ length: n }, (_, i) => (
+              <i key={i} className={i === pg ? "on" : ""}>
+                {i === pg ? <u key={k} style={{ animationDuration: `${SC_PAGE_S}s` }} /> : null}
+              </i>
+            ))}
+          </span>
+        ) : (
+          <span>{scBoards(data).length > 1 ? scBoards(data).map((x) => x.cls).filter(Boolean).join(" · ") : ""}</span>
+        )}
       </footer>
     </button>
   );
@@ -3619,7 +3683,7 @@ function Sc05({ data, sel, mode, now }) {
         {c ? (
           <section>
             <small>Rüzgâr</small>
-            <b>{`${c.kn} kn · ${c.dir != null ? `${dirShort(c.dir)} ${degText(c)}` : ""}`}</b>
+            <b>{`${c.kn} kn · ${dirText(c)}`}</b>
           </section>
         ) : null}
       </div>
@@ -3696,16 +3760,20 @@ function scPick({ data, sel, mode, hasVideo, now, far }) {
   const route = sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait");
   const rec = data.screen?.kind === "rec";
   const has = { "01": true, "02": true, "03": mode === "between" || scBoards(data).length > 0, "04": rec || data.courseShow?.vid?.["04"]?.kind === "rec", "05": !!courseSvg(data, route), "06": true };
-  return sceneOf({ show: data.courseShow, rec, mode, hasVideo, now, has, far });
+  // tehir indiyse (start yakında) sıralama araya girmez
+  const m = mode === "ap" && data.plan?.status !== "ap" ? "wait" : mode;
+  return sceneOf({ show: data.courseShow, rec, mode: m, hasVideo, now, has, far: m === mode ? far : false, dwell: { "03": sc03Len(data, sel, mode) } });
 }
 function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, onFull }) {
   const plan = data.plan;
   const r = data.race || {};
   const t = scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast });
-  const lock = mode === "seq" || mode === "ap" || t.tone === "r";
+  // Tehir (Seyhun 2026-11-04 "ortada kocaman değil, saatin altında; karada çekildiyse bütün gruplar için; ortada parkur, sıralama, rüzgâr devam")
+  const ap = mode === "ap" || (mode === "seq" && seqMode === "ap");
+  const lock = !ap && (mode === "seq" || t.tone === "r");
   const body =
-    sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} />
-    : sc === "02" ? <Sc02 t={t} data={data} sel={sel} mode={mode} now={now} today={today} />
+    sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} ap={ap} />
+    : sc === "02" ? <Sc02 t={ap ? null : t} data={data} sel={sel} mode={mode} now={now} today={today} />
     : sc === "03" ? <Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} />
     : sc === "04" ? <Sc04 data={data} />
     : sc === "05" ? <Sc05 data={data} sel={sel} mode={mode} now={now} />
@@ -3718,6 +3786,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       </div>
       {(sc === "01" || sc === "02") && (mode === "seq" || mode === "race") ? <ScFleet data={data} sel={sel} mode={mode} now={now} who={t.who} today={today} onFull={onFull} /> : null}
       {live || sc === "04" ? <ScTop rep={sc === "04"} now={now} /> : null}
+      {ap && sc !== "04" ? <ScAp t={t} plan={plan} seq={mode === "seq"} /> : null}
       <div className="sc-name">
         <div className="sc-nt">
           <b className={(plan.title || r.name || "").length > 22 ? "lg" : ""}>{plan.title || r.name || "Yarış"}</b>
