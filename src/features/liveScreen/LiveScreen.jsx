@@ -4,7 +4,7 @@ import { Fragment, useEffect, useId, useMemo, useRef, useState, useSyncExternalS
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { liveUrl } from "@/lib/raceCams";
-import { momentRace, momentRaceName, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
+import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
@@ -1462,7 +1462,7 @@ function ApBlock({ data, cs, first, apDown = false, big = "lv-big", seq = false 
   const plan = data.plan;
   const counting = !apDown && cs.label === "Tehir inişine";
   const why = plan.ap?.why || "Start ertelendi";
-  const land = plan.ap?.land ? "Karada" : "";
+  const land = apPlace(plan);
   // Sıradaki yarış: sınıf işareti (grup renginde) + "1. yarış · Sarı grup bekliyor"; hazırlık bayrağı yok (Seyhun 2026-11-03)
   const who = first ? (
     <small className="lv-who">
@@ -3143,7 +3143,7 @@ function scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast 
   if (mode === "ap") {
     const apDown = plan.status !== "ap";
     const counting = !apDown && cs.label === "Tehir inişine";
-    return { k: apDown ? "Tehir indi" : "Tehir", tone: "r", flag: "AP", tm: apDown ? "Start yakında" : counting ? cs.value : plan.ap?.why || "Belirsiz", tx: !counting, who: null, sub: apDown ? "Uyarı işareti bekleniyor" : [counting ? plan.ap?.why : "", plan.ap?.land ? "Karada" : ""].filter(Boolean).join(" · ") };
+    return { k: apDown ? "Tehir indi" : "Tehir", tone: "r", flag: "AP", tm: apDown ? "Start yakında" : counting ? cs.value : plan.ap?.why || "Belirsiz", tx: !counting, who: null, sub: apDown ? "Uyarı işareti bekleniyor" : [counting ? plan.ap?.why : "", apPlace(plan)].filter(Boolean).join(" · ") };
   }
   if (mode === "race") return { k: cs.label || "Geçen süre", tm: cs.value, who: gWho({ name: sel ? raceName(sel) : "", grp: entry?.grp || sel?.grp || "", cls: entry?.cls || sel?.cls || "" }) };
   if (mode === "none") {
@@ -3260,8 +3260,8 @@ function ScAp({ t, plan, seq }) {
   const counting = !down && !t.tx && /\d/.test(String(t.tm || ""));
   const why = plan.ap?.why || "";
   // çekilen tehir işareti (AP, AP üzeri H, AP üzeri 6…): bayrak düğmesindekiyle aynı bayraklar
-  const s = (signalOf(plan.sig?.id)?.kind === "ap" ? signalOf(plan.sig.id) : null) || signalOf(plan.ap?.land ? "AP/H" : "AP");
-  const line = down ? ["Start yakında", "Uyarı işareti bekleniyor"] : [s.hours ? "" : why || "Belirsiz", plan.ap?.land ? "Karada" : "", seq && t.who ? gWhat(t.who) || t.who.name : "Tüm gruplar"];
+  const s = signalOf(apSigId(plan));
+  const line = down ? ["Start yakında", "Uyarı işareti bekleniyor"] : [s.hours ? "" : why || "Belirsiz", apPlace(plan), seq && t.who ? gWhat(t.who) || t.who.name : "Tüm gruplar"];
   return (
     <div className="sc-ap">
       <span className="sc-sgf" aria-hidden="true">
