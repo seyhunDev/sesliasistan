@@ -1252,13 +1252,13 @@ async function rainStrip(h) {
   });
   await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
   await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
-  await check("Hava", "yağmur grafiği", "saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; günler şeridi var", async () => {
+  await check("Hava", "yağmur grafiği", "saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var", async () => {
     const T = "[data-hour-table]";
     const ok = await waitFor(() => page.locator(`${T} [data-col]`).count(), 15000);
     const txt = (await page.locator(T).first().textContent().catch(() => "")) || "";
-    const days = await page.locator("nav[aria-label='Günler'] button").count();
+    const days = await page.locator("nav[aria-label='Gün'] button").count();
     if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}.png`, fullPage: true }));
-    return [ok >= 24 && /5,5/.test(txt) && /9/.test(txt) && days >= 5, `sütun ${ok} · gün ${days} · 5,5 ${/5,5/.test(txt)}`];
+    return [ok >= 24 && /5,5/.test(txt) && /9/.test(txt) && days >= 1, `sütun ${ok} · gün düğmesi ${days} · 5,5 ${/5,5/.test(txt)}`];
   });
   await check("Sayfa hataları", "hava yağış", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
