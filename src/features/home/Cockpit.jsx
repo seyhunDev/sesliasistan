@@ -14,6 +14,8 @@ import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/li
 import { initials, todayStr } from "@/lib/utils/format";
 import { HourTable } from "@/features/weather/HourTable";
 import { NowRain } from "@/features/weather/NowRain";
+import { useRainRadar } from "@/features/weather/useRainRadar";
+import { radarNow, radarRows } from "@/features/weather/rainLine";
 import { DayTimeline } from "./DayTimeline";
 import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
@@ -38,12 +40,15 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) 
   const today = todayStr();
   const date = sel || today;
   const isToday = date === today;
-  const rows = dayHours(w, date);
+  const home = getPlace();
+  // Radar burada yağış görmüyorsa şu anki yağmur simgesi, arka plan ve son saatlerin yağmuru gösterilmez (radarNow / radarRows); "Şu an" satırı durumu yazar
+  const radar = useRainRadar(isToday ? home : null);
+  const fcRows = dayHours(w, date);
+  const rows = isToday ? radarRows(fcRows, radar) : fcRows;
   const dw = dayWeather(w, rows, date);
-  const n = isToday ? nowOf(w) : dw && { t: dw.max, code: dw.code, day: true, wind: dw.wind, gust: dw.gust, dir: dw.dir };
+  const n = isToday ? radarNow(nowOf(w), radar) : dw && { t: dw.max, code: dw.code, day: true, wind: dw.wind, gust: dw.gust, dir: dw.dir };
   const dname = cap(new Date(`${date}T12:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", ""));
   const goWeather = () => (w ? router.push("/weather") : refresh(true));
-  const home = getPlace();
   // Hissedilen ve günün yağışı: seçili günün saatlik satırlarından (bugünse şimdiki saat, değilse öğle)
   const cur = rows?.find((h) => h.hh === (isToday ? String(now.getHours()).padStart(2, "0") : "13"));
   const mmDay = rows ? rows.reduce((a, h) => a + (h.mm || 0), 0) : 0;
@@ -97,7 +102,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) 
             <>
               <div className="mt-2.5 overflow-hidden rounded-[1.25rem] bg-[#0b1a33] p-3">
                 <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} />
-                {isToday && <NowRain place={home} rows={rows} />}
+                {isToday && <NowRain place={home} rows={fcRows} radar={radar} />}
               </div>
             </>
           )}

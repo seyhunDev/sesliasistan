@@ -36,3 +36,35 @@ export function hereLine(radar, soon, hm = (ms) => new Date(ms).toTimeString().s
   if (radar.near) return `Burada yağmıyor · ${radar.near.km} km ${AT[radar.near.dir] || radar.near.dir} ${LV[radar.near.level]}${when}`;
   return soon ? `Burada ve 30 km içinde yağış yok${when}` : "";
 }
+
+// Radar burada yağış görmüyorsa tahminin yağmurunu şu ana yansıtma (Seyhun 2026-11-04: "burada ve etrafta yağmur yoksa arka planı yağmurlu yapmayalım,
+// grafikte de göstermeyelim… ikon yağmur, arka plan yağmurlu ama burası güneşli"). Tahmin ~10 km'lik kareyi tek değer sayar; şu an ve son 2 saat için radar daha doğru.
+// wet: yağmur/çisenti/sağanak/fırtına kodu. dryNow: son karede noktada yağış yok ve 5 km içinde de yok.
+export const wetCode = (c) => (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95;
+export function dryNow(radar) {
+  const last = radar?.frames?.at(-1);
+  return !!last && radar.near !== undefined && last.level === 0 && (!radar.near || radar.near.km >= 5);
+}
+const dryCode = (day) => (day ? 2 : 3); // parçalı bulutlu (gece kapalı): bulut bilgisi yok, nötr
+// Şu anki hava (nowOf): yağmurlu kod radar kuru diyorsa nötr koda döner, radarDry işaretlenir
+export function radarNow(n, radar) {
+  return n && wetCode(n.code) && dryNow(radar) ? { ...n, code: dryCode(n.day), radarDry: true } : n;
+}
+// Bugünün saatleri: radarın baktığı saatlerde (son 2 saat ve şimdi) radar yağış görmediyse o saatin yağmur simgesi ve mm'si kalkar
+export function radarRows(rows, radar, tz = "Europe/Istanbul") {
+  const frames = radar?.frames || [];
+  if (!rows?.length || !frames.length) return rows;
+  const hr = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: tz });
+  const by = {};
+  for (const f of frames) {
+    const h = hr.format(new Date(f.at));
+    by[h] = Math.max(by[h] ?? 0, f.level);
+  }
+  const lastH = hr.format(new Date(frames.at(-1).at));
+  return rows.map((r) => {
+    const lv = by[r.hh];
+    if (lv == null || lv > 0 || (r.hh === lastH && !dryNow(radar))) return r;
+    if (!wetCode(r.code) && !(r.mm >= 0.1)) return r;
+    return { ...r, code: wetCode(r.code) ? dryCode(r.day) : r.code, mm: 0, radarDry: true };
+  });
+}
