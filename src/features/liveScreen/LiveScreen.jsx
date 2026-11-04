@@ -3164,8 +3164,10 @@ function scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast 
     return { k: voidShort(vd.void), tone: "r", flag: voidFlag(vd.void), tm: cs.rem ? cs.value : "Yeniden start", tx: !cs.rem, who: gWho({ name: raceName(vd), grp: g, cls: data.rounds?.[vd.id]?.cls || vd.cls || "" }), sub: cs.rem ? "" : "Uyarı işareti bekleniyor" };
   }
   if (mode === "between" && sel?.fin) return { k: "Bitti", tm: raceTime(sel) || "—", who: gWho({ name: raceName(sel), grp: entry?.grp || sel.grp, cls: entry?.cls || "" }), sub: first ? `Sıradaki · ${gWhat(first)}${first.at ? ` · ${first.at}` : ""}` : "" };
-  const left0 = !cs.rem && r.startDate > today ? daysUntil(r.startDate, today) : 0;
-  if (left0) return { k: "Yarışa", tm: `${left0} gün`, sub: [r.endDate && r.endDate !== r.startDate ? `${dayText(r.startDate)} – ${dayText(r.endDate)}` : dayText(r.startDate), r.place].filter(Boolean).join(" · ") };
+  // bir günden uzaksa saat:dakika değil gün (Seyhun 2026-11-04 "yarışa 14 gün var")
+  const far = !cs.rem || cs.rem >= 86400;
+  const left0 = far && r.startDate > today ? daysUntil(r.startDate, today) : far && cs.rem ? Math.ceil(cs.rem / 86400) : 0;
+  if (left0) return { k: "Yarışa", tm: String(left0), un: "gün", sub: [r.endDate && r.endDate !== r.startDate ? `${dayText(r.startDate)} – ${dayText(r.endDate)}` : dayText(r.startDate), r.place].filter(Boolean).join(" · ") };
   const orange = orangeUp(plan, today);
   const { kick } = holdState(data, today, cs, now);
   return { k: orange ? "Turuncu bayrak · start hattı kuruldu" : kick, tone: orange ? "o" : "", orange, tm: cs.rem ? cs.value : "—:—", at: first?.at || "", who: gWho(first) };
@@ -3307,7 +3309,10 @@ function ScTime({ t, big = false }) {
         {t.flag ? <Flag kind={t.flag} /> : t.orange ? <i className="sc-of" aria-hidden="true" /> : null}
         {[big && t.who?.name ? t.who.name : "", t.k].filter(Boolean).join(" · ")}
       </div>
-      <div className={`sc-tm${tx ? " tx" : ""}`}>{t.tm}</div>
+      <div className={`sc-tm${tx ? " tx" : ""}`}>
+        {t.tm}
+        {t.un ? <small className="sc-un">{t.un}</small> : null}
+      </div>
       {big && (t.who?.grp || t.who?.cls || t.at) ? (
         <div className="sc-tw">
           {t.who?.cls ? <span>{t.who.cls}</span> : null}
