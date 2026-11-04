@@ -35,7 +35,7 @@ import { BoatLive } from "@/features/tracking/BoatLive";
 import { ZOOMS } from "@/lib/boatPlay";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets } from "@/lib/raceLive";
+import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets, grpHold, grpRelease, grpDue, heldGrps } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, coursePoints } from "@/lib/courseCard";
@@ -273,7 +273,17 @@ export function BroadcastPage({ orgId, id }) {
   };
   // Tehir penceresi: her tehir buradan çekilir (Bayrak › Tehir / AP üzeri H / saatli, geri sayımdaki Tehir, İptal › Tehir). Yer (Karada /
   // Denizde) her seferinde seçilir (Seyhun 2026-11-04). Denizde varsayılan "Belirsiz" (Seyhun 2026-11-03 11:47)
-  const openAp = (pre = {}) => setAp({ min: 0, why: AP_WHY[0], live: countingAt(Date.now()), land: false, auto: true, hours: 0, ...pre });
+  // Tek gruba tehir (Seyhun 2026-11-04): başka grup yarıştayken geri sayımdaki grup varsayılan "Yalnız o grup"; yoksa Tüm gruplar
+  const cdGrp = () => {
+    const rid = rf.ridOf(readTimer());
+    const s0 = rid ? live.starts.find((x) => x.id === rid) : null;
+    return s0 ? s0.grp || L?.rounds?.[rid]?.grp || "" : "";
+  };
+  const openAp = (pre = {}) => {
+    const now = nowMs();
+    const grp = countingAt(now) && runningIds(now).length ? cdGrp() : "";
+    setAp({ min: 0, why: AP_WHY[0], live: countingAt(now), land: false, auto: true, hours: 0, grp, ...pre });
+  };
   // Bayraktan tehir: AP denizde, AP üzeri H karada, AP üzeri sayı saatli (planlanan start + n saat; iniş uyarı işaretinden 1 dk önce)
   const apFromFlag = (id) => {
     const s = signalOf(id);
@@ -316,6 +326,19 @@ export function BroadcastPage({ orgId, id }) {
   // "Tehiri indir"); inince 1 dk sonra uyarı işareti = sıradaki yarışın geri sayımı kendiliğinden başlar (tehiri kuran telefonda).
   const postpone = (a = ap, extra = {}) => {
     let order = plan.order;
+    if (a.grp) {
+      // yalnız bir grup: o grubun geri sayımı sürüyorsa durur, start programa döner; grubun bekleyen startları tehirde (gün tehiri yok)
+      const rid = a.live ? rf.ridOf(readTimer()) : "";
+      if (rid && cdGrp() === a.grp) {
+        stopCount();
+        const back = apBack(rid);
+        if (back) order = [back, ...order];
+      }
+      const done = changePlan({ day: planDay, order: grpHold(order, a.grp, { why: a.why, land: a.land, hours: a.hours, down: a.min ? new Date(nowMs() + a.min * 60e3).toISOString() : "" }) });
+      setAp(null);
+      toast(`${a.grp} grup tehirde`);
+      return done;
+    }
     // dizinin durduğu yer (canlı ekranda şerit orada kırmızı noktayla durur)
     const t0 = readTimer();
     const seq = a.live && t0.mode === "start" ? (t0.end != null ? Math.max(0, Math.ceil((t0.end - Date.now()) / 1000)) : t0.left ?? null) : null;
@@ -387,6 +410,8 @@ export function BroadcastPage({ orgId, id }) {
   const apSigOff = (pl) => (signalOf(pl.sig?.id)?.kind === "ap" && !signalOf(pl.sig.id).end ? { sig: null } : {});
   // Tehiri indir: tek yol (düğme, inişi gelince kendiliğinden, eski tehir işaretinin İndir'i): denizde 1 dk, karada 60 dk sonra uyarı işareti
   const lowerAp = (at = nowMs()) => changePlan({ day: planDay, ...apLower(at, readTimer().dur || 300, dev, plan.ap?.land, plan.ap?.auto), ...apSigOff(plan) });
+  // Tek grubun tehiri iner: grup sıranın başına döner, geri sayımı komite başlatır
+  const lowerGrp = (g) => (changePlan({ order: grpRelease(plan.order, g) }), toast(`${g} grubun tehiri indi`));
   const lowerSig = () => (plan.status === "ap" && signalOf(plan.sig?.id)?.kind === "ap" && !signalOf(plan.sig.id).end ? lowerAp() : changePlan({ sig: null }));
   // Program sekmesi (Seyhun 2026-11-04 "çok karışık, yeniden tasarla"): her günün tek "İlk start" saati (aynı saat daily, farklı gün times;
   // ilk kez girilen saat bütün günlerin olur), "Her güne" ile bütün günler aynı saat. Bugünün / yarının saati değişirse ekranın saati de;
@@ -488,6 +513,7 @@ export function BroadcastPage({ orgId, id }) {
   // Başlat'ı; başka grubun geri sayımı sürerken başlamaz (yarışta olan grup sürer, Bitti ile ayrı biter)
   const startRow = (i) => {
     if (countingAt(new Date().valueOf())) return toast("Önce süren geri sayım bitsin");
+    if (plan.order[i]?.ap) return toast("Bu grup tehirde. Önce tehiri indir.");
     if (!plan.order[i]?.prep) return toast("Önce bayrağı seç");
     pickRef.current = i;
     raceStart(flow, "start", race?.name || "Yarış");
@@ -511,6 +537,8 @@ export function BroadcastPage({ orgId, id }) {
   useEffect(() => {
     autoRef.current = (now) => {
       if (apDue(plan, now)) return lowerAp(Date.parse(plan.ap.down));
+      const gd = grpDue(plan.order, now);
+      if (gd.length) return changePlan({ order: gd.reduce((o, g) => grpRelease(o, g), plan.order) });
       if (!warnDue(plan, now)) return;
       const mine = !plan.warnBy || plan.warnBy === dev || now - Date.parse(plan.warn) > 4000;
       if (!mine) return;
@@ -519,7 +547,7 @@ export function BroadcastPage({ orgId, id }) {
       raceStart(flow, "start", race?.name || "Yarış");
     };
   });
-  const tracking = (plan.status === "ap" && !!plan.ap?.down) || !!plan.warn;
+  const tracking = (plan.status === "ap" && !!plan.ap?.down) || !!plan.warn || heldGrps(plan.order).some((x) => x.ap.down);
   useEffect(() => {
     if (!tracking) return;
     const t = setInterval(() => {
@@ -881,6 +909,13 @@ export function BroadcastPage({ orgId, id }) {
   const todays = [...live.starts].filter((x) => x.day === today); // eskiden yeniye (listede 1., 2., …)
   const races = dayRaces({ starts: live.starts, order: plan.order, grpOf: (x) => x.grp || L?.rounds?.[x.id]?.grp || "", liveIds: cur ? [cur.id] : [], today, rdays });
   const nextRow = races.flatMap((r) => r.rows).find((x) => x.state === "next");
+  // Tehirde seçilebilen gruplar: geri sayımdaki ve bekleyen (tehirde olmayan) gruplar; tek grup varsa seçim yok
+  const apGrps = (() => {
+    const t0 = L?.timer && countingAt(capNow) ? live.starts.find((x) => x.id === rf.ridOf(L.timer)) : null;
+    const g = [t0 ? t0.grp || L?.rounds?.[t0.id]?.grp || "" : "", ...plan.order.filter((o) => !o.ap).map((o) => o.grp)].filter(Boolean);
+    const u = [...new Set(g)];
+    return u.length > 1 || (u.length && runningIds(capNow).length) ? u : [];
+  })();
   // o an gösterilen öğe ve sıradaki (canlı ekranla aynı showPlan; verisi olmayan atlanır)
   const evHas = { video: !!onScreen || evNow === "start" || evNow === "race", time: true, prog: races.some((r) => r.rows.some((x) => x.state !== "done")), wind: true, course: !!scene, rank: hasSheet || scMode === "between" || live.starts.some((x) => x.fin), next: true };
   const shNow = showPlan({ show: pre, evre: evNow, has: evHas, now: capNow });
@@ -1280,6 +1315,7 @@ export function BroadcastPage({ orgId, id }) {
                           : x.state === "void" ? `${s.void} · ${hm(s.fin || s.at)}`
                           : isCd ? [paused ? "Durdu" : "Geri sayım", prepTxt].filter(Boolean).join(" · ")
                           : live ? `Yarışta · start ${hm(s.at)}`
+                          : x.state === "ap" ? ["Tehir", x.plan.ap.why, x.plan.ap.land ? "Karada" : "", x.plan.ap.down ? `iniş ${trHm(x.plan.ap.down)}` : ""].filter(Boolean).join(" · ")
                           : x.state === "next" ? ["Sıradaki", prepTxt].filter(Boolean).join(" · ") : "Bekliyor";
                         const time =
                           x.state === "done" ? raceTime(s)
@@ -1296,7 +1332,7 @@ export function BroadcastPage({ orgId, id }) {
                                 <span className="size-2.5 shrink-0 rounded-full" style={{ background: x.grp ? groupColor(x.grp) : "var(--mut)" }} aria-hidden="true" />
                                 <span className="min-w-0 flex-1 leading-tight">
                                   <b className={`block truncate font-semibold ${x.state === "void" ? "text-mut line-through" : ""}`}>{[x.grp || e?.cls || "Start", `${r.n}. yarış`, x.retry ? "tekrar" : ""].filter(Boolean).join(" · ")}</b>
-                                  <span className={`block truncate text-[0.8125rem] ${x.state === "void" ? "text-warn" : "text-mut"}`}>{sub}</span>
+                                  <span className={`block truncate text-[0.8125rem] ${x.state === "void" || x.state === "ap" ? "text-warn" : "text-mut"}`}>{sub}</span>
                                 </span>
                                 {time ? <span className={`shrink-0 text-[1.25rem] font-bold tabular-nums ${isCd ? "text-acc" : x.state === "done" ? "text-ok" : ""}`}>{time}</span> : null}
                               </button>
@@ -1313,7 +1349,12 @@ export function BroadcastPage({ orgId, id }) {
                                   Bitti
                                 </Button>
                               ) : null}
-                              {!s && canRow && x.state !== "next" ? (
+                              {!s && x.state === "ap" ? (
+                                <Button size="sm" variant="secondary" full={false} onClick={() => lowerGrp(x.grp)}>
+                                  İndir
+                                </Button>
+                              ) : null}
+                              {!s && canRow && x.state !== "next" && x.state !== "ap" ? (
                                 <Button size="sm" variant="secondary" full={false} onClick={() => startRow(x.i)}>
                                   Başlat
                                 </Button>
@@ -2153,6 +2194,20 @@ export function BroadcastPage({ orgId, id }) {
       <Sheet open={!!ap && (plan.status !== "ap" || !!ap.edit)} onClose={() => setAp(null)} title={ap?.edit ? "Tehiri düzelt" : "Tehir"} navy>
         {ap ? (
           <div className="space-y-4 pb-3">
+            {/* Kimin için (Seyhun 2026-11-04 "tek gruba tehir"): bütün gün ya da yalnız bir grup (öbür gruplar sürer) */}
+            {!ap.edit && apGrps.length ? (
+              <div>
+                <div className="masa-aplab">Kimin için</div>
+                <div className="masa-apgrid">
+                  {["", ...apGrps].map((g) => (
+                    <button key={g || "-"} type="button" data-press aria-pressed={(ap.grp || "") === g} onClick={() => setAp({ ...ap, grp: g })} className="masa-ap">
+                      <b className="sm">{g || "Tüm gruplar"}</b>
+                      <small>{g ? "yalnız bu grup" : "bütün gün"}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div>
               <div className="masa-aplab">İner</div>
               <div className="masa-apgrid">
@@ -2176,6 +2231,7 @@ export function BroadcastPage({ orgId, id }) {
                 ))}
               </div>
             </div>
+            {ap.grp ? null : (
             <div>
               <div className="masa-aplab">İnince</div>
               <div className="masa-apgrid two">
@@ -2187,6 +2243,7 @@ export function BroadcastPage({ orgId, id }) {
                 ))}
               </div>
             </div>
+            )}
             <div>
               <div className="masa-aplab">Sebep</div>
               <div className="masa-apgrid">
@@ -2197,7 +2254,7 @@ export function BroadcastPage({ orgId, id }) {
                 ))}
               </div>
             </div>
-            <p className="text-[0.875rem] text-mut">{ap.edit && ap.min == null ? [plan.ap?.down ? `İniş ${trHm(plan.ap.down)} (değişmez)` : "İniş belirsiz (değişmez)", ap.auto === false ? "Geri sayımı sen başlatırsın" : `İnince ${apGap(ap.land)} dk sonra geri sayım`].join(" · ") : [ap.hours ? `${ap.hours} saat tehir` : "", ap.live ? "Sayaç durur" : "", ap.min ? `İniş ${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}` : "İniş belirsiz, Tehiri indir ile iner", ap.auto === false ? "Geri sayımı sen başlatırsın" : `İnince ${apGap(ap.land)} dk sonra geri sayım`].filter(Boolean).join(" · ")}</p>
+            <p className="text-[0.875rem] text-mut">{ap.edit && ap.min == null ? [plan.ap?.down ? `İniş ${trHm(plan.ap.down)} (değişmez)` : "İniş belirsiz (değişmez)", ap.auto === false ? "Geri sayımı sen başlatırsın" : `İnince ${apGap(ap.land)} dk sonra geri sayım`].join(" · ") : [ap.hours ? `${ap.hours} saat tehir` : "", ap.live ? "Sayaç durur" : "", ap.min ? `İniş ${trHm(new Date((tick || capNow) + ap.min * 60e3).toISOString())}` : "İniş belirsiz, Tehiri indir ile iner", ap.grp ? `Yalnız ${ap.grp}; inince Başlat sende` : ap.auto === false ? "Geri sayımı sen başlatırsın" : `İnince ${apGap(ap.land)} dk sonra geri sayım`].filter(Boolean).join(" · ")}</p>
             <div className="flex gap-2">
               <Button variant="secondary" className="flex-1" onClick={() => setAp(null)}>
                 Vazgeç

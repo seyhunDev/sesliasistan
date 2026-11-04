@@ -3224,6 +3224,10 @@ function otherGroups(data, sel, today, now) {
     })
     .filter((x) => x.grp)
     .sort((a, b) => a.at - b.at)
+    .concat(
+      // tek gruba tehir (Seyhun 2026-11-04): tehirdeki grup da küçük satır, "Tehir · sebep", sağda AP
+      [...new Map((data.plan?.order || []).filter((o) => o.ap && o.grp && o.grp !== (sel?.grp || data.rounds?.[sel?.id]?.grp)).map((o) => [o.grp, o])).values()].map((o) => ({ id: `ap-${o.grp}`, grp: o.grp, name: "Tehir", what: [o.ap.why, o.ap.land ? "Karada" : ""].filter(Boolean).join(" · ") || "Tehir", time: o.ap.land ? "AP/H" : "AP", at: Infinity }))
+    )
     .slice(0, 4);
 }
 function ScOthers({ data, sel, today, now }) {
