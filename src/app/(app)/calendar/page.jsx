@@ -62,7 +62,14 @@ function Calendar({ initial }) {
   const mark = (day) => {
     const { plans: p, tasks: t } = dayItems(plans, tasks, day);
     const open = t.filter((x) => !x.done);
-    return { plans: p.length, fit: fitDates.has(day), tasks: open.length, late: day < today && open.length > 0, bday: birthdaysOn(birthdays, day).length };
+    const b = birthdaysOn(birthdays, day);
+    // Geniş ekranda hücrede görünen adlar (iPad ve Mac; telefonda gizli): doğum günü, plan (saatle), açık görev
+    const evs = [
+      ...b.map((x) => ({ k: `b${x.id}`, t: x.name, c: "bday" })),
+      ...p.map((x) => ({ k: `p${x.id}`, h: x.time && (x.endDate || x.date) === x.date ? x.time : "", t: x.title, c: "plan" })),
+      ...open.map((x) => ({ k: `t${x.id}`, t: x.title, c: day < today ? "late" : "task" })),
+    ];
+    return { plans: p.length, fit: fitDates.has(day), tasks: open.length, late: day < today && open.length > 0, bday: b.length, evs };
   };
   const pick = (day) => {
     setSel(day);
@@ -82,8 +89,8 @@ function Calendar({ initial }) {
   const sub = "block truncate text-[0.8125rem] text-mut";
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">
-      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Takvim">
+    <main className="cal-wide mx-auto max-w-[30rem] px-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <section className="cal-top ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Takvim">
         <header className="flex items-center gap-2">
           <BackButton href="/" />
           <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold capitalize tracking-[-.02em]">{monthLabel(month)}</h1>
@@ -92,13 +99,22 @@ function Calendar({ initial }) {
               Bugün
             </button>
           )}
+          {/* Geniş ekranda ay düğmeleri başlıkta (haftanın günleri ızgarayla aynı hizada); telefonda ayın üstündeki satırda */}
+          <span className="cal-hnav gap-2">
+            <button type="button" onClick={() => setMonth((m) => shift(m, -1))} aria-label="Önceki ay" data-press className="btn btn-round size-9">
+              <Icon name="back" className="size-4" />
+            </button>
+            <button type="button" onClick={() => setMonth((m) => shift(m, 1))} aria-label="Sonraki ay" data-press className="btn btn-round size-9">
+              <Icon name="chev" className="size-4" />
+            </button>
+          </span>
           <Link href="/schedule" aria-label="Ders programı" data-press className="btn btn-round size-9">
             <Icon name="book" className="size-4" />
           </Link>
         </header>
 
         {/* Ay */}
-        <div className="mt-4 flex items-center justify-between">
+        <div className="cal-week mt-4 flex items-center justify-between">
           <button type="button" onClick={() => setMonth((m) => shift(m, -1))} aria-label="Önceki ay" data-press className="btn btn-round size-9">
             <Icon name="back" className="size-4" />
           </button>
@@ -111,7 +127,7 @@ function Calendar({ initial }) {
             <Icon name="chev" className="size-4" />
           </button>
         </div>
-        <div className="mt-1 grid grid-cols-7 gap-y-0.5">
+        <div className="cal-grid mt-1 grid grid-cols-7 gap-y-0.5">
           {cells.map(({ day, inMonth }) => {
             const m = mark(day);
             const on = day === sel;
@@ -123,26 +139,39 @@ function Calendar({ initial }) {
                 onClick={() => pick(day)}
                 aria-label={`${longDay(day)}${m.plans ? `, ${m.plans} plan` : ""}${m.fit ? ", fitness" : ""}${m.tasks ? `, ${m.tasks} görev` : ""}`}
                 aria-pressed={on}
-                className="flex flex-col items-center py-1 active:opacity-60"
+                data-on={on || undefined}
+                data-out={inMonth ? undefined : ""}
+                className="cal-cell flex flex-col items-center py-1 active:opacity-60"
               >
                 <span
-                  className={`grid size-9 place-items-center rounded-full text-[0.9375rem] font-semibold tabular-nums ${
+                  className={`cal-num grid size-9 place-items-center rounded-full text-[0.9375rem] font-semibold tabular-nums ${
                     on ? "bg-white text-deep" : isToday ? "text-white ring-1 ring-white/60" : inMonth ? "text-white" : "text-white/30"
                   }`}
                 >
                   {+day.slice(8)}
                 </span>
-                <span className={`mt-0.5 flex h-1.5 gap-0.5 ${inMonth ? "" : "opacity-40"}`}>
+                <span className={`cal-dots mt-0.5 flex h-1.5 gap-0.5 ${inMonth ? "" : "opacity-40"}`}>
                   {m.plans > 0 && <i className="size-1.5 rounded-full bg-white" />}
                   {m.fit && <i className="tone-fit tone-bar size-1.5 rounded-full" />}
                   {m.tasks > 0 && <i className={`size-1.5 rounded-full ${m.late ? "bg-rec" : "bg-amber-600"}`} />}
                   {m.bday > 0 && <i className="size-1.5 rounded-full bg-pink-500" />}
                 </span>
+                {m.evs.length > 0 && (
+                  <span className="cal-evs" aria-hidden>
+                    {m.evs.slice(0, 4).map((e) => (
+                      <i key={e.k} data-c={e.c}>
+                        {e.h && <b>{e.h} </b>}
+                        {e.t}
+                      </i>
+                    ))}
+                    {m.evs.length > 4 && <i data-c="more">+{m.evs.length - 4}</i>}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
-        <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[0.6875rem] text-white/60">
+        <div className="cal-legend mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[0.6875rem] text-white/60">
           <span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-white" /> Plan</span>
           <span className="flex items-center gap-1"><i className="tone-fit tone-bar size-1.5 rounded-full" /> Fitness</span>
           <span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-amber-600" /> Görev</span>
@@ -151,7 +180,7 @@ function Calendar({ initial }) {
         </div>
       </section>
 
-      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="cal-body relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {/* Seçili gün */}
         <section>
           <ListHead title={[when, shortDay(sel)].filter(Boolean).join(" · ")} count={count} />
@@ -259,6 +288,20 @@ function Calendar({ initial }) {
             </ul>
           )}
         </section>
+        {/* Geniş ekranda (iPad yatay, Mac) seçili güne ekleme düğmeleri sağ sütunun altında; telefonda gizli */}
+        {count > 0 && (
+          <div className="cal-acts">
+            <button type="button" onClick={() => openAdd({ type: "plan", date: sel })} data-press className="btn btn-primary btn-sm flex-1">
+              Plan ekle
+            </button>
+            <button type="button" onClick={() => openAdd({ type: "task", date: sel })} data-press className="btn btn-secondary btn-sm flex-1">
+              Görev ekle
+            </button>
+            <button type="button" onClick={() => openBirthday({ date: sel })} aria-label="Doğum günü ekle" data-press className="btn btn-round btn-sm">
+              <Icon name="cake" className="size-5" />
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );

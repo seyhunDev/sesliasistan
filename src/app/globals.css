@@ -808,9 +808,14 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
   main.race-wide > .race-body > * { break-inside: avoid; margin: 0 0 1.5rem; }
 }
 @media (min-width: 64rem) {
-  body[data-side] main.race-wide { display: grid; grid-template-columns: 26rem minmax(0, 1fr); column-gap: 1.5rem; align-items: start; padding-top: 1.5rem; }
-  body[data-side] main.race-wide > .race-top { position: sticky; top: 1.5rem; margin: 0; padding: 1.25rem; border-radius: 1.5rem; }
-  body[data-side] main.race-wide > .race-body { margin: 0; padding: 0; border-radius: 0; background: transparent; columns: 20rem 2; }
+  /* 2026-11-04: Planlar, Notlar gibi solda ekran yüksekliğinde lacivert kokpit (yuvarlak kutu ve yan boşluk yok), sağda aylar sütun sütun */
+  body[data-side] main.race-wide.max-w-\[30rem\] { max-width: none; padding: 0; display: grid; grid-template-columns: 22rem minmax(0, 1fr); align-items: start; min-height: 100dvh; }
+  body[data-side] main.race-wide > .race-top { position: sticky; top: 0; margin: 0; height: 100dvh; overflow-y: auto; padding: calc(1.25rem + env(safe-area-inset-top)) 1.25rem 1.5rem; border-radius: 0; }
+  body[data-side] main.race-wide > .race-body { margin: 0; padding: calc(1.25rem + env(safe-area-inset-top)) 2rem 2.5rem; border-radius: 0; columns: 20rem; column-gap: 1.5rem; }
+}
+@media (min-width: 80rem) {
+  body[data-side] main.race-wide.max-w-\[30rem\] { grid-template-columns: 26rem minmax(0, 1fr); }
+  body[data-side] main.race-wide > .race-top { padding-left: 1.75rem; padding-right: 1.75rem; }
 }
 
 /* KOKPİT (ana sayfanın lacivert üst kısmı; Seyhun 2026-10-21 "C · Lacivert kokpit"; features/home/Cockpit.jsx): logonun gecesi, sağ üstte mavi,
@@ -962,3 +967,89 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
 @keyframes btn-spin { to { transform: rotate(360deg); } }
 .btn[aria-busy="true"]:disabled { opacity: 1; cursor: progress; }
 @media (prefers-reduced-motion: reduce) { .btn-spin { animation-duration: 1.6s; } }
+
+/* GENİŞ EKRAN SAYFA DESENİ (Seyhun 2026-11-04 "sağda ve solda boşluklar var… iPad'e ve MacBook'a kendilerine has tasarım"):
+   Mac ve yatay iPad (sol menü, ≥64rem): sayfa menünün sağındaki bütün alanı kaplar (yan boşluk yok); lacivert üst kenardan kenara;
+   altındaki bölümler sütunlara dağılır (wide-cols). Sayfa main'ine "wide" eklenir; telefonda ve dik iPad'de değişiklik yok. */
+@media (min-width: 64rem) {
+  body[data-side] main.wide.max-w-\[30rem\] { max-width: none; padding-left: 2rem; padding-right: 2rem; }
+  body[data-side] main.wide > :is(.ck, .navy, .wide-top, .wide-body) { margin-left: -2rem; margin-right: -2rem; padding-left: 2rem; padding-right: 2rem; }
+  body[data-side] main.wide > .wide-body { border-radius: 0; }
+  body[data-side] .wide-cols { columns: 24rem 4; column-gap: 1.5rem; }
+  body[data-side] .wide-cols > * { break-inside: avoid; margin: 0 0 1.5rem !important; }
+  body[data-side] .wide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr)); gap: 0.75rem 1.5rem; align-items: start; }
+}
+
+/* TAKVİM geniş ekranda (calendar/page.jsx): ay ızgarası büyük, hücrelerde günün planları adıyla (masaüstü takvimi gibi).
+   Dik iPad: ay tam genişlik, altında seçili gün. Mac ve yatay iPad: ekran yüksekliğinde; solda lacivert ay, sağda seçili gün listesi ve
+   altında Plan ekle / Görev ekle. Telefonda hücrelerde yalnız noktalar (cal-evs gizli). */
+.cal-evs, .cal-hnav { display: none; }
+@media (min-width: 48rem) {
+  .cal-hnav { display: flex; }
+  .cal-week > button { display: none; }
+  .cal-week > div { padding: 0; }
+  .cal-grid { gap: 0; border-top: 1px solid rgba(255, 255, 255, .08); }
+  .cal-grid .cal-cell { align-items: stretch; justify-content: flex-start; min-height: 6.5rem; padding: 0.375rem; border-bottom: 1px solid rgba(255, 255, 255, .08); text-align: left; overflow: hidden; }
+  .cal-grid .cal-cell:not(:nth-child(7n)) { border-right: 1px solid rgba(255, 255, 255, .08); }
+  .cal-grid .cal-cell[data-on] { background: rgba(255, 255, 255, .07); }
+  .cal-grid .cal-num { width: 1.875rem; height: 1.875rem; font-size: 0.875rem; }
+  .cal-grid .cal-dots { display: none; }
+  .cal-evs { display: flex; flex-direction: column; gap: 0.1875rem; margin-top: 0.25rem; min-width: 0; }
+  .cal-evs i { display: block; font-style: normal; font-size: 0.75rem; font-weight: 600; line-height: 1.25; padding: 0.125rem 0.375rem; border-radius: 0.375rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(255, 255, 255, .12); color: #fff; }
+  .cal-evs i[data-c="task"] { background: rgba(217, 119, 6, .3); }
+  .cal-evs i[data-c="late"] { background: rgba(220, 38, 38, .32); }
+  .cal-evs i[data-c="bday"] { background: rgba(236, 72, 153, .3); }
+  .cal-evs i[data-c="more"] { background: none; color: rgba(255, 255, 255, .6); padding-top: 0; }
+  .cal-evs b { font-weight: 700; color: rgba(255, 255, 255, .7); }
+  .cal-cell[data-out] .cal-evs { opacity: .45; }
+  .cal-legend { display: none; }
+  .cal-acts { display: flex; gap: 0.5rem; }
+}
+@media (max-width: 47.99rem) { .cal-acts { display: none; } }
+@media (min-width: 64rem) {
+  body[data-side] main.cal-wide.max-w-\[30rem\] { max-width: none; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) 24rem; height: 100dvh; overflow: hidden; }
+  body[data-side] main.cal-wide > .cal-top { margin: 0; padding: calc(1.25rem + env(safe-area-inset-top)) 2rem 1.5rem; display: flex; flex-direction: column; min-height: 0; }
+  body[data-side] main.cal-wide .cal-grid { flex: 1; grid-auto-rows: minmax(0, 1fr); min-height: 0; }
+  body[data-side] main.cal-wide .cal-grid .cal-cell { min-height: 0; }
+  body[data-side] main.cal-wide > .cal-body { margin: 0; border-radius: 0; padding: calc(1.25rem + env(safe-area-inset-top)) 1.5rem 1.5rem; overflow-y: auto; display: flex; flex-direction: column; }
+  body[data-side] main.cal-wide .cal-acts { position: sticky; bottom: 0; margin-top: auto; padding-top: 1rem; background: var(--bg); }
+}
+/* Yatay iPad: hücreler dar, saat yazılmaz, sağ sütun 20rem */
+@media (min-width: 64rem) and (max-width: 79.99rem) {
+  body[data-side] main.cal-wide.max-w-\[30rem\] { grid-template-columns: minmax(0, 1fr) 20rem; }
+  body[data-side] main.cal-wide .cal-top { padding-left: 1.25rem; padding-right: 1.25rem; }
+  body[data-side] main.cal-wide .cal-evs b { display: none; }
+  body[data-side] main.cal-wide .cal-evs i { padding: 0.125rem 0.25rem; font-size: 0.6875rem; }
+}
+
+/* SOLDA KOKPİT, SAĞDA İÇERİK (split; Mac ve yatay iPad, sol menü ≥64rem): sayfanın lacivert üstü (ilk section.ck) solda ekran yüksekliğinde
+   sabit sütun olur (başlık, özet, ana düğmeler); açık zemindeki gövde (.bg-bg) sağda kalan bütün genişliği alır ve bölümleri sütunlara
+   dağılır (24rem'lik, sığdığı kadar). Yan boşluk yok. Takvim aynı yönde (solda lacivert ay). Telefonda ve dik iPad'de değişiklik yok. */
+@media (min-width: 64rem) {
+  body[data-side] main.split.max-w-\[30rem\] { max-width: none; padding: 0; display: grid; grid-template-columns: 22rem minmax(0, 1fr); align-items: start; min-height: 100dvh; }
+  body[data-side] main.split > section.ck:first-child, body[data-side] main.split > .split-top { position: sticky; top: 0; margin: 0; height: 100dvh; overflow-y: auto; padding: calc(1.25rem + env(safe-area-inset-top)) 1.25rem 1.5rem; }
+  body[data-side] main.split > .bg-bg { margin: 0; border-radius: 0; padding: calc(1.25rem + env(safe-area-inset-top)) 2rem 2.5rem; min-width: 0; }
+  body[data-side] main.split > .bg-bg.split-cols { columns: 24rem; column-gap: 1.5rem; }
+  body[data-side] main.split > .bg-bg.split-cols > * { break-inside: avoid; margin: 0 0 1.5rem !important; }
+  body[data-side] main.split > .bg-bg.split-cols > .split-span { column-span: all; }
+}
+@media (min-width: 80rem) {
+  body[data-side] main.split.max-w-\[30rem\] { grid-template-columns: 26rem minmax(0, 1fr); }
+  body[data-side] main.split > section.ck:first-child, body[data-side] main.split > .split-top { padding-left: 1.75rem; padding-right: 1.75rem; }
+}
+/* split-main: sağdaki gövdede ana liste geniş sütunda, .split-side (ör. İngilizce kelime kartı) dar sağ sütunda */
+@media (min-width: 64rem) {
+  body[data-side] main.split > .bg-bg.split-main { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; column-gap: 1.5rem; }
+  body[data-side] main.split > .bg-bg.split-main > * { margin: 0 0 1.5rem !important; min-width: 0; }
+}
+@media (min-width: 80rem) {
+  body[data-side] main.split > .bg-bg.split-main { grid-template-columns: minmax(0, 1fr) 22rem; grid-auto-flow: row dense; }
+  body[data-side] main.split > .bg-bg.split-main > * { grid-column: 1; }
+  body[data-side] main.split > .bg-bg.split-main > .split-side { grid-column: 2; grid-row: 1 / span 20; }
+}
+/* Dik iPad (48–64rem, alt çubuk): sütunlu sayfalarda gövde iki sütun */
+@media (min-width: 48rem) {
+  .wide-cols, main.split > .bg-bg.split-cols { columns: 2; column-gap: 1rem; }
+  .wide-cols > *, main.split > .bg-bg.split-cols > * { break-inside: avoid; margin: 0 0 1.5rem !important; }
+  main.split > .bg-bg.split-cols > .split-span { column-span: all; }
+}
