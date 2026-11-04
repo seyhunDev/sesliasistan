@@ -3526,6 +3526,34 @@ function DrProg({ prog }) {
     </ul>
   );
 }
+// Program start kartının altında (Seyhun 2026-11-04 "sol alttan kaldıralım, start'a taşıyalım; 30 saniyede bir açılsın, daha sade"):
+// her 30 sn'de 10 sn aşağı açılır, sonra kapanır. Satır: saat, grup rengi, yarış; sıradaki parlak. Kalan yarış yoksa hiç çıkmaz.
+const SP_EVERY = 30;
+const SP_SHOW = 10;
+function GStProg({ prog, now }) {
+  const up = prog.filter((x) => x.state !== "done");
+  if (!up.length) return null;
+  const rows = up.slice(0, PROG_MAX);
+  const more = up.length - rows.length;
+  const on = Math.floor(now / 1000) % SP_EVERY < SP_SHOW;
+  return (
+    <div className={`gr-sp${on ? " on" : ""}`} aria-hidden={!on}>
+      <div>
+        <ul>
+          {rows.map((x) => (
+            <li key={x.key} className={x.state} style={{ "--g": groupColor(x.grp) || "rgba(255,255,255,.45)" }}>
+              <b>{x.at || ""}</b>
+              <i />
+              <span>{gWhat(x) || x.name}</span>
+              {x.state === "now" ? <small className="on">Yarışta</small> : x.state === "next" ? <small>Sıradaki</small> : null}
+            </li>
+          ))}
+          {more > 0 ? <li className="more">{`+${more} start daha`}</li> : null}
+        </ul>
+      </div>
+    </div>
+  );
+}
 function GDrawer({ rk, have, sec, auto, data, now, prog }) {
   // bir kez açılır ve açık kalır; bölümler yerinde sakince değişir, boy oynamaz (Seyhun 2026-11-03 18:38 "sürekli açılıp kapanan şeyler hoş olmuyor")
   const [open, setOpen] = useState(false);
@@ -3670,20 +3698,21 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
   else if (preOn) {
     const route = sceneRoute(data, null, true, "wait");
     const crs = !!courseSvg(data, route);
-    const have = [hasHours(data) || windAhead(data, now).length >= 2 ? "wind" : "", crs ? "course" : "", prog.length ? "prog" : ""].filter(Boolean);
-    rk = preStep({ show: sh, now, have }) || "prog";
+    // program sol alttan kalktı, start kartının altında açılır (Seyhun 2026-11-04, GStProg)
+    const have = [hasHours(data) || windAhead(data, now).length >= 2 ? "wind" : "", crs ? "course" : ""].filter(Boolean);
+    rk = preStep({ show: sh, now, have }) || have[0] || "";
     wCan = have.includes("wind");
     // sol altta tek alan, sırayla rüzgâr → parkur → program (Seyhun 2026-11-03 17:54); rüzgâr adımında beklenen saatler kartın içinde açılıp adım bitmeden kapanır
     const pc = cleanCourseShow(sh);
     const el = pc.auto ? (Math.max(0, now - (Date.parse(pc.at) || 0)) % (pc.sec * 1000)) / 1000 : 99;
     wOpen = wCan && rk === "wind" && el >= 1.2 && (!pc.auto || el < pc.sec - 1.8);
-    panel = rk === "wind" ? null : rk === "course" && crs ? <GCourse data={data} sel={null} racing={false} /> : <GProg prog={prog} />;
+    panel = rk === "course" && crs ? <GCourse data={data} sel={null} racing={false} /> : null;
     if (!left && top && have.length) drw = <GDrawer rk={rk} have={have} sec={pc.sec} auto={pc.auto} data={data} now={now} prog={prog} />;
   }
   // Rüzgâr · Parkur · Program paneli her durumda solda en altta (Seyhun 2026-11-03 19:59)
   if (!drw && mode !== "none") {
     const route = sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait");
-    const have = [hasHours(data) || windAhead(data, now).length >= 2 ? "wind" : "", courseSvg(data, route) ? "course" : "", prog.length ? "prog" : ""].filter(Boolean);
+    const have = [hasHours(data) || windAhead(data, now).length >= 2 ? "wind" : "", courseSvg(data, route) ? "course" : ""].filter(Boolean);
     if (have.length) {
       const pc = cleanCourseShow(sh);
       rk = preStep({ show: sh, now, have }) || have[0];
@@ -3697,6 +3726,7 @@ function Grafik({ data, id, sel, entry, cs, prog, today, now, mode, seqMode, fsL
     <div className="gr">
       <div className="gr-lc">
         <GStart t={top} />
+        {top ? <GStProg prog={prog} now={now} /> : null}
         <GClock c={clock} />
         {mid ? <div className="gr-mid">{mid}</div> : null}
         <div className="gr-lcb">

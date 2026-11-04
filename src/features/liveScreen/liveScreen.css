@@ -1740,3 +1740,18 @@ button.gr-card { cursor: pointer; }
 .gr-dri .gr-dp2 li small { font-size: 0.72em; letter-spacing: 0.1em; color: #ff3d77; }
 .gr-dri .gr-dp2 li small.on { color: #2fd6c3; }
 .gr-dri .gr-dp2 li.next span, .gr-dri .gr-dp2 li.now span { color: #fff; }
+
+/* Program start kartının altında (Seyhun 2026-11-04): 30 sn'de bir 10 sn açılır; sade satırlar */
+.gr-sp { display: grid; grid-template-rows: 0fr; margin-top: -0.4em; transition: grid-template-rows 0.6s cubic-bezier(0.22, 0.8, 0.24, 1), opacity 0.4s; opacity: 0; }
+.gr-sp.on { grid-template-rows: 1fr; opacity: 1; }
+.gr-sp > div { min-height: 0; overflow: hidden; }
+.gr-sp ul { list-style: none; margin: 0; padding: 0.9em 0.95em 0.6em; border-radius: 0 0 0.55em 0.55em; background: rgba(10, 18, 32, 0.82); }
+.gr-sp li { display: grid; grid-template-columns: 3em 0.25em minmax(0, 1fr) auto; align-items: center; gap: 0.7em; padding: 0.35em 0; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 1em; color: rgba(255, 255, 255, 0.62); }
+.gr-sp li b { font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+.gr-sp li i { width: 0.25em; height: 1.2em; border-radius: 0.12em; background: var(--g); }
+.gr-sp li span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-sp li small { font-size: 0.72em; letter-spacing: 0.1em; text-transform: uppercase; color: #ff3d77; }
+.gr-sp li small.on { color: #2fd6c3; }
+.gr-sp li.next, .gr-sp li.now { color: #fff; }
+.gr-sp li.more { display: block; padding-top: 0.4em; font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); }
+@media (prefers-reduced-motion: reduce) { .gr-sp { transition: none; } }
