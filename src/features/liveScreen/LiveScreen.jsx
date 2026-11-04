@@ -381,16 +381,14 @@ function LoadSkel({ name = "" }) {
           ‹
         </Link>
       </div>
-      {/* yayın ekranının sağ altındaki yer (sc-name): yarışın adı + Velora; veri gelince aynı yerde kalır (Seyhun 2026-11-04 yeni tasarım) */}
-      <div className="lv-lname">
-        <div className="t">
-          {name ? <b>{name}</b> : null}
-          <small>Yükleniyor</small>
-        </div>
-        <span className="v">
-          <VeloraGlyph size={40} />
-          <small>Velora</small>
+      {/* Velora yükleme işareti (Seyhun 2026-11-04 "eski kalmış loading alanı yeni Velora tasarımıyla"): ortada V daire, çevresinde dönen ince
+          mavi halka, altında yarışın adı (listeden geldiyse hemen) ve "Yayına bağlanılıyor" */}
+      <div className="lv-lbrand">
+        <span className="ring">
+          <VeloraGlyph size={56} />
         </span>
+        {name ? <b>{name}</b> : null}
+        <small>Yayına bağlanılıyor</small>
       </div>
     </div>
   );
