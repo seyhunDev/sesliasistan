@@ -3244,12 +3244,14 @@ function ScOthers({ data, sel, today, now }) {
     </div>
   );
 }
+// Sol alt sütun (Seyhun 2026-11-04 "sol alt köşeye; altta süre alanı, üstünde sıralama"): Canlı sağ üstte tek başına; sütunda en altta yarışın
+// kartı, üstünde diğer gruplar ve grubun sporcuları / dönüş (sahne.css .sc-rcol column-reverse)
 function ScTop({ rep, on, children }) {
   return (
-    <div className="sc-rcol">
+    <>
       {on ? <div className="sc-tr">{rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}</div> : null}
-      {children}
-    </div>
+      <div className="sc-rcol">{children}</div>
+    </>
   );
 }
 // Tehir rozeti: sağ üstte Canlı + saatin altında; karada (dizi dışı) tehir bütün gruplar için, dizide çekildiyse o start
@@ -3437,7 +3439,7 @@ function ScFleet({ data, sel, mode, now, who, today, onFull }) {
           <span>{rd.tag || "Dönüş"}</span>
         </div>
         <ol>
-          {rd.rows.map((r, i) => (
+          {rd.rows.slice(0, SC_FLEET_MAX).map((r, i) => (
             <li key={`${r.sail}${i}`}>
               <u>{r.p}</u>
               <b>{r.sail}</b>
@@ -3445,7 +3447,7 @@ function ScFleet({ data, sel, mode, now, who, today, onFull }) {
             </li>
           ))}
         </ol>
-        {rd.n > rd.rows.length ? <div className="sc-rdm">{`+${rd.n - rd.rows.length} tekne`}</div> : null}
+        {rd.n > Math.min(rd.rows.length, SC_FLEET_MAX) ? <div className="sc-rdm">{`+${rd.n - Math.min(rd.rows.length, SC_FLEET_MAX)} tekne`}</div> : null}
       </button>
     );
   }
@@ -3479,10 +3481,10 @@ function ScGroup({ data, who, today, now }) {
       if (!col || !li || getComputedStyle(col).display === "contents") return setFit(SC_PAGE);
       const used = [...col.children].filter((c) => c !== el).reduce((a, c) => a + c.getBoundingClientRect().height, 0);
       const gap = parseFloat(getComputedStyle(col).rowGap) || 0;
-      const room = (col.parentElement?.clientHeight || 0) - 9 * (parseFloat(getComputedStyle(col).fontSize) || 16); // .sc-rcol max-height: 100% - 9em
+      const room = (col.parentElement?.clientHeight || 0) - 12 * (parseFloat(getComputedStyle(col).fontSize) || 16); // .sc-rcol max-height: 100% - 12em (sahne.css hafif panel)
       const head = [...el.children].filter((c) => c.tagName !== "OL").reduce((a, c) => a + c.getBoundingClientRect().height, 0) + (el.querySelector(".sc-rdp") ? 0 : 2.2 * (parseFloat(getComputedStyle(el).fontSize) || 16)); // başlık + sayfa satırı
       const rows = Math.floor((room - used - gap * (col.children.length - 1) - head - (parseFloat(getComputedStyle(el).marginTop) || 0)) / li.getBoundingClientRect().height);
-      setFit(Math.max(SC_TOP + 2, Math.min(SC_PAGE, rows || SC_PAGE)));
+      setFit(Math.max(SC_TOP + 2, Math.min(SC_FLEET_MAX, rows || SC_FLEET_MAX)));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -3587,6 +3589,7 @@ function Sc02({ t, data, sel, mode, now, today, col = false }) {
 // Sahne girince ilk sayfadan başlar; sahnenin ekranda kalma süresi sayfa sayısı kadar (sc03Len → sceneOf dwell)
 const SC_PAGE = 11; // satır: ilk 5 sabit + 6 akan (Seyhun 2026-11-04 "ilk 5 her zaman gösterilsin, sonrası ileri doğru aksın")
 const SC_TOP = 5;
+const SC_FLEET_MAX = 8; // sağ sütundaki grup listesi en çok bu kadar satır (Seyhun 2026-11-04 "göz yoruyor, arka planı kapatıyor")
 const SC_PAGE_S = 8;
 const scPages = (len, top = SC_TOP, size = SC_PAGE) => (len <= size ? 1 : Math.ceil((len - top) / (size - top)));
 // Sayfalı liste (03 genel sıralama ve sağdaki grup listesi aynı mantık): sıralama varsa ilk `top` (5) sabit + 6'şar akan,

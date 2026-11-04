@@ -305,3 +305,45 @@
 @media (prefers-reduced-motion: reduce) { .sc-rd li.fl { animation: none; } }
 .sc-rcol > .sc-rd li { padding-top: 0.32em; padding-bottom: 0.32em; } /* sütunda kartın altında daha çok tekne sığsın */
 @media (max-aspect-ratio: 1/1) { .sc-rd li.cut { border-top: 1px solid var(--sc-line); } } /* dikte iki sütun: sabit-akan çizgisi yok */
+
+/* Hafif panel (Seyhun 2026-11-04 "çok göz yoruyor, arka planı kapatıyor"): görüntü önde; yarı saydam cam, ince çizgi, gölge yok, küçük yazı.
+   Ortak: .sc-lite sınıfı ya da --sc-lite rengi; şimdilik sağ üst sütunda (yarış kartı + grup listesi), sonra bütün sahnelere taşınacak */
+.sc { --sc-lite: rgba(6, 14, 28, 0.38); --sc-lite-line: rgba(255, 255, 255, 0.12); }
+.sc-lite, .sc-rcol > .sc-c2.col, .sc-rcol > .sc-rd, .sc-rcol > .sc-og {
+  background: var(--sc-lite);
+  border-radius: 0.6em;
+  box-shadow: inset 0 0 0 1px var(--sc-lite-line);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+  text-shadow: 0 0.05em 0.4em rgba(0, 0, 0, 0.35);
+}
+.sc-rcol { font-size: 0.8em; gap: 0.4em; max-height: calc(100% - 12em); }
+.sc-rcol > .sc-c2.col, .sc-rcol > .sc-rd, .sc-rcol > .sc-og { width: 16em; }
+.sc-rcol > .sc-og > div + div { border-color: var(--sc-lite-line); }
+.sc-rcol > .sc-og > div { padding: 0.4em 0.75em; }
+.sc-rcol > .sc-c2.col :is(.sc-who, .sc-fl, .sc-ocs, .sc-wl), .sc-rcol > .sc-rd :is(li, .sc-rdm) { border-color: var(--sc-lite-line); }
+.sc-rcol > .sc-c2.col .sc-who { padding: 0.45em 0.7em; }
+.sc-rcol > .sc-c2.col .sc-t { padding: 0.45em 0.7em 0.4em; }
+.sc-rcol > .sc-c2.col .sc-tm { font-size: 2.6em; }
+.sc-rcol > .sc-c2.col .sc-wl { padding: 0.45em 0.7em; }
+.sc-rcol > .sc-rd li { padding: 0.28em 0.75em; font-size: 1em; }
+.sc-rcol > .sc-rd li b { font-weight: 700; }
+.sc-rcol > .sc-rd li em { color: rgba(255, 255, 255, 0.7); }
+.sc-rcol > .sc-rd .sc-rdh { padding: 0.55em 0.75em 0.4em; }
+/* "İlk 5 · 18–19" tek satır; sayfa çizgileri kalan yere sığar */
+.sc-rdp > span { flex: none; white-space: nowrap; }
+.sc-rdp .sc-pgs { min-width: 0; flex: 1; justify-content: flex-end; overflow: hidden; }
+.sc-rdp .sc-pgs i { flex: 0 1 1.2em; min-width: 0.25em; }
+/* sağ alttaki ad sütunla ve görüntüyle yarışmasın: daha küçük */
+.sc-name { gap: 0.8em; }
+.sc-nt b { font-size: 1.5em; }
+.sc-nt b.lg { font-size: 1.3em; }
+@media (max-aspect-ratio: 1/1) { .sc-rcol { font-size: 1em; } .sc-rcol > .sc-c2.col, .sc-rcol > .sc-rd { width: auto; } }
+.sc-rcol > .sc-c2.col .sc-who { flex-wrap: wrap; row-gap: 0.3em; }
+/* Sol alt (Seyhun 2026-11-04 "sol alt köşeye; altta süre alanı, üstünde sıralama"): Canlı sağ üstte tek başına; sütun sol altta, en altta yarışın
+   kartı, üstünde diğer gruplar ve grubun listesi. Telefon dikeyde eski yerler (yukarıdaki display: contents) */
+@media not all and (max-aspect-ratio: 1/1) {
+  .sc-tr { position: absolute; top: calc(1.8em + env(safe-area-inset-top)); right: calc(2em + env(safe-area-inset-right)); }
+  .sc-rcol { top: auto; bottom: calc(2em + env(safe-area-inset-bottom)); left: calc(2em + env(safe-area-inset-left)); right: auto; flex-direction: column-reverse; align-items: flex-start; }
+  .sc:has(.sc-ap) .sc-rcol > .sc-rd { margin-top: 0; }
+}
