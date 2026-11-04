@@ -14,7 +14,7 @@ import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
 import { programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { DocsTab } from "./DocsTab";
@@ -227,7 +227,9 @@ export function BroadcastPage({ orgId, id }) {
     const next = cleanPlan({ ...base, ...(patch.day && patch.day < today ? { ...patch, day: today } : patch) });
     setPlan(next);
     // Promise döner: düğme veri gidene kadar halka gösterir
-    return savePlan(orgId, id, next).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
+    // yalnız değişen alanlar (sunucunun siteden yazdığı program alanları ezilmesin)
+    const keys = Object.keys(next).filter((k) => JSON.stringify(next[k]) !== JSON.stringify(plan[k]));
+    return savePlanKeys(orgId, id, next, keys).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
   };
   const planDay = plan.day && plan.day >= today ? plan.day : today;
   const nextPlan = plan.order[0] || null; // sıradaki start (listenin ilk bekleyeni)
