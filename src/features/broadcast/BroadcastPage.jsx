@@ -815,12 +815,9 @@ export function BroadcastPage({ orgId, id }) {
       return null;
     }
   })();
+  const [typeOpen, setTypeOpen] = useState(false); // Parkur: harita üstündeki kart türü seçimi
+  const [ptOpen, setPtOpen] = useState(""); // Parkur: girilmiş konum (Buradayım / Sil)
   const lastOf = (k) => [...c.obs].reverse().find((x) => x.kind === k) || null;
-  const lastObs = [
-    ["Rüzgâr", lastOf("wind"), wind ? `${degText(wind)} ${dirShort(wind.deg)}${wind.kn != null ? ` · ${wind.kn} kn` : ""}` : ""],
-    ["Hat", lastOf("line"), bias?.end ? `${bias.end === "pin" ? "Pin" : "Komite"} +${bias.deg}°` : bias ? "Dik" : lastOf("line") ? degText(lastOf("line")) : ""],
-    ["Eksen", lastOf("axis"), lastOf("axis") ? degText(lastOf("axis")) : ""],
-  ];
   const row = "flex w-full items-center gap-3 px-4 py-3 text-left";
   // Yayında: bugün süren yarış var. İnce üst çubuk: yalnız sıradan durumlarda (kurulum, bayrak seçimi, tehir, geri düğmesi yokken)
   const anyLive = live.starts.some((x) => x.day === today && !x.fin && !x.void);
@@ -1615,75 +1612,14 @@ export function BroadcastPage({ orgId, id }) {
         ) : null}
         {!needSetup && tab === "parkur" ? (
           <>
-        {/* Parkur (Seyhun 2026-11-03 "yap"): büyük harita; kart adı, ölçülen rüzgâr ve hat avantajı haritanın üstünde; altında rota
-            kutuları (Düzelt › Kaydet). Kartlar tek listede: seçili kart + tür + her grubun kartı. Son ölçümler üç kutu, hepsi Tümü'nde. */}
+        {/* Parkur (Seyhun 2026-11-04 örnek parkur-pro onaylandı): büyük harita (sol üstte kart A · B · +, sağ üstte tür), altında üç gösterge
+            Rüzgâr · Eksen · Hat, rota şeridi START → F + Düzelt; Gruplar tek satır (dokun: grubun kartı sıradakine geçer); Konumlar 6 kutu
+            (girilmeyene dokun: Buradayım; girilene dokun: Buradayım / Sil); Ölçümler son üç satır, Tümü */}
         <section>
           <div className={`${card} overflow-hidden`}>
             <div className="relative">
-              {scene ? <div className="[&>svg]:block" dangerouslySetInnerHTML={{ __html: scene }} /> : <p className="px-4 pb-6 pt-14 text-[0.875rem] text-mut">Rüzgâr ya da parkur ölçümü girince kart çizilir</p>}
-              <div className="pointer-events-none absolute left-3 top-2.5 max-w-[58%] leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
-                <b className="block truncate text-[0.9375rem] font-bold">{`Kart ${course.sel} · ${(CARD_TYPES[selCard(course).type] || CARD_TYPES.std).split(" ")[0]}`}</b>
-                {selWho ? <span className="block truncate text-[0.75rem] font-semibold text-white/75">{selWho}</span> : null}
-              </div>
-              {wind ? (
-                <div className="pointer-events-none absolute right-3 top-2 text-right leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
-                  <b className="block text-[1.25rem] font-bold tabular-nums">
-                    {degText(wind)}
-                    <small className="ml-0.5 text-[0.75rem]">{dirShort(wind.deg)}</small>
-                  </b>
-                  {wind.kn != null || wind.gust != null ? <span className="block text-[0.75rem] font-semibold text-white/80">{[wind.kn != null ? `${wind.kn} kn` : "", wind.gust != null ? `sağanak ${wind.gust}` : ""].filter(Boolean).join(" · ")}</span> : null}
-                  <span className="block text-[0.75rem] font-semibold text-white/70">{`${hm(wind.at)} ölçüm`}</span>
-                </div>
-              ) : null}
-              {bias?.end ? (
-                <span className="pointer-events-none absolute bottom-2.5 left-3 rounded-[0.5rem] bg-black/45 px-2 py-1 text-[0.75rem] font-bold text-white">
-                  {"Hat avantajı "}
-                  <i className="not-italic text-ok">{`${bias.end === "pin" ? "Pin" : "Komite"} +${bias.deg}°`}</i>
-                </span>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-2 border-t border-line px-3 py-2.5">
-              {rtEdit ? (
-                <input autoFocus value={rt} onChange={(e) => setRt(e.target.value.slice(0, 40))} placeholder="1 2 3 F" aria-label="Rota" className="h-9 min-w-0 flex-1 rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.9375rem] font-bold tabular-nums tracking-[0.06em] outline-none" />
-              ) : (
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1" aria-label={`Rota ${routeText(cleanRoute(rt)) || "yok"}`}>
-                  {cleanRoute(rt).length ? (
-                    cleanRoute(rt).map((s, i) => (
-                      <span key={i} className="flex items-center gap-1">
-                        {i ? <span className="text-[0.75rem] text-mut">›</span> : null}
-                        <span className={`grid h-8 min-w-8 place-items-center rounded-[0.5rem] border px-1.5 text-[0.9375rem] font-bold tabular-nums ${s === "F" ? "border-ok/50 text-ok" : "border-line bg-[var(--chip)]"}`}>{s}</span>
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-[0.875rem] font-semibold text-mut">Rota yok</span>
-                  )}
-                </div>
-              )}
-              <Button
-                size="sm"
-                variant="secondary"
-                full={false}
-                onClick={() => {
-                  if (!rtEdit) return setRtEdit(true);
-                  if (cleanRoute(rt).length) setRtEdit(false);
-                  saveRoute();
-                }}
-              >
-                {rtEdit ? "Kaydet" : "Düzelt"}
-              </Button>
-            </div>
-          </div>
-        </section>
-        {/* Kartlar (Seyhun 2026-11-02 "sarı grubu trapezde, mavi grubu başka parkurda"): her grup bir kart seçer; seçmeyen grup seçili kartla. */}
-        <section>
-          <Head title="Kartlar" right="Seçili kart sıradaki startta açılır" />
-          <div className={`${card} overflow-hidden`}>
-            <div className="flex items-center gap-2.5 border-b border-line px-4 py-2.5">
-              <span className="min-w-0 flex-1 leading-tight">
-                <b className="block truncate font-semibold">Kart</b>
-                <span className="block truncate text-[0.75rem] text-mut">{`${CARD_TYPES[selCard(course).type] || CARD_TYPES.std} · ${routeText(selCard(course).route) || "Rota yok"}`}</span>
-              </span>
-              <div className="masa-seg">
+              {scene ? <div className="[&>svg]:block" dangerouslySetInnerHTML={{ __html: scene }} /> : <p className="px-4 pb-8 pt-20 text-center text-[0.875rem] text-mut">Rüzgâr ya da parkur ölçümü girince kart çizilir</p>}
+              <div className="masa-seg absolute left-2.5 top-2.5">
                 {course.cards.map((x) => (
                   <button key={x.id} type="button" aria-pressed={x.id === course.sel} aria-label={`Kart ${x.id}`} onClick={() => pickCard(x.id)}>
                     {x.id}
@@ -1693,103 +1629,147 @@ export function BroadcastPage({ orgId, id }) {
                   +
                 </button>
               </div>
+              <button type="button" data-press aria-label="Kart türü" aria-expanded={typeOpen} onClick={() => setTypeOpen((v) => !v)} className="masa-b gl absolute right-2.5 top-2.5 bg-black/45">
+                {(CARD_TYPES[selCard(course).type] || CARD_TYPES.std).split(" ")[0]}
+              </button>
+              {typeOpen ? (
+                <div className="absolute right-2.5 top-[3.75rem] z-10 grid gap-1.5 rounded-[0.875rem] bg-[#0e1829]/95 p-1.5 shadow-lg">
+                  {Object.entries(CARD_TYPES).map(([t, n]) => (
+                    <button key={t} type="button" data-press aria-pressed={selCard(course).type === t} className="masa-b justify-start" onClick={() => (setTypeOpen(false), setType(t))}>
+                      {n.split(" ")[0]}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
-            <div className="flex items-center gap-2.5 border-b border-line px-4 py-2.5 last:border-b-0">
-              <b className="min-w-0 flex-1 truncate font-semibold">Tür</b>
-              <div className="masa-seg">
-                {Object.entries(CARD_TYPES).map(([t, n]) => (
-                  <button key={t} type="button" aria-pressed={selCard(course).type === t} onClick={() => setType(t)}>
-                    {n.split(" ")[0]}
-                  </button>
-                ))}
+            <div className="masa-inst">
+              <div>
+                <small>Rüzgâr</small>
+                <b>
+                  {wind ? degText(wind) : "—"}
+                  {wind ? <em>{dirShort(wind.deg)}</em> : null}
+                </b>
+                <span>{wind ? [wind.kn != null ? `${wind.kn} kn` : "", wind.gust != null ? `sağanak ${wind.gust}` : "", wind.kn == null && wind.gust == null ? hm(wind.at) : ""].filter(Boolean).join(" · ") : "Ölçüm yok"}</span>
+              </div>
+              <div>
+                <small>Eksen</small>
+                <b>{lastOf("axis") ? degText(lastOf("axis")) : "—"}</b>
+                <span>{lastOf("axis") && wind ? `Rüzgâr ${axisOff(wind.deg, lastOf("axis").deg)}` : lastOf("axis") ? hm(lastOf("axis").at) : "Ölçüm yok"}</span>
+              </div>
+              <div>
+                <small>Hat</small>
+                <b className={bias?.end ? "g" : ""}>{bias?.end ? (bias.end === "pin" ? "Pin" : "Komite") : bias ? "Dik" : "—"}</b>
+                <span>{bias?.end ? `+${bias.deg}° avantaj` : bias ? "Avantaj yok" : "Ölçüm yok"}</span>
               </div>
             </div>
-            {groupRows.length > 1
-              ? groupRows.map(([c, g]) => {
-                  const k = cardFor(course, c, g);
-                  return (
-                    <div key={cardKey(c, g)} className="flex items-center gap-2.5 border-b border-line px-4 py-2.5 last:border-b-0">
-                      <span className="size-2.5 shrink-0 rounded-full" style={{ background: g ? groupColor(g) : "var(--mut)" }} aria-hidden="true" />
-                      <span className="min-w-0 flex-1 leading-tight">
-                        <b className="block truncate font-semibold">{g ? `${g}${plan.sets.length > 1 ? ` · ${c}` : ""}` : c}</b>
-                        {k.id !== course.sel ? <span className="block truncate text-[0.75rem] text-mut">{`${(CARD_TYPES[k.type] || CARD_TYPES.std).split(" ")[0]} · ${routeText(k.route) || "Rota yok"}`}</span> : null}
-                      </span>
-                      <div className="masa-seg">
-                        {course.cards.map((x) => (
-                          <button key={x.id} type="button" aria-pressed={k.id === x.id} aria-label={`Kart ${x.id}`} onClick={() => k.id !== x.id && putCards({ by: { ...course.by, [cardKey(c, g)]: x.id } }, `${g || c}: Kart ${x.id}`)}>
-                            {x.id}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })
-              : null}
-            {course.cards.length > 1 ? (
-              <button type="button" onClick={dropCard} className="block w-full px-4 py-2.5 text-left text-[0.875rem] font-semibold text-rec">
-                {`Kart ${course.sel}'i sil`}
-              </button>
-            ) : null}
+            <div className="masa-legs">
+              {rtEdit ? (
+                <input autoFocus value={rt} onChange={(e) => setRt(e.target.value.slice(0, 40))} placeholder="1 2 3 F" aria-label="Rota" className="h-12 min-w-0 flex-1 rounded-[0.875rem] bg-[var(--chip)] px-3 text-[1rem] font-bold tabular-nums tracking-[0.06em] outline-none" />
+              ) : (
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-y-1.5" aria-label={`Rota ${routeText(cleanRoute(rt)) || "yok"}`}>
+                  <span className="lp s">START</span>
+                  {cleanRoute(rt).map((s, i) => (
+                    <span key={i} className="lg">
+                      <i />
+                      <span className={`lp${s === "F" ? " f" : ""}`}>{s}</span>
+                    </span>
+                  ))}
+                  {!cleanRoute(rt).length ? <span className="ml-2 text-[0.875rem] font-semibold text-mut">Rota yok</span> : null}
+                </div>
+              )}
+              <Button
+                size="sm"
+                variant="secondary"
+                full={false}
+                onClick={() => {
+                  if (!rtEdit) return setRtEdit(true);
+                  if (cleanRoute(rt).length) setRtEdit(false);
+                  return saveRoute();
+                }}
+              >
+                {rtEdit ? "Kaydet" : "Düzelt"}
+              </Button>
+            </div>
           </div>
         </section>
-        {/* Konumlar (Seyhun 2026-11-03): teknenin/şamandıranın yanında Buradayım; girilen yer geçerli, rüzgâra göre kaymışsa kaç derece */}
+        {groupRows.length > 1 ? (
+          <section>
+            <Head title="Gruplar" right={course.cards.length > 1 ? "Dokun, kart değişsin" : ""} />
+            <div className={`${card} flex flex-wrap gap-2 p-3`}>
+              {groupRows.map(([cl, g]) => {
+                const k = cardFor(course, cl, g);
+                const nx = course.cards[(course.cards.findIndex((x) => x.id === k.id) + 1) % course.cards.length];
+                return (
+                  <button key={cardKey(cl, g)} type="button" data-press className="masa-b gap-2" disabled={course.cards.length < 2} onClick={() => putCards({ by: { ...course.by, [cardKey(cl, g)]: nx.id } }, `${g || cl}: Kart ${nx.id}`)}>
+                    <span className="size-2.5 shrink-0 rounded-full" style={{ background: g ? groupColor(g) : "var(--mut)" }} aria-hidden="true" />
+                    {g ? `${g}${plan.sets.length > 1 ? ` · ${cl}` : ""}` : cl}
+                    <b className="masa-gk">{k.id}</b>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
         <section>
-          <Head title="Konumlar" />
-          <div className={`${card} overflow-hidden`}>
+          <Head title="Konumlar" right={ptOpen ? PT_LABEL[ptOpen] : "Dokun: Buradayım"} />
+          <div className="masa-pts">
             {PT_ROWS.map((k) => {
               const p = course.pts[k];
               const off = cpts?.off?.[k];
               return (
-                <div key={k} className="flex items-center gap-2.5 border-b border-line px-4 py-2.5 last:border-b-0">
-                  <span className="min-w-0 flex-1 leading-tight">
-                    <b className="block truncate font-semibold">{PT_LABEL[k]}</b>
-                    <span className="block truncate text-[0.75rem] text-mut">{p ? `${p.at ? `${hm(p.at)} · ` : ""}${off ? `Rüzgâra göre ${Math.abs(off)}° ${off > 0 ? "sağda" : "solda"}` : "Girildi"}` : "Girilmedi"}</span>
-                  </span>
-                  {p ? (
-                    <button type="button" onClick={() => putPt(k, null)} className="masa-b red">
-                      Sil
-                    </button>
-                  ) : null}
-                  <Button size="sm" variant="secondary" full={false} disabled={!!ptBusy} onClick={() => hereFor(k)}>
-                    {ptBusy === k ? "Bekle…" : "Buradayım"}
-                  </Button>
-                </div>
+                <button key={k} type="button" data-press aria-pressed={ptOpen === k} disabled={!!ptBusy} className={`masa-pt ${p ? (off ? "w" : "on") : "no"}`} onClick={() => (p ? setPtOpen(ptOpen === k ? "" : k) : hereFor(k))}>
+                  <small>{PT_SHORT[k]}</small>
+                  <b>{ptBusy === k ? "Bekle…" : p ? (p.at ? hm(p.at) : "Girildi") : "Buradayım"}</b>
+                  <span>{p ? (off ? `${Math.abs(off)}° ${off > 0 ? "sağda" : "solda"}` : "Girildi") : "Girilmedi"}</span>
+                </button>
               );
             })}
           </div>
+          {ptOpen && course.pts[ptOpen] ? (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Button variant="secondary" disabled={!!ptBusy} onClick={() => (setPtOpen(""), hereFor(ptOpen))}>
+                Buradayım
+              </Button>
+              <Button variant="danger" onClick={() => (setPtOpen(""), putPt(ptOpen, null))}>
+                Sil
+              </Button>
+            </div>
+          ) : null}
         </section>
         <section>
-          <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1 text-[0.8125rem] font-semibold text-mut">
-            <span>Son ölçümler</span>
-            {course.obs.length ? (
+          <div className="mb-1.5 flex items-center justify-between gap-3 px-1 text-[0.8125rem] font-semibold text-mut">
+            <span>Ölçümler</span>
+            {course.obs.length > 3 ? (
               <button type="button" onClick={() => setObsAll((v) => !v)} className="masa-b">
                 {obsAll ? "Kapat" : "Tümü ›"}
               </button>
             ) : null}
           </div>
-          {obsAll ? (
+          {course.obs.length ? (
             <div className={`${card} overflow-hidden`}>
-              {[...course.obs].reverse().map((o) => (
-                <div key={o.id} className="flex items-center gap-3 border-b border-line px-4 py-2 text-[0.9375rem] last:border-b-0">
-                  <span className="min-w-0 flex-1 truncate font-semibold">{`${obsTitle(o)} · ${obsValue(o)}`}</span>
-                  <span className="text-[0.8125rem] tabular-nums text-mut">{hm(o.at)}</span>
-                  <button type="button" onClick={() => dropObs(o)} className="masa-b red">
-                    Sil
-                  </button>
-                </div>
-              ))}
+              {[...course.obs]
+                .reverse()
+                .slice(0, obsAll ? undefined : 3)
+                .map((o) => (
+                  <div key={o.id} className="flex items-center gap-3 border-b border-line px-4 py-1.5 text-[0.9375rem] last:border-b-0">
+                    <span className="w-12 shrink-0 text-[0.8125rem] font-semibold tabular-nums text-mut">{hm(o.at)}</span>
+                    <span className="min-w-0 flex-1 truncate font-semibold">{`${obsTitle(o)} · ${obsValue(o)}`}</span>
+                    {obsAll ? (
+                      <button type="button" onClick={() => dropObs(o)} className="masa-b red">
+                        Sil
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
             </div>
           ) : (
-            <div className="masa-meas">
-              {lastObs.map(([name, o, val]) => (
-                <div key={name} className={card}>
-                  <small>{name}</small>
-                  <b>{o ? val : "Yok"}</b>
-                  <span>{o ? hm(o.at) : "·"}</span>
-                </div>
-              ))}
-            </div>
+            <p className={`${card} px-4 py-3 text-[0.875rem] text-mut`}>Ölçüm yok. Ölçüm ekle ya da Konuş.</p>
           )}
+          {course.cards.length > 1 ? (
+            <button type="button" onClick={dropCard} className="masa-b red mt-3">
+              {`Kart ${course.sel}'i sil`}
+            </button>
+          ) : null}
         </section>
         {cListen || heard ? (
           <p className="px-1 text-[0.875rem] text-mut" aria-live="polite">
@@ -2376,6 +2356,12 @@ function Head({ title, right = "", onAdd = null, addLabel = "Ekle", busy = false
 const SHOW_NAME = { course: "Parkur" };
 // Konumla girilen noktalar (lib/courseCard.js coursePoints)
 const PT_ROWS = ["komite", "pin", "m1", "m2", "m3", "fin"];
+const PT_SHORT = { komite: "Komite", pin: "Pin", m1: "1", m2: "2", m3: "3", fin: "Finiş" };
+// Eksenin rüzgâra göre farkı: "+5°" / "−3°" / "aynı"
+const axisOff = (w, a) => {
+  const d = Math.round((((w - a) % 360) + 540) % 360 - 180);
+  return d ? `${d > 0 ? "+" : "−"}${Math.abs(d)}°` : "aynı";
+};
 const PT_LABEL = { komite: "Komite", pin: "Pin", m1: "1 (orsa)", m2: "2 (apaz)", m3: "3 (pupa)", m4: "4", fin: "Finiş" };
 const STEPS = ["Sınıflar", "Gruplar"];
 const bigBtn = "flex h-12 w-full items-center justify-center rounded-[1.125rem] bg-white text-[1.125rem] font-semibold text-[#0b1a33] shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-0.5 active:shadow-none disabled:opacity-40";

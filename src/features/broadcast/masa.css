@@ -285,3 +285,33 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-wide-g small { display: block; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mut); }
 .masa-wide-g b { display: block; margin-top: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.25rem; font-weight: 800; }
 .masa-wide-g span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8125rem; font-weight: 600; color: var(--mut); }
+/* Parkur sekmesi yeni düzen (Seyhun 2026-11-04 parkur-pro onayı) */
+.masa-seg { background: rgba(14, 24, 41, 0.85); }
+.masa-seg > button { height: 2.625rem; min-width: 2.625rem; font-size: 0.9375rem; }
+.masa-inst { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.masa-inst > div { min-width: 0; padding: 0.625rem 0.875rem; }
+.masa-inst > div + div { border-left: 1px solid var(--line); }
+.masa-inst small { display: block; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mut); }
+.masa-inst b { display: block; margin-top: 0.125rem; font-size: 1.375rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.masa-inst b em { margin-left: 0.25rem; font-style: normal; font-size: 0.8125rem; color: var(--mut); }
+.masa-inst b.g { color: var(--ok); }
+.masa-inst span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; font-weight: 600; color: var(--mut); }
+.masa-legs { display: flex; align-items: center; gap: 0.625rem; border-top: 1px solid var(--line); padding: 0.625rem 0.75rem; }
+.masa-legs .lp { display: grid; place-items: center; min-width: 2.25rem; height: 2.25rem; padding: 0 0.375rem; border-radius: 0.625rem; background: var(--chip); font-size: 0.9375rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.masa-legs .lp.s { padding: 0 0.625rem; font-size: 0.75rem; letter-spacing: 0.08em; background: #2a3d5e; }
+.masa-legs .lp.f { background: rgba(52, 196, 124, 0.18); color: var(--ok); }
+.masa-legs .lg { display: flex; align-items: center; }
+.masa-legs .lg i { display: block; width: 0.75rem; height: 2px; background: #2a3d5e; }
+.masa-gk { display: grid; place-items: center; min-width: 1.75rem; height: 1.75rem; border-radius: 0.5rem; background: var(--acc); color: var(--on-acc); font-size: 0.8125rem; }
+.masa-pts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.masa-pt { min-width: 0; min-height: 4.5rem; border-radius: 0.875rem; border: 1px solid var(--line); background: var(--card); padding: 0.5rem 0.625rem; text-align: left; }
+.masa-pt:active { transform: scale(0.97); }
+.masa-pt small { display: block; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mut); }
+.masa-pt b { display: block; margin-top: 0.125rem; font-size: 1.0625rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.masa-pt span { display: block; font-size: 0.75rem; font-weight: 600; color: var(--mut); }
+.masa-pt.on { border-color: rgba(52, 196, 124, 0.55); background: rgba(52, 196, 124, 0.1); }
+.masa-pt.on span { color: #7fe0ad; }
+.masa-pt.w { border-color: rgba(240, 180, 60, 0.55); background: var(--warnbg); }
+.masa-pt.w span { color: var(--warn); }
+.masa-pt.no b { color: var(--acc); }
+.masa-pt[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--acc); }
