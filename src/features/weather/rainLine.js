@@ -31,8 +31,8 @@ const AT = { kuzey: "kuzeyinde", kuzeydoğu: "kuzeydoğusunda", doğu: "doğusun
 export function hereLine(radar, soon, hm = (ms) => new Date(ms).toTimeString().slice(0, 5)) {
   const last = radar?.frames?.at(-1);
   if (!last || radar.near === undefined) return "";
-  const when = ` (radar ${hm(Date.parse(last.at))})`;
-  if (last.level > 0) return `Burada şu an ${LV[last.level]} yağış var${when}`;
-  if (radar.near) return `Burada yağmıyor · ${radar.near.km} km ${AT[radar.near.dir] || radar.near.dir} ${LV[radar.near.level]} yağış${when}`;
-  return soon ? `Burada ve 30 km içinde şu an yağış yok${when}` : "";
+  const when = ` · ${hm(Date.parse(last.at))}`; // tek satır (Seyhun 2026-11-04): radar saati kısa
+  if (last.level > 0) return `Burada ${LV[last.level]} yağış var${when}`;
+  if (radar.near) return `Burada yağmıyor · ${radar.near.km} km ${AT[radar.near.dir] || radar.near.dir} ${LV[radar.near.level]}${when}`;
+  return soon ? `Burada ve 30 km içinde yağış yok${when}` : "";
 }
