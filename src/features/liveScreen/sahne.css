@@ -149,6 +149,8 @@
 .sc-c2 { position: absolute; top: calc(1.8em + env(safe-area-inset-top)); left: calc(2em + env(safe-area-inset-left)); width: 20em; max-width: calc(100% - 4em); }
 .sc-rd { position: absolute; top: calc(5.5em + env(safe-area-inset-top)); right: calc(2em + env(safe-area-inset-right)); width: 17em; animation: sc-in 0.5s ease both; }
 .sc-rdh { display: flex; justify-content: space-between; gap: 1em; padding: 0.7em 0.9em 0.5em; font: 700 0.7em/1 var(--sc-c); letter-spacing: 0.18em; text-transform: uppercase; color: var(--sc-mut); }
+.sc-rdh > span:first-child { display: flex; align-items: center; gap: 0.6em; color: rgba(255, 255, 255, 0.85); }
+.sc-rdh .sc-ckg { font-size: 1.05em; letter-spacing: 0.1em; padding: 0.3em 0.5em; }
 .sc-rd ol { list-style: none; margin: 0; padding: 0; }
 .sc-rd li { display: flex; align-items: center; gap: 0.6em; padding: 0.45em 0.9em; border-top: 1px solid var(--sc-line); font: 700 1.1em/1 var(--sc-c); text-transform: uppercase; }
 .sc-rd li u { text-decoration: none; width: 1.3em; color: var(--sc-mut); }
