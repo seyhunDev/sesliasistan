@@ -1,8 +1,8 @@
-Commit: f01ee89 · Merge pull request #1211 from seyhunDev/claude/project-thread-1bw2uf
-Zaman: 2026-11-04-1547 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41830242689
+Commit: fe38938 · Canlı ekran TV düzeni 3: Genel geri, Abandone, Gün bitti evreleri ve evre bandı (#1219)
+Zaman: 2026-11-04-1641 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41837968107
 
-TAM TEST · 04.11.2026 15:34:12
+TAM TEST · 04.11.2026 16:27:23
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Ana sayfa: yarış günü havası…
     Antrenman: sesle başlat ve bitir…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 26/26 geçti
+    Çevrimdışı: 24/26 geçti
     Yarış sayfası (sporcu seçili, yarış günü)…
     Yarış günü (sporcu seçili)…
     Yarıştan önce (sporcu seçili)…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1432/1439 geçti · 7 kalan · 816 sn
+SONUÇ: 1430/1439 geçti · 9 kalan · 837 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -202,12 +202,18 @@ SONUÇ: 1432/1439 geçti · 7 kalan · 816 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 16 · açıklama "Gerçekleşen (Dikili istasyonu)Tahmin" · bölünmüş true
+          olan:     ölçülen sütun 17 · açıklama "Gerçekleşen (Dikili istasyonu)Tahmin" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 26/26
-  ✓ Anında açılış: 5/5
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 24/26
+  ✗ Anında açılış: 3/5
+      ✗ “yeniden açılınca açılış ekranı”
+          beklenen: hiç görünmez
+          olan:     {"boot":true,"warm":true}
+      ✗ “sunucuda değişiklik varken”
+          beklenen: üstte çizgi çıkar, yeni başlık gelir
+          olan:     {"boot":true,"sync":true}
   ✓ İnternet varken: 2/2
   ✓ Yavaş bağlantı: 3/3
   ✓ Takılan bağlantı: 2/2
