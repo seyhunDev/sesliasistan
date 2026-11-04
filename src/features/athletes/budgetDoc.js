@@ -123,11 +123,15 @@ export async function buildBudgetPdf(r, athletes, fonts) {
     text("Kalem yok.", cols[1], y, f.r, 9.5, { color: MUT });
     y += 22;
   }
-  need(24);
-  text("Toplam", cols[1], y + 2, f.b, 10);
-  text(tl(t.total), cols[3], y + 2, f.b, 10, { align: "right" });
-  text(t.athletes ? tl(t.perAthlete) : "-", cols[4], y + 2, f.b, 10, { align: "right" });
-  y += 30;
+  // Toplam: kalemlerden bir satır aralıkla ayrı, üstte koyu çizgi, kalın yazı
+  need(44);
+  y += 8;
+  rule(y - 6, NAVY, 1.2);
+  y += 14;
+  text("Toplam", cols[1], y, f.b, 11);
+  text(tl(t.total), cols[3], y, f.b, 11, { align: "right" });
+  text(t.athletes ? tl(t.perAthlete) : "-", cols[4], y, f.b, 11, { align: "right" });
+  y += 32;
 
   // Sporcu başına ödeme
   if (athletes.length) {
