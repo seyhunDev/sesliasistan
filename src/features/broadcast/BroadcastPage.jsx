@@ -902,7 +902,8 @@ export function BroadcastPage({ orgId, id }) {
   const planAt = plan.day === today && plan.at ? Date.parse(`${today}T${plan.at}:00+03:00`) : NaN;
   const evSoon = scMode === "wait" && (orangeUp(plan, today) || (planAt > capNow && planAt - capNow <= 600e3));
   // kendiliğinden evre (Yayın › Ekran'da elle seçilmediyse ekrandaki), elle seçilen (pre.evre) üstüne yazar
-  const evAuto = plan.status === "ap" ? "ap" : evreOf(scMode, "", evSoon);
+  const evVd = lastT?.void && !cur ? lastT.void : "";
+  const evAuto = plan.status === "ap" ? "ap" : evreOf(scMode, "", evSoon, "", { fs: /genel/i.test(evVd), aban: /abandone|iptal/i.test(evVd) });
   const evNow = pre.evre || evAuto;
   // evreye atanan görüntü varsa ekrandaki odur
   const eff = L ? evreScreen(L.screen, pre, evNow) : null;
