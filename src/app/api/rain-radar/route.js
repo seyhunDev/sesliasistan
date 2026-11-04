@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
-import { decodePng, levelAt, tileOf } from "@/lib/rainRadar";
+import { decodePng, levelAt, levelOf, nearestRain, tileOf } from "@/lib/rainRadar";
 
 export const runtime = "nodejs";
 
-// Radardan yağış: ?lat&lon → { src: "RainViewer", frames: [{ at (ISO), level 0-3 }] } son 2 saat, 10 dakikada bir.
+// Radardan yağış: ?lat&lon → { src: "RainViewer", frames: [{ at (ISO), level 0-3 }], near } son 2 saat, 10 dakikada bir.
+// near: son karede 30 km içindeki en yakın yağış { at, km, dir, level } ya da null (çevrede yok); burada yağıyorsa km 0 sayılmaz, frames'e bakılır.
 // Radar listesi 5 dk, her döşeme 2 saat saklanır (aynı döşeme bütün kullanıcılar için bir kez indirilir).
 const MAPS = "https://api.rainviewer.com/public/weather-maps.json";
 let maps = null;
@@ -54,7 +55,24 @@ export async function GET(req) {
         }
       }),
     );
-    return NextResponse.json({ src: "RainViewer", frames: frames.filter(Boolean) });
+    let near;
+    const last = past.at(-1);
+    if (last) {
+      try {
+        // Son karenin noktayı çevreleyen döşemeleri (30 km ≈ 32 piksel, en çok 4 döşeme)
+        const imgs = new Map();
+        const keys = new Set();
+        for (const ox of [-1, 0, 1]) for (const oy of [-1, 0, 1]) if ((ox === 0 || (ox < 0 ? t.px < 40 : t.px > 215)) && (oy === 0 || (oy < 0 ? t.py < 40 : t.py > 215))) keys.add(`${t.x + ox}/${t.y + oy}`);
+        await Promise.all([...keys].map(async (k) => imgs.set(k, await tile(`${host}${last.path}/256/${t.z}/${k}/2/1_0.png`).catch(() => null))));
+        const at = (gx, gy) => {
+          const img = imgs.get(`${Math.floor(gx / 256)}/${Math.floor(gy / 256)}`);
+          return img ? levelOf(...img.px(((gx % 256) + 256) % 256, ((gy % 256) + 256) % 256)) : 0;
+        };
+        const n = nearestRain(at, t.x * 256 + t.px, t.y * 256 + t.py, lat);
+        near = n ? { at: new Date(last.time * 1000).toISOString(), ...n } : null;
+      } catch {}
+    }
+    return NextResponse.json({ src: "RainViewer", frames: frames.filter(Boolean), ...(near !== undefined && { near }) });
   } catch (e) {
     console.error("rain-radar", e?.message);
     return NextResponse.json({ src: "RainViewer", frames: [], error: "Radar alınamadı" });

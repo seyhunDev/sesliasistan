@@ -23,3 +23,16 @@ export function rainLine(rows, fc, nowAt, oSum, radH) {
   return { text: out.join(" · "), hot };
 }
 
+
+// Burada / çevrede (Seyhun 2026-11-04, kart "Radarla burada / çevrede"): tahmin ~10 km'lik kareyi tek değer sayar; şu anki durumu radar söyler.
+// radar: /api/rain-radar cevabı ({ frames, near }); soon: tahmin önümüzdeki 3 saatte yağış diyor mu. Gösterilecek bir şey yoksa "".
+const LV = ["", "hafif", "orta", "kuvvetli"];
+const AT = { kuzey: "kuzeyinde", kuzeydoğu: "kuzeydoğusunda", doğu: "doğusunda", güneydoğu: "güneydoğusunda", güney: "güneyinde", güneybatı: "güneybatısında", batı: "batısında", kuzeybatı: "kuzeybatısında" };
+export function hereLine(radar, soon, hm = (ms) => new Date(ms).toTimeString().slice(0, 5)) {
+  const last = radar?.frames?.at(-1);
+  if (!last || radar.near === undefined) return "";
+  const when = ` (radar ${hm(Date.parse(last.at))})`;
+  if (last.level > 0) return `Burada şu an ${LV[last.level]} yağış var${when}`;
+  if (radar.near) return `Burada yağmıyor · ${radar.near.km} km ${AT[radar.near.dir] || radar.near.dir} ${LV[radar.near.level]} yağış${when}`;
+  return soon ? `Burada ve 30 km içinde şu an yağış yok${when}` : "";
+}
