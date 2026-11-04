@@ -103,7 +103,18 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-sails span.f { background: #f5c518; color: #1a1a1a; }
 
 /* Gruplar ve kameralar (Seyhun 2026-11-02 gruplar-kamera/grup-a.png): ekrandaki yarış pembe kartta; satırda ▶ ekrana alır */
-.masa-onair { background: linear-gradient(90deg, rgba(255, 61, 119, 0.2), rgba(255, 61, 119, 0.06)); border: 1px solid rgba(255, 61, 119, 0.55); }
+/* Ekranda: kırmızı çerçeve (yayında), zemin ekrandaki grubun rengi (--g) */
+.masa-onair { border: 3px solid var(--acc); background: linear-gradient(135deg, var(--g), color-mix(in srgb, var(--g) 55%, #0b1322)); box-shadow: 0 8px 24px rgba(255, 61, 119, 0.18); color: #fff; }
+.masa-onair .text-mut { color: rgba(255, 255, 255, 0.82); }
+.masa-onair, .masa-hero.g { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.masa-onair .masa-b[aria-pressed="true"], .masa-hero.g .masa-hero-d button[aria-pressed="true"] { text-shadow: none; }
+.masa-onair .masa-b { background: rgba(6, 12, 24, 0.35); color: #fff; }
+.masa-onair .masa-b[aria-pressed="true"] { background: #fff; color: #0b1322; }
+/* Bugün listesi: satır grubun renginde (--g) şerit; yarışan / sıradaki hafif zemin, bekleyen soluk */
+.masa-row { position: relative; }
+.masa-row::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; border-radius: 0 3px 3px 0; background: var(--g); }
+.masa-row.hot { background: linear-gradient(90deg, color-mix(in srgb, var(--g) 22%, transparent), transparent 70%); }
+.masa-row.dim::before { opacity: 0.45; }
 .masa-onair-tag { flex: none; border-radius: 4px; background: var(--acc); color: var(--on-acc); padding: 0.2rem 0.45rem; font-size: 0.656rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 .masa-pill { flex: none; display: flex; align-items: center; gap: 0.35rem; border-radius: 1rem; background: var(--chip); padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 600; color: var(--mut); }
 .masa-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mut); }
@@ -225,6 +236,15 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-hero-h > span:last-child { margin-left: auto; }
 .masa-hero-bd { border-radius: 0.4375rem; background: rgba(255, 255, 255, 0.1); padding: 0.25rem 0.5rem; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #cfe0f5; }
 .masa-hero.cd .masa-hero-bd { background: var(--acc); color: #fff; }
+/* Sıradaki / geri sayım kartı grubun renginde (--g); geri sayımda kırmızı çerçeve */
+.masa-hero.g { border-color: transparent; background: linear-gradient(160deg, var(--g), color-mix(in srgb, var(--g) 40%, #0b1322) 75%); color: #fff; }
+.masa-hero.g.cd { border: 3px solid var(--acc); }
+.masa-hero.g .masa-hero-h, .masa-hero.g .masa-hero-n small, .masa-hero.g .masa-hero-p { color: rgba(255, 255, 255, 0.85); }
+.masa-hero.g .masa-hero-bd { background: rgba(0, 0, 0, 0.28); color: #fff; }
+.masa-hero.g.cd .masa-hero-bd { background: var(--acc); }
+.masa-hero.g .masa-hero-d button { border-color: transparent; background: rgba(0, 0, 0, 0.25); }
+.masa-hero.g .masa-hero-d button[aria-pressed="true"] { background: #fff; color: #0b1322; }
+.masa-hero.g .masa-hero-d button small { color: rgba(255, 255, 255, 0.7); }
 .masa-hero-n { display: flex; align-items: center; gap: 0.625rem; margin-top: 0.75rem; }
 .masa-hero-n b { font-size: 1.5rem; font-weight: 800; }
 .masa-hero-n small { font-size: 0.875rem; font-weight: 600; color: var(--mut); }
@@ -383,3 +403,5 @@ body[data-typing] .masa-bar { bottom: 0 !important; }
   /* Önizleme küçük (Seyhun 2026-11-04): yarım sütun, yanında ne gösterdiği */
   .masa-board .masa-mons { max-width: 15rem; }
 }
+/* grubun renginde kartta grup noktası görünmez, yer kaplamasın */
+.masa-hero.g .masa-hero-n > span:first-child, .masa-onair > div:first-child > span[aria-hidden="true"] { display: none; }
