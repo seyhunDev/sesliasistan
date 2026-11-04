@@ -4,6 +4,7 @@
 // TYF Yelken Ligi sitesindeki sezonlar › ayaklar › sınıflar. Sınıfa dokununca sitedeki belgeleri görünür (açılır);
 // "Yarışı al" yarışı yarış ilanından açar (talimat okunur, elle yüklemedeki gibi) ve belgelerini izlemeye alır
 // (raceSite.js, /api/race-site). Zaten alınmış sınıf "Alındı" yazar, dokununca yarışı açar.
+// Alma arka planda (siteTake.js, Seyhun 2026-11-04): adımlar ve gelen belgeler ilerleme kartında; ekran kapansa da iş biter.
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
@@ -14,13 +15,11 @@ import { ListHead, Row, RowList, SkelRow, Tag } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
-import { freshRace, loadRaces, saveRace } from "@/features/athletes/races";
-import { applyNotice, readNotice } from "@/features/athletes/raceNotice";
-import { noticeName, saveNoticeFile } from "@/features/athletes/noticeFile";
-import { followSite, loadSiteList, siteFile } from "@/features/athletes/raceSite";
-import { noticeDoc } from "@/lib/siteBoard";
+import { Loader } from "@/components/ui/Loader";
+import { loadRaces } from "@/features/athletes/races";
+import { loadSiteList, siteFile } from "@/features/athletes/raceSite";
+import { STEPS, clearTask, startTake, useSiteTasks } from "@/features/athletes/siteTake";
 import { kindLabel, pickSeason } from "@/lib/siteDocs";
-import { sameRace } from "@/lib/sharedRace";
 import { todayStr } from "@/lib/utils/format";
 
 export default function SitePage() {
@@ -49,12 +48,13 @@ function Site({ orgId, uid }) {
   const [races, setRaces] = useState([]);
   const [open, setOpen] = useState("");
   const [view, setView] = useState(null);
-  const [busy, setBusy] = useState("");
   const [retry, setRetry] = useState(0);
+  const [ver, setVer] = useState(0);
+  const tasks = useSiteTasks();
 
   useEffect(() => {
     loadRaces(orgId).then(setRaces, () => {});
-  }, [orgId]);
+  }, [orgId, ver]);
   useEffect(() => {
     let on = true;
     loadSiteList(season).then(
@@ -80,32 +80,16 @@ function Site({ orgId, uid }) {
   };
   const again = () => (setFail(false), setRetry((n) => n + 1));
   const have = (act) => races.find((r) => r.site?.act === act);
-  const take = async (leg, c) => {
+  const take = (leg, c) => {
     const had = have(c.act);
     if (had) return router.push(`/athletes/races/${had.id}?sec=site`);
-    setBusy(c.act);
-    try {
-      const site = { act: c.act, cls: c.cls, season: data.season, n: leg.n, legNo: leg.legNo };
-      const today = todayStr();
-      let r = { ...freshRace(races.find((x) => x.signer) || races[0], today), name: `${data.season} ${ayak(leg.name)} ${c.cls}` };
-      const ilan = noticeDoc(c);
-      if (ilan) {
-        const file = await siteFile(ilan);
-        const n = await readNotice(file);
-        r = applyNotice({ ...r, name: "" }, n);
-        if (!r.name) r.name = `${ayak(leg.name)} ${c.cls}`;
-        r.noticeFile = await saveNoticeFile(orgId, file, noticeName(r)).catch(() => null);
-      }
-      // Aynı yarış elle açılmışsa ona bağlanır
-      const same = races.find((x) => !x.site && sameRace(x, r));
-      const id = await saveRace(orgId, uid, same ? { ...same, site } : { ...r, site });
-      const got = await followSite(id, site);
-      toast(got.error || "Yarış alındı, belgeler alınıyor");
-      router.push(`/athletes/races/${id}?sec=site`);
-    } catch (e) {
-      toast(e?.message || "Yarış alınamadı");
-      setBusy("");
-    }
+    clearTask(c.act);
+    startTake({
+      orgId, uid, races, season: data.season, leg, c,
+      // Ekran kapanmış olabilir: bildirimden açılır
+      onDone: (id, name) => (setVer((n) => n + 1), toast(`${name || c.cls} alındı`, { action: { label: "Aç", onClick: () => router.push(`/athletes/races/${id}?sec=site`) } })),
+      onFail: (m) => toast(m),
+    });
   };
 
   return (
@@ -151,9 +135,13 @@ function Site({ orgId, uid }) {
                             <small className="block truncate text-[0.75rem] text-mut">{`${kindLabel(d.kind)} · ${when(d.at)}`}</small>
                           </button>
                         ))}
-                        <Button variant="primary" full className="mt-2" loading={busy === c.act} disabled={!!busy && busy !== c.act} onClick={() => take(leg, c)}>
-                          {had ? "Yarışı aç" : "Yarışı al"}
-                        </Button>
+                        {tasks[c.act] ? (
+                          <TakeCard t={tasks[c.act]} onOpen={() => router.push(`/athletes/races/${tasks[c.act].raceId}?sec=site`)} onRetry={() => take(leg, c)} />
+                        ) : (
+                          <Button variant="primary" full className="mt-2" onClick={() => take(leg, c)}>
+                            {had ? "Yarışı aç" : "Yarışı al"}
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -165,5 +153,45 @@ function Site({ orgId, uid }) {
       </div>
       {view && <PdfViewer title={view.name} load={() => siteFile(view)} onClose={() => setView(null)} />}
     </main>
+  );
+}
+
+// Alma ilerlemesi: adımlar (geçen ✓, süren dönen, gelecek soluk), belgeler gelirken dolan çubuk; bitince "Yarışı aç"
+function TakeCard({ t, onOpen, onRetry }) {
+  const pct = t.total ? Math.round(((t.got || 0) / t.total) * 100) : 100;
+  return (
+    <div className="mt-2 rounded-2xl border border-line bg-bg px-3.5 py-3">
+      <ol className="space-y-2">
+        {STEPS.map((name, i) => {
+          const done = t.step > i || (i === 3 && t.done);
+          const now = t.step === i && !t.done && !t.error;
+          return (
+            <li key={name} className={`flex items-center gap-2.5 text-[0.875rem] font-semibold transition-opacity duration-300 ${done || now ? "" : "opacity-40"}`}>
+              <span className="flex size-5 shrink-0 items-center justify-center">
+                {now ? <Loader size="sm" /> : done ? <span className="anim-in text-acc">✓</span> : <span className="size-1.5 rounded-full bg-current opacity-50" />}
+              </span>
+              <span className="min-w-0 flex-1 truncate">{i === 3 && t.total ? `${name.replace(" alınıyor", "")} ${t.got || 0}/${t.total}` : name}</span>
+            </li>
+          );
+        })}
+      </ol>
+      {t.step >= 3 && t.total > 0 && (
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
+          <div className="h-full rounded-full bg-acc transition-[width] duration-700 ease-out" style={{ width: `${pct}%` }} />
+        </div>
+      )}
+      {t.error ? (
+        <>
+          <p className="mt-3 text-[0.8125rem] font-semibold text-warn">{t.error}</p>
+          <Button variant="secondary" full className="mt-2" onClick={onRetry}>
+            Tekrar dene
+          </Button>
+        </>
+      ) : t.raceId ? (
+        <Button variant="primary" full className="mt-3" onClick={onOpen}>
+          Yarışı aç
+        </Button>
+      ) : null}
+    </div>
   );
 }
