@@ -253,3 +253,5 @@
 .sc-board tr.fl:nth-child(7) td { animation-delay: 0.04s; } .sc-board tr.fl:nth-child(8) td { animation-delay: 0.08s; } .sc-board tr.fl:nth-child(9) td { animation-delay: 0.12s; } .sc-board tr.fl:nth-child(10) td { animation-delay: 0.16s; } .sc-board tr.fl:nth-child(11) td { animation-delay: 0.2s; }
 @keyframes sc-fl { from { opacity: 0; transform: translateX(1.5em); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .sc-board tr.fl td { animation: none; } }
+.sc-ap .sc-sgf { flex: none; }
+.sc-ap .sc-sgf i { width: 2.2em; }

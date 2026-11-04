@@ -241,35 +241,10 @@ function Flag({ kind, cls, down, grp }) {
         )}
       </span>
     );
-  if (kind === "P") return <span className={`${c} p`} />;
-  if (kind === "I") return <span className={`${c} i`} />;
-  if (kind === "U") return <span className={`${c} u`} />;
-  if (kind === "Z")
-    return (
-      <span className={`${c} z`}>
-        <svg viewBox="0 0 30 20" preserveAspectRatio="none">
-          <path d="M0 0 L15 10 L0 20 Z" fill="#111" />
-          <path d="M0 0 L30 0 L15 10 Z" fill="#f5c400" />
-          <path d="M30 0 L30 20 L15 10 Z" fill="#1b4fd6" />
-          <path d="M0 20 L30 20 L15 10 Z" fill="#e11d48" />
-        </svg>
-      </span>
-    );
-  if (kind === "Kara") return <span className={`${c} black`} />;
-  if (kind === "AP") return <span className={`${c} ap`} />;
-  if (kind === "FS")
-    return (
-      <span className={`${c} fs`}>
-        <svg viewBox="0 0 30 20" preserveAspectRatio="none">
-          <path d="M0 0 L30 0 L15 10 Z" fill="#1b4fd6" />
-          <path d="M0 20 L30 20 L15 10 Z" fill="#1b4fd6" />
-          <path d="M0 0 L0 20 L15 10 Z" fill="#f5c400" />
-          <path d="M30 0 L30 20 L15 10 Z" fill="#f5c400" />
-        </svg>
-      </span>
-    );
-  if (kind === "N") return <span className={`${c} n`} />;
-  return null;
+  // İşaret bayrakları (AP, FS, N, P, I, U, Z, Kara…): her yerde Yayın › Bayrak penceresindekiyle aynı çizim (lib/raceSignals flagSvg;
+  // Seyhun 2026-11-04 "bayrak butonundaki tehir bayrağını kullanalım, başka yerde farklı olmasın")
+  const art = flagSvg(kind);
+  return art ? <span className={`${c} art${/^(AP|FS|n\d)$/.test(kind) ? " pen" : ""}`} dangerouslySetInnerHTML={{ __html: art }} /> : null;
 }
 // Geçersiz startın bayrağı (Seyhun 2026-11-02 "genel geri bayrağı, tehir bayrağı görseli"): Tehir → AP, Genel geri çağırma → 1. tekrar, İptal → N
 const voidFlag = (v) => (/tehir/i.test(v || "") ? "AP" : /genel/i.test(v || "") ? "FS" : /abandone|iptal|İptal/i.test(v || "") ? "N" : "");
@@ -3241,13 +3216,19 @@ function ScAp({ t, plan, seq }) {
   const down = plan.status !== "ap";
   const counting = !down && !t.tx && /\d/.test(String(t.tm || ""));
   const why = plan.ap?.why || "";
-  const line = down ? ["Start yakında", "Uyarı işareti bekleniyor"] : [why || "Belirsiz", plan.ap?.land ? "Karada" : "", seq && t.who ? gWhat(t.who) || t.who.name : "Tüm gruplar"];
+  // çekilen tehir işareti (AP, AP üzeri H, AP üzeri 6…): bayrak düğmesindekiyle aynı bayraklar
+  const s = (signalOf(plan.sig?.id)?.kind === "ap" ? signalOf(plan.sig.id) : null) || signalOf(plan.ap?.land ? "AP/H" : "AP");
+  const line = down ? ["Start yakında", "Uyarı işareti bekleniyor"] : [s.hours ? "" : why || "Belirsiz", plan.ap?.land ? "Karada" : "", seq && t.who ? gWhat(t.who) || t.who.name : "Tüm gruplar"];
   return (
     <div className="sc-ap">
-      <Flag kind="AP" />
+      <span className="sc-sgf" aria-hidden="true">
+        {(down ? ["AP"] : s.flags).map((f) => (
+          <i key={f} dangerouslySetInnerHTML={{ __html: flagSvg(f) }} />
+        ))}
+      </span>
       <div>
         <b>
-          {down ? "Tehir indi" : "Tehir"}
+          {down ? "Tehir indi" : s.hours ? s.short : "Tehir"}
           {counting ? <em>{t.tm}</em> : null}
         </b>
         <span>{line.filter(Boolean).join(" · ")}</span>
@@ -3273,6 +3254,8 @@ function ScSig({ data, today }) {
   const sig = data.plan?.sig;
   const s = sig ? signalOf(sig.id) : null;
   if (!s || !sigOnCard(s)) return null;
+  // tehir işaretleri (AP/H, AP 6 saat) saatin altındaki tehir rozetinde; tehir inince hiç gösterilmez
+  if (s.kind === "ap" && !s.end) return null;
   if (new Date(Date.parse(sig.at) + 3 * 3600e3).toISOString().slice(0, 10) !== today) return null;
   return (
     <div className="sc-fl">
