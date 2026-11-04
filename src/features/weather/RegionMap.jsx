@@ -306,8 +306,9 @@ export function RegionMap({ place, station, obs, onPick, startOpen = false, onCl
             <div className="absolute top-1 h-3.5 w-0.5 bg-[#ff6b6b]" style={{ left: `${nowPct}%` }} />
             <input type="range" min={0} max={Math.max(0, steps.length - 1)} value={ix} onChange={(e) => (setPlay(false), setSel(+e.target.value))} aria-label="Zaman" className="ck-range absolute inset-x-0 top-0 h-6 w-full" />
             <div className="absolute inset-x-0 top-[1.15rem] text-[0.625rem] text-white/60">
-              <span className="absolute left-0">−2 sa</span>
-              <span className="absolute -translate-x-1/2" style={{ left: `${nowPct}%` }}>Şimdi</span>
+              {/* "Şimdi" başa yakınken "−2 sa" ile üst üste biniyordu (Seyhun 2026-11-04): o zaman başlangıç yazısı yazılmaz */}
+              {nowPct >= 20 && <span className="absolute left-0">−2 sa</span>}
+              <span className="absolute whitespace-nowrap" style={{ left: `${nowPct}%`, transform: `translateX(-${nowPct < 20 ? Math.round(nowPct * 2.5) : 50}%)` }}>Şimdi</span>
               <span className="absolute right-0">+24</span>
             </div>
           </div>
