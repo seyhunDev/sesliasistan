@@ -1,7 +1,7 @@
 // Yeni sürüm denetimi: /api/version (son yayın) ile bu telefondaki sürüm (BUILD.sha) karşılaştırılır.
 // Uygulama açılınca, uygulamaya dönünce ve açıkken 5 dakikada bir bakılır. Farklıysa "Yeni sürüm var · Güncelle"
 // (NewVersionBar) ve asistanda "uygulamayı güncelle". Güncelle: service worker yenilenir, sayfa yeniden yüklenir.
-// Uygun anda (arkadan dönüş, sayfa geçişi) kendiliğinden de yenilenir: canAutoUpdate.
+// Uygun anda (arkaya gidiş, sayfa geçişi) kendiliğinden de yenilenir: canAutoUpdate.
 import { BUILD } from "@/lib/buildInfo";
 import { trailFullLoad } from "@/lib/navTrail";
 
@@ -86,10 +86,21 @@ function countWakeLocks() {
   };
 }
 
-// Arkadan dönüş: yeni sürüm varsa ve uygunsa hemen yenile
+// Arkadan dönüş: yalnız sürüm sorulur. Yenileme göz önünde yapılmaz (Seyhun 2026-11-04 "uygulamalar arası geçişte benimki
+// beyaz ekranla açılıyor": uygulamaya dönünce sayfa baştan yükleniyor, bir an boş ekran kalıyordu). Yeni sürüm bir sonraki
+// arkaya gidişte (görünmeden) ya da bir sonraki sayfa geçişinde alınır.
 async function onResume(away) {
   await checkVersion(away > 15e3);
-  if (latest && canAutoUpdate(pageState())) (markTried(), applyUpdate());
+}
+
+// Uygulama arkaya gidince: yeni sürüm biliniyorsa ve uygunsa, kullanıcı görmeden yenilenir (kısa bir an sonra hâlâ arkadaysa)
+let hideTimer = 0;
+function onHide() {
+  clearTimeout(hideTimer);
+  if (!latest) return;
+  hideTimer = setTimeout(() => {
+    if (document.visibilityState === "hidden" && latest && canAutoUpdate(pageState())) (markTried(), location.reload());
+  }, 400);
 }
 
 // Uygulama içi bağlantıya dokunuş: yeni sürüm varsa sayfa geçişi tam yükleme olur (eski kod parçası istenmez)
@@ -116,7 +127,8 @@ export function watchVersion() {
   countWakeLocks();
   let hiddenAt = 0;
   const vis = () => {
-    if (document.visibilityState === "hidden") return void (hiddenAt = Date.now());
+    if (document.visibilityState === "hidden") return void ((hiddenAt = Date.now()), onHide());
+    clearTimeout(hideTimer);
     onResume(hiddenAt ? Date.now() - hiddenAt : 0);
   };
   const shown = (e) => e.persisted && onResume(60e3);
@@ -128,7 +140,8 @@ export function watchVersion() {
     document.removeEventListener("visibilitychange", vis),
     window.removeEventListener("pageshow", shown),
     document.removeEventListener("click", onClick, true),
-    clearInterval(t)
+    clearInterval(t),
+    clearTimeout(hideTimer)
   );
 }
 

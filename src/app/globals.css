@@ -244,22 +244,24 @@ select {
 @keyframes stagein { from { opacity: 0; } }
 .stage-in { animation: stagein .26s ease-out .06s both; }
 
-/* SAYFA GEÇİŞİ (app/(app)/template.jsx): kısa ve sakin. İleri: sağdan 24 px kayarak belirir; geri: soldan;
-   alt sekmeler arası ve ilk açılış: yalnız solma. Bitince iz bırakmaz (backwards). İçinde sabit (fixed) çubuk olan
-   sayfada kaydırma yok (transform sabit öğeleri sayfaya bağlar, zıplarlardı), yalnız solma.
+/* SAYFA GEÇİŞİ (app/(app)/template.jsx): kısa ve sakin. Telefonda ileri: sağdan 24 px kayar; geri: soldan;
+   alt sekmeler arası ve ilk açılış: animasyon yok. Bitince iz bırakmaz (backwards). İçinde sabit (fixed) çubuk olan
+   sayfada kaydırma yok (transform sabit öğeleri sayfaya bağlar, zıplarlardı).
    overflow-x: clip: kayarken yatay kaydırma çubuğu çıkmasın (yapışkan başlıkları bozmaz). */
 @keyframes pagein { from { opacity: 0; } }
-@keyframes pagefwd { from { opacity: 0; transform: translate3d(24px, 0, 0); } }
-@keyframes pageback { from { opacity: 0; transform: translate3d(-24px, 0, 0); } }
+/* Sayfa geçişinde ekran bir an boş (beyaz) görünmesin (Seyhun 2026-11-04 "benimki beyaz ekranla açılıyor, diğer uygulamalar normal"):
+   eskiden yeni sayfa tamamen saydamdan (opacity 0) başlıyordu; Mac'te koca alan bir an boş kalıyordu. Artık sayfa hiç saydam olmaz,
+   yalnız telefonda ileri/geri giderken hafifçe kayar. Alt sekmeler arası ve geniş ekranda (sol menü) geçiş anında, animasyonsuz. */
+@keyframes pagefwd { from { transform: translate3d(24px, 0, 0); } }
+@keyframes pageback { from { transform: translate3d(-24px, 0, 0); } }
 /* İlk sayfada (data-dir boş) animasyon yok: açılış ekranı zaten soldurur. Eskiden ilk sayfa da solma alıyordu ama açılış
    sürerken (html[data-boot] .page-in { animation: none }) durduruluyordu; açılış bitip data-boot kalkınca animasyon baştan başlıyor, ana sayfa bir an
    kaybolup geri geliyordu (Seyhun: "ekran geldi, gitti, geldi"). */
 .page-in { overflow-x: clip; }
-.page-in:is([data-dir="tab"], [data-dir="fwd"], [data-dir="back"]) { animation: pagein .2s ease-out backwards; }
-.page-in[data-dir="fwd"]:not(:has(.fixed)) { animation: pagefwd .3s cubic-bezier(.22, .8, .24, 1) backwards; }
-.page-in[data-dir="back"]:not(:has(.fixed)) { animation: pageback .3s cubic-bezier(.22, .8, .24, 1) backwards; }
-@media (prefers-reduced-motion: reduce) {
-  .page-in:is([data-dir="fwd"], [data-dir="back"]) { animation: pagein .2s ease-out backwards !important; }
+.page-in[data-dir="fwd"]:not(:has(.fixed)) { animation: pagefwd .26s cubic-bezier(.22, .8, .24, 1) backwards; }
+.page-in[data-dir="back"]:not(:has(.fixed)) { animation: pageback .26s cubic-bezier(.22, .8, .24, 1) backwards; }
+@media (prefers-reduced-motion: reduce), (min-width: 64rem) {
+  .page-in:is([data-dir="fwd"], [data-dir="back"]) { animation: none !important; }
 }
 /* Sohbette mesajlar ilk kez okununca: iskeletten mesajlara yumuşak geçiş (bellekten gelince animasyon yok) */
 .msgs-in { animation: pagein .22s ease-out backwards; }
