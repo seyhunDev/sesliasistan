@@ -96,10 +96,9 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         inbox={inbox}
         onInbox={onInbox}
         sel={sel}
-        onOpenDay={() => setPick(sel)}
         live={athletes ? <RaceLive open={race.open} /> : null}
         away={athletes && !(sel === today && racePhase({ r: { startDate: today }, today, now: new Date() }) === "done") ? awayRace(race.open, sel) : null}
-        days={<HomeDays today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
+        days={<HomeDays wx={weather.w} today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
       >
         <div className="ck-c mt-4">
           <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
@@ -121,7 +120,7 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
       </Cockpit>
       {/* Alt kısım da lacivert (Seyhun 2026-10-22: "yukarısı daha güzel, bu tasarımı devam ettirelim"): kartlar kokpitteki gibi
           yarı saydam lacivert, yazılar açık; renkler globals.css .navy değişkenlerinden (koyu görünüm sınıfları da çalışır) */}
-      <div data-theme="dark" className="navy home-navy relative -mx-4 space-y-6 px-4 pb-6 pt-2">
+      <div className="home-low relative space-y-6 pb-6 pt-5">
         {quota && (
           <p className="-mb-4 px-1 text-[0.75rem] tabular-nums text-mut">
             Bugün kalan · asistan {quota.qa.left}/{quota.qa.limit} · fiş {quota.qr.left}/{quota.qr.limit}

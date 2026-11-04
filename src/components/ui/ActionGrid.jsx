@@ -9,12 +9,12 @@ export function ActionGrid({ items, label = "İşler", pill, icons }) {
   return (
     <nav aria-label={label} className={`grid gap-2 ${icons ? "grid-cols-2" : "grid-cols-4"}`}>
       {items.map((a) => {
-        const shape = icons ? "ck-ibtn" : pill ? "ck-pill justify-center" : "h-[3.25rem] rounded-2xl justify-center";
-        const cls = `raised ${shape} flex min-w-0 items-center gap-1 px-1 text-[0.84375rem] font-semibold ${a.done ? "text-[var(--ok)] ck-done" : a.main ? "act-main" : "text-fg"}`;
+        const shape = icons ? `hb h-[3.25rem] rounded-[0.9375rem] px-3 ${a.main ? "hb-main" : ""}` : pill ? "ck-pill justify-center" : "h-[3.25rem] rounded-2xl justify-center";
+        const cls = icons ? `${shape} flex min-w-0 items-center gap-2.5 text-[0.875rem] font-semibold` : `raised ${shape} flex min-w-0 items-center gap-1 px-1 text-[0.84375rem] font-semibold ${a.done ? "text-[var(--ok)] ck-done" : a.main ? "act-main" : "text-fg"}`;
         const body = icons ? (
           <>
-            <Icon name={a.done ? "check" : a.icon} className="ck-icon" />
-            <span className="relative truncate">{a.label}</span>
+            <Icon name={a.done ? "check" : a.icon} className="hb-ic size-5 shrink-0 text-acc" />
+            <span className="truncate">{a.label}</span>
           </>
         ) : (
           <>

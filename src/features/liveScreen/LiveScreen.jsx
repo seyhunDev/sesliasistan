@@ -8,7 +8,7 @@ import { momentRace, momentRaceName, apText, nextRaceNo, cleanPlan, daysUntil, o
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
+import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, sceneOf, sceneScreen, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
@@ -3123,7 +3123,7 @@ const gWho = (x) => (x ? { name: x.name || "", grp: x.grp || "", cls: x.cls || "
 // ---- Yayın sahneleri (Seyhun 2026-11-04 "yap", örnek artifact MWmT63Sb1mmtJ4s6izg82N): 01 Yarış öncesi (ortada tek kart: Süre · Program ·
 // Rüzgâr sırayla), 02 Yarışta (görüntü önde, sol üstte tek kart; start'a dakikalar · geri sayım · start sonrası · dönüş), 03 Genel sıralama,
 // 04 Tekrar, 05 Parkur, 06 Sıradaki yarış. Hepsinde sağ üstte Canlı + saat, sağ altta yarışın adı ve Velora. Sahne kendiliğinden seçilir
-// (sceneAuto); Yayın'dan elle seçilen (courseShow.scene) üstüne yazar.
+// (lib/raceRounds sceneOf); Yayın'dan elle seçilen (courseShow.scene) üstüne yazar.
 const SC_TAB = 10; // sn, 01'deki kartın her bölümü
 const SC_ROT = 15; // sn, 03 ↔ 06 ve sınıf sınıf sıralama
 const SC_RANK = 10;
@@ -3199,18 +3199,6 @@ function scBoards(data) {
     const races = f.races.slice(-8);
     return { cls: f.cls || "", tag: `Geçici · ${f.races.length} yarış`, races, rows: f.rows.slice(0, SC_RANK).map((r, i) => ({ p: r.rank || i + 1, sail: r.sail, name: r.name, club: r.club, sc: races.map((n) => (r.sc[n] ? r.sc[n].code || String(r.sc[n].pts) : "")), t: r.total })), total: f.rows.length };
   });
-}
-export const SCENE_NAME = { "01": "Yarış öncesi", "02": "Yarışta", "03": "Sıralama", "04": "Tekrar", "05": "Parkur", "06": "Sıradaki" };
-// Otomatik sahne: tekrar videosu → 04; Parkur elle açık → 05; gün bitti → 03 ↔ 06; yarışta → 02; yarış bitti → 03 ↔ 06;
-// yarış öncesi (bekleme, start dizisi, tehir) videolu → 02, videosuz → 01
-function sceneAuto({ data, mode, hasVideo, now, has }) {
-  if (data.screen?.kind === "rec") return "04";
-  if (data.courseShow?.one === "course" && has["05"]) return "05";
-  const rot = (a, b) => (has[a] && has[b] ? (Math.floor(now / 1000 / SC_ROT) % 2 ? b : a) : has[a] ? a : has[b] ? b : "");
-  if (mode === "summary") return rot("03", "06") || "01";
-  if (mode === "race") return "02";
-  if (mode === "between") return rot("03", "06") || (hasVideo ? "02" : "01");
-  return hasVideo ? "02" : "01";
 }
 function ScTop({ rep, now }) {
   return (
@@ -3668,13 +3656,16 @@ function Sc06({ data, prog, now, today }) {
     </>
   );
 }
-function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, hasVideo, onFull }) {
+// Hangi sahne (lib/raceRounds sceneOf; Yayın sayfası da aynı işlevle bakar)
+function scPick({ data, sel, mode, hasVideo, now }) {
+  const route = sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait");
+  const rec = data.screen?.kind === "rec";
+  const has = { "01": true, "02": true, "03": mode === "between" || scBoards(data).length > 0, "04": rec || data.courseShow?.vid?.["04"]?.kind === "rec", "05": !!courseSvg(data, route), "06": true };
+  return sceneOf({ show: data.courseShow, rec, mode, hasVideo, now, has });
+}
+function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, onFull }) {
   const plan = data.plan;
   const r = data.race || {};
-  const route = sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait");
-  const has = { "01": true, "02": true, "03": mode === "between" || scBoards(data).length > 0, "04": data.screen?.kind === "rec", "05": !!courseSvg(data, route), "06": true };
-  const man = data.courseShow?.scene || "";
-  const sc = man && has[man] ? man : sceneAuto({ data, mode, hasVideo, now, has });
   const t = scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast });
   const lock = mode === "seq" || mode === "ap" || t.tone === "r";
   const body =
@@ -3808,11 +3799,15 @@ export function LiveScreen({ id, y = "" }) {
   if (isCur) {
     const apDown = st !== "ap" && !!data.plan.warn && nowMs < Date.parse(data.plan.warn);
     const mode = phase === "summary" ? "summary" : seqMode ? "seq" : st === "ap" || apDown ? "ap" : racing ? "race" : between ? "between" : st === "none" && data.plan.day === today ? "none" : "wait";
+    const sc = scPick({ data, sel, mode, hasVideo, now: nowMs });
+    // sahnenin önceden seçilen videosu (Yayın › Ekran › sahne)
+    const sd = { ...data, screen: sceneScreen(data.screen, data.courseShow, sc) };
+    const vid = ["live", "drone", "src", "rec", "boats"].includes(sd.screen?.kind);
     return (
-      <div className={`lv lv-bc lv-grx${hasVideo ? " video" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
-        <Backdrop data={data} isCur={isCur} entry={entry} />
+      <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
+        <Backdrop data={sd} isCur={isCur} entry={entry} />
         <div className="lv-page lv-ov">
-          <Sahne data={data} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} hasVideo={hasVideo} onFull={setFull} />
+          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} onFull={setFull} />
         </div>
         {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
         {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}

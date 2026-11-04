@@ -112,7 +112,7 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
           {tiles ? (
             // Kokpitte ikili kutular (Seyhun "A · Kutular" 2026-10-24): yemek kartının üstünde, aynı satırlar kutu olarak
             <>
-              <h2 id="home-sum" className="mb-2 px-1 text-[0.9375rem] font-semibold">{title}</h2>
+              <ListHead id="home-sum" title={title} />
               <RowTiles>
                 {lead}
                 {rows}

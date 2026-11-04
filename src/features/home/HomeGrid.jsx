@@ -27,7 +27,7 @@ export function HomeGrid({ pages, side, athletes, receipts, owner }) {
   const today = todayStr();
   const sail = plans.some((p) => p.date === today && p.status !== "cancelled" && isTraining(p));
   const items = [
-    athletes && !side && { key: "att", icon: "checks", label: "Yoklama", href: (sail && attHref(today, today)) || "/athletes/attendance" },
+    athletes && !side && { key: "att", icon: "checks", label: "Yoklama", main: sail, href: (sail && attHref(today, today)) || "/athletes/attendance" },
     side && { key: "my-att", icon: "checks", label: "Yoklama", href: "/my-attendance" },
     { key: "note", icon: "note", label: "Not", onClick: () => openAdd({ type: "note" }) },
     { key: "plan", icon: "cal", label: "Plan", onClick: () => openAdd({ type: "plan" }) },
