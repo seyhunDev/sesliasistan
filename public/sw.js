@@ -67,15 +67,20 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(
       (async () => {
         const pages = await caches.open(PAGES_CACHE);
-        try {
-          const res = await Promise.race([fetch(req), timeout(NAV_TIMEOUT)]);
+        const net = fetch(req).then((res) => {
           if (res.ok && !res.redirected) pages.put(path, res.clone());
           return res;
+        });
+        try {
+          return await Promise.race([net.then((r) => r.clone()), timeout(NAV_TIMEOUT)]);
         } catch {
           const hit = await pages.match(path);
           if (hit) return hit;
+          // Kayıtlı kopya yok: ağ yavaşsa beklemeye devam edilir (eskiden 4 sn'de "İnternet bağlantısı yok" çıkıyordu)
+          const late = await net.catch(() => null);
+          if (late) return late.clone();
           return new Response(
-            '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Çevrimdışı</title><body style="font-family:system-ui;background:#f4f3ef;color:#26282c;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:24px"><div><h1 style="font-size:20px">İnternet bağlantısı yok</h1><p style="color:#74777d">Bu sayfa henüz telefona kaydedilmedi. Bağlantı gelince tekrar dene.</p></div>',
+            '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Çevrimdışı</title><body style="font-family:system-ui;background:#f4f3ef;color:#26282c;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:24px"><div><h1 style="font-size:20px">İnternet bağlantısı yok</h1><p style="color:#74777d">Bu sayfa henüz telefona kaydedilmedi. Bağlantı gelince kendiliğinden açılır.</p></div><script>addEventListener("online",()=>location.reload())</script>',
             { headers: { "content-type": "text/html; charset=utf-8" } },
           );
         }

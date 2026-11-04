@@ -3,17 +3,35 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Asistan</title>
+<title>Velora</title>
 <style>
   body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
     background: #f4f3ef; color: #1f2a24; font-family: system-ui, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
-  button { margin-top: 16px; padding: 12px 24px; border: 0; border-radius: 999px; background: #1f6b4a; color: #fff; font-size: 16px; }
+  p { margin: 0; }
+  #alt { margin-top: 6px; color: #74777d; font-size: 14px; }
+  button { margin-top: 16px; padding: 12px 24px; border: 0; border-radius: 999px; background: #1d4ed8; color: #fff; font-size: 16px; }
 </style>
 </head>
 <body>
   <div>
     <p>İnternete bağlanılamadı.</p>
-    <button onclick="location.href='https://sesliasistan.netlify.app'">Yeniden dene</button>
+    <p id="alt">Bağlantı gelince kendiliğinden açılır.</p>
+    <button onclick="ac()">Yeniden dene</button>
   </div>
+<script>
+  // Site açılamayınca gösterilir (capacitor.config.json errorPath). İnternet gelince ve birkaç saniyede bir site denenir,
+  // ulaşılınca kendiliğinden açılır; kullanıcının uygulamayı kapatıp açması gerekmez.
+  var SITE = "https://sesliasistan.netlify.app";
+  var gidiyor = false;
+  function ac() { gidiyor = true; location.href = SITE; }
+  function dene() {
+    if (gidiyor || navigator.onLine === false) return;
+    fetch(SITE + "/manifest.webmanifest?t=" + Date.now(), { mode: "no-cors", cache: "no-store" }).then(ac, function () {});
+  }
+  window.addEventListener("online", dene);
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") dene(); });
+  setInterval(dene, 5000);
+  setTimeout(dene, 1500);
+</script>
 </body>
 </html>

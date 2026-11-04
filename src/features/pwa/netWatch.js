@@ -2,7 +2,7 @@
 
 import { disableNetwork, enableNetwork, waitForPendingWrites } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
-import { FLASH_MS, FLASH_GAP, pendingGrace } from "@/lib/netSync";
+import { FLASH_MS, FLASH_GAP, RESUME_KICK_MS, pendingGrace } from "@/lib/netSync";
 
 // Gönderilmeyi bekleyen kayıt var mı: waitForPendingWrites yazma yoksa hemen biter, varsa hepsi sunucuya ulaşınca.
 // Okuma yapmaz, yalnız telefondaki sırayı sorar. Yalnız kullanıcı kaydettiğinde onay gecikirse (lib/soon.js "sa-write-wait")
@@ -40,6 +40,31 @@ function kick() {
     .then(() => enableNetwork(db))
     .catch(() => {})
     .finally(() => (kicking = false));
+}
+
+// Bağlantı dönünce veriler kendiliğinden yenilensin (Seyhun 2026-11-04: "internet geri gelse bile hemen alınıyor mu bilmiyorum,
+// sayfayı yenilemek ya da uygulamayı kapatıp açmak zorunda kalıyorum"). iPhone uygulamayı arkaya alınca Firestore'un açık bağlantısını
+// sessizce keser; Firestore bunu çoğu zaman uzun süre fark etmez, dinleyiciler eski veride kalır. Uygulama RESUME_KICK_MS'ten uzun
+// arkada kaldıysa öne gelince ve internet geri gelince bağlantı bir kez kapatılıp açılır: dinleyiciler kaldığı yerden sürer,
+// yalnız aradaki değişiklikler gelir (fazladan tam okuma yok).
+export function watchReconnect() {
+  if (typeof window === "undefined") return () => {};
+  let hiddenAt = 0;
+  const vis = () => {
+    if (document.visibilityState === "hidden") return void (hiddenAt = Date.now());
+    const away = hiddenAt ? Date.now() - hiddenAt : 0;
+    hiddenAt = 0;
+    if (away > RESUME_KICK_MS && navigator.onLine !== false) kick();
+  };
+  const back = (e) => e.persisted && kick(); // Safari sayfayı önbellekten geri getirdi
+  window.addEventListener("online", kick);
+  window.addEventListener("pageshow", back);
+  document.addEventListener("visibilitychange", vis);
+  return () => {
+    window.removeEventListener("online", kick);
+    window.removeEventListener("pageshow", back);
+    document.removeEventListener("visibilitychange", vis);
+  };
 }
 
 // Aynı anda tek bekleyici
