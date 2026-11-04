@@ -3,7 +3,8 @@
 // Yarış sayfasında "Siteden belgeler" (Seyhun 2026-11-03): yarış sitesinden alınan bütün belgeler, yeni önce.
 // Açılınca yeni gelenler türüne göre işlenir (raceSite.js): renk listesi ve final grupları günün gruplarına, sporcu listesi
 // kayıt listesine, sonuçlar yarışın sonuçlarına (onResults, page.jsx). Her satır açılır (PDF); işlenen belge "Geri al" ile döner.
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { Sheet } from "@/components/ui/Sheet";
@@ -101,6 +102,8 @@ export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndo, 
     setBusy("");
   };
 
+  const load = useCallback(() => getStored(view.file, "application/pdf"), [view]);
+  const close = useCallback(() => setView(null), []);
   const fresh = (docs || []).filter((d) => d.state === "new").length;
   const amend = currentAmend(docs || []);
   return (
@@ -146,7 +149,8 @@ export function SiteDocs({ orgId, race, open: open0 = false, onResults, onUndo, 
           </Button>
         </div>
       </Sheet>
-      {view && <PdfViewer title={view.name} load={() => getStored(view.file, "application/pdf")} onClose={() => setView(null)} />}
+      {/* Belge pencerenin (Sheet, body'de) üstünde açılsın: o da body'ye (Seyhun 2026-11-04 "tıkladığımda gösterilmiyor evrak") */}
+      {view && createPortal(<PdfViewer title={view.name} load={load} onClose={close} />, document.body)}
     </>
   );
 }
