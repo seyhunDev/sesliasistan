@@ -262,7 +262,7 @@ export function ReceiptBook({ kind: start = "" }) {
 
   // Yeni tasarım (velora-tasarim, 2026-11-03): lacivert üstte ad, büyük tutar, ekleme düğmeleri, ay, arama ve süzgeç çipleri; altta gün gün liste
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={owner ? "Fişler ve faturalar" : "Fişler"}>
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -437,7 +437,7 @@ export function ReceiptBook({ kind: start = "" }) {
         )}
       </section>
 
-      <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="split-main relative -mx-5 -mt-6 min-h-[50vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {shownKind === "invoice" ? (
           <InvoicePanel desk={desk} tab={invTab} />
         ) : (

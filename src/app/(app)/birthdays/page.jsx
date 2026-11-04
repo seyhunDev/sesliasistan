@@ -27,7 +27,7 @@ export default function BirthdaysPage() {
   const sub = birthdays.length ? [`${birthdays.length} kişi`, soon && `30 günde ${soon}`].filter(Boolean).join(" · ") : "Henüz yok";
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Doğum günleri">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -54,7 +54,7 @@ export default function BirthdaysPage() {
         )}
       </section>
 
-      <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="split-cols relative -mx-5 -mt-6 min-h-[50vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {!next && <Empty icon="cake" title="Doğum günü eklenmedi" />}
 
         {months.map((m) => {

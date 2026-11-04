@@ -100,7 +100,7 @@ export default function SchedulePage() {
 
   const show = cur || nxt;
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPhoto} />
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Ders programı">
         <header className="flex items-center gap-2.5">
@@ -157,7 +157,7 @@ export default function SchedulePage() {
         </div>
       </section>
 
-      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="split-cols relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {busy ? (
           <RowList>
             <div className="flex min-h-[3.5rem] items-center gap-3 py-2.5 text-[0.875rem] font-semibold text-mut">
