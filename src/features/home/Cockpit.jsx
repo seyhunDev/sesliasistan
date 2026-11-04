@@ -13,6 +13,7 @@ import { isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
 import { HourTable } from "@/features/weather/HourTable";
+import { NowRain } from "@/features/weather/NowRain";
 import { DayTimeline } from "./DayTimeline";
 import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
@@ -96,6 +97,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) 
             <>
               <div className="mt-2.5 overflow-hidden rounded-[1.25rem] bg-[#0b1a33] p-3">
                 <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} />
+                {isToday && <NowRain place={home} rows={rows} />}
               </div>
             </>
           )}

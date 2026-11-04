@@ -4,7 +4,7 @@ import { useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { useWindObs } from "./useWindObs";
 import { useRainRadar } from "./useRainRadar";
-import { hereLine } from "./rainLine";
+import { NowRain } from "./NowRain";
 import { RegionMap, pointName } from "./RegionMap";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -57,9 +57,6 @@ export function WeatherTop({ w, refresh }) {
     toast(`Nokta taşındı · ${saved.name}`, { duration: 8000, action: { label: "Geri al", onClick: () => save(prev) } });
   };
   const links = compareLinks(place);
-  // Tahmin modeli ~10 km'lik kareyi tek değer sayar: bugün için radar "burada yağıyor mu, en yakın yağış nerede" satırını yazar
-  const h0 = nowHour();
-  const here = isToday ? hereLine(radar, rows.some((r) => +r.hh >= h0 && +r.hh <= h0 + 3 && r.mm >= 0.1), (ms) => new Date(ms).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })) : "";
   const v = n || (top && { t: info?.max, code: info?.code, day: true, wind: top.wind, gust: top.gust, dir: top.dir });
   return (
     <>
@@ -101,9 +98,9 @@ export function WeatherTop({ w, refresh }) {
           {rows.length > 0 && (
             <div className="rounded-[1.25rem] bg-[#0b1a33] p-3">
               <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} />
+              {isToday && <NowRain place={place} rows={rows} />}
             </div>
           )}
-          {here && <p className="mt-2 px-1 text-[0.8125rem] font-semibold text-fg">{here}</p>}
         </section>
         <section>
           <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1">

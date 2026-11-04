@@ -82,6 +82,7 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
                   data-now={i === nowAt ? "" : undefined}
                   data-obs={c.obs ? "" : undefined}
                   className={`relative w-11 shrink-0 text-center tabular-nums ${c.first ? "border-l border-[color:var(--ht-line)]" : ""}`}
+                  style={c.obs ? { background: OBS_BG } : undefined}
                 >
                   {i === nowAt && <span aria-hidden className="pointer-events-none absolute -bottom-1 -top-1 inset-x-0 rounded-[0.625rem] border-2 border-[color:var(--ht-now)]" />}
                   <Cell className={`text-[0.75rem] font-semibold ${c.first ? "text-[color:var(--ht-fg)]" : "text-[color:var(--ht-mut)]"}`}>{c.first ? c.dname : c.hh}</Cell>
@@ -124,8 +125,8 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
       {anyObs && (
         <p className="mt-1.5 flex flex-nowrap gap-3 whitespace-nowrap px-1 text-[0.6875rem] text-[color:var(--ht-mut)]" aria-label="Tablo açıklaması">
           <span className="inline-flex items-center gap-1.5">
-            <i className="inline-block size-2 rounded-full bg-[color:var(--ht-obs)]" />
-            {`Ölçülen${ob?.station?.name ? ` (${ob.station.name} istasyonu)` : ""}`}
+            <i className="inline-block size-2.5 rounded-[3px] border border-[color:var(--ht-obs)]" style={{ background: OBS_BG }} />
+            {`Gerçekleşen${ob?.station?.name ? ` (${ob.station.name} istasyonu)` : ""}`}
           </span>
           <span>Tahmin</span>
         </p>
@@ -133,6 +134,9 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
     </div>
   );
 }
+
+// Gerçekleşen (istasyon ölçümü) sütunlarının zemini (Seyhun 2026-11-04 "gerçekleşenleri daha net göstermeliyiz"): yalnız açık mavi yazı yetmiyordu
+const OBS_BG = "color-mix(in srgb, var(--ht-obs) 16%, transparent)";
 
 function Cell({ className = "", children }) {
   return <div className={`grid h-7 place-items-center ${className}`}>{children}</div>;
