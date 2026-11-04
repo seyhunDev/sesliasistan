@@ -994,7 +994,7 @@ function overallTop(data, n = 5) {
   const official = (data.fleets || []).filter((f) => f.rows?.some((r) => r.pts != null && r.pts !== ""));
   if (official.length) {
     const f = official[0];
-    return { tag: "Resmî", cls: f.cls || "", rows: f.rows.slice(0, n).map((r) => ({ p: r.place || r.code, sail: r.sail, name: r.name, club: r.club, t: r.pts })), total: f.rows.length };
+    return { tag: "Resmî", cls: f.cls || "", rows: f.rows.slice(0, n).map((r, i) => ({ p: r.rank || r.place || r.code || i + 1, sail: r.sail, name: r.name, club: r.club, t: r.pts })), total: f.rows.length };
   }
   const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
   let prov = [];
@@ -3180,7 +3180,7 @@ function scRound(data, sel) {
   if (pos < 0) return null;
   const t = Math.max(0, ...((en.legs?.[pos]?.t || []).map(Number).filter(Number.isFinite)));
   const rr = raceRows(data, sel);
-  return rr.rows.length ? { t, head: rr.head, rows: rr.rows.slice(0, 3) } : null;
+  return rr.rows.length ? { t, head: rr.head, tag: rr.tag, n: rr.rows.length, rows: rr.rows.slice(0, SC_FLEET) } : null;
 }
 // genel sıralama: resmî (PDF) ya da geçici; sınıf sınıf, yarış yarış puanlar
 function scBoards(data) {
@@ -3353,34 +3353,82 @@ function scBoats(data, who, today) {
   const inGrp = grp && Object.keys(gm).length ? all.filter((x) => gm[x.sail] === grp) : [];
   return (inGrp.length ? inGrp : all.filter((x) => !cls || !x.cls || x.cls === cls)).slice().sort((a, b) => Number(a.sail) - Number(b.sail));
 }
-function ScBoats({ rows, who }) {
-  const n = 12;
+// 01 Sıralama sekmesi: genel sıralamanın ilk 10'u, iki sütun (1–5, 6–10)
+function ScRank({ b }) {
+  if (!b) return null;
   return (
-    <div className="sc-bt">
-      <div className="sc-src">{["Sporcular", who?.grp ? `${who.grp} grup` : who?.cls || "", `${rows.length} tekne`].filter(Boolean).join(" · ")}</div>
+    <div className="sc-bt sc-rk">
+      <div className="sc-src">{["Genel sıralama", b.cls, b.tag].filter(Boolean).join(" · ")}</div>
       <ol>
-        {rows.slice(0, n).map((x) => (
-          <li key={x.sail}>
-            <b>{x.sail}</b>
-            <span>{shortName(x.name) || ""}</span>
-            <em>{shortClub(x.club) || ""}</em>
+        {b.rows.slice(0, 10).map((r, i) => (
+          <li key={`${r.sail}${i}`}>
+            <u>{r.p}</u>
+            <b>{String(r.sail || "").replace(/^\D+/, "")}</b>
+            <span>{shortName(r.name) || ""}</span>
+            <em>{r.t ?? ""}</em>
           </li>
         ))}
       </ol>
-      {rows.length > n ? <div className="sc-more">{`+${rows.length - n} tekne`}</div> : null}
+    </div>
+  );
+}
+// Sağ üstte grubun sporcuları (start dizisinde ve ilk dönüşe kadar), şamandıra dönüşünden sonra aynı yerde dönüş sırası
+// (Seyhun 2026-11-04 "starttan önce grubun sporcuları, sonra aynı sporcular şamandıra dönüşleriyle devam")
+const SC_FLEET = 10;
+function ScFleet({ data, sel, mode, now, who, today, onFull }) {
+  const rd = mode === "race" ? scRound(data, sel) : null;
+  if (rd) {
+    const fresh = rd.t && now - rd.t < SC_ROUND_MS;
+    return (
+      <button type="button" className="sc-rd" onClick={() => onFull("race")}>
+        <div className="sc-rdh">
+          <span>{fresh ? `${rd.head} · az önce` : rd.head}</span>
+          <span>{rd.tag || "Dönüş"}</span>
+        </div>
+        <ol>
+          {rd.rows.map((r, i) => (
+            <li key={`${r.sail}${i}`}>
+              <u>{r.p}</u>
+              <b>{r.sail}</b>
+              <em>{r.gap || r.name}</em>
+            </li>
+          ))}
+        </ol>
+        {rd.n > rd.rows.length ? <div className="sc-rdm">{`+${rd.n - rd.rows.length} tekne`}</div> : null}
+      </button>
+    );
+  }
+  const boats = scBoats(data, who, today);
+  if (!boats.length) return null;
+  return (
+    <div className="sc-rd">
+      <div className="sc-rdh">
+        <span>{who?.grp ? `${who.grp} grup` : who?.cls || "Sporcular"}</span>
+        <span>{`${boats.length} tekne`}</span>
+      </div>
+      <ol>
+        {boats.slice(0, SC_FLEET).map((x) => (
+          <li key={x.sail}>
+            <b>{x.sail}</b>
+            <em>{shortName(x.name) || ""}</em>
+          </li>
+        ))}
+      </ol>
+      {boats.length > SC_FLEET ? <div className="sc-rdm">{`+${boats.length - SC_FLEET} tekne`}</div> : null}
     </div>
   );
 }
 // 01: ortada tek kart; Süre · Program · Rüzgâr sırayla (start dizisi, tehir, abandone ve genel geride yalnız Süre)
 function Sc01({ t, data, prog, now, today, lock }) {
-  const boats = scBoats(data, t.who, today);
-  const have = ["time", prog.some((x) => x.state !== "done") ? "prog" : "", curWind(data, null, true, now) || windAhead(data, now).length >= 2 ? "wind" : "", boats.length ? "boats" : ""].filter(Boolean);
+  // Sporcular yerine genel sıralama (Seyhun 2026-11-04 "orası genel sıralama olsun"); grubun sporcuları start dizisinde sağdaki panelde
+  const boards = scBoards(data);
+  const have = ["time", prog.some((x) => x.state !== "done") ? "prog" : "", curWind(data, null, true, now) || windAhead(data, now).length >= 2 ? "wind" : "", boards.length ? "rank" : ""].filter(Boolean);
   const k = lock ? "time" : have[Math.floor(now / 1000 / SC_TAB) % have.length];
-  const NAME = { time: "Süre", prog: "Program", wind: "Rüzgâr", boats: "Sporcular" };
+  const NAME = { time: "Süre", prog: "Program", wind: "Rüzgâr", rank: "Sıralama" };
   return (
     <div className="sc-c1">
       <div className="sc-cb" key={k}>
-        {k === "time" ? <ScTime t={t} big /> : k === "prog" ? <ScProg prog={prog} /> : k === "boats" ? <ScBoats rows={boats} who={t.who} /> : <ScWind data={data} now={now} prog={prog} big />}
+        {k === "time" ? <ScTime t={t} big /> : k === "prog" ? <ScProg prog={prog} /> : k === "rank" ? <ScRank b={boards[Math.floor(now / 1000 / (SC_TAB * have.length)) % boards.length]} /> : <ScWind data={data} now={now} prog={prog} big />}
         {k === "time" ? <ScSig data={data} today={today} /> : null}
       </div>
       {have.length > 1 && !lock ? (
@@ -3397,9 +3445,8 @@ function Sc01({ t, data, prog, now, today, lock }) {
   );
 }
 // 02: sol üstte tek kart; geri sayımda o an çekili bayrak, yarışta erken çıkanlar; şamandıra dönüşünden sonra sağ üstte ilk 3 (60 sn)
-function Sc02({ t, data, sel, mode, now, today, onFull }) {
+function Sc02({ t, data, sel, mode, now, today }) {
   const ea = mode === "race" && sel && now - Date.parse(sel.at) < 15 * 60e3 ? earlyOf(data, sel.id) : [];
-  const rd = mode === "race" ? scRound(data, sel) : null;
   const n = /^(\d+)\./.exec(t.who?.name || "")?.[1];
   return (
     <>
@@ -3422,23 +3469,6 @@ function Sc02({ t, data, sel, mode, now, today, onFull }) {
         <ScSig data={data} today={today} />
         <ScWindLine data={data} now={now} />
       </div>
-      {rd && rd.t && now - rd.t < SC_ROUND_MS ? (
-        <button type="button" className="sc-rd" onClick={() => onFull("race")}>
-          <div className="sc-rdh">
-            <span>{`${rd.head} · az önce`}</span>
-            <span>Dönüş</span>
-          </div>
-          <ol>
-            {rd.rows.map((r, i) => (
-              <li key={`${r.sail}${i}`}>
-                <u>{r.p}</u>
-                <b>{r.sail}</b>
-                <em>{r.gap || r.name}</em>
-              </li>
-            ))}
-          </ol>
-        </button>
-      ) : null}
     </>
   );
 }
@@ -3675,7 +3705,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
   const lock = mode === "seq" || mode === "ap" || t.tone === "r";
   const body =
     sc === "01" ? <Sc01 t={t} data={data} prog={prog} now={now} today={today} lock={lock} />
-    : sc === "02" ? <Sc02 t={t} data={data} sel={sel} mode={mode} now={now} today={today} onFull={onFull} />
+    : sc === "02" ? <Sc02 t={t} data={data} sel={sel} mode={mode} now={now} today={today} />
     : sc === "03" ? <Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} />
     : sc === "04" ? <Sc04 data={data} />
     : sc === "05" ? <Sc05 data={data} sel={sel} mode={mode} now={now} />
@@ -3686,6 +3716,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       <div className="sc-body" key={sc}>
         {body}
       </div>
+      {(sc === "01" || sc === "02") && (mode === "seq" || mode === "race") ? <ScFleet data={data} sel={sel} mode={mode} now={now} who={t.who} today={today} onFull={onFull} /> : null}
       {live || sc === "04" ? <ScTop rep={sc === "04"} now={now} /> : null}
       <div className="sc-name">
         <div className="sc-nt">
