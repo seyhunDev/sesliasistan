@@ -1091,3 +1091,17 @@ group("Tekne takibi")([
     ["Yayın ve canlı", { desc: "Tehir penceresinde Kimin için; satırda İndir; Başlat tehirde engelli; canlıda tehirdeki grup küçük satır", fn: () => { const bp = r("features/broadcast/BroadcastPage.jsx"); const ls = r("features/liveScreen/LiveScreen.jsx"); return [/Kimin için/.test(bp) && /grpHold\(order, a\.grp/.test(bp), /lowerGrp\(x\.grp\)/.test(bp) && /Bu grup tehirde/.test(bp) && /grpDue\(plan\.order, now\)/.test(bp), /ap-\$\{o\.grp\}/.test(ls)]; }, ok: (a) => a.every(Boolean) }],
   ]);
 }
+
+// Aynı anda iki telefon (Seyhun 2026-11-04 "iki telefonun birbirini ezmesi"): yazmadan önce sunucudakiyle birleşir
+{
+  const RL = await import("@/lib/raceLive");
+  const r = (f) => readFileSync(new URL(`../../../src/${f}`, import.meta.url), "utf8");
+  const S = (id, at, extra = {}) => ({ id, at, ...extra });
+  const known = [S("a", "2026-11-04T10:00:00Z", { grp: "Sarı" })];
+  group("Aynı anda iki telefon")([
+    ["iki telefon iki grup", { desc: "A Sarı'yı bitirir, B Kırmızı'yı başlatır: ikisi de kalır", fn: () => { const srv = [...known, S("k", "2026-11-04T10:20:00Z", { grp: "Kırmızı" })]; const mine = [{ ...known[0], fin: "2026-11-04T10:40:00Z" }]; return RL.mergeStarts(known, mine, srv); }, ok: (l) => l.length === 2 && l[0].fin && l[1].id === "k" }],
+    ["silme ve eski kopya", { desc: "benim sildiğim gider; öbürünün sildiğine dokunmadıysam geri gelmez; kimse değiştirmediyse benimki aynen", fn: () => [RL.mergeStarts(known, [], [...known, S("k", "2026-11-04T10:20:00Z")]).map((x) => x.id).join(), RL.mergeStarts([...known, S("k", "x")], [...known, S("k", "x"), S("m", "2026-11-04T11:00:00Z")], known).map((x) => x.id).join(), RL.mergeStarts(known, [S("z", "1")], known).map((x) => x.id).join()], ok: (a) => a.join("|") === "k|a,m|z" }],
+    ["bekleyen startlar", { desc: "A Sarı'yı başlatıp satırını çıkarır, B Mavi'yi başlatır: ikisi de çıkar, Kırmızı kalır; A'nın eklediği sona", fn: () => { const o = [{ grp: "Sarı" }, { grp: "Mavi" }, { grp: "Kırmızı" }]; const srv = [{ grp: "Sarı" }, { grp: "Kırmızı" }]; return [RL.mergeOrder(o, [{ grp: "Mavi" }, { grp: "Kırmızı" }], srv).map((x) => x.grp).join(), RL.mergeOrder(o, [...o, { grp: "Yeşil" }], srv).map((x) => x.grp).join()]; }, ok: (a) => a.join("|") === "Kırmızı|Sarı,Kırmızı,Yeşil" }],
+    ["bağlantılar", { desc: "saveStarts ve plan.order sunucuyla birleşir (runTransaction), son görülen useLiveSync'ten; Yayın programı öbür telefondan gelir", fn: () => { const st = r("features/athletes/raceLiveStore.js"); return [/runTransaction/.test(st) && /mergeStarts\(base, mine, srv\)/.test(st) && /ks\.includes\("order"\)/.test(st), /noteLive\(orgId, raceId, d\)/.test(r("features/raceMedia/useLiveSync.js")), /sinceLocal\(\) < 3000/.test(r("features/broadcast/BroadcastPage.jsx"))]; }, ok: (a) => a.every(Boolean) }],
+  ]);
+}

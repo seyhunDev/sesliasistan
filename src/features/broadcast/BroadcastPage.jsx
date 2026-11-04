@@ -58,6 +58,12 @@ import "./masa.css";
 // Yukarı/Aşağı/Çıkar aynı yerde. Biten yarışın seçimi de satırından düzeltilir.
 const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "");
 const nowMs = () => Date.now();
+// bu telefonun son program değişikliğinin anı (öbür telefondan gelen eski kayıt hemen üstüne yazılmasın)
+let planLocalT = 0;
+const markLocal = () => {
+  planLocalT = Date.now();
+};
+const sinceLocal = () => Date.now() - planLocalT;
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const orient = (m) => (m.w && m.h ? (m.h > m.w ? "Dikey" : "Yatay") : "");
 
@@ -208,6 +214,16 @@ export function BroadcastPage({ orgId, id }) {
     const t = setTimeout(() => (setPlan(rp), savePlan(orgId, id, rp).catch(() => {})), 0);
     return () => clearTimeout(t);
   }, [today, plan, orgId, id]);
+  // Aynı anda iki telefon (Seyhun 2026-11-04): öbür telefonun program değişikliği (tehir, bekleyen startlar, bayrak…) bu telefona da gelir.
+  // Kendi değişikliğimizden hemen sonraki 3 sn'de gelen eski kayıt atlanır (kendi kaydımız gelince zaten aynı olur).
+  const livePlanJs = JSON.stringify(live.plan || null);
+  useEffect(() => {
+    if (!liveIn.current || !live.plan || sinceLocal() < 3000) return;
+    const rp = rollPlan(live.plan, today);
+    const t = setTimeout(() => setPlan((p) => (JSON.stringify(p) === JSON.stringify(rp) ? p : rp)), 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [livePlanJs]);
   // Dönüşler canlı (iki görevli: biri şamandırada, biri finişte; Seyhun 2026-11-02 inceleme)
   useEffect(() => {
     const tick = () => setCapNow(Date.now());
@@ -250,6 +266,7 @@ export function BroadcastPage({ orgId, id }) {
   const changePlan = (patch) => {
     const base = plan.day && plan.day < today ? rollPlan(plan, today) : plan;
     const next = cleanPlan({ ...base, ...(patch.day && patch.day < today ? { ...patch, day: today } : patch) });
+    markLocal();
     setPlan(next);
     // Promise döner: düğme veri gidene kadar halka gösterir
     // yalnız değişen alanlar (sunucunun siteden yazdığı program alanları ezilmesin)
