@@ -6,7 +6,7 @@ import { syncPush } from "@/lib/push";
 import { wireNativePush } from "@/lib/nativePush";
 import { applyTheme, readTheme, watchTheme } from "@/lib/theme";
 import { OFFLINE_GRACE, netText, netTone } from "@/lib/netSync";
-import { checkWrites, netState, subscribeNet } from "./netWatch";
+import { checkWrites, netState, subscribeNet, watchReconnect } from "./netWatch";
 import { watchChunkErrors } from "@/lib/crash";
 
 // Service worker'ı kaydeder: yayında çevrimdışı açılış + bildirim; geliştirmede yalnızca bildirim (önbellek kapalı)
@@ -81,6 +81,9 @@ export function OfflineBanner() {
       setDown(false);
     };
   }, [online]);
+
+  // Uygulama arkadan dönünce / internet gelince dinleyiciler tazelenir (netWatch.js)
+  useEffect(() => watchReconnect(), []);
 
   // Kullanıcının kaydı 2,5 sn içinde onaylanmadı (lib/soon.js): bekleyen kayıt izlenir
   useEffect(() => {
