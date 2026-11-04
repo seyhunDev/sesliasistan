@@ -1354,6 +1354,9 @@ group("Geri düğmesi")([
   ["aynı adres", F("iki kez yazılmaz", () => walk([["push", "/"]]).length === 1)],
   ["bilinmeyen adrese dönüş", F("yeni iz başlar", () => walk([["push", "/a"], ["pop", "/b"]]).join() === "/b")],
   ["boş iz", F("ilk adres yazılır", () => NAV.stepTrail([], "push", "/plans").join() === "/plans")],
+  ["yeni sürüm varken Yarışlar'a dokunuldu (tam yükleme)", F("iz devam eder, geri ana sayfaya (Sporcular'a değil)", () => { const t = NAV.restoreTrail(["/", "/athletes/races"], "/athletes/races", "navigate"); return t.join() === "/,/athletes/races"; })],
+  ["tam yüklemeden tarayıcı geri", F("iz o sayfaya kısalır", () => NAV.restoreTrail(["/", "/athletes", "/athletes/races"], "/athletes", "back_forward").join() === "/,/athletes")],
+  ["izde olmayan sayfada açıldı", F("yeni iz", () => NAV.restoreTrail(["/", "/plans"], "/athletes/races", "navigate").join() === "/athletes/races" && NAV.restoreTrail(null, "/x").join() === "/x")],
   ["Aidatlar'da açıldı › geri › geri", F("döngü yok: üst sayfa yerine geçer, sonra ana sayfa", () => { const t = walk([["replace", "/athletes"]], ["/dues"]); return t.join() === "/athletes" && t.length === 1; })],
 ]);
 
