@@ -240,7 +240,8 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     return () => window.dispatchEvent(new CustomEvent("sa-plain", { detail: false }));
   }, [plain]);
 
-  // Lacivert üstün başlığı (RaceEditor üst kısmı onun altına koyar): geri, ad, yer · tarih, ⋯
+  // Lacivert üstün başlığı (RaceEditor üst kısmı onun altına koyar): geri, ad, yer · tarih, kalan gün / Yarışta, ⋯
+  // (Seyhun 2026-11-04: ayrı "5 gün kaldı" satırı kalktı, başlık satırında; sayfa daha az yer kaplar)
   const head = (
     <header className="flex items-center gap-2.5">
       <BackButton href="/athletes/races" />
@@ -248,6 +249,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
         <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</h1>
         {race && <p className="truncate text-[0.8125rem] text-white/65">{subText({ ...race, ...head0 })}</p>}
       </div>
+      {race && <Left r={{ ...race, ...head0 }} />}
       {(race?.id || head0) && (
         <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className={buttonClass({ variant: "back" })}>
           <Icon name="more" className="size-5" />
@@ -305,6 +307,27 @@ function Race({ orgId, uid, email, by, mail, coach }) {
 
 // Başlığın alt satırı (tarih tek yerde; kalan gün lacivertte büyük): "Foça, İzmir · 26–28 Eki"
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+// Başlığın sağında kalan gün ("5 / gün", "Yarın", "Bugün"), yarışta yanıp sönen "Yarışta", bittiyse "Bitti"
+function Left({ r }) {
+  if (!r.startDate) return null;
+  const t = todayStr();
+  const n = Math.round((new Date(`${r.startDate}T12:00:00`) - new Date(`${t}T12:00:00`)) / 864e5);
+  const on = n <= 0 && t <= (r.endDate || r.startDate);
+  if (n > 1)
+    return (
+      <span className="shrink-0 text-center leading-none" aria-label={`${n} gün kaldı`}>
+        <b className="block text-[1.625rem] font-bold tracking-[-.04em] tabular-nums">{n}</b>
+        <small className="mt-0.5 block text-[0.6875rem] font-semibold text-white/70">gün</small>
+      </span>
+    );
+  return (
+    <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-[0.8125rem] font-semibold">
+      {on && <span className="size-2 animate-pulse rounded-full bg-[#ff6b6b]" aria-hidden="true" />}
+      {n === 1 ? "Yarın" : on ? "Yarışta" : "Bitti"}
+    </span>
+  );
+}
+
 function subText(r) {
   const a = r.startDate;
   const b = r.endDate && r.endDate !== a ? r.endDate : "";

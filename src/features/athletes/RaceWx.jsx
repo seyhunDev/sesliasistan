@@ -129,7 +129,20 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
   if (!first || first > lastForecastDay(today)) return null;
   return (
     <section className={fill ? "mt-4 flex flex-1 flex-col" : "mt-4"} aria-label="Yarış havası">
-      <div className="mb-2 flex items-center gap-2">
+      {/* Seyhun 2026-10-26: gün değişince yüklenirken alan küçülüp sayfa zıplıyordu; her durumda grafikle aynı yükseklik */}
+      <div ref={area} data-ready={d.rows?.length && !late ? "1" : "0"} className="flex min-h-[16.25rem] flex-col" style={!d.rows?.length && tall ? { minHeight: tall } : undefined} data-swipe-day {...swipe}>
+        {late ? (
+          <p className="m-auto text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
+        ) : d.rows?.length ? (
+          <DayChart rows={d.rows} day={sel} at={d.at} marks={marks} />
+        ) : d.err ? (
+          <p className="m-auto text-center text-[0.875rem] text-white/70">Hava tahmini alınamadı.</p>
+        ) : (
+          <Wait />
+        )}
+      </div>
+      {/* yer, ölçüm istasyonu, gün ve yenile grafiğin altında (Seyhun 2026-11-04 "bunları grafiğin altına alalım") */}
+      <div className="mt-2 flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-white/65">
           Hava · {d.place || sp?.name || r.district || r.city}
           {st && ` · ölçüm ${st.name} ${String(st.km).replace(".", ",")} km`}
@@ -144,18 +157,6 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
         <button type="button" onClick={() => (keep(), setTick((n) => n + 1))} aria-label="Yenile" data-press className="btn btn-round size-8">
           <Icon name="load" className="size-4" />
         </button>
-      </div>
-      {/* Seyhun 2026-10-26: gün değişince yüklenirken alan küçülüp sayfa zıplıyordu; her durumda grafikle aynı yükseklik */}
-      <div ref={area} data-ready={d.rows?.length && !late ? "1" : "0"} className="flex min-h-[16.25rem] flex-col" style={!d.rows?.length && tall ? { minHeight: tall } : undefined} data-swipe-day {...swipe}>
-        {late ? (
-          <p className="m-auto text-center text-[0.875rem] text-white/70">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} tarihinden sonra çıkar.</p>
-        ) : d.rows?.length ? (
-          <DayChart rows={d.rows} day={sel} at={d.at} marks={marks} />
-        ) : d.err ? (
-          <p className="m-auto text-center text-[0.875rem] text-white/70">Hava tahmini alınamadı.</p>
-        ) : (
-          <Wait />
-        )}
       </div>
       <Sheet open={pick} onClose={() => setPick(false)} title="Gün">
         <ul className="divide-y divide-line border-y border-line">

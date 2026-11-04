@@ -895,21 +895,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
       {raceDay && rid ? (
         <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayNo={dayNo} dayAll={dayAll} />
       ) : !over && left != null ? (
-        <div className="mt-4">
-          <span className="flex items-center justify-between gap-3">
-            <span className="flex min-w-0 items-baseline gap-2">
-              {left > 1 ? (
-                <>
-                  <b className="text-[2.375rem] font-bold leading-none tracking-[-.04em] tabular-nums">{left}</b>
-                  <span className="text-[0.9375rem] font-semibold text-white/75">gün kaldı</span>
-                </>
-              ) : (
-                <b className="-mb-[0.2em] truncate pb-[0.2em] text-[1.75rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
-              )}
-            </span>
-            {/* Sadeleştirme (Seyhun 2026-11-04): Yayına git ⋯ › Yayın'da; ilerleme çubuğu ve "Hazırlık · N bölüm eksik" kalktı
-                (eksik bölüm sekmede sarı nokta, işler Özet'te) */}
-          </span>
+        <div className="mt-1">
+          {/* kalan gün başlık satırında (page.jsx Left; Seyhun 2026-11-04); Yayına git ⋯ › Yayın'da, ilerleme çubuğu kalktı */}
           {rid && <RaceWx r={{ ...r, id: rid }} />}
         </div>
       ) : null}

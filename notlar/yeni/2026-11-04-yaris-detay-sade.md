@@ -11,3 +11,8 @@
 ## Sıradaki işler
 
 - Seyhun başka bölüm (Özet'teki Yarış kartı, Evrak belge grupları) için de sadeleştirme isterse.
+
+## Tasarım
+
+- Yarış sayfası başlığı (Seyhun 2026-11-04): geri · ad / yer · tarih · sağda kalan gün ("5 / gün", "Yarın") ya da yanıp sönen "Yarışta", bittiyse "Bitti" (`page.jsx` `Left`) · ⋯. Ayrı "5 gün kaldı" satırı yok.
+- Yarış havası (`RaceWx`): yer, ölçüm istasyonu, gün seçimi ve yenile grafiğin ALTINDA; üstte doğrudan sıcaklık ve tablo.
