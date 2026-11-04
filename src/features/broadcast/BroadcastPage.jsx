@@ -1200,7 +1200,9 @@ export function BroadcastPage({ orgId, id }) {
         {/* Turuncu bayrak (Seyhun 2026-11-02): çekilince canlı ekran "Start öncesi"ne geçer (videoluda soldaki şeritte bayrak, uyarıya kalan süre, hattaki rüzgâr) */}
         {/* Ekranda (Seyhun 2026-11-02 gruplar-kamera/grup-a.png): canlı ekranın gösterdiği yarış ve kamerası; altındaki şeritten grup seçilir, "Otomatik" en son başlayana döner */}
         {airStart ? (
-          <div className="masa-onair rounded-[1.125rem] px-3.5 py-3">
+          // Renkle ayırma (Seyhun 2026-11-04 "sadece yazıya bağımlı kalmayalım"; örnek yayin-tasarim/sure-renk/ornek.png): ekranda olmak kırmızı
+          // çerçeve + etiket, kartın zemini ekrandaki grubun rengi
+          <div className="masa-onair rounded-[1.125rem] px-3.5 py-3" style={{ "--g": groupColor(airE.grp || airStart.grp || "") || "#2a4a7a" }}>
           <div className="flex items-center gap-3">
             <span className="masa-onair-tag">Ekranda</span>
             <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(airE.grp || airStart.grp || "") }} aria-hidden="true" />
@@ -1227,7 +1229,7 @@ export function BroadcastPage({ orgId, id }) {
           </div>
         ) : null}
         {hero ? (
-              <section className={`masa-hero${hero.cd ? " cd" : ""}`} aria-live="polite">
+              <section className={`masa-hero g${hero.cd ? " cd" : ""}`} style={{ "--g": (heroX.grp && groupColor(heroX.grp)) || "#2a4a7a" }} aria-live="polite">
                 <div className="masa-hero-h">
                   <span className="masa-hero-bd">{hero.cd ? (heroPaused ? "Durdu" : "Geri sayım") : "Sıradaki"}</span>
                   <span>{[`${hero.n}. yarış`, heroE?.cls].filter(Boolean).join(" · ")}</span>
@@ -1350,13 +1352,17 @@ export function BroadcastPage({ orgId, id }) {
                           : "";
                         const finish = () => change((l) => { const next = finishRace(l.starts, s.id, Date.now(), rdays); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; });
                         return (
-                          <div key={x.key} className={live || x.state === "next" ? "bg-accbg" : ""}>
+                          // satır grubun renginde: solda şerit, yarışan / geri sayan / sıradaki satırda hafif zemin, bekleyen soluk
+                          <div key={x.key} className={`masa-row${live || x.state === "next" || isCd ? " hot" : x.state === "wait" || x.state === "ap" ? " dim" : ""}`} style={{ "--g": (x.grp && groupColor(x.grp)) || "var(--mut)" }}>
                             {/* Ekrana alma tek yerde: üstteki Ekranda kartının grup şeridi (Seyhun 2026-11-04) */}
                             <div className="flex items-center gap-2 pl-3.5 pr-3">
                               <button type="button" onClick={() => (s ? (setEditI(-1), setPickId(isOpen ? "" : s.id)) : (setPickId(""), setEditI(isOpen ? -1 : x.i)))} className="flex min-w-0 flex-1 items-center gap-2.5 py-2 text-left">
                                 <span className="size-2.5 shrink-0 rounded-full" style={{ background: x.grp ? groupColor(x.grp) : "var(--mut)" }} aria-hidden="true" />
                                 <span className="min-w-0 flex-1 leading-tight">
-                                  <b className={`block truncate font-semibold ${x.state === "void" ? "text-mut line-through" : ""}`}>{[x.grp || e?.cls || "Start", `${r.n}. yarış`, x.retry ? "tekrar" : ""].filter(Boolean).join(" · ")}</b>
+                                  <b className="flex min-w-0 items-center gap-1.5 font-semibold">
+                                    <span className={`truncate ${x.state === "void" ? "text-mut line-through" : ""}`}>{[x.grp || e?.cls || "Start", `${r.n}. yarış`, x.retry ? "tekrar" : ""].filter(Boolean).join(" · ")}</span>
+                                    {s && airStart?.id === s.id ? <span className="masa-onair-tag">Ekranda</span> : null}
+                                  </b>
                                   <span className={`block truncate text-[0.8125rem] ${x.state === "void" || x.state === "ap" ? "text-warn" : "text-mut"}`}>{sub}</span>
                                 </span>
                                 {time ? <span className={`shrink-0 text-[1.25rem] font-bold tabular-nums ${isCd ? "text-acc" : x.state === "done" ? "text-ok" : ""}`}>{time}</span> : null}
