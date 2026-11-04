@@ -39,7 +39,7 @@ import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, w
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, coursePoints } from "@/lib/courseCard";
-import { EVRES, EVRE_NAME, EVRE_WHEN, ITEM_NAME, ITEM_SECS, SHOW_ITEMS, cleanCourseShow, evreOf, evreScreen, showPlan, CLASS_PICK, raceClasses, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
+import { EVRES, EVRE_NAME, EVRE_WHEN, ITEM_NAME, ITEM_SECS, SHOW_ITEMS, SIDES, SIDE_NAME, cleanCourseShow, evreOf, evreScreen, showPlan, CLASS_PICK, raceClasses, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { autoCaption } from "@/lib/raceCaption";
@@ -1795,6 +1795,15 @@ export function BroadcastPage({ orgId, id }) {
                 </button>
               ))}
             </div>
+            {/* Sol alttaki liste bu evrede (Seyhun 2026-11-04 "genel sıralamayı starttan önce, start dizisinde, starttan sonra da gösterebilmeliyim") */}
+            <div className="flex items-center gap-1.5 overflow-x-auto px-4 pt-2 [scrollbar-width:none]" aria-label="Sol alt">
+              <small className="w-[4.5rem] flex-none text-[0.75rem] font-semibold text-mut">Sol alt</small>
+              {SIDES.map((k) => (
+                <button key={k} type="button" data-press aria-pressed={pre.ev[evNow].side === k} onClick={() => putEv(evNow, { side: k })} className="masa-b dur">
+                  {SIDE_NAME[k]}
+                </button>
+              ))}
+            </div>
             <div className="flex items-center gap-1.5 overflow-x-auto px-4 pb-3 pt-2 [scrollbar-width:none]" aria-label="Ekranda tut">
               <small className="w-[4.5rem] flex-none text-[0.75rem] font-semibold text-mut">Ekranda tut</small>
               <button type="button" data-press aria-pressed={!shNow.pin} onClick={() => putPin("")} className="masa-b dur">
@@ -2416,6 +2425,16 @@ export function BroadcastPage({ orgId, id }) {
                   ))}
                 </div>
               ) : null}
+            </div>
+            <div>
+              <Head title="Sol alt" />
+              <div className="grid grid-cols-3 gap-1.5">
+                {SIDES.map((k) => (
+                  <button key={k} type="button" data-press aria-pressed={pre.ev[scOpen].side === k} className="masa-tog text-center" onClick={() => putEv(scOpen, { side: k })}>
+                    {SIDE_NAME[k]}
+                  </button>
+                ))}
+              </div>
             </div>
             {pre.ev[scOpen].items.length > 1 ? (
               <div>

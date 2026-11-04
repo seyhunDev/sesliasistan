@@ -3465,6 +3465,29 @@ function scBoats(data, who, today) {
 // Sağ üstte grubun sporcuları (start dizisinde ve ilk dönüşe kadar), şamandıra dönüşünden sonra aynı yerde dönüş sırası
 // (Seyhun 2026-11-04 "starttan önce grubun sporcuları, sonra aynı sporcular şamandıra dönüşleriyle devam")
 const SC_FLEET = 10;
+// Sol altta genel sıralamanın ilk 10'u (kartın sınıfı; yoksa ilk sınıf)
+function ScGen({ data, who, onFull }) {
+  const bs = scBoards(data);
+  const b = bs.find((x) => who?.cls && x.cls === who.cls) || bs[0];
+  if (!b?.all.length) return null;
+  return (
+    <button type="button" className="sc-rd" onClick={() => onFull("all")}>
+      <div className="sc-rdh">
+        <span>{[b.cls || "Genel", "Genel sıra"].join(" · ")}</span>
+        <span>{`${b.total} tekne`}</span>
+      </div>
+      <ol>
+        {b.all.slice(0, SC_GEN).map((r, i) => (
+          <li key={`${r.sail}${i}`}>
+            <u>{r.p}</u>
+            <b>{r.sail}</b>
+            <em>{shortName(r.name) || ""}</em>
+          </li>
+        ))}
+      </ol>
+    </button>
+  );
+}
 // Grup etiketi (süre kartıyla aynı renk)
 function ScGrp({ g }) {
   if (!g) return null;
@@ -4020,7 +4043,10 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
   const live = mode !== "none" && plan.status !== "done";
   // Sol alt liste tek kural (Seyhun 2026-11-04 "hangi durumda ne zaman gösteriliyor, karışıklık var"): süre kartındaki grubun listesi;
   // start öncesinden yarış bitene kadar (tehir dahil) her öğede yerinde, yalnız ortada genel sıralama ya da parkur (sol yarıyı kaplar) varken yok; yarış öncesi ve sonrası yok
-  const listOn = ["prestart", "start", "race", "ap"].includes(evre) && sc !== "03" && sc !== "05";
+  // Yayın › Ekran'da evre başına seçilir (Grup ve sıra / Genel ilk 10 / Yok)
+  const side = cleanCourseShow(data.courseShow).ev[evre]?.side || "off";
+  const listOn = side !== "off" && sc !== "03" && sc !== "05";
+  const lwho = t.who || gWho(entry);
   // ekrandaki görüntünün grubu (yalnız video gösterilirken; tekrar ve tekne haritası değil)
   const liveGrps = (data.starts || []).filter((x) => x.day === today && !x.void && !x.fin).map((x) => x.grp || data.rounds?.[x.id]?.grp || "");
   const vEntry = { ...entry, cls: entry?.cls || "", grp: entry?.grp || sel?.grp || "" };
@@ -4033,7 +4059,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       </div>
       <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
-        {listOn ? <ScFleet data={data} sel={sel} mode={mode} now={now} who={t.who || gWho(entry)} today={today} onFull={onFull} /> : null}
+        {listOn ? side === "gen" ? <ScGen data={data} who={lwho} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
       {ap && sc !== "04" ? <ScAp t={t} plan={plan} seq={mode === "seq"} /> : null}
       <div className="sc-name">
