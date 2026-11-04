@@ -253,3 +253,4 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-ap, .masa-flagt, .masa-flagt.sm { min-height: 4.5rem; }
 .masa-sq, .masa-sq.sm { width: 4.5rem; }
 .masa .btn.masa-hero-go { height: 3.75rem; font-size: 1.1875rem; }
+.masa-barin { padding-bottom: max(0.5rem, calc(env(safe-area-inset-bottom) - 1rem)); }

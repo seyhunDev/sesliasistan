@@ -2237,10 +2237,12 @@ function TimeIn({ value, onSave, ...p }) {
   };
   return <input {...p} type="time" value={draft ?? value ?? ""} onChange={(e) => setDraft(e.target.value)} onBlur={save} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />;
 }
+// Alt düğme çubuğu ekranın dibine oturur (Seyhun 2026-11-04 "altta niye boşluk kalıyor"): iPhone'un ev çizgisi için bırakılan
+// boşluk yarıya indi (masa.css .masa-barin), çubuk sayfayla aynı genişlikte
 function MasaBar({ children }) {
   return (
     <div data-pagebar="" className="masa-bar fixed inset-x-0 bottom-0 z-30">
-      <div className="mx-auto flex max-w-[30rem] gap-2 px-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2.5">{children}</div>
+      <div className="masa-barin mx-auto flex max-w-[30rem] gap-2 px-4 pt-2 md:max-w-[44rem]">{children}</div>
     </div>
   );
 }
