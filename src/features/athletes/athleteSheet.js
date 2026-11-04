@@ -320,10 +320,13 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
         y += 16;
         rule(y - 11, L + 90);
       }
-      page.drawRectangle({ x: L, y: H - y - 12, width: R - L, height: 22, color: SOFT });
-      text("Ödenecek toplam", L + 10, y + 3, f.b, 10.5);
-      text(tl(d.money.total), R - 10, y + 3, f.b, 11.5, { align: "right" });
-      y += 26;
+      // Toplam: kalemlerden bir satır aralıkla ayrı, üstte koyu çizgi, kalın yazı
+      y += 8;
+      page.drawRectangle({ x: L, y: H - y - 22, width: R - L, height: 26, color: SOFT });
+      page.drawLine({ start: { x: L, y: H - y + 4 }, end: { x: R, y: H - y + 4 }, thickness: 1.2, color: NAVY });
+      text("Ödenecek toplam", L + 10, y + 13, f.b, 11);
+      text(tl(d.money.total), R - 10, y + 13, f.b, 12, { align: "right" });
+      y += 30;
       if (d.money.club.length) text(`Kulüp karşılar: ${d.money.club.join(", ")}`, L, y, f.r, 8.5, { color: MUT, max: R - L });
     }
   }
