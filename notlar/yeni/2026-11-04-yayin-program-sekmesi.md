@@ -1,0 +1,7 @@
+## Nerede kaldım
+- Yayın › Program yeniden (Seyhun 2026-11-04: "Program sekmesinde eksikler, hatalar var, çok karışık, zor; yeniden tasarla"; telefonda denenmedi). Bulunanlar: programın maddeleri (canlı ekranda görünen) elle eklenemiyor/düzeltilemiyordu, yalnız yapay zekâyla; iki ayrı "İlk start" (gün ve Her gün) karışıktı; ilk start saati değişince programdaki "İlk start" maddesi eski saatte kalıyordu (canlı ekranda iki saat); gün eklenip kaldırılamıyordu; bekleyen startların "Çıkar"ı Süre'nin işiydi ve son bekleyen çıkarılınca hemen yeniden ekleniyordu; günün adı iki kez yazıyordu; açıkken siteden gelen program eski hâlle ezilebiliyordu.
+- Yeni düzen: gün kutuları + "Gün ekle"; seçili günün kartı Yarış Var/Yok, tek İlk start (farklıysa "Her güne"), ilk/son gün "Günü kaldır" (yarışı yoksa); "Program" maddeleri dokun düzelt/sil, + ekle; "Yapılan yarışlar" dokun → Yarışı sil; Canlı ekran "Ertesi güne geçer"; "Programı ekle" alttan açılır. Bekleyen startlar yalnız Süre'de. Sekme açılınca plan daily/times/off/agenda belgeden tazelenir; yazımlar alan alan (savePlanKeys).
+- Dosyalar: `src/features/broadcast/BroadcastPage.jsx`, `masa.css`, `src/lib/raceProgram.js` (agendaPut, agendaFirst, datesAdd, datesDrop). Test yaris.mjs "program sekmesi elle".
+
+## Sıradaki işler
+0. Telefonda: Program'da madde ekle/düzelt/sil, canlı ekranın Program kartında görünüyor mu; İlk start saatini değiştir, "İlk start" maddesi ve geri sayım aynı saat mi; Gün ekle / Günü kaldır yarışın tarihlerini değiştiriyor mu.
