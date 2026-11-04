@@ -151,7 +151,9 @@ export function cleanPlan(p) {
   const off = [...new Set((Array.isArray(p?.off) ? p.off : []).filter((d) => DAY.test(d || "")))].slice(0, 20);
   // Turuncu bayrak (Seyhun 2026-11-02 "turuncu bayrak basılınca artık start öncesi"): çekildiği an (ISO); "" indi. Ekran yalnız o gün ve gün bitmemişken sayar
   const orange = typeof p?.orange === "string" && !Number.isNaN(Date.parse(p.orange)) ? p.orange.slice(0, 30) : "";
-  return { day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off, orange, warn, warnBy, agenda: cleanAgenda(p?.agenda), sig: cleanSig(p?.sig) };
+  // Ekrandaki ad (Seyhun 2026-11-04 "yarışmanın adını yönetim panelinden editleyebilmeliyim; başlık ve alt satır"): boşsa yarışın adı
+  const one = (v, n) => String(v || "").replace(/\s+/g, " ").trim().slice(0, n);
+  return { title: one(p?.title, 40), sub: one(p?.sub, 60), day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off, orange, warn, warnBy, agenda: cleanAgenda(p?.agenda), sig: cleanSig(p?.sig) };
 }
 // Tehir cümlesi: "Rüzgâr yok · Karada" (sebep ve yer). Start saati yazılmaz (Seyhun 2026-11-02 "orada yanlış bilgi veriliyor"); iniş saati ve
 // uyarı işareti saati de yazılmaz (Seyhun 2026-11-03 "tehirin ineceği saati, uyarı işareti saatini göstermeyelim"): inişe kalan geri sayımda

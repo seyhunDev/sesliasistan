@@ -1471,6 +1471,10 @@ button.gr-card { cursor: pointer; }
 /* sağ alt: yarış adı | Velora */
 .gr-nm { display: flex; align-items: center; justify-content: flex-end; gap: 1em; }
 .gr-nm b { display: block; }
+.gr-nt { min-width: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 0.3em; }
+.gr-nt b { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-nt b.lg { font-size: 1.5em; }
+.gr-name .gr-nt small { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 0.95em; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.72); }
 .gr-vl { display: flex; flex-direction: column; align-items: center; gap: 0.25em; padding-left: 1em; border-left: 2px solid rgba(255, 255, 255, 0.55); }
 .gr-vl svg { width: 2.4em; height: auto; filter: drop-shadow(0 0.1em 0.5em rgba(0, 0, 0, 0.45)); }
 .gr-name .gr-vl small { margin: 0; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.75em; letter-spacing: 0.28em; text-transform: uppercase; color: #fff; }
@@ -1479,6 +1483,7 @@ button.gr-card { cursor: pointer; }
   .gr-lb { flex-direction: column; align-items: stretch; }
   .gr-col { width: auto; }
   .gr-nm { justify-content: flex-start; }
+  .gr-nt { align-items: flex-start; }
   .gr-vl { display: none; }
   .gr-st .gr-tm { font-size: 3.4em; }
 }
