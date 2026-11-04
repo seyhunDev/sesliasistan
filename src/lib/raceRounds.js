@@ -373,6 +373,11 @@ export const cleanCourseShow = (c) => ({
   // Her sahnenin önceden seçilen videosu (Seyhun 2026-11-04 "her ekranın canlı videosunu önceden seçebilmeliyim"): sahne açılınca o görüntü;
   // kind "" = bulanık foto; sahnenin anahtarı yoksa ekrandaki ne ise o kalır
   vid: cleanSceneVid(c?.vid),
+  // Evre atamaları (Seyhun 2026-11-04 "yarış öncesi şu video, yarışta şu drone; o sahnede şunu göster, sonra parkuru, rüzgârı"): evre başına
+  // görüntü (vid; yoksa ekrandaki), gösterilecekler sırası (items) ve her birinin süresi (sec). Eski sahne videoları (vid) evrelere taşınır
+  ev: cleanEv(c?.ev, cleanSceneVid(c?.vid)),
+  // Elle sabitlenen öğe (Yayın › Ekran › Sabitle); "Otomatiğe dön" boşaltır
+  pin: SHOW_ITEMS.includes(c?.pin) ? c.pin : "",
 });
 export function cleanSceneVid(v) {
   const out = {};
@@ -424,6 +429,67 @@ export function sceneScreen(screen, show, sc) {
   if (!v) return s;
   return { ...s, kind: v.kind, src: v.src || "", mid: v.mid || "", loop: v.kind === "boats", pause: !!v.kind && !!s.pause, ...(v.kind === "boats" ? { zoom: v.zoom ?? 100 } : {}) };
 }
+// ---- Yayın evreleri ve gösterilecekler (Seyhun 2026-11-04 "otomatik geçiş neye geçiyor belli değil; atamaları biz yapalım") ----
+// Evre yarışın durumundan kendiliğinden belli olur (canlı ekran ve Yayın aynı evreOf); her evrenin görüntüsü ve öğe sırası Yayın › Ekran'da seçilir.
+export const EVRES = ["pre", "start", "race", "post", "ap"];
+export const EVRE_NAME = { pre: "Yarış öncesi", start: "Start", race: "Yarışta", post: "Yarış sonrası", ap: "Tehir" };
+export const EVRE_WHEN = { pre: "Start geri sayımı başlayana kadar", start: "Start geri sayımında ve genel geride", race: "Start'tan finişe kadar", post: "Finiş ya da abandone sonrası, gün bitince de", ap: "Tehir bayrağı çekiliyken" };
+export const SHOW_ITEMS = ["video", "time", "prog", "wind", "course", "rank", "next"];
+export const ITEM_NAME = { video: "Görüntü", time: "Süre", prog: "Program", wind: "Rüzgâr", course: "Parkur", rank: "Genel sıralama", next: "Sıradaki yarış" };
+export const ITEM_SECS = [8, 10, 15, 20, 30];
+export const EVRE_DEF = { pre: ["video", "time", "prog", "wind", "rank"], start: ["video"], race: ["video"], post: ["rank", "next"], ap: ["time", "prog", "wind", "rank"] };
+// eski sahnenin videosu hangi evreye (01 yarış öncesi videosuz, 02 videolu ve yarışta, 03 sıralama = yarış sonrası)
+const EV_MIG = { pre: "01", start: "02", race: "02", post: "03", ap: "01" };
+export function cleanEvVid(v) {
+  if (!v || typeof v !== "object") return null;
+  const s = cleanScreen(v);
+  return { kind: s.kind, src: s.src, mid: s.mid, ...(s.kind === "boats" ? { zoom: s.zoom } : {}) };
+}
+export function cleanEvOne(e, k, old = {}) {
+  const has = !!e && typeof e === "object";
+  const items = has && Array.isArray(e.items) ? [...new Set(e.items.filter((x) => SHOW_ITEMS.includes(x)))] : [...EVRE_DEF[k]];
+  const vid = has ? cleanEvVid(e.vid) : old[EV_MIG[k]] || null;
+  return { items, sec: ITEM_SECS.includes(Number(e?.sec)) ? Number(e.sec) : 15, vid };
+}
+export function cleanEv(ev, old = {}) {
+  return Object.fromEntries(EVRES.map((k) => [k, cleanEvOne(ev?.[k], k, old)]));
+}
+// Canlı ekranın kipinden evre: seq (dizide tehir "ap" ayrı), summary/between yarış sonrası; wait/none yarış öncesi
+export function evreOf(mode, seqMode = "") {
+  if (mode === "ap" || (mode === "seq" && seqMode === "ap")) return "ap";
+  if (mode === "seq") return "start";
+  if (mode === "race") return "race";
+  if (mode === "between" || mode === "summary") return "post";
+  return "pre";
+}
+// O an gösterilen öğe: elle sabitlenen (ya da sesle açılan parkur/rüzgâr/program) varsa o; yoksa evrenin sırası, verisi olmayan atlanır.
+// has: verisi olan öğeler; dwell: öğenin en az süresi (sn; uzun sıralama sayfa sayısı kadar). Dönen: item, left (sn), next, list
+export function showPlan({ show, evre, has, now, dwell = {} }) {
+  const c = cleanCourseShow(show);
+  const e = c.ev[evre] || c.ev.pre;
+  const pin = c.pin || ({ course: "course", wind: "wind", prog: "prog" }[c.one] || "");
+  const list = e.items.filter((k) => has[k]);
+  if (pin && has[pin]) return { evre, item: pin, pin: true, list, left: 0, next: "" };
+  if (!list.length) return { evre, item: has.video ? "video" : "time", pin: false, list, left: 0, next: "", empty: true };
+  const L = list.map((k) => [k, Math.max(e.sec, dwell[k] || 0)]);
+  const tot = L.reduce((s, [, d]) => s + d, 0);
+  let t = Math.floor(now / 1000) % tot;
+  for (let i = 0; i < L.length; i++) {
+    const [k, d] = L[i];
+    if (t < d) return { evre, item: k, pin: false, list, left: d - t, next: L.length > 1 ? L[(i + 1) % L.length][0] : "" };
+    t -= d;
+  }
+  return { evre, item: L[0][0], pin: false, list, left: 0, next: "" };
+}
+// Evrenin görüntüsü: atanmışsa o (ara ve alt yazı ekrandakinden), yoksa ekrandaki
+export function evreScreen(screen, show, evre) {
+  const v = cleanCourseShow(show).ev[evre]?.vid;
+  const s = screen || { kind: "" };
+  if (!v) return s;
+  return { ...s, kind: v.kind, src: v.src || "", mid: v.mid || "", loop: v.kind === "boats" || v.kind === "rec" ? true : !!s.loop, pause: !!v.kind && !!s.pause, ...(v.kind === "boats" ? { zoom: v.zoom ?? 100 } : {}) };
+}
+// Öğenin canlı ekrandaki çizimi (sahne.css sınıfları): Görüntü 02 (kayıtsa 04 Tekrar), Süre/Program/Rüzgâr 01, Sıralama 03, Parkur 05, Sıradaki 06
+export const itemScene = (item, rec = false) => (item === "video" ? (rec ? "04" : "02") : item === "rank" ? "03" : item === "course" ? "05" : item === "next" ? "06" : "01");
 // Akışta o an gösterilen adım; have: ekranda gösterilebilenler (veri yoksa adım atlanır). Otomatikte "at"tan (Yayın'da Başa al) itibaren döner.
 export function preSteps(show, have = PRE_STEPS) {
   return cleanCourseShow(show).pre.filter((k) => have.includes(k));

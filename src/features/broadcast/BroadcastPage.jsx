@@ -14,7 +14,7 @@ import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
 import { programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
+import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { DocsTab } from "./DocsTab";
@@ -39,7 +39,7 @@ import { upSec, AP_MIN, AP_WHY, apDue, apLower, apRaise, trHm, warnDue, orangeUp
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, coursePoints } from "@/lib/courseCard";
-import { SCENES, SCENE_NAME, cleanCourseShow, sceneOf, sceneScreen, CLASS_PICK, raceClasses, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
+import { EVRES, EVRE_NAME, EVRE_WHEN, ITEM_NAME, ITEM_SECS, SHOW_ITEMS, cleanCourseShow, evreOf, evreScreen, showPlan, CLASS_PICK, raceClasses, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { autoCaption } from "@/lib/raceCaption";
@@ -84,7 +84,8 @@ export function BroadcastPage({ orgId, id }) {
   const [srcList, setSrcList] = useState([]);
   const [stat, setStat] = useState({}); // bağlantı → { live, vid } (/api/yayin-durum)
   const [addOpen, setAddOpen] = useState(false);
-  const [scOpen, setScOpen] = useState(""); // Ekran: videosu seçilen sahne
+  const [scOpen, setScOpen] = useState(""); // Ekran: ataması açılan evre (pre, start, race, post, ap)
+  const [vidPick, setVidPick] = useState(false); // evre penceresinde görüntü listesi açık
   const [hasSheet, setHasSheet] = useState(false); // yüklü sonuç PDF'i var: 03 genel sıralama gösterilebilir
   const [addKind, setAddKind] = useState("drone");
   const [addUrl, setAddUrl] = useState("");
@@ -730,23 +731,24 @@ export function BroadcastPage({ orgId, id }) {
   const selSrc = sel?.kind === "src" ? srcOf(sel.src) : null;
   // "Grubun kamerası" (kind live): ekrandaki yarışın grubuna bağlı kamera (Kameralar), yoksa Kamera 1
   const autoOn = Object.keys(L?.camBy || {}).length > 0;
-  // Ekrandaki sahne (Seyhun 2026-11-04 "otomatik süreye göre, ama ben de seçebilmeliyim"): canlı ekranla aynı kural (lib/raceRounds sceneOf);
-  // evre buradan kabaca: gün bitti, start dizisi, yarışta, yarış bitti, bekleme
+  // Ekrandaki evre (Seyhun 2026-11-04 "otomatik geçiş neye geçiyor belli değil; yarış öncesi şu video, yarışta şu drone"): canlı ekranla aynı
+  // kural (lib/raceRounds evreOf); evre buradan kabaca: gün bitti, start dizisi, yarışta, yarış bitti, tehir, bekleme
   const lastT = [...live.starts].filter((x) => x.day === today).at(-1) || null;
   const scMode = plan.status === "done" ? "summary" : cur && !cur.fin && !cur.void ? (Date.parse(cur.at) > capNow ? "seq" : "race") : lastT && (lastT.fin || lastT.void) && !cur ? "between" : "wait";
-  const rawKind = L?.screen.kind || "";
-  const scHas = { "01": true, "02": true, "03": hasSheet || scMode === "between" || live.starts.some((x) => x.fin), "04": rawKind === "rec" || pre.vid["04"]?.kind === "rec", "05": true, "06": true };
-  const planAt = plan.day === today && plan.at ? Date.parse(`${today}T${plan.at}:00+03:00`) : NaN;
-  const scFar = !cur && !(planAt - capNow <= 600e3 && planAt > capNow);
-  const scNow = sceneOf({ show: pre, rec: rawKind === "rec", mode: scMode, hasVideo: !!rawKind, now: capNow, has: scHas, far: scFar });
-  // sahnenin önceden seçilen videosu varsa ekrandaki odur
-  const eff = L ? sceneScreen(L.screen, pre, scNow) : null;
+  const evNow = plan.status === "ap" ? "ap" : evreOf(scMode);
+  // evreye atanan görüntü varsa ekrandaki odur
+  const eff = L ? evreScreen(L.screen, pre, evNow) : null;
   const onScreen = eff?.kind ? eff : null;
-  const putVid = (k, v) => {
-    const vid = { ...pre.vid };
-    if (v) vid[k] = { kind: v.kind || "", src: v.src || "", mid: v.mid || "", ...(v.kind === "boats" ? { zoom: v.zoom ?? 100 } : {}) };
-    else delete vid[k];
-    putCourseShow({ ...cShow, vid });
+  // tek evrenin ataması alan alan yazılır (raceLiveStore saveEvre; başka ekranın seçimi ezilmez)
+  const putEv = (k, patch) => {
+    const e = { ...pre.ev[k], ...patch };
+    setL((p) => (p ? { ...p, courseShow: { ...p.courseShow, ev: { ...cleanCourseShow(p.courseShow).ev, [k]: e } } } : p));
+    saveEvre(orgId, id, k, e).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
+  };
+  const putVid = (k, v) => putEv(k, { vid: v ? { kind: v.kind || "", src: v.src || "", mid: v.mid || "", ...(v.kind === "boats" ? { zoom: v.zoom ?? 100 } : {}) } : null });
+  const putPin = (item) => {
+    setL((p) => (p ? { ...p, courseShow: { ...p.courseShow, pin: item, ...(item ? {} : { one: "" }), scene: "" } } : p));
+    savePin(orgId, id, item).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
   };
   if (L && !capInit) {
     setCapInit(true);
@@ -790,6 +792,9 @@ export function BroadcastPage({ orgId, id }) {
   const todays = [...live.starts].filter((x) => x.day === today); // eskiden yeniye (listede 1., 2., …)
   const races = dayRaces({ starts: live.starts, order: plan.order, grpOf: (x) => x.grp || L?.rounds?.[x.id]?.grp || "", liveIds: cur ? [cur.id] : [], today, rdays });
   const nextRow = races.flatMap((r) => r.rows).find((x) => x.state === "next");
+  // o an gösterilen öğe ve sıradaki (canlı ekranla aynı showPlan; verisi olmayan atlanır)
+  const evHas = { video: !!onScreen || evNow === "start" || evNow === "race", time: true, prog: races.some((r) => r.rows.some((x) => x.state !== "done")), wind: true, course: !!scene, rank: hasSheet || scMode === "between" || live.starts.some((x) => x.fin), next: true };
+  const shNow = showPlan({ show: pre, evre: evNow, has: evHas, now: capNow });
   const days = rdays?.length ? rdays : [today];
   const idle = tr.t.end == null && tr.t.left == null;
   const needRace = !!L && !nextRow && idle && plan.status !== "done";
@@ -843,7 +848,7 @@ export function BroadcastPage({ orgId, id }) {
   const tabInfo = [
     ["sure", "Süre", cur ? (Date.parse(cur.at) > capNow ? "Geri sayım" : "Yarışta") : plan.status === "ap" ? "Tehir" : plan.status === "done" ? "Gün bitti" : races.length ? `${races.length} yarış` : "Boş", !!cur],
     ["program", "Program", `${days.length} gün`, false],
-    ["video", "Ekran", `${scNow} ${SCENE_NAME[scNow]}`, !!onScreen && !onScreen.pause],
+    ["video", "Ekran", `${EVRE_NAME[evNow]} · ${ITEM_NAME[shNow.item]}`, !!onScreen && !onScreen.pause],
     ["parkur", "Parkur", (CARD_TYPES[selCard(course).type] || "").split(" ")[0], false],
     ["sporcu", "Sporcu", entries.length ? `${entries.length}` : "—", false],
     ["belge", "Belgeler", race?.results?.files?.length ? "Sonuç var" : "—", false],
@@ -905,10 +910,10 @@ export function BroadcastPage({ orgId, id }) {
   const monName = monRec ? recName(monRec, live.starts) : onScreen?.kind === "boats" ? "Tekneler · Canlı konum" : onScreen?.kind === "src" ? srcOf(onScreen.src)?.name || "Canlı" : onScreen?.kind === "live" ? airCam?.name || "Grubun kamerası" : onScreen?.kind === "drone" ? "Drone" : "Video";
   const pvRec = sel?.kind === "rec" ? live.media.find((m) => m.id === sel.mid) : null;
   const pvUrl = selSrc?.url || (sel?.kind === "live" ? airCam?.url || L?.stream.url || "" : "");
-  // sahnenin videosunun adı ve kapağı (Ekran › Sahneler)
+  // evrenin görüntüsünün adı ve kapağı (Ekran › Evreler)
   const vidOf = (v) => (!v ? null : v.kind === "src" ? srcOf(v.src) : null);
   const vidName = (k) => {
-    const v = pre.vid[k];
+    const v = pre.ev[k]?.vid;
     if (!v) return "Ekrandaki";
     if (!v.kind) return "Bulanık foto";
     if (v.kind === "src") return vidOf(v)?.name || "Canlı";
@@ -918,7 +923,7 @@ export function BroadcastPage({ orgId, id }) {
     return m ? recName(m, live.starts) : "Kayıt";
   };
   const sceneThumb = (k) => {
-    const v = pre.vid[k];
+    const v = pre.ev[k]?.vid || (k === evNow ? onScreen : null);
     if (v?.kind === "src") return ytThumb(vidOf(v)?.url, stat[vidOf(v)?.url]?.vid) || "";
     if (v?.kind === "live") return ytThumb(airCam?.url, stat[airCam?.url]?.vid) || "";
     if (v?.kind === "rec") return live.media.find((x) => x.id === v.mid)?.thumb || "";
@@ -1480,34 +1485,55 @@ export function BroadcastPage({ orgId, id }) {
           ) : null}
           {/* Tek önizleme (Seyhun 2026-11-03 yonetim/ornek-A: video alanı sade); ekrandaki ne olduğu tek satır */}
           <p className="truncate px-1 pt-2 text-[0.8125rem] font-semibold text-mut">
-            {`Ekranda: ${scNow} ${SCENE_NAME[scNow]} · ${onScreen ? (onScreen.pause ? `${monName} · ara verildi` : monName) : "Bulanık foto"}`}
+            {`Görüntü: ${onScreen ? (onScreen.pause ? `${monName} · ara verildi` : monName) : "Bulanık foto"}`}
           </p>
         </section>
-        {/* Sahneler (Seyhun 2026-11-04, örnek "Yönetim"): ekrandaki sahne kırmızı; dokununca sahnenin videosu seçilir ve istenirse ekrana alınır */}
+        {/* Şimdi (Seyhun 2026-11-04 "otomatik geçiş niye, neye geçiyor belli değil"): evre ve nedeni, ekrandaki öğe, sıradaki ve kaç sn sonra;
+            Ekranda tut ile bir öğe sabitlenir, Otomatik sıraya döner */}
         <section>
-          <Head title="Sahneler" />
-          <div className="masa-scs">
-            {SCENES.map((k) => {
+          <Head title="Şimdi" />
+          <div className={`${card} overflow-hidden`}>
+            <div className="px-4 pb-1 pt-3">
+              <b className="block text-[1rem]">{`${EVRE_NAME[evNow]} · ${ITEM_NAME[shNow.item]}`}</b>
+              <span className="block text-[0.8125rem] font-semibold text-mut">
+                {shNow.pin ? `${ITEM_NAME[shNow.item]} sabit, kaldırana kadar ekranda` : shNow.empty ? "Seçilenlerin verisi yok" : shNow.next ? `${shNow.left > 5 ? `${shNow.left} sn sonra ` : "Birazdan "}${ITEM_NAME[shNow.next]}` : "Tek öğe, dönmez"}
+              </span>
+              <span className="block text-[0.8125rem] text-mut">{`${EVRE_WHEN[evNow]}`}</span>
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto px-4 pb-3 pt-2 [scrollbar-width:none]" aria-label="Ekranda tut">
+              <button type="button" data-press aria-pressed={!shNow.pin} onClick={() => putPin("")} className="masa-b dur">
+                Otomatik
+              </button>
+              {SHOW_ITEMS.filter((k) => evHas[k]).map((k) => (
+                <button key={k} type="button" data-press aria-pressed={shNow.pin && shNow.item === k} onClick={() => putPin(shNow.pin && shNow.item === k ? "" : k)} className="masa-b dur">
+                  {ITEM_NAME[k]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+        {/* Evreler (Seyhun 2026-11-04 "yarış öncesi şu video, yarışta şu drone; o sahnede şunu göster, sonra parkuru, rüzgârı"): her evrenin
+            görüntüsü ve gösterilecekler sırası; ekrandaki evre kırmızı; dokununca atama penceresi */}
+        <section>
+          <Head title="Evreler" />
+          <div className={`${card} overflow-hidden`}>
+            {EVRES.map((k) => {
               const th = sceneThumb(k);
+              const its = pre.ev[k].items;
               return (
-                <button key={k} type="button" data-press onClick={() => setScOpen(k)} className={`masa-sc${k === scNow ? " on" : ""}`}>
-                  <span className="th">
-                    {th ? <img src={th} alt="" /> : null}
-                    <i>{k}</i>
-                    {k === scNow ? <em>EKRANDA</em> : null}
+                <button key={k} type="button" data-press onClick={() => (setVidPick(false), setScOpen(k))} className={`masa-evr${k === evNow ? " on" : ""}`}>
+                  <span className="th">{th ? <img src={th} alt="" /> : null}</span>
+                  <span className="tx">
+                    <b>
+                      {EVRE_NAME[k]}
+                      {k === evNow ? <em>ŞİMDİ</em> : null}
+                    </b>
+                    <small>{vidName(k)}</small>
+                    <small>{its.length ? its.map((x) => ITEM_NAME[x]).join(" · ") : "Öğe yok"}</small>
                   </span>
-                  <b>{SCENE_NAME[k]}</b>
-                  <small>{vidName(k)}</small>
                 </button>
               );
             })}
-          </div>
-          <div className={`${card} mt-2 overflow-hidden`}>
-            <button type="button" onClick={() => putCourseShow({ ...cShow, scene: pre.scene ? "" : scNow })} className={row} aria-pressed={!pre.scene}>
-              <span className="min-w-0 flex-1 font-semibold">Otomatik geçiş</span>
-              <span className="text-[0.8125rem] font-semibold text-mut">{pre.scene ? `${pre.scene} ekranda kalır` : ""}</span>
-              <span className={`masa-sw${!pre.scene ? " on" : ""}`} aria-hidden="true" />
-            </button>
           </div>
         </section>
         <ScreenName plan={plan} name={race?.name || ""} onSave={(title, sub) => changePlan({ title, sub }).then(() => toast("Ekrandaki ad kaydedildi"))} />
@@ -1626,7 +1652,7 @@ export function BroadcastPage({ orgId, id }) {
           </div>
         </section>
         <MasaBar>
-          <Button variant="secondary" disabled={!!busy || !onScreen} onClick={() => (pre.vid[scNow] ? putVid(scNow, { kind: "" }) : null, show({ kind: "", caption: cap }))}>
+          <Button variant="secondary" disabled={!!busy || !onScreen} onClick={() => (pre.ev[evNow].vid ? putVid(evNow, { kind: "" }) : null, show({ kind: "", caption: cap }))}>
             Kaldır
           </Button>
           {onScreen ? (
@@ -1635,7 +1661,7 @@ export function BroadcastPage({ orgId, id }) {
               {onScreen.pause ? "Sürdür" : "Duraklat"}
             </Button>
           ) : null}
-          <Button disabled={!!busy || !takeOk || (!!onScreen && isOn(sel.kind, sel.mid || sel.src || ""))} onClick={() => (pre.vid[scNow] && sel.kind !== "rec" ? putVid(scNow, { ...sel, zoom: zoomNow }) : null, show({ ...sel, loop: sel.kind === "boats", caption: cap, ...(sel.kind === "boats" ? { zoom: zoomNow } : {}) }))}>
+          <Button disabled={!!busy || !takeOk || (!!onScreen && isOn(sel.kind, sel.mid || sel.src || ""))} onClick={() => (pre.ev[evNow].vid ? putVid(evNow, { ...sel, zoom: zoomNow }) : null, show({ ...sel, loop: sel.kind === "boats", caption: cap, ...(sel.kind === "boats" ? { zoom: zoomNow } : {}) }))}>
             {pvName ? `${pvName.length > 14 ? "Ekrana al" : `${pvName}'i ekrana al`}` : "Ekrana al"}
           </Button>
         </MasaBar>
@@ -1829,7 +1855,7 @@ export function BroadcastPage({ orgId, id }) {
             </MasaBar>
           </>
         ) : null}
-        {!needSetup && tab === "belge" ? <DocsTab orgId={orgId} race={race} onRace={setRace} onShow={() => (putCourseShow({ ...cShow, scene: "03" }), toast("03 Sıralama ekranda"))} showing={scNow === "03"} /> : null}
+        {!needSetup && tab === "belge" ? <DocsTab orgId={orgId} race={race} onRace={setRace} onShow={() => (putPin("rank"), toast("Genel sıralama ekranda"))} showing={shNow.item === "rank"} /> : null}
         {!needSetup && tab === "donus" ? (
           <>
         {/* Dönüşler (Seyhun 2026-11-02 yayın masası): şamandıralar adım adım (geçen tekne sayısı), son şamandıra üstte, lider sarı */}
@@ -2002,39 +2028,83 @@ export function BroadcastPage({ orgId, id }) {
         ) : null}
       </Sheet>
       {/* Canlı kaynak ekle (Seyhun 2026-11-03 video-sekme/ornek.png): tür + YouTube bağlantısı + Ekle; ad kendiliğinden (Drone 2) */}
-      {/* Sahnenin videosu (Seyhun 2026-11-04 "her ekranın canlı videosunu önceden seçebilmeliyim"): seçilen hemen kaydedilir; sahne açılınca o görüntü */}
-      <Sheet open={!!scOpen} onClose={() => setScOpen("")} title={scOpen ? `${scOpen} · ${SCENE_NAME[scOpen]}` : ""} navy>
+      {/* Evrenin ataması (Seyhun 2026-11-04): görüntü (Ekrandaki, bulanık foto, canlı kaynak, tekneler, kayıt) ve gösterilecekler sırası
+          (Yukarı / Çıkar, altta Ekle), her birinin süresi; seçilen hemen kaydedilir, yalnız o evrenin alanı yazılır */}
+      <Sheet open={!!scOpen} onClose={() => setScOpen("")} title={scOpen ? EVRE_NAME[scOpen] : ""} navy>
         {scOpen ? (
           <div className="space-y-3 px-4 pb-5">
+            <p className="px-1 text-[0.8125rem] font-semibold text-mut">{EVRE_WHEN[scOpen]}</p>
             <div className={`${card} overflow-hidden`}>
-              {[
-                [null, "Ekrandaki", ""],
-                [{ kind: "" }, "Bulanık foto", ""],
-                ...(autoOn ? [[{ kind: "live" }, "Grubun kamerası", airCam?.name || ""]] : []),
-                ...srcList.map((x) => [{ kind: "src", src: x.id }, x.name, stat[x.url]?.live ? "Yayında" : x.url ? "" : "Bağlantı yok"]),
-                [{ kind: "boats" }, "Tekneler", "Canlı konum"],
-                ...(scOpen === "04" ? vids.map((m) => [{ kind: "rec", mid: m.id }, recName(m, live.starts), m.dur ? mmss(m.dur) : ""]) : []),
-              ].map(([v, t, sub]) => {
-                const cv = pre.vid[scOpen];
-                const on = !v ? !cv : !!cv && cv.kind === v.kind && (cv.src || "") === (v.src || "") && (cv.mid || "") === (v.mid || "");
-                return (
-                  <button key={`${v?.kind ?? "x"}${v?.src || v?.mid || ""}`} type="button" aria-pressed={on} onClick={() => putVid(scOpen, v)} className={`${row} border-b border-line last:border-b-0`}>
-                    <span className="min-w-0 flex-1 truncate font-semibold">{t}</span>
-                    {sub ? <span className="shrink-0 text-[0.8125rem] font-semibold text-mut">{sub}</span> : null}
-                    <span className={`masa-rd${on ? " on" : ""}`} aria-hidden="true" />
-                  </button>
-                );
-              })}
+              <button type="button" onClick={() => setVidPick((v) => !v)} aria-expanded={vidPick} className={row}>
+                <span className="min-w-0 flex-1 font-semibold">Görüntü</span>
+                <span className="min-w-0 max-w-[60%] truncate text-[0.875rem] font-semibold text-mut">{vidName(scOpen)}</span>
+                <span className="text-mut" aria-hidden="true">{vidPick ? "⌃" : "›"}</span>
+              </button>
+              {vidPick
+                ? [
+                    [null, "Ekrandaki", "Ekrana aldığın"],
+                    [{ kind: "" }, "Bulanık foto", ""],
+                    ...(autoOn ? [[{ kind: "live" }, "Grubun kamerası", airCam?.name || ""]] : []),
+                    ...srcList.map((x) => [{ kind: "src", src: x.id }, x.name, stat[x.url]?.live ? "Yayında" : x.url ? "" : "Bağlantı yok"]),
+                    [{ kind: "boats" }, "Tekneler", "Canlı konum"],
+                    ...vids.map((m) => [{ kind: "rec", mid: m.id }, recName(m, live.starts), m.dur ? mmss(m.dur) : ""]),
+                  ].map(([v, t, sub]) => {
+                    const cv = pre.ev[scOpen].vid;
+                    const on = !v ? !cv : !!cv && cv.kind === v.kind && (cv.src || "") === (v.src || "") && (cv.mid || "") === (v.mid || "");
+                    return (
+                      <button key={`${v?.kind ?? "x"}${v?.src || v?.mid || ""}`} type="button" aria-pressed={on} onClick={() => (putVid(scOpen, v), setVidPick(false))} className={`${row} border-t border-line`}>
+                        <span className="min-w-0 flex-1 truncate font-semibold">{t}</span>
+                        {sub ? <span className="shrink-0 text-[0.8125rem] font-semibold text-mut">{sub}</span> : null}
+                        <span className={`masa-rd${on ? " on" : ""}`} aria-hidden="true" />
+                      </button>
+                    );
+                  })
+                : null}
             </div>
-            {pre.scene === scOpen ? (
-              <Button variant="secondary" full onClick={() => (putCourseShow({ ...cShow, scene: "" }), setScOpen(""))}>
-                Otomatiğe dön
-              </Button>
-            ) : (
-              <Button full onClick={() => (putCourseShow({ ...cShow, scene: scOpen }), setScOpen(""), toast(`${scOpen} ekranda`))}>
-                Şimdi ekrana al
-              </Button>
-            )}
+            <div>
+              <Head title="Gösterilecekler" right="sırayla" />
+              <div className={`${card} overflow-hidden`}>
+                {pre.ev[scOpen].items.map((k, i, a) => (
+                  <div key={k} className="masa-it">
+                    <i>{i + 1}</i>
+                    <span>
+                      {ITEM_NAME[k]}
+                      {scOpen === evNow && !evHas[k] ? <small>Veri yok, atlanır</small> : null}
+                    </span>
+                    {i > 0 ? (
+                      <button type="button" data-press className="masa-b" onClick={() => putEv(scOpen, { items: [...a.slice(0, i - 1), k, a[i - 1], ...a.slice(i + 1)] })}>
+                        Yukarı
+                      </button>
+                    ) : null}
+                    <button type="button" data-press className="masa-b red" onClick={() => putEv(scOpen, { items: a.filter((x) => x !== k) })}>
+                      Çıkar
+                    </button>
+                  </div>
+                ))}
+                {!pre.ev[scOpen].items.length ? <p className="px-4 py-3 text-[0.875rem] font-semibold text-mut">{scOpen === "start" || scOpen === "race" ? "Görüntü gösterilir" : "Süre gösterilir"}</p> : null}
+              </div>
+              {SHOW_ITEMS.some((k) => !pre.ev[scOpen].items.includes(k)) ? (
+                <div className="flex flex-wrap gap-1.5 pt-2" aria-label="Ekle">
+                  {SHOW_ITEMS.filter((k) => !pre.ev[scOpen].items.includes(k)).map((k) => (
+                    <button key={k} type="button" data-press className="masa-b" onClick={() => putEv(scOpen, { items: [...pre.ev[scOpen].items, k] })}>
+                      {`+ ${ITEM_NAME[k]}`}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            {pre.ev[scOpen].items.length > 1 ? (
+              <div>
+                <Head title="Her biri" />
+                <div className="grid grid-cols-5 gap-1.5">
+                  {ITEM_SECS.map((n) => (
+                    <button key={n} type="button" data-press aria-pressed={pre.ev[scOpen].sec === n} className="masa-tog text-center" onClick={() => putEv(scOpen, { sec: n })}>
+                      {`${n} sn`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </Sheet>
