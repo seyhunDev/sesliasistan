@@ -20,8 +20,8 @@ const DARK_SKY = { sun: "text-amber-300", cloudSun: "text-amber-200", moon: "tex
 // yarış havası, multimedya Hava. Sütunlar her saat bir: seçilen günün saatleri, ardından ertesi gün (ilk sütunda gün adı, solunda ince çizgi);
 // parmakla sola kaydırılır. Satırlar: saat, gökyüzü simgesi, sıcaklık, hissedilen (veri yoksa satır yok), yağmur (o saatin yağışı, mm, mavi sayı ve altında
 // şiddete göre renkli şerit, mmTone), rüzgâr kn, sağanak kn (rüzgâr haritasının renginde kutu, colorOf), yön oku (rüzgârın estiği yöne bakar) ve derece.
-// Gerçekleşen (canlı yayın ekranındaki gibi): geçmiş saatlerde en yakın istasyonun ölçümü (useWindObs; far: 100 km'ye kadar) açık mavi yazılır
-// (hourCols), altta tek satır "Ölçülen (Dikili istasyonu) · Tahmin". Bugünse şimdiki saatin sütunu kırmızı çerçeveli ve açılışta solda görünür;
+// Gerçekleşen: geçmiş saatlerde en yakın istasyonun ölçtüğü rüzgâr (useWindObs; far: 100 km'ye kadar) ayrı "Ölçülen kn" satırında açık mavi
+// ("8–11" rüzgâr–sağanak) ve grafikte açık mavi nokta; tahmin satırları hep tahmin kalır (2026-11-04, sütunları karıştırmıyordu). Altta "Ölçülen: Dikili istasyonu". Bugünse şimdiki saatin sütunu kırmızı çerçeveli ve açılışta solda görünür;
 // başka günde sabah 6'dan başlar. marks: [{ at: "HH:MM", label }] plan / start saatleri pembe dikey çizgi ve altında kısa yazı.
 // Renkler CSS değişkeniyle (--ht-mut, --ht-line, --ht-rain, --ht-now, --ht-obs, --ht-mark, --ht-cell): lacivert kartta varsayılanlar, açık sayfada tone="light".
 export function HourTable({ rows, next = null, date, tone = "dark", onClick, className = "", place = null, far = false, marks = [], obs = null, station = null, nowMs = null, scale = 1 }) {
@@ -48,8 +48,7 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
 
   if (!cols.length) return null;
   const vars = tone === "light" ? LIGHT : DARK;
-  const labels = [["Saat"], [""], ["Sıcaklık"], ...(hasFeel ? [["Hissedilen"]] : []), ["Yağmur", "mm"], ["Rüzgâr", "kn"], ["Sağanak", "kn"], ["Yön"], ...(lines.length ? [[""]] : [])];
-  const ink = (c) => (c.obs ? "text-[color:var(--ht-obs)]" : "");
+  const labels = [["Saat"], [""], ["Sıcaklık"], ...(hasFeel ? [["Hissedilen"]] : []), ["Yağmur", "mm"], ["Rüzgâr", "kn"], ["Sağanak", "kn"], ["Yön"], ...(anyObs ? [["Ölçülen", "kn", true]] : []), ...(lines.length ? [[""]] : [])];
 
   return (
     <div style={scale !== 1 ? { ...vars, zoom: scale } : vars} className={className}>
@@ -61,8 +60,8 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
         <div className="shrink-0 border-r border-[color:var(--ht-line)]">
           <div style={{ height: CH }} aria-hidden="true" />
           <div className="py-1">
-          {labels.map(([a, b], i) => (
-            <div key={i} className="flex h-7 items-center whitespace-nowrap pl-3 pr-2 text-[0.6875rem] font-semibold text-[color:var(--ht-mut)]">
+          {labels.map(([a, b, o], i) => (
+            <div key={i} className={`flex h-7 items-center whitespace-nowrap pl-3 pr-2 text-[0.6875rem] font-semibold ${o ? "text-[color:var(--ht-obs)]" : "text-[color:var(--ht-mut)]"}`}>
               {a}
               {b && <small className="ml-0.5 text-[0.625rem] font-medium opacity-75">{b}</small>}
             </div>
@@ -82,34 +81,38 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
                   data-now={i === nowAt ? "" : undefined}
                   data-obs={c.obs ? "" : undefined}
                   className={`relative w-11 shrink-0 text-center tabular-nums ${c.first ? "border-l border-[color:var(--ht-line)]" : ""}`}
-                  style={c.obs ? { background: OBS_BG } : undefined}
                 >
                   {i === nowAt && <span aria-hidden className="pointer-events-none absolute -bottom-1 -top-1 inset-x-0 rounded-[0.625rem] border-2 border-[color:var(--ht-now)]" />}
                   <Cell className={`text-[0.75rem] font-semibold ${c.first ? "text-[color:var(--ht-fg)]" : "text-[color:var(--ht-mut)]"}`}>{c.first ? c.dname : c.hh}</Cell>
                   <Cell>
                     <Icon name={s.icon} className={`size-[1.15rem] ${tone === "light" ? skyTone(s.icon) : DARK_SKY[s.icon] || "text-white/80"}`} />
                   </Cell>
-                  <Cell className={`text-[0.9375rem] font-bold ${ink(c)}`}>{c.t}°</Cell>
+                  <Cell className="text-[0.9375rem] font-bold">{c.t}°</Cell>
                   {hasFeel && <Cell className="text-[0.8125rem] text-[color:var(--ht-mut)]">{c.feel != null ? `${c.feel}°` : ""}</Cell>}
                   <Cell className="relative text-[0.75rem] font-bold text-[color:var(--ht-rain)]">
                     {rain && <span aria-hidden className="absolute inset-x-0 bottom-0 h-1" style={{ background: rain }} />}
                     {mmText(c.mm)}
                   </Cell>
-                  <Cell className={`text-[0.875rem] font-bold ${ink(c)}`}>{c.wind}</Cell>
+                  <Cell className="text-[0.875rem] font-bold">{c.wind}</Cell>
                   <Cell>
                     {(c.gust ?? c.wind) != null && (
-                      <span className={`grid h-6 w-9 place-items-center rounded-md text-[0.8125rem] font-bold text-[#0b1730] ${c.obs ? "ring-2 ring-inset ring-[color:var(--ht-obs)]" : ""}`} style={{ background: colorOf(c.gust ?? c.wind) }}>
+                      <span className="grid h-6 w-9 place-items-center rounded-md text-[0.8125rem] font-bold text-[#0b1730]" style={{ background: colorOf(c.gust ?? c.wind) }}>
                         {c.gust ?? c.wind}
                       </span>
                     )}
                   </Cell>
                   <Cell>
                     {c.dir != null && (
-                      <svg viewBox="0 0 16 16" aria-label={`${Math.round(c.dir)}°`} className={`size-4 ${c.obs ? "text-[color:var(--ht-obs)]" : "text-[color:var(--ht-mut)]"}`} style={{ transform: `rotate(${c.dir + 180}deg)` }}>
+                      <svg viewBox="0 0 16 16" aria-label={`${Math.round(c.dir)}°`} className="size-4 text-[color:var(--ht-mut)]" style={{ transform: `rotate(${c.dir + 180}deg)` }}>
                         <path d="M8 1l5 13-5-3-5 3z" fill="currentColor" />
                       </svg>
                     )}
                   </Cell>
+                  {anyObs && (
+                    <Cell className="whitespace-nowrap text-[0.75rem] font-bold tracking-[-.02em] text-[color:var(--ht-obs)]">
+                      {c.ob ? (c.ob.gust != null && c.ob.gust > c.ob.wind ? `${c.ob.wind}–${c.ob.gust}` : c.ob.wind) : ""}
+                    </Cell>
+                  )}
                   {lines.length > 0 && <Cell />}
                 </div>
               );
@@ -125,18 +128,14 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
       {anyObs && (
         <p className="mt-1.5 flex flex-nowrap gap-3 whitespace-nowrap px-1 text-[0.6875rem] text-[color:var(--ht-mut)]" aria-label="Tablo açıklaması">
           <span className="inline-flex items-center gap-1.5">
-            <i className="inline-block size-2.5 rounded-[3px] border border-[color:var(--ht-obs)]" style={{ background: OBS_BG }} />
-            {`Gerçekleşen${ob?.station?.name ? ` (${ob.station.name} istasyonu)` : ""}`}
+            <i className="inline-block size-2 rounded-full bg-[color:var(--ht-obs)]" />
+            {`Ölçülen: ${ob?.station?.name ? `${ob.station.name} istasyonu` : "en yakın istasyon"}`}
           </span>
-          <span>Tahmin</span>
         </p>
       )}
     </div>
   );
 }
-
-// Gerçekleşen (istasyon ölçümü) sütunlarının zemini (Seyhun 2026-11-04 "gerçekleşenleri daha net göstermeliyiz"): yalnız açık mavi yazı yetmiyordu
-const OBS_BG = "color-mix(in srgb, var(--ht-obs) 16%, transparent)";
 
 function Cell({ className = "", children }) {
   return <div className={`grid h-7 place-items-center ${className}`}>{children}</div>;
@@ -150,7 +149,7 @@ const LIGHT = { "--ht-wind": "#38bdf8", "--ht-gust": "#7c6bd6", "--ht-obs": "#1f
 function WindChart({ cols, nowAt }) {
   const pts = cols.map((c, i) => ({ x: (i + 0.5) * COL, w: c.wind, g: c.gust ?? c.wind })).filter((p) => p.w != null);
   if (pts.length < 2) return <div style={{ height: CH }} aria-hidden="true" />;
-  const max = Math.max(10, ...pts.map((p) => p.g || 0)) * 1.1;
+  const max = Math.max(10, ...pts.map((p) => p.g || 0), ...cols.map((c) => c.ob?.wind || 0)) * 1.1;
   const y = (v) => (4 + (1 - (v || 0) / max) * (CH - 8)).toFixed(1);
   const line = (k) => pts.map((p, i) => `${i ? "L" : "M"}${p.x},${y(p[k])}`).join("");
   const W = cols.length * COL;
@@ -158,6 +157,7 @@ function WindChart({ cols, nowAt }) {
     <svg data-wind-chart width={W} height={CH} viewBox={`0 0 ${W} ${CH}`} className="block" aria-hidden="true">
       <path d={`${line("w")}L${pts[pts.length - 1].x},${CH}L${pts[0].x},${CH}Z`} fill="var(--ht-wind)" fillOpacity=".8" />
       <path d={line("g")} fill="none" stroke="var(--ht-gust)" strokeWidth="1.5" strokeDasharray="4 3" />
+      {cols.map((c, i) => c.ob && <circle key={i} cx={(i + 0.5) * COL} cy={y(c.ob.wind)} r="3.5" fill="var(--ht-obs)" stroke="var(--ht-card)" strokeWidth="1.5" />)}
       {nowAt >= 0 && <line x1={(nowAt + 0.5) * COL} x2={(nowAt + 0.5) * COL} y1="0" y2={CH} stroke="var(--ht-now)" strokeWidth="2" />}
     </svg>
   );
