@@ -138,7 +138,7 @@ function Cell({ className = "", children }) {
   return <div className={`grid h-7 place-items-center ${className}`}>{children}</div>;
 }
 
-const DARK = { "--ht-wind": "#67e8f9", "--ht-gust": "#c4b5fd", "--ht-obs": "#9ed6ff", "--ht-mark": "#ff5c8f", "--ht-fg": "#fff", "--ht-mut": "rgba(255,255,255,.62)", "--ht-line": "rgba(255,255,255,.12)", "--ht-card": "rgba(255,255,255,.05)", "--ht-rain": "#7fb6ff", "--ht-now": "#f05a5a" };
+const DARK = { "--ht-wind": "#67e8f9", "--ht-gust": "#c4b5fd", "--ht-obs": "#9ed6ff", "--ht-mark": "#ff5c8f", "--ht-fg": "#fff", "--ht-mut": "rgba(255,255,255,.62)", "--ht-line": "rgba(255,255,255,.12)", "--ht-card": "#0f1f38", "--ht-rain": "#7fb6ff", "--ht-now": "#f05a5a" };
 const LIGHT = { "--ht-wind": "#38bdf8", "--ht-gust": "#7c6bd6", "--ht-obs": "#1f6fd1", "--ht-mark": "#e0336f", "--ht-fg": "var(--color-fg, #1d2433)", "--ht-mut": "var(--color-mut, #6b7385)", "--ht-line": "var(--color-line, #e3e6ec)", "--ht-card": "var(--color-card, #fff)", "--ht-rain": "#2f6fc0", "--ht-now": "#e5484d" };
 
 // Tablonun üstündeki rüzgâr grafiği (Seyhun 2026-11-04 "bu tasarıma bir grafik de ekle"): her sütunun üstünde, tabloyla birlikte kayar; dolu alan rüzgâr, kesik çizgi sağanak,
