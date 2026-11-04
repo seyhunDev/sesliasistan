@@ -231,6 +231,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
 
   // Multimedya sayfası kalktı (Seyhun 2026-11-01 "yarışın multimedyasını kaldır, tek Yayın"): yarış günü de bu sayfa kalır, Yayın düğmesi
   // yayın sayfasına gider. ⋯'den bölüm (?sec=) açılınca kalır.
+  const [siteNew, setSiteNew] = useState(0); // siteden gelen görülmemiş belgeler (Evrak düğmesinde)
   const [sec] = useState(() => q.get("sec") || ""); // sayfa açılırken bir kez (RaceEditor açınca adresten siler)
   const plain = !!race && !missingRace;
   useEffect(() => {
@@ -269,7 +270,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
         <>
           <RaceEditor
             key={ver}
-            sec={sec}
+            sec={sec === "site" ? "docs" : sec}
             head={head}
             sharedList={id === "new" ? sharedList : []}
             alert={err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
@@ -292,9 +293,10 @@ function Race({ orgId, uid, email, by, mail, coach }) {
             mailTo={mail?.saved}
             coach={coach}
             onCoach={onCoach}
+            siteNew={siteNew}
+            siteDocs={race.id && race.site?.act ? (shown) => <SiteDocs orgId={orgId} race={race} shown={shown} onNew={setSiteNew} ready={!!athletes} onResults={onSiteResults} onUndo={onSiteUndo} onRefresh={onSiteRefresh} /> : null}
             onMailTo={(list) => updateDoc(doc(db, "users", uid), { mailTo: list }).catch(() => toast("Adres kaydedilemedi"))}
           />
-          {race.id && race.site?.act && <SiteDocs orgId={orgId} race={race} open={sec === "site"} ready={!!athletes} onResults={onSiteResults} onUndo={onSiteUndo} onRefresh={onSiteRefresh} />}
         </>
       )}
     </main>
