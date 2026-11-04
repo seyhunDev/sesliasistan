@@ -76,7 +76,7 @@ const titleCase = (s) =>
     .replace(/(^|[\s'-])(\p{L})/gu, (m, a, b) => a + b.toLocaleUpperCase("tr-TR"));
 
 // Sınıf adları Latin yazılır ("OPTIMIST" → "Optimist", Türkçe "Optımıst" değil)
-const CLASSES = ["Optimist", "ILCA 4", "ILCA 6", "ILCA 7", "Laser", "420", "470", "29er", "49er", "Nacra 17", "Finn", "Techno 293", "iQFoil", "RS:X", "Kite"];
+const CLASSES = ["Optimist", "Optimist Junior", "ILCA 4", "ILCA 6", "ILCA 7", "Laser", "420", "470", "29er", "49er", "Nacra 17", "Finn", "Techno 293", "iQFoil", "RS:X", "Kite"];
 const clsName = (s) => CLASSES.find((c) => plain(c) === plain(s)) || String(s || "").trim();
 
 // Sayfalar (her biri items dizisi) → kayıt listesi satırları { sail, name, club, cls, born, sex, grp }; başlık bulunamazsa []
@@ -126,7 +126,8 @@ function resCol(s) {
   if (/^(rank|sira|siralama|pos|position|place|no)$/.test(p) && !/^y/.test(p)) return "rank";
   if (/^(nett|net|netpuan|nettotal|netpts)$/.test(p)) return "pts";
   if (/^(total|toplam|brut|gross)$/.test(p)) return "skip";
-  if (/^[qrfmsc]\d{1,2}$/.test(p) || /^race\d{1,2}$/.test(p) || /^\d{1,2}$/.test(p)) return "race";
+  // Y1, Y2… (Türkçe "yarış"; Seyhun 2026-11-04 Sailwave "GEÇİCİ SONUÇLAR" Optimist Junior)
+  if (/^[qrfmscy]\d{1,2}$/.test(p) || /^(race|yaris)\d{1,2}$/.test(p) || /^\d{1,2}$/.test(p)) return "race";
   return colOf(s);
 }
 // Yarış puanı: "1.0" → "1", "(9.0)" → "(9)", "(74.0" + "RET)" → "(RET)", "74.0 UFD" → "UFD" (atılan parantezde)
@@ -140,16 +141,32 @@ export function raceCell(v) {
   const x = String(Number(n.replace(",", ".")));
   return out ? `(${x})` : x;
 }
+// Başlık satırının sütunları; iki parçaya bölünmüş başlık ("AD" + "SOYAD") birleşir
+function resHead(row) {
+  const cols = [];
+  for (let i = 0; i < row.parts.length; i++) {
+    const a = row.parts[i];
+    const b = row.parts[i + 1];
+    const one = resCol(a.s);
+    const two = !one && b ? resCol(`${a.s} ${b.s}`) : "";
+    if (two) {
+      cols.push({ k: two, x: a.x });
+      i++;
+    } else cols.push({ k: one || "skip", x: a.x });
+  }
+  const ks = cols.map((c) => c.k);
+  return ks.includes("rank") && ks.includes("name") && ks.includes("race") ? cols : null;
+}
 export function resultTableOf(pages) {
-  const fleets = [];
+  const rows = [];
   let cols = null;
   let cur = "";
   let last = null;
   for (const items of pages || []) {
     for (const row of rowsOf(items)) {
-      const ks = row.parts.map((p) => resCol(p.s));
-      if (ks.includes("rank") && ks.includes("name") && ks.includes("race")) {
-        cols = row.parts.map((p, i) => ({ k: ks[i] || "skip", x: p.x }));
+      const h = resHead(row);
+      if (h) {
+        cols = h;
         continue;
       }
       // "ALTIN 03.11.2025", "Gümüş Grup": sonraki satırların grubu
@@ -173,16 +190,21 @@ export function resultTableOf(pages) {
       if (!rank) {
         // alt satıra taşan ad, kulüp, yarış puanı
         if (!last) continue;
-        for (const k of ["name", "club"]) if (cell[k]) last[k] = `${last[k]} ${cell[k]}`.trim();
+        // sınıf da taşar ("OPTIMIST" + "JUNIOR")
+        for (const k of ["name", "club", "cls"]) if (cell[k]) last[k] = `${last[k]} ${cell[k]}`.trim();
         races.forEach((v, i) => v && (last.rc[i] = `${last.rc[i] || ""}${v}`));
         continue;
       }
-      const cls = clsName(cell.cls || "");
-      let f = fleets.find((x) => x.cls === cls);
-      if (!f) fleets.push((f = { cls, rows: [] }));
-      last = { rank, name: cell.name || "", sail: String(cell.sail || "").replace(/\D/g, ""), club: cell.club || "", born: cell.born || "", pts: Number(String(cell.pts || "").replace(",", ".")), sex: cell.sex || "", grp: groupOf(cell.grp || "") || cur, rc: races };
-      f.rows.push(last);
+      last = { cls: cell.cls || "", rank, name: cell.name || "", sail: String(cell.sail || "").replace(/\D/g, ""), club: cell.club || "", born: cell.born || "", pts: Number(String(cell.pts || "").replace(",", ".")), sex: cell.sex || "", grp: groupOf(cell.grp || "") || cur, rc: races };
+      rows.push(last);
     }
+  }
+  const fleets = [];
+  for (const { cls: c, ...r } of rows) {
+    const cls = clsName(c);
+    let f = fleets.find((x) => x.cls === cls);
+    if (!f) fleets.push((f = { cls, rows: [] }));
+    f.rows.push(r);
   }
   for (const f of fleets)
     f.rows = f.rows.map(({ rc, ...r }) => ({ ...r, name: titleCase(r.name), r: cols ? cols.map((q, i) => (q.k === "race" ? raceCell(rc[i]) : null)).filter((x) => x !== null) : [] }));

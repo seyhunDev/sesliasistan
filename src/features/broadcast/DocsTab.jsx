@@ -99,6 +99,20 @@ export function DocsTab({ orgId, race, onRace, onShow, showing }) {
     }
     setBusy("");
   };
+  // Belgeyi elle sonuç olarak oku (Seyhun 2026-11-04 "geçici sonuçları tıklayıp bunu yükle, bunu oku diyebilmeliyim")
+  const readDoc = async (d) => {
+    setBusy(d.id);
+    try {
+      const f = new File([await siteDocBlob(race.id, d)], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" });
+      const got = await takeResults(f);
+      await saveDocState(orgId, race.id, d.id, { state: "used", note: importToast(got), undo: { file: got.results.files?.at(-1)?.id || "" } });
+      toast(importToast(got));
+    } catch (e) {
+      await saveDocState(orgId, race.id, d.id, { state: "kept", note: e?.message || "Okunamadı" }).catch(() => {});
+      toast(e?.message || "Okunamadı");
+    }
+    setBusy("");
+  };
   const check = async () => {
     setBusy("check");
     try {
@@ -143,12 +157,17 @@ export function DocsTab({ orgId, race, onRace, onShow, showing }) {
         <div className={`${card} overflow-hidden`}>
           {!list.length ? <p className="px-4 py-3.5 text-[0.9375rem] text-mut">{docs ? "Henüz belge yok" : "Yükleniyor…"}</p> : null}
           {list.map((d) => (
-            <button key={d.id} type="button" data-press onClick={() => setView(d)} className="flex w-full min-w-0 items-center gap-3 border-t border-line px-4 py-3 text-left first:border-t-0">
-              <span className="min-w-0 flex-1">
+            <div key={d.id} className="flex min-w-0 items-center gap-2 border-t border-line pr-3 first:border-t-0">
+              <button type="button" data-press onClick={() => setView(d)} className="min-w-0 flex-1 px-4 py-3 text-left">
                 <b className="block truncate text-[0.9375rem] font-semibold">{d.name}</b>
                 <small className="block truncate text-[0.8125rem] text-mut">{[kindText(d), when(d.at), d.state === "new" || d.state === "busy" ? "İşleniyor" : d.state === "kept" ? d.note || "İşlenemedi" : d.note].filter(Boolean).join(" · ")}</small>
-              </span>
-            </button>
+              </button>
+              {d.kind === "results" || d.kind === "other" ? (
+                <Button size="sm" full={false} variant={d.state === "used" ? "secondary" : "primary"} className="shrink-0" loading={busy === d.id} disabled={!!busy && busy !== d.id} onClick={() => readDoc(d)}>
+                  {d.state === "used" ? "Yeniden oku" : "Oku"}
+                </Button>
+              ) : null}
+            </div>
           ))}
         </div>
       </section>
