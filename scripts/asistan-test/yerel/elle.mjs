@@ -1782,6 +1782,36 @@ const backTaps = async () => {
 group("Geri düğmesi dokunuşu")([
   ["arka arkaya basış", F("tek geri; tepki yoksa üst sayfa; geri olunca hemen yeniden basılır", backTaps)],
 ]);
+// Seyhun 2026-11-04 "geri giderken hiç açmadığım Sporcular geldi": uygulama yarışta açılınca (bildirim, yeniden açılış) geri › geri
+// Yarışlar'dan Sporcular'a gidiyordu; Yayın yarış sayfasının yerine geçtiği için Yayın'dan geri yarışı atlıyordu.
+const backSrc = async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  const races = src("app/(app)/athletes/races/page.jsx").includes('<BackButton href="/" />');
+  const roll = src("features/athletes/RollPanel.jsx").includes('<BackButton href="/" />');
+  const live = src("features/raceMedia/RaceMedia.jsx").includes("goLive: () => router.push(") && src("features/athletes/RaceEditor.jsx").includes('replace={k !== "canli"}');
+  return (races && roll && live) || JSON.stringify({ races, roll, live });
+};
+// Next geri gelince aynı adresi yeniden yazar (replaceState); iz bununla değişmemeli
+const sameReplace = async () => {
+  await wait(0);
+  await backDone;
+  const loc = { pathname: "/athletes/races/r1", search: "", href: "https://x.app/athletes/races/r1" };
+  const store = { "sa-nav-trail": JSON.stringify(["/", "/athletes/races", "/athletes/races/r1/yayin"]) };
+  globalThis.window = { location: loc, history: { pushState() {}, replaceState() {} }, addEventListener() {} };
+  globalThis.sessionStorage = { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) };
+  try {
+    const t = NAV.restoreTrail(JSON.parse(store["sa-nav-trail"]), "/athletes/races/r1/yayin");
+    return t.length === 3;
+  } finally {
+    delete globalThis.window;
+    delete globalThis.sessionStorage;
+  }
+};
+group("Geri düğmesi: yarıştan çıkış")([
+  ["yarışta açıldı › geri › geri", F("Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır", backSrc)],
+  ["iz yüklenir", F("sayfa yenilenince iz aynı", sameReplace)],
+]);
 
 // Kenardan kaydırarak geri (swipeBack.js): yalnız sol kenardan, yana çekişte; yeterince çekilince geri
 const SW = await import("@/lib/swipeBack");

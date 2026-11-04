@@ -50,7 +50,7 @@ function Races({ orgId, me }) {
   const head = (
     <>
     <header className="flex items-center gap-2.5">
-      <BackButton href="/athletes" />
+      <BackButton href="/" />
       <div className="min-w-0 flex-1 leading-tight">
         <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Yarışlar</h1>
         <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>

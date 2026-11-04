@@ -54,7 +54,7 @@ const TABS = [["sure", "Süre"], ["media", "Medya"], ["res", "Sonuçlar"]];
 // Sonuç (Seyhun 2026-10-30): bizimkilerin sırası ve dünden farkı, tüm liste, üstte Özeti paylaş ve gün bitince Yarın / Dönüş
 const RACE_TABS = [["course", "Saha"], ["sure", "Start"], ["res", "Sonuç"]];
 // Yarış sayfası ve multimedya tek sayfa gibi (Seyhun 2026-10-29 "detay, multimedya aynı sayfa farklı sekmeler olsun"): alt çubukta
-// ilk sekme Yarış (yarış sayfası /athletes/races/<id>), diğerleri multimedya (/media?tab=…); geçiş replace ile, geri tuşu listeye
+// ilk sekme Yarış (yarış sayfası /athletes/races/<id>), diğerleri multimedya (/media?tab=…); geçiş replace ile, geri tuşu listeye (Yayın ayrı sayfa: push, geri yarışa döner)
 // Yarış günlerinde Yarış sekmesi yok (Seyhun 2026-10-30, yaris-yapi: altta Saha · Start · Sonuç); hazırlık ⋯ içinde. Yarıştan sonra yine var.
 export const racing = (r) => !!r?.startDate && todayStr() >= r.startDate && todayStr() <= (r.endDate || r.startDate);
 // Herkese açık ekranın yönetimi ayrı Yayın sayfasında (/yayin; Seyhun 2026-11-01 "ayrı bir sayfada yöneteceğiz"); ⋯ › Yayın oraya gider
@@ -194,7 +194,7 @@ export function RaceMedia({ orgId, id }) {
   // Yarış sayfasının ⋯ menüsünden gelen iş (?do=sum|shot|day|reset) yarış yüklenince bir kez açılır
   const todo = useRef(q.get("do") || "");
   const ready = !!race;
-  const sets = { setSum, setTab, setAddDay, setReset, goLive: () => router.replace(`/athletes/races/${id}/yayin`) };
+  const sets = { setSum, setTab, setAddDay, setReset, goLive: () => router.push(`/athletes/races/${id}/yayin`) };
   const run = (k) => menuAct(k, sets);
   useEffect(() => {
     const k = todo.current;

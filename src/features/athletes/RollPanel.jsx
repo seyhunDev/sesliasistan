@@ -108,7 +108,7 @@ export function RollPanel({ inSheet = false, day = "", onSaved }) {
       <main data-theme="dark" className="navy page-navy mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
         <section className="ck -mx-5 px-5 pb-5 pt-[calc(0.75rem+env(safe-area-inset-top))]" style={{ background: "radial-gradient(120% 70% at 88% 0%, rgba(61, 123, 255, .38), transparent 62%)" }} aria-label="Yoklama">
           <header className="flex items-center gap-2.5">
-            <BackButton href="/athletes" />
+            <BackButton href="/" />
             <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">Yoklama</h1>
             {ok && (
               <button type="button" onClick={() => setMenu(true)} data-press aria-label="Yoklama seçenekleri" className="btn btn-round relative size-10">
