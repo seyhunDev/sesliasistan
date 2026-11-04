@@ -1,8 +1,8 @@
-Commit: e0d1a46 · Ek talimat: toplantılar ve planlanan yarış sayısı programa, değişiklik notu (#1223)
-Zaman: 2026-11-04-2046 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41878367904
+Commit: fd44a75 · Canlı ekran: TV sıralama listesi (6 haneli yelken, K3, kulüp), rüzgâr tek yerde, bant yan yana, sarı azaldı (#1224)
+Zaman: 2026-11-04-2100 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41880363983
 
-TAM TEST · 04.11.2026 20:32:48
+TAM TEST · 04.11.2026 20:47:27
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1430/1439 geçti · 9 kalan · 845 sn
+SONUÇ: 1430/1439 geçti · 9 kalan · 802 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
