@@ -14,7 +14,7 @@ import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
 import { programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
+import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { NearCams } from "./NearCams";
@@ -84,6 +84,7 @@ export function BroadcastPage({ orgId, id }) {
   const [stat, setStat] = useState({}); // bağlantı → { live, vid } (/api/yayin-durum)
   const [addOpen, setAddOpen] = useState(false);
   const [scOpen, setScOpen] = useState(""); // Ekran: videosu seçilen sahne
+  const [hasSheet, setHasSheet] = useState(false); // yüklü sonuç PDF'i var: 03 genel sıralama gösterilebilir
   const [addKind, setAddKind] = useState("drone");
   const [addUrl, setAddUrl] = useState("");
   const [howOpen, setHowOpen] = useState(false); // Drone › Nasıl bağlanır
@@ -137,6 +138,7 @@ export function BroadcastPage({ orgId, id }) {
     // parkur kartları yarış boyu (raceLive.cards); ölçümler günün belgesinde
     Promise.all([loadCourse(orgId, id, today), loadRoundsOf(orgId, id).catch(() => ({}))]).then(([c, d]) => on && setCourse(cleanCourse(withRaceCards(c, d.cards)))).catch(() => {});
     loadEntryDoc(orgId, id).then((d) => on && (setEntries(d.rows), setGroups(d.groups)), () => {});
+    loadSheets(orgId, id).then((l) => on && setHasSheet(l.length > 0), () => {});
     reload().then((d) => {
       if (!on) return;
       // yeni gün: plan eski günde kaldıysa bugünün planı (günün saati, bekleyenler düşer) yazılır
@@ -697,8 +699,10 @@ export function BroadcastPage({ orgId, id }) {
   const lastT = [...live.starts].filter((x) => x.day === today).at(-1) || null;
   const scMode = plan.status === "done" ? "summary" : cur && !cur.fin && !cur.void ? (Date.parse(cur.at) > capNow ? "seq" : "race") : lastT && (lastT.fin || lastT.void) && !cur ? "between" : "wait";
   const rawKind = L?.screen.kind || "";
-  const scHas = { "01": true, "02": true, "03": true, "04": rawKind === "rec" || pre.vid["04"]?.kind === "rec", "05": true, "06": true };
-  const scNow = sceneOf({ show: pre, rec: rawKind === "rec", mode: scMode, hasVideo: !!rawKind, now: capNow, has: scHas });
+  const scHas = { "01": true, "02": true, "03": hasSheet || scMode === "between" || live.starts.some((x) => x.fin), "04": rawKind === "rec" || pre.vid["04"]?.kind === "rec", "05": true, "06": true };
+  const planAt = plan.day === today && plan.at ? Date.parse(`${today}T${plan.at}:00+03:00`) : NaN;
+  const scFar = !cur && !(planAt - capNow <= 600e3 && planAt > capNow);
+  const scNow = sceneOf({ show: pre, rec: rawKind === "rec", mode: scMode, hasVideo: !!rawKind, now: capNow, has: scHas, far: scFar });
   // sahnenin önceden seçilen videosu varsa ekrandaki odur
   const eff = L ? sceneScreen(L.screen, pre, scNow) : null;
   const onScreen = eff?.kind ? eff : null;

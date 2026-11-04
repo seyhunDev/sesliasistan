@@ -374,7 +374,8 @@ export const SCENE_NAME = { "01": "Yarış öncesi", "02": "Yarışta", "03": "S
 export const SCENE_ROT = 15; // sn, 03 ↔ 06
 // Otomatik sahne: tekrar videosu → 04; Parkur elle açık → 05; gün bitti → 03 ↔ 06; yarışta → 02; yarış bitti → 03 ↔ 06;
 // yarış öncesi (bekleme, start dizisi, tehir) videolu → 02, videosuz → 01. Elle seçilen (show.scene) verisi varsa üstüne yazar
-export function sceneOf({ show, rec, mode, hasVideo, now, has }) {
+// far: yarış öncesi start'a 10 dk'dan fazla var (ya da saat yok); sıralama varsa arada 03 (Seyhun 2026-11-04 "starta bir saat var, genel sıralamayı neden gösteremiyoruz")
+export function sceneOf({ show, rec, mode, hasVideo, now, has, far = false }) {
   const man = show?.scene || "";
   if (man && has[man]) return man;
   if (rec) return "04";
@@ -383,7 +384,9 @@ export function sceneOf({ show, rec, mode, hasVideo, now, has }) {
   if (mode === "summary") return rot("03", "06") || "01";
   if (mode === "race") return "02";
   if (mode === "between") return rot("03", "06") || (hasVideo ? "02" : "01");
-  return hasVideo ? "02" : "01";
+  const base = hasVideo ? "02" : "01";
+  if (mode === "wait" && far && has["03"]) return Math.floor(now / 1000 / SCENE_ROT) % 3 === 2 ? "03" : base;
+  return base;
 }
 // Sahnenin görüntüsü: önceden seçilen video varsa o (ara ve alt yazı ekrandakinden), yoksa ekrandaki
 export function sceneScreen(screen, show, sc) {
