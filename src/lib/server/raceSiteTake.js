@@ -13,7 +13,7 @@ import { FieldPath, FieldValue } from "firebase-admin/firestore";
 import { tableOf } from "../pdfLines.js";
 import { cleanEntries, mergeEntries } from "../roundSay.js";
 import { cleanGroups, dayGroups } from "../roundScore.js";
-import { cleanSchedule, colorOf, dayOf, mergeSchedule, sitePlan } from "../siteDocs.js";
+import { cleanSchedule, colorOf, dayOf, mergeSchedule, scheduleDiff, sitePlan } from "../siteDocs.js";
 
 // pdf.js Node'da DOMMatrix ister (yoksa @napi-rs/canvas'tan alır; Netlify işlevinde o yerel paket olmayabilir).
 // Yalnız yazı okunur, çizim yok: yalın bir matris yeter.
@@ -104,7 +104,7 @@ const s = { type: "string" };
 export const AMEND_SYSTEM = `Sen bir yelken kulübünün antrenörüne yardım eden asistansın. Sana bir yelken yarışının ek talimatı (değişiklik, amendment) ya da programı verilir.
 Belgede yarışın programında, saatlerinde, günlerinde, parkurunda, kurallarında ne değiştiyse çıkar. Yalnızca belgede yazanı yaz, uydurma.
 - summary: değişikliğin 1-2 kısa Türkçe cümlesi ("İlk start 11:00'den 12:00'ye alındı. 5 Kasım'da 3 yarış yapılacak.").
-- schedule: belgede geçen program satırlarının YENİ hali; her satır { date YYYY-MM-DD, time HH:MM ya da boş, title kısa Türkçe ("İlk start", "Kaptanlar toplantısı", "Ödül töreni", "Son start saati") }. Programla ilgisi yoksa boş dizi.`;
+- schedule: belgede geçen program satırlarının YENİ hali; her satır { date YYYY-MM-DD, time HH:MM ya da boş, title kısa Türkçe ("İlk start", "Antrenör toplantısı", "Kaptanlar toplantısı", "Ödül töreni", "Son start saati") }. Toplantıları (antrenör, koç, kaptanlar, yarışçı) atlama. O gün planlanan yarış sayısı yazıyorsa ayrı satır { date, time boş, title "3 yarış planlandı" }. Programla ilgisi yoksa boş dizi.`;
 export const AMEND_SCHEMA = {
   type: "object",
   properties: { summary: s, schedule: { type: "array", items: { type: "object", properties: { date: s, time: s, title: s }, required: ["date", "title"] } } },
@@ -134,7 +134,8 @@ export async function takeNotice({ db, orgId, raceId, d, buf, ai }) {
     const raw = await ai.callGemini({ model: process.env.GEMINI_MODEL, system: AMEND_SYSTEM, user: `Bugün: ${today}. Yarış: ${S(race.name, 120)} (${race.startDate || ""}). Yıl yazmayan tarihlerde yarışın yılını kullan. Bu belgeyi oku.`, schema: AMEND_SCHEMA, images: pdfImage(buf), maxTokens: 3000, timeoutMs: 90000 });
     const add = cleanSchedule(raw?.schedule);
     next = { ...notice, schedule: mergeSchedule(notice.schedule, add) };
-    note = S(raw?.summary, 200) || (add.length ? `Programda ${add.length} satır` : "Değişiklik okunamadı");
+    // Not: ne değişti (eski → yeni saat, eklenen madde); yoksa yapay zekanın özeti. Bildirimde ve Dokümanlar'da görünür.
+    note = scheduleDiff(notice.schedule, add) || S(raw?.summary, 200) || (add.length ? "Programda değişiklik yok" : "Değişiklik okunamadı");
   }
   await ref.update({ notice: next, updatedAt: FieldValue.serverTimestamp() });
   const undo = { notice };
