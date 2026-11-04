@@ -380,7 +380,17 @@ function LoadSkel({ name = "" }) {
         <Link href="/canli" className="lv-back lv-backc" aria-label="Yarışlar">
           ‹
         </Link>
-        {name ? <span className="lv-rname">{name}</span> : null}
+      </div>
+      {/* yayın ekranının sağ altındaki yer (sc-name): yarışın adı + Velora; veri gelince aynı yerde kalır (Seyhun 2026-11-04 yeni tasarım) */}
+      <div className="lv-lname">
+        <div className="t">
+          {name ? <b>{name}</b> : null}
+          <small>Yükleniyor</small>
+        </div>
+        <span className="v">
+          <VeloraGlyph size={40} />
+          <small>Velora</small>
+        </span>
       </div>
     </div>
   );
