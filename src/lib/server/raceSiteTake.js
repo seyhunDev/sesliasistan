@@ -4,6 +4,8 @@
 //   sporcu listesi               → kayıt listesi
 //   yarış talimatı (ilan değil)   → yarışın programı ve sınıfları (yapay zeka, lib/ai/raceNoticeAi.js)
 //   ek talimat / program          → programdaki değişiklikler (yapay zeka)
+//   talimat / ek talimat / program → Yayın programı da (raceLive plan: daily, times, off, agenda; Seyhun 2026-11-04 "Yayın'a elle
+//                                    yüklemeye gerek kalmasın"; lib/ai/raceProgramAi.js, Yayın › Program'daki okuyucu)
 // Her biri öncesini (undo) saklar; yarış sayfasındaki "Geri al" (raceSite.js undoDoc) döndürür.
 // PDF tablosu okunamazsa (taranmış PDF) null: telefon yarış sayfası açılınca yapay zekayla dener. Sonuçlar telefonda işlenir
 // (sporcularımız ayrı projede).
@@ -11,7 +13,7 @@ import { FieldPath, FieldValue } from "firebase-admin/firestore";
 import { tableOf } from "../pdfLines.js";
 import { cleanEntries, mergeEntries } from "../roundSay.js";
 import { cleanGroups, dayGroups } from "../roundScore.js";
-import { cleanSchedule, colorOf, dayOf, mergeSchedule } from "../siteDocs.js";
+import { cleanSchedule, colorOf, dayOf, mergeSchedule, sitePlan } from "../siteDocs.js";
 
 // pdf.js Node'da DOMMatrix ister (yoksa @napi-rs/canvas'tan alır; Netlify işlevinde o yerel paket olmayabilir).
 // Yalnız yazı okunur, çizim yok: yalın bir matris yeter.
@@ -135,7 +137,33 @@ export async function takeNotice({ db, orgId, raceId, d, buf, ai }) {
     note = S(raw?.summary, 200) || (add.length ? `Programda ${add.length} satır` : "Değişiklik okunamadı");
   }
   await ref.update({ notice: next, updatedAt: FieldValue.serverTimestamp() });
-  return { state: "used", note, undo: { notice } };
+  const undo = { notice };
+  // Yayın programı: okunamazsa talimat yine kullanılmış sayılır
+  if (ai.readProgramAi)
+    try {
+      const plan = await takePlan({ db, orgId, raceId, race, d, buf, ai, today });
+      if (plan) {
+        undo.plan = plan.old;
+        note = `${note} · Yayın programı ${plan.days} gün`;
+      }
+    } catch (e) {
+      console.warn("[yarış sitesi] yayın programı", d.name, e.message);
+    }
+  return { state: "used", note, undo };
+}
+
+// Yayın programı (raceLive/{yarış}.plan): talimatta bütünü, ek talimatta yalnız geçen günler. Dönüş { old, days } ya da null
+const PLAN_KEYS = ["daily", "times", "off", "agenda"];
+async function takePlan({ db, orgId, raceId, race, d, buf, ai, today }) {
+  const days = await ai.readProgramAi({ images: pdfImage(buf), today, race: [race.name, race.place].filter(Boolean).join(" · "), timeoutMs: 120000 });
+  if (!days?.length) return null;
+  const ref = db.collection("orgs").doc(orgId).collection("raceLive").doc(raceId);
+  const plan = (await ref.get()).data()?.plan || {};
+  const next = sitePlan(plan, days, d.kind === "notice");
+  if (!next) return null;
+  const old = Object.fromEntries(PLAN_KEYS.map((k) => [k, plan[k] ?? (k === "daily" ? "" : k === "off" ? [] : {})]));
+  await ref.set({ plan: next }, { mergeFields: PLAN_KEYS.map((k) => new FieldPath("plan", k)) });
+  return { old, days: days.length };
 }
 
 // Belge türüne göre kullanma (raceSiteSync.syncRace use): null → telefon işler (sonuçlar, okunamayan tablo)

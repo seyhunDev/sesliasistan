@@ -14,6 +14,7 @@ import { notifyDocs, pageCache, scanNew, syncRace } from "../../src/lib/server/r
 import { makeTake } from "../../src/lib/server/raceSiteTake.js";
 import { callGemini } from "../../src/lib/ai/gemini.js";
 import { readNoticeAi } from "../../src/lib/ai/raceNoticeAi.js";
+import { readProgramAi } from "../../src/lib/ai/raceProgramAi.js";
 
 export default async function raceSiteRun(req) {
   let a = {};
@@ -35,7 +36,7 @@ export default async function raceSiteRun(req) {
       console.warn("[yarış sitesi] VAPID", e.message);
     }
   const get = pageCache();
-  const ai = { callGemini, readNoticeAi };
+  const ai = { callGemini, readNoticeAi, readProgramAi };
   let n = 0;
   // Sitede yeni yarış (saatte bir, zamanlayıcı scan ile çağırır)
   if (scan) n += await scanNew({ db, get, recordInbox, sendDevice, newRaces, newRacesNote }).catch((e) => (console.warn("[yarış sitesi] tarama", e.message), 0));
