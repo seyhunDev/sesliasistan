@@ -1,8 +1,8 @@
-Commit: fd44a75 · Canlı ekran: TV sıralama listesi (6 haneli yelken, K3, kulüp), rüzgâr tek yerde, bant yan yana, sarı azaldı (#1224)
-Zaman: 2026-11-04-2100 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41880363983
+Commit: eb4306d · Canlı sol alt sıra: ilk 5 sabit, sakin akış, Kulüpsüz, kızların ilk 5'i (#1225)
+Zaman: 2026-11-04-2119 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41883473889
 
-TAM TEST · 04.11.2026 20:47:27
+TAM TEST · 04.11.2026 21:05:20
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1430/1439 geçti · 9 kalan · 802 sn
+SONUÇ: 1430/1439 geçti · 9 kalan · 846 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -202,7 +202,7 @@ SONUÇ: 1430/1439 geçti · 9 kalan · 802 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 21 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 22 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
