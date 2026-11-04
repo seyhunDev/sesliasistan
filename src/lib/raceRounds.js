@@ -356,7 +356,42 @@ export const cleanCourseShow = (c) => ({
   hold: PRE_STEPS.includes(c?.hold) ? c.hold : "wind",
   // Yayın sahnesi (Seyhun 2026-11-04): "" otomatik (süreye göre), "01"…"06" Yayın'dan elle seçilen
   scene: SCENES.includes(c?.scene) ? c.scene : "",
+  // Her sahnenin önceden seçilen videosu (Seyhun 2026-11-04 "her ekranın canlı videosunu önceden seçebilmeliyim"): sahne açılınca o görüntü;
+  // kind "" = bulanık foto; sahnenin anahtarı yoksa ekrandaki ne ise o kalır
+  vid: cleanSceneVid(c?.vid),
 });
+export function cleanSceneVid(v) {
+  const out = {};
+  for (const k of SCENES) {
+    if (!v || typeof v[k] !== "object" || !v[k]) continue;
+    const s = cleanScreen(v[k]);
+    if (s.kind === "rec" && k !== "04") continue;
+    out[k] = { kind: s.kind, src: s.src, mid: s.mid, ...(s.kind === "boats" ? { zoom: s.zoom } : {}) };
+  }
+  return out;
+}
+export const SCENE_NAME = { "01": "Yarış öncesi", "02": "Yarışta", "03": "Sıralama", "04": "Tekrar", "05": "Parkur", "06": "Sıradaki" };
+export const SCENE_ROT = 15; // sn, 03 ↔ 06
+// Otomatik sahne: tekrar videosu → 04; Parkur elle açık → 05; gün bitti → 03 ↔ 06; yarışta → 02; yarış bitti → 03 ↔ 06;
+// yarış öncesi (bekleme, start dizisi, tehir) videolu → 02, videosuz → 01. Elle seçilen (show.scene) verisi varsa üstüne yazar
+export function sceneOf({ show, rec, mode, hasVideo, now, has }) {
+  const man = show?.scene || "";
+  if (man && has[man]) return man;
+  if (rec) return "04";
+  if (show?.one === "course" && has["05"]) return "05";
+  const rot = (a, b) => (has[a] && has[b] ? (Math.floor(now / 1000 / SCENE_ROT) % 2 ? b : a) : has[a] ? a : has[b] ? b : "");
+  if (mode === "summary") return rot("03", "06") || "01";
+  if (mode === "race") return "02";
+  if (mode === "between") return rot("03", "06") || (hasVideo ? "02" : "01");
+  return hasVideo ? "02" : "01";
+}
+// Sahnenin görüntüsü: önceden seçilen video varsa o (ara ve alt yazı ekrandakinden), yoksa ekrandaki
+export function sceneScreen(screen, show, sc) {
+  const v = show?.vid?.[sc];
+  const s = screen || { kind: "" };
+  if (!v) return s;
+  return { ...s, kind: v.kind, src: v.src || "", mid: v.mid || "", loop: v.kind === "boats", pause: !!v.kind && !!s.pause, ...(v.kind === "boats" ? { zoom: v.zoom ?? 100 } : {}) };
+}
 // Akışta o an gösterilen adım; have: ekranda gösterilebilenler (veri yoksa adım atlanır). Otomatikte "at"tan (Yayın'da Başa al) itibaren döner.
 export function preSteps(show, have = PRE_STEPS) {
   return cleanCourseShow(show).pre.filter((k) => have.includes(k));

@@ -325,3 +325,15 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-first.soon .r b { color: var(--warn); }
 .masa-first.now { border-color: var(--acc); }
 .masa-first.now .r b { color: var(--acc); }
+/* Ekran › Sahneler (Seyhun 2026-11-04): 6 sahne, 3 sütun; ekrandaki kırmızı çerçeve */
+.masa-scs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.masa-sc { min-width: 0; overflow: hidden; border-radius: 0.75rem; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); text-align: left; }
+.masa-sc.on { box-shadow: inset 0 0 0 2px #ff453a; }
+.masa-sc .th { position: relative; display: block; aspect-ratio: 16 / 9; background: linear-gradient(160deg, #1d3a5c, #0b1a2e); }
+.masa-sc .th img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.masa-sc .th i { position: absolute; left: 0.3rem; top: 0.3rem; padding: 0.05rem 0.3rem; border-radius: 0.25rem; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 0.6875rem; font-style: normal; font-weight: 800; }
+.masa-sc .th em { position: absolute; right: 0.3rem; top: 0.3rem; padding: 0.05rem 0.3rem; border-radius: 0.25rem; background: #ff453a; color: #fff; font-size: 0.5625rem; font-style: normal; font-weight: 800; letter-spacing: 0.06em; }
+.masa-sc b { display: block; overflow: hidden; padding: 0.375rem 0.5rem 0; font-size: 0.8125rem; text-overflow: ellipsis; white-space: nowrap; }
+.masa-sc small { display: block; overflow: hidden; padding: 0.05rem 0.5rem 0.45rem; color: var(--mut); font-size: 0.71875rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.masa-rd { width: 1.25rem; height: 1.25rem; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 2px #33445f; }
+.masa-rd.on { box-shadow: inset 0 0 0 6px var(--acc); }
