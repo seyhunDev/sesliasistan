@@ -96,7 +96,7 @@ function AthleteList() {
   const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
 
   return (
-    <main className={`mx-auto max-w-[30rem] px-5 ${sel ? "pb-[calc(7rem+env(safe-area-inset-bottom))]" : "pb-[calc(2.5rem+env(safe-area-inset-bottom))]"}`}>
+    <main className={`split mx-auto max-w-[30rem] px-5 ${sel ? "pb-[calc(7rem+env(safe-area-inset-bottom))]" : "pb-[calc(2.5rem+env(safe-area-inset-bottom))]"}`}>
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Sporcular">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -178,7 +178,7 @@ function AthleteList() {
           {list.length === 0 ? (
             <p className="mt-4 text-center text-[0.875rem] text-mut">Eşleşen sporcu yok</p>
           ) : (
-            <ul className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
+            <ul className="card-grid divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
               {list.map((a) => {
                 const b = birthParts(a.studentBirthDate);
                 const canAdd = b && !hasBday(a, b);

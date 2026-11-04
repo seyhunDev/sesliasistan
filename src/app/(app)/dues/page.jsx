@@ -297,7 +297,7 @@ function Dues({ uid, duesAt }) {
     list.length > 0 && (
       <section>
         <ListHead title={title} count={list.length} />
-        <ul className={`overflow-hidden px-3.5 ${card}`}>{list.map(row)}</ul>
+        <ul className={`card-grid overflow-hidden px-3.5 ${card}`}>{list.map(row)}</ul>
       </section>
     );
   const top = (
@@ -666,7 +666,7 @@ function PayForm({ a, cfg, months, yms, onSave }) {
 // Yeni tasarım (velora-tasarim): lacivert üst (geri, ad, ⋯ ayarlar; top: bu ayın geliri, düğmeler, arama), altında açık alan
 function Shell({ children, sub, top, onMore }) {
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Aidatlar">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />

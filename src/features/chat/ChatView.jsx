@@ -558,7 +558,7 @@ export function ChatView({ cid }) {
 
   return (
     // Sabit kutu: başlık üstte, mesajlar ortada kendi içinde kayar, yazma alanı altta (yükseklik: yukarıdaki fit)
-    <main ref={shell} className="fixed inset-x-0 top-0 z-30 flex h-dvh flex-col overscroll-none bg-bg">
+    <main ref={shell} className="chat-view fixed inset-x-0 top-0 z-30 flex h-dvh flex-col overscroll-none bg-bg">
       <div className="relative mx-auto flex min-h-0 w-full max-w-[30rem] flex-1 flex-col">
         {/* Üst: geri, fotoğraf + ad (yalnızca yazarken altında "yazıyor…"), ayarlar */}
         <header className="z-10 flex shrink-0 items-center gap-1.5 border-b border-line bg-bg px-1.5 pb-1.5 pt-[calc(0.375rem+env(safe-area-inset-top))]">
