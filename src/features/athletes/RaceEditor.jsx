@@ -1040,7 +1040,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
             {/* Denemeleri sıfırla kalktı: Yayın › ⋯ › Yayını sıfırla aynı işi yapar (2026-11-04) */}
             {MEDIA_MENU.filter(([k]) => k !== "reset").map(([k, l]) => ((k === "canli" ? !isOwner : !(r.startDate && today >= r.startDate)) ? null : (
               <li key={k}>
-                <Link href={k === "canli" ? `/athletes/races/${rid}/yayin` : `/athletes/races/${rid}/media?do=${k}`} replace data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
+                <Link href={k === "canli" ? `/athletes/races/${rid}/yayin` : `/athletes/races/${rid}/media?do=${k}`} replace={k !== "canli"} data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
                   <b className="min-w-0 flex-1 text-[1rem] font-medium">{l}</b>
                   <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
                 </Link>

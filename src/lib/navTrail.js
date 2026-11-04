@@ -81,8 +81,11 @@ export function installTrail() {
     return r;
   };
   h.replaceState = function (data, unused, url) {
+    // Adres değişmiyorsa (Next her geçişten sonra, geri gelince de, aynı adresi yeniden yazar) iz değişmez. Önceden
+    // geri gelince Next'in bu yazması geri olayından önce gelirse izin sonu yanlış sayfaya dönüyor, iz şişiyordu.
+    const same = url == null || keyOf(url) === here();
     const r = replace.call(this, data, unused, url);
-    if (url != null) { trail = stepTrail(trail, "replace", keyOf(url)); save(); }
+    if (!same) { trail = stepTrail(trail, "replace", keyOf(url)); save(); }
     return r;
   };
   window.addEventListener("popstate", () => {

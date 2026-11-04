@@ -86,7 +86,7 @@ export function RaceCalendar() {
     <main className="race-wide mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <section className="ck race-top -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Yarış takvimi">
         <header className="flex items-center gap-2.5">
-          <BackButton href={club ? "/athletes" : "/"} />
+          <BackButton href="/" />
           <div className="min-w-0 flex-1 leading-tight">
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{club ? "Yarışlar" : "Yarış takvimi"}</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{!list ? "Yükleniyor…" : [`${all.up.length} yaklaşan`, `${all.past.length} geçmiş`].join(" · ")}</p>
