@@ -41,7 +41,7 @@ function Top({ profile, label }) {
 
 // Açık alan ve bölüm: başlık listenin dışında (ListHead), satırlar ince çizgili beyaz kartta (yeni tasarım, 2026-11-03)
 function Body({ children }) {
-  return <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">{children}</div>;
+  return <div className="wide-body wide-cols relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">{children}</div>;
 }
 function Sec({ title, children }) {
   return (
@@ -71,7 +71,7 @@ function PersonSettings({ profile, n }) {
   const kind = kindOf(profile);
   const ai = kind !== "athlete" && kind !== "student";
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+    <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <Top profile={profile} label={KIND_LABEL[kind] || "Kişi"} />
       <Body>
         <Sec title="Ayarlar">
@@ -117,7 +117,7 @@ export default function SettingsPage() {
   if (profile.role !== "owner") return <PersonSettings profile={profile} n={n} />;
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+    <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <Top profile={profile} label="Ana hesap" />
       <Body>
         <Sec title="Genel">

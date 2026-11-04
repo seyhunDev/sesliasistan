@@ -130,7 +130,7 @@ export default function NotesPage() {
   const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Notlar">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -175,7 +175,7 @@ export default function NotesPage() {
         )}
       </section>
 
-      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="split-main relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {logNotes.length > 0 && (
           <section className="overflow-hidden rounded-[1.25rem] border border-line bg-card">
             <button onClick={() => setShowLog(!showLog)} data-press="row" className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[0.8125rem]">
@@ -224,7 +224,9 @@ export default function NotesPage() {
           Arşiv ›
         </Link>
 
-        <WordCard />
+        <div className="split-side">
+          <WordCard />
+        </div>
       </div>
     </main>
   );
