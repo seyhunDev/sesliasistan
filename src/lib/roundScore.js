@@ -109,6 +109,16 @@ export function startScores(st, entry, members = null) {
   return { n: st?.n || 0, grp: entry?.grp || "", size, done, scores };
 }
 
+// Sporcunun final grubu sırası: son final yarışındaki grubu (Altın 0, Gümüş 1, Bronz 2, Zümrüt 3); final yarışmadıysa 99
+const FINAL_ORDER = Object.keys(FINALS);
+export function finalIdx(sc) {
+  const ns = Object.keys(sc || {}).map(Number).sort((a, b) => b - a);
+  for (const n of ns) {
+    const i = FINAL_ORDER.indexOf(groupOf(sc[n]?.grp));
+    if (i >= 0) return i;
+  }
+  return 99;
+}
 // İki sporcuyu karşılaştır (RRS A8): toplam, sonra birincilik/ikincilik… sayısı, sonra son yarıştan geriye
 function better(a, b, races) {
   if (a.total !== b.total) return a.total - b.total;
@@ -155,7 +165,9 @@ export function provisional({ starts = [], rounds = {}, entries = [], groups = {
   return [...out]
     .map(([cls, rows]) => {
       const races = [...new Set(rows.flatMap((r) => Object.keys(r.sc).map(Number)))].sort((a, b) => a - b);
-      rows.sort((a, b) => better(a, b, races));
+      // Final serisi (Seyhun 2026-11-04 "Altın, Gümüş, Bronz açıklandı"): final grubunda yarışan herkes alt gruptakilerin önünde;
+      // Altın'ın sonuncusu Gümüş'ün birincisinden önce gelir, grup içinde puan sırası (RRS A8)
+      rows.sort((a, b) => finalIdx(a.sc) - finalIdx(b.sc) || better(a, b, races));
       return { cls, races, rows: rows.map((r, i) => ({ ...r, rank: i + 1 })) };
     })
     .sort((a, b) => b.rows.length - a.rows.length);
