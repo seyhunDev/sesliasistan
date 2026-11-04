@@ -192,9 +192,11 @@ export function WordTalk({ w, onClose, onQuiz }) {
               Bitir
             </Button>
             <span className="flex-1" />
-            <Button variant="secondary" full={false} onClick={onQuiz} className="!h-12 !rounded-full !border-0 !bg-none !bg-[#8fb3ff]/14 !px-7 !text-[#8fb3ff] !shadow-none">
+            {onQuiz && (
+              <Button variant="secondary" full={false} onClick={onQuiz} className="!h-12 !rounded-full !border-0 !bg-none !bg-[#8fb3ff]/14 !px-7 !text-[#8fb3ff] !shadow-none">
               Sına
             </Button>
+            )}
           </>
         ) : (
           <>

@@ -3306,3 +3306,70 @@ group("Ortak düğmeler")([
     ["harf harf", F("son yanıt Typed, akıştan sonra değil", () => /<Typed turn=\{t\} on=\{typeLast\} \/>/.test(th) && /typeLast=\{!streamed\}/.test(sh))],
   ]);
 }
+
+// İngilizce kalıplar (kalıp bloklama, Seyhun 2026-11-02): veri, aralıklı tekrar, Kur blokları, destede saklama
+{
+  const KC = await import("@/lib/englishChunks");
+  const KS = await import("@/lib/englishChunkStudy");
+  const EWk = await import("@/lib/englishWords");
+  const T = "2026-11-04";
+  const add = (d, n) => { const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+  const seq = (vals) => { let i = 0; return () => vals[i++ % vals.length]; };
+  const empty = { words: [], gaps: [1, 2, 4, 7, 14] };
+  group("İngilizce kalıplar")([
+    ["kalıp listesi", F("en az 30 kalıp, kimlik tekrarı yok, her kalıpta 4+ dolu parça, konu listede", () => {
+      const ids = KC.CHUNKS.map((c) => c.id);
+      return KC.CHUNKS.length >= 30 && new Set(ids).size === ids.length && KC.CHUNKS.every((c) => c.head && c.tr && c.rule && KC.CHUNK_TOPICS.includes(c.topic) && c.fills.length >= 4 && c.fills.every((f) => f.length === 3 && f.every((v) => typeof v === "string" && v.trim())));
+    })],
+    ["her konuda kalıp", F("beş konunun hepsi dolu", () => KC.CHUNK_TOPICS.every((t) => KC.CHUNKS.some((c) => c.topic === t)))],
+    ["cümle kurulur", F("baş + parça + son, noktalama yapışık", () => {
+      const a = KS.fillText(KS.chunkById("look-forward"), ["the weekend"]);
+      const b = KS.fillText(KS.chunkById("can-i-have"), ["the bill"]);
+      const c = KS.fillText(KS.chunkById("is-there"), ["a pharmacy"]);
+      return a === "I'm looking forward to the weekend." && b === "Can I have the bill, please?" && c === "Is there a pharmacy near here?";
+    })],
+    ["ilk kalıp", F("hiç başlanmamışsa listenin ilki", () => KS.nextChunk(empty, { today: T }).id === KC.CHUNKS[0].id)],
+    ["geç", F("geçilen atlanır", () => KS.nextChunk(empty, { today: T, skip: [KC.CHUNKS[0].id] }).id === KC.CHUNKS[1].id)],
+    ["konu süzgeci", F("yalnız o konunun kalıbı", () => KS.nextChunk(empty, { today: T, topic: "Spor ve kulüp" }).topic === "Spor ve kulüp")],
+    ["doğru bitti", F("çalışmaya girer, yarın tekrar, gün seriye yazılır", () => {
+      const d = KS.finishChunk(empty, "look-forward", T, true);
+      const s = d.chunks["look-forward"];
+      return s.st === "study" && s.box === 1 && s.due === add(T, 1) && d.cdays.includes(T);
+    })],
+    ["hatalı bitti", F("kutu sıfır, yarın tekrar", () => { const s = KS.finishChunk(empty, "look-forward", T, false).chunks["look-forward"]; return s.box === 0 && s.due === add(T, 1); })],
+    ["tekrar sırası", F("tekrarı gelen yeni kalıptan önce gelir", () => {
+      const d = KS.finishChunk(empty, "used-to", add(T, -1), true);
+      return KS.nextChunk(d, { today: T }).id === "used-to" && KS.dueChunks(d, T).length === 1;
+    })],
+    ["aralıklar", F("1, 2, 4, 7, 14 gün sonra öğrenildi", () => {
+      let d = empty, day = T;
+      for (const g of [1, 2, 4, 7, 14]) { d = KS.finishChunk(d, "i-wish", day, true); if (d.chunks["i-wish"].due !== add(day, g)) return false; day = d.chunks["i-wish"].due; }
+      d = KS.finishChunk(d, "i-wish", day, true);
+      return d.chunks["i-wish"].st === "known" && d.chunks["i-wish"].kd === day;
+    })],
+    ["erken tekrar", F("tekrarı gelmeden çalışılınca aralık değişmez", () => {
+      const d = KS.finishChunk(empty, "its-worth", T, true);
+      return KS.finishChunk(d, "its-worth", T, true).chunks["its-worth"].due === d.chunks["its-worth"].due;
+    })],
+    ["üst üste gün", F("bugün, dün, önceki gün → 3; boşluk seriyi keser", () => KS.streak([add(T, -2), add(T, -1), T], T) === 3 && KS.streak([add(T, -3), add(T, -1)], T) === 1 && KS.streak([], T) === 0)],
+    ["sayılar", F("kalıp ve içindeki ifade sayısı", () => {
+      const d = KS.finishChunk(KS.knowChunk(empty, "it-depends", T), "id-like", T, true);
+      const s = KS.chunkStats(d, T);
+      return s.known === 1 && s.study === 1 && s.words === KS.chunkById("it-depends").fills.length + KS.chunkById("id-like").fills.length && s.days === 1;
+    })],
+    ["Kur görevleri", F("3 görev, doğru bloklar havuzda, çeldirici var", () => {
+      const ts = KS.buildTasks(KS.chunkById("look-forward"), seq([0.1, 0.7, 0.3, 0.9, 0.5]));
+      return ts.length === 3 && ts.every((t) => t.answer.every((a) => t.pool.some((p) => p.t === a.t)) && t.pool.length > t.answer.length && t.pool.some((p) => p.t === "I'm used to") && new Set(t.pool.map((p) => p.k)).size === t.pool.length);
+    })],
+    ["Kur denetimi", F("doğru sıra doğru, yer değişince yanlış", () => {
+      const [t] = KS.buildTasks(KS.chunkById("is-there"), seq([0.2, 0.6, 0.4]));
+      return t.answer.length === 3 && t.answer[2].t === "near here" && KS.taskRight(t, t.answer) && !KS.taskRight(t, [t.answer[1], t.answer[0], t.answer[2]]);
+    })],
+    ["Türkçe işaret", F("parçanın Türkçesi cümlede bulunur", () => { const m = KS.markTr("Hafta sonunu dört gözle bekliyorum.", "hafta sonunu"); return m && m[1] === "Hafta sonunu"; })],
+    ["destede saklanır", F("cleanDeck kalıp ilerlemesini korur, bilinmeyen kimliği atar", () => {
+      const d = EWk.cleanDeck({ ...KS.finishChunk(empty, "look-forward", T, true), chunks: { ...KS.finishChunk(empty, "look-forward", T, true).chunks, yok: { st: "known" } } });
+      return d.chunks["look-forward"]?.box === 1 && !d.chunks.yok && d.cdays[0] === T;
+    })],
+    ["yeniden çalış", F("kalıp ilerlemesi silinir", () => !KS.resetChunk(KS.knowChunk(empty, "its-up-to", T), "its-up-to").chunks["its-up-to"])],
+  ]);
+}
