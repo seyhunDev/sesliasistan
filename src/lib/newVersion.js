@@ -1,6 +1,7 @@
 // Yeni sürüm denetimi: /api/version (son yayın) ile bu telefondaki sürüm (BUILD.sha) karşılaştırılır.
 // Uygulama açılınca, uygulamaya dönünce ve açıkken 5 dakikada bir bakılır. Farklıysa "Yeni sürüm var · Güncelle"
 // (NewVersionBar) ve asistanda "uygulamayı güncelle". Güncelle: service worker yenilenir, sayfa yeniden yüklenir.
+// Uygun anda (arkadan dönüş, sayfa geçişi) kendiliğinden de yenilenir: canAutoUpdate.
 import { BUILD } from "@/lib/buildInfo";
 
 let latest = null; // { sha, at, msg } yayındaki sürüm farklıysa
@@ -29,12 +30,101 @@ export async function checkVersion(force = false) {
   return latest;
 }
 
+// Kendiliğinden güncelleme (Seyhun 2026-11-04: "her güncellemeden sonra yüklenemedi diyor, kapatıp açınca düzeliyor"):
+// yayından sonra açık kalan eski sürüm, sunucuda artık olmayan eski kod parçalarını ve sayfa verisini istiyor, sayfalar
+// yüklenemiyordu. Yeni sürüm görülünce uygulama ilk uygun anda kendini yeniler: arkadan dönünce ya da başka sayfaya geçerken.
+// İş sürerken (kayıt, sayaç, arama: ekran açık tutuluyor), yazı yazarken ya da pencere açıkken yenilenmez; o zaman alttaki
+// "Yeni sürüm var · Güncelle" kartı kalır. Aynı sürüm için bir kez denenir (yenileme döngüsü olmasın).
+const AUTO_KEY = "sa-auto-update";
+let locks = 0; // kodun istediği, henüz bırakmadığı ekran kilitleri (telefon arkaya gidince sistem bırakır, o sayılmaz)
+
+export function canAutoUpdate({ busy = 0, typing = false, dialog = false, tried = "" } = {}, sha = latest?.sha) {
+  return !!sha && tried !== sha && !busy && !typing && !dialog;
+}
+
+function pageState() {
+  const a = document.activeElement;
+  const b = document.body.dataset;
+  const typing = !!b.typing || (!!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
+  // Asistan ya da ekranda açık pencere (kapalı pencereler ekranın dışında bekler; SwipeBack ile aynı ölçü)
+  const dialog = !!b.asst || [...document.querySelectorAll('[role="dialog"]')].some((d) => {
+    const r = d.getBoundingClientRect();
+    return r.height && r.top < window.innerHeight - 4 && r.bottom > 4;
+  });
+  let tried = "";
+  try {
+    tried = sessionStorage.getItem(AUTO_KEY) || "";
+  } catch {
+    tried = latest?.sha || ""; // saklanamıyorsa kendiliğinden yenileme yok (döngü olmasın)
+  }
+  return { busy: locks, typing, dialog, tried };
+}
+
+function markTried() {
+  try {
+    sessionStorage.setItem(AUTO_KEY, latest.sha);
+  } catch {}
+}
+
+// Ekran kilidi isteklerini say: kayıt, sayaç, arama, takip sürerken kendiliğinden yenileme olmaz
+function countWakeLocks() {
+  const wl = navigator.wakeLock;
+  if (!wl?.request || wl.__saCount) return;
+  const req = wl.request.bind(wl);
+  wl.__saCount = true;
+  wl.request = async (...a) => {
+    const s = await req(...a);
+    locks++;
+    const rel = s.release.bind(s);
+    let done = false;
+    s.release = (...b) => {
+      if (!done) (done = true), (locks = Math.max(0, locks - 1));
+      return rel(...b);
+    };
+    return s;
+  };
+}
+
+// Arkadan dönüş: yeni sürüm varsa ve uygunsa hemen yenile
+async function onResume(away) {
+  await checkVersion(away > 15e3);
+  if (latest && canAutoUpdate(pageState())) (markTried(), applyUpdate());
+}
+
+// Uygulama içi bağlantıya dokunuş: yeni sürüm varsa sayfa geçişi tam yükleme olur (eski kod parçası istenmez)
+function onClick(e) {
+  if (!latest || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const a = e.target?.closest?.("a[href]");
+  if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download")) return;
+  const url = new URL(a.href, location.href);
+  if (url.origin !== location.origin || url.pathname.startsWith("/api/")) return;
+  if (url.pathname === location.pathname && url.search === location.search) return;
+  if (!canAutoUpdate({ ...pageState(), typing: false, dialog: false })) return;
+  e.preventDefault();
+  e.stopPropagation(); // Next'in kendi geçişi başlamasın
+  markTried();
+  location.assign(url.href);
+}
+
 export function watchVersion() {
   checkVersion(true);
-  const vis = () => document.visibilityState === "visible" && checkVersion();
+  countWakeLocks();
+  let hiddenAt = 0;
+  const vis = () => {
+    if (document.visibilityState === "hidden") return void (hiddenAt = Date.now());
+    onResume(hiddenAt ? Date.now() - hiddenAt : 0);
+  };
+  const shown = (e) => e.persisted && onResume(60e3);
   document.addEventListener("visibilitychange", vis);
+  window.addEventListener("pageshow", shown);
+  document.addEventListener("click", onClick, true);
   const t = setInterval(() => document.visibilityState === "visible" && checkVersion(), 5 * 60e3);
-  return () => (document.removeEventListener("visibilitychange", vis), clearInterval(t));
+  return () => (
+    document.removeEventListener("visibilitychange", vis),
+    window.removeEventListener("pageshow", shown),
+    document.removeEventListener("click", onClick, true),
+    clearInterval(t)
+  );
 }
 
 // Yeni sürümü kullanmaya başla: service worker yeni sw.js'i alır (en çok 3 sn beklenir), sayfa sunucudan yeniden yüklenir
