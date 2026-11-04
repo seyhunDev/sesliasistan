@@ -32,7 +32,7 @@ import { RoundsScreen } from "@/features/rounds/RoundsScreen";
 import { EntriesView } from "@/features/rounds/EntriesView";
 import { TrackPanel } from "@/features/tracking/TrackPanel";
 import { BoatLive } from "@/features/tracking/BoatLive";
-import { ZOOMS } from "@/lib/boatPlay";
+import { ZOOMS, fleetGroups, fleetOf } from "@/lib/boatPlay";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
 import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets, grpHold, grpRelease, grpDue, heldGrps } from "@/lib/raceLive";
@@ -564,6 +564,10 @@ export function BroadcastPage({ orgId, id }) {
     saveOnAir(orgId, id, o).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
   };
   const srcs = sourcesOf(L?.stream);
+  // Canlı konum (Seyhun 2026-11-04): renk listesindeki tekneler ve grupları ("Sarı grup tekneler", "Mavi grup tekneler" …)
+  const fleet = fleetOf(entries, groupMap(groupsOn(groups, today)));
+  const fleetGrps = fleetGroups(fleet, [...plan.sets.flatMap((x) => x.grps), ...GROUP_PICK]);
+  const boatsName = (g) => (g ? `${g} grup tekneler` : "Tekneler");
   const saveCams = () => {
     const m = bindCam(L?.camBy, camOpen, camPick);
     setL((p) => (p ? { ...p, camBy: m } : p));
@@ -701,7 +705,7 @@ export function BroadcastPage({ orgId, id }) {
     setBusy("x");
     try {
       await showOnScreen(orgId, id, s);
-      setSel(s.kind ? { kind: s.kind, mid: s.mid, src: s.src } : null);
+      setSel(s.kind ? { kind: s.kind, mid: s.mid, src: s.src, ...(s.kind === "boats" ? { grp: s.grp || "" } : {}) } : null);
       toast(s.kind ? "Ekranda" : "Ekrandan kaldırıldı");
       await reload();
     } catch {
@@ -733,6 +737,13 @@ export function BroadcastPage({ orgId, id }) {
     const u = String(p.url || "").trim();
     if (u && !ytEmbed(u)) return toast("Bağlantı tanınmadı: YouTube canlı yayın ya da kanal bağlantısı olmalı.");
     putSources(srcList.map((x) => (x.id === sid ? { ...x, url: u } : x)));
+  };
+  // kaynağın grubu: dokununca bu kaynağa bağlanır (başka kaynaktaysa buraya geçer), yeniden dokununca çözülür
+  const putSrcGrp = (sid, k) => {
+    const mine = groupsOf(L?.camBy, sid);
+    const m = bindCam(L?.camBy, sid, mine.includes(k) ? mine.filter((x) => x !== k) : [...mine, k]);
+    setL((p) => (p ? { ...p, camBy: m } : p));
+    saveCamBy(orgId, id, m).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
   };
   const dropSrc = (sid) => {
     if (sel?.src === sid) setSel(null);
@@ -902,7 +913,7 @@ export function BroadcastPage({ orgId, id }) {
     setL((p) => (p ? { ...p, courseShow: { ...p.courseShow, ev: { ...cleanCourseShow(p.courseShow).ev, [k]: e } } } : p));
     saveEvre(orgId, id, k, e).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
   };
-  const putVid = (k, v) => putEv(k, { vid: v ? { kind: v.kind || "", src: v.src || "", mid: v.mid || "", ...(v.kind === "boats" ? { zoom: v.zoom ?? 100 } : {}) } : null });
+  const putVid = (k, v) => putEv(k, { vid: v ? { kind: v.kind || "", src: v.src || "", mid: v.mid || "", ...(v.kind === "boats" ? { zoom: v.zoom ?? 100, grp: v.grp || "" } : {}) } : null });
   const putEvreMan = (k) => {
     setL((p) => (p ? { ...p, courseShow: { ...p.courseShow, evre: k } } : p));
     saveEvreMan(orgId, id, k).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
@@ -933,8 +944,9 @@ export function BroadcastPage({ orgId, id }) {
     setZoom(v);
     if (onScreen?.kind === "boats") show({ ...onScreen, zoom: v });
   };
-  const isOn = (k, mid = "") => onScreen?.kind === k && (k === "rec" ? onScreen.mid === mid : k === "src" ? onScreen.src === mid : true);
-  const isSel = (k, mid = "") => sel?.kind === k && (k === "rec" ? sel.mid === mid : k === "src" ? sel.src === mid : true);
+  // boats: mid yerine grup (Canlı konum › "Sarı grup tekneler")
+  const isOn = (k, mid = "") => onScreen?.kind === k && (k === "rec" ? onScreen.mid === mid : k === "src" ? onScreen.src === mid : k === "boats" ? (onScreen.grp || "") === mid : true);
+  const isSel = (k, mid = "") => sel?.kind === k && (k === "rec" ? sel.mid === mid : k === "src" ? sel.src === mid : k === "boats" ? (sel.grp || "") === mid : true);
   const c = withLiveWind(course, live.wind, today);
   const wind = [...c.obs].reverse().find((x) => x.kind === "wind");
   const scene = (() => {
@@ -1081,7 +1093,7 @@ export function BroadcastPage({ orgId, id }) {
   const airCam = airStart ? srcs.find((c) => c.id === camOf(L?.camBy, airE.cls || "", airE.grp || airStart.grp || "")) : null;
   // Ekranda: canlıysa küçük oynatıcı (sessiz), kayıtsa küçük resmi; Önizleme: seçilen kaynak (yalnız burada)
   const airUrl = onScreen && onScreen.kind !== "rec" ? (onScreen.kind === "live" && airCam?.url ? airCam.url : screenUrl(onScreen, { ...L?.stream, sources: srcList })) : "";
-  const monName = monRec ? recName(monRec, live.starts) : onScreen?.kind === "boats" ? "Tekneler · Canlı konum" : onScreen?.kind === "src" ? srcOf(onScreen.src)?.name || "Canlı" : onScreen?.kind === "live" ? airCam?.name || "Grubun kamerası" : onScreen?.kind === "drone" ? "Drone" : "Video";
+  const monName = monRec ? recName(monRec, live.starts) : onScreen?.kind === "boats" ? `${boatsName(onScreen.grp)} · Canlı konum` : onScreen?.kind === "src" ? srcOf(onScreen.src)?.name || "Canlı" : onScreen?.kind === "live" ? airCam?.name || "Grubun kamerası" : onScreen?.kind === "drone" ? "Drone" : "Video";
   const pvRec = sel?.kind === "rec" ? live.media.find((m) => m.id === sel.mid) : null;
   const pvUrl = selSrc?.url || (sel?.kind === "live" ? airCam?.url || L?.stream.url || "" : "");
   // evrenin görüntüsünün adı ve kapağı (Ekran › Evreler)
@@ -1092,7 +1104,7 @@ export function BroadcastPage({ orgId, id }) {
     if (!v.kind) return "Bulanık foto";
     if (v.kind === "src") return vidOf(v)?.name || "Canlı";
     if (v.kind === "live") return "Grubun kamerası";
-    if (v.kind === "boats") return "Tekneler";
+    if (v.kind === "boats") return boatsName(v.grp);
     const m = live.media.find((x) => x.id === v.mid);
     return m ? recName(m, live.starts) : "Kayıt";
   };
@@ -1103,7 +1115,7 @@ export function BroadcastPage({ orgId, id }) {
     if (v?.kind === "rec") return live.media.find((x) => x.id === v.mid)?.thumb || "";
     return "";
   };
-  const pvName = selSrc?.name || (sel?.kind === "live" ? "Grubun kamerası" : sel?.kind === "boats" ? "Tekneler" : pvRec ? recName(pvRec, live.starts) : "");
+  const pvName = selSrc?.name || (sel?.kind === "live" ? "Grubun kamerası" : sel?.kind === "boats" ? boatsName(sel.grp) : pvRec ? recName(pvRec, live.starts) : "");
   const takeOk = !!sel && (sel.kind === "rec" || sel.kind === "boats" || !!ytEmbed(pvUrl));
   const nLive = srcList.filter((x) => stat[x.url]?.live).length;
   // satırdan başlatma: geri sayım sürmüyor, tehir yok, gün bitmedi
@@ -1756,7 +1768,7 @@ export function BroadcastPage({ orgId, id }) {
         <section>
           <div className="masa-mons">
             <div className="masa-mon pv">
-              {sel?.kind === "boats" ? <BoatLive grp={airE.grp || airStart?.grp || ""} zoom={zoomNow} course={course} /> : pvUrl && ytEmbed(pvUrl) ? <iframe key={pvUrl} src={ytSrc(pvUrl)} title="Önizleme" allow="autoplay; encrypted-media" /> : pvRec?.thumb ? <img src={pvRec.thumb} alt="" /> : <div className="mid">{sel ? "Bağlantı yok" : "Kaynak seç"}</div>}
+              {sel?.kind === "boats" ? <BoatLive grp={sel.grp || airE.grp || airStart?.grp || ""} zoom={zoomNow} course={course} fleet={fleet} /> : pvUrl && ytEmbed(pvUrl) ? <iframe key={pvUrl} src={ytSrc(pvUrl)} title="Önizleme" allow="autoplay; encrypted-media" /> : pvRec?.thumb ? <img src={pvRec.thumb} alt="" /> : <div className="mid">{sel ? "Bağlantı yok" : "Kaynak seç"}</div>}
               <span className="lb">ÖNİZLEME</span>
               {pvName ? <span className="sn">{pvName}</span> : null}
             </div>
@@ -1883,6 +1895,37 @@ export function BroadcastPage({ orgId, id }) {
             </div>
             {selSrc ? (
               <div className="border-t border-line px-3.5 py-3">
+                {/* Ad ve grup (Seyhun 2026-11-04 "isimleri değiştirebilmeliyim, mesela drone 1 sarı grup; atamasını da orada yapıp değiştirebilmeliyim"):
+                    ad stream.sources[].name, grup Kameralar'daki bağlama (camBy) ile aynı */}
+                <input
+                  key={`n${selSrc.id}`}
+                  defaultValue={selSrc.name}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim().slice(0, 30);
+                    if (v && v !== selSrc.name) putSources(srcList.map((x) => (x.id === selSrc.id ? { ...x, name: v } : x)));
+                    else e.target.value = selSrc.name;
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                  maxLength={30}
+                  aria-label="Kaynağın adı"
+                  className="mb-2 h-10 w-full min-w-0 rounded-[0.6875rem] bg-[var(--chip)] px-3 text-[0.9375rem] font-semibold outline-none"
+                />
+                {groupRows.length ? (
+                  <div className="mb-2 flex flex-wrap items-center gap-1.5" aria-label="Çektiği grup">
+                    {groupRows.map(([c, g]) => {
+                      const k = cardKey(c, g);
+                      const on = L?.camBy?.[k] === selSrc.id;
+                      const other = !on && L?.camBy?.[k] ? srcs.find((x) => x.id === L.camBy[k]) : null;
+                      return (
+                        <button key={k} type="button" aria-pressed={on} onClick={() => putSrcGrp(selSrc.id, k)} className="masa-b inline-flex items-center gap-1.5">
+                          <span className="size-2 shrink-0 rounded-full" style={{ background: g ? groupColor(g) : "var(--mut)" }} aria-hidden="true" />
+                          {groupRows.some(([c2]) => c2 !== c) ? [c, g].filter(Boolean).join(" · ") : g || c}
+                          {other ? <span className="text-mut">{`· ${other.name}`}</span> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <div className="flex items-center gap-2">
                   <input
                     key={selSrc.id}
@@ -1922,13 +1965,23 @@ export function BroadcastPage({ orgId, id }) {
                   <b>{isOn("rec", m.id) ? `Ekranda · ${recName(m, live.starts)}` : recName(m, live.starts)}</b>
                 </button>
               ))}
-              {/* Canlı tekne konumları (Seyhun 2026-11-03 "video yerine bunu da seçebilmeliyim; gruba göre otomatik"; replay değil, o ayrı yapılacak): ekrandaki yarışın grubu */}
-              <button type="button" aria-pressed={isSel("boats")} onClick={() => setSel({ kind: "boats" })} className="masa-tile">
-                <span className="th">Canlı konum</span>
-                <b>{isOn("boats") ? "Ekranda · Tekneler" : "Tekneler"}</b>
-              </button>
             </div>
             <input ref={file} type="file" accept="video/*" className="hidden" onChange={pick} />
+          </div>
+        </section>
+        {/* Canlı konum (Seyhun 2026-11-03 "video yerine bunu da seçebilmeliyim"; 2026-11-04 "renk listesi yüklenince sarı grup tekneler, mavi grup
+            tekneler"): grup başına bir döşeme, tekneler renk listesinden (konum şimdilik örnek iz). Renk listesi yoksa tek döşeme, ekrandaki yarışın grubu */}
+        <section>
+          <Head title="Canlı konum" />
+          <div className="masa-tiles">
+            {(fleetGrps.length ? fleetGrps : [""]).map((g) => (
+              <button key={g || "x"} type="button" aria-pressed={isSel("boats", g)} onClick={() => setSel({ kind: "boats", grp: g })} className="masa-tile">
+                <span className="th" style={g && groupColor(g) ? { boxShadow: `inset 0 -0.25rem 0 ${groupColor(g)}` } : undefined}>
+                  {g ? `${fleet.filter((b) => b.grp === g).length} tekne` : "Canlı konum"}
+                </span>
+                <b>{isOn("boats", g) ? `Ekranda · ${boatsName(g)}` : boatsName(g)}</b>
+              </button>
+            ))}
           </div>
         </section>
         <section>
@@ -1970,7 +2023,7 @@ export function BroadcastPage({ orgId, id }) {
               {onScreen.pause ? "Sürdür" : "Duraklat"}
             </Button>
           ) : null}
-          <Button disabled={!!busy || !takeOk || (!!onScreen && isOn(sel.kind, sel.mid || sel.src || ""))} onClick={() => (pre.ev[evNow].vid ? putVid(evNow, { ...sel, zoom: zoomNow }) : null, show({ ...sel, loop: sel.kind === "boats", caption: cap, ...(sel.kind === "boats" ? { zoom: zoomNow } : {}) }))}>
+          <Button disabled={!!busy || !takeOk || (!!onScreen && isOn(sel.kind, sel.mid || sel.src || sel.grp || ""))} onClick={() => (pre.ev[evNow].vid ? putVid(evNow, { ...sel, zoom: zoomNow }) : null, show({ ...sel, loop: sel.kind === "boats", caption: cap, ...(sel.kind === "boats" ? { zoom: zoomNow } : {}) }))}>
             {pvName ? `${pvName.length > 14 ? "Ekrana al" : `${pvName}'i ekrana al`}` : "Ekrana al"}
           </Button>
         </MasaBar>
@@ -2383,13 +2436,13 @@ export function BroadcastPage({ orgId, id }) {
                     [{ kind: "" }, "Bulanık foto", ""],
                     ...(autoOn ? [[{ kind: "live" }, "Grubun kamerası", airCam?.name || ""]] : []),
                     ...srcList.map((x) => [{ kind: "src", src: x.id }, x.name, stat[x.url]?.live ? "Yayında" : x.url ? "" : "Bağlantı yok"]),
-                    [{ kind: "boats" }, "Tekneler", "Canlı konum"],
+                    ...(fleetGrps.length ? fleetGrps : [""]).map((g) => [{ kind: "boats", grp: g }, boatsName(g), "Canlı konum"]),
                     ...vids.map((m) => [{ kind: "rec", mid: m.id }, recName(m, live.starts), m.dur ? mmss(m.dur) : ""]),
                   ].map(([v, t, sub]) => {
                     const cv = pre.ev[scOpen].vid;
-                    const on = !v ? !cv : !!cv && cv.kind === v.kind && (cv.src || "") === (v.src || "") && (cv.mid || "") === (v.mid || "");
+                    const on = !v ? !cv : !!cv && cv.kind === v.kind && (cv.src || "") === (v.src || "") && (cv.mid || "") === (v.mid || "") && (cv.grp || "") === (v.grp || "");
                     return (
-                      <button key={`${v?.kind ?? "x"}${v?.src || v?.mid || ""}`} type="button" aria-pressed={on} onClick={() => (putVid(scOpen, v), setVidPick(false))} className={`${row} border-t border-line`}>
+                      <button key={`${v?.kind ?? "x"}${v?.src || v?.mid || v?.grp || ""}`} type="button" aria-pressed={on} onClick={() => (putVid(scOpen, v), setVidPick(false))} className={`${row} border-t border-line`}>
                         <span className="min-w-0 flex-1 truncate font-semibold">{t}</span>
                         {sub ? <span className="shrink-0 text-[0.8125rem] font-semibold text-mut">{sub}</span> : null}
                         <span className={`masa-rd${on ? " on" : ""}`} aria-hidden="true" />
