@@ -56,6 +56,30 @@ export async function siteList(get, season = "") {
   return { seasons, season: s.name, legs };
 }
 
+// Kaydedilmiş liste (Seyhun 2026-11-04 "listeyi bir kere kaydedelim, siteye sürekli istek atmayalım"): raceSite/_list-{sezon}
+// ({ json, at }). Siteden ekranı buradan açılır; saatlik tarama (scanNew) şimdiki sezonu yeniler, eski kayıt 3 saatten eskiyse siteden okunur.
+const LIST_TTL = 3 * 3600e3;
+const listRef = (db, season) => db.collection("raceSite").doc(`_list-${season || "now"}`);
+export async function saveList(db, season, list) {
+  const json = JSON.stringify(list);
+  if (json.length > 900000) return;
+  await listRef(db, season).set({ json, at: new Date().toISOString() });
+}
+export async function cachedList(db, get, season = "") {
+  const snap = await listRef(db, season).get().catch(() => null);
+  const c = snap?.exists ? snap.data() : null;
+  if (c?.json && Date.now() - (Date.parse(c.at) || 0) < LIST_TTL) return JSON.parse(c.json);
+  try {
+    const list = await siteList(get, season);
+    await saveList(db, season, list).catch(() => {});
+    return list;
+  } catch (e) {
+    // Site açılmazsa eski kayıt
+    if (c?.json) return JSON.parse(c.json);
+    throw e;
+  }
+}
+
 const tokenUrl = (bucket, path, token) => `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
 
 // Bir belgeyi indirir ve Storage'a koyar; künye { id, name, size, path, url, at } (noticeFile.js biçimi)
@@ -166,6 +190,7 @@ export async function scanNew({ db, get, recordInbox, sendDevice, newRaces, newR
   const ref = db.collection("raceSite").doc(KNOWN);
   const k = (await ref.get()).data() || {};
   const list = await siteList(get, "");
+  await Promise.all([saveList(db, "", list), saveList(db, list.season, list)]).catch(() => {});
   const acts = list.legs.flatMap((l) => (l.classes || []).map((c) => c.act));
   const fresh = Array.isArray(k.acts) ? newRaces(list.legs, k.acts) : [];
   await ref.set({ season: list.season, acts: [...new Set([...(k.acts || []), ...acts])].slice(-3000), scanAt: new Date().toISOString() }, { merge: true });

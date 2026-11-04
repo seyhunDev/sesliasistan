@@ -4,13 +4,13 @@ import { adminDb, adminReady } from "@/lib/server/admin";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { fileUrl } from "@/lib/siteBoard";
 import { FieldValue } from "firebase-admin/firestore";
-import { KNOWN, pageCache, siteList } from "@/lib/server/raceSiteSync";
+import { KNOWN, cachedList, pageCache, siteList } from "@/lib/server/raceSiteSync";
 import { ackSig } from "@/lib/server/ackSign";
 
 export const runtime = "nodejs";
 
 // Yarış sitesi (TYF Yelken Ligi, lib/siteBoard.js; Seyhun 2026-11-03), yalnız ana hesap:
-// GET ?season=2026-2027        → sezonlar, ayaklar, sınıflar ve belgeleri (Yarışlar › Siteden ekranı)
+// GET ?season=2026-2027        → sezonlar, ayaklar, sınıflar ve belgeleri (Yarışlar › Siteden ekranı; kaydedilmiş listeden)
 // GET ?file=292893             → sitedeki belgenin kendisi (yarış ilanı telefonda okunur, yarış ondan açılır)
 // POST { raceId, site }         → yarışı izlemeye al (raceSite/{org}_{yarış}); belgeler arka planda hemen alınır ve kullanılır
 // POST { raceId, off: true }    → izlemeyi bırak (alınmış belgeler yarışta kalır)
@@ -40,7 +40,9 @@ export async function GET(request) {
   // Siteden ekranını açan ana hesap yeni yarış bildirimini alır (raceSiteSync.scanNew)
   if (adminReady()) adminDb().collection("raceSite").doc(KNOWN).set({ owners: FieldValue.arrayUnion(au.uid) }, { merge: true }).catch(() => {});
   try {
-    return NextResponse.json(await siteList(pageCache(), q.get("season") || ""));
+    // Kaydedilmiş listeden (raceSiteSync.cachedList); sunucu ayarı yoksa siteden
+    const season = q.get("season") || "";
+    return NextResponse.json(adminReady() ? await cachedList(adminDb(), pageCache(), season) : await siteList(pageCache(), season));
   } catch (e) {
     console.warn("[race-site] liste", e.message);
     return bad("Yarış sitesine ulaşılamadı, biraz sonra tekrar dene.", 502);
