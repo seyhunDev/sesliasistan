@@ -51,6 +51,45 @@ export function groupSet(set, grp) {
 export const groupsOf = (set) => [...new Set(set.boats.map((b) => b.grp).filter(Boolean))];
 // Yayındaki canlı konum (BoatLive): ekrandaki yarışın grubu veri setinde varsa o, yoksa ilk grup
 export const liveGroup = (set, grp) => (set && groupsOf(set).includes(grp) ? grp : (set && groupsOf(set)[0]) || "");
+// Renk listesindeki tekneler (Seyhun 2026-11-04 "renk listesi yüklenince sarı grup tekneler, mavi grup tekneler; verdiğimiz renk listesine göre
+// o tekneler oluşturulmalı"): kayıt listesi + günün grup listesi { yelken: grup } → [{ sail, name, grp }]
+export function fleetOf(entries, gm) {
+  const name = new Map((Array.isArray(entries) ? entries : []).map((e) => [String(e?.sail || ""), String(e?.name || "")]));
+  return Object.entries(gm && typeof gm === "object" ? gm : {})
+    .map(([sail, grp]) => ({ sail: cleanSail(sail), name: (name.get(String(sail)) || "").slice(0, 40), grp: String(grp || "").slice(0, 20) }))
+    .filter((b) => b.sail && b.grp)
+    .sort((a, b) => Number(a.sail) - Number(b.sail) || a.sail.localeCompare(b.sail));
+}
+// Gruplar renk listesindeki sırayla değil, bilinen sırayla (order: ["Sarı", "Mavi", …]); bilinmeyen sonda
+export const fleetGroups = (fleet, order = []) => {
+  const gs = [...new Set((fleet || []).map((b) => b.grp).filter(Boolean))];
+  const at = (g) => (order.indexOf(g) < 0 ? 999 : order.indexOf(g));
+  return gs.sort((a, b) => at(a) - at(b) || a.localeCompare(b, "tr"));
+};
+// Gerçek konum gelene kadar (Seyhun 2026-11-04 "datayı şu an almıyoruz, örnek data kullanıyoruz; gerçek renklere göre tekneler devam edelim"):
+// grubun gerçek tekneleri örnek setin bir grubunun izlerini sırayla alır; örnekteki tekneden çoksa sonrakiler birer sıra geride (9 m) ve
+// biraz yanda. Gerçek takip verisi gelince bu işlev kalkar, oynatıcı aynı biçimi okur.
+export function realSet(set, fleet, grp) {
+  const mine = (fleet || []).filter((b) => b.grp === grp);
+  if (!set || !mine.length) return null;
+  const g0 = groupsOf(set)[0] || "";
+  const tpl = set.boats.filter((b) => !g0 || b.grp === g0).map((b) => b.sail);
+  if (!tpl.length) return null;
+  const tr = tracksOf(set);
+  const back = norm(set.wind.dir + 180);
+  const side = norm(set.wind.dir + 90);
+  const fixes = [];
+  mine.forEach((b, i) => {
+    const k = Math.floor(i / tpl.length);
+    for (const f of tr.get(tpl[i % tpl.length]) || []) {
+      let p = { lat: f.lat, lon: f.lon };
+      if (k) p = dest(dest(p, back, 9 * k), side, k % 2 ? 5 : -2);
+      fixes.push({ ...f, sail: b.sail, lat: p.lat, lon: p.lon });
+    }
+  });
+  fixes.sort((a, b) => a.t - b.t);
+  return { ...set, boats: mine.map((b) => ({ sail: b.sail, name: b.name, grp })), fixes };
+}
 // Parkurun gerçek yerine taşıma (Seyhun 2026-11-03 "hakem botu, pin, şamandıra koordinatlarını gireceğim"; Yayın › Parkur, courseCard coursePoints):
 // verilen noktalar (komite, pin, m1… {lat, lon}) şamandıra olur; örnek tekneler start hattına göre yerleşir: hattın ortası gerçek ortaya,
 // parkur ekseni gerçek eksene (orta → 1) döner, hat boyunca uzaklık hattın boyuna göre ölçeklenir. Rüzgâr yönü gerçek eksen olur.

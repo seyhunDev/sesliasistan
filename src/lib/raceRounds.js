@@ -345,8 +345,11 @@ export function cleanScreen(s) {
   // caption: ekranın altındaki yazı (Seyhun 2026-11-02 "videonun ne olduğunu yazabileceğimiz bir alan, altta olimpiyat yayını gibi")
   // src: Yayın › Video'daki canlı kaynaklardan biri (stream.sources id; Seyhun 2026-11-02 "Drone 1, 2, 3, telefon; seçip ekrana alayım")
   // zoom: tekne ekranının yakınlığı (0 start … 100 bütün parkur; Seyhun 2026-11-03 "yönetimden ayarlayabileyim")
-  return { kind, src: kind === "src" && SRC_ID.test(s?.src || "") ? s.src : "", mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, caption: String(s?.caption || "").trim().slice(0, 80), at: typeof s?.at === "string" ? s.at.slice(0, 30) : "", ...(kind === "boats" ? { zoom: Number.isFinite(+s?.zoom) && s?.zoom !== null && s?.zoom !== "" ? Math.max(0, Math.min(100, Math.round(+s.zoom))) : 100 } : {}) };
+  return { kind, src: kind === "src" && SRC_ID.test(s?.src || "") ? s.src : "", mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, caption: String(s?.caption || "").trim().slice(0, 80), at: typeof s?.at === "string" ? s.at.slice(0, 30) : "", ...(kind === "boats" ? { zoom: Number.isFinite(+s?.zoom) && s?.zoom !== null && s?.zoom !== "" ? Math.max(0, Math.min(100, Math.round(+s.zoom))) : 100, grp: boatGrp(s?.grp) } : {}) };
 }
+// Canlı konumda gösterilen grup (Seyhun 2026-11-04 "sarı grup tekneler, mavi grup tekneler"): boşsa ekrandaki yarışın grubu
+const boatGrp = (g) => String(g || "").trim().slice(0, 20);
+const boatsOf = (v) => (v.kind === "boats" ? { zoom: v.zoom ?? 100, grp: boatGrp(v.grp) } : {});
 // Parkur gösterimi (Seyhun 2026-11-02): auto = yarış öncesi 30 sn'de bir kendiliğinden (varsayılan açık), at = Yayın'dan "Parkuru göster"e basılan an
 // one = Yayın'dan elle açılan tek gösterim ("course" | "wind" | "prog"): kaldırılana kadar ekranda kalır, yarış öncesi, sırasında ve sonrasında
 // (Seyhun 2026-11-02 "starttan sonra manuel yönetim… parkur, rüzgâr, program gösterme butonları ayrı olsun")
@@ -387,7 +390,7 @@ export function cleanSceneVid(v) {
     if (!v || typeof v[k] !== "object" || !v[k]) continue;
     const s = cleanScreen(v[k]);
     if (s.kind === "rec" && k !== "04") continue;
-    out[k] = { kind: s.kind, src: s.src, mid: s.mid, ...(s.kind === "boats" ? { zoom: s.zoom } : {}) };
+    out[k] = { kind: s.kind, src: s.src, mid: s.mid, ...boatsOf(s) };
   }
   return out;
 }
@@ -429,7 +432,7 @@ export function sceneScreen(screen, show, sc) {
   const v = show?.vid?.[sc];
   const s = screen || { kind: "" };
   if (!v) return s;
-  return { ...s, kind: v.kind, src: v.src || "", mid: v.mid || "", loop: v.kind === "boats", pause: !!v.kind && !!s.pause, ...(v.kind === "boats" ? { zoom: v.zoom ?? 100 } : {}) };
+  return { ...s, kind: v.kind, src: v.src || "", mid: v.mid || "", loop: v.kind === "boats", pause: !!v.kind && !!s.pause, ...boatsOf(v) };
 }
 // ---- Yayın evreleri ve gösterilecekler (Seyhun 2026-11-04 "otomatik geçiş neye geçiyor belli değil; atamaları biz yapalım") ----
 // Evre yarışın durumundan kendiliğinden belli olur (canlı ekran ve Yayın aynı evreOf); her evrenin görüntüsü ve öğe sırası Yayın › Ekran'da seçilir.
@@ -450,7 +453,7 @@ const EV_MIG = { pre: "01", prestart: "01", start: "02", race: "02", post: "03",
 export function cleanEvVid(v) {
   if (!v || typeof v !== "object") return null;
   const s = cleanScreen(v);
-  return { kind: s.kind, src: s.src, mid: s.mid, ...(s.kind === "boats" ? { zoom: s.zoom } : {}) };
+  return { kind: s.kind, src: s.src, mid: s.mid, ...boatsOf(s) };
 }
 export function cleanEvOne(e, k, old = {}) {
   const has = !!e && typeof e === "object";
@@ -495,7 +498,7 @@ export function evreScreen(screen, show, evre) {
   const v = cleanCourseShow(show).ev[evre]?.vid;
   const s = screen || { kind: "" };
   if (!v) return s;
-  return { ...s, kind: v.kind, src: v.src || "", mid: v.mid || "", loop: v.kind === "boats" || v.kind === "rec" ? true : !!s.loop, pause: !!v.kind && !!s.pause, ...(v.kind === "boats" ? { zoom: v.zoom ?? 100 } : {}) };
+  return { ...s, kind: v.kind, src: v.src || "", mid: v.mid || "", loop: v.kind === "boats" || v.kind === "rec" ? true : !!s.loop, pause: !!v.kind && !!s.pause, ...boatsOf(v) };
 }
 // Öğenin canlı ekrandaki çizimi (sahne.css sınıfları): Görüntü 02 (kayıtsa 04 Tekrar), Süre/Program/Rüzgâr 01, Sıralama 03, Parkur 05, Sıradaki 06
 export const itemScene = (item, rec = false) => (item === "video" ? (rec ? "04" : "02") : item === "rank" ? "03" : item === "course" ? "05" : item === "next" ? "06" : "01");
