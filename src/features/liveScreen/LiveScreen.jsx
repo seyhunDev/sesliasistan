@@ -14,6 +14,7 @@ import { catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/
 import { colorOf as windColor } from "@/lib/windMap";
 import { BoatMap } from "@/features/tracking/BoatMap";
 import { BoatLive } from "@/features/tracking/BoatLive";
+import { fleetOf } from "@/lib/boatPlay";
 import { HourTable } from "@/features/weather/HourTable";
 import { useDemo } from "./demo";
 import { useVisit } from "./useVisit";
@@ -811,7 +812,7 @@ function Races({ id, starts, cur, sel, fleets, rounds, entries, onClose }) {
 const LOAD_MS = 8000;
 const FADE_MS = 1100;
 const noSub = () => () => {};
-function Backdrop({ data, isCur, entry }) {
+function Backdrop({ data, isCur, entry, today = "" }) {
   const scr = isCur ? data.screen || {} : {};
   // canlı yayın ya da drone; ekrandaki yarışın grubuna kamera bağlıysa o kamera (lib/raceCams.js)
   const yt = ytSrc(liveUrl(screenUrl(scr, data.stream), scr, data.stream, data.camBy, entry));
@@ -860,10 +861,11 @@ function Backdrop({ data, isCur, entry }) {
         </pre>
       ) : null}
       <Sea photo={on ? "" : BG_PHOTO} />
-      {/* Canlı tekne konumları (Seyhun 2026-11-03): Yayın › Video › Tekneler; ekrandaki yarışın grubu (şimdilik start anı, döngüde) */}
+      {/* Canlı tekne konumları (Seyhun 2026-11-03): Yayın › Video › Canlı konum; seçilen grup (yoksa ekrandaki yarışın grubu), renk listesindeki
+          tekneler (şimdilik örnek izlerle, start anı, döngüde) */}
       {scr.kind === "boats" ? (
         <div className="lv-boats" aria-hidden="true">
-          <BoatLive grp={entry?.grp || ""} zoom={scr.zoom ?? 100} course={data.course || null} />
+          <BoatLive grp={scr.grp || entry?.grp || ""} zoom={scr.zoom ?? 100} course={data.course || null} fleet={fleetOf(data.entries, groupMap(groupsOn(data.groups, today)))} />
         </div>
       ) : null}
       {st && layers.length ? (
@@ -4046,7 +4048,11 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
   // Yayın › Ekran'da evre başına seçilir (Grup ve sıra / Genel ilk 10 / Yok)
   const side = cleanCourseShow(data.courseShow).ev[evre]?.side || "off";
   const listOn = side !== "off" && sc !== "03" && sc !== "05";
-  const lwho = t.who || gWho(entry);
+  // canlı konumda bir grubun tekneleri ekrandayken (Seyhun 2026-11-04 "grubu gösterirken genel sıralamayı da solda altta"): sol altta o grubun
+  // tekneleri ve genel sıralamadaki yerleri (Grup ve sıra; evrede Yok seçiliyse de)
+  const bgrp = data.screen?.kind === "boats" ? data.screen.grp || "" : "";
+  const bside = bgrp && sc !== "03" && sc !== "05";
+  const lwho = bgrp ? { name: "", grp: bgrp, cls: (data.plan?.sets || []).find((x) => (x.grps || []).includes(bgrp))?.cls || t.who?.cls || entry?.cls || "" } : t.who || gWho(entry);
   // ekrandaki görüntünün grubu (yalnız video gösterilirken; tekrar ve tekne haritası değil)
   const liveGrps = (data.starts || []).filter((x) => x.day === today && !x.void && !x.fin).map((x) => x.grp || data.rounds?.[x.id]?.grp || "");
   const vEntry = { ...entry, cls: entry?.cls || "", grp: entry?.grp || sel?.grp || "" };
@@ -4057,9 +4063,9 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       <div className="sc-body" key={sc}>
         {body}
       </div>
-      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} /> : null}>
+      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
-        {listOn ? side === "gen" ? <ScGen data={data} who={lwho} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
+        {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} /> : listOn ? side === "gen" ? <ScGen data={data} who={lwho} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
       {ap && sc !== "04" ? <ScAp t={t} plan={plan} seq={mode === "seq"} /> : null}
       <div className="sc-name">
@@ -4183,7 +4189,7 @@ export function LiveScreen({ id, y = "" }) {
     const { sd, vid, sc, item, evre } = scPick({ data, sel, entry, cs, prog, today, now: nowMs, mode, seqMode, fsLast });
     return (
       <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
-        <Backdrop data={sd} isCur={isCur} entry={entry} />
+        <Backdrop data={sd} isCur={isCur} entry={entry} today={today} />
         <div className="lv-page lv-ov">
           <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} />
         </div>
@@ -4195,7 +4201,7 @@ export function LiveScreen({ id, y = "" }) {
   }
   return (
     <div className={`lv lv-bc${ongoing && phase === "race" ? " has-live" : ""}${slide ? " course" : ""}${hasVideo ? " video" : ""}${counting ? " counting" : ""}${near ? " near" : ""}${hasVideo && data.screen?.pause ? " pause" : ""} ${phase}`}>
-      <Backdrop data={data} isCur={isCur} entry={entry} />
+      <Backdrop data={data} isCur={isCur} entry={entry} today={today} />
       <div className="lv-page lv-ov">
         {/* Geri ve yarışın adı aynı satırda, bir kez (Seyhun 2026-11-03: iki yerde yazıyordu, hizalı değildi) */}
         <div className="lv-topl">

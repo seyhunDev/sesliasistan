@@ -6,7 +6,7 @@
 // Şimdilik hazır veri seti (public/veri/ornek-start.json); canlı konum akışı gelince aynı oynatıcı o veriyi okur.
 // grp: ekrandaki yarışın grubu; veri setinde o grup yoksa ilk grup.
 import { useEffect, useMemo, useState } from "react";
-import { cleanSet, liveGroup, placeSet } from "@/lib/boatPlay";
+import { cleanSet, liveGroup, placeSet, realSet } from "@/lib/boatPlay";
 import { coursePoints } from "@/lib/courseCard";
 import { cleanCourse } from "@/lib/raceCourse";
 import { BoatRace } from "./BoatRace";
@@ -15,7 +15,8 @@ let cache = null;
 
 // zoom: Yayın › Video görünümü (screen.zoom 0–100); verilmezse eski start görünümü
 // course: yarışın parkuru (Yayın › Parkur); komite ve pin girildiyse şamandıralar gerçek yerinde, tekneler o start hattında
-export function BoatLive({ grp = "", bare = true, tag, zoom = null, course = null }) {
+// fleet: renk listesindeki tekneler [{ sail, name, grp }] (lib/boatPlay fleetOf); grubun tekneleri varsa örnek izlerle onlar oynar
+export function BoatLive({ grp = "", bare = true, tag, zoom = null, course = null, fleet = null }) {
   const [set, setSet] = useState(cache);
   useEffect(() => {
     if (cache) return;
@@ -32,14 +33,18 @@ export function BoatLive({ grp = "", bare = true, tag, zoom = null, course = nul
       on = false;
     };
   }, []);
+  const fkey = (fleet || []).filter((b) => b.grp === grp).map((b) => b.sail).join(",");
   const placed = useMemo(() => {
-    if (!set || !course) return set;
+    const base = (grp && fkey && realSet(set, fleet, grp)) || set;
+    if (!base || !course) return base;
     try {
-      return placeSet(set, coursePoints(cleanCourse(course))?.pts);
+      return placeSet(base, coursePoints(cleanCourse(course))?.pts);
     } catch {
-      return set;
+      return base;
     }
-  }, [set, course]);
+    // fleet yalnız grubun yelken listesi değişince (fkey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [set, course, grp, fkey]);
   if (!placed) return <div className="br" />;
   const g = liveGroup(placed, grp);
   return <BoatRace key={g} set={placed} grp={g} bare={bare} tag={tag} zoom={zoom} />;
