@@ -10,12 +10,11 @@ import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { useToast } from "@/components/ui/ToastProvider";
-import { getStored } from "@/lib/firebase/fileStore";
 import { kindLabel, resultState } from "@/lib/siteDocs";
 import { stampResults } from "@/lib/raceDay";
 import { todayStr } from "@/lib/utils/format";
 import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
-import { LIST_KINDS, applyList, checkSite, saveDocState, watchSiteDocs } from "@/features/athletes/raceSite";
+import { LIST_KINDS, applyList, siteDocBlob, checkSite, saveDocState, watchSiteDocs } from "@/features/athletes/raceSite";
 import { importResults, importToast } from "@/features/athletes/resultsImport";
 import { saveRaceResults } from "@/features/athletes/races";
 
@@ -71,7 +70,7 @@ export function DocsTab({ orgId, race, onRace, onShow, showing }) {
         try {
           let patch;
           if (d.kind === "results") {
-            const f = new File([await getStored(d.file, "application/pdf")], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" });
+            const f = new File([await siteDocBlob(race.id, d)], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" });
             const got = await takeResults(f);
             patch = { state: "used", note: importToast(got), undo: { file: got.results.files?.at(-1)?.id || "" } };
           } else patch = await applyList(orgId, race.id, d);
@@ -108,7 +107,7 @@ export function DocsTab({ orgId, race, onRace, onShow, showing }) {
     }
     setBusy("");
   };
-  const load = useCallback(() => getStored(view.file, "application/pdf"), [view]);
+  const load = useCallback(() => siteDocBlob(race.id, view), [race?.id, view]);
   const close = useCallback(() => setView(null), []);
 
   const list = (docs || []).slice().sort((a, b) => ORDER.indexOf(ORDER.includes(a.kind) ? a.kind : "other") - ORDER.indexOf(ORDER.includes(b.kind) ? b.kind : "other") || String(b.at).localeCompare(String(a.at)));
