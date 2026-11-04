@@ -12,7 +12,7 @@ import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
 import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan } from "@/lib/raceLive";
 import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
-import { cleanCourseShow, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
+import { cleanCourseShow, cleanEvOne, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
 import { cleanCamBy, cleanOnAir } from "@/lib/raceCams";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
@@ -324,7 +324,15 @@ export function saveRounds(orgId, id, sid, entry, base = null) {
   return setDoc(live(orgId, id), { rounds: { [sid]: patch } }, { merge: true });
 }
 export const saveScreen = (orgId, id, s) => setDoc(live(orgId, id), { screen: cleanScreen({ ...s, at: new Date().toISOString() }) }, { merge: true });
-export const saveCourseShow = (orgId, id, c) => setDoc(live(orgId, id), { courseShow: cleanCourseShow(c) }, { merge: true });
+// Evre atamaları (ev) ve sabitlenen öğe (pin) burada yazılmaz: eski kopyayla başka ekranın seçimi ezilmesin (saveEvre, savePin alan alan yazar)
+export const saveCourseShow = (orgId, id, c) => {
+  const { ev: _e, pin: _p, ...rest } = cleanCourseShow(c);
+  return setDoc(live(orgId, id), { courseShow: rest }, { merge: true });
+};
+// Tek evrenin görüntüsü + gösterilecekler + süre (Yayın › Ekran); yalnız courseShow.ev.<evre> değişir
+export const saveEvre = (orgId, id, k, e) => setDoc(live(orgId, id), { courseShow: { ev: { [k]: cleanEvOne(e, k) } } }, { mergeFields: [new FieldPath("courseShow", "ev", k)] });
+// Elle sabitlenen öğe; boş = otomatik (sesle açılan "one" da kalkar)
+export const savePin = (orgId, id, item) => setDoc(live(orgId, id), { courseShow: { pin: item || "", ...(item ? {} : { one: "" }), scene: "" } }, { merge: true });
 // Ekrandaki yarış (sid boş = en son başlayan) ve kameraların grupları (alan bütün yazılır: çözülen grup silinir)
 export const saveOnAir = (orgId, id, o) => setDoc(live(orgId, id), { onAir: cleanOnAir(o) }, { merge: true });
 export const saveCamBy = (orgId, id, m) => setDoc(live(orgId, id), { camBy: cleanCamBy(m) }, { mergeFields: ["camBy"] });
