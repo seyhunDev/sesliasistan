@@ -3188,7 +3188,7 @@ function scBoards(data) {
   if (official.length)
     return official.map((f) => {
       const n = Math.max(0, ...f.rows.map((r) => (Array.isArray(r.r) ? r.r.length : 0)));
-      return { cls: f.cls || "", tag: "Resmî sonuç", races: Array.from({ length: Math.min(n, 8) }, (_, i) => i + 1), rows: f.rows.slice(0, SC_RANK).map((r) => ({ p: r.place || r.code, sail: r.sail, name: r.name, club: r.club, sc: (Array.isArray(r.r) ? r.r : []).slice(0, 8).map((v) => String(v ?? "")), t: r.pts })), total: f.rows.length };
+      return { cls: f.cls || "", tag: "Resmî sonuç", races: Array.from({ length: Math.min(n, 8) }, (_, i) => i + 1), rows: f.rows.slice(0, SC_RANK).map((r, i) => ({ p: r.rank || r.place || r.code || i + 1, sail: r.sail, name: r.name, club: r.club, sc: (Array.isArray(r.r) ? r.r : []).slice(0, 8).map((v) => String(v ?? "")), t: r.pts })), total: f.rows.length };
     });
   const year = +String(data.race?.startDate || "").slice(0, 4) || new Date().getFullYear();
   let prov = [];
@@ -3662,11 +3662,11 @@ function Sc06({ data, prog, now, today }) {
   );
 }
 // Hangi sahne (lib/raceRounds sceneOf; Yayın sayfası da aynı işlevle bakar)
-function scPick({ data, sel, mode, hasVideo, now }) {
+function scPick({ data, sel, mode, hasVideo, now, far }) {
   const route = sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait");
   const rec = data.screen?.kind === "rec";
   const has = { "01": true, "02": true, "03": mode === "between" || scBoards(data).length > 0, "04": rec || data.courseShow?.vid?.["04"]?.kind === "rec", "05": !!courseSvg(data, route), "06": true };
-  return sceneOf({ show: data.courseShow, rec, mode, hasVideo, now, has });
+  return sceneOf({ show: data.courseShow, rec, mode, hasVideo, now, has, far });
 }
 function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, onFull }) {
   const plan = data.plan;
@@ -3804,7 +3804,7 @@ export function LiveScreen({ id, y = "" }) {
   if (isCur) {
     const apDown = st !== "ap" && !!data.plan.warn && nowMs < Date.parse(data.plan.warn);
     const mode = phase === "summary" ? "summary" : seqMode ? "seq" : st === "ap" || apDown ? "ap" : racing ? "race" : between ? "between" : st === "none" && data.plan.day === today ? "none" : "wait";
-    const sc = scPick({ data, sel, mode, hasVideo, now: nowMs });
+    const sc = scPick({ data, sel, mode, hasVideo, now: nowMs, far: cs.rem == null || cs.rem > 600 });
     // sahnenin önceden seçilen videosu (Yayın › Ekran › sahne)
     const sd = { ...data, screen: sceneScreen(data.screen, data.courseShow, sc) };
     const vid = ["live", "drone", "src", "rec", "boats"].includes(sd.screen?.kind);
