@@ -23,9 +23,11 @@ const toBase64 = (file) =>
 export async function readResults(file, names = []) {
   const kind = await kindOf(file);
   let body;
+  let npg = 0;
   if (kind === "pdf") {
     // Yazılı PDF'te sütun başlıkları (Rank, Y.NO, AD SOYAD, Q1…F2, Nett) tanınırsa yapay zekasız okunur (Seyhun 2026-11-03)
     const pages = await pdfPages(file).catch(() => []);
+    npg = pages.length;
     const fleets = cleanSheet(resultTableOf(pages));
     if (fleets.reduce((n, f) => n + f.rows.length, 0) >= 3) return { kind, fleets };
     if (file.size > MAX) throw new Error("PDF 4 MB'tan büyük. Yalnız sonuç sayfalarını ayrı PDF yap ya da fotoğrafını yükle.");
@@ -39,8 +41,12 @@ export async function readResults(file, names = []) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ ...body, names }),
     timeout: 65000,
+  }).catch((e) => {
+    throw new Error(`Sonuçlar okunamadı: ${kind === "pdf" ? `${npg ? `${npg} sayfalık PDF'te ` : ""}sonuç tablosunun sütunları tanınmadı, yapay zeka da` : "yapay zeka"} zamanında yanıt vermedi (${e?.message || "bağlantı"}).`);
   });
   const p = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(p.error || (res.status >= 500 ? "Sonuçlar okunamadı (uzun sürdü). Tekrar dene." : "Sonuçlar okunamadı"));
+  // Gerçek nedeni söyle (Seyhun 2026-11-04 "okunamadı diyor"): tablo tanınmadı mı, yapay zeka mı yetişemedi
+  const why = kind === "pdf" ? `${npg ? `${npg} sayfalık PDF'te ` : ""}sonuç tablosunun sütunları tanınmadı; yapay zekaya gönderildi` : "Fotoğraf yapay zekaya gönderildi";
+  if (!res.ok) throw new Error(p.error ? `${p.error} (${why})` : res.status >= 500 || res.status === 0 ? `Sonuçlar okunamadı: ${why}, yanıt zamanında gelmedi.` : `Sonuçlar okunamadı: ${why}.`);
   return { kind, fleets: cleanSheet(p.fleets) };
 }
