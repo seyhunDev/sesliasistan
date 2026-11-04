@@ -902,3 +902,9 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
 /* Mavi zemin + beyaz yazı (Seyhun 2026-11-03: gün penceresinde düğme yazısı okunmuyordu): koyu temada ve lacivert bölümde
    vurgu açık mavi olduğu için yazı koyu lacivert olur; açık temada beyaz kalır */
 .bg-acc.text-white { color: var(--on-acc); }
+
+/* Düğme içi işlem halkası (Button onClick Promise döndürünce; Seyhun 2026-11-04): veri gidene kadar döner, düğme soluklaşmaz */
+.btn-spin { display: inline-block; width: 1.05em; height: 1.05em; flex: none; border-radius: 50%; border: 0.16em solid currentColor; border-right-color: transparent; animation: btn-spin 0.7s linear infinite; }
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+.btn[aria-busy="true"]:disabled { opacity: 1; cursor: progress; }
+@media (prefers-reduced-motion: reduce) { .btn-spin { animation-duration: 1.6s; } }

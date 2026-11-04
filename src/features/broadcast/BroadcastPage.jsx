@@ -170,6 +170,13 @@ export function BroadcastPage({ orgId, id }) {
     };
   }, [tab, srcUrls]);
 
+  // gün değişince (sayfa gece açık kaldıysa) plan bugüne geçer ve kaydedilir
+  useEffect(() => {
+    if (!plan.day || plan.day >= today) return;
+    const rp = rollPlan(plan, today);
+    const t = setTimeout(() => (setPlan(rp), savePlan(orgId, id, rp).catch(() => {})), 0);
+    return () => clearTimeout(t);
+  }, [today, plan, orgId, id]);
   // Dönüşler canlı (iki görevli: biri şamandırada, biri finişte; Seyhun 2026-11-02 inceleme)
   useEffect(() => {
     const tick = () => setCapNow(Date.now());
@@ -207,12 +214,16 @@ export function BroadcastPage({ orgId, id }) {
   const cur = tr.t.end != null || tr.t.left != null ? live.starts.find((x) => x.id === rf.ridOf(tr.t)) : null;
   // Program: değişiklik hemen görünür, kayıt arkada (savePlan)
   const tomorrow = new Date(Date.parse(`${today}T12:00:00`) + 864e5).toLocaleDateString("sv-SE");
+  // Yayın gece açık kaldıysa (Seyhun 2026-11-04 "tehir ettim, canlı ekranda hiç görünmedi"): plan dünde kalıyordu, tehir dünün gününe
+  // yazılıp ekranda yeni günle siliniyordu. Gün değişince plan önce bugüne geçer.
   const changePlan = (patch) => {
-    const next = cleanPlan({ ...plan, ...patch });
+    const base = plan.day && plan.day < today ? rollPlan(plan, today) : plan;
+    const next = cleanPlan({ ...base, ...(patch.day && patch.day < today ? { ...patch, day: today } : patch) });
     setPlan(next);
-    savePlan(orgId, id, next).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
+    // Promise döner: düğme veri gidene kadar halka gösterir
+    return savePlan(orgId, id, next).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
   };
-  const planDay = plan.day || today;
+  const planDay = plan.day && plan.day >= today ? plan.day : today;
   const nextPlan = plan.order[0] || null; // sıradaki start (listenin ilk bekleyeni)
   // Tehir: start saati min dakika ileri alınır (0 = belirsiz, saat silinir), sebep ekranda yazar; "Erteleme kalktı" eski saati geri getirir
   // Geri sayımda tehir (Seyhun 2026-11-02 "tehir yaptım ama süre durmadı"): sayaç durur, start verilmemiş yarış silinir ve programın
@@ -282,8 +293,9 @@ export function BroadcastPage({ orgId, id }) {
     }
     const raised = apRaise(plan, Date.now(), a.min, a.why, a.land, a.auto);
     if (seq != null) raised.ap = { ...raised.ap, seq, dur: t0.dur || 300 };
-    changePlan({ day: planDay, order, ...raised, ...extra });
+    const done = changePlan({ day: planDay, order, ...raised, ...extra });
     setAp(null);
+    return done;
   };
   // Bayrakla işlem (Seyhun 2026-11-03 19:23-19:28 "bayrakları tıklayarak yapalım, hepsinde onay"): Bayrak penceresinde bayrağa dokun → onay → Çek.
   // Tehir ailesi tehir akışını, abandone ve birinci tekrar yarışı geçersiz sayar, hazırlık sıradaki startın bayrağı olur, diğerleri ekranda kart.
@@ -298,8 +310,7 @@ export function BroadcastPage({ orgId, id }) {
     const s = signalOf(id);
     if (!s) return;
     const now = nowMs();
-    setFlagPick(null);
-    setFlagOpen(false);
+    let p = null;
     if (s.kind === "ap") {
       const a = { min: 0, why: AP_WHY[0], live: countingAt(now), land: !!s.land, auto: true };
       if (s.hours) {
@@ -308,28 +319,32 @@ export function BroadcastPage({ orgId, id }) {
         a.min = Number.isFinite(t2) ? Math.max(1, Math.round((t2 - 60e3 - now) / 60e3)) : 0;
         a.why = `${s.hours} saat tehir`;
       }
-      postpone(a, { ...(s.end ? dayDone() : {}), ...(s.land || s.end || s.hours ? sigNow(id) : {}) });
+      p = postpone(a, { ...(s.end ? dayDone() : {}), ...(s.land || s.end || s.hours ? sigNow(id) : {}) });
     } else if (s.kind === "void" || s.kind === "fs") {
       let ids = rid ? [rid] : runningIds(now);
       if (s.kind === "fs" && !rid) {
         const last = live.starts.filter((x) => x.day === today && !x.void && Date.parse(x.at) <= now).sort((x, y) => Date.parse(y.at) - Date.parse(x.at))[0];
         ids = last ? [last.id] : [];
       }
-      if (!ids.length) return toast(s.kind === "fs" ? "Start verilmiş yarış yok." : "Devam eden yarış yok.");
+      if (!ids.length) return (setFlagPick(null), setFlagOpen(false), toast(s.kind === "fs" ? "Start verilmiş yarış yok." : "Devam eden yarış yok."));
       const t0 = readTimer();
       if (t0.mode === "start" && ids.includes(rf.ridOf(t0))) writeTimer({ dur: t0.dur, end: null, left: null, zero: t0.end });
       const backs = ids.map((x) => apBack(x, false)).filter(Boolean).map((b) => (s.kind === "fs" ? { ...b, prep: "" } : b));
       rf.voidNow(ids, s.kind === "fs" ? "Genel geri çağırma" : "Abandone");
-      changePlan({ order: [...backs, ...plan.order], ...(s.end ? dayDone() : {}), ...(s.land || s.end ? sigNow(id) : {}) });
+      p = changePlan({ order: [...backs, ...plan.order], ...(s.end ? dayDone() : {}), ...(s.land || s.end ? sigNow(id) : {}) });
       if (s.kind === "fs") setRetryPick(false);
     } else if (s.kind === "prep") {
-      if (plan.order.length) editRow(0, { prep: id });
-      else changePlan({ prep: id });
+      p = plan.order.length ? editRow(0, { prep: id }) : changePlan({ prep: id });
     } else {
       const g = runningIds(now).map((x) => live.starts.find((y) => y.id === x)?.grp || L?.rounds?.[x]?.grp || "").filter(Boolean);
-      changePlan(sigNow(id, [...new Set(g)].join(" · ")));
+      p = changePlan(sigNow(id, [...new Set(g)].join(" · ")));
     }
-    toast(`${s.name} çekildi`);
+    // onay penceresi veri gidene kadar açık kalır (Çek düğmesinde halka), sonra kapanır ve bildirir
+    return Promise.resolve(p).then(() => {
+      setFlagPick(null);
+      setFlagOpen(false);
+      toast(`${s.name} çekildi`);
+    });
   };
   const lowerSig = () => changePlan({ sig: null });
   const lowerAp = () => changePlan({ day: planDay, ...apLower(Date.now(), readTimer().dur || 300, dev, plan.ap?.land, plan.ap?.auto) });
