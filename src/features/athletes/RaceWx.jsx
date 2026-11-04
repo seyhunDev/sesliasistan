@@ -134,7 +134,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
       {fill && !late && !d.err && (
         <div className="relative mt-3 flex min-h-[7rem] flex-1 flex-col">
           {d.at ? (
-            <RegionMap inline className="flex-1" place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
+            <RegionMap inline className="flex-1" place={d.at} day={sel} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} />
           ) : (
             <div className="ck-shim flex-1 rounded-[1.125rem]" aria-hidden="true" />
           )}
@@ -143,7 +143,7 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
       {!fill && !d.at && !mini && !late && !d.err && <div className="ck-shim mt-3 h-[18rem] rounded-[1.125rem]" aria-hidden="true" />}
       {!fill && d.at && (
         <div className="mt-3">
-          <RegionMap place={d.at} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} inline />
+          <RegionMap place={d.at} day={sel} station={ob?.station?.km <= 30 ? ob.station : null} obs={sel === today && ob?.station?.km <= 30 ? ob?.rows : null} inline />
         </div>
       )}
     </section>

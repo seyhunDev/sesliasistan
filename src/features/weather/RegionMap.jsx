@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
+import { todayStr } from "@/lib/utils/format";
 import { MAP_ATTR, MAP_STYLE, loadMapLibre } from "@/lib/maplibre";
 import { denseArrows, regionSteps, regionUrl, shapeRegion, mmColor, pTone, rainShare } from "@/lib/regionMap";
 import { colorOf } from "@/lib/windMap";
@@ -21,12 +22,20 @@ const DARK_STYLES = ["https://tiles.openfreemap.org/styles/fiord", "https://tile
 const RADAR_LIST = "https://api.rainviewer.com/public/weather-maps.json";
 const GRID = new Map(); // yer → { t, v } (30 dk)
 const HM = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: PLACE.tz });
+// Seçilen günün adı: Dün / Yarın, yoksa "6 Kas Per"
+function dayName(day, today) {
+  const t = Date.parse(`${today}T12:00:00Z`);
+  const k = Math.round((Date.parse(`${day}T12:00:00Z`) - t) / 864e5);
+  if (k === -1) return "Dün";
+  if (k === 1) return "Yarın";
+  return new Date(`${day}T12:00:00Z`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short", timeZone: "UTC" });
+}
 
-async function loadGrid(p) {
-  const k = `${(+p.lat).toFixed(3)},${(+p.lon).toFixed(3)}`;
+async function loadGrid(p, day = "") {
+  const k = `${(+p.lat).toFixed(3)},${(+p.lon).toFixed(3)},${day}`;
   const hit = GRID.get(k);
   if (hit && Date.now() - hit.t < 30 * 60e3) return hit.v;
-  const { url, pts } = regionUrl(p, PLACE.tz);
+  const { url, pts } = regionUrl(p, PLACE.tz, day);
   const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw new Error("grid");
   const v = shapeRegion(await r.json(), pts);
@@ -69,14 +78,15 @@ function arrowImage() {
   return g.getImageData(0, 0, 32, 32);
 }
 
-export function RegionMap({ place, station, obs, onPick, startOpen = false, onClose, mini = false, inline = false, className = "" }) {
+// day: sayfada seçilen gün ("YYYY-AA-GG"). Bugün değilse harita o günün 00–23 saatlerini gösterir (açılışta 12:00), radar ve ölçüm yok.
+export function RegionMap({ place, station, obs, day, onPick, startOpen = false, onClose, mini = false, inline = false, className = "" }) {
   const box = useRef(null);
   const map = useRef(null);
   const pick = useRef(onPick);
   const here0 = useRef(place);
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState(false);
-  const [grid, setGrid] = useState(null);
+  const [raw, setGrid] = useState(null);
   const [radar, setRadar] = useState([]);
   const [mode, setMode] = useState("wind");
   const [full, setFull] = useState(startOpen); // açık: tam ekran harita; kapalıyken yalnız "Harita" düğmesi
@@ -90,17 +100,27 @@ export function RegionMap({ place, station, obs, onPick, startOpen = false, onCl
     here0.current = place;
   }, [onPick, place]);
 
+  const today = todayStr();
+  const other = day && day !== today ? day : ""; // başka bir gün seçili
+  const grid = raw?.day === other ? raw : null; // gün değişince eski günün verisi gösterilmez
+  const [selDay, setSelDay] = useState(other);
+  if (selDay !== other) {
+    setSelDay(other);
+    setSel(null);
+    setPlay(false);
+  }
+
   const pk = `${place.lat},${place.lon}`;
   const gc = center?.pk === pk ? center : place; // seçilen yer değişince veri yeniden onun çevresinden
   const shown = full || mini || inline; // harita çiziliyor mu (kapalı mini: küçük önizleme)
   useEffect(() => {
     if (!shown) return;
     let on = true;
-    loadGrid(gc).then((v) => on && setGrid(v), () => {});
+    loadGrid(gc, other).then((v) => on && setGrid({ ...v, day: other }), () => {});
     return () => {
       on = false;
     };
-  }, [shown, gc.lat, gc.lon]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [shown, gc.lat, gc.lon, other]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!full) return;
     let on = true;
@@ -150,8 +170,8 @@ export function RegionMap({ place, station, obs, onPick, startOpen = false, onCl
   }, [full, shown, inline]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const now = useNow().getTime();
-  const steps = useMemo(() => regionSteps(grid, radar, mode, now), [grid, radar, mode, now]);
-  const nowIx = steps.findIndex((s) => s.now);
+  const steps = useMemo(() => regionSteps(grid, other ? [] : radar, mode, now, !!other), [grid, radar, mode, now, other]);
+  const nowIx = other ? Math.max(0, steps.findIndex((s) => s.hh === "12")) : steps.findIndex((s) => s.now); // başka günde açılış 12:00
   const ix = sel == null || sel >= steps.length ? Math.max(0, nowIx) : sel;
   const step = steps[ix];
 
@@ -258,7 +278,7 @@ export function RegionMap({ place, station, obs, onPick, startOpen = false, onCl
       </button>
     );
   const here = grid ? nearest(grid.spots, place) : null;
-  const ob = step && step.kind !== "fc" && obs?.find((o) => o.hh === step.hh);
+  const ob = !other && step && step.kind !== "fc" && obs?.find((o) => o.hh === step.hh);
   let info = "";
   if (step && here) {
     if (mode === "wind") info = step.i >= 0 ? `${windName(here.d[step.i])[0]} ${dirDeg(here.d[step.i])} ${knTxt(here.w[step.i], here.g[step.i])} kn${ob ? ` · ölçüm ${station?.name || ""} ${Math.round(ob.wind)} kn` : ""}` : "";
@@ -302,19 +322,27 @@ export function RegionMap({ place, station, obs, onPick, startOpen = false, onCl
           </button>
           <div className="relative h-8 min-w-0 flex-1">
             <div className="absolute inset-x-0 top-[9px] h-1 rounded-full bg-white/18" />
-            <div className="absolute left-0 top-[9px] h-1 rounded-full bg-white" style={{ width: `${nowPct}%` }} />
-            <div className="absolute top-1 h-3.5 w-0.5 bg-[#ff6b6b]" style={{ left: `${nowPct}%` }} />
+            {!other && <div className="absolute left-0 top-[9px] h-1 rounded-full bg-white" style={{ width: `${nowPct}%` }} />}
+            {!other && <div className="absolute top-1 h-3.5 w-0.5 bg-[#ff6b6b]" style={{ left: `${nowPct}%` }} />}
             <input type="range" min={0} max={Math.max(0, steps.length - 1)} value={ix} onChange={(e) => (setPlay(false), setSel(+e.target.value))} aria-label="Zaman" className="ck-range absolute inset-x-0 top-0 h-6 w-full" />
+            {other ? (
+              <div className="absolute inset-x-0 top-[1.15rem] text-[0.625rem] text-white/60">
+                <span className="absolute left-0">00</span>
+                <span className="absolute left-1/2 -translate-x-1/2">12</span>
+                <span className="absolute right-0">23</span>
+              </div>
+            ) : (
             <div className="absolute inset-x-0 top-[1.15rem] text-[0.625rem] text-white/60">
               {/* "Şimdi" başa yakınken "−2 sa" ile üst üste biniyordu (Seyhun 2026-11-04): o zaman başlangıç yazısı yazılmaz */}
               {nowPct >= 20 && <span className="absolute left-0">−2 sa</span>}
               <span className="absolute whitespace-nowrap" style={{ left: `${nowPct}%`, transform: `translateX(-${nowPct < 20 ? Math.round(nowPct * 2.5) : 50}%)` }}>Şimdi</span>
               <span className="absolute right-0">+24</span>
             </div>
+            )}
           </div>
         </div>
         <p className="mt-1.5 truncate text-[0.8125rem] font-semibold">
-          {step ? (step.now ? `Şimdi ${HM.format(step.at)}` : HM.format(step.at)) : "…"}
+          {step ? (other ? `${dayName(other, today)} ${HM.format(step.at)}` : step.now ? `Şimdi ${HM.format(step.at)}` : HM.format(step.at)) : "…"}
           {info && <span className="font-medium text-white/65"> · {info}</span>}
         </p>
       </div>

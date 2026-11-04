@@ -3,16 +3,17 @@
 import { gridOf } from "./windMap";
 
 export const SIZE = 7;
-export function regionUrl(p, tz = "Europe/Istanbul") {
+// day ("YYYY-AA-GG", Seyhun 2026-11-04 "gün değiştirirsem alttaki haritanın da günü değişsin"): verilirse o günün 24 saati; yoksa şimdiden −2 … +24 sa
+export function regionUrl(p, tz = "Europe/Istanbul", day = "") {
   const pts = gridOf(p, SIZE, SIZE);
+  const span = day ? { start_date: day, end_date: day } : { past_hours: "2", forecast_hours: "25" };
   const q = new URLSearchParams({
     latitude: pts.map((x) => x.lat).join(","),
     longitude: pts.map((x) => x.lon).join(","),
     hourly: "wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,precipitation_probability",
     wind_speed_unit: "kn",
     timezone: tz,
-    past_hours: "2",
-    forecast_hours: "25",
+    ...span,
   });
   return { url: `https://api.open-meteo.com/v1/forecast?${q}`, pts };
 }
@@ -34,9 +35,11 @@ export function shapeRegion(j, pts) {
 
 // Kaydırıcının adımları. Rüzgâr: saatlik, şimdiki saat "now". Yağış: geçmiş radar kareleri (10 dk) + şimdiden sonraki saatler (tahmin).
 // Adım: { at, hh, kind: "past" | "fc" | "radar", i (ızgara saati), r (radar karesi), now }
-export function regionSteps(grid, radar, mode, now) {
+// day: başka bir günün haritası; o günün saatleri sırayla (tahmin), radar ve "şimdi" yok
+export function regionSteps(grid, radar, mode, now, day = false) {
   if (!grid?.times?.length) return [];
   const hh = (t) => grid.times[t].slice(11, 13);
+  if (day) return grid.times.map((_, k) => ({ at: grid.at[k], hh: hh(k), kind: "fc", i: k, now: false }));
   const cur = grid.at.reduce((b, t, k) => (t <= now ? k : b), 0);
   if (mode === "wind") return grid.times.map((_, k) => ({ at: grid.at[k], hh: hh(k), kind: k <= cur ? "past" : "fc", i: k, now: k === cur }));
   const past = (radar || []).filter((f) => f.at <= now + 60e3).map((f, r, a) => ({ at: f.at, hh: "", kind: "radar", r: radar.indexOf(f), now: r === a.length - 1 }));
