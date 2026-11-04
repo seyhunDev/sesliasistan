@@ -2617,8 +2617,15 @@ function curWind(data, sel, isCur, now) {
   const { w: mine } = lastWind(data, sel, isCur);
   const fc = data.forecast;
   const tr = new Date(now + 3 * 3600e3);
-  const so = (fc?.obs || []).filter((o) => o.wind != null).at(-1);
   const fresh = mine?.kn != null && mine.at && now - Date.parse(mine.at) < 3600e3;
+  const c = curWind0(mine, fc, tr, fresh);
+  if (!c) return null;
+  // ölçülende sağanak yoksa (istasyon çoğu saat yazmaz) bu saatin tahmini sağanağı (Seyhun 2026-11-04 "asıl şiddet sağanakta")
+  const fg = (fc?.rows || []).find((r) => r.hh === tr.toISOString().slice(11, 13))?.gust;
+  return { ...c, fg: fg != null ? fg : null };
+}
+function curWind0(mine, fc, tr, fresh) {
+  const so = (fc?.obs || []).filter((o) => o.wind != null).at(-1);
   if (fresh) return { kn: mine.kn, dir: mine.dir, gust: mine.gust ?? null, range: mine.range || null, hh: tr.toISOString().slice(11, 13), man: true, by: `Parkur verisi ${trOf(mine.at).slice(11, 16)}` };
   // İstasyon "sakin" (SYNOP 00000: 0 kn, yön yok) bildirince ekranda oksuz "0 kn" kalıyordu (Seyhun 2026-11-04 "rüzgâr sıfır, yön, ok yok"):
   // o zaman bu saatin tahmini yazılır (ok, yön, kaynak "Tahmin"); tahmin de yoksa "Sakin"
@@ -2631,6 +2638,11 @@ function curWind(data, sel, isCur, now) {
 }
 // yön yazısı: ok yoksa sakin (0 kn) ya da değişken
 const dirText = (w) => (w?.dir != null ? `${dirShort(w.dir)} ${degText(w)}` : w?.kn === 0 ? "Sakin" : w?.kn != null ? "Değişken" : "");
+// sağanak yazısı: ölçülen varsa o, yoksa bu saatin tahmini; rüzgârdan büyük değilse yazılmaz
+const gustText = (c) => (c?.gust != null && c.gust > (c.kn ?? 0) ? `sağanak ${c.gust}` : c?.fg != null && c.fg > (c.kn ?? 0) ? `tahmini sağanak ${c.fg}` : "");
+// beklenen (tahmin) rüzgâr + sağanağı: "12 kn · sağanak 18"
+const cap = (t) => (t ? t[0].toLocaleUpperCase("tr-TR") + t.slice(1) : t);
+const expKn = (w) => (w?.kn != null ? `${w.kn} kn${w.gust != null && w.gust > w.kn ? ` · sağanak ${w.gust}` : ""}` : "");
 const degText = (w) => (w?.range ? `${w.range[0]}–${w.range[1]}°` : w?.dir != null ? `${Math.round(w.dir)}°` : "");
 // Bekleme ekranında şimdiki rüzgâr (Seyhun 2026-11-02 "rüzgâr yönü daha doğru ve profesyonel; manuel girildiyse gösterilsin"):
 // akış yönünü gösteren ok, derece ve pusula, knot; altında kaynak (Parkur verisi 14:05 turuncu ya da istasyon)
@@ -3042,6 +3054,7 @@ function WindChart({ rows, at }) {
   // start anı: bugünün saatlerinde kesirli konum
   let sx = null;
   let sk = null;
+  let sg = null;
   if (at && /^\d\d:\d\d$/.test(at)) {
     const hf = +at.slice(0, 2) + +at.slice(3) / 60;
     const i = rows.findIndex((x, j) => !x.tm && +x.hh <= hf && (rows[j + 1] ? rows[j + 1].tm || +rows[j + 1].hh > hf : false));
@@ -3049,6 +3062,8 @@ function WindChart({ rows, at }) {
       const f = hf - +rows[i].hh;
       sx = xs(i) + (xs(i + 1) - xs(i)) * f;
       sk = Math.round((rows[i].wind + (rows[i + 1].wind - rows[i].wind) * f) * 10) / 10;
+      // start'taki sağanak (Seyhun 2026-11-04 "asıl şiddet sağanakta")
+      if (rows[i].gust != null && rows[i + 1].gust != null) sg = Math.round(rows[i].gust + (rows[i + 1].gust - rows[i].gust) * f);
     }
   }
   const fs = { fontFamily: "var(--lv-font-c), var(--lv-font), sans-serif", fontWeight: 700 };
@@ -3088,8 +3103,11 @@ function WindChart({ rows, at }) {
             START
           </text>
           <circle cx={sx} cy={ys(sk)} r="4.5" fill="#fff" stroke="#ff3d77" strokeWidth="2.5" />
-          <text x={sx + 9} y={ys(sk) - 9} fontSize="15" fill="#fff" style={{ ...fs, fontWeight: 800 }}>
+          <text x={sx > W - 150 ? sx - 9 : sx + 9} y={ys(sk) - 9} textAnchor={sx > W - 150 ? "end" : "start"} fontSize="15" fill="#fff" style={{ ...fs, fontWeight: 800 }}>
             {`${String(sk).replace(".", ",")} kn`}
+            {sg != null && sg > sk ? (
+              <tspan fill="#ffd23f" fontSize="13">{` · sağanak ${sg}`}</tspan>
+            ) : null}
           </text>
         </g>
       ) : null}
@@ -3337,10 +3355,10 @@ function ScWind({ data, now, prog, big = false }) {
   const rows = big ? windAhead(data, now) : [];
   const at = (prog || []).find((x) => x.state === "next")?.at || "";
   if (!c && rows.length < 2) return null;
-  const gu = c && c.gust != null && c.gust > c.kn ? `Sağanak ${c.gust} kn` : "";
+  const gu = gustText(c);
   // elle ölçüm varken start'ta beklenen yazılmaz (Seyhun 2026-11-03 17:39: tahmin ile ölçüm çok farklı olabiliyor)
   const ew = c && big && data.plan?.at && !c?.man ? expWind(data.forecast, data.plan.at) : null;
-  const ex = ew?.kn != null ? `start'ta ${ew.kn} kn` : "";
+  const ex = ew?.kn != null ? `start'ta ${expKn(ew)}` : "";
   return (
     <div className={`sc-w${big ? " big" : ""}`}>
       {c ? (
@@ -3354,7 +3372,7 @@ function ScWind({ data, now, prog, big = false }) {
             </b>
             <span>{dirText(c)}</span>
           </div>
-          {gu || ex ? <div className="sc-gu">{[gu, ex].filter(Boolean).join(" · ")}</div> : null}
+          {gu || ex ? <div className="sc-gu">{cap([gu, ex].filter(Boolean).join(" · "))}</div> : null}
         </>
       ) : null}
       {rows.length >= 2 ? (
@@ -3387,7 +3405,7 @@ function ScWindLine({ data, now }) {
       {gArrow(c.dir)}
       <b>{`${c.kn} kn`}</b>
       <span>{dirText(c)}</span>
-      {c.gust != null && c.gust > c.kn ? <em>{`sağanak ${c.gust}`}</em> : null}
+      {gustText(c) ? <em>{gustText(c)}</em> : null}
     </div>
   );
 }
@@ -3862,7 +3880,7 @@ function Sc05({ data, sel, mode, now }) {
         {c ? (
           <section>
             <small>Rüzgâr</small>
-            <b>{`${c.kn} kn · ${dirText(c)}`}</b>
+            <b>{[`${c.kn} kn`, dirText(c), gustText(c)].filter(Boolean).join(" · ")}</b>
           </section>
         ) : null}
       </div>
@@ -3911,7 +3929,7 @@ function Sc06({ data, prog, now, today }) {
             {w?.kn != null ? (
               <div>
                 <small>Beklenen rüzgâr</small>
-                <b>{`${w.kn} kn`}</b>
+                <b>{expKn(w)}</b>
               </div>
             ) : null}
           </div>
