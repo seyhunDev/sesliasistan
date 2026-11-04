@@ -354,12 +354,16 @@ export function BroadcastPage({ orgId, id }) {
   const startGrp = (x) => x.grp || L?.rounds?.[x.id]?.grp || "";
   const pendingIds = (now, grp = null) => live.starts.filter((x) => x.day === today && !x.fin && !x.void && Date.parse(x.at) > now && (grp == null || startGrp(x) === grp)).map((x) => x.id);
   const grpOfTimer = () => (countingAt(nowMs()) ? cdGrp() : null);
-  const postpone = (a = ap, extra = {}) => {
+  // a: Tehir penceresinin seçimleri. Düğmeden tıklama olayı gelirse pencerenin seçimi alınır (Seyhun 2026-11-04 "tehir yapıyorum, süre geri
+  // saymaya devam ediyor": "Tehir çek" olayı a sanılıyordu; grup, yer, iniş, sebep yok sayılıyor, sayaç durmuyordu)
+  const postpone = (a0, extra = {}) => {
+    const a = a0 && typeof a0 === "object" && !a0.nativeEvent && !a0.target ? a0 : ap || {};
     let order = plan.order;
     if (a.grp) {
       // yalnız bir grup: o grubun geri sayımı sürüyorsa durur, start programa döner; grubun bekleyen startları tehirde (gün tehiri yok)
       const ids = pendingIds(nowMs(), a.grp);
-      if (grpOfTimer() === a.grp) stopCount();
+      const trid = countingAt(nowMs()) ? rf.ridOf(readTimer()) : "";
+      if (grpOfTimer() === a.grp || (trid && ids.includes(trid))) stopCount();
       order = [...ids.map((x) => apBack(x)).filter(Boolean), ...order];
       const done = changePlan({ day: planDay, order: grpHold(order, a.grp, { why: a.why, land: a.land, hours: a.hours, down: a.min ? new Date(nowMs() + a.min * 60e3).toISOString() : "" }) });
       setAp(null);
@@ -2353,7 +2357,7 @@ export function BroadcastPage({ orgId, id }) {
               <Button variant="secondary" className="flex-1" onClick={() => setAp(null)}>
                 Vazgeç
               </Button>
-              <Button className="flex-1" onClick={ap.edit ? fixAp : postpone}>
+              <Button className="flex-1" onClick={ap.edit ? fixAp : () => postpone(ap)}>
                 {ap.edit ? "Kaydet" : "Tehir çek"}
               </Button>
             </div>
