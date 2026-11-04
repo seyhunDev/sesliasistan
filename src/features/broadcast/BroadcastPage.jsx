@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- yayın küçük resimleri (YouTube, kayıt) doğrudan */
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { BackButton } from "@/components/ui/BackButton";
@@ -82,6 +82,14 @@ export function BroadcastPage({ orgId, id }) {
   const [rt, setRt] = useState(""); // seçili parkur kartının rotası (yazı: "1 2 3 F")
   const [rtId, setRtId] = useState("");
   const [tab, setTab] = useState("sure"); // Sekmeler (Seyhun 2026-11-02): Süre · Video · Parkur · Dönüşler
+  // Tek sayfa (Seyhun 2026-11-04 "MacBook'ta yönetim neden bu kadar karmaşık; tek sayfadan her şeyi yönetebilmeliyim"): iPad ve Mac'te
+  // sekme yok, bütün bölümler yan yana sütunlarda (48rem'den 2, 80rem'den 3 sütun); her sütun kendi kayar. Telefonda sekmeler aynı.
+  const board = useSyncExternalStore(subMq(BOARD_Q), () => window.matchMedia(BOARD_Q).matches, () => false);
+  const cols3 = useSyncExternalStore(subMq(COLS3_Q), () => window.matchMedia(COLS3_Q).matches, () => false);
+  const [slots, setSlots] = useState({});
+  const seen = (k) => board || tab === k;
+  // sekmeye geç; panoda o bölüme kayar (ör. Süre'deki "Dönüşler")
+  const goTab = (k) => (setTab(k), board && slots[k]?.parentElement?.scrollIntoView({ behavior: "smooth", block: "start" }));
   const [cap, setCap] = useState(""); // ekranın altındaki yazı (screen.caption)
   const [capInit, setCapInit] = useState(false);
   const [capNow, setCapNow] = useState(0); // otomatik yazının önizlemesi için saat (5 sn)
@@ -171,7 +179,7 @@ export function BroadcastPage({ orgId, id }) {
   // Yayında mı (Video sekmesi açıkken 45 sn'de bir; YouTube, sunucuda /api/yayin-durum)
   const srcUrls = srcList.map((x) => x.url).filter(Boolean).join("|");
   useEffect(() => {
-    if (tab !== "video" || !srcUrls) return;
+    if (!(board || tab === "video") || !srcUrls) return;
     let on = true;
     const ask = () =>
       document.visibilityState === "visible" &&
@@ -185,12 +193,12 @@ export function BroadcastPage({ orgId, id }) {
       on = false;
       clearInterval(t);
     };
-  }, [tab, srcUrls]);
+  }, [tab, board, srcUrls]);
 
   // Program sekmesi açılınca günlerin saati, "yok" günleri ve maddeleri belgeden tazelenir (siteden gelen talimat ya da başka telefon
   // arada yazdıysa eski hâli üstüne yazılmasın; yarış sistemi haritası 2026-11-04 riski)
   useEffect(() => {
-    if (tab !== "program") return undefined;
+    if (!(board || tab === "program")) return undefined;
     let on = true;
     loadRoundsOf(orgId, id)
       .then((d) => on && d?.plan && setPlan((p) => cleanPlan({ ...p, daily: d.plan.daily, times: d.plan.times, off: d.plan.off, agenda: d.plan.agenda })))
@@ -198,7 +206,7 @@ export function BroadcastPage({ orgId, id }) {
     return () => {
       on = false;
     };
-  }, [tab, orgId, id]);
+  }, [tab, board, orgId, id]);
   // gün değişince (sayfa gece açık kaldıysa) plan bugüne geçer ve kaydedilir
   useEffect(() => {
     if (!plan.day || plan.day >= today) return;
@@ -328,14 +336,14 @@ export function BroadcastPage({ orgId, id }) {
       rf.choose(v);
       if (back) changePlan({ order: [{ ...back, prep: "" }, ...plan.order] });
       setRetryPick(false);
-      setTab("sure");
+      goTab("sure");
       return;
     }
     if (v !== "Tehir" || !rf.ask?.canDrop) return rf.choose(v);
     const back = apBack(rf.ask.id, false);
     if (back) changePlan({ order: [back, ...plan.order] });
     rf.choose("");
-    setTab("sure");
+    goTab("sure");
     setAp({ min: 1, why: AP_WHY[0], live: false, now: true, auto: true });
   };
   // Tehir (Seyhun 2026-11-02 "geri sayımın herhangi bir yerinde tehir; 1 dk sonra indir, 5 dk sonra indir ya da belirsiz; indikten 1 dk sonra
@@ -1091,7 +1099,6 @@ export function BroadcastPage({ orgId, id }) {
   const orangeOn = orangeUp(plan, today);
   // Günün ilk startı henüz verilmediyse ilk start saati (Süre kartında geri sayım: uyarı işareti = start − süre)
   const firstAt = plan.status !== "ap" && plan.status !== "done" && !races.some((r) => r.rows.some((y) => y.start)) ? dayTime(plan, planDay) || plan.at : "";
-  const wide = useSyncExternalStore(subWide, isWide, () => false);
   // Turuncu bayrak çek / indir: her bayrak işlemi onay sorar (Seyhun kuralı); onaylanınca kayıt bitene kadar düğmede halka
   const askOrange = (up) =>
     confirmIt({
@@ -1110,7 +1117,8 @@ export function BroadcastPage({ orgId, id }) {
   const apSig = signalOf(apSigId(plan));
 
   return (
-    <main className="masa mx-auto max-w-[30rem] px-5 md:max-w-[44rem] pb-[calc(env(safe-area-inset-bottom)+7rem)]">
+    <Board.Provider value={board ? slots : null}>
+    <main className={`masa${board && !needSetup ? " board" : ""} mx-auto max-w-[30rem] px-5 md:max-w-[44rem] pb-[calc(env(safe-area-inset-bottom)+7rem)]`}>
       <section className={`ck -mx-5 px-5 ${slim ? "pb-2" : "pb-9"} pt-[calc(0.75rem+env(safe-area-inset-top))]`} aria-label="Yayın">
         {/* Ince üst çubuk (Seyhun 2026-11-03 yonetim/ornek-A): geri, yarış adı, Yayında, ⋯; büyük sayaç kalktı, süre her grubun satırında */}
         <header className="flex items-center gap-2.5">
@@ -1183,9 +1191,9 @@ export function BroadcastPage({ orgId, id }) {
 
       <div className={`relative -mx-5 space-y-6 bg-bg px-5 pb-1 ${slim ? "pt-2" : "-mt-6 rounded-t-[1.75rem] pt-5"}`}>
         {/* Yayın masası (Seyhun 2026-11-02, masa/B-koyu-masa.png): sekmeler tek kartta, altında kısa durum; iş düğmeleri altta sabit */}
-        {needSetup ? null : <MasaTabs value={tab} onChange={setTab} tabs={tabInfo} />}
-        {!needSetup && tab === "sure" ? (
-          <>
+        {needSetup || board ? null : <MasaTabs value={tab} onChange={setTab} tabs={tabInfo} />}
+        {!needSetup && seen("sure") ? (
+          <Pane k="sure">
         {/* Bugün (Seyhun 2026-11-02 tasarım yayin-tasarim/startlar/startlar-yeni.png): gruplar yarış oluşturulurken seçilir (üstte); liste yarış
             yarış, her yarışın altında grupları ve tek durum (Bitti · Yarışta · Abandone, Sıradaki, Bekliyor). "+ Yarış" sıradaki yarışı
             bütün gruplarıyla ekler. Biten yarış tek satıra kapanır (dokununca açılır). */}
@@ -1417,7 +1425,7 @@ export function BroadcastPage({ orgId, id }) {
                                   </>
                                 ) : (
                                   <>
-                                    <Button variant="secondary" size="sm" full={false} onClick={() => (setSelId(s.id), setTab("donus"))}>
+                                    <Button variant="secondary" size="sm" full={false} onClick={() => (setSelId(s.id), goTab("donus"))}>
                                       Dönüşler
                                     </Button>
                                     {live || isUp ? (
@@ -1514,10 +1522,10 @@ export function BroadcastPage({ orgId, id }) {
                 </Button>
               )}
             </MasaBar>
-          </>
+          </Pane>
         ) : null}
-        {!needSetup && tab === "program" ? (
-          <>
+        {!needSetup && seen("program") ? (
+          <Pane k="program">
         {/* Program (Seyhun 2026-11-04 "çok karışık, zor; yeniden tasarla"): üstte günler (+ Gün ekle), altta seçili günün kartı: Yarış Var/Yok,
             tek İlk start saati (günler farklıysa "Her güne"), canlı ekranda görünen programın maddeleri (dokun: düzelt/sil, + ekle), o günün
             yapılan yarışları (dokun: Sil). Bekleyen startlar Süre'de. "Programı ekle" alttan açılır (fotoğraf, PDF ya da yazı → yapay zekâ) */}
@@ -1678,10 +1686,10 @@ export function BroadcastPage({ orgId, id }) {
             />
           ) : null}
         </Sheet>
-          </>
+          </Pane>
         ) : null}
-        {!needSetup && tab === "video" ? (
-          <>
+        {!needSetup && seen("video") ? (
+          <Pane k="video">
         {/* Video (Seyhun 2026-11-02 "önce ben göreyim, sonra ekrana alayım"; örnek drone-yayin/coklu onaylandı): solda Önizleme (yalnız burada),
             sağda Ekranda (izleyicinin gördüğü); altta canlı kaynaklar (Drone 1-3, telefon, kamera; Yayında göstergesi), sonra kayıtlar */}
         <section>
@@ -1896,10 +1904,10 @@ export function BroadcastPage({ orgId, id }) {
             {pvName ? `${pvName.length > 14 ? "Ekrana al" : `${pvName}'i ekrana al`}` : "Ekrana al"}
           </Button>
         </MasaBar>
-          </>
+          </Pane>
         ) : null}
-        {!needSetup && tab === "parkur" ? (
-          <>
+        {!needSetup && seen("parkur") ? (
+          <Pane k="parkur">
         {/* Parkur (Seyhun 2026-11-04 örnek parkur-pro onaylandı): büyük harita (sol üstte kart A · B · +, sağ üstte tür), altında üç gösterge
             Rüzgâr · Eksen · Hat, rota şeridi START → F + Düzelt; Gruplar tek satır (dokun: grubun kartı sıradakine geçer); Konumlar 6 kutu
             (girilmeyene dokun: Buradayım; girilene dokun: Buradayım / Sil); Ölçümler son üç satır, Tümü */}
@@ -2072,10 +2080,10 @@ export function BroadcastPage({ orgId, id }) {
             {cListen ? "Bitti" : "Konuş"}
           </Button>
         </MasaBar>
-          </>
+          </Pane>
         ) : null}
-        {!needSetup && tab === "sporcu" ? (
-          <>
+        {!needSetup && seen("sporcu") ? (
+          <Pane k="sporcu">
             {/* Sporcu (Seyhun 2026-11-03): gruplar, sporcu listesi, gün gün renk listesi, sonuçlar; Dönüşler bu listeyi kullanır */}
             <AthletesTab orgId={orgId} raceId={id} plan={plan} onSets={(sets) => changePlan({ sets, cls: sets[0]?.cls || "", grps: sets[0]?.grps || [] })} entries={entries} groups={groups} today={today} days={days} />
             <MasaBar>
@@ -2084,11 +2092,11 @@ export function BroadcastPage({ orgId, id }) {
               </Link>
               <Button onClick={() => setList(true)}>Liste yükle</Button>
             </MasaBar>
-          </>
+          </Pane>
         ) : null}
-        {!needSetup && tab === "belge" ? <DocsTab orgId={orgId} race={race} onRace={setRace} onShow={() => (putPin("rank"), toast("Genel sıralama ekranda"))} showing={shNow.item === "rank"} /> : null}
-        {!needSetup && tab === "donus" ? (
-          <>
+        {!needSetup && seen("belge") ? <Pane k="belge"><DocsTab orgId={orgId} race={race} onRace={setRace} onShow={() => (putPin("rank"), toast("Genel sıralama ekranda"))} showing={shNow.item === "rank"} /></Pane> : null}
+        {!needSetup && seen("donus") ? (
+          <Pane k="donus">
         {/* Grup şeridi (Seyhun 2026-11-04 aynı anda üç grup): Dönüşler, Ceza ve Sesle gir seçili gruba yazar; önce yarışta olanlar, sonra bugün bitenler */}
         {pickable.length > 1 ? (
           <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1" aria-label="Grup">
@@ -2162,14 +2170,16 @@ export function BroadcastPage({ orgId, id }) {
             Sesle gir
           </Button>
         </MasaBar>
-          </>
+          </Pane>
         ) : null}
         {/* Tekne takibi (Seyhun 2026-11-02): teknedeki telefonların konumu, şamandıra yanından geçince dönüş (features/tracking).
             Sekme değişince de takılı kalır (algılama sayfa açıkken sürer), yalnız Dönüşler'de görünür */}
-        <section className={!needSetup && tab === "donus" ? "" : "hidden"}>
+        <Pane k="track">
+        <section className={!needSetup && seen("donus") ? "" : "hidden"}>
           <Head title="Tekne takibi" />
           <TrackPanel orgId={orgId} raceId={id} starts={liveStarts(live.starts, L?.timer, today).map((x) => ({ ...x, grp: x.grp || L?.rounds?.[x.id]?.grp || "" }))} rounds={L?.rounds || {}} groupOf={groupMap(groupsOn(groups, today))} course={course} />
         </section>
+        </Pane>
       </div>
 
       {/* ⋯ menüsü: ekran ve link, sonuç PDF'i (ayrı sayfa), kayıt listesi, gün durumu; Günü bitir bir daha sorar (yanlış dokunuş) */}
@@ -2506,38 +2516,52 @@ export function BroadcastPage({ orgId, id }) {
             document.body,
           )
         : null}
-      {/* Geniş ekran (Seyhun 2026-11-04 "MacBook'ta telefondaki gibi duruyor"; örnek onaylandı): solda yönetim sütunu, sağda izleyicinin gördüğü
-          canlı ekran 16:9 ve altında Ekranda · Sıradaki · Durum. Telefonda ve iPad dikte yok (çerçeve hiç yüklenmez) */}
-      {wide ? (
-        <aside className="masa-wide" aria-label="Canlı ekran">
-          <div className="masa-wide-h">
-            <span className="masa-wide-live">Canlı</span>
-            İzleyicinin gördüğü
-            <a href={`/canli/${id}`} target="_blank" rel="noreferrer" className="masa-b ml-auto">
-              Ayrı aç
-            </a>
-          </div>
-          <iframe src={`/canli/${id}`} title="Canlı ekran" className="masa-wide-scr" />
-          <div className="masa-wide-g">
-            <div>
-              <small>Ekranda</small>
-              <b>{onScreen ? monName : "Grafik"}</b>
-              <span>{onScreen ? (onScreen.pause ? "Ara verildi" : "Yayında") : "Video yok"}</span>
+      {/* Tek sayfa panosu: sütunlar, her bölümün başlığı (sekmenin adı ve kısa durumu) ve yeri; bölümlerin içeriği sekmelerdekinin aynısı
+          (Pane ile buraya taşınır). Canlı ekran küçük, Mac'te sağ sütunun en üstünde, iPad'de ikinci sütunun üstünde */}
+      {board && !needSetup ? (
+        <div className="masa-board" style={{ gridTemplateColumns: `repeat(${cols3 ? 3 : 2}, minmax(0, 1fr))` }}>
+          {(cols3 ? BOARD3 : BOARD2).map((col, i) => (
+            <div key={`${cols3 ? 3 : 2}-${i}`} className="masa-col">
+              {col.map((k) => {
+                if (k === "canli")
+                  return (
+                    <section key={k} className="masa-pn" aria-label="Canlı ekran">
+                      <div className="masa-pnh">
+                        <b>Canlı ekran</b>
+                        <a href={`/canli/${id}`} target="_blank" rel="noreferrer" className="masa-b ml-auto">
+                          Ayrı aç
+                        </a>
+                      </div>
+                      <iframe src={`/canli/${id}`} title="Canlı ekran" className="masa-wide-scr" />
+                    </section>
+                  );
+                const t = tabInfo.find((x) => x[0] === k);
+                return (
+                  <section key={k} className="masa-pn" aria-label={t?.[1] || ""}>
+                    {t ? (
+                      <div className="masa-pnh">
+                        <b>{t[1]}</b>
+                        <small>
+                          {t[3] ? <i aria-hidden="true" /> : null}
+                          {t[2]}
+                        </small>
+                      </div>
+                    ) : null}
+                    <div
+                      className="masa-pnb space-y-6"
+                      ref={(el) => {
+                        if (el) setSlots((m) => (m[k] === el ? m : { ...m, [k]: el }));
+                      }}
+                    />
+                  </section>
+                );
+              })}
             </div>
-            <div>
-              <small>Sıradaki start</small>
-              <b>{hero ? (hero.cd ? mmss(Math.max(0, heroPaused ? tr.t.left : tr.rem)) : dayTime(plan, planDay) || plan.at || "—") : "—"}</b>
-              <span>{hero ? [`${hero.n}. yarış`, heroX.grp ? `${heroX.grp} grup` : heroE?.cls].filter(Boolean).join(" · ") : "Sırada yarış yok"}</span>
-            </div>
-            <div>
-              <small>Durum</small>
-              <b>{plan.status === "ap" ? "Tehir" : plan.status === "done" ? "Gün bitti" : hero?.cd ? "Geri sayım" : orangeOn ? "Turuncu çekili" : "Bekliyor"}</b>
-              <span>{plan.status === "ap" ? apText(plan) : orangeOn ? `${hm(plan.orange)}'den beri` : ""}</span>
-            </div>
-          </div>
-        </aside>
+          ))}
+        </div>
       ) : null}
     </main>
+    </Board.Provider>
   );
 }
 
@@ -2739,15 +2763,29 @@ function FirstStart({ day, at, dur }) {
     </div>
   );
 }
-// Geniş ekran (MacBook, iPad yatay): 64rem ve üstü
-const WIDE_Q = "(min-width: 64rem)";
-const subWide = (cb) => {
-  const m = window.matchMedia(WIDE_Q);
-  m.addEventListener("change", cb);
-  return () => m.removeEventListener("change", cb);
-};
-const isWide = () => window.matchMedia(WIDE_Q).matches;
+// Tek sayfa panosu (iPad, Mac): 48rem'den iki sütun, 80rem'den üç sütun. Hangi bölüm hangi sütunda: Süre en solda (asıl iş),
+// Ekran ortada, canlı ekran ve uzun listeler (Dönüş, Belgeler, Sporcu) sağda
+const BOARD_Q = "(min-width: 48rem)";
+const COLS3_Q = "(min-width: 80rem)";
+const BOARD3 = [["sure", "program"], ["video", "parkur"], ["canli", "donus", "track", "belge", "sporcu"]];
+const BOARD2 = [["sure", "program", "donus", "track", "belge"], ["canli", "video", "parkur", "sporcu"]];
+const mqSubs = {};
+const subMq = (q) =>
+  (mqSubs[q] ||= (cb) => {
+    const m = window.matchMedia(q);
+    m.addEventListener("change", cb);
+    return () => m.removeEventListener("change", cb);
+  });
+// Panoda bölüm içeriği kendi sütunundaki yerine taşınır (portal: durum kaybolmaz); telefonda olduğu yerde kalır
+const Board = createContext(null);
+function Pane({ k, children }) {
+  const slots = useContext(Board);
+  if (!slots) return children;
+  return slots[k] ? createPortal(children, slots[k]) : null;
+}
 function MasaBar({ children }) {
+  // panoda bölümün altında yapışık durur (o bölüm görünürken düğmeler elde), ekranın altına sabitlenmez
+  if (useContext(Board)) return <div className="masa-pbar flex gap-2">{children}</div>;
   return (
     <div data-pagebar="" className="masa-bar fixed inset-x-0 bottom-0 z-30">
       <div className="masa-barin mx-auto flex max-w-[30rem] gap-2 px-4 pt-2 md:max-w-[44rem]">{children}</div>
