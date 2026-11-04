@@ -1,8 +1,8 @@
-Commit: 848f718 · Canlı ekran: "14 gün" yazısı kesilmesin (#1142)
-Zaman: 2026-11-04-0846 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41780144930
+Commit: 185de38 · Tehir inince işaret kartı da kalkar; bayraklar tek çizim, AP üzeri 6 tam görünür (#1174)
+Zaman: 2026-11-04-1048 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41793108667
 
-TAM TEST · 04.11.2026 08:36:09
+TAM TEST · 04.11.2026 10:35:16
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,15 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1438/1440 geçti · 2 kalan · 622 sn
+SONUÇ: 1433/1439 geçti · 6 kalan · 814 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4442 test”
+      ✗ “4471 test”
           beklenen: hepsi geçer
-          olan:     4422/4442 geçti
+          olan:     4450/4471 geçti
+      ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
       ✗ “parkur kartları: varsayılan seçili, yeni kart, Başlat rotayı yazar, ekranda sahne” → [true,true,false,false,true] (beklenen: Seyhun 2026-11-02: her yarışın kendi parkur kartı olabilir; şimdiki varsayılan (A) ve seçili; Yayın › Parkur'da Yeni kart, rota yazma, seçme, silme; Başlat seçili kartın rotasını o yarışa yazar; canlı ekran süren yarışın rotasını, yoksa seçili kartı animasyonlu sahnede gösterir; /canli ve Yayın ⋯ menüsünde örnek yarış düğmesi)
       ✗ “canlı ekran yayın tasarımı: program, beklenen rüzgâr, yayın yazısı” → [true,true,true,false,true,true] (beklenen: Seyhun 2026-11-02 (tasarim7 onayı, 'profesyonel yelken yayını gibi yazı'): yarış öncesi video yokken ortada büyük geri sayım, ilk yarış + grup, beklenen rüzgâr (tahminin start saati), altta program kartları (1. yarış Mavi grup…); yarışta ve videolu beklemede sağ üstte program etiketleri (Bitti · Canlı · saat); gün sonu 'Gün bitti · N yarış' + yarış kartları + genel, şeritte yarının ilk startı ve beklenen rüzgârı (/api/canli forecastNext); Barlow / Barlow Condensed; arka foto 18px bulanık)
@@ -163,9 +164,12 @@ SONUÇ: 1438/1440 geçti · 2 kalan · 622 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 141/141
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 139/140
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Ana sayfa: 10/10
+  ✗ Ana sayfa: 8/9
+      ✗ “saat saat hava tablosu”
+          beklenen: hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
@@ -204,10 +208,32 @@ SONUÇ: 1438/1440 geçti · 2 kalan · 622 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 20/21
-  ✓ Yarış sayfası: 14/14
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 17/21
+  ✗ Yarış sayfası: 12/14
+      ✗ “yarıştan önce, sporcu seçili”
+          beklenen: çökmeden açılır, "gün kaldı" görünür
+          olan:     "gün kaldı" görünmedi
+      ✗ “havada gün düğmeleri”
+          beklenen: çökmeden açılır, "gün kaldı" görünür
+          olan:     "gün kaldı" görünmedi
   ✓ Antrenman: 2/2
-  ✓ Asılı bağlantı: 2/2
+  ✗ Asılı bağlantı: 1/2
+      ✗ “asılı bağlantıda yarıştan önceki sayfa”
+          beklenen: "gün kaldı" 5 sn içinde görünür (yükleniyor'da kalmaz)
+          olan:     görünmedi: Oluştur
+KAYIT
+Plan
+Tarih ve saat
+Görev
+Yapılacak iş
+Not
+Kısa not
+Doğum günü
+Hatırlat
+KULÜP
+Yoklama
+Bugün kim geldi
+Yarış
   ✗ Yayın: 2/3
       ✗ “video sekmesi sade”
           beklenen: açılır
