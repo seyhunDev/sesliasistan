@@ -93,7 +93,7 @@ function Site({ orgId, uid }) {
   };
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <header className="flex items-center gap-2.5">
           <BackButton href="/athletes/races" />
@@ -107,7 +107,7 @@ function Site({ orgId, uid }) {
           ))}
         </div>
       </section>
-      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="split-cols relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {fail && <LoadFail onRetry={again} />}
         {!data && !fail && (
           <RowList>

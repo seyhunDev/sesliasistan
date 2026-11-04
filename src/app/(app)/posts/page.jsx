@@ -68,7 +68,7 @@ function Posts({ orgId }) {
   const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
   const shown = tab === "old" ? old : live;
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Instagram">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -96,7 +96,7 @@ function Posts({ orgId }) {
         )}
       </section>
 
-      <div className="relative -mx-5 -mt-6 min-h-[50vh] rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="split-cols relative -mx-5 -mt-6 min-h-[50vh] rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {error && <p className="mb-3 text-center text-[0.875rem] text-rec">{error}</p>}
         {!posts ? (
           <Loading label="Gönderiler yükleniyor" />

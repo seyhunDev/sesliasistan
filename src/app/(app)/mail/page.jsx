@@ -356,7 +356,7 @@ export default function MailPage() {
   }[tab];
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {/* Yeni tasarım (2026-11-03): lacivert üstte ad, Ayarlar, tek toplam (kulüp: banka + kasa; Kişisel'de gelir − gider), sekmeler ve Banka'da arama */}
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Hesaplar">
         <header className="flex items-center gap-2.5">

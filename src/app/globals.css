@@ -1027,7 +1027,7 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
    dağılır (24rem'lik, sığdığı kadar). Yan boşluk yok. Takvim aynı yönde (solda lacivert ay). Telefonda ve dik iPad'de değişiklik yok. */
 @media (min-width: 64rem) {
   body[data-side] main.split.max-w-\[30rem\] { max-width: none; padding: 0; display: grid; grid-template-columns: 22rem minmax(0, 1fr); align-items: start; min-height: 100dvh; }
-  body[data-side] main.split > section.ck:first-child, body[data-side] main.split > .split-top { position: sticky; top: 0; margin: 0; height: 100dvh; overflow-y: auto; padding: calc(1.25rem + env(safe-area-inset-top)) 1.25rem 1.5rem; }
+  body[data-side] main.split > section.ck:first-of-type, body[data-side] main.split > .split-top { position: sticky; top: 0; margin: 0; height: 100dvh; overflow-y: auto; padding: calc(1.25rem + env(safe-area-inset-top)) 1.25rem 1.5rem; }
   body[data-side] main.split > .bg-bg { margin: 0; border-radius: 0; padding: calc(1.25rem + env(safe-area-inset-top)) 2rem 2.5rem; min-width: 0; }
   body[data-side] main.split > .bg-bg.split-cols { columns: 24rem; column-gap: 1.5rem; }
   body[data-side] main.split > .bg-bg.split-cols > * { break-inside: avoid; margin: 0 0 1.5rem !important; }
@@ -1035,7 +1035,7 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
 }
 @media (min-width: 80rem) {
   body[data-side] main.split.max-w-\[30rem\] { grid-template-columns: 26rem minmax(0, 1fr); }
-  body[data-side] main.split > section.ck:first-child, body[data-side] main.split > .split-top { padding-left: 1.75rem; padding-right: 1.75rem; }
+  body[data-side] main.split > section.ck:first-of-type, body[data-side] main.split > .split-top { padding-left: 1.75rem; padding-right: 1.75rem; }
 }
 /* split-main: sağdaki gövdede ana liste geniş sütunda, .split-side (ör. İngilizce kelime kartı) dar sağ sütunda */
 @media (min-width: 64rem) {
@@ -1043,7 +1043,7 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
   body[data-side] main.split > .bg-bg.split-main > * { margin: 0 0 1.5rem !important; min-width: 0; }
 }
 @media (min-width: 80rem) {
-  body[data-side] main.split > .bg-bg.split-main { grid-template-columns: minmax(0, 1fr) 22rem; grid-auto-flow: row dense; }
+  body[data-side] main.split > .bg-bg.split-main:has(> .split-side) { grid-template-columns: minmax(0, 1fr) 22rem; grid-auto-flow: row dense; }
   body[data-side] main.split > .bg-bg.split-main > * { grid-column: 1; }
   body[data-side] main.split > .bg-bg.split-main > .split-side { grid-column: 2; grid-row: 1 / span 20; }
 }
@@ -1082,3 +1082,8 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
   body[data-side] main.chat-view.fixed, body[data-side] .chat-blank { left: 41rem; }
 }
 @media (min-width: 48rem) { ul.card-grid.px-3\.5 { padding: 0; } ul.card-grid.px-3\.5 > li { padding-left: 0.875rem; padding-right: 0.875rem; } }
+/* Koyu (lacivert) tam sayfalar (Yoklama, Fitness, İngilizce, Yoklamam): Mac ve yatay iPad'de sayfa bütün genişliği kaplar, yan boşluk yok */
+@media (min-width: 64rem) {
+  body[data-side] main.navy.max-w-\[30rem\] { max-width: none; padding-left: 2rem; padding-right: 2rem; }
+  body[data-side]:has(main.navy) { background: #0b1a33; }
+}
