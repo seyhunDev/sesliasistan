@@ -1,8 +1,8 @@
-Commit: 7757bad · Canlı ekran: rüzgâr yazan her yerde sağanak (beklenen dahil); ölçümde yoksa bu saatin tahmini (#1190)
-Zaman: 2026-11-04-1215 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41803896481
+Commit: 2eea92b · Yayın › Süre: gruplar renkle ayrılır (#1191)
+Zaman: 2026-11-04-1234 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/41806563514
 
-TAM TEST · 04.11.2026 12:02:16
+TAM TEST · 04.11.2026 12:20:10
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1433/1439 geçti · 6 kalan · 770 sn
+SONUÇ: 1433/1439 geçti · 6 kalan · 833 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
