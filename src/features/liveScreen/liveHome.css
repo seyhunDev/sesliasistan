@@ -92,6 +92,7 @@
 .lh-logo { display: inline-flex; align-items: center; gap: 0.7em; padding: 0 2.2em; opacity: 0.55; white-space: nowrap; }
 .lh-logo svg, .lh-logo img { flex: none; width: 2.1em; height: 2.1em; object-fit: contain; }
 .lh-logo img { filter: grayscale(1) brightness(2.2) contrast(0.9); border-radius: 50%; }
+.lh-logo img.duz { border-radius: 0; }
 .lh-logo b { font-size: 1.05em; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #fff; }
 @keyframes lh-mq { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 

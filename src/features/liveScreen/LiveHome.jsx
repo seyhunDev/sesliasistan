@@ -76,7 +76,14 @@ function Logos() {
           {l.velora ? (
             <VeloraGlyph size={30} />
           ) : (
-            <img src={l.img} alt="" width={34} height={34} draggable={false} />
+            <img
+              src={l.img}
+              alt=""
+              width={34}
+              height={34}
+              draggable={false}
+              className={l.duz ? "duz" : undefined}
+            />
           )}
           <b>{l.ad}</b>
         </span>
