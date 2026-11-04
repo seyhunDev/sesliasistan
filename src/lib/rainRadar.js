@@ -89,3 +89,26 @@ export function levelAt(img, px, py) {
     }
   return best;
 }
+
+// Çevredeki en yakın yağış (Seyhun 2026-11-04 "önemli olan benim bulunduğum yer, onu ayırabiliyor muyuz"): tahmin modeli ~10 km'lik
+// kareyi tek değer sayar, radar ise yaklaşık 1 km'de bir bakar. Noktanın radar pikselinden başlayıp maxKm içinde yağış olan en yakın piksel aranır.
+// levelAtPx(gx, gy): dünya piksel koordinatında şiddet (0-3; döşeme yoksa 0). Dönen null ya da { km, dir (8 yön adı), level }.
+const DIRS = ["kuzey", "kuzeydoğu", "doğu", "güneydoğu", "güney", "güneybatı", "batı", "kuzeybatı"];
+export function kmPerPx(lat, z = ZOOM) {
+  return (156543.03 * Math.cos((lat * Math.PI) / 180)) / 2 ** z / 1000;
+}
+export function nearestRain(levelAtPx, gx, gy, lat, maxKm = 30, z = ZOOM) {
+  const k = kmPerPx(lat, z);
+  const R = Math.ceil(maxKm / k);
+  let best = null;
+  for (let dy = -R; dy <= R; dy++)
+    for (let dx = -R; dx <= R; dx++) {
+      const d = Math.hypot(dx, dy) * k;
+      if (d > maxKm || (best && d >= best.d)) continue;
+      const lv = levelAtPx(gx + dx, gy + dy);
+      if (lv > 0) best = { d, dx, dy, lv };
+    }
+  if (!best) return null;
+  const deg = ((Math.atan2(best.dx, -best.dy) * 180) / Math.PI + 360) % 360; // ekranda yukarı = kuzey
+  return { km: Math.max(1, Math.round(best.d)), dir: DIRS[Math.round(deg / 45) % 8], level: best.lv };
+}
