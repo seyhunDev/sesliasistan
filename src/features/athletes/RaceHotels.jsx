@@ -71,7 +71,6 @@ export function RaceHotels({ hotels, onChange, onRooms, roomsBusy }) {
           </button>
         </li>
       </ul>
-      {!hotels.length && <p className="mt-2 px-1 text-[0.75rem] text-mut">Talimatta otel yoksa ya da başka otelde kalacaksanız elle ekle.</p>}
       {onRooms && hotels.length > 0 && !hotels.some((h) => cleanRooms(h.rooms).length) && (
         <button type="button" disabled={roomsBusy} onClick={onRooms} className="mt-2 w-full rounded-xl px-4 py-2.5 text-left text-[0.8125rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
           {roomsBusy ? "Talimat yeniden okunuyor…" : "Oda fiyatlarını talimattan yeniden oku"}

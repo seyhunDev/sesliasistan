@@ -99,10 +99,8 @@ export function AroundView({ r, onChange }) {
         {busy ? <Loader size="sm" className="text-white" label={busy} /> : <Icon name="spark" className="size-[1.125rem]" />}
         {busy ? `${busy}…` : a ? "Yeniden getir" : "Yapay zekayla getir"}
       </button>
-      <p className="mt-2 px-1 text-[0.75rem] text-mut">
-        {a?.at ? `${madeText(a.at)} getirildi. ` : "Ulaşım, yakındaki market, eczane, restoranlar ve gezilecek yerler haritada gösterilir. "}
-        {"Yerler OpenStreetMap'ten gelir; yapay zeka ulaşımı özetler ve gezilecek yerleri seçer."}
-      </p>
+      {/* açıklama yazısı kalktı (Seyhun 2026-11-04 sadeleştirme); yalnız ne zaman getirildiği */}
+      {a?.at && <p className="mt-2 px-1 text-[0.75rem] text-mut">{madeText(a.at)} getirildi · OpenStreetMap</p>}
 
       {a && (
         <>

@@ -1,8 +1,8 @@
 "use client";
 
 // Yarış sayfasında "Siteden belgeler" (Seyhun 2026-11-03): yarış sitesinden alınan bütün belgeler, yeni önce.
-// Evrak sekmesinde liste olarak (Seyhun 2026-11-04 "orada hepsini listeleyelim, yeni evrak olduğunu yarış sayfasında da gösterelim"):
-// görülmemiş belge "Yeni" (kayıtta seen yok), sekme açılınca görüldü yazılır; sayısı onNew ile Evrak sekmesinin düğmesine gider.
+// Yarış sayfasının Dokümanlar sekmesinde (2026-11-04 Evrak'tan ayrıldı) liste olarak (Seyhun 2026-11-04 "orada hepsini listeleyelim, yeni evrak olduğunu yarış sayfasında da gösterelim"):
+// görülmemiş belge "Yeni" (kayıtta seen yok), sekme açılınca görüldü yazılır; sayısı onNew ile Dokümanlar sekmesinin düğmesine gider.
 // Sekme kapalıyken de bağlı kalır (hidden): yeni gelenler işlenir, sayı güncel kalır.
 // Açılınca yeni gelenler türüne göre işlenir (raceSite.js): renk listesi ve final grupları günün gruplarına, sporcu listesi
 // kayıt listesine, sonuçlar yarışın sonuçlarına (onResults, page.jsx). Her satır açılır (PDF); işlenen belge "Geri al" ile döner.
@@ -105,7 +105,7 @@ export function SiteDocs({ orgId, race, shown = false, onNew, onResults, onUndo,
 
   const load = useCallback(() => getStored(view.file, "application/pdf"), [view]);
   const close = useCallback(() => setView(null), []);
-  // Görülmemiş sayısı Evrak düğmesine; sekmeden çıkınca (ya da sayfa kapanınca) görüldü yazılır, Yeni yazısı bakarken kalır
+  // Görülmemiş sayısı Dokümanlar düğmesine; sekmeden çıkınca (ya da sayfa kapanınca) görüldü yazılır, Yeni yazısı bakarken kalır
   const unseen = (docs || []).filter((d) => !d.seen);
   useEffect(() => onNew?.(unseen.length), [unseen.length, onNew]);
   const seenNow = useRef([]);

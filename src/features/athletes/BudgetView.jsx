@@ -224,7 +224,6 @@ export function BudgetView({ r, athletes, onChange }) {
           {busy ? "Hazırlanıyor…" : "Talimattaki ücretleri ve otelleri ekle"}
         </button>
       )}
-      <p className="mt-2 px-1 text-[0.75rem] text-mut">Alttaki asistana söyleyebilirsin: “Bütçeye otel kişi başı gecelik 3500 lira ekle”, “minibüs toplam 6000, kulüp öder”, “3 kişilik oda gecelik 3200, bizden 1 sporcu kalıyor”.</p>
 
       {athletes.length > 0 && b.items.length > 0 && (
         <>
