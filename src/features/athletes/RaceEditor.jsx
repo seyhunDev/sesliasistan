@@ -12,6 +12,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { DOC_TEXT } from "./EditAthlete";
 import { EXPIRY, raceExpired } from "@/lib/expiry";
 import { withResults } from "@/lib/raceResults";
@@ -163,6 +164,7 @@ const inRace = (x) => !!x?.startDate && todayStr() >= x.startDate && todayStr() 
 export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
   const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
   const toast = useToast();
+  const confirmIt = useConfirm();
   const router = useRouter();
   const [r, setR] = useState(start);
   const [noticeInfo, setNoticeInfo] = useState(false);
@@ -460,23 +462,29 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     addFiles(metas);
     if (metas.length === ok.length) toast(metas.length > 1 ? `${metas.length} evrak eklendi` : "Evrak eklendi");
   };
-  const removeStored = async (x) => {
-    if (!confirm(`"${x.name}" silinsin mi?`)) return;
-    setR((p) => ({ ...p, files: (p.files || []).filter((f) => f.id !== x.id) }));
-    dropRaceStored(orgId, x);
-  };
+  const removeStored = (x) =>
+    confirmIt({
+      title: `"${x.name}" silinsin mi?`,
+      run: async () => {
+        await dropRaceStored(orgId, x);
+        setR((p) => ({ ...p, files: (p.files || []).filter((f) => f.id !== x.id) }));
+      },
+    });
   // Kayıtlı evrakı aç/paylaş: dosya bu cihazda yoksa indirilir; indirilemezse adresi açılır
   const storedFile = async (x, then) => {
     const f = await loadRaceFile(x);
     if (f) return then(f);
     window.open(x.url, "_blank");
   };
-  const removeExtra = async (x) => {
-    if (!confirm(`"${x.name}" silinsin mi?`)) return;
-    const next = extras.filter((e) => e.id !== x.id);
-    setExtras(next);
-    await saveExtras(id.current, next);
-  };
+  const removeExtra = (x) =>
+    confirmIt({
+      title: `"${x.name}" silinsin mi?`,
+      run: async () => {
+        const next = extras.filter((e) => e.id !== x.id);
+        setExtras(next);
+        await saveExtras(id.current, next);
+      },
+    });
   // Eski düzen: yalnız bu telefonda kalan evrakı Firebase'e gönderir
   const sendLocal = async () => {
     await queue.current.catch(() => {});
@@ -579,14 +587,19 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const loadViewer = useCallback(() => loadNoticeFile(orgId, noticeFileMeta), [orgId, noticeFileMeta]);
   // Talimat menüsü (başlığın altındaki talimat satırının ayar düğmesi): aç, yenisini yükle, kaldır
   const [noticeMenu, setNoticeMenu] = useState(false);
-  const dropNotice = () => {
-    if (!confirm("Yarış talimatı kaldırılsın mı? Talimattan gelen işler ve bilgiler silinir; yarışın adı, tarihi, yeri kalır.")) return;
-    const old = latest.current.noticeFile;
-    setR((p) => ({ ...p, notice: null, noticeFile: null }));
-    if (old?.id) dropNoticeFile(orgId, old);
-    setNoticeMenu(false);
-    toast("Talimat kaldırıldı");
-  };
+  const dropNotice = () =>
+    confirmIt({
+      title: "Yarış talimatı kaldırılsın mı?",
+      text: "Talimattan gelen işler ve bilgiler silinir; yarışın adı, tarihi, yeri kalır.",
+      yes: "Kaldır",
+      run: async () => {
+        const old = latest.current.noticeFile;
+        if (old?.id) await Promise.resolve(dropNoticeFile(orgId, old)).catch(() => {});
+        setR((p) => ({ ...p, notice: null, noticeFile: null }));
+        setNoticeMenu(false);
+        toast("Talimat kaldırıldı");
+      },
+    });
   const noticePlan = async () => {
     if (!r.name.trim()) return toast("Önce yarış adı");
     const n = await onNoticePlan(r);
@@ -604,16 +617,24 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     if (sec0 === "del") remove();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const remove = async () => {
-    if (!id.current || !confirm(`"${r.name}" silinsin mi? Sporcu kartları etkilenmez.`)) return;
-    dirty.current = false;
-    await queue.current.catch(() => {});
-    dropRaceFile(id.current);
-    dropExtras(id.current);
-    for (const f of latest.current.files || []) dropRaceStored(orgId, f);
-    dropNoticeFile(orgId, latest.current.noticeFile);
-    for (const m of latest.current.results?.files || []) dropNoticeFile(orgId, m);
-    await onDelete(id.current);
+  // Silme onayı alttan pencere; "Sil"e basınca silme bitene kadar düğmede dönen halka, sonra sayfa kapanır (Seyhun 2026-11-04)
+  const remove = () => {
+    if (!id.current) return;
+    confirmIt({
+      title: `"${r.name}" silinsin mi?`,
+      text: "Sporcu kartları etkilenmez.",
+      yes: "Yarışı sil",
+      run: async () => {
+        dirty.current = false;
+        await queue.current.catch(() => {});
+        dropRaceFile(id.current);
+        dropExtras(id.current);
+        for (const f of latest.current.files || []) dropRaceStored(orgId, f);
+        dropNoticeFile(orgId, latest.current.noticeFile);
+        for (const m of latest.current.results?.files || []) dropNoticeFile(orgId, m);
+        await onDelete(id.current);
+      },
+    });
   };
 
   // Veli bilgi notu: seçili her sporcuya tek sayfa (yolculuk, program, konaklama, sporcu payı)

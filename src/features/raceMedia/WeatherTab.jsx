@@ -9,6 +9,7 @@ import { dirDeg, windLevel } from "@/features/weather/weather";
 import { cleanSpot, loadRaceDay } from "@/features/athletes/raceWeather";
 import { saveRaceSpot } from "@/features/athletes/races";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { SpotSheet } from "./SpotSheet";
 import { addWind, saveWind } from "@/features/athletes/raceLiveStore";
 import { Bar } from "@/features/training/Countdown";
@@ -21,6 +22,7 @@ import { DIRS, atOf, dayOf, dirShort, hm, marksFor, windOn } from "@/lib/raceLiv
 // saveSpot: yerin kaydı (antrenman sayfası planına yazar); verilmezse yarışa (saveRaceSpot)
 export function WeatherTab({ orgId, race, day, live, onChange, onRace, saveSpot: put }) {
   const toast = useToast();
+  const ask = useConfirm();
   const [wx, setWx] = useState({ day: "", rows: null, err: "" });
   const [open, setOpen] = useState(false);
   const [pick, setPick] = useState(false);
@@ -54,11 +56,14 @@ export function WeatherTab({ orgId, race, day, live, onChange, onRace, saveSpot:
   const list = windOn(live.wind, day);
   const rows = wx.day === day ? wx.rows : null;
   const marks = rows ? marksFor(rows, list) : [];
-  const drop = (w) => {
-    if (!confirm(`${hm(w.at)} rüzgâr kaydı silinsin mi?`)) return;
-    const next = live.wind.filter((x) => x !== w);
-    onChange({ wind: next }, () => saveWind(orgId, race.id, next));
-  };
+  const drop = (w) =>
+    ask({
+      title: `${hm(w.at)} rüzgâr kaydı silinsin mi?`,
+      run: async () => {
+        const next = live.wind.filter((x) => x !== w);
+        onChange({ wind: next }, () => saveWind(orgId, race.id, next));
+      },
+    });
 
   return (
     <>

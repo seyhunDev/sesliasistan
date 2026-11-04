@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { VIDEO_Q, addRaceMedia, backfillPoster, cloudCopy, cloudMedia, dropRaceMedia, mutedCopy, posterOf, prepRaceMedia, readVideoQ, saveMedia, saveVideoQ } from "@/features/athletes/raceLiveStore";
 import { Button } from "@/components/ui/Button";
 import { Bar, readTimer } from "@/features/training/Countdown";
@@ -66,6 +67,7 @@ const posterJobs = new Map(); // bu açılışta küçük resmi denenen kayıtla
 // list: yarışın Start sekmesi (TimerTab useStartList): çekimler günün yarış listesinde her yarışın kendi satırında, yarışa bağlı olmayanlar altta
 export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = null, onFileDone, list = null }) {
   const toast = useToast();
+  const ask = useConfirm();
   const [busy, setBusy] = useState(""); // ilerleme yazısı
   const [pending, setPending] = useState(0); // sırada bekleyen kayıt
   const queue = useRef(Promise.resolve());
@@ -268,8 +270,8 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file0]);
 
-  const drop = (m) => {
-    if (!confirm(m.kind === "video" ? "Video silinsin mi?" : "Fotoğraf silinsin mi?")) return;
+  const drop = (m) => ask({ title: m.kind === "video" ? "Video silinsin mi?" : "Fotoğraf silinsin mi?", run: async () => dropNow(m) });
+  const dropNow = (m) => {
     setOpen("");
     const rest = live.media.filter((x) => x.id !== m.id);
     onChange({ media: rest }, () => dropRaceMedia(orgId, race.id, m, rest));

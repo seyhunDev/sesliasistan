@@ -6,6 +6,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { Splash } from "@/components/ui/Splash";
 import { Button } from "@/components/ui/Button";
 import { ToastProvider } from "@/components/ui/ToastProvider";
+import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { TimerSound } from "@/features/training/Countdown";
 import { IosBridge } from "@/features/ios/IosBridge";
 import { AppLock } from "@/features/ios/AppLock";
@@ -69,6 +70,7 @@ export default function AppLayout({ children }) {
 
   return (
     <ToastProvider>
+     <ConfirmProvider>
       <TtsProvider>
         <DataProvider>
          <ChatProvider>
@@ -106,6 +108,7 @@ export default function AppLayout({ children }) {
          </ChatProvider>
         </DataProvider>
       </TtsProvider>
+     </ConfirmProvider>
     </ToastProvider>
   );
 }
