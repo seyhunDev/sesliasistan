@@ -328,22 +328,20 @@ export function newStart(starts, at, wind = [], forecast = null, rdays = null) {
 // Geçersiz yarış numara almaz: sıradaki geçerli yarışın numarasını taşır (tekrar koşulan yarışla aynı numara)
 // rdays (yarışın günleri) verilirse yarış dışındaki günler (antrenman) kendi içinde 1'den başlar, yarış serisini kaydırmaz
 const group = (day, rdays) => (rdays?.length && !rdays.includes(day) ? day : "seri");
-// Grup grup yarış (Seyhun 2026-11-02 inceleme): Sarı ve Mavi aynı "3. yarış"ı ayrı startlarla koşar. Gruplu start, aynı gün hemen
-// önceki startlar gruplu ve bu grup o numarada henüz yoksa önceki numarayı paylaşır (Sarı 3, Mavi 3, Sarı 4, Mavi 4).
+// Grup grup yarış (Seyhun 2026-11-02 inceleme): Sarı ve Mavi aynı "3. yarış"ı ayrı startlarla koşar.
+// Gruplu startın numarası grubun kendi sırası (Seyhun 2026-11-04 "o grubun kaçıncı yarışı"): grup ilerde de olsa geride de olsa
+// her grubun n'inci geçerli startı n. yarış (eskiden "son açılan yarışı paylaş" kuralı, Sarı 3'e geçince Kırmızı'nın 2'sini 3 yapıyordu).
+// Grup daha önce hiç koşmadıysa grupsuz son yarıştan devam eder.
 export function renumber(starts, rdays = null) {
   const st = {};
   return cleanStarts(starts).map((x) => {
     const g = group(x.day, rdays);
-    const s = (st[g] ||= { n: 0, used: new Set(), day: "" });
-    const share = !!x.grp && s.n > 0 && s.day === x.day && s.used.size > 0 && !s.used.has("") && !s.used.has(x.grp);
-    const n = share ? s.n : s.n + 1;
+    const s = (st[g] ||= { n: 0, free: 0, by: {} });
+    const n = x.grp ? (s.by[x.grp] ?? s.free) + 1 : s.n + 1;
     if (!x.void) {
-      if (!share) {
-        s.n = n;
-        s.used = new Set();
-      }
-      s.used.add(x.grp || "");
-      s.day = x.day;
+      if (x.grp) s.by[x.grp] = n;
+      else s.free = n;
+      s.n = Math.max(s.n, n);
     }
     return { ...x, n };
   });
