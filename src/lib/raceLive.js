@@ -3,6 +3,7 @@
 // { wind: [{ at, dir, kn, gust, src }], starts: [{ id, day, n, at, dir, kn, course, flag, note }], media: [{ id, kind, type, size, url, at, ath }] }
 import { cleanAgenda } from "./raceProgram";
 import { cleanSig } from "./raceSignals";
+import { finalsOnly, isFinalGrp } from "./roundScore";
 // (ath: fotoğrafta/videoda etiketlenen sporcuların id'leri; phase/sec/end: çekildiği an start sayacına göre, momentOf).
 // Rüzgâr kaydının `src` alanı "elle" ya da ileride bağlanacak ölçüm cihazının adı: grafik ikisini aynı noktalarla çizer.
 
@@ -130,10 +131,12 @@ const cleanHold = (a) => ({ why: String(a?.why || "").slice(0, 60), land: !!a?.l
 export function cleanPlan(p) {
   const hm = (v, d = "") => (HM.test(v || "") ? v : d);
   const day = DAY.test(p?.day || "") ? p.day : "";
-  const order = (Array.isArray(p?.order) ? p.order : [])
+  const order0 = (Array.isArray(p?.order) ? p.order : [])
     .map((o) => ({ cls: String(o?.cls || "").slice(0, 20), grp: String(o?.grp || "").slice(0, 20), prep: String(o?.prep || "").slice(0, 8), ...(o?.ap && o.grp ? { ap: cleanHold(o.ap) } : {}) }))
-    .filter((o) => o.cls || o.grp)
-    .slice(0, 24);
+    .filter((o) => o.cls || o.grp);
+  // Final grupları açıklanan sınıfın (sette ya da bekleyen startlarda Altın/Gümüş/Bronz) renk grubu startları düşer (finalsOnly)
+  const finCls = new Set([...order0.filter((o) => isFinalGrp(o.grp)).map((o) => o.cls), ...(Array.isArray(p?.sets) ? p.sets : []).filter((x) => Array.isArray(x?.grps) && x.grps.some(isFinalGrp)).map((x) => String(x.cls || "").slice(0, 20))]);
+  const order = order0.filter((o) => !finCls.has(o.cls) || !o.grp || isFinalGrp(o.grp)).slice(0, 24);
   const next = p?.next && DAY.test(p.next.day || "") ? { day: p.next.day, at: hm(p.next.at) } : null;
   const status = PLAN_STATUS.includes(p?.status) ? p.status : "";
   // Tehir (Seyhun 2026-11-01 "bir sebep belirterek tehir basabilirim, bir saatlik"): from eski saat, why sebep; at yeni saat (belirsizse boş)
@@ -147,10 +150,10 @@ export function cleanPlan(p) {
   const warn = status === "ap" ? "" : iso(p?.warn);
   const warnBy = warn ? String(p?.warnBy || "").slice(0, 12) : "";
   // Günün grupları (Seyhun 2026-11-02 "startlar-yeni"): bir kez seçilir, "+ Yarış" bunlarla bir yarışın startlarını ekler
-  const grps = [...new Set((Array.isArray(p?.grps) ? p.grps : []).map((g) => String(g || "").slice(0, 20)).filter(Boolean))].slice(0, 6);
+  const grps = finalsOnly([...new Set((Array.isArray(p?.grps) ? p.grps : []).map((g) => String(g || "").slice(0, 20)).filter(Boolean))]).slice(0, 6);
   // Birden çok sınıf (Seyhun 2026-11-02 "bir iki sınıf seçerim, sınıf seçiliyse grup seçerek başlarım"): sets [{ cls, grps }]; yoksa cls + grps
   const sets = (Array.isArray(p?.sets) ? p.sets : [])
-    .map((x) => ({ cls: String(x?.cls || "").slice(0, 20), grps: [...new Set((Array.isArray(x?.grps) ? x.grps : []).map((g) => String(g || "").slice(0, 20)).filter(Boolean))].slice(0, 6) }))
+    .map((x) => ({ cls: String(x?.cls || "").slice(0, 20), grps: finalsOnly([...new Set((Array.isArray(x?.grps) ? x.grps : []).map((g) => String(g || "").slice(0, 20)).filter(Boolean))]).slice(0, 6) }))
     .filter((x) => x.cls)
     .slice(0, 6);
   // Günler (Seyhun 2026-11-02 "her gün startı 11 yapacağım"): daily her günün ilk start saati, times[gün] o güne özel saat, off yarış olmayan günler

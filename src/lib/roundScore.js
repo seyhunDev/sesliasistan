@@ -36,6 +36,10 @@ export function groupOf(raw) {
   const p = plain(String(raw || "").replace(/\b(grup|group|fleet|filo)\b/gi, ""));
   return COLORS.find(([, re]) => re.test(p))?.[0] || "";
 }
+// Final grupları açıklanınca (Seyhun 2026-11-05 "Altın, Gümüş, Bronz eklendiyse renk gruplarını artık göstermeyelim"): listede final
+// grubu (Altın, Gümüş, Bronz, Zümrüt) varsa renk grupları (Sarı, Mavi…) düşer; yoksa liste aynı kalır
+export const isFinalGrp = (g) => !!FINALS[groupOf(g)];
+export const finalsOnly = (grps) => (grps.some(isFinalGrp) ? grps.filter(isFinalGrp) : grps);
 export const groupColor = (g) => COLORS.find(([n]) => n === g)?.[2] || FINALS[g] || "";
 
 // Günün grup listesi: [[yelken, grup]] → { yelken: grup }
