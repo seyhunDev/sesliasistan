@@ -28,6 +28,7 @@ group("Yarış çevresi")([
 
 // Yarış havası (raceWeather.js): yarış günleri, gündüz rüzgârı, kayıt temizliği, 16 günlük ufuk
 const RW = await import("@/features/athletes/raceWeather");
+const TRK = await import("@/lib/trainRank");
 const HRS = Array.from({ length: 48 }, (_, i) => `2026-10-0${7 + Math.floor(i / 24)}T${String(i % 24).padStart(2, "0")}:00`);
 const WJ = {
   hourly: { time: HRS, temperature_2m: HRS.map(() => 20), weather_code: HRS.map(() => 1), is_day: HRS.map((t) => (+t.slice(11, 13) >= 7 && +t.slice(11, 13) <= 19 ? 1 : 0)),
@@ -377,6 +378,16 @@ group("Yarış multimedya")([
   ["antrenman sayacı değişmedi", { desc: "son 5 sn + 0", fn: () => seq(120, ""), ok: (r) => r === "5s,4s,3s,2s,1s,0l" }],
   ["rüzgâr cümlesi", { desc: "knot + yön (kuzeybatı, karayel, poyraz), sağanak", fn: () => [RL.windCommand("rüzgar 15 knot kuzeybatı"), RL.windCommand("rüzgarı yaz karayel 12 knot"), RL.windCommand("rüzgar poyraz 18 knot sağanak 24"), RL.windCommand("kuzeybatıdan on dört knot esiyor")], ok: ([a, b, c, d]) => a.kn === 15 && a.dir === 315 && b.dir === 315 && b.kn === 12 && c.dir === 45 && c.gust === 24 && c.kn === 18 && d?.kn === 14 }],
   ["rüzgâr sorusu kayıt değil", { desc: "soru, tahmin, yönsüz", fn: () => [RL.windCommand("yarın rüzgar kaç knot"), RL.windCommand("rüzgar 15 knot olacak mı?"), RL.windCommand("rüzgar 15 knot")], ok: (r) => r.every((x) => x === null) }],
+  ["antrenman genel sıralama", { desc: "ayın yalnız yarış sayılan (cnt) startları; gelmediği DNC; yarış sayısı; günün yerleri", fn: () => {
+    const f = (id, name) => ({ id, name });
+    const plans = [
+      { id: "p1", date: "2026-11-02", races: [{ id: "y1", cnt: true, finishes: [f("a", "Ali"), f("b", "Ayşe")] }, { id: "y2", finishes: [f("b", "Ayşe"), f("a", "Ali")] }] },
+      { id: "p2", date: "2026-11-04", races: [{ id: "y1", cnt: true, finishes: [f("a", "Ali"), f("c", "Can")] }] },
+      { id: "p3", date: "2026-10-30", races: [{ id: "y1", cnt: true, finishes: [f("b", "Ayşe")] }] },
+    ];
+    const t = TRK.monthRank(plans, "2026-11");
+    return [t.races.length, t.rows.map((r) => `${r.name}:${r.net}:${r.n}`).join(","), TRK.dayPlaces(plans[0].races, "a")];
+  }, ok: ([n, rows, dp]) => n === 2 && rows === "Ali:2:2,Can:6:1,Ayşe:6:1" && dp === "1 · 2" }],
   ["antrenman sesle başlat", { desc: "2 dakika başlat → 120 sn; süresiz → 0 (seçili süre); başka işin başlat'ı değil", fn: () => ["2 dakika başlat", "iki dakikalık yarış başlat", "yarışı başlat", "start ver", "5 dakikalık sayacı başlat", "toplantıyı başlat", "kaç dakika başlat?", "antrenmanı başlat", "ver"].map((t) => TV.trainCommand(t)), ok: ([a, b, c, d, e, f, g, h, i]) => a.start === 120 && b.start === 120 && c.start === 0 && d.start === 0 && e.start === 300 && f === null && g === null && h === null && i === null }],
   ["antrenman sesle bitir", { desc: "yarışı bitir; aynı cümlede sonuç kalanı", fn: () => ["yarışı bitir", "yarış bitti, sonuçlar: birinci Ali ikinci Ayşe", "bitir yarışı 1 Ali 2 Ayşe", "antrenman planını bitir", "Ali bitirdi"].map((t) => TV.trainCommand(t)), ok: ([a, b, c, d, e]) => a.finish && a.rest === "" && b.finish && b.rest === "birinci ali ikinci ayşe" && c.rest === "1 ali 2 ayşe" && d === null && e === null }],
   ["sayaç cümlesi", { desc: "süre yoksa 5 dk; dakika söylenirse o", fn: () => [RL.timerCommand("sayacı başlat"), RL.timerCommand("2 dakikalık geri sayımı başlat"), RL.timerCommand("bir dakikalık sayaç başlat"), RL.timerCommand("sayaç kaç dakika")], ok: ([a, b, c, d]) => a.sec === 300 && b.sec === 120 && c.sec === 60 && d === null }],

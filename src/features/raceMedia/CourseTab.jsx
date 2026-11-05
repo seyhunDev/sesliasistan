@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { addCourseObs, courseRef, saveCourse } from "@/features/athletes/raceLiveStore";
 import { canShare, loadSharedCourse, shareCourse } from "@/features/athletes/sharedRaces";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { BYS, PICKS, cleanCourse, cleanObs, degText, norm, obsTitle, obsValue, windTrend, withLiveWind } from "@/lib/raceCourse";
+import { BYS, CARD_TYPES, PICKS, cardType, cleanCourse, selCard, cleanObs, degText, norm, obsTitle, obsValue, windTrend, withLiveWind } from "@/lib/raceCourse";
 import { RaceWx } from "@/features/athletes/RaceWx";
 import { CompassSight, askCompass } from "./CompassSight";
 import { setCourseView } from "./courseView";
@@ -21,13 +21,16 @@ import { setCourseView } from "./courseView";
 const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 const BY = Object.fromEntries(BYS);
 
-export function CourseTab({ orgId, race, day, wind = [], onDropWind, onDay }) {
+// wx: üstte yarışın havası (antrenman ekranında yok, Rüzgâr ayrı düğmede); types: rota kartı türü seçimi (ILCA · Trapez);
+// big: "Büyük göster" (antrenmanda çocuklara göstermek için kart tam ekran; Seyhun 2026-11-05)
+export function CourseTab({ orgId, race, day, wind = [], onDropWind, onDay, wx = true, types = false, big = false }) {
   const toast = useToast();
   const [c, setC] = useState(() => cleanCourse({}));
   const [here, setHere] = useState(null); // telefonun yeri { lat, lon, acc }
   const [add, setAdd] = useState(null); // elle ekleme penceresi { lat, lon } | {}
   const [sight, setSight] = useState(false);
   const [open, setOpen] = useState(null); // dokunulan ölçüm
+  const [full, setFull] = useState(false); // kart tam ekran
   const latest = useRef(c);
   useEffect(() => {
     latest.current = c;
@@ -112,14 +115,36 @@ export function CourseTab({ orgId, race, day, wind = [], onDropWind, onDay }) {
     <>
       {/* Lacivert sayfa (Seyhun 2026-10-29 "arka plan uygulamayla uyumlu, rota kartı ön planda, yazılar ince ve hizalı"):
           kart kutusuz ve büyük; altında iki ince çerçeveli düğme; Özet ve Ölçümler aynı hizada ince çizgili liste (ad · açıklama · değer) */}
-      <RaceWx r={race} pinned={day} onDay={onDay} />
-      <div className="-mx-2 mt-4">
+      {wx && <RaceWx r={race} pinned={day} onDay={onDay} />}
+      {types && (
+        <div className="mt-1 grid grid-cols-2 gap-2" role="group" aria-label="Parkur türü">
+          {Object.entries(CARD_TYPES).map(([k, l]) => {
+            const on = cardType(selCard(c)) === k;
+            return (
+              <button key={k} type="button" aria-pressed={on} onClick={() => !on && save({ ...latest.current, cards: latest.current.cards.map((x) => (x.id === selCard(latest.current).id ? { ...x, type: k } : x)) })} className={`h-11 rounded-xl text-[0.9375rem] font-semibold ${on ? "bg-white text-[#0b1626]" : "bg-white/10 text-white"}`}>
+                {l}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className={`-mx-2 ${wx ? "mt-4" : "mt-2"}`}>
         {kart ? (
           <div aria-label="Rota kartı" role="img" dangerouslySetInnerHTML={{ __html: kart }} />
         ) : (
           <p className="px-4 py-16 text-center text-[0.9375rem] text-white/60">Rüzgârı ya da parkur eksenini ekle, kart çizilsin</p>
         )}
       </div>
+      {big && kart && (
+        <button type="button" onClick={() => setFull(true)} className="mt-3 h-12 w-full rounded-xl bg-[#2f6bff] text-[1rem] font-bold text-white active:translate-y-px">
+          Büyük göster
+        </button>
+      )}
+      {full && kart && (
+        <button type="button" aria-label="Kapat" onClick={() => setFull(false)} className="fixed inset-0 z-[60] grid place-items-center bg-[#0b1626] p-4">
+          <span className="block w-full max-w-[60rem]" dangerouslySetInnerHTML={{ __html: kart }} />
+        </button>
+      )}
       <div className="mt-3 grid grid-cols-2 gap-2.5">
         <button type="button" data-press onClick={() => setAdd({})} className="raised ck-pill font-medium">Yön ekle</button>
         <button type="button" data-press onClick={async () => ((await askCompass()) ? setSight(true) : toast("Pusula izni verilmedi"))} className="raised ck-pill font-medium">Pusula</button>

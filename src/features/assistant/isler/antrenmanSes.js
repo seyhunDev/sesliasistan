@@ -10,6 +10,7 @@ import { pickPlan } from "@/lib/trainingLog";
 import { aliasesOf } from "@/features/athletes/names";
 import { isActive, loadAthletes } from "@/features/athletes/data";
 import { leadIn, raceStart, readTimer, writeTimer } from "@/features/training/Countdown";
+import { countPref } from "@/features/training/useTrainingFlow";
 import { todayStr } from "@/lib/utils/format";
 
 const OWN = "/training/day";
@@ -63,7 +64,7 @@ export async function trainVoiceCmd(ctx, s, viaVoice) {
       raceStart(
         {
           onStart: (end, rid) => {
-            const r = { id: rid, name: `Yarış ${list.length + 1}`, startAt: end, cd: sec, finishes: [] };
+            const r = { id: rid, name: `Yarış ${list.length + 1}`, startAt: end, cd: sec, ...(countPref() ? { cnt: true } : {}), finishes: [] };
             updateRecord("plan", plan.id, { races: cleanRaces([...list, r]) }, by);
             toast?.(`${r.name} geri sayımı başladı`, { duration: 8000, action: { label: "Geri al", onClick: () => (updateRecord("plan", plan.id, { races: cleanRaces(list) }, by), writeTimer(prevT)) } });
           },
