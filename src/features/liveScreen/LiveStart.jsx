@@ -6,6 +6,7 @@
 // Kurallar ve yazmalar Yayın › Süre ile aynı (broadcast/startFlow, raceMedia/useRaceFlow, training/Countdown); sayacın sahibi Yayın sayfası.
 // Bu dosya yalnız telefonda daha önce uygulamaya girilmişse yüklenir (LiveScreen dinamik import); izleyiciye Firebase yüklenmez.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase/clientApp";
 import { loadRace } from "@/features/athletes/races";
@@ -23,6 +24,7 @@ import { flagSvg } from "@/lib/raceSignals";
 import { groupColor } from "@/lib/roundScore";
 import { todayStr } from "@/lib/utils/format";
 import { ToastProvider } from "@/components/ui/ToastProvider";
+import { LiveVideos } from "./LiveVideos";
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
@@ -33,7 +35,8 @@ export default function LiveStart(p) {
     </ToastProvider>
   );
 }
-function Start({ raceId, open, onClose, onReady, wind = false, onWindClose }) {
+// vidHost: Kamera panelindeki yer (LiveScreen ScView); videolar oraya çizilir
+function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, screen = null, ev = null, evre = "" }) {
   const [orgId, setOrgId] = useState("");
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -271,6 +274,7 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose }) {
           </div>
         </div>
       ) : null}
+      {vidHost ? createPortal(<LiveVideos orgId={orgId} raceId={raceId} live={live} setLive={setLive} screen={screen} ev={ev} evre={evre} />, vidHost) : null}
       <VoidSheet ask={rf.ask} onChoose={(r) => (rf.choose(r), push())} />
       <AddSheet open={wind} c={course} onClose={() => onWindClose?.()} onAdd={addObs} />
     </>
