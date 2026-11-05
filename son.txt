@@ -1,8 +1,8 @@
-Commit: 0c17292 · Yayın › Parkur: ana asistan, grubun kartı sesle, sade alt kısım (#1233)
-Zaman: 2026-11-05-1754 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42047191923
+Commit: 42f0a41 · Yarış takip: günün özeti (Dün | Bugün) ve Gruplar bölümü (#1237)
+Zaman: 2026-11-05-1950 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42066194413
 
-TAM TEST · 05.11.2026 17:40:24
+TAM TEST · 05.11.2026 19:37:14
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1430/1439 geçti · 9 kalan · 864 sn
+SONUÇ: 1431/1440 geçti · 9 kalan · 813 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -169,9 +169,9 @@ SONUÇ: 1430/1439 geçti · 9 kalan · 864 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 138/140
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 139/141
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 8/9
+  ✗ Ana sayfa: 9/10
       ✗ “saat saat hava tablosu”
           beklenen: hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat
           olan:     hata: locator.click: Timeout 30000ms exceeded.
@@ -201,7 +201,7 @@ SONUÇ: 1430/1439 geçti · 9 kalan · 864 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 18 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 20 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
