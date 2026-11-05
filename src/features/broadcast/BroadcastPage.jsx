@@ -13,7 +13,7 @@ import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { loadRace, saveRaceDates } from "@/features/athletes/races";
-import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
+import { cloudForScreen, keepForScreen, keptIds, readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
 import { FIRST_ITEM, agendaFirst, agendaPut, datesAdd, datesDrop, programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, saveEvreMan, loadShowTpl, saveShowTpl, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
@@ -113,6 +113,8 @@ export function BroadcastPage({ orgId, id }) {
   const [sel, setSel] = useState(null); // ekrana verilecek seçim { kind, mid }
   const [zoom, setZoom] = useState(null); // tekne ekranının yakınlığı (seçilmediyse ekrandaki ya da 100)
   const [busy, setBusy] = useState("");
+  const [here, setHere] = useState(() => new Set()); // bu telefonda duran (buluta yüklenmemiş) videolar
+  const [phPick, setPhPick] = useState([]); // buluta yüklenecek diye seçilenler
   const [add, setAdd] = useState(null); // ölçüm penceresi: PICKS sırası
   const [voice, setVoice] = useState(false);
   const [list, setList] = useState(false);
@@ -756,17 +758,36 @@ export function BroadcastPage({ orgId, id }) {
     e.target.value = "";
     if (!f) return;
     try {
-      const { uploadForScreen } = await import("./broadcastStore");
-      const meta = await uploadForScreen(orgId, id, f, live.starts, setBusy);
+      // video önce yalnız telefona (Seyhun 2026-11-05 "buluta eklemeyi şarta bağlayalım"): seçilip "Buluta yükle" denince buluta gider
+      const meta = await keepForScreen(orgId, id, f, live.starts, setBusy);
       setLive((l) => cleanLive({ ...l, media: [...l.media, meta] }));
       setBusy("");
-      // yüklenen video hemen yayına alınmaz: önizlemede seçilir, hazır olunca "Ekrana al" (Seyhun 2026-11-03)
-      setSel({ kind: "rec", mid: meta.id });
-      toast("Video yüklendi, önizlemede");
+      if (meta.ph) {
+        setHere((h) => new Set([...h, meta.id]));
+        setPhPick([meta.id]);
+        toast("Telefona kaydedildi");
+      } else setSel({ kind: "rec", mid: meta.id });
     } catch (err) {
-      toast(err?.message || "Yüklenemedi");
+      toast(err?.message || "Kaydedilemedi");
       setBusy("");
     }
+  };
+  // seçilen telefondaki videolar buluta; yüklenen son video önizlemede (hazır olunca "Ekrana al", Seyhun 2026-11-03)
+  const toCloud = async () => {
+    const list = live.media.filter((m) => phPick.includes(m.id) && m.ph);
+    for (const [i, m] of list.entries()) {
+      try {
+        const next = await cloudForScreen(orgId, id, m, (st) => setBusy(list.length > 1 ? `${i + 1}/${list.length} · ${st}` : st));
+        if (next) setLive((l) => cleanLive({ ...l, media: l.media.map((x) => (x.id === m.id ? next : x)) }));
+        setPhPick((p) => p.filter((x) => x !== m.id));
+        if (i === list.length - 1) setSel({ kind: "rec", mid: m.id });
+      } catch (err) {
+        setBusy("");
+        return toast(err?.message || "Yüklenemedi");
+      }
+    }
+    setBusy("");
+    toast("Buluta yüklendi");
   };
   const addObs = async (o) => {
     setAdd(null);
@@ -912,6 +933,16 @@ export function BroadcastPage({ orgId, id }) {
     setRt(routeText(selCard(course).route));
   }
   const vids = [...live.media].filter((m) => m.kind === "video" && m.url).reverse().slice(0, 6); // yalnız telefonda duran (ph) ekrana gidemez
+  const phVids = live.media.filter((m) => m.kind === "video" && m.ph && here.has(m.id)).reverse().slice(0, 6);
+  const nMedia = live.media.length;
+  useEffect(() => {
+    if (!id) return undefined;
+    let on = true;
+    keptIds(id).then((h) => on && setHere(h), () => {});
+    return () => {
+      on = false;
+    };
+  }, [id, nMedia]);
   const srcOf = (sid) => srcList.find((x) => x.id === sid) || null;
   const selSrc = sel?.kind === "src" ? srcOf(sel.src) : null;
   // "Grubun kamerası" (kind live): ekrandaki yarışın grubuna bağlı kamera (Kameralar), yoksa Kamera 1
@@ -2034,6 +2065,16 @@ export function BroadcastPage({ orgId, id }) {
           <Head title="Kayıtlar" right={busy && busy !== "x" ? busy : ""} onAdd={() => file.current?.click()} addLabel="Telefondan video ekle" busy={!!busy} />
           <div>
             <div className="masa-tiles">
+              {phVids.map((m) => (
+                <button key={m.id} type="button" aria-pressed={phPick.includes(m.id)} onClick={() => setPhPick((p) => (p.includes(m.id) ? p.filter((x) => x !== m.id) : [...p, m.id]))} className="masa-tile ph">
+                  <span className="th">
+                    {m.thumb ? <img src={m.thumb} alt="" /> : null}
+                    <s>Telefonda</s>
+                    {m.dur ? <em>{mmss(m.dur)}</em> : null}
+                  </span>
+                  <b>{recName(m, live.starts)}</b>
+                </button>
+              ))}
               {vids.map((m) => (
                 <button key={m.id} type="button" aria-pressed={isSel("rec", m.id)} onClick={() => setSel({ kind: "rec", mid: m.id })} className="masa-tile">
                   <span className="th">
@@ -2045,6 +2086,11 @@ export function BroadcastPage({ orgId, id }) {
                 </button>
               ))}
             </div>
+            {phPick.length ? (
+              <Button className="masa-up" disabled={!!busy} onClick={toCloud}>
+                {phPick.length > 1 ? `Buluta yükle (${phPick.length})` : "Buluta yükle"}
+              </Button>
+            ) : null}
             <input ref={file} type="file" accept="video/*" className="hidden" onChange={pick} />
           </div>
         </section>

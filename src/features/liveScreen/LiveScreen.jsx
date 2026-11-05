@@ -4249,7 +4249,7 @@ const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // start alanına kadar gelsin"; örnek canli-tv/alt-cubuk-ornek.png onaylandı): tek sıra eşit düğme Kamera · Konum · Parkur · Rüzgâr ·
 // Sıralama · Start (Start yalnız ana hesap). Dokunulanın içeriği çubuğun üstünde açılır, en çok süre kartının altına kadar; aynı düğme
 // kapatır. Start penceresi (LiveStart) de aynı yerde (--vb-b, --vb-t). Yalnız telefon / dikey ekranda.
-function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null }) {
+function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null }) {
   const ref = useRef(null);
   const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
   const res = !!rr?.rows.length;
@@ -4257,10 +4257,10 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   const wind = windAhead(data, now).length >= 2;
   const course = !!courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"));
   const btns = [
-    cams.length && ["cam", "Kamera", !!cam && !cam.startsWith("b:")],
+    (cams.length || vidRef) && ["cam", "Kamera", !!cam && !cam.startsWith("b:")],
     pos.length && ["pos", "Konum", cam.startsWith("b:")],
-    course && ["course", "Parkur"],
-    (wind || onWind) && ["wind", "Rüzgâr"],
+    (course || onWind) && ["course", "Parkur"],
+    wind && ["wind", "Rüzgâr"],
     (rank || res) && ["rank", "Sıralama"],
     onStart && ["start", "Start"],
   ].filter(Boolean);
@@ -4302,25 +4302,32 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       : [];
   const body =
     on === "cam" || on === "pos" ? (
-      <div className="sc-vs">
-        {opts.map((x) => (
-          <button key={x.k || "yayin"} type="button" className={x.on ? "on" : ""} aria-pressed={x.on} onClick={() => onCam(x.k && cam !== x.k ? x.k : "")}>
-            {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
-            {x.name}
-          </button>
-        ))}
-      </div>
-    ) : on === "course" ? (
-      <ScCourseDrop data={data} sel={sel} mode={mode} />
-    ) : on === "wind" ? (
       <>
-        {wind ? <ScWindDrop data={data} now={now} at={(prog || []).find((x) => x.state === "next")?.at || ""} /> : <p className="sc-vno">Rüzgâr verisi yok</p>}
+        {on === "pos" || cams.length ? (
+          <div className="sc-vs">
+            {opts.map((x) => (
+              <button key={x.k || "yayin"} type="button" className={x.on ? "on" : ""} aria-pressed={x.on} onClick={() => onCam(x.k && cam !== x.k ? x.k : "")}>
+                {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
+                {x.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {/* ana hesabın videoları (LiveStart › LiveVideos buraya çizer) */}
+        {on === "cam" && vidRef ? <div ref={vidRef} /> : null}
+      </>
+    ) : on === "course" ? (
+      <>
+        {course ? <ScCourseDrop data={data} sel={sel} mode={mode} /> : <p className="sc-vno">Parkur yok</p>}
+        {/* rüzgâr / eksen / hat ölçümü (Seyhun 2026-11-05 "rüzgâr ekleme parkurda olmalı, adı Ölçüm ekle") */}
         {onWind ? (
           <button type="button" className="sc-vadd" onClick={onWind}>
-            + Rüzgâr ekle
+            + Ölçüm ekle
           </button>
         ) : null}
       </>
+    ) : on === "wind" ? (
+      <ScWindDrop data={data} now={now} at={(prog || []).find((x) => x.state === "next")?.at || ""} />
     ) : on === "rank" ? (
       <>
         {rank ? <div className="sc-ckx rk"><Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} ctl={rk} /></div> : null}
@@ -4466,7 +4473,8 @@ export function LiveScreen({ id, y = "" }) {
   const [vCam, setVCam] = useState(""); // izleyicinin seçtiği kamera (kaynak id), boşsa yayının gösterdiği
   const [adm, setAdm] = useState(false); // ana hesap bu yarışın sahibi (LiveStart söyler)
   const [stOpen, setStOpen] = useState(false); // Start penceresi
-  const [wdOpen, setWdOpen] = useState(false); // Rüzgâr (ölçüm) penceresi
+  const [wdOpen, setWdOpen] = useState(false); // Ölçüm ekle penceresi (Parkur paneli)
+  const [vidHost, setVidHost] = useState(null); // Kamera panelinde ana hesabın videolarının yeri
   const warm = useSyncExternalStore(noSub, () => !!readWarmMe(), () => false); // bu telefonda uygulamaya girilmiş mi
   const [vTab, setVTab] = useState(""); // alt çubukta açık olan: cam, pos, course, wind, rank, start (boş = kapalı)
   const vView = ["rank", "wind", "course"].includes(vTab) ? vTab : ""; // izleyicinin açtığı Sıralama / Rüzgâr / Parkur
@@ -4585,8 +4593,8 @@ export function LiveScreen({ id, y = "" }) {
       <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
         <Backdrop data={sd} isCur={isCur} entry={entry} today={today} />
         <div className="lv-page lv-ov">
-          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={setVCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} />} />
-          {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} /> : null}
+          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={setVCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && !demoOn ? setVidHost : null} />} />
+          {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "cam" ? vidHost : null} screen={data.screen || null} ev={data.courseShow?.ev || null} evre={pk.evre} /> : null}
         </div>
         {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
         {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}
