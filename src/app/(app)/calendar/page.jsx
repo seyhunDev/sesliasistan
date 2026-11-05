@@ -8,6 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 import { BackButton } from "@/components/ui/BackButton";
 import { ListHead, Tag } from "@/components/ui/Row";
 import { useAdd } from "@/features/add/AddProvider";
+import { usePlanOpen } from "@/features/athletes/usePlanOpen";
 import { useData } from "@/features/data/DataProvider";
 import { useWho } from "@/features/data/useWho";
 import { birthdaysOn, dayItems, fitOn, leftLabel, lessonsOn, monthGrid, nextBirthday } from "@/lib/agenda";
@@ -52,6 +53,7 @@ function Calendar({ initial }) {
   const fit = useMemo(() => fitDays(all, fitOthers || [], members, myUid), [all, fitOthers, members, myUid]);
   const fitDates = useMemo(() => new Set(fit.map((f) => f.date)), [fit]);
   const { openAdd } = useAdd();
+  const { open: openPlan } = usePlanOpen(); // yarışa bağlı plan yarış sayfasını açar (tek kural)
   const { openBirthday } = useBirthday();
   const pillOf = useWho();
   const today = todayStr();
@@ -231,7 +233,7 @@ function Calendar({ initial }) {
                 const multi = p.endDate && p.endDate !== p.date;
                 return (
                   <li key={p.id}>
-                    <button type="button" onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} data-press="row" className={`${rowCls} ${isImportant(p) ? "bg-accbg" : ""}`}>
+                    <button type="button" onClick={() => openPlan(p)} data-press="row" className={`${rowCls} ${isImportant(p) ? "bg-accbg" : ""}`}>
                       <span className={`${lead} text-acc`}>{multi ? "Gün" : p.time || "Gün"}</span>
                       <span className="min-w-0 flex-1">
                         <b className={`${ttl} ${p.status === "cancelled" ? "text-mut line-through" : ""}`}>{p.title}</b>

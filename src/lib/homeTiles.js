@@ -160,7 +160,8 @@ export function trainingWeek(plans = [], today, fit = [], weeks = 1, fromYesterd
     const f = fit.filter((x) => x.date === date).map((x) => ({ ...x, st: statusOf(x.plan || x, today) }));
     const rank = { missed: 0, today: 1, next: 1, skip: 2, done: 3 };
     f.sort((a, b) => (a.mine === b.mine ? 0 : a.mine ? -1 : 1) || rank[a.st] - rank[b.st] || a.name.localeCompare(b.name, "tr"));
-    return { date, d: d.getDate(), w, state, has: on.length > 0, sail: on, fit: f, other: others.filter((p) => p.date === date) };
+    // Diğer planlar çok günlüyse (yarış) her gününde nokta olur
+    return { date, d: d.getDate(), w, state, has: on.length > 0, sail: on, fit: f, other: others.filter((p) => p.date <= date && (p.endDate || p.date) >= date) };
   });
   const ym = today.slice(0, 7);
   const m = monthLog(plans, ym);
@@ -579,7 +580,7 @@ export const mealPhoto = (h) => (h >= 6 && h < 11 ? "breakfast" : h >= 11 && h <
 // Ana sayfada seçilen günün planları (Seyhun 2026-10-23 "günler en üstte"): iptal ve bitenler hariç, saat sırasıyla (saatsizler sonda)
 export function dayPlans(plans = [], date) {
   return plans
-    .filter((p) => p.date === date && p.status !== "cancelled" && !p.done && p.status !== "done")
+    .filter((p) => p.date <= date && (p.endDate || p.date) >= date && p.status !== "cancelled" && !p.done && p.status !== "done")
     .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
 }
 

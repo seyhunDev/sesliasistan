@@ -9,6 +9,7 @@ import { DelBadge, Empty, catStyle } from "@/components/ui/Page";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { isImportant } from "@/lib/planImportant";
 import { useAdd } from "@/features/add/AddProvider";
+import { usePlanOpen } from "@/features/athletes/usePlanOpen";
 import { useData } from "@/features/data/DataProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -66,7 +67,7 @@ export default function PlansPage() {
   const { openAdd } = useAdd();
   const now = useNow();
   const today = todayStr();
-  const open = (p) => openAdd({ edit: { kind: "plan", id: p.id } });
+  const { open } = usePlanOpen(); // yarışa bağlı plan yarış sayfasını açar (tek kural)
   const markDone = (p) => {
     updateRecord("plan", p.id, planDonePatch(), by);
     navigator.vibrate?.(10);

@@ -1,5 +1,6 @@
 "use client";
 
+import { racePlanDates } from "./raceLinks";
 import { cleanResults } from "@/lib/raceResults";
 import { cleanFollow } from "@/lib/resultSheet";
 import { arrayUnion, collection, doc, serverTimestamp } from "firebase/firestore";
@@ -312,12 +313,12 @@ export function freshRace(last = {}, today = "") {
 
 // Yarışı planlara yazar (tüm gün, çok günlü, "Yarış" kategorisi). saveDrafts: DataProvider'dan.
 // Yolculuk yazıldıysa plan çıkış gününde, çıkış saatinde başlar, dönüş gününde biter; yeri buluşma noktası (tek plan, ayrı kayıt yok).
+// Plan yarışın kimliğini taşır (raceId): Planlar, Takvim ve ana sayfada dokununca yarış sayfası açılır, yarışın adı değişse de bağ kopmaz (raceLinks.js).
 export async function addRacePlan(saveDrafts, r, by) {
-  const date = r.departDate || r.startDate;
-  const end = r.returnDate || r.endDate || "";
+  const { date, endDate } = racePlanDates(r);
   const time = /^\d{2}:\d{2}$/.test(r.departTime || "") ? r.departTime : "";
   const res = await saveDrafts(
-    [{ type: "plan", title: r.name.trim(), date, endDate: end && end > date ? end : "", time, place: (r.meetPoint || r.departFrom || "").trim() || [r.district, r.city].filter(Boolean).join(", "), cat: "Yarış", assignees: [] }],
+    [{ type: "plan", title: r.name.trim(), date, endDate, time, place: (r.meetPoint || r.departFrom || "").trim() || [r.district, r.city].filter(Boolean).join(", "), cat: "Yarış", assignees: [], raceId: r.id || "" }],
     { source: "manual", by },
   );
   return !res.error && res.plans > 0;

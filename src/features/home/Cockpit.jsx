@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { useAdd } from "@/features/add/AddProvider";
+import { usePlanOpen } from "@/features/athletes/usePlanOpen";
 import { useData } from "@/features/data/DataProvider";
 import { dayHours, dirDeg, getPlace, kn, nowOf, sky, windName } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
@@ -158,7 +158,7 @@ export function planWhen(p, now, today) {
 function NextPlan({ now }) {
   const { plans } = useData();
   const { profile } = useAuth();
-  const { openAdd } = useAdd();
+  const { open } = usePlanOpen(); // yarışa bağlı plan yarış sayfasını açar (tek kural)
   const today = todayStr();
   const p = nextPlan(plans, now, today);
   if (!p) return null;
@@ -169,7 +169,7 @@ function NextPlan({ now }) {
   const att = sail && canSeeAthletes(profile?.email);
   return (
     <div className="rounded-[1.25rem] bg-[#0b1a33] p-3 text-white">
-      <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3.5 text-left">
+      <button type="button" data-press onClick={() => open(p)} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3.5 text-left">
         <span className="min-w-[3.375rem] shrink-0 border-r border-white/30 pr-3.5 text-center leading-tight">
           <small className="block text-[0.75rem] font-semibold text-white/85">{w.top}</small>
           <b className="block text-[1.75rem] font-bold leading-none tracking-[-.03em] tabular-nums">{w.day}</b>

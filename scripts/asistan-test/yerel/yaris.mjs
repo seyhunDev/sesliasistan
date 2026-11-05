@@ -1111,3 +1111,46 @@ group("Tekne takibi")([
     ["bağlantılar", { desc: "saveStarts ve plan.order sunucuyla birleşir (runTransaction), son görülen useLiveSync'ten; Yayın programı öbür telefondan gelir", fn: () => { const st = r("features/athletes/raceLiveStore.js"); return [/runTransaction/.test(st) && /mergeStarts\(base, mine, srv\)/.test(st) && /ks\.includes\("order"\)/.test(st), /noteLive\(orgId, raceId, d\)/.test(r("features/raceMedia/useLiveSync.js")), /sinceLocal\(\) < 3000/.test(r("features/broadcast/BroadcastPage.jsx"))]; }, ok: (a) => a.every(Boolean) }],
   ]);
 }
+
+// Plana dokununca nereye (Seyhun 2026-11-05 "plana tıklıyorum, yarışa götürmesi gerekiyor, plana götürüyor"): TEK KURAL raceLinks.planRaceHref
+{
+  const L = await import("@/features/athletes/raceLinks");
+  const AG = await import("@/lib/agenda");
+  const HT = await import("@/lib/homeTiles");
+  const r = (f) => readFileSync(new URL(`../../../src/${f}`, import.meta.url), "utf8");
+  const rs = [{ id: "r1", name: "Foça Kupası" }];
+  group("Plan ve yarış bağı")([
+    ["yarışa bağlı plan yarışı açar", { desc: "yarışın planı ve son tarihi yarış sayfasına; raceId varsa ad tutmasa da (yarış listesi boşken de); diğer plan boş", fn: () => [
+      L.planRaceHref({ cat: "Yarış", title: "Foça Kupası" }, rs) === "/athletes/races/r1",
+      L.planRaceHref({ cat: "Yarış", title: "Foça Kupası: Online kayıt" }, rs) === "/athletes/races/r1",
+      L.planRaceHref({ cat: "Yarış", title: "Eski ad", raceId: "r9" }, []) === "/athletes/races/r9",
+      L.planRaceHref({ cat: "Toplantı", title: "Foça Kupası" }, rs) === "",
+      L.planRaceHref({ cat: "Yarış", title: "Bilinmeyen" }, rs) === "",
+    ], ok: (a) => a.every(Boolean) }],
+    ["yarışın planları kimlikle", { desc: "raceId'li plan ad değişse de yarışın; başka yarışın kimliğini taşıyan aynı adlı plan sayılmaz; 200 günden uzak aynı adlı (geçen yıl) sayılmaz", fn: () => {
+      const P = [
+        { id: "a", cat: "Yarış", title: "Eski Ad", raceId: "r1", date: "2026-11-10" },
+        { id: "b", cat: "Yarış", title: "Eski Ad: Kayıt", raceId: "r1", date: "2026-11-01" },
+        { id: "c", cat: "Yarış", title: "Foça Kupası", raceId: "r2", date: "2026-11-10" },
+        { id: "d", cat: "Yarış", title: "Foça Kupası: Kayıt", date: "2025-11-01" },
+      ];
+      const x = L.racePlansOf({ id: "r1", name: "Foça Kupası", startDate: "2026-11-10" }, P);
+      return [x.main?.id, x.deadlines.map((p) => p.id).join()];
+    }, ok: ([m, d]) => m === "a" && d === "b" }],
+    ["yarış değişince plan da", { desc: "ad/tarih değişince yarışın planı ve son tarih adları eşitlenir, eski plana raceId yazılır; aynıysa iş yok", fn: () => {
+      const race = { id: "r1", name: "Yeni Ad", startDate: "2026-11-12", endDate: "2026-11-14" };
+      const s = L.racePlanSync(race, { main: { id: "a", title: "Eski", date: "2026-11-10", endDate: "" }, deadlines: [{ id: "b", title: "Eski: Kayıt", raceId: "r1" }] });
+      const same = L.racePlanSync(race, { main: { id: "a", raceId: "r1", title: "Yeni Ad", date: "2026-11-12", endDate: "2026-11-14" }, deadlines: [] });
+      return [JSON.stringify(s), same.length];
+    }, ok: ([s, n]) => s === JSON.stringify([["a", { raceId: "r1", title: "Yeni Ad", date: "2026-11-12", endDate: "2026-11-14" }], ["b", { title: "Yeni Ad: Kayıt" }]]) && n === 0 }],
+    ["çok günlü plan her gün", { desc: "3 günlük yarış planı ana sayfa gün listesinde ve hafta şeridinde 3 günde de; saati yalnız ilk gün", fn: () => {
+      const p = { id: "p", cat: "Yarış", title: "Foça", date: "2026-11-10", endDate: "2026-11-12", time: "07:00", status: "planned" };
+      return [AG.onDay(p, "2026-11-11"), AG.onDay(p, "2026-11-13"), AG.timeOn(p, "2026-11-10"), AG.timeOn(p, "2026-11-11"), HT.dayPlans([p], "2026-11-12").length];
+    }, ok: ([a, b, t1, t2, n]) => a && !b && t1 === "07:00" && t2 === "" && n === 1 }],
+    ["her yerde aynı kural", { desc: "Planlar, Takvim, Sıradaki plan, günün listesi ve gün penceresi plana dokununca usePlanOpen; yarıştan eklenen plan raceId taşır", fn: () => {
+      const use = ["app/(app)/plans/page.jsx", "app/(app)/calendar/page.jsx", "features/home/Cockpit.jsx", "features/home/DayTimeline.jsx", "features/home/DayPick.jsx"].every((f) => /usePlanOpen\(\)/.test(r(f)));
+      const id = /raceId: r\.id/.test(r("features/athletes/races.js")) && /raceId: r\.id/.test(r("features/athletes/raceNotice.js")) && /d\.raceId \? \{ raceId: d\.raceId \}/.test(r("features/data/DataProvider.jsx"));
+      return [use, id, /onSyncPlan/.test(r("features/athletes/RaceEditor.jsx"))];
+    }, ok: (a) => a.every(Boolean) }],
+  ]);
+}
