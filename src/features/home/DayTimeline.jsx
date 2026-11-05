@@ -7,6 +7,8 @@ import { useAdd } from "@/features/add/AddProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { planKindOf } from "@/features/athletes/raceLinks";
+import { usePlanOpen } from "@/features/athletes/usePlanOpen";
+import { onDay, timeOn } from "@/lib/agenda";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { sky } from "@/features/weather/weather";
@@ -28,12 +30,15 @@ export function DayTimeline({ date, rows }) {
   const { profile } = useAuth();
   const { openAdd } = useAdd();
   const race = useRaceHome();
+  const { open, hrefOf } = usePlanOpen();
   const now = useNow();
   const today = todayStr();
   const isToday = date === today;
   const att = canSeeAthletes(profile?.email);
+  // Çok günlü plan (yarış) her gününde görünür; saati yalnız ilk gününde (sonraki günlerde tüm gün)
   const list = plans
-    .filter((p) => p.date === date && p.status !== "cancelled")
+    .filter((p) => onDay(p, date) && p.status !== "cancelled")
+    .map((p) => (timeOn(p, date) === (p.time || "") ? p : { ...p, time: "" }))
     .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
   const hm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const d = new Date(`${date}T12:00`);
@@ -60,7 +65,10 @@ export function DayTimeline({ date, rows }) {
           const sub = done ? "Yapıldı" : [p.place].filter(Boolean).join(" · ");
           const btns = !done && (
             <>
-              {kind !== "plan" && r && (
+              {kind === "race" && hrefOf(p) && (
+                <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="btn btn-sm btn-secondary !h-8 !px-3.5 !text-[0.8125rem]">Plan</button>
+              )}
+              {kind !== "plan" && r && !hrefOf(p) && (
                 <Link href={`/athletes/races/${r.id}`} data-press className="btn btn-sm btn-secondary !h-8 !px-3.5 !text-[0.8125rem]">Yarış sayfası</Link>
               )}
               {train && att && date <= today && (
@@ -88,7 +96,7 @@ export function DayTimeline({ date, rows }) {
                 )}
                 <span aria-hidden="true" className="w-[3px] shrink-0 self-stretch rounded-full" style={{ background: COLOR[k] }} />
                 <div className="min-w-0 flex-1">
-                  <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="block w-full min-w-0 text-left">
+                  <button type="button" data-press onClick={() => open(p)} className="block w-full min-w-0 text-left">
                     <b className={`block truncate text-[0.9375rem] font-semibold ${done ? "line-through" : ""}`}>{p.title || "Plan"}</b>
                     <small className="mt-0.5 block truncate text-[0.8125rem] text-mut">
                       <span className="font-semibold" style={{ color: COLOR[k] }}>{LABEL[k]}</span>

@@ -59,7 +59,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   const q = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { saveDrafts, plans } = useData();
+  const { saveDrafts, plans, updateRecord, isStaff } = useData();
   const { openAdd } = useAdd();
   const { data, err, reload } = useDikili("list", loadAthletes);
   const user = useDikiliUser();
@@ -291,6 +291,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
             onOpenPlan={(pid) => openAdd({ edit: { kind: "plan", id: pid } })}
             onPlan={(r) => addRacePlan(saveDrafts, r, by)}
             onNoticePlan={(r) => addNoticePlans(saveDrafts, r, by)}
+            onSyncPlan={isStaff ? null : (pid, patch) => updateRecord("plan", pid, patch, by)}
             onSaveAthlete={onSaveAthlete}
             onMail={mail ? async (m) => (await mailToMe(uid, m), mail.version >= (m.to.length ? 2 : 1)) : null}
             mailTo={mail?.saved}

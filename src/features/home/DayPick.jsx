@@ -14,6 +14,8 @@ import { isFit } from "@/lib/fitness/model";
 import { isTraining } from "@/lib/trainingLog";
 import { planKindOf } from "@/features/athletes/raceLinks";
 import { useRaceHome } from "@/features/athletes/raceHome";
+import { usePlanOpen } from "@/features/athletes/usePlanOpen";
+import { onDay, timeOn } from "@/lib/agenda";
 import { Icon } from "@/components/ui/Icon";
 import { initials } from "@/lib/utils/format";
 
@@ -24,6 +26,7 @@ const FIT_ST = { done: ["Yaptı", "st"], missed: ["Yapmadı", "gen"], skip: ["At
 export function DayPick({ day, att, today, onClose }) {
   const { saveDrafts, plans, updateRecord } = useData();
   const race = useRaceHome();
+  const { open, hrefOf } = usePlanOpen();
   const { profile } = useAuth();
   const toast = useToast();
   const router = useRouter();
@@ -55,7 +58,10 @@ export function DayPick({ day, att, today, onClose }) {
   const noLog = info.sail.find((p) => needsLog(p, today));
   // Planlar: yapılanlar da listede kalır (yeşil ✓, üstü çizili; dokununca geri alınır). Antrenman ve fitness kendi bölümlerinde.
   const others = day
-    ? plans.filter((p) => p.date === day.date && !isTraining(p) && !isFit(p) && p.status !== "cancelled").sort((a, b) => (a.time || "99").localeCompare(b.time || "99"))
+    ? plans
+        .filter((p) => onDay(p, day.date) && !isTraining(p) && !isFit(p) && p.status !== "cancelled")
+        .map((p) => (timeOn(p, day.date) === (p.time || "") ? p : { ...p, time: "" }))
+        .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"))
     : [];
   const isDone = (p) => !!p.done || p.status === "done";
   const toggleDone = (p) => updateRecord("plan", p.id, isDone(p) ? { done: false, ...(p.status === "done" ? { status: "" } : {}) } : { done: true }, profile?.uid);
@@ -76,17 +82,17 @@ export function DayPick({ day, att, today, onClose }) {
                     <QuickRow
                       key={p.id}
                       lead={kind === "race" ? tm : <Check on={done} label={done ? "Yapılmadı yap" : "Yapıldı"} onClick={() => toggleDone(p)} />}
-                      onOpen={() => edit(p.id)}
+                      onOpen={() => open(p, onClose)}
                       title={p.title || "Plan"}
                       sub={done ? "Yapıldı" : [kind !== "race" && p.time, p.place].filter(Boolean).join(" · ")}
                       done={done}
                     >
-                      {!done && kind !== "plan" && r && (
+                      {!done && kind !== "plan" && r && !hrefOf(p) && (
                         <Button size="sm" variant={kind === "race" ? "primary" : "secondary"} onClick={() => go(`/athletes/races/${r.id}`)}>
                           Yarış sayfası
                         </Button>
                       )}
-                      {!done && kind === "race" && (
+                      {!done && kind === "race" && hrefOf(p) && (
                         <Button size="sm" variant="secondary" onClick={() => edit(p.id)}>
                           Plan
                         </Button>

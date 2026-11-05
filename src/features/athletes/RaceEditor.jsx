@@ -33,7 +33,7 @@ import { RaceWx } from "./RaceWx";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { loadPosts } from "@/features/posts/posts";
-import { racePlansOf, racePostOf } from "./raceLinks";
+import { racePlanSync, racePlansOf, racePostOf } from "./raceLinks";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
 import { RACE_FILE_MAX, dropRaceStored, loadRaceFile, moveLocalExtras, uploadRaceFile } from "./raceStore";
 import { cleanDone, cleanNotice, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
@@ -160,7 +160,7 @@ function Check({ on, tone = "ok" }) {
 const SECS = [...RACE_SECS.map(([k]) => k), "site"]; // site: siteden gelen yarış dokümanları (?sec=site)
 const inRace = (x) => !!x?.startDate && todayStr() >= x.startDate && todayStr() <= (x.endDate || x.startDate);
 
-export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0 }) {
+export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0 }) {
   const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
   const toast = useToast();
   const confirmIt = useConfirm();
@@ -520,7 +520,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   };
   const toPlan = async () => {
     if (!r.name.trim() || !r.startDate) return toast("Önce yarış adı ve başlangıç tarihi");
-    if (await onPlan(r)) {
+    if (await onPlan({ ...r, id: id.current || "" })) {
       put("planAdded", true);
       toast("Planlara eklendi");
     }
@@ -611,7 +611,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     });
   const noticePlan = async () => {
     if (!r.name.trim()) return toast("Önce yarış adı");
-    const n = await onNoticePlan(r);
+    const n = await onNoticePlan({ ...r, id: id.current || "" });
     if (n > 0) {
       put("notice", { ...r.notice, planned: true });
       toast(`${n} son tarih planlara eklendi`);
@@ -750,7 +750,19 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   };
   const dueOpen = (r.notice?.deadlines || []).filter((d) => d.date && daysTo(d.date) >= 0).length;
   // Yarış kartı: plan, son tarihler, gönderi (Seyhun 2026-10-20: "gönderisi hazırlandıysa o gönderiyi gösterelim"; "plandaysa planda gösterelim")
-  const links = racePlansOf(r, plans);
+  const links = racePlansOf({ ...r, id: rid }, plans);
+  // Yarışın planı yarışı izler (tek kural, raceLinks.js): ad ya da tarih değişince plan ve son tarih planları da değişir; eski planlara yarış kimliği
+  // yazılır. Yazarken her harfte değil, durunca (1,5 sn) yazılır; yalnız kimlik eklenecekse hemen.
+  const sync = rid && onSyncPlan ? racePlanSync({ ...r, id: rid }, links) : [];
+  const syncKey = JSON.stringify(sync);
+  useEffect(() => {
+    const list = JSON.parse(syncKey);
+    if (!list.length) return;
+    const onlyId = list.every(([, x]) => Object.keys(x).join() === "raceId");
+    const t = setTimeout(() => list.forEach(([pid, x]) => onSyncPlan(pid, x)), onlyId ? 0 : 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncKey]);
   const inPlan = links.main || (r.planAdded && !plans.length ? {} : null);
   // Gönderiler yarış açılınca bir kez okunur (yalnız kayıtlı yarışta; okunamazsa "Gönderi hazırla" görünür)
   const [posts, setPosts] = useState(null);

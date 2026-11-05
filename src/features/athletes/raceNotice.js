@@ -103,7 +103,7 @@ export async function addNoticePlans(saveDrafts, r, by) {
   if (!list.length) return 0;
   const place = [r.district, r.city].filter(Boolean).join(", ");
   const res = await saveDrafts(
-    list.map((d) => ({ type: "plan", title: `${r.name.trim()}: ${d.title}`, date: d.date, endDate: "", time: d.time || "", place, cat: "Yarış", assignees: [] })),
+    list.map((d) => ({ type: "plan", title: `${r.name.trim()}: ${d.title}`, date: d.date, endDate: "", time: d.time || "", place, cat: "Yarış", assignees: [], raceId: r.id || "" })),
     { source: "manual", by },
   );
   return res.error ? 0 : res.plans;
