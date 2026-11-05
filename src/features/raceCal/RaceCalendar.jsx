@@ -13,6 +13,8 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { loadRaces } from "@/features/athletes/races";
 import { RaceSwitch } from "./RaceSwitch";
+import { WideCols } from "@/features/athletes/RaceList";
+import { useWide } from "@/hooks/useWide";
 
 // Yarış takvimi (Seyhun 2026-10-28, örnek /mnt/project-files/yaris-tasarim/takvim/ornek.png): ortak yarışlar (sharedRaces) herkese açık.
 // Lacivert üstte başlık, arama, Yaklaşan | Geçmiş; altta ay ay yarışlar. Dokununca /races/{id} (bilgi, talimat, sonuçlar).
@@ -35,7 +37,7 @@ function soon(s, today) {
   return a === 1 ? "Yarın" : a === 0 ? "Bugün" : "Sürüyor";
 }
 
-function CalRow({ s, past, today, onOpen }) {
+function CalRow({ s, past, today, onOpen, wide, mine }) {
   const a = day(s.startDate);
   const b = s.endDate && s.endDate !== s.startDate ? day(s.endDate) : null;
   const classes = classesOf(s.notice).join(", ");
@@ -52,8 +54,8 @@ function CalRow({ s, past, today, onOpen }) {
         </span>
       }
       title={s.name}
-      sub={[placeOf(s), classes].filter(Boolean).join(" · ")}
-      right={past ? null : soon(s, today)}
+      sub={wide ? placeOf(s) : [placeOf(s), classes].filter(Boolean).join(" · ")}
+      right={wide ? <WideCols a={classes || "—"} b={mine ? <span className="font-semibold text-acc">Kulübümde</span> : ""} c={past ? "" : soon(s, today)} /> : past ? null : soon(s, today)}
     />
   );
 }
@@ -75,6 +77,7 @@ export function RaceCalendar() {
   useEffect(() => {
     loadSharedAll().then(setList, (e) => (setList([]), setError(e?.code === "permission-denied" ? "Yarış takvimi açılamadı." : "Yarışlar alınamadı.")));
   }, []);
+  const wide = useWide();
   const today = todayStr();
   const cal = useMemo(() => calendarOf(list, today, q), [list, today, q]);
   const all = useMemo(() => calendarOf(list, today), [list, today]);
@@ -91,8 +94,10 @@ export function RaceCalendar() {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{club ? "Yarışlar" : "Yarış takvimi"}</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{!list ? "Yükleniyor…" : [`${all.up.length} yaklaşan`, `${all.past.length} geçmiş`].join(" · ")}</p>
           </div>
+          {wide && club && <RaceSwitch on="cal" inline />}
         </header>
-        {club && <RaceSwitch on="cal" />}
+        {!wide && club && <RaceSwitch on="cal" />}
+        <div className="race-find">
         <label className="ck-glass mt-3.5 flex h-11 items-center gap-2 rounded-xl px-3">
           <Icon name="search" className="size-[1.125rem] shrink-0 text-white/55" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Yarış, yer ya da sınıf ara" enterKeyHint="search" className="min-w-0 flex-1 bg-transparent text-[0.9375rem] text-white outline-none placeholder:text-white/55" />
@@ -109,6 +114,7 @@ export function RaceCalendar() {
             </button>
           ))}
         </div>
+        </div>
       </section>
       <div className="race-body relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {error && <p className="text-center text-[0.875rem] text-rec">{error}</p>}
@@ -119,7 +125,7 @@ export function RaceCalendar() {
             <ListHead title={m} count={l.length} />
             <RowList>
               {l.map((s) => (
-                <CalRow key={s.id} s={s} past={tab === "past"} today={today} onOpen={open} />
+                <CalRow key={s.id} s={s} past={tab === "past"} today={today} onOpen={open} wide={wide} mine={!!mine[s.id]} />
               ))}
             </RowList>
           </section>
