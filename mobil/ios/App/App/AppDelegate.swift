@@ -60,6 +60,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      configurationForConnecting connectingSceneSession: UISceneSession,
                      options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        // Projektör/TV (kablo ya da AirPlay) bağlanınca iOS harici ekran için de sahne ister. Ona pencere açmayız:
+        // açarsak ikinci bir Velora açılır ve iPad ekranı yansımaz (Seyhun 2026-11-05 Capsule 3). Pencere yoksa iOS düz yansıtır.
+        if connectingSceneSession.role != .windowApplication {
+            return UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
+        }
         let config = UISceneConfiguration(name: "Default Configuration",
                                           sessionRole: connectingSceneSession.role)
         config.delegateClass = SceneDelegate.self
