@@ -1522,7 +1522,7 @@ function ScGen({ data, who, now, onFull }) {
   const k = Math.floor(now / 1000 / SC_PAGE_S);
   const pg = scPaged(list, k, SC_TOP, SC_GEN, scCatPages(b));
   return (
-    <button type="button" className="sc-rd" onClick={() => onFull("all")}>
+    <button type="button" className="sc-rd" onClick={onFull ? () => onFull("all") : undefined}>
       <div className="sc-rdh">
         <span>{[b.cls || "Genel", "Genel sıra"].join(" · ")}</span>
         <span>{`${b.total} tekne`}</span>
@@ -1605,7 +1605,7 @@ function ScFleet({ data, sel, mode, now, who, today, onFull }) {
   if (rd) {
     const fresh = rd.t && now - rd.t < SC_ROUND_MS;
     return (
-      <button type="button" className="sc-rd" onClick={() => onFull("race")}>
+      <button type="button" className="sc-rd" onClick={onFull ? () => onFull("race") : undefined}>
         <div className="sc-rdh">
           <span>
             <ScGrp g={who?.grp} />
@@ -1922,7 +1922,7 @@ function Sc03({ data, sel, mode, now, onFull, ctl = null }) {
   if (cur.rr) {
     const rr = cur.rr;
     return (
-      <button type="button" className="sc-board" onClick={() => onFull("race")}>
+      <button type="button" className="sc-board" onClick={onFull ? () => onFull("race") : undefined}>
         <header>
           <b>{rr.head === "Resmî sonuç" ? "Sonuç" : "Yarış sonucu"}</b>
           <div>
@@ -1963,7 +1963,7 @@ function Sc03({ data, sel, mode, now, onFull, ctl = null }) {
     ctl.setTab(i);
   };
   return (
-    <Box {...(ctl ? {} : { type: "button", onClick: () => onFull("all") })} className={`sc-board wide${ctl ? " ctl" : ""}`}>
+    <Box {...(ctl ? {} : { type: "button", onClick: onFull ? () => onFull("all") : undefined })} className={`sc-board wide${ctl ? " ctl" : ""}`}>
       <header>
         <b>Genel sıralama</b>
         <div>
@@ -2542,6 +2542,10 @@ export function LiveScreen({ id, y = "" }) {
   const [myVid, setMyVid] = useState({ id: "", url: "" }); // yalnız bu cihazda arka planda oynayan kendi videom (canlı yayına gitmez)
   const [barHide, setBarHide] = useState(false); // alt düğmeler gizli
   const inApp = useInAppBack(); // uygulama içinden açıldı (link ile açılanda null)
+  // Düğmeler, seçimler, listeye dokunma yalnız uygulama içinde "Ekrana aç" ile açılan ekranda (Seyhun 2026-11-05 "herkese açık linkte ve Yayın'daki
+  // önizlemede kontrol olmayacak, sadece gösterilecek"); çerçevede (Yayın önizlemesi) hiç yok
+  const top = useSyncExternalStore(noSub, () => window.self === window.top, () => false);
+  const own = !!inApp && top;
   const [vTab, setVTab] = useState(""); // alt çubukta açık olan: cam, pos, course, wind, rank, start (boş = kapalı)
   const myRef = useRef(null); // arka plandaki kendi videom (oynat, geri al, baştan)
   const playMine = useCallback((vid, blob) => {
@@ -2655,7 +2659,7 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={setVCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={myVid.url && adm && inApp && !demoOn ? <MyVidCtl key={myVid.id} vref={myRef} onOpen={() => setVTab("vid")} onStop={() => playMine("", null)} /> : null} hide={barHide} onHide={setBarHide} />} />
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={setVCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={myVid.url && adm && inApp && !demoOn ? <MyVidCtl key={myVid.id} vref={myRef} onOpen={() => setVTab("vid")} onStop={() => playMine("", null)} /> : null} hide={barHide} onHide={setBarHide} /> : null} />
         {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
