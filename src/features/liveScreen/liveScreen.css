@@ -69,17 +69,12 @@
 .lv-gone b { font-size: 1.6em; font-weight: 800; }
 .lv-gone span { color: var(--lv-mut); }
 .lv-gone .lv-btn { margin-top: 0.6em; }
-.lv-home { padding: 0.3em 1em; max-width: 46em; width: 100%; }
-.lv-demob { align-self: flex-start; }
 .lv-row { display: block; padding: 0.85em 0; border-top: 1px solid var(--lv-line); color: var(--lv-fg); text-decoration: none; }
 .lv-row:first-child { border-top: 0; }
 .lv-row b { display: flex; align-items: center; gap: 0.6em; font-size: 1.15em; font-weight: 700; }
 .lv-row b em { font-style: normal; font-size: 0.7em; }
 .lv-row.live { background: rgba(255, 61, 119, 0.08); margin: 0 -1em; padding-left: 1em; padding-right: 1em; }
 .lv-row span { display: block; color: var(--lv-mut); font-size: 0.9em; margin-top: 0.15em; }
-.lv-mut { color: var(--lv-mut); }
-.lv-dim { color: var(--lv-dim); }
-.lv-acc { color: var(--lv-acc); }
 .lv-btn {
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.08);
@@ -100,12 +95,6 @@
 .lv-back { color: var(--lv-dim); text-decoration: none; font-size: 1.6em; line-height: 1; padding: 0 0.25em; margin-left: -0.25em; font-weight: 500; }
 .lv-back:hover { color: var(--lv-fg); }
 /* Genel sayfa /canli başlığı */
-.lv-head { display: flex; align-items: center; gap: 0.9em; }
-.lv-ttl { min-width: 0; flex: 1; }
-.lv-ttl b { display: block; font-size: 1.9em; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4); }
-.lv-ttl span { display: block; color: var(--lv-mut); font-size: 0.95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-live { display: inline-flex; align-items: center; gap: 0.5em; background: var(--lv-acc); color: #fff; padding: 0.42em 1em; border-radius: 999px; font-size: 0.9em; letter-spacing: 0.08em; text-transform: uppercase; }
-.lv-live::before { content: ""; width: 0.55em; height: 0.55em; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0.28em rgba(255, 255, 255, 0.3); }
 
 /* ---- Sade yayın yerleşimi (Seyhun 2026-11-02 "daha sade, bilgi ekranı alt tarafta") ----
    Üstte yalnız geri düğmesi (yazı yok); solda tek panel (yarışta günün yarışı ⇄ genel, 12 sn'de bir); ortada yalnız geri sayarken büyük sayaç; sağda
@@ -121,40 +110,13 @@
   height: 100dvh;
   min-height: 0;
 }
-.lv-left { grid-area: left; display: flex; flex-direction: column; gap: 0.7em; align-self: start; min-height: 0; max-height: 100%; overflow: hidden; }
-.lv-center { grid-area: center; align-self: center; justify-self: center; transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.lv-center .lv-pill { animation: none; transform: scale(1.35); padding: 0.6em 1.8em 0.9em; }
-.lv-center .lv-clock { font-size: clamp(56px, 5.6vw, 170px); }
 /* Video varken sayaç ortadan aşağı kayıp küçülür (görüntüyü kapatmasın); start olunca alttaki şeride iner ve kaybolur */
-.lv-bc.video .lv-center { transform: translateY(22vh) scale(0.72); }
 /* sayaç ileri saymaya geçince sakin söner (Seyhun 2026-11-02 "çok dikkat çekiyor, normal çalışsın"); süre şeritte yerinde belirir */
-.lv-center.out { animation: lv-off 0.6s ease both; }
-@keyframes lv-off { to { opacity: 0; } }
-.lv-ov > .lv-sumhero { grid-area: center; align-self: center; justify-self: center; }
 /* Parkur sahnesi: büyük, sağda ve ortada (sol panelin yanında); videoda koyu camın üstünde */
-.lv-scene { position: fixed; z-index: -1; left: 40vw; right: 1.5vw; top: 9vh; bottom: 13vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4em; background: none; border: 0; padding: 0; color: #fff; cursor: pointer; animation: lv-fade 0.8s ease-out both; }
-.lv-sceneb { width: 100%; min-height: 0; flex: 1; display: flex; align-items: center; justify-content: center; }
-.lv-sceneb svg { width: 100%; height: 100%; max-height: 100%; }
-.lv-scenet { font-size: 0.82em; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.8; }
 /* Parkur gösterilirken (Seyhun 2026-11-02): kart yok; arka plan (video ya da deniz/fotoğraf) bulanıklaşır, ortadaki sayaç ve bekleme yazısı çekilir */
 .lv-bc :is(.lv-bg, .lv-sea) { transition: filter 0.8s ease; }
 .lv-bc.course :is(.lv-bg, .lv-sea) { filter: blur(18px) brightness(0.6); }
-.lv-bc :is(.lv-center, .lv-wait) { transition: opacity 0.6s ease; }
-.lv-bc.course :is(.lv-center, .lv-wait) { opacity: 0; }
-.lv-scene.out { animation: lv-sink 0.6s ease-in both; }
-.lv-foot { grid-area: foot; display: flex; flex-direction: column; align-items: center; gap: 0.6em; min-width: 0; }
-.lv-windpop { width: min(100%, 34em); padding: 0.6em 0.9em; align-self: flex-start; }
 /* Alt bant: tek koyu şerit, hücreler ince çizgiyle ayrılır; üstte değer, altında küçük etiket */
-.lv-bar { display: flex; align-items: stretch; width: 100%; min-height: 3.8em; background: var(--lv-panel); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: 0.6em; overflow: hidden; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.lv-bar > .lv-livedot { align-self: center; padding: 0 1.1em; }
-.lv-cell { display: flex; flex-direction: column; justify-content: center; gap: 0.1em; padding: 0.5em 1.4em; min-width: 0; border: 0; border-left: 1px solid var(--lv-line); background: none; color: inherit; font: inherit; text-align: left; }
-.lv-bar > .lv-cell:first-child, .lv-bar > .lv-livedot + .lv-cell { border-left: 0; }
-button.lv-cell { cursor: pointer; }
-button.lv-cell:hover { background: rgba(255, 255, 255, 0.06); }
-.lv-cell b { display: flex; align-items: center; gap: 0.45em; font-size: 1.3em; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-cell span { font-size: 0.72em; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lv-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-cell.time b { font-size: 1.9em; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1; }
-.lv-cell .lv-arrow { width: 1.6em; height: 1.6em; border-width: 1.5px; }
 /* Örnek yarışın oynatıcısı (yalnız /canli/ornek) */
 .lv-demo { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 0.3em; padding: 0.3em 0.4em 0.3em 0.9em; border-radius: 999px; background: rgba(0, 0, 0, 0.62); font-size: 13px; color: rgba(255, 255, 255, 0.85); }
 .lv-demo span { margin-right: 0.4em; white-space: nowrap; }
@@ -162,17 +124,10 @@ button.lv-cell:hover { background: rgba(255, 255, 255, 0.06); }
 .lv-demo a { border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; border-radius: 999px; padding: 0.2em 0.75em; text-decoration: none; }
 /* Alt yazı (olimpiyat / SailGP): şeridin üstünde; solda vurgu şeridi, büyük yazı, altında sınıf · grup · yarış */
 /* Şeridin üstünde, şeffaf zeminde yarışın adı ve şimdi ne olduğu (hep orada); üstünde yayıncının alt yazısı */
-.lv-title { align-self: stretch; display: flex; flex-direction: column; gap: 0.35em; padding: 0.2em 0.4em 0; min-width: 0; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55); }
-.lv-titlem { display: flex; align-items: baseline; gap: 0.4em 1em; flex-wrap: wrap; min-width: 0; padding: 0.55em 1em; border-radius: 0.6em; background: linear-gradient(90deg, rgba(4, 14, 28, 0.5), rgba(4, 14, 28, 0.12) 70%, transparent); }
-.lv-titlem > b { display: flex; align-items: center; gap: 0.45em; font-size: 1.9em; font-weight: 800; letter-spacing: -0.015em; line-height: 1.1; }
-.lv-titlem > span { color: var(--lv-mut); font-size: 0.85em; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
-.lv-titlem > b .lv-dot { width: 0.42em; height: 0.42em; }
-.lv-titleb { margin-left: auto; display: flex; gap: 0.5em; text-shadow: none; }
-.lv-cap { align-self: flex-start; font-style: normal; font-size: 1.05em; font-weight: 700; padding: 0.3em 0.8em; border-left: 0.3em solid var(--lv-acc); background: rgba(4, 14, 28, 0.45); border-radius: 0 0.4em 0.4em 0; animation: lv-fade 0.6s ease both; }
 /* Panel girişi/çıkışı: in = yukarı süzülür, out = solup aşağı iner, sonra kaldırılır (useFade) */
 .lv-bg .lv-bgl.tall :is(video, img):not(.lv-bgblur) { object-fit: contain; }
 .lv-bg .lv-bgblur { filter: blur(28px) brightness(0.55); transform: translate(-50%, -50%) scale(1.15); }
-.lv-p.out, .lv-bg.out { animation: lv-sink 0.5s ease-in both; pointer-events: none; }
+.lv-bg.out { animation: lv-sink 0.5s ease-in both; pointer-events: none; }
 @keyframes lv-sink { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(14px); } }
 .lv-bg.out { animation: lv-fadeout 0.9s ease-in both; }
 @keyframes lv-fadeout { from { opacity: 1; } to { opacity: 0; } }
@@ -186,109 +141,20 @@ button.lv-cell:hover { background: rgba(255, 255, 255, 0.06); }
 .lv-pulse { width: 0.8em; height: 0.8em; border-radius: 50%; background: var(--lv-acc); animation: lv-pulse 1.4s ease-in-out infinite; }
 @keyframes lv-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 61, 119, 0.6); } 50% { box-shadow: 0 0 0 0.6em rgba(255, 61, 119, 0); } }
 /* Gün sonu: ortada büyük sayı ve günün yarışlarının kartları (grup, sınıf, ilk üç) */
-.lv-sumhero { display: flex; flex-direction: column; align-items: center; gap: 1.2em; max-width: 100%; padding: 0 1em; animation: lv-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.lv-sumbig { display: flex; align-items: center; gap: 0.5em; text-shadow: 0 6px 30px rgba(0, 0, 0, 0.45); }
-.lv-sumbig b { font-size: clamp(64px, 7.5vw, 220px); font-weight: 800; letter-spacing: -0.05em; line-height: 0.9; }
-.lv-sumbig span { display: flex; flex-direction: column; font-size: 1.5em; font-weight: 800; line-height: 1.1; }
-.lv-sumbig small { font-size: 0.6em; font-weight: 600; color: var(--lv-mut); }
-.lv-sumraces { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.7em; max-width: 100%; }
-.lv-sumr { width: 15em; background: var(--lv-panel); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: 0.5em; overflow: hidden; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); }
-.lv-sumr header { display: flex; justify-content: space-between; align-items: center; gap: 0.6em; padding: 0.4em 0.8em; background: rgba(0, 0, 0, 0.55); font-size: 0.8em; letter-spacing: 0.06em; text-transform: uppercase; }
-.lv-sumr header b { display: flex; align-items: center; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-sumr header span { color: var(--lv-mut); white-space: nowrap; }
-.lv-sumr .lv-rl, .lv-sumr .lv-pe { padding: 0.3em 0.8em 0.4em; }
-.lv-sumr .lv-rl li { grid-template-columns: 1.3em 3em minmax(0, 1fr) auto; }
 /* Panel: koyu, köşeleri az yuvarlak, üstte siyah başlık şeridi (SailGP kutuları gibi); açılırken yukarı süzülür */
-.lv-p {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  width: 100%;
-  background: var(--lv-panel);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  border-radius: 0.5em;
-  overflow: hidden;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
-  border: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-button.lv-p { cursor: pointer; }
-button.lv-p:active { transform: translateY(1px); }
-.lv-ph { display: flex; justify-content: space-between; align-items: center; gap: 0.8em; padding: 0.45em 0.9em; background: rgba(0, 0, 0, 0.55); font-size: 0.8em; letter-spacing: 0.06em; text-transform: uppercase; }
-.lv-ph b { display: flex; align-items: center; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-ph span { color: var(--lv-mut); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-pb { padding: 0.5em 0.9em 0.6em; min-height: 0; display: flex; flex-direction: column; }
-.lv-pe { color: var(--lv-mut); font-weight: 500; font-size: 0.9em; padding: 0.3em 0; }
-.lv-pm { color: var(--lv-mut); font-size: 0.8em; padding-top: 0.35em; }
 /* Sıralama satırı: sıra · yelken · kısa ad · kulüp kısaltması (· puan) */
-.lv-rl { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
-.lv-rl li { display: grid; grid-template-columns: 1.6em 3.4em minmax(0, 1fr) auto; align-items: center; gap: 0.5em; padding: 0.26em 0; border-top: 1px solid var(--lv-soft); white-space: nowrap; }
-.lv-rl li:first-child { border-top: 0; }
-.lv-rl b { font-size: 1.1em; font-weight: 800; }
-.lv-rl i { font-style: normal; color: var(--lv-mut); font-weight: 700; }
-.lv-rl span { overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; }
-.lv-rl em { font-style: normal; color: var(--lv-mut); font-weight: 600; font-size: 0.86em; }
-.lv-rl u { text-decoration: none; font-weight: 800; min-width: 2em; text-align: right; }
-.lv-rl li.w { grid-template-columns: 1.6em minmax(0, 1fr) auto; }
-.lv-rl li:has(u) { grid-template-columns: 1.6em 3.4em minmax(0, 1fr) auto auto; }
-.lv-rl li.new { background: var(--lv-accbg); margin: 0 -0.9em; padding-left: 0.9em; padding-right: 0.9em; }
-.lv-rankp .lv-chips { justify-content: flex-start; margin-top: 0.5em; }
 /* Üst orta: yarış adı satırı ve mesaj şeridi */
 /* Yarış adı: büyük harf, aralıklı, çok soluk (zemine gömülü); yer ve tarih daha soluk */
-.lv-ghost { border: 1px solid rgba(255, 255, 255, 0.16); background: none; color: rgba(255, 255, 255, 0.5); border-radius: 999px; padding: 0.25em 0.8em; font: inherit; font-size: 0.72em; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; cursor: pointer; text-decoration: none; align-self: center; }
-.lv-ghost:hover { color: var(--lv-fg); border-color: rgba(255, 255, 255, 0.4); }
-.lv-ghost.on { color: var(--lv-acc); border-color: rgba(255, 61, 119, 0.5); }
 /* Canlı: mesaj şeridinin başında küçük kırmızı nokta + CANLI */
-.lv-livedot { display: inline-flex; align-items: center; gap: 0.4em; font-style: normal; font-size: 0.72em; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--lv-acc); }
-.lv-livedot::before { content: ""; width: 0.6em; height: 0.6em; border-radius: 50%; background: var(--lv-acc); animation: lv-pulse 1.4s ease-in-out infinite; }
 /* Geri tek başına sol üst köşede; sıralama paneli onun altından başlar */
 .lv-backc { position: absolute; top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top) - 0.2em); left: clamp(16px, 1.6vw, 44px); z-index: 3; margin: 0; }
 /* Sağ üst: parkur, dokununca büyük (kartsız, ekran boyunca) */
-.lv-svg { display: flex; justify-content: center; width: 100%; }
-.lv-svg svg { display: block; width: 100%; height: auto; }
-.lv-cflat { display: flex; justify-content: center; align-items: center; min-height: 0; animation: lv-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.lv-cflat svg { display: block; width: auto; height: min(88vh, 70vw); max-width: 100%; }
 @keyframes lv-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-@media (prefers-reduced-motion: reduce) { .lv-p, .lv-cap, .lv-cflat, .lv-scene, .lv-pill, .lv-bg, .lv-sumhero, .lv-pause, .lv-center, .lv-bar, .lv-cell, .lv-cell b { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .lv-bg, .lv-pause { animation: none; transition: none; } }
 /* Sol alt: rüzgâr (ok, derece, yön · hız); beklemede altında günün tahmini */
-.lv-windp.fc { width: min(100%, 23em); }
-.lv-wv { display: flex; align-items: center; gap: 0.6em; min-width: 0; flex-wrap: wrap; }
-.lv-wv b { font-size: 1.9em; font-weight: 800; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; }
-.lv-wv > span:not(.lv-arrow) { color: var(--lv-mut); white-space: nowrap; }
-.lv-arrow { width: 2.4em; height: 2.4em; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.28); display: grid; place-items: center; flex: none; }
-.lv-arrow svg { width: 60%; height: 60%; transition: transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
 /* Rüzgâr aralığı: ok iki yön arasında salınır (parkur kartındaki gibi) */
-.lv-arrow.swing svg { animation: lv-swing 3.2s ease-in-out infinite alternate; }
-@keyframes lv-swing { from { transform: rotate(var(--lv-a)); } to { transform: rotate(var(--lv-b)); } }
-.lv-wv { animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.lv-fc.mini svg { height: clamp(70px, 6vw, 130px); }
-.lv-fc { margin-top: 0.5em; }
-.lv-fc .lv-lab { font-size: 0.78em; }
-.lv-fc svg { display: block; width: 100%; height: clamp(90px, 8vw, 170px); margin-top: 0.4em; }
-.lv-fc .lv-sumt { font-size: 0.82em; }
-.lv-sumw { margin-top: 0.4em; }
-.lv-sumw svg { display: block; width: 100%; height: 4.5em; }
-.lv-sumt { display: flex; justify-content: space-between; color: var(--lv-dim); font-size: 0.78em; margin-top: 0.3em; }
 /* Alt orta: sayaç şeridi (büyük sayı), üstte evre ve start saati, altında bayraklar ve dakika adımları */
-.lv-pill { display: flex; flex-direction: column; align-items: center; min-width: min(100%, 17em); max-width: 100%; background: var(--lv-panel); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: 0.6em; padding: 0.5em 1.4em 0.7em; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); animation: lv-fade 0.6s both; /* transform geçişle yönetilir (lv-rise'ın transform'u geçişi ezerdi) */ }
-.lv-pillh { display: flex; justify-content: space-between; gap: 1.5em; width: 100%; color: var(--lv-mut); font-size: 0.82em; letter-spacing: 0.06em; text-transform: uppercase; }
-.lv-clock { font-size: clamp(44px, 4.6vw, 150px); font-weight: 800; letter-spacing: -0.05em; line-height: 1; font-variant-numeric: tabular-nums; margin: 0.08em 0 0.06em; white-space: nowrap; }
-.lv-pillf { display: flex; align-items: flex-start; gap: 1.1em; margin-top: 0.2em; }
 /* Bayraklar kare ve aynı boyda, adları küçük; start saati soluk (Seyhun 2026-11-02) */
-.lv-pillh span + span { opacity: 0.5; }
-.lv-pillf .lv-seq { align-self: center; }
-.lv-fl { display: flex; flex-direction: column; align-items: center; gap: 0.15em; transition: opacity 0.8s; }
-.lv-fl.down { opacity: 0.35; }
-.lv-fl small { font-size: 0.56em; font-weight: 600; letter-spacing: 0.04em; color: var(--lv-mut); white-space: nowrap; }
-.lv-seq { display: flex; gap: 0.35em; }
-.lv-seq i { font-style: normal; font-size: 0.78em; width: 1.9em; text-align: center; border-top: 3px solid rgba(255, 255, 255, 0.18); padding-top: 0.25em; color: var(--lv-mut); }
-.lv-seq .done { border-color: rgba(255, 255, 255, 0.7); }
-.lv-seq .now { border-color: var(--lv-acc); color: var(--lv-acc); }
 /* Bayraklar: sınıf (beyaz, harf), P (mavi, beyaz kare), I (sarı, siyah daire), U (kırmızı-beyaz dörtlü), Z (dört üçgen), Kara. İnen bayrak soluk */
 .lv-flag { display: block; box-sizing: border-box; width: 1.9em; height: 1.9em; border-radius: 0.2em; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
 .lv-flag.cls { background: #fff; color: #111; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1em; }
@@ -296,10 +162,6 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-flag.cls { flex-direction: column; gap: 0; border: 1.5px solid rgba(255, 255, 255, 0.85); }
 .lv-flag.cls svg { width: 100%; height: 100%; }
 .lv-flag.cls b { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.5em; font-weight: 800; letter-spacing: 0.04em; line-height: 1; color: inherit; }
-
-.lv-flags { display: flex; align-items: flex-start; gap: 1.2em; margin-top: 0.9em; font-size: clamp(16px, 1.6vw, 30px); }
-.lv-flags .lv-flag { width: 2.4em; height: 2.4em; }
-.lv-flags .lv-fl small { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.45em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.75); }
 .lv-flag.black { background: #111; border: 1.5px solid rgba(255, 255, 255, 0.85); }
 .lv-flag.p { background: #1b4fd6; }
 .lv-flag.p::after { content: ""; position: absolute; inset: 28%; background: #fff; }
@@ -328,7 +190,6 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-rcb span { color: var(--lv-mut); font-size: 0.85em; }
 .lv-rcb b { font-weight: 700; min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Sağ alt: sıradaki start + genel ilk 5 (puan sağda) */
-.lv-allp .lv-rl li { padding: 0.2em 0; }
 /* Tam liste penceresi ve kartlar (tablo: sıra, yelken, ad, kulüp, şamandıra şamandıra) */
 .lv-card {
   background: var(--lv-card);
@@ -341,8 +202,6 @@ button.lv-p:active { transform: translateY(1px); }
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 .lv-pop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; padding: clamp(16px, 1.5vw, 40px); font-size: clamp(14px, 1vw, 26px); z-index: 10; }
-.lv-big { cursor: pointer; }
-.lv-list { width: min(26em, 100%); max-height: 86vh; overflow: auto; background: rgba(5, 18, 34, 0.94); }
 .lv-full { width: min(64em, 100%); max-height: 90vh; overflow: auto; background: rgba(5, 18, 34, 0.94); display: flex; flex-direction: column; gap: 0.6em; }
 .lv-full .lv-rank { background: none; border: 0; box-shadow: none; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .lv-lab { color: var(--lv-mut); font-size: 0.88em; display: flex; justify-content: space-between; align-items: center; gap: 1em; min-width: 0; }
@@ -379,90 +238,25 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-dot { display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; margin-right: 0.35em; flex: none; vertical-align: 0.05em; }
 .lv-btn .lv-dot { margin-right: 0.3em; }
 .lv-empty { color: var(--lv-mut); font-weight: 500; padding: 0.8em 0.35em; }
-.lv-r { display: flex; justify-content: space-between; align-items: center; gap: 1em; padding: 0.6em 0; border-bottom: 1px solid var(--lv-soft); color: inherit; text-decoration: none; }
-.lv-r span { color: var(--lv-mut); font-weight: 500; font-size: 0.9em; white-space: nowrap; }
-.lv-r.sel b { color: var(--lv-acc); }
 
 /* ---- Yayın yazısı ve yeni evreler (Seyhun 2026-11-02 onay, project-files/samandira-donus/tasarim7; "profesyonel yelken yarışı yayını gibi yazı") ----
    Tek yazı ailesi: satırlar Barlow, başlık / sayı / etiket Barlow Condensed (src/app/canli/layout.jsx); etiketler büyük harf ve aralıklı, rakamlar eşit genişlikte. */
 .lv { font-family: var(--lv-font), var(--font-sans), system-ui, sans-serif; font-feature-settings: "tnum" 1; }
-.lv :is(.lv-clock, .lv-big, .lv-kick, .lv-what, .lv-expw, .lv-ph, .lv-pillh, .lv-cell, .lv-titlem, .lv-cap, .lv-p2, .lv-pt .h, .lv-sumh, .lv-sumr header, .lv-rl b, .lv-rl i, .lv-livedot, .lv-pm, .lv-scenet, .lv-btn, .lv-ghost) { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-titlem > b { font-size: 2.3em; font-weight: 700; letter-spacing: 0; text-transform: uppercase; }
-.lv-titlem > span, .lv-cell span, .lv-ph { font-weight: 600; letter-spacing: 0.12em; }
-.lv-cell b { font-size: 1.55em; font-weight: 700; letter-spacing: 0.01em; }
-.lv-cell.time b { font-size: 2.1em; font-weight: 600; line-height: 1; }
-.lv-cell.time.warn b { font-size: 1.35em; letter-spacing: 0; }
-.lv-clock { font-weight: 600; letter-spacing: -0.01em; }
-.lv-rl { font-size: 1.05em; }
-.lv-rl b { font-weight: 700; }
-.lv-rl i { font-weight: 600; }
-.lv-cap { font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
-.lv-cap.warn { border-left-color: var(--lv-warn, #f5b942); }
 /* Yarış öncesi, video yok: ortada geri sayım, ilk yarış, beklenen rüzgâr; altta program kartları; şerit gizli */
-.lv-foot.off { visibility: hidden; }
 /* gün sonunda başlık büyük yazıda; alttaki satırda yalnız düğmeler */
-.lv-titlem.bare { background: none; }
-.lv-titlem.bare > :not(.lv-titleb) { display: none; }
-.lv-titlem > b { gap: 0.25em; }
-.lv-what { gap: 0.2em 0.35em; }
-.lv-wait { position: absolute; inset: 0; z-index: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.9em; padding: 0 2em 9em; text-align: center; animation: lv-fade 0.8s ease-out both; }
-.lv-kick { font-size: 1.15em; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: var(--lv-mut); }
-.lv-big { font-family: var(--lv-font-c), system-ui, sans-serif; font-size: clamp(110px, 13vw, 360px); font-weight: 300; line-height: 0.85; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; text-shadow: 0 10px 50px rgba(0, 0, 0, 0.35); }
-.lv-what { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 0.2em 0.5em; font-size: 2em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
-.lv-what .lv-dot { width: 0.45em; height: 0.45em; }
-.lv-what small { font-size: 0.55em; font-weight: 600; color: var(--lv-mut); letter-spacing: 0.12em; }
-.lv-ap { font-size: 1.15em; color: var(--lv-mut); }
-.lv-expw { display: flex; align-items: center; gap: 0.9em; margin-top: 1em; padding: 0.7em 1.5em; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 999px; background: rgba(6, 24, 43, 0.35); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-.lv-expw b { font-size: 1.6em; font-weight: 700; }
-.lv-expw span:last-child { font-size: 0.85em; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lv-mut); }
-.lv-prog { position: absolute; left: clamp(16px, 1.6vw, 44px); right: clamp(16px, 1.6vw, 44px); bottom: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-bottom)); z-index: 1; display: flex; gap: 0.9em; animation: lv-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.lv-pt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3em; padding: 0.9em 1.2em; border-radius: 0.6em; background: rgba(6, 24, 43, 0.55); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-.lv-pt .h { display: flex; align-items: center; gap: 0.2em; font-size: 1.3em; font-weight: 600; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
-.lv-pt .h em { margin-left: auto; padding-left: 0.6em; font-style: normal; font-size: 0.8em; letter-spacing: 0.08em; color: var(--lv-mut); }
-.lv-pt .b { color: var(--lv-mut); font-weight: 500; }
-.lv-pt.next { border-color: var(--lv-acc); background: rgba(255, 61, 119, 0.14); }
-.lv-pt.next .h em, .lv-pt.now .h em { color: var(--lv-acc); }
-.lv-pt.done .h em { color: #86efac; }
 /* Program etiketleri sağ üstte (yarışta ve videolu beklemede) */
-.lv-prog2 { position: absolute; top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top)); right: clamp(16px, 1.6vw, 44px); z-index: 3; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5em; max-width: 60%; }
-.lv-p2 { display: inline-flex; align-items: center; gap: 0.1em; padding: 0.4em 0.9em; border-radius: 999px; background: rgba(6, 24, 43, 0.55); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.95em; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255, 255, 255, 0.78); white-space: nowrap; }
-.lv-p2.now { border-color: var(--lv-acc); color: #fff; }
-.lv-p2.done { color: rgba(255, 255, 255, 0.45); }
 /* Gün sonu: solda başlık ve yarış kartları (ilk üç), sağda genel sıralama; altta yarının ilk startı ve beklenen rüzgârı */
-.lv-end { grid-row: 2; grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(18em, 26em); gap: 2em; align-items: center; min-height: 0; padding-top: 2em; }
-.lv-end .lv-sumhero { align-items: stretch; padding: 0; }
-.lv-sumh { margin: 0; font-family: var(--lv-font-c), system-ui, sans-serif; font-size: clamp(40px, 4.2vw, 120px); font-weight: 700; line-height: 1; text-transform: uppercase; }
-.lv-sumh small { display: block; margin-bottom: 0.5em; font-size: 0.26em; font-weight: 600; letter-spacing: 0.16em; color: var(--lv-mut); }
-.lv-end .lv-sumraces { display: grid; grid-template-columns: repeat(auto-fill, minmax(14em, 1fr)); justify-content: stretch; }
-.lv-end .lv-sumr { width: auto; }
-.lv-endall { align-self: center; }
 
 /* Tek şerit (Seyhun 2026-11-02 "tek bir çizgi olmalı"): ilk hücre yarışın adı büyük, altında küçük satır; sıradaki yarış en sağda küçük */
-.lv-cell.ttl { min-width: 0; flex: 0 1 auto; padding-right: 1.8em; }
-.lv-cell.ttl b { font-size: 2em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.01em; line-height: 1.05; }
-.lv-cell.ttl b { gap: 0.15em; }
-.lv-cell.ttl b .lv-dot { width: 0.42em; height: 0.42em; }
-.lv-void { display: flex; align-items: center; gap: 0.6em; font-size: 1.25em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #ffd54a; }
-.lv-void .lv-flag { font-size: 1.1em; }
-.lv-cell.next { opacity: 0.8; }
-.lv-cell.next b { font-size: 1.05em; font-weight: 600; text-transform: uppercase; }
-.lv-title { flex-direction: row; align-items: flex-end; justify-content: space-between; }
-.lv-title .lv-titleb { margin-left: auto; }
 /* Genel sıralama yarışta sağda: alttan yukarı sabit yükseklikte, kaydırılır */
-.lv-right { grid-area: right; align-self: end; justify-self: end; width: min(100%, 24em); min-height: 0; max-height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
-.lv-rside .lv-pb { max-height: 46vh; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
-.lv-bc.video .lv-rside .lv-pb { max-height: 30vh; }
 
 /* Tablet (761–1099): paneller biraz dar, orta boşluk küçük */
 @media (max-width: 1099px) and (min-width: 761px) {
   .lv-ov { grid-template-columns: minmax(14em, 19em) minmax(0, 1fr) minmax(0, 18em); }
-  .lv-rl li { grid-template-columns: 1.4em 3em minmax(0, 1fr) auto; }
 }
 
 /* Telefon: video üstte 16:9 (sabit değil, akışta), altında paneller alt alta: mesaj, sayaç, sıralama, parkur, rüzgâr, sıradaki/genel */
 @media (max-width: 760px) {
-  .lv-ttl b { font-size: 22px; white-space: normal; }
-  .lv-ttl span { font-size: 13px; }
   .lv-page { font-size: 15px; padding: calc(14px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); gap: 12px; }
   .lv-ov { display: flex; flex-direction: column; height: auto; min-height: 100dvh; }
   .lv-bc.video .lv-page { padding-top: 0; }
@@ -473,40 +267,12 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-bc.video .lv-sea { display: none; }
   .lv-ov > * { width: 100%; max-width: none; justify-self: stretch; }
   .lv-backc { position: static; order: 0; align-self: flex-start; }
-  .lv-live { font-size: 0; gap: 0; padding: 0.42em; }
-  .lv-live::before { width: 9px; height: 9px; box-shadow: none; }
-  .lv-center { order: 2; transform: none !important; }
-  .lv-center .lv-pill { transform: none; width: 100%; }
-  .lv-titlem > b { font-size: 1.45em; }
-  .lv-titleb { margin-left: 0; }
-  .lv-sumhero { order: 2; padding: 0; }
-  .lv-sumbig b { font-size: 64px; }
-  .lv-sumr { width: 100%; }
   .lv-pause { position: absolute; inset: auto 0; height: 56.25vw; top: 0; }
   .lv-pausec { font-size: 14px; padding: 0.8em 1.4em; }
-  .lv-clock { font-size: 64px; }
-  .lv-foot { order: 3; }
-  .lv-bar { flex-wrap: wrap; }
-  .lv-cell { flex: 1 1 40%; padding: 0.5em 0.9em; border-left: 0; border-top: 1px solid var(--lv-line); }
-  .lv-left { order: 4; overflow: visible; max-height: none; }
   /* telefonda parkur bütün ekranın önünde, arkası bulanık (sayfa akışını itmez) */
-  .lv-bc.course :is(.lv-foot, .lv-left, .lv-right, .lv-title) { opacity: 0; transition: opacity 0.5s ease; }
-  .lv-scene { position: fixed; z-index: 40; inset: 0; padding: 18vh 3vw; backdrop-filter: blur(16px) brightness(0.6); -webkit-backdrop-filter: blur(16px) brightness(0.6); }
-  .lv-foot.off { display: none; }
-  .lv-right { order: 5; width: 100%; }
-  .lv-cell.ttl { flex: 1 1 100%; }
-  .lv-cell.next { margin-left: 0; align-items: flex-start; text-align: left; }
-  .lv-wait { position: static; order: 1; padding: 12vh 0 2em; }
-  .lv-big { font-size: 26vw; }
-  .lv-what { font-size: 1.4em; }
-  .lv-prog { position: static; order: 2; flex-direction: column; gap: 0.5em; }
-  .lv-prog2 { position: static; order: 1; max-width: none; justify-content: flex-start; }
-  .lv-end { order: 2; display: flex; flex-direction: column; align-items: stretch; padding-top: 0; }
-  .lv-sumh { font-size: 34px; }
   .lv-demo { top: auto; bottom: calc(10px + env(safe-area-inset-bottom)); right: 8px; left: 8px; justify-content: center; }
-  .lv-bigc, .lv-full, .lv-list, .lv-races { width: 100%; }
+  .lv-full, .lv-races { width: 100%; }
   .lv-rgrid { grid-template-columns: 1fr; }
-  .lv-cflat svg { width: 100%; height: auto; }
   .lv-rank :is(th, td).k, .lv-rank :is(th, td).c, .lv-rank :is(th, td).s { display: none; }
   .lv-nm2 { display: block; color: var(--lv-mut); font-weight: 500; font-size: 0.82em; }
   .lv-nm2:empty { display: none; }
@@ -519,417 +285,55 @@ button.lv-p:active { transform: translateY(1px); }
   .lv-rank .lv-lab { flex-wrap: wrap; row-gap: 0.5em; }
   .lv-rank .lv-lab .lv-chips { justify-content: flex-start; }
 }
-.lv-rankp .lv-rl u { font-weight: 600; color: var(--lv-mut); font-variant-numeric: tabular-nums; }
 
 /* Alt şerit (Seyhun 2026-11-02 serit-yeni onay): boydan boya değil, bilgi bitince biter; koyu modüller, ince ayraç, keskin köşe,
    solda logo renginde ince şerit; her modülde üstte büyük değer, altta küçük etiket. Parkur rota noktaları, yarışta liderin şamandırası sarı */
-.lv-foot { align-items: flex-start; }
-.lv-bar { position: relative; width: max-content; max-width: 100%; align-self: flex-start; background: rgba(7, 11, 20, 0.88); border-radius: 4px; padding-left: 4px; }
-.lv-bar::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, #ff3d77, #ff9a4d); }
-.lv-bar > .lv-cell:first-child { border-left: 0; }
-.lv-cell { padding: 0.55em 1.3em; }
-.lv-cell.ttl { padding-right: 1.6em; }
-.lv-cell.ttl b { font-size: 1.75em; }
-.lv-cell.ttl span { display: flex; align-items: center; gap: 0.8em; }
-.lv-cell.ttl .lv-livedot { font-size: 1em; }
-.lv-route { gap: 0.3em !important; }
-.lv-route i { display: inline-grid; place-items: center; width: 1.25em; height: 1.25em; border-radius: 50%; background: rgba(255, 255, 255, 0.12); font-style: normal; font-size: 0.72em; font-weight: 700; }
-.lv-route s { width: 0.55em; height: 1px; background: rgba(255, 255, 255, 0.35); }
-.lv-route i.done { background: rgba(255, 255, 255, 0.28); }
-.lv-route i.on { background: #ffcf33; color: #0b1220; }
-@media (max-width: 760px) {
-  .lv-bar { width: 100%; }
-  .lv-cell.ttl b { font-size: 1.4em; }
-}
 /* Video varken geri sayım şeritte (ortada videonun önüne gelmez) */
-.lv-cell.clock b { font-size: 2.6em; }
 /* Yarış öncesi gösterim: parkur → rüzgâr → program (Seyhun 2026-11-02); parkurla aynı yer, arka plan bulanık, kart yok */
-.lv-slide { cursor: default; gap: 1.2em; justify-content: center; }
-.lv-slnow { display: flex; gap: 3em; justify-content: center; flex-wrap: wrap; }
-.lv-slnow > div { display: flex; flex-direction: column; align-items: center; gap: 0.3em; }
-.lv-slnow b { display: flex; align-items: center; gap: 0.35em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 2.8em; font-weight: 700; line-height: 1; }
-.lv-slnow b .lv-arrow { width: 1em; height: 1em; }
-.lv-slnow span, .lv-slprog span { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.8em; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lv-mut); }
-.lv-slide .lv-fc { width: min(100%, 46em); }
-.lv-slprog { display: flex; flex-direction: column; width: min(100%, 30em); }
-.lv-slprog > div { display: flex; align-items: center; gap: 0.7em; padding: 0.7em 0.2em; border-bottom: 1px solid var(--lv-line); }
-.lv-slprog b { flex: 1; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.5em; font-weight: 700; text-transform: uppercase; }
-.lv-slprog .done { opacity: 0.55; }
-.lv-slprog .next span, .lv-slprog .now span { color: var(--lv-acc); }
 /* gösterim açıkken yarış öncesi sayfa (ortadaki sayaç ve program kartları) gizlenir; lv-fade animasyonu opaklığı ezmesin */
-.lv-bc.course :is(.lv-wait, .lv-prog) { animation: none; opacity: 0; visibility: hidden; }
-@media (max-width: 760px) {
-  .lv-slide { background: rgba(4, 10, 20, 0.94); }
-}
 /* Video yokken bekleme ekranı (Seyhun 2026-11-02 bekleme.png onay): solda durum sabit, sağda vitrin (parkur → rüzgâr → program) */
-.lv-hold { position: absolute; inset: 0; z-index: 0; display: grid; grid-template-columns: 42% 58%; animation: lv-fade 0.8s ease-out both; }
-.lv-hst { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 0.6em; padding: 0 1em 3em 4vw; min-width: 0; }
-.lv-hold .lv-big { font-size: clamp(72px, 10vw, 200px); line-height: 0.9; }
-.lv-hold .lv-what { flex-wrap: wrap; justify-content: flex-start; text-align: left; }
-.lv-hbox { display: flex; align-items: center; gap: 0.9em; margin-top: 0.6em; padding: 0.7em 1.1em 0.7em 0.9em; background: rgba(7, 11, 20, 0.7); border-left: 4px solid #ffcf33; border-radius: 0 4px 4px 0; max-width: 100%; }
-.lv-hbox .lv-flag { font-size: 1.4em; flex: none; }
-.lv-hbox b { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.35em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #ffcf33; }
-.lv-hbox span { display: block; font-size: 0.85em; color: rgba(255, 255, 255, 0.72); margin-top: 0.15em; }
-.lv-show { display: flex; flex-direction: column; min-width: 0; padding: 4.5vh 3vw 6vh 1vw; }
-.lv-tabs { display: flex; justify-content: center; gap: 1.6em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.85em; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.4); }
-.lv-tabs i { font-style: normal; position: relative; padding-bottom: 0.5em; transition: color 0.4s ease; }
-.lv-tabs i.on { color: #fff; }
-.lv-tabs i.on::after { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; background: #ff3d77; animation: lv-tabbar 12s linear both; }
-@keyframes lv-tabbar { from { width: 0; } to { width: 100%; } }
-.lv-showb { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2em; animation: lv-fade 0.7s ease-out both; }
-.lv-showb .lv-fc { width: min(100%, 46em); }
-@media (max-width: 760px) {
-  .lv-hold { position: static; order: 1; display: flex; flex-direction: column; gap: 1.6em; padding: 9vh 0 2em; }
-  .lv-hst { padding: 0; }
-  .lv-hold .lv-big { font-size: 24vw; }
-  .lv-show { padding: 0; }
-  .lv-tabs { justify-content: flex-start; }
-  .lv-showb { justify-content: flex-start; min-height: 22em; }
-}
 /* Yarışın adı soluk (Seyhun 2026-11-02); yarışa günler varken "6 gün" ve yarış günlerinin beklenen rüzgârı */
-.lv-hname { max-width: 100%; margin-bottom: 0.4em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(22px, 2.6vw, 54px); font-weight: 700; line-height: 1.05; text-transform: uppercase; letter-spacing: 0.03em; color: rgba(255, 255, 255, 0.28); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.lv-bigd { display: flex; align-items: baseline; gap: 0.12em; }
-.lv-bigd small { font-size: 0.32em; font-weight: 500; letter-spacing: 0.04em; color: var(--lv-mut); }
-.lv-hold .lv-whatd { font-size: 1.35em; }
-.lv-ahead { width: min(100%, 34em); display: flex; flex-direction: column; }
-.lv-ah { display: grid; grid-template-columns: 7.5em 1.8em 5.5em 1fr; align-items: center; gap: 0 0.8em; padding: 0.75em 0; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
-.lv-ah:last-child { border-bottom: 0; }
-.lv-ah .d b { display: block; font-size: 1.15em; font-weight: 600; }
-.lv-ah .d span { font-size: 0.82em; color: var(--lv-mut); }
-.lv-ah .ar { width: 1.6em; height: 1.6em; fill: #fff; }
-.lv-ah .k { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 2em; font-weight: 600; font-variant-numeric: tabular-nums; }
-.lv-ah .k em { font-style: normal; font-size: 0.42em; font-weight: 500; color: var(--lv-mut); margin-left: 0.25em; }
-.lv-ah .w { font-size: 0.9em; color: var(--lv-mut); }
-.lv-ah .w.n { grid-column: 2 / -1; }
-@media (max-width: 760px) { .lv-hname { font-size: 6vw; } .lv-ah { grid-template-columns: 4.6em 1.4em 4.2em 1fr; gap: 0 0.6em; } .lv-ah .k { font-size: 1.6em; } }
-@media (prefers-reduced-motion: reduce) { .lv-hold, .lv-showb, .lv-tabs i.on::after { animation: none; } }
 /* Sıralama panelinde yükseldi/düştü oku ve şamandıra şamandıra kendi sıraları (Seyhun 2026-11-02) */
-.lv-rankp .lv-rl li { grid-template-columns: 1.6em 1.9em 3.2em minmax(0, 1fr) auto auto; }
-.lv-rankp .lv-rl li.h { grid-template-columns: 1.6em 1.9em 3.2em minmax(0, 1fr) auto auto auto; }
-.lv-mv { text-decoration: none; font-size: 0.72em; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--lv-mut); }
-.lv-mv.up { color: #3ddc84; }
-.lv-mv.down { color: #ff6b6b; }
-.lv-hist { font-size: 0.72em; font-weight: 600; color: var(--lv-mut); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
 /* Rüzgâr grafiği açıklaması: beklenen (tahmin, beyaz çizgi), gerçekleşen (istasyon, mavi alan), bizim ölçüm (nokta) */
-.lv-leg { display: inline-flex; align-items: center; gap: 0.45em; flex-wrap: wrap; }
-.lv-leg i { display: inline-block; width: 1.4em; height: 0.7em; margin-left: 0.6em; border-radius: 2px; }
-.lv-leg i:first-child { margin-left: 0; }
-.lv-leg i.f { height: 0; border-top: 2.5px solid #fff; border-radius: 0; }
-.lv-leg i.o { background: rgba(143, 214, 255, 0.45); border-top: 2.5px solid #8fd6ff; }
-.lv-leg i.m { width: 0.7em; height: 0.7em; border-radius: 50%; background: #fff; }
-.lv-showb .lv-fc svg, .lv-slide .lv-fc svg { height: clamp(130px, 13vw, 250px); }
 /* Rüzgâr gösterimi sütunlu (Seyhun 2026-11-02 ruzgar-yeni.png onay): üstte iki kutu, altta saat saat gerçekleşen / beklenen */
-.lv-wbars { display: block; width: min(100%, 52em); height: auto; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-wleg { display: flex; gap: 1.6em; flex-wrap: wrap; justify-content: center; font-size: 0.85em; color: rgba(255, 255, 255, 0.8); }
-.lv-wleg i { display: inline-block; width: 1.3em; height: 0.9em; border-radius: 3px; margin-right: 0.45em; vertical-align: -0.1em; }
-.lv-wleg i.o { background: #4fb3ff; }
-.lv-wleg i.m { background: #ff9a4d; }
-.lv-wleg i.f { border: 1.5px solid rgba(255, 255, 255, 0.4); border-top: 4px solid #3fe0a0; background: linear-gradient(rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.04)); }
-.lv-wleg i.l { height: 0; border-top: 3px dashed #fff; border-radius: 0; vertical-align: 0.25em; }
 /* Rüzgâr: grafiğin altında şimdi → start bandı (Seyhun 2026-11-02 "grafik üstte, açıklama en altta, beklenti daha güzel") */
-.lv-wnow { display: flex; align-items: stretch; justify-content: center; gap: 1em; width: min(100%, 52em); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-wnow > .a, .lv-wnow > .b { flex: 1 1 0; min-width: 0; padding: 0.7em 1.1em 0.8em; border-radius: 10px; background: rgba(7, 11, 20, 0.62); }
-.lv-wnow > .a { border-left: 6px solid #4fb3ff; }
-.lv-wnow > .a.m { border-left-color: #ff9a4d; }
-.lv-wnow > .b { border-left: 6px solid #ff3d77; }
-.lv-wnow span { display: block; font-size: 0.82em; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.72); }
-.lv-wnow .a span { color: #7cc8ff; }
-.lv-wnow .a.m span { color: #ffb37a; }
-.lv-wnow .b span { color: #ff8fab; }
-.lv-wnow b { display: flex; align-items: baseline; gap: 0.25em; font-size: 3.2em; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.lv-wnow b em { font-style: normal; font-size: 0.42em; font-weight: 600; color: rgba(255, 255, 255, 0.75); }
-.lv-wnow b i { font-style: normal; font-size: 0.42em; font-weight: 700; margin-left: 0.4em; padding: 0.1em 0.45em; border-radius: 4px; background: rgba(255, 255, 255, 0.12); }
-.lv-wnow small { display: block; font-family: var(--lv-font), system-ui, sans-serif; font-size: 0.85em; color: rgba(255, 255, 255, 0.85); }
-.lv-wnow small.src { font-size: 0.75em; color: rgba(255, 255, 255, 0.55); margin-top: 0.15em; }
-.lv-wnow .mid { flex: 0 0 7.5em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2em; text-align: center; }
-.lv-wnow .mid span { color: #fff; font-size: 0.95em; letter-spacing: 0.08em; }
-.lv-wnow .mid svg { width: 100%; height: 1.1em; }
-.lv-wnow .mid line { stroke: rgba(255, 255, 255, 0.7); stroke-width: 3; stroke-dasharray: 6 5; }
-.lv-wnow .mid path { fill: #fff; }
-.lv-wnow .mid small { font-size: 0.78em; color: rgba(255, 255, 255, 0.65); }
-@media (max-width: 760px) { .lv-wnow { gap: 0.5em; } .lv-wnow > .a, .lv-wnow > .b { padding: 0.5em 0.7em; } .lv-wnow b { font-size: 2em; } .lv-wnow .mid { flex-basis: 4.5em; } .lv-wnow .mid span { font-size: 0.75em; letter-spacing: 0; } }
 /* Gün sonu (Seyhun 2026-11-02 "modern, yayın gibi"): kartlar soldan sağa açılır, sağa kapanır; podyum, tablo, istatistik */
-.lv-flow { position: absolute; inset: 0; z-index: 0; display: flex; align-items: center; justify-content: center; padding: 7vh 5vw 9.5em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
 /* Gün sonu arka planı (Seyhun 2026-11-02 "arkada blur, biraz koyu; kartların arka planı olmasın, grafikler canlı, az yazı") */
 .lv-bc.summary :is(.lv-bg, .lv-sea) { filter: blur(26px) brightness(0.42) saturate(1.1); }
-.lv-gcard { width: min(100%, 70em); animation: lv-wipe 0.75s cubic-bezier(0.7, 0, 0.2, 1) both; }
-.lv-gcard.out { animation: lv-wipeout 0.6s cubic-bezier(0.7, 0, 0.2, 1) both; }
-@keyframes lv-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-@keyframes lv-wipeout { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 0 100%); } }
-.lv-gcard header { position: relative; display: flex; align-items: baseline; justify-content: space-between; gap: 1em; padding: 0 0.2em 0.5em; border-bottom: 2px solid rgba(255, 255, 255, 0.18); }
-.lv-gcard h2 { display: flex; align-items: center; gap: 0.4em; margin: 0; font-size: clamp(22px, 2.2vw, 44px); font-weight: 700; letter-spacing: 0; color: #fff; }
-.lv-gcard header span { font-size: clamp(13px, 1vw, 20px); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
-.lv-gbody { padding: 1.6em 0.2em 0; }
-.lv-gcard .lv-wbars rect[fill] { filter: drop-shadow(0 0 10px rgba(79, 179, 255, 0.35)); }
-.lv-gbody > *, .lv-gw > * { animation: lv-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.45s both; }
 @keyframes lv-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
-.lv-gw { display: grid; grid-template-columns: minmax(12em, 0.36fr) minmax(0, 1fr); gap: 2em; align-items: center; }
-.lv-gstat { display: flex; flex-direction: column; gap: 0.9em; }
-.lv-gstat > div { padding-left: 0.9em; border-left: 5px solid #4fb3ff; }
-.lv-gstat > .f { border-left: 5px dashed rgba(255, 255, 255, 0.7); }
-.lv-gstat > .s { border-left-color: #fff; }
-.lv-gstat > .n { border-left-color: #ff3d77; }
-.lv-gstat span { display: block; font-size: 1em; font-weight: 700; letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.75); }
-.lv-gstat b { display: flex; align-items: baseline; gap: 0.2em; font-size: clamp(44px, 4.6vw, 96px); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
-.lv-gstat b em { font-style: normal; font-size: 0.36em; font-weight: 600; color: rgba(255, 255, 255, 0.7); }
-.lv-gstat p { margin: 0.2em 0 0; font-family: var(--lv-font), system-ui, sans-serif; font-size: clamp(15px, 1.2vw, 24px); font-weight: 600; color: rgba(255, 255, 255, 0.75); }
-.lv-gchart .lv-wbars { width: 100%; }
-.lv-gchart .lv-wbars rect { transform-box: fill-box; transform-origin: 50% 100%; animation: lv-grow 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.6s both; }
-@keyframes lv-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-.lv-pod { display: flex; justify-content: center; align-items: flex-end; gap: 1.2em; height: clamp(240px, 42vh, 460px); }
-.lv-pod .c { flex: 0 1 15em; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; min-width: 0; }
-.lv-pod .who { padding: 0 0.2em 0.6em; text-align: center; animation: lv-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) calc(var(--d) + 0.35s) both; }
-.lv-pod .who b { display: block; font-size: clamp(18px, 1.7vw, 34px); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-pod .who span { font-size: clamp(12px, 0.95vw, 18px); letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.6); }
-.lv-pod .blk { display: flex; align-items: flex-start; justify-content: center; padding-top: 0.2em; border-radius: 6px 6px 0 0; font-size: clamp(48px, 5vw, 110px); font-weight: 700; color: #0b1a2a; transform-origin: 50% 100%; animation: lv-grow 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d) both; }
-.lv-pod .p1 .blk { height: 62%; background: linear-gradient(180deg, #ffe066, #f2b705); }
-.lv-pod .p2 .blk { height: 46%; background: linear-gradient(180deg, #eef2f6, #b9c4cf); }
-.lv-pod .p3 .blk { height: 34%; background: linear-gradient(180deg, #f0b07c, #c97a3e); }
-.lv-gtab { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: column; grid-template-rows: repeat(5, auto); gap: 0 2.4em; }
-.lv-gtab li { display: grid; grid-template-columns: 2em minmax(0, 1fr) auto 2.6em; align-items: center; gap: 0.8em; padding: 0.55em 0.2em; border-bottom: 1px solid rgba(255, 255, 255, 0.1); animation: lv-slide 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0s) both; }
-@keyframes lv-slide { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
-.lv-gtab b { font-size: clamp(20px, 1.8vw, 36px); font-weight: 700; }
-.lv-gtab li:nth-child(1) b { color: #ffd23f; }
-.lv-gtab li:nth-child(2) b { color: #d6dde5; }
-.lv-gtab li:nth-child(3) b { color: #e39a5f; }
-.lv-gtab span { font-size: clamp(18px, 1.55vw, 32px); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-gtab em { font-style: normal; font-size: clamp(12px, 0.9vw, 18px); letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.55); }
-.lv-gtab u { text-decoration: none; font-size: clamp(18px, 1.55vw, 32px); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
-.lv-gfoot { display: flex; align-items: center; justify-content: flex-end; margin-top: 1em; font-family: var(--lv-font), system-ui, sans-serif; font-size: 0.9em; color: #ffcf33; }
-.lv-gfoot button { font: inherit; font-weight: 600; color: #fff; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 999px; padding: 0.4em 1.1em; cursor: pointer; }
-.lv-flbar { position: absolute; left: 50%; bottom: 7.2em; transform: translateX(-50%); display: flex; gap: 6px; width: min(60%, 36em); }
-.lv-flbar i { flex: 1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
-.lv-flbar s { display: block; height: 100%; background: #fff; text-decoration: none; }
-@media (max-width: 760px) {
-  .lv-flow { position: relative; flex-direction: column; padding: 3.5em 0.8em 1.5em; min-height: 70vh; }
-  .lv-gw { grid-template-columns: 1fr; gap: 1em; }
-  .lv-gstat { flex-direction: row; flex-wrap: wrap; gap: 0.8em 1.4em; }
-  .lv-gtab { grid-template-columns: 1fr; grid-auto-flow: row; grid-template-rows: none; }
-  .lv-gbody { padding: 1em; }
-  .lv-pod { height: 15em; gap: 0.5em; }
-  .lv-flbar { position: static; transform: none; width: 100%; margin-top: 1.2em; }
-}
-@media (prefers-reduced-motion: reduce) { .lv-gcard, .lv-gcard.out, .lv-gbody > *, .lv-gw > *, .lv-gtab li, .lv-pod .blk, .lv-pod .who, .lv-gchart .lv-wbars rect { animation: none; } }
 /* Bekleme ekranında şimdiki rüzgâr (Seyhun 2026-11-02): ok (akış yönü), pusula + derece, knot; kaynak altta, manuel turuncu nokta */
-.lv-hwind { display: flex; align-items: center; gap: 0.8em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-hwind .lv-arrow { width: 3.2em; height: 3.2em; }
-.lv-hwind b { display: flex; gap: 0.6em; font-size: clamp(22px, 2.2vw, 44px); font-weight: 700; line-height: 1.1; }
-.lv-hwind b span + span { color: rgba(255, 255, 255, 0.8); font-weight: 600; }
-.lv-hwind small { display: flex; align-items: center; gap: 0.4em; margin-top: 0.2em; font-size: clamp(13px, 1vw, 19px); font-weight: 600; letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.6); }
-.lv-hwind.m small { color: #ffb37a; }
-.lv-hwind small i { width: 0.6em; height: 0.6em; border-radius: 50%; background: #ff9a4d; }
-.lv-hold .lv-hwind { margin: 0.5em 0 0.6em; }
 /* Videolu yarış öncesi sol şerit (Seyhun 2026-11-02 videolu/ onay): yalnız şeridin arkası bulanık ve koyu, bilgilerin kendi zemini yok;
    sağ kenarı videoya yumuşak geçer. Turuncu bayrakla "Start öncesi" */
-.lv-side { position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; width: min(48vw, 780px); padding: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top) + 4.2em) 3vw 2em clamp(16px, 1.6vw, 44px); display: flex; flex-direction: column; gap: 1.4em; overflow: hidden; background: linear-gradient(90deg, rgba(6, 22, 43, 0.72), rgba(6, 22, 43, 0.6) 55%, rgba(6, 22, 43, 0)); backdrop-filter: blur(26px) saturate(1.1); -webkit-backdrop-filter: blur(26px) saturate(1.1); mask-image: linear-gradient(90deg, #000 68%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 68%, transparent); animation: lv-fade 0.8s ease-out both; font-size: clamp(12px, 1.05vw, 21px); }
-.lv-stop { padding: 0; }
-.lv-side .lv-ssec { border-top: 1px solid var(--lv-gline); padding: 1em 1.4em; }
-.lv-side .lv-sh { margin-bottom: 0.55em; font-size: 0.8em; font-weight: 600; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.6); }
-.lv-s2 { display: grid; grid-template-columns: 1.2fr 1fr; padding: 0 !important; }
-.lv-s2.one { grid-template-columns: 1fr; }
-.lv-s2 > div { padding: 1em 1.4em; min-width: 0; }
-.lv-s2 > div + div { border-left: 1px solid var(--lv-gline); }
-.lv-sflags { display: flex; flex-wrap: wrap; gap: 0.6em 1.4em; padding: 0; }
-.lv-sfl { display: flex; align-items: center; gap: 0.7em; transition: opacity 0.8s; }
-.lv-sfl.down { opacity: 0.4; }
-.lv-sfl .lv-flag { font-size: 1.5em; width: 1.9em; height: 1.9em; flex: none; }
-.lv-sfl b { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.05em; font-weight: 700; letter-spacing: 0.03em; }
-.lv-sfl small { display: block; font-size: 0.78em; font-weight: 600; color: rgba(255, 255, 255, 0.6); }
-.lv-sroute { display: flex !important; align-items: center; font-size: 1.6em !important; margin-bottom: 0.45em; }
-.lv-side > * { flex: none; }
-.lv-side :is(.lv-sname, .lv-skick, .lv-sbig, .lv-ssub, .lv-swhat, .lv-sh, .lv-swind b, .lv-swind .d, .lv-scrs b, .lv-scrs span, .lv-sprog, .lv-sbias) { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-sname { font-size: 1.05em; font-weight: 600; line-height: 1.1; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); margin-bottom: 0.6em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.lv-skick { display: inline-flex; align-items: center; gap: 0.55em; padding: 0.3em 0.7em 0.3em 0.45em; border-radius: 0.45em; background: rgba(255, 255, 255, 0.1); font-size: 0.88em; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.8); }
-.lv-skick:not(.o) { padding-left: 0.7em; }
-.lv-skick.o { color: #ffa45c; background: rgba(255, 122, 26, 0.16); }
-.lv-oflag { width: 1.6em; height: 1em; flex: none; border-radius: 2px; background: #ff7a1a; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
-.lv-sbig { margin: 0.1em 0 0 -0.03em; font-size: clamp(64px, min(10vw, 22vh), 200px); font-weight: 300; line-height: 0.86; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-.lv-ssub { margin-top: 1.1em; font-size: 1em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); }
-.lv-swhat { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3em 0.5em; margin-top: 0.7em; font-size: 1.7em; font-weight: 700; text-transform: uppercase; }
-.lv-ssec { border-top: 1px solid rgba(255, 255, 255, 0.14); padding-top: 1em; }
-.lv-sh { margin-bottom: 0.6em; font-size: clamp(11px, 0.9vw, 17px); font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
-.lv-swind { display: flex; align-items: center; gap: 1em; }
-.lv-swind .lv-arrow { width: 2.8em; height: 2.8em; flex: none; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 50%; }
-.lv-swind .v { min-width: 0; }
-.lv-swind b { display: block; font-size: 2.2em; font-weight: 700; line-height: 1; }
-.lv-swind b em { margin-left: 0.3em; font-size: 0.45em; font-style: normal; font-weight: 500; color: rgba(255, 255, 255, 0.65); }
-.lv-swind small { display: block; margin-top: 0.25em; font-size: 0.82em; font-weight: 600; color: rgba(255, 255, 255, 0.65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-swind small .m { color: #ff9a4d; }
-.lv-swind small .m::before { content: "● "; }
-.lv-swind .d { margin-left: auto; white-space: nowrap; font-size: clamp(16px, 1.4vw, 28px); font-weight: 600; color: rgba(255, 255, 255, 0.85); }
-.lv-sbias { font-size: 1.45em; font-weight: 700; line-height: 1.05; letter-spacing: 0.02em; text-transform: uppercase; color: #f5c518; }
-.lv-scrs { display: flex; flex-direction: column; gap: 0.5em; }
-.lv-scrs .s { min-height: 0; }
 /* parkur ekseni: kuzeye göre dönen kesik ok (komitenin parkuru attığı yön) ve rüzgârın eksenden farkı */
-.lv-sax { display: flex; align-items: center; gap: 0.8em; }
-.lv-sax i { position: relative; flex: none; width: 2.6em; height: 2.6em; border-radius: 50%; border: 1.5px solid rgba(143, 211, 255, 0.5); }
-.lv-sax i::before { content: ""; position: absolute; left: 50%; top: 18%; bottom: 50%; border-left: 2px dashed #8fd3ff; transform: translateX(-1px); }
-.lv-sax i::after { content: ""; position: absolute; left: 50%; top: 8%; border: 0.32em solid transparent; border-bottom: 0.45em solid #8fd3ff; border-top: 0; transform: translateX(-50%); }
-.lv-sax b { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.6em; font-weight: 700; color: #8fd3ff; }
-.lv-sax span { display: block; font-size: 0.82em; font-weight: 600; color: rgba(255, 255, 255, 0.7); }
-.lv-scrs .s svg { display: block; width: 100%; height: auto; max-height: 13vh; }
-.lv-scrs b { display: inline; margin-right: 0.6em; font-size: clamp(16px, 1.5vw, 30px); font-weight: 700; text-transform: uppercase; }
-.lv-scrs b + span { font-size: clamp(12px, 1.05vw, 20px); font-weight: 600; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.65); }
-.lv-sprog > div:not(.lv-sh) { display: flex; align-items: center; gap: 0.7em; padding: 0.3em 0; font-size: 1.15em; font-weight: 600; }
-.lv-sprog > div .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-sprog > div i { font-style: normal; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.75); }
-.lv-sprog > div.next i, .lv-sprog > div.now i { color: #ff9a4d; }
-@media (max-width: 760px) {
-  .lv-side { position: relative; left: auto; top: auto; width: auto; max-height: none; order: 1; margin-top: 4em; font-size: 14px; }
-  .lv-sbig { font-size: 18vw; }
-}
-@media (prefers-reduced-motion: reduce) { .lv-side { animation: none; } }
 /* Program maddeleri (Seyhun 2026-11-02): saat solda, geçen soluk, sıradaki vurgulu; yarış öncesinde gün gün */
-.lv-agenda i { width: 3.6em; flex: none; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-style: normal; font-size: 1.25em; font-weight: 600; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.8); }
-.lv-agenda .next i, .lv-agenda .next b { color: #fff; }
-.lv-agenda .next { border-left: 3px solid var(--lv-acc); padding-left: 0.6em; }
-.lv-agenda.all { max-height: 70vh; overflow: hidden; }
-.lv-agenda.all section + section { margin-top: 0.8em; }
-.lv-agenda.all h4 { margin: 0 0 0.2em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.9em; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--lv-acc); }
-.lv-agenda.all > section > div { display: flex; align-items: center; gap: 0.7em; padding: 0.4em 0.2em; border-bottom: 1px solid var(--lv-line); }
-.lv-agenda.all b { font-size: 1.2em; }
-.lv-sprog > div.done { opacity: 0.5; }
 
 /* Cam kartlar (Seyhun 2026-11-02 cam-kart/ onay): alt şeridin rengi, daha açık, buzlu; şamandıra sıralaması solda pembe çizgili,
    genel sıralama sağda küçük, beyaz çizgili, puan kutuda. İkisi aynı aileden ama birbirine karışmaz */
 .lv-glass { position: relative; border: 1px solid var(--lv-gline); background: var(--lv-glass); backdrop-filter: blur(20px) saturate(1.15); -webkit-backdrop-filter: blur(20px) saturate(1.15); border-radius: 16px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35); }
 .lv-glass::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, #ff3d77, #ff9a4d); z-index: 1; }
-.lv-rankp.lv-glass .lv-ph { background: transparent; padding: 0.9em 1.1em 0.7em; border-bottom: 1px solid var(--lv-gline); font-size: 1em; letter-spacing: 0; text-transform: none; align-items: flex-end; }
-.lv-rankp.lv-glass .lv-ph b { font-size: 1.45em; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; line-height: 1; }
-.lv-rankp.lv-glass .lv-ph span { font-size: 0.72em; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
-.lv-rankp.lv-glass .lv-pb { padding: 0.4em 0.7em 0.6em; }
-.lv-rankp .lv-rl li { border-top: 0; padding: 0.24em 0.4em; }
-.lv-rankp .lv-rl li > b { display: inline-grid; place-items: center; width: 1.55em; height: 1.55em; border-radius: 0.35em; background: rgba(255, 255, 255, 0.1); font-size: 0.95em; }
-.lv-rankp .lv-rl li.l > b { background: #f5c518; color: #111; }
-.lv-rankp .lv-rl li.l u { color: #f5c518; }
-.lv-rankp .lv-rl u.ld { font-weight: 700; }
-.lv-ovs { position: absolute; right: 1.6vw; top: calc(1.6vw + 3.2em); z-index: 1; width: min(23vw, 400px); display: flex; flex-direction: column; overflow: hidden; animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; font-size: clamp(12px, 0.95vw, 20px); }
-.lv-ovs::before { background: rgba(255, 255, 255, 0.55); }
-.lv-ovs header { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.8em; padding: 0.95em 1.2em 0.7em; border-bottom: 1px solid var(--lv-gline); }
-.lv-ovs header b { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.4em; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; line-height: 1; }
-.lv-ovs header span { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.74em; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-ovs ol { list-style: none; margin: 0; padding: 0.4em 0.8em 0.5em; font-variant-numeric: tabular-nums; }
-.lv-ovs li { display: grid; grid-template-columns: 1.5em minmax(0, 1fr) auto; align-items: center; gap: 0.6em; padding: 0.32em 0.3em; }
-.lv-ovs li > b { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.15em; font-weight: 700; color: rgba(255, 255, 255, 0.55); }
-.lv-ovs li:nth-child(-n + 3) > b { color: #fff; }
-.lv-ovs li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.05em; font-weight: 600; line-height: 1.15; }
-.lv-ovs li em { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-style: normal; font-size: 0.72em; font-weight: 600; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.5); }
-.lv-ovs li u { text-decoration: none; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.3em; font-weight: 700; min-width: 2em; padding: 0.05em 0.35em; border-radius: 0.3em; background: rgba(255, 255, 255, 0.08); text-align: center; }
-.lv-ovf { padding: 0 1.2em 0.9em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.74em; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
-.lv-bc.course .lv-ovs { opacity: 0; transition: opacity 0.5s ease; }
-@media (max-width: 760px) { .lv-ovs { position: relative; right: auto; top: auto; width: auto; order: 3; font-size: 14px; } }
-@media (prefers-reduced-motion: reduce) { .lv-ovs { animation: none; } }
 /* Rüzgâr grafiği canlı (Seyhun 2026-11-02 "biraz daha canlı olabilir"): çubuklar sırayla yükselir, beklenen eğri akar, şimdi noktası atar */
-.lv-wb { transform-box: fill-box; transform-origin: 50% 100%; animation: lv-wgrow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
-@keyframes lv-wgrow { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
-.lv-wcurve { filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.55)); stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: lv-wdraw 1.6s 0.5s ease-out forwards; }
-@keyframes lv-wdraw { to { stroke-dashoffset: 0; } }
-.lv-wpulse { transform-box: fill-box; transform-origin: center; animation: lv-wpulse 1.8s ease-in-out infinite; }
-@keyframes lv-wpulse { 0%, 100% { transform: scale(0.7); opacity: 1; } 50% { transform: scale(1.3); opacity: 0.55; } }
-@media (prefers-reduced-motion: reduce) { .lv-wb, .lv-wcurve, .lv-wpulse { animation: none; stroke-dashoffset: 0; } }
 
 /* Rüzgâr ve hava tek grafik (Seyhun 2026-11-02 örnek A, yayin-tasarim/ruzgar-anlasilir/ruzgar-a.png) */
-.lv-wa { width: min(100%, 52em); display: flex; flex-direction: column; gap: 0.8em; }
-.lv-wkh { display: flex; gap: 0.6em; }
-.lv-wkh { gap: 2.4em; }
-.lv-wkh > div { min-width: 0; }
-.lv-wkh small { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.62em; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-wkh b { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.75em; font-weight: 700; line-height: 1.1; margin-top: 0.1em; white-space: nowrap; }
-.lv-wkh b span { font-size: 0.62em; color: #fff; }
-.lv-wkh b.o { color: #6cc4ff; }
-.lv-wkh b.m { color: #ffab66; }
-.lv-wkh i { display: block; font-style: normal; font-size: 0.68em; color: rgba(255, 255, 255, 0.65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-wchart { display: block; width: 100%; height: auto; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-wa .lv-wleg i.lo { height: 0.28em; background: #6cc4ff; border-radius: 2px; vertical-align: 0.2em; }
-.lv-wa .lv-wleg i.lm { width: 0.8em; height: 0.8em; border-radius: 50%; background: #ff9a4d; }
-.lv-wa .lv-wleg i.lf { height: 0; border-top: 3px dashed rgba(255, 255, 255, 0.8); border-radius: 0; vertical-align: 0.25em; }
-@media (max-width: 700px) { .lv-wkh { gap: 0.4em; } .lv-wkh > div { padding: 0.5em 0.6em; } .lv-wkh b { font-size: 1.45em; } .lv-wkh b span { display: block; font-size: 0.55em; } }
 /* Bugün yarış yok (örnek A) */
-.lv-nopill { display: inline-flex; padding: 0.35em 0.9em; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-size: clamp(14px, 1.1vw, 20px); font-weight: 700; color: #ffd166; }
-.lv-hold .lv-nobig { font-size: clamp(72px, 9vw, 180px); }
-.lv-nobig small { font-size: 0.45em; color: rgba(255, 255, 255, 0.55); }
-.lv-notop { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3em 1.1em; margin-top: 0.6em; font-size: clamp(14px, 1.15vw, 21px); font-weight: 600; color: rgba(255, 255, 255, 0.85); }
-.lv-notop b { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #ff5c8f; }
-.lv-notop i { font-style: normal; color: rgba(255, 255, 255, 0.5); }
-.lv-show:has(.lv-nocard) { justify-content: center; }
-.lv-nocard { display: flex; flex-direction: column; gap: 0.7em; border-radius: 18px; background: rgba(14, 30, 52, 0.55); border: 1px solid rgba(255, 255, 255, 0.14); padding: 1.4em 1.6em; }
-.lv-nocard > small { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(11px, 0.85vw, 15px); font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
-.lv-nokn { display: flex; flex-wrap: wrap; gap: 0.3em 1.4em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(22px, 2vw, 38px); font-weight: 700; }
-.lv-nokn i { font-family: var(--lv-font); font-style: normal; font-size: 0.5em; font-weight: 600; color: rgba(255, 255, 255, 0.6); }
-.lv-nochart { width: 100%; height: auto; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-noag { display: flex; flex-wrap: wrap; gap: 0.6em; }
-.lv-noag span { padding: 0.35em 0.9em; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-size: clamp(13px, 1vw, 18px); font-weight: 700; }
-.lv-noag span.s { background: rgba(255, 61, 119, 0.25); }
-@media (max-width: 760px) { .lv-nocard { padding: 1em; } .lv-hold .lv-nobig { font-size: 22vw; } }
 /* Yükleniyor: düz zemin (eski iskelet kutuları kalktı, Seyhun 2026-11-03) */
 .lv-sea.lv-plain { background: radial-gradient(120% 90% at 30% 20%, #1d4a72 0%, #123352 45%, #0b2038 100%); }
 .lv-sea.lv-plain::after { display: none; }
 .lv-skel { position: fixed; inset: 0; z-index: 2; pointer-events: none; animation: lv-fade 0.5s ease-out both; }
 /* Şeritte saat (Seyhun 2026-11-02 örnek A): beyaz blokta büyük sayı, yanında kare bayraklar ve 5·4·1·0 çubuğu */
-.lv-cell.lv-sclock { background: #fff; color: #0b1a2a; border-left: 0; padding: 0.35em 1.3em; gap: 0; }
-.lv-cell.lv-sclock span { color: #ff3d77; font-weight: 700; letter-spacing: 0.16em; }
-.lv-cell.lv-sclock b { font-size: 2.6em; font-weight: 700; line-height: 0.95; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: #0b1a2a; }
-.lv-cell.lv-sflag { flex-direction: row; align-items: center; gap: 0.6em; }
-.lv-cell.lv-sflag span { font-size: 1em; letter-spacing: 0; text-transform: none; overflow: visible; }
-.lv-sflag .lv-flag { width: 2.4em; height: 2.4em; }
-.lv-sseg { display: flex; gap: 0.35em; margin-left: 0.6em; }
-.lv-sseg i { display: flex; flex-direction: column; align-items: center; gap: 0.3em; width: 3em; font-style: normal; font-size: 0.95em; font-weight: 700; color: rgba(255, 255, 255, 0.55); }
-.lv-sseg s { display: block; width: 100%; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.22); text-decoration: none; }
-.lv-sseg i.done { color: #fff; }
-.lv-sseg i.done s { background: #fff; }
-.lv-sseg i.now { color: #ff5c8f; }
-.lv-sseg i.now s { background: #ff3d77; }
-@media (max-width: 760px) { .lv-cell.lv-sclock b { font-size: 2.1em; } .lv-sseg i { width: 1.8em; } }
 
 /* Tekne takibi haritası (features/tracking/BoatMap.jsx, Seyhun 2026-11-02): sağ altta, alttaki şeridin üstünde */
 .lv-map { position: absolute; right: 1.6vw; bottom: calc(1.6vw + 5.5em); z-index: 2; width: min(18vw, 300px); min-width: 150px; aspect-ratio: 1; padding: 0.4em; font-size: clamp(12px, 1vw, 20px); animation: lv-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .lv-map svg { display: block; }
 
 /* Yarışın adı geri düğmesinin yanında soluk (Seyhun 2026-11-03); sağ üstte Canlı rozeti arada bir hangi yarış olduğunu yazarak açılıp kapanır */
-.lv-rname { position: absolute; top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top) + 0.15em); left: calc(clamp(16px, 1.6vw, 44px) + 2.6em); z-index: 2; max-width: 38%; font-size: 0.95em; font-weight: 600; color: rgba(255, 255, 255, 0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-onair { position: absolute; left: auto; width: max-content; max-width: calc(100% - 32px); top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top)); right: clamp(16px, 1.6vw, 44px); z-index: 4; display: flex; align-items: center; gap: 0.5em; padding: 0.4em 0.85em; border-radius: 2em; background: rgba(8, 20, 36, 0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.14); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-onair b { font-size: 0.8em; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; }
-.lv-onairw { display: block; max-width: 0; overflow: hidden; opacity: 0; white-space: nowrap; font-size: 0.95em; font-weight: 700; color: #fff; animation: lv-onairw 40s ease-in-out infinite; }
-.lv-onairw > span { display: block; overflow: hidden; text-overflow: ellipsis; padding-left: 0.5em; border-left: 1px solid rgba(255, 255, 255, 0.25); }
-@keyframes lv-onairw { 0% { max-width: 0; opacity: 0; } 2% { max-width: var(--w, 24em); opacity: 1; } 15% { max-width: var(--w, 24em); opacity: 1; } 17.5%, 100% { max-width: 0; opacity: 0; } }
-.lv.has-live .lv-prog2 { right: calc(clamp(16px, 1.6vw, 44px) + 7.5em); max-width: 50%; }
-@media (prefers-reduced-motion: reduce) { .lv-onairw { animation: none; } }
-@media (max-width: 760px) { .lv-onairw { --w: 10em; } .lv-rname { max-width: 32%; } }
 
 /* Yarış öncesi yeni düzen (Seyhun 2026-11-03, yayin-tasarim/oncesi-yeni): geri ve yarış adı aynı satırda hizalı; sol altta yatay rüzgâr şeridi;
    program çizgili zaman akışı, "Sıradaki" dolu pembe-turuncu etiket. Videosuz ve videolu aynı dil */
 .lv-topl { position: absolute; top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top)); left: clamp(16px, 1.6vw, 44px); z-index: 3; display: flex; align-items: center; gap: 0.7em; max-width: 44%; }
 .lv-topl .lv-backc { position: static; margin: 0; flex: none; }
-.lv-topl .lv-rname { position: static; max-width: none; min-width: 0; font-size: 1.05em; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
 @media (max-width: 760px) { .lv-topl { position: static; order: 0; align-self: flex-start; max-width: 100%; } }
-.lv-pill { flex: none; font-style: normal; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.8em; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #fff; background: linear-gradient(135deg, #ff3d77, #ff9a4d); padding: 0.3em 0.9em; border-radius: 999px; }
-.lv-wstrip { align-self: stretch; margin-top: 1.2em; display: flex; align-items: center; gap: 1.1em; padding: 0.8em 1.2em; border-radius: 16px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-wstrip .lv-arrow { width: 3em; height: 3em; flex: none; }
-.lv-wstrip .kn { font-size: clamp(30px, 3vw, 60px); font-weight: 700; line-height: 1; white-space: nowrap; }
-.lv-wstrip .kn em { margin-left: 0.25em; font-size: 0.4em; font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.65); }
-.lv-wstrip .g { flex: 1; min-width: 0; display: flex; justify-content: space-around; gap: 1em; }
-.lv-wstrip .g small { display: block; font-size: 0.78em; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
-.lv-wstrip .g b { display: block; font-size: 1.5em; font-weight: 700; white-space: nowrap; }
-.lv-wstrip .src { font-size: 0.85em; font-weight: 600; color: rgba(255, 255, 255, 0.6); white-space: nowrap; }
-.lv-wstrip .src.m { color: #ffa45c; }
-.lv-wstrip .src.m::before { content: "● "; }
-@media (max-width: 760px) { .lv-wstrip { flex-wrap: wrap; gap: 0.7em 1em; } }
 /* program zaman akışı */
-.lv-slprog { width: min(100%, 38em); }
-.lv-slprog > div { position: relative; display: grid; grid-template-columns: 3.6em 1.1em 1fr auto; align-items: center; column-gap: 0.7em; padding: 0.55em 0.5em; border-bottom: 0; border-radius: 14px; }
-.lv-slprog > div:not(:last-child)::after { content: ""; position: absolute; left: calc(0.5em + 3.6em + 0.7em + 0.55em - 1px); top: 62%; height: 100%; width: 2px; background: rgba(255, 255, 255, 0.2); }
-.lv-slprog > div > i { font-style: normal; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.6em; font-weight: 600; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.9); }
-.lv-slprog > div > s { width: 0.7em; height: 0.7em; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.55); background: #0a2744; z-index: 1; text-decoration: none; justify-self: center; }
-.lv-slprog > div > b { font-size: 1.45em; font-weight: 600; text-transform: none; min-width: 0; }
-.lv-slprog > div.done > s { background: rgba(255, 255, 255, 0.4); border-color: transparent; }
-.lv-slprog > div.next { background: linear-gradient(90deg, rgba(255, 61, 119, 0.22), rgba(255, 154, 77, 0.14)); }
-.lv-slprog > div.next > s { background: #ff7a4d; border-color: #ff7a4d; box-shadow: 0 0 0 5px rgba(255, 122, 77, 0.25); }
-.lv-slprog .next span, .lv-slprog .now span { color: #ffb37a; }
-.lv-agenda .next { border-left: 0; padding-left: 0.5em; }
 /* videolu sol şerit: "Sıradaki" etiketi */
-.lv-sprog > div.next { flex-wrap: nowrap; }
-.lv-sprog > div.next i { color: rgba(255, 255, 255, 0.85); }
-.lv-sprog > div .lv-pill { font-size: 0.65em; }
 
 /* Arka plan katmanları: yeni kaynak görünmez yüklenir, hazır olunca eskisinin üstüne çapraz geçişle gelir (Seyhun 2026-11-03) */
 .lv-bgl { position: absolute; inset: 0; opacity: 0; transition: opacity 1.1s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -938,35 +342,8 @@ button.lv-p:active { transform: translateY(1px); }
 .lv-bgl.load { z-index: 0; }
 
 /* videolu yarış öncesi: ince çizgi altında üç sütun (Seyhun 2026-11-03 örnek E) */
-.lv-swhat small { font-size: 0.55em; font-weight: 600; letter-spacing: 0.14em; color: rgba(255, 255, 255, 0.6); margin-left: 0.2em; }
-.lv-sgrid { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 1.6em; padding-top: 1.2em; border-top: 1px solid rgba(255, 255, 255, 0.22); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-sgrid > div { min-width: 0; }
-.lv-sgrid small { display: block; font-size: 0.8em; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); white-space: nowrap; }
-.lv-sgrid b { display: flex; align-items: center; gap: 0.3em; margin-top: 0.35em; font-size: 2.2em; font-weight: 700; line-height: 1; white-space: nowrap; }
-.lv-sgrid b em { font-size: 0.5em; font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.65); }
-.lv-sgrid b .lv-arrow { width: 1em; height: 1em; flex: none; border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 50%; margin-right: 0.1em; }
-.lv-sgrid b .lv-dot { width: 0.4em; height: 0.4em; }
-.lv-sgrid span { display: block; margin-top: 0.4em; font-size: 1em; font-weight: 600; letter-spacing: 0.03em; color: rgba(255, 255, 255, 0.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 760px) { .lv-side { width: auto; padding: 1em 0 0; mask-image: none; -webkit-mask-image: none; backdrop-filter: none; -webkit-backdrop-filter: none; } .lv-sgrid { grid-template-columns: 1fr 1fr; } }
 
 /* Bekleme ekranı örnek H (Seyhun 2026-11-03 onay): vitrin dönmez; solda geri sayım, program, rüzgâr; sağ üstte parkur */
-.lv-holdh { grid-template-columns: 46% 54%; }
-.lv-holdh .lv-hst { justify-content: flex-start; gap: 0.35em; padding: 11vh 1em 3vh 4vw; }
-.lv-holdh .lv-big { font-size: clamp(60px, 7.6vw, 136px); }
-.lv-holdh .lv-what { font-size: 1.3em; }
-.lv-hlab { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.8em; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
-.lv-hprog { align-self: stretch; margin-top: 1.1em; min-height: 0; }
-.lv-hprog .lv-hlab { margin-bottom: 0.3em; }
-.lv-holdh .lv-hst .lv-slprog { width: 100%; font-size: 0.78em; }
-.lv-holdh .lv-hst .lv-slprog > div.done { display: none; }
-.lv-holdh .lv-hst .lv-slprog > div:nth-child(n + 7) { display: none; }
-.lv-holdh .lv-hst .lv-wstrip { margin-top: 1.2em; }
-.lv-showh { padding: 11vh 2.5vw 4vh 1vw; }
-.lv-showh .lv-showb { justify-content: flex-start; align-items: flex-end; margin-top: 0.3em; animation: none; }
-.lv-showh .lv-sceneb { align-items: flex-start; justify-content: flex-end; }
-.lv-showh .lv-sceneb { flex: 1; min-height: 0; }
-.lv-showh .lv-sceneb svg { width: 100%; height: 100%; }
-@media (max-width: 760px) { .lv-holdh .lv-hst { padding: 0; } .lv-showh { padding: 0; } .lv-showh .lv-showb { align-items: flex-start; min-height: 0; } .lv-showh .lv-sceneb { flex: none; } .lv-showh .lv-sceneb svg { width: 100%; height: auto; } .lv-wstrip .src { width: 100%; } }
 /* Yükleniyor (Seyhun 2026-11-03): düz zemin, sol üstte geri + yarışın adı, üstte ince kayan çizgi; sahte yerleşim yok */
 .lv-skel { display: block; }
 .lv-skel .lv-topl { pointer-events: auto; }
@@ -974,400 +351,35 @@ button.lv-p:active { transform: translateY(1px); }
 @keyframes lv-loadline { from { background-position: -100% 0; } to { background-position: 300% 0; } }
 @media (prefers-reduced-motion: reduce) { .lv-loadline { animation: none; width: 40%; } }
 /* Videolu yarış öncesi tehir etiketi (Seyhun 2026-11-03): AP bayrağı + "Tehir" */
-.lv-skick.ap { color: #ffcf33; background: rgba(255, 207, 51, 0.14); padding-left: 0.45em; }
-.lv-skick.ap .lv-flag { font-size: 0.9em; }
 /* Senaryo 1 (Seyhun 2026-11-03 onay): yarış günü, videosuz üç sütun — geri sayım + program | parkur | rüzgâr; olmayan sütun çizilmez */
-.lv-hold3 { grid-template-columns: 30fr 40fr 30fr; column-gap: 2vw; padding: 0 clamp(16px, 2.5vw, 44px) 0 0; }
-.lv-hold3[data-cols="2"] { grid-template-columns: 38fr 62fr; }
-.lv-hold3 .lv-hwnd .lv-wrows, .lv-hold3 .lv-hwnd .lv-wnow { max-width: 26em; }
-.lv-hold3[data-cols="1"] { grid-template-columns: 1fr; }
-.lv-hold3 .lv-hst { justify-content: flex-start; gap: 0.3em; padding: 11vh 0 3vh 4vw; }
-.lv-hold3 .lv-big { font-size: clamp(56px, 7vw, 126px); }
-.lv-hold3 .lv-what { font-size: 1.25em; }
-.lv-hold3 .lv-hprog { margin-top: 1.4em; }
-.lv-hold3 .lv-hst .lv-slprog { width: 100%; font-size: 0.74em; }
-.lv-hold3 .lv-hst .lv-slprog > div:nth-child(n + 8) { display: none; }
-.lv-hold3 .lv-hst .lv-slprog > div.done { opacity: 0.4; }
-.lv-topr { position: absolute; right: clamp(16px, 2.5vw, 44px); top: calc(clamp(16px, 1.6vw, 44px) + env(safe-area-inset-top) + 0.2em); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.05em; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
-.lv-hcrs, .lv-hwnd { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 11vh 0 3vh; }
-.lv-hcrs .lv-sceneb { flex: 1; min-height: 0; margin-top: 0.4em; }
-.lv-hcrs .lv-sceneb svg { width: 100%; height: 100%; }
-.lv-cinfo { display: flex; gap: 1.6em; margin-top: 0.8em; padding-top: 0.8em; border-top: 1px solid rgba(255, 255, 255, 0.18); }
-.lv-cinfo small { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.72em; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
-.lv-cinfo b { display: block; margin-top: 0.15em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.5em; font-weight: 700; white-space: nowrap; }
-.lv-hlab.sm { margin-top: 1.4em; font-size: 0.72em; color: rgba(255, 255, 255, 0.45); }
-.lv-wnow { display: flex; align-items: center; gap: 0.8em; margin-top: 0.5em; }
-.lv-wnow .lv-arrow { width: 3.2em; height: 3.2em; flex: none; margin: 0; }
-.lv-wnow { justify-content: flex-start; }
-.lv-wnow .kn { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(34px, 3.2vw, 64px); font-weight: 700; line-height: 1; }
-.lv-wnow .kn em { margin-left: 0.2em; font-size: 0.36em; font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.65); }
-.lv-wnow span { display: block; margin-top: 0.2em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1em; font-weight: 600; letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.7); white-space: nowrap; }
-.lv-wrows { margin-top: 0.3em; display: flex; flex-direction: column; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-wrows > div { display: grid; grid-template-columns: 3.4em 1.6em 1fr 2.8em; align-items: center; column-gap: 0.5em; padding: 0.3em 0.4em; border-radius: 0.6em; }
-.lv-wrows > div > span { font-size: 1.1em; font-weight: 600; color: rgba(255, 255, 255, 0.6); }
-.lv-wrows > div > i { display: block; width: 1.2em; height: 1.2em; background: #fff; clip-path: polygon(50% 0, 85% 85%, 50% 68%, 15% 85%); }
-.lv-wrows > div > i.no { visibility: hidden; }
-.lv-wrows > div > b { font-size: 1.4em; font-weight: 700; }
-.lv-wrows > div > small { font-size: 0.9em; color: rgba(255, 255, 255, 0.55); text-align: right; }
-.lv-wrows > div.got > b { color: #7fdcff; }
-.lv-wrows > div.on { background: linear-gradient(90deg, rgba(255, 61, 119, 0.25), rgba(255, 154, 77, 0.12)); }
-.lv-wrows > div.on > span { color: #fff; }
-@media (max-width: 760px) {
-  .lv-hold3, .lv-hold3[data-cols="2"] { display: flex; }
-  .lv-hold3 .lv-hst, .lv-hcrs, .lv-hwnd { padding: 0; }
-  .lv-hcrs .lv-sceneb { flex: none; }
-  .lv-hcrs .lv-sceneb svg { height: auto; }
-  .lv-topr { position: static; order: 0; }
-}
 /* Senaryo 1 videolu (yayin-tasarim/senaryo/1-videolu.png): altta bulanık bant, dört blok yan yana */
-.lv-side.lv-band { top: auto; right: 0; bottom: 0; left: 0; width: auto; height: auto; flex-direction: row; align-items: flex-start; gap: 2.5vw; padding: 2.2em clamp(16px, 2.5vw, 44px) calc(1.6em + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(6, 22, 43, 0.5), rgba(6, 22, 43, 0.82) 30%); mask-image: none; -webkit-mask-image: none; }
-.lv-band > div { min-width: 0; }
-.lv-band .lv-bclock { flex: 0 0 21%; }
-.lv-band .lv-bprog { flex: 1 1 0; }
-.lv-band .lv-bcrs { flex: 0 0 23%; }
-.lv-band .lv-bwnd { flex: 0 0 30%; }
-.lv-band .lv-sbig { font-size: clamp(48px, 6.4vw, 118px); line-height: 0.95; }
-.lv-band .lv-slprog { width: 100%; font-size: 0.72em; margin-top: 0.3em; }
-.lv-band .lv-route { display: flex; align-items: center; margin-top: 0.5em; }
-.lv-band .lv-route span { display: inline-flex; align-items: center; }
-.lv-band .lv-route i { display: grid; place-items: center; width: 2em; height: 2em; border-radius: 50%; background: rgba(255, 255, 255, 0.16); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.1em; font-style: normal; font-weight: 700; }
-.lv-band .lv-route s { display: block; width: 0.9em; height: 2px; background: rgba(255, 255, 255, 0.35); }
-.lv-band .lv-cinfo { border-top: 0; padding-top: 0; margin-top: 0.9em; gap: 1.3em; }
-.lv-band .lv-wnow .kn { font-size: clamp(30px, 2.6vw, 50px); }
-.lv-wcells { display: flex; gap: 0.3em; margin-top: 0.7em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-wcells > div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.15em; padding: 0.3em 0.1em; border-radius: 0.5em; }
-.lv-wcells > div > span { font-size: 0.8em; font-weight: 600; color: rgba(255, 255, 255, 0.55); }
-.lv-wcells > div > i { display: block; width: 0.9em; height: 0.9em; background: #fff; clip-path: polygon(50% 0, 85% 85%, 50% 68%, 15% 85%); }
-.lv-wcells > div > i.no { visibility: hidden; }
-.lv-wcells > div > b { font-size: 1.15em; font-weight: 700; }
-.lv-wcells > div.on { background: linear-gradient(180deg, rgba(255, 61, 119, 0.3), rgba(255, 154, 77, 0.14)); }
-@media (max-width: 760px) { .lv-side.lv-band { position: static; flex-direction: column; gap: 1.2em; padding: 1em 0; mask-image: none; -webkit-mask-image: none; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; } .lv-band > div { flex: none; width: 100%; } }
 /* Senaryo 2 (yayin-tasarim/senaryo/2b-videosuz-donen.png): start'a 1 saatten az. Solda sayaç + sıradaki yarış + bayraklar sabit, sağda tek
    dönen panel (8 sn'de bir kayar, altında noktalar), altta 5·4·1·0 çubuğu. Videoda (2b-videolu-donen.png) hepsi alt bantta */
-.lv-topr2 { display: flex; align-items: center; gap: 1em; z-index: 3; }
-.lv-opill { display: inline-flex; align-items: center; gap: 0.5em; padding: 0.3em 0.7em 0.3em 0.5em; border-radius: 0.4em; background: rgba(255, 122, 26, 0.18); color: #ffa45c; font-weight: 700; letter-spacing: 0.16em; }
-.lv-opill i { width: 1.3em; height: 0.9em; border-radius: 2px; background: #ff7a1a; }
-.lv-hold2 { grid-template-columns: 46fr 54fr; grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "clock one" "seq seq"; column-gap: 2vw; padding: 11vh clamp(16px, 2.5vw, 44px) 4vh 4vw; }
-.lv-nclock { grid-area: clock; display: flex; flex-direction: column; align-items: flex-start; gap: 0.3em; min-width: 0; }
-.lv-hold2 .lv-big { font-size: clamp(90px, 13vw, 270px); line-height: 0.88; margin-left: -0.03em; }
-.lv-hold2 .lv-what { flex-wrap: wrap; justify-content: flex-start; text-align: left; font-size: 1.6em; }
-.lv-nclock .lv-sflags { margin-top: 0.8em; }
-.lv-nclock .lv-sfl .lv-flag { font-size: 1.9em; }
-.lv-nclock .lv-sfl b { font-size: 1.2em; }
-.lv-nclock .lv-sfl small { font-size: 0.85em; }
-.lv-one { grid-area: one; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; text-align: right; min-width: 0; }
-.lv-oneb { width: 100%; animation: lv-slidein 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-@keyframes lv-slidein { from { opacity: 0; transform: translateX(1.5em); } to { opacity: 1; transform: none; } }
-.lv-oneb > small { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.95em; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
-.lv-oneb > b { display: flex; align-items: center; justify-content: flex-end; gap: 0.2em; margin-top: 0.2em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(40px, 4.8vw, 96px); font-weight: 700; line-height: 1.05; overflow-wrap: anywhere; }
-.lv-oneb > b.y { color: #ffd23f; }
-.lv-oneb > b em { font-style: normal; font-size: 0.32em; font-weight: 600; color: rgba(255, 255, 255, 0.65); margin-left: 0.25em; }
-.lv-oneb > b .lv-arrow { width: 0.85em; height: 0.85em; margin-right: 0.15em; border-color: rgba(255, 255, 255, 0.45); }
-.lv-oneb > b .lv-dot { width: 0.4em; height: 0.4em; margin-right: 0.15em; }
-.lv-oneb > span { display: block; margin-top: 0.45em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.35em; font-weight: 600; letter-spacing: 0.03em; color: rgba(255, 255, 255, 0.75); }
-.lv-oneb .lv-route { display: flex; justify-content: flex-end; align-items: center; margin-top: 0.5em; }
-.lv-oneb .lv-route > span { display: inline-flex; align-items: center; }
-.lv-oneb .lv-route > i { display: grid; place-items: center; width: 2.6em; height: 2.6em; border-radius: 50%; background: rgba(255, 255, 255, 0.16); font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.3em; font-style: normal; font-weight: 700; }
-.lv-oneb .lv-route > s { display: block; width: 1em; height: 2px; background: rgba(255, 255, 255, 0.35); }
-.lv-dots { display: flex; justify-content: flex-end; gap: 0.5em; margin-top: 1.2em; }
-.lv-dots i { display: block; width: 0.55em; height: 0.55em; border-radius: 0.3em; background: rgba(255, 255, 255, 0.3); transition: width 0.4s, background 0.4s; }
-.lv-dots i.on { width: 1.6em; background: #fff; }
-.lv-seq { grid-area: seq; display: flex; gap: 0.5em; margin-top: 1.5em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-seq > div { flex: 1; min-width: 0; }
-.lv-seq s { display: block; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.18); text-decoration: none; }
-.lv-seq > div.done s { background: #fff; }
-.lv-seq > div.now s { background: linear-gradient(90deg, #ff3d77, #ff9a4d var(--lv-f, 0%), rgba(255, 255, 255, 0.18) var(--lv-f, 0%)); }
-.lv-seq span { display: block; margin-top: 0.6em; font-size: 0.95em; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-seq > div.done span { color: rgba(255, 255, 255, 0.7); }
-.lv-seq > div.now span { color: #fff; }
-.lv-side.lv-band2 { flex-direction: column; align-items: stretch; gap: 0; padding-top: 1.6em; background: linear-gradient(180deg, rgba(6, 22, 43, 0.5), rgba(6, 22, 43, 0.82) 30%); mask-image: none; -webkit-mask-image: none; }
-.lv-brow { display: flex; align-items: flex-start; justify-content: space-between; gap: 2vw; }
-.lv-band2 .lv-nclock { flex: 0 1 auto; }
-.lv-band2 .lv-big { font-size: clamp(56px, 7.4vw, 150px); line-height: 0.9; }
-.lv-band2 .lv-what { font-size: 1.35em; }
-.lv-band2 .lv-nclock .lv-sfl .lv-flag { font-size: 1.5em; }
-.lv-band2 .lv-one { flex: 1 1 0; padding-top: 1.2em; justify-content: flex-start; }
-.lv-band2 .lv-oneb > b { font-size: clamp(34px, 4vw, 80px); }
-.lv-band2 .lv-seq { margin-top: 1em; }
-@media (max-width: 760px) {
-  .lv-hold2 { display: flex; padding: 9vh 0 2em; }
-  .lv-hold2 .lv-big { font-size: 24vw; }
-  .lv-one, .lv-band2 .lv-one { align-items: flex-start; text-align: left; padding-top: 0; }
-  .lv-oneb > b, .lv-oneb .lv-route { justify-content: flex-start; }
-  .lv-dots { justify-content: flex-start; }
-  .lv-brow { flex-direction: column; gap: 1.2em; }
-  .lv-topr2 { position: static; order: 0; }
-}
-@media (prefers-reduced-motion: reduce) { .lv-oneb { animation: none; } }
 /* Ortak rüzgâr bloğu (Seyhun 2026-11-03): ortalı ok, knot + sağanak, yön, kaynak; altında ortak saatlik tablo */
-.lv-wn { display: flex; align-items: center; gap: 0.8em; margin-top: 0.5em; }
-.lv-wna { width: 3.4em; height: 3.4em; flex: none; }
-.lv-wn.big .lv-wna { width: 4.6em; height: 4.6em; }
-.lv-wnt { min-width: 0; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-wnt b { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 0.3em; font-size: clamp(34px, 3.2vw, 64px); font-weight: 700; line-height: 1; }
-.lv-wn.big .lv-wnt b { font-size: clamp(44px, 4.4vw, 90px); }
-.lv-wnt b em { font-size: 0.4em; font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.65); }
-.lv-wnt b i { font-size: 0.38em; font-style: normal; font-weight: 700; color: #ffd23f; }
-.lv-wnt span { display: block; margin-top: 0.25em; font-size: 1.05em; font-weight: 600; letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.7); white-space: nowrap; }
-.lv-wh { margin-top: 1em; max-width: 100%; }
-.lv-one .lv-wn { justify-content: flex-end; text-align: left; }
-.lv-one .lv-wh { margin-top: 0.4em; width: min(100%, 46em); }
-.lv-band .lv-wh { margin-top: 0.6em; }
 /* Parkur her yerde sahneyle (Seyhun 2026-11-03 "sadece sayılar yazıyor; parkur animasyonumuzu kullanmamız lazım") */
-.lv-band .lv-bcrs .lv-sceneb { flex: none; margin-top: 0.3em; }
-.lv-band .lv-bcrs .lv-sceneb svg { width: 100%; height: auto; max-height: 11em; }
-.lv-one .lv-sceneb { width: min(100%, 58em); flex: none; margin-top: 0.3em; }
-.lv-one .lv-sceneb svg { width: 100%; height: auto; max-height: 50vh; }
-.lv-band2 .lv-one .lv-sceneb svg { max-height: 15em; }
-.lv-band2 .lv-one .lv-wh { zoom: 0.9; }
 /* Senaryo 3 tehir (yayin-tasarim/senaryo/3-*.png): AP etiketi, inişe geri sayım ya da büyük sebep, altında yer ve bekleyen yarış */
-.lv-apk { display: inline-flex; align-items: center; gap: 0.6em; padding: 0.3em 0.8em 0.3em 0.5em; border-radius: 0.4em; background: rgba(255, 207, 51, 0.14); color: #ffcf33; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1em; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 0.6em; }
-.lv-apk .lv-flag { font-size: 0.95em; }
-.lv-bigt { font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(40px, 5.2vw, 96px); font-weight: 700; line-height: 1; color: #ffcf33; overflow-wrap: anywhere; }
-.lv-why { margin-top: 0.4em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.5em; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: #ffcf33; }
-.lv-why.w { color: #fff; font-size: 1.3em; }
-.lv-why small { display: block; margin-top: 0.3em; font-size: 0.6em; font-weight: 600; letter-spacing: 0.12em; color: rgba(255, 255, 255, 0.6); }
-.lv-band .lv-bigt { font-size: clamp(30px, 3.6vw, 64px); }
-.lv-band .lv-why { font-size: 1.2em; }
-.lv-band .lv-sbig + .lv-swhat { margin-top: 0.3em; }
-.lv-band .lv-slprog b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-band .lv-wh { max-width: 100%; overflow: hidden; }
 
 /* Tekne replay'i (Yayın › Video › Tekneler, features/tracking/BoatReplay; Seyhun 2026-11-03) */
 .lv-boats { position: fixed; inset: 0; z-index: 0; animation: lv-fade 1.2s ease-out both; }
 /* Yarışta dönen panelde sıralama kartı (cam kart) sağa yaslı, yazılar sola */
-.lv-one .lv-rankp { width: min(100%, 34em); margin-left: auto; text-align: left; }
 /* Start geri sayımı (2026-11-03, senaryo/2e): büyük sayaç, 5·4·1·0 şeridi, sağda sabit rüzgâr ve start hattı */
-.lv-sq { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "clock side" "strip strip"; column-gap: 3vw; padding: 11vh 4vw 6vh; }
-.lv-sqc { grid-area: clock; display: flex; flex-direction: column; align-items: flex-start; gap: 0.35em; min-width: 0; }
-.lv-sq .lv-big { font-size: clamp(110px, 19vw, 360px); line-height: 0.85; margin-left: -0.03em; }
-.lv-sq .lv-what, .lv-sqb .lv-what { justify-content: flex-start; text-align: left; font-size: 1.6em; }
-.lv-kick.o { color: #ff9a4d; }
-.lv-sqside { grid-area: side; display: flex; flex-direction: column; gap: 2em; align-items: flex-end; text-align: right; }
-.lv-sqside small { display: block; margin-bottom: 0.4em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 0.85em; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
-.lv-sqside .lv-wn { justify-content: flex-end; text-align: left; }
-.lv-sqline b { display: block; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: clamp(30px, 3.4vw, 64px); font-weight: 700; line-height: 1; color: #ffd23f; }
-.lv-sqline span { display: block; margin-top: 0.35em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.15em; font-weight: 600; color: rgba(255, 255, 255, 0.7); }
-.lv-strip { grid-area: strip; position: relative; height: 9.5em; margin: 0 0.4em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-strk { position: absolute; left: 0; right: 0; top: 5em; height: 0.85em; border-radius: 0.45em; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
-.lv-strk b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0.45em; background: linear-gradient(90deg, #ff3d77, #ff9a4d); transition: width 1s linear; }
-.lv-strip.stop .lv-strk b { background: rgba(255, 255, 255, 0.35); }
-.lv-spt { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
-.lv-spt.first { transform: none; align-items: flex-start; }
-.lv-spt.last { transform: translateX(-100%); align-items: flex-end; }
-.lv-sevs { display: flex; gap: 0.4em; height: 2.9em; align-items: flex-end; }
-.lv-sev { display: inline-flex; align-items: flex-end; gap: 0.15em; opacity: 0.35; filter: grayscale(0.6); }
-.lv-spt.done .lv-sev { opacity: 1; filter: none; }
-.lv-sev .lv-flag { font-size: 1.15em; }
-.lv-sev i { font-style: normal; font-size: 0.85em; font-weight: 700; color: rgba(255, 255, 255, 0.7); }
-.lv-spt > s { display: block; width: 3px; height: 1.9em; margin-top: 0.4em; border-radius: 2px; background: rgba(255, 255, 255, 0.35); }
-.lv-spt.done > s { background: #fff; }
-.lv-spt > small { margin-top: 1.4em; font-size: 1.05em; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; color: rgba(255, 255, 255, 0.45); }
-.lv-spt.done > small { color: rgba(255, 255, 255, 0.85); }
-.lv-sknob { position: absolute; top: 4.5em; width: 1.9em; height: 1.9em; margin-left: -0.95em; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0.4em rgba(255, 154, 77, 0.35), 0 2px 10px rgba(0, 0, 0, 0.5); transition: left 1s linear; }
-.lv-strip.stop .lv-sknob { background: #e11d48; box-shadow: 0 0 0 0.4em rgba(225, 29, 72, 0.3); }
-.lv-side.lv-sqb { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "clock strip side"; align-items: start; column-gap: 3vw; }
-.lv-sqb .lv-sqc { gap: 0.25em; }
-.lv-sqb .lv-strip { margin-top: 2.6em; height: 8em; font-size: 0.9em; }
-.lv-sqb .lv-sqside { gap: 1.1em; }
-.lv-sqb .lv-sqline b { font-size: clamp(24px, 2.4vw, 44px); }
-@media (max-width: 47.99rem) {
-  .lv-sq { grid-template-columns: 1fr; grid-template-areas: "clock" "strip" "side"; row-gap: 1.5em; }
-  .lv-sqside { align-items: flex-start; text-align: left; }
-  .lv-side.lv-sqb { grid-template-columns: 1fr; grid-template-areas: "clock" "strip" "side"; row-gap: 1em; }
-  .lv-spt > small { font-size: 0.9em; letter-spacing: 0.06em; }
-  .lv-spt > small span, .lv-sev i { display: none; }
-  .lv-sev .lv-flag { font-size: 0.8em; }
-}
 /* Senaryo 5 (2026-11-03): startlar arası "Bitti" etiketi ve ilk üç; abandone tehir etiketiyle aynı */
-.lv-apk.f { background: rgba(255, 255, 255, 0.12); color: #fff; }
-.lv-bigt.f { color: #fff; }
-.lv-top3 { display: grid; gap: 0.3em; margin-top: 0.7em; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; font-size: 1.35em; font-weight: 700; }
-.lv-top3 > div { display: flex; align-items: center; gap: 0.6em; }
-.lv-top3 b { display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 0.3em; background: rgba(255, 255, 255, 0.14); font-size: 0.85em; }
-.lv-top3 b.p1 { background: #ffcf33; color: #1b2233; }
-.lv-top3 em { font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.72); }
-.lv-band .lv-top3 { font-size: 1.05em; margin-top: 0.4em; }
-.lv-band .lv-apk { font-size: 0.9em; letter-spacing: 0.1em; white-space: nowrap; }
 /* Senaryo 6, gün bitti (2026-11-03): solda gün bitti + yarın, ortada bugünün sonuçları, sağda yarının rüzgârı */
-.lv-dres { display: flex; flex-direction: column; gap: 1.1em; min-width: 0; padding: 11vh 0 3vh; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-dr > b { display: flex; align-items: center; gap: 0.4em; font-size: 1.35em; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; }
-.lv-dr ol { list-style: none; margin: 0.45em 0 0; padding: 0; display: grid; gap: 0.25em; }
-.lv-dr li { display: grid; grid-template-columns: 1.6em 3.4em minmax(0, 1fr); align-items: center; gap: 0.5em; font-size: 1.2em; font-weight: 700; }
-.lv-dr li i { display: inline-flex; align-items: center; justify-content: center; height: 1.45em; border-radius: 0.3em; font-style: normal; font-size: 0.85em; background: rgba(255, 255, 255, 0.14); }
-.lv-dr li i.p1 { background: #ffcf33; color: #1b2233; }
-.lv-dr li em { font-style: normal; font-weight: 600; color: rgba(255, 255, 255, 0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv-dr.ov > b { font-size: 1em; letter-spacing: 0.2em; color: rgba(255, 255, 255, 0.55); }
-.lv-dr.ov li { font-size: 1.05em; }
-.lv-dend .lv-bigt { color: #fff; }
-.lv-band .lv-dres { padding: 0; gap: 0.7em; font-size: 0.85em; flex: 1 1 0; }
-.lv-dendb .lv-bclock { flex: 0 0 24%; }
-.lv-dendb .lv-dwnd { flex: 0 0 34%; padding: 0; }
-@media (max-width: 47.99rem) { .lv-dres { padding: 0; } }
 .lv-bc.summary.video :is(.lv-bg, .lv-sea) { filter: none; }
-.lv-dendb .lv-bclock { display: flex; flex-direction: column; align-items: flex-start; gap: 0.4em; }
-.lv-dendb .lv-bclock .lv-apk { margin-bottom: 0.2em; }
 /* Örnek I (2026-11-03): ilk starta 1 saatten fazla. Solda sabit başlık + durum, sağda yandan kayan tek alan */
-.lv-hold4 { grid-template-columns: 38fr 62fr; column-gap: 3vw; padding: 0 clamp(16px, 2.5vw, 44px) 0 0; }
-.lv-hold4 .lv-hst { justify-content: flex-start; gap: 0.3em; padding: 12vh 0 3vh 4vw; }
-.lv-hold4 .lv-big { font-size: clamp(56px, 7.5vw, 136px); margin-top: 0.15em; }
-.lv-hold4 .lv-what { font-size: 1.25em; }
-.lv-hold4 .lv-what small { display: block; margin-top: 0.25em; }
-.lv-htitle { display: flex; flex-direction: column; gap: 0.35em; margin-bottom: 3.2vh; max-width: 100%; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-htitle b { font-size: clamp(24px, 2.3vw, 42px); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.1; }
-.lv-htitle span { font-size: 1em; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
-.lv-bc:has(.lv-hold4) .lv-rname { display: none; }
-.lv-slides { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 12vh 0 4vh; overflow: hidden; }
-.lv-slide { flex: 1; display: flex; flex-direction: column; min-height: 0; animation: lv-slidein 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-.lv-slide > * { flex: 1; padding: 0; min-height: 0; }
-.lv-slide .lv-hwnd .lv-wrows, .lv-slide .lv-hwnd .lv-wnow { max-width: none; }
-.lv-slide .lv-hprog .lv-slprog { width: 100%; font-size: 1.05em; }
-.lv-hboats { display: flex; flex-direction: column; min-height: 0; }
-.lv-hboats .br { flex: 1; min-height: 0; position: relative; border-radius: 0.8em; overflow: hidden; margin-top: 0.4em; }
-@keyframes lv-slidein { from { transform: translateX(8%); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (max-width: 47.99rem) { .lv-hold4 { display: flex; flex-direction: column; gap: 1.5em; padding: 0; } .lv-hold4 .lv-hst, .lv-hold4 .lv-slides { padding: 0; } .lv-hold4 .lv-slides { min-height: 60vh; } .lv-band .lv-slides { height: auto; min-height: 30vh; } }
-.lv-band .lv-slides { flex: 1 1 0; height: 34vh; padding: 0; }
-.lv-band .lv-slides .lv-dots { position: absolute; right: 0; top: 0; margin: 0; }
-.lv-band .lv-slide > .lv-bcrs, .lv-band .lv-slide > .lv-bwnd, .lv-band .lv-slide > .lv-bprog { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.lv-band .lv-slide .lv-bcrs .lv-sceneb { flex: 1; min-height: 0; }
-.lv-band .lv-slide .lv-slprog { font-size: 0.95em; }
-.lv-band .lv-bclock .lv-htitle { margin-bottom: 1.4vh; }
-.lv-band .lv-bclock .lv-htitle b { font-size: clamp(18px, 1.6vw, 30px); }
-.lv-band .lv-bclock .lv-htitle span { font-size: 0.8em; }
-.lv-band .lv-bclock { flex: 0 0 30%; }
-.lv-bc:has(.lv-band .lv-htitle) .lv-rname { display: none; }
-.lv-band .lv-slide > .lv-bwnd { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: 2vw; align-items: start; }
-.lv-band .lv-slide > .lv-bwnd > .lv-hlab { grid-column: 1 / -1; }
-.lv-band .lv-slide > .lv-bcrs { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); column-gap: 2vw; }
-.lv-band .lv-slide > .lv-bcrs > .lv-hlab { grid-column: 1 / -1; }
-.lv-band .lv-slide > .lv-bcrs .lv-sceneb { height: 100%; }
-.lv-band .lv-slide > .lv-bcrs .lv-sceneb svg { width: 100%; height: 100%; }
-.lv-band .lv-slide > .lv-bcrs .lv-cinfo { flex-direction: column; justify-content: center; gap: 1.2em; margin: 0; border: 0; }
 /* Videolu (Seyhun 2026-11-03 "orantısız; ad ve başlık yukarıda soluk; parkur yok; şerit gibi alçak") */
-.lv-rsub { font-size: 0.85em; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--lv-font-c), var(--lv-font), system-ui, sans-serif; }
-.lv-topl:has(.lv-rsub) { max-width: 80%; }
-.lv-side.lv-band:has(.lv-slides) { align-items: stretch; padding-top: 1.4em; }
-.lv-band .lv-slides { height: 21vh; }
-.lv-band:has(.lv-slides) .lv-sbig { font-size: clamp(40px, 4.6vw, 84px); }
-.lv-band:has(.lv-slides) .lv-bclock { flex: 0 0 26%; }
-.lv-band .lv-slide > .lv-bwnd .lv-wnow { font-size: 0.85em; }
-.lv-band .lv-slide .lv-slprog { font-size: 0.85em; }
-.lv-band .lv-hboats .br-live { left: 0.6em; top: 0.5em; bottom: auto; transform: none; font-size: 13px; }
-@media (max-width: 47.99rem) { .lv-band .lv-slides { height: 30vh; } }
 /* Tehirde sıradaki start: sınıf işareti + "1. yarış · Sarı grup bekliyor" (hazırlık bayrağı yok) */
-.lv-why small.lv-who { display: flex; align-items: center; gap: 0.5em; }
-.lv-who .lv-flag { width: 1.6em; height: 1.6em; flex: none; }
 /* Start geri sayımı: erken start yapanlar (Seyhun 2026-11-03 11:47) */
-.lv-early { display: flex; flex-direction: column; gap: 0.35em; min-width: 12em; align-items: flex-end; }
-.lv-early small { display: block; margin-bottom: 0.2em; font-size: 0.85em; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
-.lv-early .lv-erow { display: flex; align-items: baseline; gap: 0.6em; font-size: clamp(16px, 1.5vw, 28px); }
-.lv-early .lv-erow b { font-variant-numeric: tabular-nums; font-weight: 800; color: #fff; }
-.lv-early .lv-erow span { color: rgba(255, 255, 255, 0.75); font-weight: 600; }
-.lv-early .lv-erow em { font-style: normal; font-weight: 800; color: #ffb547; font-size: 0.8em; letter-spacing: 0.08em; }
-.lv-early .lv-emore { color: rgba(255, 255, 255, 0.55); font-weight: 700; }
 /* Videolu şerit: sağ bölüm sağa yaslı, sabit genişlik; arka plan içerikten taşmaz (Seyhun 2026-11-03 11:51) */
-.lv-band .lv-slide { align-items: flex-end; }
-.lv-band .lv-slide > .lv-bprog { width: min(100%, 30em); }
-.lv-band .lv-slide > .lv-bwnd { width: min(100%, 62em); }
-.lv-band .lv-slide > .lv-bcrs { width: min(100%, 40em); }
-.lv-sqb .lv-sqside { justify-self: end; }
-@media (max-width: 47.99rem) { .lv-band .lv-slide { align-items: stretch; } .lv-band .lv-slide > .lv-bprog, .lv-band .lv-slide > .lv-bwnd, .lv-band .lv-slide > .lv-bcrs { width: auto; } }
 /* Deneme turu 2026-11-03 (telefon): start şeridi taşmasın, videolu şeritte rüzgâr tablosu alta, yarış adı ile alt yazı iki satır */
-@media (max-width: 47.99rem) {
-  .lv-sq, .lv-side.lv-sqb { grid-template-columns: minmax(0, 1fr); }
-  .lv-band > .lv-strip { width: auto; margin-right: 1.4em; }
-  .lv-sqb .lv-sqside, .lv-early { align-items: flex-start; text-align: left; justify-self: start; }
-  .lv-band .lv-slide > .lv-bwnd { display: flex; flex-direction: column; gap: 0.6em; }
-  .lv-band .lv-slides { height: 48vh; }
-  .lv-topl:has(.lv-rsub) { flex-wrap: wrap; row-gap: 0.2em; }
-  .lv-topl .lv-rsub { flex-basis: 100%; white-space: normal; padding-left: 1.6em; }
-}
 /* ---- Yayın grafiği (Seyhun 2026-11-03 14:41, yayin-tasarim/yayin-grafik/): videolu = videosuz; köşelerde cam kartlar ---- */
 .gr { position: absolute; inset: 0; font-size: clamp(11px, 0.95vw, 24px); pointer-events: none; font-family: var(--lv-font), system-ui, sans-serif; }
 .gr > * { pointer-events: auto; }
-.gr-card { display: block; width: 100%; padding: 0; text-align: left; color: #fff; background: rgba(9, 22, 40, 0.84); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 0.7em; overflow: hidden; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font: inherit; }
-button.gr-card { cursor: pointer; }
-.gr-hd { display: flex; align-items: center; gap: 0.55em; min-width: 0; padding: 0.5em 0.95em; background: rgba(255, 255, 255, 0.06); border-bottom: 1px solid rgba(255, 255, 255, 0.12); font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.95em; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255, 255, 255, 0.82); white-space: nowrap; }
-.gr-hd .lv-flag { font-size: 0.8em; flex: none; }
-.gr-tag { margin-left: auto; padding-left: 0.8em; font-weight: 600; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.55); overflow: hidden; text-overflow: ellipsis; }
-.gr-top { position: absolute; left: 50%; top: calc(1.6em + env(safe-area-inset-top)); transform: translateX(-50%); width: auto; min-width: 26em; max-width: 44vw; text-align: center; }
-.gr-top .gr-hd { justify-content: center; }
-.gr-tm { padding: 0.12em 0.45em 0.1em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 4.4em; line-height: 1; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.gr-sub { padding: 0.1em 1em 0.75em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 1.1em; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.62); }
-.gr-top.o .gr-hd { background: linear-gradient(90deg, rgba(255, 122, 40, 0.38), rgba(255, 122, 40, 0.12)); color: #ffd2b0; }
-.gr-top.r .gr-hd { background: linear-gradient(90deg, rgba(225, 29, 72, 0.42), rgba(225, 29, 72, 0.14)); color: #ffd0da; }
-.gr-top.r .gr-tm { font-size: 3.4em; padding-top: 0.2em; color: #ffd23f; }
-.gr-of { width: 1.6em; height: 1.05em; border-radius: 0.15em; background: #ff7a1a; flex: none; }
-.gr-bar { height: 0.35em; background: rgba(255, 255, 255, 0.1); }
-.gr-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff3d77, #ff9a4d); transition: width 1s linear; }
-.gr-l { position: absolute; left: 2em; top: calc(1.6em + env(safe-area-inset-top)); width: 23em; }
-.gr-r { position: absolute; right: 2em; top: calc(1.6em + env(safe-area-inset-top)); width: 25em; }
-.gr-lb { position: absolute; left: 2em; bottom: calc(1.8em + env(safe-area-inset-bottom)); width: 23em; }
-.gr-name { position: absolute; right: 2em; bottom: calc(1.8em + env(safe-area-inset-bottom)); max-width: 40vw; text-align: right; text-shadow: 0 0.1em 0.6em rgba(0, 0, 0, 0.45); }
-.gr-name b { display: flex; align-items: center; justify-content: flex-end; gap: 0.4em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 800; font-size: 2em; line-height: 1.05; letter-spacing: 0.05em; text-transform: uppercase; }
-.gr-back { position: absolute; left: 0.45em; top: calc(0.35em + env(safe-area-inset-top)); z-index: 3; display: grid; place-items: center; width: 1.4em; height: 1.4em; border-radius: 50%; font-size: 1.1em; line-height: 1; color: rgba(255, 255, 255, 0.4); background: rgba(8, 18, 34, 0.25); text-decoration: none; font-weight: 600; transition: color 0.2s ease, background-color 0.2s ease; }
-.gr-back:hover, .gr-back:focus-visible { color: #fff; background: rgba(8, 18, 34, 0.7); }
-.gr-name > span { display: block; margin-top: 0.35em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255, 255, 255, 0.78); }
-.gr-live { display: inline-flex; align-items: center; gap: 0.45em; margin-bottom: 0.6em; padding: 0.25em 0.75em; border-radius: 99em; background: rgba(225, 29, 72, 0.92); font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.9em; letter-spacing: 0.16em; text-transform: uppercase; text-shadow: none; }
-.gr-live::before { content: ""; width: 0.5em; height: 0.5em; border-radius: 50%; background: #fff; animation: lv-pulse 1.6s ease-in-out infinite; }
-.gr-rows { list-style: none; margin: 0; padding: 0.15em 0; }
-.gr-rows li { display: grid; grid-template-columns: 1.8em 3.2em minmax(0, 1fr) auto; align-items: center; gap: 0.6em; padding: 0.4em 0.95em; font-size: 1.05em; border-top: 1px solid rgba(255, 255, 255, 0.06); }
-.gr-rows li:first-child { border-top: 0; }
-.gr-rows b { display: grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 0.3em; background: rgba(255, 255, 255, 0.12); font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; }
-.gr-rows li.l b { background: #ffd23f; color: #10203a; }
-.gr-rows li.pen b { width: auto; min-width: 1.6em; padding: 0 0.2em; background: rgba(255, 154, 77, 0.22); color: #ff9a4d; font-size: 0.72em; }
-.gr-rows i { font-style: normal; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; color: rgba(255, 255, 255, 0.78); }
-.gr-rows span { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gr-rows em { font-style: normal; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; color: rgba(255, 255, 255, 0.6); font-variant-numeric: tabular-nums; }
-.gr-rows em.y { color: #ffd23f; }
-.gr-more { padding: 0.4em 0.95em 0.6em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-size: 0.85em; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
-.gr-wr { display: grid; grid-template-columns: minmax(0, 1fr) 2.6em 6.6em; align-items: center; gap: 0.9em; padding: 0.55em 0.95em; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-.gr-hd + .gr-wr { border-top: 0; }
-.gr-wr small { display: block; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-size: 0.85em; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.65); }
-.gr-wr span { display: block; margin-top: 0.15em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-size: 0.85em; font-weight: 600; color: rgba(255, 255, 255, 0.55); }
 .gr-arr { width: 2.6em; height: 2.6em; }
-.gr-kn { text-align: right; white-space: nowrap; }
-.gr-kn b { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 2.2em; line-height: 1; }
-.gr-kn b em { font-style: normal; font-size: 0.42em; margin-left: 0.2em; color: rgba(255, 255, 255, 0.6); }
-.gr-kn i { display: block; font-style: normal; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; color: #ffd23f; }
-.gr-pg { list-style: none; margin: 0; padding: 0.35em 0; }
-.gr-pg li { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) auto; align-items: center; gap: 0.7em; padding: 0.5em 0.95em; font-size: 1.08em; }
-.gr-pg li b { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; }
-.gr-pg li span { min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gr-pg li small { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; color: rgba(255, 255, 255, 0.6); white-space: nowrap; }
-.gr-pg li.done { color: rgba(255, 255, 255, 0.45); }
-.gr-pg li.next { background: linear-gradient(90deg, rgba(255, 61, 119, 0.3), rgba(255, 154, 77, 0.1)); }
-.gr-pg li.now small { color: #ff5a7a; }
-.gr-seq { list-style: none; margin: 0; padding: 0.3em 0; }
-.gr-seq li { display: grid; grid-template-columns: 2.4em minmax(0, 1fr) auto; align-items: center; gap: 0.8em; padding: 0.5em 0.95em; font-size: 1.08em; color: rgba(255, 255, 255, 0.5); }
-.gr-seq li b { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 1.5em; line-height: 1; }
-.gr-seq li small { display: block; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-size: 0.75em; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
-.gr-seq li.ok { color: #fff; }
-.gr-seq li.nx { color: #fff; background: linear-gradient(90deg, rgba(255, 61, 119, 0.3), rgba(255, 154, 77, 0.1)); }
-.gr-seq li i { font-style: normal; display: flex; }
-.gr-seq .lv-flag { font-size: 0.9em; }
-.gr-big { padding: 0.85em 0.95em 0.95em; }
-.gr-bt { display: flex; align-items: center; gap: 0.7em; }
-.gr-bt .lv-flag { font-size: 1.3em; flex: none; }
-.gr-bt h3 { margin: 0; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 2.1em; line-height: 1.05; color: #ffd23f; }
-.gr-big p { margin: 0.45em 0 0; font-weight: 600; font-size: 1.05em; color: rgba(255, 255, 255, 0.85); }
-.gr-big p.m { color: rgba(255, 255, 255, 0.58); font-size: 0.95em; }
-.gr-crs .lv-sceneb { display: block; height: 15em; }
-.gr-crs .lv-sceneb svg { width: 100%; height: 100%; }
 /* telefon: dikey sıra (süre, sağ kart, sonuç, rüzgâr, ad) */
 @media (max-width: 47.99rem) {
   .gr { position: relative; inset: auto; display: flex; flex-direction: column; gap: 0.8em; min-height: 100%; padding: calc(0.9em + env(safe-area-inset-top)) 1em calc(1.2em + env(safe-area-inset-bottom)); font-size: 14px; }
-  .gr-top, .gr-l, .gr-r, .gr-lb, .gr-name { position: static; transform: none; width: auto; min-width: 0; max-width: none; }
-  .gr-top { order: 1; } .gr-r { order: 2; } .gr-l { order: 3; } .gr-lb { order: 4; } .gr-name { order: 0; text-align: left; }
-  .gr-name b { justify-content: flex-start; font-size: 1.3em; }
-  .gr-name > span { font-size: 0.8em; letter-spacing: 0.12em; }
-  .gr-back { position: absolute; left: 0.5em; }
-  .gr-name { padding-left: 1.6em; }
-  .gr-live { position: absolute; right: 1em; top: calc(0.9em + env(safe-area-inset-top)); margin: 0; }
-  .gr-tm { font-size: 3.6em; }
 }
-.gr-name > .gr-live { display: inline-flex; margin-top: 0; letter-spacing: 0.16em; color: #fff; }
-.gr-pg.w li { grid-template-columns: minmax(0, 1fr) auto; }
 /* Tam liste pencereleri (genel sıralama, yarış sıralaması, yarışlar) ortada değil, üstten sabit mesafede başlar: az tekne olunca
    pencere kısalır ama Kapat düğmesi yerinde kalır (Seyhun 2026-11-03 15:55) */
 .lv-pop { align-items: flex-start; padding-top: max(6vh, calc(16px + env(safe-area-inset-top))); }
@@ -1382,364 +394,52 @@ button.gr-card { cursor: pointer; }
   .lv-grx .lv-page { position: relative; z-index: 1; }
 }
 /* Yarışta süre: rüzgârın üstünde skor bandı (Seyhun 2026-11-03 16:45) */
-.gr-clk { display: flex; align-items: stretch; margin-bottom: 0.6em; border-left: 0.32em solid var(--g); }
-.gr-clk-w { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 0.15em; padding: 0.55em 0.9em; }
-.gr-clk-w b { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 1.35em; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gr-clk-w span { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 0.85em; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gr-clk-t { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; padding: 0.45em 0.9em; background: rgba(255, 255, 255, 0.06); border-left: 1px solid rgba(255, 255, 255, 0.12); }
-.gr-clk-t small { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.72em; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); white-space: nowrap; }
-.gr-clk-t b { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 2.1em; line-height: 1.05; font-variant-numeric: tabular-nums; color: #ffd23f; white-space: nowrap; }
 /* Canlı grafik görünümü (Seyhun 2026-11-03 17:10 sol-alt onayı, "start ve rüzgâr birlikte, biraz canlı"): kartlar koyu cam, başlıkta solda renkli eğik
    kesimli rozet; start kartı sol altta rüzgârın üstünde (yarış öncesi büyük, yarışta küçük bant), üst orta videoya kalır; beklenen rüzgâr
    tablosu rüzgârın yanında açılır; sağ altta yarış adı | Velora işareti */
-.gr-card { background: rgba(7, 17, 33, 0.86); border: 0; border-radius: 0.55em; box-shadow: 0 0.6em 2em rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.08); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-.gr-hd { align-items: stretch; gap: 0; height: 2.1em; padding: 0; background: rgba(255, 255, 255, 0.07); border-bottom: 0; letter-spacing: 0.1em; color: #fff; }
-.gr-bd { display: flex; align-items: center; gap: 0.45em; flex: none; padding: 0 1.15em 0 0.7em; background: #ff3d77; color: #fff; clip-path: polygon(0 0, 100% 0, calc(100% - 0.6em) 100%, 0 100%); }
-.gr-bd.t { background: #2fd6c3; color: #06202a; }
-.gr-bd.y { background: #ffd23f; color: #10203a; }
-.gr-bd.r { background: #e11d48; }
-.gr-bd.o { background: #ff7a1a; }
-.gr-bd .lv-flag { font-size: 0.75em; }
-.gr-bd .gr-of { background: #fff; width: 1.2em; height: 0.8em; }
-.gr-hs { display: flex; align-items: center; min-width: 0; padding: 0 0.7em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gr-tag { display: flex; align-items: center; padding: 0 0.85em; }
-.gr-lb { display: flex; align-items: flex-end; gap: 0.6em; width: auto; }
-.gr-col { display: flex; flex-direction: column; gap: 0.5em; width: 23em; }
-.gr-clk { margin-bottom: 0; }
 /* start kartı */
-.gr-st { text-align: left; }
-.gr-stb { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.6em; padding: 0.3em 0.9em 0.5em; }
-.gr-st .gr-tm { padding: 0; font-weight: 700; font-size: 4.2em; line-height: 0.95; }
-.gr-st .gr-tm.tx { font-size: 2.4em; line-height: 1.1; padding: 0.15em 0; color: #ffd23f; white-space: normal; }
-.gr-who { min-width: 0; text-align: right; font-family: var(--lv-font-c), var(--lv-font), sans-serif; text-transform: uppercase; }
-.gr-who b { display: block; font-weight: 800; font-size: 1.45em; letter-spacing: 0.04em; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gr-who span { display: inline-block; margin-top: 0.35em; padding: 0.12em 0.55em; border-radius: 0.25em; background: var(--g); color: #10203a; font-weight: 700; font-size: 0.95em; letter-spacing: 0.1em; }
-.gr-who small { display: block; margin-top: 0.3em; font-weight: 600; font-size: 0.9em; letter-spacing: 0.1em; color: rgba(255, 255, 255, 0.62); }
-.gr-st .gr-sub { padding: 0 0.9em 0.65em; font-size: 1em; }
-.gr-sq { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0; padding: 0; list-style: none; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-.gr-sq li { display: flex; align-items: center; justify-content: center; gap: 0.45em; padding: 0.4em 0; color: rgba(255, 255, 255, 0.4); }
-.gr-sq li + li { border-left: 1px solid rgba(255, 255, 255, 0.1); }
-.gr-sq b { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 800; font-size: 1.25em; }
-.gr-sq .lv-flag { font-size: 0.6em; opacity: 0.55; }
-.gr-sq li.ok { color: #fff; }
-.gr-sq li.ok .lv-flag { opacity: 1; }
-.gr-sq li.nx { color: #fff; background: rgba(255, 61, 119, 0.22); box-shadow: inset 0 -0.18em 0 #ff3d77; }
-.gr-sq li.nx .lv-flag { opacity: 1; }
-.gr-bar { height: 0.32em; background: rgba(255, 255, 255, 0.08); }
-.gr-bar i { box-shadow: 0 0 0.8em #ff3d77; }
 /* rüzgâr: ok turkuaz halkada */
-.gr-wr { grid-template-columns: minmax(0, 1fr) 3em 6.4em; gap: 0.6em; }
-.gr-wind .gr-arr { width: 3em; height: 3em; }
-.gr-kn b { font-size: 2.5em; }
 /* beklenen rüzgâr tablosu (rüzgârın yanında açılır, geçmiş saatler soluk) */
-@keyframes gr-open { from { clip-path: inset(0 100% 0 0); opacity: 0.4; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
 /* sağ üst kart değişince yumuşak geçiş */
-.gr-r { animation: gr-in 0.5s ease both; }
-@keyframes gr-in { from { opacity: 0; transform: translateY(-0.4em); } to { opacity: 1; transform: none; } }
 /* rota */
-.gr-rot { list-style: none; margin: 0; padding: 0.35em 0; }
-.gr-rot li { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); align-items: center; gap: 0.7em; padding: 0.42em 0.95em; font-size: 1.05em; font-weight: 600; }
-.gr-rot i { display: grid; place-items: center; width: 2em; height: 2em; border-radius: 50%; background: #ffb21e; color: #10203a; font-style: normal; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 800; }
-.gr-rot i.s { background: #fff; }
-.gr-rot i.f { background: #e5484d; color: #fff; }
 /* program: sıradaki pembe çizgili */
-.gr-pg li.next { background: linear-gradient(90deg, rgba(255, 61, 119, 0.32), rgba(255, 154, 77, 0.1)); box-shadow: inset 0.25em 0 0 #ff3d77; }
 /* sağ alt: yarış adı | Velora */
-.gr-nm { display: flex; align-items: center; justify-content: flex-end; gap: 1em; }
-.gr-nm b { display: block; }
-.gr-nt { min-width: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 0.3em; }
-.gr-nt b { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gr-nt b.lg { font-size: 1.5em; }
-.gr-name .gr-nt small { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 0.95em; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.72); }
-.gr-vl { display: flex; flex-direction: column; align-items: center; gap: 0.25em; padding-left: 1em; border-left: 2px solid rgba(255, 255, 255, 0.55); }
-.gr-vl svg { width: 2.4em; height: auto; filter: drop-shadow(0 0.1em 0.5em rgba(0, 0, 0, 0.45)); }
-.gr-name .gr-vl small { margin: 0; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.75em; letter-spacing: 0.28em; text-transform: uppercase; color: #fff; }
-@media (prefers-reduced-motion: reduce) { .gr-r { animation: none; } }
-@media (max-width: 47.99rem) {
-  .gr-lb { flex-direction: column; align-items: stretch; }
-  .gr-col { width: auto; }
-  .gr-nm { justify-content: flex-start; }
-  .gr-nt { align-items: flex-start; }
-  .gr-vl { display: none; }
-  .gr-st .gr-tm { font-size: 3.4em; }
-}
 /* süre yokken start kartında yalnız yarış bilgisi (sola yaslı) */
-.gr-stb.nt { grid-template-columns: minmax(0, 1fr); }
-.gr-stb.nt .gr-who { text-align: left; }
 /* geri: zeminsiz, biraz büyük ok, tam ortalı (Seyhun 2026-11-03 17:20) */
-.gr-back { width: 2em; height: 2em; font-size: 1em; background: none; color: rgba(255, 255, 255, 0.5); filter: drop-shadow(0 0.05em 0.3em rgba(0, 0, 0, 0.5)); }
-.gr-back svg { display: block; width: 1.5em; height: 1.5em; }
-.gr-back:hover, .gr-back:focus-visible { background: none; color: #fff; }
 /* kırmızı kartta (abandone, genel geri) yarış bilgisi sağda kalır */
-.gr-st.r .gr-stb { grid-template-columns: minmax(0, 1fr) auto; }
 /* rüzgâr kaynağı (yer ve saat) başlıkta küçük */
-.gr-wind .gr-tag { font-size: 0.8em; letter-spacing: 0.06em; }
-.gr-lb { gap: 0; }
 /* süre yokken (Seyhun 2026-11-03 17:35): yarış bilgisi tek satır, solda büyük yarış adı, yanında grup rozeti ve sınıf */
-.gr-stb.nt { padding: 0.55em 0.9em 0.6em; }
-.gr-stb.nt .gr-who { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35em 0.7em; text-align: left; }
-.gr-stb.nt .gr-who b { font-size: 1.9em; }
-.gr-stb.nt .gr-who span, .gr-stb.nt .gr-who small { margin-top: 0; }
 /* beklenen rüzgâr: ayrı kart yok, rüzgâr kartının kendisi yana genişleyip açılır, sonra kapanır (Seyhun 2026-11-03 17:44);
    yalnız önümüzdeki saatler, ayrı başlık yok */
-.gr-col { width: auto; align-items: flex-start; }
-.gr-col > * { width: 23em; }
-.gr-col > .gr-wind { width: auto; min-width: 23em; }
-.gr-wb { display: flex; align-items: stretch; }
-.gr-wrs { width: 23em; flex: none; }
-.gr-wx { max-width: 0; overflow: hidden; opacity: 0; transition: max-width 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease 0.1s; }
-.gr-wind.on .gr-wx { max-width: min(40em, calc(100vw - 56em)); opacity: 1; }
-.gr-wx .lv-wh { margin: 0; padding: 0.15em 0.7em 0.55em 0.4em; background: none; border: 0; width: max-content; }
-@media (prefers-reduced-motion: reduce) { .gr-wx { transition: none; } }
-@media (max-width: 47.99rem) {
-  .gr-col > *, .gr-col > .gr-wind { width: 100%; min-width: 0; }
-  .gr-wb { flex-direction: column; }
-  .gr-wrs { width: auto; }
-  .gr-wx { max-width: none; max-height: 0; transition: max-height 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s; }
-  .gr-wind.on .gr-wx { max-width: none; max-height: 14em; overflow-x: auto; }
-}
 /* açılan tablo kartın parçası: kendi çerçevesi, zemini ve "şimdi" çerçevesi yok; rüzgâr satırlarından ince bir çizgiyle ayrılır */
-.gr-wx { border-left: 1px solid rgba(255, 255, 255, 0.08); }
-.gr-wx [class*="border-[color:var(--ht-line)]"] { border: 0 !important; background: transparent !important; border-radius: 0 !important; }
-.gr-wx [class*="border-[color:var(--ht-now)]"] { display: none; }
-@media (max-width: 47.99rem) { .gr-wx { border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.08); } }
 /* kart yüksekliği açılacak tabloya göre (Seyhun 2026-11-03 17:54): kapalıyken de aynı boy, rüzgâr satırları boyu eşit paylaşır, altta boşluk kalmaz;
    başlık şeridi açılan kısım dahil kartın tamamında tek parça */
-.gr-wind.x .gr-wrs { display: flex; flex-direction: column; }
-.gr-wind.x .gr-wr { flex: 1; }
-.gr-wrs > .gr-wr:first-child { border-top: 0; }
-.gr-wind.x .gr-hd { width: 100%; }
 /* yeni yerleşim (Seyhun 2026-11-03 17:54): start sol üstte; sol altta tek alan rüzgâr → parkur → program sırayla gelir */
-.gr-tl { position: absolute; left: 2em; top: calc(2.6em + env(safe-area-inset-top)); width: 23em; }
-.gr-col > .gr-pn { width: auto; }
-.gr-pn { animation: gr-pn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.gr-pn > .gr-wind { width: auto; min-width: 23em; }
-.gr-pn > .gr-side { width: 25em; }
-.gr-pn > .gr-crs .lv-sceneb { animation: lv-wipe 1.8s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both; }
-@keyframes gr-pn { from { opacity: 0; transform: translateY(0.8em); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .gr-pn, .gr-pn > .gr-crs .lv-sceneb { animation: none; } }
-@media (max-width: 47.99rem) {
-  .gr-tl { position: static; width: auto; order: 1; }
-  .gr-pn, .gr-pn > .gr-side, .gr-pn > .gr-wind { width: 100%; min-width: 0; }
-}
 /* start dizisinde kural bayrağı + kısa açıklama (5·4·1·0 şeridi yerine; Seyhun 2026-11-03 18:07) */
-.gr-rl { display: flex; align-items: center; gap: 0.75em; padding: 0.5em 0.95em 0.55em; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-.gr-rl > .lv-flag { flex: none; width: 2.3em; height: 2.3em; }
-.gr-rl b { display: block; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-size: 0.95em; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #fff; }
-.gr-rl small { display: block; margin-top: 0.1em; font-size: 0.8em; font-weight: 600; line-height: 1.3; color: rgba(255, 255, 255, 0.62); }
 /* açılan kısım: kendi "Beklenen" başlığı, daha geniş tablo, alanın ortasında (Seyhun 2026-11-03 18:18) */
-.gr-wa { width: 23em; flex: none; display: flex; flex-direction: column; }
-.gr-wa > .gr-wrs { flex: 1; width: auto; }
-.gr-wx { display: flex; flex-direction: column; }
-.gr-wx > .gr-hd { flex: none; white-space: nowrap; }
-.gr-wt { flex: 1; display: flex; align-items: center; padding: 0.4em 1em 0.5em 0.6em; }
-.gr-wx .lv-wh { padding: 0; }
-.gr-wind.on .gr-wx { max-width: min(54em, calc(100vw - 30em)); }
-@media (max-width: 47.99rem) { .gr-wa { width: auto; } .gr-wind.on .gr-wx { max-width: none; max-height: 20em; } .gr-wt { overflow-x: auto; } }
 /* sade program (Seyhun 2026-11-03 18:20): rüzgâr / parkur kartlarıyla aynı satır dili; rozet açık mavi, pembe dolgu yok */
-.gr-bd.b { background: #8fc3ff; color: #0b1a33; }
-.gr-prg .gr-pg { padding: 0; }
-.gr-prg .gr-pg li { grid-template-columns: 3.2em minmax(0, 1fr) auto; padding: 0.6em 0.95em 0.6em 1.15em; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 1em; color: rgba(255, 255, 255, 0.72); position: relative; }
-.gr-prg .gr-pg li:first-child { border-top: 0; }
-.gr-prg .gr-pg li b { font-size: 1.3em; font-weight: 800; }
-.gr-prg .gr-pg li small { font-size: 0.85em; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); }
-.gr-prg .gr-pg li.next { background: none; box-shadow: none; color: #fff; }
-.gr-prg .gr-pg li.next::before { content: ""; position: absolute; left: 0; top: 0.45em; bottom: 0.45em; width: 0.22em; border-radius: 0 0.2em 0.2em 0; background: var(--g); }
-.gr-prg .gr-pg li.next small { color: rgba(255, 255, 255, 0.5); }
-.gr-prg .gr-pg li.now small { color: #2fd6c3; }
-.gr-prg .gr-pg li.done { color: rgba(255, 255, 255, 0.38); }
 /* açılış kapanış kadar yumuşak (Seyhun 2026-11-03 18:25): max-width yerine 0fr → 1fr; içerik genişliği kadar açılır, hız iki yönde aynı */
-.gr-wx { display: grid; grid-template-columns: 0fr; max-width: none; transition: grid-template-columns 1s cubic-bezier(0.45, 0, 0.2, 1), opacity 0.6s ease; }
-.gr-wind.on .gr-wx { grid-template-columns: 1fr; max-width: none; }
-.gr-wxi { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
-.gr-wxi > .gr-hd { flex: none; white-space: nowrap; }
-.gr-wxi .lv-wh { max-width: min(54em, calc(100vw - 30em)); }
-@media (max-width: 47.99rem) {
-  .gr-wx { grid-template-columns: none; grid-template-rows: 0fr; transition: grid-template-rows 1s cubic-bezier(0.45, 0, 0.2, 1), opacity 0.6s ease; max-height: none; }
-  .gr-wind.on .gr-wx { grid-template-columns: none; grid-template-rows: 1fr; max-height: none; }
-  .gr-wxi { min-height: 0; }
-  .gr-wxi .lv-wh { max-width: none; }
-}
-.gr-prg .gr-more { border-top: 1px solid rgba(255, 255, 255, 0.1); padding: 0.5em 0.95em; font-size: 0.8em; color: rgba(255, 255, 255, 0.45); }
 /* start çekmecesi (Seyhun 2026-11-03 18:30, onay 18:35): start kartının altından açılan tek gövde; ayrı kart değil, devamı */
-.gr-tl.dr { width: 26em; filter: drop-shadow(0 0.6em 1.6em rgba(0, 0, 0, 0.35)); }
-.gr-tl.dr > .gr-st { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); transition: border-radius 0.3s; }
-.gr-tl.dr:has(.gr-dr.on) > .gr-st { border-radius: 0.55em 0.55em 0 0; }
-.gr-dr { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.9s cubic-bezier(0.45, 0, 0.2, 1); }
-.gr-dr.on { grid-template-rows: 1fr; }
-.gr-dri { min-height: 0; overflow: hidden; background: rgba(12, 26, 46, 0.82); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-radius: 0 0 0.55em 0.55em; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
-.gr-tabs { display: grid; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-.gr-tabs span { position: relative; padding: 0.5em 0 0.45em; text-align: center; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.85em; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.4); transition: color 0.4s; }
-.gr-tabs span.on { color: #fff; }
-.gr-tabs span i { position: absolute; left: 0; bottom: -1px; height: 2px; width: 0; background: var(--c); }
-.gr-tabs span i.run { animation: gr-fill linear forwards; }
-.gr-tabs span i.full { width: 100%; }
-@keyframes gr-fill { to { width: 100%; } }
-.gr-dpn { padding: 0.75em 0.95em 0.85em; animation: gr-din 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-@keyframes gr-din { from { opacity: 0; transform: translateY(-0.6em); } to { opacity: 1; transform: none; } }
-.gr-dw { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 0.9em; }
-.gr-dw .gr-arr { width: 3em; height: 3em; }
-.gr-dl { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.65); font-size: 0.9em; }
-.gr-dl small { display: block; margin-top: 0.15em; letter-spacing: 0.03em; text-transform: none; font-weight: 600; color: rgba(255, 255, 255, 0.45); }
-.gr-dk { text-align: right; font-family: var(--lv-font-c), var(--lv-font), sans-serif; }
-.gr-dk b { font-weight: 800; font-size: 2.6em; line-height: 1; }
-.gr-dk b em { font-style: normal; font-size: 0.42em; margin-left: 0.15em; }
-.gr-dk span { display: block; color: #ffd23f; font-weight: 700; }
-.gr-dh { margin-top: 0.75em; padding-top: 0.55em; border-top: 1px solid rgba(255, 255, 255, 0.1); font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.8em; letter-spacing: 0.12em; text-transform: uppercase; color: #2fd6c3; }
-.gr-hrs { display: grid; margin-top: 0.4em; }
-.gr-hrs > div { display: grid; justify-items: center; gap: 0.2em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; animation: gr-din 0.5s both; }
-.gr-hrs small { font-size: 0.8em; color: rgba(255, 255, 255, 0.5); }
-.gr-hrs .st small { color: #ff3d77; }
-.gr-hrs svg { width: 1.1em; height: 1.1em; color: rgba(255, 255, 255, 0.75); }
-.gr-hrs b { font-size: 1.2em; }
-.gr-hrs i { font-style: normal; font-size: 0.8em; min-width: 1.8em; text-align: center; padding: 0.05em 0.35em; border-radius: 0.25em; color: #0b1730; }
-.gr-hrs i.no { background: none; }
-.gr-dc { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.gr-dc small { color: rgba(255, 255, 255, 0.6); font-size: 0.9em; }
-.gr-dsc { margin-top: 0.4em; animation: lv-wipe 1.8s cubic-bezier(0.4, 0, 0.2, 1) 0.5s both; }
-.gr-dp { list-style: none; margin: 0; padding: 0; }
-.gr-dp li { display: grid; grid-template-columns: 3.2em 0.55em minmax(0, 1fr) auto; align-items: center; gap: 0.7em; padding: 0.45em 0; color: rgba(255, 255, 255, 0.7); font-weight: 600; animation: gr-din 0.45s both; }
-.gr-dp li + li { border-top: 1px solid rgba(255, 255, 255, 0.1); }
-.gr-dp li b { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 800; font-size: 1.2em; color: #fff; font-variant-numeric: tabular-nums; }
-.gr-dp li i { width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--g); }
-.gr-dp li span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gr-dp li small { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.8em; letter-spacing: 0.08em; text-transform: uppercase; color: #2fd6c3; }
-.gr-dp li.next { color: #fff; }
-.gr-dp li.more { display: block; padding-top: 0.5em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.8em; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); }
-@media (prefers-reduced-motion: reduce) { .gr-dr, .gr-dpn, .gr-hrs > div, .gr-dp li, .gr-dsc { transition: none; animation: none; } .gr-tabs span i.run { animation: none; width: 100%; } }
-@media (max-width: 47.99rem) { .gr-tl.dr { width: auto; } }
 /* çekmece açık kalır: içerik yerinde yumuşak geçişle değişir, boy sabit (Seyhun 2026-11-03 18:38) */
-.gr-dpn { height: 15.5em; overflow: hidden; animation: gr-dfade 0.8s ease both; }
 @keyframes gr-dfade { from { opacity: 0; } to { opacity: 1; } }
-.gr-hrs > div, .gr-dp li { animation: none; }
-.gr-dsc { animation: none; }
-.gr-dsc svg { max-height: 12.5em; }
 /* çekmece boyu içeriğe göre, yumuşak; zemin yok, yalnız arkası buzlu (Seyhun 2026-11-03 18:43) */
-.gr-dpn { height: auto; }
-.gr-dbox { overflow: hidden; transition: height 0.7s cubic-bezier(0.45, 0, 0.2, 1); }
-.gr-dri { background: rgba(8, 18, 34, 0.32); -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1); }
-.gr-dri { text-shadow: 0 1px 0.4em rgba(0, 0, 0, 0.45); }
 
 /* Seyhun 2026-11-03 19:12 ("yap" 19:15): start sağ üstte, geri tuşu yok; rüzgâr · parkur · program sol alttan yukarı açılan opak panel,
    sekmeler altta, açık bölümün rengi üstte ince çizgi; beklenen rüzgâr çizgi grafik (yarına geçer) */
-.gr-tl { left: auto; right: 2em; top: calc(2em + env(safe-area-inset-top)); width: 23em; display: flex; flex-direction: column; gap: 0.6em; }
-.gr-tl > .gr-st { box-shadow: 0 0.8em 2em rgba(0, 0, 0, 0.35); }
-.gr-tlr { width: 100%; animation: gr-in 0.5s ease both; }
-.gr-tlr > * { width: 100%; }
-.gr-col > .gr-dr { width: 34em; }
-.gr-dr { filter: drop-shadow(0 0.8em 1.8em rgba(0, 0, 0, 0.4)); }
-.gr-dri { position: relative; background: linear-gradient(180deg, #102039 0, #0a1528 100%); -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 0.55em; box-shadow: none; text-shadow: none; }
-.gr-dri::before { content: ""; position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 0.22em; background: var(--c); transition: background-color 0.6s; }
-.gr-dri .gr-tabs { border-bottom: 0; background: #060d1a; }
-.gr-dri .gr-tabs span { padding: 0.55em 0 0.5em; font-size: 0.9em; letter-spacing: 0.14em; color: rgba(255, 255, 255, 0.38); }
-.gr-dri .gr-tabs span.on { color: #fff; background: rgba(255, 255, 255, 0.05); }
-.gr-dri .gr-tabs span i { top: 0; bottom: auto; height: 0.18em; }
-.gr-dri .gr-dpn { padding: 1em 1.2em 1em; }
-.gr-dri .gr-dw { grid-template-columns: auto minmax(0, 1fr) auto; gap: 1em; }
-.gr-dri .gr-dw .gr-arr { width: 3.2em; height: 3.2em; }
-.gr-dri .gr-dk { text-align: left; }
-.gr-dri .gr-dk b { font-size: 3em; line-height: 0.95; }
-.gr-dri .gr-dk b em { color: rgba(255, 255, 255, 0.7); }
-.gr-dri .gr-dk span { color: rgba(255, 255, 255, 0.75); letter-spacing: 0.04em; }
-.gr-dri .gr-dk span i { font-style: normal; color: #ffd23f; }
-.gr-dri .gr-dl { align-self: start; text-align: right; }
-.gr-dri .gr-dh { display: flex; align-items: center; gap: 1.2em; margin-top: 0.9em; padding-top: 0; border-top: 0; color: rgba(255, 255, 255, 0.55); font-size: 0.85em; }
-.gr-dh span { display: flex; align-items: center; gap: 0.4em; color: rgba(255, 255, 255, 0.7); }
-.gr-dh span:first-of-type { margin-left: auto; }
-.gr-dh span i { width: 1.4em; height: 0; border-top: 0.22em solid #2fd6c3; }
-.gr-dh span i.b { border-top: 0.16em dashed #ffd23f; }
 .gr-wc { display: block; width: 100%; height: auto; margin-top: 0.4em; overflow: visible; }
 .gr-wc .gr-wcl { stroke-dasharray: 1 1; stroke-dashoffset: 1; animation: gr-wcl 1.4s 0.5s cubic-bezier(0.45, 0, 0.2, 1) forwards; }
 .gr-wc .gr-wca { opacity: 0; animation: gr-dfade 0.9s 1.2s ease forwards; }
 .gr-wc .gr-wcs { opacity: 0; animation: gr-dfade 0.6s 1.7s ease forwards; }
 @keyframes gr-wcl { to { stroke-dashoffset: 0; } }
-.gr-dp li small { color: rgba(255, 255, 255, 0.5); }
-.gr-dp li.next small { color: #ff3d77; }
 @media (prefers-reduced-motion: reduce) { .gr-wc .gr-wcl, .gr-wc .gr-wca, .gr-wc .gr-wcs { animation: none; opacity: 1; stroke-dashoffset: 0; } }
-@media (max-width: 47.99rem) {
-  .gr-tl { position: static; width: auto; order: 1; }
-  .gr-col > .gr-dr { width: 100%; }
-}
-.gr-dri .gr-dp li { grid-template-columns: 3.3em 0.3em minmax(0, 1fr) auto; gap: 0.8em; padding: 0.5em 0; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 1.1em; }
-.gr-dri .gr-dp li i { width: 0.3em; height: 1.3em; border-radius: 0.15em; }
-.gr-dri .gr-dp li.done { color: rgba(255, 255, 255, 0.4); }
-.gr-dri .gr-dp li.done b { color: rgba(255, 255, 255, 0.4); }
-.gr-dri .gr-dp li.more { font-size: 0.8em; }
 /* İşaret kartı (bayrakla işlem, 2026-11-03): sağ üstte start kartının altında; bayraklar üst üste */
-.gr-sig { animation: gr-in 0.5s ease both; }
-.gr-sgb { display: flex; align-items: flex-start; gap: 0.9em; padding: 0.7em 0.9em 0.8em; }
-.gr-sgf { display: flex; flex: none; flex-direction: column; gap: 0.2em; }
-.gr-sgf > i { display: block; width: 3.6em; height: 2.4em; border-radius: 0.15em; overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15); }
-.gr-sgf svg { display: block; width: 100%; height: 100%; }
-.gr-sgt { min-width: 0; flex: 1; }
-.gr-sgt b { display: block; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 800; font-size: 1.45em; letter-spacing: 0.04em; line-height: 1.05; text-transform: uppercase; }
-.gr-sgt p { margin: 0.3em 0 0; font-size: 0.95em; line-height: 1.3; color: rgba(255, 255, 255, 0.78); }
-.gr-sgt small { display: block; margin-top: 0.35em; font-weight: 700; font-size: 0.85em; color: #ffd23f; }
-.gr-r > .gr-sig { margin-top: 0.6em; }
 /* Sol sütun (Seyhun 2026-11-03 19:59): üstte start, altında sporcular / şamandıra sırası / sonuç, en altta rüzgâr · parkur · program; dar (19em) */
-.gr-lc { position: absolute; left: 2em; top: calc(2em + env(safe-area-inset-top)); bottom: calc(1.8em + env(safe-area-inset-bottom)); width: 19em; display: flex; flex-direction: column; gap: 0.6em; pointer-events: none; }
-.gr-lc > * { pointer-events: auto; flex: none; }
-.gr-lc .gr-st .gr-tm { font-size: 3.4em; }
-.gr-lc .gr-who b { font-size: 1.2em; }
-.gr-mid { flex: 0 1 auto; min-height: 0; overflow: hidden; animation: gr-in 0.5s ease both; }
-.gr-mid > .gr-card { width: 100%; }
-.gr-lcb { margin-top: auto; }
-.gr-lcb > .gr-dr, .gr-lcb > .gr-pn, .gr-lcb .gr-wind { width: 100%; min-width: 0; }
-.gr-rc { position: absolute; right: 2em; top: calc(2em + env(safe-area-inset-top)); width: 21em; display: flex; flex-direction: column; gap: 0.6em; animation: gr-in 0.5s ease both; }
-.gr-rc > * { width: 100%; }
-.gr-boats .gr-rows li > b { color: #ff8ab0; }
-@media (max-width: 47.99rem) {
-  .gr-lc { position: static; width: auto; margin: 0.8em; }
-  .gr-rc { position: static; width: auto; margin: 0 0.8em 0.8em; }
-}
 /* Panel bölümleri yeniden (Seyhun 2026-11-03 20:23): kaynak/saat küçük soluk sol üstte; hız + yön tek satır; sağanak ayrı satır;
    parkur büyük, rota yazısı yok; program sade (saat, grup çizgisi, yarış; yalnız yarışta/sıradaki işaretli) */
-.gr-dsrc { font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 0.72em; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.42); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gr-dw2m { display: flex; align-items: center; gap: 0.6em; margin-top: 0.35em; white-space: nowrap; font-family: var(--lv-font-c), var(--lv-font), sans-serif; }
-.gr-dw2m .gr-arr { width: 2.4em; height: 2.4em; flex: none; }
-.gr-dw2m b { font-weight: 800; font-size: 2.6em; line-height: 0.95; }
-.gr-dw2m b em { font-style: normal; font-size: 0.4em; margin-left: 0.15em; color: rgba(255, 255, 255, 0.65); }
-.gr-dw2m span { margin-left: auto; font-weight: 700; font-size: 1.05em; letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.8); }
-.gr-dgu { margin-top: 0.3em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 0.95em; letter-spacing: 0.04em; color: #ffd23f; }
-.gr-dh2 { display: flex; align-items: center; gap: 0.9em; margin-top: 0.8em; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 600; font-size: 0.72em; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.42); }
-.gr-dh2 span { display: flex; align-items: center; gap: 0.35em; }
-.gr-dh2 span:nth-child(2) { margin-left: auto; }
-.gr-dh2 i { width: 1.2em; height: 0; border-top: 0.22em solid #2fd6c3; }
-.gr-dh2 i.b { border-top: 0.16em dashed #ffd23f; }
-.gr-dri .gr-dpn:has(.gr-dc2) { padding: 0.6em 0.6em 0.4em; }
-.gr-dc2 { position: relative; }
-.gr-dc2 > .gr-dsrc { position: absolute; left: 0.4em; top: 0.1em; z-index: 1; }
-.gr-dc2 .gr-dsc { margin-top: 0; }
-.gr-dc2 .gr-dsc svg { display: block; width: 100%; height: auto; max-height: 22em; }
-.gr-dri .gr-dp2 li { grid-template-columns: 3em 0.25em minmax(0, 1fr) auto; gap: 0.7em; padding: 0.45em 0; font-size: 1em; }
-.gr-dri .gr-dp2 li + li { border-top: 0; }
-.gr-dri .gr-dp2 li small { font-size: 0.72em; letter-spacing: 0.1em; color: #ff3d77; }
-.gr-dri .gr-dp2 li small.on { color: #2fd6c3; }
-.gr-dri .gr-dp2 li.next span, .gr-dri .gr-dp2 li.now span { color: #fff; }
 
 /* Program start kartının altında (Seyhun 2026-11-04): 30 sn'de bir 10 sn açılır; sade satırlar */
-.gr-sp { display: grid; grid-template-rows: 0fr; margin-top: -0.6em; transition: grid-template-rows 0.6s cubic-bezier(0.22, 0.8, 0.24, 1), opacity 0.4s; opacity: 0; }
-.gr-sp.on { grid-template-rows: 1fr; opacity: 1; }
-.gr-sp > div { min-height: 0; overflow: hidden; }
-.gr-sp ul { list-style: none; margin: 0; padding: 0.55em 0.95em 0.6em; border-radius: 0 0 0.55em 0.55em; background: rgba(28, 44, 70, 0.62); border-top: 1px solid rgba(255, 255, 255, 0.1); box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.08), inset -1px 0 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.08), 0 0.6em 2em rgba(0, 0, 0, 0.3); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 /* açıkken start kartıyla tek parça: kartın alt köşeleri düzleşir, arada boşluk yok (Seyhun 2026-11-04) */
-.gr-lc > .gr-st { transition: border-radius 0.3s; }
-.gr-lc:has(> .gr-sp.on) > .gr-st { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-.gr-sp li { display: grid; grid-template-columns: 3em 0.25em minmax(0, 1fr) auto; align-items: center; gap: 0.7em; padding: 0.35em 0; font-family: var(--lv-font-c), var(--lv-font), sans-serif; font-weight: 700; font-size: 1em; color: rgba(255, 255, 255, 0.62); }
-.gr-sp li b { font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
-.gr-sp li i { width: 0.25em; height: 1.2em; border-radius: 0.12em; background: var(--g); }
-.gr-sp li span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gr-sp li small { font-size: 0.72em; letter-spacing: 0.1em; text-transform: uppercase; color: #ff3d77; }
-.gr-sp li small.on { color: #2fd6c3; }
-.gr-sp li.next, .gr-sp li.now { color: #fff; }
-.gr-sp li.more { display: block; padding-top: 0.4em; font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); }
-@media (prefers-reduced-motion: reduce) { .gr-sp { transition: none; } }
-.gr-st.o .gr-of { width: 2.2em; height: 1.45em; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); }
 /* Canlı işareti sağ üst köşede (Seyhun 2026-11-04); sağ kartlar altına iner */
-.gr-onair { position: absolute; right: 2em; top: calc(2em + env(safe-area-inset-top)); margin: 0; z-index: 2; }
-.gr:has(> .gr-onair) > .gr-rc { top: calc(4.6em + env(safe-area-inset-top)); }
-@media (max-width: 700px) { .gr-onair { position: fixed; right: 0.8em; top: calc(0.8em + env(safe-area-inset-top)); } }
-
 
 /* Canlı ekran yükleniyor (Seyhun 2026-11-04 yeni tasarım): Velora laciverti zemin, üstte mavi kayan çizgi, ortada V daire + dönen ince halka, yarışın adı */
 .lv-sea.lv-plain { background: radial-gradient(70% 60% at 85% 0%, rgba(61, 123, 255, 0.22), transparent 70%), radial-gradient(120% 90% at 30% 20%, #0f2547 0%, #0b1a33 50%, #050d1c 100%); }
@@ -1752,7 +452,6 @@ button.gr-card { cursor: pointer; }
 .lv-lbrand small { font-size: 0.9em; font-weight: 700; line-height: 1; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
 @keyframes lv-lspin { to { transform: rotate(1turn); } }
 @keyframes lv-lbreath { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.94); opacity: 0.8; } }
-@keyframes lv-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) { .lv-lbrand .ring::before, .lv-lbrand .ring svg { animation: none; } }
 /* İşaret bayrakları ortak çizimden (lib/raceSignals flagSvg; Seyhun 2026-11-04 "her yerde aynı tehir bayrağı") */
 .lv-flag.art { background: none; height: auto; aspect-ratio: 3 / 2; border: 0; box-shadow: none; overflow: visible; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4)); }
@@ -1763,8 +462,4 @@ button.gr-card { cursor: pointer; }
 .lv-photo { opacity: 0.75; filter: saturate(0.95) blur(5px); animation: lv-fade 1.2s ease-out both, lv-kb 45s ease-in-out 1.2s infinite alternate; }
 @media (prefers-reduced-motion: reduce) { .lv-photo { animation: lv-fade 1.2s ease-out both; } }
 
-
 /* Ana hesap: Start'ın solunda rüzgâr ölçümü: arka plansız, soluk, büyükçe + */
-.sc-vwd, .sc-vt button.sc-vwd { margin-left: auto; align-self: center; justify-content: center; height: 1.08em; min-width: 1.08em; padding: 0 0.2em; border: 0; background: none; color: #fff; opacity: 0.5; font: 400 2.4em/1 var(--sc-c, var(--lv-font-c)); letter-spacing: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-.sc-vwd:active { opacity: 0.9; transform: scale(0.92); }
-.sc-vwd + .sc-vgo { margin-left: 0.3em; }
