@@ -747,3 +747,7 @@
 @media (max-aspect-ratio: 1/1) {
   .sc:has(.sc-vb.bar.hid) .sc-rd, .sc:has(.sc-vb.bar.hid) .sc-later, .sc:has(.sc-vb.bar.hid) .sc-ci { bottom: calc(7em + env(safe-area-inset-bottom)); }
 }
+.lvd-hd .lvd-del { margin-left: auto; height: 1.9em; padding: 0 0.9em; border: 0; border-radius: 99px; background: rgba(255, 255, 255, 0.1); color: #fff; font: 700 0.95em/1 var(--sc-c, var(--lv-font-c)); }
+.lvd-hd .lvd-del.on { background: #fff; color: #0b1626; }
+.lvd-hd span + .lvd-del { margin-left: 0.6em; }
+.lvd-t s.x { background: #e5484d; }

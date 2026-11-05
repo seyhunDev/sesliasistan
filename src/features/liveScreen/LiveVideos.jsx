@@ -2,9 +2,9 @@
 
 // /canli Video sekmesi (ana hesap, yalnız uygulama içinde; Seyhun 2026-11-05 "canlı yayına göndermeyelim, o sadece benim uygulamamda,
 // iPad'imde, telefonumda olsun; canlı yayın linkinde görüntü devam eder"): "Video çek" ile çekilen video yalnız bu cihazda saklanır
-// (pendingStore, 7 gün), hiçbir yere yüklenmez. Videoya dokununca bu ekranın arka planında oynar, yeniden dokununca kalkar.
+// (pendingStore; sen silene kadar durur, Seyhun 2026-11-05 "niye 7 gün, kullanıcı isterse siler"), hiçbir yere yüklenmez. Videoya dokununca bu ekranın arka planında oynar, yeniden dokununca kalkar.
 import { useEffect, useMemo, useState } from "react";
-import { keepLocal, listKept } from "@/features/raceMedia/pendingStore";
+import { dropKept, keepLocal, listKept } from "@/features/raceMedia/pendingStore";
 import { RecPick } from "@/features/raceMedia/RecPick";
 import { recName } from "./liveActions";
 import { momentAt } from "@/lib/raceLive";
@@ -32,6 +32,7 @@ export function LiveVideos({ raceId, starts = [], playing = "", onPlay }) {
   const [list, setList] = useState([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [del, setDel] = useState(false); // Sil: dokunulan video silinir
   useEffect(() => {
     let on = true;
     listKept().then((l) => on && setList(l.filter((x) => x.mine && x.raceId === raceId && x.blob).sort((a, b) => (a.at < b.at ? 1 : -1))), () => {});
@@ -50,18 +51,31 @@ export function LiveVideos({ raceId, starts = [], playing = "", onPlay }) {
     setBusy(true);
     const dur = await durOf(file);
     const end = file.lastModified || Date.now();
-    const x = { id: newId(), raceId, kind: "video", mine: true, size: file.size, blob: file, at: new Date(end - dur * 1000).toISOString(), dur };
+    const x = { id: newId(), raceId, kind: "video", mine: true, stay: true, size: file.size, blob: file, at: new Date(end - dur * 1000).toISOString(), dur };
     await keepLocal(x);
     setList((l) => [x, ...l]);
     setBusy(false);
     onPlay?.(x.id, x.blob); // çekilen hemen arka planda
   };
 
+  const drop = (x) => {
+    if (playing === x.id) onPlay?.("", null);
+    dropKept(x.id);
+    const rest = list.filter((y) => y.id !== x.id);
+    setList(rest);
+    if (!rest.length) setDel(false);
+  };
+
   return (
     <div className="lvd">
       <div className="lvd-hd">
         <b>Video</b>
-        {list.some((x) => x.id === playing) ? <span>Ekranda: {hm(list.find((x) => x.id === playing).at)}</span> : null}
+        {list.some((x) => x.id === playing) && !del ? <span>Ekranda: {hm(list.find((x) => x.id === playing).at)}</span> : null}
+        {list.length ? (
+          <button type="button" className={`lvd-del${del ? " on" : ""}`} onClick={() => setDel(!del)}>
+            {del ? "Bitti" : "Sil"}
+          </button>
+        ) : null}
       </div>
       <RecPick onFile={take} className="lvd-rec" aria-busy={busy}>
         <i aria-hidden="true" />
@@ -74,10 +88,10 @@ export function LiveVideos({ raceId, starts = [], playing = "", onPlay }) {
             const on = playing === x.id;
             const name = recName({ at: x.at, ...(momentAt(x.at, starts) || {}) }, starts);
             return (
-              <button key={x.id} type="button" className={`lvd-t${on ? " on" : ""}`} aria-pressed={on} onClick={() => (on ? onPlay?.("", null) : onPlay?.(x.id, x.blob))}>
+              <button key={x.id} type="button" className={`lvd-t${on ? " on" : ""}`} aria-pressed={on} onClick={() => (del ? drop(x) : on ? onPlay?.("", null) : onPlay?.(x.id, x.blob))}>
                 <span className="th">
                   <video src={`${urls[x.id]}#t=0.5`} preload="metadata" muted playsInline />
-                  {on ? <s>Ekranda</s> : null}
+                  {del ? <s className="x">Sil</s> : on ? <s>Ekranda</s> : null}
                   {x.dur ? <em>{mmss(x.dur)}</em> : null}
                 </span>
                 <b>{[name, hm(x.at)].filter(Boolean).join(" · ")}</b>

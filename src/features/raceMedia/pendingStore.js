@@ -57,11 +57,11 @@ export function keepLocal(x) {
   navigator.storage?.persist?.().catch(() => {});
   return tx("readwrite", (s) => s.put({ ...x, savedAt: Date.now() }), KEPT).catch(() => {});
 }
-// 7 günü geçenler silinir (stay: yalnız telefonda duran büyük video, buluta yüklenene ya da silinene kadar kalır), kalanlar döner (hepsi; raceId ile süzülür)
+// 7 günü geçenler silinir (mine: /canli Video sekmesinde çekilen, kullanıcı silene kadar; stay: yalnız telefonda duran büyük video, buluta yüklenene ya da silinene kadar kalır), kalanlar döner (hepsi; raceId ile süzülür)
 export async function listKept(now = Date.now()) {
   try {
     const all = (await tx("readonly", (s) => s.getAll(), KEPT)) || [];
-    const old = all.filter((x) => !x.stay && now - x.savedAt > KEEP_DAYS * 864e5);
+    const old = all.filter((x) => !x.stay && !x.mine && now - x.savedAt > KEEP_DAYS * 864e5);
     if (old.length) await tx("readwrite", (s) => old.forEach((x) => s.delete(x.id)), KEPT);
     return all.filter((x) => !old.includes(x));
   } catch {
