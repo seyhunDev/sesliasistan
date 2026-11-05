@@ -441,7 +441,7 @@ function Ranking({ data, sel, isCur, id }) {
   // ad ve kulüp: önce kayıt listesinden, yoksa sonuç PDF'lerinden
   const who = { ...whoBySail(data.fleets), ...Object.fromEntries((data.entries || []).map((r) => [r.sail, { name: r.name, club: r.club }])) };
   const st = standings(entry);
-  const groups = sel?.n ? officialFor(data.fleets, sel.n, manualFinish(entry)) : [];
+  const groups = sel?.n ? officialFor(data.fleets, sel.n, manualFinish(entry), sel.grp || entry.grp || "") : [];
   const [gk, setGk] = useState("");
   const g = groups.find((x) => x.key === gk) || groups[0];
   const pos = nowPos(entry);
@@ -686,7 +686,7 @@ function Races({ id, starts, cur, sel, fleets, rounds, entries, onClose }) {
         <div className="lv-rgrid">
           {list.map((s) => {
             const e = rounds?.[s.id] || {};
-            const off = officialFor(fleets, s.n).length > 0;
+            const off = officialFor(fleets, s.n, {}, s.grp || e.grp || "").length > 0;
             const first = e.legs?.length ? standings(e)[0] : null;
             const w = first ? whoOf(who, first.sail) : null;
             const vf = voidFlag(s.void);
@@ -1069,7 +1069,7 @@ const gArrow = (dir) => (
 function raceRows(data, sel) {
   const entry = data.rounds?.[sel?.id] || { route: [], legs: [] };
   const who = whoMap(data);
-  const g = sel?.n ? officialFor(data.fleets, sel.n, manualFinish(entry))[0] : null;
+  const g = sel?.n ? officialFor(data.fleets, sel.n, manualFinish(entry), sel.grp || entry.grp || "")[0] : null;
   if (g) return { rows: g.rows.map((r) => ({ p: r.place || r.code, sail: r.sail.replace(/^\D+/, "") || r.sail, name: shortName(r.name) || "", gap: "" })), head: "Resmî sonuç", n: g.rows.length };
   const st = standings(entry);
   const top = st[0];

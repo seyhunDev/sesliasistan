@@ -86,6 +86,14 @@ export function grpOf(raw) {
   return "";
 }
 
+// Renk grubu (eleme günleri; Seyhun 2026-11-05 "geçici sonuçta gruplar karışık, her satırın grubu yazıyor"): satırın fl alanı.
+// grp yalnız final grubudur (sıralama onunla bölünür), fl o yarışın renk grubu (resmî sonuç gruba göre ayrılır)
+const COLOR_FL = [["Sarı", /^(sari|yellow)$/], ["Mavi", /^(mavi|blue)$/], ["Kırmızı", /^(kirmizi|red)$/], ["Yeşil", /^(yesil|green)$/], ["Pembe", /^(pembe|pink)$/], ["Turuncu", /^(turuncu|orange)$/], ["Mor", /^(mor|purple)$/], ["Beyaz", /^(beyaz|white)$/]];
+export function flOf(raw) {
+  const c = plain(raw).replace(/\b(grup|group|fleet|filo)\b/g, "").trim();
+  return c ? COLOR_FL.find(([, re]) => re.test(c))?.[0] || "" : "";
+}
+
 // "K", "F", "W", "Kız", "Kadın", "Female", "Girl" → K; "E", "M", "Erkek", "Male", "Boy" → E
 export function sexOf(raw) {
   const c = plain(raw);
@@ -122,6 +130,7 @@ export function cleanSheet(raw) {
         sex: sexOf(r?.sex),
         cat: catOf(cls, r?.cat),
         grp: grpOf(r?.grp),
+        ...(flOf(r?.fl || r?.grp) ? { fl: flOf(r?.fl || r?.grp) } : {}),
         // yarış yarış puanları (canlı ekranda resmî sonuç, Seyhun 2026-11-01): ["1", "(14)", "DNF"]; n. yarış = r[n-1]
         ...(Array.isArray(r?.r) && r.r.some((x) => String(x ?? "").trim()) ? { r: r.r.slice(0, 20).map((x) => String(x ?? "").replace(/\s+/g, "").slice(0, 8)) } : {}),
       }))
@@ -130,8 +139,11 @@ export function cleanSheet(raw) {
     if (!cls || !rows.length) continue;
     // Gruplar ayrı liste okunduysa (her grup kendi sayfasında) aynı sınıfın grupları tek listede birleşir
     const at = fleets.findIndex((x) => x.cls === cls);
-    if (at < 0) fleets.push({ cls, rows: byGroup(rows) });
-    else fleets[at] = joinGroups(fleets[at], { cls, rows });
+    // yarış sütun adları (Q1…F2); eski kayıtta yok
+    const heads = Array.isArray(f?.heads) ? f.heads.slice(0, 20).map((h) => String(h || "").replace(/\s+/g, "").toUpperCase().slice(0, 6)) : [];
+    const hd = heads.length ? { heads } : {};
+    if (at < 0) fleets.push({ cls, ...hd, rows: byGroup(rows) });
+    else fleets[at] = joinGroups(fleets[at], { cls, ...hd, rows });
   }
   return fleets;
 }
@@ -148,7 +160,7 @@ export function byGroup(rows) {
 export function joinGroups(prev, next) {
   const grps = new Set(next.rows.map((r) => r.grp).filter(Boolean));
   if (!prev || !grps.size || !prev.rows.some((r) => r.grp)) return { ...next, rows: byGroup(next.rows) };
-  return { ...next, rows: byGroup([...prev.rows.filter((r) => r.grp && !grps.has(r.grp)), ...next.rows]) };
+  return { ...next, ...(next.heads || !prev.heads ? {} : { heads: prev.heads }), rows: byGroup([...prev.rows.filter((r) => r.grp && !grps.has(r.grp)), ...next.rows]) };
 }
 
 // Ad eşleşmesi: sporcunun ilk ve son adı satırda geçiyor (sıra fark etmez: "KAYA Ali" = Ali Kaya)
