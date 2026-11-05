@@ -24,6 +24,7 @@ import { DocsTab } from "./DocsTab";
 import { NearCams } from "./NearCams";
 import { AthletesTab } from "./AthletesTab";
 import { CourseTalk } from "./CourseTalk";
+import { writeCourseVoice } from "./courseWrite";
 import { courseVoice } from "./courseVoice";
 import { SIGNALS, addHours, flagSvg, signalOf, soundText } from "@/lib/raceSignals";
 import { VoiceLight } from "@/features/home/TabBar";
@@ -859,37 +860,16 @@ export function BroadcastPage({ orgId, id }) {
   // "trapez", "Bronz B kartında". Yazma burada (kart, rota, grup kartı, ölçüm); dönüş söylenecek özet, hata olursa fırlatır.
   const [obsAll, setObsAll] = useState(false);
   // Dönüş: yazılanlar [{ t: başlık, s: ayrıntı, k: parlayan kutu (wind/axis/line/route) }]; yazılamazsa fırlatır
-  const applyCourseVoice = async (r) => {
-    const said = [];
-    const rows = plan.sets.flatMap((x) => x.grps.map((g) => [x.cls, g]));
-    let by = course.by;
-    const miss = [];
-    for (const gc of r.grpCards || []) {
-      const row = rows.find(([, g]) => g === gc.grp);
-      if (!row) miss.push(`${gc.grp} grubu bu yarışta yok`);
-      else if (!course.cards.some((k) => k.id === gc.card)) miss.push(`Kart ${gc.card} yok`);
-      else {
-        by = { ...by, [cardKey(row[0], row[1])]: gc.card };
-        said.push({ t: `${gc.grp} → Kart ${gc.card}`, k: "grp" });
-      }
-    }
-    if (r.route || r.type || by !== course.by) {
-      const cards = course.cards.map((k) => (k.id === course.sel ? { ...k, ...(r.route ? { route: r.route } : {}), ...(r.type ? { type: r.type } : {}) } : k));
-      await putCards({ cards, by });
-      if (r.route) setRt(routeText(r.route));
-      if (r.route || r.type) said.push({ t: [r.type ? CARD_TYPES[r.type].split(" ")[0] : "", r.route ? `rota ${routeText(r.route)}` : ""].filter(Boolean).join(" · "), s: `Kart ${course.sel}`, k: "route" });
-    }
-    if (r.list?.length || r.len) {
-      const at = Date.now();
-      const list = r.list.map((o, i) => cleanObs({ ...o, at: new Date(at + i).toISOString() })).filter(Boolean);
-      setCourse((c) => cleanCourse({ ...c, obs: [...c.obs, ...list], ...(r.len ? { len: { ...(c.len || {}), ...r.len } } : {}) }));
-      await addCourseMany(orgId, id, today, list, r.len);
-      for (const o of list) said.push({ t: `${obsTitle(o)} ${o.range ? `${o.range[0]}–${o.range[1]}°` : `${o.deg}°`}${o.kn != null ? ` · ${o.kn} kn` : ""}`, s: o.gust != null ? `sağanak ${o.gust}` : "", k: o.kind });
-      if (r.len) said.push({ t: `Orsa ayağı ${r.len.orsa} m`, k: "len" });
-    }
-    if (!said.length && miss.length) throw new Error(`${miss.join(", ")}.`);
-    return [...said, ...miss.map((t) => ({ t, miss: true }))];
-  };
+  const applyCourseVoice = (r) =>
+    writeCourseVoice(r, {
+      course,
+      rows: plan.sets.flatMap((x) => x.grps.map((g) => [x.cls, g])),
+      putCards: async (k) => (await putCards(k), r.route && setRt(routeText(r.route))),
+      putObs: async (list, len) => {
+        setCourse((c) => cleanCourse({ ...c, obs: [...c.obs, ...list], ...(len ? { len: { ...(c.len || {}), ...len } } : {}) }));
+        await addCourseMany(orgId, id, today, list, len);
+      },
+    });
   // Sesle yazılanı geri al: parkur yazımdan önceki hâline döner (tek adım)
   const undoCourse = async (prev) => {
     setCourse(cleanCourse(prev));
@@ -2757,7 +2737,7 @@ export function BroadcastPage({ orgId, id }) {
 
       {/* geri sayımda İptal › Tehir: yarış silinip programa döner, tehir penceresi 1 dk seçili açılır (sayaç zaten durdu) */}
       <VoidSheet ask={rf.ask} onChoose={chooseVoid} />
-      <AddSheet open={add !== null} pick0={add || 0} c={c} onClose={() => setAdd(null)} onAdd={addObs} />
+      <AddSheet open={add !== null} pick0={add || 0} c={c} onClose={() => setAdd(null)} onAdd={addObs} onVoice={() => (setAdd(null), setTalk(true))} />
       <PenSheet
         open={penOpen}
         onClose={() => setPenOpen(false)}

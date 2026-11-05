@@ -11,7 +11,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase/clientApp";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseObs, loadCourse, loadRoundsOf, saveCards, savePlanKeys, saveRounds, saveTimer, watchRounds } from "@/features/athletes/raceLiveStore";
+import { addCourseMany, addCourseObs, loadCourse, saveCourse, loadRoundsOf, saveCards, savePlanKeys, saveRounds, saveTimer, watchRounds } from "@/features/athletes/raceLiveStore";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { VoidSheet, useRaceFlow } from "@/features/raceMedia/useRaceFlow";
@@ -20,6 +20,8 @@ import { finishSteps, orderWithout, startBlock, startedRow, yayinPath, zeroStart
 import { cleanLive, cleanPlan, finishRace, moveWin, nextRaceNo, openWin, raceName, rollPlan, winLeft } from "@/lib/raceLive";
 import { CARD_TYPES, cardFor, cardKey, cleanCourse, cleanObs, withRaceCards } from "@/lib/raceCourse";
 import { AddSheet } from "@/features/raceMedia/CourseTab";
+import { CourseTalk } from "@/features/broadcast/CourseTalk";
+import { writeCourseVoice } from "@/features/broadcast/courseWrite";
 import { PREP_PICK, prepName } from "@/lib/raceRounds";
 import { flagSvg } from "@/lib/raceSignals";
 import { groupColor } from "@/lib/roundScore";
@@ -165,6 +167,28 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
     const obs = cleanObs(o);
     setCourse((c) => cleanCourse({ ...c, obs: [...c.obs, obs] }));
     addCourseObs(orgId, raceId, today, obs).catch(() => setMsg("Kaydedilemedi. İnterneti kontrol et."));
+  };
+  // Sesle (Seyhun 2026-11-05 "canlı ekranda da sesle de olmalı"): Ölçüm ekle › Sesle; Yayın › Parkur'daki sesle parkurun aynısı
+  // (CourseTalk + courseWrite): rüzgâr, eksen, hat, rota, grubun kartı aynı kayıtlarla; Geri al parkuru önceki hâline yazar
+  const [talk, setTalk] = useState(false);
+  const fail = () => setMsg("Kaydedilemedi. İnterneti kontrol et.");
+  const applyVoice = (r) =>
+    writeCourseVoice(r, {
+      course,
+      rows: plan.sets.flatMap((x) => x.grps.map((g) => [x.cls, g])),
+      putCards: async (k) => {
+        const next = cleanCourse({ ...course, ...k });
+        setCourse(next);
+        await saveCards(orgId, raceId, today, next);
+      },
+      putObs: async (list, len) => {
+        setCourse((c) => cleanCourse({ ...c, obs: [...c.obs, ...list], ...(len ? { len: { ...(c.len || {}), ...len } } : {}) }));
+        await addCourseMany(orgId, raceId, today, list, len);
+      },
+    });
+  const undoVoice = async (prev) => {
+    setCourse(cleanCourse(prev));
+    await saveCourse(orgId, raceId, today, prev).catch(fail);
   };
   const running = live.starts.filter((x) => x.day === today && !x.fin && !x.void);
   // Yarıştaki grup (Seyhun 2026-11-05 "Mavi yarışta diyor, tıklıyorum, yarışı bitirmeyi yapamıyorum"): dokununca Yayın › Süre'deki işlemler,
@@ -368,7 +392,8 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
       ) : null}
       {vidHost ? createPortal(<LiveVideos orgId={orgId} raceId={raceId} race={race} starts={live.starts} rounds={rounds} stream={stream} playing={playing} onPlay={onPlay} />, vidHost) : null}
       <VoidSheet ask={rf.ask} onChoose={(r) => (rf.choose(r), push())} />
-      <AddSheet open={wind} c={course} onClose={() => onWindClose?.()} onAdd={addObs} />
+      <AddSheet open={wind} c={course} onClose={() => onWindClose?.()} onAdd={addObs} onVoice={() => (onWindClose?.(), setTalk(true))} />
+      <CourseTalk open={talk} onClose={() => setTalk(false)} course={course} apply={applyVoice} undo={undoVoice} />
     </>
   );
 }
