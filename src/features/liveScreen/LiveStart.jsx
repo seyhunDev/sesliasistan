@@ -11,11 +11,12 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase/clientApp";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { addCourseObs, loadCourse, loadRoundsOf, saveCards, savePlanKeys, saveTimer, watchRounds } from "@/features/athletes/raceLiveStore";
+import { addCourseObs, loadCourse, loadRoundsOf, saveCards, savePlanKeys, saveRounds, saveTimer, watchRounds } from "@/features/athletes/raceLiveStore";
+import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { VoidSheet, useRaceFlow } from "@/features/raceMedia/useRaceFlow";
 import { audio, raceCancel, raceFinish, raceStart, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
-import { orderWithout, startBlock, startedRow, yayinPath, zeroStarts } from "@/features/broadcast/startFlow";
+import { finishSteps, orderWithout, startBlock, startedRow, yayinPath, zeroStarts } from "@/features/broadcast/startFlow";
 import { cleanLive, cleanPlan, finishRace, moveWin, nextRaceNo, openWin, raceName, rollPlan, winLeft } from "@/lib/raceLive";
 import { CARD_TYPES, cardFor, cardKey, cleanCourse, cleanObs, withRaceCards } from "@/lib/raceCourse";
 import { AddSheet } from "@/features/raceMedia/CourseTab";
@@ -36,7 +37,7 @@ export default function LiveStart(p) {
   );
 }
 // vidHost: Video panelindeki yer (LiveScreen ScView; yalnız uygulama içinde); videolar oraya çizilir
-function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null }) {
+function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false }) {
   const [orgId, setOrgId] = useState("");
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -185,6 +186,48 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
     push();
     setRunId("");
   };
+  // Finiş penceresi kendiliğinden (Seyhun 2026-11-05 "canlı ekrana da taşı"): uygulama içi ekran açıkken bu telefon, Yayın › Süre ile aynı
+  // kuralla (startFlow finishSteps) ilk finişte pencereyi açar, süre bitince yarışı bitirir, bitirmeyenlere bir kez DNF yazar. 5 sn'de bir
+  const [groups, setGroups] = useState({});
+  useEffect(() => {
+    if (!orgId || !auto) return undefined;
+    let on = true;
+    loadEntryDoc(orgId, raceId).then((d) => on && setGroups(d.groups || {}), () => {});
+    return () => {
+      on = false;
+    };
+  }, [orgId, raceId, auto]);
+  const tick = useRef(null);
+  const step = () => {
+    const now = Date.now();
+    let next = live.starts;
+    let stop = false;
+    for (const x of finishSteps({ starts: live.starts, rounds, groups, today, now })) {
+      if (x.k === "open") next = openWin(next, x.s.id, x.at);
+      else if (x.k === "end") (next = finishRace(next, x.s.id, now, rdays)), (stop = stop || upHere(x.s.id));
+      else {
+        next = next.map((y) => (y.id === x.s.id ? { ...y, dnf: true } : y));
+        stop = stop || upHere(x.s.id);
+        if (x.pen) {
+          const prev = rounds[x.s.id] || { route: [], legs: [] };
+          saveRounds(orgId, raceId, x.s.id, { ...prev, pen: x.pen }, prev).catch(() => {});
+        }
+      }
+    }
+    if (stop) {
+      writeTimer({ dur: t.dur, end: null, left: null, zero: t.end });
+      push();
+    }
+    if (next !== live.starts) rf.save(next);
+  };
+  useEffect(() => {
+    tick.current = step;
+  });
+  useEffect(() => {
+    if (!orgId || !auto) return undefined;
+    const i = setInterval(() => tick.current?.(), 5000);
+    return () => clearInterval(i);
+  }, [orgId, auto]);
   const runSec = (s) => (upHere(s.id) ? Math.max(0, Math.floor(-tr.rem)) : Math.max(0, Math.floor((nowT - Date.parse(s.at)) / 1000)));
   if (!orgId) return null;
   const card = row ? cardFor(course, row.cls, row.grp) : null;

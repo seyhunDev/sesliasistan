@@ -19,7 +19,7 @@ import { raceDays } from "@/features/athletes/raceWeather";
 import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, saveEvreMan, loadShowTpl, saveShowTpl, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, finalsFirst, groupColor, groupMap, groupsOn, isFinalGrp } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
-import { countingAt as countingNow, orderWithout, startBlock, startedRow, zeroStarts } from "./startFlow";
+import { countingAt as countingNow, finishSteps, orderWithout, startBlock, startedRow, zeroStarts } from "./startFlow";
 import { DocsTab } from "./DocsTab";
 import { NearCams } from "./NearCams";
 import { AthletesTab } from "./AthletesTab";
@@ -40,11 +40,11 @@ import { BoatLive } from "@/features/tracking/BoatLive";
 import { ZOOMS, fleetGroups, fleetOf } from "@/lib/boatPlay";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, openWin, moveWin, needDnf, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets, grpHold, grpRelease, grpDue, heldGrps } from "@/lib/raceLive";
+import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, openWin, moveWin, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets, grpHold, grpRelease, grpDue, heldGrps } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, coursePoints } from "@/lib/courseCard";
-import { EVRES, EVRE_DEF, EVRE_NAME, EVRE_WHEN, ITEM_NAME, SIDE_DEF, ITEM_SECS, SHOW_ITEMS, SIDES, SIDE_NAME, cleanCourseShow, evreOf, evreScreen, showPlan, CLASS_PICK, raceClasses, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, dnfPen, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
+import { EVRES, EVRE_DEF, EVRE_NAME, EVRE_WHEN, ITEM_NAME, SIDE_DEF, ITEM_SECS, SHOW_ITEMS, SIDES, SIDE_NAME, cleanCourseShow, evreOf, evreScreen, showPlan, CLASS_PICK, raceClasses, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { autoCaption } from "@/lib/raceCaption";
@@ -1242,25 +1242,14 @@ export function BroadcastPage({ orgId, id }) {
   // kendiliğinden biter, bitirmeyen ve başka cezası olmayan teknelere DNF yazılır (grubun listesi, yoksa dönüşte görülenler)
   const putStarts = (fn) => change((l) => { const next = fn(l.starts); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; });
   const endRace = (s) => (upRow(s.id) ? raceFinish(flow) : putStarts((l) => finishRace(l, s.id, Date.now(), rdays)));
-  const membersOf = (s) => {
-    const gm = groupMap(groupsOn(groups, s.day));
-    const g = s.grp || L?.rounds?.[s.id]?.grp || "";
-    return g && Object.keys(gm).length ? Object.keys(gm).filter((k) => gm[k] === g) : null;
-  };
   const winTick = () => {
-    for (const s of live.starts) {
-      if (s.day !== today || s.void || Date.parse(s.at) > capNow) continue;
-      const e = L.rounds?.[s.id];
-      if (!s.fin && !s.fw) {
-        const k = (e?.route || []).lastIndexOf("F");
-        const first = k >= 0 ? (e.legs?.[k] || [])[0] : "";
-        if (first) putStarts((l) => openWin(l, s.id, Math.min(e.tm?.[k]?.[first] || capNow, capNow)));
-      } else if (!s.fin && Date.parse(s.fw) <= capNow) endRace(s);
-      else if (needDnf(s)) {
-        if (upRow(s.id)) raceFinish(flow); // pencere sayfa kapalıyken bittiyse sayaç da durur
-        putStarts((l) => l.map((x) => (x.id === s.id ? { ...x, dnf: true } : x)));
-        const pen = dnfPen(e, membersOf(s));
-        if (JSON.stringify(pen) !== JSON.stringify(e?.pen || {})) setPickOf(s.id, { pen });
+    for (const x of finishSteps({ starts: live.starts, rounds: L.rounds, groups, today, now: capNow })) {
+      if (x.k === "open") putStarts((l) => openWin(l, x.s.id, x.at));
+      else if (x.k === "end") endRace(x.s);
+      else {
+        if (upRow(x.s.id)) raceFinish(flow); // pencere sayfa kapalıyken bittiyse sayaç da durur
+        putStarts((l) => l.map((y) => (y.id === x.s.id ? { ...y, dnf: true } : y)));
+        if (x.pen) setPickOf(x.s.id, { pen: x.pen });
       }
     }
   };
