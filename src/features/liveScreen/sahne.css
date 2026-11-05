@@ -623,3 +623,10 @@
 .lv:has(.sc-ckx.rk) { overflow: hidden; touch-action: none; }
 .lv:has(.sc-ckx.rk) .sc-scr { touch-action: pan-y; }
 .lv:has(.sc-ckx.rk) .sc-tabs, .lv:has(.sc-ckx.rk) .sc-vs { touch-action: pan-x; }
+
+/* Görüntü sırası anahtarı (Seyhun 2026-11-05 "canlı konum butonları da olacak"): Kamera | Konum, başlığın yerinde; seçilen beyaz */
+@media (max-aspect-ratio: 1/1) {
+  .sc-vt { flex: none; display: inline-flex; margin: 0 0.5em 0 1em; padding: 0.2em; border-radius: 0.7em; background: rgba(10, 20, 36, 0.62); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  .sc-vt button { height: 2.35em; padding: 0 0.7em; border: 0; border-radius: 0.5em; background: none; color: var(--sc-mut); font: 700 1.05em/1 var(--sc-c); letter-spacing: 0.08em; text-transform: uppercase; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  .sc-vt button.on { background: rgba(255, 255, 255, 0.92); color: #0b1626; }
+}
