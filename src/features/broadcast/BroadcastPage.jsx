@@ -17,7 +17,7 @@ import { readProgramFile, readProgramText } from "@/features/broadcast/broadcast
 import { FIRST_ITEM, agendaFirst, agendaPut, datesAdd, datesDrop, programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, saveEvreMan, loadShowTpl, saveShowTpl, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
-import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
+import { GROUP_PICK, finalsOnly, groupColor, groupMap, groupsOn, isFinalGrp } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { countingAt as countingNow, orderWithout, startBlock, startedRow, zeroStarts } from "./startFlow";
 import { DocsTab } from "./DocsTab";
@@ -1048,7 +1048,9 @@ export function BroadcastPage({ orgId, id }) {
   // Seçim kareleri (Seyhun 2026-11-03 "sınıf, grup, bayrak yan yana kare butonlar, görselleriyle; hangisine tıklanırsa onu değiştirelim"):
   // üç kare seçili değeri gösterir (sınıf işareti grup renginde, grup rengi, bayrak resmi); dokununca yalnız o seçimin seçenekleri açılır
   const pickSquares = (val, set, keys = ["cls", "grp", "prep"]) => {
-    const defs = { cls: ["Sınıf", CLASS_PICK], grp: ["Grup", GROUP_PICK], prep: ["Bayrak", PREP_PICK] };
+    // final grupları açıklandıysa (Altın/Gümüş/Bronz) renk grupları seçilmez (Seyhun 2026-11-05)
+    const grpPick = plan.sets.some((x) => x.grps.some(isFinalGrp)) ? GROUP_PICK.filter(isFinalGrp) : GROUP_PICK;
+    const defs = { cls: ["Sınıf", CLASS_PICK], grp: ["Grup", grpPick], prep: ["Bayrak", PREP_PICK] };
     const art = (key, v, g) => (key === "cls" ? <ClsArt cls={v} grp={g} /> : key === "grp" ? <span className="block h-full w-full" style={{ background: groupColor(v) || "var(--chip)" }} /> : v ? <FlagArt p={v} /> : null);
     const open = keys.includes(pickKey) ? pickKey : "";
     return (
@@ -3215,7 +3217,7 @@ function Setup({ sets, guess = [], onSave, onCancel }) {
                   {[...GROUP_PICK, ...(grps[c] || []).filter((g) => !GROUP_PICK.includes(g))].map((g) => {
                     const on = (grps[c] || []).includes(g);
                     return (
-                      <button key={g} type="button" aria-pressed={on} onClick={() => setGrps((d) => ({ ...d, [c]: on ? (d[c] || []).filter((x) => x !== g) : [...(d[c] || []), g] }))} className={chip(on)}>
+                      <button key={g} type="button" aria-pressed={on} onClick={() => setGrps((d) => ({ ...d, [c]: on ? (d[c] || []).filter((x) => x !== g) : finalsOnly([...(d[c] || []), g]) }))} className={chip(on)}>
                         <span className="size-2.5 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" />
                         {g}
                       </button>
