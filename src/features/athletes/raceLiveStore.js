@@ -10,7 +10,7 @@ import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResumable } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
-import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan, mergeOrder, mergeStarts } from "@/lib/raceLive";
+import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan, mergeOrder, mergeStarts, pickTimer } from "@/lib/raceLive";
 import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
 import { cleanCourseShow, cleanEvOne, cleanShowTpl, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
 import { cleanCamBy, cleanOnAir } from "@/lib/raceCams";
@@ -374,6 +374,8 @@ export const saveCourseShow = (orgId, id, c) => {
 };
 // Tek evrenin görüntüsü + gösterilecekler + süre (Yayın › Ekran); yalnız courseShow.ev.<evre> değişir
 export const saveEvre = (orgId, id, k, e) => setDoc(live(orgId, id), { courseShow: { ev: { [k]: cleanEvOne(e, k) } } }, { mergeFields: [new FieldPath("courseShow", "ev", k)] });
+// Sayaç belgeye (/canli Start penceresi; sayacın sahibi Yayın sayfası olduğundan useLiveSync bu sayfada göndermez)
+export const saveTimer = (orgId, id, t) => setDoc(live(orgId, id), { timer: { ...pickTimer(t), at: Date.now() } }, { merge: true });
 // Senin evre listelerin (bütün yarışlar; raceRounds cleanShowTpl): orgs/{org}/yayinEkran/ev, evre evre yazılır
 const showTplRef = (orgId) => doc(db, "orgs", orgId, "yayinEkran", "ev");
 export const loadShowTpl = (orgId) => getDoc(showTplRef(orgId)).then((s) => cleanShowTpl(s.exists() ? s.data().ev : null));

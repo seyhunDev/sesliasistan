@@ -19,6 +19,7 @@ import { raceDays } from "@/features/athletes/raceWeather";
 import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, saveEvreMan, loadShowTpl, saveShowTpl, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
+import { countingAt as countingNow, orderWithout, startBlock, startedRow, zeroStarts } from "./startFlow";
 import { DocsTab } from "./DocsTab";
 import { NearCams } from "./NearCams";
 import { AthletesTab } from "./AthletesTab";
@@ -249,12 +250,10 @@ export function BroadcastPage({ orgId, id }) {
   // Sayaç 0 olunca günün sıradaki yarışı start saati ve son rüzgârla yazılır (RaceMedia ile aynı)
   const onZero = useCallback(
     (end, t) => {
-      if (Date.now() - end > 20 * 60e3) return;
       if (!liveIn.current) return;
-      if (t?.mode !== "start" || !t.rid || !ownedBy(t.own, ownHere())) return;
       change((l) => {
-        const next = zeroRace(l.starts, t.rid, end, l.wind, rdays);
-        if (next === l.starts) return {};
+        const next = zeroStarts(l.starts, t, end, l.wind, rdays, ownedBy(t?.own, ownHere()));
+        if (!next) return {};
         saveStarts(orgId, id, next).catch(() => {});
         return { starts: next };
       });
@@ -284,7 +283,7 @@ export function BroadcastPage({ orgId, id }) {
   // Tehir: start saati min dakika ileri alınır (0 = belirsiz, saat silinir), sebep ekranda yazar; "Erteleme kalktı" eski saati geri getirir
   // Geri sayımda tehir (Seyhun 2026-11-02 "tehir yaptım ama süre durmadı"): sayaç durur, start verilmemiş yarış silinir ve programın
   // başına geri döner (aynı grup, aynı numara); yeni saat şimdiden ileri (denizde varsayılan Belirsiz).
-  const countingAt = (now) => tr.t.mode === "start" && ((tr.t.end != null && tr.t.end > now) || tr.t.left != null);
+  const countingAt = (now) => countingNow(tr.t, now);
   const apBack = (rid, drop = true) => {
     const s = live.starts.find((x) => x.id === rid);
     if (!s) return;
@@ -541,24 +540,19 @@ export function BroadcastPage({ orgId, id }) {
       pickRef.current = -1;
       const np = plan.order[pk];
       if (!np) return;
-      const { cls, grp, prep } = np;
-      // seçili parkur kartı ve rotası o yarışa yazılır (rota daha önce söylendiyse o kalır)
-      const prev = L?.rounds?.[rid] || { route: [], legs: [] };
-      // grubun parkuru (Parkur › Grupların parkuru), yoksa seçili kart
-      const k = cardFor(course, cls, grp);
-      if (rid) saveRounds(orgId, id, rid, { ...prev, grp, cls, prep, card: k.id, route: prev.route?.length ? prev.route : k.route }, prev).then(reload, () => {});
+      // sınıf, grup, bayrak ve grubun parkur kartı o yarışa (startFlow; /canli Start penceresi de aynısı)
+      if (rid) startedRow({ orgId, raceId: id, rid, row: np, rounds: L?.rounds, course }).then(reload, () => {});
       setEditI(-1);
       setMade(0);
       setRetryPick(false);
-      changePlan({ order: plan.order.filter((_, k) => k !== pk), warn: "" });
+      changePlan({ order: orderWithout(plan.order, pk), warn: "" });
     },
   };
   // Gruplar ayrı ayrı (Seyhun 2026-11-02 "sarı başladı, mavi de başlayabilir; grupları ayrı yönetebilmeliyim"): bekleyen her satırın kendi
   // Başlat'ı; başka grubun geri sayımı sürerken başlamaz (yarışta olan grup sürer, Bitti ile ayrı biter)
   const startRow = (i) => {
-    if (countingAt(new Date().valueOf())) return toast("Önce süren geri sayım bitsin");
-    if (plan.order[i]?.ap) return toast("Bu grup tehirde. Önce tehiri indir.");
-    if (!plan.order[i]?.prep) return toast("Önce bayrağı seç");
+    const no = startBlock(tr.t, plan.order[i], new Date().valueOf());
+    if (no) return toast(no);
     pickRef.current = i;
     raceStart(flow, "start", race?.name || "Yarış");
   };

@@ -22,6 +22,8 @@ import { dayProgram, expText, expWind } from "./program";
 import { agendaView } from "@/lib/raceProgram";
 import { autoCaption } from "@/lib/raceCaption";
 import { flagSvg, signalOf, sigOnCard, soundText } from "@/lib/raceSignals";
+import dynamic from "next/dynamic";
+import { readWarmMe } from "@/lib/warmStart";
 import "./liveScreen.css";
 import "./sahne.css";
 
@@ -4238,9 +4240,11 @@ function viewPos(data, today) {
   gs.sort((a, b) => rank(a) - rank(b));
   return gs.length ? gs.map((g) => ({ grp: g, name: g })) : (data.entries || []).length ? [{ grp: "", name: "Tekneler" }] : [];
 }
+// Start penceresi yalnız uygulamaya girilmiş telefonda yüklenir (Firebase izleyiciye gitmez)
+const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // Telefonda alt şerit (Seyhun 2026-11-05): solda görüntü (Yayın = yayın odasının seçtiği, sonra grupların kamerası), sağda Sıralama,
 // Sonuçlar, Rüzgâr, Parkur. Seçilen dolu; aynı düğmeye yeniden basınca yayının akışına döner. Geniş ekranda (TV) yok.
-function ScView({ data, sel, mode, now, cams, pos, cam, onCam, tab, onTab, view, onView, onFull }) {
+function ScView({ data, sel, mode, now, cams, pos, cam, onCam, tab, onTab, view, onView, onFull, onStart = null }) {
   const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
   const res = !!rr?.rows.length;
   const rank = scBoards(data).length > 0;
@@ -4251,7 +4255,19 @@ function ScView({ data, sel, mode, now, cams, pos, cam, onCam, tab, onTab, view,
   // (Kamera · Konum · Ekran; altı çizili yazı, düğme değil), altta seçilen sekmenin düğmeleri tek sıra, yana kayar. Seçimler sekme
   // değişince kalır; seçimi olan sekmede küçük nokta
   const tabs = [cams.length && ["cam", "Kamera"], pos.length && ["pos", "Konum"], btns.length && ["view", "Ekran"]].filter(Boolean);
-  if (!tabs.length) return null;
+  if (!tabs.length && !onStart) return null;
+  // ana hesap: sağda Start (LiveStart penceresi); izleyici görmez
+  const go = onStart ? (
+    <button type="button" className="sc-vgo" onClick={onStart}>
+      Start
+    </button>
+  ) : null;
+  if (!tabs.length)
+    return (
+      <nav className="sc-vb" aria-label="İzleyici seçimi">
+        <div className="sc-vt one">{go}</div>
+      </nav>
+    );
   const t = tabs.some(([k]) => k === tab) ? tab : tabs[0][0];
   const mark = { cam: !!cam && !cam.startsWith("b:"), pos: cam.startsWith("b:"), view: !!view };
   const opts =
@@ -4271,10 +4287,12 @@ function ScView({ data, sel, mode, now, cams, pos, cam, onCam, tab, onTab, view,
               {mark[k] ? <i aria-hidden="true" /> : null}
             </button>
           ))}
+          {go}
         </div>
       ) : (
         <div className="sc-vt one">
           <span>{tabs[0][1]}</span>
+          {go}
         </div>
       )}
       <div className="sc-vs">
@@ -4399,6 +4417,9 @@ export function LiveScreen({ id, y = "" }) {
   const [courseOpen, setCourseOpen] = useState(false);
   const [windOpen, setWindOpen] = useState(false);
   const [vCam, setVCam] = useState(""); // izleyicinin seçtiği kamera (kaynak id), boşsa yayının gösterdiği
+  const [adm, setAdm] = useState(false); // ana hesap bu yarışın sahibi (LiveStart söyler)
+  const [stOpen, setStOpen] = useState(false); // Start penceresi
+  const warm = useSyncExternalStore(noSub, () => !!readWarmMe(), () => false); // bu telefonda uygulamaya girilmiş mi
   const [vTab, setVTab] = useState("cam"); // Görüntü sırası: "cam" kameralar | "pos" canlı konum grupları
   const [vView, setVView] = useState(""); // "rank" | "wind" | "course": izleyicinin açtığı sahne
   const [rkTab, setRkTab] = useState(0); // izleyicinin Sıralama sekmesi (Genel, Kızlar…)
@@ -4516,7 +4537,8 @@ export function LiveScreen({ id, y = "" }) {
       <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
         <Backdrop data={sd} isCur={isCur} entry={entry} today={today} />
         <div className="lv-page lv-ov">
-          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} view={vwOn ? vView : ""} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} cams={cams} pos={pos} cam={camOn} onCam={setVCam} tab={vTab} onTab={setVTab} view={vwOn ? vView : ""} onView={setVView} onFull={setFull} />} />
+          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} view={vwOn ? vView : ""} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} cams={cams} pos={pos} cam={camOn} onCam={setVCam} tab={vTab} onTab={setVTab} onStart={adm && !demoOn ? () => setStOpen(true) : null} view={vwOn ? vView : ""} onView={setVView} onFull={setFull} />} />
+          {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen} onClose={() => setStOpen(false)} onReady={setAdm} /> : null}
         </div>
         {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
         {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}
