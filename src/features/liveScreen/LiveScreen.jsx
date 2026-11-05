@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useR
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { liveUrl, sourcesOf, videoGroup } from "@/lib/raceCams";
-import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
+import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset, winLeft, FIN_WIN } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
@@ -1753,31 +1753,42 @@ function ScClock({ t, data, sel, mode, now, today, noWind = false, drop = null }
       sc.style.removeProperty("--sc-ckh");
     };
   }, []);
+  // finiş penceresi (ilk finişten sonra, varsayılan 15 dk): geçen sürenin altında kalan süre ve eriyen çizgi
+  const fw = mode === "race" && sel ? winLeft(sel, now) : null;
+  const at = t.at ? (
+    <span className="sc-cka">
+      <small>Start</small>
+      {t.at}
+    </span>
+  ) : null;
+  const tk0 = !(g || t.who?.cls || n) && t.k && !String(t.tm || "").toLocaleLowerCase("tr-TR").includes(String(t.k).toLocaleLowerCase("tr-TR"));
+  // Kutusuz kart (Seyhun 2026-11-05 "kutu değil, kenardan içeri doğru transparan arka plan; süre büyük; arkayı kapatmasın"): arka plan
+  // sol üst köşeden içeri doğru silinen gölge (.sc-ck::before), üstte grup · sınıf · yarış ve sağda start saati, altında büyük süre
   return (
     <div ref={ref} className={`sc-ck ${up ? "up" : "dn"}${t.tone ? ` ${t.tone}` : ""}`}>
-      {g || t.who?.cls || n ? (
+      {g || t.who?.cls || n || tk0 || at ? (
         <div className="sc-ckw">
           {g ? <span className="sc-ckg" style={{ background: gc, color: inkOn(gc) }}>{g}</span> : null}
           {t.who?.cls ? <span className="sc-ckc">{t.who.cls}</span> : null}
           {n ? <span className="sc-ckn">{`${n}. yarış`}</span> : null}
-        </div>
-      ) : null}
-      {!(g || t.who?.cls || n) && t.k && !String(t.tm || "").toLocaleLowerCase("tr-TR").includes(String(t.k).toLocaleLowerCase("tr-TR")) ? (
-        <div className="sc-ckw">
-          <span className="sc-ckc">{t.k}</span>
+          {tk0 ? <span className="sc-ckc">{t.k}</span> : null}
+          {at}
         </div>
       ) : null}
       <div className={`sc-ckt${num ? "" : " tx"}`}>
         {num ? <i aria-hidden="true">{up ? "+" : "−"}</i> : null}
         <b>{t.tm}</b>
         {t.un ? <small>{t.un}</small> : null}
-        {t.at ? (
-          <span className="sc-cka">
-            <small>Start</small>
-            {t.at}
-          </span>
-        ) : null}
       </div>
+      {fw != null ? (
+        <div className="sc-ckf">
+          <span>Finiş penceresi</span>
+          <b>{`${Math.floor(fw / 60)}:${String(fw % 60).padStart(2, "0")}`}</b>
+          <i aria-hidden="true">
+            <u style={{ width: `${Math.min(100, (fw / (FIN_WIN * 60)) * 100)}%` }} />
+          </i>
+        </div>
+      ) : null}
       {tot > 0 ? (
         <div className="sc-ckb" aria-hidden="true">
           <u style={{ width: `${Math.min(100, (rem / tot) * 100)}%` }} />
