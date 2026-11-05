@@ -106,3 +106,7 @@
 @media (prefers-reduced-motion: reduce) {
   .lh-glow, .lh-mq-t, .lh-live::before, .lh-state.on::before, .lh-card.live::before, .lh .sk i, .lh .lh-row.sk .d { animation: none; }
 }
+
+/* Canlı rozeti arka plansız, yarış ekranıyla aynı (Seyhun 2026-11-05): mercan yazı, kırmızı nokta yavaş nabız */
+.lh-live { background: none; padding: 0.4em 0.1em; color: #ff5f6d; text-shadow: 0 0.06em 0.5em rgba(0, 0, 0, 0.5); }
+.lh-live::before { width: 0.55em; height: 0.55em; background: #ff3b4e; }
