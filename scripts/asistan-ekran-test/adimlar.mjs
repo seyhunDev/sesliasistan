@@ -1090,8 +1090,10 @@ async function trainVoice(h) {
   });
   await check(G, "antrenman sayfası", "antrenman günü açıldı, Yarış 1 sayacın başlığında", async () => {
     const went = await waitFor(async () => new URL(page.url()).pathname === "/training/day", 30000);
-    const ok = await waitFor(async () => /Yarış 1/.test(await page.locator("main").first().innerText().catch(() => "")), 15000);
-    return [!!went && !!ok, `sayfa ${new URL(page.url()).pathname} · ${ok ? "Yarış 1 var" : "Yarış 1 yok"}`];
+    // süre kartının başlığı büyük harfle yazılır (YARIŞ 1); Türkçe küçük harfe çevrilip aranır
+    const ok = await waitFor(async () => /yarış 1/.test((await page.locator("main").first().innerText().catch(() => "")).toLocaleLowerCase("tr-TR")), 15000);
+    if (process.env.ANT_SHOT) await page.screenshot({ path: `${process.env.ANT_SHOT}.png` }).catch(() => {});
+    return [!!went && !!ok, `sayfa ${new URL(page.url()).pathname} · ${ok ? "Yarış 1 var" : `Yarış 1 yok: ${(await page.locator("main").first().innerText().catch(() => "")).replace(/\s+/g, " ").slice(0, 80)}`}`];
   });
   await closeAll(page);
   await home();
