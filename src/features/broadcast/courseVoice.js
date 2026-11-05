@@ -1,6 +1,7 @@
 import { cleanCourse, courseCommand, courseRelative } from "@/lib/raceCourse";
 import { cleanRoute, routeText } from "@/lib/courseScene";
 import { askCourseAi } from "@/services/courseService";
+import { GROUP_PICK, groupOf } from "@/lib/roundScore";
 
 // Yayın › Parkur'da sesle parkur (Seyhun 2026-11-03 18:43 "parkuru sesle yapabilmeliyim; rüzgâr 20-35 aralığı ya da 20, eksen şu"):
 // "rota 1 2 3 2 3 finiş" → seçili kartın rotası; "trapez" / "ILCA parkuru" → kart türü; rüzgâr, aralık, eksen, hat, orsa boyu
@@ -26,8 +27,20 @@ function lastVals(c) {
   const a = [...obs].reverse().find((x) => x.kind === "axis");
   return { wind: w ? { deg: w.deg, kn: w.kn } : null, axis: a ? a.deg : null };
 }
-// Dönüş { route, type, list: [obs…], len, need, error }; hiçbiri yoksa { none: true }
+// Grubun kartı (Seyhun 2026-11-05 "Bronz B kartında", "Altın A parkurunda", "sarı grup kart B"): { grp, card } ya da null
+const GRP_WORDS = [...GROUP_PICK, "Zümrüt", "gold", "silver", "bronze", "blue", "yellow", "red", "green", "pink"];
+export function groupCardOf(text) {
+  const t = String(text || "").toLocaleLowerCase("tr-TR");
+  const w = GRP_WORDS.find((g) => new RegExp(`(^|[^a-zçğıöşü])${g.toLocaleLowerCase("tr-TR")}`).test(t));
+  const grp = w ? groupOf(w) : "";
+  if (!grp) return null;
+  const m = /\b([a-h])\s*(?:kart|parkur)/.exec(t) || /(?:kart|parkur)\S*\s+([a-h])\b/.exec(t);
+  return m ? { grp, card: m[1].toUpperCase() } : null;
+}
+// Dönüş { route, type, grpCard, list: [obs…], len, need, error }; hiçbiri yoksa { none: true }
 export async function courseVoice(text, cur) {
+  const grpCard = groupCardOf(text);
+  if (grpCard) return { grpCard, list: [] };
   const route = routeOf(text);
   const type = typeOf(text);
   const rest = route ? String(text).replace(ROUTE_RE, " ") : String(text);
