@@ -3652,7 +3652,7 @@ function scGroupRows(data, who, today) {
   return { list, ranked, cats: scCatPages(b, new Set(list.map((x) => String(x.sail)))) };
 }
 // Sağ sütunda üstte yarışın kartı varken yer azalır: sayfa boyu sütuna sığan satır sayısı kadar (ölçülür), ilk 5 yine sabit
-function ScGroup({ data, who, today, now }) {
+function ScGroup({ data, who, today, now, slim = false }) {
   const [fit, setFit] = useState(SC_PAGE);
   const ref = useRef(null);
   const { list, ranked, cats } = scGroupRows(data, who, today);
@@ -3675,12 +3675,14 @@ function ScGroup({ data, who, today, now }) {
     ro.observe(el.parentElement?.parentElement || el);
     return () => ro.disconnect();
   }, [list.length]);
+  useEdge(ref, "--bx-l", (r) => r.right, slim);
+  useEdge(ref, "--bx-b", (r) => window.innerHeight - r.top, slim);
   if (!list.length) return null;
   const top = ranked ? SC_TOP : 0;
   const k = Math.floor(now / 1000 / SC_PAGE_S);
-  const pg = scPaged(list, k, top, fit, ranked ? cats : []);
+  const pg = scPaged(list, k, top, slim ? Math.min(fit, SC_SLIM) : fit, ranked ? cats : []);
   return (
-    <div className="sc-rd" ref={ref} data-pg={k}>
+    <div className={`sc-rd${slim ? " slim" : ""}`} ref={ref} data-pg={k}>
       <div className="sc-rdh">
         <span>
           <ScGrp g={who?.grp} />
@@ -3740,6 +3742,7 @@ function ScClock({ t, data, sel, mode, now, today, noWind = false, drop = null }
   const gc = g ? groupColor(g) || "#ffd23f" : "";
   // kartın boyu sahneye yazılır (--sc-ckh): sol üstte kart, altındaki paneller (genel sıralama, parkur) onun altından başlar
   const ref = useRef(null);
+  useEdge(ref, "--bx-t", (r) => r.bottom);
   useLayoutEffect(() => {
     const el = ref.current;
     const sc = el?.closest(".sc");
@@ -3843,9 +3846,28 @@ function Sc02({ t, data, sel, mode, now, today, col = false }) {
 // Sahne girince ilk sayfadan başlar; sahnenin ekranda kalma süresi sayfa sayısı kadar (sc03Len → sceneOf dwell)
 const SC_PAGE = 11; // satır: ilk 5 sabit + 6 akan (Seyhun 2026-11-04 "ilk 5 her zaman gösterilsin, sonrası ileri doğru aksın")
 const SC_TOP = 5;
+const SC_SLIM = 8; // canlı konum haritası arkadayken grup listesi en çok bu kadar satır, dar (Seyhun 2026-11-05 "haritayı kapatıyor")
 const SC_FLEET_MAX = 8; // sağ sütundaki grup listesi en çok bu kadar satır (Seyhun 2026-11-04 "göz yoruyor, arka planı kapatıyor")
 const SC_PAGE_S = 8;
 const scPages = (len, top = SC_TOP, size = SC_PAGE) => (len <= size ? 1 : Math.ceil((len - top) / (size - top)));
+// Bir panelin ekrandaki yerini sayfaya yazar (canlı konum haritası panellerin arasındaki boş alana sığsın): .lv üstünde CSS değişkeni
+function useEdge(ref, name, pick, on = true) {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const lv = el?.closest(".lv");
+    if (!on || !el || !lv) return undefined;
+    const set = () => lv.style.setProperty(name, `${Math.round(pick(el.getBoundingClientRect()))}px`);
+    set();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(set) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", set);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", set);
+      lv.style.removeProperty(name);
+    };
+  }, [on]);
+}
 // Sayfalı liste (03 genel sıralama ve sağdaki grup listesi aynı mantık): sıralama varsa ilk `top` (5) sabit + 6'şar akan,
 // sıralama yoksa top = 0, baştan 11'er; hiçbir tekne atlanmaz. from/to ekranda "6–11" yazısı için.
 function scPageOf(list, pg, top = SC_TOP, size = SC_PAGE) {
@@ -4103,41 +4125,28 @@ function ScCourseDrop({ data, sel, mode }) {
   } catch {
     bias = null;
   }
+  // eksen başlıkta (Seyhun 2026-11-05 "ekseni yukarıda başlık; elle girildiyse belirt"): kartta girilen eksen "Elle", yoksa rüzgârdan tahmin
   const ax = axisInfo(data);
-  const axT = axisText(data);
-  const axDeg = /^(\d+°)\s*(.*)$/.exec(axT || "");
+  const g = ax ? null : guessAxis(data);
+  const deg = ax ? ax.deg : g != null ? Math.round(g) : null;
+  const sub = [ax?.sh != null ? shiftText(ax.sh) : "", [ty.split(" ")[0], card?.id ? `Kart ${card.id}` : ""].filter(Boolean).join(" · ")].filter(Boolean).join(" · ");
   return (
     <div className="sc-ckx crs">
       <div className="sc-cxh">
-        <b>{[ty.split(" ")[0], card?.id ? `Kart ${card.id}` : ""].filter(Boolean).join(" · ") || "Parkur"}</b>
-      </div>
-      <div className="sc-cxd" dangerouslySetInnerHTML={{ __html: svg }} />
-      {route.length ? (
-        <ol className="sc-cxr" aria-label="Rota">
-          <li className="s">Start</li>
-          {route.map((m, i) => (
-            <li key={`${m}${i}`} className={m === "F" ? "f" : ""}>
-              {m === "F" ? "Finiş" : markLabel(m)}
-            </li>
-          ))}
-        </ol>
-      ) : null}
-      <div className="sc-cxs">
-        {axT ? (
-          <section>
+        {deg != null ? (
+          <div>
             <small>Eksen</small>
-            <b>{axDeg ? axDeg[1] : axT}</b>
-            <span>{[axDeg?.[2], ax?.sh != null ? shiftText(ax.sh) : ""].filter(Boolean).join(" · ")}</span>
-          </section>
-        ) : null}
-        {bias?.end ? (
-          <section>
-            <small>Hat avantajı</small>
-            <b>{bias.end === "pin" ? "Pin" : "Komite"}</b>
-            <span>{`${Math.round(bias.deg)}° avantajlı`}</span>
-          </section>
-        ) : null}
+            <b>{`${deg}° ${dirShort(deg)}`}</b>
+            <i className={ax ? "m" : ""}>{ax ? "Elle girildi" : "Tahmin"}</i>
+          </div>
+        ) : (
+          <div />
+        )}
+        {bias?.end ? <em>{`${bias.end === "pin" ? "Pin" : "Komite"} +${Math.round(bias.deg)}°`}</em> : null}
       </div>
+      {sub ? <div className="sc-cxu">{sub}</div> : null}
+      <div className="sc-cxd" dangerouslySetInnerHTML={{ __html: svg }} />
+      {route.length ? <div className="sc-cxr">{["Start", ...route.map((m) => (m === "F" ? "Finiş" : markLabel(m)))].join("  ›  ")}</div> : null}
     </div>
   );
 }
@@ -4340,7 +4349,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       </div>
       <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={sc === "01" && item === "wind"} drop={drop} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
-        {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} /> : listOn ? side === "gen" || (!lwho?.grp && mode !== "race" && scBoards(data).length) ? <ScGen data={data} who={lwho} now={now} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
+        {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} slim /> : listOn ? side === "gen" || (!lwho?.grp && mode !== "race" && scBoards(data).length) ? <ScGen data={data} who={lwho} now={now} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
       {bumpOn ? (
         <div className="sc-bump" key={bump.t} aria-hidden="true">
