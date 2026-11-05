@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { liveUrl, sourcesOf, videoGroup } from "@/lib/raceCams";
@@ -3738,8 +3738,23 @@ function ScClock({ t, data, sel, mode, now, today, noWind = false, drop = null }
   const tot = rem == null || up ? 0 : mode === "seq" ? Math.max(rem, data.timer?.dur || 300) : SC_CK0.get(tk) || rem;
   const g = t.who?.grp || "";
   const gc = g ? groupColor(g) || "#ffd23f" : "";
+  // kartın boyu sahneye yazılır (--sc-ckh): sol üstte kart, altındaki paneller (genel sıralama, parkur) onun altından başlar
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const sc = el?.closest(".sc");
+    if (!el || !sc) return undefined;
+    const set = () => sc.style.setProperty("--sc-ckh", `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    set();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(set) : null;
+    ro?.observe(el);
+    return () => {
+      ro?.disconnect();
+      sc.style.removeProperty("--sc-ckh");
+    };
+  }, []);
   return (
-    <div className={`sc-ck ${up ? "up" : "dn"}${t.tone ? ` ${t.tone}` : ""}`}>
+    <div ref={ref} className={`sc-ck ${up ? "up" : "dn"}${t.tone ? ` ${t.tone}` : ""}`}>
       {g || t.who?.cls || n ? (
         <div className="sc-ckw">
           {g ? <span className="sc-ckg" style={{ background: gc, color: inkOn(gc) }}>{g}</span> : null}

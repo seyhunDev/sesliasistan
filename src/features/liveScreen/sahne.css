@@ -585,3 +585,23 @@
 .sc-cxs b { display: block; margin-top: 0.3em; font: 800 1.9em/1 var(--sc-c); font-variant-numeric: tabular-nums; }
 .sc-cxs span { display: block; margin-top: 0.3em; font: 600 0.95em/1.2 var(--sc-c); color: rgba(255, 255, 255, 0.75); }
 .sc:has(:is(.sc-ckx.rk, .sc-ckx.crs)) :is(.sc-rcol > .sc-rd, .sc-rd) { display: none; }
+
+/* Süre kartı Canlı ile aynı satırda, solda (Seyhun 2026-11-05 "canlının alt satırında değil, aynı satır; sağda değil solda"): her cihazda
+   üst satır = solda kart, sağda Canlı (+ grup). Kartın boyu --sc-ckh (ScClock ölçer); sol paneller onun altından başlar */
+.sc-tcol { left: calc(2em + env(safe-area-inset-left)); flex-direction: row-reverse; justify-content: space-between; align-items: flex-start; gap: 1em; pointer-events: none; }
+.sc-tcol > * { pointer-events: auto; }
+.sc-tcol > .sc-ck { flex: 0 1 auto; min-width: 0; margin-right: auto; }
+@media not all and (max-aspect-ratio: 1/1) {
+  .sc:has(.sc-ck) :is(.sc-board, .sc-board.wide, .sc-cpn) { top: calc(1.8em + var(--sc-ckh, 0px) + 0.8em + env(safe-area-inset-top)); }
+  .sc:has(.sc-ck) :is(.sc-board, .sc-board.wide) { max-height: calc(100% - 7.8em - var(--sc-ckh, 0px)); }
+}
+@media (max-aspect-ratio: 1/1) {
+  .sc-tcol { display: flex; position: absolute; top: calc(1em + env(safe-area-inset-top)); left: 1em; right: 1em; gap: 0.6em; }
+  .sc-tcol > .sc-tr { position: static; flex-direction: column; align-items: flex-end; height: auto; gap: 0.35em; flex: none; }
+  .sc-tcol > .sc-tr > * { height: 2.6em; }
+  .sc-tcol > .sc-ck { position: static; flex: 1 1 auto; width: auto; max-width: 34em; }
+  .sc:has(.sc-ck) :is(.sc-board.wide, .sc-c2, .sc-cbn, .sc-rcol > .sc-c2.col) { top: calc(1em + var(--sc-ckh, 0px) + 0.6em + env(safe-area-inset-top)); }
+  .sc:has(.sc-ck) .sc-crs { top: calc(2em + var(--sc-ckh, 0px)); }
+  .sc:has(.sc-ck.dn, .sc-ck.up) .sc-board.wide { max-height: calc(100% - var(--sc-ckh, 0px) - 16em - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+  .sc-ck { --sc-dh: calc(100dvh - 22em - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+}
