@@ -38,6 +38,44 @@ function durOf(blob) {
   });
 }
 
+// Küçük resim (Seyhun 2026-11-05 "önizleme gösteremiyor muyuz, gri ekran"): videonun 0,5. saniyesi JPEG olarak öğeye yazılır (th)
+function thumbOf(blob) {
+  return new Promise((res) => {
+    const url = URL.createObjectURL(blob);
+    const v = document.createElement("video");
+    let done = false;
+    const end = (x) => {
+      if (done) return;
+      done = true;
+      URL.revokeObjectURL(url);
+      res(x);
+    };
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = "auto";
+    v.onloadeddata = () => {
+      v.currentTime = Math.min(0.5, (v.duration || 1) / 2);
+    };
+    v.onseeked = () => {
+      try {
+        const w = 240;
+        const h = Math.round((w * (v.videoHeight || 3)) / (v.videoWidth || 4));
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        c.getContext("2d").drawImage(v, 0, 0, w, h);
+        end(c.toDataURL("image/jpeg", 0.7));
+      } catch {
+        end("");
+      }
+    };
+    v.onerror = () => end("");
+    setTimeout(() => end(""), 8000);
+    v.src = url;
+    v.load();
+  });
+}
+
 // Çekim anının yarışı: geri sayımı süren start, yoksa o andan önce başlamış son start (aynı gün, geçersiz olmayan)
 function sidAt(starts, at, day) {
   const t = readTimer();
@@ -89,6 +127,18 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     keepLocal(n);
     setList((l) => l.map((y) => (y.id === x.id ? n : y)));
   };
+  // eski videoların küçük resmi yoksa sırayla çıkarılır
+  const noTh = list.find((x) => !x.th && !x.thNo)?.id || "";
+  useEffect(() => {
+    const x = list.find((y) => y.id === noTh);
+    if (!x) return undefined;
+    let on = true;
+    thumbOf(x.blob).then((th) => on && put(x, th ? { th } : { thNo: true }));
+    return () => {
+      on = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noTh]);
   const take = async (file) => {
     if (!file || busy) return;
     if (!/^video\//.test(file.type || "") && !/\.(mov|mp4|m4v)$/i.test(file.name || "")) return setMsg("Video çek");
@@ -101,7 +151,7 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     await keepLocal(x);
     setList((l) => [x, ...l]);
     setBusy(false);
-    onPlay?.(x.id, x.blob); // çekilen hemen arka planda
+    thumbOf(file).then((th) => th && put(x, { th }));
   };
   const drop = (x) => {
     if (playing === x.id) onPlay?.("", null);
@@ -153,7 +203,8 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
         onClick={() => (edit ? (setCur(cur === x.id ? "" : x.id), setLink(""), setMsg("")) : playing === x.id ? onPlay?.("", null) : onPlay?.(x.id, x.blob))}
       >
         <span className="th">
-          <video src={`${urls[x.id]}#t=0.5`} preload="metadata" muted playsInline />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {x.th ? <img src={x.th} alt="" /> : <video src={`${urls[x.id]}#t=0.5`} preload="metadata" muted playsInline />}
           {playing === x.id ? <s>Ekranda</s> : x.yt ? <s className="yt">YouTube</s> : null}
           {x.dur ? <em>{mmss(x.dur)}</em> : null}
         </span>
