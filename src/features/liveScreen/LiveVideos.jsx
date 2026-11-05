@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { dropKept, keepLocal, listKept } from "@/features/raceMedia/pendingStore";
 import { RecPick } from "@/features/raceMedia/RecPick";
+import { deletePhotos } from "@/lib/nativeIos";
 import { readTimer } from "@/features/training/Countdown";
 import { saveStream } from "@/features/athletes/raceLiveStore";
 import { recName } from "./liveActions";
@@ -76,9 +77,47 @@ function thumbOf(blob) {
   });
 }
 
-// Çekim anının yarışı: geri sayımı süren start, yoksa o andan önce başlamış son start (aynı gün, geçersiz olmayan)
-function sidAt(starts, at, day) {
-  const t = readTimer();
+// Galeriden seçilen videonun çekim anı (Seyhun 2026-11-05 "galeriden seçme"): iPhone seçicide lastModified seçim anıdır; MP4/MOV
+// "mvhd" kutusundaki creation_time (1904'ten saniye, UTC) okunur. moov dosyanın sonunda da olabilir: üst kutular başlıklarından atlanır.
+async function shotAt(file) {
+  try {
+    const rd = async (a, n) => new DataView(await file.slice(a, a + n).arrayBuffer());
+    let off = 0;
+    for (let i = 0; i < 64 && off + 8 <= file.size; i++) {
+      const h = await rd(off, 16);
+      let len = h.getUint32(0);
+      const type = String.fromCharCode(h.getUint8(4), h.getUint8(5), h.getUint8(6), h.getUint8(7));
+      let hd = 8;
+      if (len === 1) (len = Number(h.getBigUint64(8))), (hd = 16);
+      else if (len === 0) len = file.size - off;
+      if (len < 8) return 0;
+      if (type === "moov") {
+        const m = await rd(off + hd, Math.min(len - hd, 4 << 20));
+        for (let j = 0; j + 8 <= m.byteLength; ) {
+          const l = m.getUint32(j);
+          const ty = String.fromCharCode(m.getUint8(j + 4), m.getUint8(j + 5), m.getUint8(j + 6), m.getUint8(j + 7));
+          if (ty === "mvhd") {
+            const sec = m.getUint8(j + 8) === 1 ? Number(m.getBigUint64(j + 12)) : m.getUint32(j + 12);
+            const ms = (sec - 2082844800) * 1000;
+            return ms > Date.UTC(2015, 0, 1) && ms < Date.now() + 864e5 ? ms : 0;
+          }
+          if (l < 8) break;
+          j += l;
+        }
+        return 0;
+      }
+      off += len;
+    }
+  } catch {
+    /* okunamadı: lastModified kullanılır */
+  }
+  return 0;
+}
+const dayOf = (iso) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+
+// Çekim anının yarışı: geri sayımı süren start (yalnız şimdi çekilende), yoksa o andan önce başlamış son start (aynı gün, geçersiz olmayan)
+function sidAt(starts, at, day, live = true) {
+  const t = live ? readTimer() : null;
   if (t?.mode === "start" && t.rid && starts.some((s) => s.id === t.rid)) return t.rid;
   return [...starts].filter((s) => !s.void && s.at && s.at <= at && (s.day || s.at.slice(0, 10)) === day).sort((a, b) => (a.at < b.at ? -1 : 1)).at(-1)?.id || "";
 }
@@ -115,8 +154,9 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     g.items.push(x);
   }
   groups.sort((a, b) => (!a.s ? 1 : !b.s ? -1 : a.s.at < b.s.at ? 1 : -1));
-  const dayStarts = [...starts].filter((s) => !s.void && s.at && (s.day || s.at.slice(0, 10)) === today).sort((a, b) => (a.at < b.at ? 1 : -1));
   const sel = list.find((x) => x.id === cur) || null;
+  const selDay = sel ? dayOf(sel.at) : today; // Düzenle'de seçilen videonun günü (galeriden eski gün de gelebilir)
+  const dayStarts = [...starts].filter((s) => !s.void && s.at && (s.day || s.at.slice(0, 10)) === selDay).sort((a, b) => (a.at < b.at ? 1 : -1));
   const nameOf = (x) => {
     const s = x?.sid ? byId.get(x.sid) : null;
     return s ? sName(s) : x ? hm(x.at) : "";
@@ -139,23 +179,42 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noTh]);
+  const isVid = (f) => /^video\//.test(f?.type || "") || /\.(mov|mp4|m4v)$/i.test(f?.name || "");
+  // gal: galeriden seçildi (çekim anı dosyanın içinden; sayaç bakılmaz)
+  const add = async (file, gal) => {
+    const dur = await durOf(file);
+    const shot = gal ? await shotAt(file) : 0;
+    const at = new Date(shot || (file.lastModified || Date.now()) - dur * 1000).toISOString();
+    const x = { id: newId(), raceId, kind: "video", mine: true, stay: true, size: file.size, blob: file, at, dur, sid: sidAt(starts, at, dayOf(at), !gal), ...(file.asset ? { asset: file.asset } : {}) };
+    await keepLocal(x);
+    setList((l) => [x, ...l].sort((a, b) => (a.at < b.at ? 1 : -1)));
+    thumbOf(file).then((th) => th && put(x, { th }));
+  };
   const take = async (file) => {
     if (!file || busy) return;
-    if (!/^video\//.test(file.type || "") && !/\.(mov|mp4|m4v)$/i.test(file.name || "")) return setMsg("Video çek");
+    if (!isVid(file)) return setMsg("Video çek");
     setMsg("");
     setBusy(true);
-    const dur = await durOf(file);
-    const end = file.lastModified || Date.now();
-    const at = new Date(end - dur * 1000).toISOString();
-    const x = { id: newId(), raceId, kind: "video", mine: true, stay: true, size: file.size, blob: file, at, dur, sid: sidAt(starts, at, today) };
-    await keepLocal(x);
-    setList((l) => [x, ...l]);
+    await add(file, false);
     setBusy(false);
-    thumbOf(file).then((th) => th && put(x, { th }));
+  };
+  const [gal, setGal] = useState(""); // "2/5" galeriden eklenirken
+  const pick = async (files) => {
+    const fs = [...(files || [])].filter(isVid);
+    if (!fs.length || busy) return;
+    setMsg("");
+    setBusy(true);
+    for (let i = 0; i < fs.length; i++) {
+      setGal(`${i + 1}/${fs.length}`);
+      await add(fs[i], true);
+    }
+    setGal("");
+    setBusy(false);
   };
   const drop = (x) => {
     if (playing === x.id) onPlay?.("", null);
     dropKept(x.id);
+    if (x.asset) deletePhotos([x.asset]); // Velora'nın kamerasıyla çekildiyse Fotoğraflar'daki aslı da (iPhone kendisi onay sorar)
     setList(list.filter((y) => y.id !== x.id));
     setCur("");
   };
@@ -224,10 +283,16 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
         ) : null}
       </div>
       {edit ? null : (
-        <RecPick onFile={take} className="lvd-rec" aria-busy={busy}>
-          <i aria-hidden="true" />
-          {busy ? "Kaydediliyor…" : "Video çek"}
-        </RecPick>
+        <div className="lvd-add">
+          <RecPick onFile={take} className="lvd-rec" aria-busy={busy && !gal}>
+            <i aria-hidden="true" />
+            {busy && !gal ? "Kaydediliyor…" : "Video çek"}
+          </RecPick>
+          <label className="lvd-gal" aria-busy={!!gal}>
+            <input type="file" accept="video/*" multiple hidden disabled={busy} onChange={(e) => (pick(e.target.files), (e.target.value = ""))} />
+            {gal ? `Ekleniyor ${gal}` : "Galeriden ekle"}
+          </label>
+        </div>
       )}
       {edit && sel ? (
         <div className="lvd-ed">
