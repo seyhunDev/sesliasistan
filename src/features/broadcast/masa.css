@@ -405,3 +405,12 @@ body[data-typing] .masa-bar { bottom: 0 !important; }
 }
 /* grubun renginde kartta grup noktası görünmez, yer kaplamasın */
 .masa-hero.g .masa-hero-n > span:first-child, .masa-onair > div:first-child > span[aria-hidden="true"] { display: none; }
+
+/* Parkur alt kısmı sade (Seyhun 2026-11-05): konumlar tek satır 6 küçük kutu (✓ girildi, — girilmedi), asistan düğmesi iş çubuğunda */
+.masa-pts { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.375rem; }
+.masa-pt { min-height: 3.5rem; padding: 0.4rem 0.125rem; text-align: center; }
+.masa-pt small { letter-spacing: 0.02em; text-transform: none; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.masa-pt.on b { color: #7fe0ad; }
+.masa-pt.no b { color: var(--mut); }
+.masa-pt.w b { color: var(--warn); }
+.masa-orb { flex: none; display: grid; place-items: center; width: 3rem; height: 3rem; }

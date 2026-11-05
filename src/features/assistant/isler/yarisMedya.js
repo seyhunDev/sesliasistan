@@ -88,6 +88,30 @@ export async function courseCmd(ctx, s, viaVoice) {
   }
   const v = courseView();
   const cur = v ? v.get() : null;
+  // Yayın › Parkur açık (Seyhun 2026-11-05 "ayrı Konuş olmasın, bizim asistan yapsın"): kart, rota, tür, grubun kartı ve ölçümler
+  // sekmenin kendi yazıcısıyla (apply); sorular ve parkurla ilgisiz cümleler aşağıya / diğer işlere geçer
+  if (v?.apply && !courseAsk(s, cur)) {
+    const { courseVoice } = await import("@/features/broadcast/courseVoice");
+    setPhase?.("thinking");
+    const r = await courseVoice(s, cur);
+    if (r.error) {
+      reply("Parkur için yapay zekâya ulaşamadım. Kısa söyle: “rüzgar 330, 12 knot”, “eksen 320”.", { fail: true, engine: "local" }, viaVoice);
+      return true;
+    }
+    if (r.need) {
+      reply(r.need === "axis" ? "Önce parkur eksenini söyle, örneğin “eksen 320”." : "Önce rüzgârın derecesini ve hızını söyle, örneğin “rüzgar 330, 12 knot”.", { engine: "local" }, viaVoice);
+      return true;
+    }
+    if (!r.none) {
+      try {
+        const said = await v.apply(r);
+        done(said ? `Yazdım: ${said}.` : "Tamam.", { engine: "local" }, viaVoice);
+      } catch (e) {
+        reply(e?.message && !/fetch|network|permission/i.test(e.message) ? e.message : "Parkura yazamadım, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
+      }
+      return true;
+    }
+  }
   let cc = courseCommand(s);
   if (!cc && v) {
     const ans = courseAsk(s, cur);
