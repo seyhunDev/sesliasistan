@@ -4,6 +4,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { openInApp } from "@/features/liveScreen/InAppBack";
 import { BackButton } from "@/components/ui/BackButton";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
@@ -50,10 +52,10 @@ import "./masa.css";
 
 // Yarışın yayın sayfası (/athletes/races/<id>/yayin, yalnız ana hesap; Seyhun 2026-11-01 "herkese açık multimedyasını ayrı bir sayfada
 // yöneteceğiz"): herkese açık /canli ekranına giden her şey tek yerde. Lacivert üstte start sayacı (Başlat · İptal · Eşitle; sayaç diğer
-// cihazlara ve herkese açık sayfaya useLiveSync ile gider), Linki kopyala / Ekranı aç. Açık alanda üç bölüm:
+// cihazlara ve herkese açık sayfaya useLiveSync ile gider), Linki kopyala / Ekrana aç. Açık alanda üç bölüm:
 // Ekranda (canlı yayın linki ya da bu yarışın videoları, telefondan seçilen video yüklenir; dikey/yatay yazılır; Göster ekrana verir),
 // Parkur ve rüzgâr (son rüzgâr, parkur kartı, ölçüm ekleme; Parkur sekmesiyle aynı kayıt), Dönüşler (sesle giriş, kayıt listesi),
-// Sonuç PDF'i ayrı sayfada (/sonuclar, 2026-11-01); Linki kopyala, Ekranı aç, Kayıt listesi, gün durumu ⋯ menüsünde. Multimedya sayfası kalktı (Seyhun 2026-11-01 "tek bu yayın olanı kullanacağız").
+// Sonuç PDF'i ayrı sayfada (/sonuclar, 2026-11-01); Linki kopyala, Ekrana aç, Kayıt listesi, gün durumu ⋯ menüsünde. Multimedya sayfası kalktı (Seyhun 2026-11-01 "tek bu yayın olanı kullanacağız").
 // Bugünün startları tek liste (Seyhun 2026-11-01 "sınıf/grup seçimi ile sıra ekleme birbirinden bağımsız olamaz"): biten ve süren startlar
 // saatiyle üstte, sonra yapılacak startlar (raceLive.plan.order [{ cls, grp, prep }]); ilk bekleyen "Sıradaki"dir, sayacın üstünde yazar ve
 // Başlat onun sınıf/grup/bayrağını rounds[start]'a yazıp listeden düşer. "Start ekle" satır ekler; satıra dokununca sınıf, grup, bayrak,
@@ -692,14 +694,13 @@ export function BroadcastPage({ orgId, id }) {
       toast(e?.message || "Kopyalanamadı");
     }
   };
+  // Ekrana aç (Seyhun 2026-11-05 "uygulama içinde açılsın, yana kaydırınca geri gidilsin"): Safari'ye atmaz, /canli uygulamada açılır
+  const router = useRouter();
   const openScreen = async () => {
-    const w = window.open("", "_blank");
     try {
       await ensurePublic(id);
-      if (w) w.location.href = liveUrl(id);
-      else window.location.href = liveUrl(id);
+      openInApp(router, `/canli/${id}`);
     } catch (e) {
-      w?.close();
       toast(e?.message || "Açılamadı");
     }
   };
@@ -2623,11 +2624,11 @@ export function BroadcastPage({ orgId, id }) {
       <Sheet open={menu} onClose={() => (setMenu(false), setAskEnd(false))} title="Yayın">
         <div className="divide-y divide-line">
           {[
-            ["Ekranı aç", () => (setMenu(false), openScreen())],
+            ["Ekrana aç", () => (setMenu(false), openScreen())],
             ["Linki kopyala", () => (setMenu(false), copy())],
             ["Sınıf ve gruplar", () => (setMenu(false), setSetupOpen(true), window.scrollTo({ top: 0 }))],
             // Örnek yarış (Seyhun 2026-11-02): tasarımı görmek için Sarı grup örneği, veriye dokunmaz
-            ["Örnek yarışı aç", () => (setMenu(false), window.open("/canli/ornek", "_blank"))],
+            ["Örnek yarışı aç", () => (setMenu(false), openInApp(router, "/canli/ornek"))],
             ["Yayını sıfırla", () => (setMenu(false), setReset(true))],
           ].map(([t, fn]) => (
             <button key={t} type="button" onClick={fn} className={`${row} font-semibold`}>
@@ -2692,9 +2693,9 @@ export function BroadcastPage({ orgId, id }) {
                     <section key={k} className="masa-pn" aria-label="Canlı ekran">
                       <div className="masa-pnh">
                         <b>Canlı ekran</b>
-                        <a href={`/canli/${id}`} target="_blank" rel="noreferrer" className="masa-b ml-auto">
-                          Ayrı aç
-                        </a>
+                        <button type="button" onClick={openScreen} className="masa-b ml-auto">
+                          Ekrana aç
+                        </button>
                       </div>
                       <iframe src={`/canli/${id}`} title="Canlı ekran" className="masa-wide-scr" />
                     </section>
