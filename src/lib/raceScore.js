@@ -1,6 +1,6 @@
 // Antrenman yarışları: antrenman planının `races` alanında durur (ek koleksiyon, ek kural yok).
 // races = [{ id, name, startAt (ms, sayaç 0 olduğunda), fin? (yarış süresi sn, Bitir), marks? ({ "Şamandıra 1": sn }),
-//   finishes: [{ id, name, code?, t? (startan beri sn) }] }]. Sonucu girilmemiş yarış puan durumuna girmez.
+//   cnt? (yarış olarak sayılır, genel sıralamaya girer), finishes: [{ id, name, code?, t? (startan beri sn) }] }]. Sonucu girilmemiş yarış puan durumuna girmez.
 // finishes bitiş sırasıdır; kodlu olan (DNF, DNS…) yer almaz, arkasındakiler bir sıra öne geçer.
 // Puanlama yelken yarış kurallarındaki düşük puan sistemi (RRS Ek A): 1. → 1 puan, 2. → 2 puan…
 // Katılan = o gün yoklamada "geldi" olanlar + yarışlara eklenen herkes. Yarışa eklenmeyen katılan DNC olur.
@@ -36,6 +36,7 @@ export function cleanRaces(races) {
         ...(Number.isFinite(r?.startAt) ? { startAt: r.startAt } : {}),
         ...(Number.isFinite(r?.fin) && r.fin >= 0 ? { fin: Math.round(r.fin) } : {}),
         ...(Number.isFinite(r?.cd) && r.cd > 0 && r.cd <= 3600 ? { cd: Math.round(r.cd) } : {}),
+        ...(r?.cnt ? { cnt: true } : {}), // yarış olarak sayılır: antrenmanın genel sıralamasına girer (Seyhun 2026-11-05)
         ...(Object.keys(marks).length ? { marks } : {}),
         finishes,
       };

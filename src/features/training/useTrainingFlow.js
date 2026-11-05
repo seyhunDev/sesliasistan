@@ -8,6 +8,20 @@ import { upSec } from "@/lib/raceLive";
 // Antrenman sayfasında yarış multimedyanın sayacı (Seyhun 2026-10-20): aynı Countdown (compact, start dizisi) ve Start/Şamandıra
 // kareleri; akış antrenman planının yarışlarına (lib/raceScore.js) yazar. Başlat yeni yarışı açar (start anı = sayacın 0'ı),
 // +30 sn/+1 dk startı kaydırır, geri sayımda İptal sonucu olmayan yarışı siler, Bitir yarışın süresini yazar. Her adımda 8 sn "Geri al".
+// "Yarış olarak say" (Seyhun 2026-11-05): açıksa yeni start genel sıralamaya girer (race.cnt); seçim bu telefonda saklanır, ilk açılışta açık
+const CNT = "sa-ant-yaris";
+export function countPref() {
+  try {
+    return localStorage.getItem(CNT) !== "0";
+  } catch {
+    return true;
+  }
+}
+export function setCountPref(on) {
+  try {
+    localStorage.setItem(CNT, on ? "1" : "0");
+  } catch {}
+}
 export function useTrainingFlow({ races, save }) {
   const toast = useToast();
   const undo = (msg, before, prevT) =>
@@ -16,7 +30,7 @@ export function useTrainingFlow({ races, save }) {
   const flow = {
     label: `Yarış ${races.length + 1}`,
     onStart: (end, rid, prevT) => {
-      const r = { id: rid, name: `Yarış ${races.length + 1}`, startAt: end, ...(prevT?.dur > 0 ? { cd: prevT.dur } : {}), finishes: [] }; // cd: kaç dakikalık startla
+      const r = { id: rid, name: `Yarış ${races.length + 1}`, startAt: end, ...(prevT?.dur > 0 ? { cd: prevT.dur } : {}), ...(countPref() ? { cnt: true } : {}), finishes: [] }; // cd: kaç dakikalık startla
       save([...races, r]);
       undo(`${r.name} ${end < Date.now() ? "açıldı" : "geri sayımı başladı"}`, races, prevT);
     },
