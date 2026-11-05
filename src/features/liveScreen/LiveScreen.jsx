@@ -8,7 +8,7 @@ import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, clean
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
+import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, clubName, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
@@ -3423,6 +3423,29 @@ function ScWind({ data, now, prog, big = false }) {
     </div>
   );
 }
+// Telefonda Rüzgâr (Seyhun 2026-11-05 "start bekleniyor yazısı aynı kalır, grafik aşağı doğru açılsın"): süre kartının altından açılan beklenen rüzgâr
+function ScWindDrop({ data, now, at = "" }) {
+  const rows = windAhead(data, now);
+  if (rows.length < 2) return null;
+  return (
+    <div className="sc-ckx">
+      <div className="sc-wh">
+        <span>Beklenen</span>
+        <span>
+          <i className="a" />
+          Rüzgâr
+        </span>
+        {rows.every((x) => x.gust != null) ? (
+          <span>
+            <i className="b" />
+            Sağanak
+          </span>
+        ) : null}
+      </div>
+      <WindChart rows={rows} at={at} />
+    </div>
+  );
+}
 // tek satır rüzgâr (02 kartının altı)
 function ScWindLine({ data, now }) {
   const c = curWind(data, null, true, now);
@@ -3693,7 +3716,7 @@ function Sc01({ t, data, prog, now, today, lock, ap = false, only = "" }) {
 // üstte tek satır yarış · sınıf · grup · start saati; büyük süre önünde − (geri) ya da + (ileri), geri sayım sarı-turuncu değil mavi tonda,
 // ileri beyaz; altında dakikanın saniyeleri ince çubuk (geride erir, ileride dolar); bayrak, erken çıkan, işaret, rüzgâr birer satır
 const SC_CK0 = new Map(); // geri sayımın bu ekranda ilk görülen kalan süresi (start başına; kart yeniden kurulunca kaybolmasın)
-function ScClock({ t, data, sel, mode, now, today, noWind = false }) {
+function ScClock({ t, data, sel, mode, now, today, noWind = false, drop = false }) {
   const ea = mode === "race" && sel && now - Date.parse(sel.at) < 15 * 60e3 ? earlyOf(data, sel.id) : [];
   const n = /^(\d+)\./.exec(t.who?.name || "")?.[1];
   const num = !t.tx && /^\d{1,2}(:\d\d){1,2}$/.test(String(t.tm || ""));
@@ -3750,7 +3773,8 @@ function ScClock({ t, data, sel, mode, now, today, noWind = false }) {
         </div>
       ) : null}
       <ScSig data={data} today={today} />
-      {noWind ? null : <ScWindLine data={data} now={now} />}
+      {noWind && !drop ? null : <ScWindLine data={data} now={now} />}
+      {drop ? <ScWindDrop data={data} now={now} at={t.at} /> : null}
     </div>
   );
 }
@@ -3907,8 +3931,11 @@ function Sc03({ data, sel, mode, now, onFull }) {
                     {m}
                   </em>
                 ))}
+                <small className={`sc-cl2${clubName(r.club) ? "" : " no"}`}>{clubName(r.club) || "Kulüpsüz"}</small>
               </td>
-              <td className="cl">{shortClub(r.club) || ""}</td>
+              <td className={`cl${clubName(r.club) ? "" : " no"}`}>
+                <span>{clubName(r.club) || "Kulüpsüz"}</span>
+              </td>
               {b.races.map((x, j) => (
                 <td key={x} className={`y${/^\(.*\)$/.test(r.sc[j] || "") ? " x" : ""}`}>
                   {String(r.sc[j] || "").replace(/^\((.*)\)$/, "$1")}
@@ -4095,31 +4122,41 @@ function ScView({ data, sel, mode, now, cams, cam, onCam, view, onView, onFull }
   const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
   const res = !!rr?.rows.length;
   const rank = scBoards(data).length > 0;
-  const wind = !!curWind(data, null, true, now) || windAhead(data, now).length >= 2 || (data.forecast?.rows || []).length > 0;
+  const wind = windAhead(data, now).length >= 2;
   const course = !!courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"));
   const btns = [rank && ["rank", "Sıralama"], res && ["res", "Sonuçlar"], wind && ["wind", "Rüzgâr"], course && ["course", "Parkur"]].filter(Boolean);
   if (!cams.length && !btns.length) return null;
+  // iki sıra (Seyhun 2026-11-05 "yayın seçimiyle gösterilen şeyin seçimini ayıralım; üst alt"): üstte görüntü, altta ekranda ne açılacağı
   return (
-    <nav className="sc-vb" aria-label="Görüntü seç">
+    <nav className={`sc-vb${cams.length && btns.length ? " two" : ""}`} aria-label="İzleyici seçimi">
       {cams.length ? (
-        <>
-          <button type="button" className={!cam ? "on" : ""} onClick={() => onCam("")}>
-            Yayın
-          </button>
-          {cams.map((x) => (
-            <button key={x.src} type="button" className={cam === x.src ? "on" : ""} onClick={() => onCam(cam === x.src ? "" : x.src)}>
-              {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
-              {x.name}
+        <div className="sc-vr">
+          <b>Görüntü</b>
+          <div className="sc-vs">
+            <button type="button" className={!cam ? "on" : ""} aria-pressed={!cam} onClick={() => onCam("")}>
+              Yayın
             </button>
-          ))}
-          {btns.length ? <span className="sc-vbs" aria-hidden="true" /> : null}
-        </>
+            {cams.map((x) => (
+              <button key={x.src} type="button" className={cam === x.src ? "on" : ""} aria-pressed={cam === x.src} onClick={() => onCam(cam === x.src ? "" : x.src)}>
+                {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
+                {x.name}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : null}
-      {btns.map(([k, label]) => (
-        <button key={k} type="button" className={view === k ? "on" : ""} onClick={() => (k === "res" ? onFull("race") : onView(view === k ? "" : k))}>
-          {label}
-        </button>
-      ))}
+      {btns.length ? (
+        <div className="sc-vr">
+          <b>Ekran</b>
+          <div className="sc-vs">
+            {btns.map(([k, label]) => (
+              <button key={k} type="button" className={view === k ? "on" : ""} aria-pressed={view === k} onClick={() => (k === "res" ? onFull("race") : onView(view === k ? "" : k))}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </nav>
   );
 }
@@ -4145,7 +4182,7 @@ function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast 
   const p = showPlan({ show: sd.courseShow, evre, has, now, dwell: { rank: sc03Len(sd, sel, mode), course: SCENE_T + 2 } });
   return { ...p, sd, vid, evre, sc: itemScene(p.item, sd.screen?.kind === "rec") };
 }
-function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null }) {
+function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null, wdrop = false }) {
   const plan = data.plan;
   const r = data.race || {};
   const t = scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast });
@@ -4190,7 +4227,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       <div className="sc-body" key={sc}>
         {body}
       </div>
-      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={sc === "01" && item === "wind"} /> : null}>
+      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={sc === "01" && item === "wind"} drop={wdrop} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
         {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} /> : listOn ? side === "gen" || (!lwho?.grp && mode !== "race" && scBoards(data).length) ? <ScGen data={data} who={lwho} now={now} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
@@ -4329,14 +4366,16 @@ export function LiveScreen({ id, y = "" }) {
     const camOn = cams.some((x) => x.src === vCam) ? vCam : "";
     const sd = camOn ? { ...pk.sd, screen: { kind: "src", src: camOn } } : pk.sd;
     const vid = camOn ? true : pk.vid;
-    const vwOn = vView === "rank" ? scBoards(sd).length > 0 : vView === "course" ? !!courseSvg(sd, sceneRoute(sd, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait")) : vView === "wind";
-    const { sc, item } = !vwOn ? pk : vView === "rank" ? { sc: "03", item: "rank" } : vView === "course" ? { sc: "05", item: "course" } : { sc: "01", item: "wind" };
+    const vwOn = vView === "rank" ? scBoards(sd).length > 0 : vView === "course" ? !!courseSvg(sd, sceneRoute(sd, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait")) : vView === "wind" ? windAhead(sd, nowMs).length >= 2 : false;
+    // Rüzgâr sahne değiştirmez: süre kartının altından grafik açılır
+    const wdrop = vwOn && vView === "wind";
+    const { sc, item } = !vwOn || wdrop ? pk : vView === "rank" ? { sc: "03", item: "rank" } : { sc: "05", item: "course" };
     const { evre } = pk;
     return (
       <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
         <Backdrop data={sd} isCur={isCur} entry={entry} today={today} />
         <div className="lv-page lv-ov">
-          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} cams={cams} cam={camOn} onCam={setVCam} view={vwOn ? vView : ""} onView={setVView} onFull={setFull} />} />
+          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} wdrop={wdrop} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} cams={cams} cam={camOn} onCam={setVCam} view={vwOn ? vView : ""} onView={setVView} onFull={setFull} />} />
         </div>
         {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
         {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}

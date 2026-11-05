@@ -15,14 +15,14 @@ const SAILS = [
   ["24", "Ada Yılmaz", "Çeşme YK", "2014", "K"],
   ["94", "Mert Şen", "Dikili YK", "2012", "E"],
   ["918", "Elif Koç", "Urla YK", "2012", "K"],
-  ["502", "Kaan Er", "Dikili YK", "2010", "E"],
+  ["502", "Kaan Er", "Dikili Yelken Spor Kulübü", "2010", "E"],
   ["808", "Bora Ak", "Urla YK", "2013", "E"],
   ["77", "Lina Taş", "İzmir YK", "2013", "K"],
-  ["1301", "Umut Can", "Bodrum YK", "2012", "E"],
+  ["1301", "Umut Can", "", "2012", "E"],
   ["415", "Selin Ay", "Foça YK", "2011", "K"],
   ["62", "Arda Öz", "Çeşme YK", "2014", "E"],
   ["233", "Zeynep Su", "Ayvalık YK", "2012", "K"],
-  ["1450", "Efe Tan", "Bodrum YK", "2011", "E"],
+  ["1450", "Efe Tan", "Bodrum Deniz ve Yelken Sporları Kulübü Derneği", "2011", "E"],
 ];
 const ROUTE = ["1", "2", "3", "F"];
 // Sıralamalar: bir sıradan başlayıp her şamandırada birkaç komşu yer değiştirir (gerçek yarış gibi)
