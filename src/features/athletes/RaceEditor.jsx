@@ -32,6 +32,7 @@ import { AroundView } from "./AroundView";
 import { RaceWx } from "./RaceWx";
 import { RaceTrack } from "./RaceTrack";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
+import { useWide } from "@/features/home/SideNav";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { loadPosts } from "@/features/posts/posts";
 import { racePlanSync, racePlansOf, racePostOf } from "./raceLinks";
@@ -897,6 +898,16 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const dayAll = raceDay ? Math.round((new Date(`${r.endDate || r.startDate}T12:00:00`) - new Date(`${r.startDate}T12:00:00`)) / 864e5) + 1 : 0;
   // Yarış günü üstü günün evresine göre (RaceDayTop: A rüzgâr · B sonuçlar · C gün bitti + yarın)
   const { phase, races: dayRaces } = useRacePhase(r, orgId, rid, raceDay);
+  // iPad yatay ve Mac (sol menü, Seyhun 2026-11-05 "iPad için daha özel bir tasarım"): solda lacivert (başlık, hava, harita, Yayına git),
+  // sağda sekmeler ve sekmenin içi; yarış günü de bölümler pencerede değil sağda açık, Takip (sonuçlar) hep görünür
+  const wide = useWide();
+  const dayWide = raceDay && wide;
+  // telefonda (ya da iPad dik çevrilince) yarış günü bölüm penceresi kendiliğinden açılmaz
+  const autoTab = useRef(false);
+  useEffect(() => {
+    if (dayWide && tab === "sum") (autoTab.current = true), setTab(siteDocs ? "site" : "prep");
+    else if (!dayWide && raceDay && autoTab.current) (autoTab.current = false), setTab("sum");
+  }, [dayWide, raceDay, tab, siteDocs]);
   const tabs = [
     // Yarış günü (Seyhun 2026-10-29): hazırlık, plan ve not altta görünmez; "Hazırlık" sekmesine dokununca açılır, yeniden dokununca kapanır.
     // Yarıştan önce eskisi gibi Özet.
@@ -911,6 +922,22 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   ];
   // Seyhun 2026-10-26 (örnek A, yaris-tasarim/ozet-liste): üstte kalan gün + yanında Multimedya (ayrı, açık renk), altında tek satır
   // kaydırılabilir sekmeler (eksikse sarı nokta). Talimat yüklüyse düğme yok, ⋯ içinde "Talimatı gör".
+  // Sekmeler: telefonda lacivertin altında, geniş ekranda sağdaki açık gövdenin başında
+  const nav = (
+    <nav aria-label="Bölümler" className={`${wide ? "mb-1 mt-1 flex-wrap" : "-mx-5 mt-4 overflow-x-auto px-5"} flex gap-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
+        {tabs.map(([k, name, , warn]) => {
+          const on = tab === k || (k === "trip" && tab === "budget");
+          return (
+            <button key={k} type="button" aria-pressed={on} onClick={() => setTab(k === "prep" && on && !wide ? "sum" : k)} data-press style={wide && on ? { background: "var(--acc)", color: "#fff", borderColor: "transparent" } : undefined} className={`raised flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[0.875rem] font-semibold ${!wide && on ? "ck-sel" : ""}`}>
+              {warn && !over && <span className={`size-1.5 rounded-full ${wide ? "bg-amber-500" : "bg-[#ffd59a]"}`} aria-label="eksik" />}
+              {name}
+              {/* Siteden yeni belge (Seyhun 2026-11-04 "yeni evrak olduğunu yarış sayfasında da göstermeliyiz") */}
+              {k === "site" && siteNew > 0 && <span className="tone-gen tone-chip rounded-full px-1.5 text-[0.6875rem] font-bold tabular-nums">{siteNew} yeni</span>}
+            </button>
+          );
+        })}
+      </nav>
+  );
   const top = (
     <>
       {raceDay && rid ? (
@@ -921,19 +948,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
           {rid && <RaceWx r={{ ...r, id: rid }} />}
         </div>
       ) : null}
-      {!raceDay && <nav aria-label="Bölümler" className="-mx-5 mt-4 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {tabs.map(([k, name, , warn]) => {
-          const on = tab === k || (k === "trip" && tab === "budget");
-          return (
-            <button key={k} type="button" aria-pressed={on} onClick={() => setTab(k === "prep" && on ? "sum" : k)} data-press className={`raised flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[0.875rem] font-semibold ${on ? "ck-sel" : ""}`}>
-              {warn && !over && <span className="size-1.5 rounded-full bg-[#ffd59a]" aria-label="eksik" />}
-              {name}
-              {/* Siteden yeni belge (Seyhun 2026-11-04 "yeni evrak olduğunu yarış sayfasında da göstermeliyiz") */}
-              {k === "site" && siteNew > 0 && <span className="tone-gen tone-chip rounded-full px-1.5 text-[0.6875rem] font-bold tabular-nums">{siteNew} yeni</span>}
-            </button>
-          );
-        })}
-      </nav>}
+      {!raceDay && !wide && nav}
     </>
   );
   // yarış günü (Seyhun 2026-10-29): sayfa tek ekran, lacivert alan alt çubuğa kadar iner (altta siyah/açık bölüm başlamaz);
@@ -950,12 +965,15 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   // yarış günü işleri Yayın'da (Seyhun 2026-11-04 "bunu kaldırabiliriz artık çünkü başka sistem kullanıyoruz")
   const closeSec = () => setTab("sum");
   const secWrap = (body) =>
-    raceDay ? (
+    raceDay && !wide ? (
       <Sheet open={tab !== "sum"} onClose={closeSec} title={secName}>
         <div className="-mt-4">{body}</div>
       </Sheet>
     ) : (
-      <div className={light}>{body}</div>
+      <div className={`${light} race-body`}>
+        {wide && nav}
+        {body}
+      </div>
     );
 
   if (!begun) {
@@ -1050,17 +1068,18 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         )}
         {/* Yarış başladıktan sonra multimedyanın işleri de bu tek ⋯ içinde (Seyhun 2026-10-30; multimedya sayfasındaki ⋯ ile aynı liste) */}
         {/* Canlı ekran (ana hesap) yarıştan önce de görünür: dönüş girişi ve kayıt listesi önceden hazırlanır (Seyhun 2026-11-01) */}
-        {rid && ((r.startDate && today >= r.startDate) || isOwner) && (
+        {rid && isOwner && (
           <ul className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
             {/* Denemeleri sıfırla kalktı: Yayın › ⋯ › Yayını sıfırla aynı işi yapar (2026-11-04) */}
-            {MEDIA_MENU.filter(([k]) => k !== "reset").map(([k, l]) => ((k === "canli" ? !isOwner : !(r.startDate && today >= r.startDate)) ? null : (
+            {/* Çekim ayarları ve Gün ekle kalktı (Seyhun 2026-11-05: süre, geri sayım, çekim artık Yayın'da; eski /media ekranına gidiyordu) */}
+            {MEDIA_MENU.filter(([k]) => k === "canli" && isOwner).map(([k, l]) => (
               <li key={k}>
-                <Link href={k === "canli" ? `/athletes/races/${rid}/yayin` : `/athletes/races/${rid}/media?do=${k}`} replace={k !== "canli"} data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
+                <Link href={`/athletes/races/${rid}/yayin`} data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
                   <b className="min-w-0 flex-1 text-[1rem] font-medium">{l}</b>
                   <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
                 </Link>
               </li>
-            )))}
+            ))}
           </ul>
         )}
         <ul className={`${card} divide-y divide-line overflow-hidden`}>

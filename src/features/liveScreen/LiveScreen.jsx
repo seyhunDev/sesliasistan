@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useR
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { liveUrl, sourcesOf, videoGroup } from "@/lib/raceCams";
-import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
+import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset, winLeft, FIN_WIN } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
@@ -188,6 +188,39 @@ function useClockSync(on) {
     };
   }, [on]);
   return off;
+}
+// Uygulama içinde bu telefonun sayacı (Seyhun 2026-11-05 "başlatıyorum, yukarıdaki geri sayım daha geç başlıyor; kendi içimizde gecikmesiz"):
+// Yayın / Start penceresi sayacı telefonda yazar (training/Countdown "sa-sayac"), buluta sonra gider. Bu yarışın sayacıysa ve buluttakinden eski
+// değilse ekran onu kullanır; saat sunucu saatine çevrilir (skew). Herkese açık linkte hep buluttaki
+const LOC_KEY = "sa-sayac";
+const locSub = (f) => {
+  window.addEventListener(LOC_KEY, f);
+  window.addEventListener("storage", f);
+  return () => (window.removeEventListener(LOC_KEY, f), window.removeEventListener("storage", f));
+};
+const locRaw = () => {
+  try {
+    return localStorage.getItem(LOC_KEY) || "";
+  } catch {
+    return "";
+  }
+};
+function useLocalTimer(skew, id, on, remote) {
+  const raw = useSyncExternalStore(locSub, locRaw, () => "");
+  const k = skew.current || 0;
+  return useMemo(() => {
+    if (!on || !raw || !id) return null;
+    let t = null;
+    try {
+      t = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+    if (!t || t.own !== `/athletes/races/${id}/yayin` || t.mode !== "start") return null;
+    if ((remote?.at || 0) > (t.at || 0) + 5000) return null; // başka cihaz sonradan değiştirdi: buluttaki geçerli
+    const sh = (x) => (typeof x === "number" ? x + k : x ?? null);
+    return { ...remote, ...t, end: sh(t.end), zero: sh(t.zero), at: t.at };
+  }, [raw, id, on, remote, k]);
 }
 function useNow(skew, ms = 250) {
   const [now, setNow] = useState(() => mono());
@@ -1522,7 +1555,7 @@ function ScGen({ data, who, now, onFull }) {
   const k = Math.floor(now / 1000 / SC_PAGE_S);
   const pg = scPaged(list, k, SC_TOP, SC_GEN, scCatPages(b));
   return (
-    <button type="button" className="sc-rd" onClick={() => onFull("all")}>
+    <button type="button" className="sc-rd" onClick={onFull ? () => onFull("all") : undefined}>
       <div className="sc-rdh">
         <span>{[b.cls || "Genel", "Genel sıra"].join(" · ")}</span>
         <span>{`${b.total} tekne`}</span>
@@ -1605,7 +1638,7 @@ function ScFleet({ data, sel, mode, now, who, today, onFull }) {
   if (rd) {
     const fresh = rd.t && now - rd.t < SC_ROUND_MS;
     return (
-      <button type="button" className="sc-rd" onClick={() => onFull("race")}>
+      <button type="button" className="sc-rd" onClick={onFull ? () => onFull("race") : undefined}>
         <div className="sc-rdh">
           <span>
             <ScGrp g={who?.grp} />
@@ -1753,31 +1786,42 @@ function ScClock({ t, data, sel, mode, now, today, noWind = false, drop = null }
       sc.style.removeProperty("--sc-ckh");
     };
   }, []);
+  // finiş penceresi (ilk finişten sonra, varsayılan 15 dk): geçen sürenin altında kalan süre ve eriyen çizgi
+  const fw = mode === "race" && sel ? winLeft(sel, now) : null;
+  const at = t.at ? (
+    <span className="sc-cka">
+      <small>Start</small>
+      {t.at}
+    </span>
+  ) : null;
+  const tk0 = !(g || t.who?.cls || n) && t.k && !String(t.tm || "").toLocaleLowerCase("tr-TR").includes(String(t.k).toLocaleLowerCase("tr-TR"));
+  // Kutusuz kart (Seyhun 2026-11-05 "kutu değil, kenardan içeri doğru transparan arka plan; süre büyük; arkayı kapatmasın"): arka plan
+  // sol üst köşeden içeri doğru silinen gölge (.sc-ck::before), üstte grup · sınıf · yarış ve sağda start saati, altında büyük süre
   return (
     <div ref={ref} className={`sc-ck ${up ? "up" : "dn"}${t.tone ? ` ${t.tone}` : ""}`}>
-      {g || t.who?.cls || n ? (
+      {g || t.who?.cls || n || tk0 || at ? (
         <div className="sc-ckw">
           {g ? <span className="sc-ckg" style={{ background: gc, color: inkOn(gc) }}>{g}</span> : null}
           {t.who?.cls ? <span className="sc-ckc">{t.who.cls}</span> : null}
           {n ? <span className="sc-ckn">{`${n}. yarış`}</span> : null}
-        </div>
-      ) : null}
-      {!(g || t.who?.cls || n) && t.k && !String(t.tm || "").toLocaleLowerCase("tr-TR").includes(String(t.k).toLocaleLowerCase("tr-TR")) ? (
-        <div className="sc-ckw">
-          <span className="sc-ckc">{t.k}</span>
+          {tk0 ? <span className="sc-ckc">{t.k}</span> : null}
+          {at}
         </div>
       ) : null}
       <div className={`sc-ckt${num ? "" : " tx"}`}>
         {num ? <i aria-hidden="true">{up ? "+" : "−"}</i> : null}
         <b>{t.tm}</b>
         {t.un ? <small>{t.un}</small> : null}
-        {t.at ? (
-          <span className="sc-cka">
-            <small>Start</small>
-            {t.at}
-          </span>
-        ) : null}
       </div>
+      {fw != null ? (
+        <div className="sc-ckf">
+          <span>Finiş penceresi</span>
+          <b>{`${Math.floor(fw / 60)}:${String(fw % 60).padStart(2, "0")}`}</b>
+          <i aria-hidden="true">
+            <u style={{ width: `${Math.min(100, (fw / (FIN_WIN * 60)) * 100)}%` }} />
+          </i>
+        </div>
+      ) : null}
       {tot > 0 ? (
         <div className="sc-ckb" aria-hidden="true">
           <u style={{ width: `${Math.min(100, (rem / tot) * 100)}%` }} />
@@ -1911,7 +1955,7 @@ function Sc03({ data, sel, mode, now, onFull, ctl = null }) {
   if (cur.rr) {
     const rr = cur.rr;
     return (
-      <button type="button" className="sc-board" onClick={() => onFull("race")}>
+      <button type="button" className="sc-board" onClick={onFull ? () => onFull("race") : undefined}>
         <header>
           <b>{rr.head === "Resmî sonuç" ? "Sonuç" : "Yarış sonucu"}</b>
           <div>
@@ -1952,7 +1996,7 @@ function Sc03({ data, sel, mode, now, onFull, ctl = null }) {
     ctl.setTab(i);
   };
   return (
-    <Box {...(ctl ? {} : { type: "button", onClick: () => onFull("all") })} className={`sc-board wide${ctl ? " ctl" : ""}`}>
+    <Box {...(ctl ? {} : { type: "button", onClick: onFull ? () => onFull("all") : undefined })} className={`sc-board wide${ctl ? " ctl" : ""}`}>
       <header>
         <b>Genel sıralama</b>
         <div>
@@ -2243,7 +2287,49 @@ const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // start alanına kadar gelsin"; örnek canli-tv/alt-cubuk-ornek.png onaylandı): tek sıra eşit düğme Kamera · Konum · Parkur · Rüzgâr ·
 // Sıralama · Start (Start yalnız ana hesap). Dokunulanın içeriği çubuğun üstünde açılır, en çok süre kartının altına kadar; aynı düğme
 // kapatır. Start penceresi (LiveStart) de aynı yerde (--vb-b, --vb-t). Yalnız telefon / dikey ekranda.
-function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", hide = false, onHide }) {
+// Ekrandaki kendi videom (Seyhun 2026-11-05 "istediğim kadar izleyip geri alıp tekrardan başlatabileyim; bir ok olsun, basınca videolar açılsın"):
+// çubuğun üstünde ince şerit: Videolar ˄ · −10 · Oynat/Duraklat · Baştan · Ses · süre çizgisi (dokununca oraya atlar) · Kaldır
+function MyVidCtl({ vref, onOpen, onStop }) {
+  const [st, setSt] = useState({ t: 0, d: 0, paused: false, muted: true });
+  useEffect(() => {
+    const v = vref.current;
+    if (!v) return undefined;
+    const up = () => setSt({ t: v.currentTime || 0, d: Number.isFinite(v.duration) ? v.duration : 0, paused: v.paused, muted: v.muted });
+    const ev = ["timeupdate", "play", "pause", "loadedmetadata", "volumechange"];
+    ev.forEach((e) => v.addEventListener(e, up));
+    up();
+    return () => ev.forEach((e) => v.removeEventListener(e, up));
+  }, [vref]);
+  const v = () => vref.current;
+  const go = (t) => v() && (v().currentTime = Math.max(0, Math.min(t, (v().duration || 0) - 0.05)));
+  const mm = (x) => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, "0")}`;
+  const seek = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    go(((e.clientX - r.left) / r.width) * st.d);
+  };
+  return (
+    <div className="sc-mv">
+      <button type="button" className="up" onClick={onOpen} aria-label="Videolar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        Videolar
+      </button>
+      <button type="button" onClick={() => go(st.t - 10)}>−10</button>
+      <button type="button" className="pp" onClick={() => (v()?.paused ? v().play().catch(() => {}) : v()?.pause())} aria-label={st.paused ? "Oynat" : "Duraklat"}>
+        {st.paused ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor" /></svg> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor" /></svg>}
+      </button>
+      <button type="button" onClick={() => (go(0), v()?.play().catch(() => {}))}>Baştan</button>
+      <button type="button" className={st.muted ? "" : "on"} aria-pressed={!st.muted} onClick={() => v() && (v().muted = !v().muted)}>
+        Ses
+      </button>
+      <div className="tl" onClick={seek} role="presentation">
+        <i style={{ width: `${st.d ? (st.t / st.d) * 100 : 0}%` }} />
+        <small>{`${mm(st.t)} / ${mm(st.d)}`}</small>
+      </div>
+      <button type="button" className="x" onClick={onStop}>Kaldır</button>
+    </div>
+  );
+}
+function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide }) {
   const ref = useRef(null);
   const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
   const res = !!rr?.rows.length;
@@ -2270,18 +2356,24 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       const em = parseFloat(getComputedStyle(el).fontSize) || 16;
       root.style.setProperty("--vb-b", `${Math.round(window.innerHeight - r.top + em * 0.5)}px`);
       root.style.setProperty("--vb-t", `${Math.round((ck ? ck.bottom : r.top / 3) + em * 0.6)}px`);
+      // yatayda çubuk üstte ortada: altı (--vb-d) ve iki yandaki süre kartı / Canlı'ya değmeyecek genişlik (--vb-s)
+      const tr = el.closest(".sc")?.querySelector(".sc-tr")?.getBoundingClientRect();
+      root.style.setProperty("--vb-d", `${Math.round(r.bottom)}px`);
+      root.style.setProperty("--vb-s", `${Math.round(Math.max(ck ? ck.right : 0, tr ? window.innerWidth - tr.left : 0) + em)}px`);
     };
     set();
     const ro = new ResizeObserver(set);
     ro.observe(el);
     const ck = el.closest(".sc")?.querySelector(".sc-ck");
     if (ck) ro.observe(ck);
+    const tr = el.closest(".sc")?.querySelector(".sc-tr");
+    if (tr) ro.observe(tr);
     window.addEventListener("resize", set);
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", set);
     };
-  }, [btns.length]);
+  }, [btns.length, hide]);
   if (!btns.length) return null;
   const on = btns.some(([k]) => k === open) ? open : "";
   const tap = (k) => {
@@ -2347,6 +2439,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
           Gizle
         </button>
       ) : null}
+      {!body && ctl ? ctl : null}
       <div className="sc-vr2">
         {btns.map(([k, l, dot]) => (
           <button key={k} type="button" className={`${k === "start" ? "go" : ""}${on === k ? " on" : ""}`} aria-pressed={on === k} onClick={() => tap(k)}>
@@ -2471,7 +2564,7 @@ export function LiveScreen({ id, y = "" }) {
   useVisit(id); // isimsiz ziyaret haberi (Ayarlar › Yayın)
   const real = useData(demoOn ? "" : id, y);
   const demo = useDemo(demoOn);
-  const { data, err, skew } = demoOn ? { data: demo.data, err: "", skew: real.skew } : real;
+  const { data: data0, err, skew } = demoOn ? { data: demo.data, err: "", skew: real.skew } : real;
   const [list, setList] = useState(false);
   const [full, setFull] = useState(""); // "race" | "all": tam liste penceresi
   const [vCam, setVCam] = useState(""); // izleyicinin seçtiği kamera (kaynak id), boşsa yayının gösterdiği
@@ -2482,18 +2575,26 @@ export function LiveScreen({ id, y = "" }) {
   const [myVid, setMyVid] = useState({ id: "", url: "" }); // yalnız bu cihazda arka planda oynayan kendi videom (canlı yayına gitmez)
   const [barHide, setBarHide] = useState(false); // alt düğmeler gizli
   const inApp = useInAppBack(); // uygulama içinden açıldı (link ile açılanda null)
+  // Düğmeler, seçimler, listeye dokunma yalnız uygulama içinde "Ekrana aç" ile açılan ekranda (Seyhun 2026-11-05 "herkese açık linkte ve Yayın'daki
+  // önizlemede kontrol olmayacak, sadece gösterilecek"); çerçevede (Yayın önizlemesi) hiç yok
+  const top = useSyncExternalStore(noSub, () => window.self === window.top, () => false);
+  const own = !!inApp && top;
+  const locT = useLocalTimer(skew, id, own && !demoOn && !y, data0?.timer || null);
+  const data = useMemo(() => (locT && data0 ? { ...data0, timer: locT } : data0), [data0, locT]);
+  const [vTab, setVTab] = useState(""); // alt çubukta açık olan: cam, pos, course, wind, rank, start (boş = kapalı)
+  const myRef = useRef(null); // arka plandaki kendi videom (oynat, geri al, baştan)
   const playMine = useCallback((vid, blob) => {
     setMyVid((o) => {
       if (o.url) URL.revokeObjectURL(o.url);
       return vid && blob ? { id: vid, url: URL.createObjectURL(blob) } : { id: "", url: "" };
     });
-  }, []);
+    if (vid) setVTab(""); // ekrana verince video paneli kapanır (Seyhun 2026-11-05); "Videolar" ile yeniden açılır
+  }, [setVTab]);
   const warm = useSyncExternalStore(noSub, () => !!readWarmMe(), () => false); // bu telefonda uygulamaya girilmiş mi
-  const [vTab, setVTab] = useState(""); // alt çubukta açık olan: cam, pos, course, wind, rank, start (boş = kapalı)
   const vView = ["rank", "wind", "course"].includes(vTab) ? vTab : ""; // izleyicinin açtığı Sıralama / Rüzgâr / Parkur
   const [rkTab, setRkTab] = useState(0); // izleyicinin Sıralama sekmesi (Genel, Kızlar…)
   const [rkAuto, setRkAuto] = useState(false); // Oto: sekmeler kendiliğinden geçer
-  const nowMs = useNow(skew, 1000); // evre ve bekleme sayacı için saat (sunucuyla eşlenmiş)
+  const nowMs = useNow(skew, own ? 250 : 1000); // evre ve bekleme sayacı için saat (sunucuyla eşlenmiş)
   const router = useRouter();
   // Yarış silinmiş ya da ekranı kapalı (Seyhun 2026-11-01 "sildiğimde linki de kullanılamasın"): paylaşılan link genel sayfaya (/canli) gider
   const gone = !data && err === "yok";
@@ -2589,11 +2690,11 @@ export function LiveScreen({ id, y = "" }) {
       <Backdrop data={sd} isCur={isCur} entry={entry} today={today} />
       {myVid.url ? (
         <div className="lv-my" aria-hidden="true">
-          <video key={myVid.id} src={myVid.url} autoPlay muted loop playsInline />
+          <video key={myVid.id} ref={myRef} src={myVid.url} autoPlay muted loop playsInline />
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={setVCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} hide={barHide} onHide={setBarHide} />} />
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={setVCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={myVid.url && adm && inApp && !demoOn ? <MyVidCtl key={myVid.id} vref={myRef} onOpen={() => setVTab("vid")} onStop={() => playMine("", null)} /> : null} hide={barHide} onHide={setBarHide} /> : null} />
         {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}

@@ -1,55 +1,55 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BackButton } from "@/components/ui/BackButton";
-import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
-import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { isActive, loadAthletes } from "@/features/athletes/data";
-import { loadLive } from "@/features/athletes/raceLiveStore";
+import { loadStream, saveStream } from "@/features/athletes/raceLiveStore";
 import { RollPanel } from "@/features/athletes/RollPanel";
+import { RaceWx } from "@/features/athletes/RaceWx";
 import { TrainingLog } from "@/features/add/TrainingLog";
-import { Countdown, raceFinish, readTimer, useTimerRun } from "@/features/training/Countdown";
-import { useTrainingFlow } from "@/features/training/useTrainingFlow";
-import { FinishTap, useTrainList } from "@/features/training/TrainFlow";
-import { RecPick } from "@/features/raceMedia/RecPick";
-import { Marks } from "@/features/raceMedia/TimerTab";
-import { MediaSettingsButton, MediaTab } from "@/features/raceMedia/MediaTab";
-import { AskButton, TabDock } from "@/features/raceMedia/RaceMedia";
-import { useLiveSync } from "@/features/raceMedia/useLiveSync";
+import { chooseDur, raceCancel, raceFinish, raceStart, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
+import { countPref, setCountPref, useTrainingFlow } from "@/features/training/useTrainingFlow";
+import { AskButton } from "@/features/raceMedia/RaceMedia";
+import { CourseTab } from "@/features/raceMedia/CourseTab";
+import { LiveVideos } from "@/features/liveScreen/LiveVideos";
 import { Races } from "@/features/training/Races";
 import { aliasesOf, useNameIndex } from "@/features/athletes/names";
 import { useSpeech } from "@/hooks/useSpeech";
 import { voiceResult, voiceText } from "@/lib/raceVoice";
 import { canLog, isTraining, pickPlan } from "@/lib/trainingLog";
-import { cleanRaces, entrantsOf, mmss, newRace, standings } from "@/lib/raceScore";
-import { BUOYS, cleanBuoys, cleanLive, upSec } from "@/lib/raceLive";
+import { addFinish, cleanRaces, entrantsOf, mmss, places, removeFinish, setCode, standings } from "@/lib/raceScore";
+import { BUOYS, cleanBuoys, upSec } from "@/lib/raceLive";
+import { addSource, cleanStream, streamSources, ytEmbed, ytSrc } from "@/lib/raceRounds";
+import { dayPlaces, monthName, monthRank } from "@/lib/trainRank";
 import { todayStr } from "@/lib/utils/format";
-import { useTabInUrl } from "@/hooks/useTabInUrl";
+import "@/features/liveScreen/sahne.css";
+import "@/features/training/trainLive.css";
 
-// Antrenman sayfası (kulüp antrenmanı günü), yarış multimedya sayfasının düzeninde (Seyhun 2026-10-20 onayı,
-// /mnt/project-files/antrenman-sayfasi/medya-ornek.png): altta Süre · Medya · Hava · Sonuçlar.
-// Antrenman sekmesi (2026-11-02 yeni tasarım): başlıksız, sol üstte geri + Yoklama · Günlük; sayaç açık kartta (useTrainingFlow; her start bir yarış açar), yarışta Bitiren kim? kartta; altında Bugünkü yarışlar. Videolar yalnız Medya sekmesinde.
-// Medya: multimedyanın MediaTab'ı; fotoğraf/video bu antrenmana bağlı (raceLive/ant-<planId>, Storage raceMedia), antrenman yarışlarına göre gruplu.
-// Hava: multimedyanın WeatherTab'ı; yer planın `spot`u, yoksa Dikili. Sonuçlar: günün yarışları ve puan durumu (Races).
-// Süre'de alt şeritte "Sonucu söyle" ve ana düğme (Başlat…; Seyhun 2026-10-22: "Başlat'ı ve Sonucu söyle'yi aşağı al, Rüzgâr'ı kaldır"): yarış sıralaması sesle ("1 Ali, 2 Ayşe", yalnız adlar da, karışık da), onaysız yazılır, 8 sn Geri al (lib/raceVoice.js voiceResult).
-// Yeni tasarım (Seyhun 2026-10-21 onayı, /mnt/project-files/antrenman-sayfasi/yeni-tasarim/ornek.png): üstte lacivert kokpit (geri, ad, gün;
-// Süre'de sayaç da orada). Yeni akış (Seyhun 2026-11-01, TrainFlow): altında Yoklama · Günlük düğmeleri, yarışta Bitiren kim? kareleri,
-// günün yarışları (sıralama + videolar satırda, biten son yarış açık). Alt çubuk Yarış · Videolar; Video Başlat'ın yanında.
-// Açılış: ?id=<antrenman planı> (plan penceresinden, gün penceresinden) ya da bugünün antrenmanı; ?tab=media|wx|res. Sesle: "antrenman sayfasını aç".
-const stamp = () => Date.now();
-const dayText = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
-const TABS = ["sure", "media"];
-// Yeni akış (Seyhun 2026-11-01): Sonuçlar ve Hava sekmeleri kalktı; sonuç Yarış ekranında (TrainFlow), Kayıt yerine Başlat'ın yanında Video
-const DOCK = [["sure", "Antrenman"], ["media", "Medya"]];
+// Antrenman ekranı (Seyhun 2026-11-05 "antrenmanın multimedya sayfasını canlı yayın sayfası gibi yapalım"; örnek
+// /mnt/project-files/antrenman-canli/ornek.png onaylandı): /canli'nin düzeni. Arkada görüntü (Kamera'da seçilen kaynak, Video'da oynatılan
+// video, yoksa deniz), üstte süre kartı (geri, antrenman / yarış, büyük sayaç; sağda Yoklama ve Günlük), altta tek sıra Kamera · Parkur ·
+// Rüzgâr · Sıralama · Video · Start ve asistan küresi. Dokunulan panel çubuktan yukarı açılır, aynı düğme kapatır.
+// Start: 5·4·2·1 dk, kimler (yoklamada gelenler), parkur, "Yarış olarak say" (race.cnt → genel sıralama), Start ver. Geri sayımda −1/+1 dk, İptal;
+// startan sonra Bitiren kim? kareleri (sırayla dokun, tekrar dokununca çıkar; DNF), Sesle söyle, Yarışı bitir.
+// Sıralama: Bugün (günün puan durumu, hangi startın yarış sayıldığı) · Genel (ayın yarış sayılan startları, lib/trainRank.js).
+// Video: canlı ekranın Video paneli (LiveVideos; yalnız bu telefonda, start start galeri, Düzenle, YouTube'a ekle → Kamera kaynakları).
+// Parkur: yarış multimedyasının parkur kartı (CourseTab; ILCA · Trapez, ölçümler, Büyük göster). Rüzgâr: ortak hava tablosu (RaceWx).
+// Kayıtlar: yarışlar planın `races` alanında, parkur/kaynaklar raceLive/ant-<planId>. Açılış: ?id=<plan> ya da bugünün antrenmanı; ?tab=<panel>.
+const dayText = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+const PANELS = ["cam", "course", "wind", "rank", "vid", "start"];
+const PRESETS = [300, 240, 120, 60];
 const iso = (ms) => new Date(ms).toISOString();
+const first = (n) => String(n || "").split(" ")[0];
+const SEA = "/canli/ornek-deniz.svg";
+const stamp = () => Date.now();
 
-// Antrenman yarışları → multimedyanın start satırları (medyanın yarışı ve anı bunlara göre bulunur)
+// Antrenman yarışları → canlı ekranın start satırları (videonun yarışı bunlara göre bulunur)
 const startsOf = (races, day) =>
   (races || [])
     .map((r, i) => ({ r, n: i + 1 }))
@@ -74,18 +74,20 @@ function Day() {
   const today = todayStr();
   const plan = (id && plans.find((p) => p.id === id)) || (!id ? pickPlan(plans, today) : null);
   const date = plan?.date || today;
-  const by = { name: profile?.name ?? "Kullanıcı" }; // plan penceresindeki gibi (updatedBy)
+  const by = { name: profile?.name ?? "Kullanıcı" };
   const [athletes, setAthletes] = useState([]);
   const [att, setAtt] = useState({}); // bu sayfada değişen yoklama: { "gün|id": durum | null }
   const [sheet, setSheet] = useState(""); // roll | races | log
-  const [raceKey, setRaceKey] = useState({ k: 0, rid: null }); // Sonuçlar'dan açılan yarış
+  const [open, setOpen] = useState(() => (q.get("tab") === "media" ? "vid" : PANELS.includes(q.get("tab")) ? q.get("tab") : "")); // eski ?tab=media (Medya sayfası) Video
   const [adding, setAdding] = useState(false);
-  const [tab, setTab] = useState(TABS.includes(q.get("tab")) ? q.get("tab") : "sure");
-  useTabInUrl(tab);
-  const [shot, setShot] = useState(null); // alttaki Kayıt ile iPhone kamerasında çekilen dosya (Medya işler)
+  const [cnt, setCnt] = useState(countPref);
+  const [dur, setDur] = useState(0);
   const orgId = profile?.orgId || "";
   const liveId = plan && racer && orgId ? `ant-${plan.id}` : "";
-  const [live, setLive] = useState(() => cleanLive({}));
+  const [stream, setStream] = useState(null);
+  const [cam, setCam] = useState(""); // arkadaki kaynak (id)
+  const [vid, setVid] = useState({ id: "", url: "" }); // arkada oynatılan kendi videon
+  const [link, setLink] = useState("");
 
   useEffect(() => {
     if (!racer) return;
@@ -100,49 +102,36 @@ function Day() {
   useEffect(() => {
     if (!liveId) return;
     let on = true;
-    loadLive(orgId, liveId).then(
-      (l) => on && setLive(l),
+    loadStream(orgId, liveId).then(
+      (s) => on && setStream(s),
       () => {},
     );
     return () => {
       on = false;
     };
   }, [orgId, liveId]);
-  useLiveSync({ orgId, raceId: liveId, setLive });
-  // Bu sayfada yapılan değişiklik hemen görünür; kayıt arkada gider (multimedyadaki gibi)
-  const change = useCallback(
-    (patch, job) => {
-      setLive((l) => cleanLive({ ...l, ...(typeof patch === "function" ? patch(l) : patch) }));
-      Promise.resolve(job?.()).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
-    },
-    [toast],
-  );
+  useEffect(() => () => vid.url && URL.revokeObjectURL(vid.url), [vid.url]);
 
   const stateOf = (a) => (`${date}|${a.id}` in att ? att[`${date}|${a.id}`] : a.att?.[date.slice(0, 4)]?.[date.slice(5)] || null);
   const byName = (a, b) => a.name.localeCompare(b.name, "tr");
   const present = athletes.filter((a) => stateOf(a) === "present").map((a) => ({ id: a.id, name: a.studentName })).sort(byName);
   const others = athletes.filter((a) => stateOf(a) !== "present").map((a) => ({ id: a.id, name: a.studentName })).sort(byName);
   const races = plan?.races || [];
-  const table = standings(races, present);
   const locked = plan && isLocked?.("plan", plan.id);
-  // Sayaç yarış multimedyadakiyle aynı (sayaca dokununca başlar, start dizisi bipleri); planı olan günde her start bir yarış açar
   const saveRaces = (list) => updateRecord("plan", plan.id, { races: cleanRaces(list) }, by);
   const { flow, undo } = useTrainingFlow({ races, save: saveRaces });
   const tr = useTimerRun();
-  const withRaces = plan && racer && !locked;
+  const withRaces = !!plan && racer && !locked;
   const cur = withRaces && (tr.running || tr.t.left != null) ? races.find((r) => r.id === tr.t.rid) : null;
-  const buoys = plan?.buoys ? cleanBuoys(plan.buoys) : BUOYS;
-  const mark = (b) => {
-    if (!cur || tr.t.end == null) return;
-    const sec = upSec(tr.t.end, stamp());
-    saveRaces(races.map((r) => (r.id === cur.id ? { ...r, marks: { ...r.marks, [b]: sec } } : r)));
-    undo(`${b} · ${mmss(sec)}`, races);
-  };
   const title = plan && plan.title !== "Antrenman" ? plan.title : "Antrenman";
+  const people = present.length ? present : athletes.length ? athletes.map((a) => ({ id: a.id, name: a.studentName })).sort(byName) : entrantsOf([], races);
+  const table = standings(races, present);
+  const month = date.slice(0, 7);
+  const gen = useMemo(() => monthRank(plans, month), [plans, month]); // eslint-disable-line react-hooks/preserve-manual-memoization
+  // Rüzgâr ve Parkur'a verilen yer (aynı nesne kalsın: değişince hava yeniden alınır)
   const spotKey = plan?.spot ? `${plan.spot.lat},${plan.spot.lon},${plan.spot.name}` : "";
-  // Hava sekmesine verilen yer (aynı nesne kalsın: değişince hava yeniden alınır)
-  const place = useMemo(() => ({ id: liveId, name: title, district: "Dikili", city: "İzmir", spot: spotKey ? plan.spot : null }), [liveId, title, spotKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const ours = present.length ? athletes.filter((a) => stateOf(a) === "present") : athletes;
+  const wxRace = useMemo(() => ({ id: liveId || "ant", name: title, startDate: date, endDate: date, district: "Dikili", city: "İzmir", spot: spotKey ? plan.spot : null }), [liveId, title, date, spotKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Sonucu söyle: dokun konuş, bitince dokun; adlar sporculara eşlenir, yarışa hemen yazılır
   const { idx: nameIdx } = useNameIndex();
   const [said, setSaid] = useState("");
@@ -168,160 +157,384 @@ function Day() {
     setAdding(false);
     if (r.error) toast("Kaydedilemedi, tekrar dene.");
   }
-  const openRace = (rid) => (setRaceKey((x) => ({ k: x.k + 1, rid })), setSheet("races"));
-  const addRace = () => {
-    const r = newRace(races);
-    saveRaces([...races, r]);
-    openRace(r.id);
-  };
 
-  const tabs = !!liveId && !locked;
-  const shown = tabs ? tab : "sure";
-  // Bitiren kim? kareleri: yoklamada gelenler, yoklama yoksa bütün sporcular, onlar da yoksa bugünkü yarışlara girenler
-  const people = present.length ? present : athletes.length ? athletes.map((a) => ({ id: a.id, name: a.studentName })).sort(byName) : entrantsOf([], races);
-  // Herkes bitince yarış biter: sıralama ve süre tek kayıtta, sayaç durur (8 sn Geri al)
+  // Sayaç (telefondaki tek sayaç): süre seçimi, start, kaydırma, iptal, bitir
+  const t = tr.t;
+  const counting = t.end != null && !tr.up;
+  const paused = t.end == null && t.left != null;
+  const sec = dur || t.dur || 300;
+  const start = () => {
+    chooseDur(sec);
+    raceStart(withRaces ? flow : null, "start", title);
+    setOpen("");
+  };
+  const shift = (d) => {
+    const x = readTimer();
+    if (x.end == null) return;
+    const end = x.end + d * 1000;
+    if (end <= Date.now()) return;
+    writeTimer({ ...x, end });
+    if (withRaces && x.rid) flow.onShift(end, x.rid);
+  };
   const finishAll = (x) => {
-    const t = readTimer();
-    const fin = upSec(x.startAt ?? t.end, stamp());
+    const prev = readTimer();
+    const fin = upSec(x.startAt ?? prev.end, stamp());
     saveRaces(races.map((o) => (o.id === x.id ? { ...x, fin } : o)));
-    if (t.rid === x.id) raceFinish(null);
-    undo(`${x.name} bitti · ${mmss(fin)}`, races, t);
+    if (prev.rid === x.id) raceFinish(null);
+    undo(`${x.name} bitti · ${mmss(fin)}`, races, prev);
   };
-  const lastR = races.at(-1);
-  const list = useTrainList({ races, date, tr, open: !cur && lastR?.finishes.length ? lastR.id : null, table, onOpen: openRace, onAdd: addRace });
-  const voiceBtn = withRaces && (
-    <button
-      type="button"
-      onClick={() => (sp.status === "listening" ? sp.stop() : sp.status === "idle" && (setSaid(""), sp.start({ autoStop: 0 })))}
-      disabled={sp.status === "transcribing"}
-      className={`flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-[0.875rem] px-2 text-[0.9375rem] font-semibold active:translate-y-px active:shadow-none disabled:opacity-60 ${sp.status === "listening" ? "bg-rec text-white" : "border border-line bg-card shadow-[0_2px_0_var(--line)]"}`}
-    >
-      <Icon name={sp.status === "listening" ? "stop" : "mic"} className="size-5 shrink-0" />
-      <span className="truncate">{sp.status === "listening" ? "Bitince dokun" : sp.status === "transcribing" ? "Yazıya çevriliyor" : "Sesle söyle"}</span>
-    </button>
-  );
-  const pill = "h-9 rounded-full border border-line bg-card px-3.5 text-[0.875rem] font-semibold text-fg2 active:translate-y-px";
+  const saveRace = (x) => saveRaces(races.map((o) => (o.id === x.id ? x : o)));
+  const [dnf, setDnf] = useState(false); // DNF: sıradaki dokunuş DNF yazar
 
-  return (
-    <main className={`mx-auto max-w-[30rem] px-4 ${tabs ? "pb-[calc(env(safe-area-inset-bottom)+8rem)]" : "pb-[calc(var(--dome-h,var(--stage-h,6rem))+6rem)]"}`}>
-      {/* Başlık yok (Seyhun 2026-11-02 "çok yer kaplıyor"): sol üstte geri, yanında Yoklama · Günlük; sayaç hemen altında */}
-      <header className="flex items-center gap-2 pb-1 pt-[calc(0.5rem+env(safe-area-inset-top))]">
-        <BackButton href="/training" />
-        <h1 className="sr-only">{title}</h1>
-        <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
-          {date !== today && <span className={`${pill} flex shrink-0 items-center`}>{dayText(date)}</span>}
-          {shown === "sure" && plan && (racer || canLog(plan, today)) && (
-            <>
-              {racer && (
-                <button type="button" onClick={() => setSheet("roll")} className={`${pill} shrink-0`}>
-                  {athletes.length ? (present.length ? `${present.length} kişi geldi` : "Yoklama") : "Yoklama"} ›
+  // Görüntü: kendi videon > seçilen kaynak > deniz
+  const sources = streamSources(stream).filter((x) => x.url);
+  const src = sources.find((x) => x.id === cam);
+  const addLink = async () => {
+    const u = link.trim();
+    if (!ytEmbed(u)) return toast("YouTube linki tanınmadı");
+    const base = streamSources(stream).filter((x) => x.url);
+    const l = addSource(base, "camera");
+    if (l.length === base.length) return toast("Kaynak listesi dolu (en çok 8)");
+    const next = { ...cleanStream(stream), sources: l.map((y, i, a) => (i === a.length - 1 ? { ...y, url: u } : y)) };
+    try {
+      await saveStream(orgId, liveId, next);
+      setStream(cleanStream(next));
+      setLink("");
+      setCam(l.at(-1).id);
+    } catch {
+      toast("Kaydedilemedi. İnterneti kontrol et.");
+    }
+  };
+
+  const tap = (k) => setOpen((o) => (o === k ? "" : k));
+  const big = counting || paused ? `−${mmss(Math.max(0, counting ? tr.rem : t.left))}` : tr.up && t.end != null ? `+${mmss(upSec(t.end, tr.now))}` : !plan ? "Plan yok" : withRaces ? `Yarış ${races.length + 1}` : "Start";
+  const bigCls = counting ? (tr.rem <= 10 ? "red" : "cd") : paused ? "cd" : "";
+  const fins = cur ? cur.finishes.length : 0;
+
+  const btns = [
+    ["cam", "Kamera"],
+    ["course", "Parkur"],
+    ["wind", "Rüzgâr"],
+    ["rank", "Sıralama"],
+    ["vid", "Video"],
+    ["start", "Start"],
+  ].filter(([k]) => (k === "cam" || k === "course" || k === "vid" ? !!liveId : k === "rank" ? withRaces : true));
+
+  const startPanel = () => {
+    if (!plan)
+      return (
+        <>
+          <div className="tl-hd">
+            <h3>Start</h3>
+          </div>
+          <p className="tl-no">Bugün antrenman planı yok</p>
+          <button type="button" className="tl-go" disabled={adding || !racer} onClick={addPlan}>
+            Antrenman ekle
+          </button>
+        </>
+      );
+    if (cur && tr.up && t.end != null) {
+      const pl = places(cur);
+      const fin = Object.fromEntries(cur.finishes.map((f) => [f.id, f]));
+      const all = [...people, ...cur.finishes.filter((f) => !people.some((p) => p.id === f.id))];
+      const hit = (p) => {
+        let next = fin[p.id] ? removeFinish(cur, p.id) : addFinish(cur, p);
+        if (!fin[p.id] && dnf) (next = setCode(next, p.id, "DNF")), setDnf(false);
+        if (!fin[p.id] && all.every((x) => next.finishes.some((f) => f.id === x.id))) return finishAll(next);
+        saveRace(next);
+      };
+      return (
+        <>
+          <div className="tl-hd">
+            <h3>Bitiren kim?</h3>
+            <small>{dnf ? "DNF olanı seç" : "Sırayla dokun"}</small>
+          </div>
+          <div className="tl-tiles">
+            {all.map((p) => {
+              const f = fin[p.id];
+              return (
+                <button key={p.id} type="button" className={f ? "on" : ""} aria-pressed={!!f} onClick={() => hit(p)}>
+                  {f ? <i>{f.code || pl[p.id]}</i> : null}
+                  <span>{first(p.name)}</span>
+                  {f?.t != null ? <small>{mmss(f.t)}</small> : null}
                 </button>
-              )}
-              {canLog(plan, today) && !locked && (
-                <button type="button" onClick={() => setSheet("log")} className={`${pill} shrink-0`}>
-                  {plan.log ? "Günlük" : "Günlük yazılmadı"} ›
-                </button>
-              )}
-            </>
-          )}
+              );
+            })}
+          </div>
+          <div className="tl-foot">
+            <button type="button" className={sp.status === "listening" ? "rec" : ""} disabled={sp.status === "transcribing"} onClick={() => (sp.status === "listening" ? sp.stop() : sp.status === "idle" && (setSaid(""), sp.start({ autoStop: 0 })))}>
+              {sp.status === "listening" ? "Bitince dokun" : sp.status === "transcribing" ? "Yazılıyor" : "Sesle söyle"}
+            </button>
+            <button type="button" className={dnf ? "p" : ""} aria-pressed={dnf} onClick={() => setDnf(!dnf)}>
+              DNF
+            </button>
+            <button type="button" className="p" onClick={() => finishAll(cur)}>
+              Yarışı bitir
+            </button>
+          </div>
+          {said ? <p className="tl-msg">{said}</p> : null}
+        </>
+      );
+    }
+    if (counting || paused)
+      return (
+        <>
+          <div className="tl-hd">
+            <h3>Start</h3>
+            <small>{cur ? cur.name : title}</small>
+          </div>
+          <div className="tl-foot">
+            <button type="button" disabled={!counting} onClick={() => shift(-60)}>
+              −1 dk
+            </button>
+            <button type="button" disabled={!counting} onClick={() => shift(60)}>
+              +1 dk
+            </button>
+            <button type="button" className="rec" onClick={() => raceCancel(withRaces ? flow : null)}>
+              İptal
+            </button>
+          </div>
+        </>
+      );
+    return (
+      <>
+        <div className="tl-hd">
+          <h3>Start</h3>
+          <small>{withRaces ? `Bugün · Yarış ${races.length + 1}` : title}</small>
         </div>
-        {shown === "media" && <MediaSettingsButton />}
-      </header>
-      {tabs && tr.running && shown !== "sure" && (
-        <div className="sticky top-[calc(0.5rem+env(safe-area-inset-top))] z-[5] mb-3">
-          <button type="button" onClick={() => setTab("sure")} className={`flex h-11 w-full items-center justify-between rounded-xl px-4 text-white active:translate-y-px ${!tr.up && tr.rem <= 10 ? "bg-rec" : "bg-deep"}`}>
-            <span className="text-[0.875rem]">{tr.up ? "Startan beri" : "Start sayacı"}</span>
-            <b className="text-[1.25rem] font-semibold tabular-nums">{mmss(tr.up ? upSec(tr.t.end, tr.now) : Math.max(0, tr.rem))}</b>
+        <div className="tl-lb">Süre</div>
+        <div className="tl-chips">
+          {PRESETS.map((s) => (
+            <button key={s} type="button" className={sec === s ? "on" : ""} aria-pressed={sec === s} onClick={() => setDur(s)}>
+              {s / 60}
+              <small>dk</small>
+            </button>
+          ))}
+        </div>
+        {withRaces && (
+          <>
+            <div className="tl-lb">Start</div>
+            <div className="tl-box">
+              <button type="button" className="tl-row" onClick={() => setSheet("roll")}>
+                <b>KİMLER</b>
+                <span>
+                  {people.length} sporcu
+                  <small>{present.length ? "Yoklamada gelenler" : "Yoklama alınmadı, herkes"}</small>
+                </span>
+                <i>Yoklama</i>
+              </button>
+              <button type="button" className="tl-row" onClick={() => setOpen("course")}>
+                <b>PARKUR</b>
+                <span>Parkur kartı</span>
+                <i>Aç</i>
+              </button>
+              <button type="button" className="tl-row" aria-pressed={cnt} onClick={() => (setCnt(!cnt), setCountPref(!cnt))}>
+                <b>YARIŞ</b>
+                <span>
+                  Yarış olarak say
+                  <small>Genel sıralamaya girer</small>
+                </span>
+                <em className={`tl-sw${cnt ? " on" : ""}`} aria-hidden="true" />
+              </button>
+            </div>
+          </>
+        )}
+        <button type="button" className="tl-go" onClick={start}>
+          Start ver<small>{sec / 60} dk</small>
+        </button>
+      </>
+    );
+  };
+
+  const [rk, setRk] = useState("day");
+  const rankPanel = () => {
+    const dayRows = table.rows;
+    const rows = rk === "day" ? dayRows : gen.rows;
+    return (
+      <>
+        <div className="tl-tabs">
+          <button type="button" className={rk === "day" ? "on" : ""} onClick={() => setRk("day")}>
+            Bugün
+          </button>
+          <button type="button" className={rk === "gen" ? "on" : ""} onClick={() => setRk("gen")}>
+            Genel
+          </button>
+          <button type="button" className="r" onClick={() => setSheet("races")}>
+            Düzelt
           </button>
         </div>
-      )}
+        {rk === "day" ? (
+          races.length ? (
+            <div className="tl-cnt" role="group" aria-label="Yarış sayılan startlar">
+              {races.map((r) => (
+                <button key={r.id} type="button" className={r.cnt ? "on" : ""} aria-pressed={!!r.cnt} onClick={() => saveRace({ ...r, cnt: !r.cnt })}>
+                  {r.name}
+                </button>
+              ))}
+            </div>
+          ) : null
+        ) : (
+          <p className="tl-sub">
+            {monthName(month)} · {gen.races.length} yarış · düşük puan önde{gen.discard ? " · en kötü sonuç atılır" : ""}
+          </p>
+        )}
+        {rows.length ? (
+          <table className="tl-tb">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>SPORCU</th>
+                {rk === "gen" ? <th className="c">YARIŞ</th> : null}
+                <th>PUAN</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td className="n">{r.rank}</td>
+                  <td>
+                    {r.name}
+                    <small>{rk === "day" ? r.cells.map((c) => c.code || c.place).join(" · ") : dayPlaces(races, r.id) ? `Bugün ${dayPlaces(races, r.id)}` : ""}</small>
+                  </td>
+                  {rk === "gen" ? <td className="c">{r.n}</td> : null}
+                  <td>{r.net}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="tl-no">{rk === "day" ? "Bugün sonuç yok" : "Bu ay yarış sayılan start yok"}</p>
+        )}
+      </>
+    );
+  };
 
-      {shown === "sure" && (
-        <>
-          <Countdown
-            mode="start"
-            race={withRaces ? flow : null}
-            title={cur ? cur.name : withRaces ? flow.label : ""}
-            where={title}
-            beforeStart={!plan && racer ? addPlan : undefined}
-            mid={withRaces && !!cur && tr.up && <FinishTap race={cur} people={people} onSave={(x) => saveRaces(races.map((o) => (o.id === x.id ? x : o)))} onAll={finishAll} voice={voiceBtn} />}
-            rec={
-              tabs && (
-                <RecPick onFile={(f) => (setShot(f), setTab("media"))} aria-label="Video" className="flex h-16 shrink-0 touch-manipulation items-center gap-2 rounded-[1.125rem] border border-line bg-card px-5 text-[1.0625rem] font-semibold shadow-[0_3px_0_var(--line)] active:translate-y-0.5 active:shadow-none">
-                  <span className="size-4 rounded-full bg-rec" />
-                  Video
-                </RecPick>
-              )
-            }
-          />
-          {withRaces && !!cur && tr.up && <Marks buoys={buoys} s={cur} on onMark={mark} onBuoys={(next) => updateRecord("plan", plan.id, { buoys: next }, by)} />}
-          {withRaces && said && <p className="mt-3 px-1 text-[0.875rem] leading-snug text-fg2">{said}</p>}
+  const camPanel = () => (
+    <>
+      <div className="tl-hd">
+        <h3>Kamera</h3>
+      </div>
+      <div className="tl-src">
+        <button type="button" className={!cam ? "on" : ""} aria-pressed={!cam} onClick={() => setCam("")}>
+          Yok
+        </button>
+        {sources.map((x) => (
+          <button key={x.id} type="button" className={cam === x.id ? "on" : ""} aria-pressed={cam === x.id} onClick={() => (setCam(cam === x.id ? "" : x.id), setVid({ id: "", url: "" }))}>
+            {x.name}
+          </button>
+        ))}
+      </div>
+      <div className="tl-ln">
+        <input type="url" inputMode="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="YouTube linki" />
+        <button type="button" disabled={!link.trim()} onClick={addLink}>
+          Ekle
+        </button>
+      </div>
+    </>
+  );
 
-          {!plan ? (
-            <section className="mt-6">
-              <ListHead title="Plan" />
-              <RowList>
-                <Row onClick={adding ? undefined : addPlan} title="Bugün antrenman planı yok" right={<span className="text-acc">Ekle</span>} chev={false} />
-              </RowList>
-            </section>
-          ) : (
-            withRaces && (
-              <section className="mt-6" aria-label="Bugünkü yarışlar">
-                <div className="mb-1.5 flex items-baseline justify-between px-2">
-                  <h2 className="text-[0.9375rem] font-semibold">Bugünkü yarışlar</h2>
-                  {table.races.length > 1 && (
-                    <button type="button" onClick={() => openRace("")} className="text-[0.875rem] font-semibold text-acc">
-                      Genel durum ›
-                    </button>
-                  )}
-                </div>
-                <ul className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
-                  {list.empty}
-                  {[...list.today].reverse().map((x) => (
-                    <li key={x.id}>{list.row(x)}</li>
-                  ))}
-                  <li>{list.add}</li>
-                </ul>
-              </section>
-            )
-          )}
-        </>
-      )}
-      {tabs && shown === "media" && (
-        <MediaTab
-          orgId={orgId}
-          race={place}
-          day={date}
-          live={{ ...live, starts: startsOf(races, date) }}
-          ours={ours}
-          onChange={change}
-          file0={shot}
-          onFileDone={() => setShot(null)}
-        />
-      )}
+  const body =
+    open === "start" ? (
+      startPanel()
+    ) : open === "rank" ? (
+      rankPanel()
+    ) : open === "cam" ? (
+      camPanel()
+    ) : open === "wind" ? (
+      <>
+        <div className="tl-hd">
+          <h3>Rüzgâr</h3>
+        </div>
+        <RaceWx r={wxRace} />
+      </>
+    ) : open === "course" ? (
+      <>
+        <div className="tl-hd">
+          <h3>Parkur</h3>
+        </div>
+        <CourseTab orgId={orgId} race={wxRace} day={date} wx={false} types big />
+      </>
+    ) : open === "vid" ? (
+      <LiveVideos
+        orgId={orgId}
+        raceId={liveId}
+        race={{ name: title }}
+        starts={startsOf(races, date)}
+        stream={stream}
+        playing={vid.id}
+        onPlay={(vId, blob) => setVid((v) => (v.url && URL.revokeObjectURL(v.url), vId && blob ? { id: vId, url: URL.createObjectURL(blob) } : { id: "", url: "" }))}
+      />
+    ) : null;
+
+  return (
+    <main className="tl" aria-label={title}>
+      <div className="tl-bg" aria-hidden="true" onClick={() => setOpen("")}>
+        {vid.url ? (
+          <video src={vid.url} autoPlay muted playsInline loop />
+        ) : src ? (
+          <iframe title="Kamera" src={ytSrc(src.url)} allow="autoplay; encrypted-media; picture-in-picture" />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={SEA} alt="" />
+        )}
+      </div>
+
+      <header className="tl-ck">
+        <div className="tl-k">
+          <Link href="/training" className="tl-back" aria-label="Geri">
+            ‹
+          </Link>
+          {cur?.cnt ? <span className="tl-tag">YARIŞ</span> : null}
+          <b>{cur ? cur.name : title}</b>
+          <span>· {cur ? `${people.length} sporcu` : dayText(date)}</span>
+        </div>
+        <h1 className={`tl-big ${bigCls}`}>{big}</h1>
+        <div className="tl-r">
+          {racer && plan ? (
+            <button type="button" onClick={() => setSheet("roll")}>
+              {cur && tr.up ? "Bitiren" : "Yoklama"}
+              <b>{cur && tr.up ? `${fins} / ${people.length}` : present.length ? `${present.length} sporcu` : "Al"}</b>
+            </button>
+          ) : null}
+          {plan && canLog(plan, today) && !locked ? (
+            <button type="button" onClick={() => setSheet("log")}>
+              <b>{plan.log ? "Günlük" : "Günlük yaz"}</b>
+            </button>
+          ) : null}
+        </div>
+      </header>
+
+      {body ? (
+        <section className={`tl-pn${open === "cam" ? " fit" : ""}`} aria-label={btns.find(([k]) => k === open)?.[1]}>
+          <div className="tl-in ck navy">{body}</div>
+        </section>
+      ) : null}
+
+      <nav className="tl-bar" aria-label="Antrenman">
+        {btns.map(([k, l]) => (
+          <button key={k} type="button" className={`${k === "start" ? "st" : ""}${open === k ? " on" : ""}`} aria-pressed={open === k} onClick={() => tap(k)}>
+            {l}
+          </button>
+        ))}
+        <span className="tl-ask">
+          <AskButton examples={ASK_EX} />
+        </span>
+      </nav>
 
       {racer && (
         <Sheet open={sheet === "roll"} onClose={() => setSheet("")} title="Yoklama">
           {sheet === "roll" && <RollPanel inSheet day={date} onSaved={(d, ch) => setAtt((x) => ({ ...x, ...Object.fromEntries(Object.entries(ch).map(([k, v]) => [`${d}|${k}`, v])) }))} />}
         </Sheet>
       )}
-      {plan && racer && (
-        <Races key={raceKey.k} rid0={raceKey.rid} open={sheet === "races"} onClose={() => setSheet("")} races={races} present={present} others={others} onSave={saveRaces} buoys={buoys} />
-      )}
+      {plan && racer && <Races open={sheet === "races"} onClose={() => setSheet("")} races={races} present={present} others={others} onSave={saveRaces} buoys={plan.buoys ? cleanBuoys(plan.buoys) : BUOYS} />}
       {plan && isTraining(plan) && (
         <Sheet open={sheet === "log"} onClose={() => setSheet("")} title="Günlük">
           {sheet === "log" && <TrainingLog rec={plan} by={by} startOpen onDone={() => setSheet("")} />}
         </Sheet>
       )}
-      {tabs && (
-        <>
-          <TabDock tabs={DOCK} value={shown} onChange={setTab} extra={<AskButton examples={ASK_EX} />} />
-        </>
-      )}
     </main>
   );
 }
 
-// Asistan düğmesi (Seyhun 2026-10-23: antrenman sayfasında da kullanılsın): her yerdeki gibi bas-konuş (2026-10-25): basılı
-// tut konuş, bırak gönder; kısa dokunuşta asistan açık ve boşta kalır, dışarı kaydırıp bırakınca iptal
+// Asistan küresi (her yerdeki gibi bas-konuş): antrenmanı sesle başlat, bitir, sonuç
 const ASK_EX = ["2 dakika başlat", "Yarışı bitir, 1 Ali 2 Ayşe 3 Mehmet", "Bugünkü antrenman çok iyi geçti, start çalıştık"];

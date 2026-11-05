@@ -388,6 +388,8 @@ export const savePin = (orgId, id, item) => setDoc(live(orgId, id), { courseShow
 export const saveOnAir = (orgId, id, o) => setDoc(live(orgId, id), { onAir: cleanOnAir(o) }, { merge: true });
 export const saveCamBy = (orgId, id, m) => setDoc(live(orgId, id), { camBy: cleanCamBy(m) }, { mergeFields: ["camBy"] });
 // s: { url, drone } (eski çağrı yalnız bağlantı yazısı verir)
+// Görüntü kaynakları (antrenman ekranının Kamera'sı; cleanLive stream'i taşımaz)
+export const loadStream = async (orgId, id) => cleanStream((await getDoc(live(orgId, id))).data()?.stream);
 export const saveStream = (orgId, id, s) => setDoc(live(orgId, id), { stream: cleanStream(typeof s === "string" ? { url: s } : s) }, { merge: true });
 // Dönüşleri canlı dinle (Yayın sayfası: başka telefondan girilen dönüşler hemen görünür; aynı belgeyi useLiveSync de dinler, okuma ortak)
 export function watchRounds(orgId, id, cb) {
