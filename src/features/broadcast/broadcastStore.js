@@ -2,8 +2,7 @@
 
 // Yayın sayfasının işleri (Seyhun 2026-11-01): telefondan seçilen video yarışa yüklenir ve ekrana verilir; videonun eni boyu kayda yazılır
 // (herkese açık sayfa dikey videoyu dikey kutuda gösterir). Çekim akışının geri kalanı (yerel kopya, küçük resim kuyruğu) MediaTab'da kalır.
-import { RAW_MAX, addRaceMedia, cloudCopy, cloudMedia, prepRaceMedia } from "@/features/athletes/raceLiveStore";
-import { keepLocal, listKept } from "@/features/raceMedia/pendingStore";
+import { RAW_MAX, addRaceMedia, cloudCopy, prepRaceMedia } from "@/features/athletes/raceLiveStore";
 import { dayOf, momentAt, momentOf } from "@/lib/raceLive";
 import { readTimer } from "@/features/training/Countdown";
 import { authFetch } from "@/lib/authFetch";
@@ -41,43 +40,13 @@ export async function uploadForScreen(orgId, raceId, file, starts, onStep) {
     blob = c.blob;
     type = c.type;
   }
-  const { at, extra } = takenAt(file, m, size, starts);
-  return addRaceMedia(orgId, raceId, { blob, type, kind: m.kind }, at, (p) => onStep?.(`Yükleniyor %${Math.round(p * 100)}`), extra);
-}
-// Çekilen anı (dosya zamanı kaydın bitişi) ve künyeye yazılanlar (an, süre, en boy)
-function takenAt(file, m, size, starts) {
   const t = file.lastModified ? new Date(file.lastModified).toISOString() : "";
   const now = new Date().toISOString();
   const end = t && dayOf(t) === dayOf(now) ? t : now;
   const at = m.kind === "video" && m.dur ? new Date(Date.parse(end) - m.dur * 1000).toISOString() : end;
   const mom = momentAt(at, starts) || momentOf(at, readTimer()) || {};
-  return { at, extra: { ...mom, ...(m.dur ? { dur: m.dur } : {}), ...(size.w && size.h ? { w: size.w, h: size.h } : {}) } };
-}
-
-// Yayın videosu önce yalnız telefona (Seyhun 2026-11-05 "buluta eklemeyi şarta bağlayalım, sadece telefona eklenecek; isterse seçtiği
-// videoları buluta yükleyebilir"): dosya telefonda kalır (pendingStore, stay), yarışa küçük resmi ve künyesi (ph) yazılır.
-// Fotoğraf küçük olduğundan eskisi gibi yüklenir. Künyeyi döndürür.
-export async function keepForScreen(orgId, raceId, file, starts, onStep) {
-  const size = await videoSize(file);
-  onStep?.("Hazırlanıyor…");
-  const m = await prepRaceMedia(file, null);
-  const { at, extra } = takenAt(file, m, size, starts);
-  if (m.kind !== "video") return addRaceMedia(orgId, raceId, { blob: m.blob, type: m.type, kind: m.kind }, at, (p) => onStep?.(`Yükleniyor %${Math.round(p * 100)}`), extra);
-  const meta = await addRaceMedia(orgId, raceId, { blob: m.blob, type: m.type, kind: "video" }, at, null, { ...extra, ph: true });
-  await keepLocal({ id: meta.id, raceId, kind: "video", size: m.blob.size, blob: m.blob, stay: true });
-  return meta;
-}
-// Telefonda duran videolardan bu telefondakiler (id kümesi)
-export const keptIds = (raceId) => listKept().then((l) => new Set(l.filter((x) => x.raceId === raceId && x.kind === "video").map((x) => x.id)));
-// Seçilen telefondaki videoyu buluta yükle (akışa uygun kopyası gider, aslı telefonda 7 gün daha). Yeni künyeyi döndürür.
-export async function cloudForScreen(orgId, raceId, meta, onStep) {
-  const k = (await listKept()).find((x) => x.id === meta.id);
-  if (!k?.blob) throw new Error("Video bu telefonda değil");
-  onStep?.("Hazırlanıyor…");
-  const c = await cloudCopy(k.blob, meta.type || k.blob.type, (p) => onStep?.(`Küçültülüyor %${Math.round(p * 100)}`));
-  const next = await cloudMedia(orgId, raceId, meta, c.blob, c.type, (p) => onStep?.(`Yükleniyor %${Math.round(p * 100)}`));
-  await keepLocal({ id: meta.id, raceId, kind: "video", size: k.blob.size, blob: k.blob });
-  return next;
+  const extra = { ...mom, ...(m.dur ? { dur: m.dur } : {}), ...(size.w && size.h ? { w: size.w, h: size.h } : {}) };
+  return addRaceMedia(orgId, raceId, { blob, type, kind: m.kind }, at, (p) => onStep?.(`Yükleniyor %${Math.round(p * 100)}`), extra);
 }
 
 // Yarış programı (Seyhun 2026-11-02): fotoğraf, PDF ya da yazı → günler (yapay zekâ okur, /api/race-program; lib/raceProgram.js)
