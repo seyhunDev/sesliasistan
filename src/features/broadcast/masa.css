@@ -52,13 +52,13 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-mon .mid { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.55); font-size: 0.875rem; font-weight: 600; }
 .masa-tiles { display: flex; gap: 0.5625rem; overflow-x: auto; padding: 0.75rem 0.875rem; scrollbar-width: none; }
 .masa-tile { flex: none; width: 6rem; text-align: left; }
-.masa-tile .th { position: relative; display: flex; height: 3.625rem; align-items: center; justify-content: center; overflow: hidden; border-radius: 0.6875rem; border: 2px solid transparent; background: var(--chip); color: var(--mut); font-size: 0.6875rem; font-weight: 700; }
+.masa-tile .th { position: relative; display: flex; height: 3.625rem; align-items: center; justify-content: center; overflow: hidden; border-radius: 0.6875rem; border: 2px solid transparent; background: var(--chip, rgba(255, 255, 255, 0.1)); color: var(--mut); font-size: 0.6875rem; font-weight: 700; }
 .masa-tile .th img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .masa-tile .th em { position: absolute; right: 0.3rem; bottom: 0.25rem; padding: 0 0.25rem; border-radius: 0.25rem; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 0.625rem; font-style: normal; }
 .masa-tile b { display: block; margin-top: 0.3rem; font-size: 0.75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .masa-tile[aria-pressed="true"] .th { border-color: var(--acc); }
 .masa-tile[aria-pressed="true"] b { color: var(--acc); }
-.masa-tog { border-radius: 0.8rem; background: var(--chip); padding: 0.625rem 0.625rem 0.5625rem; text-align: left; font-size: 0.875rem; font-weight: 700; }
+.masa-tog { border-radius: 0.8rem; background: var(--chip, rgba(255, 255, 255, 0.1)); padding: 0.625rem 0.625rem 0.5625rem; text-align: left; font-size: 0.875rem; font-weight: 700; }
 .masa-tog small { display: block; margin-top: 0.125rem; font-size: 0.6875rem; font-weight: 600; color: var(--mut); }
 .masa-tog[aria-pressed="true"] { background: var(--acc); color: var(--on-acc); }
 .masa-tog[aria-pressed="true"] small { color: rgba(255, 255, 255, 0.85); }
@@ -80,8 +80,8 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-day.add { flex: 0 0 5.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; border-style: dashed; border-color: var(--line); background: transparent; text-align: center; }
 .masa-day.add b { margin: 0; font-size: 1.5rem; line-height: 1; color: var(--acc); }
 .masa-day.add span { margin-top: 0.25rem; }
-.masa-time { height: 2.75rem; min-width: 6rem; flex-shrink: 0; border-radius: 0.75rem; background: var(--chip); padding: 0 0.625rem; font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; outline: none; }
-.masa-text { height: 2.75rem; min-width: 0; flex: 1; border-radius: 0.75rem; background: var(--chip); padding: 0 0.75rem; font-size: 1rem; font-weight: 600; outline: none; }
+.masa-time { height: 2.75rem; min-width: 6rem; flex-shrink: 0; border-radius: 0.75rem; background: var(--chip, rgba(255, 255, 255, 0.1)); padding: 0 0.625rem; font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; outline: none; }
+.masa-text { height: 2.75rem; min-width: 0; flex: 1; border-radius: 0.75rem; background: var(--chip, rgba(255, 255, 255, 0.1)); padding: 0 0.75rem; font-size: 1rem; font-weight: 600; outline: none; }
 
 /* Parkur: kart kutuları */
 .masa-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
@@ -94,12 +94,12 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 /* Dönüşler: şamandıra adımları */
 .masa-steps { display: flex; gap: 0.25rem; padding: 0.875rem 0.75rem 0.75rem; }
 .masa-steps > div { flex: 1; min-width: 0; text-align: center; }
-.masa-steps b { display: flex; width: 2.375rem; height: 2.375rem; margin: 0 auto; align-items: center; justify-content: center; border-radius: 50%; background: var(--chip); font-size: 0.875rem; font-weight: 800; }
+.masa-steps b { display: flex; width: 2.375rem; height: 2.375rem; margin: 0 auto; align-items: center; justify-content: center; border-radius: 50%; background: var(--chip, rgba(255, 255, 255, 0.1)); font-size: 0.875rem; font-weight: 800; }
 .masa-steps span { display: block; margin-top: 0.375rem; font-size: 0.71875rem; font-weight: 700; color: var(--mut); }
 .masa-steps .dn b { background: var(--ok); color: #fff; }
 .masa-steps .cu b { background: var(--acc); color: var(--on-acc); box-shadow: 0 0 0 5px var(--accbg); }
 .masa-sails { display: flex; flex-wrap: wrap; gap: 0.3125rem; padding: 0.75rem 0.875rem; }
-.masa-sails span { padding: 0.25rem 0.4375rem; border-radius: 0.4375rem; background: var(--chip); font-size: 0.78125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.masa-sails span { padding: 0.25rem 0.4375rem; border-radius: 0.4375rem; background: var(--chip, rgba(255, 255, 255, 0.1)); font-size: 0.78125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .masa-sails span.f { background: #f5c518; color: #1a1a1a; }
 
 /* Gruplar ve kameralar (Seyhun 2026-11-02 gruplar-kamera/grup-a.png): ekrandaki yarış pembe kartta; satırda ▶ ekrana alır */
@@ -116,7 +116,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-row.hot { background: linear-gradient(90deg, color-mix(in srgb, var(--g) 22%, transparent), transparent 70%); }
 .masa-row.dim::before { opacity: 0.45; }
 .masa-onair-tag { flex: none; border-radius: 4px; background: var(--acc); color: var(--on-acc); padding: 0.2rem 0.45rem; font-size: 0.656rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
-.masa-pill { flex: none; display: flex; align-items: center; gap: 0.35rem; border-radius: 1rem; background: var(--chip); padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 600; color: var(--mut); }
+.masa-pill { flex: none; display: flex; align-items: center; gap: 0.35rem; border-radius: 1rem; background: var(--chip, rgba(255, 255, 255, 0.1)); padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 600; color: var(--mut); }
 .masa-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mut); }
 .masa-pill.on { color: var(--fg); }
 .masa-pill.on::before { background: var(--ok); }
@@ -140,7 +140,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-src { display: flex; width: 100%; min-width: 0; align-items: center; gap: 0.75rem; padding: 0.55rem 0.875rem; text-align: left; border-bottom: 1px solid var(--line); }
 .masa-src:last-child { border-bottom: 0; }
 .masa-src.pv { background: var(--accbg); }
-.masa-src .th { position: relative; display: flex; width: 5.75rem; flex: none; aspect-ratio: 16 / 9; align-items: center; justify-content: center; overflow: hidden; border-radius: 0.6875rem; border: 2px solid transparent; background: var(--chip); }
+.masa-src .th { position: relative; display: flex; width: 5.75rem; flex: none; aspect-ratio: 16 / 9; align-items: center; justify-content: center; overflow: hidden; border-radius: 0.6875rem; border: 2px solid transparent; background: var(--chip, rgba(255, 255, 255, 0.1)); }
 .masa-src .th img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .masa-src.pv .th { border-color: var(--ok); }
 .masa-src.pg .th { border-color: #ff453a; }
@@ -161,7 +161,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 @keyframes masa-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 61, 119, 0.6); } 50% { box-shadow: 0 0 0 5px rgba(255, 61, 119, 0); } }
 
 /* Seçim kareleri: sınıf · grup · bayrak (Seyhun 2026-11-03) */
-.masa-sq { display: flex; width: 4.5rem; flex: none; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; aspect-ratio: 1; border-radius: 0.875rem; background: var(--chip); border: 2px solid transparent; }
+.masa-sq { display: flex; width: 4.5rem; flex: none; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; aspect-ratio: 1; border-radius: 0.875rem; background: var(--chip, rgba(255, 255, 255, 0.1)); border: 2px solid transparent; }
 .masa-sq.on { border-color: var(--acc); }
 .masa-sq.sel { background: var(--acc); }
 .masa-sq.sel small { color: #fff; }
@@ -174,7 +174,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-aplab { margin-bottom: 0.4rem; font-size: 0.8125rem; font-weight: 700; color: var(--mut); }
 .masa-apgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
 .masa-apgrid.two { grid-template-columns: repeat(2, 1fr); }
-.masa-ap { display: flex; min-height: 4rem; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; padding: 0.5rem 0.4rem; border-radius: 0.875rem; background: var(--chip); border: 2px solid transparent; color: var(--fg); }
+.masa-ap { display: flex; min-height: 4rem; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; padding: 0.5rem 0.4rem; border-radius: 0.875rem; background: var(--chip, rgba(255, 255, 255, 0.1)); border: 2px solid transparent; color: var(--fg); }
 .masa-ap b { font-size: 1.375rem; font-weight: 800; line-height: 1; }
 .masa-ap b.sm { font-size: 1rem; line-height: 1.15; text-align: center; }
 .masa-ap small { font-size: 0.6875rem; font-weight: 700; color: var(--mut); text-align: center; }
@@ -202,7 +202,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-bar { bottom: 0 !important; padding-bottom: 0 !important; box-shadow: 0 30vh 0 #0e1829; }
 
 /* Parkur sekmesi (Seyhun 2026-11-03): kart seçici A · B · + ve son ölçüm kutuları */
-.masa-seg { display: flex; flex-shrink: 0; gap: 0.125rem; border-radius: 999px; background: var(--chip); padding: 0.1875rem; }
+.masa-seg { display: flex; flex-shrink: 0; gap: 0.125rem; border-radius: 999px; background: var(--chip, rgba(255, 255, 255, 0.1)); padding: 0.1875rem; }
 .masa-seg > button { height: 2rem; min-width: 2.25rem; border-radius: 999px; padding: 0 0.625rem; font-size: 0.875rem; font-weight: 700; color: var(--mut); }
 .masa-seg > button:active { transform: scale(0.95); }
 .masa-seg > button[aria-pressed="true"] { background: var(--acc); color: #fff; }
@@ -221,7 +221,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-flags.lg > i { width: 3rem; height: 2rem; }
 .masa-flaggrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.375rem; }
 .masa-flaggrid.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.masa-flagt { display: flex; min-height: 4.5rem; flex-direction: column; align-items: center; justify-content: center; gap: 0.375rem; border-radius: 0.75rem; border: 1px solid var(--line); background: var(--chip); padding: 0.5rem 0.25rem; }
+.masa-flagt { display: flex; min-height: 4.5rem; flex-direction: column; align-items: center; justify-content: center; gap: 0.375rem; border-radius: 0.75rem; border: 1px solid var(--line); background: var(--chip, rgba(255, 255, 255, 0.1)); padding: 0.5rem 0.25rem; }
 .masa-flagt.sm { min-height: 3.5rem; }
 .masa-flagt > b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8125rem; font-weight: 700; color: var(--fg2); }
 .masa-flagt:active { transform: scale(0.96); }
@@ -260,7 +260,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 /* Tek boy (Seyhun 2026-11-04 "telefondan, iPad'den rahat kullanılmalı; bazıları küçük, bazıları büyük olmamalı"):
    Yayın'daki her düğme 3rem (48 px) yükseklikte; kare seçimler (bayrak, tehir, sınıf/grup) tek boy 4.5rem. Tek istisna Süre'deki büyük Başlat. */
 .masa .btn, .masa .btn-sm { height: 3rem; padding: 0 1rem; border-radius: 0.875rem; font-size: 0.9375rem; }
-.masa-b { display: inline-flex; flex: none; align-items: center; justify-content: center; min-width: 3rem; height: 3rem; padding: 0 1rem; border-radius: 0.875rem; background: var(--chip); font-size: 0.9375rem; font-weight: 700; white-space: nowrap; }
+.masa-b { display: inline-flex; flex: none; align-items: center; justify-content: center; min-width: 3rem; height: 3rem; padding: 0 1rem; border-radius: 0.875rem; background: var(--chip, rgba(255, 255, 255, 0.1)); font-size: 0.9375rem; font-weight: 700; white-space: nowrap; }
 .masa-b:active { transform: scale(0.96); }
 .masa-b.gl { background: rgba(255, 255, 255, 0.15); color: #fff; }
 .masa-b.red { color: var(--rec); }
@@ -299,7 +299,7 @@ html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
 .masa-inst b.g { color: var(--ok); }
 .masa-inst span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; font-weight: 600; color: var(--mut); }
 .masa-legs { display: flex; align-items: center; gap: 0.625rem; border-top: 1px solid var(--line); padding: 0.625rem 0.75rem; }
-.masa-legs .lp { display: grid; place-items: center; min-width: 2.25rem; height: 2.25rem; padding: 0 0.375rem; border-radius: 0.625rem; background: var(--chip); font-size: 0.9375rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.masa-legs .lp { display: grid; place-items: center; min-width: 2.25rem; height: 2.25rem; padding: 0 0.375rem; border-radius: 0.625rem; background: var(--chip, rgba(255, 255, 255, 0.1)); font-size: 0.9375rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .masa-legs .lp.s { padding: 0 0.625rem; font-size: 0.75rem; letter-spacing: 0.08em; background: #2a3d5e; }
 .masa-legs .lp.f { background: rgba(52, 196, 124, 0.18); color: var(--ok); }
 .masa-legs .lg { display: flex; align-items: center; }
@@ -436,3 +436,15 @@ body[data-typing] .masa-bar { bottom: 0 !important; }
 .masa-talk-list span { font-size: 0.8125rem; color: var(--mut); }
 .masa-talk-err { font-weight: 700; color: var(--warn); }
 .masa-inst > .fl, .masa-legs.fl { box-shadow: inset 0 0 0 2px var(--acc); transition: box-shadow 0.3s; }
+/* Gösterilecekler (Seyhun 2026-11-05 "doğru düzgün butonlar, ekleme kolay"): satır başına aynı boy düğmeler; eklenmeyenler aynı kartta altta */
+.masa-it { min-height: 3.5rem; }
+.masa-it i { width: 1.5rem; height: 1.5rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--chip, rgba(255, 255, 255, 0.1)); color: var(--fg, inherit); font-size: 0.8125rem; }
+.masa-it.off i { background: none; color: var(--mut); font-size: 1rem; }
+.masa-it.off span { color: var(--mut); font-weight: 600; }
+.masa-b.sm { height: 2.5rem; min-width: 5.25rem; padding: 0 0.875rem; border-radius: 0.75rem; font-size: 0.875rem; }
+.masa-b.add { color: var(--acc); }
+.masa-it-h { padding: 0.75rem 1rem 0.375rem; border-top: 1px solid var(--line); font-size: 0.75rem; font-weight: 700; color: var(--mut); }
+.masa-it-no { padding: 0.875rem 1rem; border-bottom: 1px solid var(--line); font-size: 0.875rem; font-weight: 600; color: var(--mut); }
+/* pencerede (Sheet sayfanın dışında açılır, --chip yok) düğmeler kabarık görünür */
+.navy :is(.masa-b, .masa-tog) { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.3); }
+.navy :is(.masa-b, .masa-tog):active { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35); }

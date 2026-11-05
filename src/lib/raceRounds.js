@@ -461,7 +461,20 @@ export function cleanEvOne(e, k, old = {}) {
   const has = !!e && typeof e === "object";
   const items = has && Array.isArray(e.items) ? [...new Set(e.items.filter((x) => SHOW_ITEMS.includes(x)))] : [...EVRE_DEF[k]];
   const vid = has ? cleanEvVid(e.vid) : old[EV_MIG[k]] || null;
-  return { items, sec: ITEM_SECS.includes(Number(e?.sec)) ? Number(e.sec) : 15, vid, side: SIDES.includes(e?.side) ? e.side : SIDE_DEF[k] };
+  // own: Yayın › Ekran'da elle değiştirildi (Seyhun 2026-11-05 "çıkarıyorum, bir dahaki sefer geri gelmiş"); değişmeyen evreye senin listen (showTpl) yazılır
+  return { items, sec: ITEM_SECS.includes(Number(e?.sec)) ? Number(e.sec) : 15, vid, side: SIDES.includes(e?.side) ? e.side : SIDE_DEF[k], own: !!e?.own };
+}
+// Senin evre listelerin (Seyhun 2026-11-05 "kalıcı olarak çıkartılsın, kalıcı olarak eklensin"): bütün yarışlarda geçerli öğe sırası, süre ve
+// sol alt; görüntü yarışa özel kalır. Yalnız kaydedilmiş evreler döner
+export function cleanShowTpl(t) {
+  const out = {};
+  for (const k of EVRES) {
+    const e = t?.[k];
+    if (!e || typeof e !== "object" || !Array.isArray(e.items)) continue;
+    const c = cleanEvOne(e, k);
+    out[k] = { items: c.items, sec: c.sec, side: c.side };
+  }
+  return out;
 }
 export function cleanEv(ev, old = {}) {
   return Object.fromEntries(EVRES.map((k) => [k, cleanEvOne(ev?.[k], k, old)]));

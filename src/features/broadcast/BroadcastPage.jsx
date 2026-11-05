@@ -16,7 +16,7 @@ import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
 import { FIRST_ITEM, agendaFirst, agendaPut, datesAdd, datesDrop, programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, saveEvreMan, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
+import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, saveEvreMan, loadShowTpl, saveShowTpl, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, groupColor, groupMap, groupsOn } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { DocsTab } from "./DocsTab";
@@ -43,7 +43,7 @@ import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, w
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, coursePoints } from "@/lib/courseCard";
-import { EVRES, EVRE_NAME, EVRE_WHEN, ITEM_NAME, ITEM_SECS, SHOW_ITEMS, SIDES, SIDE_NAME, cleanCourseShow, evreOf, evreScreen, showPlan, CLASS_PICK, raceClasses, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
+import { EVRES, EVRE_DEF, EVRE_NAME, EVRE_WHEN, ITEM_NAME, SIDE_DEF, ITEM_SECS, SHOW_ITEMS, SIDES, SIDE_NAME, cleanCourseShow, evreOf, evreScreen, showPlan, CLASS_PICK, raceClasses, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { autoCaption } from "@/lib/raceCaption";
@@ -81,6 +81,7 @@ export function BroadcastPage({ orgId, id }) {
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
   const [L, setL] = useState(null); // rounds, screen, stream (loadRoundsOf)
+  const [tpl, setTpl] = useState(null); // senin evre listelerin (bütün yarışlar; loadShowTpl)
   const [course, setCourse] = useState(() => cleanCourse({}));
   const [rtEdit, setRtEdit] = useState(false); // rotayı düzelt (yazı kutusu)
   const [rt, setRt] = useState(""); // seçili parkur kartının rotası (yazı: "1 2 3 F")
@@ -174,6 +175,7 @@ export function BroadcastPage({ orgId, id }) {
       setSel(d.screen.kind ? { kind: d.screen.kind, mid: d.screen.mid } : null);
     }, () => toast("Yüklenemedi, tekrar dene."));
     ensurePublic(id).catch(() => {});
+    loadShowTpl(orgId).then((t) => on && setTpl(t), () => on && setTpl({}));
     return () => {
       on = false;
     };
@@ -931,11 +933,27 @@ export function BroadcastPage({ orgId, id }) {
   const eff = L ? evreScreen(L.screen, pre, evNow) : null;
   const onScreen = eff?.kind ? eff : null;
   // tek evrenin ataması alan alan yazılır (raceLiveStore saveEvre; başka ekranın seçimi ezilmez)
-  const putEv = (k, patch) => {
-    const e = { ...pre.ev[k], ...patch };
+  // öğe sırası, süre ve sol alt senin listene de yazılır (showTpl; sonraki yarışlarda ve sıfırlamadan sonra aynısı)
+  const putEv = (k, patch, tpl = true) => {
+    const e = { ...pre.ev[k], ...patch, own: true };
     setL((p) => (p ? { ...p, courseShow: { ...p.courseShow, ev: { ...cleanCourseShow(p.courseShow).ev, [k]: e } } } : p));
     saveEvre(orgId, id, k, e).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
+    if (tpl && ("items" in patch || "sec" in patch || "side" in patch)) {
+      setTpl((t) => ({ ...t, [k]: { items: e.items, sec: e.sec, side: e.side } }));
+      saveShowTpl(orgId, k, e).catch(() => {});
+    }
   };
+  // Varsayılana dön: evrenin ilk hâli (görüntü kalır), senin listen de
+  const resetEv = (k) => putEv(k, { items: [...EVRE_DEF[k]], sec: 15, side: SIDE_DEF[k] });
+  // Bu yarışta hiç değiştirilmemiş evreye senin listen yazılır (Seyhun 2026-11-05 "kalıcı olarak çıkartılsın, eklensin")
+  const tplDone = useRef("");
+  useEffect(() => {
+    if (!L || !tpl || tplDone.current === id) return;
+    tplDone.current = id;
+    const todo = EVRES.filter((k) => tpl[k] && !pre.ev[k].own);
+    if (todo.length) Promise.resolve().then(() => todo.forEach((k) => putEv(k, tpl[k], false)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [L, tpl, id]);
   const putVid = (k, v) => putEv(k, { vid: v ? { kind: v.kind || "", src: v.src || "", mid: v.mid || "", ...(v.kind === "boats" ? { zoom: v.zoom ?? 100, grp: v.grp || "" } : {}) } : null });
   const putEvreMan = (k) => {
     setL((p) => (p ? { ...p, courseShow: { ...p.courseShow, evre: k } } : p));
@@ -2483,6 +2501,8 @@ export function BroadcastPage({ orgId, id }) {
                 : null}
             </div>
             <div>
+              {/* Gösterilecekler (Seyhun 2026-11-05 "doğru düzgün butonlar, ekleme kolay"): üstte sıradakiler (Yukarı, Çıkar), altta eklenmeyenler
+                  tek dokunuşla Ekle; değişiklik bütün yarışlarda kalır */}
               <Head title="Gösterilecekler" right="sırayla" />
               <div className={`${card} overflow-hidden`}>
                 {pre.ev[scOpen].items.map((k, i, a) => (
@@ -2493,26 +2513,31 @@ export function BroadcastPage({ orgId, id }) {
                       {scOpen === evNow && !evHas[k] ? <small>Veri yok, atlanır</small> : null}
                     </span>
                     {i > 0 ? (
-                      <button type="button" data-press className="masa-b" onClick={() => putEv(scOpen, { items: [...a.slice(0, i - 1), k, a[i - 1], ...a.slice(i + 1)] })}>
+                      <button type="button" data-press className="masa-b sm" onClick={() => putEv(scOpen, { items: [...a.slice(0, i - 1), k, a[i - 1], ...a.slice(i + 1)] })}>
                         Yukarı
                       </button>
                     ) : null}
-                    <button type="button" data-press className="masa-b red" onClick={() => putEv(scOpen, { items: a.filter((x) => x !== k) })}>
+                    <button type="button" data-press className="masa-b sm red" onClick={() => putEv(scOpen, { items: a.filter((x) => x !== k) })}>
                       Çıkar
                     </button>
                   </div>
                 ))}
-                {!pre.ev[scOpen].items.length ? <p className="px-4 py-3 text-[0.875rem] font-semibold text-mut">{scOpen === "start" || scOpen === "race" ? "Görüntü gösterilir" : "Süre gösterilir"}</p> : null}
+                {!pre.ev[scOpen].items.length ? <p className="masa-it-no">{scOpen === "start" || scOpen === "race" ? "Boş · görüntü gösterilir" : "Boş · süre gösterilir"}</p> : null}
+                {SHOW_ITEMS.some((k) => !pre.ev[scOpen].items.includes(k)) ? (
+                  <>
+                    <div className="masa-it-h">Eklenmeyenler</div>
+                    {SHOW_ITEMS.filter((k) => !pre.ev[scOpen].items.includes(k)).map((k) => (
+                      <div key={k} className="masa-it off">
+                        <i>+</i>
+                        <span>{ITEM_NAME[k]}</span>
+                        <button type="button" data-press className="masa-b sm add" onClick={() => putEv(scOpen, { items: [...pre.ev[scOpen].items, k] })}>
+                          Ekle
+                        </button>
+                      </div>
+                    ))}
+                  </>
+                ) : null}
               </div>
-              {SHOW_ITEMS.some((k) => !pre.ev[scOpen].items.includes(k)) ? (
-                <div className="flex flex-wrap gap-1.5 pt-2" aria-label="Ekle">
-                  {SHOW_ITEMS.filter((k) => !pre.ev[scOpen].items.includes(k)).map((k) => (
-                    <button key={k} type="button" data-press className="masa-b" onClick={() => putEv(scOpen, { items: [...pre.ev[scOpen].items, k] })}>
-                      {`+ ${ITEM_NAME[k]}`}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
             </div>
             <div>
               <Head title="Sol alt" />
@@ -2535,6 +2560,11 @@ export function BroadcastPage({ orgId, id }) {
                   ))}
                 </div>
               </div>
+            ) : null}
+            {pre.ev[scOpen].items.join() !== EVRE_DEF[scOpen].join() || pre.ev[scOpen].sec !== 15 || pre.ev[scOpen].side !== SIDE_DEF[scOpen] ? (
+              <Button variant="secondary" full onClick={() => (resetEv(scOpen), toast(`${EVRE_NAME[scOpen]} varsayılana döndü`))}>
+                Varsayılana dön
+              </Button>
             ) : null}
             {scOpen === evNow && pre.evre ? (
               <Button variant="secondary" full onClick={() => (putEvreMan(""), setScOpen(""))}>

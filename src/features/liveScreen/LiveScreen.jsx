@@ -10,7 +10,7 @@ import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, clubName, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
-import { catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
+import { GROUP_PICK, catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
 import { BoatMap } from "@/features/tracking/BoatMap";
 import { BoatLive } from "@/features/tracking/BoatLive";
@@ -4230,47 +4230,61 @@ function viewCams(data) {
   for (const x of list) if (!out.some((y) => y.src === x.id)) out.push({ src: x.id, grp: "", name: x.name });
   return out;
 }
+// İzleyicinin seçebileceği canlı konum grupları (Seyhun 2026-11-05 "canlı konumları da butonlarla"): günün grupları renk sırasında;
+// grup listesi yoksa tek "Tekneler"
+function viewPos(data, today) {
+  const gs = [...new Set(Object.values(groupMap(groupsOn(data.groups, today))))].filter(Boolean);
+  const rank = (g) => (GROUP_PICK.indexOf(g) + 1 || 99);
+  gs.sort((a, b) => rank(a) - rank(b));
+  return gs.length ? gs.map((g) => ({ grp: g, name: g })) : (data.entries || []).length ? [{ grp: "", name: "Tekneler" }] : [];
+}
 // Telefonda alt şerit (Seyhun 2026-11-05): solda görüntü (Yayın = yayın odasının seçtiği, sonra grupların kamerası), sağda Sıralama,
 // Sonuçlar, Rüzgâr, Parkur. Seçilen dolu; aynı düğmeye yeniden basınca yayının akışına döner. Geniş ekranda (TV) yok.
-function ScView({ data, sel, mode, now, cams, cam, onCam, view, onView, onFull }) {
+function ScView({ data, sel, mode, now, cams, pos, cam, onCam, tab, onTab, view, onView, onFull }) {
   const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
   const res = !!rr?.rows.length;
   const rank = scBoards(data).length > 0;
   const wind = windAhead(data, now).length >= 2;
   const course = !!courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"));
   const btns = [rank && ["rank", "Sıralama"], res && ["res", "Sonuçlar"], wind && ["wind", "Rüzgâr"], course && ["course", "Parkur"]].filter(Boolean);
-  if (!cams.length && !btns.length) return null;
-  // iki sıra (Seyhun 2026-11-05 "yayın seçimiyle gösterilen şeyin seçimini ayıralım; üst alt"): üstte görüntü, altta ekranda ne açılacağı
+  // Tek panel (Seyhun 2026-11-05 "kamera, konum, ekran seçimi diğerlerinden farklı olsun; tasarım daha iyi olabilir"): üstte sekme
+  // (Kamera · Konum · Ekran; altı çizili yazı, düğme değil), altta seçilen sekmenin düğmeleri tek sıra, yana kayar. Seçimler sekme
+  // değişince kalır; seçimi olan sekmede küçük nokta
+  const tabs = [cams.length && ["cam", "Kamera"], pos.length && ["pos", "Konum"], btns.length && ["view", "Ekran"]].filter(Boolean);
+  if (!tabs.length) return null;
+  const t = tabs.some(([k]) => k === tab) ? tab : tabs[0][0];
+  const mark = { cam: !!cam && !cam.startsWith("b:"), pos: cam.startsWith("b:"), view: !!view };
+  const opts =
+    t === "view"
+      ? btns.map(([k, label]) => ({ k, name: label, on: view === k, go: () => (k === "res" ? onFull("race") : onView(view === k ? "" : k)) }))
+      : [
+          { k: "", name: "Yayın", on: !cam, go: () => onCam("") },
+          ...(t === "cam" ? cams.map((x) => ({ k: x.src, grp: x.grp, name: x.name })) : pos.map((x) => ({ k: `b:${x.grp}`, grp: x.grp, name: x.name }))).map((x) => ({ ...x, on: cam === x.k, go: () => onCam(cam === x.k ? "" : x.k) })),
+        ];
   return (
-    <nav className={`sc-vb${cams.length && btns.length ? " two" : ""}`} aria-label="İzleyici seçimi">
-      {cams.length ? (
-        <div className="sc-vr">
-          <b>Görüntü</b>
-          <div className="sc-vs">
-            <button type="button" className={!cam ? "on" : ""} aria-pressed={!cam} onClick={() => onCam("")}>
-              Yayın
+    <nav className="sc-vb two" aria-label="İzleyici seçimi">
+      {tabs.length > 1 ? (
+        <div className="sc-vt" role="tablist">
+          {tabs.map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={t === k} className={t === k ? "on" : ""} onClick={() => onTab(k)}>
+              {l}
+              {mark[k] ? <i aria-hidden="true" /> : null}
             </button>
-            {cams.map((x) => (
-              <button key={x.src} type="button" className={cam === x.src ? "on" : ""} aria-pressed={cam === x.src} onClick={() => onCam(cam === x.src ? "" : x.src)}>
-                {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
-                {x.name}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
-      ) : null}
-      {btns.length ? (
-        <div className="sc-vr">
-          <b>Ekran</b>
-          <div className="sc-vs">
-            {btns.map(([k, label]) => (
-              <button key={k} type="button" className={view === k ? "on" : ""} aria-pressed={view === k} onClick={() => (k === "res" ? onFull("race") : onView(view === k ? "" : k))}>
-                {label}
-              </button>
-            ))}
-          </div>
+      ) : (
+        <div className="sc-vt one">
+          <span>{tabs[0][1]}</span>
         </div>
-      ) : null}
+      )}
+      <div className="sc-vs">
+        {opts.map((x) => (
+          <button key={x.k || "yayin"} type="button" className={x.on ? "on" : ""} aria-pressed={x.on} onClick={x.go}>
+            {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
+            {x.name}
+          </button>
+        ))}
+      </div>
     </nav>
   );
 }
@@ -4385,6 +4399,7 @@ export function LiveScreen({ id, y = "" }) {
   const [courseOpen, setCourseOpen] = useState(false);
   const [windOpen, setWindOpen] = useState(false);
   const [vCam, setVCam] = useState(""); // izleyicinin seçtiği kamera (kaynak id), boşsa yayının gösterdiği
+  const [vTab, setVTab] = useState("cam"); // Görüntü sırası: "cam" kameralar | "pos" canlı konum grupları
   const [vView, setVView] = useState(""); // "rank" | "wind" | "course": izleyicinin açtığı sahne
   const [rkTab, setRkTab] = useState(0); // izleyicinin Sıralama sekmesi (Genel, Kızlar…)
   const [rkAuto, setRkAuto] = useState(false); // Oto: sekmeler kendiliğinden geçer
@@ -4485,8 +4500,11 @@ export function LiveScreen({ id, y = "" }) {
     // izleyicinin seçimi (Seyhun 2026-11-05 "kullanıcı seçebilsin"): kendi telefonunda grubun kamerası ve Sıralama / Rüzgâr / Parkur;
     // seçmezse yayın odasının gösterdiği
     const cams = viewCams(data);
-    const camOn = cams.some((x) => x.src === vCam) ? vCam : "";
-    const sd = camOn ? { ...pk.sd, screen: { kind: "src", src: camOn } } : pk.sd;
+    const pos = viewPos(data, today);
+    // vCam: kaynak id (kamera) ya da "b:<grup>" (o grubun canlı konumu)
+    const posOn = vCam.startsWith("b:") && pos.some((x) => `b:${x.grp}` === vCam);
+    const camOn = posOn || cams.some((x) => x.src === vCam) ? vCam : "";
+    const sd = posOn ? { ...pk.sd, screen: { kind: "boats", grp: vCam.slice(2), zoom: 100 } } : camOn ? { ...pk.sd, screen: { kind: "src", src: camOn } } : pk.sd;
     const vid = camOn ? true : pk.vid;
     const vwOn = vView === "rank" ? scBoards(sd).length > 0 : vView === "course" ? !!courseSvg(sd, sceneRoute(sd, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait")) : vView === "wind" ? windAhead(sd, nowMs).length >= 2 : false;
     // Rüzgâr sahne değiştirmez: süre kartının altından grafik açılır
@@ -4498,7 +4516,7 @@ export function LiveScreen({ id, y = "" }) {
       <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
         <Backdrop data={sd} isCur={isCur} entry={entry} today={today} />
         <div className="lv-page lv-ov">
-          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} view={vwOn ? vView : ""} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} cams={cams} cam={camOn} onCam={setVCam} view={vwOn ? vView : ""} onView={setVView} onFull={setFull} />} />
+          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} view={vwOn ? vView : ""} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} cams={cams} pos={pos} cam={camOn} onCam={setVCam} tab={vTab} onTab={setVTab} view={vwOn ? vView : ""} onView={setVView} onFull={setFull} />} />
         </div>
         {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
         {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}

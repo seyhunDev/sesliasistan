@@ -12,7 +12,7 @@ import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
 import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan, mergeOrder, mergeStarts } from "@/lib/raceLive";
 import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
-import { cleanCourseShow, cleanEvOne, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
+import { cleanCourseShow, cleanEvOne, cleanShowTpl, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
 import { cleanCamBy, cleanOnAir } from "@/lib/raceCams";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
@@ -299,6 +299,14 @@ export async function loadSheets(orgId, id) {
 // Denemeleri sıfırla: patch (lib/raceLive.js resetPatch) belgeye yazılır; media boşaltılıyorsa dosyalar da silinir
 export async function resetLive(orgId, id, patch, media = []) {
   // mergeFields: her alan bütünüyle yazılır (rounds ve plan iç içe birleşmez, boşalır); günün grup listeleri de silinir
+  // Ekran evreleri (courseShow.ev) sıfırlamada kalır (Seyhun 2026-11-05 "çıkarıyorum, bir dahaki sefer geri gelmiş"); silinen kayda bağlı görüntü düşer
+  if (patch.courseShow && !patch.courseShow.ev) {
+    const ev = (await getDoc(live(orgId, id)).catch(() => null))?.data()?.courseShow?.ev;
+    if (ev && typeof ev === "object") {
+      const keep = Object.fromEntries(Object.entries(ev).map(([k, e]) => [k, patch.media && e?.vid?.kind === "rec" ? { ...e, vid: null } : e]));
+      patch = { ...patch, courseShow: { ...patch.courseShow, ev: keep } };
+    }
+  }
   await setDoc(live(orgId, id), patch, { mergeFields: Object.keys(patch) });
   await setDoc(doc(db, "orgs", orgId, "raceLive", id, "entries", "list"), { groups: {} }, { mergeFields: ["groups"] }).catch(() => {});
   // parkur ölçümleri (rüzgâr, konumlar, ayak açıları) silinir; parkur kartları ve seçili parkur kalır
@@ -366,6 +374,10 @@ export const saveCourseShow = (orgId, id, c) => {
 };
 // Tek evrenin görüntüsü + gösterilecekler + süre (Yayın › Ekran); yalnız courseShow.ev.<evre> değişir
 export const saveEvre = (orgId, id, k, e) => setDoc(live(orgId, id), { courseShow: { ev: { [k]: cleanEvOne(e, k) } } }, { mergeFields: [new FieldPath("courseShow", "ev", k)] });
+// Senin evre listelerin (bütün yarışlar; raceRounds cleanShowTpl): orgs/{org}/yayinEkran/ev, evre evre yazılır
+const showTplRef = (orgId) => doc(db, "orgs", orgId, "yayinEkran", "ev");
+export const loadShowTpl = (orgId) => getDoc(showTplRef(orgId)).then((s) => cleanShowTpl(s.exists() ? s.data().ev : null));
+export const saveShowTpl = (orgId, k, e) => setDoc(showTplRef(orgId), { ev: { [k]: { items: e.items, sec: e.sec, side: e.side } } }, { mergeFields: [new FieldPath("ev", k)] });
 // Elle seçilen evre; boş = kendiliğinden (yarışın durumuna göre)
 export const saveEvreMan = (orgId, id, k) => setDoc(live(orgId, id), { courseShow: { evre: k || "" } }, { merge: true });
 // Elle sabitlenen öğe; boş = otomatik (sesle açılan "one" da kalkar)
