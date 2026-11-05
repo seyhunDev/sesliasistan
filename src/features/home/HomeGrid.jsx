@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ActionGrid } from "@/components/ui/ActionGrid";
 import { Icon } from "@/components/ui/Icon";
@@ -17,7 +18,7 @@ import { todayStr } from "@/lib/utils/format";
 // Ana hesap: Yoklama (bugün antrenman varsa o günün yoklaması; diğerleri gibi vurgusuz), Not, Plan, Fiş, Mesaj (Sporcular grubu), Toplantı, Görev,
 // sonunda Tümü (Süre kokpitteki sıradaki antrenmanın yanında) (bütün sayfalar penceresi; eskiden en alttaki küçük düğmelerdi). Yetkisi olmayan düğme çıkmaz.
 // Aynı iş kartlarda tekrar yazmaz (Notlar kartında "Not ekle", Sporcular kartında Yoklama/Mesaj yok).
-export function HomeGrid({ pages, side, athletes, receipts, owner }) {
+export function HomeGrid({ pages, side, athletes, receipts, owner, quick = false }) {
   const { openAdd } = useAdd();
   const { openReceipt } = useReceipt();
   const { openMeeting } = useMeeting();
@@ -39,9 +40,10 @@ export function HomeGrid({ pages, side, athletes, receipts, owner }) {
     .filter(Boolean)
     .slice(0, 7);
   const groups = (pages || []).filter((g) => g.items.length);
+  const allItem = { key: "all", icon: "grid", label: "Tümü", onClick: () => setAll(true) };
   return (
     <>
-      <ActionGrid icons items={[...items, { key: "all", icon: "grid", label: "Tümü", onClick: () => setAll(true) }]} />
+      {quick ? <QuickRow items={[...items.slice(0, 4), allItem]} /> : <ActionGrid icons items={[...items, allItem]} />}
       <Sheet open={all} onClose={() => setAll(false)} title="Tüm sayfalar">
         <div className="space-y-2 pb-1" data-all-groups>
           {groups.map((g) => {
@@ -66,5 +68,35 @@ export function HomeGrid({ pages, side, athletes, receipts, owner }) {
         </div>
       </Sheet>
     </>
+  );
+}
+
+// Geniş ekranda (iPad, Mac) sade iş sırası (Seyhun 2026-11-05 "karman çorman, daha canlı"): en sık dört iş + Tümü tek sırada, renkli yuvarlak simge;
+// diğer işler (Mesaj, Toplantı, Görev) Tümü penceresinde. Renk yalnız iş türünü ayırır (Yoklama mavi, Not yeşil, Plan turuncu, Fiş mor).
+const QCOL = { att: "#2563eb", "my-att": "#2563eb", note: "#16a34a", plan: "#e58a2b", receipt: "#7c3aed", all: "#64748b", msg: "#0891b2", meeting: "#0891b2", task: "#16a34a" };
+function QuickRow({ items }) {
+  const cls = "hq-tile";
+  return (
+    <nav aria-label="İşler" className="hq">
+      {items.map((a) => {
+        const body = (
+          <>
+            <i style={{ "--c": QCOL[a.key] || "#64748b" }} className="hq-ic">
+              <Icon name={a.icon} className="size-[1.125rem]" />
+            </i>
+            <span className="truncate">{a.label}</span>
+          </>
+        );
+        return a.href ? (
+          <Link key={a.key} href={a.href} data-press className={cls}>
+            {body}
+          </Link>
+        ) : (
+          <button key={a.key} type="button" data-press onClick={a.onClick} className={cls}>
+            {body}
+          </button>
+        );
+      })}
+    </nav>
   );
 }

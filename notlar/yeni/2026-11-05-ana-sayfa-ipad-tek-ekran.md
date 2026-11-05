@@ -14,3 +14,9 @@ Telefonda/iPad'de denenmedi; gerçek cihazda boşluk ve yükseklik ince ayarı. 
 - Gökyüzü kart değil: `.hs-sky` sayfanın üstünde kenardan kenara, altı soluklaşır (mask); yer adı sıcaklığın yanında, tarih başlıktan kalktı.
 - Takvimde yan gün paneli kapalı başlar, güne dokununca açılır (aynı güne tekrar ya da × ile kapanır). Plan, Görev, Doğum günü ekle düğmeleri takvimin başlığında (ders programı simgesinin yanında).
 - Gün hücrelerinde plan, görev, doğum günü adları her ekranda görünür.
+
+## Üçüncü tur: sade sağ sütun (2026-11-05)
+- Sağ sütun: Sıradaki plan, tek sıra hızlı iş (`HomeGrid quick`: Yoklama, Not, Plan, Fiş + Tümü; renkli yuvarlak simge, `.hq`), Kulüp artık kutu değil liste (`HomeSummary tiles={false}`, satır = iş + durum), Notlar. Mesaj, Toplantı, Görev "Tümü" penceresinde.
+- Takvim başlığında üç ekleme simgesi yerine tek "+ Ekle" menüsü (Plan, Görev, Doğum günü).
+- Hava aynı: gerçek grafik + saat saat tablo yatay ve dikeyde olduğu gibi.
+- Ekran testinde "Antrenman yarışı sesle › antrenman sayfası" kırmızı: #1263 (antrenman sayfası canlı ekran düzeni) sonrası, bu işle ilgisi yok.
