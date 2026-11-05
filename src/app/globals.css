@@ -509,7 +509,8 @@ html[data-warm] .boot:not([data-phase="out"]) { animation: bootwarm .3s ease-out
 .boot::before { content: ""; position: absolute; left: 50%; top: 42%; width: 26rem; height: 26rem; transform: translate(-50%, -50%); border-radius: 9999px;
   background: radial-gradient(closest-side, rgba(61, 123, 255, .2), rgba(61, 123, 255, .06) 60%, transparent); animation: bootglow 2.6s ease-in-out infinite; }
 .boot-mark { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: -6vh; }
-.boot-logo { display: block; width: 8rem; height: 8.5rem; overflow: visible; }
+/* halka (nefes alan parıltı) dışarı taşınca kesilmesin (Seyhun 2026-11-05): çizim alanı logonun çevresinde 2 rem boşluklu, boyut aynı kalır */
+.boot-logo { display: block; width: 12rem; height: 12.5rem; margin: -2rem -2rem; overflow: visible; }
 /* Logo (2026-11-03): daire büyüyerek gelir, V yukarıdan inip daireyi oyar; yükleme sürerken daire hafifçe nefes alır */
 .boot-disc { transform-origin: 50px 52px; transform-box: view-box; animation: bootcore .6s cubic-bezier(.2, .9, .3, 1.3) .1s both, bootbreath 2.4s ease-in-out 1.4s infinite; }
 .boot-v { transform-box: view-box; animation: bootvin .55s cubic-bezier(.2, .9, .3, 1) .45s both; }

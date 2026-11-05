@@ -20,7 +20,8 @@ function flyTo() {
   if (!a.width || !b.width) return false;
   const dx = b.left + b.width / 2 - (a.left + a.width / 2);
   const dy = b.top + b.height / 2 - (a.top + a.height / 2);
-  logo.style.setProperty("--fly", `translate(${dx}px, ${dy}px) scale(${b.width / a.width})`);
+  // çizim alanı logonun etrafında halka için boşluklu (96 birim; logo 64 birim): ölçek logonun kendi genişliğine göre
+  logo.style.setProperty("--fly", `translate(${dx}px, ${dy}px) scale(${b.width / (a.width * (64 / 96))})`);
   document.documentElement.dataset.bootFly = "";
   return true;
 }
@@ -85,10 +86,10 @@ export function BootSplash() {
       <div className="boot-bg" />
       <div className="boot-mark">
         {/* Velora logosu (public/brand/velora-glyph.svg ile aynı çizim): daire gelir, V inip daireyi oyar */}
-        <svg className="boot-logo" viewBox="18 18 64 68" aria-hidden="true">
+        <svg className="boot-logo" viewBox="2 2 96 100" aria-hidden="true">
           <defs>
-            <mask id="boot-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-              <rect width="100" height="100" fill="#fff" />
+            <mask id="boot-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="104">
+              <rect width="100" height="104" fill="#fff" />
               <path className="boot-v" d={MARK_V} fill="#000" />
             </mask>
           </defs>
