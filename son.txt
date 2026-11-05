@@ -1,8 +1,8 @@
-Commit: aec0978 · İngilizce kalıplar: Kur bitince Konuş açılır, sonuç ekranı kaybolmaz (#1275)
-Zaman: 2026-11-06-0114 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42116992341
+Commit: e2c5a05 · Ölçüm ekle: pusula kadranı, Pusula, Sesle; canlı ekranda sesle parkur (#1276)
+Zaman: 2026-11-06-0148 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42122094695
 
-TAM TEST · 06.11.2026 00:56:05
+TAM TEST · 06.11.2026 01:31:01
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1427/1440 geçti · 13 kalan · 1084 sn
+SONUÇ: 1427/1440 geçti · 13 kalan · 1041 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4489 test”
+      ✗ “4490 test”
           beklenen: hepsi geçer
-          olan:     4456/4489 geçti
+          olan:     4457/4490 geçti
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “ortak hava tablosu” → false (beklenen: hava sayfası DayStrip + HourTable, yarış havası HourTable, ikisinde de eski grafik yok; ölçülen geçmiş sütun, plan çizgisi, günlük yağış; harita her yerde Harita düğmesi)
       ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
