@@ -108,7 +108,9 @@ export function demoData(step, t0, s0, now, v0 = s0, vt = 0) {
     timer: step >= S.SEQ && step < S.FIN ? { end: start, mode: "start", dur: 300 } : null,
     rounds,
     screen: video ? { kind: "live", caption: step === S.START ? "Sarı grup startı" : "" } : { kind: "" },
-    stream: { url: video ? (step >= S.SEQ ? `${DEMO_VIDEO}&t=${vt}s` : DEMO_VIDEO) : "" },
+    stream: { url: video ? (step >= S.SEQ ? `${DEMO_VIDEO}&t=${vt}s` : DEMO_VIDEO) : "", sources: [{ id: "c1", name: "Kamera 1", kind: "camera", url: DEMO_VIDEO }, { id: "d1", name: "Drone 1", kind: "drone", url: DEMO_VIDEO }] },
+    // izleyici görüntü seçimi (Seyhun 2026-11-05): Sarı grup Kamera 1'de, Drone 1 grupsuz
+    camBy: { "Optimist|Sarı": "c1" },
     media: [{ id: "m1", kind: "photo", url: "/canli/ornek-deniz.svg", at: iso(t0), thumb: "" }],
     wind: [],
     day: today,
