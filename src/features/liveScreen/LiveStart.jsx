@@ -35,8 +35,8 @@ export default function LiveStart(p) {
     </ToastProvider>
   );
 }
-// vidHost: Kamera panelindeki yer (LiveScreen ScView); videolar oraya çizilir
-function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, screen = null, ev = null, evre = "" }) {
+// vidHost: Video panelindeki yer (LiveScreen ScView; yalnız uygulama içinde); videolar oraya çizilir
+function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay }) {
   const [orgId, setOrgId] = useState("");
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -274,7 +274,7 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
           </div>
         </div>
       ) : null}
-      {vidHost ? createPortal(<LiveVideos orgId={orgId} raceId={raceId} live={live} setLive={setLive} screen={screen} ev={ev} evre={evre} />, vidHost) : null}
+      {vidHost ? createPortal(<LiveVideos raceId={raceId} starts={live.starts} playing={playing} onPlay={onPlay} />, vidHost) : null}
       <VoidSheet ask={rf.ask} onChoose={(r) => (rf.choose(r), push())} />
       <AddSheet open={wind} c={course} onClose={() => onWindClose?.()} onAdd={addObs} />
     </>
