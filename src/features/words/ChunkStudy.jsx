@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { buildTasks, chunkState, chunkStats, dueChunks, fillText, markTr, taskRight } from "@/lib/englishChunkStudy";
+import { buildTasks, chunkState, chunkStats, dueChunks, fillText, markTr, patternText, taskRight } from "@/lib/englishChunkStudy";
 import { primeEn, sayEn } from "./WordView";
+import { WordTalk } from "./WordTalk";
 
 // Kalıp bloklama (Seyhun 2026-11-02: "kalıplarla kelimeleri öğreneceğim… tek tek kelime öğrenmek istemiyorum"; örnek
 // /mnt/project-files/ingilizce-kelime/kaliplar/ornek.png onaylandı 2026-11-04). Bir kalıp dört adımda: Dinle · Değiştir (parçaya
@@ -64,8 +65,9 @@ function dueSay(due, today) {
 }
 
 // c: kalıp; deck; today; topic: üstte görünen konu; onSave(fn) → Promise; onNext(): sıradaki kalıp; onOpen(id): başka kalıp;
-// onTalk(c): Konuş; onMenu(): ⋯; onSkip(): Geç
-export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onTalk, onMenu, onSkip }) {
+// onMenu(): ⋯; onSkip(): Geç. Kur bitince sonuç kaydedilir (sayfa kalıbı sabitler, sıradaki kalıba kendiliğinden geçmez) ve
+// dördüncü adım Konuş açılır (Atla ile doğrudan sonuç); konuşma kapanınca sonuç ekranı.
+export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onMenu, onSkip }) {
   const [fi, setFi] = useState(0);
   const [tried, setTried] = useState(() => new Set([0]));
   const [phase, setPhase] = useState("learn");
@@ -119,7 +121,7 @@ export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onTa
     setMiss(true);
     lay(b ? [...good, b] : good);
   };
-  const goOn = async () => {
+  const goOn = async (talk = true) => {
     if (ti + 1 < tasks.length) {
       setTi(ti + 1);
       setBuilt([]);
@@ -128,9 +130,11 @@ export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onTa
     }
     const right = !miss;
     setSaved({ right });
-    setPhase("done");
+    if (talk) primeEn();
+    setPhase(talk ? "talk" : "done");
     await onSave(right);
   };
+  const last = ti + 1 >= tasks.length;
 
   const top = (left, mid, right) => (
     <header className="relative flex items-center justify-between gap-3 pt-[calc(0.75rem+env(safe-area-inset-top))] text-[0.875rem] text-white/50">
@@ -198,18 +202,26 @@ export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onTa
           </div>
         </section>
         <footer className="relative flex items-center justify-between gap-3">
-          <Button variant="text" onClick={hint} disabled={!!check} className="!px-0 !text-white/50">
-            İpucu
-          </Button>
+          {check && last ? (
+            <Button variant="text" onClick={() => goOn(false)} className="!px-0 !text-white/50">
+              Atla
+            </Button>
+          ) : (
+            <Button variant="text" onClick={hint} disabled={!!check} className="!px-0 !text-white/50">
+              İpucu
+            </Button>
+          )}
           {check && (
-            <Button variant="secondary" full={false} onClick={goOn} className={GO}>
-              {ti + 1 < tasks.length ? "Devam" : "Bitir"}
+            <Button variant="secondary" full={false} onClick={() => goOn(true)} className={GO}>
+              {last ? "Konuş" : "Devam"}
             </Button>
           )}
         </footer>
       </>
     );
   }
+
+  if (phase === "talk") return <WordTalk w={{ en: patternText(c), tr: c.tr, kind: "phrase" }} onClose={() => setPhase(saved ? "done" : "learn")} />;
 
   if (phase === "done" && saved) {
     const st = chunkState(deck, c.id);
@@ -251,7 +263,7 @@ export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onTa
           )}
         </section>
         <footer className="relative flex items-center justify-between gap-3">
-          <Button variant="text" onClick={() => (primeEn(), onTalk(c))} className="!px-0 !text-white/50">
+          <Button variant="text" onClick={() => (primeEn(), setPhase("talk"))} className="!px-0 !text-white/50">
             Konuş
           </Button>
           <Button variant="secondary" full={false} onClick={onNext} className={GO}>

@@ -180,7 +180,6 @@ export default function EnglishPage() {
   const [cTopic, setCTopic] = useState("");
   const [cSkip, setCSkip] = useState([]);
   const [cPin, setCPin] = useState("");
-  const [cTalk, setCTalk] = useState(null);
   const [topic, setTopic] = useState("");
   const [skip, setSkip] = useState([]);
   const [pin, setPin] = useState("");
@@ -316,9 +315,7 @@ export default function EnglishPage() {
   return (
     <main data-theme="dark" className="navy fit-dark relative mx-auto flex min-h-dvh max-w-[30rem] flex-col px-6 pb-[calc(var(--dome-h,var(--stage-h,6rem))+1rem)]">
       {isChunk ? <Glow /> : <Photo />}
-      {isChunk && cTalk ? (
-        <WordTalk w={{ en: patternText(cTalk), tr: cTalk.tr, kind: "phrase" }} onClose={() => setCTalk(null)} />
-      ) : isChunk ? (
+      {isChunk ? (
         !deck ? (
           <section className="relative flex flex-1 items-center justify-center">
             <Loading label="Yükleniyor" />
@@ -330,11 +327,10 @@ export default function EnglishPage() {
             deck={deck}
             today={today}
             topic={cTopic}
-            onSave={(right) => save((d) => finishChunk(d, chunk.id, today, right))}
+            onSave={(right) => (setCPin(chunk.id), save((d) => finishChunk(d, chunk.id, today, right)))}
             onNext={nextC}
             onSkip={nextC}
             onOpen={openC}
-            onTalk={(c) => setCTalk(c)}
             onMenu={() => setMenu(true)}
           />
         ) : (
