@@ -59,14 +59,20 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide 
     <section className={wide ? "home-ck hs" : "home-ck -mx-4 px-4"} aria-label="Bugün">
       {/* Hava manzarası (Seyhun 2026-11-04 "A · Hava manzarası", örnek yeni-ana-tam): üstte havanın kendisi, gökyüzü rengi o günün havasına göre
           (yağmurda çizgiler akar); sıcaklık, rüzgâr, Grafik / Tablo sekmesi. Altında açık zeminde günler, yarış şeridi, plan, çizelge, düğmeler. */}
+      {wide && <div className="hs-sky ck-hero" data-sky={skyKey(n)} aria-hidden="true" />}
       <div className={wide ? "ck-a hs-w" : "ck-a"}>
-      <div className={`ck ck-hero pb-4 ${wide ? "rounded-[1.5rem] px-4 pt-3" : "-mx-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))]"}`} data-sky={skyKey(n)}>
+      {/* Geniş ekranda gökyüzü kart değil: sayfanın üstünde kenardan kenara (hs-sky), altı soluklaşır; yer adı sıcaklığın yanında, tarih Takvim'de (Seyhun 2026-11-05 "A") */}
+      <div className={wide ? "ck hs-top pb-3 pt-1" : "ck ck-hero -mx-4 px-4 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]"} data-sky={skyKey(n)}>
       <header className="flex items-center gap-2">
         <h1 className="sr-only">{now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}</h1>
-        <span className="min-w-0 flex-1 leading-tight">
-          <b className="block truncate text-[0.8125rem] font-semibold">{home.name}</b>
-          <small className="block truncate text-[0.75rem] text-white/75">{dateLabel}</small>
-        </span>
+        {wide ? (
+          <span className="flex-1" />
+        ) : (
+          <span className="min-w-0 flex-1 leading-tight">
+            <b className="block truncate text-[0.8125rem] font-semibold">{home.name}</b>
+            <small className="block truncate text-[0.75rem] text-white/75">{dateLabel}</small>
+          </span>
+        )}
         <BirthdayBadge />
         <InboxBell inbox={inbox} onOpen={onInbox} />
         <Link href="/settings" aria-label="Ayarlar" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 text-[0.8125rem] font-semibold text-white active:scale-90">
@@ -80,7 +86,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide 
               <span className="flex items-end gap-3">
                 <span className={`shrink-0 font-semibold leading-[.9] tracking-[-.05em] tabular-nums ${wide ? "text-[3.25rem]" : "text-[4.25rem]"}`}>{n.t}°</span>
                 <span className="min-w-0 flex-1 pb-1 leading-tight">
-                  <b className="block truncate text-[0.9375rem] font-semibold">{isToday ? "" : `${dname} · `}{sky(n.code, n.day).label}</b>
+                  <b className="block truncate text-[0.9375rem] font-semibold">{isToday ? "" : `${dname} · `}{sky(n.code, n.day).label}{wide ? ` · ${home.name}` : ""}</b>
                   {cur?.feel != null && <small className="block truncate text-[0.8125rem] text-white/80 tabular-nums">Hissedilen {cur.feel}°</small>}
                   <small className="block truncate text-[0.8125rem] text-white/80 tabular-nums">
                     {dw ? `${dw.min}° / ${dw.max}°` : ""}
@@ -101,7 +107,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide 
           </button>
           {rows?.length > 0 && (
             <>
-              <div className="mt-2.5 overflow-hidden rounded-[1.25rem] bg-[#0b1a33] p-3">
+              <div className={`mt-2.5 overflow-hidden rounded-[1.25rem] p-3 ${wide ? "bg-[#0b1a33]/40" : "bg-[#0b1a33]"}`}>
                 <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} />
                 {isToday && <NowRain place={home} rows={fcRows} radar={radar} />}
               </div>

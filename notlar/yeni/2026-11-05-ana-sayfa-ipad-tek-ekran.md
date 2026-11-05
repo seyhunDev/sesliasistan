@@ -9,3 +9,8 @@ Seyhun (2026-11-05): "tek uygulama ekranı gibi, kaydırma gerekmeden; hava ve t
 - Eski `home-wide` CSS bloğu silindi; test: ekran testinde "iPad tek ekran".
 ## Sıradaki işler
 Telefonda/iPad'de denenmedi; gerçek cihazda boşluk ve yükseklik ince ayarı. Önceden kırmızı: "saat saat hava tablosu" (Tablo düğmesi yok), Hava 2/3 (hava thread'i).
+
+## Güncelleme (aynı gün, ikinci tur)
+- Gökyüzü kart değil: `.hs-sky` sayfanın üstünde kenardan kenara, altı soluklaşır (mask); yer adı sıcaklığın yanında, tarih başlıktan kalktı.
+- Takvimde yan gün paneli kapalı başlar, güne dokununca açılır (aynı güne tekrar ya da × ile kapanır). Plan, Görev, Doğum günü ekle düğmeleri takvimin başlığında (ders programı simgesinin yanında).
+- Gün hücrelerinde plan, görev, doğum günü adları her ekranda görünür.

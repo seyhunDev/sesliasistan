@@ -68,7 +68,10 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
     ];
     return { plans: p.length, fit: fitDates.has(day), tasks: open.length, late: day < today && open.length > 0, bday: b.length, evs };
   };
+  // Ana sayfada (embedded) yan gün paneli kapalı başlar; güne dokununca açılır, aynı güne tekrar dokununca ya da Kapat ile kapanır
+  const [dayOpen, setDayOpen] = useState(false);
   const pick = (day) => {
+    if (embedded) setDayOpen(day === sel ? !dayOpen : true);
     setSel(day);
     setBrowse(null);
   };
@@ -86,7 +89,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
   const sub = "block truncate text-[0.8125rem] text-mut";
 
   return (
-    <Root embedded={embedded}>
+    <Root embedded={embedded} open={dayOpen}>
       <section className={embedded ? "cal-top ck px-3.5 pb-3 pt-3" : "cal-top ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]"} aria-label="Takvim">
         <header className="flex items-center gap-2">
           {!embedded && <BackButton href="/" />}
@@ -105,6 +108,19 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
               <Icon name="chev" className="size-4" />
             </button>
           </span>
+          {embedded && (
+            <>
+              <button type="button" onClick={() => openAdd({ type: "plan", date: sel })} aria-label="Plan ekle" data-press className="btn btn-round size-9">
+                <Icon name="cal" className="size-4" />
+              </button>
+              <button type="button" onClick={() => openAdd({ type: "task", date: sel })} aria-label="Görev ekle" data-press className="btn btn-round size-9">
+                <Icon name="task" className="size-4" />
+              </button>
+              <button type="button" onClick={() => openBirthday({ date: sel })} aria-label="Doğum günü ekle" data-press className="btn btn-round size-9">
+                <Icon name="cake" className="size-4" />
+              </button>
+            </>
+          )}
           <Link href="/schedule" aria-label="Ders programı" data-press className="btn btn-round size-9">
             <Icon name="book" className="size-4" />
           </Link>
@@ -177,14 +193,24 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
         </div>
       </section>
 
+      {(!embedded || dayOpen) && (
       <div className={embedded ? "cal-body relative space-y-4" : "cal-body relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5"}>
         {/* Seçili gün */}
         <section>
-          <ListHead title={[when, shortDay(sel)].filter(Boolean).join(" · ")} count={count} />
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <ListHead title={[when, shortDay(sel)].filter(Boolean).join(" · ")} count={count} />
+            </div>
+            {embedded && (
+              <button type="button" onClick={() => setDayOpen(false)} aria-label="Günü kapat" data-press className="btn btn-round size-8 shrink-0">
+                <Icon name="x" className="size-4" />
+              </button>
+            )}
+          </div>
           {count === 0 ? (
             <div className="overflow-hidden rounded-[1.25rem] border border-line bg-card px-3.5 py-3">
               <p className="text-[0.9375rem] font-semibold text-mut">Kayıt yok</p>
-              <div className="mt-3 flex gap-2">
+              <div className={embedded ? "hidden" : "mt-3 flex gap-2"}>
                 <button type="button" onClick={() => openAdd({ type: "plan", date: sel })} data-press className="btn btn-primary btn-sm flex-1">
                   Plan ekle
                 </button>
@@ -286,7 +312,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
           )}
         </section>
         {/* Geniş ekranda (iPad yatay, Mac) seçili güne ekleme düğmeleri sağ sütunun altında; telefonda gizli */}
-        {count > 0 && (
+        {count > 0 && !embedded && (
           <div className="cal-acts">
             <button type="button" onClick={() => openAdd({ type: "plan", date: sel })} data-press className="btn btn-primary btn-sm flex-1">
               Plan ekle
@@ -300,14 +326,15 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
           </div>
         )}
       </div>
+      )}
     </Root>
   );
 }
 
 // Takvim sayfasında <main>, ana sayfada (embedded) kartın içinde ay + gün listesi (globals.css .cal-emb)
-function Root({ embedded, children }) {
+function Root({ embedded, open, children }) {
   return embedded ? (
-    <div className="cal-emb">{children}</div>
+    <div className="cal-emb" data-open={open || undefined}>{children}</div>
   ) : (
     <main className="cal-wide mx-auto max-w-[30rem] px-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">{children}</main>
   );

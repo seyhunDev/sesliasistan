@@ -1206,12 +1206,22 @@ async function rainStrip(h) {
         return { has: !!main, scroll: main ? main.scrollHeight - main.clientHeight : -1, cal: !!cal, calH: r ? Math.round(r.height) : 0, tl: !!document.querySelector("section[aria-label='Günün planları']"), nav: !!document.querySelector("nav[aria-label='İşler']") };
       });
       if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ipad-${tag}.png` });
+      // Yan gün paneli kapalı başlar, güne dokununca açılır, Kapat ile kapanır; Plan/Görev/Doğum günü ekle başlıkta
+      m.closed = (await page.locator(".cal-emb .cal-body").count()) === 0;
+      m.adds = (await page.locator(".cal-emb header [aria-label='Plan ekle'], .cal-emb header [aria-label='Görev ekle'], .cal-emb header [aria-label='Doğum günü ekle']").count()) === 3;
+      await page.locator(".cal-emb .cal-cell").nth(15).click();
+      await page.waitForTimeout(400);
+      m.opened = (await page.locator(".cal-emb .cal-body").count()) === 1;
+      if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ipad-${tag}-gun.png` });
+      await page.locator(".cal-emb [aria-label='Günü kapat']").click();
+      await page.waitForTimeout(300);
+      m.closed2 = (await page.locator(".cal-emb .cal-body").count()) === 0;
       out.push([tag, m]);
     }
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(1200);
     const ph = await page.evaluate(() => ({ screen: !!document.querySelector("main.home-screen"), cal: !!document.querySelector(".cal-emb"), tl: !!document.querySelector("section[aria-label='Günün planları']") }));
-    const ok = out.every(([, m]) => m.has && m.cal && m.calH >= 300 && !m.tl && m.nav) && !ph.screen && !ph.cal && ph.tl;
+    const ok = out.every(([, m]) => m.has && m.cal && m.calH >= 300 && !m.tl && m.nav && m.closed && m.adds && m.opened && m.closed2) && !ph.screen && !ph.cal && ph.tl;
     return [ok, JSON.stringify({ out, ph })];
   });
   // Seyhun 2026-11-03 (Windy görseli): ana sayfa hava kartı saat saat tablo; 3 saatte bir sütun, ertesi gün de var, yağmur mm satırı, şimdiki saat çerçeveli
