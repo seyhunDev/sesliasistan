@@ -4,7 +4,9 @@
 // kuralları ve aynı yazmaları kullanır. Sayaç telefonda tek (training/Countdown); sahibi her zaman yarışın Yayın sayfası, /canli'den
 // başlatılan sayaç da Yayın'ındır (Yayın açılınca 0 anını, bitişi o yazar).
 import { saveRounds } from "@/features/athletes/raceLiveStore";
-import { zeroRace } from "@/lib/raceLive";
+import { needDnf, zeroRace } from "@/lib/raceLive";
+import { dnfPen } from "@/lib/raceRounds";
+import { groupMap, groupsOn } from "@/lib/roundScore";
 import { cardFor } from "@/lib/raceCourse";
 
 export const yayinPath = (raceId) => `/athletes/races/${raceId}/yayin`;
@@ -37,4 +39,28 @@ export function zeroStarts(starts, t, end, wind, rdays, mine) {
   if (t?.mode !== "start" || !t.rid || !mine) return null;
   const next = zeroRace(starts, t.rid, end, wind, rdays);
   return next === starts ? null : next;
+}
+
+// Finiş penceresi adımları (Seyhun 2026-11-05; Yayın › Süre ve uygulama içi /canli aynı kural): ilk tekne finişe yazılınca pencere açılır
+// (open, at = ilk finiş anı), pencere bitince yarış biter (end), bitmiş yarışta bir kez DNF (dnf: bitirmeyen ve başka cezası olmayanlara, pen
+// yalnız değiştiyse). groups: entries/list groups (grubun listesi; yoksa dönüşte görülenler)
+export function finishSteps({ starts, rounds, groups, today, now }) {
+  const out = [];
+  for (const s of starts || []) {
+    if (s.day !== today || s.void || Date.parse(s.at) > now) continue;
+    const e = rounds?.[s.id];
+    if (!s.fin && !s.fw) {
+      const k = (e?.route || []).lastIndexOf("F");
+      const first = k >= 0 ? (e.legs?.[k] || [])[0] : "";
+      if (first) out.push({ k: "open", s, at: Math.min(e.tm?.[k]?.[first] || now, now) });
+    } else if (!s.fin && Date.parse(s.fw) <= now) out.push({ k: "end", s });
+    else if (needDnf(s)) {
+      const gm = groupMap(groupsOn(groups || {}, s.day));
+      const g = s.grp || e?.grp || "";
+      const members = g && Object.keys(gm).length ? Object.keys(gm).filter((x) => gm[x] === g) : null;
+      const pen = dnfPen(e, members);
+      out.push({ k: "dnf", s, pen: JSON.stringify(pen) !== JSON.stringify(e?.pen || {}) ? pen : null });
+    }
+  }
+  return out;
 }
