@@ -70,6 +70,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
   };
   // Ana sayfada (embedded) yan gün paneli kapalı başlar; güne dokununca açılır, aynı güne tekrar dokununca ya da Kapat ile kapanır
   const [dayOpen, setDayOpen] = useState(false);
+  const [addMenu, setAddMenu] = useState(false);
   const pick = (day) => {
     if (embedded) setDayOpen(day === sel ? !dayOpen : true);
     setSel(day);
@@ -109,17 +110,27 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
             </button>
           </span>
           {embedded && (
-            <>
-              <button type="button" onClick={() => openAdd({ type: "plan", date: sel })} aria-label="Plan ekle" data-press className="btn btn-round size-9">
-                <Icon name="cal" className="size-4" />
+            <span className="relative">
+              <button type="button" onClick={() => setAddMenu((v) => !v)} aria-expanded={addMenu} aria-haspopup="menu" data-press className="btn btn-primary btn-sm shrink-0">
+                + Ekle
               </button>
-              <button type="button" onClick={() => openAdd({ type: "task", date: sel })} aria-label="Görev ekle" data-press className="btn btn-round size-9">
-                <Icon name="task" className="size-4" />
-              </button>
-              <button type="button" onClick={() => openBirthday({ date: sel })} aria-label="Doğum günü ekle" data-press className="btn btn-round size-9">
-                <Icon name="cake" className="size-4" />
-              </button>
-            </>
+              {addMenu && (
+                <>
+                  <button type="button" aria-label="Menüyü kapat" onClick={() => setAddMenu(false)} className="fixed inset-0 z-40 cursor-default" />
+                  <div role="menu" className="absolute right-0 top-full z-50 mt-1.5 w-40 overflow-hidden rounded-2xl border border-line bg-card py-1 text-fg shadow-lg">
+                    {[
+                      ["Plan", () => openAdd({ type: "plan", date: sel })],
+                      ["Görev", () => openAdd({ type: "task", date: sel })],
+                      ["Doğum günü", () => openBirthday({ date: sel })],
+                    ].map(([l, f]) => (
+                      <button key={l} type="button" role="menuitem" data-press="row" onClick={() => (setAddMenu(false), f())} className="block min-h-[2.5rem] w-full px-3.5 text-left text-[0.9375rem] font-semibold">
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </span>
           )}
           <Link href="/schedule" aria-label="Ders programı" data-press className="btn btn-round size-9">
             <Icon name="book" className="size-4" />

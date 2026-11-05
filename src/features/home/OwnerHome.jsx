@@ -119,13 +119,13 @@ export function HomeFeed({ weather, inbox, onInbox, quota, wide = false }) {
         days={wide ? null : <HomeDays wx={weather.w} today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
       >
         <div className="ck-c mt-4">
-          <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
+          <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} quick={wide} />
         </div>
         {/* Kulüp kutuları kalır (Seyhun 2026-11-03: "ana sayfadaki kulüp kutuları kalsın"); Yemek · Market · Giyim, Deniz trafiği · Kameralar yok, "Tümü" içinde */}
         {owner && (
           <div className="ck-d mt-5 empty:hidden">
             <HomeSummary
-              tiles
+              tiles={!wide}
               title={athletes || race.on ? "Kulüp" : "Özet"}
               money={canReceipts(kind)}
               race={null}

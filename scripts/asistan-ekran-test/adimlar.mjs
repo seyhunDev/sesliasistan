@@ -1208,10 +1208,13 @@ async function rainStrip(h) {
       if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ipad-${tag}.png` });
       // Yan gün paneli kapalı başlar, güne dokununca açılır, Kapat ile kapanır; Plan/Görev/Doğum günü ekle başlıkta
       m.closed = (await page.locator(".cal-emb .cal-body").count()) === 0;
-      m.adds = (await page.locator(".cal-emb header [aria-label='Plan ekle'], .cal-emb header [aria-label='Görev ekle'], .cal-emb header [aria-label='Doğum günü ekle']").count()) === 3;
+      await page.locator(".cal-emb header button", { hasText: "+ Ekle" }).click();
+      m.adds = (await page.locator(".cal-emb [role=menuitem]").count()) === 3;
+      await page.locator("[aria-label='Menüyü kapat']").click();
       await page.locator(".cal-emb .cal-cell").nth(15).click();
       await page.waitForTimeout(400);
       m.opened = (await page.locator(".cal-emb .cal-body").count()) === 1;
+      m.quick = (await page.locator("nav[aria-label='İşler'].hq .hq-tile").count()) === 5;
       if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ipad-${tag}-gun.png` });
       await page.locator(".cal-emb [aria-label='Günü kapat']").click();
       await page.waitForTimeout(300);
@@ -1221,7 +1224,7 @@ async function rainStrip(h) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(1200);
     const ph = await page.evaluate(() => ({ screen: !!document.querySelector("main.home-screen"), cal: !!document.querySelector(".cal-emb"), tl: !!document.querySelector("section[aria-label='Günün planları']") }));
-    const ok = out.every(([, m]) => m.has && m.cal && m.calH >= 300 && !m.tl && m.nav && m.closed && m.adds && m.opened && m.closed2) && !ph.screen && !ph.cal && ph.tl;
+    const ok = out.every(([, m]) => m.has && m.cal && m.calH >= 300 && !m.tl && m.nav && m.closed && m.adds && m.opened && m.closed2 && m.quick) && !ph.screen && !ph.cal && ph.tl;
     return [ok, JSON.stringify({ out, ph })];
   });
   // Seyhun 2026-11-03 (Windy görseli): ana sayfa hava kartı saat saat tablo; 3 saatte bir sütun, ertesi gün de var, yağmur mm satırı, şimdiki saat çerçeveli
