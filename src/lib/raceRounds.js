@@ -31,6 +31,18 @@ export const prepName = (p) => (p === "Kara" ? "Kara bayrak" : p ? `${p} bayrağ
 // Ceza ve sonuç kodları (Seyhun 2026-11-02 yayın incelemesi): puanı grup sayısı + 1, sıralamada en altta
 // DNC gelmedi ve DNE (atılamaz diskalifiye) 2026-11-02; elle Yayın › Dönüşler › Ceza (arayarak seçerek)
 export const PEN_CODES = ["DNC", "DNS", "OCS", "UFD", "BFD", "DSQ", "DNE", "RET", "DNF"];
+// Finiş penceresi bitince (Seyhun 2026-11-05 "başka ceza almadıysa DNF"): yarıştaki teknelerden (grubun listesi, yoksa dönüşte görülenler)
+// finişte olmayan ve cezası olmayanlara DNF; dönen yeni ceza listesi
+export function dnfPen(e, members = null) {
+  const route = e?.route || [];
+  const legs = e?.legs || [];
+  const k = route.lastIndexOf("F");
+  const done = new Set(k >= 0 ? (legs[k] || []).map(String) : []);
+  const seen = members?.length ? members.map(String) : [...new Set(legs.flat().map(String))];
+  const pen = { ...(e?.pen || {}) };
+  for (const s of seen) if (s && !done.has(s) && !pen[s]) pen[s] = "DNF";
+  return pen;
+}
 export const PEN_NAME = { DNC: "Gelmedi", DNS: "Start almadı", OCS: "Erken çıktı", UFD: "U bayrağı", BFD: "Kara bayrak", DSQ: "Diskalifiye", DNE: "Atılamaz DSQ", RET: "Bıraktı", DNF: "Bitiremedi" };
 // Ceza aramasının satırları (Yayın › Dönüşler › Ceza): yelken no başı ya da ad; members varsa önce o grup, all ile herkes
 export function penRows({ entries = [], members = null, all = false, q = "" }) {

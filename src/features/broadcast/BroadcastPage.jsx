@@ -40,11 +40,11 @@ import { BoatLive } from "@/features/tracking/BoatLive";
 import { ZOOMS, fleetGroups, fleetOf } from "@/lib/boatPlay";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets, grpHold, grpRelease, grpDue, heldGrps } from "@/lib/raceLive";
+import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, openWin, moveWin, needDnf, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets, grpHold, grpRelease, grpDue, heldGrps } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, coursePoints } from "@/lib/courseCard";
-import { EVRES, EVRE_DEF, EVRE_NAME, EVRE_WHEN, ITEM_NAME, SIDE_DEF, ITEM_SECS, SHOW_ITEMS, SIDES, SIDE_NAME, cleanCourseShow, evreOf, evreScreen, showPlan, CLASS_PICK, raceClasses, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
+import { EVRES, EVRE_DEF, EVRE_NAME, EVRE_WHEN, ITEM_NAME, SIDE_DEF, ITEM_SECS, SHOW_ITEMS, SIDES, SIDE_NAME, cleanCourseShow, evreOf, evreScreen, showPlan, CLASS_PICK, raceClasses, PREP_PICK, SRC_KINDS, YT_RTMP, addSource, cleanSources, currentStart, liveStarts, dnfPen, markName, prepName, screenUrl, streamSources, ytEmbed, ytId, ytSrc } from "@/lib/raceRounds";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { autoCaption } from "@/lib/raceCaption";
@@ -1236,6 +1236,39 @@ export function BroadcastPage({ orgId, id }) {
     changePlan({ prep: f, order: plan.order.map((o) => (o.cls === cl ? { ...o, prep: f } : o)) });
   };
   const grpName = (k) => { const [c, g] = k.split("|"); return g || c; };
+  // Finiş penceresi (Seyhun 2026-11-05): ilk tekne finişe yazılınca ya da "İlk finiş"e basılınca 15 dk açılır (±5 dk); süre bitince yarış
+  // kendiliğinden biter, bitirmeyen ve başka cezası olmayan teknelere DNF yazılır (grubun listesi, yoksa dönüşte görülenler)
+  const putStarts = (fn) => change((l) => { const next = fn(l.starts); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; });
+  const endRace = (s) => (upRow(s.id) ? raceFinish(flow) : putStarts((l) => finishRace(l, s.id, Date.now(), rdays)));
+  const membersOf = (s) => {
+    const gm = groupMap(groupsOn(groups, s.day));
+    const g = s.grp || L?.rounds?.[s.id]?.grp || "";
+    return g && Object.keys(gm).length ? Object.keys(gm).filter((k) => gm[k] === g) : null;
+  };
+  const winTick = () => {
+    for (const s of live.starts) {
+      if (s.day !== today || s.void || Date.parse(s.at) > capNow) continue;
+      const e = L.rounds?.[s.id];
+      if (!s.fin && !s.fw) {
+        const k = (e?.route || []).lastIndexOf("F");
+        const first = k >= 0 ? (e.legs?.[k] || [])[0] : "";
+        if (first) putStarts((l) => openWin(l, s.id, Math.min(e.tm?.[k]?.[first] || capNow, capNow)));
+      } else if (!s.fin && Date.parse(s.fw) <= capNow) endRace(s);
+      else if (needDnf(s)) {
+        if (upRow(s.id)) raceFinish(flow); // pencere sayfa kapalıyken bittiyse sayaç da durur
+        putStarts((l) => l.map((x) => (x.id === s.id ? { ...x, dnf: true } : x)));
+        const pen = dnfPen(e, membersOf(s));
+        if (JSON.stringify(pen) !== JSON.stringify(e?.pen || {})) setPickOf(s.id, { pen });
+      }
+    }
+  };
+  useEffect(() => {
+    if (!L || !capNow) return;
+    const t = setTimeout(() => winTick(), 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capNow, L, live.starts]);
+
   const apSig = signalOf(apSigId(plan));
 
   return (
@@ -1329,7 +1362,6 @@ export function BroadcastPage({ orgId, id }) {
                 const s = x.start;
                 const open = pickId === s.id;
                 const up = upRow(s.id);
-                const finish = () => (up ? raceFinish(flow) : change((l) => { const next = finishRace(l.starts, s.id, Date.now(), rdays); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; }));
                 return (
                   <div key={s.id} className={`sure-mini${open ? " open" : ""}`} style={{ "--g": (x.grp && groupColor(x.grp)) || "var(--mut)" }}>
                     <button type="button" onClick={() => setPickId(open ? "" : s.id)} className="sure-mini-h" data-press>
@@ -1342,11 +1374,33 @@ export function BroadcastPage({ orgId, id }) {
                       </span>
                       <em>{mmss(up ? upSec(tr.t.end, tr.now) : Math.max(0, Math.floor((nowS - Date.parse(s.at)) / 1000)))}</em>
                     </button>
+                    {s.fw ? (
+                      <div className="sure-win">
+                        <span className="min-w-0 flex-1">
+                          Finiş penceresi <WinLeft fw={s.fw} />
+                        </span>
+                        {open ? (
+                          <>
+                            <Button size="sm" variant="secondary" onClick={() => putStarts((l) => moveWin(l, s.id, Date.now(), -5))}>
+                              −5 dk
+                            </Button>
+                            <Button size="sm" variant="secondary" onClick={() => putStarts((l) => moveWin(l, s.id, Date.now(), 5))}>
+                              +5 dk
+                            </Button>
+                            <Button size="sm" onClick={() => endRace(s)}>
+                              Bitir
+                            </Button>
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {open ? (
                       <div className="sure-acts">
-                        <Button size="sm" onClick={finish}>
-                          Bitti
-                        </Button>
+                        {s.fw ? null : (
+                          <Button size="sm" onClick={() => putStarts((l) => openWin(l, s.id, Date.now()))}>
+                            İlk finiş
+                          </Button>
+                        )}
                         <Button size="sm" variant="secondary" onClick={() => (setFlagFor(s.id), setFlagOpen(true))}>
                           Bayrak
                         </Button>
@@ -2968,6 +3022,15 @@ function TimeIn({ value, onSave, ...p }) {
 // boşluk yarıya indi (masa.css .masa-barin), çubuk sayfayla aynı genişlikte
 // İlk start (Seyhun 2026-11-04 "ilk start kaç dakika kaldı, saati ne; 11 dediğimde 10.55'te uyarı işareti, sınıf bayrağı çekilir"):
 // start saati ve uyarı işareti saati (start − seçili süre); büyük sayaç uyarı işaretine, yani Başlat'a kalan süre. Zamanı gelince "Şimdi Başlat".
+// Finiş penceresine kalan (saniye saniye)
+function WinLeft({ fw }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return <b>{mmss(Math.max(0, Math.ceil((Date.parse(fw) - now) / 1000)))}</b>;
+}
 function FirstStart({ day, at, dur }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
