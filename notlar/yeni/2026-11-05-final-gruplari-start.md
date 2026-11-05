@@ -6,3 +6,7 @@
 ## Sıradaki işler
 
 - Geçici sonuç PDF'inde grupları ayırma (örnek /mnt/project-files/coklu-grup/ornek-pdf/).
+
+## Asistan
+
+- Final gruplarının varsayılan start sırası Altın, Gümüş, Bronz (`finalsFirst`, Sınıf ve gruplar penceresinde grup seçilirken); "Öne al" ile değiştirilebilir.
