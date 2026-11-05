@@ -7,7 +7,6 @@ import { Empty } from "@/components/ui/Page";
 import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { todayStr } from "@/lib/utils/format";
 import { useWide } from "@/hooks/useWide";
-import { rangeText } from "./raceDocs";
 import { doneFor, stepTotal, stepsOf } from "./races";
 
 const MON = ["OCA", "ŞUB", "MAR", "NİS", "MAY", "HAZ", "TEM", "AĞU", "EYL", "EKİ", "KAS", "ARA"];
@@ -64,7 +63,6 @@ function warnOf(r) {
   const parts = [r.notice && !r.noticeFile && "Talimat dosyası yok", close && todo && `${todo} iş eksik`].filter(Boolean);
   return parts.join(" · ");
 }
-const subOf = (r) => [placeText(r), r.abroad && "Yurt dışı", r.athleteIds.length ? `${r.athleteIds.length} sporcu` : "Sporcu seçilmedi"].filter(Boolean).join(" · ");
 // Ay başlığı: bu yıl "EKİM", başka yıl "ŞUBAT 2027"; tarihsiz yarışlar en sonda
 const monthOf = (r) => {
   if (!r.startDate) return "TARİHSİZ";
@@ -110,13 +108,40 @@ function prepOf(r, past) {
   );
 }
 
+// Telefonda satırın 3. satırı (Seyhun 2026-11-05 "telefon tasarımını da aynı yap", yaris-tasarim/ipad/yarislar-telefon.png):
+// iPad'deki sütunların aynısı alt alta: sporcu · iş sayısı ve ince çubuk, sporcusuzsa sarı "Sporcu seç"; geçmişte sonuç
+function MetaLine({ r, past }) {
+  const n = r.athleteIds.length;
+  const total = stepTotal(r);
+  const done = total - stepsOf(r).length;
+  const prep = past
+    ? r.results?.rows && Object.keys(r.results.rows).length ? "Sonuç var" : ""
+    : !n ? <span className="font-semibold text-warn">Sporcu seç</span> : total ? (done === total ? "Hazır" : `${done} / ${total} iş`) : "";
+  if (!n && !prep) return null;
+  return (
+    <span className="mt-1 flex items-center gap-1.5 text-[0.78125rem] text-fg">
+      {n > 0 && `${n} sporcu`}
+      {n > 0 && prep && " · "}
+      {prep}
+      {!past && n > 0 && total > 0 && (
+        <span className="ml-1 h-[5px] w-14 shrink-0 overflow-hidden rounded-full bg-line" aria-hidden="true">
+          <span className={`block h-full rounded-full ${done === total ? "bg-ok" : "bg-acc"}`} style={{ width: `${Math.round((done / total) * 100)}%` }} />
+        </span>
+      )}
+    </span>
+  );
+}
+
 function RaceRow({ r, past, onOpen, wide }) {
   const s = r.startDate && day(r.startDate);
-  const e = r.endDate && r.endDate !== r.startDate ? day(r.endDate) : null;
   const warn = !past && warnOf(r);
-  const sub = wide
-    ? warn || [placeText(r), r.abroad && "Yurt dışı", shortRange(r)].filter(Boolean).join(" · ")
-    : warn || (past ? [placeText(r), e ? `${s.getDate()}–${e.getDate()} ${MON[e.getMonth()].toLocaleLowerCase("tr-TR")}` : ""].filter(Boolean).join(" · ") || subOf(r) : subOf(r));
+  const line = warn || [placeText(r), r.abroad && "Yurt dışı", shortRange(r)].filter(Boolean).join(" · ");
+  const sub = wide ? line : (
+    <>
+      {line}
+      <MetaLine r={r} past={past} />
+    </>
+  );
   return (
     <Row
       onClick={() => onOpen(r)}
@@ -166,7 +191,7 @@ function NextTop({ r, onOpen }) {
           )}
         </span>
         <b className="mt-2.5 block truncate text-[1.3125rem] font-bold leading-tight tracking-tight">{r.name || "Adsız yarış"}</b>
-        <span className="mt-0.5 block truncate text-[0.875rem] text-white/70">{[placeText(r), rangeText(r.startDate, r.endDate), `${r.athleteIds.length} sporcu`].filter(Boolean).join(" · ")}</span>
+        <span className="mt-0.5 block truncate text-[0.875rem] text-white/70">{[placeText(r), shortRange(r), `${r.athleteIds.length} sporcu`].filter(Boolean).join(" · ")}</span>
       </button>
       {/* geniş ekranda sağ yarı: hazırlık, son tarih, sıradaki iş */}
       <div className="race-next-b">
