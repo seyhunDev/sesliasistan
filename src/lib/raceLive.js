@@ -96,7 +96,11 @@ export function cleanStarts(list) {
       ...(x?.grp ? { grp: S(String(x.grp).replace(/[^\p{L} ]/gu, ""), 20) } : {}),
       marks: cleanMarks(x?.marks),
       ...(Array.isArray(x?.fins) && x.fins.length ? { fins: cleanFins(x.fins) } : {}),
+      // fw: finiş penceresinin sonu ("İlk finiş" + 15 dk; Seyhun 2026-11-05), dnf: pencere bitince bitirmeyenlere DNF yazıldı
+      ...(ISO(x?.fw) ? { fw: ISO(x.fw) } : {}),
+      ...(x?.dnf === true ? { dnf: true } : {}),
     }))
+    .map((x) => (x.fw && !x.fin && !x.void && Date.parse(x.fw) <= Date.now() ? { ...x, fin: x.fw } : x)) // pencere bittiyse sayfa açık olmasa da bitmiş sayılır
     .filter((x) => x.id && x.day && x.at)
     .sort((a, b) => a.at.localeCompare(b.at))
     .slice(-200);
@@ -393,7 +397,17 @@ export function zeroRace(starts, id, endMs, wind = [], rdays = null) {
   const w = newStart([], at, wind);
   return renumber((starts || []).map((x) => (x.id === id ? { ...x, at, dir: x.dir ?? w.dir, kn: x.kn ?? w.kn } : x)), rdays);
 }
-export const finishRace = (starts, id, finMs, rdays = null) => renumber((starts || []).map((x) => (x.id === id ? { ...x, fin: new Date(finMs).toISOString() } : x)), rdays);
+// Finiş penceresi açıksa bitiş en geç pencerenin sonu (sayfa geç açıldıysa da)
+export const finishRace = (starts, id, finMs, rdays = null) =>
+  renumber((starts || []).map((x) => (x.id === id ? { ...x, fin: new Date(x.fw ? Math.min(finMs, Date.parse(x.fw)) : finMs).toISOString() } : x)), rdays);
+// "İlk finiş" (Seyhun 2026-11-05): ilk tekne bitirince pencere açılır (varsayılan 15 dk), ±5 dk değişir, sonunda yarış kendiliğinden biter
+export const FIN_WIN = 15;
+export const openWin = (starts, id, nowMs, min = FIN_WIN) => (starts || []).map((x) => (x.id === id && !x.fin ? { ...x, fw: new Date(nowMs + min * 60e3).toISOString() } : x));
+export const moveWin = (starts, id, nowMs, dMin) =>
+  (starts || []).map((x) => (x.id === id && x.fw && !x.fin ? { ...x, fw: new Date(Math.max(nowMs + 60e3, Date.parse(x.fw) + dMin * 60e3)).toISOString() } : x));
+export const winLeft = (s, nowMs) => (s?.fw && !s.fin ? Math.max(0, Math.ceil((Date.parse(s.fw) - nowMs) / 1000)) : null);
+// Pencereli yarış bitti ama DNF henüz yazılmadı
+export const needDnf = (s) => !!(s?.fw && s.fin && !s.void && !s.dnf);
 export const dropRace = (starts, id, rdays = null) => renumber((starts || []).filter((x) => x.id !== id), rdays);
 // Yarışı geçersiz say (tehir / genel geri çağırma / iptal): bitiş = iptal anı (çekimleri o ana kadar bu yarışa düşer); reason boşsa geri geçerli
 export const voidRace = (starts, id, reason, atMs, rdays = null) =>
