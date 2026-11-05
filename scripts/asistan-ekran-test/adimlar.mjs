@@ -1193,6 +1193,27 @@ async function rainStrip(h) {
     if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-anasayfa.png`, fullPage: true });
     return [cards === 0 && shop === 0 && links === 0, `kart ${cards} · alışveriş ${shop} · deniz/kamera ${links}`];
   });
+  // Seyhun 2026-11-05 "tek uygulama ekranı, kaydırma gerekmeden": iPad yatay ve dikeyde ana sayfa ekranı doldurur; solda hava + Takvim sayfası, sağda düğmeler
+  await check("Ana sayfa", "iPad tek ekran", "yatay 1180x820 ve dikey 820x1180: hava, takvim ve düğmeler görünür, sayfa kaymaz; telefona dönünce eski düzen", async () => {
+    const out = [];
+    for (const [w, h, tag] of [[1180, 820, "yatay"], [820, 1180, "dikey"]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.waitForTimeout(1500);
+      const m = await page.evaluate(() => {
+        const main = document.querySelector("main.home-screen");
+        const cal = document.querySelector(".cal-emb");
+        const r = cal?.getBoundingClientRect();
+        return { has: !!main, scroll: main ? main.scrollHeight - main.clientHeight : -1, cal: !!cal, calH: r ? Math.round(r.height) : 0, tl: !!document.querySelector("section[aria-label='Günün planları']"), nav: !!document.querySelector("nav[aria-label='İşler']") };
+      });
+      if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ipad-${tag}.png` });
+      out.push([tag, m]);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(1200);
+    const ph = await page.evaluate(() => ({ screen: !!document.querySelector("main.home-screen"), cal: !!document.querySelector(".cal-emb"), tl: !!document.querySelector("section[aria-label='Günün planları']") }));
+    const ok = out.every(([, m]) => m.has && m.cal && m.calH >= 300 && !m.tl && m.nav) && !ph.screen && !ph.cal && ph.tl;
+    return [ok, JSON.stringify({ out, ph })];
+  });
   // Seyhun 2026-11-03 (Windy görseli): ana sayfa hava kartı saat saat tablo; 3 saatte bir sütun, ertesi gün de var, yağmur mm satırı, şimdiki saat çerçeveli
   await check("Ana sayfa", "saat saat hava tablosu", "hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat", async () => {
     await page.getByRole("button", { name: "Tablo", exact: true }).first().click();

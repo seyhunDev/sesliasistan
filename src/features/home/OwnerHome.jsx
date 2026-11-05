@@ -24,6 +24,7 @@ import { myFit } from "@/lib/fitness/model";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { RaceLive } from "./RaceLive";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
+import { useWide } from "@/hooks/useWide";
 
 // Ana sayfa (Seyhun 2026-10-21 "C · Lacivert kokpit", ilk ekran "A · tam lacivert"): ilk ekran tam bir sayfa lacivert kokpit (Cockpit: tarih, zil, Ayarlar,
 // hava, rüzgâr grafiği, sıradaki iş, iş düğmeleri, büyük günler), altında açık zeminde akış (HomeFeed): Notlar, Sporcular, Fitness, takvim, doğum günü, Kulüp/Özet. Alttaki asistan kubbesi her sayfada aynı (TabBar).
@@ -42,9 +43,10 @@ export function OwnerHome() {
     window.history.replaceState(null, "", "/");
   }, [setSheet]);
 
+  const wide = useWide();
   return (
-    <main className="calm grouped home-wide relative mx-auto max-w-[30rem] px-4">
-      <HomeFeed weather={weather} inbox={inbox} onInbox={() => setSheet(true)} quota={staff && qa && qr ? { qa, qr } : null} />
+    <main className={`calm grouped relative mx-auto max-w-[30rem] ${wide ? "home-screen" : "px-4"}`}>
+      <HomeFeed wide={wide} weather={weather} inbox={inbox} onInbox={() => setSheet(true)} quota={staff && qa && qr ? { qa, qr } : null} />
       <InboxSheet inbox={inbox} open={inbox.open} onClose={() => setSheet(false)} />
     </main>
   );
@@ -54,7 +56,7 @@ export function OwnerHome() {
 // "kısa yolları canlı alanlara çevirelim": Sporcular, Fitness, yarış, aidat, fiş, hesap, Notlar, Mesajlar, Toplantı, Instagram; HomeSummary + HomeWidgets) › bütün sayfalar iş düğmelerindeki "Tümü" penceresinde (HomeGrid).
 // Kişi şeridi kaldırıldı (sporcular kendi alanında, Kişiler alttaki düğmelerde).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
-export function HomeFeed({ weather, inbox, onInbox, quota }) {
+export function HomeFeed({ weather, inbox, onInbox, quota, wide = false }) {
   const { profile } = useAuth();
   const { plans, lessons, members, notes, fitOthers } = useData();
   const staff = profile?.role === "staff";
@@ -87,6 +89,22 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
   const [pick, setPick] = useState(null);
 
 
+  const lowBlock = (
+    <div className={wide ? "home-low relative space-y-4" : "home-low relative space-y-6 pb-6 pt-5"}>
+      {quota && (
+        <p className="px-1 text-[0.75rem] tabular-nums text-mut">
+          Bugün kalan · asistan {quota.qa.left}/{quota.qa.limit} · fiş {quota.qr.left}/{quota.qr.limit}
+        </p>
+      )}
+      <PaidNotice />
+      {/* Yalnız notlar (Seyhun 2026-11-03 "A · İyice sade"); Sporcular, Fitness, doğum günü, İngilizce, Görevler, Medya, Özet kartları kalktı
+          (sayfaları "Tümü" içinde). Çalışanın ve sporcunun kendi antrenman/yoklama kartı kalır. Geniş ekranda sağ sütunun altında */}
+      <NotesWidget notes={notes} />
+      {staff && <MyFitCard />}
+      {side && <MyAttendanceCard kind={kind} />}
+    </div>
+  );
+
   return (
     <>
       {/* Lacivert kokpit (Seyhun 2026-10-21; boşluksuz, sıkı): en üstte büyük günler (seçilen güne göre hava ve planlar), altta iş düğmeleri (en sık işler adıyla, sonunda Tümü) */}
@@ -95,8 +113,10 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         inbox={inbox}
         onInbox={onInbox}
         sel={sel}
+        onSel={setSel}
+        wide={wide}
         live={athletes ? <RaceLive open={race.open} /> : null}
-        days={<HomeDays wx={weather.w} today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
+        days={wide ? null : <HomeDays wx={weather.w} today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
       >
         <div className="ck-c mt-4">
           <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
@@ -115,22 +135,11 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
             />
           </div>
         )}
+        {wide && lowBlock}
       </Cockpit>
       {/* Alt kısım da lacivert (Seyhun 2026-10-22: "yukarısı daha güzel, bu tasarımı devam ettirelim"): kartlar kokpitteki gibi
           yarı saydam lacivert, yazılar açık; renkler globals.css .navy değişkenlerinden (koyu görünüm sınıfları da çalışır) */}
-      <div className="home-low relative space-y-6 pb-6 pt-5">
-        {quota && (
-          <p className="-mb-4 px-1 text-[0.75rem] tabular-nums text-mut">
-            Bugün kalan · asistan {quota.qa.left}/{quota.qa.limit} · fiş {quota.qr.left}/{quota.qr.limit}
-          </p>
-        )}
-        <PaidNotice />
-        {/* Yalnız notlar (Seyhun 2026-11-03 "A · İyice sade"); Sporcular, Fitness, doğum günü, İngilizce, Görevler, Medya, Özet kartları kalktı
-            (sayfaları "Tümü" içinde). Çalışanın ve sporcunun kendi antrenman/yoklama kartı kalır */}
-        <NotesWidget notes={notes} />
-        {staff && <MyFitCard />}
-        {side && <MyAttendanceCard kind={kind} />}
-      </div>
+      {!wide && lowBlock}
     </>
   );
 }

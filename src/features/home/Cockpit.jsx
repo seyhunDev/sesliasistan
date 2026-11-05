@@ -16,6 +16,7 @@ import { HourTable } from "@/features/weather/HourTable";
 import { NowRain } from "@/features/weather/NowRain";
 import { useRainRadar } from "@/features/weather/useRainRadar";
 import { radarNow, radarRows } from "@/features/weather/rainLine";
+import { CalendarView } from "@/features/calendar/CalendarView";
 import { DayTimeline } from "./DayTimeline";
 import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
@@ -32,7 +33,7 @@ import { BirthdayBadge } from "./PeopleStrip";
 // Yarış günü (Seyhun 2026-10-27 "A · Yarışın yeri büyük", örnek yaris-yeri-hava): seçilen gün bir yarışın günleri içindeyse (away, OwnerHome awayRace)
 // büyük hava ve rüzgâr grafiği yarışın yerinin (raceWeather.loadRaceDay); 2026-10-28 "A · Alt alta ince": büyük grafik yerine iki ince şerit (WindStrip), üstte yarış yeri, altta ev yeri
 // (hava yeri, ör. Dikili: sıcaklık · yön · kn), ona dokununca hava sayfası. Yarışın yeri ev yerine 10 km'den yakınsa ya da hava alınamazsa her şey eskisi gibi.
-export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) {
+export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide = false, children }) {
   const { profile } = useAuth();
   const router = useRouter();
   const now = useNow();
@@ -55,11 +56,11 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) 
   const dateLabel = cap(new Date(`${date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" }));
 
   return (
-    <section className="home-ck -mx-4 px-4" aria-label="Bugün">
+    <section className={wide ? "home-ck hs" : "home-ck -mx-4 px-4"} aria-label="Bugün">
       {/* Hava manzarası (Seyhun 2026-11-04 "A · Hava manzarası", örnek yeni-ana-tam): üstte havanın kendisi, gökyüzü rengi o günün havasına göre
           (yağmurda çizgiler akar); sıcaklık, rüzgâr, Grafik / Tablo sekmesi. Altında açık zeminde günler, yarış şeridi, plan, çizelge, düğmeler. */}
-      <div className="ck-a">
-      <div className="ck ck-hero -mx-4 px-4 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]" data-sky={skyKey(n)}>
+      <div className={wide ? "ck-a hs-w" : "ck-a"}>
+      <div className={`ck ck-hero pb-4 ${wide ? "rounded-[1.5rem] px-4 pt-3" : "-mx-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))]"}`} data-sky={skyKey(n)}>
       <header className="flex items-center gap-2">
         <h1 className="sr-only">{now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}</h1>
         <span className="min-w-0 flex-1 leading-tight">
@@ -77,7 +78,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) 
           <button type="button" onClick={goWeather} aria-label="Hava ayrıntısı" className="mt-2 block w-full text-left">
             {n ? (
               <span className="flex items-end gap-3">
-                <span className="shrink-0 text-[4.25rem] font-semibold leading-[.9] tracking-[-.05em] tabular-nums">{n.t}°</span>
+                <span className={`shrink-0 font-semibold leading-[.9] tracking-[-.05em] tabular-nums ${wide ? "text-[3.25rem]" : "text-[4.25rem]"}`}>{n.t}°</span>
                 <span className="min-w-0 flex-1 pb-1 leading-tight">
                   <b className="block truncate text-[0.9375rem] font-semibold">{isToday ? "" : `${dname} · `}{sky(n.code, n.day).label}</b>
                   {cur?.feel != null && <small className="block truncate text-[0.8125rem] text-white/80 tabular-nums">Hissedilen {cur.feel}°</small>}
@@ -109,14 +110,28 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, children }) 
       </>
       </div>
 
-      <div className="mt-3">{days}</div>
-      {live}
+      {days && <div className="mt-3">{days}</div>}
+      {!wide && live}
       </div>
-      <div className="ck-b mt-3 space-y-3">
-        {isToday && <NextPlan now={now} />}
-        <DayTimeline date={date} rows={rows} />
-      </div>
-      {children}
+      {wide ? (
+        <div className="hs-cal">
+          <CalendarView embedded sel={date} onSel={onSel} />
+        </div>
+      ) : (
+        <div className="ck-b mt-3 space-y-3">
+          {isToday && <NextPlan now={now} />}
+          <DayTimeline date={date} rows={rows} />
+        </div>
+      )}
+      {wide ? (
+        <div className="hs-r">
+          {isToday && <NextPlan now={now} />}
+          {live}
+          {children}
+        </div>
+      ) : (
+        children
+      )}
     </section>
   );
 }

@@ -1149,7 +1149,7 @@ group("Tekne takibi")([
       return [AG.onDay(p, "2026-11-11"), AG.onDay(p, "2026-11-13"), AG.timeOn(p, "2026-11-10"), AG.timeOn(p, "2026-11-11"), HT.dayPlans([p], "2026-11-12").length];
     }, ok: ([a, b, t1, t2, n]) => a && !b && t1 === "07:00" && t2 === "" && n === 1 }],
     ["her yerde aynı kural", { desc: "Planlar, Takvim, Sıradaki plan, günün listesi ve gün penceresi plana dokununca usePlanOpen; yarıştan eklenen plan raceId taşır", fn: () => {
-      const use = ["app/(app)/plans/page.jsx", "app/(app)/calendar/page.jsx", "features/home/Cockpit.jsx", "features/home/DayTimeline.jsx", "features/home/DayPick.jsx"].every((f) => /usePlanOpen\(\)/.test(r(f)));
+      const use = ["app/(app)/plans/page.jsx", "features/calendar/CalendarView.jsx", "features/home/Cockpit.jsx", "features/home/DayTimeline.jsx", "features/home/DayPick.jsx"].every((f) => /usePlanOpen\(\)/.test(r(f)));
       const id = /raceId: r\.id/.test(r("features/athletes/races.js")) && /raceId: r\.id/.test(r("features/athletes/raceNotice.js")) && /d\.raceId \? \{ raceId: d\.raceId \}/.test(r("features/data/DataProvider.jsx"));
       return [use, id, /onSyncPlan/.test(r("features/athletes/RaceEditor.jsx"))];
     }, ok: (a) => a.every(Boolean) }],
