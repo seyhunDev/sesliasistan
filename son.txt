@@ -1,8 +1,8 @@
-Commit: 42f0a41 · Yarış takip: günün özeti (Dün | Bugün) ve Gruplar bölümü (#1237)
-Zaman: 2026-11-05-1950 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42066194413
+Commit: 48b0d67 · Canlı Video: galeri yarış yarış, Düzenle (yarış, Sil), YouTube'a ekle ve linki kaynaklara ekle (#1253)
+Zaman: 2026-11-05-2201 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42086667206
 
-TAM TEST · 05.11.2026 19:37:14
+TAM TEST · 05.11.2026 21:42:37
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,22 +30,25 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1431/1440 geçti · 9 kalan · 813 sn
+SONUÇ: 1429/1440 geçti · 11 kalan · 1128 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4514 test”
+      ✗ “4516 test”
           beklenen: hepsi geçer
-          olan:     4488/4514 geçti
+          olan:     4484/4516 geçti
       ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
+      ✗ “yayın: bugünün startları tek liste” → [true,false,true,true] (beklenen: Seyhun 2026-11-01: sınıf/grup/bayrak seçimi ile start sırası tek listede (plan.order [{cls,grp,prep}]); ilk bekleyen Sıradaki, Başlat onu rounds[start]'a yazıp listeden düşer; satıra dokununca çipler + Yukarı/Aşağı/Çıkar; herkese açık ekran plan.order'ı olduğu gibi sıradaki gösterir)
+      ✗ “telefon izleyici şeridi: grubun kamerası, Sıralama, Sonuçlar, Rüzgâr, Parkur; süre boşsa Start bekleniyor” → [true,true,true,true,false] (beklenen: Seyhun 2026-11-05: /canli telefonda izleyici kendisi seçer (gruba bağlı kamera/drone, Sıralama, Sonuçlar, Rüzgâr, Parkur), seçmezse yayın odasının gösterdiği; sayaç yokken boş süre yerine 'Start bekleniyor'; telefonda sıralama tek sütun)
       ✗ “yayın sekmeleri, ekranda alt yazı, rüzgâr aralığı ve gün boyu grafik, üst şerit, yarışlar penceresi” → [false,true,true,true,true,true,true,true] (beklenen: Seyhun 2026-11-02: Yayın sayfası Süre · Video · Parkur · Dönüşler sekmeleri (Seg); Video'da 'Ekranda yazı' (screen.caption) → canlı ekranda alt yazı LowerThird, sesle 'ekrana yaz: …' / 'ekrandaki yazıyı kaldır'; rüzgâr aralığı okta salınır (lv-swing), değişince süzülür; gün boyu grafik her evrede: tahmin + istasyon ölçümü (/api/canli forecast.obs) + bizim ölçümler)
-      ✗ “parkur kartları: varsayılan seçili, yeni kart, Başlat rotayı yazar, ekranda sahne” → [true,true,true,false,true] (beklenen: Seyhun 2026-11-02: her yarışın kendi parkur kartı olabilir; şimdiki varsayılan (A) ve seçili; Yayın › Parkur'da Yeni kart, rota yazma, seçme, silme; Başlat seçili kartın rotasını o yarışa yazar; canlı ekran süren yarışın rotasını, yoksa seçili kartı animasyonlu sahnede gösterir; /canli ve Yayın ⋯ menüsünde örnek yarış düğmesi)
+      ✗ “parkur kartları: varsayılan seçili, yeni kart, Başlat rotayı yazar, ekranda sahne” → [true,true,false,false,true] (beklenen: Seyhun 2026-11-02: her yarışın kendi parkur kartı olabilir; şimdiki varsayılan (A) ve seçili; Yayın › Parkur'da Yeni kart, rota yazma, seçme, silme; Başlat seçili kartın rotasını o yarışa yazar; canlı ekran süren yarışın rotasını, yoksa seçili kartı animasyonlu sahnede gösterir; /canli ve Yayın ⋯ menüsünde örnek yarış düğmesi)
       ✗ “canlı ekran yayın tasarımı: program, beklenen rüzgâr, yayın yazısı” → [true,true,true,false,true,true] (beklenen: Seyhun 2026-11-02 (tasarim7 onayı, 'profesyonel yelken yayını gibi yazı'): yarış öncesi video yokken ortada büyük geri sayım, ilk yarış + grup, beklenen rüzgâr (tahminin start saati), altta program kartları (1. yarış Mavi grup…); yarışta ve videolu beklemede sağ üstte program etiketleri (Bitti · Canlı · saat); gün sonu 'Gün bitti · N yarış' + yarış kartları + genel, şeritte yarının ilk startı ve beklenen rüzgârı (/api/canli forecastNext); Barlow / Barlow Condensed; arka foto 18px bulanık)
       ✗ “canlı ekran senaryo 2: start'a 1 saatten az, dönen tek panel” → [true,true,false,true] (beklenen: Seyhun 2026-11-03 (senaryo/2b onayı, 'hepsini aynı anda göstermemize gerek yok'): yarış günü start'a 1 saatten az, turuncu bayrak ya da start dizisi → videosuz StartHero (.lv-hold2), videolu NearBand (.lv-band2): sayaç + sıradaki yarış + bayraklar sabit, sağda tek panel 8 sn'de bir kayar (Start hattı → Rüzgâr → Parkur → Sıradaki, noktalar), son dakikada panel yok, altta 5·4·1·0 çubuğu; sıralama, çipler, alt şerit yok; tehir ve yarın hariç)
       ✗ “canlı ekran ortak rüzgâr bloğu ve parkur sahnesi” → [true,false,true,false,true] (beklenen: Seyhun 2026-11-03 ('rüzgâr gösteriminde çok eksiltmişsin; sağanak, gerçekleşen; ok ortalanmamış; birbirleriyle uyumlu'; 'parkurda sadece sayılar yazıyor, parkur animasyonumuzu kullanalım; veri yoksa rüzgâr 0 kabul'): WindNow (ortalı ok, kn, sağanak, yön, kaynak) + WindHours (ortak HourTable) her adımda; parkur her yerde sahne, ölçüm yokken varsayılan kart eksen 0°; senaryo 2 yalnız sayaç/turuncu/<1 saat)
       ✗ “tehir: rüzgâr değişken sebebi, çekildikten sonra düzelt” → [true,false,false,true] (beklenen: Seyhun 2026-11-03: 'tehir sebebi olarak rüzgâr çok değişiyor da olsun; hatalı bir şey olursa sonra değişim yapılabilmeli' → AP_WHY'de 'Rüzgâr değişken'; tehir çekiliyken Düzelt aynı pencereyi açar (iniş seçilmezse aynı kalır), Kaydet plan.ap'ı günceller; tehirde/yarıştan önce hazırlık bayrağı gösterilmez, sıradaki start sınıf işaretiyle 'bekliyor')
+      ✗ “canlı bekleme ekranı kartsız, ince geri, boş genel sıralama yok” → [true,false,true,true] (beklenen: Seyhun 2026-11-01: bekleme evresinde geri sayım ekranın ortasında kartsız, altında küçük saat; başlıkta ince ‹ geri (/canli); genel sıralama yalnız sonuç varsa (hideEmpty); yan sütun yalnız yayın ya da sıralama varsa)
       ✗ “tehir (süre + sebep) ve bekleme ekranında rüzgâr tahmini” → [true,false,true,true,true,true] (beklenen: Seyhun 2026-11-01: Yayın'da Tehir → süre (30 dk…2 sa, belirsiz) + sebep; plan.ap { from, why }, at yeni saat; apText ekranda; /api/canli forecast (Open-Meteo, yarış yeri) → WindDay grafiği, parkur ölçüm varsa, 'ekranda neler' şeridi; zeminde parkur çizgisi yok)
       ✗ “yayın sayfası sade: ⋯ menüsü, sonuç PDF'i ayrı sayfa; /canli canlı etiketi” → [true,true,true,false,false,true] (beklenen: Seyhun 2026-11-01: Yayın'da az düğme (Başlat; Start ekle + Tehir; Sesle gir), Linki kopyala / Ekranı aç / Sonuç PDF'i / Kayıt listesi / Bugün yarış yok / Günü bitir (bir daha sorar) ⋯ menüsünde; sonuçlar /athletes/races/<id>/sonuclar; /canli listesinde süren yarış Canlı, 20 sn yenilenir; çökme ekranı /canli'de 'Canlı yarışlara dön')
       ✗ “grubun kendi numarası” → ["S1,M1,K1,S2,M2,S3,K2,K2",3,3,false,true,true] (beklenen: Seyhun 2026-11-04 üç grup: Sarı 3. yarışa geçince Kırmızı'nın 2. yarışı 2 kalır; abandone tekrarı aynı numara; Yayın satırı grup · yarış, başlamış yarışta değiştirme yok, kısa yollar; Dönüşler seçili gruba; canlıda diğer gruplar)
@@ -61,9 +64,12 @@ SONUÇ: 1431/1440 geçti · 9 kalan · 813 sn
       ✗ “genel sıralama starttan sonra, göster/kaldır, cam kart” → [true,true,false,false,true] (beklenen: Seyhun 2026-11-02: genel sıralama start'tan önce (geri sayımda) görünmez; yarışta Yayın › Video › 'Genel sıralama (yarışta)' ya da sesle 'geneli kaldır/göster' ile kapanır/açılır; kutusuz sağ bulanık şerit, şamandıra sıralaması kutusuz ve farklı biçimde)
       ✗ “yayın kurulumu, resimli bayrak, grupların parkuru” → [true,true,true,true,false,true,false] (beklenen: Seyhun 2026-11-02 'önce sınıflar, sonra gruplar; bir kere seçip kapatalım, ayarlardan değişsin; sonra sekmeler. Bayrak resimli, hiçbiri seçili değil, seçince ilerler, geri de olsun. Sarı trapezde, mavi başka parkurda')
       ✗ “bekleme örnek H, tehir: bayrak + sebep, inişe geri sayım” → [false,true,true,true] (beklenen: Seyhun 2026-11-03: videosuz bekleme solda geri sayım + program + rüzgâr, sağ üstte parkur, vitrin dönmez; tehirde iki ekranda AP bayrağı ve sebep, iniş / uyarı işareti saati yok, süre belliyse 'Tehir inişine' geri sayım; Yayın'da inince 1 dk sonra geri sayım seçilebilir)
+      ✗ “gruplar ayrı başlar, ▶ ekrana alır, kamera gruba bağlı” → [true,true,true,true,true,true,true,true,true,false] (beklenen: Seyhun 2026-11-02 'sarı başladı, mavi de başlayabilir; grupları ayrı yönetebilmeliyim; canlı yayında hangisini göstereceğimi seçeyim; Kamera 1 ile 1. ve 3. grubu, Kamera 2 ile 2. ve 4. grubu çekerim' (örnek gruplar-kamera/grup-a.png))
       ✗ “sol alt: start + rüzgâr, yarış öncesi akış, Velora” → true,true,true,true,true,false,false,true,false (beklenen: Seyhun 2026-11-03 17:10 (sol-alt onayı): start kartı rüzgârın üstünde (üst orta boş), start dizisinde bayraklar start kartında 5·4·1·0 şeridi (sağda dizi kartı yok); yarış öncesi akış beklenen rüzgâr (rüzgârdan yana açılır, yalnız önümüzdeki saatler) → parkur → program (rota 17:34'te çıktı), Yayın'da Otomatik (8/12/20/30 sn) ya da Elle, Geri/Durdur/İleri; sağ altta Velora işareti)
       ✗ “süre yoksa süre alanı gösterilmez” → false,false,false,false (beklenen: Seyhun 2026-11-03 17:19: geri / ileri sayım yokken (—:—, —, geri sayım bitti) start kartında ve yarış bandında boş süre alanı yok; başka bilgi de yoksa kart yok)
+      ✗ “canlı ekranda Rüzgâr: Parkur'daki ölçüm penceresi (ana hesap)” → [true,false] (beklenen: Seyhun 2026-11-05: rüzgâr yönü, eksen gibi ölçümler Yayın › Parkur'daki gibi /canli'den de girilir; Start'ın solunda Rüzgâr, aynı AddSheet ve addCourseObs)
       ✗ “kurallar ve bağlantılar” → [true,true,false,true] (beklenen: telefon anahtarla yalnız yazar; yayın konumu sunucudan; Yayın'da panel sekmeden bağımsız; asistanda komut)
+      ✗ “Yayın ve canlı” → [true,false,true] (beklenen: Tehir penceresinde Kimin için; satırda İndir; Başlat tehirde engelli; canlıda tehirdeki grup küçük satır)
 
 2. ANLAMA: temiz cümleler: 121/121
   ✓ Temiz cümle: Plan / takvim: 8/8
@@ -201,7 +207,7 @@ SONUÇ: 1431/1440 geçti · 9 kalan · 813 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 20 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 22 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
@@ -222,7 +228,7 @@ SONUÇ: 1431/1440 geçti · 9 kalan · 813 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 17/21
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/21
   ✗ Yarış sayfası: 12/14
       ✗ “yarıştan önce, sporcu seçili”
           beklenen: çökmeden açılır, "gün kaldı" görünür
@@ -248,10 +254,16 @@ KULÜP
 Yoklama
 Bugün kim geldi
 Yarış
-  ✗ Yayın: 2/3
+  ✗ Yayın: 0/3
+      ✗ “gruplar ayrı, ekranda seçim, kameralar”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 10000ms exceeded.
       ✗ “video sekmesi sade”
           beklenen: açılır
           olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “satırdan başlat, dur, devam”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 10000ms exceeded.
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
