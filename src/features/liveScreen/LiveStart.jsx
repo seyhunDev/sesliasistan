@@ -170,9 +170,7 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose }) {
     <>
       {open ? (
         <div className="lst" role="dialog" aria-label="Start">
-          <button type="button" className="lst-bg" aria-label="Kapat" onClick={onClose} />
           <div className="lst-sh">
-            <div className="lst-gr" aria-hidden="true" />
             <div className="lst-hd">
               <b>Start</b>
               <span>{[row?.cls, row ? rf.flow.label : ""].filter(Boolean).join(" · ")}</span>

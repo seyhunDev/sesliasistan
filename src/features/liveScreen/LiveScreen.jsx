@@ -4245,70 +4245,100 @@ function viewPos(data, today) {
 const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // Telefonda alt şerit (Seyhun 2026-11-05): solda görüntü (Yayın = yayın odasının seçtiği, sonra grupların kamerası), sağda Sıralama,
 // Sonuçlar, Rüzgâr, Parkur. Seçilen dolu; aynı düğmeye yeniden basınca yayının akışına döner. Geniş ekranda (TV) yok.
-function ScView({ data, sel, mode, now, cams, pos, cam, onCam, tab, onTab, view, onView, onFull, onStart = null, onWind = null }) {
+// Alt çubuk (Seyhun 2026-11-05 "kamera, konum, ekran gibi; parkur, rüzgâr, sıralama ayrı düğme; dokununca alttan yukarı açılsın,
+// start alanına kadar gelsin"; örnek canli-tv/alt-cubuk-ornek.png onaylandı): tek sıra eşit düğme Kamera · Konum · Parkur · Rüzgâr ·
+// Sıralama · Start (Start yalnız ana hesap). Dokunulanın içeriği çubuğun üstünde açılır, en çok süre kartının altına kadar; aynı düğme
+// kapatır. Start penceresi (LiveStart) de aynı yerde (--vb-b, --vb-t). Yalnız telefon / dikey ekranda.
+function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null }) {
+  const ref = useRef(null);
   const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
   const res = !!rr?.rows.length;
   const rank = scBoards(data).length > 0;
   const wind = windAhead(data, now).length >= 2;
   const course = !!courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"));
-  const btns = [rank && ["rank", "Sıralama"], res && ["res", "Sonuçlar"], wind && ["wind", "Rüzgâr"], course && ["course", "Parkur"]].filter(Boolean);
-  // Tek panel (Seyhun 2026-11-05 "kamera, konum, ekran seçimi diğerlerinden farklı olsun; tasarım daha iyi olabilir"): üstte sekme
-  // (Kamera · Konum · Ekran; altı çizili yazı, düğme değil), altta seçilen sekmenin düğmeleri tek sıra, yana kayar. Seçimler sekme
-  // değişince kalır; seçimi olan sekmede küçük nokta
-  const tabs = [cams.length && ["cam", "Kamera"], pos.length && ["pos", "Konum"], btns.length && ["view", "Ekran"]].filter(Boolean);
-  if (!tabs.length && !onStart) return null;
-  // ana hesap: sağda Start (LiveStart penceresi); izleyici görmez
-  // ana hesap: Start'ın solunda soluk + (Seyhun 2026-11-05 "yazı ve arka plan olmasın, soluk, biraz büyük artı"): Yayın › Parkur'daki Ölçüm ekle penceresi
-  const go = onStart ? (
-    <>
-      {onWind ? (
-        <button type="button" className="sc-vwd" onClick={onWind} aria-label="Rüzgâr ekle">
-          +
-        </button>
-      ) : null}
-      <button type="button" className="sc-vgo" onClick={onStart}>
-        Start
-      </button>
-    </>
-  ) : null;
-  if (!tabs.length)
-    return (
-      <nav className="sc-vb" aria-label="İzleyici seçimi">
-        <div className="sc-vt one">{go}</div>
-      </nav>
-    );
-  const t = tabs.some(([k]) => k === tab) ? tab : tabs[0][0];
-  const mark = { cam: !!cam && !cam.startsWith("b:"), pos: cam.startsWith("b:"), view: !!view };
+  const btns = [
+    cams.length && ["cam", "Kamera", !!cam && !cam.startsWith("b:")],
+    pos.length && ["pos", "Konum", cam.startsWith("b:")],
+    course && ["course", "Parkur"],
+    (wind || onWind) && ["wind", "Rüzgâr"],
+    (rank || res) && ["rank", "Sıralama"],
+    onStart && ["start", "Start"],
+  ].filter(Boolean);
+  // açık panelin yeri: çubuğun üstü (--vb-b, alttan) ile süre kartının altı (--vb-t, üstten) arası
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const root = document.documentElement;
+    const set = () => {
+      const r = el.getBoundingClientRect();
+      const ck = el.closest(".sc")?.querySelector(".sc-ck")?.getBoundingClientRect();
+      const em = parseFloat(getComputedStyle(el).fontSize) || 16;
+      root.style.setProperty("--vb-b", `${Math.round(window.innerHeight - r.top + em * 0.5)}px`);
+      root.style.setProperty("--vb-t", `${Math.round((ck ? ck.bottom : r.top / 3) + em * 0.6)}px`);
+    };
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    const ck = el.closest(".sc")?.querySelector(".sc-ck");
+    if (ck) ro.observe(ck);
+    window.addEventListener("resize", set);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", set);
+    };
+  }, [btns.length]);
+  if (!btns.length) return null;
+  const on = btns.some(([k]) => k === open) ? open : "";
+  const tap = (k) => {
+    if (k === "start") return on === "start" ? onOpen("") : (onOpen("start"), onStart());
+    onOpen(on === k ? "" : k);
+  };
   const opts =
-    t === "view"
-      ? btns.map(([k, label]) => ({ k, name: label, on: view === k, go: () => (k === "res" ? onFull("race") : onView(view === k ? "" : k)) }))
-      : [
-          { k: "", name: "Yayın", on: !cam, go: () => onCam("") },
-          ...(t === "cam" ? cams.map((x) => ({ k: x.src, grp: x.grp, name: x.name })) : pos.map((x) => ({ k: `b:${x.grp}`, grp: x.grp, name: x.name }))).map((x) => ({ ...x, on: cam === x.k, go: () => onCam(cam === x.k ? "" : x.k) })),
-        ];
-  return (
-    <nav className="sc-vb two" aria-label="İzleyici seçimi">
-      {tabs.length > 1 ? (
-        <div className="sc-vt" role="tablist">
-          {tabs.map(([k, l]) => (
-            <button key={k} type="button" role="tab" aria-selected={t === k} className={t === k ? "on" : ""} onClick={() => onTab(k)}>
-              {l}
-              {mark[k] ? <i aria-hidden="true" /> : null}
-            </button>
-          ))}
-          {go}
-        </div>
-      ) : (
-        <div className="sc-vt one">
-          <span>{tabs[0][1]}</span>
-          {go}
-        </div>
-      )}
+    on === "cam" || on === "pos"
+      ? [
+          { k: "", name: "Yayın", on: !cam },
+          ...(on === "cam" ? cams.map((x) => ({ k: x.src, grp: x.grp, name: x.name })) : pos.map((x) => ({ k: `b:${x.grp}`, grp: x.grp, name: x.name }))).map((x) => ({ ...x, on: cam === x.k })),
+        ]
+      : [];
+  const body =
+    on === "cam" || on === "pos" ? (
       <div className="sc-vs">
         {opts.map((x) => (
-          <button key={x.k || "yayin"} type="button" className={x.on ? "on" : ""} aria-pressed={x.on} onClick={x.go}>
+          <button key={x.k || "yayin"} type="button" className={x.on ? "on" : ""} aria-pressed={x.on} onClick={() => onCam(x.k && cam !== x.k ? x.k : "")}>
             {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
             {x.name}
+          </button>
+        ))}
+      </div>
+    ) : on === "course" ? (
+      <ScCourseDrop data={data} sel={sel} mode={mode} />
+    ) : on === "wind" ? (
+      <>
+        {wind ? <ScWindDrop data={data} now={now} at={(prog || []).find((x) => x.state === "next")?.at || ""} /> : <p className="sc-vno">Rüzgâr verisi yok</p>}
+        {onWind ? (
+          <button type="button" className="sc-vadd" onClick={onWind}>
+            + Rüzgâr ekle
+          </button>
+        ) : null}
+      </>
+    ) : on === "rank" ? (
+      <>
+        {rank ? <div className="sc-ckx rk"><Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} ctl={rk} /></div> : null}
+        {res ? (
+          <button type="button" className="sc-vadd" onClick={() => onFull("race")}>
+            Yarışın sonuçları
+          </button>
+        ) : null}
+      </>
+    ) : null;
+  return (
+    <nav className="sc-vb bar" ref={ref} aria-label="İzleyici seçimi">
+      {body ? <div className={`sc-vp ${on}`}>{body}</div> : null}
+      <div className="sc-vr2">
+        {btns.map(([k, l, dot]) => (
+          <button key={k} type="button" className={`${k === "start" ? "go" : ""}${on === k ? " on" : ""}`} aria-pressed={on === k} onClick={() => tap(k)}>
+            {l}
+            {dot ? <i aria-hidden="true" /> : null}
           </button>
         ))}
       </div>
@@ -4438,8 +4468,8 @@ export function LiveScreen({ id, y = "" }) {
   const [stOpen, setStOpen] = useState(false); // Start penceresi
   const [wdOpen, setWdOpen] = useState(false); // Rüzgâr (ölçüm) penceresi
   const warm = useSyncExternalStore(noSub, () => !!readWarmMe(), () => false); // bu telefonda uygulamaya girilmiş mi
-  const [vTab, setVTab] = useState("cam"); // Görüntü sırası: "cam" kameralar | "pos" canlı konum grupları
-  const [vView, setVView] = useState(""); // "rank" | "wind" | "course": izleyicinin açtığı sahne
+  const [vTab, setVTab] = useState(""); // alt çubukta açık olan: cam, pos, course, wind, rank, start (boş = kapalı)
+  const vView = ["rank", "wind", "course"].includes(vTab) ? vTab : ""; // izleyicinin açtığı Sıralama / Rüzgâr / Parkur
   const [rkTab, setRkTab] = useState(0); // izleyicinin Sıralama sekmesi (Genel, Kızlar…)
   const [rkAuto, setRkAuto] = useState(false); // Oto: sekmeler kendiliğinden geçer
   const nowMs = useNow(skew, 1000); // evre ve bekleme sayacı için saat (sunucuyla eşlenmiş)
@@ -4555,8 +4585,8 @@ export function LiveScreen({ id, y = "" }) {
       <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
         <Backdrop data={sd} isCur={isCur} entry={entry} today={today} />
         <div className="lv-page lv-ov">
-          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} view={vwOn ? vView : ""} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} cams={cams} pos={pos} cam={camOn} onCam={setVCam} tab={vTab} onTab={setVTab} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} view={vwOn ? vView : ""} onView={setVView} onFull={setFull} />} />
-          {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen} onClose={() => setStOpen(false)} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} /> : null}
+          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={setVCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} />} />
+          {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} /> : null}
         </div>
         {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
         {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}
