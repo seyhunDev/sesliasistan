@@ -24,6 +24,7 @@ import { autoCaption } from "@/lib/raceCaption";
 import { flagSvg, signalOf, sigOnCard, soundText } from "@/lib/raceSignals";
 import dynamic from "next/dynamic";
 import { readWarmMe } from "@/lib/warmStart";
+import { useInAppBack } from "./InAppBack";
 import "./liveScreen.css";
 import "./sahne.css";
 
@@ -4329,6 +4330,7 @@ function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast 
   return { ...p, sd, vid, evre, sc: itemScene(p.item, sd.screen?.kind === "rec") };
 }
 function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null, view = "", rk = null }) {
+  const back = useInAppBack(); // uygulama içinden açıldıysa yarış adının başında geri oku
   // izleyicinin açtığı Rüzgâr / Sıralama / Parkur (Seyhun 2026-11-05 "yukarıdan açılsın"): süre kartının altından açılır, sahne değişmez
   const drop =
     view === "wind" ? <ScWindDrop data={data} now={now} at={(prog || []).find((x) => x.state === "next")?.at || ""} />
@@ -4391,6 +4393,13 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       ) : null}
       {ap && sc !== "04" ? <ScAp t={t} plan={plan} seq={mode === "seq"} /> : null}
       <div className="sc-name">
+        {back ? (
+          <button type="button" className="sc-back" aria-label="Geri" onClick={back}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 4 7 12l8 8" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        ) : null}
         <div className="sc-nt">
           <b className={(plan.title || r.name || "").length > 22 ? "lg" : ""}>{plan.title || r.name || "Yarış"}</b>
           {plan.sub ? <small>{plan.sub}</small> : null}
