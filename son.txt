@@ -1,8 +1,8 @@
-Commit: e2c5a05 · Ölçüm ekle: pusula kadranı, Pusula, Sesle; canlı ekranda sesle parkur (#1276)
-Zaman: 2026-11-06-0148 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42122094695
+Commit: a18aae2 · Final startları: renk grupları düşer, sıra sınıfın grup sırası; kadran kenarda kesilmez (#1277)
+Zaman: 2026-11-06-0217 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42126067486
 
-TAM TEST · 06.11.2026 01:31:01
+TAM TEST · 06.11.2026 01:59:58
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1427/1440 geçti · 13 kalan · 1041 sn
+SONUÇ: 1427/1440 geçti · 13 kalan · 1040 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4490 test”
+      ✗ “4491 test”
           beklenen: hepsi geçer
-          olan:     4457/4490 geçti
+          olan:     4458/4491 geçti
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “ortak hava tablosu” → false (beklenen: hava sayfası DayStrip + HourTable, yarış havası HourTable, ikisinde de eski grafik yok; ölçülen geçmiş sütun, plan çizgisi, günlük yağış; harita her yerde Harita düğmesi)
       ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
@@ -214,7 +214,7 @@ SONUÇ: 1427/1440 geçti · 13 kalan · 1041 sn
           olan:     sütun 48 · gün düğmesi 1 · 5,5 false
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 2 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 3 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
