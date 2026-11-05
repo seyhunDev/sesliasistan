@@ -24,7 +24,7 @@ const DARK_SKY = { sun: "text-amber-300", cloudSun: "text-amber-200", moon: "tex
 // ("8–11" rüzgâr–sağanak) ve grafikte açık mavi nokta; tahmin satırları hep tahmin kalır (2026-11-04, sütunları karıştırmıyordu). Altta "Ölçülen: Dikili istasyonu". Bugünse şimdiki saatin sütunu kırmızı çerçeveli ve açılışta solda görünür;
 // başka günde sabah 6'dan başlar. marks: [{ at: "HH:MM", label }] plan / start saatleri pembe dikey çizgi ve altında kısa yazı.
 // Renkler CSS değişkeniyle (--ht-mut, --ht-line, --ht-rain, --ht-now, --ht-obs, --ht-mark, --ht-cell): lacivert kartta varsayılanlar, açık sayfada tone="light".
-export function HourTable({ rows, next = null, date, tone = "dark", onClick, className = "", place = null, far = false, marks = [], obs = null, station = null, nowMs = null, scale = 1 }) {
+export function HourTable({ rows, next = null, date, tone = "dark", onClick, className = "", place = null, far = false, marks = [], obs = null, station = null, nowMs = null, scale = 1, flat = false }) {
   const clock = useNow();
   const now = nowMs != null ? new Date(nowMs) : clock;
   const ref = useRef(null);
@@ -47,7 +47,7 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
   }, [date, start, nowAt]);
 
   if (!cols.length) return null;
-  const vars = tone === "light" ? LIGHT : DARK;
+  const vars = { ...(tone === "light" ? LIGHT : DARK), ...(flat ? { "--ht-card": "transparent" } : {}) };
   const labels = [["Saat"], [""], ["Sıcaklık"], ...(hasFeel ? [["Hissedilen"]] : []), ["Yağmur", "mm"], ["Rüzgâr", "kn"], ["Sağanak", "kn"], ["Yön"], ...(anyObs ? [["Ölçülen", "kn", true]] : []), ...(lines.length ? [[""]] : [])];
 
   return (
@@ -82,7 +82,7 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
                   data-obs={c.obs ? "" : undefined}
                   className={`relative w-11 shrink-0 text-center tabular-nums ${c.first ? "border-l border-[color:var(--ht-line)]" : ""}`}
                 >
-                  {i === nowAt && <span aria-hidden className="pointer-events-none absolute -bottom-1 -top-1 inset-x-0 rounded-[0.625rem] border-2 border-[color:var(--ht-now)]" />}
+                  {i === nowAt && <span aria-hidden className="pointer-events-none absolute inset-x-0.5 bottom-0.5 top-0.5 rounded-lg border border-[color:var(--ht-now)]" />}
                   <Cell className={`text-[0.75rem] font-semibold ${c.first ? "text-[color:var(--ht-fg)]" : "text-[color:var(--ht-mut)]"}`}>{c.first ? c.dname : c.hh}</Cell>
                   <Cell>
                     <Icon name={s.icon} className={`size-[1.15rem] ${tone === "light" ? skyTone(s.icon) : DARK_SKY[s.icon] || "text-white/80"}`} />
@@ -157,7 +157,7 @@ function WindChart({ cols, nowAt }) {
     <svg data-wind-chart width={W} height={CH} viewBox={`0 0 ${W} ${CH}`} className="block" aria-hidden="true">
       <path d={`${line("w")}L${pts[pts.length - 1].x},${CH}L${pts[0].x},${CH}Z`} fill="var(--ht-wind)" fillOpacity=".8" />
       <path d={line("g")} fill="none" stroke="var(--ht-gust)" strokeWidth="1.5" strokeDasharray="4 3" />
-      {cols.map((c, i) => c.ob && <circle key={i} cx={(i + 0.5) * COL} cy={y(c.ob.wind)} r="3.5" fill="var(--ht-obs)" stroke="var(--ht-card)" strokeWidth="1.5" />)}
+      {cols.map((c, i) => c.ob && <circle key={i} cx={(i + 0.5) * COL} cy={y(c.ob.wind)} r="3.5" fill="var(--ht-obs)" stroke="#0b1a33" strokeWidth="1.5" />)}
       {nowAt >= 0 && <line x1={(nowAt + 0.5) * COL} x2={(nowAt + 0.5) * COL} y1="0" y2={CH} stroke="var(--ht-now)" strokeWidth="2" />}
     </svg>
   );

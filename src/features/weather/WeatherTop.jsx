@@ -100,7 +100,7 @@ export function WeatherTop({ w, refresh }) {
         <section aria-label="Saat saat">
           {rows.length > 0 && (
             <div className="rounded-[1.25rem] bg-[#0b1a33] p-3">
-              <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} />
+              <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} flat />
               {isToday && <NowRain place={place} rows={fcRows} radar={radar} />}
             </div>
           )}
