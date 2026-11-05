@@ -728,7 +728,7 @@ export function BroadcastPage({ orgId, id }) {
   };
   const addSrc = (k, url = "", name = "") => {
     const u = String(url || "").trim();
-    if (u && !ytEmbed(u)) return toast("Bağlantı tanınmadı: YouTube canlı yayın ya da kanal bağlantısı olmalı.");
+    if (u && !ytEmbed(u)) return toast(u.includes("/@") ? "Bu kanal bağlantısı (@ad) açılamıyor. Yayının kendi bağlantısını yapıştır: youtube.com/live/… ya da Studio'daki studio.youtube.com/video/…" : "Bağlantı tanınmadı. Yayının bağlantısını yapıştır: youtube.com/live/…, youtu.be/… ya da studio.youtube.com/video/…");
     const l = addSource(srcList, k).map((x, i, a) => (i === a.length - 1 && u ? { ...x, url: u, ...(name ? { name: String(name).slice(0, 30) } : {}) } : x));
     setAddOpen(false);
     setAddUrl("");
@@ -737,7 +737,7 @@ export function BroadcastPage({ orgId, id }) {
   };
   const putSrc = (sid, p) => {
     const u = String(p.url || "").trim();
-    if (u && !ytEmbed(u)) return toast("Bağlantı tanınmadı: YouTube canlı yayın ya da kanal bağlantısı olmalı.");
+    if (u && !ytEmbed(u)) return toast(u.includes("/@") ? "Bu kanal bağlantısı (@ad) açılamıyor. Yayının kendi bağlantısını yapıştır: youtube.com/live/… ya da Studio'daki studio.youtube.com/video/…" : "Bağlantı tanınmadı. Yayının bağlantısını yapıştır: youtube.com/live/…, youtu.be/… ya da studio.youtube.com/video/…");
     putSources(srcList.map((x) => (x.id === sid ? { ...x, url: u } : x)));
   };
   // kaynağın grubu: dokununca bu kaynağa bağlanır (başka kaynaktaysa buraya geçer), yeniden dokununca çözülür
@@ -2853,8 +2853,7 @@ const keepSources = (l) => {
 };
 // vid: kanal bağlantısında o anki yayının kimliği (/api/yayin-durum); canlı yayının resmi dakikada bir tazelenir (hqdefault_live)
 const ytThumb = (u, vid = "") => {
-  const m = String(u || "").match(/(?:youtu\.be\/|[?&]v=|\/live\/|\/embed\/|\/shorts\/)([\w-]{11})/);
-  const v = vid || m?.[1] || "";
+  const v = vid || ytId(u);
   return v ? (vid ? `https://i.ytimg.com/vi/${v}/hqdefault_live.jpg?m=${Math.floor(Date.now() / 60000)}` : `https://i.ytimg.com/vi/${v}/hqdefault.jpg`) : "";
 };
 // Sekmeler ekranın altında sabit çubuk (Seyhun 2026-11-04 "sekme butonlarını alta alalım, sekmedeki butonlar sekme çubuğunun üstünde;

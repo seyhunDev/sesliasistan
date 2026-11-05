@@ -590,7 +590,8 @@ export const courseShowing = ({ show, now, pre }) => showSlide({ show, now, pre,
 // YouTube bağlantısından video kimliği (watch?v=, youtu.be/, /live/, /embed/)
 export function ytId(url) {
   const u = String(url || "").trim();
-  const m = u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|live\/|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
+  // studio.youtube.com/video/<ID>/livestreaming (Seyhun 2026-11-05 Studio adresini yapıştırdı)
+  const m = u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|live\/|embed\/|shorts\/)|studio\.youtube\.com\/video\/|youtu\.be\/)([\w-]{11})/);
   return m ? m[1] : "";
 }
 // Kanalın canlı yayını (youtube.com/channel/UC…/live, …/embed/live_stream?channel=UC…): kanal kimliği; @ad bağlantısı çözülemez
