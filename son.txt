@@ -1,8 +1,8 @@
-Commit: 88da3cd · Canlı: canlı konumda dar grup listesi ve harita boş alana, sade parkur kartı, sabit yükseklikte sıralama (#1232)
-Zaman: 2026-11-05-1632 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42034313246
+Commit: 0c17292 · Yayın › Parkur: ana asistan, grubun kartı sesle, sade alt kısım (#1233)
+Zaman: 2026-11-05-1754 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42047191923
 
-TAM TEST · 05.11.2026 16:18:08
+TAM TEST · 05.11.2026 17:40:24
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1430/1439 geçti · 9 kalan · 869 sn
+SONUÇ: 1430/1439 geçti · 9 kalan · 864 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4513 test”
+      ✗ “4514 test”
           beklenen: hepsi geçer
-          olan:     4486/4513 geçti
+          olan:     4488/4514 geçti
       ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
       ✗ “yayın sekmeleri, ekranda alt yazı, rüzgâr aralığı ve gün boyu grafik, üst şerit, yarışlar penceresi” → [false,true,true,true,true,true,true,true] (beklenen: Seyhun 2026-11-02: Yayın sayfası Süre · Video · Parkur · Dönüşler sekmeleri (Seg); Video'da 'Ekranda yazı' (screen.caption) → canlı ekranda alt yazı LowerThird, sesle 'ekrana yaz: …' / 'ekrandaki yazıyı kaldır'; rüzgâr aralığı okta salınır (lv-swing), değişince süzülür; gün boyu grafik her evrede: tahmin + istasyon ölçümü (/api/canli forecast.obs) + bizim ölçümler)
@@ -49,7 +49,6 @@ SONUÇ: 1430/1439 geçti · 9 kalan · 869 sn
       ✗ “tehir (süre + sebep) ve bekleme ekranında rüzgâr tahmini” → [true,false,true,true,true,true] (beklenen: Seyhun 2026-11-01: Yayın'da Tehir → süre (30 dk…2 sa, belirsiz) + sebep; plan.ap { from, why }, at yeni saat; apText ekranda; /api/canli forecast (Open-Meteo, yarış yeri) → WindDay grafiği, parkur ölçüm varsa, 'ekranda neler' şeridi; zeminde parkur çizgisi yok)
       ✗ “yayın sayfası sade: ⋯ menüsü, sonuç PDF'i ayrı sayfa; /canli canlı etiketi” → [true,true,true,false,false,true] (beklenen: Seyhun 2026-11-01: Yayın'da az düğme (Başlat; Start ekle + Tehir; Sesle gir), Linki kopyala / Ekranı aç / Sonuç PDF'i / Kayıt listesi / Bugün yarış yok / Günü bitir (bir daha sorar) ⋯ menüsünde; sonuçlar /athletes/races/<id>/sonuclar; /canli listesinde süren yarış Canlı, 20 sn yenilenir; çökme ekranı /canli'de 'Canlı yarışlara dön')
       ✗ “grubun kendi numarası” → ["S1,M1,K1,S2,M2,S3,K2,K2",3,3,false,true,true] (beklenen: Seyhun 2026-11-04 üç grup: Sarı 3. yarışa geçince Kırmızı'nın 2. yarışı 2 kalır; abandone tekrarı aynı numara; Yayın satırı grup · yarış, başlamış yarışta değiştirme yok, kısa yollar; Dönüşler seçili gruba; canlıda diğer gruplar)
-      ✗ “yayın: önce yarış, sonra süre” → [true,true,true,false] (beklenen: Seyhun 2026-11-02: sıradaki yarış yoksa ve sayaç boşsa sayaç yerine yarış oluşturma (sınıf, gruplar, bayrak); oluşturunca program ve sayaç; 2026-11-03 'bayrak seçimi fazlalık': bayrak sorulmaz, startlar U ile eklenir, satırda değişir)
       ✗ “parkur sahnesi: örnek tekne avantajlı uçtan tramolayla” → [true,true,true,false] (beklenen: Seyhun 2026-11-02: parkur rüzgâra göre atılır, rüzgâr dönünce hat avantajı (raceCourse lineBias ile aynı) değişir; örnek nokta avantajlı uçtan kalkar, orsada rüzgâra 45° ile tramola atar (uzun ayakta bir tramola daha), pupada kavança, şamandıraları rota gibi döner, iz bırakır; canlı ekranda ve Yayın önizlemesinde)
       ✗ “rüzgâr yönü: bekleme ekranında şimdiki rüzgâr, grafikte saat saat derece, ok akış yönünde” → [false,true,true,true,true] (beklenen: Seyhun 2026-11-02: start beklerken şimdiki rüzgâr ve yönü profesyonel (pusula + derece + knot), manuel girildiyse yazsın; ne oldu / ne bekleniyor grafiğinde yönler derece olarak)
       ✗ “ekranda gösterim düğmeleri Video sekmesinde” → false (beklenen: Seyhun 2026-11-02: rüzgâr, parkur, program ekranda gösterme Parkur sekmesinden Video sekmesine; 2026-11-04 yerini Ekran sekmesindeki Evreler aldı (Ekranda tut))
@@ -60,7 +59,7 @@ SONUÇ: 1430/1439 geçti · 9 kalan · 869 sn
       ✗ “yarışta süre rüzgârın üstünde küçük bant” → false,false,false (beklenen: Seyhun 2026-11-03 16:45: yarış başlayınca 'Starttan beri' süresi üst ortadan kalkar, rüzgâr kartının hemen üstünde küçük bant (grup rengi, yarış adı, grup · sınıf); üst orta videoya kalır; yarış adı altta tekrar yazılmaz)
       ✗ “örnek yarış gerçek start videosuyla, parkur ekseni” → [true,true,true,true,true,true,false] (beklenen: Seyhun 2026-11-02: örnekte gerçek video (DEMO_VIDEO); start dizisi video 0:00'dan açılırken sayaç 1:04, start'tan 40 sn sonra video kalkar, dönüşler ve genel sıralama; turuncu bayrak adımı; YouTube bağlantısındaki t= başlama saniyesi gömmeye geçer; parkur ekseni sahnede kesik çizgi + açı, sol bilgide 'Eksen 300° KB' ve rüzgârın eksenden farkı)
       ✗ “genel sıralama starttan sonra, göster/kaldır, cam kart” → [true,true,false,false,true] (beklenen: Seyhun 2026-11-02: genel sıralama start'tan önce (geri sayımda) görünmez; yarışta Yayın › Video › 'Genel sıralama (yarışta)' ya da sesle 'geneli kaldır/göster' ile kapanır/açılır; kutusuz sağ bulanık şerit, şamandıra sıralaması kutusuz ve farklı biçimde)
-      ✗ “yayın kurulumu, resimli bayrak, grupların parkuru” → [true,true,true,true,false,true,true] (beklenen: Seyhun 2026-11-02 'önce sınıflar, sonra gruplar; bir kere seçip kapatalım, ayarlardan değişsin; sonra sekmeler. Bayrak resimli, hiçbiri seçili değil, seçince ilerler, geri de olsun. Sarı trapezde, mavi başka parkurda')
+      ✗ “yayın kurulumu, resimli bayrak, grupların parkuru” → [true,true,true,true,false,true,false] (beklenen: Seyhun 2026-11-02 'önce sınıflar, sonra gruplar; bir kere seçip kapatalım, ayarlardan değişsin; sonra sekmeler. Bayrak resimli, hiçbiri seçili değil, seçince ilerler, geri de olsun. Sarı trapezde, mavi başka parkurda')
       ✗ “bekleme örnek H, tehir: bayrak + sebep, inişe geri sayım” → [false,true,true,true] (beklenen: Seyhun 2026-11-03: videosuz bekleme solda geri sayım + program + rüzgâr, sağ üstte parkur, vitrin dönmez; tehirde iki ekranda AP bayrağı ve sebep, iniş / uyarı işareti saati yok, süre belliyse 'Tehir inişine' geri sayım; Yayın'da inince 1 dk sonra geri sayım seçilebilir)
       ✗ “sol alt: start + rüzgâr, yarış öncesi akış, Velora” → true,true,true,true,true,false,false,true,false (beklenen: Seyhun 2026-11-03 17:10 (sol-alt onayı): start kartı rüzgârın üstünde (üst orta boş), start dizisinde bayraklar start kartında 5·4·1·0 şeridi (sağda dizi kartı yok); yarış öncesi akış beklenen rüzgâr (rüzgârdan yana açılır, yalnız önümüzdeki saatler) → parkur → program (rota 17:34'te çıktı), Yayın'da Otomatik (8/12/20/30 sn) ya da Elle, Geri/Durdur/İleri; sağ altta Velora işareti)
       ✗ “süre yoksa süre alanı gösterilmez” → false,false,false,false (beklenen: Seyhun 2026-11-03 17:19: geri / ileri sayım yokken (—:—, —, geri sayım bitti) start kartında ve yarış bandında boş süre alanı yok; başka bilgi de yoksa kart yok)
@@ -202,7 +201,7 @@ SONUÇ: 1430/1439 geçti · 9 kalan · 869 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 17 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 18 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
