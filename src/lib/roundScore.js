@@ -40,6 +40,11 @@ export function groupOf(raw) {
 // grubu (Altın, Gümüş, Bronz, Zümrüt) varsa renk grupları (Sarı, Mavi…) düşer; yoksa liste aynı kalır
 export const isFinalGrp = (g) => !!FINALS[groupOf(g)];
 export const finalsOnly = (grps) => (grps.some(isFinalGrp) ? grps.filter(isFinalGrp) : grps);
+// Final gruplarının varsayılan start sırası Altın, Gümüş, Bronz, Zümrüt (Seyhun 2026-11-05 "genelde öyle verirler"; Öne al ile değişir)
+export const finalsFirst = (grps) => {
+  const f = finalsOnly(grps);
+  return f.some(isFinalGrp) ? [...f].sort((a, b) => Object.keys(FINALS).indexOf(groupOf(a)) - Object.keys(FINALS).indexOf(groupOf(b))) : f;
+};
 export const groupColor = (g) => COLORS.find(([n]) => n === g)?.[2] || FINALS[g] || "";
 
 // Günün grup listesi: [[yelken, grup]] → { yelken: grup }
