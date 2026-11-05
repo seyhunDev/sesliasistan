@@ -2011,11 +2011,7 @@ function Sc03({ data, sel, mode, now, onFull, ctl = null }) {
               {tabName(x)}
             </button>
           ))}
-          {slides.length > 1 ? (
-            <button type="button" className={`oto${ctl.auto ? " on" : ""}`} aria-pressed={ctl.auto} onClick={() => ctl.setAuto(!ctl.auto)}>
-              Oto
-            </button>
-          ) : null}
+          {/* Oto düğmesi kalktı (Seyhun 2026-11-05 "ona gerek yok"): sekmeler yalnız elle */}
         </div>
       ) : null}
       <div className={ctl ? "sc-scr" : undefined} key={ctl ? `${b.cls}${cat || ""}` : undefined} onTouchStart={ctl?.auto ? () => ctl.setAuto(false) : undefined} onWheel={ctl?.auto ? () => ctl.setAuto(false) : undefined}>
