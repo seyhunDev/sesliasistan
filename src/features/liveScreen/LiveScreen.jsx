@@ -2270,18 +2270,24 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       const em = parseFloat(getComputedStyle(el).fontSize) || 16;
       root.style.setProperty("--vb-b", `${Math.round(window.innerHeight - r.top + em * 0.5)}px`);
       root.style.setProperty("--vb-t", `${Math.round((ck ? ck.bottom : r.top / 3) + em * 0.6)}px`);
+      // yatayda çubuk üstte ortada: altı (--vb-d) ve iki yandaki süre kartı / Canlı'ya değmeyecek genişlik (--vb-s)
+      const tr = el.closest(".sc")?.querySelector(".sc-tr")?.getBoundingClientRect();
+      root.style.setProperty("--vb-d", `${Math.round(r.bottom)}px`);
+      root.style.setProperty("--vb-s", `${Math.round(Math.max(ck ? ck.right : 0, tr ? window.innerWidth - tr.left : 0) + em)}px`);
     };
     set();
     const ro = new ResizeObserver(set);
     ro.observe(el);
     const ck = el.closest(".sc")?.querySelector(".sc-ck");
     if (ck) ro.observe(ck);
+    const tr = el.closest(".sc")?.querySelector(".sc-tr");
+    if (tr) ro.observe(tr);
     window.addEventListener("resize", set);
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", set);
     };
-  }, [btns.length]);
+  }, [btns.length, hide]);
   if (!btns.length) return null;
   const on = btns.some(([k]) => k === open) ? open : "";
   const tap = (k) => {
