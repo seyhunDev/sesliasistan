@@ -3,18 +3,25 @@
 // Yarış takip (Seyhun 2026-11-05 "yarış detay sayfasını yarış takip sayfasına çevirelim; duyurular, talimatlar, sonuçlar gösterilsin,
 // yeni gelen varsa bildirim olsun ve gösterilsin"; örnek yaris-detay-sade/yaris-takip-ornek.png onaylı): yarış sayfasının ilk sekmesi.
 // Siteden gelen belgeler (raceSite.js watchSiteDocs; işleme, görüldü yazma ve Geri al SiteDocs'ta kalır, "Tüm belgeler" altında)
-// üç bölümde: Sonuçlar (bizim sporcuların sırası + sonuç belgeleri), Duyurular (renk listesi, final grupları, sporcu listesi, diğer),
+// en üstte Günün özeti (Dün | Bugün), sonra Sonuçlar (bizim sporcuların sırası + sonuç belgeleri), Gruplar (renk listesi, final grupları),
+// Duyurular (sporcu listesi, diğer),
 // Talimatlar (talimat, ek talimat, program). Görülmemiş belge "Yeni"; bildirim (sunucu notifyDocs) bu sekmeyi açar (?sec=site).
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { ListHead, Tag } from "@/components/ui/Row";
+import { Seg } from "@/components/ui/Page";
+import { todayStr } from "@/lib/utils/format";
+import { windName } from "@/features/weather/weather";
+import { loadLive } from "./raceLiveStore";
+import { loadRaceDay } from "./raceWeather";
 import { Icon } from "@/components/ui/Icon";
 import { ourPlaces } from "@/lib/raceDay";
 import { kindLabel, resultState, version } from "@/lib/siteDocs";
 import { siteDocBlob, watchSiteDocs } from "./raceSite";
 
 const RULES = ["notice", "amend", "program"];
+const GROUPS = ["groups", "fleets"];
 const when = (at) => {
   const d = new Date(`${String(at).slice(0, 10)}T12:00:00`);
   return `${d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} ${String(at).slice(11, 16)}`.trim();
@@ -26,10 +33,11 @@ const subOf = (x) => [x.n ? `${x.cls} / ${x.n}` : x.cls, x.grp && x.fp && `${x.g
 const markOf = (d) => (d.kind === "results" ? ({ kesin: "kesin", gecici: "geçici" })[resultState(d.name)] || "" : d.kind === "amend" && version(d.name) ? `V${version(d.name)}` : "");
 
 export function trackGroups(docs) {
-  const list = docs || [];
+  const list = [...(docs || [])].sort((a, b) => String(b.at).localeCompare(String(a.at))); // yeni önce
   return {
     results: list.filter((d) => d.kind === "results"),
-    news: list.filter((d) => d.kind !== "results" && !RULES.includes(d.kind)),
+    groups: list.filter((d) => GROUPS.includes(d.kind)),
+    news: list.filter((d) => d.kind !== "results" && !RULES.includes(d.kind) && !GROUPS.includes(d.kind)),
     rules: list.filter((d) => RULES.includes(d.kind)),
   };
 }
@@ -51,6 +59,86 @@ function DocRows({ list, onOpen }) {
   });
 }
 
+const hm = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
+const dayOfIso = (iso) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+const dirOf = (degs) => {
+  if (!degs.length) return "";
+  const x = degs.reduce((a, d) => a + Math.cos((d * Math.PI) / 180), 0);
+  const y = degs.reduce((a, d) => a + Math.sin((d * Math.PI) / 180), 0);
+  return windName((Math.atan2(y, x) * 180) / Math.PI)[1];
+};
+
+// Günün özeti (Seyhun 2026-11-05 "ne zaman yarışlar başladı, kısa bir özet; dünün özeti, bugünün özeti; rüzgâr durumu"; örnek
+// yaris-takip-ozet-ornek.png onaylı). Satırlar [ad, yazı]; olmayan satır yazılmaz.
+// starts: raceLive.starts; wind: raceLive.wind (ölçülen); fc: o günün saatlik tahmini (ölçüm yoksa 10–17 arası); docs: siteden belgeler
+export function daySummary({ day, starts = [], wind = [], fc = null, docs = [], results = null, places = [] }) {
+  const lines = [];
+  const races = starts.filter((x) => x.day === day && !x.void && x.at).sort((a, b) => a.at.localeCompare(b.at));
+  if (races.length) lines.push(["Yarışlar", `${races.length} yarış · ilk start ${hm(races[0].at)}${races.length > 1 ? `, son ${hm(races.at(-1).at)}` : ""}`]);
+  const ws = wind.filter((w) => w.at && w.kn != null && dayOfIso(w.at) === day);
+  if (ws.length) {
+    const k = ws.map((w) => +w.kn);
+    const lo = Math.min(...k);
+    const hi = Math.max(...k);
+    lines.push(["Rüzgâr", [dirOf(ws.filter((w) => w.dir != null).map((w) => +w.dir)), `${lo === hi ? lo : `${lo}–${hi}`} kn`, `${ws.length} ölçüm`].filter(Boolean).join(" · ")]);
+  } else if (fc?.length) {
+    const hrs = fc.filter((h) => +h.hh >= 10 && +h.hh <= 17 && h.wind != null);
+    if (hrs.length) {
+      const lo = Math.round(Math.min(...hrs.map((h) => h.wind)));
+      const hi = Math.round(Math.max(...hrs.map((h) => h.gust ?? h.wind)));
+      lines.push(["Rüzgâr", [dirOf(hrs.filter((h) => h.dir != null).map((h) => h.dir)), `${lo}–${hi} kn`, "tahmin"].filter(Boolean).join(" · ")]);
+    }
+  }
+  const g = docs.filter((d) => GROUPS.includes(d.kind) && String(d.at).slice(0, 10) === day);
+  if (g.length) lines.push(["Gruplar", g.some((d) => d.kind === "fleets") ? "Altın · Gümüş · Bronz ayrıldı" : `Renk listesi açıklandı${g.length > 1 ? ` (${g.length})` : ""}`]);
+  const rd = docs.filter((d) => d.kind === "results" && String(d.at).slice(0, 10) === day);
+  if (rd.length) lines.push(["Sonuçlar", rd.map((d) => (resultState(d.name) === "kesin" ? "Kesin sonuç" : "Geçici sonuç")).filter((x, i, a) => a.indexOf(x) === i).join(" · ") + " geldi"]);
+  if (results?.day === day && places.length) lines.push(["Bizimkiler", places.slice(0, 4).map((x) => `${x.name.split(" ")[0]} ${x.place}.${x.row?.grp && x.row?.fp ? ` (${x.row.grp} ${x.row.fp}.)` : ""}`).join(" · ")]);
+  return lines;
+}
+
+function DaySummary({ orgId, race, docs, places }) {
+  const today = todayStr();
+  const yest = new Date(Date.parse(`${today}T12:00:00`) - 864e5).toLocaleDateString("sv-SE");
+  const [which, setWhich] = useState("today");
+  const day = which === "today" ? today : yest;
+  const [live, setLive] = useState(null);
+  const [fc, setFc] = useState({});
+  useEffect(() => {
+    let on = true;
+    loadLive(orgId, race.id).then((l) => on && setLive(l), () => on && setLive({ starts: [], wind: [] }));
+    return () => void (on = false);
+  }, [orgId, race.id]);
+  useEffect(() => {
+    if (fc[day] !== undefined) return;
+    let on = true;
+    loadRaceDay(race, day).then((d) => on && setFc((p) => ({ ...p, [day]: d.rows || null })), () => on && setFc((p) => ({ ...p, [day]: null })));
+    return () => void (on = false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day, race.id]);
+  const lines = live ? daySummary({ day, starts: live.starts, wind: live.wind, fc: fc[day], docs: docs || [], results: race.results, places }) : null;
+  return (
+    <section className="mt-6" aria-label="Günün özeti">
+      <ListHead title="Günün özeti" />
+      <Seg value={which} onChange={setWhich} options={[["yest", "Dün"], ["today", "Bugün"]]} className="mb-2" />
+      <div className="overflow-hidden rounded-[1.25rem] border border-line bg-card px-3.5">
+        {!lines ? (
+          <p className="py-3.5 text-[0.9375rem] text-mut">Yükleniyor…</p>
+        ) : !lines.length ? (
+          <p className="py-3.5 text-[0.9375rem] text-mut">{which === "today" ? "Bugün henüz bir şey yok" : "Dün bir şey yok"}</p>
+        ) : (
+          lines.map(([k, v]) => (
+            <div key={k} className="flex gap-3 border-t border-line py-3 first:border-t-0">
+              <span className="w-[4.75rem] shrink-0 text-[0.8125rem] text-mut">{k}</span>
+              <span className="min-w-0 flex-1 text-[0.9375rem]">{v}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function RaceTrack({ orgId, race, chosen = [], more = null }) {
   const [docs, setDocs] = useState(null);
   const [view, setView] = useState(null);
@@ -64,6 +152,7 @@ export function RaceTrack({ orgId, race, chosen = [], more = null }) {
   const empty = (t) => <p className="py-3.5 text-[0.9375rem] text-mut">{docs ? t : "Yükleniyor…"}</p>;
   return (
     <>
+      <DaySummary orgId={orgId} race={race} docs={docs} places={places} />
       <section className="mt-6" aria-label="Sonuçlar">
         <ListHead title="Sonuçlar" count={g.results.length} />
         <div className={box}>
@@ -80,13 +169,23 @@ export function RaceTrack({ orgId, race, chosen = [], more = null }) {
           {!places.length && !g.results.length && empty("Henüz sonuç yok")}
         </div>
       </section>
-      <section className="mt-6" aria-label="Duyurular">
-        <ListHead title="Duyurular" count={g.news.length} />
+      <section className="mt-6" aria-label="Gruplar">
+        <ListHead title="Gruplar" count={g.groups.length} />
         <div className={box}>
-          <DocRows list={g.news} onOpen={setView} />
-          {!g.news.length && empty("Henüz duyuru yok")}
+          <DocRows list={g.groups} onOpen={setView} />
+          {!g.groups.length && empty("Henüz grup açıklanmadı")}
         </div>
       </section>
+{/* duyuru yoksa bölüm görünmez (sporcu listesi ve sınıflanmayan belgeler) */}
+      {(!docs || g.news.length > 0) && (
+              <section className="mt-6" aria-label="Duyurular">
+          <ListHead title="Duyurular" count={g.news.length} />
+          <div className={box}>
+            <DocRows list={g.news} onOpen={setView} />
+            {!g.news.length && empty("Henüz duyuru yok")}
+          </div>
+        </section>
+      )}
       <section className="mt-6" aria-label="Talimatlar">
         <ListHead title="Talimatlar" count={g.rules.length} />
         <div className={box}>
