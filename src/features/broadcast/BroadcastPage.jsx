@@ -17,7 +17,7 @@ import { readProgramFile, readProgramText } from "@/features/broadcast/broadcast
 import { FIRST_ITEM, agendaFirst, agendaPut, datesAdd, datesDrop, programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, saveEvreMan, loadShowTpl, saveShowTpl, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
-import { GROUP_PICK, finalsOnly, groupColor, groupMap, groupsOn, isFinalGrp } from "@/lib/roundScore";
+import { GROUP_PICK, finalsFirst, groupColor, groupMap, groupsOn, isFinalGrp } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { countingAt as countingNow, orderWithout, startBlock, startedRow, zeroStarts } from "./startFlow";
 import { DocsTab } from "./DocsTab";
@@ -3217,7 +3217,7 @@ function Setup({ sets, guess = [], onSave, onCancel }) {
                   {[...GROUP_PICK, ...(grps[c] || []).filter((g) => !GROUP_PICK.includes(g))].map((g) => {
                     const on = (grps[c] || []).includes(g);
                     return (
-                      <button key={g} type="button" aria-pressed={on} onClick={() => setGrps((d) => ({ ...d, [c]: on ? (d[c] || []).filter((x) => x !== g) : finalsOnly([...(d[c] || []), g]) }))} className={chip(on)}>
+                      <button key={g} type="button" aria-pressed={on} onClick={() => setGrps((d) => ({ ...d, [c]: on ? (d[c] || []).filter((x) => x !== g) : finalsFirst([...(d[c] || []), g]) }))} className={chip(on)}>
                         <span className="size-2.5 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" />
                         {g}
                       </button>
