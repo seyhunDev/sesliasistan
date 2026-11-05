@@ -6,3 +6,7 @@
 ## Sıradaki işler
 
 - Yarış sayfasındaki rüzgâr girişi örneği (ruzgar-ornek.png) Seyhun'un onayını bekliyor.
+
+## Tasarım
+
+- 2026-11-05 Seyhun: /canli'deki "Rüzgâr" yazılı düğme yerine yazısız, arka plansız, soluk, biraz büyük "+" (`.sc-vwd`, liveScreen.css).
