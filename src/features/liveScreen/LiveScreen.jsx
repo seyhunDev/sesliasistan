@@ -4258,12 +4258,12 @@ function ScView({ data, sel, mode, now, cams, pos, cam, onCam, tab, onTab, view,
   const tabs = [cams.length && ["cam", "Kamera"], pos.length && ["pos", "Konum"], btns.length && ["view", "Ekran"]].filter(Boolean);
   if (!tabs.length && !onStart) return null;
   // ana hesap: sağda Start (LiveStart penceresi); izleyici görmez
-  // ana hesap: Start'ın solunda Rüzgâr (Yayın › Parkur'daki Ölçüm ekle penceresi)
+  // ana hesap: Start'ın solunda soluk + (Seyhun 2026-11-05 "yazı ve arka plan olmasın, soluk, biraz büyük artı"): Yayın › Parkur'daki Ölçüm ekle penceresi
   const go = onStart ? (
     <>
       {onWind ? (
-        <button type="button" className="sc-vgo sc-vwd" onClick={onWind}>
-          Rüzgâr
+        <button type="button" className="sc-vwd" onClick={onWind} aria-label="Rüzgâr ekle">
+          +
         </button>
       ) : null}
       <button type="button" className="sc-vgo" onClick={onStart}>

@@ -1764,5 +1764,7 @@ button.gr-card { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .lv-photo { animation: lv-fade 1.2s ease-out both; } }
 
 
-/* Ana hesap: Start'ın solunda Rüzgâr (ölçüm penceresi), Start ile aynı düğme */
-.sc-vwd + .sc-vgo { margin-left: 0.4em; }
+/* Ana hesap: Start'ın solunda rüzgâr ölçümü: arka plansız, soluk, büyükçe + */
+.sc-vwd, .sc-vt button.sc-vwd { margin-left: auto; align-self: center; justify-content: center; height: 1.08em; min-width: 1.08em; padding: 0 0.2em; border: 0; background: none; color: #fff; opacity: 0.5; font: 400 2.4em/1 var(--sc-c, var(--lv-font-c)); letter-spacing: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.sc-vwd:active { opacity: 0.9; transform: scale(0.92); }
+.sc-vwd + .sc-vgo { margin-left: 0.3em; }
