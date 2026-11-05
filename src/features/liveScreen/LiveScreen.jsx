@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { liveUrl, videoGroup } from "@/lib/raceCams";
+import { liveUrl, sourcesOf, videoGroup } from "@/lib/raceCams";
 import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
@@ -3204,7 +3204,7 @@ function scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast 
   if (left0) return { k: "Yarışa", tm: String(left0), un: "gün", sub: [r.endDate && r.endDate !== r.startDate ? `${dayText(r.startDate)} – ${dayText(r.endDate)}` : dayText(r.startDate), r.place].filter(Boolean).join(" · ") };
   const orange = orangeUp(plan, today);
   const { kick } = holdState(data, today, cs, now);
-  return { k: orange ? "Turuncu bayrak · start hattı kuruldu" : kick, tone: orange ? "o" : "", orange, tm: cs.rem ? cs.value : "—:—", at: first?.at || "", who: gWho(first) };
+  return { k: orange ? "Turuncu bayrak · start hattı kuruldu" : kick, tone: orange ? "o" : "", orange, tm: cs.rem ? cs.value : first?.at ? "Start bekleniyor" : "Program bekleniyor", tx: !cs.rem, at: first?.at || "", who: gWho(first) };
 }
 // son şamandıra dönüşü (ms) ve o şamandıradaki ilk 3
 function scRound(data, sel) {
@@ -4076,6 +4076,53 @@ function Sc06({ data, prog, now, today }) {
 }
 // Evre ve o an gösterilen öğe (lib/raceRounds showPlan; Yayın › Ekran aynı işlevle bakar). Evrenin görüntüsü (evreScreen) önce seçilir,
 // öğelerden verisi olmayan atlanır: Görüntü yalnız video varken (start ve yarışta fotoğraf üstünde de), Süre tehirde yalnız iniş sayılırken
+// İzleyicinin seçebileceği görüntüler: gruba bağlı, bağlantısı olan kaynaklar (Yayın › kaynaklar, camBy "sınıf|grup" → kaynak); grubu
+// olmayan bağlantılı kaynak adıyla (Drone 1)
+function viewCams(data) {
+  const list = sourcesOf(data.stream).filter((x) => x.url);
+  const out = [];
+  for (const [k, v] of Object.entries(data.camBy || {})) {
+    const grp = k.split("|")[1] || "";
+    if (!grp || !list.some((x) => x.id === v) || out.some((x) => x.grp === grp)) continue;
+    out.push({ src: v, grp, name: grp });
+  }
+  for (const x of list) if (!out.some((y) => y.src === x.id)) out.push({ src: x.id, grp: "", name: x.name });
+  return out;
+}
+// Telefonda alt şerit (Seyhun 2026-11-05): solda görüntü (Yayın = yayın odasının seçtiği, sonra grupların kamerası), sağda Sıralama,
+// Sonuçlar, Rüzgâr, Parkur. Seçilen dolu; aynı düğmeye yeniden basınca yayının akışına döner. Geniş ekranda (TV) yok.
+function ScView({ data, sel, mode, now, cams, cam, onCam, view, onView, onFull }) {
+  const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
+  const res = !!rr?.rows.length;
+  const rank = scBoards(data).length > 0;
+  const wind = !!curWind(data, null, true, now) || windAhead(data, now).length >= 2 || (data.forecast?.rows || []).length > 0;
+  const course = !!courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"));
+  const btns = [rank && ["rank", "Sıralama"], res && ["res", "Sonuçlar"], wind && ["wind", "Rüzgâr"], course && ["course", "Parkur"]].filter(Boolean);
+  if (!cams.length && !btns.length) return null;
+  return (
+    <nav className="sc-vb" aria-label="Görüntü seç">
+      {cams.length ? (
+        <>
+          <button type="button" className={!cam ? "on" : ""} onClick={() => onCam("")}>
+            Yayın
+          </button>
+          {cams.map((x) => (
+            <button key={x.src} type="button" className={cam === x.src ? "on" : ""} onClick={() => onCam(cam === x.src ? "" : x.src)}>
+              {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
+              {x.name}
+            </button>
+          ))}
+          {btns.length ? <span className="sc-vbs" aria-hidden="true" /> : null}
+        </>
+      ) : null}
+      {btns.map(([k, label]) => (
+        <button key={k} type="button" className={view === k ? "on" : ""} onClick={() => (k === "res" ? onFull("race") : onView(view === k ? "" : k))}>
+          {label}
+        </button>
+      ))}
+    </nav>
+  );
+}
 function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast }) {
   // Start öncesi: turuncu bayrak çekili ya da start'a 10 dk'dan az; Yayın'dan elle seçilen evre (courseShow.evre) üstüne yazar
   const soon = mode === "wait" && (orangeUp(data.plan, today) || (cs.rem != null && cs.rem > 0 && cs.rem <= 600));
@@ -4098,7 +4145,7 @@ function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast 
   const p = showPlan({ show: sd.courseShow, evre, has, now, dwell: { rank: sc03Len(sd, sel, mode), course: SCENE_T + 2 } });
   return { ...p, sd, vid, evre, sc: itemScene(p.item, sd.screen?.kind === "rec") };
 }
-function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull }) {
+function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null }) {
   const plan = data.plan;
   const r = data.race || {};
   const t = scTime({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast });
@@ -4164,6 +4211,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
           <small>Velora</small>
         </span>
       </div>
+      {bar}
     </div>
   );
 }
@@ -4179,6 +4227,8 @@ export function LiveScreen({ id, y = "" }) {
   const [full, setFull] = useState(""); // "race" | "all": tam liste penceresi
   const [courseOpen, setCourseOpen] = useState(false);
   const [windOpen, setWindOpen] = useState(false);
+  const [vCam, setVCam] = useState(""); // izleyicinin seçtiği kamera (kaynak id), boşsa yayının gösterdiği
+  const [vView, setVView] = useState(""); // "rank" | "wind" | "course": izleyicinin açtığı sahne
   const nowMs = useNow(skew, 1000); // evre ve bekleme sayacı için saat (sunucuyla eşlenmiş)
   const router = useRouter();
   // Yarış silinmiş ya da ekranı kapalı (Seyhun 2026-11-01 "sildiğimde linki de kullanılamasın"): paylaşılan link genel sayfaya (/canli) gider
@@ -4272,12 +4322,21 @@ export function LiveScreen({ id, y = "" }) {
     const apDown = st !== "ap" && !!data.plan.warn && nowMs < Date.parse(data.plan.warn);
     const mode = phase === "summary" ? "summary" : seqMode ? "seq" : st === "ap" || apDown ? "ap" : racing ? "race" : between ? "between" : st === "none" && data.plan.day === today ? "none" : "wait";
     // evrenin görüntüsü ve sıradaki öğesi (Yayın › Ekran › evre)
-    const { sd, vid, sc, item, evre } = scPick({ data, sel, entry, cs, prog, today, now: nowMs, mode, seqMode, fsLast });
+    const pk = scPick({ data, sel, entry, cs, prog, today, now: nowMs, mode, seqMode, fsLast });
+    // izleyicinin seçimi (Seyhun 2026-11-05 "kullanıcı seçebilsin"): kendi telefonunda grubun kamerası ve Sıralama / Rüzgâr / Parkur;
+    // seçmezse yayın odasının gösterdiği
+    const cams = viewCams(data);
+    const camOn = cams.some((x) => x.src === vCam) ? vCam : "";
+    const sd = camOn ? { ...pk.sd, screen: { kind: "src", src: camOn } } : pk.sd;
+    const vid = camOn ? true : pk.vid;
+    const vwOn = vView === "rank" ? scBoards(sd).length > 0 : vView === "course" ? !!courseSvg(sd, sceneRoute(sd, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait")) : vView === "wind";
+    const { sc, item } = !vwOn ? pk : vView === "rank" ? { sc: "03", item: "rank" } : vView === "course" ? { sc: "05", item: "course" } : { sc: "01", item: "wind" };
+    const { evre } = pk;
     return (
       <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
         <Backdrop data={sd} isCur={isCur} entry={entry} today={today} />
         <div className="lv-page lv-ov">
-          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} />
+          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} cams={cams} cam={camOn} onCam={setVCam} view={vwOn ? vView : ""} onView={setVView} onFull={setFull} />} />
         </div>
         {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
         {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}
