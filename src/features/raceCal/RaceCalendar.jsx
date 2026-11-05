@@ -54,7 +54,22 @@ function CalRow({ s, past, today, onOpen, wide, mine }) {
         </span>
       }
       title={s.name}
-      sub={wide ? placeOf(s) : [placeOf(s), classes].filter(Boolean).join(" · ")}
+      sub={
+        wide ? (
+          placeOf(s)
+        ) : (
+          <>
+            {placeOf(s)}
+            {(classes || mine) && (
+              <span className="mt-1 block truncate text-[0.78125rem] text-fg">
+                {classes}
+                {classes && mine && " · "}
+                {mine && <span className="font-semibold text-acc">Kulübümde</span>}
+              </span>
+            )}
+          </>
+        )
+      }
       right={wide ? <WideCols a={classes || "—"} b={mine ? <span className="font-semibold text-acc">Kulübümde</span> : ""} c={past ? "" : soon(s, today)} /> : past ? null : soon(s, today)}
     />
   );
