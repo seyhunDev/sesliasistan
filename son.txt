@@ -1,8 +1,8 @@
-Commit: 9ea5e82 · Finiş penceresi adımları ortak: Yayın › Süre ve uygulama içi canlı ekran (#1271)
-Zaman: 2026-11-05-2357 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42105185256
+Commit: a106529 · Yayın kaynağı: YouTube Studio bağlantısı tanınır (#1274)
+Zaman: 2026-11-06-0036 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42111415284
 
-TAM TEST · 05.11.2026 23:39:08
+TAM TEST · 06.11.2026 00:19:27
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1429/1440 geçti · 11 kalan · 1129 sn
+SONUÇ: 1428/1440 geçti · 12 kalan · 1047 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4488 test”
+      ✗ “4489 test”
           beklenen: hepsi geçer
-          olan:     4455/4488 geçti
+          olan:     4456/4489 geçti
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “ortak hava tablosu” → false (beklenen: hava sayfası DayStrip + HourTable, yarış havası HourTable, ikisinde de eski grafik yok; ölçülen geçmiş sütun, plan çizgisi, günlük yağış; harita her yerde Harita düğmesi)
       ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
@@ -176,12 +176,15 @@ SONUÇ: 1429/1440 geçti · 11 kalan · 1129 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 139/141
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 138/141
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 9/10
+  ✗ Ana sayfa: 8/10
       ✗ “saat saat hava tablosu”
           beklenen: hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat
           olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “yarış günü havası”
+          beklenen: yarın (Foça'da yarış) seçilince hava alanı aynı kalır, yarış yeri tablosu çıkmaz; tek dokunuşta pencere açılmaz
+          olan:     yarış tablosu 0 · hava 1 · pencere 1 · seçili true
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
@@ -206,9 +209,9 @@ SONUÇ: 1429/1440 geçti · 11 kalan · 1129 sn
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
   ✗ Hava: 2/3
-      ✗ “ölçülen / beklenen yağmur”
-          beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 24 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+      ✗ “yağmur grafiği”
+          beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var
+          olan:     sütun 48 · gün düğmesi 1 · 5,5 false
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
