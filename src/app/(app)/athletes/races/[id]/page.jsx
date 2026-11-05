@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
@@ -35,7 +36,7 @@ import { importResults, importToast } from "@/features/athletes/resultsImport";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
 export default function RacePage() {
-  const { user, profile } = useAuth();
+  const { user, profile, isOwner } = useAuth();
   const router = useRouter();
   const allowed = canSeeAthletes(profile?.email);
   useEffect(() => {
@@ -251,6 +252,12 @@ function Race({ orgId, uid, email, by, mail, coach }) {
         {race && <p className="truncate text-[0.8125rem] text-white/65">{subText({ ...race, ...head0 })}</p>}
       </div>
       {race && <Left r={{ ...race, ...head0 }} />}
+      {/* Yayın düğmesi (ana hesap; Seyhun 2026-11-05 "bir de yayın butonu koy") */}
+      {race?.id && isOwner && (
+        <Link href={`/athletes/races/${race.id}/yayin`} data-press className="raised flex h-9 shrink-0 items-center rounded-full border px-3 text-[0.8125rem] font-semibold">
+          Yayın
+        </Link>
+      )}
       {(race?.id || head0) && (
         <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className={buttonClass({ variant: "back" })}>
           <Icon name="more" className="size-5" />

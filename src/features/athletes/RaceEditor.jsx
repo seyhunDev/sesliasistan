@@ -30,6 +30,7 @@ import { tl, totals } from "./budget";
 import { BUDGET_ONLY, buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
 import { RaceWx } from "./RaceWx";
+import { RaceTrack } from "./RaceTrack";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { loadPosts } from "@/features/posts/posts";
@@ -171,7 +172,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const [manual, setManual] = useState(false);
   // Tek ⋯ (Seyhun 2026-10-30, yaris-yapi): multimedya sayfasının ⋯ menüsünden gelen bölüm ?sec= ile açılır (prep, people, docs, trip, budget, edit, del)
   const [sec0] = useState(sec);
-  const [tab, setTab] = useState(() => (SECS.includes(sec0) && (sec0 !== "prep" || inRace(start)) ? sec0 : "sum"));
+  // Sitesi bağlı yarış yarış günü dışında Takip ile açılır (Seyhun 2026-11-05)
+  const [tab, setTab] = useState(() => (SECS.includes(sec0) && (sec0 !== "prep" || inRace(start)) ? sec0 : siteDocs && !inRace(start) ? "site" : "sum"));
   const [edit, setEdit] = useState(sec0 === "edit"); // yarışın adı, tarihi, yeri (başlık kartına dokununca)
   // Sekmeye ya da yarış bilgisi penceresine git
   const go = (t) => (t === "edit" ? setEdit(true) : setTab(t));
@@ -898,9 +900,10 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const tabs = [
     // Yarış günü (Seyhun 2026-10-29): hazırlık, plan ve not altta görünmez; "Hazırlık" sekmesine dokununca açılır, yeniden dokununca kapanır.
     // Yarıştan önce eskisi gibi Özet.
-    raceDay ? ["prep", "Hazırlık", todoList.length ? `${todoList.length} iş` : "Tamam", false] : ["sum", "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
-    // Yarışın sitesinden gelen dokümanlar (talimat, geçici sonuçlar…) kendi sekmesinde; bizim hazırladığımız evrak Evrak'ta (Seyhun 2026-11-04 "ayrı tutmamız lazım")
-    ...(siteDocs ? [["site", "Dokümanlar", siteNew ? `${siteNew} yeni` : "", false]] : []),
+    // Yarış takip (Seyhun 2026-11-05): sitesi bağlı yarışta ilk sekme Takip (sonuçlar, duyurular, talimatlar; RaceTrack), Özet'in adı Hazırlık.
+    // Bizim hazırladığımız evrak Evrak'ta (2026-11-04 "ayrı tutmamız lazım")
+    ...(siteDocs ? [["site", "Takip", siteNew ? `${siteNew} yeni` : "", false]] : []),
+    raceDay ? ["prep", "Hazırlık", todoList.length ? `${todoList.length} iş` : "Tamam", false] : ["sum", over ? "Özet" : siteDocs ? "Hazırlık" : "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
     ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
     ["docs", "Evrak", file || (!checked && r.docsAt && !stale) ? "Hazır" : stale ? "Yenile" : r.docsAt ? "Bu cihazda yok" : "Hazır değil", !stat[1][4]],
     // Yolculuk ve Bütçe tek sekme (Seyhun 2026-11-04 "sadeleştirelim"): sekmeler tek satıra sığar; "budget" açılınca Bütçe'ye kayar
@@ -1346,7 +1349,11 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
       )}
 
       {/* Siteden gelen belgeler Dokümanlar sekmesinde (2026-11-04); sekme kapalıyken de bağlı (yeni gelenler işlenir) */}
-      {siteDocs && <div hidden={tab !== "site"}>{siteDocs(tab === "site")}</div>}
+      {siteDocs && rid && (
+        <div hidden={tab !== "site"}>
+          <RaceTrack orgId={orgId} race={{ ...r, id: rid }} chosen={chosen} more={siteDocs(tab === "site")} />
+        </div>
+      )}
       {tab === "docs" && (
         <>
           {/* Hazır evrak bir bilgi değişince (stale) ya da bu telefonda yoksa (başka cihazda hazırlandı / telefon sildi): uyarı */}
