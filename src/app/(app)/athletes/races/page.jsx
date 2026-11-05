@@ -13,6 +13,9 @@ import { loadRaces, racesNow } from "@/features/athletes/races";
 import { shareAll } from "@/features/athletes/sharedRaces";
 import { sweepLive } from "@/features/athletes/raceWipe";
 import { RaceSwitch } from "@/features/raceCal/RaceSwitch";
+import { Sheet } from "@/components/ui/Sheet";
+import { Row, RowList } from "@/components/ui/Row";
+import { useWide } from "@/hooks/useWide";
 
 // Yarışlar (yeni tasarım 2026-10-21): lacivert üstte başlık ve sıradaki yarış; sıradaki yarış kartı, yaklaşan yarışlar ay ay, geçmiş yarışlar en altta; yarışa dokununca evrak, sporcular, yapılacaklar
 export default function RacesPage() {
@@ -43,6 +46,8 @@ function Races({ orgId, me }) {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
+  const wide = useWide();
+  const [menu, setMenu] = useState(false);
   const up = races?.filter((r) => !isPast(r)).length || 0;
   const past = (races?.length || 0) - up;
   const sub = !races ? "Yükleniyor…" : [up ? `${up} yaklaşan` : "Yaklaşan yarış yok", past && `${past} geçmiş`].filter(Boolean).join(" · ");
@@ -55,17 +60,24 @@ function Races({ orgId, me }) {
         <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Yarışlar</h1>
         <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
       </div>
-      {me.uid === orgId && (
-        <Link href="/athletes/races/site" data-press className="raised flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold">
-          Siteden
-        </Link>
-      )}
+      {wide && <RaceSwitch on="club" inline />}
+      {/* geniş ekranda Siteden ⋯ içinde */}
+      {me.uid === orgId &&
+        (wide ? (
+          <button type="button" onClick={() => setMenu(true)} aria-label="Diğer" data-press className="raised flex h-9 w-10 shrink-0 items-center justify-center rounded-xl border">
+            <Icon name="more" className="size-5" />
+          </button>
+        ) : (
+          <Link href="/athletes/races/site" data-press className="raised flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+            Siteden
+          </Link>
+        ))}
       <Link href="/athletes/races/new" data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
         <Icon name="plus" className="size-4" />
         Yarış
       </Link>
     </header>
-    <RaceSwitch on="club" />
+    {!wide && <RaceSwitch on="club" />}
     </>
   );
 
@@ -75,6 +87,11 @@ function Races({ orgId, me }) {
         {error && <p className="text-center text-[0.875rem] text-rec">{error}</p>}
         {!races && <Loading label="Yarışlar yükleniyor" />}
       </RaceList>
+      <Sheet open={menu} onClose={() => setMenu(false)} title="Yarışlar">
+        <RowList>
+          <Row href="/athletes/races/site" title="Siteden ekle" />
+        </RowList>
+      </Sheet>
     </main>
   );
 }

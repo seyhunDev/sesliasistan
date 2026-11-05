@@ -6,6 +6,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Empty } from "@/components/ui/Page";
 import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { todayStr } from "@/lib/utils/format";
+import { useWide } from "@/hooks/useWide";
 import { rangeText } from "./raceDocs";
 import { doneFor, stepTotal, stepsOf } from "./races";
 
@@ -73,11 +74,49 @@ const monthOf = (r) => {
 const byMonth = (list) => list.reduce((g, r) => (g.at(-1)?.[0] === monthOf(r) ? g.at(-1)[1].push(r) : g.push([monthOf(r), [r]]), g), []);
 
 // Liste satırı (ortak Row): solda gün ve haftanın günü, ortada ad ve yer (eksik varsa sarı), sağda kalan süre
-function RaceRow({ r, past, onOpen }) {
+// Geniş ekranda (iPad, Mac; Seyhun 2026-11-05 onayı, yaris-tasarim/ipad) satırın sağı sütun sütun: sporcu · hazırlık · kalan süre
+export function WideCols({ a, b, c }) {
+  return (
+    <span className="flex items-center gap-4 text-[0.875rem] font-normal">
+      <span className="w-20 truncate">{a}</span>
+      <span className="w-28 truncate">{b}</span>
+      <span className="w-16 text-right text-[0.9375rem] font-bold">{c}</span>
+    </span>
+  );
+}
+// "19–21 Kas", "27 Eki–1 Kas"
+const shortRange = (r) => {
+  if (!r.startDate) return "";
+  const a = day(r.startDate);
+  const b = r.endDate && r.endDate !== r.startDate ? day(r.endDate) : null;
+  const m = (d) => MON[d.getMonth()].charAt(0) + MON[d.getMonth()].slice(1).toLocaleLowerCase("tr-TR");
+  if (!b) return `${a.getDate()} ${m(a)}`;
+  return a.getMonth() === b.getMonth() ? `${a.getDate()}–${b.getDate()} ${m(b)}` : `${a.getDate()} ${m(a)}–${b.getDate()} ${m(b)}`;
+};
+// Hazırlık sütunu: sporcusuz yarışta "Sporcu seç", yoksa yapılan iş ve ince çubuk; geçmişte sonuç
+function prepOf(r, past) {
+  if (past) return r.results?.rows && Object.keys(r.results.rows).length ? "Sonuç var" : "";
+  if (!r.athleteIds.length) return <span className="font-semibold text-warn">Sporcu seç</span>;
+  const total = stepTotal(r);
+  if (!total) return "";
+  const done = total - stepsOf(r).length;
+  return (
+    <>
+      {done === total ? "Hazır" : `${done} / ${total} iş`}
+      <span className="mt-1 block h-[5px] overflow-hidden rounded-full bg-line" aria-hidden="true">
+        <span className={`block h-full rounded-full ${done === total ? "bg-ok" : "bg-acc"}`} style={{ width: `${Math.round((done / total) * 100)}%` }} />
+      </span>
+    </>
+  );
+}
+
+function RaceRow({ r, past, onOpen, wide }) {
   const s = r.startDate && day(r.startDate);
   const e = r.endDate && r.endDate !== r.startDate ? day(r.endDate) : null;
   const warn = !past && warnOf(r);
-  const sub = warn || (past ? [placeText(r), e ? `${s.getDate()}–${e.getDate()} ${MON[e.getMonth()].toLocaleLowerCase("tr-TR")}` : ""].filter(Boolean).join(" · ") || subOf(r) : subOf(r));
+  const sub = wide
+    ? warn || [placeText(r), r.abroad && "Yurt dışı", shortRange(r)].filter(Boolean).join(" · ")
+    : warn || (past ? [placeText(r), e ? `${s.getDate()}–${e.getDate()} ${MON[e.getMonth()].toLocaleLowerCase("tr-TR")}` : ""].filter(Boolean).join(" · ") || subOf(r) : subOf(r));
   return (
     <Row
       onClick={() => onOpen(r)}
@@ -90,7 +129,7 @@ function RaceRow({ r, past, onOpen }) {
       title={r.name || "Adsız yarış"}
       sub={sub}
       warn={!!warn}
-      right={past ? null : soonText(r)}
+      right={wide ? <WideCols a={r.athleteIds.length ? `${r.athleteIds.length} sporcu` : "—"} b={prepOf(r, past)} c={past ? "" : soonText(r)} /> : past ? null : soonText(r)}
     />
   );
 }
@@ -105,7 +144,7 @@ function NextTop({ r, onOpen }) {
   const step = nextStep(r);
   const line = "flex w-full items-center gap-3 border-t border-white/15 px-4 py-3 text-left text-[0.875rem] first:border-t-0 active:bg-white/5";
   return (
-    <div className="mt-5" aria-label="Sıradaki yarış">
+    <div className="race-next mt-5" aria-label="Sıradaki yarış">
       <button type="button" onClick={() => onOpen(r)} className="block w-full text-left active:opacity-80">
         <span className="flex items-center justify-between gap-3 text-[0.75rem] font-bold tracking-[.06em] text-white/65">
           SIRADAKİ YARIŞ
@@ -128,8 +167,11 @@ function NextTop({ r, onOpen }) {
         </span>
         <b className="mt-2.5 block truncate text-[1.3125rem] font-bold leading-tight tracking-tight">{r.name || "Adsız yarış"}</b>
         <span className="mt-0.5 block truncate text-[0.875rem] text-white/70">{[placeText(r), rangeText(r.startDate, r.endDate), `${r.athleteIds.length} sporcu`].filter(Boolean).join(" · ")}</span>
+      </button>
+      {/* geniş ekranda sağ yarı: hazırlık, son tarih, sıradaki iş */}
+      <div className="race-next-b">
         {total > 0 && (
-          <>
+          <button type="button" onClick={() => onOpen(r)} className="block w-full text-left active:opacity-80">
             <span className="mt-3.5 block h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
               <span className="block h-full rounded-full bg-[#8fb3ff]" style={{ width: `${Math.round((done / total) * 100)}%` }} />
             </span>
@@ -137,9 +179,8 @@ function NextTop({ r, onOpen }) {
               <span>Hazırlık</span>
               <span className="tabular-nums">{done === total ? "Hepsi tamam" : `${done} / ${total} iş tamam`}</span>
             </span>
-          </>
+          </button>
         )}
-      </button>
       {(dl || step) && (
         <div className="ck-glass mt-3.5 overflow-hidden rounded-2xl">
           {dl && (
@@ -165,6 +206,7 @@ function NextTop({ r, onOpen }) {
           Yayın
         </Link>
       )}
+      </div>
     </div>
   );
 }
@@ -172,6 +214,7 @@ function NextTop({ r, onOpen }) {
 // Yarış listesi: lacivert üstte başlık (head) ve sıradaki yarış; açık zeminde yaklaşan yarışlar ay ay, en altta geçmiş (son yarış + "N yarış daha")
 export function RaceList({ races, onOpen, head, children }) {
   const [showPast, setShowPast] = useState(false);
+  const wide = useWide();
   const list = races || [];
   const up = list.filter((r) => !isPast(r)).sort((a, b) => (a.startDate || "9").localeCompare(b.startDate || "9"));
   const past = list.filter(isPast).sort((a, b) => b.startDate.localeCompare(a.startDate));
@@ -193,7 +236,7 @@ export function RaceList({ races, onOpen, head, children }) {
             <ListHead title={m} count={l.length} />
             <RowList>
               {l.map((r) => (
-                <RaceRow key={r.id} r={r} onOpen={onOpen} />
+                <RaceRow key={r.id} r={r} onOpen={onOpen} wide={wide} />
               ))}
             </RowList>
           </section>
@@ -203,7 +246,7 @@ export function RaceList({ races, onOpen, head, children }) {
             <ListHead title="Geçmiş" count={past.length} />
             <RowList>
               {(showPast ? past : past.slice(0, 1)).map((r) => (
-                <RaceRow key={r.id} r={r} past onOpen={onOpen} />
+                <RaceRow key={r.id} r={r} past onOpen={onOpen} wide={wide} />
               ))}
               {past.length > 1 && (
                 <button type="button" onClick={() => setShowPast((v) => !v)} aria-expanded={showPast} data-press="row" className="flex min-h-[3rem] w-full items-center border-t border-line text-left text-[0.9375rem] font-semibold text-acc">
