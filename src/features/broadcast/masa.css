@@ -448,3 +448,57 @@ body[data-typing] .masa-bar { bottom: 0 !important; }
 /* pencerede (Sheet sayfanın dışında açılır, --chip yok) düğmeler kabarık görünür */
 .navy :is(.masa-b, .masa-tog) { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.3); }
 .navy :is(.masa-b, .masa-tog):active { box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35); }
+
+/* Süre (Seyhun 2026-11-05 örnek yayin-tasarim/sure-yeni/ornek.png): yarıştaki grupların küçük şeritleri, başlatılacak grubun büyük kartı,
+   yarış × grup tablosu. iPad ve Mac panosunda içerik telefon genişliğinde kalır (sütun ne kadar geniş olursa olsun) */
+.masa-sure { max-width: 30rem; }
+@media (min-width: 48rem) {
+  .masa-pnb:has(> .masa-sure) > * { max-width: 30rem; }
+}
+.sure-mini { position: relative; overflow: hidden; border-radius: 1rem; background: var(--card); border: 1px solid var(--line); }
+.sure-mini::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; border-radius: 0 3px 3px 0; background: var(--g); }
+.sure-mini.open { border-color: color-mix(in srgb, var(--g) 70%, transparent); }
+.sure-mini-h { display: flex; width: 100%; align-items: center; gap: 0.75rem; padding: 0.6rem 0.875rem 0.6rem 1.125rem; text-align: left; }
+.sure-mini-h b { font-size: 0.9375rem; font-weight: 700; }
+.sure-mini-h small { display: block; margin-top: 0.125rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.8125rem; font-weight: 600; color: var(--mut); }
+.sure-mini-h em { flex: none; font-style: normal; font-size: 1.375rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.sure-acts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.375rem; padding: 0 0.75rem 0.75rem 1.125rem; }
+.sure-more { margin-left: 0.25rem; width: 2rem; height: 1.75rem; border-radius: 0.5rem; background: rgba(0, 0, 0, 0.25); color: #fff; font-weight: 800; line-height: 1; }
+.sure-more[aria-pressed="true"] { background: #fff; color: #0b1322; }
+.sure-pick { display: flex; gap: 0.375rem; overflow-x: auto; margin: 0.75rem 0 0.25rem; scrollbar-width: none; }
+.sure-pick button { display: flex; flex: none; align-items: center; gap: 0.375rem; height: 2.5rem; padding: 0 0.75rem; border-radius: 0.75rem; background: rgba(0, 0, 0, 0.25); font-size: 0.9375rem; font-weight: 700; color: #fff; }
+.sure-pick button i { width: 0.625rem; height: 0.625rem; border-radius: 50%; }
+.sure-pick button[aria-pressed="true"] { background: #fff; color: #0b1322; text-shadow: none; }
+.sure-set { display: flex; align-items: center; gap: 0.625rem; margin-top: 0.5rem; padding: 0.5rem 0.625rem; border-radius: 0.75rem; background: rgba(0, 0, 0, 0.25); }
+.sure-set > span:not(.sure-art) { min-width: 0; flex: 1; line-height: 1.2; }
+.sure-set small { display: block; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.75); }
+.sure-set b { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.9375rem; font-weight: 700; }
+.sure-set > button { flex: none; height: 2.25rem; padding: 0 0.75rem; border-radius: 0.625rem; background: rgba(255, 255, 255, 0.14); font-size: 0.8125rem; font-weight: 700; color: #fff; }
+.sure-set > button[aria-pressed="true"] { background: #fff; color: #0b1322; text-shadow: none; }
+.sure-art { display: block; width: 2rem; height: 1.375rem; flex: none; overflow: hidden; border-radius: 0.1875rem; }
+.sure-art.card { display: flex; align-items: center; justify-content: center; background: #fff; color: #0b1322; font-size: 0.8125rem; font-weight: 800; text-shadow: none; }
+.sure-opts { display: flex; gap: 0.375rem; overflow-x: auto; margin-top: 0.375rem; scrollbar-width: none; }
+.sure-opts.five { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.sure-opts button { display: flex; min-width: 3.5rem; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem; padding: 0.5rem 0.25rem; border-radius: 0.75rem; background: rgba(0, 0, 0, 0.25); color: #fff; }
+.sure-opts button small { font-size: 0.75rem; font-weight: 700; }
+.sure-opts button b { font-size: 1.0625rem; font-weight: 800; }
+.sure-opts button[aria-pressed="true"] { background: #fff; color: #0b1322; text-shadow: none; }
+.masa-hero .masa-hero-d { margin-top: 0.625rem; }
+.masa-hero .masa-oup, .masa-hero .masa-hero-or { margin-top: 0.5rem; }
+/* yarış × grup tablosu */
+.sure-grid { overflow: hidden; border-radius: 1rem; background: var(--card); border: 1px solid var(--line); }
+.sure-gr { display: grid; grid-template-columns: 2.75rem repeat(var(--cols), minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.sure-gr:first-child { border-top: 0; }
+.sure-gr > * { min-width: 0; padding: 0.5rem 0.25rem; border-left: 1px solid var(--line); text-align: center; }
+.sure-gr > :first-child { border-left: 0; padding-left: 0.75rem; text-align: left; font-size: 0.875rem; font-weight: 700; color: var(--mut); }
+.sure-gr.head > * { display: flex; align-items: center; justify-content: center; gap: 0.3rem; overflow: hidden; white-space: nowrap; font-size: 0.875rem; font-weight: 800; }
+.sure-gr.head > :first-child { justify-content: flex-start; font-size: 0.6875rem; color: var(--mut); }
+.sure-gr.head i { width: 0.5625rem; height: 0.5625rem; flex: none; border-radius: 50%; }
+.sure-gr button b { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.875rem; font-weight: 700; color: var(--mut); font-variant-numeric: tabular-nums; }
+.sure-gr button small { display: block; margin-top: 0.125rem; font-size: 0.6875rem; font-weight: 600; color: var(--mut); }
+.sure-gr button.live { background: color-mix(in srgb, var(--g) 30%, transparent); }
+.sure-gr button.live b, .sure-gr button.cd b, .sure-gr button.nx b { color: var(--fg); }
+.sure-gr button.cd { background: rgba(255, 61, 119, 0.22); }
+.sure-gr button.nx { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--g) 80%, transparent); }
+.sure-gr button.ok b { color: var(--ok); }
+.sure-gr button.void b, .sure-gr button.ap b { color: var(--warn); }
