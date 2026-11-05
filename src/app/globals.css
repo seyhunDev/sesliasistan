@@ -1098,11 +1098,18 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
   .wide-cols > *, main.split > .bg-bg.split-cols > * { break-inside: avoid; margin: 0 0 1.5rem !important; }
   main.split > .bg-bg.split-cols > .split-span { column-span: all; }
 }
-/* split-even (Yarış detayı): lacivert sol sütun geniş (hava tablosu ve harita), sağda sekmenin içeriği. Lacivert tek başınaysa (yarış günü)
-   bütün genişliği alır. */
+/* split-even (Yarış detayı; iPad tasarımı Seyhun 2026-11-05): solda lacivert (başlık, hava tablosu, harita, Yayına git), sağda sekmeler ve
+   sekmenin içi; yarış günü de. Takip (track-cols) sağda iki sütun: özet + sonuçlar | gruplar, duyurular, talimatlar. Lacivert tek
+   başınaysa (yarış yüklenirken) bütün genişliği alır. */
 @media (min-width: 64rem) {
-  body[data-side] main.split.split-even.max-w-\[30rem\] { grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 1fr); }
+  body[data-side] main.split.split-even.max-w-\[30rem\] { grid-template-columns: 23rem minmax(0, 1fr); }
+  body[data-side] main.split.split-even > .bg-bg { padding-left: 1.25rem; padding-right: 1.25rem; }
   body[data-side] main.split:not(:has(> .bg-bg)) > section.ck:first-child { grid-column: 1 / -1; position: static; height: auto; min-height: 100dvh; }
+  body[data-side] main.split-even .track-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); column-gap: 1.25rem; align-items: start; }
+}
+@media (min-width: 80rem) {
+  body[data-side] main.split.split-even.max-w-\[30rem\] { grid-template-columns: minmax(26rem, 0.85fr) minmax(0, 1fr); }
+  body[data-side] main.split.split-even > .bg-bg { padding-left: 2rem; padding-right: 2rem; }
 }
 /* card-grid: tek kartta alt alta satırlar (ul) iPad ve Mac'te ayrı küçük kartlardan ızgara olur (Sporcular gibi uzun listeler) */
 @media (min-width: 48rem) {
