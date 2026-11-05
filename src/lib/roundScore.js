@@ -25,6 +25,7 @@ export const COLORS = [
   ["Beyaz", /^(beyaz|white)/, "#b8bcc6"],
 ];
 const FINALS = { Altın: "#d4a017", Gümüş: "#9aa3ad", Bronz: "#b07040", Zümrüt: "#1f9e74" };
+export const FINAL_ORDER = Object.keys(FINALS);
 // Dönüş ekranında seçilen gruplar (sırayla)
 // sıra: Sarı, Mavi, Kırmızı, Yeşil, Pembe (Seyhun 2026-11-02 "önce sarı, sonra mavi, yeşil, pembe"; 2026-11-04 kırmızı eklendi)
 export const GROUP_PICK = ["Sarı", "Mavi", "Kırmızı", "Yeşil", "Pembe", "Altın", "Gümüş", "Bronz"];
@@ -119,7 +120,6 @@ export function startScores(st, entry, members = null) {
 }
 
 // Sporcunun final grubu sırası: son final yarışındaki grubu (Altın 0, Gümüş 1, Bronz 2, Zümrüt 3); final yarışmadıysa 99
-const FINAL_ORDER = Object.keys(FINALS);
 export function finalIdx(sc) {
   const ns = Object.keys(sc || {}).map(Number).sort((a, b) => b - a);
   for (const n of ns) {

@@ -3,7 +3,7 @@
 // { wind: [{ at, dir, kn, gust, src }], starts: [{ id, day, n, at, dir, kn, course, flag, note }], media: [{ id, kind, type, size, url, at, ath }] }
 import { cleanAgenda } from "./raceProgram";
 import { cleanSig } from "./raceSignals";
-import { finalsOnly, isFinalGrp } from "./roundScore";
+import { FINAL_ORDER, finalsOnly, groupOf, isFinalGrp } from "./roundScore";
 // (ath: fotoğrafta/videoda etiketlenen sporcuların id'leri; phase/sec/end: çekildiği an start sayacına göre, momentOf).
 // Rüzgâr kaydının `src` alanı "elle" ya da ileride bağlanacak ölçüm cihazının adı: grafik ikisini aynı noktalarla çizer.
 
@@ -135,8 +135,21 @@ export function cleanPlan(p) {
     .map((o) => ({ cls: String(o?.cls || "").slice(0, 20), grp: String(o?.grp || "").slice(0, 20), prep: String(o?.prep || "").slice(0, 8), ...(o?.ap && o.grp ? { ap: cleanHold(o.ap) } : {}) }))
     .filter((o) => o.cls || o.grp);
   // Final grupları açıklanan sınıfın (sette ya da bekleyen startlarda Altın/Gümüş/Bronz) renk grubu startları düşer (finalsOnly)
-  const finCls = new Set([...order0.filter((o) => isFinalGrp(o.grp)).map((o) => o.cls), ...(Array.isArray(p?.sets) ? p.sets : []).filter((x) => Array.isArray(x?.grps) && x.grps.some(isFinalGrp)).map((x) => String(x.cls || "").slice(0, 20))]);
-  const order = order0.filter((o) => !finCls.has(o.cls) || !o.grp || isFinalGrp(o.grp)).slice(0, 24);
+  // Sınıf adı büyük/küçük harf ve boşluktan bağımsız; sınıfsız final satırı varsa bütün renk satırları düşer (Seyhun 2026-11-05 "hâlâ renk grupları duruyor")
+  const ck = (c) => String(c || "").trim().toLocaleLowerCase("tr");
+  const sets0 = (Array.isArray(p?.sets) ? p.sets : []).filter((x) => Array.isArray(x?.grps));
+  const finCls = new Set([...order0.filter((o) => isFinalGrp(o.grp)).map((o) => ck(o.cls)), ...sets0.filter((x) => x.grps.some(isFinalGrp)).map((x) => ck(x.cls))]);
+  const dropCol = (o) => o.grp && !isFinalGrp(o.grp) && (finCls.has("") || finCls.has(ck(o.cls)) || (!o.cls && finCls.size > 0));
+  const order1 = order0.filter((o) => !dropCol(o)).slice(0, 24);
+  // Bekleyen final startları sınıfın grup sırasıyla (Sporcu sekmesi / kurulumdaki sıra; yoksa Altın, Gümüş, Bronz, Zümrüt), yerleri aynı kalır
+  const rankOf = (o) => {
+    const set = sets0.find((x) => ck(x.cls) === ck(o.cls) && x.grps.some(isFinalGrp));
+    const i = set ? set.grps.findIndex((g) => groupOf(g) === groupOf(o.grp)) : -1;
+    return i >= 0 ? i : 10 + FINAL_ORDER.indexOf(groupOf(o.grp));
+  };
+  const finIdx = order1.map((o, i) => (isFinalGrp(o.grp) && !o.ap ? i : -1)).filter((i) => i >= 0);
+  const finRows = finIdx.map((i) => order1[i]).sort((a, b) => (ck(a.cls) === ck(b.cls) ? rankOf(a) - rankOf(b) : 0));
+  const order = order1.map((o, i) => (finIdx.includes(i) ? finRows[finIdx.indexOf(i)] : o));
   const next = p?.next && DAY.test(p.next.day || "") ? { day: p.next.day, at: hm(p.next.at) } : null;
   const status = PLAN_STATUS.includes(p?.status) ? p.status : "";
   // Tehir (Seyhun 2026-11-01 "bir sebep belirterek tehir basabilirim, bir saatlik"): from eski saat, why sebep; at yeni saat (belirsizse boş)
