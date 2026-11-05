@@ -1,8 +1,8 @@
-Commit: a106529 · Yayın kaynağı: YouTube Studio bağlantısı tanınır (#1274)
-Zaman: 2026-11-06-0036 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42111415284
+Commit: aec0978 · İngilizce kalıplar: Kur bitince Konuş açılır, sonuç ekranı kaybolmaz (#1275)
+Zaman: 2026-11-06-0114 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42116992341
 
-TAM TEST · 06.11.2026 00:19:27
+TAM TEST · 06.11.2026 00:56:05
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1428/1440 geçti · 12 kalan · 1047 sn
+SONUÇ: 1427/1440 geçti · 13 kalan · 1084 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -176,7 +176,7 @@ SONUÇ: 1428/1440 geçti · 12 kalan · 1047 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 138/141
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 137/141
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✗ Ana sayfa: 8/10
       ✗ “saat saat hava tablosu”
@@ -208,10 +208,13 @@ SONUÇ: 1428/1440 geçti · 12 kalan · 1047 sn
   ✓ Tam ekran üstte: 1/1
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
-  ✗ Hava: 2/3
+  ✗ Hava: 1/3
       ✗ “yağmur grafiği”
           beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var
           olan:     sütun 48 · gün düğmesi 1 · 5,5 false
+      ✗ “ölçülen / beklenen yağmur”
+          beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
+          olan:     ölçülen sütun 2 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
