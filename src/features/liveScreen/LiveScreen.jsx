@@ -15,7 +15,6 @@ import { colorOf as windColor } from "@/lib/windMap";
 import { BoatMap } from "@/features/tracking/BoatMap";
 import { BoatLive } from "@/features/tracking/BoatLive";
 import { fleetOf } from "@/lib/boatPlay";
-import { HourTable } from "@/features/weather/HourTable";
 import { useDemo } from "./demo";
 import { useVisit } from "./useVisit";
 import { dayProgram, expText, expWind } from "./program";
@@ -2381,7 +2380,7 @@ function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast 
   const p = showPlan({ show: sd.courseShow, evre, has, now, dwell: { rank: sc03Len(sd, sel, mode), course: SCENE_T + 2 } });
   return { ...p, sd, vid, evre, sc: itemScene(p.item, sd.screen?.kind === "rec") };
 }
-function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null, view = "", rk = null }) {
+function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null, view = "", rk = null, past = false }) {
   const back = useInAppBack(); // uygulama içinden açıldıysa yarış adının başında geri oku
   // izleyicinin açtığı Rüzgâr / Sıralama / Parkur (Seyhun 2026-11-05 "yukarıdan açılsın"): süre kartının altından açılır, sahne değişmez
   const drop =
@@ -2407,7 +2406,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
     : sc === "04" ? <Sc04 data={data} />
     : sc === "05" ? <Sc05 data={data} sel={sel} mode={mode} now={now} />
     : <Sc06 data={data} prog={prog} now={now} today={today} />;
-  const live = mode !== "none" && plan.status !== "done";
+  const live = !past && mode !== "none" && plan.status !== "done"; // geçmiş yarışta (?y=) Canlı rozeti yok
   // Evre bandı (Seyhun 2026-11-04 "TV show kıvamında; geçişler"): evre değişince altta 3 sn evrenin adı (sayfa ilk açılışında yok)
   const [bump, setBump] = useState({ e: evre, t: 0 });
   if (bump.e !== evre) setBump({ e: evre, t: now });
@@ -2582,7 +2581,8 @@ export function LiveScreen({ id, y = "" }) {
   // Rüzgâr sahne değiştirmez: süre kartının altından grafik açılır
   // açılan bölüm kartın altında; ortada aynı şey ikinci kez çıkmasın
   const same = vwOn && ((vView === "rank" && pk.sc === "03") || (vView === "course" && pk.sc === "05") || (vView === "wind" && pk.sc === "01" && pk.item === "wind"));
-  const { sc, item } = same ? { sc: "01", item: "time" } : pk;
+  // geçmiş yarış (?y=, Seyhun 2026-11-05 eski düzen kalktı): o yarışın sıralaması
+  const { sc, item } = !isCur && scBoards(sd).length ? { sc: "03", item: "rank" } : same ? { sc: "01", item: "time" } : pk;
   const { evre } = pk;
   return (
     <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
@@ -2593,7 +2593,7 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={setVCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} hide={barHide} onHide={setBarHide} />} />
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={setVCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} hide={barHide} onHide={setBarHide} />} />
         {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
