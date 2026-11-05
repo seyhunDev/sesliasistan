@@ -265,7 +265,7 @@ function Dial({ deg, live, onDeg, className = "" }) {
       onPointerUp={() => (drag.current = false)}
       onPointerCancel={() => (drag.current = false)}
     >
-      <svg viewBox="0 0 200 200" className="size-full" aria-hidden="true">
+      <svg viewBox="-12 -12 224 224" className="size-full overflow-visible" aria-hidden="true">
         <circle cx="100" cy="100" r="96" fill="var(--bg)" stroke="var(--line)" />
         {Array.from({ length: 72 }, (_, i) => {
           const a = ((i * 5 - 90) * Math.PI) / 180;
@@ -281,7 +281,7 @@ function Dial({ deg, live, onDeg, className = "" }) {
       </svg>
       <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
         <div>
-          <b className="block text-[2.75rem] font-bold leading-none tracking-[-.03em] tabular-nums">{deg}°</b>
+          <b className="block text-[2.375rem] font-bold leading-none tracking-[-.03em] tabular-nums">{deg}°</b>
           <span className="mt-1 block text-[0.875rem] font-semibold text-mut">{dirOf(deg)}{live ? " · canlı" : ""}</span>
         </div>
       </div>
