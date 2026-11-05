@@ -121,6 +121,9 @@ export function BroadcastPage({ orgId, id }) {
   const [pickId, setPickId] = useState(""); // Süre'de açık satır (başlamış startın kısa yolları)
   // Dönüşler, Ceza ve Sesle gir'in yarışı (Seyhun 2026-11-04 aynı anda üç grup): grup şeridinden seçilir, satırın açık/kapalı olmasına bağlı değil
   const [selId, setSelId] = useState("");
+  // Süre büyük kartı: başlatılacak start (plan.order sırası; -1 = sıradaki) ve açık seçim (prep · card · more)
+  const [heroPick, setHeroPick] = useState(-1);
+  const [chg, setChg] = useState("");
   const [editI, setEditI] = useState(-1); // listede açık olan bekleyen start (plan.order sırası)
   const [pickKey, setPickKey] = useState(""); // satırda açık seçim: cls | grp | prep
   const [menu, setMenu] = useState(false); // ⋯ menüsü (Seyhun 2026-11-01 "çok fazla buton, yanlışlıkla tıklanmasın": az kullanılan ve riskli işler burada)
@@ -1173,7 +1176,10 @@ export function BroadcastPage({ orgId, id }) {
   const hero = (() => {
     for (const r of races) for (const x of r.rows) if (x.start && cdRow(x.start.id)) return { x, n: r.n, cd: true };
     if (!canRow) return null;
+    // grup çipinden ya da tablodan seçilen bekleyen start, yoksa sıradaki
+    for (const r of races) for (const x of r.rows) if (!x.start && x.state !== "ap" && heroPick >= 0 && x.i === heroPick) return { x, n: r.n, cd: false };
     for (const r of races) for (const x of r.rows) if (!x.start && x.state === "next") return { x, n: r.n, cd: false };
+    for (const r of races) for (const x of r.rows) if (!x.start && x.state === "wait") return { x, n: r.n, cd: false };
     return null;
   })();
   const heroX = hero?.x || null;
@@ -1197,6 +1203,44 @@ export function BroadcastPage({ orgId, id }) {
     const gm = groupMap(groupsOn(groups, today));
     return Object.values(gm).filter((g) => g === hero.x.grp).length;
   })();
+  // Süre: başlatılabilecek bekleyen startlar (her grubun ilki), yarıştaki gruplar, tablonun sütunları, büyük kartın rota kartı
+  const heroOpts = (() => {
+    const seen = new Set();
+    const out = [];
+    for (const r of races) for (const x of r.rows) {
+      const k = x.grp || x.plan?.cls || "";
+      if (x.start || x.state === "ap" || seen.has(k)) continue;
+      seen.add(k);
+      out.push({ x, n: r.n });
+    }
+    return out;
+  })();
+  const racing = races.flatMap((r) => r.rows.filter((x) => x.start && x.state === "live" && !cdRow(x.start.id)).map((x) => ({ x, n: r.n })));
+  const cols = (() => {
+    const g = [...groupRows.map(([, gg]) => gg), ...races.flatMap((r) => r.rows.map((x) => x.grp || ""))];
+    return [...new Set(g)];
+  })();
+  const heroCard = heroX ? cardFor(course, heroE?.cls || "", heroX.grp || "") : selCard(course);
+  // grubun son dönüşü: "2. şamandıra · 9/14 döndü", "Finiş · 3/14 bitirdi", yoksa start saati
+  const roundTxt = (s) => {
+    const e = L?.rounds?.[s.id];
+    const route = e?.route || [];
+    const legs = e?.legs || [];
+    let last = -1;
+    route.forEach((_, k) => {
+      if ((legs[k] || []).length) last = k;
+    });
+    if (last < 0) return `Start ${hm(s.at)} · dönüş yok`;
+    const m = route[last];
+    const n = legs[last].length;
+    const tot = (legs[0] || []).length;
+    return `${m === "F" ? "Finiş" : markName(m)} · ${last && tot ? `${n}/${tot}` : n} ${m === "F" ? "bitirdi" : "döndü"}`;
+  };
+  // Kural bayrağı varsayılan olur (Seyhun 2026-11-05): bu sınıfın bekleyen bütün startları ve yeni yarışlar bu bayrakla
+  const setPrep = (x, f) => {
+    const cl = x.plan?.cls || "";
+    changePlan({ prep: f, order: plan.order.map((o) => (o.cls === cl ? { ...o, prep: f } : o)) });
+  };
   const grpName = (k) => { const [c, g] = k.split("|"); return g || c; };
   const apSig = signalOf(apSigId(plan));
 
@@ -1278,50 +1322,71 @@ export function BroadcastPage({ orgId, id }) {
         {needSetup || board ? null : <MasaTabs value={tab} onChange={setTab} tabs={tabInfo} />}
         {!needSetup && seen("sure") ? (
           <Pane k="sure">
-        {/* Bugün (Seyhun 2026-11-02 tasarım yayin-tasarim/startlar/startlar-yeni.png): gruplar yarış oluşturulurken seçilir (üstte); liste yarış
-            yarış, her yarışın altında grupları ve tek durum (Bitti · Yarışta · Abandone, Sıradaki, Bekliyor). "+ Yarış" sıradaki yarışı
-            bütün gruplarıyla ekler. Biten yarış tek satıra kapanır (dokununca açılır). */}
-        {/* Turuncu bayrak (Seyhun 2026-11-02): çekilince canlı ekran "Start öncesi"ne geçer (videoluda soldaki şeritte bayrak, uyarıya kalan süre, hattaki rüzgâr) */}
-        {/* Ekranda (Seyhun 2026-11-02 gruplar-kamera/grup-a.png): canlı ekranın gösterdiği yarış ve kamerası; altındaki şeritten grup seçilir, "Otomatik" en son başlayana döner */}
-        {airStart ? (
-          // Renkle ayırma (Seyhun 2026-11-04 "sadece yazıya bağımlı kalmayalım"; örnek yayin-tasarim/sure-renk/ornek.png): ekranda olmak kırmızı
-          // çerçeve + etiket, kartın zemini ekrandaki grubun rengi
-          <div className="masa-onair rounded-[1.125rem] px-3.5 py-3" style={{ "--g": groupColor(airE.grp || airStart.grp || "") || "#2a4a7a" }}>
-          <div className="flex items-center gap-3">
-            <span className="masa-onair-tag">Ekranda</span>
-            <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(airE.grp || airStart.grp || "") }} aria-hidden="true" />
-            <span className="min-w-0 flex-1 leading-tight">
-              <b className="block truncate font-semibold">{[airE.grp || airStart.grp || airE.cls, `${airStart.n}. yarış`].filter(Boolean).join(" · ")}</b>
-              <span className="block truncate text-[0.8125rem] text-mut">{[airCam?.name, airStart.void ? airStart.void : airStart.fin ? "Bitti" : Date.parse(airStart.at) > capNow ? "Geri sayım" : "Yarışta"].filter(Boolean).join(" · ")}</span>
-            </span>
-          </div>
-          {/* Canlıya hangi grup (Seyhun 2026-11-04 "canlı yayına hangi grubun yarışının alınacağını yönetebilmeliyiz"): seçilen büyük ekranda,
-              diğerleri canlıda küçük satır. Otomatik: geri sayımdaki grup, yoksa en son başlayan */}
-          {airPick.length > 1 || onAir ? (
-            <div className="-mx-3.5 mt-2.5 flex gap-2 overflow-x-auto px-3.5" aria-label="Canlıda gösterilen grup">
-              <button type="button" aria-pressed={!onAir} onClick={() => onAir && putOnAir(onAir)} className="masa-b" data-press>
-                Otomatik
-              </button>
-              {airPick.map((x) => (
-                <button key={x.id} type="button" aria-pressed={onAir === x.id} onClick={() => onAir !== x.id && putOnAir(x.id)} className="masa-b gap-2" data-press>
-                  <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(x.grp || L?.rounds?.[x.id]?.grp || "") || "var(--mut)" }} aria-hidden="true" />
-                  {[startLabel(x), x.fin ? "bitti" : Date.parse(x.at) > capNow ? "geri sayım" : ""].filter(Boolean).join(" · ")}
-                </button>
-              ))}
+        {/* Süre (Seyhun 2026-11-05 örnek yayin-tasarim/sure-yeni/ornek.png onaylandı): üstte yarıştaki grupların küçük şeritleri (durum, süre;
+            dokununca Bitti · Bayrak · Dönüş · Abandone); ortada başlatılacak grubun büyük kartı (grup çipleri, kural bayrağı ve rota kartı seçili
+            kalır, "Değiştir"; süre, turuncu, Başlat); start verilince grup üstteki şeritlere iner, sıradaki grup büyür. Altta yarış × grup tablosu.
+            Ekranda kartı ve kameralar Ekran sekmesinde. */}
+        <div className="masa-sure space-y-5">
+        {racing.length ? (
+          <section>
+            <Head title="Yarışta" right={`${racing.length} grup`} />
+            <div className="space-y-2">
+              {racing.map(({ x, n }) => {
+                const s = x.start;
+                const open = pickId === s.id;
+                const up = upRow(s.id);
+                const finish = () => (up ? raceFinish(flow) : change((l) => { const next = finishRace(l.starts, s.id, Date.now(), rdays); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; }));
+                return (
+                  <div key={s.id} className={`sure-mini${open ? " open" : ""}`} style={{ "--g": (x.grp && groupColor(x.grp)) || "var(--mut)" }}>
+                    <button type="button" onClick={() => setPickId(open ? "" : s.id)} className="sure-mini-h" data-press>
+                      <span className="min-w-0 flex-1 leading-tight">
+                        <b className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate">{[x.grp || L?.rounds?.[s.id]?.cls || "Start", `${n}. yarış`].join(" · ")}</span>
+                          {airStart?.id === s.id ? <span className="masa-onair-tag">Ekranda</span> : null}
+                        </b>
+                        <small>{roundTxt(s)}</small>
+                      </span>
+                      <em>{mmss(up ? upSec(tr.t.end, tr.now) : Math.max(0, Math.floor((nowS - Date.parse(s.at)) / 1000)))}</em>
+                    </button>
+                    {open ? (
+                      <div className="sure-acts">
+                        <Button size="sm" onClick={finish}>
+                          Bitti
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => (setFlagFor(s.id), setFlagOpen(true))}>
+                          Bayrak
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => (setSelId(s.id), goTab("donus"))}>
+                          Dönüş
+                        </Button>
+                        <Button size="sm" variant="secondary" className="text-rec" onClick={() => setFlagPick({ id: "N", rid: s.id })}>
+                          Abandone
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
-          ) : null}
-          </div>
+          </section>
         ) : null}
         {hero ? (
-              <section className={`masa-hero g${hero.cd ? " cd" : ""}`} style={{ "--g": (heroX.grp && groupColor(heroX.grp)) || "#2a4a7a" }} aria-live="polite">
+          <section>
+            <Head title="Başlatılacak" />
+              <div className={`masa-hero g${hero.cd ? " cd" : ""}`} style={{ "--g": (heroX.grp && groupColor(heroX.grp)) || "#2a4a7a" }} aria-live="polite">
                 <div className="masa-hero-h">
                   <span className="masa-hero-bd">{hero.cd ? (heroPaused ? "Durdu" : "Geri sayım") : "Sıradaki"}</span>
-                  <span>{[`${hero.n}. yarış`, heroE?.cls].filter(Boolean).join(" · ")}</span>
+                  <span>{[`${hero.n}. yarış`, hero.cd ? (heroPrep ? `${heroE.prep} çekili` : "") : heroE?.cls].filter(Boolean).join(" · ")}</span>
+                  {!hero.cd ? (
+                    <button type="button" className="sure-more" aria-label="Diğer" aria-pressed={chg === "more"} onClick={() => setChg(chg === "more" ? "" : "more")} data-press>
+                      ⋯
+                    </button>
+                  ) : null}
                 </div>
                 <div className="masa-hero-n">
                   <span className="size-3.5 shrink-0 rounded-full" style={{ background: heroX.grp ? groupColor(heroX.grp) : "var(--mut)" }} aria-hidden="true" />
                   <b>{heroX.grp ? `${heroX.grp} grup` : heroE?.cls || "Start"}</b>
-                  <small>{hero.cd ? (heroPrep ? `${heroPrep} çekili` : "") : heroCount ? `${heroCount} tekne` : ""}</small>
+                  <small>{!hero.cd && heroCount ? `${heroCount} tekne` : ""}</small>
                 </div>
                 {hero.cd ? (
                   <>
@@ -1351,39 +1416,72 @@ export function BroadcastPage({ orgId, id }) {
                   </>
                 ) : (
                   <>
-                    {/* Turuncu bayrak start işlerinin ilk adımı (Seyhun 2026-11-04 örnek onaylandı): inikken büyük turuncu düğme, çekiliyken ne zamandır çekili + İndir; Başlat çekilince büyür */}
-                    <div className="masa-osteps">
-                      <span className={orangeOn ? "ok" : "on"}>
-                        {orangeOn ? "✓" : "1"}
-                        <b>Turuncu</b>
-                      </span>
-                      <span className={orangeOn ? "on" : ""}>
-                        2<b>Geri sayım</b>
-                      </span>
-                      <span>
-                        3<b>Start</b>
-                      </span>
-                    </div>
-                    {orangeOn ? (
-                      <div className="masa-oup">
-                        <span className="masa-ofl" aria-hidden="true" />
-                        <span className="min-w-0 flex-1">
-                          <b>Turuncu çekili</b>
-                          <small>{`${hm(plan.orange)}'den beri`}</small>
+                    {chg === "more" ? (
+                      <div className="sure-set">
+                        <span>
+                          <b>Bu startı sil</b>
                         </span>
-                        <em>{`${Math.max(0, Math.floor((capNow - Date.parse(plan.orange)) / 60000))} dk`}</em>
-                        <button type="button" data-press className="masa-b gl" onClick={() => askOrange(false)}>
-                          İndir
+                        <button type="button" data-press onClick={() => (setChg(""), setHeroPick(-1), changePlan({ order: plan.order.filter((_, k) => k !== heroX.i) }))}>
+                          Sil
                         </button>
                       </div>
-                    ) : (
-                      <Button className="masa-hero-or" onClick={() => askOrange(true)}>
-                        <span className="masa-ofl" aria-hidden="true" />
-                        Turuncu bayrağı çek
-                      </Button>
-                    )}
+                    ) : null}
+                    {heroOpts.length > 1 ? (
+                      <div className="sure-pick" aria-label="Grup">
+                        {heroOpts.map(({ x, n }) => (
+                          <button key={x.key} type="button" data-press aria-pressed={x.i === heroX.i} onClick={() => (setChg(""), setHeroPick(x.i))}>
+                            <i style={{ background: (x.grp && groupColor(x.grp)) || "var(--mut)" }} aria-hidden="true" />
+                            {[x.grp || x.plan?.cls || "Start", n !== hero.n ? n : ""].filter(Boolean).join(" ")}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    {/* Kural bayrağı ve rota kartı seçili kalır (Seyhun 2026-11-05 "çok alan kaplamasın, Değiştir yazarız") */}
+                    <div className="sure-set">
+                      <span className="sure-art">{heroE?.prep ? <FlagArt p={heroE.prep} /> : null}</span>
+                      <span>
+                        <small>Kural bayrağı</small>
+                        <b>{heroE?.prep ? (heroE.prep === "Kara" ? "Siyah" : heroE.prep) : "Seçilmedi"}</b>
+                      </span>
+                      <button type="button" data-press aria-pressed={chg === "prep"} onClick={() => setChg(chg === "prep" ? "" : "prep")}>
+                        Değiştir
+                      </button>
+                    </div>
+                    {chg === "prep" ? (
+                      <div className="sure-opts five">
+                        {PREP_PICK.map((f) => (
+                          <button key={f} type="button" data-press aria-pressed={heroE?.prep === f} onClick={() => (setPrep(heroX, f), setChg(""))}>
+                            <span className="sure-art">
+                              <FlagArt p={f} />
+                            </span>
+                            <small>{f === "Kara" ? "Siyah" : f}</small>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    <div className="sure-set">
+                      <span className="sure-art card">{heroCard.id}</span>
+                      <span>
+                        <small>Rota kartı</small>
+                        <b>{[`Kart ${heroCard.id}`, CARD_TYPES[heroCard.type] || "", routeText(heroCard.route || [])].filter(Boolean).join(" · ")}</b>
+                      </span>
+                      {course.cards?.length > 1 ? (
+                        <button type="button" data-press aria-pressed={chg === "card"} onClick={() => setChg(chg === "card" ? "" : "card")}>
+                          Değiştir
+                        </button>
+                      ) : null}
+                    </div>
+                    {chg === "card" ? (
+                      <div className="sure-opts">
+                        {course.cards.map((k) => (
+                          <button key={k.id} type="button" data-press aria-pressed={k.id === heroCard.id} onClick={() => (setChg(""), k.id !== heroCard.id && putCards({ by: { ...course.by, [cardKey(heroE?.cls || "", heroX.grp || "")]: k.id } }, `${heroX.grp || heroE?.cls || "Start"}: Kart ${k.id}`))}>
+                            <b>{k.id}</b>
+                            <small>{CARD_TYPES[k.type] || ""}</small>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                     {firstAt ? <FirstStart day={planDay} at={firstAt} dur={tr.t.dur || 300} /> : null}
-                    {heroPrep ? <p className="masa-hero-p">{`Hazırlık: ${heroPrep}`}</p> : null}
                     <div className="masa-hero-d">
                       {[300, 240, 120, 60].map((d) => (
                         <button key={d} type="button" data-press aria-pressed={tr.t.dur === d} onClick={() => chooseDur(d)}>
@@ -1392,195 +1490,98 @@ export function BroadcastPage({ orgId, id }) {
                         </button>
                       ))}
                     </div>
-                    <Button className={orangeOn ? "masa-hero-go" : ""} variant={orangeOn ? "primary" : "secondary"} onClick={() => startRow(heroX.i)}>
-                      Başlat
+                    {orangeOn ? (
+                      <div className="masa-oup">
+                        <span className="masa-ofl" aria-hidden="true" />
+                        <span className="min-w-0 flex-1">
+                          <b>Turuncu çekili</b>
+                          <small>{`${hm(plan.orange)}'den beri`}</small>
+                        </span>
+                        <button type="button" data-press className="masa-b gl" onClick={() => askOrange(false)}>
+                          İndir
+                        </button>
+                      </div>
+                    ) : (
+                      <Button variant="secondary" className="masa-hero-or" onClick={() => askOrange(true)}>
+                        <span className="masa-ofl" aria-hidden="true" />
+                        Turuncu bayrağı çek
+                      </Button>
+                    )}
+                    <Button className="masa-hero-go mt-2" onClick={() => (setChg(""), setHeroPick(-1), startRow(heroX.i))}>
+                      {`Başlat · ${heroX.grp || heroE?.cls || "Start"}`}
                     </Button>
                   </>
                 )}
-              </section>
+              </div>
+          </section>
         ) : null}
         <section>
-          <Head title="Bugün" right={plan.status === "done" ? "Gün bitti" : plan.status === "none" ? "Bugün yarış yok" : plan.status === "ap" ? "Start ertelendi" : [races.length ? `${races.length} yarış` : "", plan.at ? `İlk start ${plan.at}` : ""].filter(Boolean).join(" · ")} />
-          <div className={`${card} overflow-hidden`}>
-            {races.map((r) => {
-              const open = r.state !== "done" || openN === r.n;
-              return (
-                <div key={r.n} className="border-b border-line">
-                  <button type="button" onClick={() => r.state === "done" && setOpenN(openN === r.n ? 0 : r.n)} className="flex w-full items-center px-4 pb-1 pt-2.5 text-left text-[0.8125rem] font-bold tracking-[0.02em] text-mut">
-                    <span className="flex-1">{r.n}. YARIŞ</span>
-                    <span>{r.state === "done" ? "Bitti" : r.state === "live" ? "Sürüyor" : ""}</span>
-                  </button>
-                  {open
-                    ? r.rows.map((x) => {
-                        const s = x.start;
-                        const e = s ? L?.rounds?.[s.id] || {} : x.plan;
-                        const isOpen = s ? pickId === s.id : editI === x.i;
-                        const live = x.state === "live";
-                        const isCd = !!s && cdRow(s.id);
-                        const isUp = !!s && upRow(s.id);
-                        const paused = isCd && tr.t.left != null;
-                        const prepTxt = prepName(e?.prep) || "";
-                        // Her satırın süresi ve durumu (Seyhun 2026-11-03: gruplar ayrı, süre kendi satırında)
-                        const sub =
-                          x.state === "done" ? `Bitti · start ${hm(s.at)}`
-                          : x.state === "void" ? `${s.void} · ${hm(s.fin || s.at)}`
-                          : isCd ? [paused ? "Durdu" : "Geri sayım", prepTxt].filter(Boolean).join(" · ")
-                          : live ? `Yarışta · start ${hm(s.at)}`
-                          : x.state === "ap" ? ["Tehir", x.plan.ap.why, x.plan.ap.land ? "Karada" : "", x.plan.ap.down ? `iniş ${trHm(x.plan.ap.down)}` : ""].filter(Boolean).join(" · ")
-                          : x.state === "next" ? ["Sıradaki", prepTxt].filter(Boolean).join(" · ") : "Bekliyor";
-                        const time =
-                          x.state === "done" ? raceTime(s)
-                          : isCd ? mmss(Math.max(0, paused ? tr.t.left : tr.rem))
-                          : isUp ? mmss(upSec(tr.t.end, tr.now))
-                          : live ? mmss(Math.max(0, Math.floor((nowS - Date.parse(s.at)) / 1000)))
-                          : "";
-                        const finish = () => change((l) => { const next = finishRace(l.starts, s.id, Date.now(), rdays); saveStarts(orgId, id, next).catch(() => {}); return { starts: next }; });
-                        return (
-                          // satır grubun renginde: solda şerit, yarışan / geri sayan / sıradaki satırda hafif zemin, bekleyen soluk
-                          <div key={x.key} className={`masa-row${live || x.state === "next" || isCd ? " hot" : x.state === "wait" || x.state === "ap" ? " dim" : ""}`} style={{ "--g": (x.grp && groupColor(x.grp)) || "var(--mut)" }}>
-                            {/* Ekrana alma tek yerde: üstteki Ekranda kartının grup şeridi (Seyhun 2026-11-04) */}
-                            <div className="flex items-center gap-2 pl-3.5 pr-3">
-                              <button type="button" onClick={() => (s ? (setEditI(-1), setPickId(isOpen ? "" : s.id)) : (setPickId(""), setEditI(isOpen ? -1 : x.i)))} className="flex min-w-0 flex-1 items-center gap-2.5 py-2 text-left">
-                                <span className="size-2.5 shrink-0 rounded-full" style={{ background: x.grp ? groupColor(x.grp) : "var(--mut)" }} aria-hidden="true" />
-                                <span className="min-w-0 flex-1 leading-tight">
-                                  <b className="flex min-w-0 items-center gap-1.5 font-semibold">
-                                    <span className={`truncate ${x.state === "void" ? "text-mut line-through" : ""}`}>{[x.grp || e?.cls || "Start", `${r.n}. yarış`, x.retry ? "tekrar" : ""].filter(Boolean).join(" · ")}</span>
-                                    {s && airStart?.id === s.id ? <span className="masa-onair-tag">Ekranda</span> : null}
-                                  </b>
-                                  <span className={`block truncate text-[0.8125rem] ${x.state === "void" || x.state === "ap" ? "text-warn" : "text-mut"}`}>{sub}</span>
-                                </span>
-                                {time ? <span className={`shrink-0 text-[1.25rem] font-bold tabular-nums ${isCd ? "text-acc" : x.state === "done" ? "text-ok" : ""}`}>{time}</span> : null}
-                              </button>
-                              {isCd && !hero?.cd ? (
-                                <Button size="sm" variant="secondary" full={false} onClick={paused ? resumeCd : pauseCd}>
-                                  {paused ? "Devam" : "Dur"}
-                                </Button>
-                              ) : isUp ? (
-                                <Button size="sm" variant="secondary" full={false} onClick={() => raceFinish(flow)}>
-                                  Bitti
-                                </Button>
-                              ) : live ? (
-                                <Button size="sm" variant="secondary" full={false} onClick={finish}>
-                                  Bitti
-                                </Button>
-                              ) : null}
-                              {!s && x.state === "ap" ? (
-                                <Button size="sm" variant="secondary" full={false} onClick={() => lowerGrp(x.grp)}>
-                                  İndir
-                                </Button>
-                              ) : null}
-                              {!s && canRow && x.state !== "next" && x.state !== "ap" ? (
-                                <Button size="sm" variant="secondary" full={false} onClick={() => startRow(x.i)}>
-                                  Başlat
-                                </Button>
-                              ) : null}
-                            </div>
-                            {!s && canRow && x.state === "next" && !hero ? (
-                              // Sıradaki grup: süre seçimi ve Başlat (5 · 4 · 2 · 1 dk; son seçilen bu telefonda kalır)
-                              <div className="flex items-center gap-1.5 pb-2.5 pl-[2.125rem] pr-3">
-                                {[300, 240, 120, 60].map((d) => (
-                                  <button key={d} type="button" aria-pressed={tr.t.dur === d} onClick={() => chooseDur(d)} className="masa-b dur tabular-nums">
-                                    {d / 60}
-                                  </button>
-                                ))}
-                                <span className="text-[0.8125rem] text-mut">dk</span>
-                                <Button size="sm" full={false} className="ml-auto" onClick={() => startRow(x.i)}>
-                                  Başlat
-                                </Button>
-                              </div>
-                            ) : null}
-                            {isOpen && s && x.state !== "void" ? (
-                              // Başlamış yarışın kısa yolları (Seyhun 2026-11-04 "başlamış yarışı değiştirmenin mantığı yok; açılınca o yarışı abandone,
-                              // kısa yollar"): sınıf / grup / bayrak burada değişmez. Geri sayımda süre düzeltme ve İptal; yarışta ve bitince ekrana al,
-                              // Dönüşler (bu grubu seçer), yarışta yalnız bu yarışa bayrak (X, S, C…) ve Abandone
-                              <div className="flex flex-wrap gap-2 px-4 pb-2.5 pt-1">
-                                {isCd ? (
-                                  <>
-                                    {!paused ? (
-                                      <>
-                                        <Button variant="secondary" size="sm" full={false} disabled={tr.rem <= 60} onClick={() => shiftCd(tr.t.end - 60000)}>
-                                          −1 dk
-                                        </Button>
-                                        <Button variant="secondary" size="sm" full={false} onClick={() => shiftCd(Date.now() + Math.round(tr.rem / 60) * 60000)}>
-                                          Eşitle
-                                        </Button>
-                                        <Button variant="secondary" size="sm" full={false} onClick={() => shiftCd(tr.t.end + 60000)}>
-                                          +1 dk
-                                        </Button>
-                                      </>
-                                    ) : null}
-                                    <Button variant="secondary" size="sm" full={false} className="ml-auto" onClick={() => raceCancel(flow)}>
-                                      İptal
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Button variant="secondary" size="sm" full={false} onClick={() => (setSelId(s.id), goTab("donus"))}>
-                                      Dönüşler
-                                    </Button>
-                                    {live || isUp ? (
-                                      <>
-                                        <Button variant="secondary" size="sm" full={false} onClick={() => (setFlagFor(s.id), setFlagOpen(true))}>
-                                          Bayrak
-                                        </Button>
-                                        <Button variant="secondary" size="sm" full={false} className="ml-auto" onClick={() => setFlagPick({ id: "N", rid: s.id })}>
-                                          Abandone
-                                        </Button>
-                                      </>
-                                    ) : null}
-                                  </>
-                                )}
-                              </div>
-                            ) : null}
-                            {isOpen && !s ? (
-                              <div className="space-y-2 px-4 pb-2.5">
-                                {/* Bekleyen start (Seyhun 2026-11-04 "sınıfı ve grubu göstermeye gerek yok; kural bayrağı gösterilir ve değiştirilir ya da
-                                    yarış silinir"): yalnız bayrak seçimi (dokununca kaydedilir, pencere kapanır) ve Yarışı sil */}
-                                <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]" aria-label="Kural bayrağı">
-                                  {PREP_PICK.map((f) => (
-                                    <button key={f} type="button" aria-pressed={e?.prep === f} onClick={() => (editRow(x.i, { prep: f }), setEditI(-1))} data-press className={`masa-sq sm${e?.prep === f ? " sel" : ""}`}>
-                                      <span className="art">
-                                        <FlagArt p={f} />
-                                      </span>
-                                      <small>{f}</small>
-                                    </button>
-                                  ))}
-                                </div>
-                                <Button variant="secondary" size="sm" full={false} onClick={() => (setEditI(-1), changePlan({ order: plan.order.filter((_, k) => k !== x.i) }))}>
-                                  Yarışı sil
-                                </Button>
-                              </div>
-                            ) : null}
-                          </div>
-                        );
-                      })
-                    : null}
-                </div>
-              );
-            })}
-            {plan.status === "ap" ? <p className="border-b border-line px-4 py-2.5 text-[0.875rem] font-semibold text-warn">{apText(plan)}</p> : null}
-            {/* Start sırası görünür (Seyhun 2026-11-04 "grup sıralamasını nereden değiştiriyoruz?"): sıra burada yazar, Değiştir kurulumu açar */}
-            {groupRows.length > 1 ? (
-              <div className="flex items-center gap-3 border-t border-line px-4 py-2">
-                <span className="min-w-0 flex-1 leading-tight">
-                  <span className="block text-[0.8125rem] font-semibold text-mut">Start sırası</span>
-                  <span className="flex min-w-0 items-center gap-1.5 truncate text-[0.9375rem] font-semibold">
-                    {groupRows.map(([cl, g], k) => (
-                      <span key={`${cl}|${g}`} className="flex shrink-0 items-center gap-1">
-                        {k ? <span className="text-mut">·</span> : null}
-                        {g ? <span className="size-2.5 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
-                        {g || cl}
-                      </span>
-                    ))}
+          <Head title="Bugün" right={plan.status === "done" ? "Gün bitti" : plan.status === "none" ? "Bugün yarış yok" : plan.status === "ap" ? "Start ertelendi" : plan.at ? `İlk start ${plan.at}` : ""} />
+          {races.length ? (
+            // Yarış × grup tablosu (Seyhun 2026-11-05 "1. yarış Mavi, 1. yarış Sarı… net görmeliyim"): satır yarış, sütun grup; bekleyen kutuya
+            // dokununca o start büyük karta gelir, başlamışa dokununca işleri (yarışta) ya da dönüşleri (bitti) açılır
+            <div className="sure-grid" style={{ "--cols": cols.length }}>
+              <div className="sure-gr head">
+                <span>Yarış</span>
+                {cols.map((g) => (
+                  <span key={g || "-"}>
+                    {g ? <i style={{ background: groupColor(g) || "var(--mut)" }} aria-hidden="true" /> : null}
+                    {g || "Start"}
                   </span>
-                </span>
-                <Button size="sm" variant="secondary" full={false} onClick={() => (setSetupOpen(true), window.scrollTo({ top: 0 }))}>
-                  Değiştir
-                </Button>
+                ))}
               </div>
-            ) : null}
-          </div>
+              {races.map((r) => (
+                <div key={r.n} className="sure-gr">
+                  <span>{`${r.n}.`}</span>
+                  {cols.map((g) => {
+                    const x = r.rows.filter((y) => (y.grp || "") === g).at(-1);
+                    if (!x) return <span key={g || "-"} />;
+                    const s = x.start;
+                    const cd = !!s && cdRow(s.id);
+                    const t =
+                      x.state === "done" ? [raceTime(s), "bitti"]
+                      : x.state === "void" ? ["—", s.void === "Genel geri çağırma" ? "genel geri" : "abandone"]
+                      : cd ? [`−${mmss(Math.max(0, tr.t.left != null ? tr.t.left : tr.rem))}`, tr.t.left != null ? "durdu" : "geri sayım"]
+                      : s ? [mmss(upRow(s.id) ? upSec(tr.t.end, tr.now) : Math.max(0, Math.floor((nowS - Date.parse(s.at)) / 1000))), "yarışta"]
+                      : x.state === "ap" ? ["tehir", ""]
+                      : x.i === heroX?.i && !hero?.cd ? ["sıradaki", x.plan?.prep === "Kara" ? "Siyah" : x.plan?.prep || ""]
+                      : ["bekliyor", ""];
+                    const cls = x.state === "done" ? "ok" : x.state === "void" ? "void" : cd ? "cd" : s ? "live" : x.state === "ap" ? "ap" : x.i === heroX?.i && !hero?.cd ? "nx" : "";
+                    const tap = () => (s ? (x.state === "live" && !cd ? setPickId(s.id) : x.state === "done" ? (setSelId(s.id), goTab("donus")) : null) : x.state !== "ap" && canRow ? (setChg(""), setHeroPick(x.i)) : null);
+                    return (
+                      <button key={g || "-"} type="button" onClick={tap} className={cls} style={{ "--g": (g && groupColor(g)) || "#2a4a7a" }}>
+                        <b>{t[0]}</b>
+                        {t[1] ? <small>{t[1]}</small> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {plan.status === "ap" ? <p className={`${card} mt-2 px-4 py-2.5 text-[0.875rem] font-semibold text-warn`}>{apText(plan)}</p> : null}
+          {/* Start sırası görünür (Seyhun 2026-11-04 "grup sıralamasını nereden değiştiriyoruz?"): sıra burada yazar, Değiştir kurulumu açar */}
+          {groupRows.length > 1 ? (
+            <div className={`${card} mt-2 flex items-center gap-3 px-4 py-2`}>
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block text-[0.8125rem] font-semibold text-mut">Start sırası</span>
+                <span className="flex min-w-0 items-center gap-1.5 truncate text-[0.9375rem] font-semibold">
+                  {groupRows.map(([cl, g], k) => (
+                    <span key={`${cl}|${g}`} className="flex shrink-0 items-center gap-1">
+                      {k ? <span className="text-mut">·</span> : null}
+                      {g ? <span className="size-2.5 rounded-full" style={{ background: groupColor(g) }} aria-hidden="true" /> : null}
+                      {g || cl}
+                    </span>
+                  ))}
+                </span>
+              </span>
+              <Button size="sm" variant="secondary" full={false} onClick={() => (setSetupOpen(true), window.scrollTo({ top: 0 }))}>
+                Değiştir
+              </Button>
+            </div>
+          ) : null}
         </section>
+        </div>
         {plan.sig && signalOf(plan.sig.id)?.kind !== "prep" ? (
           <div className={`${card} flex items-center gap-3 px-4 py-2.5`}>
             <span className="masa-flags" aria-hidden="true">
@@ -1597,24 +1598,6 @@ export function BroadcastPage({ orgId, id }) {
             </Button>
           </div>
         ) : null}
-        {/* Kameralar: her kaynağın çektiği gruplar (bir kez seçilir); grup ekrana alınınca canlı görüntü o grubun kamerasına geçer */}
-        <section>
-          <Head title="Kameralar" />
-          <div className={`${card} divide-y divide-line overflow-hidden`}>
-            {srcs.map((c) => {
-              const gs = groupsOf(L?.camBy, c.id);
-              return (
-                <button key={c.id} type="button" onClick={() => (setCamPick(gs), setCamOpen(c.id))} className={row}>
-                  <span className="min-w-0 flex-1 leading-tight">
-                    <b className="block truncate font-semibold">{c.name}</b>
-                    <span className="block truncate text-[0.8125rem] text-mut">{gs.length ? gs.map(grpName).join(" · ") : "Grup yok"}</span>
-                  </span>
-                  <span className={`masa-pill${c.url ? " on" : ""}`}>{c.url ? "Yayında" : "Yayın yok"}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
         <MasaBar>
               {plan.status === "ap" ? (
                 <Button onClick={() => lowerAp()}>Tehiri indir</Button>
@@ -2059,6 +2042,55 @@ export function BroadcastPage({ orgId, id }) {
 
               </div>
             ) : null}
+          </div>
+        </section>
+        {/* Ekranda kartı ve kameralar Süre'den buraya taşındı (Seyhun 2026-11-05 "sürede kameraları kaldıralım") */}
+        {/* Ekranda (Seyhun 2026-11-02 gruplar-kamera/grup-a.png): canlı ekranın gösterdiği yarış ve kamerası; altındaki şeritten grup seçilir, "Otomatik" en son başlayana döner */}
+        {airStart ? (
+          // Renkle ayırma (Seyhun 2026-11-04 "sadece yazıya bağımlı kalmayalım"; örnek yayin-tasarim/sure-renk/ornek.png): ekranda olmak kırmızı
+          // çerçeve + etiket, kartın zemini ekrandaki grubun rengi
+          <div className="masa-onair rounded-[1.125rem] px-3.5 py-3" style={{ "--g": groupColor(airE.grp || airStart.grp || "") || "#2a4a7a" }}>
+          <div className="flex items-center gap-3">
+            <span className="masa-onair-tag">Ekranda</span>
+            <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(airE.grp || airStart.grp || "") }} aria-hidden="true" />
+            <span className="min-w-0 flex-1 leading-tight">
+              <b className="block truncate font-semibold">{[airE.grp || airStart.grp || airE.cls, `${airStart.n}. yarış`].filter(Boolean).join(" · ")}</b>
+              <span className="block truncate text-[0.8125rem] text-mut">{[airCam?.name, airStart.void ? airStart.void : airStart.fin ? "Bitti" : Date.parse(airStart.at) > capNow ? "Geri sayım" : "Yarışta"].filter(Boolean).join(" · ")}</span>
+            </span>
+          </div>
+          {/* Canlıya hangi grup (Seyhun 2026-11-04 "canlı yayına hangi grubun yarışının alınacağını yönetebilmeliyiz"): seçilen büyük ekranda,
+              diğerleri canlıda küçük satır. Otomatik: geri sayımdaki grup, yoksa en son başlayan */}
+          {airPick.length > 1 || onAir ? (
+            <div className="-mx-3.5 mt-2.5 flex gap-2 overflow-x-auto px-3.5" aria-label="Canlıda gösterilen grup">
+              <button type="button" aria-pressed={!onAir} onClick={() => onAir && putOnAir(onAir)} className="masa-b" data-press>
+                Otomatik
+              </button>
+              {airPick.map((x) => (
+                <button key={x.id} type="button" aria-pressed={onAir === x.id} onClick={() => onAir !== x.id && putOnAir(x.id)} className="masa-b gap-2" data-press>
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(x.grp || L?.rounds?.[x.id]?.grp || "") || "var(--mut)" }} aria-hidden="true" />
+                  {[startLabel(x), x.fin ? "bitti" : Date.parse(x.at) > capNow ? "geri sayım" : ""].filter(Boolean).join(" · ")}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          </div>
+        ) : null}
+        {/* Kameralar: her kaynağın çektiği gruplar (bir kez seçilir); grup ekrana alınınca canlı görüntü o grubun kamerasına geçer */}
+        <section>
+          <Head title="Kameralar" />
+          <div className={`${card} divide-y divide-line overflow-hidden`}>
+            {srcs.map((c) => {
+              const gs = groupsOf(L?.camBy, c.id);
+              return (
+                <button key={c.id} type="button" onClick={() => (setCamPick(gs), setCamOpen(c.id))} className={row}>
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <b className="block truncate font-semibold">{c.name}</b>
+                    <span className="block truncate text-[0.8125rem] text-mut">{gs.length ? gs.map(grpName).join(" · ") : "Grup yok"}</span>
+                  </span>
+                  <span className={`masa-pill${c.url ? " on" : ""}`}>{c.url ? "Yayında" : "Yayın yok"}</span>
+                </button>
+              );
+            })}
           </div>
         </section>
         <MasaBar>
