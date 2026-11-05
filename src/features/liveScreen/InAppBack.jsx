@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BackButton } from "@/components/ui/BackButton";
 import { edgeStart, swipeAxis, swipeDone } from "@/lib/swipeBack";
 
 // Canlı ekran uygulama içinde (Seyhun 2026-11-05 "Ekrana aç uygulama içinde açılsın; soldan sağa kaydırınca geri gitmeli"):
@@ -23,10 +22,11 @@ const ownSwipe = () => {
   return ios && (alone || window.Capacitor?.getPlatform?.() === "ios");
 };
 
-export function InAppBack() {
+// Uygulama içinden açıldıysa geri dönüş işlevi (yoksa null). Geri oku yarış adının başında (LiveScreen sc-name; Seyhun 2026-11-05
+// "geri okunu aşağıya yarış adının başına koyalım, arka plan koyma"); kenardan kaydırma InAppBack'te
+export function useInAppBack() {
   const router = useRouter();
   const [back, setBack] = useState("");
-
   useEffect(() => {
     let b = "";
     try {
@@ -35,13 +35,19 @@ export function InAppBack() {
     const t = setTimeout(() => setBack(b), 0);
     return () => clearTimeout(t);
   }, []);
-  // sol üstteki sayaç kartı düğmenin altında kalmasın (liveScreen.css html[data-inapp])
-  useEffect(() => {
-    if (!back) return;
-    document.documentElement.dataset.inapp = "1";
-    return () => delete document.documentElement.dataset.inapp;
-  }, [back]);
+  if (!back) return null;
+  return () => {
+    try {
+      sessionStorage.removeItem(KEY);
+    } catch {}
+    if (window.history.length > 1) router.back();
+    else router.replace(back);
+  };
+}
 
+export function InAppBack() {
+  const go = useInAppBack();
+  const back = !!go;
   useEffect(() => {
     if (!back || !ownSwipe()) return;
     let g = null;
@@ -77,7 +83,7 @@ export function InAppBack() {
       g = null;
       if (!swipeDone(dx, Date.now() - t, window.innerWidth)) return move(0, true);
       move(window.innerWidth, true);
-      setTimeout(go, 160);
+      setTimeout(() => go?.(), 160);
     };
     const cancel = () => (g ? move(0, true) : null, (g = null));
     document.addEventListener("touchstart", start, { passive: true });
@@ -93,18 +99,5 @@ export function InAppBack() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [back]);
 
-  function go() {
-    try {
-      sessionStorage.removeItem(KEY);
-    } catch {}
-    if (window.history.length > 1) router.back();
-    else router.replace(back);
-  }
-
-  if (!back) return null;
-  return (
-    <div className="navy fixed z-[80] !bg-transparent !p-0" style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)", left: "calc(env(safe-area-inset-left, 0px) + 0.75rem)" }}>
-      <BackButton onClick={go} className="btn-sm" />
-    </div>
-  );
+  return null;
 }
