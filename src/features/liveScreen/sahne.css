@@ -624,9 +624,16 @@
 .lv:has(.sc-ckx.rk) .sc-scr { touch-action: pan-y; }
 .lv:has(.sc-ckx.rk) .sc-tabs, .lv:has(.sc-ckx.rk) .sc-vs { touch-action: pan-x; }
 
-/* Görüntü sırası anahtarı (Seyhun 2026-11-05 "canlı konum butonları da olacak"): Kamera | Konum, başlığın yerinde; seçilen beyaz */
+/* İzleyici paneli (Seyhun 2026-11-05 "kamera, konum, ekran seçimi diğerlerinden farklı olsun"): tek cam panel; üstte sekmeler altı çizili
+   yazı (düğme değil), altta seçilen sekmenin düğmeleri tek sıra */
 @media (max-aspect-ratio: 1/1) {
-  .sc-vt { flex: none; display: inline-flex; margin: 0 0.5em 0 1em; padding: 0.2em; border-radius: 0.7em; background: rgba(10, 20, 36, 0.62); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
-  .sc-vt button { height: 2.35em; padding: 0 0.7em; border: 0; border-radius: 0.5em; background: none; color: var(--sc-mut); font: 700 1.05em/1 var(--sc-c); letter-spacing: 0.08em; text-transform: uppercase; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-  .sc-vt button.on { background: rgba(255, 255, 255, 0.92); color: #0b1626; }
+  .sc-vb { left: 0.75em; right: 0.75em; gap: 0; padding: 0.15em 0 0.75em; border-radius: 1.1em; background: rgba(8, 16, 30, 0.58); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0.4em 1.4em rgba(0, 0, 0, 0.3); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+  .sc-vt { display: flex; gap: 0.2em; padding: 0 0.6em; margin-bottom: 0.6em; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+  .sc-vt button, .sc-vt.one span { position: relative; display: inline-flex; align-items: center; gap: 0.35em; height: 2.6em; padding: 0 0.7em; border: 0; background: none; color: rgba(255, 255, 255, 0.55); font: 700 1.05em/1 var(--sc-c); letter-spacing: 0.14em; text-transform: uppercase; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  .sc-vt button.on, .sc-vt.one span { color: #fff; }
+  .sc-vt button.on::after { content: ""; position: absolute; left: 0.7em; right: 0.7em; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: #4d8dff; }
+  .sc-vt button i { width: 0.4em; height: 0.4em; border-radius: 50%; background: #4d8dff; }
+  .sc-vb .sc-vs { padding: 0 0.75em; }
+  .sc-vb .sc-vs button { background: rgba(255, 255, 255, 0.1); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .sc-vb .sc-vs button.on { background: #fff; color: #0b1626; }
 }

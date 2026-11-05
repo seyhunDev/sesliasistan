@@ -4247,54 +4247,44 @@ function ScView({ data, sel, mode, now, cams, pos, cam, onCam, tab, onTab, view,
   const wind = windAhead(data, now).length >= 2;
   const course = !!courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"));
   const btns = [rank && ["rank", "Sıralama"], res && ["res", "Sonuçlar"], wind && ["wind", "Rüzgâr"], course && ["course", "Parkur"]].filter(Boolean);
-  if (!cams.length && !pos.length && !btns.length) return null;
-  // Görüntü sırası (Seyhun 2026-11-05 "canlı konum butonları da olacak, nasıl organize edelim"): solda Kamera | Konum anahtarı, sağda
-  // Yayın ve o türün grupları; düğme sayısı artınca sıra uzamaz, yana kayar. Yalnız biri varsa anahtar yok, düz başlık
-  const both = cams.length > 0 && pos.length > 0;
-  const t = both ? tab : cams.length ? "cam" : "pos";
-  const opts = t === "cam" ? cams.map((x) => ({ k: x.src, grp: x.grp, name: x.name })) : pos.map((x) => ({ k: `b:${x.grp}`, grp: x.grp, name: x.name }));
-  const img = cams.length || pos.length;
-  // iki sıra (Seyhun 2026-11-05 "yayın seçimiyle gösterilen şeyin seçimini ayıralım; üst alt"): üstte görüntü, altta ekranda ne açılacağı
+  // Tek panel (Seyhun 2026-11-05 "kamera, konum, ekran seçimi diğerlerinden farklı olsun; tasarım daha iyi olabilir"): üstte sekme
+  // (Kamera · Konum · Ekran; altı çizili yazı, düğme değil), altta seçilen sekmenin düğmeleri tek sıra, yana kayar. Seçimler sekme
+  // değişince kalır; seçimi olan sekmede küçük nokta
+  const tabs = [cams.length && ["cam", "Kamera"], pos.length && ["pos", "Konum"], btns.length && ["view", "Ekran"]].filter(Boolean);
+  if (!tabs.length) return null;
+  const t = tabs.some(([k]) => k === tab) ? tab : tabs[0][0];
+  const mark = { cam: !!cam && !cam.startsWith("b:"), pos: cam.startsWith("b:"), view: !!view };
+  const opts =
+    t === "view"
+      ? btns.map(([k, label]) => ({ k, name: label, on: view === k, go: () => (k === "res" ? onFull("race") : onView(view === k ? "" : k)) }))
+      : [
+          { k: "", name: "Yayın", on: !cam, go: () => onCam("") },
+          ...(t === "cam" ? cams.map((x) => ({ k: x.src, grp: x.grp, name: x.name })) : pos.map((x) => ({ k: `b:${x.grp}`, grp: x.grp, name: x.name }))).map((x) => ({ ...x, on: cam === x.k, go: () => onCam(cam === x.k ? "" : x.k) })),
+        ];
   return (
-    <nav className={`sc-vb${img && btns.length ? " two" : ""}`} aria-label="İzleyici seçimi">
-      {img ? (
-        <div className="sc-vr">
-          {both ? (
-            <span className="sc-vt" role="group" aria-label="Görüntü türü">
-              {[["cam", "Kamera"], ["pos", "Konum"]].map(([k, l]) => (
-                <button key={k} type="button" className={t === k ? "on" : ""} aria-pressed={t === k} onClick={() => onTab(k)}>
-                  {l}
-                </button>
-              ))}
-            </span>
-          ) : (
-            <b>{t === "cam" ? "Görüntü" : "Konum"}</b>
-          )}
-          <div className="sc-vs">
-            <button type="button" className={!cam ? "on" : ""} aria-pressed={!cam} onClick={() => onCam("")}>
-              Yayın
+    <nav className="sc-vb two" aria-label="İzleyici seçimi">
+      {tabs.length > 1 ? (
+        <div className="sc-vt" role="tablist">
+          {tabs.map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={t === k} className={t === k ? "on" : ""} onClick={() => onTab(k)}>
+              {l}
+              {mark[k] ? <i aria-hidden="true" /> : null}
             </button>
-            {opts.map((x) => (
-              <button key={x.k} type="button" className={cam === x.k ? "on" : ""} aria-pressed={cam === x.k} onClick={() => onCam(cam === x.k ? "" : x.k)}>
-                {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
-                {x.name}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
-      ) : null}
-      {btns.length ? (
-        <div className="sc-vr">
-          <b>Ekran</b>
-          <div className="sc-vs">
-            {btns.map(([k, label]) => (
-              <button key={k} type="button" className={view === k ? "on" : ""} aria-pressed={view === k} onClick={() => (k === "res" ? onFull("race") : onView(view === k ? "" : k))}>
-                {label}
-              </button>
-            ))}
-          </div>
+      ) : (
+        <div className="sc-vt one">
+          <span>{tabs[0][1]}</span>
         </div>
-      ) : null}
+      )}
+      <div className="sc-vs">
+        {opts.map((x) => (
+          <button key={x.k || "yayin"} type="button" className={x.on ? "on" : ""} aria-pressed={x.on} onClick={x.go}>
+            {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
+            {x.name}
+          </button>
+        ))}
+      </div>
     </nav>
   );
 }
