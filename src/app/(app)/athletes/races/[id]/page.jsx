@@ -244,16 +244,22 @@ function Race({ orgId, uid, email, by, mail, coach }) {
 
   // Lacivert üstün başlığı (RaceEditor üst kısmı onun altına koyar): geri, ad, yer · tarih, kalan gün / Yarışta, ⋯
   // (Seyhun 2026-11-04: ayrı "5 gün kaldı" satırı kalktı, başlık satırında; sayfa daha az yer kaplar)
+  // Yarış sürerken (Seyhun 2026-11-05 "başlık çok şey olmuş"): adın önünde yalnız kırmızı nokta; "Yarışta" yazısı ve üstteki Yayın düğmesi yok
+  // (Yayın'a lacivertin altındaki "Yayına git" ile gidilir)
+  const on = !!race && racing({ ...race, ...head0 });
   const head = (
     <header className="flex items-center gap-2.5">
       <BackButton href="/athletes/races" />
       <div className="min-w-0 flex-1 leading-tight">
-        <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</h1>
+        <h1 className="flex items-center gap-2 text-[1.375rem] font-bold tracking-[-.02em]">
+          {on && <span className="size-2.5 shrink-0 rounded-full bg-[#ff6b6b]" role="img" aria-label="Yarışta" />}
+          <span className="truncate">{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</span>
+        </h1>
         {race && <p className="truncate text-[0.8125rem] text-white/65">{subText({ ...race, ...head0 })}</p>}
       </div>
-      {race && <Left r={{ ...race, ...head0 }} />}
-      {/* Yayın düğmesi (ana hesap; Seyhun 2026-11-05 "bir de yayın butonu koy") */}
-      {race?.id && isOwner && (
+      {race && !on && <Left r={{ ...race, ...head0 }} />}
+      {/* Yayın düğmesi (ana hesap; Seyhun 2026-11-05 "bir de yayın butonu koy"); yarış sürerken yok, altta Yayına git var */}
+      {race?.id && isOwner && !on && (
         <Link href={`/athletes/races/${race.id}/yayin`} data-press className="raised flex h-9 shrink-0 items-center rounded-full border px-3 text-[0.8125rem] font-semibold">
           Yayın
         </Link>
@@ -316,7 +322,13 @@ function Race({ orgId, uid, email, by, mail, coach }) {
 
 // Başlığın alt satırı (tarih tek yerde; kalan gün lacivertte büyük): "Foça, İzmir · 26–28 Eki"
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
-// Başlığın sağında kalan gün ("5 / gün", "Yarın", "Bugün"), yarışta yanıp sönen "Yarışta", bittiyse "Bitti"
+// Yarış bugün sürüyor mu (başlangıçtan bitişe)
+function racing(r) {
+  if (!r.startDate) return false;
+  const t = todayStr();
+  return t >= r.startDate && t <= (r.endDate || r.startDate);
+}
+// Başlığın sağında kalan gün ("5 / gün", "Yarın"), bittiyse "Bitti" (yarış sürerken başlıkta kırmızı nokta)
 function Left({ r }) {
   if (!r.startDate) return null;
   const t = todayStr();

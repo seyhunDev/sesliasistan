@@ -151,7 +151,9 @@ export function RaceTrack({ orgId, race, chosen = [], more = null }) {
   const box = "overflow-hidden rounded-[1.25rem] border border-line bg-card px-3.5";
   const empty = (t) => <p className="py-3.5 text-[0.9375rem] text-mut">{docs ? t : "Yükleniyor…"}</p>;
   return (
-    <>
+    <div className="track-cols">
+      {/* iPad yatay ve Mac'te iki sütun (globals.css track-cols): solda özet ve sonuçlar, sağda gruplar, duyurular, talimatlar */}
+      <div>
       <DaySummary orgId={orgId} race={race} docs={docs} places={places} />
       <section className="mt-6" aria-label="Sonuçlar">
         <ListHead title="Sonuçlar" count={g.results.length} />
@@ -169,6 +171,8 @@ export function RaceTrack({ orgId, race, chosen = [], more = null }) {
           {!places.length && !g.results.length && empty("Henüz sonuç yok")}
         </div>
       </section>
+      </div>
+      <div>
       <section className="mt-6" aria-label="Gruplar">
         <ListHead title="Gruplar" count={g.groups.length} />
         <div className={box}>
@@ -202,7 +206,8 @@ export function RaceTrack({ orgId, race, chosen = [], more = null }) {
           <div hidden={!all}>{more}</div>
         </>
       )}
+      </div>
       {view && createPortal(<PdfViewer title={view.name} load={load} onClose={close} />, document.body)}
-    </>
+    </div>
   );
 }
