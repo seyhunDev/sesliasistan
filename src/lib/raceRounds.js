@@ -689,6 +689,14 @@ export function shortName(name) {
   if (w.length < 2) return w[0] || "";
   return `${w[0][0].toLocaleUpperCase("tr-TR")}. ${w.slice(1).join(" ")}`;
 }
+// Kulübün açık adı (Seyhun 2026-11-05 "genel sıralamada açık şekilde kulüp ismi; çok uzunlara limit"): "Dikili Yelken Spor Kulübü" kadarı
+// tam; daha uzunu kelime sınırında "…" ile kesilir; ekrana sığmazsa CSS ayrıca kısaltır
+export function clubName(club, max = 30) {
+  const s = String(club || "").replace(/\s+/g, " ").trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max + 1).replace(/\s+\S*$/, "");
+  return `${(cut.length >= max * 0.6 ? cut : s.slice(0, max)).replace(/[\s,.-]+$/, "")}…`;
+}
 export function shortClub(club) {
   const w = String(club || "").trim().split(/\s+/).filter(Boolean);
   if (!w.length) return "";

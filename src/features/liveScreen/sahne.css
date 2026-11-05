@@ -502,16 +502,21 @@
 /* Telefon (Seyhun 2026-11-05): izleyici alt şeridi; sıralama tek sütun (yan yana değil); liste şeridin üstünde, evre bandı ortada */
 .sc-vb { display: none; }
 @media (max-aspect-ratio: 1/1) {
-  .sc-vb { position: absolute; z-index: 4; left: 0; right: 0; bottom: calc(4.6em + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 0.4em; padding: 0 1em; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-  .sc-vb::-webkit-scrollbar { display: none; }
-  .sc-vb button { flex: none; display: inline-flex; align-items: center; gap: 0.45em; height: 2.6em; padding: 0 1em; border: 0; border-radius: 1.3em; background: var(--sc-lite); box-shadow: inset 0 0 0 1px var(--sc-lite-line); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); color: #fff; font: 700 1.3em/1 var(--sc-c); letter-spacing: 0.02em; white-space: nowrap; }
-  .sc-vb button { font-size: 1.15em; height: 2.4em; padding: 0 0.85em; }
-  .sc-vb button.on { background: #fff; color: #0b1626; box-shadow: none; }
-  .sc-vb button i { width: 0.65em; height: 0.65em; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); }
-  .sc-vb button:active { transform: scale(0.96); }
-  .sc-vbs { flex: none; width: 1px; height: 1.8em; background: var(--sc-lite-line); }
-  .sc:has(.sc-vb) .sc-rd, .sc:has(.sc-vb) .sc-later, .sc:has(.sc-vb) .sc-ci { bottom: calc(8.4em + env(safe-area-inset-bottom)); }
-  .sc:has(.sc-vb) .sc-crs { bottom: 36%; }
+  .sc-vb { position: absolute; z-index: 4; left: 0; right: 0; bottom: calc(4.4em + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 0.5em; }
+  .sc-vr { display: flex; align-items: center; min-width: 0; }
+  .sc-vr > b { flex: none; width: 5.4em; padding-left: 1em; font: 700 0.95em/1 var(--sc-c); letter-spacing: 0.12em; text-transform: uppercase; color: var(--sc-mut); }
+  .sc-vs { flex: 1; min-width: 0; display: flex; gap: 0.45em; padding-right: 1em; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+  .sc-vs::-webkit-scrollbar { display: none; }
+  .sc-vs button { flex: none; scroll-snap-align: start; display: inline-flex; align-items: center; justify-content: center; gap: 0.45em; min-width: 4.6em; height: 2.75em; padding: 0 0.95em; border: 0; border-radius: 0.6em; background: rgba(10, 20, 36, 0.62); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 0.15em 0.5em rgba(0, 0, 0, 0.25); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); color: #fff; font: 700 1.4em/1 var(--sc-c); letter-spacing: 0.02em; white-space: nowrap; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: transform 0.12s ease, background 0.15s ease; }
+  .sc-vs button.on { background: #fff; color: #0b1626; box-shadow: 0 0.15em 0.5em rgba(0, 0, 0, 0.3); }
+  .sc-vs button i { width: 0.6em; height: 0.6em; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); }
+  .sc-vs button:active { transform: scale(0.95); }
+  .sc:has(.sc-vb) .sc-rd, .sc:has(.sc-vb) .sc-later, .sc:has(.sc-vb) .sc-ci { bottom: calc(9.4em + env(safe-area-inset-bottom)); }
+  .sc:has(.sc-vb.two) .sc-rd, .sc:has(.sc-vb.two) .sc-later, .sc:has(.sc-vb.two) .sc-ci { bottom: calc(14.2em + env(safe-area-inset-bottom)); }
+  .sc:has(.sc-vb) .sc-crs { bottom: 40%; }
+  .sc-ckx { font-size: 0.78em; padding: 0.55em 1.8em 0.5em 0.9em; border-top: 1px solid var(--sc-lite-line); animation: sc-drop 0.3s ease both; transform-origin: top; }
+  .sc-ckx .sc-wh { margin: 0 0 0.3em; font-size: 0.8em; }
+  .sc-ckx .gr-wc { width: 100%; height: auto; margin: 0; }
   .sc-rd ol { display: block; }
   .sc-rd li.cut { border-top: 2px solid rgba(255, 255, 255, 0.28); }
   .sc-rcol > .sc-rd { width: auto; left: 1em; right: 1em; max-height: 48%; overflow: hidden; }
@@ -521,3 +526,15 @@
   .sc-nt b { font-size: 1.25em; }
   .sc-nt b.lg { font-size: 1.1em; }
 }
+
+/* Genel sıralamada kulübün açık adı (Seyhun 2026-11-05): ekrana göre genişlik, sığmazsa "…"; kulübü yoksa soluk "Kulüpsüz".
+   Telefonda kulüp sütunu yok, ad altında küçük satır */
+.sc-board td.cl span { display: block; max-width: clamp(8em, 24vw, 24em); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-board td.cl.no { opacity: 0.55; }
+.sc-board .sc-cl2 { display: none; }
+@media (max-aspect-ratio: 1/1) {
+  .sc-board .sc-cl2 { display: block; margin-top: 0.25em; max-width: 100%; font: 600 0.72em/1.1 var(--sc-c); letter-spacing: 0.04em; color: var(--sc-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sc-board .sc-cl2.no { opacity: 0.55; }
+  .sc-board.wide td.n { max-width: 58vw; }
+}
+@keyframes sc-drop { from { opacity: 0; transform: scaleY(0.6); } to { opacity: 1; transform: none; } }
