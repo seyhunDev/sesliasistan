@@ -1763,3 +1763,6 @@ button.gr-card { cursor: pointer; }
 .lv-photo { opacity: 0.75; filter: saturate(0.95) blur(5px); animation: lv-fade 1.2s ease-out both, lv-kb 45s ease-in-out 1.2s infinite alternate; }
 @media (prefers-reduced-motion: reduce) { .lv-photo { animation: lv-fade 1.2s ease-out both; } }
 
+
+/* Ana hesap: Start'ın solunda Rüzgâr (ölçüm penceresi), Start ile aynı düğme */
+.sc-vwd + .sc-vgo { margin-left: 0.4em; }

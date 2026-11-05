@@ -4245,7 +4245,7 @@ function viewPos(data, today) {
 const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // Telefonda alt şerit (Seyhun 2026-11-05): solda görüntü (Yayın = yayın odasının seçtiği, sonra grupların kamerası), sağda Sıralama,
 // Sonuçlar, Rüzgâr, Parkur. Seçilen dolu; aynı düğmeye yeniden basınca yayının akışına döner. Geniş ekranda (TV) yok.
-function ScView({ data, sel, mode, now, cams, pos, cam, onCam, tab, onTab, view, onView, onFull, onStart = null }) {
+function ScView({ data, sel, mode, now, cams, pos, cam, onCam, tab, onTab, view, onView, onFull, onStart = null, onWind = null }) {
   const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
   const res = !!rr?.rows.length;
   const rank = scBoards(data).length > 0;
@@ -4258,10 +4258,18 @@ function ScView({ data, sel, mode, now, cams, pos, cam, onCam, tab, onTab, view,
   const tabs = [cams.length && ["cam", "Kamera"], pos.length && ["pos", "Konum"], btns.length && ["view", "Ekran"]].filter(Boolean);
   if (!tabs.length && !onStart) return null;
   // ana hesap: sağda Start (LiveStart penceresi); izleyici görmez
+  // ana hesap: Start'ın solunda Rüzgâr (Yayın › Parkur'daki Ölçüm ekle penceresi)
   const go = onStart ? (
-    <button type="button" className="sc-vgo" onClick={onStart}>
-      Start
-    </button>
+    <>
+      {onWind ? (
+        <button type="button" className="sc-vgo sc-vwd" onClick={onWind}>
+          Rüzgâr
+        </button>
+      ) : null}
+      <button type="button" className="sc-vgo" onClick={onStart}>
+        Start
+      </button>
+    </>
   ) : null;
   if (!tabs.length)
     return (
@@ -4428,6 +4436,7 @@ export function LiveScreen({ id, y = "" }) {
   const [vCam, setVCam] = useState(""); // izleyicinin seçtiği kamera (kaynak id), boşsa yayının gösterdiği
   const [adm, setAdm] = useState(false); // ana hesap bu yarışın sahibi (LiveStart söyler)
   const [stOpen, setStOpen] = useState(false); // Start penceresi
+  const [wdOpen, setWdOpen] = useState(false); // Rüzgâr (ölçüm) penceresi
   const warm = useSyncExternalStore(noSub, () => !!readWarmMe(), () => false); // bu telefonda uygulamaya girilmiş mi
   const [vTab, setVTab] = useState("cam"); // Görüntü sırası: "cam" kameralar | "pos" canlı konum grupları
   const [vView, setVView] = useState(""); // "rank" | "wind" | "course": izleyicinin açtığı sahne
@@ -4546,8 +4555,8 @@ export function LiveScreen({ id, y = "" }) {
       <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
         <Backdrop data={sd} isCur={isCur} entry={entry} today={today} />
         <div className="lv-page lv-ov">
-          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} view={vwOn ? vView : ""} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} cams={cams} pos={pos} cam={camOn} onCam={setVCam} tab={vTab} onTab={setVTab} onStart={adm && !demoOn ? () => setStOpen(true) : null} view={vwOn ? vView : ""} onView={setVView} onFull={setFull} />} />
-          {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen} onClose={() => setStOpen(false)} onReady={setAdm} /> : null}
+          <Sahne data={sd} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={setFull} view={vwOn ? vView : ""} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} bar={<ScView data={data} sel={sel} mode={mode} now={nowMs} cams={cams} pos={pos} cam={camOn} onCam={setVCam} tab={vTab} onTab={setVTab} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} view={vwOn ? vView : ""} onView={setVView} onFull={setFull} />} />
+          {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen} onClose={() => setStOpen(false)} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} /> : null}
         </div>
         {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
         {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}

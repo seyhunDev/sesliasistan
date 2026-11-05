@@ -10,13 +10,14 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase/clientApp";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { loadCourse, loadRoundsOf, saveCards, savePlanKeys, saveTimer, watchRounds } from "@/features/athletes/raceLiveStore";
+import { addCourseObs, loadCourse, loadRoundsOf, saveCards, savePlanKeys, saveTimer, watchRounds } from "@/features/athletes/raceLiveStore";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { VoidSheet, useRaceFlow } from "@/features/raceMedia/useRaceFlow";
 import { audio, raceCancel, raceStart, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { orderWithout, startBlock, startedRow, yayinPath, zeroStarts } from "@/features/broadcast/startFlow";
 import { cleanLive, cleanPlan, raceName, rollPlan } from "@/lib/raceLive";
-import { CARD_TYPES, cardFor, cardKey, cleanCourse, withRaceCards } from "@/lib/raceCourse";
+import { CARD_TYPES, cardFor, cardKey, cleanCourse, cleanObs, withRaceCards } from "@/lib/raceCourse";
+import { AddSheet } from "@/features/raceMedia/CourseTab";
 import { PREP_PICK, prepName } from "@/lib/raceRounds";
 import { flagSvg } from "@/lib/raceSignals";
 import { groupColor } from "@/lib/roundScore";
@@ -32,7 +33,7 @@ export default function LiveStart(p) {
     </ToastProvider>
   );
 }
-function Start({ raceId, open, onClose, onReady }) {
+function Start({ raceId, open, onClose, onReady, wind = false, onWindClose }) {
   const [orgId, setOrgId] = useState("");
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -153,6 +154,14 @@ function Start({ raceId, open, onClose, onReady }) {
     raceCancel(rf.flow, own);
     push();
   };
+  // Rüzgâr / eksen / hat ölçümü (Seyhun 2026-11-05 "parkur sekmesinde yaptığımızın aynısını canlı yayında da"): Yayın › Parkur'daki
+  // Ölçüm ekle penceresinin aynısı (CourseTab AddSheet), aynı kayıt (addCourseObs)
+  const addObs = (o) => {
+    onWindClose?.();
+    const obs = cleanObs(o);
+    setCourse((c) => cleanCourse({ ...c, obs: [...c.obs, obs] }));
+    addCourseObs(orgId, raceId, today, obs).catch(() => setMsg("Kaydedilemedi. İnterneti kontrol et."));
+  };
   const running = live.starts.filter((x) => x.day === today && !x.fin && !x.void);
   if (!orgId) return null;
   const card = row ? cardFor(course, row.cls, row.grp) : null;
@@ -265,6 +274,7 @@ function Start({ raceId, open, onClose, onReady }) {
         </div>
       ) : null}
       <VoidSheet ask={rf.ask} onChoose={(r) => (rf.choose(r), push())} />
+      <AddSheet open={wind} c={course} onClose={() => onWindClose?.()} onAdd={addObs} />
     </>
   );
 }
