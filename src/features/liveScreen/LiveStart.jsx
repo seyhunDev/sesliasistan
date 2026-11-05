@@ -14,9 +14,9 @@ import { raceDays } from "@/features/athletes/raceWeather";
 import { addCourseObs, loadCourse, loadRoundsOf, saveCards, savePlanKeys, saveTimer, watchRounds } from "@/features/athletes/raceLiveStore";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { VoidSheet, useRaceFlow } from "@/features/raceMedia/useRaceFlow";
-import { audio, raceCancel, raceStart, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
+import { audio, raceCancel, raceFinish, raceStart, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { orderWithout, startBlock, startedRow, yayinPath, zeroStarts } from "@/features/broadcast/startFlow";
-import { cleanLive, cleanPlan, raceName, rollPlan } from "@/lib/raceLive";
+import { cleanLive, cleanPlan, finishRace, moveWin, nextRaceNo, openWin, raceName, rollPlan, winLeft } from "@/lib/raceLive";
 import { CARD_TYPES, cardFor, cardKey, cleanCourse, cleanObs, withRaceCards } from "@/lib/raceCourse";
 import { AddSheet } from "@/features/raceMedia/CourseTab";
 import { PREP_PICK, prepName } from "@/lib/raceRounds";
@@ -166,6 +166,26 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
     addCourseObs(orgId, raceId, today, obs).catch(() => setMsg("Kaydedilemedi. İnterneti kontrol et."));
   };
   const running = live.starts.filter((x) => x.day === today && !x.fin && !x.void);
+  // Yarıştaki grup (Seyhun 2026-11-05 "Mavi yarışta diyor, tıklıyorum, yarışı bitirmeyi yapamıyorum"): dokununca Yayın › Süre'deki işlemler,
+  // aynı kayıtlarla (lib/raceLive openWin, moveWin, finishRace; useRaceFlow save / voidNow)
+  const [runId, setRunId] = useState("");
+  const [clk, setClk] = useState(0);
+  useEffect(() => {
+    if (!open) return undefined;
+    const i = setInterval(() => setClk(Date.now()), 500);
+    return () => clearInterval(i);
+  }, [open]);
+  const nowT = Math.max(clk, tr.now || 0);
+  const runS = running.find((x) => x.id === runId && x.id !== cdId) || null;
+  const upHere = (id) => tr.up && t.mode === "start" && rf.ridOf(t) === id; // bu telefonun sayacı bu yarışı ileri sayıyor
+  const putStarts = (fn) => rf.save(fn(live.starts));
+  const endRace = (s) => {
+    if (upHere(s.id)) raceFinish(rf.flow, own);
+    else putStarts((l) => finishRace(l, s.id, Date.now(), rdays));
+    push();
+    setRunId("");
+  };
+  const runSec = (s) => (upHere(s.id) ? Math.max(0, Math.floor(-tr.rem)) : Math.max(0, Math.floor((nowT - Date.parse(s.at)) / 1000)));
   if (!orgId) return null;
   const card = row ? cardFor(course, row.cls, row.grp) : null;
   const dur = Math.round((t.left ?? t.dur ?? 300) / 60);
@@ -178,7 +198,7 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
               <b>Start</b>
               <span>{[row?.cls, row ? rf.flow.label : ""].filter(Boolean).join(" · ")}</span>
             </div>
-            {order.length || running.length ? (
+            {(!counting && order.length) || running.length ? (
               <>
                 <div className="lst-lab">Grup</div>
                 <div className="lst-gs">
@@ -186,28 +206,57 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
                     const cd = s.id === cdId;
                     const g = rounds[s.id]?.grp || s.grp || "";
                     return (
-                      <div key={s.id} className="lst-g run">
+                      <button key={s.id} type="button" className={`lst-g run${runS?.id === s.id ? " on" : ""}`} aria-pressed={runS?.id === s.id} disabled={cd} onClick={() => (setRunId(runS?.id === s.id ? "" : s.id), setEdit(""), setMsg(""))}>
                         <span>
                           {g ? <i style={{ background: groupColor(g) || "#ffd23f" }} /> : null}
                           {g || raceName(s)}
                         </span>
-                        <small>{cd ? `Start'a ${mmss(Math.max(0, tr.rem))}` : "Yarışta"}</small>
-                      </div>
+                        <small>{cd ? `Start'a ${mmss(Math.max(0, tr.rem))}` : s.fw ? `Finiş ${mmss(winLeft(s, nowT) || 0)}` : `Yarışta ${mmss(runSec(s))}`}</small>
+                      </button>
                     );
                   })}
-                  {order.map((o, i) => (
+                  {(counting ? [] : order).map((o, i) => (
                     <button key={`${o.cls}${o.grp}${i}`} type="button" className={`lst-g${i === sel ? " on" : ""}`} aria-pressed={i === sel} onClick={() => (setPickI(i), setEdit(""), setMsg(""))}>
                       <span>
                         {o.grp ? <i style={{ background: groupColor(o.grp) || "#ffd23f" }} /> : null}
                         {o.grp || o.cls}
                       </span>
-                      <small>{o.ap ? "Tehirde" : i === 0 ? "Sırada" : "Bekliyor"}</small>
+                      <small>{o.ap ? "Tehirde" : `${nextRaceNo(live.starts, today, rdays, o.grp || "")}. yarış`}</small>
                     </button>
                   ))}
                 </div>
               </>
             ) : null}
-            {row ? (
+            {runS ? (
+              <div className="lst-rows lst-rs">
+                <div className="lst-r">
+                  <span className="k">{runS.fw ? "Finiş" : "Süre"}</span>
+                  <span className="v tm">{runS.fw ? `Pencere ${mmss(winLeft(runS, nowT) || 0)}` : mmss(runSec(runS))}</span>
+                </div>
+                <div className="lst-ch">
+                  {runS.fw ? (
+                    <>
+                      <button type="button" onClick={() => putStarts((l) => moveWin(l, runS.id, Date.now(), -5))}>
+                        −5 dk
+                      </button>
+                      <button type="button" onClick={() => putStarts((l) => moveWin(l, runS.id, Date.now(), 5))}>
+                        +5 dk
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => putStarts((l) => openWin(l, runS.id, Date.now()))}>
+                      İlk finiş
+                    </button>
+                  )}
+                  <button type="button" className="go" onClick={() => endRace(runS)}>
+                    Bitir
+                  </button>
+                  <button type="button" className="x" onClick={() => (upHere(runS.id) && writeTimer({ dur: t.dur, end: null, left: null, zero: t.end }), rf.voidNow([runS.id], "Abandone"), push(), setRunId(""))}>
+                    Abandone
+                  </button>
+                </div>
+              </div>
+            ) : counting ? null : row ? (
               <>
                 <div className="lst-rows">
                   <div className="lst-r">

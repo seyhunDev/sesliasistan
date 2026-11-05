@@ -189,6 +189,39 @@ function useClockSync(on) {
   }, [on]);
   return off;
 }
+// Uygulama içinde bu telefonun sayacı (Seyhun 2026-11-05 "başlatıyorum, yukarıdaki geri sayım daha geç başlıyor; kendi içimizde gecikmesiz"):
+// Yayın / Start penceresi sayacı telefonda yazar (training/Countdown "sa-sayac"), buluta sonra gider. Bu yarışın sayacıysa ve buluttakinden eski
+// değilse ekran onu kullanır; saat sunucu saatine çevrilir (skew). Herkese açık linkte hep buluttaki
+const LOC_KEY = "sa-sayac";
+const locSub = (f) => {
+  window.addEventListener(LOC_KEY, f);
+  window.addEventListener("storage", f);
+  return () => (window.removeEventListener(LOC_KEY, f), window.removeEventListener("storage", f));
+};
+const locRaw = () => {
+  try {
+    return localStorage.getItem(LOC_KEY) || "";
+  } catch {
+    return "";
+  }
+};
+function useLocalTimer(skew, id, on, remote) {
+  const raw = useSyncExternalStore(locSub, locRaw, () => "");
+  const k = skew.current || 0;
+  return useMemo(() => {
+    if (!on || !raw || !id) return null;
+    let t = null;
+    try {
+      t = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+    if (!t || t.own !== `/athletes/races/${id}/yayin` || t.mode !== "start") return null;
+    if ((remote?.at || 0) > (t.at || 0) + 5000) return null; // başka cihaz sonradan değiştirdi: buluttaki geçerli
+    const sh = (x) => (typeof x === "number" ? x + k : x ?? null);
+    return { ...remote, ...t, end: sh(t.end), zero: sh(t.zero), at: t.at };
+  }, [raw, id, on, remote, k]);
+}
 function useNow(skew, ms = 250) {
   const [now, setNow] = useState(() => mono());
   useEffect(() => {
@@ -2531,7 +2564,7 @@ export function LiveScreen({ id, y = "" }) {
   useVisit(id); // isimsiz ziyaret haberi (Ayarlar › Yayın)
   const real = useData(demoOn ? "" : id, y);
   const demo = useDemo(demoOn);
-  const { data, err, skew } = demoOn ? { data: demo.data, err: "", skew: real.skew } : real;
+  const { data: data0, err, skew } = demoOn ? { data: demo.data, err: "", skew: real.skew } : real;
   const [list, setList] = useState(false);
   const [full, setFull] = useState(""); // "race" | "all": tam liste penceresi
   const [vCam, setVCam] = useState(""); // izleyicinin seçtiği kamera (kaynak id), boşsa yayının gösterdiği
@@ -2546,6 +2579,8 @@ export function LiveScreen({ id, y = "" }) {
   // önizlemede kontrol olmayacak, sadece gösterilecek"); çerçevede (Yayın önizlemesi) hiç yok
   const top = useSyncExternalStore(noSub, () => window.self === window.top, () => false);
   const own = !!inApp && top;
+  const locT = useLocalTimer(skew, id, own && !demoOn && !y, data0?.timer || null);
+  const data = useMemo(() => (locT && data0 ? { ...data0, timer: locT } : data0), [data0, locT]);
   const [vTab, setVTab] = useState(""); // alt çubukta açık olan: cam, pos, course, wind, rank, start (boş = kapalı)
   const myRef = useRef(null); // arka plandaki kendi videom (oynat, geri al, baştan)
   const playMine = useCallback((vid, blob) => {
@@ -2559,7 +2594,7 @@ export function LiveScreen({ id, y = "" }) {
   const vView = ["rank", "wind", "course"].includes(vTab) ? vTab : ""; // izleyicinin açtığı Sıralama / Rüzgâr / Parkur
   const [rkTab, setRkTab] = useState(0); // izleyicinin Sıralama sekmesi (Genel, Kızlar…)
   const [rkAuto, setRkAuto] = useState(false); // Oto: sekmeler kendiliğinden geçer
-  const nowMs = useNow(skew, 1000); // evre ve bekleme sayacı için saat (sunucuyla eşlenmiş)
+  const nowMs = useNow(skew, own ? 250 : 1000); // evre ve bekleme sayacı için saat (sunucuyla eşlenmiş)
   const router = useRouter();
   // Yarış silinmiş ya da ekranı kapalı (Seyhun 2026-11-01 "sildiğimde linki de kullanılamasın"): paylaşılan link genel sayfaya (/canli) gider
   const gone = !data && err === "yok";
