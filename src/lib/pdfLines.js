@@ -150,9 +150,9 @@ function resHead(row) {
     const one = resCol(a.s);
     const two = !one && b ? resCol(`${a.s} ${b.s}`) : "";
     if (two) {
-      cols.push({ k: two, x: a.x });
+      cols.push({ k: two, x: a.x, s: `${a.s} ${b.s}` });
       i++;
-    } else cols.push({ k: one || "skip", x: a.x });
+    } else cols.push({ k: one || "skip", x: a.x, s: a.s });
   }
   const ks = cols.map((c) => c.k);
   return ks.includes("rank") && ks.includes("name") && ks.includes("race") ? cols : null;
@@ -206,7 +206,11 @@ export function resultTableOf(pages) {
     if (!f) fleets.push((f = { cls, rows: [] }));
     f.rows.push(r);
   }
-  for (const f of fleets)
+  // yarış sütunlarının adları (Q1…Q6, F1, F2): final grubunun n. yarışı n. F sütunu (raceRounds officialFor)
+  const heads = cols ? cols.filter((q) => q.k === "race").map((q) => String(q.s || "").trim().toUpperCase()) : [];
+  for (const f of fleets) {
+    if (heads.length) f.heads = heads;
     f.rows = f.rows.map(({ rc, ...r }) => ({ ...r, name: titleCase(r.name), r: cols ? cols.map((q, i) => (q.k === "race" ? raceCell(rc[i]) : null)).filter((x) => x !== null) : [] }));
+  }
   return fleets.filter((f) => f.rows.length);
 }

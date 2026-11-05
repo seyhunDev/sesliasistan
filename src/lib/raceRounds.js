@@ -1,3 +1,4 @@
+import { groupOf, isFinalGrp } from "./roundScore";
 // Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01): şamandıra dönüşleri, parkur sırası, ekranda oynayan kayıt,
 // resmî sonuçla (PDF) karşılaştırma. Saf işlevler (test: scripts/asistan-test/yerel/yaris.mjs).
 // Kayıt orgs/{org}/raceLive/{yarış} belgesinde:
@@ -304,15 +305,28 @@ export const sameSail = (a, b) => {
   const x = digits(a).replace(/^0+(?=\d)/, ""), y = digits(b).replace(/^0+(?=\d)/, "");
   return !!x && x === y;
 };
-export function officialFor(fleets, n, manual = {}) {
+// grp verilirse (startın grubu; Seyhun 2026-11-05 "geçici sonuçta gruplar karışık, her satır kendi grubuna") yalnız o grubun satırları;
+// final grubunun (Altın, Gümüş…) n. yarışı n. F sütunu, renk grubununki n. Q sütunu (sütun adları okunduysa; yoksa n. sütun)
+export function raceCol(heads, grp, n) {
+  if (!Array.isArray(heads) || !heads.length || !grp) return n - 1;
+  const re = isFinalGrp(grp) ? /^F\d/ : /^Q\d/;
+  const at = heads.map((h, i) => (re.test(String(h)) ? i : -1)).filter((i) => i >= 0);
+  return at.length ? (at[n - 1] ?? -1) : n - 1;
+}
+export function officialFor(fleets, n, manual = {}, grp = "") {
   const groups = new Map();
   const many = new Set((fleets || []).map((f) => f.cls)).size > 1;
+  const g0 = grp ? groupOf(grp) || grp : "";
   for (const f of fleets || []) {
+    const ci = raceCol(f.heads, g0, n);
+    const gOf = (r) => r.grp || r.fl || "";
+    const own = g0 && (f.rows || []).some((r) => r.grp === g0 || r.fl === g0);
     for (const r of f.rows || []) {
-      const sc = Array.isArray(r.r) ? r.r[n - 1] : "";
+      if (own && r.grp !== g0 && r.fl !== g0) continue;
+      const sc = Array.isArray(r.r) && ci >= 0 ? r.r[ci] : "";
       if (!sc) continue;
-      const key = `${f.cls}|${r.grp || ""}`;
-      const label = r.grp ? (many ? `${f.cls} ${r.grp}` : r.grp) : f.cls;
+      const key = `${f.cls}|${gOf(r)}`;
+      const label = gOf(r) ? (many ? `${f.cls} ${gOf(r)}` : gOf(r)) : f.cls;
       if (!groups.has(key)) groups.set(key, { key, label, rows: [] });
       groups.get(key).rows.push({ sail: r.sail || "", name: r.name || "", club: r.club || "", score: String(sc) });
     }

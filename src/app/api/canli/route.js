@@ -55,7 +55,7 @@ async function fleetsOf(org, id) {
     if (i < 0) all.push(f);
     else all[i] = joinGroups(all[i], f);
   }
-  const fleets = all.map((f) => ({ cls: f.cls, rows: f.rows.map((r) => ({ name: r.name, sail: r.sail, club: r.club, grp: r.grp, rank: r.rank || 0, pts: r.pts ?? null, ...(r.r ? { r: r.r } : {}), ...(r.sex ? { sex: r.sex } : {}), ...(r.cat ? { cat: r.cat } : {}), ...(r.born ? { born: r.born } : {}) })) }));
+  const fleets = all.map((f) => ({ cls: f.cls, ...(f.heads ? { heads: f.heads } : {}), rows: f.rows.map((r) => ({ name: r.name, sail: r.sail, club: r.club, grp: r.grp, ...(r.fl ? { fl: r.fl } : {}), rank: r.rank || 0, pts: r.pts ?? null, ...(r.r ? { r: r.r } : {}), ...(r.sex ? { sex: r.sex } : {}), ...(r.cat ? { cat: r.cat } : {}), ...(r.born ? { born: r.born } : {}) })) }));
   sheetMemo.set(k, { t: Date.now(), fleets });
   return fleets;
 }
