@@ -61,17 +61,12 @@ function Races({ orgId, me }) {
         <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
       </div>
       {wide && <RaceSwitch on="club" inline />}
-      {/* geniş ekranda Siteden ⋯ içinde */}
-      {me.uid === orgId &&
-        (wide ? (
-          <button type="button" onClick={() => setMenu(true)} aria-label="Diğer" data-press className="raised flex h-9 w-10 shrink-0 items-center justify-center rounded-xl border">
-            <Icon name="more" className="size-5" />
-          </button>
-        ) : (
-          <Link href="/athletes/races/site" data-press className="raised flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold">
-            Siteden
-          </Link>
-        ))}
+      {/* Siteden ⋯ içinde (telefon ve geniş ekran aynı, 2026-11-05) */}
+      {me.uid === orgId && (
+        <button type="button" onClick={() => setMenu(true)} aria-label="Diğer" data-press className="raised flex h-9 w-10 shrink-0 items-center justify-center rounded-xl border">
+          <Icon name="more" className="size-5" />
+        </button>
+      )}
       <Link href="/athletes/races/new" data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
         <Icon name="plus" className="size-4" />
         Yarış
