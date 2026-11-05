@@ -104,8 +104,8 @@ export async function courseCmd(ctx, s, viaVoice) {
     }
     if (!r.none) {
       try {
-        const said = await v.apply(r);
-        done(said ? `Yazdım: ${said}.` : "Tamam.", { engine: "local" }, viaVoice);
+        const said = (await v.apply(r)) || [];
+        done(said.length ? `Yazdım: ${said.map((x) => x.t).join(" · ")}.` : "Tamam.", { engine: "local" }, viaVoice);
       } catch (e) {
         reply(e?.message && !/fetch|network|permission/i.test(e.message) ? e.message : "Parkura yazamadım, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
       }
