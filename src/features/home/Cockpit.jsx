@@ -108,7 +108,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide 
           {rows?.length > 0 && (
             <>
               <div className={`mt-2.5 overflow-hidden rounded-[1.25rem] p-3 ${wide ? "bg-[#0b1a33]/40" : "bg-[#0b1a33]"}`}>
-                <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} />
+                <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} flat />
                 {isToday && <NowRain place={home} rows={fcRows} radar={radar} />}
               </div>
             </>
