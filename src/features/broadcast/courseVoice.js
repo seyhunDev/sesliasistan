@@ -37,27 +37,54 @@ export function groupCardOf(text) {
   const m = /\b([a-h])\s*(?:kart|parkur)/.exec(t) || /(?:kart|parkur)\S*\s+([a-h])\b/.exec(t);
   return m ? { grp, card: m[1].toUpperCase() } : null;
 }
-// Dönüş { route, type, grpCard, list: [obs…], len, need, error }; hiçbiri yoksa { none: true }
-export async function courseVoice(text, cur) {
+// Uzun anlatım mı (Seyhun 2026-11-05 "uzun konuşma da olabilir, rüzgârı, parkuru anlatacağım"): birden çok cümle ya da 120 harften uzun
+export const longTalk = (text) => String(text || "").length > 120 || (String(text || "").match(/[.!?]\s/g) || []).length >= 2;
+// "… gönder" ile biten konuşma: komut kelimesi atılır
+export const dropSend = (text) => String(text || "").replace(/[\s,.]*(?:tamam\s+)?g[öo]nder[\s.!]*$/i, "").trim();
+const fromAi = (items) => {
+  const out = { route: null, type: "", grpCards: [], list: [], len: null };
+  for (const x of items || []) {
+    if (x.obs) out.list.push(x.obs);
+    else if (x.len) out.len = x.len;
+    else if (x.route) out.route = x.route; // son söylenen
+    else if (x.card) out.type = x.card;
+    else if (x.grp) out.grpCards = [...out.grpCards.filter((g) => g.grp !== x.grp.grp), x.grp];
+  }
+  return out;
+};
+// Dönüş { route, type, grpCards: [{ grp, card }], list: [obs…], len, need, error }; hiçbiri yoksa { none: true }
+export async function courseVoice(text0, cur) {
+  const text = dropSend(text0);
+  // uzun anlatım: önce yapay zekâ bütün metni okur (rota, kart, gruplar dahil); ulaşılamazsa telefondaki kurallar
+  if (longTalk(text)) {
+    const ai = await askCourseAi(text, lastVals(cur));
+    if (ai.items) {
+      const r = fromAi(ai.items);
+      if (r.route || r.type || r.grpCards.length || r.list.length || r.len) return r;
+    } else if (ai.error) return { error: ai.error, list: [], grpCards: [] };
+    else if (ai.none) return { none: true, list: [], grpCards: [] };
+  }
   const grpCard = groupCardOf(text);
-  if (grpCard) return { grpCard, list: [] };
+  if (grpCard) return { grpCards: [grpCard], list: [] };
   const route = routeOf(text);
   const type = typeOf(text);
   const rest = route ? String(text).replace(ROUTE_RE, " ") : String(text);
   let cc = courseCommand(rest);
   if (!cc) {
     const rel = courseRelative(rest, cur);
-    if (rel?.need) return { route, type, need: rel.need, list: [] };
+    if (rel?.need) return { route, type, need: rel.need, list: [], grpCards: [] };
     if (rel) cc = rel;
   }
   if (!cc && !route && !type && /\d/.test(rest)) {
     const ai = await askCourseAi(rest, lastVals(cur));
-    if (ai.items) cc = { list: ai.items };
-    else if (ai.error) return { error: ai.error, list: [] };
+    if (ai.items) {
+      const r = fromAi(ai.items);
+      if (r.route || r.type || r.grpCards.length || r.list.length || r.len) return r;
+    } else if (ai.error) return { error: ai.error, list: [], grpCards: [] };
   }
   const list = (cc?.list || []).filter((x) => x.obs).map((x) => x.obs);
   const len = cc?.list?.find((x) => x.len)?.len || null;
-  if (!route && !type && !list.length && !len) return { none: true, list: [] };
-  return { route, type, list, len };
+  if (!route && !type && !list.length && !len) return { none: true, list: [], grpCards: [] };
+  return { route, type, list, len, grpCards: [] };
 }
 export const routeSay = (r) => routeText(r);

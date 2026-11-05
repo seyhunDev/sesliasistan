@@ -20,9 +20,9 @@ import { PenSheet } from "./PenSheet";
 import { DocsTab } from "./DocsTab";
 import { NearCams } from "./NearCams";
 import { AthletesTab } from "./AthletesTab";
+import { CourseTalk } from "./CourseTalk";
 import { courseVoice } from "./courseVoice";
 import { SIGNALS, addHours, flagSvg, signalOf, soundText } from "@/lib/raceSignals";
-import { useAssistant } from "@/features/assistant/AssistantProvider";
 import { VoiceLight } from "@/features/home/TabBar";
 import { setCourseView } from "@/features/raceMedia/courseView";
 import { audio, chooseDur, ownHere, raceCancel, raceFinish, raceStart, raceVoid, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
@@ -858,32 +858,51 @@ export function BroadcastPage({ orgId, id }) {
   // asistan önce parkura bakar (isler/yarisMedya courseCmd → courseView.apply): "rüzgâr 20 ile 35 arası", "eksen 320", "rota 1 2 3 2 3 finiş",
   // "trapez", "Bronz B kartında". Yazma burada (kart, rota, grup kartı, ölçüm); dönüş söylenecek özet, hata olursa fırlatır.
   const [obsAll, setObsAll] = useState(false);
+  // Dönüş: yazılanlar [{ t: başlık, s: ayrıntı, k: parlayan kutu (wind/axis/line/route) }]; yazılamazsa fırlatır
   const applyCourseVoice = async (r) => {
     const said = [];
-    if (r.grpCard) {
-      const row = plan.sets.flatMap((x) => x.grps.map((g) => [x.cls, g])).find(([, g]) => g === r.grpCard.grp);
-      if (!row) throw new Error(`${r.grpCard.grp} grubu bu yarışta yok.`);
-      if (!course.cards.some((k) => k.id === r.grpCard.card)) throw new Error(`Kart ${r.grpCard.card} yok.`);
-      await putCards({ by: { ...course.by, [cardKey(row[0], row[1])]: r.grpCard.card } });
-      said.push(`${r.grpCard.grp} grubu Kart ${r.grpCard.card}`);
+    const rows = plan.sets.flatMap((x) => x.grps.map((g) => [x.cls, g]));
+    let by = course.by;
+    const miss = [];
+    for (const gc of r.grpCards || []) {
+      const row = rows.find(([, g]) => g === gc.grp);
+      if (!row) miss.push(`${gc.grp} grubu bu yarışta yok`);
+      else if (!course.cards.some((k) => k.id === gc.card)) miss.push(`Kart ${gc.card} yok`);
+      else {
+        by = { ...by, [cardKey(row[0], row[1])]: gc.card };
+        said.push({ t: `${gc.grp} → Kart ${gc.card}`, k: "grp" });
+      }
     }
-    if (r.route || r.type) {
+    if (r.route || r.type || by !== course.by) {
       const cards = course.cards.map((k) => (k.id === course.sel ? { ...k, ...(r.route ? { route: r.route } : {}), ...(r.type ? { type: r.type } : {}) } : k));
-      await putCards({ cards });
+      await putCards({ cards, by });
       if (r.route) setRt(routeText(r.route));
-      if (r.type) said.push(CARD_TYPES[r.type]);
-      if (r.route) said.push(`rota ${routeText(r.route)}`);
+      if (r.route || r.type) said.push({ t: [r.type ? CARD_TYPES[r.type].split(" ")[0] : "", r.route ? `rota ${routeText(r.route)}` : ""].filter(Boolean).join(" · "), s: `Kart ${course.sel}`, k: "route" });
     }
     if (r.list?.length || r.len) {
       const at = Date.now();
       const list = r.list.map((o, i) => cleanObs({ ...o, at: new Date(at + i).toISOString() })).filter(Boolean);
       setCourse((c) => cleanCourse({ ...c, obs: [...c.obs, ...list], ...(r.len ? { len: { ...(c.len || {}), ...r.len } } : {}) }));
       await addCourseMany(orgId, id, today, list, r.len);
-      for (const o of list) said.push(`${obsTitle(o)} ${o.range ? `${o.range[0]}–${o.range[1]}°` : `${o.deg}°`}${o.kn != null ? `, ${o.kn} knot` : ""}`);
-      if (r.len) said.push(`orsa ${r.len.orsa} m`);
+      for (const o of list) said.push({ t: `${obsTitle(o)} ${o.range ? `${o.range[0]}–${o.range[1]}°` : `${o.deg}°`}${o.kn != null ? ` · ${o.kn} kn` : ""}`, s: o.gust != null ? `sağanak ${o.gust}` : "", k: o.kind });
+      if (r.len) said.push({ t: `Orsa ayağı ${r.len.orsa} m`, k: "len" });
     }
-    return said.join(" · ");
+    if (!said.length && miss.length) throw new Error(`${miss.join(", ")}.`);
+    return [...said, ...miss.map((t) => ({ t, miss: true }))];
   };
+  // Sesle yazılanı geri al: parkur yazımdan önceki hâline döner (tek adım)
+  const undoCourse = async (prev) => {
+    setCourse(cleanCourse(prev));
+    setRt(routeText(selCard(cleanCourse(prev)).route));
+    await saveCourse(orgId, id, today, prev);
+  };
+  const [talk, setTalk] = useState(false); // sesle parkur penceresi (CourseTalk)
+  const [flash, setFlash] = useState([]); // sesle yazılınca bir an parlayan kutular
+  useEffect(() => {
+    if (!flash.length) return;
+    const t = setTimeout(() => setFlash([]), 1800);
+    return () => clearTimeout(t);
+  }, [flash]);
   const courseLive = useRef({});
   useEffect(() => {
     courseLive.current = { course, apply: applyCourseVoice };
@@ -2072,7 +2091,7 @@ export function BroadcastPage({ orgId, id }) {
               ) : null}
             </div>
             <div className="masa-inst">
-              <div>
+              <div className={flash.includes("wind") ? "fl" : ""}>
                 <small>Rüzgâr</small>
                 <b>
                   {wind ? degText(wind) : "—"}
@@ -2080,18 +2099,18 @@ export function BroadcastPage({ orgId, id }) {
                 </b>
                 <span>{wind ? [wind.kn != null ? `${wind.kn} kn` : "", wind.gust != null ? `sağanak ${wind.gust}` : "", wind.kn == null && wind.gust == null ? hm(wind.at) : ""].filter(Boolean).join(" · ") : "Ölçüm yok"}</span>
               </div>
-              <div>
+              <div className={flash.includes("axis") ? "fl" : ""}>
                 <small>Eksen</small>
                 <b>{lastOf("axis") ? degText(lastOf("axis")) : "—"}</b>
                 <span>{lastOf("axis") && wind ? `Rüzgâr ${axisOff(wind.deg, lastOf("axis").deg)}` : lastOf("axis") ? hm(lastOf("axis").at) : "Ölçüm yok"}</span>
               </div>
-              <div>
+              <div className={flash.includes("line") ? "fl" : ""}>
                 <small>Hat</small>
                 <b className={bias?.end ? "g" : ""}>{bias?.end ? (bias.end === "pin" ? "Pin" : "Komite") : bias ? "Dik" : "—"}</b>
                 <span>{bias?.end ? `+${bias.deg}° avantaj` : bias ? "Avantaj yok" : "Ölçüm yok"}</span>
               </div>
             </div>
-            <div className="masa-legs">
+            <div className={`masa-legs${flash.includes("route") ? " fl" : ""}`}>
               {rtEdit ? (
                 <input autoFocus value={rt} onChange={(e) => setRt(e.target.value.slice(0, 40))} placeholder="1 2 3 F" aria-label="Rota" className="h-12 min-w-0 flex-1 rounded-[0.875rem] bg-[var(--chip)] px-3 text-[1rem] font-bold tabular-nums tracking-[0.06em] outline-none" />
               ) : (
@@ -2209,8 +2228,11 @@ export function BroadcastPage({ orgId, id }) {
           <Button variant="secondary" onClick={() => setAdd(0)}>
             Ölçüm ekle
           </Button>
-          <AskOrb examples={COURSE_EX} />
+          <span className="masa-orb">
+            <VoiceLight state={talk ? "listening" : "idle"} size="size-12" compact onTap={() => setTalk(true)} onHold={() => setTalk(true)} />
+          </span>
         </MasaBar>
+        <CourseTalk open={talk} onClose={() => setTalk(false)} course={course} apply={applyCourseVoice} undo={undoCourse} onWrote={setFlash} />
           </Pane>
         ) : null}
         {!needSetup && seen("sporcu") ? (
@@ -2936,18 +2958,6 @@ function Pane({ k, children }) {
   const slots = useContext(Board);
   if (!slots) return children;
   return slots[k] ? createPortal(children, slots[k]) : null;
-}
-// Ana asistanın bas-konuş düğmesi (Seyhun 2026-11-05 "bizim asistanı kullanacağız, o ikon"): basılı tut konuş, bırak gönder; Parkur
-// açıkken asistan önce parkura yazar (courseView). Örnekler asistan penceresinde görünür.
-const COURSE_EX = ["Rüzgâr 330, 12 knot", "Eksen 320", "Rota 1 2 3 2 3 finiş", "Bronz B kartında"];
-function AskOrb({ examples }) {
-  const { openAssistant, act } = useAssistant();
-  const release = ({ short, away }) => (short ? (act.current.release || act.current.cancel)?.() : away ? act.current.cancel?.() : (act.current.release || act.current.stop)?.());
-  return (
-    <span className="masa-orb">
-      <VoiceLight state="idle" size="size-12" compact onPress={() => openAssistant({ listen: true, dock: true, examples })} onRelease={release} />
-    </span>
-  );
 }
 function MasaBar({ children }) {
   // panoda bölümün altında yapışık durur (o bölüm görünürken düğmeler elde), ekranın altına sabitlenmez

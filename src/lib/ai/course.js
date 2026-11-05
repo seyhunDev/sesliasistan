@@ -18,7 +18,14 @@ Kayıt türleri:
   obs.spot: rüzgâr bir yerde ölçüldüyse o yer: "m1".."m4", "komite", "pin"; yoksa boş.
 - "pt": "X burada" denince işaretlenen yer: pt "komite", "pin", "m1".."m4".
 - "len": orsa ayağının uzunluğu metre (mil × 1852).
+- "card": parkur kartının türü: card "trapez" (trapez parkur) ya da "std" (standart, orsa-pupa, ILCA parkuru).
+- "route": şamandıra dönüş sırası (rota): route listesi, şamandıra numaraları "1".."4" ve finiş "F" ("bir iki üç iki üç finiş" →
+  ["1","2","3","2","3","F"]); start yazılmaz.
+- "grp": bir grubun hangi parkur kartında yarışacağı ("Bronz B kartında", "sarı grup A parkurunda"): grp grup adı (Sarı, Mavi, Kırmızı,
+  Yeşil, Pembe, Altın, Gümüş, Bronz), card kart harfi ("A", "B"…).
 - "none": cümle bunlardan biri değilse.
+Konuşma uzun olabilir (bir dakikaya kadar anlatım, "şey", tekrar, düzeltme): kullanıcı kendini düzeltirse ("280, yok 290") SON söyleneni
+yaz. Sağanak ("sağanak 16", "gustlar 18'e çıkıyor") rüzgâr kaydının gust alanı. "Gönder" kelimesi komuttur, yazma.
 Sayıları yazıyla söylenmiş olabilir ("üç yüz otuz" = 330). Derece 0-359. Yön adı söylenirse derece yaz (kuzey 0, poyraz/kuzeydoğu 45,
 doğu 90, keşişleme/güneydoğu 135, kıble/güney 180, lodos/güneybatı 225, batı 270, karayel/kuzeybatı 315). Tahmin etme; cümlede yoksa alanı
 boş bırak. Soru, sohbet ya da parkurla ilgisiz cümlede items boş.`;
@@ -26,13 +33,13 @@ boş bırak. Soru, sohbet ya da parkurla ilgisiz cümlede items boş.`;
 // last: ekrandaki parkurun son değerleri { wind: { deg, kn }, axis } (göreli cümleler için)
 export const courseUser = (text, last = null) => {
   const l = last && (last.wind || last.axis != null) ? `\nSon değerler: ${last.wind ? `rüzgâr ${last.wind.deg}°${last.wind.kn != null ? ` ${last.wind.kn} knot` : ""}` : "rüzgâr yok"}, ${last.axis != null ? `eksen ${last.axis}°` : "eksen yok"}` : "";
-  return `Cümle: """${String(text || "").replace(/\s+/g, " ").trim().slice(0, 300)}"""${l}`;
+  return `Cümle: """${String(text || "").replace(/\s+/g, " ").trim().slice(0, 1500)}"""${l}`;
 };
 
 export const COURSE_ITEM = {
   type: "object",
   properties: {
-    type: { type: "string", enum: ["obs", "pt", "len", "none"] },
+    type: { type: "string", enum: ["obs", "pt", "len", "card", "route", "grp", "none"] },
     kind: { type: "string", enum: ["wind", "axis", "line", "mark", "leg"] },
     ref: { type: "string" },
     deg: { type: "number" },
@@ -42,6 +49,10 @@ export const COURSE_ITEM = {
     spot: { type: "string" },
     pt: { type: "string" },
     orsa: { type: "number" },
+    gust: { type: "number" },
+    card: { type: "string" },
+    route: { type: "array", items: { type: "string" } },
+    grp: { type: "string" },
   },
   required: ["type"],
 };
