@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { useSpeech } from "@/hooks/useSpeech";
 import { courseVoice, dropSend } from "./courseVoice";
+import "./CourseTalk.css";
 
 // Sesle parkur (Seyhun 2026-11-05 "bas konuş değil; tıkladım, konuştum, gönder dedim, gönderdi; uzun konuşma da olabilir"):
 // asistan düğmesine bir dokunuş → alt pencere dinler (parkur arkada açık), yazı akar; Gönder ya da "gönder" deyince yapay zekâ çözer

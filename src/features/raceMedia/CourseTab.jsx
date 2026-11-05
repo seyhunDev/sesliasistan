@@ -11,6 +11,8 @@ import { cardOf, cardSvg } from "@/lib/courseCard";
 import { BYS, CARD_TYPES, PICKS, cardType, cleanCourse, selCard, cleanObs, degText, norm, obsTitle, obsValue, windTrend, withLiveWind } from "@/lib/raceCourse";
 import { RaceWx } from "@/features/athletes/RaceWx";
 import { CompassSight, askCompass } from "./CompassSight";
+import { angDiff, compassReader } from "@/lib/compass";
+import { startCompass } from "@/lib/nativeIos";
 import { setCourseView } from "./courseView";
 
 // Parkur sekmesi (Seyhun 2026-10-28): üstte rota kartı (lib/courseCard.js, komitenin ekseni yukarıda; harita kaldırıldı).
@@ -192,92 +194,209 @@ export function CourseTab({ orgId, race, day, wind = [], onDropWind, onDay, wx =
   );
 }
 
-// Elle ekleme: ne, kim, derece (−5 −1 +1 +5), rüzgârda knot. Haritaya dokunulduysa ölçüm o noktaya konur.
+// Ölçüm ekle (Seyhun 2026-11-05 "daha profesyonel, kullanıcı dostu; iPhone/iPad'in pusulasını kullan; her yerde aynı tasarım"; örnek
+// project-files/yayin-parkur/olcum-ekle-ornek.png onaylandı). Tek pencere: Yayın › Parkur, /canli (LiveStart), antrenman (CourseTab).
+// Ne: 8 kısa kutu; yön: pusula kadranı (parmakla çevrilir) + −5 −1 +1 +5; Pusula: kadran telefonun baktığı yönü canlı gösterir,
+// "Bunu kullan" yazar (iPhone uygulamasında gerçek kuzey, tarayıcıda manyetik); "Kamerayla nişan al" CompassSight. Rüzgârda Hız,
+// Sağanak, Aralık tek liste (Yok = eklenmez); Kim ölçtü altta. Haritaya dokunulduysa ölçüm o noktaya konur.
 // pick0: açılışta seçili ölçüm (PICKS sırası; yayın sayfası Rüzgâr / Parkur ekseni ile açar, Seyhun 2026-11-01)
-export function AddSheet({ open, at, c, onClose, onAdd, pick0 = 0 }) {
+// onVoice: varsa "Sesle" düğmesi (Seyhun 2026-11-05 "canlı ekranda da sesle de olmalı"); ana sayfa pencereyi kapatıp sesle parkuru açar
+export function AddSheet({ open, at, c, onClose, onAdd, pick0 = 0, onVoice = null }) {
   return (
     <Sheet open={open} onClose={onClose} title="Ölçüm ekle">
-      {open && <AddBody at={at} c={c} onAdd={onAdd} pick0={pick0} />}
+      {open && <AddBody at={at} c={c} onAdd={onAdd} pick0={pick0} onVoice={onVoice} />}
     </Sheet>
   );
 }
-function AddBody({ at, c, onAdd, pick0 = 0 }) {
+const SHORT = { "Rüzgâr": "Rüzgâr", "Parkur ekseni": "Eksen", "Komiteden pin": "Hat K→P", "Pin'den komite": "Hat P→K", "Orsa şamandırası": "Orsa", "Apaz şamandırası": "Apaz", "Orsadan apaza": "Orsa→Apaz", "Apazdan orsaya": "Apaz→Orsa" };
+const DIRS = ["K", "KD", "D", "GD", "G", "GB", "B", "KB"];
+const dirOf = (d) => DIRS[Math.round(d / 45) % 8];
+
+// Telefonun pusulası: on iken derece (null = henüz okunmadı); iPhone uygulamasında yerel pusula, yoksa deviceorientation
+function useCompass(on) {
+  const [deg, setDeg] = useState(null);
+  useEffect(() => {
+    if (!on) return;
+    let last = null;
+    const put = (h) => {
+      last = last === null ? h : norm(last + angDiff(h, last) * 0.35);
+      setDeg(Math.round(last) % 360);
+    };
+    const stopNative = startCompass((e) => {
+      const h = e.true >= 0 ? e.true : e.mag;
+      if (typeof h === "number") put(h);
+    });
+    const read = compassReader();
+    const f = (e) => {
+      const h = read(e);
+      if (h !== null) put(h);
+    };
+    if (!stopNative) {
+      window.addEventListener("deviceorientation", f, true);
+      window.addEventListener("deviceorientationabsolute", f, true);
+    }
+    return () => {
+      stopNative?.();
+      window.removeEventListener("deviceorientation", f, true);
+      window.removeEventListener("deviceorientationabsolute", f, true);
+      setTimeout(() => setDeg(null), 0);
+    };
+  }, [on]);
+  return deg;
+}
+
+// Pusula kadranı: parmakla çevrilir (merkeze göre açı); live iken yeşil ve dokunulmaz
+function Dial({ deg, live, onDeg, className = "" }) {
+  const box = useRef(null);
+  const drag = useRef(false);
+  const at = (e) => {
+    const r = box.current.getBoundingClientRect();
+    const a = (Math.atan2(e.clientX - (r.left + r.width / 2), -(e.clientY - (r.top + r.height / 2))) * 180) / Math.PI;
+    onDeg(Math.round(norm(a)) % 360);
+  };
+  const rad = ((deg - 90) * Math.PI) / 180;
+  const col = live ? "#34c38f" : "var(--acc)";
+  return (
+    <div
+      ref={box}
+      className={`relative aspect-square touch-none select-none ${className}`}
+      onPointerDown={(e) => !live && ((drag.current = true), e.currentTarget.setPointerCapture?.(e.pointerId), at(e))}
+      onPointerMove={(e) => drag.current && at(e)}
+      onPointerUp={() => (drag.current = false)}
+      onPointerCancel={() => (drag.current = false)}
+    >
+      <svg viewBox="0 0 200 200" className="size-full" aria-hidden="true">
+        <circle cx="100" cy="100" r="96" fill="var(--bg)" stroke="var(--line)" />
+        {Array.from({ length: 72 }, (_, i) => {
+          const a = ((i * 5 - 90) * Math.PI) / 180;
+          const l = i % 6 === 0 ? 12 : 6;
+          return <line key={i} x1={100 + 84 * Math.cos(a)} y1={100 + 84 * Math.sin(a)} x2={100 + (84 - l) * Math.cos(a)} y2={100 + (84 - l) * Math.sin(a)} stroke={i % 18 === 0 ? "var(--fg2)" : "var(--line)"} strokeWidth={i % 6 === 0 ? 2 : 1} />;
+        })}
+        {[["K", 0], ["D", 90], ["G", 180], ["B", 270]].map(([t, a]) => {
+          const r = ((a - 90) * Math.PI) / 180;
+          return <text key={t} x={100 + 62 * Math.cos(r)} y={100 + 62 * Math.sin(r) + 4} textAnchor="middle" fontSize="11" fontWeight="700" fill="var(--mut)">{t}</text>;
+        })}
+        <path d={`M${100 + 58 * Math.cos(rad)} ${100 + 58 * Math.sin(rad)} L${100 + 84 * Math.cos(rad)} ${100 + 84 * Math.sin(rad)}`} stroke={col} strokeWidth="3" strokeLinecap="round" />
+        <circle cx={100 + 92 * Math.cos(rad)} cy={100 + 92 * Math.sin(rad)} r="9" fill={col} stroke="#fff" strokeWidth="2" />
+      </svg>
+      <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
+        <div>
+          <b className="block text-[2.75rem] font-bold leading-none tracking-[-.03em] tabular-nums">{deg}°</b>
+          <span className="mt-1 block text-[0.875rem] font-semibold text-mut">{dirOf(deg)}{live ? " · canlı" : ""}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddBody({ at, c, onAdd, pick0 = 0, onVoice = null }) {
   const [pick, setPick] = useState(pick0);
   const [by, setBy] = useState("ben");
   const lastOf = (k) => [...c.obs].reverse().find((x) => x.kind === k);
   const [deg, setDeg] = useState(() => lastOf(PICKS[pick0][0])?.deg ?? lastOf("wind")?.deg ?? 0);
   const [kn, setKn] = useState(() => lastOf("wind")?.kn ?? 8);
   const [gust, setGust] = useState(() => lastOf("wind")?.gust ?? null); // sağanak (Seyhun 2026-11-03 17:39 "sağanak da ekleyelim")
-  const [deg2, setDeg2] = useState(null); // rüzgâr aralığının ikinci yönü (Seyhun 2026-10-30 "belli bir aralık seçebilmeliyim")
+  const [span, setSpan] = useState(0); // rüzgâr aralığının genişliği (derece; 0 = yok), aralık deg … deg+span (Seyhun 2026-10-30)
+  const [comp, setComp] = useState(false); // pusula açık
+  const [sight, setSight] = useState(false); // kamerayla nişan
+  const live = useCompass(comp);
   const [kind, ref] = PICKS[pick];
-  const chip = (on) => `h-9 rounded-full px-3.5 text-[0.875rem] font-medium active:scale-95 ${on ? "bg-acc text-white" : "bg-bg"}`;
-  const step = "grid h-10 w-11 place-items-center rounded-xl border border-line bg-card text-[0.875rem] font-semibold shadow-[0_2px_0_var(--line)] active:translate-y-px active:shadow-none";
+  const wind = kind === "wind";
+  const shown = comp && live !== null ? live : deg;
+  const tile = (on) => `h-10 rounded-xl px-1 text-[0.8125rem] font-semibold active:scale-[.97] ${on ? "bg-acc text-white" : "bg-bg text-fg2"}`;
+  const step = "grid h-11 place-items-center rounded-xl bg-bg text-[1rem] font-semibold shadow-[inset_0_-2px_0_rgba(0,0,0,.12)] active:translate-y-px disabled:opacity-35";
+  const openComp = async () => (await askCompass()) && setComp(true);
+  const use = () => (live !== null && setDeg(live), setComp(false));
+  const row = (name, val, minus, plus, off = false) => (
+    <div className="flex h-14 items-center border-t border-line pl-3.5 pr-1.5 first:border-t-0">
+      <span className="flex-1 text-[0.9375rem] font-semibold text-fg2">{name}</span>
+      <button type="button" aria-label={`${name} azalt`} onClick={minus} className={`${step} w-11`}>−</button>
+      <b className={`min-w-[5.5rem] text-center tabular-nums ${off ? "text-[0.9375rem] font-semibold text-mut" : "text-[1.375rem] font-bold"}`}>{val}</b>
+      <button type="button" aria-label={`${name} artır`} onClick={plus} className={`${step} w-11`}>+</button>
+    </div>
+  );
+  const tool = "h-12 rounded-2xl bg-bg text-[0.9375rem] font-semibold text-acc active:scale-[.98]";
+  const tools = onVoice ? (
+    <div className="grid grid-cols-2 gap-1.5">
+      <button type="button" onClick={openComp} className={tool}>Pusula</button>
+      <button type="button" onClick={onVoice} className={tool}>Sesle</button>
+    </div>
+  ) : (
+    <button type="button" onClick={openComp} className={tool}>Pusula</button>
+  );
+  const out = { kind, ref, deg, by, kn: wind ? kn : null, ...(wind && gust !== null && gust > kn ? { gust } : {}), ...(wind && span ? { range: [deg, norm(deg + span)] } : {}), ...(at?.lat != null ? { lat: at.lat, lon: at.lon } : {}) };
   return (
     <div className="pb-2">
-      <p className="text-[0.8125rem] font-semibold text-fg2">Ne</p>
-      <div className="mt-2 flex flex-wrap gap-1.5">
+      <div className="grid grid-cols-4 gap-1.5">
         {PICKS.map(([, , l], i) => (
-          <button key={l} type="button" onClick={() => (setPick(i), setDeg(lastOf(PICKS[i][0])?.deg ?? deg))} className={chip(pick === i)}>{l}</button>
+          <button key={l} type="button" aria-pressed={pick === i} onClick={() => (setPick(i), setDeg(lastOf(PICKS[i][0])?.deg ?? deg))} className={tile(pick === i)}>
+            {SHORT[l] || l}
+          </button>
         ))}
       </div>
-      <p className="mt-4 text-[0.8125rem] font-semibold text-fg2">Kim ölçtü</p>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {BYS.map(([k, l]) => (
-          <button key={k} type="button" onClick={() => setBy(k)} className={chip(by === k)}>{l}</button>
-        ))}
-      </div>
-      <div className="mt-4 flex items-center justify-between">
-        <b className="text-[3rem] font-bold leading-none tracking-[-.03em] tabular-nums">{deg}°</b>
-        <div className="flex gap-1.5">
-          {[-5, -1, 1, 5].map((d) => (
-            <button key={d} type="button" onClick={() => setDeg((v) => norm(v + d))} className={step}>{d > 0 ? `+${d}` : `−${-d}`}</button>
-          ))}
-        </div>
-      </div>
-      {kind === "wind" &&
-        (deg2 === null ? (
-          <button type="button" onClick={() => setDeg2(norm(deg + 10))} className="mt-2 text-[0.875rem] font-semibold text-acc">Aralık ekle</button>
-        ) : (
-          <div className="mt-3 flex items-center justify-between">
-            <span className="flex items-baseline gap-2">
-              <span className="text-[1rem] text-mut">ile</span>
-              <b className="text-[2.25rem] font-bold leading-none tracking-[-.03em] tabular-nums">{deg2}°</b>
-              <button type="button" onClick={() => setDeg2(null)} className="ml-1 text-[0.8125rem] font-semibold text-mut">Kaldır</button>
-            </span>
-            <div className="flex gap-1.5">
-              {[-5, -1, 1, 5].map((d) => (
-                <button key={d} type="button" onClick={() => setDeg2((v) => norm(v + d))} className={step}>{d > 0 ? `+${d}` : `−${-d}`}</button>
-              ))}
-            </div>
+      <div className="mt-4 md:grid md:grid-cols-[15rem_1fr] md:gap-5">
+        <div className="flex items-center gap-3.5 md:block">
+          <Dial deg={shown} live={comp} onDeg={setDeg} className="w-44 shrink-0 md:w-full" />
+          <div className="flex flex-1 flex-col gap-2 md:hidden">
+            {comp ? (
+              <>
+                <button type="button" onClick={use} disabled={live === null} className="flex h-14 flex-col items-center justify-center rounded-2xl bg-acc text-white active:scale-[.98] disabled:opacity-50">
+                  <b className="text-[0.9375rem]">Bunu kullan</b>
+                  <small className="text-[0.75rem] font-semibold opacity-80">{live === null ? "Pusula okunuyor" : `Pusula · ${live}°`}</small>
+                </button>
+                <button type="button" onClick={() => (setComp(false), setSight(true))} className="h-12 rounded-2xl bg-bg text-[0.875rem] font-semibold text-acc">Kamerayla nişan al</button>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[-5, 5, -1, 1].map((d) => (
+                    <button key={d} type="button" onClick={() => setDeg((v) => norm(v + d))} className={step}>{d > 0 ? `+${d}` : `−${-d}`}</button>
+                  ))}
+                </div>
+                {tools}
+              </>
+            )}
           </div>
-        ))}
-      {kind === "wind" && (
-        <div className="mt-3 flex items-center justify-between">
-          <b className="text-[1.5rem] font-semibold tabular-nums">{kn} kn</b>
-          <div className="flex gap-1.5">
-            {[-1, 1].map((d) => (
-              <button key={d} type="button" onClick={() => setKn((v) => Math.max(0, Math.min(60, v + d)))} className={step}>{d > 0 ? "+1" : "−1"}</button>
+        </div>
+        <div className="min-w-0">
+          <div className="hidden gap-2 md:flex md:flex-col">
+            {comp ? (
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={use} disabled={live === null} className="flex h-14 flex-col items-center justify-center rounded-2xl bg-acc text-white active:scale-[.98] disabled:opacity-50">
+                  <b className="text-[0.9375rem]">Bunu kullan</b>
+                  <small className="text-[0.75rem] font-semibold opacity-80">{live === null ? "Pusula okunuyor" : `Pusula · ${live}°`}</small>
+                </button>
+                <button type="button" onClick={() => (setComp(false), setSight(true))} className="h-14 rounded-2xl bg-bg text-[0.875rem] font-semibold text-acc">Kamerayla nişan al</button>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[-5, -1, 1, 5].map((d) => (
+                    <button key={d} type="button" onClick={() => setDeg((v) => norm(v + d))} className={step}>{d > 0 ? `+${d}` : `−${-d}`}</button>
+                  ))}
+                </div>
+                {tools}
+              </>
+            )}
+          </div>
+          {wind && (
+            <div className="mt-4 overflow-hidden rounded-2xl bg-bg/60 md:mt-2">
+              {row("Hız", `${kn} kn`, () => setKn((v) => Math.max(0, v - 1)), () => setKn((v) => Math.min(60, v + 1)))}
+              {row("Sağanak", gust === null ? "Yok" : `${gust} kn`, () => setGust((v) => (v === null || v - 1 <= kn ? null : v - 1)), () => setGust((v) => Math.min(60, v === null ? kn + 4 : v + 1)), gust === null)}
+              {row("Aralık", span ? `${deg}–${norm(deg + span)}°` : "Yok", () => setSpan((v) => Math.max(0, v - 5)), () => setSpan((v) => Math.min(90, v + 5)), !span)}
+            </div>
+          )}
+          <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-bg/60 p-1">
+            {BYS.map(([k, l]) => (
+              <button key={k} type="button" aria-pressed={by === k} onClick={() => setBy(k)} className={`h-9 rounded-lg text-[0.8125rem] font-semibold ${by === k ? "bg-card text-fg shadow-sm" : "text-mut"}`}>{l}</button>
             ))}
           </div>
         </div>
-      )}
-      {kind === "wind" &&
-        (gust === null ? (
-          <button type="button" onClick={() => setGust(Math.min(60, kn + 4))} className="mt-2 text-[0.875rem] font-semibold text-acc">Sağanak ekle</button>
-        ) : (
-          <div className="mt-3 flex items-center justify-between">
-            <span className="flex items-baseline gap-2">
-              <b className="text-[1.5rem] font-semibold tabular-nums">{`sağanak ${gust} kn`}</b>
-              <button type="button" onClick={() => setGust(null)} className="ml-1 text-[0.8125rem] font-semibold text-mut">Kaldır</button>
-            </span>
-            <div className="flex gap-1.5">
-              {[-1, 1].map((d) => (
-                <button key={d} type="button" onClick={() => setGust((v) => Math.max(0, Math.min(60, v + d)))} className={step}>{d > 0 ? "+1" : "−1"}</button>
-              ))}
-            </div>
-          </div>
-        ))}
-      <Button className="mt-5 h-14" onClick={() => onAdd({ kind, ref, deg, by, kn: kind === "wind" ? kn : null, ...(kind === "wind" && gust !== null && gust > kn ? { gust } : {}), ...(kind === "wind" && deg2 !== null ? { range: [deg, deg2] } : {}), ...(at?.lat != null ? { lat: at.lat, lon: at.lon } : {}) })}>Ekle</Button>
+      </div>
+      <Button className="mt-4 h-14 w-full" disabled={comp} onClick={() => onAdd(out)}>
+        {`Ekle · ${dirOf(deg)} ${span && wind ? `${deg}–${norm(deg + span)}` : deg}°${wind ? ` · ${kn} kn` : ""}`}
+      </Button>
+      <CompassSight open={sight} onClose={() => setSight(false)} onAdd={(o) => (setDeg(o.deg), setSight(false))} />
     </div>
   );
 }
