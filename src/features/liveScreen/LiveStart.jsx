@@ -42,7 +42,7 @@ export default function LiveStart(p) {
 }
 // vidHost: Video panelindeki yer (LiveScreen ScView; yalnız uygulama içinde); videolar oraya çizilir
 // masaHost: Yayın masasının yeri (Yayın modunda "Yayında"ya basınca); give: Benim'de seçileni yayına ver isteği { s, n }
-function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false, masaHost = null, now = null, pos = [], give = null, onGiven }) {
+function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false, masaHost = null, addCat = null, now = null, pos = [], give = null, onGiven }) {
   const [orgId, setOrgId] = useState("");
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -403,7 +403,7 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
           </div>
         </div>
       ) : null}
-      {masaHost && orgId ? createPortal(<LiveMasa orgId={orgId} raceId={raceId} race={race} live={live} now={now} pos={pos} today={today} />, masaHost) : null}
+      {masaHost && orgId ? createPortal(<LiveMasa addCat={addCat} orgId={orgId} raceId={raceId} race={race} live={live} now={now} pos={pos} today={today} />, masaHost) : null}
       {vidHost ? createPortal(<LiveVideos orgId={orgId} raceId={raceId} race={race} starts={live.starts} rounds={rounds} stream={stream} playing={playing} onPlay={onPlay} />, vidHost) : null}
       <VoidSheet ask={rf.ask} onChoose={(r) => (rf.choose(r), push())} />
       <AddSheet open={wind} c={course} onClose={() => onWindClose?.()} onAdd={addObs} onVoice={() => (onWindClose?.(), setTalk(true))} />
