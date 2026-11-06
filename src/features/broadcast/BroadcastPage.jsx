@@ -93,14 +93,14 @@ export function BroadcastPage({ orgId, id }) {
   const [rt, setRt] = useState(""); // seçili parkur kartının rotası (yazı: "1 2 3 F")
   const [rtId, setRtId] = useState("");
   const [tab, setTab] = useState("sure"); // Sekmeler (Seyhun 2026-11-02): Süre · Video · Parkur · Dönüşler
-  // Tek sayfa (Seyhun 2026-11-04 "MacBook'ta yönetim neden bu kadar karmaşık; tek sayfadan her şeyi yönetebilmeliyim"): iPad ve Mac'te
-  // sekme yok, bütün bölümler yan yana sütunlarda (48rem'den 2, 80rem'den 3 sütun); her sütun kendi kayar. Telefonda sekmeler aynı.
+  // iPad ve Mac (Seyhun 2026-11-06 "Yap", örnek project-files/yayin-ipad/sure-ipad-ornek.png): solda sekmelerin menüsü (ad + kısa durum),
+  // sağda yalnız seçili sekme; Süre iki sütun (solda başlatılacak grup, sağda yarışta olanlar ve Bugün). Eski: 2026-11-04 bütün bölümler
+  // yan yana sütunlarda. Telefonda sekmeler aynı.
   const board = useSyncExternalStore(subMq(BOARD_Q), () => window.matchMedia(BOARD_Q).matches, () => false);
-  const cols3 = useSyncExternalStore(subMq(COLS3_Q), () => window.matchMedia(COLS3_Q).matches, () => false);
   const [slots, setSlots] = useState({});
-  const seen = (k) => board || tab === k;
-  // sekmeye geç; panoda o bölüme kayar (ör. Süre'deki "Dönüşler")
-  const goTab = (k) => (setTab(k), board && slots[k]?.parentElement?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  const seen = (k) => tab === k || (board && k === "track" && tab === "donus");
+  // sekmeye geç (ör. Süre'deki "Dönüşler"); panoda soldaki menüden aynı sekme seçilir
+  const goTab = (k) => setTab(k);
   const [cap, setCap] = useState(""); // ekranın altındaki yazı (screen.caption)
   const [capInit, setCapInit] = useState(false);
   const [capNow, setCapNow] = useState(0); // otomatik yazının önizlemesi için saat (5 sn)
@@ -1106,11 +1106,12 @@ export function BroadcastPage({ orgId, id }) {
   const tabInfo = [
     ["sure", "Süre", cur ? (Date.parse(cur.at) > capNow ? "Geri sayım" : "Yarışta") : plan.status === "ap" ? "Tehir" : plan.status === "done" ? "Gün bitti" : races.length ? `${races.length} yarış` : "Boş", !!cur],
     ["program", "Program", plan.off.includes(planDay) ? "Bugün yok" : dayTime(plan, planDay) ? `İlk ${dayTime(plan, planDay)}` : `${days.length} gün`, false],
-    ["video", "Ekran", `${EVRE_NAME[evNow]} · ${ITEM_NAME[shNow.item]}`, !!onScreen && !onScreen.pause],
     ["parkur", "Parkur", (CARD_TYPES[selCard(course).type] || "").split(" ")[0], false],
     ["sporcu", "Sporcu", entries.length ? `${entries.length}` : "—", false],
     ["belge", "Belgeler", race?.results?.files?.length ? "Sonuç var" : "—", false],
     ["donus", "Dönüş", entry?.route?.length ? `${legsDone}/${entry.route.length}` : entries.length ? `${entries.length} tekne` : "—", false],
+    // Ekran canlı ekrana taşınıyor (Seyhun 2026-11-06); taşınana kadar en sonda
+    ["video", "Ekran", `${EVRE_NAME[evNow]} · ${ITEM_NAME[shNow.item]}`, !!onScreen && !onScreen.pause],
   ];
   const monRec = onScreen?.kind === "rec" ? live.media.find((m) => m.id === onScreen.mid) : null;
   const pDay = days.includes(openDay) ? openDay : days.includes(planDay) ? planDay : days[0];
@@ -1436,7 +1437,7 @@ export function BroadcastPage({ orgId, id }) {
           </section>
         ) : null}
         {hero ? (
-          <section>
+          <section className="sure-hero">
             <Head title="Başlatılacak" />
               <div className={`masa-hero g${hero.cd ? " cd" : ""}`} style={{ "--g": (heroX.grp && groupColor(heroX.grp)) || "#2a4a7a" }} aria-live="polite">
                 <div className="masa-hero-h">
@@ -2813,45 +2814,30 @@ export function BroadcastPage({ orgId, id }) {
       {/* Tek sayfa panosu: sütunlar, her bölümün başlığı (sekmenin adı ve kısa durumu) ve yeri; bölümlerin içeriği sekmelerdekinin aynısı
           (Pane ile buraya taşınır). Canlı ekran küçük, Mac'te sağ sütunun en üstünde, iPad'de ikinci sütunun üstünde */}
       {board && !needSetup ? (
-        <div className="masa-board" style={{ gridTemplateColumns: `repeat(${cols3 ? 3 : 2}, minmax(0, 1fr))` }}>
-          {(cols3 ? BOARD3 : BOARD2).map((col, i) => (
-            <div key={`${cols3 ? 3 : 2}-${i}`} className="masa-col">
-              {col.map((k) => {
-                if (k === "canli")
-                  return (
-                    <section key={k} className="masa-pn" aria-label="Canlı ekran">
-                      <div className="masa-pnh">
-                        <b>Canlı ekran</b>
-                        <button type="button" onClick={openScreen} className="masa-b ml-auto">
-                          Ekrana aç
-                        </button>
-                      </div>
-                      <iframe src={`/canli/${id}`} title="Canlı ekran" className="masa-wide-scr" />
-                    </section>
-                  );
-                const t = tabInfo.find((x) => x[0] === k);
-                return (
-                  <section key={k} className="masa-pn" aria-label={t?.[1] || ""}>
-                    {t ? (
-                      <div className="masa-pnh">
-                        <b>{t[1]}</b>
-                        <small>
-                          {t[3] ? <i aria-hidden="true" /> : null}
-                          {t[2]}
-                        </small>
-                      </div>
-                    ) : null}
-                    <div
-                      className="masa-pnb space-y-6"
-                      ref={(el) => {
-                        if (el) setSlots((m) => (m[k] === el ? m : { ...m, [k]: el }));
-                      }}
-                    />
-                  </section>
-                );
-              })}
-            </div>
-          ))}
+        <div className="masa-board">
+          <nav className="masa-side" aria-label="Sekmeler">
+            {tabInfo.map(([k, name, sub, dot]) => (
+              <button key={k} type="button" aria-pressed={tab === k} onClick={() => setTab(k)} data-press>
+                <b>{name}</b>
+                <small>
+                  {dot ? <i aria-hidden="true" /> : null}
+                  {sub}
+                </small>
+              </button>
+            ))}
+          </nav>
+          <div className="masa-col">
+            {[tab, ...(tab === "donus" ? ["track"] : [])].map((k) => (
+              <section key={k} className={`masa-pn${k === "sure" ? " wide" : ""}`} aria-label={tabInfo.find((x) => x[0] === k)?.[1] || ""}>
+                <div
+                  className="masa-pnb space-y-6"
+                  ref={(el) => {
+                    if (el) setSlots((m) => (m[k] === el ? m : { ...m, [k]: el }));
+                  }}
+                />
+              </section>
+            ))}
+          </div>
         </div>
       ) : null}
     </main>
@@ -3077,12 +3063,8 @@ function FirstStart({ day, at, dur }) {
     </div>
   );
 }
-// Tek sayfa panosu (iPad, Mac): 48rem'den iki sütun, 80rem'den üç sütun. Hangi bölüm hangi sütunda: Süre en solda (asıl iş),
-// Ekran ortada, canlı ekran ve uzun listeler (Dönüş, Belgeler, Sporcu) sağda
+// Pano (iPad, Mac): 48rem'den solda menü, sağda seçili sekme
 const BOARD_Q = "(min-width: 48rem)";
-const COLS3_Q = "(min-width: 80rem)";
-const BOARD3 = [["sure", "program"], ["video", "parkur"], ["canli", "donus", "track", "belge", "sporcu"]];
-const BOARD2 = [["sure", "program", "donus", "track", "belge"], ["canli", "video", "parkur", "sporcu"]];
 const mqSubs = {};
 const subMq = (q) =>
   (mqSubs[q] ||= (cb) => {
