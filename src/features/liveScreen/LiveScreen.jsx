@@ -9,7 +9,7 @@ import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, clean
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, clubName, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc } from "@/lib/raceRounds";
+import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, clubName, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc, SRC_CATS, srcCat } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { GROUP_PICK, catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
@@ -2447,7 +2447,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   const all = sourcesOf(data.stream); // Yayın › kaynaklar: kendi verdiğin adla (Start kamerası, Drone…)
   // kaynak yayında mı (raceLive.srcLive, açık Yayın sayfası YouTube'a bakıp yazar; 6 dk'dan eskisi yayın yok): kırmızı nokta
   const live = (id) => srcIsLive(data.srcLive, id, now);
-  const off = all.filter((x) => !x.url && !cams.some((y) => y.src === x.id)); // bağlantısı olmayan kaynak: soluk
+  const off = all.filter((x) => !x.url); // bağlantısı olmayan kaynak: soluk
   const picks = !!onFollow && (cams.length > 0 || pos.length > 0 || off.length > 0 || !!vidRef);
   const btns = [
     (course || onWind) && ["course", "Parkur"],
@@ -2516,26 +2516,33 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
         <button type="button" className={`sc-vt wide${!cam && !myVid ? " on" : ""}`} aria-pressed={!cam && !myVid} onClick={() => pick("")}>
           Yayınla aynı
         </button>
-        {cams.length || off.length ? (
-          <>
-            <h4 className="sc-vsh">Canlı kaynaklar</h4>
-            <div className="sc-vg">
-              {cams.map((x) => (
-                <button key={x.src} type="button" className={`sc-vt${cam === x.src ? " on" : ""}`} aria-pressed={cam === x.src} onClick={() => pick(x.src)}>
-                  {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
-                  {all.find((y) => y.id === x.src)?.name || x.name}
-                  {live(x.src) ? <b className="sc-vlv" aria-label="yayında" /> : null}
-                </button>
-              ))}
-              {off.map((x) => (
-                <button key={x.id} type="button" className="sc-vt off" disabled>
-                  {x.name}
-                  <small>bağlı değil</small>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : null}
+        {/* kategoriler (Seyhun 2026-11-06): Canlı yayınlar, Kanalımdaki canlılar, Etraftaki kameralar, YouTube videoları; boş olan görünmez */}
+        {SRC_CATS.map(([c, title]) => {
+          const list = all.filter((x) => srcCat(x) === c);
+          if (!list.length) return null;
+          return (
+            <Fragment key={c}>
+              <h4 className="sc-vsh">{title}</h4>
+              <div className="sc-vg">
+                {list.map((x) => {
+                  const grp = cams.find((y) => y.src === x.id)?.grp || "";
+                  return x.url ? (
+                    <button key={x.id} type="button" className={`sc-vt${cam === x.id ? " on" : ""}`} aria-pressed={cam === x.id} onClick={() => pick(x.id)}>
+                      {grp ? <i style={{ background: groupColor(grp) || "#ffd23f" }} aria-hidden="true" /> : null}
+                      {x.name}
+                      {live(x.id) ? <b className="sc-vlv" aria-label="yayında" /> : null}
+                    </button>
+                  ) : (
+                    <button key={x.id} type="button" className="sc-vt off" disabled>
+                      {x.name}
+                      <small>bağlı değil</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </Fragment>
+          );
+        })}
         {pos.length ? (
           <>
             <h4 className="sc-vsh">Canlı konum</h4>

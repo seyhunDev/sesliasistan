@@ -744,10 +744,10 @@ export function BroadcastPage({ orgId, id }) {
       toast("Kaydedilemedi. İnterneti kontrol et.");
     }
   };
-  const addSrc = (k, url = "", name = "") => {
+  const addSrc = (k, url = "", name = "", from = "") => {
     const u = String(url || "").trim();
     if (u && !ytEmbed(u)) return toast(u.includes("/@") ? "Bu kanal bağlantısı (@ad) açılamıyor. Yayının kendi bağlantısını yapıştır: youtube.com/live/… ya da Studio'daki studio.youtube.com/video/…" : "Bağlantı tanınmadı. Yayının bağlantısını yapıştır: youtube.com/live/…, youtu.be/… ya da studio.youtube.com/video/…");
-    const l = addSource(srcList, k).map((x, i, a) => (i === a.length - 1 && u ? { ...x, url: u, ...(name ? { name: String(name).slice(0, 30) } : {}) } : x));
+    const l = addSource(srcList, k).map((x, i, a) => (i === a.length - 1 && u ? { ...x, url: u, ...(name ? { name: String(name).slice(0, 30) } : {}), ...(from ? { from } : {}) } : x));
     setAddOpen(false);
     setAddUrl("");
     setSel({ kind: "src", src: l.at(-1).id });
@@ -2401,8 +2401,8 @@ export function BroadcastPage({ orgId, id }) {
           <button type="button" onClick={() => (setAddOpen(false), setHowOpen(true))} className="mt-2.5 text-[0.875rem] font-semibold text-[#7fb6ff]">
             Nasıl bağlanır
           </button>
-          {addOpen && <MyChannel used={srcList.map((x) => x.url)} onPick={(u) => addSrc(addKind, u)} />}
-          {addOpen && <NearCams race={race} onPick={(u, n) => addSrc("camera", u, n)} />}
+          {addOpen && <MyChannel used={srcList.map((x) => x.url)} onPick={(u) => addSrc(addKind, u, "", "kanal")} />}
+          {addOpen && <NearCams race={race} onPick={(u, n) => addSrc("camera", u, n, "etraf")} />}
           <div className="mt-3 flex gap-2">
             <Button variant="secondary" className="flex-1" onClick={() => setAddOpen(false)}>
               Vazgeç

@@ -635,7 +635,19 @@ export const cleanSources = (list) =>
       ...(/^[\w-]{1,80}$/.test(x.ytStream || "") ? { ytStream: x.ytStream } : {}),
       // auto: kanalda açılan canlı yayından kendiliğinden eklendi (lib/youtube.js withMyLive); yayın bitince kendiliğinden kalkar
       ...(x.auto === true ? { auto: true } : {}),
+      // from: nereden eklendi (Seyhun 2026-11-06 "Ne izleyeyim'de kategoriler"): kanal = kendi kanalımdan, etraf = etraftaki kameralar,
+      // video = YouTube videosu (canlı değil), link = elle yapıştırılan canlı yayın; yoksa cihaz kaynağı (drone, telefon, kamera)
+      ...(SRC_FROM.includes(x.from) ? { from: x.from } : {}),
     }));
+export const SRC_FROM = ["kanal", "etraf", "video", "link"];
+// Kaynağın kategorisi: kanal (kendiliğinden eklenen canlı da), etraf, video, yoksa canlı (cihazlar ve elle eklenen canlı yayın)
+export const srcCat = (x) => (x?.auto || x?.from === "kanal" ? "kanal" : x?.from === "etraf" ? "etraf" : x?.from === "video" ? "video" : "canli");
+export const SRC_CATS = [
+  ["canli", "Canlı yayınlar"],
+  ["kanal", "Kanalımdaki canlılar"],
+  ["etraf", "Etraftaki kameralar"],
+  ["video", "YouTube videoları"],
+];
 export const cleanStream = (s) => {
   const sources = cleanSources(s?.sources);
   const of = (id) => sources.find((x) => x.id === id)?.url;
