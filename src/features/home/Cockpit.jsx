@@ -12,14 +12,12 @@ import { useNow } from "@/hooks/useNow";
 import { isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
-import { HourTable } from "@/features/weather/HourTable";
-import { NowRain } from "@/features/weather/NowRain";
 import { insightFacts, weatherInsight } from "@/features/weather/insight";
-import { InsightCard, InsightChart, useWeatherBrief } from "@/features/weather/WeatherInsight";
+import { useWeatherBrief } from "@/features/weather/WeatherInsight";
+import { HeroStrip } from "./HeroStrip";
 import { useRainRadar } from "@/features/weather/useRainRadar";
 import { radarNow, radarRows } from "@/features/weather/rainLine";
 import { CalendarView } from "@/features/calendar/CalendarView";
-import { DayTimeline } from "./DayTimeline";
 import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
 
@@ -35,7 +33,7 @@ import { BirthdayBadge } from "./PeopleStrip";
 // Yarış günü (Seyhun 2026-10-27 "A · Yarışın yeri büyük", örnek yaris-yeri-hava): seçilen gün bir yarışın günleri içindeyse (away, OwnerHome awayRace)
 // büyük hava ve rüzgâr grafiği yarışın yerinin (raceWeather.loadRaceDay); 2026-10-28 "A · Alt alta ince": büyük grafik yerine iki ince şerit (WindStrip), üstte yarış yeri, altta ev yeri
 // (hava yeri, ör. Dikili: sıcaklık · yön · kn), ona dokununca hava sayfası. Yarışın yeri ev yerine 10 km'den yakınsa ya da hava alınamazsa her şey eskisi gibi.
-export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide = false, children }) {
+export function Cockpit({ weather, inbox, onInbox, live, grid, sel, onSel, wide = false, children }) {
   const { profile } = useAuth();
   const router = useRouter();
   const now = useNow();
@@ -68,7 +66,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide 
       {wide && <div className="hs-sky ck-hero" data-sky={skyKey(n)} aria-hidden="true" />}
       <div className={wide ? "ck-a hs-w" : "ck-a"}>
       {/* Geniş ekranda gökyüzü kart değil: sayfanın üstünde kenardan kenara (hs-sky), altı soluklaşır; yer adı sıcaklığın yanında, tarih Takvim'de (Seyhun 2026-11-05 "A") */}
-      <div className={wide ? "ck hs-top pb-3 pt-1" : "ck ck-hero -mx-4 px-4 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]"} data-sky={skyKey(n)}>
+      <div className={wide ? "ck hs-top pb-3 pt-1" : "ck ck-hero ck-fade -mx-4 px-4 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]"} data-sky={skyKey(n)}>
       <header className="flex items-center gap-2">
         <h1 className="sr-only">{now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}</h1>
         {wide ? (
@@ -112,44 +110,36 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide 
             )}
           </button>
           {n && line && <p className={`mt-2 text-[0.9375rem] leading-snug text-white/90 ${wide ? "line-clamp-1" : ""}`} aria-label="Hava özeti">{line}</p>}
-          {rows?.length > 0 && (
-            <>
-              <div className={`mt-2.5 overflow-hidden rounded-[1.25rem] p-3 ${wide ? "bg-[#0b1a33]/40" : "bg-[#0b1a33]"}`}>
-                {ins && (
-                  <div className={wide ? "mb-2 space-y-1.5" : "mb-3 space-y-2.5"}>
-                    <InsightCard ins={ins} />
-                    <InsightChart ins={ins} compact={wide} />
-                  </div>
-                )}
-                <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} flat />
-                {isToday && !(ins?.kind === "rain" && ins.sub?.startsWith("Burada")) && <NowRain place={home} rows={fcRows} radar={radar} />}
-              </div>
-            </>
-          )}
+          <HeroStrip ins={ins} now={isToday} wide={wide} />
       </>
       </div>
 
-      {days && <div className="mt-3">{days}</div>}
-      {!wide && live}
       </div>
       {wide ? (
         <div className="hs-cal">
           <CalendarView embedded sel={date} onSel={onSel} />
         </div>
       ) : (
-        <div className="ck-b mt-3 space-y-3">
+        <div className="ck-b -mt-5 space-y-2.5">
+          {live}
           {isToday && <NextPlan now={now} />}
-          <DayTimeline date={date} rows={rows} />
         </div>
       )}
       {wide ? (
         <div className="hs-r">
-          {isToday && <NextPlan now={now} />}
           {live}
+          {isToday && <NextPlan now={now} />}
+          {grid}
           {children}
         </div>
       ) : (
-        children
+        <>
+          <div className="ck-c mt-3">{grid}</div>
+          <div className="cal-flat -mx-4 mt-4">
+            <CalendarView embedded flat sel={date} onSel={onSel} />
+          </div>
+          {children}
+        </>
       )}
     </section>
   );

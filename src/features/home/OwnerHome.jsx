@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { HomeDays } from "./HomeDays";
 import { todayStr } from "@/lib/utils/format";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -86,7 +85,6 @@ export function HomeFeed({ weather, inbox, onInbox, quota, wide = false }) {
   // Seçilen gün (Seyhun 2026-10-23 "günler en üstte"): kokpitteki hava, grafik ve planlar bu güne göre; pick: penceresi açık gün
   const today = todayStr();
   const [sel, setSel] = useState(today);
-  const [pick, setPick] = useState(null);
 
 
   const lowBlock = (
@@ -116,16 +114,12 @@ export function HomeFeed({ weather, inbox, onInbox, quota, wide = false }) {
         onSel={setSel}
         wide={wide}
         live={athletes ? <RaceLive open={race.open} /> : null}
-        days={wide ? null : <HomeDays wx={weather.w} today={today} fit={fit} att={athletes} sel={sel} onSel={setSel} pick={pick} onPick={setPick} />}
+        grid={<HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />}
       >
-        <div className="ck-c mt-4">
-          <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} quick={wide} />
-        </div>
         {/* Kulüp kutuları kalır (Seyhun 2026-11-03: "ana sayfadaki kulüp kutuları kalsın"); Yemek · Market · Giyim, Deniz trafiği · Kameralar yok, "Tümü" içinde */}
         {owner && (
           <div className="ck-d mt-5 empty:hidden">
             <HomeSummary
-              tiles={!wide}
               title={athletes || race.on ? "Kulüp" : "Özet"}
               money={canReceipts(kind)}
               race={null}

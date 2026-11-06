@@ -1,5 +1,6 @@
 "use client";
 
+import { ClubIcon } from "./ui";
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
@@ -99,7 +100,7 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
   const msg = useMessagesRow();
   const rows = [
     skel("dues") ? <SkelRow key="dues" /> : duesT && <DuesRow key="dues" t={duesT} mon={mon} />,
-    skel("bank") ? <SkelRow key="bank" /> : bankT && <Row key="bank" href="/mail" title="Hesap" sub={[bankT.label, bankT.sub].filter(Boolean).join(" · ")} right={bankT.big} />,
+    skel("bank") ? <SkelRow key="bank" /> : bankT && <Row key="bank" href="/mail" lead={<ClubIcon name="wallet" color="#0369a1" />} title="Hesap" sub={[bankT.label, bankT.sub].filter(Boolean).join(" · ")} right={bankT.big} />,
     skel("inv") ? <SkelRow key="inv" /> : fisT && <FisRow key="inv" t={fisT} spend={invoices && inv && money ? m.receipts : null} />,
     tail !== false && msg,
   ].filter(Boolean);
@@ -190,6 +191,7 @@ function DuesRow({ t, mon }) {
   return (
     <Row
       href="/dues"
+      lead={<ClubIcon name="users" color="#16a34a" />}
       title={`Aidat · ${mon}`}
       sub={t.sub}
       warn={t.warn}
@@ -208,7 +210,7 @@ function DuesRow({ t, mon }) {
 
 // Fiş / Fatura satırı: ödenmemiş fatura sayısı ve tutarı, yoksa ayın fiş harcaması; altında ayın harcaması. Dokununca Fiş / Fatura
 function FisRow({ t, spend }) {
-  return <Row href="/receipts" title="Fiş / Fatura" sub={[t.sub, spend && `${spend.sub}: ${spend.big}`].filter(Boolean).join(" · ")} warn={t.warn} right={t.big} />;
+  return <Row href="/receipts" lead={<ClubIcon name="receipt" color="#7c3aed" />} title="Fiş / Fatura" sub={[t.sub, spend && `${spend.sub}: ${spend.big}`].filter(Boolean).join(" · ")} warn={t.warn} right={t.big} />;
 }
 
 // Tam genişlik: Instagram (gönderi sayısı, sonuncusu ne zaman; son üç gönderinin görseli, dokununca o gönderi). Görsel yoksa yalnız yazı

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ActionGrid } from "@/components/ui/ActionGrid";
 import { Icon } from "@/components/ui/Icon";
 import { Row } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
@@ -18,7 +17,7 @@ import { todayStr } from "@/lib/utils/format";
 // Ana hesap: Yoklama (bugün antrenman varsa o günün yoklaması; diğerleri gibi vurgusuz), Not, Plan, Fiş, Mesaj (Sporcular grubu), Toplantı, Görev,
 // sonunda Tümü (Süre kokpitteki sıradaki antrenmanın yanında) (bütün sayfalar penceresi; eskiden en alttaki küçük düğmelerdi). Yetkisi olmayan düğme çıkmaz.
 // Aynı iş kartlarda tekrar yazmaz (Notlar kartında "Not ekle", Sporcular kartında Yoklama/Mesaj yok).
-export function HomeGrid({ pages, side, athletes, receipts, owner, quick = false }) {
+export function HomeGrid({ pages, side, athletes, receipts, owner }) {
   const { openAdd } = useAdd();
   const { openReceipt } = useReceipt();
   const { openMeeting } = useMeeting();
@@ -37,13 +36,22 @@ export function HomeGrid({ pages, side, athletes, receipts, owner, quick = false
     !side && { key: "meeting", icon: "users", label: "Toplantı", onClick: openMeeting },
     { key: "task", icon: "task", label: "Görev", onClick: () => openAdd({ type: "task" }) },
   ]
-    .filter(Boolean)
-    .slice(0, 7);
+    .filter(Boolean);
   const groups = (pages || []).filter((g) => g.items.length);
   const allItem = { key: "all", icon: "grid", label: "Tümü", onClick: () => setAll(true) };
+  // İki satır, sekiz düğme (Seyhun 2026-11-06 "daha çok buton, yarışlar falan, 2 satır"): Yarışlar, Antrenman, sonra iş düğmeleri, sonunda Tümü. Sayfa düğmeleri homeActions'tan (yetkiye göre)
+  const flat = groups.flatMap((g) => g.items);
+  const page = (label, key, icon) => {
+    const a = flat.find((x) => x.label === label && x.href);
+    return a && { key, icon, label, href: a.href };
+  };
+  const lead = [page("Yarışlar", "races", "flag"), page("Antrenman", "train", "clock")].filter(Boolean);
+  const body = items.filter((i) => ["att", "my-att", "plan", "note", "receipt", "msg"].includes(i.key));
+  const rest = items.filter((i) => !body.includes(i));
+  const quickItems = [...lead, ...body, ...rest].slice(0, 7);
   return (
     <>
-      {quick ? <QuickRow items={[...items.slice(0, 4), allItem]} /> : <ActionGrid icons items={[...items, allItem]} />}
+      <QuickRow items={[...quickItems, allItem]} />
       <Sheet open={all} onClose={() => setAll(false)} title="Tüm sayfalar">
         <div className="space-y-2 pb-1" data-all-groups>
           {groups.map((g) => {
@@ -71,9 +79,9 @@ export function HomeGrid({ pages, side, athletes, receipts, owner, quick = false
   );
 }
 
-// Geniş ekranda (iPad, Mac) sade iş sırası (Seyhun 2026-11-05 "karman çorman, daha canlı"): en sık dört iş + Tümü tek sırada, renkli yuvarlak simge;
-// diğer işler (Mesaj, Toplantı, Görev) Tümü penceresinde. Renk yalnız iş türünü ayırır (Yoklama mavi, Not yeşil, Plan turuncu, Fiş mor).
-const QCOL = { att: "#2563eb", "my-att": "#2563eb", note: "#16a34a", plan: "#e58a2b", receipt: "#7c3aed", all: "#64748b", msg: "#0891b2", meeting: "#0891b2", task: "#16a34a" };
+// Sade iş düğmeleri (Seyhun 2026-11-05 "karman çorman, daha canlı"; 2026-11-06 iki satır, sekiz düğme; telefon ve iPad aynı): renkli yuvarlak simge, kısa ad;
+// diğer işler (Toplantı, Görev) Tümü penceresinde. Renk yalnız iş türünü ayırır (Yoklama mavi, Not yeşil, Plan turuncu, Fiş mor).
+const QCOL = { races: "#2563eb", train: "#16a34a", att: "#2563eb", "my-att": "#2563eb", note: "#16a34a", plan: "#e58a2b", receipt: "#7c3aed", all: "#64748b", msg: "#0891b2", meeting: "#0891b2", task: "#16a34a" };
 function QuickRow({ items }) {
   const cls = "hq-tile";
   return (
