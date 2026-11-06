@@ -1498,6 +1498,25 @@ function ScWindDrop({ data, now, at = "" }) {
     </div>
   );
 }
+// Parkur ve rüzgâr panelinin üstü (Seyhun 2026-11-06 "şu anki ölçümleri asıl göstermemiz lazım"): şimdi esen, büyük; nereden ölçüldüğü
+function ScWindNow({ data, now }) {
+  const c = curWind(data, null, true, now);
+  if (!c) return null;
+  return (
+    <div className={`sc-wnow${c.man ? " man" : ""}`}>
+      <span className="ar">{gArrow(c.dir)}</span>
+      <b>
+        {c.kn}
+        <small>kn</small>
+      </b>
+      <span className="tx">
+        <strong>{dirText(c)}</strong>
+        {gustText(c) ? <em>{cap(gustText(c))}</em> : null}
+        <small>{c.by}</small>
+      </span>
+    </div>
+  );
+}
 // tek satır rüzgâr (02 kartının altı)
 function ScWindLine({ data, now }) {
   const c = curWind(data, null, true, now);
@@ -2381,6 +2400,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   const res = !!rr?.rows.length;
   const rank = scBoards(data).length > 0;
   const wind = windAhead(data, now).length >= 2;
+  const nowW = !!curWind(data, null, true, now);
   const course = !!courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"));
   const all = sourcesOf(data.stream); // Yayın › kaynaklar: kendi verdiğin adla (Start kamerası, Drone…)
   // kaynak yayında mı (raceLive.srcLive, açık Yayın sayfası YouTube'a bakıp yazar; 6 dk'dan eskisi yayın yok): kırmızı nokta
@@ -2388,8 +2408,8 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   const off = all.filter((x) => !x.url); // bağlantısı olmayan kaynak: soluk
   const picks = !!onFollow && (cams.length > 0 || pos.length > 0 || off.length > 0 || !!vidRef);
   const btns = [
-    (course || onWind) && ["course", "Parkur"],
-    wind && ["wind", "Rüzgâr"],
+    // Parkur ve rüzgâr tek düğme (Seyhun 2026-11-06): üstte şu anki ölçüm, ortada büyük parkur, altta beklenen rüzgâr
+    (course || onWind || wind || nowW) && ["course", "Parkur ve rüzgâr"],
     (rank || res) && ["rank", "Sıralama"],
     prog.length > 0 && ["prog", "Program"],
     vidRef && ["vid", "Video", !!myVid],
@@ -2598,6 +2618,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       <div ref={vidRef} />
     ) : k === "course" ? (
       <>
+        <ScWindNow data={data} now={now} />
         {course ? <ScCourseDrop data={data} sel={sel} mode={mode} /> : <p className="sc-vno">Parkur yok</p>}
         {/* rüzgâr / eksen / hat ölçümü (Seyhun 2026-11-05 "rüzgâr ekleme parkurda olmalı, adı Ölçüm ekle") */}
         {onWind ? (
@@ -2605,9 +2626,8 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
             + Ölçüm ekle
           </button>
         ) : null}
+        {wind ? <ScWindDrop data={data} now={now} at={(prog || []).find((x) => x.state === "next")?.at || ""} /> : null}
       </>
-    ) : k === "wind" ? (
-      <ScWindDrop data={data} now={now} at={(prog || []).find((x) => x.state === "next")?.at || ""} />
     ) : k === "rank" ? (
       <>
         {rank ? <div className="sc-ckx rk"><Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} ctl={rk} /></div> : null}
@@ -2711,7 +2731,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
         {bar.length ? (
           <div className={`sc-vr2${airBtns ? " air" : ""}`}>
             {bar.map(([k, l, dot]) => (
-              <button key={k} type="button" className={`${k === "start" ? "go" : ""}${isOn(k) ? " on" : ""}`} aria-pressed={isOn(k)} onClick={() => (k.startsWith("m:") ? (isOn(k) ? close() : onMasa(k.slice(2))) : tap(k))}>
+              <button key={k} type="button" className={`${k === "start" ? "go" : k === "course" ? "wide2" : ""}${isOn(k) ? " on" : ""}`} aria-pressed={isOn(k)} onClick={() => (k.startsWith("m:") ? (isOn(k) ? close() : onMasa(k.slice(2))) : tap(k))}>
                 {l}
                 {dot ? <i aria-hidden="true" /> : null}
               </button>
