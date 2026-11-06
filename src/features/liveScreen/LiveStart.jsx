@@ -44,7 +44,7 @@ export default function LiveStart(p) {
 }
 // vidHost: Video panelindeki yer (LiveScreen ScView; yalnız uygulama içinde); videolar oraya çizilir
 // masaHost: Yayın masasının yeri (Yayın modunda "Yayında"ya basınca); give: Benim'de seçileni yayına ver isteği { s, n }
-function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false, masaHost = null, addCat = null, now = null, pos = [], give = null, onGiven, list = null, onListed }) {
+function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false, masaHost = null, addCat = null, now = null, pos = [], give = null, onGiven, list = null, onListed, cards = null }) {
   const [orgId, setOrgId] = useState("");
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -86,6 +86,14 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
       () => (onGiven?.(false), setMsg("Kaydedilemedi. İnterneti kontrol et.")),
     );
   }, [orgId, raceId, give, onGiven]);
+  // Parkur ve rüzgâr › Parkur seçimi (LiveScreen ScCrsPick): kartlar yarış boyu kaydedilir (Başlat o kartı yarışa yazar)
+  const cardsN = useRef(0);
+  useEffect(() => {
+    if (!orgId || !cards?.n || cardsN.current === cards.n) return;
+    cardsN.current = cards.n;
+    setCourse((c) => cleanCourse({ ...c, ...cards.k }));
+    saveCards(orgId, raceId, today, cards.k).catch(() => setMsg("Kaydedilemedi. İnterneti kontrol et."));
+  }, [orgId, raceId, today, cards]);
   // Tekne ekranında "Yeni liste" (Seyhun 2026-11-06 "listeler açıklanınca tıklarım, her gün değişecek gruplar"): renk ya da final
   // listesi (PDF, foto, Excel) okunur, bugünün grupları olur (yarış sitesinden gelen belgeyle aynı iş: raceSite applyList), sporcular kayıt listesine eklenir.
   const listN = useRef(0);

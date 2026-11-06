@@ -83,7 +83,7 @@ export function demoData(step, t0, s0, now, v0 = s0, vt = 0) {
   // start: start dizisinde ve start adımında videodaki start anı, sonra adımın başından yarışın o dakikası kadar önce
   const start = step === S.SEQ || step === S.START ? v0 + VID_START : s0 - (RACE_MIN[step] || 0) * 60e3;
   const done_ = step >= S.END;
-  const plan = { day: today, at: hm(now + 3 * 60e3 + 59e3), order: [...(step < S.START ? [{ cls: "Optimist", grp: "Sarı", prep: "P" }] : []), ...(!done_ ? [{ cls: "Optimist", grp: "Mavi", prep: "P" }, { cls: "Optimist", grp: "Mavi", prep: "P" }] : [])], status: done_ ? "done" : "", next: done_ ? { day: tom, at: "11:00" } : null, showAt: "06:00", ap: null, orange: step >= S.ORANGE && !done_ ? iso(now) : "" };
+  const plan = { day: today, at: hm(now + 3 * 60e3 + 59e3), order: [...(step < S.START ? [{ cls: "Optimist", grp: "Sarı", prep: "P" }] : []), ...(!done_ ? [{ cls: "Optimist", grp: "Mavi", prep: "P" }, { cls: "Optimist", grp: "Mavi", prep: "P" }, { cls: "ILCA 6", grp: "", prep: "P" }] : [])], status: done_ ? "done" : "", next: done_ ? { day: tom, at: "11:00" } : null, showAt: "06:00", ap: null, orange: step >= S.ORANGE && !done_ ? iso(now) : "" };
   // parkur: komite parkuru 300°'ye attı (eksen), rüzgâr 295°
   const cAt = iso(step === S.COURSE ? s0 : t0 - 700e3);
   const course = step >= S.COURSE ? { pts: {}, obs: [{ id: "w1", kind: "wind", deg: 295, kn: 12, at: cAt, by: "ben", ref: "" }, { id: "a1", kind: "axis", deg: 300, at: cAt, by: "ben", ref: "" }, { id: "l1", kind: "line", ref: "pin", deg: 32, at: cAt, by: "ben" }], len: { orsa: 900 }, cards: [{ id: "A", route: ROUTE }, { id: "B", route: ["1", "4", "1", "2", "3", "F"] }], sel: "A" } : { pts: {}, obs: [], len: {} };

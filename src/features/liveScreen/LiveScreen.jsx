@@ -7,7 +7,7 @@ import { liveUrl, sourcesOf, videoGroup } from "@/lib/raceCams";
 import { srcIsLive } from "@/lib/srcLive";
 import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset, winLeft, FIN_WIN } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
+import { CARD_IDS, CARD_TYPES, ORSA_M, cardFor, cardKey, cardType, cleanCards, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, clubName, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc, SRC_CATS, srcCat } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
@@ -2442,6 +2442,102 @@ function Sc05({ data, sel, mode, now }) {
     </div>
   );
 }
+// Parkur seçimi (Seyhun 2026-11-06 "parkur seçimini canlı yayın sayfasında yapabilmeliyim; seçtiğimde kalsın; ilk baş en basit parkuru seçtim,
+// bitti; çoklu parkurda sınıfa özel kalıcı"): üstte seçili parkur + Değiştir; açınca parkur şekilleri ve rota; "Sınıflara göre" ile sınıf
+// çipleri, sınıfa dokununca o sınıfın parkuru seçilir (raceLive.cards: kartlar, sel, by "Sınıf|"). Yarış boyu kalır, Başlat o kartı yarışa yazar.
+const crsClasses = (data) => {
+  const out = [];
+  const add = (c) => c && !out.includes(c) && out.push(c);
+  (data.plan?.order || []).forEach((o) => add(o.cls));
+  Object.values(data.rounds || {}).forEach((r) => add(r?.cls));
+  Object.keys(cleanCourse(data.course || {}).by || {}).forEach((k) => add(k.split("|")[0]));
+  return out.slice(0, 8);
+};
+// parkur şeklinin küçük çizimi (rüzgârsız, yazısız)
+const crsMini = (data, type, route) => courseSvg({ ...data, course: { ...(data.course || {}), cards: [{ id: "A", type, route }], sel: "A", by: {} } }, route, { W: 360, H: 300, bare: true, sail: false, pre: `mn${type}` });
+function ScCrsPick({ data, view, onView, onCards }) {
+  const crs = cleanCourse(data.course || {});
+  const [open, setOpen] = useState(false);
+  const [more, setMore] = useState(false);
+  const cls = crsClasses(data);
+  const own = (c) => !!crs.by[cardKey(c, "")];
+  const card = view ? cardFor(crs, view, "") : selCard(crs);
+  const [rt, setRt] = useState(null); // yazılan rota (null: kartınki)
+  const split = cls.some(own);
+  const put = (next) => onCards?.(cleanCards({ ...crs, ...next }));
+  // bu kartı başka bir sınıf ya da Herkes de kullanıyor mu (kullanıyorsa sınıfa yeni kart açılır)
+  const shared = (id) => (view ? crs.sel === id || cls.some((c) => c !== view && cardFor(crs, c, "").id === id) : false);
+  const forClass = (type, route) => {
+    const same = crs.cards.find((k) => k.type === type && routeText(k.route) === routeText(route));
+    if (same) return put({ by: { ...crs.by, [cardKey(view, "")]: same.id } });
+    const id = CARD_IDS.find((x) => !crs.cards.some((k) => k.id === x));
+    if (!id) return;
+    put({ cards: [...crs.cards, { id, type, route }], by: { ...crs.by, [cardKey(view, "")]: id } });
+  };
+  const setType = (t) => {
+    if (t === card.type) return;
+    if (view && shared(card.id)) return forClass(t, card.route);
+    put({ cards: crs.cards.map((k) => (k.id === card.id ? { ...k, type: t } : k)) });
+  };
+  const saveRt = () => {
+    const r = cleanRoute(String(rt ?? "").replace(/fini[sş]/gi, "F").split(/[\s·›,>-]+/));
+    setRt(null);
+    if (r.length < 2 || routeText(r) === routeText(card.route)) return;
+    if (r.at(-1) !== "F") r.push("F");
+    if (view && shared(card.id)) return forClass(card.type, r);
+    put({ cards: crs.cards.map((k) => (k.id === card.id ? { ...k, route: r } : k)) });
+  };
+  const toAll = () => put({ by: Object.fromEntries(Object.entries(crs.by).filter(([k]) => k.split("|")[0] !== view)) });
+  return (
+    <div className={`sc-pk${open ? " on" : ""}`}>
+      {split || (open && more) ? (
+        <div className="sc-pkc" role="tablist">
+          {["", ...cls].map((c) => (
+            <button key={c || "all"} type="button" role="tab" aria-selected={view === c} onClick={() => (setRt(null), onView(c))}>
+              {c || (split ? "Diğerleri" : "Herkes")}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="sc-pkh">
+        <span>
+          <b>{CARD_TYPES[card.type] || ""}</b>
+          <small>{["Start", ...card.route.map((x) => (x === "F" ? "Finiş" : x))].join(" › ")}</small>
+        </span>
+        {onCards ? (
+          <button type="button" className="sc-pkb" aria-expanded={open} onClick={() => (setOpen(!open), setRt(null))}>
+            {open ? "Tamam" : "Değiştir"}
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <div className="sc-pkd">
+          <div className="sc-pkt">
+            {Object.entries(CARD_TYPES).map(([t, n]) => (
+              <button key={t} type="button" aria-pressed={card.type === t} onClick={() => setType(t)}>
+                <i dangerouslySetInnerHTML={{ __html: crsMini(data, t, card.route) }} />
+                <b>{n}</b>
+              </button>
+            ))}
+          </div>
+          <label className="sc-pkr">
+            <small>Rota</small>
+            <input value={rt ?? card.route.map((x) => (x === "F" ? "Finiş" : x)).join(" ")} inputMode="text" enterKeyHint="done" onChange={(e) => setRt(e.target.value)} onBlur={saveRt} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />
+          </label>
+          {view && own(view) ? (
+            <button type="button" className="sc-pkx" onClick={toAll}>
+              {`${view} herkesle aynı olsun`}
+            </button>
+          ) : cls.length && !more && !split ? (
+            <button type="button" className="sc-pkx" onClick={() => setMore(true)}>
+              Sınıflara göre
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 // Telefon/tablet Parkur (Seyhun 2026-11-05 "rüzgâr gibi yukarıdan açılsın; rota, eksen daha iyi gösterilsin"): kartın altında çizim, altında
 // rota adımları (Start › 1 › 2 › Finiş) ve iki kutu: eksen (derece + rüzgârın farkı), hat avantajı. Rüzgâr kartta zaten yazıyor, tekrar yok.
 // Büyük parkur çizimi: sahnenin en-boyu panelin en-boyuna göre (dikey telefonda uzun, yatay iPad'de geniş), parkur alanı doldurur
@@ -2465,9 +2561,12 @@ function ScCourseBig({ data, route }) {
     </div>
   );
 }
-function ScCourseDrop({ data, sel, mode, bare = false }) {
+function ScCourseDrop({ data: data0, sel, mode, bare = false, view = null }) {
   const racing = mode === "race";
-  const route = sceneRoute(data, racing ? sel : null, true, racing ? "race" : "wait");
+  // sınıfın parkuru seçiliyse (ScCrsPick) o kartın şekli ve rotası
+  const vk = view ? cardFor(cleanCourse(data0.course || {}), view, "") : null;
+  const data = vk ? { ...data0, course: { ...data0.course, sel: vk.id } } : data0;
+  const route = vk ? vk.route : view === "" ? selCard(cleanCourse(data.course || {})).route : sceneRoute(data, racing ? sel : null, true, racing ? "race" : "wait");
   const svg = courseSvg(data, route, { W: 900, H: 760, bare });
   if (!svg) return null;
   // Parkur ve rüzgâr paneli (Seyhun 2026-11-06 "çok fazla tekrar; bir kere parkur büyük"): sayılar üstteki rüzgâr kartında, burada yalnız çizim
@@ -2610,7 +2709,8 @@ const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // sağdan kayarak); seçince kapanır. Alt çubukta yalnız Parkur · Rüzgâr · Sıralama · Video · Start; paneller açılıp kapanırken kayar.
 const SHUT_MS = 190;
 const FULL_VP = ["course", "wind", "rank", "prog"];
-function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", photos = [], defCam = "" }) {
+function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", photos = [], defCam = "", onCards = null }) {
+  const [crsView, setCrsView] = useState(null); // Parkur panelinde bakılan sınıf (null: o anki yarışın parkuru, "": herkes)
   const ref = useRef(null);
   const [shut, setShut] = useState(""); // kapanırken kayan panel (animasyon bitince kalkar)
   const dragRef = useRef(null);
@@ -2890,7 +2990,8 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
     ) : k === "course" ? (
       <>
         <ScWindNow data={data} now={now} />
-        {course ? <ScCourseDrop data={data} sel={sel} mode={mode} bare /> : <p className="sc-vno">Parkur yok</p>}
+        {course || onCards ? <ScCrsPick data={data} view={crsView ?? ""} onView={setCrsView} onCards={onCards} /> : null}
+        {course ? <ScCourseDrop data={data} sel={sel} mode={mode} bare view={crsView} /> : <p className="sc-vno">Parkur yok</p>}
         <ScWindDay data={data} now={now} />
         {/* rüzgâr / eksen / hat ölçümü (Seyhun 2026-11-05 "rüzgâr ekleme parkurda olmalı, adı Ölçüm ekle") */}
         {onWind ? (
@@ -3160,7 +3261,10 @@ export function LiveScreen({ id, y = "" }) {
     if (!vCam) setVCam(BG_DEF);
   }
   const locT = useLocalTimer(skew, id, own && !demoOn && !y, data0?.timer || null);
-  const data = useMemo(() => (locT && data0 ? { ...data0, timer: locT } : data0), [data0, locT]);
+  // parkur seçimi (ScCrsPick): yazılana kadar ekranda hemen görünür; sunucudaki cardAt yenilenince sunucununki
+  const [crsReq, setCrsReq] = useState(null); // { k: kartlar, n, at }
+  const crsOv = crsReq && data0 && !((data0.course?.cardAt || "") >= crsReq.at) ? crsReq.k : null;
+  const data = useMemo(() => (data0 && (locT || crsOv) ? { ...data0, ...(locT ? { timer: locT } : {}), ...(crsOv ? { course: { ...data0.course, ...crsOv } } : {}) } : data0), [data0, locT, crsOv]);
   const [vTab, setVTab] = useState(""); // alt çubukta açık olan: cam, pos, course, wind, rank, start (boş = kapalı)
   const myRef = useRef(null); // arka plandaki kendi videom (oynat, geri al, baştan)
   const playMine = useCallback((vid, blob) => {
@@ -3327,8 +3431,8 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} still={still} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} /> : null} />
-        {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} list={newList} onListed={onListed} /> : null}
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} still={still} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} onCards={(adm && inApp) || demoOn ? (k) => setCrsReq({ k, n: Date.now(), at: new Date().toISOString() }) : null} /> : null} />
+        {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} list={newList} onListed={onListed} cards={crsReq} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
       {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}

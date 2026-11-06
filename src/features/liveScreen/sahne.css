@@ -1257,3 +1257,26 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 .sc .sc-wpg button:active { transform: scale(0.94); }
 .sc .sc-wpg button:disabled { opacity: 0.3; }
 .sc-wpg svg { width: 1.2em; height: 1.2em; }
+
+/* Parkur seçimi (2026-11-06): seçili parkur + Değiştir; açınca şekiller, rota, sınıflara göre */
+.sc-pk { margin-bottom: 0.6em; padding: 0.6em 0.85em; border-radius: 0.9em; background: rgba(255, 255, 255, 0.06); }
+.sc-pkh { display: flex; align-items: center; gap: 0.7em; }
+.sc-pkh > span { display: flex; flex-direction: column; gap: 0.25em; flex: 1 1 auto; min-width: 0; }
+.sc-pkh b { font: 800 1.05em/1.1 var(--sc-c); color: #fff; }
+.sc-pkh small { font: 700 0.85em/1.2 var(--sc-c); color: rgba(255, 255, 255, 0.6); letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc .sc-pkb { flex: none; height: 2.4em; padding: 0 1em; border: 0; border-radius: 99em; background: rgba(255, 255, 255, 0.12); color: #fff; font: 700 0.9em/1 var(--sc-c); -webkit-tap-highlight-color: transparent; }
+.sc .sc-pk.on .sc-pkb { background: #2563eb; }
+.sc .sc-pkb:active, .sc .sc-pkt button:active, .sc .sc-pkc button:active, .sc .sc-pkx:active { transform: scale(0.96); }
+.sc-pkc { display: flex; gap: 0.4em; margin: 0 0 0.6em; overflow-x: auto; scrollbar-width: none; }
+.sc .sc-pkc button { flex: none; height: 2.2em; padding: 0 0.9em; border: 0; border-radius: 99em; background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.75); font: 700 0.85em/1 var(--sc-c); }
+.sc .sc-pkc button[aria-selected="true"] { background: #fff; color: #0b1a33; }
+.sc-pkd { margin-top: 0.7em; animation: sc-drop 0.24s ease both; transform-origin: top; }
+.sc-pkt { display: grid; grid-template-columns: repeat(2, minmax(0, 13em)); gap: 0.5em; }
+.sc .sc-pkt button { display: flex; flex-direction: column; align-items: center; gap: 0.3em; padding: 0.45em 0.45em 0.6em; border: 0; border-radius: 0.75em; background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.8); font: 700 0.9em/1 var(--sc-c); }
+.sc .sc-pkt button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px #4d8dff; background: rgba(77, 141, 255, 0.14); color: #fff; }
+.sc-pkt i { display: block; width: 100%; aspect-ratio: 6 / 5; overflow: hidden; border-radius: 0.5em; }
+.sc-pkt i svg { display: block; width: 100%; height: 100%; }
+.sc-pkr { display: flex; align-items: center; gap: 0.7em; margin-top: 0.6em; padding: 0 0.85em; height: 2.8em; border-radius: 0.75em; background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+.sc-pkr small { font: 700 0.75em/1 var(--sc-c); letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+.sc-pkr input { flex: 1 1 auto; min-width: 0; border: 0; background: none; outline: none; color: #fff; font: 700 1em/1 var(--sc-c); letter-spacing: 0.06em; }
+.sc .sc-pkx { display: block; width: 100%; text-align: center; margin-top: 0.6em; height: 2.6em; border: 0; border-radius: 0.75em; background: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.85); font: 700 0.9em/1 var(--sc-c); }
