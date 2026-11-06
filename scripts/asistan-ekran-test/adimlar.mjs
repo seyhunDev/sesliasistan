@@ -736,16 +736,18 @@ async function scenarios3(h) {
     await shot.setViewportSize({ width: 600, height: 800 });
     await shot.setContent(`<body style="margin:0;background:#ddd;display:grid;place-items:center;height:100vh">${q.createSvgTag({ cellSize: 6, margin: 4 })}</body>`);
     const png = await shot.screenshot();
+    if (process.env.QR_PNG) (await import("node:fs")).writeFileSync(process.env.QR_PNG, png);
     await shot.close();
-    // Dokun konuş (2026-11-06): dokun dinlesin, hiçbir şey söylemeden yeniden dokun: asistan açık, boşta; altta Fotoğraf · Yaz
+    // Dokun konuş (2026-11-06): basılı tut → yazı kutusu (içinde Fotoğraf)
     {
       const o = page.locator("[data-dome] [data-orb]:visible").first();
       const b = await o.boundingBox();
-      await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
-      await waitFor(async () => (await state(page)) === "listening", 4000);
-      await page.evaluate(() => document.querySelector("[data-dome] .afull [data-orb]")?.click());
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+      await page.mouse.down();
+      await page.waitForTimeout(650);
+      await page.mouse.up();
+      await page.locator("[data-dome] textarea").waitFor({ timeout: 4000 }).catch(() => {});
     }
-    await waitFor(async () => (await state(page)) === "idle", 4000);
     const b2 = aiCalls();
     const pick = page.locator("[data-dome] input[type=file][accept='image/*']");
     await check(GQ, "yazı kutusunda Fotoğraf", "düğme görünür", async () => {
@@ -755,7 +757,7 @@ async function scenarios3(h) {
     if (await pick.count()) await pick.setInputFiles({ name: "kod.png", mimeType: "image/png", buffer: png });
     await check(GQ, "kare kodun fotoğrafı", "kişi okunur, yapay zekaya gitmez", async () => {
       const ok = await waitFor(async () => /Velora kare kodundan okudum\. Deniz Aydın/.test(clean(await convo(page))), 8000);
-      return [!!ok && aiCalls() === b2, `${clean(await last(page)).slice(0, 90)} · yapay zeka ${aiCalls() - b2}`];
+      return [!!ok && aiCalls() === b2, `${clean(await last(page)).slice(0, 90)} · yapay zeka ${aiCalls() - b2} DBG ${clean(await dome(page).innerText()).slice(0, 400)}`];
     });
     await talkAsk(page, "vazgeç");
     await waitFor(async () => (await state(page)) === "idle", 3000);
