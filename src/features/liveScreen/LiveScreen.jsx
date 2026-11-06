@@ -735,7 +735,7 @@ const LOAD_MS = 8000;
 const FADE_MS = 1100;
 const noSub = () => () => {};
 // Canlı yayın yokken arka plan (Seyhun 2026-11-04 "her zaman canlı yayın yapamayacağım; arkada ne gösterelim"): bugünün kayıtları sırayla
-// (yoksa yarışın son kayıtları), köşede "Tekrar"; kayıt da yoksa yarış yerinin fotoğrafı yavaşça yakınlaşır (Ken Burns)
+// (yalnız bugünün), köşede "Tekrar"; kayıt da yoksa yarış yerinin fotoğrafı yavaşça yakınlaşır (Ken Burns)
 const AUTO_MAX = 6;
 const dayIst = (t) => {
   const ms = typeof t === "number" ? t : Date.parse(t || "");
@@ -743,8 +743,8 @@ const dayIst = (t) => {
 };
 function autoRecs(data, today) {
   const vids = (data.media || []).filter((m) => m.kind === "video" && m.url);
-  const day = vids.filter((m) => dayIst(m.at) === today);
-  return (day.length ? day : vids).slice(-AUTO_MAX);
+  // yalnız bugünün kayıtları (Seyhun 2026-11-06 "olması gereken neyse"): eski günlerin videoları canlı sanılmasın; bugün kayıt yoksa fotoğraf
+  return vids.filter((m) => dayIst(m.at) === today).slice(-AUTO_MAX);
 }
 // ekranda canlı görüntü ya da elle seçilen kayıt yoksa (tekne haritası da değilse) kendiliğinden tekrar açılır mı
 function autoOn(data, isCur, entry, today) {
