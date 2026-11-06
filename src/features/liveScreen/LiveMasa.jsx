@@ -268,6 +268,13 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
                   </div>
                 </>
               ) : null}
+              {/* Kategorisi (Seyhun 2026-11-06 "yeni düzene niye geçmedi"): önceden eklenenler Canlı yayınlar'da durur; buradan taşınır */}
+              <h4 className="lms-h">Kategorisi</h4>
+              <div className="lms-cs">
+                {SRC_CATS.map(([c, t]) =>
+                  chip(srcCat(s) === c, t, () => putSrc(s.id, { from: c === "canli" ? "" : c, ...(c !== "kanal" && s.auto ? { auto: false } : {}) }), "", c),
+                )}
+              </div>
               <SrcKey src={s} onStream={(v) => putStream(s.id, v)} toast={say} />
               {!isOn({ kind: "src", src: s.id }) ? (
                 <button type="button" className="lms-b red" onClick={() => (setSelSrc(""), putSources(srcList.filter((x) => x.id !== s.id)))}>
