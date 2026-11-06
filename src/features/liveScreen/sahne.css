@@ -1311,3 +1311,12 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 .sc .sc-vr2 button.gear.hide { margin-left: 0.35em; }
 .sc .sc-vb .sc-vshow { width: 2.9em; height: 2.9em; background: rgba(8, 16, 30, 0.8); }
 .sc .sc-vb .sc-vshow svg { width: 1.55em; height: 1.55em; }
+
+/* Ekranda › kaynak kutusunun ⋯ düğmesi (2026-11-06 örnek kaynak-detay) */
+.sc .sc-vp.src .sc-vg > .sc-vtw { position: relative; display: flex; flex: 0 0 auto; scroll-snap-align: start; }
+.sc .sc-vp.src .sc-vtw > .sc-vt { min-width: 8.5em; max-width: 14em; height: 3.4em; padding-right: 2.7em; }
+.sc .sc-vtw > .sc-vt.off:not(:disabled) { opacity: 0.6; }
+.sc .sc-vmore { position: absolute; right: 0.4em; top: 50%; display: grid; place-items: center; width: 2.1em; height: 2.1em; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.12); color: #fff; transform: translateY(-50%); -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.sc .sc-vmore svg { width: 1.15em; height: 1.15em; fill: currentColor; }
+.sc .sc-vtw > .sc-vt.on + .sc-vmore { background: #e8edf3; color: #0b1626; }
+.sc .sc-vmore:active { transform: translateY(-50%) scale(0.92); }

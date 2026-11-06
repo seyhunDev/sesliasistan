@@ -39,3 +39,40 @@
   .eay-l { border-top: 0; border-right: 1px solid #e5e7eb; }
   .eay-d { padding: 1.2em 1.6em; }
 }
+
+/* Kaynağın detay sayfası (2026-11-06 örnek canli-tv/kaynak-detay): beyaz tam sayfa, X; iPad'de solda önizleme, sağda sekmeler */
+.kdt { position: fixed; inset: 0; z-index: 60; overflow-y: auto; overscroll-behavior: contain; background: #fff; color: #0f172a; font: 16px/1.35 -apple-system, "SF Pro Text", Inter, system-ui, sans-serif; padding: calc(1em + env(safe-area-inset-top)) calc(1.1em + env(safe-area-inset-right)) calc(2em + env(safe-area-inset-bottom)) calc(1.1em + env(safe-area-inset-left)); animation: kdt-in 0.22s ease both; }
+@keyframes kdt-in { from { opacity: 0; transform: translateY(1.2em); } to { opacity: 1; transform: none; } }
+.kdt-x { position: fixed; top: calc(0.8em + env(safe-area-inset-top)); right: calc(0.8em + env(safe-area-inset-right)); z-index: 1; display: grid; place-items: center; width: 2.5em; height: 2.5em; padding: 0; border: 0; border-radius: 50%; background: #f1f5f9; color: #0f172a; }
+.kdt-x svg { width: 1.2em; height: 1.2em; }
+.kdt-w { max-width: 40rem; margin: 0 auto; padding-top: 2.6em; }
+.kdt-pv { position: relative; aspect-ratio: 16 / 9; border-radius: 0.9em; overflow: hidden; background: linear-gradient(135deg, #1e3a5f, #0b1626); }
+.kdt-pv img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.kdt-pv em { position: absolute; left: 0.6em; top: 0.6em; padding: 0.2em 0.55em; border-radius: 99px; background: #e11d48; color: #fff; font-size: 0.75em; font-style: normal; font-weight: 700; letter-spacing: 0.04em; }
+.kdt-pv em.no { background: rgba(15, 23, 42, 0.7); }
+.kdt-t { margin: 0.7em 0 0.1em; font-size: 1.75em; font-weight: 700; letter-spacing: -0.02em; }
+.kdt-m { margin: 0 0 0.9em; color: #64748b; font-size: 0.92em; }
+.kdt-go { display: block; width: 100%; padding: 0.85em; border: 0; border-radius: 0.75em; background: #2563eb; color: #fff; font-family: inherit; font-size: 1em; font-weight: 600; }
+.kdt-go:disabled { opacity: 0.4; }
+.kdt-go.off { background: #fee2e2; color: #b91c1c; }
+.kdt-go:active { transform: scale(0.98); }
+.kdt-n { margin: 0.6em 0 0; color: #16a34a; font-size: 0.9em; text-align: center; }
+.kdt-b { margin-top: 1.3em; }
+.kdt-tabs, .kdt-seg { display: flex; gap: 0.2em; padding: 0.2em; border-radius: 0.7em; background: #f1f5f9; }
+.kdt-tabs button, .kdt-seg button { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 0.4em; min-width: 0; padding: 0.6em 0.4em; border: 0; border-radius: 0.55em; background: none; color: #475569; font-family: inherit; font-size: 0.88em; font-weight: 600; white-space: nowrap; }
+.kdt-tabs button.on, .kdt-seg button.on { background: #fff; color: #0f172a; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.14); }
+.kdt-seg.wrap { flex-wrap: wrap; }
+.kdt-seg.wrap button { flex: 1 1 6em; }
+.kdt-seg i { width: 0.6em; height: 0.6em; border-radius: 50%; flex: none; }
+.kdt-l { margin-top: 0.8em; border-top: 1px solid #e5e7eb; }
+.kdt-r { display: flex; align-items: center; gap: 1em; padding: 0.85em 0.2em; border-bottom: 1px solid #e5e7eb; }
+.kdt-r > span { flex: none; }
+.kdt-r input { flex: 1 1 auto; min-width: 0; padding: 0; border: 0; background: none; color: #475569; font: inherit; text-align: right; outline: none; }
+.kdt-r input:focus { color: #0f172a; }
+.kdt-h { margin: 1.3em 0 0.5em; color: #64748b; font-size: 0.75em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.kdt-key .masa-b { padding: 0.6em 0.9em; border: 0; border-radius: 0.6em; background: #f1f5f9; color: #0f172a; font-family: inherit; font-size: 0.9em; font-weight: 600; }
+.kdt-del { display: block; margin: 2em auto 0; padding: 0.6em 1em; border: 0; background: none; color: #dc2626; font-family: inherit; font-size: 1em; font-weight: 600; }
+@media (min-width: 48rem) {
+  .kdt-w { max-width: 60rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0 2.2em; align-items: start; }
+  .kdt-b { margin-top: 0; }
+}

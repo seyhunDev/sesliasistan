@@ -5,6 +5,7 @@
 // ad, bağlantı, çektiği grup, anahtar, sil, + Kaynak), Canlı konum, Kayıtlar. Yazı: ekranda yazı ve ekrandaki ad. Yazılar Yayın sayfasıyla
 // aynı kayıtlar (raceLiveStore, liveActions). Yalnız ana hesap, yalnız uygulama içinde (LiveStart çizer).
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { loadRoundsOf, saveCamBy, saveEvre, saveEvreMan, saveOnAir, savePin, savePlanKeys, saveShowTpl, saveSrcLive, watchRounds } from "@/features/athletes/raceLiveStore";
 import { liveUrl, recName, setStream, showOnScreen } from "./liveActions";
 import { EVRES, EVRE_DEF, EVRE_NAME, EVRE_WHEN, ITEM_NAME, ITEM_SECS, SHOW_ITEMS, SIDES, SIDE_DEF, SIDE_NAME, SRC_CATS, SRC_KINDS, addSource, cleanCourseShow, srcCat, streamSources, ytEmbed, ytId } from "@/lib/raceRounds";
@@ -38,7 +39,8 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
   const [evOpen, setEvOpen] = useState("");
   const [aySel, setAySel] = useState(""); // Ekran ayarlarında seçilen evre
   const [ayVid, setAyVid] = useState(false); // görüntü seçenekleri açık
-  const [selSrc, setSelSrc] = useState("");
+  const [det, setDet] = useState(addCat?.det || ""); // ⋯ ile açılan kaynağın detay sayfası (kaynak id)
+  const [dTab, setDTab] = useState("bil"); // detay sayfasının sekmesi: bil (Bilgiler), grp (Grup), ayar (Ayarlar)
   const [wipe, setWipe] = useState(false); // Kaynakları sıfırla: ikinci dokunuşta siler
   const [add, setAdd] = useState(addCat?.c || ""); // açık ekleme kutusu: kategori (canli, video, kanal, etraf)
   const [addKind, setAddKind] = useState("drone");
@@ -65,7 +67,8 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
     setAddSeen(addN);
     setTab(addCat.tab || "src");
     setAdd(addCat.c || "");
-    setSelSrc("");
+    setDet(addCat.det || "");
+    setDTab("bil");
     setAddUrl("");
     setAddName("");
   }
@@ -150,7 +153,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
   };
   // sil: yalnız listeden (YouTube'daki yayın ve anahtarı kalır); kanalımdan kendiliğinden gelen süren yayın bir daha eklenmez
   const delSrc = (s) => {
-    setSelSrc("");
+    closeDet();
     const v = ytId(s.url);
     putSources(srcList.filter((x) => x.id !== s.id), s.auto && v ? [...(L?.stream?.gone || []), v] : null);
   };
@@ -158,7 +161,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
   // kameralar ve yayında işareti silinir; kanalımdan gelen süren yayınlar bir daha kendiliğinden eklenmez; ekrandaki kaynak kalkar
   const wipeSrc = () => {
     setWipe(false);
-    setSelSrc("");
+    setDet("");
     setAdd("");
     const gone = [...new Set([...(L?.stream?.gone || []), ...srcList.filter((x) => x.auto).map((x) => ytId(x.url)).filter(Boolean)])];
     putSources([], gone);
@@ -179,7 +182,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
     setAdd("");
     setAddUrl("");
     setAddName("");
-    setSelSrc(l.at(-1).id);
+    if (!u && from !== "video") setDet(l.at(-1).id); // bağlantısız eklenen kaynak: detayda bağlantı yazılır
     putSources(l);
   };
   const putSrc = (sid, p) => {
@@ -229,7 +232,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
     const th = thumb(x.url);
     const vd = srcCat(x) === "video";
     return (
-      <button key={x.id} type="button" className={`lms-t${isOn({ kind: "src", src: x.id }) ? " air" : ""}${selSrc === x.id ? " sel" : ""}`} aria-pressed={selSrc === x.id} onClick={() => (setSelSrc(selSrc === x.id ? "" : x.id), setAdd(""))}>
+      <button key={x.id} type="button" className={`lms-t${isOn({ kind: "src", src: x.id }) ? " air" : ""}`} onClick={() => (setDet(x.id), setDTab("bil"), setAdd(""))}>
         <span className={`th${lv || vd ? "" : " off"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element -- YouTube küçük resmi */}
           {th ? <img src={th} alt="" loading="lazy" /> : null}
@@ -274,54 +277,123 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
       </div>
     </div>
   );
-  const srcBox = () => {
-    const s = srcList.find((x) => x.id === selSrc);
-    if (!s) return null;
-    return (
-            <div className="lms-sd" key={s.id}>
-              <button type="button" className="lms-b go wide" disabled={!s.url} onClick={() => show({ kind: "src", src: s.id })}>
-                {isOn({ kind: "src", src: s.id }) ? `${s.name} yayında` : `${s.name}'i yayına ver`}
-              </button>
-              <input
-                className="lms-in"
-                defaultValue={s.name}
-                maxLength={30}
-                aria-label="Kaynağın adı"
-                onBlur={(e) => {
-                  const v = e.target.value.trim().slice(0, 30);
-                  if (v && v !== s.name) putSrc(s.id, { name: v });
-                  else e.target.value = s.name;
-                }}
-                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-              />
-              <input className="lms-in" defaultValue={s.url} inputMode="url" placeholder={`${s.name} · YouTube bağlantısı`} aria-label="Bağlantı" onBlur={(e) => e.target.value.trim() !== s.url && putSrc(s.id, { url: e.target.value.trim() })} />
-              {groupRows.length ? (
-                <>
-                  <h4 className="lms-h">Çektiği grup</h4>
-                  <div className="lms-cs">
-                    {groupRows.map(([c, g]) => {
-                      const k = cardKey(c, g);
-                      const multi = groupRows.some(([c2]) => c2 !== c);
-                      return chip(L.camBy?.[k] === s.id, multi ? [c, g].filter(Boolean).join(" · ") : g || c, () => putSrcGrp(s.id, k), g ? groupColor(g) : "", k);
-                    })}
-                  </div>
-                </>
-              ) : null}
-              {/* Kategorisi (Seyhun 2026-11-06 "yeni düzene niye geçmedi"): önceden eklenenler Canlı yayınlar'da durur; buradan taşınır */}
-              <h4 className="lms-h">Kategorisi</h4>
-              <div className="lms-cs">
-                {SRC_CATS.map(([c, t]) =>
-                  chip(srcCat(s) === c, t, () => putSrc(s.id, { from: c === "canli" ? "" : c, ...(c !== "kanal" && s.auto ? { auto: false } : {}) }), "", c),
-                )}
-              </div>
-              <SrcKey src={s} onStream={(v) => putStream(s.id, v)} toast={say} />
-              {!isOn({ kind: "src", src: s.id }) ? (
-                <button type="button" className="lms-b red" onClick={() => delSrc(s)}>
-                  Kaynağı sil
-                </button>
-              ) : null}
+  // Kaynağın detay sayfası (Seyhun 2026-11-06 örnek kaynak-detay: "3 nokta; detay sayfası açılıp işlemler yapılıp X ile kapansın"):
+  // beyaz tam sayfa; önizleme, ad, Yayına ver, ad / bağlantı / yayın anahtarı, çektiği grup, kategori, sil. Ekranda › ⋯ ile açılınca X oraya döner.
+  const CAT_SHORT = { canli: "Canlı", kanal: "Kanalım", etraf: "Etraf", video: "Video" };
+  const closeDet = () => (addCat?.det && addCat.det === det && addCat.back ? addCat.back() : setDet(""));
+  const detPage = () => {
+    const s = srcList.find((x) => x.id === det);
+    if (!s || typeof document === "undefined") return null;
+    const air = isOn({ kind: "src", src: s.id });
+    const lv = isLive(s);
+    const th = thumb(s.url);
+    const mine = groupsOf(L.camBy, s.id);
+    const multi = groupRows.some(([c2]) => c2 !== groupRows[0]?.[0]);
+    const gName = (k) => {
+      const [c, g] = k.split("|");
+      return multi ? [c, g].filter(Boolean).join(" · ") : g || c;
+    };
+    const hasGrp = groupRows.length > 0 && srcCat(s) !== "video";
+    const tabs = [["bil", "Bilgiler"], ...(hasGrp ? [["grp", "Grup"]] : []), ["ayar", "Ayarlar"]];
+    const tb = tabs.some(([k]) => k === dTab) ? dTab : "bil";
+    const meta = [SRC_CATS.find(([c]) => c === srcCat(s))?.[1], mine.length ? `${mine.map(gName).join(", ")} ${mine.length > 1 ? "gruplarını" : "grubunu"} çekiyor` : "", !s.url ? "Bağlantı yok" : ""].filter(Boolean).join(" · ");
+    return createPortal(
+      <div className="kdt" role="dialog" aria-label={s.name}>
+        <button type="button" className="kdt-x" aria-label="Kapat" onClick={closeDet}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+        </button>
+        <div className="kdt-w">
+          <div className="kdt-a">
+            <div className="kdt-pv">
+              {/* eslint-disable-next-line @next/next/no-img-element -- YouTube küçük resmi */}
+              {th ? <img src={th} alt="" onError={(e) => (e.currentTarget.style.display = "none")} /> : null}
+              {air ? <em>YAYINDA</em> : <em className="no">{!s.url ? "BAĞLANTI YOK" : lv ? "CANLI" : srcCat(s) === "video" ? "VİDEO" : "YAYIN YOK"}</em>}
             </div>
-          );
+            <h2 className="kdt-t">{s.name}</h2>
+            {meta ? <p className="kdt-m">{meta}</p> : null}
+            {air ? (
+              <button type="button" className="kdt-go off" onClick={() => show({ kind: "", off: evNow })}>
+                Yayından çıkar
+              </button>
+            ) : (
+              <button type="button" className="kdt-go" disabled={!s.url} onClick={() => show({ kind: "src", src: s.id })}>
+                Yayına ver
+              </button>
+            )}
+            {note ? <p className="kdt-n" role="status">{note}</p> : null}
+          </div>
+          <div className="kdt-b">
+            <div className="kdt-tabs" role="tablist">
+              {tabs.map(([k, t]) => (
+                <button key={k} type="button" role="tab" aria-selected={tb === k} className={tb === k ? "on" : ""} onClick={() => setDTab(k)}>
+                  {t}
+                </button>
+              ))}
+            </div>
+            {tb === "bil" ? <div className="kdt-l">
+              <label className="kdt-r">
+                <span>Ad</span>
+                <input
+                  defaultValue={s.name}
+                  maxLength={30}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim().slice(0, 30);
+                    if (v && v !== s.name) putSrc(s.id, { name: v });
+                    else e.target.value = s.name;
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                />
+              </label>
+              <label className="kdt-r">
+                <span>Bağlantı</span>
+                <input defaultValue={s.url} inputMode="url" placeholder="YouTube bağlantısı" onBlur={(e) => e.target.value.trim() !== s.url && putSrc(s.id, { url: e.target.value.trim() })} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />
+              </label>
+            </div> : null}
+            {tb === "grp" ? (
+              <>
+                <h4 className="kdt-h">Çektiği grup</h4>
+                <div className="kdt-seg wrap" role="group">
+                  {groupRows.map(([c, g]) => {
+                    const k = cardKey(c, g);
+                    const on = L.camBy?.[k] === s.id;
+                    return (
+                      <button key={k} type="button" className={on ? "on" : ""} aria-pressed={on} onClick={() => putSrcGrp(s.id, k)}>
+                        {g ? <i style={{ background: groupColor(g) || "#ffd23f" }} aria-hidden="true" /> : null}
+                        {gName(k)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : null}
+            {tb === "ayar" ? <>
+            {srcCat(s) !== "video" ? (
+              <>
+                <h4 className="kdt-h">Yayın anahtarı</h4>
+                <div className="kdt-key">
+                  <SrcKey src={s} onStream={(v) => putStream(s.id, v)} toast={say} />
+                </div>
+              </>
+            ) : null}
+            <h4 className="kdt-h">Kategorisi</h4>
+            <div className="kdt-seg" role="group">
+              {SRC_CATS.map(([c]) => (
+                <button key={c} type="button" className={srcCat(s) === c ? "on" : ""} aria-pressed={srcCat(s) === c} onClick={() => srcCat(s) !== c && putSrc(s.id, { from: c === "canli" ? "" : c, ...(c !== "kanal" && s.auto ? { auto: false } : {}) })}>
+                  {CAT_SHORT[c]}
+                </button>
+              ))}
+            </div>
+            {!air ? (
+              <button type="button" className="kdt-del" onClick={() => delSrc(s)}>
+                Kaynağı sil
+              </button>
+            ) : null}
+            </> : null}
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
   };
   const body =
     tab === "now" ? (
@@ -461,7 +533,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
               <div className="lms-ch">
                 <h4 className="lms-h">{title}</h4>
                 {!full ? (
-                  <button type="button" className={`lms-plus${add === c ? " on" : ""}`} aria-label={`${title} ekle`} aria-expanded={add === c} onClick={() => (setAdd(add === c ? "" : c), setSelSrc(""), setAddUrl(""), setAddName(""))}>
+                  <button type="button" className={`lms-plus${add === c ? " on" : ""}`} aria-label={`${title} ekle`} aria-expanded={add === c} onClick={() => (setAdd(add === c ? "" : c), setAddUrl(""), setAddName(""))}>
                     {c === "video" ? "+ Video" : c === "kanal" ? "+ Kanalımdan" : c === "etraf" ? "+ Bul" : "+ Kaynak"}
                   </button>
                 ) : null}
@@ -482,7 +554,6 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
               ) : add !== c ? (
                 <p className="lms-empty">{c === "video" ? "YouTube'daki bir videoyu bağlantısıyla ekle" : c === "kanal" ? "Kanalında canlı yayın açınca burada çıkar" : c === "etraf" ? "Yarış yerine yakın açık kameralar" : "Drone, telefon ya da kamera ekle"}</p>
               ) : null}
-              {list.some((x) => x.id === selSrc) ? srcBox() : null}
             </section>
           );
         })}
@@ -645,6 +716,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
       <div className="lms-bd" key={tab}>
         {body}
       </div>
+      {det ? detPage() : null}
     </div>
   );
 }
