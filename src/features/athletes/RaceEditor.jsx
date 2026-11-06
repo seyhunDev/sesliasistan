@@ -29,7 +29,8 @@ import { BudgetView } from "./BudgetView";
 import { tl, totals } from "./budget";
 import { BUDGET_ONLY, buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
-import { RaceWx } from "./RaceWx";
+import { RaceWxRows } from "./RaceWx";
+import { Fold, RaceSeg } from "./raceUi";
 import { RaceTrack } from "./RaceTrack";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
 import { useWide } from "@/features/home/SideNav";
@@ -154,6 +155,9 @@ function Check({ on, tone = "ok" }) {
   );
 }
 
+// Yolculuk satırı: "Çar 11 Kas"
+const tripDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
+
 // Tek yarış: özet (yapılacaklar, not, takvim), sporcular, bilgiler, evrak.
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
@@ -174,7 +178,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   // Tek ⋯ (Seyhun 2026-10-30, yaris-yapi): multimedya sayfasının ⋯ menüsünden gelen bölüm ?sec= ile açılır (prep, people, docs, trip, budget, edit, del)
   const [sec0] = useState(sec);
   // Sitesi bağlı yarış yarış günü dışında Takip ile açılır (Seyhun 2026-11-05)
-  const [tab, setTab] = useState(() => (SECS.includes(sec0) && (sec0 !== "prep" || inRace(start)) ? sec0 : siteDocs && !inRace(start) ? "site" : "sum"));
+  // Hazırlık her zaman "sum" (yeni görünüm 2026-11-06: yarış günü de sekmeler sayfada; eski ?sec=prep bağlantıları Hazırlık'ı açar)
+  const [tab, setTab] = useState(() => (sec0 === "prep" ? "sum" : SECS.includes(sec0) ? sec0 : siteDocs && !inRace(start) ? "site" : "sum"));
   const [edit, setEdit] = useState(sec0 === "edit"); // yarışın adı, tarihi, yeri (başlık kartına dokununca)
   // Sekmeye ya da yarış bilgisi penceresine git
   const go = (t) => (t === "edit" ? setEdit(true) : setTab(t));
@@ -787,6 +792,9 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const todoList = steps.filter((x) => x.key !== "docs").sort((x, y) => order.indexOf(x.group) - order.indexOf(y.group));
   const doneTasks = doneList.filter((x) => x.key !== "docs");
   const [showDone, setShowDone] = useState(false);
+  // Yolculuk sekmesinde açık satır (Gidiş, Dönüş, Otel, Yarış alanı, Bütçe); aynı anda bir tane
+  const [fold, setFold] = useState("");
+  const flipFold = (k) => setFold((f) => (f === k ? "" : k));
   // Yarış kartının satırı: sol ad, sağda durum (ya da mor işlem), altında kısa bilgi
   // Tek satır (Seyhun 2026-10-26: "çok yer kaplıyor, liste gibi"): solda başlık, ortada değer, sağda kısa ek bilgi
   const linkRow = ({ k, title, main, sub, act, onClick, href, right }) => {
@@ -894,87 +902,56 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   // üstte büyük Multimedya ve günün rüzgârı; Özet yerine "Bugün" (kalan iş kısa notta, dokununca açılır)
   const today = todayStr();
   const raceDay = !over && !!r.startDate && today >= r.startDate;
-  const dayNo = raceDay ? Math.round((new Date(`${today}T12:00:00`) - new Date(`${r.startDate}T12:00:00`)) / 864e5) + 1 : 0;
   const dayAll = raceDay ? Math.round((new Date(`${r.endDate || r.startDate}T12:00:00`) - new Date(`${r.startDate}T12:00:00`)) / 864e5) + 1 : 0;
   // Yarış günü üstü günün evresine göre (RaceDayTop: A rüzgâr · B sonuçlar · C gün bitti + yarın)
   const { phase, races: dayRaces } = useRacePhase(r, orgId, rid, raceDay);
   // iPad yatay ve Mac (sol menü, Seyhun 2026-11-05 "iPad için daha özel bir tasarım"): solda lacivert (başlık, hava, harita, Yayına git),
   // sağda sekmeler ve sekmenin içi; yarış günü de bölümler pencerede değil sağda açık, Takip (sonuçlar) hep görünür
   const wide = useWide();
-  const dayWide = raceDay && wide;
-  // telefonda (ya da iPad dik çevrilince) yarış günü bölüm penceresi kendiliğinden açılmaz
-  const autoTab = useRef(false);
-  useEffect(() => {
-    if (dayWide && tab === "sum") (autoTab.current = true), setTab(siteDocs ? "site" : "prep");
-    else if (!dayWide && raceDay && autoTab.current) (autoTab.current = false), setTab("sum");
-  }, [dayWide, raceDay, tab, siteDocs]);
   const tabs = [
     // Yarış günü (Seyhun 2026-10-29): hazırlık, plan ve not altta görünmez; "Hazırlık" sekmesine dokununca açılır, yeniden dokununca kapanır.
     // Yarıştan önce eskisi gibi Özet.
     // Yarış takip (Seyhun 2026-11-05): sitesi bağlı yarışta ilk sekme Takip (sonuçlar, duyurular, talimatlar; RaceTrack), Özet'in adı Hazırlık.
     // Bizim hazırladığımız evrak Evrak'ta (2026-11-04 "ayrı tutmamız lazım")
-    ...(siteDocs ? [["site", "Takip", siteNew ? `${siteNew} yeni` : "", false]] : []),
-    raceDay ? ["prep", "Hazırlık", todoList.length ? `${todoList.length} iş` : "Tamam", false] : ["sum", over ? "Özet" : siteDocs ? "Hazırlık" : "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
+    ...(siteDocs ? [["site", "Takip", siteNew ? `${siteNew} yeni` : "", false, siteNew || 0]] : []),
+    ["sum", over ? "Özet" : "Hazırlık", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
     ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
     ["docs", "Evrak", file || (!checked && r.docsAt && !stale) ? "Hazır" : stale ? "Yenile" : r.docsAt ? "Bu cihazda yok" : "Hazır değil", !stat[1][4]],
     // Yolculuk ve Bütçe tek sekme (Seyhun 2026-11-04 "sadeleştirelim"): sekmeler tek satıra sığar; "budget" açılınca Bütçe'ye kayar
-    ["trip", "Yolculuk ve bütçe", trip.length ? "Yazıldı" : "Yok", !stat[2][4] || !stat[3][4]],
+    ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4] || !stat[3][4]],
   ];
   // Seyhun 2026-10-26 (örnek A, yaris-tasarim/ozet-liste): üstte kalan gün + yanında Multimedya (ayrı, açık renk), altında tek satır
   // kaydırılabilir sekmeler (eksikse sarı nokta). Talimat yüklüyse düğme yok, ⋯ içinde "Talimatı gör".
   // Sekmeler: telefonda lacivertin altında, geniş ekranda sağdaki açık gövdenin başında
-  const nav = (
-    <nav aria-label="Bölümler" className={`${wide ? "mb-1 mt-1 flex-wrap" : "-mx-5 mt-4 overflow-x-auto px-5"} flex gap-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
-        {tabs.map(([k, name, , warn]) => {
-          const on = tab === k || (k === "trip" && tab === "budget");
-          return (
-            <button key={k} type="button" aria-pressed={on} onClick={() => setTab(k === "prep" && on && !wide ? "sum" : k)} data-press style={wide && on ? { background: "var(--acc)", color: "#fff", borderColor: "transparent" } : undefined} className={`raised flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[0.875rem] font-semibold ${!wide && on ? "ck-sel" : ""}`}>
-              {warn && !over && <span className={`size-1.5 rounded-full ${wide ? "bg-amber-500" : "bg-[#ffd59a]"}`} aria-label="eksik" />}
-              {name}
-              {/* Siteden yeni belge (Seyhun 2026-11-04 "yeni evrak olduğunu yarış sayfasında da göstermeliyiz") */}
-              {k === "site" && siteNew > 0 && <span className="tone-gen tone-chip rounded-full px-1.5 text-[0.6875rem] font-bold tabular-nums">{siteNew} yeni</span>}
-            </button>
-          );
-        })}
-      </nav>
-  );
+  // Sekmeler tek parça seçici (yeni görünüm 2026-11-06); telefonda üstte, geniş ekranda sağ bölümün başında
+  const nav = <RaceSeg tabs={tabs} value={tab === "budget" ? "trip" : tab} onChange={setTab} className={wide ? "mb-2 mt-1" : "mt-5"} />;
+  // Üst (yeni görünüm 2026-11-06): yarış günü RaceDayTop (büyük tek satır, Hava/Harita satırı, Yayına git), öncesinde yalnız Hava ve Harita satırları
   const top = (
     <>
       {raceDay && rid ? (
-        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayNo={dayNo} dayAll={dayAll} />
-      ) : !over && left != null ? (
-        <div className="mt-1">
-          {/* kalan gün başlık satırında (page.jsx Left; Seyhun 2026-11-04); Yayına git ⋯ › Yayın'da, ilerleme çubuğu kalktı */}
-          {rid && <RaceWx r={{ ...r, id: rid }} />}
+        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} />
+      ) : !over && rid ? (
+        <div className="mt-4">
+          <RaceWxRows r={{ ...r, id: rid }} />
         </div>
       ) : null}
-      {!raceDay && !wide && nav}
+      {!wide && nav}
     </>
   );
-  // yarış günü (Seyhun 2026-10-29): sayfa tek ekran, lacivert alan alt çubuğa kadar iner (altta siyah/açık bölüm başlamaz);
-  // data-fit: sayfanın kendi alt boşluğu (main pb) kalkar (globals.css), yoksa ekran 7rem fazla kayıp altta siyah boşluk kalıyordu (Seyhun 2026-11-03)
+  // Beyaz üst (lacivert blok kalktı, 2026-11-06); geniş ekranda solda sabit sütun (split-top)
   const navy = (body) => (
-    <section data-fit={raceDay && begun ? "" : undefined} className={`ck -mx-5 px-5 pt-[calc(0.75rem+env(safe-area-inset-top))] ${raceDay && begun ? "flex min-h-dvh flex-col pb-[calc(6.5rem+env(safe-area-inset-bottom))]" : "pb-9"}`} aria-label={r.name || "Yarış"}>
+    <section className="rz-top split-top pb-1 pt-[calc(0.5rem+env(safe-area-inset-top))]" aria-label={r.name || "Yarış"}>
       {head}
       {body}
     </section>
   );
-  const light = "relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-0.5";
-  const secName = tabs.find((x) => x[0] === (tab === "budget" ? "trip" : tab))?.[1] || "";
-  // Yarış günü ⋯'den açılan bölüm kapanınca yarış sayfasında kalınır; eski multimedya ekranına (/media) dönülmez,
-  // yarış günü işleri Yayın'da (Seyhun 2026-11-04 "bunu kaldırabiliriz artık çünkü başka sistem kullanıyoruz")
-  const closeSec = () => setTab("sum");
-  const secWrap = (body) =>
-    raceDay && !wide ? (
-      <Sheet open={tab !== "sum"} onClose={closeSec} title={secName}>
-        <div className="-mt-4">{body}</div>
-      </Sheet>
-    ) : (
-      <div className={`${light} race-body`}>
-        {wide && nav}
-        {body}
-      </div>
-    );
+  const light = "bg-bg pb-1 pt-1";
+  const secWrap = (body) => (
+    <div className={`${light} race-body`}>
+      {wide && nav}
+      {body}
+    </div>
+  );
 
   if (!begun) {
     const form = r.notice || manual;
@@ -1051,21 +1028,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     <>
       {/* Sağ üstteki ⋯ (Seyhun 2026-10-20: "editleme, silme… bir ayarlar butonuyla ulaşabildiğimiz şeyler olmalı") */}
       <Sheet open={menu} onClose={() => onMenu?.(false)} title="Yarış">
-        {/* yarış günü bölümler burada (Seyhun 2026-10-29: "sporcu, evrak, yolculuk, bütçe… sağ üstteki ayar düğmesine") */}
-        {raceDay && (
-          <ul className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
-            {tabs.map(([k, name, sub, warn]) => (
-              <li key={k}>
-                <button type="button" data-press="row" data-sec={k} onClick={() => (onMenu?.(false), setTab(k))} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                  <b className="min-w-0 flex-1 text-[1rem] font-medium">{name}</b>
-                  {warn && <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-label="eksik" />}
-                  <span className="shrink-0 text-[0.875rem] text-mut">{sub}</span>
-                  <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
         {/* Yarış başladıktan sonra multimedyanın işleri de bu tek ⋯ içinde (Seyhun 2026-10-30; multimedya sayfasındaki ⋯ ile aynı liste) */}
         {/* Canlı ekran (ana hesap) yarıştan önce de görünür: dönüş girişi ve kayıt listesi önceden hazırlanır (Seyhun 2026-11-01) */}
         {rid && isOwner && (
@@ -1230,7 +1192,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
       {navy(top)}
       {secWrap(<>
         {alert}
-      {(raceDay ? tab === "prep" : tab === "sum") && (
+      {tab === "sum" && (
         <>
           {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/sonuclar` : ""} />}
           {!over && (
@@ -1288,46 +1250,34 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
           ) : !athletes.length ? (
             <Loading label="Sporcular yükleniyor" className="py-8" />
           ) : !chosen.length ? (
-            <div className={`${card} flex flex-col items-center px-6 py-8 text-center`}>
-              <span className="grid size-14 place-items-center rounded-full bg-acc/10 text-acc">
-                <Icon name="users" className="size-7" />
-              </span>
-              <b className="mt-3 text-[1.0625rem] font-semibold">Katılacak sporcuları ekle</b>
-              <span className="mt-1 text-[0.8125rem] text-mut">Evrak için önce sporcuları seç</span>
-              <button type="button" onClick={() => setPick(true)} data-press className="btn btn-primary mt-5 w-full">
-                <Icon name="plus" className="size-5" />
-                Sporcu ekle
-              </button>
-            </div>
+            <button type="button" onClick={() => setPick(true)} data-press className="btn btn-primary w-full">
+              Sporcu ekle
+            </button>
           ) : (
-            <div className={`${card} divide-y divide-line overflow-hidden`}>
-              <button type="button" onClick={() => setPick(true)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left text-acc">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10">
-                  <Icon name="plus" className="size-5" />
-                </span>
-                <b className="text-[0.9375rem] font-semibold">Sporcu ekle ya da çıkar</b>
-              </button>
+            /* Yeni görünüm (2026-11-06, yeni-dil/ornek.png 3): satırda ad, altında eksik ya da lisans, sağda tek durum; satıra dokununca bilgi penceresi */
+            <div className="rz-list">
               {chosen.map((a) => {
                 const miss = missing(a, docs);
                 const gone = raceExpired(a, r);
+                const sub = gone.length
+                  ? gone.map((x) => `${x.label} ${x.date.slice(8, 10)}.${x.date.slice(5, 7)}’de biter`).join(" · ")
+                  : miss.length
+                    ? miss.join(", ")
+                    : [a.licenseNo && `Lisans ${a.licenseNo}`, a.studentSchool || a.studentSchoolAndClass].filter(Boolean).join(" · ");
                 return (
-                  <div key={a.id} className="flex items-center gap-3 px-4 py-3">
-                    <Link href={`/athletes/${a.id}`} className="flex min-w-0 flex-1 items-center gap-3 active:opacity-60">
-                      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-semibold text-acc">{initials(a.studentName)}</span>
-                      <span className="min-w-0 flex-1">
-                        <b className="block truncate text-[0.9375rem] font-semibold">{a.studentName}</b>
-                        <span className={`block truncate text-[0.8125rem] ${miss.length ? "text-amber-700" : "text-mut"}`}>
-                          {miss.length ? `${miss.length} bilgi eksik: ${miss.join(", ")}` : [a.licenseNo && `Lisans ${a.licenseNo}`, a.studentSchool || a.studentSchoolAndClass].filter(Boolean).join(" · ")}
-                        </span>
-                        {gone.length > 0 && <span className="block truncate text-[0.75rem] font-medium text-rec">{gone.map((x) => `${x.label} bitişi ${x.date.slice(8, 10)}.${x.date.slice(5, 7)}, yarışta geçersiz`).join(" · ")}</span>}
-                      </span>
-                    </Link>
-                    <button type="button" onClick={() => setFix(a)} className={`h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold ring-1 ${miss.length || gone.length ? "bg-amber-500/10 text-amber-700 ring-amber-500/30" : "text-acc ring-line"}`}>
-                      {miss.length || gone.length ? "Tamamla" : "Bilgi"}
-                    </button>
-                  </div>
+                  <button key={a.id} type="button" onClick={() => setFix(a)} data-press="row" className="rz-row w-full text-left">
+                    <span className="rz-k">
+                      {a.studentName}
+                      {sub && <small>{sub}</small>}
+                    </span>
+                    <span className={`rz-v font-semibold ${gone.length ? "rz-rec" : miss.length ? "rz-warn" : "rz-ok"}`}>{gone.length ? "Geçersiz" : miss.length ? `${miss.length} eksik` : "Tamam"}</span>
+                    <span className="rz-chev" aria-hidden="true" />
+                  </button>
                 );
               })}
+              <button type="button" onClick={() => setPick(true)} data-press="row" className="rz-row w-full text-left text-[1rem] font-medium text-acc">
+                Sporcu ekle ya da çıkar
+              </button>
             </div>
           )}
           {lost > 0 && <p className="mt-2 px-1 text-[0.75rem] text-mut">{lost} sporcu artık listede yok, belgeye girmez.</p>}
@@ -1340,29 +1290,40 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         </>
       )}
 
+      {/* Yolculuk ve bütçe (yeni görünüm 2026-11-06, yeni-dil/ornek.png 4): uzun form yerine özet satırlar, dokununca yerinde açılır */}
       {(tab === "trip" || tab === "budget") && (
         <>
-          <Label>YOLCULUK</Label>
-          <Group>
-            <Pair>
-              <Row label="Çıkış günü">{tripField("departDate", "", "date")}</Row>
-              <Row label="Çıkış saati">{tripField("departTime", "", "time")}</Row>
-            </Pair>
-            <Row label="Çıkış yeri">{tripField("departFrom", "Dikili, kulüp önü")}</Row>
-            <Row label="Buluşma noktası">{tripField("meetPoint", "Çıkış yeriyle aynıysa boş bırak")}</Row>
-            <Pair>
-              <Row label="Dönüş günü">{tripField("returnDate", "", "date")}</Row>
-              <Row label="Dönüş saati">{tripField("returnTime", "", "time")}</Row>
-            </Pair>
-          </Group>
-
-          <RaceHotels hotels={raceHotels(r)} onChange={(list) => put("hotels", list)} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
-
-          <AroundView r={r} onChange={(a) => put("around", a)} />
+          <Label>Yolculuk</Label>
+          <Fold label="Gidiş" value={[r.departDate && tripDay(r.departDate), r.departTime].filter(Boolean).join(" · ") || "Yazılmadı"} open={fold === "go"} onToggle={() => flipFold("go")}>
+            <Group>
+              <Pair>
+                <Row label="Çıkış günü">{tripField("departDate", "", "date")}</Row>
+                <Row label="Çıkış saati">{tripField("departTime", "", "time")}</Row>
+              </Pair>
+              <Row label="Çıkış yeri">{tripField("departFrom", "Dikili, kulüp önü")}</Row>
+              <Row label="Buluşma noktası">{tripField("meetPoint", "Çıkış yeriyle aynıysa boş bırak")}</Row>
+            </Group>
+          </Fold>
+          <Fold label="Dönüş" value={[r.returnDate && tripDay(r.returnDate), r.returnTime].filter(Boolean).join(" · ") || "Yazılmadı"} open={fold === "back"} onToggle={() => flipFold("back")}>
+            <Group>
+              <Pair>
+                <Row label="Dönüş günü">{tripField("returnDate", "", "date")}</Row>
+                <Row label="Dönüş saati">{tripField("returnTime", "", "time")}</Row>
+              </Pair>
+            </Group>
+          </Fold>
+          <Fold label="Otel" value={raceHotels(r).map((h) => h.name).filter(Boolean).join(", ") || "Yok"} open={fold === "hotel"} onToggle={() => flipFold("hotel")}>
+            <RaceHotels hotels={raceHotels(r)} onChange={(list) => put("hotels", list)} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
+          </Fold>
+          <Fold label="Yarış alanı" value={r.around?.venue?.name || r.notice?.venue || ""} open={fold === "area"} onToggle={() => flipFold("area")}>
+            <AroundView r={r} onChange={(a) => put("around", a)} />
+          </Fold>
 
           <div ref={budgetRef} className="scroll-mt-4">
-            <Label>BÜTÇE</Label>
-            <BudgetView r={r} athletes={chosen} onChange={(b) => put("budget", b)} />
+            <div className="h-6" />
+            <Fold label="Bütçe" value={[money.total ? tl(money.total) : "", chosen.length ? `${chosen.filter((a) => r.budget?.paid?.[a.id]).length}/${chosen.length} ödedi` : ""].filter(Boolean).join(" · ") || "Yok"} open={fold === "budget" || tab === "budget"} onToggle={() => (tab === "budget" ? setTab("trip") : flipFold("budget"))}>
+              <BudgetView r={r} athletes={chosen} onChange={(b) => put("budget", b)} />
+            </Fold>
           </div>
         </>
       )}

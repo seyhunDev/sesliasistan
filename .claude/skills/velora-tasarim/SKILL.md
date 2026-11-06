@@ -88,6 +88,18 @@ Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar 
 
 Bir sayfa geçince bu listeyi güncelle.
 
+## Yarış sayfaları: "yarış sade" (2026-11-06)
+
+Yarış detay, Yarışlar listesi ve Yayın sayfaları lacivert kokpit KULLANMAZ (Seyhun 2026-11-06 "tasarımı tamamen değiştir… renk anlayışı, buton anlayışı, her şey dahil"; örnek project-files/yaris-detay-sade/yeni-dil/ornek.png):
+
+- Beyaz zemin (`main.rz`), kart çerçevesi ve gölge yok; satırlar ince çizgiyle ayrılır (`.rz-row`, `.rz-list`).
+- Üst: solda "‹ Yarışlar" mavi yazı, sağda ⋯; altında büyük ad ve tek satır gri bilgi. Ek işler (Yayın, düzenle, sil) ⋯ içinde.
+- Detay gerektiren her şey kapalı satırdır, dokununca yerinde açılır (`Fold`): Hava, Harita, Gidiş, Otel…
+- Sekmeler tek parça seçici (`RaceSeg`), hepsi tek satırda; eksikte küçük sarı nokta.
+- Sayfada tek dolu mavi düğme (o sekmenin ana işi); diğer işler mavi yazı ya da satır.
+- Renk: mavi yalnız iş, yeşil tamam, sarı eksik, kırmızı yaklaşan/geçersiz. Satırın sağında tek durum yazısı (Tamam, 2 eksik), düğme yok.
+- Parçalar `src/features/athletes/raceUi.jsx`, CSS globals.css "YARIŞ SADE".
+
 ## Hareket (animasyon)
 
 - Hareket yalnız bir şey olurken: dinleme, iş, konuşma, kayıt. Boşta ekranda sürekli dönen, nefes alan, kayan bir şey olmaz (ekran testi "Enerji (boşta)": saniyede en çok 3 stil hesabı).

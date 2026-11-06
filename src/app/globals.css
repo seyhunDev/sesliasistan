@@ -1151,3 +1151,43 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
 .spk-btn { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18), 0 2px 6px rgba(0, 0, 0, .25); }
 .spk-btn.spk-btn-off { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08); }
 @media (prefers-reduced-motion: reduce) { .spk :is(.spk-w, .spk-sl) { transition: none; } }
+
+/* YARIŞ SADE (Seyhun 2026-11-06 "tasarımı tamamen değiştir… renk anlayışı, buton anlayışı, her şey dahil"; örnek
+   /mnt/project-files/yaris-detay-sade/yeni-dil/ornek.png onaylı): yarış sayfaları beyaz zemin, lacivert blok ve kart çerçevesi yok,
+   satırlar ince çizgiyle ayrılır, sekmeler tek parça seçici, sayfada tek dolu mavi düğme. Parçalar src/features/athletes/raceUi.jsx. */
+body:has(main.rz) { background: var(--card); }
+main.rz, main.rz > .bg-bg { background: var(--card); }
+main.rz .rz-top h1 { font-size: 1.875rem; font-weight: 700; letter-spacing: -.025em; line-height: 1.1; }
+.rz-bar { display: flex; align-items: center; justify-content: space-between; height: 2.5rem; margin-left: -.25rem; }
+.rz-link { display: inline-flex; align-items: center; gap: .125rem; height: 2.5rem; padding: 0 .25rem; color: var(--acc); font-size: 1.0625rem; font-weight: 500; }
+.rz-list { border-top: 1px solid var(--line); }
+.rz-row-wrap + .rz-row-wrap, .rz-list + .rz-list { border-top: 0; }
+/* çizgiler eski liste satırlarıyla aynı genişlikte: yazı sayfa kenarında, çizgi 1rem taşar */
+.rz-row { display: flex; align-items: center; gap: .75rem; min-height: 3.125rem; margin-inline: -1rem; padding-inline: 1rem; width: calc(100% + 2rem) !important; border-bottom: 1px solid var(--line); }
+.rz-list { margin-inline: 0; }
+.rz-row-wrap:not(.rz-row-wrap + .rz-row-wrap) > .rz-row { border-top: 1px solid var(--line); }
+/* açılan satırın içindeki eski bölüm başlığı (Konaklama, Yarış alanı) tekrar etmesin */
+main.rz .rz-open > .mb-2.mt-6:first-child { display: none; }
+.rz-k { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1rem; font-weight: 500; }
+.rz-k small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .8125rem; font-weight: 400; color: var(--mut); }
+.rz-v { flex-shrink: 0; max-width: 62%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9375rem; color: var(--mut); }
+.rz-v b { color: var(--fg); font-weight: 600; }
+.rz-ok { color: var(--ok); } .rz-warn { color: var(--warn); } .rz-rec { color: var(--rec); }
+.rz-chev { width: .5rem; height: .5rem; flex-shrink: 0; margin-right: .125rem; border-right: 1.8px solid color-mix(in srgb, var(--mut) 55%, transparent); border-bottom: 1.8px solid color-mix(in srgb, var(--mut) 55%, transparent); transform: rotate(-45deg); }
+.rz-chev.rz-dn { transform: rotate(45deg); margin-top: -.25rem; }
+.rz-chev.rz-up { transform: rotate(-135deg); margin-top: .25rem; }
+.rz-open { margin-inline: -1rem; padding: .5rem 1rem .875rem; border-bottom: 1px solid var(--line); }
+.rz-shim { display: inline-block; width: 7rem; height: .875rem; border-radius: 999px; background: var(--line); vertical-align: middle; }
+.rz-seg { display: grid; gap: 0; padding: 3px; border-radius: .6875rem; background: color-mix(in srgb, var(--fg) 6%, var(--card)); }
+.rz-seg-b { display: flex; min-width: 0; height: 2rem; align-items: center; justify-content: center; gap: .3125rem; padding: 0 .25rem; border-radius: .5625rem; font-size: .84375rem; font-weight: 600; color: var(--mut); }
+.rz-seg-b[aria-pressed="true"] { background: var(--card); color: var(--fg); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.rz-dot { width: .375rem; height: .375rem; flex-shrink: 0; border-radius: 50%; background: var(--warn); }
+.rz-new { flex-shrink: 0; border-radius: 999px; padding: 0 .3125rem; background: var(--acc); color: #fff; font-size: .6875rem; font-weight: 700; line-height: 1.125rem; }
+/* Eski parçalar (kart, bölüm başlığı) yarış sayfasında düz: kart zemini, gölgesi ve köşesi yok, satırlar ince çizgiyle, başlık küçük gri */
+main.rz .bg-card.rounded-\[1\.25rem\] { background: transparent; box-shadow: none; border-radius: 0; margin-left: -1rem; margin-right: -1rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+main.rz .tracking-\[\.08em\] { display: block; letter-spacing: 0; font-weight: 600; font-size: .8125rem; text-transform: lowercase; }
+main.rz .tracking-\[\.08em\]::first-letter { text-transform: uppercase; }
+main.rz [data-pagebar] { background: linear-gradient(to top, var(--card) 60%, transparent); }
+@media (min-width: 64rem) {
+  body[data-side] main.rz.split > .rz-top { border-right: 1px solid var(--line); }
+}
