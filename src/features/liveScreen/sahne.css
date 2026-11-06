@@ -1126,3 +1126,13 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
   .sc-btop { top: calc(var(--vb-t, 7em) + 2.8em); left: auto; right: 0.75em; transform: none; }
   .lv:has(.sc-vb.bar.bt) .br-grp { top: calc(var(--vb-t, 7em) + 3.5em); left: 0.9em; transform: none; }
 }
+
+/* Parkur dikeyde ekranı doldurur (Seyhun 2026-11-06 "parkur daha büyük ve aşağıda; iPad'de aşağısı boş, ekrana göre büyüsün"):
+   süre kartının altından çubuğun üstüne kadar tek sütun: başlık, çizim (kalan yerin tamamı), rota / eksen / rüzgâr */
+@media (max-aspect-ratio: 1/1) {
+  .sc-cpn { display: flex; flex-direction: column; gap: 0.6em; position: absolute; left: 1em; right: 1em; top: calc(1em + var(--sc-ckh, 0px) + 0.6em + env(safe-area-inset-top)); bottom: var(--vb-b, calc(1em + env(safe-area-inset-bottom))); }
+  .sc .sc-cpn > .sc-cbn, .sc .sc-cpn > .sc-ci { position: static; inset: auto; width: auto; max-width: none; flex: none; }
+  .sc .sc-cpn > .sc-crs { position: relative; inset: auto; flex: 1 1 auto; min-height: 0; padding: 0.6em; }
+  .sc-cpn > .sc-ci { display: flex; flex-wrap: wrap; }
+  .sc-cpn > .sc-ci section { flex: 1 1 auto; border-top: 0; }
+}
