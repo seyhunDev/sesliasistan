@@ -22,6 +22,8 @@ import { PenSheet } from "./PenSheet";
 import { countingAt as countingNow, finishSteps, orderWithout, startBlock, startedRow, zeroStarts } from "./startFlow";
 import { DocsTab } from "./DocsTab";
 import { MyChannel } from "./MyChannel";
+import { SrcKey } from "./SrcKey";
+import { ytPrepare } from "@/lib/youtube";
 import { NearCams } from "./NearCams";
 import { AthletesTab } from "./AthletesTab";
 import { CourseTalk } from "./CourseTalk";
@@ -736,6 +738,36 @@ export function BroadcastPage({ orgId, id }) {
     setAddUrl("");
     setSel({ kind: "src", src: l.at(-1).id });
     putSources(l);
+  };
+  // Günün yayınları (Seyhun 2026-11-06 çoklu kaynak, Liste dışı): anahtarı olan kaynaklara yayın yoksa ya da bittiyse yenisi açılır,
+  // link kaynağa yazılır; sayfa açıkken 3 dakikada bir bakılır (yayın kendiliğinden bitince sonraki Go Live için yenisi hazır olur)
+  const ytTitle = (x) => [race?.name, x.name].filter(Boolean).join(" · ");
+  const prepAt = useRef(0);
+  useEffect(() => {
+    if (!srcList.some((x) => x.ytStream)) return undefined;
+    const run = () => {
+      if (Date.now() - prepAt.current < 150e3) return;
+      prepAt.current = Date.now();
+      ytPrepare(srcList, ytTitle).then(
+        (m) => Object.keys(m).length && putSources(srcList.map((x) => (m[x.id] ? { ...x, url: m[x.id] } : x))),
+        () => {}
+      );
+    };
+    run();
+    const t = setInterval(run, 180e3);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- liste ya da yarış adı değişince
+  }, [srcList, race?.name]);
+  // yeni anahtar: kaynağa yazılır, günün yayını hemen açılır
+  const putStream = async (sid, ytStream) => {
+    const l = srcList.map((x) => (x.id === sid ? { ...x, ytStream } : x));
+    let m = {};
+    try {
+      m = await ytPrepare(l.filter((x) => x.id === sid), ytTitle);
+    } catch {}
+    prepAt.current = Date.now();
+    putSources(l.map((x) => (m[x.id] ? { ...x, url: m[x.id] } : x)));
+    toast("Anahtar hazır: adresi ve anahtarı cihaza gir");
   };
   const putSrc = (sid, p) => {
     const u = String(p.url || "").trim();
@@ -1977,6 +2009,7 @@ export function BroadcastPage({ orgId, id }) {
                     })}
                   </div>
                 ) : null}
+                <SrcKey key={`k${selSrc.id}`} src={selSrc} onStream={(v) => putStream(selSrc.id, v)} toast={toast} />
                 <div className="flex items-center gap-2">
                   <input
                     key={selSrc.id}

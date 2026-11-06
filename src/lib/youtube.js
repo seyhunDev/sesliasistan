@@ -101,12 +101,20 @@ function errText(status, body) {
 }
 const ytErr = async (r) => errText(r.status, await r.text().catch(() => ""));
 
-async function api(path) {
+async function api(path, { method = "GET", body } = {}) {
   const { token } = await ytToken();
-  const r = await fetch(`https://www.googleapis.com/youtube/v3/${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  const r = await fetch(`https://www.googleapis.com/youtube/v3/${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, ...(body ? { "content-type": "application/json" } : {}) },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
   if (r.status === 401) throw (ytForget(), new YtNeed("connect"));
-  if (!r.ok) throw new Error(await ytErr(r));
-  return r.json();
+  if (r.status === 204) return {};
+  const t = await r.text().catch(() => "");
+  // eski bağlantıda yayın yönetme izni yok: yeniden bağlanılır
+  if (r.status === 403 && /insufficientPermissions|insufficient authentication scopes/i.test(t)) throw new YtNeed("connect", "YouTube iznini yenile");
+  if (!r.ok) throw new Error(errText(r.status, t));
+  return t ? JSON.parse(t) : {};
 }
 const thumbOf = (sn) => sn?.thumbnails?.medium?.url || sn?.thumbnails?.default?.url || "";
 
@@ -132,3 +140,56 @@ export async function ytMine() {
 }
 
 export const PRIVACY = { public: "Herkese açık", unlisted: "Liste dışı", private: "Özel" };
+
+// Kalıcı yayın anahtarı (Seyhun 2026-11-06 çoklu kaynak: "2 drone, 2 telefon, sabit kameralar"): her kaynağa kanalda bir anahtar.
+// Anahtar bir kez cihaza (DJI Fly, PRISM, kamera uygulaması) girilir, hiç değişmez. Sonuç anahtarın kimliği (kaynakta ytStream).
+export async function ytNewStream(name) {
+  const d = await api("liveStreams?part=snippet,cdn,contentDetails", {
+    method: "POST",
+    body: { snippet: { title: clean(`Velora · ${name}`, 100) }, cdn: { ingestionType: "rtmp", resolution: "variable", frameRate: "variable" }, contentDetails: { isReusable: true } },
+  });
+  if (!d.id) throw new Error("YouTube anahtar açmadı");
+  return d.id;
+}
+// Cihaza girilecek adres ve anahtar: { url, key, health } (Firestore'a yazılmaz, her seferinde YouTube'dan okunur)
+export async function ytStreamInfo(id) {
+  const d = await api(`liveStreams?part=cdn,status&id=${encodeURIComponent(id)}`);
+  const it = d.items?.[0];
+  if (!it) throw new Error("Anahtar YouTube'da bulunamadı");
+  const ing = it.cdn?.ingestionInfo || {};
+  return { url: ing.ingestionAddress || "rtmp://a.rtmp.youtube.com/live2", key: ing.streamName || "", health: it.status?.streamStatus || "" };
+}
+
+// Yayının bekleyen ya da süren hâlleri: bunlardan biriyse bağlı yayın yeniden kullanılır; bittiyse (complete) yenisi açılır
+export const YT_OPEN = ["created", "ready", "testStarting", "testing", "liveStarting", "live"];
+const vidOf = (u) => (String(u || "").match(/(?:youtu\.be\/|[?&]v=|\/live\/)([\w-]{11})/) || [])[1] || "";
+// Hangi kaynaklara yeni yayın gerekir: anahtarı olan, bağlı yayını olmayan ya da yayını bitmiş/silinmiş (saf; test yaris.mjs)
+export const needBroadcast = (sources, status) => sources.filter((x) => x.ytStream && !YT_OPEN.includes(status[vidOf(x.url)] || ""));
+
+// Günün yayınları: anahtarı olan her kaynak için Liste dışı, kendiliğinden başlayıp biten yayın açılır ve anahtara bağlanır;
+// cihaz yayına başlayınca yayın kendisi canlıya geçer. Sonuç değişen kaynaklar { id: url } (değişen yoksa {}).
+export async function ytPrepare(sources, titleOf) {
+  const mine = sources.filter((x) => x.ytStream);
+  if (!mine.length) return {};
+  const ids = mine.map((x) => vidOf(x.url)).filter(Boolean);
+  const status = {};
+  if (ids.length) {
+    const d = await api(`liveBroadcasts?part=status&id=${ids.join(",")}&maxResults=50`);
+    for (const it of d.items || []) status[it.id] = it.status?.lifeCycleStatus || "";
+  }
+  const out = {};
+  for (const x of needBroadcast(mine, status)) {
+    const b = await api("liveBroadcasts?part=snippet,status,contentDetails", {
+      method: "POST",
+      body: {
+        snippet: { title: clean(titleOf(x), 100) || "Velora canlı", scheduledStartTime: new Date(Date.now() + 60e3).toISOString() },
+        status: { privacyStatus: "unlisted", selfDeclaredMadeForKids: false },
+        contentDetails: { enableAutoStart: true, enableAutoStop: true, enableEmbed: true, latencyPreference: "low", enableDvr: true },
+      },
+    });
+    if (!b.id) continue;
+    await api(`liveBroadcasts/bind?id=${b.id}&part=id,contentDetails&streamId=${encodeURIComponent(x.ytStream)}`, { method: "POST" });
+    out[x.id] = `https://youtu.be/${b.id}`;
+  }
+  return out;
+}

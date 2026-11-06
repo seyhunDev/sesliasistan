@@ -1147,6 +1147,7 @@ group("Tekne takibi")([
 {
   const YA = await import("@/lib/server/ytAuth");
   const YT = await import("@/lib/youtube");
+  const { cleanSources: cleanSrcs } = await import("@/lib/raceRounds");
   const src = (f) => readFileSync(new URL(`../../../src/${f}`, import.meta.url), "utf8");
   group("YouTube yükleme")([
     ["izin durumu", { desc: "imzalı durum aynı anahtarla okunur; başka anahtar, bozulmuş imza ve süresi dolmuş durum boş döner", fn: () => {
@@ -1159,6 +1160,15 @@ group("Tekne takibi")([
       return [/ytUpload\(/.test(v), /Kameralara ekleyeyim mi\?/.test(v), /addSource\(base, "camera"\)/.test(v), !/navigator\.share/.test(v), /YouTube&apos;a bağlan/.test(v)];
     }, ok: (a) => a.every(Boolean) }],
     ["Kanalımdan", { desc: "Yayın › + Kaynak'ta kanalın canlı yayını ve videoları; dokununca seçili türde eklenir", fn: () => [/<MyChannel /.test(src("features/broadcast/BroadcastPage.jsx")), /broadcastStatus=active/.test(src("lib/youtube.js"))], ok: (a) => a.every(Boolean) }],
+    ["çoklu kaynak: kalıcı anahtar", { desc: "kaynak ytStream kimliğini korur (anahtar yazılmaz), bozuk kimlik atılır; yayını bitmiş ya da olmayan anahtarlı kaynağa yeni yayın", fn: () => {
+      const RR = cleanSrcs([{ id: "d1", name: "Drone 1", kind: "drone", url: "https://youtu.be/AAAAAAAAAAA", ytStream: "abc-123", key: "gizli" }, { id: "p1", name: "Telefon 1", kind: "phone", url: "", ytStream: "x y" }]);
+      const need = YT.needBroadcast([{ id: "d1", ytStream: "s", url: "https://youtu.be/AAAAAAAAAAA" }, { id: "d2", ytStream: "s2", url: "https://youtu.be/BBBBBBBBBBB" }, { id: "p1", ytStream: "s3", url: "" }, { id: "c1", url: "" }], { AAAAAAAAAAA: "ready", BBBBBBBBBBB: "complete" });
+      return [RR[0].ytStream, "key" in RR[0], "ytStream" in RR[1], need.map((x) => x.id).join()];
+    }, ok: ([a, k, b, n]) => a === "abc-123" && !k && !b && n === "d2,p1" }],
+    ["günün yayını kendiliğinden", { desc: "Yayın sayfası anahtarlı kaynaklara Liste dışı, kendiliğinden başlayıp biten yayın açar; kaynakta Anahtarı kopyala", fn: () => {
+      const y = src("lib/youtube.js");
+      return [/enableAutoStart: true/.test(y) && /enableAutoStop: true/.test(y) && /privacyStatus: "unlisted"/.test(y), /liveBroadcasts\/bind/.test(y), /ytPrepare\(srcList/.test(src("features/broadcast/BroadcastPage.jsx")), /Anahtarı kopyala/.test(src("features/broadcast/SrcKey.jsx")), /auth\/youtube"/.test(src("lib/server/ytAuth.js"))];
+    }, ok: (a) => a.every(Boolean) }],
     ["anahtar sunucuda", { desc: "yenileme anahtarı ytAuth'ta (kurallarda yok: telefondan okunamaz); telefon yalnız kısa erişim anahtarı alır", fn: () => [/collection\("ytAuth"\)/.test(src("app/api/youtube/route.js")), !/ytAuth/.test(readFileSync(new URL("../../../firestore.rules", import.meta.url), "utf8")), !/refresh/.test(src("lib/youtube.js"))], ok: (a) => a.every(Boolean) }],
   ]);
 }

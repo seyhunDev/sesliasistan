@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 
 // YouTube Google izni: kapsamlar, dönüş adresi ve imzalı durum (api/youtube, api/youtube/callback)
-export const YT_SCOPES = ["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube.readonly"];
+// youtube: canlı yayın anahtarı ve günlük yayın açma (2026-11-06 çoklu kaynak); eski bağlantıda yoksa telefon "YouTube'a bağlan" der
+export const YT_SCOPES = ["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube.readonly", "https://www.googleapis.com/auth/youtube"];
 export const ytRedirect = (request) => `${new URL(request.url).origin}/api/youtube/callback`;
 
 // İzin dönüşünde kimin bağlandığı: imzalı, 15 dakikalık durum (uid · bitiş)
