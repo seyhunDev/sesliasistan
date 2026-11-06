@@ -9,7 +9,7 @@ import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, clean
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_IDS, CARD_TYPES, ORSA_M, cardFor, cardKey, cardType, cleanCards, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
-import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, clubName, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc, SRC_CATS, srcCat } from "@/lib/raceRounds";
+import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, clubName, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc, ytId, SRC_CATS, srcCat } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { HourTable } from "@/features/weather/HourTable";
 import { GROUP_PICK, catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
@@ -2860,16 +2860,31 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
               {list.length ? <div className="sc-vg">
                 {list.map((x) => {
                   const grp = cams.find((y) => y.src === x.id)?.grp || "";
-                  const t = x.url ? (
-                    <button key={x.id} type="button" className={`sc-vt${cam === x.id ? " on" : ""}`} aria-pressed={cam === x.id} onClick={() => pick(x.id)}>
-                      {grp ? <i style={{ background: groupColor(grp) || "#ffd23f" }} aria-hidden="true" /> : null}
-                      {x.name}
+                  // önizleme kartı (Seyhun 2026-11-06 "yazı küçük ve ince, asıl görüntüyü, önizlemeyi gösterelim"): YouTube küçük resmi, altında ince ad
+                  const yid = ytId(x.url);
+                  const th = (
+                    <span className="sc-vth">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- YouTube küçük resmi */}
+                      {yid ? <img src={`https://i.ytimg.com/vi/${yid}/mqdefault.jpg`} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.display = "none")} /> : null}
                       {live(x.id) ? <b className="sc-vlv" aria-label="yayında" /> : null}
+                    </span>
+                  );
+                  const nm = (
+                    <span className="sc-vtn">
+                      {grp ? <i style={{ background: groupColor(grp) || "#ffd23f" }} aria-hidden="true" /> : null}
+                      <span>{x.name}</span>
+                      {x.url ? null : <small>bağlı değil</small>}
+                    </span>
+                  );
+                  const t = x.url ? (
+                    <button key={x.id} type="button" className={`sc-vt pv${cam === x.id ? " on" : ""}`} aria-pressed={cam === x.id} onClick={() => pick(x.id)}>
+                      {th}
+                      {nm}
                     </button>
                   ) : (
-                    <button key={x.id} type="button" className="sc-vt off" disabled={!onSrcMenu} onClick={() => onSrcMenu?.(x.id)}>
-                      {x.name}
-                      <small>bağlı değil</small>
+                    <button key={x.id} type="button" className="sc-vt pv off" disabled={!onSrcMenu} onClick={() => onSrcMenu?.(x.id)}>
+                      {th}
+                      {nm}
                     </button>
                   );
                   // ⋯ kaynağın detay sayfası (Seyhun 2026-11-06 örnek kaynak-detay; yalnız yöneten)

@@ -1321,3 +1321,21 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 .sc .sc-vtw > .sc-vt.on + .sc-vmore { background: #e8edf3; color: #0b1626; }
 .sc .sc-vmore:active { transform: translateY(-50%) scale(0.92); }
 .sc .sc-vp.src .sc-vadd.one { flex: none; width: auto; height: 2.5em; margin: 0.6em 0 0; padding: 0 1.1em; border-radius: 99px; background: #2563eb; color: #fff; font: 700 0.95em/1 var(--sc-c, var(--lv-font-c)); align-self: flex-start; }
+
+/* Ekranda › Yayınlar önizleme kartları (2026-11-06 "yazı küçük ve ince, önizlemeyi gösterelim") */
+.sc .sc-vp.src .sc-vg .sc-vt.pv { flex: 0 0 auto; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0.35em; width: 10.5em; min-width: 0; max-width: none; height: auto; min-height: 0; padding: 0; background: none; box-shadow: none; color: rgba(255, 255, 255, 0.82); text-align: left; scroll-snap-align: start; }
+.sc .sc-vt.pv .sc-vth { position: relative; display: block; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 0.6em; background: linear-gradient(135deg, #1e3a5f, #0b1626); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1); transition: box-shadow 0.18s ease; }
+.sc .sc-vt.pv .sc-vth img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sc .sc-vt.pv .sc-vth .sc-vlv { position: absolute; left: 0.45em; top: 0.45em; width: 0.6em; height: 0.6em; }
+.sc .sc-vt.pv.on { background: none; color: #fff; }
+.sc .sc-vt.pv.on .sc-vth { box-shadow: 0 0 0 2px #fff; }
+.sc .sc-vt.pv .sc-vtn { display: flex; align-items: center; gap: 0.35em; min-width: 0; padding: 0 0.15em; font: 500 0.8em/1.2 -apple-system, "SF Pro Text", Inter, system-ui, sans-serif; letter-spacing: 0; }
+.sc .sc-vt.pv .sc-vtn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc .sc-vt.pv .sc-vtn i { flex: none; width: 0.55em; height: 0.55em; border-radius: 50%; }
+.sc .sc-vt.pv .sc-vtn small { margin-left: auto; opacity: 0.6; font-size: 0.9em; white-space: nowrap; }
+.sc .sc-vt.pv.off { opacity: 1; }
+.sc .sc-vt.pv.off .sc-vth { opacity: 0.5; }
+.sc .sc-vp.src .sc-vtw > .sc-vt.pv { height: auto; padding: 0; }
+.sc .sc-vtw > .sc-vt.pv + .sc-vmore { top: 0.35em; right: 0.35em; width: 1.8em; height: 1.8em; transform: none; background: rgba(0, 0, 0, 0.5); color: #fff; }
+.sc .sc-vtw > .sc-vt.pv + .sc-vmore:active { transform: scale(0.92); }
+.sc .sc-vp.src .sc-vg:has(.pv) { gap: 0.7em; }
