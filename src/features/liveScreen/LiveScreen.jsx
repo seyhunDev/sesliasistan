@@ -1681,7 +1681,7 @@ function ScWindDay({ data, now }) {
 }
 // Parkur ve rüzgâr panelinin üstü (Seyhun 2026-11-06 "şu anki ölçümleri asıl göstermemiz lazım"; "önemli bilgiler daha net"): şimdi esen, büyük;
 // yanında parkur sayıları bir kez (eksen, rüzgârın eksenden farkı, avantajlı uç); çizimde bu yazılar yok
-function ScWindNow({ data, now }) {
+function ScWindNow({ data, now, pk = null }) {
   const c = curWind(data, null, true, now);
   const ax = axisInfo(data);
   const g = ax ? null : guessAxis(data);
@@ -1698,7 +1698,7 @@ function ScWindNow({ data, now }) {
     sh != null ? ["Fark", Math.abs(sh) < 1 ? "0°" : `${Math.abs(sh)}° ${sh > 0 ? "sağa" : "sola"}`] : null,
     bias?.end ? [bias.end === "pin" ? "Pin" : "Komite", `+${Math.round(bias.deg)}°`] : null,
   ].filter(Boolean);
-  if (!c && !fx.length) return null;
+  if (!c && !fx.length && !pk) return null;
   return (
     <div className={`sc-wnow${c?.man ? " man" : ""}`}>
       {c ? (
@@ -1715,7 +1715,7 @@ function ScWindNow({ data, now }) {
           </span>
         </>
       ) : null}
-      {fx.length ? (
+      {fx.length || pk ? (
         <span className="fx">
           {fx.map(([k, v]) => (
             <span key={k}>
@@ -1723,6 +1723,20 @@ function ScWindNow({ data, now }) {
               <b>{v}</b>
             </span>
           ))}
+          {/* Parkur (Seyhun 2026-11-06 "yukarıda Eksen, Rüzgâr gibi parkur da; tıklayınca alan açılsın, seçeyim, kapansın") */}
+          {pk ? (
+            pk.onTap ? (
+              <button type="button" className="pk" aria-expanded={pk.open} onClick={pk.onTap}>
+                <small>Parkur</small>
+                <b>{pk.name}</b>
+              </button>
+            ) : (
+              <span>
+                <small>Parkur</small>
+                <b>{pk.name}</b>
+              </span>
+            )
+          ) : null}
         </span>
       ) : null}
     </div>
@@ -2473,9 +2487,8 @@ const crsClasses = (data) => {
 };
 // parkur şeklinin küçük çizimi (rüzgârsız, yazısız)
 const crsMini = (data, type, route) => courseSvg({ ...data, course: { ...(data.course || {}), cards: [{ id: "A", type, route }], sel: "A", by: {} } }, route, { W: 360, H: 300, bare: true, sail: false, pre: `mn${type}` });
-function ScCrsPick({ data, view, onView, onCards }) {
+function ScCrsPick({ data, view, onView, onCards, onClose }) {
   const crs = cleanCourse(data.course || {});
-  const [open, setOpen] = useState(false);
   const [more, setMore] = useState(false);
   const cls = crsClasses(data);
   const own = (c) => !!crs.by[cardKey(c, "")];
@@ -2493,6 +2506,8 @@ function ScCrsPick({ data, view, onView, onCards }) {
     put({ cards: [...crs.cards, { id, type, route }], by: { ...crs.by, [cardKey(view, "")]: id } });
   };
   const setType = (t) => {
+    // seçince alan kapanır (sınıflara göre bakılırken açık kalır, sıradaki sınıf seçilebilsin)
+    if (!view) onClose?.();
     if (t === card.type) return;
     if (view && shared(card.id)) return forClass(t, card.route);
     put({ cards: crs.cards.map((k) => (k.id === card.id ? { ...k, type: t } : k)) });
@@ -2507,8 +2522,8 @@ function ScCrsPick({ data, view, onView, onCards }) {
   };
   const toAll = () => put({ by: Object.fromEntries(Object.entries(crs.by).filter(([k]) => k.split("|")[0] !== view)) });
   return (
-    <div className={`sc-pk${open ? " on" : ""}`}>
-      {split || (open && more) ? (
+    <div className="sc-pk">
+      {split || more ? (
         <div className="sc-pkc" role="tablist">
           {["", ...cls].map((c) => (
             <button key={c || "all"} type="button" role="tab" aria-selected={view === c} onClick={() => (setRt(null), onView(c))}>
@@ -2517,41 +2532,26 @@ function ScCrsPick({ data, view, onView, onCards }) {
           ))}
         </div>
       ) : null}
-      <div className="sc-pkh">
-        <span>
-          <b>{CARD_TYPES[card.type] || ""}</b>
-          <small>{["Start", ...card.route.map((x) => (x === "F" ? "Finiş" : x))].join(" › ")}</small>
-        </span>
-        {onCards ? (
-          <button type="button" className="sc-pkb" aria-expanded={open} onClick={() => (setOpen(!open), setRt(null))}>
-            {open ? "Tamam" : "Değiştir"}
+      <div className="sc-pkt">
+        {Object.entries(CARD_TYPES).map(([t, n]) => (
+          <button key={t} type="button" aria-pressed={card.type === t} onClick={() => setType(t)}>
+            <i dangerouslySetInnerHTML={{ __html: crsMini(data, t, card.route) }} />
+            <b>{n}</b>
           </button>
-        ) : null}
+        ))}
       </div>
-      {open ? (
-        <div className="sc-pkd">
-          <div className="sc-pkt">
-            {Object.entries(CARD_TYPES).map(([t, n]) => (
-              <button key={t} type="button" aria-pressed={card.type === t} onClick={() => setType(t)}>
-                <i dangerouslySetInnerHTML={{ __html: crsMini(data, t, card.route) }} />
-                <b>{n}</b>
-              </button>
-            ))}
-          </div>
-          <label className="sc-pkr">
-            <small>Rota</small>
-            <input value={rt ?? card.route.map((x) => (x === "F" ? "Finiş" : x)).join(" ")} inputMode="text" enterKeyHint="done" onChange={(e) => setRt(e.target.value)} onBlur={saveRt} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />
-          </label>
-          {view && own(view) ? (
-            <button type="button" className="sc-pkx" onClick={toAll}>
-              {`${view} herkesle aynı olsun`}
-            </button>
-          ) : cls.length && !more && !split ? (
-            <button type="button" className="sc-pkx" onClick={() => setMore(true)}>
-              Sınıflara göre
-            </button>
-          ) : null}
-        </div>
+      <label className="sc-pkr">
+        <small>Rota</small>
+        <input value={rt ?? card.route.map((x) => (x === "F" ? "Finiş" : x)).join(" ")} inputMode="text" enterKeyHint="done" onChange={(e) => setRt(e.target.value)} onBlur={saveRt} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />
+      </label>
+      {view && own(view) ? (
+        <button type="button" className="sc-pkx" onClick={toAll}>
+          {`${view} herkesle aynı olsun`}
+        </button>
+      ) : cls.length && !more && !split ? (
+        <button type="button" className="sc-pkx" onClick={() => setMore(true)}>
+          Sınıflara göre
+        </button>
       ) : null}
     </div>
   );
@@ -2729,6 +2729,10 @@ const SHUT_MS = 190;
 const FULL_VP = ["course", "wind", "rank", "prog"];
 function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", photos = [], defCam = "", onCards = null }) {
   const [crsView, setCrsView] = useState(null); // Parkur panelinde bakılan sınıf (null: o anki yarışın parkuru, "": herkes)
+  const [crsOpen, setCrsOpen] = useState(false); // üstteki Parkur kutusuna dokununca açılan seçim alanı
+  // üstte yazan parkur: o anki / sıradaki yarışın sınıfınınki, yoksa seçili
+  const pkCls = (sel && data.rounds?.[sel.id]?.cls) || (data.plan?.order || [])[0]?.cls || "";
+  const pkCard = pkCls ? cardFor(cleanCourse(data.course || {}), pkCls, "") : selCard(cleanCourse(data.course || {}));
   const ref = useRef(null);
   const [shut, setShut] = useState(""); // kapanırken kayan panel (animasyon bitince kalkar)
   const dragRef = useRef(null);
@@ -3007,9 +3011,9 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       <div ref={vidRef} />
     ) : k === "course" ? (
       <>
-        <ScWindNow data={data} now={now} />
-        {course || onCards ? <ScCrsPick data={data} view={crsView ?? ""} onView={setCrsView} onCards={onCards} /> : null}
-        {course ? <ScCourseDrop data={data} sel={sel} mode={mode} bare view={crsView} /> : <p className="sc-vno">Parkur yok</p>}
+        <ScWindNow data={data} now={now} pk={course || onCards ? { name: (CARD_TYPES[pkCard.type] || "").split(" ")[0], open: crsOpen, onTap: onCards ? () => (setCrsOpen(!crsOpen), setCrsView(null)) : null } : null} />
+        {crsOpen && onCards ? <ScCrsPick data={data} view={crsView ?? ""} onView={setCrsView} onCards={onCards} onClose={() => (setCrsOpen(false), setCrsView(null))} /> : null}
+        {course ? <ScCourseDrop data={data} sel={sel} mode={mode} bare view={crsOpen ? crsView : null} /> : <p className="sc-vno">Parkur yok</p>}
         <ScWindDay data={data} now={now} />
         {/* rüzgâr / eksen / hat ölçümü (Seyhun 2026-11-05 "rüzgâr ekleme parkurda olmalı, adı Ölçüm ekle") */}
         {onWind ? (
