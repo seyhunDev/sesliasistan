@@ -11,7 +11,7 @@ import { CARD_IDS, CARD_TYPES, ORSA_M, cardFor, cardKey, cardType, cleanCards, c
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, clubName, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc, SRC_CATS, srcCat } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
-import { WindRibbon } from "@/features/weather/WindRibbon";
+import { HourTable } from "@/features/weather/HourTable";
 import { GROUP_PICK, catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
 import { BoatMap } from "@/features/tracking/BoatMap";
@@ -1532,148 +1532,32 @@ function windTip(rows, c) {
   if (dn) return `${at(dn)} rüzgâr ${dn.wind} kn'a düşüyor`;
   return "";
 }
-// Grafik (Seyhun 2026-11-06 "tahmin sonrası için olmalı; 2 saat öncesinden göster, gerçekleşeni de; 00'dan sonrasını da ekle; ileri butonuyla
-// bir gün sonrasına geçeyim"): "Şimdi" sayfası 2 saat önceden 12 saat sonrasına (gece yarısını geçer), geçmiş = gerçekleşen (istasyon + ölçümümüz),
-// beklenen yalnız şimdiden sonra; › ile "Yarın" sayfası (ertesi günün 24 saati). Önemli bir şey yoksa satır sade, açınca yine grafik.
-function windDayPts(data, now, page = 0) {
-  const nh = istHour(now).h;
-  const today = istHour(now).day;
-  const fcAll = [
-    ...(data.forecast?.rows || []).filter((r) => r.wind != null).map((r) => ({ h: +r.hh, v: +r.wind })),
-    ...(data.forecast?.next || []).filter((r) => r.wind != null).map((r) => ({ h: +r.hh + 24, v: +r.wind })),
-  ].sort((x, y) => x.h - y.h);
-  if (page === 1) {
-    const fc = fcAll.filter((x) => x.h >= 24);
-    return { h0: 24, h1: 47, fc, st: [], me: [], nh: null };
-  }
-  const h0 = Math.floor(nh) - 2, h1 = h0 + 14;
-  let fc = fcAll.filter((x) => x.h > nh && x.h <= h1);
-  const pr = [...fcAll].reverse().find((x) => x.h <= nh), nx = fcAll.find((x) => x.h > nh);
-  if (pr && nx) fc = [{ h: nh, v: +(pr.v + ((nx.v - pr.v) * (nh - pr.h)) / (nx.h - pr.h)).toFixed(1) }, ...fc];
-  else if (pr && pr.h === nh) fc = [pr, ...fc];
-  const st = (data.forecast?.obs || []).filter((r) => r.wind != null && +r.hh <= nh && +r.hh >= h0).map((r) => ({ h: +r.hh, v: +r.wind }));
-  const me = [...(data.wind || []), ...(data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, kn: o.kn }))]
-    .filter((x) => x.kn != null && x.at && istHour(Date.parse(x.at)).day === today)
-    .map((x) => ({ h: istHour(Date.parse(x.at)).h, v: +x.kn }))
-    .filter((x) => x.h >= h0 && x.h <= nh);
-  return { h0, h1, fc, st, me, nh };
-}
-// Ortak rüzgâr şeridi (Seyhun 2026-11-06, ana sayfadaki WindRibbon: dalga, hamle, yön, saat, sıcaklık, yağmur): Şimdi = bugünün saatleri, geçen
-// saatlerde istasyonun ölçtüğü (gerçekleşen) rüzgâr; Yarın = ertesi gün. Bugünden 4 saatten az kaldıysa (gece) eski grafik
-const ribRow = (r) => ({ hh: r.hh, wind: r.wind, gust: r.gust, dir: r.dir, t: r.t, mm: r.mm, rain: r.rain ?? r.pop, code: r.code });
-function ribbonRows(data, now, page) {
-  if (page === 1) return (data.forecast?.next || []).filter((r) => r.wind != null).map(ribRow);
-  const nh = Math.floor(istHour(now).h);
-  const obs = Object.fromEntries((data.forecast?.obs || []).filter((r) => r.wind != null && +r.hh <= nh).map((r) => [+r.hh, r]));
-  const rows = (data.forecast?.rows || []).filter((r) => r.wind != null).map((r) => (obs[+r.hh] ? { ...ribRow(r), wind: +obs[+r.hh].wind, gust: obs[+r.hh].gust ?? r.gust, dir: obs[+r.hh].dir ?? r.dir } : ribRow(r)));
-  return rows.filter((r) => +r.hh >= Math.max(6, nh - 1)).length >= 4 ? rows : null;
-}
+// Tahmin tablosu (Seyhun 2026-11-06 "karma karışık; Windguru gibi gün gün, saat saat; yağmur burada mı çevrede mi nokta atışı"): uygulamanın
+// ortak saat saat hava tablosu (HourTable; ana sayfa, hava sayfası, yarış havası aynı): bugün + yarın sütunları, gün adı ayırır, şimdiki saat
+// çerçeveli, yağmur yarış yerinin mm'si, geçen saatlerde istasyonun ölçtüğü rüzgâr ayrı "Ölçülen" satırında, start saati çizgi.
+const hourRows = (rows, day) =>
+  (rows || []).filter((r) => r.wind != null).map((r) => ({ ...r, time: `${day}T${r.hh}:00`, day: +r.hh >= 7 && +r.hh <= 18 }));
 function ScWindDay({ data, now }) {
   const [open, setOpen] = useState(false);
-  // akşam 18'den sonra yarın önemli (Seyhun 2026-11-06): grafik Yarın sayfasıyla açılır, ‹ ile Şimdi
-  const [page, setPage] = useState(() => (istHour(now).h >= 18 ? 1 : 0));
   const tip = windTip(windAhead(data, now), curWind(data, null, true, now));
-  const hasNext = (data.forecast?.next || []).filter((r) => r.wind != null).length > 1;
-  const { h0, h1, fc, st, me, nh } = windDayPts(data, now, hasNext ? page : 0);
-  const p0 = windDayPts(data, now, 0);
-  if (p0.fc.length < 2 && p0.st.length < 2) return null;
-  const all = [...fc, ...st, ...me];
-  const W = 400, H = 170, l = 26, r = 10, t = 16, b = 26;
-  const max = Math.ceil((Math.max(10, ...all.map((x) => x.v)) + 2) / 5) * 5;
-  const xs = (h) => l + ((h - h0) * (W - l - r)) / (h1 - h0);
-  const ys = (v) => t + (H - t - b) * (1 - v / max);
-  const line = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${xs(p.h).toFixed(1)} ${ys(p.v).toFixed(1)}`).join(" ");
-  const fs = { fontFamily: "var(--lv-font-c), var(--lv-font), sans-serif", fontWeight: 700 };
-  const step = h1 - h0 > 16 ? 3 : 2;
-  const vs = p0.fc.map((x) => x.v);
-  const calm = vs.length ? `Sonraki saatler ${Math.round(Math.min(...vs))}–${Math.round(Math.max(...vs))} kn` : "";
-  const pg = hasNext ? page : 0;
-  const rib = ribbonRows(data, now, pg);
-  const chev = (d) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  const today = istHour(now).day;
+  const rows = hourRows(data.forecast?.rows, today);
+  if (rows.length < 2) return null;
+  const tom = new Date(Date.parse(`${today}T12:00:00Z`) + 864e5).toISOString().slice(0, 10);
+  const next = hourRows(data.forecast?.next, tom);
+  const ah = windAhead(data, now).map((r) => r.wind);
+  const calm = ah.length ? `Sonraki saatler ${Math.min(...ah)}–${Math.max(...ah)} kn` : "";
+  const marks = data.plan?.at && data.plan?.day === today ? [{ at: data.plan.at, label: "Start" }] : [];
   return (
     <div className={`sc-wday${open ? " on" : ""}${tip ? "" : " calm"}`}>
       <button type="button" className="sc-wtg" aria-expanded={open} onClick={() => setOpen(!open)}>
         <i>Tahmin</i>
         <span>{tip || calm}</span>
-        {chev("M6 9l6 6 6-6")}
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       {open ? (
         <div className="sc-wdb">
-          <div className="sc-wpg">
-            <button type="button" aria-label="Önceki" disabled={pg === 0} onClick={() => setPage(0)}>
-              {chev("M15 6l-6 6 6 6")}
-            </button>
-            <b>{pg ? "Yarın" : "Şimdi"}</b>
-            <button type="button" aria-label="Sonraki" disabled={pg === 1 || !hasNext} onClick={() => setPage(1)}>
-              {chev("M9 6l6 6-6 6")}
-            </button>
-          </div>
-          {rib ? (
-            <WindRibbon rows={rib} nowH={pg ? -1 : Math.floor(istHour(now).h)} legend={false} h={110} className="sc-wrib" />
-          ) : (
-            <>
-          <div className="sc-wh">
-            <span>
-              <i className="a" />
-              Beklenen
-            </span>
-            {st.length ? (
-              <span>
-                <i className="w" />
-                Gerçekleşen
-              </span>
-            ) : null}
-            {me.length ? (
-              <span>
-                <i className="m" />
-                Ölçümümüz
-              </span>
-            ) : null}
-          </div>
-          <svg className="gr-wc" viewBox={`0 0 ${W} ${H}`} aria-label="Beklenen ve gerçekleşen rüzgâr">
-            {[5, 10, 15, 20, 25, 30].filter((v) => v < max).map((v) => (
-              <g key={v}>
-                <line x1={l} x2={W - r} y1={ys(v)} y2={ys(v)} stroke="rgba(255,255,255,.07)" />
-                <text x={l - 6} y={ys(v) + 4} textAnchor="end" fontSize="12" fill="rgba(255,255,255,.45)" style={fs}>
-                  {v}
-                </text>
-              </g>
-            ))}
-            {Array.from({ length: h1 - h0 + 1 }, (_, i) => h0 + i).filter((h) => h % step === 0).map((h) => (
-              <text key={h} x={xs(h)} y={H - 6} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,.5)" style={fs}>
-                {String(((h % 24) + 24) % 24).padStart(2, "0")}
-              </text>
-            ))}
-            {!pg && h1 > 24 && h0 < 24 ? (
-              <g>
-                <line x1={xs(24)} x2={xs(24)} y1={t} y2={H - b} stroke="rgba(255,255,255,.18)" />
-                <text x={xs(24) + 4} y={t + 8} fontSize="11" fill="rgba(255,255,255,.5)" style={fs}>
-                  Yarın
-                </text>
-              </g>
-            ) : null}
-            {fc.length > 1 ? (
-              <>
-                <path d={`${line(fc)} L${xs(fc.at(-1).h)} ${ys(0)} L${xs(fc[0].h)} ${ys(0)} Z`} fill="rgba(47,214,195,.18)" />
-                <path d={line(fc)} fill="none" stroke="#2fd6c3" strokeWidth="2.4" strokeLinejoin="round" />
-              </>
-            ) : null}
-            {st.length > 1 ? <path d={line(st)} fill="none" stroke="#fff" strokeWidth="2.4" strokeLinejoin="round" /> : null}
-            {st.length === 1 ? <circle cx={xs(st[0].h)} cy={ys(st[0].v)} r="3.5" fill="#fff" /> : null}
-            {me.map((p, i) => (
-              <circle key={i} cx={xs(p.h)} cy={ys(p.v)} r="4.5" fill="#4d8dff" stroke="#fff" strokeWidth="1.5" />
-            ))}
-            {nh != null ? (
-              <g>
-                <line x1={xs(nh)} x2={xs(nh)} y1={t} y2={H - b} stroke="rgba(255,255,255,.55)" strokeDasharray="3 4" />
-                <text x={xs(nh)} y={t - 4} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,.7)" style={fs}>
-                  Şimdi
-                </text>
-              </g>
-            ) : null}
-          </svg>
-            </>
-          )}
+          <HourTable rows={rows} next={next.length ? next : null} date={today} obs={data.forecast?.obs || []} station={data.forecast?.station ? { name: data.forecast.station } : null} nowMs={now} marks={marks} flat />
         </div>
       ) : null}
     </div>
