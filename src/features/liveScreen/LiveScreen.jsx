@@ -2406,7 +2406,7 @@ function MyVidCtl({ vref, onOpen, onStop }) {
 // gördüğü. Seçim yalnız bu telefonda, yayına gitmez. "Ekranda"ya basınca "Ne izleyeyim?" paneli açılır (dikeyde alttan, yatayda
 // sağdan kayarak); seçince kapanır. Alt çubukta yalnız Parkur · Rüzgâr · Sıralama · Video · Start; paneller açılıp kapanırken kayar.
 const SHUT_MS = 190;
-function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "" }) {
+function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null }) {
   const ref = useRef(null);
   const [shut, setShut] = useState(""); // kapanırken kayan panel (animasyon bitince kalkar)
   const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
@@ -2486,14 +2486,23 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
         <button type="button" className={`sc-vt wide${!cam && !myVid ? " on" : ""}`} aria-pressed={!cam && !myVid} onClick={() => pick("")}>
           Yayınla aynı
         </button>
-        {/* kategoriler (Seyhun 2026-11-06): Canlı yayınlar, Kanalımdaki canlılar, Etraftaki kameralar, YouTube videoları; boş olan görünmez */}
+        {/* kategoriler (Seyhun 2026-11-06): Canlı yayınlar, Kanalımdaki canlılar, Etraftaki kameralar, YouTube videoları; boş olan görünmez.
+            Yöneten için hepsi görünür, başlığın yanındaki + yayın masasının Kaynaklar'ında o kategorinin ekleme kutusunu açar
+            (Seyhun 2026-11-06 "yeni video düzeni niye gelmedi") */}
         {SRC_CATS.map(([c, title]) => {
           const list = all.filter((x) => srcCat(x) === c);
-          if (!list.length) return null;
+          if (!list.length && !onAddSrc) return null;
           return (
             <Fragment key={c}>
-              <h4 className="sc-vsh">{title}</h4>
-              <div className="sc-vg">
+              <div className="sc-vshr">
+                <h4 className="sc-vsh">{title}</h4>
+                {onAddSrc ? (
+                  <button type="button" className="sc-vadd" aria-label={`${title} ekle`} onClick={() => onAddSrc(c)}>
+                    {c === "video" ? "+ Video" : c === "kanal" ? "+ Kanalımdan" : c === "etraf" ? "+ Bul" : "+ Kaynak"}
+                  </button>
+                ) : null}
+              </div>
+              {list.length ? <div className="sc-vg">
                 {list.map((x) => {
                   const grp = cams.find((y) => y.src === x.id)?.grp || "";
                   return x.url ? (
@@ -2509,7 +2518,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
                     </button>
                   );
                 })}
-              </div>
+              </div> : null}
             </Fragment>
           );
         })}
@@ -2779,6 +2788,7 @@ export function LiveScreen({ id, y = "" }) {
   const [vidHost, setVidHost] = useState(null); // Video panelinde ana hesabın videolarının yeri
   const [masaHost, setMasaHost] = useState(null); // Yayın masasının yeri (Yayın › "Yayında" paneli)
   const [give, setGive] = useState(null); // Benim › Yayına ver isteği { s, n } (LiveStart yazar)
+  const [masaAdd, setMasaAdd] = useState(null); // Ne izleyeyim? › + : masanın Kaynaklar'ında açılacak ekleme kutusu { c, n }
   const [myVid, setMyVid] = useState({ id: "", url: "" }); // yalnız bu cihazda arka planda oynayan kendi videom (canlı yayına gitmez)
   const [barHide, setBarHide] = useState(false); // alt düğmeler gizli
   const [follow, setFollow] = useState(false); // Yayın: izleyicilerin gördüğü (kendi seçimim beklemede kalır)
@@ -2807,6 +2817,8 @@ export function LiveScreen({ id, y = "" }) {
   }, [follow]);
   const warm = useSyncExternalStore(noSub, () => !!readWarmMe(), () => false); // bu telefonda uygulamaya girilmiş mi
   const onGiven = useCallback((ok) => ok && setVCam(""), []); // yayına verilince kendi seçimim yayınla aynı olur
+  const addSrcAt = useCallback((c) => (setMasaAdd({ c, n: Date.now() }), setVTab("masa")), []);
+  if (vTab !== "masa" && masaAdd) setMasaAdd(null); // masa kapanınca bir dahaki açılış Şimdi sekmesiyle
   const vView = ["rank", "wind", "course"].includes(vTab) ? vTab : ""; // izleyicinin açtığı Sıralama / Rüzgâr / Parkur
   const [rkTab, setRkTab] = useState(0); // izleyicinin Sıralama sekmesi (Genel, Kızlar…)
   const [rkAuto, setRkAuto] = useState(false); // Oto: sekmeler kendiliğinden geçer
@@ -2924,8 +2936,8 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={myVid.url && adm && inApp && !demoOn ? <MyVidCtl key={myVid.id} vref={myRef} onOpen={() => setVTab("vid")} onStop={() => playMine("", null)} /> : sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => pickCam(`b:${g}`)} /> : null} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} /> : null} />
-        {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} now={masaNow} pos={pos} give={give} onGiven={onGiven} /> : null}
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={myVid.url && adm && inApp && !demoOn ? <MyVidCtl key={myVid.id} vref={myRef} onOpen={() => setVTab("vid")} onStop={() => playMine("", null)} /> : sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => pickCam(`b:${g}`)} /> : null} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} /> : null} />
+        {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
       {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}

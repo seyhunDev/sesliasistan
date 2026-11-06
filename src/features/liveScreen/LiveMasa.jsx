@@ -31,12 +31,12 @@ const thumb = (url) => (ytId(url) ? `https://i.ytimg.com/vi/${ytId(url)}/mqdefau
 const sameVid = (a, b) => !!a && !!b && a.kind === b.kind && (a.src || "") === (b.src || "") && (a.mid || "") === (b.mid || "") && (a.grp || "") === (b.grp || "");
 
 // now: ekranın şu anki evresi ve öğesi (LiveScreen scPick): { evre, auto, item, next, left, pin, empty, has }
-export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMsg }) {
-  const [tab, setTab] = useState("now");
+export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMsg, addCat = null }) {
+  const [tab, setTab] = useState(addCat ? "src" : "now");
   const [L, setL] = useState(null); // ekran, kaynaklar, evreler (raceLive belgesinin ekran alanları)
   const [evOpen, setEvOpen] = useState("");
   const [selSrc, setSelSrc] = useState("");
-  const [add, setAdd] = useState(""); // açık ekleme kutusu: kategori (canli, video, kanal, etraf)
+  const [add, setAdd] = useState(addCat?.c || ""); // açık ekleme kutusu: kategori (canli, video, kanal, etraf)
   const [addKind, setAddKind] = useState("drone");
   const [addName, setAddName] = useState("");
   const [addUrl, setAddUrl] = useState("");
@@ -52,6 +52,17 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
     return () => clearTimeout(t);
   }, [note]);
   const fail = () => say(FAIL);
+  // Ne izleyeyim? › "+ Video" vb.: Kaynaklar sekmesi o kategorinin ekleme kutusuyla açılır
+  const addN = addCat?.n || 0;
+  const [addSeen, setAddSeen] = useState(addN);
+  if (addN !== addSeen) {
+    setAddSeen(addN);
+    setTab("src");
+    setAdd(addCat.c);
+    setSelSrc("");
+    setAddUrl("");
+    setAddName("");
+  }
 
   useEffect(() => {
     let on = true;
