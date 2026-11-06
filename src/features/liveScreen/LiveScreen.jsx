@@ -2625,7 +2625,7 @@ const BAR_ICON = {
   src: bi(<><rect x="3" y="5" width="18" height="12" rx="2.5" /><path d="M8 21h8M12 17v4" /></>),
   txt: bi(<><path d="M5 6h14M12 6v13M9 19h6" /></>),
 };
-function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", masaAyar = false, photos = [], defCam = "", onCards = null }) {
+function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", masaAyar = false, photos = [], defCam = "", onCards = null, onSrcMenu = null }) {
   const [crsView, setCrsView] = useState(null); // Parkur panelinde bakılan sınıf (null: o anki yarışın parkuru, "": herkes)
   const [crsOpen, setCrsOpen] = useState(false); // üstteki Parkur kutusuna dokununca açılan seçim alanı
   // üstte yazan parkur: o anki / sıradaki yarışın sınıfınınki, yoksa seçili
@@ -2867,18 +2867,27 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
               {list.length ? <div className="sc-vg">
                 {list.map((x) => {
                   const grp = cams.find((y) => y.src === x.id)?.grp || "";
-                  return x.url ? (
+                  const t = x.url ? (
                     <button key={x.id} type="button" className={`sc-vt${cam === x.id ? " on" : ""}`} aria-pressed={cam === x.id} onClick={() => pick(x.id)}>
                       {grp ? <i style={{ background: groupColor(grp) || "#ffd23f" }} aria-hidden="true" /> : null}
                       {x.name}
                       {live(x.id) ? <b className="sc-vlv" aria-label="yayında" /> : null}
                     </button>
                   ) : (
-                    <button key={x.id} type="button" className="sc-vt off" disabled>
+                    <button key={x.id} type="button" className="sc-vt off" disabled={!onSrcMenu} onClick={() => onSrcMenu?.(x.id)}>
                       {x.name}
                       <small>bağlı değil</small>
                     </button>
                   );
+                  // ⋯ kaynağın detay sayfası (Seyhun 2026-11-06 örnek kaynak-detay; yalnız yöneten)
+                  return onSrcMenu ? (
+                    <span key={x.id} className="sc-vtw">
+                      {t}
+                      <button type="button" className="sc-vmore" aria-label={`${x.name} ayrıntıları`} onClick={() => onSrcMenu(x.id)}>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="19" cy="12" r="1.9" /></svg>
+                      </button>
+                    </span>
+                  ) : t;
                 })}
               </div> : null}
             </Fragment>
@@ -3218,6 +3227,8 @@ export function LiveScreen({ id, y = "" }) {
   const onGiven = useCallback((ok) => ok && setVCam(""), []); // yayına verilince kendi seçimim yayınla aynı olur
   const addSrcAt = useCallback((c) => (setMasaAdd({ tab: "src", c, n: Date.now() }), setVTab("masa")), []);
   const masaAt = useCallback((t, ayar = false) => (setMasaAdd({ tab: t, c: "", n: Date.now(), bare: true, ...(ayar ? { ayar: true } : {}) }), setVTab("masa")), []);
+  // Ekranda › kaynağın ⋯: masanın kaynak detay sayfası açılır, X Ekranda'ya döner
+  const srcMenu = useCallback((id) => (setMasaAdd({ tab: "src", c: "", n: Date.now(), bare: true, det: id, back: () => setVTab("src") }), setVTab("masa")), []);
   if (vTab !== "masa" && masaAdd) setMasaAdd(null); // masa kapanınca bir dahaki açılış Şimdi sekmesiyle
   const vView = ["rank", "wind", "course"].includes(vTab) ? vTab : ""; // izleyicinin açtığı Sıralama / Rüzgâr / Parkur
   const [rkTab, setRkTab] = useState(0); // izleyicinin Sıralama sekmesi (Genel, Kızlar…)
@@ -3364,7 +3375,7 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} still={still} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} masaAyar={vTab === "masa" && !!masaAdd?.ayar} onCards={(adm && inApp) || demoOn ? (k) => setCrsReq({ k, n: Date.now(), at: new Date().toISOString() }) : null} /> : null} />
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} still={still} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} masaAyar={vTab === "masa" && !!masaAdd?.ayar} onSrcMenu={adm && inApp && !demoOn ? srcMenu : null} onCards={(adm && inApp) || demoOn ? (k) => setCrsReq({ k, n: Date.now(), at: new Date().toISOString() }) : null} /> : null} />
         {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} list={newList} onListed={onListed} cards={crsReq} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
