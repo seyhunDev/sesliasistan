@@ -1142,3 +1142,23 @@ group("Tekne takibi")([
     }, ok: (a) => a.every(Boolean) }],
   ]);
 }
+
+// YouTube'a yükle (2026-11-06): imzalı izin durumu, yükleme bilgileri, Video paneli ve Kanalımdan akışı
+{
+  const YA = await import("@/lib/server/ytAuth");
+  const YT = await import("@/lib/youtube");
+  const src = (f) => readFileSync(new URL(`../../../src/${f}`, import.meta.url), "utf8");
+  group("YouTube yükleme")([
+    ["izin durumu", { desc: "imzalı durum aynı anahtarla okunur; başka anahtar, bozulmuş imza ve süresi dolmuş durum boş döner", fn: () => {
+      const s = YA.signState("uid1", "gizli", 1000);
+      return [YA.readState(s, "gizli", 2000), YA.readState(s, "baska", 2000), YA.readState(s.slice(0, -2) + "xx", "gizli", 2000), YA.readState(s, "gizli", 1000 + 16 * 60e3), YA.readState("", "gizli")];
+    }, ok: ([a, b, c, d, e]) => a === "uid1" && b === "" && c === "" && d === "" && e === "" }],
+    ["yükleme bilgileri", { desc: "Liste dışı, yerleştirmeye açık, Spor; başlık 100 karakter, < > atılır", fn: () => YT.ytMeta(`<b>${"a".repeat(120)}`, "Örnek Kupa"), ok: (m) => m.status.privacyStatus === "unlisted" && m.status.embeddable === true && m.snippet.categoryId === "17" && m.snippet.title.length === 100 && !/[<>]/.test(m.snippet.title) && m.snippet.description === "Örnek Kupa" }],
+    ["Video paneli akışı", { desc: "paylaş penceresi ve link kutusu yerine YouTube'a yükle; bitince 'Kameralara ekleyeyim mi?' + ad, kamera olarak kaynaklara", fn: () => {
+      const v = src("features/liveScreen/LiveVideos.jsx");
+      return [/ytUpload\(/.test(v), /Kameralara ekleyeyim mi\?/.test(v), /addSource\(base, "camera"\)/.test(v), !/navigator\.share/.test(v), /YouTube&apos;a bağlan/.test(v)];
+    }, ok: (a) => a.every(Boolean) }],
+    ["Kanalımdan", { desc: "Yayın › + Kaynak'ta kanalın canlı yayını ve videoları; dokununca seçili türde eklenir", fn: () => [/<MyChannel /.test(src("features/broadcast/BroadcastPage.jsx")), /broadcastStatus=active/.test(src("lib/youtube.js"))], ok: (a) => a.every(Boolean) }],
+    ["anahtar sunucuda", { desc: "yenileme anahtarı ytAuth'ta (kurallarda yok: telefondan okunamaz); telefon yalnız kısa erişim anahtarı alır", fn: () => [/collection\("ytAuth"\)/.test(src("app/api/youtube/route.js")), !/ytAuth/.test(readFileSync(new URL("../../../firestore.rules", import.meta.url), "utf8")), !/refresh/.test(src("lib/youtube.js"))], ok: (a) => a.every(Boolean) }],
+  ]);
+}

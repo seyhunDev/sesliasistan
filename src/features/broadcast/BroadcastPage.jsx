@@ -21,6 +21,7 @@ import { GROUP_PICK, finalsFirst, groupColor, groupMap, groupsOn, isFinalGrp } f
 import { PenSheet } from "./PenSheet";
 import { countingAt as countingNow, finishSteps, orderWithout, startBlock, startedRow, zeroStarts } from "./startFlow";
 import { DocsTab } from "./DocsTab";
+import { MyChannel } from "./MyChannel";
 import { NearCams } from "./NearCams";
 import { AthletesTab } from "./AthletesTab";
 import { CourseTalk } from "./CourseTalk";
@@ -2643,6 +2644,7 @@ export function BroadcastPage({ orgId, id }) {
           <button type="button" onClick={() => (setAddOpen(false), setHowOpen(true))} className="mt-2.5 text-[0.875rem] font-semibold text-[#7fb6ff]">
             Nasıl bağlanır
           </button>
+          {addOpen && <MyChannel used={srcList.map((x) => x.url)} onPick={(u) => addSrc(addKind, u)} />}
           {addOpen && <NearCams race={race} onPick={(u, n) => addSrc("camera", u, n)} />}
           <div className="mt-3 flex gap-2">
             <Button variant="secondary" className="flex-1" onClick={() => setAddOpen(false)}>
