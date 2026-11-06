@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { BackButton } from "@/components/ui/BackButton";
+import { BackLink } from "@/components/ui/BackLink";
 import { Loading } from "@/components/ui/Loader";
 import { LoadFail } from "@/components/ui/LoadFail";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -16,7 +15,6 @@ import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { RaceEditor } from "@/features/athletes/RaceEditor";
 import { placeText } from "@/features/athletes/RaceList";
 import { Icon } from "@/components/ui/Icon";
-import { buttonClass } from "@/components/ui/buttonClass";
 import { coachStart } from "@/features/athletes/raceDocs";
 import { addRacePlan, freshRace, loadRace, loadRaces, racesNow, saveRace, saveRaceResults } from "@/features/athletes/races";
 import { loadShared, loadSharedList, pullSheets, shareRace } from "@/features/athletes/sharedRaces";
@@ -55,7 +53,6 @@ export default function RacePage() {
 const cachedRace = (orgId, id) => (id === "new" ? null : racesNow(orgId, 60e3)?.find((x) => x.id === id) || null);
 
 function Race({ orgId, uid, email, by, mail, coach }) {
-  const { isOwner } = useAuth(); // Canlı sekmesi yalnız ana hesapta
   const { id } = useParams();
   const q = useSearchParams();
   const router = useRouter();
@@ -242,42 +239,38 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     return () => window.dispatchEvent(new CustomEvent("sa-plain", { detail: false }));
   }, [plain]);
 
-  // Lacivert üstün başlığı (RaceEditor üst kısmı onun altına koyar): geri, ad, yer · tarih, kalan gün / Yarışta, ⋯
-  // (Seyhun 2026-11-04: ayrı "5 gün kaldı" satırı kalktı, başlık satırında; sayfa daha az yer kaplar)
-  // Yarış sürerken (Seyhun 2026-11-05 "başlık çok şey olmuş"): adın önünde yalnız kırmızı nokta; "Yarışta" yazısı ve üstteki Yayın düğmesi yok
-  // (Yayın'a lacivertin altındaki "Yayına git" ile gidilir)
+  // Başlık (yeni beyaz görünüm, Seyhun 2026-11-06 "üst satır hala çok dolu"; yeni-dil/ornek.png): üstte "‹ Yarışlar" ve ⋯ (Yayın, düzenle, sil),
+  // altında büyük ad ve tek satır bilgi: tarih · yer · kalan gün (yarış sürerken kırmızı nokta ve "Yarışta · 2. gün")
   const on = !!race && racing({ ...race, ...head0 });
   const head = (
-    <header className="flex items-center gap-2.5">
-      <BackButton href="/athletes/races" />
-      <div className="min-w-0 flex-1 leading-tight">
-        <h1 className="flex items-center gap-2 text-[1.375rem] font-bold tracking-[-.02em]">
-          {on && <span className="size-2.5 shrink-0 rounded-full bg-[#ff6b6b]" role="img" aria-label="Yarışta" />}
-          <span className="truncate">{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</span>
-        </h1>
-        {race && <p className="truncate text-[0.8125rem] text-white/65">{subText({ ...race, ...head0 })}</p>}
+    <header>
+      <div className="rz-bar">
+        <BackLink href="/athletes/races" aria-label="Geri" data-press className="rz-link">
+          <Icon name="back" className="size-5" />
+          Yarışlar
+        </BackLink>
+        {(race?.id || head0) && (
+          <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className="rz-link w-10 justify-center">
+            <Icon name="more" className="size-6" />
+          </button>
+        )}
       </div>
-      {race && !on && <Left r={{ ...race, ...head0 }} />}
-      {/* Yayın düğmesi (ana hesap; Seyhun 2026-11-05 "bir de yayın butonu koy"); yarış sürerken yok, altta Yayına git var */}
-      {race?.id && isOwner && !on && (
-        <Link href={`/athletes/races/${race.id}/yayin`} data-press className="raised flex h-9 shrink-0 items-center rounded-full border px-3 text-[0.8125rem] font-semibold">
-          Yayın
-        </Link>
-      )}
-      {(race?.id || head0) && (
-        <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className={buttonClass({ variant: "back" })}>
-          <Icon name="more" className="size-5" />
-        </button>
+      <h1 className="mt-1 truncate">{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</h1>
+      {race && (
+        <p className="mt-1 flex items-center gap-1.5 text-[0.9375rem] text-mut">
+          {on && <span className="size-2 shrink-0 rounded-full bg-rec" aria-hidden="true" />}
+          <span className="truncate">{subText({ ...race, ...head0 })}</span>
+        </p>
       )}
     </header>
   );
 
   return (
-    <main className="split split-even mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className="rz split split-even mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {!race || missingRace ? (
         <>
-          <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]">{head}</section>
-          <div className="relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pt-1">
+          <section className="rz-top split-top pb-1 pt-[calc(0.5rem+env(safe-area-inset-top))]">{head}</section>
+          <div className="bg-bg pt-1">
             {err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
             {missingRace ? <p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p> : fail && !race ? <LoadFail onRetry={() => (setFail(false), setRetry((n) => n + 1))} /> : <Loading label="Yarış yükleniyor" />}
           </div>
@@ -320,38 +313,25 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   );
 }
 
-// Başlığın alt satırı (tarih tek yerde; kalan gün lacivertte büyük): "Foça, İzmir · 26–28 Eki"
+// Başlığın alt satırı: "11–12 Kas · Dikili · 5 gün kaldı"; yarış sürerken "Yarışta · 2. gün · Dikili"; bitince "… · Bitti"
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+const gap = (a, b) => Math.round((new Date(`${b}T12:00:00`) - new Date(`${a}T12:00:00`)) / 864e5);
 // Yarış bugün sürüyor mu (başlangıçtan bitişe)
 function racing(r) {
   if (!r.startDate) return false;
   const t = todayStr();
   return t >= r.startDate && t <= (r.endDate || r.startDate);
 }
-// Başlığın sağında kalan gün ("5 / gün", "Yarın"), bittiyse "Bitti" (yarış sürerken başlıkta kırmızı nokta)
-function Left({ r }) {
-  if (!r.startDate) return null;
-  const t = todayStr();
-  const n = Math.round((new Date(`${r.startDate}T12:00:00`) - new Date(`${t}T12:00:00`)) / 864e5);
-  const on = n <= 0 && t <= (r.endDate || r.startDate);
-  if (n > 1)
-    return (
-      <span className="shrink-0 text-center leading-none" aria-label={`${n} gün kaldı`}>
-        <b className="block text-[1.625rem] font-bold tracking-[-.04em] tabular-nums">{n}</b>
-        <small className="mt-0.5 block text-[0.6875rem] font-semibold text-white/70">gün</small>
-      </span>
-    );
-  return (
-    <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-[0.8125rem] font-semibold">
-      {on && <span className="size-2 animate-pulse rounded-full bg-[#ff6b6b]" aria-hidden="true" />}
-      {n === 1 ? "Yarın" : on ? "Yarışta" : "Bitti"}
-    </span>
-  );
-}
 
 function subText(r) {
   const a = r.startDate;
   const b = r.endDate && r.endDate !== a ? r.endDate : "";
   const when = !a ? "" : !b ? shortDay(a) : a.slice(0, 7) === b.slice(0, 7) ? `${+a.slice(8)}–${shortDay(b)}` : `${shortDay(a)}–${shortDay(b)}`;
-  return [placeText(r), when].filter(Boolean).join(" · ");
+  const place = r.district || r.city || placeText(r);
+  if (!a) return place;
+  const t = todayStr();
+  const n = gap(t, a);
+  if (racing(r)) return [`Yarışta · ${gap(a, t) + 1}. gün`, place].filter(Boolean).join(" · ");
+  const left = n > 1 ? `${n} gün kaldı` : n === 1 ? "Yarın" : "Bitti";
+  return [when, place, left].filter(Boolean).join(" · ");
 }

@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { dayPlan, nextDay, ourPlaces, racePhase } from "@/lib/raceDay";
 import { loadLive } from "./raceLiveStore";
-import { RaceWx } from "./RaceWx";
+import { RaceWxRows } from "./RaceWx";
 
-// Yarış günü lacivert üst (Seyhun 2026-10-28, yaris-tasarim/harita "Yarış günü: saate göre değişen sayfa"):
+// Yarış günü üstü (Seyhun 2026-10-28, yaris-tasarim/harita "Yarış günü: saate göre değişen sayfa"):
 //   A yarışlar sürerken: rüzgâr (RaceWx, şimdiki ölçüm/tahmin) üstte, altında Multimedya · Parkur
 //   B bugünün sonucu gelince: bizimkilerin sırası ve dünden farkı (↑2), "Tüm sonuçlar" Multimedya › Sonuçlar; rüzgâr altta
 //   C gün bitince (son yarış bitip 90 dk ya da 18:00): sonuç kısa, sonra yarın (talimat programından ilk start, toplanma; havası yarına açılır);
@@ -42,89 +41,69 @@ export function useRacePhase(r, orgId, rid, on) {
 
 // "Optimist / 120 · Junior 4. · Kızlar 7."
 const subOf = (x) => [x.n ? `${x.cls} / ${x.n}` : x.cls, x.grp && x.fp && `${x.grp} ${x.fp}.`, x.cp && `${x.cat} ${x.cp}.`, x.gp && `Kızlar ${x.gp}.`].filter(Boolean).join(" · ");
-const btn = "flex h-[3.25rem] items-center justify-center gap-2.5 rounded-2xl text-[1.0625rem] font-bold active:translate-y-px active:shadow-none";
-const main = `${btn} bg-[#8fb3ff] text-[#06283a] shadow-[0_3px_0_#2aa9bd]`;
-const second = `${btn} raised border px-5 text-[1rem] font-semibold`;
 
 function Places({ list, short = false }) {
   return (
-    <ul className="ck-glass divide-y divide-white/10 overflow-hidden rounded-2xl">
+    <div className="rz-list">
       {list.map((x) => (
-        <li key={x.id} className="flex items-center gap-3 px-4 py-2.5">
-          <b className="w-8 shrink-0 text-[1.375rem] font-bold leading-none tabular-nums">{x.place}</b>
-          <span className="min-w-0 flex-1">
-            <b className="block truncate text-[0.9375rem] font-semibold">{x.name}</b>
-            {!short && x.row?.cls && <small className="block truncate text-[0.78rem] text-white/60">{subOf(x.row)}</small>}
+        <div key={x.id} className="rz-row">
+          <b className="w-8 shrink-0 text-[1.25rem] font-bold tabular-nums">{x.place}</b>
+          <span className="rz-k">
+            {x.name}
+            {!short && x.row?.cls && <small>{subOf(x.row)}</small>}
           </span>
-          {x.move ? <span className={`shrink-0 text-[0.8125rem] font-semibold tabular-nums ${x.move > 0 ? "text-[#8fb3ff]" : "text-[#ffd59a]"}`}>{x.move > 0 ? `↑${x.move}` : `↓${-x.move}`}</span> : null}
-        </li>
+          {x.move ? <span className={`rz-v font-semibold ${x.move > 0 ? "rz-ok" : "rz-warn"}`}>{x.move > 0 ? `↑${x.move}` : `↓${-x.move}`}</span> : null}
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
 
-export function RaceDayTop({ r, rid, chosen, phase, races, dayNo, dayAll }) {
+// Yarış günü üstü, yeni beyaz görünüm (Seyhun 2026-11-06, yeni-dil/ornek.png 5): büyük tek satır (2. yarış · start 12:30 / Sonuçlar / Gün bitti),
+// Hava ve Harita kapalı satır (RaceWxRows), bizimkilerin sırası, yarın ya da dönüş satırı; tek dolu düğme "Yayına git" (sonuç gelince "Tüm sonuçlar")
+export function RaceDayTop({ r, rid, chosen, phase, races, dayAll }) {
   const today = todayStr();
   const media = `/athletes/races/${rid}/yayin`; // Yayın sayfası (multimedya kalktı, Seyhun 2026-11-01)
   const places = ourPlaces(r.results, chosen);
   const fleet = r.results?.fleet;
   const last = today >= (r.endDate || r.startDate);
   const tom = nextDay(today);
-  // "4. gün · Yarışta" gibi yazı yok (Seyhun 2026-10-29: "o yazıya hiç gerek yok, çok fazla yazı olmasın"); yarış sürerken başlık yok
-  const title = phase === "done" ? (dayAll > 1 && !last ? "Gün bitti" : "Yarış bitti") : phase === "results" ? "Sonuçlar" : "";
   const fin = races.filter((x) => x.fin).length;
-  const side =
-    phase === "race"
-      ? races.length
-        ? fin === races.length
-          ? `${races.length} yarış bitti`
-          : `${races.at(-1).n}. yarış · ${hm(races.at(-1).at)}`
-        : ""
-      : [races.length && `${races.length} yarış`, fleet && `${fleet} tekne`].filter(Boolean).join(" · ");
-  const wx = <RaceWx key={phase} mini fill r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} />;
-  // tek ekran (Seyhun 2026-10-29, 2026-11-03): kalan yeri açık bölge haritası doldurur (RaceWx fill); Multimedya · Parkur alt çubukta sekme (aynı sayfa gibi)
+  const cur = races.at(-1);
+  const title = phase === "done" ? (dayAll > 1 && !last ? "Gün bitti" : "Yarış bitti") : phase === "results" ? "Sonuçlar" : cur && fin < races.length ? `${cur.n}. yarış` : races.length ? `${races.length} yarış bitti` : "";
+  const side = phase === "race" ? (cur && fin < races.length ? `start ${hm(cur.at)}` : "") : [races.length && `${races.length} yarış`, fleet && `${fleet} tekne`].filter(Boolean).join(" · ");
   return (
-    <div className="mt-3 flex flex-1 flex-col">
+    <div className="mt-4">
       {(title || side) && (
-        <span className="flex items-baseline justify-between gap-3">
-          {title && <b className="-mb-[0.2em] truncate pb-[0.2em] text-[1.625rem] font-bold leading-none tracking-tight">{title}</b>}
-          {side && <span className="shrink-0 text-[0.8125rem] font-semibold tabular-nums text-white/70">{side}</span>}
-        </span>
+        <p className="flex items-baseline gap-2.5">
+          {title && <b className="truncate text-[2.25rem] font-bold leading-none tracking-[-.04em]">{title}</b>}
+          {side && <span className="shrink-0 text-[0.9375rem] tabular-nums text-mut">{side}</span>}
+        </p>
       )}
+      <div className="mt-3">
+        <RaceWxRows key={phase} r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} />
+      </div>
+      {places.length > 0 && <Places list={phase === "done" ? places.slice(0, 4) : places} short={phase === "done"} />}
+      {phase === "done" && <NextRow r={r} />}
+      <Link href={media} data-press className="btn btn-primary mt-4 w-full">
+        {phase === "race" ? "Yayına git" : "Tüm sonuçlar"}
+      </Link>
+    </div>
+  );
+}
 
-      {phase === "race" && (
-        <>
-          {wx}
-          {/* Seyhun 2026-11-03: "Yayına git" alta; üstte hava, ortada harita kalan yeri doldurur */}
-          <Link href={media} data-press className={`${main} mt-3`}>
-            Yayına git
-          </Link>
-        </>
-      )}
-
-      {phase === "results" && (
-        <>
-          <div className="mt-4">
-            <Places list={places} />
-          </div>
-          <Link href={media} data-press className={`${main} mt-3`}>
-            Tüm sonuçlar
-          </Link>
-          {wx}
-        </>
-      )}
-
-      {phase === "done" && (
-        <>
-          {places.length > 0 && (
-            <Link href={media} className="mt-4 block active:opacity-80" aria-label="Tüm sonuçlar">
-              <Places list={places.slice(0, 4)} short />
-            </Link>
-          )}
-          <NextCard r={r} />
-          {wx}
-        </>
-      )}
+// Gün bitince yarın ya da son gün dönüş, beyaz görünümde tek satır
+function NextRow({ r }) {
+  const today = todayStr();
+  const last = today >= (r.endDate || r.startDate);
+  const plan = dayPlan(r, nextDay(today));
+  const val = last ? [r.returnDate && dm(r.returnDate), r.returnTime].filter(Boolean).join(" · ") || "Yazılmadı" : plan.start ? `İlk start ${plan.start.time}` : plan.first ? `${plan.first.title} ${plan.first.time}` : dm(nextDay(today));
+  return (
+    <div className="rz-list">
+      <div className="rz-row">
+        <span className="rz-k">{last ? "Dönüş" : "Yarın"}</span>
+        <span className="rz-v">{val}</span>
+      </div>
     </div>
   );
 }
