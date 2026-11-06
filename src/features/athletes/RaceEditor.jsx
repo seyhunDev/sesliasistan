@@ -1118,8 +1118,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
           </ul>
           <p className="mt-2 px-1 text-[0.75rem] text-mut">İşaretli bölümler notta görünür. Son tarihler bilgi içindir, 7 gün ve daha az kalanlar vurgulanır.</p>
 
-          <button type="button" onClick={() => (setSheetOpen(false), makeSheet())} disabled={sheetBusy || !sheetList.length} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-deep text-[0.9375rem] font-semibold text-white disabled:opacity-40">
-            <Icon name="print" className="size-5" />
+          <button type="button" onClick={() => (setSheetOpen(false), makeSheet())} disabled={sheetBusy || !sheetList.length} data-press className="btn btn-primary mt-5 w-full">
             {sheetBusy ? "Hazırlanıyor…" : `Bilgi notunu hazırla · ${sheetList.length} sayfa`}
           </button>
       </Sheet>
@@ -1329,35 +1328,40 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         <>
           {/* Hazır evrak bir bilgi değişince (stale) ya da bu telefonda yoksa (başka cihazda hazırlandı / telefon sildi): uyarı */}
           {!file && (stale || (checked && r.docsAt)) && chosen.length > 0 && (
-            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-amber-500/10 px-4 py-3 ring-1 ring-amber-500/30">
-              <Icon name="alert" className="size-5 shrink-0 text-amber-600" />
-              <span className="min-w-0 flex-1">
-                <b className="block text-[0.9375rem] font-semibold">{stale ? "Evrak eski, yenile" : "Evrak bu cihazda yok"}</b>
-                <span className="block text-[0.8125rem] text-mut">{stale ? "Bir bilgi değişti, önceki evrak geçersiz." : "Başka cihazda hazırlandı ya da telefon sildi. Yeniden hazırla."}</span>
-              </span>
-              <button type="button" onClick={make} disabled={busy} className="h-9 shrink-0 rounded-full bg-amber-600 px-4 text-[0.8125rem] font-semibold text-white disabled:opacity-50">
-                {busy ? "Hazırlanıyor…" : stale ? "Yenile" : "Hazırla"}
+            <div className="rz-list mt-4">
+              <button type="button" onClick={make} disabled={busy} data-press="row" className="rz-row w-full text-left">
+                <span className="rz-k">
+                  {stale ? "Evrak eski" : "Evrak bu cihazda yok"}
+                  <small>{stale ? "Bir bilgi değişti, önceki evrak geçersiz" : "Başka cihazda hazırlandı ya da telefon sildi"}</small>
+                </span>
+                <span className="rz-v rz-warn font-semibold">{busy ? "Hazırlanıyor…" : stale ? "Yenile" : "Hazırla"}</span>
               </button>
             </div>
           )}
 
           {/* Özet: hazır evrak tek kartta */}
           {file && (
-            <div className="mt-4 rounded-3xl bg-deep px-5 py-4 text-white">
-              <p className="truncate text-[0.6875rem] font-semibold uppercase tracking-wider text-white/70">Evrak · {r.name || "yarış"}</p>
-              <b className="mt-0.5 block text-[1.375rem] font-bold">{parts.length} belge hazır</b>
-              <span className="block text-[0.8125rem] text-white/80">{[`${made?.pages || pages} sayfa`, made?.at && `${madeText(made.at)} hazırlandı`, `${chosen.length} sporcu`].filter(Boolean).join(" · ")}</span>
-              <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => openPdf()} className="h-10 flex-1 rounded-full bg-white text-[0.875rem] font-semibold text-deep">Tümünü aç</button>
-                <button type="button" onClick={() => share()} className="h-10 flex-1 rounded-full bg-white/15 text-[0.875rem] font-semibold">Paylaş</button>
+            /* Yeni beyaz görünüm (2026-11-06): özet satırı (sağda Yenile), altında tek dolu "Tümünü aç" ve açık mavi Paylaş / Mail */
+            <div className="mt-4">
+              <div className="rz-list">
+                <div className="rz-row">
+                  <span className="rz-k">
+                    {parts.length} belge hazır
+                    <small>{[`${made?.pages || pages} sayfa`, made?.at && `${madeText(made.at)} hazırlandı`, `${chosen.length} sporcu`].filter(Boolean).join(" · ")}</small>
+                  </span>
+                  <button type="button" onClick={make} disabled={busy} data-press className="rz-v rz-acc font-medium">
+                    {busy ? "Hazırlanıyor…" : "Yenile"}
+                  </button>
+                </div>
+              </div>
+              <div className={`mt-3 grid gap-2.5 ${onMail ? "grid-cols-3" : "grid-cols-2"}`}>
+                <button type="button" onClick={() => openPdf()} data-press className="btn btn-primary">Tümünü aç</button>
+                <button type="button" onClick={() => share()} data-press className="btn rz-soft">Paylaş</button>
                 {onMail && (
-                  <button type="button" onClick={() => setMailPick(true)} disabled={mailing} aria-label="Mail at" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 disabled:opacity-50">
-                    <Icon name="mail" className="size-5" />
+                  <button type="button" onClick={() => setMailPick(true)} disabled={mailing} data-press className="btn rz-soft">
+                    {mailing ? "…" : "Mail"}
                   </button>
                 )}
-                <button type="button" onClick={make} disabled={busy} className="h-10 flex-1 rounded-full bg-white/15 text-[0.875rem] font-semibold disabled:opacity-50">
-                  {busy ? "…" : "Yenile"}
-                </button>
               </div>
             </div>
           )}
@@ -1369,14 +1373,12 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
               <div className={`${card} divide-y divide-line overflow-hidden`}>
                 {!ready[0][1] && (
                   <button type="button" onClick={() => setEdit(true)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                    <Icon name="alert" className="size-[1.125rem] shrink-0 text-rec" />
                     <span className="flex-1 text-[0.875rem] font-medium">{ready[0][0]}</span>
                     <span className="text-[0.8125rem] font-semibold text-acc">Düzelt</span>
                   </button>
                 )}
                 {!chosen.length && (
                   <button type="button" onClick={() => setTab("people")} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                    <Icon name="alert" className="size-[1.125rem] shrink-0 text-rec" />
                     <span className="flex-1 text-[0.875rem] font-medium">Sporcu seçilmedi</span>
                     <span className="text-[0.8125rem] font-semibold text-acc">Sporcu ekle</span>
                   </button>
@@ -1384,7 +1386,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                 {signerAsk && (
                   <div className={r.signer.trim() ? "" : "bg-amber-500/5"}>
                     <p className="flex items-center gap-3 px-4 pt-3 text-[0.875rem] font-medium">
-                      <Icon name={r.signer.trim() ? "check" : "alert"} className={`size-[1.125rem] shrink-0 ${r.signer.trim() ? "text-ok" : "text-rec"}`} />
                       Belgeleri imzalayan kulüp yetkilisi
                     </p>
                     <Pair>
@@ -1398,7 +1399,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                   const gone = raceExpired(a, r);
                   return (
                     <button key={a.id} type="button" onClick={() => setFix(a)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                      <Icon name="alert" className="size-[1.125rem] shrink-0 text-amber-600" />
                       <span className="min-w-0 flex-1">
                         <b className="block truncate text-[0.875rem] font-medium">{a.studentName}</b>
                         <span className="block truncate text-[0.75rem] text-mut">{[miss.length && `Eksik: ${miss.join(", ")}`, gone.length && `${gone.map((x) => x.label).join(", ")} yarışta geçersiz`].filter(Boolean).join(" · ")}</span>
@@ -1409,7 +1409,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                 })}
                 {coachLack.length > 0 && (
                   <button type="button" onClick={() => setCoachOpen(true)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                    <Icon name="alert" className="size-[1.125rem] shrink-0 text-amber-600" />
                     <span className="min-w-0 flex-1">
                       <b className="block text-[0.875rem] font-medium">Antrenör bilgisi</b>
                       <span className="block truncate text-[0.75rem] text-mut">Eksik: {coachLack.join(", ")}</span>
@@ -1567,7 +1566,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
           <Label>ORTAK BİLGİLER</Label>
           <div className={`${card} overflow-hidden`}>
             <button type="button" onClick={() => setSignOpen(!signOpen)} aria-expanded={signOpen} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-              <Icon name="edit" className="size-5 shrink-0 text-acc" />
               <span className="min-w-0 flex-1">
                 <b className="block text-[0.9375rem] font-semibold">İmza ve tarih</b>
                 <span className="block truncate text-[0.8125rem] text-mut">{[r.signer.trim() && `${r.signer.trim()}${r.signerTitle?.trim() ? `, ${r.signerTitle.trim()}` : ""}`, r.letterDate ? `evrak tarihi ${rangeText(r.letterDate, r.letterDate)}` : "evrak tarihi ilk hazırlamada yazılır"].filter(Boolean).join(" · ")}</span>
@@ -1595,7 +1593,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
             <div ref={coachRef} className="scroll-mt-4">
               <Label right={coachSaved ? "kaydedildi ✓" : "hesabına kaydedilir"}>{tyf ? "ANTRENÖR VE DESTEK BOTU" : "ANTRENÖR"}</Label>
               <button type="button" onClick={() => setCoachOpen(true)} className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg`}>
-                <Icon name="user" className="size-5 shrink-0 text-acc" />
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-[0.9375rem] font-semibold">{coach.name || "Antrenör"}</b>
                   <span className="block text-[0.8125rem] text-mut">{coachLack.length ? `Eksik: ${coachLack.join(", ")}` : "Bilgiler hesabında kayıtlı, belgelere kendiliğinden yazılır"}</span>
@@ -1666,9 +1663,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
             ))}
             <li>
               <button type="button" disabled={upload != null} onClick={() => pickExtra.current?.click()} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
-                  <Icon name="plus" className="size-5" />
-                </span>
                 <span className="min-w-0 flex-1">
                   <b className="block text-[0.9375rem] font-semibold text-acc">{upload != null ? `Yükleniyor… %${Math.round(upload * 100)}` : "Evrak ekle"}</b>
                 </span>
@@ -1706,14 +1700,12 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
                   {mailing ? "…" : "Mail"}
                 </button>
               )}
-              <button type="button" onClick={() => share()} className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white">
-                <Icon name="up" className="size-5" />
+              <button type="button" onClick={() => share()} data-press className="btn btn-primary flex-1">
                 Paylaş / Yazdır
               </button>
             </>
           ) : (
-            <button type="button" onClick={make} disabled={busy} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white disabled:opacity-50">
-              <Icon name="print" className="size-5" />
+            <button type="button" onClick={make} disabled={busy} data-press className="btn btn-primary flex-1">
               {busy ? "Hazırlanıyor…" : pages ? `Belgeleri hazırla · ${pages} sayfa` : "Belgeleri hazırla"}
             </button>
           )}
