@@ -1,0 +1,263 @@
+Commit: e396071 · Asistan ekran testi: kare kod fotoğrafı yazı kutusundan (#1325)
+Zaman: 2026-11-06-2252 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42280824183
+
+TAM TEST · 06.11.2026 22:35:01
+Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
+
+1/4 Birim testleri çalışıyor…
+2/4 Anlama ve görev listesi (hatalı girdilerle)…
+    Sahte Firebase (emülatör) açılıyor…
+3/4 Uygulama bu bilgisayarda açılıyor (ilk derleme 1-3 dakika sürebilir)…
+    Sayfalar tarayıcıda açılıyor…
+    Sesli asistan ekranı (sahte Firebase, yapay zekasız)…
+    Asistan: sekme çubuğu, açılış, dinleme, kapanış…
+    Asistan: çalışırken, küçültme, sesli yanıt, geçmiş…
+    Asistan: kayıt, onaylar, görev listesi…
+    Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
+    Deniz trafiği sayfası…
+    Kameralar sayfası…
+    Hava: yağış şeridi…
+    Hava: ölçülen / beklenen yağmur…
+    Ana sayfa: yarış günü havası…
+    Antrenman: sesle başlat ve bitir…
+    Çevrimdışı çalışma (internet kesilip açılır)…
+    Çevrimdışı: 24/26 geçti
+    Yarış sayfası (sporcu seçili, yarış günü)…
+    Yarış günü (sporcu seçili)…
+    Yarıştan önce (sporcu seçili)…
+    Multimedya…
+4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
+
+======================================================================
+SONUÇ: 1428/1438 geçti · 10 kalan · 1030 sn
+======================================================================
+
+1. BİRİM TESTLERİ: 0/1
+  ✗ Birim testleri: 0/1
+      ✗ “4505 test”
+          beklenen: hepsi geçer
+          olan:     4466/4505 geçti
+      ✗ “yarışta açıldı › geri › geri” → {"races":false,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
+      ✗ “tek kutu” → false (beklenen: solda kutu, sağda bas-konuş küresi)
+      ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
+      ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
+      ✗ “sağ uçta büyük” → false (beklenen: dört sekme solda, küre sağda 4.75rem)
+      ✗ “kısa dokunuş sınırı” → false (beklenen: SHORT_MS 200 (tek kelimelik cevap atılmasın, 2026-11-04), AWAY_PX 90)
+      ✗ “yayın: bugünün startları tek liste” → [true,false,true,false] (beklenen: Seyhun 2026-11-01: sınıf/grup/bayrak seçimi ile start sırası tek listede (plan.order [{cls,grp,prep}]); ilk bekleyen Sıradaki, Başlat onu rounds[start]'a yazıp listeden düşer; satıra dokununca çipler + Yukarı/Aşağı/Çıkar; herkese açık ekran plan.order'ı olduğu gibi sıradaki gösterir)
+      ✗ “yayından çıkar anında keser: evrenin görüntüsü ve kayıt sırası geri gelmez” → [true,true,false,false,true,true,true] (beklenen: Seyhun 2026-11-06: Yayından çıkar / Ekrandan kaldır deyince o evrenin atanmış görüntüsü (evreScreen) ve günün kayıtları sırayla (autoOn) devam etmesin; yeni görüntü verilince off kalkar)
+      ✗ “yayın sekmeleri, ekranda alt yazı, rüzgâr aralığı ve gün boyu grafik, üst şerit, yarışlar penceresi” → [false,false,false,true,false,false,false,true] (beklenen: Seyhun 2026-11-02: Yayın sayfası Süre · Video · Parkur · Dönüşler sekmeleri (Seg); Video'da 'Ekranda yazı' (screen.caption) → canlı ekranda alt yazı LowerThird, sesle 'ekrana yaz: …' / 'ekrandaki yazıyı kaldır'; rüzgâr aralığı okta salınır (lv-swing), değişince süzülür; gün boyu grafik her evrede: tahmin + istasyon ölçümü (/api/canli forecast.obs) + bizim ölçümler)
+      ✗ “parkur kartları: varsayılan seçili, yeni kart, Başlat rotayı yazar, ekranda sahne” → [true,true,false,false,true] (beklenen: Seyhun 2026-11-02: her yarışın kendi parkur kartı olabilir; şimdiki varsayılan (A) ve seçili; Yayın › Parkur'da Yeni kart, rota yazma, seçme, silme; Başlat seçili kartın rotasını o yarışa yazar; canlı ekran süren yarışın rotasını, yoksa seçili kartı animasyonlu sahnede gösterir; /canli ve Yayın ⋯ menüsünde örnek yarış düğmesi)
+      ✗ “canlı ekran yayın tasarımı: program, beklenen rüzgâr, yayın yazısı” → [true,true,true,false,false,true] (beklenen: Seyhun 2026-11-02 (tasarim7 onayı, 'profesyonel yelken yayını gibi yazı'): yarış öncesi video yokken ortada büyük geri sayım, ilk yarış + grup, beklenen rüzgâr (tahminin start saati), altta program kartları (1. yarış Mavi grup…); yarışta ve videolu beklemede sağ üstte program etiketleri (Bitti · Canlı · saat); gün sonu 'Gün bitti · N yarış' + yarış kartları + genel, şeritte yarının ilk startı ve beklenen rüzgârı (/api/canli forecastNext); Barlow / Barlow Condensed; arka foto 18px bulanık)
+      ✗ “canlı ekran senaryo 2: start'a 1 saatten az, dönen tek panel” → [false,false,false,false] (beklenen: Seyhun 2026-11-03 (senaryo/2b onayı, 'hepsini aynı anda göstermemize gerek yok'): yarış günü start'a 1 saatten az, turuncu bayrak ya da start dizisi → videosuz StartHero (.lv-hold2), videolu NearBand (.lv-band2): sayaç + sıradaki yarış + bayraklar sabit, sağda tek panel 8 sn'de bir kayar (Start hattı → Rüzgâr → Parkur → Sıradaki, noktalar), son dakikada panel yok, altta 5·4·1·0 çubuğu; sıralama, çipler, alt şerit yok; tehir ve yarın hariç)
+      ✗ “canlı ekran ortak rüzgâr bloğu ve parkur sahnesi” → [false,false,false,false,false] (beklenen: Seyhun 2026-11-03 ('rüzgâr gösteriminde çok eksiltmişsin; sağanak, gerçekleşen; ok ortalanmamış; birbirleriyle uyumlu'; 'parkurda sadece sayılar yazıyor, parkur animasyonumuzu kullanalım; veri yoksa rüzgâr 0 kabul'): WindNow (ortalı ok, kn, sağanak, yön, kaynak) + WindHours (ortak HourTable) her adımda; parkur her yerde sahne, ölçüm yokken varsayılan kart eksen 0°; senaryo 2 yalnız sayaç/turuncu/<1 saat)
+      ✗ “tehir: rüzgâr değişken sebebi, çekildikten sonra düzelt” → [true,false,false,false] (beklenen: Seyhun 2026-11-03: 'tehir sebebi olarak rüzgâr çok değişiyor da olsun; hatalı bir şey olursa sonra değişim yapılabilmeli' → AP_WHY'de 'Rüzgâr değişken'; tehir çekiliyken Düzelt aynı pencereyi açar (iniş seçilmezse aynı kalır), Kaydet plan.ap'ı günceller; tehirde/yarıştan önce hazırlık bayrağı gösterilmez, sıradaki start sınıf işaretiyle 'bekliyor')
+      ✗ “canlı bekleme ekranı kartsız, ince geri, boş genel sıralama yok” → [false,false,false,false] (beklenen: Seyhun 2026-11-01: bekleme evresinde geri sayım ekranın ortasında kartsız, altında küçük saat; başlıkta ince ‹ geri (/canli); genel sıralama yalnız sonuç varsa (hideEmpty); yan sütun yalnız yayın ya da sıralama varsa)
+      ✗ “tehir (süre + sebep) ve bekleme ekranında rüzgâr tahmini” → [true,false,true,true,true,false] (beklenen: Seyhun 2026-11-01: Yayın'da Tehir → süre (30 dk…2 sa, belirsiz) + sebep; plan.ap { from, why }, at yeni saat; apText ekranda; /api/canli forecast (Open-Meteo, yarış yeri) → WindDay grafiği, parkur ölçüm varsa, 'ekranda neler' şeridi; zeminde parkur çizgisi yok)
+      ✗ “yayın sayfası sade: ⋯ menüsü, sonuç PDF'i ayrı sayfa; /canli canlı etiketi” → [true,true,true,false,false,true] (beklenen: Seyhun 2026-11-01: Yayın'da az düğme (Başlat; Start ekle + Tehir; Sesle gir), Linki kopyala / Ekranı aç / Sonuç PDF'i / Kayıt listesi / Bugün yarış yok / Günü bitir (bir daha sorar) ⋯ menüsünde; sonuçlar /athletes/races/<id>/sonuclar; /canli listesinde süren yarış Canlı, 20 sn yenilenir; çökme ekranı /canli'de 'Canlı yarışlara dön')
+      ✗ “grubun kendi numarası” → ["S1,M1,K1,S2,M2,S3,K2,K2",3,3,false,true,true] (beklenen: Seyhun 2026-11-04 üç grup: Sarı 3. yarışa geçince Kırmızı'nın 2. yarışı 2 kalır; abandone tekrarı aynı numara; Yayın satırı grup · yarış, başlamış yarışta değiştirme yok, kısa yollar; Dönüşler seçili gruba; canlıda diğer gruplar)
+      ✗ “parkur sahnesi: örnek tekne avantajlı uçtan tramolayla” → [true,true,true,false] (beklenen: Seyhun 2026-11-02: parkur rüzgâra göre atılır, rüzgâr dönünce hat avantajı (raceCourse lineBias ile aynı) değişir; örnek nokta avantajlı uçtan kalkar, orsada rüzgâra 45° ile tramola atar (uzun ayakta bir tramola daha), pupada kavança, şamandıraları rota gibi döner, iz bırakır; canlı ekranda ve Yayın önizlemesinde)
+      ✗ “rüzgâr yönü: bekleme ekranında şimdiki rüzgâr, grafikte saat saat derece, ok akış yönünde” → [false,true,false,false,false] (beklenen: Seyhun 2026-11-02: start beklerken şimdiki rüzgâr ve yönü profesyonel (pusula + derece + knot), manuel girildiyse yazsın; ne oldu / ne bekleniyor grafiğinde yönler derece olarak)
+      ✗ “ekranda gösterim düğmeleri Video sekmesinde” → false (beklenen: Seyhun 2026-11-02: rüzgâr, parkur, program ekranda gösterme Parkur sekmesinden Video sekmesine; 2026-11-04 yerini Ekran sekmesindeki Evreler aldı (Ekranda tut))
+      ✗ “yayın masası: koyu, sekme durumu, alttaki sabit düğmeler” → [false,true,false,false,true,true] (beklenen: Seyhun 2026-11-02 (masa/B-koyu-masa.png seçildi): Yayın sayfası canlı ekranla aynı koyu zemin, pembe vurgu; sekmelerde kısa durum (Yarışta, 3 gün, Ekranda, Trapez, 2/4); her sekmenin iş düğmeleri altta sabit; Video'da ekran önizlemesi ve kaynak kutucukları; Program'da gün kutuları; Parkur'da kart kutuları; Dönüşler'de şamandıra adımları)
+      ✗ “videolu yarış öncesi: sol şerit ve turuncu bayrak” → [true,true,true,true,false,false,false] (beklenen: Seyhun 2026-11-02 (videolu/ onay): video varken yarış öncesinde solda bulanık şerit (yarış adı, Yarış öncesi / turuncu bayrakla Start öncesi, süre, rüzgâr, hat avantajı, parkur, program); Yayın › Süre'de Turuncu bayrak, Video'da Sol bilgi anahtarı; sesle 'turuncu bayrak çekildi/indi', 'sol bilgiyi kapat/aç'; şerit açıkken gösterim kartları ve alt şerit yok)
+      ✗ “program maddeleri: yarış öncesi bütün program, o gün o günün maddeleri” → 09:30Antrenör toplantısı,11:00İlk start|true|true|true|true|false|false (beklenen: Seyhun 2026-11-02: PDF'teki programın bütün maddeleri (antrenör toplantısı, ilk start, son start saati) okunur, plan.agenda'ya yazılır; canlı ekranda yarış öncesi bütün program, yarış günü o günün maddeleri, saati geçen soluk (Yapıldı), sıradaki vurgulu; Yayını sıfırla programı korur)
+      ✗ “program sekmesi elle: madde ekle/düzelt, ilk start maddesi saatle aynı, gün ekle/kaldır” → 09:30Antrenör toplantısı,11:00İlk start|0|09:30,12:00|true|{"startDate":"2026-11-06","endDate":"2026-11-09"}|{"startDate":"2026-11-04","endDate":"2026-11-05"}|true|{"startDate":"2026-11-07","endDate":"2026-11-08"}|true|false (beklenen: Seyhun 2026-11-04 'Program sekmesinde eksikler, hatalar var, çok karışık; yeniden tasarla': maddeler elle eklenir/düzelir/silinir (canlı ekranda görünen plan.agenda), İlk start saati değişince 'İlk start' maddesi de aynı saate geçer, gün sona eklenir (en çok 10), yalnız ilk/son gün kalkar; Program sekmesi tek saat + Her güne, bekleyen start yok (Süre'de))
+      ✗ “yarışta süre rüzgârın üstünde küçük bant” → false,false,false (beklenen: Seyhun 2026-11-03 16:45: yarış başlayınca 'Starttan beri' süresi üst ortadan kalkar, rüzgâr kartının hemen üstünde küçük bant (grup rengi, yarış adı, grup · sınıf); üst orta videoya kalır; yarış adı altta tekrar yazılmaz)
+      ✗ “örnek yarış gerçek start videosuyla, parkur ekseni” → [true,true,true,true,true,true,false] (beklenen: Seyhun 2026-11-02: örnekte gerçek video (DEMO_VIDEO); start dizisi video 0:00'dan açılırken sayaç 1:04, start'tan 40 sn sonra video kalkar, dönüşler ve genel sıralama; turuncu bayrak adımı; YouTube bağlantısındaki t= başlama saniyesi gömmeye geçer; parkur ekseni sahnede kesik çizgi + açı, sol bilgide 'Eksen 300° KB' ve rüzgârın eksenden farkı)
+      ✗ “genel sıralama starttan sonra, göster/kaldır, cam kart” → [true,true,false,false,false] (beklenen: Seyhun 2026-11-02: genel sıralama start'tan önce (geri sayımda) görünmez; yarışta Yayın › Video › 'Genel sıralama (yarışta)' ya da sesle 'geneli kaldır/göster' ile kapanır/açılır; kutusuz sağ bulanık şerit, şamandıra sıralaması kutusuz ve farklı biçimde)
+      ✗ “yayın kurulumu, resimli bayrak, grupların parkuru” → [true,true,true,true,false,true,false] (beklenen: Seyhun 2026-11-02 'önce sınıflar, sonra gruplar; bir kere seçip kapatalım, ayarlardan değişsin; sonra sekmeler. Bayrak resimli, hiçbiri seçili değil, seçince ilerler, geri de olsun. Sarı trapezde, mavi başka parkurda')
+      ✗ “bekleme örnek H, tehir: bayrak + sebep, inişe geri sayım” → [false,true,false,true] (beklenen: Seyhun 2026-11-03: videosuz bekleme solda geri sayım + program + rüzgâr, sağ üstte parkur, vitrin dönmez; tehirde iki ekranda AP bayrağı ve sebep, iniş / uyarı işareti saati yok, süre belliyse 'Tehir inişine' geri sayım; Yayın'da inince 1 dk sonra geri sayım seçilebilir)
+      ✗ “gruplar ayrı başlar, ▶ ekrana alır, kamera gruba bağlı” → [true,true,true,true,true,true,true,true,true,false] (beklenen: Seyhun 2026-11-02 'sarı başladı, mavi de başlayabilir; grupları ayrı yönetebilmeliyim; canlı yayında hangisini göstereceğimi seçeyim; Kamera 1 ile 1. ve 3. grubu, Kamera 2 ile 2. ve 4. grubu çekerim' (örnek gruplar-kamera/grup-a.png))
+      ✗ “sol alt: start + rüzgâr, yarış öncesi akış, Velora” → true,true,true,true,true,false,false,true,false (beklenen: Seyhun 2026-11-03 17:10 (sol-alt onayı): start kartı rüzgârın üstünde (üst orta boş), start dizisinde bayraklar start kartında 5·4·1·0 şeridi (sağda dizi kartı yok); yarış öncesi akış beklenen rüzgâr (rüzgârdan yana açılır, yalnız önümüzdeki saatler) → parkur → program (rota 17:34'te çıktı), Yayın'da Otomatik (8/12/20/30 sn) ya da Elle, Geri/Durdur/İleri; sağ altta Velora işareti)
+      ✗ “süre yoksa süre alanı gösterilmez” → false,false,false,false (beklenen: Seyhun 2026-11-03 17:19: geri / ileri sayım yokken (—:—, —, geri sayım bitti) start kartında ve yarış bandında boş süre alanı yok; başka bilgi de yoksa kart yok)
+      ✗ “canlı ekranda Rüzgâr: Parkur'daki ölçüm penceresi (ana hesap)” → [true,false] (beklenen: Seyhun 2026-11-05: rüzgâr yönü, eksen gibi ölçümler Yayın › Parkur'daki gibi /canli'den de girilir; Start'ın solunda Rüzgâr, aynı AddSheet ve addCourseObs)
+      ✗ “yayın evreleri: görüntü ve gösterilecekler atanır” → [false,false,true,true,true,false,true,true] (beklenen: Seyhun 2026-11-04 'yarış öncesi şu video, yarışta şu drone; o sahnede şunu göster, sonra parkuru, rüzgârı; otomatik geçiş neye geçiyor belli değil': courseShow.ev evre başına (Yarış öncesi, Start, Yarışta, Yarış sonrası, Tehir) görüntü + öğe sırası + süre; verisi olmayan atlanır; Sabitle (pin); eski sahne videoları evrelere taşınır; Yayın alan alan yazar (saveEvre))
+      ✗ “kurallar ve bağlantılar” → [true,true,false,true] (beklenen: telefon anahtarla yalnız yazar; yayın konumu sunucudan; Yayın'da panel sekmeden bağımsız; asistanda komut)
+      ✗ “yayında canlı konum: Yayın ve canlı ekran” → [false,true,false] (beklenen: Yayın › Video'da Tekneler kutusu, önizlemede ekrandaki grubun tekneleri, ekrana alınca döngü; canlı ekranda arkada BoatLive (videolu düzen), CANLI KONUM rozeti (replay değil))
+      ✗ “canlı konum: renk listesindeki gruplar” → [true,true,true,true,true,false,true,true] (beklenen: Seyhun 2026-11-04 'renk listesi yüklenince sarı grup tekneler, mavi grup tekneler; örnek data ile gerçek renklere göre tekneler': fleetOf kayıt + grup listesinden, gruplar bilinen sırayla; realSet grubun gerçek tekneleri örnek izlerle (10'dan çoksa geride sıra), grup yoksa null; screen/evre görüntüsünde grp kalır; Yayın'da grup başına döşeme, canlı ekranda sol altta o grubun genel sırası)
+      ✗ “Yayın ve canlı” → [true,false,true] (beklenen: Tehir penceresinde Kimin için; satırda İndir; Başlat tehirde engelli; canlıda tehirdeki grup küçük satır)
+
+2. ANLAMA: temiz cümleler: 121/121
+  ✓ Temiz cümle: Plan / takvim: 8/8
+  ✓ Temiz cümle: Görev: 6/6
+  ✓ Temiz cümle: Not: 3/3
+  ✓ Temiz cümle: Mesaj: 10/10
+  ✓ Temiz cümle: Soru: 5/5
+  ✓ Temiz cümle: Soru (yoklamadan): 2/2
+  ✓ Temiz cümle: Soru (kulüp verisinden): 1/1
+  ✓ Temiz cümle: Yoklama: 6/6
+  ✓ Temiz cümle: Yoklama (yoklama sayfasında): 3/3
+  ✓ Temiz cümle: Antrenman günlüğü: 3/3
+  ✓ Temiz cümle: Yarış: 5/5
+  ✓ Temiz cümle: Yarış aç: 2/2
+  ✓ Temiz cümle: Yarış (yarış sayfasında): 3/3
+  ✓ Temiz cümle: Instagram: 4/4
+  ✓ Temiz cümle: Instagram (gönderi ekranında): 2/2
+  ✓ Temiz cümle: Nakit ödeme / bağış: 3/3
+  ✓ Temiz cümle: Aidat: 2/2
+  ✓ Temiz cümle: Fatura: 2/2
+  ✓ Temiz cümle: Fiş: 2/2
+  ✓ Temiz cümle: Sporcu: 2/2
+  ✓ Temiz cümle: Kişi: 1/1
+  ✓ Temiz cümle: Doğum günü: 1/1
+  ✓ Temiz cümle: Alışveriş: 3/3
+  ✓ Temiz cümle: Envanter: 2/2
+  ✓ Temiz cümle: Etkinlik: 2/2
+  ✓ Temiz cümle: Ders programı: 1/1
+  ✓ Temiz cümle: Arama: 2/2
+  ✓ Temiz cümle: Sayfa açma: 10/10
+  ✓ Temiz cümle: Kapatma: 4/4
+  ✓ Temiz cümle: Kapatma (soru sonrası): 2/2
+  ✓ Temiz cümle: Geri al: 1/1
+  ✓ Temiz cümle: çok iş: 18/18
+
+2. ANLAMA: insan ve ses tanıma hataları: 630/630
+  ✓ Bozuk: noktalamasız: 121/121
+  ✓ Bozuk: küçük harf, kesme işaretsiz: 121/121
+  ✓ Bozuk: Türkçe harfsiz (klavye): 102/102
+  ✓ Bozuk: dolgu sözlü (şey, ııı): 121/121
+  ✓ Bozuk: kekeme (ilk söz iki kez): 121/121
+  ✓ Gerçek hata: yanlış duyulan fiil (oluru, hazirla): 1/1
+  ✓ Gerçek hata: aynı cümle, Türkçe harfsiz ve noktasız: 1/1
+  ✓ Gerçek hata: yanlış duyulan fiil + sonra: 1/1
+  ✓ Gerçek hata: Türkçe harfsiz, antreman: 3/3
+  ✓ Gerçek hata: noktasız, Türkçe harfsiz: 1/1
+  ✓ Gerçek hata: kesmesiz, Türkçe harfsiz: 2/2
+  ✓ Gerçek hata: antreman: 1/1
+  ✓ Gerçek hata: sayı yazıyla, antreman: 1/1
+  ✓ Gerçek hata: kelime bölünmüş (yok lama): 1/1
+  ✓ Gerçek hata: "Ali ve" birleşik duyulmuş: 1/1
+  ✓ Gerçek hata: Türkçe harfsiz: 3/3
+  ✓ Gerçek hata: insta, Türkçe harfsiz: 1/1
+  ✓ Gerçek hata: bitişik soru eki: 2/2
+  ✓ Gerçek hata: vatsap: 1/1
+  ✓ Gerçek hata: marka adı eksik harf: 1/1
+  ✓ Gerçek hata: sayı yazıyla: 1/1
+  ✓ Gerçek hata: knot → not: 1/1
+  ✓ Gerçek hata: kapatma sözü: 1/1
+  ✓ Gerçek hata: Türkçe harfsiz kapatma: 1/1
+  ✓ Gerçek hata: kapatma + söz: 1/1
+  ✓ Gerçek hata: yıl yazıyla: 1/1
+  ✓ Gerçek hata: git yerine gir: 1/1
+  ✓ Gerçek hata: kısa sayfa adı: 1/1
+  ✓ Gerçek hata: kesmesiz, -yla: 1/1
+  ✓ Gerçek hata: gönder yerine yolla: 1/1
+  ✓ Gerçek hata: ödemedi yerine vermedi: 1/1
+  ✓ Gerçek hata: tutar yazıyla, kesmesiz: 1/1
+  ✓ Gerçek hata: kesmesiz, bitişik soru eki: 1/1
+  ✓ Gerçek hata: "ki" ayrı yazılmış: 1/1
+  ✓ Gerçek hata: konuşma dili (yapcaz): 1/1
+  ✓ Gerçek hata: yazım hatası (yazz): 1/1
+  ✓ Gerçek hata: mesaj, yoklama sanılmamalı: 1/1
+  ✓ Gerçek hata: soru, yoklama yazılmamalı: 2/2
+  ✓ Gerçek hata: mesaj, kapatma sanılmamalı: 1/1
+  ✓ Gerçek hata: optimist → optimus: 1/1
+  ✓ Gerçek hata: noktasız (yoklama sayfasında): 1/1
+  ✓ Gerçek hata: yazım hatası (gönderi ekranında): 1/1
+
+2. ANLAMA: insan davranışları (düzeltme, vazgeçme, onay, tekrar, soru/komut, öğrenme): 187/187
+  ✓ Mesaj kartına cevap (gönder / vazgeç / değiştir): 45/45
+  ✓ Kayıt taslağına cevap (kaydet / vazgeç / değiştir): 24/24
+  ✓ “Başka bir isteğin var mı?” cevabı: 19/19
+  ✓ “Saat kaçta olsun?” cevabı: 19/19
+  ✓ Yeni cümle: Düzeltme: 8/8
+  ✓ Yeni cümle: Vazgeçme: 7/7
+  ✓ Yeni cümle: Gönderme: 9/9
+  ✓ Yeni cümle: Soru / komut: 13/13
+  ✓ Yeni cümle: Tekrar: 6/6
+  ✓ Yeni cümle: Kibar / sokak ağzı: 12/12
+  ✓ Uzun, dağınık anlatım (yapay zeka cevap vermezse): 4/4
+  ✓ Öğrenme deposu: yapay zekanın cevabı bir dahaki sefere yerelde: 11/11
+  ✓ Yanlış / eksik söylenen sporcu adı (günlük ↔ yoklama): 10/10
+
+3. AKIŞ: görev listesi, takılma, çökme: 245/245
+  ✓ Yedek görev listesi (yapay zeka cevap vermezse): 115/115
+  ✓ Görev listesi: sıra ve takılma: 115/115
+  ✓ Saçma girdi: çökmez, takılmaz: 14/14
+  ✓ Hız: 1/1
+
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 68/68
+  ✓ Sunucu ucu: girişsiz istek reddedilir: 18/18
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
+  ✓ Giriş ekranı: 2/2
+
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 136/139
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
+  ✗ Ana sayfa: 7/8
+      ✗ “saat saat hava tablosu”
+          beklenen: hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+  ✓ Enerji (boşta): 2/2
+  ✓ Bas konuş: tam ekran açılış: 4/4
+  ✓ Halka renkleri: 6/6
+  ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
+  ✓ Kapanış: 3/3
+  ✓ Kısa dokun yaz: 1/1
+  ✓ Sayfa hataları: 13/13
+  ✓ Küçültme (aşağı kaydır): 4/4
+  ✓ Yeniden açılış: 3/3
+  ✓ Sesli yanıt: 8/8
+  ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
+  ✓ Onay isteyen işler: 10/10
+  ✓ Görev listesi ve ilerleme halkası: 3/3
+  ✓ Tohum cümleler (telefonda cevap): 12/12
+  ✗ Kişi kare kodu: 3/4
+      ✗ “kare kodun fotoğrafı”
+          beklenen: kişi okunur, yapay zekaya gitmez
+          olan:     hata: dome is not defined
+  ✓ Asistanın gizli olduğu yerler: 8/8
+  ✓ Geniş ekran (sol menü): 3/3
+  ✓ Asistan raporu: 3/3
+  ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
+  ✓ Instagram gönderisi: 1/1
+  ✓ Tam ekran üstte: 1/1
+  ✓ Deniz trafiği: 2/2
+  ✓ Kameralar: 5/5
+  ✗ Hava: 2/3
+      ✗ “ölçülen / beklenen yağmur”
+          beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
+          olan:     ölçülen sütun 23 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+  ✓ Antrenman yarışı sesle: 4/4
+  ✓ Güvenlik: 1/1
+
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 24/26
+  ✗ Anında açılış: 3/5
+      ✗ “yeniden açılınca açılış ekranı”
+          beklenen: hiç görünmez
+          olan:     {"boot":true,"warm":true}
+      ✗ “sunucuda değişiklik varken”
+          beklenen: üstte çizgi çıkar, yeni başlık gelir
+          olan:     {"boot":true,"sync":true}
+  ✓ İnternet varken: 2/2
+  ✓ Yavaş bağlantı: 3/3
+  ✓ Takılan bağlantı: 2/2
+  ✓ İnternet yok: 5/5
+  ✓ Bağlantı gelince: 2/2
+  ✓ Açıkken kopup gelince: 2/2
+  ✓ Önbellek iç hatası: 3/3
+  ✓ iPhone: 2/2
+
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 17/21
+  ✗ Yarış sayfası: 13/14
+      ✗ “havada gün düğmeleri”
+          beklenen: çökmeden açılır, "gün kaldı" görünür
+          olan:     gün satırı yok
+  ✓ Antrenman: 2/2
+  ✓ Asılı bağlantı: 2/2
+  ✗ Yayın: 0/3
+      ✗ “gruplar ayrı, ekranda seçim, kameralar”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 10000ms exceeded.
+      ✗ “video sekmesi sade”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “satırdan başlat, dur, devam”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 10000ms exceeded.
+
+4. GERÇEK YAPAY ZEKA: 0/0
+  – Gerçek yapay zeka: ATLANDI (--yzsiz)
+
+Okuma: ✓ geçti, ✗ kalan (hata var), – atlandı. “beklenen” asistanın yapması gereken, “olan” şu an yaptığı.
+“yapay zeka (plan/görev/not/mesaj/soru)”: cümle ana yapay zekaya gidiyor; plan, görev, not, mesaj ve sorular için doğru yer budur.
