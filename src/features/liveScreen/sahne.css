@@ -1149,3 +1149,16 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 .sc .sc-vph1.on { box-shadow: 0 0 0 3px #fff; }
 .sc .sc-vph1.add { display: flex; align-items: center; justify-content: center; color: #fff; font: 700 0.9em/1.2 var(--sc-c); text-align: center; cursor: pointer; }
 .sc .sc-vph1:active { transform: scale(0.97); }
+
+/* Telefonda ve iPad'de (dokunmatik) Parkur, Rüzgâr, Sıralama, Program tam ekran; sağ üstte tek X (Seyhun 2026-11-06). Web ve Mac değişmez */
+.sc-vpx { display: none; }
+@media (pointer: coarse) {
+  .sc .sc-vb.bar > .sc-vp.full { position: fixed; inset: 0; top: 0; right: 0; bottom: 0; left: 0; width: auto; height: auto; max-height: none; margin: 0; transform: none; z-index: 40; display: flex; flex-direction: column; gap: 0.7em; overflow-y: auto; overscroll-behavior: contain; padding: calc(4.2em + env(safe-area-inset-top)) calc(1em + env(safe-area-inset-right)) calc(1em + env(safe-area-inset-bottom)) calc(1em + env(safe-area-inset-left)); border-radius: 0; background: rgba(6, 13, 26, 0.97); box-shadow: none; animation: sc-full 0.22s ease both; }
+  .sc .sc-vp.full .sc-ckx.crs { flex: 1 1 auto; height: auto; min-height: 16em; }
+  .sc .sc-vp.full .sc-ckx.rk { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .sc .sc-vp.full .sc-ckx .sc-board.wide.ctl { flex: 1 1 auto; height: auto; max-height: none; min-height: 0; }
+  .sc .sc-vp.full .sc-vpx { position: fixed; top: calc(0.8em + env(safe-area-inset-top)); right: calc(0.8em + env(safe-area-inset-right)); z-index: 41; display: flex; align-items: center; justify-content: center; width: 2.8em; height: 2.8em; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.14); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); color: #fff; -webkit-tap-highlight-color: transparent; }
+  .sc .sc-vp.full .sc-vpx svg { width: 1.3em; height: 1.3em; }
+  .sc .sc-vp.full .sc-vpx:active { transform: translateY(2px); box-shadow: none; }
+}
+@keyframes sc-full { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: none; } }
