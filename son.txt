@@ -1,8 +1,8 @@
-Commit: e396071 · Asistan ekran testi: kare kod fotoğrafı yazı kutusundan (#1325)
-Zaman: 2026-11-06-2252 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42280824183
+Commit: a997090 · Canlı Ekranda: kaynaklar önizleme kartı (#1334)
+Zaman: 2026-11-07-0017 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42292900209
 
-TAM TEST · 06.11.2026 22:35:01
+TAM TEST · 06.11.2026 23:59:49
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1428/1438 geçti · 10 kalan · 1030 sn
+SONUÇ: 1428/1438 geçti · 10 kalan · 1032 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -215,9 +215,9 @@ SONUÇ: 1428/1438 geçti · 10 kalan · 1030 sn
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
   ✗ Hava: 2/3
-      ✗ “ölçülen / beklenen yağmur”
-          beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 23 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+      ✗ “yağmur grafiği”
+          beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var
+          olan:     sütun 48 · gün düğmesi 1 · 5,5 false
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
