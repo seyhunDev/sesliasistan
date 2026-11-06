@@ -137,9 +137,16 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
     setL((p) => ({ ...p, onAir: o }));
     saveOnAir(orgId, raceId, o).catch(fail);
   };
-  const putSources = (l) => {
-    setL((p) => ({ ...p, stream: { ...(p.stream || {}), sources: l } }));
-    setStream(orgId, raceId, { sources: l }).catch(fail);
+  const putSources = (l, gone = null) => {
+    const x = { sources: l, empty: !l.length, ...(gone ? { gone } : {}) };
+    setL((p) => ({ ...p, stream: { ...(p.stream || {}), ...x } }));
+    setStream(orgId, raceId, x).catch(fail);
+  };
+  // sil: yalnız listeden (YouTube'daki yayın ve anahtarı kalır); kanalımdan kendiliğinden gelen süren yayın bir daha eklenmez
+  const delSrc = (s) => {
+    setSelSrc("");
+    const v = ytId(s.url);
+    putSources(srcList.filter((x) => x.id !== s.id), s.auto && v ? [...(L?.stream?.gone || []), v] : null);
   };
   // from: kanal (Kanalımdan), etraf (Etraftaki kameralar), video (YouTube videosu); canlı yayında yok
   const addSrc = (k, url = "", name = "", from = "") => {
@@ -288,7 +295,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
               </div>
               <SrcKey src={s} onStream={(v) => putStream(s.id, v)} toast={say} />
               {!isOn({ kind: "src", src: s.id }) ? (
-                <button type="button" className="lms-b red" onClick={() => (setSelSrc(""), putSources(srcList.filter((x) => x.id !== s.id)))}>
+                <button type="button" className="lms-b red" onClick={() => delSrc(s)}>
                   Kaynağı sil
                 </button>
               ) : null}

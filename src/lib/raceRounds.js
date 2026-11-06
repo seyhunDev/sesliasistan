@@ -648,15 +648,20 @@ export const SRC_CATS = [
   ["etraf", "Etraftaki kameralar"],
   ["video", "YouTube videoları"],
 ];
+// empty: kaynakların hepsi silindi (Seyhun 2026-11-06 "2 kaynağı silemiyorum": boş listede eski Kamera 1 + Drone 1 geri geliyordu);
+// gone: listeden silinen, kanalda süren yayınların kimlikleri (kendiliğinden yeniden eklenmesin; YouTube'daki yayına dokunulmaz)
 export const cleanStream = (s) => {
   const sources = cleanSources(s?.sources);
+  const empty = s?.empty === true && !sources.length;
   const of = (id) => sources.find((x) => x.id === id)?.url;
-  return { url: sources.length ? of("c1") ?? ytUrl(s?.url) : ytUrl(s?.url), drone: sources.length ? of("d1") ?? ytUrl(s?.drone) : ytUrl(s?.drone), sources };
+  const gone = Array.isArray(s?.gone) ? [...new Set(s.gone.filter((x) => /^[\w-]{11}$/.test(String(x))))].slice(-20) : null;
+  return { url: empty ? "" : sources.length ? of("c1") ?? ytUrl(s?.url) : ytUrl(s?.url), drone: empty ? "" : sources.length ? of("d1") ?? ytUrl(s?.drone) : ytUrl(s?.drone), sources, empty, ...(gone ? { gone } : {}) };
 };
-// Kaynak listesi: kayıtlı liste, yoksa eski alanlardan Kamera 1 + Drone 1
+// Kaynak listesi: kayıtlı liste, yoksa (hepsi silinmediyse) eski alanlardan Kamera 1 + Drone 1
 export const streamSources = (stream) => {
   const l = cleanSources(stream?.sources);
-  return l.length ? l : [{ id: "c1", name: "Kamera 1", kind: "camera", url: ytUrl(stream?.url) }, { id: "d1", name: "Drone 1", kind: "drone", url: ytUrl(stream?.drone) }];
+  if (l.length || stream?.empty === true) return l;
+  return [{ id: "c1", name: "Kamera 1", kind: "camera", url: ytUrl(stream?.url) }, { id: "d1", name: "Drone 1", kind: "drone", url: ytUrl(stream?.drone) }];
 };
 // Yeni kaynak: türün sıradaki numarası ("Drone 2", id d2)
 export function addSource(list, kind) {
