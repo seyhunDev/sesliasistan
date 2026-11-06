@@ -202,12 +202,13 @@ export async function ytLiveNow() {
 }
 // Kaynak listesine kanalın canlı yayınları: listede olmayan her canlı yayın kaynak olarak eklenir (auto), bitmiş olan kendiliğinden
 // eklenmiş kaynak kalkar. Elle eklenenlere dokunulmaz. Değişiklik yoksa null (saf; test yaris.mjs)
-export function withMyLive(list, live) {
-  const on = new Set(live.map((x) => x.id));
+export function withMyLive(list, live, gone = []) {
+  const no = new Set(gone);
+  const on = new Set(live.map((x) => x.id).filter((x) => !no.has(x)));
   let l = list.filter((x) => !x.auto || on.has(vidOf(x.url)));
   const have = new Set(l.map((x) => vidOf(x.url)).filter(Boolean));
   for (const b of live) {
-    if (have.has(b.id) || l.length >= 8) continue;
+    if (have.has(b.id) || no.has(b.id) || l.length >= 8) continue;
     const n = addSource(l, "camera");
     l = n.map((x, i) => (i === n.length - 1 ? { ...x, name: clean(b.title, 30) || x.name, url: b.link, auto: true } : x));
     have.add(b.id);

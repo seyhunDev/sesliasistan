@@ -180,7 +180,7 @@ export function BroadcastPage({ orgId, id }) {
       setPlan(rp);
       if (rp.day !== d.plan.day) savePlan(orgId, id, rp).catch(() => {});
       const sl = streamSources(d.stream);
-      setSrcList(d.stream.sources.length || sl.some((x) => x.url) ? sl : lastSources() || sl);
+      setSrcList(d.stream.sources.length || d.stream.empty || sl.some((x) => x.url) ? sl : lastSources() || sl);
       srcIn.current = true;
       setSel(d.screen.kind ? { kind: d.screen.kind, mid: d.screen.mid } : null);
     }, () => toast("Yüklenemedi, tekrar dene."));
@@ -734,11 +734,11 @@ export function BroadcastPage({ orgId, id }) {
     setBusy("");
   };
   // Canlı kaynaklar: ekle, bağlantı yaz, sil (stream.sources; eski url/drone alanları Kamera 1 / Drone 1'den dolar)
-  const putSources = async (l) => {
+  const putSources = async (l, gone = null) => {
     setSrcList(l);
     keepSources(l);
     try {
-      await setStream(orgId, id, { sources: l });
+      await setStream(orgId, id, { sources: l, empty: !l.length, ...(gone ? { gone } : {}) });
       await reload();
     } catch {
       toast("Kaydedilemedi. İnterneti kontrol et.");
@@ -775,8 +775,10 @@ export function BroadcastPage({ orgId, id }) {
   // Kanalımda canlı (Seyhun 2026-11-06 "kendim bir yayın açınca onu göreyim, + eklememe gerek kalmasın"): sayfa açıkken dakikada bir
   // kanalın süren yayınlarına bakılır; listede olmayan kaynak olarak kendiliğinden eklenir, bitince kalkar. Bağlantı yoksa bakılmaz.
   const listRef = useRef(srcList);
+  const goneRef = useRef([]);
   useEffect(() => {
     listRef.current = srcList;
+    goneRef.current = L?.stream?.gone || [];
   });
   useEffect(() => {
     let on = true;
@@ -786,7 +788,7 @@ export function BroadcastPage({ orgId, id }) {
       document.visibilityState === "visible" &&
       ytLiveNow().then(
         (live) => {
-          const l = on && withMyLive(listRef.current, live);
+          const l = on && withMyLive(listRef.current, live, goneRef.current);
           if (l) putSources(l);
         },
         (e) => (e instanceof YtNeed || /ana hesap|yönetici|\(403/i.test(e?.message || "")) && clearInterval(t)
@@ -825,7 +827,9 @@ export function BroadcastPage({ orgId, id }) {
   };
   const dropSrc = (sid) => {
     if (sel?.src === sid) setSel(null);
-    putSources(srcList.filter((x) => x.id !== sid));
+    const s = srcList.find((x) => x.id === sid);
+    const v = s?.auto ? ytId(s.url) : "";
+    putSources(srcList.filter((x) => x.id !== sid), v ? [...(L?.stream?.gone || []), v] : null);
   };
   const pick = async (e) => {
     const f = e.target.files?.[0];
