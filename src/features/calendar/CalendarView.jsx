@@ -96,8 +96,13 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
   // Satır biçimi her kayıtta aynı: solda saat (w-12), ad ve alt satır, sağda durum
   const rowCls = "flex min-h-[3.5rem] w-full items-center gap-3 px-3.5 py-2.5 text-left";
   const lead = "w-12 shrink-0 whitespace-nowrap text-[0.8125rem] font-bold tabular-nums";
-  const ttl = "block truncate text-[0.9375rem] font-semibold";
-  const sub = "block truncate text-[0.8125rem] text-mut";
+  // Ana sayfadaki yan gün paneli (embedded, flat değil): her kayıt kendi kartında, ad kısalmaz, alt satır sarılır (Seyhun 2026-11-06 "detaylı, profesyonel; 4-5 plan rahat sığsın")
+  const side = embedded && !flat;
+  const ttl = side ? "block text-[1rem] font-semibold leading-snug" : "block truncate text-[0.9375rem] font-semibold";
+  const sub = side ? "mt-0.5 block text-[0.8125rem] leading-snug text-mut" : "block truncate text-[0.8125rem] text-mut";
+  const liCls = side ? "overflow-hidden rounded-2xl border border-line bg-card" : "";
+  const KC = { g: "#16a34a", bl: "#2563eb", or: "#ea580c" };
+  const kindOf = (x) => (/antrenman/i.test(x.cat || "") ? "g" : /yarış|toplantı/i.test(x.cat || "") ? "bl" : "or");
 
   return (
     <Root embedded={embedded} open={dayOpen} flat={flat}>
@@ -219,16 +224,23 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
       <div className={embedded ? "cal-body relative space-y-4" : "cal-body relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5"}>
         {/* Seçili gün */}
         <section>
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <ListHead title={[when, shortDay(sel)].filter(Boolean).join(" · ")} count={count} />
-            </div>
-            {embedded && !flat && (
-              <button type="button" onClick={() => setDayOpen(false)} aria-label="Günü kapat" data-press className="btn btn-round size-8 shrink-0">
+          {side ? (
+            <div className="mb-3 flex items-center gap-3">
+              <div className="min-w-0 flex-1 leading-tight">
+                <b className="block text-[1.25rem] font-bold tracking-[-.02em]">{longDay(sel)}</b>
+                <small className="mt-0.5 block text-[0.8125rem] text-mut">{[when, count ? `${count} kayıt` : ""].filter(Boolean).join(" · ")}</small>
+              </div>
+              <button type="button" onClick={() => setDayOpen(false)} aria-label="Günü kapat" data-press className="btn btn-round size-9 shrink-0">
                 <Icon name="x" className="size-4" />
               </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <ListHead title={[when, shortDay(sel)].filter(Boolean).join(" · ")} count={count} />
+              </div>
+            </div>
+          )}
           {count === 0 ? (
             <div className="overflow-hidden rounded-[1.25rem] border border-line bg-card px-3.5 py-3">
               <p className="text-[0.9375rem] font-semibold text-mut">Kayıt yok</p>
@@ -245,11 +257,11 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
               </div>
             </div>
           ) : (
-            <ul className="overflow-hidden rounded-[1.25rem] border border-line bg-card [&>*+*]:border-t [&>*+*]:border-line">
+            <ul className={side ? "space-y-2" : "overflow-hidden rounded-[1.25rem] border border-line bg-card [&>*+*]:border-t [&>*+*]:border-line"}>
               {bdays.map((b) => {
                 const age = nextBirthday(b, sel).age;
                 return (
-                  <li key={b.id}>
+                  <li key={b.id} className={liCls}>
                     <button type="button" onClick={() => openBirthday({ edit: b.id })} data-press="row" className={rowCls}>
                       <span className={`${lead} text-mut`}>Gün</span>
                       <span className="min-w-0 flex-1">
@@ -261,7 +273,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
                 );
               })}
               {dayLessons.map((l) => (
-                <li key={l.id}>
+                <li key={l.id} className={liCls}>
                   <Link href="/schedule" data-press="row" className={rowCls}>
                     <span className={`${lead} text-mut`}>{l.start}</span>
                     <span className="min-w-0 flex-1">
@@ -275,7 +287,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
               {items.plans.map((p) => {
                 const multi = p.endDate && p.endDate !== p.date;
                 return (
-                  <li key={p.id}>
+                  <li key={p.id} className={liCls} style={side ? { borderLeft: `4px solid ${KC[kindOf(p)]}` } : undefined}>
                     <button type="button" onClick={() => openPlan(p)} data-press="row" className={`${rowCls} ${isImportant(p) ? "bg-accbg" : ""}`}>
                       <span className={`${lead} text-acc`}>{multi ? "Gün" : p.time || "Gün"}</span>
                       <span className="min-w-0 flex-1">
@@ -295,7 +307,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
               {dayFit.map((f) => {
                 const [st, tone] = FST[statusOf(f.plan, today)] || [];
                 return (
-                  <li key={f.id}>
+                  <li key={f.id} className={liCls}>
                     <button type="button" onClick={() => openAdd({ edit: { kind: "plan", id: f.id } })} data-press="row" className={`tone-fit ${rowCls}`}>
                       <span className={`${lead} text-[var(--tfg)]`}>{f.plan.time || "Gün"}</span>
                       <span className="min-w-0 flex-1">
@@ -308,7 +320,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
                 );
               })}
               {items.tasks.map((t) => (
-                <li key={t.id} className="flex min-h-[3.5rem] items-center gap-3 px-3.5 py-2.5">
+                <li key={t.id} className={`flex min-h-[3.5rem] items-center gap-3 px-3.5 py-2.5 ${liCls}`}>
                   <span className="grid w-12 shrink-0 place-items-start">
                     <button
                       type="button"

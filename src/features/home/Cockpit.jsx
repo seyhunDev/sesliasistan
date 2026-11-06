@@ -126,10 +126,10 @@ export function Cockpit({ weather, inbox, onInbox, live, grid, sel, onSel, wide 
                 {wide && line && <span className="line-clamp-4 min-w-0 flex-1 border-l border-white/25 pl-3 text-[0.8125rem] leading-snug text-white/90" aria-label="Hava özeti">{line}</span>}
               </span>
             ) : (
-              <span className="block py-2 text-[0.875rem] text-white/80">{err ? "Hava durumu alınamadı · dokun, yenile" : w ? "Bu gün için hava tahmini yok" : "Hava yükleniyor…"}</span>
+              <span className={`grid place-items-center text-[0.875rem] text-white/80 ${wide ? "min-h-[3.5rem]" : "min-h-[4.5rem]"}`}>{err ? "Hava durumu alınamadı · dokun, yenile" : w ? "Bu gün için hava tahmini yok" : "Hava yükleniyor…"}</span>
             )}
           </button>
-          {n && line && !wide && <p className="mt-2 text-[0.9375rem] leading-snug text-white/90" aria-label="Hava özeti">{line}</p>}
+          {!wide && <p className="mt-2 min-h-[2.5rem] text-[0.9375rem] leading-snug text-white/90" aria-label="Hava özeti">{n && line}</p>}
           <WindRibbon rows={rows} nowH={isToday ? now.getHours() : -1} radar={isToday ? radar : null} h={wide ? 84 : 92} className="mt-3" />
       </>
       </div>
