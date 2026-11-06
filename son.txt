@@ -1,8 +1,8 @@
-Commit: b396760 · Uygulama içi canlı ekran: alt kısım boş, logo sağ üstte, düğmeler en altta (#1297)
-Zaman: 2026-11-06-1255 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42196272127
+Commit: 7117918 · Canlı ekran: Parkur ve rüzgâr tek düğme, beklenen ve gerçekleşen grafiği (#1304)
+Zaman: 2026-11-06-1941 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42252157436
 
-TAM TEST · 06.11.2026 12:36:59
+TAM TEST · 06.11.2026 19:25:34
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1429/1440 geçti · 11 kalan · 1108 sn
+SONUÇ: 1431/1440 geçti · 9 kalan · 937 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -209,7 +209,7 @@ SONUÇ: 1429/1440 geçti · 11 kalan · 1108 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 13 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 20 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
@@ -230,32 +230,13 @@ SONUÇ: 1429/1440 geçti · 11 kalan · 1108 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/21
-  ✗ Yarış sayfası: 12/14
-      ✗ “yarıştan önce, sporcu seçili”
-          beklenen: çökmeden açılır, "gün kaldı" görünür
-          olan:     "gün kaldı" görünmedi
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 17/21
+  ✗ Yarış sayfası: 13/14
       ✗ “havada gün düğmeleri”
           beklenen: çökmeden açılır, "gün kaldı" görünür
-          olan:     "gün kaldı" görünmedi
+          olan:     gün satırı yok
   ✓ Antrenman: 2/2
-  ✗ Asılı bağlantı: 1/2
-      ✗ “asılı bağlantıda yarıştan önceki sayfa”
-          beklenen: "gün kaldı" 5 sn içinde görünür (yükleniyor'da kalmaz)
-          olan:     görünmedi: Oluştur
-KAYIT
-Plan
-Tarih ve saat
-Görev
-Yapılacak iş
-Not
-Kısa not
-Doğum günü
-Hatırlat
-KULÜP
-Yoklama
-Bugün kim geldi
-Yarış
+  ✓ Asılı bağlantı: 2/2
   ✗ Yayın: 0/3
       ✗ “gruplar ayrı, ekranda seçim, kameralar”
           beklenen: açılır
