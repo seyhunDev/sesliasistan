@@ -2325,16 +2325,26 @@ function MyVidCtl({ vref, onOpen, onStop }) {
     </div>
   );
 }
-function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide }) {
+// Kaynak seçimi (Seyhun 2026-11-06 "benim alanım ayrı, yayın alanı ayrı; yayın butonu ayrı olsun, benim manuel seçimim öncelikli";
+// örnek canli-tv/kaynak-secimi/ornek.png onaylandı): çubuğun üstünde Benim | Yayın anahtarı ve "Ekranda: … ˄". Benim'de ekranda
+// kendi seçimin (kamera, drone, telefon, grubun canlı konumu ya da kendi videon), seçmediysen yayınınki; Yayın'da izleyicilerin
+// gördüğü. Seçim yalnız bu telefonda, yayına gitmez. "Ekranda"ya basınca "Ne izleyeyim?" paneli açılır (dikeyde alttan, yatayda
+// sağdan kayarak); seçince kapanır. Alt çubukta yalnız Parkur · Rüzgâr · Sıralama · Video · Start; paneller açılıp kapanırken kayar.
+const SHUT_MS = 190;
+function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "" }) {
   const ref = useRef(null);
+  const [shut, setShut] = useState(""); // kapanırken kayan panel (animasyon bitince kalkar)
   const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
   const res = !!rr?.rows.length;
   const rank = scBoards(data).length > 0;
   const wind = windAhead(data, now).length >= 2;
   const course = !!courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"));
+  const all = sourcesOf(data.stream); // Yayın › kaynaklar: kendi verdiğin adla (Start kamerası, Drone…)
+  // kaynak yayında mı (kaynak/YouTube tarafı stream.sources[].live yazınca): kırmızı nokta
+  const live = (id) => !!(data.stream?.sources || []).find((x) => x?.id === id)?.live;
+  const off = all.filter((x) => !x.url && !cams.some((y) => y.src === x.id)); // bağlantısı olmayan kaynak: soluk
+  const picks = !!onFollow && (cams.length > 0 || pos.length > 0 || off.length > 0 || !!vidRef);
   const btns = [
-    cams.length && ["cam", "Kamera", !!cam && !cam.startsWith("b:")],
-    pos.length && ["pos", "Konum", cam.startsWith("b:")],
     (course || onWind) && ["course", "Parkur"],
     wind && ["wind", "Rüzgâr"],
     (rank || res) && ["rank", "Sıralama"],
@@ -2369,34 +2379,83 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       ro.disconnect();
       window.removeEventListener("resize", set);
     };
-  }, [btns.length, hide]);
-  if (!btns.length) return null;
-  const on = btns.some(([k]) => k === open) ? open : "";
-  const tap = (k) => {
-    if (k === "start") return on === "start" ? onOpen("") : (onOpen("start"), onStart());
-    onOpen(on === k ? "" : k);
+  }, [btns.length, hide, picks]);
+  useEffect(() => {
+    if (!shut) return undefined;
+    const t = setTimeout(() => setShut(""), SHUT_MS);
+    return () => clearTimeout(t);
+  }, [shut]);
+  if (!btns.length && !picks) return null;
+  const on = btns.some(([k]) => k === open) || (open === "src" && picks) ? open : "";
+  const close = () => {
+    if (on) setShut(on);
+    onOpen("");
   };
-  const opts =
-    on === "cam" || on === "pos"
-      ? [
-          { k: "", name: "Yayın", on: !cam },
-          ...(on === "cam" ? cams.map((x) => ({ k: x.src, grp: x.grp, name: x.name })) : pos.map((x) => ({ k: `b:${x.grp}`, grp: x.grp, name: x.name }))).map((x) => ({ ...x, on: cam === x.k })),
-        ]
-      : [];
-  const body =
-    on === "cam" || on === "pos" ? (
-      <div className="sc-vs">
-        {opts.map((x) => (
-          <button key={x.k || "yayin"} type="button" className={x.on ? "on" : ""} aria-pressed={x.on} onClick={() => onCam(x.k && cam !== x.k ? x.k : "")}>
-            {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
-            {x.name}
-          </button>
-        ))}
-      </div>
-    ) : on === "vid" ? (
+  const tap = (k) => {
+    if (on === k) return close();
+    if (k === "start") return (onOpen("start"), onStart());
+    onOpen(k);
+  };
+  const pick = (k) => {
+    onCam(k);
+    close();
+  };
+  const panel = (k) =>
+    k === "src" ? (
+      <>
+        <div className="sc-vph">
+          <b>Ne izleyeyim?</b>
+          <small>Yalnız senin ekranın</small>
+        </div>
+        <button type="button" className={`sc-vt wide${!cam && !myVid ? " on" : ""}`} aria-pressed={!cam && !myVid} onClick={() => pick("")}>
+          Yayınla aynı
+        </button>
+        {cams.length || off.length ? (
+          <>
+            <h4 className="sc-vsh">Canlı kaynaklar</h4>
+            <div className="sc-vg">
+              {cams.map((x) => (
+                <button key={x.src} type="button" className={`sc-vt${cam === x.src ? " on" : ""}`} aria-pressed={cam === x.src} onClick={() => pick(x.src)}>
+                  {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
+                  {all.find((y) => y.id === x.src)?.name || x.name}
+                  {live(x.src) ? <b className="sc-vlv" aria-label="yayında" /> : null}
+                </button>
+              ))}
+              {off.map((x) => (
+                <button key={x.id} type="button" className="sc-vt off" disabled>
+                  {x.name}
+                  <small>bağlı değil</small>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+        {pos.length ? (
+          <>
+            <h4 className="sc-vsh">Canlı konum</h4>
+            <div className="sc-vg">
+              {pos.map((x) => (
+                <button key={x.grp || "t"} type="button" className={`sc-vt${cam === `b:${x.grp}` ? " on" : ""}`} aria-pressed={cam === `b:${x.grp}`} onClick={() => pick(`b:${x.grp}`)}>
+                  {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
+                  {x.name}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+        {vidRef ? (
+          <>
+            <h4 className="sc-vsh">Videolarım</h4>
+            <button type="button" className={`sc-vt wide${myVid ? " on" : ""}`} onClick={() => onOpen("vid")}>
+              {myVid ? "Videon ekranda · değiştir" : "Videolarından seç"}
+            </button>
+          </>
+        ) : null}
+      </>
+    ) : k === "vid" ? (
       // ana hesabın kendi videoları (LiveStart › LiveVideos buraya çizer; yalnız uygulama içinde)
       <div ref={vidRef} />
-    ) : on === "course" ? (
+    ) : k === "course" ? (
       <>
         {course ? <ScCourseDrop data={data} sel={sel} mode={mode} /> : <p className="sc-vno">Parkur yok</p>}
         {/* rüzgâr / eksen / hat ölçümü (Seyhun 2026-11-05 "rüzgâr ekleme parkurda olmalı, adı Ölçüm ekle") */}
@@ -2406,9 +2465,9 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
           </button>
         ) : null}
       </>
-    ) : on === "wind" ? (
+    ) : k === "wind" ? (
       <ScWindDrop data={data} now={now} at={(prog || []).find((x) => x.state === "next")?.at || ""} />
-    ) : on === "rank" ? (
+    ) : k === "rank" ? (
       <>
         {rank ? <div className="sc-ckx rk"><Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} ctl={rk} /></div> : null}
         {res ? (
@@ -2418,6 +2477,8 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
         ) : null}
       </>
     ) : null;
+  const body = on && on !== "start" ? panel(on) : null;
+  const gone = !on && shut && shut !== "start" && shut !== "vid" ? panel(shut) : null; // kapanış animasyonu (video paneli kendi yerine çizildiği için anında kalkar)
   // Gizle (Seyhun 2026-11-05 "arka planda video varken alt butonlar çok yer kaplıyor"): yalnız küçük "Düğmeler" kalır
   if (hide)
     return (
@@ -2428,21 +2489,50 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       </nav>
     );
   return (
-    <nav className="sc-vb bar" ref={ref} aria-label="İzleyici seçimi">
-      {body ? <div className={`sc-vp ${on}`}>{body}</div> : null}
-      {onHide && !body ? (
-        <button type="button" className="sc-vhide" onClick={() => (onOpen(""), onHide(true))}>
-          Gizle
-        </button>
-      ) : null}
-      {!body && ctl ? ctl : null}
-      <div className="sc-vr2">
-        {btns.map(([k, l, dot]) => (
-          <button key={k} type="button" className={`${k === "start" ? "go" : ""}${on === k ? " on" : ""}`} aria-pressed={on === k} onClick={() => tap(k)}>
-            {l}
-            {dot ? <i aria-hidden="true" /> : null}
-          </button>
-        ))}
+    <nav className={`sc-vb bar${picks ? " pk" : ""}`} ref={ref} aria-label="İzleyici seçimi">
+      {body ? <div className={`sc-vp ${on}`}>{body}</div> : gone ? <div className={`sc-vp ${shut} out`} aria-hidden="true" inert>{gone}</div> : null}
+      {!body && ctl && !follow ? ctl : null}
+      <div className="sc-vrow">
+        {picks || onHide ? (
+          <div className="sc-vtop">
+            {picks ? (
+              <>
+                <div className={`sc-seg${follow ? " y" : ""}`} role="group" aria-label="Ekranda ne olsun">
+                  <button type="button" className={follow ? "" : "on"} aria-pressed={!follow} onClick={() => onFollow(false)}>
+                    Benim
+                  </button>
+                  <button type="button" className={`yy${follow ? " on" : ""}`} aria-pressed={follow} onClick={() => (onFollow(true), on === "src" && close())}>
+                    Yayın
+                  </button>
+                </div>
+                {!follow ? (
+                  <button type="button" className={`sc-now${on === "src" ? " on" : ""}`} aria-expanded={on === "src"} onClick={() => tap("src")}>
+                    <span>Ekranda</span>
+                    <b>{label}</b>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </button>
+                ) : (
+                  <span className="sc-now yy">İzleyicilerin gördüğü</span>
+                )}
+              </>
+            ) : null}
+            {onHide && !body ? (
+              <button type="button" className="sc-vhide" onClick={() => (onOpen(""), onHide(true))}>
+                Gizle
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {btns.length ? (
+          <div className="sc-vr2">
+            {btns.map(([k, l, dot]) => (
+              <button key={k} type="button" className={`${k === "start" ? "go" : ""}${on === k ? " on" : ""}`} aria-pressed={on === k} onClick={() => tap(k)}>
+                {l}
+                {dot ? <i aria-hidden="true" /> : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </nav>
   );
@@ -2570,6 +2660,7 @@ export function LiveScreen({ id, y = "" }) {
   const [vidHost, setVidHost] = useState(null); // Video panelinde ana hesabın videolarının yeri
   const [myVid, setMyVid] = useState({ id: "", url: "" }); // yalnız bu cihazda arka planda oynayan kendi videom (canlı yayına gitmez)
   const [barHide, setBarHide] = useState(false); // alt düğmeler gizli
+  const [follow, setFollow] = useState(false); // Yayın: izleyicilerin gördüğü (kendi seçimim beklemede kalır)
   const inApp = useInAppBack(); // uygulama içinden açıldı (link ile açılanda null)
   // Düğmeler, seçimler, listeye dokunma yalnız uygulama içinde "Ekrana aç" ile açılan ekranda (Seyhun 2026-11-05 "herkese açık linkte ve Yayın'daki
   // önizlemede kontrol olmayacak, sadece gösterilecek"); çerçevede (Yayın önizlemesi) hiç yok
@@ -2584,8 +2675,15 @@ export function LiveScreen({ id, y = "" }) {
       if (o.url) URL.revokeObjectURL(o.url);
       return vid && blob ? { id: vid, url: URL.createObjectURL(blob) } : { id: "", url: "" };
     });
-    if (vid) setVTab(""); // ekrana verince video paneli kapanır (Seyhun 2026-11-05); "Videolar" ile yeniden açılır
+    if (vid) (setVTab(""), setFollow(false)); // ekrana verince video paneli kapanır (Seyhun 2026-11-05); "Videolar" ile yeniden açılır
   }, [setVTab]);
+  // Yayın'a geçince kendi videom duraklar, Benim'e dönünce kaldığı yerden sürer
+  useEffect(() => {
+    const v = myRef.current;
+    if (!v) return;
+    if (follow) v.pause();
+    else v.play().catch(() => {});
+  }, [follow]);
   const warm = useSyncExternalStore(noSub, () => !!readWarmMe(), () => false); // bu telefonda uygulamaya girilmiş mi
   const vView = ["rank", "wind", "course"].includes(vTab) ? vTab : ""; // izleyicinin açtığı Sıralama / Rüzgâr / Parkur
   const [rkTab, setRkTab] = useState(0); // izleyicinin Sıralama sekmesi (Genel, Kızlar…)
@@ -2672,8 +2770,12 @@ export function LiveScreen({ id, y = "" }) {
   // vCam: kaynak id (kamera) ya da "b:<grup>" (o grubun canlı konumu)
   const posOn = vCam.startsWith("b:") && pos.some((x) => `b:${x.grp}` === vCam);
   const camOn = posOn || cams.some((x) => x.src === vCam) ? vCam : "";
-  const sd = posOn ? { ...pk.sd, screen: { kind: "boats", grp: vCam.slice(2), zoom: 100 } } : camOn ? { ...pk.sd, screen: { kind: "src", src: camOn } } : pk.sd;
-  const vid = camOn || myVid.url ? true : pk.vid;
+  // Benim (varsayılan): kendi seçimim öncelikli; Yayın: izleyicilerin gördüğü
+  const mine = own && !follow;
+  const sd = mine && posOn ? { ...pk.sd, screen: { kind: "boats", grp: vCam.slice(2), zoom: 100 } } : mine && camOn ? { ...pk.sd, screen: { kind: "src", src: camOn } } : pk.sd;
+  const vid = mine && (camOn || myVid.url) ? true : pk.vid;
+  const onLabel = myVid.url ? "Videon" : posOn ? `${pos.find((x) => `b:${x.grp}` === vCam)?.name || "Tekneler"} konumu` : camOn ? sourcesOf(data.stream).find((x) => x.id === camOn)?.name || "Kamera" : "Yayınla aynı";
+  const pickCam = (k) => (setVCam(k), myVid.url && playMine("", null));
   const vwOn = vView === "rank" ? scBoards(sd).length > 0 : vView === "course" ? !!courseSvg(sd, sceneRoute(sd, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait")) : vView === "wind" ? windAhead(sd, nowMs).length >= 2 : false;
   // Rüzgâr sahne değiştirmez: süre kartının altından grafik açılır
   // açılan bölüm kartın altında; ortada aynı şey ikinci kez çıkmasın
@@ -2682,7 +2784,7 @@ export function LiveScreen({ id, y = "" }) {
   const { sc, item } = !isCur && scBoards(sd).length ? { sc: "03", item: "rank" } : same ? { sc: "01", item: "time" } : pk;
   const { evre } = pk;
   return (
-    <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
+    <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${follow ? " fol" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
       <Backdrop data={sd} isCur={isCur} entry={entry} today={today} />
       {myVid.url ? (
         <div className="lv-my" aria-hidden="true">
@@ -2690,7 +2792,7 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={setVCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={myVid.url && adm && inApp && !demoOn ? <MyVidCtl key={myVid.id} vref={myRef} onOpen={() => setVTab("vid")} onStop={() => playMine("", null)} /> : null} hide={barHide} onHide={setBarHide} /> : null} />
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={myVid.url && adm && inApp && !demoOn ? <MyVidCtl key={myVid.id} vref={myRef} onOpen={() => setVTab("vid")} onStop={() => playMine("", null)} /> : null} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} /> : null} />
         {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
