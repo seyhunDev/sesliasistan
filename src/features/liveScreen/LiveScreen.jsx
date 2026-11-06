@@ -11,6 +11,7 @@ import { CARD_IDS, CARD_TYPES, ORSA_M, cardFor, cardKey, cardType, cleanCards, c
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, clubName, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc, SRC_CATS, srcCat } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
+import { WindRibbon } from "@/features/weather/WindRibbon";
 import { GROUP_PICK, catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
 import { BoatMap } from "@/features/tracking/BoatMap";
@@ -1557,6 +1558,16 @@ function windDayPts(data, now, page = 0) {
     .filter((x) => x.h >= h0 && x.h <= nh);
   return { h0, h1, fc, st, me, nh };
 }
+// Ortak rüzgâr şeridi (Seyhun 2026-11-06, ana sayfadaki WindRibbon: dalga, hamle, yön, saat, sıcaklık, yağmur): Şimdi = bugünün saatleri, geçen
+// saatlerde istasyonun ölçtüğü (gerçekleşen) rüzgâr; Yarın = ertesi gün. Bugünden 4 saatten az kaldıysa (gece) eski grafik
+const ribRow = (r) => ({ hh: r.hh, wind: r.wind, gust: r.gust, dir: r.dir, t: r.t, mm: r.mm, rain: r.rain ?? r.pop, code: r.code });
+function ribbonRows(data, now, page) {
+  if (page === 1) return (data.forecast?.next || []).filter((r) => r.wind != null).map(ribRow);
+  const nh = Math.floor(istHour(now).h);
+  const obs = Object.fromEntries((data.forecast?.obs || []).filter((r) => r.wind != null && +r.hh <= nh).map((r) => [+r.hh, r]));
+  const rows = (data.forecast?.rows || []).filter((r) => r.wind != null).map((r) => (obs[+r.hh] ? { ...ribRow(r), wind: +obs[+r.hh].wind, gust: obs[+r.hh].gust ?? r.gust, dir: obs[+r.hh].dir ?? r.dir } : ribRow(r)));
+  return rows.filter((r) => +r.hh >= Math.max(6, nh - 1)).length >= 4 ? rows : null;
+}
 function ScWindDay({ data, now }) {
   const [open, setOpen] = useState(false);
   // akşam 18'den sonra yarın önemli (Seyhun 2026-11-06): grafik Yarın sayfasıyla açılır, ‹ ile Şimdi
@@ -1577,6 +1588,7 @@ function ScWindDay({ data, now }) {
   const vs = p0.fc.map((x) => x.v);
   const calm = vs.length ? `Sonraki saatler ${Math.round(Math.min(...vs))}–${Math.round(Math.max(...vs))} kn` : "";
   const pg = hasNext ? page : 0;
+  const rib = ribbonRows(data, now, pg);
   const chev = (d) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
   return (
     <div className={`sc-wday${open ? " on" : ""}${tip ? "" : " calm"}`}>
@@ -1596,6 +1608,10 @@ function ScWindDay({ data, now }) {
               {chev("M9 6l6 6-6 6")}
             </button>
           </div>
+          {rib ? (
+            <WindRibbon rows={rib} nowH={pg ? -1 : Math.floor(istHour(now).h)} legend={false} h={110} className="sc-wrib" />
+          ) : (
+            <>
           <div className="sc-wh">
             <span>
               <i className="a" />
@@ -1656,6 +1672,8 @@ function ScWindDay({ data, now }) {
               </g>
             ) : null}
           </svg>
+            </>
+          )}
         </div>
       ) : null}
     </div>
