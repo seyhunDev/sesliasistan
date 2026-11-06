@@ -1332,16 +1332,23 @@ function ScOthers({ data, sel, today, now }) {
 // Sol alt sütun (Seyhun 2026-11-04 "sol alt köşeye; altta süre alanı, üstünde sıralama"): Canlı sağ üstte tek başına; sütunda en altta yarışın
 // kartı, üstünde diğer gruplar ve grubun sporcuları / dönüş (sahne.css .sc-rcol column-reverse)
 // Canlı rozetinin yanında görüntünün grubu (grp): drone ya da kamera bir gruba bağlıysa "Mavi grup"
-function ScTop({ rep, on, grp = "", auto = false, card = null, children }) {
+function ScTop({ rep, on, grp = "", auto = false, card = null, logo = null, children }) {
   return (
     <>
       {/* sağ üst: Canlı (+ görüntünün grubu) ve hemen altında süre kartı (Seyhun 2026-11-04 "süre hepsi için geçerli, canlının altına") */}
       <div className="sc-tcol">
-      {on ? (
+      {on || logo ? (
         <div className="sc-tr">
-          {rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}
-          {!rep && auto && !grp ? <span className="sc-lgrp">Tekrar</span> : null}
-          {!rep && grp ? (
+          {/* uygulama içinde logo sağ üstte, Canlı altında; logoya dokununca geri (Seyhun 2026-11-06 "alttaki logoyu canlı kısmına al") */}
+          {logo ? (
+            <button type="button" className="sc-tlogo" aria-label="Geri" onClick={logo.back || undefined} disabled={!logo.back}>
+              <VeloraGlyph size={40} />
+              <small>Velora</small>
+            </button>
+          ) : null}
+          {!on ? null : rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}
+          {on && !rep && auto && !grp ? <span className="sc-lgrp">Tekrar</span> : null}
+          {on && !rep && grp ? (
             <span className="sc-lgrp">
               <i style={{ background: groupColor(grp) || "rgba(255,255,255,.6)" }} aria-hidden="true" />
               {`${grp} grup`}
@@ -2694,11 +2701,11 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
   const vOn = (mode === "seq" || mode === "race") && !!liveUrl(screenUrl(data.screen, data.stream), data.screen, data.stream, data.camBy, vEntry);
   const vgrp = vOn ? videoGroup(data.screen, data.stream, data.camBy, vEntry, liveGrps) : "";
   return (
-    <div className={`sc s${sc}`} data-scene={sc}>
+    <div className={`sc s${sc}${bar ? " own" : ""}`} data-scene={sc}>
       <div className="sc-body" key={sc}>
         {body}
       </div>
-      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={sc === "01" && item === "wind"} drop={drop} /> : null}>
+      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} logo={bar ? { back } : null} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={sc === "01" && item === "wind"} drop={drop} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
         {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} slim /> : listOn ? side === "gen" || (!lwho?.grp && mode !== "race" && scBoards(data).length) ? <ScGen data={data} who={lwho} now={now} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
@@ -2709,7 +2716,8 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
         </div>
       ) : null}
       {ap && sc !== "04" ? <ScAp t={t} plan={plan} seq={mode === "seq"} /> : null}
-      <div className="sc-name">
+      {/* uygulama içinde yarış adı ve alttaki logo yok (Seyhun 2026-11-06 "ekranı iyi kullanamıyoruz"): düğmeler en altta */}
+      {bar ? null : <div className="sc-name">
         {back ? (
           <button type="button" className="sc-back" aria-label="Geri" onClick={back}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -2725,7 +2733,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
           <VeloraGlyph size={40} />
           <small>Velora</small>
         </span>
-      </div>
+      </div>}
       {bar}
     </div>
   );
