@@ -15,6 +15,7 @@ import { GROUP_PICK, catsOf, groupColor, groupMap, groupsOn, onlyCat, provisiona
 import { colorOf as windColor } from "@/lib/windMap";
 import { BoatMap } from "@/features/tracking/BoatMap";
 import { BoatLive } from "@/features/tracking/BoatLive";
+import { BoatCtl } from "@/features/tracking/BoatCtl";
 import { fleetOf } from "@/lib/boatPlay";
 import { useDemo } from "./demo";
 import { useVisit } from "./useVisit";
@@ -749,6 +750,12 @@ function autoOn(data, isCur, entry, today) {
   if (ytSrc(liveUrl(screenUrl(scr, data.stream), scr, data.stream, data.camBy, entry))) return false;
   return autoRecs(data, today).length > 0;
 }
+// Tekne konumunun canlı anı: bugün o grubun son startı (2026-11-06); yoksa oynatıcı klibi baştan oynatır
+function boatStart(data, grp, today) {
+  const st = (data.starts || []).filter((x) => x.day === today && x.at && !x.void && (!grp || x.grp === grp)).at(-1);
+  const ms = st ? Date.parse(st.at) : NaN;
+  return Number.isFinite(ms) ? ms : null;
+}
 function Backdrop({ data, isCur, entry, today = "" }) {
   const scr = isCur ? data.screen || {} : {};
   // canlı yayın ya da drone; ekrandaki yarışın grubuna kamera bağlıysa o kamera (lib/raceCams.js)
@@ -806,7 +813,7 @@ function Backdrop({ data, isCur, entry, today = "" }) {
           tekneler (şimdilik örnek izlerle, start anı, döngüde) */}
       {scr.kind === "boats" ? (
         <div className="lv-boats" aria-hidden="true">
-          <BoatLive grp={scr.grp || entry?.grp || ""} zoom={scr.zoom ?? 100} course={data.course || null} fleet={fleetOf(data.entries, groupMap(groupsOn(data.groups, today)))} />
+          <BoatLive grp={scr.grp || entry?.grp || ""} course={data.course || null} fleet={fleetOf(data.entries, groupMap(groupsOn(data.groups, today)))} startAt={boatStart(data, scr.grp || entry?.grp || "", today)} ctl />
         </div>
       ) : null}
       {st && layers.length ? (
@@ -2954,7 +2961,7 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={myVid.url && adm && inApp && !demoOn ? <MyVidCtl key={myVid.id} vref={myRef} onOpen={() => setVTab("vid")} onStop={() => playMine("", null)} /> : null} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} /> : null} />
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={myVid.url && adm && inApp && !demoOn ? <MyVidCtl key={myVid.id} vref={myRef} onOpen={() => setVTab("vid")} onStop={() => playMine("", null)} /> : sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => pickCam(`b:${g}`)} /> : null} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} /> : null} />
         {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} now={masaNow} pos={pos} give={give} onGiven={onGiven} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}

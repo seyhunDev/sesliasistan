@@ -218,3 +218,157 @@ export function clockText(t) {
   const mmss = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   return t < 0 ? { label: "START'A", n: mmss } : { label: "SÜRE", n: `${String(Math.floor(Math.floor(t / 1000) / 60)).padStart(2, "0")}:${String(Math.floor(t / 1000) % 60).padStart(2, "0")}` };
 }
+
+// Yerel düzlem (metre): origin (0,0), up yönü +y, sağı +x. frameOf ile aynı dönüş.
+export function localFn(origin, up) {
+  const a = (up * Math.PI) / 180;
+  const k = Math.cos((origin.lat * Math.PI) / 180);
+  return (p) => {
+    const x = ((p.lon - origin.lon) * Math.PI * 6371000 * k) / 180;
+    const y = ((p.lat - origin.lat) * Math.PI * 6371000) / 180;
+    return { x: x * Math.cos(a) - y * Math.sin(a), y: x * Math.sin(a) + y * Math.cos(a) };
+  };
+}
+// start hattının ortası (yoksa ilk şamandıra)
+export const lineMid = (marks) =>
+  marks?.pin && marks?.komite ? { lat: (marks.pin.lat + marks.komite.lat) / 2, lon: (marks.pin.lon + marks.komite.lon) / 2 } : marks?.komite || marks?.pin || null;
+const seeded = (s) => () => {
+  s = (Math.imul(s ^ (s >>> 15), 1 | s) + 0x6d2b79f5) | 0;
+  return ((s ^ (s >>> 7)) >>> 0) / 4294967296;
+};
+const hashOf = (txt) => [...String(txt)].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 7);
+// Örnek yarışın tamamı (Seyhun 2026-11-06 "starttan 20 sn, 30 sn sonra ilerlemeleri, dönüşleri görelim"): gerçek takip verisi gelene kadar
+// her teknenin son konumundan sonrası parkur boyunca (orsa tramolalı → 1 → 2 → kapı (3S/3P) → finiş) 3 sn'de bir konumla uzatılır.
+// Şamandıralar iskeleden (tekne şamandıranın sağından) dönülür. Saf: aynı girişe aynı iz. 1. şamandıra yoksa set olduğu gibi döner.
+export function fullRace(set) {
+  const M = set?.marks || {};
+  const o = lineMid(M);
+  if (!set || !o || !M.m1 || !set.fixes.length) return set;
+  const up = set.wind.dir;
+  const L = localFn(o, up);
+  const toGeo = (x, y) => (Math.hypot(x, y) < 0.01 ? { ...o } : dest(o, norm(up + (Math.atan2(x, y) * 180) / Math.PI), Math.hypot(x, y)));
+  const P = (k) => (M[k] ? L(M[k]) : null);
+  const m1 = P("m1");
+  const m2 = P("m2");
+  const gs = P("m3s");
+  const gp = P("m3p");
+  const f1 = P("fin1");
+  const f2 = P("fin2");
+  const fin = f1 && f2 ? { x: (f1.x + f2.x) / 2, y: (f1.y + f2.y) / 2 } : f1 || f2 || { x: 0, y: 0 };
+  const half = P("pin") && P("komite") ? Math.abs(P("komite").x - P("pin").x) / 2 : 120;
+  const tr = tracksOf(set);
+  const out = [...set.fixes];
+  for (const b of set.boats) {
+    const list = tr.get(b.sail);
+    if (!list?.length) continue;
+    const r = seeded(hashOf(b.sail) ^ hashOf(set.race || "r"));
+    const sp = 0.93 + r() * 0.14;
+    const last = list.at(-1);
+    const s0 = L(last);
+    const pts = [[s0.x, s0.y]];
+    // orsa: rüzgâra ~45° tramolalarla 1'in altına kadar
+    let x = s0.x;
+    let y = s0.y;
+    let side = (last.hdg ?? up) - up;
+    side = angDiff(0, side) >= 0 ? 1 : -1;
+    const lim = Math.max(half * 1.6, Math.abs(m1.y) * 0.4);
+    while (y < m1.y - 90) {
+      const leg = 70 + r() * 150;
+      x = Math.max(m1.x - lim, Math.min(m1.x + lim, x + side * leg * 0.7));
+      y = Math.min(m1.y - 90, y + leg * 0.7);
+      pts.push([x, y]);
+      side = -side;
+    }
+    // şamandıra dönüşü: gelişin sağından geçer, gidişe döner
+    const round = (m, nx) => {
+      const [px, py] = pts.at(-1);
+      const iv = norm2(m.x - px, m.y - py);
+      const ov = norm2(nx.x - m.x, nx.y - m.y);
+      const ri = [iv[1], -iv[0]];
+      const ro = [ov[1], -ov[0]];
+      const bs = norm2(ri[0] + ro[0], ri[1] + ro[1]);
+      const w = 10 + r() * 8;
+      pts.push([m.x + ri[0] * w - iv[0] * 22, m.y + ri[1] * w - iv[1] * 22], [m.x + bs[0] * w, m.y + bs[1] * w], [m.x + ro[0] * w + ov[0] * 22, m.y + ro[1] * w + ov[1] * 22]);
+    };
+    const gate = gs && gp ? (r() < 0.5 ? gs : gp) : gs || gp;
+    const seq = [m1, m2, gate, fin].filter(Boolean);
+    for (let i = 0; i < seq.length - 1; i++) round(seq[i], seq[i + 1]);
+    pts.push([fin.x + (r() - 0.5) * 30, fin.y]);
+    const path = chaikin(pts, 3);
+    // hız: orsa 1.25, pupa 1.9, apaz 2.3 m/sn; 3 sn'de bir konum
+    let t = last.t;
+    let carry = 0;
+    for (let i = 1; i < path.length; i++) {
+      const [ax, ay] = path[i - 1];
+      const [bx, by] = path[i];
+      const d = Math.hypot(bx - ax, by - ay);
+      if (d < 0.01) continue;
+      const c = (by - ay) / d;
+      const v = (c > 0.5 ? 1.25 : c < -0.5 ? 1.9 : 2.3) * sp;
+      const hdg = Math.round(norm(up + (Math.atan2(bx - ax, by - ay) * 180) / Math.PI));
+      const dt = (d / v) * 1000;
+      let at = 3000 - carry;
+      while (at <= dt) {
+        const f = at / dt;
+        out.push({ t: Math.round(t + at), sail: b.sail, ...toGeo(ax + (bx - ax) * f, ay + (by - ay) * f), hdg, spd: +v.toFixed(1) });
+        at += 3000;
+      }
+      carry = dt - (at - 3000);
+      t += dt;
+    }
+  }
+  out.sort((a, b) => a.t - b.t);
+  return { ...set, fixes: out };
+}
+const norm2 = (x, y) => {
+  const d = Math.hypot(x, y) || 1;
+  return [x / d, y / d];
+};
+function chaikin(p, n) {
+  for (let k = 0; k < n; k++) {
+    const o = [p[0]];
+    for (let i = 0; i < p.length - 1; i++) {
+      const [a, b] = [p[i], p[i + 1]];
+      o.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]], [0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]]);
+    }
+    o.push(p.at(-1));
+    p = o;
+  }
+  return p;
+}
+// Kesitler (Seyhun 2026-11-06): Start, +20 sn, +30 sn, her şamandıraya ilk teknenin gelişi (12 sn önce), ilk finiş (10 sn önce).
+// focus: o anda kameranın bakacağı yer { lat, lon, span (m) }. Verinin içinde kalanlar.
+export function cutsOf(set) {
+  const M = set?.marks || {};
+  const o = lineMid(M);
+  if (!set?.fixes.length) return [];
+  const { t0, t1 } = spanOf(set);
+  const lineLen = M.pin && M.komite ? dist(M.pin, M.komite) : 200;
+  const sf = o ? { ...o, span: Math.max(160, lineLen * 1.35) } : null;
+  const out = [
+    { n: "Start", t: 0, focus: sf },
+    { n: "+20 sn", t: 20000, focus: sf },
+    { n: "+30 sn", t: 30000, focus: sf ? { ...sf, span: sf.span * 1.1 } : null },
+  ];
+  const first = (m, r) => {
+    let best = Infinity;
+    for (const f of set.fixes) {
+      if (f.t < 60000 || f.t >= best) continue;
+      if (dist(f, m) < r) best = f.t;
+    }
+    return best;
+  };
+  const mid = (a, b) => (a && b ? { lat: (a.lat + b.lat) / 2, lon: (a.lon + b.lon) / 2 } : a || b || null);
+  const gate = mid(M.m3s, M.m3p);
+  for (const [n, m, r] of [["1. şamandıra", M.m1, 40], ["2. şamandıra", M.m2, 40], ["Kapı", gate, 70]]) {
+    if (!m) continue;
+    const t = first(m, r);
+    if (Number.isFinite(t)) out.push({ n, t: Math.max(t0, t - 12000), focus: { ...m, span: 260 } });
+  }
+  const fm = mid(M.fin1, M.fin2);
+  if (fm) {
+    const ends = [...tracksOf(set).values()].map((l) => l.at(-1)).filter((f) => f.t > 120000 && dist(f, fm) < 80);
+    if (ends.length) out.push({ n: "Finiş", t: Math.max(t0, Math.min(...ends.map((f) => f.t)) - 10000), focus: { ...fm, span: 280 } });
+  }
+  return out.filter((c) => c.t >= t0 && c.t <= t1).sort((a, b) => a.t - b.t);
+}
