@@ -136,7 +136,7 @@ export function sailPlan(g, route, wind) {
 }
 
 // Sahne: { W, H } piksel, rota, isteğe bağlı pre (animasyon adları için önek), title (alt yazı)
-export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "", wind = true, sea = false, sail = false, sailT = 16, axis = true } = {}) {
+export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "", wind = true, sea = false, sail = false, sailT = 16, axis = true, bare = false } = {}) {
   if (!card) return "";
   const g = geom(card, { lineK: 0.38 }); // start hattı rota kartındaki gibi orsanın üçte biri kadar (Seyhun 2026-11-02 "start çok büyük")
   const rt = cleanRoute(route);
@@ -254,7 +254,8 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
     const k = 0.3, mx = A0[0] + (A1[0] - A0[0]) * k, my = A0[1] + (A1[1] - A0[1]) * k;
     under += `<line x1="${f(A0[0])}" y1="${f(A0[1])}" x2="${f(A1[0])}" y2="${f(A1[1])}" stroke="#8fd3ff" stroke-opacity=".85" stroke-width="${f(Math.max(2, 3 * u))}" stroke-dasharray="${f(16 * u)} ${f(11 * u)}" stroke-linecap="round"/>`;
     const st = `fill="#fff" stroke="#0b1a2a" stroke-opacity=".55" stroke-width="${f(4 * u)}" paint-order="stroke" stroke-linejoin="round"`;
-    labels += `<g transform="translate(${f(mx + 20 * u)} ${f(my)})"><text text-anchor="start" font-size="${f(15 * u)}" font-weight="700" letter-spacing="${f(2 * u)}" ${st} fill-opacity=".8">PARKUR EKSENİ</text><text y="${f(28 * u)}" text-anchor="start" font-size="${f(26 * u)}" font-weight="800" ${st}><tspan fill="#8fd3ff">${Math.round(g.A)}°</tspan> ${dirShort(g.A)}</text></g>`;
+    // bare: sayılar çizimin dışında yazılıyor (canlı › Parkur ve rüzgâr paneli; Seyhun 2026-11-06 "çok fazla tekrar"), çizimde yalnız çizgi ve ok
+    if (!bare) labels += `<g transform="translate(${f(mx + 20 * u)} ${f(my)})"><text text-anchor="start" font-size="${f(15 * u)}" font-weight="700" letter-spacing="${f(2 * u)}" ${st} fill-opacity=".8">PARKUR EKSENİ</text><text y="${f(28 * u)}" text-anchor="start" font-size="${f(26 * u)}" font-weight="800" ${st}><tspan fill="#8fd3ff">${Math.round(g.A)}°</tspan> ${dirShort(g.A)}</text></g>`;
   }
   if (rt.length) {
     const { legs, alt } = routePlan(g, rt);
@@ -317,7 +318,7 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
     const anim = `dur="${T}s" repeatCount="indefinite"`;
     under += `<path d="${d}" pathLength="1" stroke-dasharray="1 1" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="${f(Math.max(2, 3.5 * u))}" stroke-linecap="round" stroke-linejoin="round"><animate attributeName="stroke-dashoffset" values="1;0;0" keyTimes="0;.88;1" ${anim}/></path>`;
     under += `<g><circle r="${f(13 * u)}" fill="#fff" opacity=".25"/><circle r="${f(7 * u)}" fill="#fff"/><animateMotion ${anim} keyPoints="0;1;1" keyTimes="0;.88;1" calcMode="linear" path="${d}"/></g>`;
-    if (sp.end) {
+    if (sp.end && !bare) {
       const e = P(sp.start);
       labels += `<text x="${f(e[0])}" y="${f(e[1] + 58 * u)}" text-anchor="middle" font-size="${f(19 * u)}" font-weight="700" letter-spacing="${f(1.5 * u)}" fill="#ffd400" stroke="#0b1a2a" stroke-opacity=".55" stroke-width="${f(4 * u)}" paint-order="stroke">${sp.end === "pin" ? "PİN" : "KOMİTE"} AVANTAJLI · ${sp.deg}°</text>`;
     }
@@ -335,8 +336,9 @@ export function sceneSvg(card, route, { W = 1600, H = 900, pre = "cs", title = "
     const wx = Math.min(W - 190 * u, Math.max(...pts.map((p) => p[0])) + 110 * u), wy = Math.max(70 * u, Math.min(...pts.map((p) => p[1])) + 30 * u);
     const L = 46 * u;
     o += `<g transform="translate(${f(wx)} ${f(wy)})"><circle r="${f(L * 1.05)}" fill="#071a2e" fill-opacity=".55" stroke="#fff" stroke-opacity=".25" stroke-width="${f(1.5 * u)}"/><g transform="rotate(${f(sh)})"><line x1="0" y1="${f(-L * 0.8)}" x2="0" y2="${f(L * 0.35)}" stroke="#fff" stroke-width="${f(6 * u)}" stroke-linecap="round"/><path d="M0 ${f(L * 0.82)} L${f(-L * 0.36)} ${f(L * 0.22)} L${f(L * 0.36)} ${f(L * 0.22)} Z" fill="#fff"/></g>`;
-    o += `<text x="0" y="${f(L * 1.05 + 28 * u)}" text-anchor="middle" font-size="${f(24 * u)}" font-weight="800" fill="#fff" stroke="#0b1a2a" stroke-opacity=".55" stroke-width="${f(4 * u)}" paint-order="stroke">${dirShort(card.wind)} · ${Math.round(card.wind)}°</text>`;
-    o += `<text x="0" y="${f(L * 1.05 + 52 * u)}" text-anchor="middle" font-size="${f(18 * u)}" font-weight="600" fill="#fff" fill-opacity=".8" stroke="#0b1a2a" stroke-opacity=".5" stroke-width="${f(3 * u)}" paint-order="stroke">${card.kn != null ? `Rüzgâr ${card.kn} knot` : "Rüzgâr"}</text></g>`;
+    if (bare) o += "</g>";
+    else o += `<text x="0" y="${f(L * 1.05 + 28 * u)}" text-anchor="middle" font-size="${f(24 * u)}" font-weight="800" fill="#fff" stroke="#0b1a2a" stroke-opacity=".55" stroke-width="${f(4 * u)}" paint-order="stroke">${dirShort(card.wind)} · ${Math.round(card.wind)}°</text>`;
+    if (!bare) o += `<text x="0" y="${f(L * 1.05 + 52 * u)}" text-anchor="middle" font-size="${f(18 * u)}" font-weight="600" fill="#fff" fill-opacity=".8" stroke="#0b1a2a" stroke-opacity=".5" stroke-width="${f(3 * u)}" paint-order="stroke">${card.kn != null ? `Rüzgâr ${card.kn} knot` : "Rüzgâr"}</text></g>`;
   }
   if (title) o += `<text x="${f(W / 2)}" y="${f(H - 26 * u)}" text-anchor="middle" font-size="${f(24 * u)}" font-weight="600" letter-spacing="${f(1.5 * u)}" fill="#fff" opacity=".88">${title}</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Inter,sans-serif">${o}</svg>`;

@@ -1193,3 +1193,19 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 .sc-wdb .gr-wc { width: 100%; height: auto; max-height: 15em; display: block; margin: 0 auto; }
 .sc-wh i.w { background: #fff; }
 .sc-wh i.m { background: #4d8dff; border-radius: 50%; width: 0.6em; height: 0.6em; }
+
+/* Parkur ve rüzgâr sade (Seyhun 2026-11-06 "çok fazla tekrar; parkur bir kez büyük; tahmin yalnız önemliyse"):
+   üstte rüzgâr + parkur sayıları tek kart, altında yalnız çizim, önemliyse turuncu tahmin satırı (dokununca grafik) */
+.sc-wnow { flex-wrap: wrap; }
+.sc-wnow .fx { display: flex; gap: 0.5em; margin-left: auto; }
+.sc-wnow .fx > span { display: grid; gap: 0.25em; min-width: 3.6em; padding: 0.45em 0.6em; border-radius: 0.6em; background: rgba(255, 255, 255, 0.07); text-align: center; }
+.sc-wnow .fx small { font: 700 0.68em/1 var(--sc-c); letter-spacing: 0.1em; text-transform: uppercase; color: var(--sc-mut, rgba(255, 255, 255, 0.6)); }
+.sc-wnow .fx b { font: 800 1.15em/1 var(--sc-c); color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sc-ckx.crs.bare { padding: 0.3em; }
+.sc-ckx.crs.bare .sc-cxd { flex: 1 1 auto; min-height: 0; }
+.sc-wday { margin-bottom: 0.6em; background: rgba(255, 169, 77, 0.1); }
+.sc .sc-wday .sc-wtg { justify-content: flex-start; color: #ffa94d; }
+.sc-wtg > i { flex: none; padding: 0.3em 0.6em; border-radius: 99em; background: #ffa94d; color: #0b1a33; font: 800 0.72em/1 var(--sc-c); font-style: normal; }
+.sc-wtg > span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-ckx.crs.bare .sc-cxd { margin: 0; }
+.sc-ckx.crs.bare .sc-cxd svg { height: 100%; }
