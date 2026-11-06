@@ -2358,48 +2358,7 @@ const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // start alanına kadar gelsin"; örnek canli-tv/alt-cubuk-ornek.png onaylandı): tek sıra eşit düğme Kamera · Konum · Parkur · Rüzgâr ·
 // Sıralama · Start (Start yalnız ana hesap). Dokunulanın içeriği çubuğun üstünde açılır, en çok süre kartının altına kadar; aynı düğme
 // kapatır. Start penceresi (LiveStart) de aynı yerde (--vb-b, --vb-t). Yalnız telefon / dikey ekranda.
-// Ekrandaki kendi videom (Seyhun 2026-11-05 "istediğim kadar izleyip geri alıp tekrardan başlatabileyim; bir ok olsun, basınca videolar açılsın"):
-// çubuğun üstünde ince şerit: Videolar ˄ · −10 · Oynat/Duraklat · Baştan · Ses · süre çizgisi (dokununca oraya atlar) · Kaldır
-function MyVidCtl({ vref, onOpen, onStop }) {
-  const [st, setSt] = useState({ t: 0, d: 0, paused: false, muted: true });
-  useEffect(() => {
-    const v = vref.current;
-    if (!v) return undefined;
-    const up = () => setSt({ t: v.currentTime || 0, d: Number.isFinite(v.duration) ? v.duration : 0, paused: v.paused, muted: v.muted });
-    const ev = ["timeupdate", "play", "pause", "loadedmetadata", "volumechange"];
-    ev.forEach((e) => v.addEventListener(e, up));
-    up();
-    return () => ev.forEach((e) => v.removeEventListener(e, up));
-  }, [vref]);
-  const v = () => vref.current;
-  const go = (t) => v() && (v().currentTime = Math.max(0, Math.min(t, (v().duration || 0) - 0.05)));
-  const mm = (x) => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, "0")}`;
-  const seek = (e) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    go(((e.clientX - r.left) / r.width) * st.d);
-  };
-  return (
-    <div className="sc-mv">
-      <button type="button" className="up" onClick={onOpen} aria-label="Videolar">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        Videolar
-      </button>
-      <button type="button" onClick={() => go(st.t - 10)}>−10</button>
-      <button type="button" className="pp" onClick={() => (v()?.paused ? v().play().catch(() => {}) : v()?.pause())} aria-label={st.paused ? "Oynat" : "Duraklat"}>
-        {st.paused ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor" /></svg> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor" /></svg>}
-      </button>
-      <button type="button" onClick={() => (go(0), v()?.play().catch(() => {}))}>Baştan</button>
-      <button type="button" className={st.muted ? "" : "on"} aria-pressed={!st.muted} onClick={() => v() && (v().muted = !v().muted)}>
-        Ses
-      </button>
-      <div className="tl" onClick={seek} role="presentation">
-        <i style={{ width: `${st.d ? (st.t / st.d) * 100 : 0}%` }} />
-        <small>{`${mm(st.t)} / ${mm(st.d)}`}</small>
-      </div>
-      <button type="button" className="x" onClick={onStop}>Kaldır</button>
-    </div>
-  );
-}
+// Ekrandaki kendi videom (Seyhun 2026-11-06): ekranın düğmeleri kalkar, cihazın kendi video kontrolleri ve Kapat (LiveScreen .lv.mine)
 // Kaynak seçimi (Seyhun 2026-11-06 "benim alanım ayrı, yayın alanı ayrı; yayın butonu ayrı olsun, benim manuel seçimim öncelikli";
 // örnek canli-tv/kaynak-secimi/ornek.png onaylandı): çubuğun üstünde Benim | Yayın anahtarı ve "Ekranda: … ˄". Benim'de ekranda
 // kendi seçimin (kamera, drone, telefon, grubun canlı konumu ya da kendi videon), seçmediysen yayınınki; Yayın'da izleyicilerin
@@ -2928,15 +2887,22 @@ export function LiveScreen({ id, y = "" }) {
   const { sc, item } = !isCur && scBoards(sd).length ? { sc: "03", item: "rank" } : same ? { sc: "01", item: "time" } : pk;
   const { evre } = pk;
   return (
-    <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${follow ? " fol" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
+    <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${follow ? " fol" : ""}${myVid.url && !follow ? " mine" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
       <Backdrop data={sd} isCur={isCur} entry={entry} today={today} />
+      {/* Kendi videom (Seyhun 2026-11-06 "videoyu gösterirken düğmeler kalkmalı, yalnız videonun kontrol paneli, iPad gibi"): ekranın
+          düğmeleri, çubuğu ve kartları kalkar; video cihazın kendi oynatıcı kontrolleriyle (oynat, süre çubuğu, ses, tam ekran); Kapat ile canlı ekrana dönülür */}
       {myVid.url ? (
-        <div className="lv-my" aria-hidden="true">
-          <video key={myVid.id} ref={myRef} src={myVid.url} autoPlay muted loop playsInline />
+        <div className="lv-my">
+          <video key={myVid.id} ref={myRef} src={myVid.url} autoPlay muted playsInline controls />
+          {!follow ? (
+            <button type="button" className="lv-myx" onClick={() => playMine("", null)}>
+              Kapat
+            </button>
+          ) : null}
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={myVid.url && adm && inApp && !demoOn ? <MyVidCtl key={myVid.id} vref={myRef} onOpen={() => setVTab("vid")} onStop={() => playMine("", null)} /> : sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => pickCam(`b:${g}`)} /> : null} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} /> : null} />
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => pickCam(`b:${g}`)} /> : null} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} /> : null} />
         {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}

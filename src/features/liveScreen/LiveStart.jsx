@@ -49,6 +49,8 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
   const [rounds, setRounds] = useState({});
   const [course, setCourse] = useState(() => cleanCourse({}));
   const [pickI, setPickI] = useState(0);
+  const [runId, setRunId] = useState("");
+  const [big, setBig] = useState(false); // start sürerken pencere küçük şerit; Büyüt ile tam (Seyhun 2026-11-06 "ekranı çok kaplıyor")
   const [edit, setEdit] = useState(""); // "prep" | "card": açık seçim
   const [msg, setMsg] = useState("");
   const pick = useRef(0);
@@ -134,7 +136,10 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
       if (!r) return;
       startedRow({ orgId, raceId, rid, row: r, rounds, course }).catch(() => {});
       changePlan({ order: orderWithout(order, i), warn: "" });
-      setPickI(0); // sıradaki grup kendiliğinden seçili
+      setPickI(0);
+      // başlatılan grupta kalınır (Seyhun 2026-11-06 "startı başlatınca onda kalmalıyız"), pencere küçük şeride iner
+      setRunId(rid);
+      setBig(false);
     },
   };
   const go = () => {
@@ -206,7 +211,6 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
   const running = live.starts.filter((x) => x.day === today && !x.fin && !x.void);
   // Yarıştaki grup (Seyhun 2026-11-05 "Mavi yarışta diyor, tıklıyorum, yarışı bitirmeyi yapamıyorum"): dokununca Yayın › Süre'deki işlemler,
   // aynı kayıtlarla (lib/raceLive openWin, moveWin, finishRace; useRaceFlow save / voidNow)
-  const [runId, setRunId] = useState("");
   const [clk, setClk] = useState(0);
   useEffect(() => {
     if (!open) return undefined;
@@ -269,14 +273,70 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
   if (!orgId) return null;
   const card = row ? cardFor(course, row.cls, row.grp) : null;
   const dur = Math.round((t.left ?? t.dur ?? 300) / 60);
+  const cdS = counting && cdId ? live.starts.find((x) => x.id === cdId) || null : null;
+  const miniS = runS || cdS; // küçük şeritte görünen start
+  const mini = open && !big && !!miniS;
+  const gOf = (s) => rounds[s.id]?.grp || s.grp || "";
+  const voidRun = (s) => (upHere(s.id) && writeTimer({ dur: t.dur, end: null, left: null, zero: t.end }), rf.voidNow([s.id], "Abandone"), push(), setRunId(""));
   return (
     <>
-      {open ? (
+      {mini ? (
+        <div className="lst lst-mini" role="dialog" aria-label="Start">
+          <div className="lst-sh">
+            <span className="nm">
+              {gOf(miniS) ? <i style={{ background: groupColor(gOf(miniS)) || "#ffd23f" }} /> : null}
+              {gOf(miniS) || raceName(miniS)}
+            </span>
+            <span className={`tm${miniS === cdS ? " cd" : ""}`}>
+              {miniS === cdS ? (t.left != null ? `−${mmss(t.left)}` : `−${mmss(Math.max(0, tr.rem))}`) : miniS.fw ? `Finiş ${mmss(winLeft(miniS, nowT) || 0)}` : mmss(runSec(miniS))}
+            </span>
+            <span className="bt">
+              {miniS === cdS ? (
+                <>
+                  <button type="button" onClick={shift}>
+                    +1 dk
+                  </button>
+                  <button type="button" onClick={cancel}>
+                    İptal
+                  </button>
+                </>
+              ) : (
+                <>
+                  {miniS.fw ? (
+                    <button type="button" onClick={() => putStarts((l) => moveWin(l, miniS.id, Date.now(), 5))}>
+                      +5 dk
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => putStarts((l) => openWin(l, miniS.id, Date.now()))}>
+                      İlk finiş
+                    </button>
+                  )}
+                  <button type="button" className="go" onClick={() => endRace(miniS)}>
+                    Bitir
+                  </button>
+                  <button type="button" className="x" onClick={() => voidRun(miniS)}>
+                    Abandone
+                  </button>
+                </>
+              )}
+              <button type="button" className="bg" onClick={() => setBig(true)}>
+                Büyüt
+              </button>
+            </span>
+          </div>
+        </div>
+      ) : open ? (
         <div className="lst" role="dialog" aria-label="Start">
           <div className="lst-sh">
             <div className="lst-hd">
               <b>Start</b>
-              <span>{[row?.cls, row ? rf.flow.label : ""].filter(Boolean).join(" · ")}</span>
+              {miniS ? (
+                <button type="button" className="lst-sm" onClick={() => setBig(false)}>
+                  Küçült
+                </button>
+              ) : (
+                <span>{[row?.cls, row ? rf.flow.label : ""].filter(Boolean).join(" · ")}</span>
+              )}
             </div>
             {(!counting && order.length) || running.length ? (
               <>
@@ -296,7 +356,7 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
                     );
                   })}
                   {(counting ? [] : order).map((o, i) => (
-                    <button key={`${o.cls}${o.grp}${i}`} type="button" className={`lst-g${i === sel ? " on" : ""}`} aria-pressed={i === sel} onClick={() => (setPickI(i), setEdit(""), setMsg(""))}>
+                    <button key={`${o.cls}${o.grp}${i}`} type="button" className={`lst-g${i === sel && !runS ? " on" : ""}`} aria-pressed={i === sel && !runS} onClick={() => (setPickI(i), setRunId(""), setEdit(""), setMsg(""))}>
                       <span>
                         {o.grp ? <i style={{ background: groupColor(o.grp) || "#ffd23f" }} /> : null}
                         {o.grp || o.cls}
@@ -331,7 +391,7 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
                   <button type="button" className="go" onClick={() => endRace(runS)}>
                     Bitir
                   </button>
-                  <button type="button" className="x" onClick={() => (upHere(runS.id) && writeTimer({ dur: t.dur, end: null, left: null, zero: t.end }), rf.voidNow([runS.id], "Abandone"), push(), setRunId(""))}>
+                  <button type="button" className="x" onClick={() => voidRun(runS)}>
                     Abandone
                   </button>
                 </div>
