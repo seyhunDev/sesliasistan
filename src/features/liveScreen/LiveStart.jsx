@@ -28,6 +28,8 @@ import { groupColor } from "@/lib/roundScore";
 import { todayStr } from "@/lib/utils/format";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { LiveVideos } from "./LiveVideos";
+import { LiveMasa } from "./LiveMasa";
+import { showOnScreen } from "./liveActions";
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
@@ -39,7 +41,8 @@ export default function LiveStart(p) {
   );
 }
 // vidHost: Video panelindeki yer (LiveScreen ScView; yalnız uygulama içinde); videolar oraya çizilir
-function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false }) {
+// masaHost: Yayın masasının yeri (Yayın modunda "Yayında"ya basınca); give: Benim'de seçileni yayına ver isteği { s, n }
+function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false, masaHost = null, now = null, pos = [], give = null, onGiven }) {
   const [orgId, setOrgId] = useState("");
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -69,6 +72,16 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
     [raceId],
   );
   useEffect(() => onReady?.(!!orgId), [orgId, onReady]);
+  // Benim › Yayına ver: seçilen kaynak / konum izleyicilere de geçer (Yayın › Ekrana al ile aynı kayıt)
+  const gaveN = useRef(0);
+  useEffect(() => {
+    if (!orgId || !give?.n || gaveN.current === give.n) return;
+    gaveN.current = give.n;
+    showOnScreen(orgId, raceId, give.s).then(
+      () => onGiven?.(true),
+      () => (onGiven?.(false), setMsg("Kaydedilemedi. İnterneti kontrol et.")),
+    );
+  }, [orgId, raceId, give, onGiven]);
   useEffect(() => {
     if (!orgId) return;
     let on = true;
@@ -390,6 +403,7 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
           </div>
         </div>
       ) : null}
+      {masaHost && orgId ? createPortal(<LiveMasa orgId={orgId} raceId={raceId} race={race} live={live} now={now} pos={pos} today={today} />, masaHost) : null}
       {vidHost ? createPortal(<LiveVideos orgId={orgId} raceId={raceId} race={race} starts={live.starts} rounds={rounds} stream={stream} playing={playing} onPlay={onPlay} />, vidHost) : null}
       <VoidSheet ask={rf.ask} onChoose={(r) => (rf.choose(r), push())} />
       <AddSheet open={wind} c={course} onClose={() => onWindClose?.()} onAdd={addObs} onVoice={() => (onWindClose?.(), setTalk(true))} />
