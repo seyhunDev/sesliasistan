@@ -747,6 +747,8 @@ function autoRecs(data, today) {
 function autoOn(data, isCur, entry, today) {
   const scr = isCur ? data.screen || {} : {};
   if (scr.kind === "boats" || scr.kind === "rec") return false;
+  // elle "Yayından çıkar / Ekrandan kaldır" dendiyse kayıtlar kendiliğinden sırayla oynamaz (Seyhun 2026-11-06 "listenin bitmesi bekleniyor, anında kesilsin")
+  if (scr.off) return false;
   if (ytSrc(liveUrl(screenUrl(scr, data.stream), scr, data.stream, data.camBy, entry))) return false;
   return autoRecs(data, today).length > 0;
 }
@@ -3222,12 +3224,14 @@ export function LiveScreen({ id, y = "" }) {
   // Tekne konumu ekrandayken (Seyhun 2026-11-06 "alttaki butonlar kalksın; yukarıda X; yayına al / yayından çıkar buradan"): alt çubuk yerine
   // üstte Yayına al / Yayından çıkar + X, altta yalnız tekne şeridi (BoatCtl). X: kendi seçimimse yayınla aynıya döner, yayınınkiyse bu ekranda gizlenir.
   const boatOn = mine && sd.screen?.kind === "boats" && !myVid.url;
+  // yayındaki görüntü evrenin atanmış görüntüsünden de gelebilir (pk.sd.screen); Yayından çıkar ikisini de keser
+  const airScr0 = pk.sd.screen || {};
   const boatAdm = adm && inApp && !demoOn;
   const boatMode = boatOn
     ? {
         onClose: () => (posOn ? pickCam("") : setBoatX(airBoat)),
         onAir: boatAdm && canGive ? doGive : null,
-        offAir: boatAdm && onAirS.kind === "boats" && (!posOn || given) ? () => setGive((g) => ({ s: { kind: "", caption: onAirS.caption || "" }, n: (g?.n || 0) + 1 })) : null,
+        offAir: boatAdm && airScr0.kind === "boats" && (!posOn || given) ? () => (setBoatX(""), setGive((g) => ({ s: { kind: "", off: pk.evre, caption: onAirS.caption || "" }, n: (g?.n || 0) + 1 }))) : null,
       }
     : null;
   // Yayında ne var (Yayın modundaki düğme): kaynağın adı, canlı konum, kayıt, yoksa evrenin öğesi
