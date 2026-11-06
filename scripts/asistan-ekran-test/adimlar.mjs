@@ -78,10 +78,10 @@ export async function scenarios(h) {
     }).catch(() => ({ n: 0, cols: 0, ic: 0 }));
     return [r.n >= 5 && r.n <= 8 && r.cols === 4 && r.ic === r.n, `${r.n} düğme · ${r.cols} sütun · ${r.ic} ikonlu`];
   });
-  await check(G1, "boşta", "durum boşta, etiket “basılı tut konuş”", async () => {
+  await check(G1, "boşta", "durum boşta, etiket “dokun konuş”", async () => {
     const st = await orb(page).getAttribute("data-state");
     const lb = await orb(page).getAttribute("aria-label");
-    return [st === "idle" && /basılı tut konuş/.test(lb), `${st} · ${lb}`];
+    return [st === "idle" && /dokun konuş/.test(lb), `${st} · ${lb}`];
   });
 
   await check("Enerji (boşta)", "ana sayfa", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
@@ -93,15 +93,14 @@ export async function scenarios(h) {
   const srBefore = await page.evaluate(() => window.__t.srStarts);
   await h.hold(page);
   const G2 = "Bas konuş: tam ekran açılış";
-  // Seyhun 2026-11-02 "A · İçeriğe göre büyür": tam ekran değil, alttan küçük pencere (en çok ekranın ~yarısı), arkası görünür ve hafif kararır
-  await check(G2, "düğmeye bas", "alttan küçük koyu pencere açılır (afull-in, data-theme=dark), ekranın yarısını geçmez, arkada karartma", async () => {
+  // Seyhun 2026-11-06 "arka fon blur olsun, alttan bir şey açılmasın": tam ekran bulanık zemin, olaylar ortada
+  await check(G2, "düğmeye dokun", "tam ekran bulanık koyu zemin açılır (afull-in, data-theme=dark), alttan pencere yok", async () => {
     await full(page).waitFor({ timeout: 4000 });
     const cls = await full(page).getAttribute("class");
     const theme = await full(page).getAttribute("data-theme");
     const box = await full(page).boundingBox();
     const vh = page.viewportSize().height;
-    const dim = await page.locator("[data-adim]").count();
-    return [/afull-in/.test(cls) && /afull-sm/.test(cls) && theme === "dark" && box.height >= 100 && box.height <= vh * 0.6 && dim === 1, `${cls.match(/afull-(in|out)/)?.[0]} · ${theme} · ${Math.round(box.height)}/${vh} px · karartma ${dim}`];
+    return [/afull-in/.test(cls) && !/afull-sm/.test(cls) && theme === "dark" && box.height >= vh * 0.9, `${cls.match(/afull-(in|out)/)?.[0]} · ${theme} · ${Math.round(box.height)}/${vh} px`];
   });
   await check(G2, "açılış animasyonu", "afull-in animasyonu tanımlı ve çalışıyor", async () => {
     const a = await full(page).evaluate((el) => getComputedStyle(el).animationName);
@@ -115,28 +114,29 @@ export async function scenarios(h) {
   // Dinlerken "Dinliyorum" yalnız alttaki çubukta, halkada yazı yok (2026-10-18)
   // Asistan düğmede (2026-10-22): düğme kırmızı, içinde canlı ses dalgası; "Dinliyorum" söylenen yazının altında
   // Seyhun 2026-10-22: "iki farklı yerde dinliyorum yazısı çıkıyor": ekranda tek "Dinliyorum"
-  await check("Halka renkleri", "dinlerken", "düğme kırmızı + ses dalgası, durum satırında yazı yok, “Dinliyorum” tek yerde", async () => {
+  // Dokun konuş (2026-11-06): düğmede gönder oku, ses dalgası ortada sözün altında
+  await check("Halka renkleri", "dinlerken", "düğme dinliyor (gönder oku) + ortada ses dalgası, durum satırında yazı yok, “Dinliyorum” en çok bir yerde", async () => {
     const c = await ringColor(page);
-    const bars = (await page.locator("[data-dome] [data-ring] canvas").count()) === 1 ? 5 : 0;
+    const bars = (await page.locator("[data-dome] .asaid canvas").count()) === 1 ? 5 : 0;
     const t = (await ringText(page)).trim();
     const all = await dome(page).innerText();
     const n = (all.match(/Dinliyorum/g) || []).length;
-    return [c === "kırmızı" && bars === 5 && !t && n === 1, `${c} · ${bars} çubuk · halka: “${t}” · “Dinliyorum” ${n} kez`];
+    return [c === "kırmızı" && bars === 5 && !t && n <= 1, `${c} · ${bars} çubuk · halka: “${t}” · “Dinliyorum” ${n} kez`];
   });
   // Asistan düğmede (2026-10-22): ayrı zemin yok, arkadaki sayfa bulanıklaşır; örtü sürekli oynamaz; yan düğmeler
   // Bas-konuş (2026-10-25): altta tek kutu ve sağında küre; Dur ve kapat düğmesi yok (bırakınca gönderir)
-  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), altta tek kutu, Dur ve kapat düğmesi yok", async () => {
+  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), altta tek kutu, Dur yok, sağ üstte kapat", async () => {
     const z = await page.locator("[data-dome] .abg").evaluate((el) => { const c = getComputedStyle(el); return { anim: `${c.animationName} ${c.animationIterationCount}`, blur: c.backdropFilter || c.webkitBackdropFilter || "" }; });
     const pill = await page.locator("[data-dome] .apill").count();
     const dur = await btn(page, "Dur").count();
     const x = await btn(page, "Asistanı kapat").count();
-    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && pill === 1 && dur === 0 && x === 0, `örtü ${z.anim} · ${z.blur} · kutu ${pill} · Dur ${dur} · kapat ${x}`];
+    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && pill === 1 && dur === 0 && x === 1, `örtü ${z.anim} · ${z.blur} · kutu ${pill} · Dur ${dur} · kapat ${x}`];
   });
   await say(page, "notlarımı oku");
   // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutunun üstüne akar, kutuda "Dinliyorum · süre"; gönderme düğmesi yok
-  await check(G2, "konuşurken", "canlı yazı, süre; Dur ve Gönder düğmesi yok (bırakınca gider)", async () => {
-    const ok = await waitFor(async () => /notlarımı oku/.test(await dome(page).locator(".asheet-input").innerText()), 3000);
-    const box = (await dome(page).locator(".asheet").innerText()).replace(/\n/g, " ");
+  await check(G2, "konuşurken", "canlı yazı ortada, süre; Dur ve Gönder düğmesi yok (düğmeye dokununca gider)", async () => {
+    const ok = await waitFor(async () => /notlarımı oku/.test(await dome(page).locator(".asaid").innerText()), 3000);
+    const box = (await dome(page).locator(".asaid").innerText()).replace(/\n/g, " ");
     const dur = await btn(page, "Dur").count();
     return [!!ok && /\d:\d\d/.test(box) && dur === 0 && (await btn(page, "Gönder").count()) === 0, `${box.slice(0, 80)} · Dur ${dur}`];
   });
@@ -163,7 +163,7 @@ export async function scenarios(h) {
 
   // Kapat (×): aşağı kayarak kapanır, sekmeler geri gelir
   const G4 = "Kapanış";
-  await page.locator("[data-adim]").click({ position: { x: 20, y: 20 } }); // pencerenin dışı (arkadaki sayfa)
+  await page.locator("[data-apane]").click({ position: { x: 4, y: 4 } }); // ortadaki boş bulanık alan
   await check(G4, "boş alana dokun", "afull-out ile aşağı kayarak kapanır", async () => {
     const cls = await waitFor(async () => {
       const c = await full(page).getAttribute("class", { timeout: 300 }).catch(() => "");
@@ -737,8 +737,14 @@ async function scenarios3(h) {
     await shot.setContent(`<body style="margin:0;background:#ddd;display:grid;place-items:center;height:100vh">${q.createSvgTag({ cellSize: 6, margin: 4 })}</body>`);
     const png = await shot.screenshot();
     await shot.close();
-    // Kısa dokunuş: asistan açılır, boşta; altta Fotoğraf · Yaz (bas-konuş 2026-10-25)
-    await page.locator("[data-dome] [data-orb]:visible").first().click();
+    // Dokun konuş (2026-11-06): dokun dinlesin, hiçbir şey söylemeden yeniden dokun: asistan açık, boşta; altta Fotoğraf · Yaz
+    {
+      const o = page.locator("[data-dome] [data-orb]:visible").first();
+      const b = await o.boundingBox();
+      await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+      await waitFor(async () => (await state(page)) === "listening", 4000);
+      await page.evaluate(() => document.querySelector("[data-dome] .afull [data-orb]")?.click());
+    }
     await waitFor(async () => (await state(page)) === "idle", 4000);
     const b2 = aiCalls();
     const pick = page.locator("[data-dome] input[type=file][accept='image/*']");
@@ -875,9 +881,9 @@ async function scenarios4(h) {
       const ok = await waitFor(async () => (await full(page).count()) && (await state(page)) === "listening", 4000);
       return [!!ok, `tam ekran ${await full(page).count()} · ${await state(page)}`];
     });
-    await check(GW, "açık asistanın genişliği", "konuşma ortada, en çok 34rem (544 px)", async () => {
+    await check(GW, "açık asistanın genişliği", "konuşma ortada, en çok 40rem (640 px; 2026-11-06 iPad'de biraz geniş)", async () => {
       const w = await page.locator("[data-dome] .asheet").first().evaluate((el) => el.getBoundingClientRect().width);
-      return [w <= 545, `${Math.round(w)} px`];
+      return [w <= 641, `${Math.round(w)} px`];
     });
     await check("Sayfa hataları", "geniş ekran", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
     await page.context().close();
@@ -997,8 +1003,8 @@ async function scenarios4(h) {
       await h.hold(page);
       await waitFor(async () => (await state(page)) === "listening", 5000);
       await check(GR, "canlı yazı (akış)", "konuşurken kelimeler kutuya akar, parça çevirisi istenmez", async () => {
-        const ok = await waitFor(async () => /Yarın saat onda antrenman/.test(await dome(page).locator(".asheet-input").innerText()), 6000);
-        const box = clean(await dome(page).locator(".asheet-input").innerText());
+        const ok = await waitFor(async () => /Yarın saat onda antrenman/.test(await dome(page).locator(".asaid").innerText()), 6000);
+        const box = clean(await dome(page).locator(".asaid").innerText());
         const parts = calls.filter((c) => c.path === "/api/transcribe").length - part0;
         const url = await page.evaluate(() => window.__ws.urls[0] || "");
         return [!!ok && /BidiGenerateContentConstrained\?access_token=auth_tokens/.test(url), `“${box.slice(0, 60)}” · ses parçası ${await page.evaluate(() => window.__ws.audio)} · parça çevirisi ${parts}`];
