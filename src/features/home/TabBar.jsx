@@ -30,37 +30,33 @@ import { TimerChip } from "@/features/training/TimerChip";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor (bas-konuş olmayan küçük küreler)
 export const CHECK_MS = 1500; // iş bitince küredeki yeşil ✓ bu kadar görünür, sonra asistan düğmesi geri gelir
-// BAS-KONUŞ (Seyhun 2026-10-25, örnek "A · Çubuğun sağ ucunda"): asistan küresi basılı tutulduğu sürece dinler, bırakınca
-// gönderir; kendiliğinden dinleme yok. Çok kısa dokunuş (SHORT_MS) konuşma sayılmaz; parmak küreden uzağa (AWAY_PX) kayıp
-// bırakılırsa gönderilmez. onRelease({ short, away }).
-const SHORT_MS = 200; // useAssistant PRESS_MIN ile aynı
-const AWAY_PX = 90;
-// Bırakma pencereden dinlenir: kapalı asistanda basınca sekme çubuğundaki küre yerini açık asistanın küresine bırakır
-// (ilk düğme kalkar), parmağın kalkması yine yakalanır.
-function usePress(onPress, onRelease) {
-  const rel = useRef(onRelease);
-  useLayoutEffect(() => {
-    rel.current = onRelease;
-  });
+// DOKUN KONUŞ (Seyhun 2026-11-06, örnek /mnt/project-files/asistan/tiklamali): basılı tutarak konuşmak yok. Boştayken dokununca
+// dinler, dinlerken dokununca bitirir ve gönderir (düğmede gönder oku), iş sürerken dokununca durdurur (düğmede kare).
+// Boştayken basılı tutmak (onHold varsa) yazarak sorar. onRelease({ short }) eski arayüzle aynı: gönder = { short: false },
+// durdur = { short: true }.
+function usePress(onPress, onRelease, state, onHold) {
+  const t = useRef(0);
+  const held = useRef(false);
   if (!onPress) return null;
+  const up = () => clearTimeout(t.current);
   return {
     onPointerDown: (e) => {
-      if (e.button > 0) return;
-      const p = { t: Date.now(), x: e.clientX, y: e.clientY, away: false };
-      const move = (ev) => {
-        if (Math.hypot(ev.clientX - p.x, ev.clientY - p.y) > AWAY_PX) p.away = true;
-      };
-      const end = (ev) => {
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", end);
-        window.removeEventListener("pointercancel", end);
-        // pointercancel (iPhone sistem hareketi, bildirim) kullanıcının vazgeçmesi değildir: söylenen gönderilir, atılmaz
-        rel.current?.({ short: Date.now() - p.t < SHORT_MS, away: p.away });
-      };
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", end);
-      window.addEventListener("pointercancel", end);
+      held.current = false;
+      if (e.button > 0 || !onHold || state !== "idle") return;
+      t.current = setTimeout(() => {
+        held.current = true;
+        navigator.vibrate?.(12);
+        onHold();
+      }, HOLD_MS);
+    },
+    onPointerUp: up,
+    onPointerLeave: up,
+    onPointerCancel: up,
+    onClick: () => {
+      if (held.current) return void (held.current = false);
       navigator.vibrate?.(10);
+      if (state === "listening") return onRelease?.({ short: false, away: false });
+      if (state === "busy") return onRelease?.({ short: true, away: false });
       onPress();
     },
     onContextMenu: (e) => e.preventDefault(),
@@ -206,15 +202,15 @@ const LIGHT_LABEL = {
 };
 // İş sürerken kısa dokunuş durdurur; okurken kısa dokunuş okumayı keser, basılı tutunca sözünü kesip dinler
 const PTT_LABEL = {
-  idle: "Asistan: basılı tut konuş",
-  listening: "Bırak, gönder",
+  idle: "Asistan: dokun konuş, basılı tut yaz",
+  listening: "Bitir ve gönder",
   busy: "Durdur",
   speaking: "Okumayı kes",
 };
 export function VoiceLight({ onTap, onHold, onPress, onRelease, state, size = "size-[4.5rem]", compact = false }) {
   const t = useRef(null);
   const held = useRef(false);
-  const ptt = usePress(onPress, onRelease);
+  const ptt = usePress(onPress, onRelease, state, onHold);
   const down = () => {
     held.current = false;
     t.current = setTimeout(() => {
@@ -237,13 +233,15 @@ export function VoiceLight({ onTap, onHold, onPress, onRelease, state, size = "s
         onClick: () => !held.current && onTap(),
       })}
       aria-label={ptt ? PTT_LABEL[state] || PTT_LABEL.idle : LIGHT_LABEL[state] || LIGHT_LABEL.idle}
-      className={`vlight ${compact ? "vl-sm" : ""} ${size} ${ptt ? "touch-none" : ""} shrink-0 select-none active:scale-95 [-webkit-touch-callout:none]`}
+      className={`vlight ${compact ? "vl-sm" : ""} ${size} shrink-0 select-none active:scale-95 [-webkit-touch-callout:none]`}
     >
       <span className="vl-halo" aria-hidden="true" />
       <span className="vl-ring" aria-hidden="true" />
       <span className="vl-disc" aria-hidden="true" />
       {state === "listening" ? (
         <ListenWave round {...(compact ? { bar: 2.5, gap: 2.5 } : {})} />
+      ) : ptt && state === "idle" ? (
+        <Icon name="mic" className="relative size-[1.875rem] text-white [stroke-width:2]" />
       ) : (
         <span className="vl-wave" aria-hidden="true">
           <i />
@@ -284,32 +282,14 @@ function NavTab({ href, icon, label, active, badge }) {
 //   konuşuyor            noktalar                             mavi · basılı tut, sözünü kes
 // mode: listening | sending | busy | speaking | idle. tail: yazının soluk son kısmı. r: ringOf (data-tone, üstteki durum yazısı)
 const PILLBTN = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-white/[.08] text-fg transition active:scale-90";
-function AssistBox({ mode, text, tail = "", ph, r = {}, draft = false, onX, xLabel, onText, onPhoto, onPress, onRelease }) {
-  const box = useRef(null);
+function AssistBox({ mode, ph, r = {}, draft = false, onX, xLabel, onText, onPhoto, onPress, onRelease }) {
   const pick = useRef(null);
-  useEffect(() => {
-    const el = box.current;
-    if (el) el.scrollTop = el.scrollHeight; // uzun sözde son kısım görünsün
-  }, [text, tail]);
-  const listening = mode === "listening";
   const idle = mode === "idle";
-  const said = [text, tail].filter(Boolean).join(" ");
   return (
     <div className="relative px-3 pb-1">
-      {/* Söylenen / yazılan söz: kutunun üstünde, büyük; durunca dokununca klavyeyle düzeltilir */}
-      {!!said && (
-        <div data-mode={mode} className={`asheet-input amsg-in mx-2 ${listening ? "mb-2" : "mb-4"} ${idle ? "asheet-draft" : ""}`}>
-          <div ref={box} onClick={idle ? onText : undefined} className={`max-h-[9.5rem] overflow-hidden text-[1.3125rem] font-semibold leading-snug tracking-[-.01em] ${idle && onText ? "cursor-text" : ""}`}>
-            <span className="text-fg">
-              {text}
-              {tail && <span className="text-fg/45">{text ? " " : ""}{tail}</span>}
-              {listening && <i className="box-caret" aria-hidden="true" />}
-            </span>
-          </div>
-        </div>
-      )}
       <div className="flex items-end gap-2.5">
-        <div className="apill flex h-[3.875rem] min-w-0 flex-1 items-center gap-2 rounded-full pl-2 pr-4">
+        {/* Dinlerken ve iş sürerken kutu yok: söylenen ortada (Said), yalnız sağdaki düğme */}
+        <div className={`apill flex h-[3.875rem] min-w-0 flex-1 items-center gap-2 rounded-full pl-2 pr-4 ${idle ? "" : "invisible"}`}>
           {idle && draft ? (
             <button type="button" onClick={onX} aria-label={xLabel} className={PILLBTN}>
               <Icon name="x" className="size-[1.25rem]" />
@@ -334,12 +314,7 @@ function AssistBox({ mode, text, tail = "", ph, r = {}, draft = false, onX, xLab
           ) : (
             <span className="w-2 shrink-0" />
           )}
-          {listening ? (
-            <span className="flex min-w-0 flex-1 items-center gap-2 text-[0.9375rem] font-semibold text-fg/80">
-              <MicDot />
-              Dinliyorum · <ListenClock />
-            </span>
-          ) : idle ? (
+          {idle ? (
             <button type="button" onClick={onText} aria-label={draft ? "Düzelt" : "Yaz"} className="min-w-0 flex-1 truncate py-3 text-left text-[0.9375rem] text-fg/55">
               {draft ? "Düzelt" : ph}
             </button>
@@ -353,13 +328,43 @@ function AssistBox({ mode, text, tail = "", ph, r = {}, draft = false, onX, xLab
   );
 }
 
+// Ortadaki söz (Seyhun 2026-11-06 "ortada olaylar gerçekleşsin"): dinlerken söylenen büyük ve ortada akar (son, henüz
+// kesinleşmemiş kısım soluk), altında sesle oynayan dalga ve süre. Durunca (taslak) dokununca klavyeyle düzeltilir.
+function Said({ mode, text, tail = "", onText }) {
+  const box = useRef(null);
+  useEffect(() => {
+    const el = box.current;
+    if (el) el.scrollTop = el.scrollHeight; // uzun sözde son kısım görünsün
+  }, [text, tail]);
+  const listening = mode === "listening";
+  const idle = mode === "idle";
+  return (
+    <div data-mode={mode} className={`asaid amsg-in flex flex-col items-center text-center ${idle ? "asheet-draft" : ""}`}>
+      <div ref={box} onClick={idle ? onText : undefined} className={`max-h-[14rem] overflow-hidden text-[1.625rem] font-semibold leading-snug tracking-[-.01em] md:text-[2rem] ${idle && onText ? "cursor-text" : ""}`}>
+        <span className="text-fg">
+          {text}
+          {tail && <span className="text-fg/45">{text ? " " : ""}{tail}</span>}
+        </span>
+      </div>
+      {listening && (
+        <>
+          <div className="mt-5 flex w-28 text-[#8fb3ff]">
+            <ListenWave line className="h-9" bar={4} gap={4} />
+          </div>
+          <span className="mt-2 text-[0.8125rem] font-semibold tabular-nums text-[#8fb3ff]"><ListenClock /></span>
+        </>
+      )}
+    </div>
+  );
+}
+
 // Ortadaki düğme (alt çubuktaki asistan düğmesiyle aynı yer ve görünüş, globals.css .vlight .aorb): renk durumu anlatır.
 // İçinde: dinlerken canlı ses dalgası, taslakta ↑, iş bitince onay, değilse logo dalgası. data-tone/data-fill ekran testleri için.
 function OrbMain({ mode, r, icon, label, on = true, onTap, onHold, onPress, onRelease, small = false }) {
   const t = useRef(null);
   const held = useRef(false);
-  const ptt = usePress(onPress, onRelease);
   const vstate = mode === "listening" ? "listening" : mode === "busy" || mode === "sending" ? "busy" : mode === "speaking" ? "speaking" : "idle";
+  const ptt = usePress(onPress, onRelease, vstate);
   const down = () => {
     held.current = false;
     if (!onHold || mode !== "idle") return;
@@ -387,17 +392,23 @@ function OrbMain({ mode, r, icon, label, on = true, onTap, onHold, onPress, onRe
         onClick: () => !held.current && onTap(),
       })}
       aria-label={ptt ? PTT_LABEL[vstate] || PTT_LABEL.idle : label}
-      className={`vlight aorb ${small ? "vl-sm size-[3.125rem]" : ptt ? "size-[4.75rem] touch-none" : "size-[4.5rem]"} shrink-0 select-none disabled:opacity-60 [-webkit-touch-callout:none]`}
+      className={`vlight aorb ${small ? "vl-sm size-[3.125rem]" : ptt ? "size-[4.75rem]" : "size-[4.5rem]"} shrink-0 select-none disabled:opacity-60 [-webkit-touch-callout:none]`}
     >
       <span className="vl-halo" aria-hidden="true" />
       <span className="vl-ring" aria-hidden="true" />
       <span className="vl-disc" aria-hidden="true" />
-      {mode === "listening" ? (
+      {ptt && vstate === "listening" ? (
+        <Icon name="up" className="relative size-8 text-[#0b1a33] [stroke-width:2.6]" />
+      ) : ptt && vstate === "busy" ? (
+        <Icon name="stop" className="relative size-6 text-white" />
+      ) : mode === "listening" ? (
         <ListenWave round {...(small ? { bar: 3, gap: 3 } : {})} />
       ) : icon === "up" && !ptt ? (
         <Icon name="up" className={`relative ${small ? "size-6" : "size-7"} text-white [stroke-width:2.5]`} />
       ) : r.check && mode === "idle" ? (
         <svg viewBox="0 0 48 48" className={`relative ${small ? "size-6" : "size-8"}`} aria-hidden="true"><path className="lring-check" d="M13 25l7 7 15-16" /></svg>
+      ) : ptt && vstate === "idle" ? (
+        <Icon name="mic" className="relative size-[1.875rem] text-white [stroke-width:2]" />
       ) : (
         <span className="vl-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span>
       )}
@@ -550,7 +561,7 @@ function ReadToggle() {
       onClick={flip}
       aria-pressed={on}
       aria-label={on ? "Sesli yanıtı kapat" : "Sesli yanıtı aç"}
-      className={`spk-btn absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full transition-[background-color,color,box-shadow,transform] duration-200 active:scale-90 ${on ? "bg-[#3d7bff] text-white" : "spk-btn-off bg-white/10 text-[#e8ecff]/70"}`}
+      className={`spk-btn grid size-10 shrink-0 place-items-center rounded-full transition-[background-color,color,box-shadow,transform] duration-200 active:scale-90 ${on ? "bg-[#3d7bff] text-white" : "spk-btn-off bg-white/10 text-[#e8ecff]/70"}`}
     >
       <SpeakerGlyph on={on} />
     </button>
@@ -580,6 +591,8 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
     const jump = wasActive.current !== active;
     wasActive.current = active;
     const set = () => {
+      // Taşma gizli kubbe tarayıcıca kaydırılmış kalabilir (tam ekrandayken odaklanan düğme): küre yukarıda kesilmesin
+      if (o.scrollTop) o.scrollTop = 0;
       const h = shown ? Math.round(i.offsetHeight) : 0;
       if (o.style.height !== `${h}px`) {
         if (jump) o.style.transition = "none";
@@ -817,7 +830,6 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   return (
     <>
     {/* Asistan açıkken arkadaki sayfa görünür, hafifçe kararır; dışına dokununca kapanır (dinlerken ya da bekleyen söz varken değil) */}
-    {active && !typing && <div data-adim="" aria-hidden="true" onClick={() => mode !== "listening" && !draft && onClose?.()} className="adim fixed inset-0 z-[37]" />}
     <div
       ref={box}
       data-dome=""
@@ -836,11 +848,11 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
         {sheet ? (
           // Asistan açıkken tam sayfa (Seyhun, 2026-10-14): arkada animasyonlu zemin, önde sohbet ve görevler, altta aynı kutu;
           // açık ya da koyu görünümden bağımsız tek koyu tasarım (data-theme="dark": içindeki dark: sınıfları da koyu)
-          <div data-theme={active ? "dark" : undefined} data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? `afull afull-sm ${leaving ? "afull-out" : "afull-in"} relative flex flex-col` : "contents"}>
+          <div data-theme={active ? "dark" : undefined} data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? `afull ${leaving ? "afull-out" : "afull-in"} relative flex h-[var(--vvh,100dvh)] flex-col` : "contents"}>
           {active && <AssistBg />}
-          <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex flex-col" : ""}`}>
+          <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col md:max-w-[40rem]" : ""}`}>
             {active && (
-              <div className="relative flex h-12 shrink-0 items-center px-5">
+              <div className="relative mt-[env(safe-area-inset-top)] flex h-14 shrink-0 items-center gap-2 px-5">
                 {/* Durum yazısı (Düşünüyorum, Yapıyorum 2 / 3, Kaydedildi): sol üstte tek satır; sağda sesli yanıt */}
                 {/* İş bitince ("Kaydedildi", "Tamam") yazı görünmez: bunu düğmedeki yeşil ✓ anlatır; ekran okuyucu yine okur */}
                 <p aria-live="polite" className="min-w-0 truncate text-[0.875rem] font-semibold text-fg/80">
@@ -849,7 +861,11 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                     {ring.label && ring.sub ? <span className="font-normal text-fg/60"> · {ring.sub}</span> : null}
                   </span>
                 </p>
+                <span className="ml-auto" />
                 <ReadToggle />
+                <button type="button" onClick={onClose} aria-label="Asistanı kapat" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/[.12] text-fg transition active:scale-90">
+                  <Icon name="x" className="size-5" />
+                </button>
               </div>
             )}
             {active && (
@@ -860,12 +876,17 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                 onClick={(e) => (e.target === pane.current || e.target === body.current) && mode !== "listening" && !draft && onClose?.()}
                 // Küçük pencere (Seyhun 2026-11-02 "A · İçeriğe göre büyür"): sohbet içeriği kadar, en çok ekranın yarısı kadar
                 // pencere; fazlası içeride kayar, yeni mesajda kendiliğinden en alta iner (yukarıdaki kaydırma). Üstte kısa soluklaşma.
-                className="max-h-[max(9rem,calc(var(--vvh,100dvh)*.55-8rem))] overflow-y-auto overscroll-contain px-5 [mask-image:linear-gradient(to_bottom,transparent,#000_1.5rem)] [scrollbar-width:none]"
+                // Tam ekran bulanık zemin (Seyhun 2026-11-06): olaylar ekranın ortasında; uzun sohbet içeride kayar
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 [mask-image:linear-gradient(to_bottom,transparent,#000_1.5rem,#000_calc(100%-1.5rem),transparent)] [scrollbar-width:none]"
               >
-                <div ref={body} className="flex flex-col justify-end pb-3 pt-3">
-                  <div ref={feed}>
+                <div ref={body} data-said={boxText && mode !== "busy" ? "" : undefined} className="flex min-h-full flex-col justify-center py-6">
+                  <div ref={feed} data-afeed="">
                     <div ref={setSlot} />
                   </div>
+                  {!!boxText && mode !== "busy" && (
+                    <Said mode={mode} text={boxText} tail={mode === "listening" && heard && live.heardFix != null ? live.tail || "" : ""} onText={mode === "idle" ? (draft ? voice.type : typeNow) : undefined} />
+                  )}
+                  {mode === "listening" && !boxText && <Said mode={mode} text="" />}
                 </div>
               </div>
             )}
@@ -875,10 +896,8 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
               <AssistBox
                 mode={mode}
                 r={ring}
-                text={boxText}
                 ph={cfg.ph}
                 draft={!!draft}
-                tail={mode === "listening" && heard && live.heardFix != null ? live.tail || "" : ""}
                 // × her zaman asistanı kapatır (Seyhun 2026-10-22); dinleme ve bekleyen söz de gider
                 onX={onClose}
                 xLabel="Asistanı kapat"
@@ -918,7 +937,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                     <TimerChip />
                     <span className="acenter absolute -top-7 right-2.5 rounded-full p-1">
                       {/* Küçülen asistan bu küreyi kullanır: rengi o anki durum (ikinci küre yok) */}
-                      <VoiceLight state={small ? state : "idle"} onPress={press} onRelease={release} size="size-[4.75rem]" />
+                      <VoiceLight state={small ? state : "idle"} onPress={press} onRelease={release} onHold={typeNow} size="size-[4.75rem]" />
                     </span>
                   </div>
                 )}
