@@ -1278,3 +1278,18 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 .sc-pkr input { flex: 1 1 auto; min-width: 0; border: 0; background: none; outline: none; color: #fff; font: 700 1em/1 var(--sc-c); letter-spacing: 0.06em; }
 .sc .sc-pkx { display: block; width: 100%; text-align: center; margin-top: 0.6em; height: 2.6em; border: 0; border-radius: 0.75em; background: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.85); font: 700 0.9em/1 var(--sc-c); }
 .sc-wdb [data-hour-table] { margin-top: 0.2em; }
+
+/* Alt çubuk düğmeleri (2026-11-06 "butonları düzelt, daha güzel tasarım"): simge üstte, kısa ad altta; Start mavi; Ayarlar yuvarlak çark; Gizle/Göster ok */
+.sc .sc-vr2 { gap: 0.25em; padding: 0.35em; border-radius: 1.4em; }
+.sc .sc-vr2 button { flex-direction: column; gap: 0.25em; height: 3.6em; min-width: 3.9em; padding: 0 0.55em; border-radius: 1.05em; background: transparent; color: rgba(255, 255, 255, 0.85); font: 700 0.78em/1 var(--sc-c); letter-spacing: 0.02em; }
+.sc .sc-vr2 button svg { width: 1.75em; height: 1.75em; flex: none; }
+.sc .sc-vr2 button span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.sc .sc-vr2 button.on { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.sc .sc-vr2 button.go { background: linear-gradient(#3d7dff, #2563eb); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0.25em 0.8em rgba(37, 99, 235, 0.45); }
+.sc .sc-vr2 button.go.on { box-shadow: inset 0 0 0 2px #fff; }
+.sc .sc-vr2 button.gear { flex: 0 0 auto; align-self: center; width: 2.9em; min-width: 0; height: 2.9em; margin-left: 0.2em; padding: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.1); }
+.sc .sc-vr2 button.gear svg { width: 1.55em; height: 1.55em; }
+.sc .sc-vr2 button.gear.on { background: #fff; color: #0b1626; }
+.sc .sc-vr2 button i { top: 0.45em; right: 0.7em; }
+.sc .sc-vb .sc-vhide, .sc .sc-vtop .sc-vhide, .sc .sc-vb .sc-vshow { display: grid; place-items: center; width: 2.5em; height: 2.5em; padding: 0; border-radius: 50%; }
+.sc .sc-vhide svg, .sc .sc-vshow svg { width: 1.3em; height: 1.3em; }

@@ -18,6 +18,7 @@ import { SrcKey } from "@/features/broadcast/SrcKey";
 import { MyChannel } from "@/features/broadcast/MyChannel";
 import { NearCams } from "@/features/broadcast/NearCams";
 import { ytPrepare } from "@/lib/youtube";
+import "./ekranAyar.css";
 
 const TABS = [
   ["now", "Şimdi"],
@@ -35,6 +36,8 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
   const [tab, setTab] = useState(addCat?.tab || "now");
   const [L, setL] = useState(null); // ekran, kaynaklar, evreler (raceLive belgesinin ekran alanları)
   const [evOpen, setEvOpen] = useState("");
+  const [aySel, setAySel] = useState(""); // Ekran ayarlarında seçilen evre
+  const [ayVid, setAyVid] = useState(false); // görüntü seçenekleri açık
   const [selSrc, setSelSrc] = useState("");
   const [wipe, setWipe] = useState(false); // Kaynakları sıfırla: ikinci dokunuşta siler
   const [add, setAdd] = useState(addCat?.c || ""); // açık ekleme kutusu: kategori (canli, video, kanal, etraf)
@@ -56,6 +59,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
   // Ne izleyeyim? › "+ Video" vb.: Kaynaklar sekmesi o kategorinin ekleme kutusuyla açılır
   const addN = addCat?.n || 0;
   const bare = !!addCat?.bare;
+  const ayar = !!addCat?.ayar; // çubuktaki çarkla açılan Ekran ayarları (beyaz, tam sayfa)
   const [addSeen, setAddSeen] = useState(addN);
   if (addN !== addSeen) {
     setAddSeen(addN);
@@ -538,6 +542,91 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
         </div>
       </>
     );
+  // Ekran ayarları (Seyhun 2026-11-06 örnek ekran-ayarlari onaylandı): solda evreler (ne açık, ŞİMDİ), sağda seçilen evrenin anahtarları
+  // (Rüzgâr, Parkur, Program, Genel sıralama, Sıradaki yarış), her birinin süresi, sol alt liste ve görüntü. Telefonda alt alta.
+  // Öğe sırası, süre ve sol alt bütün yarışlara da yazılır (putEv → saveShowTpl); görüntü yarışa özel.
+  const AY_ITEMS = ["wind", "course", "prog", "rank", "next"];
+  if (ayar) {
+    const k = aySel || evNow;
+    const e = pre.ev[k];
+    const onCnt = (x) => x.items.filter((i) => AY_ITEMS.includes(i));
+    const sum = (x) => (onCnt(x).length ? onCnt(x).map((i) => (i === "rank" ? "Sıralama" : i === "next" ? "Sıradaki" : ITEM_NAME[i])).join(", ") : "Kapalı");
+    const toggle = (i) => putEv(k, { items: e.items.includes(i) ? e.items.filter((x) => x !== i) : [...e.items, i] });
+    const seg = (list, cur, name, set) => (
+      <div className="eay-seg" role="group">
+        {list.map((v) => (
+          <button key={v} type="button" className={cur === v ? "on" : ""} aria-pressed={cur === v} onClick={() => cur !== v && set(v)}>
+            {name(v)}
+          </button>
+        ))}
+      </div>
+    );
+    const any = onCnt(e).length > 0 || e.side !== "off" || !!e.vid;
+    return (
+      <div className="eay">
+        <h2 className="eay-t">Ekran ayarları</h2>
+        <p className="eay-m">Bütün yarışlarda geçerli</p>
+        {note ? <p className="eay-n" role="status">{note}</p> : null}
+        <div className="eay-w">
+          <div className="eay-l">
+            {EVRES.map((x) => (
+              <button key={x} type="button" className={`eay-r${x === k ? " sel" : ""}`} onClick={() => (setAySel(x), setAyVid(false))}>
+                <span>
+                  <b>
+                    {EVRE_NAME[x]}
+                    {x === evNow ? <em>ŞİMDİ</em> : null}
+                  </b>
+                  <small>{EVRE_WHEN[x]}</small>
+                </span>
+                <i className={onCnt(pre.ev[x]).length ? "on" : ""}>{sum(pre.ev[x])}</i>
+              </button>
+            ))}
+          </div>
+          <div className="eay-d" key={k}>
+            <h3>{EVRE_NAME[k]}</h3>
+            <p className="eay-wh">{EVRE_WHEN[k]}</p>
+            <p className="eay-h">Ekranda kendiliğinden</p>
+            {AY_ITEMS.map((i) => (
+              <button key={i} type="button" className="eay-sw" role="switch" aria-checked={e.items.includes(i)} onClick={() => toggle(i)}>
+                <span>{ITEM_NAME[i]}</span>
+                <i className={e.items.includes(i) ? "on" : ""} aria-hidden="true" />
+              </button>
+            ))}
+            {onCnt(e).length > 1 ? (
+              <>
+                <p className="eay-h">Her biri</p>
+                {seg(ITEM_SECS, e.sec, (n) => `${n} sn`, (n) => putEv(k, { sec: n }))}
+              </>
+            ) : null}
+            <p className="eay-h">Sol alt liste</p>
+            {seg(SIDES, e.side, (v) => SIDE_NAME[v], (v) => putEv(k, { side: v }))}
+            <p className="eay-h">Görüntü</p>
+            <button type="button" className="eay-pk" aria-expanded={ayVid} onClick={() => setAyVid(!ayVid)}>
+              <span>{e.vid ? vidName(k) : "Yayındaki"}</span>
+              <i>{ayVid ? "Kapat" : "Değiştir ›"}</i>
+            </button>
+            {ayVid ? (
+              <div className="eay-vs">
+                {[[null, "Yayındaki"], [{ kind: "" }, "Bulanık foto"], ...vidOpts].map(([v, t]) => {
+                  const sel = v ? sameVid(e.vid, v) || (!v.kind && !!e.vid && !e.vid.kind) : !e.vid;
+                  return (
+                    <button key={t + (v?.src || v?.mid || v?.grp || v?.kind || "")} type="button" className={sel ? "on" : ""} aria-pressed={sel} onClick={() => (putVid(k, v), setAyVid(false))}>
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            {any ? (
+              <button type="button" className="eay-x" onClick={() => putEv(k, { items: [], side: "off", vid: null })}>
+                Bu evreyi kapat
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="lms">
       <div className="lms-hd">
