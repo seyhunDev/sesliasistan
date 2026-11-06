@@ -28,7 +28,8 @@ export function rainSpan(rows, nowH = -1, radar = null) {
 }
 
 export function WindRibbon({ rows, nowH = -1, radar = null, tone = "sky", win = null, h = 96, legend = true, className = "" }) {
-  const from = nowH >= 0 ? Math.max(6, nowH - 1) : 6;
+  // Akşam geç saatte (kalan saat az) günün tamamı gösterilir (insight.js ile aynı)
+  const from = nowH >= 0 && nowH <= 18 ? Math.max(6, nowH - 1) : 6;
   const hrs = (rows || []).filter((r) => +r.hh >= from && +r.hh <= 23 && r.wind != null);
   if (hrs.length < 4) return null;
   const n = hrs.length;
