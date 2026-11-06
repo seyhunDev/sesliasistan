@@ -12,7 +12,7 @@ import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
 import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan, mergeOrder, mergeStarts, pickTimer } from "@/lib/raceLive";
 import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
-import { cleanCourseShow, cleanEvOne, cleanShowTpl, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
+import { EV_V, cleanCourseShow, cleanEvOne, cleanShowTpl, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
 import { cleanCamBy, cleanOnAir } from "@/lib/raceCams";
 import { cleanSrcLive } from "@/lib/srcLive";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
@@ -380,7 +380,7 @@ export const saveTimer = (orgId, id, t) => setDoc(live(orgId, id), { timer: { ..
 // Senin evre listelerin (bütün yarışlar; raceRounds cleanShowTpl): orgs/{org}/yayinEkran/ev, evre evre yazılır
 const showTplRef = (orgId) => doc(db, "orgs", orgId, "yayinEkran", "ev");
 export const loadShowTpl = (orgId) => getDoc(showTplRef(orgId)).then((s) => cleanShowTpl(s.exists() ? s.data().ev : null));
-export const saveShowTpl = (orgId, k, e) => setDoc(showTplRef(orgId), { ev: { [k]: { items: e.items, sec: e.sec, side: e.side } } }, { mergeFields: [new FieldPath("ev", k)] });
+export const saveShowTpl = (orgId, k, e) => setDoc(showTplRef(orgId), { ev: { [k]: { v: EV_V, items: e.items, sec: e.sec, side: e.side } } }, { mergeFields: [new FieldPath("ev", k)] });
 // Elle seçilen evre; boş = kendiliğinden (yarışın durumuna göre)
 export const saveEvreMan = (orgId, id, k) => setDoc(live(orgId, id), { courseShow: { evre: k || "" } }, { merge: true });
 // Elle sabitlenen öğe; boş = otomatik (sesle açılan "one" da kalkar)
