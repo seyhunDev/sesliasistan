@@ -1170,6 +1170,14 @@ group("Tekne takibi")([
       const y = src("lib/youtube.js");
       return [/enableAutoStart: true/.test(y) && /enableAutoStop: true/.test(y) && /privacyStatus: "unlisted"/.test(y), /liveBroadcasts\/bind/.test(y), /ytPrepare\(srcList/.test(src("features/broadcast/BroadcastPage.jsx")), /Anahtarı kopyala/.test(src("features/broadcast/SrcKey.jsx")), /auth\/youtube"/.test(src("lib/server/ytAuth.js"))];
     }, ok: (a) => a.every(Boolean) }],
+    ["kanalımda canlı kendiliğinden", { desc: "kanalda açılan canlı yayın + olmadan kaynak olur (adı yayının başlığı); bitince yalnız kendiliğinden eklenen kalkar, elle eklenen kalır", fn: () => {
+      const base = [{ id: "c1", name: "Start", kind: "camera", url: "https://youtu.be/AAAAAAAAAAA" }, { id: "c2", name: "Eski", kind: "camera", url: "https://youtu.be/CCCCCCCCCCC", auto: true }];
+      const live = [{ id: "AAAAAAAAAAA", title: "Start", link: "https://youtu.be/AAAAAAAAAAA" }, { id: "BBBBBBBBBBB", title: "Tekne <1>", link: "https://youtu.be/BBBBBBBBBBB" }];
+      const l = YT.withMyLive(base, live);
+      const again = YT.withMyLive(l, live);
+      const auto = cleanSrcs(l).find((x) => x.url.includes("BBBBBBBBBBB"));
+      return [l.map((x) => x.id).join(), auto?.auto, auto?.name, again, YT.withMyLive([base[0]], [live[0]]), /withMyLive\(listRef/.test(src("features/broadcast/BroadcastPage.jsx"))];
+    }, ok: ([ids, au, nm, ag, same, wired]) => ids === "c1,c2" && au === true && nm === "Tekne 1" && ag === null && same === null && wired }],
     ["anahtar sunucuda", { desc: "yenileme anahtarı ytAuth'ta (kurallarda yok: telefondan okunamaz); telefon yalnız kısa erişim anahtarı alır", fn: () => [/collection\("ytAuth"\)/.test(src("app/api/youtube/route.js")), !/ytAuth/.test(readFileSync(new URL("../../../firestore.rules", import.meta.url), "utf8")), !/refresh/.test(src("lib/youtube.js"))], ok: (a) => a.every(Boolean) }],
   ]);
 }

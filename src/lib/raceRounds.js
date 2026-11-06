@@ -633,6 +633,8 @@ export const cleanSources = (list) =>
       url: ytUrl(x.url),
       // ytStream: Velora'nın açtığı kalıcı YouTube yayın anahtarının kimliği (anahtarın kendisi burada yazılmaz; lib/youtube.js)
       ...(/^[\w-]{1,80}$/.test(x.ytStream || "") ? { ytStream: x.ytStream } : {}),
+      // auto: kanalda açılan canlı yayından kendiliğinden eklendi (lib/youtube.js withMyLive); yayın bitince kendiliğinden kalkar
+      ...(x.auto === true ? { auto: true } : {}),
     }));
 export const cleanStream = (s) => {
   const sources = cleanSources(s?.sources);
