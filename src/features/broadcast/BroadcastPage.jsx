@@ -22,7 +22,7 @@ import { countingAt as countingNow, finishSteps, orderWithout, startBlock, start
 import { DocsTab } from "./DocsTab";
 import { MyChannel } from "./MyChannel";
 import { SrcKey } from "./SrcKey";
-import { ytPrepare } from "@/lib/youtube";
+import { YtNeed, withMyLive, ytLiveNow, ytPrepare } from "@/lib/youtube";
 import { nextSrcLive } from "@/lib/srcLive";
 import { NearCams } from "./NearCams";
 import { AthletesTab } from "./AthletesTab";
@@ -106,6 +106,7 @@ export function BroadcastPage({ orgId, id }) {
   // Canlı kaynaklar (Seyhun 2026-11-02 "Drone 1, 2, 3, telefon; önce ben göreyim, sonra ekrana alayım"): stream.sources; sıfırlamada kalır,
   // yeni yarışta bu telefonda son kullanılan liste gelir. Önizleme yalnız bu sayfada (veriye yazılmaz), "ekrana al" screen'e yazar
   const [srcList, setSrcList] = useState([]);
+  const srcIn = useRef(false); // kayıtlı kaynaklar yüklendi (önce boş liste yazılmasın)
   const [stat, setStat] = useState({}); // bağlantı → { live, vid } (/api/yayin-durum)
   const [addOpen, setAddOpen] = useState(false);
   const [scOpen, setScOpen] = useState(""); // Ekran: ataması açılan evre (pre, start, race, post, ap)
@@ -180,6 +181,7 @@ export function BroadcastPage({ orgId, id }) {
       if (rp.day !== d.plan.day) savePlan(orgId, id, rp).catch(() => {});
       const sl = streamSources(d.stream);
       setSrcList(d.stream.sources.length || sl.some((x) => x.url) ? sl : lastSources() || sl);
+      srcIn.current = true;
       setSel(d.screen.kind ? { kind: d.screen.kind, mid: d.screen.mid } : null);
     }, () => toast("Yüklenemedi, tekrar dene."));
     ensurePublic(id).catch(() => {});
@@ -770,6 +772,34 @@ export function BroadcastPage({ orgId, id }) {
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- liste ya da yarış adı değişince
   }, [srcList, race?.name]);
+  // Kanalımda canlı (Seyhun 2026-11-06 "kendim bir yayın açınca onu göreyim, + eklememe gerek kalmasın"): sayfa açıkken dakikada bir
+  // kanalın süren yayınlarına bakılır; listede olmayan kaynak olarak kendiliğinden eklenir, bitince kalkar. Bağlantı yoksa bakılmaz.
+  const listRef = useRef(srcList);
+  useEffect(() => {
+    listRef.current = srcList;
+  });
+  useEffect(() => {
+    let on = true;
+    let t = 0;
+    const look = () =>
+      srcIn.current &&
+      document.visibilityState === "visible" &&
+      ytLiveNow().then(
+        (live) => {
+          const l = on && withMyLive(listRef.current, live);
+          if (l) putSources(l);
+        },
+        (e) => (e instanceof YtNeed || /ana hesap|yönetici|\(403/i.test(e?.message || "")) && clearInterval(t)
+      );
+    const t0 = setTimeout(look, 5000);
+    t = setInterval(look, 60e3);
+    return () => {
+      on = false;
+      clearTimeout(t0);
+      clearInterval(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- yarış değişince
+  }, [orgId, id]);
   // yeni anahtar: kaynağa yazılır, günün yayını hemen açılır
   const putStream = async (sid, ytStream) => {
     const l = srcList.map((x) => (x.id === sid ? { ...x, ytStream } : x));

@@ -1,6 +1,7 @@
 // YouTube kanalı (Seyhun 2026-11-06): Velora'dan videoyu kanala yükleme ve kanaldaki videoları/canlı yayını listeleme.
 // Erişim anahtarı sunucudan (api/youtube, 1 saatlik) alınır; yükleme ve liste YouTube'a doğrudan gider.
 import { authFetch } from "@/lib/authFetch";
+import { addSource } from "@/lib/raceRounds";
 
 let tok = null; // { token, exp, channel }
 
@@ -192,4 +193,25 @@ export async function ytPrepare(sources, titleOf) {
     out[x.id] = `https://youtu.be/${b.id}`;
   }
   return out;
+}
+
+// Kanalda şu an süren canlı yayınlar (Seyhun 2026-11-06 "kendim bir yayın açınca onu göreyim, direkt seçebileyim"): [{ id, title, link }]
+export async function ytLiveNow() {
+  const d = await api("liveBroadcasts?part=snippet&broadcastStatus=active&broadcastType=all&maxResults=8");
+  return (d.items || []).map((x) => ({ id: x.id, title: x.snippet?.title || "", link: `https://youtu.be/${x.id}` }));
+}
+// Kaynak listesine kanalın canlı yayınları: listede olmayan her canlı yayın kaynak olarak eklenir (auto), bitmiş olan kendiliğinden
+// eklenmiş kaynak kalkar. Elle eklenenlere dokunulmaz. Değişiklik yoksa null (saf; test yaris.mjs)
+export function withMyLive(list, live) {
+  const on = new Set(live.map((x) => x.id));
+  let l = list.filter((x) => !x.auto || on.has(vidOf(x.url)));
+  const have = new Set(l.map((x) => vidOf(x.url)).filter(Boolean));
+  for (const b of live) {
+    if (have.has(b.id) || l.length >= 8) continue;
+    const n = addSource(l, "camera");
+    l = n.map((x, i) => (i === n.length - 1 ? { ...x, name: clean(b.title, 30) || x.name, url: b.link, auto: true } : x));
+    have.add(b.id);
+  }
+  const same = l.length === list.length && l.every((x, i) => x === list[i]);
+  return same ? null : l;
 }
