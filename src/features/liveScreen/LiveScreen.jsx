@@ -2331,7 +2331,8 @@ function Sc04({ data }) {
 function Sc05({ data, sel, mode, now }) {
   const racing = mode === "race";
   const route = sceneRoute(data, racing ? sel : null, true, racing ? "race" : "wait");
-  const svg = courseSvg(data, route, { W: 900, H: 760 });
+  // çizimde eksen / avantaj / rüzgâr yazısı yok, yanındaki kutularda bir kez (Seyhun 2026-11-06 "çok fazla tekrar")
+  const svg = courseSvg(data, route, { W: 900, H: 760, bare: true });
   if (!svg) return null;
   const crs = cleanCourse(data.course || {});
   const card = selCard(crs);
@@ -2576,6 +2577,12 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   ].filter(Boolean);
   // Ekranda penceresinin sekmeleri (Seyhun 2026-11-06 "ekranda sekmesi karman çorman, daha organize"): Arka plan · Yayınlar · Konum · Videolarım
   const [sTab, setSTab] = useState("");
+  // Yayınla aynı anahtarı (Seyhun 2026-11-06 "kocaman butona gerek yok, bir anahtar olsun"): açıkken ekran yayını izler, seçenekler gizli;
+  // kapatınca sekmeler açılır, bir şey seçince kendi seçimin ekrana gelir. Kendi seçimin varken anahtar kapalı; açınca yayına döner.
+  const synced = !cam && !myVid;
+  const [free, setFree] = useState(false);
+  const sameOn = synced && !free;
+  const flip = () => (sameOn ? setFree(true) : (setFree(false), setSTab(""), onCam("")));
   const tabNow = sTab || (cam.startsWith("ph:") ? "bg" : cam.startsWith("b:") ? "pos" : "yy");
   const sTabs = [["bg", "Arka plan"], ["yy", "Yayınlar"], pos.length ? ["pos", "Konum"] : null, vidRef ? ["vid", "Videolarım"] : null].filter(Boolean);
   // kendi fotoğrafım bu cihazda kalır (küçültülmüş JPEG)
@@ -2660,6 +2667,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   };
   const pick = (k) => {
     onCam(k);
+    setFree(false);
     close();
   };
   const panel = (k) =>
@@ -2667,8 +2675,13 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       <>
         <div className="sc-vph">
           <b>Ekranda</b>
-          <small>Yalnız senin ekranın</small>
+          <label className="sc-sw">
+            Yayınla aynı
+            <input type="checkbox" role="switch" checked={sameOn} onChange={flip} />
+            <i aria-hidden="true" />
+          </label>
         </div>
+        {sameOn ? null : (<>
         <div className="sc-vtabs" role="tablist">
           {sTabs.map(([t, n]) => (
             <button key={t} type="button" role="tab" aria-selected={tabNow === t} className={tabNow === t ? "on" : ""} onClick={() => setSTab(t)}>
@@ -2687,9 +2700,6 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
                 <input type="file" accept="image/*" onChange={addPh} hidden />
               </label>
             </div>
-            <button type="button" className={`sc-vt wide${!cam.startsWith("ph:") ? " on" : ""}`} onClick={() => (pick(""), setSTab(""))}>
-              Yayına bağlan
-            </button>
           </>
         ) : tabNow === "pos" ? (
           <>
@@ -2710,9 +2720,6 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
           </>
         ) : (
           <>
-        <button type="button" className={`sc-vt wide${!cam && !myVid ? " on" : ""}`} aria-pressed={!cam && !myVid} onClick={() => pick("")}>
-          Yayınla aynı
-        </button>
         {/* kategoriler (Seyhun 2026-11-06): Canlı yayınlar, Kanalımdaki canlılar, Etraftaki kameralar, YouTube videoları; boş olan görünmez.
             Yöneten için hepsi görünür, başlığın yanındaki + yayın masasının Kaynaklar'ında o kategorinin ekleme kutusunu açar
             (Seyhun 2026-11-06 "yeni video düzeni niye gelmedi") */}
@@ -2751,6 +2758,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
         })}
           </>
         )}
+        </>)}
       </>
     ) : k === "masa" ? (
       // Yayın masası (LiveStart › LiveMasa buraya çizer; yalnız ana hesap, uygulama içinde)
@@ -2847,15 +2855,16 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
           <div className="sc-vtop">
             {picks ? (
               <>
-                <div className={`sc-seg${follow ? " y" : ""}`} role="group" aria-label="Ekranda ne olsun">
+                {/* Benim | Yayın yalnız yayın masası olan hesapta (Yayın'da çubuk masanın düğmeleri olur); başkasında fark yok, gösterilmez */}
+                {masaRef ? <div className={`sc-seg${follow ? " y" : ""}`} role="group" aria-label="Ekranda ne olsun">
                   <button type="button" className={follow ? "" : "on"} aria-pressed={!follow} onClick={() => (onFollow(false), on === "masa" && close())}>
                     Benim
                   </button>
                   <button type="button" className={`yy${follow ? " on" : ""}`} aria-pressed={follow} onClick={() => (onFollow(true), on === "src" && close())}>
                     Yayın
                   </button>
-                </div>
-                {!follow ? (
+                </div> : null}
+                {!follow || !masaRef ? (
                   <>
                     <button type="button" className={`sc-now${on === "src" ? " on" : ""}`} aria-expanded={on === "src"} onClick={() => tap("src")}>
                       <span>Ekranda</span>
@@ -2869,14 +2878,12 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
                       </button>
                     ) : null}
                   </>
-                ) : masaRef ? (
+                ) : (
                   <button type="button" className={`sc-now air${on === "masa" ? " on" : ""}`} aria-expanded={on === "masa"} onClick={() => tap("masa")}>
                     <span>Yayında</span>
                     <b>{airLabel || "Otomatik"}</b>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </button>
-                ) : (
-                  <span className="sc-now yy">İzleyicilerin gördüğü</span>
                 )}
               </>
             ) : null}
