@@ -474,25 +474,27 @@ export const EVRE_WHEN = { pre: "Start'a 10 dakikadan çok varken", prestart: "T
 export const SHOW_ITEMS = ["video", "time", "prog", "wind", "course", "rank", "next"];
 export const ITEM_NAME = { video: "Görüntü", time: "Süre", prog: "Program", wind: "Rüzgâr", course: "Parkur", rank: "Genel sıralama", next: "Sıradaki yarış" };
 export const ITEM_SECS = [8, 10, 15, 20, 30];
-export const EVRE_DEF = { pre: ["video", "time", "prog", "wind", "rank"], prestart: ["video", "time", "wind", "course"], start: ["video"], fs: ["video"], race: ["video"], post: ["rank", "next"], aban: ["video", "next", "prog"], ap: ["time", "prog", "wind", "rank"], done: ["rank", "next"] };
+// Varsayılan boş (Seyhun 2026-11-06 "varsayılanların hepsini sıfırla; arkada evrede şu gösteriliyor, bu gösteriliyor olmasın; ben isteyince bakıyorum"):
+// evrede kendiliğinden hiçbir şey dönmez, sol alt liste yok; ne gösterileceğini Seyhun ayarlardan kendisi seçer
+export const EVRE_DEF = { pre: [], prestart: [], start: [], fs: [], race: [], post: [], aban: [], ap: [], done: [] };
 // Sol alttaki liste evre başına (Seyhun 2026-11-04 "genel sıralamayı starttan önce, start dizisinde, starttan sonra da gösterebilmeliyim"):
 // grp = süre kartındaki grubun sporcuları + genel derecesi (yarışta dönüşten sonra dönüş sırası), gen = genel sıralama ilk 10, off = yok
 export const SIDES = ["grp", "gen", "off"];
 export const SIDE_NAME = { grp: "Grup ve sıra", gen: "Genel ilk 10", off: "Yok" };
-export const SIDE_DEF = { pre: "grp", prestart: "grp", start: "grp", fs: "grp", race: "grp", post: "off", aban: "grp", ap: "grp", done: "off" };
-// eski sahnenin videosu hangi evreye (01 yarış öncesi videosuz, 02 videolu ve yarışta, 03 sıralama = yarış sonrası)
-const EV_MIG = { pre: "01", prestart: "01", start: "02", fs: "02", race: "02", post: "03", aban: "01", ap: "01", done: "03" };
+export const SIDE_DEF = { pre: "off", prestart: "off", start: "off", fs: "off", race: "off", post: "off", aban: "off", ap: "off", done: "off" };
+// Evre ayarlarının sürümü: 2026-11-06 sıfırlamasından önce kaydedilenler (v yok) okunmaz, hepsi boş başlar
+export const EV_V = 2;
 export function cleanEvVid(v) {
   if (!v || typeof v !== "object") return null;
   const s = cleanScreen(v);
   return { kind: s.kind, src: s.src, mid: s.mid, ...boatsOf(s) };
 }
 export function cleanEvOne(e, k, old = {}) {
-  const has = !!e && typeof e === "object";
+  const has = !!e && typeof e === "object" && e.v === EV_V;
   const items = has && Array.isArray(e.items) ? [...new Set(e.items.filter((x) => SHOW_ITEMS.includes(x)))] : [...EVRE_DEF[k]];
-  const vid = has ? cleanEvVid(e.vid) : old[EV_MIG[k]] || null;
+  const vid = has ? cleanEvVid(e.vid) : null;
   // own: Yayın › Ekran'da elle değiştirildi (Seyhun 2026-11-05 "çıkarıyorum, bir dahaki sefer geri gelmiş"); değişmeyen evreye senin listen (showTpl) yazılır
-  return { items, sec: ITEM_SECS.includes(Number(e?.sec)) ? Number(e.sec) : 15, vid, side: SIDES.includes(e?.side) ? e.side : SIDE_DEF[k], own: !!e?.own };
+  return { v: EV_V, items, sec: has && ITEM_SECS.includes(Number(e.sec)) ? Number(e.sec) : 15, vid, side: has && SIDES.includes(e.side) ? e.side : SIDE_DEF[k], own: has && !!e.own };
 }
 // Senin evre listelerin (Seyhun 2026-11-05 "kalıcı olarak çıkartılsın, kalıcı olarak eklensin"): bütün yarışlarda geçerli öğe sırası, süre ve
 // sol alt; görüntü yarışa özel kalır. Yalnız kaydedilmiş evreler döner
@@ -502,7 +504,8 @@ export function cleanShowTpl(t) {
     const e = t?.[k];
     if (!e || typeof e !== "object" || !Array.isArray(e.items)) continue;
     const c = cleanEvOne(e, k);
-    out[k] = { items: c.items, sec: c.sec, side: c.side };
+    if (e.v !== EV_V) continue;
+    out[k] = { v: EV_V, items: c.items, sec: c.sec, side: c.side };
   }
   return out;
 }
