@@ -1162,3 +1162,34 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
   .sc .sc-vp.full .sc-vpx:active { transform: translateY(2px); box-shadow: none; }
 }
 @keyframes sc-full { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: none; } }
+/* Parkur ve rüzgâr paneli (Seyhun 2026-11-06): üstte şu anki ölçüm büyük, parkur çizimi geniş, beklenen rüzgâr altta */
+.sc-wnow { display: flex; align-items: center; gap: 0.75em; margin-bottom: 0.6em; padding: 0.7em 0.85em; border-radius: 0.9em; background: rgba(255, 255, 255, 0.06); animation: sc-vt-in 0.3s cubic-bezier(0.3, 0.9, 0.3, 1) both; }
+.sc-wnow.man { box-shadow: inset 0 0 0 1px rgba(127, 176, 255, 0.35); }
+.sc-wnow .ar { display: flex; width: 3em; height: 3em; flex: none; }
+.sc-wnow .ar svg { width: 100%; height: 100%; }
+.sc-wnow > b { font: 800 3em/0.9 var(--sc-c); color: #fff; font-variant-numeric: tabular-nums; }
+.sc-wnow > b small { margin-left: 0.12em; font-size: 0.38em; font-weight: 700; color: rgba(255, 255, 255, 0.7); }
+.sc-wnow .tx { display: grid; gap: 0.2em; min-width: 0; }
+.sc-wnow .tx strong { font: 800 1.15em/1 var(--sc-c); color: #fff; }
+.sc-wnow .tx em { font: 700 0.9em/1.1 var(--sc-c); font-style: normal; color: #ffd23f; }
+.sc-wnow .tx small { font: 600 0.75em/1.1 var(--sc-c); color: var(--sc-mut, rgba(255, 255, 255, 0.6)); }
+.sc-vp.course > .sc-ckx:not(.crs) { margin-top: 0.6em; }
+.sc-vp.course .sc-ckx.crs { height: max(22em, var(--sc-dh)); }
+.sc-vr2 button.wide2 { flex-grow: 1.6; }
+@media not all and (max-aspect-ratio: 1/1) {
+  .sc-vb.bar > .sc-vp.course { width: min(36em, 62vw); }
+  .sc-vb.bar > .sc-vp.course .sc-ckx.crs { height: min(30em, 58vh); }
+  .sc-vb.bar > .sc-vp.course { max-height: calc(100dvh - var(--vb-d, 6em) - 1.5em - env(safe-area-inset-bottom)); }
+}
+.sc-vp.course > .sc-ckx:not(.crs) { font-size: 0.8em; }
+
+/* Parkur ve rüzgâr › Beklenen ve gerçekleşen (isteğe bağlı açılır) */
+.sc-wday { border-radius: 0.9em; background: rgba(255, 255, 255, 0.05); overflow: hidden; }
+.sc .sc-wtg { display: flex; align-items: center; justify-content: space-between; gap: 0.6em; width: 100%; height: 3em; padding: 0 0.95em; border: 0; background: none; color: #fff; font: 700 1em/1 var(--sc-c); text-align: left; -webkit-tap-highlight-color: transparent; }
+.sc-wtg svg { width: 1.2em; height: 1.2em; flex: none; transition: transform 0.2s ease; }
+.sc-wday.on .sc-wtg svg { transform: rotate(180deg); }
+.sc-wdb { padding: 0 0.85em 0.7em; animation: sc-drop 0.28s ease both; transform-origin: top; }
+.sc-wdb .sc-wh { margin: 0 0 0.3em; }
+.sc-wdb .gr-wc { width: 100%; height: auto; max-height: 15em; display: block; margin: 0 auto; }
+.sc-wh i.w { background: #fff; }
+.sc-wh i.m { background: #4d8dff; border-radius: 50%; width: 0.6em; height: 0.6em; }

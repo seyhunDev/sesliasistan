@@ -1498,6 +1498,108 @@ function ScWindDrop({ data, now, at = "" }) {
     </div>
   );
 }
+// Beklenen ve gerçekleşen rüzgâr (Seyhun 2026-11-06 "beklentiyi, yani grafiği ve gerçekleşeni de gösterelim; isteğe bağlı açalım"): kapalı gelir,
+// dokununca bugünün saatleri: beklenen = tahmin (dolu alan), gerçekleşen = istasyon (beyaz çizgi) ve bizim ölçümlerimiz (mavi nokta), şimdi kesik çizgi
+const istHour = (ms) => {
+  const d = new Date(ms + 3 * 3600e3);
+  return { day: d.toISOString().slice(0, 10), h: d.getUTCHours() + d.getUTCMinutes() / 60 };
+};
+function ScWindDay({ data, now }) {
+  const [open, setOpen] = useState(false);
+  const today = istHour(now).day;
+  const fc = (data.forecast?.rows || []).filter((r) => r.wind != null).map((r) => ({ h: +r.hh, v: +r.wind }));
+  const st = (data.forecast?.obs || []).filter((r) => r.wind != null && +r.hh <= istHour(now).h).map((r) => ({ h: +r.hh, v: +r.wind }));
+  const me = [...(data.wind || []), ...(data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, kn: o.kn }))]
+    .filter((x) => x.kn != null && x.at && istHour(Date.parse(x.at)).day === today)
+    .map((x) => ({ h: istHour(Date.parse(x.at)).h, v: +x.kn }));
+  if (fc.length < 2 && st.length < 2) return null;
+  const all = [...fc, ...st, ...me];
+  const h0 = Math.floor(Math.min(...all.map((x) => x.h)));
+  const h1 = Math.max(h0 + 1, Math.ceil(Math.max(...all.map((x) => x.h))));
+  const W = 400, H = 170, l = 26, r = 10, t = 14, b = 26;
+  const max = Math.ceil((Math.max(10, ...all.map((x) => x.v)) + 2) / 5) * 5;
+  const xs = (h) => l + ((h - h0) * (W - l - r)) / (h1 - h0);
+  const ys = (v) => t + (H - t - b) * (1 - v / max);
+  const line = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${xs(p.h).toFixed(1)} ${ys(p.v).toFixed(1)}`).join(" ");
+  const nh = istHour(now).h;
+  const fs = { fontFamily: "var(--lv-font-c), var(--lv-font), sans-serif", fontWeight: 700 };
+  return (
+    <div className={`sc-wday${open ? " on" : ""}`}>
+      <button type="button" className="sc-wtg" aria-expanded={open} onClick={() => setOpen(!open)}>
+        Beklenen ve gerçekleşen
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </button>
+      {open ? (
+        <div className="sc-wdb">
+          <div className="sc-wh">
+            <span>
+              <i className="a" />
+              Beklenen
+            </span>
+            {st.length ? (
+              <span>
+                <i className="w" />
+                İstasyon
+              </span>
+            ) : null}
+            {me.length ? (
+              <span>
+                <i className="m" />
+                Ölçümümüz
+              </span>
+            ) : null}
+          </div>
+          <svg className="gr-wc" viewBox={`0 0 ${W} ${H}`} aria-label="Beklenen ve gerçekleşen rüzgâr">
+            {[5, 10, 15, 20, 25, 30].filter((v) => v < max).map((v) => (
+              <g key={v}>
+                <line x1={l} x2={W - r} y1={ys(v)} y2={ys(v)} stroke="rgba(255,255,255,.07)" />
+                <text x={l - 6} y={ys(v) + 4} textAnchor="end" fontSize="12" fill="rgba(255,255,255,.45)" style={fs}>
+                  {v}
+                </text>
+              </g>
+            ))}
+            {Array.from({ length: h1 - h0 + 1 }, (_, i) => h0 + i).filter((h) => h % 3 === 0).map((h) => (
+              <text key={h} x={xs(h)} y={H - 6} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,.5)" style={fs}>
+                {String(h % 24).padStart(2, "0")}
+              </text>
+            ))}
+            {fc.length > 1 ? (
+              <>
+                <path d={`${line(fc)} L${xs(fc.at(-1).h)} ${ys(0)} L${xs(fc[0].h)} ${ys(0)} Z`} fill="rgba(47,214,195,.18)" />
+                <path d={line(fc)} fill="none" stroke="#2fd6c3" strokeWidth="2.4" strokeLinejoin="round" />
+              </>
+            ) : null}
+            {st.length > 1 ? <path d={line(st)} fill="none" stroke="#fff" strokeWidth="2.4" strokeLinejoin="round" /> : null}
+            {st.length === 1 ? <circle cx={xs(st[0].h)} cy={ys(st[0].v)} r="3.5" fill="#fff" /> : null}
+            {me.map((p, i) => (
+              <circle key={i} cx={xs(p.h)} cy={ys(p.v)} r="4.5" fill="#4d8dff" stroke="#fff" strokeWidth="1.5" />
+            ))}
+            {nh >= h0 && nh <= h1 ? <line x1={xs(nh)} x2={xs(nh)} y1={t} y2={H - b} stroke="rgba(255,255,255,.55)" strokeDasharray="3 4" /> : null}
+          </svg>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+// Parkur ve rüzgâr panelinin üstü (Seyhun 2026-11-06 "şu anki ölçümleri asıl göstermemiz lazım"): şimdi esen, büyük; nereden ölçüldüğü
+function ScWindNow({ data, now }) {
+  const c = curWind(data, null, true, now);
+  if (!c) return null;
+  return (
+    <div className={`sc-wnow${c.man ? " man" : ""}`}>
+      <span className="ar">{gArrow(c.dir)}</span>
+      <b>
+        {c.kn}
+        <small>kn</small>
+      </b>
+      <span className="tx">
+        <strong>{dirText(c)}</strong>
+        {gustText(c) ? <em>{cap(gustText(c))}</em> : null}
+        <small>{c.by}</small>
+      </span>
+    </div>
+  );
+}
 // tek satır rüzgâr (02 kartının altı)
 function ScWindLine({ data, now }) {
   const c = curWind(data, null, true, now);
@@ -2381,6 +2483,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   const res = !!rr?.rows.length;
   const rank = scBoards(data).length > 0;
   const wind = windAhead(data, now).length >= 2;
+  const nowW = !!curWind(data, null, true, now);
   const course = !!courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"));
   const all = sourcesOf(data.stream); // Yayın › kaynaklar: kendi verdiğin adla (Start kamerası, Drone…)
   // kaynak yayında mı (raceLive.srcLive, açık Yayın sayfası YouTube'a bakıp yazar; 6 dk'dan eskisi yayın yok): kırmızı nokta
@@ -2388,8 +2491,8 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   const off = all.filter((x) => !x.url); // bağlantısı olmayan kaynak: soluk
   const picks = !!onFollow && (cams.length > 0 || pos.length > 0 || off.length > 0 || !!vidRef);
   const btns = [
-    (course || onWind) && ["course", "Parkur"],
-    wind && ["wind", "Rüzgâr"],
+    // Parkur ve rüzgâr tek düğme (Seyhun 2026-11-06): üstte şu anki ölçüm, ortada büyük parkur, altta beklenen rüzgâr
+    (course || onWind || wind || nowW) && ["course", "Parkur ve rüzgâr"],
     (rank || res) && ["rank", "Sıralama"],
     prog.length > 0 && ["prog", "Program"],
     vidRef && ["vid", "Video", !!myVid],
@@ -2598,6 +2701,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       <div ref={vidRef} />
     ) : k === "course" ? (
       <>
+        <ScWindNow data={data} now={now} />
         {course ? <ScCourseDrop data={data} sel={sel} mode={mode} /> : <p className="sc-vno">Parkur yok</p>}
         {/* rüzgâr / eksen / hat ölçümü (Seyhun 2026-11-05 "rüzgâr ekleme parkurda olmalı, adı Ölçüm ekle") */}
         {onWind ? (
@@ -2605,9 +2709,8 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
             + Ölçüm ekle
           </button>
         ) : null}
+        <ScWindDay data={data} now={now} />
       </>
-    ) : k === "wind" ? (
-      <ScWindDrop data={data} now={now} at={(prog || []).find((x) => x.state === "next")?.at || ""} />
     ) : k === "rank" ? (
       <>
         {rank ? <div className="sc-ckx rk"><Sc03 data={data} sel={sel} mode={mode} now={now} onFull={onFull} ctl={rk} /></div> : null}
@@ -2711,7 +2814,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
         {bar.length ? (
           <div className={`sc-vr2${airBtns ? " air" : ""}`}>
             {bar.map(([k, l, dot]) => (
-              <button key={k} type="button" className={`${k === "start" ? "go" : ""}${isOn(k) ? " on" : ""}`} aria-pressed={isOn(k)} onClick={() => (k.startsWith("m:") ? (isOn(k) ? close() : onMasa(k.slice(2))) : tap(k))}>
+              <button key={k} type="button" className={`${k === "start" ? "go" : k === "course" ? "wide2" : ""}${isOn(k) ? " on" : ""}`} aria-pressed={isOn(k)} onClick={() => (k.startsWith("m:") ? (isOn(k) ? close() : onMasa(k.slice(2))) : tap(k))}>
                 {l}
                 {dot ? <i aria-hidden="true" /> : null}
               </button>
