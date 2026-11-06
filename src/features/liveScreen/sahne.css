@@ -445,6 +445,13 @@
 .sc-ckd { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; gap: 0.25em; }
 .sc-ckd i { width: 0.35em; height: 0.35em; border-radius: 50%; background: rgba(255, 255, 255, 0.22); transition: background 0.3s; }
 .sc-ckd i.on { background: #fff; }
+/* Sade kart (Seyhun 2026-11-06 "çok yazı var; start saati, grup, evre yazıları kalksın; grubu A · renk çizgisi"): grup = sürenin solunda
+   grubun renginde ince dikey çizgi; basamaklarda yalnız bayrak; satırlarda açıklama yazısı yok */
+.sc-ckgb { flex: none; align-self: stretch; width: 0.3em; margin: 0.35em 0.15em 0.25em 0; border-radius: 0.15em; box-shadow: 0 0 0.6em currentColor; animation: sc-in 0.5s ease both; }
+.sc-ckm > .sc-ckt { padding-top: 0; }
+.sc-ladgo { display: block; width: 0.7em; height: 0.7em; border-radius: 50%; background: rgba(255, 255, 255, 0.35); transition: background 0.3s, box-shadow 0.3s; }
+.sc-lad > div.now .sc-ladgo { background: var(--sc-acc2); box-shadow: 0 0 0.6em var(--sc-acc2); }
+.sc-ck .sc-xp .sc-fl em { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .sc-ck *, .sc-ck::before, .sc-ck::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

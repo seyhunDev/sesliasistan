@@ -1771,7 +1771,8 @@ function Sc01({ t, data, prog, now, today, lock, ap = false, only = "" }) {
 // üstte tek satır yarış · sınıf · grup · start saati; büyük süre önünde − (geri) ya da + (ileri), geri sayım sarı-turuncu değil mavi tonda,
 // ileri beyaz; altında dakikanın saniyeleri ince çubuk (geride erir, ileride dolar); bayrak, erken çıkan, işaret, rüzgâr birer satır
 const SC_CK0 = new Map(); // geri sayımın bu ekranda ilk görülen kalan süresi (start başına; kart yeniden kurulunca kaybolmasın)
-const SC_SLOT = 5; // sn: alt satırda dönen bilgiler (rüzgâr, sıradaki, son dönüş, ilk finiş)
+const SC_WIND = 20; // sn: rüzgâr bu kadar saniyede bir açılır
+const SC_WON = 6; // sn: açık kalır
 // Açılıp kapanan satır (Seyhun 2026-11-06 "her şeyi aynı anda göstermek zorunda değiliz; açılır kapanır olsun, animasyonlar güzel"):
 // on olunca yukarıdan açılır, kapanırken son içeriği gösterir (useLast), boyu sıfıra iner
 function ScXp({ on, children }) {
@@ -1804,9 +1805,8 @@ function ckEvre(t, mode, fw, rem) {
 // Süre kartı (Seyhun 2026-11-05/06, örnek /mnt/project-files/sure-gostergesi/evreler-ornek.html): kutusuz, sol üst köşeden içeri silinen gölge;
 // üstte evre etiketi + grup · sınıf · yarış; büyük süre, yanında start saati; start dizisinde 5 · 4 · 1 · 0 basamakları; bayrak, erken çıkan,
 // işaret, finiş penceresi gerekince açılır; rüzgâr, sıradaki, son dönüş tek satırda sırayla döner
-function ScClock({ t, data, sel, mode, now, today, prog = [], noWind = false, drop = null }) {
+function ScClock({ t, data, sel, mode, now, today, noWind = false, drop = null }) {
   const ea = mode === "race" && sel && now - Date.parse(sel.at) < 15 * 60e3 ? earlyOf(data, sel.id) : [];
-  const n = /^(\d+)\./.exec(t.who?.name || "")?.[1];
   const num = !t.tx && /^\d{1,2}(:\d\d){1,2}$/.test(String(t.tm || ""));
   const up = mode === "race" || mode === "between";
   // geri sayım çubuğu sayacın tamamına göre erir: start dizisinde dizinin süresi, beklerken bu ekranın o start'a saymaya başladığı an
@@ -1835,7 +1835,6 @@ function ScClock({ t, data, sel, mode, now, today, prog = [], noWind = false, dr
   }, []);
   const fw = mode === "race" && sel ? winLeft(sel, now) : null;
   const ev = ckEvre(t, mode, fw, up ? null : rem);
-  const tk0 = !(g || t.who?.cls || n) && !ev && t.k && !String(t.tm || "").toLocaleLowerCase("tr-TR").includes(String(t.k).toLocaleLowerCase("tr-TR"));
   const seq = mode === "seq" && num && dur >= 290 && dur <= 310; // 5 dakikalık dizi: basamaklı
   const st = seq ? (rem > 240 ? 0 : rem > 60 ? 1 : rem > 0 ? 2 : 3) : -1;
   const lfill = seq ? [(dur - rem) / (dur - 240), (240 - rem) / 180, (60 - rem) / 60, 1][st] : 0;
@@ -1846,55 +1845,28 @@ function ScClock({ t, data, sel, mode, now, today, prog = [], noWind = false, dr
   const flL = useLast(t.fl && !seq ? t.fl : null);
   const eaL = useLast(ea.length ? ea.map((x) => ({ c: x.c, sail: x.sail })) : null);
   const sigL = useLast(sig ? sig.id || sig.short : null);
-  // alt satırda dönen bilgiler (dizide yok: göz süreden ayrılmasın)
+  // rüzgâr ara sıra açılır (Seyhun 2026-11-06 "rüzgâr zaten ara sıra açılıp gösterilsin"): SC_WIND sn'de bir SC_WON sn; dizide hiç
   const wl = noWind && !drop ? null : curWind(data, null, true, now);
-  const nx = (prog || []).find((x) => x.state === "next");
-  const rd = mode === "race" && sel ? scRound(data, sel) : null;
-  const slots = mode === "seq" || go ? [] : [
-    fw != null && rd?.rows?.[0] ? { k: "f1", el: <><small>İlk finiş</small><span>{rd.rows[0].sail}</span></> } : null,
-    rd && fw == null && rd.rows?.length ? { k: `rd${rd.head}`, el: <><small>{rd.head}</small><span>{rd.rows.slice(0, 3).map((r) => r.sail).join(" · ")}</span></> } : null,
-    wl ? { k: "w", el: <ScWindLine data={data} now={now} /> } : null,
-    !up && nx && mode !== "summary" && gWhat(nx) && !(t.who?.grp && nx.grp === t.who.grp) ? { k: "nx", el: <><small>Sıradaki</small><span>{[gWhat(nx), nx.at].filter(Boolean).join(" · ")}</span></> } : null,
-    t.sub && t.tx ? { k: "sub", el: <span>{t.sub}</span> } : null,
-  ].filter(Boolean);
-  const si = slots.length ? Math.floor(now / 1000 / SC_SLOT) % slots.length : 0;
-  const slot = slots[si];
+  const wOn = !!wl && mode !== "seq" && !go && (now / 1000) % SC_WIND >= SC_WIND - SC_WON;
+  const red = ev?.[1] === "r";
+  const redL = useLast(red && t.flag ? { f: t.flag, n: ev[0] } : null);
   const tick = mode === "seq" && rem != null && rem <= 10 && rem > 0;
   return (
-    <div ref={ref} className={`sc-ck ${up ? "up" : "dn"}${t.tone ? ` ${t.tone}` : ""}${ev?.[1] === "r" ? " red" : ""}`}>
-      {ev || g || t.who?.cls || n || tk0 ? (
-        <div className="sc-ckw">
-          {ev ? (
-            <span className={`sc-cke${ev[1] ? ` ${ev[1]}` : ""}`}>
-              <span key={ev[0]}>{ev[0]}</span>
-            </span>
-          ) : null}
-          {g ? <span className="sc-ckg" style={{ background: gc, color: inkOn(gc) }}>{g}</span> : null}
-          {t.who?.cls ? <span className="sc-ckc">{t.who.cls}</span> : null}
-          {n ? <span className="sc-ckn">{`${n}. yarış`}</span> : null}
-          {tk0 ? <span className="sc-ckc">{t.k}</span> : null}
-        </div>
-      ) : null}
+    <div ref={ref} className={`sc-ck ${up ? "up" : "dn"}${t.tone ? ` ${t.tone}` : ""}${red ? " red" : ""}`}>
       <div className="sc-ckm">
+        {g && mode !== "summary" ? <span className="sc-ckgb" style={{ background: gc, color: gc }} aria-label={`${g} grup`} /> : null}
         <div key={num ? `n${up}` : String(t.tm)} className={`sc-ckt${num ? "" : " tx"}`}>
           {num ? <i aria-hidden="true">{up ? "+" : "−"}</i> : null}
           <b key={tick ? t.tm : "b"} className={tick ? "tk" : ""}>{t.tm}</b>
           {t.un ? <small>{t.un}</small> : null}
           {go ? <span className="sc-go" aria-hidden="true" /> : null}
         </div>
-        {t.at && num && !up ? (
-          <span className="sc-cka">
-            <small>Start</small>
-            {t.at}
-          </span>
-        ) : null}
       </div>
       {seq ? (
         <div className="sc-lad" aria-hidden="true">
-          {[["cls", "5"], [prep, "4"], [prep, "1"], ["", "Start"]].map(([f, l], i) => (
+          {["cls", prep, prep, ""].map((f, i) => (
             <div key={i} className={i < st ? "done" : i === st ? "now" : ""}>
-              {f ? <Flag kind={f} cls={t.who?.cls} grp={f === "cls" ? g : ""} down={i === 2} /> : null}
-              <span>{l}</span>
+              {f ? <Flag kind={f} cls={t.who?.cls} grp={f === "cls" ? g : ""} down={i === 2} /> : <i className="sc-ladgo" />}
               <s style={i === st ? { width: `${Math.max(0, Math.min(1, lfill)) * 100}%` } : undefined} />
             </div>
           ))}
@@ -1918,7 +1890,6 @@ function ScClock({ t, data, sel, mode, now, today, prog = [], noWind = false, dr
           <div className="sc-fl">
             <Flag kind={flL.kind} down={flL.down} />
             <b>{flL.t}</b>
-            <em>{flL.s}</em>
           </div>
         ) : null}
       </ScXp>
@@ -1926,7 +1897,6 @@ function ScClock({ t, data, sel, mode, now, today, prog = [], noWind = false, dr
         <div className="sc-fl">
           <i className="sc-of" aria-hidden="true" />
           <b>Turuncu bayrak</b>
-          <em>Start hattı kuruldu</em>
         </div>
       </ScXp>
       <ScXp on={ea.length > 0}>
@@ -1938,22 +1908,15 @@ function ScClock({ t, data, sel, mode, now, today, prog = [], noWind = false, dr
         ) : null}
       </ScXp>
       <ScXp on={!!sig}>{sigL ? <ScSig data={data} today={today} s={sig || signalOf(sigL)} /> : null}</ScXp>
-      <ScXp on={!!slot}>
-        <div className="sc-cks">
-          {slot ? (
-            <div key={slot.k} className="sc-cks1">
-              {slot.el}
-            </div>
-          ) : null}
-          {slots.length > 1 ? (
-            <span className="sc-ckd" aria-hidden="true">
-              {slots.map((x, i) => (
-                <i key={x.k} className={i === si ? "on" : ""} />
-              ))}
-            </span>
-          ) : null}
-        </div>
+      <ScXp on={red && !!t.flag}>
+        {redL ? (
+          <div className="sc-fl">
+            <Flag kind={redL.f} />
+            <b>{redL.n}</b>
+          </div>
+        ) : null}
       </ScXp>
+      <ScXp on={wOn}>{wl ? <ScWindLine data={data} now={now} /> : null}</ScXp>
       {drop}
     </div>
   );
@@ -2767,7 +2730,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       <div className="sc-body" key={sc}>
         {body}
       </div>
-      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} prog={prog} noWind={sc === "01" && item === "wind"} drop={drop} /> : null}>
+      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={sc === "01" && item === "wind"} drop={drop} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
         {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} slim /> : listOn ? side === "gen" || (!lwho?.grp && mode !== "race" && scBoards(data).length) ? <ScGen data={data} who={lwho} now={now} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
