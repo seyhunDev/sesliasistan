@@ -14,6 +14,7 @@ import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, c
 import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
 import { cleanCourseShow, cleanEvOne, cleanShowTpl, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
 import { cleanCamBy, cleanOnAir } from "@/lib/raceCams";
+import { cleanSrcLive } from "@/lib/srcLive";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
 const VIDEO_SEC = 120;
@@ -387,6 +388,8 @@ export const savePin = (orgId, id, item) => setDoc(live(orgId, id), { courseShow
 // Ekrandaki yarış (sid boş = en son başlayan) ve kameraların grupları (alan bütün yazılır: çözülen grup silinir)
 export const saveOnAir = (orgId, id, o) => setDoc(live(orgId, id), { onAir: cleanOnAir(o) }, { merge: true });
 export const saveCamBy = (orgId, id, m) => setDoc(live(orgId, id), { camBy: cleanCamBy(m) }, { mergeFields: ["camBy"] });
+// Yayında olan kaynaklar { id: son görülme } (lib/srcLive.js; alan bütün yazılır)
+export const saveSrcLive = (orgId, id, m) => setDoc(live(orgId, id), { srcLive: cleanSrcLive(m) }, { mergeFields: ["srcLive"] });
 // s: { url, drone } (eski çağrı yalnız bağlantı yazısı verir)
 // Görüntü kaynakları (antrenman ekranının Kamera'sı; cleanLive stream'i taşımaz)
 export const loadStream = async (orgId, id) => cleanStream((await getDoc(live(orgId, id))).data()?.stream);
@@ -398,7 +401,7 @@ export function watchRounds(orgId, id, cb) {
     (snap) => {
       if (snap.metadata.hasPendingWrites) return;
       const d = snap.exists() ? snap.data() : {};
-      cb({ rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), timer: d.timer || null, camBy: cleanCamBy(d.camBy), onAir: cleanOnAir(d.onAir) });
+      cb({ rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), timer: d.timer || null, camBy: cleanCamBy(d.camBy), onAir: cleanOnAir(d.onAir), srcLive: cleanSrcLive(d.srcLive) });
     },
     () => {},
   );
@@ -406,5 +409,5 @@ export function watchRounds(orgId, id, cb) {
 export async function loadRoundsOf(orgId, id) {
   const snap = await readServer(live(orgId, id));
   const d = snap.exists() ? snap.data() : {};
-  return { ...cleanLive(d), timer: d.timer || null, rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), courseShow: cleanCourseShow(d.courseShow), camBy: cleanCamBy(d.camBy), onAir: cleanOnAir(d.onAir), cards: d.cards || null };
+  return { ...cleanLive(d), timer: d.timer || null, rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), courseShow: cleanCourseShow(d.courseShow), camBy: cleanCamBy(d.camBy), onAir: cleanOnAir(d.onAir), srcLive: cleanSrcLive(d.srcLive), cards: d.cards || null };
 }

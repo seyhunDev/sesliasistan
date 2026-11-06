@@ -16,7 +16,7 @@ import { loadRace, saveRaceDates } from "@/features/athletes/races";
 import { readProgramFile, readProgramText } from "@/features/broadcast/broadcastStore";
 import { FIRST_ITEM, agendaFirst, agendaPut, datesAdd, datesDrop, programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveCourseShow, saveEvre, saveEvreMan, loadShowTpl, saveShowTpl, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
+import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveSrcLive, saveCourseShow, saveEvre, saveEvreMan, loadShowTpl, saveShowTpl, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
 import { GROUP_PICK, finalsFirst, groupColor, groupMap, groupsOn, isFinalGrp } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { countingAt as countingNow, finishSteps, orderWithout, startBlock, startedRow, zeroStarts } from "./startFlow";
@@ -24,6 +24,7 @@ import { DocsTab } from "./DocsTab";
 import { MyChannel } from "./MyChannel";
 import { SrcKey } from "./SrcKey";
 import { ytPrepare } from "@/lib/youtube";
+import { nextSrcLive } from "@/lib/srcLive";
 import { NearCams } from "./NearCams";
 import { AthletesTab } from "./AthletesTab";
 import { CourseTalk } from "./CourseTalk";
@@ -190,16 +191,28 @@ export function BroadcastPage({ orgId, id }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, id, today]);
 
-  // Yayında mı (Video sekmesi açıkken 45 sn'de bir; YouTube, sunucuda /api/yayin-durum)
+  // Yayında mı (sayfa açıkken 45 sn'de bir; YouTube, sunucuda /api/yayin-durum). Yayında olan kaynaklar raceLive.srcLive'a yazılır
+  // (lib/srcLive.js; Seyhun 2026-11-06 "yayın başladığında yayının başladığını gösteririz"): Ekran seçicisi ve /canli oradan okur
   const srcUrls = srcList.map((x) => x.url).filter(Boolean).join("|");
+  const liveRef = useRef({});
   useEffect(() => {
-    if (!(board || tab === "video") || !srcUrls) return;
+    liveRef.current = { srcLive: L?.srcLive, list: srcList };
+  });
+  useEffect(() => {
+    if (!srcUrls) return;
     let on = true;
     const ask = () =>
       document.visibilityState === "visible" &&
       authFetch(`/api/yayin-durum?${srcUrls.split("|").map((u) => `u=${encodeURIComponent(u)}`).join("&")}`)
         .then((r) => r.json())
-        .then((d) => on && setStat(Object.fromEntries((d.list || []).map((x) => [x.url, x]))))
+        .then((d) => {
+          if (!on) return;
+          const m = Object.fromEntries((d.list || []).map((x) => [x.url, x]));
+          setStat(m);
+          if (!d.key) return;
+          const nx = nextSrcLive(liveRef.current.srcLive, liveRef.current.list.filter((x) => x.url && m[x.url]?.live).map((x) => x.id));
+          if (nx) (setL((p) => (p ? { ...p, srcLive: nx } : p)), saveSrcLive(orgId, id, nx).catch(() => {}));
+        })
         .catch(() => {});
     ask();
     const t = setInterval(ask, 45000);
@@ -207,7 +220,7 @@ export function BroadcastPage({ orgId, id }) {
       on = false;
       clearInterval(t);
     };
-  }, [tab, board, srcUrls]);
+  }, [srcUrls, orgId, id]);
 
   // Program sekmesi açılınca günlerin saati, "yok" günleri ve maddeleri belgeden tazelenir (siteden gelen talimat ya da başka telefon
   // arada yazdıysa eski hâli üstüne yazılmasın; yarış sistemi haritası 2026-11-04 riski)
