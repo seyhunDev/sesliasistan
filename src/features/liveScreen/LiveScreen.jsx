@@ -2556,6 +2556,7 @@ const FULL_VP = ["course", "wind", "rank", "prog"];
 function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", photos = [] }) {
   const ref = useRef(null);
   const [shut, setShut] = useState(""); // kapanırken kayan panel (animasyon bitince kalkar)
+  const dragRef = useRef(null);
   const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
   const res = !!rr?.rows.length;
   const rank = scBoards(data).length > 0;
@@ -2654,11 +2655,57 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
     const t = setTimeout(() => setShut(""), SHUT_MS);
     return () => clearTimeout(t);
   }, [shut]);
+  // boşluğa dokununca kapat (Seyhun 2026-11-06 "herhangi bir yere tıklayınca da kapansın"): açık panel varken ekranda çubuğun dışına
+  // dokunmak yalnız paneli kapatır (alttaki şeye tıklanmaz); ekranın dışındaki pencereler (ölçüm ekle vb.) etkilenmez
+  const openK = btns.some(([k]) => k === open) || open === "src" || open === "masa" ? open : "";
+  useEffect(() => {
+    if (!openK || openK === "start") return undefined;
+    const down = (e) => {
+      const el = ref.current;
+      const sc = el?.closest(".lv") || el?.closest(".sc");
+      if (!el || !sc || el.contains(e.target) || !sc.contains(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const eat = (c) => (c.preventDefault(), c.stopPropagation());
+      document.addEventListener("click", eat, { capture: true, once: true });
+      setTimeout(() => document.removeEventListener("click", eat, { capture: true }), 600);
+      setShut(openK);
+      onOpen("");
+    };
+    document.addEventListener("pointerdown", down, true);
+    return () => document.removeEventListener("pointerdown", down, true);
+  }, [openK, onOpen]);
   if (!btns.length && !picks) return null;
   const on = btns.some(([k]) => k === open) || (open === "src" && picks) || (open === "masa" && masaRef) ? open : "";
   const close = () => {
     if (on) setShut(on);
     onOpen("");
+  };
+  // aşağı çekerek kapat (Seyhun 2026-11-06 "aşağı çekerek kapatabilelim"): panelin içi en üstteyken parmak 80 px'ten fazla inerse kapanır
+  const drag = {
+    onTouchStart: (e) => {
+      const el = e.currentTarget;
+      const sc = e.target.closest?.(".sc-vp, .sc-board, .gr-wc, [data-scroll]");
+      const top = el.scrollTop <= 0 && (!sc || sc === el || sc.scrollTop <= 0);
+      dragRef.current = top ? { y: e.touches[0].clientY, x: e.touches[0].clientX, d: 0 } : null;
+    },
+    onTouchMove: (e) => {
+      const g = dragRef.current;
+      if (!g) return;
+      const d = e.touches[0].clientY - g.y;
+      if (Math.abs(e.touches[0].clientX - g.x) > Math.abs(d) && g.d === 0) return (dragRef.current = null);
+      g.d = Math.max(0, d);
+      e.currentTarget.style.translate = g.d ? `0 ${g.d}px` : "";
+      e.currentTarget.style.transition = "none";
+    },
+    onTouchEnd: (e) => {
+      const g = dragRef.current;
+      dragRef.current = null;
+      const el = e.currentTarget;
+      el.style.transition = "";
+      el.style.translate = "";
+      if (g && g.d > 80) close();
+    },
   };
   const tap = (k) => {
     if (on === k) return close();
@@ -2840,7 +2887,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
     <nav className={`sc-vb bar${picks ? " pk" : ""}`} ref={ref} aria-label="İzleyici seçimi">
       {/* Parkur, Rüzgâr, Sıralama, Program telefonda ve iPad'de tam ekran, tek X ile kapanır (Seyhun 2026-11-06; web ve Mac'te eskisi gibi) */}
       {body ? (
-        <div className={`sc-vp ${on}${FULL_VP.includes(on) ? " full" : ""}`}>
+        <div className={`sc-vp ${on}${FULL_VP.includes(on) ? " full" : ""}`} {...drag}>
           {FULL_VP.includes(on) ? (
             <button type="button" className="sc-vpx" aria-label="Kapat" onClick={close}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" /></svg>
