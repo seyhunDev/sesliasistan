@@ -1,3 +1,4 @@
+import { cleanSrcLive } from "@/lib/srcLive";
 import { NextResponse } from "next/server";
 import { getStorage } from "firebase-admin/storage";
 import { requireUser, unauthorized } from "@/lib/server/auth";
@@ -215,6 +216,7 @@ async function build(id, y) {
     courseShow: cleanCourseShow(d.courseShow),
     camBy: cleanCamBy(d.camBy),
     onAir: cleanOnAir(d.onAir),
+    srcLive: cleanSrcLive(d.srcLive),
     stream: cleanStream(d.stream),
     media,
     wind: live.wind.filter((w) => dayOf(w.at) === day || trDay(Date.parse(w.at)) === day).slice(-40),
