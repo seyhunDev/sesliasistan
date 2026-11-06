@@ -5,9 +5,11 @@ import { Icon } from "@/components/ui/Icon";
 import { buildWhen } from "@/lib/buildInfo";
 import { applyUpdate, newVersion, subscribeVersion, watchVersion } from "@/lib/newVersion";
 
-// Yayında daha yeni sürüm varsa üstte küçük kart: "Yeni sürüm var · 9 Ekim 21:10" + Güncelle düğmesi (sayfa yenilenir).
+// Yayında daha yeni sürüm varsa altta belirgin mavi şerit: "Yeni sürüm var · 9 Ekim 21:10" + Güncelle (sayfa yenilenir).
+// (Seyhun 2026-11-06 "güncelleme butonu bağımsız alttan daha belirgin çıksın; canlı yayın sayfasında da")
 // × ile o açılış için gizlenir; uygulama yeniden açılınca ya da daha yeni bir sürüm gelince yine çıkar.
-export function NewVersionBar() {
+// className: yerleşim (varsayılan alt çubuğun üstü); canlı ekran kendi yerini verir (features/liveScreen/CanliUpdate)
+export function NewVersionBar({ className = "bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.5rem)]" }) {
   const v = useSyncExternalStore(subscribeVersion, newVersion, () => null);
   const [hid, setHid] = useState("");
   const [busy, setBusy] = useState(false);
@@ -15,22 +17,22 @@ export function NewVersionBar() {
   if (!v || hid === v.sha) return null;
   const when = buildWhen(v.at);
   return (
-    <div role="status" className="fade-in pointer-events-none fixed inset-x-0 bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.5rem)] z-[47] flex justify-center px-4">
-      <div className="pointer-events-auto flex w-full max-w-[26.25rem] items-center gap-2.5 rounded-2xl bg-card py-2 pl-3.5 pr-2 shadow-[0_4px_16px_rgba(38,40,44,.14)]">
-        <span className="size-2 shrink-0 rounded-full bg-acc" />
-        <span className="min-w-0 flex-1 text-[0.8125rem] leading-snug">
-          <span className="block font-semibold">Yeni sürüm var</span>
-          {when && <span className="block text-mut">{when}</span>}
+    <div role="status" className={`fade-in pointer-events-none fixed inset-x-0 z-[47] flex justify-center px-4 ${className}`}>
+      <div className="pointer-events-auto flex w-full max-w-[26.25rem] items-center gap-3 rounded-2xl bg-[#2563eb] py-2.5 pl-4 pr-2 text-white shadow-[0_8px_28px_rgba(37,99,235,.45)]">
+        <span className="min-w-0 flex-1 leading-snug">
+          <span className="block text-[0.9375rem] font-semibold">Yeni sürüm var</span>
+          {when && <span className="block text-[0.8125rem] text-white/80">{when}</span>}
         </span>
         <button
           type="button"
           disabled={busy}
           onClick={() => (setBusy(true), applyUpdate())}
-          data-press className="btn btn-primary btn-sm shrink-0"
+          data-press
+          className="h-10 shrink-0 rounded-xl bg-white px-4 text-[0.9375rem] font-semibold text-[#2563eb] active:translate-y-px"
         >
           {busy ? "Güncelleniyor…" : "Güncelle"}
         </button>
-        <button type="button" aria-label="Kapat" onClick={() => setHid(v.sha)} data-press className="btn btn-icon btn-sm size-7 shrink-0 text-mut">
+        <button type="button" aria-label="Kapat" onClick={() => setHid(v.sha)} data-press className="grid size-9 shrink-0 place-items-center rounded-full text-white/80 active:translate-y-px">
           <Icon name="x" className="size-4" />
         </button>
       </div>
