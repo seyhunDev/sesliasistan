@@ -1559,7 +1559,8 @@ function windDayPts(data, now, page = 0) {
 }
 function ScWindDay({ data, now }) {
   const [open, setOpen] = useState(false);
-  const [page, setPage] = useState(0);
+  // akşam 18'den sonra yarın önemli (Seyhun 2026-11-06): grafik Yarın sayfasıyla açılır, ‹ ile Şimdi
+  const [page, setPage] = useState(() => (istHour(now).h >= 18 ? 1 : 0));
   const tip = windTip(windAhead(data, now), curWind(data, null, true, now));
   const hasNext = (data.forecast?.next || []).filter((r) => r.wind != null).length > 1;
   const { h0, h1, fc, st, me, nh } = windDayPts(data, now, hasNext ? page : 0);
@@ -3035,7 +3036,7 @@ function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast 
   const auto = evreOf(mode, seqMode, soon, "", { fs: /genel/i.test(vd?.void || ""), aban: /abandone|iptal/i.test(vd?.void || "") });
   return { ...p, sd, vid, evre, auto, has, sc: itemScene(p.item, sd.screen?.kind === "rec") };
 }
-function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null, view = "", rk = null, past = false }) {
+function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null, view = "", rk = null, past = false, still = false }) {
   const back = useInAppBack(); // uygulama içinden açıldıysa yarış adının başında geri oku
   // izleyicinin açtığı Rüzgâr / Sıralama / Parkur (Seyhun 2026-11-05 "yukarıdan açılsın"): süre kartının altından açılır, sahne değişmez
   const drop =
@@ -3087,7 +3088,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       <div className="sc-body" key={sc}>
         {body}
       </div>
-      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} logo={bar ? { back } : null} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={sc === "01" && item === "wind"} drop={drop} /> : null}>
+      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} logo={bar ? { back } : null} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={still || (sc === "01" && item === "wind")} drop={drop} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
         {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} slim /> : listOn ? side === "gen" || (!lwho?.grp && mode !== "race" && scBoards(data).length) ? <ScGen data={data} who={lwho} now={now} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
@@ -3305,7 +3306,10 @@ export function LiveScreen({ id, y = "" }) {
   // açılan bölüm kartın altında; ortada aynı şey ikinci kez çıkmasın
   const same = vwOn && ((vView === "rank" && pk.sc === "03") || (vView === "course" && pk.sc === "05") || (vView === "wind" && pk.sc === "01" && pk.item === "wind"));
   // geçmiş yarış (?y=, Seyhun 2026-11-05 eski düzen kalktı): o yarışın sıralaması
-  const { sc, item } = !isCur && scBoards(sd).length ? { sc: "03", item: "rank" } : same ? { sc: "01", item: "time" } : pk;
+  // yayın kapalıyken / fotoğraf arkadayken ortada sahne dönmez (Seyhun 2026-11-06 "yayın kapalı olmasına rağmen arka planda rüzgâr dönüyor; rüzgâra
+  // tıklayarak ulaşacağım"): yalnız süre kartı; Rüzgâr / Parkur / Sıralama alt çubuktan açılır
+  const still = mine && !!phOn && !myVid.url;
+  const { sc, item } = !isCur && scBoards(sd).length ? { sc: "03", item: "rank" } : same || still ? { sc: "01", item: "time" } : pk;
   const { evre } = pk;
   return (
     <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${follow ? " fol" : ""}${myVid.url && !follow ? " mine" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
@@ -3323,7 +3327,7 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} /> : null} />
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} still={still} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} /> : null} />
         {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} list={newList} onListed={onListed} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
