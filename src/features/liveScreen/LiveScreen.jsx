@@ -1531,35 +1531,70 @@ function windTip(rows, c) {
   if (dn) return `${at(dn)} rüzgâr ${dn.wind} kn'a düşüyor`;
   return "";
 }
-function ScWindDay({ data, now }) {
-  const [open, setOpen] = useState(false);
-  const tip = windTip(windAhead(data, now), curWind(data, null, true, now));
+// Grafik (Seyhun 2026-11-06 "tahmin sonrası için olmalı; 2 saat öncesinden göster, gerçekleşeni de; 00'dan sonrasını da ekle; ileri butonuyla
+// bir gün sonrasına geçeyim"): "Şimdi" sayfası 2 saat önceden 12 saat sonrasına (gece yarısını geçer), geçmiş = gerçekleşen (istasyon + ölçümümüz),
+// beklenen yalnız şimdiden sonra; › ile "Yarın" sayfası (ertesi günün 24 saati). Önemli bir şey yoksa satır sade, açınca yine grafik.
+function windDayPts(data, now, page = 0) {
+  const nh = istHour(now).h;
   const today = istHour(now).day;
-  const fc = (data.forecast?.rows || []).filter((r) => r.wind != null).map((r) => ({ h: +r.hh, v: +r.wind }));
-  const st = (data.forecast?.obs || []).filter((r) => r.wind != null && +r.hh <= istHour(now).h).map((r) => ({ h: +r.hh, v: +r.wind }));
+  const fcAll = [
+    ...(data.forecast?.rows || []).filter((r) => r.wind != null).map((r) => ({ h: +r.hh, v: +r.wind })),
+    ...(data.forecast?.next || []).filter((r) => r.wind != null).map((r) => ({ h: +r.hh + 24, v: +r.wind })),
+  ].sort((x, y) => x.h - y.h);
+  if (page === 1) {
+    const fc = fcAll.filter((x) => x.h >= 24);
+    return { h0: 24, h1: 47, fc, st: [], me: [], nh: null };
+  }
+  const h0 = Math.floor(nh) - 2, h1 = h0 + 14;
+  let fc = fcAll.filter((x) => x.h > nh && x.h <= h1);
+  const pr = [...fcAll].reverse().find((x) => x.h <= nh), nx = fcAll.find((x) => x.h > nh);
+  if (pr && nx) fc = [{ h: nh, v: +(pr.v + ((nx.v - pr.v) * (nh - pr.h)) / (nx.h - pr.h)).toFixed(1) }, ...fc];
+  else if (pr && pr.h === nh) fc = [pr, ...fc];
+  const st = (data.forecast?.obs || []).filter((r) => r.wind != null && +r.hh <= nh && +r.hh >= h0).map((r) => ({ h: +r.hh, v: +r.wind }));
   const me = [...(data.wind || []), ...(data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, kn: o.kn }))]
     .filter((x) => x.kn != null && x.at && istHour(Date.parse(x.at)).day === today)
-    .map((x) => ({ h: istHour(Date.parse(x.at)).h, v: +x.kn }));
-  if (!tip || (fc.length < 2 && st.length < 2)) return null;
+    .map((x) => ({ h: istHour(Date.parse(x.at)).h, v: +x.kn }))
+    .filter((x) => x.h >= h0 && x.h <= nh);
+  return { h0, h1, fc, st, me, nh };
+}
+function ScWindDay({ data, now }) {
+  const [open, setOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const tip = windTip(windAhead(data, now), curWind(data, null, true, now));
+  const hasNext = (data.forecast?.next || []).filter((r) => r.wind != null).length > 1;
+  const { h0, h1, fc, st, me, nh } = windDayPts(data, now, hasNext ? page : 0);
+  const p0 = windDayPts(data, now, 0);
+  if (p0.fc.length < 2 && p0.st.length < 2) return null;
   const all = [...fc, ...st, ...me];
-  const h0 = Math.floor(Math.min(...all.map((x) => x.h)));
-  const h1 = Math.max(h0 + 1, Math.ceil(Math.max(...all.map((x) => x.h))));
-  const W = 400, H = 170, l = 26, r = 10, t = 14, b = 26;
+  const W = 400, H = 170, l = 26, r = 10, t = 16, b = 26;
   const max = Math.ceil((Math.max(10, ...all.map((x) => x.v)) + 2) / 5) * 5;
   const xs = (h) => l + ((h - h0) * (W - l - r)) / (h1 - h0);
   const ys = (v) => t + (H - t - b) * (1 - v / max);
   const line = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${xs(p.h).toFixed(1)} ${ys(p.v).toFixed(1)}`).join(" ");
-  const nh = istHour(now).h;
   const fs = { fontFamily: "var(--lv-font-c), var(--lv-font), sans-serif", fontWeight: 700 };
+  const step = h1 - h0 > 16 ? 3 : 2;
+  const vs = p0.fc.map((x) => x.v);
+  const calm = vs.length ? `Sonraki saatler ${Math.round(Math.min(...vs))}–${Math.round(Math.max(...vs))} kn` : "";
+  const pg = hasNext ? page : 0;
+  const chev = (d) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
   return (
-    <div className={`sc-wday${open ? " on" : ""}`}>
+    <div className={`sc-wday${open ? " on" : ""}${tip ? "" : " calm"}`}>
       <button type="button" className="sc-wtg" aria-expanded={open} onClick={() => setOpen(!open)}>
         <i>Tahmin</i>
-        <span>{tip}</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <span>{tip || calm}</span>
+        {chev("M6 9l6 6 6-6")}
       </button>
       {open ? (
         <div className="sc-wdb">
+          <div className="sc-wpg">
+            <button type="button" aria-label="Önceki" disabled={pg === 0} onClick={() => setPage(0)}>
+              {chev("M15 6l-6 6 6 6")}
+            </button>
+            <b>{pg ? "Yarın" : "Şimdi"}</b>
+            <button type="button" aria-label="Sonraki" disabled={pg === 1 || !hasNext} onClick={() => setPage(1)}>
+              {chev("M9 6l6 6-6 6")}
+            </button>
+          </div>
           <div className="sc-wh">
             <span>
               <i className="a" />
@@ -1568,7 +1603,7 @@ function ScWindDay({ data, now }) {
             {st.length ? (
               <span>
                 <i className="w" />
-                İstasyon
+                Gerçekleşen
               </span>
             ) : null}
             {me.length ? (
@@ -1587,11 +1622,19 @@ function ScWindDay({ data, now }) {
                 </text>
               </g>
             ))}
-            {Array.from({ length: h1 - h0 + 1 }, (_, i) => h0 + i).filter((h) => h % 3 === 0).map((h) => (
+            {Array.from({ length: h1 - h0 + 1 }, (_, i) => h0 + i).filter((h) => h % step === 0).map((h) => (
               <text key={h} x={xs(h)} y={H - 6} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,.5)" style={fs}>
-                {String(h % 24).padStart(2, "0")}
+                {String(((h % 24) + 24) % 24).padStart(2, "0")}
               </text>
             ))}
+            {!pg && h1 > 24 && h0 < 24 ? (
+              <g>
+                <line x1={xs(24)} x2={xs(24)} y1={t} y2={H - b} stroke="rgba(255,255,255,.18)" />
+                <text x={xs(24) + 4} y={t + 8} fontSize="11" fill="rgba(255,255,255,.5)" style={fs}>
+                  Yarın
+                </text>
+              </g>
+            ) : null}
             {fc.length > 1 ? (
               <>
                 <path d={`${line(fc)} L${xs(fc.at(-1).h)} ${ys(0)} L${xs(fc[0].h)} ${ys(0)} Z`} fill="rgba(47,214,195,.18)" />
@@ -1603,7 +1646,14 @@ function ScWindDay({ data, now }) {
             {me.map((p, i) => (
               <circle key={i} cx={xs(p.h)} cy={ys(p.v)} r="4.5" fill="#4d8dff" stroke="#fff" strokeWidth="1.5" />
             ))}
-            {nh >= h0 && nh <= h1 ? <line x1={xs(nh)} x2={xs(nh)} y1={t} y2={H - b} stroke="rgba(255,255,255,.55)" strokeDasharray="3 4" /> : null}
+            {nh != null ? (
+              <g>
+                <line x1={xs(nh)} x2={xs(nh)} y1={t} y2={H - b} stroke="rgba(255,255,255,.55)" strokeDasharray="3 4" />
+                <text x={xs(nh)} y={t - 4} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,.7)" style={fs}>
+                  Şimdi
+                </text>
+              </g>
+            ) : null}
           </svg>
         </div>
       ) : null}

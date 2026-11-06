@@ -1246,3 +1246,14 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 .sc-vl.live circle { animation: sc-vlive 2.6s ease-in-out infinite; }
 @keyframes sc-vlive { 0%, 100% { fill: #fff; } 50% { fill: #ff3b4e; } }
 @media (prefers-reduced-motion: reduce) { .sc-vl.live circle { animation: none; fill: #ff3b4e; } }
+
+/* Tahmin grafiği sayfaları (2026-11-06): Şimdi | Yarın, önemli bir şey yoksa satır sade */
+.sc-wday.calm { background: rgba(255, 255, 255, 0.05); }
+.sc .sc-wday.calm .sc-wtg { color: rgba(255, 255, 255, 0.8); }
+.sc-wday.calm .sc-wtg > i { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.sc-wpg { display: flex; align-items: center; justify-content: center; gap: 0.8em; margin: 0 0 0.4em; }
+.sc-wpg b { min-width: 4.5em; text-align: center; font: 800 0.95em/1 var(--sc-c); color: #fff; letter-spacing: 0.04em; }
+.sc .sc-wpg button { display: grid; place-items: center; width: 2.4em; height: 2.4em; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.1); color: #fff; -webkit-tap-highlight-color: transparent; }
+.sc .sc-wpg button:active { transform: scale(0.94); }
+.sc .sc-wpg button:disabled { opacity: 0.3; }
+.sc-wpg svg { width: 1.2em; height: 1.2em; }
