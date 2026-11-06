@@ -1172,7 +1172,7 @@ main.rz .rz-open > .mb-2.mt-6:first-child { display: none; }
 .rz-k small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .8125rem; font-weight: 400; color: var(--mut); }
 .rz-v { flex-shrink: 0; max-width: 62%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9375rem; color: var(--mut); }
 .rz-v b { color: var(--fg); font-weight: 600; }
-.rz-ok { color: var(--ok); } .rz-warn { color: var(--warn); } .rz-rec { color: var(--rec); }
+.rz-acc { color: var(--acc); } .rz-ok { color: var(--ok); } .rz-warn { color: var(--warn); } .rz-rec { color: var(--rec); }
 .rz-chev { width: .5rem; height: .5rem; flex-shrink: 0; margin-right: .125rem; border-right: 1.8px solid color-mix(in srgb, var(--mut) 55%, transparent); border-bottom: 1.8px solid color-mix(in srgb, var(--mut) 55%, transparent); transform: rotate(-45deg); }
 .rz-chev.rz-dn { transform: rotate(45deg); margin-top: -.25rem; }
 .rz-chev.rz-up { transform: rotate(-135deg); margin-top: .25rem; }
@@ -1187,7 +1187,9 @@ main.rz .rz-open > .mb-2.mt-6:first-child { display: none; }
 main.rz .bg-card.rounded-\[1\.25rem\] { background: transparent; box-shadow: none; border-radius: 0; margin-left: -1rem; margin-right: -1rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 main.rz .tracking-\[\.08em\] { display: block; letter-spacing: 0; font-weight: 600; font-size: .8125rem; text-transform: lowercase; }
 main.rz .tracking-\[\.08em\]::first-letter { text-transform: uppercase; }
+.rz-soft { background: var(--accbg); color: var(--acc); border-color: transparent; box-shadow: none; }
 main.rz [data-pagebar] { background: linear-gradient(to top, var(--card) 60%, transparent); }
 @media (min-width: 64rem) {
   body[data-side] main.rz.split > .rz-top { border-right: 1px solid var(--line); }
 }
+.rz-h { margin: 1.5rem 0 .25rem; font-size: .8125rem; font-weight: 600; color: var(--mut); }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
-import { MEDIA_MENU, RACE_SECS } from "@/lib/raceMenu";
+import { RACE_SECS } from "@/lib/raceMenu";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
@@ -30,7 +30,7 @@ import { tl, totals } from "./budget";
 import { BUDGET_ONLY, buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
 import { RaceWxRows } from "./RaceWx";
-import { Fold, RaceSeg } from "./raceUi";
+import { Fold, RaceGo, RaceSeg } from "./raceUi";
 import { RaceTrack } from "./RaceTrack";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
 import { useWide } from "@/features/home/SideNav";
@@ -929,11 +929,17 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const top = (
     <>
       {raceDay && rid ? (
-        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} />
-      ) : !over && rid ? (
-        <div className="mt-4">
-          <RaceWxRows r={{ ...r, id: rid }} />
-        </div>
+        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} go={isOwner ? <RaceGo id={rid} /> : null} />
+      ) : rid ? (
+        <>
+          {/* Canlı ekran · Yayın yalnız ana hesapta (yarıştan önce de: dönüş girişi, kayıt listesi önceden hazırlanır) */}
+          {isOwner && <RaceGo id={rid} className="mt-4" />}
+          {!over && (
+            <div className="mt-4">
+              <RaceWxRows r={{ ...r, id: rid }} />
+            </div>
+          )}
+        </>
       ) : null}
       {!wide && nav}
     </>
@@ -1028,22 +1034,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     <>
       {/* Sağ üstteki ⋯ (Seyhun 2026-10-20: "editleme, silme… bir ayarlar butonuyla ulaşabildiğimiz şeyler olmalı") */}
       <Sheet open={menu} onClose={() => onMenu?.(false)} title="Yarış">
-        {/* Yarış başladıktan sonra multimedyanın işleri de bu tek ⋯ içinde (Seyhun 2026-10-30; multimedya sayfasındaki ⋯ ile aynı liste) */}
-        {/* Canlı ekran (ana hesap) yarıştan önce de görünür: dönüş girişi ve kayıt listesi önceden hazırlanır (Seyhun 2026-11-01) */}
-        {rid && isOwner && (
-          <ul className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
-            {/* Denemeleri sıfırla kalktı: Yayın › ⋯ › Yayını sıfırla aynı işi yapar (2026-11-04) */}
-            {/* Çekim ayarları ve Gün ekle kalktı (Seyhun 2026-11-05: süre, geri sayım, çekim artık Yayın'da; eski /media ekranına gidiyordu) */}
-            {MEDIA_MENU.filter(([k]) => k === "canli" && isOwner).map(([k, l]) => (
-              <li key={k}>
-                <Link href={`/athletes/races/${rid}/yayin`} data-press="row" data-menu={k} onClick={() => onMenu?.(false)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
-                  <b className="min-w-0 flex-1 text-[1rem] font-medium">{l}</b>
-                  <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+        {/* Yayın ⋯ içinde değil: adın altında Canlı ekran · Yayın düğmeleri (RaceGo, Seyhun 2026-11-06) */}
         <ul className={`${card} divide-y divide-line overflow-hidden`}>
           {[
             ["Bilgileri düzenle", () => setEdit(true)],

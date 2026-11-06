@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { BackButton } from "@/components/ui/BackButton";
+import { BackLink } from "@/components/ui/BackLink";
 import { Loading } from "@/components/ui/Loader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
@@ -15,7 +15,6 @@ import { sweepLive } from "@/features/athletes/raceWipe";
 import { RaceSwitch } from "@/features/raceCal/RaceSwitch";
 import { Sheet } from "@/components/ui/Sheet";
 import { Row, RowList } from "@/components/ui/Row";
-import { useWide } from "@/hooks/useWide";
 
 // Yarışlar (yeni tasarım 2026-10-21): lacivert üstte başlık ve sıradaki yarış; sıradaki yarış kartı, yaklaşan yarışlar ay ay, geçmiş yarışlar en altta; yarışa dokununca evrak, sporcular, yapılacaklar
 export default function RacesPage() {
@@ -46,39 +45,40 @@ function Races({ orgId, me }) {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
-  const wide = useWide();
   const [menu, setMenu] = useState(false);
   const up = races?.filter((r) => !isPast(r)).length || 0;
   const past = (races?.length || 0) - up;
   const sub = !races ? "Yükleniyor…" : [up ? `${up} yaklaşan` : "Yaklaşan yarış yok", past && `${past} geçmiş`].filter(Boolean).join(" · ");
 
+  // Başlık (yeni beyaz görünüm, Seyhun 2026-11-06): "‹ Ana sayfa", sağda + Yarış ve ⋯ (Siteden ekle); büyük ad, tek satır bilgi, Kulübüm | Takvim
   const head = (
-    <>
-    <header className="flex items-center gap-2.5">
-      <BackButton href="/" />
-      <div className="min-w-0 flex-1 leading-tight">
-        <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Yarışlar</h1>
-        <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
+    <header>
+      <div className="rz-bar">
+        <BackLink href="/" aria-label="Geri" data-press className="rz-link">
+          <Icon name="back" className="size-5" />
+          Ana sayfa
+        </BackLink>
+        <span className="flex items-center gap-1">
+          <Link href="/athletes/races/new" data-press className="rz-link px-2">
+            <Icon name="plus" className="size-5" />
+            Yarış
+          </Link>
+          {me.uid === orgId && (
+            <button type="button" onClick={() => setMenu(true)} aria-label="Diğer" data-press className="rz-link w-10 justify-center">
+              <Icon name="more" className="size-6" />
+            </button>
+          )}
+        </span>
       </div>
-      {wide && <RaceSwitch on="club" inline />}
-      {/* Siteden ⋯ içinde (telefon ve geniş ekran aynı, 2026-11-05) */}
-      {me.uid === orgId && (
-        <button type="button" onClick={() => setMenu(true)} aria-label="Diğer" data-press className="raised flex h-9 w-10 shrink-0 items-center justify-center rounded-xl border">
-          <Icon name="more" className="size-5" />
-        </button>
-      )}
-      <Link href="/athletes/races/new" data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
-        <Icon name="plus" className="size-4" />
-        Yarış
-      </Link>
+      <h1 className="mt-1 truncate">Yarışlar</h1>
+      <p className="mt-1 truncate text-[0.9375rem] text-mut">{sub}</p>
+      <RaceSwitch on="club" light />
     </header>
-    {!wide && <RaceSwitch on="club" />}
-    </>
   );
 
   return (
-    <main className="race-wide mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
-      <RaceList races={races} head={head} onOpen={(r) => router.push(`/athletes/races/${r.id}`)}>
+    <main className="rz race-wide mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
+      <RaceList races={races} head={head} owner={me.uid === orgId} onOpen={(r) => router.push(`/athletes/races/${r.id}`)}>
         {error && <p className="text-center text-[0.875rem] text-rec">{error}</p>}
         {!races && <Loading label="Yarışlar yükleniyor" />}
       </RaceList>

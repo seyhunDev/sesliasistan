@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { todayStr } from "@/lib/utils/format";
 import { dayPlan, nextDay, ourPlaces, racePhase } from "@/lib/raceDay";
 import { loadLive } from "./raceLiveStore";
@@ -60,10 +59,9 @@ function Places({ list, short = false }) {
 }
 
 // Yarış günü üstü, yeni beyaz görünüm (Seyhun 2026-11-06, yeni-dil/ornek.png 5): büyük tek satır (2. yarış · start 12:30 / Sonuçlar / Gün bitti),
-// Hava ve Harita kapalı satır (RaceWxRows), bizimkilerin sırası, yarın ya da dönüş satırı; tek dolu düğme "Yayına git" (sonuç gelince "Tüm sonuçlar")
-export function RaceDayTop({ r, rid, chosen, phase, races, dayAll }) {
+// Canlı ekran · Yayın (go), Hava ve Harita kapalı satır (RaceWxRows), bizimkilerin sırası, yarın ya da dönüş satırı
+export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = null }) {
   const today = todayStr();
-  const media = `/athletes/races/${rid}/yayin`; // Yayın sayfası (multimedya kalktı, Seyhun 2026-11-01)
   const places = ourPlaces(r.results, chosen);
   const fleet = r.results?.fleet;
   const last = today >= (r.endDate || r.startDate);
@@ -80,14 +78,13 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayAll }) {
           {side && <span className="shrink-0 text-[0.9375rem] tabular-nums text-mut">{side}</span>}
         </p>
       )}
+      {/* Canlı ekran · Yayın (yalnız ana hesap; raceUi RaceGo, Seyhun 2026-11-06) */}
+      {go && <div className="mt-4">{go}</div>}
       <div className="mt-3">
         <RaceWxRows key={phase} r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} />
       </div>
       {places.length > 0 && <Places list={phase === "done" ? places.slice(0, 4) : places} short={phase === "done"} />}
       {phase === "done" && <NextRow r={r} />}
-      <Link href={media} data-press className="btn btn-primary mt-4 w-full">
-        {phase === "race" ? "Yayına git" : "Tüm sonuçlar"}
-      </Link>
     </div>
   );
 }

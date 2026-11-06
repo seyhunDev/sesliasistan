@@ -174,12 +174,12 @@ export async function run(server, log = () => {}) {
     await page.getByText("Bu hesabın sporcuları görme izni yok").waitFor({ state: "detached", timeout: 30000 }).catch(() => {});
 
     log("    Yarış günü (sporcu seçili)…");
-    // Multimedya sayfası kalktı (Seyhun 2026-11-01, tek Yayın): yarış günü sayfa yerinde kalır, "Yayına git" Yayın sayfasına götürür,
+    // Multimedya sayfası kalktı (Seyhun 2026-11-01, tek Yayın): yarış günü sayfa yerinde kalır, "Canlı ekran" ve "Yayın" düğmeleri (2026-11-06), Yayın Yayın sayfasına götürür,
     // yarışın alt çubuğu yok, uygulamanın çubuğu görünür
-    await okPage("Yarış sayfası", "yarış günü, sporcu seçili", "/athletes/races/r1", "Yayına git", async () => {
+    await okPage("Yarış sayfası", "yarış günü, sporcu seçili", "/athletes/races/r1", "Canlı ekran", async () => {
       await page.waitForTimeout(1500);
       const stay = new URL(page.url()).pathname === "/athletes/races/r1";
-      const go = await page.getByRole("link", { name: "Yayına git" }).first().getAttribute("href").catch(() => "");
+      const go = await page.getByRole("link", { name: "Yayın", exact: true }).first().getAttribute("href").catch(() => "");
       const dock = await page.locator("nav[aria-label='Multimedya sekmeleri']").count();
       const orb = await page.locator("[data-orb]:visible").count();
       if (process.env.YARIS_FOTO) await page.screenshot({ path: process.env.YARIS_FOTO }).catch(() => {});
