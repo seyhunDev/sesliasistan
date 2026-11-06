@@ -626,7 +626,14 @@ export const cleanSources = (list) =>
   (Array.isArray(list) ? list : [])
     .filter((x) => x && SRC_ID.test(x.id || ""))
     .slice(0, 8)
-    .map((x) => ({ id: x.id, name: String(x.name || "").trim().slice(0, 30) || x.id, kind: SRC_KINDS[x.kind] ? x.kind : "camera", url: ytUrl(x.url) }));
+    .map((x) => ({
+      id: x.id,
+      name: String(x.name || "").trim().slice(0, 30) || x.id,
+      kind: SRC_KINDS[x.kind] ? x.kind : "camera",
+      url: ytUrl(x.url),
+      // ytStream: Velora'nın açtığı kalıcı YouTube yayın anahtarının kimliği (anahtarın kendisi burada yazılmaz; lib/youtube.js)
+      ...(/^[\w-]{1,80}$/.test(x.ytStream || "") ? { ytStream: x.ytStream } : {}),
+    }));
 export const cleanStream = (s) => {
   const sources = cleanSources(s?.sources);
   const of = (id) => sources.find((x) => x.id === id)?.url;
