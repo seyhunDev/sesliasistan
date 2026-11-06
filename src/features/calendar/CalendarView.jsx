@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ImpTag } from "@/components/ui/ImpTag";
 import { isImportant } from "@/lib/planImportant";
 import { Icon } from "@/components/ui/Icon";
@@ -32,7 +32,8 @@ const shortDay = (s) => `${new Date(`${s}T00:00`).toLocaleDateString("tr-TR", { 
 // Takvim (yeni tasarım, 2026-11-03): lacivert üstte ay adı, önceki/sonraki ay, Bugün ve ders programı; ay ızgarası lacivertte
 // (planlar ve görevler noktayla). Altta seçili günün listesi tek kartta: solda saat, ad, alt satır, sağda durum.
 // Fitness: ana sayfadaki gibi kendi ve sporcuların antrenmanları (fitDays; fitOthers zaten yüklü, ek okuma yok), turuncu nokta ve satır.
-export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
+export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat = false }) {
+  const light = embedded; // ana sayfada açık zeminde (hava alanıyla bütünleşik); Takvim sayfası lacivert kalır
   const { plans: all, fitOthers, members, myUid, tasks, toggleTask, birthdays, lessons } = useData();
   const plans = useMemo(() => all.filter((p) => !isFit(p)), [all]);
   const fit = useMemo(() => fitDays(all, fitOthers || [], members, myUid), [all, fitOthers, members, myUid]);
@@ -63,7 +64,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
     // Geniş ekranda hücrede görünen adlar (iPad ve Mac; telefonda gizli): doğum günü, plan (saatle), açık görev
     const evs = [
       ...b.map((x) => ({ k: `b${x.id}`, t: x.name, c: "bday" })),
-      ...p.map((x) => ({ k: `p${x.id}`, h: x.time && (x.endDate || x.date) === x.date ? x.time : "", t: x.title, c: "plan" })),
+      ...p.map((x) => ({ k: `p${x.id}`, h: x.time && (x.endDate || x.date) === x.date ? x.time : "", t: x.title, c: "plan", g: /antrenman/i.test(x.cat || "") ? "g" : /yarış|toplantı/i.test(x.cat || "") ? "bl" : "or" })),
       ...open.map((x) => ({ k: `t${x.id}`, t: x.title, c: day < today ? "late" : "task" })),
     ];
     return { plans: p.length, fit: fitDates.has(day), tasks: open.length, late: day < today && open.length > 0, bday: b.length, evs };
@@ -71,8 +72,16 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
   // Ana sayfada (embedded) yan gün paneli kapalı başlar; güne dokununca açılır, aynı güne tekrar dokununca ya da Kapat ile kapanır
   const [dayOpen, setDayOpen] = useState(false);
   const [addMenu, setAddMenu] = useState(false);
+  // Menü dışına dokununca kapanır (ekran kaplayan örtü yerine belge dinleyicisi: ana sayfada takvim yığın bağlamında, örtü başka sütunların altında kalıyordu)
+  const addRef = useRef(null);
+  useEffect(() => {
+    if (!addMenu) return;
+    const off = (e) => addRef.current && !addRef.current.contains(e.target) && setAddMenu(false);
+    document.addEventListener("pointerdown", off);
+    return () => document.removeEventListener("pointerdown", off);
+  }, [addMenu]);
   const pick = (day) => {
-    if (embedded) setDayOpen(day === sel ? !dayOpen : true);
+    if (embedded && !flat) setDayOpen(day === sel ? !dayOpen : true);
     setSel(day);
     setBrowse(null);
   };
@@ -90,13 +99,13 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
   const sub = "block truncate text-[0.8125rem] text-mut";
 
   return (
-    <Root embedded={embedded} open={dayOpen}>
-      <section className={embedded ? "cal-top ck px-3.5 pb-3 pt-3" : "cal-top ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]"} aria-label="Takvim">
+    <Root embedded={embedded} open={dayOpen} flat={flat}>
+      <section className={embedded ? "cal-top px-3.5 pb-3 pt-3" : "cal-top ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]"} aria-label="Takvim">
         <header className="flex items-center gap-2">
           {!embedded && <BackButton href="/" />}
           <h1 className={`min-w-0 flex-1 truncate font-bold capitalize tracking-[-.02em] ${embedded ? "text-[1.0625rem]" : "text-[1.375rem]"}`}>{monthLabel(month)}</h1>
           {(sel !== today || month !== today.slice(0, 7)) && (
-            <button type="button" onClick={() => pick(today)} data-press className="ck-btn shrink-0">
+            <button type="button" onClick={() => pick(today)} data-press className={light ? "btn btn-secondary btn-sm shrink-0" : "ck-btn shrink-0"}>
               Bugün
             </button>
           )}
@@ -110,13 +119,12 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
             </button>
           </span>
           {embedded && (
-            <span className="relative">
+            <span className="relative" ref={addRef}>
               <button type="button" onClick={() => setAddMenu((v) => !v)} aria-expanded={addMenu} aria-haspopup="menu" data-press className="btn btn-primary btn-sm shrink-0">
                 + Ekle
               </button>
               {addMenu && (
                 <>
-                  <button type="button" aria-label="Menüyü kapat" onClick={() => setAddMenu(false)} className="fixed inset-0 z-40 cursor-default" />
                   <div role="menu" className="absolute right-0 top-full z-50 mt-1.5 w-40 overflow-hidden rounded-2xl border border-line bg-card py-1 text-fg shadow-lg">
                     {[
                       ["Plan", () => openAdd({ type: "plan", date: sel })],
@@ -142,7 +150,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
           <button type="button" onClick={() => setMonth((m) => shift(m, -1))} aria-label="Önceki ay" data-press className="btn btn-round size-9">
             <Icon name="back" className="size-4" />
           </button>
-          <div className="grid flex-1 grid-cols-7 px-1 text-center text-[0.6875rem] font-semibold text-white/50">
+          <div className={`grid flex-1 grid-cols-7 px-1 text-center text-[0.6875rem] font-semibold ${light ? "text-mut" : "text-white/50"}`}>
             {WEEK.map((w) => (
               <span key={w}>{w}</span>
             ))}
@@ -169,26 +177,28 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
               >
                 <span
                   className={`cal-num grid size-9 place-items-center rounded-full text-[0.9375rem] font-semibold tabular-nums ${
-                    on ? "bg-white text-deep" : isToday ? "text-white ring-1 ring-white/60" : inMonth ? "text-white" : "text-white/30"
+                    light
+                      ? on ? "bg-acc text-white" : isToday ? "text-acc ring-1 ring-acc" : inMonth ? "text-fg" : "text-mut/50"
+                      : on ? "bg-white text-deep" : isToday ? "text-white ring-1 ring-white/60" : inMonth ? "text-white" : "text-white/30"
                   }`}
                 >
                   {+day.slice(8)}
                 </span>
                 <span className={`cal-dots mt-0.5 flex h-1.5 gap-0.5 ${inMonth ? "" : "opacity-40"}`}>
-                  {m.plans > 0 && <i className="size-1.5 rounded-full bg-white" />}
+                  {m.plans > 0 && <i className={`size-1.5 rounded-full ${light ? "bg-acc" : "bg-white"}`} />}
                   {m.fit && <i className="tone-fit tone-bar size-1.5 rounded-full" />}
                   {m.tasks > 0 && <i className={`size-1.5 rounded-full ${m.late ? "bg-rec" : "bg-amber-600"}`} />}
                   {m.bday > 0 && <i className="size-1.5 rounded-full bg-pink-500" />}
                 </span>
                 {m.evs.length > 0 && (
                   <span className="cal-evs" aria-hidden>
-                    {m.evs.slice(0, 4).map((e) => (
-                      <i key={e.k} data-c={e.c}>
+                    {m.evs.slice(0, embedded ? 2 : 4).map((e) => (
+                      <i key={e.k} data-c={e.c} data-k={e.g}>
                         {e.h && <b>{e.h} </b>}
                         {e.t}
                       </i>
                     ))}
-                    {m.evs.length > 4 && <i data-c="more">+{m.evs.length - 4}</i>}
+                    {m.evs.length > (embedded ? 2 : 4) && <i data-c="more">+{m.evs.length - (embedded ? 2 : 4)} daha</i>}
                   </span>
                 )}
               </button>
@@ -204,7 +214,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
         </div>
       </section>
 
-      {(!embedded || dayOpen) && (
+      {(!embedded || flat || dayOpen) && (
       <div className={embedded ? "cal-body relative space-y-4" : "cal-body relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5"}>
         {/* Seçili gün */}
         <section>
@@ -212,7 +222,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
             <div className="min-w-0 flex-1">
               <ListHead title={[when, shortDay(sel)].filter(Boolean).join(" · ")} count={count} />
             </div>
-            {embedded && (
+            {embedded && !flat && (
               <button type="button" onClick={() => setDayOpen(false)} aria-label="Günü kapat" data-press className="btn btn-round size-8 shrink-0">
                 <Icon name="x" className="size-4" />
               </button>
@@ -343,9 +353,9 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false }) {
 }
 
 // Takvim sayfasında <main>, ana sayfada (embedded) kartın içinde ay + gün listesi (globals.css .cal-emb)
-function Root({ embedded, open, children }) {
+function Root({ embedded, open, flat, children }) {
   return embedded ? (
-    <div className="cal-emb" data-open={open || undefined}>{children}</div>
+    <div className={flat ? "cal-emb cal-flatv" : "cal-emb"} data-open={open || undefined}>{children}</div>
   ) : (
     <main className="cal-wide mx-auto max-w-[30rem] px-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">{children}</main>
   );
