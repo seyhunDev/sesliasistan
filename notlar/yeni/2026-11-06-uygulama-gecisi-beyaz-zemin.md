@@ -1,0 +1,8 @@
+## Nerede kaldım
+
+- iPhone/iPad/Mac uygulamasında (Capacitor) uygulamalar arası geçişte bir an beyaz ekran (Seyhun 2026-11-06; üçünde de iOS uygulamasını kullanıyor). Sebep (tahmin, cihazda denenmedi): sistem arkadaki uygulamanın görüntüsünü atınca dönüşte sayfa yeniden çizilene kadar web görünümünün kendi zemini görünüyor; zemin krem/beyazdı. Artık lacivert #0b1a33: `mobil/capacitor.config.json` ios.backgroundColor ve `VeloraViewController.swift` capacitorDidLoad (view, webView isOpaque=false, scrollView).
+- Xcode ile yeniden kurulum gerekir (iPhone, iPad, Mac).
+
+## Sıradaki işler
+
+- Yeniden kurulumdan sonra hâlâ beyaz görülürse: LaunchScreen.storyboard zemini (systemBackground) da lacivert yapılabilir.

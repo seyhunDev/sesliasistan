@@ -15,6 +15,16 @@ class VeloraViewController: CAPBridgeViewController {
 
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(VeloraPlugin())
+        // Uygulamalar arası geçişte beyaz ekran (Seyhun 2026-11-06, iPhone, iPad ve Mac): sistem arkadaki uygulamanın görüntüsünü
+        // bellekten atınca, dönüşte sayfa yeniden çizilene kadar web görünümünün kendi zemini görünüyordu (beyaz). Zemin Velora
+        // laciverti: o kısa anda beyaz yerine lacivert görünür (ana sayfa ve açılış ekranıyla aynı renk).
+        let lacivert = UIColor(red: 11 / 255, green: 26 / 255, blue: 51 / 255, alpha: 1)
+        view.backgroundColor = lacivert
+        if let w = webView {
+            w.isOpaque = false
+            w.backgroundColor = lacivert
+            w.scrollView.backgroundColor = lacivert
+        }
         if let w = webView {
             let k = GezinmeKalkani(w.navigationDelegate)
             gezinme = k
