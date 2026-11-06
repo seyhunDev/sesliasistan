@@ -1,5 +1,6 @@
 import { Barlow, Barlow_Condensed } from "next/font/google";
 import { InAppBack } from "@/features/liveScreen/InAppBack";
+import { CanliUpdate } from "@/features/liveScreen/CanliUpdate";
 
 // Herkese açık canlı yarış sayfalarının yazısı (Seyhun 2026-11-02 "profesyonel yelken yarışı yayını gibi, rastgele yazı karakteri olmasın"):
 // spor yayınlarının dar, kalın yazısı. Başlık, sayı ve etiketler Barlow Condensed; satırlar Barlow. Derlemede indirilir, uygulamayla sunulur.
@@ -11,6 +12,7 @@ export default function CanliLayout({ children }) {
     <>
       <div className={`canli-root ${body.variable} ${head.variable}`}>{children}</div>
       <InAppBack />
+      <CanliUpdate />
     </>
   );
 }

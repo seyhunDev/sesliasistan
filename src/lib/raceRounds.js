@@ -371,7 +371,11 @@ export function cleanScreen(s) {
   // caption: ekranın altındaki yazı (Seyhun 2026-11-02 "videonun ne olduğunu yazabileceğimiz bir alan, altta olimpiyat yayını gibi")
   // src: Yayın › Video'daki canlı kaynaklardan biri (stream.sources id; Seyhun 2026-11-02 "Drone 1, 2, 3, telefon; seçip ekrana alayım")
   // zoom: tekne ekranının yakınlığı (0 start … 100 bütün parkur; Seyhun 2026-11-03 "yönetimden ayarlayabileyim")
-  return { kind, src: kind === "src" && SRC_ID.test(s?.src || "") ? s.src : "", mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, caption: String(s?.caption || "").trim().slice(0, 80), at: typeof s?.at === "string" ? s.at.slice(0, 30) : "", ...(kind === "boats" ? { zoom: Number.isFinite(+s?.zoom) && s?.zoom !== null && s?.zoom !== "" ? Math.max(0, Math.min(100, Math.round(+s.zoom))) : 100, grp: boatGrp(s?.grp) } : {}) };
+  // off: "Yayından çıkar" / "Ekrandan kaldır" hangi evrede basıldıysa (Seyhun 2026-11-06 "anında kesilsin"): o evrenin atanmış görüntüsü
+  // geri getirmez (evreScreen); yeni bir görüntü verilince ya da evre değişince kalkar
+  // her zaman yazılır (belge merge ile yazıldığından eski off kalmasın)
+  const off = !kind && EVRES.includes(s?.off) ? s.off : "";
+  return { off, kind, src: kind === "src" && SRC_ID.test(s?.src || "") ? s.src : "", mid: kind === "rec" && /^[\w-]{1,40}$/.test(s?.mid || "") ? s.mid : "", loop: !!s?.loop, pause: !!kind && !!s?.pause, caption: String(s?.caption || "").trim().slice(0, 80), at: typeof s?.at === "string" ? s.at.slice(0, 30) : "", ...(kind === "boats" ? { zoom: Number.isFinite(+s?.zoom) && s?.zoom !== null && s?.zoom !== "" ? Math.max(0, Math.min(100, Math.round(+s.zoom))) : 100, grp: boatGrp(s?.grp) } : {}) };
 }
 // Canlı konumda gösterilen grup (Seyhun 2026-11-04 "sarı grup tekneler, mavi grup tekneler"): boşsa ekrandaki yarışın grubu
 const boatGrp = (g) => String(g || "").trim().slice(0, 20);
@@ -542,7 +546,7 @@ export function showPlan({ show, evre, has, now, dwell = {} }) {
 export function evreScreen(screen, show, evre) {
   const v = cleanCourseShow(show).ev[evre]?.vid;
   const s = screen || { kind: "" };
-  if (!v) return s;
+  if (!v || (!s.kind && s.off === evre)) return s;
   return { ...s, kind: v.kind, src: v.src || "", mid: v.mid || "", loop: v.kind === "boats" || v.kind === "rec" ? true : !!s.loop, pause: !!v.kind && !!s.pause, ...boatsOf(v) };
 }
 // Öğenin canlı ekrandaki çizimi (sahne.css sınıfları): Görüntü 02 (kayıtsa 04 Tekrar), Süre/Program/Rüzgâr 01, Sıralama 03, Parkur 05, Sıradaki 06

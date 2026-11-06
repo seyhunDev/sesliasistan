@@ -1235,3 +1235,14 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
   .sc-vb.bar > .sc-vp.src, .sc-vb.bar > .sc-vp.masa { top: calc(5.8em + env(safe-area-inset-top)); }
   .sc-vb.bar > .sc-vp.src { max-height: calc(100dvh - 6.8em - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
 }
+
+/* Uygulama içinde Canlı: logonun başında kırmızı yanıp sönen nokta (Seyhun 2026-11-06 "canlı yazısını kaldır; logonun yerini oynatma") */
+.sc .sc-tlogo { position: relative; }
+.sc-tdot { position: absolute; top: 1.2em; right: calc(100% + 0.35em); width: 0.7em; height: 0.7em; border-radius: 50%; background: #ff3b4e; transform: translateY(-50%); box-shadow: 0 0 0 0 rgba(255, 59, 78, 0.55); animation: sc-beat 1.8s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .sc-tdot { animation: none; } }
+
+/* kendi ekranımın varsayılan arkası bulanık fotoğraf; herkese açık ekranda canlı = logonun dairesi beyazdan kırmızıya, yine beyaza (Seyhun 2026-11-06) */
+.lv-sea.blur .lv-photo { filter: blur(18px) brightness(0.85); transform: scale(1.08); }
+.sc-vl.live circle { animation: sc-vlive 2.6s ease-in-out infinite; }
+@keyframes sc-vlive { 0%, 100% { fill: #fff; } 50% { fill: #ff3b4e; } }
+@media (prefers-reduced-motion: reduce) { .sc-vl.live circle { animation: none; fill: #ff3b4e; } }

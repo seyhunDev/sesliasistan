@@ -497,9 +497,10 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
             <div className="lms-cs">{vids.map((m) => chip(isOn({ kind: "rec", mid: m.id }), recName(m, live.starts), () => show({ kind: "rec", mid: m.id, loop: true }), "", m.id))}</div>
           </>
         ) : null}
-        {screen.kind ? (
+        {screen.kind || (pre.ev[evNow]?.vid?.kind && screen.off !== evNow) ? (
           <div className="lms-row">
-            <button type="button" className="lms-b red" onClick={() => show({ kind: "" })}>
+            {/* anında keser: evrenin atanmış görüntüsü de bu evrede geri gelmez (raceRounds cleanScreen off) */}
+            <button type="button" className="lms-b red" onClick={() => show({ kind: "", off: evNow })}>
               Ekrandan kaldır
             </button>
           </div>
