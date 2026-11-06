@@ -34,6 +34,7 @@ const shortDay = (s) => `${new Date(`${s}T00:00`).toLocaleDateString("tr-TR", { 
 // Fitness: ana sayfadaki gibi kendi ve sporcuların antrenmanları (fitDays; fitOthers zaten yüklü, ek okuma yok), turuncu nokta ve satır.
 export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat = false }) {
   const light = embedded; // ana sayfada açık zeminde (hava alanıyla bütünleşik); Takvim sayfası lacivert kalır
+  const evMax = embedded ? (flat ? 2 : 3) : 4; // ana sayfa iPad hücresinde en çok 3 plan, fazlası "+N daha"
   const { plans: all, fitOthers, members, myUid, tasks, toggleTask, birthdays, lessons } = useData();
   const plans = useMemo(() => all.filter((p) => !isFit(p)), [all]);
   const fit = useMemo(() => fitDays(all, fitOthers || [], members, myUid), [all, fitOthers, members, myUid]);
@@ -192,13 +193,13 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
                 </span>
                 {m.evs.length > 0 && (
                   <span className="cal-evs" aria-hidden>
-                    {m.evs.slice(0, embedded ? 2 : 4).map((e) => (
+                    {m.evs.slice(0, evMax).map((e) => (
                       <i key={e.k} data-c={e.c} data-k={e.g}>
                         {e.h && <b>{e.h} </b>}
                         {e.t}
                       </i>
                     ))}
-                    {m.evs.length > (embedded ? 2 : 4) && <i data-c="more">+{m.evs.length - (embedded ? 2 : 4)} daha</i>}
+                    {m.evs.length > evMax && <i data-c="more">+{m.evs.length - evMax} daha</i>}
                   </span>
                 )}
               </button>

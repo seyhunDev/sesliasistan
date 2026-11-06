@@ -14,6 +14,7 @@ import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { DayNav } from "./DayNav";
 import { HourTable } from "./HourTable";
+import { WindRibbon } from "./WindRibbon";
 import { nextDay } from "./hourCols";
 import { todayStr } from "@/lib/utils/format";
 import { dayCode, dayHours, dirDeg, getPlace, kn, nowOf, placeLabel, setPlace, sky, windName, compareLinks } from "./weather";
@@ -92,6 +93,7 @@ export function WeatherTop({ w, refresh }) {
             </span>
           </div>
         )}
+        {rows.length > 0 && <WindRibbon rows={rows} nowH={isToday ? nowHour() : -1} radar={isToday ? radar : null} h={104} className="mt-4" />}
         <div className="mt-4">
           <DayNav sel={sel} days={navDays} today={today} onStep={(k) => setSel(navDays[navDays.indexOf(sel) + k] || sel)} />
         </div>

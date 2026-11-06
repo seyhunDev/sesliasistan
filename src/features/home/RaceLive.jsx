@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { loadAthletes } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
@@ -87,13 +86,14 @@ function Line({ id, orgId, title }) {
   if (over) return null;
   const sub = race ? raceLine({ r: race, today: todayStr(), now: clock, starts: live.starts, athletes: kids, timer }) : timer;
   return (
-    <Link href={`/athletes/races/${id}`} data-press aria-label="Süren yarış" className="hb-card mt-3 flex items-center gap-3 rounded-[1.125rem] px-3.5 py-2.5">
-      <span className="size-2 shrink-0 rounded-full bg-[#e5484d] shadow-[0_0_0_4px_rgba(229,72,77,.22)]" />
-      <span className="min-w-0 flex-1">
-        <b className="block truncate text-[0.9375rem] font-semibold">{title}</b>
-        {sub && <small className="block truncate text-[0.8125rem] tabular-nums text-mut">{sub}</small>}
+    <Link href={`/athletes/races/${id}`} data-press aria-label="Süren yarış" className="mt-3 grid gap-0.5 rounded-[1.125rem] bg-[#0b1a33] px-3.5 py-3 text-white">
+      <span className="flex items-center gap-2 text-[0.75rem] font-bold tracking-[.04em] text-[#ff8f8f]">
+        <i className="size-2 rounded-full bg-[#ff5252] shadow-[0_0_0_4px_rgba(255,82,82,.25)]" />
+        SÜREN YARIŞ
+        <span className="ml-auto rounded-full bg-white/15 px-2.5 py-0.5 text-[0.75rem] font-semibold tracking-normal text-white">Aç ›</span>
       </span>
-      <Icon name="chev" className="size-4 shrink-0 text-mut" />
+      <b className="block truncate text-[1.0625rem] font-semibold">{title}</b>
+      {sub && <small className="block truncate text-[0.8125rem] tabular-nums text-white/80">{sub}</small>}
     </Link>
   );
 }
