@@ -1184,7 +1184,7 @@ main.rz .rz-open > .mb-2.mt-6:first-child { display: none; }
 .rz-dot { width: .375rem; height: .375rem; flex-shrink: 0; border-radius: 50%; background: var(--warn); }
 .rz-new { flex-shrink: 0; border-radius: 999px; padding: 0 .3125rem; background: var(--acc); color: #fff; font-size: .6875rem; font-weight: 700; line-height: 1.125rem; }
 /* Eski parçalar (kart, bölüm başlığı) yarış sayfasında düz: kart zemini, gölgesi ve köşesi yok, satırlar ince çizgiyle, başlık küçük gri */
-main.rz .bg-card.rounded-\[1\.25rem\] { background: transparent; box-shadow: none; border-radius: 0; margin-left: -1rem; margin-right: -1rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+main.rz .bg-card.rounded-\[1\.25rem\] { background: transparent; box-shadow: none; border-radius: 0; border-left: 0; border-right: 0; margin-left: -1rem; margin-right: -1rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 main.rz .tracking-\[\.08em\] { display: block; letter-spacing: 0; font-weight: 600; font-size: .8125rem; text-transform: lowercase; }
 main.rz .tracking-\[\.08em\]::first-letter { text-transform: uppercase; }
 .rz-soft { background: var(--accbg); color: var(--acc); border-color: transparent; box-shadow: none; }
@@ -1193,3 +1193,4 @@ main.rz [data-pagebar] { background: linear-gradient(to top, var(--card) 60%, tr
   body[data-side] main.rz.split > .rz-top { border-right: 1px solid var(--line); }
 }
 .rz-h { margin: 1.5rem 0 .25rem; font-size: .8125rem; font-weight: 600; color: var(--mut); }
+main.rz .bg-card.rounded-\[1\.25rem\].px-3\.5 { padding-left: 1rem; padding-right: 1rem; }
