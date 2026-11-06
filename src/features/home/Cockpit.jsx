@@ -14,6 +14,8 @@ import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/li
 import { initials, todayStr } from "@/lib/utils/format";
 import { HourTable } from "@/features/weather/HourTable";
 import { NowRain } from "@/features/weather/NowRain";
+import { insightFacts, weatherInsight } from "@/features/weather/insight";
+import { InsightCard, InsightChart, useWeatherBrief } from "@/features/weather/WeatherInsight";
 import { useRainRadar } from "@/features/weather/useRainRadar";
 import { radarNow, radarRows } from "@/features/weather/rainLine";
 import { CalendarView } from "@/features/calendar/CalendarView";
@@ -53,6 +55,10 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide 
   // Hissedilen ve günün yağışı: seçili günün saatlik satırlarından (bugünse şimdiki saat, değilse öğle)
   const cur = rows?.find((h) => h.hh === (isToday ? String(now.getHours()).padStart(2, "0") : "13"));
   const mmDay = rows ? rows.reduce((a, h) => a + (h.mm || 0), 0) : 0;
+  // Önemli kart + küçük gidiş grafiği + yapay zeka cümlesi (insight.js; Seyhun 2026-11-06 "önemli bir şey varsa göster, sakinse küçük grafik")
+  const ins = weatherInsight({ rows, nowH: isToday ? now.getHours() : -1, radar: isToday ? radar : null, hm: (ms) => new Date(ms).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) });
+  const brief = useWeatherBrief(isToday ? insightFacts(ins, home.name) : null);
+  const line = isToday ? brief : ins?.line;
   const dateLabel = cap(new Date(`${date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" }));
 
   return (
@@ -105,11 +111,18 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide 
               <span className="block py-2 text-[0.875rem] text-white/80">{err ? "Hava durumu alınamadı · dokun, yenile" : w ? "Bu gün için hava tahmini yok" : "Hava yükleniyor…"}</span>
             )}
           </button>
+          {n && line && <p className={`mt-2 text-[0.9375rem] leading-snug text-white/90 ${wide ? "line-clamp-1" : ""}`} aria-label="Hava özeti">{line}</p>}
           {rows?.length > 0 && (
             <>
               <div className={`mt-2.5 overflow-hidden rounded-[1.25rem] p-3 ${wide ? "bg-[#0b1a33]/40" : "bg-[#0b1a33]"}`}>
+                {ins && (
+                  <div className={wide ? "mb-2 space-y-1.5" : "mb-3 space-y-2.5"}>
+                    <InsightCard ins={ins} />
+                    <InsightChart ins={ins} compact={wide} />
+                  </div>
+                )}
                 <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} flat />
-                {isToday && <NowRain place={home} rows={fcRows} radar={radar} />}
+                {isToday && !(ins?.kind === "rain" && ins.sub?.startsWith("Burada")) && <NowRain place={home} rows={fcRows} radar={radar} />}
               </div>
             </>
           )}
