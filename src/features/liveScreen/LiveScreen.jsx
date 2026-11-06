@@ -1504,15 +1504,37 @@ const istHour = (ms) => {
   const d = new Date(ms + 3 * 3600e3);
   return { day: d.toISOString().slice(0, 10), h: d.getUTCHours() + d.getUTCMinutes() / 60 };
 };
+// Tahminde önemli bir şey (Seyhun 2026-11-06 "ana sayfadaki gibi önemli bir şey varsa"): önümüzdeki 4 saatte rüzgâr 5 kn artar ya da azalırsa,
+// 18 kn'u geçerse, sağanak 25 kn'u bulursa ya da yön 25° dönerse tek satır; yoksa tahmin hiç gösterilmez. Satıra dokununca grafik açılır.
+function windTip(rows, c) {
+  const nx = rows.slice(1, 5);
+  if (!nx.length) return "";
+  const base = c?.kn ?? rows[0].wind;
+  const at = (r) => `${r.tm ? "Yarın " : ""}${r.hh}:00`;
+  const up = nx.find((r) => r.wind >= base + 5 || (r.wind >= 18 && base < 18));
+  if (up) return `${at(up)} rüzgâr ${up.wind} kn'a çıkıyor`;
+  const gu = nx.find((r) => r.gust != null && r.gust >= 25 && !(c?.gust >= 25));
+  if (gu) return `${at(gu)} sağanak ${gu.gust} kn`;
+  const d0 = c?.dir ?? rows[0].dir;
+  const tn = d0 == null ? null : nx.find((r) => r.dir != null && Math.abs(((r.dir - d0 + 540) % 360) - 180) >= 25);
+  if (tn) {
+    const d = ((tn.dir - d0 + 540) % 360) - 180;
+    return `${at(tn)} rüzgâr ${Math.abs(Math.round(d))}° ${d > 0 ? "sağa" : "sola"} dönüyor (${dirShort(tn.dir)} ${Math.round(tn.dir)}°)`;
+  }
+  const dn = base >= 8 ? nx.find((r) => r.wind <= base - 5) : null;
+  if (dn) return `${at(dn)} rüzgâr ${dn.wind} kn'a düşüyor`;
+  return "";
+}
 function ScWindDay({ data, now }) {
   const [open, setOpen] = useState(false);
+  const tip = windTip(windAhead(data, now), curWind(data, null, true, now));
   const today = istHour(now).day;
   const fc = (data.forecast?.rows || []).filter((r) => r.wind != null).map((r) => ({ h: +r.hh, v: +r.wind }));
   const st = (data.forecast?.obs || []).filter((r) => r.wind != null && +r.hh <= istHour(now).h).map((r) => ({ h: +r.hh, v: +r.wind }));
   const me = [...(data.wind || []), ...(data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, kn: o.kn }))]
     .filter((x) => x.kn != null && x.at && istHour(Date.parse(x.at)).day === today)
     .map((x) => ({ h: istHour(Date.parse(x.at)).h, v: +x.kn }));
-  if (fc.length < 2 && st.length < 2) return null;
+  if (!tip || (fc.length < 2 && st.length < 2)) return null;
   const all = [...fc, ...st, ...me];
   const h0 = Math.floor(Math.min(...all.map((x) => x.h)));
   const h1 = Math.max(h0 + 1, Math.ceil(Math.max(...all.map((x) => x.h))));
@@ -1526,7 +1548,8 @@ function ScWindDay({ data, now }) {
   return (
     <div className={`sc-wday${open ? " on" : ""}`}>
       <button type="button" className="sc-wtg" aria-expanded={open} onClick={() => setOpen(!open)}>
-        Beklenen ve gerçekleşen
+        <i>Tahmin</i>
+        <span>{tip}</span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       {open ? (
@@ -1581,22 +1604,52 @@ function ScWindDay({ data, now }) {
     </div>
   );
 }
-// Parkur ve rüzgâr panelinin üstü (Seyhun 2026-11-06 "şu anki ölçümleri asıl göstermemiz lazım"): şimdi esen, büyük; nereden ölçüldüğü
+// Parkur ve rüzgâr panelinin üstü (Seyhun 2026-11-06 "şu anki ölçümleri asıl göstermemiz lazım"; "önemli bilgiler daha net"): şimdi esen, büyük;
+// yanında parkur sayıları bir kez (eksen, rüzgârın eksenden farkı, avantajlı uç); çizimde bu yazılar yok
 function ScWindNow({ data, now }) {
   const c = curWind(data, null, true, now);
-  if (!c) return null;
+  const ax = axisInfo(data);
+  const g = ax ? null : guessAxis(data);
+  const deg = ax ? ax.deg : g != null ? Math.round(g) : null;
+  let bias = null;
+  try {
+    bias = lineBias(cleanCourse(data.course || {}));
+  } catch {
+    bias = null;
+  }
+  const sh = ax?.sh;
+  const fx = [
+    deg != null ? ["Eksen", `${deg}°`] : null,
+    sh != null ? ["Fark", Math.abs(sh) < 1 ? "0°" : `${Math.abs(sh)}° ${sh > 0 ? "sağa" : "sola"}`] : null,
+    bias?.end ? [bias.end === "pin" ? "Pin" : "Komite", `+${Math.round(bias.deg)}°`] : null,
+  ].filter(Boolean);
+  if (!c && !fx.length) return null;
   return (
-    <div className={`sc-wnow${c.man ? " man" : ""}`}>
-      <span className="ar">{gArrow(c.dir)}</span>
-      <b>
-        {c.kn}
-        <small>kn</small>
-      </b>
-      <span className="tx">
-        <strong>{dirText(c)}</strong>
-        {gustText(c) ? <em>{cap(gustText(c))}</em> : null}
-        <small>{c.by}</small>
-      </span>
+    <div className={`sc-wnow${c?.man ? " man" : ""}`}>
+      {c ? (
+        <>
+          <span className="ar">{gArrow(c.dir)}</span>
+          <b>
+            {c.kn}
+            <small>kn</small>
+          </b>
+          <span className="tx">
+            <strong>{dirText(c)}</strong>
+            {gustText(c) ? <em>{cap(gustText(c))}</em> : null}
+            <small>{c.by}</small>
+          </span>
+        </>
+      ) : null}
+      {fx.length ? (
+        <span className="fx">
+          {fx.map(([k, v]) => (
+            <span key={k}>
+              <small>{k}</small>
+              <b>{v}</b>
+            </span>
+          ))}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -2278,7 +2331,8 @@ function Sc04({ data }) {
 function Sc05({ data, sel, mode, now }) {
   const racing = mode === "race";
   const route = sceneRoute(data, racing ? sel : null, true, racing ? "race" : "wait");
-  const svg = courseSvg(data, route, { W: 900, H: 760 });
+  // çizimde eksen / avantaj / rüzgâr yazısı yok, yanındaki kutularda bir kez (Seyhun 2026-11-06 "çok fazla tekrar")
+  const svg = courseSvg(data, route, { W: 900, H: 760, bare: true });
   if (!svg) return null;
   const crs = cleanCourse(data.course || {});
   const card = selCard(crs);
@@ -2333,11 +2387,34 @@ function Sc05({ data, sel, mode, now }) {
 }
 // Telefon/tablet Parkur (Seyhun 2026-11-05 "rüzgâr gibi yukarıdan açılsın; rota, eksen daha iyi gösterilsin"): kartın altında çizim, altında
 // rota adımları (Start › 1 › 2 › Finiş) ve iki kutu: eksen (derece + rüzgârın farkı), hat avantajı. Rüzgâr kartta zaten yazıyor, tekrar yok.
-function ScCourseDrop({ data, sel, mode }) {
+// Büyük parkur çizimi: sahnenin en-boyu panelin en-boyuna göre (dikey telefonda uzun, yatay iPad'de geniş), parkur alanı doldurur
+function ScCourseBig({ data, route }) {
+  const ref = useRef(null);
+  const [ar, setAr] = useState(0.85);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => {
+      const { width: w, height: h } = e.contentRect;
+      if (w > 0 && h > 0) setAr(Math.round(Math.min(1.7, Math.max(0.5, h / w)) * 20) / 20);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const svg = courseSvg(data, route, { W: 900, H: Math.round(900 * ar), bare: true });
+  return (
+    <div className="sc-ckx crs bare">
+      <div ref={ref} className="sc-cxd" dangerouslySetInnerHTML={{ __html: svg }} />
+    </div>
+  );
+}
+function ScCourseDrop({ data, sel, mode, bare = false }) {
   const racing = mode === "race";
   const route = sceneRoute(data, racing ? sel : null, true, racing ? "race" : "wait");
-  const svg = courseSvg(data, route, { W: 900, H: 760 });
+  const svg = courseSvg(data, route, { W: 900, H: 760, bare });
   if (!svg) return null;
+  // Parkur ve rüzgâr paneli (Seyhun 2026-11-06 "çok fazla tekrar; bir kere parkur büyük"): sayılar üstteki rüzgâr kartında, burada yalnız çizim
+  if (bare) return <ScCourseBig data={data} route={route} />;
   const crs = cleanCourse(data.course || {});
   const card = selCard(crs);
   const ty = CARD_TYPES[card?.type] || "";
@@ -2500,6 +2577,12 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   ].filter(Boolean);
   // Ekranda penceresinin sekmeleri (Seyhun 2026-11-06 "ekranda sekmesi karman çorman, daha organize"): Arka plan · Yayınlar · Konum · Videolarım
   const [sTab, setSTab] = useState("");
+  // Yayınla aynı anahtarı (Seyhun 2026-11-06 "kocaman butona gerek yok, bir anahtar olsun"): açıkken ekran yayını izler, seçenekler gizli;
+  // kapatınca sekmeler açılır, bir şey seçince kendi seçimin ekrana gelir. Kendi seçimin varken anahtar kapalı; açınca yayına döner.
+  const synced = !cam && !myVid;
+  const [free, setFree] = useState(false);
+  const sameOn = synced && !free;
+  const flip = () => (sameOn ? setFree(true) : (setFree(false), setSTab(""), onCam("")));
   const tabNow = sTab || (cam.startsWith("ph:") ? "bg" : cam.startsWith("b:") ? "pos" : "yy");
   const sTabs = [["bg", "Arka plan"], ["yy", "Yayınlar"], pos.length ? ["pos", "Konum"] : null, vidRef ? ["vid", "Videolarım"] : null].filter(Boolean);
   // kendi fotoğrafım bu cihazda kalır (küçültülmüş JPEG)
@@ -2584,6 +2667,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   };
   const pick = (k) => {
     onCam(k);
+    setFree(false);
     close();
   };
   const panel = (k) =>
@@ -2591,8 +2675,13 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       <>
         <div className="sc-vph">
           <b>Ekranda</b>
-          <small>Yalnız senin ekranın</small>
+          <label className="sc-sw">
+            Yayınla aynı
+            <input type="checkbox" role="switch" checked={sameOn} onChange={flip} />
+            <i aria-hidden="true" />
+          </label>
         </div>
+        {sameOn ? null : (<>
         <div className="sc-vtabs" role="tablist">
           {sTabs.map(([t, n]) => (
             <button key={t} type="button" role="tab" aria-selected={tabNow === t} className={tabNow === t ? "on" : ""} onClick={() => setSTab(t)}>
@@ -2611,9 +2700,6 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
                 <input type="file" accept="image/*" onChange={addPh} hidden />
               </label>
             </div>
-            <button type="button" className={`sc-vt wide${!cam.startsWith("ph:") ? " on" : ""}`} onClick={() => (pick(""), setSTab(""))}>
-              Yayına bağlan
-            </button>
           </>
         ) : tabNow === "pos" ? (
           <>
@@ -2634,9 +2720,6 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
           </>
         ) : (
           <>
-        <button type="button" className={`sc-vt wide${!cam && !myVid ? " on" : ""}`} aria-pressed={!cam && !myVid} onClick={() => pick("")}>
-          Yayınla aynı
-        </button>
         {/* kategoriler (Seyhun 2026-11-06): Canlı yayınlar, Kanalımdaki canlılar, Etraftaki kameralar, YouTube videoları; boş olan görünmez.
             Yöneten için hepsi görünür, başlığın yanındaki + yayın masasının Kaynaklar'ında o kategorinin ekleme kutusunu açar
             (Seyhun 2026-11-06 "yeni video düzeni niye gelmedi") */}
@@ -2675,6 +2758,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
         })}
           </>
         )}
+        </>)}
       </>
     ) : k === "masa" ? (
       // Yayın masası (LiveStart › LiveMasa buraya çizer; yalnız ana hesap, uygulama içinde)
@@ -2702,14 +2786,14 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
     ) : k === "course" ? (
       <>
         <ScWindNow data={data} now={now} />
-        {course ? <ScCourseDrop data={data} sel={sel} mode={mode} /> : <p className="sc-vno">Parkur yok</p>}
+        {course ? <ScCourseDrop data={data} sel={sel} mode={mode} bare /> : <p className="sc-vno">Parkur yok</p>}
+        <ScWindDay data={data} now={now} />
         {/* rüzgâr / eksen / hat ölçümü (Seyhun 2026-11-05 "rüzgâr ekleme parkurda olmalı, adı Ölçüm ekle") */}
         {onWind ? (
           <button type="button" className="sc-vadd" onClick={onWind}>
             + Ölçüm ekle
           </button>
         ) : null}
-        <ScWindDay data={data} now={now} />
       </>
     ) : k === "rank" ? (
       <>
@@ -2771,15 +2855,16 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
           <div className="sc-vtop">
             {picks ? (
               <>
-                <div className={`sc-seg${follow ? " y" : ""}`} role="group" aria-label="Ekranda ne olsun">
+                {/* Benim | Yayın yalnız yayın masası olan hesapta (Yayın'da çubuk masanın düğmeleri olur); başkasında fark yok, gösterilmez */}
+                {masaRef ? <div className={`sc-seg${follow ? " y" : ""}`} role="group" aria-label="Ekranda ne olsun">
                   <button type="button" className={follow ? "" : "on"} aria-pressed={!follow} onClick={() => (onFollow(false), on === "masa" && close())}>
                     Benim
                   </button>
                   <button type="button" className={`yy${follow ? " on" : ""}`} aria-pressed={follow} onClick={() => (onFollow(true), on === "src" && close())}>
                     Yayın
                   </button>
-                </div>
-                {!follow ? (
+                </div> : null}
+                {!follow || !masaRef ? (
                   <>
                     <button type="button" className={`sc-now${on === "src" ? " on" : ""}`} aria-expanded={on === "src"} onClick={() => tap("src")}>
                       <span>Ekranda</span>
@@ -2793,14 +2878,12 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
                       </button>
                     ) : null}
                   </>
-                ) : masaRef ? (
+                ) : (
                   <button type="button" className={`sc-now air${on === "masa" ? " on" : ""}`} aria-expanded={on === "masa"} onClick={() => tap("masa")}>
                     <span>Yayında</span>
                     <b>{airLabel || "Otomatik"}</b>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </button>
-                ) : (
-                  <span className="sc-now yy">İzleyicilerin gördüğü</span>
                 )}
               </>
             ) : null}
