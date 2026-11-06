@@ -9,8 +9,14 @@ const LV = ["", "hafif", "orta", "kuvvetli"];
 export function weatherInsight({ rows, nowH = -1, radar = null, hm }) {
   if (!rows?.length) return null;
   const from = nowH >= 0 ? nowH : 6;
-  const span = rows.filter((r) => +r.hh >= from && +r.hh <= 23);
-  if (span.length < 3) return null;
+  let span = rows.filter((r) => +r.hh >= from && +r.hh <= 23);
+  // Akşam geç saatte (21'den sonra) kalan saat azdır: günün tamamı, sakin gün olarak
+  if (span.length < 3) {
+    const all = rows.filter((r) => +r.hh >= 6 && +r.hh <= 23);
+    if (all.length < 3) return null;
+    const hi = Math.max(...all.map((r) => r.t)), lo = Math.min(...all.map((r) => r.t));
+    return { kind: "calm", title: "", sub: "", chart: chart(all, "temp"), line: `Bugün ${lo}° ile ${hi}° arasında geçti.` };
+  }
   const first = span[0];
 
   // 1) Yağmur
