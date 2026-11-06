@@ -384,7 +384,21 @@ body[data-typing] .masa-bar { bottom: 0 !important; }
   main.masa.board > section.ck { flex: none; margin: 0; padding: calc(0.625rem + env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) 0.625rem max(1.25rem, env(safe-area-inset-left)) !important; border-bottom: 1px solid var(--line); }
   main.masa.board > section.ck > :not(header) { max-width: 44rem; }
   main.masa.board > div.relative { display: none; }
-  .masa-board { flex: 1; min-height: 0; display: grid; }
+  /* Sol menü (Seyhun 2026-11-06 "Yap", project-files/yayin-ipad/sure-ipad-ornek.png): sekmenin adı ve kısa durumu; sağda yalnız seçili sekme */
+  .masa-board { flex: 1; min-height: 0; display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); }
+  .masa-side { display: flex; flex-direction: column; gap: 0.25rem; overflow-y: auto; padding: 1rem 0.625rem calc(1rem + env(safe-area-inset-bottom)) max(0.625rem, env(safe-area-inset-left)); background: #0e1829; border-right: 1px solid var(--line); }
+  .masa-side button { display: flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; min-height: 3.5rem; padding: 0.625rem 0.875rem; border-radius: 0.875rem; text-align: left; color: var(--fg2); }
+  .masa-side button b { font-size: 1rem; font-weight: 700; }
+  .masa-side button small { display: flex; max-width: 100%; align-items: center; gap: 0.3rem; overflow: hidden; font-size: 0.8125rem; font-weight: 600; color: var(--mut); white-space: nowrap; text-overflow: ellipsis; }
+  .masa-side button small i { width: 6px; height: 6px; flex: none; border-radius: 50%; background: #ff453a; }
+  .masa-side button[aria-pressed="true"] { background: var(--accbg); box-shadow: inset 3px 0 0 var(--acc); color: #fff; }
+  .masa-board .masa-pn { padding-top: 1.25rem; }
+  .masa-board .masa-pn > .masa-pnb { max-width: 44rem; }
+  .masa-board .masa-pn.wide > .masa-pnb { max-width: 64rem; }
+  /* Süre iki sütun: solda başlatılacak grubun kartı, sağda yarışta olanlar, Bugün ve bayrak satırı */
+  .masa-board .masa-sure:has(> .sure-hero) { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 1.5rem; row-gap: 1.25rem; align-items: start; }
+  .masa-board .masa-sure:has(> .sure-hero) > * { grid-column: 2; margin-top: 0 !important; }
+  .masa-board .masa-sure > .sure-hero { grid-column: 1; grid-row: 1 / span 6; }
   .masa-col { min-width: 0; overflow-y: auto; overscroll-behavior: contain; }
   .masa-col > :last-child { margin-bottom: env(safe-area-inset-bottom); }
   .masa-col + .masa-col { border-left: 1px solid var(--line); }
@@ -433,7 +447,7 @@ body[data-typing] .masa-bar { bottom: 0 !important; }
    yarış × grup tablosu. iPad ve Mac panosunda içerik telefon genişliğinde kalır (sütun ne kadar geniş olursa olsun) */
 .masa-sure { max-width: 30rem; }
 @media (min-width: 48rem) {
-  .masa-pnb:has(> .masa-sure) > * { max-width: 30rem; }
+  .masa-pnb:has(> .masa-sure:not(:has(> .sure-hero))) > * { max-width: 30rem; }
 }
 .sure-mini { position: relative; overflow: hidden; border-radius: 1rem; background: var(--card); border: 1px solid var(--line); }
 .sure-mini::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; border-radius: 0 3px 3px 0; background: var(--g); }
