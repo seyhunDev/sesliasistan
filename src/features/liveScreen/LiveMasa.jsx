@@ -32,7 +32,7 @@ const sameVid = (a, b) => !!a && !!b && a.kind === b.kind && (a.src || "") === (
 
 // now: ekranın şu anki evresi ve öğesi (LiveScreen scPick): { evre, auto, item, next, left, pin, empty, has }
 export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMsg, addCat = null }) {
-  const [tab, setTab] = useState(addCat ? "src" : "now");
+  const [tab, setTab] = useState(addCat?.tab || "now");
   const [L, setL] = useState(null); // ekran, kaynaklar, evreler (raceLive belgesinin ekran alanları)
   const [evOpen, setEvOpen] = useState("");
   const [selSrc, setSelSrc] = useState("");
@@ -54,11 +54,12 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
   const fail = () => say(FAIL);
   // Ne izleyeyim? › "+ Video" vb.: Kaynaklar sekmesi o kategorinin ekleme kutusuyla açılır
   const addN = addCat?.n || 0;
+  const bare = !!addCat?.bare;
   const [addSeen, setAddSeen] = useState(addN);
   if (addN !== addSeen) {
     setAddSeen(addN);
-    setTab("src");
-    setAdd(addCat.c);
+    setTab(addCat.tab || "src");
+    setAdd(addCat.c || "");
     setSelSrc("");
     setAddUrl("");
     setAddName("");
@@ -518,16 +519,17 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
   return (
     <div className="lms">
       <div className="lms-hd">
-        <b>Yayın masası</b>
+        <b>{bare ? TABS.find(([k]) => k === tab)?.[1] || "Yayın" : "Yayın masası"}</b>
         <small>İzleyiciler bunu görür</small>
       </div>
-      <div className="lms-tabs" role="tablist">
+      {/* çubuktaki Şimdi / Evreler / Kaynaklar / Yazı ile açılınca sekmeler çubukta (bare) */}
+      {bare ? null : <div className="lms-tabs" role="tablist">
         {TABS.map(([k, t]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>
             {t}
           </button>
         ))}
-      </div>
+      </div>}
       {note ? <p className="lms-msg" role="status">{note}</p> : null}
       <div className="lms-bd" key={tab}>
         {body}

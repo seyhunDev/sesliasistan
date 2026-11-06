@@ -12,7 +12,9 @@ import { auth } from "@/lib/firebase/clientApp";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { addCourseMany, addCourseObs, loadCourse, saveCourse, loadRoundsOf, saveCards, savePlanKeys, saveRounds, saveTimer, watchRounds } from "@/features/athletes/raceLiveStore";
-import { loadEntryDoc } from "@/features/rounds/roundsStore";
+import { loadEntryDoc, readEntryFile, saveEntries, saveGroups } from "@/features/rounds/roundsStore";
+import { mergeEntries } from "@/lib/roundSay";
+import { colorOf } from "@/lib/siteDocs";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { VoidSheet, useRaceFlow } from "@/features/raceMedia/useRaceFlow";
 import { audio, raceCancel, raceFinish, raceStart, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
@@ -24,7 +26,7 @@ import { CourseTalk } from "@/features/broadcast/CourseTalk";
 import { writeCourseVoice } from "@/features/broadcast/courseWrite";
 import { PREP_PICK, prepName } from "@/lib/raceRounds";
 import { flagSvg } from "@/lib/raceSignals";
-import { groupColor } from "@/lib/roundScore";
+import { dayGroups, groupColor, groupOf } from "@/lib/roundScore";
 import { todayStr } from "@/lib/utils/format";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { LiveVideos } from "./LiveVideos";
@@ -42,7 +44,7 @@ export default function LiveStart(p) {
 }
 // vidHost: Video panelindeki yer (LiveScreen ScView; yalnız uygulama içinde); videolar oraya çizilir
 // masaHost: Yayın masasının yeri (Yayın modunda "Yayında"ya basınca); give: Benim'de seçileni yayına ver isteği { s, n }
-function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false, masaHost = null, addCat = null, now = null, pos = [], give = null, onGiven }) {
+function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false, masaHost = null, addCat = null, now = null, pos = [], give = null, onGiven, list = null, onListed }) {
   const [orgId, setOrgId] = useState("");
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -84,6 +86,25 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
       () => (onGiven?.(false), setMsg("Kaydedilemedi. İnterneti kontrol et.")),
     );
   }, [orgId, raceId, give, onGiven]);
+  // Tekne ekranında "Yeni liste" (Seyhun 2026-11-06 "listeler açıklanınca tıklarım, her gün değişecek gruplar"): renk ya da final
+  // listesi (PDF, foto, Excel) okunur, bugünün grupları olur (yarış sitesinden gelen belgeyle aynı iş: raceSite applyList), sporcular kayıt listesine eklenir.
+  const listN = useRef(0);
+  useEffect(() => {
+    if (!orgId || !list?.n || listN.current === list.n) return;
+    listN.current = list.n;
+    (async () => {
+      const rows = await readEntryFile(list.file);
+      const color = colorOf(list.file.name || "");
+      const pairs = rows.map((r) => [r.sail, groupOf(r.grp) || color]).filter(([a, g]) => a && g);
+      if (!pairs.length) return onListed?.(rows.length ? "Listede grup yok (dosya adında renk de yok)" : "Liste okunamadı");
+      const cur = await loadEntryDoc(orgId, raceId);
+      await saveGroups(orgId, raceId, today, dayGroups(cur.groups[today] || null, pairs));
+      await saveEntries(orgId, raceId, mergeEntries(cur.rows, rows));
+      const n = {};
+      pairs.forEach(([, g]) => (n[g] = (n[g] || 0) + 1));
+      onListed?.(Object.entries(n).map(([g, k]) => `${g} ${k}`).join(" · "));
+    })().catch(() => onListed?.("Liste okunamadı. İnterneti kontrol et."));
+  }, [orgId, raceId, list, onListed, today]);
   useEffect(() => {
     if (!orgId) return;
     let on = true;
