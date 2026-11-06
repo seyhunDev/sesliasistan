@@ -33,7 +33,8 @@ export function SwipeBack() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!standaloneIos()) return;
+    // iPhone uygulamasının yeni sürümü kenardan geriyi kendisi yapar (önceki sayfanın görüntüsü altta görünür; VeloraViewController)
+    if (!standaloneIos() || navigator.userAgent.includes("VeloraKaydir")) return;
     let g = null; // süren hareket: { x, y, t, axis, el, href, dx }
 
     const page = () => {

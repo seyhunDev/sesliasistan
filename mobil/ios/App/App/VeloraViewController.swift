@@ -24,6 +24,10 @@ class VeloraViewController: CAPBridgeViewController {
             w.isOpaque = false
             w.backgroundColor = lacivert
             w.scrollView.backgroundColor = lacivert
+            // Kenardan kaydırarak geri (Seyhun 2026-11-06 "yana kaydırınca sayfa boş görünüyor; Instagram'da önceki sayfa altta hazır"):
+            // iPhone'un kendi hareketi önceki sayfanın görüntüsünü altta gösterir. Web tarafındaki elle yazılmış kaydırma
+            // (SwipeBack.jsx) bu uygulamada kapanır; tarayıcı kimliğindeki "VeloraKaydir" (capacitor.config.json) bunu söyler.
+            w.allowsBackForwardNavigationGestures = true
         }
         if let w = webView {
             let k = GezinmeKalkani(w.navigationDelegate)

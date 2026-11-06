@@ -6,3 +6,7 @@
 ## Sıradaki işler
 
 - Yeniden kurulumdan sonra hâlâ beyaz görülürse: LaunchScreen.storyboard zemini (systemBackground) da lacivert yapılabilir.
+
+## Asistan
+
+- Kenardan kaydırarak geri (Seyhun 2026-11-06 "yana kaydırınca sayfa boş; Instagram'da önceki sayfa altta hazır"): iPhone uygulamasında WKWebView `allowsBackForwardNavigationGestures = true` (VeloraViewController), iPhone önceki sayfanın görüntüsünü altta gösterir. Tarayıcı kimliğine "VeloraKaydir" eklenir (capacitor.config.json ios.appendUserAgent); bunu gören web tarafı kendi `SwipeBack.jsx` kaydırmasını kapatır (eski kurulumda eskisi çalışmaya devam eder). Öncesinde navStart olmayan popstate = kenardan kaydırma, geçiş animasyonu oynamaz (`navProgress.js` navPopped → data-nav none). Açık pencere varken de kaydırma geri gider (önceki engel yalnız web kaydırmasındaydı).

@@ -5,6 +5,7 @@
 const TAB_ROOTS = ["/", "/calendar", "/messages", "/tasks"];
 
 let phase = "idle";
+let startedAt = 0; // son navStart anı (geri düğmesi mi, iPhone'un kenardan kaydırması mı: navPopped)
 let timer = 0;
 const subs = new Set();
 const set = (p) => {
@@ -32,6 +33,7 @@ export function navStart(href, back = false) {
     if (!p || p === window.location.pathname) return;
     setNavKind(TAB_ROOTS.includes(p) && TAB_ROOTS.includes(window.location.pathname) ? "tab" : "fwd");
   } else setNavKind("back");
+  startedAt = Date.now();
   clearTimeout(timer);
   set("run");
   timer = setTimeout(navDone, 10000); // en kötü durumda kendiliğinden biter
@@ -66,7 +68,9 @@ export function navClick(e) {
 let popped = false;
 export const navPopped = () => {
   popped = true;
-  setNavKind("back");
+  // Geri düğmesi önce navStart'ı çağırır (router.back). Öncesinde navStart yoksa geri iPhone'un kenardan kaydırmasıdır
+  // (VeloraViewController allowsBackForwardNavigationGestures): sayfa zaten kaydı, geçiş animasyonu ikinci kez oynamaz.
+  setNavKind(Date.now() - startedAt < 1000 ? "back" : "none");
 };
 
 // Sayfa geçişi animasyonunun türü (globals.css › SAYFA GEÇİŞİ, app/(app)/template.jsx ViewTransition): <html data-nav>
