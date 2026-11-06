@@ -918,7 +918,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
     ["docs", "Evrak", file || (!checked && r.docsAt && !stale) ? "Hazır" : stale ? "Yenile" : r.docsAt ? "Bu cihazda yok" : "Hazır değil", !stat[1][4]],
     // Yolculuk ve Bütçe tek sekme (Seyhun 2026-11-04 "sadeleştirelim"): sekmeler tek satıra sığar; "budget" açılınca Bütçe'ye kayar
-    ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4] || !stat[3][4]],
+    ["trip", "Yolculuk ve bütçe", trip.length ? "Yazıldı" : "Yok", !stat[2][4] || !stat[3][4]],
   ];
   // Seyhun 2026-10-26 (örnek A, yaris-tasarim/ozet-liste): üstte kalan gün + yanında Multimedya (ayrı, açık renk), altında tek satır
   // kaydırılabilir sekmeler (eksikse sarı nokta). Talimat yüklüyse düğme yok, ⋯ içinde "Talimatı gör".

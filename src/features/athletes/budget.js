@@ -215,11 +215,14 @@ export function howText(l, t) {
   }
   const parts = [tl(l.amount)];
   if (l.qty > 1) parts.push(`${l.qty} ${l.cat === "Konaklama" ? "gece" : "adet"}`);
+  // Ortak kalem: otel odasındaki gibi kaç sporcuya bölündüğü yazar (Seyhun 2026-11-06 "kaç kişi arasında bölüşüldüğünü")
+  const n = l.only?.length || t?.athletes || 0;
+  const tail = l.unit === "shared" ? (!l.club && n ? ` · ${n} sporcuya bölünür` : " (ortak)") : "";
   if (l.only) {
     if (l.unit === "athlete" || l.unit === "person") parts.push(`${l.only.length} sporcu`);
-    return parts.join(" × ") + (l.unit === "shared" ? " (ortak)" : "");
+    return parts.join(" × ") + tail;
   }
   if (l.unit === "athlete") parts.push(`${t.athletes} sporcu`);
   if (l.unit === "person") parts.push(`${t.people} kişi`);
-  return parts.join(" × ") + (l.unit === "shared" ? " (ortak)" : "");
+  return parts.join(" × ") + tail;
 }
