@@ -2373,6 +2373,7 @@ const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // gördüğü. Seçim yalnız bu telefonda, yayına gitmez. "Ekranda"ya basınca "Ne izleyeyim?" paneli açılır (dikeyde alttan, yatayda
 // sağdan kayarak); seçince kapanır. Alt çubukta yalnız Parkur · Rüzgâr · Sıralama · Video · Start; paneller açılıp kapanırken kayar.
 const SHUT_MS = 190;
+const FULL_VP = ["course", "wind", "rank", "prog"];
 function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", photos = [] }) {
   const ref = useRef(null);
   const [shut, setShut] = useState(""); // kapanırken kayan panel (animasyon bitince kalkar)
@@ -2650,7 +2651,17 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
     );
   return (
     <nav className={`sc-vb bar${picks ? " pk" : ""}`} ref={ref} aria-label="İzleyici seçimi">
-      {body ? <div className={`sc-vp ${on}`}>{body}</div> : gone ? <div className={`sc-vp ${shut} out`} aria-hidden="true" inert>{gone}</div> : null}
+      {/* Parkur, Rüzgâr, Sıralama, Program telefonda ve iPad'de tam ekran, tek X ile kapanır (Seyhun 2026-11-06; web ve Mac'te eskisi gibi) */}
+      {body ? (
+        <div className={`sc-vp ${on}${FULL_VP.includes(on) ? " full" : ""}`}>
+          {FULL_VP.includes(on) ? (
+            <button type="button" className="sc-vpx" aria-label="Kapat" onClick={close}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" /></svg>
+            </button>
+          ) : null}
+          {body}
+        </div>
+      ) : gone ? <div className={`sc-vp ${shut} out`} aria-hidden="true" inert>{gone}</div> : null}
       {!body && ctl && !follow ? ctl : null}
       <div className="sc-vrow">
         {picks || onHide ? (
