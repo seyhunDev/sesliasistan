@@ -40,9 +40,10 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
   const [aySel, setAySel] = useState(""); // Ekran ayarlarında seçilen evre
   const [ayVid, setAyVid] = useState(false); // görüntü seçenekleri açık
   const [det, setDet] = useState(addCat?.det || ""); // ⋯ ile açılan kaynağın detay sayfası (kaynak id)
-  const [dTab, setDTab] = useState("bil"); // detay sayfasının sekmesi: bil (Bilgiler), grp (Grup), ayar (Ayarlar)
+  const [dTab, setDTab] = useState("bil");
+  const [sMenu, setSMenu] = useState(addCat?.c === "menu" ? "add" : ""); // Kaynaklar sayfasında açık menü: add (+ Ekle) | more (⋯) // detay sayfasının sekmesi: bil (Bilgiler), grp (Grup), ayar (Ayarlar)
   const [wipe, setWipe] = useState(false); // Kaynakları sıfırla: ikinci dokunuşta siler
-  const [add, setAdd] = useState(addCat?.c || ""); // açık ekleme kutusu: kategori (canli, video, kanal, etraf)
+  const [add, setAdd] = useState(addCat?.c && addCat.c !== "menu" ? addCat.c : ""); // açık ekleme kutusu: kategori (canli, video, kanal, etraf)
   const [addKind, setAddKind] = useState("drone");
   const [addName, setAddName] = useState("");
   const [addUrl, setAddUrl] = useState("");
@@ -66,7 +67,8 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
   if (addN !== addSeen) {
     setAddSeen(addN);
     setTab(addCat.tab || "src");
-    setAdd(addCat.c || "");
+    setAdd(addCat.c === "menu" ? "" : addCat.c || "");
+    setSMenu(addCat.c === "menu" ? "add" : "");
     setDet(addCat.det || "");
     setDTab("bil");
     setAddUrl("");
@@ -227,26 +229,6 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
     </button>
   );
 
-  const tile = (x) => {
-    const lv = isLive(x);
-    const th = thumb(x.url);
-    const vd = srcCat(x) === "video";
-    return (
-      <button key={x.id} type="button" className={`lms-t${isOn({ kind: "src", src: x.id }) ? " air" : ""}`} onClick={() => (setDet(x.id), setDTab("bil"), setAdd(""))}>
-        <span className={`th${lv || vd ? "" : " off"}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- YouTube küçük resmi */}
-          {th ? <img src={th} alt="" loading="lazy" /> : null}
-          <em className={lv ? "" : "no"}>{!x.url ? "BAĞLANTI YOK" : lv ? "YAYINDA" : vd ? "VİDEO" : "YAYIN YOK"}</em>
-        </span>
-        <b>
-          {groupsOf(L.camBy, x.id).slice(0, 2).map((k) => (
-            <i key={k} style={{ background: groupColor(k.split("|")[1]) || "#ffd23f" }} aria-hidden="true" />
-          ))}
-          {x.name}
-        </b>
-      </button>
-    );
-  };
   // ekleme kutusu kategoriye göre: canlı yayın (tür + bağlantı), YouTube videosu (bağlantı + ad), kanalımdan, etraftaki kameralar
   const addBox = (c) => (
     <div className="lms-sd">
@@ -298,7 +280,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
     const tb = tabs.some(([k]) => k === dTab) ? dTab : "bil";
     const meta = [SRC_CATS.find(([c]) => c === srcCat(s))?.[1], mine.length ? `${mine.map(gName).join(", ")} ${mine.length > 1 ? "gruplarını" : "grubunu"} çekiyor` : "", !s.url ? "Bağlantı yok" : ""].filter(Boolean).join(" · ");
     return createPortal(
-      <div className="kdt" role="dialog" aria-label={s.name}>
+      <div className="kdt kdt-d-on" role="dialog" aria-label={s.name}>
         <button type="button" className="kdt-x" aria-label="Kapat" onClick={closeDet}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
         </button>
@@ -390,6 +372,110 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
             ) : null}
             </> : null}
           </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  };
+  // Kaynaklar sayfası (Seyhun 2026-11-06 örnek kaynaklar-sade: "karma karışık; neden arama açık geliyor"): beyaz tam sayfa, tek liste
+  // (resim, ad, durum; satır → detay), tek "+ Ekle" menüsü (kategori seçilince ekleme kutusu), Sıfırla ve Ekrandan kaldır ⋯ arkasında
+  const ADD_ITEMS = [["canli", "Canlı yayın"], ["kanal", "Kanalımdan"], ["etraf", "Etraftaki kameralar"], ["video", "YouTube videosu"]];
+  const closeSrc = () => (setSMenu(""), setAdd(""), addCat?.back && addCat.tab === "src" ? addCat.back() : setTab("now"));
+  const srcPage = () => {
+    if (typeof document === "undefined") return null;
+    const airNow = screen.kind === "src" ? srcList.find((x) => x.id === screen.src)?.name : screen.kind === "live" ? "Grubun kamerası" : screen.kind === "boats" ? `${screen.grp || "Tekneler"} konumu` : screen.kind === "rec" ? "Kayıt" : "";
+    const pill = (air, lv) => (air ? <em className="kdt-p">YAYINDA</em> : lv ? <em className="kdt-p g">CANLI</em> : null);
+    const chev = <i className="kdt-ch" aria-hidden="true">›</i>;
+    const row = (key, th, name, sub, right, onClick) => (
+      <button key={key} type="button" className="kdt-sr" onClick={onClick}>
+        <span className={`kdt-th${th ? "" : " n"}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- YouTube küçük resmi */}
+          {th ? <img src={th} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.display = "none")} /> : null}
+        </span>
+        <span className="kdt-st">
+          <b>{name}</b>
+          {sub ? <small>{sub}</small> : null}
+        </span>
+        {right}
+        {chev}
+      </button>
+    );
+    const sub = (x) => {
+      const g = groupsOf(L.camBy, x.id);
+      const gs = g.length ? g.map((k) => k.split("|")[1] || k.split("|")[0]).join(", ") : "";
+      return (
+        <>
+          {g.length ? <i className="kdt-dot" style={{ background: groupColor(g[0].split("|")[1]) || "#ffd23f" }} aria-hidden="true" /> : null}
+          {[gs, !x.url ? "Bağlantı yok" : CAT_SHORT[srcCat(x)]].filter(Boolean).join(" · ")}
+        </>
+      );
+    };
+    return createPortal(
+      <div className="kdt" role="dialog" aria-label="Kaynaklar" onClick={() => sMenu && setSMenu("")}>
+        <button type="button" className="kdt-x" aria-label="Kapat" onClick={closeSrc}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+        </button>
+        <div className="kdt-w one">
+          <div className="kdt-top">
+            <h2 className="kdt-t">Kaynaklar</h2>
+            {srcList.length < 8 ? (
+              <button type="button" className="kdt-add" aria-expanded={sMenu === "add"} onClick={(e) => (e.stopPropagation(), setSMenu(sMenu === "add" ? "" : "add"))}>
+                + Ekle
+              </button>
+            ) : null}
+            <button type="button" className="kdt-more" aria-label="Diğer" aria-expanded={sMenu === "more"} onClick={(e) => (e.stopPropagation(), setSMenu(sMenu === "more" ? "" : "more"), setWipe(false))}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="19" cy="12" r="1.9" /></svg>
+            </button>
+            {sMenu === "add" ? (
+              <div className="kdt-menu" role="menu">
+                {ADD_ITEMS.map(([c, t]) => (
+                  <button key={c} type="button" role="menuitem" onClick={() => (setSMenu(""), setAdd(c), setAddUrl(""), setAddName(""))}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            ) : sMenu === "more" ? (
+              <div className="kdt-menu" role="menu" onClick={(e) => e.stopPropagation()}>
+                {screen.kind || (pre.ev[evNow]?.vid?.kind && screen.off !== evNow) ? (
+                  <button type="button" role="menuitem" onClick={() => (setSMenu(""), show({ kind: "", off: evNow }))}>
+                    Ekrandan kaldır
+                  </button>
+                ) : null}
+                <button type="button" role="menuitem" className="red" disabled={!srcList.length && !autoOn} onClick={() => (wipe ? (wipeSrc(), setSMenu("")) : setWipe(true))}>
+                  {wipe ? "Hepsi silinsin mi? Dokun, sil" : "Kaynakları sıfırla"}
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {airNow ? <p className="kdt-m">{`Yayında: ${airNow}`}</p> : null}
+          {note ? <p className="kdt-n" role="status">{note}</p> : null}
+          {add ? (
+            <div className="kdt-addb">
+              <h4 className="kdt-h">{ADD_ITEMS.find(([c]) => c === add)?.[1]}</h4>
+              {addBox(add)}
+            </div>
+          ) : null}
+          {srcList.length || autoOn ? (
+            <div className="kdt-l">
+              {autoOn ? row("live", "", "Grubun kamerası", "Gruba göre", pill(isOn({ kind: "live" }), false), () => show({ kind: "live" })) : null}
+              {srcList.map((x) => row(x.id, thumb(x.url), x.name, sub(x), pill(isOn({ kind: "src", src: x.id }), isLive(x)), () => (setDet(x.id), setDTab("bil"), setSMenu(""))))}
+            </div>
+          ) : !add ? (
+            <p className="kdt-m">Henüz kaynak yok</p>
+          ) : null}
+          <h4 className="kdt-h">Canlı konum</h4>
+          <div className="kdt-l">
+            {(pos.length ? pos : [{ grp: "", name: "Tekneler" }]).map((g) => {
+              const v = { kind: "boats", grp: g.grp };
+              return row(`b:${g.grp}`, "", g.grp ? `${g.grp} tekneler` : "Tekneler", "", pill(isOn(v), false), () => show({ ...v, zoom: 100 }));
+            })}
+          </div>
+          {vids.length ? (
+            <>
+              <h4 className="kdt-h">Kayıtlar</h4>
+              <div className="kdt-l">{vids.map((m) => row(m.id, m.thumb || "", recName(m, live.starts), "", pill(isOn({ kind: "rec", mid: m.id }), false), () => show({ kind: "rec", mid: m.id, loop: true })))}</div>
+            </>
+          ) : null}
         </div>
       </div>,
       document.body,
@@ -522,66 +608,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
           );
         })}
       </div>
-    ) : tab === "src" ? (
-      <>
-        {/* Kategoriler (Seyhun 2026-11-06 "YouTube videosu, YouTube canlı, benim kanalımın canlıları, etraftakiler"): her başlığın yanında + */}
-        {SRC_CATS.map(([c, title]) => {
-          const list = srcList.filter((x) => srcCat(x) === c);
-          const full = srcList.length >= 8;
-          return (
-            <section key={c} className="lms-cat">
-              <div className="lms-ch">
-                <h4 className="lms-h">{title}</h4>
-                {!full ? (
-                  <button type="button" className={`lms-plus${add === c ? " on" : ""}`} aria-label={`${title} ekle`} aria-expanded={add === c} onClick={() => (setAdd(add === c ? "" : c), setAddUrl(""), setAddName(""))}>
-                    {c === "video" ? "+ Video" : c === "kanal" ? "+ Kanalımdan" : c === "etraf" ? "+ Bul" : "+ Kaynak"}
-                  </button>
-                ) : null}
-              </div>
-              {add === c ? addBox(c) : null}
-              {list.length || (c === "canli" && autoOn) ? (
-                <div className="lms-tiles">
-                  {c === "canli" && autoOn ? (
-                    <button type="button" className={`lms-t${isOn({ kind: "live" }) ? " air" : ""}`} onClick={() => show({ kind: "live" })}>
-                      <span className="th">
-                        <em className="no">GRUBA GÖRE</em>
-                      </span>
-                      <b>Grubun kamerası</b>
-                    </button>
-                  ) : null}
-                  {list.map(tile)}
-                </div>
-              ) : add !== c ? (
-                <p className="lms-empty">{c === "video" ? "YouTube'daki bir videoyu bağlantısıyla ekle" : c === "kanal" ? "Kanalında canlı yayın açınca burada çıkar" : c === "etraf" ? "Yarış yerine yakın açık kameralar" : "Drone, telefon ya da kamera ekle"}</p>
-              ) : null}
-            </section>
-          );
-        })}
-        {srcList.length || autoOn ? (
-          <button type="button" className={`lms-b red lms-wipe${wipe ? " on" : ""}`} onClick={() => (wipe ? wipeSrc() : setWipe(true))} onBlur={() => setWipe(false)}>
-            {wipe ? "Hepsi silinsin mi? Dokun, sil" : "Kaynakları sıfırla"}
-          </button>
-        ) : null}
-        <h4 className="lms-h">Canlı konum</h4>
-        <div className="lms-cs">
-          {(pos.length ? pos : [{ grp: "", name: "Tekneler" }]).map((g) => chip(isOn({ kind: "boats", grp: g.grp }), g.grp ? `${g.grp} tekneler` : "Tekneler", () => show({ kind: "boats", grp: g.grp, zoom: 100 }), g.grp ? groupColor(g.grp) : "", g.grp || "t"))}
-        </div>
-        {vids.length ? (
-          <>
-            <h4 className="lms-h">Kayıtlar</h4>
-            <div className="lms-cs">{vids.map((m) => chip(isOn({ kind: "rec", mid: m.id }), recName(m, live.starts), () => show({ kind: "rec", mid: m.id, loop: true }), "", m.id))}</div>
-          </>
-        ) : null}
-        {screen.kind || (pre.ev[evNow]?.vid?.kind && screen.off !== evNow) ? (
-          <div className="lms-row">
-            {/* anında keser: evrenin atanmış görüntüsü de bu evrede geri gelmez (raceRounds cleanScreen off) */}
-            <button type="button" className="lms-b red" onClick={() => show({ kind: "", off: evNow })}>
-              Ekrandan kaldır
-            </button>
-          </div>
-        ) : null}
-      </>
-    ) : (
+    ) : tab === "src" ? null : (
       <>
         <h4 className="lms-h">Ekranda yazı</h4>
         <input className="lms-in" value={cap ?? screen.caption ?? ""} maxLength={80} placeholder="Örn. Sarı grup start hattında" aria-label="Ekranda yazı" onChange={(e) => setCap(e.target.value)} />
@@ -716,6 +743,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
       <div className="lms-bd" key={tab}>
         {body}
       </div>
+      {tab === "src" ? srcPage() : null}
       {det ? detPage() : null}
     </div>
   );

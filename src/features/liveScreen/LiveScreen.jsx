@@ -2848,21 +2848,14 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
           </>
         ) : (
           <>
-        {/* kategoriler (Seyhun 2026-11-06): Canlı yayınlar, Kanalımdaki canlılar, Etraftaki kameralar, YouTube videoları; boş olan görünmez.
-            Yöneten için hepsi görünür, başlığın yanındaki + yayın masasının Kaynaklar'ında o kategorinin ekleme kutusunu açar
-            (Seyhun 2026-11-06 "yeni video düzeni niye gelmedi") */}
+        {/* kategoriler (Seyhun 2026-11-06): Canlı yayınlar, Kanalımdaki canlılar, Etraftaki kameralar, YouTube videoları; boş olan görünmez */}
         {SRC_CATS.map(([c, title]) => {
           const list = all.filter((x) => srcCat(x) === c);
-          if (!list.length && !onAddSrc) return null;
+          if (!list.length) return null;
           return (
             <Fragment key={c}>
               <div className="sc-vshr">
                 <h4 className="sc-vsh">{title}</h4>
-                {onAddSrc ? (
-                  <button type="button" className="sc-vadd" aria-label={`${title} ekle`} onClick={() => onAddSrc(c)}>
-                    {c === "video" ? "+ Video" : c === "kanal" ? "+ Kanalımdan" : c === "etraf" ? "+ Bul" : "+ Kaynak"}
-                  </button>
-                ) : null}
               </div>
               {list.length ? <div className="sc-vg">
                 {list.map((x) => {
@@ -2893,6 +2886,12 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
             </Fragment>
           );
         })}
+        {/* tek "+ Ekle" (Seyhun 2026-11-06 örnek kaynaklar-sade): Kaynaklar sayfası ekleme menüsüyle açılır */}
+        {onAddSrc ? (
+          <button type="button" className="sc-vadd one" onClick={() => onAddSrc("menu")}>
+            + Ekle
+          </button>
+        ) : null}
           </>
         )}
         </>)}
@@ -3225,8 +3224,8 @@ export function LiveScreen({ id, y = "" }) {
   }, [follow]);
   const warm = useSyncExternalStore(noSub, () => !!readWarmMe(), () => false); // bu telefonda uygulamaya girilmiş mi
   const onGiven = useCallback((ok) => ok && setVCam(""), []); // yayına verilince kendi seçimim yayınla aynı olur
-  const addSrcAt = useCallback((c) => (setMasaAdd({ tab: "src", c, n: Date.now() }), setVTab("masa")), []);
-  const masaAt = useCallback((t, ayar = false) => (setMasaAdd({ tab: t, c: "", n: Date.now(), bare: true, ...(ayar ? { ayar: true } : {}) }), setVTab("masa")), []);
+  const addSrcAt = useCallback((c) => (setMasaAdd({ tab: "src", c, n: Date.now(), back: () => setVTab("src") }), setVTab("masa")), []);
+  const masaAt = useCallback((t, ayar = false) => (setMasaAdd({ tab: t, c: "", n: Date.now(), bare: true, back: () => setVTab(""), ...(ayar ? { ayar: true } : {}) }), setVTab("masa")), []);
   // Ekranda › kaynağın ⋯: masanın kaynak detay sayfası açılır, X Ekranda'ya döner
   const srcMenu = useCallback((id) => (setMasaAdd({ tab: "src", c: "", n: Date.now(), bare: true, det: id, back: () => setVTab("src") }), setVTab("masa")), []);
   if (vTab !== "masa" && masaAdd) setMasaAdd(null); // masa kapanınca bir dahaki açılış Şimdi sekmesiyle
