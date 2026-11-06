@@ -1345,11 +1345,13 @@ function ScTop({ rep, on, grp = "", auto = false, card = null, logo = null, chil
           {/* uygulama içinde logo sağ üstte, Canlı altında; logoya dokununca geri (Seyhun 2026-11-06 "alttaki logoyu canlı kısmına al") */}
           {logo ? (
             <button type="button" className="sc-tlogo" aria-label="Geri" onClick={logo.back || undefined} disabled={!logo.back}>
+              {/* canlıyken logonun başında yanıp sönen kırmızı nokta; "Canlı" yazısı yok, Velora yazısı yerinde (Seyhun 2026-11-06) */}
+              {on && !rep ? <i className="sc-tdot" aria-label="Canlı" /> : null}
               <VeloraGlyph size={40} />
               <small>Velora</small>
             </button>
           ) : null}
-          {!on ? null : rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}
+          {!on || (logo && !rep) ? null : rep ? <span className="sc-live rep">Tekrar</span> : <span className="sc-live">Canlı</span>}
           {on && !rep && auto && !grp ? <span className="sc-lgrp">Tekrar</span> : null}
           {on && !rep && grp ? (
             <span className="sc-lgrp">
