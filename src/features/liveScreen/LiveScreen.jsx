@@ -3016,7 +3016,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
                 )}
               </>
             ) : null}
-            {onHide && !body ? (
+            {onHide && !body && !bar.length ? (
               <button type="button" className="sc-vhide" aria-label="Düğmeleri gizle" onClick={() => (onOpen(""), onHide(true))}>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
@@ -3035,6 +3035,11 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
                 </button>
               );
             })}
+            {onHide && !body ? (
+              <button type="button" className="gear hide" aria-label="Düğmeleri gizle" onClick={() => (onOpen(""), onHide(true))}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

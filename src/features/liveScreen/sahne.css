@@ -1306,3 +1306,8 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 @media (orientation: landscape) and (min-width: 48rem) {
   .sc .sc-vb.bar > .sc-vp.src { height: min(30em, calc(100dvh - 7.8em - env(safe-area-inset-top) - env(safe-area-inset-bottom))); }
 }
+
+/* Gizle oku çubukta Ayarlar çarkının yanında, aynı yuvarlak düğme (2026-11-06); gizliyken açan ok da aynı boy */
+.sc .sc-vr2 button.gear.hide { margin-left: 0.35em; }
+.sc .sc-vb .sc-vshow { width: 2.9em; height: 2.9em; background: rgba(8, 16, 30, 0.8); }
+.sc .sc-vb .sc-vshow svg { width: 1.55em; height: 1.55em; }
