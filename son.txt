@@ -1,8 +1,8 @@
-Commit: 3ba925c · Yayın: kanalda açılan canlı yayın + olmadan kendiliğinden kaynak olur, bitince kalkar (#1289)
-Zaman: 2026-11-06-1116 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42184212309
+Commit: b396760 · Uygulama içi canlı ekran: alt kısım boş, logo sağ üstte, düğmeler en altta (#1297)
+Zaman: 2026-11-06-1255 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42196272127
 
-TAM TEST · 06.11.2026 10:58:20
+TAM TEST · 06.11.2026 12:36:59
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1429/1440 geçti · 11 kalan · 1113 sn
+SONUÇ: 1429/1440 geçti · 11 kalan · 1108 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4502 test”
+      ✗ “4503 test”
           beklenen: hepsi geçer
-          olan:     4469/4502 geçti
+          olan:     4469/4503 geçti
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “ortak hava tablosu” → false (beklenen: hava sayfası DayStrip + HourTable, yarış havası HourTable, ikisinde de eski grafik yok; ölçülen geçmiş sütun, plan çizgisi, günlük yağış; harita her yerde Harita düğmesi)
       ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
@@ -70,6 +70,7 @@ SONUÇ: 1429/1440 geçti · 11 kalan · 1113 sn
       ✗ “süre yoksa süre alanı gösterilmez” → false,false,false,false (beklenen: Seyhun 2026-11-03 17:19: geri / ileri sayım yokken (—:—, —, geri sayım bitti) start kartında ve yarış bandında boş süre alanı yok; başka bilgi de yoksa kart yok)
       ✗ “canlı ekranda Rüzgâr: Parkur'daki ölçüm penceresi (ana hesap)” → [true,false] (beklenen: Seyhun 2026-11-05: rüzgâr yönü, eksen gibi ölçümler Yayın › Parkur'daki gibi /canli'den de girilir; Start'ın solunda Rüzgâr, aynı AddSheet ve addCourseObs)
       ✗ “kurallar ve bağlantılar” → [true,true,false,true] (beklenen: telefon anahtarla yalnız yazar; yayın konumu sunucudan; Yayın'da panel sekmeden bağımsız; asistanda komut)
+      ✗ “yayında canlı konum: Yayın ve canlı ekran” → [false,true,false] (beklenen: Yayın › Video'da Tekneler kutusu, önizlemede ekrandaki grubun tekneleri, ekrana alınca döngü; canlı ekranda arkada BoatLive (videolu düzen), CANLI KONUM rozeti (replay değil))
       ✗ “Yayın ve canlı” → [true,false,true] (beklenen: Tehir penceresinde Kimin için; satırda İndir; Başlat tehirde engelli; canlıda tehirdeki grup küçük satır)
 
 2. ANLAMA: temiz cümleler: 121/121
@@ -208,7 +209,7 @@ SONUÇ: 1429/1440 geçti · 11 kalan · 1113 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 12 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 13 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
