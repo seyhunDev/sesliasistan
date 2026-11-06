@@ -1293,3 +1293,16 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 .sc .sc-vr2 button i { top: 0.45em; right: 0.7em; }
 .sc .sc-vb .sc-vhide, .sc .sc-vtop .sc-vhide, .sc .sc-vb .sc-vshow { display: grid; place-items: center; width: 2.5em; height: 2.5em; padding: 0; border-radius: 50%; }
 .sc .sc-vhide svg, .sc .sc-vshow svg { width: 1.3em; height: 1.3em; }
+
+/* Ekranda penceresi sabit boy (2026-11-06 "içeriğe göre yükselip alçalmasın; videolar yana kaysın"): başlık + anahtar + sekmeler üstte sabit,
+   her kategori tek sıra, yana kaydırılır; pencere yüksekliği sekmeden sekmeye değişmez */
+.sc .sc-vb.bar > .sc-vp.src { height: min(25em, 62dvh); max-height: none; overflow-y: auto; display: flex; flex-direction: column; }
+.sc .sc-vp.src > .sc-vph, .sc .sc-vp.src > .sc-vtabs { flex: none; }
+.sc .sc-vp.src .sc-vg, .sc .sc-vp.src .sc-vph2 { display: flex; gap: 0.5em; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none; padding-bottom: 0.15em; margin-bottom: 0.4em; }
+.sc .sc-vp.src .sc-vg::-webkit-scrollbar, .sc .sc-vp.src .sc-vph2::-webkit-scrollbar { display: none; }
+.sc .sc-vp.src .sc-vg > .sc-vt { flex: 0 0 auto; min-width: 8.5em; max-width: 13em; height: 3.4em; scroll-snap-align: start; }
+.sc .sc-vp.src .sc-vph2 > .sc-vph1 { flex: 0 0 7.5em; scroll-snap-align: start; }
+.sc .sc-vp.src .sc-vshr { margin-top: 0.7em; }
+@media (orientation: landscape) and (min-width: 48rem) {
+  .sc .sc-vb.bar > .sc-vp.src { height: min(30em, calc(100dvh - 7.8em - env(safe-area-inset-top) - env(safe-area-inset-bottom))); }
+}

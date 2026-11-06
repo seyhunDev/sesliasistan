@@ -2698,8 +2698,6 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   const airBtns = follow && onMasa;
   // Ayarlar (Seyhun 2026-11-06 "bu ayarları kendi canlı yayın sekmemde de yapabilmeliyim; yuvarlak ayarlar butonu koy"): çarkla evre ayarları
   const bar = airBtns ? [["m:now", "Şimdi"], ["m:ev", "Evreler"], ["m:src", "Kaynaklar"], ["m:txt", "Yazı"], ...(onStart ? [["start", "Start"]] : [])] : [...btns, ...(onMasa ? [["m:ev", "Ayarlar"]] : [])];
-  const ayarOn = on === "masa" && masaAyar;
-  const isOn = (k) => (k.startsWith("m:") ? on === "masa" && masaTab === k.slice(2) && (k !== "m:ev" || airBtns || masaAyar) : on === k);
   // açık panelin yeri: çubuğun üstü (--vb-b, alttan) ile süre kartının altı (--vb-t, üstten) arası
   useLayoutEffect(() => {
     const el = ref.current;
@@ -2756,6 +2754,8 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   }, [openK, onOpen]);
   if (!btns.length && !picks) return null;
   const on = btns.some(([k]) => k === open) || (open === "src" && picks) || (open === "masa" && masaRef) ? open : "";
+  const ayarOn = on === "masa" && masaAyar;
+  const isOn = (k) => (k.startsWith("m:") ? on === "masa" && masaTab === k.slice(2) && (k !== "m:ev" || airBtns || masaAyar) : on === k);
   const close = () => {
     if (on) setShut(on);
     onOpen("");
@@ -2792,6 +2792,8 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
     onOpen(k);
   };
   const pick = (k) => {
+    // seçili olana yeniden dokununca kalkar (Seyhun 2026-11-06 "seçili bir kaynak varsa tekrar tıklandığında kaldırılmalı"): yayın kapalı fotoğrafa döner, pencere açık kalır
+    if (k === cam) return (onCam(defCam || ""), setFree(true));
     onCam(k);
     setFree(false);
     close();
