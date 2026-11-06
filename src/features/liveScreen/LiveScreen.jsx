@@ -2372,7 +2372,7 @@ const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // gördüğü. Seçim yalnız bu telefonda, yayına gitmez. "Ekranda"ya basınca "Ne izleyeyim?" paneli açılır (dikeyde alttan, yatayda
 // sağdan kayarak); seçince kapanır. Alt çubukta yalnız Parkur · Rüzgâr · Sıralama · Video · Start; paneller açılıp kapanırken kayar.
 const SHUT_MS = 190;
-function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null }) {
+function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null }) {
   const ref = useRef(null);
   const [shut, setShut] = useState(""); // kapanırken kayan panel (animasyon bitince kalkar)
   const rr = sel && (sel.fin || mode === "between") ? raceRows(data, sel) : null;
@@ -2558,6 +2558,26 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   const body = on && on !== "start" ? panel(on) : null;
   const gone = !on && shut && shut !== "start" && shut !== "vid" && shut !== "masa" ? panel(shut) : null; // kapanış animasyonu (video paneli kendi yerine çizildiği için anında kalkar)
   // Gizle (Seyhun 2026-11-05 "arka planda video varken alt butonlar çok yer kaplıyor"): yalnız küçük "Düğmeler" kalır
+  if (boat && !follow)
+    return (
+      <nav className="sc-vb bar bt" ref={ref} aria-label="Tekne konumu">
+        <div className="sc-btop">
+          {boat.onAir ? (
+            <button type="button" className="sc-give" onClick={boat.onAir}>
+              Yayına al
+            </button>
+          ) : boat.offAir ? (
+            <button type="button" className="sc-give off" onClick={boat.offAir}>
+              Yayından çıkar
+            </button>
+          ) : null}
+          <button type="button" className="sc-bx" aria-label="Kapat" onClick={boat.onClose}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" /></svg>
+          </button>
+        </div>
+        {ctl}
+      </nav>
+    );
   if (hide)
     return (
       <nav className="sc-vb bar hid" ref={ref} aria-label="İzleyici seçimi">
@@ -2755,6 +2775,10 @@ export function LiveScreen({ id, y = "" }) {
   const [vidHost, setVidHost] = useState(null); // Video panelinde ana hesabın videolarının yeri
   const [masaHost, setMasaHost] = useState(null); // Yayın masasının yeri (Yayın › "Yayında" paneli)
   const [give, setGive] = useState(null); // Benim › Yayına ver isteği { s, n } (LiveStart yazar)
+  const [boatX, setBoatX] = useState(""); // X ile bu ekranda kapatılan yayındaki tekne konumu ("b:<grup>")
+  const [newList, setNewList] = useState(null); // tekne ekranında Yeni liste { file, n } (LiveStart okur, bugünün grupları olur)
+  const [listMsg, setListMsg] = useState("");
+  const onListed = useCallback((t) => setListMsg(t), []);
   const [masaAdd, setMasaAdd] = useState(null); // Ne izleyeyim? › + : masanın Kaynaklar'ında açılacak ekleme kutusu { c, n }
   const [myVid, setMyVid] = useState({ id: "", url: "" }); // yalnız bu cihazda arka planda oynayan kendi videom (canlı yayına gitmez)
   const [barHide, setBarHide] = useState(false); // alt düğmeler gizli
@@ -2873,7 +2897,9 @@ export function LiveScreen({ id, y = "" }) {
   const camOn = posOn || cams.some((x) => x.src === vCam) ? vCam : "";
   // Benim (varsayılan): kendi seçimim öncelikli; Yayın: izleyicilerin gördüğü
   const mine = own && !follow;
-  const sd = mine && posOn ? { ...pk.sd, screen: { kind: "boats", grp: vCam.slice(2), zoom: 100 } } : mine && camOn ? { ...pk.sd, screen: { kind: "src", src: camOn } } : pk.sd;
+  // yayından gelen tekne konumu X ile kapatıldıysa (yalnız bu ekranda, yayındaki değişene kadar) arkası boş kalır
+  const airBoat = pk.sd.screen?.kind === "boats" ? `b:${pk.sd.screen.grp || ""}` : "";
+  const sd = mine && posOn ? { ...pk.sd, screen: { kind: "boats", grp: vCam.slice(2), zoom: 100 } } : mine && camOn ? { ...pk.sd, screen: { kind: "src", src: camOn } } : mine && airBoat && boatX === airBoat ? { ...pk.sd, screen: { kind: "" } } : pk.sd;
   const vid = mine && (camOn || myVid.url) ? true : pk.vid;
   const onLabel = myVid.url ? "Videon" : posOn ? `${pos.find((x) => `b:${x.grp}` === vCam)?.name || "Tekneler"} konumu` : camOn ? sourcesOf(data.stream).find((x) => x.id === camOn)?.name || "Kamera" : "Yayınla aynı";
   const pickCam = (k) => (setVCam(k), myVid.url && playMine("", null));
@@ -2883,6 +2909,17 @@ export function LiveScreen({ id, y = "" }) {
   const given = !!giveS && onAirS.kind === giveS.kind && (giveS.kind === "src" ? onAirS.src === giveS.src : (onAirS.grp || "") === (giveS.grp || ""));
   const canGive = adm && inApp && !demoOn && mine && !!giveS && !given && !myVid.url;
   const doGive = () => setGive((g) => ({ s: { ...giveS, caption: onAirS.caption || "" }, n: (g?.n || 0) + 1 }));
+  // Tekne konumu ekrandayken (Seyhun 2026-11-06 "alttaki butonlar kalksın; yukarıda X; yayına al / yayından çıkar buradan"): alt çubuk yerine
+  // üstte Yayına al / Yayından çıkar + X, altta yalnız tekne şeridi (BoatCtl). X: kendi seçimimse yayınla aynıya döner, yayınınkiyse bu ekranda gizlenir.
+  const boatOn = mine && sd.screen?.kind === "boats" && !myVid.url;
+  const boatAdm = adm && inApp && !demoOn;
+  const boatMode = boatOn
+    ? {
+        onClose: () => (posOn ? pickCam("") : setBoatX(airBoat)),
+        onAir: boatAdm && canGive ? doGive : null,
+        offAir: boatAdm && onAirS.kind === "boats" && (!posOn || given) ? () => setGive((g) => ({ s: { kind: "", caption: onAirS.caption || "" }, n: (g?.n || 0) + 1 })) : null,
+      }
+    : null;
   // Yayında ne var (Yayın modundaki düğme): kaynağın adı, canlı konum, kayıt, yoksa evrenin öğesi
   const airScr = pk.sd.screen || {};
   const airLabel = airScr.kind === "src" ? sourcesOf(data.stream).find((x) => x.id === airScr.src)?.name || "Kaynak" : airScr.kind === "boats" ? `${airScr.grp || "Tekneler"} konumu` : airScr.kind === "rec" ? "Kayıt" : airScr.kind === "live" ? "Grubun kamerası" : EVRE_NAME[pk.evre] || "Otomatik";
@@ -2910,8 +2947,8 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => pickCam(`b:${g}`)} /> : null} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} /> : null} />
-        {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} /> : null}
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={camOn} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} /> : null} />
+        {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} list={newList} onListed={onListed} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
       {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}

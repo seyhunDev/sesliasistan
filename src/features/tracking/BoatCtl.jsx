@@ -3,12 +3,14 @@
 // Tekne konumu şeridi (Seyhun 2026-11-06, onaylı örnek project-files/tekne-animasyon/gruplu): canlı ekranda tekneler görünürken alt
 // çubuğun üstünde. Grup (günün listesinden: Sarı, Mavi… ya da Altın, Gümüş, Bronz), kesitler (Start, +20 sn, +30 sn, şamandıralar,
 // Finiş), −10 sn, Durdur/Oynat, Canlı, uzaklaştır/yakınlaştır. Yalnız bu telefonda (boatCtl), yayına gitmez.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { groupColor } from "@/lib/roundScore";
 import { boatCtl, useBoatCtl } from "./boatStore";
 
-export function BoatCtl({ groups = [], grp = "", onGrp }) {
+// onList: ana hesapta "Yeni liste" (renk / final listesi dosyası; bugünün grupları olur), listMsg: okuma sonucu
+export function BoatCtl({ groups = [], grp = "", onGrp, onList = null, listMsg = "" }) {
   const s = useBoatCtl();
+  const file = useRef(null);
   // etkin kesit için şimdiki an (yarım saniyede bir)
   const [, setN] = useState(0);
   useEffect(() => {
@@ -20,7 +22,7 @@ export function BoatCtl({ groups = [], grp = "", onGrp }) {
   const on = s.live ? -1 : cuts.reduce((k, c, i) => (cur >= c.t - 500 ? i : k), -1);
   return (
     <div className="sc-mv sc-bc">
-      {groups.length > 1 ? (
+      {groups.length > 1 || onList ? (
         <div className="row gs">
           {groups.map((x) => (
             <button key={x.grp || "t"} type="button" className={x.grp === grp ? "on" : ""} aria-pressed={x.grp === grp} onClick={() => onGrp?.(x.grp)}>
@@ -28,6 +30,15 @@ export function BoatCtl({ groups = [], grp = "", onGrp }) {
               {x.name}
             </button>
           ))}
+          {onList ? (
+            <>
+              <button type="button" className="nl" onClick={() => file.current?.click()}>
+                Yeni liste
+              </button>
+              <input ref={file} type="file" accept="application/pdf,image/*,.xls,.xlsx,.csv" hidden onChange={(e) => (e.target.files?.[0] && onList(e.target.files[0]), (e.target.value = ""))} />
+            </>
+          ) : null}
+          {listMsg ? <small className="lm">{listMsg}</small> : null}
         </div>
       ) : null}
       {cuts.length ? (
