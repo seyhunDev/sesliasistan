@@ -121,7 +121,7 @@ async function forecastOf(org, id, r, day) {
       const N = (x) => (Number.isFinite(Number(x)) && x !== null ? Math.round(Number(x)) : null);
       const all = (h.time || []).map((t, i) => ({ d: t.slice(0, 10), hh: t.slice(11, 13), wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]), code: N(h.weather_code?.[i]), t: N(h.temperature_2m?.[i]), mm: Number.isFinite(Number(h.precipitation?.[i])) && h.precipitation[i] !== null ? Math.round(Number(h.precipitation[i]) * 10) / 10 : null, pop: N(h.precipitation_probability?.[i]) })).filter((x) => x.wind != null);
       const rows = all.filter((x) => x.d === day).map(({ d, ...x }) => x);
-      const next = all.filter((x) => x.d === d2).map((x) => ({ hh: x.hh, wind: x.wind, gust: x.gust, dir: x.dir }));
+      const next = all.filter((x) => x.d === d2).map(({ d, ...x }) => x); // sıcaklık ve yağmur da (canlı ekran rüzgâr şeridi Yarın)
       if (rows.length) v = { place: S(sp.name, 60), rows, ...(next.length ? { next } : {}) };
     }
     // Gerçekleşen rüzgâr (Seyhun 2026-11-02 "tahmin ve gerçekleşen grafiğimiz neden gösterilmiyor"): en yakın istasyon (100 km'ye kadar, /api/wind-obs far gibi)

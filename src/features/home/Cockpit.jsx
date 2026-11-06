@@ -12,14 +12,12 @@ import { useNow } from "@/hooks/useNow";
 import { isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
-import { HourTable } from "@/features/weather/HourTable";
-import { NowRain } from "@/features/weather/NowRain";
 import { insightFacts, weatherInsight } from "@/features/weather/insight";
-import { InsightCard, InsightChart, useWeatherBrief } from "@/features/weather/WeatherInsight";
+import { useWeatherBrief } from "@/features/weather/WeatherInsight";
+import { WindRibbon } from "@/features/weather/WindRibbon";
 import { useRainRadar } from "@/features/weather/useRainRadar";
 import { radarNow, radarRows } from "@/features/weather/rainLine";
 import { CalendarView } from "@/features/calendar/CalendarView";
-import { DayTimeline } from "./DayTimeline";
 import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
 
@@ -35,7 +33,7 @@ import { BirthdayBadge } from "./PeopleStrip";
 // Yarış günü (Seyhun 2026-10-27 "A · Yarışın yeri büyük", örnek yaris-yeri-hava): seçilen gün bir yarışın günleri içindeyse (away, OwnerHome awayRace)
 // büyük hava ve rüzgâr grafiği yarışın yerinin (raceWeather.loadRaceDay); 2026-10-28 "A · Alt alta ince": büyük grafik yerine iki ince şerit (WindStrip), üstte yarış yeri, altta ev yeri
 // (hava yeri, ör. Dikili: sıcaklık · yön · kn), ona dokununca hava sayfası. Yarışın yeri ev yerine 10 km'den yakınsa ya da hava alınamazsa her şey eskisi gibi.
-export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide = false, children }) {
+export function Cockpit({ weather, inbox, onInbox, live, grid, sel, onSel, wide = false, children }) {
   const { profile } = useAuth();
   const router = useRouter();
   const now = useNow();
@@ -68,7 +66,7 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide 
       {wide && <div className="hs-sky ck-hero" data-sky={skyKey(n)} aria-hidden="true" />}
       <div className={wide ? "ck-a hs-w" : "ck-a"}>
       {/* Geniş ekranda gökyüzü kart değil: sayfanın üstünde kenardan kenara (hs-sky), altı soluklaşır; yer adı sıcaklığın yanında, tarih Takvim'de (Seyhun 2026-11-05 "A") */}
-      <div className={wide ? "ck hs-top pb-3 pt-1" : "ck ck-hero -mx-4 px-4 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]"} data-sky={skyKey(n)}>
+      <div className={wide ? "ck hs-top pb-3 pt-1" : "ck ck-hero ck-fade -mx-4 px-4 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]"} data-sky={skyKey(n)}>
       <header className="flex items-center gap-2">
         <h1 className="sr-only">{now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}</h1>
         {wide ? (
@@ -112,44 +110,36 @@ export function Cockpit({ weather, inbox, onInbox, days, live, sel, onSel, wide 
             )}
           </button>
           {n && line && <p className={`mt-2 text-[0.9375rem] leading-snug text-white/90 ${wide ? "line-clamp-1" : ""}`} aria-label="Hava özeti">{line}</p>}
-          {rows?.length > 0 && (
-            <>
-              <div className={`mt-2.5 overflow-hidden rounded-[1.25rem] p-3 ${wide ? "bg-[#0b1a33]/40" : "bg-[#0b1a33]"}`}>
-                {ins && (
-                  <div className={wide ? "mb-2 space-y-1.5" : "mb-3 space-y-2.5"}>
-                    <InsightCard ins={ins} />
-                    <InsightChart ins={ins} compact={wide} />
-                  </div>
-                )}
-                <HourTable key={date} rows={rows} next={dayHours(w, nextDay(date))} date={date} onClick={goWeather} flat />
-                {isToday && !(ins?.kind === "rain" && ins.sub?.startsWith("Burada")) && <NowRain place={home} rows={fcRows} radar={radar} />}
-              </div>
-            </>
-          )}
+          <WindRibbon rows={rows} nowH={isToday ? now.getHours() : -1} radar={isToday ? radar : null} h={wide ? 84 : 92} className="mt-3" />
       </>
       </div>
 
-      {days && <div className="mt-3">{days}</div>}
-      {!wide && live}
       </div>
       {wide ? (
         <div className="hs-cal">
           <CalendarView embedded sel={date} onSel={onSel} />
         </div>
       ) : (
-        <div className="ck-b mt-3 space-y-3">
+        <div className="ck-b -mt-5 space-y-2.5">
+          {live}
           {isToday && <NextPlan now={now} />}
-          <DayTimeline date={date} rows={rows} />
         </div>
       )}
       {wide ? (
         <div className="hs-r">
-          {isToday && <NextPlan now={now} />}
           {live}
+          {isToday && <NextPlan now={now} />}
+          {grid}
           {children}
         </div>
       ) : (
-        children
+        <>
+          <div className="ck-c mt-3">{grid}</div>
+          <div className="cal-flat -mx-4 mt-4">
+            <CalendarView embedded flat sel={date} onSel={onSel} />
+          </div>
+          {children}
+        </>
       )}
     </section>
   );
@@ -202,31 +192,31 @@ function NextPlan({ now }) {
   // Antrenmansa Süre'nin yanında Yoklama (Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
   const att = sail && canSeeAthletes(profile?.email);
   return (
-    <div className="rounded-[1.25rem] bg-[#0b1a33] p-3 text-white">
-      <button type="button" data-press onClick={() => open(p)} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3.5 text-left">
-        <span className="min-w-[3.375rem] shrink-0 border-r border-white/30 pr-3.5 text-center leading-tight">
-          <small className="block text-[0.75rem] font-semibold text-white/85">{w.top}</small>
-          <b className="block text-[1.75rem] font-bold leading-none tracking-[-.03em] tabular-nums">{w.day}</b>
-          <small className="block text-[0.75rem] font-semibold text-white/85">{w.mon}</small>
+    <div className="rounded-[1.125rem] border border-line bg-card p-3">
+      <button type="button" data-press onClick={() => open(p)} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3 text-left">
+        <span className="min-w-[3rem] shrink-0 border-r border-line pr-3 text-center leading-tight">
+          <small className="block text-[0.6875rem] font-semibold text-mut">{w.top}</small>
+          <b className="block text-[1.625rem] font-bold leading-none tracking-[-.03em] tabular-nums">{w.day}</b>
+          <small className="block text-[0.6875rem] font-semibold text-mut">{w.mon}</small>
         </span>
         <span className="min-w-0 flex-1">
-          <b className="block truncate text-[1.0625rem] font-semibold leading-snug">{p.title || "Plan"}</b>
-          {sub && <small className="mt-0.5 block truncate text-[0.8125rem] tabular-nums text-white/80">{sub}</small>}
+          <b className="block truncate text-[1rem] font-semibold leading-snug">{p.title || "Plan"}</b>
+          {sub && <small className="mt-0.5 block truncate text-[0.8125rem] tabular-nums text-mut">{sub}</small>}
         </span>
-        <span className="shrink-0 text-right leading-tight">
-          <b className="block text-[1.375rem] font-bold tabular-nums">{w.left[0]}</b>
-          {w.left[1] && <small className="block text-[0.75rem] text-white/85">{w.left[1]}</small>}
+        <span className="shrink-0 text-right leading-tight text-acc">
+          <b className="block text-[1.25rem] font-bold tabular-nums">{w.left[0]}</b>
+          {w.left[1] && <small className="block text-[0.6875rem] text-mut">{w.left[1]}</small>}
         </span>
       </button>
       {(att || sail) && (
-        <div className={`mt-3 grid gap-2 ${att && sail ? "grid-cols-2" : "grid-cols-1"}`}>
+        <div className={`mt-2.5 grid gap-2 ${att && sail ? "grid-cols-2" : "grid-cols-1"}`}>
           {att && (
-            <Link href={attHref(p.date, today) || "/athletes/attendance"} data-press className="ck-pbtn ck-pbtn2">
+            <Link href={attHref(p.date, today) || "/athletes/attendance"} data-press className="btn btn-secondary btn-sm">
               Yoklama
             </Link>
           )}
           {sail && (
-            <Link href={`/training/day?id=${p.id}`} data-press className="ck-pbtn">
+            <Link href={`/training/day?id=${p.id}`} data-press className="btn btn-primary btn-sm">
               Süre
             </Link>
           )}

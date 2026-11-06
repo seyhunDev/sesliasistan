@@ -7,10 +7,11 @@ import { liveUrl, sourcesOf, videoGroup } from "@/lib/raceCams";
 import { srcIsLive } from "@/lib/srcLive";
 import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset, winLeft, FIN_WIN } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
-import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
+import { CARD_IDS, CARD_TYPES, ORSA_M, cardFor, cardKey, cardType, cleanCards, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { recTitle, windAhead, gapAt, leaderAt, manualFinish, markLabel, markName, nowPos, officialFor, prepName, rankMove, sameSail, clubName, shortClub, shortName, preStep, cleanCourseShow, EVRE_NAME, evreOf, evreScreen, itemScene, showPlan, showSlide, standings, whoBySail, whoOf, screenUrl, ytSrc, SRC_CATS, srcCat } from "@/lib/raceRounds";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
+import { WindRibbon } from "@/features/weather/WindRibbon";
 import { GROUP_PICK, catsOf, groupColor, groupMap, groupsOn, onlyCat, provisional } from "@/lib/roundScore";
 import { colorOf as windColor } from "@/lib/windMap";
 import { BoatMap } from "@/features/tracking/BoatMap";
@@ -1531,35 +1532,86 @@ function windTip(rows, c) {
   if (dn) return `${at(dn)} rüzgâr ${dn.wind} kn'a düşüyor`;
   return "";
 }
-function ScWindDay({ data, now }) {
-  const [open, setOpen] = useState(false);
-  const tip = windTip(windAhead(data, now), curWind(data, null, true, now));
+// Grafik (Seyhun 2026-11-06 "tahmin sonrası için olmalı; 2 saat öncesinden göster, gerçekleşeni de; 00'dan sonrasını da ekle; ileri butonuyla
+// bir gün sonrasına geçeyim"): "Şimdi" sayfası 2 saat önceden 12 saat sonrasına (gece yarısını geçer), geçmiş = gerçekleşen (istasyon + ölçümümüz),
+// beklenen yalnız şimdiden sonra; › ile "Yarın" sayfası (ertesi günün 24 saati). Önemli bir şey yoksa satır sade, açınca yine grafik.
+function windDayPts(data, now, page = 0) {
+  const nh = istHour(now).h;
   const today = istHour(now).day;
-  const fc = (data.forecast?.rows || []).filter((r) => r.wind != null).map((r) => ({ h: +r.hh, v: +r.wind }));
-  const st = (data.forecast?.obs || []).filter((r) => r.wind != null && +r.hh <= istHour(now).h).map((r) => ({ h: +r.hh, v: +r.wind }));
+  const fcAll = [
+    ...(data.forecast?.rows || []).filter((r) => r.wind != null).map((r) => ({ h: +r.hh, v: +r.wind })),
+    ...(data.forecast?.next || []).filter((r) => r.wind != null).map((r) => ({ h: +r.hh + 24, v: +r.wind })),
+  ].sort((x, y) => x.h - y.h);
+  if (page === 1) {
+    const fc = fcAll.filter((x) => x.h >= 24);
+    return { h0: 24, h1: 47, fc, st: [], me: [], nh: null };
+  }
+  const h0 = Math.floor(nh) - 2, h1 = h0 + 14;
+  let fc = fcAll.filter((x) => x.h > nh && x.h <= h1);
+  const pr = [...fcAll].reverse().find((x) => x.h <= nh), nx = fcAll.find((x) => x.h > nh);
+  if (pr && nx) fc = [{ h: nh, v: +(pr.v + ((nx.v - pr.v) * (nh - pr.h)) / (nx.h - pr.h)).toFixed(1) }, ...fc];
+  else if (pr && pr.h === nh) fc = [pr, ...fc];
+  const st = (data.forecast?.obs || []).filter((r) => r.wind != null && +r.hh <= nh && +r.hh >= h0).map((r) => ({ h: +r.hh, v: +r.wind }));
   const me = [...(data.wind || []), ...(data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, kn: o.kn }))]
     .filter((x) => x.kn != null && x.at && istHour(Date.parse(x.at)).day === today)
-    .map((x) => ({ h: istHour(Date.parse(x.at)).h, v: +x.kn }));
-  if (!tip || (fc.length < 2 && st.length < 2)) return null;
+    .map((x) => ({ h: istHour(Date.parse(x.at)).h, v: +x.kn }))
+    .filter((x) => x.h >= h0 && x.h <= nh);
+  return { h0, h1, fc, st, me, nh };
+}
+// Ortak rüzgâr şeridi (Seyhun 2026-11-06, ana sayfadaki WindRibbon: dalga, hamle, yön, saat, sıcaklık, yağmur): Şimdi = bugünün saatleri, geçen
+// saatlerde istasyonun ölçtüğü (gerçekleşen) rüzgâr; Yarın = ertesi gün. Bugünden 4 saatten az kaldıysa (gece) eski grafik
+const ribRow = (r) => ({ hh: r.hh, wind: r.wind, gust: r.gust, dir: r.dir, t: r.t, mm: r.mm, rain: r.rain ?? r.pop, code: r.code });
+function ribbonRows(data, now, page) {
+  if (page === 1) return (data.forecast?.next || []).filter((r) => r.wind != null).map(ribRow);
+  const nh = Math.floor(istHour(now).h);
+  const obs = Object.fromEntries((data.forecast?.obs || []).filter((r) => r.wind != null && +r.hh <= nh).map((r) => [+r.hh, r]));
+  const rows = (data.forecast?.rows || []).filter((r) => r.wind != null).map((r) => (obs[+r.hh] ? { ...ribRow(r), wind: +obs[+r.hh].wind, gust: obs[+r.hh].gust ?? r.gust, dir: obs[+r.hh].dir ?? r.dir } : ribRow(r)));
+  return rows.filter((r) => +r.hh >= Math.max(6, nh - 1)).length >= 4 ? rows : null;
+}
+function ScWindDay({ data, now }) {
+  const [open, setOpen] = useState(false);
+  // akşam 18'den sonra yarın önemli (Seyhun 2026-11-06): grafik Yarın sayfasıyla açılır, ‹ ile Şimdi
+  const [page, setPage] = useState(() => (istHour(now).h >= 18 ? 1 : 0));
+  const tip = windTip(windAhead(data, now), curWind(data, null, true, now));
+  const hasNext = (data.forecast?.next || []).filter((r) => r.wind != null).length > 1;
+  const { h0, h1, fc, st, me, nh } = windDayPts(data, now, hasNext ? page : 0);
+  const p0 = windDayPts(data, now, 0);
+  if (p0.fc.length < 2 && p0.st.length < 2) return null;
   const all = [...fc, ...st, ...me];
-  const h0 = Math.floor(Math.min(...all.map((x) => x.h)));
-  const h1 = Math.max(h0 + 1, Math.ceil(Math.max(...all.map((x) => x.h))));
-  const W = 400, H = 170, l = 26, r = 10, t = 14, b = 26;
+  const W = 400, H = 170, l = 26, r = 10, t = 16, b = 26;
   const max = Math.ceil((Math.max(10, ...all.map((x) => x.v)) + 2) / 5) * 5;
   const xs = (h) => l + ((h - h0) * (W - l - r)) / (h1 - h0);
   const ys = (v) => t + (H - t - b) * (1 - v / max);
   const line = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${xs(p.h).toFixed(1)} ${ys(p.v).toFixed(1)}`).join(" ");
-  const nh = istHour(now).h;
   const fs = { fontFamily: "var(--lv-font-c), var(--lv-font), sans-serif", fontWeight: 700 };
+  const step = h1 - h0 > 16 ? 3 : 2;
+  const vs = p0.fc.map((x) => x.v);
+  const calm = vs.length ? `Sonraki saatler ${Math.round(Math.min(...vs))}–${Math.round(Math.max(...vs))} kn` : "";
+  const pg = hasNext ? page : 0;
+  const rib = ribbonRows(data, now, pg);
+  const chev = (d) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
   return (
-    <div className={`sc-wday${open ? " on" : ""}`}>
+    <div className={`sc-wday${open ? " on" : ""}${tip ? "" : " calm"}`}>
       <button type="button" className="sc-wtg" aria-expanded={open} onClick={() => setOpen(!open)}>
         <i>Tahmin</i>
-        <span>{tip}</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <span>{tip || calm}</span>
+        {chev("M6 9l6 6 6-6")}
       </button>
       {open ? (
         <div className="sc-wdb">
+          <div className="sc-wpg">
+            <button type="button" aria-label="Önceki" disabled={pg === 0} onClick={() => setPage(0)}>
+              {chev("M15 6l-6 6 6 6")}
+            </button>
+            <b>{pg ? "Yarın" : "Şimdi"}</b>
+            <button type="button" aria-label="Sonraki" disabled={pg === 1 || !hasNext} onClick={() => setPage(1)}>
+              {chev("M9 6l6 6-6 6")}
+            </button>
+          </div>
+          {rib ? (
+            <WindRibbon rows={rib} nowH={pg ? -1 : Math.floor(istHour(now).h)} legend={false} h={110} className="sc-wrib" />
+          ) : (
+            <>
           <div className="sc-wh">
             <span>
               <i className="a" />
@@ -1568,7 +1620,7 @@ function ScWindDay({ data, now }) {
             {st.length ? (
               <span>
                 <i className="w" />
-                İstasyon
+                Gerçekleşen
               </span>
             ) : null}
             {me.length ? (
@@ -1587,11 +1639,19 @@ function ScWindDay({ data, now }) {
                 </text>
               </g>
             ))}
-            {Array.from({ length: h1 - h0 + 1 }, (_, i) => h0 + i).filter((h) => h % 3 === 0).map((h) => (
+            {Array.from({ length: h1 - h0 + 1 }, (_, i) => h0 + i).filter((h) => h % step === 0).map((h) => (
               <text key={h} x={xs(h)} y={H - 6} textAnchor="middle" fontSize="12" fill="rgba(255,255,255,.5)" style={fs}>
-                {String(h % 24).padStart(2, "0")}
+                {String(((h % 24) + 24) % 24).padStart(2, "0")}
               </text>
             ))}
+            {!pg && h1 > 24 && h0 < 24 ? (
+              <g>
+                <line x1={xs(24)} x2={xs(24)} y1={t} y2={H - b} stroke="rgba(255,255,255,.18)" />
+                <text x={xs(24) + 4} y={t + 8} fontSize="11" fill="rgba(255,255,255,.5)" style={fs}>
+                  Yarın
+                </text>
+              </g>
+            ) : null}
             {fc.length > 1 ? (
               <>
                 <path d={`${line(fc)} L${xs(fc.at(-1).h)} ${ys(0)} L${xs(fc[0].h)} ${ys(0)} Z`} fill="rgba(47,214,195,.18)" />
@@ -1603,8 +1663,17 @@ function ScWindDay({ data, now }) {
             {me.map((p, i) => (
               <circle key={i} cx={xs(p.h)} cy={ys(p.v)} r="4.5" fill="#4d8dff" stroke="#fff" strokeWidth="1.5" />
             ))}
-            {nh >= h0 && nh <= h1 ? <line x1={xs(nh)} x2={xs(nh)} y1={t} y2={H - b} stroke="rgba(255,255,255,.55)" strokeDasharray="3 4" /> : null}
+            {nh != null ? (
+              <g>
+                <line x1={xs(nh)} x2={xs(nh)} y1={t} y2={H - b} stroke="rgba(255,255,255,.55)" strokeDasharray="3 4" />
+                <text x={xs(nh)} y={t - 4} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,.7)" style={fs}>
+                  Şimdi
+                </text>
+              </g>
+            ) : null}
           </svg>
+            </>
+          )}
         </div>
       ) : null}
     </div>
@@ -1612,7 +1681,7 @@ function ScWindDay({ data, now }) {
 }
 // Parkur ve rüzgâr panelinin üstü (Seyhun 2026-11-06 "şu anki ölçümleri asıl göstermemiz lazım"; "önemli bilgiler daha net"): şimdi esen, büyük;
 // yanında parkur sayıları bir kez (eksen, rüzgârın eksenden farkı, avantajlı uç); çizimde bu yazılar yok
-function ScWindNow({ data, now }) {
+function ScWindNow({ data, now, pk = null }) {
   const c = curWind(data, null, true, now);
   const ax = axisInfo(data);
   const g = ax ? null : guessAxis(data);
@@ -1629,7 +1698,7 @@ function ScWindNow({ data, now }) {
     sh != null ? ["Fark", Math.abs(sh) < 1 ? "0°" : `${Math.abs(sh)}° ${sh > 0 ? "sağa" : "sola"}`] : null,
     bias?.end ? [bias.end === "pin" ? "Pin" : "Komite", `+${Math.round(bias.deg)}°`] : null,
   ].filter(Boolean);
-  if (!c && !fx.length) return null;
+  if (!c && !fx.length && !pk) return null;
   return (
     <div className={`sc-wnow${c?.man ? " man" : ""}`}>
       {c ? (
@@ -1646,7 +1715,7 @@ function ScWindNow({ data, now }) {
           </span>
         </>
       ) : null}
-      {fx.length ? (
+      {fx.length || pk ? (
         <span className="fx">
           {fx.map(([k, v]) => (
             <span key={k}>
@@ -1654,6 +1723,20 @@ function ScWindNow({ data, now }) {
               <b>{v}</b>
             </span>
           ))}
+          {/* Parkur (Seyhun 2026-11-06 "yukarıda Eksen, Rüzgâr gibi parkur da; tıklayınca alan açılsın, seçeyim, kapansın") */}
+          {pk ? (
+            pk.onTap ? (
+              <button type="button" className="pk" aria-expanded={pk.open} onClick={pk.onTap}>
+                <small>Parkur</small>
+                <b>{pk.name}</b>
+              </button>
+            ) : (
+              <span>
+                <small>Parkur</small>
+                <b>{pk.name}</b>
+              </span>
+            )
+          ) : null}
         </span>
       ) : null}
     </div>
@@ -2391,6 +2474,88 @@ function Sc05({ data, sel, mode, now }) {
     </div>
   );
 }
+// Parkur seçimi (Seyhun 2026-11-06 "parkur seçimini canlı yayın sayfasında yapabilmeliyim; seçtiğimde kalsın; ilk baş en basit parkuru seçtim,
+// bitti; çoklu parkurda sınıfa özel kalıcı"): üstte seçili parkur + Değiştir; açınca parkur şekilleri ve rota; "Sınıflara göre" ile sınıf
+// çipleri, sınıfa dokununca o sınıfın parkuru seçilir (raceLive.cards: kartlar, sel, by "Sınıf|"). Yarış boyu kalır, Başlat o kartı yarışa yazar.
+const crsClasses = (data) => {
+  const out = [];
+  const add = (c) => c && !out.includes(c) && out.push(c);
+  (data.plan?.order || []).forEach((o) => add(o.cls));
+  Object.values(data.rounds || {}).forEach((r) => add(r?.cls));
+  Object.keys(cleanCourse(data.course || {}).by || {}).forEach((k) => add(k.split("|")[0]));
+  return out.slice(0, 8);
+};
+// parkur şeklinin küçük çizimi (rüzgârsız, yazısız)
+const crsMini = (data, type, route) => courseSvg({ ...data, course: { ...(data.course || {}), cards: [{ id: "A", type, route }], sel: "A", by: {} } }, route, { W: 360, H: 300, bare: true, sail: false, pre: `mn${type}` });
+function ScCrsPick({ data, view, onView, onCards, onClose }) {
+  const crs = cleanCourse(data.course || {});
+  const [more, setMore] = useState(false);
+  const cls = crsClasses(data);
+  const own = (c) => !!crs.by[cardKey(c, "")];
+  const card = view ? cardFor(crs, view, "") : selCard(crs);
+  const [rt, setRt] = useState(null); // yazılan rota (null: kartınki)
+  const split = cls.some(own);
+  const put = (next) => onCards?.(cleanCards({ ...crs, ...next }));
+  // bu kartı başka bir sınıf ya da Herkes de kullanıyor mu (kullanıyorsa sınıfa yeni kart açılır)
+  const shared = (id) => (view ? crs.sel === id || cls.some((c) => c !== view && cardFor(crs, c, "").id === id) : false);
+  const forClass = (type, route) => {
+    const same = crs.cards.find((k) => k.type === type && routeText(k.route) === routeText(route));
+    if (same) return put({ by: { ...crs.by, [cardKey(view, "")]: same.id } });
+    const id = CARD_IDS.find((x) => !crs.cards.some((k) => k.id === x));
+    if (!id) return;
+    put({ cards: [...crs.cards, { id, type, route }], by: { ...crs.by, [cardKey(view, "")]: id } });
+  };
+  const setType = (t) => {
+    // seçince alan kapanır (sınıflara göre bakılırken açık kalır, sıradaki sınıf seçilebilsin)
+    if (!view) onClose?.();
+    if (t === card.type) return;
+    if (view && shared(card.id)) return forClass(t, card.route);
+    put({ cards: crs.cards.map((k) => (k.id === card.id ? { ...k, type: t } : k)) });
+  };
+  const saveRt = () => {
+    const r = cleanRoute(String(rt ?? "").replace(/fini[sş]/gi, "F").split(/[\s·›,>-]+/));
+    setRt(null);
+    if (r.length < 2 || routeText(r) === routeText(card.route)) return;
+    if (r.at(-1) !== "F") r.push("F");
+    if (view && shared(card.id)) return forClass(card.type, r);
+    put({ cards: crs.cards.map((k) => (k.id === card.id ? { ...k, route: r } : k)) });
+  };
+  const toAll = () => put({ by: Object.fromEntries(Object.entries(crs.by).filter(([k]) => k.split("|")[0] !== view)) });
+  return (
+    <div className="sc-pk">
+      {split || more ? (
+        <div className="sc-pkc" role="tablist">
+          {["", ...cls].map((c) => (
+            <button key={c || "all"} type="button" role="tab" aria-selected={view === c} onClick={() => (setRt(null), onView(c))}>
+              {c || (split ? "Diğerleri" : "Herkes")}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="sc-pkt">
+        {Object.entries(CARD_TYPES).map(([t, n]) => (
+          <button key={t} type="button" aria-pressed={card.type === t} onClick={() => setType(t)}>
+            <i dangerouslySetInnerHTML={{ __html: crsMini(data, t, card.route) }} />
+            <b>{n}</b>
+          </button>
+        ))}
+      </div>
+      <label className="sc-pkr">
+        <small>Rota</small>
+        <input value={rt ?? card.route.map((x) => (x === "F" ? "Finiş" : x)).join(" ")} inputMode="text" enterKeyHint="done" onChange={(e) => setRt(e.target.value)} onBlur={saveRt} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />
+      </label>
+      {view && own(view) ? (
+        <button type="button" className="sc-pkx" onClick={toAll}>
+          {`${view} herkesle aynı olsun`}
+        </button>
+      ) : cls.length && !more && !split ? (
+        <button type="button" className="sc-pkx" onClick={() => setMore(true)}>
+          Sınıflara göre
+        </button>
+      ) : null}
+    </div>
+  );
+}
 // Telefon/tablet Parkur (Seyhun 2026-11-05 "rüzgâr gibi yukarıdan açılsın; rota, eksen daha iyi gösterilsin"): kartın altında çizim, altında
 // rota adımları (Start › 1 › 2 › Finiş) ve iki kutu: eksen (derece + rüzgârın farkı), hat avantajı. Rüzgâr kartta zaten yazıyor, tekrar yok.
 // Büyük parkur çizimi: sahnenin en-boyu panelin en-boyuna göre (dikey telefonda uzun, yatay iPad'de geniş), parkur alanı doldurur
@@ -2414,9 +2579,12 @@ function ScCourseBig({ data, route }) {
     </div>
   );
 }
-function ScCourseDrop({ data, sel, mode, bare = false }) {
+function ScCourseDrop({ data: data0, sel, mode, bare = false, view = null }) {
   const racing = mode === "race";
-  const route = sceneRoute(data, racing ? sel : null, true, racing ? "race" : "wait");
+  // sınıfın parkuru seçiliyse (ScCrsPick) o kartın şekli ve rotası
+  const vk = view ? cardFor(cleanCourse(data0.course || {}), view, "") : null;
+  const data = vk ? { ...data0, course: { ...data0.course, sel: vk.id } } : data0;
+  const route = vk ? vk.route : view === "" ? selCard(cleanCourse(data.course || {})).route : sceneRoute(data, racing ? sel : null, true, racing ? "race" : "wait");
   const svg = courseSvg(data, route, { W: 900, H: 760, bare });
   if (!svg) return null;
   // Parkur ve rüzgâr paneli (Seyhun 2026-11-06 "çok fazla tekrar; bir kere parkur büyük"): sayılar üstteki rüzgâr kartında, burada yalnız çizim
@@ -2559,7 +2727,12 @@ const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // sağdan kayarak); seçince kapanır. Alt çubukta yalnız Parkur · Rüzgâr · Sıralama · Video · Start; paneller açılıp kapanırken kayar.
 const SHUT_MS = 190;
 const FULL_VP = ["course", "wind", "rank", "prog"];
-function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", photos = [], defCam = "" }) {
+function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", photos = [], defCam = "", onCards = null }) {
+  const [crsView, setCrsView] = useState(null); // Parkur panelinde bakılan sınıf (null: o anki yarışın parkuru, "": herkes)
+  const [crsOpen, setCrsOpen] = useState(false); // üstteki Parkur kutusuna dokununca açılan seçim alanı
+  // üstte yazan parkur: o anki / sıradaki yarışın sınıfınınki, yoksa seçili
+  const pkCls = (sel && data.rounds?.[sel.id]?.cls) || (data.plan?.order || [])[0]?.cls || "";
+  const pkCard = pkCls ? cardFor(cleanCourse(data.course || {}), pkCls, "") : selCard(cleanCourse(data.course || {}));
   const ref = useRef(null);
   const [shut, setShut] = useState(""); // kapanırken kayan panel (animasyon bitince kalkar)
   const dragRef = useRef(null);
@@ -2838,8 +3011,9 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       <div ref={vidRef} />
     ) : k === "course" ? (
       <>
-        <ScWindNow data={data} now={now} />
-        {course ? <ScCourseDrop data={data} sel={sel} mode={mode} bare /> : <p className="sc-vno">Parkur yok</p>}
+        <ScWindNow data={data} now={now} pk={course || onCards ? { name: (CARD_TYPES[pkCard.type] || "").split(" ")[0], open: crsOpen, onTap: onCards ? () => (setCrsOpen(!crsOpen), setCrsView(null)) : null } : null} />
+        {crsOpen && onCards ? <ScCrsPick data={data} view={crsView ?? ""} onView={setCrsView} onCards={onCards} onClose={() => (setCrsOpen(false), setCrsView(null))} /> : null}
+        {course ? <ScCourseDrop data={data} sel={sel} mode={mode} bare view={crsOpen ? crsView : null} /> : <p className="sc-vno">Parkur yok</p>}
         <ScWindDay data={data} now={now} />
         {/* rüzgâr / eksen / hat ölçümü (Seyhun 2026-11-05 "rüzgâr ekleme parkurda olmalı, adı Ölçüm ekle") */}
         {onWind ? (
@@ -2985,7 +3159,7 @@ function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast 
   const auto = evreOf(mode, seqMode, soon, "", { fs: /genel/i.test(vd?.void || ""), aban: /abandone|iptal/i.test(vd?.void || "") });
   return { ...p, sd, vid, evre, auto, has, sc: itemScene(p.item, sd.screen?.kind === "rec") };
 }
-function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null, view = "", rk = null, past = false }) {
+function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null, view = "", rk = null, past = false, still = false }) {
   const back = useInAppBack(); // uygulama içinden açıldıysa yarış adının başında geri oku
   // izleyicinin açtığı Rüzgâr / Sıralama / Parkur (Seyhun 2026-11-05 "yukarıdan açılsın"): süre kartının altından açılır, sahne değişmez
   const drop =
@@ -3037,7 +3211,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       <div className="sc-body" key={sc}>
         {body}
       </div>
-      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} logo={bar ? { back } : null} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={sc === "01" && item === "wind"} drop={drop} /> : null}>
+      <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} logo={bar ? { back } : null} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={still || (sc === "01" && item === "wind")} drop={drop} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
         {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} slim /> : listOn ? side === "gen" || (!lwho?.grp && mode !== "race" && scBoards(data).length) ? <ScGen data={data} who={lwho} now={now} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
       </ScTop>
@@ -3109,7 +3283,10 @@ export function LiveScreen({ id, y = "" }) {
     if (!vCam) setVCam(BG_DEF);
   }
   const locT = useLocalTimer(skew, id, own && !demoOn && !y, data0?.timer || null);
-  const data = useMemo(() => (locT && data0 ? { ...data0, timer: locT } : data0), [data0, locT]);
+  // parkur seçimi (ScCrsPick): yazılana kadar ekranda hemen görünür; sunucudaki cardAt yenilenince sunucununki
+  const [crsReq, setCrsReq] = useState(null); // { k: kartlar, n, at }
+  const crsOv = crsReq && data0 && !((data0.course?.cardAt || "") >= crsReq.at) ? crsReq.k : null;
+  const data = useMemo(() => (data0 && (locT || crsOv) ? { ...data0, ...(locT ? { timer: locT } : {}), ...(crsOv ? { course: { ...data0.course, ...crsOv } } : {}) } : data0), [data0, locT, crsOv]);
   const [vTab, setVTab] = useState(""); // alt çubukta açık olan: cam, pos, course, wind, rank, start (boş = kapalı)
   const myRef = useRef(null); // arka plandaki kendi videom (oynat, geri al, baştan)
   const playMine = useCallback((vid, blob) => {
@@ -3255,7 +3432,10 @@ export function LiveScreen({ id, y = "" }) {
   // açılan bölüm kartın altında; ortada aynı şey ikinci kez çıkmasın
   const same = vwOn && ((vView === "rank" && pk.sc === "03") || (vView === "course" && pk.sc === "05") || (vView === "wind" && pk.sc === "01" && pk.item === "wind"));
   // geçmiş yarış (?y=, Seyhun 2026-11-05 eski düzen kalktı): o yarışın sıralaması
-  const { sc, item } = !isCur && scBoards(sd).length ? { sc: "03", item: "rank" } : same ? { sc: "01", item: "time" } : pk;
+  // yayın kapalıyken / fotoğraf arkadayken ortada sahne dönmez (Seyhun 2026-11-06 "yayın kapalı olmasına rağmen arka planda rüzgâr dönüyor; rüzgâra
+  // tıklayarak ulaşacağım"): yalnız süre kartı; Rüzgâr / Parkur / Sıralama alt çubuktan açılır
+  const still = mine && !!phOn && !myVid.url;
+  const { sc, item } = !isCur && scBoards(sd).length ? { sc: "03", item: "rank" } : same || still ? { sc: "01", item: "time" } : pk;
   const { evre } = pk;
   return (
     <div className={`lv lv-bc lv-grx${vid ? " video" : ""}${follow ? " fol" : ""}${myVid.url && !follow ? " mine" : ""}${vid && sd.screen?.pause ? " pause" : ""} ${phase}`}>
@@ -3273,8 +3453,8 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} /> : null} />
-        {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} list={newList} onListed={onListed} /> : null}
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} still={still} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} onCards={(adm && inApp) || demoOn ? (k) => setCrsReq({ k, n: Date.now(), at: new Date().toISOString() }) : null} /> : null} />
+        {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} list={newList} onListed={onListed} cards={crsReq} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
       {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}

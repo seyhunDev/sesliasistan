@@ -1,5 +1,6 @@
 "use client";
 
+import { ClubIcon } from "./ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { WaSheet } from "./WaSheet";
@@ -176,7 +177,7 @@ export function useMessagesRow() {
   const { chats = [], unreadTotal = 0 } = useChat() || {};
   const top = chats.filter((c) => c.last && !c.last.deleted).sort((a, b) => (b.unread > 0) - (a.unread > 0) || toMs(b.last?.at) - toMs(a.last?.at))[0];
   if (!top) return null;
-  return <Row key="msg" href={`/messages?c=${top.id}`} title="Mesajlar" sub={`${top.title}: ${top.last.text}`} right={unreadTotal > 0 ? <span className="tone-ve tone-bar rounded-full px-2 py-px text-[0.75rem] font-bold text-white dark:text-[#111214]">{unreadTotal}</span> : null} />;
+  return <Row key="msg" href={`/messages?c=${top.id}`} lead={<ClubIcon name="chat" color="#a16207" />} title="Mesajlar" sub={`${top.title}: ${top.last.text}`} right={unreadTotal > 0 ? <span className="tone-ve tone-bar rounded-full px-2 py-px text-[0.75rem] font-bold text-white dark:text-[#111214]">{unreadTotal}</span> : null} />;
 }
 
 // Kulüp listesinin başındaki satırlar (Seyhun 2026-10-21): Yarış (süren ya da sıradaki; dokununca yarışın sayfası), Antrenman (son yoklamalı gün ve
@@ -193,9 +194,9 @@ export function ClubRows({ open, fit }) {
   const who = train && (train.n ? `${train.names.slice(0, 3).join(", ")}${train.n > 3 ? ` +${train.n - 3}` : ""}` : "");
   return (
     <>
-      {race && <Row href={`/athletes/races/${race.id}`} title={race.title} sub={race.sub} right={race.right} />}
-      {train && <Row href={`/athletes/attendance?gun=${train.date}`} title={`Antrenman · ${train.when}`} sub={who} right={`${train.n} kişi`} />}
-      <Row href="/fitness" title="Fitness" right={fw.n ? `${fw.done}/${fw.n}` : null} sub={fw.n ? "Bu hafta yapıldı" : "Bu hafta antrenman yok"} />
+      {race && <Row href={`/athletes/races/${race.id}`} lead={<ClubIcon name="flag" color="#2563eb" />} title={race.title} sub={race.sub} right={race.right} />}
+      {train && <Row href={`/athletes/attendance?gun=${train.date}`} lead={<ClubIcon name="checks" color="#2563eb" />} title={`Antrenman · ${train.when}`} sub={who} right={`${train.n} kişi`} />}
+      <Row href="/fitness" lead={<ClubIcon name="dumbbell" color="#16a34a" />} title="Fitness" right={fw.n ? `${fw.done}/${fw.n}` : null} sub={fw.n ? "Bu hafta yapıldı" : "Bu hafta antrenman yok"} />
     </>
   );
 }
