@@ -31,7 +31,8 @@ export function WindRibbon({ rows, nowH = -1, radar = null, tone = "sky", win = 
   // Akşam geç saatte (kalan saat az) günün tamamı gösterilir (insight.js ile aynı)
   const from = nowH >= 0 && nowH <= 18 ? Math.max(6, nowH - 1) : 6;
   const hrs = (rows || []).filter((r) => +r.hh >= from && +r.hh <= 23 && r.wind != null);
-  if (hrs.length < 4) return null;
+  // Veri yokken de aynı yükseklik (ana sayfada zıplama olmasın; Seyhun 2026-11-06 "oynamayı istemiyorum")
+  if (hrs.length < 4) return <div data-wind-ribbon="empty" className={`grid place-items-center text-[0.8125rem] text-[color:var(--wr-mut,rgba(255,255,255,.75))] ${className}`} style={{ minHeight: h + 92, ...(tone === "light" ? {} : { color: "rgba(255,255,255,.75)" }) }}>Bu gün için saatlik rüzgâr yok</div>;
   const n = hrs.length;
   const max = Math.max(MIN_MAX, ...hrs.map((r) => r.gust ?? r.wind)) * 1.08;
   const X = (i) => ((i + 0.5) / n) * 100;

@@ -818,7 +818,7 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
    sağ sütunun içeriği iki sütun. Sığmayan çok küçük ekranda sayfa kayar. Telefon (<48rem) değişmez (JS useWide ile ayrılır). */
 @media (min-width: 48rem) {
   body main.home-screen.max-w-\[30rem\] { max-width: none; box-sizing: border-box; height: 100dvh; overflow-y: auto; padding: calc(0.75rem + env(safe-area-inset-top)) 1rem calc(6.5rem + env(safe-area-inset-bottom)); }
-  main.home-screen .home-ck.hs { margin: 0; padding: 0; display: grid; gap: 0.75rem; height: 100%; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; }
+  main.home-screen .home-ck.hs { margin: 0; padding: 0; display: grid; gap: 0.75rem; height: auto; min-height: 100%; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; }
   main.home-screen .hs-w { grid-row: 1; min-width: 0; }
   main.home-screen .hs-cal { grid-row: 2; min-height: 0; display: grid; margin-left: -1rem; }
   main.home-screen .hs-r { grid-row: 3; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; align-content: start; }
