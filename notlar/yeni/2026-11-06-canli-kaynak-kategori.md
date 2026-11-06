@@ -7,3 +7,7 @@
 ## Sıradaki işler
 
 - Onaydan sonra birleşir.
+
+## Nerede kaldım (ek)
+
+- Kategoriler yayında ama önceden eklenen kaynaklarda `from` yok, hepsi "Canlı yayınlar"da görünüyordu (Seyhun iPad ekran görüntüsü). Yayın masası › Kaynaklar › kaynağa dokun › **Kategorisi** ile taşınır (Canlı yayın, Kanalımdaki, Etraftaki, YouTube videosu).
