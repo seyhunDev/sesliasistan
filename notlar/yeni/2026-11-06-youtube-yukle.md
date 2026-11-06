@@ -1,0 +1,7 @@
+## Nerede kaldım
+- YouTube'a yükle (Seyhun: "çektiğim videoyu YouTube'a yükleyebilmeliyim, linkiyle kameralara ekleyeyim mi diye sor, isim vereyim"; örnek project-files/youtube-yukle/ornek.png; telefonda denenmedi): /canli Video paneli › Düzenle'de paylaş penceresi ve link kutusu yerine "YouTube'a yükle". Video kanala Liste dışı, yerleştirmeye açık yüklenir (`src/lib/youtube.js` `ytUpload`, YouTube'a doğrudan, Netlify'dan geçmez). Bitince "Kameralara ekleyeyim mi?" + ad (varsayılan sıradaki "Kamera N") › Ekle: `stream.sources`'a kamera; Hayır denirse sonra "Kameralara ekle". Yayın › + Kaynak'ta "Kanalımdan" (`src/features/broadcast/MyChannel.jsx`): kanalın o anki canlı yayını ve son 25 video (liste dışı dahil), dokununca seçili türde eklenir.
+- Bağlantı: `src/app/api/youtube/route.js` (start/token/off, yalnız ana hesap) + `callback/route.js`; yenileme anahtarı Firestore `ytAuth/{uid}` (kurallarda yok, telefondan okunamaz; kural değişmedi). Google girişi iPhone uygulamasında Safari'de açılır. Netlify'da `YT_CLIENT_ID`, `YT_CLIENT_SECRET` gerekir; Google Cloud'da OAuth istemcisi (Web), yönlendirme `https://sesliasistan.netlify.app/api/youtube/callback`, uygulama "In production". Test yaris.mjs "YouTube yükleme".
+
+## Sıradaki işler
+0. Google Cloud + Netlify kurulumu, sonra telefonda: Video › Düzenle › YouTube'a yükle › bağlan › yükle › Kameralara ekle › Kamera'dan ekrana al; Yayın › + Kaynak › Kanalımdan.
+1. Büyük videoda yükleme yarıda kesilirse kaldığı yerden devam (şimdi baştan).

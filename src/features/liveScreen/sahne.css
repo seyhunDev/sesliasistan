@@ -762,6 +762,14 @@
 .lvd-ln button:disabled { opacity: 0.45; }
 .lvd-ok { margin-top: 0.6em; font: 600 0.9em/1.3 var(--sc-c, var(--lv-font-c)); color: #7fb0ff; }
 .lvd-t s.yt { background: #e5484d; }
+/* YouTube'a yükle (2026-11-06): ana iş düğmesi mavi, ilerleme çubuğu, "Kameralara ekleyeyim mi?" */
+.lvd-chs button.p { background: linear-gradient(#3d7dff, #2563eb); }
+.lvd-chs button:disabled { opacity: 0.45; }
+.lvd-up { margin-top: 0.7em; }
+.lvd-up div { display: flex; justify-content: space-between; margin-bottom: 0.4em; font: 600 0.9em/1.2 var(--sc-c, var(--lv-font-c)); color: rgba(255, 255, 255, 0.8); }
+.lvd-up i { display: block; height: 0.4em; border-radius: 0.2em; background: linear-gradient(90deg, #3d7bff calc(var(--p, 0) * 100%), rgba(255, 255, 255, 0.12) 0); }
+.lvd-q { margin: 0.7em 0 0; font: 700 1em/1.2 var(--sc-c, var(--lv-font-c)); }
+.lvd-ln button.s { background: rgba(255, 255, 255, 0.12); }
 
 /* Yatay ekran ve iPad (Seyhun 2026-11-05 "iPad'de alttaki düğmeler logonun üstüne geliyor"): aynı çubuk üstte ortada, süre kartı ile
    Canlı arasında; alttaki kartlara (rüzgâr, sıralama, ad ve logo) değmez. Dokunulanın içeriği çubuğun hemen altından açılır */

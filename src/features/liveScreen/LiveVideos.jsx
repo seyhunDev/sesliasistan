@@ -6,8 +6,9 @@
 // Videoya dokununca bu ekranın arka planında oynar, yeniden dokununca kalkar.
 // Galeri yarış yarış (Seyhun 2026-11-05 "hangi yarışta çekersem, sarı grubun birinci yarışı diye etiketleyip organize"; örnek
 // canli-tv/video-galeri-ornek.png): çekilince o an süren startın etiketi (sid); Düzenle'de yarışı değişir, Yarış dışı, Sil.
-// YouTube'a ekle (Seyhun 2026-11-05 "YouTube'a ekleyip sonra kameralarda gösterip yayına verebilirim"): telefonun paylaş penceresi açılır
-// (YouTube uygulaması seçilir, başlık panoya kopyalanır); YouTube linki yapıştırılınca yayının kaynaklarına eklenir (Kamera, Yayın › Ekran).
+// YouTube'a yükle (Seyhun 2026-11-06 "çektiğim videoyu YouTube'a yükleyebilmeliyim, sonra linkiyle kameralara ekleyeyim mi diye sor, isim
+// vereyim"; örnek youtube-yukle/ornek.png): video kanala Liste dışı yüklenir (lib/youtube.js, ilk seferde "YouTube'a bağlan"), link
+// kendiliğinden gelir, "Kameralara ekleyeyim mi?" sorulur; adı verilince yayının kaynaklarına kamera olarak eklenir (Kamera, Yayın › Ekran).
 import { useEffect, useMemo, useState } from "react";
 import { dropKept, keepLocal, listKept } from "@/features/raceMedia/pendingStore";
 import { RecPick } from "@/features/raceMedia/RecPick";
@@ -16,7 +17,8 @@ import { readTimer } from "@/features/training/Countdown";
 import { saveStream } from "@/features/athletes/raceLiveStore";
 import { recName } from "./liveActions";
 import { momentAt, raceName } from "@/lib/raceLive";
-import { addSource, cleanStream, streamSources, ytEmbed } from "@/lib/raceRounds";
+import { addSource, cleanStream, streamSources } from "@/lib/raceRounds";
+import { YtNeed, ytConnect, ytUpload } from "@/lib/youtube";
 import { groupColor } from "@/lib/roundScore";
 import { todayStr } from "@/lib/utils/format";
 
@@ -128,7 +130,9 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
   const [msg, setMsg] = useState("");
   const [edit, setEdit] = useState(false); // Düzenle
   const [cur, setCur] = useState(""); // Düzenle'de seçilen video
-  const [link, setLink] = useState("");
+  const [up, setUp] = useState(null); // { id, p } YouTube'a yüklenirken
+  const [need, setNeed] = useState(false); // YouTube'a bağlan
+  const [camName, setCamName] = useState("");
   const today = todayStr();
   useEffect(() => {
     let on = true;
@@ -162,11 +166,15 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     return s ? sName(s) : x ? hm(x.at) : "";
   };
 
-  const put = (x, patch) => {
-    const n = { ...x, ...patch };
-    keepLocal(n);
-    setList((l) => l.map((y) => (y.id === x.id ? n : y)));
-  };
+  const put = (x, patch) =>
+    setList((l) =>
+      l.map((y) => {
+        if (y.id !== x.id) return y;
+        const n = { ...y, ...patch };
+        keepLocal(n);
+        return n;
+      })
+    );
   // eski videoların küçük resmi yoksa sırayla çıkarılır
   const noTh = list.find((x) => !x.th && !x.thNo)?.id || "";
   useEffect(() => {
@@ -224,28 +232,37 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     const what = s ? recName({ at: x.at, ...(momentAt(x.at, starts) || {}) }, starts) : `Kayıt ${hm(x.at)}`;
     return [race?.name, s ? grpOf(s) : "", what].filter(Boolean).join(" · ");
   };
-  const share = (x) => {
-    const title = ytTitle(x);
-    const ext = /quicktime/.test(x.blob.type) ? "mov" : "mp4";
-    const f = new File([x.blob], `${title}.${ext}`, { type: x.blob.type || "video/mp4" });
-    navigator.clipboard?.writeText(title).catch(() => {});
-    if (navigator.canShare?.({ files: [f] })) navigator.share({ files: [f], title }).catch(() => {});
-    else setMsg("Bu cihaz paylaşamıyor");
+  const srcs = streamSources(stream);
+  const camOf = (x) => (x?.yt ? srcs.find((y) => y.url === x.yt)?.name || "" : "");
+  const nextCam = () => addSource(srcs, "camera").at(-1).name;
+  // Liste dışı yükle; link gelince kameralara eklemeyi sorar
+  const upload = async (x) => {
+    if (up) return;
+    setMsg("");
+    setNeed(false);
+    setUp({ id: x.id, p: 0 });
+    try {
+      const vid = await ytUpload(x.blob, { title: ytTitle(x), description: race?.name || "" }, (p) => setUp({ id: x.id, p }));
+      put(x, { yt: `https://youtu.be/${vid}`, ytNo: false });
+      setCamName(nextCam());
+    } catch (e) {
+      if (e instanceof YtNeed && e.need === "connect") setNeed(true);
+      else setMsg(e?.message || "Yüklenemedi");
+    }
+    setUp(null);
   };
-  // YouTube linki → yayının kaynakları (Kamera düğmesinde ve Yayın › Ekran'da görünür)
-  const addLink = async (x) => {
-    const u = link.trim();
-    if (!ytEmbed(u)) return setMsg("YouTube linki tanınmadı");
-    const base = streamSources(stream);
-    const had = base.some((y) => y.url === u);
-    let l = had ? base : addSource(base, "phone");
-    if (!had && l.length === base.length) return setMsg("Kaynak listesi dolu (en çok 8). Yayın › Ekran'dan birini çıkar.");
-    if (!had) l = l.map((y, i, a) => (i === a.length - 1 ? { ...y, url: u, name: nameOf(x).slice(0, 30) } : y));
+  const connect = () => ytConnect().then(() => setNeed(false), (e) => setMsg(e?.message || "Bağlanılamadı"));
+  // YouTube linki → yayının kaynakları, verilen adla kamera (Kamera düğmesinde ve Yayın › Ekran'da görünür)
+  const addCam = async (x) => {
+    const base = srcs;
+    const l0 = addSource(base, "camera");
+    if (l0.length === base.length) return setMsg("Kaynak listesi dolu (en çok 8). Yayın › Ekran'dan birini çıkar.");
+    const name = (camName.trim() || l0.at(-1).name).slice(0, 30);
+    const l = l0.map((y, i, a) => (i === a.length - 1 ? { ...y, url: x.yt, name } : y));
     setMsg("");
     try {
       await saveStream(orgId, raceId, { ...cleanStream(stream), sources: l });
-      put(x, { yt: u });
-      setLink("");
+      put(x, { ytCam: name });
     } catch {
       setMsg("Kaydedilemedi. İnterneti kontrol et.");
     }
@@ -259,7 +276,7 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
         type="button"
         className={`lvd-t${on ? " on" : ""}`}
         aria-pressed={on}
-        onClick={() => (edit ? (setCur(cur === x.id ? "" : x.id), setLink(""), setMsg("")) : playing === x.id ? onPlay?.("", null) : onPlay?.(x.id, x.blob))}
+        onClick={() => (edit ? (setCur(cur === x.id ? "" : x.id), setCamName(nextCam()), setMsg("")) : playing === x.id ? onPlay?.("", null) : onPlay?.(x.id, x.blob))}
       >
         <span className="th">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -308,23 +325,51 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
               Yarış dışı
             </button>
           </div>
-          <div className="lvd-chs">
-            <button type="button" onClick={() => share(sel)}>
-              YouTube&apos;a ekle
-            </button>
-            <button type="button" className="x" onClick={() => drop(sel)}>
-              Sil
-            </button>
-          </div>
-          {sel.yt ? (
-            <p className="lvd-ok">Kaynaklarda: {nameOf(sel)}</p>
+          {up?.id === sel.id ? (
+            <div className="lvd-up">
+              <div>
+                <span>YouTube&apos;a yükleniyor</span>
+                <span>{`%${Math.round(up.p * 100)}`}</span>
+              </div>
+              <i style={{ "--p": up.p }} />
+            </div>
           ) : (
-            <div className="lvd-ln">
-              <input type="url" inputMode="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="YouTube linki" />
-              <button type="button" disabled={!link.trim()} onClick={() => addLink(sel)}>
-                Kaynaklara ekle
+            <div className="lvd-chs">
+              {sel.yt ? (
+                sel.ytNo && !camOf(sel) ? (
+                  <button type="button" onClick={() => put(sel, { ytNo: false })}>
+                    Kameralara ekle
+                  </button>
+                ) : null
+              ) : need ? (
+                <button type="button" className="p" onClick={connect}>
+                  YouTube&apos;a bağlan
+                </button>
+              ) : (
+                <button type="button" className="p" disabled={!!up} onClick={() => upload(sel)}>
+                  YouTube&apos;a yükle
+                </button>
+              )}
+              <button type="button" className="x" onClick={() => drop(sel)}>
+                Sil
               </button>
             </div>
+          )}
+          {!sel.yt || up?.id === sel.id ? null : camOf(sel) || sel.ytCam ? (
+            <p className="lvd-ok">Kameralarda: {camOf(sel) || sel.ytCam}</p>
+          ) : sel.ytNo ? null : (
+            <>
+              <p className="lvd-q">Kameralara ekleyeyim mi?</p>
+              <div className="lvd-ln">
+                <input value={camName} onChange={(e) => setCamName(e.target.value)} maxLength={30} enterKeyHint="done" aria-label="Kamera adı" />
+                <button type="button" onClick={() => addCam(sel)}>
+                  Ekle
+                </button>
+                <button type="button" className="s" onClick={() => put(sel, { ytNo: true })}>
+                  Hayır
+                </button>
+              </div>
+            </>
           )}
         </div>
       ) : null}
