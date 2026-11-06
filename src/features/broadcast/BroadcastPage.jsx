@@ -16,7 +16,7 @@ import { readProgramFile, readProgramText } from "@/features/broadcast/broadcast
 import { FIRST_ITEM, agendaFirst, agendaPut, datesAdd, datesDrop, programPatch } from "@/lib/raceProgram";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { loadSheets, addCourseMany, addCourseObs, saveCoursePt, loadCourse, loadLive, loadRoundsOf, resetLive, saveCamBy, saveSrcLive, saveCourseShow, saveEvre, saveEvreMan, loadShowTpl, saveShowTpl, savePin, saveOnAir, saveCards, watchRounds, saveCourse, savePlan, saveRounds, saveStarts, savePlanKeys } from "@/features/athletes/raceLiveStore";
-import { GROUP_PICK, finalsFirst, groupColor, groupMap, groupsOn, isFinalGrp } from "@/lib/roundScore";
+import { GROUP_PICK, finalsFirst, finalsOnly, groupColor, groupMap, groupsOn, isFinalGrp } from "@/lib/roundScore";
 import { PenSheet } from "./PenSheet";
 import { countingAt as countingNow, finishSteps, orderWithout, startBlock, startedRow, zeroStarts } from "./startFlow";
 import { DocsTab } from "./DocsTab";
@@ -1268,7 +1268,7 @@ export function BroadcastPage({ orgId, id }) {
   const racing = races.flatMap((r) => r.rows.filter((x) => x.start && x.state === "live" && !cdRow(x.start.id)).map((x) => ({ x, n: r.n })));
   const cols = (() => {
     const g = [...groupRows.map(([, gg]) => gg), ...races.flatMap((r) => r.rows.map((x) => x.grp || ""))];
-    return [...new Set(g)];
+    return finalsOnly([...new Set(g)]); // final grupları varsa renk grupları sütunda yok (Seyhun 2026-11-05)
   })();
   const heroCard = heroX ? cardFor(course, heroE?.cls || "", heroX.grp || "") : selCard(course);
   // grubun son dönüşü: "2. şamandıra · 9/14 döndü", "Finiş · 3/14 bitirdi", yoksa start saati
@@ -1613,22 +1613,23 @@ export function BroadcastPage({ orgId, id }) {
           {races.length ? (
             // Yarış × grup tablosu (Seyhun 2026-11-05 "1. yarış Mavi, 1. yarış Sarı… net görmeliyim"): satır yarış, sütun grup; bekleyen kutuya
             // dokununca o start büyük karta gelir, başlamışa dokununca işleri (yarışta) ya da dönüşleri (bitti) açılır
-            <div className="sure-grid" style={{ "--cols": cols.length }}>
+            <div className="sure-grid" style={{ "--cols": races.length }}>
+              {/* Satır grup, sütun yarış (Seyhun 2026-11-06 "yazılar kesiliyor"): grup çoğalınca da sığar */}
               <div className="sure-gr head">
-                <span>Yarış</span>
-                {cols.map((g) => (
-                  <span key={g || "-"}>
+                <span>Grup</span>
+                {races.map((r) => (
+                  <span key={r.n}>{`${r.n}. yarış`}</span>
+                ))}
+              </div>
+              {cols.map((g) => (
+                <div key={g || "-"} className="sure-gr">
+                  <span>
                     {g ? <i style={{ background: groupColor(g) || "var(--mut)" }} aria-hidden="true" /> : null}
                     {g || "Start"}
                   </span>
-                ))}
-              </div>
-              {races.map((r) => (
-                <div key={r.n} className="sure-gr">
-                  <span>{`${r.n}.`}</span>
-                  {cols.map((g) => {
+                  {races.map((r) => {
                     const x = r.rows.filter((y) => (y.grp || "") === g).at(-1);
-                    if (!x) return <span key={g || "-"} />;
+                    if (!x) return <span key={r.n} />;
                     const s = x.start;
                     const cd = !!s && cdRow(s.id);
                     const t =
@@ -1642,7 +1643,7 @@ export function BroadcastPage({ orgId, id }) {
                     const cls = x.state === "done" ? "ok" : x.state === "void" ? "void" : cd ? "cd" : s ? "live" : x.state === "ap" ? "ap" : x.i === heroX?.i && !hero?.cd ? "nx" : "";
                     const tap = () => (s ? (x.state === "live" && !cd ? setPickId(s.id) : x.state === "done" ? (setSelId(s.id), goTab("donus")) : null) : x.state !== "ap" && canRow ? (setChg(""), setHeroPick(x.i)) : null);
                     return (
-                      <button key={g || "-"} type="button" onClick={tap} className={cls} style={{ "--g": (g && groupColor(g)) || "#2a4a7a" }}>
+                      <button key={r.n} type="button" onClick={tap} className={cls} style={{ "--g": (g && groupColor(g)) || "#2a4a7a" }}>
                         <b>{t[0]}</b>
                         {t[1] ? <small>{t[1]}</small> : null}
                       </button>
@@ -2535,6 +2536,16 @@ export function BroadcastPage({ orgId, id }) {
                 </small>
               </button>
             ))}
+            {/* Canlı ekran ve Ayarlar menüde (Seyhun 2026-11-06 "ekranı soldaki yerde bir düğme olarak koyalım; ayarlar yerinde değil") */}
+            <span className="masa-side-gap" aria-hidden="true" />
+            <button type="button" className="tool" onClick={openScreen} data-press>
+              <b>Canlı ekran</b>
+              <small>Yönet, ekrana aç</small>
+            </button>
+            <button type="button" className="tool" onClick={() => setMenu(true)} data-press>
+              <b>Ayarlar</b>
+              <small>Sınıf, grup, link</small>
+            </button>
           </nav>
           <div className="masa-col">
             {[tab, ...(tab === "donus" ? ["track"] : [])].map((k) => (
