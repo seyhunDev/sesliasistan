@@ -25,3 +25,9 @@
   .brp-top { left: 12px; right: 12px; justify-content: flex-end; flex-wrap: wrap; }
 }
 .br-fin { font-size: 18px; fill: rgba(255, 255, 255, 0.8); }
+.br-grp { position: absolute; left: 50%; top: calc(clamp(14px, 2vw, 32px) + env(safe-area-inset-top)); transform: translateX(-50%); display: flex; align-items: center; gap: 0.5em; white-space: nowrap; font: 700 clamp(15px, 1.25vw, 20px) var(--lv-font-c, "Barlow Condensed", sans-serif); letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.85); pointer-events: none; }
+.br-grp i { width: 0.7em; height: 0.7em; border-radius: 50%; }
+@media (max-aspect-ratio: 1/1) {
+  .br-grp { top: var(--vb-t, 9em); font-size: 15px; }
+  .lv:has(.sc-rd.slim) .br-grp { top: 0.7em; }
+}
