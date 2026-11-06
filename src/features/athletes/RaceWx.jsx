@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DayNav } from "@/features/weather/DayNav";
 import { HourTable } from "@/features/weather/HourTable";
+import { WindRibbon } from "@/features/weather/WindRibbon";
 import { useWindObs } from "@/features/weather/useWindObs";
 import { RegionMap } from "@/features/weather/RegionMap";
 import { NowRain } from "@/features/weather/NowRain";
@@ -199,7 +200,8 @@ export function RaceWxRows({ r, day = "" }) {
     <section aria-label="Yarış havası">
       <Fold label="Hava" value={value} open={open.wx && !late && !!rows} onToggle={() => !late && rows && flip("wx")}>
         {days.length > 1 && <DayNav light sel={sel} days={days} today={today} onStep={step} />}
-        {rows && <HourTable key={sel} rows={rows} date={sel} place={d.at} far tone="light" />}
+        {rows && <WindRibbon rows={rows} nowH={isToday ? +nowHH() : -1} radar={isToday ? radar : null} tone="light" win={d.win || null} h={92} className="mt-3" />}
+        {rows && <HourTable key={sel} rows={rows} date={sel} place={d.at} far tone="light" className="mt-3" />}
         {isToday && d.at && <NowRain place={d.at} rows={d.rows} radar={radar} />}
       </Fold>
       {!late && !d.err && (
