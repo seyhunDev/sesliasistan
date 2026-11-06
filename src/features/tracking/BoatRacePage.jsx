@@ -4,7 +4,7 @@
 // gerçek yarışta canlı konum akışı sonra bağlanacak (aynı biçim, lib/boatPlay.js). ?grp=Sarı ile tek grup; üstte grup seçimi.
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { cleanSet, groupsOf } from "@/lib/boatPlay";
+import { cleanSet, fullRace, groupsOf } from "@/lib/boatPlay";
 import { BoatRace } from "./BoatRace";
 
 export function BoatRacePage({ id, grp0 = "" }) {
@@ -19,7 +19,7 @@ export function BoatRacePage({ id, grp0 = "" }) {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((j) => {
         if (!on) return;
-        const s = cleanSet(j);
+        const s = fullRace(cleanSet(j));
         setSet(s);
         setGrp((g) => g || groupsOf(s)[0] || "");
       })
