@@ -36,6 +36,7 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
   const [L, setL] = useState(null); // ekran, kaynaklar, evreler (raceLive belgesinin ekran alanları)
   const [evOpen, setEvOpen] = useState("");
   const [selSrc, setSelSrc] = useState("");
+  const [wipe, setWipe] = useState(false); // Kaynakları sıfırla: ikinci dokunuşta siler
   const [add, setAdd] = useState(addCat?.c || ""); // açık ekleme kutusu: kategori (canli, video, kanal, etraf)
   const [addKind, setAddKind] = useState("drone");
   const [addName, setAddName] = useState("");
@@ -148,6 +149,21 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
     setSelSrc("");
     const v = ytId(s.url);
     putSources(srcList.filter((x) => x.id !== s.id), s.auto && v ? [...(L?.stream?.gone || []), v] : null);
+  };
+  // Kaynakları sıfırla (Seyhun 2026-11-06 "eski kamera falan onları temizleyelim, sıfırdan deneyeceğim"): bütün kaynaklar, gruba bağlı
+  // kameralar ve yayında işareti silinir; kanalımdan gelen süren yayınlar bir daha kendiliğinden eklenmez; ekrandaki kaynak kalkar
+  const wipeSrc = () => {
+    setWipe(false);
+    setSelSrc("");
+    setAdd("");
+    const gone = [...new Set([...(L?.stream?.gone || []), ...srcList.filter((x) => x.auto).map((x) => ytId(x.url)).filter(Boolean)])];
+    putSources([], gone);
+    setL((p) => ({ ...p, camBy: {}, srcLive: {}, onAir: { sid: "" } }));
+    saveCamBy(orgId, raceId, {}).catch(fail);
+    saveSrcLive(orgId, raceId, {}).catch(() => {});
+    saveOnAir(orgId, raceId, { sid: "" }).catch(() => {});
+    if (screen.kind === "src" || screen.kind === "live") show({ kind: "" });
+    else say("Kaynaklar silindi");
   };
   // from: kanal (Kanalımdan), etraf (Etraftaki kameralar), video (YouTube videosu); canlı yayında yok
   const addSrc = (k, url = "", name = "", from = "") => {
@@ -466,6 +482,11 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
             </section>
           );
         })}
+        {srcList.length || autoOn ? (
+          <button type="button" className={`lms-b red lms-wipe${wipe ? " on" : ""}`} onClick={() => (wipe ? wipeSrc() : setWipe(true))} onBlur={() => setWipe(false)}>
+            {wipe ? "Hepsi silinsin mi? Dokun, sil" : "Kaynakları sıfırla"}
+          </button>
+        ) : null}
         <h4 className="lms-h">Canlı konum</h4>
         <div className="lms-cs">
           {(pos.length ? pos : [{ grp: "", name: "Tekneler" }]).map((g) => chip(isOn({ kind: "boats", grp: g.grp }), g.grp ? `${g.grp} tekneler` : "Tekneler", () => show({ kind: "boats", grp: g.grp, zoom: 100 }), g.grp ? groupColor(g.grp) : "", g.grp || "t"))}
