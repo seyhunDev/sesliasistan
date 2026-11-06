@@ -10,7 +10,7 @@ const S = (v, n) => String(v ?? "").trim().slice(0, n);
 // Kaynaklar: yeni liste varsa o, yoksa eski canlı yayın ve drone bağlantıları
 export function sourcesOf(stream) {
   if (Array.isArray(stream?.sources) && stream.sources.length)
-    return stream.sources.filter((x) => x && ID.test(x.id || "")).map((x) => ({ id: x.id, name: S(x.name, 30) || x.id, kind: S(x.kind, 10), url: S(x.url, 200) }));
+    return stream.sources.filter((x) => x && ID.test(x.id || "")).map((x) => ({ id: x.id, name: S(x.name, 30) || x.id, kind: S(x.kind, 10), url: S(x.url, 200), ...(x.auto === true ? { auto: true } : {}), ...(x.from ? { from: S(x.from, 10) } : {}) }));
   return [
     { id: "c1", name: "Kamera 1", kind: "camera", url: S(stream?.url, 200) },
     { id: "d1", name: "Drone 1", kind: "drone", url: S(stream?.drone, 200) },

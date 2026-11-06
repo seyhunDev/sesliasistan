@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { loadRoundsOf, saveCamBy, saveEvre, saveEvreMan, saveOnAir, savePin, savePlanKeys, saveShowTpl, saveSrcLive, watchRounds } from "@/features/athletes/raceLiveStore";
 import { liveUrl, recName, setStream, showOnScreen } from "./liveActions";
-import { EVRES, EVRE_DEF, EVRE_NAME, EVRE_WHEN, ITEM_NAME, ITEM_SECS, SHOW_ITEMS, SIDES, SIDE_DEF, SIDE_NAME, SRC_KINDS, addSource, cleanCourseShow, streamSources, ytEmbed, ytId } from "@/lib/raceRounds";
+import { EVRES, EVRE_DEF, EVRE_NAME, EVRE_WHEN, ITEM_NAME, ITEM_SECS, SHOW_ITEMS, SIDES, SIDE_DEF, SIDE_NAME, SRC_CATS, SRC_KINDS, addSource, cleanCourseShow, srcCat, streamSources, ytEmbed, ytId } from "@/lib/raceRounds";
 import { bindCam, groupsOf } from "@/lib/raceCams";
 import { cardKey } from "@/lib/raceCourse";
 import { cleanPlan, raceName } from "@/lib/raceLive";
@@ -16,6 +16,7 @@ import { groupColor } from "@/lib/roundScore";
 import { authFetch } from "@/lib/authFetch";
 import { SrcKey } from "@/features/broadcast/SrcKey";
 import { MyChannel } from "@/features/broadcast/MyChannel";
+import { NearCams } from "@/features/broadcast/NearCams";
 import { ytPrepare } from "@/lib/youtube";
 
 const TABS = [
@@ -35,8 +36,9 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
   const [L, setL] = useState(null); // ekran, kaynaklar, evreler (raceLive belgesinin ekran alanları)
   const [evOpen, setEvOpen] = useState("");
   const [selSrc, setSelSrc] = useState("");
-  const [add, setAdd] = useState(false);
+  const [add, setAdd] = useState(""); // açık ekleme kutusu: kategori (canli, video, kanal, etraf)
   const [addKind, setAddKind] = useState("drone");
+  const [addName, setAddName] = useState("");
   const [addUrl, setAddUrl] = useState("");
   const [stat, setStat] = useState({});
   const [cap, setCap] = useState(null);
@@ -128,12 +130,16 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
     setL((p) => ({ ...p, stream: { ...(p.stream || {}), sources: l } }));
     setStream(orgId, raceId, { sources: l }).catch(fail);
   };
-  const addSrc = (k, url = "", name = "") => {
+  // from: kanal (Kanalımdan), etraf (Etraftaki kameralar), video (YouTube videosu); canlı yayında yok
+  const addSrc = (k, url = "", name = "", from = "") => {
     const u = String(url || "").trim();
     if (u && !ytEmbed(u)) return say(BAD_URL);
-    const l = addSource(srcList, k).map((x, i, a) => (i === a.length - 1 && u ? { ...x, url: u, ...(name ? { name: String(name).slice(0, 30) } : {}) } : x));
-    setAdd(false);
+    if (from === "video" && !u) return say("Videonun bağlantısını yapıştır");
+    const vn = from === "video" ? name || `Video ${srcList.filter((x) => x.from === "video").length + 1}` : name;
+    const l = addSource(srcList, k).map((x, i, a) => (i === a.length - 1 ? { ...x, ...(u ? { url: u } : {}), ...(vn ? { name: String(vn).slice(0, 30) } : {}), ...(from ? { from } : {}) } : x));
+    setAdd("");
     setAddUrl("");
+    setAddName("");
     setSelSrc(l.at(-1).id);
     putSources(l);
   };
@@ -179,6 +185,98 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
     </button>
   );
 
+  const tile = (x) => {
+    const lv = isLive(x);
+    const th = thumb(x.url);
+    const vd = srcCat(x) === "video";
+    return (
+      <button key={x.id} type="button" className={`lms-t${isOn({ kind: "src", src: x.id }) ? " air" : ""}${selSrc === x.id ? " sel" : ""}`} aria-pressed={selSrc === x.id} onClick={() => (setSelSrc(selSrc === x.id ? "" : x.id), setAdd(""))}>
+        <span className={`th${lv || vd ? "" : " off"}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- YouTube küçük resmi */}
+          {th ? <img src={th} alt="" loading="lazy" /> : null}
+          <em className={lv ? "" : "no"}>{!x.url ? "BAĞLANTI YOK" : lv ? "YAYINDA" : vd ? "VİDEO" : "YAYIN YOK"}</em>
+        </span>
+        <b>
+          {groupsOf(L.camBy, x.id).slice(0, 2).map((k) => (
+            <i key={k} style={{ background: groupColor(k.split("|")[1]) || "#ffd23f" }} aria-hidden="true" />
+          ))}
+          {x.name}
+        </b>
+      </button>
+    );
+  };
+  // ekleme kutusu kategoriye göre: canlı yayın (tür + bağlantı), YouTube videosu (bağlantı + ad), kanalımdan, etraftaki kameralar
+  const addBox = (c) => (
+    <div className="lms-sd">
+      {c === "canli" ? (
+        <>
+          <div className="lms-cs">{Object.entries(SRC_KINDS).map(([k, t]) => chip(addKind === k, `${t} · ${addSource(srcList, k).at(-1).name}`, () => setAddKind(k), "", k))}</div>
+          <input className="lms-in" value={addUrl} onChange={(e) => setAddUrl(e.target.value)} placeholder="YouTube canlı yayın bağlantısı (sonra da yazılır)" inputMode="url" aria-label="Bağlantı" />
+        </>
+      ) : c === "video" ? (
+        <>
+          <input className="lms-in" value={addUrl} onChange={(e) => setAddUrl(e.target.value)} placeholder="YouTube video bağlantısı (youtu.be, watch?v=, shorts)" inputMode="url" aria-label="Video bağlantısı" />
+          <input className="lms-in" value={addName} maxLength={30} onChange={(e) => setAddName(e.target.value)} placeholder="Adı (örn. Dünkü start)" aria-label="Videonun adı" />
+        </>
+      ) : c === "kanal" ? (
+        <MyChannel used={srcList.map((x) => x.url)} onPick={(u) => addSrc("camera", u, "", "kanal")} />
+      ) : (
+        <NearCams race={race} onPick={(u, n) => addSrc("camera", u, n, "etraf")} />
+      )}
+      <div className="lms-row">
+        <button type="button" className="lms-b" onClick={() => setAdd("")}>
+          Vazgeç
+        </button>
+        {c === "canli" || c === "video" ? (
+          <button type="button" className="lms-b go" onClick={() => (c === "video" ? addSrc("camera", addUrl, addName.trim(), "video") : addSrc(addKind, addUrl))}>
+            Ekle
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+  const srcBox = () => {
+    const s = srcList.find((x) => x.id === selSrc);
+    if (!s) return null;
+    return (
+            <div className="lms-sd" key={s.id}>
+              <button type="button" className="lms-b go wide" disabled={!s.url} onClick={() => show({ kind: "src", src: s.id })}>
+                {isOn({ kind: "src", src: s.id }) ? `${s.name} yayında` : `${s.name}'i yayına ver`}
+              </button>
+              <input
+                className="lms-in"
+                defaultValue={s.name}
+                maxLength={30}
+                aria-label="Kaynağın adı"
+                onBlur={(e) => {
+                  const v = e.target.value.trim().slice(0, 30);
+                  if (v && v !== s.name) putSrc(s.id, { name: v });
+                  else e.target.value = s.name;
+                }}
+                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+              />
+              <input className="lms-in" defaultValue={s.url} inputMode="url" placeholder={`${s.name} · YouTube bağlantısı`} aria-label="Bağlantı" onBlur={(e) => e.target.value.trim() !== s.url && putSrc(s.id, { url: e.target.value.trim() })} />
+              {groupRows.length ? (
+                <>
+                  <h4 className="lms-h">Çektiği grup</h4>
+                  <div className="lms-cs">
+                    {groupRows.map(([c, g]) => {
+                      const k = cardKey(c, g);
+                      const multi = groupRows.some(([c2]) => c2 !== c);
+                      return chip(L.camBy?.[k] === s.id, multi ? [c, g].filter(Boolean).join(" · ") : g || c, () => putSrcGrp(s.id, k), g ? groupColor(g) : "", k);
+                    })}
+                  </div>
+                </>
+              ) : null}
+              <SrcKey src={s} onStream={(v) => putStream(s.id, v)} toast={say} />
+              {!isOn({ kind: "src", src: s.id }) ? (
+                <button type="button" className="lms-b red" onClick={() => (setSelSrc(""), putSources(srcList.filter((x) => x.id !== s.id)))}>
+                  Kaynağı sil
+                </button>
+              ) : null}
+            </div>
+          );
+  };
   const body =
     tab === "now" ? (
       <>
@@ -308,99 +406,40 @@ export function LiveMasa({ orgId, raceId, race, live, now, pos = [], today, onMs
       </div>
     ) : tab === "src" ? (
       <>
-        <div className="lms-tiles">
-          {autoOn ? (
-            <button type="button" className={`lms-t${isOn({ kind: "live" }) ? " air" : ""}`} onClick={() => show({ kind: "live" })}>
-              <span className="th">
-                <em className="no">GRUBA GÖRE</em>
-              </span>
-              <b>Grubun kamerası</b>
-            </button>
-          ) : null}
-          {srcList.map((x) => {
-            const lv = isLive(x);
-            const th = thumb(x.url);
-            return (
-              <button key={x.id} type="button" className={`lms-t${isOn({ kind: "src", src: x.id }) ? " air" : ""}${selSrc === x.id ? " sel" : ""}`} aria-pressed={selSrc === x.id} onClick={() => setSelSrc(selSrc === x.id ? "" : x.id)}>
-                <span className={`th${lv ? "" : " off"}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- YouTube küçük resmi */}
-                  {th ? <img src={th} alt="" loading="lazy" /> : null}
-                  <em className={lv ? "" : "no"}>{!x.url ? "BAĞLANTI YOK" : lv ? "YAYINDA" : "YAYIN YOK"}</em>
-                </span>
-                <b>
-                  {groupsOf(L.camBy, x.id).slice(0, 2).map((k) => (
-                    <i key={k} style={{ background: groupColor(k.split("|")[1]) || "#ffd23f" }} aria-hidden="true" />
-                  ))}
-                  {x.name}
-                </b>
-              </button>
-            );
-          })}
-          {srcList.length < 8 ? (
-            <button type="button" className="lms-t add" onClick={() => (setAdd(true), setSelSrc(""))}>
-              + Kaynak
-            </button>
-          ) : null}
-        </div>
-        {(() => {
-          const s = srcList.find((x) => x.id === selSrc);
-          if (!s) return null;
+        {/* Kategoriler (Seyhun 2026-11-06 "YouTube videosu, YouTube canlı, benim kanalımın canlıları, etraftakiler"): her başlığın yanında + */}
+        {SRC_CATS.map(([c, title]) => {
+          const list = srcList.filter((x) => srcCat(x) === c);
+          const full = srcList.length >= 8;
           return (
-            <div className="lms-sd" key={s.id}>
-              <button type="button" className="lms-b go wide" disabled={!s.url} onClick={() => show({ kind: "src", src: s.id })}>
-                {isOn({ kind: "src", src: s.id }) ? `${s.name} yayında` : `${s.name}'i yayına ver`}
-              </button>
-              <input
-                className="lms-in"
-                defaultValue={s.name}
-                maxLength={30}
-                aria-label="Kaynağın adı"
-                onBlur={(e) => {
-                  const v = e.target.value.trim().slice(0, 30);
-                  if (v && v !== s.name) putSrc(s.id, { name: v });
-                  else e.target.value = s.name;
-                }}
-                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-              />
-              <input className="lms-in" defaultValue={s.url} inputMode="url" placeholder={`${s.name} · YouTube bağlantısı`} aria-label="Bağlantı" onBlur={(e) => e.target.value.trim() !== s.url && putSrc(s.id, { url: e.target.value.trim() })} />
-              {groupRows.length ? (
-                <>
-                  <h4 className="lms-h">Çektiği grup</h4>
-                  <div className="lms-cs">
-                    {groupRows.map(([c, g]) => {
-                      const k = cardKey(c, g);
-                      const multi = groupRows.some(([c2]) => c2 !== c);
-                      return chip(L.camBy?.[k] === s.id, multi ? [c, g].filter(Boolean).join(" · ") : g || c, () => putSrcGrp(s.id, k), g ? groupColor(g) : "", k);
-                    })}
-                  </div>
-                </>
+            <section key={c} className="lms-cat">
+              <div className="lms-ch">
+                <h4 className="lms-h">{title}</h4>
+                {!full ? (
+                  <button type="button" className={`lms-plus${add === c ? " on" : ""}`} aria-label={`${title} ekle`} aria-expanded={add === c} onClick={() => (setAdd(add === c ? "" : c), setSelSrc(""), setAddUrl(""), setAddName(""))}>
+                    {c === "video" ? "+ Video" : c === "kanal" ? "+ Kanalımdan" : c === "etraf" ? "+ Bul" : "+ Kaynak"}
+                  </button>
+                ) : null}
+              </div>
+              {add === c ? addBox(c) : null}
+              {list.length || (c === "canli" && autoOn) ? (
+                <div className="lms-tiles">
+                  {c === "canli" && autoOn ? (
+                    <button type="button" className={`lms-t${isOn({ kind: "live" }) ? " air" : ""}`} onClick={() => show({ kind: "live" })}>
+                      <span className="th">
+                        <em className="no">GRUBA GÖRE</em>
+                      </span>
+                      <b>Grubun kamerası</b>
+                    </button>
+                  ) : null}
+                  {list.map(tile)}
+                </div>
+              ) : add !== c ? (
+                <p className="lms-empty">{c === "video" ? "YouTube'daki bir videoyu bağlantısıyla ekle" : c === "kanal" ? "Kanalında canlı yayın açınca burada çıkar" : c === "etraf" ? "Yarış yerine yakın açık kameralar" : "Drone, telefon ya da kamera ekle"}</p>
               ) : null}
-              <SrcKey src={s} onStream={(v) => putStream(s.id, v)} toast={say} />
-              {!isOn({ kind: "src", src: s.id }) ? (
-                <button type="button" className="lms-b red" onClick={() => (setSelSrc(""), putSources(srcList.filter((x) => x.id !== s.id)))}>
-                  Kaynağı sil
-                </button>
-              ) : null}
-            </div>
+              {list.some((x) => x.id === selSrc) ? srcBox() : null}
+            </section>
           );
-        })()}
-        {add ? (
-          <div className="lms-sd">
-            <div className="lms-cs">
-              {Object.entries(SRC_KINDS).map(([k, t]) => chip(addKind === k, `${t} · ${addSource(srcList, k).at(-1).name}`, () => setAddKind(k), "", k))}
-            </div>
-            <input className="lms-in" value={addUrl} onChange={(e) => setAddUrl(e.target.value)} placeholder="YouTube canlı yayın bağlantısı" inputMode="url" aria-label="Bağlantı" />
-            <MyChannel used={srcList.map((x) => x.url)} onPick={(u) => addSrc(addKind, u)} />
-            <div className="lms-row">
-              <button type="button" className="lms-b" onClick={() => setAdd(false)}>
-                Vazgeç
-              </button>
-              <button type="button" className="lms-b go" onClick={() => addSrc(addKind, addUrl)}>
-                Ekle
-              </button>
-            </div>
-          </div>
-        ) : null}
+        })}
         <h4 className="lms-h">Canlı konum</h4>
         <div className="lms-cs">
           {(pos.length ? pos : [{ grp: "", name: "Tekneler" }]).map((g) => chip(isOn({ kind: "boats", grp: g.grp }), g.grp ? `${g.grp} tekneler` : "Tekneler", () => show({ kind: "boats", grp: g.grp, zoom: 100 }), g.grp ? groupColor(g.grp) : "", g.grp || "t"))}
