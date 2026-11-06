@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useR
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { liveUrl, sourcesOf, videoGroup } from "@/lib/raceCams";
+import { srcIsLive } from "@/lib/srcLive";
 import { momentRace, momentRaceName, apPlace, apSigId, apText, nextRaceNo, cleanPlan, daysUntil, orangeUp, raceDays, dirShort, livePhase, planLabel, planStartMs, raceName, raceTime, raceTitle, seqState, seqSteps, windByHour, windPoints, bestOffset, winLeft, FIN_WIN } from "@/lib/raceLive";
 import { cardOf, cardSvg } from "@/lib/courseCard";
 import { CARD_TYPES, ORSA_M, cardType, cleanCourse, lineBias, selCard } from "@/lib/raceCourse";
@@ -2444,8 +2445,8 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   const wind = windAhead(data, now).length >= 2;
   const course = !!courseSvg(data, sceneRoute(data, mode === "race" ? sel : null, true, mode === "race" ? "race" : "wait"));
   const all = sourcesOf(data.stream); // Yayın › kaynaklar: kendi verdiğin adla (Start kamerası, Drone…)
-  // kaynak yayında mı (kaynak/YouTube tarafı stream.sources[].live yazınca): kırmızı nokta
-  const live = (id) => !!(data.stream?.sources || []).find((x) => x?.id === id)?.live;
+  // kaynak yayında mı (raceLive.srcLive, açık Yayın sayfası YouTube'a bakıp yazar; 6 dk'dan eskisi yayın yok): kırmızı nokta
+  const live = (id) => srcIsLive(data.srcLive, id, now);
   const off = all.filter((x) => !x.url && !cams.some((y) => y.src === x.id)); // bağlantısı olmayan kaynak: soluk
   const picks = !!onFollow && (cams.length > 0 || pos.length > 0 || off.length > 0 || !!vidRef);
   const btns = [
