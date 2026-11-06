@@ -5,7 +5,18 @@ import Link from "next/link";
 // Yarışlar tek sayfa gibi (Seyhun 2026-10-28, yaris-tasarim/harita): lacivert üstte Kulübüm | Takvim. Kulübüm kulübün yarışları
 // (/athletes/races), Takvim ortak yarışlar (/races). Yalnız sporcu yetkisi olanda görünür; diğerleri yalnız Takvim'i görür.
 // inline: geniş ekranda başlığın sağında, dar (Seyhun 2026-11-05 iPad tasarımı)
-export function RaceSwitch({ on, inline }) {
+// light: yarışların yeni beyaz görünümü (2026-11-06; raceUi RaceSeg ile aynı tek parça seçici)
+export function RaceSwitch({ on, inline, light = false }) {
+  if (light)
+    return (
+      <nav aria-label="Yarışlar" className="rz-seg mt-4 grid-cols-2">
+        {[["club", "Kulübüm", "/athletes/races"], ["cal", "Takvim", "/races"]].map(([k, l, href]) => (
+          <Link key={k} href={href} replace aria-current={on === k ? "page" : undefined} aria-pressed={on === k} data-press className="rz-seg-b">
+            {l}
+          </Link>
+        ))}
+      </nav>
+    );
   const seg = (k, l, href) => (
     <Link href={href} replace aria-current={on === k ? "page" : undefined} data-press className={`flex h-[2.125rem] flex-1 items-center justify-center rounded-[0.6rem] text-[0.875rem] font-semibold ${on === k ? "bg-white text-[#0b1a33]" : "text-white/80"}`}>
       {l}

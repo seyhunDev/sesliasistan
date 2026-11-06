@@ -1,5 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { openInApp } from "@/features/liveScreen/InAppBack";
+
 // Yarış sayfalarının yeni görünümü (Seyhun 2026-11-06 "tasarımı tamamen değiştir… bundan sonraki yarışla ilgili kısımları bu sade tasarım
 // anlayışı, buton anlayışıyla yapacağız"; örnek yaris-detay-sade/yeni-dil/ornek.png onaylı): beyaz zemin, lacivert blok ve kart çerçevesi yok,
 // satırlar ince çizgiyle ayrılır; sekmeler tek parça seçici; sayfada tek dolu mavi düğme. Renk: mavi yalnız iş, yeşil tamam, sarı eksik,
@@ -30,5 +34,22 @@ export function RaceSeg({ tabs, value, onChange, className = "" }) {
         </button>
       ))}
     </nav>
+  );
+}
+
+// İki giriş (Seyhun 2026-11-06 "hem yayını açabilmeliyim hem de kendi canlı yayın sayfamı"; yayin-canli/ornek.png onaylı): yan yana
+// "Canlı ekran" (dolu mavi; kendi canlı ekranı uygulama içinde, /canli/<id>, geri kaydırınca buraya döner) ve "Yayın" (açık mavi; yönetim
+// sayfası). Yalnız ana hesapta gösterilir (çağıran karar verir).
+export function RaceGo({ id, className = "" }) {
+  const router = useRouter();
+  return (
+    <div className={`grid grid-cols-2 gap-2.5 ${className}`}>
+      <button type="button" onClick={() => openInApp(router, `/canli/${id}`)} data-press className="btn btn-primary">
+        Canlı ekran
+      </button>
+      <Link href={`/athletes/races/${id}/yayin`} data-press className="btn rz-soft">
+        Yayın
+      </Link>
+    </div>
   );
 }
