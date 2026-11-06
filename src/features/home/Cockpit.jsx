@@ -87,9 +87,9 @@ export function Cockpit({ weather, inbox, onInbox, live, grid, sel, onSel, wide 
       <>
           <button type="button" onClick={goWeather} aria-label="Hava ayrıntısı" className="mt-2 block w-full text-left">
             {n ? (
-              <span className="flex items-end gap-3">
+              <span className={`flex gap-3 ${wide ? "items-center" : "items-end"}`}>
                 <span className={`shrink-0 font-semibold leading-[.9] tracking-[-.05em] tabular-nums ${wide ? "text-[3.25rem]" : "text-[4.25rem]"}`}>{n.t}°</span>
-                <span className="min-w-0 flex-1 pb-1 leading-tight">
+                <span className={`min-w-0 pb-1 leading-tight ${wide ? "shrink-0" : "flex-1"}`}>
                   <b className="block truncate text-[0.9375rem] font-semibold">{isToday ? "" : `${dname} · `}{sky(n.code, n.day).label}{wide ? ` · ${home.name}` : ""}</b>
                   {cur?.feel != null && <small className="block truncate text-[0.8125rem] text-white/80 tabular-nums">Hissedilen {cur.feel}°</small>}
                   <small className="block truncate text-[0.8125rem] text-white/80 tabular-nums">
@@ -97,19 +97,39 @@ export function Cockpit({ weather, inbox, onInbox, live, grid, sel, onSel, wide 
                     {mmDay >= 0.1 ? `${dw ? " · " : ""}${fmtMm(mmDay)} mm` : ""}
                   </small>
                 </span>
-                <span className="shrink-0 pb-1 text-right leading-tight">
-                  <small className="block text-[0.75rem] text-white/75">{windName(n.dir)[0]} {dirDeg(n.dir)} · {isToday ? "şimdi" : "gün içi"}</small>
-                  <b className="text-[1.625rem] font-bold tracking-[-.02em] tabular-nums">
-                    {kn(n.wind, n.gust)}
-                    <span className="text-[0.8125rem] font-medium text-white/70"> kn</span>
-                  </b>
-                </span>
+                {wide ? (
+                  <span className="flex shrink-0 items-center gap-2.5 border-l border-white/25 pl-4" data-wind-now>
+                    <span className="grid size-12 shrink-0 place-items-center rounded-full border border-white/40 bg-white/10" aria-hidden="true">
+                      {n.dir != null && (
+                        <svg viewBox="0 0 16 16" className="size-6 text-white" style={{ transform: `rotate(${n.dir + 180}deg)` }}>
+                          <path d="M8 1l5 13-5-3-5 3z" fill="currentColor" />
+                        </svg>
+                      )}
+                    </span>
+                    <span className="leading-tight">
+                      <b className="block text-[1.625rem] font-bold tracking-[-.02em] tabular-nums">
+                        {kn(n.wind, n.gust)}
+                        <span className="text-[0.8125rem] font-medium text-white/70"> kn</span>
+                      </b>
+                      <small className="block text-[0.75rem] text-white/80">{windName(n.dir)[0]} {dirDeg(n.dir)} · {isToday ? "şimdi" : "gün içi"}</small>
+                    </span>
+                  </span>
+                ) : (
+                  <span className="shrink-0 pb-1 text-right leading-tight">
+                    <small className="block text-[0.75rem] text-white/75">{windName(n.dir)[0]} {dirDeg(n.dir)} · {isToday ? "şimdi" : "gün içi"}</small>
+                    <b className="text-[1.625rem] font-bold tracking-[-.02em] tabular-nums">
+                      {kn(n.wind, n.gust)}
+                      <span className="text-[0.8125rem] font-medium text-white/70"> kn</span>
+                    </b>
+                  </span>
+                )}
+                {wide && line && <span className="line-clamp-4 min-w-0 flex-1 border-l border-white/25 pl-3 text-[0.8125rem] leading-snug text-white/90" aria-label="Hava özeti">{line}</span>}
               </span>
             ) : (
               <span className="block py-2 text-[0.875rem] text-white/80">{err ? "Hava durumu alınamadı · dokun, yenile" : w ? "Bu gün için hava tahmini yok" : "Hava yükleniyor…"}</span>
             )}
           </button>
-          {n && line && <p className={`mt-2 text-[0.9375rem] leading-snug text-white/90 ${wide ? "line-clamp-1" : ""}`} aria-label="Hava özeti">{line}</p>}
+          {n && line && !wide && <p className="mt-2 text-[0.9375rem] leading-snug text-white/90" aria-label="Hava özeti">{line}</p>}
           <WindRibbon rows={rows} nowH={isToday ? now.getHours() : -1} radar={isToday ? radar : null} h={wide ? 84 : 92} className="mt-3" />
       </>
       </div>
@@ -192,7 +212,7 @@ function NextPlan({ now }) {
   // Antrenmansa Süre'nin yanında Yoklama (Seyhun 2026-10-22). Bugün ya da geçmişse o günün yoklaması, sonraki günde yoklama sayfası
   const att = sail && canSeeAthletes(profile?.email);
   return (
-    <div className="rounded-[1.125rem] border border-line bg-card p-3">
+    <div className="hs-plan rounded-[1.125rem] border border-line bg-card p-3">
       <button type="button" data-press onClick={() => open(p)} aria-label="Sıradaki plan" className="flex w-full min-w-0 items-center gap-3 text-left">
         <span className="min-w-[3rem] shrink-0 border-r border-line pr-3 text-center leading-tight">
           <small className="block text-[0.6875rem] font-semibold text-mut">{w.top}</small>
