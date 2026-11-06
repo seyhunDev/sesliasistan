@@ -257,7 +257,10 @@ select {
 /* İlk sayfada (data-dir boş) animasyon yok: açılış ekranı zaten soldurur. Eskiden ilk sayfa da solma alıyordu ama açılış
    sürerken (html[data-boot] .page-in { animation: none }) durduruluyordu; açılış bitip data-boot kalkınca animasyon baştan başlıyor, ana sayfa bir an
    kaybolup geri geliyordu (Seyhun: "ekran geldi, gitti, geldi"). */
-.page-in { overflow-x: clip; }
+/* Sayfa katmanı opak ve en az ekran boyu (Seyhun 2026-11-06 "bir önceki sayfanın görüntüsü yeni sayfada görünüp kayboluyor"):
+   sayfa geçişinde (ViewTransition) yeni sayfanın görüntüsü eskisinin üstüne kayar; katmanın zemini yoktu, yeni sayfanın boş/saydam
+   yerlerinden (kartlar arası, alt kısım) eski sayfa görünüyordu. Zemin gövdeden alınır (açık, lacivert, koyu sayfalar aynen kalır). */
+.page-in { overflow-x: clip; background: inherit; min-height: 100lvh; }
 .page-in[data-dir="fwd"]:not(:has(.fixed)) { animation: pagefwd .26s cubic-bezier(.22, .8, .24, 1) backwards; }
 .page-in[data-dir="back"]:not(:has(.fixed)) { animation: pageback .26s cubic-bezier(.22, .8, .24, 1) backwards; }
 @media (prefers-reduced-motion: reduce), (min-width: 64rem) {
