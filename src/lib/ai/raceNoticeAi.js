@@ -93,11 +93,11 @@ export function noticeOut(raw) {
 }
 
 // images: [{ mimeType, data(base64) }] ya da text. isNotice false ise hata (code "not-notice")
-export async function readNoticeAi({ images = [], text = "", today = new Date().toISOString().slice(0, 10), timeoutMs = 50000 }) {
+export async function readNoticeAi({ images = [], text = "", today = new Date().toISOString().slice(0, 10), focus = "", timeoutMs = 50000 }) {
   const raw = await callGemini({
     model: process.env.GEMINI_MODEL,
     system: NOTICE_SYSTEM,
-    user: `Bugün: ${today}. Yıl yazmayan tarihlerde yarışın yılını kullan. ${text ? `Bu yarış talimatı metnini oku (kopyalanmış, tablo düzeni bozuk olabilir):\n"""\n${text}\n"""` : "Bu yarış talimatını oku."}`,
+    user: `Bugün: ${today}. Yıl yazmayan tarihlerde yarışın yılını kullan. ${focus ? `${focus} ` : ""}${text ? `Bu yarış talimatı metnini oku (kopyalanmış, tablo düzeni bozuk olabilir):\n"""\n${text}\n"""` : "Bu yarış talimatını oku."}`,
     schema: NOTICE_SCHEMA,
     images: text ? [] : images,
     maxTokens: 8000,

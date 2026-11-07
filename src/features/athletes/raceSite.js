@@ -18,7 +18,7 @@ import { dropSheet } from "@/lib/resultSheet";
 import { colorOf, dayOf } from "@/lib/siteDocs";
 import { loadEntryDoc, readEntryFile, saveEntries, saveGroups } from "@/features/rounds/roundsStore";
 import { dropSheetDoc } from "./raceLiveStore";
-import { saveRaceResults } from "./races";
+import { raceGone, saveRaceResults } from "./races";
 
 const col = (orgId, raceId) => collection(db, "orgs", orgId, "raceLive", raceId, "site");
 const entryRef = (orgId, raceId) => doc(db, "orgs", orgId, "raceLive", raceId, "entries", "list");
@@ -42,6 +42,12 @@ const post = (body) => ask("/api/race-site", { method: "POST", headers: { "conte
 export const followSite = (raceId, site) => post({ raceId, site });
 export const unfollowSite = (raceId) => post({ raceId, off: true });
 export const checkSite = (raceId) => post({ raceId, now: true });
+// Siteden alınan yarışı var olan yarışa birleştir (sunucu taşır, kopya yarış silinir); dönüş birleşilen yarışın kimliği
+export async function mergeSite(raceId, into) {
+  const p = await post({ raceId, into });
+  raceGone(raceId);
+  return p.id || into;
+}
 
 // Yarışın sitedeki belgeleri, yeni yüklenen önce; canlı (sunucu belge alıp işledikçe liste kendiliğinden yenilenir)
 const sorted = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.at).localeCompare(String(a.at)));

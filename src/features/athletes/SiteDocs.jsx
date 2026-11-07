@@ -8,12 +8,15 @@
 // kayıt listesine, sonuçlar yarışın sonuçlarına (onResults, page.jsx). Her satır açılır (PDF); işlenen belge "Geri al" ile döner.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { RacePickSheet } from "./RacePickSheet";
 import { Button } from "@/components/ui/Button";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { ListHead, Row, RowList, Tag } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { currentAmend, kindLabel, resultState, version } from "@/lib/siteDocs";
-import { LIST_KINDS, applyList, claimDoc, siteDocBlob, waiting, checkSite, redoDoc, saveDocState, undoDoc, unfollowSite, watchSiteDocs } from "./raceSite";
+import { LIST_KINDS, applyList, claimDoc, siteDocBlob, waiting, checkSite, mergeSite, redoDoc, saveDocState, undoDoc, unfollowSite, watchSiteDocs } from "./raceSite";
 
 const when = (at) => {
   const d = new Date(`${String(at).slice(0, 10)}T12:00:00`);
@@ -94,6 +97,28 @@ export function SiteDocs({ orgId, race, shown = false, onNew, onResults, onUndo,
     }
     setBusy("");
   };
+  // Birleştir (Seyhun 2026-11-07): bu siteden alınan yarış, kendi açtığın yarışla tek yarış olur; belgeler oraya gelir
+  const router = useRouter();
+  const ask = useConfirm();
+  const [pick, setPick] = useState(false);
+  const merge = (to) => {
+    setPick(false);
+    ask({
+      title: `"${to.name || "Yarış"}" ile birleştirilsin mi?`,
+      text: "Belgeler, sporcu ve renk listeleri, program o yarışa taşınır; oradaki sporcular ve evrak kalır. Bu kopya yarış silinir.",
+      yes: "Birleştir",
+      run: async () => {
+        try {
+          const id = await mergeSite(race.id, to.id);
+          toast("Birleştirildi");
+          router.replace(`/athletes/races/${id}?sec=site`);
+        } catch (e) {
+          toast(e.message || "Birleştirilemedi");
+          throw e;
+        }
+      },
+    });
+  };
   const stop = async () => {
     if (!confirm("Bu yarış siteden izlenmesin mi? Alınmış belgeler kalır.")) return;
     setBusy("stop");
@@ -161,6 +186,10 @@ export function SiteDocs({ orgId, race, shown = false, onNew, onResults, onUndo,
             İzlemeyi bırak
           </Button>
         </div>
+        <Button variant="secondary" full className="mt-2" onClick={() => setPick(true)}>
+          Yarışımla birleştir
+        </Button>
+        <RacePickSheet open={pick} onClose={() => setPick(false)} orgId={orgId} title="Hangi yarışınla birleşsin?" near={race.startDate} skip={race.id} onPick={merge} />
       </section>
       {/* Belge sayfanın katmanından (page-in) bağımsız, en üstte açılsın (Seyhun 2026-11-04 "tıkladığımda gösterilmiyor evrak") */}
       {view && createPortal(<PdfViewer title={view.name} load={load} onClose={close} />, document.body)}

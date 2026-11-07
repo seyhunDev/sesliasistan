@@ -6,7 +6,9 @@
 import { randomUUID } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { BOARD_URL, SITE, classesOf, legUrl, parseBoard } from "../siteBoard.js";
-import { docKind, newDocs } from "../siteDocs.js";
+import { docKind, mergeSchedule, newDocs } from "../siteDocs.js";
+import { cleanEntries, mergeEntries } from "../roundSay.js";
+import { cleanGroups } from "../roundScore.js";
 
 export const RESULTS_URL = `${SITE}/home/results/`;
 export const resultsLegUrl = (n) => `${SITE}/Home/GetResultsLeg?legNumber=${encodeURIComponent(n)}`;
@@ -154,6 +156,57 @@ export async function syncRace({ db, bucket, ref, entry, get, limit = PER_RUN, t
   const more = all.length > fresh.length;
   await ref.set({ seen, missing: !c, ...(more ? {} : { checkedAt: new Date().toISOString() }) }, { merge: true });
   return got;
+}
+
+// Birleştir (Seyhun 2026-11-07 "kendi kurduğum yarışla federasyondan aldığımı birleştirelim, belgeler oraya gelsin"):
+// siteden alınan yarışın (from) site bağlantısı, belgeleri (raceLive/site), kayıt ve grup listesi, talimattan okunan program ve
+// Yayın programı var olan yarışa (to) taşınır; to'nun sporcuları, evrakı, bütçesi olduğu gibi kalır. Sonra from yarışı ve canlı kaydı silinir.
+// Storage'daki belge dosyalarına dokunulmaz (taşınan kayıtlar onları gösterir).
+export async function mergeSite({ db, orgId, from, to }) {
+  const races = db.collection("orgs").doc(orgId).collection("races");
+  const [a, b] = await Promise.all([races.doc(from).get(), races.doc(to).get()]);
+  if (!a.exists || !b.exists) throw new Error("Yarış bulunamadı.");
+  const A = a.data();
+  const B = b.data();
+  if (!A.site?.act) throw new Error("Bu yarış siteden alınmamış.");
+  if (B.site?.act && B.site.act !== A.site.act) throw new Error("Seçtiğin yarış başka bir site yarışına bağlı.");
+  const live = db.collection("orgs").doc(orgId).collection("raceLive");
+  // Belgeler
+  const docs = await live.doc(from).collection("site").get();
+  for (let i = 0; i < docs.docs.length; i += 400) {
+    const batch = db.batch();
+    for (const d of docs.docs.slice(i, i + 400)) batch.set(live.doc(to).collection("site").doc(d.id), d.data());
+    await batch.commit();
+  }
+  // Kayıt listesi ve günlük gruplar (to'nunki önce, aynı gün varsa to'nunki kalır)
+  const [ea, eb] = await Promise.all([live.doc(from).collection("entries").doc("list").get(), live.doc(to).collection("entries").doc("list").get()]);
+  if (ea.exists) {
+    const x = ea.data();
+    const y = eb.exists ? eb.data() : {};
+    const groups = { ...Object.fromEntries(Object.entries(cleanGroups(x.groups)).map(([d, l]) => [d, Object.fromEntries(l)])), ...Object.fromEntries(Object.entries(cleanGroups(y.groups)).map(([d, l]) => [d, Object.fromEntries(l)])) };
+    const rows = mergeEntries(cleanEntries(y.rows), cleanEntries(x.rows)).map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== "grp")));
+    await live.doc(to).collection("entries").doc("list").set({ rows, groups, at: new Date().toISOString() });
+  }
+  // Yayın programı: to'da yoksa from'unki
+  const [la, lb] = await Promise.all([live.doc(from).get(), live.doc(to).get()]);
+  const pa = la.exists ? la.data().plan || {} : {};
+  const pb = lb.exists ? lb.data().plan || {} : {};
+  if (pa.agenda && !Object.keys(pb.agenda || {}).length) {
+    const keep = Object.fromEntries(["daily", "times", "off", "agenda"].filter((k) => pa[k] !== undefined).map((k) => [k, pa[k]]));
+    await live.doc(to).set({ plan: keep }, { mergeFields: Object.keys(keep).map((k) => `plan.${k}`) });
+  }
+  // Yarış: site bağlantısı; talimat programı birleşir (to'nunki üstüne from'un satırları), talimat dosyası yoksa from'unki
+  const na = A.notice && typeof A.notice === "object" ? A.notice : null;
+  const nb = B.notice && typeof B.notice === "object" ? B.notice : null;
+  const notice = na ? { ...na, ...(nb || {}), schedule: mergeSchedule(nb?.schedule, na.schedule) } : nb;
+  await races.doc(to).update({ site: A.site, ...(notice ? { notice } : {}), ...(!B.noticeFile && A.noticeFile ? { noticeFile: A.noticeFile } : {}), updatedAt: FieldValue.serverTimestamp() });
+  // İzleme kaydı to'ya
+  const sa = await db.collection("raceSite").doc(`${orgId}_${from}`).get();
+  if (sa.exists) await db.collection("raceSite").doc(`${orgId}_${to}`).set({ ...sa.data(), raceId: to, name: String(B.name || sa.data().name || "").slice(0, 120), startDate: B.startDate || sa.data().startDate || "", endDate: B.endDate || sa.data().endDate || "" });
+  await db.collection("raceSite").doc(`${orgId}_${from}`).delete();
+  // Kopya yarış ve canlı kaydı
+  await db.recursiveDelete(live.doc(from));
+  await races.doc(from).delete();
 }
 
 // Bir kişiye bildirim (bildirim kutusu + telefonları)
