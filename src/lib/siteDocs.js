@@ -53,6 +53,18 @@ export function version(name) {
   return m ? +m[1] : 1;
 }
 
+// Liste belgesinin geçtiği gün (Seyhun 2026-11-07 "gruplar açıklandı ama göremiyorum"): adında tarih varsa o gün; yoksa yarış
+// başlamadan gelen liste ilk yarış günü, yarış günlerinde öğleden sonra (15:00, sitenin saati) gelen liste ertesi gün
+export function listDay(name, at = "", start = "") {
+  const d = dayOf(name, at);
+  if (d) return d;
+  const day = String(at || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return /^\d{4}-\d{2}-\d{2}$/.test(start) ? start : "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(start) && day < start) return start;
+  if (+String(at).slice(11, 13) < 15) return day;
+  return new Date(Date.parse(`${day}T12:00:00Z`) + 864e5).toISOString().slice(0, 10);
+}
+
 // Adın içindeki gün ("RENK LİSTESİ-04.11.2026", "04-11-2026", "4.11") → "2026-11-04". Yıl yoksa yüklenme gününün yılı.
 export function dayOf(name, uploaded = "") {
   const s = String(name || "");
