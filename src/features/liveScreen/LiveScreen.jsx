@@ -1681,6 +1681,111 @@ function ScProg({ prog }) {
     </div>
   );
 }
+// Günün grupları: { grp, rows: [{ sail, name, club }] } (Sarı, Mavi… sırasıyla); bugün yoksa açıklanmış ilk sonraki gün (day ile)
+function scGroups(data, today) {
+  const all = data.groups || {};
+  const day = groupsOn(all, today).length ? today : Object.keys(all).filter((d) => d > today).sort()[0] || "";
+  const gm = groupMap(groupsOn(all, day));
+  if (!Object.keys(gm).length) return [];
+  const who = new Map((data.entries || []).map((e) => [String(e.sail), e]));
+  const by = new Map();
+  for (const [sail, g] of Object.entries(gm)) {
+    if (!by.has(g)) by.set(g, []);
+    const e = who.get(sail);
+    by.get(g).push({ sail, name: e?.name || "", club: e?.club || "" });
+  }
+  const rk = (g) => {
+    const i = GROUP_PICK.indexOf(g);
+    return i < 0 ? 99 : i;
+  };
+  return [...by.entries()]
+    .sort((a, b) => rk(a[0]) - rk(b[0]) || a[0].localeCompare(b[0], "tr"))
+    .map(([grp, rows]) => ({ grp, day, rows: rows.sort((a, b) => Number(a.sail) - Number(b.sail) || a.sail.localeCompare(b.sail)) }));
+}
+// Program paneli: Start (günün start sırası), Talimat (yarış talimatındaki program), Gruplar; yalnız dolu olan sekmeler
+const PG_STATE = { done: "Bitti", now: "Yarışta", next: "Sıradaki" };
+function ScProgPanel({ prog, ag, gr, day }) {
+  const tabs = [prog.length > 0 && ["st", "Start"], ag && ["ag", "Talimat"], gr.length > 0 && ["gr", "Gruplar"]].filter(Boolean);
+  const [tab, setTab] = useState("");
+  const [g, setG] = useState("");
+  const on = tabs.some(([t]) => t === tab) ? tab : tabs[0]?.[0] || "";
+  const grp = gr.find((x) => x.grp === g) || gr[0];
+  return (
+    <div className="sc-pgl">
+      <div className="sc-vph">
+        <b>Program</b>
+      </div>
+      {tabs.length > 1 ? (
+        <div className="sc-vtabs" role="tablist">
+          {tabs.map(([t, n]) => (
+            <button key={t} type="button" role="tab" aria-selected={on === t} className={on === t ? "on" : ""} onClick={() => setTab(t)}>
+              {n}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {on === "st" ? (
+        <ul>
+          {prog.map((x) => (
+            <li key={x.key} className={x.state}>
+              <span className="t">{x.at || "—"}</span>
+              {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
+              <b>{[x.grp, x.name].filter(Boolean).join(" · ")}</b>
+              <small>{PG_STATE[x.state] || "Bekliyor"}</small>
+            </li>
+          ))}
+        </ul>
+      ) : on === "ag" ? (
+        ag.mode === "day" ? (
+          <ul>
+            {ag.rows.map((x, i) => (
+              <li key={i} className={x.state}>
+                <span className="t">{x.at || "—"}</span>
+                <b>{x.text}</b>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          ag.days.map((d) => (
+            <Fragment key={d.day}>
+              <p className="sc-pgd">{dayText(d.day)}</p>
+              <ul>
+                {d.rows.map((x, i) => (
+                  <li key={i}>
+                    <span className="t">{x.at || "—"}</span>
+                    <b>{x.text}</b>
+                  </li>
+                ))}
+              </ul>
+            </Fragment>
+          ))
+        )
+      ) : on === "gr" && grp ? (
+        <>
+          <div className="sc-pgg">
+            {gr.map((x) => (
+              <button key={x.grp} type="button" className={x.grp === grp.grp ? "on" : ""} aria-pressed={x.grp === grp.grp} onClick={() => setG(x.grp)}>
+                <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" />
+                {x.grp}
+                <small>{x.rows.length}</small>
+              </button>
+            ))}
+          </div>
+          {grp.day !== day ? <p className="sc-pgd">{dayText(grp.day)}</p> : null}
+          <ul className="bt">
+            {grp.rows.map((x) => (
+              <li key={x.sail}>
+                <span className="t">{x.sail}</span>
+                <b>{x.name}</b>
+                <small>{shortClub(x.club)}</small>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </div>
+  );
+}
 // sıradaki startın grubundaki sporcular (eski sol sütun, Seyhun 2026-11-03 19:59): günün grup listesi, yoksa sınıfın kayıt listesi
 function scBoats(data, who, today) {
   const all = data.entries || [];
@@ -2645,11 +2750,16 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   const live = (id) => srcIsLive(data.srcLive, id, now);
   const off = all.filter((x) => !x.url); // bağlantısı olmayan kaynak: soluk
   const picks = !!onFollow && (cams.length > 0 || pos.length > 0 || off.length > 0 || !!vidRef);
+  // Program düğmesi (Seyhun 2026-11-07 "canlı sayfasında grupları görebilmeliyim, programı görebilmeliyim"): start sırası, talimattaki
+  // program (plan.agenda) ve günün grupları (entries/list.groups; siteden ya da elle her eklenişte güncellenir)
+  const pgDay = seeDay(data, now);
+  const pgAg = agendaView(data.plan?.agenda, pgDay, new Date(now + 3 * 3600e3).toISOString().slice(11, 16));
+  const pgGr = useMemo(() => scGroups(data, pgDay), [data, pgDay]);
   const btns = [
     // Parkur ve rüzgâr tek düğme (Seyhun 2026-11-06): üstte şu anki ölçüm, ortada büyük parkur, altta beklenen rüzgâr
     (course || onWind || wind || nowW) && ["course", "Parkur ve rüzgâr"],
     (rank || res) && ["rank", "Sıralama"],
-    prog.length > 0 && ["prog", "Program"],
+    (prog.length > 0 || pgAg || pgGr.length > 0) && ["prog", "Program"],
     vidRef && ["vid", "Video", !!myVid],
     onStart && ["start", "Start"],
   ].filter(Boolean);
@@ -2916,21 +3026,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       <div ref={masaRef} className="sc-masa" />
     ) : k === "prog" ? (
       // günün programı (Seyhun 2026-11-06 "varsa program butonumuzda olsun"): biten soluk, süren mavi, sıradaki sarı
-      <div className="sc-pgl">
-        <div className="sc-vph">
-          <b>Bugünün programı</b>
-        </div>
-        <ul>
-          {prog.map((x) => (
-            <li key={x.key} className={x.state}>
-              <span className="t">{x.at || "—"}</span>
-              {x.grp ? <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" /> : null}
-              <b>{[x.grp, x.name].filter(Boolean).join(" · ")}</b>
-              <small>{x.state === "done" ? "Bitti" : x.state === "now" ? "Yarışta" : x.state === "next" ? "Sıradaki" : "Bekliyor"}</small>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <ScProgPanel prog={prog} ag={pgAg} gr={pgGr} day={pgDay} />
     ) : k === "vid" ? (
       // ana hesabın kendi videoları (LiveStart › LiveVideos buraya çizer; yalnız uygulama içinde)
       <div ref={vidRef} />
