@@ -1,8 +1,8 @@
-Commit: a997090 · Canlı Ekranda: kaynaklar önizleme kartı (#1334)
-Zaman: 2026-11-07-0017 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42292900209
+Commit: e3b8e18 · Canlı: düğmeler tek tasarım ailesinde, biraz daha büyük (#1335)
+Zaman: 2026-11-07-1256 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42360622303
 
-TAM TEST · 06.11.2026 23:59:49
+TAM TEST · 07.11.2026 12:39:34
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,24 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1428/1438 geçti · 10 kalan · 1032 sn
+SONUÇ: 1428/1438 geçti · 10 kalan · 1028 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
       ✗ “4505 test”
           beklenen: hepsi geçer
-          olan:     4466/4505 geçti
+          olan:     4456/4505 geçti
+      ✗ “2 dakika başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
+      ✗ “iki dakikalık yarış başlat” → ✗ ai · ön cevap: Bir bakayım. (beklenen: yol: trainVoice)
+      ✗ “yarışı başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
+      ✗ “start ver” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
+      ✗ “5 dakikalık sayacı başlat” → ✗ raceTimer (beklenen: yol: trainVoice)
+      ✗ “sayacı başlat” → ✗ raceTimer (beklenen: yol: trainVoice)
+      ✗ “bir dakikalık sayaç başlat” → ✗ raceTimer (beklenen: yol: trainVoice)
+      ✗ “yarışı bitir” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
+      ✗ “yarış bitti” → ✗ ai · ön cevap: Tamam, görevi tamamlıyorum. (beklenen: yol: trainVoice)
+      ✗ “yarış bitti sonuçlar 1 Ali 2 Zeynep 3 Emre” → ✗ trainResult (beklenen: yol: trainVoice)
       ✗ “yarışta açıldı › geri › geri” → {"races":false,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “tek kutu” → false (beklenen: solda kutu, sağda bas-konuş küresi)
       ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
@@ -215,9 +225,9 @@ SONUÇ: 1428/1438 geçti · 10 kalan · 1032 sn
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
   ✗ Hava: 2/3
-      ✗ “yağmur grafiği”
-          beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var
-          olan:     sütun 48 · gün düğmesi 1 · 5,5 false
+      ✗ “ölçülen / beklenen yağmur”
+          beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
+          olan:     ölçülen sütun 13 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
