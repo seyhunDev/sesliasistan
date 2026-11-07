@@ -53,7 +53,7 @@ export default async function raceSiteRun(req) {
       const e = { ...entry, name: race.name || entry.name, startDate: race.startDate || entry.startDate, endDate: race.endDate || entry.endDate };
       // İlk alışta eski belgeler sessiz (bildirim yalnız sonradan gelenlere)
       const first = !(entry.seen || []).length;
-      const got = await syncRace({ db, bucket, ref, entry: e, get, take: makeTake({ db, orgId: e.orgId, raceId: e.raceId, ai }) });
+      const got = await syncRace({ db, bucket, ref, entry: e, get, take: makeTake({ db, orgId: e.orgId, raceId: e.raceId, ai, cls: e.cls }) });
       n += got.length;
       if (!first) await notifyDocs({ db, entry: e, got, recordInbox, sendDevice, docNote }).catch((x) => console.warn("[yarış sitesi] bildirim", x.message));
     } catch (x) {

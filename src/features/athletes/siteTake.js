@@ -13,6 +13,7 @@ import { followSite, siteFile, watchSiteDocs } from "./raceSite";
 import { noticeDoc } from "@/lib/siteBoard";
 import { sameRace } from "@/lib/sharedRace";
 import { todayStr } from "@/lib/utils/format";
+import { focusText } from "@/lib/siteDocs";
 
 export const STEPS = ["Yarış ilanı indiriliyor", "Talimat okunuyor", "Yarış kaydediliyor", "Belgeler alınıyor"];
 const ayak = (s) => String(s || "").replace(/AYAK/i, "Ayak");
@@ -49,27 +50,33 @@ function watchDocs(orgId, act, raceId, total) {
   );
 }
 
-// races: kulübün yarışları (aynı yarış elle açıldıysa ona bağlanır); data: siteList; onDone(raceId, name)
-export function startTake({ orgId, uid, races, season, leg, c, onDone, onFail }) {
+// races: kulübün yarışları (aynı yarış elle açıldıysa ona bağlanır); onDone(raceId, name)
+// into: var olan yarış (Seyhun 2026-11-07 "benim kurduğum yarışa bağlayalım"): yeni yarış açılmaz, sporcular ve evrak olduğu gibi kalır;
+// talimattan yalnız programı yoksa program (notice) alınır
+export function startTake({ orgId, uid, races, season, leg, c, into = null, onDone, onFail }) {
   if (tasks[c.act] && !tasks[c.act].error && !tasks[c.act].done) return;
   const total = c.docs.length;
   set(c.act, { step: 0, got: 0, total, raceId: "", error: "", done: false });
   (async () => {
     try {
       const site = { act: c.act, cls: c.cls, season, n: leg.n, legNo: leg.legNo };
-      let r = { ...freshRace(races.find((x) => x.signer) || races[0], todayStr()), name: `${season} ${ayak(leg.name)} ${c.cls}` };
+      let r = into || { ...freshRace(races.find((x) => x.signer) || races[0], todayStr()), name: `${season} ${ayak(leg.name)} ${c.cls}` };
       const ilan = noticeDoc(c);
-      if (ilan) {
+      if (ilan && !(into && into.notice?.schedule?.length)) {
         const file = await siteFile(ilan);
         set(c.act, { step: 1 });
-        const n = await readNotice(file);
-        r = applyNotice({ ...r, name: "" }, n);
-        if (!r.name) r.name = `${ayak(leg.name)} ${c.cls}`;
-        r.noticeFile = await saveNoticeFile(orgId, file, noticeName(r)).catch(() => null);
+        // Tek talimatta birden çok kategori: yalnız bu sınıfınki (OPT.JUNIOR / OPTIMIST)
+        const n = await readNotice(file, { focus: focusText(c.cls) });
+        if (into) r = { ...into, notice: applyNotice({ ...into }, n).notice };
+        else {
+          r = applyNotice({ ...r, name: "" }, n);
+          if (!r.name) r.name = `${ayak(leg.name)} ${c.cls}`;
+        }
+        if (!r.noticeFile) r.noticeFile = await saveNoticeFile(orgId, file, noticeName(r)).catch(() => null);
       }
       set(c.act, { step: 2 });
-      const same = races.find((x) => !x.site && sameRace(x, r));
-      const id = await saveRace(orgId, uid, same ? { ...same, site } : { ...r, site });
+      const same = into || races.find((x) => !x.site && sameRace(x, r));
+      const id = await saveRace(orgId, uid, into ? { ...r, site } : same ? { ...same, site } : { ...r, site });
       set(c.act, { step: 3, raceId: id });
       const got = await followSite(id, site);
       if (got.error) throw new Error(got.error);

@@ -19,8 +19,8 @@ export const PROGRAM_SCHEMA = {
 };
 
 // Dönüş günler (lib/raceProgram.js cleanProgram), belge program değilse null
-export async function readProgramAi({ images = [], text = "", today = new Date().toISOString().slice(0, 10), race = "", timeoutMs = 55000 }) {
-  const ctx = `Bugün ${today}.${race ? ` Yarış: ${race}.` : ""}`;
+export async function readProgramAi({ images = [], text = "", today = new Date().toISOString().slice(0, 10), race = "", focus = "", timeoutMs = 55000 }) {
+  const ctx = `Bugün ${today}.${race ? ` Yarış: ${race}.` : ""}${focus ? ` ${focus}` : ""}`;
   const raw = await callGemini({
     model: process.env.GEMINI_MODEL,
     system: PROGRAM_SYSTEM,

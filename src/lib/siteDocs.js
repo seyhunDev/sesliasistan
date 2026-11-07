@@ -160,6 +160,15 @@ export function newRacesNote(list, season) {
   return { title: `Sitede ${list.length} yeni yarış`, body: `${season} ${legs.join(", ")}: ${list.map((x) => x.cls).slice(0, 8).join(", ")}${list.length > 8 ? "…" : ""}` };
 }
 
+// Tek talimatta birden çok kategori (Seyhun 2026-11-07 "talimat tek, içinde Junior ve Senior var; bize Senior lazım"): yapay zekaya
+// yarışın kendi kategorisi söylenir (sitedeki sınıf sekmesi: OPT.JUNIOR → Junior, OPTIMIST → ana/Senior). Sınıf yoksa "".
+export function focusText(cls) {
+  const c = String(cls || "").trim().slice(0, 40);
+  if (!c) return "";
+  const what = /junior|jr\b/i.test(c) ? `${c} (Junior kategorisi)` : /opt/i.test(c) ? `${c} (Junior değil; ana / Senior kategori)` : c;
+  return `Bu yarış yalnız "${what}" kategorisi için. Program, start saatleri, yarış sayısı ve toplantılarda yalnız bu kategoriye ait ya da bütün kategorilere ortak satırları al; başka kategorinin (Junior/Senior, Gelişim, başka sınıf) satırlarını alma.`;
+}
+
 // Ek talimatın getirdiği değişiklik (Seyhun 2026-11-04 "ek talimatla saatler, planlar değişiyor"): eski ve yeni program satırları
 // karşılaştırılır; "5 Kas İlk start 11:00 → 12:00 · 5 Kas Antrenör toplantısı 09:30 eklendi". Değişen yoksa "".
 export function scheduleDiff(old, next) {

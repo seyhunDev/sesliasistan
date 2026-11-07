@@ -419,6 +419,11 @@ export const saveRaceDates = (orgId, id, { startDate, endDate }) => (stale(), up
 export const saveRaceSpot = (orgId, id, spot) => (stale(), updateDoc(doc(col(orgId), id), { spot: cleanSpot(spot), updatedAt: serverTimestamp() }));
 
 // Silinince ana sayfanın yarış özeti (raceHome.js) olayla hemen tazelenir; yarış şeridi ve kartı silinen yarışı göstermez
+// Sunucuda silinen yarış (birleştirme, raceSite.mergeSite): liste önbelleği ve açık ekranlar
+export const raceGone = (id) => {
+  stale();
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("sa-race-gone", { detail: { id } }));
+};
 export const deleteRace = (orgId, id) => {
   stale();
   return deleteDoc(doc(col(orgId), id)).then(() => {

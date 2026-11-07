@@ -5,7 +5,7 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { fileUrl } from "@/lib/siteBoard";
 import { FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { KNOWN, cachedList, pageCache, siteList } from "@/lib/server/raceSiteSync";
+import { KNOWN, cachedList, mergeSite, pageCache, siteList } from "@/lib/server/raceSiteSync";
 import { ackSig } from "@/lib/server/ackSign";
 
 export const runtime = "nodejs";
@@ -18,6 +18,7 @@ export const runtime = "nodejs";
 // POST { raceId, site }         → yarışı izlemeye al (raceSite/{org}_{yarış}); belgeler arka planda hemen alınır ve kullanılır
 // POST { raceId, off: true }    → izlemeyi bırak (alınmış belgeler yarışta kalır)
 // POST { raceId, now: true }    → hemen bak (yarış sayfasındaki "Şimdi bak")
+// POST { raceId, into: <yarış> } → siteden alınan yarışı var olan yarışa birleştir (Seyhun 2026-11-07), raceSiteSync.mergeSite
 const bad = (error, status = 400) => NextResponse.json({ error }, { status });
 
 async function who(request) {
@@ -87,6 +88,17 @@ export async function POST(request) {
   if (body.off) {
     await ref.set({ on: false }, { merge: true });
     return NextResponse.json({ ok: true });
+  }
+  if (body.into) {
+    const into = S(body.into, 40);
+    if (!/^[A-Za-z0-9]{6,40}$/.test(into) || into === raceId) return bad("Birleştirilecek yarış yok.");
+    try {
+      await mergeSite({ db, orgId, from: raceId, to: into });
+      return NextResponse.json({ ok: true, id: into });
+    } catch (e) {
+      console.warn("[race-site] birleştir", e.message);
+      return bad(e.message || "Birleştirilemedi.", 400);
+    }
   }
   const r = race.data();
   let entry;

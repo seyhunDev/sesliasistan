@@ -13,7 +13,7 @@ import { FieldPath, FieldValue } from "firebase-admin/firestore";
 import { tableOf } from "../pdfLines.js";
 import { cleanEntries, mergeEntries } from "../roundSay.js";
 import { cleanGroups, dayGroups } from "../roundScore.js";
-import { cleanSchedule, colorOf, dayOf, mergeSchedule, scheduleDiff, sitePlan } from "../siteDocs.js";
+import { cleanSchedule, colorOf, dayOf, focusText, mergeSchedule, scheduleDiff, sitePlan } from "../siteDocs.js";
 
 // pdf.js Node'da DOMMatrix ister (yoksa @napi-rs/canvas'tan alır; Netlify işlevinde o yerel paket olmayabilir).
 // Yalnız yazı okunur, çizim yok: yalın bir matris yeter.
@@ -114,7 +114,8 @@ const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const pdfImage = (buf) => [{ mimeType: "application/pdf", data: Buffer.from(buf).toString("base64") }];
 
 // Talimat / ek talimat / program: yarışın notice alanı güncellenir. ai: { callGemini, readNoticeAi }
-export async function takeNotice({ db, orgId, raceId, d, buf, ai }) {
+export async function takeNotice({ db, orgId, raceId, d, buf, ai, cls = "" }) {
+  const focus = focusText(cls);
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return null;
   if (buf.length > 15 * 1024 * 1024) return { state: "kept", note: "Belge çok büyük" };
   const ref = db.collection("orgs").doc(orgId).collection("races").doc(raceId);
@@ -125,13 +126,13 @@ export async function takeNotice({ db, orgId, raceId, d, buf, ai }) {
   let note;
   if (d.kind === "notice") {
     // Yarış talimatı: programı ve (boşsa) sınıflar, iletişim
-    const n = await ai.readNoticeAi({ images: pdfImage(buf), today, timeoutMs: 120000 });
+    const n = await ai.readNoticeAi({ images: pdfImage(buf), today, focus, timeoutMs: 120000 });
     next = { ...notice, schedule: n.schedule.length ? n.schedule : cleanSchedule(notice.schedule) };
     if (!Array.isArray(notice.classes) || !notice.classes.length) next.classes = n.classes;
     if (!Array.isArray(notice.contacts) || !notice.contacts.length) next.contacts = n.contacts;
     note = n.schedule.length ? `Program ${n.schedule.length} satır` : "Programı yok";
   } else {
-    const raw = await ai.callGemini({ model: process.env.GEMINI_MODEL, system: AMEND_SYSTEM, user: `Bugün: ${today}. Yarış: ${S(race.name, 120)} (${race.startDate || ""}). Yıl yazmayan tarihlerde yarışın yılını kullan. Bu belgeyi oku.`, schema: AMEND_SCHEMA, images: pdfImage(buf), maxTokens: 3000, timeoutMs: 90000 });
+    const raw = await ai.callGemini({ model: process.env.GEMINI_MODEL, system: AMEND_SYSTEM, user: `Bugün: ${today}. Yarış: ${S(race.name, 120)} (${race.startDate || ""}). Yıl yazmayan tarihlerde yarışın yılını kullan.${focus ? ` ${focus}` : ""} Bu belgeyi oku.`, schema: AMEND_SCHEMA, images: pdfImage(buf), maxTokens: 3000, timeoutMs: 90000 });
     const add = cleanSchedule(raw?.schedule);
     next = { ...notice, schedule: mergeSchedule(notice.schedule, add) };
     // Not: ne değişti (eski → yeni saat, eklenen madde); yoksa yapay zekanın özeti. Bildirimde ve Dokümanlar'da görünür.
@@ -142,7 +143,7 @@ export async function takeNotice({ db, orgId, raceId, d, buf, ai }) {
   // Yayın programı: okunamazsa talimat yine kullanılmış sayılır
   if (ai.readProgramAi)
     try {
-      const plan = await takePlan({ db, orgId, raceId, race, d, buf, ai, today });
+      const plan = await takePlan({ db, orgId, raceId, race, d, buf, ai, today, focus });
       if (plan) {
         undo.plan = plan.old;
         note = `${note} · Yayın programı ${plan.days} gün`;
@@ -155,8 +156,8 @@ export async function takeNotice({ db, orgId, raceId, d, buf, ai }) {
 
 // Yayın programı (raceLive/{yarış}.plan): talimatta bütünü, ek talimatta yalnız geçen günler. Dönüş { old, days } ya da null
 const PLAN_KEYS = ["daily", "times", "off", "agenda"];
-async function takePlan({ db, orgId, raceId, race, d, buf, ai, today }) {
-  const days = await ai.readProgramAi({ images: pdfImage(buf), today, race: [race.name, race.place].filter(Boolean).join(" · "), timeoutMs: 120000 });
+async function takePlan({ db, orgId, raceId, race, d, buf, ai, today, focus = "" }) {
+  const days = await ai.readProgramAi({ images: pdfImage(buf), today, race: [race.name, race.place].filter(Boolean).join(" · "), focus, timeoutMs: 120000 });
   if (!days?.length) return null;
   const ref = db.collection("orgs").doc(orgId).collection("raceLive").doc(raceId);
   const plan = (await ref.get()).data()?.plan || {};
@@ -169,13 +170,13 @@ async function takePlan({ db, orgId, raceId, race, d, buf, ai, today }) {
 
 // Belge türüne göre kullanma (raceSiteSync.syncRace use): null → telefon işler (sonuçlar, okunamayan tablo)
 const isIlan = (name) => /\bILANI?\b|İLANI?\b/.test(String(name || "").toLocaleUpperCase("tr-TR"));
-export function makeTake({ db, orgId, raceId, ai }) {
+export function makeTake({ db, orgId, raceId, ai, cls = "" }) {
   return async (d, buf) => {
     if (["groups", "fleets", "entries"].includes(d.kind)) return takeList({ db, orgId, raceId, d, buf });
     if (d.kind === "results") return null;
     // Yarış ilanı: yarış ondan açıldı (Siteden yarış al)
     if (d.kind === "notice" && isIlan(d.name)) return { state: "kept", note: "Yarış ilanı" };
-    if (["notice", "amend", "program"].includes(d.kind)) return (await takeNotice({ db, orgId, raceId, d, buf, ai })) || null;
+    if (["notice", "amend", "program"].includes(d.kind)) return (await takeNotice({ db, orgId, raceId, d, buf, ai, cls })) || null;
     return { state: "kept" };
   };
 }

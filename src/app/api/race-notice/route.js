@@ -36,13 +36,15 @@ async function handle(request) {
   } else if (text.length < 40) return bad("Talimat metni çok kısa.");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
   const today = DATE.test(body?.today || "") ? body.today : new Date().toISOString().slice(0, 10);
+  // Tek talimatta birden çok kategori: yalnız bu yarışınki (lib/siteDocs.js focusText; Siteden yarış al gönderir)
+  const focus = String(body?.focus || "").slice(0, 400);
 
   try {
     const t0 = Date.now();
     const raw = await callGemini({
       model: process.env.GEMINI_MODEL,
       system: NOTICE_SYSTEM,
-      user: `Bugün: ${today}. Yıl yazmayan tarihlerde yarışın yılını kullan. ${text ? `Bu yarış talimatı metnini oku (kopyalanmış, tablo düzeni bozuk olabilir):\n"""\n${text}\n"""` : "Bu yarış talimatını oku."}`,
+      user: `Bugün: ${today}. Yıl yazmayan tarihlerde yarışın yılını kullan. ${focus ? `${focus} ` : ""}${text ? `Bu yarış talimatı metnini oku (kopyalanmış, tablo düzeni bozuk olabilir):\n"""\n${text}\n"""` : "Bu yarış talimatını oku."}`,
       schema: NOTICE_SCHEMA,
       images: text ? [] : [{ mimeType, data }],
       maxTokens: 8000,

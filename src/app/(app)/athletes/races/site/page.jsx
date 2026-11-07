@@ -19,6 +19,7 @@ import { Loader } from "@/components/ui/Loader";
 import { loadRaces } from "@/features/athletes/races";
 import { loadSiteList, siteFile } from "@/features/athletes/raceSite";
 import { STEPS, clearTask, startTake, useSiteTasks } from "@/features/athletes/siteTake";
+import { RacePickSheet } from "@/features/athletes/RacePickSheet";
 import { kindLabel, pickSeason } from "@/lib/siteDocs";
 import { todayStr } from "@/lib/utils/format";
 
@@ -51,6 +52,7 @@ function Site({ orgId, uid }) {
   const [retry, setRetry] = useState(0);
   const [ver, setVer] = useState(0);
   const tasks = useSiteTasks();
+  const [link, setLink] = useState(null); // { leg, c }: var olan yarışa bağla (Seyhun 2026-11-07)
 
   useEffect(() => {
     loadRaces(orgId).then(setRaces, () => {});
@@ -80,12 +82,12 @@ function Site({ orgId, uid }) {
   };
   const again = () => (setFail(false), setRetry((n) => n + 1));
   const have = (act) => races.find((r) => r.site?.act === act);
-  const take = (leg, c) => {
+  const take = (leg, c, into = null) => {
     const had = have(c.act);
     if (had) return router.push(`/athletes/races/${had.id}?sec=site`);
     clearTask(c.act);
     startTake({
-      orgId, uid, races, season: data.season, leg, c,
+      orgId, uid, races, season: data.season, leg, c, into,
       // Ekran kapanmış olabilir: bildirimden açılır
       onDone: (id, name) => (setVer((n) => n + 1), toast(`${name || c.cls} alındı`, { action: { label: "Aç", onClick: () => router.push(`/athletes/races/${id}?sec=site`) } })),
       onFail: (m) => toast(m),
@@ -138,9 +140,16 @@ function Site({ orgId, uid }) {
                         {tasks[c.act] ? (
                           <TakeCard t={tasks[c.act]} onOpen={() => router.push(`/athletes/races/${tasks[c.act].raceId}?sec=site`)} onRetry={() => take(leg, c)} />
                         ) : (
-                          <Button variant="primary" full className="mt-2" onClick={() => take(leg, c)}>
-                            {had ? "Yarışı aç" : "Yarışı al"}
-                          </Button>
+                          <>
+                            <Button variant="primary" full className="mt-2" onClick={() => take(leg, c)}>
+                              {had ? "Yarışı aç" : "Yarışı al"}
+                            </Button>
+                            {!had && (
+                              <Button variant="secondary" full className="mt-2" onClick={() => setLink({ leg, c })}>
+                                Var olan yarışıma bağla
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -151,6 +160,7 @@ function Site({ orgId, uid }) {
           </section>
         ))}
       </div>
+      <RacePickSheet open={!!link} onClose={() => setLink(null)} orgId={orgId} title="Hangi yarışına bağlansın?" near={link?.c.docs.at(-1)?.at?.slice(0, 10) || ""} onPick={(r) => (take(link.leg, link.c, r), setLink(null))} />
       {view && <PdfViewer title={view.name} load={() => siteFile(view)} onClose={() => setView(null)} />}
     </main>
   );
