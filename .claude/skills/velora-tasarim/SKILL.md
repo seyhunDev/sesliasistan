@@ -88,17 +88,17 @@ Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar 
 
 Bir sayfa geçince bu listeyi güncelle.
 
-## Yarış sayfaları: "yarış sade" (2026-11-06)
+## Yarış sayfaları: "yarış kart" (2026-11-07)
 
-Yarış detay, Yarışlar listesi ve Yayın sayfaları lacivert kokpit KULLANMAZ (Seyhun 2026-11-06 "tasarımı tamamen değiştir… renk anlayışı, buton anlayışı, her şey dahil"; örnek project-files/yaris-detay-sade/yeni-dil/ornek.png):
+Yarışlar listesi ve yarış detayı diğer sayfalar gibi lacivert kokpit kullanır (Seyhun 2026-11-07 "diğer sayfalardaki gibi olsun, başlık geri butonun yanında; iPad'de tıklamalar net, ortak butonlar"; örnek project-files/yaris-tasarim/sade/ust-*.png onaylı). Yayın sayfası ayrı (kendi sahibi).
 
-- Beyaz zemin (`main.rz`), kart çerçevesi ve gölge yok; satırlar ince çizgiyle ayrılır (`.rz-row`, `.rz-list`).
-- Üst: solda "‹ Yarışlar" mavi yazı, sağda ⋯; altında büyük ad ve tek satır gri bilgi. Ek işler (Yayın, düzenle, sil) ⋯ içinde.
-- Detay gerektiren her şey kapalı satırdır, dokununca yerinde açılır (`Fold`): Hava, Harita, Gidiş, Otel…
-- Sekmeler tek parça seçici (`RaceSeg`), hepsi tek satırda; eksikte küçük sarı nokta.
-- Sayfada tek dolu mavi düğme (o sekmenin ana işi); diğer işler mavi yazı ya da satır.
-- Renk: mavi yalnız iş, yeşil tamam, sarı eksik, kırmızı yaklaşan/geçersiz. Satırın sağında tek durum yazısı (Tamam, 2 eksik), düğme yok.
-- Parçalar `src/features/athletes/raceUi.jsx`, CSS globals.css "YARIŞ SADE".
+- Üst lacivert (`.ck`): yuvarlak geri (`BackButton`), yanında başlık (liste "Yarışlar", detayda yarışın adı), sağda beyaz `+ Yarış` (`ck-btn`) ya da yuvarlak ⋯ (`btn btn-round`). Detayda altında tek satır: tarih · yer · kalan gün. Başlık bir kez yazılır.
+- Sıradaki yarış mavi kart (`ck-plan`, Planlar'daki Bugün kartı gibi); altında Canlı ekran (beyaz) · Yayın (cam) (`RaceGo`, ortak `.btn`).
+- Altı açık gri zemin, üstü yuvarlak (`.rzc-body`); satırlar beyaz kartta (`.rz-list`), satır 3.5rem (iPad'de net dokunma). Yan yana açılır satırlar (`Fold`) tek kart olur.
+- Az kullanılanlar altta açılır "Diğer"de (Geçmiş yarışlar, Yarış takvimi, Siteden ekle); detayda ek işler ⋯ içinde.
+- Sekmeler (`RaceSeg`) açık gövdenin başında; iPad yatayda solda lacivert, sağda gövde (`split`).
+- Renk: mavi yalnız iş, yeşil tamam, sarı eksik, kırmızı yaklaşan/geçersiz.
+- Parçalar `src/features/athletes/raceUi.jsx`, CSS globals.css "YARIŞ SADE" + "YARIŞ KART" (`main.rz.rzc`).
 
 ## Hareket (animasyon)
 

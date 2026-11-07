@@ -39,11 +39,11 @@ export function RaceSeg({ tabs, value, onChange, className = "" }) {
 
 // İki giriş (Seyhun 2026-11-06 "hem yayını açabilmeliyim hem de kendi canlı yayın sayfamı"; yayin-canli/ornek.png onaylı): yan yana
 // "Canlı ekran" (dolu mavi; kendi canlı ekranı uygulama içinde, /canli/<id>, geri kaydırınca buraya döner) ve "Yayın" (açık mavi; yönetim
-// sayfası). Yalnız ana hesapta gösterilir (çağıran karar verir).
+// sayfası). Yalnız ana hesapta gösterilir (çağıran karar verir). Lacivert üstte (yarış kart, 2026-11-07) Canlı ekran beyaz, Yayın cam (.ck .rz-go).
 export function RaceGo({ id, className = "" }) {
   const router = useRouter();
   return (
-    <div className={`grid grid-cols-2 gap-2.5 ${className}`}>
+    <div className={`rz-go grid grid-cols-2 gap-2.5 ${className}`}>
       <button type="button" onClick={() => openInApp(router, `/canli/${id}`)} data-press className="btn btn-primary">
         Canlı ekran
       </button>

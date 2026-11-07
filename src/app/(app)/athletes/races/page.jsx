@@ -4,19 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { BackLink } from "@/components/ui/BackLink";
+import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
-import { RaceList, isPast } from "@/features/athletes/RaceList";
+import { RaceList } from "@/features/athletes/RaceList";
 import { loadRaces, racesNow } from "@/features/athletes/races";
 import { shareAll } from "@/features/athletes/sharedRaces";
 import { sweepLive } from "@/features/athletes/raceWipe";
-import { RaceSwitch } from "@/features/raceCal/RaceSwitch";
-import { Sheet } from "@/components/ui/Sheet";
-import { Row, RowList } from "@/components/ui/Row";
 
-// Yarışlar (yeni tasarım 2026-10-21): lacivert üstte başlık ve sıradaki yarış; sıradaki yarış kartı, yaklaşan yarışlar ay ay, geçmiş yarışlar en altta; yarışa dokununca evrak, sporcular, yapılacaklar
+// Yarışlar (yarış kart 2026-11-07): lacivert üstte başlık ve sıradaki yarış kartı; açık zeminde Yaklaşan ve açılır Diğer; yarışa dokununca yarış sayfası
 export default function RacesPage() {
   const { user, profile } = useAuth();
   const router = useRouter();
@@ -45,48 +42,41 @@ function Races({ orgId, me }) {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
-  const [menu, setMenu] = useState(false);
-  const up = races?.filter((r) => !isPast(r)).length || 0;
-  const past = (races?.length || 0) - up;
-  const sub = !races ? "Yükleniyor…" : [up ? `${up} yaklaşan` : "Yaklaşan yarış yok", past && `${past} geçmiş`].filter(Boolean).join(" · ");
+  const owner = me.uid === orgId;
 
-  // Başlık (yeni beyaz görünüm, Seyhun 2026-11-06): "‹ Ana sayfa", sağda + Yarış ve ⋯ (Siteden ekle); büyük ad, tek satır bilgi, Kulübüm | Takvim
+  // Başlık (yarış kart, Seyhun 2026-11-07 "Yarışlar başlığı geri butonun yanında olmalı, diğer sayfalardaki gibi"): Planlar gibi yuvarlak geri,
+  // yanında "Yarışlar", sağda beyaz + Yarış. Az kullanılanlar (Geçmiş yarışlar, Yarış takvimi, Siteden ekle) altta açılır "Diğer"de.
   const head = (
-    <header>
-      <div className="rz-bar">
-        <BackLink href="/" aria-label="Geri" data-press className="rz-link">
-          <Icon name="back" className="size-5" />
-          Ana sayfa
-        </BackLink>
-        <span className="flex items-center gap-1">
-          <Link href="/athletes/races/new" data-press className="rz-link px-2">
-            <Icon name="plus" className="size-5" />
-            Yarış
-          </Link>
-          {me.uid === orgId && (
-            <button type="button" onClick={() => setMenu(true)} aria-label="Diğer" data-press className="rz-link w-10 justify-center">
-              <Icon name="more" className="size-6" />
-            </button>
-          )}
-        </span>
-      </div>
-      <h1 className="mt-1 truncate">Yarışlar</h1>
-      <p className="mt-1 truncate text-[0.9375rem] text-mut">{sub}</p>
-      <RaceSwitch on="club" light />
+    <header className="flex items-center gap-2.5">
+      <BackButton href="/" />
+      <h1 className="min-w-0 flex-1 truncate">Yarışlar</h1>
+      <Link href="/athletes/races/new" data-press className="ck-btn shrink-0 !flex !h-10 items-center gap-1 !px-3.5 !text-[0.9375rem]">
+        <Icon name="plus" className="size-4" />
+        Yarış
+      </Link>
     </header>
+  );
+  const extra = (
+    <>
+      <Link href="/races" data-press="row" className="rz-row w-full">
+        <span className="rz-k">Yarış takvimi</span>
+        <span className="rz-chev" aria-hidden="true" />
+      </Link>
+      {owner && (
+        <Link href="/athletes/races/site" data-press="row" className="rz-row w-full">
+          <span className="rz-k">Siteden ekle</span>
+          <span className="rz-chev" aria-hidden="true" />
+        </Link>
+      )}
+    </>
   );
 
   return (
-    <main className="rz race-wide mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
-      <RaceList races={races} head={head} owner={me.uid === orgId} onOpen={(r) => router.push(`/athletes/races/${r.id}`)}>
+    <main className="rz rzc split mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+      <RaceList races={races} head={head} owner={owner} extra={extra} onOpen={(r) => router.push(`/athletes/races/${r.id}`)}>
         {error && <p className="text-center text-[0.875rem] text-rec">{error}</p>}
         {!races && <Loading label="Yarışlar yükleniyor" />}
       </RaceList>
-      <Sheet open={menu} onClose={() => setMenu(false)} title="Yarışlar">
-        <RowList>
-          <Row href="/athletes/races/site" title="Siteden ekle" />
-        </RowList>
-      </Sheet>
     </main>
   );
 }

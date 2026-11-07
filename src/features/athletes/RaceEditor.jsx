@@ -34,7 +34,6 @@ import { RaceWxRows } from "./RaceWx";
 import { Fold, RaceGo, RaceSeg } from "./raceUi";
 import { RaceTrack } from "./RaceTrack";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
-import { useWide } from "@/features/home/SideNav";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { loadPosts } from "@/features/posts/posts";
 import { racePlanSync, racePlansOf, racePostOf } from "./raceLinks";
@@ -908,8 +907,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   // Yarış günü üstü günün evresine göre (RaceDayTop: A rüzgâr · B sonuçlar · C gün bitti + yarın)
   const { phase, races: dayRaces } = useRacePhase(r, orgId, rid, raceDay);
   // iPad yatay ve Mac (sol menü, Seyhun 2026-11-05 "iPad için daha özel bir tasarım"): solda lacivert (başlık, hava, harita, Yayına git),
-  // sağda sekmeler ve sekmenin içi; yarış günü de bölümler pencerede değil sağda açık, Takip (sonuçlar) hep görünür
-  const wide = useWide();
+  // sağda sekmeler ve sekmenin içi (CSS split); Takip (sonuçlar) hep görünür
   const tabs = [
     // Yarış günü (Seyhun 2026-10-29): hazırlık, plan ve not altta görünmez; "Hazırlık" sekmesine dokununca açılır, yeniden dokununca kapanır.
     // Yarıştan önce eskisi gibi Özet.
@@ -926,7 +924,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   // kaydırılabilir sekmeler (eksikse sarı nokta). Talimat yüklüyse düğme yok, ⋯ içinde "Talimatı gör".
   // Sekmeler: telefonda lacivertin altında, geniş ekranda sağdaki açık gövdenin başında
   // Sekmeler tek parça seçici (yeni görünüm 2026-11-06); telefonda üstte, geniş ekranda sağ bölümün başında
-  const nav = <RaceSeg tabs={tabs} value={tab === "budget" ? "trip" : tab} onChange={setTab} className={wide ? "mb-2 mt-1" : "mt-5"} />;
+  // Yarış kart (2026-11-07): sekmeler her ekranda açık gövdenin başında, lacivertin altında
+  const nav = <RaceSeg tabs={tabs} value={tab === "budget" ? "trip" : tab} onChange={setTab} className="mb-1" />;
   // Üst (yeni görünüm 2026-11-06): yarış günü RaceDayTop (büyük tek satır, Hava/Harita satırı, Yayına git), öncesinde yalnız Hava ve Harita satırları
   const top = (
     <>
@@ -943,20 +942,19 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
           )}
         </>
       ) : null}
-      {!wide && nav}
     </>
   );
-  // Beyaz üst (lacivert blok kalktı, 2026-11-06); geniş ekranda solda sabit sütun (split-top)
+  // Lacivert üst (yarış kart, Seyhun 2026-11-07 "diğer sayfalardaki gibi"; Planlar gibi); geniş ekranda solda sabit sütun (split-top)
   const navy = (body) => (
-    <section className="rz-top split-top pb-1 pt-[calc(0.5rem+env(safe-area-inset-top))]" aria-label={r.name || "Yarış"}>
+    <section className="ck split-top -mx-5 px-5 pb-10 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={r.name || "Yarış"}>
       {head}
       {body}
     </section>
   );
-  const light = "bg-bg pb-1 pt-1";
+  const light = "rzc-body bg-bg pb-4";
   const secWrap = (body) => (
     <div className={`${light} race-body`}>
-      {wide && nav}
+      {nav}
       {body}
     </div>
   );
