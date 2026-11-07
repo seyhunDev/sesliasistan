@@ -12,10 +12,10 @@ import { setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { getStored } from "@/lib/firebase/fileStore";
-import { mergeEntries } from "@/lib/roundSay";
-import { dayGroups } from "@/lib/roundScore";
+import { cleanEntries, mergeEntries } from "@/lib/roundSay";
+import { cleanGroups, dayGroups } from "@/lib/roundScore";
 import { dropSheet } from "@/lib/resultSheet";
-import { colorOf, dayOf } from "@/lib/siteDocs";
+import { listGroups } from "@/lib/siteDocs";
 import { loadEntryDoc, readEntryFile, saveEntries, saveGroups } from "@/features/rounds/roundsStore";
 import { dropSheetDoc } from "./raceLiveStore";
 import { raceGone, saveRaceResults } from "./races";
@@ -90,23 +90,20 @@ export async function claimDoc(orgId, raceId, key) {
 
 // Liste belgesi (renk, final grupları, sporcu): okunur, kayıt listesine eklenir; grup varsa o günün gruplarına yazılır.
 // Dönüş kaydın yeni alanları { state, note, undo }
-export async function applyList(orgId, raceId, d) {
+export async function applyList(orgId, raceId, d, start = "") {
   const rows = await readEntryFile(await fileOf(d, raceId));
   if (!rows.length) return { state: "kept", note: "Liste okunamadı" };
   const cur = await loadEntryDoc(orgId, raceId);
   const undo = { rows: cur.rows };
   let note = "";
-  if (d.kind !== "entries") {
-    const color = colorOf(d.name);
-    const list = rows.map((r) => [r.sail, r.grp || color]).filter(([s, g]) => s && g);
-    const day = dayOf(d.name, d.at) || String(d.at).slice(0, 10);
-    if (list.length) {
-      const old = cur.groups[day] || null;
-      undo.day = day;
-      undo.groups = old ? Object.fromEntries(old) : null;
-      await saveGroups(orgId, raceId, day, dayGroups(old, list));
-      note = `${list.length} teknenin grubu · ${+day.slice(8)} ${new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { month: "short" })}`;
-    }
+  const lg = listGroups(rows, d, start);
+  if (lg) {
+    const { day, list } = lg;
+    const old = cur.groups[day] || null;
+    undo.day = day;
+    undo.groups = old ? Object.fromEntries(old) : null;
+    await saveGroups(orgId, raceId, day, dayGroups(old, list));
+    note = `${list.length} teknenin grubu · ${+day.slice(8)} ${new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { month: "short" })}`;
   }
   const next = mergeEntries(cur.rows, rows);
   await saveEntries(orgId, raceId, next);
@@ -145,3 +142,10 @@ export async function undoDoc(orgId, race, d) {
 // Geri alınanı yeniden işle
 export const redoDoc = (orgId, raceId, d) => mark(orgId, raceId, d.id, { state: "new" });
 export const saveDocState = mark;
+
+// Kayıt listesi ve günlük gruplar, canlı (Takip › Gruplar: yeni liste gelince kendiliğinden yenilenir)
+export const watchEntryDoc = (orgId, raceId, cb, onErr) =>
+  onSnapshot(entryRef(orgId, raceId), (snap) => {
+    const d = snap.exists() ? snap.data() : {};
+    cb({ rows: cleanEntries(d.rows), groups: cleanGroups(d.groups) });
+  }, onErr);

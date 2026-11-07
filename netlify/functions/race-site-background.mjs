@@ -51,6 +51,8 @@ export default async function raceSiteRun(req) {
     try {
       const race = (await db.collection("orgs").doc(entry.orgId).collection("races").doc(entry.raceId).get()).data() || {};
       const e = { ...entry, name: race.name || entry.name, startDate: race.startDate || entry.startDate, endDate: race.endDate || entry.endDate };
+      // Yarışın adı ve tarihleri değiştiyse izleme kaydı da (zamanlayıcı yarış günlerini bundan bilir)
+      if (e.name !== entry.name || e.startDate !== entry.startDate || e.endDate !== entry.endDate) await ref.set({ name: e.name || "", startDate: e.startDate || "", endDate: e.endDate || "" }, { merge: true });
       // İlk alışta eski belgeler sessiz (bildirim yalnız sonradan gelenlere)
       const first = !(entry.seen || []).length;
       const take = makeTake({ db, orgId: e.orgId, raceId: e.raceId, ai, cls: e.cls });

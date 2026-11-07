@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { RACE_SECS } from "@/lib/raceMenu";
@@ -168,6 +169,7 @@ const inRace = (x) => !!x?.startDate && todayStr() >= x.startDate && todayStr() 
 
 export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0 }) {
   const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
+  const router = useRouter();
   const toast = useToast();
   const confirmIt = useConfirm();
   const [r, setR] = useState(start);
@@ -1038,6 +1040,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         <ul className={`${card} divide-y divide-line overflow-hidden`}>
           {[
             ["Bilgileri düzenle", () => setEdit(true)],
+            // Kendi açtığın yarışı sitedeki yarışa bağla (Seyhun 2026-11-07 "hem kendim oluşturabilmeliyim hem siteden ekleyebilmeliyim")
+            isOwner && start.id && !r.site?.act && ["Siteden bağla", () => router.push(`/athletes/races/site?into=${start.id}`)],
           ]
             .filter(Boolean)
             .map(([l, fn, red]) => (

@@ -65,6 +65,16 @@ export function listDay(name, at = "", start = "") {
   return new Date(Date.parse(`${day}T12:00:00Z`) + 864e5).toISOString().slice(0, 10);
 }
 
+// Liste belgesinin grupları: { day, list: [[yelken, grup]] } ya da null. Renk/final listesinde satırın grubu ya da adındaki renk;
+// sporcu listesinde yalnız satırların yarısından çoğunda grup varsa (grup sütunu ya da grup başlıkları)
+export function listGroups(rows, d, start = "") {
+  const color = d.kind === "entries" ? "" : colorOf(d.name);
+  const list = (rows || []).map((r) => [r.sail, r.grp || color]).filter(([s, g]) => s && g);
+  if (!list.length || (d.kind === "entries" && list.length < rows.length / 2)) return null;
+  const day = listDay(d.name, d.at, start);
+  return day ? { day, list } : null;
+}
+
 // Adın içindeki gün ("RENK LİSTESİ-04.11.2026", "04-11-2026", "4.11") → "2026-11-04". Yıl yoksa yüklenme gününün yılı.
 export function dayOf(name, uploaded = "") {
   const s = String(name || "");
