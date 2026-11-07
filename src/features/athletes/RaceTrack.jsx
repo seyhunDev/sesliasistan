@@ -17,8 +17,9 @@ import { loadLive } from "./raceLiveStore";
 import { loadRaceDay } from "./raceWeather";
 import { Icon } from "@/components/ui/Icon";
 import { ourPlaces } from "@/lib/raceDay";
-import { kindLabel, resultState, version } from "@/lib/siteDocs";
-import { siteDocBlob, watchSiteDocs } from "./raceSite";
+import { cleanSchedule, currentAmend, kindLabel, resultState, version } from "@/lib/siteDocs";
+import { GROUP_PICK, groupColor } from "@/lib/roundScore";
+import { siteDocBlob, watchEntryDoc, watchSiteDocs } from "./raceSite";
 
 const RULES = ["notice", "amend", "program"];
 const GROUPS = ["groups", "fleets"];
@@ -32,24 +33,89 @@ const subOf = (x) => [x.n ? `${x.cls} / ${x.n}` : x.cls, x.grp && x.fp && `${x.g
 // Satırın sağındaki kısa işaret: sonuçta geçici/kesin, ek talimatta sürüm
 const markOf = (d) => (d.kind === "results" ? ({ kesin: "kesin", gecici: "geçici" })[resultState(d.name)] || "" : d.kind === "amend" && version(d.name) ? `V${version(d.name)}` : "");
 
+// Sporcu listesi grupları da getirdiyse (Optimist'te ilk günün grupları) Gruplar'da
+const grpDoc = (d) => d.kind === "entries" && /grubu/.test(d.note || "");
 export function trackGroups(docs) {
   const list = [...(docs || [])].sort((a, b) => String(b.at).localeCompare(String(a.at))); // yeni önce
   return {
     results: list.filter((d) => d.kind === "results"),
-    groups: list.filter((d) => GROUPS.includes(d.kind)),
-    news: list.filter((d) => d.kind !== "results" && !RULES.includes(d.kind) && !GROUPS.includes(d.kind)),
+    groups: list.filter((d) => GROUPS.includes(d.kind) || grpDoc(d)),
+    news: list.filter((d) => d.kind !== "results" && !RULES.includes(d.kind) && !GROUPS.includes(d.kind) && !grpDoc(d)),
     rules: list.filter((d) => RULES.includes(d.kind)),
   };
 }
 
-function DocRows({ list, onOpen }) {
+// cur: geçerli ek talimat (eskileri soluk, "eski"); alt satırda belgenin ne getirdiği (sunucunun notu: "İlk start 11:00 → 12:00", "45 teknenin grubu")
+const dayName = (day) => new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
+// Gösterilecek grup günü: bugünün grubu, yoksa ilk gelecek gün, yoksa son gün
+export function groupDay(groups, today) {
+  const days = Object.keys(groups || {}).filter((d) => groups[d]?.length).sort();
+  return days.includes(today) ? today : days.find((d) => d > today) || days.at(-1) || "";
+}
+// Günün grupları (Seyhun 2026-11-07 "gruplar açıklandı ama göremiyorum; her eklendiğinde güncellenmeli"): kayıt listesindeki grup
+// listesi canlı (raceSite.watchEntryDoc); grup başına tekne sayısı, bizim sporcuların grubu
+function GroupsNow({ e, chosen }) {
+  const day = e ? groupDay(e.groups, todayStr()) : "";
+  if (!day) return null;
+  const list = e.groups[day];
+  const count = {};
+  for (const [, g] of list) count[g] = (count[g] || 0) + 1;
+  const rank = (g) => GROUP_PICK.indexOf(g) + 1 || 99;
+  const gs = Object.keys(count).sort((a, b) => rank(a) - rank(b));
+  const bySail = new Map(list);
+  const ours = chosen.map((a) => ({ id: a.id, name: a.studentName, g: bySail.get(String(a.sailNo || "").replace(/\D/g, "")) })).filter((x) => x.g);
+  return (
+    <>
+      <div className="border-t border-line py-3 first:border-t-0">
+        <small className="block text-[0.8125rem] text-mut">{dayName(day)} grupları · {list.length} tekne</small>
+        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+          {gs.map((g) => (
+            <span key={g} className="inline-flex items-center gap-1.5 text-[0.9375rem] font-semibold">
+              <i className="size-2.5 rounded-full" style={{ background: groupColor(g) || "currentColor" }} aria-hidden="true" />
+              {g} <span className="font-normal text-mut tabular-nums">{count[g]}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+      {ours.map((x) => (
+        <div key={x.id} className="flex min-h-[3rem] items-center gap-2 border-t border-line py-2">
+          <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{x.name}</span>
+          <i className="size-2.5 shrink-0 rounded-full" style={{ background: groupColor(x.g) || "currentColor" }} aria-hidden="true" />
+          <b className="shrink-0 text-[0.9375rem] font-semibold">{x.g}</b>
+        </div>
+      ))}
+    </>
+  );
+}
+// Program (Seyhun 2026-11-07 "yarış talimatında program var, onu kullanalım"): talimat ve ek talimatlardan (race.notice.schedule),
+// bugün ve sonrası; yarış bittiyse hepsi. Gün başına bir satır.
+export function programDays(schedule, today) {
+  const rows = cleanSchedule(schedule);
+  const by = new Map();
+  for (const r of rows) by.set(r.date, [...(by.get(r.date) || []), r]);
+  const days = [...by.keys()].sort();
+  const next = days.filter((d) => d >= today);
+  return (next.length ? next : days).map((d) => [d, by.get(d).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"))]);
+}
+function ProgramRows({ schedule }) {
+  const today = todayStr();
+  return programDays(schedule, today).map(([d, items]) => (
+    <div key={d} className="flex gap-3 border-t border-line py-3 first:border-t-0">
+      <span className={`w-[4.75rem] shrink-0 text-[0.8125rem] ${d === today ? "font-semibold text-acc" : "text-mut"}`}>{d === today ? "Bugün" : dayName(d)}</span>
+      <span className="min-w-0 flex-1 text-[0.9375rem]">{items.map((x) => [x.time, x.title].filter(Boolean).join(" ")).join(" · ")}</span>
+    </div>
+  ));
+}
+
+function DocRows({ list, onOpen, cur = null }) {
   return list.map((d) => {
-    const mark = markOf(d);
+    const old = d.kind === "amend" && cur && d.id !== cur.id;
+    const mark = old ? "eski" : markOf(d);
     return (
-      <button key={d.id} type="button" data-press="row" onClick={() => onOpen(d)} className="flex min-h-[3.5rem] w-full items-center gap-2 border-t border-line py-2 text-left first:border-t-0">
+      <button key={d.id} type="button" data-press="row" onClick={() => onOpen(d)} className={`flex min-h-[3.5rem] w-full items-center gap-2 border-t border-line py-2 text-left first:border-t-0 ${old ? "opacity-55" : ""}`}>
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[0.9375rem] font-semibold">{d.name}</b>
-          <small className="block truncate text-[0.8125rem] text-mut">{[kindLabel(d.kind), when(d.at)].filter(Boolean).join(" · ")}</small>
+          <small className="block truncate text-[0.8125rem] text-mut">{[kindLabel(d.kind), when(d.at), d.state === "used" && d.note && d.note !== "Yarış ilanı" ? d.note : ""].filter(Boolean).join(" · ")}</small>
         </span>
         {!d.seen && <Tag tone="gen">Yeni</Tag>}
         {mark && <span className="shrink-0 rounded-full bg-bg px-2 py-0.5 text-[0.75rem] font-semibold text-mut">{mark}</span>}
@@ -144,6 +210,9 @@ export function RaceTrack({ orgId, race, chosen = [], more = null }) {
   const [view, setView] = useState(null);
   const [all, setAll] = useState(false);
   useEffect(() => watchSiteDocs(orgId, race.id, setDocs, () => setDocs((d) => d || [])), [orgId, race.id]);
+  const [ent, setEnt] = useState(null);
+  useEffect(() => watchEntryDoc(orgId, race.id, setEnt, () => setEnt({ rows: [], groups: {} })), [orgId, race.id]);
+  const hasGroups = !!(ent && groupDay(ent.groups, todayStr()));
   const load = useCallback(() => siteDocBlob(race.id, view), [race.id, view]);
   const close = useCallback(() => setView(null), []);
   const g = trackGroups(docs);
@@ -174,10 +243,11 @@ export function RaceTrack({ orgId, race, chosen = [], more = null }) {
       </div>
       <div>
       <section className="mt-6" aria-label="Gruplar">
-        <ListHead title="Gruplar" count={g.groups.length} />
+        <ListHead title="Gruplar" />
         <div className={box}>
+          <GroupsNow e={ent} chosen={chosen} />
           <DocRows list={g.groups} onOpen={setView} />
-          {!g.groups.length && empty("Henüz grup açıklanmadı")}
+          {!g.groups.length && !hasGroups && empty("Henüz grup açıklanmadı")}
         </div>
       </section>
 {/* duyuru yoksa bölüm görünmez (sporcu listesi ve sınıflanmayan belgeler) */}
@@ -190,10 +260,18 @@ export function RaceTrack({ orgId, race, chosen = [], more = null }) {
           </div>
         </section>
       )}
+      {cleanSchedule(race.notice?.schedule).length > 0 && (
+        <section className="mt-6" aria-label="Program">
+          <ListHead title="Program" />
+          <div className={box}>
+            <ProgramRows schedule={race.notice.schedule} />
+          </div>
+        </section>
+      )}
       <section className="mt-6" aria-label="Talimatlar">
         <ListHead title="Talimatlar" count={g.rules.length} />
         <div className={box}>
-          <DocRows list={g.rules} onOpen={setView} />
+          <DocRows list={g.rules} onOpen={setView} cur={currentAmend(g.rules)} />
           {!g.rules.length && empty("Henüz talimat yok")}
         </div>
       </section>

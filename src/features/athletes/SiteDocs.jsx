@@ -54,7 +54,7 @@ export function SiteDocs({ orgId, race, shown = false, onNew, onResults, onUndo,
       for (const d of todo) {
         if (!(await claimDoc(orgId, race.id, d.id))) continue;
         try {
-          const patch = d.kind === "results" ? await onResults(d) : await applyList(orgId, race.id, d);
+          const patch = d.kind === "results" ? await onResults(d) : await applyList(orgId, race.id, d, race.startDate || "");
           if (!patch) {
             await saveDocState(orgId, race.id, d.id, { state: "new" }).catch(() => {});
             continue;
@@ -68,7 +68,7 @@ export function SiteDocs({ orgId, race, shown = false, onNew, onResults, onUndo,
       running.current = false;
       if (n) toast(`Siteden ${n} belge işlendi`);
     })();
-  }, [docs, ready, orgId, race.id, onResults, toast]);
+  }, [docs, ready, orgId, race.id, race.startDate, onResults, toast]);
 
   const undo = async (d) => {
     setBusy(d.id);

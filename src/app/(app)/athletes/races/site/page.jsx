@@ -17,7 +17,8 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { Loader } from "@/components/ui/Loader";
 import { loadRaces } from "@/features/athletes/races";
-import { loadSiteList, siteFile } from "@/features/athletes/raceSite";
+import { loadSiteList, mergeSite, siteFile } from "@/features/athletes/raceSite";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { STEPS, clearTask, startTake, useSiteTasks } from "@/features/athletes/siteTake";
 import { RacePickSheet } from "@/features/athletes/RacePickSheet";
 import { kindLabel, pickSeason } from "@/lib/siteDocs";
@@ -52,7 +53,11 @@ function Site({ orgId, uid }) {
   const [retry, setRetry] = useState(0);
   const [ver, setVer] = useState(0);
   const tasks = useSiteTasks();
-  const [link, setLink] = useState(null); // { leg, c }: var olan yarışa bağla (Seyhun 2026-11-07)
+  const [link, setLink] = useState(null); // { leg, c, had }: var olan yarışa bağla ya da alınmışı birleştir (Seyhun 2026-11-07)
+  // Yarış sayfasından "Siteden bağla" (?into=<yarış>): seçilen sınıf o yarışa bağlanır, alınmışsa onunla birleşir
+  const [intoId] = useState(() => (typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("into") || ""));
+  const into = races.find((r) => r.id === intoId && !r.site?.act) || null;
+  const ask = useConfirm();
 
   useEffect(() => {
     loadRaces(orgId).then(setRaces, () => {});
@@ -82,8 +87,26 @@ function Site({ orgId, uid }) {
   };
   const again = () => (setFail(false), setRetry((n) => n + 1));
   const have = (act) => races.find((r) => r.site?.act === act);
+  // Alınmış site yarışını kendi yarışınla birleştir (kopya silinir, belgeler senin yarışına)
+  const merge = (had, to) =>
+    ask({
+      title: `"${to.name || "Yarış"}" ile birleştirilsin mi?`,
+      text: "Siteden gelen belgeler, sporcu ve renk listeleri, program o yarışa taşınır; oradaki sporcular ve evrak kalır. Siteden açılan kopya silinir.",
+      yes: "Birleştir",
+      run: async () => {
+        try {
+          const id = await mergeSite(had.id, to.id);
+          toast("Birleştirildi");
+          router.replace(`/athletes/races/${id}?sec=site`);
+        } catch (e) {
+          toast(e.message || "Birleştirilemedi");
+          throw e;
+        }
+      },
+    });
   const take = (leg, c, into = null) => {
     const had = have(c.act);
+    if (had && into) return merge(had, into);
     if (had) return router.push(`/athletes/races/${had.id}?sec=site`);
     clearTask(c.act);
     startTake({
@@ -99,7 +122,7 @@ function Site({ orgId, uid }) {
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <header className="flex items-center gap-2.5">
           <BackButton href="/athletes/races" />
-          <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">Siteden yarış al</h1>
+          <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">{into ? "Siteden bağla" : "Siteden yarış al"}</h1>
         </header>
         <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-1">
           {(data?.seasons || (season ? [{ name: season }] : [])).map((s) => (
@@ -141,13 +164,19 @@ function Site({ orgId, uid }) {
                           <TakeCard t={tasks[c.act]} onOpen={() => router.push(`/athletes/races/${tasks[c.act].raceId}?sec=site`)} onRetry={() => take(leg, c)} />
                         ) : (
                           <>
-                            <Button variant="primary" full className="mt-2" onClick={() => take(leg, c)}>
-                              {had ? "Yarışı aç" : "Yarışı al"}
-                            </Button>
-                            {!had && (
-                              <Button variant="secondary" full className="mt-2" onClick={() => setLink({ leg, c })}>
-                                Var olan yarışıma bağla
+                            {into ? (
+                              <Button variant="primary" full className="mt-2" onClick={() => take(leg, c, into)}>
+                                {had ? `${into.name || "Yarışınla"} birleştir` : `${into.name || "Yarışına"} bağla`}
                               </Button>
+                            ) : (
+                              <>
+                                <Button variant="primary" full className="mt-2" onClick={() => take(leg, c)}>
+                                  {had ? "Yarışı aç" : "Yarışı al"}
+                                </Button>
+                                <Button variant="secondary" full className="mt-2" onClick={() => setLink({ leg, c, had })}>
+                                  {had ? "Yarışımla birleştir" : "Var olan yarışıma bağla"}
+                                </Button>
+                              </>
                             )}
                           </>
                         )}
@@ -160,7 +189,7 @@ function Site({ orgId, uid }) {
           </section>
         ))}
       </div>
-      <RacePickSheet open={!!link} onClose={() => setLink(null)} orgId={orgId} title="Hangi yarışına bağlansın?" near={link?.c.docs.at(-1)?.at?.slice(0, 10) || ""} onPick={(r) => (take(link.leg, link.c, r), setLink(null))} />
+      <RacePickSheet open={!!link} onClose={() => setLink(null)} orgId={orgId} title={link?.had ? "Hangi yarışınla birleşsin?" : "Hangi yarışına bağlansın?"} near={link?.had?.startDate || link?.c.docs.at(-1)?.at?.slice(0, 10) || ""} skip={link?.had?.id || ""} onPick={(r) => (take(link.leg, link.c, r), setLink(null))} />
       {view && <PdfViewer title={view.name} load={() => siteFile(view)} onClose={() => setView(null)} />}
     </main>
   );

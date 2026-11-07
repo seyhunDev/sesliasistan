@@ -13,7 +13,7 @@ import { FieldPath, FieldValue } from "firebase-admin/firestore";
 import { tableOf } from "../pdfLines.js";
 import { cleanEntries, mergeEntries } from "../roundSay.js";
 import { cleanGroups, dayGroups } from "../roundScore.js";
-import { cleanSchedule, colorOf, dayOf, focusText, listDay, mergeSchedule, scheduleDiff, sitePlan } from "../siteDocs.js";
+import { cleanSchedule, dayOf, focusText, listGroups, mergeSchedule, scheduleDiff, sitePlan } from "../siteDocs.js";
 
 // pdf.js Node'da DOMMatrix ister (yoksa @napi-rs/canvas'tan alır; Netlify işlevinde o yerel paket olmayabilir).
 // Yalnız yazı okunur, çizim yok: yalın bir matris yeter.
@@ -81,19 +81,16 @@ export async function takeList({ db, orgId, raceId, d, buf }) {
   const undo = { rows: noGrp(old) };
   let note = "";
   // Sporcu listesinde grup sütunu ya da grup başlıkları varsa (Optimist'te ilk günün grupları sporcu listesinde) o da grup listesi
-  const color = d.kind === "entries" ? "" : colorOf(d.name);
-  const list = rows.map((r) => [r.sail, r.grp || color]).filter(([s, g]) => s && g);
-  if (d.kind !== "entries" || list.length >= rows.length / 2) {
-    const start = d.kind === "entries" || !dayOf(d.name, d.at) ? (await db.collection("orgs").doc(orgId).collection("races").doc(raceId).get()).data()?.startDate || "" : "";
-    const day = listDay(d.name, d.at, start);
-    if (list.length && day) {
-      const prev = groups[day] || null;
-      undo.day = day;
-      undo.groups = prev ? Object.fromEntries(prev) : null;
-      const next = Object.fromEntries(cleanGroups({ [day]: dayGroups(prev, list) })[day] || []);
-      await ref.set({ groups: { [day]: next } }, { mergeFields: [new FieldPath("groups", day)] });
-      note = `${list.length} teknenin grubu · ${short(day)}`;
-    }
+  const start = d.kind === "entries" || !dayOf(d.name, d.at) ? (await db.collection("orgs").doc(orgId).collection("races").doc(raceId).get()).data()?.startDate || "" : "";
+  const lg = listGroups(rows, d, start);
+  if (lg) {
+    const { day, list } = lg;
+    const prev = groups[day] || null;
+    undo.day = day;
+    undo.groups = prev ? Object.fromEntries(prev) : null;
+    const next = Object.fromEntries(cleanGroups({ [day]: dayGroups(prev, list) })[day] || []);
+    await ref.set({ groups: { [day]: next } }, { mergeFields: [new FieldPath("groups", day)] });
+    note = `${list.length} teknenin grubu · ${short(day)}`;
   }
   const next = mergeEntries(old, rows);
   await ref.set({ rows: noGrp(cleanEntries(next)), at: new Date().toISOString() }, { merge: true });
