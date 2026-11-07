@@ -1245,3 +1245,82 @@ main.rz [data-pagebar] { background: linear-gradient(to top, var(--card) 60%, tr
 }
 .rz-h { margin: 1.5rem 0 .25rem; font-size: .8125rem; font-weight: 600; color: var(--mut); }
 main.rz .bg-card.rounded-\[1\.25rem\].px-3\.5 { padding-left: 1rem; padding-right: 1rem; }
+
+/* YARIŞ KART (rzc; Seyhun 2026-11-07 "diğer sayfalardaki gibi olsun… iPad'de tıklamalar net, ortak butonlar"; örnek
+   /mnt/project-files/yaris-tasarim/sade/ust-*.png onaylı): Yarışlar ve yarış detayı Planlar gibi. Üst lacivert (ck): yuvarlak geri, yanında
+   başlık, sağda ⋯ / + Yarış; sıradaki yarış mavi kart (ck-plan); Canlı ekran beyaz, Yayın cam (rz-go). Altı açık gri zemin, üstü yuvarlak;
+   satırlar beyaz kartta (rz-list), yan yana açılır satırlar (Fold) tek kart olur, eski kartlar da aynı çerçevede. Satırlar 3.5rem (iPad'de
+   dokunması kolay). Lacivertteki satırlar (Hava, Harita) cam kartta. main.rz.rzc; yalnız athletes/races ve athletes/races/[id]. */
+body:has(main.rz.rzc) { background: var(--bg); }
+main.rz.rzc { background: transparent; }
+main.rz.rzc > .bg-bg { background: var(--bg); }
+.rzc-body { position: relative; margin: -1.5rem -1.25rem 0; padding: 1.25rem 1.25rem 0; border-radius: 1.75rem 1.75rem 0 0; }
+main.rzc .rz-h { margin: 1.5rem .25rem .5rem; font-size: .8125rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--mut); }
+main.rzc .rzc-body > .rz-h:first-child, main.rzc .rzc-body > section:first-child > .rz-h:first-child { margin-top: .25rem; }
+main.rzc .rz-list { overflow: hidden; border: 1px solid var(--line); border-radius: 1.25rem; background: var(--card); }
+main.rzc .rz-row { min-height: 3.5rem; margin-inline: 0; padding: .5rem 1rem; width: 100% !important; border-bottom: 1px solid var(--line); }
+main.rzc .rz-list > :last-child, main.rzc .rz-list > :last-child > .rz-row:last-child { border-bottom: 0; }
+main.rzc .rz-k { font-size: 1rem; font-weight: 600; }
+main.rzc .rz-k small { margin-top: .0625rem; font-size: .84375rem; }
+/* yan yana açılır satırlar tek kart */
+main.rzc .rz-row-wrap { overflow: hidden; border: 1px solid var(--line); border-top: 0; background: var(--card); }
+main.rzc .rz-row-wrap:not(.rz-row-wrap + .rz-row-wrap) { border-top: 1px solid var(--line); border-top-left-radius: 1.25rem; border-top-right-radius: 1.25rem; }
+main.rzc .rz-row-wrap:not(:has(+ .rz-row-wrap)) { border-bottom-left-radius: 1.25rem; border-bottom-right-radius: 1.25rem; }
+main.rzc .rz-row-wrap:not(.rz-row-wrap + .rz-row-wrap) > .rz-row { border-top: 0; }
+main.rzc .rz-row-wrap:not(:has(+ .rz-row-wrap)) > .rz-row:last-child { border-bottom: 0; }
+main.rzc .rz-open { margin-inline: 0; padding: .75rem 1rem 1rem; background: color-mix(in srgb, var(--bg) 55%, var(--card)); }
+main.rzc .rz-row-wrap:not(:has(+ .rz-row-wrap)) > .rz-open { border-bottom: 0; }
+main.rzc .rz-list .rz-open { border-bottom: 1px solid var(--line); }
+/* eski kartlar düz değil, kart */
+main.rz.rzc .bg-card.rounded-\[1\.25rem\] { margin-left: 0; margin-right: 0; border: 1px solid var(--line); border-radius: 1.25rem; background: var(--card); box-shadow: none; }
+main.rz.rzc .tracking-\[\.08em\] { display: revert-layer; letter-spacing: revert-layer; font-weight: revert-layer; font-size: revert-layer; text-transform: revert-layer; }
+main.rz.rzc .tracking-\[\.08em\]::first-letter { text-transform: revert-layer; }
+main.rzc .rz-seg { padding: 3px; border-radius: .875rem; background: color-mix(in srgb, var(--fg) 7%, var(--bg)); }
+main.rzc .rz-seg-b { height: 2.5rem; border-radius: .6875rem; font-size: .9375rem; }
+main.rz.rzc [data-pagebar] { background: linear-gradient(to top, var(--bg) 60%, transparent); }
+/* lacivert üst */
+main.rzc .ck h1 { font-size: 1.375rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+main.rzc .ck .rz-sub { color: rgba(255, 255, 255, .7); }
+main.rzc .ck .rz-list, main.rzc .ck .rz-row-wrap { border-color: rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .08); }
+main.rzc .ck .rz-row, main.rzc .ck .rz-open, main.rzc .ck .rz-list .rz-open { border-color: rgba(255, 255, 255, .12); }
+main.rzc .ck .rz-row { min-height: 3.25rem; }
+main.rzc .ck .rz-k { font-weight: 500; }
+main.rzc .ck :is(.rz-v, .rz-k small, .text-mut) { color: rgba(255, 255, 255, .72); }
+main.rzc .ck .rz-v b { color: #fff; }
+main.rzc .ck .rz-chev { border-color: rgba(255, 255, 255, .5); }
+main.rzc .ck .rz-open { background: rgba(0, 0, 0, .14); }
+main.rzc .ck .rz-shim { background: rgba(255, 255, 255, .14); }
+main.rzc .ck .rz-acc { color: #8fb3ff; }
+main.rzc .ck .rz-warn { color: #f3c37a; }
+main.rzc .ck .rz-ok { color: #8fd6a8; }
+main.rzc .ck [data-press="row"][data-pressed] { background-color: rgba(255, 255, 255, .06); }
+main.rzc .ck .rz-seg { background: rgba(255, 255, 255, .1); }
+main.rzc .ck .rz-seg-b { color: rgba(255, 255, 255, .75); }
+main.rzc .ck .rz-seg-b[aria-pressed="true"] { background: #fff; color: #0b1a33; }
+/* Canlı ekran beyaz, Yayın cam (ortak .btn; lacivertte) */
+.ck .rz-go .btn { height: 3rem; border-radius: .875rem; font-weight: 700; }
+.ck .rz-go .btn-primary { border-color: #fff; background: #fff; color: #0b1a33; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+.ck .rz-go .rz-soft { border: 1px solid rgba(255, 255, 255, .18); background: rgba(255, 255, 255, .12); color: #fff; }
+.ck .rz-go .btn-primary[data-pressed] { background: #e9eef7; }
+.ck .rz-go .rz-soft[data-pressed] { background: rgba(255, 255, 255, .06); }
+/* sıradaki yarış kartı */
+.rzc-next .rzc-r { display: flex; align-items: center; gap: .75rem; width: 100%; min-height: 3rem; border-top: 1px solid rgba(255, 255, 255, .22); text-align: left; }
+.rzc-next .rzc-r > span:first-child { flex: 1; color: rgba(255, 255, 255, .78); }
+.rzc-next .rzc-r > b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+/* tarih kutusu (liste satırı) */
+.rzc-day { display: flex; width: 2.875rem; height: 3rem; flex-shrink: 0; flex-direction: column; align-items: center; justify-content: center; border-radius: .8125rem; background: var(--accbg); color: var(--acc); line-height: 1; }
+.rzc-day b { font-size: 1.125rem; font-weight: 700; }
+.rzc-day small { margin-top: .25rem; font-size: .625rem; font-weight: 700; letter-spacing: .06em; }
+.rzc-day.rzc-past { background: color-mix(in srgb, var(--fg) 6%, var(--card)); color: var(--mut); }
+/* geniş ekran: telefondaki yuvarlak üst köşe ve bindirme yok (split solda lacivert, sağda gövde) */
+@media (min-width: 48rem) {
+  main.rzc .ck { padding-left: 2rem; padding-right: 2rem; margin-left: -2rem; margin-right: -2rem; }
+  main.rzc .rzc-body { margin-left: -2rem; margin-right: -2rem; padding-left: 2rem; padding-right: 2rem; }
+  main.rz.rzc.max-w-\[30rem\] { padding-left: 2rem; padding-right: 2rem; }
+  main.rzc .rz-list .rz-row { padding-inline: 1.25rem; }
+}
+@media (min-width: 64rem) {
+  body[data-side] main.rz.rzc.split > .ck { margin: 0; border-right: 0; }
+  body[data-side] main.rz.rzc.split > .rzc-body { margin: 0; border-radius: 0; padding: calc(1.25rem + env(safe-area-inset-top)) 2rem 2.5rem; }
+  body[data-side] main.rz.rzc.split.split-even > .rzc-body { padding-left: 1.5rem; padding-right: 1.5rem; }
+}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { BackLink } from "@/components/ui/BackLink";
+import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
 import { LoadFail } from "@/components/ui/LoadFail";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -239,25 +239,22 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     return () => window.dispatchEvent(new CustomEvent("sa-plain", { detail: false }));
   }, [plain]);
 
-  // Başlık (yeni beyaz görünüm, Seyhun 2026-11-06 "üst satır hala çok dolu"; yeni-dil/ornek.png): üstte "‹ Yarışlar" ve ⋯ (Yayın, düzenle, sil),
-  // altında büyük ad ve tek satır bilgi: tarih · yer · kalan gün (yarış sürerken kırmızı nokta ve "Yarışta · 2. gün")
+  // Başlık (yarış kart, Seyhun 2026-11-07 "diğer sayfalardaki gibi, başlık geri butonun yanında"): Planlar gibi yuvarlak geri, yanında yarışın
+  // adı, sağda yuvarlak ⋯ (Yayın, düzenle, siteden bağla, sil); altında tek satır: tarih · yer · kalan gün (yarış sürerken kırmızı nokta)
   const on = !!race && racing({ ...race, ...head0 });
   const head = (
     <header>
-      <div className="rz-bar">
-        <BackLink href="/athletes/races" aria-label="Geri" data-press className="rz-link">
-          <Icon name="back" className="size-5" />
-          Yarışlar
-        </BackLink>
+      <div className="flex items-center gap-2.5">
+        <BackButton href="/athletes/races" />
+        <h1 className="min-w-0 flex-1 truncate">{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</h1>
         {(race?.id || head0) && (
-          <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className="rz-link w-10 justify-center">
+          <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className="btn btn-round">
             <Icon name="more" className="size-6" />
           </button>
         )}
       </div>
-      <h1 className="mt-1 truncate">{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</h1>
       {race && (
-        <p className="mt-1 flex items-center gap-1.5 text-[0.9375rem] text-mut">
+        <p className="rz-sub ml-[3.375rem] mt-0.5 flex items-center gap-1.5 text-[0.9375rem]">
           {on && <span className="size-2 shrink-0 rounded-full bg-rec" aria-hidden="true" />}
           <span className="truncate">{subText({ ...race, ...head0 })}</span>
         </p>
@@ -266,11 +263,11 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   );
 
   return (
-    <main className="rz split split-even mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className="rz rzc split split-even mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {!race || missingRace ? (
         <>
-          <section className="rz-top split-top pb-1 pt-[calc(0.5rem+env(safe-area-inset-top))]">{head}</section>
-          <div className="bg-bg pt-1">
+          <section className="ck split-top -mx-5 px-5 pb-10 pt-[calc(0.75rem+env(safe-area-inset-top))]">{head}</section>
+          <div className="rzc-body bg-bg pb-4">
             {err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
             {missingRace ? <p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p> : fail && !race ? <LoadFail onRetry={() => (setFail(false), setRetry((n) => n + 1))} /> : <Loading label="Yarış yükleniyor" />}
           </div>
