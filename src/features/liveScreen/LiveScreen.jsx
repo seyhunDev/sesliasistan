@@ -1681,6 +1681,13 @@ function ScProg({ prog }) {
     </div>
   );
 }
+// Bizim sporcular (Seyhun 2026-11-07 "bizim sporcularımız gruplarında en yukarıda"): kulübü Dikili olan
+const isOur = (club) => /dikili/.test(String(club || "").toLocaleLowerCase("tr"));
+// Gruplarda arama: ad, kulüp ya da yelken no; her kelime geçmeli
+const grpHit = (x, q) => {
+  const hay = [x.name, x.club, clubName(x.club), shortClub(x.club), x.sail].join(" ").toLocaleLowerCase("tr");
+  return q.toLocaleLowerCase("tr").split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
+};
 // Günün grupları: { grp, rows: [{ sail, name, club }] } (Sarı, Mavi… sırasıyla); bugün yoksa açıklanmış ilk sonraki gün (day ile)
 function scGroups(data, today) {
   const all = data.groups || {};
@@ -1692,7 +1699,7 @@ function scGroups(data, today) {
   for (const [sail, g] of Object.entries(gm)) {
     if (!by.has(g)) by.set(g, []);
     const e = who.get(sail);
-    by.get(g).push({ sail, name: e?.name || "", club: e?.club || "" });
+    by.get(g).push({ sail, name: e?.name || "", club: e?.club || "", our: isOur(e?.club) });
   }
   const rk = (g) => {
     const i = GROUP_PICK.indexOf(g);
@@ -1700,7 +1707,7 @@ function scGroups(data, today) {
   };
   return [...by.entries()]
     .sort((a, b) => rk(a[0]) - rk(b[0]) || a[0].localeCompare(b[0], "tr"))
-    .map(([grp, rows]) => ({ grp, day, rows: rows.sort((a, b) => Number(a.sail) - Number(b.sail) || a.sail.localeCompare(b.sail)) }));
+    .map(([grp, rows]) => ({ grp, day, rows: rows.sort((a, b) => b.our - a.our || Number(a.sail) - Number(b.sail) || a.sail.localeCompare(b.sail)) }));
 }
 // Program paneli: Start (günün start sırası), Talimat (yarış talimatındaki program); yalnız dolu olan sekmeler. Gruplar ayrı düğmede (ScGrpPanel)
 const PG_STATE = { done: "Bitti", now: "Yarışta", next: "Sıradaki" };
@@ -1765,13 +1772,27 @@ function ScProgPanel({ prog, ag }) {
 // Gruplar paneli: grup seçilir, altında yelken no, ad, kulüp
 function ScGrpPanel({ gr, day }) {
   const [g, setG] = useState("");
+  const [q, setQ] = useState("");
   const grp = gr.find((x) => x.grp === g) || gr[0];
   if (!grp) return null;
+  const hits = q.trim() ? gr.flatMap((x) => x.rows.filter((r) => grpHit(r, q)).map((r) => ({ ...r, grp: x.grp }))) : null;
+  const row = (x, dot) => (
+    <li key={`${dot || ""}${x.sail}`} className={x.our ? "our" : ""}>
+      <span className="t">{x.sail}</span>
+      {dot ? <i style={{ background: groupColor(dot) || "#ffd23f" }} aria-hidden="true" /> : null}
+      <b>{x.name}</b>
+      <small>{dot || shortClub(x.club)}</small>
+    </li>
+  );
   return (
     <div className="sc-pgl">
       <div className="sc-vph">
         <b>Gruplar</b>
       </div>
+      <input className="sc-pgs" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ara" aria-label="Gruplarda ara" />
+      {hits ? (
+        hits.length ? <ul className="bt">{hits.map((x) => row(x, x.grp))}</ul> : <p className="sc-vno">Bulunamadı</p>
+      ) : (
         <>
           <div className="sc-pgg">
             {gr.map((x) => (
@@ -1783,16 +1804,9 @@ function ScGrpPanel({ gr, day }) {
             ))}
           </div>
           {grp.day !== day ? <p className="sc-pgd">{dayText(grp.day)}</p> : null}
-          <ul className="bt">
-            {grp.rows.map((x) => (
-              <li key={x.sail}>
-                <span className="t">{x.sail}</span>
-                <b>{x.name}</b>
-                <small>{shortClub(x.club)}</small>
-              </li>
-            ))}
-          </ul>
+          <ul className="bt">{grp.rows.map((x) => row(x, ""))}</ul>
         </>
+      )}
     </div>
   );
 }

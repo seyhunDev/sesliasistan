@@ -1379,3 +1379,8 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 .sc-pgl ul.bt li { padding: 0.55em 0.2em; font-size: 0.98em; }
 .sc-pgl ul.bt li .t { width: 3.4em; }
 .sc-pgl li.done > * { opacity: 0.45; } /* li'nin açılış animasyonu opaklığı 1'de bırakıyor; geçen satır içindekilerle solar */
+/* Gruplarda arama ve bizim sporcular (Seyhun 2026-11-07) */
+.sc-pgs { width: 100%; height: 2.5em; margin: 0 0 0.5em; padding: 0 1em; border: 0; border-radius: var(--sc-br, 0.95em); background: rgba(255, 255, 255, 0.08); color: #fff; font-family: var(--sc-c); font-size: max(16px, 1em); font-weight: 600; outline: none; -webkit-appearance: none; appearance: none; }
+.sc-pgs::placeholder { color: rgba(255, 255, 255, 0.45); }
+.sc-pgs:focus { background: rgba(255, 255, 255, 0.13); }
+.sc-pgl li.our b { color: #7fb0ff; }
