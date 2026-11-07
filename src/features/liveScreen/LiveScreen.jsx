@@ -1702,14 +1702,12 @@ function scGroups(data, today) {
     .sort((a, b) => rk(a[0]) - rk(b[0]) || a[0].localeCompare(b[0], "tr"))
     .map(([grp, rows]) => ({ grp, day, rows: rows.sort((a, b) => Number(a.sail) - Number(b.sail) || a.sail.localeCompare(b.sail)) }));
 }
-// Program paneli: Start (günün start sırası), Talimat (yarış talimatındaki program), Gruplar; yalnız dolu olan sekmeler
+// Program paneli: Start (günün start sırası), Talimat (yarış talimatındaki program); yalnız dolu olan sekmeler. Gruplar ayrı düğmede (ScGrpPanel)
 const PG_STATE = { done: "Bitti", now: "Yarışta", next: "Sıradaki" };
-function ScProgPanel({ prog, ag, gr, day }) {
-  const tabs = [prog.length > 0 && ["st", "Start"], ag && ["ag", "Talimat"], gr.length > 0 && ["gr", "Gruplar"]].filter(Boolean);
+function ScProgPanel({ prog, ag }) {
+  const tabs = [prog.length > 0 && ["st", "Start"], ag && ["ag", "Talimat"]].filter(Boolean);
   const [tab, setTab] = useState("");
-  const [g, setG] = useState("");
   const on = tabs.some(([t]) => t === tab) ? tab : tabs[0]?.[0] || "";
-  const grp = gr.find((x) => x.grp === g) || gr[0];
   return (
     <div className="sc-pgl">
       <div className="sc-vph">
@@ -1760,7 +1758,20 @@ function ScProgPanel({ prog, ag, gr, day }) {
             </Fragment>
           ))
         )
-      ) : on === "gr" && grp ? (
+      ) : null}
+    </div>
+  );
+}
+// Gruplar paneli: grup seçilir, altında yelken no, ad, kulüp
+function ScGrpPanel({ gr, day }) {
+  const [g, setG] = useState("");
+  const grp = gr.find((x) => x.grp === g) || gr[0];
+  if (!grp) return null;
+  return (
+    <div className="sc-pgl">
+      <div className="sc-vph">
+        <b>Gruplar</b>
+      </div>
         <>
           <div className="sc-pgg">
             {gr.map((x) => (
@@ -1782,7 +1793,6 @@ function ScProgPanel({ prog, ag, gr, day }) {
             ))}
           </ul>
         </>
-      ) : null}
     </div>
   );
 }
@@ -2715,13 +2725,14 @@ const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // gördüğü. Seçim yalnız bu telefonda, yayına gitmez. "Ekranda"ya basınca "Ne izleyeyim?" paneli açılır (dikeyde alttan, yatayda
 // sağdan kayarak); seçince kapanır. Alt çubukta yalnız Parkur · Rüzgâr · Sıralama · Video · Start; paneller açılıp kapanırken kayar.
 const SHUT_MS = 190;
-const FULL_VP = ["course", "wind", "rank", "prog"];
+const FULL_VP = ["course", "wind", "rank", "prog", "grp"];
 // Alt çubuğun simgeleri (Seyhun 2026-11-06 "butonları düzelt, daha güzel tasarım"): simge + kısa ad, Start mavi, Ayarlar yuvarlak çark
 const bi = (d) => <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
 const BAR_ICON = {
   course: bi(<><path d="M5 20l4-14 6 8 4-9" /><circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="14" r="1.6" /><circle cx="19" cy="5" r="1.6" /></>),
   rank: bi(<><path d="M5 20v-6M12 20V6M19 20v-9" /></>),
   prog: bi(<><rect x="4" y="5" width="16" height="15" rx="2.5" /><path d="M4 10h16M9 3v4M15 3v4" /></>),
+  grp: bi(<><circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" /><path d="M3 19c.6-3 2.6-5 5-5s4.4 2 5 5M11 19c.6-3 2.6-5 5-5s4.4 2 5 5" /></>),
   vid: bi(<><rect x="3" y="6" width="13" height="12" rx="2.5" /><path d="M16 10.5l5-3v9l-5-3" /></>),
   start: bi(<><circle cx="12" cy="13" r="7.5" /><path d="M12 9v4l2.5 2M10 2.5h4" /></>),
   gear: bi(<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" /></>),
@@ -2759,7 +2770,9 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
     // Parkur ve rüzgâr tek düğme (Seyhun 2026-11-06): üstte şu anki ölçüm, ortada büyük parkur, altta beklenen rüzgâr
     (course || onWind || wind || nowW) && ["course", "Parkur ve rüzgâr"],
     (rank || res) && ["rank", "Sıralama"],
-    (prog.length > 0 || pgAg || pgGr.length > 0) && ["prog", "Program"],
+    (prog.length > 0 || pgAg) && ["prog", "Program"],
+    // Gruplar ayrı düğme (Seyhun 2026-11-07 "Gruplar butonu olsun, orada gruplar gösterilsin")
+    pgGr.length > 0 && ["grp", "Gruplar"],
     vidRef && ["vid", "Video", !!myVid],
     onStart && ["start", "Start"],
   ].filter(Boolean);
@@ -3026,7 +3039,9 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       <div ref={masaRef} className="sc-masa" />
     ) : k === "prog" ? (
       // günün programı (Seyhun 2026-11-06 "varsa program butonumuzda olsun"): biten soluk, süren mavi, sıradaki sarı
-      <ScProgPanel prog={prog} ag={pgAg} gr={pgGr} day={pgDay} />
+      <ScProgPanel prog={prog} ag={pgAg} />
+    ) : k === "grp" ? (
+      <ScGrpPanel gr={pgGr} day={pgDay} />
     ) : k === "vid" ? (
       // ana hesabın kendi videoları (LiveStart › LiveVideos buraya çizer; yalnız uygulama içinde)
       <div ref={vidRef} />
