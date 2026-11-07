@@ -51,7 +51,7 @@ function colOf(s) {
   if (/^(dtarihi|dtarih|dogumtarihi|dogum|dogumyili|dyili|dt|dob|birth|birthdate|yob)$/.test(p)) return "born";
   if (/^(kulup|kulubu|kulupadi|club|team)$/.test(p)) return "club";
   if (/^(sinif|sinifi|class|tekne|boat)$/.test(p)) return "cls";
-  if (/^(grup|group|filo|fleet)$/.test(p) || /^\d{1,2}[./-]\d{1,2}([./-]\d{2,4})?$/.test(String(s).trim())) return "grp";
+  if (/^(grup|group|filo|fleet|renk|renkgrubu|grubu|gruprengi)$/.test(p) || /^\d{1,2}[./-]\d{1,2}([./-]\d{2,4})?$/.test(String(s).trim())) return "grp";
   if (/^(il|sehir|city|ulke|country|kat|kategori|category)$/.test(p)) return "skip";
   return "";
 }

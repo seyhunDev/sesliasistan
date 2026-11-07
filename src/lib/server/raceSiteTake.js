@@ -13,7 +13,7 @@ import { FieldPath, FieldValue } from "firebase-admin/firestore";
 import { tableOf } from "../pdfLines.js";
 import { cleanEntries, mergeEntries } from "../roundSay.js";
 import { cleanGroups, dayGroups } from "../roundScore.js";
-import { cleanSchedule, colorOf, dayOf, focusText, mergeSchedule, scheduleDiff, sitePlan } from "../siteDocs.js";
+import { cleanSchedule, colorOf, dayOf, focusText, listDay, mergeSchedule, scheduleDiff, sitePlan } from "../siteDocs.js";
 
 // pdf.js Node'da DOMMatrix ister (yoksa @napi-rs/canvas'tan alır; Netlify işlevinde o yerel paket olmayabilir).
 // Yalnız yazı okunur, çizim yok: yalın bir matris yeter.
@@ -80,11 +80,13 @@ export async function takeList({ db, orgId, raceId, d, buf }) {
   const groups = cleanGroups(cur.groups);
   const undo = { rows: noGrp(old) };
   let note = "";
-  if (d.kind !== "entries") {
-    const color = colorOf(d.name);
-    const list = rows.map((r) => [r.sail, r.grp || color]).filter(([s, g]) => s && g);
-    const day = dayOf(d.name, d.at) || String(d.at).slice(0, 10);
-    if (list.length) {
+  // Sporcu listesinde grup sütunu ya da grup başlıkları varsa (Optimist'te ilk günün grupları sporcu listesinde) o da grup listesi
+  const color = d.kind === "entries" ? "" : colorOf(d.name);
+  const list = rows.map((r) => [r.sail, r.grp || color]).filter(([s, g]) => s && g);
+  if (d.kind !== "entries" || list.length >= rows.length / 2) {
+    const start = d.kind === "entries" || !dayOf(d.name, d.at) ? (await db.collection("orgs").doc(orgId).collection("races").doc(raceId).get()).data()?.startDate || "" : "";
+    const day = listDay(d.name, d.at, start);
+    if (list.length && day) {
       const prev = groups[day] || null;
       undo.day = day;
       undo.groups = prev ? Object.fromEntries(prev) : null;
@@ -114,7 +116,9 @@ const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const pdfImage = (buf) => [{ mimeType: "application/pdf", data: Buffer.from(buf).toString("base64") }];
 
 // Talimat / ek talimat / program: yarışın notice alanı güncellenir. ai: { callGemini, readNoticeAi }
-export async function takeNotice({ db, orgId, raceId, d, buf, ai, cls = "" }) {
+// ilan: yarış ilanı (Seyhun 2026-11-07 "yarış talimatında program var, onu kullanalım"): program yalnız yarışta ve Yayın'da
+// program yoksa yazılır (sonradan gelen ek talimatların değişikliği ezilmez)
+export async function takeNotice({ db, orgId, raceId, d, buf, ai, cls = "", ilan = false }) {
   const focus = focusText(cls);
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return null;
   if (buf.length > 15 * 1024 * 1024) return { state: "kept", note: "Belge çok büyük" };
@@ -127,10 +131,11 @@ export async function takeNotice({ db, orgId, raceId, d, buf, ai, cls = "" }) {
   if (d.kind === "notice") {
     // Yarış talimatı: programı ve (boşsa) sınıflar, iletişim
     const n = await ai.readNoticeAi({ images: pdfImage(buf), today, focus, timeoutMs: 120000 });
-    next = { ...notice, schedule: n.schedule.length ? n.schedule : cleanSchedule(notice.schedule) };
+    const had = cleanSchedule(notice.schedule);
+    next = { ...notice, schedule: n.schedule.length && !(ilan && had.length) ? n.schedule : had };
     if (!Array.isArray(notice.classes) || !notice.classes.length) next.classes = n.classes;
     if (!Array.isArray(notice.contacts) || !notice.contacts.length) next.contacts = n.contacts;
-    note = n.schedule.length ? `Program ${n.schedule.length} satır` : "Programı yok";
+    note = ilan ? (n.schedule.length && !had.length ? `Yarış ilanı · Program ${n.schedule.length} satır` : "Yarış ilanı") : n.schedule.length ? `Program ${n.schedule.length} satır` : "Programı yok";
   } else {
     const raw = await ai.callGemini({ model: process.env.GEMINI_MODEL, system: AMEND_SYSTEM, user: `Bugün: ${today}. Yarış: ${S(race.name, 120)} (${race.startDate || ""}). Yıl yazmayan tarihlerde yarışın yılını kullan.${focus ? ` ${focus}` : ""} Bu belgeyi oku.`, schema: AMEND_SCHEMA, images: pdfImage(buf), maxTokens: 3000, timeoutMs: 90000 });
     const add = cleanSchedule(raw?.schedule);
@@ -143,7 +148,7 @@ export async function takeNotice({ db, orgId, raceId, d, buf, ai, cls = "" }) {
   // Yayın programı: okunamazsa talimat yine kullanılmış sayılır
   if (ai.readProgramAi)
     try {
-      const plan = await takePlan({ db, orgId, raceId, race, d, buf, ai, today, focus });
+      const plan = await takePlan({ db, orgId, raceId, race, d, buf, ai, today, focus, ilan });
       if (plan) {
         undo.plan = plan.old;
         note = `${note} · Yayın programı ${plan.days} gün`;
@@ -156,10 +161,11 @@ export async function takeNotice({ db, orgId, raceId, d, buf, ai, cls = "" }) {
 
 // Yayın programı (raceLive/{yarış}.plan): talimatta bütünü, ek talimatta yalnız geçen günler. Dönüş { old, days } ya da null
 const PLAN_KEYS = ["daily", "times", "off", "agenda"];
-async function takePlan({ db, orgId, raceId, race, d, buf, ai, today, focus = "" }) {
+async function takePlan({ db, orgId, raceId, race, d, buf, ai, today, focus = "", ilan = false }) {
+  const ref = db.collection("orgs").doc(orgId).collection("raceLive").doc(raceId);
+  if (ilan && Object.keys((await ref.get()).data()?.plan?.agenda || {}).length) return null;
   const days = await ai.readProgramAi({ images: pdfImage(buf), today, race: [race.name, race.place].filter(Boolean).join(" · "), focus, timeoutMs: 120000 });
   if (!days?.length) return null;
-  const ref = db.collection("orgs").doc(orgId).collection("raceLive").doc(raceId);
   const plan = (await ref.get()).data()?.plan || {};
   const next = sitePlan(plan, days, d.kind === "notice");
   if (!next) return null;
@@ -169,14 +175,42 @@ async function takePlan({ db, orgId, raceId, race, d, buf, ai, today, focus = ""
 }
 
 // Belge türüne göre kullanma (raceSiteSync.syncRace use): null → telefon işler (sonuçlar, okunamayan tablo)
-const isIlan = (name) => /\bILANI?\b|İLANI?\b/.test(String(name || "").toLocaleUpperCase("tr-TR"));
+export const isIlan = (name) => /\bILANI?\b|İLANI?\b/.test(String(name || "").toLocaleUpperCase("tr-TR"));
 export function makeTake({ db, orgId, raceId, ai, cls = "" }) {
   return async (d, buf) => {
     if (["groups", "fleets", "entries"].includes(d.kind)) return takeList({ db, orgId, raceId, d, buf });
     if (d.kind === "results") return null;
-    // Yarış ilanı: yarış ondan açıldı (Siteden yarış al)
-    if (d.kind === "notice" && isIlan(d.name)) return { state: "kept", note: "Yarış ilanı" };
+    // Yarış ilanı: yarış ondan açıldı (Siteden yarış al); programı yarışta ya da Yayın'da yoksa ondan
+    if (d.kind === "notice" && isIlan(d.name)) return (await takeNotice({ db, orgId, raceId, d, buf, ai, cls, ilan: true })) || { state: "kept", note: "Yarış ilanı" };
     if (["notice", "amend", "program"].includes(d.kind)) return (await takeNotice({ db, orgId, raceId, d, buf, ai, cls })) || null;
     return { state: "kept" };
   };
+}
+
+// Önceden alınmış belgeleri bir kez yeniden kullanma (Seyhun 2026-11-07): eskiden yarış ilanı yalnız saklanıyordu, sporcu listesindeki
+// gruplar okunmuyordu. Yayın programı boşsa ilan, hiç grup yoksa sporcu listeleri yeniden işlenir. Dönüş işlenen belge sayısı.
+export const FILL = "2026-11-07";
+export async function fillOld({ db, bucket, orgId, raceId, take }) {
+  const live = db.collection("orgs").doc(orgId).collection("raceLive").doc(raceId);
+  const [docs, liveSnap, list] = await Promise.all([live.collection("site").get(), live.get(), live.collection("entries").doc("list").get()]);
+  const hasPlan = Object.keys(liveSnap.data()?.plan?.agenda || {}).length > 0;
+  const hasGroups = Object.keys(cleanGroups(list.data()?.groups)).length > 0;
+  const recs = docs.docs.map((x) => ({ id: x.id, ...x.data() })).filter((r) => r.file?.path).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+  const todo = [
+    ...(hasPlan ? [] : recs.filter((r) => r.kind === "notice" && isIlan(r.name) && r.state === "kept").slice(-1)),
+    ...(hasGroups ? [] : recs.filter((r) => r.kind === "entries" && r.state === "used")),
+  ];
+  let n = 0;
+  for (const r of todo) {
+    try {
+      const [buf] = await bucket.file(r.file.path).download();
+      const done = await take(r, buf);
+      if (!done || done.state === "kept") continue;
+      await live.collection("site").doc(r.id).set({ state: done.state, note: done.note || "", ...(done.undo ? { undo: done.undo } : {}), at2: new Date().toISOString() }, { merge: true });
+      n++;
+    } catch (e) {
+      console.warn("[yarış sitesi] yeniden", r.name, e.message);
+    }
+  }
+  return n;
 }

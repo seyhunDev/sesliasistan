@@ -11,7 +11,7 @@ import { recordInbox } from "../../src/lib/inbox.js";
 import { sendDevice } from "../../src/lib/server/sendDevice.js";
 import { docNote, newRaces, newRacesNote } from "../../src/lib/siteDocs.js";
 import { notifyDocs, pageCache, scanNew, syncRace } from "../../src/lib/server/raceSiteSync.js";
-import { makeTake } from "../../src/lib/server/raceSiteTake.js";
+import { FILL, fillOld, makeTake } from "../../src/lib/server/raceSiteTake.js";
 import { callGemini } from "../../src/lib/ai/gemini.js";
 import { readNoticeAi } from "../../src/lib/ai/raceNoticeAi.js";
 import { readProgramAi } from "../../src/lib/ai/raceProgramAi.js";
@@ -53,8 +53,14 @@ export default async function raceSiteRun(req) {
       const e = { ...entry, name: race.name || entry.name, startDate: race.startDate || entry.startDate, endDate: race.endDate || entry.endDate };
       // İlk alışta eski belgeler sessiz (bildirim yalnız sonradan gelenlere)
       const first = !(entry.seen || []).length;
-      const got = await syncRace({ db, bucket, ref, entry: e, get, take: makeTake({ db, orgId: e.orgId, raceId: e.raceId, ai, cls: e.cls }) });
+      const take = makeTake({ db, orgId: e.orgId, raceId: e.raceId, ai, cls: e.cls });
+      const got = await syncRace({ db, bucket, ref, entry: e, get, take });
       n += got.length;
+      // Önceden alınmış ilan ve sporcu listeleri bir kez yeniden (program ve gruplar)
+      if (entry.fill !== FILL) {
+        n += await fillOld({ db, bucket, orgId: e.orgId, raceId: e.raceId, take }).catch((x) => (console.warn("[yarış sitesi] yeniden", x.message), 0));
+        await ref.set({ fill: FILL }, { merge: true });
+      }
       if (!first) await notifyDocs({ db, entry: e, got, recordInbox, sendDevice, docNote }).catch((x) => console.warn("[yarış sitesi] bildirim", x.message));
     } catch (x) {
       console.warn("[yarış sitesi]", entry.name, x.message);
