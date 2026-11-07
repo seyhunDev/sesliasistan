@@ -1365,3 +1365,17 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
   .sc.own .sc-vr2 button.gear { width: var(--sc-bh); }
   .sc.own .sc-vtop .sc-now, .sc.own .sc-vb .sc-vshow, .sc.own .sc-give { height: calc(var(--sc-bh) + 0.6em); }
 }
+
+/* Program paneli sekmeleri (Seyhun 2026-11-07): Start · Talimat · Gruplar; grup seçimi yatay kaydırılır, liste yelken no, ad, kulüp */
+.sc-pgl .sc-vtabs { margin-bottom: 0.4em; }
+.sc-pgl .sc-pgd { margin: 0.7em 0.2em 0.1em; font: 700 0.78em/1 var(--sc-c); letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
+.sc-pgl li b { font-weight: 600; }
+.sc-pgg { display: flex; gap: 0.4em; overflow-x: auto; padding: 0.2em 0 0.5em; scrollbar-width: none; }
+.sc-pgg::-webkit-scrollbar { display: none; }
+.sc-pgg button { flex: none; display: inline-flex; align-items: center; gap: 0.45em; height: 2.6em; padding: 0 0.9em; border: 0; border-radius: var(--sc-br, 0.95em); background: rgba(255, 255, 255, 0.07); color: rgba(255, 255, 255, 0.85); font: 700 0.9em/1 var(--sc-c); -webkit-tap-highlight-color: transparent; }
+.sc-pgg button.on { background: #fff; color: #0b1626; }
+.sc-pgg button i { width: 0.65em; height: 0.65em; border-radius: 50%; }
+.sc-pgg button small { font-weight: 600; opacity: 0.6; }
+.sc-pgl ul.bt li { padding: 0.55em 0.2em; font-size: 0.98em; }
+.sc-pgl ul.bt li .t { width: 3.4em; }
+.sc-pgl li.done > * { opacity: 0.45; } /* li'nin açılış animasyonu opaklığı 1'de bırakıyor; geçen satır içindekilerle solar */
