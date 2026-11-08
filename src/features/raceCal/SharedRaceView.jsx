@@ -175,7 +175,7 @@ function Results({ s, sheets, onBack }) {
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {rows.map((r) => (
               <li key={`${r.place}-${r.name}`} className="flex min-h-11 items-center gap-2.5 px-4 py-2 text-[0.9375rem]">
-                <span className="w-8 shrink-0 text-right font-semibold tabular-nums text-mut">{r.place}.</span>
+                <span className="w-11 shrink-0 text-right font-semibold tabular-nums text-mut">{r.place}.</span>
                 <span className="min-w-0 flex-1">
                   <b className="block truncate font-medium">{r.name}</b>
                   {r.sail && <small className="block truncate text-[0.75rem] text-mut">{r.sail}</small>}

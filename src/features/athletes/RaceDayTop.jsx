@@ -42,11 +42,12 @@ export function useRacePhase(r, orgId, rid, on) {
 const subOf = (x) => [x.n ? `${x.cls} / ${x.n}` : x.cls, x.grp && x.fp && `${x.grp} ${x.fp}.`, x.cp && `${x.cat} ${x.cp}.`, x.gp && `Kızlar ${x.gp}.`].filter(Boolean).join(" · ");
 
 function Places({ list, short = false }) {
+  // Üstteki hava satırlarından ayrı dursun (Seyhun 2026-11-08 "sonuç alanı üstteki alanlara bitişik")
   return (
-    <div className="rz-list">
+    <div className="rz-list mt-6">
       {list.map((x) => (
         <div key={x.id} className="rz-row">
-          <b className="w-8 shrink-0 text-[1.25rem] font-bold tabular-nums">{x.place}</b>
+          <b className="w-11 shrink-0 text-[1.25rem] font-bold tabular-nums">{x.place}</b>
           <span className="rz-k">
             {x.name}
             {!short && x.row?.cls && <small>{subOf(x.row)}</small>}
