@@ -99,11 +99,17 @@ async function onResume(away) {
 // sık yayın olduğu için masaüstleri arasında kısa bir gidiş-dönüşte bile sayfa arkada baştan yükleniyor, dönüşte boş ekran görünüyordu.
 // Kısa gidiş-dönüşte sayfa olduğu gibi kalır; yeni sürüm sonraki sayfa geçişinde ya da uzun aradan sonra alınır.
 const HIDE_RELOAD = 3 * 60e3;
+// Zamanlayıcı geç çalıştıysa telefon uyuyordu (ekran kilidi, iPhone arkadaki uygulamanın kodunu durdurur): bu an uygulamaya
+// dönüş anıdır, yenileme göz önünde olur (Seyhun 2026-11-08: "kilidi açınca uygulama yükleniyor gibi yenileniyor"). O zaman yenilenmez.
+const LATE = 15e3;
+export const lateWake = (due, now = Date.now()) => now - due > LATE;
 let hideTimer = 0;
 function onHide() {
   clearTimeout(hideTimer);
   if (!latest || document.visibilityState !== "hidden") return;
+  const due = Date.now() + HIDE_RELOAD;
   hideTimer = setTimeout(() => {
+    if (lateWake(due)) return;
     if (document.visibilityState === "hidden" && latest && canAutoUpdate(pageState())) (markTried(), dropPages().then(() => location.reload()));
   }, HIDE_RELOAD);
 }

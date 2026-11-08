@@ -1985,6 +1985,7 @@ group("Yeni sürüm")([
   ["kendiliğinden yenileme", F("yeni sürümde boşta yenilenir", () => NV.canAutoUpdate({}, "bbb") && !NV.canAutoUpdate({}, ""))],
   ["iş sürerken yenilenmez", F("kayıt/sayaç, yazı, açık pencere", () => !NV.canAutoUpdate({ busy: 1 }, "bbb") && !NV.canAutoUpdate({ typing: true }, "bbb") && !NV.canAutoUpdate({ dialog: true }, "bbb"))],
   ["döngü yok", F("aynı sürüm için bir kez", () => !NV.canAutoUpdate({ tried: "bbb" }, "bbb") && NV.canAutoUpdate({ tried: "aaa" }, "bbb"))],
+  ["kilitten dönüşte yenilenmez", F("telefon uyurken gecikmiş zamanlayıcı yenilemez", () => NV.lateWake(1000, 1000 + 60e3) && !NV.lateWake(1000, 1000 + 200))],
 ]);
 
 // Fitness (lib/fitness): hareket listesi, program, takvime yazılacak günler, sonuç, takip, otomatik ilerleme, sözler
