@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { todayStr } from "@/lib/utils/format";
 import { dayPlan, nextDay, ourPlaces, racePhase } from "@/lib/raceDay";
+import { raceLine } from "@/lib/resultSheet";
 import { loadLive } from "./raceLiveStore";
 import { RaceWxRows } from "./RaceWx";
 
@@ -51,6 +52,7 @@ function Places({ list, short = false }) {
           <span className="rz-k">
             {x.name}
             {!short && x.row?.cls && <small>{subOf(x.row)}</small>}
+            {raceLine(x.row) && <small>{raceLine(x.row)}</small>}
           </span>
           {x.move ? <span className={`rz-v font-semibold ${x.move > 0 ? "rz-ok" : "rz-warn"}`}>{x.move > 0 ? `↑${x.move}` : `↓${-x.move}`}</span> : null}
         </div>

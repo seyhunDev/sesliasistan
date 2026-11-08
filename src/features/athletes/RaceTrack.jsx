@@ -20,6 +20,7 @@ import { Icon } from "@/components/ui/Icon";
 import { ourPlaces } from "@/lib/raceDay";
 import { cleanSchedule, currentAmend, kindLabel, resultState, version } from "@/lib/siteDocs";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
+import { raceLine } from "@/lib/resultSheet";
 import { siteDocBlob, watchEntryDoc, watchSiteDocs } from "./raceSite";
 
 const RULES = ["notice", "amend", "program"];
@@ -248,6 +249,7 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[0.9375rem] font-semibold">{x.name}</b>
                 {x.row?.cls && <small className="block truncate text-[0.8125rem] text-mut">{subOf(x.row)}</small>}
+                {raceLine(x.row) && <small className="block truncate text-[0.8125rem] text-mut">{raceLine(x.row)}</small>}
               </span>
               <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{x.place}.</b>
             </div>
