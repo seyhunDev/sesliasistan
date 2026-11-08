@@ -100,9 +100,10 @@ export function programDays(schedule, today) {
 }
 function ProgramRows({ schedule }) {
   const today = todayStr();
+  const tomorrow = new Date(Date.parse(`${today}T12:00:00`) + 864e5).toLocaleDateString("sv-SE");
   return programDays(schedule, today).map(([d, items]) => (
     <div key={d} className="flex gap-3 border-t border-line py-3 first:border-t-0">
-      <span className={`w-[4.75rem] shrink-0 text-[0.8125rem] ${d === today ? "font-semibold text-acc" : "text-mut"}`}>{d === today ? "Bugün" : dayName(d)}</span>
+      <span className={`w-[4.75rem] shrink-0 text-[0.8125rem] ${d === today ? "font-semibold text-acc" : "text-mut"}`}>{d === today ? "Bugün" : d === tomorrow ? "Yarın" : dayName(d)}</span>
       <span className="min-w-0 flex-1 text-[0.9375rem]">{items.map((x) => [x.time, x.title].filter(Boolean).join(" ")).join(" · ")}</span>
     </div>
   ));
@@ -164,48 +165,6 @@ export function daySummary({ day, starts = [], wind = [], fc = null, docs = [], 
   return lines;
 }
 
-function DaySummary({ orgId, race, docs, places }) {
-  const today = todayStr();
-  const yest = new Date(Date.parse(`${today}T12:00:00`) - 864e5).toLocaleDateString("sv-SE");
-  const [which, setWhich] = useState("today");
-  const day = which === "today" ? today : yest;
-  const [live, setLive] = useState(null);
-  const [fc, setFc] = useState({});
-  useEffect(() => {
-    let on = true;
-    loadLive(orgId, race.id).then((l) => on && setLive(l), () => on && setLive({ starts: [], wind: [] }));
-    return () => void (on = false);
-  }, [orgId, race.id]);
-  useEffect(() => {
-    if (fc[day] !== undefined) return;
-    let on = true;
-    loadRaceDay(race, day).then((d) => on && setFc((p) => ({ ...p, [day]: d.rows || null })), () => on && setFc((p) => ({ ...p, [day]: null })));
-    return () => void (on = false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [day, race.id]);
-  const lines = live ? daySummary({ day, starts: live.starts, wind: live.wind, fc: fc[day], docs: docs || [], results: race.results, places }) : null;
-  return (
-    <section className="mt-6" aria-label="Günün özeti">
-      <ListHead title="Günün özeti" />
-      <Seg value={which} onChange={setWhich} options={[["yest", "Dün"], ["today", "Bugün"]]} className="mb-2" />
-      <div className="overflow-hidden rounded-[1.25rem] border border-line bg-card px-3.5">
-        {!lines ? (
-          <p className="py-3.5 text-[0.9375rem] text-mut">Yükleniyor…</p>
-        ) : !lines.length ? (
-          <p className="py-3.5 text-[0.9375rem] text-mut">{which === "today" ? "Bugün henüz bir şey yok" : "Dün bir şey yok"}</p>
-        ) : (
-          lines.map(([k, v]) => (
-            <div key={k} className="flex gap-3 border-t border-line py-3 first:border-t-0">
-              <span className="w-[4.75rem] shrink-0 text-[0.8125rem] text-mut">{k}</span>
-              <span className="min-w-0 flex-1 text-[0.9375rem]">{v}</span>
-            </div>
-          ))
-        )}
-      </div>
-    </section>
-  );
-}
-
 export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile = null }) {
   // Elle sonuç yükleme (Seyhun 2026-11-08): siteye gelmeyen sonuç PDF'i, siteden gelenle aynı yol (page.jsx importFile)
   const toast = useToast();
@@ -225,6 +184,8 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
   const [docs, setDocs] = useState(null);
   const [view, setView] = useState(null);
   const [all, setAll] = useState(false);
+  const [resOpen, setResOpen] = useState(false);
+  const [papersOpen, setPapersOpen] = useState(false);
   useEffect(() => watchSiteDocs(orgId, race.id, setDocs, () => setDocs((d) => d || [])), [orgId, race.id]);
   const [ent, setEnt] = useState(null);
   useEffect(() => watchEntryDoc(orgId, race.id, setEnt, () => setEnt({ rows: [], groups: {} })), [orgId, race.id]);
@@ -235,71 +196,77 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
   const places = ourPlaces(race.results, chosen);
   const box = "overflow-hidden rounded-[1.25rem] border border-line bg-card px-3.5";
   const empty = (t) => <p className="py-3.5 text-[0.9375rem] text-mut">{docs ? t : "Yükleniyor…"}</p>;
+  // Belgeler tek kartta (sade, 2026-11-08): talimat, ek talimat, program, duyuru, grup belgesi; yeni gelenler ve son üçü açık, gerisi "Diğer N belge"
+  const papers = [...g.rules, ...g.news, ...g.groups].sort((a, b) => Number(!!a.seen) - Number(!!b.seen) || String(b.at).localeCompare(String(a.at)));
+  const head = Math.max(3, papers.filter((d) => !d.seen).length);
+  const state = g.results.length ? (resultState(g.results[0].name) === "kesin" ? "Kesin" : "Geçici") : "";
+  const raceN = Math.max(0, ...Object.values(race.results?.rows || {}).map((x) => x?.r?.length || 0));
+  const row = "flex min-h-[3.5rem] w-full items-center gap-2 border-t border-line py-2 text-left first:border-t-0";
   return (
-    <div className="track-cols">
-      {/* iPad yatay ve Mac'te iki sütun (globals.css track-cols): solda özet ve sonuçlar, sağda gruplar, duyurular, talimatlar */}
-      <div>
-      <DaySummary orgId={orgId} race={race} docs={docs} places={places} />
-      <section className="mt-6" aria-label="Sonuçlar">
-        <ListHead title="Sonuçlar" count={g.results.length} />
-        <div className={box}>
-          <ResultCards list={places} />
-          <DocRows list={g.results} onOpen={setView} />
-          {!places.length && !g.results.length && empty("Henüz sonuç yok")}
-        </div>
-        {onResultsFile && (
-          <>
-            <button type="button" onClick={() => pickRef.current?.click()} disabled={upBusy} data-press className="btn btn-text btn-sm mt-2 w-full text-acc disabled:opacity-60">
-              {upBusy ? "Okunuyor…" : "Sonuç yükle"}
-            </button>
-            <input ref={pickRef} type="file" accept="application/pdf,image/*,.pdf" hidden onChange={(e) => (upload(e.target.files?.[0]), (e.target.value = ""))} />
-          </>
-        )}
-      </section>
-      </div>
-      <div>
-      <section className="mt-6" aria-label="Gruplar">
+    <div>
+      {/* Sade sıra (Seyhun 2026-11-08 "gruplar, sonuçlar diye devam etmeli"; örnek yaris-tasarim/sade/takip-*.png): Gruplar, Sonuçlar, Program,
+          Belgeler. Hava ve kaç yarış yapıldığı yalnız üstte (RaceDayTop "Şimdi"), sonuçlar yalnız burada. */}
+      <section className="mt-5" aria-label="Gruplar">
         <ListHead title="Gruplar" />
         <div className={box}>
           <GroupsNow e={ent} chosen={chosen} />
-          <DocRows list={g.groups} onOpen={setView} />
-          {!g.groups.length && !hasGroups && empty("Henüz grup açıklanmadı")}
+          {!hasGroups && empty("Henüz grup açıklanmadı")}
         </div>
       </section>
-{/* duyuru yoksa bölüm görünmez (sporcu listesi ve sınıflanmayan belgeler) */}
-      {(!docs || g.news.length > 0) && (
-              <section className="mt-6" aria-label="Duyurular">
-          <ListHead title="Duyurular" count={g.news.length} />
-          <div className={box}>
-            <DocRows list={g.news} onOpen={setView} />
-            {!g.news.length && empty("Henüz duyuru yok")}
-          </div>
-        </section>
-      )}
-      {cleanSchedule(race.notice?.schedule).length > 0 && (
-        <section className="mt-6" aria-label="Program">
-          <ListHead title="Program" />
-          <div className={box}>
-            <ProgramRows schedule={race.notice.schedule} />
-          </div>
-        </section>
-      )}
-      <section className="mt-6" aria-label="Talimatlar">
-        <ListHead title="Talimatlar" count={g.rules.length} />
+      <section className="mt-6" aria-label="Sonuçlar">
+        <ListHead title={["Sonuçlar", state, raceN && `${raceN} yarış`].filter(Boolean).join(" · ")} />
         <div className={box}>
-          <DocRows list={g.rules} onOpen={setView} cur={currentAmend(g.rules)} />
-          {!g.rules.length && empty("Henüz talimat yok")}
+          <ResultCards list={places} />
+          {!places.length && !g.results.length && empty("Henüz sonuç yok")}
+          {g.results.length > 0 && (
+            <button type="button" aria-expanded={resOpen} onClick={() => setResOpen((v) => !v)} data-press="row" className={row}>
+              <span className="min-w-0 flex-1 text-[0.9375rem] font-medium">Sonuç belgeleri</span>
+              {g.results.some((d) => !d.seen) && <Tag tone="gen">Yeni</Tag>}
+              <span className="text-[0.9375rem] text-mut tabular-nums">{g.results.length}</span>
+              <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${resOpen ? "-rotate-90" : "rotate-90"}`} />
+            </button>
+          )}
+          {resOpen && <DocRows list={g.results} onOpen={setView} />}
+          {onResultsFile && (
+            <>
+              <button type="button" onClick={() => pickRef.current?.click()} disabled={upBusy} data-press="row" className={`${row} font-semibold text-acc disabled:opacity-60`}>
+                {upBusy ? "Okunuyor…" : "Sonuç yükle"}
+              </button>
+              <input ref={pickRef} type="file" accept="application/pdf,image/*,.pdf" hidden onChange={(e) => (upload(e.target.files?.[0]), (e.target.value = ""))} />
+            </>
+          )}
         </div>
       </section>
-      {/* Belgelerin tamamı ve işlemleri (Geri al, Yeniden işle, Şimdi bak, İzlemeyi bırak): SiteDocs, özellik kaybolmasın */}
-      {more && (
-        <>
-          <button type="button" aria-expanded={all} onClick={() => setAll((v) => !v)} data-press className="btn btn-text btn-sm mt-3 w-full">
-            {all ? "Kapat" : "Tüm belgeler ve işlemler"}
-          </button>
-          <div hidden={!all}>{more}</div>
-        </>
-      )}
+      <div className="track-cols">
+        {/* iPad'de iki sütun (globals.css track-cols): Program | Belgeler */}
+        {cleanSchedule(race.notice?.schedule).length > 0 && (
+          <section className="mt-6" aria-label="Program">
+            <ListHead title="Program" />
+            <div className={box}>
+              <ProgramRows schedule={race.notice.schedule} />
+            </div>
+          </section>
+        )}
+        <section className="mt-6" aria-label="Belgeler">
+          <ListHead title="Belgeler" count={papers.length} />
+          <div className={box}>
+            <DocRows list={papersOpen ? papers : papers.slice(0, head)} onOpen={setView} cur={currentAmend(g.rules)} />
+            {!papers.length && empty("Henüz belge yok")}
+            {papers.length > head && (
+              <button type="button" aria-expanded={papersOpen} onClick={() => setPapersOpen((v) => !v)} data-press="row" className={row}>
+                <span className="min-w-0 flex-1 text-[0.9375rem] font-medium">{papersOpen ? "Daha az göster" : `Diğer ${papers.length - head} belge`}</span>
+                <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${papersOpen ? "-rotate-90" : "rotate-90"}`} />
+              </button>
+            )}
+            {/* Belgelerin tamamı ve işlemleri (Geri al, Yeniden işle, Şimdi bak, İzlemeyi bırak): SiteDocs, özellik kaybolmasın */}
+            {more && (
+              <button type="button" aria-expanded={all} onClick={() => setAll((v) => !v)} data-press="row" className={`${row} font-semibold text-acc`}>
+                <span className="min-w-0 flex-1">{all ? "Kapat" : "Tüm belgeler ve işlemler"}</span>
+              </button>
+            )}
+          </div>
+          {more && <div hidden={!all}>{more}</div>}
+        </section>
       </div>
       {view && createPortal(<PdfViewer title={view.name} load={load} onClose={close} />, document.body)}
     </div>

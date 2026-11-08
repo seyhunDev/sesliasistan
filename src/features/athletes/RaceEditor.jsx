@@ -164,7 +164,6 @@ const tripDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { w
 // coach: hesabın antrenör bilgileri (users/{uid}.coach), onCoach(bilgi) kaydeder
 // ⋯ menüsünün bölümleri (?sec=) ve multimedya işleri (?do=); liste lib/raceMenu.js
 const SECS = [...RACE_SECS.map(([k]) => k), "site"]; // site: siteden gelen yarış dokümanları (?sec=site)
-const inRace = (x) => !!x?.startDate && todayStr() >= x.startDate && todayStr() <= (x.endDate || x.startDate);
 
 export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0, onResultsFile = null }) {
   const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
@@ -180,7 +179,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const [sec0] = useState(sec);
   // Sitesi bağlı yarış yarış günü dışında Takip ile açılır (Seyhun 2026-11-05)
   // Hazırlık her zaman "sum" (yeni görünüm 2026-11-06: yarış günü de sekmeler sayfada; eski ?sec=prep bağlantıları Hazırlık'ı açar)
-  const [tab, setTab] = useState(() => (sec0 === "prep" ? "sum" : SECS.includes(sec0) ? sec0 : siteDocs && !inRace(start) ? "site" : "sum"));
+  const [tab, setTab] = useState(() => (sec0 === "prep" ? "sum" : SECS.includes(sec0) ? sec0 : siteDocs ? "site" : "sum"));
   const [edit, setEdit] = useState(sec0 === "edit"); // yarışın adı, tarihi, yeri (başlık kartına dokununca)
   // Sekmeye ya da yarış bilgisi penceresine git
   const go = (t) => (t === "edit" ? setEdit(true) : setTab(t));
@@ -930,7 +929,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const top = (
     <>
       {raceDay && rid ? (
-        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} go={isOwner ? <RaceGo id={rid} /> : null} />
+        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} go={isOwner ? <RaceGo id={rid} /> : null} track={!!siteDocs} />
       ) : rid ? (
         <>
           {/* Canlı ekran · Yayın yalnız ana hesapta (yarıştan önce de: dönüş girişi, kayıt listesi önceden hazırlanır) */}
@@ -1186,7 +1185,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         {alert}
       {tab === "sum" && (
         <>
-          {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/sonuclar` : ""} />}
+          {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/sonuclar` : ""} track={!!siteDocs} />}
           {!over && (
             <>
               <Label right={todoList.length ? `${todoList.length} iş` : ""}>Yapılacaklar</Label>
@@ -1869,7 +1868,7 @@ function DocFields({ a, onSave, onClose, onSaved }) {
 
 // Biten yarışın özeti (Seyhun: "tamamlanan yarışta hazırlıkları göstermeye gerek yok; kaç gün sürdü, kimler katıldı,
 // sonuçları, bütçe durumu"; yapılmadan kalan işler bilgi olarak, istenirse yine yapıldı işaretlenir)
-function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark, resHref }) {
+function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark, resHref, track = false }) {
   const from = r.startDate, to = r.endDate || r.startDate;
   const days = from ? Math.round((new Date(`${to}T12:00:00`) - new Date(`${from}T12:00:00`)) / 864e5) + 1 : 0;
   const placed = ourPlaces(r.results, chosen);
@@ -1891,9 +1890,10 @@ function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark, resHref }
         ))}
       </div>
 
-      {/* Sonuçların yeri yarışın sonuç sayfası /sonuclar (2026-11-01): burada bizimkilerin sırası tek satır */}
-      <Label right={r.results?.fleet ? `${r.results.fleet} tekne` : ""}>SONUÇLAR</Label>
-      {resHref ? (
+      {/* Sonuçların yeri yarışın sonuç sayfası /sonuclar (2026-11-01): burada bizimkilerin sırası tek satır; sitesi bağlı yarışta sonuçlar
+          Takip'te, burada tekrar yazılmaz (Seyhun 2026-11-08 "iki defa sonuçları gösteriyoruz") */}
+      {!track && <Label right={r.results?.fleet ? `${r.results.fleet} tekne` : ""}>SONUÇLAR</Label>}
+      {track ? null : resHref ? (
         <Link href={resHref} className={`${card} flex min-h-[2.875rem] items-center gap-3 px-4 py-2.5 active:bg-bg`}>
           <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${placed.length ? "font-medium" : "text-mut"}`}>{placed.length ? placed.map((x) => `${x.name.split(" ")[0]} ${x.place}.`).join(" · ") : chosen.length ? "Sonuç yok" : "Sporcu eklenmemiş"}</span>
           <span className="shrink-0 text-[0.875rem] font-semibold text-acc">{placed.length ? "Tümü" : "PDF yükle"}</span>
