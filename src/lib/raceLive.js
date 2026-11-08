@@ -851,6 +851,62 @@ export function orderBySets(order, sets) {
   return chunks.flatMap((c) => c.map((x, i) => ({ x, i })).sort((a, b) => r(a.x) - r(b.x) || a.i - b.i).map((o) => o.x));
 }
 
+// Grup ekleme (Seyhun 2026-11-08 "sarı, mavi, kırmızı grubumuz var, onları ekleyebiliyor olmam lazım; şurası sadece sarı gözüküyor"):
+// sınıfa yeni grup gelince (elle, sesle, Sporcu sekmesi, kurulum ya da renk listesi) bekleyen her yarışa o grubun startı da girer.
+// Yarış = sınıfın eski bütün gruplarını taşıyan bekleyen startlar (genel geri çağırmadan dönen tek grup start'ı yarış sayılmaz, eski grup tekse sayılır).
+const lowCls = (c) => String(c || "").trim().toLocaleLowerCase("tr");
+export function fillOrder(order, oldSets, sets) {
+  const key = (x) => `${x.cls || ""}|${x.grp || ""}`;
+  const chunks = [];
+  let seen = null;
+  for (const x of order || []) {
+    if (!seen || seen.has(key(x))) chunks.push([]), (seen = new Set());
+    seen.add(key(x));
+    chunks.at(-1).push({ ...x });
+  }
+  let n = (order || []).length;
+  for (const set of sets || []) {
+    const was = (oldSets || []).find((x) => lowCls(x.cls) === lowCls(set.cls))?.grps || [];
+    const add = set.grps.filter((g) => !was.includes(g));
+    if (!add.length) continue;
+    for (const c of chunks) {
+      const mine = c.filter((x) => lowCls(x.cls) === lowCls(set.cls));
+      if (!mine.length) continue;
+      const prep = mine[0].prep || "";
+      if (!was.length) {
+        const bare = mine.find((x) => !x.grp);
+        if (!bare) continue;
+        bare.grp = add[0];
+        for (const g of add.slice(1)) if (n < 24) c.push({ cls: mine[0].cls, grp: g, prep }), n++;
+        continue;
+      }
+      if (!was.every((g) => mine.some((x) => x.grp === g))) continue;
+      for (const g of add) if (n < 24 && !mine.some((x) => x.grp === g)) c.push({ cls: mine[0].cls, grp: g, prep }), n++;
+    }
+  }
+  return orderBySets(chunks.flat(), sets);
+}
+// Elle ya da sesle grup ekle: sınıf verilmezse ilk sınıf. Final grupları açıklanmış sınıfa renk grubu eklenmez. Dönüş plan yaması ya da null (yeni grup yok)
+export function addGrps(plan, grps, cls = "") {
+  const sets0 = plan?.sets?.length ? plan.sets : [{ cls: plan?.cls || "Optimist", grps: plan?.grps || [] }];
+  const i = Math.max(0, cls ? sets0.findIndex((x) => lowCls(x.cls) === lowCls(cls)) : 0);
+  const set = sets0[i];
+  if (!set) return null;
+  const fin = set.grps.some(isFinalGrp);
+  const add = (grps || []).filter((g) => g && !set.grps.includes(g) && (!fin || isFinalGrp(g)));
+  if (!add.length) return null;
+  const sets = sets0.map((x, k) => (k === i ? { ...x, grps: [...x.grps, ...add].slice(0, 6) } : x));
+  return { sets, cls: sets[0].cls, grps: sets[0].grps, order: fillOrder(plan?.order || [], sets0, sets), added: add.filter((g) => sets[i].grps.includes(g)), to: set.cls };
+}
+// "mavi grubu ekle", "kırmızı ve yeşil grupları ekle", "grup ekle sarı" → { add: ["Mavi", …], say }
+const GRP_SAY = [["Sarı", "sar[ıi]"], ["Mavi", "mavi"], ["Kırmızı", "k[ıi]rm[ıi]z[ıi]"], ["Yeşil", "ye[sş]il"], ["Pembe", "pembe"], ["Altın", "alt[ıi]n"], ["Gümüş", "g[üu]m[üu][sş]"], ["Bronz", "bronz"]];
+export function grpCommand(raw) {
+  const s = String(raw || "").toLocaleLowerCase("tr");
+  if (!/gru[bp]/.test(s) || !/\bekle/.test(s)) return null;
+  const add = GRP_SAY.filter(([, re]) => new RegExp(`(^|[^a-zçğıöşü])${re}`).test(s)).map(([g]) => g);
+  return add.length ? { add, say: s } : null;
+}
+
 // Tek gruba tehir: grubun bekleyen startları tehirde, sıranın sonuna gider (sıradaki start tehirde olmayan grup olur)
 export function grpHold(order, grp, a) {
   const hold = cleanHold(a);
