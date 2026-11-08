@@ -1,8 +1,8 @@
-Commit: a28d3fe · Takip: Sonuç yükle (elle sonuç PDF'i) (#1347)
-Zaman: 2026-11-08-1329 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42470488075
+Commit: 7f31852 · Sonuç sırası 3 haneye sığar; sonuç listesi ayrık (#1348)
+Zaman: 2026-11-08-1348 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42471679337
 
-TAM TEST · 08.11.2026 13:13:36
+TAM TEST · 08.11.2026 13:30:33
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1428/1438 geçti · 10 kalan · 974 sn
+SONUÇ: 1428/1438 geçti · 10 kalan · 1047 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
