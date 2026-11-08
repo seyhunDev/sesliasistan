@@ -225,6 +225,7 @@ export function rankOurs(fleets, athletes, club) {
       ...(flt.length ? { grp: me.grp, fp: flt.indexOf(ri) + 1, fn: flt.length } : {}),
       // Renk grubu ve yarış yarış puanı (Seyhun 2026-11-08 "sporcunun hangi grupta olduğu ve yarışta kaç olduğunu görmek istiyorum")
       ...(me.fl ? { fl: me.fl } : {}),
+      ...(me.pts !== "" && me.pts != null && Number.isFinite(Number(me.pts)) ? { pts: Number(me.pts) } : {}),
       ...(me.r?.length ? { r: me.r, ...(f.heads?.length ? { rh: f.heads } : {}) } : {}),
       place: ri + 1,
       n: f.rows.length,
@@ -320,4 +321,23 @@ export function mergeSheet(res, ranked, file) {
 export function dropSheet(res, fileId) {
   const rows = Object.fromEntries(Object.entries(res?.rows || {}).filter(([, x]) => x.f !== fileId));
   return { fleet: res?.fleet || "", rows, files: (res?.files || []).filter((f) => f.id !== fileId) };
+}
+
+// Sonuç kartının yarış kareleri (features/athletes/ResultCards): (14) atılan, OCS ceza, en düşük sayı en iyi.
+const isDrop = (v) => /^\(.*\)$/.test(v) || /^\[.*\]$/.test(v);
+const bare = (v) => v.replace(/^[([]|[)\]]$/g, "").trim();
+const isPen = (v) => !!v && !/^-?\d+(?:[.,]\d+)?$/.test(v);
+
+export function raceCells(row) {
+  const rs = (row?.r || []).map((x) => String(x ?? "").trim());
+  const cells = rs.map((v, i) => {
+    const drop = isDrop(v);
+    const val = bare(v);
+    const pen = isPen(val);
+    return { k: i, head: row?.rh?.[i] || `Y${i + 1}`, val: val || "–", drop, pen, empty: !val, num: !val || pen ? null : Number(val.replace(",", ".")) };
+  });
+  const nums = cells.filter((c) => !c.drop && c.num !== null).map((c) => c.num);
+  const best = nums.length > 1 ? Math.min(...nums) : null;
+  for (const c of cells) c.best = best !== null && !c.drop && c.num === best;
+  return cells;
 }

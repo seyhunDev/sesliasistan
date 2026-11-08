@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { todayStr } from "@/lib/utils/format";
 import { dayPlan, nextDay, ourPlaces, racePhase } from "@/lib/raceDay";
-import { raceLine } from "@/lib/resultSheet";
+import { ResultCards } from "./ResultCards";
 import { loadLive } from "./raceLiveStore";
 import { RaceWxRows } from "./RaceWx";
 
@@ -39,27 +39,6 @@ export function useRacePhase(r, orgId, rid, on) {
   return { phase: racePhase({ r, today, now, starts }), races: mine };
 }
 
-// "Optimist / 120 · Junior 4. · Kızlar 7."
-const subOf = (x) => [x.n ? `${x.cls} / ${x.n}` : x.cls, x.grp && x.fp && `${x.grp} ${x.fp}.`, x.cp && `${x.cat} ${x.cp}.`, x.gp && `Kızlar ${x.gp}.`].filter(Boolean).join(" · ");
-
-function Places({ list, short = false }) {
-  // Üstteki hava satırlarından ayrı dursun (Seyhun 2026-11-08 "sonuç alanı üstteki alanlara bitişik")
-  return (
-    <div className="rz-list mt-6">
-      {list.map((x) => (
-        <div key={x.id} className="rz-row">
-          <b className="w-11 shrink-0 text-[1.25rem] font-bold tabular-nums">{x.place}</b>
-          <span className="rz-k">
-            {x.name}
-            {!short && x.row?.cls && <small>{subOf(x.row)}</small>}
-            {raceLine(x.row) && <small>{raceLine(x.row)}</small>}
-          </span>
-          {x.move ? <span className={`rz-v font-semibold ${x.move > 0 ? "rz-ok" : "rz-warn"}`}>{x.move > 0 ? `↑${x.move}` : `↓${-x.move}`}</span> : null}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // Yarış günü üstü, yeni beyaz görünüm (Seyhun 2026-11-06, yeni-dil/ornek.png 5): büyük tek satır (2. yarış · start 12:30 / Sonuçlar / Gün bitti),
 // Canlı ekran · Yayın (go), Hava ve Harita kapalı satır (RaceWxRows), bizimkilerin sırası, yarın ya da dönüş satırı
@@ -86,7 +65,7 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = null }) 
       <div className="mt-3">
         <RaceWxRows key={phase} r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} />
       </div>
-      {places.length > 0 && <Places list={phase === "done" ? places.slice(0, 4) : places} short={phase === "done"} />}
+      {places.length > 0 && <ResultCards className="mt-6" list={phase === "done" ? places.slice(0, 4) : places} short={phase === "done"} />}
       {phase === "done" && <NextRow r={r} />}
     </div>
   );

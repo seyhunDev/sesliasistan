@@ -27,6 +27,7 @@ export function cleanResults(v) {
       if (/^[\w-]{1,40}$/.test(x?.f || "")) row.f = x.f;
       // fl renk grubu, r yarış yarış puanları, rh sütun adları (Y1, Q2; resultSheet.raceLine)
       if (["Sarı", "Mavi", "Kırmızı", "Yeşil", "Pembe", "Turuncu", "Mor", "Beyaz"].includes(x?.fl)) row.fl = x.fl;
+      if (x?.pts !== "" && x?.pts != null && Number.isFinite(Number(x.pts)) && Number(x.pts) >= 0) row.pts = Math.round(Number(x.pts) * 10) / 10;
       if (Array.isArray(x?.r) && x.r.length) {
         row.r = x.r.slice(0, 20).map((v) => S(v, 8));
         if (Array.isArray(x?.rh) && x.rh.length) row.rh = x.rh.slice(0, 20).map((v) => S(v, 6));
