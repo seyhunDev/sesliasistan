@@ -63,9 +63,8 @@ export async function deletePhotos(ids) {
 
 // Seyhun 2026-10-26: "Kayıt uygulamaya alınamadı". Sayfa canlı siteden açık, capacitor:// adresini fetch okuyamıyor; dosya
 // eklentiden 2 MB'lık parçalarla (base64) alınır, son parçada telefondaki geçici dosya silinir.
-async function readNative(r) {
+async function readNative(r, len = 2 * 1024 * 1024) {
   const parts = [];
-  const len = 2 * 1024 * 1024;
   for (let off = 0; ; off += len) {
     const { data, done } = await plugin().cameraRead({ file: r.file, offset: off, length: len });
     const bin = atob(data || "");
@@ -75,6 +74,20 @@ async function readNative(r) {
     if (done || !bin.length) break;
   }
   return new Blob(parts, { type: r.type || "" });
+}
+
+// Galeriden video, kopyasız (Seyhun 2026-11-08 "galerimde zaten var, iki defa kullanmaya gerek yok"; VeloraKamera.swift galleryPick):
+// Fotoğraflar seçicisi; videonun kendisi alınmaz. Sonuç { items: [{ asset, dur (sn), at (ms), th }], miss } ya da null (vazgeçildi).
+// Bu parça olmadan kurulmuş eski uygulamada yok (hasGallery false; web dosya seçicisi kullanılır).
+export const hasGallery = () => typeof plugin()?.galleryPick === "function";
+export async function galleryPick() {
+  const r = await plugin().galleryPick({});
+  return r?.cancel ? null : { items: Array.isArray(r?.items) ? r.items : [], miss: r?.miss || 0 };
+}
+// Fotoğraflar'daki videonun oynatılacak / yüklenecek geçici kopyası (Blob, yalnız bellekte; telefondaki geçici dosya okununca silinir)
+export async function galleryBlob(asset) {
+  const r = await plugin().galleryOpen({ asset });
+  return readNative(r, 6 * 1024 * 1024);
 }
 
 // Plan alarmları: [{ key, at (ms), title }] (lib/planAlarm.js alarmItems). Sonuç { kind: "alarm" | "notification", count }

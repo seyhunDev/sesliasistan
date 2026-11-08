@@ -16,6 +16,7 @@ import AlarmKit
 // - alarmSync: planların alarmları; iOS 26'da saat alarmı (AlarmKit, sessiz modda da çalar), eski iOS'ta bildirim
 // - haptic, biometry / unlock (Face ID kilidi), widgetData (ana ekran widget'ı): VeloraDokunus.swift
 // - camera: üstünde sayaç akan iPhone kamerası (Medya › Kayıt): VeloraKamera.swift
+// - galleryPick / galleryOpen: Fotoğraflar'dan video, kopyasız (yalnız kimlik; oynatırken geçici dosya): VeloraKamera.swift
 // - pushReady: bildirimler kurulu mu (AppDelegate, Firebase)
 // - compassStart / compassStop: kameranın baktığı pusula yönü ("compass" olayı; Parkur › Pusula), aşağıda Pusula
 // - badge: simgedeki sayı (zildeki okunmamışlar); 0 olunca bildirim merkezindeki Velora bildirimleri de kalkar
@@ -37,6 +38,8 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "camera", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cameraRead", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "photosDelete", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "galleryPick", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "galleryOpen", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "watchTake", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "watchReply", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "watchState", returnType: CAPPluginReturnPromise),

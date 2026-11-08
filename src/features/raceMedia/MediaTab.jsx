@@ -207,7 +207,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, file0 = 
       upSet((x) => {
         const mine = { ...x.mine };
         const kept = { ...x.kept };
-        for (const k of list) {
+        for (const k of list.filter((y) => y.blob)) {
           if (!mine[k.id]) mine[k.id] = { url: URL.createObjectURL(k.blob), done: false };
           kept[k.id] = { kind: k.kind, size: k.size || k.blob?.size || 0 };
         }
