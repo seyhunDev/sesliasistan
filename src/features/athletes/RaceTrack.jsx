@@ -6,7 +6,8 @@
 // en üstte Günün özeti (Dün | Bugün), sonra Sonuçlar (bizim sporcuların sırası + sonuç belgeleri), Gruplar (renk listesi, final grupları),
 // Duyurular (sporcu listesi, diğer),
 // Talimatlar (talimat, ek talimat, program). Görülmemiş belge "Yeni"; bildirim (sunucu notifyDocs) bu sekmeyi açar (?sec=site).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useToast } from "@/components/ui/ToastProvider";
 import { createPortal } from "react-dom";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { ListHead, Tag } from "@/components/ui/Row";
@@ -205,7 +206,22 @@ function DaySummary({ orgId, race, docs, places }) {
   );
 }
 
-export function RaceTrack({ orgId, race, chosen = [], more = null }) {
+export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile = null }) {
+  // Elle sonuç yükleme (Seyhun 2026-11-08): siteye gelmeyen sonuç PDF'i, siteden gelenle aynı yol (page.jsx importFile)
+  const toast = useToast();
+  const pickRef = useRef(null);
+  const [upBusy, setUpBusy] = useState(false);
+  const upload = async (f) => {
+    if (!f || !onResultsFile || upBusy) return;
+    setUpBusy(true);
+    try {
+      const r = await onResultsFile(f);
+      toast(r?.note || "Sonuçlar eklendi");
+    } catch (e) {
+      toast(e?.message || "Sonuçlar okunamadı");
+    }
+    setUpBusy(false);
+  };
   const [docs, setDocs] = useState(null);
   const [view, setView] = useState(null);
   const [all, setAll] = useState(false);
@@ -239,6 +255,14 @@ export function RaceTrack({ orgId, race, chosen = [], more = null }) {
           <DocRows list={g.results} onOpen={setView} />
           {!places.length && !g.results.length && empty("Henüz sonuç yok")}
         </div>
+        {onResultsFile && (
+          <>
+            <button type="button" onClick={() => pickRef.current?.click()} disabled={upBusy} data-press className="btn btn-text btn-sm mt-2 w-full text-acc disabled:opacity-60">
+              {upBusy ? "Okunuyor…" : "Sonuç yükle"}
+            </button>
+            <input ref={pickRef} type="file" accept="application/pdf,image/*,.pdf" hidden onChange={(e) => (upload(e.target.files?.[0]), (e.target.value = ""))} />
+          </>
+        )}
       </section>
       </div>
       <div>
