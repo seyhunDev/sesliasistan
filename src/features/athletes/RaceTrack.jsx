@@ -20,7 +20,7 @@ import { Icon } from "@/components/ui/Icon";
 import { ourPlaces } from "@/lib/raceDay";
 import { cleanSchedule, currentAmend, kindLabel, resultState, version } from "@/lib/siteDocs";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
-import { raceLine } from "@/lib/resultSheet";
+import { ResultCards } from "./ResultCards";
 import { siteDocBlob, watchEntryDoc, watchSiteDocs } from "./raceSite";
 
 const RULES = ["notice", "amend", "program"];
@@ -30,7 +30,6 @@ const when = (at) => {
   return `${d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} ${String(at).slice(11, 16)}`.trim();
 };
 // "Optimist / 120 · Gümüş 5. · Junior 4."
-const subOf = (x) => [x.n ? `${x.cls} / ${x.n}` : x.cls, x.grp && x.fp && `${x.grp} ${x.fp}.`, x.cp && `${x.cat} ${x.cp}.`, x.gp && `Kızlar ${x.gp}.`].filter(Boolean).join(" · ");
 
 // Satırın sağındaki kısa işaret: sonuçta geçici/kesin, ek talimatta sürüm
 const markOf = (d) => (d.kind === "results" ? ({ kesin: "kesin", gecici: "geçici" })[resultState(d.name)] || "" : d.kind === "amend" && version(d.name) ? `V${version(d.name)}` : "");
@@ -244,16 +243,7 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
       <section className="mt-6" aria-label="Sonuçlar">
         <ListHead title="Sonuçlar" count={g.results.length} />
         <div className={box}>
-          {places.map((x) => (
-            <div key={x.id} className="flex min-h-[3.5rem] items-center gap-3 border-t border-line py-2 first:border-t-0">
-              <span className="min-w-0 flex-1">
-                <b className="block truncate text-[0.9375rem] font-semibold">{x.name}</b>
-                {x.row?.cls && <small className="block truncate text-[0.8125rem] text-mut">{subOf(x.row)}</small>}
-                {raceLine(x.row) && <small className="block truncate text-[0.8125rem] text-mut">{raceLine(x.row)}</small>}
-              </span>
-              <b className="shrink-0 text-[1.375rem] font-bold tabular-nums">{x.place}.</b>
-            </div>
-          ))}
+          <ResultCards list={places} />
           <DocRows list={g.results} onOpen={setView} />
           {!places.length && !g.results.length && empty("Henüz sonuç yok")}
         </div>
