@@ -185,17 +185,17 @@ export function makeTake({ db, orgId, raceId, ai, cls = "" }) {
 }
 
 // Önceden alınmış belgeleri bir kez yeniden kullanma (Seyhun 2026-11-07): eskiden yarış ilanı yalnız saklanıyordu, sporcu listesindeki
-// gruplar okunmuyordu. Yayın programı boşsa ilan, hiç grup yoksa sporcu listeleri yeniden işlenir. Dönüş işlenen belge sayısı.
-export const FILL = "2026-11-07";
+// gruplar okunmuyordu. Yayın programı boşsa ilan, grup getirmemiş sporcu listeleri yeniden işlenir (yarışta başka günün grupları olsa da;
+// Seyhun 2026-11-08 "grupları göremiyorum": birleştirilen yarışta Junior'ın eski grupları vardı, Senior listesi atlanmıştı). Dönüş işlenen belge sayısı.
+export const FILL = "2026-11-08";
 export async function fillOld({ db, bucket, orgId, raceId, take }) {
   const live = db.collection("orgs").doc(orgId).collection("raceLive").doc(raceId);
-  const [docs, liveSnap, list] = await Promise.all([live.collection("site").get(), live.get(), live.collection("entries").doc("list").get()]);
+  const [docs, liveSnap] = await Promise.all([live.collection("site").get(), live.get()]);
   const hasPlan = Object.keys(liveSnap.data()?.plan?.agenda || {}).length > 0;
-  const hasGroups = Object.keys(cleanGroups(list.data()?.groups)).length > 0;
   const recs = docs.docs.map((x) => ({ id: x.id, ...x.data() })).filter((r) => r.file?.path).sort((a, b) => String(a.at).localeCompare(String(b.at)));
   const todo = [
     ...(hasPlan ? [] : recs.filter((r) => r.kind === "notice" && isIlan(r.name) && r.state === "kept").slice(-1)),
-    ...(hasGroups ? [] : recs.filter((r) => r.kind === "entries" && r.state === "used")),
+    ...recs.filter((r) => r.kind === "entries" && r.state === "used" && !/grubu/.test(r.note || "")),
   ];
   let n = 0;
   for (const r of todo) {
