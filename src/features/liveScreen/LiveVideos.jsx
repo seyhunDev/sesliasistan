@@ -9,10 +9,15 @@
 // YouTube'a yükle (Seyhun 2026-11-06 "çektiğim videoyu YouTube'a yükleyebilmeliyim, sonra linkiyle kameralara ekleyeyim mi diye sor, isim
 // vereyim"; örnek youtube-yukle/ornek.png): video kanala Liste dışı yüklenir (lib/youtube.js, ilk seferde "YouTube'a bağlan"), link
 // kendiliğinden gelir, "Kameralara ekleyeyim mi?" sorulur; adı verilince yayının kaynaklarına kamera olarak eklenir (Kamera, Yayın › Ekran).
+// Kopyasız (Seyhun 2026-11-08 "galerimde zaten var, iki defa kullanmaya gerek yok"; yeni iPhone kurulumunda, hasGallery): galeriden
+// seçilen ve Velora kamerasıyla çekilip Fotoğraflar'a kaydedilen video telefonda saklanmaz, yalnız Fotoğraflar kimliği (asset), süre,
+// çekim anı ve küçük resim tutulur; oynatırken / YouTube'a yüklerken Fotoğraflar'dan geçici kopya okunur (galleryBlob, yalnız bellekte).
+// Eski kopyalar (Seyhun 2026-11-08 "daha önce eklenenleri de silmemiz lazım"): kimliği olanın kopyası silinir, kimliksiz galeri kopyası
+// (dosya adı velora- ile başlamayan) listeden kalkar (aslı Fotoğraflar'da); Velora kamerasının kimliksiz kaydı tek kopya olduğu için kalır.
 import { useEffect, useMemo, useState } from "react";
 import { dropKept, keepLocal, listKept } from "@/features/raceMedia/pendingStore";
 import { RecPick } from "@/features/raceMedia/RecPick";
-import { deletePhotos } from "@/lib/nativeIos";
+import { deletePhotos, galleryBlob, galleryPick, hasGallery } from "@/lib/nativeIos";
 import { readTimer } from "@/features/training/Countdown";
 import { saveStream } from "@/features/athletes/raceLiveStore";
 import { recName } from "./liveActions";
@@ -124,6 +129,12 @@ function sidAt(starts, at, day, live = true) {
   return [...starts].filter((s) => !s.void && s.at && s.at <= at && (s.day || s.at.slice(0, 10)) === day).sort((a, b) => (a.at < b.at ? -1 : 1)).at(-1)?.id || "";
 }
 
+// telefondaki kopyası atılmış öğe: yalnız Fotoğraflar kimliği (blob ve boyutu yok)
+const refOf = (x) => {
+  const { blob: _b, size: _s, ...rest } = x;
+  return rest;
+};
+
 export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {}, stream = null, playing = "", onPlay }) {
   const [list, setList] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -136,13 +147,33 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
   const today = todayStr();
   useEffect(() => {
     let on = true;
-    listKept().then((l) => on && setList(l.filter((x) => x.mine && x.raceId === raceId && x.blob).sort((a, b) => (a.at < b.at ? 1 : -1))), () => {});
+    listKept().then(async (l) => {
+      let mine = l.filter((x) => x.mine && x.raceId === raceId && (x.blob || x.asset));
+      if (hasGallery()) {
+        const old = mine.filter((x) => x.blob && !x.asset && !String(x.blob.name || "").startsWith("velora-"));
+        const ref = mine.filter((x) => x.blob && x.asset);
+        await Promise.all([...old.map((x) => dropKept(x.id)), ...ref.map((x) => keepLocal(refOf(x)))]);
+        mine = mine.filter((x) => !old.includes(x)).map((x) => (ref.includes(x) ? refOf(x) : x));
+      }
+      if (on) setList(mine.sort((a, b) => (a.at < b.at ? 1 : -1)));
+    }, () => {});
     return () => {
       on = false;
     };
   }, [raceId]);
   // küçük resimler için yerel adresler
-  const urls = useMemo(() => Object.fromEntries(list.map((x) => [x.id, URL.createObjectURL(x.blob)])), [list]);
+  const urls = useMemo(() => Object.fromEntries(list.filter((x) => x.blob).map((x) => [x.id, URL.createObjectURL(x.blob)])), [list]);
+  const [opening, setOpening] = useState(""); // Fotoğraflar'dan okunan video
+  // oynatmak / yüklemek için video: telefonda kopyası yoksa Fotoğraflar'dan geçici kopya
+  const blobOf = async (x) => {
+    if (x.blob) return x.blob;
+    setOpening(x.id);
+    try {
+      return await galleryBlob(x.asset);
+    } finally {
+      setOpening("");
+    }
+  };
   useEffect(() => () => Object.values(urls).forEach((u) => URL.revokeObjectURL(u)), [urls]);
 
   const grpOf = (s) => rounds?.[s.id]?.grp || s.grp || "";
@@ -176,7 +207,7 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
       })
     );
   // eski videoların küçük resmi yoksa sırayla çıkarılır
-  const noTh = list.find((x) => !x.th && !x.thNo)?.id || "";
+  const noTh = list.find((x) => !x.th && !x.thNo && x.blob)?.id || "";
   useEffect(() => {
     const x = list.find((y) => y.id === noTh);
     if (!x) return undefined;
@@ -193,10 +224,13 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     const dur = await durOf(file);
     const shot = gal ? await shotAt(file) : 0;
     const at = new Date(shot || (file.lastModified || Date.now()) - dur * 1000).toISOString();
-    const x = { id: newId(), raceId, kind: "video", mine: true, stay: true, size: file.size, blob: file, at, dur, sid: sidAt(starts, at, dayOf(at), !gal), ...(file.asset ? { asset: file.asset } : {}) };
+    const x0 = { id: newId(), raceId, kind: "video", mine: true, stay: true, size: file.size, blob: file, at, dur, sid: sidAt(starts, at, dayOf(at), !gal), ...(file.asset ? { asset: file.asset } : {}) };
+    // Fotoğraflar'a kaydedildiyse kopyası tutulmaz (küçük resim dosyadan, sonra yalnız kimlik)
+    const th = file.asset && hasGallery() ? await thumbOf(file) : "";
+    const x = file.asset && hasGallery() ? { ...refOf(x0), ...(th ? { th } : { thNo: true }) } : x0;
     await keepLocal(x);
     setList((l) => [x, ...l].sort((a, b) => (a.at < b.at ? 1 : -1)));
-    thumbOf(file).then((th) => th && put(x, { th }));
+    if (x.blob) thumbOf(file).then((t) => t && put(x, { th: t }));
   };
   const take = async (file) => {
     if (!file || busy) return;
@@ -207,6 +241,30 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     setBusy(false);
   };
   const [gal, setGal] = useState(""); // "2/5" galeriden eklenirken
+  // Fotoğraflar seçicisi (yeni iPhone kurulumu): yalnız kimlik, süre, çekim anı ve küçük resim saklanır
+  const pickPhotos = async () => {
+    if (busy) return;
+    setMsg("");
+    setBusy(true);
+    setGal("…");
+    try {
+      const r = await galleryPick();
+      const have = new Set(list.map((x) => x.asset).filter(Boolean));
+      const add = (r?.items || [])
+        .filter((y) => y.asset && !have.has(y.asset))
+        .map((y) => {
+          const at = new Date(y.at || Date.now()).toISOString();
+          return { id: newId(), raceId, kind: "video", mine: true, stay: true, asset: y.asset, at, dur: y.dur || 0, sid: sidAt(starts, at, dayOf(at), false), ...(y.th ? { th: y.th } : { thNo: true }) };
+        });
+      for (const x of add) await keepLocal(x);
+      if (add.length) setList((l) => [...add, ...l].sort((a, b) => (a.at < b.at ? 1 : -1)));
+      if (r?.miss) setMsg(`${r.miss} video okunamadı. Ayarlar › Velora › Fotoğraflar › Tüm Fotoğraflar`);
+    } catch (e) {
+      setMsg(e?.message || "Galeri açılamadı");
+    }
+    setGal("");
+    setBusy(false);
+  };
   const pick = async (files) => {
     const fs = [...(files || [])].filter(isVid);
     if (!fs.length || busy) return;
@@ -242,7 +300,7 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     setNeed(false);
     setUp({ id: x.id, p: 0 });
     try {
-      const vid = await ytUpload(x.blob, { title: ytTitle(x), description: race?.name || "" }, (p) => setUp({ id: x.id, p }));
+      const vid = await ytUpload(await blobOf(x), { title: ytTitle(x), description: race?.name || "" }, (p) => setUp({ id: x.id, p }));
       put(x, { yt: `https://youtu.be/${vid}`, ytNo: false });
       setCamName(nextCam());
     } catch (e) {
@@ -268,6 +326,15 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     }
   };
 
+  const play = async (x) => {
+    if (opening) return;
+    setMsg("");
+    try {
+      onPlay?.(x.id, await blobOf(x));
+    } catch (e) {
+      setMsg(e?.message || "Video açılamadı");
+    }
+  };
   const tile = (x) => {
     const on = edit ? cur === x.id : playing === x.id;
     return (
@@ -276,12 +343,12 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
         type="button"
         className={`lvd-t${on ? " on" : ""}`}
         aria-pressed={on}
-        onClick={() => (edit ? (setCur(cur === x.id ? "" : x.id), setCamName(nextCam()), setMsg("")) : playing === x.id ? onPlay?.("", null) : onPlay?.(x.id, x.blob))}
+        onClick={() => (edit ? (setCur(cur === x.id ? "" : x.id), setCamName(nextCam()), setMsg("")) : playing === x.id ? onPlay?.("", null) : play(x))}
       >
         <span className="th">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {x.th ? <img src={x.th} alt="" /> : <video src={`${urls[x.id]}#t=0.5`} preload="metadata" muted playsInline />}
-          {playing === x.id ? <s>Ekranda</s> : x.yt ? <s className="yt">YouTube</s> : null}
+          {x.th ? <img src={x.th} alt="" /> : urls[x.id] ? <video src={`${urls[x.id]}#t=0.5`} preload="metadata" muted playsInline /> : null}
+          {opening === x.id ? <s>Açılıyor</s> : playing === x.id ? <s>Ekranda</s> : x.yt ? <s className="yt">YouTube</s> : null}
           {x.dur ? <em>{mmss(x.dur)}</em> : null}
         </span>
       </button>
@@ -305,10 +372,16 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
             <i aria-hidden="true" />
             {busy && !gal ? "Kaydediliyor…" : "Video çek"}
           </RecPick>
-          <label className="lvd-gal" aria-busy={!!gal}>
-            <input type="file" accept="video/*" multiple hidden disabled={busy} onChange={(e) => (pick(e.target.files), (e.target.value = ""))} />
-            {gal ? `Ekleniyor ${gal}` : "Galeriden ekle"}
-          </label>
+          {hasGallery() ? (
+            <button type="button" className="lvd-gal" aria-busy={!!gal} disabled={busy} onClick={pickPhotos}>
+              {gal ? "Ekleniyor…" : "Galeriden ekle"}
+            </button>
+          ) : (
+            <label className="lvd-gal" aria-busy={!!gal}>
+              <input type="file" accept="video/*" multiple hidden disabled={busy} onChange={(e) => (pick(e.target.files), (e.target.value = ""))} />
+              {gal ? `Ekleniyor ${gal}` : "Galeriden ekle"}
+            </label>
+          )}
         </div>
       )}
       {edit && sel ? (

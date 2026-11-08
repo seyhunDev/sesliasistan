@@ -47,7 +47,7 @@ function Library({ orgId }) {
     loadAllMedia(orgId).then(setDocs, (e) => (setDocs([]), setError(e?.message || "Medya alınamadı.")));
     loadRaces(orgId).then(setRaces, () => {});
     listKept()
-      .then((l) => setKept(Object.fromEntries(l.map((k) => [k.id, URL.createObjectURL(k.blob)]))))
+      .then((l) => setKept(Object.fromEntries(l.filter((k) => k.blob).map((k) => [k.id, URL.createObjectURL(k.blob)]))))
       .catch(() => {});
   }, [orgId]);
   const secs = useMemo(() => librarySections(docs || [], { plans, races }), [docs, plans, races]);
