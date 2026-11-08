@@ -11,6 +11,7 @@ import {
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/clientApp";
 import { clearWarm } from "@/lib/warmStart";
+import { clearPlace } from "@/lib/place";
 
 const EVENT = "sa-auth";
 
@@ -63,6 +64,7 @@ export async function resetPassword(email) {
 
 export async function logout() {
   clearWarm(); // anında açılış kopyası (lib/warmStart.js) başka hesaba kalmasın
+  clearPlace();
   await signOut(auth);
 }
 

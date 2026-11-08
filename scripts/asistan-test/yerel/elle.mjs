@@ -1988,6 +1988,22 @@ group("Yeni sürüm")([
   ["kilitten dönüşte yenilenmez", F("telefon uyurken gecikmiş zamanlayıcı yenilemez", () => NV.lateWake(1000, 1000 + 60e3) && !NV.lateWake(1000, 1000 + 200))],
 ]);
 
+// Kalınan sayfa (lib/place.js): arkadan dönüşte uygulama ana sayfadan baştan yüklenirse kalınan sayfaya geçilir
+const PL = await import("@/lib/place");
+const runPlace = (pathname, saved, search = "") => {
+  let went = null;
+  const location = { pathname, search, hash: "", replace: (u) => (went = u) };
+  const sessionStorage = { getItem: () => saved };
+  new Function("location", "sessionStorage", PL.PLACE_SCRIPT)(location, sessionStorage);
+  return went;
+};
+group("Kalınan sayfa")([
+  ["ana sayfadan yüklenince", F("kalınan yarış sayfası açılır", () => PL.restoreTo({ pathname: "/" }, "/athletes/races/r1/media") === "/athletes/races/r1/media" && runPlace("/", "/athletes/races/r1/media") === "/athletes/races/r1/media")],
+  ["kayıt yoksa ya da ana sayfaysa", F("ana sayfada kalınır", () => PL.restoreTo({ pathname: "/" }, null) === null && PL.restoreTo({ pathname: "/" }, "/") === null && runPlace("/", null) === null && runPlace("/", "/") === null)],
+  ["başka sayfa yüklenirken", F("dokunulmaz (bildirim, bağlantı)", () => PL.restoreTo({ pathname: "/tasks" }, "/plans") === null && PL.restoreTo({ pathname: "/", search: "?x=1" }, "/plans") === null && runPlace("/tasks", "/plans") === null && runPlace("/", "/plans", "?x=1") === null)],
+  ["giriş ve dış adres", F("geri dönülmez", () => !PL.keepable("/login") && !PL.keepable("//evil.com") && !PL.keepable("https://x") && runPlace("/", "/login") === null && runPlace("/", "//evil.com") === null && PL.keepable("/canli/abc"))],
+]);
+
 // Fitness (lib/fitness): hareket listesi, program, takvime yazılacak günler, sonuç, takip, otomatik ilerleme, sözler
 const FX = await import("@/lib/fitness/exercises");
 const FM2 = await import("@/lib/fitness/model");

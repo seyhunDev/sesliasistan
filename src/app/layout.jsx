@@ -5,6 +5,8 @@ import { ServiceWorkerSetup } from "@/features/pwa/Pwa";
 import { BootSplash } from "@/components/ui/BootSplash";
 import { PressFeedback } from "@/components/ui/PressFeedback";
 import { THEME_BG, THEME_SCRIPT } from "@/lib/theme";
+import { PLACE_SCRIPT } from "@/lib/place";
+import { KeepPlace } from "@/components/ui/KeepPlace";
 
 // Her cihazda aynı görünen, Türkçe karakterleri tam destekleyen yazı tipi (derlemede indirilir, uygulamayla birlikte sunulur)
 const inter = Inter({ subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-inter" });
@@ -35,6 +37,8 @@ export default function RootLayout({ children }) {
     return (
         <html lang="tr" className={inter.variable} suppressHydrationWarning>
             <head>
+                {/* Arkadan dönüşte sayfa baştan yüklendiyse kalınan sayfaya geç (lib/place.js); en önde, başka bir şey çizilmeden */}
+                <script dangerouslySetInnerHTML={{ __html: PLACE_SCRIPT }} />
                 {/* Yazı boyutu seçimi sayfa çizilmeden uygulansın (sonradan büyüyüp zıplamasın) */}
                 <script dangerouslySetInnerHTML={{ __html: SIZE_SCRIPT }} />
                 {/* Açık / koyu görünüm de ilk çizimden önce (beyaz parlayıp kararmasın) */}
@@ -48,6 +52,7 @@ export default function RootLayout({ children }) {
                 <AuthProvider>{children}</AuthProvider>
                 <ServiceWorkerSetup />
                 <PressFeedback />
+                <KeepPlace />
             </body>
         </html>
     );
