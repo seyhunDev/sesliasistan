@@ -1384,3 +1384,9 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 .sc-pgs::placeholder { color: rgba(255, 255, 255, 0.45); }
 .sc-pgs:focus { background: rgba(255, 255, 255, 0.13); }
 .sc-pgl li.our b { color: #7fb0ff; }
+/* Start › + Grup (Seyhun 2026-11-08): grup sırasının sonunda; açılınca grup seçenekleri, önce günün listesindekiler */
+.lst-g.add { flex: 0 0 5.5rem; color: rgba(255, 255, 255, 0.8); }
+.lst-g.add.on { color: #0b1626; }
+.lst-addg { padding: 0 0 0.875rem; margin-top: -0.375rem; }
+.lst-addg button { display: inline-flex; align-items: center; gap: 0.4rem; }
+.lst-addg i { width: 0.625rem; height: 0.625rem; border-radius: 50%; }
