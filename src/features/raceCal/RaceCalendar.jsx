@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
@@ -12,7 +13,6 @@ import { todayStr } from "@/lib/utils/format";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { loadRaces } from "@/features/athletes/races";
-import { RaceSwitch } from "./RaceSwitch";
 import { WideCols } from "@/features/athletes/RaceList";
 import { useWide } from "@/hooks/useWide";
 
@@ -103,15 +103,21 @@ export function RaceCalendar() {
   return (
     <main className="race-wide mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <section className="ck race-top -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Yarış takvimi">
+        {/* Yarış kart (Seyhun 2026-11-08 "Oluşturabilmeliyim"): takvime Yarışlar › Diğer'den gelinir; geri Yarışlar'a döner, kulüp hesabında
+            sağda beyaz + Yarış (yeni yarış), Kulübüm | Takvim seçicisi yok */}
         <header className="flex items-center gap-2.5">
-          <BackButton href="/" />
+          <BackButton href={club ? "/athletes/races" : "/"} />
           <div className="min-w-0 flex-1 leading-tight">
-            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{club ? "Yarışlar" : "Yarış takvimi"}</h1>
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Yarış takvimi</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{!list ? "Yükleniyor…" : [`${all.up.length} yaklaşan`, `${all.past.length} geçmiş`].join(" · ")}</p>
           </div>
-          {wide && club && <RaceSwitch on="cal" inline />}
+          {club && (
+            <Link href="/athletes/races/new" data-press className="ck-btn shrink-0 !flex !h-10 items-center gap-1 !px-3.5 !text-[0.9375rem]">
+              <Icon name="plus" className="size-4" />
+              Yarış
+            </Link>
+          )}
         </header>
-        {!wide && club && <RaceSwitch on="cal" />}
         <div className="race-find">
         <label className="ck-glass mt-3.5 flex h-11 items-center gap-2 rounded-xl px-3">
           <Icon name="search" className="size-[1.125rem] shrink-0 text-white/55" />
