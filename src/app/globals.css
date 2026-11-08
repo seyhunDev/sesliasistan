@@ -1325,40 +1325,33 @@ main.rzc .ck .rz-seg-b[aria-pressed="true"] { background: #fff; color: #0b1a33; 
   body[data-side] main.rz.rzc.split.split-even > .rzc-body { padding-left: 1.5rem; padding-right: 1.5rem; }
 }
 
-/* SONUÇ KARTLARI (Seyhun 2026-11-08 "modern profesyonel", örnek 2 onaylı; src/features/athletes/ResultCards.jsx):
-   renk grubu sol çizgi, büyük sıra, NET puan, yarış yarış kareler (atılan kesik, ceza kırmızı, en iyi grup renginde). */
-.rs-ath { --gt: color-mix(in srgb, var(--g) 72%, var(--fg)); position: relative; padding: 1rem 0 .875rem .75rem; border-top: 1px solid var(--line); }
-.rs-ath:first-child { border-top: 0; }
-.rs-ath::before { content: ""; position: absolute; left: 0; top: 1rem; bottom: .875rem; width: 3px; border-radius: 0 3px 3px 0; background: var(--g); }
-.rs-top { display: flex; align-items: center; gap: .75rem; }
-.rs-pl { width: 4.75rem; flex-shrink: 0; font-size: 1.75rem; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
-.rs-pl sup { font-size: .6875rem; font-weight: 600; color: var(--mut); letter-spacing: 0; vertical-align: top; margin-left: 1px; }
+/* SONUÇ LİSTESİ (Seyhun 2026-11-08 "sonuçları daha az minimal, liste gibi"; örnek yaris-tasarim/sade/sonuc-liste-*.png onaylı;
+   src/features/athletes/ResultCards.jsx): sporcu başına bir satır, ince çizgiyle ayrılır. Solda sıra /kişi, ortada grup renginde nokta + ad +
+   dünden fark, altında grup/kategori sırası ve yarış yarış puan (en iyi koyu, atılan parantezde gri, ceza kırmızı), sağda NET. */
+.rs-row { display: flex; align-items: center; gap: .75rem; min-height: 3.625rem; padding: .625rem 0; border-top: 1px solid var(--line); }
+.rs-row:first-child { border-top: 0; }
+.rs-pl { width: 3.25rem; flex-shrink: 0; font-size: 1.3125rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rs-pl sup { margin-left: 1px; font-size: .6875rem; font-weight: 500; color: var(--mut); letter-spacing: 0; }
 .rs-mid { flex: 1; min-width: 0; }
-.rs-nm { display: block; font-size: 1rem; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rs-meta { display: flex; align-items: center; gap: .375rem; margin-top: .25rem; font-size: .75rem; color: var(--mut); min-width: 0; }
-.rs-sub { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.rs-tag { display: inline-flex; align-items: center; gap: .3125rem; flex-shrink: 0; height: 1.25rem; padding: 0 .5rem; border-radius: 999px; font-size: .6875rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gt); background: color-mix(in srgb, var(--g) 14%, transparent); }
-.rs-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--g); }
-.rs-up { flex-shrink: 0; color: #16a34a; font-weight: 700; } .rs-dn { flex-shrink: 0; color: #dc2626; font-weight: 700; }
-.rs-net { flex-shrink: 0; text-align: right; }
-.rs-net b { display: block; font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1; }
-.rs-net small { font-size: .625rem; font-weight: 600; color: var(--mut); letter-spacing: .08em; }
-.rs-grid { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 4px; margin-top: .75rem; margin-left: 5.5rem; }
-.rs-c { position: relative; overflow: hidden; height: 2.875rem; border-radius: .625rem; display: flex; flex-direction: column; align-items: center; justify-content: center; background: color-mix(in srgb, var(--g) 9%, var(--card)); border: 1px solid color-mix(in srgb, var(--g) 30%, transparent); }
-.rs-c::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--g); }
-.rs-c b { font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
-.rs-c i { font-style: normal; font-size: .59375rem; font-weight: 600; color: var(--mut); letter-spacing: .06em; margin-top: .25rem; white-space: nowrap; }
-.rs-c.rs-best b { color: var(--gt); }
-.rs-c.rs-drop { background: color-mix(in srgb, var(--mut) 6%, var(--card)); border: 1px dashed color-mix(in srgb, var(--mut) 45%, transparent); }
-.rs-c.rs-drop::after { display: none; }
-.rs-c.rs-drop b { color: var(--mut); font-weight: 600; }
-.rs-c.rs-drop b::before { content: "("; } .rs-c.rs-drop b::after { content: ")"; }
-.rs-c.rs-pen { background: color-mix(in srgb, #ef4444 9%, var(--card)); border-color: color-mix(in srgb, #ef4444 35%, transparent); }
-.rs-c.rs-pen::after { background: #ef4444; }
-.rs-c.rs-pen b { font-size: .75rem; color: #dc2626; letter-spacing: .04em; }
-.rs-c.rs-empty { opacity: .35; }
+.rs-nm { display: flex; align-items: center; gap: .4375rem; min-width: 0; font-size: 1rem; font-weight: 600; }
+.rs-nm > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rs-nm > i { width: .5rem; height: .5rem; flex-shrink: 0; border-radius: 50%; background: var(--g); }
+.rs-up, .rs-dn { flex-shrink: 0; font-size: .8125rem; font-weight: 700; } .rs-up { color: #16a34a; } .rs-dn { color: #dc2626; }
+.rs-sub { display: block; margin-top: .125rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .8125rem; color: var(--mut); font-variant-numeric: tabular-nums; }
+.rs-rs { display: flex; flex-wrap: wrap; gap: .125rem .875rem; margin-top: .125rem; font-size: .8125rem; color: var(--fg2, var(--fg)); font-variant-numeric: tabular-nums; }
+.rs-rs i { margin-right: .25rem; font-style: normal; color: var(--mut); }
+.rs-rs .rs-best { font-weight: 700; color: var(--fg); }
+.rs-rs .rs-drop { color: var(--mut); }
+.rs-rs .rs-pen { font-weight: 700; color: #dc2626; }
+.rs-rs .rs-empty { opacity: .4; }
+.rs-net { flex-shrink: 0; text-align: right; font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.rs-net small { display: block; font-size: .625rem; font-weight: 600; color: var(--mut); letter-spacing: .06em; }
 /* beş sekme (Takip varken) telefonda sığsın: yazı biraz küçük, iç boşluk dar */
 @media (max-width: 47.99rem) {
   main.rzc .rz-seg:has(> :nth-child(5)) .rz-seg-b { gap: .1875rem; padding: 0 .125rem; font-size: .8125rem; letter-spacing: -.01em; }
   main.rzc .rz-seg:has(> :nth-child(5)) .rz-dot { width: .3125rem; height: .3125rem; }
 }
+/* sonuç listesi lacivert üstte (sitesi bağlı olmayan yarışın yarış günü, RaceDayTop) */
+.ck .rs-row { border-color: rgba(255, 255, 255, .12); }
+.ck :is(.rs-sub, .rs-pl sup, .rs-net small, .rs-rs i, .rs-rs .rs-drop) { color: rgba(255, 255, 255, .62); }
+.ck .rs-rs, .ck .rs-rs .rs-best { color: #fff; }
