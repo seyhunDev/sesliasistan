@@ -40,33 +40,45 @@ export function useRacePhase(r, orgId, rid, on) {
 }
 
 
-// Yarış günü üstü, yeni beyaz görünüm (Seyhun 2026-11-06, yeni-dil/ornek.png 5): büyük tek satır (2. yarış · start 12:30 / Sonuçlar / Gün bitti),
-// Canlı ekran · Yayın (go), Hava ve Harita kapalı satır (RaceWxRows), bizimkilerin sırası, yarın ya da dönüş satırı
-export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = null }) {
+// Yarış günü üstü (sade, Seyhun 2026-11-08 "hava durumunu, kaç yarış yapıldığını birkaç yerde gösteriyoruz… tekrar olmasın"; örnek
+// yaris-tasarim/sade/takip-*.png): Canlı ekran · Yayın (go), altında tek kartta "Şimdi" (2 yarış bitti · 3. start 12:30 / Sonuçlar geldi /
+// Gün bitti) ve Hava, Harita. Bizimkilerin sırası yalnız Takip sekmesi yoksa burada (track: sitesi bağlı yarışta sonuçlar Takip'te, tek yer);
+// gün bitince yarın ya da dönüş satırı.
+export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = null, track = false }) {
   const today = todayStr();
-  const places = ourPlaces(r.results, chosen);
+  const places = track ? [] : ourPlaces(r.results, chosen);
   const fleet = r.results?.fleet;
   const last = today >= (r.endDate || r.startDate);
   const tom = nextDay(today);
   const fin = races.filter((x) => x.fin).length;
   const cur = races.at(-1);
-  const title = phase === "done" ? (dayAll > 1 && !last ? "Gün bitti" : "Yarış bitti") : phase === "results" ? "Sonuçlar" : cur && fin < races.length ? `${cur.n}. yarış` : races.length ? `${races.length} yarış bitti` : "";
-  const side = phase === "race" ? (cur && fin < races.length ? `start ${hm(cur.at)}` : "") : [races.length && `${races.length} yarış`, fleet && `${fleet} tekne`].filter(Boolean).join(" · ");
+  const now =
+    phase === "done"
+      ? [dayAll > 1 && !last ? "Gün bitti" : "Yarış bitti", races.length && `${races.length} yarış`].filter(Boolean).join(" · ")
+      : cur && fin < races.length
+        ? [fin && `${fin} yarış bitti`, `${cur.n}. start ${hm(cur.at)}`].filter(Boolean).join(" · ")
+        : races.length
+          ? [`${races.length} yarış bitti`, phase === "results" && "sonuçlar geldi", fleet && `${fleet} tekne`].filter(Boolean).join(" · ")
+          : "";
+  const lead = now ? (
+    <div className="rz-row-wrap">
+      <div className="rz-row">
+        <span className="rz-k">Şimdi</span>
+        <span className="rz-v">
+          <b>{now}</b>
+        </span>
+      </div>
+    </div>
+  ) : null;
   return (
     <div className="mt-4">
-      {(title || side) && (
-        <p className="flex items-baseline gap-2.5">
-          {title && <b className="truncate text-[2.25rem] font-bold leading-none tracking-[-.04em]">{title}</b>}
-          {side && <span className="shrink-0 text-[0.9375rem] tabular-nums text-mut">{side}</span>}
-        </p>
-      )}
       {/* Canlı ekran · Yayın (yalnız ana hesap; raceUi RaceGo, Seyhun 2026-11-06) */}
-      {go && <div className="mt-4">{go}</div>}
+      {go}
       <div className="mt-3">
-        <RaceWxRows key={phase} r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} />
+        <RaceWxRows key={phase} r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} lead={lead} />
       </div>
       {places.length > 0 && <ResultCards className="mt-6" list={phase === "done" ? places.slice(0, 4) : places} short={phase === "done"} />}
-      {phase === "done" && <NextRow r={r} />}
+      {phase === "done" && !track && <NextRow r={r} />}
     </div>
   );
 }

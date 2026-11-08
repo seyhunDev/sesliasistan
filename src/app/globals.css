@@ -1357,3 +1357,8 @@ main.rzc .ck .rz-seg-b[aria-pressed="true"] { background: #fff; color: #0b1a33; 
 .rs-c.rs-pen::after { background: #ef4444; }
 .rs-c.rs-pen b { font-size: .75rem; color: #dc2626; letter-spacing: .04em; }
 .rs-c.rs-empty { opacity: .35; }
+/* beş sekme (Takip varken) telefonda sığsın: yazı biraz küçük, iç boşluk dar */
+@media (max-width: 47.99rem) {
+  main.rzc .rz-seg:has(> :nth-child(5)) .rz-seg-b { gap: .1875rem; padding: 0 .125rem; font-size: .8125rem; letter-spacing: -.01em; }
+  main.rzc .rz-seg:has(> :nth-child(5)) .rz-dot { width: .3125rem; height: .3125rem; }
+}

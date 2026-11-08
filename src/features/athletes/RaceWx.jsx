@@ -162,7 +162,8 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
 // Yeni yarış görünümü (Seyhun 2026-11-06 "hava durumu özet olsun, isterse tıklayıp detayı görsün; harita da başta kapalı olsun"):
 // "Hava" tek satır (sıcaklık · rüzgâr adı · kn), dokununca gün satırı ve saat saat tablo (açık renk) yerinde açılır; "Harita" satırı
 // dokununca bölge haritası açılır. day: açılışta seçili gün (yarış günü akşamı yarın). Tahmin henüz çıkmadıysa Hava satırı yazıyla kalır.
-export function RaceWxRows({ r, day = "" }) {
+// lead: Hava'nın üstünde aynı kartta duran satır (yarış günü "Şimdi", RaceDayTop)
+export function RaceWxRows({ r, day = "", lead = null }) {
   const today = todayStr();
   const race = raceDays(r);
   const days = wxDays(r, today);
@@ -174,7 +175,7 @@ export function RaceWxRows({ r, day = "" }) {
   const ob = useWindObs(open.map ? d.at : null, late ? "" : sel, today, true);
   const isToday = sel === today;
   const radar = useRainRadar(isToday && open.wx ? d.at : null);
-  if (!first) return null;
+  if (!first) return lead;
   const rows = d.rows?.length ? (isToday && open.wx ? radarRows(d.rows, radar) : d.rows) : null;
   const top = rows ? rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]) : null;
   const v = rows ? (isToday && rows.find((h) => h.hh === nowHH())) || top : null;
@@ -198,6 +199,7 @@ export function RaceWxRows({ r, day = "" }) {
   const flip = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }));
   return (
     <section aria-label="Yarış havası">
+      {lead}
       <Fold label="Hava" value={value} open={open.wx && !late && !!rows} onToggle={() => !late && rows && flip("wx")}>
         {days.length > 1 && <DayNav light sel={sel} days={days} today={today} onStep={step} />}
         {rows && <WindRibbon rows={rows} nowH={isToday ? +nowHH() : -1} radar={isToday ? radar : null} tone="light" win={d.win || null} h={92} className="mt-3" />}
