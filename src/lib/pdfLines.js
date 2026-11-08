@@ -94,8 +94,10 @@ export function tableOf(pages) {
       // "MAVİ GRUP", "Sarı Grup Listesi", "BLUE FLEET": sonraki satırların grubu (grup sütunu yoksa)
       const words = row.parts.map((p) => p.s).join(" ").split(/\s+/);
       const named = words.some((w) => /^(grup|grubu|group|fleet|filo|liste|listesi)$/.test(plain(w)));
-      if (words.length <= 6 && (named || words.length === 1)) {
-        const g = words.map(groupOf).find(Boolean);
+      // Başlık sayfa başlığıyla aynı satırda olabilir ("… OPTİMİST SPORCU LİSTESİ  MAVİ GRUP"); harfleri ayrı parça gelen ad ("MAV İ") birleşik de denenir
+      const long = words.length > 6;
+      if ((named || words.length === 1) && (!long || (named && words.length <= 14 && !(cols && row.parts.length >= cols.length)))) {
+        const g = words.map(groupOf).find(Boolean) || (words.length <= 3 ? groupOf(words.join("")) : "");
         if (g) {
           cur = g;
           continue;

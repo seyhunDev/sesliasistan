@@ -26,7 +26,7 @@ import { CourseTalk } from "@/features/broadcast/CourseTalk";
 import { writeCourseVoice } from "@/features/broadcast/courseWrite";
 import { PREP_PICK, prepName } from "@/lib/raceRounds";
 import { flagSvg } from "@/lib/raceSignals";
-import { dayGroups, groupColor, groupOf } from "@/lib/roundScore";
+import { GROUP_PICK, dayGroups, groupColor, groupMap, groupOf, groupsOn } from "@/lib/roundScore";
 import { todayStr } from "@/lib/utils/format";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { LiveVideos } from "./LiveVideos";
@@ -301,6 +301,20 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
   const runSec = (s) => (upHere(s.id) ? Math.max(0, Math.floor(-tr.rem)) : Math.max(0, Math.floor((nowT - Date.parse(s.at)) / 1000)));
   if (!orgId) return null;
   const card = row ? cardFor(course, row.cls, row.grp) : null;
+  // Grup ekle (Seyhun 2026-11-08 "sarı, mavi, kırmızı grubumuz var, onları ekleyebiliyor olmam lazım"): seçili satırın sınıfına grup eklenir,
+  // hem sınıfın grupları (plan.sets, sonraki yarışlar da) hem de bekleyen start olarak sıranın sonuna. Önce günün listesindeki gruplar.
+  const addCls = row?.cls || plan.sets[0]?.cls || plan.cls || "Optimist";
+  const dayGrps = [...new Set(Object.values(groupMap(groupsOn(groups, today))))];
+  const addOpts = [...new Set([...dayGrps, ...GROUP_PICK])].filter((g) => !order.some((o) => o.cls === addCls && o.grp === g));
+  const addGrp = (g) => {
+    setEdit("");
+    if (order.length >= 24) return setMsg("Programda en çok 24 start.");
+    const sets = plan.sets.length ? plan.sets : [{ cls: addCls, grps: plan.grps || [] }];
+    const next = sets.some((x) => x.cls === addCls) ? sets.map((x) => (x.cls === addCls && !x.grps.includes(g) ? { ...x, grps: [...x.grps, g] } : x)) : [...sets, { cls: addCls, grps: [g] }];
+    changePlan({ sets: next, cls: next[0].cls, grps: next[0].grps, order: [...order, { cls: addCls, grp: g, prep: row?.prep || plan.prep || "U" }] });
+    setPickI(order.length);
+    setRunId("");
+  };
   const dur = Math.round((t.left ?? t.dur ?? 300) / 60);
   const cdS = counting && cdId ? live.starts.find((x) => x.id === cdId) || null : null;
   const miniS = runS || cdS; // küçük şeritte görünen start
@@ -367,7 +381,7 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
                 <span>{[row?.cls, row ? rf.flow.label : ""].filter(Boolean).join(" · ")}</span>
               )}
             </div>
-            {(!counting && order.length) || running.length ? (
+            {!counting || running.length ? (
               <>
                 <div className="lst-lab">Grup</div>
                 <div className="lst-gs">
@@ -393,7 +407,22 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
                       <small>{o.ap ? "Tehirde" : `${nextRaceNo(live.starts, today, rdays, o.grp || "")}. yarış`}</small>
                     </button>
                   ))}
+                  {counting ? null : (
+                    <button type="button" className={`lst-g add${edit === "grp" ? " on" : ""}`} aria-pressed={edit === "grp"} onClick={() => (setEdit(edit === "grp" ? "" : "grp"), setMsg(""))}>
+                      <span>+ Grup</span>
+                    </button>
+                  )}
                 </div>
+                {edit === "grp" ? (
+                  <div className="lst-ch lst-addg">
+                    {addOpts.map((g) => (
+                      <button key={g} type="button" onClick={() => addGrp(g)}>
+                        <i style={{ background: groupColor(g) || "#ffd23f" }} aria-hidden="true" />
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </>
             ) : null}
             {runS ? (
