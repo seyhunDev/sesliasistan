@@ -25,6 +25,12 @@ export function cleanResults(v) {
       Object.assign(row, { cls, cat: ["Senior", "Junior", "Bambino"].includes(x?.cat) ? x.cat : "", n: int(x?.n, 1000), cp: int(x?.cp, 500), cn: int(x?.cn, 1000), gp: int(x?.gp, 500), gn: int(x?.gn, 1000), jp: int(x?.jp, 500), jn: int(x?.jn, 1000) });
       if (GROUPS.includes(x?.grp) && int(x?.fp, 500)) Object.assign(row, { grp: x.grp, fp: int(x.fp, 500), fn: int(x?.fn, 1000) });
       if (/^[\w-]{1,40}$/.test(x?.f || "")) row.f = x.f;
+      // fl renk grubu, r yarış yarış puanları, rh sütun adları (Y1, Q2; resultSheet.raceLine)
+      if (["Sarı", "Mavi", "Kırmızı", "Yeşil", "Pembe", "Turuncu", "Mor", "Beyaz"].includes(x?.fl)) row.fl = x.fl;
+      if (Array.isArray(x?.r) && x.r.length) {
+        row.r = x.r.slice(0, 20).map((v) => S(v, 8));
+        if (Array.isArray(x?.rh) && x.rh.length) row.rh = x.rh.slice(0, 20).map((v) => S(v, 6));
+      }
     }
     rows[id] = row;
   }

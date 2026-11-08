@@ -223,6 +223,9 @@ export function rankOurs(fleets, athletes, club) {
       cls: f.cls,
       cat: me.cat,
       ...(flt.length ? { grp: me.grp, fp: flt.indexOf(ri) + 1, fn: flt.length } : {}),
+      // Renk grubu ve yarış yarış puanı (Seyhun 2026-11-08 "sporcunun hangi grupta olduğu ve yarışta kaç olduğunu görmek istiyorum")
+      ...(me.fl ? { fl: me.fl } : {}),
+      ...(me.r?.length ? { r: me.r, ...(f.heads?.length ? { rh: f.heads } : {}) } : {}),
       place: ri + 1,
       n: f.rows.length,
       cp: cp || "",
@@ -234,6 +237,12 @@ export function rankOurs(fleets, athletes, club) {
     };
   }
   return out;
+}
+
+// Yarış yarış: "Mavi grup · Y1 3 · Y2 (12) · Y3 5" (fl renk grubu, r yarış puanları, rh sütun adları; yoksa "1. yarış")
+export function raceLine(x) {
+  const rs = (x?.r || []).map((v, i) => (String(v ?? "").trim() ? `${x.rh?.[i] || `${i + 1}. yarış`} ${v}` : "")).filter(Boolean);
+  return [x?.fl && `${x.fl} grup`, ...rs].filter(Boolean).join(" · ");
 }
 
 // "Optimist Junior", "ILCA 4"
