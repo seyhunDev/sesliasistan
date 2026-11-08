@@ -3,6 +3,7 @@
 // (NewVersionBar) ve asistanda "uygulamayı güncelle". Güncelle: service worker yenilenir, sayfa yeniden yüklenir.
 // Uygun anda (arkaya gidiş, sayfa geçişi) kendiliğinden de yenilenir: canAutoUpdate.
 import { BUILD } from "@/lib/buildInfo";
+import { savePlace } from "@/lib/place";
 import { trailFullLoad } from "@/lib/navTrail";
 import { dropPages } from "@/lib/crash";
 
@@ -130,6 +131,7 @@ function onClick(e) {
   e.stopPropagation(); // Next'in kendi geçişi başlamasın
   markTried();
   trailFullLoad(url.href);
+  savePlace(url.pathname + url.search); // tam yüklemeyle ana sayfaya gidişte eski sayfaya geri dönülmesin (lib/place.js)
   dropPages().then(() => location.assign(url.href));
 }
 

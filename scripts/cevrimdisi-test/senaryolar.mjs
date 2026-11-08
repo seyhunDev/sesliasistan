@@ -171,10 +171,12 @@ export async function run(server, log = () => {}) {
     );
     await page.close();
     const w1 = await open("/tasks");
-    await check(G, "yeniden açılınca açılış ekranı", "hiç görünmez", async () => {
+    await check(G, "yeniden açılınca yükleme beklenmez", "telefondaki kopyayla açılır", async () => {
       await until(() => task(w1, "Kopya görevi"), 20000);
       const r = await w1.evaluate(() => ({ boot: window.__boot, warm: "warm" in document.documentElement.dataset }));
-      return [!r.boot && r.warm, JSON.stringify(r)];
+      // Açılış ekranı 2026-11-04'ten beri kod geç gelirse 0,45 sn sonra logoyla belirir (globals.css bootwarm); asıl ölçü:
+      // hiçbir yükleme aşaması ekranı tutmadı (Splash tutsaydı data-warm'ı kaldırırdı)
+      return [r.warm, JSON.stringify(r)];
     });
     await sleep(5000);
     await check(G, "değişiklik yokken üst çizgi", "çıkmaz", async () => {
@@ -186,10 +188,24 @@ export async function run(server, log = () => {}) {
     const w2 = await open("/tasks");
     await check(G, "sunucuda değişiklik varken", "üstte çizgi çıkar, yeni başlık gelir", async () => {
       const ok = await until(async () => (await task(w2, "Yeni başlık")) && (await w2.evaluate(() => window.__sync)), 20000);
-      const r = await w2.evaluate(() => ({ boot: window.__boot, sync: window.__sync }));
-      return [ok && !r.boot, JSON.stringify(r)];
+      const r = await w2.evaluate(() => ({ warm: "warm" in document.documentElement.dataset, sync: window.__sync }));
+      return [ok && r.warm, JSON.stringify(r)];
+    });
+    // Kalınan sayfa (lib/place.js): uygulama arkadan dönüşte siteyi ana sayfadan baştan açarsa kalınan sayfa açılır;
+    // yeni pencerede (uygulama tamamen kapanıp açılınca) ana sayfa açılır
+    await check(G, "arkadan dönüşte ana sayfadan yüklenince", "kalınan sayfa (/tasks) açılır", async () => {
+      await w2.goto(`${server.url}/`, { waitUntil: "load" });
+      await until(async () => new URL(w2.url()).pathname === "/tasks", 8000);
+      return [new URL(w2.url()).pathname === "/tasks", new URL(w2.url()).pathname];
     });
     await w2.close();
+    await check(G, "tamamen kapatılıp açılınca", "ana sayfa açılır", async () => {
+      const w3 = await open("/");
+      await sleep(2000);
+      const p = new URL(w3.url()).pathname;
+      await w3.close();
+      return [p === "/", p];
+    });
     page = await open("/shopping");
 
     // 1) İnternet varken: boşta, uygulamaya dönüşte ve kayıtta şerit çıkmaz
