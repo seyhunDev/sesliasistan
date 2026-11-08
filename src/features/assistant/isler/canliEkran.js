@@ -1,11 +1,11 @@
 // Canlı ekran işleri (herkese açık /canli sayfası, Seyhun 2026-11-01), elle yapılanın (Canlı ekran penceresi) sesle yapılanı:
 // "birinci şamandıra 1302 1287 1415", "finish 1287 1302" → o anki yarışın dönüşleri; "parkur 1 4 1 2 3 finish" → dönüş sırası;
-// "ekranda birinci yarışın startını döngüde göster", "ekranda canlı yayını göster", "ekrandan kaldır"; hemen ardından "geri al".
+// "ekranda birinci yarışın startını döngüde göster", "ekranda canlı yayını göster", "ekrandan kaldır"; hemen ardından "geri al"; "mavi grubu ekle".
 // Yalnız ana hesap. Yarış: açık yarış ya da multimedya sayfası, yoksa bugün süren yarış (yarisMedya ile aynı).
-import { liveRace } from "@/lib/raceLive";
+import { grpCommand, liveRace } from "@/lib/raceLive";
 import { courseUndo } from "@/lib/raceCourse";
 import { roundCommand, routeCommand, screenCommand } from "@/lib/raceRounds";
-import { roundAt, roundJust, roundSay, roundUndo, screenSay } from "@/features/liveScreen/liveActions";
+import { grpSay, roundAt, roundJust, roundSay, roundUndo, screenSay } from "@/features/liveScreen/liveActions";
 import { courseAt } from "./yarisMedya";
 import { todayStr } from "@/lib/utils/format";
 
@@ -29,7 +29,7 @@ export async function liveScreenCmd(ctx, s, viaVoice) {
     }
     return true;
   }
-  const mine = routeCommand(s) || roundCommand(s) || screenCommand(s);
+  const mine = routeCommand(s) || roundCommand(s) || screenCommand(s) || grpCommand(s);
   if (!mine) return undefined;
   const r = raceFor(ctx);
   if (!r) {
@@ -38,7 +38,7 @@ export async function liveScreenCmd(ctx, s, viaVoice) {
   }
   setPhase?.("thinking");
   try {
-    const out = (await roundSay(raceOrg, r.id, s)) || (await screenSay(raceOrg, r.id, s));
+    const out = (await roundSay(raceOrg, r.id, s)) || (await screenSay(raceOrg, r.id, s)) || (await grpSay(raceOrg, r.id, s, todayStr()));
     if (!out) return undefined;
     if (out.fail) reply(out.fail, { engine: "local" }, viaVoice);
     else done(out.text, { engine: "local" }, viaVoice);

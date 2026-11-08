@@ -2,8 +2,8 @@
 
 // Canlı ekranın işleri: hem uygulamadaki "Canlı ekran" penceresi hem asistan (isler/canliEkran.js) bunları kullanır (sesle = elle).
 import { authFetch } from "@/lib/authFetch";
-import { loadRoundsOf, saveCourseShow, savePlan, saveRounds, saveScreen, saveStream } from "@/features/athletes/raceLiveStore";
-import { momentRace, momentRaceName, raceName } from "@/lib/raceLive";
+import { loadRoundsOf, saveCourseShow, savePlan, savePlanKeys, saveRounds, saveScreen, saveStream } from "@/features/athletes/raceLiveStore";
+import { addGrps, grpCommand, momentRace, momentRaceName, raceName, rollPlan } from "@/lib/raceLive";
 import { applyRound, currentStart, markName, recTitle, roundCommand, routeCommand, screenCommand, setRoute, sourceBySay, streamSources, ytEmbed } from "@/lib/raceRounds";
 
 export const liveUrl = (raceId) => `${window.location.origin}/canli/${raceId}`;
@@ -124,4 +124,18 @@ export async function screenSay(orgId, raceId, s) {
   if (!pick) return { fail: "Gösterilecek video yok." };
   await showOnScreen(orgId, raceId, { kind: "rec", mid: pick.id, loop: c.loop });
   return { text: `Ekranda: ${recName(pick, L.starts)}${c.loop ? ", döngüde" : ""}.` };
+}
+
+// "mavi grubu ekle", "optimist kırmızı ve yeşil grupları ekle" (Seyhun 2026-11-08): Yayın › Süre'deki "+ Grup" ile aynı (addGrps)
+export async function grpSay(orgId, raceId, s, today) {
+  const c = grpCommand(s);
+  if (!c) return null;
+  const L = await loadRoundsOf(orgId, raceId);
+  const plan = rollPlan(L.plan, today);
+  const cls = plan.sets.find((x) => c.say.includes(x.cls.trim().toLocaleLowerCase("tr")))?.cls || "";
+  const p = addGrps(plan, c.add, cls);
+  if (!p) return { fail: `${c.add.join(", ")} zaten var.` };
+  const { added, to, ...patch } = p;
+  await savePlanKeys(orgId, raceId, { ...plan, ...patch }, ["sets", "cls", "grps", "order", ...(plan.day !== L.plan.day ? ["day", "at", "status", "next", "ap"] : [])]);
+  return { text: `${added.join(", ")} grup eklendi${to ? `, ${to}` : ""}. Bekleyen yarışlara startı da girdi.` };
 }

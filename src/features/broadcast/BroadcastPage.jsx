@@ -44,7 +44,7 @@ import { BoatLive } from "@/features/tracking/BoatLive";
 import { ZOOMS, fleetGroups, fleetOf } from "@/lib/boatPlay";
 import { loadEntryDoc } from "@/features/rounds/roundsStore";
 import { ensurePublic, liveUrl, recName, setStream, showOnScreen } from "@/features/liveScreen/liveActions";
-import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, openWin, moveWin, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets, grpHold, grpRelease, grpDue, heldGrps } from "@/lib/raceLive";
+import { upSec, AP_MIN, AP_WHY, apDue, apGap, apLower, apRaise, apSigId, trHm, warnDue, orangeUp, apText, cleanLive, cleanPlan, dayRaces, dayTime, dirShort, dropRace, finishRace, openWin, moveWin, pickTimer, resetPatch, rollPlan, ownedBy, raceName, raceOrder, raceTime, raceTitle, renumber, zeroRace, setsUp, orderBySets, fillOrder, addGrps, grpHold, grpRelease, grpDue, heldGrps } from "@/lib/raceLive";
 import { CARD_IDS, CARD_TYPES, cardFor, cardKey, withRaceCards, cleanCourse, cleanObs, degText, lineBias, obsTitle, obsValue, selCard, withLiveWind } from "@/lib/raceCourse";
 import { cleanRoute, routeText, sceneSvg } from "@/lib/courseScene";
 import { cardOf, coursePoints } from "@/lib/courseCard";
@@ -664,7 +664,8 @@ export function BroadcastPage({ orgId, id }) {
     grpRef.current = grpKey;
     const add = JSON.parse(grpKey);
     const t = setTimeout(() => {
-      changePlan({ sets: plan.sets.map((x) => (add[x.cls] ? { ...x, grps: [...x.grps, ...add[x.cls]].slice(0, 6) } : x)) });
+      const sets = plan.sets.map((x) => (add[x.cls] ? { ...x, grps: [...x.grps, ...add[x.cls]].slice(0, 6) } : x));
+      changePlan({ sets, order: fillOrder(plan.order, plan.sets, sets) });
       toast(`Renk listesinden gruplar eklendi: ${Object.values(add).flat().join(", ")}`);
     }, 0);
     return () => clearTimeout(t);
@@ -672,7 +673,7 @@ export function BroadcastPage({ orgId, id }) {
   }, [grpKey]);
   const saveSetup = (sets) => {
     // bekleyen startlar da yeni start sırasına göre dizilir (sınıf sırası, sınıfın içinde grup sırası)
-    changePlan({ sets, cls: sets[0]?.cls || "", grps: sets[0]?.grps || [], order: orderBySets(plan.order, sets) });
+    changePlan({ sets, cls: sets[0]?.cls || "", grps: sets[0]?.grps || [], order: fillOrder(plan.order, plan.sets, sets) });
     setSetupOpen(false);
     toast("Sınıflar ve gruplar kaydedildi");
   };
@@ -1269,6 +1270,18 @@ export function BroadcastPage({ orgId, id }) {
     }
     return out;
   })();
+  const heroCls = heroE?.cls || heroX?.plan?.cls || plan.sets[0]?.cls || plan.cls || "";
+  const heroSet = plan.sets.find((x) => x.cls.trim().toLocaleLowerCase("tr") === heroCls.trim().toLocaleLowerCase("tr")) || plan.sets[0] || { grps: plan.grps };
+  const grpMore = (heroSet.grps.some(isFinalGrp) ? GROUP_PICK.filter(isFinalGrp) : GROUP_PICK).filter((g) => !heroSet.grps.includes(g) && (plan.sets.length ? heroSet.grps.length < 6 : true));
+  const addGrp = (g) => {
+    const p = addGrps(plan, [g], heroCls);
+    setChg("");
+    if (!p) return;
+    const { added, to, ...patch } = p;
+    if (patch.order.length > 24) return toast("Programda en çok 24 start.");
+    changePlan(patch);
+    toast(`${added.join(", ")} grup eklendi${to ? ` · ${to}` : ""}`);
+  };
   const racing = races.flatMap((r) => r.rows.filter((x) => x.start && x.state === "live" && !cdRow(x.start.id)).map((x) => ({ x, n: r.n })));
   const cols = (() => {
     const g = [...groupRows.map(([, gg]) => gg), ...races.flatMap((r) => r.rows.map((x) => x.grp || ""))];
@@ -1523,12 +1536,28 @@ export function BroadcastPage({ orgId, id }) {
                         </button>
                       </div>
                     ) : null}
-                    {heroOpts.length > 1 ? (
-                      <div className="sure-pick" aria-label="Grup">
-                        {heroOpts.map(({ x, n }) => (
-                          <button key={x.key} type="button" data-press aria-pressed={x.i === heroX.i} onClick={() => (setChg(""), setHeroPick(x.i))}>
-                            <i style={{ background: (x.grp && groupColor(x.grp)) || "var(--mut)" }} aria-hidden="true" />
-                            {[x.grp || x.plan?.cls || "Start", n !== hero.n ? n : ""].filter(Boolean).join(" ")}
+                    <div className="sure-pick" aria-label="Grup">
+                      {heroOpts.length > 1
+                        ? heroOpts.map(({ x, n }) => (
+                            <button key={x.key} type="button" data-press aria-pressed={x.i === heroX.i} onClick={() => (setChg(""), setHeroPick(x.i))}>
+                              <i style={{ background: (x.grp && groupColor(x.grp)) || "var(--mut)" }} aria-hidden="true" />
+                              {[x.grp || x.plan?.cls || "Start", n !== hero.n ? n : ""].filter(Boolean).join(" ")}
+                            </button>
+                          ))
+                        : null}
+                      {/* Grup ekle (Seyhun 2026-11-08): sınıfa yeni grup, bekleyen yarışlara o grubun startı da girer (sesle "mavi grubu ekle") */}
+                      {grpMore.length ? (
+                        <button type="button" data-press aria-pressed={chg === "grp"} onClick={() => setChg(chg === "grp" ? "" : "grp")}>
+                          + Grup
+                        </button>
+                      ) : null}
+                    </div>
+                    {chg === "grp" ? (
+                      <div className="sure-pick" aria-label="Eklenecek grup">
+                        {grpMore.map((g) => (
+                          <button key={g} type="button" data-press onClick={() => addGrp(g)}>
+                            <i style={{ background: groupColor(g) }} aria-hidden="true" />
+                            {g}
                           </button>
                         ))}
                       </div>
@@ -2071,7 +2100,7 @@ export function BroadcastPage({ orgId, id }) {
         {!needSetup && seen("sporcu") ? (
           <Pane k="sporcu">
             {/* Sporcu (Seyhun 2026-11-03): gruplar, sporcu listesi, gün gün renk listesi, sonuçlar; Dönüşler bu listeyi kullanır */}
-            <AthletesTab orgId={orgId} raceId={id} plan={plan} onSets={(sets) => changePlan({ sets, cls: sets[0]?.cls || "", grps: sets[0]?.grps || [] })} entries={entries} groups={groups} today={today} days={days} />
+            <AthletesTab orgId={orgId} raceId={id} plan={plan} onSets={(sets) => changePlan({ sets, cls: sets[0]?.cls || "", grps: sets[0]?.grps || [], order: fillOrder(plan.order, plan.sets, sets) })} entries={entries} groups={groups} today={today} days={days} />
             <MasaBar>
               <Link href={`/athletes/races/${id}/sonuclar`} className="flex h-12 flex-1 items-center justify-center rounded-[0.875rem] border border-line bg-[var(--chip)] text-[0.9375rem] font-semibold active:scale-[0.98]">
                 Sonuç yükle
