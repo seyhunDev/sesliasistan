@@ -166,7 +166,7 @@ const tripDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { w
 const SECS = [...RACE_SECS.map(([k]) => k), "site"]; // site: siteden gelen yarış dokümanları (?sec=site)
 const inRace = (x) => !!x?.startDate && todayStr() >= x.startDate && todayStr() <= (x.endDate || x.startDate);
 
-export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0 }) {
+export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0, onResultsFile = null }) {
   const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
   const router = useRouter();
   const toast = useToast();
@@ -1323,7 +1323,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
       {/* Siteden gelen belgeler Dokümanlar sekmesinde (2026-11-04); sekme kapalıyken de bağlı (yeni gelenler işlenir) */}
       {siteDocs && rid && (
         <div hidden={tab !== "site"}>
-          <RaceTrack orgId={orgId} race={{ ...r, id: rid }} chosen={chosen} more={siteDocs(tab === "site")} />
+          <RaceTrack orgId={orgId} race={{ ...r, id: rid }} chosen={chosen} more={siteDocs(tab === "site")} onResultsFile={onResultsFile} />
         </div>
       )}
       {tab === "docs" && (

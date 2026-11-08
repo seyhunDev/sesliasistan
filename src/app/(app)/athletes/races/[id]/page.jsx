@@ -144,13 +144,13 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   useEffect(() => {
     raceNow.current = race;
   }, [race]);
-  const onSiteResults = useCallback(
-    async (d) => {
+  // Sonuç belgesi (siteden ya da elle, Takip › Sonuçlar › Sonuç yükle; Seyhun 2026-11-08 "sisteme girilmediyse manuel yükleyebilmeliyim")
+  const importFile = useCallback(
+    async (file) => {
       const cur = raceNow.current;
       if (!athletes || !cur?.id) return null;
       const ours = athletes.filter((a) => (cur.athleteIds || []).includes(a.id));
       const club = athletes.filter((a) => isActive(a) && !ours.includes(a));
-      const file = new File([await siteDocBlob(cur.id, d)], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" });
       const got = await importResults({ orgId, race: cur, athletes: ours, club, file });
       got.results = stampResults(cur.results, got.results, todayStr());
       await saveRaceResults(orgId, cur.id, got.results, got.extra);
@@ -162,6 +162,14 @@ function Race({ orgId, uid, email, by, mail, coach }) {
       return { state: "used", note: importToast(got), undo: { file: got.results.files?.at(-1)?.id || "" } };
     },
     [athletes, orgId],
+  );
+  const onSiteResults = useCallback(
+    async (d) => {
+      const cur = raceNow.current;
+      if (!athletes || !cur?.id) return null;
+      return importFile(new File([await siteDocBlob(cur.id, d)], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" }));
+    },
+    [athletes, importFile],
   );
   // Sunucu siteden gelen talimatı işledi: yarış yeniden okunur
   const onSiteRefresh = useCallback(async () => {
@@ -301,6 +309,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
             coach={coach}
             onCoach={onCoach}
             siteNew={siteNew}
+            onResultsFile={athletes ? importFile : null}
             siteDocs={race.id && race.site?.act ? (shown) => <SiteDocs orgId={orgId} race={race} shown={shown} onNew={setSiteNew} ready={!!athletes} onResults={onSiteResults} onUndo={onSiteUndo} onRefresh={onSiteRefresh} /> : null}
             onMailTo={(list) => updateDoc(doc(db, "users", uid), { mailTo: list }).catch(() => toast("Adres kaydedilemedi"))}
           />
