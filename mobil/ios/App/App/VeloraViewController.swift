@@ -47,13 +47,16 @@ class VeloraViewController: CAPBridgeViewController {
             return
         }
         if w.isLoading { return }
-        // Sayfa var görünüyor ama web süreci ölmüş olabilir (beyaz ekran): küçük bir soru cevapsız kalırsa yeniden yüklenir
+        // Sayfa var görünüyor ama web süreci ölmüş olabilir (beyaz ekran): küçük soru hata verirse ya da sayfa boşsa yeniden yüklenir.
+        // Cevap yalnız gecikirse yenilenmez (Seyhun 2026-11-08 "kilidi açınca uygulama yükleniyor gibi yenileniyor"): kilitten
+        // dönüşte web süreci uyanırken cevap 3 sn'yi geçebiliyordu, canlı sayfa boşuna baştan yükleniyordu. Ölmüş süreç hata
+        // olarak döner; hiç cevap gelmezse ancak 15 sn sonra yenilenir.
         var cevap = false
         w.evaluateJavaScript("document.body ? document.body.childElementCount : 0") { sonuc, hata in
             cevap = true
             if hata != nil || (sonuc as? Int) == 0 { w.reload() }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
             if !cevap && !w.isLoading { w.reload() }
         }
     }
