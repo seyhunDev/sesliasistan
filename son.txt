@@ -1,8 +1,8 @@
-Commit: 8e55f44 · Yayın: + Grup ve sesle grup ekleme (#1346)
-Zaman: 2026-11-08-1236 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42466774208
+Commit: a28d3fe · Takip: Sonuç yükle (elle sonuç PDF'i) (#1347)
+Zaman: 2026-11-08-1329 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42470488075
 
-TAM TEST · 08.11.2026 12:21:10
+TAM TEST · 08.11.2026 13:13:36
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1428/1438 geçti · 10 kalan · 948 sn
+SONUÇ: 1428/1438 geçti · 10 kalan · 974 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -227,7 +227,7 @@ SONUÇ: 1428/1438 geçti · 10 kalan · 948 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 13 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 14 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
