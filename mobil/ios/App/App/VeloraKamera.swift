@@ -1,6 +1,7 @@
 import AVFoundation
 import Capacitor
 import Photos
+import PhotosUI
 import UIKit
 import UniformTypeIdentifiers
 
@@ -346,6 +347,110 @@ enum VideoKopya {
                     }
                 }
             }
+        }
+    }
+}
+
+// Galeriden video (Seyhun 2026-11-08 "galerimde zaten var, iki defa kullanmaya gerek yok"; web: LiveVideos.jsx, nativeIos.js):
+// galleryPick Fotoğraflar seçicisini açar (çoklu, yalnız video), videonun kopyasını almaz; her seçilen için { asset (Fotoğraflar
+// kimliği), dur (sn), at (çekim anı, ms), th (küçük resim, JPEG data adresi) } döner. Sonuç { items, miss } ya da { cancel: true };
+// miss: "Sınırlı erişim"de okunamayan seçim sayısı. Okuma izni ilk seferde istenir.
+// galleryOpen({ asset }) oynatmak ya da YouTube'a yüklemek için geçici dosya hazırlar (camera sonucuyla aynı biçim; web cameraRead ile
+// okur, son parçada dosya silinir). 250 MB'tan büyük video 1080p, en çok 250 MB kopyaya küçültülür (web'de bellekte tutulacak).
+extension VeloraPlugin {
+    @objc func galleryPick(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            let durum = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+            guard durum == .authorized || durum == .limited else { return call.reject("Fotoğraflar'a erişim izni yok. Ayarlar › Velora › Fotoğraflar") }
+            guard let vc = self.bridge?.viewController else { return call.reject("Seçici açılamadı") }
+            var c = PHPickerConfiguration(photoLibrary: .shared())
+            c.filter = .videos
+            c.selectionLimit = 0
+            c.preferredAssetRepresentationMode = .current
+            let p = PHPickerViewController(configuration: c)
+            let y = GaleriYonetici(call: call)
+            p.delegate = y
+            GaleriYonetici.etkin = y
+            vc.present(p, animated: true)
+        }
+    }
+
+    @objc func galleryOpen(_ call: CAPPluginCall) {
+        let kimlik = call.getString("asset", "")
+        Task {
+            let durum = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+            guard durum == .authorized || durum == .limited else { return call.reject("Fotoğraflar'a erişim izni yok") }
+            guard let a = PHAsset.fetchAssets(withLocalIdentifiers: [kimlik], options: nil).firstObject else { return call.reject("Video Fotoğraflar'da bulunamadı") }
+            let kaynaklar = PHAssetResource.assetResources(for: a)
+            guard let r = kaynaklar.first(where: { $0.type == .fullSizeVideo }) ?? kaynaklar.first(where: { $0.type == .video }) else { return call.reject("Video okunamadı") }
+            let tmp = FileManager.default.temporaryDirectory
+            let ad = "velora-g\(Int(Date().timeIntervalSince1970 * 1000))"
+            let ext = (r.originalFilename as NSString).pathExtension.lowercased()
+            let asil = tmp.appendingPathComponent("\(ad)-asil.\(ext.isEmpty ? "mov" : ext)")
+            try? FileManager.default.removeItem(at: asil)
+            let o = PHAssetResourceRequestOptions()
+            o.isNetworkAccessAllowed = true // iCloud'daki video indirilir
+            do {
+                try await PHAssetResourceManager.default().writeData(for: r, toFile: asil, options: o)
+            } catch {
+                return call.reject("Video okunamadı: \(error.localizedDescription)")
+            }
+            let at = a.creationDate ?? Date()
+            let boyut = (try? FileManager.default.attributesOfItem(atPath: asil.path)[.size] as? NSNumber)?.intValue ?? 0
+            let sinir = 250 * 1024 * 1024
+            if boyut > sinir {
+                let kucuk = tmp.appendingPathComponent("\(ad).mp4")
+                do {
+                    try await VideoKopya.hazirla(asil, kucuk, enCokBayt: sinir, enCokBps: 8_000_000, enCokPx: 1920)
+                    try? FileManager.default.removeItem(at: asil)
+                    return self.galeriCevap(call, kucuk, type: "video/mp4", at: at)
+                } catch {
+                    NSLog("[galeri] küçültülemedi: \(error)")
+                }
+            }
+            self.galeriCevap(call, asil, type: ext == "mp4" ? "video/mp4" : "video/quicktime", at: at)
+        }
+    }
+
+    private func galeriCevap(_ call: CAPPluginCall, _ url: URL, type: String, at: Date) {
+        let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue ?? 0
+        call.resolve(["file": url.path, "size": size, "kind": "video", "type": type, "name": url.lastPathComponent, "end": at.timeIntervalSince1970 * 1000])
+    }
+}
+
+final class GaleriYonetici: NSObject, PHPickerViewControllerDelegate {
+    static var etkin: GaleriYonetici?
+    let call: CAPPluginCall
+
+    init(call: CAPPluginCall) {
+        self.call = call
+    }
+
+    func picker(_ p: PHPickerViewController, didFinishPicking sonuclar: [PHPickerResult]) {
+        p.dismiss(animated: true)
+        GaleriYonetici.etkin = nil
+        let kimlikler = sonuclar.compactMap { $0.assetIdentifier }
+        if sonuclar.isEmpty { return call.resolve(["cancel": true]) }
+        let call = self.call
+        DispatchQueue.global(qos: .userInitiated).async {
+            let bul = PHAsset.fetchAssets(withLocalIdentifiers: kimlikler, options: nil)
+            var sira: [String: PHAsset] = [:]
+            bul.enumerateObjects { a, _, _ in sira[a.localIdentifier] = a }
+            let o = PHImageRequestOptions()
+            o.isSynchronous = true
+            o.deliveryMode = .highQualityFormat
+            o.resizeMode = .fast
+            o.isNetworkAccessAllowed = true
+            var items: [[String: Any]] = []
+            for k in kimlikler {
+                guard let a = sira[k] else { continue }
+                var th = ""
+                PHImageManager.default().requestImage(for: a, targetSize: CGSize(width: 480, height: 480), contentMode: .aspectFill, options: o) { img, _ in
+                    if let d = img?.jpegData(compressionQuality: 0.7) { th = "data:image/jpeg;base64," + d.base64EncodedString() }
+                }
+                items.append(["asset": k, "dur": Int(a.duration.rounded()), "at": (a.creationDate ?? Date()).timeIntervalSince1970 * 1000, "th": th])
+            }
+            call.resolve(["items": items, "miss": sonuclar.count - items.count])
         }
     }
 }
