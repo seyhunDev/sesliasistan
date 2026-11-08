@@ -150,7 +150,7 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     listKept().then(async (l) => {
       let mine = l.filter((x) => x.mine && x.raceId === raceId && (x.blob || x.asset));
       if (hasGallery()) {
-        const old = mine.filter((x) => x.blob && !x.asset && !String(x.blob.name || "").startsWith("velora-"));
+        const old = mine.filter((x) => x.blob && !x.asset && !/^(velora-|captured)/i.test(String(x.blob.name || ""))); // kamera kayıtları (velora-, web'de capturedvideo) tek kopya
         const ref = mine.filter((x) => x.blob && x.asset);
         await Promise.all([...old.map((x) => dropKept(x.id)), ...ref.map((x) => keepLocal(refOf(x)))]);
         mine = mine.filter((x) => !old.includes(x)).map((x) => (ref.includes(x) ? refOf(x) : x));
