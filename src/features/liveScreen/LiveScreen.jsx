@@ -1690,7 +1690,28 @@ const grpHit = (x, q) => {
   const hay = [x.name, x.club, clubName(x.club), shortClub(x.club), x.sail].join(" ").toLocaleLowerCase("tr");
   return q.toLocaleLowerCase("tr").split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
 };
-// Program paneli: Start (günün start sırası), Talimat (yarış talimatındaki program); yalnız dolu olan sekmeler. Gruplar Sporcular düğmesinde (ScAthPanel)
+// Günün grupları: { grp, rows: [{ sail, name, club }] } (Sarı, Mavi… sırasıyla); bugün yoksa açıklanmış ilk sonraki gün (day ile)
+function scGroups(data, today) {
+  const all = data.groups || {};
+  const day = groupsOn(all, today).length ? today : Object.keys(all).filter((d) => d > today).sort()[0] || "";
+  const gm = groupMap(groupsOn(all, day));
+  if (!Object.keys(gm).length) return [];
+  const who = new Map((data.entries || []).map((e) => [String(e.sail), e]));
+  const by = new Map();
+  for (const [sail, g] of Object.entries(gm)) {
+    if (!by.has(g)) by.set(g, []);
+    const e = who.get(sail);
+    by.get(g).push({ sail, name: e?.name || "", club: e?.club || "", our: isOur(e?.club) });
+  }
+  const rk = (g) => {
+    const i = GROUP_PICK.indexOf(g);
+    return i < 0 ? 99 : i;
+  };
+  return [...by.entries()]
+    .sort((a, b) => rk(a[0]) - rk(b[0]) || a[0].localeCompare(b[0], "tr"))
+    .map(([grp, rows]) => ({ grp, day, rows: rows.sort((a, b) => b.our - a.our || Number(a.sail) - Number(b.sail) || a.sail.localeCompare(b.sail)) }));
+}
+// Program paneli: Start (günün start sırası), Talimat (yarış talimatındaki program); yalnız dolu olan sekmeler. Gruplar ayrı düğmede (ScGrpPanel)
 const PG_STATE = { done: "Bitti", now: "Yarışta", next: "Sıradaki" };
 function ScProgPanel({ prog, ag }) {
   const tabs = [prog.length > 0 && ["st", "Start"], ag && ["ag", "Talimat"]].filter(Boolean);
@@ -1750,186 +1771,45 @@ function ScProgPanel({ prog, ag }) {
     </div>
   );
 }
-// Sporcular (Seyhun 2026-11-09 "canlı sayfada sporcuların derecelerini ve o gün hangi grupta olduklarını görmek istiyorum"; Sıralama ve
-// Gruplar tek düğme): sınıf sınıf genel sıra, yelken no, ad, kulüp, bugünkü grup, puan; sıralama yoksa kayıt listesi. Bizimkiler mavi.
-function scAth(data, day) {
-  const gm = groupMap(groupsOn(data.groups || {}, day));
-  const boards = scBoards(data);
-  const out = boards.map((b) => ({ cls: b.cls, races: b.races, rows: b.all.map((r) => ({ p: r.p, sail: String(r.sail), name: r.name || "", club: r.club || "", sc: r.sc, t: r.t ?? "" })) }));
-  for (const e of data.entries || []) {
-    const sail = String(e.sail || "");
-    if (!sail) continue;
-    let b = out.length === 1 && boards.length ? out[0] : out.find((x) => x.cls === (e.cls || ""));
-    if (!b) out.push((b = { cls: e.cls || "", races: [], rows: [] }));
-    if (!b.rows.some((r) => r.sail === sail)) b.rows.push({ p: "", sail, name: e.name || "", club: e.club || "", sc: [], t: "" });
-  }
-  return out
-    .map((b) => ({ ...b, rows: b.rows.map((r) => ({ ...r, g: gm[r.sail] || "", our: isOur(r.club) })) }))
-    .map((b) => ({ ...b, rows: b.rows.filter((r) => r.p !== "").concat(b.rows.filter((r) => r.p === "").sort((x, y) => Number(x.sail) - Number(y.sail) || x.sail.localeCompare(y.sail))) }))
-    .filter((b) => b.rows.length);
-}
-// sporcunun dereceleri gün gün (yeniden eskiye): yarış no → gün starts'tan, o günkü grubu günün listesinden
-function athDays(data, b, r) {
-  const by = new Map();
-  b.races.forEach((n, i) => {
-    const v = r.sc[i];
-    if (!v) return;
-    const st = (data.starts || []).find((s) => !s.void && s.n === n && (!s.cls || !b.cls || s.cls === b.cls));
-    const day = st?.day || "";
-    if (!by.has(day)) by.set(day, []);
-    by.get(day).push({ n, v, g: day ? groupMap(groupsOn(data.groups || {}, day))[r.sail] || "" : "" });
-  });
-  return [...by.entries()].sort((x, y) => y[0].localeCompare(x[0])).map(([day, rows]) => ({ day, rows: rows.reverse() }));
-}
-const athDayName = (d, today) => (d === today ? "Bugün" : d === trDay(Date.parse(`${today}T12:00:00Z`) - 864e5) ? "Dün" : dayText(d));
-const GDot = ({ g }) => (g ? <i style={{ background: groupColor(g) || "#ffd23f" }} aria-hidden="true" /> : null);
-function ScAthPanel({ data, ath, day, prog = [], res = false, onFull }) {
-  const [ci, setCi] = useState(0);
+// Gruplar paneli: grup seçilir, altında yelken no, ad, kulüp
+function ScGrpPanel({ gr, day }) {
+  const [g, setG] = useState("");
   const [q, setQ] = useState("");
-  const [f, setF] = useState(""); // "" hepsi, "our" bizimkiler, grup adı
-  const [pick, setPick] = useState(null); // { cls, sail }
-  const b = ath[Math.min(ci, ath.length - 1)];
-  if (!b) return null;
-  const pb = pick ? ath.find((x) => x.cls === pick.cls) : null;
-  const pr = pb?.rows.find((x) => x.sail === pick.sail);
-  if (pr) {
-    const days = athDays(data, pb, pr);
-    const st = pr.g ? prog.find((x) => x.grp === pr.g && (x.state === "now" || x.state === "next")) : null;
-    return (
-      <div className="sc-ath one">
-        <button type="button" className="sc-athb" onClick={() => setPick(null)}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          Sporcular
-        </button>
-        <h3 className={pr.our ? "our" : ""}>{pr.name || pr.sail}</h3>
-        <p className="sc-athw">{[pr.sail, clubName(pr.club) || pr.club, pb.cls].filter(Boolean).join(" · ")}</p>
-        <div className="sc-aths">
-          <div><span>Genel sıra</span><b>{pr.p ? `${pr.p}${/^\d+$/.test(String(pr.p)) ? "." : ""}` : "—"}</b></div>
-          <div><span>Puan</span><b>{pr.t !== "" ? pr.t : "—"}</b></div>
-          <div className={pr.g ? "g" : ""}><span>Bugün</span><b>{pr.g ? <><GDot g={pr.g} />{pr.g}</> : "—"}</b></div>
-        </div>
-        {st ? (
-          <div className="sc-athn">
-            <b>{[st.grp, st.name].filter(Boolean).join(" · ")}</b>
-            <span className={st.state}>{st.state === "now" ? "Yarışta" : st.at || "Sıradaki"}</span>
-          </div>
-        ) : null}
-        {days.length ? (
-          <>
-            <p className="sc-athh">Dereceler</p>
-            {days.map((d) => (
-              <Fragment key={d.day || "x"}>
-                {d.day && days.length > 1 ? <p className="sc-athd">{athDayName(d.day, day)}</p> : null}
-                <ul>
-                  {d.rows.map((x) => (
-                    <li key={x.n}>
-                      <span>{x.n}. yarış</span>
-                      <em>{x.g ? <><GDot g={x.g} />{x.g}</> : null}</em>
-                      <b>{x.v}</b>
-                    </li>
-                  ))}
-                </ul>
-              </Fragment>
-            ))}
-          </>
-        ) : null}
-      </div>
-    );
-  }
-  const ours = b.rows.filter((r) => r.our).length;
-  const grs = [...new Set(b.rows.map((r) => r.g).filter(Boolean))].sort((x, y) => {
-    const i = (g) => (GROUP_PICK.indexOf(g) < 0 ? 99 : GROUP_PICK.indexOf(g));
-    return i(x) - i(y) || x.localeCompare(y, "tr");
-  });
-  const fOn = f === "our" ? (ours ? f : "") : grs.includes(f) ? f : "";
-  const rows = b.rows.filter((r) => (!fOn || (fOn === "our" ? r.our : r.g === fOn)) && (!q.trim() || grpHit(r, q)));
-  const hasP = b.rows.some((r) => r.p !== "");
-  return (
-    <div className="sc-ath">
-      <div className="sc-vph">
-        <b>Sporcular</b>
-      </div>
-      {ath.length > 1 ? (
-        <div className="sc-vtabs" role="tablist">
-          {ath.map((x, i) => (
-            <button key={x.cls || i} type="button" role="tab" aria-selected={x === b} className={x === b ? "on" : ""} onClick={() => (setCi(i), setF(""))}>
-              {x.cls || "Diğer"}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <input className="sc-pgs" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ara" aria-label="Sporcu ara" />
-      {ours || grs.length ? (
-        <div className="sc-pgg">
-          <button type="button" className={fOn === "" ? "on" : ""} aria-pressed={fOn === ""} onClick={() => setF("")}>
-            Hepsi
-          </button>
-          {ours ? (
-            <button type="button" className={`our${fOn === "our" ? " on" : ""}`} aria-pressed={fOn === "our"} onClick={() => setF("our")}>
-              Bizimkiler <small>{ours}</small>
-            </button>
-          ) : null}
-          {grs.map((g) => (
-            <button key={g} type="button" className={fOn === g ? "on" : ""} aria-pressed={fOn === g} onClick={() => setF(g)}>
-              <GDot g={g} />
-              {g}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      {rows.length ? (
-        <>
-          <div className={`sc-atht${hasP ? "" : " np"}`} aria-hidden="true">
-            {hasP ? <span>Sıra</span> : null}
-            <span>No</span>
-            <span>Sporcu</span>
-            <span>Bugün</span>
-            {hasP ? <span className="r">Puan</span> : null}
-          </div>
-          <ul className={hasP ? "" : "np"}>
-            {rows.map((r) => (
-              <li key={r.sail} className={r.our ? "our" : ""}>
-                <button type="button" onClick={() => setPick({ cls: b.cls, sail: r.sail })}>
-                  {hasP ? <b className="p">{r.p ? `${r.p}${/^\d+$/.test(String(r.p)) ? "." : ""}` : ""}</b> : null}
-                  <span className="s">{r.sail}</span>
-                  <span className="n">
-                    <b>{r.name || "—"}</b>
-                    <small>{shortClub(r.club)}</small>
-                  </span>
-                  <span className="g">{r.g ? <><GDot g={r.g} />{r.g}</> : ""}</span>
-                  {hasP ? <span className="t">{r.t}</span> : null}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
-        <p className="sc-vno">Bulunamadı</p>
-      )}
-      {res ? (
-        <button type="button" className="sc-vadd" onClick={() => onFull("race")}>
-          Yarışın sonuçları
-        </button>
-      ) : null}
-    </div>
+  const grp = gr.find((x) => x.grp === g) || gr[0];
+  if (!grp) return null;
+  const hits = q.trim() ? gr.flatMap((x) => x.rows.filter((r) => grpHit(r, q)).map((r) => ({ ...r, grp: x.grp }))) : null;
+  const row = (x, dot) => (
+    <li key={`${dot || ""}${x.sail}`} className={x.our ? "our" : ""}>
+      <span className="t">{x.sail}</span>
+      {dot ? <i style={{ background: groupColor(dot) || "#ffd23f" }} aria-hidden="true" /> : null}
+      <b>{x.name}</b>
+      <small>{dot || shortClub(x.club)}</small>
+    </li>
   );
-}
-// Ekranda Bizimkiler kartı (Seyhun 2026-11-09 örnek onaylandı): bizim sporcuların genel sırası ve bugünkü grubu; dokununca Sporcular açılır
-function ScOurs({ ath, onTap }) {
-  const rows = ath.flatMap((b) => b.rows.filter((r) => r.our && r.p !== "")).slice(0, 5);
-  if (!rows.length) return null;
   return (
-    <button type="button" className="sc-ours" onClick={onTap}>
-      <span className="h">Bizimkiler</span>
-      {rows.map((r) => (
-        <span key={r.sail} className="r">
-          <b>{`${r.p}${/^\d+$/.test(String(r.p)) ? "." : ""}`}</b>
-          {r.g ? <GDot g={r.g} /> : <i aria-hidden="true" />}
-          <span>{r.name || r.sail}</span>
-          <small>{r.t}</small>
-        </span>
-      ))}
-    </button>
+    <div className="sc-pgl">
+      <div className="sc-vph">
+        <b>Gruplar</b>
+      </div>
+      <input className="sc-pgs" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ara" aria-label="Gruplarda ara" />
+      {hits ? (
+        hits.length ? <ul className="bt">{hits.map((x) => row(x, x.grp))}</ul> : <p className="sc-vno">Bulunamadı</p>
+      ) : (
+        <>
+          <div className="sc-pgg">
+            {gr.map((x) => (
+              <button key={x.grp} type="button" className={x.grp === grp.grp ? "on" : ""} aria-pressed={x.grp === grp.grp} onClick={() => setG(x.grp)}>
+                <i style={{ background: groupColor(x.grp) || "#ffd23f" }} aria-hidden="true" />
+                {x.grp}
+                <small>{x.rows.length}</small>
+              </button>
+            ))}
+          </div>
+          {grp.day !== day ? <p className="sc-pgd">{dayText(grp.day)}</p> : null}
+          <ul className="bt">{grp.rows.map((x) => row(x, ""))}</ul>
+        </>
+      )}
+    </div>
   );
 }
 // sıradaki startın grubundaki sporcular (eski sol sütun, Seyhun 2026-11-03 19:59): günün grup listesi, yoksa sınıfın kayıt listesi
@@ -2861,15 +2741,14 @@ const LiveStart = dynamic(() => import("./LiveStart"), { ssr: false });
 // gördüğü. Seçim yalnız bu telefonda, yayına gitmez. "Ekranda"ya basınca "Ne izleyeyim?" paneli açılır (dikeyde alttan, yatayda
 // sağdan kayarak); seçince kapanır. Alt çubukta yalnız Parkur · Rüzgâr · Sıralama · Video · Start; paneller açılıp kapanırken kayar.
 const SHUT_MS = 190;
-const FULL_VP = ["course", "wind", "rank", "prog", "ath"];
-const athDock = () => typeof window !== "undefined" && !!window.matchMedia?.("(min-aspect-ratio: 1/1) and (min-width: 900px)").matches;
+const FULL_VP = ["course", "wind", "rank", "prog", "grp"];
 // Alt çubuğun simgeleri (Seyhun 2026-11-06 "butonları düzelt, daha güzel tasarım"): simge + kısa ad, Start mavi, Ayarlar yuvarlak çark
 const bi = (d) => <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
 const BAR_ICON = {
   course: bi(<><path d="M5 20l4-14 6 8 4-9" /><circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="14" r="1.6" /><circle cx="19" cy="5" r="1.6" /></>),
   rank: bi(<><path d="M5 20v-6M12 20V6M19 20v-9" /></>),
   prog: bi(<><rect x="4" y="5" width="16" height="15" rx="2.5" /><path d="M4 10h16M9 3v4M15 3v4" /></>),
-  ath: bi(<><circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" /><path d="M3 19c.6-3 2.6-5 5-5s4.4 2 5 5M11 19c.6-3 2.6-5 5-5s4.4 2 5 5" /></>),
+  grp: bi(<><circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" /><path d="M3 19c.6-3 2.6-5 5-5s4.4 2 5 5M11 19c.6-3 2.6-5 5-5s4.4 2 5 5" /></>),
   vid: bi(<><rect x="3" y="6" width="13" height="12" rx="2.5" /><path d="M16 10.5l5-3v9l-5-3" /></>),
   start: bi(<><circle cx="12" cy="13" r="7.5" /><path d="M12 9v4l2.5 2M10 2.5h4" /></>),
   mic: bi(<><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21" /></>),
@@ -2903,13 +2782,14 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
   // program (plan.agenda) ve günün grupları (entries/list.groups; siteden ya da elle her eklenişte güncellenir)
   const pgDay = seeDay(data, now);
   const pgAg = agendaView(data.plan?.agenda, pgDay, new Date(now + 3 * 3600e3).toISOString().slice(11, 16));
-  const ath = useMemo(() => scAth(data, pgDay), [data, pgDay]);
+  const pgGr = useMemo(() => scGroups(data, pgDay), [data, pgDay]);
   const btns = [
     // Parkur ve rüzgâr tek düğme (Seyhun 2026-11-06): üstte şu anki ölçüm, ortada büyük parkur, altta beklenen rüzgâr
     (course || onWind || wind || nowW) && ["course", "Parkur ve rüzgâr"],
-    // Sporcular (Seyhun 2026-11-09): Sıralama ve Gruplar tek düğme; genel sıra, bugünkü grup, puan, dokununca dereceler
-    ath.length > 0 && ["ath", "Sporcular"],
+    (rank || res) && ["rank", "Sıralama"],
     (prog.length > 0 || pgAg) && ["prog", "Program"],
+    // Gruplar ayrı düğme (Seyhun 2026-11-07 "Gruplar butonu olsun, orada gruplar gösterilsin")
+    pgGr.length > 0 && ["grp", "Gruplar"],
     vidRef && ["vid", "Video", !!myVid],
     onStart && ["start", "Start"],
   ].filter(Boolean);
@@ -2995,18 +2875,11 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
     const t = setTimeout(() => setShut(""), SHUT_MS);
     return () => clearTimeout(t);
   }, [shut]);
-  // iPad'de ve geniş yatay ekranda Sporcular videonun yanında hep açık (Seyhun 2026-11-09 örnek): ilk açılışta bir kez açılır, boşluğa dokununca kapanmaz
-  const athAuto = useRef(false);
-  useEffect(() => {
-    if (athAuto.current || !ath.length) return;
-    athAuto.current = true;
-    if (!open && athDock()) onOpen("ath");
-  }, [ath.length, open, onOpen]);
   // boşluğa dokununca kapat (Seyhun 2026-11-06 "herhangi bir yere tıklayınca da kapansın"): açık panel varken ekranda çubuğun dışına
   // dokunmak yalnız paneli kapatır (alttaki şeye tıklanmaz); ekranın dışındaki pencereler (ölçüm ekle vb.) etkilenmez
   const openK = btns.some(([k]) => k === open) || open === "src" || open === "masa" ? open : "";
   useEffect(() => {
-    if (!openK || openK === "start" || (openK === "ath" && athDock())) return undefined;
+    if (!openK || openK === "start") return undefined;
     const down = (e) => {
       const el = ref.current;
       const sc = el?.closest(".lv") || el?.closest(".sc");
@@ -3188,8 +3061,8 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
     ) : k === "prog" ? (
       // günün programı (Seyhun 2026-11-06 "varsa program butonumuzda olsun"): biten soluk, süren mavi, sıradaki sarı
       <ScProgPanel prog={prog} ag={pgAg} />
-    ) : k === "ath" ? (
-      <ScAthPanel data={data} ath={ath} day={pgDay} prog={prog} res={res} onFull={onFull} />
+    ) : k === "grp" ? (
+      <ScGrpPanel gr={pgGr} day={pgDay} />
     ) : k === "vid" ? (
       // ana hesabın kendi videoları (LiveStart › LiveVideos buraya çizer; yalnız uygulama içinde)
       <div ref={vidRef} />
@@ -3261,7 +3134,6 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
         </div>
       ) : gone ? <div className={`sc-vp ${shut} out`} aria-hidden="true" inert>{gone}</div> : null}
       {!body && ctl && !follow ? ctl : null}
-      {!body && !ctl && !follow ? <ScOurs ath={ath} onTap={() => tap("ath")} /> : null}
       <div className="sc-vrow">
         {picks || onHide ? (
           <div className="sc-vtop">
