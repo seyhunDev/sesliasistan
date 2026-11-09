@@ -37,21 +37,31 @@ export function RaceSeg({ tabs, value, onChange, className = "" }) {
   );
 }
 
-// Üstteki tek kart (Seyhun 2026-11-09 sade öneri "üç bilgi"): [etiket, büyük değer, küçük ek]; boş değerli hücre yazılmaz
+// Üstteki bilgi şeridi (Seyhun 2026-11-09 sade öneri "üç bilgi"; 2026-11-09 Takip yeni tasarım: kutu yok, ince çizgiler arasında tek satır):
+// [etiket, büyük değer, küçük ek, dokununca (isteğe bağlı), açık mı]; boş değerli hücre yazılmaz. Hava hücresi dokununca saat saat havayı açar.
 export function RaceStats({ items, className = "" }) {
   const list = items.filter((x) => x && x[1] !== "" && x[1] != null);
   if (!list.length) return null;
   return (
     <div className={`rz-stats ${className}`} style={{ gridTemplateColumns: `repeat(${list.length}, minmax(0, 1fr))` }}>
-      {list.map(([k, v, s]) => (
-        <div key={k}>
-          <small>{k}</small>
-          <b>
-            {v}
-            {s ? <em>{s}</em> : null}
-          </b>
-        </div>
-      ))}
+      {list.map(([k, v, s, onTap, open]) => {
+        const body = (
+          <>
+            <small>{k}</small>
+            <b>
+              {v}
+              {s ? <em>{s}</em> : null}
+            </b>
+          </>
+        );
+        return onTap ? (
+          <button key={k} type="button" onClick={onTap} aria-expanded={!!open} data-press className="rz-stat-b">
+            {body}
+          </button>
+        ) : (
+          <div key={k}>{body}</div>
+        );
+      })}
     </div>
   );
 }
@@ -59,16 +69,18 @@ export function RaceStats({ items, className = "" }) {
 // İki giriş (Seyhun 2026-11-06 "hem yayını açabilmeliyim hem de kendi canlı yayın sayfamı"; yayin-canli/ornek.png onaylı): yan yana
 // "Canlı ekran" (dolu mavi; kendi canlı ekranı uygulama içinde, /canli/<id>, geri kaydırınca buraya döner) ve "Yayın" (açık mavi; yönetim
 // sayfası). Yalnız ana hesapta gösterilir (çağıran karar verir). Lacivert üstte (yarış kart, 2026-11-07) Canlı ekran beyaz, Yayın cam (.ck .rz-go).
-export function RaceGo({ id, className = "" }) {
+// extra: yanına üçüncü düğme (yarış günü "Harita", Seyhun 2026-11-09 Takip yeni tasarım)
+export function RaceGo({ id, className = "", extra = null }) {
   const router = useRouter();
   return (
-    <div className={`rz-go grid grid-cols-2 gap-2.5 ${className}`}>
+    <div className={`rz-go grid ${extra ? "grid-cols-3" : "grid-cols-2"} gap-2 ${className}`}>
       <button type="button" onClick={() => openInApp(router, `/canli/${id}`)} data-press className="btn btn-primary">
         Canlı ekran
       </button>
       <Link href={`/athletes/races/${id}/yayin`} data-press className="btn rz-soft">
         Yayın
       </Link>
+      {extra}
     </div>
   );
 }

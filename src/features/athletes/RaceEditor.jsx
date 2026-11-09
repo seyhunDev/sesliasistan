@@ -936,7 +936,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const top = (
     <>
       {raceDay && rid ? (
-        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} go={isOwner ? <RaceGo id={rid} /> : null} track={!!siteDocs} onResultsFile={onResultsFile} />
+        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} go={!!isOwner} track={!!siteDocs} onResultsFile={onResultsFile} />
       ) : rid ? (
         <>
           {/* Canlı ekran · Yayın yalnız ana hesapta (yarıştan önce de: dönüş girişi, kayıt listesi önceden hazırlanır) */}
