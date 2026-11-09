@@ -1,8 +1,8 @@
-Commit: d9d990e · Canlı: Sonuçlar sade liste, son güncelleme saati, yalnız yarının grubu, açık kulüp adı (#1369)
-Zaman: 2026-11-09-1825 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42641413375
+Commit: 2bfc6b3 · Yarış detayı: Sporcularımız düz liste (#1371)
+Zaman: 2026-11-09-1908 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42648625115
 
-TAM TEST · 09.11.2026 18:07:49
+TAM TEST · 09.11.2026 18:50:48
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1424/1440 geçti · 16 kalan · 1082 sn
+SONUÇ: 1424/1440 geçti · 16 kalan · 1068 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
