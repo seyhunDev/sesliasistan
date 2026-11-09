@@ -31,7 +31,7 @@ import { tl, totals } from "./budget";
 import { BUDGET_ONLY, buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
 import { RaceWxRows } from "./RaceWx";
-import { Fold, RaceGo, RaceSeg, RaceStats } from "./raceUi";
+import { Fold, RaceSeg, RaceStats } from "./raceUi";
 import { ResultsAdd } from "./ResultCards";
 import { RaceTrack } from "./RaceTrack";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
@@ -936,11 +936,10 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const top = (
     <>
       {raceDay && rid ? (
-        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} go={!!isOwner} track={!!siteDocs} onResultsFile={onResultsFile} />
+        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} track={!!siteDocs} onResultsFile={onResultsFile} />
       ) : rid ? (
         <>
-          {/* Canlı ekran · Yayın yalnız ana hesapta (yarıştan önce de: dönüş girişi, kayıt listesi önceden hazırlanır) */}
-          {isOwner && <RaceGo id={rid} className="mt-4" />}
+          {/* Canlı ekran · Yayın düğmeleri kalktı (Seyhun 2026-11-09 "yayın butonuna şimdilik gerek yok"): Canlı başlıkta (yarış günleri), Yayın ⋯ içinde */}
           {/* Yarıştan önce üst kart (Seyhun 2026-11-09 sade öneri): Hazırlık · Sporcu · Evrak */}
           {!over && (
             <div className="mt-4">
@@ -1049,9 +1048,10 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     <>
       {/* Sağ üstteki ⋯ (Seyhun 2026-10-20: "editleme, silme… bir ayarlar butonuyla ulaşabildiğimiz şeyler olmalı") */}
       <Sheet open={menu} onClose={() => onMenu?.(false)} title="Yarış">
-        {/* Yayın ⋯ içinde değil: adın altında Canlı ekran · Yayın düğmeleri (RaceGo, Seyhun 2026-11-06) */}
+        {/* Yayın ⋯ içinde (Seyhun 2026-11-09 "yayın butonuna şimdilik gerek yok, başka bir yerde buton olarak kullan"); Canlı başlıkta */}
         <ul className={`${card} divide-y divide-line overflow-hidden`}>
           {[
+            isOwner && start.id && ["Yayın", () => router.push(`/athletes/races/${start.id}/yayin`)],
             ["Bilgileri düzenle", () => setEdit(true)],
             // Kendi açtığın yarışı sitedeki yarışa bağla (Seyhun 2026-11-07 "hem kendim oluşturabilmeliyim hem siteden ekleyebilmeliyim")
             isOwner && start.id && !r.site?.act && ["Siteden bağla", () => router.push(`/athletes/races/site?into=${start.id}`)],

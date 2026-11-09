@@ -32,6 +32,7 @@ import { siteDocBlob } from "@/features/athletes/raceSite";
 import { SiteDocs } from "@/features/athletes/SiteDocs";
 import { addResults, importResults, importToast } from "@/features/athletes/resultsImport";
 import { BG_PHOTO } from "@/features/liveScreen/bgPhoto";
+import { LiveBtn } from "@/features/athletes/raceUi";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
 export default function RacePage() {
@@ -54,6 +55,7 @@ export default function RacePage() {
 const cachedRace = (orgId, id) => (id === "new" ? null : racesNow(orgId, 60e3)?.find((x) => x.id === id) || null);
 
 function Race({ orgId, uid, email, by, mail, coach }) {
+  const { isOwner } = useAuth(); // Canlı düğmesi yalnız ana hesapta
   const { id } = useParams();
   const q = useSearchParams();
   const router = useRouter();
@@ -245,23 +247,24 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   // Başlık (yarış kart, Seyhun 2026-11-07 "diğer sayfalardaki gibi, başlık geri butonun yanında"): Planlar gibi yuvarlak geri, yanında yarışın
   // adı, sağda yuvarlak ⋯ (Yayın, düzenle, siteden bağla, sil); altında tek satır: tarih · yer · kalan gün (yarış sürerken kırmızı nokta)
   const on = !!race && racing({ ...race, ...head0 });
+  // Yarış detayı yeni başlık (Seyhun 2026-11-09 "tek canlı butonu"; örnek c-telefon/ipad.png "Yap"): üst satırda geri, sağda Canlı (ana hesap,
+  // yarış günleri) ve ⋯ (Yayın, düzenle, siteden bağla, sil); altında durum (yarışta kırmızı), büyük ad, tarih · yer
+  const rr = race ? { ...race, ...head0 } : null;
   const head = (
-    <header>
+    <header className="rz-hd">
       <div className="flex items-center gap-2.5">
         <BackButton href="/athletes/races" />
-        <h1 className="min-w-0 flex-1 truncate">{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</h1>
+        <span className="flex-1" />
+        {on && isOwner && race?.id && <LiveBtn id={race.id} />}
         {(race?.id || head0) && (
           <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className="rz-more btn btn-round">
             <Icon name="more" className="size-6" />
           </button>
         )}
       </div>
-      {race && (
-        <p className="rz-sub ml-[3.375rem] mt-0.5 flex items-center gap-1.5 text-[0.9375rem]">
-          {on && <span className="size-2 shrink-0 rounded-full bg-rec" aria-hidden="true" />}
-          <span className="truncate">{subText({ ...race, ...head0 })}</span>
-        </p>
-      )}
+      {rr && <p className={`rz-kick ${on ? "rz-kick-on" : ""}`}>{kickText(rr)}</p>}
+      <h1>{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</h1>
+      {rr && <p className="rz-sub">{whereText(rr)}</p>}
     </header>
   );
 
@@ -321,7 +324,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   );
 }
 
-// Başlığın alt satırı: "11–12 Kas · Dikili · 5 gün kaldı"; yarış sürerken "Yarışta · 2. gün · Dikili"; bitince "… · Bitti"
+// "12 Kas"
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const gap = (a, b) => Math.round((new Date(`${b}T12:00:00`) - new Date(`${a}T12:00:00`)) / 864e5);
 // Yarış bugün sürüyor mu (başlangıçtan bitişe)
@@ -331,15 +334,18 @@ function racing(r) {
   return t >= r.startDate && t <= (r.endDate || r.startDate);
 }
 
-function subText(r) {
+// Başlığın üst satırı: "Yarışta · 3. gün" / "12 gün kaldı" / "Yarın" / "Bitti"
+function kickText(r) {
+  if (!r.startDate) return "";
+  const t = todayStr();
+  if (racing(r)) return `Yarışta · ${gap(r.startDate, t) + 1}. gün`;
+  const n = gap(t, r.startDate);
+  return n > 1 ? `${n} gün kaldı` : n === 1 ? "Yarın" : "Bitti";
+}
+// Adın altı: "8–11 Kas · Foça, İzmir"
+function whereText(r) {
   const a = r.startDate;
   const b = r.endDate && r.endDate !== a ? r.endDate : "";
   const when = !a ? "" : !b ? shortDay(a) : a.slice(0, 7) === b.slice(0, 7) ? `${+a.slice(8)}–${shortDay(b)}` : `${shortDay(a)}–${shortDay(b)}`;
-  const place = r.district || r.city || placeText(r);
-  if (!a) return place;
-  const t = todayStr();
-  const n = gap(t, a);
-  if (racing(r)) return [`Yarışta · ${gap(a, t) + 1}. gün`, place].filter(Boolean).join(" · ");
-  const left = n > 1 ? `${n} gün kaldı` : n === 1 ? "Yarın" : "Bitti";
-  return [when, place, left].filter(Boolean).join(" · ");
+  return [when, placeText(r)].filter(Boolean).join(" · ");
 }

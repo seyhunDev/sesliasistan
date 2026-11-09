@@ -1284,6 +1284,16 @@ main.rz.rzc [data-pagebar] { background: linear-gradient(to top, var(--bg) 60%, 
 /* lacivert üst */
 main.rzc .ck h1 { font-size: 1.375rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
 main.rzc .ck .rz-sub { color: rgba(255, 255, 255, .7); }
+/* Yarış detayı başlık (Seyhun 2026-11-09 "tek canlı butonu"; c-telefon/ipad.png): durum satırı, büyük ad, tarih · yer; sağ üstte beyaz Canlı */
+main.rzc .ck .rz-hd .rz-kick { margin: 1.25rem 0 0; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255, 255, 255, .62); display: flex; align-items: center; gap: .5rem; }
+main.rzc .ck .rz-hd .rz-kick:empty { display: none; }
+main.rzc .ck .rz-hd .rz-kick-on { color: #ff8a7a; }
+main.rzc .ck .rz-hd .rz-kick-on::before { content: ""; width: .5rem; height: .5rem; border-radius: 999px; background: #ff4d3d; }
+main.rzc .ck .rz-hd h1 { margin-top: .375rem; font-size: 1.875rem; font-weight: 700; letter-spacing: -.025em; line-height: 1.1; overflow-wrap: anywhere; color: #fff; }
+main.rzc .ck .rz-hd .rz-sub { margin: .375rem 0 0; font-size: .875rem; color: rgba(255, 255, 255, .62); }
+.rz-live { display: inline-flex; align-items: center; gap: .5rem; height: 2.5rem; padding: 0 1rem 0 .875rem; border-radius: 999px; background: #fff; color: #0a1324; font-weight: 700; font-size: .9375rem; box-shadow: 0 2px 8px rgba(0, 0, 0, .25); transition: transform .12s, box-shadow .12s; }
+.rz-live i { width: .5625rem; height: .5625rem; border-radius: 999px; background: #ff4d3d; box-shadow: 0 0 0 4px rgba(255, 77, 61, .18); }
+.rz-live[data-pressed] { transform: scale(.96); box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
 main.rzc .ck .rz-list, main.rzc .ck .rz-row-wrap { border-color: rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .08); }
 main.rzc .ck .rz-row, main.rzc .ck .rz-open, main.rzc .ck .rz-list .rz-open { border-color: rgba(255, 255, 255, .12); }
 main.rzc .ck .rz-row { min-height: 3.25rem; }
@@ -1389,13 +1399,12 @@ main.rz.rzc.rzi { padding-bottom: 0; }
   body[data-side]:has(main.rzi) :is([data-sheet], .fixed[data-pagebar], [data-screen], main.fixed, .dome:not([data-on]), [role="status"].fixed), body[data-side]:has(main.rzi) > [data-bar] { left: 0; }
   body[data-side] main.rz.rzc.split.split-even.rzi { grid-template-columns: minmax(24rem, .72fr) minmax(0, 1.28fr); padding-bottom: 0; }
   body[data-side] main.rz.rzc.split.rzi > .ck { padding: calc(1.25rem + env(safe-area-inset-top)) 1.75rem 1.5rem 2rem; }
-  body[data-side] main.rzi > .ck > header, body[data-side] main.rzi > .ck > header > div:first-child { display: contents; }
-  body[data-side] main.rzi > .ck > header > div:first-child > :first-child { align-self: flex-start; }
-  body[data-side] main.rzc.rzi > .ck h1 { flex: none; margin-top: auto; padding-top: 2rem; overflow: visible; white-space: normal; text-overflow: clip; font-size: 3rem; font-weight: 700; line-height: 1.06; letter-spacing: -.03em; color: rgba(255, 255, 255, .84); }
+  body[data-side] main.rzi > .ck > header.rz-hd { flex: 1 0 auto; display: flex; flex-direction: column; }
+  body[data-side] main.rzi > .ck .rz-hd .rz-kick { margin-top: auto; padding-top: 2rem; font-size: .8125rem; }
+  body[data-side] main.rzc.rzi > .ck h1 { flex: none; margin-top: .5rem; overflow: visible; white-space: normal; text-overflow: clip; font-size: 3rem; font-weight: 700; line-height: 1.06; letter-spacing: -.03em; color: rgba(255, 255, 255, .84); }
   body[data-side] main.rzc.rzi > .ck .rz-sub { margin: .625rem 0 0; font-size: 1.125rem; color: rgba(255, 255, 255, .6); }
   body[data-side] main.rzi > .ck .rz-go .btn { height: 3.375rem; border-radius: 1rem; font-size: 1.03125rem; }
   body[data-side] main.rzi > .ck .rz-go { margin-top: auto; padding-top: 1.5rem; }
-  body[data-side] main.rzi > .ck .rz-more { position: absolute; right: 1.75rem; top: calc(1.25rem + env(safe-area-inset-top)); }
   body[data-side] main.rz.rzc.split.split-even.rzi > .rzc-body { margin: calc(1.25rem + env(safe-area-inset-top)) 1.25rem 1.25rem 0; min-height: calc(100dvh - 2.5rem - env(safe-area-inset-top)); padding: 1rem 1.5rem 6rem; }
 }
 
