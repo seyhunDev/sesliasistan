@@ -51,12 +51,14 @@ async function fleetsOf(org, id) {
   // eskiden yeniye: aynı sınıfın yeni belgesi eskisinin yerine geçer, gruplu belgeler (Altın PDF'i + Gümüş PDF'i) birleşir
   const docs = snap.docs.map((d) => d.data()).sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
   const all = [];
-  for (const f of docs.flatMap((d) => cleanSheet(d.fleets))) {
+  const at = {}; // sınıfın sonucu en son ne zaman geldi (canlı ekran Sonuçlar "14:32 güncellendi")
+  for (const f of docs.flatMap((d) => cleanSheet(d.fleets).map((x) => ({ ...x, at: String(d.at || "") })))) {
+    if (f.at > (at[f.cls] || "")) at[f.cls] = f.at;
     const i = all.findIndex((x) => x.cls === f.cls);
     if (i < 0) all.push(f);
     else all[i] = joinGroups(all[i], f);
   }
-  const fleets = all.map((f) => ({ cls: f.cls, ...(f.heads ? { heads: f.heads } : {}), rows: f.rows.map((r) => ({ name: r.name, sail: r.sail, club: r.club, grp: r.grp, ...(r.fl ? { fl: r.fl } : {}), rank: r.rank || 0, pts: r.pts ?? null, ...(r.r ? { r: r.r } : {}), ...(r.sex ? { sex: r.sex } : {}), ...(r.cat ? { cat: r.cat } : {}), ...(r.born ? { born: r.born } : {}) })) }));
+  const fleets = all.map((f) => ({ cls: f.cls, ...(at[f.cls] ? { at: at[f.cls] } : {}), ...(f.heads ? { heads: f.heads } : {}), rows: f.rows.map((r) => ({ name: r.name, sail: r.sail, club: r.club, grp: r.grp, ...(r.fl ? { fl: r.fl } : {}), rank: r.rank || 0, pts: r.pts ?? null, ...(r.r ? { r: r.r } : {}), ...(r.sex ? { sex: r.sex } : {}), ...(r.cat ? { cat: r.cat } : {}), ...(r.born ? { born: r.born } : {}) })) }));
   sheetMemo.set(k, { t: Date.now(), fleets });
   return fleets;
 }
