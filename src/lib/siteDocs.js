@@ -20,7 +20,8 @@ export const KINDS = [
   ["results", "Sonuçlar", /\bsonuc|\bresults?\b|\bsiralama/],
   ["fleets", "Final grupları", /\baltin\b.*\b(gumus|bronz|liste|lst)\b|\bgumus\b.*\bbronz\b|\bfinal (filo|grup)/],
   ["entries", "Sporcu listesi", /\bsporcu listesi?\b|\bkatilim(ci)? listesi?\b|\bkayit listesi\b|\bentry list\b|\bentries\b/],
-  ["amend", "Ek talimat", /\bek (yaris )?talimat|\bdegisiklik\b|\bamendment\b/],
+  // "EK YARIŞ KURALI NO3" de ek talimat (Seyhun 2026-11-09: toplantı ve ilk start saati onunla değişti, "Belge" sayılıp okunmuyordu)
+  ["amend", "Ek talimat", /\bek (yaris )?(talimat|kural)|\bdegisiklik\b|\bamendment\b/],
   ["notice", "Yarış talimatı", /\btalimat|\bilani?\b|\bsailing instructions\b|\bnotice of race\b/],
   ["program", "Program", /\bprogram\b|\bschedule\b/],
 ];
@@ -150,6 +151,17 @@ const loose = (t) =>
   String(t || "")
     .toLocaleLowerCase("tr-TR")
     .replace(/[^a-zçğıöşü0-9]/g, "");
+// Program satırının anlamı (Seyhun 2026-11-09: ek talimat "İlk start" diyor, talimat "Günün ilk start saati (Optimist Genel)";
+// ikisi aynı satır, yenisi eskisinin yerine geçmeli, yan yana iki saat çıkmamalı)
+export function itemKey(t) {
+  const p = plain(t);
+  if (/\b(ilk|first)\b.*\b(start|uyari|warning|isaret)/.test(p)) return "ilk-start";
+  if (/\bson\b.*\b(start|uyari|isaret)|\blast\b.*\b(start|warning)/.test(p)) return "son-start";
+  if (/\b(antrenor|koc|coach)/.test(p) && /\b(toplanti|brifing|briefing|meeting)/.test(p)) return "antrenor-toplantisi";
+  if (/\b(kaptan|yarisci|skipper|competitor)/.test(p) && /\b(toplanti|brifing|briefing|meeting)/.test(p)) return "kaptanlar-toplantisi";
+  if (/\b(odul|prize)/.test(p)) return "odul-toreni";
+  return loose(t);
+}
 export const cleanSchedule = (a) =>
   (Array.isArray(a) ? a : [])
     .filter((x) => DATE.test(x?.date || "") && S(x?.title, 120))
@@ -159,8 +171,8 @@ export const cleanSchedule = (a) =>
 export function mergeSchedule(old, add) {
   const out = cleanSchedule(old);
   for (const x of cleanSchedule(add)) {
-    const i = out.findIndex((y) => y.date === x.date && loose(y.title) === loose(x.title));
-    if (i > -1) out[i] = x;
+    const i = out.findIndex((y) => y.date === x.date && itemKey(y.title) === itemKey(x.title));
+    if (i > -1) out[i] = { ...x, title: out[i].title };
     else out.push(x);
   }
   return out.sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)).slice(0, 40);
@@ -197,7 +209,7 @@ export function scheduleDiff(old, next) {
   const a = cleanSchedule(old);
   const out = [];
   for (const x of cleanSchedule(next)) {
-    const y = a.find((z) => z.date === x.date && loose(z.title) === loose(x.title));
+    const y = a.find((z) => z.date === x.date && itemKey(z.title) === itemKey(x.title));
     const d = `${+x.date.slice(8)} ${MON[+x.date.slice(5, 7) - 1]}`;
     if (!y) out.push(`${d} ${x.title}${x.time ? ` ${x.time}` : ""} eklendi`);
     else if (y.time !== x.time) out.push(`${d} ${x.title} ${y.time || "saatsiz"} → ${x.time || "saatsiz"}`);
@@ -219,7 +231,16 @@ export function sitePlan(plan, days, full) {
   const agenda = { ...old.agenda };
   const keys = [...new Set([...Object.keys(old.agenda), ...Object.keys(old.times), ...old.off])].sort();
   for (const d of list) {
-    if (d.items?.length) agenda[d.day] = d.items;
+    // Ek talimatta günün yalnız değişen maddeleri olabilir: aynı anlamdaki madde (itemKey) yenisiyle değişir, ötekiler kalır
+    if (d.items?.length) {
+      const had = [...(agenda[d.day] || [])];
+      for (const it of d.items) {
+        const i = had.findIndex((x) => itemKey(x.text) === itemKey(it.text));
+        if (i > -1) had[i] = { ...it, text: had[i].text };
+        else had.push(it);
+      }
+      agenda[d.day] = had.sort((a, b) => String(a.at || "99").localeCompare(String(b.at || "99")));
+    }
     if (d.race) {
       off.delete(d.day);
       if (d.at && d.at !== old.daily) times[d.day] = d.at;
@@ -231,4 +252,29 @@ export function sitePlan(plan, days, full) {
     }
   }
   return { daily: old.daily, times, off: [...off].sort(), agenda: cleanAgenda(agenda) };
+}
+
+// Takip'in üstündeki son belge (Seyhun 2026-11-09 "en son gelen bilgi neyse onu yukarıda gösterelim, okudum butonu"): sonuç ve
+// liste dışındaki en yeni belge; "Okudum" (kayıtta read) basılınca kalkar, yenisi gelince yine çıkar. Bitmiş yarışta gösterilmez.
+const NOT_NEWS = ["results", "groups", "fleets", "entries"];
+export function latestNews(docs, race = {}, today = "") {
+  const end = race?.endDate || race?.startDate || "";
+  if (today && end && end < today) return null;
+  const d = (docs || [])
+    .filter((x) => !NOT_NEWS.includes(x?.kind || docKind(x?.name)) && x?.state !== "undone")
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)))[0];
+  return d && !d.read ? d : null;
+}
+// Belgenin programda değiştirdiği satırlar (Program'da okunana kadar işaretli): "gün|başlık" → eski saat ("" yeni satır)
+export const rowKey = (x) => `${x.date}|${itemKey(x.title)}`;
+export function changedRows(before, now) {
+  const a = new Map(cleanSchedule(before).map((x) => [rowKey(x), x]));
+  const out = {};
+  if (!a.size) return out; // ilk program (talimat) değişiklik sayılmaz
+  for (const x of cleanSchedule(now)) {
+    const y = a.get(rowKey(x));
+    if (!y) out[rowKey(x)] = "";
+    else if (y.time !== x.time) out[rowKey(x)] = y.time || "saatsiz";
+  }
+  return out;
 }
