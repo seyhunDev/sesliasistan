@@ -34,13 +34,15 @@ import { RaceWxRows } from "./RaceWx";
 import { Fold, RaceSeg, RaceStats } from "./raceUi";
 import { ResultsAdd } from "./ResultCards";
 import { RaceTrack } from "./RaceTrack";
+import { RaceAdd } from "./RaceAddSheet";
+import { takeRaceDraft } from "./raceDraft";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { loadPosts } from "@/features/posts/posts";
 import { racePlanSync, racePlansOf, racePostOf } from "./raceLinks";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
 import { RACE_FILE_MAX, dropRaceStored, loadRaceFile, moveLocalExtras, uploadRaceFile } from "./raceStore";
-import { cleanDone, cleanNotice, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
+import { cleanDone, cleanNotice, racesNow, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
 import { initials, leftText, placeText } from "./RaceList";
 import { fromShared } from "@/lib/sharedRace";
 
@@ -167,7 +169,7 @@ const tripDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { w
 const PREP = ["sum", "docs", "trip", "budget"]; // Hazırlık sekmesinin bölümleri
 const SECS = [...RACE_SECS.map(([k]) => k), "site", "belge"]; // site: Takip (?sec=site); belge: siteden gelen belgelerin tamamı
 
-export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0, onResultsFile = null }) {
+export function RaceEditor({ sec = "", uid = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0, onResultsFile = null }) {
   const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
   const router = useRouter();
   const toast = useToast();
@@ -176,7 +178,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const [noticeInfo, setNoticeInfo] = useState(false);
   // Yeni yarış önce tek soruyla başlar: talimat var mı? (talimatla ya da elle ad, tarih, yer) → sonra sayfa
   const [begun, setBegun] = useState(!!start.id);
-  const [manual, setManual] = useState(false);
   // Tek ⋯ (Seyhun 2026-10-30, yaris-yapi): multimedya sayfasının ⋯ menüsünden gelen bölüm ?sec= ile açılır (prep, people, docs, trip, budget, edit, del)
   const [sec0] = useState(sec);
   // Sitesi bağlı yarış yarış günü dışında Takip ile açılır (Seyhun 2026-11-05)
@@ -560,6 +561,15 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     }
     setReading(false);
   };
+  // "+ Yarış" penceresinden gelen iş (raceDraft): talimat okunur ya da elle yazılan bilgilerle yarış başlar
+  const drafted = useRef(false);
+  useEffect(() => {
+    if (start.id || drafted.current) return;
+    drafted.current = true;
+    const d = takeRaceDraft();
+    if (d?.notice) loadNotice(d.notice);
+    else if (d?.fields) (setR((p) => ({ ...p, ...d.fields })), setBegun(true), setTab("sum"));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // mode: new (ilk talimat), update (farkları gördü, bilgileri güncelle), keep (yalnız dosyayı sakla), same (bilgiler aynı)
   const takeNotice = async (n, pdf, mode) => {
     if (mode === "new" || mode === "update") {
@@ -974,7 +984,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   );
 
   if (!begun) {
-    const form = r.notice || manual;
+    const form = !!r.notice;
     return (
       <>
         {navy(null)}
@@ -982,28 +992,22 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         {!form ? (
           <>
             {sharedList.length > 0 && !reading && <SharedPick list={sharedList} onPick={(s) => (setR((p) => ({ ...p, ...fromShared(s) })), setBegun(true), setTab("sum"))} />}
-            <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">Yarış talimatın var mı?</h2>
-            <p className="mt-1.5 px-1 text-[0.9375rem] text-mut">Varsa yükle, bilgileri ben doldurayım.</p>
-            <div className="mt-4">
-              <NoticeUpload busy={reading} onFile={loadNotice} onText={loadNotice} title="Talimatı yükle" sub="PDF, fotoğraf ya da metin. Ad, tarih, yer, program, son tarihler, ücret ve oteller dolar." />
+            {/* Üç yol (Seyhun 2026-11-09 "TFF'den seç, manuel, talimatla"; "+ Yarış" penceresiyle aynı gövde, RaceAddSheet.RaceAdd) */}
+            <div className="ra-page mt-2">
+              <RaceAdd
+                site={isOwner}
+                orgId={orgId}
+                uid={uid}
+                races={racesNow(orgId) || []}
+                busy={reading}
+                onNotice={loadNotice}
+                onManual={(f) => (setR((p) => ({ ...p, ...f })), setBegun(true), setTab("sum"))}
+              />
             </div>
-            {!reading && (
-              <button type="button" onClick={() => setManual(true)} className={`${card} mt-3 flex w-full items-center gap-3 px-4 py-3.5 text-left`}>
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-bg text-mut">
-                  <Icon name="edit" className="size-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <b className="block text-[0.9375rem] font-semibold">Talimat yok, elle başla</b>
-                  <span className="block text-[0.8125rem] text-mut">Adı, tarihi ve yeri yaz; talimatı sonra da ekleyebilirsin.</span>
-                </span>
-                <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-              </button>
-            )}
           </>
         ) : (
           <>
-            <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">{r.notice ? "Talimattan okundu" : "Yarışın bilgileri"}</h2>
-            <p className="mt-1.5 px-1 text-[0.9375rem] text-mut">{r.notice ? "Kontrol et, yanlış varsa düzelt." : "Gerisini sonra eklersin."}</p>
+            <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">Talimattan okundu</h2>
             <Seg value={r.abroad ? "out" : "in"} onChange={(v) => setAbroad(v === "out")} options={[["in", "Yurt içi"], ["out", "Yurt dışı"]]} className="mt-4" />
             <Group className="mt-3">
               <Row label="Yarış adı">
@@ -1032,11 +1036,6 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
               Devam
               <Icon name="chev" className="size-4" />
             </button>
-            {!r.notice && (
-              <button type="button" onClick={() => setManual(false)} data-press className="btn btn-text btn-sm mt-2 w-full text-acc">
-                Talimatla başla
-              </button>
-            )}
           </>
         )}
         </div>

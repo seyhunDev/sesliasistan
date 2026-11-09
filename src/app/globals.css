@@ -1411,11 +1411,11 @@ main.rz.rzc.rzi { padding-bottom: 0; }
 /* YARIŞLAR YENİ TASARIM (rzl; Seyhun 2026-11-09 "daha düzgün, minimal, modern, profesyonel"; örnek yl-telefon/ipad.png onaylı;
    athletes/races/page.jsx, RaceList.jsx): sayfa baştan sona koyu lacivert, kutu yok; satırlar ince çizgiyle. Sıradaki yarış mavi kart değil,
    çizgiler arasında yazı (rzl-now). "+ Yarış" federasyon penceresi (RaceAddSheet, .ra-*). */
-body:has(main.rz.rzc.rzl) { background: radial-gradient(56rem 32rem at 70% -10%, #2c4266 0, transparent 60%), radial-gradient(44rem 36rem at 0% 30%, #1d2c48 0, transparent 60%), #0b1426; background-attachment: fixed; }
-main.rz.rzc.rzl { --bg: transparent; --card: transparent; --fg: #eef2f8; --fg2: #c9d1dd; --mut: rgba(226, 232, 242, .58); --line: rgba(255, 255, 255, .09); --acc: #8fb3ff; --warn: #f3c37a; color: var(--fg); }
-main.rzl > .ck, main.rzl .ck.split-top { background: transparent; }
-main.rz.rzc.rzl > .bg-bg, main.rzl .rzc-body { background: transparent; }
-main.rzl .rzc-body { margin-top: 0; padding-top: .5rem; border-radius: 0; }
+body:has(main.rz.rzc.rzl), body:has(main.rz.rzc .ra-page) { background: radial-gradient(56rem 32rem at 70% -10%, #2c4266 0, transparent 60%), radial-gradient(44rem 36rem at 0% 30%, #1d2c48 0, transparent 60%), #0b1426; background-attachment: fixed; }
+main.rz.rzc.rzl, main.rz.rzc:has(.ra-page) { --bg: transparent; --card: transparent; --fg: #eef2f8; --fg2: #c9d1dd; --mut: rgba(226, 232, 242, .58); --line: rgba(255, 255, 255, .09); --acc: #8fb3ff; --warn: #f3c37a; color: var(--fg); }
+main.rzl > .ck, main.rzl .ck.split-top, main.rzc:has(.ra-page) .ck.split-top { background: transparent; }
+main.rz.rzc.rzl > .bg-bg, main.rzl .rzc-body, main.rz.rzc:has(.ra-page) .rzc-body { background: transparent; }
+main.rzl .rzc-body, main.rz.rzc:has(.ra-page) .rzc-body { margin-top: 0; padding-top: .5rem; border-radius: 0; }
 main.rzl .rzc-body .rz-list { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
 main.rzl .rzc-body .rz-list > :last-child, main.rzl .rzc-body .rz-list > :last-child > .rz-row:last-child { border-bottom: 1px solid var(--line); }
 main.rzl .rzc-body .rz-row { padding-inline: 0; }
@@ -1436,7 +1436,22 @@ main.rzl .rz-chev { border-color: rgba(255, 255, 255, .4); }
 .ra-add { flex-shrink: 0; height: 2rem; padding: 0 .875rem; border-radius: 999px; background: var(--acc); color: #081325; font-size: .84375rem; font-weight: 700; }
 .ra-add:disabled { opacity: .55; }
 .ra-ok { flex-shrink: 0; font-size: .8125rem; font-weight: 600; color: var(--mut); }
-.ra-man { display: flex; justify-content: space-between; padding: .875rem 0 .25rem; font-size: .9375rem; font-weight: 600; color: var(--acc); }
+/* Yarış ekleme üç yol (Seyhun 2026-11-09 "TFF'den seç, manuel, talimatla"; örnek e3/yp "Yap"): pencere ve yeni yarış sayfası aynı (RaceAdd) */
+.ra .rz-seg { padding: 3px; border-radius: .875rem; background: rgba(255, 255, 255, .08); }
+.ra .rz-seg-b { height: 2.375rem; border-radius: .6875rem; font-size: .9375rem; color: var(--mut); }
+.ra .rz-seg-b[aria-pressed="true"] { background: #fff; color: #0b1a33; box-shadow: 0 1px 4px rgba(0, 0, 0, .3); }
+.ra-new { display: inline-block; margin-left: .375rem; padding: .0625rem .4375rem; border-radius: 999px; background: #8fb3ff; color: #081325; font-size: .6875rem; font-weight: 700; vertical-align: .125rem; }
+.ra-rows { margin-top: .5rem; }
+.ra-go { width: 100%; justify-content: space-between; min-height: 3.25rem; text-align: left; }
+.ra-go > span { color: var(--mut); font-size: 1.125rem; }
+.ra-wait { min-height: 3.25rem; color: var(--mut); font-size: .9375rem; }
+.ra-f { display: block; min-width: 0; margin-top: .75rem; }
+.ra-f > span { display: block; margin-bottom: .375rem; font-size: .78125rem; color: var(--mut); }
+.ra-f input { display: block; width: 100%; min-width: 0; height: 2.875rem; padding: 0 .875rem; border-radius: .75rem; background: rgba(255, 255, 255, .07); color: var(--fg); font-size: .9375rem; outline: none; }
+.ra-f input:focus { box-shadow: inset 0 0 0 1.5px var(--acc); }
+.ra-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .625rem; }
+.ra-big { display: grid; place-items: center; width: 100%; height: 3.125rem; margin-top: 1.25rem; border-radius: .875rem; background: var(--acc); color: #081325; font-size: 1rem; font-weight: 700; }
+.ra-big:disabled { opacity: .5; }
 
 /* TAKİP YENİ TASARIM (Seyhun 2026-11-09 "profesyonel, modern, minimal, sade"; örnek takip-telefon/ipad.png onaylı; RaceTrack.jsx):
    kutu yok, bölümler ince çizgiyle; en üstte son belge kartı (Aç · Okudum), Program gün seçicili saat satırları (değişen saat mavi,
