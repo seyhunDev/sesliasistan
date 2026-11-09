@@ -1920,7 +1920,7 @@ function ScAthPanel({ data, ath, day, prog = [], res = false, onFull, onResult =
                   <span className="s">{r.sail}</span>
                   <span className="n">
                     <b>{r.name || "—"}</b>
-                    <small>{shortClub(r.club)}</small>
+                    <small>{clubName(r.club)}</small>
                   </span>
                   <span className="g">{r.g ? <><GDot g={r.g} />{r.g}</> : ""}</span>
                   {hasP ? <span className="t">{r.t}</span> : null}
