@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
@@ -22,6 +23,7 @@ const fold = (s = "") => s.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normal
 // Mesajlar: popüler mesajlaşma uygulamaları gibi tek liste. Kişi sohbetleri, gruplar ve Ekip
 // son mesaja göre sıralı; okunmamışlar kalın ve sayılı. Üstte kişiler (çevrimiçi noktasıyla): dokununca birebir sohbet.
 export function ChatList() {
+  const confirmAsk = useConfirm();
   const router = useRouter();
   const { chats, people, personName, uid, denied, orgId, ready, groupIds, chatRef, chatCounts, resetChats } = useChat();
   const toast = useToast();
@@ -107,7 +109,7 @@ export function ChatList() {
     setResetting(false);
     if (n.error) return toast(n.error);
     if (!n.chats) return toast("Silinecek mesaj yok");
-    if (!window.confirm(`${n.chats} sohbet, ${n.messages} mesaj ve tüm ekler herkes için kalıcı silinecek. Geri alınamaz. Mesajlar sıfırlansın mı?`)) return;
+    if (!(await confirmAsk({ title: "Mesajlar sıfırlansın mı?", text: `${n.chats} sohbet, ${n.messages} mesaj ve tüm ekler herkes için kalıcı silinir.`, yes: "Sıfırla" }))) return;
     setResetting(true);
     const ok = await resetChats();
     setResetting(false);

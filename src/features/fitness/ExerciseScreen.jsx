@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/Icon";
@@ -17,6 +18,7 @@ import { YtEdit } from "./YtVideo";
 // put(fn): fn(güncel kayıt) => { yt, media } kaydeder (useFitLib.setMedia).
 let seq = 0;
 export function ExerciseScreen({ e, uses = 0, put, onBack, children }) {
+  const confirmAsk = useConfirm();
   const { profile } = useAuth();
   const orgId = profile?.orgId;
   const toast = useToast();
@@ -61,7 +63,7 @@ export function ExerciseScreen({ e, uses = 0, put, onBack, children }) {
     add.forEach((j) => run(j.id, j.file));
   };
   const remove = async (m) => {
-    if (!confirm(m.kind === "video" ? "Video bu hareketten kaldırılsın mı?" : "Fotoğraf bu hareketten kaldırılsın mı?")) return;
+    if (!(await confirmAsk({ title: m.kind === "video" ? "Video kaldırılsın mı?" : "Fotoğraf kaldırılsın mı?", yes: "Kaldır" }))) return;
     try {
       await put((now) => ({ yt: now.yt, media: (now.media || []).filter((x) => x.id !== m.id) }));
       setCur(0);

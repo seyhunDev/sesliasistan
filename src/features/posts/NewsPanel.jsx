@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { Icon } from "@/components/ui/Icon";
@@ -23,6 +24,7 @@ const LOGIN = "Dikili Yelken yönetici hesabıyla giriş yapın";
 // post: açık gönderi; poster(): afişin tuvali (0. fotoğraf); ensureId(): gönderi kaydedilmemişse kaydedip kimliği verir;
 // onLinked(newsId): gönderideki bağlantıyı yazar. ref: asistan için run(op) (add, edit, publish, unpublish, remove).
 export const NewsPanel = forwardRef(function NewsPanel({ show, post, pid, poster, ensureId, onLinked }, ref) {
+  const confirmAsk = useConfirm();
   const toast = useToast();
   const [acc, setAcc] = useState(undefined); // { user, admin } | undefined (bakılıyor)
   const [item, setItem] = useState(undefined); // haber belgesi | null (yok) | undefined (bakılıyor)
@@ -120,7 +122,7 @@ export const NewsPanel = forwardRef(function NewsPanel({ show, post, pid, poster
 
   const remove = async () => {
     if (!item) return "Bu afiş haberlerde yok.";
-    if (!confirm("Haber Dikili Yelken sitesinden kaldırılsın mı? Fotoğrafları da silinir.")) return "Haberi kaldırmadım.";
+    if (!(await confirmAsk({ title: "Haber siteden kaldırılsın mı?", text: "Dikili Yelken sitesinden kalkar, fotoğrafları da silinir.", yes: "Kaldır" }))) return "Haberi kaldırmadım.";
     setBusy("del");
     setErr("");
     try {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { BackButton } from "@/components/ui/BackButton";
 import { ListHead } from "@/components/ui/Row";
-import { Icon } from "@/components/ui/Icon";
+import { AddButton } from "@/components/ui/AddButton";
 import { DelBadge, Empty } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { SwipeRow } from "@/components/ui/SwipeRow";
@@ -80,10 +80,7 @@ export default function TasksPage() {
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
           <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">Görevler</h1>
-          <button type="button" onClick={() => openAdd({ type: "task" })} data-press className="ck-btn shrink-0 !flex items-center gap-1">
-            <Icon name="plus" className="size-4" />
-            Görev
-          </button>
+          <AddButton onClick={() => openAdd({ type: "task" })}>Görev</AddButton>
         </header>
 
         <div className="mt-4 flex items-baseline justify-between gap-3">
@@ -129,8 +126,8 @@ export default function TasksPage() {
       </section>
 
       <div className="split-main relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
-        {tasks.length === 0 && <Empty icon="task" title="Henüz görev yok" />}
-        {tasks.length > 0 && groups.length === 0 && <Empty icon="check" title="Açık görev kalmadı" />}
+        {tasks.length === 0 && <Empty title="Görev yok" add="Görev" onAdd={() => openAdd({ type: "task" })} />}
+        {tasks.length > 0 && groups.length === 0 && <Empty title="Açık görev yok" add="Görev" onAdd={() => openAdd({ type: "task" })} />}
         {groups.map((g) => (
           <section key={g.key}>
             <ListHead title={g.label} count={g.items.length} />

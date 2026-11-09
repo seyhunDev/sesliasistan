@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Icon } from "@/components/ui/Icon";
@@ -19,6 +20,7 @@ import { useFitLib } from "./useFitLib";
 const hasMedia = (x) => !!(x.yt?.id || (x.media || []).length);
 
 export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
+  const confirmAsk = useConfirm();
   const { lib, setMedia, merge, attach, rename, drop } = useFitLib();
   const toast = useToast();
   const [join, setJoin] = useState(false);
@@ -81,7 +83,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   const remove = async () => {
     const n = uses[e.key] || 0;
     if (n) return toast(`${n} programda var; önce programdan çıkar`);
-    if (!confirm(`“${e.name}” listeden silinsin mi? Fotoğraf ve videoları silinmez, "Hareketsiz kalan dosyalar"da durur.`)) return;
+    if (!(await confirmAsk({ title: "Hareket silinsin mi?", text: `${e.name} · fotoğraf ve videoları "Hareketsiz kalan dosyalar"da kalır.` }))) return;
     try {
       await drop(e.key);
       back();
@@ -92,7 +94,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   };
   // Bu hareketi seçilenle birleştirir: fotoğrafı/videosu çok olan kalır, öbürünün adı da ileride ona gider
   const joinWith = async (x) => {
-    if (!confirm(`“${e.name}” ile “${x.name}” aynı hareket olarak birleştirilsin mi? Fotoğraf ve videoların hepsi kalır.`)) return;
+    if (!(await confirmAsk({ title: "Birleştirilsin mi?", text: `${e.name} ile ${x.name} tek hareket olur, fotoğraf ve videoların hepsi kalır.`, yes: "Birleştir", danger: false }))) return;
     const keep = libKeepOf(lib, [e.key, x.key]);
     try {
       await merge(keep, [e.key, x.key]);
@@ -214,11 +216,12 @@ const mediaText = (x) => {
   return [ph ? `${ph} fotoğraf` : "", vd ? `${vd} video` : ""].filter(Boolean).join(" · ") || "Fotoğraf yok";
 };
 function Dupes({ groups, uses, onMerge, title = "Aynı adlı hareketler", start = false }) {
+  const confirmAsk = useConfirm();
   const [open, setOpen] = useState(start);
   const [busy, setBusy] = useState("");
   const run = async (list) => {
     const names = list.map((g) => g.name).join(", ");
-    if (!confirm(`${names} birleştirilsin mi? Fotoğraf ve videolar silinmez, kalan harekete geçer.`)) return;
+    if (!(await confirmAsk({ title: "Birleştirilsin mi?", text: `${names} · fotoğraf ve videolar kalan harekete geçer.`, yes: "Birleştir", danger: false }))) return;
     setBusy(list.length > 1 ? "*" : list[0].keep);
     try {
       for (const g of list) await onMerge(g.keep, g.items.map((x) => x.key));

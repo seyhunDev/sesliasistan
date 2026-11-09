@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
@@ -97,6 +98,7 @@ const avgTiming = () => {
 };
 
 export function TestsPage() {
+  const confirmAsk = useConfirm();
   const { profile } = useAuth();
   const toast = useToast();
   const router = useRouter();
@@ -124,7 +126,7 @@ export function TestsPage() {
     const list = RUNNABLE.filter((t) => keys.includes(t.key));
     if (!list.length) return toast("Önce test seç");
     const ai = list.find((t) => t.ai);
-    if (ai && !confirm(`${ai.name} yapay zekaya ${ai.sub().split(" ")[0]} istek gönderir (kayıt yapılmaz). Başlasın mı?`)) return;
+    if (ai && !(await confirmAsk({ title: "Yapay zeka testi başlasın mı?", text: `${ai.name} · ${ai.sub().split(" ")[0]} istek gönderir, kayıt yapılmaz.`, yes: "Başlat", danger: false }))) return;
     const ctl = new AbortController();
     stop.current = ctl;
     const t0 = Date.now();
