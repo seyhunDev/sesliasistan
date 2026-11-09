@@ -1790,13 +1790,34 @@ function athDays(data, b, r) {
 }
 const athDayName = (d, today) => (d === today ? "Bugün" : d === trDay(Date.parse(`${today}T12:00:00Z`) - 864e5) ? "Dün" : d === trDay(Date.parse(`${today}T12:00:00Z`) + 864e5) ? "Yarın" : dayText(d));
 const GDot = ({ g }) => (g ? <i style={{ background: groupColor(g) || "#ffd23f" }} aria-hidden="true" /> : null);
-function ScAthPanel({ data, ath, day, prog = [], res = false, onFull }) {
+function ScAthPanel({ data, ath, day, prog = [], res = false, onFull, onResult = null, resMsg = "" }) {
   const [ci, setCi] = useState(0);
   const [q, setQ] = useState("");
   const [f, setF] = useState(""); // "" hepsi, "our" bizimkiler, grup adı
   const [pick, setPick] = useState(null); // { cls, sail }
   const b = ath[Math.min(ci, ath.length - 1)];
-  if (!b) return null;
+  const head = (
+    <>
+      <div className="sc-vph">
+        <b>Sporcular</b>
+        {/* Sonuç ekle (Seyhun 2026-11-09 "sonuçları gösterdiğimiz her yerde artı"): sonuç PDF'i ya da fotoğrafı */}
+        {onResult ? (
+          <label className="sc-athadd" aria-label="Sonuç ekle">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" /></svg>
+            <input type="file" accept="application/pdf,image/*" hidden onChange={(e) => (e.target.files?.[0] && onResult(e.target.files[0]), (e.target.value = ""))} />
+          </label>
+        ) : null}
+      </div>
+      {resMsg ? <p className="sc-athm">{resMsg}</p> : null}
+    </>
+  );
+  if (!b)
+    return (
+      <div className="sc-ath">
+        {head}
+        <p className="sc-vno">Henüz sonuç yok</p>
+      </div>
+    );
   const pb = pick ? ath.find((x) => x.cls === pick.cls) : null;
   const pr = pb?.rows.find((x) => x.sail === pick.sail);
   if (pr) {
@@ -1853,9 +1874,7 @@ function ScAthPanel({ data, ath, day, prog = [], res = false, onFull }) {
   const hasP = b.rows.some((r) => r.p !== "");
   return (
     <div className="sc-ath">
-      <div className="sc-vph">
-        <b>Sporcular</b>
-      </div>
+      {head}
       {ath.length > 1 ? (
         <div className="sc-vtabs" role="tablist">
           {ath.map((x, i) => (
@@ -2886,7 +2905,7 @@ const BAR_ICON = {
   src: bi(<><rect x="3" y="5" width="18" height="12" rx="2.5" /><path d="M8 21h8M12 17v4" /></>),
   txt: bi(<><path d="M5 6h14M12 6v13M9 19h6" /></>),
 };
-function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", masaAyar = false, photos = [], defCam = "", onCards = null, onSrcMenu = null, onTalk = null }) {
+function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", masaAyar = false, photos = [], defCam = "", onCards = null, onSrcMenu = null, onTalk = null, onResult = null, resMsg = "" }) {
   const [crsView, setCrsView] = useState(null); // Parkur panelinde bakılan sınıf (null: o anki yarışın parkuru, "": herkes)
   const [crsOpen, setCrsOpen] = useState(false); // üstteki Parkur kutusuna dokununca açılan seçim alanı
   // üstte yazan parkur: o anki / sıradaki yarışın sınıfınınki, yoksa seçili
@@ -2915,7 +2934,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
     // Parkur ve rüzgâr tek düğme (Seyhun 2026-11-06): üstte şu anki ölçüm, ortada büyük parkur, altta beklenen rüzgâr
     (course || onWind || wind || nowW) && ["course", "Parkur ve rüzgâr"],
     // Sporcular (Seyhun 2026-11-09): Sıralama ve Gruplar tek düğme; genel sıra, bugünkü grup, puan, dokununca dereceler
-    ath.length > 0 && ["ath", "Sporcular"],
+    (ath.length > 0 || onResult) && ["ath", "Sporcular"],
     (prog.length > 0 || pgAg) && ["prog", "Program"],
     vidRef && ["vid", "Video", !!myVid],
     onStart && ["start", "Start"],
@@ -3196,7 +3215,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       // günün programı (Seyhun 2026-11-06 "varsa program butonumuzda olsun"): biten soluk, süren mavi, sıradaki sarı
       <ScProgPanel prog={prog} ag={pgAg} />
     ) : k === "ath" ? (
-      <ScAthPanel data={data} ath={ath} day={pgDay} prog={prog} res={res} onFull={onFull} />
+      <ScAthPanel data={data} ath={ath} day={pgDay} prog={prog} res={res} onFull={onFull} onResult={onResult} resMsg={resMsg} />
     ) : k === "vid" ? (
       // ana hesabın kendi videoları (LiveStart › LiveVideos buraya çizer; yalnız uygulama içinde)
       <div ref={vidRef} />
@@ -3486,6 +3505,9 @@ export function LiveScreen({ id, y = "" }) {
   const locT = useLocalTimer(skew, id, own && !demoOn && !y, data0?.timer || null);
   // parkur seçimi (ScCrsPick): yazılana kadar ekranda hemen görünür; sunucudaki cardAt yenilenince sunucununki
   const [crsReq, setCrsReq] = useState(null); // { k: kartlar, n, at }
+  const [resFile, setResFile] = useState(null); // Sporcular › "+": LiveStart sonucu yükler
+  const [resMsg, setResMsg] = useState("");
+  const onResDone = useCallback((t) => setResMsg(t), []);
   const [talkN, setTalkN] = useState(0); // Sesle düğmesi: LiveStart sesle parkur penceresini açar
   const crsOv = crsReq && data0 && !((data0.course?.cardAt || "") >= crsReq.at) ? crsReq.k : null;
   const data = useMemo(() => (data0 && (locT || crsOv) ? { ...data0, ...(locT ? { timer: locT } : {}), ...(crsOv ? { course: { ...data0.course, ...crsOv } } : {}) } : data0), [data0, locT, crsOv]);
@@ -3657,8 +3679,8 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} still={still} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} masaAyar={vTab === "masa" && !!masaAdd?.ayar} onSrcMenu={adm && inApp && !demoOn ? srcMenu : null} onCards={(adm && inApp) || demoOn ? (k) => setCrsReq({ k, n: Date.now(), at: new Date().toISOString() }) : null} onTalk={adm && !demoOn ? () => setTalkN(Date.now()) : null} /> : null} />
-        {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} list={newList} onListed={onListed} cards={crsReq} talkN={talkN} /> : null}
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} still={still} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} masaAyar={vTab === "masa" && !!masaAdd?.ayar} onSrcMenu={adm && inApp && !demoOn ? srcMenu : null} onCards={(adm && inApp) || demoOn ? (k) => setCrsReq({ k, n: Date.now(), at: new Date().toISOString() }) : null} onTalk={adm && !demoOn ? () => setTalkN(Date.now()) : null} onResult={adm && inApp && !demoOn ? (file) => (setResMsg("Okunuyor…"), setResFile((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} resMsg={resMsg} /> : null} />
+        {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} list={newList} onListed={onListed} cards={crsReq} talkN={talkN} resFile={resFile} onResDone={onResDone} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
       {list ? <Races id={id} starts={starts} cur={data.cur} sel={sel} fleets={data.fleets} rounds={data.rounds} entries={data.entries} onClose={() => setList(false)} /> : null}

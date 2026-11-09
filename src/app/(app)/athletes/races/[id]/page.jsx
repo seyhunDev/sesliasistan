@@ -30,7 +30,7 @@ import { todayStr } from "@/lib/utils/format";
 import { goBack } from "@/lib/navTrail";
 import { siteDocBlob } from "@/features/athletes/raceSite";
 import { SiteDocs } from "@/features/athletes/SiteDocs";
-import { importResults, importToast } from "@/features/athletes/resultsImport";
+import { addResults, importResults, importToast } from "@/features/athletes/resultsImport";
 import { BG_PHOTO } from "@/features/liveScreen/bgPhoto";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
@@ -150,13 +150,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     async (file, replace = "") => {
       const cur = raceNow.current;
       if (!athletes || !cur?.id) return null;
-      const ours = athletes.filter((a) => (cur.athleteIds || []).includes(a.id));
-      const club = athletes.filter((a) => isActive(a) && !ours.includes(a));
-      const got = await importResults({ orgId, race: cur, athletes: ours, club, file, replace });
-      got.results = stampResults(cur.results, got.results, todayStr());
-      await saveRaceResults(orgId, cur.id, got.results, got.extra);
-      const athleteIds = [...new Set([...(cur.athleteIds || []), ...got.extra])];
-      const next = { ...cur, results: got.results, athleteIds };
+      const { got, race: next } = await addResults({ orgId, race: cur, athletes, file, replace });
       raceNow.current = next;
       setRace(next);
       window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: next }));
