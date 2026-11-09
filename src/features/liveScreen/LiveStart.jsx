@@ -44,7 +44,7 @@ export default function LiveStart(p) {
 }
 // vidHost: Video panelindeki yer (LiveScreen ScView; yalnız uygulama içinde); videolar oraya çizilir
 // masaHost: Yayın masasının yeri (Yayın modunda "Yayında"ya basınca); give: Benim'de seçileni yayına ver isteği { s, n }
-function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false, masaHost = null, addCat = null, now = null, pos = [], give = null, onGiven, list = null, onListed, cards = null }) {
+function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false, masaHost = null, addCat = null, now = null, pos = [], give = null, onGiven, list = null, onListed, cards = null, talkN = 0 }) {
   const [orgId, setOrgId] = useState("");
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -218,6 +218,14 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
   // Sesle (Seyhun 2026-11-05 "canlı ekranda da sesle de olmalı"): Ölçüm ekle › Sesle; Yayın › Parkur'daki sesle parkurun aynısı
   // (CourseTalk + courseWrite): rüzgâr, eksen, hat, rota, grubun kartı aynı kayıtlarla; Geri al parkuru önceki hâline yazar
   const [talk, setTalk] = useState(false);
+  // çubuktaki Sesle düğmesi (talkN her basışta değişir)
+  const talkSeen = useRef(talkN);
+  useEffect(() => {
+    if (!talkN || talkSeen.current === talkN) return undefined;
+    talkSeen.current = talkN;
+    const t = setTimeout(() => setTalk(true), 0);
+    return () => clearTimeout(t);
+  }, [talkN]);
   const fail = () => setMsg("Kaydedilemedi. İnterneti kontrol et.");
   const applyVoice = (r) =>
     writeCourseVoice(r, {
