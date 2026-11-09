@@ -246,7 +246,9 @@ export async function scanNew({ db, get, recordInbox, sendDevice, newRaces, newR
   await Promise.all([saveList(db, "", list), saveList(db, list.season, list)]).catch(() => {});
   const acts = list.legs.flatMap((l) => (l.classes || []).map((c) => c.act));
   const fresh = Array.isArray(k.acts) ? newRaces(list.legs, k.acts) : [];
-  await ref.set({ season: list.season, acts: [...new Set([...(k.acts || []), ...acts])].slice(-3000), scanAt: new Date().toISOString() }, { merge: true });
+  const now = new Date().toISOString();
+  const news = [...fresh.map((x) => ({ act: x.act, cls: x.cls, leg: x.leg, at: now })), ...(Array.isArray(k.news) ? k.news : [])].slice(0, 100);
+  await ref.set({ season: list.season, acts: [...new Set([...(k.acts || []), ...acts])].slice(-3000), scanAt: now, ...(fresh.length ? { news } : {}) }, { merge: true });
   const note = newRacesNote(fresh, list.season);
   if (!note) return 0;
   const follow = await db.collection("raceSite").where("on", "==", true).get();
