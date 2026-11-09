@@ -6,7 +6,6 @@ import { dayPlan, nextDay, ourPlaces, racePhase } from "@/lib/raceDay";
 import { ResultCards, ResultsAdd } from "./ResultCards";
 import { loadLive } from "./raceLiveStore";
 import { RaceWxRows } from "./RaceWx";
-import { RaceStats } from "./raceUi";
 
 // Yarış günü üstü (Seyhun 2026-10-28, yaris-tasarim/harita "Yarış günü: saate göre değişen sayfa"):
 //   A yarışlar sürerken: rüzgâr (RaceWx, şimdiki ölçüm/tahmin) üstte, altında Multimedya · Parkur
@@ -45,10 +44,9 @@ export function useRacePhase(r, orgId, rid, on) {
 // yaris-tasarim/sade/takip-*.png): Canlı ekran · Yayın (go), altında tek kartta "Şimdi" (2 yarış bitti · 3. start 12:30 / Sonuçlar geldi /
 // Gün bitti) ve Hava, Harita. Bizimkilerin sırası yalnız Takip sekmesi yoksa burada (track: sitesi bağlı yarışta sonuçlar Takip'te, tek yer);
 // gün bitince yarın ya da dönüş satırı.
-export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = null, track = false, onResultsFile = null }) {
+export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = false, track = false, onResultsFile = null }) {
   const today = todayStr();
   const places = track ? [] : ourPlaces(r.results, chosen);
-  const fleet = r.results?.fleet;
   const last = today >= (r.endDate || r.startDate);
   const tom = nextDay(today);
   const fin = races.filter((x) => x.fin).length;
@@ -56,24 +54,15 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = null, tr
   // Üst kart (Seyhun 2026-11-09 sade öneri): Bitti · Sıradaki start · (gün bitince) durum; hava ayrı satırda (RaceWxRows)
   const next = cur && fin < races.length ? cur : null;
   const resN = Math.max(0, ...Object.values(r.results?.rows || {}).map((x) => x?.r?.length || 0));
-  const lead = (
-    <RaceStats
-      className="mb-2.5"
-      items={[
-        // sayaçta start yoksa sonuç belgesindeki yarış sayısı
-        ["Bitti", races.length ? fin || (next ? 0 : races.length) : resN || "", "yarış"],
-        next ? ["Sıradaki", hm(next.at), `${next.n}. start`] : phase === "done" ? ["Durum", dayAll > 1 && !last ? "Gün bitti" : "Bitti", ""] : phase === "results" ? ["Sonuçlar", "Geldi", ""] : ["Sıradaki", "–", "start"],
-        fleet ? ["Tekne", fleet, ""] : null,
-      ]}
-    />
-  );
+  // Bilgi şeridi (Seyhun 2026-11-09 Takip yeni tasarım): Bitti · Sıradaki/Durum · Hava (RaceWxRows ekler); altında Canlı ekran · Yayın · Harita
+  const stats = [
+    // sayaçta start yoksa sonuç belgesindeki yarış sayısı
+    ["Bitti", races.length ? fin || (next ? 0 : races.length) : resN || "", "yarış"],
+    next ? ["Sıradaki", hm(next.at), `${next.n}. start`] : phase === "done" ? ["Durum", dayAll > 1 && !last ? "Gün bitti" : "Bitti", ""] : phase === "results" ? ["Sonuçlar", "Geldi", ""] : ["Sıradaki", "–", "start"],
+  ];
   return (
     <div className="rz-dtop mt-4">
-      {/* Canlı ekran · Yayın (yalnız ana hesap; raceUi RaceGo, Seyhun 2026-11-06) */}
-      {go}
-      <div className="mt-3">
-        <RaceWxRows key={phase} r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} lead={lead} />
-      </div>
+      <RaceWxRows key={phase} r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} stats={stats} go={go} />
       {/* Sonuçlar (sitesi bağlı değilse burada) ve "+" ile sonuç ekleme */}
       {!track && (places.length > 0 || onResultsFile) && (
         <div className="rz-res mt-6">

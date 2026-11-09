@@ -1342,12 +1342,18 @@ main.rz.rzc.rzi > .ck { display: flex; flex-direction: column; background: trans
 /* telefon ve dik iPad (Seyhun 2026-11-09 "üst taraf boş kalıyor"): geri, ad ve ⋯ tek satırda, altında tarih; hemen altında hava ve düğmeler */
 main.rzi .rz-dtop { display: contents; }
 main.rzi > .ck .rz-go { order: 9; margin-top: .75rem; }
+/* bilgi şeridi, düğmeler ve açılan hava/harita kahramanın sırasına katılır (RaceWx stats); açılanlar düğmelerin altında */
+main.rzi .rz-dtop > section { display: contents; }
+main.rzi > .ck .rz-wx-open { order: 10; }
 main.rzc.rzi > .ck h1 { color: rgba(255, 255, 255, .9); }
 main.rzc.rzi > .ck { padding-bottom: 0; }
 /* üst kart: üç bilgi yan yana (raceUi RaceStats) */
-.rz-stats { display: grid; overflow: hidden; border-radius: 1.125rem; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .09); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-.rz-stats > div { min-width: 0; padding: .625rem .75rem; border-left: 1px solid rgba(255, 255, 255, .1); }
-.rz-stats > div:first-child { border-left: 0; }
+/* Takip yeni tasarım (Seyhun 2026-11-09 "profesyonel, modern, minimal"): kutu yok, üstte ve altta ince çizgi arasında tek satır */
+.rz-stats { display: grid; border-top: 1px solid rgba(255, 255, 255, .14); border-bottom: 1px solid rgba(255, 255, 255, .14); }
+.rz-stats > * { min-width: 0; padding: .6875rem .875rem; border-left: 1px solid rgba(255, 255, 255, .12); text-align: left; }
+.rz-stats > :first-child { border-left: 0; padding-left: .125rem; }
+.rz-stat-b[data-pressed] { opacity: .7; }
+.rz-stat-b[aria-expanded="true"] small { color: #fff; }
 .rz-stats small { display: block; font-size: .71875rem; font-weight: 600; color: rgba(255, 255, 255, .58); }
 .rz-stats b { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 1.125rem; font-weight: 700; letter-spacing: -.02em; color: #fff; }
 .rz-stats em { margin-left: .1875rem; font-style: normal; font-size: .78125rem; font-weight: 600; color: rgba(255, 255, 255, .65); }
@@ -1389,6 +1395,39 @@ main.rz.rzc.rzi { padding-bottom: 0; }
   body[data-side] main.rzi > .ck .rz-more { position: absolute; right: 1.75rem; top: calc(1.25rem + env(safe-area-inset-top)); }
   body[data-side] main.rz.rzc.split.split-even.rzi > .rzc-body { margin: calc(1.25rem + env(safe-area-inset-top)) 1.25rem 1.25rem 0; min-height: calc(100dvh - 2.5rem - env(safe-area-inset-top)); padding: 1rem 1.5rem 6rem; }
 }
+
+/* TAKİP YENİ TASARIM (Seyhun 2026-11-09 "profesyonel, modern, minimal, sade"; örnek takip-telefon/ipad.png onaylı; RaceTrack.jsx):
+   kutu yok, bölümler ince çizgiyle; en üstte son belge kartı (Aç · Okudum), Program gün seçicili saat satırları (değişen saat mavi,
+   eski üstü çizili), Gruplar renk çubuğu, Belgeler solda mavi noktalı satırlar. */
+.tk-box { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.tk-box:has(> .rs-head:first-child) { border-top: 0; }
+.tk-news { display: flex; flex-direction: column; gap: .75rem; padding: .875rem 1rem; border-radius: 1.125rem; background: color-mix(in srgb, var(--acc) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 32%, transparent); }
+.tk-news small { display: block; font-size: .71875rem; font-weight: 700; letter-spacing: .06em; color: var(--acc); }
+.tk-news small span { font-weight: 500; letter-spacing: 0; color: var(--mut); }
+.tk-news p { margin-top: .3125rem; font-size: .9375rem; line-height: 1.4; }
+.tk-news-b { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.tk-news-b .btn { height: 2.5rem; border-radius: .75rem; font-weight: 700; }
+@media (min-width: 48rem) {
+  .tk-news { flex-direction: row; align-items: center; gap: 1.25rem; }
+  .tk-news-b { width: 15rem; flex-shrink: 0; }
+}
+.tk-days { display: flex; gap: .375rem; margin-bottom: .375rem; overflow-x: auto; scrollbar-width: none; }
+.tk-days button { flex-shrink: 0; height: 2rem; padding: 0 .875rem; border-radius: 999px; font-size: .8125rem; font-weight: 600; color: var(--mut); }
+.tk-days button[aria-selected="true"] { background: color-mix(in srgb, var(--fg) 12%, transparent); color: var(--fg); }
+.tk-days button.tk-ch::after { content: ""; display: inline-block; width: .3125rem; height: .3125rem; margin-left: .3125rem; vertical-align: middle; border-radius: 50%; background: var(--acc); }
+.tk-rows { border-top: 1px solid var(--line); }
+.tk-ev { display: grid; grid-template-columns: 3.75rem 1fr; gap: .75rem; align-items: baseline; padding: .6875rem 0; border-bottom: 1px solid var(--line); }
+.tk-ev time { font-size: .9375rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tk-ev time s { display: block; font-size: .75rem; font-weight: 500; color: var(--mut); }
+.tk-ev span { min-width: 0; font-size: .9375rem; }
+.tk-ev.tk-new time { color: var(--acc); }
+.tk-bar { display: flex; gap: 2px; height: .5rem; overflow: hidden; border-radius: .25rem; margin-top: .25rem; }
+.tk-bar i { background: var(--g); }
+.tk-leg { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .375rem 1rem; margin-top: .5625rem; font-size: .875rem; font-weight: 600; }
+.tk-leg span { display: flex; align-items: center; gap: .375rem; }
+.tk-leg span::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--g); }
+.tk-leg em { font-style: normal; font-weight: 500; color: var(--mut); }
+.tk-all { margin-top: .75rem; font-size: .875rem; font-weight: 600; color: var(--acc); }
 
 /* SONUÇ LİSTESİ (Seyhun 2026-11-09 renkli yuvarlaklar; örnek yaris-tasarim/sade/sonuc-renk-*.png onaylı; src/features/athletes/ResultCards.jsx):
    sporcu başına bir satır. Solda sıra, altında /kişi (3 hane sığar); ortada ad + dünden fark, altında her yarış grubunun renginde yuvarlak

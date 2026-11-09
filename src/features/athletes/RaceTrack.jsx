@@ -10,17 +10,16 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { ListHead, Tag } from "@/components/ui/Row";
-import { Seg } from "@/components/ui/Page";
 import { todayStr } from "@/lib/utils/format";
 import { windName } from "@/features/weather/weather";
 import { loadLive } from "./raceLiveStore";
 import { loadRaceDay } from "./raceWeather";
 import { Icon } from "@/components/ui/Icon";
 import { ourPlaces } from "@/lib/raceDay";
-import { cleanSchedule, currentAmend, kindLabel, resultState, version } from "@/lib/siteDocs";
+import { changedRows, cleanSchedule, currentAmend, kindLabel, latestNews, resultState, rowKey, version } from "@/lib/siteDocs";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
 import { ResultCards, ResultsAdd } from "./ResultCards";
-import { siteDocBlob, watchEntryDoc, watchSiteDocs } from "./raceSite";
+import { saveDocState, siteDocBlob, watchEntryDoc, watchSiteDocs } from "./raceSite";
 
 const RULES = ["notice", "amend", "program"];
 const GROUPS = ["groups", "fleets"];
@@ -65,30 +64,29 @@ const tomorrowOf = (today) => new Date(Date.parse(`${today}T12:00:00`) + 864e5).
 const dayTag = (d, today) => (d === today ? "" : d === tomorrowOf(today) ? "Yarın" : new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }));
 // Günün grupları (Seyhun 2026-11-07 "gruplar açıklandı ama göremiyorum; her eklendiğinde güncellenmeli"): kayıt listesindeki grup
 // listesi canlı (raceSite.watchEntryDoc); grup başına tekne sayısı, bizim sporcuların grubu
-function GroupsNow({ e }) {
-  const today = todayStr();
+// Takip yeni tasarım (Seyhun 2026-11-09): tek renk çubuğu (grup başına pay) ve altında grup adı + tekne sayısı
+function GroupsNow({ e, day }) {
   const rank = (g) => GROUP_PICK.indexOf(g) + 1 || 99;
-  return groupDays(e?.groups, today).map((day) => {
-    const list = e.groups[day];
-    const count = {};
-    for (const [, g] of list) count[g] = (count[g] || 0) + 1;
-    const gs = Object.keys(count).sort((a, b) => rank(a) - rank(b));
-    return (
-      <div key={day} className="border-t border-line py-3 first:border-t-0">
-        <small className="block text-[0.8125rem] text-mut">
-          {day === today ? "Bugün" : dayTag(day, today) === "Yarın" ? "Yarın" : dayName(day)} · {list.length} tekne
-        </small>
-        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-          {gs.map((g) => (
-            <span key={g} className="inline-flex items-center gap-1.5 text-[0.9375rem] font-semibold">
-              <i className="size-2.5 rounded-full" style={{ background: groupColor(g) || "currentColor" }} aria-hidden="true" />
-              {g} <span className="font-normal text-mut tabular-nums">{count[g]}</span>
-            </span>
-          ))}
-        </div>
+  const list = e?.groups?.[day] || [];
+  const count = {};
+  for (const [, g] of list) count[g] = (count[g] || 0) + 1;
+  const gs = Object.keys(count).sort((a, b) => rank(a) - rank(b));
+  return (
+    <>
+      <div className="tk-bar" aria-hidden="true">
+        {gs.map((g) => (
+          <i key={g} style={{ flex: count[g], "--g": groupColor(g) || "var(--mut)" }} />
+        ))}
       </div>
-    );
-  });
+      <div className="tk-leg">
+        {gs.map((g) => (
+          <span key={g} style={{ "--g": groupColor(g) || "var(--mut)" }}>
+            {g} <em>{count[g]}</em>
+          </span>
+        ))}
+      </div>
+    </>
+  );
 }
 // Bizim sporcuların grupları (kayıt listesindeki günlerin grupları, yelken numarasıyla): { sporcu id: [[gün etiketi, grup], …] };
 // bugünün etiketi boş, yarınınki "Yarın" (açıklanınca hemen)
@@ -114,15 +112,43 @@ export function programDays(schedule, today) {
   const next = days.filter((d) => d >= today);
   return (next.length ? next : days).map((d) => [d, by.get(d).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"))]);
 }
-function ProgramRows({ schedule }) {
+// Takip yeni tasarım (Seyhun 2026-11-09 "program çok kötü gösteriyor"): gün seçici (Bugün · Yarın · 11 Kas), saat solda, iş sağda.
+// changed: son talimatın değiştirdiği satırlar (siteDocs changedRows; "gün|başlık" → eski saat); Okudum'a kadar yeni saat mavi, eski altında üstü çizili
+function ProgramRows({ schedule, changed = {} }) {
   const today = todayStr();
-  const tomorrow = new Date(Date.parse(`${today}T12:00:00`) + 864e5).toLocaleDateString("sv-SE");
-  return programDays(schedule, today).map(([d, items]) => (
-    <div key={d} className="flex gap-3 border-t border-line py-3 first:border-t-0">
-      <span className={`w-[4.75rem] shrink-0 text-[0.8125rem] ${d === today ? "font-semibold text-acc" : "text-mut"}`}>{d === today ? "Bugün" : d === tomorrow ? "Yarın" : dayName(d)}</span>
-      <span className="min-w-0 flex-1 text-[0.9375rem]">{items.map((x) => [x.time, x.title].filter(Boolean).join(" ")).join(" · ")}</span>
-    </div>
-  ));
+  const days = programDays(schedule, today);
+  const [pick, setPick] = useState("");
+  const sel = days.find(([d]) => d === pick) || days[0];
+  if (!sel) return null;
+  const label = (d) => (d === today ? "Bugün" : d === tomorrowOf(today) ? "Yarın" : new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }));
+  return (
+    <>
+      {days.length > 1 && (
+        <div className="tk-days" role="tablist">
+          {days.map(([d, items]) => (
+            <button key={d} type="button" role="tab" aria-selected={d === sel[0]} onClick={() => setPick(d)} data-press className={items.some((x) => rowKey(x) in changed) ? "tk-ch" : ""}>
+              {label(d)}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="tk-rows">
+        {sel[1].map((x) => {
+          const k = rowKey(x);
+          const old = changed[k];
+          return (
+            <div key={k + x.time} className={`tk-ev ${k in changed ? "tk-new" : ""}`}>
+              <time>
+                {x.time || "–"}
+                {old && old !== "saatsiz" && <s>{old}</s>}
+              </time>
+              <span>{x.title}</span>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
 }
 
 function DocRows({ list, onOpen, cur = null }) {
@@ -130,12 +156,13 @@ function DocRows({ list, onOpen, cur = null }) {
     const old = d.kind === "amend" && cur && d.id !== cur.id;
     const mark = old ? "eski" : markOf(d);
     return (
-      <button key={d.id} type="button" data-press="row" onClick={() => onOpen(d)} className={`flex min-h-[3.5rem] w-full items-center gap-2 border-t border-line py-2 text-left first:border-t-0 ${old ? "opacity-55" : ""}`}>
+      <button key={d.id} type="button" data-press="row" onClick={() => onOpen(d)} className={`flex min-h-[3.5rem] w-full items-center gap-2.5 border-t border-line py-2 text-left first:border-t-0 ${old ? "opacity-55" : ""}`}>
+        {/* yeni belge solda mavi nokta (Takip yeni tasarım) */}
+        <i className={`size-[0.4375rem] shrink-0 rounded-full ${d.seen ? "" : "bg-acc"}`} aria-label={d.seen ? undefined : "Yeni"} />
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[0.9375rem] font-semibold">{d.name}</b>
           <small className="block truncate text-[0.8125rem] text-mut">{[kindLabel(d.kind), when(d.at), d.state === "used" && d.note && d.note !== "Yarış ilanı" ? d.note : ""].filter(Boolean).join(" · ")}</small>
         </span>
-        {!d.seen && <Tag tone="gen">Yeni</Tag>}
         {mark && <span className="shrink-0 rounded-full bg-bg px-2 py-0.5 text-[0.75rem] font-semibold text-mut">{mark}</span>}
         <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
       </button>
@@ -232,21 +259,46 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
         {view && createPortal(<PdfViewer title={view.name} load={load} onClose={close} />, document.body)}
       </div>
     );
+  // En son gelen belge (Seyhun 2026-11-09 "en son gelen bilgi yukarıda, okudum butonu"; Takip yeni tasarım onaylı): ne değiştiği, Aç · Okudum.
+  // Okunana kadar Program'da değişen saatler işaretli (ek talimatın sakladığı eski program ile şimdiki)
+  const news = docs ? latestNews(docs, race, todayStr()) : null;
+  const changed = news?.kind === "amend" && news.undo?.notice ? changedRows(news.undo.notice.schedule, race.notice?.schedule) : {};
+  const grpDay = groupDays(ent?.groups, todayStr())[0] || "";
+  const grpN = grpDay ? ent.groups[grpDay].length : 0;
+  const grpLabel = grpDay === todayStr() ? "Bugün gruplar" : grpDay === tomorrowOf(todayStr()) ? "Yarın gruplar" : `${dayName(grpDay)} gruplar`;
   return (
-    <div>
-      {/* Sade öneri (Seyhun 2026-11-09 "Yap"): önce Sporcularımız (sıra, bugünkü grup etiketi, yarış yarış yuvarlaklar, NET), yanında (iPad) ya da
-          altında (telefon) bugünün grupları, program ve yeni belgeler; belgelerin tamamı Belgeler sekmesinde. Hava ve kaç yarış üstte. */}
+    <div className="tk">
+      {news && (
+        <section className="tk-news mt-5" aria-label="Son belge">
+          <div className="min-w-0 flex-1">
+            <small>
+              {[kindLabel(news.kind), version(news.name) ? `${version(news.name)}` : ""].filter(Boolean).join(" ").toLocaleUpperCase("tr-TR")}
+              <span> · {when(news.at)}</span>
+            </small>
+            <p>{news.state === "used" && news.note ? news.note : news.name}</p>
+          </div>
+          <div className="tk-news-b">
+            <button type="button" onClick={() => setView(news)} data-press className="btn rz-soft">
+              Aç
+            </button>
+            <button type="button" onClick={() => saveDocState(orgId, race.id, news.id, { read: true, seen: true }).catch(() => {})} data-press className="btn btn-primary">
+              Okudum
+            </button>
+          </div>
+        </section>
+      )}
+      {/* Takip yeni tasarım (Seyhun 2026-11-09 "profesyonel, modern, minimal, sade"; örnek takip-*.png onaylı): kutu yok, bölümler ince
+          çizgiyle; solda (telefonda üstte) Sporcularımız, yanında Program, Gruplar, Belgeler */}
       <div className="track-cols track-main">
-        <section className="mt-5" aria-label="Sporcularımız">
+        <section className="mt-6" aria-label="Sporcularımız">
           <ListHead title={["Sporcularımız", state, raceN && `${raceN} yarış`].filter(Boolean).join(" · ")} action={<ResultsAdd onFile={onResultsFile} />} />
-          <div className={box}>
+          <div className="tk-box">
             <ResultCards list={places} groups={grpOf} rest={noRes.map((a) => ({ id: a.id, name: a.studentName }))} />
             {!places.length && !noRes.length && !g.results.length && empty("Henüz sonuç yok")}
             {g.results.length > 0 && (
               <button type="button" aria-expanded={resOpen} onClick={() => setResOpen((v) => !v)} data-press="row" className={row}>
-                <span className="min-w-0 flex-1 text-[0.9375rem] font-medium">Sonuç belgeleri</span>
+                <span className="min-w-0 flex-1 text-[0.9375rem] text-mut">Sonuç belgeleri · {g.results.length}</span>
                 {g.results.some((d) => !d.seen) && <Tag tone="gen">Yeni</Tag>}
-                <span className="text-[0.9375rem] text-mut tabular-nums">{g.results.length}</span>
                 <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${resOpen ? "-rotate-90" : "rotate-90"}`} />
               </button>
             )}
@@ -254,36 +306,30 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
           </div>
         </section>
         <div>
-          {hasGroups && (
-            <section className="mt-5" aria-label="Bugünün grupları">
-              <ListHead title="Gruplar" />
-              <div className={box}>
-                <GroupsNow e={ent} />
-              </div>
-            </section>
-          )}
           {cleanSchedule(race.notice?.schedule).length > 0 && (
-            <section className="mt-5" aria-label="Program">
+            <section className="mt-6" aria-label="Program">
               <ListHead title="Program" />
-              <div className={box}>
-                <ProgramRows schedule={race.notice.schedule} />
-              </div>
+              <ProgramRows schedule={race.notice.schedule} changed={changed} />
             </section>
           )}
-          <section className="mt-5" aria-label="Belgeler">
-            <ListHead title={unseen.length ? "Yeni belgeler" : "Belgeler"} count={unseen.length || null} />
-            <div className={box}>
-              <DocRows list={unseen.length ? unseen : papers.slice(0, 2)} onOpen={setView} cur={currentAmend(g.rules)} />
+          {hasGroups && (
+            <section className="mt-6" aria-label="Gruplar">
+              <ListHead title={grpLabel} action={<span className="text-[0.8125rem] text-mut tabular-nums">{grpN} tekne</span>} />
+              <GroupsNow e={ent} day={grpDay} />
+            </section>
+          )}
+          <section className="mt-6" aria-label="Belgeler">
+            <ListHead title="Belgeler" />
+            <div className="tk-box">
+              <DocRows list={papers.slice(0, Math.max(4, unseen.length))} onOpen={setView} cur={currentAmend(g.rules)} />
               {!papers.length && empty("Henüz belge yok")}
-              {onAll && papers.length > 0 && (
-                <button type="button" onClick={onAll} data-press="row" className={row}>
-                  <span className="min-w-0 flex-1 text-[0.9375rem] font-medium">Tüm belgeler</span>
-                  <span className="text-[0.9375rem] text-mut tabular-nums">{papers.length + g.results.length}</span>
-                  <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-                </button>
-              )}
               {!onAll && docsMore}
             </div>
+            {onAll && papers.length > 0 && (
+              <button type="button" onClick={onAll} data-press className="tk-all">
+                Tüm belgeler
+              </button>
+            )}
             {!onAll && more && <div hidden={!all}>{more}</div>}
           </section>
         </div>
