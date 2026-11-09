@@ -14,7 +14,7 @@ import { tableOf } from "../pdfLines.js";
 import { takeResults } from "./raceSiteResults.js";
 import { cleanEntries, mergeEntries } from "../roundSay.js";
 import { cleanGroups, dayGroups } from "../roundScore.js";
-import { cleanSchedule, dayOf, focusText, listGroups, mergeSchedule, scheduleDiff, sitePlan } from "../siteDocs.js";
+import { cleanSchedule, dayOf, docKind, focusText, listGroups, mergeSchedule, scheduleDiff, sitePlan } from "../siteDocs.js";
 
 // pdf.js Node'da DOMMatrix ister (yoksa @napi-rs/canvas'tan alır; Netlify işlevinde o yerel paket olmayabilir).
 // Yalnız yazı okunur, çizim yok: yalın bir matris yeter.
@@ -208,6 +208,27 @@ export async function fillOld({ db, bucket, orgId, raceId, take }) {
       n++;
     } catch (e) {
       console.warn("[yarış sitesi] yeniden", r.name, e.message);
+    }
+  }
+  return n;
+}
+
+// Türü sonradan düzelen belgeler (2026-11-09 "EK YARIŞ KURALI" artık ek talimat): kayıtta "Belge" (other) duranlar eskiden yeniye
+// bir kez ek talimat olarak işlenir; program ve Yayın programı güncellenir. Dönüş işlenen sayısı.
+export const FIX = "2026-11-09";
+export async function fixKinds({ db, bucket, orgId, raceId, take }) {
+  const site = db.collection("orgs").doc(orgId).collection("raceLive").doc(raceId).collection("site");
+  const recs = (await site.get()).docs.map((x) => ({ id: x.id, ...x.data() })).filter((r) => r.file?.path && r.kind !== docKind(r.name) && docKind(r.name) === "amend" && r.state !== "used" && r.state !== "undone").sort((a, b) => String(a.at).localeCompare(String(b.at)));
+  let n = 0;
+  for (const r of recs) {
+    try {
+      const d = { ...r, kind: "amend" };
+      const [buf] = await bucket.file(r.file.path).download();
+      const done = await take(d, buf);
+      await site.doc(r.id).set({ kind: "amend", ...(done ? { state: done.state, note: done.note || "", ...(done.undo ? { undo: done.undo } : {}) } : {}), at2: new Date().toISOString() }, { merge: true });
+      n++;
+    } catch (e) {
+      console.warn("[yarış sitesi] tür düzeltme", r.name, e.message);
     }
   }
   return n;

@@ -11,7 +11,7 @@ import { recordInbox } from "../../src/lib/inbox.js";
 import { sendDevice } from "../../src/lib/server/sendDevice.js";
 import { docNote, newRaces, newRacesNote } from "../../src/lib/siteDocs.js";
 import { notifyDocs, pageCache, scanNew, syncRace } from "../../src/lib/server/raceSiteSync.js";
-import { FILL, fillOld, makeTake } from "../../src/lib/server/raceSiteTake.js";
+import { FILL, FIX, fillOld, fixKinds, makeTake } from "../../src/lib/server/raceSiteTake.js";
 import { callGemini } from "../../src/lib/ai/gemini.js";
 import { readNoticeAi } from "../../src/lib/ai/raceNoticeAi.js";
 import { readProgramAi } from "../../src/lib/ai/raceProgramAi.js";
@@ -62,6 +62,10 @@ export default async function raceSiteRun(req) {
       if (entry.fill !== FILL) {
         n += await fillOld({ db, bucket, orgId: e.orgId, raceId: e.raceId, take }).catch((x) => (console.warn("[yarış sitesi] yeniden", x.message), 0));
         await ref.set({ fill: FILL }, { merge: true });
+      }
+      if (entry.fix !== FIX) {
+        n += await fixKinds({ db, bucket, orgId: e.orgId, raceId: e.raceId, take }).catch((x) => (console.warn("[yarış sitesi] tür düzeltme", x.message), 0));
+        await ref.set({ fix: FIX }, { merge: true });
       }
       if (!first) await notifyDocs({ db, entry: e, got, recordInbox, sendDevice, docNote }).catch((x) => console.warn("[yarış sitesi] bildirim", x.message));
     } catch (x) {
