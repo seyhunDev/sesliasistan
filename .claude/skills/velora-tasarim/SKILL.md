@@ -101,6 +101,13 @@ Yarışlar listesi ve yarış detayı diğer sayfalar gibi lacivert kokpit kulla
 - Renk: mavi yalnız iş, yeşil tamam, sarı eksik, kırmızı yaklaşan/geçersiz.
 - Parçalar `src/features/athletes/raceUi.jsx`, CSS globals.css "YARIŞ SADE" + "YARIŞ KART" (`main.rz.rzc`).
 
+## Ortak eylemler (2026-11-09, onaylı örnek "Ortak eylemler")
+
+- Ekle: lacivert üstte başlığın sağında `AddButton` ("+ Ürün"); pencere açar, ayrı sayfaya gitmez. Boşsa `Empty` (tek satır + ekle düğmesi).
+- Pencere: `Sheet`. Telefonda yarım açılır, yukarı çekince tam boy; iPad'de ortada. İş düğmeleri `footer={<SheetActions … />}`: solda Vazgeç, sağda ana iş; düzenlemede solda kırmızı yazı "Sil". Yazı varsa `dirty` verilir.
+- Seçim: `PickSheet` (iPad'de `anchor` ile düğmenin altında).
+- Silme: geri alınabiliyorsa soru yok, `toast(…, { action: { label: "Geri al" } })`. Geri alınamıyorsa (para, toplu, gönderme) `useConfirm`. `window.confirm` kullanılmaz.
+
 ## Hareket (animasyon)
 
 - Hareket yalnız bir şey olurken: dinleme, iş, konuşma, kayıt. Boşta ekranda sürekli dönen, nefes alan, kayan bir şey olmaz (ekran testi "Enerji (boşta)": saniyede en çok 3 stil hesabı).
