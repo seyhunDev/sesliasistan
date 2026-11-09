@@ -1401,6 +1401,13 @@ main.rz.rzc.rzi { padding-bottom: 0; }
 .rs-mid { flex: 1; min-width: 0; }
 .rs-nm { display: flex; align-items: center; gap: .375rem; min-width: 0; font-size: 1rem; font-weight: 600; }
 .rs-nm > span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Sonuç ekle "+" (ResultsAdd): başlığın sağında küçük yuvarlak, zemine göre açık ya da cam */
+.rs-add { display: grid; width: 1.75rem; height: 1.75rem; flex-shrink: 0; place-items: center; border-radius: 50%; background: var(--accbg); color: var(--acc); }
+.rs-add[data-pressed] { transform: scale(.94); }
+.rs-add.rs-busy { opacity: .5; animation: rs-pulse 1s ease-in-out infinite alternate; }
+@keyframes rs-pulse { to { opacity: .25; } }
+.ck .rs-add { background: rgba(255, 255, 255, .14); color: #fff; }
+.rz-res-h { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: 0 .25rem .375rem; font-size: .8125rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .62); }
 .rs-tag { display: inline-flex; flex-shrink: 0; align-items: center; gap: .3125rem; height: 1.25rem; padding: 0 .5rem; border-radius: 999px; font-size: .6875rem; font-weight: 700; background: color-mix(in srgb, var(--g) 16%, transparent); color: color-mix(in srgb, var(--g) 70%, var(--fg)); }
 .rs-tag::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--g); }
 .rs-up, .rs-dn { flex-shrink: 0; font-size: .8125rem; font-weight: 700; } .rs-up { color: #16a34a; } .rs-dn { color: #dc2626; }

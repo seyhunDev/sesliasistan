@@ -32,6 +32,7 @@ import { BUDGET_ONLY, buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
 import { RaceWxRows } from "./RaceWx";
 import { Fold, RaceGo, RaceSeg, RaceStats } from "./raceUi";
+import { ResultsAdd } from "./ResultCards";
 import { RaceTrack } from "./RaceTrack";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
 import { RACE_KEY } from "@/features/posts/postModel";
@@ -935,7 +936,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const top = (
     <>
       {raceDay && rid ? (
-        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} go={isOwner ? <RaceGo id={rid} /> : null} track={!!siteDocs} />
+        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} go={isOwner ? <RaceGo id={rid} /> : null} track={!!siteDocs} onResultsFile={onResultsFile} />
       ) : rid ? (
         <>
           {/* Canlı ekran · Yayın yalnız ana hesapta (yarıştan önce de: dönüş girişi, kayıt listesi önceden hazırlanır) */}
@@ -1200,7 +1201,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         {alert}
       {prep && (
         <>
-          {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/sonuclar` : ""} track={!!siteDocs} />}
+          {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/sonuclar` : ""} track={!!siteDocs} onResultsFile={onResultsFile} />}
           {!over && (
             <>
               <Label right={todoList.length ? `${todoList.length} iş` : ""}>Yapılacaklar</Label>
@@ -1884,7 +1885,7 @@ function DocFields({ a, onSave, onClose, onSaved }) {
 
 // Biten yarışın özeti (Seyhun: "tamamlanan yarışta hazırlıkları göstermeye gerek yok; kaç gün sürdü, kimler katıldı,
 // sonuçları, bütçe durumu"; yapılmadan kalan işler bilgi olarak, istenirse yine yapıldı işaretlenir)
-function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark, resHref, track = false }) {
+function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark, resHref, track = false, onResultsFile = null }) {
   const from = r.startDate, to = r.endDate || r.startDate;
   const days = from ? Math.round((new Date(`${to}T12:00:00`) - new Date(`${from}T12:00:00`)) / 864e5) + 1 : 0;
   const placed = ourPlaces(r.results, chosen);
@@ -1908,7 +1909,18 @@ function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark, resHref, 
 
       {/* Sonuçların yeri yarışın sonuç sayfası /sonuclar (2026-11-01): burada bizimkilerin sırası tek satır; sitesi bağlı yarışta sonuçlar
           Takip'te, burada tekrar yazılmaz (Seyhun 2026-11-08 "iki defa sonuçları gösteriyoruz") */}
-      {!track && <Label right={r.results?.fleet ? `${r.results.fleet} tekne` : ""}>SONUÇLAR</Label>}
+      {!track && (
+        <Label
+          right={
+            <span className="flex items-center gap-2">
+              {r.results?.fleet ? `${r.results.fleet} tekne` : ""}
+              <ResultsAdd onFile={onResultsFile} />
+            </span>
+          }
+        >
+          SONUÇLAR
+        </Label>
+      )}
       {track ? null : resHref ? (
         <Link href={resHref} className={`${card} flex min-h-[2.875rem] items-center gap-3 px-4 py-2.5 active:bg-bg`}>
           <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${placed.length ? "font-medium" : "text-mut"}`}>{placed.length ? placed.map((x) => `${x.name.split(" ")[0]} ${x.place}.`).join(" · ") : chosen.length ? "Sonuç yok" : "Sporcu eklenmemiş"}</span>

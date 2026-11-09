@@ -5,8 +5,39 @@
 // örnek /mnt/project-files/yaris-tasarim/sade/sonuc-renk-yakin.png onaylı): solda sıra, altında /kişi (3 haneli sıra adla çakışmaz); ortada ad ve
 // dünden fark, altında her yarış o yarışın grubunun renginde yuvarlak, içinde puan (F sütunu final grubu, diğerleri renk grubu); atılan boş
 // halka, ceza kırmızı; çok yarışta alt satıra geçer. Sağda NET. Biçim globals.css .rs-*. Veri: resultSheet raceCells (değişmedi).
+import { useRef, useState } from "react";
+import { useToast } from "@/components/ui/ToastProvider";
+import { Icon } from "@/components/ui/Icon";
 import { groupColor } from "@/lib/roundScore";
 import { raceCells } from "@/lib/resultSheet";
+
+// Sonuç ekle "+" (Seyhun 2026-11-09 "sonuçları gösterdiğimiz her yerde tasarımı bozmayacak bir artı; artıyla sonuç ekleyeceğiz"): başlığın
+// sağında küçük yuvarlak; PDF ya da fotoğraf seçilir, onFile (yarış sayfası importFile: resultsImport + kayıt) işler. Tek ortak parça.
+export function ResultsAdd({ onFile, className = "" }) {
+  const toast = useToast();
+  const pick = useRef(null);
+  const [busy, setBusy] = useState(false);
+  if (!onFile) return null;
+  const run = async (f) => {
+    if (!f || busy) return;
+    setBusy(true);
+    try {
+      const r = await onFile(f);
+      toast(r?.note || "Sonuçlar eklendi");
+    } catch (e) {
+      toast(e?.message || "Sonuçlar okunamadı");
+    }
+    setBusy(false);
+  };
+  return (
+    <>
+      <button type="button" onClick={() => pick.current?.click()} disabled={busy} aria-label={busy ? "Sonuç okunuyor" : "Sonuç ekle"} title="Sonuç ekle" data-press className={`rs-add ${busy ? "rs-busy" : ""} ${className}`}>
+        <Icon name="plus" className="size-4" />
+      </button>
+      <input ref={pick} type="file" accept="application/pdf,image/*,.pdf" hidden onChange={(e) => (run(e.target.files?.[0]), (e.target.value = ""))} />
+    </>
+  );
+}
 
 // Açık renkli grupta (Sarı, Altın, Gümüş) yuvarlağın yazısı koyu
 const LIGHT = new Set(["Sarı", "Altın", "Gümüş"]);

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { todayStr } from "@/lib/utils/format";
 import { dayPlan, nextDay, ourPlaces, racePhase } from "@/lib/raceDay";
-import { ResultCards } from "./ResultCards";
+import { ResultCards, ResultsAdd } from "./ResultCards";
 import { loadLive } from "./raceLiveStore";
 import { RaceWxRows } from "./RaceWx";
 import { RaceStats } from "./raceUi";
@@ -45,7 +45,7 @@ export function useRacePhase(r, orgId, rid, on) {
 // yaris-tasarim/sade/takip-*.png): Canlı ekran · Yayın (go), altında tek kartta "Şimdi" (2 yarış bitti · 3. start 12:30 / Sonuçlar geldi /
 // Gün bitti) ve Hava, Harita. Bizimkilerin sırası yalnız Takip sekmesi yoksa burada (track: sitesi bağlı yarışta sonuçlar Takip'te, tek yer);
 // gün bitince yarın ya da dönüş satırı.
-export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = null, track = false }) {
+export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = null, track = false, onResultsFile = null }) {
   const today = todayStr();
   const places = track ? [] : ourPlaces(r.results, chosen);
   const fleet = r.results?.fleet;
@@ -74,7 +74,16 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = null, tr
       <div className="mt-3">
         <RaceWxRows key={phase} r={{ ...r, id: rid }} day={phase === "done" && !last ? tom : ""} lead={lead} />
       </div>
-      {places.length > 0 && <ResultCards className="mt-6" list={phase === "done" ? places.slice(0, 4) : places} short={phase === "done"} />}
+      {/* Sonuçlar (sitesi bağlı değilse burada) ve "+" ile sonuç ekleme */}
+      {!track && (places.length > 0 || onResultsFile) && (
+        <div className="rz-res mt-6">
+          <div className="rz-res-h">
+            <span>Sonuçlar</span>
+            <ResultsAdd onFile={onResultsFile} />
+          </div>
+          {places.length > 0 && <ResultCards list={phase === "done" ? places.slice(0, 4) : places} short={phase === "done"} />}
+        </div>
+      )}
       {phase === "done" && !track && <NextRow r={r} />}
     </div>
   );

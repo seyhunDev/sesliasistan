@@ -57,7 +57,7 @@ export function Row({ href, onClick, lead, title, sub, right, warn = false, chev
 }
 
 // Bölüm başlığı (listelerin üstünde): küçük büyük harfli gri ad ve sayı, sağda tek eylem ("Tümü ›" gibi)
-export function ListHead({ title, count, href, more = "Tümü", id }) {
+export function ListHead({ title, count, href, more = "Tümü", id, action = null }) {
   return (
     <div className="mb-1.5 flex items-center justify-between gap-3 px-1">
       <h2 id={id} className="min-w-0 truncate text-[0.8125rem] font-bold tracking-[.04em] text-mut">
@@ -69,6 +69,7 @@ export function ListHead({ title, count, href, more = "Tümü", id }) {
           {more} ›
         </Link>
       )}
+      {action}
     </div>
   );
 }
