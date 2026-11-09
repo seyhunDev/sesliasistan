@@ -9,6 +9,9 @@ import { ListHead } from "@/components/ui/Row";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { Loading } from "@/components/ui/Loader";
 import { Sheet } from "@/components/ui/Sheet";
+import { PickSheet } from "@/components/ui/PickSheet";
+import { AddButton } from "@/components/ui/AddButton";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
@@ -85,6 +88,7 @@ function Dues({ uid, duesAt }) {
   const [setOpen, setSetOpen] = useState(false);
   const [q, setQ] = useState("");
   const [pickOpen, setPickOpen] = useState(false); // Ödeme ekle: sporcu seç
+  const addRef = useRef(null); // iPad'de sporcu listesi "+ Ödeme"nin altında açılır
 
   // Mail gelince sunucu aidatı kendiliğinden yazabilir: uygulamaya dönünce yeniden okunur (eski kayıtla üstüne yazılmasın)
   const [fresh, setFresh] = useState(0);
@@ -319,11 +323,8 @@ function Dues({ uid, duesAt }) {
           </p>
         </div>
       )}
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => setPickOpen(true)} data-press className="raised flex h-10 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
-          Ödeme ekle
-        </button>
-        <button type="button" onClick={() => setMatchOpen(true)} data-press className="raised flex h-10 items-center justify-center gap-1.5 rounded-xl border text-[0.9375rem] font-semibold">
+      <div className="mt-4">
+        <button type="button" onClick={() => setMatchOpen(true)} data-press className="raised flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border text-[0.9375rem] font-semibold">
           Banka
           {pending.length > 0 && <span className="rounded-full bg-warnbg px-1.5 text-[0.75rem] font-bold tabular-nums text-warn">{pending.length}</span>}
         </button>
@@ -341,7 +342,7 @@ function Dues({ uid, duesAt }) {
   );
 
   return (
-    <Shell sub={sub} top={top} onMore={() => setSetOpen(true)}>
+    <Shell sub={sub} top={top} onMore={() => setSetOpen(true)} add={<AddButton ref={addRef} onClick={() => setPickOpen(true)}>Ödeme</AddButton>}>
       <div className="space-y-6">
         {mv?.error && <p className="px-1 text-[0.8125rem] text-rec">Banka mailleri okunamadı. Gmail bağlantısı kurulu mu?</p>}
         {group("Borcu var", oweRows)}
@@ -353,20 +354,14 @@ function Dues({ uid, duesAt }) {
       </div>
 
       {/* Ödeme ekle: önce sporcu seçilir */}
-      <Sheet open={pickOpen} onClose={() => setPickOpen(false)} title="Ödeme ekle">
-        <div className="overflow-y-auto px-5 pb-2">
-          <ul className={`overflow-hidden px-3.5 ${card}`}>
-            {[...oweRows, ...okRows, ...offRows, ...bursRows].map((r) => (
-              <li key={r.a.id} className="border-t border-line first:border-t-0">
-                <button type="button" onClick={() => (setPickOpen(false), setPayFor(r.a))} data-press="row" className="flex min-h-12 w-full items-center gap-3 py-2 text-left">
-                  <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{r.a.studentName}</b>
-                  {r.info.debt > 0 && <span className="shrink-0 text-[0.8125rem] font-semibold tabular-nums text-rec">{TL(r.info.debt)}</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </Sheet>
+      <PickSheet
+        open={pickOpen}
+        onClose={() => setPickOpen(false)}
+        title="Sporcu seç"
+        anchor={addRef}
+        items={[...oweRows, ...okRows, ...offRows, ...bursRows].map((r) => ({ id: r.a.id, title: r.a.studentName, right: r.info.debt > 0 ? TL(r.info.debt) : null, rightTone: "rec" }))}
+        onPick={(id) => setPayFor([...oweRows, ...okRows, ...offRows, ...bursRows].find((r) => r.a.id === id)?.a || null)}
+      />
 
       {/* Ödeme ekle */}
       <Sheet open={!!payFor} onClose={() => setPayFor(null)} title={payFor ? `${payFor.studentName} · ödeme ekle` : ""}>
@@ -484,6 +479,7 @@ const MARK = { paid: "✓", part: "½", due: "", free: "–", burs: "–", none:
 // Açılan satır: 12 aylık şerit, ödemeler, Ödeme ekle, sporcuya özel ayar
 function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onMove, onStart, onFree, onFee, onBurs }) {
   const now = yms.at(-1);
+  const ask = useConfirm();
   const [sel, setSel] = useState(now);
   const [more, setMore] = useState(false);
   const [own, setOwn] = useState(cfg.fees?.[a.id] ? String(cfg.fees[a.id]) : "");
@@ -523,7 +519,7 @@ function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onMove, onStart, 
                   {g.desc && <small className="mt-0.5 block break-words text-[0.75rem] leading-snug text-mut">{g.desc}</small>}
                 </button>
                 <span className="font-semibold tabular-nums">{TL(g.amt)}</span>
-                <button type="button" onClick={() => window.confirm(`${TL(g.amt)} ödeme silinsin mi?`) && onDrop(g)} aria-label="Sil" data-press className="btn btn-icon btn-sm size-7 shrink-0 text-mut">
+                <button type="button" onClick={() => ask({ title: "Ödeme silinsin mi?", text: `${monthsLong(g.months)} aidatı · ${TL(g.amt)} · ${dayShort(g.date)}`, run: () => onDrop(g) })} aria-label="Sil" data-press className="btn btn-icon btn-sm size-7 shrink-0 text-mut">
                   <Icon name="trash" className="size-4" />
                 </button>
               </div>
@@ -664,7 +660,7 @@ function PayForm({ a, cfg, months, yms, onSave }) {
 }
 
 // Yeni tasarım (velora-tasarim): lacivert üst (geri, ad, ⋯ ayarlar; top: bu ayın geliri, düğmeler, arama), altında açık alan
-function Shell({ children, sub, top, onMore }) {
+function Shell({ children, sub, top, onMore, add }) {
   return (
     <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Aidatlar">
@@ -674,6 +670,7 @@ function Shell({ children, sub, top, onMore }) {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Aidatlar</h1>
             {sub && <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>}
           </div>
+          {add}
           {onMore && (
             <button type="button" onClick={onMore} aria-label="Aidat ayarları" data-press className={`${buttonClass({ variant: "round" })} size-10`}>
               <Icon name="more" className="size-5" />
@@ -848,6 +845,7 @@ function MatchList({ pending, athletes, onConfirm, onIgnore }) {
 // Banka Excel'i yükle: bankadan indirilen hesap hareketleri (ör. son 3 ay). Gelen paralar saklanır, geçmiş aylarda da görünür.
 function BankFiles({ uid, onChange }) {
   const toast = useToast();
+  const ask = useConfirm();
   const input = useRef(null);
   const [open, setOpen] = useState(false);
   const [list, setList] = useState(null);
@@ -868,11 +866,16 @@ function BankFiles({ uid, onChange }) {
     }
     setBusy(false);
   }
-  async function del(f) {
-    if (!confirm(`${f.name} silinsin mi? Onayladığın ödemeler kalır.`)) return;
-    await deleteStatement(uid, f).catch(() => toast("Silinemedi"));
-    refresh();
-    onChange();
+  function del(f) {
+    ask({
+      title: "Banka dosyası silinsin mi?",
+      text: `${f.name} · onayladığın ödemeler kalır`,
+      run: async () => {
+        await deleteStatement(uid, f).catch(() => toast("Silinemedi"));
+        refresh();
+        onChange();
+      },
+    });
   }
   const day = (s) => String(s || "").split("-").reverse().join(".");
   return (

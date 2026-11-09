@@ -1,0 +1,10 @@
+## Nerede kaldım
+- Ortak eylemler (Seyhun 2026-11-09 "her ortak eylem ortak tasarım olmalı"; onaylı örnek https://claude.ai/artifact/8c2ZoRdZg6EoJSBucsvxdD; telefonda denenmedi): `Sheet` iki boy (telefonda içerik kadar, en çok %75; tutamaçtan yukarı çek = tam boy %94, aşağı çek = yarıma iner / kapanır; tutamaca dokununca da büyür), iPad ve geniş ekranda ortada yüzen pencere (`data-sheet-c`), `anchor` verilirse düğmenin altında küçük kutu, `dirty` ile kapatmadan önce "Yazdıkların silinsin mi?", `footer` + `SheetActions` (Vazgeç / ana iş; düzenlemede solda kırmızı "Sil"). Yeni `AddButton` (lacivert üstte "+ Ad"), `PickSheet` (8'den fazla öğede arama; tek seçim dokununca kapanır, çoklu "Seç (n)"). `Empty` artık simgesiz, `add`/`onAdd` ile ekle düğmesi.
+- Geçen sayfalar: Envanter (lacivert üst: ⋯ + "+ Ürün", özet kutuları, arama ve kategori çipleri lacivertte; ürün penceresi altta Kaydet / Sil; ürün ve hareket silme sorusuz "Geri al", toplu hareket temizleme ve envanteri silme onay penceresiyle; bakım kaydı silmek sorusuz, Kaydet'e kadar yazılmaz), Aidatlar ("+ Ödeme" başlıkta → ortak sporcu seçimi, iPad'de düğmenin altında; ödeme ve banka dosyası silme onay penceresi), Görevler ("+ Görev", boş durumda ekle düğmesi).
+
+## Sıradaki işler
+0. Telefonda: Envanter'de "+ Ürün" yarım açılıyor mu, yukarı çekince tam boy, yazıp aşağı çekince soru; ürün sil → Geri al. Aidatlar "+ Ödeme" → sporcu seç. iPad'de pencere ortada, Aidatlar sporcu listesi düğmenin altında.
+1. Kalan sayfaları parti parti geçir (tarayıcının confirm() kutusu ~25 dosya: Faturalar, Sohbet, Fitness, Etkinlik, Ayarlar…; 22 ekranın kendi tam ekran penceresi; 15 arama kutusu). Yarışlar, oradaki çalışma bitince.
+
+## Tasarım
+- Ortak eylemler (2026-11-09 onaylı, tüm Velora; Yemek ve Sanal şimdilik hariç): ekle = başlığın sağında `AddButton`, ayrı sayfa açmaz; ekle ve düzenle aynı pencere; geri alınabilen silmede soru yok, "Geri al"; onay (`useConfirm`) yalnız para, toplu, gönderme ve geri alınamayanlarda; seçim her yerde `PickSheet`; arama ve çipler lacivert üstte; boş durum tek satır + ekle düğmesi. Yeni kod `window.confirm` kullanmaz.

@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
+import { AddButton } from "@/components/ui/AddButton";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { Loading } from "@/components/ui/Loader";
-import { Chips, Empty, Hero, HeroLabel, Label, Seg, Stat, card } from "@/components/ui/Page";
-import { Sheet } from "@/components/ui/Sheet";
+import { Empty, Label, Seg, card } from "@/components/ui/Page";
+import { Sheet, SheetActions } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { todayStr } from "@/lib/utils/format";
@@ -29,7 +31,10 @@ export function InventoryView({ orgId, id, by }) {
   const [q, setQ] = useState("");
   const [own, setOwn] = useState(""); // "" hepsi | club | private
   const [item, setItem] = useState(null); // düzenlenen ürün
+  const [form, setForm] = useState({ dirty: false, ready: false }); // açık ürün formunun durumu
+  const onForm = useCallback((v) => setForm(v), []);
   const [settings, setSettings] = useState(null);
+  const ask = useConfirm();
 
   useEffect(() => {
     setLastInv(id);
@@ -113,21 +118,44 @@ export function InventoryView({ orgId, id, by }) {
     const ok = await change((cur) => (next = addKit(cur, boatId, { by })), "Takım eklendi");
     if (ok && next) setItem(next.items.find((x) => x.id === boatId) || null);
   };
+  // Ürünü silmek geri alınabilir (ortak eylemler): soru yok, altta "Geri al". Belgeleri bildirim kapanınca silinir.
   const delItem = async (x) => {
-    if (!window.confirm(`“${x.name}” envanterden silinsin mi?${x.files?.length ? ` ${x.files.length} belge/fotoğrafı da silinir.` : ""}`)) return;
-    if (await change((cur) => dropItem(cur, x.id, { by }), "Silindi")) {
-      setItem(null);
-      (x.files || []).forEach((f) => dropInvFile(orgId, f));
-    }
+    const at = new Date().toISOString();
+    const i = inv.items.findIndex((y) => y.id === x.id);
+    if (!(await change((cur) => dropItem(cur, x.id, { by, now: at })))) return;
+    setItem(null);
+    let back = false;
+    toast(`${x.name} silindi`, {
+      action: {
+        label: "Geri al",
+        onClick: () => {
+          back = true;
+          change((cur) => {
+            const items = [...cur.items];
+            items.splice(Math.min(Math.max(i, 0), items.length), 0, x);
+            return { ...cur, items, log: cur.log.filter((e) => !(e.op === "delete" && e.at === at && e.name === x.name)) };
+          }, "Geri alındı");
+        },
+      },
+    });
+    if (x.files?.length) setTimeout(() => !back && x.files.forEach((f) => dropInvFile(orgId, f)), 5500);
   };
-  const delLog = (e) => {
-    if (!window.confirm(`“${e.name}” hareketi silinsin mi? Yalnız kayıt silinir, ürünlerin adedi değişmez.`)) return;
-    change((cur) => dropLog(cur, logKey(e)), "Hareket silindi");
+  const delLog = async (e) => {
+    const i = inv.log.indexOf(e);
+    if (!(await change((cur) => dropLog(cur, logKey(e))))) return;
+    toast("Hareket silindi", {
+      action: {
+        label: "Geri al",
+        onClick: () => change((cur) => {
+          const log = [...cur.log];
+          log.splice(Math.min(Math.max(i, 0), log.length), 0, e);
+          return { ...cur, log };
+        }),
+      },
+    });
   };
-  const delOrphans = (n) => {
-    if (!window.confirm(`Envanterde artık olmayan ürünlerin ${n} hareketi silinsin mi? Ürünlerin adedi değişmez.`)) return;
-    change((cur) => dropOrphanLogs(cur), "Hareketler silindi");
-  };
+  const delOrphans = (n) =>
+    ask({ title: `${n} hareket silinsin mi?`, text: "Envanterde artık olmayan ürünlerin hareketleri. Ürünlerin adedi değişmez.", run: () => change((cur) => dropOrphanLogs(cur), "Hareketler silindi") });
   const exportXlsx = async () => {
     const XLSX = await import("xlsx");
     const wb = XLSX.utils.book_new();
@@ -135,46 +163,66 @@ export function InventoryView({ orgId, id, by }) {
     XLSX.writeFile(wb, `envanter-${inv.name.toLocaleLowerCase("tr-TR").replace(/\s+/g, "-")}-${todayStr()}.xlsx`);
   };
 
+  const newItem = () => setItem({ ...cleanItem({ no: nextNo(inv), cat: cat || inv.cats[0], addedAt: todayStr(), qty: 1 }), id: "" });
+  const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
+
   return (
     <Wrap
       title={inv.name}
+      sub={`${kindOf(inv.kind)[1]} · ${st.items} ürün`}
       right={
         <>
-          <button type="button" onClick={() => setSettings({ name: inv.name, kind: inv.kind, prefix: inv.prefix, cats: inv.cats, add: "" })} aria-label="Envanter ayarları" data-press className="btn btn-round size-10 text-fg">
-            <Icon name="sliders" className="size-5" />
+          <button type="button" onClick={() => setSettings({ name: inv.name, kind: inv.kind, prefix: inv.prefix, cats: inv.cats, add: "" })} aria-label="Envanter ayarları" data-press className="btn btn-round size-10">
+            <Icon name="more" className="size-5" />
           </button>
-          <button type="button" onClick={() => setItem({ ...cleanItem({ no: nextNo(inv), cat: cat || inv.cats[0], addedAt: todayStr(), qty: 1 }), id: "" })} className="flex h-10 items-center gap-1.5 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
-            <Icon name="plus" className="size-[1.125rem]" />
-            Ürün
-          </button>
+          <AddButton onClick={newItem}>Ürün</AddButton>
+        </>
+      }
+      top={
+        <>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {[
+              [st.qty, "toplam adet"],
+              [st.bad, "sorunlu", st.bad > 0],
+              [st.value > 0 ? tl(st.value) : "–", "alış değeri"],
+            ].map(([n, l, warn]) => (
+              <div key={l} className="ck-glass min-w-0 rounded-xl px-3 py-2">
+                <b className={`block truncate text-[1.125rem] font-bold leading-tight tabular-nums ${warn ? "text-rec" : "text-white"}`}>{n}</b>
+                <small className="block truncate text-[0.75rem] text-white/65">{l}</small>
+              </div>
+            ))}
+          </div>
+          {tab === "items" && inv.items.length > 0 && (
+            <>
+              <label className="ck-glass mt-4 flex h-11 items-center gap-2 rounded-2xl px-3.5">
+                <Icon name="search" className="size-[1.125rem] shrink-0 text-white/55" />
+                <input value={q} onChange={(e) => setQ(e.target.value)} type="search" placeholder="Ara" enterKeyHint="search" className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-white/50" />
+                {q && (
+                  <button type="button" onClick={() => setQ("")} aria-label="Aramayı temizle" data-press className="grid size-7 place-items-center rounded-full text-white/70">
+                    <Icon name="x" className="size-4" />
+                  </button>
+                )}
+              </label>
+              <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
+                {chips.map(([k, l, n]) => (
+                  <button key={k || "all"} type="button" onClick={() => setCat(k)} aria-pressed={cat === k} data-press className={`${pill0} ${cat === k ? "border-white bg-white text-deep" : "ck-glass text-white"}`}>
+                    <span className="max-w-[9rem] truncate">{l}</span>
+                    <span className="ml-1.5 tabular-nums opacity-70">{n}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </>
       }
     >
-      <Hero className="mt-2">
-        <div className="flex items-center justify-between gap-3">
-          <HeroLabel>{kindOf(inv.kind)[1].toLocaleUpperCase("tr-TR")}</HeroLabel>
-          <Icon name={kindOf(inv.kind)[2]} className="size-4 text-white/80" />
-        </div>
-        <div className="mt-3 flex gap-2">
-          <Stat n={st.items} label="ürün" />
-          <Stat n={st.qty} label="toplam adet" />
-          <Stat n={st.bad} label="sorunlu" tone={st.bad ? "rec" : ""} />
-        </div>
-        {st.value > 0 && <p className="mt-2.5 text-[0.75rem] text-white/75">Kayıtlı alış değeri {tl(st.value)}</p>}
-      </Hero>
-
-      <Seg value={tab} onChange={setTab} options={[["items", "Ürünler", inv.items.length], ["log", "Hareketler", inv.log.length]]} className="mt-4" />
+      <Seg value={tab} onChange={setTab} options={[["items", "Ürünler", inv.items.length], ["log", "Hareketler", inv.log.length]]} />
 
       {tab === "items" ? (
         inv.items.length === 0 ? (
-          <Empty icon={kindOf(inv.kind)[2]} title="Henüz ürün yok" sub="“Ürün” ile ekle ya da asistana söyle: “3 Optimist teknesi, 2 el telsizi ve bir lazer yazıcı ekle”." />
+          <Empty title="Ürün yok" add="Ürün" onAdd={newItem} />
         ) : (
           <>
-            <div className="relative mt-3">
-              <Icon name="search" className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-mut" />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ara: ad, no, yer, kimde…" className={`${input} bg-card pl-9`} />
-            </div>
-            <Chips value={cat} onChange={setCat} options={chips} className="mt-3" />
             {hasPrivate && <Seg value={own} onChange={setOwn} options={[["", "Hepsi"], ...OWNERS]} className="mt-3" />}
             {groups.length === 0 && <p className="mt-6 text-center text-[0.875rem] text-mut">Bulunamadı.</p>}
             {groups.map(([c, list]) => (
@@ -217,13 +265,12 @@ export function InventoryView({ orgId, id, by }) {
           </>
         )
       ) : inv.log.length === 0 ? (
-        <p className="mt-6 text-center text-[0.875rem] text-mut">Henüz hareket yok.</p>
+        <Empty title="Hareket yok" />
       ) : (
         <>
         {orphans > 0 && (
-          <button type="button" onClick={() => delOrphans(orphans)} data-press className="btn btn-danger mt-4 w-full">
-            <Icon name="trash" className="size-4" />
-            Silinen ürünlerin hareketlerini temizle ({orphans})
+          <button type="button" onClick={() => delOrphans(orphans)} data-press className="btn btn-secondary mt-4 w-full text-rec">
+            Silinen ürünlerin hareketleri ({orphans})
           </button>
         )}
         <ul className={`${card} mt-4 divide-y divide-line/70`}>
@@ -251,8 +298,14 @@ export function InventoryView({ orgId, id, by }) {
         </>
       )}
 
-      <Sheet open={!!item} onClose={() => setItem(null)} title={item?.id ? "Ürün" : "Yeni ürün"}>
-        {item && <ItemForm key={`${item.id || "new"}:${item.updatedAt}`} start={item} cats={inv.cats} inv={inv} onSave={saveItem} onDelete={item.id ? () => delItem(item) : null} onOpen={setItem} onKit={makeKit} onRead={readFile} onFile={(f) => openInvFile(orgId, f).catch(() => toast("Dosya açılamadı"))} />}
+      <Sheet
+        open={!!item}
+        onClose={() => setItem(null)}
+        title={item?.id ? "Ürünü düzenle" : "Yeni ürün"}
+        dirty={form.dirty}
+        footer={item && <SheetActions form="inv-item" yes="Kaydet" disabled={!form.ready} onCancel={() => setItem(null)} onDelete={item.id ? () => delItem(item) : null} />}
+      >
+        {item && <ItemForm key={`${item.id || "new"}:${item.updatedAt}`} formId="inv-item" onState={onForm} start={item} cats={inv.cats} inv={inv} onSave={saveItem} onOpen={setItem} onKit={makeKit} onRead={readFile} onFile={(f) => openInvFile(orgId, f).catch(() => toast("Dosya açılamadı"))} />}
       </Sheet>
 
       <Sheet open={!!settings} onClose={() => setSettings(null)} title="Envanter ayarları">
@@ -265,17 +318,23 @@ export function InventoryView({ orgId, id, by }) {
               const ok = await change((cur) => ({ ...cur, name: settings.name.trim() || cur.name, kind: settings.kind, prefix: settings.prefix, cats: settings.cats }), "Kaydedildi");
               if (ok) setSettings(null);
             }}
-            onDelete={async () => {
-              if (!window.confirm(`“${inv.name}” envanteri ve içindeki ${inv.items.length} ürün silinsin mi? Geri alınamaz.`)) return;
-              try {
-                await deleteInventory(orgId, id);
-                inv.items.flatMap((x) => x.files || []).forEach((f) => dropInvFile(orgId, f));
-                toast("Envanter silindi");
-                goBack(router, "/inventory");
-              } catch {
-                toast("Silinemedi");
-              }
-            }}
+            onDelete={() =>
+              ask({
+                title: "Envanter silinsin mi?",
+                text: `${inv.name} · ${inv.items.length} ürün`,
+                run: async () => {
+                  try {
+                    await deleteInventory(orgId, id);
+                    inv.items.flatMap((x) => x.files || []).forEach((f) => dropInvFile(orgId, f));
+                    toast("Envanter silindi");
+                    setSettings(null);
+                    goBack(router, "/inventory");
+                  } catch {
+                    toast("Silinemedi");
+                  }
+                },
+              })
+            }
           />
         )}
       </Sheet>
@@ -283,13 +342,22 @@ export function InventoryView({ orgId, id, by }) {
   );
 }
 
-function Wrap({ title, right, children }) {
+// Lacivert üst (diğer yeni sayfalar gibi): geri, ad, sağda ⋯ ve "+ Ürün"; altında özet, arama ve kategori çipleri
+function Wrap({ title, sub, right, top, children }) {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <PageHeader title={title} back="/inventory">
-        {right}
-      </PageHeader>
-      {children}
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={title}>
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/inventory" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{title}</h1>
+            {sub && <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>}
+          </div>
+          {right}
+        </header>
+        {top}
+      </section>
+      <div className="relative -mx-5 -mt-6 min-h-[50vh] rounded-t-[1.75rem] bg-bg px-5 pt-5">{children}</div>
     </main>
   );
 }

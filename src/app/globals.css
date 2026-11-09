@@ -811,6 +811,9 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
   body[data-side] [data-sheet] { left: 15rem; bottom: 1.5rem; }
   body[data-side] [data-sheet] > div { border-radius: 1.5rem; max-height: calc(100dvh - 3rem); padding-bottom: 1.25rem; }
   body[data-side] [data-sheet].translate-y-full { translate: 0 calc(100% + 2rem); }
+  /* Ortak pencere geniş ekranda ortada yüzer (Sheet.jsx, 2026-11-09): menünün sağındaki alanın ortası */
+  body[data-side] [data-sheet-c]:not([data-pop]) { left: 15rem; }
+  body[data-side]:has(main.rzi) [data-sheet-c] { left: 0; }
 }
 /* Ana sayfa geniş ekranda (Seyhun 2026-11-05 "tek uygulama ekranı gibi, kaydırma gerekmeden"; örnek /mnt/project-files/ana-sayfa/ipad-ana.html):
    sayfa ekranı doldurur. Sol: üstte hava (tablo, günler), altında Takvim sayfasının kendisi (CalendarView embedded: ay + seçili gün) kalan yüksekliği doldurur.
