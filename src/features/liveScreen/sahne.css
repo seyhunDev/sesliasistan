@@ -1391,3 +1391,11 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 .lst-addg button { display: inline-flex; align-items: center; gap: 0.4rem; }
 .lst-addg i { width: 0.625rem; height: 0.625rem; border-radius: 50%; }
 button.lvd-gal { border: 0; } /* Fotoğraflar seçicisi (yeni iPhone kurulumu) */
+/* Video galerisi gün gün (Seyhun 2026-11-09): üstte gün seçimi, her gün başlığı altında yarışlar */
+.lvd-days { display: flex; gap: 0.4em; margin-top: 0.9em; overflow-x: auto; scrollbar-width: none; }
+.lvd-days::-webkit-scrollbar { display: none; }
+.lvd-days button { flex: none; height: 2.3em; padding: 0 0.9em; border: 0; border-radius: 0.55em; background: rgba(255, 255, 255, 0.1); color: #fff; font: 700 0.95em/1 var(--sc-c, var(--lv-font-c)); -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.lvd-days button.on { background: #fff; color: #0b1626; }
+.lvd-dh { display: flex; align-items: baseline; gap: 0.5em; margin: 1.2em 0.1em 0; font: 800 1.1em/1 var(--sc-c, var(--lv-font-c)); letter-spacing: 0.02em; }
+.lvd-dh small { font: 600 0.8em/1 var(--sc-c, var(--lv-font-c)); color: rgba(255, 255, 255, 0.5); }
+.lvd-day .lvd-sec { margin-top: 0.7em; font-size: 0.92em; color: rgba(255, 255, 255, 0.85); }

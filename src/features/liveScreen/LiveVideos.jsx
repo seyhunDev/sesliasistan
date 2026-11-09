@@ -14,7 +14,7 @@
 // çekim anı ve küçük resim tutulur; oynatırken / YouTube'a yüklerken Fotoğraflar'dan geçici kopya okunur (galleryBlob, yalnız bellekte).
 // Eski kopyalar (Seyhun 2026-11-08 "daha önce eklenenleri de silmemiz lazım"): kimliği olanın kopyası silinir, kimliksiz galeri kopyası
 // (dosya adı velora- ile başlamayan) listeden kalkar (aslı Fotoğraflar'da); Velora kamerasının kimliksiz kaydı tek kopya olduğu için kalır.
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { dropKept, keepLocal, listKept } from "@/features/raceMedia/pendingStore";
 import { RecPick } from "@/features/raceMedia/RecPick";
 import { deletePhotos, galleryBlob, galleryPick, hasGallery } from "@/lib/nativeIos";
@@ -179,16 +179,27 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
   const grpOf = (s) => rounds?.[s.id]?.grp || s.grp || "";
   const sName = (s) => [grpOf(s), raceName(s)].filter(Boolean).join(" · ");
   const byId = new Map(starts.map((s) => [s.id, s]));
-  // galeri: yarış yarış, en yeni yarış üstte; etiketsizler en altta "Yarış dışı"
-  const groups = [];
-  for (const x of list) {
-    const s = x.sid ? byId.get(x.sid) : null;
-    const k = s ? s.id : "";
-    let g = groups.find((y) => y.k === k);
-    if (!g) groups.push((g = { k, s, items: [] }));
-    g.items.push(x);
-  }
-  groups.sort((a, b) => (!a.s ? 1 : !b.s ? -1 : a.s.at < b.s.at ? 1 : -1));
+  // galeri gün gün (Seyhun 2026-11-09 "eklenen videoları sıralı, günlere göre filtrelenmiş göster; dünkü bugün de görünsün"):
+  // en yeni gün üstte; günün içinde yarış yarış (en yeni yarış üstte), etiketsizler günün sonunda "Yarış dışı". Birden çok gün varsa
+  // üstte gün seçimi (Tümü, Bugün, Dün, 7 Kas…)
+  const [dayPick, setDayPick] = useState("");
+  const days = [...new Set(list.map((x) => dayOf(x.at)))].sort((a, b) => (a < b ? 1 : -1));
+  const dayOn = days.includes(dayPick) ? dayPick : "";
+  const dayName = (d) => (d === today ? "Bugün" : d === dayOf(new Date(Date.parse(`${today}T12:00:00Z`) - 864e5).toISOString()) ? "Dün" : new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }));
+  const byDay = days
+    .filter((d) => !dayOn || d === dayOn)
+    .map((d) => {
+      const groups = [];
+      for (const x of list.filter((y) => dayOf(y.at) === d)) {
+        const s = x.sid ? byId.get(x.sid) : null;
+        const k = s ? s.id : "";
+        let g = groups.find((y) => y.k === k);
+        if (!g) groups.push((g = { k, s, items: [] }));
+        g.items.push(x);
+      }
+      groups.sort((a, b) => (!a.s ? 1 : !b.s ? -1 : a.s.at < b.s.at ? 1 : -1));
+      return { d, n: groups.reduce((n, g) => n + g.items.length, 0), groups };
+    });
   const sel = list.find((x) => x.id === cur) || null;
   const selDay = sel ? dayOf(sel.at) : today; // Düzenle'de seçilen videonun günü (galeriden eski gün de gelebilir)
   const dayStarts = [...starts].filter((s) => !s.void && s.at && (s.day || s.at.slice(0, 10)) === selDay).sort((a, b) => (a.at < b.at ? 1 : -1));
@@ -447,14 +458,31 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
         </div>
       ) : null}
       {msg ? <p className="lst-msg">{msg}</p> : null}
-      {groups.map((g) => (
-        <section key={g.k || "dis"}>
-          <div className="lvd-sec">
-            {g.s && grpOf(g.s) ? <i style={{ background: groupColor(grpOf(g.s)) || "#ffd23f" }} aria-hidden="true" /> : null}
-            {g.s ? sName(g.s) : "Yarış dışı"}
-            <small>{`· ${g.items.length}`}</small>
+      {days.length > 1 ? (
+        <div className="lvd-days">
+          {[["", "Tümü"], ...days.map((d) => [d, dayName(d)])].map(([d, n]) => (
+            <button key={d || "all"} type="button" className={dayOn === d ? "on" : ""} aria-pressed={dayOn === d} onClick={() => setDayPick(d)}>
+              {n}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {byDay.map((dd) => (
+        <section key={dd.d} className="lvd-day">
+          <div className="lvd-dh">
+            {dayName(dd.d)}
+            <small>{`${dd.n} video`}</small>
           </div>
-          <div className="lvd-g">{g.items.map(tile)}</div>
+          {dd.groups.map((g) => (
+            <Fragment key={g.k || "dis"}>
+              <div className="lvd-sec">
+                {g.s && grpOf(g.s) ? <i style={{ background: groupColor(grpOf(g.s)) || "#ffd23f" }} aria-hidden="true" /> : null}
+                {g.s ? sName(g.s) : "Yarış dışı"}
+                <small>{`· ${g.items.length}`}</small>
+              </div>
+              <div className="lvd-g">{g.items.map(tile)}</div>
+            </Fragment>
+          ))}
         </section>
       ))}
     </div>
