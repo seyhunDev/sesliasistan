@@ -1399,3 +1399,65 @@ button.lvd-gal { border: 0; } /* Fotoğraflar seçicisi (yeni iPhone kurulumu) *
 .lvd-dh { display: flex; align-items: baseline; gap: 0.5em; margin: 1.2em 0.1em 0; font: 800 1.1em/1 var(--sc-c, var(--lv-font-c)); letter-spacing: 0.02em; }
 .lvd-dh small { font: 600 0.8em/1 var(--sc-c, var(--lv-font-c)); color: rgba(255, 255, 255, 0.5); }
 .lvd-day .lvd-sec { margin-top: 0.7em; font-size: 0.92em; color: rgba(255, 255, 255, 0.85); }
+/* Sporcular (Seyhun 2026-11-09 örnek onaylandı): Sıralama + Gruplar tek panel; satıra dokununca sporcunun dereceleri gün gün */
+.sc-ath ul { margin: 0; padding: 0; list-style: none; }
+.sc-ath .sc-pgg button.our { background: rgba(61, 125, 255, 0.2); color: #a9c8ff; }
+.sc-ath .sc-pgg button.our.on { background: #fff; color: #0b1626; }
+.sc-atht, .sc-ath li > button { display: grid; grid-template-columns: 2.1em 2.9em minmax(0, 1fr) 4.4em 2.6em; gap: 0.5em; align-items: center; padding: 0 0.25em; }
+.sc-atht.np, .sc-ath ul.np li > button { grid-template-columns: 2.9em minmax(0, 1fr) 4.4em; }
+.sc-atht { margin-top: 0.3em; padding-bottom: 0.35em; font: 600 0.75em/1 var(--sc-c); letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+.sc-atht .r { text-align: right; }
+.sc .sc-ath li > button { width: 100%; min-height: 3.2em; border: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.07); border-radius: 0; background: none; color: #fff; text-align: left; font: inherit; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.sc .sc-ath li > button:active { background: rgba(255, 255, 255, 0.06); }
+.sc-ath li .p { font: 800 1.2em/1 var(--sc-c); color: rgba(255, 255, 255, 0.9); }
+.sc-ath li .s { font: 600 1.02em/1 var(--sc-c); color: rgba(255, 255, 255, 0.7); }
+.sc-ath li .n { min-width: 0; display: flex; flex-direction: column; gap: 0.15em; }
+.sc-ath li .n b { font: 600 0.95em/1.2 var(--sc-f, inherit); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-ath li .n small { font-size: 0.75em; color: rgba(255, 255, 255, 0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-ath li .g { display: inline-flex; align-items: center; gap: 0.4em; font: 700 0.95em/1 var(--sc-c); }
+.sc-ath li .t { text-align: right; font: 700 1.05em/1 var(--sc-c); }
+.sc-ath i { display: inline-block; flex: none; width: 0.62em; height: 0.62em; border-radius: 50%; }
+.sc-ath li.our .p, .sc-ath li.our .n b { color: #7fb0ff; }
+.sc .sc-athb { display: inline-flex; align-items: center; gap: 0.3em; height: 2.4em; padding: 0 0.8em 0 0.4em; border: 0; border-radius: 0.8em; background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); font: 700 1em/1 var(--sc-c); -webkit-tap-highlight-color: transparent; }
+.sc-athb svg { width: 1.2em; height: 1.2em; }
+.sc-ath.one h3 { margin: 0.6em 0 0.1em; font: 800 2em/1 var(--sc-c); color: #fff; }
+.sc-ath.one h3.our { color: #7fb0ff; }
+.sc-athw { margin: 0 0 0.8em; font-size: 0.92em; color: rgba(255, 255, 255, 0.7); }
+.sc-aths { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5em; }
+.sc-aths > div { display: flex; flex-direction: column; gap: 0.35em; padding: 0.75em; border-radius: 1em; background: rgba(255, 255, 255, 0.07); }
+.sc-aths span { font: 600 0.78em/1 var(--sc-c); letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
+.sc-aths b { display: inline-flex; align-items: center; gap: 0.35em; font: 800 1.8em/1 var(--sc-c); color: #fff; }
+.sc-aths i { width: 0.4em; height: 0.4em; }
+.sc-athn { display: flex; align-items: center; justify-content: space-between; gap: 0.6em; margin-top: 0.7em; padding: 0.8em 0.9em; border-radius: 1em; background: rgba(61, 125, 255, 0.16); font: 700 1.05em/1 var(--sc-c); }
+.sc-athn span { font-weight: 800; color: #7fb0ff; }
+.sc-athn span.next { color: #ffd23f; }
+.sc-athh { margin: 1.1em 0.15em 0.2em; font: 700 0.85em/1 var(--sc-c); letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
+.sc-athd { margin: 0.7em 0.15em 0.1em; font: 700 1em/1 var(--sc-c); color: rgba(255, 255, 255, 0.75); }
+.sc-ath.one li { display: grid; grid-template-columns: minmax(0, 1fr) 5.5em 3em; align-items: center; gap: 0.5em; min-height: 2.9em; padding: 0 0.15em; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+.sc-ath.one li span { font-weight: 600; }
+.sc-ath.one li em { display: inline-flex; align-items: center; gap: 0.4em; font: 700 0.95em/1 var(--sc-c); font-style: normal; color: rgba(255, 255, 255, 0.8); }
+.sc-ath.one li b { text-align: right; font: 800 1.35em/1 var(--sc-c); }
+/* ekranda Bizimkiler kartı (yalnız dikeyde; yatayda Sporcular yanda açık) */
+.sc .sc-ours { display: flex; flex-direction: column; gap: 0.15em; width: 100%; margin-bottom: 0.5em; padding: 0.7em 0.85em; border: 0; border-radius: 1.1em; background: rgba(8, 16, 30, 0.74); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); color: #fff; text-align: left; font: inherit; -webkit-tap-highlight-color: transparent; }
+.sc-ours .h { font: 700 0.85em/1 var(--sc-c); letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.65); margin-bottom: 0.25em; }
+.sc-ours .r { display: grid; grid-template-columns: 2.2em 0.7em minmax(0, 1fr) auto; align-items: center; gap: 0.5em; min-height: 1.8em; }
+.sc-ours .r b { font: 800 1.2em/1 var(--sc-c); color: #7fb0ff; }
+.sc-ours .r i { width: 0.62em; height: 0.62em; border-radius: 50%; }
+.sc-ours .r span { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-ours .r small { font: 600 0.85em/1 var(--sc-c); color: rgba(255, 255, 255, 0.65); }
+@media not all and (max-aspect-ratio: 1/1) { .sc .sc-ours { display: none; } }
+/* iPad ve geniş yatay ekran: Sporcular sağda yanda, çubuk solda kalır */
+@media (min-aspect-ratio: 1/1) and (min-width: 900px) {
+  .sc .sc-vb.bar > .sc-vp.ath, .sc .sc-vb.bar > .sc-vp.full.ath { position: fixed; inset: auto; top: 0; bottom: 0; right: 0; left: auto; width: min(25em, 38vw); height: auto; max-height: none; margin: 0; transform: none; z-index: 7; display: block; overflow-y: auto; overscroll-behavior: contain; padding: calc(1em + env(safe-area-inset-top)) calc(1em + env(safe-area-inset-right)) calc(1em + env(safe-area-inset-bottom)) 1em; border-radius: 0; background: #0b1626; box-shadow: -1px 0 0 rgba(255, 255, 255, 0.08); animation: sc-vp-rin 0.32s cubic-bezier(0.3, 0.9, 0.3, 1) both; }
+  .sc .sc-vb.bar > .sc-vp.ath.out { animation: sc-vp-rout 0.19s ease both; }
+  .sc .sc-vb.bar > .sc-vp.ath .sc-vpx { position: absolute; top: calc(0.8em + env(safe-area-inset-top)); right: calc(0.8em + env(safe-area-inset-right)); }
+  .sc-vb.bar:has(> .sc-vp.ath:not(.out)) { right: calc(min(25em, 38vw) + 1em); max-width: calc(100vw - min(25em, 38vw) - var(--vb-s, 20em) - 2em); }
+  .sc-vb.bar:has(> .sc-vp.ath:not(.out)) > .sc-vrow { flex-wrap: wrap; justify-content: center; }
+}
+@media (max-aspect-ratio: 1/1) { .sc-ath { font-size: 1.12em; } }
+/* Sporcular › Sonuç ekle "+" (Seyhun 2026-11-09): başlığın yanında küçük yuvarlak */
+.sc .sc-ath .sc-vph { justify-content: flex-start; }
+.sc .sc-athadd { display: inline-flex; align-items: center; justify-content: center; width: 2em; height: 2em; border-radius: 50%; background: rgba(255, 255, 255, 0.12); color: #fff; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sc .sc-athadd:active { transform: scale(0.94); }
+.sc-athadd svg { width: 1.1em; height: 1.1em; }
+.sc-athm { margin: -0.3em 0.15em 0.6em; font: 600 0.9em/1.3 var(--sc-c); color: rgba(255, 255, 255, 0.7); }

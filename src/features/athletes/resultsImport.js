@@ -11,10 +11,23 @@ import { readResults } from "./raceResultsRead";
 import { noticePdf, saveNoticeFile } from "./noticeFile";
 import { dropSheetDoc, loadSheets, saveSheet } from "./raceLiveStore";
 import { saveSharedSheet } from "./sharedRaces";
-import { loadRace } from "./races";
+import { loadRace, saveRaceResults } from "./races";
+import { isActive } from "./data";
+import { stampResults } from "@/lib/raceDay";
+import { todayStr } from "@/lib/utils/format";
 
 const fileName = (race, n) => `${String(race?.name || "Yarış").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 60)} sonuçları${n > 1 ? ` ${n}` : ""}.pdf`;
 
+// Tek ortak "Sonuç ekle" (yarış sayfası Takip › Sonuçlar, Yayın › Belgeler, canlı ekran › Sporcular "+"; Seyhun 2026-11-09 "sonuçları
+// gösterdiğimiz her yerde artı"): yarıştaki ve kulübün sporcularıyla okur, yarışa kaydeder. Dönüş { got, race: güncel yarış }
+export async function addResults({ orgId, race, athletes, file, replace = "" }) {
+  const ours = athletes.filter((a) => (race.athleteIds || []).includes(a.id));
+  const club = athletes.filter((a) => isActive(a) && !ours.includes(a));
+  const got = await importResults({ orgId, race, athletes: ours, club, file, replace });
+  got.results = stampResults(race.results, got.results, todayStr());
+  await saveRaceResults(orgId, race.id, got.results, got.extra);
+  return { got, race: { ...race, results: got.results, athleteIds: [...new Set([...(race.athleteIds || []), ...got.extra])] } };
+}
 // replace: sunucunun siteden okuyup yazdığı genel liste (sheets/site-…, raceSiteTake.takeResults); yerine bu belgeninki geçer
 export async function importResults({ orgId, race, athletes, club = [], file, replace = "" }) {
   // Sonuçlar üç ekrandan (yarış sayfası, Multimedya › Sonuç, Yayın › Belgeler) yazılır: eldeki eski kopya değil, kayıttaki taze hâl üstüne

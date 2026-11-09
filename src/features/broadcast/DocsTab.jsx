@@ -11,12 +11,9 @@ import { card } from "@/components/ui/Page";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { useToast } from "@/components/ui/ToastProvider";
 import { kindLabel, resultState } from "@/lib/siteDocs";
-import { stampResults } from "@/lib/raceDay";
-import { todayStr } from "@/lib/utils/format";
-import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
+import { loadAthletes, useDikili } from "@/features/athletes/data";
 import { LIST_KINDS, applyList, claimDoc, siteDocBlob, waiting, checkSite, saveDocState, watchSiteDocs } from "@/features/athletes/raceSite";
-import { importResults, importToast } from "@/features/athletes/resultsImport";
-import { saveRaceResults } from "@/features/athletes/races";
+import { addResults, importToast } from "@/features/athletes/resultsImport";
 
 // Gösterim sırası: önce sonuçlar, sonra listeler, talimatlar
 const ORDER = ["results", "groups", "fleets", "entries", "amend", "notice", "program", "other"];
@@ -45,12 +42,7 @@ export function DocsTab({ orgId, race, onRace, onShow, showing }) {
     async (f) => {
       const cur = raceNow.current;
       if (!athletes || !cur?.id) throw new Error("Sporcular yükleniyor, birazdan tekrar dene.");
-      const ours = athletes.filter((a) => (cur.athleteIds || []).includes(a.id));
-      const club = athletes.filter((a) => isActive(a) && !ours.includes(a));
-      const got = await importResults({ orgId, race: cur, athletes: ours, club, file: f });
-      got.results = stampResults(cur.results, got.results, todayStr());
-      await saveRaceResults(orgId, cur.id, got.results, got.extra);
-      const next = { ...cur, results: got.results, athleteIds: [...new Set([...(cur.athleteIds || []), ...got.extra])] };
+      const { got, race: next } = await addResults({ orgId, race: cur, athletes, file: f });
       raceNow.current = next;
       onRace?.(next);
       return got;
