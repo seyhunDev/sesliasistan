@@ -264,7 +264,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
       </div>
       {rr && <p className={`rz-kick ${on ? "rz-kick-on" : ""}`}>{kickText(rr)}</p>}
       <h1>{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</h1>
-      {rr && <p className="rz-sub">{whereText(rr)}</p>}
+      {rr && id !== "new" && <p className="rz-sub">{whereText(rr)}</p>}
     </header>
   );
 
@@ -290,6 +290,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
           <RaceEditor
             key={ver}
             sec={sec}
+            uid={uid}
             head={head}
             sharedList={id === "new" ? sharedList : []}
             alert={err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
