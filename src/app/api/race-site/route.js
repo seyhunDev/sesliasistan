@@ -5,6 +5,7 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { fileUrl } from "@/lib/siteBoard";
 import { FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import { freshActs } from "@/lib/siteDocs";
 import { KNOWN, cachedList, mergeSite, pageCache, siteList } from "@/lib/server/raceSiteSync";
 import { ackSig } from "@/lib/server/ackSign";
 
@@ -64,7 +65,10 @@ export async function GET(request) {
   try {
     // Kaydedilmiş listeden (raceSiteSync.cachedList); sunucu ayarı yoksa siteden
     const season = q.get("season") || "";
-    return NextResponse.json(adminReady() ? await cachedList(adminDb(), pageCache(), season) : await siteList(pageCache(), season));
+    if (!adminReady()) return NextResponse.json(await siteList(pageCache(), season));
+    // fresh: son 14 günde sitede yeni görülen yarışlar { act: ilk görülme } (+ Yarış penceresinde "Yeni"; siteDocs.freshActs)
+    const [list, known] = await Promise.all([cachedList(adminDb(), pageCache(), season), adminDb().collection("raceSite").doc(KNOWN).get().catch(() => null)]);
+    return NextResponse.json({ ...list, fresh: freshActs(known?.data()?.news) });
   } catch (e) {
     console.warn("[race-site] liste", e.message);
     return bad("Yarış sitesine ulaşılamadı, biraz sonra tekrar dene.", 502);
