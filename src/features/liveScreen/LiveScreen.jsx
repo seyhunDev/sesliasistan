@@ -1760,9 +1760,11 @@ function athGDay(data, day) {
 function scAth(data, day) {
   const gd = athGDay(data, day);
   const gm = groupMap(groupsOn(data.groups || {}, gd));
-  const gm0 = gd === day ? gm : groupMap(groupsOn(data.groups || {}, day));
   const boards = scBoards(data);
-  const out = boards.map((b) => ({ cls: b.cls, races: b.races, rows: b.all.map((r) => ({ p: r.p, sail: String(r.sail), name: r.name || "", club: r.club || "", sc: r.sc, t: r.t ?? "" })) }));
+  // son güncelleme: resmî sonuçta belgenin geliş anı (sınıf sınıf), geçicide son biten yarış
+  const fat = new Map((data.fleets || []).map((f) => [f.cls || "", f.at || ""]));
+  const fin = (data.starts || []).map((x) => x.fin || "").filter(Boolean).sort().pop() || "";
+  const out = boards.map((b) => ({ cls: b.cls, at: (data.fleets || []).length ? fat.get(b.cls) || "" : fin, races: b.races, rows: b.all.map((r) => ({ p: r.p, sail: String(r.sail), name: r.name || "", club: r.club || "", sc: r.sc, t: r.t ?? "" })) }));
   for (const e of data.entries || []) {
     const sail = String(e.sail || "");
     if (!sail) continue;
@@ -1771,7 +1773,7 @@ function scAth(data, day) {
     if (!b.rows.some((r) => r.sail === sail)) b.rows.push({ p: "", sail, name: e.name || "", club: e.club || "", sc: [], t: "" });
   }
   return out
-    .map((b) => ({ ...b, gd, rows: b.rows.map((r) => ({ ...r, g: gm[r.sail] || "", g0: gm0[r.sail] || "", our: isOur(r.club) })) }))
+    .map((b) => ({ ...b, gd, rows: b.rows.map((r) => ({ ...r, g: gm[r.sail] || "", our: isOur(r.club) })) }))
     .map((b) => ({ ...b, rows: b.rows.filter((r) => r.p !== "").concat(b.rows.filter((r) => r.p === "").sort((x, y) => Number(x.sail) - Number(y.sail) || x.sail.localeCompare(y.sail))) }))
     .filter((b) => b.rows.length);
 }
@@ -1790,7 +1792,17 @@ function athDays(data, b, r) {
 }
 const athDayName = (d, today) => (d === today ? "Bugün" : d === trDay(Date.parse(`${today}T12:00:00Z`) - 864e5) ? "Dün" : d === trDay(Date.parse(`${today}T12:00:00Z`) + 864e5) ? "Yarın" : dayText(d));
 const GDot = ({ g }) => (g ? <i style={{ background: groupColor(g) || "#ffd23f" }} aria-hidden="true" /> : null);
-function ScAthPanel({ data, ath, day, prog = [], res = false, onFull, onResult = null, resMsg = "" }) {
+const athAt = (at, today) => {
+  if (!at) return "";
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return "";
+  const hm = d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
+  return `${trDay(d.getTime()) === today ? hm : `${dayText(trDay(d.getTime()))} ${hm}`} güncellendi`;
+};
+const athRank = (p) => (p ? `${p}${/^\d+$/.test(String(p)) ? "." : ""}` : "");
+// Sonuçlar paneli (Seyhun 2026-11-09 örnek "sade liste" onaylandı, "sekme adı ve başlık Sonuçlar, yanında en son güncelleme ve +"): satırda sıra,
+// ad, altında grup (açıklanmış en yeni gün; yarınki açıklanınca yalnız o) + yelken no + kulüp; sağda puan, altında yarış dereceleri
+function ScAthPanel({ data, ath, day, onFull, res = false, onResult = null, resMsg = "" }) {
   const [ci, setCi] = useState(0);
   const [q, setQ] = useState("");
   const [f, setF] = useState(""); // "" hepsi, "our" bizimkiler, grup adı
@@ -1799,8 +1811,8 @@ function ScAthPanel({ data, ath, day, prog = [], res = false, onFull, onResult =
   const head = (
     <>
       <div className="sc-vph">
-        <b>Sporcular</b>
-        {/* Sonuç ekle (Seyhun 2026-11-09 "sonuçları gösterdiğimiz her yerde artı"): sonuç PDF'i ya da fotoğrafı */}
+        <b>Sonuçlar</b>
+        {b?.at ? <small>{athAt(b.at, day)}</small> : null}
         {onResult ? (
           <label className="sc-athadd" aria-label="Sonuç ekle">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" /></svg>
@@ -1822,43 +1834,33 @@ function ScAthPanel({ data, ath, day, prog = [], res = false, onFull, onResult =
   const pr = pb?.rows.find((x) => x.sail === pick.sail);
   if (pr) {
     const days = athDays(data, pb, pr);
-    const st = pr.g0 ? prog.find((x) => x.grp === pr.g0 && (x.state === "now" || x.state === "next")) : null;
     return (
       <div className="sc-ath one">
         <button type="button" className="sc-athb" onClick={() => setPick(null)}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          Sporcular
+          Sonuçlar
         </button>
         <h3 className={pr.our ? "our" : ""}>{pr.name || pr.sail}</h3>
-        <p className="sc-athw">{[pr.sail, clubName(pr.club) || pr.club, pb.cls].filter(Boolean).join(" · ")}</p>
-        <div className="sc-aths">
-          <div><span>Genel sıra</span><b>{pr.p ? `${pr.p}${/^\d+$/.test(String(pr.p)) ? "." : ""}` : "—"}</b></div>
-          <div><span>Puan</span><b>{pr.t !== "" ? pr.t : "—"}</b></div>
-          <div className={pr.g ? "g" : ""}><span>{athDayName(pb.gd, day)}</span><b>{pr.g ? <><GDot g={pr.g} />{pr.g}</> : "—"}</b></div>
-        </div>
-        {st ? (
-          <div className="sc-athn">
-            <b>{[st.grp, st.name].filter(Boolean).join(" · ")}</b>
-            <span className={st.state}>{st.state === "now" ? "Yarışta" : st.at || "Sıradaki"}</span>
-          </div>
-        ) : null}
+        <p className="sc-athw">{[pr.sail, clubName(pr.club, 40), pb.cls].filter(Boolean).join(" · ")}</p>
+        <ul className="sc-athkv">
+          {pr.p ? <li><span>Genel sıra</span><b>{athRank(pr.p)}</b></li> : null}
+          {pr.t !== "" ? <li><span>Puan</span><b>{pr.t}</b></li> : null}
+          {pr.g ? <li><span>{athDayName(pb.gd, day)}</span><b><GDot g={pr.g} />{pr.g}</b></li> : null}
+        </ul>
         {days.length ? (
           <>
             <p className="sc-athh">Dereceler</p>
-            {days.map((d) => (
-              <Fragment key={d.day || "x"}>
-                {d.day && days.length > 1 ? <p className="sc-athd">{athDayName(d.day, day)}</p> : null}
-                <ul>
-                  {d.rows.map((x) => (
-                    <li key={x.n}>
-                      <span>{x.n}. yarış</span>
-                      <em>{x.g ? <><GDot g={x.g} />{x.g}</> : null}</em>
-                      <b>{x.v}</b>
-                    </li>
-                  ))}
-                </ul>
-              </Fragment>
-            ))}
+            <ul className="sc-athkv">
+              {days.flatMap((d) =>
+                d.rows.map((x) => (
+                  <li key={x.n}>
+                    <span>{x.n}. yarış</span>
+                    {d.day ? <small>{athDayName(d.day, day)}</small> : null}
+                    <b>{x.v}</b>
+                  </li>
+                )),
+              )}
+            </ul>
           </>
         ) : null}
       </div>
@@ -1872,6 +1874,8 @@ function ScAthPanel({ data, ath, day, prog = [], res = false, onFull, onResult =
   const fOn = f === "our" ? (ours ? f : "") : grs.includes(f) ? f : "";
   const rows = b.rows.filter((r) => (!fOn || (fOn === "our" ? r.our : r.g === fOn)) && (!q.trim() || grpHit(r, q)));
   const hasP = b.rows.some((r) => r.p !== "");
+  const gdName = athDayName(b.gd, day);
+  const cap = [grs.length ? `${gdName === "Bugün" ? "Bugünün" : gdName === "Yarın" ? "Yarının" : gdName} grupları` : "", ath.length > 1 ? "" : b.cls].filter(Boolean).join(" · ");
   return (
     <div className="sc-ath">
       {head}
@@ -1891,8 +1895,8 @@ function ScAthPanel({ data, ath, day, prog = [], res = false, onFull, onResult =
             Hepsi
           </button>
           {ours ? (
-            <button type="button" className={`our${fOn === "our" ? " on" : ""}`} aria-pressed={fOn === "our"} onClick={() => setF("our")}>
-              Bizimkiler <small>{ours}</small>
+            <button type="button" className={fOn === "our" ? "on" : ""} aria-pressed={fOn === "our"} onClick={() => setF("our")}>
+              Bizimkiler
             </button>
           ) : null}
           {grs.map((g) => (
@@ -1905,28 +1909,36 @@ function ScAthPanel({ data, ath, day, prog = [], res = false, onFull, onResult =
       ) : null}
       {rows.length ? (
         <>
-          <div className={`sc-atht${hasP ? "" : " np"}`} aria-hidden="true">
-            {hasP ? <span>Sıra</span> : null}
-            <span>No</span>
-            <span>Sporcu</span>
-            <span>{athDayName(b.gd, day)}</span>
-            {hasP ? <span className="r">Puan</span> : null}
-          </div>
-          <ul className={hasP ? "" : "np"}>
-            {rows.map((r) => (
-              <li key={r.sail} className={r.our ? "our" : ""}>
-                <button type="button" onClick={() => setPick({ cls: b.cls, sail: r.sail })}>
-                  {hasP ? <b className="p">{r.p ? `${r.p}${/^\d+$/.test(String(r.p)) ? "." : ""}` : ""}</b> : null}
-                  <span className="s">{r.sail}</span>
-                  <span className="n">
-                    <b>{r.name || "—"}</b>
-                    <small>{shortClub(r.club)}</small>
-                  </span>
-                  <span className="g">{r.g ? <><GDot g={r.g} />{r.g}</> : ""}</span>
-                  {hasP ? <span className="t">{r.t}</span> : null}
-                </button>
-              </li>
-            ))}
+          {cap || hasP ? (
+            <div className="sc-atht">
+              <span>{cap}</span>
+              {hasP ? <span>Puan</span> : null}
+            </div>
+          ) : null}
+          <ul className="sc-athl">
+            {rows.map((r) => {
+              const sc = (r.sc || []).filter(Boolean).slice(-5).join(" · ");
+              return (
+                <li key={r.sail} className={r.our ? "our" : ""}>
+                  <button type="button" onClick={() => setPick({ cls: b.cls, sail: r.sail })}>
+                    {hasP ? <b className="p">{athRank(r.p)}</b> : null}
+                    <span className="n">
+                      <b>{r.name || r.sail}</b>
+                      <small>
+                        {r.g ? <span className="g"><GDot g={r.g} />{r.g}</span> : null}
+                        <span className="c">{[r.sail, clubName(r.club)].filter(Boolean).join(" · ")}</span>
+                      </small>
+                    </span>
+                    {hasP ? (
+                      <span className="t">
+                        <b>{r.t}</b>
+                        {sc ? <small>{sc}</small> : null}
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </>
       ) : (
@@ -2934,7 +2946,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
     // Parkur ve rüzgâr tek düğme (Seyhun 2026-11-06): üstte şu anki ölçüm, ortada büyük parkur, altta beklenen rüzgâr
     (course || onWind || wind || nowW) && ["course", "Parkur ve rüzgâr"],
     // Sporcular (Seyhun 2026-11-09): Sıralama ve Gruplar tek düğme; genel sıra, bugünkü grup, puan, dokununca dereceler
-    (ath.length > 0 || onResult) && ["ath", "Sporcular"],
+    (ath.length > 0 || onResult) && ["ath", "Sonuçlar"],
     (prog.length > 0 || pgAg) && ["prog", "Program"],
     vidRef && ["vid", "Video", !!myVid],
     onStart && ["start", "Start"],
@@ -3215,7 +3227,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       // günün programı (Seyhun 2026-11-06 "varsa program butonumuzda olsun"): biten soluk, süren mavi, sıradaki sarı
       <ScProgPanel prog={prog} ag={pgAg} />
     ) : k === "ath" ? (
-      <ScAthPanel data={data} ath={ath} day={pgDay} prog={prog} res={res} onFull={onFull} onResult={onResult} resMsg={resMsg} />
+      <ScAthPanel data={data} ath={ath} day={pgDay} res={res} onFull={onFull} onResult={onResult} resMsg={resMsg} />
     ) : k === "vid" ? (
       // ana hesabın kendi videoları (LiveStart › LiveVideos buraya çizer; yalnız uygulama içinde)
       <div ref={vidRef} />
