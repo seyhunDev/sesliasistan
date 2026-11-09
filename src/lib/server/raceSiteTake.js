@@ -11,6 +11,7 @@
 // (sporcularımız ayrı projede).
 import { FieldPath, FieldValue } from "firebase-admin/firestore";
 import { tableOf } from "../pdfLines.js";
+import { takeResults } from "./raceSiteResults.js";
 import { cleanEntries, mergeEntries } from "../roundSay.js";
 import { cleanGroups, dayGroups } from "../roundScore.js";
 import { cleanSchedule, dayOf, focusText, listGroups, mergeSchedule, scheduleDiff, sitePlan } from "../siteDocs.js";
@@ -176,7 +177,7 @@ export const isIlan = (name) => /\bILANI?\b|İLANI?\b/.test(String(name || "").t
 export function makeTake({ db, orgId, raceId, ai, cls = "" }) {
   return async (d, buf) => {
     if (["groups", "fleets", "entries"].includes(d.kind)) return takeList({ db, orgId, raceId, d, buf });
-    if (d.kind === "results") return null;
+    if (d.kind === "results") return takeResults({ db, orgId, raceId, d, buf, ai, pdfPages }).catch((e) => (console.warn("[yarış sitesi] sonuç", d.name, e.message), null));
     // Yarış ilanı: yarış ondan açıldı (Siteden yarış al); programı yarışta ya da Yayın'da yoksa ondan
     if (d.kind === "notice" && isIlan(d.name)) return (await takeNotice({ db, orgId, raceId, d, buf, ai, cls, ilan: true })) || { state: "kept", note: "Yarış ilanı" };
     if (["notice", "amend", "program"].includes(d.kind)) return (await takeNotice({ db, orgId, raceId, d, buf, ai, cls })) || null;
