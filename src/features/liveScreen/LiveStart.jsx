@@ -10,6 +10,8 @@ import { createPortal } from "react-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase/clientApp";
 import { loadRace } from "@/features/athletes/races";
+import { loadAthletes } from "@/features/athletes/data";
+import { addResults, importToast } from "@/features/athletes/resultsImport";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { addCourseMany, addCourseObs, loadCourse, saveCourse, loadRoundsOf, saveCards, savePlanKeys, saveRounds, saveTimer, watchRounds } from "@/features/athletes/raceLiveStore";
 import { loadEntryDoc, readEntryFile, saveEntries, saveGroups } from "@/features/rounds/roundsStore";
@@ -44,7 +46,7 @@ export default function LiveStart(p) {
 }
 // vidHost: Video panelindeki yer (LiveScreen ScView; yalnız uygulama içinde); videolar oraya çizilir
 // masaHost: Yayın masasının yeri (Yayın modunda "Yayında"ya basınca); give: Benim'de seçileni yayına ver isteği { s, n }
-function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false, masaHost = null, addCat = null, now = null, pos = [], give = null, onGiven, list = null, onListed, cards = null, talkN = 0 }) {
+function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidHost = null, playing = "", onPlay, stream = null, auto = false, masaHost = null, addCat = null, now = null, pos = [], give = null, onGiven, list = null, onListed, cards = null, talkN = 0, resFile = null, onResDone }) {
   const [orgId, setOrgId] = useState("");
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -96,6 +98,18 @@ function Start({ raceId, open, onClose, onReady, wind = false, onWindClose, vidH
   }, [orgId, raceId, today, cards]);
   // Tekne ekranında "Yeni liste" (Seyhun 2026-11-06 "listeler açıklanınca tıklarım, her gün değişecek gruplar"): renk ya da final
   // listesi (PDF, foto, Excel) okunur, bugünün grupları olur (yarış sitesinden gelen belgeyle aynı iş: raceSite applyList), sporcular kayıt listesine eklenir.
+  // Sporcular › "+" Sonuç ekle (Seyhun 2026-11-09): yarış sayfasındaki sonuç yüklemeyle aynı ortak iş (resultsImport.addResults)
+  const resN = useRef(0);
+  useEffect(() => {
+    if (!orgId || !race?.id || !resFile?.n || resN.current === resFile.n) return;
+    resN.current = resFile.n;
+    (async () => {
+      const { athletes } = await loadAthletes();
+      const { got, race: next } = await addResults({ orgId, race: (await loadRace(orgId, race.id)) || race, athletes: athletes || [], file: resFile.file });
+      setRace(next);
+      onResDone?.(importToast(got) || "Sonuçlar eklendi");
+    })().catch((e) => onResDone?.(e?.message ? `Okunamadı: ${e.message}` : "Okunamadı. İnterneti kontrol et."));
+  }, [orgId, race, resFile, onResDone]);
   const listN = useRef(0);
   useEffect(() => {
     if (!orgId || !list?.n || listN.current === list.n) return;
