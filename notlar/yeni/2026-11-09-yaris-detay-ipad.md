@@ -16,3 +16,7 @@
 ## Tasarım
 
 - Yarış detayı iPad'de tam ekran: bulanık fotoğraf zemini + solda soluk büyük ad ve düğmeler + sağda koyu cam panel. Telefon yarış kart düzeninde kalır.
+
+## Tasarım (telefon)
+
+- (Tasarım) 2026-11-09 telefon ve dik iPad de aynı görünüm (bulanık fotoğraf + cam panel); Seyhun "üst taraf boş kalıyor" dedi: telefonda ve dik iPad'de üst sıkı (geri, ad, ⋯ tek satır, tarih altında, hemen altında Hava ve Canlı ekran · Yayın). Büyük soluk ad yalnız yatay iPad/Mac'te.
