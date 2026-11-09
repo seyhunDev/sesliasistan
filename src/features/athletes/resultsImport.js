@@ -9,13 +9,14 @@ import { mergeSheet, rankOurs, raceYear, withCats } from "@/lib/resultSheet";
 import { keepFiles, rankWith } from "@/lib/sharedRace";
 import { readResults } from "./raceResultsRead";
 import { noticePdf, saveNoticeFile } from "./noticeFile";
-import { loadSheets, saveSheet } from "./raceLiveStore";
+import { dropSheetDoc, loadSheets, saveSheet } from "./raceLiveStore";
 import { saveSharedSheet } from "./sharedRaces";
 import { loadRace } from "./races";
 
 const fileName = (race, n) => `${String(race?.name || "Yarış").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 60)} sonuçları${n > 1 ? ` ${n}` : ""}.pdf`;
 
-export async function importResults({ orgId, race, athletes, club = [], file }) {
+// replace: sunucunun siteden okuyup yazdığı genel liste (sheets/site-…, raceSiteTake.takeResults); yerine bu belgeninki geçer
+export async function importResults({ orgId, race, athletes, club = [], file, replace = "" }) {
   // Sonuçlar üç ekrandan (yarış sayfası, Multimedya › Sonuç, Yayın › Belgeler) yazılır: eldeki eski kopya değil, kayıttaki taze hâl üstüne
   // eklenir (biri az önce PDF eklediyse silinmesin; yarış sistemi haritası 2026-11-04)
   const fresh = race.id ? await loadRace(orgId, race.id).catch(() => null) : null;
@@ -26,11 +27,11 @@ export async function importResults({ orgId, race, athletes, club = [], file }) 
   // Yaş kategorileri (ILCA 4 Junior) doğum yılından, yarışın yılına göre
   const fleets = withCats(read.fleets, raceYear(race));
   // Gruplu sınıfta önceki PDF'lerle birlikte sıralanır (Altın PDF'i önce, Gümüş PDF'i sonra: Gümüş'teki sporcunun genel sırası ikisinden)
-  const before = race.id ? await loadSheets(orgId, race.id).catch(() => []) : [];
+  const before = (race.id ? await loadSheets(orgId, race.id).catch(() => []) : []).filter((x) => !replace || x.id !== replace);
   const ranked = rankWith(before, fleets, pool, raceYear(race));
   const pdf = await noticePdf(file, kind);
   const meta = await saveNoticeFile(orgId, pdf, fileName(race, (res.files?.length || 0) + 1));
-  if (race.id) await saveSheet(orgId, race.id, meta.id, fleets).catch((e) => console.warn("[sonuç] genel liste kaydedilemedi", e));
+  if (race.id) await saveSheet(orgId, race.id, meta.id, fleets).then(() => replace && dropSheetDoc(orgId, race.id, replace)).catch((e) => console.warn("[sonuç] genel liste kaydedilemedi", e));
   // Ortak yarışa da (yalnız ekleyen kulüp ve ana hesap yazabilir; diğerlerinde kural reddeder)
   if (race.shared) saveSharedSheet(race.shared, meta, fleets).catch(() => {});
   const extra = Object.keys(ranked).filter((id) => !(race.athleteIds || []).includes(id));

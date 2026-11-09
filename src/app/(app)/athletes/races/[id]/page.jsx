@@ -147,12 +147,12 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   }, [race]);
   // Sonuç belgesi (siteden ya da elle, Takip › Sonuçlar › Sonuç yükle; Seyhun 2026-11-08 "sisteme girilmediyse manuel yükleyebilmeliyim")
   const importFile = useCallback(
-    async (file) => {
+    async (file, replace = "") => {
       const cur = raceNow.current;
       if (!athletes || !cur?.id) return null;
       const ours = athletes.filter((a) => (cur.athleteIds || []).includes(a.id));
       const club = athletes.filter((a) => isActive(a) && !ours.includes(a));
-      const got = await importResults({ orgId, race: cur, athletes: ours, club, file });
+      const got = await importResults({ orgId, race: cur, athletes: ours, club, file, replace });
       got.results = stampResults(cur.results, got.results, todayStr());
       await saveRaceResults(orgId, cur.id, got.results, got.extra);
       const athleteIds = [...new Set([...(cur.athleteIds || []), ...got.extra])];
@@ -168,7 +168,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     async (d) => {
       const cur = raceNow.current;
       if (!athletes || !cur?.id) return null;
-      return importFile(new File([await siteDocBlob(cur.id, d)], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" }));
+      return importFile(new File([await siteDocBlob(cur.id, d)], d.file?.name || `${d.name}.pdf`, { type: "application/pdf" }), d.sheet || "");
     },
     [athletes, importFile],
   );
