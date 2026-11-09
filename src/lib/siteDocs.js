@@ -232,3 +232,28 @@ export function sitePlan(plan, days, full) {
   }
   return { daily: old.daily, times, off: [...off].sort(), agenda: cleanAgenda(agenda) };
 }
+
+// Takip'in üstündeki son belge (Seyhun 2026-11-09 "en son gelen bilgi neyse onu yukarıda gösterelim, okudum butonu"): sonuç ve
+// liste dışındaki en yeni belge; "Okudum" (kayıtta read) basılınca kalkar, yenisi gelince yine çıkar. Bitmiş yarışta gösterilmez.
+const NOT_NEWS = ["results", "groups", "fleets", "entries"];
+export function latestNews(docs, race = {}, today = "") {
+  const end = race?.endDate || race?.startDate || "";
+  if (today && end && end < today) return null;
+  const d = (docs || [])
+    .filter((x) => !NOT_NEWS.includes(x?.kind || docKind(x?.name)) && x?.state !== "undone")
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)))[0];
+  return d && !d.read ? d : null;
+}
+// Belgenin programda değiştirdiği satırlar (Program'da okunana kadar işaretli): "gün|başlık" → eski saat ("" yeni satır)
+export const rowKey = (x) => `${x.date}|${loose(x.title)}`;
+export function changedRows(before, now) {
+  const a = new Map(cleanSchedule(before).map((x) => [rowKey(x), x]));
+  const out = {};
+  if (!a.size) return out; // ilk program (talimat) değişiklik sayılmaz
+  for (const x of cleanSchedule(now)) {
+    const y = a.get(rowKey(x));
+    if (!y) out[rowKey(x)] = "";
+    else if (y.time !== x.time) out[rowKey(x)] = y.time || "saatsiz";
+  }
+  return out;
+}

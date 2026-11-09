@@ -18,10 +18,10 @@ import { loadLive } from "./raceLiveStore";
 import { loadRaceDay } from "./raceWeather";
 import { Icon } from "@/components/ui/Icon";
 import { ourPlaces } from "@/lib/raceDay";
-import { cleanSchedule, currentAmend, kindLabel, resultState, version } from "@/lib/siteDocs";
+import { changedRows, cleanSchedule, currentAmend, kindLabel, latestNews, resultState, rowKey, version } from "@/lib/siteDocs";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
 import { ResultCards } from "./ResultCards";
-import { siteDocBlob, watchEntryDoc, watchSiteDocs } from "./raceSite";
+import { saveDocState, siteDocBlob, watchEntryDoc, watchSiteDocs } from "./raceSite";
 
 const RULES = ["notice", "amend", "program"];
 const GROUPS = ["groups", "fleets"];
@@ -98,15 +98,49 @@ export function programDays(schedule, today) {
   const next = days.filter((d) => d >= today);
   return (next.length ? next : days).map((d) => [d, by.get(d).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"))]);
 }
-function ProgramRows({ schedule }) {
+// changed: son belgenin değiştirdiği satırlar (siteDocs.changedRows); "Okudum"a kadar mavi, eski saat üstü çizili
+function ProgramRows({ schedule, changed = {} }) {
   const today = todayStr();
   const tomorrow = new Date(Date.parse(`${today}T12:00:00`) + 864e5).toLocaleDateString("sv-SE");
   return programDays(schedule, today).map(([d, items]) => (
     <div key={d} className="flex gap-3 border-t border-line py-3 first:border-t-0">
       <span className={`w-[4.75rem] shrink-0 text-[0.8125rem] ${d === today ? "font-semibold text-acc" : "text-mut"}`}>{d === today ? "Bugün" : d === tomorrow ? "Yarın" : dayName(d)}</span>
-      <span className="min-w-0 flex-1 text-[0.9375rem]">{items.map((x) => [x.time, x.title].filter(Boolean).join(" ")).join(" · ")}</span>
+      <span className="min-w-0 flex-1 text-[0.9375rem]">
+        {items.map((x, i) => {
+          const was = changed[rowKey(x)];
+          return (
+            <span key={i}>
+              {i > 0 && " · "}
+              {was && <s className="mr-1 text-[0.8125rem] text-mut">{was}</s>}
+              <span className={was !== undefined ? "font-semibold text-acc" : ""}>{[x.time, x.title].filter(Boolean).join(" ")}</span>
+            </span>
+          );
+        })}
+      </span>
     </div>
   ));
+}
+
+// Son gelen belge, Takip'in en üstünde (Seyhun 2026-11-09, örnek /mnt/project-files/talimat-ust/ornek-telefon.png): ne değişti,
+// program güncellendiyse yazısı; Aç belgeyi açar, Okudum kartı kaldırır (raceLive/{yarış}/site/{belge}.read)
+function NewsCard({ d, onOpen, onRead }) {
+  const planned = d.state === "used" && (d.undo?.notice || d.undo?.plan);
+  const note = d.state === "used" && d.note && d.note !== "Yarış ilanı" ? d.note.replace(/ · Yayın programı \d+ gün$/, "") : "";
+  return (
+    <section aria-label="Son gelen belge" className="mt-5 rounded-[1.25rem] border border-acc/35 bg-acc/5 px-3.5 pb-3 pt-3.5">
+      <p className="text-[0.75rem] font-semibold uppercase tracking-wide text-acc">
+        {[kindLabel(d.kind), d.kind === "amend" && version(d.name) ? `V${version(d.name)}` : ""].filter(Boolean).join(" ")}
+        <span className="font-medium normal-case tracking-normal text-mut"> · {when(d.at)}</span>
+      </p>
+      <b className="mt-1 block text-[0.9375rem] font-semibold">{d.name}</b>
+      {note && <p className="mt-1.5 text-[0.9375rem] leading-snug">{note}</p>}
+      {planned && <p className="mt-1 text-[0.8125rem] text-mut">Program ve canlı yayın programı güncellendi</p>}
+      <div className="mt-3 flex gap-2">
+        <button type="button" onClick={() => onOpen(d)} data-press className="btn btn-secondary btn-sm flex-1">Aç</button>
+        <button type="button" onClick={() => onRead(d)} data-press className="btn btn-primary btn-sm flex-1">Okudum</button>
+      </div>
+    </section>
+  );
 }
 
 function DocRows({ list, onOpen, cur = null }) {
@@ -202,8 +236,12 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
   const state = g.results.length ? (resultState(g.results[0].name) === "kesin" ? "Kesin" : "Geçici") : "";
   const raceN = Math.max(0, ...Object.values(race.results?.rows || {}).map((x) => x?.r?.length || 0));
   const row = "flex min-h-[3.5rem] w-full items-center gap-2 border-t border-line py-2 text-left first:border-t-0";
+  const news = latestNews(docs, race, todayStr());
+  const changed = news?.undo?.notice ? changedRows(news.undo.notice.schedule, race.notice?.schedule) : {};
+  const readNews = (d) => saveDocState(orgId, race.id, d.id, { read: true, seen: true }).catch(() => toast("Kaydedilemedi"));
   return (
     <div>
+      {news && <NewsCard d={news} onOpen={setView} onRead={readNews} />}
       {/* Sade sıra (Seyhun 2026-11-08 "gruplar, sonuçlar diye devam etmeli"; örnek yaris-tasarim/sade/takip-*.png): Gruplar, Sonuçlar, Program,
           Belgeler. Hava ve kaç yarış yapıldığı yalnız üstte (RaceDayTop "Şimdi"), sonuçlar yalnız burada. */}
       <section className="mt-5" aria-label="Gruplar">
@@ -243,7 +281,7 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
           <section className="mt-6" aria-label="Program">
             <ListHead title="Program" />
             <div className={box}>
-              <ProgramRows schedule={race.notice.schedule} />
+              <ProgramRows schedule={race.notice.schedule} changed={changed} />
             </div>
           </section>
         )}
