@@ -1397,7 +1397,10 @@ main.rz.rzc.rzi { padding-bottom: 0; }
 .rs-rs { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .375rem; }
 .rs-rs i { display: grid; width: 1.5rem; height: 1.5rem; place-items: center; border-radius: 50%; background: var(--g); color: #fff; font-style: normal; font-size: .6875rem; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; overflow: hidden; }
 .rs-rs i.rs-lt { color: #2b2200; }
-.rs-rs i.rs-drop { background: transparent; color: var(--mut); font-weight: 600; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--mut) 45%, transparent); }
+/* atılan yarış (Seyhun 2026-11-09 "en kötü derece atılmış halini de gösterelim, üstüne bir çizgi çekelim"): grubun renginde halka, üstünde
+   çapraz çizgi; puan görünür kalır */
+.rs-rs i.rs-drop { position: relative; background: transparent; color: var(--mut); font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--g); }
+.rs-rs i.rs-drop::after { content: ""; position: absolute; left: -10%; right: -10%; top: 50%; height: 1.5px; background: currentColor; transform: rotate(-45deg); }
 .rs-rs i.rs-pen { background: #dc2626; color: #fff; font-size: .53125rem; letter-spacing: -.02em; }
 .rs-rs i.rs-empty { opacity: .35; }
 /* BFD siyah, UFD beyaz (atılmışsa halka o renkte); koyu zeminde siyahın, açık zeminde beyazın ince kenarı */
