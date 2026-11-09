@@ -1339,19 +1339,17 @@ body:has(main.rzi) { background: #0b1a33; }
 main.rz.rzc.rzi > :not(.rzi-bg) { position: relative; z-index: 1; }
 /* kahraman (lacivert üst saydam) */
 main.rz.rzc.rzi > .ck { display: flex; flex-direction: column; background: transparent; }
-main.rzi > .ck > header, main.rzi > .ck > header > div:first-child, main.rzi .rz-dtop { display: contents; }
-main.rzi > .ck > header > div:first-child > :first-child { align-self: flex-start; }
-main.rzi > .ck .rz-more { position: absolute; top: calc(.75rem + env(safe-area-inset-top)); right: 1.25rem; }
-main.rzc.rzi > .ck h1 { flex: none; margin-top: 1.75rem; overflow: visible; white-space: normal; text-overflow: clip; font-size: 2.125rem; font-weight: 700; line-height: 1.06; letter-spacing: -.03em; color: rgba(255, 255, 255, .84); }
-main.rzc.rzi > .ck .rz-sub { margin: .5rem 0 0; font-size: 1rem; color: rgba(255, 255, 255, .6); }
-main.rzi > .ck .rz-go { order: 9; margin-top: 1.5rem; }
-main.rzi > .ck .rz-go .btn { height: 3.375rem; border-radius: 1rem; font-size: 1.03125rem; }
+/* telefon ve dik iPad (Seyhun 2026-11-09 "üst taraf boş kalıyor"): geri, ad ve ⋯ tek satırda, altında tarih; hemen altında hava ve düğmeler */
+main.rzi .rz-dtop { display: contents; }
+main.rzi > .ck .rz-go { order: 9; margin-top: .75rem; }
+main.rzc.rzi > .ck h1 { color: rgba(255, 255, 255, .9); }
+main.rzc.rzi > .ck { padding-bottom: 0; }
 main.rzi > .ck :is(.rz-list, .rz-row-wrap) { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 /* koyu cam panel */
 main.rz.rzc.rzi > .rzc-body {
   --bg: rgba(8, 20, 42, .35); --card: rgba(255, 255, 255, .07); --fg: #eef2f8; --fg2: #c9d1dd; --mut: rgba(238, 242, 248, .62); --line: rgba(255, 255, 255, .12);
   --acc: #8fb3ff; --acc2: #8fb3ff; --accbg: rgba(111, 155, 255, .18); --on-acc: #0b1a33; --warn: #f3c37a; --warnbg: rgba(243, 195, 122, .14); --ok: #8fd6a8; --rec: #f08a80;
-  margin: 1.25rem -1.25rem 0; min-height: 60dvh; border-radius: 1.75rem 1.75rem 0 0; padding: 1rem 1.25rem calc(7rem + env(safe-area-inset-bottom)); color: var(--fg);
+  margin: 1rem -1.25rem 0; min-height: 60dvh; border-radius: 1.75rem 1.75rem 0 0; padding: 1rem 1.25rem calc(7rem + env(safe-area-inset-bottom)); color: var(--fg);
   background: rgba(10, 22, 44, .55); border-top: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .6);
   -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2);
 }
@@ -1362,10 +1360,7 @@ main.rz.rzc.rzi [data-pagebar] { background: linear-gradient(to top, rgba(8, 20,
 main.rz.rzc.rzi { padding-bottom: 0; }
 @media (min-width: 48rem) {
   main.rz.rzc.rzi { padding-bottom: calc(7rem + env(safe-area-inset-bottom)); }
-  main.rzi > .ck .rz-more { right: 2rem; }
-  main.rzc.rzi > .ck h1 { margin-top: 2.5rem; font-size: 2.75rem; }
-  main.rzc.rzi > .ck .rz-sub { margin-top: .625rem; font-size: 1.125rem; }
-  main.rz.rzc.rzi > .rzc-body { margin: .5rem 0 0; min-height: 0; border-radius: 1.75rem; border: 1px solid rgba(255, 255, 255, .12); padding: 1rem 1.5rem 1.5rem; }
+  main.rz.rzc.rzi > .rzc-body { margin: 1rem 0 0; min-height: 0; border-radius: 1.75rem; border: 1px solid rgba(255, 255, 255, .12); padding: 1rem 1.5rem 1.5rem; }
 }
 @media (min-width: 64rem) {
   body[data-side]:has(main.rzi) { padding-left: 0; }
@@ -1377,9 +1372,13 @@ main.rz.rzc.rzi { padding-bottom: 0; }
   body[data-side]:has(main.rzi) :is([data-sheet], .fixed[data-pagebar], [data-screen], main.fixed, .dome:not([data-on]), [role="status"].fixed), body[data-side]:has(main.rzi) > [data-bar] { left: 0; }
   body[data-side] main.rz.rzc.split.split-even.rzi { grid-template-columns: minmax(24rem, .72fr) minmax(0, 1.28fr); padding-bottom: 0; }
   body[data-side] main.rz.rzc.split.rzi > .ck { padding: calc(1.25rem + env(safe-area-inset-top)) 1.75rem 1.5rem 2rem; }
-  body[data-side] main.rzc.rzi > .ck h1 { margin-top: auto; padding-top: 2rem; font-size: 3rem; }
+  body[data-side] main.rzi > .ck > header, body[data-side] main.rzi > .ck > header > div:first-child { display: contents; }
+  body[data-side] main.rzi > .ck > header > div:first-child > :first-child { align-self: flex-start; }
+  body[data-side] main.rzc.rzi > .ck h1 { flex: none; margin-top: auto; padding-top: 2rem; overflow: visible; white-space: normal; text-overflow: clip; font-size: 3rem; font-weight: 700; line-height: 1.06; letter-spacing: -.03em; color: rgba(255, 255, 255, .84); }
+  body[data-side] main.rzc.rzi > .ck .rz-sub { margin: .625rem 0 0; font-size: 1.125rem; color: rgba(255, 255, 255, .6); }
+  body[data-side] main.rzi > .ck .rz-go .btn { height: 3.375rem; border-radius: 1rem; font-size: 1.03125rem; }
   body[data-side] main.rzi > .ck .rz-go { margin-top: auto; padding-top: 1.5rem; }
-  body[data-side] main.rzi > .ck .rz-more { right: 1.75rem; top: calc(1.25rem + env(safe-area-inset-top)); }
+  body[data-side] main.rzi > .ck .rz-more { position: absolute; right: 1.75rem; top: calc(1.25rem + env(safe-area-inset-top)); }
   body[data-side] main.rz.rzc.split.split-even.rzi > .rzc-body { margin: calc(1.25rem + env(safe-area-inset-top)) 1.25rem 1.25rem 0; min-height: calc(100dvh - 2.5rem - env(safe-area-inset-top)); padding: 1rem 1.5rem 6rem; }
 }
 
