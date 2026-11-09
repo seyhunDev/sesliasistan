@@ -1325,6 +1325,58 @@ main.rzc .ck .rz-seg-b[aria-pressed="true"] { background: #fff; color: #0b1a33; 
   body[data-side] main.rz.rzc.split.split-even > .rzc-body { padding-left: 1.5rem; padding-right: 1.5rem; }
 }
 
+/* YARIŞ DETAYI iPAD (rzi; Seyhun 2026-11-09 "iPad için yeniden tasarla, tam ekranı iyi kullan, arkada canlı yayındaki fotoğraf bulanık,
+   solda soluk yarışın adı, altında tarih, aşağıda butonlar"; örnek /mnt/project-files/yaris-tasarim/ipad-detay/*.png onaylı).
+   Telefonda hiçbir şey değişmez. Arkada ekranı kaplayan bulanık fotoğraf (bgPhoto.js); lacivert üst saydam: üstte geri ve ⋯, ortada büyük
+   soluk ad ve tarih satırı, altında Şimdi/Hava/Harita cam satırları, en altta Canlı ekran · Yayın. Sekmeler ve içi koyu cam panelde (renk
+   değişkenleri panelin içinde koyu ve saydam). Yatay iPad ve Mac: solda kahraman, sağda panel; sol menü bu sayfada gizli, yalnız asistan
+   düğmesi sağ altta kalır (geri düğmesiyle çıkılır). */
+.rzi-bg { display: none; }
+@media (min-width: 48rem) {
+  body:has(main.rzi) { background: #0b1a33; }
+  .rzi-bg { display: block; position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #0b1a33; }
+  .rzi-bg i { position: absolute; inset: -3rem; background-position: center; background-size: cover; filter: blur(14px) saturate(1.15); transform: scale(1.06); }
+  .rzi-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8, 20, 42, .5) 0%, rgba(8, 20, 42, .6) 40%, rgba(8, 20, 42, .8) 100%); }
+  main.rz.rzc.rzi > :not(.rzi-bg) { position: relative; z-index: 1; }
+  /* kahraman (lacivert üst saydam) */
+  main.rz.rzc.rzi > .ck { display: flex; flex-direction: column; background: transparent; }
+  main.rzi > .ck > header, main.rzi > .ck > header > div:first-child, main.rzi .rz-dtop { display: contents; }
+  main.rzi > .ck > header > div:first-child > :first-child { align-self: flex-start; }
+  main.rzi > .ck .rz-more { position: absolute; top: calc(.75rem + env(safe-area-inset-top)); right: 2rem; }
+  main.rzc.rzi > .ck h1 { flex: none; margin-top: 2.5rem; overflow: visible; white-space: normal; text-overflow: clip; font-size: 2.75rem; font-weight: 700; line-height: 1.06; letter-spacing: -.03em; color: rgba(255, 255, 255, .84); }
+  main.rzc.rzi > .ck .rz-sub { margin: .625rem 0 0; font-size: 1.125rem; color: rgba(255, 255, 255, .6); }
+  main.rzi > .ck .rz-go { order: 9; margin-top: 1.5rem; }
+  main.rzi > .ck .rz-go .btn { height: 3.375rem; border-radius: 1rem; font-size: 1.03125rem; }
+  main.rzi > .ck :is(.rz-list, .rz-row-wrap) { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  /* koyu cam panel */
+  main.rz.rzc.rzi > .rzc-body {
+    --bg: rgba(8, 20, 42, .35); --card: rgba(255, 255, 255, .07); --fg: #eef2f8; --fg2: #c9d1dd; --mut: rgba(238, 242, 248, .62); --line: rgba(255, 255, 255, .12);
+    --acc: #8fb3ff; --acc2: #8fb3ff; --accbg: rgba(111, 155, 255, .18); --on-acc: #0b1a33; --warn: #f3c37a; --warnbg: rgba(243, 195, 122, .14); --ok: #8fd6a8; --rec: #f08a80;
+    margin: .5rem 0 0; border-radius: 1.75rem; padding: 1rem 1.5rem 1.5rem; color: var(--fg);
+    background: rgba(10, 22, 44, .55); border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .6);
+    -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2);
+  }
+  main.rzi > .rzc-body .rz-seg { background: rgba(255, 255, 255, .08); }
+  main.rzi > .rzc-body .rz-seg-b[aria-pressed="true"] { background: rgba(255, 255, 255, .95); color: #0b1a33; }
+  main.rzi .track-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); column-gap: 1.5rem; align-items: start; }
+  main.rz.rzc.rzi [data-pagebar] { background: linear-gradient(to top, rgba(8, 20, 42, .9) 60%, transparent); }
+}
+@media (min-width: 64rem) {
+  body[data-side]:has(main.rzi) { padding-left: 0; }
+  body:has(main.rzi) .sidenav { inset: auto 1.5rem 1.5rem auto; width: auto; border: 0; background: transparent; padding: 0; }
+  body:has(main.rzi) .sidenav > :not(.sidenav-orb) { display: none; }
+  body:has(main.rzi) .sidenav:not(:has(> .sidenav-orb)) { display: none; }
+  body:has(main.rzi) .sidenav > .sidenav-orb { border: 0; padding: 0; }
+  body:has(main.rzi) .sidenav > .sidenav-orb > :not(:first-child) { display: none; }
+  body[data-side]:has(main.rzi) :is([data-sheet], .fixed[data-pagebar], [data-screen], main.fixed, .dome:not([data-on]), [role="status"].fixed), body[data-side]:has(main.rzi) > [data-bar] { left: 0; }
+  body[data-side] main.rz.rzc.split.split-even.rzi { grid-template-columns: minmax(24rem, .72fr) minmax(0, 1.28fr); padding-bottom: 0; }
+  body[data-side] main.rz.rzc.split.rzi > .ck { padding: calc(1.25rem + env(safe-area-inset-top)) 1.75rem 1.5rem 2rem; }
+  body[data-side] main.rzc.rzi > .ck h1 { margin-top: auto; padding-top: 2rem; font-size: 3rem; }
+  body[data-side] main.rzi > .ck .rz-go { margin-top: auto; padding-top: 1.5rem; }
+  body[data-side] main.rzi > .ck .rz-more { right: 1.75rem; top: calc(1.25rem + env(safe-area-inset-top)); }
+  body[data-side] main.rz.rzc.split.split-even.rzi > .rzc-body { margin: calc(1.25rem + env(safe-area-inset-top)) 1.25rem 1.25rem 0; min-height: calc(100dvh - 2.5rem - env(safe-area-inset-top)); padding: 1rem 1.5rem 6rem; }
+}
+
 /* SONUÇ LİSTESİ (Seyhun 2026-11-09 renkli yuvarlaklar; örnek yaris-tasarim/sade/sonuc-renk-*.png onaylı; src/features/athletes/ResultCards.jsx):
    sporcu başına bir satır. Solda sıra, altında /kişi (3 hane sığar); ortada ad + dünden fark, altında her yarış grubunun renginde yuvarlak
    (içinde puan; atılan boş halka, ceza kırmızı; çoksa alt satıra geçer); sağda NET. */
@@ -1343,6 +1395,13 @@ main.rzc .ck .rz-seg-b[aria-pressed="true"] { background: #fff; color: #0b1a33; 
 .rs-rs i.rs-drop { background: transparent; color: var(--mut); font-weight: 600; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--mut) 45%, transparent); }
 .rs-rs i.rs-pen { background: #dc2626; color: #fff; font-size: .53125rem; letter-spacing: -.02em; }
 .rs-rs i.rs-empty { opacity: .35; }
+/* BFD siyah, UFD beyaz (atılmışsa halka o renkte); koyu zeminde siyahın, açık zeminde beyazın ince kenarı */
+.rs-rs i.rs-pen.rs-bfd { background: #000; color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28); }
+.rs-rs i.rs-pen.rs-ufd { background: #fff; color: #1d2433; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .22); }
+.rs-rs i.rs-drop.rs-bfd { box-shadow: inset 0 0 0 1.5px #000; }
+.rs-rs i.rs-drop.rs-ufd { box-shadow: inset 0 0 0 1.5px #fff, 0 0 0 1px rgba(0, 0, 0, .18); }
+.ck .rs-rs i.rs-drop.rs-bfd, main.rzi .rzc-body .rs-rs i.rs-drop.rs-bfd { box-shadow: inset 0 0 0 1.5px #000, 0 0 0 1px rgba(255, 255, 255, .3); }
+.rs-rs i.rs-drop:is(.rs-bfd, .rs-ufd) { font-size: .53125rem; letter-spacing: -.02em; }
 .rs-net { flex-shrink: 0; text-align: right; font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .rs-net small { display: block; font-size: .625rem; font-weight: 600; color: var(--mut); letter-spacing: .06em; }
 /* beş sekme (Takip varken) telefonda sığsın: yazı biraz küçük, iç boşluk dar */

@@ -71,7 +71,7 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = null, tr
     </div>
   ) : null;
   return (
-    <div className="mt-4">
+    <div className="rz-dtop mt-4">
       {/* Canlı ekran · Yayın (yalnız ana hesap; raceUi RaceGo, Seyhun 2026-11-06) */}
       {go}
       <div className="mt-3">

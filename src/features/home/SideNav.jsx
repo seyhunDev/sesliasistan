@@ -150,7 +150,7 @@ export function SideNav({ path, unread = 0, orb = null }) {
           <span className="truncate pl-2 text-[0.75rem] font-normal text-mut">{profile?.name}</span>
         </Link>
       </div>
-      {orb && <div className="flex shrink-0 items-center gap-3 border-t border-line px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">{orb}</div>}
+      {orb && <div className="sidenav-orb flex shrink-0 items-center gap-3 border-t border-line px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">{orb}</div>}
     </nav>
   );
 }

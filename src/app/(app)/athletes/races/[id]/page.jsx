@@ -31,6 +31,7 @@ import { goBack } from "@/lib/navTrail";
 import { siteDocBlob } from "@/features/athletes/raceSite";
 import { SiteDocs } from "@/features/athletes/SiteDocs";
 import { importResults, importToast } from "@/features/athletes/resultsImport";
+import { BG_PHOTO } from "@/features/liveScreen/bgPhoto";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
 export default function RacePage() {
@@ -256,7 +257,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
         <BackButton href="/athletes/races" />
         <h1 className="min-w-0 flex-1 truncate">{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</h1>
         {(race?.id || head0) && (
-          <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className="btn btn-round">
+          <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className="rz-more btn btn-round">
             <Icon name="more" className="size-6" />
           </button>
         )}
@@ -271,7 +272,14 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   );
 
   return (
-    <main className="rz rzc split split-even mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className={`rz rzc split split-even${race?.id && !missingRace ? " rzi" : ""} mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]`}>
+      {/* iPad (Seyhun 2026-11-09 "tam ekranı iyi kullan, arkada canlı yayındaki fotoğraf bulanık"; örnek yaris-tasarim/ipad-detay onaylı):
+          arkada bulanık fotoğraf, solda soluk büyük ad ve düğmeler, sağda cam panel; telefonda görünmez (globals.css "YARIŞ DETAYI iPAD") */}
+      {race?.id && !missingRace && (
+        <div className="rzi-bg" aria-hidden="true">
+          <i style={{ backgroundImage: `url(${BG_PHOTO})` }} />
+        </div>
+      )}
       {!race || missingRace ? (
         <>
           <section className="ck split-top -mx-5 px-5 pb-10 pt-[calc(0.75rem+env(safe-area-inset-top))]">{head}</section>

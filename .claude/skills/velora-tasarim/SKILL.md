@@ -19,6 +19,7 @@ Ana sayfa (2026-10-21, "C · Lacivert kokpit") bu kuralların örneğidir. Yeni 
 - Yapay zekâ yapımı görünümden kaçın: degrade, parıltı, gölgeli süs kartları yok. Kartlar düz ve ince çizgili olur.
 
 ## Renkler (`src/app/globals.css` `:root`): "Velora V" paleti (Seyhun 2026-11-03, logo 3: lacivert zeminde beyaz daire içinde V)
+- Yarış detayı iPad (2026-11-09, örnek yaris-tasarim/ipad-detay): tam ekran; arkada canlı yayının fotoğrafı bulanık, solda soluk büyük ad + tarih, Şimdi/Hava cam satırları, en altta Canlı ekran · Yayın; sağda koyu cam panelde sekmeler. Yatayda sol menü gizli, asistan düğmesi sağ altta. Sonuç yuvarlaklarında BFD siyah, UFD beyaz, diğer cezalar kırmızı.
 
 Logo lacivert ve beyaz. Lacivert kokpit ve `.navy` sayfalar logonun laciverti `#0b1a33` (kart `#13243f`, çizgi `#24375a`), lacivertte vurgu açık mavi `#8fb3ff`, seçili/ana iş elektrik mavisi `#3d7bff`. Açık sayfalar Apple gibi: açık gri zemin, beyaz kartlar.
 
