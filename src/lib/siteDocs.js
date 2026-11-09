@@ -185,6 +185,13 @@ export function newRaces(legs, known) {
   const have = new Set(known || []);
   return (legs || []).flatMap((l) => (l.classes || []).filter((c) => c.act && !have.has(c.act)).map((c) => ({ act: c.act, cls: c.cls, leg: l.name })));
 }
+// Sitede yeni görülen yarışlar (Seyhun 2026-11-09 "yeni yarış eklendiğinde haberimiz olacak mı, gösterebilecek miyiz"): saatlik tarama
+// (raceSiteSync.scanNew) ilk gördüğü sınıfları raceSite/_known.news'e { act, at } yazar; liste isteği son `days` gündekileri
+// { act: at } olarak döner (+ Yarış penceresinde "Yeni"). now: ms
+export function freshActs(news, now = Date.now(), days = 14) {
+  const from = now - days * 864e5;
+  return Object.fromEntries((Array.isArray(news) ? news : []).filter((x) => x?.act && (Date.parse(x.at) || 0) >= from).map((x) => [x.act, x.at]));
+}
 const legText = (s) => String(s || "").replace(/AYAK/i, "Ayak");
 // Bildirim: tek yarış "Sitede yeni yarış: 2. Ayak · OPTIMIST", çok yarış "Sitede 11 yeni yarış" + ayaklar ve sınıflar
 export function newRacesNote(list, season) {
