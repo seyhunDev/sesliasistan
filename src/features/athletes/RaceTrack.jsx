@@ -53,20 +53,31 @@ export function groupDay(groups, today) {
   const days = Object.keys(groups || {}).filter((d) => groups[d]?.length).sort();
   return days.includes(today) ? today : days.find((d) => d > today) || days.at(-1) || "";
 }
+// Gösterilecek grup günleri (Seyhun 2026-11-09 "yarın için açıklanan renk varsa yarını beklemeyelim, açıklandığı zaman gösterelim"):
+// bugün ve açıklanmışsa sonraki gün (yarın Altın/Gümüş/Bronz ya da yine renkler olabilir); ikisi de yoksa son açıklanan gün
+export function groupDays(groups, today) {
+  const days = Object.keys(groups || {}).filter((d) => groups[d]?.length).sort();
+  const up = days.filter((d) => d >= today);
+  return up.length ? up.slice(0, 2) : days.slice(-1);
+}
+const tomorrowOf = (today) => new Date(Date.parse(`${today}T12:00:00`) + 864e5).toLocaleDateString("sv-SE");
+// Grup gününün etiketi: bugünse boş, yarınsa "Yarın", değilse kısa tarih
+const dayTag = (d, today) => (d === today ? "" : d === tomorrowOf(today) ? "Yarın" : new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }));
 // Günün grupları (Seyhun 2026-11-07 "gruplar açıklandı ama göremiyorum; her eklendiğinde güncellenmeli"): kayıt listesindeki grup
 // listesi canlı (raceSite.watchEntryDoc); grup başına tekne sayısı, bizim sporcuların grubu
 function GroupsNow({ e }) {
-  const day = e ? groupDay(e.groups, todayStr()) : "";
-  if (!day) return null;
-  const list = e.groups[day];
-  const count = {};
-  for (const [, g] of list) count[g] = (count[g] || 0) + 1;
+  const today = todayStr();
   const rank = (g) => GROUP_PICK.indexOf(g) + 1 || 99;
-  const gs = Object.keys(count).sort((a, b) => rank(a) - rank(b));
-  return (
-    <>
-      <div className="border-t border-line py-3 first:border-t-0">
-        <small className="block text-[0.8125rem] text-mut">{dayName(day)} grupları · {list.length} tekne</small>
+  return groupDays(e?.groups, today).map((day) => {
+    const list = e.groups[day];
+    const count = {};
+    for (const [, g] of list) count[g] = (count[g] || 0) + 1;
+    const gs = Object.keys(count).sort((a, b) => rank(a) - rank(b));
+    return (
+      <div key={day} className="border-t border-line py-3 first:border-t-0">
+        <small className="block text-[0.8125rem] text-mut">
+          {day === today ? "Bugün" : dayTag(day, today) === "Yarın" ? "Yarın" : dayName(day)} · {list.length} tekne
+        </small>
         <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
           {gs.map((g) => (
             <span key={g} className="inline-flex items-center gap-1.5 text-[0.9375rem] font-semibold">
@@ -76,22 +87,29 @@ function GroupsNow({ e }) {
           ))}
         </div>
       </div>
-    </>
+    );
+  });
+}
+// Bizim sporcuların grupları (kayıt listesindeki günlerin grupları, yelken numarasıyla): { sporcu id: [[gün etiketi, grup], …] };
+// bugünün etiketi boş, yarınınki "Yarın" (açıklanınca hemen)
+export function ourGroups(e, chosen, today = todayStr()) {
+  const days = groupDays(e?.groups, today).map((d) => [dayTag(d, today), new Map(e.groups[d])]);
+  if (!days.length) return {};
+  return Object.fromEntries(
+    chosen
+      .map((a) => {
+        const sail = String(a.sailNo || "").replace(/\D/g, "");
+        return [a.id, days.map(([t, m]) => [t, m.get(sail)]).filter(([, g]) => g)];
+      })
+      .filter(([, l]) => l.length),
   );
 }
-// Bizim sporcuların bugünkü grubu (kayıt listesindeki günün grupları, yelken numarasıyla): { sporcu id: grup }
-export function ourGroups(e, chosen, today = todayStr()) {
-  const day = e ? groupDay(e.groups, today) : "";
-  if (!day) return {};
-  const bySail = new Map(e.groups[day]);
-  return Object.fromEntries(chosen.map((a) => [a.id, bySail.get(String(a.sailNo || "").replace(/\D/g, ""))]).filter(([, g]) => g));
-}
 // Grup etiketi (renkli nokta + ad), Sporcularımız satırında
-export function GroupTag({ g }) {
+export function GroupTag({ g, day = "" }) {
   if (!g) return null;
   return (
     <span className="rs-tag" style={{ "--g": groupColor(g) || "var(--mut)" }}>
-      {g}
+      {day ? `${day} ${g}` : g}
     </span>
   );
 }
@@ -197,7 +215,7 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
   useEffect(() => watchSiteDocs(orgId, race.id, setDocs, () => setDocs((d) => d || [])), [orgId, race.id]);
   const [ent, setEnt] = useState(null);
   useEffect(() => watchEntryDoc(orgId, race.id, setEnt, () => setEnt({ rows: [], groups: {} })), [orgId, race.id]);
-  const hasGroups = !!(ent && groupDay(ent.groups, todayStr()));
+  const hasGroups = groupDays(ent?.groups, todayStr()).length > 0;
   const load = useCallback(() => siteDocBlob(race.id, view), [race.id, view]);
   const close = useCallback(() => setView(null), [setView]);
   const g = trackGroups(docs);
@@ -249,7 +267,9 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
             {noRes.map((a) => (
               <div key={a.id} className="flex min-h-[3rem] items-center gap-2 border-t border-line py-2 first:border-t-0">
                 <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{a.studentName}</span>
-                <GroupTag g={grpOf[a.id]} />
+                {grpOf[a.id].map(([d, gg]) => (
+                  <GroupTag key={d} g={gg} day={d} />
+                ))}
               </div>
             ))}
             {!places.length && !noRes.length && !g.results.length && empty("Henüz sonuç yok")}
