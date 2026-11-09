@@ -84,3 +84,15 @@ export function RaceGo({ id, className = "", extra = null }) {
     </div>
   );
 }
+
+// Tek "Canlı" düğmesi (Seyhun 2026-11-09 "harita butonuna, yayın butonuna gerek yok; bir tane canlı butonumuz var"; örnek c-telefon.png "Yap"):
+// yarış sayfasının sağ üstünde ⋯ yanında beyaz hap, kırmızı nokta; kendi canlı ekranını uygulama içinde açar. Yalnız ana hesapta, yarış günlerinde.
+export function LiveBtn({ id }) {
+  const router = useRouter();
+  return (
+    <button type="button" onClick={() => openInApp(router, `/canli/${id}`)} data-press className="rz-live">
+      <i aria-hidden="true" />
+      Canlı
+    </button>
+  );
+}

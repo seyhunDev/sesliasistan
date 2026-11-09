@@ -174,7 +174,7 @@ export function RaceWxRows({ r, day = "", lead = null, stats = null, go = false 
   const [open, setOpen] = useState({ wx: false, map: false }); // ikisi ayrı açılır
   const late = !sel || sel > lastForecastDay(today);
   const d = useDay(r, late ? "" : sel);
-  const ob = useWindObs(open.map ? d.at : null, late ? "" : sel, today, true);
+  const ob = useWindObs(open.map || (stats && open.wx) ? d.at : null, late ? "" : sel, today, true);
   const isToday = sel === today;
   const radar = useRainRadar(isToday && open.wx ? d.at : null);
   if (!first) return stats ? <Strip stats={stats} go={go} id={r.id} /> : lead;
@@ -213,18 +213,20 @@ export function RaceWxRows({ r, day = "", lead = null, stats = null, go = false 
     const short = late ? "–" : v ? (v.t != null ? `${Math.round(v.t)}°` : `${Math.round(v.wind)}`) : d.err ? "–" : <span className="rz-shim" aria-label="Hava yükleniyor" />;
     const sub = !late && v ? (v.t != null ? `${kn(Math.round(v.wind), Math.round(v.gust))} kn` : "kn") : "";
     const canWx = !late && !!rows;
-    const canMap = !late && !d.err && !!d.at;
-    const mapBtn = (
-      <button type="button" onClick={() => canMap && flip("map")} aria-pressed={open.map && canMap} disabled={!canMap} data-press className="btn rz-soft">
-        Harita
-      </button>
-    );
+    // Harita düğmesi kalktı (Seyhun 2026-11-09 "hava durumuna tıklanınca altta harita gösterilebilir"): Hava açılınca altında harita da
+    const canMap = !d.err && !!d.at;
     return (
       <section aria-label="Yarış havası">
         <RaceStats items={[...stats, ["Hava", short, sub, canWx ? () => flip("wx") : null, open.wx]]} />
-        {go ? <RaceGo id={r.id} className="mt-3" extra={mapBtn} /> : <div className="rz-go mt-3 grid">{mapBtn}</div>}
-        {open.wx && canWx && <div className="rz-list rz-wx-open mt-3"><div className="rz-open">{wxBody}</div></div>}
-        {open.map && canMap && <div className="rz-list rz-wx-open mt-3"><div className="rz-open">{mapBody}</div></div>}
+        {go && <RaceGo id={r.id} className="mt-3" />}
+        {open.wx && canWx && (
+          <div className="rz-list rz-wx-open mt-3">
+            <div className="rz-open">
+              {wxBody}
+              {canMap && <div className="mt-3">{mapBody}</div>}
+            </div>
+          </div>
+        )}
       </section>
     );
   }
