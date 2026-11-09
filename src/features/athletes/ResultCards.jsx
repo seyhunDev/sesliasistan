@@ -40,7 +40,7 @@ export function ResultCards({ list, short = false, className = "" }) {
                     const flag = !c.pen ? "" : /^BF/i.test(c.val) ? " rs-bfd" : /^UF/i.test(c.val) ? " rs-ufd" : "";
                     const cls = (c.drop ? "rs-drop" : c.pen ? "rs-pen" : c.empty ? "rs-empty" : LIGHT.has(g) ? "rs-lt" : "") + flag;
                     return (
-                      <i key={c.k} className={cls} style={{ "--g": groupColor(g) || "var(--mut)" }} title={[c.head, g].filter(Boolean).join(" · ")}>
+                      <i key={c.k} className={cls} style={{ "--g": groupColor(g) || "var(--mut)" }} title={[c.head, g, c.drop && "atıldı"].filter(Boolean).join(" · ")}>
                         {c.val}
                       </i>
                     );
