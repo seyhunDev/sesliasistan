@@ -42,12 +42,32 @@ export function ResultsAdd({ onFile, className = "" }) {
 // Açık renkli grupta (Sarı, Altın, Gümüş) yuvarlağın yazısı koyu
 const LIGHT = new Set(["Sarı", "Altın", "Gümüş"]);
 
-// groups: { sporcu id: [[gün etiketi, grup], …] } (bugün etiketsiz, "Yarın Altın") (Takip, Seyhun 2026-11-09 "o gün hangi grupta olduklarını görmek istiyorum"): adın yanında renkli etiket
-export function ResultCards({ list, short = false, className = "", groups = null }) {
-  if (!list?.length) return null;
+// Gün etiketi → sütun başlığı ("" bugün, "Yarın", kısa tarih)
+const dayHead = (d) => (d ? d.toLocaleUpperCase("tr-TR") : "BUGÜN");
+
+// Düz liste (Seyhun 2026-11-09 "iki grup ismi gösteriliyor, minimal ve liste olarak hazırla"; örnek artifact liste-telefon.png): başlık satırı
+// SIRA · SPORCU · grup günü · NET; her sporcu tek satır: sıra, ad + dünden fark, altında yarış yuvarlakları; sağda tek grup (renkli nokta + ad),
+// NET. groups: { sporcu id: [[gün etiketi, grup]] } (RaceTrack.ourGroups; yarın açıklanınca yalnız yarın). rest: sonucu olmayan sporcular [{id, name}].
+export function ResultCards({ list, short = false, className = "", groups = null, rest = [] }) {
+  if (!list?.length && !rest?.length) return null;
+  const gOf = (id) => groups?.[id]?.[0] || null;
+  const day = groups ? Object.values(groups).find((l) => l?.length)?.[0]?.[0] : undefined;
+  const head = day !== undefined;
+  const Grp = ({ id }) => {
+    const x = gOf(id);
+    return head ? <span className="rs-grp" style={{ "--g": (x && groupColor(x[1])) || "var(--mut)" }}>{x ? x[1] : ""}</span> : null;
+  };
   return (
-    <div className={`rs-list ${className}`}>
-      {list.map((x) => {
+    <div className={`rs-list ${head ? "rs-head" : ""} ${className}`}>
+      {head && (
+        <div className="rs-cols" aria-hidden="true">
+          <span>SIRA</span>
+          <span>SPORCU</span>
+          <span>{dayHead(day)}</span>
+          <span>NET</span>
+        </div>
+      )}
+      {(list || []).map((x) => {
         const row = x.row || {};
         const cells = short ? [] : raceCells(row);
         const net = row.pts !== undefined && row.pts !== "" ? row.pts : null;
@@ -62,11 +82,6 @@ export function ResultCards({ list, short = false, className = "", groups = null
             <span className="rs-mid">
               <span className="rs-nm">
                 <span>{x.name}</span>
-                {(groups?.[x.id] || []).map(([d, g]) => (
-                  <span key={d} className="rs-tag" style={{ "--g": groupColor(g) || "var(--mut)" }}>
-                    {d ? `${d} ${g}` : g}
-                  </span>
-                ))}
                 {x.move ? <span className={x.move > 0 ? "rs-up" : "rs-dn"}>{x.move > 0 ? `↑${x.move}` : `↓${-x.move}`}</span> : null}
               </span>
               {cells.length > 0 && (
@@ -85,15 +100,30 @@ export function ResultCards({ list, short = false, className = "", groups = null
                 </span>
               )}
             </span>
-            {net !== null && (
+            <Grp id={x.id} />
+            {(net !== null || head) && (
               <span className="rs-net">
                 {net}
-                <small>NET</small>
+                {!head && <small>NET</small>}
               </span>
             )}
           </div>
         );
       })}
+      {rest.map((a) => (
+        <div key={a.id} className="rs-row rs-none">
+          <span className="rs-pl">
+            <b>–</b>
+          </span>
+          <span className="rs-mid">
+            <span className="rs-nm">
+              <span>{a.name}</span>
+            </span>
+          </span>
+          <Grp id={a.id} />
+          {head && <span className="rs-net" />}
+        </div>
+      ))}
     </div>
   );
 }

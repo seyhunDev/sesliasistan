@@ -104,15 +104,6 @@ export function ourGroups(e, chosen, today = todayStr()) {
       .filter(([, l]) => l.length),
   );
 }
-// Grup etiketi (renkli nokta + ad), Sporcularımız satırında
-export function GroupTag({ g, day = "" }) {
-  if (!g) return null;
-  return (
-    <span className="rs-tag" style={{ "--g": groupColor(g) || "var(--mut)" }}>
-      {day ? `${day} ${g}` : g}
-    </span>
-  );
-}
 // Program (Seyhun 2026-11-07 "yarış talimatında program var, onu kullanalım"): talimat ve ek talimatlardan (race.notice.schedule),
 // bugün ve sonrası; yarış bittiyse hepsi. Gün başına bir satır.
 export function programDays(schedule, today) {
@@ -249,15 +240,7 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
         <section className="mt-5" aria-label="Sporcularımız">
           <ListHead title={["Sporcularımız", state, raceN && `${raceN} yarış`].filter(Boolean).join(" · ")} action={<ResultsAdd onFile={onResultsFile} />} />
           <div className={box}>
-            <ResultCards list={places} groups={grpOf} />
-            {noRes.map((a) => (
-              <div key={a.id} className="flex min-h-[3rem] items-center gap-2 border-t border-line py-2 first:border-t-0">
-                <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{a.studentName}</span>
-                {grpOf[a.id].map(([d, gg]) => (
-                  <GroupTag key={d} g={gg} day={d} />
-                ))}
-              </div>
-            ))}
+            <ResultCards list={places} groups={grpOf} rest={noRes.map((a) => ({ id: a.id, name: a.studentName }))} />
             {!places.length && !noRes.length && !g.results.length && empty("Henüz sonuç yok")}
             {g.results.length > 0 && (
               <button type="button" aria-expanded={resOpen} onClick={() => setResOpen((v) => !v)} data-press="row" className={row}>
