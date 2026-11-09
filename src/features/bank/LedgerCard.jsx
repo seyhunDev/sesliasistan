@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -21,6 +22,7 @@ export const EXCEL_UPLOAD = false;
 // Excel yükle → telefonda okunur → yapay zeka inceler (tür, gönderen/alıcı adı, açıklama) → özet → "Deftere ekle".
 // Günlük mail akışına dokunmaz; aynı hareket iki kaynakta da varsa bir kez durur (bankLedger.js).
 export function LedgerCard({ uid, self, payee, onSaved }) {
+  const confirmAsk = useConfirm();
   const toast = useToast();
   const input = useRef(null);
   const [files, setFiles] = useState(null);
@@ -73,7 +75,7 @@ export function LedgerCard({ uid, self, payee, onSaved }) {
 
   // Baştan kur: defter ve yüklenen Excel kayıtları silinir, yalnız maillerden yeniden kurulur
   async function reset() {
-    if (!confirm("Banka defteri silinip baştan kurulsun mu? Yüklenen Excel'ler silinir, defter günlük maillerden yeniden kurulur. Mailler, aidat onayları ve faturalar silinmez.")) return;
+    if (!(await confirmAsk({ title: "Defter baştan kurulsun mu?", text: "Yüklenen Excel'ler silinir, defter günlük maillerden yeniden kurulur. Mailler, aidat onayları ve faturalar kalır.", yes: "Baştan kur" }))) return;
     setStep("kuruluyor");
     try {
       await resetLedger(uid);
@@ -88,7 +90,7 @@ export function LedgerCard({ uid, self, payee, onSaved }) {
   }
 
   async function del(f) {
-    if (!confirm(`${f.name} silinsin mi? Bu dosyanın getirdiği hareketler defterden çıkar; maillerden gelenler kalır.`)) return;
+    if (!(await confirmAsk({ title: "Dosya silinsin mi?", text: `${f.name} · getirdiği hareketler defterden çıkar, maillerden gelenler kalır.` }))) return;
     await deleteStatement(uid, f).catch(() => toast("Silinemedi"));
     refresh();
     onSaved?.();

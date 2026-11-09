@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { BackButton } from "@/components/ui/BackButton";
@@ -41,6 +42,7 @@ const athMeta = (a, prog, today) => [ageFrom(a?.birth, today) || prog?.forAge ? 
 const fixStart = (p) => ({ ...p, start: p.start && (p.id || p.start >= todayStr()) ? p.start : todayStr() });
 
 export function FitnessHome() {
+  const confirmAsk = useConfirm();
   const { profile } = useAuth();
   const { plans, fitOthers = [], members = [] } = useData();
   const { openAdd } = useAdd();
@@ -271,7 +273,7 @@ export function FitnessHome() {
     }
   }
   async function drop(pg = prog) {
-    if (!window.confirm("Program silinsin mi? Bütün antrenmanları (yapılanlar dahil) silinir. Hareketlerim'deki hareketler, fotoğraf ve videolar kalır. Geri alınamaz.")) return false;
+    if (!(await confirmAsk({ title: "Program silinsin mi?", text: "Bütün antrenmanları (yapılanlar dahil) silinir. Hareketler, fotoğraf ve videolar kalır." }))) return false;
     setBusy("drop");
     try {
       const n = await deleteProgram(orgId, pg.id);
@@ -290,8 +292,7 @@ export function FitnessHome() {
   });
   // Bütün fitness'ı sıfırla (denemeler silinsin): programlar, antrenmanlar, fotoğraf ve videolar; profil ve beslenme kalır
   async function reset() {
-    if (!window.confirm("Fitness sıfırlansın mı? Bütün programlar (sporcularınki dahil), bütün antrenmanlar (yapılanlar dahil), fotoğraf ve videolar silinir. Boy, kilo ve beslenme kalır.")) return;
-    if (!window.confirm("Emin misin? Geri alınamaz.")) return;
+    if (!(await confirmAsk({ title: "Fitness sıfırlansın mı?", text: "Bütün programlar (sporcularınki dahil), antrenmanlar, fotoğraf ve videolar silinir. Boy, kilo ve beslenme kalır.", yes: "Sıfırla" }))) return;
     setBusy("reset");
     try {
       const r = await resetFitness(orgId);

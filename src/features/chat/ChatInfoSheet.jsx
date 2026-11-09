@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
@@ -12,6 +13,7 @@ import { GROUPS } from "@/lib/kinds";
 // Sohbet bilgisi: sessize al, üyeler (çevrimiçi / son görülme); grupta kuran kişi ad değiştirir, üye ekler/çıkarır; gruptan çık.
 // Ana hesap: sohbeti arşivle (yalnız kendi listesinden) ya da herkes için kalıcı sil (mesajlar ve ekleri).
 export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) {
+  const confirmAsk = useConfirm();
   const router = useRouter();
   const toast = useToast();
   const { uid, orgId, allPeople, personName, mute, archive, deleteChat, updateGroup, leaveGroup } = useChat();
@@ -140,7 +142,7 @@ export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) 
               type="button"
               disabled={busy}
               onClick={async () => {
-                if (!window.confirm(`${chat.title} sohbetindeki tüm mesajlar ve ekler herkes için kalıcı silinecek. Geri alınamaz. Silinsin mi?`)) return;
+                if (!(await confirmAsk({ title: "Sohbet silinsin mi?", text: `${chat.title} · tüm mesajlar ve ekler herkes için silinir.` }))) return;
                 setBusy(true);
                 const ok = await deleteChat(chat.id);
                 setBusy(false);
@@ -159,8 +161,8 @@ export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) 
           {isGroup && (
             <button
               type="button"
-              onClick={() => {
-                if (!window.confirm("Gruptan çıkmak istiyor musun? Mesajları artık göremezsin.")) return;
+              onClick={async () => {
+                if (!(await confirmAsk({ title: "Gruptan çıkılsın mı?", text: "Mesajları artık göremezsin.", yes: "Çık" }))) return;
                 leaveGroup(chat)
                   .then(() => {
                     onClose();

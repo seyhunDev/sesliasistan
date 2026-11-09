@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
@@ -41,6 +42,7 @@ const formOf = (inv) => ({ ...blank(), ...inv, amount: inv.amount ? String(inv.a
 
 // Faturaların verisi ve pencereleri (yükleme, ayrıntı); Fişler ve faturalar sayfası kullanır, orgId yoksa (çalışan) boş kalır
 export function useInvoiceDesk(orgId) {
+  const confirmAsk = useConfirm();
   const toast = useToast();
   const { profile } = useAuth();
   const { tasks, members = [], updateRecord, nameOf } = useData();
@@ -242,7 +244,7 @@ export function useInvoiceDesk(orgId) {
             }}
             onReplaceFile={() => replaceRef.current?.click()}
             onDelete={async () => {
-              if (!confirm("Fatura, dosyası ve görevi silinsin mi?")) return;
+              if (!(await confirmAsk({ title: "Fatura silinsin mi?", text: "Dosyası ve görevi de silinir." }))) return;
               await deleteInvoice(orgId, current).catch(() => toast("Silinemedi"));
               setList((p) => p.filter((x) => x.id !== current.id));
               setOpenId("");

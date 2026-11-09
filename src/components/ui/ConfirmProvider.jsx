@@ -51,7 +51,7 @@ export function ConfirmProvider({ children }) {
   return (
     <Ctx.Provider value={ask}>
       {children}
-      <Sheet open={open} onClose={() => close(false)} title={q?.title || ""}>
+      <Sheet top open={open} onClose={() => close(false)} title={q?.title || ""}>
         {q?.text ? <p className="mb-4 text-[0.9375rem] text-fg2">{q.text}</p> : null}
         <div className="grid grid-cols-2 gap-2 pb-2">
           <Button variant="secondary" disabled={working} onClick={() => close(false)}>

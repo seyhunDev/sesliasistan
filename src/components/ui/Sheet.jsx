@@ -29,7 +29,10 @@ const typing = () => {
 // iPad ve geniş ekranda ekranın ortasında yüzen pencere; anchor verilirse (seçim listeleri) düğmenin altında küçük kutu.
 // X ile, arka plana dokunarak, Esc ile ya da aşağı çekerek kapanır. dirty: yazılmış bir şey varsa kapatmadan önce "Yazdıkların silinsin mi?" sorulur.
 // footer: en altta sabit iş düğmeleri (SheetActions). Sayfanın en üst katmanına (body) çizilir: kaydırılan bir kutunun içinden açılsa da kırpılmaz.
-export function Sheet({ open, onClose, title, navy, children, footer, dirty, anchor }) {
+// top: başka pencerenin üstünde açılan soru (onay penceresi) her zaman en üstte durur
+export function Sheet({ open, onClose, title, navy, children, footer, dirty, anchor, top }) {
+  const zBack = top ? "z-[95]" : "z-40";
+  const zFront = top ? "z-[96]" : "z-50";
   const wide = useWide();
   const [dy, setDy] = useState(0);
   const [full, setFull] = useState(false);
@@ -142,8 +145,8 @@ export function Sheet({ open, onClose, title, navy, children, footer, dirty, anc
     // iPad / geniş ekran: ortada yüzen pencere ya da düğmenin altında küçük kutu
     ui = (
       <>
-        <div onClick={want} className={`fixed inset-0 z-40 transition-opacity duration-200 ${pop ? "bg-black/10" : "bg-black/40"} ${open ? "opacity-100" : "pointer-events-none opacity-0"}`} />
-        <div data-sheet-c="" data-pop={pop ? "" : undefined} className={`pointer-events-none fixed inset-0 z-50 ${pop ? "" : "grid place-items-center p-6"}`}>
+        <div onClick={want} className={`fixed inset-0 ${zBack} transition-opacity duration-200 ${pop ? "bg-black/10" : "bg-black/40"} ${open ? "opacity-100" : "pointer-events-none opacity-0"}`} />
+        <div data-sheet-c="" data-pop={pop ? "" : undefined} className={`pointer-events-none fixed inset-0 ${zFront} ${pop ? "" : "grid place-items-center p-6"}`}>
           <div
             role="dialog"
             aria-modal="true"
@@ -170,7 +173,7 @@ export function Sheet({ open, onClose, title, navy, children, footer, dirty, anc
         <div
           onClick={want}
           style={open && dragging ? { opacity: Math.max(0.2, 1 - dy / 400) } : undefined}
-          className={`fixed inset-0 z-40 transition-[opacity,background-color] duration-300 ${full ? "bg-black/55" : "bg-black/40"} ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          className={`fixed inset-0 ${zBack} transition-[opacity,background-color] duration-300 ${full ? "bg-black/55" : "bg-black/40"} ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
         />
         <div
           role="dialog"
@@ -179,7 +182,7 @@ export function Sheet({ open, onClose, title, navy, children, footer, dirty, anc
           data-sheet=""
           data-full={full ? "" : undefined}
           style={open && dragging ? { transform: `translateY(${dy}px)`, transition: "none" } : undefined}
-          className={`fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-[30rem] transition-transform duration-300 ease-out ${open ? "translate-y-0" : "translate-y-full"}`}
+          className={`fixed inset-x-0 bottom-0 ${zFront} mx-auto w-full max-w-[30rem] transition-transform duration-300 ease-out ${open ? "translate-y-0" : "translate-y-full"}`}
         >
           <div
             data-theme={navy ? "dark" : undefined}
