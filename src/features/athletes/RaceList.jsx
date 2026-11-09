@@ -98,42 +98,25 @@ function RaceRow({ r, past, onOpen }) {
   );
 }
 
-// Sıradaki ya da süren yarış: mavi kart (Planlar'daki Bugün kartı gibi): "Sıradaki · 3 gün kaldı" (yarışta kırmızı nokta), ad,
-// tarih · yer · sporcu; altında son tarih ve sıradaki iş satırı; kartın altında ana hesapta Canlı ekran · Yayın (RaceGo)
+// Sıradaki ya da süren yarış (Yarışlar yeni tasarım, Seyhun 2026-11-09 "minimal, modern, profesyonel"; örnek yl-telefon.png onaylı): mavi
+// kart yok; ince çizgiler arasında durum (yarışta kırmızı), ad, tarih · yer · sporcu · son tarih ya da sıradaki iş; altında ana hesapta
+// Canlı ekran · Yayın (RaceGo)
 function NextTop({ r, onOpen, owner }) {
   const a = diff(r.startDate);
   const on = a <= 0 && diff(r.endDate || r.startDate) >= 0;
   const dl = nextDeadline(r);
   const step = nextStep(r);
   const lbl = on ? `Yarışta · ${1 - a}. gün` : a > 1 ? `Sıradaki · ${a} gün kaldı` : `Sıradaki · ${leftText(r)}`;
+  const info = [shortRange(r), placeText(r), r.athleteIds.length && `${r.athleteIds.length} sporcu`, dl ? `Son tarih: ${dl.title} · ${diff(dl.date) ? `${diff(dl.date)} gün` : "Bugün"}` : step && `Sıradaki iş: ${step}`].filter(Boolean).join(" · ");
   return (
-    <>
-      <div className="rzc-next ck-plan mt-5 rounded-[1.375rem] px-4 pb-1 pt-3.5 text-white" aria-label="Sıradaki yarış">
-        <button type="button" onClick={() => onOpen(r)} className="block w-full pb-3.5 text-left active:opacity-80">
-          <span className="flex items-center gap-1.5 border-b border-white/30 pb-2.5 text-[0.8125rem] font-semibold text-white/85">
-            {on && <span className="size-2 rounded-full bg-rec ring-2 ring-white/70" aria-hidden="true" />}
-            {lbl}
-          </span>
-          <b className="mt-2.5 block truncate text-[1.375rem] font-bold leading-tight tracking-[-.02em]">{r.name || "Adsız yarış"}</b>
-          <span className="mt-0.5 block truncate text-[0.9375rem] text-white/85">{[shortRange(r), placeText(r), r.athleteIds.length && `${r.athleteIds.length} sporcu`].filter(Boolean).join(" · ")}</span>
-        </button>
-        {dl && (
-          <button type="button" onClick={() => onOpen(r)} className="rzc-r active:opacity-80">
-            <span>Son tarih</span>
-            <b>
-              {dl.title} · {diff(dl.date) ? `${diff(dl.date)} gün` : "Bugün"}
-            </b>
-          </button>
-        )}
-        {step && (
-          <button type="button" onClick={() => onOpen(r)} className="rzc-r active:opacity-80">
-            <span>Sıradaki iş</span>
-            <b>{step} ›</b>
-          </button>
-        )}
-      </div>
-      {owner && r.id && <RaceGo id={r.id} className="mt-3" />}
-    </>
+    <div className="rzl-now mt-5" aria-label="Sıradaki yarış">
+      <button type="button" onClick={() => onOpen(r)} data-press="row" className="block w-full text-left">
+        <small className={on ? "rzl-on" : ""}>{lbl}</small>
+        <b>{r.name || "Adsız yarış"}</b>
+        <span>{info}</span>
+      </button>
+      {owner && r.id && <RaceGo id={r.id} className="mt-3.5" />}
+    </div>
   );
 }
 
