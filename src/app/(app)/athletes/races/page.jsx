@@ -12,6 +12,7 @@ import { RaceList } from "@/features/athletes/RaceList";
 import { loadRaces, racesNow } from "@/features/athletes/races";
 import { shareAll } from "@/features/athletes/sharedRaces";
 import { sweepLive } from "@/features/athletes/raceWipe";
+import { RaceAddSheet } from "@/features/athletes/RaceAddSheet";
 
 // Yarışlar (yarış kart 2026-11-07): lacivert üstte başlık ve sıradaki yarış kartı; açık zeminde Yaklaşan ve açılır Diğer; yarışa dokununca yarış sayfası
 export default function RacesPage() {
@@ -29,6 +30,8 @@ function Races({ orgId, me }) {
   const router = useRouter();
   const [races, setRaces] = useState(() => racesNow(orgId)); // bellekte varsa hemen (geri dönüşte boş ekran yok), arkada tazelenir
   const [error, setError] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [ver, setVer] = useState(0);
   useEffect(() => {
     loadRaces(orgId).then(
       (list) => {
@@ -41,7 +44,7 @@ function Races({ orgId, me }) {
       (e) => (setRaces((r) => r || []), setError(e?.message || "Yarışlar alınamadı.")),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId]);
+  }, [orgId, ver]);
   const owner = me.uid === orgId;
 
   // Başlık (yarış kart, Seyhun 2026-11-07 "Yarışlar başlığı geri butonun yanında olmalı, diğer sayfalardaki gibi"): Planlar gibi yuvarlak geri,
@@ -50,10 +53,18 @@ function Races({ orgId, me }) {
     <header className="flex items-center gap-2.5">
       <BackButton href="/" />
       <h1 className="min-w-0 flex-1 truncate">Yarışlar</h1>
-      <Link href="/athletes/races/new" data-press className="ck-btn shrink-0 !flex !h-10 items-center gap-1 !px-3.5 !text-[0.9375rem]">
-        <Icon name="plus" className="size-4" />
-        Yarış
-      </Link>
+      {/* + Yarış (Seyhun 2026-11-09): ana hesapta federasyon sitesindeki yarışlar penceresi (RaceAddSheet, altında Elle ekle); diğerlerinde elle */}
+      {owner ? (
+        <button type="button" onClick={() => setAdding(true)} data-press className="ck-btn shrink-0 !flex !h-10 items-center gap-1 !px-3.5 !text-[0.9375rem]">
+          <Icon name="plus" className="size-4" />
+          Yarış
+        </button>
+      ) : (
+        <Link href="/athletes/races/new" data-press className="ck-btn shrink-0 !flex !h-10 items-center gap-1 !px-3.5 !text-[0.9375rem]">
+          <Icon name="plus" className="size-4" />
+          Yarış
+        </Link>
+      )}
     </header>
   );
   const extra = (
@@ -62,21 +73,16 @@ function Races({ orgId, me }) {
         <span className="rz-k">Yarış takvimi</span>
         <span className="rz-chev" aria-hidden="true" />
       </Link>
-      {owner && (
-        <Link href="/athletes/races/site" data-press="row" className="rz-row w-full">
-          <span className="rz-k">Siteden ekle</span>
-          <span className="rz-chev" aria-hidden="true" />
-        </Link>
-      )}
     </>
   );
 
   return (
-    <main className="rz rzc split mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className="rz rzc rzl split mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <RaceList races={races} head={head} owner={owner} extra={extra} onOpen={(r) => router.push(`/athletes/races/${r.id}`)}>
         {error && <p className="text-center text-[0.875rem] text-rec">{error}</p>}
         {!races && <Loading label="Yarışlar yükleniyor" />}
       </RaceList>
+      {owner && <RaceAddSheet open={adding} onClose={() => setAdding(false)} orgId={orgId} uid={me.uid} races={races} onAdded={() => setVer((n) => n + 1)} />}
     </main>
   );
 }
