@@ -29,6 +29,7 @@ import { readWarmMe } from "@/lib/warmStart";
 import { useInAppBack } from "./InAppBack";
 import "./liveScreen.css";
 import "./sahne.css";
+import { BG_PHOTO } from "./bgPhoto";
 
 // Herkese açık canlı yarış ekranı (/canli/<yarış>, Seyhun 2026-11-01; yayın görünümü 2026-11-02 SailGP örneği, project-files/samandira-donus/yayin4).
 // Arka plan tam ekran: ekranda canlı yayın ya da tekrar varsa video, yoksa deniz zemini. Üstüne köşelerde ince paneller (Backdrop, Panel…):
@@ -359,7 +360,8 @@ function clockState({ sel, isCur, timer, now, entry, data, today }) {
 // Video yokken arkada soluk yarış fotoğrafı (Seyhun 2026-11-02 "video yoksa arkada güzel bir yarış fotoğrafı, soluk"); dosya yoksa
 // yalnız deniz rengi kalır (CSS arka planı, kırık resim görünmez). Video gelince video, duraklatılınca da o video görünür.
 // Seyhun 2026-11-02 seçti (sail-world.com Optimist fotoğrafı; sunucumuza indirilemedi, tarayıcı doğrudan oradan yükler)
-export const BG_PHOTO = "https://www.sail-world.com/photos/optimist/yysw256373.jpg";
+// adres bgPhoto.js içinde (yarış detayının iPad arka planı da kullanır, bu büyük dosyayı yüklemeden)
+export { BG_PHOTO };
 // kendi ekranımın varsayılan arkası: aynı fotoğraf bulanık (Backdrop "ph:" + bulanık işareti)
 const BG_DEF = `ph:${BG_PHOTO}#bulanik`;
 // Yükleniyor (Seyhun 2026-11-03 "o loading tasarımı yanlış, daha doğru mantıkla"): eski iskelet (sahte sıralama paneli, CANLI rozeti) yarış

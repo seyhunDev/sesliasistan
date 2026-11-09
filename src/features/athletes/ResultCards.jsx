@@ -36,7 +36,9 @@ export function ResultCards({ list, short = false, className = "" }) {
                 <span className="rs-rs">
                   {cells.map((c) => {
                     const g = grpOf(c.head);
-                    const cls = c.drop ? "rs-drop" : c.pen ? "rs-pen" : c.empty ? "rs-empty" : LIGHT.has(g) ? "rs-lt" : "";
+                    // Siyah bayrak (BFD) simsiyah, UFD beyaz (Seyhun 2026-11-09 "öbür grup renkleriyle karışıyor"); diğer cezalar kırmızı
+                    const flag = !c.pen ? "" : /^BF/i.test(c.val) ? " rs-bfd" : /^UF/i.test(c.val) ? " rs-ufd" : "";
+                    const cls = (c.drop ? "rs-drop" : c.pen ? "rs-pen" : c.empty ? "rs-empty" : LIGHT.has(g) ? "rs-lt" : "") + flag;
                     return (
                       <i key={c.k} className={cls} style={{ "--g": groupColor(g) || "var(--mut)" }} title={[c.head, g].filter(Boolean).join(" · ")}>
                         {c.val}
