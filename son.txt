@@ -1,8 +1,8 @@
-Commit: 63c6aea · Canlı Sporcular: + ile sonuç ekle; tek ortak sonuç yükleme; #1367'nin geri aldığı canlı Sporcular geri gelir (#1368)
-Zaman: 2026-11-09-1649 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42626206496
+Commit: d9d990e · Canlı: Sonuçlar sade liste, son güncelleme saati, yalnız yarının grubu, açık kulüp adı (#1369)
+Zaman: 2026-11-09-1825 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42641413375
 
-TAM TEST · 09.11.2026 16:32:08
+TAM TEST · 09.11.2026 18:07:49
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1424/1440 geçti · 16 kalan · 1069 sn
+SONUÇ: 1424/1440 geçti · 16 kalan · 1082 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -252,7 +252,7 @@ SONUÇ: 1424/1440 geçti · 16 kalan · 1069 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 17 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 19 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
