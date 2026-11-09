@@ -1,8 +1,8 @@
-Commit: 2bfc6b3 · Yarış detayı: Sporcularımız düz liste (#1371)
-Zaman: 2026-11-09-1908 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42648625115
+Commit: 961d507 · Yarış detayı: Takip yeni tasarım (#1373)
+Zaman: 2026-11-09-2001 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42657808650
 
-TAM TEST · 09.11.2026 18:50:48
+TAM TEST · 09.11.2026 19:45:08
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1424/1440 geçti · 16 kalan · 1068 sn
+SONUÇ: 1424/1440 geçti · 16 kalan · 1011 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4519 test”
+      ✗ “4520 test”
           beklenen: hepsi geçer
-          olan:     4467/4519 geçti
+          olan:     4468/4520 geçti
       ✗ “2 dakika başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
       ✗ “iki dakikalık yarış başlat” → ✗ ai · ön cevap: Bir bakayım. (beklenen: yol: trainVoice)
       ✗ “yarışı başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
@@ -252,7 +252,7 @@ SONUÇ: 1424/1440 geçti · 16 kalan · 1068 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 19 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 20 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
