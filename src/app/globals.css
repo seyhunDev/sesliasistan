@@ -1344,6 +1344,13 @@ main.rzi .rz-dtop { display: contents; }
 main.rzi > .ck .rz-go { order: 9; margin-top: .75rem; }
 main.rzc.rzi > .ck h1 { color: rgba(255, 255, 255, .9); }
 main.rzc.rzi > .ck { padding-bottom: 0; }
+/* üst kart: üç bilgi yan yana (raceUi RaceStats) */
+.rz-stats { display: grid; overflow: hidden; border-radius: 1.125rem; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .09); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.rz-stats > div { min-width: 0; padding: .625rem .75rem; border-left: 1px solid rgba(255, 255, 255, .1); }
+.rz-stats > div:first-child { border-left: 0; }
+.rz-stats small { display: block; font-size: .71875rem; font-weight: 600; color: rgba(255, 255, 255, .58); }
+.rz-stats b { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 1.125rem; font-weight: 700; letter-spacing: -.02em; color: #fff; }
+.rz-stats em { margin-left: .1875rem; font-style: normal; font-size: .78125rem; font-weight: 600; color: rgba(255, 255, 255, .65); }
 main.rzi > .ck :is(.rz-list, .rz-row-wrap) { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 /* koyu cam panel */
 main.rz.rzc.rzi > .rzc-body {
@@ -1355,6 +1362,7 @@ main.rz.rzc.rzi > .rzc-body {
 }
 main.rzi > .rzc-body .rz-seg { background: rgba(255, 255, 255, .08); }
 main.rzi > .rzc-body .rz-seg-b[aria-pressed="true"] { background: rgba(255, 255, 255, .95); color: #0b1a33; }
+@media (min-width: 48rem) { main.rzi .track-cols.track-main { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); } }
 main.rzi .track-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); column-gap: 1.5rem; align-items: start; }
 main.rz.rzc.rzi [data-pagebar] { background: linear-gradient(to top, rgba(8, 20, 42, .9) 60%, transparent); }
 main.rz.rzc.rzi { padding-bottom: 0; }
@@ -1393,6 +1401,8 @@ main.rz.rzc.rzi { padding-bottom: 0; }
 .rs-mid { flex: 1; min-width: 0; }
 .rs-nm { display: flex; align-items: center; gap: .375rem; min-width: 0; font-size: 1rem; font-weight: 600; }
 .rs-nm > span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rs-tag { display: inline-flex; flex-shrink: 0; align-items: center; gap: .3125rem; height: 1.25rem; padding: 0 .5rem; border-radius: 999px; font-size: .6875rem; font-weight: 700; background: color-mix(in srgb, var(--g) 16%, transparent); color: color-mix(in srgb, var(--g) 70%, var(--fg)); }
+.rs-tag::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--g); }
 .rs-up, .rs-dn { flex-shrink: 0; font-size: .8125rem; font-weight: 700; } .rs-up { color: #16a34a; } .rs-dn { color: #dc2626; }
 .rs-rs { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .375rem; }
 .rs-rs i { display: grid; width: 1.5rem; height: 1.5rem; place-items: center; border-radius: 50%; background: var(--g); color: #fff; font-style: normal; font-size: .6875rem; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; overflow: hidden; }
@@ -1414,8 +1424,8 @@ main.rz.rzc.rzi { padding-bottom: 0; }
 .rs-net small { display: block; font-size: .625rem; font-weight: 600; color: var(--mut); letter-spacing: .06em; }
 /* beş sekme (Takip varken) telefonda sığsın: yazı biraz küçük, iç boşluk dar */
 @media (max-width: 47.99rem) {
-  main.rzc .rz-seg:has(> :nth-child(5)) .rz-seg-b { gap: .1875rem; padding: 0 .125rem; font-size: .8125rem; letter-spacing: -.01em; }
-  main.rzc .rz-seg:has(> :nth-child(5)) .rz-dot { width: .3125rem; height: .3125rem; }
+  main.rzc .rz-seg:has(> :nth-child(4)) .rz-seg-b { gap: .1875rem; padding: 0 .125rem; font-size: .8125rem; letter-spacing: -.01em; }
+  main.rzc .rz-seg:has(> :nth-child(4)) .rz-dot { width: .3125rem; height: .3125rem; }
 }
 /* sonuç listesi lacivert üstte (sitesi bağlı olmayan yarışın yarış günü, RaceDayTop) */
 .ck .rs-row { border-color: rgba(255, 255, 255, .12); }

@@ -31,7 +31,7 @@ import { tl, totals } from "./budget";
 import { BUDGET_ONLY, buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
 import { RaceWxRows } from "./RaceWx";
-import { Fold, RaceGo, RaceSeg } from "./raceUi";
+import { Fold, RaceGo, RaceSeg, RaceStats } from "./raceUi";
 import { RaceTrack } from "./RaceTrack";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
 import { RACE_KEY } from "@/features/posts/postModel";
@@ -163,7 +163,8 @@ const tripDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { w
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
 // coach: hesabın antrenör bilgileri (users/{uid}.coach), onCoach(bilgi) kaydeder
 // ⋯ menüsünün bölümleri (?sec=) ve multimedya işleri (?do=); liste lib/raceMenu.js
-const SECS = [...RACE_SECS.map(([k]) => k), "site"]; // site: siteden gelen yarış dokümanları (?sec=site)
+const PREP = ["sum", "docs", "trip", "budget"]; // Hazırlık sekmesinin bölümleri
+const SECS = [...RACE_SECS.map(([k]) => k), "site", "belge"]; // site: Takip (?sec=site); belge: siteden gelen belgelerin tamamı
 
 export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0, onResultsFile = null }) {
   const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
@@ -179,7 +180,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const [sec0] = useState(sec);
   // Sitesi bağlı yarış yarış günü dışında Takip ile açılır (Seyhun 2026-11-05)
   // Hazırlık her zaman "sum" (yeni görünüm 2026-11-06: yarış günü de sekmeler sayfada; eski ?sec=prep bağlantıları Hazırlık'ı açar)
-  const [tab, setTab] = useState(() => (sec0 === "prep" ? "sum" : SECS.includes(sec0) ? sec0 : siteDocs ? "site" : "sum"));
+  // Sade (Seyhun 2026-11-09 "Yap", örnek yaris-tasarim öneri): yarış günü ve sonrası Takip, yarıştan önce Hazırlık açılır
+  const [tab, setTab] = useState(() => (sec0 === "prep" ? "sum" : SECS.includes(sec0) ? sec0 : siteDocs && start.startDate && todayStr() >= start.startDate ? "site" : "sum"));
   const [edit, setEdit] = useState(sec0 === "edit"); // yarışın adı, tarihi, yeri (başlık kartına dokununca)
   // Sekmeye ya da yarış bilgisi penceresine git
   const go = (t) => (t === "edit" ? setEdit(true) : setTab(t));
@@ -309,9 +311,12 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
   const fixList = chosen.filter((a) => incomplete.includes(a) || expired.includes(a));
   const coachRef = useRef(null);
   const budgetRef = useRef(null);
-  // Bütçe Yolculuk sekmesinin altında: "budget" istenince (⋯, asistan, Özet) oraya kayar
+  const tripRef = useRef(null);
+  const docsRef = useRef(null);
+  // Hazırlık'ın içindeki bölüme kayar: "budget" Bütçe'ye, "trip" Yolculuk'a, "docs" Evrak'a (⋯, asistan, Sporcular › Evraka git)
   useEffect(() => {
-    if (tab === "budget") setTimeout(() => budgetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    const ref = { budget: budgetRef, trip: tripRef, docs: docsRef }[tab];
+    if (ref) setTimeout(() => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   }, [tab]);
   // Yetkili adı eksikken Eksikler'de yazılır; yazarken kutu yer değiştirmesin diye bu açılışta orada kalır
   const [signerAsk] = useState(() => !(start.signer || "").trim());
@@ -913,18 +918,19 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
     // Yarış takip (Seyhun 2026-11-05): sitesi bağlı yarışta ilk sekme Takip (sonuçlar, duyurular, talimatlar; RaceTrack), Özet'in adı Hazırlık.
     // Bizim hazırladığımız evrak Evrak'ta (2026-11-04 "ayrı tutmamız lazım")
     ...(siteDocs ? [["site", "Takip", siteNew ? `${siteNew} yeni` : "", false, siteNew || 0]] : []),
-    ["sum", over ? "Özet" : "Hazırlık", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
-    ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
-    ["docs", "Evrak", file || (!checked && r.docsAt && !stale) ? "Hazır" : stale ? "Yenile" : r.docsAt ? "Bu cihazda yok" : "Hazır değil", !stat[1][4]],
-    // Yolculuk ve Bütçe tek sekme (Seyhun 2026-11-04 "sadeleştirelim"): sekmeler tek satıra sığar; "budget" açılınca Bütçe'ye kayar
-    ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4] || !stat[3][4]],
+    // Dört sekme (Seyhun 2026-11-09 sade öneri): Hazırlık'ın içinde Yapılacaklar, Yolculuk (Bütçe) ve Evrak; eski "docs"/"trip"/"budget"
+    // bağlantıları Hazırlık'ı açıp o bölüme kayar
+    ["sum", over ? "Özet" : "Hazırlık", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", !over && (!stat[1][4] || !stat[2][4] || !stat[3][4])],
+    ["people", "Sporcular", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
+    ...(siteDocs ? [["belge", "Belgeler", "", false]] : []),
   ];
+  const prep = PREP.includes(tab);
   // Seyhun 2026-10-26 (örnek A, yaris-tasarim/ozet-liste): üstte kalan gün + yanında Multimedya (ayrı, açık renk), altında tek satır
   // kaydırılabilir sekmeler (eksikse sarı nokta). Talimat yüklüyse düğme yok, ⋯ içinde "Talimatı gör".
   // Sekmeler: telefonda lacivertin altında, geniş ekranda sağdaki açık gövdenin başında
   // Sekmeler tek parça seçici (yeni görünüm 2026-11-06); telefonda üstte, geniş ekranda sağ bölümün başında
   // Yarış kart (2026-11-07): sekmeler her ekranda açık gövdenin başında, lacivertin altında
-  const nav = <RaceSeg tabs={tabs} value={tab === "budget" ? "trip" : tab} onChange={setTab} className="mb-1" />;
+  const nav = <RaceSeg tabs={tabs} value={prep ? "sum" : tab} onChange={setTab} className="mb-1" />;
   // Üst (yeni görünüm 2026-11-06): yarış günü RaceDayTop (büyük tek satır, Hava/Harita satırı, Yayına git), öncesinde yalnız Hava ve Harita satırları
   const top = (
     <>
@@ -934,8 +940,17 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
         <>
           {/* Canlı ekran · Yayın yalnız ana hesapta (yarıştan önce de: dönüş girişi, kayıt listesi önceden hazırlanır) */}
           {isOwner && <RaceGo id={rid} className="mt-4" />}
+          {/* Yarıştan önce üst kart (Seyhun 2026-11-09 sade öneri): Hazırlık · Sporcu · Evrak */}
           {!over && (
             <div className="mt-4">
+              <RaceStats
+                className="mb-2.5"
+                items={[
+                  ["Hazırlık", todoList.length || "Tamam", todoList.length ? "iş" : ""],
+                  ["Sporcu", chosen.length, "kişi"],
+                  ["Evrak", file || (!checked && r.docsAt && !stale) ? "Hazır" : "Yok", ""],
+                ]}
+              />
               <RaceWxRows r={{ ...r, id: rid }} />
             </div>
           )}
@@ -1183,7 +1198,7 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
       {navy(top)}
       {secWrap(<>
         {alert}
-      {tab === "sum" && (
+      {prep && (
         <>
           {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/sonuclar` : ""} track={!!siteDocs} />}
           {!over && (
@@ -1282,8 +1297,8 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
       )}
 
       {/* Yolculuk ve bütçe (yeni görünüm 2026-11-06, yeni-dil/ornek.png 4): uzun form yerine özet satırlar, dokununca yerinde açılır */}
-      {(tab === "trip" || tab === "budget") && (
-        <>
+      {prep && (
+        <div ref={tripRef} className="scroll-mt-4">
           <Label>Yolculuk</Label>
           <Fold label="Gidiş" value={[r.departDate && tripDay(r.departDate), r.departTime].filter(Boolean).join(" · ") || "Yazılmadı"} open={fold === "go"} onToggle={() => flipFold("go")}>
             <Group>
@@ -1316,17 +1331,18 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
               <BudgetView r={r} athletes={chosen} onChange={(b) => put("budget", b)} />
             </Fold>
           </div>
-        </>
+        </div>
       )}
 
       {/* Siteden gelen belgeler Dokümanlar sekmesinde (2026-11-04); sekme kapalıyken de bağlı (yeni gelenler işlenir) */}
       {siteDocs && rid && (
-        <div hidden={tab !== "site"}>
-          <RaceTrack orgId={orgId} race={{ ...r, id: rid }} chosen={chosen} more={siteDocs(tab === "site")} onResultsFile={onResultsFile} />
+        <div hidden={tab !== "site" && tab !== "belge"}>
+          <RaceTrack orgId={orgId} race={{ ...r, id: rid }} chosen={chosen} view={tab === "belge" ? "docs" : "track"} onAll={() => setTab("belge")} more={siteDocs(tab === "site" || tab === "belge")} onResultsFile={onResultsFile} />
         </div>
       )}
-      {tab === "docs" && (
-        <>
+      {prep && (
+        <div ref={docsRef} className="scroll-mt-4">
+          <Label>Evrak</Label>
           {/* Hazır evrak bir bilgi değişince (stale) ya da bu telefonda yoksa (başka cihazda hazırlandı / telefon sildi): uyarı */}
           {!file && (stale || (checked && r.docsAt)) && chosen.length > 0 && (
             <div className="rz-list mt-4">
@@ -1681,13 +1697,13 @@ export function RaceEditor({ sec = "", head = null, alert = null, sharedList = [
             </li>
           </ul>
 
-        </>
+        </div>
       )}
       </>)}
 
       <div>
       {/* Alt çubuk: belge hazırla → aç / paylaş */}
-      <div data-pagebar="" className={`${tab !== "docs" || file ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
+      <div data-pagebar="" className={`${!prep || file || !chosen.length || raceDay || over ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
         <div className="mx-auto flex max-w-[26rem] gap-2">
           {file ? (
             <>

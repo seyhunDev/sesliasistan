@@ -37,6 +37,25 @@ export function RaceSeg({ tabs, value, onChange, className = "" }) {
   );
 }
 
+// Üstteki tek kart (Seyhun 2026-11-09 sade öneri "üç bilgi"): [etiket, büyük değer, küçük ek]; boş değerli hücre yazılmaz
+export function RaceStats({ items, className = "" }) {
+  const list = items.filter((x) => x && x[1] !== "" && x[1] != null);
+  if (!list.length) return null;
+  return (
+    <div className={`rz-stats ${className}`} style={{ gridTemplateColumns: `repeat(${list.length}, minmax(0, 1fr))` }}>
+      {list.map(([k, v, s]) => (
+        <div key={k}>
+          <small>{k}</small>
+          <b>
+            {v}
+            {s ? <em>{s}</em> : null}
+          </b>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // İki giriş (Seyhun 2026-11-06 "hem yayını açabilmeliyim hem de kendi canlı yayın sayfamı"; yayin-canli/ornek.png onaylı): yan yana
 // "Canlı ekran" (dolu mavi; kendi canlı ekranı uygulama içinde, /canli/<id>, geri kaydırınca buraya döner) ve "Yayın" (açık mavi; yönetim
 // sayfası). Yalnız ana hesapta gösterilir (çağıran karar verir). Lacivert üstte (yarış kart, 2026-11-07) Canlı ekran beyaz, Yayın cam (.ck .rz-go).
