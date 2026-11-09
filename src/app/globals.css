@@ -1325,25 +1325,24 @@ main.rzc .ck .rz-seg-b[aria-pressed="true"] { background: #fff; color: #0b1a33; 
   body[data-side] main.rz.rzc.split.split-even > .rzc-body { padding-left: 1.5rem; padding-right: 1.5rem; }
 }
 
-/* SONUÇ LİSTESİ (Seyhun 2026-11-08 "sonuçları daha az minimal, liste gibi"; örnek yaris-tasarim/sade/sonuc-liste-*.png onaylı;
-   src/features/athletes/ResultCards.jsx): sporcu başına bir satır, ince çizgiyle ayrılır. Solda sıra /kişi, ortada grup renginde nokta + ad +
-   dünden fark, altında grup/kategori sırası ve yarış yarış puan (en iyi koyu, atılan parantezde gri, ceza kırmızı), sağda NET. */
-.rs-row { display: flex; align-items: center; gap: .75rem; min-height: 3.625rem; padding: .625rem 0; border-top: 1px solid var(--line); }
+/* SONUÇ LİSTESİ (Seyhun 2026-11-09 renkli yuvarlaklar; örnek yaris-tasarim/sade/sonuc-renk-*.png onaylı; src/features/athletes/ResultCards.jsx):
+   sporcu başına bir satır. Solda sıra, altında /kişi (3 hane sığar); ortada ad + dünden fark, altında her yarış grubunun renginde yuvarlak
+   (içinde puan; atılan boş halka, ceza kırmızı; çoksa alt satıra geçer); sağda NET. */
+.rs-row { display: flex; align-items: center; gap: .75rem; min-height: 3.75rem; padding: .625rem 0; border-top: 1px solid var(--line); }
 .rs-row:first-child { border-top: 0; }
-.rs-pl { width: 3.25rem; flex-shrink: 0; font-size: 1.3125rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.rs-pl sup { margin-left: 1px; font-size: .6875rem; font-weight: 500; color: var(--mut); letter-spacing: 0; }
+.rs-pl { width: 3rem; flex-shrink: 0; text-align: center; line-height: 1; font-variant-numeric: tabular-nums; }
+.rs-pl b { display: block; font-size: 1.25rem; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.rs-pl small { display: block; margin-top: .1875rem; font-size: .6875rem; color: var(--mut); white-space: nowrap; }
 .rs-mid { flex: 1; min-width: 0; }
-.rs-nm { display: flex; align-items: center; gap: .4375rem; min-width: 0; font-size: 1rem; font-weight: 600; }
-.rs-nm > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.rs-nm > i { width: .5rem; height: .5rem; flex-shrink: 0; border-radius: 50%; background: var(--g); }
+.rs-nm { display: flex; align-items: center; gap: .375rem; min-width: 0; font-size: 1rem; font-weight: 600; }
+.rs-nm > span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .rs-up, .rs-dn { flex-shrink: 0; font-size: .8125rem; font-weight: 700; } .rs-up { color: #16a34a; } .rs-dn { color: #dc2626; }
-.rs-sub { display: block; margin-top: .125rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .8125rem; color: var(--mut); font-variant-numeric: tabular-nums; }
-.rs-rs { display: flex; flex-wrap: wrap; gap: .125rem .875rem; margin-top: .125rem; font-size: .8125rem; color: var(--fg2, var(--fg)); font-variant-numeric: tabular-nums; }
-.rs-rs i { margin-right: .25rem; font-style: normal; color: var(--mut); }
-.rs-rs .rs-best { font-weight: 700; color: var(--fg); }
-.rs-rs .rs-drop { color: var(--mut); }
-.rs-rs .rs-pen { font-weight: 700; color: #dc2626; }
-.rs-rs .rs-empty { opacity: .4; }
+.rs-rs { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .375rem; }
+.rs-rs i { display: grid; width: 1.5rem; height: 1.5rem; place-items: center; border-radius: 50%; background: var(--g); color: #fff; font-style: normal; font-size: .6875rem; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; overflow: hidden; }
+.rs-rs i.rs-lt { color: #2b2200; }
+.rs-rs i.rs-drop { background: transparent; color: var(--mut); font-weight: 600; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--mut) 45%, transparent); }
+.rs-rs i.rs-pen { background: #dc2626; color: #fff; font-size: .53125rem; letter-spacing: -.02em; }
+.rs-rs i.rs-empty { opacity: .35; }
 .rs-net { flex-shrink: 0; text-align: right; font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .rs-net small { display: block; font-size: .625rem; font-weight: 600; color: var(--mut); letter-spacing: .06em; }
 /* beş sekme (Takip varken) telefonda sığsın: yazı biraz küçük, iç boşluk dar */
@@ -1353,5 +1352,4 @@ main.rzc .ck .rz-seg-b[aria-pressed="true"] { background: #fff; color: #0b1a33; 
 }
 /* sonuç listesi lacivert üstte (sitesi bağlı olmayan yarışın yarış günü, RaceDayTop) */
 .ck .rs-row { border-color: rgba(255, 255, 255, .12); }
-.ck :is(.rs-sub, .rs-pl sup, .rs-net small, .rs-rs i, .rs-rs .rs-drop) { color: rgba(255, 255, 255, .62); }
-.ck .rs-rs, .ck .rs-rs .rs-best { color: #fff; }
+.ck :is(.rs-pl small, .rs-net small, .rs-rs i.rs-drop) { color: rgba(255, 255, 255, .62); }
