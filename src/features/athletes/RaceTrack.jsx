@@ -6,8 +6,7 @@
 // en üstte Günün özeti (Dün | Bugün), sonra Sonuçlar (bizim sporcuların sırası + sonuç belgeleri), Gruplar (renk listesi, final grupları),
 // Duyurular (sporcu listesi, diğer),
 // Talimatlar (talimat, ek talimat, program). Görülmemiş belge "Yeni"; bildirim (sunucu notifyDocs) bu sekmeyi açar (?sec=site).
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useToast } from "@/components/ui/ToastProvider";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { ListHead, Tag } from "@/components/ui/Row";
@@ -20,7 +19,7 @@ import { Icon } from "@/components/ui/Icon";
 import { ourPlaces } from "@/lib/raceDay";
 import { cleanSchedule, currentAmend, kindLabel, resultState, version } from "@/lib/siteDocs";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
-import { ResultCards } from "./ResultCards";
+import { ResultCards, ResultsAdd } from "./ResultCards";
 import { siteDocBlob, watchEntryDoc, watchSiteDocs } from "./raceSite";
 
 const RULES = ["notice", "amend", "program"];
@@ -193,21 +192,7 @@ export function daySummary({ day, starts = [], wind = [], fc = null, docs = [], 
 // view: "track" (Takip: Sporcularımız, bugünün grupları, program, yeni belgeler) ya da "docs" (Belgeler sekmesi: hepsi ve işlemler);
 // onAll: Takip'teki "Tüm belgeler" Belgeler sekmesini açar (Seyhun 2026-11-09 sade öneri)
 export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile = null, view: mode = "track", onAll = null }) {
-  // Elle sonuç yükleme (Seyhun 2026-11-08): siteye gelmeyen sonuç PDF'i, siteden gelenle aynı yol (page.jsx importFile)
-  const toast = useToast();
-  const pickRef = useRef(null);
-  const [upBusy, setUpBusy] = useState(false);
-  const upload = async (f) => {
-    if (!f || !onResultsFile || upBusy) return;
-    setUpBusy(true);
-    try {
-      const r = await onResultsFile(f);
-      toast(r?.note || "Sonuçlar eklendi");
-    } catch (e) {
-      toast(e?.message || "Sonuçlar okunamadı");
-    }
-    setUpBusy(false);
-  };
+  // Elle sonuç ekleme (Seyhun 2026-11-08; 2026-11-09 başlıktaki "+", ResultsAdd): siteye gelmeyen sonuç PDF'i, siteden gelenle aynı yol (page.jsx importFile)
   const [docs, setDocs] = useState(null);
   const [view, setView] = useState(null);
   const [all, setAll] = useState(false);
@@ -261,7 +246,7 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
           altında (telefon) bugünün grupları, program ve yeni belgeler; belgelerin tamamı Belgeler sekmesinde. Hava ve kaç yarış üstte. */}
       <div className="track-cols track-main">
         <section className="mt-5" aria-label="Sporcularımız">
-          <ListHead title={["Sporcularımız", state, raceN && `${raceN} yarış`].filter(Boolean).join(" · ")} />
+          <ListHead title={["Sporcularımız", state, raceN && `${raceN} yarış`].filter(Boolean).join(" · ")} action={<ResultsAdd onFile={onResultsFile} />} />
           <div className={box}>
             <ResultCards list={places} groups={grpOf} />
             {noRes.map((a) => (
@@ -282,14 +267,6 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
               </button>
             )}
             {resOpen && <DocRows list={g.results} onOpen={setView} />}
-            {onResultsFile && (
-              <>
-                <button type="button" onClick={() => pickRef.current?.click()} disabled={upBusy} data-press="row" className={`${row} font-semibold text-acc disabled:opacity-60`}>
-                  {upBusy ? "Okunuyor…" : "Sonuç yükle"}
-                </button>
-                <input ref={pickRef} type="file" accept="application/pdf,image/*,.pdf" hidden onChange={(e) => (upload(e.target.files?.[0]), (e.target.value = ""))} />
-              </>
-            )}
           </div>
         </section>
         <div>
