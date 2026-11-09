@@ -11,7 +11,8 @@ import { raceCells } from "@/lib/resultSheet";
 // Açık renkli grupta (Sarı, Altın, Gümüş) yuvarlağın yazısı koyu
 const LIGHT = new Set(["Sarı", "Altın", "Gümüş"]);
 
-export function ResultCards({ list, short = false, className = "" }) {
+// groups: { sporcu id: bugünkü grubu } (Takip, Seyhun 2026-11-09 "o gün hangi grupta olduklarını görmek istiyorum"): adın yanında renkli etiket
+export function ResultCards({ list, short = false, className = "", groups = null }) {
   if (!list?.length) return null;
   return (
     <div className={`rs-list ${className}`}>
@@ -30,6 +31,11 @@ export function ResultCards({ list, short = false, className = "" }) {
             <span className="rs-mid">
               <span className="rs-nm">
                 <span>{x.name}</span>
+                {groups?.[x.id] ? (
+                  <span className="rs-tag" style={{ "--g": groupColor(groups[x.id]) || "var(--mut)" }}>
+                    {groups[x.id]}
+                  </span>
+                ) : null}
                 {x.move ? <span className={x.move > 0 ? "rs-up" : "rs-dn"}>{x.move > 0 ? `↑${x.move}` : `↓${-x.move}`}</span> : null}
               </span>
               {cells.length > 0 && (

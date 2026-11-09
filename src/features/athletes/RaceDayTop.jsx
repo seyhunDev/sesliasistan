@@ -6,6 +6,7 @@ import { dayPlan, nextDay, ourPlaces, racePhase } from "@/lib/raceDay";
 import { ResultCards } from "./ResultCards";
 import { loadLive } from "./raceLiveStore";
 import { RaceWxRows } from "./RaceWx";
+import { RaceStats } from "./raceUi";
 
 // Yarış günü üstü (Seyhun 2026-10-28, yaris-tasarim/harita "Yarış günü: saate göre değişen sayfa"):
 //   A yarışlar sürerken: rüzgâr (RaceWx, şimdiki ölçüm/tahmin) üstte, altında Multimedya · Parkur
@@ -52,24 +53,20 @@ export function RaceDayTop({ r, rid, chosen, phase, races, dayAll, go = null, tr
   const tom = nextDay(today);
   const fin = races.filter((x) => x.fin).length;
   const cur = races.at(-1);
-  const now =
-    phase === "done"
-      ? [dayAll > 1 && !last ? "Gün bitti" : "Yarış bitti", races.length && `${races.length} yarış`].filter(Boolean).join(" · ")
-      : cur && fin < races.length
-        ? [fin && `${fin} yarış bitti`, `${cur.n}. start ${hm(cur.at)}`].filter(Boolean).join(" · ")
-        : races.length
-          ? [`${races.length} yarış bitti`, phase === "results" && "sonuçlar geldi", fleet && `${fleet} tekne`].filter(Boolean).join(" · ")
-          : "";
-  const lead = now ? (
-    <div className="rz-row-wrap">
-      <div className="rz-row">
-        <span className="rz-k">Şimdi</span>
-        <span className="rz-v">
-          <b>{now}</b>
-        </span>
-      </div>
-    </div>
-  ) : null;
+  // Üst kart (Seyhun 2026-11-09 sade öneri): Bitti · Sıradaki start · (gün bitince) durum; hava ayrı satırda (RaceWxRows)
+  const next = cur && fin < races.length ? cur : null;
+  const resN = Math.max(0, ...Object.values(r.results?.rows || {}).map((x) => x?.r?.length || 0));
+  const lead = (
+    <RaceStats
+      className="mb-2.5"
+      items={[
+        // sayaçta start yoksa sonuç belgesindeki yarış sayısı
+        ["Bitti", races.length ? fin || (next ? 0 : races.length) : resN || "", "yarış"],
+        next ? ["Sıradaki", hm(next.at), `${next.n}. start`] : phase === "done" ? ["Durum", dayAll > 1 && !last ? "Gün bitti" : "Bitti", ""] : phase === "results" ? ["Sonuçlar", "Geldi", ""] : ["Sıradaki", "–", "start"],
+        fleet ? ["Tekne", fleet, ""] : null,
+      ]}
+    />
+  );
   return (
     <div className="rz-dtop mt-4">
       {/* Canlı ekran · Yayın (yalnız ana hesap; raceUi RaceGo, Seyhun 2026-11-06) */}
