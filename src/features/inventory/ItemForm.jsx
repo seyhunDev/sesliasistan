@@ -132,7 +132,7 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
                 f={f}
                 onOpen={() => onFile?.(f)}
                 onLabel={(label) => setX((v) => ({ ...v, files: v.files.map((y) => (y.id === f.id ? { ...y, label } : y)) }))}
-                onDrop={() => window.confirm(`“${f.label || f.name}” silinsin mi? (Kaydet'e basınca silinir)`) && setX((v) => ({ ...v, files: v.files.filter((y) => y.id !== f.id) }))}
+                onDrop={() => setX((v) => ({ ...v, files: v.files.filter((y) => y.id !== f.id) }))}
               />
             ))}
             {pend.map((f) => (

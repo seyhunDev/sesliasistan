@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -72,6 +73,7 @@ function legacyCopy(t) {
 // ("daha kısa yaz", "Mete 2. oldu diye ekle", "gün batımında teknelerle görsel üret"; setPostHandler).
 // onSave(post, photo) → kimlik; photo undefined: fotoğraf değişmedi, "": kaldırıldı, dataURL: yeni.
 export function PostEditor({ title, back, start: given, startPhoto = "", photoLost = false, onSave, onDelete, onArchive, onNews, onRaces, onAthletes }) {
+  const confirmAsk = useConfirm();
   const toast = useToast();
   const [start] = useState(() => withInfo(given));
   const [p, setP] = useState(start);
@@ -544,7 +546,7 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
   });
 
   const del = async () => {
-    if (!confirm("Bu gönderi silinsin mi?")) return;
+    if (!(await confirmAsk({ title: "Gönderi silinsin mi?" }))) return;
     setBusy("del");
     try {
       await onDelete({ ...post, id: pid });

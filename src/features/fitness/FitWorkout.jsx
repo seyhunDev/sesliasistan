@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
@@ -53,6 +54,7 @@ function partsOf(items) {
 }
 
 export function FitWorkout({ rec, by, hero = false }) {
+  const confirmAsk = useConfirm();
   const { plans, updateRecord } = useData();
   const toast = useToast();
   const fit = rec.fit || { items: [] };
@@ -119,8 +121,8 @@ export function FitWorkout({ rec, by, hero = false }) {
     if (on && !quiet) startRest(r); // adım adım ekran kendi sayacını kullanır
   }
   // Baştan başlat: yarım kalan setlerin işaretleri ve değerleri silinir, adım adım ekran ilk setten açılır
-  function restart() {
-    if (!confirm("Antrenman baştan başlasın mı? İşaretlenen setler sıfırlanır.")) return;
+  async function restart() {
+    if (!(await confirmAsk({ title: "Antrenman baştan başlasın mı?", text: "İşaretlenen setler sıfırlanır.", yes: "Baştan başlat" }))) return;
     const fresh = startSets({ ...fit, res: null }, plans, rec.date);
     setSets(fresh);
     setFeel(0);

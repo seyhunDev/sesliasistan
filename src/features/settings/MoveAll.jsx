@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useState } from "react";
 import { waitForPendingWrites } from "firebase/firestore";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -29,6 +30,7 @@ function errText(code) {
 }
 
 export function MoveAllRow() {
+  const confirmAsk = useConfirm();
   const toast = useToast();
   const { profile } = useAuth();
   const owner = profile?.role !== "staff" && (profile?.orgId || profile?.uid) === profile?.uid;
@@ -67,7 +69,7 @@ export function MoveAllRow() {
   };
 
   const drop = async () => {
-    if (!confirm("Telefondaki kopyalar silinsin mi? Hazırlanan evrak gerekince yeniden hazırlanır, dosyalar açılınca Firebase'den indirilir.")) return;
+    if (!(await confirmAsk({ title: "Telefondaki kopyalar silinsin mi?", text: "Evrak gerekince yeniden hazırlanır, dosyalar açılınca buluttan iner." }))) return;
     setBusy("drop");
     let n = 0;
     for (const r of await listRaceFiles().catch(() => [])) {
@@ -116,6 +118,7 @@ export function MoveAllRow() {
 // Ayarlar › Mail eklerini sil: banka maillerinin eski Excel ekleri sunucuda silinir, önce Storage'dakiler, sonra maillerin
 // içindekiler (mailFiles.js cleanMailFiles). Tablolar mailde kalır; bakiye, aidat, fatura ve banka defteri onları kullanır.
 export function MailFilesRow() {
+  const confirmAsk = useConfirm();
   const toast = useToast();
   const { profile } = useAuth();
   const owner = profile?.role !== "staff" && (profile?.orgId || profile?.uid) === profile?.uid;
@@ -125,7 +128,7 @@ export function MailFilesRow() {
 
   const run = async () => {
     if (typeof navigator !== "undefined" && navigator.onLine === false) return toast("İnternet yok, bağlanınca dene");
-    if (!confirm("Banka maillerinin eski Excel ekleri silinsin mi? Tablolar kayıtlı kalır, orijinaller Gmail'de durur.")) return;
+    if (!(await confirmAsk({ title: "Eski Excel ekleri silinsin mi?", text: "Tablolar kayıtlı kalır, orijinaller Gmail'de durur." }))) return;
     setOut("");
     setBusy("Storage'daki ekler siliniyor…");
     try {
