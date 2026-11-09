@@ -1752,8 +1752,15 @@ function ScProgPanel({ prog, ag }) {
 }
 // Sporcular (Seyhun 2026-11-09 "canlı sayfada sporcuların derecelerini ve o gün hangi grupta olduklarını görmek istiyorum"; Sıralama ve
 // Gruplar tek düğme): sınıf sınıf genel sıra, yelken no, ad, kulüp, bugünkü grup, puan; sıralama yoksa kayıt listesi. Bizimkiler mavi.
+// Grup rengi (Seyhun 2026-11-09 "yarın için açıklanan renk varsa açıklandığı zaman gösterelim"): açıklanmış en yeni günün grubu (bugün ya da sonrası)
+function athGDay(data, day) {
+  const all = data.groups || {};
+  return Object.keys(all).filter((d) => d > day && Object.keys(groupMap(groupsOn(all, d))).length).sort().pop() || day;
+}
 function scAth(data, day) {
-  const gm = groupMap(groupsOn(data.groups || {}, day));
+  const gd = athGDay(data, day);
+  const gm = groupMap(groupsOn(data.groups || {}, gd));
+  const gm0 = gd === day ? gm : groupMap(groupsOn(data.groups || {}, day));
   const boards = scBoards(data);
   const out = boards.map((b) => ({ cls: b.cls, races: b.races, rows: b.all.map((r) => ({ p: r.p, sail: String(r.sail), name: r.name || "", club: r.club || "", sc: r.sc, t: r.t ?? "" })) }));
   for (const e of data.entries || []) {
@@ -1764,7 +1771,7 @@ function scAth(data, day) {
     if (!b.rows.some((r) => r.sail === sail)) b.rows.push({ p: "", sail, name: e.name || "", club: e.club || "", sc: [], t: "" });
   }
   return out
-    .map((b) => ({ ...b, rows: b.rows.map((r) => ({ ...r, g: gm[r.sail] || "", our: isOur(r.club) })) }))
+    .map((b) => ({ ...b, gd, rows: b.rows.map((r) => ({ ...r, g: gm[r.sail] || "", g0: gm0[r.sail] || "", our: isOur(r.club) })) }))
     .map((b) => ({ ...b, rows: b.rows.filter((r) => r.p !== "").concat(b.rows.filter((r) => r.p === "").sort((x, y) => Number(x.sail) - Number(y.sail) || x.sail.localeCompare(y.sail))) }))
     .filter((b) => b.rows.length);
 }
@@ -1781,7 +1788,7 @@ function athDays(data, b, r) {
   });
   return [...by.entries()].sort((x, y) => y[0].localeCompare(x[0])).map(([day, rows]) => ({ day, rows: rows.reverse() }));
 }
-const athDayName = (d, today) => (d === today ? "Bugün" : d === trDay(Date.parse(`${today}T12:00:00Z`) - 864e5) ? "Dün" : dayText(d));
+const athDayName = (d, today) => (d === today ? "Bugün" : d === trDay(Date.parse(`${today}T12:00:00Z`) - 864e5) ? "Dün" : d === trDay(Date.parse(`${today}T12:00:00Z`) + 864e5) ? "Yarın" : dayText(d));
 const GDot = ({ g }) => (g ? <i style={{ background: groupColor(g) || "#ffd23f" }} aria-hidden="true" /> : null);
 function ScAthPanel({ data, ath, day, prog = [], res = false, onFull }) {
   const [ci, setCi] = useState(0);
@@ -1794,7 +1801,7 @@ function ScAthPanel({ data, ath, day, prog = [], res = false, onFull }) {
   const pr = pb?.rows.find((x) => x.sail === pick.sail);
   if (pr) {
     const days = athDays(data, pb, pr);
-    const st = pr.g ? prog.find((x) => x.grp === pr.g && (x.state === "now" || x.state === "next")) : null;
+    const st = pr.g0 ? prog.find((x) => x.grp === pr.g0 && (x.state === "now" || x.state === "next")) : null;
     return (
       <div className="sc-ath one">
         <button type="button" className="sc-athb" onClick={() => setPick(null)}>
@@ -1806,7 +1813,7 @@ function ScAthPanel({ data, ath, day, prog = [], res = false, onFull }) {
         <div className="sc-aths">
           <div><span>Genel sıra</span><b>{pr.p ? `${pr.p}${/^\d+$/.test(String(pr.p)) ? "." : ""}` : "—"}</b></div>
           <div><span>Puan</span><b>{pr.t !== "" ? pr.t : "—"}</b></div>
-          <div className={pr.g ? "g" : ""}><span>Bugün</span><b>{pr.g ? <><GDot g={pr.g} />{pr.g}</> : "—"}</b></div>
+          <div className={pr.g ? "g" : ""}><span>{athDayName(pb.gd, day)}</span><b>{pr.g ? <><GDot g={pr.g} />{pr.g}</> : "—"}</b></div>
         </div>
         {st ? (
           <div className="sc-athn">
@@ -1883,7 +1890,7 @@ function ScAthPanel({ data, ath, day, prog = [], res = false, onFull }) {
             {hasP ? <span>Sıra</span> : null}
             <span>No</span>
             <span>Sporcu</span>
-            <span>Bugün</span>
+            <span>{athDayName(b.gd, day)}</span>
             {hasP ? <span className="r">Puan</span> : null}
           </div>
           <ul className={hasP ? "" : "np"}>
