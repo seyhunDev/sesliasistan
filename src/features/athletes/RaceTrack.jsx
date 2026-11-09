@@ -56,8 +56,9 @@ export function groupDay(groups, today) {
 // bugün ve açıklanmışsa sonraki gün (yarın Altın/Gümüş/Bronz ya da yine renkler olabilir); ikisi de yoksa son açıklanan gün
 export function groupDays(groups, today) {
   const days = Object.keys(groups || {}).filter((d) => groups[d]?.length).sort();
+  // Yarının grubu açıklanınca bugününki gösterilmez (Seyhun 2026-11-09 "yarın açıklandıysa artık bugünün grubunu göstermeyelim")
   const up = days.filter((d) => d >= today);
-  return up.length ? up.slice(0, 2) : days.slice(-1);
+  return up.length ? up.slice(0, 2).slice(-1) : days.slice(-1);
 }
 const tomorrowOf = (today) => new Date(Date.parse(`${today}T12:00:00`) + 864e5).toLocaleDateString("sv-SE");
 // Grup gününün etiketi: bugünse boş, yarınsa "Yarın", değilse kısa tarih
