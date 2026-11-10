@@ -1757,6 +1757,16 @@ function athGDay(data, day) {
   const all = data.groups || {};
   return Object.keys(all).filter((d) => d > day && Object.keys(groupMap(groupsOn(all, d))).length).sort().pop() || day;
 }
+// Kızlar / Junior / Bambino (Seyhun 2026-11-10 "kızları ayrı gösteriyorduk; bizim sporcuda kız varsa kızlardaki yeri gösterilmeli"):
+// sporcunun kendi kategorisindeki yeri (onlyCat, yarış sayfasıyla aynı kural); hepsinde olan kategori (herkes Junior) yazılmaz
+const KAT_IN = { Kız: "Kızlarda", Junior: "Juniorda", Bambino: "Bambinoda" };
+const KAT_NAME = { Kız: "Kızlar", Junior: "Junior", Bambino: "Bambino" };
+function athKat(b, sail) {
+  return (b.catList || []).map((c) => {
+    const x = onlyCat(b.all, c).find((y) => String(y.sail) === String(sail));
+    return x ? { c, place: x.place } : null;
+  }).filter(Boolean);
+}
 function scAth(data, day) {
   const gd = athGDay(data, day);
   const gm = groupMap(groupsOn(data.groups || {}, gd));
@@ -1764,13 +1774,13 @@ function scAth(data, day) {
   // son güncelleme: resmî sonuçta belgenin geliş anı (sınıf sınıf), geçicide son biten yarış
   const fat = new Map((data.fleets || []).map((f) => [f.cls || "", f.at || ""]));
   const fin = (data.starts || []).map((x) => x.fin || "").filter(Boolean).sort().pop() || "";
-  const out = boards.map((b) => ({ cls: b.cls, at: (data.fleets || []).length ? fat.get(b.cls) || "" : fin, races: b.races, rows: b.all.map((r) => ({ p: r.p, sail: String(r.sail), name: r.name || "", club: r.club || "", sc: r.sc, t: r.t ?? "" })) }));
+  const out = boards.map((b) => ({ cls: b.cls, at: (data.fleets || []).length ? fat.get(b.cls) || "" : fin, races: b.races, cats: b.catList || [], rows: b.all.map((r) => ({ p: r.p, sail: String(r.sail), name: r.name || "", club: r.club || "", sc: r.sc, t: r.t ?? "", kat: athKat(b, r.sail) })) }));
   for (const e of data.entries || []) {
     const sail = String(e.sail || "");
     if (!sail) continue;
     let b = out.length === 1 && boards.length ? out[0] : out.find((x) => x.cls === (e.cls || ""));
-    if (!b) out.push((b = { cls: e.cls || "", races: [], rows: [] }));
-    if (!b.rows.some((r) => r.sail === sail)) b.rows.push({ p: "", sail, name: e.name || "", club: e.club || "", sc: [], t: "" });
+    if (!b) out.push((b = { cls: e.cls || "", races: [], cats: [], rows: [] }));
+    if (!b.rows.some((r) => r.sail === sail)) b.rows.push({ p: "", sail, name: e.name || "", club: e.club || "", sc: [], t: "", kat: [] });
   }
   return out
     .map((b) => ({ ...b, gd, rows: b.rows.map((r) => ({ ...r, g: gm[r.sail] || "", our: isOur(r.club) })) }))
@@ -1844,6 +1854,7 @@ function ScAthPanel({ data, ath, day, onFull, res = false, onResult = null, resM
         <p className="sc-athw">{[pr.sail, clubName(pr.club, 40), pb.cls].filter(Boolean).join(" · ")}</p>
         <ul className="sc-athkv">
           {pr.p ? <li><span>Genel sıra</span><b>{athRank(pr.p)}</b></li> : null}
+          {(pr.kat || []).map((k) => <li key={k.c}><span>{KAT_IN[k.c] || k.c} sıra</span><b>{k.place}.</b></li>)}
           {pr.t !== "" ? <li><span>Puan</span><b>{pr.t}</b></li> : null}
           {pr.g ? <li><span>{athDayName(pb.gd, day)}</span><b><GDot g={pr.g} />{pr.g}</b></li> : null}
         </ul>
@@ -1871,8 +1882,12 @@ function ScAthPanel({ data, ath, day, onFull, res = false, onResult = null, resM
     const i = (g) => (GROUP_PICK.indexOf(g) < 0 ? 99 : GROUP_PICK.indexOf(g));
     return i(x) - i(y) || x.localeCompare(y, "tr");
   });
-  const fOn = f === "our" ? (ours ? f : "") : grs.includes(f) ? f : "";
-  const rows = b.rows.filter((r) => (!fOn || (fOn === "our" ? r.our : r.g === fOn)) && (!q.trim() || grpHit(r, q)));
+  const kats = b.cats || [];
+  const fKat = f.startsWith("k:") && kats.includes(f.slice(2)) ? f.slice(2) : "";
+  const fOn = fKat ? f : f === "our" ? (ours ? f : "") : grs.includes(f) ? f : "";
+  // kategori seçiliyken sıra kendi içinde: Kızlar 1, 2, 3…
+  const kp = (r) => (r.kat || []).find((k) => k.c === fKat)?.place;
+  const rows = (fKat ? b.rows.filter((r) => kp(r)).map((r) => ({ ...r, p: kp(r) })).sort((x, y) => x.p - y.p) : b.rows).filter((r) => (fKat || !fOn || (fOn === "our" ? r.our : r.g === fOn)) && (!q.trim() || grpHit(r, q)));
   const hasP = b.rows.some((r) => r.p !== "");
   const gdName = athDayName(b.gd, day);
   const cap = [grs.length ? `${gdName === "Bugün" ? "Bugünün" : gdName === "Yarın" ? "Yarının" : gdName} grupları` : "", ath.length > 1 ? "" : b.cls].filter(Boolean).join(" · ");
@@ -1889,7 +1904,7 @@ function ScAthPanel({ data, ath, day, onFull, res = false, onResult = null, resM
         </div>
       ) : null}
       <input className="sc-pgs" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ara" aria-label="Sporcu ara" />
-      {ours || grs.length ? (
+      {ours || grs.length || kats.length ? (
         <div className="sc-pgg">
           <button type="button" className={fOn === "" ? "on" : ""} aria-pressed={fOn === ""} onClick={() => setF("")}>
             Hepsi
@@ -1899,6 +1914,11 @@ function ScAthPanel({ data, ath, day, onFull, res = false, onResult = null, resM
               Bizimkiler
             </button>
           ) : null}
+          {kats.map((c) => (
+            <button key={c} type="button" className={fOn === `k:${c}` ? "on" : ""} aria-pressed={fOn === `k:${c}`} onClick={() => setF(`k:${c}`)}>
+              {KAT_NAME[c] || c}
+            </button>
+          ))}
           {grs.map((g) => (
             <button key={g} type="button" className={fOn === g ? "on" : ""} aria-pressed={fOn === g} onClick={() => setF(g)}>
               <GDot g={g} />
@@ -1926,6 +1946,7 @@ function ScAthPanel({ data, ath, day, onFull, res = false, onResult = null, resM
                       <b>{r.name || r.sail}</b>
                       <small>
                         {r.g ? <span className="g"><GDot g={r.g} />{r.g}</span> : null}
+                        {r.our && !fKat && r.kat?.length ? <span className="k">{r.kat.map((k) => `${KAT_IN[k.c] || k.c} ${k.place}.`).join(" · ")}</span> : null}
                         <span className="c">{[r.sail, clubName(r.club)].filter(Boolean).join(" · ")}</span>
                       </small>
                     </span>

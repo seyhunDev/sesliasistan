@@ -1451,3 +1451,5 @@ button.lvd-gal { border: 0; } /* Fotoğraflar seçicisi (yeni iPhone kurulumu) *
 .sc .sc-athadd:active { transform: scale(0.94); }
 .sc-athadd svg { width: 1.1em; height: 1.1em; }
 .sc-athm { margin: -0.3em 0.15em 0.6em; font: 600 0.9em/1.3 var(--sc-c); color: rgba(255, 255, 255, 0.7); }
+/* Sonuçlar: bizim kız sporcunun kızlardaki yeri (Seyhun 2026-11-10) */
+.sc-athl .n .k { flex: none; color: #7fb0ff; font-weight: 600; }
