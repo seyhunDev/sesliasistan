@@ -3,7 +3,7 @@
 import { racePlanDates } from "./raceLinks";
 import { cleanResults } from "@/lib/raceResults";
 import { cleanFollow } from "@/lib/resultSheet";
-import { arrayUnion, collection, doc, serverTimestamp } from "firebase/firestore";
+import { arrayUnion, collection, doc, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { readCache, readServer } from "@/lib/firebase/fastRead";
 import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
@@ -352,6 +352,17 @@ export async function loadRace(orgId, id, onCache) {
   if (onCache) readCache(ref).then((s) => s?.exists() && onCache(raceOf(s)));
   return raceOf(await readServer(ref));
 }
+
+// Açık yarış sayfası yarışı dinler (Seyhun 2026-11-10 "telefondan sonuç yüklerim, iPad'de o an açıktır, anlık görebilmeliyim"):
+// yalnız sunucudaki hâl gelir (bu cihazın bekleyen yazısı ve telefondaki kopya atlanır). Okuma: açılışta 1, sonra yalnız değişince 1.
+export function watchRace(orgId, id, cb) {
+  return onSnapshot(
+    doc(col(orgId), id),
+    (snap) => !snap.metadata.hasPendingWrites && !snap.metadata.fromCache && snap.exists() && cb(raceOf(snap)),
+    () => {},
+  );
+}
+export { remoteResults } from "@/lib/raceResults";
 
 // Yalnız sonuçlar (multimedya sayfasından yükleme): yarışın diğer alanlarına dokunulmaz; bulunan yeni sporcular yarışa eklenir
 export async function saveRaceResults(orgId, id, results, addIds = []) {

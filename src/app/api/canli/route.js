@@ -43,10 +43,12 @@ async function orgOf(id) {
   return org;
 }
 
-async function fleetsOf(org, id) {
+// ver: yarışın sonuç belgeleri (results.files); yeni sonuç eklenince değişir, bellekteki liste beklemeden yenilenir (Seyhun 2026-11-10
+// "telefondan yüklerim, iPad'de anlık görebilmeliyim")
+async function fleetsOf(org, id, ver = "") {
   const k = `${org}/${id}`;
   const hit = sheetMemo.get(k);
-  if (hit && Date.now() - hit.t < 60e3) return hit.fleets;
+  if (hit && hit.ver === ver && Date.now() - hit.t < 60e3) return hit.fleets;
   const snap = await adminDb().collection("orgs").doc(org).collection("raceLive").doc(id).collection("sheets").get();
   // eskiden yeniye: aynı sınıfın yeni belgesi eskisinin yerine geçer, gruplu belgeler (Altın PDF'i + Gümüş PDF'i) birleşir
   const docs = snap.docs.map((d) => d.data()).sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
@@ -59,7 +61,7 @@ async function fleetsOf(org, id) {
     else all[i] = joinGroups(all[i], f);
   }
   const fleets = all.map((f) => ({ cls: f.cls, ...(at[f.cls] ? { at: at[f.cls] } : {}), ...(f.heads ? { heads: f.heads } : {}), rows: f.rows.map((r) => ({ name: r.name, sail: r.sail, club: r.club, grp: r.grp, ...(r.fl ? { fl: r.fl } : {}), rank: r.rank || 0, pts: r.pts ?? null, ...(r.r ? { r: r.r } : {}), ...(r.sex ? { sex: r.sex } : {}), ...(r.cat ? { cat: r.cat } : {}), ...(r.born ? { born: r.born } : {}) })) }));
-  sheetMemo.set(k, { t: Date.now(), fleets });
+  sheetMemo.set(k, { t: Date.now(), ver, fleets });
   return fleets;
 }
 
@@ -185,10 +187,11 @@ async function build(id, y) {
   if (!org) return null;
   const db = adminDb();
   const base = db.collection("orgs").doc(org);
-  const [raceSnap, liveSnap, fleets] = await Promise.all([base.collection("races").doc(id).get(), base.collection("raceLive").doc(id).get(), fleetsOf(org, id)]);
-  const en = await entriesOf(org, id).catch(() => ({ entries: [], groups: {} }));
+  const [raceSnap, liveSnap] = await Promise.all([base.collection("races").doc(id).get(), base.collection("raceLive").doc(id).get()]);
   if (!raceSnap.exists) return null;
   const r = raceSnap.data() || {};
+  const ver = (Array.isArray(r.results?.files) ? r.results.files : []).map((f) => S(f?.id, 80)).join(",");
+  const [fleets, en] = await Promise.all([fleetsOf(org, id, ver), entriesOf(org, id).catch(() => ({ entries: [], groups: {} }))]);
   const d = liveSnap.exists ? liveSnap.data() : {};
   const live = cleanLive(d);
   const timer = d.timer ? { ...pickTimer(d.timer), at: Number(d.timer.at) || 0 } : null;
