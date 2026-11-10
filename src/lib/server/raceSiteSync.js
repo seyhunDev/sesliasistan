@@ -253,6 +253,6 @@ export async function scanNew({ db, get, recordInbox, sendDevice, newRaces, newR
   if (!note) return 0;
   const follow = await db.collection("raceSite").where("on", "==", true).get();
   const owners = [...new Set([...(k.owners || []), ...follow.docs.map((d) => d.data().orgId)])].filter(Boolean);
-  for (const uid of owners) await notifyUser({ db, uid, payload: { ...note, tag: `site-new-${fresh[0].act}`, url: "/athletes/races/site" }, recordInbox, sendDevice }).catch(() => {});
+  for (const uid of owners) await notifyUser({ db, uid, payload: { ...note, tag: `site-new-${fresh[0].act}`, url: "/athletes/races/new" }, recordInbox, sendDevice }).catch(() => {});
   return fresh.length;
 }
