@@ -1,8 +1,8 @@
-Commit: daa9069 · Genel sonuçlar: 3 haneli sıra tek satırda (#1383)
-Zaman: 2026-11-10-1414 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42803030741
+Commit: 4dd4f03 · Sonuçlar her ekranda hemen; WhatsApp'tan Paylaş › Velora ile sonuç ekleme (#1384)
+Zaman: 2026-11-10-2124 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42871524303
 
-TAM TEST · 10.11.2026 13:55:00
+TAM TEST · 10.11.2026 21:05:26
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1423/1440 geçti · 17 kalan · 1162 sn
+SONUÇ: 1423/1440 geçti · 17 kalan · 1118 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4521 test”
+      ✗ “4525 test”
           beklenen: hepsi geçer
-          olan:     4469/4521 geçti
+          olan:     4473/4525 geçti
       ✗ “2 dakika başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
       ✗ “iki dakikalık yarış başlat” → ✗ ai · ön cevap: Bir bakayım. (beklenen: yol: trainVoice)
       ✗ “yarışı başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
@@ -252,7 +252,7 @@ SONUÇ: 1423/1440 geçti · 17 kalan · 1162 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 15 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 22 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
