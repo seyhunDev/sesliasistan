@@ -1,8 +1,8 @@
-Commit: 6d8f282 · Yarışlar listesi yeni tasarım; + Yarış ile federasyondan ekle (#1374)
-Zaman: 2026-11-09-2024 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42661522496
+Commit: daa9069 · Genel sonuçlar: 3 haneli sıra tek satırda (#1383)
+Zaman: 2026-11-10-1414 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/42803030741
 
-TAM TEST · 09.11.2026 20:07:52
+TAM TEST · 10.11.2026 13:55:00
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1424/1440 geçti · 16 kalan · 1003 sn
+SONUÇ: 1423/1440 geçti · 17 kalan · 1162 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4520 test”
+      ✗ “4521 test”
           beklenen: hepsi geçer
-          olan:     4468/4520 geçti
+          olan:     4469/4521 geçti
       ✗ “2 dakika başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
       ✗ “iki dakikalık yarış başlat” → ✗ ai · ön cevap: Bir bakayım. (beklenen: yol: trainVoice)
       ✗ “yarışı başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
@@ -252,7 +252,7 @@ SONUÇ: 1424/1440 geçti · 16 kalan · 1003 sn
   ✗ Hava: 2/3
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 21 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 15 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
@@ -267,8 +267,11 @@ SONUÇ: 1424/1440 geçti · 16 kalan · 1003 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 16/21
-  ✗ Yarış sayfası: 12/14
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/21
+  ✗ Yarış sayfası: 11/14
+      ✗ “yarış günü, sporcu seçili”
+          beklenen: çökmeden açılır, "Canlı ekran" görünür
+          olan:     "Canlı ekran" görünmedi
       ✗ “havada gün düğmeleri”
           beklenen: çökmeden açılır, "gün kaldı" görünür
           olan:     gün satırı yok
