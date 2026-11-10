@@ -47,8 +47,8 @@ const dayHead = (d) => (d ? d.toLocaleUpperCase("tr-TR") : "BUGÜN");
 
 // Düz liste (Seyhun 2026-11-09 "iki grup ismi gösteriliyor, minimal ve liste olarak hazırla"; örnek artifact liste-telefon.png): başlık satırı
 // SIRA · SPORCU · grup günü · NET; her sporcu tek satır: sıra, ad + dünden fark, altında yarış yuvarlakları; sağda tek grup (renkli nokta + ad),
-// NET. groups: { sporcu id: [[gün etiketi, grup]] } (RaceTrack.ourGroups; yarın açıklanınca yalnız yarın). rest: sonucu olmayan sporcular [{id, name}].
-export function ResultCards({ list, short = false, className = "", groups = null, rest = [] }) {
+// NET. title: alt bölüm adı (Kızlar; sütun başlığı yok). groups: { sporcu id: [[gün etiketi, grup]] } (RaceTrack.ourGroups; yarın açıklanınca yalnız yarın). rest: sonucu olmayan sporcular [{id, name}].
+export function ResultCards({ list, short = false, className = "", groups = null, rest = [], title = "" }) {
   if (!list?.length && !rest?.length) return null;
   const gOf = (id) => groups?.[id]?.[0] || null;
   const day = groups ? Object.values(groups).find((l) => l?.length)?.[0]?.[0] : undefined;
@@ -59,7 +59,9 @@ export function ResultCards({ list, short = false, className = "", groups = null
   };
   return (
     <div className={`rs-list ${head ? "rs-head" : ""} ${className}`}>
-      {head && (
+      {/* title: alt bölüm (KIZLAR); sütun başlığı tekrar etmez */}
+      {title && <h4 className="rs-sec">{title}</h4>}
+      {head && !title && (
         <div className="rs-cols" aria-hidden="true">
           <span>SIRA</span>
           <span>SPORCU</span>
