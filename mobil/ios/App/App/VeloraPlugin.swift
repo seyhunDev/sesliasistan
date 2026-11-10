@@ -20,6 +20,7 @@ import AlarmKit
 // - pushReady: bildirimler kurulu mu (AppDelegate, Firebase)
 // - compassStart / compassStop: kameranın baktığı pusula yönü ("compass" olayı; Parkur › Pusula), aşağıda Pusula
 // - badge: simgedeki sayı (zildeki okunmamışlar); 0 olunca bildirim merkezindeki Velora bildirimleri de kalkar
+// - sharedTake: Paylaş › Velora ile gelen dosyalar (WhatsApp'taki sonuç PDF'i, fotoğraf), alınınca silinir (Ortak/PaylasilanDosyalar.swift)
 // - watch olayı / watchTake, watchReply, watchState: Apple Watch'tan asistana iş ve tek sayaç (VeloraSaatKoprusu.swift)
 @objc(VeloraPlugin)
 public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -47,6 +48,7 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "badge", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "compassStart", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "compassStop", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "sharedTake", returnType: CAPPluginReturnPromise),
     ]
 
     override public func load() {
@@ -58,6 +60,23 @@ public class VeloraPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func saatIstegi() {
         guard hasListeners("watch") else { return }
         for json in SaatKoprusu.shared.al() { notifyListeners("watch", data: ["json": json]) }
+    }
+
+    // Paylaşılan dosyalar: [{ name, type, data (base64) }], eskiden yeniye; verilen dosya klasörden silinir
+    @objc func sharedTake(_ call: CAPPluginCall) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            var list: [[String: Any]] = []
+            for u in Paylasilan.hepsi() {
+                defer { try? FileManager.default.removeItem(at: u) }
+                guard let veri = try? Data(contentsOf: u) else { continue }
+                var ad = u.lastPathComponent
+                if let i = ad.firstIndex(of: "-"), ad[..<i].allSatisfy(\.isNumber) { ad = String(ad[ad.index(after: i)...]) }
+                let uz = u.pathExtension.lowercased()
+                let tur = uz == "pdf" ? "application/pdf" : uz == "png" ? "image/png" : uz == "heic" ? "image/heic" : "image/jpeg"
+                list.append(["name": ad, "type": tur, "data": veri.base64EncodedString()])
+            }
+            call.resolve(["list": list])
+        }
     }
 
     @objc func watchTake(_ call: CAPPluginCall) {

@@ -178,3 +178,22 @@ export function startCompass(fn) {
     p.compassStop?.().catch(() => {});
   };
 }
+
+// Paylaş › Velora ile gelen dosyalar (WhatsApp'taki sonuç PDF'i ya da fotoğrafı; VeloraPaylas eki, Seyhun 2026-11-10).
+// Alınan dosyalar telefondan silinir. Bu parça olmadan kurulmuş eski uygulamada ve tarayıcıda boş liste.
+export const hasShare = () => typeof plugin()?.sharedTake === "function";
+export async function takeShared() {
+  const p = plugin();
+  if (typeof p?.sharedTake !== "function") return [];
+  try {
+    const { list = [] } = (await p.sharedTake()) || {};
+    return list.map((x) => {
+      const bin = atob(x.data || "");
+      const buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      return new File([buf], x.name || "sonuc.pdf", { type: x.type || "application/pdf" });
+    });
+  } catch {
+    return [];
+  }
+}

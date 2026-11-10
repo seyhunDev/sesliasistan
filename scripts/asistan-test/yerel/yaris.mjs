@@ -1204,3 +1204,22 @@ group("Tekne takibi")([
     }, ok: ([a, b, c, d]) => a === null && Object.keys(b).join() === "d1,p1" && JSON.stringify(c) === "{}" && d.d1 === 10e6 }],
   ]);
 }
+
+// Sonuç her ekranda hemen (Seyhun 2026-11-10 "telefondan yüklerim, iPad'de o an açıktır, anlık görebilmeliyim") ve
+// Paylaş › Velora (WhatsApp'taki sonuç PDF'i ya da fotoğrafı yarışa eklenir)
+{
+  const RR = await import("@/lib/raceResults");
+  const src = (f) => readFileSync(new URL(`../../../src/${f}`, import.meta.url), "utf8");
+  const races = [
+    { id: "gel", startDate: "2026-12-20" },
+    { id: "yak", startDate: "2026-11-20" },
+    { id: "sur", startDate: "2026-11-08", endDate: "2026-11-11" },
+    { id: "eski", startDate: "2026-10-01", endDate: "2026-10-03" },
+  ];
+  group("Sonuç anında")([
+    ["başka cihazın sonucu", { desc: "sonuç değişince alınır, sporcular birleşir; aynıysa bir şey yapılmaz", fn: () => [RR.remoteResults({ results: { rows: {} }, athleteIds: ["a"] }, { results: { rows: { b: { place: 3 } } }, athleteIds: ["b"] }), RR.remoteResults({ results: { rows: {} } }, { results: { rows: {} } })], ok: ([a, b]) => a.athleteIds.join() === "a,b" && a.results.rows.b.place === 3 && b === null }],
+    ["sayfalar dinler", { desc: "yarış sayfası ve Genel sonuçlar watchRace; genel liste belge değişince yeniden okunur; canlı ekran yeni belgede beklemez", fn: () => [/watchRace\(orgId, rid/.test(src("app/(app)/athletes/races/[id]/page.jsx")), /watchRace\(profile\.orgId, rid/.test(src("app/(app)/athletes/races/[id]/sonuclar/page.jsx")), /\[orgId, race\.id, filesKey\]/.test(src("features/raceMedia/ResultsTab.jsx")), /hit\.ver === ver/.test(src("app/api/canli/route.js"))], ok: (a) => a.every(Boolean) }],
+    ["paylaşılan sonucun yarışı", { desc: "bugün süren; yoksa son başlamış; o da yoksa en yakın yaklaşan", fn: () => [RR.defaultRace(races, "2026-11-10")?.id, RR.defaultRace(races, "2026-11-15")?.id, RR.defaultRace(races.slice(0, 2), "2026-11-15")?.id, RR.defaultRace([], "2026-11-15")], ok: ([a, b, c, d]) => a === "sur" && b === "sur" && c === "yak" && d === null }],
+    ["paylaşma eki bağlı", { desc: "velora://paylas → share → SharedResults; ortak akış addResults", fn: () => [/case "paylas": koy\("share"\)/.test(readFileSync(new URL("../../../mobil/ios/App/Ortak/BasKonusIntent.swift", import.meta.url), "utf8")), /what === "share"/.test(src("features/ios/IosBridge.jsx")), /addResults\(\{ orgId, race: cur, athletes, file \}\)/.test(src("features/ios/SharedResults.jsx")), /VeloraPaylas\.appex in Embed Foundation Extensions/.test(readFileSync(new URL("../../../mobil/ios/App/App.xcodeproj/project.pbxproj", import.meta.url), "utf8"))], ok: (a) => a.every(Boolean) }],
+  ]);
+}

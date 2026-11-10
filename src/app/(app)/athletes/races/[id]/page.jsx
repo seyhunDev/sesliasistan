@@ -16,7 +16,7 @@ import { RaceEditor } from "@/features/athletes/RaceEditor";
 import { placeText } from "@/features/athletes/RaceList";
 import { Icon } from "@/components/ui/Icon";
 import { coachStart } from "@/features/athletes/raceDocs";
-import { addRacePlan, freshRace, loadRace, loadRaces, racesNow, saveRace, saveRaceResults } from "@/features/athletes/races";
+import { addRacePlan, freshRace, loadRace, loadRaces, racesNow, remoteResults, saveRace, saveRaceResults, watchRace } from "@/features/athletes/races";
 import { loadShared, loadSharedList, pullSheets, shareRace } from "@/features/athletes/sharedRaces";
 import { fromShared, newSheets, pickable } from "@/lib/sharedRace";
 import { stampResults } from "@/lib/raceDay";
@@ -147,6 +147,19 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   useEffect(() => {
     raceNow.current = race;
   }, [race]);
+  // Başka cihazdan (telefon, Yayın, canlı ekran "+") eklenen sonuç sayfa açıkken hemen görünür (Seyhun 2026-11-10); yalnız sonuçlar ve
+  // sporcular alınır, sayfadaki diğer değişikliklere dokunulmaz
+  useEffect(() => {
+    if (!rid) return;
+    return watchRace(orgId, rid, (got) => {
+      const patch = remoteResults(raceNow.current, got);
+      if (!patch) return;
+      const next = { ...raceNow.current, ...patch };
+      raceNow.current = next;
+      setRace(next);
+      window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: next }));
+    });
+  }, [orgId, rid]);
   // Sonuç belgesi (siteden ya da elle, Takip › Sonuçlar › Sonuç yükle; Seyhun 2026-11-08 "sisteme girilmediyse manuel yükleyebilmeliyim")
   const importFile = useCallback(
     async (file, replace = "") => {

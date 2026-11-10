@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { loadRace } from "@/features/athletes/races";
+import { loadRace, remoteResults, watchRace } from "@/features/athletes/races";
 import { isActive, loadAthletes } from "@/features/athletes/data";
 import { ResultsTab } from "@/features/raceMedia/ResultsTab";
 
@@ -28,6 +28,12 @@ export default function Page() {
       on = false;
     };
   }, [profile?.orgId, id]);
+  // Başka cihazdan eklenen sonuç sayfa açıkken hemen görünür (Seyhun 2026-11-10 "iPad'de anlık görebilmeliyim")
+  const rid = race?.id || "";
+  useEffect(() => {
+    if (!profile?.orgId || !rid) return;
+    return watchRace(profile.orgId, rid, (got) => setRace((p) => (remoteResults(p, got) ? { ...p, ...remoteResults(p, got), follow: got.follow } : p)));
+  }, [profile?.orgId, rid]);
   if (!isOwner || !profile?.orgId || !user) return null;
   const ours = athletes.filter((a) => race?.athleteIds?.includes(a.id));
   return (

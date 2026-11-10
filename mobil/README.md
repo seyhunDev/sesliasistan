@@ -78,6 +78,10 @@ değişince Xcode'dan yeniden kurulur. Ad "Velora", paket `com.seyhunyildiz.sesl
   - GitHub Actions "iPhone derleme" bu klasör değişince imzasız simülatör derlemesi yapar.
   - Apple Watch: `VeloraSaat` hedefi (watchOS 10+, uygulamanın içine gömülü), telefonda `App/VeloraSaatKoprusu.swift`,
     web `src/features/ios/WatchBridge.jsx`. Team ona da seçilir.
+  - Paylaş › Velora: `VeloraPaylas` hedefi (share extension, iOS 15+). WhatsApp'taki PDF ya da fotoğraf ortak klasöre
+    (`Ortak/PaylasilanDosyalar.swift`, App Group › Paylasilan) konur, `velora://paylas` Velora'yı açar; sayfa
+    `sharedTake` ile alır (dosya silinir) ve "Sonuç ekle" penceresi çıkar (`src/features/ios/SharedResults.jsx`).
+    Team ona da seçilir; App Groups'ta `group.com.seyhunyildiz.sesliasistan` işaretli olmalı.
   - Bildirimler: Firebase Cloud Messaging (Android'deki gibi; sunucu aynı). `AppDelegate.swift` Apple'ın anahtarını
     Firebase'e verir, sayfaya FCM anahtarı gider (`src/lib/nativePush.js`). Kurulum bir kez: Firebase konsolu › Project
     settings › Add app › iOS (`com.seyhunyildiz.sesliasistan`), `GoogleService-Info.plist` indirilip `ios/App/App/`
