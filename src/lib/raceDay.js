@@ -60,6 +60,15 @@ export function ourPlaces(res, athletes) {
     .sort((x, y) => x.place - y.place);
 }
 
+// Bizim kızlar, kızlar sırasıyla (Seyhun 2026-11-10 "kızları ayrı gösteriyorduk; bizim kızın kızlardaki yeri gösterilmeli"): ourPlaces
+// listesinden kızlar sırası (gp/gn, resultSheet) olanlar; place = kızlardaki sıra, row.n = kız sayısı. Ortak: yarış detayı ve canlı ekran.
+export function girlPlaces(places) {
+  return (places || [])
+    .filter((x) => x.row?.gp)
+    .map((x) => ({ ...x, place: x.row.gp, row: { ...x.row, n: x.row.gn || "" }, move: 0 }))
+    .sort((x, y) => x.place - y.place);
+}
+
 // Ana sayfadaki yarış satırının alt yazısı (Seyhun 2026-10-30: "ana sayfadan süreyi kaldıralım, sadece tıklama olsun"): günün evresine göre
 // tek kısa satır. timer: bu yarışın sayacı çalışıyorsa "Starta 03:12" (bileşen verir); athletes: [{ id, studentName }] (yarıştakiler).
 //   race    → sayaç ya da "2. yarış sürüyor · 13:05" ya da "3 yarış bitti" ya da "İlk start 11:00"

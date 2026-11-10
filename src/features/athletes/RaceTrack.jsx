@@ -8,6 +8,7 @@
 // Talimatlar (talimat, ek talimat, program). Görülmemiş belge "Yeni"; bildirim (sunucu notifyDocs) bu sekmeyi açar (?sec=site).
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { ListHead, Tag } from "@/components/ui/Row";
 import { todayStr } from "@/lib/utils/format";
@@ -15,7 +16,7 @@ import { windName } from "@/features/weather/weather";
 import { loadLive } from "./raceLiveStore";
 import { loadRaceDay } from "./raceWeather";
 import { Icon } from "@/components/ui/Icon";
-import { ourPlaces } from "@/lib/raceDay";
+import { girlPlaces, ourPlaces } from "@/lib/raceDay";
 import { changedRows, cleanSchedule, currentAmend, kindLabel, latestNews, resultState, rowKey, version } from "@/lib/siteDocs";
 import { GROUP_PICK, groupColor } from "@/lib/roundScore";
 import { ResultCards, ResultsAdd } from "./ResultCards";
@@ -224,6 +225,7 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
   const close = useCallback(() => setView(null), [setView]);
   const g = trackGroups(docs);
   const places = ourPlaces(race.results, chosen);
+  const girls = girlPlaces(places);
   const box = "overflow-hidden rounded-[1.25rem] border border-line bg-card px-3.5";
   const empty = (t) => <p className="py-3.5 text-[0.9375rem] text-mut">{docs ? t : "Yükleniyor…"}</p>;
   // Belgeler tek kartta (sade, 2026-11-08): talimat, ek talimat, program, duyuru, grup belgesi; yeni gelenler ve son üçü açık, gerisi "Diğer N belge"
@@ -294,6 +296,8 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
           <ListHead title={["Sporcularımız", state, raceN && `${raceN} yarış`].filter(Boolean).join(" · ")} action={<ResultsAdd onFile={onResultsFile} />} />
           <div className="tk-box">
             <ResultCards list={places} groups={grpOf} rest={noRes.map((a) => ({ id: a.id, name: a.studentName }))} />
+            {/* Kızlar ayrı (Seyhun 2026-11-10): bizim kızların kızlardaki sırası */}
+            {girls.length > 0 && <ResultCards list={girls} groups={grpOf} title="KIZLAR" />}
             {!places.length && !noRes.length && !g.results.length && empty("Henüz sonuç yok")}
             {g.results.length > 0 && (
               <button type="button" aria-expanded={resOpen} onClick={() => setResOpen((v) => !v)} data-press="row" className={row}>
@@ -303,6 +307,13 @@ export function RaceTrack({ orgId, race, chosen = [], more = null, onResultsFile
               </button>
             )}
             {resOpen && <DocRows list={g.results} onOpen={setView} />}
+            {/* Genel sonuçlar (Genel · Kızlar · Junior süzgeçli sonuç sayfası) */}
+            {(places.length > 0 || g.results.length > 0) && (
+              <Link href={`/athletes/races/${race.id}/sonuclar`} data-press="row" className={`${row} font-semibold text-acc`}>
+                <span className="min-w-0 flex-1">Genel sonuçlar</span>
+                <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+              </Link>
+            )}
           </div>
         </section>
         <div>
