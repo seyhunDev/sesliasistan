@@ -51,13 +51,13 @@ function Table({ title, count, children }) {
   );
 }
 
-// Satır: büyük genel sıra · ad (yıl) / yelken no · kulüp / kategori sıraları · net (· ☆)
+// Satır (3 haneli sıra tek satırda, biraz küçük; Seyhun 2026-11-10 "3 haneli olunca alta sarkıyor"): büyük genel sıra · ad (yıl) / yelken no · kulüp / kategori sıraları · net (· ☆)
 // move: dünden fark (Bizimkiler, ↑2 / ↓1; Seyhun 2026-10-30 Sonuç sekmesi)
 function Row({ pos, name, born, sail, club, ranks = [], pts, mine, star, followed, onStar, move = null }) {
   return (
     <li className={`relative flex items-start gap-2.5 py-2.5 pl-2.5 pr-3 ${mine ? "bg-accbg/60" : ""}`}>
       {mine && <i className="absolute inset-y-2 left-0 w-1 rounded-r bg-acc" />}
-      <span className={`w-9 shrink-0 text-center text-[1.375rem] font-extrabold leading-tight tabular-nums ${pos && pos <= 3 ? "text-acc" : ""}`}>{pos || "–"}</span>
+      <span className={`w-11 shrink-0 whitespace-nowrap text-center font-extrabold leading-tight tracking-[-0.02em] tabular-nums ${pos >= 100 ? "text-[1.125rem] leading-[1.75rem]" : "text-[1.375rem]"} ${pos && pos <= 3 ? "text-acc" : ""}`}>{pos || "–"}</span>
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline gap-1">
           <b className="min-w-0 truncate text-[0.9375rem] font-semibold">{name}</b>
