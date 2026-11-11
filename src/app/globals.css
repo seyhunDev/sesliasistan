@@ -1543,3 +1543,10 @@ main.rzl .rz-chev { border-color: rgba(255, 255, 255, .4); }
 /* sonuç listesi lacivert üstte (sitesi bağlı olmayan yarışın yarış günü, RaceDayTop) */
 .ck .rs-row { border-color: rgba(255, 255, 255, .12); }
 .ck :is(.rs-pl small, .rs-net small, .rs-rs i.rs-drop) { color: rgba(255, 255, 255, .62); }
+
+/* Süren yarış satırı güncellenince (RaceLive): kısa kayma ve küçük "Güncellendi" işareti */
+@keyframes rl-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes rl-out { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.rl-upd { animation: rl-in .45s cubic-bezier(.22, .8, .24, 1); }
+.rl-chip { animation: rl-out 3s ease forwards; }
+@media (prefers-reduced-motion: reduce) { .rl-upd { animation: none; } }
