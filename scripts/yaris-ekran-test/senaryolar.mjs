@@ -336,6 +336,38 @@ export async function run(server, log = () => {}) {
       const ok = day >= 1 && /yarış/.test(gen) && vid && crs;
       return [ok, `bugün ${day} satır · genel ${gen.includes("SPORCU") ? "tablo" : "boş"} · Video ${vid ? "açıldı" : "yok"} · Parkur ${crs ? "türlerle" : "yok"}`];
     });
+    // iPad (Seyhun 2026-11-11 "A · Üç sütun"): yatayda Start | Sporcular (startan sonra Bitiren kim?) | Sıralama aynı anda; dikte de üçü var.
+    // Antrenman günlüğü de iPad'de üç sütun (ay · günlük · yazılmayanlar)
+    await okPage("Antrenman", "iPad: üç sütun", "/training/day?id=t1", "Start ver", async () => {
+      await page.setViewportSize({ width: 1180, height: 820 });
+      await page.evaluate(() => localStorage.setItem("sa-sayac", JSON.stringify({ dur: 300, end: Date.now() - 60e3, left: null, mode: "start", rid: "y3", own: "/training/day?id=t1", where: "Optimist antrenmanı", at: Date.now() })));
+      await page.goto(page.url());
+      const tile = page.locator(".tw-ath .tl-tiles button", { hasText: "Deniz" });
+      const fin = await tile.waitFor({ timeout: 60000 }).then(() => true, () => false);
+      await page.waitForTimeout(1500);
+      const cols = await page.locator(".tw-grid > *").count();
+      const rank = await page.locator(".tw-rank .tl-tb tbody tr").count();
+      await foto("ipad-bitiren");
+      await tile.click().catch(() => {});
+      const back = await page.getByRole("button", { name: /^Start ver/ }).waitFor({ timeout: 20000 }).then(() => true, () => false);
+      await page.waitForTimeout(800);
+      await foto("ipad-hazir");
+      await page.locator(".tw-hb", { hasText: "Parkur" }).click().catch(() => {});
+      const crs = await page.getByRole("button", { name: "Trapez parkur" }).waitFor({ timeout: 20000 }).then(() => true, () => false);
+      await foto("ipad-parkur");
+      await page.locator(".tw-x").click().catch(() => {});
+      await page.setViewportSize({ width: 820, height: 1180 });
+      await page.waitForTimeout(800);
+      await foto("ipad-dik");
+      await page.setViewportSize({ width: 1180, height: 820 });
+      await page.goto(page.url().replace(/\/training\/day.*/, "/training"));
+      const log = await page.locator(".tw-log").waitFor({ timeout: 60000 }).then(() => true, () => false);
+      await page.waitForTimeout(800);
+      await foto("ipad-gunluk");
+      await page.setViewportSize({ width: 390, height: 844 });
+      const ok = fin && cols === 3 && rank >= 1 && back && crs && log;
+      return [ok, `bitiren ${fin ? "ortada" : "yok"} · ${cols} sütun · sıralama ${rank} satır · dokununca ${back ? "Start ver" : "değişmedi"} · Parkur ${crs ? "açıldı" : "yok"} · günlük ${log ? "üç sütun" : "yok"}`];
+    });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
     // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok
     await okPage("Yarış sayfası", "tek ⋯ menüsü", "/athletes/races/r1/media", "Start sayacı", async () => {

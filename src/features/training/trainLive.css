@@ -104,3 +104,103 @@
 @media (min-width: 40rem) {
   .tl-ck, .tl-bar, .tl-pn { left: 50%; right: auto; width: min(34rem, calc(100% - 1.2rem)); transform: translateX(-50%); }
 }
+
+/* iPad ve Mac (≥48rem; Seyhun 2026-11-11 "A · Üç sütun", örnek /mnt/project-files/antrenman-ipad/ornekler.html): ana sayfadaki iPad
+   "Zaman şeridi" dili. Lacivert, ince çizgili paneller, rakamlar Space Grotesk. Yatayda Start + Rüzgâr | Sporcular | Sıralama;
+   dikte Start ve Rüzgâr üstte yan yana, altında Sporcular ve Sıralama. Paneller içinde kayar, sayfa tek ekran. */
+.tw { --sc-c: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; --tl-b: var(--sc-c); --n: var(--font-num), ui-monospace, monospace;
+  position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; gap: 1rem; overflow: hidden; color: #e9effc;
+  padding: calc(1rem + env(safe-area-inset-top)) 1.5rem calc(1.25rem + env(safe-area-inset-bottom));
+  background: radial-gradient(120% 90% at 70% 0%, #0e2347 0%, #0b1a33 45%, #060e1d 100%); }
+.tw-hd { display: flex; align-items: center; gap: 0.625rem; min-height: 3rem; flex: none; }
+.tw-back { display: grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; border-radius: 99px; background: rgba(255, 255, 255, .07); border: 1px solid #2a4472; color: #fff; }
+.tw-back:active { transform: scale(.94); }
+.tw-hd h1 { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 0.75rem; margin: 0 0 0 0.25rem; }
+.tw-hd h1 b { font-size: 1.625rem; font-weight: 600; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tw-hd h1 small { font-size: 0.9rem; font-weight: 600; color: #7d90b5; white-space: nowrap; }
+.tw-hb { flex: none; display: flex; align-items: center; gap: 0.4rem; height: 2.5rem; padding: 0 0.9rem; border-radius: 0.75rem; background: rgba(255, 255, 255, .07); border: 1px solid #2a4472; color: #fff; font-weight: 650; font-size: 0.875rem; white-space: nowrap; transition: transform .12s; }
+.tw-hb b { font-family: var(--n); font-weight: 500; }
+.tw-hb[aria-pressed="true"] { background: #3d7bff; border-color: #3d7bff; }
+.tw-hb:active { transform: scale(.96); }
+.tw-w { background: #fff; color: #0b1a33; border-color: #fff; }
+.tw-grid { flex: 1; min-height: 0; display: grid; gap: 1rem; grid-template-columns: 21rem minmax(0, 1fr) 18rem; }
+.tw-grid.solo { grid-template-columns: minmax(0, 26rem); }
+.tw-left { display: flex; flex-direction: column; gap: 1rem; min-height: 0; }
+.tw-pn { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  background: rgba(255, 255, 255, .028); border: 1px solid #1d3256; border-radius: 1.4rem; padding: 1rem 1.125rem; text-align: left; color: inherit; }
+.tw-start { flex: 1; }
+.tw-wind { flex: none; overflow: hidden; padding-bottom: 0.5rem; }
+.tw-pt { display: flex; align-items: center; gap: 0.5rem; flex: none; margin-bottom: 0.625rem; font-size: 0.75rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: #7d90b5; }
+.tw-pt em { font-style: normal; text-transform: none; letter-spacing: 0; color: #4f6389; font-weight: 600; }
+.tw-wind .tw-pt em { color: #cfdcf5; }
+.tw-big { font-family: var(--n); font-size: 4.5rem; font-weight: 500; line-height: 1; letter-spacing: -.02em; color: #fff; white-space: nowrap; }
+.tw-big.cd { color: #8fb3ff; }
+.tw-big.red { color: #ff6b6b; }
+.tw-sub { margin: 0.4rem 0 0; font-size: 0.875rem; font-weight: 600; color: #7d90b5; }
+.tw-ctl { margin-top: 0.875rem; }
+.tw-ctl .tl-hd, .tw-ctl .tl-no { display: none; }
+.tw .tl-lb { margin: 0.75rem 0 0.4rem; font: 650 0.6875rem/1 var(--sc-c); letter-spacing: .06em; color: #7d90b5; }
+.tw .tl-lb:first-child { margin-top: 0; }
+.tw .tl-chips button { height: 2.9rem; background: rgba(255, 255, 255, .03); box-shadow: inset 0 0 0 1px #2a4472; font: 500 1.2rem/1 var(--n); }
+.tw .tl-chips button small { font: 600 0.7rem/1 var(--sc-c); color: #7d90b5; }
+.tw .tl-chips button.on { background: #fff; box-shadow: none; }
+.tw .tl-chips button.on small { color: #4a5a70; }
+.tw .tl-box { background: none; box-shadow: none; border-top: 1px solid #1d3256; border-radius: 0; }
+.tw .tl-row { padding: 0.7rem 0; border-top-color: #1d3256; }
+.tw .tl-row:first-child { border-top: 0; }
+.tw .tl-row > b { width: 4rem; font: 650 0.6875rem/1 var(--sc-c); letter-spacing: .06em; }
+.tw .tl-row > span { font: 600 0.9375rem/1.2 var(--sc-c); }
+.tw .tl-row > span small { font-size: 0.75rem; color: #7d90b5; }
+.tw .tl-row > i { font: 650 0.875rem/1 var(--sc-c); color: #8fb3ff; }
+.tw .tl-go { height: 3.5rem; margin-top: 0.75rem; border-radius: 0.9rem; background: #3d7bff; box-shadow: none; font: 650 1.15rem/1 var(--sc-c); letter-spacing: 0; }
+.tw .tl-go small { font: 500 0.95rem/1 var(--n); }
+.tw .tl-foot { flex-wrap: wrap; margin-top: 0; }
+.tw .tl-foot button { flex: 1 1 40%; height: 2.9rem; border-radius: 0.8rem; background: rgba(255, 255, 255, .07); box-shadow: inset 0 0 0 1px #2a4472; font: 650 0.9375rem/1 var(--sc-c); }
+.tw .tl-foot button.p { background: #3d7bff; box-shadow: none; }
+.tw .tl-foot button.rec { background: #e5484d; box-shadow: none; }
+.tw-ctl .tl-foot button:last-child:nth-child(3) { flex-basis: 100%; height: 3.3rem; }
+.tw .tl-msg { color: #cfdcf5; }
+.tw-tiles, .tw .tl-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.5rem; align-content: start; }
+.tw-tile { display: flex; align-items: center; gap: 0.5rem; min-width: 0; height: 3.5rem; padding: 0 0.75rem; border-radius: 0.875rem; border: 1px solid #2a4472; background: rgba(255, 255, 255, .035); }
+.tw-tile b { flex: 1; min-width: 0; font-weight: 600; font-size: 0.9375rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tw-tile small { font-size: 0.8rem; color: #7d90b5; }
+.tw-tile.off { opacity: .45; border-style: dashed; }
+.tw .tl-tiles button { height: 3.5rem; border-radius: 0.875rem; background: rgba(255, 255, 255, .035); box-shadow: inset 0 0 0 1px #2a4472; font: 600 0.9375rem/1.1 var(--sc-c); }
+.tw .tl-tiles button.on { background: rgba(61, 123, 255, .16); box-shadow: inset 0 0 0 1px #3d7bff; color: #fff; }
+.tw .tl-tiles button.on small { color: #a9b8d6; }
+.tw .tl-tiles button > span { padding-right: 2rem; }
+.tw .tl-tiles button i { top: 50%; right: 0.6rem; transform: translateY(-50%); min-width: 1.75rem; height: 1.75rem; background: #3d7bff; font: 500 0.95rem/1 var(--n); }
+.tw .tl-tabs button { height: 2.1rem; padding: 0 0.8rem; border-radius: 0.6rem; background: transparent; color: #7d90b5; font: 650 0.8125rem/1 var(--sc-c); }
+.tw .tl-tabs button.on { background: #fff; color: #0b1a33; }
+.tw .tl-cnt button { height: 1.75rem; font: 650 0.75rem/1 var(--sc-c); }
+.tw .tl-sub { color: #7d90b5; }
+.tw .tl-tb th { position: static; background: none; font: 650 0.6875rem/1 var(--sc-c); letter-spacing: .06em; color: #7d90b5; }
+.tw .tl-tb td { padding: 0.55rem 0.25rem; border-top-color: #1d3256; font: 600 0.9rem/1.15 var(--sc-c); }
+.tw .tl-tb td.n, .tw .tl-tb td:last-child, .tw .tl-tb td.c { font-family: var(--n); font-weight: 500; }
+.tw .tl-tb td:last-child { font-size: 1rem; }
+.tw .tl-tb td small { font: 500 0.7rem/1.2 var(--n); color: #7d90b5; }
+.tw .tl-tb tr:nth-child(-n + 3) td.n { color: #8fb3ff; }
+.tw-rank { padding-bottom: 4.5rem; }
+.tw-ask { position: fixed; z-index: 5; right: 2.6rem; bottom: calc(1.6rem + env(safe-area-inset-bottom)); width: 3.25rem; height: 2rem; }
+.tw-pop { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 1.5rem; background: rgba(4, 10, 22, .6); }
+.tw-sheet { position: relative; display: flex; flex-direction: column; width: min(46rem, 100%); max-height: 100%; border-radius: 1.4rem; background: #0c1728; border: 1px solid #2a4472; overflow: hidden; }
+.tw-x { position: absolute; z-index: 2; right: 0.75rem; top: 0.75rem; height: 2.25rem; }
+.tw-media { flex: none; aspect-ratio: 16 / 9; background: #000; }
+.tw-media video, .tw-media iframe { width: 100%; height: 100%; border: 0; object-fit: contain; }
+.tw-sheet .tl-in { padding-top: 1rem; }
+/* Dik iPad (sol menü yok, 48–64rem): Start ve Rüzgâr üstte yan yana, altında Sporcular ve Sıralama */
+@media (max-width: 63.99rem) {
+  .tw { padding-left: 1.25rem; padding-right: 1.25rem; }
+  .tw-grid { grid-template-columns: minmax(0, 1fr) 17rem; grid-template-rows: auto minmax(0, 1fr); }
+  .tw-left { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tw-grid.solo .tw-left { grid-template-columns: minmax(0, 1fr); }
+  .tw-wind { align-self: stretch; }
+  .tw-hd h1 small { display: none; }
+}
+/* Antrenman günlüğü (/training) geniş ekranda: solda ay ve konular, ortada günlük, sağda yazılmayanlar */
+.tw-grid.tw-log { grid-template-columns: 19rem minmax(0, 1fr) 18rem; }
+.tw-log .tw-pn > button:first-of-type, .tw-log .tw-pn > div:first-of-type { border-top: 0; }
+@media (max-width: 63.99rem) {
+  .tw-grid.tw-log { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+}
+.tw .btn-round { background: rgba(255, 255, 255, .07); border: 1px solid #2a4472; color: #fff; }
