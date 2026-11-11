@@ -79,3 +79,17 @@ export function withResults(list, ids, res) {
     .sort((a, b) => a._p - b._p)
     .map(({ _p, ...a }) => a);
 }
+
+// Başka cihazdan gelen sonuç değişikliği (açık yarış sayfası yarışı dinler, races.js watchRace; Seyhun 2026-11-10): sonuçlar farklıysa
+// { results, athleteIds } (sporcular birleşir, sayfada yeni eklenen silinmez), aynıysa null
+export function remoteResults(cur, got) {
+  if (!cur || !got || JSON.stringify(cur.results || null) === JSON.stringify(got.results || null)) return null;
+  return { results: got.results, athleteIds: [...new Set([...(cur.athleteIds || []), ...(got.athleteIds || [])])] };
+}
+
+// Paylaş › Velora ile gelen sonuçta seçili gelen yarış (features/ios/SharedResults.jsx): bugün süren; yoksa en son başlamış olan;
+// o da yoksa en yakın yaklaşan. list yeniden eskiye sıralı (races.js loadRaces)
+export function defaultRace(list, today) {
+  const on = list.find((r) => r.startDate && r.startDate <= today && today <= (r.endDate || r.startDate));
+  return on || list.find((r) => r.startDate && r.startDate <= today) || list.filter((r) => r.startDate > today).at(-1) || list[0] || null;
+}

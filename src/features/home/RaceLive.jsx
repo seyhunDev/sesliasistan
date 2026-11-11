@@ -29,12 +29,26 @@ export function RaceLive({ open }) {
   return <Line id={r.id} orgId={profile?.orgId} title={r.title} />;
 }
 
+// Kart açılışta son bilinen satırla hemen çizilir (Seyhun 2026-11-11 "her defasında yenileniyor, yer bir anda yükseliyor alçalıyor"): son durum yarış ve gün için
+// cihazda saklanır (sa-rl:<yarış>); veri gelince satır değiştiyse kısa bir kayma animasyonu ve küçük "Güncellendi" işareti. Satır yeri hep ayrılır, kart zıplamaz.
+const rlKey = (id) => `sa-rl:${id}`;
+function readRl(id, today) {
+  try {
+    const c = JSON.parse(localStorage.getItem(rlKey(id)) || "null");
+    return c && c.d === today ? c : null;
+  } catch {
+    return null;
+  }
+}
+
 function Line({ id, orgId, title }) {
   const own = `/athletes/races/${id}/yayin`; // sayaç yayın sayfasının (multimedya kalktı, 2026-11-01)
   const [race, setRace] = useState(null);
   const [live, setLive] = useState(() => cleanLive({}));
   const [kids, setKids] = useState([]);
   const [clock, setClock] = useState(() => new Date());
+  const [cache] = useState(() => readRl(id, todayStr()));
+  const [first] = useState(cache?.base ?? null);
   useEffect(() => {
     if (!orgId) return;
     let on = true;
@@ -83,8 +97,16 @@ function Line({ id, orgId, title }) {
   const made = race?.createdAt?.toDate?.() || (race?.createdAt?.seconds ? new Date(race.createdAt.seconds * 1000) : null);
   const fresh = !!made && made.toLocaleDateString("sv-SE") === today;
   const over = racePhase({ r: race || { startDate: today }, today, now: clock, starts: live.starts }) === "done" && !(ours && (running || up)) && !fresh;
-  if (over) return null;
-  const sub = race ? raceLine({ r: race, today: todayStr(), now: clock, starts: live.starts, athletes: kids, timer }) : timer;
+  const base = race ? raceLine({ r: race, today, now: clock, starts: live.starts, athletes: kids, timer: "" }) : null;
+  useEffect(() => {
+    if (!race) return;
+    try {
+      localStorage.setItem(rlKey(id), JSON.stringify({ d: today, base, over }));
+    } catch {}
+  }, [race, id, today, base, over]);
+  if (race ? over : cache?.over) return null;
+  const sub = race ? raceLine({ r: race, today, now: clock, starts: live.starts, athletes: kids, timer }) : timer || cache?.base || "";
+  const upd = race && first != null && base !== first;
   return (
     <Link href={`/athletes/races/${id}`} data-press aria-label="Süren yarış" className="mt-3 grid gap-0.5 rounded-[1.125rem] bg-[#0b1a33] px-3.5 py-3 text-white">
       <span className="flex items-center gap-2 text-[0.75rem] font-bold tracking-[.04em] text-[#ff8f8f]">
@@ -93,7 +115,10 @@ function Line({ id, orgId, title }) {
         <span className="ml-auto rounded-full bg-white/15 px-2.5 py-0.5 text-[0.75rem] font-semibold tracking-normal text-white">Aç ›</span>
       </span>
       <b className="block truncate text-[1.0625rem] font-semibold">{title}</b>
-      {sub && <small className="block truncate text-[0.8125rem] tabular-nums text-white/80">{sub}</small>}
+      <small key={base ?? "x"} data-race-sub={upd ? "upd" : undefined} className={`flex min-h-[1.25rem] items-center gap-2 truncate text-[0.8125rem] tabular-nums text-white/80 ${upd ? "rl-upd" : ""}`}>
+        <span className="min-w-0 truncate">{sub}</span>
+        {upd && <em className="rl-chip shrink-0 rounded-full bg-white/15 px-1.5 text-[0.6875rem] not-italic text-white/90">Güncellendi</em>}
+      </small>
     </Link>
   );
 }

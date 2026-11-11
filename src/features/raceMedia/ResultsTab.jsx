@@ -119,16 +119,18 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
     wait.current = setTimeout(() => saveRaceResults(orgId, race.id, results, add).catch(() => toast("Sonuç kaydedilemedi")), add.length ? 0 : 800);
   };
   useEffect(() => () => clearTimeout(wait.current), []);
+  // Genel liste: sonuç belgeleri değişince (başka cihazdan yeni sonuç, sayfa açıkken; Seyhun 2026-11-10) yeniden okunur
+  const filesKey = (race.results?.files || []).map((f) => f.id).join();
   useEffect(() => {
     let on = true;
     loadSheets(orgId, race.id).then(
       (l) => on && setSheets(l),
-      () => on && setSheets([]),
+      () => on && setSheets((p) => p || []),
     );
     return () => {
       on = false;
     };
-  }, [orgId, race.id]);
+  }, [orgId, race.id, filesKey]);
 
   const upload = async (file) => {
     if (!file || busy) return;

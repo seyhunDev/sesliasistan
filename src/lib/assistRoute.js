@@ -41,7 +41,7 @@ import { resultsAsk } from "@/lib/resultSheet";
 import { debtAsk, debtCommand } from "@/lib/debts";
 import { wordCommand } from "@/lib/englishWords";
 import { grpCommand, timerCommand, windCommand } from "@/lib/raceLive";
-import { roundCommand, routeCommand, screenCommand } from "@/lib/raceRounds";
+import { penCommand, roundCommand, routeCommand, screenCommand } from "@/lib/raceRounds";
 import { COURSE_WORD, courseAsk, courseCommand, courseRelative, courseUndo } from "@/lib/raceCourse";
 import { resultCommand } from "@/lib/raceVoice";
 import { trainCommand, raceToday } from "@/lib/trainVoice";
@@ -78,7 +78,7 @@ export function moreKind(s, c = {}) {
   const ia = infoAsk(s, c.today || "2000-01-01");
   if (ia && (ia.kind !== "invoices" || owner)) return "infoAsk";
   // Canlı ekran (isler/canliEkran.js): şamandıra dönüşü, parkur sırası, ekranda gösterme; az önce yazılan dönüşü "geri al"
-  if (owner && racer && (routeCommand(s) || roundCommand(s) || screenCommand(s) || grpCommand(s) || (c.roundJust && courseUndo(s)))) return "liveScreen";
+  if (owner && racer && (routeCommand(s) || roundCommand(s) || screenCommand(s) || grpCommand(s) || penCommand(s) || (c.roundJust && courseUndo(s)))) return "liveScreen";
   // Antrenman yarışı sesle (isler/antrenmanSes.js): "2 dakika başlat", "yarışı bitir, birinci Ali …"; yarış günü antrenman sayfası dışında Yayın'ın
   if (owner && racer && trainCommand(s) && (path.startsWith("/training") || (!path.startsWith("/athletes/races/") && !raceToday(c.races || [], c.today || "2000-01-01")))) return "trainVoice";
   if (racer && timerCommand(s)) return "raceTimer";

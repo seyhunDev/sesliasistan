@@ -2,9 +2,11 @@
 
 // Canlı ekranın işleri: hem uygulamadaki "Canlı ekran" penceresi hem asistan (isler/canliEkran.js) bunları kullanır (sesle = elle).
 import { authFetch } from "@/lib/authFetch";
+import { loadEntryDoc } from "@/features/rounds/roundsStore";
+import { groupMap, groupsOn } from "@/lib/roundScore";
 import { loadRoundsOf, saveCourseShow, savePlan, savePlanKeys, saveRounds, saveScreen, saveStream } from "@/features/athletes/raceLiveStore";
 import { addGrps, grpCommand, momentRace, momentRaceName, raceName, rollPlan } from "@/lib/raceLive";
-import { applyRound, currentStart, markName, recTitle, roundCommand, routeCommand, screenCommand, setRoute, sourceBySay, streamSources, ytEmbed } from "@/lib/raceRounds";
+import { applyRound, cleanEntry, currentStart, markName, PEN_NAME, penCommand, penStart, recTitle, roundCommand, routeCommand, screenCommand, setRoute, sourceBySay, streamSources, ytEmbed } from "@/lib/raceRounds";
 
 export const liveUrl = (raceId) => `${window.location.origin}/canli/${raceId}`;
 
@@ -138,4 +140,35 @@ export async function grpSay(orgId, raceId, s, today) {
   const { added, to, ...patch } = p;
   await savePlanKeys(orgId, raceId, { ...plan, ...patch }, ["sets", "cls", "grps", "order", ...(plan.day !== L.plan.day ? ["day", "at", "status", "next", "ap"] : [])]);
   return { text: `${added.join(", ")} grup eklendi${to ? `, ${to}` : ""}. Bekleyen yarışlara startı da girdi.` };
+}
+
+// Ceza sesle (Seyhun 2026-11-11): "UFD 512", "kara bayrak 88 ve 1302", "512'nin cezası kalksın". Yayın › Süre › Ceza ile aynı kayıt (rounds[start].pen);
+// her tekne kendi grubunun son yarışına. Hemen ardından "geri al" (tek yarışa yazıldıysa).
+export async function penSay(orgId, raceId, s, today) {
+  const c = penCommand(s);
+  if (!c) return null;
+  const [L, ent] = await Promise.all([loadRoundsOf(orgId, raceId), loadEntryDoc(orgId, raceId)]);
+  const gm = groupMap(groupsOn(ent.groups, today));
+  const by = {};
+  for (const sail of c.sails) {
+    const st = penStart(L.starts, L.rounds, gm, sail, today, L.timer);
+    if (st) (by[st.id] = by[st.id] || { st, sails: [] }).sails.push(sail);
+  }
+  const ids = Object.keys(by);
+  if (!ids.length) return { fail: "Bugün başlamış yarış yok, ceza bir yarışa yazılır." };
+  const names = [];
+  for (const sid of ids) {
+    const prev = cleanEntry(L.rounds[sid] || {});
+    const pen = { ...(prev.pen || {}) };
+    for (const sail of by[sid].sails) if (c.code) pen[sail] = c.code;
+    else delete pen[sail];
+    const { pen: _old, ...rest } = prev;
+    const cur = Object.keys(pen).length ? { ...rest, pen } : rest;
+    await saveRounds(orgId, raceId, sid, cur, L.rounds[sid] ? prev : null);
+    last = ids.length === 1 ? { t: Date.now(), org: orgId, id: raceId, sid, prev, cur } : null;
+    const st = by[sid].st;
+    names.push(`${[st.grp || L.rounds[sid]?.grp || "", raceName(st)].filter(Boolean).join(" ")}: ${by[sid].sails.join(", ")}`);
+  }
+  ensurePublic(raceId).catch(() => {});
+  return { text: c.code ? `${c.code} (${PEN_NAME[c.code]}) yazıldı. ${names.join(" · ")}.` : `Ceza kaldırıldı. ${names.join(" · ")}.` };
 }
