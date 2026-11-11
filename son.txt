@@ -1,8 +1,8 @@
-Commit: 619fc14 · Gün listesi: planlarda kaçıncı gün, kaç gün kaldı, tür; başlık kesilmiyor (#1387)
-Zaman: 2026-11-11-1920 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43054014120
+Commit: 1ca3a99 · Antrenman sayfası iPad: üç sütun (#1389)
+Zaman: 2026-11-12-0021 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43099234360
 
-TAM TEST · 11.11.2026 19:01:12
+TAM TEST · 11.11.2026 23:59:58
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1423/1440 geçti · 17 kalan · 1172 sn
+SONUÇ: 1420/1441 geçti · 21 kalan · 1310 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
       ✗ “4530 test”
           beklenen: hepsi geçer
-          olan:     4477/4530 geçti
+          olan:     4476/4530 geçti
       ✗ “2 dakika başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
       ✗ “iki dakikalık yarış başlat” → ✗ ai · ön cevap: Bir bakayım. (beklenen: yol: trainVoice)
       ✗ “yarışı başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
@@ -50,6 +50,7 @@ SONUÇ: 1423/1440 geçti · 17 kalan · 1172 sn
       ✗ “yarış bitti sonuçlar 1 Ali 2 Zeynep 3 Emre” → ✗ trainResult (beklenen: yol: trainVoice)
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “tek kutu” → false (beklenen: solda kutu, sağda bas-konuş küresi)
+      ✗ “ana sayfa özellik kartları” → false (beklenen: Özet (Mesajlar) yok; İngilizce, Görevler, Medya kartları; medya kartı en yeni bölümün son 4 karesi, 30 dk önbellek)
       ✗ “yarış satırı akşam kalkar” → false (beklenen: Seyhun 2026-10-31: günün yarışları bitince (18:00 ya da son yarıştan 90 dk) ana sayfa satırı kalkar, bu yarışın sayacı çalışıyorsa kalır)
       ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
@@ -196,9 +197,12 @@ SONUÇ: 1423/1440 geçti · 17 kalan · 1172 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 129/139
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 128/139
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 7/8
+  ✗ Ana sayfa: 6/8
+      ✗ “iPad tek ekran”
+          beklenen: yatay 1180x820 ve dikey 820x1180: hava, takvim ve düğmeler görünür, sayfa kaymaz; telefonda takvim kenardan kenara bant
+          olan:     {"out":[["yatay",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}],["dikey",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}]],"ph":{"screen":false,"cal":true,"tl":false}}
       ✗ “saat saat hava tablosu”
           beklenen: hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat
           olan:     hata: locator.click: Timeout 30000ms exceeded.
@@ -251,9 +255,9 @@ SONUÇ: 1423/1440 geçti · 17 kalan · 1172 sn
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
   ✗ Hava: 2/3
-      ✗ “ölçülen / beklenen yağmur”
-          beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 20 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+      ✗ “yağmur grafiği”
+          beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var
+          olan:     sütun 48 · gün düğmesi 1 · 5,5 false
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
@@ -268,8 +272,8 @@ SONUÇ: 1423/1440 geçti · 17 kalan · 1172 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/21
-  ✗ Yarış sayfası: 11/14
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 13/22
+  ✗ Yarış sayfası: 10/14
       ✗ “yarış günü, sporcu seçili”
           beklenen: çökmeden açılır, "Canlı ekran" görünür
           olan:     "Canlı ekran" görünmedi
@@ -279,8 +283,30 @@ SONUÇ: 1423/1440 geçti · 17 kalan · 1172 sn
       ✗ “bütün sekmeler”
           beklenen: her sekme çökmeden açılır
           olan:     2 sekme açıldı
-  ✓ Antrenman: 2/2
-  ✓ Asılı bağlantı: 2/2
+      ✗ “tek ⋯ menüsü”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     "Start sayacı" görünmedi
+  ✗ Antrenman: 2/3
+      ✗ “iPad: üç sütun”
+          beklenen: çökmeden açılır, "Start ver" görünür
+          olan:     "Start ver" görünmedi
+  ✗ Asılı bağlantı: 1/2
+      ✗ “asılı bağlantıda multimedya”
+          beklenen: "Start sayacı" 5 sn içinde görünür (yükleniyor'da kalmaz)
+          olan:     görünmedi: Oluştur
+KAYIT
+Plan
+Tarih ve saat
+Görev
+Yapılacak iş
+Not
+Kısa not
+Doğum günü
+Hatırlat
+KULÜP
+Yoklama
+Bugün kim geldi
+Yarış
   ✗ Yayın: 0/3
       ✗ “gruplar ayrı, ekranda seçim, kameralar”
           beklenen: açılır
