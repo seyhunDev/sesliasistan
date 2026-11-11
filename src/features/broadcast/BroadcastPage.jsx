@@ -1469,6 +1469,10 @@ export function BroadcastPage({ orgId, id }) {
                         <Button size="sm" variant="secondary" onClick={() => (setSelId(s.id), goTab("donus"))}>
                           Dönüş
                         </Button>
+                        {/* Ceza (Seyhun 2026-11-11 "yarış devam ediyor, UFD, BFD onları yazmam lazım"): bu yarışın ceza penceresi; sesle "UFD 512" */}
+                        <Button size="sm" variant="secondary" onClick={() => (setSelId(s.id), setPenOpen(true))}>
+                          Ceza
+                        </Button>
                         <Button size="sm" variant="secondary" className="text-rec" onClick={() => setFlagPick({ id: "N", rid: s.id })}>
                           Abandone
                         </Button>
