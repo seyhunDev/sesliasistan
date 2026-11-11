@@ -1550,3 +1550,61 @@ main.rzl .rz-chev { border-color: rgba(255, 255, 255, .4); }
 .rl-upd { animation: rl-in .45s cubic-bezier(.22, .8, .24, 1); }
 .rl-chip { animation: rl-out 3s ease forwards; }
 @media (prefers-reduced-motion: reduce) { .rl-upd { animation: none; } }
+
+/* ===== IPAD ANA SAYFA (IpadHome.jsx; Seyhun 2026-11-11 "A · Zaman şeridi", örnek ana-sayfa/sade-2026-11/ipad.html) =====
+   Baştan sona lacivert (.navy), ince çizgili paneller; rakamlar Space Grotesk (--font-num). Üstte başlık, altında Hava paneli (tam genişlik),
+   altında Takvim paneli ve sağ sütun (Bekleyen, Kulüp). Dik iPad'de (sol menü yok) sağ sütun Takvim'in altına iner. */
+.num { font-family: var(--font-num), ui-monospace, "SF Mono", monospace; font-variant-numeric: tabular-nums; }
+main.iph {
+  min-height: 100dvh; box-sizing: border-box; color: var(--fg);
+  background: radial-gradient(120% 70% at 70% 0%, #0e2347 0%, #0b1a33 45%, #060e1d 100%) fixed;
+  padding: calc(1rem + env(safe-area-inset-top)) 1.25rem calc(7rem + env(safe-area-inset-bottom));
+  display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); align-content: start;
+}
+.iph-hd { display: flex; align-items: center; gap: 0.75rem; min-height: 3rem; }
+.iph-date { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 0.75rem; margin: 0; }
+.iph-date b { font-size: 1.75rem; font-weight: 600; letter-spacing: -.02em; white-space: nowrap; }
+.iph-date small { font-size: 0.9375rem; font-weight: 600; color: var(--mut); white-space: nowrap; }
+.iph-clock { font-size: 1.75rem; font-weight: 500; color: #fff; margin-right: 0.5rem; }
+.iph-add { height: 2.5rem; padding: 0 1rem; border-radius: 99px; background: #fff; color: #0b1a33; font-weight: 650; font-size: 0.875rem; white-space: nowrap; transition: transform .12s; }
+.iph-add:active { transform: scale(.96); }
+.iph-ghost { background: rgba(255, 255, 255, .08); color: #fff; border: 1px solid #2a4472; }
+.iph-me { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; flex: none; border-radius: 99px; background: rgba(255, 255, 255, .1); border: 1px solid #2a4472; color: #fff; font-weight: 650; font-size: 0.8125rem; }
+.iph-pn { background: rgba(255, 255, 255, .028); border: 1px solid #1d3256; border-radius: 1.5rem; padding: 1rem 1.25rem; min-width: 0; }
+.iph-pt { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.625rem; font-size: 0.75rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: #7d90b5; min-height: 1.75rem; }
+.iph-pt em { font-style: normal; text-transform: none; letter-spacing: 0; color: #4f6389; font-weight: 600; }
+.iph-lg { display: flex; gap: 0.75rem; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.iph-lg i { display: inline-block; width: 0.625rem; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 0.3rem; }
+.iph-lg .iph-dash { background: repeating-linear-gradient(90deg, #8fb3ff 0 3px, transparent 3px 6px); }
+.iph-wx { display: grid; grid-template-columns: 12.5rem minmax(0, 1fr); gap: 1.25rem; }
+.iph-now { display: flex; flex-direction: column; align-items: center; border-right: 1px solid #1d3256; padding-right: 1.25rem; text-align: left; }
+.iph-now .iph-pt { align-self: stretch; }
+.iph-compass { width: 9.75rem; height: 9.75rem; }
+.iph-compass text.num { font-family: var(--font-num), ui-monospace, monospace; }
+.iph-cal { display: grid; gap: 0.75rem; align-content: start; align-self: start; }
+.iph-lane { position: relative; height: 4.75rem; margin: 0 0.25rem; }
+.iph-blk { position: absolute; height: 2.5rem; min-width: 7.5rem; display: flex; flex-direction: column; justify-content: center; padding: 0 0.625rem; border-radius: 0.75rem; text-align: left; overflow: hidden; text-decoration: none;
+  background: color-mix(in srgb, var(--tfg) 16%, transparent); border: 1.4px solid var(--tfg); color: #fff; }
+.iph-blk b { font-size: 0.8125rem; font-weight: 650; line-height: 1.15; }
+.iph-blk small { font-size: 0.6875rem; color: #a9b8d6; font-weight: 600; text-decoration: none; }
+.iph-axis { position: absolute; left: 0; right: 0; bottom: 0; height: 1.5rem; border-top: 1px solid #1d3256; }
+.iph-axis span { position: absolute; top: 0.3rem; transform: translateX(-50%); font-size: 0.6875rem; font-weight: 600; color: #4f6389; }
+.iph-nowl { position: absolute; bottom: 1.5rem; height: 3.25rem; width: 1.6px; background: var(--rec); transform: translateX(-50%); }
+.iph-nowl::after { content: ""; position: absolute; bottom: -4px; left: -3.2px; width: 8px; height: 8px; border-radius: 50%; background: var(--rec); }
+.iph-chip { font-size: 0.6875rem; font-weight: 650; text-transform: none; letter-spacing: 0; padding: 0.2rem 0.5rem; border-radius: 0.5rem; border-left: 3px solid var(--tfg); background: var(--tbg); color: #fff; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.iph-mini { text-transform: none; letter-spacing: 0; height: 1.875rem; padding: 0 0.75rem; display: grid; place-items: center; border-radius: 0.625rem; font-size: 0.75rem; font-weight: 650; color: #fff; background: rgba(255, 255, 255, .08); border: 1px solid #2a4472; }
+.iph-mini-on { background: #fff; color: #0b1a33; border-color: #fff; }
+.iph-wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.375rem; border-top: 1px solid #1d3256; padding-top: 0.75rem; }
+.iph-day { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; padding: 0.5rem; white-space: nowrap; border-radius: 1rem; border: 1px solid transparent; background: rgba(255, 255, 255, .02); text-align: left; color: var(--fg); transition: border-color .15s; }
+.iph-day small { font-size: 0.75rem; font-weight: 600; color: #7d90b5; }
+.iph-day[aria-pressed="true"] { border-color: #3d7bff; background: rgba(61, 123, 255, .1); }
+.iph-side { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.iph-row { display: flex; align-items: center; gap: 0.625rem; width: 100%; padding: 0.55rem 0; border-top: 1px solid #1d3256; text-align: left; }
+.iph-row:first-of-type { border-top: 0; }
+.iph-row b { font-size: 0.875rem; font-weight: 600; }
+.iph-row small { font-size: 0.75rem; color: #7d90b5; }
+@media (min-width: 64rem) {
+  main.iph { height: 100dvh; overflow-y: auto; padding-bottom: 1.25rem; grid-template-columns: minmax(0, 1fr) 16.5rem; grid-template-rows: auto auto minmax(0, 1fr); align-content: stretch; }
+  .iph-hd, .iph-wx { grid-column: 1 / -1; }
+  .iph-side { overflow-y: auto; scrollbar-width: none; }
+}

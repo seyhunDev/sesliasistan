@@ -1,4 +1,4 @@
-import { Inter } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { ServiceWorkerSetup } from "@/features/pwa/Pwa";
@@ -10,6 +10,8 @@ import { KeepPlace } from "@/components/ui/KeepPlace";
 
 // Her cihazda aynı görünen, Türkçe karakterleri tam destekleyen yazı tipi (derlemede indirilir, uygulamayla birlikte sunulur)
 const inter = Inter({ subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-inter" });
+// Rakamlar için teknik yazı (iPad ana sayfa saat, rüzgâr; .num sınıfı)
+const num = Space_Grotesk({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], display: "swap", variable: "--font-num" });
 
 export const metadata = {
     title: "Velora",
@@ -35,7 +37,7 @@ const WARM_SCRIPT = `try{if(localStorage.getItem("sa-warm-me"))document.document
 
 export default function RootLayout({ children }) {
     return (
-        <html lang="tr" className={inter.variable} suppressHydrationWarning>
+        <html lang="tr" className={`${inter.variable} ${num.variable}`} suppressHydrationWarning>
             <head>
                 {/* Arkadan dönüşte sayfa baştan yüklendiyse kalınan sayfaya geç (lib/place.js); en önde, başka bir şey çizilmeden */}
                 <script dangerouslySetInnerHTML={{ __html: PLACE_SCRIPT }} />

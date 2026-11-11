@@ -24,6 +24,7 @@ import { useRaceHome } from "@/features/athletes/raceHome";
 import { RaceLive } from "./RaceLive";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { useWide } from "@/hooks/useWide";
+import { IpadHome, Waiting } from "./IpadHome";
 
 // Ana sayfa (Seyhun 2026-10-21 "C · Lacivert kokpit", ilk ekran "A · tam lacivert"): ilk ekran tam bir sayfa lacivert kokpit (Cockpit: tarih, zil, Ayarlar,
 // hava, rüzgâr grafiği, sıradaki iş, iş düğmeleri, büyük günler), altında açık zeminde akış (HomeFeed): Notlar, Sporcular, Fitness, takvim, doğum günü, Kulüp/Özet. Alttaki asistan kubbesi her sayfada aynı (TabBar).
@@ -43,9 +44,17 @@ export function OwnerHome() {
   }, [setSheet]);
 
   const wide = useWide();
+  const feed = <HomeFeed wide={wide} weather={weather} inbox={inbox} onInbox={() => setSheet(true)} quota={staff && qa && qr ? { qa, qr } : null} />;
+  if (wide)
+    return (
+      <>
+        {feed}
+        <InboxSheet inbox={inbox} open={inbox.open} onClose={() => setSheet(false)} />
+      </>
+    );
   return (
-    <main className={`calm grouped relative mx-auto max-w-[30rem] ${wide ? "home-screen" : "px-4"}`}>
-      <HomeFeed wide={wide} weather={weather} inbox={inbox} onInbox={() => setSheet(true)} quota={staff && qa && qr ? { qa, qr } : null} />
+    <main className="calm grouped relative mx-auto max-w-[30rem] px-4">
+      {feed}
       <InboxSheet inbox={inbox} open={inbox.open} onClose={() => setSheet(false)} />
     </main>
   );
@@ -86,6 +95,38 @@ export function HomeFeed({ weather, inbox, onInbox, quota, wide = false }) {
   const today = todayStr();
   const [sel, setSel] = useState(today);
 
+
+  // iPad / geniş ekran (Seyhun 2026-11-11 "A · Zaman şeridi"): lacivert tek ekran, hava ve takvim ayrı panellerde; sağ sütunda yarış, Bekleyen, Kulüp
+  if (wide)
+    return (
+      <IpadHome
+        weather={weather}
+        inbox={inbox}
+        onInbox={onInbox}
+        side={{
+          all: <HomeGrid allOnly pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />,
+          body: (
+            <>
+              {athletes && <RaceLive open={race.open} />}
+              <Waiting inbox={inbox} onAll={onInbox} />
+              {quota && (
+                <p className="px-1 text-[0.75rem] tabular-nums text-mut">
+                  Bugün kalan · asistan {quota.qa.left}/{quota.qa.limit} · fiş {quota.qr.left}/{quota.qr.limit}
+                </p>
+              )}
+              <PaidNotice />
+              {owner && (
+                <div className="iph-club empty:hidden">
+                  <HomeSummary title="Kulüp" money={canReceipts(kind)} race={null} dues={!!athletes} invoices lead={athletes ? <ClubRows open={race.open} fit={fit} /> : null} />
+                </div>
+              )}
+              {staff && <MyFitCard />}
+              {side && <MyAttendanceCard kind={kind} />}
+            </>
+          ),
+        }}
+      />
+    );
 
   const lowBlock = (
     <div className={wide ? "home-low relative space-y-4" : "home-low relative space-y-6 pb-6 pt-5"}>
