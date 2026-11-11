@@ -192,6 +192,39 @@ export function roundCommand(raw) {
   return { mark, sails };
 }
 
+// Ceza sesle (Seyhun 2026-11-11 "yarış devam ediyor, UFD, BFD onları yazmam lazım"): "UFD 512", "kara bayrak 88 ve 1302", "512 erken çıktı",
+// "512'nin cezası kalksın" → { code, sails } (code "" kaldır). Yayın'daki Ceza penceresinin (PenSheet) sesle yapılanı.
+const PEN_SAY = [
+  ["BFD", /kara\s*bayra[kğ]|siyah\s*bayra[kğ]|\bb\s*f\s*d\b/],
+  ["UFD", /\bu\s*bayra[kğ]|\bu\s*f\s*d\b/],
+  ["OCS", /erken\s*(çık|kalk)|\bo\s*c\s*s\b/],
+  ["DNE", /atılamaz|\bdne\b/],
+  ["DSQ", /diskalifiye|\bdsq\b/],
+  ["DNF", /bitiremedi|bitirmedi|\bdnf\b/],
+  ["RET", /bıraktı|çekildi|\bret\b/],
+  ["DNS", /start\s*almadı|\bdns\b/],
+  ["DNC", /gelmedi|katılmadı|\bdnc\b/],
+];
+export function penCommand(raw) {
+  // saat ve tarih yelken numarası sayılmaz ("yarın 17:00 antrenman, gelmedi derse")
+  const s = low(raw).replace(/\d{1,2}[:.]\d{2}|\d{1,2}[./]\d{1,2}[./]\d{2,4}/g, " ").replace(/[,;:'’]/g, " ");
+  if (/\?|\bkaç\b|\bkim\b|nedir|antrenman|yarın|bugün|saat|dakika|tl\b|lira/.test(s)) return null;
+  const sails = [...new Set((s.match(/\d{2,6}/g) || []).map(digits))];
+  if (!sails.length) return null;
+  if (/ceza\S*\s*(kalk|kaldır|sil|iptal)|kodu\S*\s*(kaldır|sil)/.test(s)) return { code: "", sails };
+  const c = PEN_SAY.find(([, re]) => re.test(s));
+  return c ? { code: c[0], sails } : null;
+}
+
+// Cezanın yazılacağı yarış: teknenin bugünkü grubunun son startı (grup grup yarışta her grup ayrı start), grup yoksa günün son startı
+export function penStart(starts, rounds, grpOf, sail, day, timer = null) {
+  const list = (starts || []).filter((x) => !x.void && (!day || x.day === day));
+  const g = grpOf?.[sail] || "";
+  const mine = g ? list.filter((x) => (x.grp || rounds?.[x.id]?.grp || "") === g) : [];
+  const pool = mine.length ? mine : list;
+  return [...pool].sort((a, b) => String(a.at).localeCompare(String(b.at))).at(-1) || currentStart(starts, timer);
+}
+
 // "parkur 1 4 1 2 3 finish", "rota birinci dördüncü ikinci üçüncü finiş" → { route: ["1","4","1","2","3","F"] }
 export function routeCommand(raw) {
   const s = low(raw).replace(/[,;:·-]/g, " ");

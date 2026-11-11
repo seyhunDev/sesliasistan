@@ -4,8 +4,8 @@
 // Yalnız ana hesap. Yarış: açık yarış ya da multimedya sayfası, yoksa bugün süren yarış (yarisMedya ile aynı).
 import { grpCommand, liveRace } from "@/lib/raceLive";
 import { courseUndo } from "@/lib/raceCourse";
-import { roundCommand, routeCommand, screenCommand } from "@/lib/raceRounds";
-import { grpSay, roundAt, roundJust, roundSay, roundUndo, screenSay } from "@/features/liveScreen/liveActions";
+import { penCommand, roundCommand, routeCommand, screenCommand } from "@/lib/raceRounds";
+import { grpSay, penSay, roundAt, roundJust, roundSay, roundUndo, screenSay } from "@/features/liveScreen/liveActions";
 import { courseAt } from "./yarisMedya";
 import { todayStr } from "@/lib/utils/format";
 
@@ -29,7 +29,7 @@ export async function liveScreenCmd(ctx, s, viaVoice) {
     }
     return true;
   }
-  const mine = routeCommand(s) || roundCommand(s) || screenCommand(s) || grpCommand(s);
+  const mine = routeCommand(s) || roundCommand(s) || screenCommand(s) || grpCommand(s) || penCommand(s);
   if (!mine) return undefined;
   const r = raceFor(ctx);
   if (!r) {
@@ -38,7 +38,7 @@ export async function liveScreenCmd(ctx, s, viaVoice) {
   }
   setPhase?.("thinking");
   try {
-    const out = (await roundSay(raceOrg, r.id, s)) || (await screenSay(raceOrg, r.id, s)) || (await grpSay(raceOrg, r.id, s, todayStr()));
+    const out = (await roundSay(raceOrg, r.id, s)) || (await screenSay(raceOrg, r.id, s)) || (await grpSay(raceOrg, r.id, s, todayStr())) || (await penSay(raceOrg, r.id, s, todayStr()));
     if (!out) return undefined;
     if (out.fail) reply(out.fail, { engine: "local" }, viaVoice);
     else done(out.text, { engine: "local" }, viaVoice);
