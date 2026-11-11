@@ -63,6 +63,10 @@ Tailwind'de `bg-bg`, `text-mut`, `text-acc`, `border-line` gibi sınıflarla yaz
 - `.ck-glass`: yarı saydam kutu (şerit, ikincil düğme).
 - `.ck :is(.btn-round,.btn-back)`: yarı saydam yuvarlak düğme. Basınca açık renkte yanıp sönmez.
 
+## iPad ana sayfa (2026-11-11, "A · Zaman şeridi")
+
+Geniş ekranda ana sayfa `IpadHome.jsx`: baştan sona lacivert, ince çizgili paneller (`.iph-pn`), panel başlığı küçük büyük harf (`.iph-pt`), rakamlar Space Grotesk (`.num`). Hava ve takvim ayrı panellerde; aynı saat ekseni (06–24). Rüzgâr rengi `windColor` (hafif mavi, iyi yeşil, sert sarı, çok sert kırmızı). Telefona uyarlanınca aynı dil kullanılacak.
+
 ## Önemli plan
 
 Önemli plan (`isImportant`, `src/lib/planImportant.js`: elle/sesle işaretli ya da adında son tarih geçen) satırı açık vurgu zeminli (`bg-accbg`), alt satırın başında `ImpTag` (vurgu renginde "Önemli"); tarih kutusu vurgu renginde çerçeveli. Amber kullanılmaz (amber yalnız gerçek uyarı).
