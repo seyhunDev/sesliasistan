@@ -1603,12 +1603,22 @@ main.iph {
 .iph-row:first-of-type { border-top: 0; }
 .iph-row b { font-size: 0.875rem; font-weight: 600; }
 .iph-row small { font-size: 0.75rem; color: #7d90b5; }
+/* Hava sayfası (WeatherTop; Seyhun 2026-11-12, örnek hava.html): ana sayfayla aynı Hava kutusu; altında 12 gün yana kayar (geçmiş günler açık zeminli),
+   saat saat tablo ve Bölge haritası (geniş ekranda yan yana) */
+.iph-wk.iph-wk-x { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 7.25rem; overflow-x: auto; scrollbar-width: none; border-top: 0; padding-top: 0; scroll-snap-type: x proximity; }
+.iph-wk.iph-wk-x::-webkit-scrollbar { display: none; }
+.iph-wk-x .iph-day { scroll-snap-align: start; }
+.iph-day[data-past] { background: rgba(255, 255, 255, .05); }
+.iph-tag { align-self: flex-start; font-size: 0.625rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; background: rgba(255, 255, 255, .12); border-radius: 0.375rem; padding: 0.05rem 0.375rem; }
+.iph-wxg { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 64rem) { .iph-wxg { grid-template-columns: minmax(0, 1fr) 24rem; align-items: start; } }
 /* Telefon (Seyhun 2026-11-12 "iPhone'da da aynısı"; örnek ipad.html "A · iPhone"): paneller alt alta, pusula solda küçük, günler yana kayar */
 @media (max-width: 47.99rem) {
   main.iph { padding: calc(0.75rem + env(safe-area-inset-top)) 1rem calc(7rem + env(safe-area-inset-bottom)); gap: 0.75rem; }
   .iph-hd { gap: 0.5rem; min-height: 2.75rem; }
   .iph-date b { font-size: 1.45rem; }
   .iph-date small, .iph-clock { display: none; }
+  .iph-page .iph-date small { display: inline; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .iph-add { padding: 0 0.875rem; }
   .iph-pn { padding: 0.875rem 1rem; border-radius: 1.25rem; }
   .iph-pt { flex-wrap: wrap; }
@@ -1618,7 +1628,7 @@ main.iph {
   .iph-compass { width: 8.25rem; height: 8.25rem; }
   .iph-blk { min-width: 5.5rem; padding: 0 0.5rem; }
   .iph-end { display: none; }
-  .iph-wk { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 6.5rem; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; margin: 0 -1rem; padding: 0.75rem 1rem 0; }
+  .iph-wk, .iph-wk.iph-wk-x { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 6.5rem; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; margin: 0 -1rem; padding: 0.75rem 1rem 0; }
   .iph-wk::-webkit-scrollbar { display: none; }
   .iph-day { scroll-snap-align: start; }
 }
@@ -1626,4 +1636,7 @@ main.iph {
   main.iph { height: 100dvh; overflow-y: auto; padding-bottom: 1.25rem; grid-template-columns: minmax(0, 1fr) 16.5rem; grid-template-rows: auto auto minmax(0, 1fr); align-content: stretch; }
   .iph-hd, .iph-wx { grid-column: 1 / -1; }
   .iph-side { overflow-y: auto; scrollbar-width: none; }
+}
+@media (min-width: 64rem) {
+  main.iph.iph-page { height: auto; overflow: visible; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-content: start; padding-bottom: calc(7rem + env(safe-area-inset-bottom)); }
 }
