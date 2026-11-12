@@ -71,7 +71,7 @@ export async function run(server, log = () => {}) {
 
   try {
     await seed({
-      users: [{ key: "owner", email: OWNER, password: PASS, name: "Test Sahip", doc: { name: "Test Sahip", email: OWNER, role: "owner", orgId: "{owner}", onboarded: true, introV: 99, tourDone: true, createdAt: now.toISOString() } }],
+      users: [{ key: "owner", email: OWNER, password: PASS, name: "Test Sahip", doc: { name: "Test Sahip", email: OWNER, role: "owner", orgId: "{owner}", sport: "sailing", onboarded: true, introV: 99, tourDone: true, createdAt: now.toISOString() } }],
       docs: [
         { path: "orgs/{owner}/races/r1", data: { name: "Ege Kupası", city: "İzmir", district: "Dikili", startDate: TODAY, endDate: plus(2), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
         // sesle yazılmış rüzgâr (Saha ölçümlerinde görünmeli)
@@ -368,17 +368,47 @@ export async function run(server, log = () => {}) {
       const crs = await page.getByRole("button", { name: "Trapez parkur" }).waitFor({ timeout: 20000 }).then(() => true, () => false);
       await foto("ipad-parkur");
       await page.locator(".tw-x").click().catch(() => {});
+      // Video penceresi: Kapat ile Düzenle üst üste binmez; videoya dokununca ortak tam ekran oynatıcı (Seyhun 2026-11-12)
+      const pops = async (k) => {
+        await page.locator(".tw-hb", { hasText: "Video" }).click().catch(() => {});
+        await page.getByText("Video çek").waitFor({ timeout: 20000 }).catch(() => {});
+        if (process.env.YARIS_VIDEO && !(await page.locator(".lvd-del").count())) {
+          await page.locator(".lvd-gal input[type=file]").setInputFiles(process.env.YARIS_VIDEO).catch(() => {});
+          await page.locator(".lvd-del").waitFor({ timeout: 20000 }).catch(() => {});
+        }
+        await page.waitForTimeout(800);
+        const x = await page.locator(".tw-x").boundingBox();
+        const d = await page.locator(".lvd-del").boundingBox().catch(() => null);
+        const clash = !!(x && d && x.x < d.x + d.width && d.x < x.x + x.width && x.y < d.y + d.height && d.y < x.y + x.height);
+        await foto(`${k}-video`);
+        await page.locator(".tw-x").click().catch(() => {});
+        await page.locator(".tw-hb", { hasText: "Kamera" }).click().catch(() => {});
+        await page.waitForTimeout(800);
+        await foto(`${k}-kamera`);
+        await page.locator(".tw-x").click().catch(() => {});
+        return !clash;
+      };
+      const vidOk = await pops("ipad");
+      if (process.env.YARIS_VIDEO) {
+        await page.locator(".tw-hb", { hasText: "Video" }).click().catch(() => {});
+        await page.locator(".lvd-t").first().click().catch(() => {});
+        await page.waitForTimeout(1500);
+        await foto("ipad-tam-ekran");
+        await page.getByRole("button", { name: "Geri" }).last().click().catch(() => {});
+        await page.locator(".tw-x").click().catch(() => {});
+      }
       await page.setViewportSize({ width: 820, height: 1180 });
       await page.waitForTimeout(800);
       await foto("ipad-dik");
+      const vidDik = await pops("ipad-dik");
       await page.setViewportSize({ width: 1180, height: 820 });
       await page.goto(page.url().replace(/\/training\/day.*/, "/training"));
       const log = await page.locator(".tw-log").waitFor({ timeout: 60000 }).then(() => true, () => false);
       await page.waitForTimeout(800);
       await foto("ipad-gunluk");
       await page.setViewportSize({ width: 390, height: 844 });
-      const ok = fin && cols === 3 && rank >= 1 && back && crs && log;
-      return [ok, `bitiren ${fin ? "ortada" : "yok"} · ${cols} sütun · sıralama ${rank} satır · dokununca ${back ? "Start ver" : "değişmedi"} · Parkur ${crs ? "açıldı" : "yok"} · günlük ${log ? "üç sütun" : "yok"}`];
+      const ok = fin && cols === 3 && rank >= 1 && back && crs && log && vidOk && vidDik;
+      return [ok, `bitiren ${fin ? "ortada" : "yok"} · ${cols} sütun · sıralama ${rank} satır · dokununca ${back ? "Start ver" : "değişmedi"} · Parkur ${crs ? "açıldı" : "yok"} · günlük ${log ? "üç sütun" : "yok"} · Kapat ${vidOk && vidDik ? "ayrı" : "Düzenle'nin üstünde"}`];
     });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
     // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok
