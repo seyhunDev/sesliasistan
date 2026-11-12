@@ -3426,3 +3426,32 @@ group("Ortak düğmeler")([
     ["yeniden çalış", F("kalıp ilerlemesi silinir", () => !KS.resetChunk(KS.knowChunk(empty, "its-up-to", T), "its-up-to").chunks["its-up-to"])],
   ]);
 }
+
+// Mesajdaki dosyadan plan (lib/chatPlan.js): hangi ek okunur, yapay zeka cevabının temizlenmesi, sohbette "plana ekle"
+{
+  const CP = await import("@/lib/chatPlan");
+  const raw = {
+    kind: "Antrenman programı",
+    items: [
+      { title: "Optimist antrenman", date: "2026-11-15", time: "10:00", place: "Kulüp", category: "Antrenman" },
+      { title: "Optimist antrenman", date: "2026-11-15", time: "10:00" },
+      { title: "Eski toplantı", date: "2026-11-01" },
+      { title: "Foça Kupası", date: "2026-11-29", endDate: "2026-11-30", time: "09:00", category: "Yarış" },
+      { title: "Tarihsiz", date: "" },
+      { title: "Veli toplantısı", date: "2026-11-13", time: "25:00", category: "Bilinmeyen" },
+    ],
+  };
+  const out = CP.cleanPlanItems(raw, "2026-11-12");
+  group("Mesajdaki dosyadan plan")([
+    ["PDF", F("okunur", () => CP.planFile({ kind: "file", type: "application/pdf", url: "u", size: 1e6 }))],
+    ["fotoğraf", F("okunur", () => CP.planFile({ kind: "photo", type: "image/jpeg", url: "u" }))],
+    ["sesli mesaj, Word, büyük PDF", F("okunmaz", () => !CP.planFile({ kind: "voice", url: "u" }) && !CP.planFile({ kind: "file", type: "application/msword", name: "a.docx", url: "u" }) && !CP.planFile({ kind: "file", type: "application/pdf", url: "u", size: 20e6 }))],
+    ["temizleme", F("geçmiş, tarihsiz ve tekrar atlanır; tarihe göre", () => out.items.map((x) => x.title).join("|") === "Veli toplantısı|Optimist antrenman|Foça Kupası")],
+    ["çok günlü", F("saat yok, bitiş var", () => { const f = out.items[2]; return f.endDate === "2026-11-30" && f.time === "" && f.cat === "Yarış"; })],
+    ["bozuk saat ve tür", F("saat boş, Genel", () => out.items[0].time === "" && out.items[0].cat === "Genel")],
+    ["taslak", F("plan, mesaj bağı", () => { const d = CP.planDrafts(out.items, "c1/m1")[1]; return d.type === "plan" && d.fromMsg === "c1/m1" && d.time === "10:00" && d.place === "Kulüp"; })],
+    ["sohbette komut", F("plana ekle, bunu planlara ekle, takvime ekle", () => ["plana ekle", "Bunu planlara ekle.", "takvime ekle", "planlara ekler misin?"].every(CP.chatPlanCommand))],
+    ["sohbette mesaj", F("uzun cümle ve başka iş komut değil", () => !["yarın plana ekle bunu da konuşuruz", "plan yapalım", "toplantıyı ekle", "eklerim"].some(CP.chatPlanCommand))],
+    ["özet", F("3 plan ve fazlası", () => CP.planSummary([...out.items, ...out.items], 2).endsWith("ve 4 plan daha"))],
+  ]);
+}

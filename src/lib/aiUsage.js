@@ -17,6 +17,7 @@ export const AI_LABELS = {
   tasks: "Görev listesi (çoklu iş)",
   "race-around": "Yarış çevresi",
   "event-plan": "Etkinlik planı",
+  "chat-plan": "Mesajdaki dosyadan plan",
   inventory: "Envanter",
   invoice: "Fatura okuma",
   "training-log": "Antrenman günlüğü",

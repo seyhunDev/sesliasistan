@@ -49,6 +49,7 @@ import { attQueryAsk } from "@/lib/attQuery";
 import { clubAsk } from "@/lib/clubAsk";
 import { infoAsk } from "@/lib/infoAsk";
 import { contactScanCommand } from "@/lib/contactQr";
+import { chatPlanAsk } from "@/lib/chatPlan";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -148,6 +149,9 @@ export function routesOf(s, c = {}) {
   // Ana hesap: "Ali ile konuşmayı arşivle", "Ali'yle sohbeti herkes için sil" (silme onaylı; ChatProvider archive/deleteChat)
   const co = owner && !c.drafts ? chatOpAsk(s) : null;
   if (co) add("chatOp", { co });
+  // "Ali'nin attığı programı planlara ekle", "son dosyayı plana ekle": mesajdaki dosyadan plan (isler/mesajPlan.js)
+  const cp = !c.drafts && !athleteSide ? chatPlanAsk(s) : null;
+  if (cp) add("chatPlan", { cp });
   // Fitness sayfasında ya da açık fitness planında "bugünkü antrenmanı yaptım" fitness'tır, yelken günlüğü değil
   const fitFirst = c.fitHere && owner && !isStaff && wantsFitness(s, true);
   if (!mf && !athleteSide && !fitFirst && wantsLog(s) && bareLog(s)) add("logBare");

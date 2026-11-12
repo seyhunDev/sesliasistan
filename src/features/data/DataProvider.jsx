@@ -372,6 +372,7 @@ export function DataProvider({ children }) {
             ...(d.log ? { log: d.log } : {}), // antrenman günlüğüyle açılan plan
             ...(d.important ? { important: true } : {}), // Önemli (elle ya da sesle; lib/planImportant.js)
             ...(d.raceId ? { raceId: d.raceId } : {}), // yarıştan eklenen plan: dokununca yarış sayfası (features/athletes/raceLinks.js)
+            ...(d.fromMsg ? { fromMsg: String(d.fromMsg).slice(0, 120) } : {}), // mesajdaki dosyadan eklenen plan (lib/chatPlan.js): "sohbet/mesaj"
           };
           ids.push(["plan", planIds[i]]);
           // Haftalık tekrar: her hafta için ayrı plan (seriesId ortak); bildirim yalnız ilki için
