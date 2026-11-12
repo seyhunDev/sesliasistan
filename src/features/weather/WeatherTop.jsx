@@ -53,7 +53,7 @@ export function WeatherTop({ w, err, refresh }) {
   const strip = useRef(null);
   useEffect(() => {
     const el = strip.current?.querySelector("[aria-pressed=true]");
-    if (el) strip.current.scrollLeft = el.offsetLeft - strip.current.offsetLeft - 4;
+    if (el) strip.current.scrollLeft = el.offsetLeft - strip.current.firstElementChild.offsetLeft;
   }, [days.length]);
   // Haritada dokunulan nokta seçilen yer olur (Ayarlar › Hava konumu gibi profile de yazılır); "Geri al" eski yeri geri koyar
   const save = (p) => {

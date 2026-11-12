@@ -1628,7 +1628,8 @@ main.iph {
   .iph-compass { width: 8.25rem; height: 8.25rem; }
   .iph-blk { min-width: 5.5rem; padding: 0 0.5rem; }
   .iph-end { display: none; }
-  .iph-wk, .iph-wk.iph-wk-x { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 6.5rem; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; margin: 0 -1rem; padding: 0.75rem 1rem 0; }
+  .iph-wk, .iph-wk.iph-wk-x { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 6.5rem; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .iph-wk.iph-wk-x { padding-top: 0; }
   .iph-wk::-webkit-scrollbar { display: none; }
   .iph-day { scroll-snap-align: start; }
 }
