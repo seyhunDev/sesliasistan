@@ -1,8 +1,8 @@
-Commit: 4c72bce · Hava sayfası ana sayfayla aynı: ortak Hava kutusu, ölçülen rüzgâr, 12 gün (#1391)
-Zaman: 2026-11-12-0700 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43149410003
+Commit: bf1e1f5 · Gün kutuları telefonda soldan boşluklu (#1392)
+Zaman: 2026-11-12-0810 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43156931009
 
-TAM TEST · 12.11.2026 06:37:29
+TAM TEST · 12.11.2026 07:46:26
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1415/1441 geçti · 26 kalan · 1375 sn
+SONUÇ: 1415/1441 geçti · 26 kalan · 1432 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -262,10 +262,10 @@ SONUÇ: 1415/1441 geçti · 26 kalan · 1375 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 7 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 8 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 7 · açıklama 7 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 8 · açıklama 8 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
