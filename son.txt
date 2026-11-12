@@ -1,8 +1,8 @@
-Commit: de6bb07 · Antrenman telefon: Start kutusu, sekmeler, altta sabit ana düğme (#1394)
-Zaman: 2026-11-12-1524 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43214401248
+Commit: c768ecc · Antrenman iPad: Video penceresinde Düzenle ile Kapat üst üste binmesin (#1398)
+Zaman: 2026-11-12-1727 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43233713211
 
-TAM TEST · 12.11.2026 15:03:31
+TAM TEST · 12.11.2026 17:06:24
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1418/1441 geçti · 23 kalan · 1282 sn
+SONUÇ: 1412/1441 geçti · 29 kalan · 1280 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4530 test”
+      ✗ “4554 test”
           beklenen: hepsi geçer
-          olan:     4483/4530 geçti
+          olan:     4507/4554 geçti
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “tek kutu” → false (beklenen: solda kutu, sağda bas-konuş küresi)
       ✗ “ana sayfa özellik kartları” → false (beklenen: Özet (Mesajlar) yok; İngilizce, Görevler, Medya kartları; medya kartı en yeni bölümün son 4 karesi, 30 dk önbellek)
@@ -86,8 +86,11 @@ SONUÇ: 1418/1441 geçti · 23 kalan · 1282 sn
       ✗ “takip ve bağlama” → [false,true,true] (beklenen: Seyhun 2026-11-07: Takip'te günün grupları ve program, eski ek talimat soluk; yarış sayfasından Siteden bağla, Siteden'de alınmışı birleştir)
       ✗ “Yayın ve canlı” → [true,false,true] (beklenen: Tehir penceresinde Kimin için; satırda İndir; Başlat tehirde engelli; canlıda tehirdeki grup küçük satır)
 
-2. ANLAMA: temiz cümleler: 121/121
-  ✓ Temiz cümle: Plan / takvim: 8/8
+2. ANLAMA: temiz cümleler: 120/121
+  ✗ Temiz cümle: Plan / takvim: 7/8
+      ✗ “15 Ekim'de saat 11'de federasyon toplantısı var, takvime yaz.”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
   ✓ Temiz cümle: Görev: 6/6
   ✓ Temiz cümle: Not: 3/3
   ✓ Temiz cümle: Mesaj: 10/10
@@ -120,12 +123,27 @@ SONUÇ: 1418/1441 geçti · 23 kalan · 1282 sn
   ✓ Temiz cümle: Geri al: 1/1
   ✓ Temiz cümle: çok iş: 18/18
 
-2. ANLAMA: insan ve ses tanıma hataları: 630/630
-  ✓ Bozuk: noktalamasız: 121/121
-  ✓ Bozuk: küçük harf, kesme işaretsiz: 121/121
-  ✓ Bozuk: Türkçe harfsiz (klavye): 102/102
-  ✓ Bozuk: dolgu sözlü (şey, ııı): 121/121
-  ✓ Bozuk: kekeme (ilk söz iki kez): 121/121
+2. ANLAMA: insan ve ses tanıma hataları: 625/630
+  ✗ Bozuk: noktalamasız: 120/121
+      ✗ “15 Ekim'de saat 11'de federasyon toplantısı var takvime yaz”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
+  ✗ Bozuk: küçük harf, kesme işaretsiz: 120/121
+      ✗ “15 ekimde saat 11de federasyon toplantısı var takvime yaz”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
+  ✗ Bozuk: Türkçe harfsiz (klavye): 101/102
+      ✗ “15 Ekim'de saat 11'de federasyon toplantisi var, takvime yaz.”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
+  ✗ Bozuk: dolgu sözlü (şey, ııı): 120/121
+      ✗ “şey ııı 15 Ekim'de saat 11'de federasyon toplantısı var, takvime yaz.”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
+  ✗ Bozuk: kekeme (ilk söz iki kez): 120/121
+      ✗ “15 15 Ekim'de saat 11'de federasyon toplantısı var, takvime yaz.”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
   ✓ Gerçek hata: yanlış duyulan fiil (oluru, hazirla): 1/1
   ✓ Gerçek hata: aynı cümle, Türkçe harfsiz ve noktasız: 1/1
   ✓ Gerçek hata: yanlış duyulan fiil + sonra: 1/1
@@ -262,10 +280,10 @@ SONUÇ: 1418/1441 geçti · 23 kalan · 1282 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 16 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 18 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 16 · açıklama 16 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 18 · açıklama 18 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
