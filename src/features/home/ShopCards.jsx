@@ -72,8 +72,8 @@ function MarketOrderCard() {
         </span>
       </button>
       <div className="grid grid-cols-2 gap-2 p-3.5">
-        <button type="button" data-press onClick={() => setShow(true)} className="food-btn !h-10 !px-2">Takip</button>
-        <Link href="/sanal" data-press className="food-btn food-btn2 !h-10 !px-2">Yeni sipariş</Link>
+        <button type="button" data-press onClick={() => setShow(true)} className="btn btn-primary btn-sm h-10 px-2">Takip</button>
+        <Link href="/sanal" data-press className="btn btn-secondary btn-sm h-10 px-2">Yeni sipariş</Link>
       </div>
       <MarketOrder order={show ? o : null} orgId={orgId} onClose={() => setShow(false)} />
     </div>

@@ -47,7 +47,7 @@ export function PeopleList({ group }) {
   const close = () => (setEdit(null), setWant(null));
   const childNames = (m) => (m.children || []).map((c) => members.find((x) => x.uid === c)?.name?.split(" ")[0]).filter(Boolean).join(", ");
 
-  const addCls = "ck-btn shrink-0 !flex items-center gap-1";
+  const addCls = "btn btn-primary btn-sm shrink-0 gap-1";
   const row = (m) => {
     const k = kindOf(m);
     const acc = m.account !== false;
@@ -104,7 +104,7 @@ export function PeopleList({ group }) {
           </button>
         </header>
         {group === "athletes" && canSeeAthletes(profile?.email) && (
-          <Link href="/athletes" data-press className="raised mt-4 flex h-10 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+          <Link href="/athletes" data-press className="btn btn-secondary mt-4 h-10 text-[0.9375rem]">
             Kulüpten ekle
           </Link>
         )}

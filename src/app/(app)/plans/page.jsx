@@ -116,7 +116,7 @@ export default function PlansPage() {
               </select>
             </label>
           )}
-          <button type="button" onClick={() => openAdd({ type: "plan" })} data-press className="ck-btn shrink-0 !flex items-center gap-1">
+          <button type="button" onClick={() => openAdd({ type: "plan" })} data-press className="btn btn-primary btn-sm shrink-0 gap-1">
             <Icon name="plus" className="size-4" />
             Plan
           </button>

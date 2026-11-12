@@ -55,7 +55,7 @@ export function InventoryHome({ orgId }) {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Envanter</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{list ? `${list.length} envanter` : "Yükleniyor…"}</p>
           </div>
-          <button type="button" onClick={() => setAdd({ name: "", kind: "normal" })} data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+          <button type="button" onClick={() => setAdd({ name: "", kind: "normal" })} data-press className="btn btn-primary btn-sm shrink-0 gap-1">
             <Icon name="plus" className="size-4" />
             Envanter
           </button>

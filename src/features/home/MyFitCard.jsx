@@ -35,7 +35,7 @@ export function MyFitCard() {
           }
           title={p.fit?.name || p.title}
           sub={[when, n2 ? `${n2} hareket` : ""].filter(Boolean).join(" · ")}
-          right={n.today ? <span className="food-btn">Başla</span> : null}
+          right={n.today ? <span className="btn btn-primary btn-sm pointer-events-none">Başla</span> : null}
           chev={!n.today}
         />
       </RowList>

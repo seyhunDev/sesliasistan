@@ -105,7 +105,7 @@ function AthleteList() {
             <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
           </div>
           {data && !err && (
-            <button type="button" onClick={() => setAdding(true)} data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+            <button type="button" onClick={() => setAdding(true)} data-press className="btn btn-primary btn-sm shrink-0 gap-1">
               <Icon name="plus" className="size-4" />
               Sporcu
             </button>
@@ -113,10 +113,10 @@ function AthleteList() {
         </header>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <Link href="/athletes/attendance" data-press className="raised flex h-10 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+          <Link href="/athletes/attendance" data-press className="btn btn-secondary h-10 text-[0.9375rem]">
             Yoklama
           </Link>
-          <Link href="/athletes/races" data-press className="raised flex h-10 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+          <Link href="/athletes/races" data-press className="btn btn-secondary h-10 text-[0.9375rem]">
             Yarışlar
           </Link>
         </div>

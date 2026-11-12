@@ -76,7 +76,7 @@ function Posts({ orgId }) {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Instagram</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{posts ? (live.length ? `${live.length} gönderi` : "Gönderi yok") : "Yükleniyor…"}</p>
           </div>
-          <Link href="/posts/new" data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+          <Link href="/posts/new" data-press className="btn btn-primary btn-sm shrink-0 gap-1">
             <Icon name="plus" className="size-4" />
             Gönderi
           </Link>

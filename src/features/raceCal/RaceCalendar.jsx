@@ -112,7 +112,7 @@ export function RaceCalendar() {
             <p className="truncate text-[0.8125rem] text-white/65">{!list ? "Yükleniyor…" : [`${all.up.length} yaklaşan`, `${all.past.length} geçmiş`].join(" · ")}</p>
           </div>
           {club && (
-            <Link href="/athletes/races/new" data-press className="ck-btn shrink-0 !flex !h-10 items-center gap-1 !px-3.5 !text-[0.9375rem]">
+            <Link href="/athletes/races/new" data-press className="btn btn-primary h-10 shrink-0 gap-1 px-3.5 text-[0.9375rem]">
               <Icon name="plus" className="size-4" />
               Yarış
             </Link>

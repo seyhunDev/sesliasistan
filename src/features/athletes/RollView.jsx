@@ -40,10 +40,10 @@ export function RollView({ date, today, onDate, list, classes, usedClasses, cls,
       {/* Sınıf seçimi (kapalı, dokununca açılır) ve toplu işaret aynı satırda */}
       <div className="mt-3 flex items-center gap-2 px-1">
         <ClassMenu classes={usedClasses} cls={cls} onCls={onCls} count={list.length} />
-        <button data-press onClick={() => onBulk("present")} disabled={!list.length} className="raised h-8 shrink-0 px-3 text-[0.8125rem] font-semibold text-ok disabled:opacity-40">
+        <button data-press onClick={() => onBulk("present")} disabled={!list.length} className="btn btn-secondary btn-sm h-8 shrink-0 px-3 text-[0.8125rem] text-ok">
           Hepsi geldi
         </button>
-        <button data-press onClick={() => onBulk("absent")} disabled={!empty} className="raised h-8 shrink-0 px-3 text-[0.8125rem] font-semibold text-rec disabled:opacity-40">
+        <button data-press onClick={() => onBulk("absent")} disabled={!empty} className="btn btn-secondary btn-sm h-8 shrink-0 px-3 text-[0.8125rem] text-rec">
           Kalanlar yok
         </button>
       </div>
@@ -101,7 +101,7 @@ export function ClassMenu({ classes, cls, onCls, count }) {
   return (
     <div data-cls-menu className="relative min-w-0 flex-1">
       {classes.length > 1 ? (
-        <button data-press onClick={() => setMenu((m) => !m)} aria-expanded={menu} className="raised flex h-8 max-w-full items-center gap-1 px-3 text-[0.8125rem] font-semibold">
+        <button data-press onClick={() => setMenu((m) => !m)} aria-expanded={menu} className="btn btn-secondary btn-sm h-8 max-w-full gap-1 px-3 text-[0.8125rem]">
           <span className="truncate">{name}</span>
           <span className="shrink-0 tabular-nums text-mut">{count}</span>
           <Icon name="chev" className={`size-3.5 shrink-0 text-mut transition-transform ${menu ? "-rotate-90" : "rotate-90"}`} />

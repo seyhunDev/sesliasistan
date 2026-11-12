@@ -87,9 +87,9 @@ function OrderCard({ o, v, now, orgId }) {
         </span>
       </Link>
       <div className="grid grid-cols-[1fr_1.2fr_1fr] gap-2 p-3.5 pt-3.5">
-        <Link href={href} data-press className="food-btn !h-10 !px-2">Takip</Link>
-        <Link href="/shopping?tab=yemek" data-press className="food-btn food-btn2 !h-10 !px-2">Yeni sipariş</Link>
-        <button type="button" data-press onClick={() => setHelp(true)} className="food-btn food-btn2 !h-10 !px-2">Yardım</button>
+        <Link href={href} data-press className="btn btn-primary btn-sm h-10 px-2">Takip</Link>
+        <Link href="/shopping?tab=yemek" data-press className="btn btn-secondary btn-sm h-10 px-2">Yeni sipariş</Link>
+        <button type="button" data-press onClick={() => setHelp(true)} className="btn btn-secondary btn-sm h-10 px-2">Yardım</button>
       </div>
       <Sheet open={help} onClose={() => setHelp(false)} title="Yardım" navy>
         <RowList>

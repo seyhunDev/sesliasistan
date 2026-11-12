@@ -278,7 +278,7 @@ function Detail() {
         <button type="button" onClick={() => setMore(true)} aria-label="Diğer" data-press className="btn btn-round size-10">
           <Icon name="more" className="size-5" />
         </button>
-        <button type="button" onClick={() => setEdit(true)} data-press className="raised act-main flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+        <button type="button" onClick={() => setEdit(true)} data-press className="btn btn-primary btn-sm shrink-0">
           Düzenle
         </button>
       </Top>
