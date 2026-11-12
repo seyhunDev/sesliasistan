@@ -19,6 +19,7 @@ import { countPref, setCountPref, useTrainingFlow } from "@/features/training/us
 import { AskButton } from "@/features/raceMedia/RaceMedia";
 import { CourseTab } from "@/features/raceMedia/CourseTab";
 import { LiveVideos } from "@/features/liveScreen/LiveVideos";
+import { MediaViewer } from "@/features/raceMedia/MediaViewer";
 import { Races } from "@/features/training/Races";
 import { TrainWind } from "@/features/training/TrainWind";
 import { useWide } from "@/hooks/useWide";
@@ -483,7 +484,7 @@ function Day() {
         starts={startsOf(races, date)}
         stream={stream}
         playing={vid.id}
-        onPlay={(vId, blob) => setVid((v) => (v.url && URL.revokeObjectURL(v.url), vId && blob ? { id: vId, url: URL.createObjectURL(blob) } : { id: "", url: "" }))}
+        onPlay={(vId, blob, x) => setVid((v) => (v.url && URL.revokeObjectURL(v.url), vId && blob ? { id: vId, url: URL.createObjectURL(blob), at: x?.at, dur: x?.dur, name: x?.name } : { id: "", url: "" }))}
       />
     ) : null;
 
@@ -501,6 +502,16 @@ function Day() {
         </Sheet>
       )}
     </>
+  );
+  // Seçilen video tam ekran (Seyhun 2026-11-12 "videoları tam ekran izleyebilmeliyim"): ortak MediaViewer; geri, oynat/durdur, süre çubuğu, ses
+  const full = (
+    <MediaViewer
+      items={vid.url ? [{ id: vid.id, kind: "video", url: vid.url, local: vid.url, at: vid.at || new Date().toISOString(), dur: vid.dur }] : []}
+      id={vid.url ? vid.id : ""}
+      onPick={() => {}}
+      onClose={() => setVid({ id: "", url: "" })}
+      label={() => vid.name || title}
+    />
   );
 
   // iPad (Seyhun 2026-11-11 "A · Üç sütun", örnek antrenman-ipad/ornekler.html): her şey aynı anda görünür. Solda Start (büyük süre, süre seçimi,
@@ -533,7 +544,7 @@ function Day() {
     const f = finishing ? finishParts(true) : null;
     const sub = !plan ? "" : finishing ? `${cur.name} · ${fins} / ${people.length} bitti` : counting || paused ? `${cur ? cur.name : title} · ${people.length} sporcu` : `${sec / 60} dk${withRaces ? ` · ${people.length} sporcu` : ""}`;
     const pop = ["cam", "course", "vid", "wind"].includes(open) ? body : null;
-    const media = (open === "cam" || open === "vid") && (vid.url || src);
+    const media = open === "cam" && src;
     return (
       <main className="tw navy" aria-label={title}>
         <header className="tw-hd">
@@ -610,7 +621,7 @@ function Day() {
               </button>
               {media ? (
                 <div className="tw-media">
-                  {vid.url ? <video src={vid.url} autoPlay muted playsInline loop controls /> : <iframe title="Kamera" src={ytSrc(src.url)} allow="autoplay; encrypted-media; picture-in-picture" />}
+                  <iframe title="Kamera" src={ytSrc(src.url)} allow="autoplay; encrypted-media; picture-in-picture" />
                 </div>
               ) : null}
               <div className="tl-in ck navy">{pop}</div>
@@ -618,6 +629,7 @@ function Day() {
           </div>
         ) : null}
         {sheets}
+        {full}
       </main>
     );
   }
@@ -629,7 +641,7 @@ function Day() {
   const ptabs = [withRaces && ["ath", finishing ? "Bitiren kim" : "Sporcular"], withRaces && ["rank", "Sıralama"], ["wind", "Rüzgâr"]].filter(Boolean);
   const ptNow = finishing && ptab !== "rank" && ptab !== "wind" ? "ath" : ptabs.some(([k]) => k === ptab) ? ptab : ptabs[0][0];
   const pop = ["cam", "course", "vid"].includes(open) ? body : null;
-  const media = (open === "cam" || open === "vid") && (vid.url || src);
+  const media = open === "cam" && src;
   const more = btns.filter(([k]) => k === "course" || k === "vid" || k === "cam");
   const mainBtn = !plan ? (
     <button type="button" data-press className="tp-go" disabled={adding || !racer} onClick={addPlan}>
@@ -766,7 +778,7 @@ function Day() {
             </button>
             {media ? (
               <div className="tw-media">
-                {vid.url ? <video src={vid.url} autoPlay muted playsInline loop controls /> : <iframe title="Kamera" src={ytSrc(src.url)} allow="autoplay; encrypted-media; picture-in-picture" />}
+                <iframe title="Kamera" src={ytSrc(src.url)} allow="autoplay; encrypted-media; picture-in-picture" />
               </div>
             ) : null}
             <div className="tl-in ck navy">{pop}</div>
@@ -774,6 +786,7 @@ function Day() {
         </div>
       ) : null}
       {sheets}
+      {full}
     </main>
   );
 }
