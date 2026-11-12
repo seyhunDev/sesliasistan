@@ -1589,7 +1589,7 @@ main.iph {
 .iph-blk small { font-size: 0.6875rem; color: #a9b8d6; font-weight: 600; text-decoration: none; }
 .iph-axis { position: absolute; left: 0; right: 0; bottom: 0; height: 1.5rem; border-top: 1px solid #1d3256; }
 .iph-axis span { position: absolute; top: 0.3rem; transform: translateX(-50%); font-size: 0.6875rem; font-weight: 600; color: #4f6389; }
-.iph-nowl { position: absolute; bottom: 1.5rem; height: 3.25rem; width: 1.6px; background: var(--rec); transform: translateX(-50%); }
+.iph-nowl { position: absolute; bottom: 1.5rem; top: 0.25rem; width: 1.6px; background: var(--rec); transform: translateX(-50%); }
 .iph-nowl::after { content: ""; position: absolute; bottom: -4px; left: -3.2px; width: 8px; height: 8px; border-radius: 50%; background: var(--rec); }
 .iph-chip { font-size: 0.6875rem; font-weight: 650; text-transform: none; letter-spacing: 0; padding: 0.2rem 0.5rem; border-radius: 0.5rem; border-left: 3px solid var(--tfg); background: var(--tbg); color: #fff; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .iph-mini { text-transform: none; letter-spacing: 0; height: 1.875rem; padding: 0 0.75rem; display: grid; place-items: center; border-radius: 0.625rem; font-size: 0.75rem; font-weight: 650; color: #fff; background: rgba(255, 255, 255, .08); border: 1px solid #2a4472; }
@@ -1603,6 +1603,25 @@ main.iph {
 .iph-row:first-of-type { border-top: 0; }
 .iph-row b { font-size: 0.875rem; font-weight: 600; }
 .iph-row small { font-size: 0.75rem; color: #7d90b5; }
+/* Telefon (Seyhun 2026-11-12 "iPhone'da da aynısı"; örnek ipad.html "A · iPhone"): paneller alt alta, pusula solda küçük, günler yana kayar */
+@media (max-width: 47.99rem) {
+  main.iph { padding: calc(0.75rem + env(safe-area-inset-top)) 1rem calc(7rem + env(safe-area-inset-bottom)); gap: 0.75rem; }
+  .iph-hd { gap: 0.5rem; min-height: 2.75rem; }
+  .iph-date b { font-size: 1.45rem; }
+  .iph-date small, .iph-clock { display: none; }
+  .iph-add { padding: 0 0.875rem; }
+  .iph-pn { padding: 0.875rem 1rem; border-radius: 1.25rem; }
+  .iph-pt { flex-wrap: wrap; }
+  .iph-wx { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+  .iph-now { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 1rem; border-right: 0; padding: 0 0 0.75rem; border-bottom: 1px solid #1d3256; }
+  .iph-now .iph-pt { grid-column: 1 / -1; }
+  .iph-compass { width: 8.25rem; height: 8.25rem; }
+  .iph-blk { min-width: 5.5rem; padding: 0 0.5rem; }
+  .iph-end { display: none; }
+  .iph-wk { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 6.5rem; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; margin: 0 -1rem; padding: 0.75rem 1rem 0; }
+  .iph-wk::-webkit-scrollbar { display: none; }
+  .iph-day { scroll-snap-align: start; }
+}
 @media (min-width: 64rem) {
   main.iph { height: 100dvh; overflow-y: auto; padding-bottom: 1.25rem; grid-template-columns: minmax(0, 1fr) 16.5rem; grid-template-rows: auto auto minmax(0, 1fr); align-content: stretch; }
   .iph-hd, .iph-wx { grid-column: 1 / -1; }
