@@ -298,39 +298,50 @@ export async function run(server, log = () => {}) {
       const ok = chips === "5 dk,4 dk,2 dk,1 dk" && top === 0 && strip === 0 && now === 1 && kept.trim() === "2 dk" && big === 1;
       return [ok, `seçenekler ${chips} · üstte seçim ${top} · şerit ${strip} · 2 dk seçince ${now ? "02:00" : "değişmedi"} · yenileyince ${kept.trim() || "-"}${big ? " 02:00" : ""}`];
     });
-    // Antrenman ekranı canlı ekran düzeninde (Seyhun 2026-11-05, örnek antrenman-canli/ornek.png): altta Kamera · Parkur · Rüzgâr · Sıralama ·
-    // Video · Start; Start panelinde yarışta "Bitiren kim?" kareleri, herkes dokununca yarış biter ve panel yeni starta döner;
-    // Sıralama Bugün · Genel, Video canlı ekranın Video paneli, Parkur kart türü seçimiyle
+    // Antrenman telefonda (Seyhun 2026-11-12 "A · Alt düğme"): sabit Start kutusu, Sporcular (startan sonra Bitiren kim?) · Sıralama · Rüzgâr
+    // sekmeleri, altta ana düğme hep aynı yerde (Start ver → İptal → Yarışı bitir); herkes dokununca yarış biter, düğme Start ver'e döner.
+    // Parkur, Video, Kamera ⋯ içinde, alttan pencere açar
     const foto = (k) => process.env.YARIS_FOTO && page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, `-antrenman-${k}.png`) }).catch(() => {});
-    await okPage("Antrenman", "canlı düzen: bitiren kim", "/training/day?id=t1&tab=start", "Start ver", async () => {
+    await okPage("Antrenman", "telefon: bitiren kim, alt düğme", "/training/day?id=t1", "Sıralama", async () => {
       await page.evaluate(() => localStorage.setItem("sa-sayac", JSON.stringify({ dur: 300, end: Date.now() - 60e3, left: null, mode: "start", rid: "y3", own: "/training/day?id=t1", where: "Optimist antrenmanı", at: Date.now() })));
       await page.goto(page.url());
-      const tile = page.locator(".tl-tiles button", { hasText: "Deniz" });
+      const tile = page.locator(".tp-body .tl-tiles button", { hasText: "Deniz" });
       await tile.waitFor({ timeout: 60000 }).catch(() => {});
       await page.waitForTimeout(800);
-      const bar = (await page.locator(".tl-bar > button").allInnerTexts()).map((x) => x.trim()).join(",");
-      const tiles = await page.locator(".tl-tiles button").count();
+      const box = async () => Math.round((await page.locator(".tp-start").boundingBox())?.height || 0);
+      const goAt = async () => Math.round((await page.locator(".tp-go").boundingBox())?.y || 0);
+      const h1 = await box();
+      const y1 = await goAt();
+      const main1 = (await page.locator(".tp-go").innerText()).trim();
+      const tiles = await page.locator(".tp-body .tl-tiles button").count();
       await foto("yarista");
+      if (await tile.evaluate((e) => e.classList.contains("on")).catch(() => false)) await tile.click().catch(() => {});
       await tile.click().catch(() => {});
-      const back = await page.getByRole("button", { name: /^Start ver/ }).waitFor({ timeout: 20000 }).then(() => true, () => false);
+      const back = await page.locator(".tp-go", { hasText: "Start ver" }).waitFor({ timeout: 20000 }).then(() => true, () => false);
+      await page.waitForTimeout(500);
+      const h2 = await box();
+      const y2 = await goAt();
       await foto("start");
-      const ok = bar === "Kamera,Parkur,Rüzgâr,Sıralama,Video,Start" && tiles >= 1 && back;
-      return [ok, `alt çubuk ${bar} · kare ${tiles} · dokununca ${back ? "Start ver" : "değişmedi"}`];
+      const ok = /Yarışı bitir/.test(main1) && tiles >= 1 && back && h1 === h2 && y1 === y2;
+      return [ok, `ana düğme ${main1} · kare ${tiles} · dokununca ${back ? "Start ver" : "değişmedi"} · kutu ${h1}/${h2} · düğme ${y1}/${y2}`];
     });
-    await okPage("Antrenman", "canlı düzen: sıralama, video, parkur", "/training/day?id=t1&tab=rank", "Bugün", async () => {
+    await okPage("Antrenman", "telefon: sıralama, video, parkur", "/training/day?id=t1&tab=rank", "Bugün", async () => {
       const day = await page.locator(".tl-tb tbody tr").count();
       await foto("siralama");
       await page.locator(".tl-tabs button", { hasText: "Genel" }).click();
       await page.waitForTimeout(400);
-      const gen = await page.locator(".tl-pn").innerText();
+      const gen = await page.locator(".tp-body").innerText();
       await foto("genel");
-      await page.locator(".tl-bar > button", { hasText: "Video" }).click();
+      const menu = (k) => page.getByRole("button", { name: "Diğer" }).click().then(() => page.getByRole("menuitem", { name: k }).click());
+      await menu("Video").catch(() => {});
       const vid = await page.getByText("Video çek").waitFor({ timeout: 20000 }).then(() => true, () => false);
       await foto("video");
-      await page.locator(".tl-bar > button", { hasText: "Parkur" }).click();
+      await page.locator(".tw-x").click().catch(() => {});
+      await menu("Parkur").catch(() => {});
       const crs = await page.getByRole("button", { name: "Trapez parkur" }).waitFor({ timeout: 20000 }).then(() => true, () => false);
       await foto("parkur");
-      await page.locator(".tl-bar > button", { hasText: "Rüzgâr" }).click();
+      await page.locator(".tw-x").click().catch(() => {});
+      await page.locator(".tp-seg button", { hasText: "Rüzgâr" }).click();
       await page.waitForTimeout(3000);
       await foto("ruzgar");
       const ok = day >= 1 && /yarış/.test(gen) && vid && crs;
@@ -348,6 +359,7 @@ export async function run(server, log = () => {}) {
       const cols = await page.locator(".tw-grid > *").count();
       const rank = await page.locator(".tw-rank .tl-tb tbody tr").count();
       await foto("ipad-bitiren");
+      if (await tile.evaluate((e) => e.classList.contains("on")).catch(() => false)) await tile.click().catch(() => {});
       await tile.click().catch(() => {});
       const back = await page.getByRole("button", { name: /^Start ver/ }).waitFor({ timeout: 20000 }).then(() => true, () => false);
       await page.waitForTimeout(800);

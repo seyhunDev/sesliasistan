@@ -49,7 +49,6 @@ const PANELS = ["cam", "course", "wind", "rank", "vid", "start"];
 const PRESETS = [300, 240, 120, 60];
 const iso = (ms) => new Date(ms).toISOString();
 const first = (n) => String(n || "").split(" ")[0];
-const SEA = "/canli/ornek-deniz.svg";
 const stamp = () => Date.now();
 
 // Antrenman yarışları → canlı ekranın start satırları (videonun yarışı bunlara göre bulunur)
@@ -92,6 +91,8 @@ function Day() {
   const [cam, setCam] = useState(""); // arkadaki kaynak (id)
   const [vid, setVid] = useState({ id: "", url: "" }); // arkada oynatılan kendi videon
   const [link, setLink] = useState("");
+  const [ptab, setPtab] = useState(() => (q.get("tab") === "rank" || q.get("tab") === "wind" ? q.get("tab") : "ath")); // telefonda alt bölüm: ath | rank | wind
+  const [menu, setMenu] = useState(false); // telefonda ⋯
 
   useEffect(() => {
     if (!racer) return;
@@ -505,9 +506,30 @@ function Day() {
   // iPad (Seyhun 2026-11-11 "A · Üç sütun", örnek antrenman-ipad/ornekler.html): her şey aynı anda görünür. Solda Start (büyük süre, süre seçimi,
   // Start ver; startan sonra Sesle söyle · DNF · Yarışı bitir) ve antrenman saatinin rüzgârı, ortada sporcular (startan sonra Bitiren kim? kareleri),
   // sağda Sıralama (Bugün · Genel). Parkur, Video, Kamera üstte düğme, ortada pencere açar; Rüzgâr eğrisine dokununca ortak hava tablosu.
-  if (wide) {
+  // Sporcu kareleri (iPad ve telefon ortak): startan sonra Bitiren kim?, önce gelenler puanıyla, gelmeyenler soluk; adlar tam
+  const absent = present.length ? others : [];
+  const athTiles = () => {
+    if (finishing) return finishParts(true).tiles;
     const pts = Object.fromEntries(table.rows.map((r) => [r.id, r.net]));
-    const absent = present.length ? others : [];
+    return (
+      <div className="tw-tiles">
+        {people.map((p) => (
+          <div key={p.id} className="tw-tile">
+            <b>{p.name}</b>
+            {pts[p.id] != null ? <small className="num">{pts[p.id]} p</small> : null}
+          </div>
+        ))}
+        {absent.map((p) => (
+          <div key={p.id} className="tw-tile off">
+            <b>{p.name}</b>
+            <small>gelmedi</small>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  if (wide) {
     const f = finishing ? finishParts(true) : null;
     const sub = !plan ? "" : finishing ? `${cur.name} · ${fins} / ${people.length} bitti` : counting || paused ? `${cur ? cur.name : title} · ${people.length} sporcu` : `${sec / 60} dk${withRaces ? ` · ${people.length} sporcu` : ""}`;
     const pop = ["cam", "course", "vid", "wind"].includes(open) ? body : null;
@@ -565,24 +587,7 @@ function Day() {
                 <span className="flex-1" />
                 <em>{finishing ? (dnf ? "DNF olanı seç" : "sırayla dokun") : present.length ? `${present.length} geldi${absent.length ? ` · ${absent.length} gelmedi` : ""}` : "Yoklama alınmadı"}</em>
               </span>
-              {finishing ? (
-                f.tiles
-              ) : (
-                <div className="tw-tiles">
-                  {people.map((p) => (
-                    <div key={p.id} className="tw-tile">
-                      <b>{p.name}</b>
-                      {pts[p.id] != null ? <small className="num">{pts[p.id]} p</small> : null}
-                    </div>
-                  ))}
-                  {absent.map((p) => (
-                    <div key={p.id} className="tw-tile off">
-                      <b>{p.name}</b>
-                      <small>gelmedi</small>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {athTiles()}
             </section>
           )}
           {withRaces && (
@@ -617,61 +622,157 @@ function Day() {
     );
   }
 
+  // Telefon (Seyhun 2026-11-12 "A · Alt düğme", örnek antrenman-ipad/telefon-ornekler.html): iPad'in dili. Üstte geri, ad, ⋯ (Parkur, Video,
+  // Kamera); sabit boylu Start kutusu (sağ üstte Yoklama · Günlük, büyük süre, süre seçimi + Yarış olarak say; geri sayımda −1/+1, startan
+  // sonra Sesle söyle · DNF); altında Sporcular (startan sonra Bitiren kim?) · Sıralama · Rüzgâr sekmeleri; en altta sabit şeritte ana düğme
+  // (Start ver → İptal → Yarışı bitir, hep aynı yerde) ve asistan küresi. Kutuların boyu durumdan duruma değişmez.
+  const ptabs = [withRaces && ["ath", finishing ? "Bitiren kim" : "Sporcular"], withRaces && ["rank", "Sıralama"], ["wind", "Rüzgâr"]].filter(Boolean);
+  const ptNow = finishing && ptab !== "rank" && ptab !== "wind" ? "ath" : ptabs.some(([k]) => k === ptab) ? ptab : ptabs[0][0];
+  const pop = ["cam", "course", "vid"].includes(open) ? body : null;
+  const media = (open === "cam" || open === "vid") && (vid.url || src);
+  const more = btns.filter(([k]) => k === "course" || k === "vid" || k === "cam");
+  const mainBtn = !plan ? (
+    <button type="button" data-press className="tp-go" disabled={adding || !racer} onClick={addPlan}>
+      Antrenman ekle
+    </button>
+  ) : finishing ? (
+    <button type="button" data-press className="tp-go" onClick={() => finishAll(cur)}>
+      Yarışı bitir
+    </button>
+  ) : counting || paused ? (
+    <button type="button" data-press className="tp-go rec" onClick={() => raceCancel(withRaces ? flow : null)}>
+      İptal
+    </button>
+  ) : (
+    <button type="button" data-press className="tp-go" onClick={start}>
+      Start ver <small className="num">{sec / 60} dk</small>
+    </button>
+  );
   return (
-    <main className="tl" aria-label={title}>
-      <div className="tl-bg" aria-hidden="true" onClick={() => setOpen("")}>
-        {vid.url ? (
-          <video src={vid.url} autoPlay muted playsInline loop />
-        ) : src ? (
-          <iframe title="Kamera" src={ytSrc(src.url)} allow="autoplay; encrypted-media; picture-in-picture" />
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={SEA} alt="" />
-        )}
-      </div>
+    <main className="tw tp navy" aria-label={title}>
+      <header className="tw-hd">
+        <Link href="/training" className="tw-back" aria-label="Geri">
+          <Icon name="back" className="size-5" />
+        </Link>
+        <h1>
+          <b>{title}</b>
+          <small>{dayText(date)}</small>
+        </h1>
+        {more.length ? (
+          <span className="relative">
+            <button type="button" data-press className="tw-hb" aria-label="Diğer" aria-expanded={menu} onClick={() => setMenu(!menu)}>
+              ⋯
+            </button>
+            {menu ? (
+              <span className="tp-menu" role="menu">
+                {more.map(([k, l]) => (
+                  <button key={k} type="button" role="menuitem" onClick={() => (setMenu(false), tap(k))}>
+                    {l}
+                  </button>
+                ))}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
+      </header>
 
-      <header className="tl-ck">
-        <div className="tl-k">
-          <Link href="/training" className="tl-back" aria-label="Geri">
-            ‹
-          </Link>
-          {cur?.cnt ? <span className="tl-tag">YARIŞ</span> : null}
-          <b>{cur ? cur.name : title}</b>
-          <span>· {cur ? `${people.length} sporcu` : dayText(date)}</span>
-        </div>
-        <h1 className={`tl-big ${bigCls}`}>{big}</h1>
-        <div className="tl-r">
+      <section className="tw-pn tp-start" aria-label="Start">
+        <span className="tw-pt">
+          {cur?.cnt ? "Yarış" : "Start"}
+          <span className="flex-1" />
           {racer && plan ? (
-            <button type="button" onClick={() => setSheet("roll")}>
-              {cur && tr.up ? "Bitiren" : "Yoklama"}
-              <b>{cur && tr.up ? `${fins} / ${people.length}` : present.length ? `${present.length} sporcu` : "Al"}</b>
+            <button type="button" data-press className="tw-hb tp-mini" onClick={() => setSheet("roll")}>
+              Yoklama <b className="num">{present.length || "Al"}</b>
             </button>
           ) : null}
           {plan && canLog(plan, today) && !locked ? (
-            <button type="button" onClick={() => setSheet("log")}>
-              <b>{plan.log ? "Günlük" : "Günlük yaz"}</b>
+            <button type="button" data-press className="tw-hb tw-w tp-mini" onClick={() => setSheet("log")}>
+              {plan.log ? "Günlük" : "Günlük yaz"}
             </button>
           ) : null}
-        </div>
-      </header>
+        </span>
+        <div className={`tw-big num ${bigCls}`}>{big}</div>
+        <p className="tw-sub">{!plan ? "Bugün antrenman planı yok" : finishing ? `${cur.name} · ${fins} / ${people.length} bitti` : counting || paused ? `${cur ? cur.name : title} · ${people.length} sporcu` : `${sec / 60} dk${withRaces ? ` · ${people.length} sporcu` : ""}`}</p>
+        {!plan ? null : finishing ? (
+          <div className="tp-two">
+            <button type="button" className={sp.status === "listening" ? "rec" : ""} disabled={sp.status === "transcribing"} onClick={() => (sp.status === "listening" ? sp.stop() : sp.status === "idle" && (setSaid(""), sp.start({ autoStop: 0 })))}>
+              {sp.status === "listening" ? "Bitince dokun" : sp.status === "transcribing" ? "Yazılıyor" : "Sesle söyle"}
+            </button>
+            <button type="button" className={dnf ? "on" : ""} aria-pressed={dnf} onClick={() => setDnf(!dnf)}>
+              DNF
+            </button>
+          </div>
+        ) : counting || paused ? (
+          <div className="tp-two">
+            <button type="button" disabled={!counting} onClick={() => shift(-60)}>
+              −1 dk
+            </button>
+            <button type="button" disabled={!counting} onClick={() => shift(60)}>
+              +1 dk
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="tl-chips tp-chips">
+              {PRESETS.map((x) => (
+                <button key={x} type="button" className={sec === x ? "on" : ""} aria-pressed={sec === x} onClick={() => setDur(x)}>
+                  {x / 60}
+                  <small>dk</small>
+                </button>
+              ))}
+            </div>
+            {withRaces ? (
+              <button type="button" className="tp-cnt" aria-pressed={cnt} onClick={() => (setCnt(!cnt), setCountPref(!cnt))}>
+                <span>
+                  Yarış olarak say
+                  <small>Genel sıralamaya girer</small>
+                </span>
+                <em className={`tl-sw${cnt ? " on" : ""}`} aria-hidden="true" />
+              </button>
+            ) : null}
+          </>
+        )}
+        {said && finishing ? <p className="tl-msg">{said}</p> : null}
+      </section>
 
-      {body ? (
-        <section className={`tl-pn${open === "cam" ? " fit" : ""}`} aria-label={btns.find(([k]) => k === open)?.[1]}>
-          <div className="tl-in ck navy">{body}</div>
-        </section>
+      {ptabs.length > 1 ? (
+        <nav className="tp-seg" aria-label="Bölümler">
+          {ptabs.map(([k, l]) => (
+            <button key={k} type="button" className={ptNow === k ? "on" : ""} aria-pressed={ptNow === k} onClick={() => setPtab(k)}>
+              {l}
+            </button>
+          ))}
+        </nav>
       ) : null}
 
-      <nav className="tl-bar" aria-label="Antrenman">
-        {btns.map(([k, l]) => (
-          <button key={k} type="button" className={`${k === "start" ? "st" : ""}${open === k ? " on" : ""}`} aria-pressed={open === k} onClick={() => tap(k)}>
-            {l}
-          </button>
-        ))}
-        <span className="tl-ask">
+      <div className={`tp-body${ptNow === "rank" ? " tp-rank" : ""}`}>
+        {ptNow === "ath" ? athTiles() : ptNow === "rank" ? rankPanel() : <div className="ck navy">
+          <RaceWx r={wxRace} />
+        </div>}
+      </div>
+
+      <nav className="tp-dock" aria-label="Start">
+        {mainBtn}
+        <span className="tp-ask">
           <AskButton examples={ASK_EX} />
         </span>
       </nav>
 
+      {pop ? (
+        <div className="tw-pop" onClick={() => setOpen("")}>
+          <section className="tw-sheet" aria-label={btns.find(([k]) => k === open)?.[1]} onClick={(e) => e.stopPropagation()}>
+            <button type="button" data-press className="tw-hb tw-x" onClick={() => setOpen("")}>
+              Kapat
+            </button>
+            {media ? (
+              <div className="tw-media">
+                {vid.url ? <video src={vid.url} autoPlay muted playsInline loop controls /> : <iframe title="Kamera" src={ytSrc(src.url)} allow="autoplay; encrypted-media; picture-in-picture" />}
+              </div>
+            ) : null}
+            <div className="tl-in ck navy">{pop}</div>
+          </section>
+        </div>
+      ) : null}
       {sheets}
     </main>
   );
