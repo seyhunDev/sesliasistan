@@ -63,9 +63,9 @@ Tailwind'de `bg-bg`, `text-mut`, `text-acc`, `border-line` gibi sınıflarla yaz
 - `.ck-glass`: yarı saydam kutu (şerit, ikincil düğme).
 - `.ck :is(.btn-round,.btn-back)`: yarı saydam yuvarlak düğme. Basınca açık renkte yanıp sönmez.
 
-## iPad ana sayfa (2026-11-11, "A · Zaman şeridi")
+## Ana sayfa (2026-11-11 iPad, 2026-11-12 iPhone da, "A · Zaman şeridi")
 
-Geniş ekranda ana sayfa `IpadHome.jsx`: baştan sona lacivert, ince çizgili paneller (`.iph-pn`), panel başlığı küçük büyük harf (`.iph-pt`), rakamlar Space Grotesk (`.num`). Hava ve takvim ayrı panellerde; aynı saat ekseni (06–24). Rüzgâr rengi `windColor` (hafif mavi, iyi yeşil, sert sarı, çok sert kırmızı). Telefona uyarlanınca aynı dil kullanılacak.
+Telefonda da iPad'de de ana sayfa tek bileşen `IpadHome.jsx`: baştan sona lacivert, ince çizgili paneller (`.iph-pn`), panel başlığı küçük büyük harf (`.iph-pt`), rakamlar Space Grotesk (`.num`). Hava ve takvim ayrı panellerde; aynı saat ekseni (06–24). Rüzgâr rengi `windColor` (hafif mavi, iyi yeşil, sert sarı, çok sert kırmızı). Telefonda (<48rem) paneller alt alta, pusula solda küçük, günler yana kayar, plan bloğunda yalnız başlama saati; sayfalar başlıktaki "Tümü"de.
 
 ## Önemli plan
 

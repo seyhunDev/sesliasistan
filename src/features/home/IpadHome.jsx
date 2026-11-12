@@ -24,7 +24,8 @@ import { useWide as useSide } from "./SideNav";
 // ve her 3 saatin rüzgârı, göğü, sıcaklığı. Takvim paneli (hava ile ayrı; Seyhun "iç içe girmesin"): seçili günün planları kendi saat çizgisinde,
 // altında 7 gün; her günde gök, en düşük/en yüksek, gün içi rüzgâr eğrisi, rüzgâr aralığı + yön, yağış (mm · %), planlar.
 // Bir güne dokununca hava eğrisi ve plan çizgisi o güne geçer. Sağ sütun (side): yarış şeridi, Bekleyen, Kulüp ve hesaba göre kartlar.
-// Hava, Hava sayfasında seçilen yerin (getPlace) verisi; telefon düzeni değişmedi (OwnerHome HomeFeed).
+// Hava, Hava sayfasında seçilen yerin (getPlace) verisi. Telefonda da bu (Seyhun 2026-11-12 "birleştir"): paneller alt alta, günler yana kayar,
+// planlarda yalnız başlama saati; düzen globals.css (max-width 47.99rem).
 const H0 = 6;
 const H1 = 24;
 // Rüzgâr rengi (kn): hafif mavi, iyi yeşil, sert sarı, çok sert kırmızı
@@ -292,14 +293,16 @@ function DayLane({ date, today, nowH, dname }) {
   const pct = (h) => `${((Math.min(Math.max(h, H0), H1) - H0) / (H1 - H0)) * 100}%`;
   const sail = list.find(isTraining);
   const att = sail && canSeeAthletes(profile?.email);
-  // Üst üste binen bloklar alt alta (iki sıra)
+  // Üst üste binen bloklar alt alta (iki sıra); bloğun en az genişliği de sayılır (telefonda 5.5rem, iPad'de 7.5rem)
+  const [ref, W] = useWidth();
+  const minH = W ? ((W < 500 ? 88 : 120) / W) * (H1 - H0) : 0;
   const lanes = [];
   const placed = timed.map((p) => {
     const s = hOf(p.time);
     const e = Math.max(hOf(p.endTime) ?? s + (p.durationMin ? p.durationMin / 60 : isTraining(p) ? 2 : 1), s + 0.75);
     let lane = lanes.findIndex((end) => end <= s);
     if (lane < 0) lane = lanes.push(0) - 1;
-    lanes[lane] = e;
+    lanes[lane] = Math.max(e, s + minH);
     return { p, s, e, lane: Math.min(lane, 1) };
   });
   return (
@@ -323,7 +326,7 @@ function DayLane({ date, today, nowH, dname }) {
           </Link>
         )}
       </div>
-      <div className="iph-lane">
+      <div ref={ref} className="iph-lane" style={placed.some((x) => x.lane) ? { height: "7.35rem" } : undefined}>
         {placed.map(({ p, s, e, lane }) => (
           <button
             key={p.id}
@@ -331,12 +334,12 @@ function DayLane({ date, today, nowH, dname }) {
             data-press
             onClick={() => open(p)}
             className={`iph-blk tone-${planTone(p)}`}
-            style={{ left: pct(s), width: `max(4.5rem, calc(${pct(e)} - ${pct(s)}))`, top: lane ? "2.6rem" : 0 }}
+            style={{ left: pct(s), width: `calc(${pct(e)} - ${pct(s)})`, top: lane ? "2.6rem" : 0 }}
           >
             <b className="truncate">{p.title || "Plan"}</b>
             <small className="num">
               {p.time}
-              {p.endTime ? `–${p.endTime}` : ""}
+              {p.endTime && <span className="iph-end">–{p.endTime}</span>}
             </small>
           </button>
         ))}
