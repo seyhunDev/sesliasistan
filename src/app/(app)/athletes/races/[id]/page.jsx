@@ -16,7 +16,7 @@ import { RaceEditor } from "@/features/athletes/RaceEditor";
 import { placeText } from "@/features/athletes/RaceList";
 import { Icon } from "@/components/ui/Icon";
 import { coachStart } from "@/features/athletes/raceDocs";
-import { addRacePlan, freshRace, loadRace, loadRaces, racesNow, remoteResults, saveRace, saveRaceResults, watchRace } from "@/features/athletes/races";
+import { addRacePlan, changedFields, freshRace, loadRace, loadRaces, racesNow, remoteResults, saveRace, saveRaceResults, watchRace } from "@/features/athletes/races";
 import { loadShared, loadSharedList, pullSheets, shareRace } from "@/features/athletes/sharedRaces";
 import { fromShared, newSheets, pickable } from "@/lib/sharedRace";
 import { stampResults } from "@/lib/raceDay";
@@ -51,8 +51,11 @@ export default function RacePage() {
   return <Race orgId={profile.orgId} uid={user.uid} email={profile.email || user.email} by={{ name: profile?.name ?? "Kullanıcı" }} mail={mail} coach={coach} />;
 }
 
-// Listeden yeni açıldıysa (1 dk içinde okunan liste) yarış bellekten gelir: "yükleniyor" yok, yeniden okuma yok
-const cachedRace = (orgId, id) => (id === "new" ? null : racesNow(orgId, 60e3)?.find((x) => x.id === id) || null);
+// Bellekteki listede varsa yarış hemen oradan çizilir: "yükleniyor" yok (canlı ekrandan geri dönüş dahil, Seyhun 2026-11-12).
+// Liste 1 dk içinde okunduysa yeniden okuma da yok; daha eskiyse yalnız bu yarış (1 okuma) arkada tazelenir, bütün liste değil.
+const FRESH = 60e3;
+const cachedRace = (orgId, id, maxAge = Infinity) => (id === "new" ? null : racesNow(orgId, maxAge)?.find((x) => x.id === id) || null);
+const sameRace = (a, b) => !Object.keys(changedFields(a, b)).length && !Object.keys(changedFields(b, a)).length;
 
 function Race({ orgId, uid, email, by, mail, coach }) {
   const { isOwner } = useAuth(); // Canlı düğmesi yalnız ana hesapta
@@ -82,8 +85,22 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   const [fail, setFail] = useState(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
-    if (cachedRace(orgId, id)) return;
+    if (cachedRace(orgId, id, FRESH)) return;
     let on = true;
+    const kept = cachedRace(orgId, id);
+    if (kept) {
+      loadRace(orgId, id).then(
+        (r) => {
+          if (!on) return;
+          if (!r) return setMissingRace(true);
+          if (sameRace(r, kept)) return;
+          setRace(r);
+          setVer((v) => v + 1);
+        },
+        () => {},
+      );
+      return () => void (on = false);
+    }
     let shown = null;
     const fromCache = (list) => {
       if (!on || id === "new" || shown) return;
