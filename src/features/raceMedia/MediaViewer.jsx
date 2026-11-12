@@ -8,7 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 import { MomentPicker } from "./MomentPicker";
 
 // Tam ekran görüntüleyici, iPhone Fotoğraflar gibi sade (Seyhun 2026-10-22: "çok karma karışık, daha sade, iPhone tasarım"; örnek
-// yaris-tasarim/medya/izleme-sade.png): siyah zemin, görüntü ekrana sığar. Üstte yuvarlak geri, ortada başlık (yarış/start adı) ve altında
+// yaris-tasarim/medya/izleme-sade.png): siyah zemin, görüntü ekrana sığar. Üstte yuvarlak X (2026-11-12 Apple gibi; önce geri oku), ortada başlık (yarış/start adı) ve altında
 // küçük gün · saat. Altta iPhone gibi araç çubuğu: Paylaş · Kimler · Düzelt · Sil (Düzelt: yarış ve an, MomentPicker). Videoda çekimdeki sayaç, altta
 // oynat · sarma çubuğu (geçen / kalan) · ses. Görüntüye dokununca bütün yazılar gizlenir/görünür; sağa-sola kaydırınca önceki/sonraki.
 // Telefonda tutulan dosya (m.local, 7 gün) varsa o oynar, beklemeden açılır; yoksa Firebase'den, inerken "Yükleniyor %38".
@@ -19,6 +19,22 @@ export function MediaViewer(props) {
 
 // "1:35" (iPhone gibi, başta sıfır yok)
 const ms = (n) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, "0")}`;
+
+// Apple oynatıcısı gibi koyu cam (Seyhun 2026-11-12): yuvarlak düğmeler ve iPad'deki alt şerit
+const GLASS_BG = "md:bg-[rgba(40,44,52,.6)] md:backdrop-blur-xl";
+const GLASS = "grid shrink-0 place-items-center rounded-full bg-[rgba(40,44,52,.6)] text-white backdrop-blur-xl active:scale-95 transition-transform";
+// 10 sn geri/ileri: yarım ok ve ortada 10
+function Skip({ back = false }) {
+  return (
+    <svg viewBox="0 0 24 24" className="size-[60%]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d={back ? "M12 4.5a7.5 7.5 0 1 1-7.5 7.5" : "M12 4.5a7.5 7.5 0 1 0 7.5 7.5"} />
+      <path d={back ? "M12 1.8v5.4L8.6 4.5z" : "M12 1.8v5.4l3.4-2.7z"} fill="currentColor" stroke="none" />
+      <text x="12" y="15.6" fontSize="7.5" fontWeight="700" textAnchor="middle" fill="currentColor" stroke="none">
+        10
+      </text>
+    </svg>
+  );
+}
 
 // Çekimdeki sayaç (Seyhun 2026-10-22: "çekilmiş videoyu izlerken geri sayım yok"): çekildiği an startan kaç saniye önce/sonraysa (m.sec),
 // videoda oynatma süresi eklenerek "Start 3:12" / "Startan beri 1:35"
@@ -31,7 +47,7 @@ function Pill({ s }) {
   );
 }
 
-// Video: kendi oynatma çubuğumuz (iPhone'un düğmeleri yok). Küçük resim hemen görünür, inerken ortada halka ve yüzde.
+// Video: kendi oynatma çubuğumuz (iPhone'un düğmeleri yok). 2026-11-12 Apple oynatıcısı gibi: telefonda ortada 10 sn geri · oynat · 10 sn ileri, altta ince süre çizgisi; iPad'de (md) hepsi altta yüzen camsı şeritte; ses sağ üstte. Küçük resim hemen görünür, inerken ortada halka ve yüzde.
 function Clip({ m, bar, onTap, tools = null }) {
   const v = useRef(null);
   const track = useRef(null);
@@ -67,6 +83,28 @@ function Clip({ m, bar, onTap, tools = null }) {
   };
   const stop = (e) => e.stopPropagation();
   const side = "pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))]";
+  const skip = (n) => {
+    const x = v.current;
+    if (!x) return;
+    x.currentTime = Math.min(d || x.duration || 0, Math.max(0, x.currentTime + n));
+    setT(x.currentTime);
+  };
+  const mute1 = () => (v.current && (v.current.muted = !mute), setMute(!mute));
+  const playB = (c, ic) => (
+    <button type="button" onClick={toggle} aria-label={play ? "Durdur" : "Oynat"} className={`${GLASS} ${c}`}>
+      <Icon name={play ? "pause" : "play"} className={ic} />
+    </button>
+  );
+  const skipB = (c) => (
+    <button type="button" onClick={() => skip(-10)} aria-label="10 saniye geri" className={`${GLASS} ${c}`}>
+      <Skip back />
+    </button>
+  );
+  const skipF = (c) => (
+    <button type="button" onClick={() => skip(10)} aria-label="10 saniye ileri" className={`${GLASS} ${c}`}>
+      <Skip />
+    </button>
+  );
   return (
     <>
       <video
@@ -99,36 +137,51 @@ function Clip({ m, bar, onTap, tools = null }) {
         </div>
       )}
       {bar && (
-        // iPhone Fotoğraflar gibi (Seyhun 2026-10-22): oynat · sarma çubuğu · ses, altında Paylaş · Kimler · Düzelt · Sil
-        <div onTouchStart={stop} onTouchEnd={stop} className={`absolute inset-x-0 bottom-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] [text-shadow:0_1px_2px_rgba(0,0,0,.6)] ${side}`}>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={toggle} aria-label={play ? "Durdur" : "Oynat"} className="grid size-11 shrink-0 place-items-center rounded-full active:bg-white/15">
-              <svg viewBox="0 0 24 24" className="size-6" fill="currentColor">
-                {play ? <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" /> : <path d="M8 5.5v13a.5.5 0 0 0 .77.42l10.2-6.5a.5.5 0 0 0 0-.84L8.77 5.08A.5.5 0 0 0 8 5.5Z" />}
-              </svg>
-            </button>
-            <div
-              ref={track}
-              onPointerDown={(e) => (e.currentTarget.setPointerCapture(e.pointerId), seek(e))}
-              onPointerMove={(e) => e.currentTarget.hasPointerCapture(e.pointerId) && seek(e)}
-              className="relative h-9 min-w-0 flex-1 cursor-pointer touch-none overflow-hidden rounded-lg bg-white/15"
-              role="slider"
-              aria-label="Süre"
-              aria-valuemin={0}
-              aria-valuemax={Math.round(d)}
-              aria-valuenow={Math.round(t)}
-            >
-              <div className="absolute inset-y-0 left-0 bg-white/25" style={{ width: `${d ? Math.min(100, (t / d) * 100) : 0}%` }} />
-              <div className="absolute inset-y-0 w-[3px] -translate-x-1/2 rounded-full bg-white" style={{ left: `${d ? Math.min(100, (t / d) * 100) : 0}%` }} />
-              <span className="absolute inset-y-0 left-2.5 flex items-center text-[0.75rem] font-semibold tabular-nums">{ms(Math.round(t))}</span>
-              <span className="absolute inset-y-0 right-2.5 flex items-center text-[0.75rem] font-semibold tabular-nums text-white/70">−{ms(Math.max(0, Math.round(d - t)))}</span>
-            </div>
-            <button type="button" onClick={() => (v.current && (v.current.muted = !mute), setMute(!mute))} aria-label={mute ? "Sesi aç" : "Sesi kapat"} className="grid size-11 shrink-0 place-items-center rounded-full active:bg-white/15">
-              <Icon name={mute ? "mute" : "volume"} className="size-6" />
-            </button>
+        <>
+          {/* Ses sağ üstte (iPhone/iPad oynatıcısı gibi; Seyhun 2026-11-12 "Apple tarzı") */}
+          <button type="button" onClick={mute1} aria-label={mute ? "Sesi aç" : "Sesi kapat"} className={`${GLASS} absolute right-[calc(1rem+env(safe-area-inset-right))] top-[calc(0.5rem+env(safe-area-inset-top))] z-20 size-10`}>
+            <Icon name={mute ? "mute" : "volume"} className="size-5" />
+          </button>
+          {/* Telefon: ortada 10 sn geri · oynat/durdur · 10 sn ileri */}
+          <div onTouchStart={stop} onTouchEnd={stop} className={`absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-7 md:hidden ${want && wait ? "invisible" : ""}`}>
+            {skipB("size-12")}
+            {playB("size-16", "size-8")}
+            {skipF("size-12")}
           </div>
-          {tools}
-        </div>
+          {/* Altta: telefonda ince süre çizgisi ve altında geçen/kalan; iPad'de (md, 48rem) düğmeler ve süre yüzen tek camsı şeritte */}
+          <div onTouchStart={stop} onTouchEnd={stop} className={`absolute inset-x-0 bottom-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))] ${side}`}>
+            <div className={`md:mx-auto md:flex md:max-w-[40rem] md:items-center md:gap-2 md:rounded-[1.25rem] md:px-3 md:py-2 ${GLASS_BG}`}>
+              <div className="hidden items-center md:flex">
+                {skipB("size-10 !bg-transparent !backdrop-blur-none")}
+                {playB("size-10 !bg-transparent !backdrop-blur-none", "size-6")}
+                {skipF("size-10 !bg-transparent !backdrop-blur-none")}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div
+                  ref={track}
+                  onPointerDown={(e) => (e.currentTarget.setPointerCapture(e.pointerId), seek(e))}
+                  onPointerMove={(e) => e.currentTarget.hasPointerCapture(e.pointerId) && seek(e)}
+                  className="flex h-7 cursor-pointer touch-none items-center"
+                  role="slider"
+                  aria-label="Süre"
+                  aria-valuemin={0}
+                  aria-valuemax={Math.round(d)}
+                  aria-valuenow={Math.round(t)}
+                >
+                  <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/30">
+                    <div className="absolute inset-y-0 left-0 rounded-full bg-white" style={{ width: `${d ? Math.min(100, (t / d) * 100) : 0}%` }} />
+                  </div>
+                </div>
+                <div className="flex justify-between text-[0.6875rem] font-medium tabular-nums text-white/75 md:hidden">
+                  <span>{ms(Math.round(t))}</span>
+                  <span>−{ms(Math.max(0, Math.round(d - t)))}</span>
+                </div>
+              </div>
+              <span className="hidden w-12 shrink-0 text-right text-[0.75rem] font-medium tabular-nums text-white/75 md:block">−{ms(Math.max(0, Math.round(d - t)))}</span>
+            </div>
+            {tools}
+          </div>
+        </>
       )}
     </>
   );
@@ -216,11 +269,12 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
       )}
       {ui && (
         <div className={`absolute inset-x-0 top-0 z-10 flex items-center gap-3 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] ${side}`}>
-          <button type="button" onClick={onClose} aria-label="Geri" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 active:bg-white/25">
-            <Icon name="back" className="size-5" />
+          <button type="button" onClick={onClose} aria-label="Kapat" className={`${GLASS} size-10`}>
+            <Icon name="x" className="size-5" />
           </button>
           <div className="min-w-0 flex-1 text-center leading-tight [text-shadow:0_1px_2px_rgba(0,0,0,.6)]">
             <p className="truncate text-[0.9375rem] font-semibold">{title || when}</p>
+            {items.length > 1 ? <p className="text-[0.75rem] tabular-nums text-white/60">{`${i + 1} / ${items.length}`}</p> : null}
             {m.up != null ? <p className="truncate text-[0.75rem] text-white/60">{m.up < 0 ? "Telefonda · buluta gönderilemedi" : `Buluta gönderiliyor %${Math.round(m.up * 100)}`}</p> : m.ph && <p className="truncate text-[0.75rem] text-white/60">Yalnız telefonda</p>}
           </div>
           <span className="size-10 shrink-0" />

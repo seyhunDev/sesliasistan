@@ -54,16 +54,11 @@
 .tl-sw::after { content: ""; position: absolute; left: 0.2rem; top: 0.2rem; width: 1.45rem; height: 1.45rem; border-radius: 50%; background: #fff; transition: transform 0.15s ease; }
 .tl-sw.on { background: #2f6bff; }
 .tl-sw.on::after { transform: translateX(1.25rem); }
-.tl-go { display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%; height: 3.9rem; margin-top: 1rem; border-radius: 1rem; background: linear-gradient(#3b78ff, #2a5ff0); box-shadow: 0 6px 24px rgba(47, 107, 255, 0.4); color: #fff; font: 800 1.6rem/1 var(--sc-c); letter-spacing: 0.03em; }
-.tl-go small { font-size: 1.1rem; opacity: 0.8; }
-.tl-go:active { transform: translateY(1px); }
-.tl-go:disabled { opacity: 0.5; }
+/* Ana düğme ve alt düğmeler ortak düğme (.btn; Seyhun 2026-11-12 "butonlar ortak tasarımda olsun"): burada yalnız yer ve boy */
+.tl-go { width: 100%; height: 3.5rem; margin-top: 1rem; }
+.tl-go small { font-weight: 500; opacity: 0.8; }
 .tl-foot { display: flex; gap: 0.5rem; margin-top: 0.85rem; }
-.tl-foot button { flex: 1; min-width: 0; height: 3.2rem; border-radius: 0.85rem; background: #1a2638; color: #fff; font: 700 1.15rem/1 var(--sc-c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tl-foot button.p { background: #2f6bff; }
-.tl-foot button.rec { background: #e5484d; }
-.tl-foot button:active { transform: translateY(1px); }
-.tl-foot button:disabled { opacity: 0.5; }
+.tl-foot button { flex: 1; min-width: 0; height: 3.2rem; padding: 0 0.5rem; overflow: hidden; text-overflow: ellipsis; }
 .tl-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
 .tl-tiles button { position: relative; display: flex; flex-direction: column; justify-content: center; min-width: 0; height: 3.6rem; padding: 0 0.6rem; border-radius: 0.75rem; background: #1a2638; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1); color: #fff; text-align: left; font: 700 1.1rem/1.05 var(--sc-c); }
 .tl-tiles button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 1.4rem; }
@@ -98,9 +93,173 @@
 .tl-ln { display: flex; gap: 0.45rem; margin-top: 0.8rem; }
 .tl-ln input { flex: 1; min-width: 0; height: 2.75rem; padding: 0 0.75rem; border-radius: 0.6rem; border: 0; background: rgba(255, 255, 255, 0.1); color: #fff; font-size: 1rem; }
 .tl-ln input::placeholder { color: rgba(255, 255, 255, 0.45); }
-.tl-ln button { flex: none; height: 2.75rem; padding: 0 0.9rem; border-radius: 0.6rem; background: #2f6bff; color: #fff; font: 700 1rem/1 var(--sc-c); }
-.tl-ln button:disabled { opacity: 0.5; }
+.tl-ln button { flex: none; height: 2.75rem; }
 
 @media (min-width: 40rem) {
   .tl-ck, .tl-bar, .tl-pn { left: 50%; right: auto; width: min(34rem, calc(100% - 1.2rem)); transform: translateX(-50%); }
 }
+
+/* iPad ve Mac (≥48rem; Seyhun 2026-11-11 "A · Üç sütun", örnek /mnt/project-files/antrenman-ipad/ornekler.html): ana sayfadaki iPad
+   "Zaman şeridi" dili. Lacivert, ince çizgili paneller, rakamlar Space Grotesk. Yatayda Start + Rüzgâr | Sporcular | Sıralama;
+   dikte Start ve Rüzgâr üstte yan yana, altında Sporcular ve Sıralama. Paneller içinde kayar, sayfa tek ekran. */
+.tw { --sc-c: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; --tl-b: var(--sc-c); --n: var(--font-num), ui-monospace, monospace;
+  position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; gap: 1rem; overflow: hidden; color: #e9effc;
+  padding: calc(1rem + env(safe-area-inset-top)) 1.5rem calc(1.25rem + env(safe-area-inset-bottom));
+  background: radial-gradient(120% 90% at 70% 0%, #0e2347 0%, #0b1a33 45%, #060e1d 100%); }
+.tw-hd { display: flex; align-items: center; gap: 0.625rem; min-height: 3rem; flex: none; }
+.tw-hd h1 { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 0.75rem; margin: 0 0 0 0.25rem; }
+.tw-hd h1 b { font-size: 1.625rem; font-weight: 600; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tw-hd h1 small { font-size: 0.9rem; font-weight: 600; color: #7d90b5; white-space: nowrap; }
+/* Üst satırdaki düğmeler ortak düğme (.btn); burada yalnız boy. Açık pencerenin düğmesi seçili (aria-pressed, ortak). Ay adı düğme değil, kutu */
+.tw-hb { flex: none; display: flex; align-items: center; gap: 0.4rem; height: 2.5rem; padding: 0 0.9rem; font-size: 0.875rem; white-space: nowrap; }
+.tw-hb:not(.btn) { border-radius: 0.75rem; background: rgba(255, 255, 255, .07); border: 1px solid #2a4472; color: #fff; font-weight: 650; }
+.tw-hb b { font-family: var(--n); font-weight: 500; }
+.tw-grid { flex: 1; min-height: 0; display: grid; gap: 1rem; grid-template-columns: 21rem minmax(0, 1fr) 20rem; }
+.tw-grid.solo { grid-template-columns: minmax(0, 26rem); }
+.tw-left { display: flex; flex-direction: column; gap: 1rem; min-height: 0; }
+.tw-pn { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  background: rgba(255, 255, 255, .028); border: 1px solid #1d3256; border-radius: 1.4rem; padding: 1rem 1.125rem; text-align: left; color: inherit; }
+.tw-start { flex: 1; }
+.tw-wind { flex: none; overflow: hidden; padding-bottom: 0.5rem; }
+.tw-pt { display: flex; align-items: center; gap: 0.5rem; flex: none; margin-bottom: 0.625rem; font-size: 0.75rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: #7d90b5; }
+.tw-pt em { font-style: normal; text-transform: none; letter-spacing: 0; color: #4f6389; font-weight: 600; }
+.tw-wind .tw-pt em { color: #cfdcf5; }
+.tw-big { font-family: var(--n); font-size: 4.5rem; font-weight: 500; line-height: 1; letter-spacing: -.02em; color: #fff; white-space: nowrap; }
+.tw-big.cd { color: #8fb3ff; }
+.tw-big.red { color: #ff6b6b; }
+.tw-sub { margin: 0.4rem 0 0; font-size: 0.875rem; font-weight: 600; color: #7d90b5; }
+.tw-ctl { margin-top: 0.875rem; }
+.tw-ctl .tl-hd, .tw-ctl .tl-no { display: none; }
+.tw .tl-lb { margin: 0.75rem 0 0.4rem; font: 650 0.6875rem/1 var(--sc-c); letter-spacing: .06em; color: #7d90b5; }
+.tw .tl-lb:first-child { margin-top: 0; }
+.tw .tl-chips button { height: 2.9rem; background: rgba(255, 255, 255, .03); box-shadow: inset 0 0 0 1px #2a4472; font: 500 1.2rem/1 var(--n); }
+.tw .tl-chips button small { font: 600 0.7rem/1 var(--sc-c); color: #7d90b5; }
+.tw .tl-chips button.on { background: #fff; box-shadow: none; }
+.tw .tl-chips button.on small { color: #4a5a70; }
+.tw .tl-box { background: none; box-shadow: none; border-top: 1px solid #1d3256; border-radius: 0; }
+.tw .tl-row { padding: 0.7rem 0; border-top-color: #1d3256; }
+.tw .tl-row:first-child { border-top: 0; }
+.tw .tl-row > b { width: 4rem; font: 650 0.6875rem/1 var(--sc-c); letter-spacing: .06em; }
+.tw .tl-row > span { font: 600 0.9375rem/1.2 var(--sc-c); }
+.tw .tl-row > span small { font-size: 0.75rem; color: #7d90b5; }
+.tw .tl-row > i { font: 650 0.875rem/1 var(--sc-c); color: #8fb3ff; }
+.tw .tl-go { margin-top: 0.75rem; }
+.tw .tl-go small { font-family: var(--n); }
+.tw .tl-foot { flex-wrap: wrap; margin-top: 0; }
+.tw .tl-foot button { flex: 1 1 40%; height: 2.9rem; }
+.tw-ctl .tl-foot button:last-child:nth-child(3) { flex-basis: 100%; height: 3.3rem; }
+.tw .tl-msg { color: #cfdcf5; }
+.tw-tiles, .tw .tl-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.5rem; align-content: start; }
+.tw-tile { display: flex; align-items: center; gap: 0.5rem; min-width: 0; height: 3.5rem; padding: 0 0.75rem; border-radius: 0.875rem; border: 1px solid #2a4472; background: rgba(255, 255, 255, .035); }
+.tw-tile b { flex: 1; min-width: 0; font-weight: 600; font-size: 0.9375rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tw-tile small { font-size: 0.8rem; color: #7d90b5; }
+.tw-tile.off { opacity: .45; border-style: dashed; }
+.tw .tl-tiles button { height: 3.5rem; border-radius: 0.875rem; background: rgba(255, 255, 255, .035); box-shadow: inset 0 0 0 1px #2a4472; font: 600 0.9375rem/1.1 var(--sc-c); }
+.tw .tl-tiles button.on { background: rgba(61, 123, 255, .16); box-shadow: inset 0 0 0 1px #3d7bff; color: #fff; }
+.tw .tl-tiles button.on small { color: #a9b8d6; }
+.tw .tl-tiles button > span { padding-right: 2rem; }
+.tw .tl-tiles button i { top: 50%; right: 0.6rem; transform: translateY(-50%); min-width: 1.75rem; height: 1.75rem; background: #3d7bff; font: 500 0.95rem/1 var(--n); }
+.tw .tl-tabs button { height: 2.1rem; padding: 0 0.8rem; border-radius: 0.6rem; background: transparent; color: #7d90b5; font: 650 0.8125rem/1 var(--sc-c); }
+.tw .tl-tabs button.on { background: #fff; color: #0b1a33; }
+.tw .tl-cnt button { height: 1.75rem; font: 650 0.75rem/1 var(--sc-c); }
+.tw .tl-sub { color: #7d90b5; }
+.tw .tl-tb th { position: static; background: none; font: 650 0.6875rem/1 var(--sc-c); letter-spacing: .06em; color: #7d90b5; }
+.tw .tl-tb td { padding: 0.55rem 0.25rem; border-top-color: #1d3256; font: 600 0.9rem/1.15 var(--sc-c); }
+.tw .tl-tb td.n, .tw .tl-tb td:last-child, .tw .tl-tb td.c { font-family: var(--n); font-weight: 500; }
+.tw .tl-tb td:last-child { font-size: 1rem; }
+.tw .tl-tb td small { font: 500 0.7rem/1.2 var(--n); color: #7d90b5; }
+.tw .tl-tb tr:nth-child(-n + 3) td.n { color: #8fb3ff; }
+.tw-rank { padding-bottom: 4.5rem; }
+.tw-ask { position: fixed; z-index: 5; right: 2.6rem; bottom: calc(1.6rem + env(safe-area-inset-bottom)); width: 3.25rem; height: 2rem; }
+.tw-pop { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 1.5rem; background: rgba(4, 10, 22, .6); }
+.tw-sheet { position: relative; display: flex; flex-direction: column; width: min(46rem, 100%); max-height: 100%; border-radius: 1.4rem; background: #0c1728; border: 1px solid #2a4472; overflow: hidden; }
+.tw-x { position: absolute; z-index: 2; right: 0.75rem; top: 0.75rem; } /* yuvarlak X (Seyhun 2026-11-12 Apple gibi) */
+.tw-media { flex: none; aspect-ratio: 16 / 9; background: #000; }
+.tw-media video, .tw-media iframe { width: 100%; height: 100%; border: 0; object-fit: contain; }
+.tw-sheet .tl-in { padding-top: 1rem; }
+/* Video'nun başlık satırı (Seç) X'in altına girmesin (Seyhun 2026-11-12 iPad: "düzelt, kapat üst üste"); Seç Fotoğraflar gibi hap */
+.tw-sheet .lvd-hd { align-items: center; min-height: 2.25rem; padding-right: 3rem; }
+.tw-sheet .lvd-hd .lvd-del { border-radius: 99px; }
+.tw-sheet .lvd-hd span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Dik iPad (48–64rem; Seyhun 2026-11-12 "alanları iyi kullan"): solda Start (sabit boy) ve altında Sporcular, sağda Rüzgâr ve altında Sıralama.
+   Rüzgâr kutusu yalnız eğrisi kadar; boşluk kalmaz */
+@media (max-width: 63.99rem) {
+  .tw { padding-left: 1.25rem; padding-right: 1.25rem; }
+  .tw-grid { grid-template-columns: minmax(0, 1fr) 20rem; grid-template-rows: auto auto minmax(0, 1fr); }
+  .tw-left { display: contents; }
+  .tw-start { grid-column: 1; grid-row: 1 / 3; flex: none; height: 24rem; }
+  .tw-wind { grid-column: 2; grid-row: 1; }
+  .tw-ath { grid-column: 1; grid-row: 3; }
+  .tw-rank { grid-column: 2; grid-row: 2 / 4; }
+  .tw-grid.solo { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; }
+  .tw-grid.solo .tw-start, .tw-grid.solo .tw-wind { grid-column: 1; grid-row: auto; }
+  .tw-hd h1 small { display: none; }
+}
+/* Antrenman günlüğü (/training) geniş ekranda: solda ay ve konular, ortada günlük, sağda yazılmayanlar */
+.tw-grid.tw-log { grid-template-columns: 19rem minmax(0, 1fr) 18rem; }
+.tw-log .tw-pn > button:first-of-type, .tw-log .tw-pn > div:first-of-type { border-top: 0; }
+@media (max-width: 63.99rem) {
+  .tw-grid.tw-log { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+}
+
+/* Start kutusu (Seyhun 2026-11-12): Start ver, İptal ve Yarışı bitir hep en altta aynı yerde; kutunun boyu duruma göre değişmez.
+   Sporcu adları tam (iki satıra kadar), sıralamada tek satır */
+.tw-ctl { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.tw-ctl .tl-lb { display: none; }
+.tw-ctl .tl-box { margin-top: 0.5rem; }
+.tw-ctl .tl-go { margin-top: auto; flex: none; }
+.tw-ctl .tl-foot { margin-top: auto; }
+.tw-ctl .tl-foot button { height: 3.5rem; }
+.tw-ctl .tl-msg { order: -1; margin: 0 0 0.5rem; }
+.tw-tile { height: 3.75rem; }
+.tw-tile b { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.2; }
+.tw .tl-tiles { grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
+.tw .tl-tiles button { height: 3.75rem; }
+.tw .tl-tiles button > span { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.2; }
+.tw-tiles { grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
+.tw .tl-tb { table-layout: fixed; }
+.tw .tl-tb th:first-child { width: 1.75rem; }
+.tw .tl-tb th:last-child { width: 3rem; }
+.tw .tl-tb th.c { width: 3rem; }
+.tw .tl-tb td:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Kimler ve Parkur satırları üstteki Yoklama ve Parkur düğmelerini tekrar eder: geniş ekranda yalnız "Yarış olarak say" kalır */
+.tw-ctl .tl-row:not([aria-pressed]) { display: none; }
+
+/* Telefon (Seyhun 2026-11-12 "A · Alt düğme", örnek /mnt/project-files/antrenman-ipad/telefon-ornekler.html): iPad'in dili. Üstte ad ve ⋯,
+   sabit boylu Start kutusu, sekmeler (Sporcular / Bitiren kim · Sıralama · Rüzgâr), altta sabit şerit: ana düğme hep aynı yerde + asistan küresi */
+.tw.tp { gap: 0.625rem; padding: calc(0.5rem + env(safe-area-inset-top)) 0.875rem 0; }
+.tp .tw-hd { min-height: 2.75rem; }
+.tp .tw-hd h1 { margin-left: 0.125rem; gap: 0.5rem; }
+.tp .tw-hd h1 b { font-size: 1.1875rem; }
+.tp .tw-hd h1 small { font-size: 0.78rem; }
+.tp-menu { position: absolute; z-index: 20; right: 0; top: calc(100% + 0.375rem); display: flex; flex-direction: column; min-width: 9rem; padding: 0.375rem; border-radius: 0.9rem; background: #13243f; border: 1px solid #2a4472; box-shadow: 0 12px 30px rgba(0, 0, 0, .45); }
+.tp-menu button { height: 2.75rem; padding: 0 0.75rem; border-radius: 0.6rem; text-align: left; font-weight: 650; font-size: 0.9375rem; color: #fff; }
+.tp-start { flex: none; height: 14.75rem; overflow: hidden; padding: 0.8rem 0.875rem; border-radius: 1.25rem; }
+.tp-start .tw-pt { margin-bottom: 0.25rem; min-height: 1.75rem; }
+.tp-mini { height: 1.75rem; padding: 0 0.6rem; border-radius: 0.55rem; font-size: 0.72rem; text-transform: none; letter-spacing: 0; }
+.tp-start .tw-big { font-size: 3.6rem; }
+.tp-start .tw-sub { margin-top: 0.25rem; font-size: 0.8125rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tp-chips { margin-top: 0.75rem; gap: 0.375rem; }
+.tp .tp-chips button { height: 2.5rem; border-radius: 0.7rem; background: rgba(255, 255, 255, .03); box-shadow: inset 0 0 0 1px #2a4472; font: 500 1.05rem/1 var(--n); }
+.tp .tp-chips button small { font: 600 0.65rem/1 var(--sc-c); color: #7d90b5; }
+.tp .tp-chips button.on { background: #fff; color: #0b1a33; box-shadow: none; }
+.tp-cnt { display: flex; align-items: center; gap: 0.625rem; width: 100%; margin-top: 0.5rem; text-align: left; color: #fff; }
+.tp-cnt span { flex: 1; min-width: 0; font-weight: 600; font-size: 0.875rem; line-height: 1.2; }
+.tp-cnt small { display: block; font-size: 0.72rem; font-weight: 500; color: #7d90b5; }
+.tp-two { display: grid; grid-template-columns: 1fr 1fr; gap: 0.375rem; margin-top: 0.75rem; }
+.tp-two button { height: 2.75rem; font-size: 0.9375rem; }
+.tp-start .tl-msg { margin-top: 0.4rem; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tp-seg { flex: none; display: flex; gap: 0.25rem; padding: 0.25rem; border-radius: 0.85rem; background: rgba(255, 255, 255, .04); border: 1px solid #1d3256; }
+.tp-seg button { flex: 1; height: 2.25rem; border-radius: 0.6rem; font-weight: 650; font-size: 0.8125rem; color: #7d90b5; }
+.tp-seg button.on { background: #fff; color: #0b1a33; }
+.tp-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: 0.75rem; }
+.tp-rank { background: rgba(255, 255, 255, .028); border: 1px solid #1d3256; border-radius: 1.25rem; padding: 0.75rem 0.875rem; margin-bottom: 0.5rem; }
+.tp .tw-tiles, .tp .tl-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.375rem; }
+.tp .tw-tile, .tp .tl-tiles button { height: 3.25rem; padding: 0 0.625rem; border-radius: 0.8rem; }
+.tp .tw-tile b, .tp .tl-tiles button > span { font-size: 0.86rem; }
+.tp-dock { flex: none; display: flex; align-items: center; gap: 0.5rem; margin: 0 -0.875rem; padding: 0.625rem 0.875rem calc(0.625rem + env(safe-area-inset-bottom)); border-top: 1px solid #1d3256; background: rgba(6, 14, 29, .85); }
+.tp-go { flex: 1; min-width: 0; gap: 0.4rem; height: 3.25rem; font-size: 1.0625rem; }
+.tp-go small { font-size: 0.95rem; font-weight: 500; opacity: .8; }
+.tp-ask { position: relative; flex: none; width: 3.4rem; height: 3.25rem; }
+.tp .tw-pop { align-items: end; padding: 0; }
+.tp .tw-sheet { width: 100%; max-height: 88%; border-radius: 1.4rem 1.4rem 0 0; padding-bottom: env(safe-area-inset-bottom); }

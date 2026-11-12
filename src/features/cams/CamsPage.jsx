@@ -108,7 +108,7 @@ export function CamsPage() {
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
           <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">Kameralar</h1>
-          <button type="button" data-press onClick={() => setPick(true)} className="raised h-9 max-w-[45%] shrink-0 truncate rounded-full px-4 text-[0.875rem] font-semibold">
+          <button type="button" data-press onClick={() => setPick(true)} className="btn btn-secondary btn-sm block max-w-[45%] shrink-0 truncate rounded-full px-4 leading-[2.25rem]">
             {label(place) || "Yer"}
           </button>
         </header>

@@ -341,7 +341,9 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     if (opening) return;
     setMsg("");
     try {
-      onPlay?.(x.id, await blobOf(x));
+      // 3. bilgi (antrenman tam ekran oynatıcısı): sıradaki videolar (kaydırarak geçiş) ve birinin dosyasını açma
+      const order = [...list].sort((a, b) => (a.at < b.at ? -1 : 1)); // eskiden yeniye: sola kaydırınca sonraki (daha yeni) video
+      onPlay?.(x.id, await blobOf(x), { list: order.map((y) => ({ id: y.id, at: y.at, dur: y.dur, th: y.th || "", name: nameOf(y) })), open: (id) => blobOf(list.find((y) => y.id === id)) });
     } catch (e) {
       setMsg(e?.message || "Video açılamadı");
     }
@@ -372,23 +374,23 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
         <b>Video</b>
         {playing && !edit && list.some((x) => x.id === playing) ? <span>Ekranda: {nameOf(list.find((x) => x.id === playing))}</span> : null}
         {list.length ? (
-          <button type="button" className={`lvd-del${edit ? " on" : ""}`} onClick={() => (setEdit(!edit), setCur(""), setMsg(""))}>
-            {edit ? "Bitti" : "Düzenle"}
+          <button type="button" data-press className={`btn ${edit ? "btn-primary" : "btn-secondary"} lvd-del`} onClick={() => (setEdit(!edit), setCur(""), setMsg(""))}>
+            {edit ? "Bitti" : "Seç"}
           </button>
         ) : null}
       </div>
       {edit ? null : (
         <div className="lvd-add">
-          <RecPick onFile={take} className="lvd-rec" aria-busy={busy && !gal}>
+          <RecPick onFile={take} className="btn btn-primary lvd-rec" aria-busy={busy && !gal}>
             <i aria-hidden="true" />
             {busy && !gal ? "Kaydediliyor…" : "Video çek"}
           </RecPick>
           {hasGallery() ? (
-            <button type="button" className="lvd-gal" aria-busy={!!gal} disabled={busy} onClick={pickPhotos}>
+            <button type="button" data-press className="btn btn-secondary lvd-gal" aria-busy={!!gal} disabled={busy} onClick={pickPhotos}>
               {gal ? "Ekleniyor…" : "Galeriden ekle"}
             </button>
           ) : (
-            <label className="lvd-gal" aria-busy={!!gal}>
+            <label data-press className="btn btn-secondary lvd-gal" aria-busy={!!gal}>
               <input type="file" accept="video/*" multiple hidden disabled={busy} onChange={(e) => (pick(e.target.files), (e.target.value = ""))} />
               {gal ? `Ekleniyor ${gal}` : "Galeriden ekle"}
             </label>
@@ -421,20 +423,20 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
             <div className="lvd-chs">
               {sel.yt ? (
                 sel.ytNo && !camOf(sel) ? (
-                  <button type="button" onClick={() => put(sel, { ytNo: false })}>
+                  <button type="button" data-press className="btn btn-secondary" onClick={() => put(sel, { ytNo: false })}>
                     Kameralara ekle
                   </button>
                 ) : null
               ) : need ? (
-                <button type="button" className="p" onClick={connect}>
+                <button type="button" data-press className="btn btn-primary" onClick={connect}>
                   YouTube&apos;a bağlan
                 </button>
               ) : (
-                <button type="button" className="p" disabled={!!up} onClick={() => upload(sel)}>
+                <button type="button" data-press className="btn btn-primary" disabled={!!up} onClick={() => upload(sel)}>
                   YouTube&apos;a yükle
                 </button>
               )}
-              <button type="button" className="x" onClick={() => drop(sel)}>
+              <button type="button" data-press className="btn btn-danger" onClick={() => drop(sel)}>
                 Sil
               </button>
             </div>
@@ -446,10 +448,10 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
               <p className="lvd-q">Kameralara ekleyeyim mi?</p>
               <div className="lvd-ln">
                 <input value={camName} onChange={(e) => setCamName(e.target.value)} maxLength={30} enterKeyHint="done" aria-label="Kamera adı" />
-                <button type="button" onClick={() => addCam(sel)}>
+                <button type="button" data-press className="btn btn-primary" onClick={() => addCam(sel)}>
                   Ekle
                 </button>
-                <button type="button" className="s" onClick={() => put(sel, { ytNo: true })}>
+                <button type="button" data-press className="btn btn-secondary" onClick={() => put(sel, { ytNo: true })}>
                   Hayır
                 </button>
               </div>

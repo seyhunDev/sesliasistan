@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
-import { useWindObs } from "./useWindObs";
 import { useRainRadar } from "./useRainRadar";
 import { NowRain } from "./NowRain";
 import { radarNow, radarRows } from "./rainLine";
@@ -12,42 +11,50 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { db } from "@/lib/firebase/clientApp";
 import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
-import { DayNav } from "./DayNav";
 import { HourTable } from "./HourTable";
-import { WindRibbon } from "./WindRibbon";
+import { DayCell, HavaPanel, useObsRows } from "./WxPanel";
 import { nextDay } from "./hourCols";
 import { todayStr } from "@/lib/utils/format";
-import { dayCode, dayHours, dirDeg, getPlace, kn, nowOf, placeLabel, setPlace, sky, windName, compareLinks } from "./weather";
+import { dayHours, getPlace, placeLabel, setPlace, compareLinks } from "./weather";
 
-// Hava sayfası (Seyhun 2026-11-03 Windy görseli, örnek hava-sayfasi-ornek.png "Böyle yap"): lacivert üstte geri, yer, yenile, büyük sıcaklık ve şimdiki rüzgâr;
-// altında gün satırı (DayNav: ‹ Dün · Bugün · Yarın ›, önceki 5 gün ve 7 gün ileri); açık zeminde saat saat tablo (HourTable, tone="light":
-// 3 saatte bir sütun, geçmişte istasyon ölçümü açık mavi) ve altında BÖLGE haritası (tablonun altında sayfada, saat çubuğu ve Oynat ile; RegionMap: rüzgâr / yağış, −2 sa … +24,
-// dokununca nokta taşınır, Geri al), MGM / Windy ve kaynak satırı. Aynı tablo ana sayfada, yarış havasında ve canlı ekranda kullanılır.
-const nowHour = () => new Date().getHours();
+// Hava sayfası (Seyhun 2026-11-12 "hava durumu sayfasını da ana sayfa hava durumuna göre yap… gerçekleşen değerleri de göster… birleştir";
+// örnek ana-sayfa/sade-2026-11/hava.html): ana sayfayla aynı lacivert (.iph) ve aynı Hava kutusu (HavaPanel: pusula + saat saat rüzgâr,
+// geçen saatler istasyon ölçümü beyaz çizgi). Altında 12 gün (önceki 5 gün ölçülen, bugün ve 6 gün ileri; dokununca kutu ve tablo o güne geçer),
+// sonra saat saat tablo (HourTable, ölçülen saatler ayrı satırda) ve BÖLGE haritası (RegionMap; geniş ekranda yan yana), MGM / Windy, kaynak satırı.
 const ago = (ms) => {
   const m = Math.round((Date.now() - ms) / 60000);
   return m < 2 ? "az önce" : m < 60 ? `${m} dk önce` : `${Math.round(m / 60)} sa önce`;
 };
+const shift = (date, k) => {
+  const d = new Date(`${date}T12:00`);
+  d.setDate(d.getDate() + k);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
-export function WeatherTop({ w, refresh }) {
+export function WeatherTop({ w, err, refresh }) {
   const today = todayStr();
-  const all = [{ date: w.today?.date, code: w.today?.code, min: w.today?.min, max: w.today?.max, wind: w.today?.wind, gust: w.today?.gust, mm: w.today?.mm }, ...(w.days || [])].filter((d) => d.date && d.date >= today);
-  const [sel, setSel] = useState(all[0]?.date || today);
-  const past = w.past || [];
-  const navDays = [...past, ...all].map((d) => d.date); // önceki 5 gün kapalı sayılır: açılışta bugün, geri gidilebilir
+  const [sel, setSel] = useState(today);
   const place = getPlace();
   const radar = useRainRadar(place);
-  const info = [...past, ...all].find((d) => d.date === sel) || all[0];
-  const isToday = sel === all[0]?.date;
-  // Radar burada yağış görmüyorsa şu anki yağmur simgesi ve son saatlerin yağmuru gösterilmez (ana sayfa ile aynı; rainLine radarNow / radarRows)
+  const days = Array.from({ length: 12 }, (_, i) => shift(today, i - 5)).filter((d) => dayHours(w, d)?.length);
+  const isToday = sel === today;
+  // Radar burada yağış görmüyorsa şu anki yağmur ve son saatlerin yağmuru gösterilmez (rainLine radarNow / radarRows)
   const fcRows = dayHours(w, sel) || [];
   const rows = isToday ? radarRows(fcRows, radar) : fcRows;
-  const n = isToday ? radarNow(nowOf(w), radar) : null;
-  const top = rows.length ? rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]) : null;
-  const st = useWindObs(place, sel, today)?.station;
-  const obToday = useWindObs(place, today, today);
+  const ww = isToday && w ? { ...w, now: radarNow(w.now, radar) || w.now } : w;
+  const now = new Date();
+  const nowH = now.getHours() + now.getMinutes() / 60;
+  const ob = useObsRows(sel, today);
+  const obToday = useObsRows(today, today);
+  const st = ob.station || obToday.station;
   const { profile } = useAuth();
   const toast = useToast();
+  // Günler açılışta bugünden başlar (geçmiş 5 gün solda, kaydırınca)
+  const strip = useRef(null);
+  useEffect(() => {
+    const el = strip.current?.querySelector("[aria-pressed=true]");
+    if (el) strip.current.scrollLeft = el.offsetLeft - strip.current.firstElementChild.offsetLeft;
+  }, [days.length]);
   // Haritada dokunulan nokta seçilen yer olur (Ayarlar › Hava konumu gibi profile de yazılır); "Geri al" eski yeri geri koyar
   const save = (p) => {
     const saved = setPlace(p);
@@ -61,69 +68,48 @@ export function WeatherTop({ w, refresh }) {
     toast(`Nokta taşındı · ${saved.name}`, { duration: 8000, action: { label: "Geri al", onClick: () => save(prev) } });
   };
   const links = compareLinks(place);
-  const v = n || (top && { t: info?.max, code: dayCode(info?.code, rows), day: true, wind: top.wind, gust: top.gust, dir: top.dir });
+  const dname = isToday ? "Bugün" : new Date(`${sel}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric" });
   return (
-    <>
-      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Hava">
-        <header className="flex items-center gap-2.5">
-          <BackButton href="/" />
-          <div className="min-w-0 flex-1 leading-tight">
-            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Hava durumu</h1>
-            <p className="truncate text-[0.8125rem] text-white/65">{placeLabel(place)}</p>
-          </div>
-          <button type="button" onClick={() => refresh(true)} aria-label="Yenile" data-press className="btn btn-round size-9">
-            <Icon name="load" className="size-4" />
-          </button>
-        </header>
-        {v && (
-          <div className="mt-4 flex items-center gap-3">
-            <span className="shrink-0 text-[2.5rem] font-bold leading-none tracking-[-.04em] tabular-nums">{v.t}°</span>
-            <span className="min-w-0 flex-1 leading-tight">
-              <b className="block truncate text-[0.9375rem] font-semibold">{sky(v.code, v.day).label}</b>
-              <small className="block truncate text-[0.8125rem] text-white/65 tabular-nums">
-                {info ? `${info.min}° / ${info.max}°` : ""}
-              </small>
-            </span>
-            <span className="shrink-0 text-right leading-tight">
-              <small className="block text-[0.75rem] text-white/65">{windName(v.dir)[0]} {dirDeg(v.dir)} · {isToday ? "şimdi" : `en sert ${top.hh}:00`}</small>
-              <b className="text-[1.375rem] font-bold tracking-[-.02em] tabular-nums">
-                {kn(v.wind, v.gust)}
-                <span className="text-[0.8125rem] font-medium text-white/60"> kn</span>
-              </b>
-            </span>
-          </div>
-        )}
-        {rows.length > 0 && <WindRibbon rows={rows} nowH={isToday ? nowHour() : -1} radar={isToday ? radar : null} h={104} className="mt-4" />}
-        <div className="mt-4">
-          <DayNav sel={sel} days={navDays} today={today} onStep={(k) => setSel(navDays[navDays.indexOf(sel) + k] || sel)} />
-        </div>
-      </section>
-      <div className="wide-body relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
-        <section aria-label="Saat saat">
-          {rows.length > 0 && (
-            <div className="rounded-[1.25rem] bg-[#0b1a33] p-3">
-              <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} flat />
-              {isToday && <NowRain place={place} rows={fcRows} radar={radar} />}
-            </div>
-          )}
-        </section>
-        <section>
-          <div className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
-            <h2 className="text-[0.8125rem] font-bold tracking-[.04em] text-mut">BÖLGE</h2>
-            {st?.lat != null && <small className="truncate text-[0.75rem] text-mut">{st.name} istasyonu · {String(st.km).replace(".", ",")} km</small>}
-          </div>
-          <RegionMap place={place} day={sel} station={obToday?.station || st} obs={obToday?.rows} onPick={movePoint} inline />
-        </section>
-        <div className="flex gap-2">
-          <a href={links.mgm} target="_blank" rel="noopener noreferrer" data-press className="raised flex h-11 flex-1 items-center justify-center rounded-2xl text-[0.875rem] font-semibold">MGM</a>
-          <a href={links.windy} target="_blank" rel="noopener noreferrer" data-press className="raised flex h-11 flex-1 items-center justify-center rounded-2xl text-[0.875rem] font-semibold">Windy</a>
-        </div>
-        <p className="px-1 text-[0.75rem] leading-snug text-mut">
-          Kaynak: Open-Meteo · {ago(w.at)}
-          {st?.near ? ` · Ölçüm: ${st.name} istasyonu, ${String(st.km).replace(".", ",")} km` : ""}
-          {radar ? ` · Radar: ${radar.src || "RainViewer"}` : ""}
-        </p>
+    <main className="iph iph-page navy" aria-label="Hava durumu">
+      <header className="iph-hd">
+        <BackButton href="/" />
+        <h1 className="iph-date">
+          <b>Hava</b>
+          <small className="truncate">{placeLabel(place)}</small>
+        </h1>
+        <button type="button" onClick={() => refresh(true)} aria-label="Yenile" data-press className="iph-me">
+          <Icon name="load" className="size-4" />
+        </button>
+      </header>
+      <HavaPanel w={ww} err={err} refresh={refresh} date={sel} today={today} rows={rows} nowH={nowH} title="Şimdi" onOpen={() => refresh(true)} />
+      <div ref={strip} className="iph-wk iph-wk-x" aria-label="Günler">
+        {days.map((d) => (
+          <DayCell key={d} date={d} today={today} w={w} on={d === sel} nowH={d === today ? nowH : null} onSel={() => setSel(d)} />
+        ))}
       </div>
-    </>
+      <div className="iph-wxg">
+        <section className="iph-pn" aria-label="Saat saat">
+          <span className="iph-pt">Saat saat · {dname}</span>
+          {rows.length > 0 && <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} flat />}
+          {isToday && <NowRain place={place} rows={fcRows} radar={radar} />}
+        </section>
+        <section className="iph-pn" aria-label="Bölge">
+          <span className="iph-pt">
+            Bölge<span className="flex-1" />
+            {st?.lat != null && <em className="truncate">{st.name} istasyonu · {String(st.km).replace(".", ",")} km</em>}
+          </span>
+          <RegionMap place={place} day={sel} station={st} obs={obToday.rows} onPick={movePoint} inline />
+        </section>
+      </div>
+      <div className="flex gap-2">
+        <a href={links.mgm} target="_blank" rel="noopener noreferrer" data-press className="iph-mini h-11 flex-1 text-[0.875rem]">MGM</a>
+        <a href={links.windy} target="_blank" rel="noopener noreferrer" data-press className="iph-mini h-11 flex-1 text-[0.875rem]">Windy</a>
+      </div>
+      <p className="px-1 text-[0.75rem] leading-snug text-mut">
+        Kaynak: Open-Meteo · {ago(w.at)}
+        {st?.near ? ` · Ölçüm: ${st.name} istasyonu, ${String(st.km).replace(".", ",")} km` : ""}
+        {radar ? ` · Radar: ${radar.src || "RainViewer"}` : ""}
+      </p>
+    </main>
   );
 }

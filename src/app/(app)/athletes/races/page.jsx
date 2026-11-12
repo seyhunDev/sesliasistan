@@ -55,12 +55,12 @@ function Races({ orgId, me }) {
       <h1 className="min-w-0 flex-1 truncate">Yarışlar</h1>
       {/* + Yarış (Seyhun 2026-11-09): ana hesapta federasyon sitesindeki yarışlar penceresi (RaceAddSheet: TFF'den seç · Talimatla · Elle); diğerlerinde elle */}
       {owner ? (
-        <button type="button" onClick={() => setAdding(true)} data-press className="ck-btn shrink-0 !flex !h-10 items-center gap-1 !px-3.5 !text-[0.9375rem]">
+        <button type="button" onClick={() => setAdding(true)} data-press className="btn btn-primary h-10 shrink-0 gap-1 px-3.5 text-[0.9375rem]">
           <Icon name="plus" className="size-4" />
           Yarış
         </button>
       ) : (
-        <Link href="/athletes/races/new" data-press className="ck-btn shrink-0 !flex !h-10 items-center gap-1 !px-3.5 !text-[0.9375rem]">
+        <Link href="/athletes/races/new" data-press className="btn btn-primary h-10 shrink-0 gap-1 px-3.5 text-[0.9375rem]">
           <Icon name="plus" className="size-4" />
           Yarış
         </Link>

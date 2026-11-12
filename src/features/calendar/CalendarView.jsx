@@ -10,8 +10,8 @@ import { useAdd } from "@/features/add/AddProvider";
 import { usePlanOpen } from "@/features/athletes/usePlanOpen";
 import { useData } from "@/features/data/DataProvider";
 import { useWho } from "@/features/data/useWho";
-import { birthdaysOn, dayItems, fitOn, leftLabel, lessonsOn, monthGrid, nextBirthday } from "@/lib/agenda";
-import { fitDays } from "@/lib/homeTiles";
+import { birthdaysOn, dayItems, daysBetween, fitOn, leftLabel, lessonsOn, monthGrid, nextBirthday, remainLabel } from "@/lib/agenda";
+import { fitDays, planTag } from "@/lib/homeTiles";
 import { isFit, statusOf } from "@/lib/fitness/model";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import Link from "next/link";
@@ -98,8 +98,8 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
   const lead = "w-12 shrink-0 whitespace-nowrap text-[0.8125rem] font-bold tabular-nums";
   // Ana sayfadaki yan gün paneli (embedded, flat değil): her kayıt kendi kartında, ad kısalmaz, alt satır sarılır (Seyhun 2026-11-06 "detaylı, profesyonel; 4-5 plan rahat sığsın")
   const side = embedded && !flat;
-  const ttl = side ? "block text-[1rem] font-semibold leading-snug" : "block truncate text-[0.9375rem] font-semibold";
-  const sub = side ? "mt-0.5 block text-[0.8125rem] leading-snug text-mut" : "block truncate text-[0.8125rem] text-mut";
+  const ttl = side ? "block text-[1rem] font-semibold leading-snug" : "line-clamp-2 text-[0.9375rem] font-semibold leading-snug";
+  const sub = side ? "mt-0.5 block text-[0.8125rem] leading-snug text-mut" : "line-clamp-2 text-[0.8125rem] leading-snug text-mut";
   const liCls = side ? "overflow-hidden rounded-2xl border border-line bg-card" : "";
   const KC = { g: "#16a34a", bl: "#2563eb", or: "#ea580c" };
   const kindOf = (x) => (/antrenman/i.test(x.cat || "") ? "g" : /yarış|toplantı/i.test(x.cat || "") ? "bl" : "or");
@@ -111,7 +111,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
           {!embedded && <BackButton href="/" />}
           <h1 className={`min-w-0 flex-1 truncate font-bold capitalize tracking-[-.02em] ${embedded ? "text-[1.0625rem]" : "text-[1.375rem]"}`}>{monthLabel(month)}</h1>
           {(sel !== today || month !== today.slice(0, 7)) && (
-            <button type="button" onClick={() => pick(today)} data-press className={light ? "btn btn-secondary btn-sm shrink-0" : "ck-btn shrink-0"}>
+            <button type="button" onClick={() => pick(today)} data-press className="btn btn-secondary btn-sm shrink-0">
               Bugün
             </button>
           )}
@@ -286,18 +286,21 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
               ))}
               {items.plans.map((p) => {
                 const multi = p.endDate && p.endDate !== p.date;
+                // Her satırda hangi gün olduğu yazılır (Seyhun 2026-11-11 "saat var ama gün yok, kaç gün kaldığı yok, açıklaması yazılmalı"):
+                // çok günlü planda "5. gün · son gün" / "2. gün · 3 gün daha", tek günlüde "Bugün" / "Yarın" / "N gün kaldı"; türü ve yeri yanında
+                const k = multi ? daysBetween(p.date, sel) + 1 : 0;
+                const left = multi ? `${k}. gün · ${sel === p.endDate ? "son gün" : remainLabel({ ...p, endDate: p.endDate }, sel).toLocaleLowerCase("tr-TR")}` : leftLabel(p.date, today);
+                const tag = planTag(p);
                 return (
                   <li key={p.id} className={liCls} style={side ? { borderLeft: `4px solid ${KC[kindOf(p)]}` } : undefined}>
                     <button type="button" onClick={() => openPlan(p)} data-press="row" className={`${rowCls} ${isImportant(p) ? "bg-accbg" : ""}`}>
-                      <span className={`${lead} text-acc`}>{multi ? "Gün" : p.time || "Gün"}</span>
+                      <span className={`${lead} text-acc`}>{multi ? (sel === p.date && p.time ? p.time : `${k}. gün`) : p.time || "Gün"}</span>
                       <span className="min-w-0 flex-1">
                         <b className={`${ttl} ${p.status === "cancelled" ? "text-mut line-through" : ""}`}>{p.title}</b>
-                        {(p.place || multi || isImportant(p)) && (
-                          <small className={sub}>
-                            {isImportant(p) && <ImpTag />}
-                            {[multi && `${dm(p.date)} – ${dm(p.endDate)}`, p.place].filter(Boolean).join(" · ")}
-                          </small>
-                        )}
+                        <small className={sub}>
+                          {isImportant(p) && <ImpTag />}
+                          {[left, tag, multi && `${dm(p.date)} – ${dm(p.endDate)}`, p.place].filter(Boolean).join(" · ")}
+                        </small>
                       </span>
                       {pillOf(p)}
                     </button>

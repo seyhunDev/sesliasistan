@@ -153,7 +153,7 @@ export function ChatList() {
             <h1 className="truncate text-[1.375rem] font-semibold tracking-[-.02em]">Mesajlar</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{chatCount ? `${chatCount} sohbet` : "Henüz sohbet yok"}</p>
           </div>
-          <button type="button" onClick={() => setNewOpen(true)} data-press className="ck-btn shrink-0 !flex items-center gap-1">
+          <button type="button" onClick={() => setNewOpen(true)} data-press className="btn btn-primary btn-sm shrink-0 gap-1">
             <Icon name="plus" className="size-4" />
             Sohbet
           </button>

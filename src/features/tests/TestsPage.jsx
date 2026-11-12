@@ -200,7 +200,7 @@ export function TestsPage() {
         <header className="flex items-center gap-2.5">
           <BackButton href="/settings" />
           <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">Testler</h1>
-          <button type="button" onClick={() => setSheet({ kind: "reports" })} data-press className="raised flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+          <button type="button" onClick={() => setSheet({ kind: "reports" })} data-press className="btn btn-secondary btn-sm shrink-0">
             Raporlar
           </button>
         </header>
@@ -228,10 +228,10 @@ export function TestsPage() {
         </button>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => start(RUNNABLE.map((t) => t.key))} disabled={!!run} data-press className="raised flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold disabled:opacity-40">
+          <button type="button" onClick={() => start(RUNNABLE.map((t) => t.key))} disabled={!!run} data-press className="btn btn-secondary h-11 text-[0.9375rem]">
             Hepsini çalıştır
           </button>
-          <button type="button" onClick={() => start([...sel])} disabled={!run && !sel.size} data-press className="raised act-main flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold disabled:opacity-40">
+          <button type="button" onClick={() => start([...sel])} disabled={!run && !sel.size} data-press className="btn btn-primary h-11 text-[0.9375rem]">
             {run ? "Durdur" : `Seçilenler${sel.size ? ` (${sel.size})` : ""}`}
           </button>
         </div>

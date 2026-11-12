@@ -665,7 +665,7 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
     --btn-top: #ffffff;
     --btn-bot: color-mix(in srgb, var(--card) 80%, var(--line));
   }
-  html[data-theme="dark"] .btn, .navy .btn { --btn-top: color-mix(in srgb, var(--card) 88%, var(--fg)); --btn-bot: var(--card); }
+  html[data-theme="dark"] .btn { --btn-top: color-mix(in srgb, var(--card) 88%, var(--fg)); --btn-bot: var(--card); }
   .btn-sm { height: 2.25rem; padding: 0 .75rem; border-radius: .75rem; font-size: .84375rem; }
   .btn:disabled { opacity: .5; }
   .btn-primary {
@@ -689,6 +689,16 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
     background: linear-gradient(180deg, var(--btn-top) 0%, var(--btn-bot) 100%);
   }
   .btn-sm:is(.btn-back, .btn-round) { width: 2.25rem; height: 2.25rem; }
+  /* Lacivert zeminde (kokpit .ck, lacivert sayfa .navy, video galerisi .lvd, yemek kartı .food-card) aynı çeşitler (Seyhun 2026-11-12 "butonların hepsi farklı, ortak
+     tasarımı kullanalım"): İkincil yarı saydam beyaz kabarık (.ck .raised gibi), Ana elektrik mavisi, Tehlike açık kırmızı yazı, seçili İkincil
+     (aria-pressed) elektrik mavisi. Daha önce lacivertte ortak düğmenin görünümü yoktu, sayfalar kendi düğmesini yazıyordu. */
+  html :is(.ck, .navy, .lvd, .food-card) .btn { --btn-top: rgba(255, 255, 255, .1); --btn-bot: rgba(255, 255, 255, .06); }
+  :is(.ck, .navy, .lvd, .food-card) :is(.btn-secondary, .btn-danger) { color: #fff; border-color: rgba(255, 255, 255, .14); box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+  :is(.ck, .navy, .lvd, .food-card) .btn-danger { color: #f4a49c; }
+  :is(.ck, .navy, .lvd, .food-card) .btn-primary { --acc: #3d7bff; --on-acc: #fff; border-color: #3d7bff; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+  :is(.ck, .navy, .lvd, .food-card) .btn-text { color: #8fb3ff; }
+  :is(.ck, .navy, .lvd, .food-card) .btn-icon { color: rgba(255, 255, 255, .85); }
+  html :is(.ck, .navy, .lvd, .food-card) .btn-secondary[aria-pressed="true"] { --btn-top: #3d7bff; --btn-bot: #3d7bff; border-color: #3d7bff; color: #fff; }
 }
 .btn-primary[data-pressed] {
   transform: scale(0.97); filter: none;
@@ -957,11 +967,8 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .food-fade { background: linear-gradient(90deg, #13243f 30%, rgba(19, 36, 63, .85) 48%, rgba(19, 36, 63, 0) 80%); }
 /* Yan yana Yemek · Market · Giyim kartları (ShopCards; Seyhun 2026-10-25): fotoğraf alttaki yazıya doğru solar */
 .shop-fade { background: linear-gradient(180deg, rgba(19, 36, 63, .1) 10%, rgba(19, 36, 63, .75) 55%, #13243f 92%); }
-.food-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.95rem; border-radius: 0.6875rem; background: #3d7bff; color: #06283a; font-size: 0.875rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
-.food-btn2 { background: rgba(255, 255, 255, .08); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); }
 .food-step { height: 5px; border-radius: 5px; background: rgba(255, 255, 255, .12); }
 .food-step.on { background: #5b8cff; }
-/* Kokpitteki beyaz küçük düğme (Süre) */
 /* Giriş ekranı (lacivert, (auth)/login): tek yazı kutusu; e-posta ya da kullanıcı adı doğru yazılınca yeşil çerçeve.
    Ana düğme yazı tamamlanana kadar soluk durur (yüklenirken değil). */
 .auth-in { display: block; width: 100%; height: 3.5rem; border-radius: 1rem; padding: 0 1rem; font-size: 1.0625rem; font-weight: 500; color: #fff; background: rgba(255, 255, 255, .08); border: 1.5px solid rgba(255, 255, 255, .16); outline: none; transition: border-color .15s; }
@@ -970,24 +977,9 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 .auth-in[data-ok] { border-color: #5fbf86; }
 .ck .btn-primary:disabled:not([aria-busy="true"]) { opacity: 1; color: rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .1); }
 .ck .btn-text { color: #8fb3ff; }
-.ck-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.9rem; border-radius: 0.75rem; background: #fff; color: #0b1a33; font-size: 0.84375rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
-.ck-btn2 { background: rgba(255, 255, 255, .14); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18), 0 2px 0 rgba(0, 0, 0, .3); }
-.ck-btn[data-pressed] { transform: translateY(1px) scale(.97); box-shadow: 0 1px 0 rgba(0, 0, 0, .35); }
 /* Kokpitteki en yakın plan (Cockpit NextPlan; Seyhun 2026-10-22 "A · Mor kart"): logonun mavisinden koyu maviye dolu kart; içinde beyaz (Süre) ve
-   yarı saydam (Yoklama) düğme */
+   ortak düğmeler */
 .ck-plan { background: linear-gradient(135deg, #2563eb 0%, #3070f5 55%, #3d7bff 100%); box-shadow: 0 10px 24px -12px rgba(37, 99, 235, .8), inset 0 1px 0 rgba(255, 255, 255, .22); }
-.ck-pbtn { display: grid; place-items: center; height: 2.5rem; border-radius: 0.75rem; background: #fff; color: #16305e; font-size: 0.9375rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .25); }
-.ck-pbtn2 { background: rgba(255, 255, 255, .18); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3); }
-.ck-pbtn[data-pressed] { transform: translateY(1px) scale(.97); }
-/* Kokpitteki iş düğmeleri (HomeGrid › ActionGrid pill): ince mavi çerçeveli, alçak, yuvarlak; tarih kutularına benzemez. Günün ana işi dolu mavi */
-.ck .raised.ck-pill { height: 2.5rem; border-radius: 9999px; background: transparent; border: 1.5px solid rgba(143, 179, 255, .55); box-shadow: none; color: #fff; font-size: 0.875rem; }
-.ck .raised.ck-pill[data-pressed] { background: rgba(143, 179, 255, .16); transform: scale(.97); }
-.ck .raised.ck-pill.act-main { background: #3d7bff; border-color: #3d7bff; color: #06283a; }
-/* İkonlu iş düğmesi (HomeGrid › ActionGrid icons; Seyhun 2026-10-25 "B · İki sütun, mavi ikon"): solda büyük mavi ikon kartın kenarından içeri
-   girer ve sağa doğru solar, yazı sağında. Hepsi aynı görünür, Yoklama da vurgusuz (Seyhun 2026-10-25) */
-.ck .raised.ck-ibtn { position: relative; overflow: hidden; height: 3.5rem; padding-left: 4rem; border-radius: 1rem; font-size: 0.9375rem; color: #fff; }
-.ck-ibtn .ck-icon { position: absolute; left: -0.55rem; top: 50%; width: 4.6rem; height: 4.6rem; margin-top: -2.3rem; stroke-width: 1.5; color: #5b8cff; opacity: .42; pointer-events: none;
-  -webkit-mask: linear-gradient(90deg, #000 35%, transparent 95%); mask: linear-gradient(90deg, #000 35%, transparent 95%); }
 /* Ana sayfa not kartları (HomeWidgets NotesWidget; Seyhun 2026-10-23 "B · Yapışkan not"): gerçek kâğıt renginde yapışkan not, koyu yazı,
    sağ altta kıvrık köşe. Renksiz not sarı, renkli not kendi açık tonunda (--p, satır içi). Sabitlenen notta üstte mavi raptiye */
 .note-card { position: relative; color: #2a2416; background: var(--p, #f6e7a6); border-radius: 0.375rem 0.375rem 1.375rem 0.375rem; box-shadow: 0 8px 18px -10px rgba(0, 0, 0, .8); }
@@ -1550,3 +1542,135 @@ main.rzl .rz-chev { border-color: rgba(255, 255, 255, .4); }
 .rl-upd { animation: rl-in .45s cubic-bezier(.22, .8, .24, 1); }
 .rl-chip { animation: rl-out 3s ease forwards; }
 @media (prefers-reduced-motion: reduce) { .rl-upd { animation: none; } }
+
+/* ===== IPAD ANA SAYFA (IpadHome.jsx; Seyhun 2026-11-11 "A · Zaman şeridi", örnek ana-sayfa/sade-2026-11/ipad.html) =====
+   Baştan sona lacivert (.navy), ince çizgili paneller; rakamlar Space Grotesk (--font-num). Üstte başlık, altında Hava paneli (tam genişlik),
+   altında Takvim paneli ve sağ sütun (Bekleyen, Kulüp). Dik iPad'de (sol menü yok) sağ sütun Takvim'in altına iner. */
+.num { font-family: var(--font-num), ui-monospace, "SF Mono", monospace; font-variant-numeric: tabular-nums; }
+main.iph {
+  min-height: 100dvh; box-sizing: border-box; color: var(--fg);
+  background: radial-gradient(120% 70% at 70% 0%, #0e2347 0%, #0b1a33 45%, #060e1d 100%) fixed;
+  padding: calc(1rem + env(safe-area-inset-top)) 1.25rem calc(7rem + env(safe-area-inset-bottom));
+  display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); align-content: start;
+}
+.iph-hd { display: flex; align-items: center; gap: 0.75rem; min-height: 3rem; }
+.iph-date { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 0.75rem; margin: 0; }
+.iph-date b { font-size: 1.75rem; font-weight: 600; letter-spacing: -.02em; white-space: nowrap; }
+.iph-date small { font-size: 0.9375rem; font-weight: 600; color: var(--mut); white-space: nowrap; }
+.iph-clock { font-size: 1.75rem; font-weight: 500; color: #fff; margin-right: 0.5rem; }
+.iph-add { height: 2.5rem; padding: 0 1rem; border-radius: 99px; background: #fff; color: #0b1a33; font-weight: 650; font-size: 0.875rem; white-space: nowrap; transition: transform .12s; }
+.iph-add:active { transform: scale(.96); }
+.iph-ghost { background: rgba(255, 255, 255, .08); color: #fff; border: 1px solid #2a4472; }
+.iph-me { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; flex: none; border-radius: 99px; background: rgba(255, 255, 255, .1); border: 1px solid #2a4472; color: #fff; font-weight: 650; font-size: 0.8125rem; }
+.iph-pn { background: rgba(255, 255, 255, .028); border: 1px solid #1d3256; border-radius: 1.5rem; padding: 1rem 1.25rem; min-width: 0; }
+.iph-pt { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.625rem; font-size: 0.75rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: #7d90b5; min-height: 1.75rem; }
+.iph-pt em { font-style: normal; text-transform: none; letter-spacing: 0; color: #4f6389; font-weight: 600; }
+.iph-lg { display: flex; gap: 0.75rem; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.iph-lg i { display: inline-block; width: 0.625rem; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 0.3rem; }
+.iph-lg .iph-dash { background: repeating-linear-gradient(90deg, #8fb3ff 0 3px, transparent 3px 6px); }
+.iph-wx { display: grid; grid-template-columns: 12.5rem minmax(0, 1fr); gap: 1.25rem; }
+.iph-now { display: flex; flex-direction: column; align-items: center; border-right: 1px solid #1d3256; padding-right: 1.25rem; text-align: left; }
+.iph-now .iph-pt { align-self: stretch; }
+.iph-compass { width: 9.75rem; height: 9.75rem; }
+.iph-compass text.num { font-family: var(--font-num), ui-monospace, monospace; }
+.iph-cal { display: grid; gap: 0.75rem; align-content: start; align-self: start; }
+.iph-lane { position: relative; height: 4.75rem; margin: 0 0.25rem; }
+.iph-blk { position: absolute; height: 2.5rem; min-width: 7.5rem; display: flex; flex-direction: column; justify-content: center; padding: 0 0.625rem; border-radius: 0.75rem; text-align: left; overflow: hidden; text-decoration: none;
+  background: color-mix(in srgb, var(--tfg) 16%, transparent); border: 1.4px solid var(--tfg); color: #fff; }
+.iph-blk b { font-size: 0.8125rem; font-weight: 650; line-height: 1.15; }
+.iph-blk small { font-size: 0.6875rem; color: #a9b8d6; font-weight: 600; text-decoration: none; }
+.iph-axis { position: absolute; left: 0; right: 0; bottom: 0; height: 1.5rem; border-top: 1px solid #1d3256; }
+.iph-axis span { position: absolute; top: 0.3rem; transform: translateX(-50%); font-size: 0.6875rem; font-weight: 600; color: #4f6389; }
+.iph-nowl { position: absolute; bottom: 1.5rem; top: 0.25rem; width: 1.6px; background: var(--rec); transform: translateX(-50%); }
+.iph-nowl::after { content: ""; position: absolute; bottom: -4px; left: -3.2px; width: 8px; height: 8px; border-radius: 50%; background: var(--rec); }
+.iph-chip { font-size: 0.6875rem; font-weight: 650; text-transform: none; letter-spacing: 0; padding: 0.2rem 0.5rem; border-radius: 0.5rem; border-left: 3px solid var(--tfg); background: var(--tbg); color: #fff; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.iph-mini { text-transform: none; letter-spacing: 0; height: 1.875rem; padding: 0 0.75rem; display: grid; place-items: center; border-radius: 0.625rem; font-size: 0.75rem; font-weight: 650; color: #fff; background: rgba(255, 255, 255, .08); border: 1px solid #2a4472; }
+.iph-mini-on { background: #fff; color: #0b1a33; border-color: #fff; }
+.iph-wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.375rem; border-top: 1px solid #1d3256; padding-top: 0.75rem; }
+.iph-day { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; padding: 0.5rem; white-space: nowrap; border-radius: 1rem; border: 1px solid transparent; background: rgba(255, 255, 255, .02); text-align: left; color: var(--fg); transition: border-color .15s; }
+.iph-day small { font-size: 0.75rem; font-weight: 600; color: #7d90b5; }
+.iph-day[aria-pressed="true"] { border-color: #3d7bff; background: rgba(61, 123, 255, .1); }
+.iph-side { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.iph-row { display: flex; align-items: center; gap: 0.625rem; width: 100%; padding: 0.55rem 0; border-top: 1px solid #1d3256; text-align: left; }
+.iph-row:first-of-type { border-top: 0; }
+.iph-row b { font-size: 0.875rem; font-weight: 600; }
+.iph-row small { font-size: 0.75rem; color: #7d90b5; }
+/* Hava sayfası (WeatherTop; Seyhun 2026-11-12, örnek hava.html): ana sayfayla aynı Hava kutusu; altında 12 gün yana kayar (geçmiş günler açık zeminli),
+   saat saat tablo ve Bölge haritası (geniş ekranda yan yana) */
+.iph-wk.iph-wk-x { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 7.25rem; overflow-x: auto; scrollbar-width: none; border-top: 0; padding-top: 0; scroll-snap-type: x proximity; }
+.iph-wk.iph-wk-x::-webkit-scrollbar { display: none; }
+.iph-wk-x .iph-day { scroll-snap-align: start; }
+.iph-day[data-past] { background: rgba(255, 255, 255, .05); }
+.iph-tag { align-self: flex-start; font-size: 0.625rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; background: rgba(255, 255, 255, .12); border-radius: 0.375rem; padding: 0.05rem 0.375rem; }
+.iph-wxg { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 64rem) { .iph-wxg { grid-template-columns: minmax(0, 1fr) 24rem; align-items: start; } }
+/* Telefon (Seyhun 2026-11-12 "iPhone'da da aynısı"; örnek ipad.html "A · iPhone"): paneller alt alta, pusula solda küçük, günler yana kayar */
+@media (max-width: 47.99rem) {
+  main.iph { padding: calc(0.75rem + env(safe-area-inset-top)) 1rem calc(7rem + env(safe-area-inset-bottom)); gap: 0.75rem; }
+  .iph-hd { gap: 0.5rem; min-height: 2.75rem; }
+  .iph-date b { font-size: 1.45rem; }
+  .iph-date small, .iph-clock { display: none; }
+  .iph-page .iph-date small { display: inline; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .iph-add { padding: 0 0.875rem; }
+  .iph-pn { padding: 0.875rem 1rem; border-radius: 1.25rem; }
+  .iph-pt { flex-wrap: wrap; }
+  .iph-wx { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+  .iph-now { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 1rem; border-right: 0; padding: 0 0 0.75rem; border-bottom: 1px solid #1d3256; }
+  .iph-now .iph-pt { grid-column: 1 / -1; }
+  .iph-compass { width: 8.25rem; height: 8.25rem; }
+  .iph-blk { min-width: 5.5rem; padding: 0 0.5rem; }
+  .iph-end { display: none; }
+  .iph-wk, .iph-wk.iph-wk-x { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 6.5rem; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .iph-wk.iph-wk-x { padding-top: 0; }
+  .iph-wk::-webkit-scrollbar { display: none; }
+  .iph-day { scroll-snap-align: start; }
+}
+@media (min-width: 64rem) {
+  main.iph { height: 100dvh; overflow-y: auto; padding-bottom: 1.25rem; grid-template-columns: minmax(0, 1fr) 16.5rem; grid-template-rows: auto auto minmax(0, 1fr); align-content: stretch; }
+  .iph-hd, .iph-wx { grid-column: 1 / -1; }
+  .iph-side { overflow-y: auto; scrollbar-width: none; }
+}
+@media (min-width: 64rem) {
+  main.iph.iph-page { height: auto; overflow: visible; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-content: start; padding-bottom: calc(7rem + env(safe-area-inset-bottom)); }
+}
+
+/* Spor seçimi (src/sports, 2026-11-12): gece denizi arka planı, Sailing / Diğer, Yakında, tekne animasyonu */
+.sp-screen { background: #0b1a33; }
+.sea-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.sea-glow { position: absolute; left: 0; right: 0; top: 50%; height: 36%; background: radial-gradient(50% 50% at 50% 70%, rgba(61, 123, 255, .22), rgba(61, 123, 255, 0)); }
+.sea-stars { position: absolute; inset: 0 0 50% 0; background-image: radial-gradient(1px 1px at 12% 22%, #fff8, transparent), radial-gradient(1px 1px at 34% 12%, #fff6, transparent), radial-gradient(1.5px 1.5px at 58% 28%, #fff7, transparent), radial-gradient(1px 1px at 76% 14%, #fff5, transparent), radial-gradient(1px 1px at 88% 34%, #fff6, transparent), radial-gradient(1px 1px at 22% 40%, #fff4, transparent); animation: seastar 6s ease-in-out infinite alternate; }
+.sea-waves { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; }
+.sea-far { position: absolute; bottom: calc(30% * .8 - 3px); left: -30px; opacity: .65; animation: seafar 40s linear infinite; }
+.sea-w { position: absolute; inset: 0; width: 200%; height: 100%; animation: seawave 22s linear infinite; }
+.sea-w2 { animation-duration: 15s; animation-direction: reverse; }
+.sea-w3 { animation-duration: 10s; }
+@keyframes seawave { to { transform: translateX(-50%); } }
+@keyframes seafar { from { transform: translateX(0) translateY(0); } 50% { transform: translateX(calc(50vw + 15px)) translateY(2px); } to { transform: translateX(calc(100vw + 60px)) translateY(0); } }
+@keyframes seastar { to { opacity: .45; } }
+
+.sp-in { animation: spin .45s cubic-bezier(.22, .8, .24, 1) backwards; }
+@keyframes spin { from { opacity: 0; transform: translateY(12px); } }
+.sp-opt { display: flex; width: 100%; align-items: center; gap: .875rem; padding: 1rem; border-radius: 1.25rem; text-align: left; font-size: 1.125rem; font-weight: 600; color: #fff; background: rgba(19, 36, 63, .72); border: 1px solid rgba(255, 255, 255, .14); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 3px 0 rgba(0, 0, 0, .35); transition: transform .12s, box-shadow .12s; }
+.sp-opt:active { transform: translateY(3px); box-shadow: 0 0 0 rgba(0, 0, 0, .35); }
+.sp-main { background: #3d7bff; border-color: #3d7bff; }
+.sp-ic { display: grid; place-items: center; width: 3rem; height: 3rem; flex: none; border-radius: .875rem; background: rgba(143, 179, 255, .14); }
+.sp-main .sp-ic { background: rgba(255, 255, 255, .2); }
+.sp-ico { width: 1.75rem; height: 1.75rem; fill: none; stroke: #8fb3ff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sp-main .sp-ico { stroke: #fff; }
+.sp-chev { font-size: 1.5rem; line-height: 1; color: rgba(255, 255, 255, .55); }
+.sp-main .sp-chev { color: #fff; }
+.sp-back { width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: 999px; color: #fff; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .16); }
+.sp-soon { display: flex; flex-direction: column; gap: .625rem; padding: 1rem .875rem; border-radius: 1.125rem; background: rgba(19, 36, 63, .72); border: 1px solid rgba(255, 255, 255, .12); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: spin .45s cubic-bezier(.22, .8, .24, 1) calc(var(--i, 0) * 60ms) backwards; }
+.sp-dim { width: 2rem; height: 2rem; stroke: rgba(255, 255, 255, .5); }
+.sp-tag { align-self: flex-start; padding: .125rem .5rem; border-radius: 999px; border: 1px solid rgba(143, 179, 255, .35); color: #8fb3ff; font-size: .6875rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.sp-stage { position: relative; width: 100%; height: 8rem; }
+.sp-line { position: absolute; left: 0; bottom: -.25rem; width: 200%; height: .75rem; animation: seawave 3s linear infinite; }
+.sp-boat { position: absolute; bottom: 0; left: -6rem; width: 5.25rem; height: 6rem; animation: spboat 1.9s cubic-bezier(.3, .7, .3, 1) forwards; }
+@keyframes spboat { 0% { left: -6rem; transform: rotate(-5deg); } 60% { transform: rotate(3deg) translateY(-2px); } 100% { left: calc(50% - 2.625rem); transform: none; } }
+.sp-word { opacity: 0; animation: spword .55s 1.35s cubic-bezier(.22, .8, .24, 1) forwards; }
+@keyframes spword { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .sea-w, .sea-far, .sea-stars, .sp-in, .sp-soon, .sp-line { animation: none; }
+  .sp-boat { animation: none; left: calc(50% - 2.625rem); }
+  .sp-word { animation: none; opacity: 1; }
+}

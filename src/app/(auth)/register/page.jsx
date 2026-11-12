@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { SportPick } from "@/sports/SportPick";
+import { sportName } from "@/sports";
 import { Button } from "@/components/ui/Button";
 import { Field, PasswordField } from "@/components/ui/Field";
 import { authErrorMessage, register } from "@/lib/auth";
@@ -17,6 +20,8 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sport, setSport] = useState(""); // önce "Hangi spor?" (src/sports), sonra form
+  const router = useRouter();
 
   // Kayıt kapalıyken form yerine bilgi göster
   if (!SIGNUP) {
@@ -31,13 +36,15 @@ export default function RegisterPage() {
     );
   }
 
+  if (!sport) return <SportPick onDone={setSport} onBack={() => router.push("/login")} />;
+
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
     if (password.length < 6) return setError("Şifre en az 6 karakter olmalı.");
     setBusy(true);
     try {
-      await register(name, email, password);
+      await register(name, email, password, sport);
     } catch (err) {
       setError(authErrorMessage(err));
       setBusy(false);
@@ -46,6 +53,9 @@ export default function RegisterPage() {
 
   return (
     <form onSubmit={onSubmit} className={CARD}>
+      <button type="button" onClick={() => setSport("")} className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-accbg px-3 py-1 text-[0.8125rem] font-semibold text-acc">
+        {sportName(sport)} · Değiştir
+      </button>
       <h1 className="text-[1.375rem] font-semibold tracking-tight">Hesap oluştur</h1>
       <p className="mt-1 text-[0.875rem] text-mut">Birkaç bilgiyle hemen başla.</p>
 

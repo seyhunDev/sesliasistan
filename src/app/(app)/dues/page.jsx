@@ -324,7 +324,7 @@ function Dues({ uid, duesAt }) {
         </div>
       )}
       <div className="mt-4">
-        <button type="button" onClick={() => setMatchOpen(true)} data-press className="raised flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border text-[0.9375rem] font-semibold">
+        <button type="button" onClick={() => setMatchOpen(true)} data-press className="btn btn-secondary h-10 w-full gap-1.5 text-[0.9375rem]">
           Banka
           {pending.length > 0 && <span className="rounded-full bg-warnbg px-1.5 text-[0.75rem] font-bold tabular-nums text-warn">{pending.length}</span>}
         </button>

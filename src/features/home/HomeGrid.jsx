@@ -17,7 +17,7 @@ import { todayStr } from "@/lib/utils/format";
 // Ana hesap: Yoklama (bugün antrenman varsa o günün yoklaması; diğerleri gibi vurgusuz), Not, Plan, Fiş, Mesaj (Sporcular grubu), Toplantı, Görev,
 // sonunda Tümü (Süre kokpitteki sıradaki antrenmanın yanında) (bütün sayfalar penceresi; eskiden en alttaki küçük düğmelerdi). Yetkisi olmayan düğme çıkmaz.
 // Aynı iş kartlarda tekrar yazmaz (Notlar kartında "Not ekle", Sporcular kartında Yoklama/Mesaj yok).
-export function HomeGrid({ pages, side, athletes, receipts, owner }) {
+export function HomeGrid({ pages, side, athletes, receipts, owner, allOnly = false }) {
   const { openAdd } = useAdd();
   const { openReceipt } = useReceipt();
   const { openMeeting } = useMeeting();
@@ -51,7 +51,14 @@ export function HomeGrid({ pages, side, athletes, receipts, owner }) {
   const quickItems = [...lead, ...body, ...rest].slice(0, 7);
   return (
     <>
-      <QuickRow items={[...quickItems, allItem]} />
+      {/* iPad ana sayfada (IpadHome, sol menü yokken) yalnız "Tümü" düğmesi */}
+      {allOnly ? (
+        <button type="button" data-press onClick={() => setAll(true)} className="iph-add iph-ghost">
+          Tümü
+        </button>
+      ) : (
+        <QuickRow items={[...quickItems, allItem]} />
+      )}
       <Sheet open={all} onClose={() => setAll(false)} title="Tüm sayfalar">
         <div className="space-y-2 pb-1" data-all-groups>
           {groups.map((g) => {

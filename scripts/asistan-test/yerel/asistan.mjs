@@ -1711,3 +1711,17 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["paylaşılan metin", { desc: "başlık, özellik › test, ✗ ve nedeni", fn: () => RS.reportText(reps[1]), ok: (r) => /^TEST RAPORU · .* · 22\/25 geçti · 9 sn/.test(r) && /Ses › Sesli okuma: 0\/1\n✗ Ses gelmedi \(Ses anahtarı yok\)/.test(r) }],
   ]);
 }
+
+// Mesajdaki dosyadan plan sesle (lib/chatPlan.js chatPlanAsk, assistRoute.js chatPlan, isler/mesajPlan.js)
+{
+  const { chatPlanAsk } = await import("@/lib/chatPlan");
+  const { routeOf } = await import("@/lib/assistRoute");
+  const CP = (who) => ({ desc: who === null ? "mesajdan plan değil" : `dosyadan plan${who ? ` (${who})` : ""}`, fn: (s) => chatPlanAsk(s), ok: (r) => (who === null ? r === null : r?.who === who) });
+  group("Mesajdaki dosyadan plan (sesle)")([
+    ["son dosyayı planlara ekle", CP("")], ["mesajdaki belgeyi takvime ekle", CP("")], ["Ali'nin attığı programı plana ekle", CP("Ali")],
+    ["Sanver'in gönderdiği PDF'i planlarıma ekle", CP("Sanver")], ["Ali'den gelen talimatı planlara kaydet", CP("Ali")], ["son mesajdaki fotoğrafı plana ekle", CP("")],
+    ["yarın 10'da antrenman planı ekle", CP(null)], ["plan ekle", CP(null)], ["antrenman programı ekle", CP(null)], ["fitness programını planlara ekle", CP(null)], ["talimatı planlara ekle", CP(null)], ["son mesajımı sil", CP(null)],
+    ["Ali'nin attığı programı plana ekle", { desc: "yol: chatPlan", fn: (s) => routeOf(s, { owner: true }), ok: (r) => r === "chatPlan" }],
+    ["son dosyayı planlara ekle", { desc: "sporcu tarafında yok", fn: (s) => routeOf(s, { athleteSide: true }), ok: (r) => r !== "chatPlan" }],
+  ]);
+}

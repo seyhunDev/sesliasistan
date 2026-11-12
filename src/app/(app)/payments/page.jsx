@@ -161,7 +161,7 @@ function Payments() {
             type="button"
             onClick={() => download(`${title}-odemeler.csv`, named ? payeeCsv(list, named, "gelen ve giden ödemeler") : payeeCsv(list, payee.name))}
             data-press
-            className="raised mt-4 flex h-10 w-full items-center justify-center rounded-xl border text-[0.9375rem] font-semibold"
+            className="btn btn-secondary mt-4 h-10 w-full text-[0.9375rem]"
           >
             Excel indir
           </button>

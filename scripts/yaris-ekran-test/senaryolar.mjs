@@ -71,7 +71,7 @@ export async function run(server, log = () => {}) {
 
   try {
     await seed({
-      users: [{ key: "owner", email: OWNER, password: PASS, name: "Test Sahip", doc: { name: "Test Sahip", email: OWNER, role: "owner", orgId: "{owner}", onboarded: true, introV: 99, tourDone: true, createdAt: now.toISOString() } }],
+      users: [{ key: "owner", email: OWNER, password: PASS, name: "Test Sahip", doc: { name: "Test Sahip", email: OWNER, role: "owner", orgId: "{owner}", sport: "sailing", onboarded: true, introV: 99, tourDone: true, createdAt: now.toISOString() } }],
       docs: [
         { path: "orgs/{owner}/races/r1", data: { name: "Ege Kupası", city: "İzmir", district: "Dikili", startDate: TODAY, endDate: plus(2), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
         // sesle yazılmış rüzgâr (Saha ölçümlerinde görünmeli)
@@ -298,43 +298,131 @@ export async function run(server, log = () => {}) {
       const ok = chips === "5 dk,4 dk,2 dk,1 dk" && top === 0 && strip === 0 && now === 1 && kept.trim() === "2 dk" && big === 1;
       return [ok, `seçenekler ${chips} · üstte seçim ${top} · şerit ${strip} · 2 dk seçince ${now ? "02:00" : "değişmedi"} · yenileyince ${kept.trim() || "-"}${big ? " 02:00" : ""}`];
     });
-    // Antrenman ekranı canlı ekran düzeninde (Seyhun 2026-11-05, örnek antrenman-canli/ornek.png): altta Kamera · Parkur · Rüzgâr · Sıralama ·
-    // Video · Start; Start panelinde yarışta "Bitiren kim?" kareleri, herkes dokununca yarış biter ve panel yeni starta döner;
-    // Sıralama Bugün · Genel, Video canlı ekranın Video paneli, Parkur kart türü seçimiyle
+    // Antrenman telefonda (Seyhun 2026-11-12 "A · Alt düğme"): sabit Start kutusu, Sporcular (startan sonra Bitiren kim?) · Sıralama · Rüzgâr
+    // sekmeleri, altta ana düğme hep aynı yerde (Start ver → İptal → Yarışı bitir); herkes dokununca yarış biter, düğme Start ver'e döner.
+    // Parkur, Video, Kamera ⋯ içinde, alttan pencere açar
     const foto = (k) => process.env.YARIS_FOTO && page.screenshot({ path: process.env.YARIS_FOTO.replace(/\.png$/, `-antrenman-${k}.png`) }).catch(() => {});
-    await okPage("Antrenman", "canlı düzen: bitiren kim", "/training/day?id=t1&tab=start", "Start ver", async () => {
+    await okPage("Antrenman", "telefon: bitiren kim, alt düğme", "/training/day?id=t1", "Sıralama", async () => {
       await page.evaluate(() => localStorage.setItem("sa-sayac", JSON.stringify({ dur: 300, end: Date.now() - 60e3, left: null, mode: "start", rid: "y3", own: "/training/day?id=t1", where: "Optimist antrenmanı", at: Date.now() })));
       await page.goto(page.url());
-      const tile = page.locator(".tl-tiles button", { hasText: "Deniz" });
+      const tile = page.locator(".tp-body .tl-tiles button", { hasText: "Deniz" });
       await tile.waitFor({ timeout: 60000 }).catch(() => {});
       await page.waitForTimeout(800);
-      const bar = (await page.locator(".tl-bar > button").allInnerTexts()).map((x) => x.trim()).join(",");
-      const tiles = await page.locator(".tl-tiles button").count();
+      const box = async () => Math.round((await page.locator(".tp-start").boundingBox())?.height || 0);
+      const goAt = async () => Math.round((await page.locator(".tp-go").boundingBox())?.y || 0);
+      const h1 = await box();
+      const y1 = await goAt();
+      const main1 = (await page.locator(".tp-go").innerText()).trim();
+      const tiles = await page.locator(".tp-body .tl-tiles button").count();
       await foto("yarista");
+      if (await tile.evaluate((e) => e.classList.contains("on")).catch(() => false)) await tile.click().catch(() => {});
       await tile.click().catch(() => {});
-      const back = await page.getByRole("button", { name: /^Start ver/ }).waitFor({ timeout: 20000 }).then(() => true, () => false);
+      const back = await page.locator(".tp-go", { hasText: "Start ver" }).waitFor({ timeout: 20000 }).then(() => true, () => false);
+      await page.waitForTimeout(500);
+      const h2 = await box();
+      const y2 = await goAt();
       await foto("start");
-      const ok = bar === "Kamera,Parkur,Rüzgâr,Sıralama,Video,Start" && tiles >= 1 && back;
-      return [ok, `alt çubuk ${bar} · kare ${tiles} · dokununca ${back ? "Start ver" : "değişmedi"}`];
+      const ok = /Yarışı bitir/.test(main1) && tiles >= 1 && back && h1 === h2 && y1 === y2;
+      return [ok, `ana düğme ${main1} · kare ${tiles} · dokununca ${back ? "Start ver" : "değişmedi"} · kutu ${h1}/${h2} · düğme ${y1}/${y2}`];
     });
-    await okPage("Antrenman", "canlı düzen: sıralama, video, parkur", "/training/day?id=t1&tab=rank", "Bugün", async () => {
+    await okPage("Antrenman", "telefon: sıralama, video, parkur", "/training/day?id=t1&tab=rank", "Bugün", async () => {
       const day = await page.locator(".tl-tb tbody tr").count();
       await foto("siralama");
       await page.locator(".tl-tabs button", { hasText: "Genel" }).click();
       await page.waitForTimeout(400);
-      const gen = await page.locator(".tl-pn").innerText();
+      const gen = await page.locator(".tp-body").innerText();
       await foto("genel");
-      await page.locator(".tl-bar > button", { hasText: "Video" }).click();
+      const menu = (k) => page.getByRole("button", { name: "Diğer" }).click().then(() => page.getByRole("menuitem", { name: k }).click());
+      await menu("Video").catch(() => {});
       const vid = await page.getByText("Video çek").waitFor({ timeout: 20000 }).then(() => true, () => false);
       await foto("video");
-      await page.locator(".tl-bar > button", { hasText: "Parkur" }).click();
+      await page.locator(".tw-x").click().catch(() => {});
+      await menu("Parkur").catch(() => {});
       const crs = await page.getByRole("button", { name: "Trapez parkur" }).waitFor({ timeout: 20000 }).then(() => true, () => false);
       await foto("parkur");
-      await page.locator(".tl-bar > button", { hasText: "Rüzgâr" }).click();
+      await page.locator(".tw-x").click().catch(() => {});
+      await page.locator(".tp-seg button", { hasText: "Rüzgâr" }).click();
       await page.waitForTimeout(3000);
       await foto("ruzgar");
       const ok = day >= 1 && /yarış/.test(gen) && vid && crs;
       return [ok, `bugün ${day} satır · genel ${gen.includes("SPORCU") ? "tablo" : "boş"} · Video ${vid ? "açıldı" : "yok"} · Parkur ${crs ? "türlerle" : "yok"}`];
+    });
+    // iPad (Seyhun 2026-11-11 "A · Üç sütun"): yatayda Start | Sporcular (startan sonra Bitiren kim?) | Sıralama aynı anda; dikte de üçü var.
+    // Antrenman günlüğü de iPad'de üç sütun (ay · günlük · yazılmayanlar)
+    await okPage("Antrenman", "iPad: üç sütun", "/training/day?id=t1", "Sıralama", async () => {
+      await page.setViewportSize({ width: 1180, height: 820 });
+      await page.evaluate(() => localStorage.setItem("sa-sayac", JSON.stringify({ dur: 300, end: Date.now() - 60e3, left: null, mode: "start", rid: "y3", own: "/training/day?id=t1", where: "Optimist antrenmanı", at: Date.now() })));
+      await page.goto(page.url());
+      const tile = page.locator(".tw-ath .tl-tiles button", { hasText: "Deniz" });
+      const fin = await tile.waitFor({ timeout: 60000 }).then(() => true, () => false);
+      await page.waitForTimeout(1500);
+      const cols = await page.locator(".tw-grid > *").count();
+      const rank = await page.locator(".tw-rank .tl-tb tbody tr").count();
+      await foto("ipad-bitiren");
+      if (await tile.evaluate((e) => e.classList.contains("on")).catch(() => false)) await tile.click().catch(() => {});
+      await tile.click().catch(() => {});
+      const back = await page.getByRole("button", { name: /^Start ver/ }).waitFor({ timeout: 20000 }).then(() => true, () => false);
+      await page.waitForTimeout(800);
+      await foto("ipad-hazir");
+      await page.locator(".tw-hb", { hasText: "Parkur" }).click().catch(() => {});
+      const crs = await page.getByRole("button", { name: "Trapez parkur" }).waitFor({ timeout: 20000 }).then(() => true, () => false);
+      await foto("ipad-parkur");
+      await page.locator(".tw-x").click().catch(() => {});
+      // Video penceresi: Kapat ile Düzenle üst üste binmez; videoya dokununca ortak tam ekran oynatıcı (Seyhun 2026-11-12)
+      const pops = async (k) => {
+        await page.locator(".tw-hb", { hasText: "Video" }).click().catch(() => {});
+        await page.getByText("Video çek").waitFor({ timeout: 20000 }).catch(() => {});
+        if (process.env.YARIS_VIDEO && !(await page.locator(".lvd-del").count())) {
+          await page.locator(".lvd-gal input[type=file]").setInputFiles(process.env.YARIS_VIDEO).catch(() => {});
+          await page.locator(".lvd-del").waitFor({ timeout: 20000 }).catch(() => {});
+        }
+        await page.waitForTimeout(800);
+        const x = await page.locator(".tw-x").boundingBox();
+        const d = await page.locator(".lvd-del").boundingBox().catch(() => null);
+        const clash = !!(x && d && x.x < d.x + d.width && d.x < x.x + x.width && x.y < d.y + d.height && d.y < x.y + x.height);
+        await foto(`${k}-video`);
+        await page.locator(".tw-x").click().catch(() => {});
+        await page.locator(".tw-hb", { hasText: "Kamera" }).click().catch(() => {});
+        await page.waitForTimeout(800);
+        await foto(`${k}-kamera`);
+        await page.locator(".tw-x").click().catch(() => {});
+        return !clash;
+      };
+      const vidOk = await pops("ipad");
+      // Tam ekran (Apple gibi): yuvarlak X, iPad'de alttaki şerit; sağa kaydırınca (klavyede →) sonraki video, "2 / 2"
+      let swipe = true;
+      if (process.env.YARIS_VIDEO) {
+        await page.locator(".tw-hb", { hasText: "Video" }).click().catch(() => {});
+        if ((await page.locator(".lvd-t").count()) < 2) {
+          await page.locator(".lvd-gal input[type=file]").setInputFiles(process.env.YARIS_VIDEO).catch(() => {});
+          await page.waitForTimeout(1500);
+        }
+        await page.locator(".lvd-t").last().click().catch(() => {});
+        await page.waitForTimeout(1500);
+        await foto("ipad-tam-ekran");
+        await page.keyboard.press("ArrowRight");
+        swipe = await page.getByText("2 / 2").waitFor({ timeout: 10000 }).then(() => true, () => false);
+        await page.waitForTimeout(1000);
+        await foto("ipad-tam-ekran-2");
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.waitForTimeout(800);
+        await foto("telefon-tam-ekran");
+        await page.setViewportSize({ width: 1180, height: 820 });
+        await page.getByRole("button", { name: "Kapat" }).last().click().catch(() => {});
+        await page.locator(".tw-x").click().catch(() => {});
+      }
+      await page.setViewportSize({ width: 820, height: 1180 });
+      await page.waitForTimeout(800);
+      await foto("ipad-dik");
+      const vidDik = await pops("ipad-dik");
+      await page.setViewportSize({ width: 1180, height: 820 });
+      await page.goto(page.url().replace(/\/training\/day.*/, "/training"));
+      const log = await page.locator(".tw-log").waitFor({ timeout: 60000 }).then(() => true, () => false);
+      await page.waitForTimeout(800);
+      await foto("ipad-gunluk");
+      await page.setViewportSize({ width: 390, height: 844 });
+      const ok = fin && cols === 3 && rank >= 1 && back && crs && log && vidOk && vidDik && swipe;
+      return [ok, `bitiren ${fin ? "ortada" : "yok"} · ${cols} sütun · sıralama ${rank} satır · dokununca ${back ? "Start ver" : "değişmedi"} · Parkur ${crs ? "açıldı" : "yok"} · günlük ${log ? "üç sütun" : "yok"} · Kapat ${vidOk && vidDik ? "ayrı" : "Seç'in üstünde"} · kaydırma ${swipe ? "sonraki video" : "olmadı"}`];
     });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
     // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok

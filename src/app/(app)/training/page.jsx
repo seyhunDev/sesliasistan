@@ -14,6 +14,8 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { loadAthletes } from "@/features/athletes/data";
 import { todayStr } from "@/lib/utils/format";
+import { useWide } from "@/hooks/useWide";
+import "@/features/training/trainLive.css";
 
 // Antrenman günlüğü: ay ay antrenman sayısı, günlüğü yazılanlar, toplam süre, ortalama rüzgâr, en çok çalışılan konular.
 // Kayıtlar antrenman planlarının log alanından (cihazdaki planlar; ek okuma yok). Satıra dokununca plan açılır.
@@ -46,6 +48,120 @@ export default function TrainingPage() {
     .filter((p) => isTraining(p) && p.status !== "cancelled" && !p.log && (p.date || "").startsWith(ym) && p.date <= today)
     .sort((a, b) => b.date.localeCompare(a.date));
   const top = m.topics[0]?.[1] || 1;
+  const wide = useWide();
+
+  // iPad ve Mac (Seyhun 2026-11-11, antrenman sayfası "A · Üç sütun" ile aynı dil): solda ayın sayıları ve en çok çalışılanlar,
+  // ortada günlük, sağda yazılmayanlar. Lacivert, ince çizgili paneller, rakamlar Space Grotesk (antrenman sayfasının .tw stilleri).
+  if (wide) {
+    const stats = [
+      [`${m.logged.length}/${m.total}`, "günlük yazıldı"],
+      [m.minutes ? `${String(Math.round(m.minutes / 6) / 10).replace(".", ",")} sa` : "–", "toplam süre"],
+      [m.avgWind ? `${m.avgWind} kn` : "–", "ort. rüzgâr"],
+    ];
+    return (
+      <main className="tw navy fixed" aria-label="Antrenman günlüğü">
+        <header className="tw-hd">
+          <BackButton href="/" />
+          <h1>
+            <b>Antrenman günlüğü</b>
+          </h1>
+          <button type="button" aria-label="Önceki ay" onClick={() => setYm(shiftMonth(ym, -1))} data-press className="btn btn-secondary tw-hb">
+            <Icon name="back" className="size-4" />
+          </button>
+          <b className="tw-hb justify-center" style={{ minWidth: "8.5rem" }}>
+            {monthLabel(ym)}
+          </b>
+          <button type="button" aria-label="Sonraki ay" disabled={ym >= today.slice(0, 7)} onClick={() => setYm(shiftMonth(ym, 1))} data-press className="btn btn-secondary tw-hb">
+            <Icon name="chev" className="size-4" />
+          </button>
+          {racer && (
+            <Link href="/training/day" data-press className="btn btn-primary tw-hb">
+              Bugün
+            </Link>
+          )}
+        </header>
+        <div className="tw-grid tw-log">
+          <div className="tw-left">
+            <section className="tw-pn flex-none">
+              <span className="tw-pt">{monthLabel(ym)}</span>
+              {stats.map(([v, l]) => (
+                <div key={l} className="flex items-baseline justify-between gap-3 border-t border-[#1d3256] py-2 first-of-type:border-t-0">
+                  <span className="text-[0.875rem] font-semibold text-[#7d90b5]">{l}</span>
+                  <b className="num text-[1.75rem] font-medium">{v}</b>
+                </div>
+              ))}
+            </section>
+            <section className="tw-pn flex-1">
+              <span className="tw-pt">En çok çalışılanlar</span>
+              {m.topics.length ? (
+                m.topics.map(([t, n]) => (
+                  <div key={t} className="flex items-center gap-3 py-1.5 text-[0.875rem]">
+                    <span className="w-28 shrink-0 truncate font-semibold">{t}</span>
+                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#1d3256]">
+                      <span className="block h-full rounded-full bg-[#3d7bff]" style={{ width: `${(n / top) * 100}%` }} />
+                    </span>
+                    <b className="num w-6 text-right font-medium">{n}</b>
+                  </div>
+                ))
+              ) : (
+                <p className="text-[0.875rem] text-[#7d90b5]">Konu yok</p>
+              )}
+            </section>
+          </div>
+          <section className="tw-pn">
+            <span className="tw-pt">
+              Günlük<span className="flex-1" />
+              <em>{m.logged.length}</em>
+            </span>
+            {m.logged.length === 0 ? (
+              <p className="text-[0.875rem] text-[#7d90b5]">Bu ay yazılmış günlük yok.</p>
+            ) : (
+              m.logged.map((p) => (
+                <button key={p.id} type="button" onClick={() => open(p)} data-press="row" className="block w-full border-t border-[#1d3256] py-3 text-left first-of-type:border-t-0">
+                  <span className="flex items-baseline justify-between gap-2">
+                    <b className="truncate text-[0.9375rem] font-semibold">{p.title}</b>
+                    <small className="shrink-0 text-[0.8125rem] text-[#7d90b5]">{dayText(p)}</small>
+                  </span>
+                  {logLine(p.log) && <small className="block text-[0.8125rem] text-[#7d90b5]">{logLine(p.log)}</small>}
+                  {p.log.rating && <small className="block text-[0.75rem] font-semibold text-[#8fb3ff]">{RATINGS.find(([k]) => k === p.log.rating)?.[1]}</small>}
+                  {p.log.note && <p className="mt-1 line-clamp-2 text-[0.875rem] leading-snug text-[#cfdcf5]">{p.log.note}</p>}
+                  <LogDetails log={p.log} className="mt-1" />
+                  {!p.log.athletes?.length && presentOn(athletes, p.date).length > 0 && (
+                    <small className="mt-0.5 block text-[0.8125rem]">
+                      <span className="text-[#7d90b5]">Katılanlar:</span> {presentOn(athletes, p.date).join(", ")}
+                    </small>
+                  )}
+                  <Missing log={p.log} className="mt-1" />
+                </button>
+              ))
+            )}
+          </section>
+          <section className="tw-pn">
+            <span className="tw-pt">
+              Yazılmayanlar<span className="flex-1" />
+              <em>{missing.length}</em>
+            </span>
+            {missing.length ? (
+              missing.map((p) => (
+                <button key={p.id} type="button" onClick={() => open(p)} data-press="row" className="flex w-full items-center gap-3 border-t border-[#1d3256] py-2.5 text-left first-of-type:border-t-0">
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.9375rem] font-semibold">{p.title}</b>
+                    <small className="text-[0.8125rem] text-[#7d90b5]">
+                      {dayText(p)}
+                      {p.time ? ` · ${p.time}` : ""}
+                    </small>
+                  </span>
+                  <span className="text-[0.875rem] font-semibold text-[#8fb3ff]">Yaz</span>
+                </button>
+              ))
+            ) : (
+              <p className="text-[0.875rem] text-[#7d90b5]">Hepsi yazıldı</p>
+            )}
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
@@ -54,7 +170,7 @@ export default function TrainingPage() {
           <BackButton href="/" />
           <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">Antrenman günlüğü</h1>
           {racer && (
-            <Link href="/training/day" data-press className="raised act-main flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+            <Link href="/training/day" data-press className="btn btn-primary btn-sm shrink-0">
               Bugün
             </Link>
           )}

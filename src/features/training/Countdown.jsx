@@ -376,36 +376,25 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
   const hot = running && !up && rem <= 10;
   const head = up ? "Startan beri" : running ? "Starta kalan" : paused ? "Durdu" : "Start sayacı";
   const time = up ? `+${mmss(upSec(t.end, now))}` : mmss(Math.max(0, paused ? t.left : rem));
-  const btn = `flex h-12 min-w-0 flex-1 items-center justify-center rounded-[0.875rem] border px-2 text-[1rem] font-semibold active:translate-y-px active:shadow-none ${dark ? "ck-glass text-white shadow-[0_2px_0_rgba(0,0,0,.35)]" : "border-line bg-card shadow-[0_2px_0_var(--line)]"}`;
-  const mainCls = (on) =>
-    `mt-3 flex h-16 w-full items-center justify-center rounded-[1.125rem] text-[1.25rem] font-semibold active:translate-y-0.5 active:shadow-none ${
-      dark
-        ? on
-          ? "bg-white text-[#0b1a33] shadow-[0_3px_0_rgba(0,0,0,.35)]"
-          : "ck-glass text-white shadow-[0_3px_0_rgba(0,0,0,.35)]"
-        : on
-          ? "bg-acc text-white shadow-[0_3px_0_color-mix(in_srgb,var(--acc)_70%,#000)]"
-          : "border border-line bg-card text-fg shadow-[0_3px_0_var(--line)]"
-    }`;
+  // Düğmeler ortak düğme (.btn; Seyhun 2026-11-12): lacivertte de açıkta da aynı çeşitler, renkleri globals.css'ten
+  const btn = "btn btn-secondary h-12 min-w-0 flex-1 px-2";
+  const mainCls = (on) => `btn ${on ? "btn-primary" : "btn-secondary"} mt-3 h-16 w-full rounded-[1.125rem] text-[1.25rem]`;
   // Alt şeritte açık zeminde (bottom): kokpitin dışında
-  const barCls = (on) =>
-    `flex h-14 w-full items-center justify-center rounded-2xl text-[1.125rem] font-semibold active:translate-y-0.5 active:shadow-none ${
-      on ? "bg-acc text-white shadow-[0_3px_0_color-mix(in_srgb,var(--acc)_70%,#000)]" : "border border-line bg-card text-fg shadow-[0_3px_0_var(--line)]"
-    }`;
+  const barCls = (on) => `btn ${on ? "btn-primary" : "btn-secondary"} h-14 w-full rounded-2xl text-[1.125rem]`;
   const main = (cls) =>
     away ? (
-      <Link href={ownHref} className={cls(true)}>
+      <Link href={ownHref} data-press className={cls(true)}>
         {t.where || "Sayacın sayfası"} ›
       </Link>
     ) : (
-      <button type="button" onClick={idle ? start : up ? (race ? () => raceFinish(race) : reset) : running ? pause : resume} className={cls(!running || up)}>
+      <button type="button" onClick={idle ? start : up ? (race ? () => raceFinish(race) : reset) : running ? pause : resume} data-press className={cls(!running || up)}>
         <span className="truncate px-3">{idle ? startText || "Başlat" : up ? (race ? "Bitti" : "Bitir") : running ? "Durdur" : "Devam"}</span>
       </button>
     );
   const red = dark ? "text-[#f4a49c]" : "text-rec"; // lacivertte koyu kırmızı okunmuyor
   // iPhone saati gibi: ikinci düğme (Sıfırla / İptal) ana düğmenin hemen solunda; varken side (Sonucu söyle) yer açar
   const sub2 = bottom && !away && (paused || up) && (
-    <button type="button" onClick={paused ? (race ? () => raceCancel(race) : reset) : race ? () => raceVoid(race) : reset} className={barCls(false).replace("text-fg", "text-rec")}>
+    <button type="button" onClick={paused ? (race ? () => raceCancel(race) : reset) : race ? () => raceVoid(race) : reset} data-press className={barCls(false).replace("btn-secondary", "btn-danger")}>
       {paused ? "Sıfırla" : race ? "Abandone" : "İptal"}
     </button>
   );
@@ -453,22 +442,22 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
         )}
         {running && !up && !away && (
           <div className="mt-3.5 flex gap-2">
-            <button type="button" onClick={() => add(-60)} disabled={rem <= 60} className={`${btn} disabled:opacity-40`}>−1 dk</button>
-            <button type="button" onClick={even} className={btn}>Eşitle</button>
-            <button type="button" onClick={() => add(60)} className={btn}>+1 dk</button>
+            <button type="button" onClick={() => add(-60)} disabled={rem <= 60} data-press className={btn}>−1 dk</button>
+            <button type="button" onClick={even} data-press className={btn}>Eşitle</button>
+            <button type="button" onClick={() => add(60)} data-press className={btn}>+1 dk</button>
           </div>
         )}
         {paused && !away && !bottom && (
           <div className="mt-3.5 flex gap-2">
-            <button type="button" onClick={race ? () => raceCancel(race) : reset} className={`${btn} ${red}`}>Sıfırla</button>
+            <button type="button" onClick={race ? () => raceCancel(race) : reset} data-press className={btn.replace("btn-secondary", "btn-danger")}>Sıfırla</button>
           </div>
         )}
         {up && !away && (!bottom || (all && !race && mine)) && (
           <div className="mt-3.5 flex gap-2">
             {all && !race && mine && (
-              <button type="button" onClick={() => makeRace(all)} className={`${btn} ${accTx}`}>+ Yarış yap</button>
+              <button type="button" onClick={() => makeRace(all)} data-press className={btn.replace("btn-secondary", "btn-primary")}>+ Yarış yap</button>
             )}
-            {!bottom && !(dark && race) && <button type="button" onClick={race ? () => raceVoid(race) : reset} className={`${btn} ${red}`}>{race ? "Abandone" : "İptal"}</button>}
+            {!bottom && !(dark && race) && <button type="button" onClick={race ? () => raceVoid(race) : reset} data-press className={btn.replace("btn-secondary", "btn-danger")}>{race ? "Abandone" : "İptal"}</button>}
           </div>
         )}
         {!dark && !bottom && (
@@ -492,8 +481,8 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
       ) : dark && race && up && !away ? (
         // Yarışta yalnız iki düğme yan yana (Seyhun 2026-11-02 tasarım "startlar-yeni"): Abandone · Bitti
         <div className="mt-3 flex gap-2">
-          <button type="button" onClick={() => raceVoid(race)} className={mainCls(false).replace("mt-3 ", "").replace("w-full", "min-w-0 flex-1").replace("text-fg", "text-rec")}>
-            <span className="truncate px-3 text-[#f4a49c]">Abandone</span>
+          <button type="button" onClick={() => raceVoid(race)} data-press className={mainCls(false).replace("mt-3 ", "").replace("w-full", "min-w-0 flex-1").replace("btn-secondary", "btn-danger")}>
+            <span className="truncate px-3">Abandone</span>
           </button>
           {main((on) => mainCls(on).replace("mt-3 ", "").replace("w-full", "min-w-0 flex-1"))}
         </div>

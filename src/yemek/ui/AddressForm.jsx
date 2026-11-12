@@ -174,7 +174,7 @@ function MapPick({ at, onMove, onFound }) {
       </svg>
       <button type="button" onClick={() => setAbout(!about)} aria-label="Harita kaynağı" className="absolute bottom-3 left-3 z-[500] grid size-6 place-items-center rounded-full bg-white/85 text-[0.75rem] font-bold text-mut">i</button>
       {about && <p className="absolute bottom-3 left-11 z-[500] rounded-lg bg-white/90 px-2 py-1 text-[0.6875rem] text-mut">{MAP_ATTR}</p>}
-      <button type="button" onClick={goMe} data-press className="raised absolute bottom-3 right-3 z-[500] h-10 rounded-full border border-line bg-card px-4 text-[0.875rem] font-semibold">Konumum</button>
+      <button type="button" onClick={goMe} data-press className="btn btn-secondary btn-sm absolute bottom-3 right-3 z-[500] h-10 rounded-full px-4">Konumum</button>
     </div>
   );
 }

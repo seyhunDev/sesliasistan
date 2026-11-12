@@ -176,7 +176,7 @@ function RaceWidget({ r, cls }) {
         )}
       </Link>
       {r.id && (
-        <Link href={`/athletes/races/${r.id}/yayin`} data-press className="acc-btn mt-3 flex h-11 items-center justify-center gap-1.5 rounded-2xl text-[0.9375rem] font-semibold">
+        <Link href={`/athletes/races/${r.id}/yayin`} data-press className="btn btn-primary mt-3 h-11 w-full rounded-2xl gap-1.5 text-[0.9375rem]">
           Yayını aç
           <Icon name="chev" className="size-4" />
         </Link>

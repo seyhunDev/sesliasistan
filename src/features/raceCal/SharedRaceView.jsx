@@ -63,7 +63,7 @@ export function SharedRaceView({ id, club }) {
       setAsk(false);
     }
   };
-  const btn = "raised flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold";
+  const btn = "btn btn-secondary h-11 text-[0.9375rem]";
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">
