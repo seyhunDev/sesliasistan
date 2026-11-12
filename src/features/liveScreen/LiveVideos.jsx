@@ -341,7 +341,9 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     if (opening) return;
     setMsg("");
     try {
-      onPlay?.(x.id, await blobOf(x), { at: x.at, dur: x.dur, name: nameOf(x) }); // 3. bilgi: tam ekran oynatıcının başlığı (antrenman)
+      // 3. bilgi (antrenman tam ekran oynatıcısı): sıradaki videolar (kaydırarak geçiş) ve birinin dosyasını açma
+      const order = [...list].sort((a, b) => (a.at < b.at ? -1 : 1)); // eskiden yeniye: sola kaydırınca sonraki (daha yeni) video
+      onPlay?.(x.id, await blobOf(x), { list: order.map((y) => ({ id: y.id, at: y.at, dur: y.dur, th: y.th || "", name: nameOf(y) })), open: (id) => blobOf(list.find((y) => y.id === id)) });
     } catch (e) {
       setMsg(e?.message || "Video açılamadı");
     }
@@ -373,7 +375,7 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
         {playing && !edit && list.some((x) => x.id === playing) ? <span>Ekranda: {nameOf(list.find((x) => x.id === playing))}</span> : null}
         {list.length ? (
           <button type="button" data-press className={`btn ${edit ? "btn-primary" : "btn-secondary"} lvd-del`} onClick={() => (setEdit(!edit), setCur(""), setMsg(""))}>
-            {edit ? "Bitti" : "Düzenle"}
+            {edit ? "Bitti" : "Seç"}
           </button>
         ) : null}
       </div>

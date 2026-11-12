@@ -173,12 +173,13 @@
 .tw-ask { position: fixed; z-index: 5; right: 2.6rem; bottom: calc(1.6rem + env(safe-area-inset-bottom)); width: 3.25rem; height: 2rem; }
 .tw-pop { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 1.5rem; background: rgba(4, 10, 22, .6); }
 .tw-sheet { position: relative; display: flex; flex-direction: column; width: min(46rem, 100%); max-height: 100%; border-radius: 1.4rem; background: #0c1728; border: 1px solid #2a4472; overflow: hidden; }
-.tw-x { position: absolute; z-index: 2; right: 0.75rem; top: 0.75rem; height: 2.25rem; }
+.tw-x { position: absolute; z-index: 2; right: 0.75rem; top: 0.75rem; } /* yuvarlak X (Seyhun 2026-11-12 Apple gibi) */
 .tw-media { flex: none; aspect-ratio: 16 / 9; background: #000; }
 .tw-media video, .tw-media iframe { width: 100%; height: 100%; border: 0; object-fit: contain; }
 .tw-sheet .tl-in { padding-top: 1rem; }
-/* Video'nun başlık satırı (Düzenle) Kapat'ın altına girmesin (Seyhun 2026-11-12 iPad: "düzelt, kapat üst üste") */
-.tw-sheet .lvd-hd { align-items: center; min-height: 2.25rem; padding-right: 5.5rem; }
+/* Video'nun başlık satırı (Seç) X'in altına girmesin (Seyhun 2026-11-12 iPad: "düzelt, kapat üst üste"); Seç Fotoğraflar gibi hap */
+.tw-sheet .lvd-hd { align-items: center; min-height: 2.25rem; padding-right: 3rem; }
+.tw-sheet .lvd-hd .lvd-del { border-radius: 99px; }
 .tw-sheet .lvd-hd span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* Dik iPad (48–64rem; Seyhun 2026-11-12 "alanları iyi kullan"): solda Start (sabit boy) ve altında Sporcular, sağda Rüzgâr ve altında Sıralama.
    Rüzgâr kutusu yalnız eğrisi kadar; boşluk kalmaz */
