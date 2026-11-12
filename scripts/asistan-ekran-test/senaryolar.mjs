@@ -45,7 +45,7 @@ function seedData() {
   const plan = (id, title, date, time) => ({ path: `orgs/{owner}/plans/${id}`, data: { ...who("owner"), title, date, endDate: "", time, allDay: !time, durationMin: time ? 60 : null, tz: "Europe/Istanbul", timeSource: time ? "user" : "none", place: "", status: "planned" } });
   return {
     users: [
-      { key: "owner", email: OWNER, password: PASS, name: "Test Sahip", doc: { name: "Test Sahip", email: OWNER, role: "owner", orgId: "{owner}", onboarded: true, introV: 99, tourDone: true, createdAt: now } },
+      { key: "owner", email: OWNER, password: PASS, name: "Test Sahip", doc: { name: "Test Sahip", email: OWNER, role: "owner", orgId: "{owner}", sport: "sailing", onboarded: true, introV: 99, tourDone: true, createdAt: now } },
       { key: "athlete", email: ATHLETE, password: PASS, name: "Ege Demir", doc: { name: "Ege Demir", email: ATHLETE, role: "staff", kind: "athlete", orgId: "{owner}", onboarded: true, introV: 99, tourDone: true, createdAt: now } },
     ],
     docs: [
