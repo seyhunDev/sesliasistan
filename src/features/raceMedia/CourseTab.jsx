@@ -199,6 +199,7 @@ export function CourseTab({ orgId, race, day, wind = [], onDropWind, onDay, wx =
 // Ne: 8 kısa kutu; yön: pusula kadranı (parmakla çevrilir) + −5 −1 +1 +5; Pusula: kadran telefonun baktığı yönü canlı gösterir,
 // "Bunu kullan" yazar (iPhone uygulamasında gerçek kuzey, tarayıcıda manyetik); "Kamerayla nişan al" CompassSight. Rüzgârda Hız,
 // Sağanak, Aralık tek liste (Yok = eklenmez); Kim ölçtü altta. Haritaya dokunulduysa ölçüm o noktaya konur.
+// iPad/Mac'te de pencere dar (Sheet ~28rem), düzen telefondakiyle aynı tek sütun (Seyhun 2026-11-12 "iPad'de butonlar kötü çıkıyor")
 // pick0: açılışta seçili ölçüm (PICKS sırası; yayın sayfası Rüzgâr / Parkur ekseni ile açar, Seyhun 2026-11-01)
 // onVoice: varsa "Sesle" düğmesi (Seyhun 2026-11-05 "canlı ekranda da sesle de olmalı"); ana sayfa pencereyi kapatıp sesle parkuru açar
 export function AddSheet({ open, at, c, onClose, onAdd, pick0 = 0, onVoice = null }) {
@@ -334,10 +335,10 @@ function AddBody({ at, c, onAdd, pick0 = 0, onVoice = null }) {
           </button>
         ))}
       </div>
-      <div className="mt-4 md:grid md:grid-cols-[15rem_1fr] md:gap-5">
-        <div className="flex items-center gap-3.5 md:block">
-          <Dial deg={shown} live={comp} onDeg={setDeg} className="w-44 shrink-0 md:w-full" />
-          <div className="flex flex-1 flex-col gap-2 md:hidden">
+      <div className="mt-4">
+        <div className="flex items-center gap-3.5">
+          <Dial deg={shown} live={comp} onDeg={setDeg} className="w-44 shrink-0" />
+          <div className="flex flex-1 flex-col gap-2">
             {comp ? (
               <>
                 <button type="button" onClick={use} disabled={live === null} data-press className="btn btn-primary h-14 flex-col gap-0.5">
@@ -359,28 +360,8 @@ function AddBody({ at, c, onAdd, pick0 = 0, onVoice = null }) {
           </div>
         </div>
         <div className="min-w-0">
-          <div className="hidden gap-2 md:flex md:flex-col">
-            {comp ? (
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={use} disabled={live === null} data-press className="btn btn-primary h-14 flex-col gap-0.5">
-                  <b className="text-[0.9375rem]">Bunu kullan</b>
-                  <small className="text-[0.75rem] font-semibold opacity-80">{live === null ? "Pusula okunuyor" : `Pusula · ${live}°`}</small>
-                </button>
-                <button type="button" onClick={() => (setComp(false), setSight(true))} data-press className="btn btn-secondary h-14 text-[0.875rem]">Kamerayla nişan al</button>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[-5, -1, 1, 5].map((d) => (
-                    <button key={d} type="button" onClick={() => setDeg((v) => norm(v + d))} data-press className={step}>{d > 0 ? `+${d}` : `−${-d}`}</button>
-                  ))}
-                </div>
-                {tools}
-              </>
-            )}
-          </div>
           {wind && (
-            <div className="mt-4 overflow-hidden rounded-2xl bg-bg/60 md:mt-2">
+            <div className="mt-4 overflow-hidden rounded-2xl bg-bg/60">
               {row("Hız", `${kn} kn`, () => setKn((v) => Math.max(0, v - 1)), () => setKn((v) => Math.min(60, v + 1)))}
               {row("Sağanak", gust === null ? "Yok" : `${gust} kn`, () => setGust((v) => (v === null || v - 1 <= kn ? null : v - 1)), () => setGust((v) => Math.min(60, v === null ? kn + 4 : v + 1)), gust === null)}
               {row("Aralık", span ? `${deg}–${norm(deg + span)}°` : "Yok", () => setSpan((v) => Math.max(0, v - 5)), () => setSpan((v) => Math.min(90, v + 5)), !span)}
