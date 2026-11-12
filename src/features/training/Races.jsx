@@ -103,7 +103,7 @@ export function Races({ open, onClose, races, onSave, present, others, buoys = [
         <div className="grid gap-2 pb-2">
           <p className="text-[0.9375rem] text-fg2">Sonuçları da silinir, puan durumundan çıkar.</p>
           <button onClick={drop} data-press className="btn btn-danger">Sil</button>
-          <button onClick={() => setDel(null)} className="h-11 text-[0.9375rem] font-semibold text-fg2">Vazgeç</button>
+          <button onClick={() => setDel(null)} data-press className="btn btn-text w-full text-fg2">Vazgeç</button>
         </div>
       </Sheet>
     </>
@@ -138,7 +138,7 @@ function RaceView({ race, now, waiting, others, more, onMore, onName, onFinish, 
   const [name, setName] = useState(race.name);
   const marks = buoys.filter((b) => race.marks?.[b] != null).map((b) => `${b.replace("Şamandıra ", "Ş")} ${mmss(race.marks[b])}`);
   const pl = places(race);
-  const nb = "min-h-12 rounded-xl border border-line bg-card px-2 py-2 text-[0.9375rem] font-medium shadow-[0_2px_0_var(--line)] active:translate-y-px active:shadow-none";
+  const nb = "btn btn-secondary h-auto min-h-12 px-2 py-2 text-[0.9375rem] font-medium whitespace-normal";
   return (
     <div className="pb-2">
       <div className="flex items-center gap-2">
@@ -181,7 +181,7 @@ function RaceView({ race, now, waiting, others, more, onMore, onName, onFinish, 
           <p className="mb-1.5 mt-4 text-[0.875rem] font-semibold text-fg2">Bekleyenler · {waiting.length}</p>
           <div className="grid grid-cols-2 gap-2">
             {waiting.map((a) => (
-              <button key={a.id} onClick={() => onFinish(a)} className={nb}>{a.name}</button>
+              <button key={a.id} onClick={() => onFinish(a)} data-press className={nb}>{a.name}</button>
             ))}
           </div>
         </>
@@ -194,7 +194,7 @@ function RaceView({ race, now, waiting, others, more, onMore, onName, onFinish, 
           {more && (
             <div className="grid grid-cols-2 gap-2">
               {others.map((a) => (
-                <button key={a.id} onClick={() => onFinish(a)} className={`${nb} text-fg2`}>{a.name}</button>
+                <button key={a.id} onClick={() => onFinish(a)} data-press className={`${nb} text-fg2`}>{a.name}</button>
               ))}
             </div>
           )}

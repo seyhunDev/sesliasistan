@@ -65,17 +65,17 @@ export default function TrainingPage() {
           <h1>
             <b>Antrenman günlüğü</b>
           </h1>
-          <button type="button" aria-label="Önceki ay" onClick={() => setYm(shiftMonth(ym, -1))} data-press className="tw-hb">
+          <button type="button" aria-label="Önceki ay" onClick={() => setYm(shiftMonth(ym, -1))} data-press className="btn btn-secondary tw-hb">
             <Icon name="back" className="size-4" />
           </button>
           <b className="tw-hb justify-center" style={{ minWidth: "8.5rem" }}>
             {monthLabel(ym)}
           </b>
-          <button type="button" aria-label="Sonraki ay" disabled={ym >= today.slice(0, 7)} onClick={() => setYm(shiftMonth(ym, 1))} data-press className="tw-hb disabled:opacity-40">
+          <button type="button" aria-label="Sonraki ay" disabled={ym >= today.slice(0, 7)} onClick={() => setYm(shiftMonth(ym, 1))} data-press className="btn btn-secondary tw-hb">
             <Icon name="chev" className="size-4" />
           </button>
           {racer && (
-            <Link href="/training/day" data-press className="tw-hb tw-w">
+            <Link href="/training/day" data-press className="btn btn-primary tw-hb">
               Bugün
             </Link>
           )}
@@ -170,7 +170,7 @@ export default function TrainingPage() {
           <BackButton href="/" />
           <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">Antrenman günlüğü</h1>
           {racer && (
-            <Link href="/training/day" data-press className="raised act-main flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+            <Link href="/training/day" data-press className="btn btn-primary btn-sm shrink-0">
               Bugün
             </Link>
           )}

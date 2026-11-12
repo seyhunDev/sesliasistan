@@ -665,7 +665,7 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
     --btn-top: #ffffff;
     --btn-bot: color-mix(in srgb, var(--card) 80%, var(--line));
   }
-  html[data-theme="dark"] .btn, .navy .btn { --btn-top: color-mix(in srgb, var(--card) 88%, var(--fg)); --btn-bot: var(--card); }
+  html[data-theme="dark"] .btn { --btn-top: color-mix(in srgb, var(--card) 88%, var(--fg)); --btn-bot: var(--card); }
   .btn-sm { height: 2.25rem; padding: 0 .75rem; border-radius: .75rem; font-size: .84375rem; }
   .btn:disabled { opacity: .5; }
   .btn-primary {
@@ -689,6 +689,16 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
     background: linear-gradient(180deg, var(--btn-top) 0%, var(--btn-bot) 100%);
   }
   .btn-sm:is(.btn-back, .btn-round) { width: 2.25rem; height: 2.25rem; }
+  /* Lacivert zeminde (kokpit .ck, lacivert sayfa .navy, video galerisi .lvd) aynı çeşitler (Seyhun 2026-11-12 "butonların hepsi farklı, ortak
+     tasarımı kullanalım"): İkincil yarı saydam beyaz kabarık (.ck .raised gibi), Ana elektrik mavisi, Tehlike açık kırmızı yazı, seçili İkincil
+     (aria-pressed) elektrik mavisi. Daha önce lacivertte ortak düğmenin görünümü yoktu, sayfalar kendi düğmesini yazıyordu. */
+  html :is(.ck, .navy, .lvd) .btn { --btn-top: rgba(255, 255, 255, .1); --btn-bot: rgba(255, 255, 255, .06); }
+  :is(.ck, .navy, .lvd) :is(.btn-secondary, .btn-danger) { color: #fff; border-color: rgba(255, 255, 255, .14); box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+  :is(.ck, .navy, .lvd) .btn-danger { color: #f4a49c; }
+  :is(.ck, .navy, .lvd) .btn-primary { --acc: #3d7bff; --on-acc: #fff; border-color: #3d7bff; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+  :is(.ck, .navy, .lvd) .btn-text { color: #8fb3ff; }
+  :is(.ck, .navy, .lvd) .btn-icon { color: rgba(255, 255, 255, .85); }
+  html :is(.ck, .navy, .lvd) .btn-secondary[aria-pressed="true"] { --btn-top: #3d7bff; --btn-bot: #3d7bff; border-color: #3d7bff; color: #fff; }
 }
 .btn-primary[data-pressed] {
   transform: scale(0.97); filter: none;

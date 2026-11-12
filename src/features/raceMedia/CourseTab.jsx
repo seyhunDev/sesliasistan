@@ -138,7 +138,7 @@ export function CourseTab({ orgId, race, day, wind = [], onDropWind, onDay, wx =
         )}
       </div>
       {big && kart && (
-        <button type="button" onClick={() => setFull(true)} className="mt-3 h-12 w-full rounded-xl bg-[#2f6bff] text-[1rem] font-bold text-white active:translate-y-px">
+        <button type="button" onClick={() => setFull(true)} data-press className="btn btn-primary mt-3 w-full">
           Büyük göster
         </button>
       )}
@@ -148,8 +148,8 @@ export function CourseTab({ orgId, race, day, wind = [], onDropWind, onDay, wx =
         </button>
       )}
       <div className="mt-3 grid grid-cols-2 gap-2.5">
-        <button type="button" data-press onClick={() => setAdd({})} className="raised ck-pill font-medium">Yön ekle</button>
-        <button type="button" data-press onClick={async () => ((await askCompass()) ? setSight(true) : toast("Pusula izni verilmedi"))} className="raised ck-pill font-medium">Pusula</button>
+        <button type="button" data-press onClick={() => setAdd({})} className="btn btn-secondary">Yön ekle</button>
+        <button type="button" data-press onClick={async () => ((await askCompass()) ? setSight(true) : toast("Pusula izni verilmedi"))} className="btn btn-secondary">Pusula</button>
       </div>
       {trend && (
         <section className="mt-7" aria-label="Özet">
@@ -304,25 +304,25 @@ function AddBody({ at, c, onAdd, pick0 = 0, onVoice = null }) {
   const wind = kind === "wind";
   const shown = comp && live !== null ? live : deg;
   const tile = (on) => `h-10 rounded-xl px-1 text-[0.8125rem] font-semibold active:scale-[.97] ${on ? "bg-acc text-white" : "bg-bg text-fg2"}`;
-  const step = "grid h-11 place-items-center rounded-xl bg-bg text-[1rem] font-semibold shadow-[inset_0_-2px_0_rgba(0,0,0,.12)] active:translate-y-px disabled:opacity-35";
+  const step = "btn btn-secondary h-11 px-0";
   const openComp = async () => (await askCompass()) && setComp(true);
   const use = () => (live !== null && setDeg(live), setComp(false));
   const row = (name, val, minus, plus, off = false) => (
     <div className="flex h-14 items-center border-t border-line pl-3.5 pr-1.5 first:border-t-0">
       <span className="flex-1 text-[0.9375rem] font-semibold text-fg2">{name}</span>
-      <button type="button" aria-label={`${name} azalt`} onClick={minus} className={`${step} w-11`}>−</button>
+      <button type="button" aria-label={`${name} azalt`} onClick={minus} data-press className={`${step} w-11`}>−</button>
       <b className={`min-w-[5.5rem] text-center tabular-nums ${off ? "text-[0.9375rem] font-semibold text-mut" : "text-[1.375rem] font-bold"}`}>{val}</b>
-      <button type="button" aria-label={`${name} artır`} onClick={plus} className={`${step} w-11`}>+</button>
+      <button type="button" aria-label={`${name} artır`} onClick={plus} data-press className={`${step} w-11`}>+</button>
     </div>
   );
-  const tool = "h-12 rounded-2xl bg-bg text-[0.9375rem] font-semibold text-acc active:scale-[.98]";
+  const tool = "btn btn-secondary text-[0.9375rem]";
   const tools = onVoice ? (
     <div className="grid grid-cols-2 gap-1.5">
-      <button type="button" onClick={openComp} className={tool}>Pusula</button>
-      <button type="button" onClick={onVoice} className={tool}>Sesle</button>
+      <button type="button" onClick={openComp} data-press className={tool}>Pusula</button>
+      <button type="button" onClick={onVoice} data-press className={tool}>Sesle</button>
     </div>
   ) : (
-    <button type="button" onClick={openComp} className={tool}>Pusula</button>
+    <button type="button" onClick={openComp} data-press className={tool}>Pusula</button>
   );
   const out = { kind, ref, deg, by, kn: wind ? kn : null, ...(wind && gust !== null && gust > kn ? { gust } : {}), ...(wind && span ? { range: [deg, norm(deg + span)] } : {}), ...(at?.lat != null ? { lat: at.lat, lon: at.lon } : {}) };
   return (
@@ -340,17 +340,17 @@ function AddBody({ at, c, onAdd, pick0 = 0, onVoice = null }) {
           <div className="flex flex-1 flex-col gap-2 md:hidden">
             {comp ? (
               <>
-                <button type="button" onClick={use} disabled={live === null} className="flex h-14 flex-col items-center justify-center rounded-2xl bg-acc text-white active:scale-[.98] disabled:opacity-50">
+                <button type="button" onClick={use} disabled={live === null} data-press className="btn btn-primary h-14 flex-col gap-0.5">
                   <b className="text-[0.9375rem]">Bunu kullan</b>
                   <small className="text-[0.75rem] font-semibold opacity-80">{live === null ? "Pusula okunuyor" : `Pusula · ${live}°`}</small>
                 </button>
-                <button type="button" onClick={() => (setComp(false), setSight(true))} className="h-12 rounded-2xl bg-bg text-[0.875rem] font-semibold text-acc">Kamerayla nişan al</button>
+                <button type="button" onClick={() => (setComp(false), setSight(true))} data-press className="btn btn-secondary text-[0.875rem]">Kamerayla nişan al</button>
               </>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-1.5">
                   {[-5, 5, -1, 1].map((d) => (
-                    <button key={d} type="button" onClick={() => setDeg((v) => norm(v + d))} className={step}>{d > 0 ? `+${d}` : `−${-d}`}</button>
+                    <button key={d} type="button" onClick={() => setDeg((v) => norm(v + d))} data-press className={step}>{d > 0 ? `+${d}` : `−${-d}`}</button>
                   ))}
                 </div>
                 {tools}
@@ -362,17 +362,17 @@ function AddBody({ at, c, onAdd, pick0 = 0, onVoice = null }) {
           <div className="hidden gap-2 md:flex md:flex-col">
             {comp ? (
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={use} disabled={live === null} className="flex h-14 flex-col items-center justify-center rounded-2xl bg-acc text-white active:scale-[.98] disabled:opacity-50">
+                <button type="button" onClick={use} disabled={live === null} data-press className="btn btn-primary h-14 flex-col gap-0.5">
                   <b className="text-[0.9375rem]">Bunu kullan</b>
                   <small className="text-[0.75rem] font-semibold opacity-80">{live === null ? "Pusula okunuyor" : `Pusula · ${live}°`}</small>
                 </button>
-                <button type="button" onClick={() => (setComp(false), setSight(true))} className="h-14 rounded-2xl bg-bg text-[0.875rem] font-semibold text-acc">Kamerayla nişan al</button>
+                <button type="button" onClick={() => (setComp(false), setSight(true))} data-press className="btn btn-secondary h-14 text-[0.875rem]">Kamerayla nişan al</button>
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-4 gap-1.5">
                   {[-5, -1, 1, 5].map((d) => (
-                    <button key={d} type="button" onClick={() => setDeg((v) => norm(v + d))} className={step}>{d > 0 ? `+${d}` : `−${-d}`}</button>
+                    <button key={d} type="button" onClick={() => setDeg((v) => norm(v + d))} data-press className={step}>{d > 0 ? `+${d}` : `−${-d}`}</button>
                   ))}
                 </div>
                 {tools}
