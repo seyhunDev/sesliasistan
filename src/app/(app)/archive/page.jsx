@@ -134,7 +134,7 @@ function Archive() {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Arşiv</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{rows.length ? `${rows.length} kayıt` : "Kayıt yok"}</p>
           </div>
-          <button type="button" onClick={exportCsv} disabled={!shown.length} data-press className="raised flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold disabled:opacity-50">
+          <button type="button" onClick={exportCsv} disabled={!shown.length} data-press className="btn btn-secondary btn-sm shrink-0">
             Excel
           </button>
         </header>

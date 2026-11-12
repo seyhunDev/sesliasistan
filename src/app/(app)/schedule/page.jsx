@@ -112,7 +112,7 @@ export default function SchedulePage() {
           <button type="button" onClick={() => setMore(true)} aria-label="Diğer" data-press className="btn btn-round size-10">
             <Icon name="more" className="size-5" />
           </button>
-          <button type="button" onClick={newLesson} data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+          <button type="button" onClick={newLesson} data-press className="btn btn-primary btn-sm shrink-0 gap-1">
             <Icon name="plus" className="size-4" />
             Ders
           </button>

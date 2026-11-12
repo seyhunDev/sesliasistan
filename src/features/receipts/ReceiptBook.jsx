@@ -255,7 +255,7 @@ export function ReceiptBook({ kind: start = "" }) {
   const monthText = month ? monthLabel(month) : "Tüm zamanlar";
   const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
   const chip = (on) => `${pill0} ${on ? "border-white bg-white text-[#0b1a33]" : "ck-glass text-white"}`;
-  const raised = "raised flex h-10 min-w-0 disabled:opacity-50 items-center justify-center gap-1.5 rounded-xl border px-3 text-[0.9375rem] font-semibold";
+  const raised = "btn btn-secondary h-10 min-w-0 gap-1.5 px-3 text-[0.9375rem]";
   const listCls = "divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card";
   // ⋯ penceresindeki işler: pencere kapanır, iş başlar
   const run = (fn) => () => (setMore(false), fn());
@@ -299,7 +299,7 @@ export function ReceiptBook({ kind: start = "" }) {
               </p>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" onClick={desk.pick} data-press className={`${raised} act-main`}>
+              <button type="button" onClick={desk.pick} data-press className={raised.replace("btn-secondary", "btn-primary")}>
                 Fatura ekle
               </button>
               <button type="button" onClick={desk.check} disabled={desk.checking || !desk.sum.open} data-press className={raised}>
@@ -369,7 +369,7 @@ export function ReceiptBook({ kind: start = "" }) {
             {/* Ekleme düğmeleri (ana hesap; çalışan alt çubuktan ekler) */}
             {owner && (
               <div className={`mt-4 grid gap-2 ${shownKind === "" ? "grid-cols-2" : ""}`}>
-                <button type="button" onClick={() => openReceipt()} data-press className={`${raised} act-main`}>
+                <button type="button" onClick={() => openReceipt()} data-press className={raised.replace("btn-secondary", "btn-primary")}>
                   Fiş ekle
                 </button>
                 {shownKind === "" && (

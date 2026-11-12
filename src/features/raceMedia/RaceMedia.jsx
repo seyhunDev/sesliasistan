@@ -222,7 +222,7 @@ export function RaceMedia({ orgId, id }) {
       back="/athletes/races"
       action={
         <>
-          <button type="button" data-cur={cur} onClick={() => setPickDay(true)} aria-label={`Gün: ${names[cur]} · ${dayLabel(cur)}`} data-press className="raised flex h-10 shrink-0 items-center gap-1 rounded-full border px-3.5 text-[0.875rem] font-semibold tabular-nums">
+          <button type="button" data-cur={cur} onClick={() => setPickDay(true)} aria-label={`Gün: ${names[cur]} · ${dayLabel(cur)}`} data-press className="btn btn-secondary btn-sm h-10 shrink-0 gap-1 rounded-full px-3.5 tabular-nums">
             {cur === today ? "Bugün" : dayLabel(cur)}
             <span aria-hidden="true" className="text-[0.75rem] opacity-70">▾</span>
           </button>
@@ -236,7 +236,7 @@ export function RaceMedia({ orgId, id }) {
         tab === "res" ? (
           <>
             {cur === today && racing(race) && racePhase({ r: race, today, now: opened, starts: live.starts }) === "done" && <NextCard r={race} />}
-            <button type="button" onClick={() => setSum(true)} data-press className="raised ck-pill mt-3 w-full font-semibold">
+            <button type="button" onClick={() => setSum(true)} data-press className="btn btn-secondary mt-3 w-full">
               Özeti paylaş
             </button>
           </>

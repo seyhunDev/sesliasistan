@@ -69,7 +69,7 @@ function Report() {
             <p className="truncate text-[0.8125rem] text-white/65">{ready ? `${report.days.length} yoklama günü${marked.length ? ` · ${marked.length} sporcu` : ""}` : "Kulüp verisi"}</p>
           </div>
           {ready && report.days.length > 0 && (
-            <button data-press onClick={excel} disabled={busy} className="raised act-main flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold disabled:opacity-40">
+            <button data-press onClick={excel} disabled={busy} className="btn btn-primary btn-sm shrink-0">
               {busy ? "Hazırlanıyor…" : "Excel"}
             </button>
           )}

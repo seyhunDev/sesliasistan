@@ -362,7 +362,7 @@ export default function MailPage() {
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
           <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold leading-tight tracking-[-.02em]">Hesaplar</h1>
-          <Link href="/mail/setup" data-press className="raised flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+          <Link href="/mail/setup" data-press className="btn btn-secondary btn-sm shrink-0">
             Ayarlar
           </Link>
         </header>

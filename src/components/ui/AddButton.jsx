@@ -7,7 +7,7 @@ import { Icon } from "./Icon";
 // Kısa ad yazılır ("Ürün", "Görev"). Ayrı sayfaya gitmez, pencere açar (href yalnız eski tam sayfa düzenleyiciler için).
 // ref: iPad'de seçim listesi bu düğmenin altında açılsın diye (Sheet anchor).
 export function AddButton({ children, onClick, href, label, ref, className = "" }) {
-  const cls = `ck-btn !flex shrink-0 items-center gap-1 ${className}`;
+  const cls = `btn btn-primary btn-sm shrink-0 gap-1 ${className}`;
   const body = (
     <>
       <Icon name="plus" className="size-4" />

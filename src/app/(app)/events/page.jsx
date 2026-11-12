@@ -44,7 +44,7 @@ function Events({ orgId }) {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Etkinlikler</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{events ? (up ? `${up} yaklaşan` : "Yaklaşan yok") : "Yükleniyor…"}</p>
           </div>
-          <Link href="/events/new" data-press className="ck-btn shrink-0 !flex items-center gap-1">
+          <Link href="/events/new" data-press className="btn btn-primary btn-sm shrink-0 gap-1">
             <Icon name="plus" className="size-4" />
             Etkinlik
           </Link>

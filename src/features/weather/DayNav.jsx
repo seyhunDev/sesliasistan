@@ -11,7 +11,7 @@ export function DayNav({ sel, days, today, onStep, light = false }) {
   const prev = days[i - 1];
   const next = days[i + 1];
   // light: yarış sayfasının beyaz görünümü (2026-11-06); düğme yerine mavi yazı
-  const btn = light ? "flex h-9 min-w-[5.5rem] items-center text-[0.875rem] font-medium text-acc last:justify-end" : "raised flex h-9 min-w-[5.5rem] items-center justify-center rounded-full border px-3 text-[0.875rem] font-semibold";
+  const btn = light ? "flex h-9 min-w-[5.5rem] items-center text-[0.875rem] font-medium text-acc last:justify-end" : "btn btn-secondary btn-sm h-9 min-w-[5.5rem] rounded-full px-3";
   return (
     <nav aria-label="Gün" className="mb-2.5 flex items-center justify-between gap-2">
       {prev ? <button type="button" data-press onClick={() => onStep(-1)} className={btn}>‹ {rel(prev, today)}</button> : <span className="min-w-[5.5rem]" />}

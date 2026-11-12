@@ -111,7 +111,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
           {!embedded && <BackButton href="/" />}
           <h1 className={`min-w-0 flex-1 truncate font-bold capitalize tracking-[-.02em] ${embedded ? "text-[1.0625rem]" : "text-[1.375rem]"}`}>{monthLabel(month)}</h1>
           {(sel !== today || month !== today.slice(0, 7)) && (
-            <button type="button" onClick={() => pick(today)} data-press className={light ? "btn btn-secondary btn-sm shrink-0" : "ck-btn shrink-0"}>
+            <button type="button" onClick={() => pick(today)} data-press className="btn btn-secondary btn-sm shrink-0">
               Bugün
             </button>
           )}

@@ -48,16 +48,16 @@ export function WaSheet({ open, onClose, races = [] }) {
       )}
     </li>
   );
-  const btn = "flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[0.9375rem] font-semibold disabled:opacity-50";
+  const btn = "btn h-12 w-full gap-2 rounded-2xl text-[0.9375rem]";
   return (
     <Sheet open onClose={onClose} title="Sporculara WhatsApp">
       <div className="space-y-3 pb-1">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Mesaj" className="block w-full resize-none rounded-xl bg-bg px-3 py-2.5 text-[1rem] outline-none" />
-        <a href={href} target={app ? undefined : "_blank"} rel="noreferrer" data-press aria-disabled={!msg} onClick={send} className={`${btn} acc-btn ${msg ? "" : "pointer-events-none opacity-50"}`}>
+        <a href={href} target={app ? undefined : "_blank"} rel="noreferrer" data-press aria-disabled={!msg} onClick={send} className={`${btn} btn-primary ${msg ? "" : "pointer-events-none opacity-50"}`}>
           <Icon name="whatsapp" className="size-5" />
           WhatsApp&apos;ı aç
         </a>
-        <button type="button" data-press disabled={!text.trim() || mine.includes(text.trim())} onClick={() => save(cleanTemplates([text.trim(), ...mine]))} className={`${btn} raised bg-card text-acc`}>
+        <button type="button" data-press disabled={!text.trim() || mine.includes(text.trim())} onClick={() => save(cleanTemplates([text.trim(), ...mine]))} className={`${btn} btn-secondary text-acc`}>
           Kalıp olarak kaydet
         </button>
         {mine.length > 0 && (
