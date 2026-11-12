@@ -226,7 +226,7 @@ function Day() {
 
   // Bitiren kim? kareleri ve altındaki düğmeler (telefonda Start panelinde; iPad'de kareler ortada, düğmeler solda)
   const finishing = !!(cur && tr.up && t.end != null);
-  const finishParts = () => {
+  const finishParts = (full = false) => {
     const pl = places(cur);
     const fin = Object.fromEntries(cur.finishes.map((f) => [f.id, f]));
     const all = [...people, ...cur.finishes.filter((f) => !people.some((p) => p.id === f.id))];
@@ -244,7 +244,7 @@ function Day() {
               return (
                 <button key={p.id} type="button" className={f ? "on" : ""} aria-pressed={!!f} onClick={() => hit(p)}>
                   {f ? <i>{f.code || pl[p.id]}</i> : null}
-                  <span>{first(p.name)}</span>
+                  <span>{full ? p.name : first(p.name)}</span>
                   {f?.t != null ? <small>{mmss(f.t)}</small> : null}
                 </button>
               );
@@ -508,7 +508,7 @@ function Day() {
   if (wide) {
     const pts = Object.fromEntries(table.rows.map((r) => [r.id, r.net]));
     const absent = present.length ? others : [];
-    const f = finishing ? finishParts() : null;
+    const f = finishing ? finishParts(true) : null;
     const sub = !plan ? "" : finishing ? `${cur.name} · ${fins} / ${people.length} bitti` : counting || paused ? `${cur ? cur.name : title} · ${people.length} sporcu` : `${sec / 60} dk${withRaces ? ` · ${people.length} sporcu` : ""}`;
     const pop = ["cam", "course", "vid", "wind"].includes(open) ? body : null;
     const media = (open === "cam" || open === "vid") && (vid.url || src);
@@ -571,13 +571,13 @@ function Day() {
                 <div className="tw-tiles">
                   {people.map((p) => (
                     <div key={p.id} className="tw-tile">
-                      <b>{first(p.name)}</b>
+                      <b>{p.name}</b>
                       {pts[p.id] != null ? <small className="num">{pts[p.id]} p</small> : null}
                     </div>
                   ))}
                   {absent.map((p) => (
                     <div key={p.id} className="tw-tile off">
-                      <b>{first(p.name)}</b>
+                      <b>{p.name}</b>
                       <small>gelmedi</small>
                     </div>
                   ))}
