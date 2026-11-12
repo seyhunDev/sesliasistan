@@ -65,7 +65,7 @@ Tailwind'de `bg-bg`, `text-mut`, `text-acc`, `border-line` gibi sınıflarla yaz
 
 ## Ana sayfa (2026-11-11 iPad, 2026-11-12 iPhone da, "A · Zaman şeridi")
 
-Telefonda da iPad'de de ana sayfa tek bileşen `IpadHome.jsx`: baştan sona lacivert, ince çizgili paneller (`.iph-pn`), panel başlığı küçük büyük harf (`.iph-pt`), rakamlar Space Grotesk (`.num`). Hava ve takvim ayrı panellerde; aynı saat ekseni (06–24). Rüzgâr rengi `windColor` (hafif mavi, iyi yeşil, sert sarı, çok sert kırmızı). Telefonda (<48rem) paneller alt alta, pusula solda küçük, günler yana kayar, plan bloğunda yalnız başlama saati; sayfalar başlıktaki "Tümü"de.
+Telefonda da iPad'de de ana sayfa tek bileşen `IpadHome.jsx`: baştan sona lacivert, ince çizgili paneller (`.iph-pn`), panel başlığı küçük büyük harf (`.iph-pt`), rakamlar Space Grotesk (`.num`). Hava ve takvim ayrı panellerde; aynı saat ekseni (06–24). Rüzgâr rengi `windColor` (hafif mavi, iyi yeşil, sert sarı, çok sert kırmızı). Telefonda (<48rem) paneller alt alta, pusula solda küçük, günler yana kayar, plan bloğunda yalnız başlama saati; sayfalar başlıktaki "Tümü"de. Hava kutusu ortak parça (`src/features/weather/WxPanel.jsx` HavaPanel, DayCell): ana sayfa ve hava sayfası aynı; ölçülen (istasyon) rüzgâr beyaz çizgi + nokta, tahmin mavi; geçmiş gün "ölçülen" etiketli.
 
 ## Önemli plan
 
