@@ -389,12 +389,26 @@ export async function run(server, log = () => {}) {
         return !clash;
       };
       const vidOk = await pops("ipad");
+      // Tam ekran (Apple gibi): yuvarlak X, iPad'de alttaki şerit; sağa kaydırınca (klavyede →) sonraki video, "2 / 2"
+      let swipe = true;
       if (process.env.YARIS_VIDEO) {
         await page.locator(".tw-hb", { hasText: "Video" }).click().catch(() => {});
-        await page.locator(".lvd-t").first().click().catch(() => {});
+        if ((await page.locator(".lvd-t").count()) < 2) {
+          await page.locator(".lvd-gal input[type=file]").setInputFiles(process.env.YARIS_VIDEO).catch(() => {});
+          await page.waitForTimeout(1500);
+        }
+        await page.locator(".lvd-t").last().click().catch(() => {});
         await page.waitForTimeout(1500);
         await foto("ipad-tam-ekran");
-        await page.getByRole("button", { name: "Geri" }).last().click().catch(() => {});
+        await page.keyboard.press("ArrowRight");
+        swipe = await page.getByText("2 / 2").waitFor({ timeout: 10000 }).then(() => true, () => false);
+        await page.waitForTimeout(1000);
+        await foto("ipad-tam-ekran-2");
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.waitForTimeout(800);
+        await foto("telefon-tam-ekran");
+        await page.setViewportSize({ width: 1180, height: 820 });
+        await page.getByRole("button", { name: "Kapat" }).last().click().catch(() => {});
         await page.locator(".tw-x").click().catch(() => {});
       }
       await page.setViewportSize({ width: 820, height: 1180 });
@@ -407,8 +421,8 @@ export async function run(server, log = () => {}) {
       await page.waitForTimeout(800);
       await foto("ipad-gunluk");
       await page.setViewportSize({ width: 390, height: 844 });
-      const ok = fin && cols === 3 && rank >= 1 && back && crs && log && vidOk && vidDik;
-      return [ok, `bitiren ${fin ? "ortada" : "yok"} · ${cols} sütun · sıralama ${rank} satır · dokununca ${back ? "Start ver" : "değişmedi"} · Parkur ${crs ? "açıldı" : "yok"} · günlük ${log ? "üç sütun" : "yok"} · Kapat ${vidOk && vidDik ? "ayrı" : "Düzenle'nin üstünde"}`];
+      const ok = fin && cols === 3 && rank >= 1 && back && crs && log && vidOk && vidDik && swipe;
+      return [ok, `bitiren ${fin ? "ortada" : "yok"} · ${cols} sütun · sıralama ${rank} satır · dokununca ${back ? "Start ver" : "değişmedi"} · Parkur ${crs ? "açıldı" : "yok"} · günlük ${log ? "üç sütun" : "yok"} · Kapat ${vidOk && vidDik ? "ayrı" : "Seç'in üstünde"} · kaydırma ${swipe ? "sonraki video" : "olmadı"}`];
     });
     // Tek ⋯ (Seyhun 2026-10-30): multimedyanın ⋯ menüsünde yarışın bölümleri de var; Sporcu yarış sayfasında açılır.
     // Yarış sayfasının ⋯ menüsündeki Denemeleri sıfırla multimedyada pencereyi açar; Süre'de ayrı düğme yok

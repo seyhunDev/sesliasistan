@@ -484,7 +484,7 @@ function Day() {
         starts={startsOf(races, date)}
         stream={stream}
         playing={vid.id}
-        onPlay={(vId, blob, x) => setVid((v) => (v.url && URL.revokeObjectURL(v.url), vId && blob ? { id: vId, url: URL.createObjectURL(blob), at: x?.at, dur: x?.dur, name: x?.name } : { id: "", url: "" }))}
+        onPlay={(vId, blob, x) => setVid((v) => (v.url && URL.revokeObjectURL(v.url), vId && blob ? { id: vId, url: URL.createObjectURL(blob), list: x?.list || [], open: x?.open } : { id: "", url: "" }))}
       />
     ) : null;
 
@@ -503,14 +503,21 @@ function Day() {
       )}
     </>
   );
-  // Seçilen video tam ekran (Seyhun 2026-11-12 "videoları tam ekran izleyebilmeliyim"): ortak MediaViewer; geri, oynat/durdur, süre çubuğu, ses
+  // Seçilen video tam ekran (Seyhun 2026-11-12 "videoları tam ekran izleyebilmeliyim"): ortak MediaViewer; X, oynat/durdur, süre çubuğu, ses.
+  // Sağa sola kaydırınca Video listesindeki önceki/sonraki video açılır (dosyası o an okunur, LiveVideos open)
+  const vids = vid.url ? (vid.list?.length ? vid.list : [{ id: vid.id }]) : [];
+  const pickVid = async (id) => {
+    const x = vid.list?.find((y) => y.id === id);
+    const blob = x && vid.open ? await vid.open(id).catch(() => null) : null;
+    if (blob) setVid((v) => (v.url && URL.revokeObjectURL(v.url), { ...v, id, url: URL.createObjectURL(blob) }));
+  };
   const full = (
     <MediaViewer
-      items={vid.url ? [{ id: vid.id, kind: "video", url: vid.url, local: vid.url, at: vid.at || new Date().toISOString(), dur: vid.dur }] : []}
+      items={vids.map((x) => ({ id: x.id, kind: "video", url: x.id === vid.id ? vid.url : "", local: x.id === vid.id ? vid.url : "", thumb: x.th || "", at: x.at || new Date().toISOString(), dur: x.dur }))}
       id={vid.url ? vid.id : ""}
-      onPick={() => {}}
+      onPick={pickVid}
       onClose={() => setVid({ id: "", url: "" })}
-      label={() => vid.name || title}
+      label={(m) => vids.find((x) => x.id === m.id)?.name || title}
     />
   );
 
@@ -614,8 +621,8 @@ function Day() {
         {pop ? (
           <div className="tw-pop" onClick={() => setOpen("")}>
             <section className="tw-sheet" aria-label={btns.find(([k]) => k === open)?.[1] || "Rüzgâr"} onClick={(e) => e.stopPropagation()}>
-              <button type="button" data-press className="btn btn-secondary btn-sm tw-hb tw-x" onClick={() => setOpen("")}>
-                Kapat
+              <button type="button" data-press className="btn btn-round btn-sm tw-x" aria-label="Kapat" onClick={() => setOpen("")}>
+                <Icon name="x" className="size-4" />
               </button>
               {media ? (
                 <div className="tw-media">
@@ -769,8 +776,8 @@ function Day() {
       {pop ? (
         <div className="tw-pop" onClick={() => setOpen("")}>
           <section className="tw-sheet" aria-label={btns.find(([k]) => k === open)?.[1]} onClick={(e) => e.stopPropagation()}>
-            <button type="button" data-press className="btn btn-secondary btn-sm tw-hb tw-x" onClick={() => setOpen("")}>
-              Kapat
+            <button type="button" data-press className="btn btn-round btn-sm tw-x" aria-label="Kapat" onClick={() => setOpen("")}>
+              <Icon name="x" className="size-4" />
             </button>
             {media ? (
               <div className="tw-media">
