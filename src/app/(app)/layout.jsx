@@ -29,6 +29,7 @@ import { UpdateNote } from "@/features/pwa/UpdateNote";
 import { NewVersionBar } from "@/features/pwa/NewVersionBar";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 import { TryAssistant } from "@/features/onboarding/TryAssistant";
+import { SportGate } from "@/sports/SportGate";
 import { installTrail } from "@/lib/navTrail";
 import { NavProgress } from "@/components/ui/NavProgress";
 import { SyncLine } from "@/components/ui/SyncLine";
@@ -95,6 +96,7 @@ export default function AppLayout({ children }) {
                   <InboxSeen />
                   <Onboarding />
                   <TryAssistant />
+                  <SportGate />
                   <TimerSound />
                   <IosBridge />
                   <AppLock />

@@ -40,7 +40,7 @@ export async function login(emailOrUser, password) {
   await signInWithEmailAndPassword(auth, loginEmail(emailOrUser), password);
 }
 
-export async function register(name, email, password) {
+export async function register(name, email, password, sport = "sailing") {
   const cred = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
 
   // Firebase Auth profilini güncelle
@@ -52,6 +52,7 @@ export async function register(name, email, password) {
     email: email.trim().toLowerCase(),
     role: "owner",
     orgId: cred.user.uid, // Güvenlik kurallarınıza göre orgId = uid
+    sport, // kayıtta seçilen spor (src/sports)
     createdAt: new Date().toISOString(),
   });
 }
