@@ -338,7 +338,7 @@ export async function run(server, log = () => {}) {
     });
     // iPad (Seyhun 2026-11-11 "A · Üç sütun"): yatayda Start | Sporcular (startan sonra Bitiren kim?) | Sıralama aynı anda; dikte de üçü var.
     // Antrenman günlüğü de iPad'de üç sütun (ay · günlük · yazılmayanlar)
-    await okPage("Antrenman", "iPad: üç sütun", "/training/day?id=t1", "Start ver", async () => {
+    await okPage("Antrenman", "iPad: üç sütun", "/training/day?id=t1", "Sıralama", async () => {
       await page.setViewportSize({ width: 1180, height: 820 });
       await page.evaluate(() => localStorage.setItem("sa-sayac", JSON.stringify({ dur: 300, end: Date.now() - 60e3, left: null, mode: "start", rid: "y3", own: "/training/day?id=t1", where: "Optimist antrenmanı", at: Date.now() })));
       await page.goto(page.url());
