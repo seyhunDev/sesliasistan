@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 // yarış biter. Biten son yarış açık görünür: bütün sıralama süresiyle, Düzelt · Paylaş, genel durum.
 const hm = (ms) => new Date(ms).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 const first = (n) => String(n || "").split(" ")[0];
-const sub = "flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-[0.875rem] border border-line bg-card px-2 text-[0.9375rem] font-semibold shadow-[0_2px_0_var(--line)] active:translate-y-px active:shadow-none";
+const sub = "btn btn-secondary h-11 min-w-0 flex-1 px-2 text-[0.9375rem]";
 
 // Bitiren kim? (yarışta): kareler, sırası ve süresi; tekrar dokununca çıkar. Hepsi dokununca onAll (yarış biter)
 export function FinishTap({ race, people, onSave, onAll, voice = null, extra = null }) {
@@ -110,8 +110,8 @@ export function useTrainList({ races, date, tr, open, table, onOpen, onAdd }) {
               ))}
             </ol>
             <div className="flex gap-2 px-3 pb-3 pt-1">
-              <button type="button" onClick={() => onOpen(r.id)} className={sub}>Düzelt</button>
-              <button type="button" onClick={() => share(r)} className={sub}>Paylaş</button>
+              <button type="button" onClick={() => onOpen(r.id)} data-press className={sub}>Düzelt</button>
+              <button type="button" onClick={() => share(r)} data-press className={sub}>Paylaş</button>
             </div>
             {table.races.length > 1 && <p className="truncate px-4 pb-3 text-[0.8125rem] text-mut">Genel durum: {table.rows.slice(0, 3).map((x) => `${first(x.name)} ${x.net}`).join(" · ")} puan</p>}
           </>

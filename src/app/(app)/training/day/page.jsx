@@ -1,8 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -256,13 +256,13 @@ function Day() {
       foot: (
         <>
           <div className="tl-foot">
-            <button type="button" className={sp.status === "listening" ? "rec" : ""} disabled={sp.status === "transcribing"} onClick={() => (sp.status === "listening" ? sp.stop() : sp.status === "idle" && (setSaid(""), sp.start({ autoStop: 0 })))}>
+            <button type="button" data-press className={`btn ${sp.status === "listening" ? "btn-danger" : "btn-secondary"}`} disabled={sp.status === "transcribing"} onClick={() => (sp.status === "listening" ? sp.stop() : sp.status === "idle" && (setSaid(""), sp.start({ autoStop: 0 })))}>
               {sp.status === "listening" ? "Bitince dokun" : sp.status === "transcribing" ? "Yazılıyor" : "Sesle söyle"}
             </button>
-            <button type="button" className={dnf ? "p" : ""} aria-pressed={dnf} onClick={() => setDnf(!dnf)}>
+            <button type="button" data-press className={`btn ${dnf ? "btn-primary" : "btn-secondary"}`} aria-pressed={dnf} onClick={() => setDnf(!dnf)}>
               DNF
             </button>
-            <button type="button" className="p" onClick={() => finishAll(cur)}>
+            <button type="button" data-press className="btn btn-primary" onClick={() => finishAll(cur)}>
               Yarışı bitir
             </button>
           </div>
@@ -280,7 +280,7 @@ function Day() {
             <h3>Start</h3>
           </div>
           <p className="tl-no">Bugün antrenman planı yok</p>
-          <button type="button" className="tl-go" disabled={adding || !racer} onClick={addPlan}>
+          <button type="button" data-press className="btn btn-primary tl-go" disabled={adding || !racer} onClick={addPlan}>
             Antrenman ekle
           </button>
         </>
@@ -306,13 +306,13 @@ function Day() {
             <small>{cur ? cur.name : title}</small>
           </div>
           <div className="tl-foot">
-            <button type="button" disabled={!counting} onClick={() => shift(-60)}>
+            <button type="button" data-press className="btn btn-secondary" disabled={!counting} onClick={() => shift(-60)}>
               −1 dk
             </button>
-            <button type="button" disabled={!counting} onClick={() => shift(60)}>
+            <button type="button" data-press className="btn btn-secondary" disabled={!counting} onClick={() => shift(60)}>
               +1 dk
             </button>
-            <button type="button" className="rec" onClick={() => raceCancel(withRaces ? flow : null)}>
+            <button type="button" data-press className="btn btn-danger" onClick={() => raceCancel(withRaces ? flow : null)}>
               İptal
             </button>
           </div>
@@ -361,7 +361,7 @@ function Day() {
             </div>
           </>
         )}
-        <button type="button" className="tl-go" onClick={start}>
+        <button type="button" data-press className="btn btn-primary tl-go" onClick={start}>
           Start ver<small>{sec / 60} dk</small>
         </button>
       </>
@@ -448,7 +448,7 @@ function Day() {
       </div>
       <div className="tl-ln">
         <input type="url" inputMode="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="YouTube linki" />
-        <button type="button" disabled={!link.trim()} onClick={addLink}>
+        <button type="button" data-press className="btn btn-primary" disabled={!link.trim()} onClick={addLink}>
           Ekle
         </button>
       </div>
@@ -548,9 +548,7 @@ function Day() {
     return (
       <main className="tw navy" aria-label={title}>
         <header className="tw-hd">
-          <Link href="/training" className="tw-back" aria-label="Geri">
-            <Icon name="back" className="size-5" />
-          </Link>
+          <BackButton href="/training" />
           <h1>
             <b>{title}</b>
             <small>
@@ -561,17 +559,17 @@ function Day() {
           {btns
             .filter(([k]) => k === "course" || k === "vid" || k === "cam")
             .map(([k, l]) => (
-              <button key={k} type="button" data-press className="tw-hb" aria-pressed={open === k} onClick={() => tap(k)}>
+              <button key={k} type="button" data-press className="btn btn-secondary tw-hb" aria-pressed={open === k} onClick={() => tap(k)}>
                 {l}
               </button>
             ))}
           {racer && plan ? (
-            <button type="button" data-press className="tw-hb" onClick={() => setSheet("roll")}>
+            <button type="button" data-press className="btn btn-secondary tw-hb" onClick={() => setSheet("roll")}>
               Yoklama <b className="num">{present.length || "Al"}</b>
             </button>
           ) : null}
           {plan && canLog(plan, today) && !locked ? (
-            <button type="button" data-press className="tw-hb tw-w" onClick={() => setSheet("log")}>
+            <button type="button" data-press className="btn btn-primary tw-hb" onClick={() => setSheet("log")}>
               {plan.log ? "Günlük" : "Günlük yaz"}
             </button>
           ) : null}
@@ -616,7 +614,7 @@ function Day() {
         {pop ? (
           <div className="tw-pop" onClick={() => setOpen("")}>
             <section className="tw-sheet" aria-label={btns.find(([k]) => k === open)?.[1] || "Rüzgâr"} onClick={(e) => e.stopPropagation()}>
-              <button type="button" data-press className="tw-hb tw-x" onClick={() => setOpen("")}>
+              <button type="button" data-press className="btn btn-secondary btn-sm tw-hb tw-x" onClick={() => setOpen("")}>
                 Kapat
               </button>
               {media ? (
@@ -644,41 +642,39 @@ function Day() {
   const media = open === "cam" && src;
   const more = btns.filter(([k]) => k === "course" || k === "vid" || k === "cam");
   const mainBtn = !plan ? (
-    <button type="button" data-press className="tp-go" disabled={adding || !racer} onClick={addPlan}>
+    <button type="button" data-press className="btn btn-primary tp-go" disabled={adding || !racer} onClick={addPlan}>
       Antrenman ekle
     </button>
   ) : finishing ? (
-    <button type="button" data-press className="tp-go" onClick={() => finishAll(cur)}>
+    <button type="button" data-press className="btn btn-primary tp-go" onClick={() => finishAll(cur)}>
       Yarışı bitir
     </button>
   ) : counting || paused ? (
-    <button type="button" data-press className="tp-go rec" onClick={() => raceCancel(withRaces ? flow : null)}>
+    <button type="button" data-press className="btn btn-danger tp-go" onClick={() => raceCancel(withRaces ? flow : null)}>
       İptal
     </button>
   ) : (
-    <button type="button" data-press className="tp-go" onClick={start}>
+    <button type="button" data-press className="btn btn-primary tp-go" onClick={start}>
       Start ver <small className="num">{sec / 60} dk</small>
     </button>
   );
   return (
     <main className="tw tp navy" aria-label={title}>
       <header className="tw-hd">
-        <Link href="/training" className="tw-back" aria-label="Geri">
-          <Icon name="back" className="size-5" />
-        </Link>
+        <BackButton href="/training" />
         <h1>
           <b>{title}</b>
           <small>{dayText(date)}</small>
         </h1>
         {more.length ? (
           <span className="relative">
-            <button type="button" data-press className="tw-hb" aria-label="Diğer" aria-expanded={menu} onClick={() => setMenu(!menu)}>
+            <button type="button" data-press className="btn btn-round" aria-label="Diğer" aria-expanded={menu} onClick={() => setMenu(!menu)}>
               ⋯
             </button>
             {menu ? (
               <span className="tp-menu" role="menu">
                 {more.map(([k, l]) => (
-                  <button key={k} type="button" role="menuitem" onClick={() => (setMenu(false), tap(k))}>
+                  <button key={k} type="button" role="menuitem" data-press="row" onClick={() => (setMenu(false), tap(k))}>
                     {l}
                   </button>
                 ))}
@@ -693,12 +689,12 @@ function Day() {
           {cur?.cnt ? "Yarış" : "Start"}
           <span className="flex-1" />
           {racer && plan ? (
-            <button type="button" data-press className="tw-hb tp-mini" onClick={() => setSheet("roll")}>
+            <button type="button" data-press className="btn btn-secondary btn-sm tw-hb tp-mini" onClick={() => setSheet("roll")}>
               Yoklama <b className="num">{present.length || "Al"}</b>
             </button>
           ) : null}
           {plan && canLog(plan, today) && !locked ? (
-            <button type="button" data-press className="tw-hb tw-w tp-mini" onClick={() => setSheet("log")}>
+            <button type="button" data-press className="btn btn-primary btn-sm tw-hb tp-mini" onClick={() => setSheet("log")}>
               {plan.log ? "Günlük" : "Günlük yaz"}
             </button>
           ) : null}
@@ -707,19 +703,19 @@ function Day() {
         <p className="tw-sub">{!plan ? "Bugün antrenman planı yok" : finishing ? `${cur.name} · ${fins} / ${people.length} bitti` : counting || paused ? `${cur ? cur.name : title} · ${people.length} sporcu` : `${sec / 60} dk${withRaces ? ` · ${people.length} sporcu` : ""}`}</p>
         {!plan ? null : finishing ? (
           <div className="tp-two">
-            <button type="button" className={sp.status === "listening" ? "rec" : ""} disabled={sp.status === "transcribing"} onClick={() => (sp.status === "listening" ? sp.stop() : sp.status === "idle" && (setSaid(""), sp.start({ autoStop: 0 })))}>
+            <button type="button" data-press className={`btn ${sp.status === "listening" ? "btn-danger" : "btn-secondary"}`} disabled={sp.status === "transcribing"} onClick={() => (sp.status === "listening" ? sp.stop() : sp.status === "idle" && (setSaid(""), sp.start({ autoStop: 0 })))}>
               {sp.status === "listening" ? "Bitince dokun" : sp.status === "transcribing" ? "Yazılıyor" : "Sesle söyle"}
             </button>
-            <button type="button" className={dnf ? "on" : ""} aria-pressed={dnf} onClick={() => setDnf(!dnf)}>
+            <button type="button" data-press className={`btn ${dnf ? "btn-primary" : "btn-secondary"}`} aria-pressed={dnf} onClick={() => setDnf(!dnf)}>
               DNF
             </button>
           </div>
         ) : counting || paused ? (
           <div className="tp-two">
-            <button type="button" disabled={!counting} onClick={() => shift(-60)}>
+            <button type="button" data-press className="btn btn-secondary" disabled={!counting} onClick={() => shift(-60)}>
               −1 dk
             </button>
-            <button type="button" disabled={!counting} onClick={() => shift(60)}>
+            <button type="button" data-press className="btn btn-secondary" disabled={!counting} onClick={() => shift(60)}>
               +1 dk
             </button>
           </div>
@@ -773,7 +769,7 @@ function Day() {
       {pop ? (
         <div className="tw-pop" onClick={() => setOpen("")}>
           <section className="tw-sheet" aria-label={btns.find(([k]) => k === open)?.[1]} onClick={(e) => e.stopPropagation()}>
-            <button type="button" data-press className="tw-hb tw-x" onClick={() => setOpen("")}>
+            <button type="button" data-press className="btn btn-secondary btn-sm tw-hb tw-x" onClick={() => setOpen("")}>
               Kapat
             </button>
             {media ? (
