@@ -22,6 +22,8 @@ import { useRaceHome } from "@/features/athletes/raceHome";
 import { RaceLive } from "./RaceLive";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { IpadHome, Waiting } from "./IpadHome";
+import { LinkTile } from "@/components/ui/LinkTile";
+import { SIMULATOR_URL } from "@/lib/externalLinks";
 
 // Ana sayfa (Seyhun 2026-11-11 "A · Zaman şeridi", 2026-11-12 iPhone'da da aynı): IpadHome (lacivert; Hava, Takvim, Bekleyen, Kulüp). Alttaki asistan kubbesi her sayfada aynı (TabBar).
 export function OwnerHome() {
@@ -94,6 +96,7 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
                 </p>
               )}
               <PaidNotice />
+              <LinkTile title="Velora Simülatör" href={SIMULATOR_URL} />
               {owner && (
                 <div className="iph-club empty:hidden">
                   <HomeSummary title="Kulüp" money={canReceipts(kind)} race={null} dues={!!athletes} invoices lead={athletes ? <ClubRows open={race.open} fit={fit} /> : null} />
