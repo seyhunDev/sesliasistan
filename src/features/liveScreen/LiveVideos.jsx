@@ -341,7 +341,7 @@ export function LiveVideos({ orgId, raceId, race = null, starts = [], rounds = {
     if (opening) return;
     setMsg("");
     try {
-      onPlay?.(x.id, await blobOf(x));
+      onPlay?.(x.id, await blobOf(x), { at: x.at, dur: x.dur, name: nameOf(x) }); // 3. bilgi: tam ekran oynatıcının başlığı (antrenman)
     } catch (e) {
       setMsg(e?.message || "Video açılamadı");
     }
