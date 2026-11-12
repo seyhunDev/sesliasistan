@@ -1,8 +1,8 @@
-Commit: 24a35c0 · Canlı Sonuçlar: PDF biçiminde ince tablo (#1403)
-Zaman: 2026-11-12-2202 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43282199575
+Commit: 7403cda · Ana sayfa: Velora Simülatör kartı (Professional Sailing dışarıda açılır) (#1407)
+Zaman: 2026-11-12-2304 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43292777063
 
-TAM TEST · 12.11.2026 21:40:36
+TAM TEST · 12.11.2026 22:42:26
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,15 +30,16 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1412/1441 geçti · 29 kalan · 1289 sn
+SONUÇ: 1412/1441 geçti · 29 kalan · 1316 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
       ✗ “4554 test”
           beklenen: hepsi geçer
-          olan:     4507/4554 geçti
+          olan:     4506/4554 geçti
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
+      ✗ “Yarışlar geri dönüş” → false (beklenen: liste racesNow ile başlar, yarış 1 dk içindeki listeden açılır)
       ✗ “tek kutu” → false (beklenen: solda kutu, sağda bas-konuş küresi)
       ✗ “ana sayfa özellik kartları” → false (beklenen: Özet (Mesajlar) yok; İngilizce, Görevler, Medya kartları; medya kartı en yeni bölümün son 4 karesi, 30 dk önbellek)
       ✗ “ortak hava tablosu” → false (beklenen: hava sayfası DayStrip + HourTable, yarış havası HourTable, ikisinde de eski grafik yok; ölçülen geçmiş sütun, plan çizgisi, günlük yağış; harita her yerde Harita düğmesi)
@@ -54,7 +55,7 @@ SONUÇ: 1412/1441 geçti · 29 kalan · 1289 sn
       ✗ “yayından çıkar anında keser: evrenin görüntüsü ve kayıt sırası geri gelmez” → [true,true,false,false,true,true,true] (beklenen: Seyhun 2026-11-06: Yayından çıkar / Ekrandan kaldır deyince o evrenin atanmış görüntüsü (evreScreen) ve günün kayıtları sırayla (autoOn) devam etmesin; yeni görüntü verilince off kalkar)
       ✗ “yayın sekmeleri, ekranda alt yazı, rüzgâr aralığı ve gün boyu grafik, üst şerit, yarışlar penceresi” → [false,false,false,true,false,false,false,true] (beklenen: Seyhun 2026-11-02: Yayın sayfası Süre · Video · Parkur · Dönüşler sekmeleri (Seg); Video'da 'Ekranda yazı' (screen.caption) → canlı ekranda alt yazı LowerThird, sesle 'ekrana yaz: …' / 'ekrandaki yazıyı kaldır'; rüzgâr aralığı okta salınır (lv-swing), değişince süzülür; gün boyu grafik her evrede: tahmin + istasyon ölçümü (/api/canli forecast.obs) + bizim ölçümler)
       ✗ “parkur kartları: varsayılan seçili, yeni kart, Başlat rotayı yazar, ekranda sahne” → [true,true,false,false,true] (beklenen: Seyhun 2026-11-02: her yarışın kendi parkur kartı olabilir; şimdiki varsayılan (A) ve seçili; Yayın › Parkur'da Yeni kart, rota yazma, seçme, silme; Başlat seçili kartın rotasını o yarışa yazar; canlı ekran süren yarışın rotasını, yoksa seçili kartı animasyonlu sahnede gösterir; /canli ve Yayın ⋯ menüsünde örnek yarış düğmesi)
-      ✗ “canlı ekran yayın tasarımı: program, beklenen rüzgâr, yayın yazısı” → [true,true,true,false,false,true] (beklenen: Seyhun 2026-11-02 (tasarim7 onayı, 'profesyonel yelken yayını gibi yazı'): yarış öncesi video yokken ortada büyük geri sayım, ilk yarış + grup, beklenen rüzgâr (tahminin start saati), altta program kartları (1. yarış Mavi grup…); yarışta ve videolu beklemede sağ üstte program etiketleri (Bitti · Canlı · saat); gün sonu 'Gün bitti · N yarış' + yarış kartları + genel, şeritte yarının ilk startı ve beklenen rüzgârı (/api/canli forecastNext); Barlow / Barlow Condensed; arka foto 18px bulanık)
+      ✗ “canlı ekran yayın tasarımı: program, beklenen rüzgâr, yayın yazısı” → [true,true,true,false,false,false] (beklenen: Seyhun 2026-11-02 (tasarim7 onayı, 'profesyonel yelken yayını gibi yazı'): yarış öncesi video yokken ortada büyük geri sayım, ilk yarış + grup, beklenen rüzgâr (tahminin start saati), altta program kartları (1. yarış Mavi grup…); yarışta ve videolu beklemede sağ üstte program etiketleri (Bitti · Canlı · saat); gün sonu 'Gün bitti · N yarış' + yarış kartları + genel, şeritte yarının ilk startı ve beklenen rüzgârı (/api/canli forecastNext); Barlow / Barlow Condensed; arka foto 18px bulanık)
       ✗ “canlı ekran senaryo 2: start'a 1 saatten az, dönen tek panel” → [false,false,false,false] (beklenen: Seyhun 2026-11-03 (senaryo/2b onayı, 'hepsini aynı anda göstermemize gerek yok'): yarış günü start'a 1 saatten az, turuncu bayrak ya da start dizisi → videosuz StartHero (.lv-hold2), videolu NearBand (.lv-band2): sayaç + sıradaki yarış + bayraklar sabit, sağda tek panel 8 sn'de bir kayar (Start hattı → Rüzgâr → Parkur → Sıradaki, noktalar), son dakikada panel yok, altta 5·4·1·0 çubuğu; sıralama, çipler, alt şerit yok; tehir ve yarın hariç)
       ✗ “canlı ekran ortak rüzgâr bloğu ve parkur sahnesi” → [false,false,false,false,false] (beklenen: Seyhun 2026-11-03 ('rüzgâr gösteriminde çok eksiltmişsin; sağanak, gerçekleşen; ok ortalanmamış; birbirleriyle uyumlu'; 'parkurda sadece sayılar yazıyor, parkur animasyonumuzu kullanalım; veri yoksa rüzgâr 0 kabul'): WindNow (ortalı ok, kn, sağanak, yön, kaynak) + WindHours (ortak HourTable) her adımda; parkur her yerde sahne, ölçüm yokken varsayılan kart eksen 0°; senaryo 2 yalnız sayaç/turuncu/<1 saat)
       ✗ “tehir: rüzgâr değişken sebebi, çekildikten sonra düzelt” → [true,false,false,false] (beklenen: Seyhun 2026-11-03: 'tehir sebebi olarak rüzgâr çok değişiyor da olsun; hatalı bir şey olursa sonra değişim yapılabilmeli' → AP_WHY'de 'Rüzgâr değişken'; tehir çekiliyken Düzelt aynı pencereyi açar (iniş seçilmezse aynı kalır), Kaydet plan.ap'ı günceller; tehirde/yarıştan önce hazırlık bayrağı gösterilmez, sıradaki start sınıf işaretiyle 'bekliyor')
@@ -280,10 +281,10 @@ SONUÇ: 1412/1441 geçti · 29 kalan · 1289 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 22 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 23 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 22 · açıklama 22 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 23 · açıklama 23 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
