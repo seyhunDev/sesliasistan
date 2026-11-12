@@ -39,42 +39,58 @@ export function ResultsAdd({ onFile, className = "" }) {
   );
 }
 
-// Açık renkli grupta (Sarı, Altın, Gümüş) yuvarlağın yazısı koyu
-const LIGHT = new Set(["Sarı", "Altın", "Gümüş"]);
-
-// Gün etiketi → sütun başlığı ("" bugün, "Yarın", kısa tarih)
-const dayHead = (d) => (d ? d.toLocaleUpperCase("tr-TR") : "BUGÜN");
-
-// Düz liste (Seyhun 2026-11-09 "iki grup ismi gösteriliyor, minimal ve liste olarak hazırla"; örnek artifact liste-telefon.png): başlık satırı
-// SIRA · SPORCU · grup günü · NET; her sporcu tek satır: sıra, ad + dünden fark, altında yarış yuvarlakları; sağda tek grup (renkli nokta + ad),
-// NET. title: alt bölüm adı (Kızlar; sütun başlığı yok). groups: { sporcu id: [[gün etiketi, grup]] } (RaceTrack.ourGroups; yarın açıklanınca yalnız yarın). rest: sonucu olmayan sporcular [{id, name}].
+// Sade liste (Seyhun 2026-11-11 "karman çorman, sadeleştir; tek tek dereceleri de gösterelim"; örnek sp-telefon/ipad.png "Yap"): her sporcu
+// tek satır: solda büyük sıra (altında /kişi), ortada ad + dünden fark, altında grup (renkli nokta + ad); dereceler düz sayı (atılan parantezde
+// soluk, ceza kırmızı); sağda NET. Dar yerde dereceler grubun yanında, geniş yerde (iPad) sütun sütun (1 2 3 …) — iki yerde çizilir, CSS
+// kapsayıcı genişliğine göre birini gösterir (.rs-list container). title: alt bölüm (KIZLAR); sütun başlığı tekrar etmez.
+// groups: { sporcu id: [[gün etiketi, grup]] } (RaceTrack.ourGroups; yarın açıklanınca yalnız yarın). rest: sonucu olmayan sporcular [{id, name}].
 export function ResultCards({ list, short = false, className = "", groups = null, rest = [], title = "" }) {
   if (!list?.length && !rest?.length) return null;
   const gOf = (id) => groups?.[id]?.[0] || null;
-  const day = groups ? Object.values(groups).find((l) => l?.length)?.[0]?.[0] : undefined;
-  const head = day !== undefined;
+  const rows = (list || []).map((x) => ({ x, cells: short ? [] : raceCells(x.row || {}) }));
+  const n = Math.max(0, ...rows.map((r) => r.cells.length));
   const Grp = ({ id }) => {
-    const x = gOf(id);
-    return head ? <span className="rs-grp" style={{ "--g": (x && groupColor(x[1])) || "var(--mut)" }}>{x ? x[1] : ""}</span> : null;
+    const g = gOf(id);
+    return g ? (
+      <span className="rs-grp" style={{ "--g": groupColor(g[1]) || "var(--mut)" }}>
+        {g[1]}
+      </span>
+    ) : null;
   };
+  const Nums = ({ cells, col }) => (
+    <span className={col ? "rs-rc" : "rs-ri"}>
+      {(col ? Array.from({ length: n }, (_, i) => cells[i] || null) : cells).map((c, i) =>
+        c ? (
+          <i key={i} className={c.pen ? "rs-pen" : c.drop ? "rs-drop" : c.empty ? "rs-empty" : ""} title={[c.head, c.drop && "atıldı"].filter(Boolean).join(" · ")}>
+            {c.drop ? `(${c.val})` : c.val}
+          </i>
+        ) : (
+          <i key={i} />
+        ),
+      )}
+    </span>
+  );
   return (
-    <div className={`rs-list ${head ? "rs-head" : ""} ${className}`}>
-      {/* title: alt bölüm (KIZLAR); sütun başlığı tekrar etmez */}
-      {title && <h4 className="rs-sec">{title}</h4>}
-      {head && !title && (
+    <div className={`rs-list ${className}`}>
+      {title ? (
+        <h4 className="rs-sec">{title}</h4>
+      ) : (
         <div className="rs-cols" aria-hidden="true">
           <span>SIRA</span>
           <span>SPORCU</span>
-          <span>{dayHead(day)}</span>
+          {n > 0 && (
+            <span className="rs-rc">
+              {Array.from({ length: n }, (_, i) => (
+                <i key={i}>{i + 1}</i>
+              ))}
+            </span>
+          )}
           <span>NET</span>
         </div>
       )}
-      {(list || []).map((x) => {
+      {rows.map(({ x, cells }) => {
         const row = x.row || {};
-        const cells = short ? [] : raceCells(row);
         const net = row.pts !== undefined && row.pts !== "" ? row.pts : null;
-        // yarışın grubu: final sütunu (F1…) final grubu, diğerleri renk grubu; sütun adı yoksa son bilinen grup
-        const grpOf = (h) => (/^F\d/.test(String(h || "")) ? row.fl || row.grp : row.grp || row.fl) || "";
         return (
           <div key={x.id} className="rs-row">
             <span className="rs-pl">
@@ -86,29 +102,15 @@ export function ResultCards({ list, short = false, className = "", groups = null
                 <span>{x.name}</span>
                 {x.move ? <span className={x.move > 0 ? "rs-up" : "rs-dn"}>{x.move > 0 ? `↑${x.move}` : `↓${-x.move}`}</span> : null}
               </span>
-              {cells.length > 0 && (
-                <span className="rs-rs">
-                  {cells.map((c) => {
-                    const g = grpOf(c.head);
-                    // Siyah bayrak (BFD) simsiyah, UFD beyaz (Seyhun 2026-11-09 "öbür grup renkleriyle karışıyor"); diğer cezalar kırmızı
-                    const flag = !c.pen ? "" : /^BF/i.test(c.val) ? " rs-bfd" : /^UF/i.test(c.val) ? " rs-ufd" : "";
-                    const cls = (c.drop ? "rs-drop" : c.pen ? "rs-pen" : c.empty ? "rs-empty" : LIGHT.has(g) ? "rs-lt" : "") + flag;
-                    return (
-                      <i key={c.k} className={cls} style={{ "--g": groupColor(g) || "var(--mut)" }} title={[c.head, g, c.drop && "atıldı"].filter(Boolean).join(" · ")}>
-                        {c.val}
-                      </i>
-                    );
-                  })}
+              {(gOf(x.id) || cells.length > 0) && (
+                <span className="rs-sub">
+                  <Grp id={x.id} />
+                  {cells.length > 0 && <Nums cells={cells} />}
                 </span>
               )}
             </span>
-            <Grp id={x.id} />
-            {(net !== null || head) && (
-              <span className="rs-net">
-                {net}
-                {!head && <small>NET</small>}
-              </span>
-            )}
+            {n > 0 && <Nums cells={cells} col />}
+            <span className="rs-net">{net}</span>
           </div>
         );
       })}
@@ -121,9 +123,14 @@ export function ResultCards({ list, short = false, className = "", groups = null
             <span className="rs-nm">
               <span>{a.name}</span>
             </span>
+            {gOf(a.id) && (
+              <span className="rs-sub">
+                <Grp id={a.id} />
+              </span>
+            )}
           </span>
-          <Grp id={a.id} />
-          {head && <span className="rs-net" />}
+          {n > 0 && <span className="rs-rc" />}
+          <span className="rs-net" />
         </div>
       ))}
     </div>

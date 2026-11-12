@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { Button } from "@/components/ui/Button";
 import { todayStr } from "@/lib/utils/format";
 import { RACE_SECS } from "@/lib/raceMenu";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -1351,41 +1352,42 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
       {prep && (
         <div ref={docsRef} className="scroll-mt-4">
           <Label>Evrak</Label>
-          {/* Hazır evrak bir bilgi değişince (stale) ya da bu telefonda yoksa (başka cihazda hazırlandı / telefon sildi): uyarı */}
-          {!file && checked && r.docsAt && chosen.length > 0 && (
+          {/* Evrak tek satır (Seyhun 2026-11-12 "belgeleri hazırla butonu daha iyi bir yerde"; örnek ev-*.png "Yap"): alttaki yapışık çubuk
+              yok; solda durum, sağda düğmeler. Hazırsa Paylaş · Aç (Mail varsa o da); hazırlanmadıysa Hazırla; bilgi değiştiyse Yenile;
+              başka cihazda hazırlandıysa Aç (burada üretir). Hazır ve değişmemişse Hazırla hiç çıkmaz. */}
+          {chosen.length > 0 && (
             <div className="rz-list mt-4">
-              <button type="button" onClick={make} disabled={busy} data-press="row" className="rz-row w-full text-left">
+              <div className="rz-row rz-doc">
                 <span className="rz-k">
-                  {docsOld ? "Evrak eski" : docsReady ? "Evrak hazır" : "Evrak bu cihazda yok"}
-                  <small>{docsOld ? "Bir bilgi değişti" : docsReady ? "Başka cihazda hazırlandı" : "Telefon sildi"}</small>
+                  {file ? `${parts.length} belge hazır` : docsOld ? "Evrak eski" : docsReady ? "Evrak hazır" : "Evrak"}
+                  <small>
+                    {file
+                      ? [`${made?.pages || pages} sayfa`, made?.at && `${madeText(made.at)} hazırlandı`, `${chosen.length} sporcu`].filter(Boolean).join(" · ")
+                      : docsOld
+                        ? "Bir bilgi değişti"
+                        : docsReady
+                          ? "Başka cihazda hazırlandı"
+                          : [`${docs.length} belge`, pages && `${pages} sayfa`, `${chosen.length} sporcu`].filter(Boolean).join(" · ")}
+                  </small>
                 </span>
-                <span className={`rz-v font-semibold ${docsOld || !docsReady ? "rz-warn" : "rz-acc"}`}>{busy ? "Hazırlanıyor…" : docsOld ? "Yenile" : docsReady ? "Aç" : "Hazırla"}</span>
-              </button>
-            </div>
-          )}
-
-          {/* Özet: hazır evrak tek kartta */}
-          {file && (
-            /* Yeni beyaz görünüm (2026-11-06): özet satırı (sağda Yenile), altında tek dolu "Tümünü aç" ve açık mavi Paylaş / Mail */
-            <div className="mt-4">
-              <div className="rz-list">
-                <div className="rz-row">
-                  <span className="rz-k">
-                    {parts.length} belge hazır
-                    <small>{[`${made?.pages || pages} sayfa`, made?.at && `${madeText(made.at)} hazırlandı`, `${chosen.length} sporcu`].filter(Boolean).join(" · ")}</small>
-                  </span>
-                  <button type="button" onClick={make} disabled={busy} data-press className="rz-v rz-acc font-medium">
-                    {busy ? "Hazırlanıyor…" : "Yenile"}
-                  </button>
-                </div>
-              </div>
-              <div className={`mt-3 grid gap-2.5 ${onMail ? "grid-cols-3" : "grid-cols-2"}`}>
-                <button type="button" onClick={() => openPdf()} data-press className="btn btn-primary">Tümünü aç</button>
-                <button type="button" onClick={() => share()} data-press className="btn rz-soft">Paylaş</button>
-                {onMail && (
-                  <button type="button" onClick={() => setMailPick(true)} disabled={mailing} data-press className="btn rz-soft">
-                    {mailing ? "…" : "Mail"}
-                  </button>
+                {file ? (
+                  <>
+                    {onMail && (
+                      <Button variant="secondary" size="sm" full={false} onClick={() => setMailPick(true)} disabled={mailing}>
+                        {mailing ? "…" : "Mail"}
+                      </Button>
+                    )}
+                    <Button variant="secondary" size="sm" full={false} onClick={() => share()}>
+                      Paylaş
+                    </Button>
+                    <Button size="sm" full={false} onClick={() => openPdf()}>
+                      Aç
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" full={false} onClick={make} disabled={busy}>
+                    {busy ? "Hazırlanıyor…" : docsOld ? "Yenile" : docsReady ? "Aç" : "Hazırla"}
+                  </Button>
                 )}
               </div>
             </div>
@@ -1710,33 +1712,6 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
       </>)}
 
       <div>
-      {/* Alt çubuk: belge hazırla → aç / paylaş */}
-      <div data-pagebar="" className={`${!prep || docsReady || !chosen.length || raceDay || over ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
-        <div className="mx-auto flex max-w-[26rem] gap-2">
-          {file ? (
-            <>
-              <button type="button" onClick={() => openPdf()} data-press className="btn btn-secondary text-acc">
-                <Icon name="print" className="size-5" />
-                Aç
-              </button>
-              {onMail && (
-                <button type="button" onClick={() => setMailPick(true)} disabled={mailing} aria-label="Mail at" data-press className="btn btn-secondary text-acc">
-                  <Icon name="mail" className="size-5" />
-                  {mailing ? "…" : "Mail"}
-                </button>
-              )}
-              <button type="button" onClick={() => share()} data-press className="btn btn-primary flex-1">
-                Paylaş / Yazdır
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={make} disabled={busy} data-press className="btn btn-primary flex-1">
-              {busy ? "Hazırlanıyor…" : pages ? `Belgeleri hazırla · ${pages} sayfa` : "Belgeleri hazırla"}
-            </button>
-          )}
-        </div>
-      </div>
-
       <Sheet open={!!ask} onClose={() => setAsk(null)} title="Talimat farklı">
         {ask && (
           <>
