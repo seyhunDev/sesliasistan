@@ -1,8 +1,8 @@
-Commit: 1ca3a99 · Antrenman sayfası iPad: üç sütun (#1389)
-Zaman: 2026-11-12-0021 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43099234360
+Commit: 6819184 · Ana sayfa iPhone'da da Zaman şeridi (iPad ile tek bileşen) (#1390)
+Zaman: 2026-11-12-0635 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43146676644
 
-TAM TEST · 11.11.2026 23:59:58
+TAM TEST · 12.11.2026 06:13:21
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,24 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1420/1441 geçti · 21 kalan · 1310 sn
+SONUÇ: 1417/1441 geçti · 24 kalan · 1357 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
       ✗ “4530 test”
           beklenen: hepsi geçer
-          olan:     4476/4530 geçti
-      ✗ “2 dakika başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
-      ✗ “iki dakikalık yarış başlat” → ✗ ai · ön cevap: Bir bakayım. (beklenen: yol: trainVoice)
-      ✗ “yarışı başlat” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
-      ✗ “start ver” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
-      ✗ “5 dakikalık sayacı başlat” → ✗ raceTimer (beklenen: yol: trainVoice)
-      ✗ “sayacı başlat” → ✗ raceTimer (beklenen: yol: trainVoice)
-      ✗ “bir dakikalık sayaç başlat” → ✗ raceTimer (beklenen: yol: trainVoice)
-      ✗ “yarışı bitir” → ✗ ai · ön cevap: (ön cevap yok) (beklenen: yol: trainVoice)
-      ✗ “yarış bitti” → ✗ ai · ön cevap: Tamam, görevi tamamlıyorum. (beklenen: yol: trainVoice)
-      ✗ “yarış bitti sonuçlar 1 Ali 2 Zeynep 3 Emre” → ✗ trainResult (beklenen: yol: trainVoice)
+          olan:     4486/4530 geçti
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “tek kutu” → false (beklenen: solda kutu, sağda bas-konuş küresi)
       ✗ “ana sayfa özellik kartları” → false (beklenen: Özet (Mesajlar) yok; İngilizce, Görevler, Medya kartları; medya kartı en yeni bölümün son 4 karesi, 30 dk önbellek)
@@ -197,15 +187,24 @@ SONUÇ: 1420/1441 geçti · 21 kalan · 1310 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 128/139
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 125/139
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 6/8
+  ✗ Ana sayfa: 3/8
+      ✗ “iş düğmeleri”
+          beklenen: dört sütun, iki satır (en çok 8), her düğmede ikon ve ad
+          olan:     0 düğme · 0 sütun · 0 ikonlu
+      ✗ “sade ana sayfa”
+          beklenen: İngilizce/Görevler/Medya kartları, Yemek · Market · Giyim ve Deniz trafiği · Kameralar düğmeleri yok
+          olan:     hata: locator.waitFor: Timeout 15000ms exceeded.
       ✗ “iPad tek ekran”
           beklenen: yatay 1180x820 ve dikey 820x1180: hava, takvim ve düğmeler görünür, sayfa kaymaz; telefonda takvim kenardan kenara bant
-          olan:     {"out":[["yatay",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}],["dikey",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}]],"ph":{"screen":false,"cal":true,"tl":false}}
+          olan:     {"out":[["yatay",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}],["dikey",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}]],"ph":{"screen":false,"cal":false,"tl":false}}
       ✗ “saat saat hava tablosu”
           beklenen: hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat
           olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “yarış günü havası”
+          beklenen: yarın (Foça'da yarış) takvimde seçilince hava alanı aynı kalır, yarış yeri tablosu çıkmaz; altında o günün planları alt alta okunur
+          olan:     hata: locator.waitFor: Timeout 12000ms exceeded.
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
@@ -255,9 +254,9 @@ SONUÇ: 1420/1441 geçti · 21 kalan · 1310 sn
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
   ✗ Hava: 2/3
-      ✗ “yağmur grafiği”
-          beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var
-          olan:     sütun 48 · gün düğmesi 1 · 5,5 false
+      ✗ “ölçülen / beklenen yağmur”
+          beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
+          olan:     ölçülen sütun 7 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
