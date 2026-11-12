@@ -1373,7 +1373,11 @@ main.rz.rzc.rzi > .rzc-body {
 }
 main.rzi > .rzc-body .rz-seg { background: rgba(255, 255, 255, .08); }
 main.rzi > .rzc-body .rz-seg-b[aria-pressed="true"] { background: rgba(255, 255, 255, .95); color: #0b1a33; }
-@media (min-width: 48rem) { main.rzi .track-cols.track-main { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); } }
+/* Takip geniş ekranda (Seyhun 2026-11-11 sade liste): Sporcularımız tam genişlik, altında Program · Gruplar · Belgeler yan yana */
+@media (min-width: 48rem) {
+  body main.rzi .track-cols.track-main { grid-template-columns: minmax(0, 1fr); }
+  body main.rzi .track-cols.track-main > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); column-gap: 1.5rem; align-items: start; }
+}
 main.rzi .track-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); column-gap: 1.5rem; align-items: start; }
 main.rz.rzc.rzi [data-pagebar] { background: linear-gradient(to top, rgba(8, 20, 42, .9) 60%, transparent); }
 main.rz.rzc.rzi { padding-bottom: 0; }
@@ -1449,7 +1453,6 @@ main.rzl .rz-chev { border-color: rgba(255, 255, 255, .4); }
    kutu yok, bölümler ince çizgiyle; en üstte son belge kartı (Aç · Okudum), Program gün seçicili saat satırları (değişen saat mavi,
    eski üstü çizili), Gruplar renk çubuğu, Belgeler solda mavi noktalı satırlar. */
 .tk-box { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.tk-box:has(> .rs-head:first-child) { border-top: 0; }
 .tk-news { display: flex; flex-direction: column; gap: .75rem; padding: .875rem 1rem; border-radius: 1.125rem; background: color-mix(in srgb, var(--acc) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 32%, transparent); }
 .tk-news small { display: block; font-size: .71875rem; font-weight: 700; letter-spacing: .06em; color: var(--acc); }
 .tk-news small span { font-weight: 500; letter-spacing: 0; color: var(--mut); }
@@ -1497,34 +1500,36 @@ main.rzl .rz-chev { border-color: rgba(255, 255, 255, .4); }
 .ck .rs-add { background: rgba(255, 255, 255, .14); color: #fff; }
 .rz-res-h { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: 0 .25rem .375rem; font-size: .8125rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .62); }
 /* Düz liste (Seyhun 2026-11-09 "minimal ve liste olarak"): başlık satırı ve sağda tek grup sütunu (renkli nokta + ad) */
+/* Sporcularımız sade liste (Seyhun 2026-11-11 "sadeleştir, tek tek dereceler"; örnek sp-*.png "Yap"): renkli yuvarlak yok; dereceler düz sayı.
+   Dar yerde dereceler grubun yanında (.rs-ri), kapsayıcı 34rem'den genişse sütun sütun (.rs-rc, başlıkta 1 2 3 …). */
+.rs-list { container-type: inline-size; }
 .rs-cols { display: flex; align-items: center; gap: .75rem; height: 2rem; border-bottom: 1px solid var(--line); font-size: .65625rem; font-weight: 600; letter-spacing: .08em; color: var(--mut); }
-.rs-cols span:nth-child(1) { width: 3rem; text-align: center; }
-.rs-cols span:nth-child(2) { flex: 1; }
-.rs-cols span:nth-child(3) { width: 4.75rem; text-align: right; }
-.rs-cols span:nth-child(4) { width: 2.25rem; text-align: right; }
+.rs-cols > span:nth-child(1) { width: 3rem; text-align: center; }
+.rs-cols > span:nth-child(2) { flex: 1; }
+.rs-cols > span:last-child { width: 2.5rem; text-align: right; }
 .rs-cols + .rs-row { border-top: 0; }
+.rs-sub { display: flex; align-items: center; gap: .625rem; min-width: 0; margin-top: .25rem; font-size: .84375rem; color: var(--mut); white-space: nowrap; overflow: hidden; }
+.rs-grp { display: inline-flex; flex-shrink: 0; align-items: center; gap: .3125rem; font-weight: 600; color: var(--fg); }
+.rs-grp::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--g); }
+.rs-ri, .rs-rc { display: flex; font-variant-numeric: tabular-nums; }
+.rs-ri { gap: .5625rem; min-width: 0; overflow: hidden; }
+.rs-ri i, .rs-rc i { font-style: normal; }
+.rs-rc { display: none; flex-shrink: 0; }
+.rs-rc i { width: 2.375rem; text-align: center; font-size: .9375rem; color: var(--fg); white-space: nowrap; }
+.rs-rc i.rs-pen { font-size: .6875rem; letter-spacing: -.03em; }
+.rs-cols .rs-rc i { font-size: .6875rem; color: var(--mut); }
+:is(.rs-ri, .rs-rc) i.rs-drop, :is(.rs-ri, .rs-rc) i.rs-empty { color: var(--mut); }
+:is(.rs-ri, .rs-rc) i.rs-pen { color: #f87171; font-weight: 600; font-size: .78125rem; }
+.rs-net { width: 2.5rem; }
+@container (min-width: 34rem) {
+  .rs-rc { display: flex; }
+  .rs-ri { display: none; }
+}
+.ck .rs-pl small, .ck .rs-sub { color: rgba(255, 255, 255, .62); }
 .rs-sec { margin: 1.25rem 0 0; padding-bottom: .375rem; border-bottom: 1px solid var(--line); font-size: .6875rem; font-weight: 700; letter-spacing: .08em; color: var(--mut); }
 .rs-sec + .rs-row { border-top: 0; }
-.rs-grp { display: flex; width: 4.75rem; flex-shrink: 0; align-items: center; justify-content: flex-end; gap: .375rem; font-size: .8125rem; font-weight: 600; white-space: nowrap; }
-.rs-grp:not(:empty)::before { content: ""; width: .5625rem; height: .5625rem; flex-shrink: 0; border-radius: 50%; background: var(--g); }
-.rs-head .rs-net { width: 2.25rem; }
 .rs-none .rs-pl b { color: var(--mut); font-weight: 500; }
 .rs-up, .rs-dn { flex-shrink: 0; font-size: .8125rem; font-weight: 700; } .rs-up { color: #16a34a; } .rs-dn { color: #dc2626; }
-.rs-rs { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .375rem; }
-.rs-rs i { display: grid; min-width: 1.5rem; height: 1.25rem; padding: 0 .25rem; place-items: center; border-radius: 999px; background: color-mix(in srgb, var(--g) 24%, transparent); color: color-mix(in srgb, var(--g) 62%, var(--fg)); font-style: normal; font-size: .6875rem; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; overflow: hidden; }
-/* atılan yarış (Seyhun 2026-11-09 "en kötü derece atılmış halini de gösterelim, üstüne bir çizgi çekelim"): grubun renginde halka, üstünde
-   çapraz çizgi; puan görünür kalır */
-.rs-rs i.rs-drop { position: relative; background: transparent; color: var(--mut); font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--g); }
-.rs-rs i.rs-drop::after { content: ""; position: absolute; left: -10%; right: -10%; top: 50%; height: 1.5px; background: currentColor; transform: rotate(-45deg); }
-.rs-rs i.rs-pen { background: color-mix(in srgb, #dc2626 26%, transparent); color: color-mix(in srgb, #dc2626 60%, var(--fg)); font-size: .53125rem; letter-spacing: -.02em; }
-.rs-rs i.rs-empty { opacity: .35; }
-/* BFD siyah, UFD beyaz (atılmışsa halka o renkte); koyu zeminde siyahın, açık zeminde beyazın ince kenarı */
-.rs-rs i.rs-pen.rs-bfd { background: #000; color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28); }
-.rs-rs i.rs-pen.rs-ufd { background: #fff; color: #1d2433; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .22); }
-.rs-rs i.rs-drop.rs-bfd { box-shadow: inset 0 0 0 1.5px #000; }
-.rs-rs i.rs-drop.rs-ufd { box-shadow: inset 0 0 0 1.5px #fff, 0 0 0 1px rgba(0, 0, 0, .18); }
-.ck .rs-rs i.rs-drop.rs-bfd, main.rzi .rzc-body .rs-rs i.rs-drop.rs-bfd { box-shadow: inset 0 0 0 1.5px #000, 0 0 0 1px rgba(255, 255, 255, .3); }
-.rs-rs i.rs-drop:is(.rs-bfd, .rs-ufd) { font-size: .53125rem; letter-spacing: -.02em; }
 .rs-net { flex-shrink: 0; text-align: right; font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .rs-net small { display: block; font-size: .625rem; font-weight: 600; color: var(--mut); letter-spacing: .06em; }
 /* beş sekme (Takip varken) telefonda sığsın: yazı biraz küçük, iç boşluk dar */
@@ -1534,7 +1539,6 @@ main.rzl .rz-chev { border-color: rgba(255, 255, 255, .4); }
 }
 /* sonuç listesi lacivert üstte (sitesi bağlı olmayan yarışın yarış günü, RaceDayTop) */
 .ck .rs-row { border-color: rgba(255, 255, 255, .12); }
-.ck :is(.rs-pl small, .rs-net small, .rs-rs i.rs-drop) { color: rgba(255, 255, 255, .62); }
 
 /* Süren yarış satırı güncellenince (RaceLive): kısa kayma ve küçük "Güncellendi" işareti */
 @keyframes rl-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
