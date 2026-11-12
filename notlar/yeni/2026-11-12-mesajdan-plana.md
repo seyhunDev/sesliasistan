@@ -1,0 +1,12 @@
+## Nerede kaldım
+- Mesajdaki dosyadan plan (Seyhun: "mesajlaşmada gönderilen dosya plan, program gibi bir şeyse planlara ekleyebilmeliyiz; eklememi ister misin diye sorsun, ben hallediyorum dediğimde doğrudan eklesin; WhatsApp yerine Velora mesajlaşmasını kullanalım"; örnek https://claude.ai/artifact/Vk5kWrBDC6GRrDCToQk2XW onaylandı; telefonda ve gerçek dosyayla denenmedi):
+  - Sohbette son 14 günün PDF/fotoğraf ekleri (en çok 12 MB) ekranda görününce bir kez okunur (`/api/chat-plan`, Gemini; dosya mesajdaki Storage adresinden, yalnız bu projenin `chatFiles` yolu). Tarihli bir şey varsa (antrenman programı, toplantı, yarış talimatında yarış günleri + son tarihler, davet) mesajın altında "Planlara ekleyeyim mi? N plan · Ekle · Gerek yok". Ekle: alttan pencerede işaretli olanlar eklenir, satıra dokununca ad/gün/saat/yer düzeltilir. Gerek yok: o mesaj için bir daha sormaz (cihazda).
+  - "Ben hallediyorum": dosyadan sonra sohbete "plana ekle" / "bunu planlara ekle" / "takvime ekle" yazınca (ya da dosyayı yanıtlayarak) mesaj gitmez, planlar sormadan eklenir; altta "N plan eklendi · Geri al".
+  - Mesaja dokun › Plana ekle (eski dosyalar için de).
+  - Sesle: "son dosyayı planlara ekle", "Ali'nin attığı PDF'i plana ekle", "mesajdaki belgeyi takvime ekle" (yol `chatPlan`, `isler/mesajPlan.js`): açık sohbette, yoksa son 6 sohbetin son 25 mesajında en yeni dosya; sormadan ekler, kartlarda gösterir.
+  - Eklenen planlarda `fromMsg: "sohbet/mesaj"`: her cihazda "Planlara eklendi · N plan"; Geri al 10 dk. Okuma sonucu cihazda (localStorage `cp:<mesaj>`), aynı dosya o cihazda bir daha okunmaz. Yalnız ana hesap ve çalışanlar. Ayarlar › Kullanım'da "Mesajdaki dosyadan plan" sayacı.
+  - Dosyalar: `src/lib/chatPlan.js`, `src/app/api/chat-plan/route.js`, `src/features/chat/ChatPlan.jsx`, `ChatView.jsx`, `DataProvider.jsx` (fromMsg), `assistRoute.js`, `beyin/yonlendirme.js`. Kural değişikliği yok, yeni ortam değişkeni yok. Testler `test:asistan` › "Mesajdaki dosyadan plan (sesle)", `test:elle` › "Mesajdaki dosyadan plan".
+
+## Sıradaki işler
+0. Telefonda: bir sohbete antrenman programı PDF'i ve yarış talimatı gönder; altında öneri çıkıyor mu, Ekle penceresi, "plana ekle" yazınca doğrudan ekleme, Geri al; iPad'de aynı mesajda "Planlara eklendi" görünüyor mu.
+1. İstenirse: talimattan "Yarış ekle" (Yarışlar › "+ Yarış › Talimatla ekle" işiyle birlikte); Paylaş › Velora ile gelen PDF'te de "Planlara ekle".

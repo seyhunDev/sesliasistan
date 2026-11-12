@@ -25,6 +25,7 @@ import { routesOf, EARLY } from "@/lib/assistRoute";
 import { foodOrderCmd, foodRecent } from "../isler/yemek";
 import { runSea } from "../isler/deniz";
 import { runCams } from "../isler/kamera";
+import { runMsgPlan } from "../isler/mesajPlan";
 import { courseJust } from "../isler/yarisMedya";
 import { roundJust } from "@/features/liveScreen/liveActions";
 import { quickOn } from "@/lib/quickMode";
@@ -389,6 +390,11 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
         reply(`${pick.by === me ? "Son mesajın" : "Son mesaj"}: “${t}”. ${how}`, { engine: "local", pending: { msgDel: { chat: oc.chat, m: pick } } }, viaVoice);
         return true;
       }
+      // Mesajdaki dosyadan plan: "son dosyayı planlara ekle", "Ali'nin attığı programı plana ekle" (isler/mesajPlan.js)
+      case "chatPlan":
+        record(s, "chatPlan", "local");
+        await runMsgPlan(ctx, r.cp, viaVoice);
+        return true;
       // Açık sohbetin arşivi: son arşivlenen mesajı geri al (hemen) ya da kalıcı sil (yalnız ana hesap, onayla)
       case "msgArch": {
         const oc = openChat();
