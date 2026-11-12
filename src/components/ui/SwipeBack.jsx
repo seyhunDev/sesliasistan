@@ -56,7 +56,8 @@ export function SwipeBack() {
       g = null;
       if (e.touches.length !== 1) return;
       const p = e.touches[0];
-      if (!edgeStart(p.clientX, window.location.pathname) || blocked()) return;
+      // Canlı ekranın kendi kenardan geri hareketi var (liveScreen/InAppBack)
+      if (!edgeStart(p.clientX, window.location.pathname) || window.location.pathname.startsWith("/canli") || blocked()) return;
       const link = document.querySelector("[data-back]");
       if (!link && !canGoBack()) return;
       g = { x: p.clientX, y: p.clientY, t: Date.now(), axis: "", el: null, href: link?.getAttribute("href") || "/", dx: 0 };
