@@ -1,8 +1,8 @@
-Commit: 6819184 · Ana sayfa iPhone'da da Zaman şeridi (iPad ile tek bileşen) (#1390)
-Zaman: 2026-11-12-0635 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43146676644
+Commit: 4c72bce · Hava sayfası ana sayfayla aynı: ortak Hava kutusu, ölçülen rüzgâr, 12 gün (#1391)
+Zaman: 2026-11-12-0700 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43149410003
 
-TAM TEST · 12.11.2026 06:13:21
+TAM TEST · 12.11.2026 06:37:29
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,17 +30,20 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1417/1441 geçti · 24 kalan · 1357 sn
+SONUÇ: 1415/1441 geçti · 26 kalan · 1375 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
       ✗ “4530 test”
           beklenen: hepsi geçer
-          olan:     4486/4530 geçti
+          olan:     4483/4530 geçti
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “tek kutu” → false (beklenen: solda kutu, sağda bas-konuş küresi)
       ✗ “ana sayfa özellik kartları” → false (beklenen: Özet (Mesajlar) yok; İngilizce, Görevler, Medya kartları; medya kartı en yeni bölümün son 4 karesi, 30 dk önbellek)
+      ✗ “ortak hava tablosu” → false (beklenen: hava sayfası DayStrip + HourTable, yarış havası HourTable, ikisinde de eski grafik yok; ölçülen geçmiş sütun, plan çizgisi, günlük yağış; harita her yerde Harita düğmesi)
+      ✗ “önceki 5 gün” → false (beklenen: Seyhun 2026-11-03: hava sayfasında 'Önceki 5 gün' düğmesi (kapalı başlar) geçmiş 5 günü şeritte açar, saatlik tabloda ölçülen sütunlar; yarış havasında yarıştan 5 gün önce)
+      ✗ “rüzgâr yönü derece” → false (beklenen: tüm hava gösterimlerinde yön adı yanında derece (ana sayfa, hava sayfası, yarış havası, rüzgâr haritası, bölge haritası, multimedya Hava, asistan metni))
       ✗ “yarış satırı akşam kalkar” → false (beklenen: Seyhun 2026-10-31: günün yarışları bitince (18:00 ya da son yarıştan 90 dk) ana sayfa satırı kalkar, bu yarışın sayacı çalışıyorsa kalır)
       ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
@@ -187,7 +190,7 @@ SONUÇ: 1417/1441 geçti · 24 kalan · 1357 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 125/139
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 123/139
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✗ Ana sayfa: 3/8
       ✗ “iş düğmeleri”
@@ -253,10 +256,16 @@ SONUÇ: 1417/1441 geçti · 24 kalan · 1357 sn
   ✓ Tam ekran üstte: 1/1
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
-  ✗ Hava: 2/3
+  ✗ Hava: 0/3
+      ✗ “yağmur grafiği”
+          beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var
+          olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
           olan:     ölçülen sütun 7 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+      ✗ “radar ve nokta”
+          beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
+          olan:     yağan çubuk 7 · açıklama 7 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
