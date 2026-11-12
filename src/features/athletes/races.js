@@ -21,6 +21,8 @@ export const RACE_FIELDS = [
   // abroad: yurt dışı yarışı (city = ülke, district = şehir; Türkiye'de yapılacaklar listesi açılır), skips: listeden çıkarılan hazır işler
   "abroad", "skips", "done",
   "name", "federation", "city", "district", "startDate", "endDate", "leaveStart", "leaveEnd", "letterDate", "docsAt",
+  // docsKey: evrak hazırlandığındaki bilgilerin özeti (RaceEditor docsHash); bilgi değişince farklılaşır, her cihazda "evrak eski" anlaşılır
+  "docsKey",
   "signer", "signerTitle", "travel", "vehicle", "drivers", "athleteIds", "note", "checks", "planAdded",
   // Yolculuk: çıkış günü/saati, çıkış yeri, buluşma noktası (boşsa çıkış yeri), dönüş günü/saati (tripText)
   "departDate", "departTime", "departFrom", "meetPoint", "returnDate", "returnTime",
@@ -302,7 +304,7 @@ export function freshRace(last = {}, today = "") {
   return {
     abroad: false, skips: [], done: [],
     name: "", federation: last.federation || "Yelken", city: last.city || "İzmir", district: "",
-    startDate: "", endDate: "", leaveStart: "", leaveEnd: "", letterDate: "", docsAt: "",
+    startDate: "", endDate: "", leaveStart: "", leaveEnd: "", letterDate: "", docsAt: "", docsKey: "",
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [],
     departDate: "", departTime: "", departFrom: last.departFrom || "", meetPoint: "", returnDate: "", returnTime: "", note: "", checks: {}, planAdded: false,
@@ -448,4 +450,17 @@ export function shiftDay(s, n) {
   const d = new Date(`${s}T12:00:00`);
   d.setDate(d.getDate() + n);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Evrağa giren yarış alanları ve özet (RaceEditor: hazırlanan evrak eski mi; her cihazda aynı sonuç)
+export const DOC_FIELDS = [
+  "abroad", "name", "federation", "city", "district", "startDate", "endDate", "leaveStart", "leaveEnd", "letterDate",
+  "signer", "signerTitle", "travel", "vehicle", "drivers", "athleteIds", "departDate", "departTime", "departFrom", "meetPoint", "returnDate", "returnTime",
+  "clubNo", "clubDate", "clubFrom", "clubTo", "clubEvent", "clubPlace", "clubSigner", "clubTitle", "hotelName", "hotelFrom", "hotelTo", "entryClass",
+];
+export function docsHash(v) {
+  const s = JSON.stringify(v, (k, x) => (x && typeof x === "object" && typeof x.toMillis === "function" ? x.toMillis() : x));
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return (h >>> 0).toString(36);
 }

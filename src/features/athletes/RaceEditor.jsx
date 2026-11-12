@@ -42,13 +42,15 @@ import { loadPosts } from "@/features/posts/posts";
 import { racePlanSync, racePlansOf, racePostOf } from "./raceLinks";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
 import { RACE_FILE_MAX, dropRaceStored, loadRaceFile, moveLocalExtras, uploadRaceFile } from "./raceStore";
-import { cleanDone, cleanNotice, racesNow, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
+import { cleanDone, cleanNotice, racesNow, DOC_FIELDS, docsHash, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
 import { initials, leftText, placeText } from "./RaceList";
 import { fromShared } from "@/lib/sharedRace";
 
 const withHotels = (p, n) => (p.notice ? { ...p, notice: cleanNotice({ ...p.notice, hotels: n.hotels }), hotels: mergeHotels(p.hotels, n.hotels) } : p);
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const daysTo = (d) => Math.round((new Date(`${d}T12:00:00`) - new Date(`${todayStr()}T12:00:00`)) / 864e5);
+// Sporcunun evrağa giren bilgileri (özet için; yoklama, son görülme gibi alanlar evrağı eskitmesin)
+const docPerson = (a) => Object.fromEntries(Object.entries(a).filter(([k]) => /^(id|student|parent|father|mother|school|letterSchool|sailNo|licen|tyf|boatClass|currentClassId|phone|relation)/.test(k)).sort());
 const madeText = (iso) => new Date(iso).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const sizeText = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const partName = (all, title) => `${all.replace(/-evrak\.pdf$/, "")}-${title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.pdf`;
@@ -296,6 +298,12 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
     }, 800);
     return () => clearTimeout(t);
   }, [coach, onCoach]);
+  // Evrak hazır mı, eski mi (Seyhun 2026-11-12 "belgeler hazırlandıysa ve değişiklik olmadıysa tekrar hazırla butonu gösterilmesin"):
+  // hazırlarken belgeye giren bilgilerin özeti yarışa yazılır (docsKey); şimdiki özet farklıysa evrak eski. Başka cihazda hazırlanıp
+  // değişmediyse de hazır sayılır (PDF bu cihazda yoksa "Aç" onu burada yeniden üretir, buton "hazırla" demez).
+  const docsKeyNow = docsHash([DOC_FIELDS.map((k) => r[k] ?? ""), docs, forDocs.map(docPerson), coach]);
+  const docsOld = r.docsKey ? !!r.docsAt && r.docsKey !== docsKeyNow : stale;
+  const docsReady = !!file || (!!r.docsAt && !docsOld && (!!r.docsKey || !checked));
   useEffect(() => () => void (coachDirty.current && onCoach?.(cleanCoach(coachLast.current))), [onCoach]);
   // Başka cihazda (ya da bu cihazda başka sayfada) kaydedilen bilgi gelince alanlar güncellenir (yazarken değil)
   const savedKey = JSON.stringify(cleanCoach(savedCoach));
@@ -401,8 +409,8 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
     try {
       // Evrak tarihi tüm belgelerde aynı: ilk hazırlamada (docsAt yok) bugün yazılır, "Yenile"de değişmez (sonra elle değiştirilebilir).
       // Eski yarışlardaki tarih yarışın açıldığı gündü; ilk hazırlamada o da bugüne çekilir.
-      const dated = r.docsAt ? { ...r, letterDate: r.letterDate || todayStr() } : { ...r, letterDate: todayStr(), docsAt: new Date().toISOString() };
-      if (dated.letterDate !== r.letterDate || dated.docsAt !== r.docsAt) {
+      const dated = { ...(r.docsAt ? { ...r, letterDate: r.letterDate || todayStr() } : { ...r, letterDate: todayStr(), docsAt: new Date().toISOString() }), docsKey: docsKeyNow };
+      if (dated.letterDate !== r.letterDate || dated.docsAt !== r.docsAt || dated.docsKey !== r.docsKey) {
         latest.current = dated;
         first.current = true; // kaydı aşağıda yapıyoruz, tekrar kaydedilmesin
         setR(dated);
@@ -737,7 +745,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
   const hotelCount = raceHotels(r).length;
   const stat = [
     ["people", "users", "Sporcu", !chosen.length ? "Sporcu seçilmedi" : incomplete.length ? `${chosen.length} sporcu · ${incomplete.length} bilgi eksik` : `${chosen.length} sporcu · bilgiler tamam`, chosen.length > 0 && !incomplete.length, chosen.length ? "Sporcu bilgilerini tamamla" : "Sporcuları ekle"],
-    ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : stale ? "Eski, yenilenmeli" : !checked && r.docsAt ? "Hazır" : r.docsAt ? "Bu cihazda yok" : "Hazırlanmadı", !!file || (!checked && !!r.docsAt && !stale), stale ? "Evrakı yenile" : "Evrakı hazırla"],
+    ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : docsOld ? "Eski, yenilenmeli" : docsReady ? "Hazır" : r.docsAt ? "Bu cihazda yok" : "Hazırlanmadı", docsReady, docsOld ? "Evrakı yenile" : docsReady ? "Evrakı aç" : "Evrakı hazırla"],
     ["trip", "nav", "Yolculuk", trip.length ? [trip[0][1], hotelCount && `${hotelCount} otel`].filter(Boolean).join(" · ") : "Çıkış girilmedi", trip.length > 0, "Yolculuğu yaz"],
     ["budget", "wallet", "Bütçe", money.lines.length ? (chosen.length ? `${money.varies ? "Ortak pay" : "Sporcu başı"} ${tl(money.perAthlete)}` : `Toplam ${tl(money.total)}`) : "Kalem yok", money.lines.length > 0, "Bütçeyi çıkar"],
   ];
@@ -958,7 +966,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
                 items={[
                   ["Hazırlık", todoList.length || "Tamam", todoList.length ? "iş" : ""],
                   ["Sporcu", chosen.length, "kişi"],
-                  ["Evrak", file || (!checked && r.docsAt && !stale) ? "Hazır" : "Yok", ""],
+                  ["Evrak", docsReady ? "Hazır" : "Yok", ""],
                 ]}
               />
               <RaceWxRows r={{ ...r, id: rid }} />
@@ -1344,14 +1352,14 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
         <div ref={docsRef} className="scroll-mt-4">
           <Label>Evrak</Label>
           {/* Hazır evrak bir bilgi değişince (stale) ya da bu telefonda yoksa (başka cihazda hazırlandı / telefon sildi): uyarı */}
-          {!file && (stale || (checked && r.docsAt)) && chosen.length > 0 && (
+          {!file && checked && r.docsAt && chosen.length > 0 && (
             <div className="rz-list mt-4">
               <button type="button" onClick={make} disabled={busy} data-press="row" className="rz-row w-full text-left">
                 <span className="rz-k">
-                  {stale ? "Evrak eski" : "Evrak bu cihazda yok"}
-                  <small>{stale ? "Bir bilgi değişti, önceki evrak geçersiz" : "Başka cihazda hazırlandı ya da telefon sildi"}</small>
+                  {docsOld ? "Evrak eski" : docsReady ? "Evrak hazır" : "Evrak bu cihazda yok"}
+                  <small>{docsOld ? "Bir bilgi değişti" : docsReady ? "Başka cihazda hazırlandı" : "Telefon sildi"}</small>
                 </span>
-                <span className="rz-v rz-warn font-semibold">{busy ? "Hazırlanıyor…" : stale ? "Yenile" : "Hazırla"}</span>
+                <span className={`rz-v font-semibold ${docsOld || !docsReady ? "rz-warn" : "rz-acc"}`}>{busy ? "Hazırlanıyor…" : docsOld ? "Yenile" : docsReady ? "Aç" : "Hazırla"}</span>
               </button>
             </div>
           )}
@@ -1703,7 +1711,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
 
       <div>
       {/* Alt çubuk: belge hazırla → aç / paylaş */}
-      <div data-pagebar="" className={`${!prep || file || !chosen.length || raceDay || over ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
+      <div data-pagebar="" className={`${!prep || docsReady || !chosen.length || raceDay || over ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
         <div className="mx-auto flex max-w-[26rem] gap-2">
           {file ? (
             <>
