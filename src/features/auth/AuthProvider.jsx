@@ -124,6 +124,7 @@ export function AuthProvider({ children }) {
             raceLive: doc_?.raceLive === "off" ? "off" : "", // ayarlar: süren yarışın ana sayfa Multimedya kısayolu (RaceLive; "off" gizli)
             textSize: doc_?.textSize === "l" || doc_?.textSize === "xl" ? doc_.textSize : "", // ayarlar: yazı ve simge boyutu
             introV: Number(doc_?.introV) || (doc_?.onboarded ? 1 : 0), // görülen en son tanıtım sürümü (yeni slaytlar bundan büyük)
+            sport: typeof doc_?.sport === "string" ? doc_.sport : "", // spor (src/sports; "" = henüz seçmedi, SportGate bir kez sorar)
             onboarded: doc_ ? !!doc_.onboarded : null, // ilk açılış izin slaytları görüldü mü (null: henüz bilinmiyor)
             tourDone: !!doc_?.tourDone, // "Şimdi sen dene" (asistan düğmesini gösteren yönlendirme) görüldü/denendi mi
         }

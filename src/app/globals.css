@@ -1641,3 +1641,44 @@ main.iph {
 @media (min-width: 64rem) {
   main.iph.iph-page { height: auto; overflow: visible; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-content: start; padding-bottom: calc(7rem + env(safe-area-inset-bottom)); }
 }
+
+/* Spor seçimi (src/sports, 2026-11-12): gece denizi arka planı, Sailing / Diğer, Yakında, tekne animasyonu */
+.sp-screen { background: #0b1a33; }
+.sea-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.sea-glow { position: absolute; left: 0; right: 0; top: 50%; height: 36%; background: radial-gradient(50% 50% at 50% 70%, rgba(61, 123, 255, .22), rgba(61, 123, 255, 0)); }
+.sea-stars { position: absolute; inset: 0 0 50% 0; background-image: radial-gradient(1px 1px at 12% 22%, #fff8, transparent), radial-gradient(1px 1px at 34% 12%, #fff6, transparent), radial-gradient(1.5px 1.5px at 58% 28%, #fff7, transparent), radial-gradient(1px 1px at 76% 14%, #fff5, transparent), radial-gradient(1px 1px at 88% 34%, #fff6, transparent), radial-gradient(1px 1px at 22% 40%, #fff4, transparent); animation: seastar 6s ease-in-out infinite alternate; }
+.sea-waves { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; }
+.sea-far { position: absolute; bottom: calc(30% * .8 - 3px); left: -30px; opacity: .65; animation: seafar 40s linear infinite; }
+.sea-w { position: absolute; inset: 0; width: 200%; height: 100%; animation: seawave 22s linear infinite; }
+.sea-w2 { animation-duration: 15s; animation-direction: reverse; }
+.sea-w3 { animation-duration: 10s; }
+@keyframes seawave { to { transform: translateX(-50%); } }
+@keyframes seafar { from { transform: translateX(0) translateY(0); } 50% { transform: translateX(calc(50vw + 15px)) translateY(2px); } to { transform: translateX(calc(100vw + 60px)) translateY(0); } }
+@keyframes seastar { to { opacity: .45; } }
+
+.sp-in { animation: spin .45s cubic-bezier(.22, .8, .24, 1) backwards; }
+@keyframes spin { from { opacity: 0; transform: translateY(12px); } }
+.sp-opt { display: flex; width: 100%; align-items: center; gap: .875rem; padding: 1rem; border-radius: 1.25rem; text-align: left; font-size: 1.125rem; font-weight: 600; color: #fff; background: rgba(19, 36, 63, .72); border: 1px solid rgba(255, 255, 255, .14); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 3px 0 rgba(0, 0, 0, .35); transition: transform .12s, box-shadow .12s; }
+.sp-opt:active { transform: translateY(3px); box-shadow: 0 0 0 rgba(0, 0, 0, .35); }
+.sp-main { background: #3d7bff; border-color: #3d7bff; }
+.sp-ic { display: grid; place-items: center; width: 3rem; height: 3rem; flex: none; border-radius: .875rem; background: rgba(143, 179, 255, .14); }
+.sp-main .sp-ic { background: rgba(255, 255, 255, .2); }
+.sp-ico { width: 1.75rem; height: 1.75rem; fill: none; stroke: #8fb3ff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sp-main .sp-ico { stroke: #fff; }
+.sp-chev { font-size: 1.5rem; line-height: 1; color: rgba(255, 255, 255, .55); }
+.sp-main .sp-chev { color: #fff; }
+.sp-back { width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: 999px; color: #fff; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .16); }
+.sp-soon { display: flex; flex-direction: column; gap: .625rem; padding: 1rem .875rem; border-radius: 1.125rem; background: rgba(19, 36, 63, .72); border: 1px solid rgba(255, 255, 255, .12); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: spin .45s cubic-bezier(.22, .8, .24, 1) calc(var(--i, 0) * 60ms) backwards; }
+.sp-dim { width: 2rem; height: 2rem; stroke: rgba(255, 255, 255, .5); }
+.sp-tag { align-self: flex-start; padding: .125rem .5rem; border-radius: 999px; border: 1px solid rgba(143, 179, 255, .35); color: #8fb3ff; font-size: .6875rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.sp-stage { position: relative; width: 100%; height: 8rem; }
+.sp-line { position: absolute; left: 0; bottom: -.25rem; width: 200%; height: .75rem; animation: seawave 3s linear infinite; }
+.sp-boat { position: absolute; bottom: 0; left: -6rem; width: 5.25rem; height: 6rem; animation: spboat 1.9s cubic-bezier(.3, .7, .3, 1) forwards; }
+@keyframes spboat { 0% { left: -6rem; transform: rotate(-5deg); } 60% { transform: rotate(3deg) translateY(-2px); } 100% { left: calc(50% - 2.625rem); transform: none; } }
+.sp-word { opacity: 0; animation: spword .55s 1.35s cubic-bezier(.22, .8, .24, 1) forwards; }
+@keyframes spword { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .sea-w, .sea-far, .sea-stars, .sp-in, .sp-soon, .sp-line { animation: none; }
+  .sp-boat { animation: none; left: calc(50% - 2.625rem); }
+  .sp-word { animation: none; opacity: 1; }
+}
