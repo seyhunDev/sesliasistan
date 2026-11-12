@@ -1,16 +1,13 @@
-import { Barlow, Barlow_Condensed } from "next/font/google";
+import { liveBody, liveHead } from "@/features/liveScreen/fonts";
 import { InAppBack } from "@/features/liveScreen/InAppBack";
 import { CanliUpdate } from "@/features/liveScreen/CanliUpdate";
 
-// Herkese açık canlı yarış sayfalarının yazısı (Seyhun 2026-11-02 "profesyonel yelken yarışı yayını gibi, rastgele yazı karakteri olmasın"):
-// spor yayınlarının dar, kalın yazısı. Başlık, sayı ve etiketler Barlow Condensed; satırlar Barlow. Derlemede indirilir, uygulamayla sunulur.
-const body = Barlow({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600", "700"], display: "swap", variable: "--lv-font" });
-const head = Barlow_Condensed({ subsets: ["latin", "latin-ext"], weight: ["300", "500", "600", "700", "800"], display: "swap", variable: "--lv-font-c" });
-
+// Herkese açık canlı yarış sayfaları (yazı: features/liveScreen/fonts.js). Uygulama içinden (yarış sayfası, Yayın) açılan canlı ekran
+// app/(app)/athletes/(..)canli altında aynı düzenle çizilir, uygulama kapanıp yeniden kurulmaz.
 export default function CanliLayout({ children }) {
   return (
     <>
-      <div className={`canli-root ${body.variable} ${head.variable}`}>{children}</div>
+      <div className={`canli-root ${liveBody.variable} ${liveHead.variable}`}>{children}</div>
       <InAppBack />
       <CanliUpdate />
     </>

@@ -410,13 +410,19 @@ export function changedFields(r, base) {
 export async function saveRace(orgId, uid, r, base = null) {
   const data = { ...(r.id && base ? changedFields(r, base) : clean(r)), updatedAt: serverTimestamp() };
   if (data.name !== undefined) rememberRaceNames([data.name]);
-  stale();
-  if (r.id && base && Object.keys(data).length === 1) return r.id; // değişen yok
+  // Değişen yoksa bellekteki liste de geçerli kalır (önceden değişen yokken de liste eskitiliyordu,
+  // geri dönünce "Yarış yükleniyor" ve bütün liste sunucudan yeniden okunuyordu; Seyhun 2026-11-12)
+  if (r.id && base && Object.keys(data).length === 1) return r.id;
   // Sunucu onayı en çok 2,5 sn beklenir; yazma cihazda yapılmıştır, arkada gider (lib/soon.js, denetim B11)
   if (r.id) {
+    // Bellekteki kayıt da güncellenir: geri dönünce yarış yeniden okunmadan doğru hâliyle açılır
+    const m = last?.orgId === orgId && last.list.find((x) => x.id === r.id);
+    if (m) Object.assign(m, Object.fromEntries(Object.entries(data).filter(([k]) => k !== "updatedAt")));
+    else stale();
     await soon(updateDoc(doc(col(orgId), r.id), data), 2500, "Yarış");
     return r.id;
   }
+  stale();
   const ref = doc(col(orgId));
   await soon(setDoc(ref, { ...data, createdByUid: uid, createdAt: serverTimestamp() }), 2500, "Yarış");
   return ref.id;

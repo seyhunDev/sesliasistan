@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Splash } from "@/components/ui/Splash";
 import { Button } from "@/components/ui/Button";
@@ -38,6 +38,9 @@ import { SwipeBack } from "@/components/ui/SwipeBack";
 export default function AppLayout({ children }) {
   const { user, profile, loading, error } = useAuth();
   const router = useRouter();
+  // Uygulama içinden açılan canlı ekran (app/(app)/athletes/(..)canli): uygulama ayakta kalır, yalnız alt çubuk ve uygulamanın
+  // açılır notları görünmez (canlı ekranın kendi geri ve "Yeni sürüm" çubuğu var)
+  const live = usePathname().startsWith("/canli");
 
   // Geri düğmeleri gelinen sayfaya dönsün diye uygulama içi geçmiş izlenir
   useEffect(() => installTrail(), []);
@@ -86,17 +89,17 @@ export default function AppLayout({ children }) {
                   <SyncLine />
                   <SwipeBack />
                   <OfflineBanner />
-                  <UpdateNote />
-                  <NewVersionBar />
+                  {!live && <UpdateNote />}
+                  {!live && <NewVersionBar />}
                   <PushSync profile={profile} />
                   {children}
-                  <TabBarHost />
+                  {!live && <TabBarHost />}
                   <BrainSync />
                   <OpenFromUrl />
                   <InboxSeen />
-                  <Onboarding />
-                  <TryAssistant />
-                  <SportGate />
+                  {!live && <Onboarding />}
+                  {!live && <TryAssistant />}
+                  {!live && <SportGate />}
                   <TimerSound />
                   <IosBridge />
                   <AppLock />
