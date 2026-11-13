@@ -345,6 +345,13 @@ html[data-nav="none"]::view-transition-new(.vt-in) { animation: none; }
 @media (min-width: 34rem) { .asheet { box-shadow: 0 0 0 0.5px var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); } }
 .asheet-input { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .3s ease; }
 .asheet-input:focus-within { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 55%, transparent); }
+/* Yazarak sor (klavye açık, asistan kapalı; Seyhun 2026-11-13): levha yok, kutu lacivert ve klavyeye yapışık, düğmeler aynı yuvarlak */
+.dome[data-typing] .asheet { background: transparent; box-shadow: none; max-width: 40rem; }
+.dome[data-typing] .asheet::after { display: none; }
+.dome[data-typing][data-kb] .asheet { padding-bottom: 0.5rem; }
+.dome[data-typing] .asheet-input { background: #0f2140; box-shadow: inset 0 0 0 1px #2a4472, 0 18px 40px -16px rgba(0, 0, 0, .7); }
+.dome[data-typing] .asheet-input:focus-within { box-shadow: inset 0 0 0 1.5px rgba(61, 123, 255, .6), 0 18px 40px -16px rgba(0, 0, 0, .7); }
+.dome[data-typing] .atype button:not(.bg-acc) { background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px #2a4472; color: #fff; }
 .asheet-on { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 70%, transparent); }
 .asheet .vlight[data-state="idle"] { --vl-a: #3d7bff; --vl-b: #5b8cff; --vl-w: #fff; --vl-h: rgba(61, 123, 255, .3); }
 /* ASİSTAN DÜĞMEDE (2026-10-22, Seyhun'un onayladığı örnek /mnt/project-files/asistan-ekrani/asistan-dugme.html): asistan açıkken
