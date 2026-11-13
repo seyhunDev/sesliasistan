@@ -12,7 +12,6 @@ import { myFit } from "@/lib/fitness/model";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { homeActions } from "@/lib/homeTiles";
-import { AppLogo } from "@/components/ui/AppLogo";
 import { Icon } from "@/components/ui/Icon";
 
 // Geniş ekran (bilgisayar, yatay tablet): alt sekme çubuğu yerine solda sabit menü (Seyhun 2026-10-18: "cep telefonu, tablet ve
@@ -55,8 +54,9 @@ function usePages() {
   }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
 }
 
+// Açık sayfa: mavi zemin, solda mavi çizgi, beyaz yazı (Seyhun 2026-11-13 lacivert menü, örnek ana-sayfa/sade-2026-11/solmenu.html)
 const row = (on) =>
-  `flex h-10 w-full items-center justify-between rounded-xl px-3.5 text-left transition active:scale-[.98] ${on ? "bg-acc/10 font-semibold text-acc" : "text-fg hover:bg-fg/[.04]"}`;
+  `relative flex h-10 w-full items-center justify-between rounded-xl px-3.5 text-left transition active:scale-[.98] ${on ? "bg-[rgba(61,123,255,.16)] font-semibold text-white before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[#3d7bff] before:content-['']" : "text-[#cfdcf5] hover:bg-white/[.04]"}`;
 
 // Açık gruplar cihazda saklanır (Seyhun 2026-11-04 "gruplara ayıralım, tıklayınca açılsın"); kayıt yoksa yalnız açık sayfanın grubu açık
 const OPEN_KEY = "sa-side-open";
@@ -96,12 +96,9 @@ export function SideNav({ path, unread = 0, orb = null }) {
     } catch {}
   };
   return (
-    <nav aria-label="Menü" className="sidenav fixed inset-y-0 left-0 z-[37] hidden w-60 flex-col border-r border-line bg-card pt-[max(1.25rem,env(safe-area-inset-top))]">
-      {/* Uygulamanın kimliği: logo ve ad, menünün en üstünde */}
-      <Link href="/" className="mb-3 flex items-center gap-2 px-6">
-        <AppLogo size={28} />
-        <span className="text-[1.125rem] font-semibold tracking-[-.01em] text-fg">Velora</span>
-      </Link>
+    // Lacivert (Seyhun 2026-11-13 "sol sidebar'ı uygulamayla uyumlu renge getir"): üstte logo yok (iPad saat satırıyla çakışmasın), menü Ana sayfa ile başlar;
+    // logo en altta, asistan küresi ve klavye düğmesiyle aynı satırda (TabBar orb)
+    <nav aria-label="Menü" className="sidenav navy fixed inset-y-0 left-0 z-[37] hidden w-60 flex-col border-r border-[#1d3256] pt-[max(1.25rem,env(safe-area-inset-top))]">
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin]">
         {TABS.map(([href, label]) => (
           <Link key={href} href={href} aria-current={at(href) ? "page" : undefined} className={`${row(at(href))} text-[0.9375rem] ${at(href) ? "" : "font-medium"}`}>
@@ -150,7 +147,7 @@ export function SideNav({ path, unread = 0, orb = null }) {
           <span className="truncate pl-2 text-[0.75rem] font-normal text-mut">{profile?.name}</span>
         </Link>
       </div>
-      {orb && <div className="sidenav-orb flex shrink-0 items-center gap-3 border-t border-line px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">{orb}</div>}
+      {orb && <div className="sidenav-orb flex shrink-0 items-center gap-2.5 border-t border-[#1d3256] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">{orb}</div>}
     </nav>
   );
 }

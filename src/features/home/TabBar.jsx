@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAdd } from "@/features/add/AddProvider";
@@ -1160,9 +1161,14 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
             noAi ? null : (
               <>
                 <VoiceLight state={open && mini ? state : "idle"} onTap={talk} onHold={typeNow} size="size-12" compact />
-                <button type="button" onClick={typeNow} className="min-w-0 flex-1 truncate rounded-xl px-2 py-2 text-left text-[0.875rem] font-medium text-fg hover:bg-fg/[.04]">
-                  Yazarak sor
+                {/* Yazarak sor: küçük klavye düğmesi (Seyhun 2026-11-13 "karmaşık görüntü"); sağda logo */}
+                <button type="button" onClick={typeNow} aria-label="Yazarak sor" data-press className="grid size-10 shrink-0 place-items-center rounded-full border border-[#2a4472] bg-white/[.07] text-[#cfdcf5]">
+                  <Icon name="keyboard" className="size-[1.125rem]" />
                 </button>
+                <span className="flex-1" />
+                <Link href="/" aria-label="Velora" className="shrink-0">
+                  <VeloraGlyph size={28} />
+                </Link>
               </>
             )
           }

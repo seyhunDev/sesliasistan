@@ -1029,6 +1029,12 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
   color: var(--fg);
   background: #0b1a33;
 }
+/* Sol menü ve alt sekme çubuğu lacivert (Seyhun 2026-11-13, örnek solmenu.html): her sayfada aynı */
+.sidenav.navy { background: linear-gradient(180deg, #0a1830 0%, #071224 100%); }
+.atabbar { --card: #071224; --line: #1d3256; background: rgba(7, 18, 36, .94); box-shadow: 0 -1px 0 #1d3256; }
+.atabbar a { color: #7d90b5; }
+.atabbar a[aria-current="page"] { color: #fff; }
+.acenter { background: #071224; box-shadow: 0 -1px 0 #1d3256; }
 .navy :is(.bg-amber-50, .bg-amber-100) { background-color: rgba(245, 158, 11, .14); }
 .navy .bg-emerald-100 { background-color: rgba(16, 185, 129, .16); }
 .navy :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900) { color: #fbbf5c; }
