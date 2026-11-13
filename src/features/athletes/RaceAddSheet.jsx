@@ -3,7 +3,7 @@
 // Yarış ekleme (Seyhun 2026-11-09 "TFF'den seç, manuel, talimatla"; örnek e3-*.png, yp-*.png "Yap"): "+ Yarış" penceresi (Sheet) ve
 // /athletes/races/new sayfası AYNI gövdeyi (RaceAdd) gösterir: üstte TFF'den seç · Talimatla · Elle.
 // - TFF'den seç: sezon seçici, ayak ayak sınıflar; "Ekle" yarışı siteden alır (siteTake.startTake, arka planda), eklenmişte "Eklendi";
-//   son 14 günde sitede ilk görülenlerde "Yeni" (loadSiteList yanıtındaki fresh, saatlik tarama).
+//   son 14 günde sitede ilk görülenlerde "Yeni" (siteListLive yanıtındaki fresh, saatlik tarama).
 // - Talimatla: Dosya seç · Metin yapıştır (NoticeRows); ad, tarih, yer talimattan dolar.
 // - Elle: ad, tarih, il, ilçe (yurt dışında ülke, şehir).
 // Pencerede Talimatla/Elle işi yeni yarış sayfasına aktarılır (raceDraft), orada talimat okunur ya da yarış başlar.
@@ -12,9 +12,7 @@ import { useRouter } from "next/navigation";
 import { Sheet } from "@/components/ui/Sheet";
 import { LoadFail } from "@/components/ui/LoadFail";
 import { useToast } from "@/components/ui/ToastProvider";
-import { pickSeason } from "@/lib/siteDocs";
-import { todayStr } from "@/lib/utils/format";
-import { loadSiteList } from "./raceSite";
+import { siteListLive } from "./raceSite";
 import { clearTask, startTake, useSiteTasks } from "./siteTake";
 import { RaceSeg } from "./raceUi";
 import { NoticeRows } from "./NoticeView";
@@ -59,19 +57,7 @@ function SiteList({ live, orgId, uid, races, onAdded, onGo }) {
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     if (!live) return;
-    let on = true;
-    loadSiteList(season).then(
-      (d) => {
-        if (!on) return;
-        if (!Array.isArray(d?.legs)) return setFail(true);
-        const want = season || pickSeason((d.seasons || []).map((s) => s.name), todayStr());
-        if (!season && want !== d.season) return setSeason(want);
-        setData(d);
-        if (!season) setSeason(d.season);
-      },
-      () => on && setFail(true),
-    );
-    return () => void (on = false);
+    return siteListLive(season, { onData: setData, onSeason: setSeason, onFail: () => setFail(true) });
   }, [live, season, retry]);
   const pick = (name) => {
     if (name === season) return;
