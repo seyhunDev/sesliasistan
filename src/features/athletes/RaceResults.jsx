@@ -79,11 +79,11 @@ export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddA
         {canUpload && (
         <button type="button" onClick={() => pickRef.current?.click()} disabled={busy} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left text-acc disabled:opacity-60">
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10">
-            {busy ? <span className="size-5 animate-spin rounded-full border-2 border-acc/25 border-t-acc" /> : <Icon name="plus" className="size-5" />}
+            <Icon name="plus" className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <b className="block text-[0.9375rem] font-semibold">{busy ? "Sonuçlar okunuyor…" : files.length ? "Başka sonuç ekle" : "Sonuç PDF'i yükle"}</b>
-            <span className="block text-[0.8125rem] text-mut">{busy ? "Yarım dakika kadar sürebilir" : "Sporcularımızı bulur, genel, Junior ve kızlar sırasını yazar"}</span>
+            <b className="block text-[0.9375rem] font-semibold">{files.length ? "Başka sonuç ekle" : "Sonuç PDF'i yükle"}</b>
+            <span className="block text-[0.8125rem] text-mut">Sporcularımızı bulur, genel, Junior ve kızlar sırasını yazar</span>
           </span>
         </button>
         )}
