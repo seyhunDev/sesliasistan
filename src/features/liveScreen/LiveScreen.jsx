@@ -1996,6 +1996,153 @@ function ScOurs({ ath, onTap }) {
     </button>
   );
 }
+// iPad yatay açılış (Seyhun 2026-11-13 "boşken arkada bulanık fotoğraf çok kötü; açtığımda ihtiyacım olan dolu dolu görünsün"):
+// yayın kapalıyken ortada üç sütun. Yarıştan önce: kalan gün + yarış günlerinin beklenen rüzgârı | Sporcularımız | Katılım.
+// Yarış günü: süre kartı + günün programı | Rüzgâr | Sporcularımız (bugünün grubu, sonuç gelince sırası). Yalnız iPad yatayda görünür (sahne.css)
+const PANO_ROWS = 6;
+function ScPano({ data, t, prog, today, now, onAth = null }) {
+  const r = data.race || {};
+  const pre = !!r.startDate && r.startDate > today;
+  const ath = useMemo(() => scAth(data, today), [data, today]);
+  const ours = ath.flatMap((b) => b.rows.filter((x) => x.our).map((x) => ({ ...x, cls: b.cls })));
+  const days = (data.ahead?.days || []).slice(0, PANO_ROWS);
+  const pr = progRows(prog).rows;
+  const c = curWind(data, null, true, now);
+  const hrs = windAhead(data, now).slice(0, 5);
+  const en = data.entries || [];
+  const byCls = [...en.reduce((m, e) => m.set(e.cls || "", (m.get(e.cls || "") || 0) + 1), new Map())].filter(([k]) => k).sort((a, b) => b[1] - a[1]);
+  const girls = en.filter((e) => /^(k|f)/i.test(e.sex || "")).length;
+  const clubs = new Set(en.map((e) => clubName(e.club || "", 40)).filter(Boolean)).size;
+  const kn = (w) => (w?.wind != null ? `${w.wind} kn` : "—");
+  const clock = (
+    <section className="sc-pn">
+      <h3>{t.k}</h3>
+      <div className={`sc-pnb${t.tx ? " tx" : ""}`}>
+        {t.tm}
+        {t.un ? <small>{t.un}</small> : null}
+      </div>
+      {t.sub || t.at ? <p className="sc-pns">{t.sub || `Start ${t.at}`}</p> : null}
+      {pre && days.length ? (
+        <ul className="sc-pnl end">
+          {days.map((d) => (
+            <li key={d.day}>
+              <b>{`${dayText(d.day)} ${wdText(d.day)}`}</b>
+              <small>{d.at || ""}</small>
+              <span className="v">
+                {d.dir != null ? gArrow(d.dir) : null}
+                {kn(d)}
+                {d.gust != null && d.gust > (d.wind ?? 0) ? <small>{`sağanak ${d.gust}`}</small> : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : !pre && pr.length ? (
+        <ul className="sc-pnl end">
+          {pr.map((x) => (
+            <li key={x.key} className={x.state}>
+              <i className="dot" style={{ background: groupColor(x.grp) || "rgba(255,255,255,.45)" }} aria-hidden="true" />
+              <b>{gWhat(x) || x.name}</b>
+              <span className="v">{x.at || ""}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+  const wind = c || hrs.length ? (
+    <section className="sc-pn">
+      <h3>
+        Rüzgâr
+        {c?.by ? <small>{c.by}</small> : null}
+      </h3>
+      {c ? (
+        <>
+          <div className="sc-pnb">
+            {c.kn}
+            <small>kn</small>
+          </div>
+          <p className="sc-pns">
+            {c.dir != null ? gArrow(c.dir) : null}
+            {[dirText(c), gustText(c)].filter(Boolean).join(" · ")}
+          </p>
+        </>
+      ) : null}
+      {hrs.length ? (
+        <ul className="sc-pnl end">
+          {hrs.map((h) => (
+            <li key={`${h.tm ? 1 : 0}${h.hh}`}>
+              <b>{`${h.tm ? "Yarın " : ""}${h.hh}:00`}</b>
+              <span className="v">
+                {h.dir != null ? gArrow(h.dir) : null}
+                {kn(h)}
+                {h.dir != null ? <small>{dirShort(h.dir)}</small> : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  ) : null;
+  const ranked = ours.some((x) => x.p !== "");
+  const oursCol = ours.length ? (
+    <section className={`sc-pn${onAth ? " tap" : ""}`} onClick={onAth || undefined}>
+      <h3>
+        Sporcularımız
+        <small>{ranked ? "Sıra" : ours.length}</small>
+      </h3>
+      <ul className="sc-pnl">
+        {ours.map((x) => (
+          <li key={`${x.cls}${x.sail}`}>
+            <small className="no">{x.sail}</small>
+            <b>{x.name || x.sail}</b>
+            <span className="v">
+              {x.g ? <i className="dot" style={{ background: groupColor(x.g) || "#ffd23f" }} aria-hidden="true" /> : null}
+              {x.p !== "" ? `${x.p}${/^\d+$/.test(String(x.p)) ? "." : ""}` : pre || !x.g ? <small>{x.cls}</small> : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ) : null;
+  const join = byCls.length ? (
+    <section className="sc-pn">
+      <h3>
+        Katılım
+        <small>{en.length}</small>
+      </h3>
+      <ul className="sc-pnl">
+        {byCls.map(([k, n]) => (
+          <li key={k}>
+            <b>{k}</b>
+            <span className="v">{n}</span>
+          </li>
+        ))}
+        {girls ? (
+          <li>
+            <b>Kızlar</b>
+            <span className="v">{girls}</span>
+          </li>
+        ) : null}
+        {clubs ? (
+          <li>
+            <b>Kulüp</b>
+            <span className="v">{clubs}</span>
+          </li>
+        ) : null}
+      </ul>
+    </section>
+  ) : null;
+  const cols = (pre ? [clock, oursCol, join] : [clock, wind, oursCol || join]).filter(Boolean);
+  return (
+    <div className="sc-pano" style={{ "--pn-n": cols.length }}>
+      <header className="sc-pnh">
+        <b>{data.plan?.title || r.name || "Yarış"}</b>
+        <span>{[r.place, r.startDate ? (r.endDate && r.endDate !== r.startDate ? `${dayText(r.startDate)} – ${dayText(r.endDate)}` : dayText(r.startDate)) : ""].filter(Boolean).join(" · ")}</span>
+      </header>
+      <div className="sc-pnc">{cols.map((x, i) => <Fragment key={i}>{x}</Fragment>)}</div>
+    </div>
+  );
+}
 // sıradaki startın grubundaki sporcular (eski sol sütun, Seyhun 2026-11-03 19:59): günün grup listesi, yoksa sınıfın kayıt listesi
 function scBoats(data, who, today) {
   const all = data.entries || [];
@@ -2945,6 +3092,7 @@ const BAR_ICON = {
 function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, onOpen, rk = null, onFull, onStart = null, onWind = null, vidRef = null, myVid = "", ctl = null, hide = false, onHide, follow = false, onFollow = null, label = "", masaRef = null, onGive = null, airLabel = "", onAddSrc = null, boat = null, onMasa = null, masaTab = "", masaAyar = false, photos = [], defCam = "", onCards = null, onSrcMenu = null, onTalk = null, onResult = null, resMsg = "" }) {
   const [crsView, setCrsView] = useState(null); // Parkur panelinde bakılan sınıf (null: o anki yarışın parkuru, "": herkes)
   const [crsOpen, setCrsOpen] = useState(false); // üstteki Parkur kutusuna dokununca açılan seçim alanı
+  const [more, setMore] = useState(false); // ⋯ menüsü açık
   // üstte yazan parkur: o anki / sıradaki yarışın sınıfınınki, yoksa seçili
   const pkCls = (sel && data.rounds?.[sel.id]?.cls) || (data.plan?.order || [])[0]?.cls || "";
   const pkCard = pkCls ? cardFor(cleanCourse(data.course || {}), pkCls, "") : selCard(cleanCourse(data.course || {}));
@@ -3112,6 +3260,12 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
       if (g && g.d > 80) close();
     },
   };
+  // ⋯ (Seyhun 2026-11-13 "o butonlar hiç kullanışlı değil"): iPad yatayda çubuk altta tek sıra; Ekranda, Ayarlar ve Gizle bu menüde (sahne.css)
+  const menu = [
+    picks && (!follow || !masaRef) ? ["src", "Ekranda", label, () => tap("src")] : null,
+    onMasa && !airBtns ? ["ayar", "Ayarlar", "", () => onMasa("ev", true)] : null,
+    onHide ? ["hide", "Düğmeleri gizle", "", () => (onOpen(""), onHide(true))] : null,
+  ].filter(Boolean);
   const tap = (k) => {
     if (on === k) return close();
     if (k === "start") return (onOpen("start"), onStart());
@@ -3367,7 +3521,7 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
             {bar.map(([k, l, dot]) => {
               const gear = (!airBtns && k === "m:ev") || k === "talk";
               return (
-                <button key={k} type="button" className={`${k === "start" ? "go" : ""}${gear ? " gear" : ""}${isOn(k) ? " on" : ""}`} aria-pressed={isOn(k)} aria-label={gear ? l : undefined} onClick={() => (k.startsWith("m:") ? (isOn(k) ? close() : onMasa(k.slice(2), gear)) : tap(k))}>
+                <button key={k} type="button" data-k={k} className={`${k === "start" ? "go" : ""}${gear ? " gear" : ""}${isOn(k) ? " on" : ""}`} aria-pressed={isOn(k)} aria-label={gear ? l : undefined} onClick={() => (k.startsWith("m:") ? (isOn(k) ? close() : onMasa(k.slice(2), gear)) : tap(k))}>
                   {BAR_ICON[k === "talk" ? "mic" : gear ? "gear" : k.replace("m:", "")] || null}
                   {gear ? null : <span>{k === "course" ? "Parkur" : l}</span>}
                   {dot ? <i aria-hidden="true" /> : null}
@@ -3378,6 +3532,23 @@ function ScView({ data, sel, mode, now, prog = [], cams, pos, cam, onCam, open, 
               <button type="button" className="gear hide" aria-label="Düğmeleri gizle" onClick={() => (onOpen(""), onHide(true))}>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
+            ) : null}
+          </div>
+        ) : null}
+        {menu.length ? (
+          <div className={`sc-vmenu${more ? " on" : ""}`}>
+            <button type="button" className="sc-vmb" aria-label="Daha fazla" aria-expanded={more} onClick={() => setMore(!more)}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="19" cy="12" r="1.9" /></svg>
+            </button>
+            {more ? (
+              <div className="sc-vmp" role="menu">
+                {menu.map(([k, n, v, go]) => (
+                  <button key={k} type="button" role="menuitem" onClick={() => (setMore(false), go())}>
+                    <span>{n}</span>
+                    {v ? <small>{v}</small> : null}
+                  </button>
+                ))}
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -3409,7 +3580,7 @@ function scPick({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast 
   const auto = evreOf(mode, seqMode, soon, "", { fs: /genel/i.test(vd?.void || ""), aban: /abandone|iptal/i.test(vd?.void || "") });
   return { ...p, sd, vid, evre, auto, has, sc: itemScene(p.item, sd.screen?.kind === "rec") };
 }
-function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null, view = "", rk = null, past = false, still = false }) {
+function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, sc, item = "", evre = "", onFull, bar = null, view = "", rk = null, past = false, still = false, onAth = null }) {
   const back = useInAppBack(); // uygulama içinden açıldıysa yarış adının başında geri oku
   // izleyicinin açtığı Rüzgâr / Sıralama / Parkur (Seyhun 2026-11-05 "yukarıdan açılsın"): süre kartının altından açılır, sahne değişmez
   const drop =
@@ -3461,6 +3632,7 @@ function Sahne({ data, sel, entry, cs, prog, today, now, mode, seqMode, fsLast, 
       <div className="sc-body" key={sc}>
         {body}
       </div>
+      {still && bar ? <ScPano data={data} t={t} prog={prog} today={today} now={now} onAth={onAth} /> : null}
       <ScTop rep={sc === "04"} on={live || sc === "04"} grp={vgrp || bgrp} auto={autoRep} logo={bar ? { back } : null} card={colCard ? <ScClock t={t} data={data} sel={sel} mode={mode} now={now} today={today} noWind={still || (sc === "01" && item === "wind")} drop={drop} /> : null}>
         {mode === "seq" || mode === "race" ? <ScOthers data={data} sel={sel} today={today} now={now} /> : null}
         {bside ? <ScGroup key={bgrp} data={data} who={lwho} today={today} now={now} slim /> : listOn ? side === "gen" || (!lwho?.grp && mode !== "race" && scBoards(data).length) ? <ScGen data={data} who={lwho} now={now} onFull={onFull} /> : <ScFleet data={data} sel={sel} mode={mode} now={now} who={lwho} today={today} onFull={onFull} /> : null}
@@ -3709,7 +3881,7 @@ export function LiveScreen({ id, y = "" }) {
         </div>
       ) : null}
       <div className="lv-page lv-ov">
-        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} still={still} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} masaAyar={vTab === "masa" && !!masaAdd?.ayar} onSrcMenu={adm && inApp && !demoOn ? srcMenu : null} onCards={(adm && inApp) || demoOn ? (k) => setCrsReq({ k, n: Date.now(), at: new Date().toISOString() }) : null} onTalk={adm && !demoOn ? () => setTalkN(Date.now()) : null} onResult={adm && inApp && !demoOn ? (file) => (setResMsg("Okunuyor…"), setResFile((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} resMsg={resMsg} /> : null} />
+        <Sahne data={sd} past={!isCur} sel={sel} entry={entry} cs={cs} prog={prog} today={today} now={nowMs} mode={mode} seqMode={seqMode} fsLast={fsLast} sc={sc} item={item} evre={evre} still={still} onAth={own ? () => setVTab("ath") : null} onFull={own ? setFull : null} bar={own ? <ScView data={data} sel={sel} mode={mode} now={nowMs} prog={prog} cams={cams} pos={pos} cam={phOn ? vCam : camOn} photos={bgPhotos} defCam={BG_DEF} onCam={pickCam} open={vTab} onOpen={setVTab} rk={vwOn && vView === "rank" ? { tab: rkTab, setTab: setRkTab, auto: rkAuto, setAuto: setRkAuto } : null} onFull={setFull} onStart={adm && !demoOn ? () => setStOpen(true) : null} onWind={adm && !demoOn ? () => setWdOpen(true) : null} vidRef={adm && inApp && !demoOn ? setVidHost : null} myVid={myVid.id} ctl={sd.screen?.kind === "boats" && !myVid.url ? <BoatCtl groups={pos} grp={sd.screen.grp || ""} onGrp={(g) => (setBoatX(""), pickCam(`b:${g}`))} onList={boatAdm ? (file) => (setListMsg("Okunuyor…"), setNewList((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} listMsg={listMsg} /> : null} boat={boatMode} hide={barHide} onHide={setBarHide} follow={follow} onFollow={setFollow} label={onLabel} masaRef={adm && inApp && !demoOn ? setMasaHost : null} onGive={canGive ? doGive : null} airLabel={airLabel} onAddSrc={adm && inApp && !demoOn ? addSrcAt : null} onMasa={adm && inApp && !demoOn ? masaAt : null} masaTab={vTab === "masa" ? masaAdd?.tab || "now" : ""} masaAyar={vTab === "masa" && !!masaAdd?.ayar} onSrcMenu={adm && inApp && !demoOn ? srcMenu : null} onCards={(adm && inApp) || demoOn ? (k) => setCrsReq({ k, n: Date.now(), at: new Date().toISOString() }) : null} onTalk={adm && !demoOn ? () => setTalkN(Date.now()) : null} onResult={adm && inApp && !demoOn ? (file) => (setResMsg("Okunuyor…"), setResFile((x) => ({ file, n: (x?.n || 0) + 1 }))) : null} resMsg={resMsg} /> : null} />
         {warm && !demoOn && id ? <LiveStart raceId={id} open={stOpen && vTab === "start"} onClose={() => (setStOpen(false), setVTab(""))} onReady={setAdm} wind={wdOpen} onWindClose={() => setWdOpen(false)} vidHost={vTab === "vid" ? vidHost : null} playing={myVid.id} onPlay={playMine} stream={data.stream || null} auto={own} masaHost={vTab === "masa" ? masaHost : null} addCat={masaAdd} now={masaNow} pos={pos} give={give} onGiven={onGiven} list={newList} onListed={onListed} cards={crsReq} talkN={talkN} resFile={resFile} onResDone={onResDone} /> : null}
       </div>
       {demoOn ? <DemoBar ctl={demo.ctl} /> : null}
