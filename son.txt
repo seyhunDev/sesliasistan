@@ -1,8 +1,8 @@
-Commit: eb9ff07 · Sol menü ve alt çubuk lacivert, logo altta, Yazarak sor klavye düğmesi (#1416)
-Zaman: 2026-11-13-1606 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43427783933
+Commit: 75e69ca · Sol menü: logo solda büyük, klavye ve konuşma aynı yuvarlak, üstte boşluk (#1419)
+Zaman: 2026-11-13-1704 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43436014932
 
-TAM TEST · 13.11.2026 15:45:38
+TAM TEST · 13.11.2026 16:43:13
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1410/1441 geçti · 31 kalan · 1277 sn
+SONUÇ: 1411/1441 geçti · 30 kalan · 1275 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -271,7 +271,7 @@ SONUÇ: 1410/1441 geçti · 31 kalan · 1277 sn
   ✗ Geniş ekran (sol menü): 2/3
       ✗ “1280×800”
           beklenen: sol menüde asistan düğmesi ve “Yazarak sor”
-          olan:     1 düğme · Yazarak sor 0 · x=16
+          olan:     1 düğme · Yazarak sor 0 · x=175
   ✓ Asistan raporu: 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
   ✓ Instagram gönderisi: 1/1
@@ -284,10 +284,10 @@ SONUÇ: 1410/1441 geçti · 31 kalan · 1277 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 16 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 17 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 16 · açıklama 16 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 17 · açıklama 17 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
@@ -302,7 +302,7 @@ SONUÇ: 1410/1441 geçti · 31 kalan · 1277 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/22
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 16/22
   ✗ Yarış sayfası: 11/14
       ✗ “yarış günü, sporcu seçili”
           beklenen: çökmeden açılır, "Canlı ekran" görünür
@@ -313,10 +313,7 @@ SONUÇ: 1410/1441 geçti · 31 kalan · 1277 sn
       ✗ “bütün sekmeler”
           beklenen: her sekme çökmeden açılır
           olan:     2 sekme açıldı
-  ✗ Antrenman: 2/3
-      ✗ “telefon: bitiren kim, alt düğme”
-          beklenen: çökmeden açılır, "Sıralama" görünür
-          olan:     ana düğme Yarışı bitir · kare 1 · dokununca Start ver · kutu 236/236 · düğme 783/782
+  ✓ Antrenman: 3/3
   ✓ Asılı bağlantı: 2/2
   ✗ Yayın: 0/3
       ✗ “gruplar ayrı, ekranda seçim, kameralar”
