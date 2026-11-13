@@ -1,8 +1,8 @@
-Commit: 9331e12 · Yazarak sor: klavye açıkken lacivert kutu klavyeye yapışık, arkası karartma, düğmeler aynı yuvarlak (#1421)
-Zaman: 2026-11-13-1919 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43457608916
+Commit: e58418a · TFF yarış listesi telefonda saklanır, anında görünür (#1423)
+Zaman: 2026-11-13-2311 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43495754720
 
-TAM TEST · 13.11.2026 18:56:51
+TAM TEST · 13.11.2026 22:49:47
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1411/1441 geçti · 30 kalan · 1349 sn
+SONUÇ: 1411/1441 geçti · 30 kalan · 1278 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -284,10 +284,10 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1349 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 20 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 23 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 20 · açıklama 20 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 23 · açıklama 23 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
