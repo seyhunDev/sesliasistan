@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useWindObs } from "./useWindObs";
+import { radarByHour, useRainRadar } from "./useRainRadar";
+import { hereLine, radarRows, rainLine } from "./rainLine";
 import { dayHours, dirDeg, getPlace, nowOf, sky, windName } from "./weather";
 import { dayPlans, dayWeather, planTone } from "@/lib/homeTiles";
 
@@ -58,6 +60,11 @@ export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "H
   const cur = n && (real ? { ...n, wind: Math.round(real.wind), gust: real.gust != null ? Math.round(real.gust) : n.gust, dir: real.dir ?? n.dir } : n);
   const dname = isToday ? "Bugün" : cap(new Date(`${date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric" }));
   const open = onOpen || (() => refresh?.(true));
+  // Yağış (Seyhun 2026-11-13 "son bulutlara göre… bulunduğumuz alanda yağmur beklentisi varsa grafikte de göster, beklenen miktarla"):
+  // bugün radar (son 2 saat) burada yağış görmediyse o saatlerin tahmin yağışı düşer (radarRows); grafikte saat saat mm çubukları, altta tek satır
+  const radar = useRainRadar(isToday ? place : null);
+  const wr = isToday ? radarRows(rows, radar) : rows;
+  const rain = rainSum(wr, isToday ? nowH : -1, isToday ? radar : null);
   return (
     <section className="iph-pn iph-wx" aria-label="Hava">
       <button type="button" onClick={w ? open : () => refresh?.(true)} className="iph-now" aria-label="Hava ayrıntısı">
@@ -94,6 +101,12 @@ export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "H
               <i className="iph-dash" />
               sağanak
             </span>
+            {rain.any && (
+              <span className="text-[#7fb0ff]">
+                <i className="!h-2 !w-1.5 bg-[#7fb0ff]" />
+                yağış
+              </span>
+            )}
             {day.rows.length > 0 && (
               <span className="text-white">
                 <i className="bg-white" />
@@ -102,10 +115,31 @@ export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "H
             )}
           </span>
         </span>
-        <WindChart rows={rows} nowH={isToday ? nowH : null} onOpen={open} obs={day.rows} />
+        <WindChart rows={wr} nowH={isToday ? nowH : null} onOpen={open} obs={day.rows} />
+        {rain.text && (
+          <p className={`mt-1.5 flex items-start gap-2 px-1 leading-snug text-[0.8125rem] font-semibold ${rain.hot ? "text-[#ffa94d]" : "text-[#7fb0ff]"}`} aria-label="Yağış">
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-bold text-[#0b1a33] ${rain.hot ? "bg-[#ffa94d]" : "bg-[#7fb0ff]"}`}>Yağış</span>
+            <span className="min-w-0 pt-px">{rain.text}</span>
+          </p>
+        )}
       </div>
     </section>
   );
+}
+
+// Yağış satırı: tahminin kalanı, sonra radar şu an burada/yakında yağış görüyorsa o (saatiyle) ("16–18 arası orta, 4 mm bekleniyor").
+// Bugün yağış ne görünüyor ne bekleniyorsa satır yok. Başka gün: bütün günün tahmini.
+const HM = (ms) => new Date(ms).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+function rainSum(rows, nowH, radar) {
+  const rs = rows || [];
+  const fc = rs.map((r) => r.mm || 0);
+  const any = fc.some((v) => v >= 0.1);
+  const nowAt = nowH == null || nowH < 0 ? -1 : rs.findIndex((r) => +r.hh === nowH);
+  const ahead = any ? rainLine(rs, fc, nowAt, 0, radar ? radarByHour(radar) : {}) : { text: "", hot: false };
+  const here = radar ? hereLine(radar, false, HM) : "";
+  const fut = ahead.text.replace(/^Şimdi yağıyor · /, "").replace(/^sonra beklenmiyor$/, "");
+  const text = [fut, here].filter(Boolean).join(" · "); // önce beklenen miktar (telefonda kısa satırda görünsün)
+  return { any, text, hot: ahead.hot || /kuvvetli/.test(here) };
 }
 
 // Pusula: dış halkada yön çizgileri, beyaz üçgen rüzgârın geldiği yön, yanında sağanak yayı (renk = kn); ortada şimdiki rüzgâr
@@ -159,7 +193,7 @@ export function Compass({ wind, gust, dir }) {
 }
 
 
-// Seçili günün rüzgâr eğrisi (06–24): dolgu rüzgâr (tahmin), kesik çizgi sağanak, beyaz çizgi + noktalar ölçülen (istasyon); altında 3 saatlik bloklarda rüzgâr aralığı, gök, sıcaklık; bugünse kırmızı çizgi şimdi
+// Seçili günün rüzgâr eğrisi (06–24): mavi çubuklar saat saat yağış (mm), dolgu rüzgâr (tahmin), kesik çizgi sağanak, beyaz çizgi + noktalar ölçülen (istasyon); altında 3 saatlik bloklarda rüzgâr aralığı, gök, sıcaklık; bugünse kırmızı çizgi şimdi
 export function WindChart({ rows, nowH, onOpen, obs = [] }) {
   const [ref, W] = useWidth();
   const H = 196;
@@ -185,6 +219,11 @@ export function WindChart({ rows, nowH, onOpen, obs = [] }) {
   const oLine = (k) => ob.filter((o) => o[k] != null).map((o, i) => `${i ? "L" : "M"}${X(o.x).toFixed(1)} ${Y(o[k]).toFixed(1)}`).join(" ");
   const line = (k) => pts.map((p, i) => `${i ? "L" : "M"}${X(p.x).toFixed(1)} ${Y(p[k] ?? p.wind).toFixed(1)}`).join(" ");
   const area = pts.length ? `M${X(pts[0].x)} ${wy1} ${line("wind").replace(/^M/, "L")} L${X(pts.at(-1).x)} ${wy1}Z` : "";
+  // Yağış çubukları (mm/saat): grafiğin altından yukarı, en çok olan saatin üstünde miktar
+  const wet = pts.filter((p) => p.mm >= 0.1);
+  const mmTop = Math.max(4, ...wet.map((p) => p.mm));
+  const bw = Math.max(3, ((W - 42) / (H1 - H0)) * 0.55);
+  const peak = wet.length ? wet.reduce((a, p) => (p.mm > a.mm ? p : a), wet[0]) : null;
   const nowWind = nowH != null && pts.length ? pts.reduce((a, p) => (Math.abs(p.x - nowH) < Math.abs(a.x - nowH) ? p : a), pts[0]).wind : null;
   return (
     <div ref={ref} role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} className="relative cursor-pointer" style={{ height: H }} aria-label="Saat saat rüzgâr">
@@ -204,6 +243,15 @@ export function WindChart({ rows, nowH, onOpen, obs = [] }) {
               </text>
             </g>
           ))}
+          {wet.map((p) => {
+            const h = Math.max(3, (p.mm / mmTop) * 40);
+            return <rect key={p.x} x={X(p.x) - bw / 2} y={wy1 - h} width={bw} height={h} rx="1.5" fill="#7fb0ff" opacity=".7" />;
+          })}
+          {peak && (
+            <text x={X(peak.x)} y={wy1 - Math.max(3, (peak.mm / mmTop) * 40) - 4} fill="#7fb0ff" fontSize="10.5" fontWeight="700" textAnchor="middle">
+              {peak.mm < 10 ? peak.mm.toFixed(1).replace(".", ",") : Math.round(peak.mm)} mm
+            </text>
+          )}
           <path d={area} fill="url(#iph-wz)" />
           <path d={line("wind")} stroke="#8fb3ff" strokeWidth="2.2" fill="none" />
           <path d={line("gust")} stroke="#8fb3ff" strokeWidth="1.3" strokeDasharray="4 4" fill="none" opacity=".7" />

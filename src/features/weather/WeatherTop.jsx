@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { useRainRadar } from "./useRainRadar";
-import { NowRain } from "./NowRain";
 import { radarNow, radarRows } from "./rainLine";
 import { RegionMap, pointName } from "./RegionMap";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -91,7 +90,6 @@ export function WeatherTop({ w, err, refresh }) {
         <section className="iph-pn" aria-label="Saat saat">
           <span className="iph-pt">Saat saat · {dname}</span>
           {rows.length > 0 && <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} flat />}
-          {isToday && <NowRain place={place} rows={fcRows} radar={radar} />}
         </section>
         <section className="iph-pn" aria-label="Bölge">
           <span className="iph-pt">
