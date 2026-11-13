@@ -316,7 +316,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
               Elle yaz
             </button>
             <button type="button" disabled={busy} onClick={() => pick.current?.click()} data-press className="btn btn-secondary h-12 flex-[2]">
-              {busy ? "Sonuçlar okunuyor…" : "Sonuç PDF'i ekle"}
+              {"Sonuç PDF'i ekle"}
             </button>
           </div>
         </>
@@ -328,7 +328,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
             </button>
           )}
           <button type="button" disabled={busy} onClick={() => pick.current?.click()} data-press className="btn btn-primary h-14 w-full">
-            {busy ? "Sonuçlar okunuyor…" : "Sonuç PDF'i yükle"}
+            {"Sonuç PDF'i yükle"}
           </button>
         </Bar>
       )}
