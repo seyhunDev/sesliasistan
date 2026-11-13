@@ -26,7 +26,7 @@ import { dropNoticeFile, loadNoticeFile, noticeName, noticePdf, saveNoticeFile }
 import { NoticeDetails, NoticeUpload } from "./NoticeView";
 import { RaceHotels } from "./RaceHotels";
 import { MailTo } from "@/features/mail/MailTo";
-import { openFile, shareFile } from "./fileActions";
+import { openFile, printFile, shareFile } from "./fileActions";
 import { BudgetView } from "./BudgetView";
 import { tl, totals } from "./budget";
 import { BUDGET_ONLY, buildAthleteSheet, sheetParts } from "./athleteSheet";
@@ -37,6 +37,7 @@ import { ResultsAdd } from "./ResultCards";
 import { RaceTrack } from "./RaceTrack";
 import { RaceAdd } from "./RaceAddSheet";
 import { ContactLinks } from "./ContactLinks";
+import { FORM_DOCS, FORM_NAMES, TaskLinks, isFinal } from "./TaskLinks";
 import { takeRaceDraft } from "./raceDraft";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
 import { RACE_KEY } from "@/features/posts/postModel";
@@ -468,6 +469,35 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
     setMailing(false);
   };
   const share = (f = file) => shareFile(f);
+  // Kesin kayıt formları (antrenör kayıt + katılım bildirim) tek PDF; bilgiler değişmedikçe aynı dosya kullanılır.
+  // Telefonda paylaşım dokunuştan hemen sonra istenir: hazırlama uzun sürüp izin düşerse dosya hazır kalır, ikinci basışta gider.
+  const [forms, setForms] = useState(null); // { key, file }
+  const [formBusy, setFormBusy] = useState("");
+  const formAct = async (kind) => {
+    if (!chosen.length) return go("people"), toast("En az bir sporcu seç");
+    let f = forms?.key === docsKeyNow ? forms.file : null;
+    if (!f) {
+      setFormBusy(kind);
+      try {
+        const docR = { ...r, letterDate: r.letterDate || todayStr(), endDate: r.endDate || r.startDate };
+        const bytes = await buildRaceDocs(docR, forDocs, await loadFonts(), FORM_DOCS, coach);
+        const slug = r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris";
+        f = new File([bytes], `${slug}-kesin-kayit.pdf`, { type: "application/pdf" });
+        setForms({ key: docsKeyNow, file: f });
+      } catch (e) {
+        toast(e?.message || "Formlar hazırlanamadı");
+      }
+      setFormBusy("");
+      if (!f) return;
+    }
+    if (kind === "print") return printFile(f);
+    if (!navigator.canShare?.({ files: [f] })) return openFile(f, true);
+    try {
+      await navigator.share({ files: [f], title: f.name });
+    } catch (e) {
+      if (e?.name === "NotAllowedError") toast("Formlar hazır, Gönder'e yeniden bas");
+    }
+  };
   const [signOpen, setSignOpen] = useState(false);
   const [openPart, setOpenPart] = useState(null); // sporcuları açık belge (veli izni, kulüp izni)
   // Evrak uygulama içinde açılır (üstte kapat düğmesi); yeni sekmede açılınca uygulamaya dönüş yoktu
@@ -871,13 +901,14 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
   const taskRow = (s) => {
     const left = s.date ? daysTo(s.date) : null;
     return (
-      <li key={s.key} className="flex items-start gap-1 pl-1">
+      <li key={s.key} className="flex flex-wrap items-start gap-1 pl-1 sm:flex-nowrap">
         <button type="button" onClick={() => markStep(s, true)} aria-label={`${s.label}: yapıldı`} data-press className="btn btn-icon mt-0.5 shrink-0">
           <span className="size-[1.375rem] rounded-full border-2 border-line" />
         </button>
         <span className="min-w-0 flex-1 py-2.5">
           <span className="block break-words text-[0.9375rem] font-medium leading-snug">{s.label}</span>
           {s.detail && <span className="mt-0.5 block break-words text-[0.8125rem] leading-snug text-mut">{s.detail}</span>}
+          {!s.detail && isFinal(s.label) && !r.abroad && <span className="mt-0.5 block break-words text-[0.8125rem] leading-snug text-mut">{FORM_NAMES}</span>}
           {s.detail && <ContactLinks text={s.detail} place={placeText(r)} />}
         </span>
         {left !== null && left <= 14 ? (
@@ -887,6 +918,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
         ) : (
           <span className="mt-3 shrink-0 text-[0.8125rem] text-mut">{s.date ? shortDay(s.date) : s.detail ? "" : stepSrc[s.group]}</span>
         )}
+        <TaskLinks label={s.label} abroad={r.abroad} busy={formBusy} onSend={() => formAct("send")} onPrint={() => formAct("print")} />
         <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} data-press className="btn btn-icon btn-sm mt-1.5 shrink-0 text-mut/60">
           <Icon name="x" className="size-3.5" />
         </button>
