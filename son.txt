@@ -1,8 +1,8 @@
-Commit: 3960711 · Yarış detayı: kesik yazı yok, iş notunda Ara ve Harita (#1411)
-Zaman: 2026-11-13-1321 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43405608863
+Commit: eb9ff07 · Sol menü ve alt çubuk lacivert, logo altta, Yazarak sor klavye düğmesi (#1416)
+Zaman: 2026-11-13-1606 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43427783933
 
-TAM TEST · 13.11.2026 12:59:48
+TAM TEST · 13.11.2026 15:45:38
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1412/1441 geçti · 29 kalan · 1322 sn
+SONUÇ: 1410/1441 geçti · 31 kalan · 1277 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4554 test”
+      ✗ “4561 test”
           beklenen: hepsi geçer
-          olan:     4506/4554 geçti
+          olan:     4513/4561 geçti
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “Yarışlar geri dönüş” → false (beklenen: liste racesNow ile başlar, yarış 1 dk içindeki listeden açılır)
       ✗ “tek kutu” → false (beklenen: solda kutu, sağda bas-konuş küresi)
@@ -209,7 +209,7 @@ SONUÇ: 1412/1441 geçti · 29 kalan · 1322 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 123/139
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 122/139
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✗ Ana sayfa: 3/8
       ✗ “iş düğmeleri”
@@ -268,7 +268,10 @@ SONUÇ: 1412/1441 geçti · 29 kalan · 1322 sn
           beklenen: kişi okunur, yapay zekaya gitmez
           olan:     hata: dome is not defined
   ✓ Asistanın gizli olduğu yerler: 8/8
-  ✓ Geniş ekran (sol menü): 3/3
+  ✗ Geniş ekran (sol menü): 2/3
+      ✗ “1280×800”
+          beklenen: sol menüde asistan düğmesi ve “Yazarak sor”
+          olan:     1 düğme · Yazarak sor 0 · x=16
   ✓ Asistan raporu: 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
   ✓ Instagram gönderisi: 1/1
@@ -281,10 +284,10 @@ SONUÇ: 1412/1441 geçti · 29 kalan · 1322 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 14 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 16 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 14 · açıklama 14 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 16 · açıklama 16 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
@@ -299,7 +302,7 @@ SONUÇ: 1412/1441 geçti · 29 kalan · 1322 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 16/22
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/22
   ✗ Yarış sayfası: 11/14
       ✗ “yarış günü, sporcu seçili”
           beklenen: çökmeden açılır, "Canlı ekran" görünür
@@ -310,7 +313,10 @@ SONUÇ: 1412/1441 geçti · 29 kalan · 1322 sn
       ✗ “bütün sekmeler”
           beklenen: her sekme çökmeden açılır
           olan:     2 sekme açıldı
-  ✓ Antrenman: 3/3
+  ✗ Antrenman: 2/3
+      ✗ “telefon: bitiren kim, alt düğme”
+          beklenen: çökmeden açılır, "Sıralama" görünür
+          olan:     ana düğme Yarışı bitir · kare 1 · dokununca Start ver · kutu 236/236 · düğme 783/782
   ✓ Asılı bağlantı: 2/2
   ✗ Yayın: 0/3
       ✗ “gruplar ayrı, ekranda seçim, kameralar”
