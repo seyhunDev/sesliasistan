@@ -3,9 +3,9 @@
 import { openExternal } from "@/lib/externalLinks";
 
 // Dış projeye giden kart (Seyhun 2026-11-12 "Velora Simülatör"): bulunduğu alanın genişliğinde, lacivert, beyaz rozet + dalga, sağ üstte ↗
-export function LinkTile({ title, href, icon = <SailMark /> }) {
+export function LinkTile({ title, href, onOpen, icon = <SailMark /> }) {
   return (
-    <button type="button" data-press className="lt" onClick={() => openExternal(href)} aria-label={`${title} (dışarıda açılır)`}>
+    <button type="button" data-press className="lt" onClick={() => (onOpen ? onOpen() : openExternal(href))} aria-label={`${title} (dışarıda açılır)`}>
       <span className="lt-ic">{icon}</span>
       <b className="lt-t truncate">{title}</b>
       <span className="lt-go" aria-hidden>
