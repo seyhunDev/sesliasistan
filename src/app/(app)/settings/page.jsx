@@ -18,6 +18,7 @@ import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { PastChatsRow } from "@/features/settings/PastChats";
 import { EnergyRow } from "@/features/settings/Energy";
 import { buildLine } from "@/lib/buildInfo";
+import { openText, readOpens } from "@/lib/openTime";
 import { logout } from "@/lib/auth";
 import { FaceIdRow } from "@/features/ios/AppLock";
 import { KIND_LABEL, kindOf } from "@/lib/kinds";
@@ -63,6 +64,12 @@ function VersionRow() {
       <p className="px-4 pb-3.5 text-[0.875rem] leading-snug text-mut">{more}</p>
     </Fold>
   );
+}
+
+// Açılış süresi: bu cihazdaki son açılışlar (lib/openTime.js)
+function OpenRow() {
+  const [text] = useState(() => (typeof window === "undefined" ? "" : openText(readOpens())));
+  return text ? <Row title="Açılış süresi" sub={text} /> : null;
 }
 
 // Ana hesap dışındaki kişiler (çalışan, aile, sporcu…): yalnız kişinin kendisine gereken ayarlar (Seyhun, 2026-10-19).
@@ -159,6 +166,7 @@ export default function SettingsPage() {
           <PasswordRow />
           <FaceIdRow />
           <VersionRow />
+          <OpenRow />
           <Row title="Çıkış yap" danger onClick={() => logout()} />
         </Sec>
 
