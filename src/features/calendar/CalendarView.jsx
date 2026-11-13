@@ -101,6 +101,9 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
   const ttl = side ? "block text-[1rem] font-semibold leading-snug" : "line-clamp-2 text-[0.9375rem] font-semibold leading-snug";
   const sub = side ? "mt-0.5 block text-[0.8125rem] leading-snug text-mut" : "line-clamp-2 text-[0.8125rem] leading-snug text-mut";
   const liCls = side ? "overflow-hidden rounded-2xl border border-line bg-card" : "";
+  // Durum etiketi (Ana hesap, Yaptı/Yapmadı) adın altında durur: ad satırın bütün genişliğini alır, dar sütunda (iPad'de yan liste)
+  // kelime ortasından bölünmez (Seyhun 2026-11-13: "Antrenma / n")
+  const under = (node) => (node ? <span className="mt-1.5 flex">{node}</span> : null);
   const KC = { g: "#16a34a", bl: "#2563eb", or: "#ea580c" };
   const kindOf = (x) => (/antrenman/i.test(x.cat || "") ? "g" : /yarış|toplantı/i.test(x.cat || "") ? "bl" : "or");
 
@@ -301,8 +304,8 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
                           {isImportant(p) && <ImpTag />}
                           {[left, tag, multi && `${dm(p.date)} – ${dm(p.endDate)}`, p.place].filter(Boolean).join(" · ")}
                         </small>
+                        {under(pillOf(p))}
                       </span>
-                      {pillOf(p)}
                     </button>
                   </li>
                 );
@@ -316,8 +319,8 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
                       <span className="min-w-0 flex-1">
                         <b className={ttl}>{f.mine ? f.plan.fit?.name || f.plan.title || "Fitness" : f.name}</b>
                         <small className={sub}>{["Fitness", !f.mine && (f.plan.fit?.name || f.plan.title)].filter(Boolean).join(" · ")}</small>
+                        {under(st && <Tag tone={tone}>{st}</Tag>)}
                       </span>
-                      {st && <Tag tone={tone}>{st}</Tag>}
                     </button>
                   </li>
                 );
@@ -340,8 +343,8 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
                       <small className={`block truncate text-[0.8125rem] ${!t.done && t.due < today ? "font-semibold text-rec" : "text-mut"}`}>
                         {t.done ? "Yapıldı" : t.due < today ? "Gecikti" : "Görev · son gün"}
                       </small>
+                      {under(pillOf(t))}
                     </span>
-                    {pillOf(t)}
                   </button>
                 </li>
               ))}
