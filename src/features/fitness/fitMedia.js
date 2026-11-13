@@ -5,7 +5,7 @@
 // Harekette yalnız künye durur: media [{ id, type, size, kind photo|video, url }] (en çok 3). url indirme adresidir;
 // video oradan akarak oynar (baştan sona inmesi beklenmez); dosya tarayıcı önbelleğinde kalır.
 // Eski düzen (Firestore'da 900 KB'lık parçalar, url yok) yalnız okunur.
-// Fotoğraf 1280 px JPEG'e küçültülür. Video en çok 60 sn; 25 MB'tan büyükse telefonda 640 px'e küçültülerek yeniden kaydedilir
+// Fotoğraf 2048 px JPEG'e küçültülür (iPad'de büyük kutuda net görünsün). Video en çok 60 sn; 25 MB'tan büyükse telefonda 640 px'e küçültülerek yeniden kaydedilir
 // (video süresi kadar sürer); küçültülemezse en çok 80 MB kabul edilir.
 import { collection, getDocs } from "firebase/firestore";
 import { deleteObject, getMetadata, getStorage, listAll, ref as sref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -115,7 +115,7 @@ export async function shrinkVideo(v, onProg, max = 640, bps = 900_000, audio = f
 // Seçilen dosyayı saklanacak hâle getirir: { blob, type, kind }
 export async function prepMedia(file, onProg) {
   if (isImageFile(file)) {
-    const img = await compressImage(file, 1280, 0.75);
+    const img = await compressImage(file, 2048, 0.85);
     const bytes = Uint8Array.from(atob(img.base64), (ch) => ch.charCodeAt(0));
     return { blob: new Blob([bytes], { type: "image/jpeg" }), type: "image/jpeg", kind: "photo" };
   }

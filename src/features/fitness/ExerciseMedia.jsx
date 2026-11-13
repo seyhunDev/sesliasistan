@@ -87,17 +87,28 @@ export function Viewer({ orgId, m, onClose }) {
 }
 
 // Büyük gösterim (sporcunun hareket ekranı): ilk dosya kenardan kenara, video sessiz ve tekrar ederek oynar
+// Fotoğraf/video kutusunun oranı: dosyanın kendi oranı, en dikte 3:4, en yatayda 16:9 (Seyhun 2026-11-13 "kesilmeden, net").
+// Kutu en çok ekranın %60'ı kadar uzar; dosya hiç kesilmez (object-contain), arta kalan kenar koyu zemin olur.
+export const boxRatio = (r) => (r ? Math.min(16 / 9, Math.max(3 / 4, r)) : 4 / 3);
+export const ratioOf = (e) => {
+  const t = e.currentTarget;
+  const w = t.naturalWidth || t.videoWidth;
+  const h = t.naturalHeight || t.videoHeight;
+  return w && h ? w / h : 0;
+};
+
 export function Big({ orgId, m, onOpen }) {
   const { url, err, fail } = useBlobUrl(orgId, m);
+  const [r, setR] = useState(0);
   if (err) return null;
   return (
-    <button type="button" onClick={() => url && onOpen(m)} aria-label={m.kind === "video" ? "Videoyu büyüt" : "Fotoğrafı büyüt"} className="block aspect-[4/3] w-full overflow-hidden rounded-3xl bg-black/5">
+    <button type="button" onClick={() => url && onOpen(m)} aria-label={m.kind === "video" ? "Videoyu büyüt" : "Fotoğrafı büyüt"} style={{ aspectRatio: boxRatio(r) }} className="block max-h-[60dvh] w-full overflow-hidden rounded-3xl bg-black">
       {!url ? (
         <span className="shimmer block size-full" />
       ) : m.kind === "video" ? (
-        <video src={url} autoPlay loop muted playsInline onError={fail} className="size-full object-cover" />
+        <video src={url} autoPlay loop muted playsInline onError={fail} onLoadedMetadata={(e) => setR(ratioOf(e))} className="size-full object-contain" />
       ) : (
-        <img src={url} alt="" onError={fail} className="size-full object-cover" />
+        <img src={url} alt="" onError={fail} onLoad={(e) => setR(ratioOf(e))} className="size-full object-contain" />
       )}
     </button>
   );

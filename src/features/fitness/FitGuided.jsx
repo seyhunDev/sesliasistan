@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { exById } from "@/lib/fitness/exercises";
-import { Viewer, useBlobUrl } from "./ExerciseMedia";
+import { Viewer, boxRatio, ratioOf, useBlobUrl } from "./ExerciseMedia";
 import { ytEmbed } from "@/lib/fitness/youtube";
 import { guideSteps } from "@/lib/fitness/exerciseGuide";
 import { FEELS, clockText, goalSec, isTimed, nextOpen, restAfter } from "@/lib/fitness/model";
@@ -152,21 +152,24 @@ function MediaBox({ it }) {
   const slides = [...list.map((m) => ({ k: m.id, m })), ...(it.yt?.id ? [{ k: `yt${it.yt.id}`, yt: it.yt }] : [])];
   const [at, setAt] = useState(0);
   const [open, setOpen] = useState(null);
+  const [ratio, setRatio] = useState({});
   const { profile } = useAuth();
   if (!slides.length) return null;
+  const cur = slides[Math.min(at, slides.length - 1)];
+  const r = cur.yt ? 16 / 9 : ratio[cur.k];
   const onScroll = (e) => {
     const el = e.currentTarget;
     setAt(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
   };
   return (
     <div className="relative">
-      <div onScroll={onScroll} className="flex aspect-[4/3] w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden rounded-3xl bg-black [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div onScroll={onScroll} style={{ aspectRatio: boxRatio(r) }} className="flex max-h-[60dvh] w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden rounded-3xl bg-black [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {slides.map((x) => (
           <div key={x.k} className="relative size-full shrink-0 snap-center">
             {x.yt ? (
               <iframe src={ytEmbed(x.yt.id, x.yt.start)} title="Hareket videosu" className="size-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
             ) : (
-              <Slide orgId={profile?.orgId} m={x.m} onOpen={setOpen} />
+              <Slide orgId={profile?.orgId} m={x.m} onOpen={setOpen} onRatio={(v) => setRatio((o) => (o[x.k] === v ? o : { ...o, [x.k]: v }))} />
             )}
           </div>
         ))}
@@ -182,14 +185,14 @@ function MediaBox({ it }) {
     </div>
   );
 }
-function Slide({ orgId, m, onOpen }) {
+function Slide({ orgId, m, onOpen, onRatio }) {
   const { url, err, fail } = useBlobUrl(orgId, m);
   if (err) return <span className="grid size-full place-items-center text-[0.8125rem] text-white/70">{m.kind === "video" ? "Video açılamadı" : "Fotoğraf açılamadı"}</span>;
   if (!url) return <span className="shimmer block size-full" />;
-  if (m.kind === "video") return <video src={url} controls autoPlay loop muted playsInline onError={fail} className="size-full object-cover" />;
+  if (m.kind === "video") return <video src={url} controls autoPlay loop muted playsInline onError={fail} onLoadedMetadata={(e) => onRatio(ratioOf(e))} className="size-full object-contain" />;
   return (
     <button type="button" onClick={() => onOpen(m)} aria-label="Fotoğrafı büyüt" className="block size-full">
-      <img src={url} alt="" onError={fail} className="size-full object-cover" />
+      <img src={url} alt="" onError={fail} onLoad={(e) => onRatio(ratioOf(e))} className="size-full object-contain" />
     </button>
   );
 }
