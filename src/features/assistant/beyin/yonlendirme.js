@@ -411,6 +411,13 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
         return true;
       }
       // Ana hesap: "Ali ile konuşmayı arşivle / arşivden çıkar" hemen; "herkes için sil" onay sorulup sunucuda silinir
+      // "Tüm mesajları okundu say": Mesajlar ⋯ "Tümünü okundu say" ile aynı
+      case "chatReadAll": {
+        const list = (ctx.chats || []).filter((c) => c.unread > 0 && !c._ghost);
+        list.forEach((c) => ctx.chatMarkRead?.(c));
+        reply(list.length ? `${list.length} sohbeti okundu saydım.` : "Okunmamış mesaj yok.", { engine: "local" }, viaVoice);
+        return true;
+      }
       case "chatOp": {
         const { co } = r;
         const dest = ctx.resolveTo(co.who);

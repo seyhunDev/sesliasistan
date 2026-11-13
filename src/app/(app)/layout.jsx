@@ -32,6 +32,7 @@ import { TryAssistant } from "@/features/onboarding/TryAssistant";
 import { SportGate } from "@/sports/SportGate";
 import { installTrail } from "@/lib/navTrail";
 import { NavProgress } from "@/components/ui/NavProgress";
+import { OpenTimer } from "@/components/ui/OpenTimer";
 import { SyncLine } from "@/components/ui/SyncLine";
 import { SwipeBack } from "@/components/ui/SwipeBack";
 
@@ -86,6 +87,7 @@ export default function AppLayout({ children }) {
                 <AssistantProvider>
                  <DockProvider>
                   <NavProgress />
+                  <OpenTimer />
                   <SyncLine />
                   <SwipeBack />
                   <OfflineBanner />

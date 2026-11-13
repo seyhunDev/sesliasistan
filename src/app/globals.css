@@ -1173,7 +1173,7 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
 
 /* MESAJLAR iki bölme (Mac ve yatay iPad, sol menü ≥64rem; messages/page.jsx): solda sohbet listesi (lacivert üst + liste) ekran boyu,
    sağda seçili sohbet; sohbet seçili değilken sağ boş. Telefonda ve dik iPad'de ya liste ya sohbet. */
-.chat-blank { display: none; }
+.chat-blank, .chat-info, .chat-info-txt { display: none; }
 @media (max-width: 63.99rem) { .chat-pane.chat-hide { display: none; } }
 @media (min-width: 64rem) {
   body:not([data-side]) .chat-pane.chat-hide { display: none; }
@@ -1181,11 +1181,18 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
   body[data-side] .chat-pane > main.max-w-\[30rem\] { max-width: none; margin: 0; min-height: 100%; padding-bottom: 2rem; }
   body[data-side] main.chat-view.fixed { left: 39rem; }
   body[data-side] main.chat-view > div.max-w-\[30rem\] { max-width: none; }
-  body[data-side] .chat-blank { display: block; position: fixed; top: 0; bottom: 0; left: 39rem; right: 0; background: var(--bg); }
+  body[data-side] .chat-blank { display: block; position: fixed; top: 0; bottom: 0; left: 39rem; right: 0; overflow-y: auto; background: var(--bg); }
+  /* iPad örneği (2026-11-13): sol menü varken geri düğmesi yok; sabit grup kartları listede değil sağdaki boş tarafta;
+     sohbette ayar simgesi yerine "Bilgi", açılınca sağda panel (dar ekranda mesajların üstüne, geniş ekranda yanına) */
+  body[data-side] :is(.chat-pane, .chat-view) .chat-back, body[data-side] .chat-pane .chat-cards, body[data-side] .chat-view .chat-info-btn { display: none; }
+  body[data-side] .chat-view .chat-info-txt { display: inline-flex; }
+  body[data-side] .chat-view header { padding-left: 1rem; }
+  body[data-side] .chat-info { display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; right: 0; width: 20rem; z-index: 31; background: var(--card); border-left: 1px solid var(--line); padding-top: env(safe-area-inset-top); }
 }
 @media (min-width: 80rem) {
   body[data-side] .chat-pane { width: 26rem; }
   body[data-side] main.chat-view.fixed, body[data-side] .chat-blank { left: 41rem; }
+  body[data-side] main.chat-view.fixed.chat-view-info { right: 20rem; }
 }
 @media (min-width: 48rem) { ul.card-grid.px-3\.5 { padding: 0; } ul.card-grid.px-3\.5 > li { padding-left: 0.875rem; padding-right: 0.875rem; } }
 /* Koyu (lacivert) tam sayfalar (Yoklama, Fitness, İngilizce, Yoklamam): Mac ve yatay iPad'de sayfa bütün genişliği kaplar, yan boşluk yok */
