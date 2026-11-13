@@ -36,6 +36,7 @@ import { Fold, RaceSeg, RaceStats } from "./raceUi";
 import { ResultsAdd } from "./ResultCards";
 import { RaceTrack } from "./RaceTrack";
 import { RaceAdd } from "./RaceAddSheet";
+import { ContactLinks } from "./ContactLinks";
 import { takeRaceDraft } from "./raceDraft";
 import { RaceDayTop, useRacePhase } from "./RaceDayTop";
 import { RACE_KEY } from "@/features/posts/postModel";
@@ -87,8 +88,8 @@ function FileRow({ tag, title, sub, onOpen, onShare, onRemove }) {
       <button type="button" onClick={onOpen} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rec/10 text-[0.625rem] font-bold text-rec">{tag}</span>
         <span className="min-w-0 flex-1">
-          <b className="block truncate text-[0.9375rem] font-semibold">{title}</b>
-          <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>
+          <b className="block break-words text-[0.9375rem] font-semibold">{title}</b>
+          <span className="block break-words text-[0.8125rem] text-mut">{sub}</span>
         </span>
       </button>
       <button type="button" onClick={onShare} aria-label={`${title} paylaş`} data-press className="btn btn-icon size-10 shrink-0 text-acc">
@@ -121,7 +122,7 @@ function PeopleList({ people, openPdf, share }) {
         <li key={p.id} className="flex items-center gap-1 pl-1">
           <button type="button" onClick={() => openPdf(p.file)} data-press="row" className="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 text-left">
             <span className="grid size-7 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-bold text-acc">{initialsOf(p.name)}</span>
-            <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{p.name}</span>
+            <span className="min-w-0 flex-1 break-words text-[0.9375rem]">{p.name}</span>
           </button>
           <button type="button" onClick={() => share(p.file)} aria-label={`${p.name} paylaş`} data-press className="btn btn-icon size-10 shrink-0 text-acc">
             <Icon name="up" className="size-5" />
@@ -825,9 +826,9 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
   const linkRow = ({ k, title, main, sub, act, onClick, href, right }) => {
     const body = (
       <>
-        <span className="w-[5.5rem] shrink-0 truncate text-[0.875rem] text-mut">{title}</span>
-        <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${act ? "font-semibold text-acc" : "font-medium"}`}>{main}</span>
-        {(right || sub) && <span className="max-w-[45%] shrink-0 truncate text-[0.8125rem] text-mut">{right || sub}</span>}
+        <span className="w-[5.5rem] shrink-0 break-words text-[0.875rem] text-mut">{title}</span>
+        <span className={`min-w-0 flex-1 break-words text-[0.9375rem] ${act ? "font-semibold text-acc" : "font-medium"}`}>{main}</span>
+        {(right || sub) && <span className="max-w-[45%] shrink-0 break-words text-right text-[0.8125rem] text-mut">{right || sub}</span>}
         {!act && <Icon name="chev" className="size-4 shrink-0 text-mut/60" />}
       </>
     );
@@ -866,22 +867,27 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
       ? { k: "notice", title: "Talimat", main: r.noticeFile ? "PDF · program, ücret" : "Program, ücret, iletişim", onClick: () => setNoticeInfo(true) }
       : { k: "notice", title: "Talimat", main: "Talimat yükle", act: true, onClick: () => setNoticeMenu(true) },
   ].filter(Boolean);
+  // İş satırı (Seyhun 2026-11-13 "kesik gösterilmesin, tam gösterilsin"): ad ve not tam, alt alta; notta telefon varsa Ara, adres varsa Harita
   const taskRow = (s) => {
     const left = s.date ? daysTo(s.date) : null;
     return (
-      <li key={s.key} className="flex items-center gap-1 pl-1">
-        <button type="button" onClick={() => markStep(s, true)} aria-label={`${s.label}: yapıldı`} data-press className="btn btn-icon shrink-0">
+      <li key={s.key} className="flex items-start gap-1 pl-1">
+        <button type="button" onClick={() => markStep(s, true)} aria-label={`${s.label}: yapıldı`} data-press className="btn btn-icon mt-0.5 shrink-0">
           <span className="size-[1.375rem] rounded-full border-2 border-line" />
         </button>
-        <span className="min-w-0 flex-1 truncate py-2.5 text-[0.9375rem] font-medium">{s.label}</span>
+        <span className="min-w-0 flex-1 py-2.5">
+          <span className="block break-words text-[0.9375rem] font-medium leading-snug">{s.label}</span>
+          {s.detail && <span className="mt-0.5 block break-words text-[0.8125rem] leading-snug text-mut">{s.detail}</span>}
+          {s.detail && <ContactLinks text={s.detail} place={placeText(r)} />}
+        </span>
         {left !== null && left <= 14 ? (
-          <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
+          <span className={`mt-3 shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
             {left < 0 ? "Geçti" : left === 0 ? "Bugün" : `${left} gün`}
           </span>
         ) : (
-          <span className="max-w-[35%] shrink-0 truncate text-[0.8125rem] text-mut">{s.date ? shortDay(s.date) : s.detail || stepSrc[s.group]}</span>
+          <span className="mt-3 shrink-0 text-[0.8125rem] text-mut">{s.date ? shortDay(s.date) : s.detail ? "" : stepSrc[s.group]}</span>
         )}
-        <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} data-press className="btn btn-icon btn-sm shrink-0 text-mut/60">
+        <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} data-press className="btn btn-icon btn-sm mt-1.5 shrink-0 text-mut/60">
           <Icon name="x" className="size-3.5" />
         </button>
       </li>
@@ -1111,7 +1117,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
                     <button type="button" onClick={toggle} data-press="row" className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
                       <Check on={on} tone="acc" />
                       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-semibold text-acc">{initials(a.studentName)}</span>
-                      <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.studentName}</span>
+                      <span className="min-w-0 flex-1 break-words text-[0.9375rem]">{a.studentName}</span>
                     </button>
                   </li>
                 );
@@ -1129,7 +1135,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
                     <Check on={on} tone="acc" />
                     <span className="min-w-0 flex-1">
                       <b className={`block text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{title}</b>
-                      <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>
+                      <span className="block break-words text-[0.8125rem] text-mut">{sub}</span>
                     </span>
                   </button>
                   {!ok && to !== "sum" && (
@@ -1427,8 +1433,8 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
                   return (
                     <button key={a.id} type="button" onClick={() => setFix(a)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                       <span className="min-w-0 flex-1">
-                        <b className="block truncate text-[0.875rem] font-medium">{a.studentName}</b>
-                        <span className="block truncate text-[0.75rem] text-mut">{[miss.length && `Eksik: ${miss.join(", ")}`, gone.length && `${gone.map((x) => x.label).join(", ")} yarışta geçersiz`].filter(Boolean).join(" · ")}</span>
+                        <b className="block break-words text-[0.875rem] font-medium">{a.studentName}</b>
+                        <span className="block break-words text-[0.75rem] text-mut">{[miss.length && `Eksik: ${miss.join(", ")}`, gone.length && `${gone.map((x) => x.label).join(", ")} yarışta geçersiz`].filter(Boolean).join(" · ")}</span>
                       </span>
                       <span className="text-[0.8125rem] font-semibold text-acc">Tamamla</span>
                     </button>
@@ -1438,7 +1444,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
                   <button type="button" onClick={() => setCoachOpen(true)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                     <span className="min-w-0 flex-1">
                       <b className="block text-[0.875rem] font-medium">Antrenör bilgisi</b>
-                      <span className="block truncate text-[0.75rem] text-mut">Eksik: {coachLack.join(", ")}</span>
+                      <span className="block break-words text-[0.75rem] text-mut">Eksik: {coachLack.join(", ")}</span>
                     </span>
                     <span className="text-[0.8125rem] font-semibold text-acc">Tamamla</span>
                   </button>
@@ -1472,8 +1478,8 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
                         </button>
                         <button type="button" onClick={main} aria-expanded={more ? open : undefined} data-press="row" className="flex min-w-0 flex-1 items-center gap-2 py-3 text-left">
                           <span className="min-w-0 flex-1">
-                            <b className={`block truncate text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
-                            <span className={`block truncate text-[0.8125rem] ${warn ? "text-amber-600" : part ? "text-acc" : "text-mut"}`}>{status}</span>
+                            <b className={`block break-words text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
+                            <span className={`block break-words text-[0.8125rem] ${warn ? "text-amber-600" : part ? "text-acc" : "text-mut"}`}>{status}</span>
                           </span>
                           {more && <Icon name="chev" className={`size-5 shrink-0 text-mut transition-transform ${open ? "rotate-90" : ""}`} />}
                         </button>
@@ -1584,8 +1590,8 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
           <Label>VELİ</Label>
           <button type="button" onClick={() => setSheetOpen(true)} data-press="row" className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left`}>
             <span className="min-w-0 flex-1">
-              <b className="block truncate text-[0.9375rem] font-semibold">Veli bilgi notu</b>
-              <span className="block truncate text-[0.8125rem] text-mut">{chosen.length ? `${chosen.length} sayfa · yolculuk, program, sporcu payı` : "Önce sporcuları ekle"}</span>
+              <b className="block break-words text-[0.9375rem] font-semibold">Veli bilgi notu</b>
+              <span className="block break-words text-[0.8125rem] text-mut">{chosen.length ? `${chosen.length} sayfa · yolculuk, program, sporcu payı` : "Önce sporcuları ekle"}</span>
             </span>
             <Icon name="chev" className="size-5 shrink-0 text-mut" />
           </button>
@@ -1595,7 +1601,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
             <button type="button" onClick={() => setSignOpen(!signOpen)} aria-expanded={signOpen} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
               <span className="min-w-0 flex-1">
                 <b className="block text-[0.9375rem] font-semibold">İmza ve tarih</b>
-                <span className="block truncate text-[0.8125rem] text-mut">{[r.signer.trim() && `${r.signer.trim()}${r.signerTitle?.trim() ? `, ${r.signerTitle.trim()}` : ""}`, r.letterDate ? `evrak tarihi ${rangeText(r.letterDate, r.letterDate)}` : "evrak tarihi ilk hazırlamada yazılır"].filter(Boolean).join(" · ")}</span>
+                <span className="block break-words text-[0.8125rem] text-mut">{[r.signer.trim() && `${r.signer.trim()}${r.signerTitle?.trim() ? `, ${r.signerTitle.trim()}` : ""}`, r.letterDate ? `evrak tarihi ${rangeText(r.letterDate, r.letterDate)}` : "evrak tarihi ilk hazırlamada yazılır"].filter(Boolean).join(" · ")}</span>
               </span>
               <Icon name="chev" className={`size-5 shrink-0 text-mut transition-transform ${signOpen ? "rotate-90" : ""}`} />
             </button>
@@ -1621,7 +1627,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
               <Label right={coachSaved ? "kaydedildi ✓" : "hesabına kaydedilir"}>{tyf ? "ANTRENÖR VE DESTEK BOTU" : "ANTRENÖR"}</Label>
               <button type="button" onClick={() => setCoachOpen(true)} className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg`}>
                 <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[0.9375rem] font-semibold">{coach.name || "Antrenör"}</b>
+                  <b className="block break-words text-[0.9375rem] font-semibold">{coach.name || "Antrenör"}</b>
                   <span className="block text-[0.8125rem] text-mut">{coachLack.length ? `Eksik: ${coachLack.join(", ")}` : "Bilgiler hesabında kayıtlı, belgelere kendiliğinden yazılır"}</span>
                 </span>
                 <span className="text-[0.8125rem] font-semibold text-acc">Düzenle</span>
@@ -1780,7 +1786,7 @@ function Pick({ open, athletes, value, onClose, onChange }) {
             <button type="button" onClick={() => toggle(a.id)} aria-pressed={sel.has(a.id)} data-press="row" className="flex w-full items-center gap-3 py-2.5 text-left">
               <Check on={sel.has(a.id)} tone="acc" />
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-semibold text-acc">{initials(a.studentName)}</span>
-              <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.studentName}</span>
+              <span className="min-w-0 flex-1 break-words text-[0.9375rem]">{a.studentName}</span>
             </button>
           </li>
         ))}
@@ -1883,8 +1889,8 @@ function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark, resHref, 
       <div className={`${card} grid grid-cols-3 divide-x divide-line`}>
         {stats.map(([big, small]) => (
           <div key={small} className="min-w-0 px-2 py-3 text-center">
-            <b className="block truncate text-[1.0625rem] font-semibold tabular-nums">{big}</b>
-            <span className="block truncate text-[0.75rem] text-mut">{small}</span>
+            <b className="block break-words text-[1.0625rem] font-semibold tabular-nums">{big}</b>
+            <span className="block break-words text-[0.75rem] text-mut">{small}</span>
           </div>
         ))}
       </div>
@@ -1905,7 +1911,7 @@ function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark, resHref, 
       )}
       {track ? null : resHref ? (
         <Link href={resHref} className={`${card} flex min-h-[2.875rem] items-center gap-3 px-4 py-2.5 active:bg-bg`}>
-          <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${placed.length ? "font-medium" : "text-mut"}`}>{placed.length ? placed.map((x) => `${x.name.split(" ")[0]} ${x.place}.`).join(" · ") : chosen.length ? "Sonuç yok" : "Sporcu eklenmemiş"}</span>
+          <span className={`min-w-0 flex-1 break-words text-[0.9375rem] ${placed.length ? "font-medium" : "text-mut"}`}>{placed.length ? placed.map((x) => `${x.name.split(" ")[0]} ${x.place}.`).join(" · ") : chosen.length ? "Sonuç yok" : "Sporcu eklenmemiş"}</span>
           <span className="shrink-0 text-[0.875rem] font-semibold text-acc">{placed.length ? "Tümü" : "PDF yükle"}</span>
           <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
         </Link>
@@ -1965,8 +1971,8 @@ function SharedPick({ list, onPick }) {
           <li key={s.id}>
             <button type="button" onClick={() => onPick(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
               <span className="min-w-0 flex-1">
-                <b className="block truncate text-[0.9375rem] font-semibold">{s.name}</b>
-                <span className="block truncate text-[0.8125rem] text-mut">{[placeText(s), rangeText(s.startDate, s.endDate), s.noticeFile && "Talimat var"].filter(Boolean).join(" · ")}</span>
+                <b className="block break-words text-[0.9375rem] font-semibold">{s.name}</b>
+                <span className="block break-words text-[0.8125rem] text-mut">{[placeText(s), rangeText(s.startDate, s.endDate), s.noticeFile && "Talimat var"].filter(Boolean).join(" · ")}</span>
               </span>
               <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
             </button>
