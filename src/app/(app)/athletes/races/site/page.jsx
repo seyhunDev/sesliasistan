@@ -17,12 +17,11 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { Loader } from "@/components/ui/Loader";
 import { loadRaces } from "@/features/athletes/races";
-import { loadSiteList, mergeSite, siteFile } from "@/features/athletes/raceSite";
+import { mergeSite, siteFile, siteListLive } from "@/features/athletes/raceSite";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { STEPS, clearTask, startTake, useSiteTasks } from "@/features/athletes/siteTake";
 import { RacePickSheet } from "@/features/athletes/RacePickSheet";
-import { kindLabel, pickSeason } from "@/lib/siteDocs";
-import { todayStr } from "@/lib/utils/format";
+import { kindLabel } from "@/lib/siteDocs";
 
 export default function SitePage() {
   const { user, profile } = useAuth();
@@ -62,21 +61,7 @@ function Site({ orgId, uid }) {
   useEffect(() => {
     loadRaces(orgId).then(setRaces, () => {});
   }, [orgId, ver]);
-  useEffect(() => {
-    let on = true;
-    loadSiteList(season).then(
-      (d) => {
-        if (!on) return;
-        // İlk açılışta bulunduğumuz sezon (sitedeki ilk sekme değilse yeniden istenir)
-        const want = season || pickSeason(d.seasons.map((s) => s.name), todayStr());
-        if (!season && want !== d.season) return setSeason(want);
-        setData(d);
-        if (!season) setSeason(d.season);
-      },
-      () => on && setFail(true),
-    );
-    return () => void (on = false);
-  }, [season, retry]);
+  useEffect(() => siteListLive(season, { onData: setData, onSeason: setSeason, onFail: () => setFail(true) }), [season, retry]);
 
   const pick = (name) => {
     if (name === season) return;

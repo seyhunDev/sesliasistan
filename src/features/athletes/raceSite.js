@@ -15,7 +15,8 @@ import { getStored } from "@/lib/firebase/fileStore";
 import { cleanEntries, mergeEntries } from "@/lib/roundSay";
 import { cleanGroups, dayGroups } from "@/lib/roundScore";
 import { dropSheet } from "@/lib/resultSheet";
-import { listGroups } from "@/lib/siteDocs";
+import { listGroups, pickSeason } from "@/lib/siteDocs";
+import { todayStr } from "@/lib/utils/format";
 import { loadEntryDoc, readEntryFile, saveEntries, saveGroups } from "@/features/rounds/roundsStore";
 import { dropSheetDoc } from "./raceLiveStore";
 import { raceGone, saveRaceResults } from "./races";
@@ -30,7 +31,44 @@ async function ask(url, opts = {}) {
   return p;
 }
 // Sezonlar, ayaklar, sınıflar ve belgeleri
-export const loadSiteList = (season = "") => ask(`/api/race-site${season ? `?season=${encodeURIComponent(season)}` : ""}`);
+// TFF sitesine her açılışta gidilmez (Seyhun 2026-11-13): sunucu listeyi Firestore'da tutar (raceSiteSync.cachedList, saatlik tarama
+// yeniler, en çok 3 saatte bir siteye bakar). Telefon da son listeyi bu cihazda saklar: liste anında görünür, arkada güncellenir.
+const LIST_KEY = (s) => `velora:site-list:${s}`;
+const keepList = (season, d) => {
+  try {
+    const t = JSON.stringify(d);
+    localStorage.setItem(LIST_KEY(season), t);
+    if (d.season && d.season !== season) localStorage.setItem(LIST_KEY(d.season), t);
+  } catch {}
+};
+const keptList = (season) => {
+  try {
+    return JSON.parse(localStorage.getItem(LIST_KEY(season)) || "null");
+  } catch {
+    return null;
+  }
+};
+export const loadSiteList = (season = "") =>
+  ask(`/api/race-site${season ? `?season=${encodeURIComponent(season)}` : ""}`).then((d) => (Array.isArray(d?.legs) && keepList(season, d), d));
+// Liste ekranları için: önce bu cihazdaki son liste, sonra sunucudaki. Sezon seçilmemişse bulunduğumuz sezon seçilir (onSeason).
+// Saklı liste varken sunucu hatası gösterilmez. Dönen işlev dinlemeyi bırakır.
+export function siteListLive(season, { onData, onSeason, onFail }) {
+  let on = true;
+  const take = (d) => {
+    if (!on || !Array.isArray(d?.legs)) return false;
+    const want = season || pickSeason((d.seasons || []).map((x) => x.name), todayStr());
+    if (!season && want !== d.season) return onSeason(want), true;
+    onData(d);
+    if (!season) onSeason(d.season);
+    return true;
+  };
+  const had = take(keptList(season));
+  loadSiteList(season).then(
+    (d) => !take(d) && on && !had && onFail(),
+    () => on && !had && onFail(),
+  );
+  return () => void (on = false);
+}
 // Sitedeki belgenin kendisi (yarış ilanı) dosya olarak
 export async function siteFile(d) {
   const res = await authFetch(`/api/race-site?file=${d.fid}`, { timeout: 60000 });
