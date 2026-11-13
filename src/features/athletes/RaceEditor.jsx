@@ -13,6 +13,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
+import { jobDone, jobFail, startJob } from "@/lib/jobs";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { DOC_TEXT } from "./EditAthlete";
 import { EXPIRY, raceExpired } from "@/lib/expiry";
@@ -409,6 +410,8 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
     }
     if (!docs.length) return toast("En az bir belge seç");
     setBusy(true);
+    // Üstteki iş göstergesinde (lib/jobs.js): sayfadan çıkılsa da hazırlanırken ve bitince görünür
+    const job = startJob({ name: `${r.name.trim() || "Yarış"} evrakı`, steps: ["Hazırlanıyor"] });
     try {
       // Evrak tarihi tüm belgelerde aynı: ilk hazırlamada (docsAt yok) bugün yazılır, "Yenile"de değişmez (sonra elle değiştirilebilir).
       // Eski yarışlardaki tarih yarışın açıldığı gündü; ilk hazırlamada o da bugüne çekilir.
@@ -449,8 +452,9 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
       if (id.current) saveRaceFile({ id: id.current, blob: new Blob([bytes], { type: "application/pdf" }), name, docs, pages, at, mailText: text, parts: each });
       setTab("docs");
       if (!r.checks?.docs) put("checks", { ...r.checks, docs: true });
+      jobDone(job, { text: `Hazır · ${pages} sayfa` });
     } catch (e) {
-      toast(e?.message || "Belgeler hazırlanamadı");
+      jobFail(job, { text: e?.message || "Belgeler hazırlanamadı" });
     }
     setBusy(false);
   };
@@ -1424,7 +1428,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
                   </>
                 ) : (
                   <Button size="sm" full={false} onClick={make} disabled={busy}>
-                    {busy ? "Hazırlanıyor…" : docsOld ? "Yenile" : docsReady ? "Aç" : "Hazırla"}
+                    {docsOld ? "Yenile" : docsReady ? "Aç" : "Hazırla"}
                   </Button>
                 )}
               </div>

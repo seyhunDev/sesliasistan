@@ -98,7 +98,6 @@ function Site({ orgId, uid }) {
       orgId, uid, races, season: data.season, leg, c, into,
       // Ekran kapanmış olabilir: bildirimden açılır
       onDone: (id, name) => (setVer((n) => n + 1), toast(`${name || c.cls} alındı`, { action: { label: "Aç", onClick: () => router.push(`/athletes/races/${id}?sec=site`) } })),
-      onFail: (m) => toast(m),
     });
   };
 

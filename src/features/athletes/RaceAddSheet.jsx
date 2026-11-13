@@ -71,7 +71,6 @@ function SiteList({ live, orgId, uid, races, onAdded, onGo }) {
     startTake({
       orgId, uid, races: races || [], season: data.season, leg, c,
       onDone: (id, name) => (onAdded?.(), toast(`${name || c.cls} eklendi`, { action: { label: "Aç", onClick: () => router.push(`/athletes/races/${id}?sec=site`) } })),
-      onFail: (m) => toast(m),
     });
   };
   const have = (act) => (races || []).find((r) => r.site?.act === act);
@@ -119,7 +118,7 @@ function SiteList({ live, orgId, uid, races, onAdded, onGo }) {
                   </button>
                 ) : (
                   <button type="button" onClick={() => add(leg, c)} disabled={busy} data-press className="ra-add">
-                    {busy ? "Ekleniyor…" : "Ekle"}
+                    Ekle
                   </button>
                 )}
               </div>

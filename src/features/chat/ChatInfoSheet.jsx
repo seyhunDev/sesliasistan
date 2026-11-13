@@ -10,9 +10,66 @@ import { useChat } from "./ChatProvider";
 import { Avatar, isOnline, seenText } from "./bits";
 import { GROUPS } from "@/lib/kinds";
 
-// Sohbet bilgisi: sessize al, üyeler (çevrimiçi / son görülme); grupta kuran kişi ad değiştirir, üye ekler/çıkarır; gruptan çık.
-// Ana hesap: sohbeti arşivle (yalnız kendi listesinden) ya da herkes için kalıcı sil (mesajlar ve ekleri).
-export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) {
+// Sohbet bilgisi: sessize al, fotoğraf ve dosyalar, üyeler (çevrimiçi / son görülme); grupta kuran kişi ad değiştirir,
+// üye ekler/çıkarır; gruptan çık. Ana hesap: sohbeti arşivle (yalnız kendi listesinden) ya da herkes için kalıcı sil.
+// Telefonda alttan pencere (ChatInfoSheet); Mac ve yatay iPad'de sohbetin sağında panel (ChatInfoPanel, "Bilgi" düğmesi).
+export function ChatInfoSheet({ open, onClose, ...p }) {
+  return (
+    <Sheet open={open} onClose={onClose} title={p.chat?.title || "Sohbet"}>
+      {p.chat && <ChatInfo {...p} onClose={onClose} />}
+    </Sheet>
+  );
+}
+
+export function ChatInfoPanel({ onClose, ...p }) {
+  return (
+    <aside className="chat-info" aria-label="Sohbet bilgisi">
+      <header className="flex h-[3.75rem] shrink-0 items-center gap-2 border-b border-line px-4">
+        <b className="min-w-0 flex-1 truncate text-[1rem] font-semibold">Bilgi</b>
+        <button type="button" onClick={onClose} aria-label="Bilgiyi kapat" data-press className="btn btn-icon btn-sm size-8 text-mut">
+          <Icon name="x" className="size-4" />
+        </button>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-4">{p.chat && <ChatInfo {...p} onClose={onClose} />}</div>
+    </aside>
+  );
+}
+
+// Sohbetteki fotoğraf ve dosyalar (ekranda yüklü mesajlardan; ayrı okuma yok). files: en yeni önce { id, file }
+function ChatFiles({ files }) {
+  const [all, setAll] = useState(false);
+  if (!files?.length) return null;
+  const shown = all ? files : files.slice(0, 8);
+  return (
+    <div>
+      <p className="mb-1.5 flex items-center justify-between px-1 text-[0.75rem] font-bold tracking-[.08em] text-mut">
+        <span>FOTOĞRAF VE DOSYALAR · {files.length}</span>
+        {files.length > 8 && (
+          <button type="button" onClick={() => setAll((v) => !v)} className="text-[0.8125rem] font-semibold tracking-normal text-acc">
+            {all ? "Daha az" : "Tümü"}
+          </button>
+        )}
+      </p>
+      <div className="grid grid-cols-4 gap-1.5">
+        {shown.map(({ id, file: f }) => (
+          <a key={id} href={f.url} target="_blank" rel="noreferrer" title={f.name || ""} className="grid aspect-square min-w-0 place-items-center overflow-hidden rounded-xl bg-bg text-mut">
+            {f.kind === "photo" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={f.url} alt="Fotoğraf" loading="lazy" className="size-full object-cover" />
+            ) : (
+              <span className="grid justify-items-center gap-1 px-1 text-center">
+                <Icon name={f.kind === "voice" ? "mic" : "paperclip"} className="size-5" />
+                <small className="w-full truncate text-[0.625rem]">{f.kind === "voice" ? "Ses" : f.name || "Dosya"}</small>
+              </span>
+            )}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChatInfo({ onClose, chat, members, people, exists, files }) {
   const confirmAsk = useConfirm();
   const router = useRouter();
   const toast = useToast();
@@ -32,13 +89,7 @@ export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) 
       .catch(() => toast("Değiştirilemedi"));
 
   return (
-    <Sheet open={open} onClose={onClose} title={chat?.title || "Sohbet"}>
-      {chat && (
         <div className="space-y-4 pb-2">
-          <p className="px-1 text-[0.8125rem] leading-snug text-mut">
-            <Icon name="alert" className="mr-1 inline size-3.5 align-[-2px]" />
-            Bu sohbeti yalnızca içindeki kişiler görebilir{GROUPS[chat.id] ? " (gruba uyan herkes otomatik üye)" : ""}.
-          </p>
 
           {exists && (
             <button
@@ -78,6 +129,14 @@ export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) 
               </button>
             </div>
           )}
+
+          {owner && chat.type === "dm" && byUid(chat.other) && byUid(chat.other).role !== "owner" && (
+            <button type="button" onClick={() => router.push(`/people/p/${chat.other}`)} data-press className="btn btn-secondary w-full">
+              Kişi sayfası
+            </button>
+          )}
+
+          <ChatFiles files={files} />
 
           <div>
             <p className="mb-1.5 flex items-center justify-between px-1 text-[0.75rem] font-bold tracking-[.08em] text-mut">
@@ -176,7 +235,5 @@ export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) 
             </button>
           )}
         </div>
-      )}
-    </Sheet>
   );
 }

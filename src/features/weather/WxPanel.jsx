@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useWindObs } from "./useWindObs";
+import { fmtRainMm, rainSpan } from "./WindRibbon";
 import { dayHours, dirDeg, getPlace, nowOf, sky, windName } from "./weather";
 import { dayPlans, dayWeather, planTone } from "@/lib/homeTiles";
 
@@ -45,7 +46,7 @@ export function useObsRows(date, today) {
 }
 
 // Hava kutusu. date: seçili gün; rows: o günün saatleri (hava sayfasında bugün radarla düzeltilmiş); onOpen: kutuya dokununca
-export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "Hava", onOpen }) {
+export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "Hava", onOpen, radar = null }) {
   const isToday = date === today;
   const place = getPlace();
   const n = nowOf(w);
@@ -88,21 +89,27 @@ export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "H
           <span className="iph-lg">
             <span>
               <i className="bg-[#8fb3ff]" />
-              tahmin
+              rüzgâr
             </span>
             <span>
               <i className="iph-dash" />
               sağanak
             </span>
             {day.rows.length > 0 && (
-              <span className="text-white">
-                <i className="bg-white" />
-                ölçülen
-              </span>
+              <>
+                <span className="text-white">
+                  <i className="bg-white" />
+                  ölçülen
+                </span>
+                <span className="text-white">
+                  <i className="iph-dash iph-dash-w" />
+                  ölçülen sağanak
+                </span>
+              </>
             )}
           </span>
         </span>
-        <WindChart rows={rows} nowH={isToday ? nowH : null} onOpen={open} obs={day.rows} />
+        <WindChart rows={rows} nowH={isToday ? nowH : null} onOpen={open} obs={day.rows} radar={isToday ? radar : null} />
       </div>
     </section>
   );
@@ -160,7 +167,7 @@ export function Compass({ wind, gust, dir }) {
 
 
 // Seçili günün rüzgâr eğrisi (06–24): dolgu rüzgâr (tahmin), kesik çizgi sağanak, beyaz çizgi + noktalar ölçülen (istasyon); altında 3 saatlik bloklarda rüzgâr aralığı, gök, sıcaklık; bugünse kırmızı çizgi şimdi
-export function WindChart({ rows, nowH, onOpen, obs = [] }) {
+export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
   const [ref, W] = useWidth();
   const H = 196;
   const pts = (rows || []).filter((h) => +h.hh >= H0).map((h) => ({ ...h, x: +h.hh }));
@@ -185,6 +192,8 @@ export function WindChart({ rows, nowH, onOpen, obs = [] }) {
   const oLine = (k) => ob.filter((o) => o[k] != null).map((o, i) => `${i ? "L" : "M"}${X(o.x).toFixed(1)} ${Y(o[k]).toFixed(1)}`).join(" ");
   const line = (k) => pts.map((p, i) => `${i ? "L" : "M"}${X(p.x).toFixed(1)} ${Y(p[k] ?? p.wind).toFixed(1)}`).join(" ");
   const area = pts.length ? `M${X(pts[0].x)} ${wy1} ${line("wind").replace(/^M/, "L")} L${X(pts.at(-1).x)} ${wy1}Z` : "";
+  // Yağmur kuralı (#1210, WindRibbon.rainSpan): burada yağış bekleniyorsa o saatler mavi bantta, üstünde beklenen mm; radar yakında gösteriyorsa içi boş halka
+  const rs = pts.length ? rainSpan(pts, nowH ?? -1, radar) : null;
   const nowWind = nowH != null && pts.length ? pts.reduce((a, p) => (Math.abs(p.x - nowH) < Math.abs(a.x - nowH) ? p : a), pts[0]).wind : null;
   return (
     <div ref={ref} role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} className="relative cursor-pointer" style={{ height: H }} aria-label="Saat saat rüzgâr">
@@ -204,6 +213,15 @@ export function WindChart({ rows, nowH, onOpen, obs = [] }) {
               </text>
             </g>
           ))}
+          {rs && (
+            <g data-rain-span={rs.here ? "here" : "near"}>
+              <rect x={X(rs.from - 0.5)} y={wy0} width={Math.max(8, X(rs.to + 0.5) - X(rs.from - 0.5))} height={wy1 - wy0} rx="8" fill="#7db4ff" fillOpacity=".2" stroke="#7db4ff" strokeOpacity=".7" strokeDasharray="4 4" />
+              <circle cx={(X(rs.from - 0.5) + X(rs.to + 0.5)) / 2} cy={wy0 + 9} r="5" fill={rs.here ? "#cfe3ff" : "none"} stroke="#cfe3ff" strokeWidth="2" />
+              {rs.here && rs.mm >= 0.1 && (
+                <text data-rain-mm x={(X(rs.from - 0.5) + X(rs.to + 0.5)) / 2} y={wy0 + 30} fill="#cfe3ff" fontSize="12" fontWeight="700" textAnchor="middle">{fmtRainMm(rs.mm)} mm</text>
+              )}
+            </g>
+          )}
           <path d={area} fill="url(#iph-wz)" />
           <path d={line("wind")} stroke="#8fb3ff" strokeWidth="2.2" fill="none" />
           <path d={line("gust")} stroke="#8fb3ff" strokeWidth="1.3" strokeDasharray="4 4" fill="none" opacity=".7" />

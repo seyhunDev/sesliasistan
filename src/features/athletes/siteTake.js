@@ -14,6 +14,7 @@ import { noticeDoc } from "@/lib/siteBoard";
 import { sameRace } from "@/lib/sharedRace";
 import { todayStr } from "@/lib/utils/format";
 import { focusText } from "@/lib/siteDocs";
+import { jobDone, jobFail, jobStep, startJob } from "@/lib/jobs";
 
 export const STEPS = ["Yarış ilanı indiriliyor", "Talimat okunuyor", "Yarış kaydediliyor", "Belgeler alınıyor"];
 const ayak = (s) => String(s || "").replace(/AYAK/i, "Ayak");
@@ -21,9 +22,14 @@ const ayak = (s) => String(s || "").replace(/AYAK/i, "Ayak");
 // act → { step (0..4), got, total, raceId, error }
 let tasks = {};
 const subs = new Set();
+// Her adım üstteki iş göstergesine de yazılır (lib/jobs.js, JobPill): sayfa kapansa da görünür
 const set = (act, patch) => {
-  tasks = { ...tasks, [act]: { ...tasks[act], ...patch } };
+  const t = (tasks = { ...tasks, [act]: { ...tasks[act], ...patch } })[act];
   subs.forEach((f) => f());
+  if (!t.job) return;
+  if (t.error) jobFail(t.job, { text: t.error });
+  else if (t.done) jobDone(t.job, { text: "Yarış eklendi", href: t.raceId ? `/athletes/races/${t.raceId}?sec=site` : "" });
+  else jobStep(t.job, Math.min(t.step, STEPS.length - 1), t.step === 3 ? { got: t.got || 0, total: t.total || 0 } : {});
 };
 const subscribe = (f) => (subs.add(f), () => subs.delete(f));
 export const useSiteTasks = () => useSyncExternalStore(subscribe, () => tasks, () => tasks);
@@ -56,7 +62,8 @@ function watchDocs(orgId, act, raceId, total) {
 export function startTake({ orgId, uid, races, season, leg, c, into = null, onDone, onFail }) {
   if (tasks[c.act] && !tasks[c.act].error && !tasks[c.act].done) return;
   const total = c.docs.length;
-  set(c.act, { step: 0, got: 0, total, raceId: "", error: "", done: false });
+  const job = startJob({ name: into?.name || `${ayak(leg.name)} ${c.cls}`, steps: STEPS, key: `site-${c.act}` });
+  set(c.act, { step: 0, got: 0, total, raceId: "", error: "", done: false, job });
   (async () => {
     try {
       const site = { act: c.act, cls: c.cls, season, n: leg.n, legNo: leg.legNo };

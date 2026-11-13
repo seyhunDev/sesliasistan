@@ -5,7 +5,7 @@
 // (EARLY dışındakiler taslak/kart cevabından sonra) çözülür.
 import { reportAsk } from "@/lib/assistReport";
 import { testsAsk } from "@/features/tests/testWords";
-import { chatOpAsk, isEnd, isNoMore, msgArchAsk, msgDeleteAsk, undoLast } from "@/lib/assistantLocal";
+import { chatOpAsk, chatReadAllAsk, isEnd, isNoMore, msgArchAsk, msgDeleteAsk, undoLast } from "@/lib/assistantLocal";
 import { wantsLog, bareLog, isLogAnswer } from "@/lib/trainingLog";
 import { wantsEvent } from "@/features/events/eventWords";
 import { wantsInventory } from "@/features/inventory/invWords";
@@ -149,6 +149,7 @@ export function routesOf(s, c = {}) {
   // Ana hesap: "Ali ile konuşmayı arşivle", "Ali'yle sohbeti herkes için sil" (silme onaylı; ChatProvider archive/deleteChat)
   const co = owner && !c.drafts ? chatOpAsk(s) : null;
   if (co) add("chatOp", { co });
+  if (!c.drafts && chatReadAllAsk(s)) add("chatReadAll");
   // "Ali'nin attığı programı planlara ekle", "son dosyayı plana ekle": mesajdaki dosyadan plan (isler/mesajPlan.js)
   const cp = !c.drafts && !athleteSide ? chatPlanAsk(s) : null;
   if (cp) add("chatPlan", { cp });
