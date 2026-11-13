@@ -22,10 +22,18 @@ function smooth(pts) {
 // Önemli yağmur saatleri: burada (tahmin) ya da çevrede (radar yakında, burada yok)
 export function rainSpan(rows, nowH = -1, radar = null) {
   const wet = rows.filter((r) => (r.rain ?? 0) >= 50 && (r.mm ?? 0) >= 0.3).map((r) => +r.hh);
-  if (wet.length) return { here: true, from: wet[0], to: wet.find((h, i) => wet[i + 1] !== h + 1) ?? wet.at(-1) };
+  if (wet.length) {
+    const from = wet[0];
+    const to = wet.find((h, i) => wet[i + 1] !== h + 1) ?? wet.at(-1);
+    // Beklenen yağış miktarı: ilk yağışlı aralıktaki saatlerin mm toplamı (Seyhun 2026-11-13 "beklenen yağış miktarı ile birlikte")
+    const mm = rows.filter((r) => +r.hh >= from && +r.hh <= to).reduce((a, r) => a + (r.mm || 0), 0);
+    return { here: true, from, to, mm };
+  }
   if (nowH >= 0 && radar?.near && radar.near.km <= 15) return { here: false, from: nowH, to: Math.min(23, nowH + 2) };
   return null;
 }
+
+export const fmtRainMm = (v) => (v < 10 ? v.toLocaleString("tr-TR", { maximumFractionDigits: 1 }) : String(Math.round(v)));
 
 export function WindRibbon({ rows, nowH = -1, radar = null, tone = "sky", win = null, h = 96, legend = true, className = "" }) {
   // Akşam geç saatte (kalan saat az) günün tamamı gösterilir (insight.js ile aynı)
@@ -70,6 +78,7 @@ export function WindRibbon({ rows, nowH = -1, radar = null, tone = "sky", win = 
             style={{ left: `${(ri0 / n) * 100}%`, width: `${((ri1 - ri0 + 1) / n) * 100}%` }}
           >
             <i className={`absolute left-1/2 top-1 size-3 -translate-x-1/2 rounded-full border-2 border-[color:var(--wr-rain)] ${rain.here ? "bg-[color:var(--wr-rain)]" : ""}`} />
+            {rain.here && rain.mm >= 0.1 && <b data-rain-mm className="num absolute inset-x-0 top-5 text-center text-[0.6875rem] font-bold text-[color:var(--wr-rain)]">{fmtRainMm(rain.mm)} mm</b>}
           </span>
         )}
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 block w-full overflow-visible" style={{ height: h }} aria-hidden="true">
