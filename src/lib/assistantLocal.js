@@ -174,6 +174,12 @@ export function msgArchAsk(text) {
 // Sohbet işi (ana hesap): "Ali ile konuşmayı arşivle", "Ali'yle sohbeti herkes için sil", "Ekip sohbetini arşivden çıkar",
 // "bu sohbeti arşivle" (açık sohbet). Dönüş: { op: "archive" | "unarchive" | "delete", who } (who boş: açık sohbet) | null
 const CHAT_NOUN = /(?:^|\s)(?:konuşma|sohbet|yazışma|mesajlaşma)\p{L}*\s+/u;
+// "Tüm mesajları okundu say", "mesajların hepsini okundu yap", "bütün sohbetleri okundu işaretle" (Mesajlar ⋯ "Tümünü okundu say")
+export function chatReadAllAsk(text) {
+  const t = lower(String(text || "")).replace(/[.,!?]+/g, " ").replace(/\s+/g, " ").trim();
+  return /^(?:(?:tüm|bütün)\s+(?:mesaj|sohbet)\S*|(?:mesaj|sohbet)\S*\s+(?:hepsini|tümünü))\s+okundu\s+(?:say|yap|işaretle)\S*$/.test(t);
+}
+
 export function chatOpAsk(text) {
   const t = lower(String(text || "")).replace(/[.,!?]+/g, " ").replace(/\s+/g, " ").trim();
   const m = CHAT_NOUN.exec(t);

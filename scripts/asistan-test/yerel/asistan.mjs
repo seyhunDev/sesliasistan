@@ -272,6 +272,17 @@ group("Sohbet arşivi ve silme (sesle)")([
   ["Ali ile konuşmayı sil", { desc: "çalışanda chatOp yok", fn: (s) => routeOfMd(s, {}), ok: (r) => r !== "chatOp" }],
 ]);
 
+// Tümünü okundu say sesle (assistantLocal.js chatReadAllAsk, assistRoute.js chatReadAll; Mesajlar ⋯ ile aynı)
+{
+  const { chatReadAllAsk } = await import("@/lib/assistantLocal");
+  const RA = (want) => ({ desc: want ? "tümünü okundu say" : "değil", fn: (s) => chatReadAllAsk(s), ok: (r) => r === want });
+  group("Tümünü okundu say (sesle)")([
+    ["tüm mesajları okundu say", RA(true)], ["Bütün sohbetleri okundu işaretle.", RA(true)], ["mesajların hepsini okundu yap", RA(true)],
+    ["mesajları oku", RA(false)], ["Ali'nin mesajını okundu say", RA(false)], ["notlarımı oku", RA(false)],
+    ["tüm mesajları okundu say", { desc: "yol: chatReadAll", fn: (s) => routeOfMd(s, {}), ok: (r) => r === "chatReadAll" }],
+  ]);
+}
+
 // Fiş Kişisel ↔ Kulüp sesle (assistMore.js receiptScopeCommand; Garanti kart mailinden gelen fişler Kişisel başlar)
 const RSM = await import("@/lib/assistMore");
 const RSC = (desc, ok) => ({ desc, fn: (s) => RSM.receiptScopeCommand(s), ok });
@@ -613,7 +624,7 @@ group("Göreve göre ara yazı")([
     ["envantere 3 telsiz ekle", { desc: "envanter ekleme", fn: inventoryWork, ok: (w) => w === "Envantere ekleniyor" }],
     ["2 şamandıra kayboldu", { desc: "envanterden çıkarma", fn: inventoryWork, ok: (w) => w === "Envanterden çıkarılıyor" }],
     ["kaç telsiz var", { desc: "envanter sorusu", fn: inventoryWork, ok: (w) => w === "Envantere bakılıyor" }],
-    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 3100 && /envanter/i.test(p) }], // 2026-10-18: +rüzgâr kaydı, start sayacı; 2026-10-19: +sohbet arşivi; 2026-10-20: +yoklama, kulüp, fatura/harcama/mesaj sorusu; 2026-10-23: +yemek siparişi; 2026-10-24: +market sepeti
+    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 3140 && /envanter/i.test(p) }], // 2026-10-18: +rüzgâr kaydı, start sayacı; 2026-10-19: +sohbet arşivi; 2026-10-20: +yoklama, kulüp, fatura/harcama/mesaj sorusu; 2026-10-23: +yemek siparişi; 2026-10-24: +market sepeti; 2026-11-13: +tümünü okundu say
   ]);
 }
 
