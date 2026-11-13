@@ -1,7 +1,12 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { AssistantSheet } from "./AssistantSheet";
+import dynamic from "next/dynamic";
+
+// Asistan motoru (useAssistant, beyin/, isler/, ses; açılış kodunun ~1 MB'ı) açılışta yüklenmez (Seyhun 2026-11-13 "uygulama daha
+// hızlı açılsın"): sayfa çizildikten sonra boşta arkadan yüklenir (WARM_MS), asistan o ana kadar açılırsa hemen yüklenir.
+const AssistantSheet = dynamic(() => import("./AssistantSheet").then((m) => m.AssistantSheet), { ssr: false });
+const WARM_MS = 2500; // tarayıcı boş an vermezse en geç bu kadar sonra
 import { ContactScan } from "@/features/people/ContactScan";
 
 // Sağlayıcının dışında kalan yerler (ör. kayıt ekranı: AddProvider asistandan önce kurulur) olayla açar
@@ -34,6 +39,16 @@ export function AssistantProvider({ children }) {
     window.addEventListener("sa-open-assistant", on);
     return () => window.removeEventListener("sa-open-assistant", on);
   }, [openAssistant]);
+  const [warm, setWarm] = useState(false);
+  useEffect(() => {
+    const go = () => setWarm(true);
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(go, { timeout: WARM_MS });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = setTimeout(go, 1200);
+    return () => clearTimeout(t);
+  }, []);
   const close = useCallback(() => {
     openRef.current = false;
     setOpen(false);
@@ -42,7 +57,7 @@ export function AssistantProvider({ children }) {
   return (
     <Ctx.Provider value={{ openAssistant, open, live, act, stageOn, setStageOn, setSlot }}>
       {children}
-      <AssistantSheet open={open} onClose={close} seed={seed} onLive={setLive} onAct={setAct} slot={slot} />
+      {(warm || open) && <AssistantSheet open={open} onClose={close} seed={seed} onLive={setLive} onAct={setAct} slot={slot} />}
       <ContactScan />
     </Ctx.Provider>
   );
