@@ -161,8 +161,8 @@ function DocRows({ list, onOpen, cur = null }) {
         {/* yeni belge solda mavi nokta (Takip yeni tasarım) */}
         <i className={`size-[0.4375rem] shrink-0 rounded-full ${d.seen ? "" : "bg-acc"}`} aria-label={d.seen ? undefined : "Yeni"} />
         <span className="min-w-0 flex-1">
-          <b className="block truncate text-[0.9375rem] font-semibold">{d.name}</b>
-          <small className="block truncate text-[0.8125rem] text-mut">{[kindLabel(d.kind), when(d.at), d.state === "used" && d.note && d.note !== "Yarış ilanı" ? d.note : ""].filter(Boolean).join(" · ")}</small>
+          <b className="block break-words text-[0.9375rem] font-semibold">{d.name}</b>
+          <small className="block break-words text-[0.8125rem] text-mut">{[kindLabel(d.kind), when(d.at), d.state === "used" && d.note && d.note !== "Yarış ilanı" ? d.note : ""].filter(Boolean).join(" · ")}</small>
         </span>
         {mark && <span className="shrink-0 rounded-full bg-bg px-2 py-0.5 text-[0.75rem] font-semibold text-mut">{mark}</span>}
         <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
