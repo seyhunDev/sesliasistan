@@ -1,8 +1,9 @@
 "use client";
 
 import { useConfirm } from "@/components/ui/ConfirmProvider";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { PickSheet } from "@/components/ui/PickSheet";
 import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { RowList, ListHead, SkelRow } from "@/components/ui/Row";
@@ -25,7 +26,10 @@ const fold = (s = "") => s.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normal
 export function ChatList() {
   const confirmAsk = useConfirm();
   const router = useRouter();
-  const { chats, people, personName, uid, denied, orgId, ready, groupIds, chatRef, chatCounts, resetChats } = useChat();
+  const { chats, people, personName, uid, denied, orgId, ready, groupIds, chatRef, chatCounts, resetChats, markRead } = useChat();
+  const cur = useSearchParams().get("c") || ""; // iki bölmede sağda açık sohbet: listede seçili görünür
+  const [more, setMore] = useState(false);
+  const moreRef = useRef(null);
   const toast = useToast();
   const owner = !!orgId && orgId === uid;
   const [showArch, setShowArch] = useState(false);
@@ -116,9 +120,25 @@ export function ChatList() {
     toast(ok ? "Mesajlar sıfırlandı" : "Sıfırlanamadı");
   };
 
+  // Başlıktaki ⋯: seyrek işler (Seyhun 2026-11-13 onaylı iPad örneği). Sıfırlama en altta, kırmızı, onay sorar.
+  const unreadChats = chats.filter((c) => c.unread > 0 && !c._ghost);
+  const moreItems = [
+    archRows.length > 0 && { id: "arch", title: showArch ? "Arşivi gizle" : "Arşiv", right: String(archRows.length) },
+    unreadChats.length > 0 && { id: "read", title: "Tümünü okundu say", right: String(unreadChats.length) },
+    owner && ready && !denied && { id: "reset", title: resetting ? "Bekle…" : "Mesajları sıfırla", rightTone: "rec" },
+  ].filter(Boolean);
+  const moreDo = {
+    arch: () => setShowArch((v) => !v),
+    read: () => {
+      unreadChats.forEach((c) => markRead(c));
+      toast("Tümü okundu");
+    },
+    reset: () => !resetting && reset(),
+  };
+
   const row = (x) => (
     <li key={x.key}>
-      <button type="button" onPointerDown={() => x.c && warm(x.c.id)} onClick={x.open} data-press="row" className="flex min-h-[3.5rem] w-full items-center gap-3 px-3.5 py-2.5 text-left">
+      <button type="button" onPointerDown={() => x.c && warm(x.c.id)} onClick={x.open} aria-current={x.key === cur ? "true" : undefined} data-press="row" className={`flex min-h-[3.5rem] w-full items-center gap-3 px-3.5 py-2.5 text-left ${x.key === cur ? "bg-accbg" : ""}`}>
         {x.avatar}
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
@@ -148,7 +168,7 @@ export function ChatList() {
       {/* Yeni tasarım (2026-11-03): lacivert üstte geri, ad, "+ Sohbet", arama, Tümü · Okunmamış · Gruplar ve sabit grup kısa yolları */}
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Mesajlar">
         <header className="flex items-center gap-2.5">
-          <BackButton href="/" className="touch-manipulation" />
+          <BackButton href="/" className="chat-back touch-manipulation" />
           <div className="min-w-0 flex-1 leading-tight">
             <h1 className="truncate text-[1.375rem] font-semibold tracking-[-.02em]">Mesajlar</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{chatCount ? `${chatCount} sohbet` : "Henüz sohbet yok"}</p>
@@ -157,6 +177,11 @@ export function ChatList() {
             <Icon name="plus" className="size-4" />
             Sohbet
           </button>
+          {moreItems.length > 0 && (
+            <button ref={moreRef} type="button" onClick={() => setMore(true)} aria-label="Diğer" data-press className="btn btn-round shrink-0">
+              <Icon name="more" className="size-5" />
+            </button>
+          )}
         </header>
 
         <label className="ck-glass mt-4 flex h-11 items-center gap-2 rounded-2xl px-3.5">
@@ -183,7 +208,7 @@ export function ChatList() {
 
         {/* Sabit gruplar (Ekip, Aile, Sporcular): türüne uyan herkes otomatik üye; kişiye "+ Sohbet" ya da aramayla yazılır */}
         {cardIds.length > 0 && (
-          <div className={`mt-3 grid gap-2 ${cardIds.length >= 3 ? "grid-cols-3" : cardIds.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
+          <div className={`chat-cards mt-3 grid gap-2 ${cardIds.length >= 3 ? "grid-cols-3" : cardIds.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
             {cardIds.map((g) => {
               const c = chats.find((x) => x.id === g);
               const at = toMs(c?.last?.at);
@@ -241,16 +266,10 @@ export function ChatList() {
           </section>
         )}
 
-        {owner && ready && !denied && (
-          <div className="pt-4">
-            <button type="button" disabled={resetting} onClick={reset} data-press className="btn btn-danger w-full">
-              {resetting ? "Bekle…" : "Mesajları sıfırla"}
-            </button>
-          </div>
-        )}
       </div>
 
       <NewChatSheet open={newOpen} onClose={() => setNewOpen(false)} />
+      <PickSheet open={more} onClose={() => setMore(false)} title="Mesajlar" anchor={moreRef} items={moreItems} onPick={(id) => moreDo[id]?.()} />
     </main>
   );
 }
