@@ -89,17 +89,23 @@ export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "H
           <span className="iph-lg">
             <span>
               <i className="bg-[#8fb3ff]" />
-              tahmin
+              rüzgâr
             </span>
             <span>
               <i className="iph-dash" />
               sağanak
             </span>
             {day.rows.length > 0 && (
-              <span className="text-white">
-                <i className="bg-white" />
-                ölçülen
-              </span>
+              <>
+                <span className="text-white">
+                  <i className="bg-white" />
+                  ölçülen
+                </span>
+                <span className="text-white">
+                  <i className="iph-dash iph-dash-w" />
+                  ölçülen sağanak
+                </span>
+              </>
             )}
           </span>
         </span>
