@@ -418,7 +418,7 @@ function OrbMain({ mode, r, icon, label, on = true, onTap, onHold, onPress, onRe
 }
 
 // Yazı kutusu (klavyeyle yazarken, Composer): üstte yazı alanı, altta × · ses · ↑ Gönder (2026-10-16 sade kutu)
-const ROUND = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full transition active:scale-90";
+const ROUND = "grid size-12 shrink-0 touch-manipulation place-items-center rounded-full transition active:scale-90";
 function TypeBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, onPhoto, onPick, children }) {
   const box = useRef(null);
   const pick = useRef(null);
@@ -624,6 +624,8 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
     const fit = () => {
       const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
       el.style.transform = kb > 40 ? `translate3d(0,${-kb}px,0)` : "";
+      if (kb > 40) el.dataset.kb = "";
+      else delete el.dataset.kb; // klavye açıkken kutu klavyeye yapışık (alt güvenli alan boşluğu yok)
       el.style.setProperty("--vvh", `${Math.round(vv.height)}px`);
     };
     fit();
@@ -633,6 +635,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
       vv.removeEventListener("resize", fit);
       vv.removeEventListener("scroll", fit);
       el.style.transform = "";
+      delete el.dataset.kb;
     };
   }, [typing, active]);
 
@@ -830,12 +833,15 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   const ring = done && checkGone ? { tone: "idle", fill: 0, label: "", sub: "" } : okRing;
   return (
     <>
+    {/* Yazarak sor (Seyhun 2026-11-13, örnek ana-sayfa/sade-2026-11/klavye.html): arkası kararır ve bulanıklaşır, boş yere dokununca kapanır */}
+    {typing && !active && <div aria-hidden="true" onClick={onTypingDone} className="atype-dim fixed inset-0 z-[38] bg-[rgba(3,8,18,.62)] backdrop-blur-[3px]" />}
     {/* Asistan açıkken arkadaki sayfa görünür, hafifçe kararır; dışına dokununca kapanır (dinlerken ya da bekleyen söz varken değil) */}
     <div
       ref={box}
       data-dome=""
       data-state={active ? state : "idle"}
       data-on={active ? "" : undefined}
+      data-typing={typing && !active ? "" : undefined}
       role="region"
       aria-label="Asistan"
       className={`dome dome-rise fixed inset-x-0 bottom-0 ${rec ? "z-[55]" : "z-[38]"} h-0 overflow-hidden ${shown ? "visible" : "invisible [transition:height_.5s_cubic-bezier(.22,.8,.24,1),visibility_0s_.5s]"}`}
@@ -851,7 +857,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
           // açık ya da koyu görünümden bağımsız tek koyu tasarım (data-theme="dark": içindeki dark: sınıfları da koyu)
           <div data-theme={active ? "dark" : undefined} data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? `afull ${leaving ? "afull-out" : "afull-in"} relative flex h-[var(--vvh,100dvh)] flex-col` : "contents"}>
           {active && <AssistBg />}
-          <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col md:max-w-[40rem]" : ""}`}>
+          <div className={`asheet ${typing && !active ? "navy" : ""} relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col md:max-w-[40rem]" : ""}`}>
             {active && (
               <div className="relative mt-[env(safe-area-inset-top)] flex h-14 shrink-0 items-center gap-2 px-5">
                 {/* Durum yazısı (Düşünüyorum, Yapıyorum 2 / 3, Kaydedildi): sol üstte tek satır; sağda sesli yanıt */}
