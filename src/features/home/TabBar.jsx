@@ -1160,15 +1160,15 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
           orb={
             noAi ? null : (
               <>
-                <VoiceLight state={open && mini ? state : "idle"} onTap={talk} onHold={typeNow} size="size-12" compact />
-                {/* Yazarak sor: küçük klavye düğmesi (Seyhun 2026-11-13 "karmaşık görüntü"); sağda logo */}
-                <button type="button" onClick={typeNow} aria-label="Yazarak sor" data-press className="grid size-10 shrink-0 place-items-center rounded-full border border-[#2a4472] bg-white/[.07] text-[#cfdcf5]">
-                  <Icon name="keyboard" className="size-[1.125rem]" />
-                </button>
-                <span className="flex-1" />
+                {/* Solda logo; sağda klavye (yazarak sor) ve en sağda konuşma, ikisi aynı yuvarlak (Seyhun 2026-11-13) */}
                 <Link href="/" aria-label="Velora" className="shrink-0">
-                  <VeloraGlyph size={28} />
+                  <VeloraGlyph size={40} />
                 </Link>
+                <span className="flex-1" />
+                <button type="button" onClick={typeNow} aria-label="Yazarak sor" data-press className="skb grid size-12 shrink-0 place-items-center rounded-full text-white active:scale-95">
+                  <Icon name="keyboard" className="size-5" />
+                </button>
+                <VoiceLight state={open && mini ? state : "idle"} onTap={talk} onHold={typeNow} size="size-12" compact />
               </>
             )
           }
