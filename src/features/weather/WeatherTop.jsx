@@ -81,7 +81,7 @@ export function WeatherTop({ w, err, refresh }) {
           <Icon name="load" className="size-4" />
         </button>
       </header>
-      <HavaPanel w={ww} err={err} refresh={refresh} date={sel} today={today} rows={rows} nowH={nowH} title="Şimdi" onOpen={() => refresh(true)} />
+      <HavaPanel w={ww} err={err} refresh={refresh} date={sel} today={today} rows={rows} nowH={nowH} title="Şimdi" onOpen={() => refresh(true)} radar={radar} />
       <div ref={strip} className="iph-wk iph-wk-x" aria-label="Günler">
         {days.map((d) => (
           <DayCell key={d} date={d} today={today} w={w} on={d === sel} nowH={d === today ? nowH : null} onSel={() => setSel(d)} />
