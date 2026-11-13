@@ -339,6 +339,7 @@ html[data-nav="none"]::view-transition-new(.vt-in) { animation: none; }
 .acenter .vlight[data-state="idle"], .sidenav .vlight[data-state="idle"] { --vl-a: #3d7bff; --vl-b: #5b8cff; --vl-w: #fff; --vl-h: rgba(61, 123, 255, .35); }
 /* Boştaki asistan düğmesi Velora logosunun geçişini alır (mavi → açık mavi); diğer durumların renkleri aynı */
 :is(.acenter, .sidenav, .asheet) .vlight[data-state="idle"]:not(.aorb) .vl-disc { background: var(--brand); box-shadow: 0 10px 26px -10px rgba(11, 26, 51, .6), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.sidenav .skb { background: var(--brand); box-shadow: 0 10px 26px -10px rgba(11, 26, 51, .6), inset 0 1px 0 rgba(255, 255, 255, .25); transition: transform .15s ease-out; }
 .asheet { position: relative; background: var(--card); border-radius: 1.75rem 1.75rem 0 0;
   box-shadow: 0 -0.5px 0 var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); }
 @media (min-width: 34rem) { .asheet { box-shadow: 0 0 0 0.5px var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); } }

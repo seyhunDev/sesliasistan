@@ -97,8 +97,8 @@ export function SideNav({ path, unread = 0, orb = null }) {
   };
   return (
     // Lacivert (Seyhun 2026-11-13 "sol sidebar'ı uygulamayla uyumlu renge getir"): üstte logo yok (iPad saat satırıyla çakışmasın), menü Ana sayfa ile başlar;
-    // logo en altta, asistan küresi ve klavye düğmesiyle aynı satırda (TabBar orb)
-    <nav aria-label="Menü" className="sidenav navy fixed inset-y-0 left-0 z-[37] hidden w-60 flex-col border-r border-[#1d3256] pt-[max(1.25rem,env(safe-area-inset-top))]">
+    // üstte saat satırıyla karışmasın diye boşluk; logo en altta solda, sağda klavye ve asistan küresi (TabBar orb)
+    <nav aria-label="Menü" className="sidenav navy fixed inset-y-0 left-0 z-[37] hidden w-60 flex-col border-r border-[#1d3256] pt-[calc(env(safe-area-inset-top)+1.75rem)]">
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin]">
         {TABS.map(([href, label]) => (
           <Link key={href} href={href} aria-current={at(href) ? "page" : undefined} className={`${row(at(href))} text-[0.9375rem] ${at(href) ? "" : "font-medium"}`}>
