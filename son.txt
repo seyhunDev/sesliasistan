@@ -1,8 +1,8 @@
-Commit: 2adef2c · Velora Sailing kartı: Velora hesabıyla giriş ve yeni adres (#1409)
-Zaman: 2026-11-13-0933 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43376923491
+Commit: 3960711 · Yarış detayı: kesik yazı yok, iş notunda Ara ve Harita (#1411)
+Zaman: 2026-11-13-1321 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43405608863
 
-TAM TEST · 13.11.2026 09:11:46
+TAM TEST · 13.11.2026 12:59:48
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1411/1441 geçti · 30 kalan · 1288 sn
+SONUÇ: 1412/1441 geçti · 29 kalan · 1322 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -281,10 +281,10 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1288 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 10 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 14 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 10 · açıklama 10 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 14 · açıklama 14 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
@@ -299,7 +299,7 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1288 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/22
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 16/22
   ✗ Yarış sayfası: 11/14
       ✗ “yarış günü, sporcu seçili”
           beklenen: çökmeden açılır, "Canlı ekran" görünür
@@ -310,10 +310,7 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1288 sn
       ✗ “bütün sekmeler”
           beklenen: her sekme çökmeden açılır
           olan:     2 sekme açıldı
-  ✗ Antrenman: 2/3
-      ✗ “telefon: bitiren kim, alt düğme”
-          beklenen: çökmeden açılır, "Sıralama" görünür
-          olan:     ana düğme Yarışı bitir · kare 1 · dokununca Start ver · kutu 236/236 · düğme 783/782
+  ✓ Antrenman: 3/3
   ✓ Asılı bağlantı: 2/2
   ✗ Yayın: 0/3
       ✗ “gruplar ayrı, ekranda seçim, kameralar”
