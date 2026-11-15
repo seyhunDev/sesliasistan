@@ -6,14 +6,13 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Countdown, holdMic, readTimer } from "@/features/training/Countdown";
+import { Countdown, holdMic } from "@/features/training/Countdown";
 import { micReset } from "@/lib/speech/audioSession";
 import { voiceType } from "@/lib/chatFile";
 import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
 import { closeKanal, linkUrl, loadLog, loadPusula, markLog, openKanal, saveBilgi, sendMsg, sendSes, useBilgi, useTekneler } from "./bilgiStore";
 import { TekneMap } from "./TekneMap";
-import { bilgiOn, setBilgiOn } from "./BilgiSync";
 import "./bilgi.css";
 
 // Bilgi ekranı yönetimi (yalnız ana hesap): mesaj (ekranda görünür ve sesli okunur), bas-konuş, start sayacı (ortak sayaç), parkur.
@@ -453,7 +452,6 @@ export function BilgiAdmin() {
   const org = profile?.role === "owner" ? profile?.orgId || "" : "";
   const b = useBilgi(org);
   const [text, setText] = useState("");
-  const [on, setOn] = useState(() => (typeof window === "undefined" ? false : bilgiOn()));
   const [label, setLabel] = useState(null);
   const [state, setState] = useState(null);
   const [log, setLog] = useState(null);
@@ -519,13 +517,6 @@ export function BilgiAdmin() {
     marked.current = last.id;
     markLog(org, last.logId, { st: dl.state, seen: dl.seen, of: dl.of });
   }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
-  const pickOn = (v) => {
-    const yes = v === "on";
-    setOn(yes);
-    setBilgiOn(yes);
-    const t = readTimer();
-    saveBilgi(org, { timer: yes ? { dur: t.dur ?? 300, end: t.end ?? null, left: t.left ?? null, mode: t.mode || "" } : null }).catch(() => {});
-  };
   const saveText = (k, v) => {
     const cur = b?.[k] ?? "";
     if (v != null && v.trim() !== cur) saveBilgi(org, { [k]: v.trim() }).catch(() => toast("Kaydedilemedi"));
@@ -597,16 +588,8 @@ export function BilgiAdmin() {
           <>
             <section>
               <h2 className="bzy-h">Start</h2>
-              <Seg
-                value={on ? "on" : "off"}
-                items={[
-                  ["on", "Ekranda"],
-                  ["off", "Kapalı"],
-                ]}
-                onPick={pickOn}
-              />
               <input
-                className="bzy-in mt-2"
+                className="bzy-in"
                 value={label ?? b?.label ?? ""}
                 maxLength={40}
                 placeholder="Grup"
