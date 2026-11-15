@@ -1,8 +1,8 @@
-Commit: 2ac8ed0 · İngilizce kalıplara resimle ezber: kalıp resmi ve Hatırla adımı (#1424)
-Zaman: 2026-11-15-1931 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43733843529
+Commit: e695e93 · Bilgi Yönet: tam ekran harita düzeni (#1449)
+Zaman: 2026-11-15-2357 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43758737520
 
-TAM TEST · 15.11.2026 19:09:37
+TAM TEST · 15.11.2026 23:34:08
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1411/1441 geçti · 30 kalan · 1312 sn
+SONUÇ: 1409/1441 geçti · 32 kalan · 1389 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4567 test”
+      ✗ “4580 test”
           beklenen: hepsi geçer
-          olan:     4519/4567 geçti
+          olan:     4532/4580 geçti
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “Yarışlar geri dönüş” → false (beklenen: liste racesNow ile başlar, yarış 1 dk içindeki listeden açılır)
       ✗ “tek kutu” → false (beklenen: solda kutu, sağda bas-konuş küresi)
@@ -209,7 +209,7 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1312 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 122/139
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 120/139
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✗ Ana sayfa: 3/8
       ✗ “iş düğmeleri”
@@ -236,7 +236,13 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1312 sn
   ✓ Sayfa hataları: 13/13
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
-  ✓ Sesli yanıt: 8/8
+  ✗ Sesli yanıt: 6/8
+      ✗ “konuşarak “kapat””
+          beklenen: asistan hemen kapanır
+          olan:     tam ekran 1
+      ✗ “sesli yanıt açıkken soru”
+          beklenen: cevap okunur, “ilgileniyorum” denmez
+          olan:     cevap yok · okunan: yok
   ✗ Onaysız kayıt ve “Kaydedildi”: 5/12
       ✗ “geri sayımda ✕”
           beklenen: kaydedilmez, “kaydetmedim” denir
@@ -284,10 +290,10 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1312 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 20 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 24 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 20 · açıklama 20 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 24 · açıklama 24 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
