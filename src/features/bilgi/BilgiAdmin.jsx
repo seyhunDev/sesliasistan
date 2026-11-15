@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { chooseDur, holdMic, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
