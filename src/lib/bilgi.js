@@ -45,7 +45,7 @@ export function cleanBilgi(d = {}) {
 
 // Kanal (Seyhun 2026-11-15): Yönet bir kanal açar (Antrenman, Yarış…); bilgi ekranı yalnız açık kanala katılarak başlar.
 // Kanaldakiler: bilgiTekne belgeleri (ch = kanal id), son 60 sn'de ses verenler açık sayılır.
-export const LIVE_MS = 60e3;
+export const LIVE_MS = 90e3; // konum en geç 45 sn'de bir yazılır; iki yazım kaçarsa kapalı sayılır
 export const membersOf = (boats, ch, now) => (boats || []).filter((b) => ch && b.ch === ch && now - (b.t || 0) < LIVE_MS);
 
 // Gönderim durumu (İletildi / Görüldü / Ulaşmadı): sent = { id, at, to, ok } (ok: sunucu onayı true/false, beklerken null).

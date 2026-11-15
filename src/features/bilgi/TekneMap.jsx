@@ -6,7 +6,7 @@ import { MAP_STYLE, loadMapLibre } from "@/lib/maplibre";
 // Yönet › Tekneler haritası (Seyhun 2026-11-15): bilgi ekranını açan her telefon kendi GPS noktasında, üstünde yelken no ve isim.
 // 1 dk'dır konum gelmeyen soluk (gri). İlk tekneler gelince hepsi görünecek şekilde yaklaşır; sonra kullanıcı kaydırır.
 // Simge (tekne şekli, yön) ileride.
-const STALE = 60e3;
+const STALE = 90e3;
 function markEl() {
   const d = document.createElement("div");
   d.className = "tkm";

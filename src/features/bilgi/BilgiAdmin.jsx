@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { Countdown, holdMic, readTimer } from "@/features/training/Countdown";
 import { micReset } from "@/lib/speech/audioSession";
 import { voiceType } from "@/lib/chatFile";
-import { PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
+import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
 import { closeKanal, linkUrl, loadLog, loadPusula, markLog, openKanal, saveBilgi, sendMsg, sendSes, useBilgi, useTekneler } from "./bilgiStore";
 import { TekneMap } from "./TekneMap";
@@ -194,7 +194,7 @@ const ago = (t, now) => {
 };
 function Tekneler({ boats: all, ch, now, course }) {
   const list = (all || []).filter((b) => !ch || b.ch === ch).sort((a, b) => (b.t || 0) - (a.t || 0));
-  const live = list.filter((b) => now - b.t < 60e3).length;
+  const live = list.filter((b) => now - b.t < LIVE_MS).length;
   return (
     <section>
       <h2 className="bzy-h">
@@ -204,7 +204,7 @@ function Tekneler({ boats: all, ch, now, course }) {
       {list.length > 0 && (
         <div className="bzy-list mt-2.5">
           {list.map((b) => {
-            const old = now - b.t >= 60e3;
+            const old = now - b.t >= LIVE_MS;
             return (
               <div key={b.id} className={`bzy-li items-center${old ? " old" : ""}`}>
                 <time className="num font-bold text-fg">{b.sail || "—"}</time>
