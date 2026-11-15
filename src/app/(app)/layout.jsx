@@ -9,6 +9,7 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { TimerSound } from "@/features/training/Countdown";
 import { IosBridge } from "@/features/ios/IosBridge";
+import { BilgiSync } from "@/features/bilgi/BilgiSync";
 import { AppLock } from "@/features/ios/AppLock";
 import { DataProvider } from "@/features/data/DataProvider";
 import { ChatProvider } from "@/features/chat/ChatProvider";
@@ -41,7 +42,9 @@ export default function AppLayout({ children }) {
   const router = useRouter();
   // Uygulama içinden açılan canlı ekran (app/(app)/athletes/(..)canli): uygulama ayakta kalır, yalnız alt çubuk ve uygulamanın
   // açılır notları görünmez (canlı ekranın kendi geri ve "Yeni sürüm" çubuğu var)
-  const live = usePathname().startsWith("/canli");
+  // Sporcu bilgi ekranı (/bilgi) da tek ekran: alt çubuk ve açılır notlar yok
+  const path = usePathname();
+  const live = path.startsWith("/canli") || path === "/bilgi";
 
   // Geri düğmeleri gelinen sayfaya dönsün diye uygulama içi geçmiş izlenir
   useEffect(() => installTrail(), []);
@@ -103,6 +106,7 @@ export default function AppLayout({ children }) {
                   {!live && <TryAssistant />}
                   {!live && <SportGate />}
                   <TimerSound />
+                  <BilgiSync />
                   <IosBridge />
                   <AppLock />
                  </DockProvider>

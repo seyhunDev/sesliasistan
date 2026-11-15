@@ -42,6 +42,7 @@ import { debtAsk, debtCommand } from "@/lib/debts";
 import { wordCommand } from "@/lib/englishWords";
 import { grpCommand, timerCommand, windCommand } from "@/lib/raceLive";
 import { penCommand, roundCommand, routeCommand, screenCommand } from "@/lib/raceRounds";
+import { bilgiCommand } from "@/lib/bilgi";
 import { COURSE_WORD, courseAsk, courseCommand, courseRelative, courseUndo } from "@/lib/raceCourse";
 import { resultCommand } from "@/lib/raceVoice";
 import { trainCommand, raceToday } from "@/lib/trainVoice";
@@ -78,6 +79,7 @@ export function moreKind(s, c = {}) {
   // "ödenmemiş faturalar neler", "bu ay ne kadar harcadık", "okunmamış mesajım var mı"
   const ia = infoAsk(s, c.today || "2000-01-01");
   if (ia && (ia.kind !== "invoices" || owner)) return "infoAsk";
+  if (owner && bilgiCommand(s)) return "bilgi";
   // Canlı ekran (isler/canliEkran.js): şamandıra dönüşü, parkur sırası, ekranda gösterme; az önce yazılan dönüşü "geri al"
   if (owner && racer && (routeCommand(s) || roundCommand(s) || screenCommand(s) || grpCommand(s) || penCommand(s) || (c.roundJust && courseUndo(s)))) return "liveScreen";
   // Antrenman yarışı sesle (isler/antrenmanSes.js): "2 dakika başlat", "yarışı bitir, birinci Ali …"; yarış günü antrenman sayfası dışında Yayın'ın
@@ -135,6 +137,8 @@ export function routesOf(s, c = {}) {
   if (owner && racer && c.roundJust && courseUndo(s)) add("more", { kind: "liveScreen" });
   const scr = owner && racer && screenCommand(s);
   if (scr) add("more", { kind: "liveScreen" });
+  // Bilgi ekranı (isler/bilgi.js): "bilgi ekranına yaz: …" Mesajlar'a değil ekrana gider
+  if (owner && bilgiCommand(s)) add("more", { kind: "bilgi" });
   // Adım adım antrenman ekranı açık: "tamam", "sonraki", "bu hareketi atla" ekrandaki antrenmanı yürütür
   if (c.guide && guideWord(s)) add("guide");
   if ((isEnd(s) && !mf) || (c.askedMore && isNoMore(s))) add("close");
