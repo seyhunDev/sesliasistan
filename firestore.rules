@@ -125,6 +125,19 @@ service cloud.firestore {
       }
     }
 
+    // Sporcu bilgi ekranı, herkese açık link (/ekran/{key}, Seyhun 2026-11-15): ekranın kopyası. Linki bilen giriş yapmadan tek belge
+    // okur (liste yok, anahtar tahmin edilemez); yalnız ana hesap yazar ve siler.
+    match /bilgiAcik/{key} {
+      allow get: if true;
+      allow create: if key.size() >= 12 && isOwner(request.resource.data.org);
+      allow update: if isOwner(resource.data.org) && request.resource.data.org == resource.data.org;
+      allow delete: if isOwner(resource.data.org);
+      match /ses/{id} {
+        allow get: if true;
+        allow write: if isOwner(get(/databases/$(database)/documents/bilgiAcik/$(key)).data.org);
+      }
+    }
+
     match /orgs/{orgId} {
       // Ana hesap: kendi işletmesindeki her şey (doğum günleri hariç: kişiye özel, aşağıda)
       match /{col}/{document=**} {

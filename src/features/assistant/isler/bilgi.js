@@ -1,7 +1,7 @@
 // Sporcu bilgi ekranı sesle (elle yapılanın aynısı, Bilgi ekranı yönetimi): "bilgi ekranına yaz: …" / "bilgi ekranına söyle: …" mesajı
 // ekrana gönderir (ekranda görünür ve sesli okunur); "bilgi ekranını aç", "bilgi ekranını yönet". Yalnız ana hesap.
 import { SHOW, bilgiCommand } from "@/lib/bilgi";
-import { saveBilgi, sendMsg } from "@/features/bilgi/bilgiStore";
+import { linkOf, linkUrl, newLink, saveBilgi, sendMsg } from "@/features/bilgi/bilgiStore";
 
 export async function bilgiCmd(ctx, s, viaVoice) {
   const { owner, profile, router, park, leave, showPage, done, reply, setPhase } = ctx;
@@ -13,6 +13,17 @@ export async function bilgiCmd(ctx, s, viaVoice) {
     router.push(c.op === "open" ? "/bilgi" : "/bilgi/yonet");
     leave(c.op === "open" ? "Bilgi ekranını açtım." : "Bilgi ekranı yönetimini açtım.", viaVoice);
     showPage();
+    return true;
+  }
+  // "bilgi ekranı linkini ver": herkese açık link (yoksa açılır) panoya kopyalanır ve söylenir (Yönet › Herkese açık link)
+  if (c.op === "link") {
+    setPhase?.("thinking");
+    const org = profile?.orgId;
+    const key = await linkOf(org).then((k) => k || newLink(org)).catch(() => "");
+    if (!key) return (reply("Link açamadım, tekrar dene.", { fail: true, engine: "local" }, viaVoice), true);
+    const url = linkUrl(key);
+    await navigator.clipboard?.writeText(url).catch(() => {});
+    done(`Bilgi ekranı linkini kopyaladım: ${url}`, { engine: "local" }, viaVoice);
     return true;
   }
   // "bilgi ekranında rüzgârı göster / saati gizle": start sonrası ekranda aç kapa (Yönet › Start sonrası ekranda)

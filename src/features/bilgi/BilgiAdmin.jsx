@@ -11,7 +11,7 @@ import { micReset } from "@/lib/speech/audioSession";
 import { voiceType } from "@/lib/chatFile";
 import { COURSES, SES_MAX_SEC, SHOW, SHOW_DEF } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
-import { loadLog, loadPusula, saveBilgi, sendMsg, sendSes, useBilgi } from "./bilgiStore";
+import { linkUrl, loadLog, loadPusula, newLink, saveBilgi, sendMsg, sendSes, useBilgi } from "./bilgiStore";
 import { bilgiOn, setBilgiOn } from "./BilgiSync";
 import "./bilgi.css";
 
@@ -159,6 +159,45 @@ function CompassList({ rows }) {
   );
 }
 
+// Herkese açık link: kopyalanıp gönderilen kişi giriş yapmadan ekranı açar. Yenile: eski link çalışmaz olur
+function PublicLink({ org, link }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const url = link ? linkUrl(link) : "";
+  const make = async () => {
+    setBusy(true);
+    const k = await newLink(org).catch(() => "");
+    setBusy(false);
+    if (!k) return toast("Link açılamadı");
+    copy(linkUrl(k), link ? "Yeni link kopyalandı" : "Link kopyalandı");
+  };
+  const copy = (u, msg = "Link kopyalandı") =>
+    navigator.clipboard?.writeText(u).then(
+      () => toast(msg),
+      () => toast(u),
+    ) ?? toast(u);
+  return (
+    <section>
+      <h2 className="bzy-h">Herkese açık link</h2>
+      {url && <div className="bzy-link num">{url.replace(/^https?:\/\//, "")}</div>}
+      <div className="bzy-row">
+        {url ? (
+          <>
+            <Button onClick={() => copy(url)}>Kopyala</Button>
+            <Button variant="secondary" disabled={busy} onClick={make}>
+              Yenile
+            </Button>
+          </>
+        ) : (
+          <Button disabled={busy} onClick={make}>
+            Link oluştur
+          </Button>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function BilgiAdmin() {
   const { profile } = useAuth();
   const toast = useToast();
@@ -246,6 +285,7 @@ export function BilgiAdmin() {
             })}
           </div>
         </section>
+        <PublicLink org={org} link={b?.link || ""} />
         <SentList rows={log} />
         <CompassList rows={pus} />
       </div>

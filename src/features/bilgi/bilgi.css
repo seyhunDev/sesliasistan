@@ -91,4 +91,5 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-li time { flex: none; font-size: 0.75rem; font-weight: 600; color: var(--mut); min-width: 2.6rem; }
 .bzy-li b { display: block; font-weight: 600; }
 .bzy-li span { display: block; font-size: 0.75rem; color: var(--mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzy-link { background: var(--card); border: 1px solid var(--line); border-radius: 0.875rem; padding: 0.75rem 0.875rem; font-size: 0.875rem; color: var(--mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bzy-last { margin-top: 0.5rem; font-size: 0.8125rem; color: var(--mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

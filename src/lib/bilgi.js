@@ -32,6 +32,7 @@ export function cleanBilgi(d = {}) {
     label: S(d.label, 40),
     course: COURSES[d.course] ? d.course : "trapez",
     show: cleanShow(d.show),
+    link: /^[a-z0-9]{12,40}$/.test(d.link || "") ? d.link : "",
     state: S(d.state, 80),
     timer: t ? { dur: Number(t.dur) || 300, end: Number.isFinite(+t.end) && t.end != null ? +t.end : null, left: Number.isFinite(+t.left) && t.left != null ? +t.left : null, mode: S(t.mode, 20) } : null,
     msg: m && m.id ? { id: S(m.id, 40), text: S(m.text, MSG_MAX), at: Number(m.at) || 0 } : null,
@@ -93,6 +94,7 @@ export function bilgiCommand(s) {
   const m = /^bilgi ekranına\s+(?:yaz|söyle|mesaj gönder|mesaj yaz|duyur|gönder)\s*[:,]?\s*(.+)$/i.exec(t);
   if (m) return { op: "msg", text: S(m[1].replace(/[.!]+$/, ""), MSG_MAX) };
   if (/^bilgi ekranını?\s+(?:aç|göster)$/i.test(t)) return { op: "open" };
+  if (/^bilgi ekranı(?:nın)?\s+link(?:i|ini)?(?:\s+(?:ver|kopyala|paylaş|gönder|aç|oluştur))?$/i.test(t)) return { op: "link" };
   // "bilgi ekranında rüzgârı göster" / "bilgi ekranında saati gizle": start sonrası ekranda aç kapa
   const g = /^bilgi ekranında\s+(pusula|süre|parkur|rüzg[aâ]r|saat)\S*\s+(göster|gizle|aç|kapat)$/i.exec(t);
   if (g) {
