@@ -120,6 +120,8 @@ html.bz-lock body { position: fixed; inset: 0; width: 100%; }
 textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 .bzy-row > * { flex: 1; }
+.bzy-tabs { position: relative; background: var(--bg); margin: -1.5rem 0 0; padding: 1.25rem 1rem 0.5rem; border-radius: 1.75rem 1.75rem 0 0; }
+.bzy-tabs + .bzy-body { margin-top: 0; border-radius: 0; padding-top: 0.75rem; }
 .bzy-seg { display: flex; gap: 0.25rem; background: #ebebef; border-radius: 0.75rem; padding: 0.1875rem; }
 .bzy-seg button { flex: 1; padding: 0.5rem 0.25rem; border-radius: 0.5625rem; font-size: 0.875rem; font-weight: 600; color: var(--mut); background: none; border: 0; }
 .bzy-seg button[aria-pressed="true"] { background: var(--card); color: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
