@@ -459,28 +459,42 @@ function WindDial({ wind, head }) {
   );
 }
 
-// Teknenin kendi konumu (ekranda harita için) ve son 10 dk izi (5 sn'de bir nokta)
+// Teknenin kendi konumu (ekranda harita için) ve son 10 dk izi (5 sn'de bir nokta). err: konum alınamıyorsa kısa sebep
+// (Seyhun 2026-11-15 Android'de harita/konum boş kaldı: hata sessizce yutuluyordu). Yüksek doğruluk 20 sn'de konum vermezse
+// (içeride GPS tutmaz, Google servisi olmayan telefon) düşük doğrulukla (ağ) da denenir.
+const noGeo = () => !navigator.geolocation || window.isSecureContext === false;
+const GEO_ERR = { 1: "Konum izni verilmedi", 2: "Konum bulunamadı, telefonda konum açık mı?", 3: "Konum bekleniyor…" };
 function useMyPos(on) {
-  const [pos, setPos] = useState({ me: null, trail: [] });
+  const [pos, setPos] = useState({ me: null, trail: [], err: "" });
   useEffect(() => {
-    if (!on || !navigator.geolocation) return;
+    if (!on) return;
+    if (noGeo()) return;
     let last = 0;
-    const w = navigator.geolocation.watchPosition(
-      (p) => {
-        const me = { lat: p.coords.latitude, lon: p.coords.longitude };
-        const t = Date.now();
-        setPos((o) => {
-          const add = t - last > 5000;
-          if (add) last = t;
-          return { me, trail: add ? [...o.trail.filter((x) => t - x.t < 600e3), { ...me, t }] : o.trail };
-        });
-      },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
-    );
-    return () => navigator.geolocation.clearWatch(w);
+    let got = false;
+    const ok = (p) => {
+      got = true;
+      const me = { lat: p.coords.latitude, lon: p.coords.longitude };
+      const t = Date.now();
+      setPos((o) => {
+        const add = t - last > 5000;
+        if (add) last = t;
+        return { me, err: "", trail: add ? [...o.trail.filter((x) => t - x.t < 600e3), { ...me, t }] : o.trail };
+      });
+    };
+    const bad = (e) => !got && setPos((o) => ({ ...o, err: GEO_ERR[e?.code] || "Konum alınamadı" }));
+    const w1 = navigator.geolocation.watchPosition(ok, bad, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    let w2 = null;
+    const slow = setTimeout(() => {
+      if (!got) w2 = navigator.geolocation.watchPosition(ok, bad, { enableHighAccuracy: false, maximumAge: 30000, timeout: 30000 });
+    }, 20000);
+    return () => {
+      clearTimeout(slow);
+      navigator.geolocation.clearWatch(w1);
+      if (w2 != null) navigator.geolocation.clearWatch(w2);
+    };
   }, [on]);
-  return pos;
+  const none = useSyncExternalStore(noSub, noGeo, () => false);
+  return none ? { ...pos, err: "Bu tarayıcı konum vermiyor, linki Chrome ya da Safari'de aç" } : pos;
 }
 
 // pub: herkese açık linkle (/ekran/{anahtar}) girişsiz açılış; veri kopya belgeden, pusula kaydı yok, geri düğmesi yok
@@ -520,6 +534,14 @@ export function BilgiScreen({ pub = "" }) {
     try {
       if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") await DeviceOrientationEvent.requestPermission();
     } catch {}
+    // Konum izni dokunuşla istensin (bazı tarayıcılar dokunuşsuz isteği göstermiyor)
+    try {
+      navigator.geolocation?.getCurrentPosition(
+        () => {},
+        () => {},
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 },
+      );
+    } catch {}
     await unlock();
     // Tam ekran yalnız tarayıcıda: uygulamada (iPhone kabuğu, ana ekran uygulaması) iOS üstte site adresli "tam ekran" şeridi gösteriyordu
     // (Seyhun 2026-11-15); uygulama zaten tam ekran
@@ -555,7 +577,7 @@ export function BilgiScreen({ pub = "" }) {
   const wind = <WindDial wind={course.up} head={h} />;
   const map = (
     <div className="bz-rt">
-      <CourseMap course={course} me={pos.me} head={h} trail={pos.trail} className="bz-map" />
+      <CourseMap course={course} me={pos.me} head={h} trail={pos.trail} className="bz-map" note={pos.me ? "" : pos.err || "Konum bekleniyor…"} />
       {b?.state && <div className="bz-cs">{b.state}</div>}
     </div>
   );

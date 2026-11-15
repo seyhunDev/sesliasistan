@@ -25,12 +25,18 @@ function useSize() {
   return [ref, s];
 }
 
-export function CourseMap({ course, me = null, head = null, trail = [], boats = [], className = "" }) {
+export function CourseMap({ course, me = null, head = null, trail = [], boats = [], className = "", note = "" }) {
   const [ref, { w, h }] = useSize();
   const marks = course?.has ? course.pts : [];
   const up = course?.has ? course.up || 0 : 0;
   const base = marks.length ? marks : me ? [me] : boats.filter((b) => Number.isFinite(b.lat));
-  if (!base.length) return <div ref={ref} className={`bzm ${className}`} />;
+  const msg = note ? <div className="bzm-note">{note}</div> : null;
+  if (!base.length)
+    return (
+      <div ref={ref} className={`bzm ${className}`}>
+        {msg}
+      </div>
+    );
   // Merkez: parkurun ortası (ya da tekne); tekne parkura 5 km'den yakınsa sığdırılır
   const c0 = { lat: base.reduce((a, p) => a + p.lat, 0) / base.length, lon: base.reduce((a, p) => a + p.lon, 0) / base.length };
   const fit = [...base];
@@ -96,6 +102,7 @@ export function CourseMap({ course, me = null, head = null, trail = [], boats = 
           {step >= 1000 ? `${step / 1000} km` : `${step} m`}
         </text>
       </svg>
+      {msg}
     </div>
   );
 }
