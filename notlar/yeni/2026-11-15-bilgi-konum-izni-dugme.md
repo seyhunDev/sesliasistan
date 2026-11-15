@@ -5,3 +5,4 @@
 ## Sıradaki işler
 - Telefonda dene: izni reddet, düğmeye bas, pencere geliyor mu.
 - Harita: sporcu artık her zaman haritada (CourseMap). Önceden parkur 5 km'den uzaktaysa (hakem botu başka yerde girilmiş) tekne ekran dışında kalıp hiç çizilmiyordu; iPhone'da "izin verdim, haritada yok" bunun sonucu. Uzaksa merkez tekne ile parkurun ortası, altta "Parkura X km".
+- Harita zemini: CourseMap altında gerçek harita (MapBase: MapLibre + OpenFreeMap positron, dokunulmaz). Merkez/ölçek/dönüş SVG ile aynı (zoomOf, bearing = rüzgâr). Gece karo CSS ile ters çevrilip lacivert. Karo yoksa düz zemin + ızgara, konum yine çizilir. Yönet › Parkur önizlemesi de aynı bileşen.

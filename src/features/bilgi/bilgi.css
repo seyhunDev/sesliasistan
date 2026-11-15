@@ -60,6 +60,10 @@ html.bz-lock body { position: fixed; inset: 0; width: 100%; }
   --m-grid: #d6e2ee; --m-mark: #e08a00; --m-n: #111; --m-line: #1d4ed8; --m-me: #000; --m-trail: #8fb3ff; --m-sc: #59606b; --m-boat: #1d4ed8; }
 .bz:not(.bz-day) .bzm { background: #0f2240; border-color: #1d3256; --m-grid: #1a2f52; --m-mark: #d9a93a; --m-n: #cfd9ef; --m-line: #8fb3ff; --m-me: #fff; --m-trail: #3d7bff; --m-sc: #7d90b5; }
 .bzm svg { position: absolute; inset: 0; display: block; }
+.bzm-base { position: absolute; inset: 0; opacity: 0; transition: opacity .4s; pointer-events: none; }
+.bzm-base.on { opacity: .85; }
+.bz:not(.bz-day) .bzm-base.on { opacity: .7; filter: invert(1) hue-rotate(180deg) saturate(.7) brightness(.85); }
+.bzm-at { fill: var(--m-sc); font: 500 9px var(--font-sans, sans-serif); opacity: .7; }
 .bzm-grid { stroke: var(--m-grid); stroke-width: 1; fill: none; }
 .bzm-line { stroke: var(--m-line); stroke-width: 2; stroke-dasharray: 5 4; }
 .bzm-kom { fill: var(--m-line); }

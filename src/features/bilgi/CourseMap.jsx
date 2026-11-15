@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { project } from "@/lib/bilgi";
 import { dist } from "@/lib/raceCourse";
+import { MAP_STYLE, loadMapLibre } from "@/lib/maplibre";
 
 // Sade parkur haritası (Seyhun 2026-11-15, örnek "Rüzgâr ve parkur"): kara, yol yok; yalnız ızgara, ölçek, şamandıralar, start hattı,
 // teknenin kendisi (yönüyle) ve son 10 dk izi. Parkur varsa rüzgâr hep yukarıdan (parkur ekseni), yoksa kuzey yukarı ve tekne ortada.
@@ -25,8 +26,51 @@ function useSize() {
   return [ref, s];
 }
 
+// Gerçek harita zemini (Seyhun 2026-11-15: "konum var ama harita yok, karada da denizde de yerimi göreyim"). Yönet › Tekneler'deki
+// MapLibre + OpenFreeMap (anahtarsız); dokunulmaz, yalnız arka plan. Çizimler SVG'de kalır: merkez, ölçek ve dönüş (rüzgâr yukarı)
+// buradaki kameraya aynen verilir, yerel izdüşüm Mercator ile birkaç km'de piksel altı örtüşür. Karo yüklenemezse (denizde
+// internet yok) zemin düz renk kalır, konum yine çizilir. Gece: aynı karo ters çevrilip lacivertleştirilir (CSS).
+function zoomOf(lat, scale) {
+  return Math.log2((40075016.686 * Math.cos((lat * Math.PI) / 180) * scale) / 512);
+}
+function MapBase({ c, scale, up, w, h, onReady }) {
+  const box = useRef(null);
+  const map = useRef(null);
+  const [ok, setOk] = useState(false);
+  const z = zoomOf(c.lat, scale);
+  useEffect(() => {
+    let live = true;
+    loadMapLibre()
+      .then((lib) => {
+        if (!live || !box.current) return;
+        const m = new lib.Map({ container: box.current, style: MAP_STYLE, center: [26.889, 39.071], zoom: 12, interactive: false, attributionControl: false, fadeDuration: 0 });
+        map.current = m;
+        m.on("load", () => {
+          if (!live) return;
+          setOk(true);
+          onReady?.(true);
+        });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+      map.current?.remove();
+      map.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ok || !Number.isFinite(z)) return;
+    m.resize();
+    m.jumpTo({ center: [c.lon, c.lat], zoom: z, bearing: up });
+  }, [c.lat, c.lon, z, up, w, h, ok]);
+  return <div ref={box} className={`bzm-base${ok ? " on" : ""}`} aria-hidden="true" />;
+}
+
 export function CourseMap({ course, me = null, head = null, trail = [], boats = [], className = "", note = "" }) {
   const [ref, { w, h }] = useSize();
+  const [tiles, setTiles] = useState(false);
   const marks = course?.has ? course.pts : [];
   const up = course?.has ? course.up || 0 : 0;
   const base = marks.length ? marks : me ? [me] : boats.filter((b) => Number.isFinite(b.lat));
@@ -59,15 +103,31 @@ export function CourseMap({ course, me = null, head = null, trail = [], boats = 
   };
   const step = STEPS.find((m) => m * scale > w / 5) || 5000;
   const grid = [];
-  for (let x = w / 2 % (step * scale); x < w; x += step * scale) grid.push(`M${x.toFixed(1)} 0V${h}`);
-  for (let y = h / 2 % (step * scale); y < h; y += step * scale) grid.push(`M0 ${y.toFixed(1)}H${w}`);
+  for (let x = (w / 2) % (step * scale); x < w; x += step * scale) grid.push(`M${x.toFixed(1)} 0V${h}`);
+  for (let y = (h / 2) % (step * scale); y < h; y += step * scale) grid.push(`M0 ${y.toFixed(1)}H${w}`);
   const kom = marks.find((m) => m.kind === "komite");
   const pin = marks.find((m) => m.kind === "pin");
-  const tr = trail.length > 1 ? trail.map((p, i) => `${i ? "L" : "M"}${xy(p).map((v) => v.toFixed(1)).join(" ")}`).join("") : "";
+  const tr =
+    trail.length > 1
+      ? trail
+          .map(
+            (p, i) =>
+              `${i ? "L" : "M"}${xy(p)
+                .map((v) => v.toFixed(1))
+                .join(" ")}`,
+          )
+          .join("")
+      : "";
   return (
     <div ref={ref} className={`bzm ${className}`}>
+      <MapBase c={c0} scale={scale} up={up} w={w} h={h} onReady={setTiles} />
       <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-label="Parkur haritası">
-        <path d={grid.join("")} className="bzm-grid" />
+        {!tiles && <path d={grid.join("")} className="bzm-grid" />}
+        {tiles && (
+          <text x="8" y={h - 8} className="bzm-at">
+            © OpenStreetMap
+          </text>
+        )}
         {kom && pin && <line x1={xy(kom)[0]} y1={xy(kom)[1]} x2={xy(pin)[0]} y2={xy(pin)[1]} className="bzm-line" />}
         {kom && <rect x={xy(kom)[0] - 6} y={xy(kom)[1] - 6} width="12" height="12" rx="2" className="bzm-kom" />}
         {pin && <circle cx={xy(pin)[0]} cy={xy(pin)[1]} r="4.5" className="bzm-kom" />}
@@ -101,7 +161,11 @@ export function CourseMap({ course, me = null, head = null, trail = [], boats = 
         {me &&
           (() => {
             const [x, y] = xy(me);
-            return head == null ? <circle cx={x} cy={y} r="6" className="bzm-me" /> : <path d="M0 -12 L7.5 9 L0 4.5 L-7.5 9 Z" transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(head - up).toFixed(0)})`} className="bzm-me" />;
+            return head == null ? (
+              <circle cx={x} cy={y} r="6" className="bzm-me" />
+            ) : (
+              <path d="M0 -12 L7.5 9 L0 4.5 L-7.5 9 Z" transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(head - up).toFixed(0)})`} className="bzm-me" />
+            );
           })()}
         <text x={w - 8} y={h - 8} className="bzm-sc">
           {step >= 1000 ? `${step / 1000} km` : `${step} m`}
