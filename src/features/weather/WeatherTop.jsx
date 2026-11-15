@@ -18,7 +18,7 @@ import { todayStr } from "@/lib/utils/format";
 import { dayHours, getPlace, placeLabel, setPlace, compareLinks } from "./weather";
 
 // Hava sayfası (Seyhun 2026-11-12 "hava durumu sayfasını da ana sayfa hava durumuna göre yap… gerçekleşen değerleri de göster… birleştir";
-// örnek ana-sayfa/sade-2026-11/hava.html): ana sayfayla aynı lacivert (.iph) ve aynı Hava kutusu (HavaPanel: pusula + saat saat rüzgâr,
+// örnek ana-sayfa/sade-2026-11/hava.html): ana sayfayla aynı lacivert (.iph) ve aynı Hava kutusu (HavaPanel: rüzgâr oku + saat saat rüzgâr,
 // geçen saatler istasyon ölçümü beyaz çizgi). Altında 12 gün (önceki 5 gün ölçülen, bugün ve 6 gün ileri; dokununca kutu ve tablo o güne geçer),
 // sonra saat saat tablo (HourTable, ölçülen saatler ayrı satırda) ve BÖLGE haritası (RegionMap; geniş ekranda yan yana), MGM / Windy, kaynak satırı.
 const ago = (ms) => {
