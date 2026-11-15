@@ -1,8 +1,8 @@
-Commit: e695e93 · Bilgi Yönet: tam ekran harita düzeni (#1449)
-Zaman: 2026-11-15-2357 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43758737520
+Commit: 36f0e43 · Bilgi Yönet: ince cam üst şerit ve alt mesaj satırı (#1450)
+Zaman: 2026-11-16-0032 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43762084160
 
-TAM TEST · 15.11.2026 23:34:08
+TAM TEST · 16.11.2026 00:09:52
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1409/1441 geçti · 32 kalan · 1389 sn
+SONUÇ: 1412/1441 geçti · 29 kalan · 1335 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -209,7 +209,7 @@ SONUÇ: 1409/1441 geçti · 32 kalan · 1389 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 120/139
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 123/139
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✗ Ana sayfa: 3/8
       ✗ “iş düğmeleri”
@@ -236,13 +236,7 @@ SONUÇ: 1409/1441 geçti · 32 kalan · 1389 sn
   ✓ Sayfa hataları: 13/13
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
-  ✗ Sesli yanıt: 6/8
-      ✗ “konuşarak “kapat””
-          beklenen: asistan hemen kapanır
-          olan:     tam ekran 1
-      ✗ “sesli yanıt açıkken soru”
-          beklenen: cevap okunur, “ilgileniyorum” denmez
-          olan:     cevap yok · okunan: yok
+  ✓ Sesli yanıt: 8/8
   ✗ Onaysız kayıt ve “Kaydedildi”: 5/12
       ✗ “geri sayımda ✕”
           beklenen: kaydedilmez, “kaydetmedim” denir
@@ -284,16 +278,13 @@ SONUÇ: 1409/1441 geçti · 32 kalan · 1389 sn
   ✓ Tam ekran üstte: 1/1
   ✓ Deniz trafiği: 2/2
   ✓ Kameralar: 5/5
-  ✗ Hava: 0/3
+  ✗ Hava: 1/3
       ✗ “yağmur grafiği”
           beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var
-          olan:     sütun 48 · gün düğmesi 0 · 5,5 true
-      ✗ “ölçülen / beklenen yağmur”
-          beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 24 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     sütun 48 · gün düğmesi 0 · 5,5 false
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 24 · açıklama 24 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 1 · açıklama 1 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
