@@ -6,7 +6,9 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Countdown, holdMic } from "@/features/training/Countdown";
+import { chooseDur, holdMic, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
+import { mmss } from "@/lib/raceScore";
+import { Sheet } from "@/components/ui/Sheet";
 import { micReset } from "@/lib/speech/audioSession";
 import { voiceType } from "@/lib/chatFile";
 import { haptic } from "@/lib/haptic";
@@ -30,14 +32,6 @@ function Seg({ value, items, onPick }) {
     </div>
   );
 }
-
-// Bölümler (Seyhun 2026-11-15 "karman çorman, bölüm bölüm olsun"): Canlı (kanal, mesaj, tekneler haritası), Parkur, Ekran, Kayıtlar
-const TABS = [
-  ["canli", "Canlı"],
-  ["parkur", "Parkur"],
-  ["ekran", "Ekran"],
-  ["kayit", "Kayıtlar"],
-];
 
 // Bas konuş: basılı tutunca kaydeder, bırakınca gönderir (en çok 20 sn)
 function usePtt({ org, ctx, onSent }) {
@@ -230,34 +224,59 @@ const ago = (t, now) => {
   const s = Math.max(0, Math.round((now - t) / 1000));
   return s < 60 ? `${s} sn` : s < 3600 ? `${Math.round(s / 60)} dk önce` : `${Math.round(s / 3600)} sa önce`;
 };
-function Tekneler({ boats: all, ch, now, course }) {
+function Tekneler({ boats: all, ch, now }) {
   const list = (all || []).filter((b) => !ch || b.ch === ch).sort((a, b) => (b.t || 0) - (a.t || 0));
+  if (!list.length) return null;
   const live = list.filter((b) => now - b.t < LIVE_MS).length;
   return (
     <section>
       <h2 className="bzy-h">
         Tekneler <span>{live} açık</span>
       </h2>
-      <TekneMap boats={list} course={course} />
-      {list.length > 0 && (
-        <div className="bzy-list mt-2.5">
-          {list.map((b) => {
-            const old = now - b.t >= LIVE_MS;
-            return (
-              <div key={b.id} className={`bzy-li items-center${old ? " old" : ""}`}>
-                <time className="num font-bold text-fg">{b.sail || "—"}</time>
-                <div className="min-w-0 flex-1">
-                  <b>{b.name || "—"}</b>
-                </div>
-                <span className="num shrink-0 text-[0.8125rem] text-mut">
-                  {old ? ago(b.t, now) : `${ago(b.t, now)}${b.spd != null ? ` · ${String(b.spd).replace(".", ",")} kn` : ""}${b.lat == null ? " · konum yok" : ""}`}
-                </span>
+      <div className="bzy-list">
+        {list.map((b) => {
+          const old = now - b.t >= LIVE_MS;
+          return (
+            <div key={b.id} className={`bzy-li items-center${old ? " old" : ""}`}>
+              <time className="num font-bold text-fg">{b.sail || "—"}</time>
+              <div className="min-w-0 flex-1">
+                <b>{b.name || "—"}</b>
               </div>
-            );
-          })}
-        </div>
-      )}
+              <span className="num shrink-0 text-[0.8125rem] text-mut">
+                {old ? ago(b.t, now) : `${ago(b.t, now)}${b.spd != null ? ` · ${String(b.spd).replace(".", ",")} kn` : ""}${b.lat == null ? " · konum yok" : ""}`}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </section>
+  );
+}
+
+// Küçük sayaç (tam ekran haritanın üstünde; ortak sayaç, start dizisi): süre, durunca süre seçimi + Başlat, çalışırken Bitir
+const DURS = [300, 240, 120, 60];
+function MiniTimer() {
+  const { t, now, running, rem, up } = useTimerRun();
+  const time = up ? `+${mmss(Math.max(0, Math.floor((now - t.end) / 1000)))}` : mmss(Math.max(0, running ? rem : (t.left ?? t.dur)));
+  const next = DURS[(DURS.indexOf(t.dur) + 1) % DURS.length];
+  return (
+    <div className="bzy-tm" data-run={running ? "1" : "0"}>
+      <b className="num">{up || running ? (up ? time : `-${time}`) : time}</b>
+      {running ? (
+        <button type="button" className="bzy-tb" data-press onClick={() => writeTimer({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero, own: "", where: "" })}>
+          Bitir
+        </button>
+      ) : (
+        <>
+          <button type="button" className="bzy-tb bzy-tb2" data-press onClick={() => chooseDur(next)}>
+            {Math.round(t.dur / 60)} dk
+          </button>
+          <button type="button" className="bzy-tb bzy-go" data-press onClick={() => raceStart(null, "start", "Bilgi ekranı")}>
+            Başlat
+          </button>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -332,7 +351,7 @@ function PtRow({ label, pt, manual, onSave, onAuto }) {
 
 // Parkur (Seyhun 2026-11-15): rüzgâr + hakem botu girilince şamandıralar kendiliğinden yerleşir (lib/bilgi buildCourse); her biri elle
 // düzeltilebilir. Harita Tekneler'deki gerçek haritanın aynısı (tek ortak harita; Seyhun 2026-11-15 "iki harita var, biri çalışmıyor")
-function ParkurEdit({ org, pk, boats }) {
+function ParkurEdit({ org, pk }) {
   const toast = useToast();
   const p = pk || { type: "trapez", wind: null, komite: null, line: 120, orsa: 900, marks: {} };
   const c = buildCourse(p);
@@ -346,9 +365,6 @@ function ParkurEdit({ org, pk, boats }) {
         <PtRow label="Hakem botu" pt={p.komite} manual onSave={(q) => put({ komite: q })} />
         <NumIn label="Start hattı" unit="m" value={p.line} onSave={(v) => put({ line: v ?? 120 })} />
         <NumIn label="1 numaraya" unit="m" value={p.orsa} onSave={(v) => put({ orsa: v ?? 900 })} />
-      </div>
-      <div className="mt-2">
-        <TekneMap boats={boats} course={c.has ? c : null} />
       </div>
       {c.has && (
         <div className="bzy-list mt-2">
@@ -381,7 +397,6 @@ function Kanal({ org, kanal, link, count }) {
   if (!kanal?.open)
     return (
       <section>
-        <h2 className="bzy-h">Kanal</h2>
         <div className="bzy-row mt-0">
           <input className="bzy-in" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} aria-label="Kanal adı" />
           <Button disabled={busy || !name.trim()} onClick={open} className="!flex-none">
@@ -409,6 +424,9 @@ function Kanal({ org, kanal, link, count }) {
       </div>
       {more && (
         <div className="bzy-row">
+          <Link href="/bilgi" className="btn btn-secondary" data-press>
+            Ekranı aç
+          </Link>
           <Button
             variant="secondary"
             onClick={() =>
@@ -482,11 +500,7 @@ export function BilgiAdmin() {
   const [toDev, setToDev] = useState("");
   const [last, setLast] = useState(null);
   const marked = useRef("");
-  const [tab, setTab] = useState("canli");
-  const pickTab = (k) => {
-    setTab(k);
-    window.scrollTo?.({ top: 0 });
-  };
+  const [sheet, setSheet] = useState("");
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -548,101 +562,98 @@ export function BilgiAdmin() {
 
   if (!org) return <main className="p-6 text-mut">Bu sayfa yalnız ana hesapta açılır.</main>;
 
+  // Tam ekran harita düzeni (Seyhun 2026-11-15 örnek C "Harita tam olanı yap"): alt çubuk yok, kaydırma yok. Harita bütün ekran;
+  // üstte geri + kanal satırı + küçük sayaç + Parkur/Ekran/Kayıtlar, altta bas-konuş isimleri ve tek satır mesaj. İkinciller alttan pencere.
   return (
-    <main className="mx-auto max-w-[30rem] px-4">
-      <section className="ck -mx-4 px-4 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Bilgi ekranı">
-        <header className="flex items-center gap-2.5">
+    <main className="bzy-app" aria-label="Bilgi ekranı yönetimi">
+      <TekneMap boats={chBoats} course={course.has ? course : null} full />
+      <div className="bzy-top">
+        <div className="bzy-hd">
           <BackButton href="/" />
-          <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">Bilgi ekranı</h1>
-          <Link href="/bilgi" className="btn btn-secondary btn-sm" data-press>
-            Ekranı aç
-          </Link>
-        </header>
-        <div className="mt-4">
-          <Countdown dark mode="start" where="Bilgi ekranı" />
-        </div>
-      </section>
-      <div className="bzy-tabs">
-        <Seg value={tab} items={TABS} onPick={pickTab} />
-      </div>
-      <div className="bzy-body">
-        {tab === "canli" && (
-          <>
+          <div className="min-w-0 flex-1">
             <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} />
-            {kanal?.open && (
-              <section>
-                <h2 className="bzy-h">Mesaj</h2>
-                <div className="bzy-to">
-                  <TalkChip id="" label="Hepsi" picked={!to} ptt={ptt} to={null} now={now} onPick={() => setToDev("")} />
-                  {members.map((m) => {
-                    const dest = { dev: m.id, name: [m.sail, m.name].filter(Boolean).join(" ") };
-                    return <TalkChip key={m.id} id={m.id} label={dest.name} picked={to?.dev === m.id} ptt={ptt} to={dest} now={now} onPick={() => setToDev(m.id)} />;
-                  })}
-                </div>
-                <textarea className="bzy-in" value={text} maxLength={200} onChange={(e) => setText(e.target.value)} aria-label="Mesaj" />
-                <div className="bzy-row">
-                  <Button disabled={!text.trim()} onClick={send}>
-                    Gönder
-                  </Button>
-                </div>
-                <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />
-              </section>
-            )}
-            <Tekneler boats={boats} ch={ch} now={now} course={course.has ? course : null} />
-          </>
-        )}
-        {tab === "parkur" && (
-          <section>
-            <ParkurEdit org={org} pk={b?.parkur} boats={chBoats} />
-            <input
-              className="bzy-in mt-2"
-              value={state ?? b?.state ?? ""}
-              maxLength={80}
-              placeholder="Durum"
-              onChange={(e) => setState(e.target.value)}
-              onBlur={() => saveText("state", state)}
-              aria-label="Parkur durumu"
-            />
-          </section>
-        )}
-        {tab === "ekran" && (
-          <>
-            <section>
-              <h2 className="bzy-h">Start</h2>
-              <input
-                className="bzy-in"
-                value={label ?? b?.label ?? ""}
-                maxLength={40}
-                placeholder="Grup"
-                onChange={(e) => setLabel(e.target.value)}
-                onBlur={() => saveText("label", label)}
-                aria-label="Start yazısı"
-              />
-            </section>
-            <section>
-              <h2 className="bzy-h">Start sonrası ekranda</h2>
-              <div className="bzy-list">
-                {SHOW.map(([k, name]) => {
-                  const v = (b?.show || SHOW_DEF)[k];
-                  return (
-                    <div key={k} className="bzy-li items-center justify-between">
-                      <b>{name}</b>
-                      <Switch on={v} label={name} onChange={(x) => saveBilgi(org, { show: { [k]: x } }).catch(() => toast("Kaydedilemedi"))} />
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          </>
-        )}
-        {tab === "kayit" && (
-          <>
-            <SentList rows={log} />
-            <CompassList rows={pus} />
-            {!log?.length && !sessionsOf(pus).length && <p className="text-mut">Kayıt yok</p>}
-          </>
-        )}
+          </div>
+        </div>
+        <MiniTimer />
+        <div className="bzy-pills">
+          {[
+            ["parkur", "Parkur"],
+            ["ekran", "Ekran"],
+            ["kayit", "Kayıtlar"],
+          ].map(([k, l]) => (
+            <button key={k} type="button" data-press onClick={() => setSheet(k)}>
+              {l}
+            </button>
+          ))}
+        </div>
       </div>
+      {kanal?.open && (
+        <div className="bzy-dock">
+          <div className="bzy-to">
+            <TalkChip id="" label="Hepsi" picked={!to} ptt={ptt} to={null} now={now} onPick={() => setToDev("")} />
+            {members.map((m) => {
+              const dest = { dev: m.id, name: [m.sail, m.name].filter(Boolean).join(" ") };
+              return <TalkChip key={m.id} id={m.id} label={dest.name} picked={to?.dev === m.id} ptt={ptt} to={dest} now={now} onPick={() => setToDev(m.id)} />;
+            })}
+          </div>
+          <form
+            className="bzy-msg"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (text.trim()) send();
+            }}
+          >
+            <input className="bzy-in" value={text} maxLength={200} onChange={(e) => setText(e.target.value)} placeholder={to ? `${to.name}'e mesaj` : "Mesaj"} aria-label="Mesaj" enterKeyHint="send" />
+            <Button type="submit" disabled={!text.trim()} className="!flex-none">
+              Gönder
+            </Button>
+          </form>
+          <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />
+        </div>
+      )}
+      <Sheet open={sheet === "parkur"} onClose={() => setSheet("")} title="Parkur">
+        <ParkurEdit org={org} pk={b?.parkur} />
+        <input
+          className="bzy-in mt-2"
+          value={state ?? b?.state ?? ""}
+          maxLength={80}
+          placeholder="Durum"
+          onChange={(e) => setState(e.target.value)}
+          onBlur={() => saveText("state", state)}
+          aria-label="Parkur durumu"
+        />
+      </Sheet>
+      <Sheet open={sheet === "ekran"} onClose={() => setSheet("")} title="Ekran">
+        <input
+          className="bzy-in"
+          value={label ?? b?.label ?? ""}
+          maxLength={40}
+          placeholder="Grup"
+          onChange={(e) => setLabel(e.target.value)}
+          onBlur={() => saveText("label", label)}
+          aria-label="Start yazısı"
+        />
+        <h2 className="bzy-h mt-4">Start sonrası ekranda</h2>
+        <div className="bzy-list">
+          {SHOW.map(([k, name]) => {
+            const v = (b?.show || SHOW_DEF)[k];
+            return (
+              <div key={k} className="bzy-li items-center justify-between">
+                <b>{name}</b>
+                <Switch on={v} label={name} onChange={(x) => saveBilgi(org, { show: { [k]: x } }).catch(() => toast("Kaydedilemedi"))} />
+              </div>
+            );
+          })}
+        </div>
+      </Sheet>
+      <Sheet open={sheet === "kayit"} onClose={() => setSheet("")} title="Kayıtlar">
+        <div className="flex flex-col gap-6">
+          <Tekneler boats={boats} ch={ch} now={now} />
+          <SentList rows={log} />
+          <CompassList rows={pus} />
+          {!log?.length && !sessionsOf(pus).length && !chBoats.length && <p className="text-mut">Kayıt yok</p>}
+        </div>
+      </Sheet>
     </main>
   );
 }
