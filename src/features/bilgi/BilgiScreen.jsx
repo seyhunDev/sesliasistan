@@ -453,7 +453,19 @@ function WindDial({ wind, head }) {
       </svg>
       <div className="bz-wt">
         <b className="num">{wind}°</b>
-        {r && <span>{r.side ? <><em className="num">{r.deg}°</em> {r.side}</> : r.rel === 0 ? "tam burundan" : "tam kıçtan"}</span>}
+        {r && (
+          <span>
+            {r.side ? (
+              <>
+                <em className="num">{r.deg}°</em> {r.side}
+              </>
+            ) : r.rel === 0 ? (
+              "tam burundan"
+            ) : (
+              "tam kıçtan"
+            )}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -464,8 +476,33 @@ function WindDial({ wind, head }) {
 // (içeride GPS tutmaz, Google servisi olmayan telefon) düşük doğrulukla (ağ) da denenir.
 const noGeo = () => !navigator.geolocation || window.isSecureContext === false;
 const GEO_ERR = { 1: "Konum izni verilmedi", 2: "Konum bulunamadı, telefonda konum açık mı?", 3: "Konum bekleniyor…" };
+// İzin yoksa kullanıcı uğraşmasın (Seyhun 2026-11-15): "Konum iznini ver" düğmesi izni yeniden ister; telefon artık sormuyorsa
+// (kalıcı red) o cihaza göre nereden açılacağı tek satırla yazılır.
+function geoHelp() {
+  const ua = navigator.userAgent || "";
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const app = !!window.Capacitor?.isNativePlatform?.();
+  if (app && ios) return "iPhone Ayarlar › Velora › Konum › Uygulamayı Kullanırken";
+  if (app) return "Telefon Ayarlar › Uygulamalar › Velora › İzinler › Konum › İzin ver";
+  if (ios) return "iPhone Ayarlar › Gizlilik › Konum Servisleri açık olsun; Safari'de adres çubuğundaki aA › Web Sitesi Ayarları › Konum › İzin Ver";
+  return "Adres çubuğunun solundaki simge › İzinler › Konum › İzin ver, sonra sayfayı yenile";
+}
 function useMyPos(on) {
-  const [pos, setPos] = useState({ me: null, trail: [], err: "" });
+  const [pos, setPos] = useState({ me: null, trail: [], err: "", denied: false, help: "" });
+  const [run, setRun] = useState(0);
+  // Düğme: izni dokunuşla yeniden ister; verilirse izleme baştan başlar, yine red gelirse ayar yolu gösterilir
+  const ask = () => {
+    try {
+      navigator.geolocation.getCurrentPosition(
+        () => {
+          setPos((o) => ({ ...o, err: "", denied: false, help: "" }));
+          setRun((n) => n + 1);
+        },
+        (e) => setPos((o) => (e?.code === 1 ? { ...o, help: geoHelp() } : { ...o, err: GEO_ERR[e?.code] || "Konum alınamadı", denied: false })),
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 },
+      );
+    } catch {}
+  };
   useEffect(() => {
     if (!on) return;
     if (noGeo()) return;
@@ -481,7 +518,7 @@ function useMyPos(on) {
         return { me, err: "", trail: add ? [...o.trail.filter((x) => t - x.t < 600e3), { ...me, t }] : o.trail };
       });
     };
-    const bad = (e) => !got && setPos((o) => ({ ...o, err: GEO_ERR[e?.code] || "Konum alınamadı" }));
+    const bad = (e) => !got && setPos((o) => ({ ...o, err: GEO_ERR[e?.code] || "Konum alınamadı", denied: e?.code === 1 }));
     const w1 = navigator.geolocation.watchPosition(ok, bad, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
     let w2 = null;
     const slow = setTimeout(() => {
@@ -492,9 +529,20 @@ function useMyPos(on) {
       navigator.geolocation.clearWatch(w1);
       if (w2 != null) navigator.geolocation.clearWatch(w2);
     };
-  }, [on]);
+  }, [on, run]);
   const none = useSyncExternalStore(noSub, noGeo, () => false);
-  return none ? { ...pos, err: "Bu tarayıcı konum vermiyor, linki Chrome ya da Safari'de aç" } : pos;
+  return none ? { ...pos, err: "Bu tarayıcı konum vermiyor, linki Chrome ya da Safari'de aç", ask } : { ...pos, ask };
+}
+
+function GeoAsk({ pos }) {
+  return (
+    <span className="bz-geo">
+      <button type="button" className="bz-geo-b" onClick={pos.ask}>
+        Konum iznini ver
+      </button>
+      {pos.help && <span className="bz-geo-h">{pos.help}</span>}
+    </span>
+  );
 }
 
 // pub: herkese açık linkle (/ekran/{anahtar}) girişsiz açılış; veri kopya belgeden, pusula kaydı yok, geri düğmesi yok
@@ -577,7 +625,7 @@ export function BilgiScreen({ pub = "" }) {
   const wind = <WindDial wind={course.up} head={h} />;
   const map = (
     <div className="bz-rt">
-      <CourseMap course={course} me={pos.me} head={h} trail={pos.trail} className="bz-map" note={pos.me ? "" : pos.err || "Konum bekleniyor…"} />
+      <CourseMap course={course} me={pos.me} head={h} trail={pos.trail} className="bz-map" note={pos.me ? "" : pos.denied ? <GeoAsk pos={pos} /> : pos.err || "Konum bekleniyor…"} />
       {b?.state && <div className="bz-cs">{b.state}</div>}
     </div>
   );
