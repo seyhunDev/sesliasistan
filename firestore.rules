@@ -149,6 +149,10 @@ service cloud.firestore {
       match /marketFoto/{id} {
         allow read: if isStaff(orgId) && myKind() in ["staff", "family"];
       }
+      // Sporcu bilgi ekranı (/bilgi, src/features/bilgi): kulüpteki herkes okur (sayaç, parkur, mesaj, bas-konuş ses); yalnız ana hesap yazar
+      match /bilgi/{id} {
+        allow read: if isStaff(orgId);
+      }
       // Doğum günleri kişiye özel: ana hesap yalnızca kendi eklediklerini okur/yazar
       match /birthdays/{id} {
         allow read, update, delete: if isOwner(orgId) && resource.data.get("createdByUid", null) == request.auth.uid;

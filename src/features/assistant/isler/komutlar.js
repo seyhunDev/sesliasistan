@@ -15,6 +15,7 @@ import * as tekneTakip from "./tekneTakip";
 import * as antrenmanYaris from "./antrenmanYaris";
 import * as antrenmanSes from "./antrenmanSes";
 import * as sorular from "./sorular";
+import * as bilgi from "./bilgi";
 
 const first = async (list, ctx, s, viaVoice) => {
   for (const f of list) {
@@ -26,8 +27,8 @@ const first = async (list, ctx, s, viaVoice) => {
 
 // Yoklama sorusu, kulüp soruları, yarış sayfası, fiş, yoklama velileri, alışveriş, doğum günü, kişi silme, kişi kare kodu, mesaj grubu
 const EXTRA = [yoklama.attQueryCmd, sorular.clubAskCmd, sorular.infoAskCmd, yaris.raceHereCmd, para.receiptPayCmd, para.receiptScopeCmd, yoklama.absentNotifyCmd, alisveris.shopClearCmd, kisi.birthdayDeleteCmd, kisi.personDeleteCmd, kisi.contactScanCmd, mesaj.groupCreateCmd];
-// Antrenman yarışı sesle (başlat 3·2·1, bitir, sonuç; yarış günü değilse), yarış günü (canlı ekran: şamandıra dönüşü, parkur sırası, ekranda gösterme; rüzgâr kaydı, parkur derecesi, start sayacı), antrenman yarışı sonucu, sporcu boy/kilo, otel, kişi sayfası, sporcu kartı, fatura görevi, arama, aidat, kasa, nakit gelir, sporcu ekle/arşiv/sil
-const MORE = [tekneTakip.trackCmd, canliEkran.liveScreenCmd, antrenmanSes.trainVoiceCmd, yarisMedya.timerCmd, yarisMedya.windLogCmd, yarisMedya.courseCmd, antrenmanYaris.trainingResultCmd, boykilo.athleteBodyCmd, yaris.hotelAddCmd, kisi.personOpenCmd, sporcu.athleteOpenCmd, para.invoiceTaskCmd, arama.callCmd, para.duesCmd, para.cashCmd, para.incomeCmd, sporcu.athleteCmd];
+// Bilgi ekranı (sporculara mesaj, aç/yönet), antrenman yarışı sesle (başlat 3·2·1, bitir, sonuç; yarış günü değilse), yarış günü (canlı ekran: şamandıra dönüşü, parkur sırası, ekranda gösterme; rüzgâr kaydı, parkur derecesi, start sayacı), antrenman yarışı sonucu, sporcu boy/kilo, otel, kişi sayfası, sporcu kartı, fatura görevi, arama, aidat, kasa, nakit gelir, sporcu ekle/arşiv/sil
+const MORE = [bilgi.bilgiCmd, tekneTakip.trackCmd, canliEkran.liveScreenCmd, antrenmanSes.trainVoiceCmd, yarisMedya.timerCmd, yarisMedya.windLogCmd, yarisMedya.courseCmd, antrenmanYaris.trainingResultCmd, boykilo.athleteBodyCmd, yaris.hotelAddCmd, kisi.personOpenCmd, sporcu.athleteOpenCmd, para.invoiceTaskCmd, arama.callCmd, para.duesCmd, para.cashCmd, para.incomeCmd, sporcu.athleteCmd];
 
 export function runExtra(ctx, s, viaVoice) {
   return first(EXTRA, ctx, s, viaVoice);
