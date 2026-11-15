@@ -107,6 +107,30 @@ ${log ? `Konuşma:\n${log}` : "Konuşma yeni başlıyor: ilk cümleni yaz."}${au
   }
 }
 
+// hear: İngilizce sayfası › Kalıplar › Hatırla. Kişi resme bakıp cümleyi sesle söyler; yapay zeka kaydı yazıya döker (heard)
+// ve beklenen cümleyle aynı mı bakar (ok). Küçük telaffuz ya da kısaltma farkı (I am / I'm) sorun değil.
+const HEAR = `Türkçe konuşan, İngilizce öğrenen bir yetişkinin söylediği İngilizce cümleyi değerlendiriyorsun.
+- heard: ekteki ses kaydında söyleneni aynen yaz (İngilizce). Konuşma yoksa boş.
+- ok: söylenen, beklenen cümleyle aynı kalıbı ve anlamı taşıyorsa true. Kısaltma (I am / I'm), küçük telaffuz farkı ve sondaki noktalama önemsiz. Kalıp yanlışsa, kelime eksik ya da farklıysa false.`;
+const HEAR_SCHEMA = { type: "object", properties: { heard: { type: "string" }, ok: { type: "boolean" } }, required: ["heard", "ok"] };
+
+async function hear(au, body, audio) {
+  const en = S(body?.en, 200);
+  if (!en || !audio) return bad("Ses kaydı yok");
+  countAi(au, "word");
+  try {
+    const images = [{ mimeType: (audio.type || "audio/webm").split(";")[0], data: Buffer.from(await audio.arrayBuffer()).toString("base64") }];
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: HEAR, user: `Beklenen cümle: """${en}"""`, schema: HEAR_SCHEMA, images, maxTokens: 200, timeoutMs: 10000 });
+    const heard = S(raw?.heard, 300);
+    if (!heard) return bad("Sesini duyamadım, tekrar dene.", 422);
+    return NextResponse.json({ heard, ok: raw?.ok === true });
+  } catch (e) {
+    logAiError("word", "gemini", e);
+    if (e.status === 429) return bad("Yapay zeka kotası şu an dolu. Biraz sonra tekrar dene.", 429);
+    return bad("Dinleyemedim, tekrar dene.", 502);
+  }
+}
+
 const SCHEMA = {
   type: "object",
   properties: { en: { type: "string" }, type: { type: "string" }, tr: { type: "string" }, ex: { type: "string" }, exTr: { type: "string" } },
@@ -135,6 +159,7 @@ async function handle(request) {
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
   if (body?.more) return more(au, body);
   if (body?.talk) return talk(au, body, audio);
+  if (body?.hear) return hear(au, body, audio);
   const phrase = body?.kind === "phrase";
   const word = S(body?.word, phrase ? 160 : 60);
   if (!word) return bad("Hangi kelime?");

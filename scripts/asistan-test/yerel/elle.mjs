@@ -3427,6 +3427,25 @@ group("Ortak düğmeler")([
   ]);
 }
 
+// İngilizce kalıp resimleri (resimle ezber, Seyhun 2026-11-15): her kalıbın sahnesi, tarif, Hatırla adımı, resim listesi
+{
+  const KC = await import("@/lib/englishChunks");
+  const KP = await import("@/lib/englishPics");
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  const cs = src("features/words/ChunkStudy.jsx");
+  const wr = src("app/api/word/route.js");
+  const pg = src("app/(app)/english/page.jsx");
+  group("İngilizce kalıp resimleri")([
+    ["her kalıbın sahnesi", F("37 kalıbın hepsinde sahne var, fazlası yok", () => KC.CHUNKS.every((c) => KP.picScene(c.id).length > 40) && Object.keys(KP.PICS).every((id) => KC.CHUNKS.some((c) => c.id === id)))],
+    ["tarif", F("tarifte örnek cümle, sahne ve yazısız tarz", () => { const p = KP.picPrompt(KC.CHUNKS[0]); return p.includes("I'm looking forward to seeing you") && p.includes(KP.PICS["look-forward"]) && /no text/i.test(p); })],
+    ["bilinmeyen kalıp", F("sahnesi olmayan kalıba tarif yok", () => KP.picPrompt({ id: "yok", head: "x", fills: [] }) === "")],
+    ["Hatırla adımı", F("Kur → Hatırla → Konuş; Göster kalıbı yarına atar", () => /"Kur", "Hatırla", "Konuş"/.test(cs) && /last \? "Hatırla"/.test(cs) && /const show = \(\) => \{[\s\S]*?setMiss\(true\)/.test(cs) && /hearSay\(say0, blob\)/.test(cs))],
+    ["dinleme", F("/api/word hear: yazıya döker ve beklenen cümleyle karşılaştırır", () => /if \(body\?\.hear\) return hear\(au, body, audio\)/.test(wr) && /HEAR_SCHEMA/.test(wr))],
+    ["Resimler listesi", F("⋯ içinde yalnız ana hesapta Resimler", () => /\{orgId && \(\s*<Button variant="secondary" onClick=\{\(\) => \(setMenu\(false\), setPics\(true\)\)\}>/.test(pg) && /<ChunkPics orgId=\{orgId\}/.test(pg))],
+  ]);
+}
+
 // Mesajdaki dosyadan plan (lib/chatPlan.js): hangi ek okunur, yapay zeka cevabının temizlenmesi, sohbette "plana ekle"
 {
   const CP = await import("@/lib/chatPlan");

@@ -14,6 +14,7 @@ import { askWord, loadDeck, moreWord, updateDeck } from "@/features/words/wordDa
 import { primeEn, sayEn } from "@/features/words/WordView";
 import { WordTalk } from "@/features/words/WordTalk";
 import { ChunkStudy } from "@/features/words/ChunkStudy";
+import { ChunkPics } from "@/features/words/ChunkPics";
 import { chunkById, chunkState, chunkTopics, finishChunk, knowChunk, knownChunkRows, nextChunk, patternText, resetChunk, studyChunkRows } from "@/lib/englishChunkStudy";
 import { cachedDeck, findWord, hasMore, knowWord, knownList, missWord, pageCard, quizFor, reviewWord, sentencesOf, setMore, studyRows, studyWord, topicStats } from "@/lib/englishWords";
 import { todayStr } from "@/lib/utils/format";
@@ -184,6 +185,7 @@ export default function EnglishPage() {
   const [skip, setSkip] = useState([]);
   const [pin, setPin] = useState("");
   const [menu, setMenu] = useState(false);
+  const [pics, setPics] = useState(false);
   const [allKnown, setAllKnown] = useState(false);
   const [add, setAdd] = useState(false);
   const [text, setText] = useState("");
@@ -327,6 +329,7 @@ export default function EnglishPage() {
             deck={deck}
             today={today}
             topic={cTopic}
+            orgId={orgId}
             onSave={(right) => (setCPin(chunk.id), save((d) => finishChunk(d, chunk.id, today, right)))}
             onNext={nextC}
             onSkip={nextC}
@@ -480,10 +483,19 @@ export default function EnglishPage() {
               Bu kalıbı yeniden çalış
             </Button>
           )}
+          {orgId && (
+            <Button variant="secondary" onClick={() => (setMenu(false), setPics(true))}>
+              Resimler
+            </Button>
+          )}
           <Button variant="text" onClick={() => (pickKind("word"), setMenu(false))}>
             Kelimelerim ve cümlelerim
           </Button>
         </div>
+      </Sheet>
+
+      <Sheet open={pics && isChunk} onClose={() => setPics(false)} navy title="Resimler">
+        {pics && orgId && <ChunkPics orgId={orgId} onOpen={(id) => (setPics(false), openC(id))} />}
       </Sheet>
 
       <Sheet open={menu && !isChunk} onClose={() => setMenu(false)} navy title={kind === "phrase" ? "Cümleler" : "Kelimeler"}>
