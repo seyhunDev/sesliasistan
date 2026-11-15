@@ -1,7 +1,9 @@
 // Sporcu bilgi ekranı sesle (elle yapılanın aynısı, Bilgi ekranı yönetimi): "bilgi ekranına yaz: …" / "bilgi ekranına söyle: …" mesajı
 // ekrana gönderir (ekranda görünür ve sesli okunur); "bilgi ekranını aç", "bilgi ekranını yönet". Yalnız ana hesap.
-import { SHOW, bilgiCommand } from "@/lib/bilgi";
-import { linkOf, linkUrl, newLink, saveBilgi, sendMsg } from "@/features/bilgi/bilgiStore";
+import { LIVE_MS, SHOW, bilgiCommand } from "@/lib/bilgi";
+import { closeKanal, linkOf, linkUrl, loadTekneler, newLink, openKanal, saveBilgi, sendMsg } from "@/features/bilgi/bilgiStore";
+import { getDoc, doc } from "firebase/firestore";
+import { db } from "@/lib/firebase/clientApp";
 
 export async function bilgiCmd(ctx, s, viaVoice) {
   const { owner, profile, router, park, leave, showPage, done, reply, setPhase } = ctx;
@@ -13,6 +15,20 @@ export async function bilgiCmd(ctx, s, viaVoice) {
     router.push(c.op === "open" ? "/bilgi" : "/bilgi/yonet");
     leave(c.op === "open" ? "Bilgi ekranını açtım." : "Bilgi ekranı yönetimini açtım.", viaVoice);
     showPage();
+    return true;
+  }
+  // "bilgi kanalı aç: Antrenman" / "bilgi kanalını kapat" (Yönet › Kanal)
+  if (c.op === "kanal" || c.op === "kanalKapat") {
+    setPhase?.("thinking");
+    const ok = await (c.op === "kanal" ? openKanal(profile?.orgId, c.name) : closeKanal(profile?.orgId)).then(
+      () => true,
+      () => false,
+    );
+    if (!ok) return (reply("Yapamadım, tekrar dene.", { fail: true, engine: "local" }, viaVoice), true);
+    if (c.op === "kanalKapat") return (done("Bilgi kanalını kapattım.", { engine: "local" }, viaVoice), true);
+    const url = linkUrl(await linkOf(profile?.orgId));
+    await navigator.clipboard?.writeText(url).catch(() => {});
+    done(`${c.name} kanalını açtım, linki kopyaladım: ${url}`, { engine: "local" }, viaVoice);
     return true;
   }
   // "bilgi ekranı linkini ver": herkese açık link (yoksa açılır) panoya kopyalanır ve söylenir (Yönet › Herkese açık link)
@@ -40,8 +56,20 @@ export async function bilgiCmd(ctx, s, viaVoice) {
     return true;
   }
   setPhase?.("thinking");
-  const ok = await sendMsg(profile?.orgId, c.text).catch(() => false);
-  if (ok) done(`Bilgi ekranına gönderdim: ${c.text}`, { engine: "local" }, viaVoice);
+  const org = profile?.orgId;
+  // "bilgi ekranında Mustafa'ya yaz: …": açık kanaldaki kişiler arasında adı ya da yelken no ile bulunur
+  let to = null;
+  if (c.to) {
+    const k = (await getDoc(doc(db, "orgs", org, "bilgi", "ekran")).catch(() => null))?.data()?.kanal;
+    const now = Date.now();
+    const live = k?.open ? (await loadTekneler(org).catch(() => [])).filter((b) => b.ch === k.id && now - (b.t || 0) < LIVE_MS) : [];
+    const low = (x) => String(x || "").toLocaleLowerCase("tr").trim();
+    const hit = live.find((b) => low(b.name) === low(c.to) || low(b.sail) === low(c.to)) || live.find((b) => low(b.name).startsWith(low(c.to)));
+    if (!hit) return (reply(`${c.to} kanalda görünmüyor.`, { engine: "local" }, viaVoice), true);
+    to = { dev: hit.id, name: [hit.sail, hit.name].filter(Boolean).join(" ") };
+  }
+  const r = await sendMsg(org, c.text, undefined, to).catch(() => ({ ok: false }));
+  if (r.ok) done(`${to ? `${to.name} için` : "Bilgi ekranına"} gönderdim: ${c.text}`, { engine: "local" }, viaVoice);
   else reply("Gönderemedim, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
   return true;
 }

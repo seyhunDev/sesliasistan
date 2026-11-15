@@ -148,32 +148,62 @@ const metres = (a, b) => {
   const x = (b.lon - a.lon) * r * Math.cos(((a.lat + b.lat) / 2) * r);
   return Math.hypot(x, (b.lat - a.lat) * r) * 6371e3;
 };
-function useGps(on, who, org, k, uid) {
+// Kanaldaki varlık + konum (tek belge bilgiTekne/{cihaz}): GPS varsa 5 sn'de bir (durgunsa 30 sn), yoksa 30 sn'de bir konumsuz.
+// seen: ekranın gösterdiği/çaldığı son mesaj ya da ses (Yönet'te "Görüldü"); değişince hemen yazılır.
+function usePresence(on, who, org, k, uid, ch, seen) {
+  const st = useRef({ seen: "", kick: null });
   useEffect(() => {
-    if (!on || !org || !who || !navigator.geolocation) return;
+    if (!on || !org || !who || !ch) return;
+    const S0 = st.current;
     const dev = deviceId();
     if (!dev) return;
     let fix = null;
     let sent = null;
-    const w = navigator.geolocation.watchPosition(
+    const write = () => {
+      const c = fix && Date.now() - fix.timestamp < 20000 ? fix.coords : null;
+      const pt = c ? { lat: +c.latitude.toFixed(6), lon: +c.longitude.toFixed(6) } : { lat: null, lon: null };
+      const d = {
+        org,
+        k: k || "",
+        ch,
+        sail: who.sail || "",
+        name: who.name || "",
+        ...pt,
+        spd: c && Number.isFinite(c.speed) ? Math.round(c.speed * 19.44) / 10 : null,
+        hdg: c && Number.isFinite(c.heading) ? Math.round(c.heading) : null,
+        acc: c ? Math.round(c.accuracy || 0) : null,
+        t: Date.now(),
+        uid: uid || "",
+        seen: S0.seen || "",
+      };
+      sent = { ...pt, t: d.t, seen: d.seen };
+      sendPos(dev, d).catch(() => (sent = null));
+    };
+    S0.kick = write;
+    const w = navigator.geolocation?.watchPosition(
       (p) => (fix = p),
       () => {},
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
     );
+    write();
     const id = setInterval(() => {
-      if (!fix || Date.now() - fix.timestamp > 20000) return;
-      const c = fix.coords;
-      const pt = { lat: +c.latitude.toFixed(6), lon: +c.longitude.toFixed(6) };
-      if (sent && metres(sent, pt) < 10 && Date.now() - sent.t < 30000) return;
-      const d = { org, k: k || "", sail: who.sail || "", name: who.name || "", ...pt, spd: Number.isFinite(c.speed) ? Math.round(c.speed * 19.44) / 10 : null, hdg: Number.isFinite(c.heading) ? Math.round(c.heading) : null, acc: Math.round(c.accuracy || 0), t: Date.now(), uid: uid || "" };
-      sent = { ...pt, t: d.t };
-      sendPos(dev, d).catch(() => (sent = null));
+      const c = fix && Date.now() - fix.timestamp < 20000 ? fix.coords : null;
+      const age = sent ? Date.now() - sent.t : Infinity;
+      if (c && sent?.lat != null && metres(sent, { lat: c.latitude, lon: c.longitude }) < 10 && age < 30000) return;
+      if (!c && age < 30000) return;
+      write();
     }, 5000);
     return () => {
-      navigator.geolocation.clearWatch(w);
+      S0.kick = null;
+      if (w != null) navigator.geolocation.clearWatch(w);
       clearInterval(id);
     };
-  }, [on, who, org, k, uid]);
+  }, [on, who, org, k, uid, ch]);
+  useEffect(() => {
+    if (!seen || st.current.seen === seen) return;
+    st.current.seen = seen;
+    st.current.kick?.();
+  }, [seen]);
 }
 
 const noSub = () => () => {};
@@ -186,7 +216,7 @@ const whoRaw = () => {
 };
 
 // Başlat: yelken no + isim (bu telefonda saklı). Kayıtlıysa yalnız Başlat ve Değiştir
-function StartCard({ onGo }) {
+function StartCard({ onGo, kanal }) {
   // Saklı kimlik ilk çizimden sonra okunur (sunucu çizimiyle uyuşsun): sunucuda null
   const raw = useSyncExternalStore(noSub, whoRaw, () => null);
   const who = raw ? readWho() : null;
@@ -206,7 +236,13 @@ function StartCard({ onGo }) {
     setName(who?.name || "");
     setEditing(true);
   };
-  if (raw === null) return <div className="bz-go" />;
+  if (raw === null || kanal === undefined) return <div className="bz-go" />;
+  if (!kanal?.open)
+    return (
+      <div className="bz-go">
+        <div className="bz-card bz-none">Kanal açık değil</div>
+      </div>
+    );
   return (
     <div className="bz-go">
       <form
@@ -216,6 +252,7 @@ function StartCard({ onGo }) {
           go();
         }}
       >
+        <div className="bz-ch">{kanal.name}</div>
         {edit ? (
           <>
             <label>
@@ -234,7 +271,7 @@ function StartCard({ onGo }) {
           </div>
         )}
         <button type="submit" className="btn btn-primary" disabled={edit && !sail.trim() && !name.trim()}>
-          Başlat
+          Katıl ve başlat
         </button>
         {!edit && (
           <button type="button" className="bz-chg" onClick={change}>
@@ -445,21 +482,33 @@ export function BilgiScreen({ pub = "" }) {
   useRecord(on, org, profile?.uid, profile?.name);
   useWake(on);
   useLock();
-  useGps(on, who, pub ? porg : org, pub, profile?.uid);
-  const [talk, unlock] = useVoice(on, b?.msg, ses);
+  // Kanal: yalnız açık kanala katılınca çalışır; kanal kapanır ya da yenisi açılırsa ekran yeniden katılma kartına döner
+  const kanal = b === undefined ? undefined : b?.kanal || null;
+  const [joined, setJoined] = useState("");
+  const active = on && !!kanal?.open && joined === kanal.id;
+  const dev = useSyncExternalStore(noSub, deviceId, () => "");
+  const forMe = (x) => x && (!x.to || x.to === dev);
+  const myMsg = forMe(b?.msg) ? b.msg : null;
+  const mySes = forMe(ses) ? ses : null;
+  const fresh = [myMsg, mySes].filter((x) => x?.id && now - x.at < FRESH_MS).sort((x, y) => y.at - x.at)[0];
+  usePresence(active, who, pub ? porg : org, pub, profile?.uid, kanal?.id || "", active ? fresh?.id || "" : "");
+  const [talk, unlock] = useVoice(active, myMsg, mySes);
 
   // Tek dokunuş: pusula izni (iPhone), sesin açılması ve ekranın açık kalması tarayıcının dokunuş istediği işler
   const start = async (w) => {
     setWho(w);
+    setJoined(kanal?.id || "");
     try {
       if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") await DeviceOrientationEvent.requestPermission();
     } catch {}
     await unlock();
-    try {
-      await document.documentElement.requestFullscreen?.({
-        navigationUI: "hide",
-      });
-    } catch {}
+    // Tam ekran yalnız tarayıcıda: uygulamada (iPhone kabuğu, ana ekran uygulaması) iOS üstte site adresli "tam ekran" şeridi gösteriyordu
+    // (Seyhun 2026-11-15); uygulama zaten tam ekran
+    const app = !!window.Capacitor?.isNativePlatform?.() || window.navigator.standalone === true || window.matchMedia?.("(display-mode: standalone)").matches;
+    if (!app)
+      try {
+        await document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
+      } catch {}
     setOn(true);
   };
   const leave = () => {
@@ -472,7 +521,7 @@ export function BilgiScreen({ pub = "" }) {
   const sv = startView(b?.timer, now);
   const dur = b?.timer?.dur ?? 300;
   const seq = sv.phase === "down" && dur === 300 ? seqMarks(sv.left) : null;
-  const msg = b?.msg && now - b.msg.at < FRESH_MS ? b.msg : null;
+  const msg = myMsg && now - myMsg.at < FRESH_MS ? myMsg : null;
   const mode = screenMode(sv);
   const show = b?.show || SHOW_DEF;
   useBeeps(on, sv.phase === "down" || sv.phase === "up" ? sv.left : null);
@@ -567,7 +616,10 @@ export function BilgiScreen({ pub = "" }) {
           <time className="num">
             {pad(new Date(msg.at).getHours())}:{pad(new Date(msg.at).getMinutes())}
           </time>
-          <p>{msg.text}</p>
+          <p>
+            {msg.to && <em>Sana</em>}
+            {msg.text}
+          </p>
         </div>
       )}
       {(mode !== "race" || show.saat) && (
@@ -575,9 +627,7 @@ export function BilgiScreen({ pub = "" }) {
           {pad(d.getHours())}:{pad(d.getMinutes())}
         </span>
       )}
-      {!on && (
-        <StartCard onGo={start} />
-      )}
+      {!active && <StartCard onGo={start} kanal={kanal} />}
     </main>
   );
 }
