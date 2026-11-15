@@ -19,7 +19,7 @@ export function TekneMap({ boats, course = null }) {
   const map = useRef(null);
   const ml = useRef(null);
   const marks = useRef({});
-  const fitted = useRef(false);
+  const fitted = useRef("");
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState(false);
 
@@ -30,7 +30,17 @@ export function TekneMap({ boats, course = null }) {
         if (!live || !box.current) return;
         ml.current = lib;
         const touch = window.matchMedia?.("(pointer: coarse)").matches;
-        const m = new lib.Map({ container: box.current, style: MAP_STYLE, center: [26.889, 39.071], zoom: 12, attributionControl: false, dragRotate: false, touchPitch: false, pitchWithRotate: false, cooperativeGestures: !!touch });
+        const m = new lib.Map({
+          container: box.current,
+          style: MAP_STYLE,
+          center: [26.889, 39.071],
+          zoom: 12,
+          attributionControl: false,
+          dragRotate: false,
+          touchPitch: false,
+          pitchWithRotate: false,
+          cooperativeGestures: !!touch,
+        });
         m.touchZoomRotate?.disableRotation();
         map.current = m;
         m.on("load", () => live && setReady(true));
@@ -65,17 +75,25 @@ export function TekneMap({ boats, course = null }) {
         marks.current[id].remove();
         delete marks.current[id];
       }
-    const pts = (boats || []).filter((b) => Number.isFinite(b.lat) && Number.isFinite(b.lon));
-    if (!fitted.current && pts.length) {
-      fitted.current = true;
-      if (pts.length === 1) m.jumpTo({ center: [pts[0].lon, pts[0].lat], zoom: 14 });
-      else {
-        const b = new lib.LngLatBounds();
-        pts.forEach((p) => b.extend([p.lon, p.lat]));
-        m.fitBounds(b, { padding: 48, maxZoom: 15, duration: 0 });
-      }
-    }
   }, [boats, ready]);
+
+  // Sığdırma: tekneler + parkur. İlk veri gelince ve parkur değişince bir kez; arada kullanıcı kaydırır, dokunulmaz
+  const live = (boats || []).filter((b) => Number.isFinite(b.lat) && Number.isFinite(b.lon)).length;
+  const fitKey = `${JSON.stringify(course?.pts || [])}|${live > 0}`;
+  useEffect(() => {
+    const m = map.current;
+    const lib = ml.current;
+    if (!ready || !m || !lib || fitted.current === fitKey) return;
+    const pts = [...(boats || []).filter((b) => Number.isFinite(b.lat) && Number.isFinite(b.lon)), ...(course?.pts || [])];
+    if (!pts.length) return;
+    fitted.current = fitKey;
+    if (pts.length === 1) m.jumpTo({ center: [pts[0].lon, pts[0].lat], zoom: 14 });
+    else {
+      const b = new lib.LngLatBounds();
+      pts.forEach((p) => b.extend([p.lon, p.lat]));
+      m.fitBounds(b, { padding: 48, maxZoom: 15, duration: 0 });
+    }
+  }, [fitKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Parkur şamandıraları (Yönet › Parkur): turuncu nokta + numara, hakem botu ve pin mavi
   const cm = useRef([]);
@@ -91,6 +109,33 @@ export function TekneMap({ boats, course = null }) {
       d.textContent = p.n || "";
       return new lib.Marker({ element: d }).setLngLat([p.lon, p.lat]).addTo(m);
     });
+    // Start hattı: hakem botu ile pin arası kesikli çizgi
+    const pts = JSON.parse(ck);
+    const k = pts.find((x) => x.kind === "komite");
+    const pn = pts.find((x) => x.kind === "pin");
+    const data = {
+      type: "FeatureCollection",
+      features:
+        k && pn
+          ? [
+              {
+                type: "Feature",
+                geometry: {
+                  type: "LineString",
+                  coordinates: [
+                    [k.lon, k.lat],
+                    [pn.lon, pn.lat],
+                  ],
+                },
+              },
+            ]
+          : [],
+    };
+    if (m.getSource("pk-line")) m.getSource("pk-line").setData(data);
+    else {
+      m.addSource("pk-line", { type: "geojson", data });
+      m.addLayer({ id: "pk-line", type: "line", source: "pk-line", paint: { "line-color": "#1d4ed8", "line-width": 2, "line-dasharray": [2, 1.5] } });
+    }
   }, [ck, ready]);
 
   if (err) return null;

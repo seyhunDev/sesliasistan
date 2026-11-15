@@ -10,7 +10,6 @@ import { Countdown, holdMic, readTimer } from "@/features/training/Countdown";
 import { micReset } from "@/lib/speech/audioSession";
 import { voiceType } from "@/lib/chatFile";
 import { PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
-import { CourseMap } from "./CourseMap";
 import { Switch } from "@/features/settings/ui";
 import { closeKanal, linkUrl, loadLog, loadPusula, markLog, openKanal, saveBilgi, sendMsg, sendSes, useBilgi, useTekneler } from "./bilgiStore";
 import { TekneMap } from "./TekneMap";
@@ -31,6 +30,14 @@ function Seg({ value, items, onPick }) {
     </div>
   );
 }
+
+// Bölümler (Seyhun 2026-11-15 "karman çorman, bölüm bölüm olsun"): Canlı (kanal, mesaj, tekneler haritası), Parkur, Ekran, Kayıtlar
+const TABS = [
+  ["canli", "Canlı"],
+  ["parkur", "Parkur"],
+  ["ekran", "Ekran"],
+  ["kayit", "Kayıtlar"],
+];
 
 // Bas konuş: basılı tutunca kaydeder, bırakınca gönderir (en çok 20 sn)
 function PushTalk({ org, ctx, to, onSent }) {
@@ -186,9 +193,7 @@ const ago = (t, now) => {
   return s < 60 ? `${s} sn` : s < 3600 ? `${Math.round(s / 60)} dk önce` : `${Math.round(s / 3600)} sa önce`;
 };
 function Tekneler({ boats: all, ch, now, course }) {
-  if (!all?.length) return null;
-  const list = all.filter((b) => !ch || b.ch === ch).sort((a, b) => (b.t || 0) - (a.t || 0));
-  if (!list.length) return null;
+  const list = (all || []).filter((b) => !ch || b.ch === ch).sort((a, b) => (b.t || 0) - (a.t || 0));
   const live = list.filter((b) => now - b.t < 60e3).length;
   return (
     <section>
@@ -196,22 +201,24 @@ function Tekneler({ boats: all, ch, now, course }) {
         Tekneler <span>{live} açık</span>
       </h2>
       <TekneMap boats={list} course={course} />
-      <div className="bzy-list mt-2.5">
-        {list.map((b) => {
-          const old = now - b.t >= 60e3;
-          return (
-            <div key={b.id} className={`bzy-li items-center${old ? " old" : ""}`}>
-              <time className="num font-bold text-fg">{b.sail || "—"}</time>
-              <div className="min-w-0 flex-1">
-                <b>{b.name || "—"}</b>
+      {list.length > 0 && (
+        <div className="bzy-list mt-2.5">
+          {list.map((b) => {
+            const old = now - b.t >= 60e3;
+            return (
+              <div key={b.id} className={`bzy-li items-center${old ? " old" : ""}`}>
+                <time className="num font-bold text-fg">{b.sail || "—"}</time>
+                <div className="min-w-0 flex-1">
+                  <b>{b.name || "—"}</b>
+                </div>
+                <span className="num shrink-0 text-[0.8125rem] text-mut">
+                  {old ? ago(b.t, now) : `${ago(b.t, now)}${b.spd != null ? ` · ${String(b.spd).replace(".", ",")} kn` : ""}${b.lat == null ? " · konum yok" : ""}`}
+                </span>
               </div>
-              <span className="num shrink-0 text-[0.8125rem] text-mut">
-                {old ? ago(b.t, now) : `${ago(b.t, now)}${b.spd != null ? ` · ${String(b.spd).replace(".", ",")} kn` : ""}${b.lat == null ? " · konum yok" : ""}`}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -286,8 +293,8 @@ function PtRow({ label, pt, manual, onSave, onAuto }) {
 }
 
 // Parkur (Seyhun 2026-11-15): rüzgâr + hakem botu girilince şamandıralar kendiliğinden yerleşir (lib/bilgi buildCourse); her biri elle
-// düzeltilebilir. Önizleme sporcu ekranındaki haritanın aynısı (kanaldaki tekneler de görünür)
-function ParkurEdit({ org, pk, boats, now }) {
+// düzeltilebilir. Harita Tekneler'deki gerçek haritanın aynısı (tek ortak harita; Seyhun 2026-11-15 "iki harita var, biri çalışmıyor")
+function ParkurEdit({ org, pk, boats }) {
   const toast = useToast();
   const p = pk || { type: "trapez", wind: null, komite: null, line: 120, orsa: 900, marks: {} };
   const c = buildCourse(p);
@@ -302,7 +309,9 @@ function ParkurEdit({ org, pk, boats, now }) {
         <NumIn label="Start hattı" unit="m" value={p.line} onSave={(v) => put({ line: v ?? 120 })} />
         <NumIn label="1 numaraya" unit="m" value={p.orsa} onSave={(v) => put({ orsa: v ?? 900 })} />
       </div>
-      {(c.has || boats.length > 0) && <CourseMap course={c} boats={boats.map((x) => ({ ...x, old: now - (x.t || 0) > 60e3 }))} className="bzy-map" />}
+      <div className="mt-2">
+        <TekneMap boats={boats} course={c.has ? c : null} />
+      </div>
       {c.has && (
         <div className="bzy-list mt-2">
           {markKeys(p.type).map((k) => (
@@ -423,6 +432,11 @@ export function BilgiAdmin() {
   const [toDev, setToDev] = useState("");
   const [last, setLast] = useState(null);
   const marked = useRef("");
+  const [tab, setTab] = useState("canli");
+  const pickTab = (k) => {
+    setTab(k);
+    window.scrollTo?.({ top: 0 });
+  };
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -485,6 +499,9 @@ export function BilgiAdmin() {
     if (v != null && v.trim() !== cur) saveBilgi(org, { [k]: v.trim() }).catch(() => toast("Kaydedilemedi"));
   };
 
+  const course = buildCourse(b?.parkur);
+  const chBoats = (boats || []).filter((x) => !ch || x.ch === ch);
+
   if (!org) return <main className="p-6 text-mut">Bu sayfa yalnız ana hesapta açılır.</main>;
 
   return (
@@ -501,81 +518,100 @@ export function BilgiAdmin() {
           <Countdown dark mode="start" where="Bilgi ekranı" />
         </div>
       </section>
+      <div className="bzy-tabs">
+        <Seg value={tab} items={TABS} onPick={pickTab} />
+      </div>
       <div className="bzy-body">
-        <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} />
-        <section>
-          <h2 className="bzy-h">Mesaj</h2>
-          {members.length > 0 && (
-            <div className="bzy-to">
-              <button type="button" aria-pressed={!to} onClick={() => setToDev("")}>
-                Hepsi
-              </button>
-              {members.map((m) => (
-                <button key={m.id} type="button" aria-pressed={to?.dev === m.id} onClick={() => setToDev(to?.dev === m.id ? "" : m.id)}>
-                  {[m.sail, m.name].filter(Boolean).join(" ")}
-                </button>
-              ))}
-            </div>
-          )}
-          <textarea className="bzy-in" value={text} maxLength={200} onChange={(e) => setText(e.target.value)} aria-label="Mesaj" />
-          <div className="bzy-row">
-            <PushTalk org={org} ctx={ctx} to={to} onSent={got} />
-            <Button disabled={!text.trim()} onClick={send}>
-              Gönder
-            </Button>
-          </div>
-          <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />
-        </section>
-        <section>
-          <h2 className="bzy-h">Start</h2>
-          <Seg
-            value={on ? "on" : "off"}
-            items={[
-              ["on", "Ekranda"],
-              ["off", "Kapalı"],
-            ]}
-            onPick={pickOn}
-          />
-          <input
-            className="bzy-in mt-2"
-            value={label ?? b?.label ?? ""}
-            maxLength={40}
-            placeholder="Grup"
-            onChange={(e) => setLabel(e.target.value)}
-            onBlur={() => saveText("label", label)}
-            aria-label="Start yazısı"
-          />
-        </section>
-        <section>
-          <h2 className="bzy-h">Parkur</h2>
-          <ParkurEdit org={org} pk={b?.parkur} boats={(boats || []).filter((x) => !kanal?.id || x.ch === kanal.id)} now={now} />
-          <input
-            className="bzy-in mt-2"
-            value={state ?? b?.state ?? ""}
-            maxLength={80}
-            placeholder="Durum"
-            onChange={(e) => setState(e.target.value)}
-            onBlur={() => saveText("state", state)}
-            aria-label="Parkur durumu"
-          />
-        </section>
-        <section>
-          <h2 className="bzy-h">Start sonrası ekranda</h2>
-          <div className="bzy-list">
-            {SHOW.map(([k, name]) => {
-              const v = (b?.show || SHOW_DEF)[k];
-              return (
-                <div key={k} className="bzy-li items-center justify-between">
-                  <b>{name}</b>
-                  <Switch on={v} label={name} onChange={(x) => saveBilgi(org, { show: { [k]: x } }).catch(() => toast("Kaydedilemedi"))} />
+        {tab === "canli" && (
+          <>
+            <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} />
+            {kanal?.open && (
+              <section>
+                <h2 className="bzy-h">Mesaj</h2>
+                {members.length > 0 && (
+                  <div className="bzy-to">
+                    <button type="button" aria-pressed={!to} onClick={() => setToDev("")}>
+                      Hepsi
+                    </button>
+                    {members.map((m) => (
+                      <button key={m.id} type="button" aria-pressed={to?.dev === m.id} onClick={() => setToDev(to?.dev === m.id ? "" : m.id)}>
+                        {[m.sail, m.name].filter(Boolean).join(" ")}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <textarea className="bzy-in" value={text} maxLength={200} onChange={(e) => setText(e.target.value)} aria-label="Mesaj" />
+                <div className="bzy-row">
+                  <PushTalk org={org} ctx={ctx} to={to} onSent={got} />
+                  <Button disabled={!text.trim()} onClick={send}>
+                    Gönder
+                  </Button>
                 </div>
-              );
-            })}
-          </div>
-        </section>
-        <Tekneler boats={boats} ch={kanal?.id || ""} now={now} course={b?.parkur ? buildCourse(b.parkur) : null} />
-        <SentList rows={log} />
-        <CompassList rows={pus} />
+                <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />
+              </section>
+            )}
+            <Tekneler boats={boats} ch={ch} now={now} course={course.has ? course : null} />
+          </>
+        )}
+        {tab === "parkur" && (
+          <section>
+            <ParkurEdit org={org} pk={b?.parkur} boats={chBoats} />
+            <input
+              className="bzy-in mt-2"
+              value={state ?? b?.state ?? ""}
+              maxLength={80}
+              placeholder="Durum"
+              onChange={(e) => setState(e.target.value)}
+              onBlur={() => saveText("state", state)}
+              aria-label="Parkur durumu"
+            />
+          </section>
+        )}
+        {tab === "ekran" && (
+          <>
+            <section>
+              <h2 className="bzy-h">Start</h2>
+              <Seg
+                value={on ? "on" : "off"}
+                items={[
+                  ["on", "Ekranda"],
+                  ["off", "Kapalı"],
+                ]}
+                onPick={pickOn}
+              />
+              <input
+                className="bzy-in mt-2"
+                value={label ?? b?.label ?? ""}
+                maxLength={40}
+                placeholder="Grup"
+                onChange={(e) => setLabel(e.target.value)}
+                onBlur={() => saveText("label", label)}
+                aria-label="Start yazısı"
+              />
+            </section>
+            <section>
+              <h2 className="bzy-h">Start sonrası ekranda</h2>
+              <div className="bzy-list">
+                {SHOW.map(([k, name]) => {
+                  const v = (b?.show || SHOW_DEF)[k];
+                  return (
+                    <div key={k} className="bzy-li items-center justify-between">
+                      <b>{name}</b>
+                      <Switch on={v} label={name} onChange={(x) => saveBilgi(org, { show: { [k]: x } }).catch(() => toast("Kaydedilemedi"))} />
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </>
+        )}
+        {tab === "kayit" && (
+          <>
+            <SentList rows={log} />
+            <CompassList rows={pus} />
+            {!log?.length && !sessionsOf(pus).length && <p className="text-mut">Kayıt yok</p>}
+          </>
+        )}
       </div>
     </main>
   );
