@@ -328,6 +328,7 @@ function Kanal({ org, kanal, link, count }) {
   const toast = useToast();
   const [name, setName] = useState("Antrenman");
   const [busy, setBusy] = useState(false);
+  const [more, setMore] = useState(false);
   const url = link ? linkUrl(link) : "";
   const copy = (u) =>
     navigator.clipboard?.writeText(u).then(
@@ -351,26 +352,38 @@ function Kanal({ org, kanal, link, count }) {
         </div>
       </section>
     );
+  // Açık kanal tek satır (Seyhun 2026-11-15 "çok yer kaplıyor"): yeşil nokta + ad + kişi sayısı, kopyala simgesi (link), ⋯ içinde Kapat
   return (
     <section>
-      <h2 className="bzy-h">
-        Kanal <span>Açık</span>
-      </h2>
-      <div className="bzy-list">
-        <div className="bzy-li items-center">
-          <b className="flex-1">{kanal.name}</b>
-          <span className="shrink-0 text-[0.8125rem] text-mut">{count} kişi</span>
+      <div className="bzy-kanal">
+        <i className="bzy-dot" aria-label="Açık" />
+        <b>{kanal.name}</b>
+        <span className="num">{count} kişi</span>
+        <button type="button" className="bzy-ic" disabled={!url} onClick={() => copy(url)} aria-label="Linki kopyala" data-press>
+          <svg viewBox="0 0 24 24">
+            <rect x="8" y="8" width="12" height="12" rx="2.5" />
+            <path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8" />
+          </svg>
+        </button>
+        <button type="button" className="bzy-ic" onClick={() => setMore((x) => !x)} aria-label="Diğer" aria-expanded={more} data-press>
+          ⋯
+        </button>
+      </div>
+      {more && (
+        <div className="bzy-row">
+          <Button
+            variant="secondary"
+            onClick={() =>
+              closeKanal(org).then(
+                () => setMore(false),
+                () => toast("Kapatılamadı"),
+              )
+            }
+          >
+            Kanalı kapat
+          </Button>
         </div>
-      </div>
-      {url && <div className="bzy-link num mt-2">{url.replace(/^https?:\/\//, "")}</div>}
-      <div className="bzy-row">
-        <Button disabled={!url} onClick={() => copy(url)}>
-          Linki kopyala
-        </Button>
-        <Button variant="secondary" onClick={() => closeKanal(org).catch(() => toast("Kapatılamadı"))}>
-          Kapat
-        </Button>
-      </div>
+      )}
     </section>
   );
 }
