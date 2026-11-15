@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { Countdown, holdMic } from "@/features/training/Countdown";
 import { micReset } from "@/lib/speech/audioSession";
 import { voiceType } from "@/lib/chatFile";
+import { haptic } from "@/lib/haptic";
 import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
 import { closeKanal, linkUrl, loadLog, loadPusula, markLog, openKanal, saveBilgi, sendMsg, sendSes, useBilgi, useTekneler } from "./bilgiStore";
@@ -42,6 +43,7 @@ const TABS = [
 function usePtt({ org, ctx, onSent }) {
   const toast = useToast();
   const [rec, setRec] = useState(null); // { key, t0 } basılı tutulan hedef
+  const [done, setDone] = useState(null); // { key, at } son giden ses (düğmede kısa ✓)
   const st = useRef(null);
   const stop = () => {
     const s = st.current;
@@ -57,6 +59,7 @@ function usePtt({ org, ctx, onSent }) {
       e.currentTarget.setPointerCapture?.(e.pointerId);
     } catch {}
     if (st.current) return;
+    haptic("select");
     if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) return toast("Bu cihazda ses kaydı yapılamıyor.");
     const s = { mr: null, timer: 0, up: false };
     st.current = s;
@@ -90,30 +93,38 @@ function usePtt({ org, ctx, onSent }) {
       if (dur < 0.6) return; // kısa dokunuş: yalnız hedef seçildi
       const blob = new Blob(parts, { type: mr.mimeType || type || "audio/mp4" });
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, at: Date.now(), ok: null });
+      haptic("light");
       const r = await sendSes(org, blob, dur, ctx, to).catch(() => ({ ok: false }));
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, ...r, ok: !!r.ok });
+      if (r.ok) {
+        haptic("success");
+        setDone({ key, at: Date.now() });
+      } else haptic("error");
     };
     s.mr = mr;
     mr.start();
+    haptic("medium"); // kayıt başladı: parmağın altında hissedilir
     setRec({ key, t0 });
     s.timer = setTimeout(stop, SES_MAX_SEC * 1000);
     if (s.up) stop(); // izin sorulurken parmak kalktıysa
   };
   const end = () => (st.current && !st.current.mr ? (st.current.up = true) : stop());
   useEffect(() => () => stop(), []);
-  return { rec, begin, end };
+  return { rec, done, begin, end };
 }
 
 // Hedef düğmesi = bas konuş (Seyhun 2026-11-15 "ayrı bas konuş olmasın, kime basarsam onunla konuşayım"): dokununca yazılı mesajın
 // hedefi seçilir, basılı tutunca o kişiye (Hepsi: herkese) ses kaydı, bırakınca gider. Kayıtta düğme kırmızı, saniye yazar.
 function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
   const on = ptt.rec?.key === id;
+  const ok = !on && ptt.done?.key === id && now - ptt.done.at < 2000;
   return (
     <button
       type="button"
       className="bzy-ptt"
       aria-pressed={picked}
       data-rec={on ? "1" : "0"}
+      data-ok={ok ? "1" : "0"}
       onPointerDown={(e) => {
         onPick();
         ptt.begin(e, id, to);
@@ -122,7 +133,17 @@ function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
       onPointerCancel={ptt.end}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {on ? `● ${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn` : label}
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        {ok ? (
+          <path d="M5 12.5l4.5 4.5L19 7.5" />
+        ) : (
+          <>
+            <rect x="9" y="3" width="6" height="11" rx="3" />
+            <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+          </>
+        )}
+      </svg>
+      {on ? `${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn` : label}
     </button>
   );
 }
