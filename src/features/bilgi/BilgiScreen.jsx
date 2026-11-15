@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
-import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
+import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
 import { deviceId, readWho, savePusula, saveWho, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
 import "./bilgi.css";
@@ -30,14 +30,16 @@ function useTick(ms) {
 // fark (ofset) bulunur, sonra eğim düzeltmeli yön + ofset. Ölçüm titremesin diye yön birim vektörüyle yumuşatılır.
 const DEAD = 4;
 const screenAngle = () => (typeof screen !== "undefined" && screen.orientation ? screen.orientation.angle || 0 : Number(window.orientation) || 0);
+let MYPOS = null; // son GPS konumu (sapma hesabı için)
 function useHeading(on) {
   const [h, setH] = useState(null);
   const last = useRef({ t: 0, h: null, x: 0, y: 0, off: null });
   useEffect(() => {
     if (!on) return;
     const L = last.current;
-    const take = (deg, e) => {
-      if (deg == null || !Number.isFinite(deg)) return;
+    const take = (mag, e) => {
+      if (mag == null || !Number.isFinite(mag)) return;
+      const deg = mag + declination(MYPOS?.lat, MYPOS?.lon); // manyetikten gerçek kuzeye
       const r = (deg * Math.PI) / 180;
       L.x = L.x * 0.85 + Math.sin(r) * 0.15;
       L.y = L.y * 0.85 + Math.cos(r) * 0.15;
@@ -551,6 +553,7 @@ function useMyPos(on) {
     const ok = (p) => {
       got = true;
       const me = { lat: p.coords.latitude, lon: p.coords.longitude };
+      MYPOS = me;
       const t = Date.now();
       setPos((o) => {
         const add = t - last > 5000;
