@@ -205,31 +205,48 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .tkm-mk { width: 1.125rem; height: 1.125rem; border-radius: 999px; background: #e08a00; border: 2px solid #fff; color: #111; font: 700 0.625rem/0.875rem var(--font-num), ui-monospace, monospace; text-align: center; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
 .tkm-mk.komite, .tkm-mk.pin { background: #1d4ed8; width: 0.75rem; height: 0.75rem; border-radius: 3px; }
 
-/* Yönet tam ekran harita düzeni (Seyhun 2026-11-15, örnek C): harita bütün ekran, üstte kanal + sayaç + Parkur/Ekran/Kayıtlar,
-   altta bas-konuş ve tek satır mesaj. Kaydırma yok, alt çubuk yok. Pencereler (Sheet z-40/50) bunun üstünde açılır */
-.bzy-app { position: fixed; inset: 0; z-index: 30; background: #dfe9f2; overflow: hidden; touch-action: manipulation; }
+/* Yönet tam ekran harita düzeni (Seyhun 2026-11-15, örnek C; üst/alt örnek A "ince cam şeritler"): harita bütün ekran, üstte tek cam
+   şerit (geri, kanal, link, ⋯), açık renk sayaç, Parkur/Ekran/Kayıtlar tek grup; altta isimler + tek satır mesaj. Renkler gece modundan
+   bağımsız açık (harita açık renk; gece modunda koyu kutular ağır duruyordu). Kaydırma yok, alt çubuk yok. Pencereler (Sheet) üstte açılır */
+.bzy-app { --bg: #f4f6f8; --card: #fff; --fg: #0b1a33; --mut: #59606b; --line: #dde2e8; --acc: #1d4ed8; --rec: #e0675e; --glass: rgba(255, 255, 255, .86);
+  position: fixed; inset: 0; z-index: 30; background: #dfe9f2; color: var(--fg); overflow: hidden; touch-action: manipulation; color-scheme: light; }
 .tkm-map.tkm-full { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0; }
-.bzy-top { position: absolute; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top, 0px) + 0.5rem) max(0.75rem, env(safe-area-inset-right, 0px)) 0 max(0.75rem, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; }
+.bzy-app .glass, .bzy-bar, .bzy-tm, .bzy-pills, .bzy-dock, .bzy-app .bzy-kanal + .bzy-row { background: var(--glass); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 2px 10px rgba(11, 26, 51, .12); }
+.bzy-top { position: absolute; left: 0; right: 0; top: 0; box-sizing: border-box; padding: calc(env(safe-area-inset-top, 0px) + 0.5rem) calc(env(safe-area-inset-right, 0px) + 0.75rem) 0 calc(env(safe-area-inset-left, 0px) + 0.75rem); display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; }
 .bzy-top > * { pointer-events: auto; }
-.bzy-hd { display: flex; align-items: flex-start; gap: 0.5rem; }
-.bzy-hd > a, .bzy-hd > button { flex: none; background: var(--card); border-radius: 0.75rem; box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
-.bzy-app .bzy-kanal { box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
-.bzy-app .bzy-row .btn, .bzy-app .bzy-row a { box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
-.bzy-tm { display: flex; align-items: center; gap: 0.5rem; background: #0b1a33; color: #fff; border-radius: 1rem; padding: 0.5rem 0.5rem 0.5rem 0.875rem; box-shadow: 0 2px 8px rgba(11, 26, 51, .25); }
-.bzy-tm b { flex: 1; font-size: 2.125rem; line-height: 1; font-weight: 700; letter-spacing: -.02em; }
-.bzy-tb { flex: none; border: 0; border-radius: 0.75rem; padding: 0.6875rem 0.875rem; font-weight: 650; font-size: 0.9375rem; background: #e0675e; color: #fff; }
-.bzy-tb2 { background: #1f3357; color: #cfd9ef; }
-.bzy-go { background: #3d7bff; }
+.bzy-bar { display: flex; align-items: center; gap: 0.125rem; border-radius: 1rem; padding: 0.25rem; min-width: 0; }
+.bzy-app .bzy-ic { width: 2.25rem; height: 2.25rem; border-radius: 0.75rem; color: var(--fg); }
+.bzy-app .bzy-ic svg { width: 1.125rem; height: 1.125rem; stroke-width: 2; }
+.bzy-app .bzy-ic:active { background: rgba(11, 26, 51, .08); }
+.bzy-app .bzy-kanal { background: none; border: 0; box-shadow: none; padding: 0 0 0 0.25rem; gap: 0.375rem; min-width: 0; }
+.bzy-app .bzy-kanal b { flex: 0 1 auto; font-size: 0.9375rem; }
+.bzy-app .bzy-kanal span { flex: 1; font-size: 0.75rem; }
+.bzy-app .bzy-kanal + .bzy-row { border-radius: 0.875rem; padding: 0.375rem; margin-top: 0.375rem; }
+.bzy-app .bzy-kanal + .bzy-row .btn { height: 2.5rem; font-size: 0.875rem; }
+.bzy-app .bzy-row.mt-0 { margin: 0; align-items: center; }
+.bzy-app .bzy-row.mt-0 .bzy-in { padding: 0.5rem 0.75rem; border: 0; background: transparent; min-width: 0; }
+.bzy-app .bzy-row.mt-0 .btn { height: 2.25rem; padding: 0 0.875rem; font-size: 0.875rem; }
+.bzy-tm { display: flex; align-items: center; gap: 0.375rem; border-radius: 1rem; padding: 0.3125rem 0.3125rem 0.3125rem 0.875rem; color: var(--fg); }
+.bzy-tm b { flex: 1; font-size: 1.625rem; line-height: 1; font-weight: 700; letter-spacing: -.02em; }
+.bzy-tm[data-run="1"] b { color: var(--acc); }
+.bzy-tb { flex: none; border: 0; border-radius: 0.6875rem; height: 2.25rem; padding: 0 0.875rem; font-weight: 650; font-size: 0.875rem; background: #c8574f; color: #fff; }
+.bzy-tb2 { background: #eef1f5; color: var(--fg); }
+.bzy-go { background: var(--acc); color: #fff; }
 .bzy-tb:active { transform: translateY(1px); }
-.bzy-pills { display: flex; gap: 0.375rem; align-self: flex-start; }
-.bzy-pills button { border: 0; background: rgba(255, 255, 255, .94); color: #0b1a33; border-radius: 0.625rem; padding: 0.4375rem 0.75rem; font-size: 0.8125rem; font-weight: 650; box-shadow: 0 1px 4px rgba(0, 0, 0, .14); }
-.bzy-dock { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 1.25rem 1.25rem 0 0; box-shadow: 0 -4px 18px rgba(0, 0, 0, .14); padding: 0.75rem max(0.75rem, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 0.75rem) max(0.75rem, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 0.5rem; max-height: 45dvh; }
-.bzy-dock .bzy-to { margin: 0; max-height: 7.5rem; overflow-y: auto; }
+.bzy-pills { display: flex; gap: 0.125rem; align-self: flex-start; border-radius: 0.75rem; padding: 0.1875rem; }
+.bzy-pills button { border: 0; background: none; color: var(--fg); border-radius: 0.5625rem; padding: 0.4375rem 0.75rem; font-size: 0.8125rem; font-weight: 650; }
+.bzy-pills button:active { background: rgba(11, 26, 51, .08); }
+.bzy-dock { position: absolute; left: 0; right: 0; bottom: 0; box-sizing: border-box; border-radius: 1.375rem 1.375rem 0 0; padding: 0.75rem calc(env(safe-area-inset-right, 0px) + 0.75rem) calc(env(safe-area-inset-bottom, 0px) + 0.625rem) calc(env(safe-area-inset-left, 0px) + 0.75rem); display: flex; flex-direction: column; gap: 0.625rem; max-height: 45dvh; }
+.bzy-dock .bzy-to { margin: 0; max-height: 6.5rem; overflow-y: auto; gap: 0.375rem; }
+.bzy-app .bzy-to button { padding: 0 0.8125rem; height: 2.5rem; min-width: 0; background: #fff; border-color: var(--line); color: var(--fg); }
+.bzy-app .bzy-to button[aria-pressed="true"] { background: #0b1a33; border-color: #0b1a33; color: #fff; }
 .bzy-dock .bzy-sent { margin-top: 0; padding: 0.375rem 0.625rem; }
-.bzy-msg { display: flex; gap: 0.5rem; }
-.bzy-msg .bzy-in { padding: 0.625rem 0.875rem; }
+.bzy-msg { display: flex; align-items: center; gap: 0.375rem; background: #fff; border: 1px solid var(--line); border-radius: 0.875rem; padding: 0.25rem 0.25rem 0.25rem 0.25rem; }
+.bzy-msg .bzy-in { flex: 1; width: auto; min-width: 0; border: 0; background: transparent; padding: 0.5rem 0.625rem; font-size: 1rem; }
+.bzy-send { flex: none; width: 2.375rem; height: 2.375rem; border-radius: 0.6875rem; border: 0; background: var(--acc); color: #fff; display: grid; place-items: center; }
+.bzy-send:disabled { opacity: .35; }
+.bzy-send svg { width: 1.125rem; height: 1.125rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 @media (orientation: landscape) and (max-height: 32rem) {
-  .bzy-top { right: auto; width: min(22rem, 46vw); }
-  .bzy-dock { right: auto; width: min(22rem, 46vw); left: max(0.75rem, env(safe-area-inset-left, 0px)); bottom: 0.5rem; border-radius: 1.25rem; padding-bottom: 0.75rem; max-height: 55dvh; }
-  .bzy-tm b { font-size: 1.75rem; }
+  .bzy-top { right: auto; width: min(22rem, 46vw); padding-right: 0; }
+  .bzy-dock { right: auto; width: min(22rem, 46vw); left: calc(env(safe-area-inset-left, 0px) + 0.75rem); bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem); border-radius: 1.25rem; padding: 0.625rem; max-height: 55dvh; }
 }
