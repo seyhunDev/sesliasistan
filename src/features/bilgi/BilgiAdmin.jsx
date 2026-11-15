@@ -6,7 +6,8 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Countdown, readTimer } from "@/features/training/Countdown";
+import { Countdown, holdMic, readTimer } from "@/features/training/Countdown";
+import { micReset } from "@/lib/speech/audioSession";
 import { voiceType } from "@/lib/chatFile";
 import { COURSES, SES_MAX_SEC } from "@/lib/bilgi";
 import { loadLog, loadPusula, saveBilgi, sendMsg, sendSes, useBilgi } from "./bilgiStore";
@@ -47,12 +48,17 @@ function PushTalk({ org, ctx, onSent }) {
     if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) return toast("Bu cihazda ses kaydı yapılamıyor.");
     const s = { mr: null, timer: 0, up: false };
     st.current = s;
+    // Geri sayım sürerken sayaç iPhone ses oturumunu "playback"e alır (bipler sessizde de çalsın); o kipte mikrofon açılmaz.
+    // Kayıt boyunca sayaç kipi değiştirmez, mikrofon açılmadan önce kip "auto"ya döner (asistan mikrofonu gibi).
+    holdMic(true);
+    micReset();
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-    } catch {
+    } catch (err) {
       st.current = null;
-      return toast("Mikrofon izni gerekli.");
+      holdMic(false);
+      return toast(err?.name === "NotAllowedError" ? "Mikrofon izni gerekli." : "Mikrofon açılamadı, tekrar dene.");
     }
     const type = voiceType();
     const mr = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 32000 });
@@ -61,6 +67,7 @@ function PushTalk({ org, ctx, onSent }) {
     mr.ondataavailable = (ev) => ev.data?.size && parts.push(ev.data);
     mr.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop());
+      holdMic(false);
       const dur = (Date.now() - t0) / 1000;
       if (dur < 0.6) return;
       const blob = new Blob(parts, { type: mr.mimeType || type || "audio/mp4" });
