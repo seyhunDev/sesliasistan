@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sheet } from "@/components/ui/Sheet";
 import { LoadFail } from "@/components/ui/LoadFail";
+import { ListLoading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { siteListLive } from "./raceSite";
 import { clearTask, startTake, useSiteTasks } from "./siteTake";
@@ -87,14 +88,9 @@ function SiteList({ live, orgId, uid, races, onAdded, onGo }) {
         </div>
       )}
       {fail && <LoadFail onRetry={() => (setFail(false), setRetry((n) => n + 1))} />}
-      {!data && !fail && (
-        <div className="py-2" aria-label="Yarışlar yükleniyor">
-          {[0, 1, 2].map((i) => (
-            <span key={i} className="rz-shim my-3 block h-9 w-full" />
-          ))}
-        </div>
-      )}
+      {!data && !fail && <ListLoading label="Yarışlar yükleniyor" className="mt-3" />}
       {data && !data.legs.length && <p className="py-6 text-center text-[0.9375rem] text-mut">Bu sezonda yarış yok</p>}
+      <div className="list-in" key={data?.season || ""}>
       {data?.legs.map((leg) => (
         <section key={leg.n}>
           <h3 className="ra-h">{ayak(leg.name).toLocaleUpperCase("tr-TR")}</h3>
@@ -126,6 +122,7 @@ function SiteList({ live, orgId, uid, races, onAdded, onGo }) {
           })}
         </section>
       ))}
+      </div>
     </>
   );
 }

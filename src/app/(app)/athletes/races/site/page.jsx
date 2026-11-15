@@ -11,11 +11,11 @@ import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { LoadFail } from "@/components/ui/LoadFail";
 import { PdfViewer } from "@/components/ui/PdfViewer";
-import { ListHead, Row, RowList, SkelRow, Tag } from "@/components/ui/Row";
+import { ListHead, Row, RowList, Tag } from "@/components/ui/Row";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
-import { Loader } from "@/components/ui/Loader";
+import { ListLoading, Loader } from "@/components/ui/Loader";
 import { loadRaces } from "@/features/athletes/races";
 import { mergeSite, siteFile, siteListLive } from "@/features/athletes/raceSite";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
@@ -116,15 +116,9 @@ function Site({ orgId, uid }) {
           ))}
         </div>
       </section>
-      <div className="split-cols relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="split-cols list-in relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {fail && <LoadFail onRetry={again} />}
-        {!data && !fail && (
-          <RowList>
-            <SkelRow />
-            <SkelRow />
-            <SkelRow />
-          </RowList>
-        )}
+        {!data && !fail && <ListLoading label="Yarışlar yükleniyor" />}
         {data && !data.legs.length && <p className="text-center text-[0.875rem] text-mut">Bu sezonda yarış yok.</p>}
         {data?.legs.map((leg) => (
           <section key={leg.n}>
