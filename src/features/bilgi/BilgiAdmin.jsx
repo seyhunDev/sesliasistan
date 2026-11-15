@@ -40,9 +40,9 @@ const TABS = [
 ];
 
 // Bas konuş: basılı tutunca kaydeder, bırakınca gönderir (en çok 20 sn)
-function PushTalk({ org, ctx, to, onSent }) {
+function usePtt({ org, ctx, onSent }) {
   const toast = useToast();
-  const [rec, setRec] = useState(false);
+  const [rec, setRec] = useState(null); // { key, t0 } basılı tutulan hedef
   const st = useRef(null);
   const stop = () => {
     const s = st.current;
@@ -50,14 +50,23 @@ function PushTalk({ org, ctx, to, onSent }) {
     st.current = null;
     clearTimeout(s.timer);
     if (s.mr.state !== "inactive") s.mr.stop();
-    setRec(false);
+    setRec(null);
   };
-  const begin = async (e) => {
+  const begin = async (e, key, to) => {
     e.preventDefault();
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    } catch {}
     if (st.current) return;
     if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) return toast("Bu cihazda ses kaydı yapılamıyor.");
     const s = { mr: null, timer: 0, up: false };
     st.current = s;
+    // Kısa dokunuş yalnız hedef seçer: 0,3 sn basılı kalmadıysa mikrofon hiç açılmaz
+    await new Promise((r) => setTimeout(r, 300));
+    if (s.up) {
+      st.current = null;
+      return;
+    }
     // Geri sayım sürerken sayaç iPhone ses oturumunu "playback"e alır (bipler sessizde de çalsın); o kipte mikrofon açılmaz.
     // Kayıt boyunca sayaç kipi değiştirmez, mikrofon açılmadan önce kip "auto"ya döner (asistan mikrofonu gibi).
     holdMic(true);
@@ -79,7 +88,7 @@ function PushTalk({ org, ctx, to, onSent }) {
       stream.getTracks().forEach((t) => t.stop());
       holdMic(false);
       const dur = (Date.now() - t0) / 1000;
-      if (dur < 0.6) return;
+      if (dur < 0.6) return; // kısa dokunuş: yalnız hedef seçildi
       const blob = new Blob(parts, { type: mr.mimeType || type || "audio/mp4" });
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, at: Date.now(), ok: null });
       const r = await sendSes(org, blob, dur, ctx, to).catch(() => ({ ok: false }));
@@ -87,25 +96,34 @@ function PushTalk({ org, ctx, to, onSent }) {
     };
     s.mr = mr;
     mr.start();
-    setRec(true);
+    setRec({ key, t0 });
     s.timer = setTimeout(stop, SES_MAX_SEC * 1000);
     if (s.up) stop(); // izin sorulurken parmak kalktıysa
   };
   const end = () => (st.current && !st.current.mr ? (st.current.up = true) : stop());
   useEffect(() => () => stop(), []);
+  return { rec, begin, end };
+}
+
+// Hedef düğmesi = bas konuş (Seyhun 2026-11-15 "ayrı bas konuş olmasın, kime basarsam onunla konuşayım"): dokununca yazılı mesajın
+// hedefi seçilir, basılı tutunca o kişiye (Hepsi: herkese) ses kaydı, bırakınca gider. Kayıtta düğme kırmızı, saniye yazar.
+function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
+  const on = ptt.rec?.key === id;
   return (
     <button
       type="button"
-      data-press
-      className="btn btn-secondary bzy-ptt"
-      data-rec={rec ? "1" : "0"}
-      onPointerDown={begin}
-      onPointerUp={end}
-      onPointerCancel={end}
-      onPointerLeave={end}
+      className="bzy-ptt"
+      aria-pressed={picked}
+      data-rec={on ? "1" : "0"}
+      onPointerDown={(e) => {
+        onPick();
+        ptt.begin(e, id, to);
+      }}
+      onPointerUp={ptt.end}
+      onPointerCancel={ptt.end}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {rec ? "Konuşuyorsun…" : "Bas konuş"}
+      {on ? `● ${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn` : label}
     </button>
   );
 }
@@ -467,6 +485,7 @@ export function BilgiAdmin() {
   const members = membersOf(boats, ch, now);
   const target = members.find((m) => m.id === toDev);
   const to = target ? { dev: target.id, name: [target.sail, target.name].filter(Boolean).join(" ") } : null;
+  const ptt = usePtt({ org, ctx, onSent: (x) => got(x) });
   const got = (x) => {
     setLast((o) => ({ ...(o && o.at === x.at ? o : {}), ...x }));
     if (x.ok != null) reload();
@@ -541,21 +560,15 @@ export function BilgiAdmin() {
             {kanal?.open && (
               <section>
                 <h2 className="bzy-h">Mesaj</h2>
-                {members.length > 0 && (
-                  <div className="bzy-to">
-                    <button type="button" aria-pressed={!to} onClick={() => setToDev("")}>
-                      Hepsi
-                    </button>
-                    {members.map((m) => (
-                      <button key={m.id} type="button" aria-pressed={to?.dev === m.id} onClick={() => setToDev(to?.dev === m.id ? "" : m.id)}>
-                        {[m.sail, m.name].filter(Boolean).join(" ")}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div className="bzy-to">
+                  <TalkChip id="" label="Hepsi" picked={!to} ptt={ptt} to={null} now={now} onPick={() => setToDev("")} />
+                  {members.map((m) => {
+                    const dest = { dev: m.id, name: [m.sail, m.name].filter(Boolean).join(" ") };
+                    return <TalkChip key={m.id} id={m.id} label={dest.name} picked={to?.dev === m.id} ptt={ptt} to={dest} now={now} onPick={() => setToDev(m.id)} />;
+                  })}
+                </div>
                 <textarea className="bzy-in" value={text} maxLength={200} onChange={(e) => setText(e.target.value)} aria-label="Mesaj" />
                 <div className="bzy-row">
-                  <PushTalk org={org} ctx={ctx} to={to} onSent={got} />
                   <Button disabled={!text.trim()} onClick={send}>
                     Gönder
                   </Button>
