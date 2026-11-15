@@ -166,6 +166,13 @@ export function tiltHeading(alpha, beta, gamma, screenAngle = 0) {
   const xE = cZ * cY - sZ * sX * sY, xN = cY * sZ + cZ * sX * sY;
   const yE = -cX * sZ, yN = cZ * cX;
   const bE = -(cY * sZ * sX + cZ * sY), bN = -(sZ * sY - cZ * cY * sX);
+  return colsHeading(xE, xN, yE, yN, bE, bN, screenAngle);
+}
+
+// Ortak: cihaz X, Y eksenleri ve arka yüzün dünya (doğu, kuzey) bileşenlerinden yön. Arka yüz yataya yakınsa (telefon dik) onun
+// baktığı yer; telefon düze yaklaştıkça ekranın yukarısı karışır.
+function colsHeading(xE, xN, yE, yN, bE, bN, screenAngle = 0) {
+  const r = Math.PI / 180;
   const a = (screenAngle || 0) * r;
   const uE = Math.sin(a) * xE + Math.cos(a) * yE, uN = Math.sin(a) * xN + Math.cos(a) * yN;
   const m = Math.hypot(bE, bN); // arka yüz ne kadar yatay (dik telefonda 1, düz telefonda 0)
@@ -173,6 +180,20 @@ export function tiltHeading(alpha, beta, gamma, screenAngle = 0) {
   const E = bE + w * uE, N = bN + w * uN;
   if (Math.hypot(E, N) < 1e-6) return null;
   return ((Math.atan2(E, N) / r) % 360 + 360) % 360;
+}
+
+// Android (Seyhun 2026-11-15: Hiking telefonda düzken doğru, dikken yanlış): Chrome'un açı (alpha/beta/gamma) olayı yerine
+// AbsoluteOrientationSensor dörtlüğü (cihazdan dünyaya, doğu-kuzey-yukarı). Euler açılarının dik duruştaki kilitlenmesi yok.
+// q = [x, y, z, w]. Dönüş: { h, beta, gamma } (beta/gamma kayıt için, W3C ile aynı anlam)
+export function quatHeading(q, screenAngle = 0) {
+  if (!q || q.length !== 4 || !q.every(Number.isFinite)) return null;
+  const [x, y, z, w] = q;
+  const xE = 1 - 2 * (y * y + z * z), xN = 2 * (x * y + w * z), xU = 2 * (x * z - w * y);
+  const yE = 2 * (x * y - w * z), yN = 1 - 2 * (x * x + z * z), yU = 2 * (y * z + w * x);
+  const zE = 2 * (x * z + w * y), zN = 2 * (y * z - w * x), zU = 1 - 2 * (x * x + y * y);
+  const h = colsHeading(xE, xN, yE, yN, -zE, -zN, screenAngle);
+  const d = 180 / Math.PI;
+  return { h, beta: Math.asin(Math.max(-1, Math.min(1, yU))) * d, gamma: Math.atan2(-xU, zU) * d };
 }
 
 // ---- Otomatik parkur (Seyhun 2026-11-15): hakem botu (komite, start hattının sancak ucu) + rüzgâr yönü (estiği yer) girilince
