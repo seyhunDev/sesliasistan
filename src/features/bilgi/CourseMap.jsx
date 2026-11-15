@@ -30,17 +30,23 @@ export function CourseMap({ course, me = null, head = null, trail = [], boats = 
   const marks = course?.has ? course.pts : [];
   const up = course?.has ? course.up || 0 : 0;
   const base = marks.length ? marks : me ? [me] : boats.filter((b) => Number.isFinite(b.lat));
-  const msg = note ? <div className="bzm-note">{note}</div> : null;
+  // Parkur uzaktaysa (hakem botu başka yerde girilmiş) sporcu yine haritada; altta parkura uzaklık yazılır
+  const c1 = marks.length ? { lat: marks.reduce((a, p) => a + p.lat, 0) / marks.length, lon: marks.reduce((a, p) => a + p.lon, 0) / marks.length } : null;
+  const far = me && c1 ? dist(c1, me) : 0;
+  const farTxt = far > 2000 ? `Parkura ${(far / 1000).toFixed(1).replace(".", ",")} km` : "";
+  const msg = note || farTxt ? <div className="bzm-note">{note || farTxt}</div> : null;
   if (!base.length)
     return (
       <div ref={ref} className={`bzm ${className}`}>
         {msg}
       </div>
     );
-  // Merkez: parkurun ortası (ya da tekne); tekne parkura 5 km'den yakınsa sığdırılır
-  const c0 = { lat: base.reduce((a, p) => a + p.lat, 0) / base.length, lon: base.reduce((a, p) => a + p.lon, 0) / base.length };
+  // Merkez: parkurun ortası (ya da tekne). Tekne her zaman sığdırılır (Seyhun 2026-11-15 iPhone'da konum vardı ama parkur
+  // 5 km'den uzakta girildiği için tekne ekran dışında kalıyordu); 5 km'den uzaksa merkez tekne ile parkurun ortası olur.
   const fit = [...base];
-  if (me && marks.length && dist(c0, me) < 5000) fit.push(me);
+  if (me && marks.length) fit.push(me);
+  const cs = me && marks.length && far > 5000 ? [c1, me] : base;
+  const c0 = { lat: cs.reduce((a, p) => a + p.lat, 0) / cs.length, lon: cs.reduce((a, p) => a + p.lon, 0) / cs.length };
   if (!marks.length) fit.push(...trail);
   const P = fit.map((p) => project(p, c0, up));
   const pad = 28;
@@ -95,7 +101,6 @@ export function CourseMap({ course, me = null, head = null, trail = [], boats = 
         {me &&
           (() => {
             const [x, y] = xy(me);
-            if (x < -20 || y < -20 || x > w + 20 || y > h + 20) return null;
             return head == null ? <circle cx={x} cy={y} r="6" className="bzm-me" /> : <path d="M0 -12 L7.5 9 L0 4.5 L-7.5 9 Z" transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(head - up).toFixed(0)})`} className="bzm-me" />;
           })()}
         <text x={w - 8} y={h - 8} className="bzm-sc">
