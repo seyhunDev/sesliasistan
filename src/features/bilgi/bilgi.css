@@ -60,6 +60,10 @@ html.bz-lock body { position: fixed; inset: 0; width: 100%; }
   --m-grid: #d6e2ee; --m-mark: #e08a00; --m-n: #111; --m-line: #1d4ed8; --m-me: #000; --m-trail: #8fb3ff; --m-sc: #59606b; --m-boat: #1d4ed8; }
 .bz:not(.bz-day) .bzm { background: #0f2240; border-color: #1d3256; --m-grid: #1a2f52; --m-mark: #d9a93a; --m-n: #cfd9ef; --m-line: #8fb3ff; --m-me: #fff; --m-trail: #3d7bff; --m-sc: #7d90b5; }
 .bzm svg { position: absolute; inset: 0; display: block; }
+.bzm-base { position: absolute; inset: 0; opacity: 0; transition: opacity .4s; pointer-events: none; }
+.bzm-base.on { opacity: .85; }
+.bz:not(.bz-day) .bzm-base.on { opacity: .7; filter: invert(1) hue-rotate(180deg) saturate(.7) brightness(.85); }
+.bzm-at { fill: var(--m-sc); font: 500 9px var(--font-sans, sans-serif); opacity: .7; }
 .bzm-grid { stroke: var(--m-grid); stroke-width: 1; fill: none; }
 .bzm-line { stroke: var(--m-line); stroke-width: 2; stroke-dasharray: 5 4; }
 .bzm-kom { fill: var(--m-line); }
@@ -72,6 +76,11 @@ html.bz-lock body { position: fixed; inset: 0; width: 100%; }
 .bzm-old { opacity: .4; }
 .bzm-note { position: absolute; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; text-align: center; font-size: 0.875rem; font-weight: 600; color: var(--m-sc); }
 .bzm:not(:has(svg)) .bzm-note { top: 0; bottom: 0; display: grid; place-items: center; }
+.bz-geo { display: flex; flex-direction: column; align-items: center; gap: 0.625rem; max-width: 20rem; }
+.bz-geo-b { appearance: none; border: 0; border-radius: 0.875rem; padding: 0.875rem 1.25rem; font: 650 1.0625rem var(--font-sans, inherit); background: #3d7bff; color: #fff; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); }
+.bz-geo-b:active { transform: translateY(1px); box-shadow: none; }
+.bz-geo-h { font-size: 0.875rem; line-height: 1.4; color: var(--bz-fg, inherit); }
+.bzm-note:has(.bz-geo) { top: 0; bottom: 0; display: grid; place-items: center; }
 .bzm-sc { fill: var(--m-sc); font: 600 11px var(--font-num), ui-monospace, monospace; text-anchor: end; }
 /* Son 1 dakika: yalnız büyük süre. Start sonrası: seçilenler (pusula, rüzgâr, harita), altta küçük akan süre */
 .bz-last { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
