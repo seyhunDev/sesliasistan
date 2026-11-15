@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
-import { FRESH_MS, courseOf, dirName, normDeg, pFlag, seqMarks, startView } from "@/lib/bilgi";
+import { FRESH_MS, courseOf, dirName, normDeg, pFlag, seqMarks, startView, tiltHeading } from "@/lib/bilgi";
 import { savePusula, useBilgi, useBilgiDoc } from "./bilgiStore";
 import "./bilgi.css";
 
-// Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 2): başlıksız tek ekran, dokunulmaz. Saat · pusula (telefonun baktığı yön),
-// start sayacı, parkur (rüzgâr şimdilik 0) ve gelen mesaj (sesli okunur) / bas-konuş ses. İlk açılışta bir kez "Başlat":
+// Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 4): başlıksız tek ekran, dokunulmaz. Üstte en büyük pusula derecesi (telefonun
+// baktığı yön) + kayan şerit, ortada parkur, start sürerken altta mavi süre, sağ altta küçük soluk saat (rüzgâr şimdilik 0) ve gelen mesaj (sesli okunur) / bas-konuş ses. İlk açılışta bir kez "Başlat":
 // telefon pusula izni, ses ve ekranın açık kalması için dokunuş ister.
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -22,24 +22,38 @@ function useTick(ms) {
   return now;
 }
 
-// Telefonun baktığı yön: iPhone webkitCompassHeading, Android deviceorientationabsolute (360 - alpha); ekran yan dönünce açı eklenir
+// Telefonun baktığı yön, eğim düzeltmeli (lib/bilgi tiltHeading): öne/arkaya yatırınca değişmez, yalnız sağa sola dönünce değişir.
+// Android: deviceorientationabsolute (alpha kuzeye göre). iPhone: alpha keyfi başlar; telefon düze yakınken webkitCompassHeading ile
+// fark (ofset) bulunur, sonra eğim düzeltmeli yön + ofset. Ölçüm titremesin diye yön birim vektörüyle yumuşatılır.
+const screenAngle = () => (typeof screen !== "undefined" && screen.orientation ? screen.orientation.angle || 0 : Number(window.orientation) || 0);
 function useHeading(on) {
   const [h, setH] = useState(null);
-  const last = useRef({ t: 0, h: null });
+  const last = useRef({ t: 0, h: null, x: 0, y: 0, off: null });
   useEffect(() => {
     if (!on) return;
+    const L = last.current;
     const take = (deg, e) => {
       if (deg == null || !Number.isFinite(deg)) return;
-      const rot = typeof screen !== "undefined" && screen.orientation ? screen.orientation.angle || 0 : Number(window.orientation) || 0;
-      const v = normDeg(deg + rot);
+      const r = (deg * Math.PI) / 180;
+      L.x = L.x * 0.7 + Math.sin(r) * 0.3;
+      L.y = L.y * 0.7 + Math.cos(r) * 0.3;
+      const v = normDeg((Math.atan2(L.x, L.y) * 180) / Math.PI);
       SENS = { h: v, roll: Number.isFinite(e?.gamma) ? Math.round(e.gamma) : null, pitch: Number.isFinite(e?.beta) ? Math.round(e.beta) : null, t: Date.now() };
       const now = Date.now();
-      if (now - last.current.t < 150 || v === last.current.h) return;
-      last.current = { t: now, h: v };
+      if (now - L.t < 150 || v === L.h) return;
+      L.t = now;
+      L.h = v;
       setH(v);
     };
-    const ios = (e) => (e.webkitCompassHeading != null ? take(e.webkitCompassHeading, e) : e.absolute && e.alpha != null ? take(360 - e.alpha, e) : null);
-    const abs = (e) => (e.alpha != null ? take(360 - e.alpha, e) : null);
+    const abs = (e) => take(tiltHeading(e.alpha, e.beta, e.gamma, screenAngle()), e);
+    const ios = (e) => {
+      const t = tiltHeading(e.alpha, e.beta, e.gamma, screenAngle());
+      if (e.webkitCompassHeading != null && Number.isFinite(e.webkitCompassHeading)) {
+        if (t != null && Math.abs(e.beta) < 35 && Math.abs(e.gamma) < 35) L.off = normDeg(e.webkitCompassHeading + screenAngle() - t);
+        return take(t != null && L.off != null ? t + L.off : e.webkitCompassHeading + screenAngle(), e);
+      }
+      if (e.absolute) take(t, e);
+    };
     const hasAbs = "ondeviceorientationabsolute" in window;
     if (hasAbs) window.addEventListener("deviceorientationabsolute", abs);
     else window.addEventListener("deviceorientation", ios);
@@ -274,23 +288,27 @@ export function BilgiScreen() {
           </svg>
         </span>
       )}
-      <div className="bz-l">
-        <div className="bz-tw">
-          <div>
-            <span className="bz-big num">
-              {pad(d.getHours())}:{pad(d.getMinutes())}
-              <small>:{pad(d.getSeconds())}</small>
-            </span>
-          </div>
-          <div className="bz-r">
-            <span className="bz-big num">{h == null ? "---" : h}°</span>
-            <span className="bz-sm num">{h == null ? "" : dirName(h)}</span>
-          </div>
-        </div>
+      <div className="bz-cmp">
+        <div className="bz-hd num">{h == null ? "---" : h}°</div>
+        <div className="bz-dn num">{h == null ? "" : dirName(h)}</div>
         <Tape h={h} />
-        <div className="bz-hr" />
-        <div className="bz-st">
-          <div className={`bz-cd num${sv.phase === "none" ? " off" : ""}`}>{sv.txt}</div>
+      </div>
+      <div className="bz-rt">
+        <Course kind={b?.course} />
+        {b?.state && <div className="bz-cs">{b.state}</div>}
+      </div>
+      {sv.phase !== "none" && (
+        <div className="bz-tm">
+          {seq && (
+            <div className="bz-seq">
+              {seq.map((x) => (
+                <div key={x.m} className={x.on ? "on" : x.done ? "done" : ""}>
+                  {x.m}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="bz-cd num">{sv.txt}</div>
           {(b?.label || pFlag(sv.left, dur)) && (
             <div className="bz-ln">
               {b?.label && <span>{b.label}</span>}
@@ -301,24 +319,8 @@ export function BilgiScreen() {
               )}
             </div>
           )}
-          {seq && (
-            <div className="bz-seq">
-              {seq.map((x) => (
-                <div key={x.m} className={x.on ? "on" : x.done ? "done" : ""}>
-                  {x.m}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
-      </div>
-      <div className="bz-rt">
-        <div className="bz-hr bz-hr2" />
-        <div className="bz-cx">
-          <Course kind={b?.course} />
-          {b?.state && <div className="bz-cs">{b.state}</div>}
-        </div>
-      </div>
+      )}
       {msg && (
         <div className="bz-msg" role="status">
           <time className="num">
@@ -327,6 +329,9 @@ export function BilgiScreen() {
           <p>{msg.text}</p>
         </div>
       )}
+      <span className="bz-clk num" aria-label="Saat">
+        {pad(d.getHours())}:{pad(d.getMinutes())}
+      </span>
       {!on && (
         <button type="button" className="bz-go" onClick={start}>
           <span className="btn btn-primary">Başlat</span>

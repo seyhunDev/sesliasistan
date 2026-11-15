@@ -84,7 +84,13 @@ let ctx = null;
 // iPhone ses oturumu (Safari 16.4+): "auto" iken bipler zil/sessiz düğmesine uyar ve sessiz modda hiç çalmaz (YouTube açıkken çalması
 // bundan: oturum o an çalma kipindeydi). Sayaç sürerken "playback": sessiz modda da çalar (arka plandaki müzik durabilir); bitince "auto".
 // Mikrofon açılırken lib/speech/audioSession.js micReset kipi zaten "auto"ya döndürür.
+// Mikrofon açıkken (Bilgi ekranı › Bas konuş) kip "playback"e alınmaz: iPhone o kipte mikrofonu açmaz ("Mikrofon izni gerekli")
+let micHeld = false;
+export function holdMic(on) {
+  micHeld = !!on;
+}
 function session(on) {
+  if (on && micHeld) return;
   try {
     const s = navigator.audioSession;
     if (s && s.type !== (on ? "playback" : "auto") && (on || s.type === "playback")) s.type = on ? "playback" : "auto";
