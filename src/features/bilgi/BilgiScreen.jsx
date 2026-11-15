@@ -27,6 +27,7 @@ function useTick(ms) {
 // Telefonun baktığı yön, eğim düzeltmeli (lib/bilgi tiltHeading): öne/arkaya yatırınca değişmez, yalnız sağa sola dönünce değişir.
 // Android: deviceorientationabsolute (alpha kuzeye göre). iPhone: alpha keyfi başlar; telefon düze yakınken webkitCompassHeading ile
 // fark (ofset) bulunur, sonra eğim düzeltmeli yön + ofset. Ölçüm titremesin diye yön birim vektörüyle yumuşatılır.
+const DEAD = 4;
 const screenAngle = () => (typeof screen !== "undefined" && screen.orientation ? screen.orientation.angle || 0 : Number(window.orientation) || 0);
 function useHeading(on) {
   const [h, setH] = useState(null);
@@ -37,8 +38,8 @@ function useHeading(on) {
     const take = (deg, e) => {
       if (deg == null || !Number.isFinite(deg)) return;
       const r = (deg * Math.PI) / 180;
-      L.x = L.x * 0.7 + Math.sin(r) * 0.3;
-      L.y = L.y * 0.7 + Math.cos(r) * 0.3;
+      L.x = L.x * 0.85 + Math.sin(r) * 0.15;
+      L.y = L.y * 0.85 + Math.cos(r) * 0.15;
       const v = normDeg((Math.atan2(L.x, L.y) * 180) / Math.PI);
       SENS = {
         h: v,
@@ -47,7 +48,8 @@ function useHeading(on) {
         t: Date.now(),
       };
       const now = Date.now();
-      if (now - L.t < 150 || v === L.h) return;
+      // Ölü bölge (Seyhun 2026-11-15): 2-3 derecelik oynamada sayı değişmez, 4 derece ve üstü değişimde gösterilir (kayıt ham kalır)
+      if (now - L.t < 150 || (L.h != null && Math.abs(((v - L.h + 540) % 360) - 180) < DEAD)) return;
       L.t = now;
       L.h = v;
       setH(v);
@@ -123,6 +125,20 @@ function useRecord(on, org, uid, name) {
       flush();
     };
   }, [on, org, uid, name]);
+}
+
+// Ekran kaymasın (Seyhun 2026-11-15, iPhone'da yukarı aşağı oynuyordu): sayfa kaydırma ve lastik esneme kapalı, sürükleme yok
+function useLock() {
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.add("bz-lock");
+    const stop = (e) => e.touches?.length < 2 && e.cancelable && e.preventDefault();
+    document.addEventListener("touchmove", stop, { passive: false });
+    return () => {
+      el.classList.remove("bz-lock");
+      document.removeEventListener("touchmove", stop);
+    };
+  }, []);
 }
 
 function useWake(on) {
@@ -322,6 +338,7 @@ export function BilgiScreen({ pub = "" }) {
   const h = useHeading(on);
   useRecord(on, org, profile?.uid, profile?.name);
   useWake(on);
+  useLock();
   const [talk, unlock] = useVoice(on, b?.msg, ses);
 
   // Tek dokunuş: pusula izni (iPhone), sesin açılması ve ekranın açık kalması tarayıcının dokunuş istediği işler
