@@ -75,24 +75,26 @@ export function bilgiCommand(s) {
   return null;
 }
 
-// Eğim düzeltmeli pusula (Seyhun 2026-11-15 "öne arkaya yatırınca değişmemeli, yalnız sağa sola"): cihaz yön olayı (W3C, ZXY:
-// alpha Z, beta X, gamma Y) dönme matrisinden ekranın "yukarı" ekseni ile telefonun arka yüzünün (kameranın baktığı yön) yatay
-// izdüşümleri toplanır. Öne/arkaya yatırma ekranın yan ekseni etrafında dönmedir: bu iki eksen aynı düşey düzlemde kalır, toplamın
-// yönü değişmez. Düzken "yukarı" ekseni, dikken arka yüz baskın olur. screenAngle: ekranın dönüşü (yatayda 90 / 270).
-// Dönen: derece (0 kuzey, saat yönünde) ya da null (sensör yok)
+// Eğim düzeltmeli pusula (Seyhun 2026-11-15: telefon teknede dik durur; "öne arkaya yatırınca değişmemeli, yalnız sağa sola"):
+// yön = telefonun arka yüzünün (kameranın baktığı yönün) yatay izdüşümü. Dik telefon öne/arkaya yatınca ya da yana yatınca (tekne
+// yatışı) arka yüzün yatay yönü değişmez, yalnız telefon sağa sola dönünce değişir. Telefon düze yaklaştıkça (arka yüz yere bakar)
+// ekranın "yukarı" ekseni devreye girer. Cihaz yön olayı W3C (ZXY: alpha Z, beta X, gamma Y) dönme matrisinden hesaplanır.
+// screenAngle: ekranın dönüşü (yatayda 90 / 270). Dönen: derece (0 kuzey, saat yönünde) ya da null (sensör yok)
 export function tiltHeading(alpha, beta, gamma, screenAngle = 0) {
   if (![alpha, beta, gamma].every(Number.isFinite)) return null;
   const r = Math.PI / 180;
   const cZ = Math.cos(alpha * r), sZ = Math.sin(alpha * r);
   const cX = Math.cos(beta * r), sX = Math.sin(beta * r);
   const cY = Math.cos(gamma * r), sY = Math.sin(gamma * r);
-  // Dönme matrisinin sütunları (doğu, kuzey): cihaz X, Y ve -Z eksenleri
+  // Dönme matrisinin sütunları (doğu, kuzey): cihaz X, Y ve arka yüz (-Z)
   const xE = cZ * cY - sZ * sX * sY, xN = cY * sZ + cZ * sX * sY;
   const yE = -cX * sZ, yN = cZ * cX;
   const bE = -(cY * sZ * sX + cZ * sY), bN = -(sZ * sY - cZ * cY * sX);
   const a = (screenAngle || 0) * r;
-  const E = Math.sin(a) * xE + Math.cos(a) * yE + bE;
-  const N = Math.sin(a) * xN + Math.cos(a) * yN + bN;
+  const uE = Math.sin(a) * xE + Math.cos(a) * yE, uN = Math.sin(a) * xN + Math.cos(a) * yN;
+  const m = Math.hypot(bE, bN); // arka yüz ne kadar yatay (dik telefonda 1, düz telefonda 0)
+  const w = Math.max(0, Math.min(1, (0.5 - m) / 0.5)); // düzden 30°'ye kadar ekranın yukarısı karışır
+  const E = bE + w * uE, N = bN + w * uN;
   if (Math.hypot(E, N) < 1e-6) return null;
   return ((Math.atan2(E, N) / r) % 360 + 360) % 360;
 }
