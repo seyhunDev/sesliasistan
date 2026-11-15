@@ -414,12 +414,15 @@ function Kanal({ org, kanal, link, count }) {
         <span className="num">{count} kişi</span>
         <button type="button" className="bzy-ic" disabled={!url} onClick={() => copy(url)} aria-label="Linki kopyala" data-press>
           <svg viewBox="0 0 24 24">
-            <rect x="8" y="8" width="12" height="12" rx="2.5" />
-            <path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8" />
+            <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
           </svg>
         </button>
         <button type="button" className="bzy-ic" onClick={() => setMore((x) => !x)} aria-label="Diğer" aria-expanded={more} data-press>
-          ⋯
+          <svg viewBox="0 0 24 24">
+            <circle cx="5" cy="12" r="1" />
+            <circle cx="12" cy="12" r="1" />
+            <circle cx="19" cy="12" r="1" />
+          </svg>
         </button>
       </div>
       {more && (
@@ -568,8 +571,12 @@ export function BilgiAdmin() {
     <main className="bzy-app" aria-label="Bilgi ekranı yönetimi">
       <TekneMap boats={chBoats} course={course.has ? course : null} full />
       <div className="bzy-top">
-        <div className="bzy-hd">
-          <BackButton href="/" />
+        <div className="bzy-bar">
+          <Link href="/" className="bzy-ic" aria-label="Geri" data-press>
+            <svg viewBox="0 0 24 24">
+              <path d="M15 5l-7 7 7 7" />
+            </svg>
+          </Link>
           <div className="min-w-0 flex-1">
             <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} />
           </div>
@@ -603,10 +610,20 @@ export function BilgiAdmin() {
               if (text.trim()) send();
             }}
           >
-            <input className="bzy-in" value={text} maxLength={200} onChange={(e) => setText(e.target.value)} placeholder={to ? `${to.name}'e mesaj` : "Mesaj"} aria-label="Mesaj" enterKeyHint="send" />
-            <Button type="submit" disabled={!text.trim()} className="!flex-none">
-              Gönder
-            </Button>
+            <input
+              className="bzy-in"
+              value={text}
+              maxLength={200}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={to ? `${to.name} · mesaj yaz` : "Mesaj yaz"}
+              aria-label="Mesaj"
+              enterKeyHint="send"
+            />
+            <button type="submit" className="bzy-send" disabled={!text.trim()} aria-label="Gönder" data-press>
+              <svg viewBox="0 0 24 24">
+                <path d="M5 12h13M13 6l6 6-6 6" />
+              </svg>
+            </button>
           </form>
           <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />
         </div>
