@@ -86,6 +86,17 @@ html.bz-lock body { position: fixed; inset: 0; width: 100%; }
 .bz-last { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
 .bz-lm { font-size: min(34vw, 24vh); line-height: 1; font-weight: 700; color: var(--bz-tm); letter-spacing: -.03em; white-space: nowrap; }
 .bz-ll { font-size: 1.125rem; font-weight: 600; color: var(--bz-txt); margin-top: 0.75rem; }
+/* Geri sayım sürerken (son dakikadan önce) süre büyük, harita kısalır (Seyhun 2026-11-15) */
+.bz-cnt .bz-cd { font-size: min(25vw, 16vh); white-space: nowrap; margin: 0.25rem 0 0; }
+.bz-cnt .bz-rt { flex: 0 1 30vh; min-height: 5rem; }
+.bz-cnt .bz-tm { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center; }
+/* Start sonrası: üst yarı pusula, alt yarı harita, altta tek satır süre + saat */
+.bz-top { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+.bz-m-race .bz-top .bz-hd { font-size: min(34vw, 18vh); }
+.bz-m-race > .bz-rt, .bz-m-race > .bz-fill { flex: 1 1 0; min-height: 0; }
+.bz-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex: none; padding-bottom: 0.25rem; font-size: 1.75rem; font-weight: 600; color: var(--bz-tm); }
+.bz-foot small { font-size: 0.875rem; color: var(--bz-mut); margin-left: 0.5rem; font-weight: 600; }
+.bz-fclk { font-size: 1.25rem; color: var(--bz-fg); opacity: .55; }
 .bz-mini { text-align: center; font-size: 1.5rem; font-weight: 600; color: var(--bz-tm); padding-bottom: 0.25rem; flex: none; }
 .bz-mini span { font-size: 0.875rem; color: var(--bz-mut); margin-left: 0.5rem; }
 .bz-go { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: rgba(5, 10, 22, .7); border: 0; padding: 1.5rem; touch-action: manipulation; }
@@ -107,7 +118,10 @@ html.bz-lock body { position: fixed; inset: 0; width: 100%; }
   .bz-m-pre > .bz-cmp, .bz-m-race > .bz-cmp { grid-column: 1; }
   .bz-m-pre > .bz-wind, .bz-m-race > .bz-wind { grid-column: 1; }
   .bz-m-pre > .bz-rt, .bz-m-race > .bz-rt, .bz-m-race > .bz-fill { grid-column: 2; grid-row: 1 / -1; margin: 0; min-height: 0; }
-  .bz-m-pre > .bz-tm, .bz-m-race > .bz-mini { grid-column: 1; grid-row: 4; align-self: end; }
+  .bz-m-pre > .bz-tm, .bz-m-race > .bz-mini, .bz-m-race > .bz-foot { grid-column: 1; grid-row: 4; align-self: end; }
+  .bz-m-race > .bz-top { grid-column: 1; grid-row: 1 / 4; }
+  .bz-m-race .bz-top .bz-hd { font-size: min(16vw, 34vh); }
+  .bz-cnt .bz-cd { font-size: min(12vw, 24vh); }
   .bz-m-pre > .bz-msg, .bz-m-race > .bz-msg { grid-column: 1; grid-row: 3; align-self: end; }
   .bz-hd { font-size: min(14vw, 26vh); }
   .bz-lm { font-size: min(22vw, 46vh); }

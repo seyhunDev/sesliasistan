@@ -674,7 +674,7 @@ export function BilgiScreen({ pub = "" }) {
   );
 
   return (
-    <main className={`bz${night ? "" : " bz-day"} bz-m-${mode}`} data-bilgi>
+    <main className={`bz${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
       {!pub && (
         <button type="button" className="bz-back" onClick={leave} aria-label="Geri">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -698,13 +698,23 @@ export function BilgiScreen({ pub = "" }) {
       )}
       {mode === "race" && (
         <>
-          {show.pusula && compass}
-          {show.ruzgar && wind}
+          {/* Start sonrası (Seyhun 2026-11-15): üst yarı büyük pusula (+ rüzgâr), alt yarı harita; en altta solda akan süre, sağda saat */}
+          <div className="bz-top">
+            {show.pusula && compass}
+            {show.ruzgar && wind}
+          </div>
           {show.parkur ? map : <div className="bz-fill" />}
-          {show.sure && (
-            <div className="bz-mini num">
-              {sv.txt}
-              {b?.label && <span>{b.label}</span>}
+          {(show.sure || show.saat) && (
+            <div className="bz-foot num">
+              <span>
+                {show.sure && sv.txt}
+                {show.sure && b?.label && <small>{b.label}</small>}
+              </span>
+              {show.saat && (
+                <span className="bz-fclk" aria-label="Saat">
+                  {pad(d.getHours())}:{pad(d.getMinutes())}
+                </span>
+              )}
             </div>
           )}
         </>
@@ -751,7 +761,7 @@ export function BilgiScreen({ pub = "" }) {
           </p>
         </div>
       )}
-      {(mode !== "race" || show.saat) && (
+      {mode !== "race" && (
         <span className="bz-clk num" aria-label="Saat">
           {pad(d.getHours())}:{pad(d.getMinutes())}
         </span>
