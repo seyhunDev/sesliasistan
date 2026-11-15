@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
 import { FRESH_MS, SHOW_DEF, beepOf, courseOf, dirName, normDeg, pFlag, screenMode, seqMarks, startView, tiltHeading } from "@/lib/bilgi";
-import { savePusula, useBilgi, useBilgiDoc } from "./bilgiStore";
+import { savePusula, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
 import "./bilgi.css";
 
 // Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 4): başlıksız tek ekran, dokunulmaz. Üstte en büyük pusula derecesi (telefonun
@@ -307,12 +307,16 @@ function Course({ kind }) {
   );
 }
 
-export function BilgiScreen() {
+// pub: herkese açık linkle (/ekran/{anahtar}) girişsiz açılış; veri kopya belgeden, pusula kaydı yok, geri düğmesi yok
+export function BilgiScreen({ pub = "" }) {
   const router = useRouter();
   const { profile } = useAuth();
-  const org = profile?.orgId || "";
-  const b = useBilgi(org);
-  const ses = useBilgiDoc(org, "ses");
+  const org = pub ? "" : profile?.orgId || "";
+  const own = useBilgi(org);
+  const ownSes = useBilgiDoc(org, "ses");
+  const [pb, pses] = usePublic(pub);
+  const b = pub ? pb : own;
+  const ses = pub ? pses : ownSes;
   const [on, setOn] = useState(false);
   const now = useTick(250);
   const h = useHeading(on);
@@ -363,11 +367,13 @@ export function BilgiScreen() {
 
   return (
     <main className={`bz${night ? "" : " bz-day"} bz-m-${mode}`} data-bilgi>
-      <button type="button" className="bz-back" onClick={leave} aria-label="Geri">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-          <path d="M15 5l-7 7 7 7" />
-        </svg>
-      </button>
+      {!pub && (
+        <button type="button" className="bz-back" onClick={leave} aria-label="Geri">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+        </button>
+      )}
       {talk && (
         <span className="bz-talk" aria-label="Konuşuyor">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
