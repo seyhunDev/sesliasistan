@@ -16,6 +16,14 @@ export const SES_MAX_SEC = 20;
 // Mesaj ve ses yalnız tazeyse gösterilir/çalınır (ekran sonradan açılınca eski mesaj okunmaz)
 export const FRESH_MS = 60e3;
 
+// Start sonrası ekranda ne görünsün (Seyhun 2026-11-15, örnek 5): Yönet'ten aç kapa. Varsayılan pusula + süre + saat
+export const SHOW = [["pusula", "Pusula"], ["sure", "Süre"], ["parkur", "Parkur"], ["ruzgar", "Rüzgâr"], ["saat", "Saat"]];
+export const SHOW_DEF = { pusula: true, sure: true, parkur: false, ruzgar: false, saat: true };
+export function cleanShow(v) {
+  const o = v && typeof v === "object" ? v : {};
+  return Object.fromEntries(SHOW.map(([k]) => [k, typeof o[k] === "boolean" ? o[k] : SHOW_DEF[k]]));
+}
+
 export function cleanBilgi(d = {}) {
   const t = d.timer && typeof d.timer === "object" ? d.timer : null;
   const m = d.msg && typeof d.msg === "object" ? d.msg : null;
@@ -23,6 +31,7 @@ export function cleanBilgi(d = {}) {
     on: d.on !== false,
     label: S(d.label, 40),
     course: COURSES[d.course] ? d.course : "trapez",
+    show: cleanShow(d.show),
     state: S(d.state, 80),
     timer: t ? { dur: Number(t.dur) || 300, end: Number.isFinite(+t.end) && t.end != null ? +t.end : null, left: Number.isFinite(+t.left) && t.left != null ? +t.left : null, mode: S(t.mode, 20) } : null,
     msg: m && m.id ? { id: S(m.id, 40), text: S(m.text, MSG_MAX), at: Number(m.at) || 0 } : null,
@@ -57,6 +66,19 @@ export function seqMarks(left) {
     return { m, done, on };
   });
 }
+// Ekran kipi: son 1 dakikada yalnız büyük süre ("last"), start olunca ortada büyük pusula + altta küçük süre ("race"), öncesi "pre"
+export const screenMode = (sv) => (sv.phase === "down" && sv.left <= 60 ? "last" : sv.phase === "up" ? "race" : "pre");
+
+// Son dakika bipleri (Seyhun 2026-11-15): 30. ve 10. saniyede bip, son 5 saniyede her saniye çift bip, startta uzun bip.
+// prev → left geçişinde çalınacak bip: "one" | "two" | "long" | null
+export function beepOf(prev, left) {
+  if (prev == null || left == null || left === prev || left > prev || prev - left > 2) return null;
+  if (left === 0) return "long";
+  if (left <= 5) return "two";
+  if (left === 30 || left === 10) return "one";
+  return null;
+}
+
 // P bayrağı 4. dakikadan 1. dakikaya kadar
 export const pFlag = (left, dur) => dur === 300 && left != null && left > 60 && left <= 240;
 
@@ -71,6 +93,13 @@ export function bilgiCommand(s) {
   const m = /^bilgi ekranına\s+(?:yaz|söyle|mesaj gönder|mesaj yaz|duyur|gönder)\s*[:,]?\s*(.+)$/i.exec(t);
   if (m) return { op: "msg", text: S(m[1].replace(/[.!]+$/, ""), MSG_MAX) };
   if (/^bilgi ekranını?\s+(?:aç|göster)$/i.test(t)) return { op: "open" };
+  // "bilgi ekranında rüzgârı göster" / "bilgi ekranında saati gizle": start sonrası ekranda aç kapa
+  const g = /^bilgi ekranında\s+(pusula|süre|parkur|rüzg[aâ]r|saat)\S*\s+(göster|gizle|aç|kapat)$/i.exec(t);
+  if (g) {
+    const w = g[1].toLocaleLowerCase("tr");
+    const key = w === "süre" ? "sure" : w.startsWith("rüzg") ? "ruzgar" : w;
+    return { op: "show", key, on: /göster|aç/i.test(g[2]) };
+  }
   if (/^bilgi ekranını?\s+yönet(?:imini aç)?$|^bilgi ekranı yönetimini aç$/i.test(t)) return { op: "admin" };
   return null;
 }

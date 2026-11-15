@@ -4,13 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
-import { FRESH_MS, courseOf, dirName, normDeg, pFlag, seqMarks, startView, tiltHeading } from "@/lib/bilgi";
+import { FRESH_MS, SHOW_DEF, beepOf, courseOf, dirName, normDeg, pFlag, screenMode, seqMarks, startView, tiltHeading } from "@/lib/bilgi";
 import { savePusula, useBilgi, useBilgiDoc } from "./bilgiStore";
 import "./bilgi.css";
 
 // Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 4): başlıksız tek ekran, dokunulmaz. Üstte en büyük pusula derecesi (telefonun
 // baktığı yön) + kayan şerit, ortada parkur, start sürerken altta mavi süre, sağ altta küçük soluk saat (rüzgâr şimdilik 0) ve gelen mesaj (sesli okunur) / bas-konuş ses. İlk açılışta bir kez "Başlat":
 // telefon pusula izni, ses ve ekranın açık kalması için dokunuş ister.
+// Örnek 5 (Seyhun 2026-11-15): startın son 1 dakikasında yalnız büyük süre (bipli), start olunca ortada büyük pusula + altta küçük
+// akan süre; start sonrası ekranda ne görüneceği Yönet'ten (show: pusula, süre, parkur, rüzgâr, saat).
 const pad = (n) => String(n).padStart(2, "0");
 
 function useTick(ms) {
@@ -38,7 +40,12 @@ function useHeading(on) {
       L.x = L.x * 0.7 + Math.sin(r) * 0.3;
       L.y = L.y * 0.7 + Math.cos(r) * 0.3;
       const v = normDeg((Math.atan2(L.x, L.y) * 180) / Math.PI);
-      SENS = { h: v, roll: Number.isFinite(e?.gamma) ? Math.round(e.gamma) : null, pitch: Number.isFinite(e?.beta) ? Math.round(e.beta) : null, t: Date.now() };
+      SENS = {
+        h: v,
+        roll: Number.isFinite(e?.gamma) ? Math.round(e.gamma) : null,
+        pitch: Number.isFinite(e?.beta) ? Math.round(e.beta) : null,
+        t: Date.now(),
+      };
       const now = Date.now();
       if (now - L.t < 150 || v === L.h) return;
       L.t = now;
@@ -92,7 +99,13 @@ function useRecord(on, org, uid, name) {
     let t0 = 0;
     const flush = () => {
       if (buf.length < 5) return;
-      savePusula(org, { uid, name: name || "", at: t0, pts: buf.flat(), n: buf.length }).catch(() => {});
+      savePusula(org, {
+        uid,
+        name: name || "",
+        at: t0,
+        pts: buf.flat(),
+        n: buf.length,
+      }).catch(() => {});
       buf = [];
     };
     const id = setInterval(() => {
@@ -134,6 +147,39 @@ function useWake(on) {
   }, [on]);
 }
 
+// Bip sesi (Web Audio): bağlam "Başlat" dokunuşunda açılır. one: kısa bip, two: çift bip, long: uzun bip
+let ACTX = null;
+function tone(at, len) {
+  const c = ACTX;
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = "square";
+  o.frequency.value = 1500;
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(0.5, at + 0.01);
+  g.gain.setValueAtTime(0.5, at + len - 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+  o.connect(g).connect(c.destination);
+  o.start(at);
+  o.stop(at + len + 0.02);
+}
+function beep(kind) {
+  if (!ACTX) return;
+  if (ACTX.state === "suspended") ACTX.resume().catch(() => {});
+  const t = ACTX.currentTime + 0.02;
+  if (kind === "long") tone(t, 1);
+  else if (kind === "two") (tone(t, 0.12), tone(t + 0.2, 0.12));
+  else tone(t, 0.15);
+}
+function useBeeps(on, left) {
+  const prev = useRef(null);
+  useEffect(() => {
+    const k = beepOf(prev.current, left);
+    prev.current = left;
+    if (on && k) beep(k);
+  }, [on, left]);
+}
+
 // Ses öğesi tek: ekran tek, dokunuşla açılan öğe sonra gelen kayıtları çalar
 let AUDIO = null;
 
@@ -171,6 +217,11 @@ function useVoice(on, msg, ses) {
   // Tarayıcı sesi yalnız dokunuştan sonra çalar: aynı ses öğesi dokunuşta bir kez sessizce çalınır, sonra gelen kayıtlar onunla çalar
   const unlock = async () => {
     try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC && !ACTX) ACTX = new AC();
+      ACTX?.resume().catch(() => {});
+    } catch {}
+    try {
       const a = AUDIO || (AUDIO = new Audio());
       a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
       await a.play().catch(() => {});
@@ -185,7 +236,16 @@ function useVoice(on, msg, ses) {
 function Tape({ h }) {
   const W = 300;
   const px = 3.2;
-  const L = { 0: "K", 45: "KD", 90: "D", 135: "GD", 180: "G", 225: "GB", 270: "B", 315: "KB" };
+  const L = {
+    0: "K",
+    45: "KD",
+    90: "D",
+    135: "GD",
+    180: "G",
+    225: "GB",
+    270: "B",
+    315: "KB",
+  };
   const ticks = [];
   if (h != null)
     for (let d = Math.ceil((h - 50) / 5) * 5; d <= h + 50; d += 5) {
@@ -194,9 +254,17 @@ function Tape({ h }) {
       const maj = dd % 15 === 0;
       ticks.push(<line key={`l${d}`} x1={x} x2={x} y1={maj ? 6 : 12} y2={20} style={{ stroke: maj ? "var(--bz-tick)" : "var(--bz-tick2)" }} strokeWidth="1.4" />);
       if (dd % 45 === 0)
-        ticks.push(<text key={`t${d}`} x={x} y="32" className="bz-tl">{L[dd]}</text>);
+        ticks.push(
+          <text key={`t${d}`} x={x} y="32" className="bz-tl">
+            {L[dd]}
+          </text>,
+        );
       else if (maj)
-        ticks.push(<text key={`t${d}`} x={x} y="32" className="bz-tn">{dd}</text>);
+        ticks.push(
+          <text key={`t${d}`} x={x} y="32" className="bz-tn">
+            {dd}
+          </text>,
+        );
     }
   return (
     <svg className="bz-tape" viewBox={`0 0 ${W} 34`} preserveAspectRatio="none" aria-hidden="true">
@@ -232,7 +300,9 @@ function Course({ kind }) {
         {wind}
         <tspan className="bz-wu"> kn</tspan>
       </text>
-      <text x="250" y="118" className="bz-wd">— °</text>
+      <text x="250" y="118" className="bz-wd">
+        — °
+      </text>
     </svg>
   );
 }
@@ -257,7 +327,9 @@ export function BilgiScreen() {
     } catch {}
     await unlock();
     try {
-      await document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
+      await document.documentElement.requestFullscreen?.({
+        navigationUI: "hide",
+      });
     } catch {}
     setOn(true);
   };
@@ -272,9 +344,25 @@ export function BilgiScreen() {
   const dur = b?.timer?.dur ?? 300;
   const seq = sv.phase === "down" && dur === 300 ? seqMarks(sv.left) : null;
   const msg = b?.msg && now - b.msg.at < FRESH_MS ? b.msg : null;
+  const mode = screenMode(sv);
+  const show = b?.show || SHOW_DEF;
+  useBeeps(on, sv.phase === "down" || sv.phase === "up" ? sv.left : null);
+  const compass = (
+    <div className="bz-cmp">
+      <div className="bz-hd num">{h == null ? "---" : h}°</div>
+      <div className="bz-dn num">{h == null ? "" : dirName(h)}</div>
+      <Tape h={h} />
+    </div>
+  );
+  const course = (
+    <div className="bz-rt">
+      <Course kind={b?.course} />
+      {b?.state && <div className="bz-cs">{b.state}</div>}
+    </div>
+  );
 
   return (
-    <main className={`bz${night ? "" : " bz-day"}`} data-bilgi>
+    <main className={`bz${night ? "" : " bz-day"} bz-m-${mode}`} data-bilgi>
       <button type="button" className="bz-back" onClick={leave} aria-label="Geri">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
           <path d="M15 5l-7 7 7 7" />
@@ -288,38 +376,60 @@ export function BilgiScreen() {
           </svg>
         </span>
       )}
-      <div className="bz-cmp">
-        <div className="bz-hd num">{h == null ? "---" : h}°</div>
-        <div className="bz-dn num">{h == null ? "" : dirName(h)}</div>
-        <Tape h={h} />
-      </div>
-      <div className="bz-rt">
-        <Course kind={b?.course} />
-        {b?.state && <div className="bz-cs">{b.state}</div>}
-      </div>
-      {sv.phase !== "none" && (
-        <div className="bz-tm">
-          {seq && (
-            <div className="bz-seq">
-              {seq.map((x) => (
-                <div key={x.m} className={x.on ? "on" : x.done ? "done" : ""}>
-                  {x.m}
-                </div>
-              ))}
+      {mode === "last" && (
+        <div className="bz-last">
+          <div className="bz-lm num">{sv.txt}</div>
+          {b?.label && <div className="bz-ll">{b.label}</div>}
+        </div>
+      )}
+      {mode === "race" && (
+        <>
+          <div className="bz-race">
+            {show.pusula && compass}
+            {show.ruzgar && (
+              <div className="bz-wn num">
+                0<small>kn</small>
+              </div>
+            )}
+          </div>
+          {show.parkur && course}
+          {show.sure && (
+            <div className="bz-mini num">
+              {sv.txt}
+              {b?.label && <span>{b.label}</span>}
             </div>
           )}
-          <div className="bz-cd num">{sv.txt}</div>
-          {(b?.label || pFlag(sv.left, dur)) && (
-            <div className="bz-ln">
-              {b?.label && <span>{b.label}</span>}
-              {pFlag(sv.left, dur) && (
-                <span className="bz-flag">
-                  <i />P
-                </span>
+        </>
+      )}
+      {mode === "pre" && (
+        <>
+          {compass}
+          {course}
+          {sv.phase !== "none" && (
+            <div className="bz-tm">
+              {seq && (
+                <div className="bz-seq">
+                  {seq.map((x) => (
+                    <div key={x.m} className={x.on ? "on" : x.done ? "done" : ""}>
+                      {x.m}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="bz-cd num">{sv.txt}</div>
+              {(b?.label || pFlag(sv.left, dur)) && (
+                <div className="bz-ln">
+                  {b?.label && <span>{b.label}</span>}
+                  {pFlag(sv.left, dur) && (
+                    <span className="bz-flag">
+                      <i />P
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}
-        </div>
+        </>
       )}
       {msg && (
         <div className="bz-msg" role="status">
@@ -329,9 +439,11 @@ export function BilgiScreen() {
           <p>{msg.text}</p>
         </div>
       )}
-      <span className="bz-clk num" aria-label="Saat">
-        {pad(d.getHours())}:{pad(d.getMinutes())}
-      </span>
+      {(mode !== "race" || show.saat) && (
+        <span className="bz-clk num" aria-label="Saat">
+          {pad(d.getHours())}:{pad(d.getMinutes())}
+        </span>
+      )}
       {!on && (
         <button type="button" className="bz-go" onClick={start}>
           <span className="btn btn-primary">Başlat</span>
