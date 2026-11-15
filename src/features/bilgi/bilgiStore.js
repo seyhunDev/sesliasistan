@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, onSnapshot } from "firebase/firestore";
-import { setDoc } from "@/lib/firebase/write";
+import { collection, doc, getDocs, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { addDoc, setDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { cleanBilgi, MSG_MAX } from "@/lib/bilgi";
 
@@ -32,10 +32,30 @@ export function useBilgi(org) {
 
 export const saveBilgi = (org, patch) => setDoc(ref(org, "ekran"), { ...patch, at: Date.now() }, { merge: true });
 
-export function sendMsg(org, text) {
+// Gönderilen her mesaj ve ses kaydı ayrıca günlüğe yazılır (Seyhun 2026-11-15 "mesajlar kaydedilsin, ne zaman, ne için"):
+// orgs/{org}/bilgiLog { kind: "msg" | "ses", text, dur, at, label (start yazısı), state (parkur durumu), course }
+function logSent(org, item, ctx = {}) {
+  return addDoc(collection(db, "orgs", org, "bilgiLog"), { ...item, at: Date.now(), label: ctx.label || "", state: ctx.state || "", course: ctx.course || "" }).catch(() => {});
+}
+
+export function sendMsg(org, text, ctx) {
   const t = String(text || "").replace(/\s+/g, " ").trim().slice(0, MSG_MAX);
   if (!t) return Promise.resolve(false);
-  return saveBilgi(org, { msg: { id: newId(), text: t, at: Date.now() } }).then(() => true);
+  return saveBilgi(org, { msg: { id: newId(), text: t, at: Date.now() } }).then(() => (logSent(org, { kind: "msg", text: t }, ctx), true));
+}
+
+// Son gönderilenler (yönetimde açılınca bir kez okunur)
+export async function loadLog(org, n = 30) {
+  const s = await getDocs(query(collection(db, "orgs", org, "bilgiLog"), orderBy("at", "desc"), limit(n)));
+  return s.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// Pusula kaydı: ekran açıkken telefonun yönü ve yatışı saniyede bir alınır, dakikada bir tek belge olarak yazılır
+// orgs/{org}/bilgiPusula { uid, name, at (ilk örnek), pts: [[sn, yön, yatış, baş-kıç], …] }
+export const savePusula = (org, data) => addDoc(collection(db, "orgs", org, "bilgiPusula"), data);
+export async function loadPusula(org, n = 60) {
+  const s = await getDocs(query(collection(db, "orgs", org, "bilgiPusula"), orderBy("at", "desc"), limit(n)));
+  return s.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 const b64 = (blob) =>
@@ -47,9 +67,10 @@ const b64 = (blob) =>
   });
 
 // Ses kaydı belgeye base64 yazılır (20 sn, ~32 kbit/sn ≈ 100 KB; Storage kuralı gerekmez)
-export async function sendSes(org, blob, dur) {
+export async function sendSes(org, blob, dur, ctx) {
   const data = await b64(blob);
   if (!data || data.length > 700000) return false;
   await setDoc(ref(org, "ses"), { id: newId(), at: Date.now(), type: (blob.type || "audio/mp4").split(";")[0], dur: Math.round(dur), data });
+  logSent(org, { kind: "ses", dur: Math.round(dur) }, ctx);
   return true;
 }
