@@ -82,3 +82,14 @@ export async function talkWord(w, turns, audio = null) {
   if (!res.ok || !data.next) throw new Error(data.error || "Konuşmayı sürdüremedim, tekrar dene.");
   return data;
 }
+
+// Hatırla: söylenen cümle beklenenle aynı mı (/api/word hear). Dönüş { heard, ok }
+export async function hearSay(en, audio) {
+  const fd = new FormData();
+  fd.append("data", JSON.stringify({ hear: true, en }));
+  fd.append("audio", audio, `soz.${(audio.type || "").includes("mp4") ? "m4a" : "webm"}`);
+  const res = await authFetch("/api/word", { method: "POST", body: fd });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || typeof data.ok !== "boolean") throw new Error(data.error || "Dinleyemedim, tekrar dene.");
+  return data;
+}

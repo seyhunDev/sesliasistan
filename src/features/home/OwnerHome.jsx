@@ -1,5 +1,6 @@
 "use client";
 
+import { BilgiTile } from "@/features/bilgi/BilgiTile";
 import { useEffect, useMemo } from "react";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -89,6 +90,7 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
           body: (
             <>
               {athletes && <RaceLive open={race.open} />}
+              {(owner || side) && <BilgiTile owner={owner} />}
               <Waiting inbox={inbox} onAll={onInbox} />
               {quota && (
                 <p className="px-1 text-[0.75rem] tabular-nums text-mut">
