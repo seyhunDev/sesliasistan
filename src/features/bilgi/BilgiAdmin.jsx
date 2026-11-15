@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { Countdown, readTimer } from "@/features/training/Countdown";
 import { voiceType } from "@/lib/chatFile";
 import { COURSES, SES_MAX_SEC } from "@/lib/bilgi";
-import { saveBilgi, sendMsg, sendSes, useBilgi } from "./bilgiStore";
+import { loadLog, loadPusula, saveBilgi, sendMsg, sendSes, useBilgi } from "./bilgiStore";
 import { bilgiOn, setBilgiOn } from "./BilgiSync";
 import "./bilgi.css";
 
@@ -29,7 +29,7 @@ function Seg({ value, items, onPick }) {
 }
 
 // Bas konuş: basılı tutunca kaydeder, bırakınca gönderir (en çok 20 sn)
-function PushTalk({ org }) {
+function PushTalk({ org, ctx, onSent }) {
   const toast = useToast();
   const [rec, setRec] = useState(false);
   const st = useRef(null);
@@ -64,8 +64,9 @@ function PushTalk({ org }) {
       const dur = (Date.now() - t0) / 1000;
       if (dur < 0.6) return;
       const blob = new Blob(parts, { type: mr.mimeType || type || "audio/mp4" });
-      const ok = await sendSes(org, blob, dur).catch(() => false);
+      const ok = await sendSes(org, blob, dur, ctx).catch(() => false);
       toast(ok ? "Ses gönderildi" : "Ses gönderilemedi");
+      if (ok) onSent?.();
     };
     s.mr = mr;
     mr.start();
@@ -82,6 +83,74 @@ function PushTalk({ org }) {
   );
 }
 
+const pad = (n) => String(n).padStart(2, "0");
+const hhmm = (t) => `${pad(new Date(t).getHours())}:${pad(new Date(t).getMinutes())}`;
+const dayName = (t) => new Date(t).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+
+// Gönderilenler: zaman, mesaj (ya da "Ses · 4 sn") ve o anki start yazısı / parkur durumu ("ne için")
+function SentList({ rows }) {
+  if (!rows?.length) return null;
+  return (
+    <section>
+      <h2 className="bzy-h">Gönderilenler</h2>
+      <div className="bzy-list">
+        {rows.map((r, i) => (
+          <div key={r.id} className="bzy-li">
+            <time className="num">{i === 0 || dayName(rows[i - 1].at) !== dayName(r.at) ? `${dayName(r.at)} ${hhmm(r.at)}` : hhmm(r.at)}</time>
+            <div className="min-w-0 flex-1">
+              <b>{r.kind === "ses" ? `Ses · ${r.dur || 0} sn` : r.text}</b>
+              {(r.label || r.state) && <span>{[r.label, r.state].filter(Boolean).join(" · ")}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// Pusula kayıtları: aynı kişinin 3 dk'dan yakın parçaları tek oturum; yön aralığı ve yatış en çok
+export function sessionsOf(docs) {
+  const out = [];
+  for (const d of [...(docs || [])].sort((a, b) => a.at - b.at)) {
+    const n = Math.floor((d.pts?.length || 0) / 4);
+    const last = out.findLast((x) => x.uid === d.uid);
+    const end = d.at + (n ? d.pts[(n - 1) * 4] * 1000 : 0);
+    const roll = [];
+    for (let i = 0; i < n; i++) roll.push(Math.abs(d.pts[i * 4 + 2]));
+    if (last && d.at - last.end < 180e3) {
+      last.end = Math.max(last.end, end);
+      last.n += n;
+      last.roll = Math.max(last.roll, ...roll, 0);
+    } else out.push({ uid: d.uid, name: d.name || "", at: d.at, end, n, roll: Math.max(...roll, 0) });
+  }
+  return out.reverse();
+}
+
+function CompassList({ rows }) {
+  const list = sessionsOf(rows);
+  if (!list.length) return null;
+  return (
+    <section>
+      <h2 className="bzy-h">Pusula kayıtları</h2>
+      <div className="bzy-list">
+        {list.map((r) => (
+          <div key={`${r.uid}${r.at}`} className="bzy-li">
+            <time className="num">
+              {dayName(r.at)} {hhmm(r.at)}
+            </time>
+            <div className="min-w-0 flex-1">
+              <b>{r.name}</b>
+              <span>
+                {Math.max(1, Math.round((r.end - r.at) / 60e3))} dk · {r.n} ölçüm · en çok yatış {r.roll}°
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function BilgiAdmin() {
   const { profile } = useAuth();
   const toast = useToast();
@@ -91,12 +160,21 @@ export function BilgiAdmin() {
   const [on, setOn] = useState(() => (typeof window === "undefined" ? false : bilgiOn()));
   const [label, setLabel] = useState(null);
   const [state, setState] = useState(null);
+  const [log, setLog] = useState(null);
+  const [pus, setPus] = useState(null);
+  const reload = () => org && loadLog(org).then(setLog, () => {});
+  useEffect(() => {
+    if (!org) return;
+    loadLog(org).then(setLog, () => {});
+    loadPusula(org).then(setPus, () => {});
+  }, [org]);
 
   if (!org) return <main className="p-6 text-mut">Bu sayfa yalnız ana hesapta açılır.</main>;
 
+  const ctx = { label: b?.label || "", state: b?.state || "", course: b?.course || "" };
   const send = async () => {
-    const ok = await sendMsg(org, text).catch(() => false);
-    if (ok) setText("");
+    const ok = await sendMsg(org, text, ctx).catch(() => false);
+    if (ok) (setText(""), reload());
     toast(ok ? "Gönderildi" : "Gönderilemedi");
   };
   const pickOn = (v) => {
@@ -130,12 +208,11 @@ export function BilgiAdmin() {
           <h2 className="bzy-h">Mesaj</h2>
           <textarea className="bzy-in" value={text} maxLength={200} onChange={(e) => setText(e.target.value)} aria-label="Mesaj" />
           <div className="bzy-row">
-            <PushTalk org={org} />
+            <PushTalk org={org} ctx={ctx} onSent={reload} />
             <Button disabled={!text.trim()} onClick={send}>
               Gönder
             </Button>
           </div>
-          {b?.msg && <p className="bzy-last">Son: {b.msg.text}</p>}
         </section>
         <section>
           <h2 className="bzy-h">Start</h2>
@@ -147,6 +224,8 @@ export function BilgiAdmin() {
           <Seg value={b?.course || "trapez"} items={Object.entries(COURSES).map(([k, c]) => [k, c.name])} onPick={(k) => saveBilgi(org, { course: k }).catch(() => toast("Kaydedilemedi"))} />
           <input className="bzy-in mt-2" value={state ?? b?.state ?? ""} maxLength={80} placeholder="Durum" onChange={(e) => setState(e.target.value)} onBlur={() => saveText("state", state)} aria-label="Parkur durumu" />
         </section>
+        <SentList rows={log} />
+        <CompassList rows={pus} />
       </div>
     </main>
   );

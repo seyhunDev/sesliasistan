@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { sunsetHM } from "@/lib/attRemind";
 import { FRESH_MS, courseOf, dirName, normDeg, pFlag, seqMarks, startView } from "@/lib/bilgi";
-import { useBilgi, useBilgiDoc } from "./bilgiStore";
+import { savePusula, useBilgi, useBilgiDoc } from "./bilgiStore";
 import "./bilgi.css";
 
 // Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 2): başlıksız tek ekran, dokunulmaz. Saat · pusula (telefonun baktığı yön),
@@ -27,17 +28,18 @@ function useHeading(on) {
   const last = useRef({ t: 0, h: null });
   useEffect(() => {
     if (!on) return;
-    const take = (deg) => {
+    const take = (deg, e) => {
       if (deg == null || !Number.isFinite(deg)) return;
       const rot = typeof screen !== "undefined" && screen.orientation ? screen.orientation.angle || 0 : Number(window.orientation) || 0;
       const v = normDeg(deg + rot);
+      SENS = { h: v, roll: Number.isFinite(e?.gamma) ? Math.round(e.gamma) : null, pitch: Number.isFinite(e?.beta) ? Math.round(e.beta) : null, t: Date.now() };
       const now = Date.now();
       if (now - last.current.t < 150 || v === last.current.h) return;
       last.current = { t: now, h: v };
       setH(v);
     };
-    const ios = (e) => (e.webkitCompassHeading != null ? take(e.webkitCompassHeading) : e.absolute && e.alpha != null ? take(360 - e.alpha) : null);
-    const abs = (e) => (e.alpha != null ? take(360 - e.alpha) : null);
+    const ios = (e) => (e.webkitCompassHeading != null ? take(e.webkitCompassHeading, e) : e.absolute && e.alpha != null ? take(360 - e.alpha, e) : null);
+    const abs = (e) => (e.alpha != null ? take(360 - e.alpha, e) : null);
     const hasAbs = "ondeviceorientationabsolute" in window;
     if (hasAbs) window.addEventListener("deviceorientationabsolute", abs);
     else window.addEventListener("deviceorientation", ios);
@@ -47,6 +49,53 @@ function useHeading(on) {
     };
   }, [on]);
   return h;
+}
+
+// Gündüz beyaz zemin (güneşte net), güneş batınca lacivert (Seyhun 2026-11-15). Yer: Dikili; doğuş, güneş öğlesinin batışa göre simetriği
+const HERE = { lat: 39.07, lon: 26.89 };
+const mOf = (t) => +t.slice(0, 2) * 60 + +t.slice(3, 5);
+export function isNight(d = new Date()) {
+  const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const set = mOf(sunsetHM(day, HERE));
+  const n = Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(d.getFullYear(), 0, 0)) / 864e5);
+  const B = ((2 * Math.PI) / 365) * (n - 81);
+  const eot = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B); // zaman denklemi (dk)
+  const noon = 12 * 60 + (180 - HERE.lon * 4) - eot;
+  const rise = 2 * noon - set;
+  const m = d.getHours() * 60 + d.getMinutes();
+  return m >= set || m < rise;
+}
+
+// Son sensör değeri (yön, yatış, baş-kıç); kayıt saniyede bir buradan alır
+let SENS = { h: null, roll: null, pitch: null, t: 0 };
+
+// Pusula kaydı (Seyhun 2026-11-15 "kafaya açma, orsalama açılarını anlamak için"): ekran açıkken saniyede bir [sn, yön, yatış, baş-kıç],
+// 60 örnekte bir (ve ekrandan çıkınca) tek belge yazılır: saatte ~60 yazma, okuma yok
+function useRecord(on, org, uid, name) {
+  useEffect(() => {
+    if (!on || !org || !uid) return;
+    let buf = [];
+    let t0 = 0;
+    const flush = () => {
+      if (buf.length < 5) return;
+      savePusula(org, { uid, name: name || "", at: t0, pts: buf.flat(), n: buf.length }).catch(() => {});
+      buf = [];
+    };
+    const id = setInterval(() => {
+      const s = SENS;
+      if (s.h == null || Date.now() - s.t > 3000) return;
+      if (!buf.length) t0 = Date.now();
+      buf.push([Math.round((Date.now() - t0) / 1000), s.h, s.roll ?? 0, s.pitch ?? 0]);
+      if (buf.length >= 60) flush();
+    }, 1000);
+    const hide = () => document.visibilityState === "hidden" && flush();
+    document.addEventListener("visibilitychange", hide);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", hide);
+      flush();
+    };
+  }, [on, org, uid, name]);
 }
 
 function useWake(on) {
@@ -129,7 +178,7 @@ function Tape({ h }) {
       const x = W / 2 + (d - h) * px;
       const dd = ((d % 360) + 360) % 360;
       const maj = dd % 15 === 0;
-      ticks.push(<line key={`l${d}`} x1={x} x2={x} y1={maj ? 6 : 12} y2={20} stroke={maj ? "#7d90b5" : "#2f456c"} strokeWidth="1.4" />);
+      ticks.push(<line key={`l${d}`} x1={x} x2={x} y1={maj ? 6 : 12} y2={20} style={{ stroke: maj ? "var(--bz-tick)" : "var(--bz-tick2)" }} strokeWidth="1.4" />);
       if (dd % 45 === 0)
         ticks.push(<text key={`t${d}`} x={x} y="32" className="bz-tl">{L[dd]}</text>);
       else if (maj)
@@ -138,8 +187,8 @@ function Tape({ h }) {
   return (
     <svg className="bz-tape" viewBox={`0 0 ${W} 34`} preserveAspectRatio="none" aria-hidden="true">
       {ticks}
-      <path d={`M${W / 2 - 6} 0 L${W / 2 + 6} 0 L${W / 2} 8 Z`} fill="#3d7bff" />
-      <line x1={W / 2} x2={W / 2} y1="0" y2="22" stroke="#3d7bff" strokeWidth="2" />
+      <path d={`M${W / 2 - 6} 0 L${W / 2 + 6} 0 L${W / 2} 8 Z`} style={{ fill: "var(--bz-acc)" }} />
+      <line x1={W / 2} x2={W / 2} y1="0" y2="22" style={{ stroke: "var(--bz-acc)" }} strokeWidth="2" />
     </svg>
   );
 }
@@ -149,21 +198,21 @@ function Course({ kind }) {
   const wind = 0; // parkurdaki rüzgâr: kendi ölçümümüz gelince (Seyhun 2026-11-15 "şimdilik 0")
   return (
     <svg className="bz-course" viewBox="0 0 300 260" preserveAspectRatio="xMidYMid meet" aria-label={`Parkur ${c.name}`}>
-      <path d={c.path.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join(" ")} fill="none" stroke="#24375a" strokeWidth="1.5" strokeDasharray="4 5" />
+      <path d={c.path.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join(" ")} fill="none" style={{ stroke: "var(--bz-line2)" }} strokeWidth="1.5" strokeDasharray="4 5" />
       {c.marks.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r="6.5" fill="#d9a93a" />
+        <circle key={i} cx={x} cy={y} r="6.5" style={{ fill: "var(--bz-mark)" }} />
       ))}
       {c.labels.map(([n, x, y]) => (
         <text key={n} x={x} y={y} className="bz-mk">
           {n}
         </text>
       ))}
-      <path d="M110 236 L196 236" stroke="#8fb3ff" strokeWidth="2" />
-      <rect x="196" y="230" width="14" height="12" rx="2" fill="#8fb3ff" />
-      <circle cx="110" cy="236" r="4" fill="#8fb3ff" />
+      <path d="M110 236 L196 236" style={{ stroke: "var(--bz-line3)" }} strokeWidth="2" />
+      <rect x="196" y="230" width="14" height="12" rx="2" style={{ fill: "var(--bz-line3)" }} />
+      <circle cx="110" cy="236" r="4" style={{ fill: "var(--bz-line3)" }} />
       <g transform="translate(250 54)">
-        <circle r="26" fill="none" stroke="#24375a" strokeWidth="1.5" />
-        <path d="M0 -18 L0 12 M-7 4 L0 13 L7 4" stroke="#4f6389" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+        <circle r="26" fill="none" style={{ stroke: "var(--bz-line2)" }} strokeWidth="1.5" />
+        <path d="M0 -18 L0 12 M-7 4 L0 13 L7 4" style={{ stroke: "var(--bz-dim)" }} strokeWidth="2.5" fill="none" strokeLinecap="round" />
       </g>
       <text x="250" y="102" className="bz-wk">
         {wind}
@@ -183,6 +232,7 @@ export function BilgiScreen() {
   const [on, setOn] = useState(false);
   const now = useTick(250);
   const h = useHeading(on);
+  useRecord(on, org, profile?.uid, profile?.name);
   useWake(on);
   const [talk, unlock] = useVoice(on, b?.msg, ses);
 
@@ -203,13 +253,14 @@ export function BilgiScreen() {
   };
 
   const d = new Date(now);
+  const night = isNight(d);
   const sv = startView(b?.timer, now);
   const dur = b?.timer?.dur ?? 300;
   const seq = sv.phase === "down" && dur === 300 ? seqMarks(sv.left) : null;
   const msg = b?.msg && now - b.msg.at < FRESH_MS ? b.msg : null;
 
   return (
-    <main className="bz" data-bilgi>
+    <main className={`bz${night ? "" : " bz-day"}`} data-bilgi>
       <button type="button" className="bz-back" onClick={leave} aria-label="Geri">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
           <path d="M15 5l-7 7 7 7" />
