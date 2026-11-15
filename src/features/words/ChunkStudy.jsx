@@ -1,22 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { buildTasks, chunkState, chunkStats, dueChunks, fillText, markTr, patternText, taskRight } from "@/lib/englishChunkStudy";
 import { primeEn, sayEn } from "./WordView";
 import { WordTalk } from "./WordTalk";
+import { hearSay } from "./wordData";
+import { useEnMic } from "./useEnMic";
+import { cachedPic, drawing, loadPic, makePic } from "./chunkPics";
 
 // Kalıp bloklama (Seyhun 2026-11-02: "kalıplarla kelimeleri öğreneceğim… tek tek kelime öğrenmek istemiyorum"; örnek
 // /mnt/project-files/ingilizce-kelime/kaliplar/ornek.png onaylandı 2026-11-04). Bir kalıp dört adımda: Dinle · Değiştir (parçaya
 // dokununca boşluk değişir, cümle okunur) · Kur (Türkçesinden blokları dizerek İngilizcesini kur) · Konuş (yapay zeka, WordTalk).
 // Renkler: kalıp bloğu camgöbeği, değişen parça logonun pembe-turuncusu.
+// Resimle ezber (Seyhun 2026-11-15, örnek ingilizce-kelime/sekil/ornek.html): kalıbın sabit resmi Dinle'de üstte durur; Kur'dan sonra
+// Hatırla: yazı yok, yalnız resim; kişi cümleyi söyler, yapay zeka dinler (/api/word hear). Göster ya da yanlış: kalıp yarın yeniden.
 const GRAD = "bg-[linear-gradient(135deg,#ff3d77,#ff9a4d)]";
 const SLOT = `${GRAD} text-white shadow-[0_8px_22px_-8px_rgba(255,61,119,.7)]`;
 const BLOCK = "bg-[#67e8f9]/13 text-[#e6fbff] shadow-[inset_0_0_0_1.5px_rgba(103,232,249,.35)]";
 const GO = `!h-[3.25rem] !rounded-full !border-0 ${GRAD} !px-8 !font-bold !text-white !shadow-[0_10px_24px_-10px_rgba(255,61,119,.8)]`;
-const STEPS = ["Dinle", "Değiştir", "Kur", "Konuş"];
+const STEPS = ["Dinle", "Değiştir", "Kur", "Hatırla", "Konuş"];
 const DAY_MS = 86400000;
 
 function Steps({ at }) {
@@ -56,6 +61,34 @@ function TrLine({ text, part, className = "" }) {
   );
 }
 
+// Kalıbın resmi: bellekte ya da Firestore'da; yoksa ana hesapta bir kez çizilir. Çizilemezse yer kaplamaz.
+export function usePic(orgId, id) {
+  const [img, setImg] = useState(() => cachedPic(id));
+  const [fail, setFail] = useState(false);
+  useEffect(() => {
+    let live = true;
+    const on = (e) => e.detail === id && setImg(cachedPic(id));
+    window.addEventListener("sa-en-pic", on);
+    if (orgId && cachedPic(id) === undefined)
+      loadPic(orgId, id).then((x) => {
+        if (!live) return;
+        setImg(x);
+        if (!x && !drawing(id)) makePic(orgId, id).catch(() => live && setFail(true));
+      });
+    return () => {
+      live = false;
+      window.removeEventListener("sa-en-pic", on);
+    };
+  }, [orgId, id]);
+  return { img, wait: !!orgId && !img && !fail };
+}
+
+export function Pic({ pic, className = "" }) {
+  if (pic.img) return <img src={pic.img} alt="" className={`aspect-square w-full rounded-[1.5rem] object-cover ${className}`} />;
+  if (pic.wait) return <div aria-label="Resim hazırlanıyor" className={`aspect-square w-full animate-pulse rounded-[1.5rem] bg-white/6 ${className}`} />;
+  return null;
+}
+
 const tailOf = (c) => (c.tail && !/^[?.!,]/.test(c.tail) ? c.tail : "");
 const puncOf = (c) => (c.tail ? (/^[?.!,]/.test(c.tail) ? c.tail : "") : "");
 
@@ -67,7 +100,7 @@ function dueSay(due, today) {
 // c: kalıp; deck; today; topic: üstte görünen konu; onSave(fn) → Promise; onNext(): sıradaki kalıp; onOpen(id): başka kalıp;
 // onMenu(): ⋯; onSkip(): Geç. Kur bitince sonuç kaydedilir (sayfa kalıbı sabitler, sıradaki kalıba kendiliğinden geçmez) ve
 // dördüncü adım Konuş açılır (Atla ile doğrudan sonuç); konuşma kapanınca sonuç ekranı.
-export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onMenu, onSkip }) {
+export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpen, onMenu, onSkip }) {
   const [fi, setFi] = useState(0);
   const [tried, setTried] = useState(() => new Set([0]));
   const [phase, setPhase] = useState("learn");
@@ -77,6 +110,10 @@ export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onMe
   const [check, setCheck] = useState(null); // "ok" | "bad"
   const [miss, setMiss] = useState(false);
   const [saved, setSaved] = useState(null); // { right }
+  const [heard, setHeard] = useState(null); // Hatırla: { ok, heard } | { shown: true }
+  const [listening, setListening] = useState(false);
+  const pic = usePic(orgId, c.id);
+  const say0 = fillText(c, c.fills[0]);
 
   const f = c.fills[fi];
   const stats = useMemo(() => chunkStats(deck, today), [deck, today]);
@@ -128,11 +165,46 @@ export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onMe
       setCheck(null);
       return;
     }
-    const right = !miss;
+    if (talk) {
+      setHeard(null);
+      setPhase("recall");
+      return;
+    }
+    await finish(!miss, false);
+  };
+  const finish = async (right, talk) => {
     setSaved({ right });
     if (talk) primeEn();
     setPhase(talk ? "talk" : "done");
     await onSave(right);
+  };
+  const mic = useEnMic({ onFail: (m) => setHeard({ err: m }), onLong: () => tapMic() });
+  const tapMic = async () => {
+    if (listening) return;
+    if (!mic.on) {
+      primeEn();
+      setHeard(null);
+      return mic.start();
+    }
+    const blob = await mic.stop();
+    if (!blob) return setHeard({ err: "Ses duyulmadı, tekrar dene." });
+    setListening(true);
+    try {
+      const r = await hearSay(say0, blob);
+      setHeard(r);
+      if (!r.ok) setMiss(true);
+      sayEn(say0);
+    } catch (e) {
+      setHeard({ err: e.message });
+    } finally {
+      setListening(false);
+    }
+  };
+  const show = () => {
+    mic.cancel();
+    setMiss(true);
+    setHeard({ shown: true });
+    sayEn(say0);
   };
   const last = ti + 1 >= tasks.length;
 
@@ -213,7 +285,71 @@ export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onMe
           )}
           {check && (
             <Button variant="secondary" full={false} onClick={() => goOn(true)} className={GO}>
-              {last ? "Konuş" : "Devam"}
+              {last ? "Hatırla" : "Devam"}
+            </Button>
+          )}
+        </footer>
+      </>
+    );
+  }
+
+  if (phase === "recall") {
+    const answered = heard && (heard.shown || typeof heard.ok === "boolean");
+    return (
+      <>
+        {top(
+          <Button variant="icon" size="sm" aria-label="Hatırla'yı kapat" onClick={() => (mic.cancel(), setPhase("learn"))} className="!text-white/50">
+            <Icon name="x" className="size-5" />
+          </Button>,
+          <b className="font-semibold text-white/88">Hatırla</b>,
+          <span className="size-9" />,
+        )}
+        <Steps at={3} />
+        <section aria-label="Hatırla" className="relative flex flex-1 flex-col justify-center gap-5 py-6">
+          {pic.img || pic.wait ? <Pic pic={pic} className="mx-auto max-w-[20rem]" /> : <TrLine text={c.fills[0][2]} part={c.fills[0][1]} className="text-[1.5rem] font-semibold leading-[1.3]" />}
+          <div className="min-h-[3.25rem] text-[1.25rem] font-bold leading-snug">
+            {answered ? (
+              <button type="button" onClick={() => sayEn(say0)} className="text-left">
+                {heard.ok ? (
+                  <span className="inline-flex items-center gap-1.5 text-[#9fe7c6]">
+                    <Icon name="check" className="size-5" /> {say0}
+                  </span>
+                ) : (
+                  <>
+                    {!heard.shown && <span className="block text-[0.9375rem] font-semibold text-[#f3a39a]">{heard.heard}</span>}
+                    <span className="text-white/90">{say0}</span>
+                  </>
+                )}
+              </button>
+            ) : heard?.err ? (
+              <p className="text-[1rem] font-semibold text-[#f3a39a]">{heard.err}</p>
+            ) : null}
+          </div>
+          {!answered && (
+            <button
+              type="button"
+              onClick={tapMic}
+              disabled={listening}
+              aria-label={mic.on ? "Bitti" : "Söyle"}
+              className={`mx-auto grid size-[4.5rem] place-items-center rounded-full text-white disabled:opacity-60 ${mic.on ? "animate-pulse bg-[#ff3d77]" : GRAD}`}
+            >
+              <Icon name={mic.on ? "up" : "mic"} className="size-7" />
+            </button>
+          )}
+        </section>
+        <footer className="relative flex items-center justify-between gap-3">
+          {answered ? (
+            <Button variant="text" onClick={() => finish(!miss, false)} className="!px-0 !text-white/50">
+              Atla
+            </Button>
+          ) : (
+            <Button variant="text" onClick={show} disabled={listening} className="!px-0 !text-white/50">
+              Göster
+            </Button>
+          )}
+          {answered && (
+            <Button variant="secondary" full={false} onClick={() => finish(!miss, true)} className={GO}>
+              Konuş
             </Button>
           )}
         </footer>
@@ -228,11 +364,11 @@ export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onMe
     return (
       <>
         {top(<BackButton href="/" className="opacity-60" />, <b className="font-semibold text-white/88">Kalıplar</b>, menuBtn)}
-        <Steps at={2} />
+        <Steps at={3} />
         <section aria-label="Sonuç" className="relative flex flex-1 flex-col justify-center py-6">
           <b className={`bg-clip-text text-[3.25rem] font-extrabold leading-none tracking-[-.03em] text-transparent ${GRAD}`}>{saved.right ? "Kalıp tamam" : "Az kaldı"}</b>
           <p className="mt-3 text-[1.0625rem] leading-snug text-white/65">
-            {saved.right ? `Bu kalıpla ${c.fills.length} yeni ifade öğrendin. ` : "Birkaç blok karıştı. "}
+            {saved.right ? `Bu kalıpla ${c.fills.length} yeni ifade öğrendin. ` : "Birkaç yer karıştı. "}
             {st?.st === "known" ? "Artık öğrendiklerinde." : st?.due ? dueSay(st.due, today) : ""}
           </p>
           <div className="mt-6 grid grid-cols-3 gap-2.5">
@@ -288,6 +424,7 @@ export function ChunkStudy({ c, deck, today, topic, onSave, onNext, onOpen, onMe
       )}
       <Steps at={tried.size > 1 ? 1 : 0} />
       <section aria-label="Kalıp" className="relative flex flex-1 flex-col justify-center py-6">
+        <Pic pic={pic} className="mb-5 max-w-[13rem]" />
         <button type="button" onClick={() => (primeEn(), sayEn(fillText(c, f)))} aria-label="Dinle" className="flex flex-wrap items-center gap-2 text-left text-[1.875rem] font-bold leading-[1.15] tracking-[-.02em]">
           <span className={`rounded-2xl px-3.5 py-2 ${BLOCK}`}>{c.head}</span>
           <span key={fi} className={`animate-[pop_.25s_ease-out] rounded-2xl px-3.5 py-2 ${SLOT}`}>
