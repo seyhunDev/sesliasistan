@@ -9,7 +9,8 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { Countdown, holdMic, readTimer } from "@/features/training/Countdown";
 import { micReset } from "@/lib/speech/audioSession";
 import { voiceType } from "@/lib/chatFile";
-import { COURSES, SES_MAX_SEC } from "@/lib/bilgi";
+import { COURSES, SES_MAX_SEC, SHOW, SHOW_DEF } from "@/lib/bilgi";
+import { Switch } from "@/features/settings/ui";
 import { loadLog, loadPusula, saveBilgi, sendMsg, sendSes, useBilgi } from "./bilgiStore";
 import { bilgiOn, setBilgiOn } from "./BilgiSync";
 import "./bilgi.css";
@@ -230,6 +231,20 @@ export function BilgiAdmin() {
           <h2 className="bzy-h">Parkur</h2>
           <Seg value={b?.course || "trapez"} items={Object.entries(COURSES).map(([k, c]) => [k, c.name])} onPick={(k) => saveBilgi(org, { course: k }).catch(() => toast("Kaydedilemedi"))} />
           <input className="bzy-in mt-2" value={state ?? b?.state ?? ""} maxLength={80} placeholder="Durum" onChange={(e) => setState(e.target.value)} onBlur={() => saveText("state", state)} aria-label="Parkur durumu" />
+        </section>
+        <section>
+          <h2 className="bzy-h">Start sonrası ekranda</h2>
+          <div className="bzy-list">
+            {SHOW.map(([k, name]) => {
+              const v = (b?.show || SHOW_DEF)[k];
+              return (
+                <div key={k} className="bzy-li items-center justify-between">
+                  <b>{name}</b>
+                  <Switch on={v} label={name} onChange={(x) => saveBilgi(org, { show: { [k]: x } }).catch(() => toast("Kaydedilemedi"))} />
+                </div>
+              );
+            })}
+          </div>
         </section>
         <SentList rows={log} />
         <CompassList rows={pus} />

@@ -5,23 +5,26 @@
   --bz-acc: #3d7bff; --bz-tm: #6b9bff; --bz-done: #8fb3ff; --bz-mark: #d9a93a; --bz-tick: #7d90b5; --bz-tick2: #2f456c; --bz-card: #13243f;
   position: fixed; inset: 0; z-index: 60; background: var(--bz-bg); color: var(--bz-fg); overflow: hidden;
   display: flex; flex-direction: column;
-  padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) max(1rem, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 1.5rem) max(1rem, env(safe-area-inset-left, 0px));
+  /* Kenarlardan boşluk (Seyhun 2026-11-15: hiçbir şey kenara yapışmasın, kesilmesin; çentik / güvenli alan dahil) */
+  --bz-px: max(1.5rem, calc(env(safe-area-inset-left, 0px) + 0.75rem));
+  --bz-pr: max(1.5rem, calc(env(safe-area-inset-right, 0px) + 0.75rem));
+  padding: calc(env(safe-area-inset-top, 0px) + 1.5rem) var(--bz-pr) calc(env(safe-area-inset-bottom, 0px) + 2.75rem) var(--bz-px);
 }
 /* Gündüz: beyaz zemin, siyah kalın yazı (güneşte net okunur) */
 .bz.bz-day {
   --bz-bg: #fff; --bz-fg: #000; --bz-txt: #111; --bz-mut: #454b55; --bz-dim: #59606b; --bz-off: #c3c8d0; --bz-line: #c9ced6; --bz-line2: #9aa3b2; --bz-line3: #1d4ed8;
   --bz-acc: #1d4ed8; --bz-tm: #1d4ed8; --bz-done: #1d4ed8; --bz-mark: #e08a00; --bz-tick: #111; --bz-tick2: #8a919c; --bz-card: #f1f3f6;
 }
-.bz-back { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 0.375rem); left: max(0.5rem, env(safe-area-inset-left, 0px)); padding: 0.5rem; color: var(--bz-fg); opacity: .28; background: none; border: 0; z-index: 2; }
+.bz-back { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 0.5rem); left: max(0.75rem, env(safe-area-inset-left, 0px)); padding: 0.5rem; color: var(--bz-fg); opacity: .28; background: none; border: 0; z-index: 2; }
 .bz-back svg { width: 1rem; height: 1rem; display: block; }
-.bz-talk { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 0.375rem); right: max(0.75rem, env(safe-area-inset-right, 0px)); color: var(--bz-acc); opacity: .55; z-index: 2; }
+.bz-talk { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 0.75rem); right: var(--bz-pr); color: var(--bz-acc); opacity: .55; z-index: 2; }
 .bz-talk svg { width: 1rem; height: 1rem; display: block; }
 .bz-cmp { text-align: center; padding-top: 0.5rem; min-width: 0; }
-.bz-hd { font-size: min(34vw, 20vh); line-height: .92; font-weight: 700; letter-spacing: -.04em; color: var(--bz-fg); white-space: nowrap; }
+.bz-hd { font-size: min(30vw, 20vh); line-height: .92; font-weight: 700; letter-spacing: -.04em; color: var(--bz-fg); white-space: nowrap; }
 .bz-dn { font-size: 0.9375rem; font-weight: 600; color: var(--bz-mut); letter-spacing: .08em; min-height: 1.2em; margin-top: 0.125rem; }
 .bz-rt { flex: 1; min-height: 0; display: flex; flex-direction: column; min-width: 0; border-top: 1px solid var(--bz-line); border-bottom: 1px solid var(--bz-line); margin: 0.5rem 0; padding: 0.25rem 0; }
 .bz-tm { text-align: center; padding-bottom: 0.5rem; }
-.bz-clk { position: absolute; right: max(0.875rem, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 0.25rem); font-size: 0.875rem; font-weight: 600; color: var(--bz-fg); opacity: .35; }
+.bz-clk { position: absolute; right: var(--bz-pr); bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem); font-size: 0.875rem; font-weight: 600; color: var(--bz-fg); opacity: .35; }
 .bz-tape { width: 100%; height: 2.125rem; display: block; margin: 0.25rem 0 0.375rem; }
 .bz-tape .bz-tl { fill: var(--bz-tick); font: 600 10px var(--font-num), ui-monospace, monospace; text-anchor: middle; }
 .bz-tape .bz-tn { fill: var(--bz-dim); font: 500 9px var(--font-num), ui-monospace, monospace; text-anchor: middle; }
@@ -43,16 +46,29 @@
 .bz-msg { display: flex; gap: 0.625rem; align-items: baseline; margin-top: 0.5rem; padding: 0.75rem 0.875rem; border-radius: 1rem; background: var(--bz-card); border: 1px solid var(--bz-line2); }
 .bz-msg time { flex: none; font-size: 0.8125rem; font-weight: 600; color: var(--bz-acc); }
 .bz-msg p { margin: 0; font-size: 1.125rem; line-height: 1.3; font-weight: 600; color: var(--bz-fg); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* Son 1 dakika: yalnız büyük süre. Start sonrası: ortada büyük pusula, altta küçük akan süre */
+.bz-last, .bz-race { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.bz-lm { font-size: min(36vw, 26vh); line-height: 1; font-weight: 700; color: var(--bz-tm); letter-spacing: -.03em; white-space: nowrap; }
+.bz-ll { font-size: 1.125rem; font-weight: 600; color: var(--bz-txt); margin-top: 0.75rem; }
+.bz-race .bz-cmp { width: 100%; padding: 0; }
+.bz-race .bz-hd { font-size: min(32vw, 24vh); }
+.bz-wn { margin-top: 1.25rem; font-size: 2.25rem; font-weight: 700; color: var(--bz-fg); }
+.bz-wn small { font-size: 0.9375rem; color: var(--bz-mut); margin-left: 0.25rem; }
+.bz-m-race .bz-rt { flex: 0 1 34%; }
+.bz-mini { text-align: center; font-size: 1.5rem; font-weight: 600; color: var(--bz-tm); padding-bottom: 0.25rem; }
+.bz-mini span { font-size: 0.875rem; color: var(--bz-mut); margin-left: 0.5rem; }
 .bz-go { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: rgba(5, 10, 22, .55); border: 0; }
 .bz-go .btn { min-width: 9rem; height: 3.25rem; font-size: 1.0625rem; }
 
 @media (orientation: landscape) {
-  .bz { display: grid; grid-template-columns: 1.1fr 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: "cmp crs" "tm crs" "tm msg"; column-gap: 1.25rem; }
-  .bz-cmp { grid-area: cmp; }
-  .bz-rt { grid-area: crs; border: 0; border-left: 1px solid var(--bz-line); margin: 0; padding: 0 0 0 1.25rem; }
+  .bz.bz-m-pre { display: grid; grid-template-columns: 1.1fr 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: "cmp crs" "tm crs" "tm msg"; column-gap: 1.25rem; }
+  .bz-m-pre .bz-cmp { grid-area: cmp; }
+  .bz-m-pre .bz-rt { grid-area: crs; border: 0; border-left: 1px solid var(--bz-line); margin: 0; padding: 0 0 0 1.25rem; }
   .bz-tm { grid-area: tm; align-self: end; }
   .bz-msg { grid-area: msg; margin-left: 1.25rem; }
   .bz-hd { font-size: min(17vw, 34vh); }
+  .bz-race .bz-hd { font-size: min(22vw, 40vh); }
+  .bz-lm { font-size: min(24vw, 50vh); }
   .bz-cd { font-size: min(10vw, 20vh); }
 }
 /* Yönetim (/bilgi/yonet): lacivert üst + açık gövde */
