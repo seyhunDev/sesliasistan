@@ -1,3 +1,5 @@
+import { VeloraGlyph } from "./AppLogo";
+
 // Uygulamanın tek yükleme animasyonu: sırayla nefes alan üç nokta (renk: yazı rengi, className ile değişir).
 // size: "sm" (düğme içi) | "md" | "lg". Loading: ortalanmış nokta + isteğe bağlı açıklama.
 const D = { xs: 4, sm: 5, md: 7, lg: 9 };
@@ -17,6 +19,16 @@ export function Loading({ label, className = "py-12" }) {
     <div className={`fade-in flex flex-col items-center justify-center gap-3 text-center ${className}`}>
       <Loader />
       {label && <p className="text-[0.875rem] text-mut">{label}</p>}
+    </div>
+  );
+}
+
+// Liste yükleniyor (Seyhun 2026-11-15 "Velora animasyonlu ortada"): listenin yerinde soluk kutu, ortada nefes alan Velora işareti,
+// üstünden geçen ışık. Liste gelince satırları .list-in ile kayarak açılır. height: listenin aşağı yukarı yüksekliği.
+export function ListLoading({ height = "24rem", label = "Yükleniyor", className = "" }) {
+  return (
+    <div role="status" aria-label={label} className={`vload fade-in text-fg ${className}`} style={{ height }}>
+      <VeloraGlyph size={44} color="currentColor" />
     </div>
   );
 }
