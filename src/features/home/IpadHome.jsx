@@ -20,7 +20,7 @@ import { useWide as useSide } from "./SideNav";
 
 // iPad ana sayfa (Seyhun 2026-11-11 "A · Zaman şeridi", örnek ana-sayfa/sade-2026-11/ipad.html; "minimal ama teknolojik, fütüristik"):
 // baştan sona lacivert (.navy), ince çizgili paneller, rakamlar Space Grotesk (--font-num).
-// Üstte tarih, saat, + Ekle, zil, Ayarlar. Hava paneli (ortak HavaPanel, weather/WxPanel.jsx; hava sayfasıyla aynı, ölçülen rüzgârla): solda pusula (şimdiki rüzgâr, sağanak, yön), sağda seçili günün saat saat rüzgâr eğrisi
+// Üstte tarih, saat, + Ekle, zil, Ayarlar. Hava paneli (ortak HavaPanel, weather/WxPanel.jsx; hava sayfasıyla aynı, ölçülen rüzgârla): üstte şimdiki rüzgâr (ok + derece, sağanak), altında kenardan kenara seçili günün saat saat rüzgârı, en altta tek satır yağış
 // ve her 3 saatin rüzgârı, göğü, sıcaklığı. Takvim paneli (hava ile ayrı; Seyhun "iç içe girmesin"): seçili günün planları kendi saat çizgisinde,
 // altında 7 gün; her günde gök, en düşük/en yüksek, gün içi rüzgâr eğrisi, rüzgâr aralığı + yön, yağış (mm · %), planlar.
 // Bir güne dokununca hava eğrisi ve plan çizgisi o güne geçer. Sağ sütun (side): yarış şeridi, Bekleyen, Kulüp ve hesaba göre kartlar.
