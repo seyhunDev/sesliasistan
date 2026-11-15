@@ -309,6 +309,17 @@ html[data-nav="none"]::view-transition-new(.vt-in) { animation: none; }
 /* Bekleyen alan: soldan sağa akan ince ışık (yükleniyor) */
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 .shimmer { background: linear-gradient(90deg, var(--line) 25%, color-mix(in srgb, var(--acc) 22%, var(--line)) 50%, var(--line) 75%); background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }
+/* Liste yükleniyor (Loader.jsx ListLoading): soluk kutu, nefes alan Velora işareti, üstünden geçen ışık; .list-in satırları kayarak açar */
+.vload { position: relative; display: grid; place-items: center; overflow: hidden; border-radius: 1.125rem; background: color-mix(in srgb, var(--fg) 4%, transparent); border: 1px solid var(--line); }
+.vload::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--fg) 8%, transparent) 50%, transparent 70%); transform: translateX(-100%); animation: vsweep 1.8s ease-in-out infinite; }
+.vload svg { animation: vbreath 1.8s ease-in-out infinite; filter: drop-shadow(0 0 14px color-mix(in srgb, var(--acc) 45%, transparent)); }
+@keyframes vsweep { to { transform: translateX(100%); } }
+@keyframes vbreath { 0%, 100% { transform: scale(.9); opacity: .5; } 50% { transform: scale(1); opacity: 1; } }
+.list-in > * { animation: pop .34s cubic-bezier(.2, .8, .2, 1) both; }
+.list-in > :nth-child(2) { animation-delay: .06s; }
+.list-in > :nth-child(3) { animation-delay: .12s; }
+.list-in > :nth-child(n + 4) { animation-delay: .18s; }
+@media (prefers-reduced-motion: reduce) { .vload::after, .vload svg { animation: none; } .list-in > * { animation: softin .15s ease-out both; } }
 @keyframes stepin { from { opacity: 0; transform: translateX(-8px); } }
 .step-in { animation: stepin .35s ease-out both; }
 /* Lacivert zeminde bekleyen alan (yarış havası): soluk kutular, üstünden geçen ince ışık */
