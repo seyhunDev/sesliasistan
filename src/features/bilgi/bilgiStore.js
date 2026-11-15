@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { addDoc, deleteDoc, setDoc } from "@/lib/firebase/write";
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, waitForPendingWrites, where } from "firebase/firestore";
+import { addDoc, deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { cleanBilgi, MSG_MAX } from "@/lib/bilgi";
 
@@ -120,6 +120,12 @@ export function deviceId() {
 }
 export const sendPos = (dev, d) => setDoc(doc(db, "bilgiTekne", dev), d);
 
+// Sesle kişiye gönderme için kanaldakiler bir kez okunur
+export async function loadTekneler(org) {
+  const s = await getDocs(query(collection(db, "bilgiTekne"), where("org", "==", org)));
+  return s.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 // Yönet › Tekneler: işletmenin teknelerini dinler (yalnız sayfa açıkken); 12 saatten eski konum gösterilmez
 export function useTekneler(org) {
   const [v, setV] = useState(null);
@@ -137,14 +143,33 @@ export function useTekneler(org) {
 // Gönderilen her mesaj ve ses kaydı ayrıca günlüğe yazılır (Seyhun 2026-11-15 "mesajlar kaydedilsin, ne zaman, ne için"):
 // orgs/{org}/bilgiLog { kind: "msg" | "ses", text, dur, at, label (start yazısı), state (parkur durumu), course }
 function logSent(org, item, ctx = {}) {
-  return addDoc(collection(db, "orgs", org, "bilgiLog"), { ...item, at: Date.now(), label: ctx.label || "", state: ctx.state || "", course: ctx.course || "" }).catch(() => {});
+  return addDoc(collection(db, "orgs", org, "bilgiLog"), { ...item, at: Date.now(), label: ctx.label || "", state: ctx.state || "", course: ctx.course || "" }).then(
+    (r) => r.id,
+    () => "",
+  );
+}
+// Gönderim sonucu (Görüldü 3/3, Ulaşmadı…) günlüğe sonradan yazılır
+export const markLog = (org, id, patch) => (id ? updateDoc(doc(db, "orgs", org, "bilgiLog", id), patch).catch(() => {}) : Promise.resolve());
+
+// Sunucu onayı ("İletildi"): bekleyen yazmalar sunucuya ulaşınca true; 10 sn'de ulaşmazsa false (internet yok)
+const confirmed = () => Promise.race([waitForPendingWrites(db).then(() => true, () => false), new Promise((r) => setTimeout(() => r(false), 10000))]);
+
+// to: { dev, name } verilirse yalnız o ekran gösterir ("Sana"); yoksa kanaldaki herkes. Dönen: { id, ok, logId }
+export async function sendMsg(org, text, ctx, to = null) {
+  const t = String(text || "").replace(/\s+/g, " ").trim().slice(0, MSG_MAX);
+  if (!t) return { ok: false };
+  const id = newId();
+  await saveBilgi(org, { msg: { id, text: t, at: Date.now(), to: to?.dev || "" } });
+  const logId = await logSent(org, { kind: "msg", text: t, id, to: to?.name || "" }, ctx);
+  return { id, ok: await confirmed(), logId };
 }
 
-export function sendMsg(org, text, ctx) {
-  const t = String(text || "").replace(/\s+/g, " ").trim().slice(0, MSG_MAX);
-  if (!t) return Promise.resolve(false);
-  return saveBilgi(org, { msg: { id: newId(), text: t, at: Date.now() } }).then(() => (logSent(org, { kind: "msg", text: t }, ctx), true));
+// Kanal aç: yeni link (eski link çalışmaz) + kanal adı; ekranlar yalnız açık kanala katılarak başlar. Kapat: ekranlar durur
+export async function openKanal(org, name) {
+  await newLink(org);
+  await saveBilgi(org, { kanal: { id: newId(), name: String(name || "").trim().slice(0, 30) || "Antrenman", open: true, at: Date.now() } });
 }
+export const closeKanal = (org) => saveBilgi(org, { kanal: { open: false } });
 
 // Son gönderilenler (yönetimde açılınca bir kez okunur)
 export async function loadLog(org, n = 30) {
@@ -169,12 +194,12 @@ const b64 = (blob) =>
   });
 
 // Ses kaydı belgeye base64 yazılır (20 sn, ~32 kbit/sn ≈ 100 KB; Storage kuralı gerekmez)
-export async function sendSes(org, blob, dur, ctx) {
+export async function sendSes(org, blob, dur, ctx, to = null) {
   const data = await b64(blob);
-  if (!data || data.length > 700000) return false;
-  const d = { id: newId(), at: Date.now(), type: (blob.type || "audio/mp4").split(";")[0], dur: Math.round(dur), data };
+  if (!data || data.length > 700000) return { ok: false };
+  const d = { id: newId(), at: Date.now(), type: (blob.type || "audio/mp4").split(";")[0], dur: Math.round(dur), data, to: to?.dev || "" };
   mirror(org, d, "ses", "son");
   await setDoc(ref(org, "ses"), d);
-  logSent(org, { kind: "ses", dur: Math.round(dur) }, ctx);
-  return true;
+  const logId = await logSent(org, { kind: "ses", dur: Math.round(dur), id: d.id, to: to?.name || "" }, ctx);
+  return { id: d.id, ok: await confirmed(), logId };
 }

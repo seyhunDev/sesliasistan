@@ -35,8 +35,31 @@ export function cleanBilgi(d = {}) {
     link: /^[a-z0-9]{12,40}$/.test(d.link || "") ? d.link : "",
     state: S(d.state, 80),
     timer: t ? { dur: Number(t.dur) || 300, end: Number.isFinite(+t.end) && t.end != null ? +t.end : null, left: Number.isFinite(+t.left) && t.left != null ? +t.left : null, mode: S(t.mode, 20) } : null,
-    msg: m && m.id ? { id: S(m.id, 40), text: S(m.text, MSG_MAX), at: Number(m.at) || 0 } : null,
+    msg: m && m.id ? { id: S(m.id, 40), text: S(m.text, MSG_MAX), at: Number(m.at) || 0, to: S(m.to, 30) } : null,
+    kanal: d.kanal && typeof d.kanal === "object" && d.kanal.id ? { id: S(d.kanal.id, 40), name: S(d.kanal.name, 30) || "Kanal", open: d.kanal.open === true } : null,
   };
+}
+
+// Kanal (Seyhun 2026-11-15): Yönet bir kanal açar (Antrenman, Yarış…); bilgi ekranı yalnız açık kanala katılarak başlar.
+// Kanaldakiler: bilgiTekne belgeleri (ch = kanal id), son 60 sn'de ses verenler açık sayılır.
+export const LIVE_MS = 60e3;
+export const membersOf = (boats, ch, now) => (boats || []).filter((b) => ch && b.ch === ch && now - (b.t || 0) < LIVE_MS);
+
+// Gönderim durumu (İletildi / Görüldü / Ulaşmadı): sent = { id, at, to, ok } (ok: sunucu onayı true/false, beklerken null).
+// Hedef: to verilirse o cihaz, yoksa gönderim anında kanalda açık olanlar. 15 sn'de görmeyen "ulaşmadı" sayılır.
+export const SEEN_WAIT = 15e3;
+export function deliveryOf(sent, boats, ch, now) {
+  if (!sent) return null;
+  if (sent.ok === false) return { state: "fail", seen: 0, of: 0, missing: [] };
+  if (sent.ok == null) return { state: "wait", seen: 0, of: 0, missing: [] };
+  const pool = (boats || []).filter((b) => b.ch === ch);
+  const targets = sent.to ? pool.filter((b) => b.id === sent.to) : pool.filter((b) => (b.t || 0) > sent.at - LIVE_MS);
+  const seen = targets.filter((b) => b.seen === sent.id);
+  const missing = targets.filter((b) => b.seen !== sent.id).map((b) => b.sail || b.name || "?");
+  const late = now - sent.at > SEEN_WAIT;
+  if (targets.length && seen.length === targets.length) return { state: "seen", seen: seen.length, of: targets.length, missing: [] };
+  if (!late) return { state: "sent", seen: seen.length, of: targets.length, missing };
+  return { state: seen.length ? "part" : "fail", seen: seen.length, of: targets.length, missing };
 }
 
 const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -93,6 +116,13 @@ export function bilgiCommand(s) {
   const t = String(s || "").trim();
   const m = /^bilgi ekranına\s+(?:yaz|söyle|mesaj gönder|mesaj yaz|duyur|gönder)\s*[:,]?\s*(.+)$/i.exec(t);
   if (m) return { op: "msg", text: S(m[1].replace(/[.!]+$/, ""), MSG_MAX) };
+  // "bilgi ekranında Mustafa'ya yaz: …": yalnız o kişiye (kanaldaki adı ya da yelken no)
+  const p = /^bilgi ekranında\s+(.+?)['’]?(?:y?a|y?e)\s+(?:yaz|söyle|gönder)\s*[:,]?\s*(.+)$/i.exec(t);
+  if (p) return { op: "msg", to: S(p[1], 30), text: S(p[2].replace(/[.!]+$/, ""), MSG_MAX) };
+  // "bilgi kanalı aç: Antrenman" / "bilgi kanalını kapat"
+  const k = /^bilgi kanalı(?:nı)?\s+aç\s*[:,]?\s*(.*)$/i.exec(t);
+  if (k) return { op: "kanal", name: S(k[1].replace(/[.!]+$/, ""), 30) || "Antrenman" };
+  if (/^bilgi kanalını?\s+kapat$/i.test(t)) return { op: "kanalKapat" };
   if (/^bilgi ekranını?\s+(?:aç|göster)$/i.test(t)) return { op: "open" };
   if (/^bilgi ekranı(?:nın)?\s+link(?:i|ini)?(?:\s+(?:ver|kopyala|paylaş|gönder|aç|oluştur))?$/i.test(t)) return { op: "link" };
   // "bilgi ekranında rüzgârı göster" / "bilgi ekranında saati gizle": start sonrası ekranda aç kapa

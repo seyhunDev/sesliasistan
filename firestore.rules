@@ -139,11 +139,13 @@ service cloud.firestore {
     }
 
     // Bilgi ekranı tekne konumu (Seyhun 2026-11-15): ekranı açan telefon (yelken no + isim) 5 sn'de bir kendi belgesine yazar.
+    // ch: katıldığı kanal; seen: gösterdiği son mesaj/ses (Yönet'te "Görüldü"); konum izni yoksa lat/lon boş.
     // Yazabilen: işletmedeki hesaplar ya da açık link anahtarını (k) bilen girişsiz ekran. Okuyan yalnız ana hesap (Yönet › Tekneler).
     match /bilgiTekne/{dev} {
       function okPos(d) {
-        return d.keys().hasOnly(['org', 'k', 'sail', 'name', 'lat', 'lon', 'spd', 'hdg', 'acc', 't', 'uid'])
-            && d.org is string && d.lat is number && d.lon is number && d.t is number
+        return d.keys().hasOnly(['org', 'k', 'ch', 'sail', 'name', 'lat', 'lon', 'spd', 'hdg', 'acc', 't', 'uid', 'seen'])
+            && d.org is string && (d.lat == null || d.lat is number) && (d.lon == null || d.lon is number) && d.t is number
+            && d.get('seen', '') is string && d.get('seen', '').size() <= 40
             && d.get('sail', '') is string && d.get('sail', '').size() <= 12
             && d.get('name', '') is string && d.get('name', '').size() <= 30;
       }
