@@ -196,6 +196,17 @@ export function quatHeading(q, screenAngle = 0) {
   return { h, beta: Math.asin(Math.max(-1, Math.min(1, yU))) * d, gamma: Math.atan2(-xU, zU) * d };
 }
 
+// Manyetik sapma (Seyhun 2026-11-15 "sapma düzeltmesini yapalım"): telefon pusulası (iPhone webkitCompassHeading, Android sensör)
+// manyetik kuzeyi verir; harita, parkur ve hava durumundan girilen rüzgâr gerçek kuzeye göre. Ekrandaki derece gerçek kuzeye çevrilir.
+// Batı Türkiye için yaklaşık model: Dikili'de 2026 sonunda ~5,8° doğu, yılda ~0,1° artar, doğuya gittikçe biraz büyür.
+// Doğruluk tahmini ±1° (NOAA WMM2025 hesaplayıcısıyla doğrulanmadı; bu ortamdan erişilemedi). Konum yoksa Dikili değeri.
+export function declination(lat = 39.07, lon = 26.89, d = new Date()) {
+  const year = d.getFullYear() + d.getMonth() / 12;
+  const la = Number.isFinite(lat) ? lat : 39.07;
+  const lo = Number.isFinite(lon) ? lon : 26.89;
+  return 5.8 + 0.06 * (lo - 26.89) - 0.05 * (la - 39.07) + 0.1 * (year - 2026.9);
+}
+
 // ---- Otomatik parkur (Seyhun 2026-11-15): hakem botu (komite, start hattının sancak ucu) + rüzgâr yönü (estiği yer) girilince
 // şamandıralar yerleşir. Pin: rüzgâra bakarken hattın solu; 1: hattın ortasından rüzgâra "orsa" metre; trapezde 2 apaz (1'den sola
 // geri), 3 alt kapı; iniş çıkışta 4 alt kapı; üçgende 2 yan (kanat), 3 alt. Her şamandıra elle (koordinat) düzeltilebilir (marks).
