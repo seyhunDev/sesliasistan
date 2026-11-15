@@ -204,3 +204,32 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-map { height: 15rem; flex: none; margin-top: 0.5rem; }
 .tkm-mk { width: 1.125rem; height: 1.125rem; border-radius: 999px; background: #e08a00; border: 2px solid #fff; color: #111; font: 700 0.625rem/0.875rem var(--font-num), ui-monospace, monospace; text-align: center; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
 .tkm-mk.komite, .tkm-mk.pin { background: #1d4ed8; width: 0.75rem; height: 0.75rem; border-radius: 3px; }
+
+/* Yönet tam ekran harita düzeni (Seyhun 2026-11-15, örnek C): harita bütün ekran, üstte kanal + sayaç + Parkur/Ekran/Kayıtlar,
+   altta bas-konuş ve tek satır mesaj. Kaydırma yok, alt çubuk yok. Pencereler (Sheet z-40/50) bunun üstünde açılır */
+.bzy-app { position: fixed; inset: 0; z-index: 30; background: #dfe9f2; overflow: hidden; touch-action: manipulation; }
+.tkm-map.tkm-full { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0; }
+.bzy-top { position: absolute; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top, 0px) + 0.5rem) max(0.75rem, env(safe-area-inset-right, 0px)) 0 max(0.75rem, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; }
+.bzy-top > * { pointer-events: auto; }
+.bzy-hd { display: flex; align-items: flex-start; gap: 0.5rem; }
+.bzy-hd > a, .bzy-hd > button { flex: none; background: var(--card); border-radius: 0.75rem; box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
+.bzy-app .bzy-kanal { box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
+.bzy-app .bzy-row .btn, .bzy-app .bzy-row a { box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
+.bzy-tm { display: flex; align-items: center; gap: 0.5rem; background: #0b1a33; color: #fff; border-radius: 1rem; padding: 0.5rem 0.5rem 0.5rem 0.875rem; box-shadow: 0 2px 8px rgba(11, 26, 51, .25); }
+.bzy-tm b { flex: 1; font-size: 2.125rem; line-height: 1; font-weight: 700; letter-spacing: -.02em; }
+.bzy-tb { flex: none; border: 0; border-radius: 0.75rem; padding: 0.6875rem 0.875rem; font-weight: 650; font-size: 0.9375rem; background: #e0675e; color: #fff; }
+.bzy-tb2 { background: #1f3357; color: #cfd9ef; }
+.bzy-go { background: #3d7bff; }
+.bzy-tb:active { transform: translateY(1px); }
+.bzy-pills { display: flex; gap: 0.375rem; align-self: flex-start; }
+.bzy-pills button { border: 0; background: rgba(255, 255, 255, .94); color: #0b1a33; border-radius: 0.625rem; padding: 0.4375rem 0.75rem; font-size: 0.8125rem; font-weight: 650; box-shadow: 0 1px 4px rgba(0, 0, 0, .14); }
+.bzy-dock { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 1.25rem 1.25rem 0 0; box-shadow: 0 -4px 18px rgba(0, 0, 0, .14); padding: 0.75rem max(0.75rem, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 0.75rem) max(0.75rem, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 0.5rem; max-height: 45dvh; }
+.bzy-dock .bzy-to { margin: 0; max-height: 7.5rem; overflow-y: auto; }
+.bzy-dock .bzy-sent { margin-top: 0; padding: 0.375rem 0.625rem; }
+.bzy-msg { display: flex; gap: 0.5rem; }
+.bzy-msg .bzy-in { padding: 0.625rem 0.875rem; }
+@media (orientation: landscape) and (max-height: 32rem) {
+  .bzy-top { right: auto; width: min(22rem, 46vw); }
+  .bzy-dock { right: auto; width: min(22rem, 46vw); left: max(0.75rem, env(safe-area-inset-left, 0px)); bottom: 0.5rem; border-radius: 1.25rem; padding-bottom: 0.75rem; max-height: 55dvh; }
+  .bzy-tm b { font-size: 1.75rem; }
+}

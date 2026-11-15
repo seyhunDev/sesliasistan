@@ -14,7 +14,7 @@ function markEl() {
   return d;
 }
 
-export function TekneMap({ boats, course = null }) {
+export function TekneMap({ boats, course = null, full = false }) {
   const box = useRef(null);
   const map = useRef(null);
   const ml = useRef(null);
@@ -39,7 +39,7 @@ export function TekneMap({ boats, course = null }) {
           dragRotate: false,
           touchPitch: false,
           pitchWithRotate: false,
-          cooperativeGestures: !!touch,
+          cooperativeGestures: !!touch && !full,
         });
         m.touchZoomRotate?.disableRotation();
         map.current = m;
@@ -52,7 +52,7 @@ export function TekneMap({ boats, course = null }) {
       map.current = null;
       marks.current = {};
     };
-  }, []);
+  }, [full]);
 
   useEffect(() => {
     const m = map.current;
@@ -138,6 +138,6 @@ export function TekneMap({ boats, course = null }) {
     }
   }, [ck, ready]);
 
-  if (err) return null;
-  return <div ref={box} className="tkm-map" aria-label="Tekneler haritası" />;
+  if (err && !full) return null;
+  return <div ref={box} className={`tkm-map${full ? " tkm-full" : ""}`} aria-label="Tekneler haritası" />;
 }
