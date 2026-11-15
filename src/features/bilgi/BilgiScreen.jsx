@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
 import { FRESH_MS, SHOW_DEF, beepOf, courseOf, dirName, normDeg, pFlag, screenMode, seqMarks, startView, tiltHeading } from "@/lib/bilgi";
-import { savePusula, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
+import { deviceId, readWho, savePusula, saveWho, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
 import "./bilgi.css";
 
 // Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 4): başlıksız tek ekran, dokunulmaz. Üstte en büyük pusula derecesi (telefonun
@@ -139,6 +139,111 @@ function useLock() {
       document.removeEventListener("touchmove", stop);
     };
   }, []);
+}
+
+// Tekne konumu: ekran açıkken GPS izlenir, 5 sn'de bir yazılır; tekne durgunsa (10 m'den az kıpırdadı) 30 sn'de bir.
+// Belge: bilgiTekne/{cihaz} { org, k (açık link anahtarı), sail, name, lat, lon, spd (kn), hdg, acc, t, uid }
+const metres = (a, b) => {
+  const r = Math.PI / 180;
+  const x = (b.lon - a.lon) * r * Math.cos(((a.lat + b.lat) / 2) * r);
+  return Math.hypot(x, (b.lat - a.lat) * r) * 6371e3;
+};
+function useGps(on, who, org, k, uid) {
+  useEffect(() => {
+    if (!on || !org || !who || !navigator.geolocation) return;
+    const dev = deviceId();
+    if (!dev) return;
+    let fix = null;
+    let sent = null;
+    const w = navigator.geolocation.watchPosition(
+      (p) => (fix = p),
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
+    );
+    const id = setInterval(() => {
+      if (!fix || Date.now() - fix.timestamp > 20000) return;
+      const c = fix.coords;
+      const pt = { lat: +c.latitude.toFixed(6), lon: +c.longitude.toFixed(6) };
+      if (sent && metres(sent, pt) < 10 && Date.now() - sent.t < 30000) return;
+      const d = { org, k: k || "", sail: who.sail || "", name: who.name || "", ...pt, spd: Number.isFinite(c.speed) ? Math.round(c.speed * 19.44) / 10 : null, hdg: Number.isFinite(c.heading) ? Math.round(c.heading) : null, acc: Math.round(c.accuracy || 0), t: Date.now(), uid: uid || "" };
+      sent = { ...pt, t: d.t };
+      sendPos(dev, d).catch(() => (sent = null));
+    }, 5000);
+    return () => {
+      navigator.geolocation.clearWatch(w);
+      clearInterval(id);
+    };
+  }, [on, who, org, k, uid]);
+}
+
+const noSub = () => () => {};
+const whoRaw = () => {
+  try {
+    return localStorage.getItem("sa-bilgi-kim") || "";
+  } catch {
+    return "";
+  }
+};
+
+// Başlat: yelken no + isim (bu telefonda saklı). Kayıtlıysa yalnız Başlat ve Değiştir
+function StartCard({ onGo }) {
+  // Saklı kimlik ilk çizimden sonra okunur (sunucu çizimiyle uyuşsun): sunucuda null
+  const raw = useSyncExternalStore(noSub, whoRaw, () => null);
+  const who = raw ? readWho() : null;
+  const [editing, setEditing] = useState(false);
+  const edit = editing || (raw !== null && !who);
+  const [sail, setSail] = useState("");
+  const [name, setName] = useState("");
+  const go = () => {
+    if (edit) {
+      if (!sail.trim() && !name.trim()) return;
+      saveWho({ sail, name });
+      onGo(readWho());
+    } else onGo(who);
+  };
+  const change = () => {
+    setSail(who?.sail || "");
+    setName(who?.name || "");
+    setEditing(true);
+  };
+  if (raw === null) return <div className="bz-go" />;
+  return (
+    <div className="bz-go">
+      <form
+        className="bz-card"
+        onSubmit={(e) => {
+          e.preventDefault();
+          go();
+        }}
+      >
+        {edit ? (
+          <>
+            <label>
+              Yelken no
+              <input className="num" value={sail} maxLength={12} inputMode="text" autoCapitalize="characters" onChange={(e) => setSail(e.target.value)} />
+            </label>
+            <label>
+              İsim
+              <input value={name} maxLength={30} autoCapitalize="words" onChange={(e) => setName(e.target.value)} />
+            </label>
+          </>
+        ) : (
+          <div className="bz-who">
+            <b className="num">{who.sail}</b>
+            <span>{who.name}</span>
+          </div>
+        )}
+        <button type="submit" className="btn btn-primary" disabled={edit && !sail.trim() && !name.trim()}>
+          Başlat
+        </button>
+        {!edit && (
+          <button type="button" className="bz-chg" onClick={change}>
+            Değiştir
+          </button>
+        )}
+      </form>
+    </div>
+  );
 }
 
 function useWake(on) {
@@ -330,7 +435,8 @@ export function BilgiScreen({ pub = "" }) {
   const org = pub ? "" : profile?.orgId || "";
   const own = useBilgi(org);
   const ownSes = useBilgiDoc(org, "ses");
-  const [pb, pses] = usePublic(pub);
+  const [pb, pses, porg] = usePublic(pub);
+  const [who, setWho] = useState(null);
   const b = pub ? pb : own;
   const ses = pub ? pses : ownSes;
   const [on, setOn] = useState(false);
@@ -339,10 +445,12 @@ export function BilgiScreen({ pub = "" }) {
   useRecord(on, org, profile?.uid, profile?.name);
   useWake(on);
   useLock();
+  useGps(on, who, pub ? porg : org, pub, profile?.uid);
   const [talk, unlock] = useVoice(on, b?.msg, ses);
 
   // Tek dokunuş: pusula izni (iPhone), sesin açılması ve ekranın açık kalması tarayıcının dokunuş istediği işler
-  const start = async () => {
+  const start = async (w) => {
+    setWho(w);
     try {
       if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") await DeviceOrientationEvent.requestPermission();
     } catch {}
@@ -468,9 +576,7 @@ export function BilgiScreen({ pub = "" }) {
         </span>
       )}
       {!on && (
-        <button type="button" className="bz-go" onClick={start}>
-          <span className="btn btn-primary">Başlat</span>
-        </button>
+        <StartCard onGo={start} />
       )}
     </main>
   );
