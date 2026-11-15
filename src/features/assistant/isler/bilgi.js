@@ -17,6 +17,23 @@ export async function bilgiCmd(ctx, s, viaVoice) {
     showPage();
     return true;
   }
+  // "bilgi parkuru rüzgâr 220" / "… trapez" / "… hakem botu burada" (Yönet › Parkur; şamandıralar kendiliğinden yerleşir)
+  if (c.op === "parkur" || c.op === "parkurHere") {
+    setPhase?.("thinking");
+    let patch = c.patch;
+    if (c.op === "parkurHere") {
+      const q = await new Promise((ok) => (navigator.geolocation ? navigator.geolocation.getCurrentPosition((p) => ok({ lat: +p.coords.latitude.toFixed(6), lon: +p.coords.longitude.toFixed(6) }), () => ok(null), { enableHighAccuracy: true, timeout: 15000 }) : ok(null)));
+      if (!q) return (reply("Konumu alamadım, konum iznini kontrol et.", { fail: true, engine: "local" }, viaVoice), true);
+      patch = { komite: q };
+    }
+    const ok = await saveBilgi(profile?.orgId, { parkur: patch }).then(
+      () => true,
+      () => false,
+    );
+    if (!ok) return (reply("Kaydedemedim, tekrar dene.", { fail: true, engine: "local" }, viaVoice), true);
+    done(patch.komite ? "Hakem botunu buraya koydum." : patch.wind != null ? `Parkur rüzgârı ${patch.wind}°.` : patch.type ? "Parkur tipini değiştirdim." : `1 numara ${patch.orsa} m.`, { engine: "local" }, viaVoice);
+    return true;
+  }
   // "bilgi kanalı aç: Antrenman" / "bilgi kanalını kapat" (Yönet › Kanal)
   if (c.op === "kanal" || c.op === "kanalKapat") {
     setPhase?.("thinking");

@@ -9,7 +9,8 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { Countdown, holdMic, readTimer } from "@/features/training/Countdown";
 import { micReset } from "@/lib/speech/audioSession";
 import { voiceType } from "@/lib/chatFile";
-import { COURSES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, deliveryOf, membersOf } from "@/lib/bilgi";
+import { PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
+import { CourseMap } from "./CourseMap";
 import { Switch } from "@/features/settings/ui";
 import { closeKanal, linkUrl, loadLog, loadPusula, markLog, openKanal, saveBilgi, sendMsg, sendSes, useBilgi, useTekneler } from "./bilgiStore";
 import { TekneMap } from "./TekneMap";
@@ -184,7 +185,7 @@ const ago = (t, now) => {
   const s = Math.max(0, Math.round((now - t) / 1000));
   return s < 60 ? `${s} sn` : s < 3600 ? `${Math.round(s / 60)} dk önce` : `${Math.round(s / 3600)} sa önce`;
 };
-function Tekneler({ boats: all, ch, now }) {
+function Tekneler({ boats: all, ch, now, course }) {
   if (!all?.length) return null;
   const list = all.filter((b) => !ch || b.ch === ch).sort((a, b) => (b.t || 0) - (a.t || 0));
   if (!list.length) return null;
@@ -194,7 +195,7 @@ function Tekneler({ boats: all, ch, now }) {
       <h2 className="bzy-h">
         Tekneler <span>{live} açık</span>
       </h2>
-      <TekneMap boats={list} />
+      <TekneMap boats={list} course={course} />
       <div className="bzy-list mt-2.5">
         {list.map((b) => {
           const old = now - b.t >= 60e3;
@@ -212,6 +213,104 @@ function Tekneler({ boats: all, ch, now }) {
         })}
       </div>
     </section>
+  );
+}
+
+// Telefonun konumu bir kez ("Konumum": hakem botundaysan ya da şamandıranın yanındaysan)
+const here = () =>
+  new Promise((ok) =>
+    navigator.geolocation
+      ? navigator.geolocation.getCurrentPosition(
+          (p) => ok({ lat: +p.coords.latitude.toFixed(6), lon: +p.coords.longitude.toFixed(6) }),
+          () => ok(null),
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
+        )
+      : ok(null),
+  );
+
+// Sayı alanı: yazarken yerel, bırakınca kaydedilir
+function NumIn({ value, onSave, label, unit }) {
+  const [v, setV] = useState(null);
+  return (
+    <label className="bzy-fr">
+      <b>{label}</b>
+      <input
+        className="num"
+        inputMode="numeric"
+        value={v ?? (value == null ? "" : String(value))}
+        onChange={(e) => setV(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+        onBlur={() => {
+          if (v != null && v !== String(value ?? "")) onSave(v === "" ? null : +v);
+          setV(null);
+        }}
+      />
+      <span>{unit}</span>
+    </label>
+  );
+}
+
+// Koordinat satırı: "39.0712, 26.8840" yazılır ya da "Konumum"; auto: hesaplanan (elle değilse soluk), onAuto: elleyi kaldır
+function PtRow({ label, pt, manual, onSave, onAuto }) {
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [v, setV] = useState("");
+  const save = (q) => {
+    if (!q) return toast("Koordinat okunamadı");
+    onSave(q);
+    setOpen(false);
+  };
+  return (
+    <div className="bzy-pt">
+      <button type="button" className="bzy-fr" onClick={() => (setV(fmtPt(pt)), setOpen((x) => !x))}>
+        <b>{label}</b>
+        <span className={`num${pt && !manual && onAuto ? " auto" : ""}`}>{pt ? fmtPt(pt) : "—"}</span>
+      </button>
+      {open && (
+        <div className="bzy-ptin">
+          <input className="bzy-in num" value={v} inputMode="decimal" placeholder="39.07120, 26.88400" onChange={(e) => setV(e.target.value)} />
+          <div className="bzy-row">
+            <Button onClick={() => save(parsePt(v))}>Kaydet</Button>
+            <Button variant="secondary" onClick={async () => save(await here())}>
+              Konumum
+            </Button>
+            {manual && onAuto && (
+              <Button variant="secondary" onClick={() => (onAuto(), setOpen(false))}>
+                Otomatik
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Parkur (Seyhun 2026-11-15): rüzgâr + hakem botu girilince şamandıralar kendiliğinden yerleşir (lib/bilgi buildCourse); her biri elle
+// düzeltilebilir. Önizleme sporcu ekranındaki haritanın aynısı (kanaldaki tekneler de görünür)
+function ParkurEdit({ org, pk, boats, now }) {
+  const toast = useToast();
+  const p = pk || { type: "trapez", wind: null, komite: null, line: 120, orsa: 900, marks: {} };
+  const c = buildCourse(p);
+  const put = (patch) => saveBilgi(org, { parkur: patch }).catch(() => toast("Kaydedilemedi"));
+  const at = (k) => c.pts.find((x) => x.k === k) || null;
+  return (
+    <>
+      <Seg value={p.type} items={PK_TYPES} onPick={(k) => put({ type: k })} />
+      <div className="bzy-list mt-2">
+        <NumIn label="Rüzgâr" unit="°" value={p.wind} onSave={(v) => put({ wind: v == null ? null : v % 360 })} />
+        <PtRow label="Hakem botu" pt={p.komite} manual onSave={(q) => put({ komite: q })} />
+        <NumIn label="Start hattı" unit="m" value={p.line} onSave={(v) => put({ line: v ?? 120 })} />
+        <NumIn label="1 numaraya" unit="m" value={p.orsa} onSave={(v) => put({ orsa: v ?? 900 })} />
+      </div>
+      {(c.has || boats.length > 0) && <CourseMap course={c} boats={boats.map((x) => ({ ...x, old: now - (x.t || 0) > 60e3 }))} className="bzy-map" />}
+      {c.has && (
+        <div className="bzy-list mt-2">
+          {markKeys(p.type).map((k) => (
+            <PtRow key={k} label={k === "pin" ? "Pin" : PK_NAMES[k]} pt={at(k)} manual={!!p.marks?.[k]} onSave={(q) => put({ marks: { [k]: q } })} onAuto={() => put({ marks: { [k]: null } })} />
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -449,7 +548,7 @@ export function BilgiAdmin() {
         </section>
         <section>
           <h2 className="bzy-h">Parkur</h2>
-          <Seg value={b?.course || "trapez"} items={Object.entries(COURSES).map(([k, c]) => [k, c.name])} onPick={(k) => saveBilgi(org, { course: k }).catch(() => toast("Kaydedilemedi"))} />
+          <ParkurEdit org={org} pk={b?.parkur} boats={(boats || []).filter((x) => !kanal?.id || x.ch === kanal.id)} now={now} />
           <input
             className="bzy-in mt-2"
             value={state ?? b?.state ?? ""}
@@ -474,7 +573,7 @@ export function BilgiAdmin() {
             })}
           </div>
         </section>
-        <Tekneler boats={boats} ch={kanal?.id || ""} now={now} />
+        <Tekneler boats={boats} ch={kanal?.id || ""} now={now} course={b?.parkur ? buildCourse(b.parkur) : null} />
         <SentList rows={log} />
         <CompassList rows={pus} />
       </div>

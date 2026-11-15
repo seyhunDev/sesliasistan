@@ -14,7 +14,7 @@ function markEl() {
   return d;
 }
 
-export function TekneMap({ boats }) {
+export function TekneMap({ boats, course = null }) {
   const box = useRef(null);
   const map = useRef(null);
   const ml = useRef(null);
@@ -76,6 +76,22 @@ export function TekneMap({ boats }) {
       }
     }
   }, [boats, ready]);
+
+  // Parkur şamandıraları (Yönet › Parkur): turuncu nokta + numara, hakem botu ve pin mavi
+  const cm = useRef([]);
+  const ck = JSON.stringify(course?.pts || []);
+  useEffect(() => {
+    const m = map.current;
+    const lib = ml.current;
+    if (!ready || !m || !lib) return;
+    cm.current.forEach((x) => x.remove());
+    cm.current = JSON.parse(ck).map((p) => {
+      const d = document.createElement("div");
+      d.className = `tkm-mk ${p.kind}`;
+      d.textContent = p.n || "";
+      return new lib.Marker({ element: d }).setLngLat([p.lon, p.lat]).addTo(m);
+    });
+  }, [ck, ready]);
 
   if (err) return null;
   return <div ref={box} className="tkm-map" aria-label="Tekneler haritası" />;

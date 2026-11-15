@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
-import { FRESH_MS, SHOW_DEF, beepOf, courseOf, dirName, normDeg, pFlag, screenMode, seqMarks, startView, tiltHeading } from "@/lib/bilgi";
+import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, tiltHeading, windRel } from "@/lib/bilgi";
+import { CourseMap } from "./CourseMap";
 import { deviceId, readWho, savePusula, saveWho, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
 import "./bilgi.css";
 
@@ -433,36 +434,53 @@ function Tape({ h }) {
   );
 }
 
-function Course({ kind }) {
-  const c = courseOf(kind);
-  const wind = 0; // parkurdaki rüzgâr: kendi ölçümümüz gelince (Seyhun 2026-11-15 "şimdilik 0")
+// Rüzgâr göstergesi (Seyhun 2026-11-15): halkanın üstü teknenin burnu; mavi ok rüzgârın geldiği yerden içeri. Yanında rüzgâr yönü
+// ve burna göre açısı ("27° iskeleden"). Rüzgâr Yönet › Parkur'da girilir
+function WindDial({ wind, head }) {
+  if (wind == null) return null;
+  const r = windRel(wind, head);
   return (
-    <svg className="bz-course" viewBox="0 0 300 260" preserveAspectRatio="xMidYMid meet" aria-label={`Parkur ${c.name}`}>
-      <path d={c.path.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join(" ")} fill="none" style={{ stroke: "var(--bz-line2)" }} strokeWidth="1.5" strokeDasharray="4 5" />
-      {c.marks.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r="6.5" style={{ fill: "var(--bz-mark)" }} />
-      ))}
-      {c.labels.map(([n, x, y]) => (
-        <text key={n} x={x} y={y} className="bz-mk">
-          {n}
-        </text>
-      ))}
-      <path d="M110 236 L196 236" style={{ stroke: "var(--bz-line3)" }} strokeWidth="2" />
-      <rect x="196" y="230" width="14" height="12" rx="2" style={{ fill: "var(--bz-line3)" }} />
-      <circle cx="110" cy="236" r="4" style={{ fill: "var(--bz-line3)" }} />
-      <g transform="translate(250 54)">
-        <circle r="26" fill="none" style={{ stroke: "var(--bz-line2)" }} strokeWidth="1.5" />
-        <path d="M0 -18 L0 12 M-7 4 L0 13 L7 4" style={{ stroke: "var(--bz-dim)" }} strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      </g>
-      <text x="250" y="102" className="bz-wk">
-        {wind}
-        <tspan className="bz-wu"> kn</tspan>
-      </text>
-      <text x="250" y="118" className="bz-wd">
-        — °
-      </text>
-    </svg>
+    <div className="bz-wind">
+      <svg viewBox="-50 -50 100 100" aria-hidden="true">
+        <circle r="44" className="bz-wr" />
+        <path d="M0 -44 L0 -35" className="bz-wb" />
+        {r && (
+          <g transform={`rotate(${r.rel})`}>
+            <path d="M0 -47 L0 -13" className="bz-wa" />
+            <path d="M-9 -23 L0 -11 L9 -23" className="bz-wa" />
+          </g>
+        )}
+      </svg>
+      <div className="bz-wt">
+        <b className="num">{wind}°</b>
+        {r && <span>{r.side ? <><em className="num">{r.deg}°</em> {r.side}</> : r.rel === 0 ? "tam burundan" : "tam kıçtan"}</span>}
+      </div>
+    </div>
   );
+}
+
+// Teknenin kendi konumu (ekranda harita için) ve son 10 dk izi (5 sn'de bir nokta)
+function useMyPos(on) {
+  const [pos, setPos] = useState({ me: null, trail: [] });
+  useEffect(() => {
+    if (!on || !navigator.geolocation) return;
+    let last = 0;
+    const w = navigator.geolocation.watchPosition(
+      (p) => {
+        const me = { lat: p.coords.latitude, lon: p.coords.longitude };
+        const t = Date.now();
+        setPos((o) => {
+          const add = t - last > 5000;
+          if (add) last = t;
+          return { me, trail: add ? [...o.trail.filter((x) => t - x.t < 600e3), { ...me, t }] : o.trail };
+        });
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
+    );
+    return () => navigator.geolocation.clearWatch(w);
+  }, [on]);
+  return pos;
 }
 
 // pub: herkese açık linkle (/ekran/{anahtar}) girişsiz açılış; veri kopya belgeden, pusula kaydı yok, geri düğmesi yok
@@ -493,6 +511,7 @@ export function BilgiScreen({ pub = "" }) {
   const fresh = [myMsg, mySes].filter((x) => x?.id && now - x.at < FRESH_MS).sort((x, y) => y.at - x.at)[0];
   usePresence(active, who, pub ? porg : org, pub, profile?.uid, kanal?.id || "", active ? fresh?.id || "" : "");
   const [talk, unlock] = useVoice(active, myMsg, mySes);
+  const pos = useMyPos(active);
 
   // Tek dokunuş: pusula izni (iPhone), sesin açılması ve ekranın açık kalması tarayıcının dokunuş istediği işler
   const start = async (w) => {
@@ -532,9 +551,11 @@ export function BilgiScreen({ pub = "" }) {
       <Tape h={h} />
     </div>
   );
-  const course = (
+  const course = buildCourse(b?.parkur);
+  const wind = <WindDial wind={course.up} head={h} />;
+  const map = (
     <div className="bz-rt">
-      <Course kind={b?.course} />
+      <CourseMap course={course} me={pos.me} head={h} trail={pos.trail} className="bz-map" />
       {b?.state && <div className="bz-cs">{b.state}</div>}
     </div>
   );
@@ -564,15 +585,9 @@ export function BilgiScreen({ pub = "" }) {
       )}
       {mode === "race" && (
         <>
-          <div className="bz-race">
-            {show.pusula && compass}
-            {show.ruzgar && (
-              <div className="bz-wn num">
-                0<small>kn</small>
-              </div>
-            )}
-          </div>
-          {show.parkur && course}
+          {show.pusula && compass}
+          {show.ruzgar && wind}
+          {show.parkur ? map : <div className="bz-fill" />}
           {show.sure && (
             <div className="bz-mini num">
               {sv.txt}
@@ -584,7 +599,8 @@ export function BilgiScreen({ pub = "" }) {
       {mode === "pre" && (
         <>
           {compass}
-          {course}
+          {wind}
+          {map}
           {sv.phase !== "none" && (
             <div className="bz-tm">
               {seq && (

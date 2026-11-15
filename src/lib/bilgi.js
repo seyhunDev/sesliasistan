@@ -1,6 +1,8 @@
 // Sporcu bilgi ekranı (Seyhun 2026-11-15): tek ekran, dokunulmaz; saat, pusula, start sayacı, parkur, gelen mesaj (sesli okunur) ve
 // bas-konuş ses. Veri orgs/{org}/bilgi/ekran (sayaç, parkur, mesaj) ve orgs/{org}/bilgi/ses (son ses kaydı, base64). Saf işler burada.
 
+import { bearing, dest, dist } from "./raceCourse.js";
+
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 
 // Parkurlar: 300×260 çizimde şamandıralar (x, y), numaraları (no, x, y), çizgi sırası, start hattı. Rüzgâr yukarıdan (1 numara rüzgârüstü)
@@ -17,8 +19,8 @@ export const SES_MAX_SEC = 20;
 export const FRESH_MS = 60e3;
 
 // Start sonrası ekranda ne görünsün (Seyhun 2026-11-15, örnek 5): Yönet'ten aç kapa. Varsayılan pusula + süre + saat
-export const SHOW = [["pusula", "Pusula"], ["sure", "Süre"], ["parkur", "Parkur"], ["ruzgar", "Rüzgâr"], ["saat", "Saat"]];
-export const SHOW_DEF = { pusula: true, sure: true, parkur: false, ruzgar: false, saat: true };
+export const SHOW = [["pusula", "Pusula"], ["ruzgar", "Rüzgâr"], ["parkur", "Harita"], ["sure", "Süre"], ["saat", "Saat"]];
+export const SHOW_DEF = { pusula: true, sure: true, parkur: true, ruzgar: true, saat: true };
 export function cleanShow(v) {
   const o = v && typeof v === "object" ? v : {};
   return Object.fromEntries(SHOW.map(([k]) => [k, typeof o[k] === "boolean" ? o[k] : SHOW_DEF[k]]));
@@ -36,6 +38,7 @@ export function cleanBilgi(d = {}) {
     state: S(d.state, 80),
     timer: t ? { dur: Number(t.dur) || 300, end: Number.isFinite(+t.end) && t.end != null ? +t.end : null, left: Number.isFinite(+t.left) && t.left != null ? +t.left : null, mode: S(t.mode, 20) } : null,
     msg: m && m.id ? { id: S(m.id, 40), text: S(m.text, MSG_MAX), at: Number(m.at) || 0, to: S(m.to, 30) } : null,
+    parkur: cleanParkur(d.parkur),
     kanal: d.kanal && typeof d.kanal === "object" && d.kanal.id ? { id: S(d.kanal.id, 40), name: S(d.kanal.name, 30) || "Kanal", open: d.kanal.open === true } : null,
   };
 }
@@ -123,6 +126,18 @@ export function bilgiCommand(s) {
   const k = /^bilgi kanalı(?:nı)?\s+aç\s*[:,]?\s*(.*)$/i.exec(t);
   if (k) return { op: "kanal", name: S(k[1].replace(/[.!]+$/, ""), 30) || "Antrenman" };
   if (/^bilgi kanalını?\s+kapat$/i.test(t)) return { op: "kanalKapat" };
+  // Bilgi parkuru (Yönet › Parkur): "bilgi parkuru rüzgâr 220", "bilgi parkuru hakem botu burada", "bilgi parkuru trapez"
+  const pr = /^bilgi parkur(?:u|unda)?\s+(.+)$/i.exec(t);
+  if (pr) {
+    const x = pr[1].toLocaleLowerCase("tr").replace(/[.!]+$/, "").trim();
+    const w = /^r[uü]zg[aâ]r(?:ı)?\s*(\d{1,3})(?:\s*derece)?$/.exec(x);
+    if (w && +w[1] <= 360) return { op: "parkur", patch: { wind: +w[1] % 360 } };
+    if (/^(hakem botu|komite)(?:\s+(burada|konumum|benim yerim))?$/.test(x)) return { op: "parkurHere" };
+    const ty = PK_TYPES.find(([, n]) => n.toLocaleLowerCase("tr") === x);
+    if (ty) return { op: "parkur", patch: { type: ty[0] } };
+    const o = /^(?:1 numara(?:ya)?|orsa)\s*(\d{2,4})\s*(?:m|metre)?$/.exec(x);
+    if (o) return { op: "parkur", patch: { orsa: +o[1] } };
+  }
   if (/^bilgi ekranını?\s+(?:aç|göster)$/i.test(t)) return { op: "open" };
   if (/^bilgi ekranı(?:nın)?\s+link(?:i|ini)?(?:\s+(?:ver|kopyala|paylaş|gönder|aç|oluştur))?$/i.test(t)) return { op: "link" };
   // "bilgi ekranında rüzgârı göster" / "bilgi ekranında saati gizle": start sonrası ekranda aç kapa
@@ -158,4 +173,90 @@ export function tiltHeading(alpha, beta, gamma, screenAngle = 0) {
   const E = bE + w * uE, N = bN + w * uN;
   if (Math.hypot(E, N) < 1e-6) return null;
   return ((Math.atan2(E, N) / r) % 360 + 360) % 360;
+}
+
+// ---- Otomatik parkur (Seyhun 2026-11-15): hakem botu (komite, start hattının sancak ucu) + rüzgâr yönü (estiği yer) girilince
+// şamandıralar yerleşir. Pin: rüzgâra bakarken hattın solu; 1: hattın ortasından rüzgâra "orsa" metre; trapezde 2 apaz (1'den sola
+// geri), 3 alt kapı; iniş çıkışta 4 alt kapı; üçgende 2 yan (kanat), 3 alt. Her şamandıra elle (koordinat) düzeltilebilir (marks).
+export const PK_TYPES = [["trapez", "Trapez"], ["ust", "İniş çıkış"], ["ucgen", "Üçgen"]];
+export const PK_NAMES = { pin: "Pin", m1: "1 · Orsa", m2: "2 · Apaz", m2u: "2 · Kanat", m3: "3 · Alt", g1: "Alt kapı (sancak)", g2: "Alt kapı (iskele)" };
+const okPt = (p) => (p && Number.isFinite(+p.lat) && Number.isFinite(+p.lon) && Math.abs(+p.lat) <= 90 && Math.abs(+p.lon) <= 180 ? { lat: +(+p.lat).toFixed(6), lon: +(+p.lon).toFixed(6) } : null);
+const num = (v, lo, hi, def) => (Number.isFinite(+v) && v !== null && v !== "" ? Math.min(hi, Math.max(lo, Math.round(+v))) : def);
+export function cleanParkur(p) {
+  const o = p && typeof p === "object" ? p : {};
+  const marks = {};
+  for (const k of Object.keys(PK_NAMES)) {
+    const q = okPt(o.marks?.[k]);
+    if (q) marks[k] = q;
+  }
+  return {
+    type: PK_TYPES.some(([k]) => k === o.type) ? o.type : "trapez",
+    wind: o.wind == null || o.wind === "" ? null : num(o.wind, 0, 360, null) % 360,
+    komite: okPt(o.komite),
+    line: num(o.line, 20, 1000, 120),
+    orsa: num(o.orsa, 100, 5000, 900),
+    marks,
+  };
+}
+// "39.0712, 26.8840" ya da "39.0712 26.8840" → { lat, lon }
+export function parsePt(s) {
+  const m = String(s || "").replace(/,(?=\d{3,})/g, ".").match(/(-?\d+(?:\.\d+)?)[\s,;]+(-?\d+(?:\.\d+)?)/);
+  return m ? okPt({ lat: m[1], lon: m[2] }) : null;
+}
+export const fmtPt = (p) => (p ? `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}` : "");
+
+// Parkurun noktaları: { up (rüzgâr), pts: [{ k, n (etiket), lat, lon, kind: "mark" | "komite" | "pin", manual }], line: [komite, pin] }
+export function buildCourse(pk) {
+  const p = cleanParkur(pk);
+  const W = p.wind;
+  const auto = {};
+  if (p.komite && W != null) {
+    const pin = dest(p.komite, W - 90, p.line);
+    const mid = dest(p.komite, W - 90, p.line / 2);
+    const m1 = dest(mid, W, p.orsa);
+    auto.pin = pin;
+    auto.m1 = m1;
+    if (p.type === "trapez") {
+      auto.m2 = dest(m1, W - 120, p.orsa * 0.6);
+      const g = dest(mid, W, Math.min(150, p.orsa * 0.15));
+      auto.g1 = dest(g, W + 90, 20);
+      auto.g2 = dest(g, W - 90, 20);
+    } else if (p.type === "ust") {
+      const g = dest(mid, W, Math.min(150, p.orsa * 0.15));
+      auto.g1 = dest(g, W + 90, 20);
+      auto.g2 = dest(g, W - 90, 20);
+    } else {
+      auto.m2u = dest(dest(mid, W, p.orsa / 2), W - 90, p.orsa / 2);
+      auto.m3 = dest(mid, W, Math.min(120, p.orsa * 0.1));
+    }
+  }
+  const at = (k) => p.marks[k] || (auto[k] ? okPt(auto[k]) : null);
+  const label = { m1: "1", m2: "2", m2u: "2", m3: "3", g1: p.type === "ust" ? "4" : "3", g2: "" }; // kapının numarası bir kez
+  const keys = p.type === "trapez" ? ["m1", "m2", "g1", "g2"] : p.type === "ust" ? ["m1", "g1", "g2"] : ["m1", "m2u", "m3"];
+  const pts = [];
+  if (p.komite) pts.push({ k: "komite", n: "", kind: "komite", ...p.komite });
+  const pin = at("pin");
+  if (pin) pts.push({ k: "pin", n: "", kind: "pin", ...pin, manual: !!p.marks.pin });
+  for (const k of keys) {
+    const q = at(k);
+    if (q) pts.push({ k, n: label[k], kind: "mark", ...q, manual: !!p.marks[k] });
+  }
+  return { up: W, type: p.type, pts, has: pts.some((x) => x.kind === "mark") };
+}
+// Parkurda düzeltilebilen şamandıralar (sırayla)
+export const markKeys = (type) => ["pin", ...(type === "trapez" ? ["m1", "m2", "g1", "g2"] : type === "ust" ? ["m1", "g1", "g2"] : ["m1", "m2u", "m3"])];
+
+// Haritada yer: merkeze göre metre (doğu x, kuzey y), "up" derece yukarı gelecek şekilde döndürülür
+export function project(pt, c, up = 0) {
+  const d = dist(c, pt);
+  const b = ((bearing(c, pt) - (up || 0)) * Math.PI) / 180;
+  return { x: d * Math.sin(b), y: -d * Math.cos(b) };
+}
+
+// Rüzgâr teknenin burnuna göre: rel (0 burun, saat yönünde) ve "27° iskeleden" / "sancaktan"
+export function windRel(wind, head) {
+  if (wind == null || head == null) return null;
+  const rel = (((wind - head) % 360) + 360) % 360;
+  const side = rel === 0 || rel === 180 ? "" : rel < 180 ? "sancaktan" : "iskeleden";
+  return { rel, deg: Math.round(rel <= 180 ? rel : 360 - rel), side };
 }
