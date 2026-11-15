@@ -142,14 +142,15 @@ function useLock() {
   }, []);
 }
 
-// Tekne konumu: ekran açıkken GPS izlenir, 5 sn'de bir yazılır; tekne durgunsa (10 m'den az kıpırdadı) 30 sn'de bir.
+// Tekne konumu: ekran açıkken GPS izlenir, 10 sn'de bir yazılır; tekne durgunsa (10 m'den az kıpırdadı) 45 sn'de bir.
+// (Seyhun 2026-11-15 "Firebase'e yük, masraf": 5/30 sn'den 10/45 sn'ye; hareketli teknede saatte 360 yazma)
 // Belge: bilgiTekne/{cihaz} { org, k (açık link anahtarı), sail, name, lat, lon, spd (kn), hdg, acc, t, uid }
 const metres = (a, b) => {
   const r = Math.PI / 180;
   const x = (b.lon - a.lon) * r * Math.cos(((a.lat + b.lat) / 2) * r);
   return Math.hypot(x, (b.lat - a.lat) * r) * 6371e3;
 };
-// Kanaldaki varlık + konum (tek belge bilgiTekne/{cihaz}): GPS varsa 5 sn'de bir (durgunsa 30 sn), yoksa 30 sn'de bir konumsuz.
+// Kanaldaki varlık + konum (tek belge bilgiTekne/{cihaz}): GPS varsa 10 sn'de bir (durgunsa 45 sn), yoksa 45 sn'de bir konumsuz.
 // seen: ekranın gösterdiği/çaldığı son mesaj ya da ses (Yönet'te "Görüldü"); değişince hemen yazılır.
 function usePresence(on, who, org, k, uid, ch, seen) {
   const st = useRef({ seen: "", kick: null });
@@ -190,8 +191,9 @@ function usePresence(on, who, org, k, uid, ch, seen) {
     const id = setInterval(() => {
       const c = fix && Date.now() - fix.timestamp < 20000 ? fix.coords : null;
       const age = sent ? Date.now() - sent.t : Infinity;
-      if (c && sent?.lat != null && metres(sent, { lat: c.latitude, lon: c.longitude }) < 10 && age < 30000) return;
-      if (!c && age < 30000) return;
+      if (c && sent?.lat != null && metres(sent, { lat: c.latitude, lon: c.longitude }) < 10 && age < 45000) return;
+      if (!c && age < 45000) return;
+      if (age < 9500) return;
       write();
     }, 5000);
     return () => {
