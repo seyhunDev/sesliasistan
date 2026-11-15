@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { addDoc, deleteDoc, setDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { cleanBilgi, MSG_MAX } from "@/lib/bilgi";
@@ -83,7 +83,55 @@ export function usePublic(key) {
     const b = onSnapshot(pubRef(key, "ses", "son"), (x) => setV((o) => ({ ...o, key, s: x.exists() ? x.data() : null })), () => {});
     return () => (a(), b());
   }, [key]);
-  return v.key === key ? [v.d === undefined ? undefined : v.d && cleanBilgi(v.d), v.s] : [undefined, undefined];
+  return v.key === key ? [v.d === undefined ? undefined : v.d && cleanBilgi(v.d), v.s, v.d?.org || ""] : [undefined, undefined, ""];
+}
+
+// Tekne kimliği ve konumu (Seyhun 2026-11-15): bilgi ekranını açan telefon yelken no + isim yazar (bu cihazda saklı, değiştirene kadar
+// o kişi o kişidir). Ekran açıkken konum 5 sn'de bir bilgiTekne/{cihaz} belgesine yazılır (tek belge, üstüne). Sporcu hesaplarından
+// ve Takip'ten ayrı; ileride uid alanıyla sporcuya bağlanabilir. Okuma yalnız ana hesap (Yönet › Tekneler).
+const WHO = "sa-bilgi-kim";
+const DEV = "sa-bilgi-cihaz";
+export function readWho() {
+  try {
+    const w = JSON.parse(localStorage.getItem(WHO) || "null");
+    return w && (w.sail || w.name) ? { sail: String(w.sail || "").slice(0, 12), name: String(w.name || "").slice(0, 30) } : null;
+  } catch {
+    return null;
+  }
+}
+export function saveWho(w) {
+  try {
+    localStorage.setItem(WHO, JSON.stringify({ sail: String(w.sail || "").trim().slice(0, 12), name: String(w.name || "").replace(/\s+/g, " ").trim().slice(0, 30) }));
+  } catch {}
+}
+export function deviceId() {
+  try {
+    let d = localStorage.getItem(DEV) || "";
+    if (!/^[a-z0-9]{12,24}$/.test(d)) {
+      const a = new Uint8Array(12);
+      crypto.getRandomValues(a);
+      d = Array.from(a, (x) => "abcdefghijkmnpqrstuvwxyz23456789"[x % 32]).join("");
+      localStorage.setItem(DEV, d);
+    }
+    return d;
+  } catch {
+    return "";
+  }
+}
+export const sendPos = (dev, d) => setDoc(doc(db, "bilgiTekne", dev), d);
+
+// Yönet › Tekneler: işletmenin teknelerini dinler (yalnız sayfa açıkken); 12 saatten eski konum gösterilmez
+export function useTekneler(org) {
+  const [v, setV] = useState(null);
+  useEffect(() => {
+    if (!org) return;
+    return onSnapshot(
+      query(collection(db, "bilgiTekne"), where("org", "==", org)),
+      (s) => setV(s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((b) => Date.now() - (b.t || 0) < 12 * 3600e3)),
+      () => setV([]),
+    );
+  }, [org]);
+  return v;
 }
 
 // Gönderilen her mesaj ve ses kaydı ayrıca günlüğe yazılır (Seyhun 2026-11-15 "mesajlar kaydedilsin, ne zaman, ne için"):

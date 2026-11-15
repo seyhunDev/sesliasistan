@@ -11,7 +11,8 @@ import { micReset } from "@/lib/speech/audioSession";
 import { voiceType } from "@/lib/chatFile";
 import { COURSES, SES_MAX_SEC, SHOW, SHOW_DEF } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
-import { linkUrl, loadLog, loadPusula, newLink, saveBilgi, sendMsg, sendSes, useBilgi } from "./bilgiStore";
+import { linkUrl, loadLog, loadPusula, newLink, saveBilgi, sendMsg, sendSes, useBilgi, useTekneler } from "./bilgiStore";
+import { TekneMap } from "./TekneMap";
 import { bilgiOn, setBilgiOn } from "./BilgiSync";
 import "./bilgi.css";
 
@@ -159,6 +160,45 @@ function CompassList({ rows }) {
   );
 }
 
+// Tekneler (Seyhun 2026-11-15): bilgi ekranını açan telefonlar, yelken no + isimle, haritada ve listede. Yalnız bu sayfa açıkken dinlenir
+const ago = (t, now) => {
+  const s = Math.max(0, Math.round((now - t) / 1000));
+  return s < 60 ? `${s} sn` : s < 3600 ? `${Math.round(s / 60)} dk önce` : `${Math.round(s / 3600)} sa önce`;
+};
+function Tekneler({ org }) {
+  const boats = useTekneler(org);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(id);
+  }, []);
+  if (!boats?.length) return null;
+  const list = [...boats].sort((a, b) => (b.t || 0) - (a.t || 0));
+  const live = list.filter((b) => now - b.t < 60e3).length;
+  return (
+    <section>
+      <h2 className="bzy-h">
+        Tekneler <span>{live} açık</span>
+      </h2>
+      <TekneMap boats={list} />
+      <div className="bzy-list mt-2.5">
+        {list.map((b) => {
+          const old = now - b.t >= 60e3;
+          return (
+            <div key={b.id} className={`bzy-li items-center${old ? " old" : ""}`}>
+              <time className="num font-bold text-fg">{b.sail || "—"}</time>
+              <div className="min-w-0 flex-1">
+                <b>{b.name || "—"}</b>
+              </div>
+              <span className="num shrink-0 text-[0.8125rem] text-mut">{old ? ago(b.t, now) : `${ago(b.t, now)}${b.spd != null ? ` · ${String(b.spd).replace(".", ",")} kn` : ""}`}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 // Herkese açık link: kopyalanıp gönderilen kişi giriş yapmadan ekranı açar. Yenile: eski link çalışmaz olur
 function PublicLink({ org, link }) {
   const toast = useToast();
@@ -285,6 +325,7 @@ export function BilgiAdmin() {
             })}
           </div>
         </section>
+        <Tekneler org={org} />
         <PublicLink org={org} link={b?.link || ""} />
         <SentList rows={log} />
         <CompassList rows={pus} />

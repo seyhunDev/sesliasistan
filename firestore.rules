@@ -138,6 +138,25 @@ service cloud.firestore {
       }
     }
 
+    // Bilgi ekranı tekne konumu (Seyhun 2026-11-15): ekranı açan telefon (yelken no + isim) 5 sn'de bir kendi belgesine yazar.
+    // Yazabilen: işletmedeki hesaplar ya da açık link anahtarını (k) bilen girişsiz ekran. Okuyan yalnız ana hesap (Yönet › Tekneler).
+    match /bilgiTekne/{dev} {
+      function okPos(d) {
+        return d.keys().hasOnly(['org', 'k', 'sail', 'name', 'lat', 'lon', 'spd', 'hdg', 'acc', 't', 'uid'])
+            && d.org is string && d.lat is number && d.lon is number && d.t is number
+            && d.get('sail', '') is string && d.get('sail', '').size() <= 12
+            && d.get('name', '') is string && d.get('name', '').size() <= 30;
+      }
+      function mayPos(d) {
+        return (signedIn() && inOrg(d.org))
+            || (d.get('k', '') is string && d.get('k', '').size() >= 12
+                && get(/databases/$(database)/documents/bilgiAcik/$(d.k)).data.org == d.org);
+      }
+      allow read, delete: if isOwner(resource.data.org);
+      allow create: if dev.matches('^[a-z0-9]{12,24}$') && okPos(request.resource.data) && mayPos(request.resource.data);
+      allow update: if okPos(request.resource.data) && request.resource.data.org == resource.data.org && mayPos(request.resource.data);
+    }
+
     match /orgs/{orgId} {
       // Ana hesap: kendi işletmesindeki her şey (doğum günleri hariç: kişiye özel, aşağıda)
       match /{col}/{document=**} {
