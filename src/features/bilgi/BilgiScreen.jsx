@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
-import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, tiltHeading, windRel } from "@/lib/bilgi";
+import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
 import { deviceId, readWho, savePusula, saveWho, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
 import "./bilgi.css";
@@ -64,10 +64,48 @@ function useHeading(on) {
       }
       if (e.absolute) take(t, e);
     };
-    const hasAbs = "ondeviceorientationabsolute" in window;
-    if (hasAbs) window.addEventListener("deviceorientationabsolute", abs);
-    else window.addEventListener("deviceorientation", ios);
+    const events = () => {
+      if ("ondeviceorientationabsolute" in window) window.addEventListener("deviceorientationabsolute", abs);
+      else window.addEventListener("deviceorientation", ios);
+    };
+    // Android: önce AbsoluteOrientationSensor (dörtlük; dik telefonda da doğru). Yoksa, izin verilmezse ya da 2 sn'de okuma
+    // gelmezse eski açı olayına dönülür. iPhone'da bu sensör yok, webkitCompassHeading yolu sürer.
+    let sensor = null;
+    let fell = false;
+    let wait = 0;
+    const fall = () => {
+      if (fell) return;
+      fell = true;
+      clearTimeout(wait);
+      try {
+        sensor?.stop();
+      } catch {}
+      sensor = null;
+      events();
+    };
+    const iosLike = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    if (!iosLike && typeof window.AbsoluteOrientationSensor === "function") {
+      try {
+        sensor = new window.AbsoluteOrientationSensor({ frequency: 20, referenceFrame: "device" });
+        sensor.addEventListener("reading", () => {
+          clearTimeout(wait);
+          const q = quatHeading(sensor?.quaternion, screenAngle());
+          if (q) take(q.h, q);
+        });
+        sensor.addEventListener("error", fall);
+        sensor.start();
+        wait = setTimeout(fall, 2000);
+      } catch {
+        fall();
+      }
+    } else fall();
     return () => {
+      clearTimeout(wait);
+      try {
+        sensor?.stop();
+      } catch {}
+      sensor = null;
+      fell = true;
       window.removeEventListener("deviceorientationabsolute", abs);
       window.removeEventListener("deviceorientation", ios);
     };
