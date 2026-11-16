@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Hero, Label, Seg, Stat, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
-import { CATS, UNITS, WHO, cleanBudget, cleanItem, cleanRooms, emptyBudget, forAthlete, howText, nearReceipts, newId, roomFromNotice, roomLine, roomPeople, spentTotal, tl, totals } from "./budget";
+import { CATS, UNITS, WHO, cleanBudget, cleanItem, cleanRooms, emptyBudget, forAthlete, howLine, nearReceipts, newId, roomFromNotice, roomLine, roomPeople, spentTotal, tl, totals } from "./budget";
 import { useData } from "@/features/data/DataProvider";
 import { totalTL } from "@/lib/receipts";
 import { buildBudgetPdf } from "./budgetDoc";
@@ -195,7 +195,10 @@ export function BudgetView({ r, athletes, onChange }) {
                     l.est && <span className="ml-1.5 rounded-md bg-acc/10 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-acc">tahmini</span>
                   )}
                 </b>
-                <span className="block truncate text-[0.8125rem] text-mut">{howText(l, t)}</span>
+                <span className="block break-words text-[0.8125rem] text-mut">
+                  {howLine(l, t)}
+                </span>
+                {l.note && <span className="block break-words text-[0.8125rem] text-fg2">{l.note}</span>}
                 {l.only && <span className="block truncate text-[0.8125rem] font-medium text-acc">Yalnız {l.only.map((id) => nameOf[id]).filter(Boolean).join(", ")}</span>}
               </span>
               <b className="shrink-0 text-[0.9375rem] tabular-nums">{tl(l.total)}</b>
@@ -321,6 +324,7 @@ function ItemForm({ item, athletes, nights, hotels, onSave, onRemove }) {
         ))}
       </div>
       <input value={x.title} onChange={(e) => put("title")(e.target.value)} placeholder="Kalem adı (ör. Kayıt ücreti)" className={field} />
+      <input value={x.note || ""} onChange={(e) => put("note")(e.target.value)} maxLength={140} placeholder="Not" className={field} />
       <div className="flex items-center gap-2">
         <input value={x.amount} onChange={(e) => put("amount")(e.target.value.replace(/[^\d.,]/g, ""))} inputMode="decimal" placeholder={room ? "Odanın gecelik fiyatı (oda toplamı)" : "Tutar"} className={`${field} flex-1`} />
         <span className="text-[0.9375rem] font-semibold text-mut">₺</span>

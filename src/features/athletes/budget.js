@@ -53,6 +53,8 @@ export function cleanItem(x) {
       ? { cap, beds: Math.min(cap, Math.max(1, int(x?.beds ?? cap, 10))), rooms: Math.max(1, int(x?.rooms ?? 1, 30)), who: x?.who === "staff" ? "staff" : "athlete" }
       : {}),
     ...(x?.est === true && num(x?.amount) > 0 ? { est: true } : {}),
+    // Kısa not (Seyhun 2026-11-16): kalemin altında ve çıktıda görünür
+    ...(S(x?.note, 140) ? { note: S(x.note, 140) } : {}),
     ...(onlyOf(x?.only).length ? { only: onlyOf(x.only) } : {}),
   };
 }
@@ -182,6 +184,11 @@ export function totals(b, athletes, ids = null) {
 
 // Bir sporcunun ödeyeceği toplam (ortak pay + yalnız ona ait kalemler)
 export const forAthlete = (t, id) => t.lines.filter((l) => !l.only || l.only.includes(id)).reduce((n, l) => n + l.share, 0);
+// Ortak kalem (Seyhun 2026-11-16, gösterim B "Ortak · 4"): toplamı birden çok sporcuya bölünen kalemde kaç sporcuya bölündüğü; değilse 0
+export const splitCount = (l, t) => {
+  const n = l.only?.length || t.athletes;
+  return !l.club && l.unit !== "athlete" && n > 1 && l.total - l.share > 0.005 ? n : 0;
+};
 // Sporcunun kalemleri
 export const linesFor = (t, id) => t.lines.filter((l) => l.share > 0 && (!l.only || l.only.includes(id)));
 
@@ -225,4 +232,11 @@ export function howText(l, t) {
   if (l.unit === "athlete") parts.push(`${t.athletes} sporcu`);
   if (l.unit === "person") parts.push(`${t.people} kişi`);
   return parts.join(" × ") + tail;
+}
+
+// Kalemin alt satırı (Seyhun 2026-11-16): hesap, ortaksa sonunda "· Ortak · 4 sporcu" ("4 sporcuya bölünür" tekrar edilmez)
+export function howLine(l, t) {
+  const n = splitCount(l, t);
+  const how = howText(l, t);
+  return n ? `${how.replace(/ · \d+ sporcuya bölünür$/, "")} · Ortak · ${n} sporcu` : how;
 }
