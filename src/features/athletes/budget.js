@@ -184,6 +184,11 @@ export function totals(b, athletes, ids = null) {
 
 // Bir sporcunun ödeyeceği toplam (ortak pay + yalnız ona ait kalemler)
 export const forAthlete = (t, id) => t.lines.filter((l) => !l.only || l.only.includes(id)).reduce((n, l) => n + l.share, 0);
+// Ortak kalem (Seyhun 2026-11-16, gösterim B "Ortak · 4"): toplamı birden çok sporcuya bölünen kalemde kaç sporcuya bölündüğü; değilse 0
+export const splitCount = (l, t) => {
+  const n = l.only?.length || t.athletes;
+  return !l.club && l.unit !== "athlete" && n > 1 && l.total - l.share > 0.005 ? n : 0;
+};
 // Sporcunun kalemleri
 export const linesFor = (t, id) => t.lines.filter((l) => l.share > 0 && (!l.only || l.only.includes(id)));
 
