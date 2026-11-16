@@ -200,6 +200,7 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-fr input { width: 5rem; text-align: right; border: 0; background: none; font-size: 0.9375rem; color: var(--fg); outline: none; padding: 0; }
 .bzy-fr span { color: var(--fg); font-size: 0.875rem; }
 .bzy-fr span.auto { color: var(--mut); }
+.bzy-pkact { margin-top: 0.75rem; }
 .bzy-ptin { padding: 0 0.75rem 0.75rem; }
 .bzy-map { height: 15rem; flex: none; margin-top: 0.5rem; }
 .tkm-mk { width: 1.125rem; height: 1.125rem; border-radius: 999px; background: #e08a00; border: 2px solid #fff; color: #111; font: 700 0.625rem/0.875rem var(--font-num), ui-monospace, monospace; text-align: center; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }

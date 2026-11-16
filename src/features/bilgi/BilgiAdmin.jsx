@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { chooseDur, holdMic, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { mmss } from "@/lib/raceScore";
 import { Sheet } from "@/components/ui/Sheet";
@@ -313,7 +314,7 @@ function NumIn({ value, onSave, label, unit }) {
 }
 
 // Koordinat satırı: "39.0712, 26.8840" yazılır ya da "Konumum"; auto: hesaplanan (elle değilse soluk), onAuto: elleyi kaldır
-function PtRow({ label, pt, manual, onSave, onAuto }) {
+function PtRow({ label, pt, manual, onSave, onAuto, offLabel = "Otomatik" }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [v, setV] = useState("");
@@ -336,9 +337,9 @@ function PtRow({ label, pt, manual, onSave, onAuto }) {
             <Button variant="secondary" onClick={async () => save(await here())}>
               Konumum
             </Button>
-            {manual && onAuto && (
+            {manual && onAuto && pt && (
               <Button variant="secondary" onClick={() => (onAuto(), setOpen(false))}>
-                Otomatik
+                {offLabel}
               </Button>
             )}
           </div>
@@ -354,14 +355,38 @@ function ParkurEdit({ org, pk }) {
   const toast = useToast();
   const p = pk || { type: "trapez", wind: null, komite: null, line: 120, orsa: 900, marks: {} };
   const c = buildCourse(p);
-  const put = (patch) => saveBilgi(org, { parkur: patch }).catch(() => toast("Kaydedilemedi"));
+  const put = (patch) =>
+    saveBilgi(org, { parkur: patch }).then(
+      () => true,
+      () => (toast("Kaydedilemedi"), false),
+    );
   const at = (k) => c.pts.find((x) => x.k === k) || null;
+  const ask = useConfirm();
+  // Sıfırla / sil (Seyhun 2026-11-16 "konumları sıfırlayabilmemiz, istediğimizi değiştirebilmemiz ya da tamamen silebilmemiz gerekiyor"):
+  // elle düzeltilen şamandıralar tek dokunuşla otomatiğe döner; Parkuru sil bütün parkuru (tip, rüzgâr, hakem botu, uzunluklar,
+  // şamandıralar) belgeden kaldırır, link kopyasına da yazılır (saveBilgi); ekranlarda harita boşalır.
+  const nManual = markKeys(p.type).filter((k) => p.marks?.[k]).length;
+  const any = !!(pk && (pk.komite || pk.wind != null || Object.values(pk.marks || {}).some(Boolean)));
+  const wipe = () =>
+    ask({
+      title: "Parkur silinsin mi?",
+      text: "Hakem botu, rüzgâr ve bütün şamandıra konumları silinir; ekranlarda parkur kaybolur. Yeniden baştan kurabilirsin.",
+      yes: "Parkuru sil",
+      run: () =>
+        saveBilgi(org, { parkur: null }).then(
+          () => toast("Parkur silindi"),
+          (e) => {
+            toast("Silinemedi");
+            throw e;
+          },
+        ),
+    });
   return (
     <>
       <Seg value={p.type} items={PK_TYPES} onPick={(k) => put({ type: k })} />
       <div className="bzy-list mt-2">
         <NumIn label="Rüzgâr" unit="°" value={p.wind} onSave={(v) => put({ wind: v == null ? null : v % 360 })} />
-        <PtRow label="Hakem botu" pt={p.komite} manual onSave={(q) => put({ komite: q })} />
+        <PtRow label="Hakem botu" pt={p.komite} manual onSave={(q) => put({ komite: q })} onAuto={() => put({ komite: null })} offLabel="Kaldır" />
         <NumIn label="Start hattı" unit="m" value={p.line} onSave={(v) => put({ line: v ?? 120 })} />
         <NumIn label="1 numaraya" unit="m" value={p.orsa} onSave={(v) => put({ orsa: v ?? 900 })} />
       </div>
@@ -370,6 +395,20 @@ function ParkurEdit({ org, pk }) {
           {markKeys(p.type).map((k) => (
             <PtRow key={k} label={k === "pin" ? "Pin" : PK_NAMES[k]} pt={at(k)} manual={!!p.marks?.[k]} onSave={(q) => put({ marks: { [k]: q } })} onAuto={() => put({ marks: { [k]: null } })} />
           ))}
+        </div>
+      )}
+      {(nManual > 0 || any) && (
+        <div className="bzy-row bzy-pkact">
+          {nManual > 0 && (
+            <Button variant="secondary" onClick={() => put({ marks: null }).then((ok) => ok && toast("Şamandıralar otomatiğe döndü"))}>
+              Şamandıraları sıfırla
+            </Button>
+          )}
+          {any && (
+            <Button variant="danger" onClick={wipe}>
+              Parkuru sil
+            </Button>
+          )}
         </div>
       )}
     </>
