@@ -44,7 +44,10 @@ function usePtt({ org, ctx, onSent }) {
     if (!s) return;
     st.current = null;
     clearTimeout(s.timer);
-    if (s.mr.state !== "inactive") s.mr.stop();
+    if (s.mr.state !== "inactive") {
+      haptic("medium"); // bırakınca telsiz gibi "tık" (basınca da medium)
+      s.mr.stop();
+    }
     setRec(null);
   };
   const begin = async (e, key, to) => {
@@ -87,7 +90,6 @@ function usePtt({ org, ctx, onSent }) {
       if (dur < 0.6) return; // kısa dokunuş: yalnız hedef seçildi
       const blob = new Blob(parts, { type: mr.mimeType || type || "audio/mp4" });
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, at: Date.now(), ok: null });
-      haptic("light");
       const r = await sendSes(org, blob, dur, ctx, to).catch(() => ({ ok: false }));
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, ...r, ok: !!r.ok });
       if (r.ok) {
@@ -108,7 +110,8 @@ function usePtt({ org, ctx, onSent }) {
 }
 
 // Hedef düğmesi = bas konuş (Seyhun 2026-11-15 "ayrı bas konuş olmasın, kime basarsam onunla konuşayım"): dokununca yazılı mesajın
-// hedefi seçilir, basılı tutunca o kişiye (Hepsi: herkese) ses kaydı, bırakınca gider. Kayıtta düğme kırmızı, saniye yazar.
+// hedefi seçilir, basılı tutunca o kişiye (Hepsi: herkese) ses kaydı, bırakınca gider. Kayıtta düğme yeşil yanar, içe basılı kalır, saniye yazar;
+// genişliği hiç değişmez (2026-11-16).
 function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
   const on = ptt.rec?.key === id;
   const ok = !on && ptt.done?.key === id && now - ptt.done.at < 2000;
@@ -137,7 +140,12 @@ function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
           </>
         )}
       </svg>
-      {on ? `${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn` : label}
+      {/* Genişlik sabit (Seyhun 2026-11-16 "bastığımda küçülüyor"): ad, sayaç ve en geniş sayaç ("20 sn") aynı hücrede üst üste; düğme hep en genişi kadar */}
+      <span className="bzy-ptt-l">
+        <span data-v={on ? "0" : "1"}>{label}</span>
+        <span data-v={on ? "1" : "0"}>{on ? `${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn` : ""}</span>
+        <span data-v="0" aria-hidden="true">{`${SES_MAX_SEC} sn`}</span>
+      </span>
     </button>
   );
 }
