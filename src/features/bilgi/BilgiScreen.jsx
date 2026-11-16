@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
-import { FRESH_MS, courseOf, dirName, normDeg, pFlag, seqMarks, startView, tiltHeading } from "@/lib/bilgi";
-import { savePusula, useBilgi, useBilgiDoc } from "./bilgiStore";
+import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
+import { CourseMap } from "./CourseMap";
+import { deviceId, readWho, savePusula, saveWho, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
 import "./bilgi.css";
 
 // Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 4): başlıksız tek ekran, dokunulmaz. Üstte en büyük pusula derecesi (telefonun
 // baktığı yön) + kayan şerit, ortada parkur, start sürerken altta mavi süre, sağ altta küçük soluk saat (rüzgâr şimdilik 0) ve gelen mesaj (sesli okunur) / bas-konuş ses. İlk açılışta bir kez "Başlat":
 // telefon pusula izni, ses ve ekranın açık kalması için dokunuş ister.
+// Örnek 5 (Seyhun 2026-11-15): startın son 1 dakikasında yalnız büyük süre (bipli), start olunca ortada büyük pusula + altta küçük
+// akan süre; start sonrası ekranda ne görüneceği Yönet'ten (show: pusula, süre, parkur, rüzgâr, saat).
 const pad = (n) => String(n).padStart(2, "0");
 
 function useTick(ms) {
@@ -25,22 +28,31 @@ function useTick(ms) {
 // Telefonun baktığı yön, eğim düzeltmeli (lib/bilgi tiltHeading): öne/arkaya yatırınca değişmez, yalnız sağa sola dönünce değişir.
 // Android: deviceorientationabsolute (alpha kuzeye göre). iPhone: alpha keyfi başlar; telefon düze yakınken webkitCompassHeading ile
 // fark (ofset) bulunur, sonra eğim düzeltmeli yön + ofset. Ölçüm titremesin diye yön birim vektörüyle yumuşatılır.
+const DEAD = 4;
 const screenAngle = () => (typeof screen !== "undefined" && screen.orientation ? screen.orientation.angle || 0 : Number(window.orientation) || 0);
+let MYPOS = null; // son GPS konumu (sapma hesabı için)
 function useHeading(on) {
   const [h, setH] = useState(null);
   const last = useRef({ t: 0, h: null, x: 0, y: 0, off: null });
   useEffect(() => {
     if (!on) return;
     const L = last.current;
-    const take = (deg, e) => {
-      if (deg == null || !Number.isFinite(deg)) return;
+    const take = (mag, e) => {
+      if (mag == null || !Number.isFinite(mag)) return;
+      const deg = mag + declination(MYPOS?.lat, MYPOS?.lon); // manyetikten gerçek kuzeye
       const r = (deg * Math.PI) / 180;
-      L.x = L.x * 0.7 + Math.sin(r) * 0.3;
-      L.y = L.y * 0.7 + Math.cos(r) * 0.3;
+      L.x = L.x * 0.85 + Math.sin(r) * 0.15;
+      L.y = L.y * 0.85 + Math.cos(r) * 0.15;
       const v = normDeg((Math.atan2(L.x, L.y) * 180) / Math.PI);
-      SENS = { h: v, roll: Number.isFinite(e?.gamma) ? Math.round(e.gamma) : null, pitch: Number.isFinite(e?.beta) ? Math.round(e.beta) : null, t: Date.now() };
+      SENS = {
+        h: v,
+        roll: Number.isFinite(e?.gamma) ? Math.round(e.gamma) : null,
+        pitch: Number.isFinite(e?.beta) ? Math.round(e.beta) : null,
+        t: Date.now(),
+      };
       const now = Date.now();
-      if (now - L.t < 150 || v === L.h) return;
+      // Ölü bölge (Seyhun 2026-11-15): 2-3 derecelik oynamada sayı değişmez, 4 derece ve üstü değişimde gösterilir (kayıt ham kalır)
+      if (now - L.t < 150 || (L.h != null && Math.abs(((v - L.h + 540) % 360) - 180) < DEAD)) return;
       L.t = now;
       L.h = v;
       setH(v);
@@ -54,10 +66,48 @@ function useHeading(on) {
       }
       if (e.absolute) take(t, e);
     };
-    const hasAbs = "ondeviceorientationabsolute" in window;
-    if (hasAbs) window.addEventListener("deviceorientationabsolute", abs);
-    else window.addEventListener("deviceorientation", ios);
+    const events = () => {
+      if ("ondeviceorientationabsolute" in window) window.addEventListener("deviceorientationabsolute", abs);
+      else window.addEventListener("deviceorientation", ios);
+    };
+    // Android: önce AbsoluteOrientationSensor (dörtlük; dik telefonda da doğru). Yoksa, izin verilmezse ya da 2 sn'de okuma
+    // gelmezse eski açı olayına dönülür. iPhone'da bu sensör yok, webkitCompassHeading yolu sürer.
+    let sensor = null;
+    let fell = false;
+    let wait = 0;
+    const fall = () => {
+      if (fell) return;
+      fell = true;
+      clearTimeout(wait);
+      try {
+        sensor?.stop();
+      } catch {}
+      sensor = null;
+      events();
+    };
+    const iosLike = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    if (!iosLike && typeof window.AbsoluteOrientationSensor === "function") {
+      try {
+        sensor = new window.AbsoluteOrientationSensor({ frequency: 20, referenceFrame: "device" });
+        sensor.addEventListener("reading", () => {
+          clearTimeout(wait);
+          const q = quatHeading(sensor?.quaternion, screenAngle());
+          if (q) take(q.h, q);
+        });
+        sensor.addEventListener("error", fall);
+        sensor.start();
+        wait = setTimeout(fall, 2000);
+      } catch {
+        fall();
+      }
+    } else fall();
     return () => {
+      clearTimeout(wait);
+      try {
+        sensor?.stop();
+      } catch {}
+      sensor = null;
+      fell = true;
       window.removeEventListener("deviceorientationabsolute", abs);
       window.removeEventListener("deviceorientation", ios);
     };
@@ -92,7 +142,13 @@ function useRecord(on, org, uid, name) {
     let t0 = 0;
     const flush = () => {
       if (buf.length < 5) return;
-      savePusula(org, { uid, name: name || "", at: t0, pts: buf.flat(), n: buf.length }).catch(() => {});
+      savePusula(org, {
+        uid,
+        name: name || "",
+        at: t0,
+        pts: buf.flat(),
+        n: buf.length,
+      }).catch(() => {});
       buf = [];
     };
     const id = setInterval(() => {
@@ -110,6 +166,164 @@ function useRecord(on, org, uid, name) {
       flush();
     };
   }, [on, org, uid, name]);
+}
+
+// Ekran kaymasın (Seyhun 2026-11-15, iPhone'da yukarı aşağı oynuyordu): sayfa kaydırma ve lastik esneme kapalı, sürükleme yok
+function useLock() {
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.add("bz-lock");
+    const stop = (e) => e.touches?.length < 2 && e.cancelable && e.preventDefault();
+    document.addEventListener("touchmove", stop, { passive: false });
+    return () => {
+      el.classList.remove("bz-lock");
+      document.removeEventListener("touchmove", stop);
+    };
+  }, []);
+}
+
+// Tekne konumu: ekran açıkken GPS izlenir, 10 sn'de bir yazılır; tekne durgunsa (10 m'den az kıpırdadı) 45 sn'de bir.
+// (Seyhun 2026-11-15 "Firebase'e yük, masraf": 5/30 sn'den 10/45 sn'ye; hareketli teknede saatte 360 yazma)
+// Belge: bilgiTekne/{cihaz} { org, k (açık link anahtarı), sail, name, lat, lon, spd (kn), hdg, acc, t, uid }
+const metres = (a, b) => {
+  const r = Math.PI / 180;
+  const x = (b.lon - a.lon) * r * Math.cos(((a.lat + b.lat) / 2) * r);
+  return Math.hypot(x, (b.lat - a.lat) * r) * 6371e3;
+};
+// Kanaldaki varlık + konum (tek belge bilgiTekne/{cihaz}): GPS varsa 10 sn'de bir (durgunsa 45 sn), yoksa 45 sn'de bir konumsuz.
+// seen: ekranın gösterdiği/çaldığı son mesaj ya da ses (Yönet'te "Görüldü"); değişince hemen yazılır.
+function usePresence(on, who, org, k, uid, ch, seen) {
+  const st = useRef({ seen: "", kick: null });
+  useEffect(() => {
+    if (!on || !org || !who || !ch) return;
+    const S0 = st.current;
+    const dev = deviceId();
+    if (!dev) return;
+    let fix = null;
+    let sent = null;
+    const write = () => {
+      const c = fix && Date.now() - fix.timestamp < 20000 ? fix.coords : null;
+      const pt = c ? { lat: +c.latitude.toFixed(6), lon: +c.longitude.toFixed(6) } : { lat: null, lon: null };
+      const d = {
+        org,
+        k: k || "",
+        ch,
+        sail: who.sail || "",
+        name: who.name || "",
+        ...pt,
+        spd: c && Number.isFinite(c.speed) ? Math.round(c.speed * 19.44) / 10 : null,
+        hdg: c && Number.isFinite(c.heading) ? Math.round(c.heading) : null,
+        acc: c ? Math.round(c.accuracy || 0) : null,
+        t: Date.now(),
+        uid: uid || "",
+        seen: S0.seen || "",
+      };
+      sent = { ...pt, t: d.t, seen: d.seen };
+      sendPos(dev, d).catch(() => (sent = null));
+    };
+    S0.kick = write;
+    const w = navigator.geolocation?.watchPosition(
+      (p) => (fix = p),
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
+    );
+    write();
+    const id = setInterval(() => {
+      const c = fix && Date.now() - fix.timestamp < 20000 ? fix.coords : null;
+      const age = sent ? Date.now() - sent.t : Infinity;
+      if (c && sent?.lat != null && metres(sent, { lat: c.latitude, lon: c.longitude }) < 10 && age < 45000) return;
+      if (!c && age < 45000) return;
+      if (age < 9500) return;
+      write();
+    }, 5000);
+    return () => {
+      S0.kick = null;
+      if (w != null) navigator.geolocation.clearWatch(w);
+      clearInterval(id);
+    };
+  }, [on, who, org, k, uid, ch]);
+  useEffect(() => {
+    if (!seen || st.current.seen === seen) return;
+    st.current.seen = seen;
+    st.current.kick?.();
+  }, [seen]);
+}
+
+const noSub = () => () => {};
+const whoRaw = () => {
+  try {
+    return localStorage.getItem("sa-bilgi-kim") || "";
+  } catch {
+    return "";
+  }
+};
+
+// Başlat: yelken no + isim (bu telefonda saklı). Kayıtlıysa yalnız Başlat ve Değiştir
+function StartCard({ onGo, kanal }) {
+  // Saklı kimlik ilk çizimden sonra okunur (sunucu çizimiyle uyuşsun): sunucuda null
+  const raw = useSyncExternalStore(noSub, whoRaw, () => null);
+  const who = raw ? readWho() : null;
+  const [editing, setEditing] = useState(false);
+  const edit = editing || (raw !== null && !who);
+  const [sail, setSail] = useState("");
+  const [name, setName] = useState("");
+  const go = () => {
+    if (edit) {
+      if (!sail.trim() && !name.trim()) return;
+      saveWho({ sail, name });
+      onGo(readWho());
+    } else onGo(who);
+  };
+  const change = () => {
+    setSail(who?.sail || "");
+    setName(who?.name || "");
+    setEditing(true);
+  };
+  if (raw === null || kanal === undefined) return <div className="bz-go" />;
+  if (!kanal?.open)
+    return (
+      <div className="bz-go">
+        <div className="bz-card bz-none">Kanal açık değil</div>
+      </div>
+    );
+  return (
+    <div className="bz-go">
+      <form
+        className="bz-card"
+        onSubmit={(e) => {
+          e.preventDefault();
+          go();
+        }}
+      >
+        <div className="bz-ch">{kanal.name}</div>
+        {edit ? (
+          <>
+            <label>
+              Yelken no
+              <input className="num" value={sail} maxLength={12} inputMode="text" autoCapitalize="characters" onChange={(e) => setSail(e.target.value)} />
+            </label>
+            <label>
+              İsim
+              <input value={name} maxLength={30} autoCapitalize="words" onChange={(e) => setName(e.target.value)} />
+            </label>
+          </>
+        ) : (
+          <div className="bz-who">
+            <b className="num">{who.sail}</b>
+            <span>{who.name}</span>
+          </div>
+        )}
+        <button type="submit" className="btn btn-primary" disabled={edit && !sail.trim() && !name.trim()}>
+          Katıl ve başlat
+        </button>
+        {!edit && (
+          <button type="button" className="bz-chg" onClick={change}>
+            Değiştir
+          </button>
+        )}
+      </form>
+    </div>
+  );
 }
 
 function useWake(on) {
@@ -132,6 +346,39 @@ function useWake(on) {
       lock?.release().catch(() => {});
     };
   }, [on]);
+}
+
+// Bip sesi (Web Audio): bağlam "Başlat" dokunuşunda açılır. one: kısa bip, two: çift bip, long: uzun bip
+let ACTX = null;
+function tone(at, len) {
+  const c = ACTX;
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = "square";
+  o.frequency.value = 1500;
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(0.5, at + 0.01);
+  g.gain.setValueAtTime(0.5, at + len - 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+  o.connect(g).connect(c.destination);
+  o.start(at);
+  o.stop(at + len + 0.02);
+}
+function beep(kind) {
+  if (!ACTX) return;
+  if (ACTX.state === "suspended") ACTX.resume().catch(() => {});
+  const t = ACTX.currentTime + 0.02;
+  if (kind === "long") tone(t, 1);
+  else if (kind === "two") (tone(t, 0.12), tone(t + 0.2, 0.12));
+  else tone(t, 0.15);
+}
+function useBeeps(on, left) {
+  const prev = useRef(null);
+  useEffect(() => {
+    const k = beepOf(prev.current, left);
+    prev.current = left;
+    if (on && k) beep(k);
+  }, [on, left]);
 }
 
 // Ses öğesi tek: ekran tek, dokunuşla açılan öğe sonra gelen kayıtları çalar
@@ -171,6 +418,11 @@ function useVoice(on, msg, ses) {
   // Tarayıcı sesi yalnız dokunuştan sonra çalar: aynı ses öğesi dokunuşta bir kez sessizce çalınır, sonra gelen kayıtlar onunla çalar
   const unlock = async () => {
     try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC && !ACTX) ACTX = new AC();
+      ACTX?.resume().catch(() => {});
+    } catch {}
+    try {
       const a = AUDIO || (AUDIO = new Audio());
       a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
       await a.play().catch(() => {});
@@ -185,7 +437,16 @@ function useVoice(on, msg, ses) {
 function Tape({ h }) {
   const W = 300;
   const px = 3.2;
-  const L = { 0: "K", 45: "KD", 90: "D", 135: "GD", 180: "G", 225: "GB", 270: "B", 315: "KB" };
+  const L = {
+    0: "K",
+    45: "KD",
+    90: "D",
+    135: "GD",
+    180: "G",
+    225: "GB",
+    270: "B",
+    315: "KB",
+  };
   const ticks = [];
   if (h != null)
     for (let d = Math.ceil((h - 50) / 5) * 5; d <= h + 50; d += 5) {
@@ -194,9 +455,17 @@ function Tape({ h }) {
       const maj = dd % 15 === 0;
       ticks.push(<line key={`l${d}`} x1={x} x2={x} y1={maj ? 6 : 12} y2={20} style={{ stroke: maj ? "var(--bz-tick)" : "var(--bz-tick2)" }} strokeWidth="1.4" />);
       if (dd % 45 === 0)
-        ticks.push(<text key={`t${d}`} x={x} y="32" className="bz-tl">{L[dd]}</text>);
+        ticks.push(
+          <text key={`t${d}`} x={x} y="32" className="bz-tl">
+            {L[dd]}
+          </text>,
+        );
       else if (maj)
-        ticks.push(<text key={`t${d}`} x={x} y="32" className="bz-tn">{dd}</text>);
+        ticks.push(
+          <text key={`t${d}`} x={x} y="32" className="bz-tn">
+            {dd}
+          </text>,
+        );
     }
   return (
     <svg className="bz-tape" viewBox={`0 0 ${W} 34`} preserveAspectRatio="none" aria-hidden="true">
@@ -207,58 +476,171 @@ function Tape({ h }) {
   );
 }
 
-function Course({ kind }) {
-  const c = courseOf(kind);
-  const wind = 0; // parkurdaki rüzgâr: kendi ölçümümüz gelince (Seyhun 2026-11-15 "şimdilik 0")
+// Rüzgâr göstergesi (Seyhun 2026-11-15): halkanın üstü teknenin burnu; mavi ok rüzgârın geldiği yerden içeri. Yanında rüzgâr yönü
+// ve burna göre açısı ("27° iskeleden"). Rüzgâr Yönet › Parkur'da girilir
+function WindDial({ wind, head }) {
+  if (wind == null) return null;
+  const r = windRel(wind, head);
   return (
-    <svg className="bz-course" viewBox="0 0 300 260" preserveAspectRatio="xMidYMid meet" aria-label={`Parkur ${c.name}`}>
-      <path d={c.path.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join(" ")} fill="none" style={{ stroke: "var(--bz-line2)" }} strokeWidth="1.5" strokeDasharray="4 5" />
-      {c.marks.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r="6.5" style={{ fill: "var(--bz-mark)" }} />
-      ))}
-      {c.labels.map(([n, x, y]) => (
-        <text key={n} x={x} y={y} className="bz-mk">
-          {n}
-        </text>
-      ))}
-      <path d="M110 236 L196 236" style={{ stroke: "var(--bz-line3)" }} strokeWidth="2" />
-      <rect x="196" y="230" width="14" height="12" rx="2" style={{ fill: "var(--bz-line3)" }} />
-      <circle cx="110" cy="236" r="4" style={{ fill: "var(--bz-line3)" }} />
-      <g transform="translate(250 54)">
-        <circle r="26" fill="none" style={{ stroke: "var(--bz-line2)" }} strokeWidth="1.5" />
-        <path d="M0 -18 L0 12 M-7 4 L0 13 L7 4" style={{ stroke: "var(--bz-dim)" }} strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      </g>
-      <text x="250" y="102" className="bz-wk">
-        {wind}
-        <tspan className="bz-wu"> kn</tspan>
-      </text>
-      <text x="250" y="118" className="bz-wd">— °</text>
-    </svg>
+    <div className="bz-wind">
+      <svg viewBox="-50 -50 100 100" aria-hidden="true">
+        <circle r="44" className="bz-wr" />
+        <path d="M0 -44 L0 -35" className="bz-wb" />
+        {r && (
+          <g transform={`rotate(${r.rel})`}>
+            <path d="M0 -47 L0 -13" className="bz-wa" />
+            <path d="M-9 -23 L0 -11 L9 -23" className="bz-wa" />
+          </g>
+        )}
+      </svg>
+      <div className="bz-wt">
+        <b className="num">{wind}°</b>
+        {r && (
+          <span>
+            {r.side ? (
+              <>
+                <em className="num">{r.deg}°</em> {r.side}
+              </>
+            ) : r.rel === 0 ? (
+              "tam burundan"
+            ) : (
+              "tam kıçtan"
+            )}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
-export function BilgiScreen() {
+// Teknenin kendi konumu (ekranda harita için) ve son 10 dk izi (5 sn'de bir nokta). err: konum alınamıyorsa kısa sebep
+// (Seyhun 2026-11-15 Android'de harita/konum boş kaldı: hata sessizce yutuluyordu). Yüksek doğruluk 20 sn'de konum vermezse
+// (içeride GPS tutmaz, Google servisi olmayan telefon) düşük doğrulukla (ağ) da denenir.
+const noGeo = () => !navigator.geolocation || window.isSecureContext === false;
+const GEO_ERR = { 1: "Konum izni verilmedi", 2: "Konum bulunamadı, telefonda konum açık mı?", 3: "Konum bekleniyor…" };
+// İzin yoksa kullanıcı uğraşmasın (Seyhun 2026-11-15): "Konum iznini ver" düğmesi izni yeniden ister; telefon artık sormuyorsa
+// (kalıcı red) o cihaza göre nereden açılacağı tek satırla yazılır.
+function geoHelp() {
+  const ua = navigator.userAgent || "";
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const app = !!window.Capacitor?.isNativePlatform?.();
+  if (app && ios) return "iPhone Ayarlar › Velora › Konum › Uygulamayı Kullanırken";
+  if (app) return "Telefon Ayarlar › Uygulamalar › Velora › İzinler › Konum › İzin ver";
+  if (ios) return "iPhone Ayarlar › Gizlilik › Konum Servisleri açık olsun; Safari'de adres çubuğundaki aA › Web Sitesi Ayarları › Konum › İzin Ver";
+  return "Adres çubuğunun solundaki simge › İzinler › Konum › İzin ver, sonra sayfayı yenile";
+}
+function useMyPos(on) {
+  const [pos, setPos] = useState({ me: null, trail: [], err: "", denied: false, help: "" });
+  const [run, setRun] = useState(0);
+  // Düğme: izni dokunuşla yeniden ister; verilirse izleme baştan başlar, yine red gelirse ayar yolu gösterilir
+  const ask = () => {
+    try {
+      navigator.geolocation.getCurrentPosition(
+        () => {
+          setPos((o) => ({ ...o, err: "", denied: false, help: "" }));
+          setRun((n) => n + 1);
+        },
+        (e) => setPos((o) => (e?.code === 1 ? { ...o, help: geoHelp() } : { ...o, err: GEO_ERR[e?.code] || "Konum alınamadı", denied: false })),
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 },
+      );
+    } catch {}
+  };
+  useEffect(() => {
+    if (!on) return;
+    if (noGeo()) return;
+    let last = 0;
+    let got = false;
+    const ok = (p) => {
+      got = true;
+      const me = { lat: p.coords.latitude, lon: p.coords.longitude };
+      MYPOS = me;
+      const t = Date.now();
+      setPos((o) => {
+        const add = t - last > 5000;
+        if (add) last = t;
+        return { me, err: "", trail: add ? [...o.trail.filter((x) => t - x.t < 600e3), { ...me, t }] : o.trail };
+      });
+    };
+    const bad = (e) => !got && setPos((o) => ({ ...o, err: GEO_ERR[e?.code] || "Konum alınamadı", denied: e?.code === 1 }));
+    const w1 = navigator.geolocation.watchPosition(ok, bad, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    let w2 = null;
+    const slow = setTimeout(() => {
+      if (!got) w2 = navigator.geolocation.watchPosition(ok, bad, { enableHighAccuracy: false, maximumAge: 30000, timeout: 30000 });
+    }, 20000);
+    return () => {
+      clearTimeout(slow);
+      navigator.geolocation.clearWatch(w1);
+      if (w2 != null) navigator.geolocation.clearWatch(w2);
+    };
+  }, [on, run]);
+  const none = useSyncExternalStore(noSub, noGeo, () => false);
+  return none ? { ...pos, err: "Bu tarayıcı konum vermiyor, linki Chrome ya da Safari'de aç", ask } : { ...pos, ask };
+}
+
+function GeoAsk({ pos }) {
+  return (
+    <span className="bz-geo">
+      <button type="button" className="bz-geo-b" onClick={pos.ask}>
+        Konum iznini ver
+      </button>
+      {pos.help && <span className="bz-geo-h">{pos.help}</span>}
+    </span>
+  );
+}
+
+// pub: herkese açık linkle (/ekran/{anahtar}) girişsiz açılış; veri kopya belgeden, pusula kaydı yok, geri düğmesi yok
+export function BilgiScreen({ pub = "" }) {
   const router = useRouter();
   const { profile } = useAuth();
-  const org = profile?.orgId || "";
-  const b = useBilgi(org);
-  const ses = useBilgiDoc(org, "ses");
+  const org = pub ? "" : profile?.orgId || "";
+  const own = useBilgi(org);
+  const ownSes = useBilgiDoc(org, "ses");
+  const [pb, pses, porg] = usePublic(pub);
+  const [who, setWho] = useState(null);
+  const b = pub ? pb : own;
+  const ses = pub ? pses : ownSes;
   const [on, setOn] = useState(false);
   const now = useTick(250);
   const h = useHeading(on);
   useRecord(on, org, profile?.uid, profile?.name);
   useWake(on);
-  const [talk, unlock] = useVoice(on, b?.msg, ses);
+  useLock();
+  // Kanal: yalnız açık kanala katılınca çalışır; kanal kapanır ya da yenisi açılırsa ekran yeniden katılma kartına döner
+  const kanal = b === undefined ? undefined : b?.kanal || null;
+  const [joined, setJoined] = useState("");
+  const active = on && !!kanal?.open && joined === kanal.id;
+  const dev = useSyncExternalStore(noSub, deviceId, () => "");
+  const forMe = (x) => x && (!x.to || x.to === dev);
+  const myMsg = forMe(b?.msg) ? b.msg : null;
+  const mySes = forMe(ses) ? ses : null;
+  const fresh = [myMsg, mySes].filter((x) => x?.id && now - x.at < FRESH_MS).sort((x, y) => y.at - x.at)[0];
+  usePresence(active, who, pub ? porg : org, pub, profile?.uid, kanal?.id || "", active ? fresh?.id || "" : "");
+  const [talk, unlock] = useVoice(active, myMsg, mySes);
+  const pos = useMyPos(active);
 
   // Tek dokunuş: pusula izni (iPhone), sesin açılması ve ekranın açık kalması tarayıcının dokunuş istediği işler
-  const start = async () => {
+  const start = async (w) => {
+    setWho(w);
+    setJoined(kanal?.id || "");
     try {
       if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") await DeviceOrientationEvent.requestPermission();
     } catch {}
-    await unlock();
+    // Konum izni dokunuşla istensin (bazı tarayıcılar dokunuşsuz isteği göstermiyor)
     try {
-      await document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
+      navigator.geolocation?.getCurrentPosition(
+        () => {},
+        () => {},
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 },
+      );
     } catch {}
+    await unlock();
+    // Tam ekran yalnız tarayıcıda: uygulamada (iPhone kabuğu, ana ekran uygulaması) iOS üstte site adresli "tam ekran" şeridi gösteriyordu
+    // (Seyhun 2026-11-15); uygulama zaten tam ekran
+    const app = !!window.Capacitor?.isNativePlatform?.() || window.navigator.standalone === true || window.matchMedia?.("(display-mode: standalone)").matches;
+    if (!app)
+      try {
+        await document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
+      } catch {}
     setOn(true);
   };
   const leave = () => {
@@ -271,15 +653,35 @@ export function BilgiScreen() {
   const sv = startView(b?.timer, now);
   const dur = b?.timer?.dur ?? 300;
   const seq = sv.phase === "down" && dur === 300 ? seqMarks(sv.left) : null;
-  const msg = b?.msg && now - b.msg.at < FRESH_MS ? b.msg : null;
+  const msg = myMsg && now - myMsg.at < FRESH_MS ? myMsg : null;
+  const mode = screenMode(sv);
+  const show = b?.show || SHOW_DEF;
+  useBeeps(on, sv.phase === "down" || sv.phase === "up" ? sv.left : null);
+  const compass = (
+    <div className="bz-cmp">
+      <div className="bz-hd num">{h == null ? "---" : h}°</div>
+      <div className="bz-dn num">{h == null ? "" : dirName(h)}</div>
+      <Tape h={h} />
+    </div>
+  );
+  const course = buildCourse(b?.parkur);
+  const wind = <WindDial wind={course.up} head={h} />;
+  const map = (
+    <div className="bz-rt">
+      <CourseMap course={course} me={pos.me} head={h} trail={pos.trail} className="bz-map" note={pos.me ? "" : pos.denied ? <GeoAsk pos={pos} /> : pos.err || "Konum bekleniyor…"} />
+      {b?.state && <div className="bz-cs">{b.state}</div>}
+    </div>
+  );
 
   return (
-    <main className={`bz${night ? "" : " bz-day"}`} data-bilgi>
-      <button type="button" className="bz-back" onClick={leave} aria-label="Geri">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-          <path d="M15 5l-7 7 7 7" />
-        </svg>
-      </button>
+    <main className={`bz${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
+      {!pub && (
+        <button type="button" className="bz-back" onClick={leave} aria-label="Geri">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+        </button>
+      )}
       {talk && (
         <span className="bz-talk" aria-label="Konuşuyor">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -288,55 +690,83 @@ export function BilgiScreen() {
           </svg>
         </span>
       )}
-      <div className="bz-cmp">
-        <div className="bz-hd num">{h == null ? "---" : h}°</div>
-        <div className="bz-dn num">{h == null ? "" : dirName(h)}</div>
-        <Tape h={h} />
-      </div>
-      <div className="bz-rt">
-        <Course kind={b?.course} />
-        {b?.state && <div className="bz-cs">{b.state}</div>}
-      </div>
-      {sv.phase !== "none" && (
-        <div className="bz-tm">
-          {seq && (
-            <div className="bz-seq">
-              {seq.map((x) => (
-                <div key={x.m} className={x.on ? "on" : x.done ? "done" : ""}>
-                  {x.m}
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="bz-cd num">{sv.txt}</div>
-          {(b?.label || pFlag(sv.left, dur)) && (
-            <div className="bz-ln">
-              {b?.label && <span>{b.label}</span>}
-              {pFlag(sv.left, dur) && (
-                <span className="bz-flag">
-                  <i />P
+      {mode === "last" && (
+        <div className="bz-last">
+          <div className="bz-lm num">{sv.txt}</div>
+          {b?.label && <div className="bz-ll">{b.label}</div>}
+        </div>
+      )}
+      {mode === "race" && (
+        <>
+          {/* Start sonrası (Seyhun 2026-11-15): üst yarı büyük pusula (+ rüzgâr), alt yarı harita; en altta solda akan süre, sağda saat */}
+          <div className="bz-top">
+            {show.pusula && compass}
+            {show.ruzgar && wind}
+          </div>
+          {show.parkur ? map : <div className="bz-fill" />}
+          {(show.sure || show.saat) && (
+            <div className="bz-foot num">
+              <span>
+                {show.sure && sv.txt}
+                {show.sure && b?.label && <small>{b.label}</small>}
+              </span>
+              {show.saat && (
+                <span className="bz-fclk" aria-label="Saat">
+                  {pad(d.getHours())}:{pad(d.getMinutes())}
                 </span>
               )}
             </div>
           )}
-        </div>
+        </>
+      )}
+      {mode === "pre" && (
+        <>
+          {compass}
+          {wind}
+          {map}
+          {sv.phase !== "none" && (
+            <div className="bz-tm">
+              {seq && (
+                <div className="bz-seq">
+                  {seq.map((x) => (
+                    <div key={x.m} className={x.on ? "on" : x.done ? "done" : ""}>
+                      {x.m}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="bz-cd num">{sv.txt}</div>
+              {(b?.label || pFlag(sv.left, dur)) && (
+                <div className="bz-ln">
+                  {b?.label && <span>{b.label}</span>}
+                  {pFlag(sv.left, dur) && (
+                    <span className="bz-flag">
+                      <i />P
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
       {msg && (
         <div className="bz-msg" role="status">
           <time className="num">
             {pad(new Date(msg.at).getHours())}:{pad(new Date(msg.at).getMinutes())}
           </time>
-          <p>{msg.text}</p>
+          <p>
+            {msg.to && <em>Sana</em>}
+            {msg.text}
+          </p>
         </div>
       )}
-      <span className="bz-clk num" aria-label="Saat">
-        {pad(d.getHours())}:{pad(d.getMinutes())}
-      </span>
-      {!on && (
-        <button type="button" className="bz-go" onClick={start}>
-          <span className="btn btn-primary">Başlat</span>
-        </button>
+      {mode !== "race" && (
+        <span className="bz-clk num" aria-label="Saat">
+          {pad(d.getHours())}:{pad(d.getMinutes())}
+        </span>
       )}
+      {!active && <StartCard onGo={start} kanal={kanal} />}
     </main>
   );
 }

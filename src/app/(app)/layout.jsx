@@ -44,7 +44,7 @@ export default function AppLayout({ children }) {
   // açılır notları görünmez (canlı ekranın kendi geri ve "Yeni sürüm" çubuğu var)
   // Sporcu bilgi ekranı (/bilgi) da tek ekran: alt çubuk ve açılır notlar yok
   const path = usePathname();
-  const live = path.startsWith("/canli") || path === "/bilgi";
+  const live = path.startsWith("/canli") || path === "/bilgi" || path === "/bilgi/yonet";
 
   // Geri düğmeleri gelinen sayfaya dönsün diye uygulama içi geçmiş izlenir
   useEffect(() => installTrail(), []);

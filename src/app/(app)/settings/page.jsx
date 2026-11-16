@@ -17,6 +17,7 @@ import { CallsRow } from "@/features/settings/Calls";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { PastChatsRow } from "@/features/settings/PastChats";
 import { EnergyRow } from "@/features/settings/Energy";
+import { AndroidApkRow } from "@/features/settings/AndroidApk";
 import { buildLine } from "@/lib/buildInfo";
 import { openText, readOpens } from "@/lib/openTime";
 import { logout } from "@/lib/auth";
@@ -94,6 +95,7 @@ function PersonSettings({ profile, n }) {
           <PasswordRow />
           <FaceIdRow />
           <VersionRow />
+          <AndroidApkRow />
           <Row title="Çıkış yap" danger onClick={() => logout()} />
         </Sec>
       </Body>
@@ -166,6 +168,7 @@ export default function SettingsPage() {
           <PasswordRow />
           <FaceIdRow />
           <VersionRow />
+          <AndroidApkRow />
           <OpenRow />
           <Row title="Çıkış yap" danger onClick={() => logout()} />
         </Sec>

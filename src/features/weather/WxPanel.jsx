@@ -9,7 +9,7 @@ import { dayPlans, dayWeather, planTone } from "@/lib/homeTiles";
 
 // Ortak Hava kutusu (Seyhun 2026-11-12 "hava durumu sayfasını da ana sayfa hava durumuna göre yap… gerçekleşen değerleri de göster… birleştir";
 // örnek ana-sayfa/sade-2026-11/hava.html). Ana sayfa (IpadHome) ve hava sayfası (WeatherTop) aynı parçaları kullanır:
-// HavaPanel (solda pusula: şimdi, istasyon ölçümü varsa ondan; sağda seçili günün saat saat rüzgârı, geçen saatler ölçülen beyaz çizgi),
+// HavaPanel (üstte şimdiki rüzgâr: ok + derece, istasyon ölçümü varsa ondan; altta kenardan kenara saat saat rüzgâr, geçen saatler ölçülen beyaz çizgi),
 // DayCell (bir gün: gök, sıcaklık, gün içi rüzgâr, yön, yağış; geçmiş gün ölçülenden, "ölçülen" etiketli; plans verilirse planlar).
 export const H0 = 6;
 export const H1 = 24;
@@ -45,7 +45,36 @@ export function useObsRows(date, today) {
   return { station: ob?.station || null, rows: (ob?.rows || []).filter((o) => o.wind != null && (date < today || +o.hh <= nowH)) };
 }
 
-// Hava kutusu. date: seçili gün; rows: o günün saatleri (hava sayfasında bugün radarla düzeltilmiş); onOpen: kutuya dokununca
+// Hava kutusu (Seyhun 2026-11-15, örnek ana-sayfa/sade-2026-11/hava-gomulu.html: "pusulaya gerek yok… rüzgârın şiddeti ve yönü, ok ve derece";
+// "yağış tek satır"). Üstte büyük rakamla rüzgâr + estiği yönü gösteren ok, altında derece, adı, sağanak; sağda sıcaklık ve gök.
+// Bulutluysa arkada yavaş kayan yumuşak gölgeler. Altta kenardan kenara saat saat rüzgâr (WindChart), en altta tek satır yağış.
+// date: seçili gün; rows: o günün saatleri (hava sayfasında bugün radarla düzeltilmiş); onOpen: kutuya dokununca
+const CLOUDY = new Set(["cloud", "cloudSun", "fog", "rain", "storm", "snow"]);
+const AT = { kuzey: "kuzeyinde", kuzeydoğu: "kuzeydoğusunda", doğu: "doğusunda", güneydoğu: "güneydoğusunda", güney: "güneyinde", güneybatı: "güneybatısında", batı: "batısında", kuzeybatı: "kuzeybatısında" };
+
+// Rüzgâr oku: rüzgârın estiği yön (derece geldiği yön; 315° karayel kuzeybatıdan eser, ok güneydoğuyu gösterir)
+export function WindArrow({ dir, size = 16, color = "currentColor", className = "" }) {
+  if (dir == null || !Number.isFinite(+dir)) return null;
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} className={`shrink-0 ${className}`} style={{ transform: `rotate(${+dir}deg)` }} aria-hidden="true">
+      <path d="M12 3v15M6 12l6 7 6-7" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Tek satır yağış: burada bekleniyorsa saat aralığı + mm, yoksa radar yakında gösteriyorsa uzaklık ve yön
+function rainText(rows, nowH, radar) {
+  const rs = rows?.length ? rainSpan(rows, nowH ?? -1, radar) : null;
+  if (!rs) return "";
+  if (rs.here) {
+    if (nowH != null && nowH >= 0 && rs.to < nowH) return ""; // bugün yağış saatleri geçti: "bekleniyor" yazılmaz
+    const when = rs.from === rs.to ? `${pad(rs.from)}:00` : `${pad(rs.from)}:00–${pad((rs.to + 1) % 24)}:00`;
+    return rs.mm >= 0.1 ? `${when} · ${fmtRainMm(rs.mm)} mm bekleniyor` : `${when} arası bekleniyor`;
+  }
+  const n = radar?.near;
+  return n ? `Burada yağmıyor · ${n.km} km ${AT[n.dir] || n.dir} yağış var` : "";
+}
+
 export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "Hava", onOpen, radar = null }) {
   const isToday = date === today;
   const place = getPlace();
@@ -53,127 +82,109 @@ export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "H
   const dw = dayWeather(w, rows, date);
   const now = useObsRows(today, today);
   const day = useObsRows(date, today);
-  // Pusula: son 2 saatte istasyon ölçümü varsa o (gerçek), yoksa tahminin şimdisi
+  // Şimdi: son 2 saatte istasyon ölçümü varsa o (gerçek), yoksa tahminin şimdisi
   const last = now.rows.at(-1);
   const real = last && new Date().getHours() - +last.hh <= 2 ? last : null;
   const cur = n && (real ? { ...n, wind: Math.round(real.wind), gust: real.gust != null ? Math.round(real.gust) : n.gust, dir: real.dir ?? n.dir } : n);
   const dname = isToday ? "Bugün" : cap(new Date(`${date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric" }));
   const open = onOpen || (() => refresh?.(true));
+  const sk = cur ? sky(cur.code, cur.day) : null;
+  const rain = rainText(rows, isToday ? nowH : -1, isToday ? radar : null);
   return (
     <section className="iph-pn iph-wx" aria-label="Hava">
+      {sk && CLOUDY.has(sk.icon) && (
+        <>
+          <span className="iph-cl" aria-hidden="true" />
+          <span className="iph-cl iph-cl-b" aria-hidden="true" />
+        </>
+      )}
       <button type="button" onClick={w ? open : () => refresh?.(true)} className="iph-now" aria-label="Hava ayrıntısı">
-        <span className="iph-pt">
-          {title}
-          <span className="flex-1" />
-          <em className="truncate">{real ? `ölçülen ${real.hh}:00` : place.name}</em>
-        </span>
         {cur ? (
           <>
-            <Compass wind={cur.wind} gust={cur.gust} dir={cur.dir} />
-            <span className="mt-1 flex items-center gap-2.5">
-              <SkyIcon code={cur.code} day={cur.day} size="size-7" />
-              <span className="num text-[1.5rem] leading-none">{cur.t}°</span>
-              <small className="text-[0.75rem] font-semibold leading-tight text-mut">
-                {windName(cur.dir)?.[0]}
-                {dw && <span className="num block">{dw.min}°/{dw.max}°</span>}
-              </small>
+            <span className="min-w-0">
+              <span className="iph-pt">
+                {title} · {place.name}
+                {real && (
+                  <em className="iph-live">
+                    <i />
+                    ölçülen {real.hh}:00
+                  </em>
+                )}
+              </span>
+              <span className="iph-kn">
+                <WindArrow dir={cur.dir} size={40} color="#fff" className="iph-kn-ar" />
+                <b className="num">{Math.round(cur.wind ?? 0)}</b>
+                <small>kn</small>
+              </span>
+              <span className="iph-kn-sub">
+                <b>
+                  {dirDeg(cur.dir)} {windName(cur.dir)?.[0]}
+                </b>{" "}
+                · sağanak {Math.round(cur.gust ?? cur.wind ?? 0)}
+              </span>
+            </span>
+            <span className="iph-nowr">
+              <span className="num text-[2rem] font-medium leading-none">{cur.t}°</span>
+              <span className="flex items-center gap-1.5 text-[0.875rem] text-[#cfdcf5]">
+                <SkyIcon code={cur.code} day={cur.day} />
+                {sk.label}
+              </span>
+              {dw && <span className="num text-[0.8125rem] text-mut">{dw.min}° / {dw.max}°</span>}
             </span>
           </>
         ) : (
-          <span className="grid flex-1 place-items-center text-[0.875rem] text-mut">{err ? "Hava alınamadı · dokun, yenile" : "Hava yükleniyor…"}</span>
+          <span className="grid min-h-[6rem] flex-1 place-items-center text-[0.875rem] text-mut">{err ? "Hava alınamadı · dokun, yenile" : "Hava yükleniyor…"}</span>
         )}
       </button>
-      <div className="min-w-0">
-        <span className="iph-pt">
-          {dname} · saat saat<span className="flex-1" />
-          <span className="iph-lg">
-            <span>
-              <i className="bg-[#8fb3ff]" />
-              rüzgâr
-            </span>
-            <span>
-              <i className="iph-dash" />
-              sağanak
-            </span>
-            {day.rows.length > 0 && (
-              <>
-                <span className="text-white">
-                  <i className="bg-white" />
-                  ölçülen
-                </span>
-                <span className="text-white">
-                  <i className="iph-dash iph-dash-w" />
-                  ölçülen sağanak
-                </span>
-              </>
-            )}
+      <span className="iph-lg iph-wxlg">
+        <span className="text-[#cfdcf5]">{dname}</span>
+        {day.rows.length > 0 && (
+          <span className="text-white">
+            <i className="bg-white" />
+            ölçülen
           </span>
+        )}
+        <span>
+          <i className="bg-[#8fb3ff]" />
+          tahmin
         </span>
-        <WindChart rows={rows} nowH={isToday ? nowH : null} onOpen={open} obs={day.rows} radar={isToday ? radar : null} />
-      </div>
+        <span>
+          <i className="iph-dash" />
+          sağanak
+        </span>
+      </span>
+      <WindChart rows={rows} nowH={isToday ? nowH : null} onOpen={open} obs={day.rows} radar={isToday ? radar : null} />
+      {rain && (
+        <p className="iph-rain" aria-label="Yağış">
+          <em>Yağış</em>
+          <span>{rain}</span>
+        </p>
+      )}
     </section>
   );
 }
 
-// Pusula: dış halkada yön çizgileri, beyaz üçgen rüzgârın geldiği yön, yanında sağanak yayı (renk = kn); ortada şimdiki rüzgâr
-export function Compass({ wind, gust, dir }) {
-  const S = 196;
-  const c = S / 2;
-  const R = c - 14;
-  const P = (r, a) => [c + r * Math.cos(((a - 90) * Math.PI) / 180), c + r * Math.sin(((a - 90) * Math.PI) / 180)];
-  const ticks = [];
-  for (let a = 0; a < 360; a += 10) {
-    const [x1, y1] = P(R, a);
-    const [x2, y2] = P(R - (a % 90 ? 6 : 12), a);
-    ticks.push(<line key={a} x1={x1} y1={y1} x2={x2} y2={y2} stroke={a % 90 ? "#2a4472" : "#8fb3ff"} strokeWidth={a % 90 ? 1 : 2} />);
+// Yumuşak eğri (Catmull-Rom → Bezier)
+function curve(p) {
+  if (p.length < 2) return "";
+  const f = (v) => v.toFixed(1);
+  let d = `M${f(p[0][0])} ${f(p[0][1])}`;
+  for (let i = 0; i < p.length - 1; i++) {
+    const p0 = p[i - 1] || p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] || p2;
+    d += ` C${f(p1[0] + (p2[0] - p0[0]) / 6)} ${f(p1[1] + (p2[1] - p0[1]) / 6)} ${f(p2[0] - (p3[0] - p1[0]) / 6)} ${f(p2[1] - (p3[1] - p1[1]) / 6)} ${f(p2[0])} ${f(p2[1])}`;
   }
-  const has = dir != null && Number.isFinite(+dir);
-  const span = Math.min(40, Math.max(8, ((gust ?? wind) - wind) * 3));
-  const [ax, ay] = P(R + 8, (dir || 0) - span);
-  const [bx, by] = P(R + 8, (dir || 0) + span);
-  const tri = [P(R + 2, dir || 0), P(R - 18, (dir || 0) - 7), P(R - 18, (dir || 0) + 7)];
-  return (
-    <svg viewBox={`0 0 ${S} ${S}`} className="iph-compass" role="img" aria-label={`Rüzgâr ${wind} knot, sağanak ${gust ?? wind}, ${windName(dir)?.[0] || ""} ${dirDeg(dir)}`}>
-      <circle cx={c} cy={c} r={R} fill="rgba(255,255,255,.02)" stroke="#1d3256" />
-      {ticks}
-      {[
-        ["K", 0],
-        ["D", 90],
-        ["G", 180],
-        ["B", 270],
-      ].map(([t, a]) => {
-        const [x, y] = P(R - 26, a);
-        return (
-          <text key={t} x={x} y={y + 4} fill="#7d90b5" fontSize="12" fontWeight="700" textAnchor="middle">
-            {t}
-          </text>
-        );
-      })}
-      {has && (
-        <>
-          <path d={`M${ax} ${ay} A${R + 8} ${R + 8} 0 0 1 ${bx} ${by}`} stroke={windColor(gust ?? wind)} strokeWidth="4" fill="none" strokeLinecap="round" />
-          <polygon points={tri.map((p) => p.join(",")).join(" ")} fill="#fff" />
-        </>
-      )}
-      <text x={c} y={c + 8} fill="#fff" fontSize="58" textAnchor="middle" className="num" fontWeight="500">
-        {Math.round(wind ?? 0)}
-      </text>
-      <text x={c} y={c + 32} fill="#7d90b5" fontSize="12.5" textAnchor="middle" fontWeight="600">
-        kn · sağanak {Math.round(gust ?? wind ?? 0)}
-      </text>
-    </svg>
-  );
+  return d;
 }
 
-
-// Seçili günün rüzgâr eğrisi (06–24): dolgu rüzgâr (tahmin), kesik çizgi sağanak, beyaz çizgi + noktalar ölçülen (istasyon); altında 3 saatlik bloklarda rüzgâr aralığı, gök, sıcaklık; bugünse kırmızı çizgi şimdi
+// Seçili günün rüzgâr eğrisi (06–24), kutunun bir kenarından öbürüne, eksensiz: dolgu rüzgâr (tahmin), kesik çizgi sağanak, beyaz çizgi ölçülen (istasyon);
+// yağış saatleri mavi bantta (WindRibbon.rainSpan, #1210, üstünde mm); bugünse kırmızı çizgi şimdi. Altında 3 saatlik bloklar: ok + rüzgâr aralığı, derece, gök, sıcaklık
 export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
   const [ref, W] = useWidth();
-  const H = 196;
+  const H = 222;
   const pts = (rows || []).filter((h) => +h.hh >= H0).map((h) => ({ ...h, x: +h.hh }));
-  const X = (h) => 30 + ((h - H0) / (H1 - H0)) * (W - 42);
-  const wy0 = 10;
-  const wy1 = H - 64;
+  const X = (h) => ((h - H0) / (H1 - H0)) * W;
+  const wy0 = 24;
+  const wy1 = H - 78;
   const top = Math.max(20, ...pts.map((p) => p.gust ?? p.wind ?? 0), ...(obs || []).map((o) => o.gust ?? o.wind ?? 0)) + 3;
   const Y = (k) => wy1 - (k / top) * (wy1 - wy0);
   const blocks = [];
@@ -181,81 +192,87 @@ export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
     const b = pts.filter((p) => p.x >= h && p.x < h + 3);
     if (!b.length) continue;
     const mid = b[Math.floor(b.length / 2)];
-    blocks.push({ h, wind: Math.max(...b.map((p) => p.wind)), gust: Math.max(...b.map((p) => p.gust ?? p.wind)), code: mid.code, day: mid.day, t: mid.t });
+    blocks.push({ h, wind: Math.max(...b.map((p) => p.wind)), gust: Math.max(...b.map((p) => p.gust ?? p.wind)), code: mid.code, day: mid.day, t: mid.t, dir: mid.dir });
   }
-  // Ölçülen (istasyon): saat saat beyaz çizgi + noktalar, sağanak beyaz kesik; bloğun saatleri ölçülmüşse rakamlar ölçülenden, beyaz
-  const ob = (obs || []).filter((o) => o.wind != null && +o.hh >= H0).map((o) => ({ x: +o.hh, wind: o.wind, gust: o.gust ?? null }));
+  // Ölçülen (istasyon): beyaz çizgi, sağanak beyaz kesik; bloğun saatleri ölçülmüşse rakamlar ve yön ölçülenden, beyaz
+  const ob = (obs || []).filter((o) => o.wind != null && +o.hh >= H0).map((o) => ({ x: +o.hh, wind: o.wind, gust: o.gust ?? null, dir: o.dir }));
   blocks.forEach((b) => {
     const m = ob.filter((o) => o.x >= b.h && o.x < b.h + 3);
-    if (m.length) Object.assign(b, { obs: true, wind: Math.max(...m.map((o) => o.wind)), gust: Math.max(...m.map((o) => o.gust ?? o.wind)) });
+    if (m.length) Object.assign(b, { obs: true, wind: Math.max(...m.map((o) => o.wind)), gust: Math.max(...m.map((o) => o.gust ?? o.wind)), dir: m.at(-1).dir ?? b.dir });
   });
-  const oLine = (k) => ob.filter((o) => o[k] != null).map((o, i) => `${i ? "L" : "M"}${X(o.x).toFixed(1)} ${Y(o[k]).toFixed(1)}`).join(" ");
-  const line = (k) => pts.map((p, i) => `${i ? "L" : "M"}${X(p.x).toFixed(1)} ${Y(p[k] ?? p.wind).toFixed(1)}`).join(" ");
-  const area = pts.length ? `M${X(pts[0].x)} ${wy1} ${line("wind").replace(/^M/, "L")} L${X(pts.at(-1).x)} ${wy1}Z` : "";
-  // Yağmur kuralı (#1210, WindRibbon.rainSpan): burada yağış bekleniyorsa o saatler mavi bantta, üstünde beklenen mm; radar yakında gösteriyorsa içi boş halka
+  // Kenardan kenara: ilk ve son değer kutunun iki ucuna uzar
+  const edge = (p) => (p.length ? [[0, p[0][1]], ...p, [W, p.at(-1)[1]]] : p);
+  const wl = edge(pts.map((p) => [X(p.x), Y(p.wind)]));
+  const gl = edge(pts.map((p) => [X(p.x), Y(p.gust ?? p.wind)]));
+  const oW = ob.map((o) => [X(o.x), Y(o.wind)]);
+  const oG = ob.filter((o) => o.gust != null).map((o) => [X(o.x), Y(o.gust)]);
+  const area = wl.length ? `${curve(wl)} L${W} ${wy1 + 8} L0 ${wy1 + 8}Z` : "";
   const rs = pts.length ? rainSpan(pts, nowH ?? -1, radar) : null;
   const nowWind = nowH != null && pts.length ? pts.reduce((a, p) => (Math.abs(p.x - nowH) < Math.abs(a.x - nowH) ? p : a), pts[0]).wind : null;
+  const rx0 = rs ? X(rs.from - 0.5) : 0;
+  const rx1 = rs ? X(rs.to + 0.5) : 0;
   return (
-    <div ref={ref} role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} className="relative cursor-pointer" style={{ height: H }} aria-label="Saat saat rüzgâr">
+    <div ref={ref} role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} className="iph-wch relative cursor-pointer" style={{ height: H }} aria-label="Saat saat rüzgâr">
       {W > 0 && pts.length > 1 && (
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
           <defs>
             <linearGradient id="iph-wz" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#3d7bff" stopOpacity=".45" />
+              <stop offset="0" stopColor="#3d7bff" stopOpacity=".5" />
               <stop offset="1" stopColor="#3d7bff" stopOpacity="0" />
             </linearGradient>
+            <linearGradient id="iph-wl" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#8fb3ff" stopOpacity="0" />
+              <stop offset=".05" stopColor="#8fb3ff" />
+              <stop offset=".95" stopColor="#8fb3ff" />
+              <stop offset="1" stopColor="#8fb3ff" stopOpacity="0" />
+            </linearGradient>
           </defs>
-          {[0, 10, 20, 30].filter((k) => k < top).map((k) => (
-            <g key={k}>
-              <line x1="30" x2={W - 10} y1={Y(k)} y2={Y(k)} stroke="#16294a" />
-              <text x="24" y={Y(k) + 4} fill="#4f6389" fontSize="11" textAnchor="end">
-                {k}
-              </text>
-            </g>
-          ))}
           {rs && (
             <g data-rain-span={rs.here ? "here" : "near"}>
-              <rect x={X(rs.from - 0.5)} y={wy0} width={Math.max(8, X(rs.to + 0.5) - X(rs.from - 0.5))} height={wy1 - wy0} rx="8" fill="#7db4ff" fillOpacity=".2" stroke="#7db4ff" strokeOpacity=".7" strokeDasharray="4 4" />
-              <circle cx={(X(rs.from - 0.5) + X(rs.to + 0.5)) / 2} cy={wy0 + 9} r="5" fill={rs.here ? "#cfe3ff" : "none"} stroke="#cfe3ff" strokeWidth="2" />
-              {rs.here && rs.mm >= 0.1 && (
-                <text data-rain-mm x={(X(rs.from - 0.5) + X(rs.to + 0.5)) / 2} y={wy0 + 30} fill="#cfe3ff" fontSize="12" fontWeight="700" textAnchor="middle">{fmtRainMm(rs.mm)} mm</text>
+              <rect x={rx0} y={wy0 - 18} width={Math.max(8, rx1 - rx0)} height={wy1 - wy0 + 18} rx="10" fill="#7db4ff" fillOpacity=".1" stroke="#7db4ff" strokeOpacity=".45" strokeDasharray="4 4" />
+              {rs.here && rs.mm >= 0.1 ? (
+                <text data-rain-mm x={(rx0 + rx1) / 2} y={wy0 - 4} fill="#9cc2ff" fontSize="11.5" fontWeight="700" textAnchor="middle">yağış · {fmtRainMm(rs.mm)} mm</text>
+              ) : (
+                <circle cx={(rx0 + rx1) / 2} cy={wy0 - 8} r="4.5" fill={rs.here ? "#cfe3ff" : "none"} stroke="#cfe3ff" strokeWidth="2" />
               )}
             </g>
           )}
           <path d={area} fill="url(#iph-wz)" />
-          <path d={line("wind")} stroke="#8fb3ff" strokeWidth="2.2" fill="none" />
-          <path d={line("gust")} stroke="#8fb3ff" strokeWidth="1.3" strokeDasharray="4 4" fill="none" opacity=".7" />
-          {ob.length > 1 && <path d={oLine("gust")} stroke="#fff" strokeWidth="1.1" strokeDasharray="2 3" fill="none" opacity=".75" />}
-          {ob.length > 1 && <path d={oLine("wind")} stroke="#fff" strokeWidth="2.2" fill="none" />}
-          {ob.map((o) => (
-            <circle key={o.x} cx={X(o.x)} cy={Y(o.wind)} r="2.6" fill="#fff" />
-          ))}
+          <path d={curve(gl)} stroke="#8fb3ff" strokeOpacity=".55" strokeWidth="1.2" strokeDasharray="3 5" fill="none" />
+          <path d={curve(wl)} stroke="url(#iph-wl)" strokeWidth="2.4" fill="none" />
+          {oG.length > 1 && <path d={curve(oG)} stroke="#fff" strokeWidth="1.1" strokeDasharray="2 3" fill="none" opacity=".75" />}
+          {oW.length > 1 && <path d={curve(oW)} stroke="#fff" strokeWidth="2.4" fill="none" />}
           {[6, 9, 12, 15, 18, 21, 24].map((h) => (
-            <text key={h} x={X(h)} y={wy1 + 14} fill="#4f6389" fontSize="10.5" textAnchor="middle" fontWeight="600">
+            <text key={h} x={Math.min(Math.max(X(h), 12), W - 12)} y={wy1 + 22} fill="#5d7099" fontSize="11" textAnchor="middle" fontWeight="600">
               {pad(h % 24)}
             </text>
           ))}
           {nowH != null && nowH >= H0 && (
             <>
-              <line x1={X(nowH)} x2={X(nowH)} y1={wy0} y2={wy1} stroke="var(--rec)" strokeWidth="1.6" />
+              <line x1={X(nowH)} x2={X(nowH)} y1={wy0 - 10} y2={wy1 + 8} stroke="var(--rec)" strokeWidth="1.5" />
               {nowWind != null && <circle cx={X(nowH)} cy={Y(nowWind)} r="5" fill="var(--rec)" stroke="#fff" strokeWidth="2" />}
             </>
           )}
         </svg>
       )}
       {W > 0 && (
-        <div className="absolute inset-x-0 bottom-0 flex" style={{ paddingLeft: 30, paddingRight: 12 }}>
-          {blocks.map((b) => (
-            <span key={b.h} className="flex flex-1 flex-col items-center gap-0.5">
-              <b className="num text-[0.8125rem] font-semibold" style={{ color: b.obs ? "#fff" : windColor((b.wind + b.gust) / 2) }}>
-                {Math.round(b.wind)}–{Math.round(b.gust)}
-              </b>
-              <span className="flex items-center gap-1 text-[0.75rem] font-semibold text-[#cfdcf5]">
-                <SkyIcon code={b.code} day={b.day} size="size-4" />
-                {b.t}°
+        <div className="absolute inset-x-0 bottom-0 flex px-2">
+          {blocks.map((b) => {
+            const col = b.obs ? "#fff" : windColor((b.wind + b.gust) / 2);
+            return (
+              <span key={b.h} className="flex min-w-0 flex-1 flex-col items-center">
+                <b className="num flex items-center gap-1 text-[0.8125rem] font-semibold" style={{ color: col }}>
+                  <WindArrow dir={b.dir} size={13} color={col} />
+                  {Math.round(b.wind)}–{Math.round(b.gust)}
+                </b>
+                <small className="num text-[0.6875rem] text-mut">{dirDeg(b.dir)}</small>
+                <span className="flex items-center gap-1 text-[0.75rem] font-semibold text-[#cfdcf5]">
+                  <SkyIcon code={b.code} day={b.day} size="size-4" />
+                  {b.t}°
+                </span>
               </span>
-            </span>
-          ))}
+            );
+          })}
         </div>
       )}
       {!pts.length && <p className="grid h-full place-items-center text-[0.875rem] text-mut">Bu gün için hava tahmini yok</p>}
