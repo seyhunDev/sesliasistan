@@ -1,7 +1,7 @@
 // Yarış bütçesi PDF'i: antetli başlık, kalem tablosu, özet ve sporcu başına ödeme listesi (A4).
 // pdf-lib yalnızca çıktı alınırken yüklenir. Yazı tipleri ve logo raceDocs.loadFonts'tan.
 import { CLUB, rangeText } from "./raceDocs.js";
-import { UNITS, forAthlete, howText, tl, totals } from "./budget.js";
+import { UNITS, forAthlete, howText, splitCount, tl, totals } from "./budget.js";
 import { tripRows } from "./races.js";
 
 const W = 595.28;
@@ -112,8 +112,19 @@ export async function buildBudgetPdf(r, athletes, fonts) {
   t.lines.forEach((l) => {
     if (need(l.note ? 41 : 30)) head();
     text(l.cat, cols[0], y, f.r, 9.5, { max: cols[1] - cols[0] - 6 });
-    text(l.title + (l.club ? " (kulüp)" : ""), cols[1], y, f.b, 9.5, { max: cols[3] - cols[1] - 70 });
-    text(l.unit === "room" ? howText(l, t) : `${howText(l, t)} · ${unitName[l.unit]}`, cols[1], y + 12, f.r, 8, { color: MUT, max: cols[3] - cols[1] - 70 });
+    // Ortak kalem: adın yanında "Ortak · 4" etiketi (Seyhun 2026-11-16, B)
+    const title = (l.title + (l.club ? " (kulüp)" : "")).replace(/₺/g, "TL");
+    const n = splitCount(l, t);
+    const tag = n ? `Ortak · ${n}` : "";
+    const tagW = tag ? w(tag, f.b, 7.5) + 8 : 0;
+    const room = cols[3] - cols[1] - 70;
+    text(title, cols[1], y, f.b, 9.5, { max: room - (tag ? tagW + 6 : 0) });
+    if (tag) {
+      const x = cols[1] + Math.min(w(title, f.b, 9.5), room - tagW - 6) + 6;
+      page.drawRectangle({ x, y: H - y - 3, width: tagW, height: 11.5, borderColor: rgb(0.72, 0.77, 0.85), borderWidth: 0.6 });
+      text(tag, x + 4, y, f.b, 7.5, { color: NAVY });
+    }
+    text(l.unit === "room" || (n && l.unit === "shared") ? howText(l, t) : `${howText(l, t)} · ${unitName[l.unit]}`, cols[1], y + 12, f.r, 8, { color: MUT, max: cols[3] - cols[1] - 70 });
     text(tl(l.total), cols[3], y, f.b, 9.5, { align: "right" });
     text(l.club ? "-" : tl(l.share), cols[4], y, f.r, 9.5, { align: "right" });
     // Kalemin notu (Seyhun 2026-11-16)

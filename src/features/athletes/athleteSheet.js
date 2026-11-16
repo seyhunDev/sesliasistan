@@ -2,7 +2,7 @@
 // İçinde: yolculuk (tahmini plan), talimattaki program, konaklama, yalnız o sporcunun bütçe payı kalem kalem.
 // sheetData saf (testlenir); buildAthleteSheet pdf-lib'i yalnız çıktı alınırken yükler.
 import { CLUB, hotelInfo, rangeText } from "./raceDocs.js";
-import { capName, cleanRooms, linesFor, money as cash, roomNight, tl, totals } from "./budget.js";
+import { capName, cleanRooms, linesFor, money as cash, roomNight, splitCount, tl, totals } from "./budget.js";
 import { cleanTodos, doneFor, noticeTasks, raceHotels, tripRows } from "./races.js";
 import { todayStr } from "@/lib/utils/format";
 
@@ -68,10 +68,6 @@ export function upcomingDates(r, today = todayStr()) {
 }
 export const leftText = (n) => (n === 0 ? "bugün" : n === 1 ? "yarın" : `${n} gün kaldı`);
 
-// Ortak kalem (Seyhun 2026-11-16 "ortak olduğu ve kaça bölündüğü gösterilmeli"): toplamı birden çok sporcuya bölünen kalem
-// (sporcu başı kalem değil, payı toplamdan küçük)
-const shared = (l, t) => (l.only?.length || t.athletes) > 1 && l.total - l.share > 0.005;
-
 // Bir sporcunun notu. show: hangi bölümler görünsün ({ trip, program, stay, dates, budget }; yoksa hepsi) count: yarıştaki sporcu sayısı (bütçe payı buna göre bölünür)
 // Yalnız bazı sporculara yazılan kalem (only) yalnız onların notunda görünür
 export function sheetData(r, athlete, count, show = ALL) {
@@ -84,11 +80,8 @@ export function sheetData(r, athlete, count, show = ALL) {
     amount: l.share,
     est: !!l.est,
     ...(l.note ? { memo: l.note } : {}),
-    ...(l.unit === "room" && l.who === "staff"
-      ? { note: `Antrenörün odası, ${l.only?.length || t.athletes} sporcu arasında bölüşüldü` }
-      : shared(l, t)
-        ? { note: `Ortak gider: toplam ${tl(l.total)}, ${l.only?.length || t.athletes} sporcuya bölündü` }
-        : {}),
+    // Ortak kalem: adın yanında "Ortak · 4 sporcu" etiketi, altında toplam (antrenör odasında "Antrenörün odası" da)
+    ...(splitCount(l, t) ? { split: splitCount(l, t), note: `${l.unit === "room" && l.who === "staff" ? "Antrenörün odası · " : ""}Toplam ${tl(l.total)}` } : {}),
   }));
   const club = t.lines.filter((l) => l.club).map((l) => l.title);
   return {
@@ -320,7 +313,15 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
       y += 20;
       for (const l of d.money.lines) {
         text(l.cat, L, y, f.r, 9, { color: MUT, max: 80 });
-        text(l.title + (l.est ? " (tahmini)" : ""), L + 90, y, f.r, 10, { max: R - L - 200 });
+        const title = (l.title + (l.est ? " (tahmini)" : "")).replace(/₺/g, "TL").replace(/’/g, "'");
+        const tag = l.split ? `Ortak · ${l.split} sporcu` : "";
+        const tagW = tag ? w(tag, f.b, 7.5) + 8 : 0;
+        text(title, L + 90, y, f.r, 10, { max: R - L - 200 - (tag ? tagW + 6 : 0) });
+        if (tag) {
+          const x = L + 90 + Math.min(w(title, f.r, 10), R - L - 200 - tagW - 6) + 6;
+          page.drawRectangle({ x, y: H - y - 3, width: tagW, height: 11.5, borderColor: rgb(0.72, 0.77, 0.85), borderWidth: 0.6 });
+          text(tag, x + 4, y, f.b, 7.5, { color: NAVY });
+        }
         text(tl(l.amount), R, y, f.r, 10, { align: "right" });
         for (const n of [l.memo, l.note].filter(Boolean)) {
           y += 11;

@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Hero, Label, Seg, Stat, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
-import { CATS, UNITS, WHO, cleanBudget, cleanItem, cleanRooms, emptyBudget, forAthlete, howText, nearReceipts, newId, roomFromNotice, roomLine, roomPeople, spentTotal, tl, totals } from "./budget";
+import { CATS, UNITS, WHO, cleanBudget, cleanItem, cleanRooms, emptyBudget, forAthlete, howText, splitCount, nearReceipts, newId, roomFromNotice, roomLine, roomPeople, spentTotal, tl, totals } from "./budget";
 import { useData } from "@/features/data/DataProvider";
 import { totalTL } from "@/lib/receipts";
 import { buildBudgetPdf } from "./budgetDoc";
@@ -189,6 +189,7 @@ export function BudgetView({ r, athletes, onChange }) {
                 <b className="block truncate text-[0.9375rem] font-semibold">
                   {l.title}
                   {l.club && <span className="ml-1.5 rounded-md bg-ok/10 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-ok">kulüp</span>}
+                  {splitCount(l, t) > 0 && <span className="ml-1.5 rounded-md bg-acc/10 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-acc">Ortak · {splitCount(l, t)}</span>}
                   {!l.amount ? (
                     <span className="ml-1.5 rounded-md bg-rec/10 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-rec">tutar gir</span>
                   ) : (
