@@ -196,6 +196,7 @@ export function BudgetView({ r, athletes, onChange }) {
                   )}
                 </b>
                 <span className="block truncate text-[0.8125rem] text-mut">{howText(l, t)}</span>
+                {l.note && <span className="block break-words text-[0.8125rem] text-fg2">{l.note}</span>}
                 {l.only && <span className="block truncate text-[0.8125rem] font-medium text-acc">Yalnız {l.only.map((id) => nameOf[id]).filter(Boolean).join(", ")}</span>}
               </span>
               <b className="shrink-0 text-[0.9375rem] tabular-nums">{tl(l.total)}</b>
@@ -321,6 +322,7 @@ function ItemForm({ item, athletes, nights, hotels, onSave, onRemove }) {
         ))}
       </div>
       <input value={x.title} onChange={(e) => put("title")(e.target.value)} placeholder="Kalem adı (ör. Kayıt ücreti)" className={field} />
+      <input value={x.note || ""} onChange={(e) => put("note")(e.target.value)} maxLength={140} placeholder="Not" className={field} />
       <div className="flex items-center gap-2">
         <input value={x.amount} onChange={(e) => put("amount")(e.target.value.replace(/[^\d.,]/g, ""))} inputMode="decimal" placeholder={room ? "Odanın gecelik fiyatı (oda toplamı)" : "Tutar"} className={`${field} flex-1`} />
         <span className="text-[0.9375rem] font-semibold text-mut">₺</span>

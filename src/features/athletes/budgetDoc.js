@@ -110,12 +110,17 @@ export async function buildBudgetPdf(r, athletes, fonts) {
   head();
   const unitName = Object.fromEntries(UNITS);
   t.lines.forEach((l) => {
-    if (need(30)) head();
+    if (need(l.note ? 41 : 30)) head();
     text(l.cat, cols[0], y, f.r, 9.5, { max: cols[1] - cols[0] - 6 });
     text(l.title + (l.club ? " (kulüp)" : ""), cols[1], y, f.b, 9.5, { max: cols[3] - cols[1] - 70 });
     text(l.unit === "room" ? howText(l, t) : `${howText(l, t)} · ${unitName[l.unit]}`, cols[1], y + 12, f.r, 8, { color: MUT, max: cols[3] - cols[1] - 70 });
     text(tl(l.total), cols[3], y, f.b, 9.5, { align: "right" });
     text(l.club ? "-" : tl(l.share), cols[4], y, f.r, 9.5, { align: "right" });
+    // Kalemin notu (Seyhun 2026-11-16)
+    if (l.note) {
+      text(l.note, cols[1], y + 23, f.r, 8, { color: MUT, max: cols[3] - cols[1] - 70 });
+      y += 11;
+    }
     y += 28;
     rule(y - 11);
   });

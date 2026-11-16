@@ -53,6 +53,8 @@ export function cleanItem(x) {
       ? { cap, beds: Math.min(cap, Math.max(1, int(x?.beds ?? cap, 10))), rooms: Math.max(1, int(x?.rooms ?? 1, 30)), who: x?.who === "staff" ? "staff" : "athlete" }
       : {}),
     ...(x?.est === true && num(x?.amount) > 0 ? { est: true } : {}),
+    // Kısa not (Seyhun 2026-11-16): kalemin altında ve çıktıda görünür
+    ...(S(x?.note, 140) ? { note: S(x.note, 140) } : {}),
     ...(onlyOf(x?.only).length ? { only: onlyOf(x.only) } : {}),
   };
 }
