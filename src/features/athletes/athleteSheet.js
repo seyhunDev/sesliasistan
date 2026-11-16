@@ -80,8 +80,8 @@ export function sheetData(r, athlete, count, show = ALL) {
     amount: l.share,
     est: !!l.est,
     ...(l.note ? { memo: l.note } : {}),
-    // Ortak kalem: adın yanında "Ortak · 4 sporcu" etiketi, altında toplam (antrenör odasında "Antrenörün odası" da)
-    ...(splitCount(l, t) ? { split: splitCount(l, t), note: `${l.unit === "room" && l.who === "staff" ? "Antrenörün odası · " : ""}Toplam ${tl(l.total)}` } : {}),
+    // Ortak kalem (Seyhun 2026-11-16): alt satırda "Toplam 6.000 TL · Ortak · 4 sporcu" (antrenör odasında başta "Antrenörün odası")
+    ...(splitCount(l, t) ? { split: splitCount(l, t), note: `${l.unit === "room" && l.who === "staff" ? "Antrenörün odası · " : ""}Toplam ${tl(l.total)} · Ortak · ${splitCount(l, t)} sporcu` } : {}),
   }));
   const club = t.lines.filter((l) => l.club).map((l) => l.title);
   return {
@@ -313,15 +313,7 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
       y += 20;
       for (const l of d.money.lines) {
         text(l.cat, L, y, f.r, 9, { color: MUT, max: 80 });
-        const title = (l.title + (l.est ? " (tahmini)" : "")).replace(/₺/g, "TL").replace(/’/g, "'");
-        const tag = l.split ? `Ortak · ${l.split} sporcu` : "";
-        const tagW = tag ? w(tag, f.b, 7.5) + 8 : 0;
-        text(title, L + 90, y, f.r, 10, { max: R - L - 200 - (tag ? tagW + 6 : 0) });
-        if (tag) {
-          const x = L + 90 + Math.min(w(title, f.r, 10), R - L - 200 - tagW - 6) + 6;
-          page.drawRectangle({ x, y: H - y - 3, width: tagW, height: 11.5, borderColor: rgb(0.72, 0.77, 0.85), borderWidth: 0.6 });
-          text(tag, x + 4, y, f.b, 7.5, { color: NAVY });
-        }
+        text(l.title + (l.est ? " (tahmini)" : ""), L + 90, y, f.r, 10, { max: R - L - 200 });
         text(tl(l.amount), R, y, f.r, 10, { align: "right" });
         for (const n of [l.memo, l.note].filter(Boolean)) {
           y += 11;
