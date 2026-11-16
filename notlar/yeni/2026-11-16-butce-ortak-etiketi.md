@@ -3,7 +3,8 @@
 - Eski "Ortak gider: toplam X, N sporcuya bölündü" yazısı kalktı. İki PDF örnek bütçeyle çizilip bakıldı.
 
 ## Tasarım
-- Ortak kalem: adın yanında "Ortak · N" etiketi, toplam altta küçük (Seyhun seçimi B).
+- Ortak kalem: alt satırda küçük "Toplam X · Ortak · N sporcu" (etiket yok, Seyhun 2026-11-16).
 
 ## Sıradaki işler
 - Telefonda denenmedi.
+- Aynı gün değişti (Seyhun "alt satırda aynı stilde, daha sade"): etiket kalktı; alt satırda "Toplam 6.000 TL · Ortak · 4 sporcu" (sporcu çıktısı), uygulama listesinde ve genel PDF'te hesap satırının sonunda "· Ortak · 4 sporcu" (budget.howLine; "4 sporcuya bölünür" tekrarı kalkar).

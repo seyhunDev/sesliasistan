@@ -233,3 +233,10 @@ export function howText(l, t) {
   if (l.unit === "person") parts.push(`${t.people} kişi`);
   return parts.join(" × ") + tail;
 }
+
+// Kalemin alt satırı (Seyhun 2026-11-16): hesap, ortaksa sonunda "· Ortak · 4 sporcu" ("4 sporcuya bölünür" tekrar edilmez)
+export function howLine(l, t) {
+  const n = splitCount(l, t);
+  const how = howText(l, t);
+  return n ? `${how.replace(/ · \d+ sporcuya bölünür$/, "")} · Ortak · ${n} sporcu` : how;
+}
