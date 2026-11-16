@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 
 // Uygulama içi PDF görüntüleyici (tam ekran). Dosya yeni sekmede açılmaz: iPhone'da ana ekrana eklenen uygulama,
@@ -105,7 +106,9 @@ export function PdfViewer({ title, load, onClose }) {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
-  return (
+  // Sayfanın en üstüne (body) çizilir: iPad yarış sayfasının buzlu cam paneli (backdrop-filter) içindeyken "fixed" panele göre
+  // konumlanıyordu, görüntüleyici panelin içinde ve yukarıda kalıp görünmüyordu (Seyhun 2026-11-16, Bütçe › sporcu çıktısı)
+  const ui = (
     <div className="fixed inset-0 z-[90] flex flex-col bg-bg" role="dialog" aria-modal="true" aria-label={title}>
       <header className="flex shrink-0 items-center gap-1 border-b border-line bg-card px-1.5 pb-1.5 pt-[calc(.375rem+env(safe-area-inset-top))]">
         <button type="button" onClick={onClose} aria-label="Kapat" data-press className="btn btn-icon text-fg">
@@ -145,6 +148,7 @@ export function PdfViewer({ title, load, onClose }) {
       </div>
     </div>
   );
+  return typeof document === "undefined" ? ui : createPortal(ui, document.body);
 }
 
 // Tek sayfa: ekrana yaklaşınca çizilir (uzun talimatta bellek dolmasın), büyütünce yeniden çizilir
