@@ -68,6 +68,10 @@ export function upcomingDates(r, today = todayStr()) {
 }
 export const leftText = (n) => (n === 0 ? "bugün" : n === 1 ? "yarın" : `${n} gün kaldı`);
 
+// Ortak kalem (Seyhun 2026-11-16 "ortak olduğu ve kaça bölündüğü gösterilmeli"): toplamı birden çok sporcuya bölünen kalem
+// (sporcu başı kalem değil, payı toplamdan küçük)
+const shared = (l, t) => (l.only?.length || t.athletes) > 1 && l.total - l.share > 0.005;
+
 // Bir sporcunun notu. show: hangi bölümler görünsün ({ trip, program, stay, dates, budget }; yoksa hepsi) count: yarıştaki sporcu sayısı (bütçe payı buna göre bölünür)
 // Yalnız bazı sporculara yazılan kalem (only) yalnız onların notunda görünür
 export function sheetData(r, athlete, count, show = ALL) {
@@ -79,7 +83,11 @@ export function sheetData(r, athlete, count, show = ALL) {
     title: l.unit === "room" && l.who === "staff" && !/antrenör/i.test(l.title) ? `${l.title} (antrenör)` : l.title,
     amount: l.share,
     est: !!l.est,
-    ...(l.unit === "room" && l.who === "staff" ? { note: `Antrenörün odası, ${l.only?.length || t.athletes} sporcu arasında bölüşüldü` } : {}),
+    ...(l.unit === "room" && l.who === "staff"
+      ? { note: `Antrenörün odası, ${l.only?.length || t.athletes} sporcu arasında bölüşüldü` }
+      : shared(l, t)
+        ? { note: `Ortak gider: toplam ${tl(l.total)}, ${l.only?.length || t.athletes} sporcuya bölündü` }
+        : {}),
   }));
   const club = t.lines.filter((l) => l.club).map((l) => l.title);
   return {
