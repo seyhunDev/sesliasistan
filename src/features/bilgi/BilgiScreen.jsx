@@ -6,7 +6,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
 import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
-import { deviceId, readWho, savePusula, saveWho, sendGelen, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
+import { deviceId, readWho, savePusula, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
 import { usePtt } from "./usePtt";
 import { Wave } from "./Wave";
 import "./bilgi.css";
@@ -230,8 +230,23 @@ function usePresence(on, who, org, k, uid, ch, seen) {
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
     );
     write();
+    // İz: 5 sn'de bir nokta (taze konum varsa), 12 nokta (1 dk) olunca ya da ekran kapanınca tek belge
+    let iz = [];
+    let t0 = 0;
+    const flushIz = () => {
+      if (!iz.length) return;
+      sendIz({ org, k: k || "", ch, dev, sail: who.sail || "", name: who.name || "", uid: uid || "", t0, pts: iz.flat() }).catch(() => {});
+      iz = [];
+    };
+    const hide = () => document.visibilityState === "hidden" && flushIz();
+    document.addEventListener("visibilitychange", hide);
     const id = setInterval(() => {
       const c = fix && Date.now() - fix.timestamp < 20000 ? fix.coords : null;
+      if (c && Date.now() - fix.timestamp < 10000) {
+        if (!iz.length) t0 = Date.now();
+        iz.push([Math.round((Date.now() - t0) / 1000), +c.latitude.toFixed(6), +c.longitude.toFixed(6), Number.isFinite(c.speed) ? Math.round(c.speed * 19.44) / 10 : -1]);
+        if (iz.length >= 12) flushIz();
+      }
       const age = sent ? Date.now() - sent.t : Infinity;
       if (c && sent?.lat != null && metres(sent, { lat: c.latitude, lon: c.longitude }) < 10 && age < 45000) return;
       if (!c && age < 45000) return;
@@ -242,6 +257,8 @@ function usePresence(on, who, org, k, uid, ch, seen) {
       S0.kick = null;
       if (w != null) navigator.geolocation.clearWatch(w);
       clearInterval(id);
+      document.removeEventListener("visibilitychange", hide);
+      flushIz();
     };
   }, [on, who, org, k, uid, ch]);
   useEffect(() => {

@@ -194,7 +194,7 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .tkm-map { width: 100%; height: 18rem; border-radius: 1rem; overflow: hidden; border: 1px solid var(--line); background: #dfe9f2; }
 .tkm { display: flex; flex-direction: column; align-items: center; gap: 0.1875rem; pointer-events: none; }
 .tkm-l { font: 700 0.75rem var(--font-num), ui-monospace, monospace; color: #0b1a33; background: rgba(255, 255, 255, .9); border-radius: 0.375rem; padding: 0.0625rem 0.375rem; white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
-.tkm i { width: 0.875rem; height: 0.875rem; border-radius: 999px; background: #1d4ed8; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(11, 26, 51, .35); }
+.tkm i { width: 0.875rem; height: 0.875rem; border-radius: 999px; background: var(--c, #1d4ed8); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(11, 26, 51, .35); }
 .tkm.old { opacity: .45; }
 /* Konuşan tekne (sporcudan bas-konuş çalarken): yeşil atan nokta, adın yanında dalga */
 .tkm-l { display: inline-flex; align-items: center; gap: 0.375rem; }
@@ -284,3 +284,19 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
   .bzy-top { right: auto; width: min(22rem, 46vw); padding-right: 0; }
   .bzy-dock { right: auto; width: min(22rem, 46vw); left: calc(env(safe-area-inset-left, 0px) + 0.75rem); bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem); border-radius: 1.25rem; padding: 0.625rem; max-height: 55dvh; }
 }
+/* Kanallar listesi ve iz oynatıcı (Seyhun 2026-11-17) */
+.bzy-dot.off { background: #c3c8d0; }
+.bzy-kli:first-child > .bzy-li { border-top: 0; }
+.bzy-kli > .bzy-li { align-items: center; }
+.bzy-kli .bzy-li .bzy-in { padding: 0.5rem 0.625rem; }
+.bzy-kmenu { display: flex; flex-wrap: wrap; gap: 0.375rem; padding: 0 0.75rem 0.75rem; }
+.bzy-kmenu button { flex: 1 1 auto; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 0.75rem; padding: 0.5rem 0.75rem; font-size: 0.8125rem; font-weight: 600; }
+.bzy-kmenu button.del { color: #dc2626; }
+.bzy-kmenu button:disabled { opacity: .4; }
+.bzy-izr { display: flex; align-items: center; gap: 0.625rem; }
+.bzy-send .bzy-fill { fill: currentColor; stroke: none; }
+.bzy-sl { flex: 1; min-width: 0; accent-color: var(--acc); height: 1.75rem; }
+.bzy-izt { flex: none; font-weight: 700; font-size: 0.9375rem; }
+.bzy-izc { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.bzy-izc span { border: 2px solid var(--c, var(--line)); background: #fff; color: var(--fg); border-radius: 999px; padding: 0.125rem 0.625rem; font-size: 0.75rem; font-weight: 600; }
+.bzy-izx { margin-left: auto; border: 0; background: #eef2f6; color: var(--fg); border-radius: 999px; padding: 0.125rem 0.75rem; font-size: 0.75rem; font-weight: 700; }
