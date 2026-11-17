@@ -10,11 +10,12 @@ const STALE = 90e3;
 function markEl() {
   const d = document.createElement("div");
   d.className = "tkm";
-  d.innerHTML = '<span class="tkm-l"></span><i></i>';
+  d.innerHTML = '<span class="tkm-l"><span class="tkm-t"></span><span class="bz-wave tkm-w"><i></i><i></i><i></i><i></i><i></i></span></span><i></i>';
   return d;
 }
 
-export function TekneMap({ boats, course = null, full = false }) {
+// talk: o an konuşan teknenin cihaz kimliği (Seyhun 2026-11-17 örnek C): işareti yeşil atar, adının yanında ses dalgası
+export function TekneMap({ boats, course = null, full = false, talk = "" }) {
   const box = useRef(null);
   const map = useRef(null);
   const ml = useRef(null);
@@ -67,7 +68,8 @@ export function TekneMap({ boats, course = null, full = false }) {
       if (!mk) mk = marks.current[b.id] = new lib.Marker({ element: markEl(), anchor: "bottom" }).setLngLat([b.lon, b.lat]).addTo(m);
       mk.setLngLat([b.lon, b.lat]);
       const el = mk.getElement();
-      el.querySelector(".tkm-l").textContent = [b.sail, b.name].filter(Boolean).join(" · ");
+      el.querySelector(".tkm-t").textContent = [b.sail, b.name].filter(Boolean).join(" · ");
+      el.classList.toggle("talk", !!talk && b.id === talk);
       el.classList.toggle("old", now - (b.t || 0) > STALE);
     }
     for (const id of Object.keys(marks.current))
@@ -75,7 +77,7 @@ export function TekneMap({ boats, course = null, full = false }) {
         marks.current[id].remove();
         delete marks.current[id];
       }
-  }, [boats, ready]);
+  }, [boats, ready, talk]);
 
   // Sığdırma: tekneler + parkur. İlk veri gelince ve parkur değişince bir kez; arada kullanıcı kaydırır, dokunulmaz
   const live = (boats || []).filter((b) => Number.isFinite(b.lat) && Number.isFinite(b.lon)).length;

@@ -6,7 +6,9 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
 import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
-import { deviceId, readWho, savePusula, saveWho, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
+import { deviceId, readWho, savePusula, saveWho, sendGelen, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
+import { usePtt } from "./usePtt";
+import { Wave } from "./Wave";
 import "./bilgi.css";
 
 // Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 4): başlıksız tek ekran, dokunulmaz. Üstte en büyük pusula derecesi (telefonun
@@ -622,6 +624,9 @@ export function BilgiScreen({ pub = "" }) {
   usePresence(active, who, pub ? porg : org, pub, profile?.uid, kanal?.id || "", active ? fresh?.id || "" : "");
   const [talk, unlock] = useVoice(active, myMsg, mySes);
   const pos = useMyPos(active);
+  // Sporcudan Yönet'e bas-konuş (Seyhun 2026-11-17, örnek C): altta ortada mikrofon; basılı tut, konuş, bırakınca Yönet'e gider
+  const ptt = usePtt({ send: (blob, sec) => sendGelen(dev, { org: pub ? porg : org, k: pub, ch: kanal?.id || "", sail: who?.sail, name: who?.name, uid: profile?.uid }, blob, sec) });
+  const recSec = ptt.rec ? Math.max(0, Math.floor((now - ptt.rec.t0) / 1000)) : 0;
 
   // Tek dokunuş: pusula izni (iPhone), sesin açılması ve ekranın açık kalması tarayıcının dokunuş istediği işler
   const start = async (w) => {
@@ -679,7 +684,7 @@ export function BilgiScreen({ pub = "" }) {
   );
 
   return (
-    <main className={`bz${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
+    <main className={`bz${active ? " bz-pton" : ""}${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
       {!pub && (
         <button type="button" className="bz-back" onClick={leave} aria-label="Geri">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -688,12 +693,32 @@ export function BilgiScreen({ pub = "" }) {
         </button>
       )}
       {talk && (
-        <span className="bz-talk" aria-label="Konuşuyor">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <rect x="9" y="3" width="6" height="11" rx="3" />
-            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-          </svg>
+        <span className="bz-talk" role="status">
+          Yönet
+          <Wave />
         </span>
+      )}
+      {active && (
+        <button
+          type="button"
+          className="bz-ptt"
+          data-rec={ptt.rec ? "1" : undefined}
+          data-ok={ptt.done && now - ptt.done.at < 2000 ? "1" : undefined}
+          aria-label="Bas konuş"
+          onPointerDown={(e) => ptt.begin(e, "y", null)}
+          onPointerUp={ptt.end}
+          onPointerCancel={ptt.end}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          {ptt.rec ? (
+            <b className="num">{recSec}</b>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <rect x="9" y="3" width="6" height="11" rx="3" />
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+            </svg>
+          )}
+        </button>
       )}
       {mode === "last" && (
         <div className="bz-last">
