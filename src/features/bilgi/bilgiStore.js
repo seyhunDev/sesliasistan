@@ -89,17 +89,73 @@ export async function syncLink(org) {
 }
 
 // Linkle açılan ekran (girişsiz): kopya belgeleri dinler. d: belge (null: link yok/eski), err: okunamadı (izin ya da bağlantı)
+// Seyhun 2026-11-17: belge açıkken bazı telefonlarda yine "Kanal açık değil" çıktı. Telefonun yerel Firestore önbelleği bozuksa
+// (iPhone IndexedDB, aynı tarayıcıda açık başka Velora sekmesi) dinleyici hata verir; o zaman belge 5 sn'de bir doğrudan
+// sunucudan (REST, girişsiz) okunur. Önbellekten gelen "belge yok" sunucu cevabı gelene kadar sayılmaz.
+const REST = (key, path = "") =>
+  `https://firestore.googleapis.com/v1/projects/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}/databases/(default)/documents/bilgiAcik/${key}${path}?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`;
+function restVal(v) {
+  if (!v || typeof v !== "object") return null;
+  if ("mapValue" in v) return restMap(v.mapValue.fields);
+  if ("arrayValue" in v) return (v.arrayValue.values || []).map(restVal);
+  if ("integerValue" in v) return Number(v.integerValue);
+  if ("doubleValue" in v) return Number(v.doubleValue);
+  if ("booleanValue" in v) return v.booleanValue;
+  if ("stringValue" in v) return v.stringValue;
+  if ("timestampValue" in v) return Date.parse(v.timestampValue);
+  return null;
+}
+const restMap = (f) => Object.fromEntries(Object.entries(f || {}).map(([k, v]) => [k, restVal(v)]));
+async function restGet(key, path) {
+  const r = await fetch(REST(key, path), { cache: "no-store" });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`rest ${r.status}`);
+  return restMap((await r.json()).fields);
+}
+
 export function usePublic(key) {
   const [v, setV] = useState({ key: "", d: undefined, s: undefined });
   useEffect(() => {
     if (!key) return;
-    const a = onSnapshot(
-      pubRef(key),
-      (x) => setV((o) => ({ ...o, key, d: x.exists() ? x.data() : null, err: false })),
-      () => setV((o) => ({ ...o, key, d: null, err: true })),
-    );
-    const b = onSnapshot(pubRef(key, "ses", "son"), (x) => setV((o) => ({ ...o, key, s: x.exists() ? x.data() : null })), () => {});
-    return () => (a(), b());
+    let poll = 0;
+    let off = false;
+    let got = false;
+    const rest = () => {
+      if (poll || off) return;
+      const run = () =>
+        Promise.all([restGet(key), restGet(key, "/ses/son").catch(() => undefined)]).then(
+          ([d, ss]) => !off && setV((o) => ({ ...o, key, d, err: false, ...(ss !== undefined ? { s: ss } : {}) })),
+          () => !off && setV((o) => ({ ...o, key, d: o.d || null, err: !o.d })),
+        );
+      run();
+      poll = setInterval(run, 5000);
+    };
+    let a = () => {};
+    let b = () => {};
+    try {
+      a = onSnapshot(
+        pubRef(key),
+        { includeMetadataChanges: true },
+        (x) => {
+          if (!x.exists() && x.metadata.fromCache) return; // önbellekte yok: sunucu cevabını bekle
+          got = true;
+          if (!poll) setV((o) => ({ ...o, key, d: x.exists() ? x.data() : null, err: false }));
+        },
+        rest,
+      );
+      b = onSnapshot(pubRef(key, "ses", "son"), (x) => !poll && setV((o) => ({ ...o, key, s: x.exists() ? x.data() : null })), () => {});
+    } catch {
+      rest();
+    }
+    // Sunucudan 8 sn'de cevap gelmezse de doğrudan okunur
+    const slow = setTimeout(() => !got && rest(), 8000);
+    return () => {
+      off = true;
+      clearTimeout(slow);
+      clearInterval(poll);
+      a();
+      b();
+    };
   }, [key]);
   return v.key === key ? [v.d === undefined ? undefined : v.d && cleanBilgi(v.d), v.s, v.d?.org || "", v.d === null ? (v.err ? "err" : "none") : ""] : [undefined, undefined, "", ""];
 }
