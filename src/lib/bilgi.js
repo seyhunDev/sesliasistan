@@ -292,3 +292,41 @@ export function windRel(wind, head) {
   const side = rel === 0 || rel === 180 ? "" : rel < 180 ? "sancaktan" : "iskeleden";
   return { rel, deg: Math.round(rel <= 180 ? rel : 360 - rel), side };
 }
+
+// İz geri oynatma (Seyhun 2026-11-17): bilgiIz belgelerinden tekne başına sıralı noktalar. pts düz liste: [sn, enlem, boylam, hız (kn; -1 yok), …]
+export const IZ_COLORS = ["#e08a00", "#7c3aed", "#dc2626", "#0891b2", "#16a34a", "#db2777", "#4d7c0f", "#1d4ed8"];
+export function izTracks(docs) {
+  const by = {};
+  for (const d of docs || []) {
+    const id = d.dev || d.uid || `${d.sail}-${d.name}`;
+    const tr = (by[id] ||= { id, sail: d.sail || "", name: d.name || "", p: [] });
+    const a = Array.isArray(d.pts) ? d.pts : [];
+    for (let i = 0; i + 3 < a.length; i += 4) {
+      if (!Number.isFinite(a[i + 1]) || !Number.isFinite(a[i + 2])) continue;
+      tr.p.push({ t: (d.t0 || 0) + a[i] * 1000, lat: a[i + 1], lon: a[i + 2], spd: a[i + 3] >= 0 ? a[i + 3] : null });
+    }
+  }
+  const tracks = Object.values(by)
+    .filter((x) => x.p.length)
+    .sort((x, y) => String(x.sail).localeCompare(String(y.sail), "tr", { numeric: true }) || x.name.localeCompare(y.name, "tr"));
+  tracks.forEach((x, i) => {
+    x.p.sort((a, b) => a.t - b.t);
+    x.color = IZ_COLORS[i % IZ_COLORS.length];
+  });
+  const t0 = Math.min(...tracks.map((x) => x.p[0].t));
+  const t1 = Math.max(...tracks.map((x) => x.p[x.p.length - 1].t));
+  return tracks.length ? { tracks, t0, t1 } : { tracks: [], t0: 0, t1: 0 };
+}
+// T anındaki nokta: T'den önceki son nokta; iz henüz başlamadıysa null
+export function izAt(tr, T) {
+  const p = tr?.p || [];
+  if (!p.length || T < p[0].t) return null;
+  let lo = 0;
+  let hi = p.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (p[mid].t <= T) lo = mid;
+    else hi = mid - 1;
+  }
+  return p[lo];
+}

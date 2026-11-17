@@ -12,10 +12,30 @@ import { mmss } from "@/lib/raceScore";
 import { Sheet } from "@/components/ui/Sheet";
 import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
-import { closeKanal, linkUrl, loadLog, loadPusula, logGelen, markLog, openKanal, saveBilgi, sendMsg, sendSes, syncLink, useBilgi, useGelen, useTekneler } from "./bilgiStore";
+import {
+  closeKanal,
+  deleteKanal,
+  ensureKanal,
+  linkUrl,
+  loadLog,
+  loadPusula,
+  logGelen,
+  markLog,
+  openKanal,
+  reopenKanal,
+  saveBilgi,
+  sendMsg,
+  sendSes,
+  syncLink,
+  useBilgi,
+  useGelen,
+  useKanallar,
+  useTekneler,
+} from "./bilgiStore";
 import { TekneMap } from "./TekneMap";
 import { usePtt } from "./usePtt";
 import { Wave } from "./Wave";
+import { IzPanel, KanalList, useIz } from "./BilgiIz";
 import "./bilgi.css";
 
 // Bilgi ekranı yönetimi (yalnız ana hesap): mesaj (ekranda görünür ve sesli okunur), bas-konuş, start sayacı (ortak sayaç), parkur.
@@ -348,7 +368,7 @@ function ParkurEdit({ org, pk }) {
 }
 
 // Kanal (Seyhun 2026-11-15): ekranlar yalnız açık kanala katılarak başlar. Aç: ad + yeni link (eski link çalışmaz). Kapat: ekranlar durur
-function Kanal({ org, kanal, link, count, def = "Antrenman" }) {
+function Kanal({ org, kanal, link, count, def = "Antrenman", onList }) {
   const toast = useToast();
   const [name, setName] = useState(def);
   const [busy, setBusy] = useState(false);
@@ -361,7 +381,7 @@ function Kanal({ org, kanal, link, count, def = "Antrenman" }) {
     ) ?? toast(u);
   const open = async () => {
     setBusy(true);
-    await openKanal(org, name).catch(() => toast("Kanal açılamadı"));
+    await openKanal(org, name, kanal).catch(() => toast("Kanal açılamadı"));
     setBusy(false);
   };
   if (!kanal?.open)
@@ -372,6 +392,11 @@ function Kanal({ org, kanal, link, count, def = "Antrenman" }) {
           <Button disabled={busy || !name.trim()} onClick={open} className="!flex-none">
             Kanal aç
           </Button>
+          <button type="button" className="bzy-ic" onClick={onList} aria-label="Kanallar" data-press>
+            <svg viewBox="0 0 24 24">
+              <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
+            </svg>
+          </button>
         </div>
       </section>
     );
@@ -382,6 +407,11 @@ function Kanal({ org, kanal, link, count, def = "Antrenman" }) {
         <i className="bzy-dot" aria-label="Açık" />
         <b>{kanal.name}</b>
         <span className="num">{count} kişi</span>
+        <button type="button" className="bzy-ic" onClick={onList} aria-label="Kanallar" data-press>
+          <svg viewBox="0 0 24 24">
+            <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
+          </svg>
+        </button>
         <button type="button" className="bzy-ic" disabled={!url} onClick={() => copy(url)} aria-label="Linki kopyala" data-press>
           <svg viewBox="0 0 24 24">
             <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
@@ -403,7 +433,7 @@ function Kanal({ org, kanal, link, count, def = "Antrenman" }) {
           <Button
             variant="secondary"
             onClick={() =>
-              closeKanal(org).then(
+              closeKanal(org, kanal.id).then(
                 () => setMore(false),
                 () => toast("Kapatılamadı"),
               )
@@ -552,9 +582,45 @@ export function BilgiAdmin() {
     if (org && linkKey) syncLink(org).catch(() => {});
   }, [org, linkKey]);
 
-  const ctx = { label: b?.label || "", state: b?.state || "", course: b?.course || "" };
   const kanal = b?.kanal || null;
   const ch = kanal?.open ? kanal.id : "";
+  const ctx = { label: b?.label || "", state: b?.state || "", course: b?.course || "", ch };
+  // Kanallar (Seyhun 2026-11-17): liste, tekrar aç, sil (Geri al'lı, verisiyle), izi geri oynat
+  const kanallar = useKanallar(org);
+  const [hidden, setHidden] = useState([]);
+  const [izK, setIzK] = useState(null);
+  const [kbusy, setKbusy] = useState(false);
+  const iz = useIz(org, izK?.id || "");
+  useEffect(() => {
+    if (org && kanal?.open && kanal.id && kanallar && !kanallar.some((x) => x.id === kanal.id)) ensureKanal(org, kanal).catch(() => {});
+  }, [org, kanal, kanallar]);
+  const kRun = async (fn, err) => {
+    setKbusy(true);
+    await fn().catch(() => toast(err));
+    setKbusy(false);
+  };
+  const delK = (k) => {
+    let undone = false;
+    const wasOpen = !!kanal?.open && kanal.id === k.id;
+    setHidden((h) => [...h, k.id]);
+    toast(`"${k.name}" silindi`, {
+      action: {
+        label: "Geri al",
+        onClick: () => {
+          undone = true;
+          setHidden((h) => h.filter((x) => x !== k.id));
+        },
+      },
+      duration: 6000,
+    });
+    setTimeout(async () => {
+      if (undone) return;
+      if (wasOpen) await closeKanal(org, "").catch(() => {});
+      await deleteKanal(org, k.id).catch(() => toast("Silinemedi"));
+      setHidden((h) => h.filter((x) => x !== k.id));
+      reload();
+    }, 6500);
+  };
   const members = membersOf(boats, ch, now);
   const target = members.find((m) => m.id === toDev);
   const to = target ? { dev: target.id, name: [target.sail, target.name].filter(Boolean).join(" ") } : null;
@@ -607,14 +673,15 @@ export function BilgiAdmin() {
   // üstte geri + kanal satırı + küçük sayaç + Parkur/Ekran/Kayıtlar, altta bas-konuş isimleri ve tek satır mesaj. İkinciller alttan pencere.
   return (
     <main className="bzy-app" aria-label="Bilgi ekranı yönetimi">
-      <TekneMap boats={chBoats} course={course.has ? course : null} talk={talk?.dev || ""} full />
-      {talk && !chBoats.some((x) => x.id === talk.dev && Number.isFinite(x.lat)) && (
+      <TekneMap boats={izK ? iz.boats : chBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full />
+      {izK && <IzPanel k={izK} iz={iz} onClose={() => setIzK(null)} />}
+      {!izK && talk && !chBoats.some((x) => x.id === talk.dev && Number.isFinite(x.lat)) && (
         <div className="bzy-talk" role="status">
           {talk.who}
           <Wave />
         </div>
       )}
-      <div className="bzy-top">
+      <div className="bzy-top" style={izK ? { display: "none" } : undefined}>
         <div className="bzy-bar">
           <Link href="/" className="bzy-ic" aria-label="Geri" data-press>
             <svg viewBox="0 0 24 24">
@@ -622,7 +689,7 @@ export function BilgiAdmin() {
             </svg>
           </Link>
           <div className="min-w-0 flex-1">
-            <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} def={antAd || "Antrenman"} />
+            <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} def={antAd || "Antrenman"} onList={() => setSheet("kanallar")} />
           </div>
         </div>
         <MiniTimer />
@@ -643,7 +710,7 @@ export function BilgiAdmin() {
           ))}
         </div>
       </div>
-      {kanal?.open && (
+      {kanal?.open && !izK && (
         <div className="bzy-dock">
           <div className="bzy-to">
             <TalkChip id="" label="Hepsi" picked={!to} ptt={ptt} to={null} now={now} onPick={() => setToDev("")} />
@@ -677,6 +744,19 @@ export function BilgiAdmin() {
           <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />
         </div>
       )}
+      <Sheet open={sheet === "kanallar"} onClose={() => setSheet("")} title="Kanallar">
+        <KanalList
+          org={org}
+          list={kanallar}
+          cur={kanal}
+          hidden={hidden}
+          busy={kbusy}
+          onIz={(k) => (setSheet(""), setIzK(k))}
+          onOpen={(k) => kRun(() => reopenKanal(org, k, kanal), "Açılamadı")}
+          onClose={(k) => kRun(() => closeKanal(org, k.id), "Kapatılamadı")}
+          onDel={delK}
+        />
+      </Sheet>
       <Sheet open={sheet === "parkur"} onClose={() => setSheet("")} title="Parkur">
         <ParkurEdit org={org} pk={b?.parkur} />
         <input

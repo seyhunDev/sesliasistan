@@ -39,7 +39,11 @@ export function useBilgi(org) {
 // Anahtar ana belgede link alanında; yenilenince eski kopya silinir, eski link çalışmaz.
 const pubRef = (key, ...p) => doc(db, "bilgiAcik", key, ...p);
 export async function linkOf(org) {
-  if (LINK[org] === undefined) LINK[org] = await getDoc(ref(org, "ekran")).then((s) => s.data()?.link || "", () => "");
+  if (LINK[org] === undefined)
+    LINK[org] = await getDoc(ref(org, "ekran")).then(
+      (s) => s.data()?.link || "",
+      () => "",
+    );
   return LINK[org];
 }
 const mirror = (org, patch, ...p) =>
@@ -143,7 +147,11 @@ export function usePublic(key) {
         },
         rest,
       );
-      b = onSnapshot(pubRef(key, "ses", "son"), (x) => !poll && setV((o) => ({ ...o, key, s: x.exists() ? x.data() : null })), () => {});
+      b = onSnapshot(
+        pubRef(key, "ses", "son"),
+        (x) => !poll && setV((o) => ({ ...o, key, s: x.exists() ? x.data() : null })),
+        () => {},
+      );
     } catch {
       rest();
     }
@@ -175,7 +183,18 @@ export function readWho() {
 }
 export function saveWho(w) {
   try {
-    localStorage.setItem(WHO, JSON.stringify({ sail: String(w.sail || "").trim().slice(0, 12), name: String(w.name || "").replace(/\s+/g, " ").trim().slice(0, 30) }));
+    localStorage.setItem(
+      WHO,
+      JSON.stringify({
+        sail: String(w.sail || "")
+          .trim()
+          .slice(0, 12),
+        name: String(w.name || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 30),
+      }),
+    );
   } catch {}
 }
 export function deviceId() {
@@ -217,7 +236,7 @@ export function useTekneler(org) {
 // Gönderilen her mesaj ve ses kaydı ayrıca günlüğe yazılır (Seyhun 2026-11-15 "mesajlar kaydedilsin, ne zaman, ne için"):
 // orgs/{org}/bilgiLog { kind: "msg" | "ses", text, dur, at, label (start yazısı), state (parkur durumu), course }
 function logSent(org, item, ctx = {}) {
-  return addDoc(collection(db, "orgs", org, "bilgiLog"), { ...item, at: Date.now(), label: ctx.label || "", state: ctx.state || "", course: ctx.course || "" }).then(
+  return addDoc(collection(db, "orgs", org, "bilgiLog"), { ...item, at: Date.now(), ch: ctx.ch || "", label: ctx.label || "", state: ctx.state || "", course: ctx.course || "" }).then(
     (r) => r.id,
     () => "",
   );
@@ -226,11 +245,21 @@ function logSent(org, item, ctx = {}) {
 export const markLog = (org, id, patch) => (id ? updateDoc(doc(db, "orgs", org, "bilgiLog", id), patch).catch(() => {}) : Promise.resolve());
 
 // Sunucu onayı ("İletildi"): bekleyen yazmalar sunucuya ulaşınca true; 10 sn'de ulaşmazsa false (internet yok)
-const confirmed = () => Promise.race([waitForPendingWrites(db).then(() => true, () => false), new Promise((r) => setTimeout(() => r(false), 10000))]);
+const confirmed = () =>
+  Promise.race([
+    waitForPendingWrites(db).then(
+      () => true,
+      () => false,
+    ),
+    new Promise((r) => setTimeout(() => r(false), 10000)),
+  ]);
 
 // to: { dev, name } verilirse yalnız o ekran gösterir ("Sana"); yoksa kanaldaki herkes. Dönen: { id, ok, logId }
 export async function sendMsg(org, text, ctx, to = null) {
-  const t = String(text || "").replace(/\s+/g, " ").trim().slice(0, MSG_MAX);
+  const t = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MSG_MAX);
   if (!t) return { ok: false };
   const id = newId();
   await saveBilgi(org, { msg: { id, text: t, at: Date.now(), to: to?.dev || "" } });
@@ -238,13 +267,80 @@ export async function sendMsg(org, text, ctx, to = null) {
   return { id, ok: await confirmed(), logId };
 }
 
-// Kanal aç: yeni link (eski link çalışmaz) + kanal adı; ekranlar yalnız açık kanala katılarak başlar. Kapat: ekranlar durur
-export async function openKanal(org, name) {
+// Kanal aç: yeni link (eski link çalışmaz) + kanal adı; ekranlar yalnız açık kanala katılarak başlar. Kapat: ekranlar durur.
+// Her kanalın kaydı orgs/{org}/bilgiKanal/{id} { name, at (açılış), end (kapanış, açıksa null) } (Seyhun 2026-11-17 "Kanallar":
+// eski kanallar listede durur, tekrar açılır, adı değişir, verisiyle silinir). Aynı anda tek kanal açık.
+const kanalRef = (org, id) => doc(db, "orgs", org, "bilgiKanal", id);
+const kanalName = (name) =>
+  String(name || "")
+    .trim()
+    .slice(0, 30) || "Antrenman";
+async function startKanal(org, id, name, prev) {
+  if (prev?.open && prev.id && prev.id !== id) await updateDoc(kanalRef(org, prev.id), { end: Date.now() }).catch(() => {});
   await newLink(org);
-  await saveBilgi(org, { kanal: { id: newId(), name: String(name || "").trim().slice(0, 30) || "Antrenman", open: true, at: Date.now() } });
+  const at = Date.now();
+  await saveBilgi(org, { kanal: { id, name, open: true, at } });
   await syncLink(org);
+  return at;
 }
-export const closeKanal = (org) => saveBilgi(org, { kanal: { open: false } });
+export async function openKanal(org, name, prev = null) {
+  const id = newId();
+  const n = kanalName(name);
+  const at = await startKanal(org, id, n, prev);
+  await setDoc(kanalRef(org, id), { name: n, at, end: null });
+}
+// Eski kanalı tekrar aç (yeni link; izler ve kayıtlar aynı kanalda birikir)
+export async function reopenKanal(org, k, prev = null) {
+  await startKanal(org, k.id, kanalName(k.name), prev);
+  await setDoc(kanalRef(org, k.id), { name: kanalName(k.name), at: k.at || Date.now(), end: null }, { merge: true });
+}
+export async function closeKanal(org, id = "") {
+  await saveBilgi(org, { kanal: { open: false } });
+  if (id) await updateDoc(kanalRef(org, id), { end: Date.now() }).catch(() => {});
+}
+export async function renameKanal(org, id, name, isOpen) {
+  const n = kanalName(name);
+  await setDoc(kanalRef(org, id), { name: n }, { merge: true });
+  if (isOpen) await saveBilgi(org, { kanal: { name: n } });
+}
+// Açık kanalın kaydı yoksa (bu özellikten önce açılmış) oluşturulur
+export const ensureKanal = (org, k) => setDoc(kanalRef(org, k.id), { name: kanalName(k.name), at: k.at || Date.now(), end: k.open ? null : Date.now() }, { merge: true });
+export function useKanallar(org) {
+  const [v, setV] = useState(null);
+  useEffect(() => {
+    if (!org) return;
+    return onSnapshot(
+      query(collection(db, "orgs", org, "bilgiKanal"), orderBy("at", "desc"), limit(40)),
+      (s) => setV(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      () => setV([]),
+    );
+  }, [org]);
+  return org ? v : null;
+}
+// Kanalı verisiyle sil: izler (bilgiIz), son konumlar (bilgiTekne), gelen sesler (bilgiGelen), mesaj/ses günlüğü (bilgiLog, ch alanı olanlar)
+export async function deleteKanal(org, id) {
+  const top = (c) =>
+    getDocs(query(collection(db, c), where("org", "==", org), where("ch", "==", id))).then(
+      (s) => s.docs.map((d) => d.ref),
+      () => [],
+    );
+  const log = getDocs(query(collection(db, "orgs", org, "bilgiLog"), where("ch", "==", id))).then(
+    (s) => s.docs.map((d) => d.ref),
+    () => [],
+  );
+  const refs = (await Promise.all([top("bilgiIz"), top("bilgiTekne"), top("bilgiGelen"), log])).flat();
+  for (let i = 0; i < refs.length; i += 20) await Promise.all(refs.slice(i, i + 20).map((r) => deleteDoc(r).catch(() => {})));
+  await deleteDoc(kanalRef(org, id));
+  return refs.length;
+}
+
+// İz (Seyhun 2026-11-17 "sonra sporcunun ne yaptığını izlemek istiyorum"): ekran 5 sn'de bir nokta toplar, dakikada bir tek belge yazar.
+// bilgiIz { org, k, ch, dev, sail, name, uid, t0, pts: [sn, enlem, boylam, hız (kn), …] düz liste (Firestore iç içe dizi almaz) }
+export const sendIz = (d) => addDoc(collection(db, "bilgiIz"), d);
+export async function loadIz(org, ch) {
+  const s = await getDocs(query(collection(db, "bilgiIz"), where("org", "==", org), where("ch", "==", ch)));
+  return s.docs.map((d) => d.data());
+}
 
 // Son gönderilenler (yönetimde açılınca bir kez okunur)
 export async function loadLog(org, n = 30) {
