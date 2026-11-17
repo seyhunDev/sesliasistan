@@ -8,3 +8,7 @@
 ## Sıradaki işler
 
 - Kural değişince birleşik dosyayı (Velora + Velora Sailing) yenileyip Seyhun'a yayınlat.
+
+## Ek (aynı gün)
+
+- Belge açıkken bazı telefonlarda yine "Kanal açık değil" çıktı (bilgisayarda temiz tarayıcıda link çalışıyordu). `usePublic` artık: önbellekten gelen "belge yok" sayılmaz; dinleyici hata verirse ya da 8 sn'de sunucudan cevap gelmezse belge ve son ses 5 sn'de bir doğrudan REST ile (girişsiz, `bilgiAcik` get herkese açık) okunur. Playwright'ta Firestore dinleme engellenerek denendi: 14 sn'de "Katıl ve başlat" geldi.
