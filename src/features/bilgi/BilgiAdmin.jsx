@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -424,9 +425,9 @@ function ParkurEdit({ org, pk }) {
 }
 
 // Kanal (Seyhun 2026-11-15): ekranlar yalnız açık kanala katılarak başlar. Aç: ad + yeni link (eski link çalışmaz). Kapat: ekranlar durur
-function Kanal({ org, kanal, link, count }) {
+function Kanal({ org, kanal, link, count, def = "Antrenman" }) {
   const toast = useToast();
-  const [name, setName] = useState("Antrenman");
+  const [name, setName] = useState(def);
   const [busy, setBusy] = useState(false);
   const [more, setMore] = useState(false);
   const url = link ? linkUrl(link) : "";
@@ -536,6 +537,11 @@ function LastSent({ last, boats, ch, now, onAgain }) {
 
 export function BilgiAdmin() {
   const { profile } = useAuth();
+  // Bugünün antrenmanından gelindi (Seyhun 2026-11-17 "antrenmanı oradan yöneteceğim"): ?ant=plan id, ?ad=antrenmanın adı.
+  // Kanal adı antrenmanın adıyla hazır gelir; üstte Antrenman düğmesi eski sayfayı (yoklama, günlük, sıralama) açar
+  const q = useSearchParams();
+  const ant = (q.get("ant") || "").replace(/[^\w-]/g, "").slice(0, 60);
+  const antAd = (q.get("ad") || "").trim().slice(0, 30);
   const toast = useToast();
   const org = profile?.role === "owner" ? profile?.orgId || "" : "";
   const b = useBilgi(org);
@@ -624,11 +630,16 @@ export function BilgiAdmin() {
             </svg>
           </Link>
           <div className="min-w-0 flex-1">
-            <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} />
+            <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} def={antAd || "Antrenman"} />
           </div>
         </div>
         <MiniTimer />
         <div className="bzy-pills">
+          {ant ? (
+            <Link href={`/training/day?id=${ant}`} data-press>
+              Antrenman
+            </Link>
+          ) : null}
           {[
             ["parkur", "Parkur"],
             ["ekran", "Ekran"],

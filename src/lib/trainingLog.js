@@ -3,6 +3,7 @@
 // Ayrıntı (yapay zekayla ya da elle): gust (sağanak kn), sea (deniz), place (yer), athletes [ad], boats [sınıf],
 //   next (sonraki antrenmanda), details [{k, v}] (başka her şey), src "ai"
 // Saf fonksiyonlar (test edilir); ekran AddSheet içindeki TrainingLog.jsx, liste /training.
+import { todayStr } from "@/lib/utils/format";
 export const TOPICS = ["Start", "Tramola", "Kavança", "Şamandıra dönüşü", "Rota", "Hız/trim", "Taktik", "Ağır hava", "Hafif hava", "Yarış provası", "Kondisyon", "Teori"];
 export const DIRS = ["Poyraz", "Gündoğusu", "Keşişleme", "Kıble", "Lodos", "Kaba", "Batı", "Karayel"];
 export const RATINGS = [
@@ -276,4 +277,13 @@ export function attLine({ marked = [], unknown = [], fromAtt = [] } = {}) {
     unknown.length ? `Sporcularda bulamadım: ${unknown.join(", ")}.` : "",
     fromAtt.length ? `Katılanları yoklamadan aldım: ${few(fromAtt)}.` : "",
   ].filter(Boolean).join(" ");
+}
+
+// Bugünün yelken antrenmanına dokununca Bilgi Yönet açılır (Seyhun 2026-11-17: "antrenmanı oradan, kanaldan yöneteceğim"); kanal adı
+// antrenmanın adıyla hazır gelir, Yönet'teki Antrenman düğmesi bu sayfaya (yoklama, günlük, sıralama) döner. Başka günün antrenmanı eski sayfada.
+export function antYonet(p, today = todayStr()) {
+  if (!p?.id) return "/bilgi/yonet";
+  if (p.date && p.date !== today) return `/training/day?id=${p.id}`;
+  const ad = String(p.title || "Antrenman").trim().slice(0, 30);
+  return `/bilgi/yonet?ant=${encodeURIComponent(p.id)}&ad=${encodeURIComponent(ad)}`;
 }

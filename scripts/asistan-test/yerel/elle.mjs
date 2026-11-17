@@ -368,6 +368,7 @@ const TPL = [
   { id: "5", title: "Toplantı", cat: "Toplantı", date: "2026-10-02" },
 ];
 group("Antrenman günlüğü")([
+  ["bugünün antrenmanı Yönet'te", F("bugünkü plan Bilgi Yönet (kanal adı, ant), başka gün eski sayfa (Seyhun 2026-11-17)", async () => { const a = TL.antYonet({ id: "p1", title: "Optimist & ILCA", date: "2026-11-17" }, "2026-11-17"); const fs = await import("node:fs"); const r = (f) => fs.readFileSync(new URL(`../../../src/${f}`, import.meta.url), "utf8"); return a === "/bilgi/yonet?ant=p1&ad=Optimist%20%26%20ILCA" && TL.antYonet({ id: "p2", date: "2026-11-18" }, "2026-11-17") === "/training/day?id=p2" && /href=\{`\/training\/day\?id=\$\{ant\}`\}/.test(r("features/bilgi/BilgiAdmin.jsx")) && /antYonet\(p\)/.test(r("features/home/Cockpit.jsx")); })],
   ["temizle", F("sayılar, yön, tekrar eden konu", () => { const l = TL.cleanLog({ wind: "14,4", dir: "Lodos", topics: ["Start", "Start", " "], min: "abc", rating: "3", note: " iyi " }); return l.wind === 14 && l.dir === "Lodos" && l.topics.length === 1 && l.min === null && l.rating === 3 && l.note === "iyi" && !!l.at; })],
   ["boş günlük", F("null (silinir)", () => TL.cleanLog({ wind: "", topics: [], note: " " }) === null)],
   ["satır", F("12 kn Poyraz · Start, Rota · 90 dk", () => TL.logLine(TPL[0].log) === "12 kn Poyraz · Start, Rota · 90 dk")],

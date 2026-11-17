@@ -9,7 +9,7 @@ import { usePlanOpen } from "@/features/athletes/usePlanOpen";
 import { useData } from "@/features/data/DataProvider";
 import { dayHours, dirDeg, getPlace, kn, nowOf, sky, windName } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
-import { isTraining } from "@/lib/trainingLog";
+import { antYonet, isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, dayWeather, nextPlan, planTag, planTone } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
 import { insightFacts, weatherInsight } from "@/features/weather/insight";
@@ -236,8 +236,8 @@ function NextPlan({ now }) {
             </Link>
           )}
           {sail && (
-            <Link href={`/training/day?id=${p.id}`} data-press className="btn btn-primary btn-sm">
-              Süre
+            <Link href={antYonet(p)} data-press className="btn btn-primary btn-sm">
+              Yönet
             </Link>
           )}
         </div>
