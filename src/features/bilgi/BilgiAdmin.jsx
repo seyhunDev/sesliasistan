@@ -15,7 +15,7 @@ import { voiceType } from "@/lib/chatFile";
 import { haptic } from "@/lib/haptic";
 import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
-import { closeKanal, linkUrl, loadLog, loadPusula, markLog, openKanal, saveBilgi, sendMsg, sendSes, useBilgi, useTekneler } from "./bilgiStore";
+import { closeKanal, linkUrl, loadLog, loadPusula, markLog, openKanal, saveBilgi, sendMsg, sendSes, syncLink, useBilgi, useTekneler } from "./bilgiStore";
 import { TekneMap } from "./TekneMap";
 import "./bilgi.css";
 
@@ -566,6 +566,12 @@ export function BilgiAdmin() {
     loadLog(org).then(setLog, () => {});
     loadPusula(org).then(setPus, () => {});
   }, [org]);
+
+  // Yönet açılınca linkin kopyası ana belgeden tazelenir (kopya eksik/eskiyse sporcu linki "Kanal açık değil" der)
+  const linkKey = b?.link || "";
+  useEffect(() => {
+    if (org && linkKey) syncLink(org).catch(() => {});
+  }, [org, linkKey]);
 
   const ctx = { label: b?.label || "", state: b?.state || "", course: b?.course || "" };
   const kanal = b?.kanal || null;
