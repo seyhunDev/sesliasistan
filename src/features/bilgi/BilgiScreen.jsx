@@ -259,7 +259,12 @@ const whoRaw = () => {
 };
 
 // Başlat: yelken no + isim (bu telefonda saklı). Kayıtlıysa yalnız Başlat ve Değiştir
-function StartCard({ onGo, kanal }) {
+// why: link yoksa/eskiyse "none", okunamadıysa "err" (Seyhun 2026-11-17: hepsi "Kanal açık değil" diyordu, sebep anlaşılmıyordu)
+const WHY = {
+  none: "Bu link geçersiz ya da eski. Antrenöründen yeni linki iste.",
+  err: "Bağlanılamadı. İnterneti kontrol edip sayfayı yenile.",
+};
+function StartCard({ onGo, kanal, why = "" }) {
   // Saklı kimlik ilk çizimden sonra okunur (sunucu çizimiyle uyuşsun): sunucuda null
   const raw = useSyncExternalStore(noSub, whoRaw, () => null);
   const who = raw ? readWho() : null;
@@ -283,7 +288,7 @@ function StartCard({ onGo, kanal }) {
   if (!kanal?.open)
     return (
       <div className="bz-go">
-        <div className="bz-card bz-none">Kanal açık değil</div>
+        <div className="bz-card bz-none">{WHY[why] || "Kanal açık değil"}</div>
       </div>
     );
   return (
@@ -595,7 +600,7 @@ export function BilgiScreen({ pub = "" }) {
   const org = pub ? "" : profile?.orgId || "";
   const own = useBilgi(org);
   const ownSes = useBilgiDoc(org, "ses");
-  const [pb, pses, porg] = usePublic(pub);
+  const [pb, pses, porg, pwhy] = usePublic(pub);
   const [who, setWho] = useState(null);
   const b = pub ? pb : own;
   const ses = pub ? pses : ownSes;
@@ -766,7 +771,7 @@ export function BilgiScreen({ pub = "" }) {
           {pad(d.getHours())}:{pad(d.getMinutes())}
         </span>
       )}
-      {!active && <StartCard onGo={start} kanal={kanal} />}
+      {!active && <StartCard onGo={start} kanal={kanal} why={pub ? pwhy : ""} />}
     </main>
   );
 }
