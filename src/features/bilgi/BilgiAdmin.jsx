@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { chooseDur, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { mmss } from "@/lib/raceScore";
 import { Sheet } from "@/components/ui/Sheet";
-import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
+import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
 import { closeKanal, linkUrl, loadLog, loadPusula, markLog, openKanal, saveBilgi, sendMsg, sendSes, useBilgi, useTekneler } from "./bilgiStore";
 import { TekneMap } from "./TekneMap";
@@ -31,7 +33,8 @@ function Seg({ value, items, onPick }) {
 }
 
 // Hedef düğmesi = bas konuş (Seyhun 2026-11-15 "ayrı bas konuş olmasın, kime basarsam onunla konuşayım"): dokununca yazılı mesajın
-// hedefi seçilir, basılı tutunca o kişiye (Hepsi: herkese) ses kaydı, bırakınca gider. Kayıtta düğme kırmızı, saniye yazar.
+// hedefi seçilir, basılı tutunca o kişiye (Hepsi: herkese) ses kaydı, bırakınca gider. Kayıtta düğme yeşil yanar, içe basılı kalır, saniye yazar;
+// genişliği hiç değişmez (2026-11-16).
 function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
   const on = ptt.rec?.key === id;
   const ok = !on && ptt.done?.key === id && now - ptt.done.at < 2000;
@@ -60,7 +63,12 @@ function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
           </>
         )}
       </svg>
-      {on ? `${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn` : label}
+      {/* Genişlik sabit (Seyhun 2026-11-16 "bastığımda küçülüyor"): ad, sayaç ve en geniş sayaç ("20 sn") aynı hücrede üst üste; düğme hep en genişi kadar */}
+      <span className="bzy-ptt-l">
+        <span data-v={on ? "0" : "1"}>{label}</span>
+        <span data-v={on ? "1" : "0"}>{on ? `${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn` : ""}</span>
+        <span data-v="0" aria-hidden="true">{`${SES_MAX_SEC} sn`}</span>
+      </span>
     </button>
   );
 }
@@ -237,7 +245,7 @@ function NumIn({ value, onSave, label, unit }) {
 }
 
 // Koordinat satırı: "39.0712, 26.8840" yazılır ya da "Konumum"; auto: hesaplanan (elle değilse soluk), onAuto: elleyi kaldır
-function PtRow({ label, pt, manual, onSave, onAuto }) {
+function PtRow({ label, pt, manual, onSave, onAuto, offLabel = "Otomatik" }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [v, setV] = useState("");
@@ -260,9 +268,9 @@ function PtRow({ label, pt, manual, onSave, onAuto }) {
             <Button variant="secondary" onClick={async () => save(await here())}>
               Konumum
             </Button>
-            {manual && onAuto && (
+            {manual && onAuto && pt && (
               <Button variant="secondary" onClick={() => (onAuto(), setOpen(false))}>
-                Otomatik
+                {offLabel}
               </Button>
             )}
           </div>
@@ -278,14 +286,38 @@ function ParkurEdit({ org, pk }) {
   const toast = useToast();
   const p = pk || { type: "trapez", wind: null, komite: null, line: 120, orsa: 900, marks: {} };
   const c = buildCourse(p);
-  const put = (patch) => saveBilgi(org, { parkur: patch }).catch(() => toast("Kaydedilemedi"));
+  const put = (patch) =>
+    saveBilgi(org, { parkur: patch }).then(
+      () => true,
+      () => (toast("Kaydedilemedi"), false),
+    );
   const at = (k) => c.pts.find((x) => x.k === k) || null;
+  const ask = useConfirm();
+  // Sıfırla / sil (Seyhun 2026-11-16 "konumları sıfırlayabilmemiz, istediğimizi değiştirebilmemiz ya da tamamen silebilmemiz gerekiyor"):
+  // elle düzeltilen şamandıralar tek dokunuşla otomatiğe döner; Parkuru sil bütün parkuru (tip, rüzgâr, hakem botu, uzunluklar,
+  // şamandıralar) belgeden kaldırır, link kopyasına da yazılır (saveBilgi); ekranlarda harita boşalır.
+  const nManual = markKeys(p.type).filter((k) => p.marks?.[k]).length;
+  const any = !!(pk && (pk.komite || pk.wind != null || Object.values(pk.marks || {}).some(Boolean)));
+  const wipe = () =>
+    ask({
+      title: "Parkur silinsin mi?",
+      text: "Hakem botu, rüzgâr ve bütün şamandıra konumları silinir; ekranlarda parkur kaybolur. Yeniden baştan kurabilirsin.",
+      yes: "Parkuru sil",
+      run: () =>
+        saveBilgi(org, { parkur: null }).then(
+          () => toast("Parkur silindi"),
+          (e) => {
+            toast("Silinemedi");
+            throw e;
+          },
+        ),
+    });
   return (
     <>
       <Seg value={p.type} items={PK_TYPES} onPick={(k) => put({ type: k })} />
       <div className="bzy-list mt-2">
         <NumIn label="Rüzgâr" unit="°" value={p.wind} onSave={(v) => put({ wind: v == null ? null : v % 360 })} />
-        <PtRow label="Hakem botu" pt={p.komite} manual onSave={(q) => put({ komite: q })} />
+        <PtRow label="Hakem botu" pt={p.komite} manual onSave={(q) => put({ komite: q })} onAuto={() => put({ komite: null })} offLabel="Kaldır" />
         <NumIn label="Start hattı" unit="m" value={p.line} onSave={(v) => put({ line: v ?? 120 })} />
         <NumIn label="1 numaraya" unit="m" value={p.orsa} onSave={(v) => put({ orsa: v ?? 900 })} />
       </div>
@@ -296,14 +328,28 @@ function ParkurEdit({ org, pk }) {
           ))}
         </div>
       )}
+      {(nManual > 0 || any) && (
+        <div className="bzy-row bzy-pkact">
+          {nManual > 0 && (
+            <Button variant="secondary" onClick={() => put({ marks: null }).then((ok) => ok && toast("Şamandıralar otomatiğe döndü"))}>
+              Şamandıraları sıfırla
+            </Button>
+          )}
+          {any && (
+            <Button variant="danger" onClick={wipe}>
+              Parkuru sil
+            </Button>
+          )}
+        </div>
+      )}
     </>
   );
 }
 
 // Kanal (Seyhun 2026-11-15): ekranlar yalnız açık kanala katılarak başlar. Aç: ad + yeni link (eski link çalışmaz). Kapat: ekranlar durur
-function Kanal({ org, kanal, link, count }) {
+function Kanal({ org, kanal, link, count, def = "Antrenman" }) {
   const toast = useToast();
-  const [name, setName] = useState("Antrenman");
+  const [name, setName] = useState(def);
   const [busy, setBusy] = useState(false);
   const [more, setMore] = useState(false);
   const url = link ? linkUrl(link) : "";
@@ -413,6 +459,11 @@ function LastSent({ last, boats, ch, now, onAgain }) {
 
 export function BilgiAdmin() {
   const { profile } = useAuth();
+  // Bugünün antrenmanından gelindi (Seyhun 2026-11-17 "antrenmanı oradan yöneteceğim"): ?ant=plan id, ?ad=antrenmanın adı.
+  // Kanal adı antrenmanın adıyla hazır gelir; üstte Antrenman düğmesi eski sayfayı (yoklama, günlük, sıralama) açar
+  const q = useSearchParams();
+  const ant = (q.get("ant") || "").replace(/[^\w-]/g, "").slice(0, 60);
+  const antAd = (q.get("ad") || "").trim().slice(0, 30);
   const toast = useToast();
   const org = profile?.role === "owner" ? profile?.orgId || "" : "";
   const b = useBilgi(org);
@@ -501,11 +552,16 @@ export function BilgiAdmin() {
             </svg>
           </Link>
           <div className="min-w-0 flex-1">
-            <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} />
+            <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} def={antAd || "Antrenman"} />
           </div>
         </div>
         <MiniTimer />
         <div className="bzy-pills">
+          {ant ? (
+            <Link href={`/training/day?id=${ant}`} data-press>
+              Antrenman
+            </Link>
+          ) : null}
           {[
             ["parkur", "Parkur"],
             ["ekran", "Ekran"],

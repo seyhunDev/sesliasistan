@@ -20,7 +20,10 @@ export function usePtt({ send, onSent }) {
     if (!s) return;
     st.current = null;
     clearTimeout(s.timer);
-    if (s.mr.state !== "inactive") s.mr.stop();
+    if (s.mr.state !== "inactive") {
+      haptic("medium"); // bırakınca telsiz gibi "tık" (basınca da medium)
+      s.mr.stop();
+    }
     setRec(null);
   };
   const begin = async (e, key, to) => {
@@ -63,7 +66,6 @@ export function usePtt({ send, onSent }) {
       if (dur < 0.6) return; // kısa dokunuş: yalnız hedef seçildi
       const blob = new Blob(parts, { type: mr.mimeType || type || "audio/mp4" });
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, at: Date.now(), ok: null });
-      haptic("light");
       const r = await send(blob, dur, to).catch(() => ({ ok: false }));
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, ...r, ok: !!r.ok });
       if (r.ok) {

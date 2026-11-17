@@ -11,7 +11,7 @@ import { useData } from "@/features/data/DataProvider";
 import { dayHours } from "@/features/weather/weather";
 import { DayCell, H0, H1, HavaPanel, cap, pad, windColor } from "@/features/weather/WxPanel";
 import { useNow } from "@/hooks/useNow";
-import { isTraining } from "@/lib/trainingLog";
+import { antYonet, isTraining } from "@/lib/trainingLog";
 import { attHref, dayPlans, planTone } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
 import { InboxBell } from "./Inbox";
@@ -138,8 +138,8 @@ function DayLane({ date, today, nowH, dname, rows }) {
           </Link>
         )}
         {sail && (
-          <Link href={`/training/day?id=${sail.id}`} data-press className="iph-mini iph-mini-on">
-            Süre
+          <Link href={antYonet(sail)} data-press className="iph-mini iph-mini-on">
+            Yönet
           </Link>
         )}
       </div>
