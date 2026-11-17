@@ -278,3 +278,43 @@ export async function sendSes(org, blob, dur, ctx, to = null) {
   const logId = await logSent(org, { kind: "ses", dur: Math.round(dur), id: d.id, to: to?.name || "" }, ctx);
   return { id: d.id, ok: await confirmed(), logId };
 }
+
+// Sporcudan Yönet'e bas-konuş (Seyhun 2026-11-16): ekran son kaydını bilgiGelen/{cihaz} belgesine yazar (cihaz başına tek belge,
+// üstüne; depoda birikmez). Yazma kuralı bilgiTekne ile aynı (işletme hesabı ya da açık link anahtarı k); okuyan yalnız ana hesap.
+// who: { org, k, ch, sail, name, uid }
+export async function sendGelen(dev, who, blob, dur) {
+  const data = await b64(blob);
+  if (!dev || !data || data.length > 700000) return { ok: false };
+  const d = {
+    org: who.org,
+    k: who.k || "",
+    ch: who.ch || "",
+    sail: String(who.sail || "").slice(0, 12),
+    name: String(who.name || "").slice(0, 30),
+    uid: who.uid || "",
+    id: newId(),
+    at: Date.now(),
+    type: (blob.type || "audio/mp4").split(";")[0],
+    dur: Math.round(dur),
+    data,
+  };
+  await setDoc(doc(db, "bilgiGelen", dev), d);
+  return { id: d.id, ok: await confirmed() };
+}
+
+// Yönet: sporculardan gelen son sesler (belge değişince okunur; açılıştaki eskiler çalınmaz, çalan taraf at'a bakar)
+export function useGelen(org) {
+  const [v, setV] = useState([]);
+  useEffect(() => {
+    if (!org) return;
+    return onSnapshot(
+      query(collection(db, "bilgiGelen"), where("org", "==", org)),
+      (s) => setV(s.docs.map((d) => ({ dev: d.id, ...d.data() }))),
+      () => setV([]),
+    );
+  }, [org]);
+  return org ? v : [];
+}
+
+// Gelen ses Yönet'te çalınınca günlüğe de yazılır (Kayıtlar; ses verisi yazılmaz)
+export const logGelen = (org, g, ctx) => logSent(org, { kind: "gelen", dur: g.dur || 0, id: g.id, from: [g.sail, g.name].filter(Boolean).join(" ") }, ctx);

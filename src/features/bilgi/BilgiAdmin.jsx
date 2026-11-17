@@ -7,16 +7,15 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
-import { chooseDur, holdMic, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
+import { chooseDur, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { mmss } from "@/lib/raceScore";
 import { Sheet } from "@/components/ui/Sheet";
-import { micReset } from "@/lib/speech/audioSession";
-import { voiceType } from "@/lib/chatFile";
-import { haptic } from "@/lib/haptic";
 import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
-import { closeKanal, linkUrl, loadLog, loadPusula, markLog, openKanal, saveBilgi, sendMsg, sendSes, syncLink, useBilgi, useTekneler } from "./bilgiStore";
+import { closeKanal, linkUrl, loadLog, loadPusula, logGelen, markLog, openKanal, saveBilgi, sendMsg, sendSes, syncLink, useBilgi, useGelen, useTekneler } from "./bilgiStore";
 import { TekneMap } from "./TekneMap";
+import { usePtt } from "./usePtt";
+import { Wave } from "./Wave";
 import "./bilgi.css";
 
 // Bilgi ekranı yönetimi (yalnız ana hesap): mesaj (ekranda görünür ve sesli okunur), bas-konuş, start sayacı (ortak sayaç), parkur.
@@ -32,82 +31,6 @@ function Seg({ value, items, onPick }) {
       ))}
     </div>
   );
-}
-
-// Bas konuş: basılı tutunca kaydeder, bırakınca gönderir (en çok 20 sn)
-function usePtt({ org, ctx, onSent }) {
-  const toast = useToast();
-  const [rec, setRec] = useState(null); // { key, t0 } basılı tutulan hedef
-  const [done, setDone] = useState(null); // { key, at } son giden ses (düğmede kısa ✓)
-  const st = useRef(null);
-  const stop = () => {
-    const s = st.current;
-    if (!s) return;
-    st.current = null;
-    clearTimeout(s.timer);
-    if (s.mr.state !== "inactive") {
-      haptic("medium"); // bırakınca telsiz gibi "tık" (basınca da medium)
-      s.mr.stop();
-    }
-    setRec(null);
-  };
-  const begin = async (e, key, to) => {
-    e.preventDefault();
-    try {
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-    } catch {}
-    if (st.current) return;
-    haptic("select");
-    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) return toast("Bu cihazda ses kaydı yapılamıyor.");
-    const s = { mr: null, timer: 0, up: false };
-    st.current = s;
-    // Kısa dokunuş yalnız hedef seçer: 0,3 sn basılı kalmadıysa mikrofon hiç açılmaz
-    await new Promise((r) => setTimeout(r, 300));
-    if (s.up) {
-      st.current = null;
-      return;
-    }
-    // Geri sayım sürerken sayaç iPhone ses oturumunu "playback"e alır (bipler sessizde de çalsın); o kipte mikrofon açılmaz.
-    // Kayıt boyunca sayaç kipi değiştirmez, mikrofon açılmadan önce kip "auto"ya döner (asistan mikrofonu gibi).
-    holdMic(true);
-    micReset();
-    let stream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-    } catch (err) {
-      st.current = null;
-      holdMic(false);
-      return toast(err?.name === "NotAllowedError" ? "Mikrofon izni gerekli." : "Mikrofon açılamadı, tekrar dene.");
-    }
-    const type = voiceType();
-    const mr = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 32000 });
-    const parts = [];
-    const t0 = Date.now();
-    mr.ondataavailable = (ev) => ev.data?.size && parts.push(ev.data);
-    mr.onstop = async () => {
-      stream.getTracks().forEach((t) => t.stop());
-      holdMic(false);
-      const dur = (Date.now() - t0) / 1000;
-      if (dur < 0.6) return; // kısa dokunuş: yalnız hedef seçildi
-      const blob = new Blob(parts, { type: mr.mimeType || type || "audio/mp4" });
-      onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, at: Date.now(), ok: null });
-      const r = await sendSes(org, blob, dur, ctx, to).catch(() => ({ ok: false }));
-      onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, ...r, ok: !!r.ok });
-      if (r.ok) {
-        haptic("success");
-        setDone({ key, at: Date.now() });
-      } else haptic("error");
-    };
-    s.mr = mr;
-    mr.start();
-    haptic("medium"); // kayıt başladı: parmağın altında hissedilir
-    setRec({ key, t0 });
-    s.timer = setTimeout(stop, SES_MAX_SEC * 1000);
-    if (s.up) stop(); // izin sorulurken parmak kalktıysa
-  };
-  const end = () => (st.current && !st.current.mr ? (st.current.up = true) : stop());
-  useEffect(() => () => stop(), []);
-  return { rec, done, begin, end };
 }
 
 // Hedef düğmesi = bas konuş (Seyhun 2026-11-15 "ayrı bas konuş olmasın, kime basarsam onunla konuşayım"): dokununca yazılı mesajın
@@ -168,8 +91,8 @@ function SentList({ rows }) {
             <time className="num">{i === 0 || dayName(rows[i - 1].at) !== dayName(r.at) ? `${dayName(r.at)} ${hhmm(r.at)}` : hhmm(r.at)}</time>
             <div className="min-w-0 flex-1">
               <b>
-                {r.to ? `${r.to} · ` : ""}
-                {r.kind === "ses" ? `Ses · ${r.dur || 0} sn` : r.text}
+                {r.kind === "gelen" ? `${r.from || "Sporcu"} · Gelen ses · ${r.dur || 0} sn` : r.to ? `${r.to} · ` : ""}
+                {r.kind === "gelen" ? "" : r.kind === "ses" ? `Ses · ${r.dur || 0} sn` : r.text}
               </b>
               {(r.label || r.state) && <span>{[r.label, r.state].filter(Boolean).join(" · ")}</span>}
             </div>
@@ -535,6 +458,62 @@ function LastSent({ last, boats, ch, now, onAgain }) {
   );
 }
 
+// Sporcudan gelen bas-konuş (Seyhun 2026-11-17, örnek C): yeni gelen ses sırayla çalınır, çalarken o teknenin haritadaki işareti atar
+// ve üstünde dalga görünür. Taze olmayan (20 sn'den eski) ses çalınmaz. Çalınan her ses Kayıtlar'a yazılır.
+const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+function useGelenPlay(org, ctx, onLog) {
+  const toast = useToast();
+  const list = useGelen(org);
+  const [talk, setTalk] = useState(null);
+  const seen = useRef(new Set());
+  const q = useRef([]);
+  const playing = useRef(false);
+  const el = useRef(null);
+  const audio = () => el.current || (el.current = new Audio());
+  // Tarayıcı sesi yalnız dokunuştan sonra çalar: ilk dokunuşta aynı ses öğesi sessizce bir kez çalınır
+  useEffect(() => {
+    const u = () => {
+      const a = audio();
+      if (playing.current) return;
+      a.src = SILENT;
+      a.play().catch(() => {});
+    };
+    window.addEventListener("pointerdown", u, { once: true });
+    return () => window.removeEventListener("pointerdown", u);
+  }, []);
+  useEffect(() => {
+    const next = () => {
+      if (playing.current || !q.current.length) return;
+      const g = q.current.shift();
+      const a = audio();
+      playing.current = true;
+      const who = [g.sail, g.name].filter(Boolean).join(" ") || "Sporcu";
+      const fin = () => {
+        a.onended = a.onerror = a.onplaying = null;
+        playing.current = false;
+        setTalk(null);
+        next();
+      };
+      a.onplaying = () => setTalk({ dev: g.dev, who });
+      a.onended = a.onerror = fin;
+      a.src = `data:${g.type || "audio/mp4"};base64,${g.data}`;
+      a.play().catch(() => {
+        toast(`${who} sesli mesaj gönderdi; ses için ekrana bir kez dokun.`);
+        fin();
+      });
+      logGelen(org, g, ctx).then(onLog);
+    };
+    for (const g of list) {
+      if (!g.id || seen.current.has(g.id)) continue;
+      seen.current.add(g.id);
+      if (g.data && Date.now() - (g.at || 0) < 20000) q.current.push(g);
+    }
+    q.current.sort((x, y) => x.at - y.at);
+    next();
+  }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
+  return talk;
+}
+
 export function BilgiAdmin() {
   const { profile } = useAuth();
   // Bugünün antrenmanından gelindi (Seyhun 2026-11-17 "antrenmanı oradan yöneteceğim"): ?ant=plan id, ?ad=antrenmanın adı.
@@ -579,7 +558,8 @@ export function BilgiAdmin() {
   const members = membersOf(boats, ch, now);
   const target = members.find((m) => m.id === toDev);
   const to = target ? { dev: target.id, name: [target.sail, target.name].filter(Boolean).join(" ") } : null;
-  const ptt = usePtt({ org, ctx, onSent: (x) => got(x) });
+  const talk = useGelenPlay(org, ctx, () => reload());
+  const ptt = usePtt({ send: (blob, dur, to) => sendSes(org, blob, dur, ctx, to), onSent: (x) => got(x) });
   const got = (x) => {
     setLast((o) => ({ ...(o && o.at === x.at ? o : {}), ...x }));
     if (x.ok != null) reload();
@@ -627,7 +607,13 @@ export function BilgiAdmin() {
   // üstte geri + kanal satırı + küçük sayaç + Parkur/Ekran/Kayıtlar, altta bas-konuş isimleri ve tek satır mesaj. İkinciller alttan pencere.
   return (
     <main className="bzy-app" aria-label="Bilgi ekranı yönetimi">
-      <TekneMap boats={chBoats} course={course.has ? course : null} full />
+      <TekneMap boats={chBoats} course={course.has ? course : null} talk={talk?.dev || ""} full />
+      {talk && !chBoats.some((x) => x.id === talk.dev && Number.isFinite(x.lat)) && (
+        <div className="bzy-talk" role="status">
+          {talk.who}
+          <Wave />
+        </div>
+      )}
       <div className="bzy-top">
         <div className="bzy-bar">
           <Link href="/" className="bzy-ic" aria-label="Geri" data-press>
