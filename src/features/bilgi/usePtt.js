@@ -10,6 +10,8 @@ import { SES_MAX_SEC } from "@/lib/bilgi";
 
 // Bas konuş: basılı tutunca kaydeder, bırakınca gönderir (en çok 20 sn). Yönet (sporcuya) ve sporcu ekranı (Yönet'e) aynı kancayı kullanır;
 // send(blob, sn, hedef) gönderimi yapar ve { ok } döner.
+// İptal (Seyhun 2026-11-18): kayıt sürerken parmak düğmeden uzağa (yukarıdaki "İptal"e) kaydırılıp bırakılırsa ses gönderilmez.
+const CANCEL_PX = 60;
 export function usePtt({ send, onSent }) {
   const toast = useToast();
   const [rec, setRec] = useState(null); // { key, t0 } basılı tutulan hedef
@@ -34,7 +36,7 @@ export function usePtt({ send, onSent }) {
     if (st.current) return;
     haptic("select");
     if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) return toast("Bu cihazda ses kaydı yapılamıyor.");
-    const s = { mr: null, timer: 0, up: false };
+    const s = { mr: null, timer: 0, up: false, x0: e.clientX, y0: e.clientY, far: false };
     st.current = s;
     // Kısa dokunuş yalnız hedef seçer: 0,3 sn basılı kalmadıysa mikrofon hiç açılmaz
     await new Promise((r) => setTimeout(r, 300));
@@ -64,6 +66,7 @@ export function usePtt({ send, onSent }) {
       holdMic(false);
       const dur = (Date.now() - t0) / 1000;
       if (dur < 0.6) return; // kısa dokunuş: yalnız hedef seçildi
+      if (s.far) return toast("Ses iptal edildi");
       const blob = new Blob(parts, { type: mr.mimeType || type || "audio/mp4" });
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, at: Date.now(), ok: null });
       const r = await send(blob, dur, to).catch(() => ({ ok: false }));
@@ -83,7 +86,17 @@ export function usePtt({ send, onSent }) {
     s.timer = setTimeout(stop, SES_MAX_SEC * 1000);
     if (s.up) stop(); // izin sorulurken parmak kalktıysa
   };
+  // Basılıyken parmak uzaklaşınca iptal kipine girer (düğme kırmızılaşır), geri gelince çıkar
+  const move = (e) => {
+    const s = st.current;
+    if (!s?.mr) return;
+    const far = Math.hypot(e.clientX - s.x0, e.clientY - s.y0) > CANCEL_PX;
+    if (far === s.far) return;
+    s.far = far;
+    haptic("select");
+    setRec((r) => r && { ...r, cancel: far });
+  };
   const end = () => (st.current && !st.current.mr ? (st.current.up = true) : stop());
   useEffect(() => () => stop(), []);
-  return { rec, done, begin, end };
+  return { rec, done, begin, end, move };
 }

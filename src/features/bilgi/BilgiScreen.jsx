@@ -8,7 +8,7 @@ import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, scree
 import { CourseMap } from "./CourseMap";
 import { deviceId, readWho, savePusula, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
 import { usePtt } from "./usePtt";
-import { Wave } from "./Wave";
+import { PttCancel, Wave } from "./Wave";
 import "./bilgi.css";
 
 // Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 4): başlıksız tek ekran, dokunulmaz. Üstte en büyük pusula derecesi (telefonun
@@ -715,20 +715,23 @@ export function BilgiScreen({ pub = "" }) {
           <Wave />
         </span>
       )}
+      {active && ptt.rec && <PttCancel on={!!ptt.rec.cancel} className="bz-pcx" />}
       {active && (
         <button
           type="button"
           className="bz-ptt"
           data-rec={ptt.rec ? "1" : undefined}
+          data-cancel={ptt.rec?.cancel ? "1" : undefined}
           data-ok={ptt.done && now - ptt.done.at < 2000 ? "1" : undefined}
           aria-label="Bas konuş"
           onPointerDown={(e) => ptt.begin(e, "y", null)}
+          onPointerMove={ptt.move}
           onPointerUp={ptt.end}
           onPointerCancel={ptt.end}
           onContextMenu={(e) => e.preventDefault()}
         >
           {ptt.rec ? (
-            <b className="num">{recSec}</b>
+            <b className="num">{ptt.rec.cancel ? "✕" : recSec}</b>
           ) : (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
               <rect x="9" y="3" width="6" height="11" rx="3" />
