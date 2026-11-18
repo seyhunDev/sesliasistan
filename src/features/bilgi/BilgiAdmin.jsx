@@ -493,12 +493,13 @@ function LastSent({ last, boats, ch, now, onAgain }) {
 const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 function useGelenPlay(org, ctx, onLog) {
   const toast = useToast();
-  const list = useGelen(org);
+  const g0 = useGelen(org);
   const [talk, setTalk] = useState(null);
-  const seen = useRef(new Set());
+  const seen = useRef(null);
   const q = useRef([]);
   const playing = useRef(false);
   const el = useRef(null);
+  const warned = useRef(false);
   const audio = () => el.current || (el.current = new Audio());
   // Tarayıcı sesi yalnız dokunuştan sonra çalar: ilk dokunuşta aynı ses öğesi sessizce bir kez çalınır
   useEffect(() => {
@@ -511,6 +512,12 @@ function useGelenPlay(org, ctx, onLog) {
     window.addEventListener("pointerdown", u, { once: true });
     return () => window.removeEventListener("pointerdown", u);
   }, []);
+  // Okunamıyorsa (Seyhun 2026-11-18 "sporcunun sesi duyulmuyor, gösterilmiyor"): sessiz kalmasın, sebep yazsın
+  useEffect(() => {
+    if (!g0.err || warned.current) return;
+    warned.current = true;
+    toast("Sporcudan gelen sesler okunamıyor. Firestore kuralları yayınlandı mı?", { duration: 8000 });
+  }, [g0.err]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const next = () => {
       if (playing.current || !q.current.length) return;
@@ -518,29 +525,46 @@ function useGelenPlay(org, ctx, onLog) {
       const a = audio();
       playing.current = true;
       const who = [g.sail, g.name].filter(Boolean).join(" ") || "Sporcu";
+      let shown = false;
       const fin = () => {
         a.onended = a.onerror = a.onplaying = null;
         playing.current = false;
         setTalk(null);
         next();
       };
-      a.onplaying = () => setTalk({ dev: g.dev, who });
-      a.onended = a.onerror = fin;
+      // Çalınamasa da (izin, ses biçimi) kim konuştu süre kadar haritada görünür
+      const showOnly = (msg) => {
+        a.onended = a.onerror = a.onplaying = null;
+        toast(msg);
+        if (shown) return fin();
+        shown = true;
+        setTalk({ dev: g.dev, who });
+        setTimeout(fin, Math.max(2, Math.min(20, g.dur || 3)) * 1000);
+      };
+      a.onplaying = () => {
+        shown = true;
+        setTalk({ dev: g.dev, who });
+      };
+      a.onended = fin;
+      a.onerror = () => showOnly(`${who} sesli mesaj gönderdi ama bu cihazda çalınamadı.`);
       a.src = `data:${g.type || "audio/mp4"};base64,${g.data}`;
-      a.play().catch(() => {
-        toast(`${who} sesli mesaj gönderdi; ses için ekrana bir kez dokun.`);
-        fin();
+      a.play().catch((e) => {
+        if (a.onerror) showOnly(e?.name === "NotAllowedError" ? `${who} sesli mesaj gönderdi; ses için ekrana bir kez dokun.` : `${who} sesli mesaj gönderdi ama çalınamadı.`);
       });
       logGelen(org, g, ctx).then(onLog);
     };
-    for (const g of list) {
+    if (!g0.ready) return;
+    // İlk cevaptaki eski sesler çalınmaz (yalnız 30 sn içinde gelen); sonra gelen her yeni ses çalınır (telefon saatleri farklı olabilir)
+    const first = seen.current === null;
+    if (first) seen.current = new Set();
+    for (const g of g0.list) {
       if (!g.id || seen.current.has(g.id)) continue;
       seen.current.add(g.id);
-      if (g.data && Date.now() - (g.at || 0) < 20000) q.current.push(g);
+      if (g.data && (first ? Date.now() - (g.at || 0) < 30000 : true)) q.current.push(g);
     }
     q.current.sort((x, y) => x.at - y.at);
     next();
-  }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [g0]); // eslint-disable-line react-hooks/exhaustive-deps
   return talk;
 }
 

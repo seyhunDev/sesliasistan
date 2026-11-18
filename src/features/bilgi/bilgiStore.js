@@ -399,17 +399,18 @@ export async function sendGelen(dev, who, blob, dur) {
 }
 
 // Yönet: sporculardan gelen son sesler (belge değişince okunur; açılıştaki eskiler çalınmaz, çalan taraf at'a bakar)
+// Dönen: { list, ready (ilk cevap geldi), err (okunamadı: kural yayınlanmamış ya da izin yok) }
 export function useGelen(org) {
-  const [v, setV] = useState([]);
+  const [v, setV] = useState({ org: "", list: [], ready: false, err: false });
   useEffect(() => {
     if (!org) return;
     return onSnapshot(
       query(collection(db, "bilgiGelen"), where("org", "==", org)),
-      (s) => setV(s.docs.map((d) => ({ dev: d.id, ...d.data() }))),
-      () => setV([]),
+      (s) => setV({ org, list: s.docs.map((d) => ({ dev: d.id, ...d.data() })), ready: true, err: false }),
+      () => setV({ org, list: [], ready: true, err: true }),
     );
   }, [org]);
-  return org ? v : [];
+  return v.org === org ? v : { list: [], ready: false, err: false };
 }
 
 // Gelen ses Yönet'te çalınınca günlüğe de yazılır (Kayıtlar; ses verisi yazılmaz)

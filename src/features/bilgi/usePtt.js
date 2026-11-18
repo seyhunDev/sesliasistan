@@ -71,7 +71,10 @@ export function usePtt({ send, onSent }) {
       if (r.ok) {
         haptic("success");
         setDone({ key, at: Date.now() });
-      } else haptic("error");
+      } else {
+        haptic("error");
+        toast("Ses gönderilemedi, tekrar dene.");
+      }
     };
     s.mr = mr;
     mr.start();
