@@ -310,3 +310,31 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-to .bzy-ptt[data-cancel] { background: #6b7280 !important; border-color: #6b7280 !important; }
 .bzy-ptt[data-cancel]::after { display: none; }
 @media (orientation: landscape) { .bz-pcx { left: auto; right: calc(var(--bz-pr) + 0.75rem); transform: none; bottom: calc(env(safe-area-inset-bottom, 0px) + 8.75rem); } }
+/* Pusula ortada, harita köşede (Seyhun 2026-11-18 örnek B): harita sağ altta küçük kare, dokununca tam ekran. Pusula boşalan yerde büyür;
+   bas-konuş sol altta, saat sağ üstte */
+.bz { --bz-mw: min(34vw, 9.5rem); }
+.bz.bz-mapon { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bz-mw) + 1.75rem); }
+.bz-rt { position: absolute; right: var(--bz-pr); bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem); width: var(--bz-mw); height: var(--bz-mw); margin: 0; z-index: 2; cursor: pointer; }
+.bz-rt .bzm { border-radius: 1rem; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); }
+.bz-rt:not(.big) .bzm-note { font-size: 0.75rem; left: 0.25rem; right: 0.25rem; bottom: 0.25rem; }
+.bz-rt.big { left: var(--bz-px); top: calc(env(safe-area-inset-top, 0px) + 0.75rem); width: auto; height: auto; z-index: 5; }
+.bz-clk { top: calc(env(safe-area-inset-top, 0px) + 0.75rem); bottom: auto; }
+.bz.bz-mapon .bz-ptt { left: var(--bz-px); transform: none; bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem + (var(--bz-mw) - 4.25rem) / 2); }
+.bz.bz-mapon .bz-ptt:active, .bz.bz-mapon .bz-ptt[data-rec] { transform: translateY(3px); }
+.bz.bz-mapon .bz-pcx { left: var(--bz-px); transform: none; bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bz-mw) + 1.5rem); }
+.bz.bz-m-pre:not(.bz-cnt) { justify-content: center; }
+.bz-m-pre:not(.bz-cnt) .bz-hd { font-size: min(34vw, 22vh); }
+.bz-m-race .bz-top .bz-hd { font-size: min(34vw, 24vh); }
+@media (orientation: landscape) {
+  .bz.bz-m-pre, .bz.bz-m-race { display: flex; }
+  .bz { --bz-mw: min(30vh, 9rem); }
+  .bz.bz-mapon { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem); padding-right: calc(var(--bz-pr) + var(--bz-mw) + 1rem); }
+  .bz.bz-mapon .bz-ptt { left: auto; right: calc(var(--bz-pr) + (var(--bz-mw) - 4.25rem) / 2); bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bz-mw) + 3.25rem); }
+  .bz.bz-mapon .bz-pcx { left: auto; right: var(--bz-pr); bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bz-mw) + 7rem); }
+  .bz-m-race .bz-top .bz-hd, .bz-m-pre:not(.bz-cnt) .bz-hd { font-size: min(20vw, 40vh); }
+  /* Geri sayım yatayda: solda pusula + rüzgâr, sağda büyük süre */
+  .bz.bz-cnt { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: center; column-gap: 1.25rem; }
+  .bz-cnt > .bz-cmp, .bz-cnt > .bz-wind, .bz-cnt > .bz-cs { grid-column: 1; }
+  .bz-cnt > .bz-tm { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+  .bz-cnt > .bz-msg { grid-column: 1 / -1; grid-row: auto; }
+}
