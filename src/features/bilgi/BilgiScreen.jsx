@@ -624,6 +624,7 @@ export function BilgiScreen({ pub = "" }) {
   const b = pub ? pb : own;
   const ses = pub ? pses : ownSes;
   const [on, setOn] = useState(false);
+  const [big, setBig] = useState(false);
   const now = useTick(250);
   const h = useHeading(on);
   useRecord(on, org, profile?.uid, profile?.name);
@@ -693,15 +694,18 @@ export function BilgiScreen({ pub = "" }) {
   );
   const course = buildCourse(b?.parkur);
   const wind = <WindDial wind={course.up} head={h} />;
+  // Harita köşede küçük (Seyhun 2026-11-18 örnek B "pusula ortada büyük, konum ek bilgi"): dokununca tam ekran, tekrar dokununca küçülür
+  const showMap = mode !== "last" && (mode !== "race" || show.parkur);
+  const mapNote = pos.me ? "" : big ? pos.denied ? <GeoAsk pos={pos} /> : pos.err || "Konum bekleniyor…" : pos.denied ? "Konum izni" : "Konum…";
   const map = (
-    <div className="bz-rt">
-      <CourseMap course={course} me={pos.me} head={h} trail={pos.trail} className="bz-map" note={pos.me ? "" : pos.denied ? <GeoAsk pos={pos} /> : pos.err || "Konum bekleniyor…"} />
-      {b?.state && <div className="bz-cs">{b.state}</div>}
+    <div className={`bz-rt${big ? " big" : ""}`} role="button" tabIndex={0} aria-label={big ? "Haritayı küçült" : "Haritayı büyüt"} onClick={(e) => !e.target.closest("button") && setBig((x) => !x)}>
+      <CourseMap course={course} me={pos.me} head={h} trail={pos.trail} className="bz-map" note={mapNote} />
     </div>
   );
+  const csLine = b?.state ? <div className="bz-cs">{b.state}</div> : null;
 
   return (
-    <main className={`bz${active ? " bz-pton" : ""}${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
+    <main className={`bz${active ? " bz-pton" : ""}${showMap ? " bz-mapon" : ""}${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
       {!pub && (
         <button type="button" className="bz-back" onClick={leave} aria-label="Geri">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -752,8 +756,8 @@ export function BilgiScreen({ pub = "" }) {
           <div className="bz-top">
             {show.pusula && compass}
             {show.ruzgar && wind}
+            {show.parkur && csLine}
           </div>
-          {show.parkur ? map : <div className="bz-fill" />}
           {(show.sure || show.saat) && (
             <div className="bz-foot num">
               <span>
@@ -773,7 +777,7 @@ export function BilgiScreen({ pub = "" }) {
         <>
           {compass}
           {wind}
-          {map}
+          {csLine}
           {sv.phase !== "none" && (
             <div className="bz-tm">
               {seq && (
@@ -816,6 +820,7 @@ export function BilgiScreen({ pub = "" }) {
           {pad(d.getHours())}:{pad(d.getMinutes())}
         </span>
       )}
+      {showMap && map}
       {!active && <StartCard onGo={start} kanal={kanal} why={pub ? pwhy : ""} />}
     </main>
   );
