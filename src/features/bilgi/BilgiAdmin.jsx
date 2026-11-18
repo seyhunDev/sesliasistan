@@ -34,7 +34,7 @@ import {
 } from "./bilgiStore";
 import { TekneMap } from "./TekneMap";
 import { usePtt } from "./usePtt";
-import { Wave } from "./Wave";
+import { PttCancel, Wave } from "./Wave";
 import { IzPanel, KanalList, useIz } from "./BilgiIz";
 import "./bilgi.css";
 
@@ -65,11 +65,13 @@ function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
       className="bzy-ptt"
       aria-pressed={picked}
       data-rec={on ? "1" : "0"}
+      data-cancel={on && ptt.rec.cancel ? "1" : undefined}
       data-ok={ok ? "1" : "0"}
       onPointerDown={(e) => {
         onPick();
         ptt.begin(e, id, to);
       }}
+      onPointerMove={ptt.move}
       onPointerUp={ptt.end}
       onPointerCancel={ptt.end}
       onContextMenu={(e) => e.preventDefault()}
@@ -87,7 +89,7 @@ function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
       {/* Genişlik sabit (Seyhun 2026-11-16 "bastığımda küçülüyor"): ad, sayaç ve en geniş sayaç ("20 sn") aynı hücrede üst üste; düğme hep en genişi kadar */}
       <span className="bzy-ptt-l">
         <span data-v={on ? "0" : "1"}>{label}</span>
-        <span data-v={on ? "1" : "0"}>{on ? `${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn` : ""}</span>
+        <span data-v={on ? "1" : "0"}>{on ? (ptt.rec.cancel ? "İptal" : `${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn`) : ""}</span>
         <span data-v="0" aria-hidden="true">{`${SES_MAX_SEC} sn`}</span>
       </span>
     </button>
@@ -736,6 +738,7 @@ export function BilgiAdmin() {
       </div>
       {kanal?.open && !izK && (
         <div className="bzy-dock">
+          {ptt.rec && <PttCancel on={!!ptt.rec.cancel} />}
           <div className="bzy-to">
             <TalkChip id="" label="Hepsi" picked={!to} ptt={ptt} to={null} now={now} onPick={() => setToDev("")} />
             {members.map((m) => {
