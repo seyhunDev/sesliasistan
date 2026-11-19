@@ -42,6 +42,8 @@ import { agendaView } from "@/lib/raceProgram";
 import { addResults, importToast } from "@/features/athletes/resultsImport";
 import { loadRace } from "@/features/athletes/races";
 import { loadAthletes } from "@/features/athletes/data";
+import { WxDays } from "@/features/athletes/RaceWx";
+import { todayStr } from "@/lib/utils/format";
 import "./bilgi.css";
 
 // Bilgi ekranı yönetimi (yalnız ana hesap): mesaj (ekranda görünür ve sesli okunur), bas-konuş, start sayacı (ortak sayaç), parkur.
@@ -753,6 +755,7 @@ export function BilgiAdmin() {
                   ["prog", "Program"],
                 ]
               : []),
+            ["hava", "Hava"],
             ["parkur", "Parkur"],
             ["ekran", "Ekran"],
             ["kayit", "Kayıtlar"],
@@ -812,6 +815,9 @@ export function BilgiAdmin() {
         />
       </Sheet>
       <YarisSheets yaris={yaris} now={now} sheet={sheet} onClose={() => setSheet("")} onResult={addRes} resMsg={resMsg} />
+      <Sheet open={sheet === "hava"} onClose={() => setSheet("")} title="Hava">
+        {sheet === "hava" && <WxDays r={wxPlace(yaris.data?.race, yaris.id)} />}
+      </Sheet>
       <Sheet open={sheet === "parkur"} onClose={() => setSheet("")} title="Parkur">
         <ParkurEdit org={org} pk={b?.parkur} />
         <input
@@ -857,6 +863,15 @@ export function BilgiAdmin() {
       </Sheet>
     </main>
   );
+}
+
+// Hava penceresinin yeri (Seyhun 2026-11-19): o günün yarışı varsa onun yeri, yoksa Dikili; bugün ve 6 gün ileri, öncesinde 5 gün (wxDays)
+function wxPlace(race, id) {
+  const t = todayStr();
+  const d = new Date(`${t}T12:00:00`);
+  d.setDate(d.getDate() + 6);
+  const end = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return { id: `bilgi-${id || "dikili"}`, startDate: t, endDate: end, district: race?.district || "Dikili", city: race?.city || "İzmir", spot: race?.spot || null };
 }
 
 // Sonuçlar, Gruplar, Program (canlı ekranla aynı bileşenler, liveScreen/sonuclar.jsx); başlık pencerenin kendi başlığı, yarışın adı altında
