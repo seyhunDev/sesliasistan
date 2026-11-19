@@ -348,10 +348,7 @@ export function ScAthPanel({ data, ath, day, onFull, res = false, onResult = nul
             <thead>
               <tr>
                 {hasP ? <th>Sıra</th> : null}
-                {grs.length ? <th className="w">{gdName === "Bugün" ? "Grup" : gdName}</th> : null}
-                <th className="n">No</th>
                 <th>Ad Soyad</th>
-                <th className="w">Kulüp</th>
                 {(b.ra || []).map((h, i) => <th key={i} className="n">{h}</th>)}
                 {hasP ? <th className="n">Net</th> : null}
               </tr>
@@ -359,15 +356,18 @@ export function ScAthPanel({ data, ath, day, onFull, res = false, onResult = nul
             <tbody>
               {rows.map((r) => (
                 <tr key={r.sail} className={r.our ? "our" : ""} onClick={() => setPick({ cls: b.cls, sail: r.sail })}>
-                  {hasP ? <td>{athRank(r.p)}</td> : null}
-                  {grs.length ? <td className="w">{r.g ? <><GDot g={r.g} />{r.g}</> : ""}</td> : null}
-                  <td className="n">{r.sail}</td>
+                  {hasP ? <td className="p">{athRank(r.p)}</td> : null}
+                  {/* ad; altında küçük ve ince grup · yelken no · kulüp (Seyhun 2026-11-19 "ismin altında küçük, ince; çok uzunsa …") */}
                   <td className="nm">
-                    {r.g ? <span className="pd"><GDot g={r.g} /></span> : null}
-                    {r.name || r.sail}
-                    {r.our && !fKat && r.kat?.length ? <em>{r.kat.map((k) => `${KAT_IN[k.c] || k.c} ${k.place}.`).join(" · ")}</em> : null}
+                    <b>
+                      {r.name || r.sail}
+                      {r.our && !fKat && r.kat?.length ? <em>{r.kat.map((k) => `${KAT_IN[k.c] || k.c} ${k.place}.`).join(" · ")}</em> : null}
+                    </b>
+                    <small>
+                      {r.g ? <GDot g={r.g} /> : null}
+                      {[r.g && (gdName === "Bugün" ? r.g : `${gdName} ${r.g}`), r.sail, clubName(r.club, 60)].filter(Boolean).join(" · ")}
+                    </small>
                   </td>
-                  <td className="w c">{clubName(r.club)}</td>
                   {(b.ra || []).map((_, i) => {
                     const v = (r.sa || [])[i] || "";
                     return <td key={i} className={`n${v.startsWith("(") ? " d" : ""}`}>{v}</td>;
