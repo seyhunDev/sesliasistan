@@ -1429,43 +1429,49 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 /* Sonuç tablosu (Seyhun 2026-11-11 örnek onaylandı, "PDF formatında, ince"): beyaz zemin, ince çizgili tek satırlı tablo.
    iPad / yatay: çubuğun altından ekranın neredeyse tamamı; dikey ve telefon: tam ekran */
 .sc .sc-vb.bar > .sc-vp.ath { background: #fff; color: #0b1626; box-shadow: 0 0.5em 2em rgba(0, 0, 0, 0.3); }
-:is(.sc .sc-vp.ath, .sc-res) .sc-vph b { color: #0b1626; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-vph small { color: #6b7684; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-athadd { background: #e3e9f0; color: #0b1626; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-athm, :is(.sc .sc-vp.ath, .sc-res) .sc-vno { color: #4b5563; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-pgs { background: #eef2f6; color: #0b1626; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-pgs::placeholder { color: #8a94a3; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-pgg button, :is(.sc .sc-vp.ath, .sc-res) .sc-vtabs { background: #e3e9f0; color: #0b1626; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-vtabs button { color: #4b5563; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-pgg button.on, :is(.sc .sc-vp.ath, .sc-res) .sc-vtabs button.on { background: #0b1626; color: #fff; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-vadd { background: #eef2f6; color: #1f5fd6; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-vpx { background: #e3e9f0; color: #0b1626; box-shadow: none; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-athb { background: #e3e9f0; color: #0b1626; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-ath.one h3 { color: #0b1626; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-ath.one h3.our { color: #1f5fd6; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-athw, :is(.sc .sc-vp.ath, .sc-res) .sc-athkv li > span, :is(.sc .sc-vp.ath, .sc-res) .sc-athkv li > small, :is(.sc .sc-vp.ath, .sc-res) .sc-athh { color: #6b7684; }
-:is(.sc .sc-vp.ath, .sc-res) .sc-athkv, :is(.sc .sc-vp.ath, .sc-res) .sc-athkv li { border-color: #e3e9f0; }
-.sc-atbw { overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; margin: 0.3em -0.1em 0; }
-.sc-atb { width: 100%; border-collapse: collapse; font: 500 0.82rem/1 "Inter", system-ui, sans-serif; color: #0b1626; font-variant-numeric: tabular-nums; }
-.sc-atb th, .sc-atb td { height: 1.85rem; padding: 0 0.4rem; border: 1px solid #d3dae3; white-space: nowrap; text-align: left; }
-.sc-atb th { position: sticky; top: 0; background: #eef2f6; font-weight: 700; font-size: 0.75rem; }
+:is(.sc .sc-vp.ath, .sc-res) .sc-vph b { color: var(--rt-fg); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-vph small { color: var(--rt-mut); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-athadd { background: color-mix(in srgb, var(--rt-fg) 9%, transparent); color: var(--rt-fg); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-athm, :is(.sc .sc-vp.ath, .sc-res) .sc-vno { color: var(--rt-mut); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-pgs { background: color-mix(in srgb, var(--rt-fg) 6%, transparent); color: var(--rt-fg); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-pgs::placeholder { color: var(--rt-mut); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-pgg button, :is(.sc .sc-vp.ath, .sc-res) .sc-vtabs { background: color-mix(in srgb, var(--rt-fg) 9%, transparent); color: var(--rt-fg); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-vtabs button { color: var(--rt-mut); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-pgg button.on, :is(.sc .sc-vp.ath, .sc-res) .sc-vtabs button.on { background: var(--rt-fg); color: var(--rt-bg); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-vadd { background: color-mix(in srgb, var(--rt-fg) 6%, transparent); color: var(--rt-our); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-vpx { background: color-mix(in srgb, var(--rt-fg) 9%, transparent); color: var(--rt-fg); box-shadow: none; }
+:is(.sc .sc-vp.ath, .sc-res) .sc-athb { background: color-mix(in srgb, var(--rt-fg) 9%, transparent); color: var(--rt-fg); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-ath.one h3 { color: var(--rt-fg); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-ath.one h3.our { color: var(--rt-our); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-athw, :is(.sc .sc-vp.ath, .sc-res) .sc-athkv li > span, :is(.sc .sc-vp.ath, .sc-res) .sc-athkv li > small, :is(.sc .sc-vp.ath, .sc-res) .sc-athh { color: var(--rt-mut); }
+:is(.sc .sc-vp.ath, .sc-res) .sc-athkv, :is(.sc .sc-vp.ath, .sc-res) .sc-athkv li { border-color: var(--rt-line); }
+/* Sonuç tablosu sade (Seyhun 2026-11-19 "okunmuyor, sade olsun"): dikey çizgi ve dolgu yok, satır arası ince çizgi, okunur boy; ad kalın,
+   altında küçük ve ince grup · yelken no · kulüp (uzunsa …). Renkler --rt-* (canlı ekranda açık panel, Yönet'te uygulamanın teması) */
+.sc .sc-vp.ath { --rt-fg: #0b1626; --rt-mut: #6b7684; --rt-line: #e6eaef; --rt-our: #1f5fd6; --rt-ourbg: #eef4ff; --rt-bg: #fff; --rt-press: #f2f5f8; }
+.sc-atbw { overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; margin: 0.4em 0 0; }
+.sc-atb { width: 100%; border-collapse: collapse; font: 400 15px/1.25 -apple-system, "SF Pro Text", Inter, system-ui, sans-serif; color: var(--rt-fg, #0b1626); font-variant-numeric: tabular-nums; }
+.sc-atb th, .sc-atb td { padding: 0.6em 0.55em; border-bottom: 1px solid var(--rt-line, #e6eaef); white-space: nowrap; text-align: left; vertical-align: middle; }
+.sc-atb th { position: sticky; top: 0; z-index: 1; padding-top: 0.3em; background: var(--rt-bg, #fff); font-size: 0.72em; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--rt-mut, #6b7684); }
 .sc-atb .n { text-align: right; }
-.sc-atb td.d { color: #8a94a3; }
-.sc-atb td.nt { font-weight: 800; }
-.sc-atb td.c { max-width: 13rem; overflow: hidden; text-overflow: ellipsis; color: #4b5563; }
-.sc-atb td.nm { font-weight: 600; }
-.sc-atb td.nm em { margin-left: 0.5em; font-style: normal; font-weight: 600; font-size: 0.85em; color: #1f5fd6; }
-.sc-atb i { display: inline-block; width: 0.55rem; height: 0.55rem; margin-right: 0.35rem; border-radius: 50%; vertical-align: 0; }
-.sc-atb .pd { display: none; }
+.sc-atb td.p { width: 2.4em; font-weight: 700; }
+.sc-atb td.n { color: var(--rt-fg, #0b1626); }
+.sc-atb td.d { color: var(--rt-mut, #6b7684); opacity: 0.7; }
+.sc-atb td.nt { font-weight: 700; }
+.sc-atb td.nm { width: 100%; max-width: 28em; }
+.sc-atb td.nm b { display: block; font-weight: 600; }
+.sc-atb td.nm em { margin-left: 0.5em; font-style: normal; font-weight: 600; font-size: 0.8em; color: var(--rt-our, #1f5fd6); }
+.sc-atb td.nm small { display: block; max-width: 28em; margin-top: 0.15em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78em; font-weight: 400; color: var(--rt-mut, #6b7684); }
+.sc-atb i { display: inline-block; width: 0.6em; height: 0.6em; margin-right: 0.35em; border-radius: 50%; vertical-align: 0.02em; }
 .sc-atb tbody tr { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.sc-atb tbody tr:active td { background: #f2f5f8; }
-.sc-atb tr.our td { background: #e8f0ff; }
-.sc-atb tr.our td.nm { color: #1f5fd6; font-weight: 700; }
+.sc-atb tbody tr:active td { background: var(--rt-press, #f2f5f8); }
+.sc-atb tr.our td { background: var(--rt-ourbg, #eef4ff); }
+.sc-atb tr.our td.nm b { color: var(--rt-our, #1f5fd6); }
 @media (max-width: 40rem) {
-  .sc-atb .w { display: none; }
-  .sc-atb .pd { display: inline; }
-  .sc-atb th:nth-child(1), .sc-atb td:nth-child(1) { position: sticky; left: 0; z-index: 1; background: #fff; }
-  .sc-atb th:nth-child(1) { background: #eef2f6; }
+  .sc-atb td.nm, .sc-atb td.nm small { max-width: 11.5em; }
+  .sc-atb th:nth-child(-n + 2), .sc-atb td:nth-child(-n + 2) { position: sticky; z-index: 1; background: var(--rt-bg, #fff); }
+  .sc-atb th:nth-child(1), .sc-atb td:nth-child(1) { left: 0; }
+  .sc-atb th:nth-child(2), .sc-atb td:nth-child(2) { left: 2.4em; }
+  .sc-atb th:nth-child(-n + 2) { z-index: 2; }
 }
 @media (min-aspect-ratio: 1/1) {
   .sc .sc-vb.bar > .sc-vp.ath, .sc .sc-vb.bar > .sc-vp.full.ath { position: fixed; inset: auto; top: calc(var(--vb-d, 6em) + 0.6em); bottom: calc(0.8em + env(safe-area-inset-bottom)); left: calc(0.8em + env(safe-area-inset-left)); right: calc(0.8em + env(safe-area-inset-right)); width: auto; height: auto; max-height: none; margin: 0; transform: none; z-index: 7; display: block; overflow-y: auto; overscroll-behavior: contain; padding: 0.8em 1em; border-radius: 1em; background: #fff; animation: sc-vp-up 0.25s ease both; }
@@ -1537,12 +1543,12 @@ span.sc-now.yy { padding: 0 0.9em; color: rgba(255, 255, 255, 0.75); font-weight
 }
 
 /* Açık zemin sarmalı (Seyhun 2026-11-19 Bilgi Yönet › Sonuçlar, Gruplar, Program): canlı ekranın Sonuçlar paneliyle aynı görünüm (sonuclar.jsx) */
-.sc-res { --sc-c: var(--lv-font-c, inherit), system-ui, sans-serif; --sc-mut: #6b7684; --sc-br: 0.8em; font-size: 15px; color: #0b1626; font-family: -apple-system, "SF Pro Text", Inter, system-ui, sans-serif; }
+.sc-res { --rt-fg: var(--fg, #0b1626); --rt-mut: var(--mut, #6b7684); --rt-line: var(--line, #e6eaef); --rt-our: var(--acc, #1f5fd6); --rt-ourbg: color-mix(in srgb, var(--acc, #1f5fd6) 12%, transparent); --rt-bg: var(--card, #fff); --rt-press: color-mix(in srgb, var(--fg, #0b1626) 6%, transparent); --sc-c: var(--lv-font-c, inherit), system-ui, sans-serif; --sc-mut: var(--rt-mut); --sc-br: 0.8em; font-size: 15px; color: var(--rt-fg); font-family: -apple-system, "SF Pro Text", Inter, system-ui, sans-serif; }
 .sc-res .sc-vph b { font-size: 1.35em; }
-.sc-res .sc-pgl li { color: #0b1626; border-color: #e3e9f0; animation: none; }
+.sc-res .sc-pgl li { color: var(--rt-fg); border-color: var(--rt-line); animation: none; }
 .sc-res .sc-pgl li .t { width: 3.2em; }
-.sc-res .sc-pgl li .t, .sc-res .sc-pgl li small, .sc-res .sc-pgl .sc-pgd { color: #6b7684; }
-.sc-res .sc-pgl li.now b, .sc-res .sc-pgl li.now small, .sc-res .sc-pgl li.our b { color: #1f5fd6; }
+.sc-res .sc-pgl li .t, .sc-res .sc-pgl li small, .sc-res .sc-pgl .sc-pgd { color: var(--rt-mut); }
+.sc-res .sc-pgl li.now b, .sc-res .sc-pgl li.now small, .sc-res .sc-pgl li.our b { color: var(--rt-our); }
 .sc-res .sc-pgl li.next b, .sc-res .sc-pgl li.next small { color: #b7791f; }
 .sc-res .sc-grl li small { max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sc-res .sc-ath i, .sc-res .sc-grl li i { display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; flex: none; }
