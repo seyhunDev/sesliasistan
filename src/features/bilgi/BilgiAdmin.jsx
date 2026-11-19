@@ -36,6 +36,12 @@ import { TekneMap } from "./TekneMap";
 import { usePtt } from "./usePtt";
 import { PttCancel, Wave } from "./Wave";
 import { IzPanel, KanalList, useIz } from "./BilgiIz";
+import { ScAthPanel, ScGrpPanel, ScProgPanel, canliDay, scAth, useCanliRace } from "@/features/liveScreen/sonuclar";
+import { dayProgram } from "@/features/liveScreen/program";
+import { agendaView } from "@/lib/raceProgram";
+import { addResults, importToast } from "@/features/athletes/resultsImport";
+import { loadRace } from "@/features/athletes/races";
+import { loadAthletes } from "@/features/athletes/data";
 import "./bilgi.css";
 
 // Bilgi ekranı yönetimi (yalnız ana hesap): mesaj (ekranda görünür ve sesli okunur), bas-konuş, start sayacı (ortak sayaç), parkur.
@@ -591,6 +597,20 @@ export function BilgiAdmin() {
   const [last, setLast] = useState(null);
   const marked = useRef("");
   const [sheet, setSheet] = useState("");
+  // Canlı'nın Sonuçlar, Gruplar, Program'ı (Seyhun 2026-11-19 örnek onaylandı): o günün yarışı; pencere açıkken 20 sn, kapalıyken 2 dk'da bir
+  const yaris = useCanliRace(!!org, ["sonuc", "grup", "prog"].includes(sheet) ? 20e3 : 120e3);
+  const [resMsg, setResMsg] = useState("");
+  const addRes = (file) => {
+    setResMsg("Okunuyor…");
+    (async () => {
+      const race = await loadRace(org, yaris.id);
+      if (!race) return setResMsg("Yarış bulunamadı");
+      const { athletes } = await loadAthletes();
+      const { got } = await addResults({ orgId: org, race, athletes: athletes || [], file });
+      setResMsg(importToast(got) || "Sonuçlar eklendi");
+      yaris.reload();
+    })().catch((e) => setResMsg(e?.message ? `Okunamadı: ${e.message}` : "Okunamadı. İnterneti kontrol et."));
+  };
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -726,6 +746,13 @@ export function BilgiAdmin() {
             </Link>
           ) : null}
           {[
+            ...(yaris.data
+              ? [
+                  ["sonuc", "Sonuçlar"],
+                  ["grup", "Gruplar"],
+                  ["prog", "Program"],
+                ]
+              : []),
             ["parkur", "Parkur"],
             ["ekran", "Ekran"],
             ["kayit", "Kayıtlar"],
@@ -784,6 +811,7 @@ export function BilgiAdmin() {
           onDel={delK}
         />
       </Sheet>
+      <YarisSheets yaris={yaris} now={now} sheet={sheet} onClose={() => setSheet("")} onResult={addRes} resMsg={resMsg} />
       <Sheet open={sheet === "parkur"} onClose={() => setSheet("")} title="Parkur">
         <ParkurEdit org={org} pk={b?.parkur} />
         <input
@@ -828,5 +856,35 @@ export function BilgiAdmin() {
         </div>
       </Sheet>
     </main>
+  );
+}
+
+// Sonuçlar, Gruplar, Program (canlı ekranla aynı bileşenler, liveScreen/sonuclar.jsx); başlık pencerenin kendi başlığı, yarışın adı altında
+function YarisSheets({ yaris, now, sheet, onClose, onResult, resMsg }) {
+  const data = yaris.data;
+  if (!data) return null;
+  const day = canliDay(data, now);
+  const name = data.race?.name || "";
+  const hm = new Date(now + 3 * 3600e3).toISOString().slice(11, 16);
+  const ag = agendaView(data.plan?.agenda, day, hm);
+  const prog = dayProgram(data, day);
+  return (
+    <>
+      <Sheet open={sheet === "sonuc"} onClose={onClose} title={name ? `Sonuçlar · ${name}` : "Sonuçlar"}>
+        <div className="sc-res bare">
+          <ScAthPanel data={data} ath={scAth(data, day)} day={day} onResult={onResult} resMsg={resMsg} />
+        </div>
+      </Sheet>
+      <Sheet open={sheet === "grup"} onClose={onClose} title={name ? `Gruplar · ${name}` : "Gruplar"}>
+        <div className="sc-res bare">
+          <ScGrpPanel data={data} day={day} />
+        </div>
+      </Sheet>
+      <Sheet open={sheet === "prog"} onClose={onClose} title={name ? `Program · ${name}` : "Program"}>
+        <div className="sc-res bare">
+          {prog.length || ag ? <ScProgPanel prog={prog} ag={ag} /> : <p className="sc-vno">Program yok</p>}
+        </div>
+      </Sheet>
+    </>
   );
 }
