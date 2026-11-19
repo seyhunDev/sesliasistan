@@ -1,8 +1,8 @@
-Commit: e737931 · Bilgi Yönet ve sporcu ekranında Canlı'nın Sonuçlar, Gruplar, Program'ı (ortak bileşen) (#1467)
-Zaman: 2026-11-19-1225 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/44492987749
+Commit: 8fef3e7 · Sonuçlar tablosu sade ve okunur: adın altında grup · no · kulüp, tema renkleri (#1468)
+Zaman: 2026-11-19-1315 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/44500322884
 
-TAM TEST · 19.11.2026 12:04:30
+TAM TEST · 19.11.2026 12:52:29
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Ana sayfa: yarış günü havası…
     Antrenman: sesle başlat ve bitir…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 28/28 geçti
+    Çevrimdışı: 26/28 geçti
     Yarış sayfası (sporcu seçili, yarış günü)…
     Yarış günü (sporcu seçili)…
     Yarıştan önce (sporcu seçili)…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1411/1441 geçti · 30 kalan · 1267 sn
+SONUÇ: 1409/1441 geçti · 32 kalan · 1372 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -286,14 +286,14 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1267 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 13 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 14 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 13 · açıklama 13 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 14 · açıklama 14 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 28/28
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 26/28
   ✓ Anında açılış: 7/7
   ✓ İnternet varken: 2/2
   ✓ Yavaş bağlantı: 3/3
@@ -302,7 +302,13 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1267 sn
   ✓ Bağlantı gelince: 2/2
   ✓ Açıkken kopup gelince: 2/2
   ✓ Önbellek iç hatası: 3/3
-  ✓ iPhone: 2/2
+  ✗ iPhone: 0/2
+      ✗ “internetsiz kayıt ekranda”
+          beklenen: Limon listede
+          olan:     hayır
+      ✗ “bağlantı gelince”
+          beklenen: Limon sunucuda
+          olan:     hayır
 
 3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 16/22
   ✗ Yarış sayfası: 11/14
