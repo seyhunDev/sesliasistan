@@ -1,8 +1,8 @@
-Commit: 8fef3e7 · Sonuçlar tablosu sade ve okunur: adın altında grup · no · kulüp, tema renkleri (#1468)
-Zaman: 2026-11-19-1315 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/44500322884
+Commit: 97f1113 · Bilgi Yönet: Hava penceresi (#1469)
+Zaman: 2026-11-19-1407 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/44508681144
 
-TAM TEST · 19.11.2026 12:52:29
+TAM TEST · 19.11.2026 13:46:24
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Ana sayfa: yarış günü havası…
     Antrenman: sesle başlat ve bitir…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 26/28 geçti
+    Çevrimdışı: 28/28 geçti
     Yarış sayfası (sporcu seçili, yarış günü)…
     Yarış günü (sporcu seçili)…
     Yarıştan önce (sporcu seçili)…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1409/1441 geçti · 32 kalan · 1372 sn
+SONUÇ: 1410/1441 geçti · 31 kalan · 1271 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -293,7 +293,7 @@ SONUÇ: 1409/1441 geçti · 32 kalan · 1372 sn
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 26/28
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 28/28
   ✓ Anında açılış: 7/7
   ✓ İnternet varken: 2/2
   ✓ Yavaş bağlantı: 3/3
@@ -302,15 +302,9 @@ SONUÇ: 1409/1441 geçti · 32 kalan · 1372 sn
   ✓ Bağlantı gelince: 2/2
   ✓ Açıkken kopup gelince: 2/2
   ✓ Önbellek iç hatası: 3/3
-  ✗ iPhone: 0/2
-      ✗ “internetsiz kayıt ekranda”
-          beklenen: Limon listede
-          olan:     hayır
-      ✗ “bağlantı gelince”
-          beklenen: Limon sunucuda
-          olan:     hayır
+  ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 16/22
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/22
   ✗ Yarış sayfası: 11/14
       ✗ “yarış günü, sporcu seçili”
           beklenen: çökmeden açılır, "Canlı ekran" görünür
@@ -321,7 +315,10 @@ SONUÇ: 1409/1441 geçti · 32 kalan · 1372 sn
       ✗ “bütün sekmeler”
           beklenen: her sekme çökmeden açılır
           olan:     2 sekme açıldı
-  ✓ Antrenman: 3/3
+  ✗ Antrenman: 2/3
+      ✗ “telefon: bitiren kim, alt düğme”
+          beklenen: çökmeden açılır, "Sıralama" görünür
+          olan:     ana düğme Yarışı bitir · kare 1 · dokununca Start ver · kutu 236/236 · düğme 783/782
   ✓ Asılı bağlantı: 2/2
   ✗ Yayın: 0/3
       ✗ “gruplar ayrı, ekranda seçim, kameralar”
