@@ -39,8 +39,9 @@ export function useWidth() {
 }
 
 // Gerçekleşen rüzgâr: istasyonun bugünkü/geçmiş gün ölçümleri (yalnız geçen saatler)
-export function useObsRows(date, today) {
-  const ob = useWindObs(getPlace(), date, today);
+// at: belli bir yer (Bilgi › Yönet › Hava: yarışın yeri); yoksa seçili hava konumu
+export function useObsRows(date, today, at = null) {
+  const ob = useWindObs(at || getPlace(), date, today);
   const nowH = new Date().getHours();
   return { station: ob?.station || null, rows: (ob?.rows || []).filter((o) => o.wind != null && (date < today || +o.hh <= nowH)) };
 }
@@ -75,13 +76,13 @@ function rainText(rows, nowH, radar) {
   return n ? `Burada yağmıyor · ${n.km} km ${AT[n.dir] || n.dir} yağış var` : "";
 }
 
-export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "Hava", onOpen, radar = null }) {
+export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "Hava", onOpen, radar = null, at = null }) {
   const isToday = date === today;
-  const place = getPlace();
+  const place = at || getPlace();
   const n = nowOf(w);
   const dw = dayWeather(w, rows, date);
-  const now = useObsRows(today, today);
-  const day = useObsRows(date, today);
+  const now = useObsRows(today, today, at);
+  const day = useObsRows(date, today, at);
   // Şimdi: son 2 saatte istasyon ölçümü varsa o (gerçek), yoksa tahminin şimdisi
   const last = now.rows.at(-1);
   const real = last && new Date().getHours() - +last.hh <= 2 ? last : null;
@@ -283,11 +284,11 @@ export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
 
 // Bir gün: gün adı + tarih, gök + en düşük/en yüksek, gün içi rüzgâr eğrisi (12 ve 18 çizgili), rüzgâr aralığı + yön, yağış; plans verilirse planlar.
 // Geçmiş gün (Seyhun 2026-11-12 "gerçekleşen"): rüzgâr aralığı ve beyaz eğri istasyon ölçümünden, altta "ölçülen"
-export function DayCell({ date, today, w, plans = null, on, nowH, onSel }) {
+export function DayCell({ date, today, w, plans = null, on, nowH, onSel, at = null }) {
   const rows = dayHours(w, date);
   const dw = dayWeather(w, rows, date);
   const past = date < today;
-  const ob = useObsRows(date, today).rows;
+  const ob = useObsRows(date, today, at).rows;
   const src = past && ob.length ? ob : rows || [];
   const dayRows = src.filter((h) => h.hh >= "08" && h.hh <= "20");
   const lo = dayRows.length ? Math.round(Math.min(...dayRows.map((h) => h.wind))) : null;
