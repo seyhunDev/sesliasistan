@@ -251,6 +251,25 @@ export async function loadWeather(force = false) {
   return data;
 }
 
+// Belli bir yerin havası (Bilgi › Yönet › Hava, Seyhun 2026-11-20 "yarışın yapıldığı yerdeki hava"): loadWeather ile aynı biçim,
+// seçili konumu değiştirmez; yer başına ayrı önbellek
+export async function loadWeatherAt(at, force = false) {
+  const p = { ...PLACE, ...at, tz: at.tz || PLACE.tz };
+  const key = `${KEY}@${placeKey(p)}`;
+  try {
+    const c = JSON.parse(localStorage.getItem(key) || "null");
+    if (!force && c && Date.now() - c.at < TTL) return c;
+  } catch {}
+  const res = await fetch(url(p), { signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error(`Hava durumu alınamadı (${res.status})`);
+  const j = await res.json();
+  const data = { ...shape(j), place: placeKey(p), placeName: p.name, model: { lat: j.latitude, lon: j.longitude, elevation: j.elevation } };
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+  return data;
+}
+
 // ---- Yapay zeka için ----
 // Hava ile ilgili bir soru mu (yalnızca o zaman veri gönderilir; kota boşa gitmesin)
 const WX = new RegExp(

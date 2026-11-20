@@ -42,8 +42,9 @@ import { agendaView } from "@/lib/raceProgram";
 import { addResults, importToast } from "@/features/athletes/resultsImport";
 import { loadRace } from "@/features/athletes/races";
 import { loadAthletes } from "@/features/athletes/data";
-import { WxDays } from "@/features/athletes/RaceWx";
-import { todayStr } from "@/lib/utils/format";
+import { PlaceWx } from "@/features/weather/PlaceWx";
+import { racePlace } from "@/features/athletes/raceWeather";
+import { getPlace } from "@/features/weather/weather";
 import "./bilgi.css";
 
 // Bilgi ekranı yönetimi (yalnız ana hesap): mesaj (ekranda görünür ve sesli okunur), bas-konuş, start sayacı (ortak sayaç), parkur.
@@ -816,7 +817,7 @@ export function BilgiAdmin() {
       </Sheet>
       <YarisSheets yaris={yaris} now={now} sheet={sheet} onClose={() => setSheet("")} onResult={addRes} resMsg={resMsg} />
       <Sheet open={sheet === "hava"} onClose={() => setSheet("")} title="Hava">
-        {sheet === "hava" && <WxDays r={wxPlace(yaris.data?.race, yaris.id)} />}
+        {sheet === "hava" && <RaceAtWx org={org} id={yaris.id} />}
       </Sheet>
       <Sheet open={sheet === "parkur"} onClose={() => setSheet("")} title="Parkur">
         <ParkurEdit org={org} pk={b?.parkur} />
@@ -865,13 +866,23 @@ export function BilgiAdmin() {
   );
 }
 
-// Hava penceresinin yeri (Seyhun 2026-11-19): o günün yarışı varsa onun yeri, yoksa Dikili; bugün ve 6 gün ileri, öncesinde 5 gün (wxDays)
-function wxPlace(race, id) {
-  const t = todayStr();
-  const d = new Date(`${t}T12:00:00`);
-  d.setDate(d.getDate() + 6);
-  const end = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  return { id: `bilgi-${id || "dikili"}`, startDate: t, endDate: end, district: race?.district || "Dikili", city: race?.city || "İzmir", spot: race?.spot || null };
+// Hava penceresi (Seyhun 2026-11-20 "yarışın yapıldığı yerdeki hava durumunu göstermeliyiz"): o günün yarışının yeri (yarış sahası,
+// yoksa Çevre'deki alan, yoksa ilçesi; racePlace yarış sayfasıyla aynı). Yarış yoksa seçili hava konumu. Tasarım ana sayfanın Hava kutusu (PlaceWx).
+function RaceAtWx({ org, id }) {
+  const [at, setAt] = useState(null);
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      const race = id ? await loadRace(org, id) : null;
+      const p = race ? await racePlace(race) : null;
+      if (on) setAt(p?.lat != null ? { name: (p.name !== "Seçilen yer" && p.name) || race?.district || "Yarış yeri", lat: +p.lat, lon: +p.lon } : getPlace());
+    })().catch(() => on && setAt(getPlace()));
+    return () => {
+      on = false;
+    };
+  }, [org, id]);
+  if (!at) return <div className="ck-shim h-[22rem] rounded-[1.5rem]" role="status" aria-label="Hava yükleniyor" />;
+  return <PlaceWx at={at} />;
 }
 
 // Sonuçlar, Gruplar, Program (canlı ekranla aynı bileşenler, liveScreen/sonuclar.jsx); başlık pencerenin kendi başlığı, yarışın adı altında

@@ -255,39 +255,3 @@ function Strip({ stats, go, id }) {
   );
 }
 
-// Bilgi › Yönet › Hava (Seyhun 2026-11-19 "hem bugünü görebileyim hem de diğer günlere gidebileyim, önceki güne de… bugün seçili olsun"):
-// yarış havasının açık görünümü (RaceWxRows'un açılan kısmıyla aynı): ‹ Dün · Bugün · Yarın › satırı, rüzgâr şeridi, saat saat tablo.
-// r: yarış ya da yer (startDate–endDate günleri, öncesindeki 5 gün de gezilir); açılışta bugün seçili.
-export function WxDays({ r }) {
-  const today = todayStr();
-  const days = wxDays(r, today).filter((x) => x <= lastForecastDay(today));
-  const [sel, setSel] = useState(days.includes(today) ? today : days[0] || "");
-  const d = useDay(r, sel);
-  const isToday = sel === today;
-  const radar = useRainRadar(isToday ? d.at : null);
-  const rows = d.rows?.length ? (isToday ? radarRows(d.rows, radar) : d.rows) : null;
-  const step = (k) => {
-    const i = days.indexOf(sel) + k;
-    if (i >= 0 && i < days.length) setSel(days[i]);
-  };
-  if (!sel) return null;
-  return (
-    <section aria-label="Hava">
-      {days.length > 1 && <DayNav light sel={sel} days={days} today={today} onStep={step} />}
-      {rows ? (
-        <>
-          <WindRibbon rows={rows} nowH={isToday ? +nowHH() : -1} radar={isToday ? radar : null} tone="light" win={d.win || null} h={92} className="mt-3" />
-          <HourTable key={sel} rows={rows} date={sel} place={d.at} far tone="light" className="mt-3" />
-          {isToday && d.at && <NowRain place={d.at} rows={d.rows} radar={radar} />}
-        </>
-      ) : d.err ? (
-        <p className="py-8 text-center text-[0.875rem] text-mut">Hava tahmini alınamadı.</p>
-      ) : (
-        <div role="status" aria-label="Hava yükleniyor">
-          <div className="ck-shim mt-3 h-[5.75rem] rounded-[1.125rem]" />
-          <div className="ck-shim mt-3 h-[12.875rem] rounded-[1.125rem]" />
-        </div>
-      )}
-    </section>
-  );
-}
