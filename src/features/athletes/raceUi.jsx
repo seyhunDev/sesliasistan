@@ -87,6 +87,21 @@ export function RaceGo({ id, className = "", extra = null }) {
 
 // Tek "Canlı" düğmesi (Seyhun 2026-11-09 "harita butonuna, yayın butonuna gerek yok; bir tane canlı butonumuz var"; örnek c-telefon.png "Yap"):
 // yarış sayfasının sağ üstünde ⋯ yanında beyaz hap, kırmızı nokta; kendi canlı ekranını uygulama içinde açar. Yalnız ana hesapta, yarış günlerinde.
+// Bilgi ekranı düğmeleri (Seyhun 2026-11-20 "ana sayfadaki o butonlar yarış detayında da olsun"): Ekran → /bilgi, Yönet → /bilgi/yonet
+// (Yönet o an canlı yarışı kendisi bulur). Canlı'nın yanında, aynı boyda cam düğmeler.
+export function BilgiBtns() {
+  return (
+    <>
+      <Link href="/bilgi" data-press className="rz-pill">
+        Ekran
+      </Link>
+      <Link href="/bilgi/yonet" data-press className="rz-pill">
+        Yönet
+      </Link>
+    </>
+  );
+}
+
 export function LiveBtn({ id }) {
   const router = useRouter();
   return (
