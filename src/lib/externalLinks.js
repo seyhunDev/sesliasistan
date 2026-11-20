@@ -1,8 +1,8 @@
 import { authFetch, jsonOf } from "@/lib/authFetch";
 
 // Velora dışındaki kendi projelerimizin adresleri (tek yer; adres değişirse yalnız burası güncellenir)
-// Velora Sailing (eski Professional Sailing, 2026-11-13'te depo ve adres velora-sailing oldu)
-export const SIMULATOR_URL = "https://seyhundev.github.io/velora-sailing/";
+// Velora Sailing (eski Professional Sailing; 2026-11-13 github.io/velora-sailing, 2026-11-15'ten yalnız Netlify)
+export const SIMULATOR_URL = "https://velora-sailing.netlify.app/";
 
 // Dış bağlantıyı uygulamanın dışında açar: web'de yeni sekme; iPhone/iPad kabuğunda (Capacitor) başka alan adı Safari'de açılır
 export function openExternal(url) {

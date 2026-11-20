@@ -254,3 +254,4 @@ function Strip({ stats, go, id }) {
     </section>
   );
 }
+

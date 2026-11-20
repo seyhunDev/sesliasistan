@@ -3,7 +3,7 @@ import { adminAuth, adminDb, adminReady } from "@/lib/server/admin";
 
 export const runtime = "nodejs";
 
-// Velora'dan Velora Sailing'e (seyhundev.github.io/velora-sailing, statik site) tek dokunuşla giriş (Seyhun 2026-11-13: "Velora
+// Velora'dan Velora Sailing'e (velora-sailing.netlify.app, statik site; adres src/lib/externalLinks.js SIMULATOR_URL) tek dokunuşla giriş (Seyhun 2026-11-13: "Velora
 // hesabıyla giriş yaptıysam ve Velora'dan geliyorsam kendi hesabımla açılmalı"). /api/sanal-giris ile aynı yöntem: kimlik belirteci
 // yönetici SDK'sıyla doğrulanır, aynı kişi için 1 saatlik özel giriş anahtarı (custom token) döner; Sailing onunla oturum açar.
 // Her Velora hesabı girebilir. Anahtardaki `vs` bilgisi Sailing'deki rolü verir: işletmenin ana hesabı "sahip", diğerleri "kayitli".

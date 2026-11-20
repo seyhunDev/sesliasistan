@@ -39,7 +39,11 @@ export function useBilgi(org) {
 // Anahtar ana belgede link alanında; yenilenince eski kopya silinir, eski link çalışmaz.
 const pubRef = (key, ...p) => doc(db, "bilgiAcik", key, ...p);
 export async function linkOf(org) {
-  if (LINK[org] === undefined) LINK[org] = await getDoc(ref(org, "ekran")).then((s) => s.data()?.link || "", () => "");
+  if (LINK[org] === undefined)
+    LINK[org] = await getDoc(ref(org, "ekran")).then(
+      (s) => s.data()?.link || "",
+      () => "",
+    );
   return LINK[org];
 }
 const mirror = (org, patch, ...p) =>
@@ -74,16 +78,94 @@ export async function newLink(org) {
   return key;
 }
 
-// Linkle açılan ekran (girişsiz): kopya belgeleri dinler
+// Kopyayı ana belgeden baştan yazar (Seyhun 2026-11-17: kanal açık ama sporcu "Kanal açık değil" görüyordu). Kural yayınlanmadan
+// açılan kanalda kopya hiç yazılmamıştı; ana belgeye yazma sürdüğü için Yönet açık görünür, link boş kalır. Yönet açılınca ve
+// kanal açılınca çağrılır: 2 okuma + 1-2 yazma.
+export async function syncLink(org) {
+  if (!org) return "";
+  const [e, ss] = await Promise.all([getDoc(ref(org, "ekran")), getDoc(ref(org, "ses"))]);
+  const { link: key = "", ...cur } = e.data() || {};
+  if (!/^[a-z0-9]{12,40}$/.test(key)) return "";
+  LINK[org] = key;
+  await setDoc(pubRef(key), { ...cur, org, at: Date.now() });
+  if (ss.exists()) await setDoc(pubRef(key, "ses", "son"), { ...ss.data(), org }).catch(() => {});
+  return key;
+}
+
+// Linkle açılan ekran (girişsiz): kopya belgeleri dinler. d: belge (null: link yok/eski), err: okunamadı (izin ya da bağlantı)
+// Seyhun 2026-11-17: belge açıkken bazı telefonlarda yine "Kanal açık değil" çıktı. Telefonun yerel Firestore önbelleği bozuksa
+// (iPhone IndexedDB, aynı tarayıcıda açık başka Velora sekmesi) dinleyici hata verir; o zaman belge 5 sn'de bir doğrudan
+// sunucudan (REST, girişsiz) okunur. Önbellekten gelen "belge yok" sunucu cevabı gelene kadar sayılmaz.
+const REST = (key, path = "") =>
+  `https://firestore.googleapis.com/v1/projects/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}/databases/(default)/documents/bilgiAcik/${key}${path}?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`;
+function restVal(v) {
+  if (!v || typeof v !== "object") return null;
+  if ("mapValue" in v) return restMap(v.mapValue.fields);
+  if ("arrayValue" in v) return (v.arrayValue.values || []).map(restVal);
+  if ("integerValue" in v) return Number(v.integerValue);
+  if ("doubleValue" in v) return Number(v.doubleValue);
+  if ("booleanValue" in v) return v.booleanValue;
+  if ("stringValue" in v) return v.stringValue;
+  if ("timestampValue" in v) return Date.parse(v.timestampValue);
+  return null;
+}
+const restMap = (f) => Object.fromEntries(Object.entries(f || {}).map(([k, v]) => [k, restVal(v)]));
+async function restGet(key, path) {
+  const r = await fetch(REST(key, path), { cache: "no-store" });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`rest ${r.status}`);
+  return restMap((await r.json()).fields);
+}
+
 export function usePublic(key) {
   const [v, setV] = useState({ key: "", d: undefined, s: undefined });
   useEffect(() => {
     if (!key) return;
-    const a = onSnapshot(pubRef(key), (x) => setV((o) => ({ ...o, key, d: x.exists() ? x.data() : null })), () => setV((o) => ({ ...o, key, d: null })));
-    const b = onSnapshot(pubRef(key, "ses", "son"), (x) => setV((o) => ({ ...o, key, s: x.exists() ? x.data() : null })), () => {});
-    return () => (a(), b());
+    let poll = 0;
+    let off = false;
+    let got = false;
+    const rest = () => {
+      if (poll || off) return;
+      const run = () =>
+        Promise.all([restGet(key), restGet(key, "/ses/son").catch(() => undefined)]).then(
+          ([d, ss]) => !off && setV((o) => ({ ...o, key, d, err: false, ...(ss !== undefined ? { s: ss } : {}) })),
+          () => !off && setV((o) => ({ ...o, key, d: o.d || null, err: !o.d })),
+        );
+      run();
+      poll = setInterval(run, 5000);
+    };
+    let a = () => {};
+    let b = () => {};
+    try {
+      a = onSnapshot(
+        pubRef(key),
+        { includeMetadataChanges: true },
+        (x) => {
+          if (!x.exists() && x.metadata.fromCache) return; // önbellekte yok: sunucu cevabını bekle
+          got = true;
+          if (!poll) setV((o) => ({ ...o, key, d: x.exists() ? x.data() : null, err: false }));
+        },
+        rest,
+      );
+      b = onSnapshot(
+        pubRef(key, "ses", "son"),
+        (x) => !poll && setV((o) => ({ ...o, key, s: x.exists() ? x.data() : null })),
+        () => {},
+      );
+    } catch {
+      rest();
+    }
+    // Sunucudan 8 sn'de cevap gelmezse de doğrudan okunur
+    const slow = setTimeout(() => !got && rest(), 8000);
+    return () => {
+      off = true;
+      clearTimeout(slow);
+      clearInterval(poll);
+      a();
+      b();
+    };
   }, [key]);
-  return v.key === key ? [v.d === undefined ? undefined : v.d && cleanBilgi(v.d), v.s, v.d?.org || ""] : [undefined, undefined, ""];
+  return v.key === key ? [v.d === undefined ? undefined : v.d && cleanBilgi(v.d), v.s, v.d?.org || "", v.d === null ? (v.err ? "err" : "none") : ""] : [undefined, undefined, "", ""];
 }
 
 // Tekne kimliği ve konumu (Seyhun 2026-11-15): bilgi ekranını açan telefon yelken no + isim yazar (bu cihazda saklı, değiştirene kadar
@@ -101,7 +183,18 @@ export function readWho() {
 }
 export function saveWho(w) {
   try {
-    localStorage.setItem(WHO, JSON.stringify({ sail: String(w.sail || "").trim().slice(0, 12), name: String(w.name || "").replace(/\s+/g, " ").trim().slice(0, 30) }));
+    localStorage.setItem(
+      WHO,
+      JSON.stringify({
+        sail: String(w.sail || "")
+          .trim()
+          .slice(0, 12),
+        name: String(w.name || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 30),
+      }),
+    );
   } catch {}
 }
 export function deviceId() {
@@ -143,7 +236,7 @@ export function useTekneler(org) {
 // Gönderilen her mesaj ve ses kaydı ayrıca günlüğe yazılır (Seyhun 2026-11-15 "mesajlar kaydedilsin, ne zaman, ne için"):
 // orgs/{org}/bilgiLog { kind: "msg" | "ses", text, dur, at, label (start yazısı), state (parkur durumu), course }
 function logSent(org, item, ctx = {}) {
-  return addDoc(collection(db, "orgs", org, "bilgiLog"), { ...item, at: Date.now(), label: ctx.label || "", state: ctx.state || "", course: ctx.course || "" }).then(
+  return addDoc(collection(db, "orgs", org, "bilgiLog"), { ...item, at: Date.now(), ch: ctx.ch || "", label: ctx.label || "", state: ctx.state || "", course: ctx.course || "" }).then(
     (r) => r.id,
     () => "",
   );
@@ -152,11 +245,21 @@ function logSent(org, item, ctx = {}) {
 export const markLog = (org, id, patch) => (id ? updateDoc(doc(db, "orgs", org, "bilgiLog", id), patch).catch(() => {}) : Promise.resolve());
 
 // Sunucu onayı ("İletildi"): bekleyen yazmalar sunucuya ulaşınca true; 10 sn'de ulaşmazsa false (internet yok)
-const confirmed = () => Promise.race([waitForPendingWrites(db).then(() => true, () => false), new Promise((r) => setTimeout(() => r(false), 10000))]);
+const confirmed = () =>
+  Promise.race([
+    waitForPendingWrites(db).then(
+      () => true,
+      () => false,
+    ),
+    new Promise((r) => setTimeout(() => r(false), 10000)),
+  ]);
 
 // to: { dev, name } verilirse yalnız o ekran gösterir ("Sana"); yoksa kanaldaki herkes. Dönen: { id, ok, logId }
 export async function sendMsg(org, text, ctx, to = null) {
-  const t = String(text || "").replace(/\s+/g, " ").trim().slice(0, MSG_MAX);
+  const t = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MSG_MAX);
   if (!t) return { ok: false };
   const id = newId();
   await saveBilgi(org, { msg: { id, text: t, at: Date.now(), to: to?.dev || "" } });
@@ -164,12 +267,80 @@ export async function sendMsg(org, text, ctx, to = null) {
   return { id, ok: await confirmed(), logId };
 }
 
-// Kanal aç: yeni link (eski link çalışmaz) + kanal adı; ekranlar yalnız açık kanala katılarak başlar. Kapat: ekranlar durur
-export async function openKanal(org, name) {
+// Kanal aç: yeni link (eski link çalışmaz) + kanal adı; ekranlar yalnız açık kanala katılarak başlar. Kapat: ekranlar durur.
+// Her kanalın kaydı orgs/{org}/bilgiKanal/{id} { name, at (açılış), end (kapanış, açıksa null) } (Seyhun 2026-11-17 "Kanallar":
+// eski kanallar listede durur, tekrar açılır, adı değişir, verisiyle silinir). Aynı anda tek kanal açık.
+const kanalRef = (org, id) => doc(db, "orgs", org, "bilgiKanal", id);
+const kanalName = (name) =>
+  String(name || "")
+    .trim()
+    .slice(0, 30) || "Antrenman";
+async function startKanal(org, id, name, prev) {
+  if (prev?.open && prev.id && prev.id !== id) await updateDoc(kanalRef(org, prev.id), { end: Date.now() }).catch(() => {});
   await newLink(org);
-  await saveBilgi(org, { kanal: { id: newId(), name: String(name || "").trim().slice(0, 30) || "Antrenman", open: true, at: Date.now() } });
+  const at = Date.now();
+  await saveBilgi(org, { kanal: { id, name, open: true, at } });
+  await syncLink(org);
+  return at;
 }
-export const closeKanal = (org) => saveBilgi(org, { kanal: { open: false } });
+export async function openKanal(org, name, prev = null) {
+  const id = newId();
+  const n = kanalName(name);
+  const at = await startKanal(org, id, n, prev);
+  await setDoc(kanalRef(org, id), { name: n, at, end: null });
+}
+// Eski kanalı tekrar aç (yeni link; izler ve kayıtlar aynı kanalda birikir)
+export async function reopenKanal(org, k, prev = null) {
+  await startKanal(org, k.id, kanalName(k.name), prev);
+  await setDoc(kanalRef(org, k.id), { name: kanalName(k.name), at: k.at || Date.now(), end: null }, { merge: true });
+}
+export async function closeKanal(org, id = "") {
+  await saveBilgi(org, { kanal: { open: false } });
+  if (id) await updateDoc(kanalRef(org, id), { end: Date.now() }).catch(() => {});
+}
+export async function renameKanal(org, id, name, isOpen) {
+  const n = kanalName(name);
+  await setDoc(kanalRef(org, id), { name: n }, { merge: true });
+  if (isOpen) await saveBilgi(org, { kanal: { name: n } });
+}
+// Açık kanalın kaydı yoksa (bu özellikten önce açılmış) oluşturulur
+export const ensureKanal = (org, k) => setDoc(kanalRef(org, k.id), { name: kanalName(k.name), at: k.at || Date.now(), end: k.open ? null : Date.now() }, { merge: true });
+export function useKanallar(org) {
+  const [v, setV] = useState(null);
+  useEffect(() => {
+    if (!org) return;
+    return onSnapshot(
+      query(collection(db, "orgs", org, "bilgiKanal"), orderBy("at", "desc"), limit(40)),
+      (s) => setV(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      () => setV([]),
+    );
+  }, [org]);
+  return org ? v : null;
+}
+// Kanalı verisiyle sil: izler (bilgiIz), son konumlar (bilgiTekne), gelen sesler (bilgiGelen), mesaj/ses günlüğü (bilgiLog, ch alanı olanlar)
+export async function deleteKanal(org, id) {
+  const top = (c) =>
+    getDocs(query(collection(db, c), where("org", "==", org), where("ch", "==", id))).then(
+      (s) => s.docs.map((d) => d.ref),
+      () => [],
+    );
+  const log = getDocs(query(collection(db, "orgs", org, "bilgiLog"), where("ch", "==", id))).then(
+    (s) => s.docs.map((d) => d.ref),
+    () => [],
+  );
+  const refs = (await Promise.all([top("bilgiIz"), top("bilgiTekne"), top("bilgiGelen"), log])).flat();
+  for (let i = 0; i < refs.length; i += 20) await Promise.all(refs.slice(i, i + 20).map((r) => deleteDoc(r).catch(() => {})));
+  await deleteDoc(kanalRef(org, id));
+  return refs.length;
+}
+
+// İz (Seyhun 2026-11-17 "sonra sporcunun ne yaptığını izlemek istiyorum"): ekran 5 sn'de bir nokta toplar, dakikada bir tek belge yazar.
+// bilgiIz { org, k, ch, dev, sail, name, uid, t0, pts: [sn, enlem, boylam, hız (kn), …] düz liste (Firestore iç içe dizi almaz) }
+export const sendIz = (d) => addDoc(collection(db, "bilgiIz"), d);
+export async function loadIz(org, ch) {
+  const s = await getDocs(query(collection(db, "bilgiIz"), where("org", "==", org), where("ch", "==", ch)));
+  return s.docs.map((d) => d.data());
+}
 
 // Son gönderilenler (yönetimde açılınca bir kez okunur)
 export async function loadLog(org, n = 30) {
@@ -203,3 +374,44 @@ export async function sendSes(org, blob, dur, ctx, to = null) {
   const logId = await logSent(org, { kind: "ses", dur: Math.round(dur), id: d.id, to: to?.name || "" }, ctx);
   return { id: d.id, ok: await confirmed(), logId };
 }
+
+// Sporcudan Yönet'e bas-konuş (Seyhun 2026-11-16): ekran son kaydını bilgiGelen/{cihaz} belgesine yazar (cihaz başına tek belge,
+// üstüne; depoda birikmez). Yazma kuralı bilgiTekne ile aynı (işletme hesabı ya da açık link anahtarı k); okuyan yalnız ana hesap.
+// who: { org, k, ch, sail, name, uid }
+export async function sendGelen(dev, who, blob, dur) {
+  const data = await b64(blob);
+  if (!dev || !data || data.length > 700000) return { ok: false };
+  const d = {
+    org: who.org,
+    k: who.k || "",
+    ch: who.ch || "",
+    sail: String(who.sail || "").slice(0, 12),
+    name: String(who.name || "").slice(0, 30),
+    uid: who.uid || "",
+    id: newId(),
+    at: Date.now(),
+    type: (blob.type || "audio/mp4").split(";")[0],
+    dur: Math.round(dur),
+    data,
+  };
+  await setDoc(doc(db, "bilgiGelen", dev), d);
+  return { id: d.id, ok: await confirmed() };
+}
+
+// Yönet: sporculardan gelen son sesler (belge değişince okunur; açılıştaki eskiler çalınmaz, çalan taraf at'a bakar)
+// Dönen: { list, ready (ilk cevap geldi), err (okunamadı: kural yayınlanmamış ya da izin yok) }
+export function useGelen(org) {
+  const [v, setV] = useState({ org: "", list: [], ready: false, err: false });
+  useEffect(() => {
+    if (!org) return;
+    return onSnapshot(
+      query(collection(db, "bilgiGelen"), where("org", "==", org)),
+      (s) => setV({ org, list: s.docs.map((d) => ({ dev: d.id, ...d.data() })), ready: true, err: false }),
+      () => setV({ org, list: [], ready: true, err: true }),
+    );
+  }, [org]);
+  return v.org === org ? v : { list: [], ready: false, err: false };
+}
+
+// Gelen ses Yönet'te çalınınca günlüğe de yazılır (Kayıtlar; ses verisi yazılmaz)
+export const logGelen = (org, g, ctx) => logSent(org, { kind: "gelen", dur: g.dur || 0, id: g.id, from: [g.sail, g.name].filter(Boolean).join(" ") }, ctx);

@@ -10,11 +10,13 @@ const STALE = 90e3;
 function markEl() {
   const d = document.createElement("div");
   d.className = "tkm";
-  d.innerHTML = '<span class="tkm-l"></span><i></i>';
+  d.innerHTML = '<span class="tkm-l"><span class="tkm-t"></span><span class="bz-wave tkm-w"><i></i><i></i><i></i><i></i><i></i></span></span><i></i>';
   return d;
 }
 
-export function TekneMap({ boats, course = null, full = false }) {
+// talk: o an konuşan teknenin cihaz kimliği (Seyhun 2026-11-17 örnek C): işareti yeşil atar, adının yanında ses dalgası
+// tracks: geri oynatmada izler [{ id, color, line: [[boylam, enlem], …] }]; boat.color verilirse nokta o renkte
+export function TekneMap({ boats, course = null, full = false, talk = "", tracks = null }) {
   const box = useRef(null);
   const map = useRef(null);
   const ml = useRef(null);
@@ -67,24 +69,31 @@ export function TekneMap({ boats, course = null, full = false }) {
       if (!mk) mk = marks.current[b.id] = new lib.Marker({ element: markEl(), anchor: "bottom" }).setLngLat([b.lon, b.lat]).addTo(m);
       mk.setLngLat([b.lon, b.lat]);
       const el = mk.getElement();
-      el.querySelector(".tkm-l").textContent = [b.sail, b.name].filter(Boolean).join(" · ");
-      el.classList.toggle("old", now - (b.t || 0) > STALE);
+      el.querySelector(".tkm-t").textContent = [b.sail, b.name].filter(Boolean).join(" · ");
+      el.classList.toggle("talk", !!talk && b.id === talk);
+      el.style.setProperty("--c", b.color || "");
+      el.classList.toggle("old", !b.keep && now - (b.t || 0) > STALE);
     }
     for (const id of Object.keys(marks.current))
       if (!seen.has(id)) {
         marks.current[id].remove();
         delete marks.current[id];
       }
-  }, [boats, ready]);
+  }, [boats, ready, talk]);
 
   // Sığdırma: tekneler + parkur. İlk veri gelince ve parkur değişince bir kez; arada kullanıcı kaydırır, dokunulmaz
   const live = (boats || []).filter((b) => Number.isFinite(b.lat) && Number.isFinite(b.lon)).length;
-  const fitKey = `${JSON.stringify(course?.pts || [])}|${live > 0}`;
+  const tk = (tracks || []).map((x) => `${x.id}:${x.line.length}`).join(",");
+  const fitKey = `${JSON.stringify(course?.pts || [])}|${live > 0}|${tk ? tracks.map((x) => x.id).join(",") : ""}`;
   useEffect(() => {
     const m = map.current;
     const lib = ml.current;
     if (!ready || !m || !lib || fitted.current === fitKey) return;
-    const pts = [...(boats || []).filter((b) => Number.isFinite(b.lat) && Number.isFinite(b.lon)), ...(course?.pts || [])];
+    const pts = [
+      ...(boats || []).filter((b) => Number.isFinite(b.lat) && Number.isFinite(b.lon)),
+      ...(course?.pts || []),
+      ...(tracks || []).flatMap((x) => x.line.map(([lon, lat]) => ({ lon, lat }))),
+    ];
     if (!pts.length) return;
     fitted.current = fitKey;
     if (pts.length === 1) m.jumpTo({ center: [pts[0].lon, pts[0].lat], zoom: 14 });
@@ -137,6 +146,21 @@ export function TekneMap({ boats, course = null, full = false }) {
       m.addLayer({ id: "pk-line", type: "line", source: "pk-line", paint: { "line-color": "#1d4ed8", "line-width": 2, "line-dasharray": [2, 1.5] } });
     }
   }, [ck, ready]);
+
+  // İzler (geri oynatma): her tekne kendi renginde çizgi
+  useEffect(() => {
+    const m = map.current;
+    if (!ready || !m) return;
+    const data = {
+      type: "FeatureCollection",
+      features: (tracks || []).filter((x) => x.line.length > 1).map((x) => ({ type: "Feature", properties: { c: x.color }, geometry: { type: "LineString", coordinates: x.line } })),
+    };
+    if (m.getSource("iz")) m.getSource("iz").setData(data);
+    else {
+      m.addSource("iz", { type: "geojson", data });
+      m.addLayer({ id: "iz", type: "line", source: "iz", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": ["get", "c"], "line-width": 2.5, "line-opacity": 0.85 } });
+    }
+  }, [tk, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (err && !full) return null;
   return <div ref={box} className={`tkm-map${full ? " tkm-full" : ""}`} aria-label="Tekneler haritası" />;

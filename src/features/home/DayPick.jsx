@@ -11,7 +11,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { dayInfo, needsLog } from "@/lib/homeTiles";
 import { isFit } from "@/lib/fitness/model";
-import { isTraining } from "@/lib/trainingLog";
+import { antYonet, isTraining } from "@/lib/trainingLog";
 import { planKindOf } from "@/features/athletes/raceLinks";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { usePlanOpen } from "@/features/athletes/usePlanOpen";
@@ -112,7 +112,7 @@ export function DayPick({ day, att, today, onClose }) {
                     <QuickRow
                       key={p.id}
                       lead={<span className="w-12 shrink-0 pt-0.5 text-[0.875rem] font-semibold tabular-nums text-acc">{p.time || "Gün"}</span>}
-                      onOpen={() => go(`/training/day?id=${p.id}`)}
+                      onOpen={() => go(antYonet(p))}
                       title={p.title || "Antrenman"}
                       sub={needsLog(p, today) ? "Antrenman günlüğü yazılmadı" : p.place}
                       warn={needsLog(p, today)}

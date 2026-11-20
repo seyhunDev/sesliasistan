@@ -159,6 +159,45 @@ service cloud.firestore {
       allow update: if okPos(request.resource.data) && request.resource.data.org == resource.data.org && mayPos(request.resource.data);
     }
 
+    // Sporcudan Yönet'e bas-konuş (Seyhun 2026-11-16): ekran son ses kaydını kendi cihaz belgesine yazar (üstüne, birikmez).
+    // Yazabilen bilgiTekne ile aynı (işletme hesabı ya da açık link anahtarı k); okuyan ve silen yalnız ana hesap.
+    match /bilgiGelen/{dev} {
+      function okSes(d) {
+        return d.keys().hasOnly(['org', 'k', 'ch', 'sail', 'name', 'uid', 'id', 'at', 'type', 'dur', 'data'])
+            && d.org is string && d.at is number && d.dur is number && d.dur <= 30
+            && d.data is string && d.data.size() <= 700000
+            && d.type is string && d.type.size() <= 40 && d.id is string && d.id.size() <= 40
+            && d.get('sail', '') is string && d.get('sail', '').size() <= 12
+            && d.get('name', '') is string && d.get('name', '').size() <= 30;
+      }
+      function maySes(d) {
+        return (signedIn() && inOrg(d.org))
+            || (d.get('k', '') is string && d.get('k', '').size() >= 12
+                && get(/databases/$(database)/documents/bilgiAcik/$(d.k)).data.org == d.org);
+      }
+      allow read, delete: if isOwner(resource.data.org);
+      allow create: if dev.matches('^[a-z0-9]{12,24}$') && okSes(request.resource.data) && maySes(request.resource.data);
+      allow update: if okSes(request.resource.data) && request.resource.data.org == resource.data.org && maySes(request.resource.data);
+    }
+
+    // Sporcu izi (Seyhun 2026-11-17 "sonradan izlemek istiyorum"): ekran 5 sn'de bir konum noktası toplar, dakikada bir belge ekler.
+    // Yazabilen bilgiTekne ile aynı (işletme hesabı ya da açık link anahtarı k), yalnız ekler; okuyan ve silen yalnız ana hesap.
+    match /bilgiIz/{id} {
+      function okIz(d) {
+        return d.keys().hasOnly(['org', 'k', 'ch', 'dev', 'sail', 'name', 'uid', 't0', 'pts'])
+            && d.org is string && d.ch is string && d.t0 is number && d.pts is list && d.pts.size() <= 400
+            && d.get('sail', '') is string && d.get('sail', '').size() <= 12
+            && d.get('name', '') is string && d.get('name', '').size() <= 30;
+      }
+      function mayIz(d) {
+        return (signedIn() && inOrg(d.org))
+            || (d.get('k', '') is string && d.get('k', '').size() >= 12
+                && get(/databases/$(database)/documents/bilgiAcik/$(d.k)).data.org == d.org);
+      }
+      allow read, delete: if isOwner(resource.data.org);
+      allow create: if okIz(request.resource.data) && mayIz(request.resource.data);
+    }
+
     match /orgs/{orgId} {
       // Ana hesap: kendi işletmesindeki her şey (doğum günleri hariç: kişiye özel, aşağıda)
       match /{col}/{document=**} {

@@ -2,19 +2,49 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
-import { chooseDur, holdMic, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { chooseDur, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { mmss } from "@/lib/raceScore";
 import { Sheet } from "@/components/ui/Sheet";
-import { micReset } from "@/lib/speech/audioSession";
-import { voiceType } from "@/lib/chatFile";
-import { haptic } from "@/lib/haptic";
 import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
-import { closeKanal, linkUrl, loadLog, loadPusula, markLog, openKanal, saveBilgi, sendMsg, sendSes, useBilgi, useTekneler } from "./bilgiStore";
+import {
+  closeKanal,
+  deleteKanal,
+  ensureKanal,
+  linkUrl,
+  loadLog,
+  loadPusula,
+  logGelen,
+  markLog,
+  openKanal,
+  reopenKanal,
+  saveBilgi,
+  sendMsg,
+  sendSes,
+  syncLink,
+  useBilgi,
+  useGelen,
+  useKanallar,
+  useTekneler,
+} from "./bilgiStore";
 import { TekneMap } from "./TekneMap";
+import { usePtt } from "./usePtt";
+import { PttCancel, Wave } from "./Wave";
+import { IzPanel, KanalList, useIz } from "./BilgiIz";
+import { ScAthPanel, ScGrpPanel, ScProgPanel, canliDay, scAth, useCanliRace } from "@/features/liveScreen/sonuclar";
+import { dayProgram } from "@/features/liveScreen/program";
+import { agendaView } from "@/lib/raceProgram";
+import { addResults, importToast } from "@/features/athletes/resultsImport";
+import { loadRace } from "@/features/athletes/races";
+import { loadAthletes } from "@/features/athletes/data";
+import { PlaceWx } from "@/features/weather/PlaceWx";
+import { racePlace } from "@/features/athletes/raceWeather";
+import { getPlace } from "@/features/weather/weather";
 import "./bilgi.css";
 
 // Bilgi ekranı yönetimi (yalnız ana hesap): mesaj (ekranda görünür ve sesli okunur), bas-konuş, start sayacı (ortak sayaç), parkur.
@@ -32,82 +62,9 @@ function Seg({ value, items, onPick }) {
   );
 }
 
-// Bas konuş: basılı tutunca kaydeder, bırakınca gönderir (en çok 20 sn)
-function usePtt({ org, ctx, onSent }) {
-  const toast = useToast();
-  const [rec, setRec] = useState(null); // { key, t0 } basılı tutulan hedef
-  const [done, setDone] = useState(null); // { key, at } son giden ses (düğmede kısa ✓)
-  const st = useRef(null);
-  const stop = () => {
-    const s = st.current;
-    if (!s) return;
-    st.current = null;
-    clearTimeout(s.timer);
-    if (s.mr.state !== "inactive") s.mr.stop();
-    setRec(null);
-  };
-  const begin = async (e, key, to) => {
-    e.preventDefault();
-    try {
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-    } catch {}
-    if (st.current) return;
-    haptic("select");
-    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) return toast("Bu cihazda ses kaydı yapılamıyor.");
-    const s = { mr: null, timer: 0, up: false };
-    st.current = s;
-    // Kısa dokunuş yalnız hedef seçer: 0,3 sn basılı kalmadıysa mikrofon hiç açılmaz
-    await new Promise((r) => setTimeout(r, 300));
-    if (s.up) {
-      st.current = null;
-      return;
-    }
-    // Geri sayım sürerken sayaç iPhone ses oturumunu "playback"e alır (bipler sessizde de çalsın); o kipte mikrofon açılmaz.
-    // Kayıt boyunca sayaç kipi değiştirmez, mikrofon açılmadan önce kip "auto"ya döner (asistan mikrofonu gibi).
-    holdMic(true);
-    micReset();
-    let stream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-    } catch (err) {
-      st.current = null;
-      holdMic(false);
-      return toast(err?.name === "NotAllowedError" ? "Mikrofon izni gerekli." : "Mikrofon açılamadı, tekrar dene.");
-    }
-    const type = voiceType();
-    const mr = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 32000 });
-    const parts = [];
-    const t0 = Date.now();
-    mr.ondataavailable = (ev) => ev.data?.size && parts.push(ev.data);
-    mr.onstop = async () => {
-      stream.getTracks().forEach((t) => t.stop());
-      holdMic(false);
-      const dur = (Date.now() - t0) / 1000;
-      if (dur < 0.6) return; // kısa dokunuş: yalnız hedef seçildi
-      const blob = new Blob(parts, { type: mr.mimeType || type || "audio/mp4" });
-      onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, at: Date.now(), ok: null });
-      haptic("light");
-      const r = await sendSes(org, blob, dur, ctx, to).catch(() => ({ ok: false }));
-      onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, ...r, ok: !!r.ok });
-      if (r.ok) {
-        haptic("success");
-        setDone({ key, at: Date.now() });
-      } else haptic("error");
-    };
-    s.mr = mr;
-    mr.start();
-    haptic("medium"); // kayıt başladı: parmağın altında hissedilir
-    setRec({ key, t0 });
-    s.timer = setTimeout(stop, SES_MAX_SEC * 1000);
-    if (s.up) stop(); // izin sorulurken parmak kalktıysa
-  };
-  const end = () => (st.current && !st.current.mr ? (st.current.up = true) : stop());
-  useEffect(() => () => stop(), []);
-  return { rec, done, begin, end };
-}
-
 // Hedef düğmesi = bas konuş (Seyhun 2026-11-15 "ayrı bas konuş olmasın, kime basarsam onunla konuşayım"): dokununca yazılı mesajın
-// hedefi seçilir, basılı tutunca o kişiye (Hepsi: herkese) ses kaydı, bırakınca gider. Kayıtta düğme kırmızı, saniye yazar.
+// hedefi seçilir, basılı tutunca o kişiye (Hepsi: herkese) ses kaydı, bırakınca gider. Kayıtta düğme yeşil yanar, içe basılı kalır, saniye yazar;
+// genişliği hiç değişmez (2026-11-16).
 function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
   const on = ptt.rec?.key === id;
   const ok = !on && ptt.done?.key === id && now - ptt.done.at < 2000;
@@ -117,11 +74,13 @@ function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
       className="bzy-ptt"
       aria-pressed={picked}
       data-rec={on ? "1" : "0"}
+      data-cancel={on && ptt.rec.cancel ? "1" : undefined}
       data-ok={ok ? "1" : "0"}
       onPointerDown={(e) => {
         onPick();
         ptt.begin(e, id, to);
       }}
+      onPointerMove={ptt.move}
       onPointerUp={ptt.end}
       onPointerCancel={ptt.end}
       onContextMenu={(e) => e.preventDefault()}
@@ -136,7 +95,12 @@ function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
           </>
         )}
       </svg>
-      {on ? `${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn` : label}
+      {/* Genişlik sabit (Seyhun 2026-11-16 "bastığımda küçülüyor"): ad, sayaç ve en geniş sayaç ("20 sn") aynı hücrede üst üste; düğme hep en genişi kadar */}
+      <span className="bzy-ptt-l">
+        <span data-v={on ? "0" : "1"}>{label}</span>
+        <span data-v={on ? "1" : "0"}>{on ? (ptt.rec.cancel ? "İptal" : `${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn`) : ""}</span>
+        <span data-v="0" aria-hidden="true">{`${SES_MAX_SEC} sn`}</span>
+      </span>
     </button>
   );
 }
@@ -158,8 +122,8 @@ function SentList({ rows }) {
             <time className="num">{i === 0 || dayName(rows[i - 1].at) !== dayName(r.at) ? `${dayName(r.at)} ${hhmm(r.at)}` : hhmm(r.at)}</time>
             <div className="min-w-0 flex-1">
               <b>
-                {r.to ? `${r.to} · ` : ""}
-                {r.kind === "ses" ? `Ses · ${r.dur || 0} sn` : r.text}
+                {r.kind === "gelen" ? `${r.from || "Sporcu"} · Gelen ses · ${r.dur || 0} sn` : r.to ? `${r.to} · ` : ""}
+                {r.kind === "gelen" ? "" : r.kind === "ses" ? `Ses · ${r.dur || 0} sn` : r.text}
               </b>
               {(r.label || r.state) && <span>{[r.label, r.state].filter(Boolean).join(" · ")}</span>}
             </div>
@@ -313,7 +277,7 @@ function NumIn({ value, onSave, label, unit }) {
 }
 
 // Koordinat satırı: "39.0712, 26.8840" yazılır ya da "Konumum"; auto: hesaplanan (elle değilse soluk), onAuto: elleyi kaldır
-function PtRow({ label, pt, manual, onSave, onAuto }) {
+function PtRow({ label, pt, manual, onSave, onAuto, offLabel = "Otomatik" }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [v, setV] = useState("");
@@ -336,9 +300,9 @@ function PtRow({ label, pt, manual, onSave, onAuto }) {
             <Button variant="secondary" onClick={async () => save(await here())}>
               Konumum
             </Button>
-            {manual && onAuto && (
+            {manual && onAuto && pt && (
               <Button variant="secondary" onClick={() => (onAuto(), setOpen(false))}>
-                Otomatik
+                {offLabel}
               </Button>
             )}
           </div>
@@ -354,14 +318,38 @@ function ParkurEdit({ org, pk }) {
   const toast = useToast();
   const p = pk || { type: "trapez", wind: null, komite: null, line: 120, orsa: 900, marks: {} };
   const c = buildCourse(p);
-  const put = (patch) => saveBilgi(org, { parkur: patch }).catch(() => toast("Kaydedilemedi"));
+  const put = (patch) =>
+    saveBilgi(org, { parkur: patch }).then(
+      () => true,
+      () => (toast("Kaydedilemedi"), false),
+    );
   const at = (k) => c.pts.find((x) => x.k === k) || null;
+  const ask = useConfirm();
+  // Sıfırla / sil (Seyhun 2026-11-16 "konumları sıfırlayabilmemiz, istediğimizi değiştirebilmemiz ya da tamamen silebilmemiz gerekiyor"):
+  // elle düzeltilen şamandıralar tek dokunuşla otomatiğe döner; Parkuru sil bütün parkuru (tip, rüzgâr, hakem botu, uzunluklar,
+  // şamandıralar) belgeden kaldırır, link kopyasına da yazılır (saveBilgi); ekranlarda harita boşalır.
+  const nManual = markKeys(p.type).filter((k) => p.marks?.[k]).length;
+  const any = !!(pk && (pk.komite || pk.wind != null || Object.values(pk.marks || {}).some(Boolean)));
+  const wipe = () =>
+    ask({
+      title: "Parkur silinsin mi?",
+      text: "Hakem botu, rüzgâr ve bütün şamandıra konumları silinir; ekranlarda parkur kaybolur. Yeniden baştan kurabilirsin.",
+      yes: "Parkuru sil",
+      run: () =>
+        saveBilgi(org, { parkur: null }).then(
+          () => toast("Parkur silindi"),
+          (e) => {
+            toast("Silinemedi");
+            throw e;
+          },
+        ),
+    });
   return (
     <>
       <Seg value={p.type} items={PK_TYPES} onPick={(k) => put({ type: k })} />
       <div className="bzy-list mt-2">
         <NumIn label="Rüzgâr" unit="°" value={p.wind} onSave={(v) => put({ wind: v == null ? null : v % 360 })} />
-        <PtRow label="Hakem botu" pt={p.komite} manual onSave={(q) => put({ komite: q })} />
+        <PtRow label="Hakem botu" pt={p.komite} manual onSave={(q) => put({ komite: q })} onAuto={() => put({ komite: null })} offLabel="Kaldır" />
         <NumIn label="Start hattı" unit="m" value={p.line} onSave={(v) => put({ line: v ?? 120 })} />
         <NumIn label="1 numaraya" unit="m" value={p.orsa} onSave={(v) => put({ orsa: v ?? 900 })} />
       </div>
@@ -372,14 +360,28 @@ function ParkurEdit({ org, pk }) {
           ))}
         </div>
       )}
+      {(nManual > 0 || any) && (
+        <div className="bzy-row bzy-pkact">
+          {nManual > 0 && (
+            <Button variant="secondary" onClick={() => put({ marks: null }).then((ok) => ok && toast("Şamandıralar otomatiğe döndü"))}>
+              Şamandıraları sıfırla
+            </Button>
+          )}
+          {any && (
+            <Button variant="danger" onClick={wipe}>
+              Parkuru sil
+            </Button>
+          )}
+        </div>
+      )}
     </>
   );
 }
 
 // Kanal (Seyhun 2026-11-15): ekranlar yalnız açık kanala katılarak başlar. Aç: ad + yeni link (eski link çalışmaz). Kapat: ekranlar durur
-function Kanal({ org, kanal, link, count }) {
+function Kanal({ org, kanal, link, count, def = "Antrenman", onList }) {
   const toast = useToast();
-  const [name, setName] = useState("Antrenman");
+  const [name, setName] = useState(def);
   const [busy, setBusy] = useState(false);
   const [more, setMore] = useState(false);
   const url = link ? linkUrl(link) : "";
@@ -390,7 +392,7 @@ function Kanal({ org, kanal, link, count }) {
     ) ?? toast(u);
   const open = async () => {
     setBusy(true);
-    await openKanal(org, name).catch(() => toast("Kanal açılamadı"));
+    await openKanal(org, name, kanal).catch(() => toast("Kanal açılamadı"));
     setBusy(false);
   };
   if (!kanal?.open)
@@ -401,6 +403,11 @@ function Kanal({ org, kanal, link, count }) {
           <Button disabled={busy || !name.trim()} onClick={open} className="!flex-none">
             Kanal aç
           </Button>
+          <button type="button" className="bzy-ic" onClick={onList} aria-label="Kanallar" data-press>
+            <svg viewBox="0 0 24 24">
+              <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
+            </svg>
+          </button>
         </div>
       </section>
     );
@@ -411,6 +418,11 @@ function Kanal({ org, kanal, link, count }) {
         <i className="bzy-dot" aria-label="Açık" />
         <b>{kanal.name}</b>
         <span className="num">{count} kişi</span>
+        <button type="button" className="bzy-ic" onClick={onList} aria-label="Kanallar" data-press>
+          <svg viewBox="0 0 24 24">
+            <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
+          </svg>
+        </button>
         <button type="button" className="bzy-ic" disabled={!url} onClick={() => copy(url)} aria-label="Linki kopyala" data-press>
           <svg viewBox="0 0 24 24">
             <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
@@ -432,7 +444,7 @@ function Kanal({ org, kanal, link, count }) {
           <Button
             variant="secondary"
             onClick={() =>
-              closeKanal(org).then(
+              closeKanal(org, kanal.id).then(
                 () => setMore(false),
                 () => toast("Kapatılamadı"),
               )
@@ -487,8 +499,93 @@ function LastSent({ last, boats, ch, now, onAgain }) {
   );
 }
 
+// Sporcudan gelen bas-konuş (Seyhun 2026-11-17, örnek C): yeni gelen ses sırayla çalınır, çalarken o teknenin haritadaki işareti atar
+// ve üstünde dalga görünür. Taze olmayan (20 sn'den eski) ses çalınmaz. Çalınan her ses Kayıtlar'a yazılır.
+const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+function useGelenPlay(org, ctx, onLog) {
+  const toast = useToast();
+  const g0 = useGelen(org);
+  const [talk, setTalk] = useState(null);
+  const seen = useRef(null);
+  const q = useRef([]);
+  const playing = useRef(false);
+  const el = useRef(null);
+  const warned = useRef(false);
+  const audio = () => el.current || (el.current = new Audio());
+  // Tarayıcı sesi yalnız dokunuştan sonra çalar: ilk dokunuşta aynı ses öğesi sessizce bir kez çalınır
+  useEffect(() => {
+    const u = () => {
+      const a = audio();
+      if (playing.current) return;
+      a.src = SILENT;
+      a.play().catch(() => {});
+    };
+    window.addEventListener("pointerdown", u, { once: true });
+    return () => window.removeEventListener("pointerdown", u);
+  }, []);
+  // Okunamıyorsa (Seyhun 2026-11-18 "sporcunun sesi duyulmuyor, gösterilmiyor"): sessiz kalmasın, sebep yazsın
+  useEffect(() => {
+    if (!g0.err || warned.current) return;
+    warned.current = true;
+    toast("Sporcudan gelen sesler okunamıyor. Firestore kuralları yayınlandı mı?", { duration: 8000 });
+  }, [g0.err]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const next = () => {
+      if (playing.current || !q.current.length) return;
+      const g = q.current.shift();
+      const a = audio();
+      playing.current = true;
+      const who = [g.sail, g.name].filter(Boolean).join(" ") || "Sporcu";
+      let shown = false;
+      const fin = () => {
+        a.onended = a.onerror = a.onplaying = null;
+        playing.current = false;
+        setTalk(null);
+        next();
+      };
+      // Çalınamasa da (izin, ses biçimi) kim konuştu süre kadar haritada görünür
+      const showOnly = (msg) => {
+        a.onended = a.onerror = a.onplaying = null;
+        toast(msg);
+        if (shown) return fin();
+        shown = true;
+        setTalk({ dev: g.dev, who });
+        setTimeout(fin, Math.max(2, Math.min(20, g.dur || 3)) * 1000);
+      };
+      a.onplaying = () => {
+        shown = true;
+        setTalk({ dev: g.dev, who });
+      };
+      a.onended = fin;
+      a.onerror = () => showOnly(`${who} sesli mesaj gönderdi ama bu cihazda çalınamadı.`);
+      a.src = `data:${g.type || "audio/mp4"};base64,${g.data}`;
+      a.play().catch((e) => {
+        if (a.onerror) showOnly(e?.name === "NotAllowedError" ? `${who} sesli mesaj gönderdi; ses için ekrana bir kez dokun.` : `${who} sesli mesaj gönderdi ama çalınamadı.`);
+      });
+      logGelen(org, g, ctx).then(onLog);
+    };
+    if (!g0.ready) return;
+    // İlk cevaptaki eski sesler çalınmaz (yalnız 30 sn içinde gelen); sonra gelen her yeni ses çalınır (telefon saatleri farklı olabilir)
+    const first = seen.current === null;
+    if (first) seen.current = new Set();
+    for (const g of g0.list) {
+      if (!g.id || seen.current.has(g.id)) continue;
+      seen.current.add(g.id);
+      if (g.data && (first ? Date.now() - (g.at || 0) < 30000 : true)) q.current.push(g);
+    }
+    q.current.sort((x, y) => x.at - y.at);
+    next();
+  }, [g0]); // eslint-disable-line react-hooks/exhaustive-deps
+  return talk;
+}
+
 export function BilgiAdmin() {
   const { profile } = useAuth();
+  // Bugünün antrenmanından gelindi (Seyhun 2026-11-17 "antrenmanı oradan yöneteceğim"): ?ant=plan id, ?ad=antrenmanın adı.
+  // Kanal adı antrenmanın adıyla hazır gelir; üstte Antrenman düğmesi eski sayfayı (yoklama, günlük, sıralama) açar
+  const q = useSearchParams();
+  const ant = (q.get("ant") || "").replace(/[^\w-]/g, "").slice(0, 60);
+  const antAd = (q.get("ad") || "").trim().slice(0, 30);
   const toast = useToast();
   const org = profile?.role === "owner" ? profile?.orgId || "" : "";
   const b = useBilgi(org);
@@ -503,6 +600,20 @@ export function BilgiAdmin() {
   const [last, setLast] = useState(null);
   const marked = useRef("");
   const [sheet, setSheet] = useState("");
+  // Canlı'nın Sonuçlar, Gruplar, Program'ı (Seyhun 2026-11-19 örnek onaylandı): o günün yarışı; pencere açıkken 20 sn, kapalıyken 2 dk'da bir
+  const yaris = useCanliRace(!!org, ["sonuc", "grup", "prog"].includes(sheet) ? 20e3 : 120e3);
+  const [resMsg, setResMsg] = useState("");
+  const addRes = (file) => {
+    setResMsg("Okunuyor…");
+    (async () => {
+      const race = await loadRace(org, yaris.id);
+      if (!race) return setResMsg("Yarış bulunamadı");
+      const { athletes } = await loadAthletes();
+      const { got } = await addResults({ orgId: org, race, athletes: athletes || [], file });
+      setResMsg(importToast(got) || "Sonuçlar eklendi");
+      yaris.reload();
+    })().catch((e) => setResMsg(e?.message ? `Okunamadı: ${e.message}` : "Okunamadı. İnterneti kontrol et."));
+  };
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -514,13 +625,56 @@ export function BilgiAdmin() {
     loadPusula(org).then(setPus, () => {});
   }, [org]);
 
-  const ctx = { label: b?.label || "", state: b?.state || "", course: b?.course || "" };
+  // Yönet açılınca linkin kopyası ana belgeden tazelenir (kopya eksik/eskiyse sporcu linki "Kanal açık değil" der)
+  const linkKey = b?.link || "";
+  useEffect(() => {
+    if (org && linkKey) syncLink(org).catch(() => {});
+  }, [org, linkKey]);
+
   const kanal = b?.kanal || null;
   const ch = kanal?.open ? kanal.id : "";
+  const ctx = { label: b?.label || "", state: b?.state || "", course: b?.course || "", ch };
+  // Kanallar (Seyhun 2026-11-17): liste, tekrar aç, sil (Geri al'lı, verisiyle), izi geri oynat
+  const kanallar = useKanallar(org);
+  const [hidden, setHidden] = useState([]);
+  const [izK, setIzK] = useState(null);
+  const [kbusy, setKbusy] = useState(false);
+  const iz = useIz(org, izK?.id || "");
+  useEffect(() => {
+    if (org && kanal?.open && kanal.id && kanallar && !kanallar.some((x) => x.id === kanal.id)) ensureKanal(org, kanal).catch(() => {});
+  }, [org, kanal, kanallar]);
+  const kRun = async (fn, err) => {
+    setKbusy(true);
+    await fn().catch(() => toast(err));
+    setKbusy(false);
+  };
+  const delK = (k) => {
+    let undone = false;
+    const wasOpen = !!kanal?.open && kanal.id === k.id;
+    setHidden((h) => [...h, k.id]);
+    toast(`"${k.name}" silindi`, {
+      action: {
+        label: "Geri al",
+        onClick: () => {
+          undone = true;
+          setHidden((h) => h.filter((x) => x !== k.id));
+        },
+      },
+      duration: 6000,
+    });
+    setTimeout(async () => {
+      if (undone) return;
+      if (wasOpen) await closeKanal(org, "").catch(() => {});
+      await deleteKanal(org, k.id).catch(() => toast("Silinemedi"));
+      setHidden((h) => h.filter((x) => x !== k.id));
+      reload();
+    }, 6500);
+  };
   const members = membersOf(boats, ch, now);
   const target = members.find((m) => m.id === toDev);
   const to = target ? { dev: target.id, name: [target.sail, target.name].filter(Boolean).join(" ") } : null;
-  const ptt = usePtt({ org, ctx, onSent: (x) => got(x) });
+  const talk = useGelenPlay(org, ctx, () => reload());
+  const ptt = usePtt({ send: (blob, dur, to) => sendSes(org, blob, dur, ctx, to), onSent: (x) => got(x) });
   const got = (x) => {
     setLast((o) => ({ ...(o && o.at === x.at ? o : {}), ...x }));
     if (x.ok != null) reload();
@@ -568,8 +722,15 @@ export function BilgiAdmin() {
   // üstte geri + kanal satırı + küçük sayaç + Parkur/Ekran/Kayıtlar, altta bas-konuş isimleri ve tek satır mesaj. İkinciller alttan pencere.
   return (
     <main className="bzy-app" aria-label="Bilgi ekranı yönetimi">
-      <TekneMap boats={chBoats} course={course.has ? course : null} full />
-      <div className="bzy-top">
+      <TekneMap boats={izK ? iz.boats : chBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full />
+      {izK && <IzPanel k={izK} iz={iz} onClose={() => setIzK(null)} />}
+      {!izK && talk && !chBoats.some((x) => x.id === talk.dev && Number.isFinite(x.lat)) && (
+        <div className="bzy-talk" role="status">
+          {talk.who}
+          <Wave />
+        </div>
+      )}
+      <div className="bzy-top" style={izK ? { display: "none" } : undefined}>
         <div className="bzy-bar">
           <Link href="/" className="bzy-ic" aria-label="Geri" data-press>
             <svg viewBox="0 0 24 24">
@@ -577,12 +738,25 @@ export function BilgiAdmin() {
             </svg>
           </Link>
           <div className="min-w-0 flex-1">
-            <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} />
+            <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} def={antAd || "Antrenman"} onList={() => setSheet("kanallar")} />
           </div>
         </div>
         <MiniTimer />
         <div className="bzy-pills">
+          {ant ? (
+            <Link href={`/training/day?id=${ant}`} data-press>
+              Antrenman
+            </Link>
+          ) : null}
           {[
+            ...(yaris.data
+              ? [
+                  ["sonuc", "Sonuçlar"],
+                  ["grup", "Gruplar"],
+                  ["prog", "Program"],
+                ]
+              : []),
+            ["hava", "Hava"],
             ["parkur", "Parkur"],
             ["ekran", "Ekran"],
             ["kayit", "Kayıtlar"],
@@ -593,8 +767,9 @@ export function BilgiAdmin() {
           ))}
         </div>
       </div>
-      {kanal?.open && (
+      {kanal?.open && !izK && (
         <div className="bzy-dock">
+          {ptt.rec && <PttCancel on={!!ptt.rec.cancel} />}
           <div className="bzy-to">
             <TalkChip id="" label="Hepsi" picked={!to} ptt={ptt} to={null} now={now} onPick={() => setToDev("")} />
             {members.map((m) => {
@@ -627,6 +802,23 @@ export function BilgiAdmin() {
           <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />
         </div>
       )}
+      <Sheet open={sheet === "kanallar"} onClose={() => setSheet("")} title="Kanallar">
+        <KanalList
+          org={org}
+          list={kanallar}
+          cur={kanal}
+          hidden={hidden}
+          busy={kbusy}
+          onIz={(k) => (setSheet(""), setIzK(k))}
+          onOpen={(k) => kRun(() => reopenKanal(org, k, kanal), "Açılamadı")}
+          onClose={(k) => kRun(() => closeKanal(org, k.id), "Kapatılamadı")}
+          onDel={delK}
+        />
+      </Sheet>
+      <YarisSheets yaris={yaris} now={now} sheet={sheet} onClose={() => setSheet("")} onResult={addRes} resMsg={resMsg} />
+      <Sheet open={sheet === "hava"} onClose={() => setSheet("")} title="Hava">
+        {sheet === "hava" && <RaceAtWx org={org} id={yaris.id} />}
+      </Sheet>
       <Sheet open={sheet === "parkur"} onClose={() => setSheet("")} title="Parkur">
         <ParkurEdit org={org} pk={b?.parkur} />
         <input
@@ -671,5 +863,54 @@ export function BilgiAdmin() {
         </div>
       </Sheet>
     </main>
+  );
+}
+
+// Hava penceresi (Seyhun 2026-11-20 "yarışın yapıldığı yerdeki hava durumunu göstermeliyiz"): o günün yarışının yeri (yarış sahası,
+// yoksa Çevre'deki alan, yoksa ilçesi; racePlace yarış sayfasıyla aynı). Yarış yoksa seçili hava konumu. Tasarım ana sayfanın Hava kutusu (PlaceWx).
+function RaceAtWx({ org, id }) {
+  const [at, setAt] = useState(null);
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      const race = id ? await loadRace(org, id) : null;
+      const p = race ? await racePlace(race) : null;
+      if (on) setAt(p?.lat != null ? { name: (p.name !== "Seçilen yer" && p.name) || race?.district || "Yarış yeri", lat: +p.lat, lon: +p.lon } : getPlace());
+    })().catch(() => on && setAt(getPlace()));
+    return () => {
+      on = false;
+    };
+  }, [org, id]);
+  if (!at) return <div className="ck-shim h-[22rem] rounded-[1.5rem]" role="status" aria-label="Hava yükleniyor" />;
+  return <PlaceWx at={at} />;
+}
+
+// Sonuçlar, Gruplar, Program (canlı ekranla aynı bileşenler, liveScreen/sonuclar.jsx); başlık pencerenin kendi başlığı, yarışın adı altında
+function YarisSheets({ yaris, now, sheet, onClose, onResult, resMsg }) {
+  const data = yaris.data;
+  if (!data) return null;
+  const day = canliDay(data, now);
+  const name = data.race?.name || "";
+  const hm = new Date(now + 3 * 3600e3).toISOString().slice(11, 16);
+  const ag = agendaView(data.plan?.agenda, day, hm);
+  const prog = dayProgram(data, day);
+  return (
+    <>
+      <Sheet open={sheet === "sonuc"} onClose={onClose} title={name ? `Sonuçlar · ${name}` : "Sonuçlar"}>
+        <div className="sc-res bare">
+          <ScAthPanel data={data} ath={scAth(data, day)} day={day} onResult={onResult} resMsg={resMsg} />
+        </div>
+      </Sheet>
+      <Sheet open={sheet === "grup"} onClose={onClose} title={name ? `Gruplar · ${name}` : "Gruplar"}>
+        <div className="sc-res bare">
+          <ScGrpPanel data={data} day={day} />
+        </div>
+      </Sheet>
+      <Sheet open={sheet === "prog"} onClose={onClose} title={name ? `Program · ${name}` : "Program"}>
+        <div className="sc-res bare">
+          {prog.length || ag ? <ScProgPanel prog={prog} ag={ag} /> : <p className="sc-vno">Program yok</p>}
+        </div>
+      </Sheet>
+    </>
   );
 }

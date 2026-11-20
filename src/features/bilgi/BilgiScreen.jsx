@@ -6,7 +6,11 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
 import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
-import { deviceId, readWho, savePusula, saveWho, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
+import { deviceId, readWho, savePusula, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
+import { usePtt } from "./usePtt";
+import { PttCancel, Wave } from "./Wave";
+import { mineOf, useCanliRace } from "@/features/liveScreen/sonuclar";
+import { groupColor } from "@/lib/roundScore";
 import "./bilgi.css";
 
 // Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 4): başlıksız tek ekran, dokunulmaz. Üstte en büyük pusula derecesi (telefonun
@@ -228,8 +232,23 @@ function usePresence(on, who, org, k, uid, ch, seen) {
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
     );
     write();
+    // İz: 5 sn'de bir nokta (taze konum varsa), 12 nokta (1 dk) olunca ya da ekran kapanınca tek belge
+    let iz = [];
+    let t0 = 0;
+    const flushIz = () => {
+      if (!iz.length) return;
+      sendIz({ org, k: k || "", ch, dev, sail: who.sail || "", name: who.name || "", uid: uid || "", t0, pts: iz.flat() }).catch(() => {});
+      iz = [];
+    };
+    const hide = () => document.visibilityState === "hidden" && flushIz();
+    document.addEventListener("visibilitychange", hide);
     const id = setInterval(() => {
       const c = fix && Date.now() - fix.timestamp < 20000 ? fix.coords : null;
+      if (c && Date.now() - fix.timestamp < 10000) {
+        if (!iz.length) t0 = Date.now();
+        iz.push([Math.round((Date.now() - t0) / 1000), +c.latitude.toFixed(6), +c.longitude.toFixed(6), Number.isFinite(c.speed) ? Math.round(c.speed * 19.44) / 10 : -1]);
+        if (iz.length >= 12) flushIz();
+      }
       const age = sent ? Date.now() - sent.t : Infinity;
       if (c && sent?.lat != null && metres(sent, { lat: c.latitude, lon: c.longitude }) < 10 && age < 45000) return;
       if (!c && age < 45000) return;
@@ -240,6 +259,8 @@ function usePresence(on, who, org, k, uid, ch, seen) {
       S0.kick = null;
       if (w != null) navigator.geolocation.clearWatch(w);
       clearInterval(id);
+      document.removeEventListener("visibilitychange", hide);
+      flushIz();
     };
   }, [on, who, org, k, uid, ch]);
   useEffect(() => {
@@ -259,7 +280,12 @@ const whoRaw = () => {
 };
 
 // Başlat: yelken no + isim (bu telefonda saklı). Kayıtlıysa yalnız Başlat ve Değiştir
-function StartCard({ onGo, kanal }) {
+// why: link yoksa/eskiyse "none", okunamadıysa "err" (Seyhun 2026-11-17: hepsi "Kanal açık değil" diyordu, sebep anlaşılmıyordu)
+const WHY = {
+  none: "Bu link geçersiz ya da eski. Antrenöründen yeni linki iste.",
+  err: "Bağlanılamadı. İnterneti kontrol edip sayfayı yenile.",
+};
+function StartCard({ onGo, kanal, why = "" }) {
   // Saklı kimlik ilk çizimden sonra okunur (sunucu çizimiyle uyuşsun): sunucuda null
   const raw = useSyncExternalStore(noSub, whoRaw, () => null);
   const who = raw ? readWho() : null;
@@ -283,7 +309,7 @@ function StartCard({ onGo, kanal }) {
   if (!kanal?.open)
     return (
       <div className="bz-go">
-        <div className="bz-card bz-none">Kanal açık değil</div>
+        <div className="bz-card bz-none">{WHY[why] || "Kanal açık değil"}</div>
       </div>
     );
   return (
@@ -595,11 +621,12 @@ export function BilgiScreen({ pub = "" }) {
   const org = pub ? "" : profile?.orgId || "";
   const own = useBilgi(org);
   const ownSes = useBilgiDoc(org, "ses");
-  const [pb, pses, porg] = usePublic(pub);
+  const [pb, pses, porg, pwhy] = usePublic(pub);
   const [who, setWho] = useState(null);
   const b = pub ? pb : own;
   const ses = pub ? pses : ownSes;
   const [on, setOn] = useState(false);
+  const [big, setBig] = useState(false);
   const now = useTick(250);
   const h = useHeading(on);
   useRecord(on, org, profile?.uid, profile?.name);
@@ -617,6 +644,10 @@ export function BilgiScreen({ pub = "" }) {
   usePresence(active, who, pub ? porg : org, pub, profile?.uid, kanal?.id || "", active ? fresh?.id || "" : "");
   const [talk, unlock] = useVoice(active, myMsg, mySes);
   const pos = useMyPos(active);
+  const { data: mine } = useCanliRace(active && !!who?.sail, 60e3);
+  // Sporcudan Yönet'e bas-konuş (Seyhun 2026-11-17, örnek C): altta ortada mikrofon; basılı tut, konuş, bırakınca Yönet'e gider
+  const ptt = usePtt({ send: (blob, sec) => sendGelen(dev, { org: pub ? porg : org, k: pub, ch: kanal?.id || "", sail: who?.sail, name: who?.name, uid: profile?.uid }, blob, sec) });
+  const recSec = ptt.rec ? Math.max(0, Math.floor((now - ptt.rec.t0) / 1000)) : 0;
 
   // Tek dokunuş: pusula izni (iPhone), sesin açılması ve ekranın açık kalması tarayıcının dokunuş istediği işler
   const start = async (w) => {
@@ -666,15 +697,49 @@ export function BilgiScreen({ pub = "" }) {
   );
   const course = buildCourse(b?.parkur);
   const wind = <WindDial wind={course.up} head={h} />;
+  // Harita köşede küçük (Seyhun 2026-11-18 örnek B "pusula ortada büyük, konum ek bilgi"): dokununca tam ekran, tekrar dokununca küçülür
+  const showMap = mode !== "last" && (mode !== "race" || show.parkur);
+  const mapNote = pos.me ? "" : big ? pos.denied ? <GeoAsk pos={pos} /> : pos.err || "Konum bekleniyor…" : pos.denied ? "Konum izni" : "Konum…";
   const map = (
-    <div className="bz-rt">
-      <CourseMap course={course} me={pos.me} head={h} trail={pos.trail} className="bz-map" note={pos.me ? "" : pos.denied ? <GeoAsk pos={pos} /> : pos.err || "Konum bekleniyor…"} />
-      {b?.state && <div className="bz-cs">{b.state}</div>}
+    <div className={`bz-rt${big ? " big" : ""}`} role="button" tabIndex={0} aria-label={big ? "Haritayı küçült" : "Haritayı büyüt"} onClick={(e) => !e.target.closest("button") && setBig((x) => !x)}>
+      <CourseMap course={course} me={pos.me} head={h} trail={pos.trail} className="bz-map" note={mapNote} />
     </div>
   );
+  const csLine = b?.state ? <div className="bz-cs">{b.state}</div> : null;
+  // Kendi sırası, grubu, grubunun startı (Seyhun 2026-11-19 örnek onaylandı): o günün yarışından, yelken numarasıyla; yalnız start öncesi
+  const me = mine ? mineOf(mine, who?.sail, now) : null;
+  const meLine =
+    me && (me.p !== "" || me.g || me.at) ? (
+      <div className="bz-me num">
+        {me.p !== "" && (
+          <span>
+            <small>Genel</small>
+            <b>
+              {`${me.p}${/^\d+$/.test(String(me.p)) ? "." : ""}`}
+              {me.n ? <em>/{me.n}</em> : null}
+            </b>
+          </span>
+        )}
+        {me.g && (
+          <span>
+            <small>{me.gday === "Bugün" ? "Grup" : me.gday}</small>
+            <b>
+              <i style={{ background: groupColor(me.g) || "#ffd23f" }} aria-hidden="true" />
+              {me.g}
+            </b>
+          </span>
+        )}
+        {me.at && (
+          <span>
+            <small>{me.now ? "Yarışta" : "Start"}</small>
+            <b>{me.at}</b>
+          </span>
+        )}
+      </div>
+    ) : null;
 
   return (
-    <main className={`bz${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
+    <main className={`bz${active ? " bz-pton" : ""}${showMap ? " bz-mapon" : ""}${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
       {!pub && (
         <button type="button" className="bz-back" onClick={leave} aria-label="Geri">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -683,12 +748,35 @@ export function BilgiScreen({ pub = "" }) {
         </button>
       )}
       {talk && (
-        <span className="bz-talk" aria-label="Konuşuyor">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <rect x="9" y="3" width="6" height="11" rx="3" />
-            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-          </svg>
+        <span className="bz-talk" role="status">
+          Yönet
+          <Wave />
         </span>
+      )}
+      {active && ptt.rec && <PttCancel on={!!ptt.rec.cancel} className="bz-pcx" />}
+      {active && (
+        <button
+          type="button"
+          className="bz-ptt"
+          data-rec={ptt.rec ? "1" : undefined}
+          data-cancel={ptt.rec?.cancel ? "1" : undefined}
+          data-ok={ptt.done && now - ptt.done.at < 2000 ? "1" : undefined}
+          aria-label="Bas konuş"
+          onPointerDown={(e) => ptt.begin(e, "y", null)}
+          onPointerMove={ptt.move}
+          onPointerUp={ptt.end}
+          onPointerCancel={ptt.end}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          {ptt.rec ? (
+            <b className="num">{ptt.rec.cancel ? "✕" : recSec}</b>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <rect x="9" y="3" width="6" height="11" rx="3" />
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+            </svg>
+          )}
+        </button>
       )}
       {mode === "last" && (
         <div className="bz-last">
@@ -702,8 +790,8 @@ export function BilgiScreen({ pub = "" }) {
           <div className="bz-top">
             {show.pusula && compass}
             {show.ruzgar && wind}
+            {show.parkur && csLine}
           </div>
-          {show.parkur ? map : <div className="bz-fill" />}
           {(show.sure || show.saat) && (
             <div className="bz-foot num">
               <span>
@@ -723,7 +811,8 @@ export function BilgiScreen({ pub = "" }) {
         <>
           {compass}
           {wind}
-          {map}
+          {csLine}
+          {meLine}
           {sv.phase !== "none" && (
             <div className="bz-tm">
               {seq && (
@@ -766,7 +855,8 @@ export function BilgiScreen({ pub = "" }) {
           {pad(d.getHours())}:{pad(d.getMinutes())}
         </span>
       )}
-      {!active && <StartCard onGo={start} kanal={kanal} />}
+      {showMap && map}
+      {!active && <StartCard onGo={start} kanal={kanal} why={pub ? pwhy : ""} />}
     </main>
   );
 }
