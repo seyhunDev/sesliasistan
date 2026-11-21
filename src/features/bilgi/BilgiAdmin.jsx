@@ -501,6 +501,20 @@ function LastSent({ last, boats, ch, now, onAgain }) {
 
 // Sporcudan gelen bas-konuş (Seyhun 2026-11-17, örnek C): yeni gelen ses sırayla çalınır, çalarken o teknenin haritadaki işareti atar
 // ve üstünde dalga görünür. Taze olmayan (20 sn'den eski) ses çalınmaz. Çalınan her ses Kayıtlar'a yazılır.
+const HEARD = "bilgiGelenDuyuldu";
+const heardIds = () => {
+  try {
+    const v = JSON.parse(localStorage.getItem(HEARD) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+};
+const saveHeard = (set) => {
+  try {
+    localStorage.setItem(HEARD, JSON.stringify([...set].slice(-200)));
+  } catch {}
+};
 const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 function useGelenPlay(org, ctx, onLog) {
   const toast = useToast();
@@ -565,14 +579,19 @@ function useGelenPlay(org, ctx, onLog) {
       logGelen(org, g, ctx).then(onLog);
     };
     if (!g0.ready) return;
-    // İlk cevaptaki eski sesler çalınmaz (yalnız 30 sn içinde gelen); sonra gelen her yeni ses çalınır (telefon saatleri farklı olabilir)
+    // İlk cevaptaki eski sesler çalınmaz (yalnız 30 sn içinde gelen); sonra gelen her yeni ses çalınır (telefon saatleri farklı olabilir).
+    // Çalınan/görülen sesler cihazda saklanır (Seyhun 2026-11-21 "güncellemeden sonra eski ses yeniden seslendirildi"): uygulama
+    // yeniden açılınca ya da güncellenip yenilenince aynı ses bir daha çalınmaz; sporcu telefonunun saati ileri olsa da çalınmaz.
     const first = seen.current === null;
-    if (first) seen.current = new Set();
+    if (first) seen.current = new Set(heardIds());
+    let added = false;
     for (const g of g0.list) {
       if (!g.id || seen.current.has(g.id)) continue;
       seen.current.add(g.id);
-      if (g.data && (first ? Date.now() - (g.at || 0) < 30000 : true)) q.current.push(g);
+      added = true;
+      if (g.data && (first ? Math.abs(Date.now() - (g.at || 0)) < 30000 : true)) q.current.push(g);
     }
+    if (added) saveHeard(seen.current);
     q.current.sort((x, y) => x.at - y.at);
     next();
   }, [g0]); // eslint-disable-line react-hooks/exhaustive-deps
