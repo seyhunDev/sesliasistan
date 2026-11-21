@@ -214,7 +214,8 @@ final class SayacKatmani: UIView {
 
     // Kartın dar, kalın yazısı (Barlow Condensed yerine iPhone'un dar yazısı); rakamlar eşit genişlikte, süre akarken titremez
     private static func yazi(_ boy: CGFloat, _ kalinlik: UIFont.Weight) -> UIFont {
-        let f = UIFont.systemFont(ofSize: boy, weight: kalinlik, width: .condensed)
+        var f = UIFont.systemFont(ofSize: boy, weight: kalinlik)
+        if #available(iOS 16.0, *) { f = UIFont.systemFont(ofSize: boy, weight: kalinlik, width: .condensed) }
         let d = f.fontDescriptor.addingAttributes([.featureSettings: [[UIFontDescriptor.FeatureKey.type: kNumberSpacingType, UIFontDescriptor.FeatureKey.selector: kMonospacedNumbersSelector]]])
         return UIFont(descriptor: d, size: boy)
     }
