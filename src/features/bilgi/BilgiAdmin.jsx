@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -45,6 +45,9 @@ import { loadAthletes } from "@/features/athletes/data";
 import { PlaceWx } from "@/features/weather/PlaceWx";
 import { racePlace } from "@/features/athletes/raceWeather";
 import { getPlace } from "@/features/weather/weather";
+import { RecPick } from "@/features/raceMedia/RecPick";
+import { setShooting } from "@/features/raceMedia/shooting";
+import { hasCamera } from "@/lib/nativeIos";
 import "./bilgi.css";
 
 // Bilgi ekranı yönetimi (yalnız ana hesap): mesaj (ekranda görünür ve sesli okunur), bas-konuş, start sayacı (ortak sayaç), parkur.
@@ -218,6 +221,20 @@ function Tekneler({ boats: all, ch, now }) {
 
 // Küçük sayaç (tam ekran haritanın üstünde; ortak sayaç, start dizisi): süre, durunca süre seçimi + Başlat, çalışırken Bitir
 const DURS = [300, 240, 120, 60];
+// Video (Seyhun 2026-11-21 "yönetim ekranında video butonu olmalı, geri sayımı gösteren"): ortak kamera (RecPick), üstünde bu sayaç akar.
+// Video iPhone'un Fotoğraflar'ına kaydedilir. Sayaç yalnız uygulamada görünür, bu yüzden düğme yalnız uygulamada.
+const noSub = () => () => {};
+function VideoBtn() {
+  const toast = useToast();
+  const app = useSyncExternalStore(noSub, hasCamera, () => false);
+  if (!app) return null;
+  const done = (f) => (setShooting(null), toast(f?.asset ? "Video Fotoğraflar'a kaydedildi" : "Video kaydedilemedi. Fotoğraflar iznini kontrol et."));
+  return (
+    <RecPick onFile={done} className="bzy-tb bzy-rec" aria-label="Video çek">
+      Video
+    </RecPick>
+  );
+}
 function MiniTimer() {
   const { t, now, running, rem, up } = useTimerRun();
   const time = up ? `+${mmss(Math.max(0, Math.floor((now - t.end) / 1000)))}` : mmss(Math.max(0, running ? rem : (t.left ?? t.dur)));
@@ -225,6 +242,7 @@ function MiniTimer() {
   return (
     <div className="bzy-tm" data-run={running ? "1" : "0"}>
       <b className="num">{up || running ? (up ? time : `-${time}`) : time}</b>
+      <VideoBtn />
       {running ? (
         <button type="button" className="bzy-tb" data-press onClick={() => writeTimer({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero, own: "", where: "" })}>
           Bitir
