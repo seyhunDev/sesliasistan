@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreText
 import Capacitor
 import Photos
 import PhotosUI
@@ -8,7 +9,7 @@ import UniformTypeIdentifiers
 // iPhone kamerası, üstünde akan sayaçla (web: src/features/raceMedia/RecPick.jsx). Seyhun 2026-10-22: "video çekilirken kalan süreyi
 // görmedim, keşke görebilseydim". Kamera uygulamanın içinde açıldığı için Dynamic Island'daki sayaç görünmüyordu; burada iPhone'un
 // kendi kamera ekranının (UIImagePickerController) üstüne büyük süre yazılır. Dokunuşlar kameraya geçer.
-// Girdi: end (ms, sayacın sıfır anı; 0 = sayaç yok), paused, left (sn, durmuşsa), title.
+// Girdi: end (ms, sayacın sıfır anı; 0 = sayaç yok), paused, left (sn, durmuşsa), dur (sn, sayacın tamamı; çizgi için).
 // Sonuç: { path (web'in okuyabileceği adres), kind: photo | video, type, end (ms, kaydın bittiği an), asset (videonun Fotoğraflar'daki
 // kimliği; Velora'dan silinince oradan da silinir, photosDelete) } ya da { cancel: true }
 extension VeloraPlugin {
@@ -16,7 +17,7 @@ extension VeloraPlugin {
         let end = call.getDouble("end", 0) / 1000
         let paused = call.getBool("paused", false)
         let left = call.getInt("left", 0)
-        let title = call.getString("title", "")
+        let dur = call.getInt("dur", 0)
         DispatchQueue.main.async {
             guard UIImagePickerController.isSourceTypeAvailable(.camera), let vc = self.bridge?.viewController else {
                 return call.reject("Kamera yok")
@@ -31,7 +32,7 @@ extension VeloraPlugin {
             p.delegate = k
             KameraYonetici.etkin = k
             if end > 0 || paused {
-                let o = SayacKatmani(frame: vc.view.bounds, end: end, paused: paused, left: left, title: title)
+                let o = SayacKatmani(frame: vc.view.bounds, end: end, paused: paused, left: left, dur: dur)
                 p.cameraOverlayView = o
                 k.katman = o
             }
@@ -148,45 +149,54 @@ extension VeloraPlugin {
     }
 }
 
-// Kameranın üstünde büyük süre: sıfıra kalan (2:59) ya da sıfırdan beri (+1:35); durmuşsa sabit. Dokunuşları kameraya bırakır.
+// Kameranın üstünde süre kartı (Seyhun 2026-11-21 "süre kartını tasarlamıştık, aynısını yapabilir miyiz"): /canli süre kartıyla
+// (LiveScreen ScClock, sahne.css .sc-ck) aynı görünüm. Kutu yok; sol üst köşeden içeri doğru solan lacivert gölge, büyük süre:
+// sıfıra kalan mavi "−2:59" (altında eriyen ince çizgi), sıfırdan beri beyaz "+1:35"; durmuşsa sabit. Dokunuşları kameraya bırakır.
 final class SayacKatmani: UIView {
+    private static let mavi = UIColor(red: 127 / 255, green: 176 / 255, blue: 1, alpha: 1) // --sc-acc2
+    private let golge = CAGradientLayer()
+    private let isaret = UILabel()
     private let etiket = UILabel()
-    private let ust = UILabel()
+    private let cizgi = UIView()
+    private let dolu = UIView()
     private var zaman: Timer?
     private let end: TimeInterval
     private let paused: Bool
     private let left: Int
+    private let toplam: Int
+    private var oran: CGFloat = 0 // çizginin dolu kısmı (0 = çizgi yok)
 
-    init(frame: CGRect, end: TimeInterval, paused: Bool, left: Int, title: String) {
+    init(frame: CGRect, end: TimeInterval, paused: Bool, left: Int, dur: Int) {
         self.end = end
         self.paused = paused
         self.left = left
+        self.toplam = dur
         super.init(frame: frame)
         isUserInteractionEnabled = false
         autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        let kutu = UIView()
-        kutu.backgroundColor = UIColor.black.withAlphaComponent(0.55)
-        kutu.layer.cornerRadius = 16
-        kutu.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(kutu)
-        ust.text = title
-        ust.font = .systemFont(ofSize: 13, weight: .semibold)
-        ust.textColor = UIColor.white.withAlphaComponent(0.8)
-        etiket.font = .monospacedDigitSystemFont(ofSize: 44, weight: .bold)
-        etiket.textColor = .white
-        let yigin = UIStackView(arrangedSubviews: [ust, etiket])
-        yigin.axis = .vertical
-        yigin.alignment = .center
-        yigin.translatesAutoresizingMaskIntoConstraints = false
-        kutu.addSubview(yigin)
-        NSLayoutConstraint.activate([
-            kutu.centerXAnchor.constraint(equalTo: centerXAnchor),
-            kutu.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 64),
-            yigin.leadingAnchor.constraint(equalTo: kutu.leadingAnchor, constant: 18),
-            yigin.trailingAnchor.constraint(equalTo: kutu.trailingAnchor, constant: -18),
-            yigin.topAnchor.constraint(equalTo: kutu.topAnchor, constant: 6),
-            yigin.bottomAnchor.constraint(equalTo: kutu.bottomAnchor, constant: -6),
-        ])
+        golge.type = .radial
+        golge.startPoint = CGPoint(x: 0, y: 0)
+        golge.endPoint = CGPoint(x: 1, y: 1)
+        let l = UIColor(red: 3 / 255, green: 10 / 255, blue: 22 / 255, alpha: 1)
+        golge.colors = [0.86, 0.78, 0.5, 0.2, 0].map { l.withAlphaComponent($0).cgColor }
+        golge.locations = [0, 0.3, 0.55, 0.78, 1]
+        layer.addSublayer(golge)
+        isaret.font = SayacKatmani.yazi(40, .semibold)
+        etiket.font = SayacKatmani.yazi(76, .bold)
+        for v in [isaret, etiket] {
+            v.layer.shadowColor = UIColor.black.cgColor
+            v.layer.shadowOpacity = 0.55
+            v.layer.shadowRadius = 8
+            v.layer.shadowOffset = CGSize(width: 0, height: 1)
+            addSubview(v)
+        }
+        isaret.alpha = 0.85
+        cizgi.backgroundColor = UIColor.white.withAlphaComponent(0.18)
+        cizgi.layer.cornerRadius = 1.75
+        cizgi.clipsToBounds = true
+        dolu.backgroundColor = SayacKatmani.mavi
+        cizgi.addSubview(dolu)
+        addSubview(cizgi)
         guncelle()
         if !paused {
             let t = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in self?.guncelle() }
@@ -202,16 +212,53 @@ final class SayacKatmani: UIView {
         zaman = nil
     }
 
+    // Kartın dar, kalın yazısı (Barlow Condensed yerine iPhone'un dar yazısı); rakamlar eşit genişlikte, süre akarken titremez
+    private static func yazi(_ boy: CGFloat, _ kalinlik: UIFont.Weight) -> UIFont {
+        let f = UIFont.systemFont(ofSize: boy, weight: kalinlik, width: .condensed)
+        let d = f.fontDescriptor.addingAttributes([.featureSettings: [[UIFontDescriptor.FeatureKey.type: kNumberSpacingType, UIFontDescriptor.FeatureKey.selector: kMonospacedNumbersSelector]]])
+        return UIFont(descriptor: d, size: boy)
+    }
+
     private static func mmss(_ s: Int) -> String { String(format: "%d:%02d", s / 60, s % 60) }
 
     private func guncelle() {
+        let kalan: Int
+        let geri: Bool
         if paused {
-            etiket.text = SayacKatmani.mmss(max(0, left))
-            return
+            kalan = max(0, left)
+            geri = true
+        } else {
+            let k = end - Date().timeIntervalSince1970
+            geri = k > 0
+            kalan = geri ? Int(ceil(k)) : Int(-k)
         }
-        let kalan = end - Date().timeIntervalSince1970
-        etiket.text = kalan > 0 ? SayacKatmani.mmss(Int(ceil(kalan))) : "+" + SayacKatmani.mmss(Int(-kalan))
-        etiket.textColor = kalan > 0 && kalan <= 60 ? UIColor(red: 1, green: 0.45, blue: 0.4, alpha: 1) : .white
+        isaret.text = geri ? "\u{2212}" : "+"
+        etiket.text = SayacKatmani.mmss(kalan)
+        let renk: UIColor = geri ? SayacKatmani.mavi : .white
+        isaret.textColor = renk
+        etiket.textColor = renk
+        oran = geri && toplam > 0 ? min(1, CGFloat(kalan) / CGFloat(toplam)) : 0
+        setNeedsLayout()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        isaret.sizeToFit()
+        etiket.sizeToFit()
+        let x = safeAreaInsets.left + 20
+        let y = safeAreaInsets.top + 60
+        let ef = etiket.font!, isf = isaret.font!
+        let taban = y + ef.ascender // iki yazı aynı taban çizgisinde, işaret biraz yukarıda (kartta translateY(-0.2em))
+        isaret.frame.origin = CGPoint(x: x, y: taban - isf.ascender - isf.pointSize * 0.2)
+        etiket.frame.origin = CGPoint(x: isaret.frame.maxX + 3, y: y)
+        let w = etiket.frame.maxX - x
+        cizgi.isHidden = oran <= 0
+        cizgi.frame = CGRect(x: x + 2, y: etiket.frame.maxY + 4, width: w - 2, height: 3.5)
+        dolu.frame = CGRect(x: 0, y: 0, width: cizgi.bounds.width * oran, height: cizgi.bounds.height)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        golge.frame = CGRect(x: 0, y: 0, width: min(bounds.width * 1.1, x + w + 260), height: cizgi.frame.maxY + 150)
+        CATransaction.commit()
     }
 }
 
