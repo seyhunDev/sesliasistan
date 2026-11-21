@@ -1,8 +1,8 @@
-Commit: d56bf6a · Yarış detayı: Canlı'nın yanında Ekran ve Yönet düğmeleri (#1471)
-Zaman: 2026-11-20-0837 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/44679858407
+Commit: 89d8329 · Kamera üstündeki süre, süre kartı görünümünde (#1472)
+Zaman: 2026-11-21-1811 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/44915886716
 
-TAM TEST · 20.11.2026 08:16:33
+TAM TEST · 21.11.2026 17:49:29
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1411/1441 geçti · 30 kalan · 1266 sn
+SONUÇ: 1410/1441 geçti · 31 kalan · 1307 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -211,9 +211,9 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1266 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 122/139
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 121/139
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 3/8
+  ✗ Ana sayfa: 2/8
       ✗ “iş düğmeleri”
           beklenen: dört sütun, iki satır (en çok 8), her düğmede ikon ve ad
           olan:     0 düğme · 0 sütun · 0 ikonlu
@@ -229,6 +229,9 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1266 sn
       ✗ “yarış günü havası”
           beklenen: yarın (Foça'da yarış) takvimde seçilince hava alanı aynı kalır, yarış yeri tablosu çıkmaz; altında o günün planları alt alta okunur
           olan:     hata: locator.waitFor: Timeout 12000ms exceeded.
+      ✗ “süren yarış tek satır”
+          beklenen: yarış adı ve kısa durum, düğme yok, dokununca yarışın sayfası açılır
+          olan:     akşam: satır duruyor
   ✓ Enerji (boşta): 2/2
   ✓ Bas konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
@@ -286,10 +289,10 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1266 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 9 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 18 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 9 · açıklama 9 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 18 · açıklama 18 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
