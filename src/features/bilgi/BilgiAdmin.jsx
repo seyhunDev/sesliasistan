@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -36,6 +36,18 @@ import { TekneMap } from "./TekneMap";
 import { usePtt } from "./usePtt";
 import { PttCancel, Wave } from "./Wave";
 import { IzPanel, KanalList, useIz } from "./BilgiIz";
+import { ScAthPanel, ScGrpPanel, ScProgPanel, canliDay, scAth, useCanliRace } from "@/features/liveScreen/sonuclar";
+import { dayProgram } from "@/features/liveScreen/program";
+import { agendaView } from "@/lib/raceProgram";
+import { addResults, importToast } from "@/features/athletes/resultsImport";
+import { loadRace } from "@/features/athletes/races";
+import { loadAthletes } from "@/features/athletes/data";
+import { PlaceWx } from "@/features/weather/PlaceWx";
+import { racePlace } from "@/features/athletes/raceWeather";
+import { getPlace } from "@/features/weather/weather";
+import { RecPick } from "@/features/raceMedia/RecPick";
+import { setShooting } from "@/features/raceMedia/shooting";
+import { hasCamera } from "@/lib/nativeIos";
 import "./bilgi.css";
 
 // Bilgi ekranı yönetimi (yalnız ana hesap): mesaj (ekranda görünür ve sesli okunur), bas-konuş, start sayacı (ortak sayaç), parkur.
@@ -209,6 +221,20 @@ function Tekneler({ boats: all, ch, now }) {
 
 // Küçük sayaç (tam ekran haritanın üstünde; ortak sayaç, start dizisi): süre, durunca süre seçimi + Başlat, çalışırken Bitir
 const DURS = [300, 240, 120, 60];
+// Video (Seyhun 2026-11-21 "yönetim ekranında video butonu olmalı, geri sayımı gösteren"): ortak kamera (RecPick), üstünde bu sayaç akar.
+// Video iPhone'un Fotoğraflar'ına kaydedilir. Sayaç yalnız uygulamada görünür, bu yüzden düğme yalnız uygulamada.
+const noSub = () => () => {};
+function VideoBtn() {
+  const toast = useToast();
+  const app = useSyncExternalStore(noSub, hasCamera, () => false);
+  if (!app) return null;
+  const done = (f) => (setShooting(null), toast(f?.asset ? "Video Fotoğraflar'a kaydedildi" : "Video kaydedilemedi. Fotoğraflar iznini kontrol et."));
+  return (
+    <RecPick onFile={done} className="bzy-tb bzy-rec" aria-label="Video çek">
+      Video
+    </RecPick>
+  );
+}
 function MiniTimer() {
   const { t, now, running, rem, up } = useTimerRun();
   const time = up ? `+${mmss(Math.max(0, Math.floor((now - t.end) / 1000)))}` : mmss(Math.max(0, running ? rem : (t.left ?? t.dur)));
@@ -216,6 +242,7 @@ function MiniTimer() {
   return (
     <div className="bzy-tm" data-run={running ? "1" : "0"}>
       <b className="num">{up || running ? (up ? time : `-${time}`) : time}</b>
+      <VideoBtn />
       {running ? (
         <button type="button" className="bzy-tb" data-press onClick={() => writeTimer({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero, own: "", where: "" })}>
           Bitir
@@ -492,6 +519,20 @@ function LastSent({ last, boats, ch, now, onAgain }) {
 
 // Sporcudan gelen bas-konuş (Seyhun 2026-11-17, örnek C): yeni gelen ses sırayla çalınır, çalarken o teknenin haritadaki işareti atar
 // ve üstünde dalga görünür. Taze olmayan (20 sn'den eski) ses çalınmaz. Çalınan her ses Kayıtlar'a yazılır.
+const HEARD = "bilgiGelenDuyuldu";
+const heardIds = () => {
+  try {
+    const v = JSON.parse(localStorage.getItem(HEARD) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+};
+const saveHeard = (set) => {
+  try {
+    localStorage.setItem(HEARD, JSON.stringify([...set].slice(-200)));
+  } catch {}
+};
 const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 function useGelenPlay(org, ctx, onLog) {
   const toast = useToast();
@@ -556,14 +597,19 @@ function useGelenPlay(org, ctx, onLog) {
       logGelen(org, g, ctx).then(onLog);
     };
     if (!g0.ready) return;
-    // İlk cevaptaki eski sesler çalınmaz (yalnız 30 sn içinde gelen); sonra gelen her yeni ses çalınır (telefon saatleri farklı olabilir)
+    // İlk cevaptaki eski sesler çalınmaz (yalnız 30 sn içinde gelen); sonra gelen her yeni ses çalınır (telefon saatleri farklı olabilir).
+    // Çalınan/görülen sesler cihazda saklanır (Seyhun 2026-11-21 "güncellemeden sonra eski ses yeniden seslendirildi"): uygulama
+    // yeniden açılınca ya da güncellenip yenilenince aynı ses bir daha çalınmaz; sporcu telefonunun saati ileri olsa da çalınmaz.
     const first = seen.current === null;
-    if (first) seen.current = new Set();
+    if (first) seen.current = new Set(heardIds());
+    let added = false;
     for (const g of g0.list) {
       if (!g.id || seen.current.has(g.id)) continue;
       seen.current.add(g.id);
-      if (g.data && (first ? Date.now() - (g.at || 0) < 30000 : true)) q.current.push(g);
+      added = true;
+      if (g.data && (first ? Math.abs(Date.now() - (g.at || 0)) < 30000 : true)) q.current.push(g);
     }
+    if (added) saveHeard(seen.current);
     q.current.sort((x, y) => x.at - y.at);
     next();
   }, [g0]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -591,6 +637,20 @@ export function BilgiAdmin() {
   const [last, setLast] = useState(null);
   const marked = useRef("");
   const [sheet, setSheet] = useState("");
+  // Canlı'nın Sonuçlar, Gruplar, Program'ı (Seyhun 2026-11-19 örnek onaylandı): o günün yarışı; pencere açıkken 20 sn, kapalıyken 2 dk'da bir
+  const yaris = useCanliRace(!!org, ["sonuc", "grup", "prog"].includes(sheet) ? 20e3 : 120e3);
+  const [resMsg, setResMsg] = useState("");
+  const addRes = (file) => {
+    setResMsg("Okunuyor…");
+    (async () => {
+      const race = await loadRace(org, yaris.id);
+      if (!race) return setResMsg("Yarış bulunamadı");
+      const { athletes } = await loadAthletes();
+      const { got } = await addResults({ orgId: org, race, athletes: athletes || [], file });
+      setResMsg(importToast(got) || "Sonuçlar eklendi");
+      yaris.reload();
+    })().catch((e) => setResMsg(e?.message ? `Okunamadı: ${e.message}` : "Okunamadı. İnterneti kontrol et."));
+  };
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -726,6 +786,14 @@ export function BilgiAdmin() {
             </Link>
           ) : null}
           {[
+            ...(yaris.data
+              ? [
+                  ["sonuc", "Sonuçlar"],
+                  ["grup", "Gruplar"],
+                  ["prog", "Program"],
+                ]
+              : []),
+            ["hava", "Hava"],
             ["parkur", "Parkur"],
             ["ekran", "Ekran"],
             ["kayit", "Kayıtlar"],
@@ -784,6 +852,10 @@ export function BilgiAdmin() {
           onDel={delK}
         />
       </Sheet>
+      <YarisSheets yaris={yaris} now={now} sheet={sheet} onClose={() => setSheet("")} onResult={addRes} resMsg={resMsg} />
+      <Sheet open={sheet === "hava"} onClose={() => setSheet("")} title="Hava">
+        {sheet === "hava" && <RaceAtWx org={org} id={yaris.id} />}
+      </Sheet>
       <Sheet open={sheet === "parkur"} onClose={() => setSheet("")} title="Parkur">
         <ParkurEdit org={org} pk={b?.parkur} />
         <input
@@ -828,5 +900,54 @@ export function BilgiAdmin() {
         </div>
       </Sheet>
     </main>
+  );
+}
+
+// Hava penceresi (Seyhun 2026-11-20 "yarışın yapıldığı yerdeki hava durumunu göstermeliyiz"): o günün yarışının yeri (yarış sahası,
+// yoksa Çevre'deki alan, yoksa ilçesi; racePlace yarış sayfasıyla aynı). Yarış yoksa seçili hava konumu. Tasarım ana sayfanın Hava kutusu (PlaceWx).
+function RaceAtWx({ org, id }) {
+  const [at, setAt] = useState(null);
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      const race = id ? await loadRace(org, id) : null;
+      const p = race ? await racePlace(race) : null;
+      if (on) setAt(p?.lat != null ? { name: (p.name !== "Seçilen yer" && p.name) || race?.district || "Yarış yeri", lat: +p.lat, lon: +p.lon } : getPlace());
+    })().catch(() => on && setAt(getPlace()));
+    return () => {
+      on = false;
+    };
+  }, [org, id]);
+  if (!at) return <div className="ck-shim h-[22rem] rounded-[1.5rem]" role="status" aria-label="Hava yükleniyor" />;
+  return <PlaceWx at={at} />;
+}
+
+// Sonuçlar, Gruplar, Program (canlı ekranla aynı bileşenler, liveScreen/sonuclar.jsx); başlık pencerenin kendi başlığı, yarışın adı altında
+function YarisSheets({ yaris, now, sheet, onClose, onResult, resMsg }) {
+  const data = yaris.data;
+  if (!data) return null;
+  const day = canliDay(data, now);
+  const name = data.race?.name || "";
+  const hm = new Date(now + 3 * 3600e3).toISOString().slice(11, 16);
+  const ag = agendaView(data.plan?.agenda, day, hm);
+  const prog = dayProgram(data, day);
+  return (
+    <>
+      <Sheet open={sheet === "sonuc"} onClose={onClose} title={name ? `Sonuçlar · ${name}` : "Sonuçlar"}>
+        <div className="sc-res bare">
+          <ScAthPanel data={data} ath={scAth(data, day)} day={day} onResult={onResult} resMsg={resMsg} />
+        </div>
+      </Sheet>
+      <Sheet open={sheet === "grup"} onClose={onClose} title={name ? `Gruplar · ${name}` : "Gruplar"}>
+        <div className="sc-res bare">
+          <ScGrpPanel data={data} day={day} />
+        </div>
+      </Sheet>
+      <Sheet open={sheet === "prog"} onClose={onClose} title={name ? `Program · ${name}` : "Program"}>
+        <div className="sc-res bare">
+          {prog.length || ag ? <ScProgPanel prog={prog} ag={ag} /> : <p className="sc-vno">Program yok</p>}
+        </div>
+      </Sheet>
+    </>
   );
 }

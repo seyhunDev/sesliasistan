@@ -9,6 +9,8 @@ import { CourseMap } from "./CourseMap";
 import { deviceId, readWho, savePusula, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
 import { usePtt } from "./usePtt";
 import { PttCancel, Wave } from "./Wave";
+import { mineOf, useCanliRace } from "@/features/liveScreen/sonuclar";
+import { groupColor } from "@/lib/roundScore";
 import "./bilgi.css";
 
 // Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 4): başlıksız tek ekran, dokunulmaz. Üstte en büyük pusula derecesi (telefonun
@@ -642,6 +644,7 @@ export function BilgiScreen({ pub = "" }) {
   usePresence(active, who, pub ? porg : org, pub, profile?.uid, kanal?.id || "", active ? fresh?.id || "" : "");
   const [talk, unlock] = useVoice(active, myMsg, mySes);
   const pos = useMyPos(active);
+  const { data: mine } = useCanliRace(active && !!who?.sail, 60e3);
   // Sporcudan Yönet'e bas-konuş (Seyhun 2026-11-17, örnek C): altta ortada mikrofon; basılı tut, konuş, bırakınca Yönet'e gider
   const ptt = usePtt({ send: (blob, sec) => sendGelen(dev, { org: pub ? porg : org, k: pub, ch: kanal?.id || "", sail: who?.sail, name: who?.name, uid: profile?.uid }, blob, sec) });
   const recSec = ptt.rec ? Math.max(0, Math.floor((now - ptt.rec.t0) / 1000)) : 0;
@@ -703,6 +706,37 @@ export function BilgiScreen({ pub = "" }) {
     </div>
   );
   const csLine = b?.state ? <div className="bz-cs">{b.state}</div> : null;
+  // Kendi sırası, grubu, grubunun startı (Seyhun 2026-11-19 örnek onaylandı): o günün yarışından, yelken numarasıyla; yalnız start öncesi
+  const me = mine ? mineOf(mine, who?.sail, now) : null;
+  const meLine =
+    me && (me.p !== "" || me.g || me.at) ? (
+      <div className="bz-me num">
+        {me.p !== "" && (
+          <span>
+            <small>Genel</small>
+            <b>
+              {`${me.p}${/^\d+$/.test(String(me.p)) ? "." : ""}`}
+              {me.n ? <em>/{me.n}</em> : null}
+            </b>
+          </span>
+        )}
+        {me.g && (
+          <span>
+            <small>{me.gday === "Bugün" ? "Grup" : me.gday}</small>
+            <b>
+              <i style={{ background: groupColor(me.g) || "#ffd23f" }} aria-hidden="true" />
+              {me.g}
+            </b>
+          </span>
+        )}
+        {me.at && (
+          <span>
+            <small>{me.now ? "Yarışta" : "Start"}</small>
+            <b>{me.at}</b>
+          </span>
+        )}
+      </div>
+    ) : null;
 
   return (
     <main className={`bz${active ? " bz-pton" : ""}${showMap ? " bz-mapon" : ""}${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
@@ -778,6 +812,7 @@ export function BilgiScreen({ pub = "" }) {
           {compass}
           {wind}
           {csLine}
+          {meLine}
           {sv.phase !== "none" && (
             <div className="bz-tm">
               {seq && (

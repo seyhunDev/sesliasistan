@@ -32,7 +32,7 @@ import { siteDocBlob } from "@/features/athletes/raceSite";
 import { SiteDocs } from "@/features/athletes/SiteDocs";
 import { addResults, importResults, importToast } from "@/features/athletes/resultsImport";
 import { BG_PHOTO } from "@/features/liveScreen/bgPhoto";
-import { LiveBtn } from "@/features/athletes/raceUi";
+import { BilgiBtns, LiveBtn } from "@/features/athletes/raceUi";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
 export default function RacePage() {
@@ -285,6 +285,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
       <div className="flex items-center gap-2.5">
         <BackButton href="/athletes/races" />
         <span className="flex-1" />
+        {on && isOwner && race?.id && <BilgiBtns />}
         {on && isOwner && race?.id && <LiveBtn id={race.id} />}
         {(race?.id || head0) && (
           <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className="rz-more btn btn-round">
