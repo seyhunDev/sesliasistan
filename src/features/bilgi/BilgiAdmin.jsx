@@ -34,7 +34,7 @@ import {
 } from "./bilgiStore";
 import { TekneMap } from "./TekneMap";
 import { usePtt } from "./usePtt";
-import { PttCancel, Wave } from "./Wave";
+import { Wave } from "./Wave";
 import { IzPanel, KanalList, useIz } from "./BilgiIz";
 import { ScAthPanel, ScGrpPanel, ScProgPanel, canliDay, scAth, useCanliRace } from "@/features/liveScreen/sonuclar";
 import { dayProgram } from "@/features/liveScreen/program";
@@ -65,45 +65,75 @@ function Seg({ value, items, onPick }) {
   );
 }
 
-// Hedef düğmesi = bas konuş (Seyhun 2026-11-15 "ayrı bas konuş olmasın, kime basarsam onunla konuşayım"): dokununca yazılı mesajın
-// hedefi seçilir, basılı tutunca o kişiye (Hepsi: herkese) ses kaydı, bırakınca gider. Kayıtta düğme yeşil yanar, içe basılı kalır, saniye yazar;
-// genişliği hiç değişmez (2026-11-16).
-function TalkChip({ id, label, picked, ptt, to, now, onPick }) {
-  const on = ptt.rec?.key === id;
-  const ok = !on && ptt.done?.key === id && now - ptt.done.at < 2000;
+// Bas konuş (Seyhun 2026-11-22 örnek onaylandı "daha profesyonel, sade ve kullanışlı"): sporcular yukarıdan aşağı liste (iPad'de sağda,
+// telefonda altta); satıra dokununca hedef seçilir ("Hepsi" herkese). Satırın sağında o kişiye son gidenin durumu. Konuşmak için tek büyük düğme.
+function TalkRow({ label, no, picked, st, onPick }) {
+  return (
+    <button type="button" className="bzy-pr" aria-pressed={picked} onClick={onPick} data-press>
+      <span className="bzy-pr-no num">{no}</span>
+      <span className="bzy-pr-nm">{label}</span>
+      {st && <span className="bzy-pr-st" data-k={st.k}>{st.t}</span>}
+    </button>
+  );
+}
+// Son gönderinin bu satırdaki durumu: … gidiyor, ✓ iletildi, ✓✓ gördü, görmedi / ulaşmadı
+function rowSt(last, m, now) {
+  if (!last || (last.to && last.to.dev !== m.id)) return null;
+  if (last.ok === false) return { k: "bad", t: "Ulaşmadı" };
+  if (last.ok == null) return { k: "wait", t: "Gidiyor…" };
+  if (m.seen === last.id) return { k: "seen", t: `✓✓ ${hhmm(last.at)}` };
+  return now - last.at > SEEN_WAIT ? { k: "bad", t: "Görmedi" } : { k: "ok", t: `✓ ${hhmm(last.at)}` };
+}
+function allSt(d, last) {
+  if (!d) return null;
+  if (d.state === "wait") return { k: "wait", t: "Gidiyor…" };
+  if (d.state === "fail") return { k: "bad", t: "Ulaşmadı" };
+  if (d.state === "seen") return { k: "seen", t: `✓✓ ${d.of > 1 ? `${d.seen}/${d.of}` : hhmm(last.at)}` };
+  if (d.state === "part") return { k: "bad", t: `${d.seen}/${d.of} gördü` };
+  return { k: "ok", t: `✓ ${hhmm(last.at)}` };
+}
+
+// Tek büyük konuş düğmesi: her an ne olduğunu yazar. Hazır (kime) → Mikrofon açılıyor… → Kaydediliyor · 4 sn (ses seviyesi) → Gönderiliyor… → ✓ İletildi / ✓✓ Görüldü.
+// Parmak düğmeden uzağa kayınca kırmızı "Bırak: iptal". Basılı tutma süresi en çok SES_MAX_SEC.
+function PttBig({ to, ptt, last, d, now }) {
+  const rec = ptt.rec;
+  const recent = last?.kind === "ses" && now - last.at < 6000;
+  const st = rec ? (rec.cancel ? "cancel" : "rec") : ptt.arm ? "arm" : ptt.tap && now - ptt.tap.at < 1800 ? "tap" : recent && d ? d.state : "idle";
+  const name = to?.name || "Hepsi";
+  const sec = rec ? Math.max(0, Math.floor((now - rec.t0) / 1000)) : 0;
+  const [b, sm] =
+    st === "rec" ? [`Kaydediliyor · ${sec} sn`, null]
+    : st === "cancel" ? ["Bırak: iptal", "Ses gönderilmez"]
+    : st === "arm" ? ["Mikrofon açılıyor…", name]
+    : st === "tap" ? ["Basılı tut", name]
+    : st === "wait" ? ["Gönderiliyor…", `${name} · ${last.dur || 0} sn`]
+    : st === "sent" ? ["✓ İletildi", `${name} · ${last.dur || 0} sn`]
+    : st === "seen" ? ["✓✓ Görüldü", `${name} · ${last.dur || 0} sn`]
+    : st === "fail" || st === "part" ? ["Ulaşmadı", name]
+    : [name, "Basılı tut, konuş"];
+  const k = st === "part" ? "fail" : st;
   return (
     <button
       type="button"
-      className="bzy-ptt"
-      aria-pressed={picked}
-      data-rec={on ? "1" : "0"}
-      data-cancel={on && ptt.rec.cancel ? "1" : undefined}
-      data-ok={ok ? "1" : "0"}
-      onPointerDown={(e) => {
-        onPick();
-        ptt.begin(e, id, to);
-      }}
+      className="bzy-big bzy-ptt"
+      data-st={k}
+      aria-label={`Bas konuş · ${name}`}
+      onPointerDown={(e) => ptt.begin(e, "big", to)}
       onPointerMove={ptt.move}
       onPointerUp={ptt.end}
       onPointerCancel={ptt.end}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        {ok ? (
-          <path d="M5 12.5l4.5 4.5L19 7.5" />
-        ) : (
-          <>
-            <rect x="9" y="3" width="6" height="11" rx="3" />
-            <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
-          </>
-        )}
-      </svg>
-      {/* Genişlik sabit (Seyhun 2026-11-16 "bastığımda küçülüyor"): ad, sayaç ve en geniş sayaç ("20 sn") aynı hücrede üst üste; düğme hep en genişi kadar */}
-      <span className="bzy-ptt-l">
-        <span data-v={on ? "0" : "1"}>{label}</span>
-        <span data-v={on ? "1" : "0"}>{on ? (ptt.rec.cancel ? "İptal" : `${Math.max(0, Math.floor((now - ptt.rec.t0) / 1000))} sn`) : ""}</span>
-        <span data-v="0" aria-hidden="true">{`${SES_MAX_SEC} sn`}</span>
-      </span>
+      <b aria-live="polite">{b}</b>
+      {st === "rec" ? (
+        <span className="bzy-lv" aria-hidden="true">
+          {[0.5, 0.85, 1, 0.75, 0.55].map((f, i) => (
+            <i key={i} style={{ height: `${0.25 + Math.min(1, ptt.lvl * f * 1.6) * 1}rem` }} />
+          ))}
+        </span>
+      ) : (
+        sm && <small>{sm}</small>
+      )}
     </button>
   );
 }
@@ -737,6 +767,7 @@ export function BilgiAdmin() {
       got({ ...last, at, ...r, ok: !!r.ok });
     } else if (last.text) sendText(last.text, last.to);
   };
+  const dl0 = last ? deliveryOf({ id: last.id, at: last.at, to: last.to?.dev || "", ok: last.ok }, boats, ch, now) : null;
   // Sonuç belli olunca (hepsi gördü ya da 15 sn geçti) günlüğe yazılır
   const dl = last?.id ? deliveryOf({ id: last.id, at: last.at, to: last.to?.dev || "", ok: last.ok }, boats, ch, now) : null;
   const done = !!dl && !!last?.logId && (dl.state === "seen" || (now - last.at > SEEN_WAIT && dl.state !== "wait"));
@@ -806,14 +837,13 @@ export function BilgiAdmin() {
       </div>
       {kanal?.open && !izK && (
         <div className="bzy-dock">
-          {ptt.rec && <PttCancel on={!!ptt.rec.cancel} />}
-          <div className="bzy-to">
-            <TalkChip id="" label="Hepsi" picked={!to} ptt={ptt} to={null} now={now} onPick={() => setToDev("")} />
-            {members.map((m) => {
-              const dest = { dev: m.id, name: [m.sail, m.name].filter(Boolean).join(" ") };
-              return <TalkChip key={m.id} id={m.id} label={dest.name} picked={to?.dev === m.id} ptt={ptt} to={dest} now={now} onPick={() => setToDev(m.id)} />;
-            })}
+          <div className="bzy-pl" aria-label="Kime">
+            <TalkRow label="Hepsi" picked={!to} st={!last?.to ? allSt(dl0, last) : null} onPick={() => setToDev("")} />
+            {members.map((m) => (
+              <TalkRow key={m.id} no={m.sail || ""} label={m.name || m.sail || "Sporcu"} picked={to?.dev === m.id} st={rowSt(last, m, now)} onPick={() => setToDev(m.id)} />
+            ))}
           </div>
+          <PttBig to={to} ptt={ptt} last={last} d={dl0} now={now} />
           <form
             className="bzy-msg"
             onSubmit={(e) => {
@@ -836,7 +866,7 @@ export function BilgiAdmin() {
               </svg>
             </button>
           </form>
-          <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />
+          {(dl0?.state === "fail" || dl0?.state === "part") && <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />}
         </div>
       )}
       <Sheet open={sheet === "kanallar"} onClose={() => setSheet("")} title="Kanallar">

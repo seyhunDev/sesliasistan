@@ -284,7 +284,6 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-send svg { width: 1.125rem; height: 1.125rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 @media (orientation: landscape) and (max-height: 32rem) {
   .bzy-top { right: auto; width: min(22rem, 46vw); padding-right: 0; }
-  .bzy-dock { right: auto; width: min(22rem, 46vw); left: calc(env(safe-area-inset-left, 0px) + 0.75rem); bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem); border-radius: 1.25rem; padding: 0.625rem; max-height: 55dvh; }
 }
 /* Kanallar listesi ve iz oynatıcı (Seyhun 2026-11-17) */
 .bzy-dot.off { background: #c3c8d0; }
@@ -349,3 +348,37 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bz-me em { font-style: normal; font-size: 0.6em; opacity: 0.6; }
 .bz-me i { width: 0.75rem; height: 0.75rem; border-radius: 50%; flex: none; }
 .bz-m-pre > .bz-me { grid-column: 1; }
+
+/* Bas konuş paneli (Seyhun 2026-11-22 örnek onaylandı "profesyonel, sade, kullanışlı"): sporcular yukarıdan aşağı liste, altta tek büyük konuş
+   düğmesi, en altta mesaj. Telefonda (dik) altta; iPad ve yatayda sağda boydan boya panel, üst çubuk onun solunda kalır. */
+.bzy-pl { display: flex; flex-direction: column; margin: -0.25rem -0.25rem 0; overflow-y: auto; overscroll-behavior: contain; max-height: calc(3 * 2.75rem + 0.5rem); border-radius: 0.875rem; }
+.bzy-pr { flex: none; display: flex; align-items: center; gap: 0.625rem; width: 100%; height: 2.75rem; padding: 0 0.75rem; border: 0; border-radius: 0.75rem; background: none; color: var(--fg); text-align: left; font-size: 0.9375rem; font-weight: 600; }
+.bzy-pr:active { background: rgba(11, 26, 51, .06); }
+.bzy-pr[aria-pressed="true"] { background: #0b1a33; color: #fff; }
+.bzy-pr-no { flex: none; min-width: 2.5rem; font-size: 0.8125rem; font-weight: 500; color: var(--mut); font-variant-numeric: tabular-nums; }
+.bzy-pr-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzy-pr-st { flex: none; font-size: 0.75rem; font-weight: 600; color: var(--mut); font-variant-numeric: tabular-nums; }
+.bzy-pr-st[data-k="seen"] { color: var(--talk); }
+.bzy-pr-st[data-k="bad"] { color: #c8574f; }
+.bzy-pr[aria-pressed="true"] :is(.bzy-pr-no, .bzy-pr-st) { color: #c9d4e6; }
+.bzy-pr[aria-pressed="true"] .bzy-pr-st[data-k="seen"] { color: #86efac; }
+.bzy-pr[aria-pressed="true"] .bzy-pr-st[data-k="bad"] { color: #fca5a5; }
+.bzy-big { flex: none; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem; width: 100%; height: 5rem; border: 0; border-radius: 1.125rem; background: #0b1a33; color: #fff; box-shadow: 0 4px 0 #050d1c; transition: transform .07s ease-out, box-shadow .07s ease-out, background-color .15s; }
+.bzy-big b { font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; max-width: 100%; padding: 0 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzy-big small { font-size: 0.8125rem; font-weight: 500; opacity: .75; max-width: 100%; padding: 0 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzy-big:active, .bzy-big:is([data-st="arm"], [data-st="rec"], [data-st="cancel"]) { transform: translateY(4px); box-shadow: 0 0 0 #050d1c; }
+.bzy-big[data-st="arm"] { background: #3b4a63; }
+.bzy-big[data-st="rec"] { background: var(--talk); box-shadow: 0 0 0 4px rgba(22, 163, 74, .3); }
+.bzy-big[data-st="cancel"] { background: #dc2626; }
+.bzy-big[data-st="wait"] { background: #1e3a8a; }
+.bzy-big:is([data-st="sent"], [data-st="seen"]) { background: #fff; color: var(--fg); box-shadow: 0 0 0 1px var(--line); }
+.bzy-big[data-st="seen"] b { color: var(--talk); }
+.bzy-big[data-st="fail"] { background: #fff; color: #c8574f; box-shadow: 0 0 0 1px #f0c4c0; }
+.bzy-lv { display: flex; align-items: center; gap: 0.1875rem; height: 1.25rem; }
+.bzy-lv i { width: 0.25rem; min-height: 0.25rem; border-radius: 999px; background: #fff; transition: height .08s linear; }
+@media (prefers-reduced-motion: reduce) { .bzy-big, .bzy-lv i { transition: none; } }
+@media (orientation: landscape), (min-width: 48rem) {
+  .bzy-dock { left: auto; right: calc(env(safe-area-inset-right, 0px) + 0.75rem); top: calc(env(safe-area-inset-top, 0px) + 0.75rem); bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem); width: min(21rem, 38vw); max-height: none; border-radius: 1.25rem; padding: 0.625rem; }
+  .bzy-pl { flex: 1; max-height: none; }
+  .bzy-top { right: calc(env(safe-area-inset-right, 0px) + min(21rem, 38vw) + 0.75rem); }
+}
