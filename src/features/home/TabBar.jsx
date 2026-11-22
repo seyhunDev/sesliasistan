@@ -93,9 +93,9 @@ const PAGES = {
 const RACE = { ph: "Bu yarışla ilgili söyle…", ex: ["Mehmet'i de ekle", "Not al: otel rezervasyonu yapılacak", "Bütçeye otel kişi başı 3500 ekle"] };
 const isRace = (path) => path.startsWith("/athletes/races/");
 // Yarış multimedya ve antrenman sayfası kendi alt sekmelerini (Süre · Medya · Hava · Sonuçlar) gösterir
-// Tam ekran sayfalar (sekme çubuğu yok): yarış multimedya, antrenman günü, gömülü Market /sanal (Seyhun 2026-10-25 "tam ekran olmalı")
+// Tam ekran sayfalar (sekme çubuğu yok): yarış multimedya, antrenman günü, gömülü Market /sanal (Seyhun 2026-10-25 "tam ekran olmalı"), gömülü Velora Sailing /sailing
 // yarış sayfası da (kendi alt çubuğu: Yarış · Süre · Medya · Parkur · Sonuçlar, RaceMedia RACE_DOCK); yeni yarış formu değil
-const isMedia = (path) => /^\/athletes\/races\/[^/]+\/(media|yayin)/.test(path) || /^\/athletes\/races\/(?!new$)[^/]+$/.test(path) || path === "/training/day" || path === "/sanal";
+const isMedia = (path) => /^\/athletes\/races\/[^/]+\/(media|yayin)/.test(path) || /^\/athletes\/races\/(?!new$)[^/]+$/.test(path) || path === "/training/day" || path === "/sanal" || path === "/sailing";
 // Tek gönderi ekranı: söylenen açık gönderiyi değiştirir (PostEditor)
 const POST = { ph: "Gönderiyle ilgili söyle…", ex: ["Daha kısa ve samimi yaz", "Mete ikinci oldu diye ekle", "Gün batımında teknelerle görsel üret"] };
 const isPost = (path) => path.startsWith("/posts/");
@@ -1167,8 +1167,8 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
             noAi ? null : (
               <>
                 {/* Solda logo; sağda klavye (yazarak sor) ve en sağda konuşma, ikisi aynı yuvarlak (Seyhun 2026-11-13) */}
-                <Link href="/" aria-label="Velora" className="shrink-0">
-                  <VeloraGlyph size={40} />
+                <Link href="/" aria-label="Velora" className="shrink-0 text-[var(--sn-logo)]">
+                  <VeloraGlyph size={40} color="currentColor" />
                 </Link>
                 <span className="flex-1" />
                 <button type="button" onClick={typeNow} aria-label="Yazarak sor" data-press className="skb grid size-12 shrink-0 place-items-center rounded-full text-white active:scale-95">

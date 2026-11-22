@@ -14,14 +14,15 @@ import { dayPlans, dayWeather, planTone } from "@/lib/homeTiles";
 export const H0 = 6;
 export const H1 = 24;
 // Rüzgâr rengi (kn): hafif mavi, iyi yeşil, sert sarı, çok sert kırmızı
-export const windColor = (k) => (k == null ? "#4f6389" : k < 6 ? "#5f86c4" : k < 12 ? "#35b48a" : k < 18 ? "#d9a93a" : "#e0675e");
-const SKY_TONE = { sun: "#f3c45b", cloudSun: "#e9c46a", moon: "#a9b8d6", cloud: "#b9c8e4", fog: "#b9c8e4", rain: "#7fb0ff", storm: "#a99cf0", snow: "#cfe3ff" };
+// Renkler tema değişkeninden (--wc0…4, açık temada koyu gri, 18 kn ve üstü kehribar; globals.css .acik); tanımsızsa lacivertteki renkler
+export const windColor = (k) => (k == null ? "var(--wc0, #4f6389)" : k < 6 ? "var(--wc1, #5f86c4)" : k < 12 ? "var(--wc2, #35b48a)" : k < 18 ? "var(--wc3, #d9a93a)" : "var(--wc4, #e0675e)");
+const SKY_TONE = { sun: "var(--sky-sun, #f3c45b)", cloudSun: "var(--sky-sun2, #e9c46a)", moon: "var(--sky-cloud, #a9b8d6)", cloud: "var(--sky-cloud, #b9c8e4)", fog: "var(--sky-cloud, #b9c8e4)", rain: "var(--sky-rain, #7fb0ff)", storm: "var(--sky-storm, #a99cf0)", snow: "var(--sky-snow, #cfe3ff)" };
 export const pad = (n) => String(n).padStart(2, "0");
 export const cap = (t) => t.charAt(0).toLocaleUpperCase("tr-TR") + t.slice(1);
 
 export function SkyIcon({ code, day = true, size = "size-5" }) {
   const s = sky(code, day);
-  return <Icon name={s.icon} className={`${size} shrink-0`} style={{ color: SKY_TONE[s.icon] || "#b9c8e4" }} aria-label={s.label} />;
+  return <Icon name={s.icon} className={`${size} shrink-0`} style={{ color: SKY_TONE[s.icon] || "var(--sky-cloud, #b9c8e4)" }} aria-label={s.label} />;
 }
 
 // Kutunun genişliği (grafikler yazıyı bozmadan çizilsin diye piksel olarak)
@@ -113,7 +114,7 @@ export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "H
                 )}
               </span>
               <span className="iph-kn">
-                <WindArrow dir={cur.dir} size={40} color="#fff" className="iph-kn-ar" />
+                <WindArrow dir={cur.dir} size={40} color="var(--wx-strong)" className="iph-kn-ar" />
                 <b className="num">{Math.round(cur.wind ?? 0)}</b>
                 <small>kn</small>
               </span>
@@ -126,7 +127,7 @@ export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "H
             </span>
             <span className="iph-nowr">
               <span className="num text-[2rem] font-medium leading-none">{cur.t}°</span>
-              <span className="flex items-center gap-1.5 text-[0.875rem] text-[#cfdcf5]">
+              <span className="flex items-center gap-1.5 text-[0.875rem] text-[var(--wx-t2)]">
                 <SkyIcon code={cur.code} day={cur.day} />
                 {sk.label}
               </span>
@@ -138,15 +139,15 @@ export function HavaPanel({ w, err, refresh, date, today, rows, nowH, title = "H
         )}
       </button>
       <span className="iph-lg iph-wxlg">
-        <span className="text-[#cfdcf5]">{dname}</span>
+        <span className="text-[var(--wx-t2)]">{dname}</span>
         {day.rows.length > 0 && (
-          <span className="text-white">
-            <i className="bg-white" />
+          <span className="text-[var(--wx-strong)]">
+            <i className="bg-[var(--wx-obs)]" />
             ölçülen
           </span>
         )}
         <span>
-          <i className="bg-[#8fb3ff]" />
+          <i className="bg-[var(--wx-fc)]" />
           tahmin
         </span>
         <span>
@@ -218,33 +219,33 @@ export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
           <defs>
             <linearGradient id="iph-wz" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#3d7bff" stopOpacity=".5" />
-              <stop offset="1" stopColor="#3d7bff" stopOpacity="0" />
+              <stop offset="0" style={{ stopColor: "var(--wx-area)" }} />
+              <stop offset="1" style={{ stopColor: "var(--wx-area)" }} stopOpacity="0" />
             </linearGradient>
             <linearGradient id="iph-wl" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="#8fb3ff" stopOpacity="0" />
-              <stop offset=".05" stopColor="#8fb3ff" />
-              <stop offset=".95" stopColor="#8fb3ff" />
-              <stop offset="1" stopColor="#8fb3ff" stopOpacity="0" />
+              <stop offset="0" style={{ stopColor: "var(--wx-fc)" }} stopOpacity="0" />
+              <stop offset=".05" style={{ stopColor: "var(--wx-fc)" }} />
+              <stop offset=".95" style={{ stopColor: "var(--wx-fc)" }} />
+              <stop offset="1" style={{ stopColor: "var(--wx-fc)" }} stopOpacity="0" />
             </linearGradient>
           </defs>
           {rs && (
             <g data-rain-span={rs.here ? "here" : "near"}>
-              <rect x={rx0} y={wy0 - 18} width={Math.max(8, rx1 - rx0)} height={wy1 - wy0 + 18} rx="10" fill="#7db4ff" fillOpacity=".1" stroke="#7db4ff" strokeOpacity=".45" strokeDasharray="4 4" />
+              <rect x={rx0} y={wy0 - 18} width={Math.max(8, rx1 - rx0)} height={wy1 - wy0 + 18} rx="10" fill="var(--wx-rain)" fillOpacity=".1" stroke="var(--wx-rain)" strokeOpacity=".45" strokeDasharray="4 4" />
               {rs.here && rs.mm >= 0.1 ? (
-                <text data-rain-mm x={(rx0 + rx1) / 2} y={wy0 - 4} fill="#9cc2ff" fontSize="11.5" fontWeight="700" textAnchor="middle">yağış · {fmtRainMm(rs.mm)} mm</text>
+                <text data-rain-mm x={(rx0 + rx1) / 2} y={wy0 - 4} fill="var(--wx-raint)" fontSize="11.5" fontWeight="700" textAnchor="middle">yağış · {fmtRainMm(rs.mm)} mm</text>
               ) : (
-                <circle cx={(rx0 + rx1) / 2} cy={wy0 - 8} r="4.5" fill={rs.here ? "#cfe3ff" : "none"} stroke="#cfe3ff" strokeWidth="2" />
+                <circle cx={(rx0 + rx1) / 2} cy={wy0 - 8} r="4.5" fill={rs.here ? "var(--wx-raindot)" : "none"} stroke="var(--wx-raindot)" strokeWidth="2" />
               )}
             </g>
           )}
           <path d={area} fill="url(#iph-wz)" />
-          <path d={curve(gl)} stroke="#8fb3ff" strokeOpacity=".55" strokeWidth="1.2" strokeDasharray="3 5" fill="none" />
+          <path d={curve(gl)} stroke="var(--wx-gust)" strokeWidth="1.2" strokeDasharray="3 5" fill="none" />
           <path d={curve(wl)} stroke="url(#iph-wl)" strokeWidth="2.4" fill="none" />
-          {oG.length > 1 && <path d={curve(oG)} stroke="#fff" strokeWidth="1.1" strokeDasharray="2 3" fill="none" opacity=".75" />}
-          {oW.length > 1 && <path d={curve(oW)} stroke="#fff" strokeWidth="2.4" fill="none" />}
+          {oG.length > 1 && <path d={curve(oG)} stroke="var(--wx-obs)" strokeWidth="1.1" strokeDasharray="2 3" fill="none" opacity=".75" />}
+          {oW.length > 1 && <path d={curve(oW)} stroke="var(--wx-obs)" strokeWidth="2.4" fill="none" />}
           {[6, 9, 12, 15, 18, 21, 24].map((h) => (
-            <text key={h} x={Math.min(Math.max(X(h), 12), W - 12)} y={wy1 + 22} fill="#5d7099" fontSize="11" textAnchor="middle" fontWeight="600">
+            <text key={h} x={Math.min(Math.max(X(h), 12), W - 12)} y={wy1 + 22} fill="var(--wx-axis)" fontSize="11" textAnchor="middle" fontWeight="600">
               {pad(h % 24)}
             </text>
           ))}
@@ -259,7 +260,7 @@ export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
       {W > 0 && (
         <div className="absolute inset-x-0 bottom-0 flex px-2">
           {blocks.map((b) => {
-            const col = b.obs ? "#fff" : windColor((b.wind + b.gust) / 2);
+            const col = b.obs ? "var(--wx-obs)" : windColor((b.wind + b.gust) / 2);
             return (
               <span key={b.h} className="flex min-w-0 flex-1 flex-col items-center">
                 <b className="num flex items-center gap-1 text-[0.8125rem] font-semibold" style={{ color: col }}>
@@ -267,7 +268,7 @@ export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
                   {Math.round(b.wind)}–{Math.round(b.gust)}
                 </b>
                 <small className="num text-[0.6875rem] text-mut">{dirDeg(b.dir)}</small>
-                <span className="flex items-center gap-1 text-[0.75rem] font-semibold text-[#cfdcf5]">
+                <span className="flex items-center gap-1 text-[0.75rem] font-semibold text-[var(--wx-t2)]">
                   <SkyIcon code={b.code} day={b.day} size="size-4" />
                   {b.t}°
                 </span>
@@ -299,7 +300,7 @@ export function DayCell({ date, today, w, plans = null, on, nowH, onSel, at = nu
   const ps = plans ? dayPlans(plans, date) : null;
   const d = new Date(`${date}T12:00`);
   const real = past && ob.length > 0;
-  const col = real ? "#fff" : windColor(((lo ?? 0) + (hi ?? 0)) / 2);
+  const col = real ? "var(--wx-obs)" : windColor(((lo ?? 0) + (hi ?? 0)) / 2);
   return (
     <button type="button" onClick={onSel} aria-pressed={on} data-past={past ? "" : undefined} className="iph-day" aria-label={d.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}>
       <span className="flex items-baseline justify-between gap-1">
@@ -310,7 +311,7 @@ export function DayCell({ date, today, w, plans = null, on, nowH, onSel, at = nu
         <>
           <span className="flex items-center justify-between">
             <SkyIcon code={dw.code} />
-            <span className="num text-[0.6875rem] text-[#cfdcf5]">
+            <span className="num text-[0.6875rem] text-[var(--wx-t2)]">
               {dw.min}/{dw.max}°
             </span>
           </span>
@@ -321,11 +322,11 @@ export function DayCell({ date, today, w, plans = null, on, nowH, onSel, at = nu
             </span>
             {noon?.dir != null && (
               <svg viewBox="-7 -7 14 14" className="size-3.5" style={{ transform: `rotate(${noon.dir + 180}deg)` }} aria-label={windName(noon.dir)?.[0]}>
-                <path d="M0 -6 L4 4 L0 2 L-4 4Z" fill="#cfdcf5" />
+                <path d="M0 -6 L4 4 L0 2 L-4 4Z" fill="var(--wx-t2)" />
               </svg>
             )}
           </span>
-          <span className={`num flex justify-between gap-1 text-[0.6875rem] font-semibold ${mm >= 0.1 ? "text-[#7fb0ff]" : "text-[#4f6389]"}`}>
+          <span className={`num flex justify-between gap-1 text-[0.6875rem] font-semibold ${mm >= 0.1 ? "text-[var(--wx-mm)]" : "text-[var(--wx-faint)]"}`}>
             {mm >= 0.1 ? (
               <>
                 <span>{mm < 10 ? mm.toFixed(1).replace(".", ",") : Math.round(mm)} mm</span>
@@ -337,14 +338,14 @@ export function DayCell({ date, today, w, plans = null, on, nowH, onSel, at = nu
           </span>
         </>
       ) : (
-        <span className="py-6 text-center text-[0.6875rem] text-[#4f6389]">Tahmin yok</span>
+        <span className="py-6 text-center text-[0.6875rem] text-[var(--wx-faint)]">Tahmin yok</span>
       )}
       {ps ? (
         <span className="flex min-w-0 items-center gap-1 border-t border-line pt-1.5">
           {ps.slice(0, 4).map((p) => (
             <i key={p.id} className={`tone-${planTone(p)} tone-bar size-1.5 shrink-0 rounded-full`} />
           ))}
-          <span className="min-w-0 truncate text-[0.6875rem] font-semibold text-[#cfdcf5]">{ps[0]?.title || "Plan yok"}</span>
+          <span className="min-w-0 truncate text-[0.6875rem] font-semibold text-[var(--wx-t2)]">{ps[0]?.title || "Plan yok"}</span>
         </span>
       ) : (
         real && <span className="iph-tag">ölçülen</span>
@@ -365,12 +366,12 @@ function Spark({ rows, nowH, color, obs = [], dim = false }) {
   const ob = obs.filter((o) => +o.hh >= H0);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-[2.125rem] w-full" aria-hidden="true">
-      <path d={`M${X(+pts[0].hh)} ${H} ${l("wind").replace(/^M/, "L")} L${X(+pts.at(-1).hh)} ${H}Z`} fill="#3d7bff" fillOpacity=".22" />
-      <path d={l("gust")} stroke="#8fb3ff" strokeWidth="1" strokeDasharray="3 3" fill="none" opacity=".6" vectorEffect="non-scaling-stroke" />
-      <path d={l("wind")} stroke={dim ? "#8fb3ff" : color} strokeWidth={dim ? 1.2 : 1.8} opacity={dim ? 0.5 : 1} fill="none" vectorEffect="non-scaling-stroke" />
-      {ob.length > 1 && <path d={ob.map((o, i) => `${i ? "L" : "M"}${X(+o.hh).toFixed(1)} ${Y(o.wind).toFixed(1)}`).join(" ")} stroke="#fff" strokeWidth="1.8" fill="none" vectorEffect="non-scaling-stroke" />}
+      <path d={`M${X(+pts[0].hh)} ${H} ${l("wind").replace(/^M/, "L")} L${X(+pts.at(-1).hh)} ${H}Z`} fill="var(--wx-area)" fillOpacity=".45" />
+      <path d={l("gust")} stroke="var(--wx-gust)" strokeWidth="1" strokeDasharray="3 3" fill="none" vectorEffect="non-scaling-stroke" />
+      <path d={l("wind")} stroke={dim ? "var(--wx-fc)" : color} strokeWidth={dim ? 1.2 : 1.8} opacity={dim ? 0.5 : 1} fill="none" vectorEffect="non-scaling-stroke" />
+      {ob.length > 1 && <path d={ob.map((o, i) => `${i ? "L" : "M"}${X(+o.hh).toFixed(1)} ${Y(o.wind).toFixed(1)}`).join(" ")} stroke="var(--wx-obs)" strokeWidth="1.8" fill="none" vectorEffect="non-scaling-stroke" />}
       {[12, 18].map((h) => (
-        <line key={h} x1={X(h)} x2={X(h)} y1="0" y2={H} stroke="#1d3256" vectorEffect="non-scaling-stroke" />
+        <line key={h} x1={X(h)} x2={X(h)} y1="0" y2={H} stroke="var(--wx-grid)" vectorEffect="non-scaling-stroke" />
       ))}
       {nowH != null && nowH >= H0 && <line x1={X(nowH)} x2={X(nowH)} y1="0" y2={H} stroke="var(--rec)" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />}
     </svg>
