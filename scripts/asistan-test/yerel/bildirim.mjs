@@ -469,4 +469,25 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   add(G, "yeni bildirim (sayı 3)", "iPhone bildiriminde de simge sayısı 3", fcmMessage("t", { title: "x", badge: 3 }).apns.payload.aps.badge === 3);
 }
 
+// ---------------- Bildirime dokununca sayfa açılır (takılmadan) ----------------
+// Seyhun 2026-11-20 "mesaj bildirimine tıklayınca ekran dönüp kalıyor": geçiş takılırsa sayfa tam yüklemeyle açılır (lib/openOutside.js)
+{
+  const G = "Bildirime dokununca açılış";
+  const { insidePath, samePlace, arrived, NAV_WAIT } = await import("@/lib/openOutside");
+  const B = "https://sesliasistan.netlify.app/plans";
+  add(G, "mesaj bildirimi (/messages?c=abc)", "uygulama içi yol olarak açılır", insidePath("/messages?c=abc", B) === "/messages?c=abc");
+  add(G, "bildirimde tam adres", "aynı siteyse yola çevrilir", insidePath("https://sesliasistan.netlify.app/dues", B) === "/dues");
+  add(G, "başka site ya da /api adresi", "açılmaz", insidePath("https://ornek.com/x", B) === null && insidePath("/api/notify", B) === null);
+  add(G, "adressiz bildirim", "ana sayfa", insidePath("", B) === "/" && insidePath(undefined, B) === "/");
+  add(G, "zaten o sohbetteyken", "yeniden açılmaz", samePlace("/messages?c=a", "/messages?c=a") && !samePlace("/messages?c=b", "/messages?c=a"));
+  add(G, "geçiş oldu, ana sayfa adresi sadeleştirdi (/?open=… → /)", "tam yükleme yapılmaz", arrived("/?open=task:1", "/", ["/"]));
+  add(G, "geçiş 4 sn'de olmadı (adres hiç değişmedi)", "sayfa tam yüklemeyle açılır", !arrived("/messages?c=a", "/plans", []) && NAV_WAIT <= 5000);
+  const fs = await import("node:fs");
+  const pwa = fs.readFileSync("src/features/pwa/Pwa.jsx", "utf8");
+  const ios = fs.readFileSync("src/features/ios/IosBridge.jsx", "utf8");
+  const sw = fs.readFileSync("public/sw.js", "utf8");
+  add(G, "uygulama bildirimi, widget, sayaç", "hepsi aynı takılmayan yoldan açılır", /wireNativePush\(\(url\) => openOutside\(router, url\)\)/.test(pwa) && /listenWorkerOpen\(router\)/.test(pwa) && !/router\.push\(/.test(ios));
+  add(G, "web bildirimi, sayfa service worker'a bağlı değil", "sayfaya \"aç\" mesajı gider (önceden hiçbir şey olmuyordu)", /postMessage\(\{ sa: "open", url \}\)/.test(sw));
+}
+
 for (const [g, cases] of Object.entries(rows)) group(g)(cases.map(([say, desc, got, ok]) => [say, { desc, fn: () => got, ok }]));
