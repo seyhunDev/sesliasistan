@@ -102,11 +102,14 @@ export async function openOutside(router, url) {
 }
 
 // Web bildirimi: service worker açık sayfaya "şu adresi aç" der (public/sw.js notificationclick)
+// iPhone uygulamasında (WKWebView) navigator.serviceWorker yoktur. Seyhun 2026-11-22: "undefined is not an object
+// (evaluating 't.addEventListener')" ile her sayfa "Bu sayfa açılamadı" oldu: derleyici `if (!sw)` denetimini siliyordu
+// (navigator.serviceWorker'ı hep var sayıyor). Denetim "in" ile ve typeof ile yapılır, çağrılar da ?. ile.
 export function listenWorkerOpen(router) {
-  const sw = navigator.serviceWorker;
-  if (!sw) return () => {};
+  const sw = typeof navigator !== "undefined" && "serviceWorker" in navigator ? navigator["serviceWorker"] : null;
+  if (!sw || typeof sw.addEventListener !== "function") return () => {};
   const on = (e) => e.data?.sa === "open" && openOutside(router, e.data.url);
   sw.addEventListener("message", on);
   sw.startMessages?.();
-  return () => sw.removeEventListener("message", on);
+  return () => sw?.removeEventListener?.("message", on);
 }
