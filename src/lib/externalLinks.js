@@ -14,6 +14,17 @@ export function openExternal(url) {
 // Velora Sailing'i kullanıcının Velora hesabıyla açar: /api/sailing-giris 1 saatlik giriş anahtarı verir, adresin # kısmında gider
 // (sunucuya ve kayıtlara gitmez); Sailing onunla oturum açar ve # kısmını siler. Anahtar alınamazsa site yine açılır (orada
 // Velora e-posta ve şifresiyle ya da misafir olarak girilir). Sekme dokunuş anında açılır ki iPhone açılır pencereyi engellemesin.
+// Velora Sailing giriş anahtarı (1 saat) ya da null; gömülü /sailing sayfası çerçeve adresine koyar
+export async function sailingToken() {
+  try {
+    const r = await jsonOf(await authFetch("/api/sailing-giris", { method: "POST", timeout: 10000 }));
+    return r?.token || null;
+  } catch {
+    return null;
+  }
+}
+
+// Dışarıda (yeni sekmede / Safari'de) açar; Velora'nın içinde açmak için /sailing sayfası kullanılır
 export async function openSailing() {
   if (typeof window === "undefined") return;
   // Uygulama kabuğunda (Capacitor) boş sekme açılmaz: adres hazır olunca openExternal Safari'de açar
