@@ -1,8 +1,8 @@
-Commit: 40c8f49 · Bilgi Yönet: sayaç satırında Video düğmesi (ortak kamera, üstünde geri sayım) (#1474)
-Zaman: 2026-11-21-2122 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/44933037241
+Commit: ada6c4e · Bilgi Yönet: kanal şeridi, ortak düğmelerle Kanal aç / Link / Kapat (#1478)
+Zaman: 2026-11-22-1823 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45035933066
 
-TAM TEST · 21.11.2026 21:00:27
+TAM TEST · 22.11.2026 18:01:46
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1411/1441 geçti · 30 kalan · 1326 sn
+SONUÇ: 1411/1441 geçti · 30 kalan · 1321 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -286,10 +286,10 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1326 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 22 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 19 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 22 · açıklama 22 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 19 · açıklama 19 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
