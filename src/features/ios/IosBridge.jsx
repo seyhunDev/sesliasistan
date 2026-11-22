@@ -12,6 +12,7 @@ import { alarmItems } from "@/lib/planAlarm";
 import { SharedResults } from "./SharedResults";
 import { WatchBridge } from "./WatchBridge";
 import { WidgetFeed } from "./WidgetFeed";
+import { openOutside } from "@/lib/openOutside";
 
 // iPhone uygulamasının yerel parçalarını web'e bağlar (uygulama düzeninde bir kez durur; tarayıcıda hiçbir şey yapmaz):
 // - bas-konuş: Siri / Eylem tuşu / Denetim Merkezi düğmesi → asistan açılır ve dinler
@@ -35,12 +36,12 @@ export function IosBridge() {
     if (!iosApp()) return;
     bridgeVibrate();
     const go = (what) => {
-      if (what.startsWith("go:")) router.push(what.slice(3) || "/");
+      if (what.startsWith("go:")) openOutside(router, what.slice(3) || "/");
       else if (what === "share") window.dispatchEvent(new CustomEvent("sa-shared-files"));
       else if (what === "talk") window.dispatchEvent(new CustomEvent("sa-open-assistant", { detail: { listen: true } }));
       else if (what === "timer") {
         const own = readTimer().own;
-        if (own) router.push(own.startsWith("/athletes/races/") ? `${own}?tab=sure` : own);
+        if (own) openOutside(router, own.startsWith("/athletes/races/") ? `${own}?tab=sure` : own);
       }
     };
     takeOpen().then(go);
