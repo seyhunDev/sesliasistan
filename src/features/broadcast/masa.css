@@ -21,7 +21,7 @@
   background: var(--bg);
 }
 html:has(.masa), body:has(.masa) { background: #0b1322 !important; }
-.masa .btn { --btn-top: #1d2d49; --btn-bot: #16243c; }
+.masa .btn { --btn-gray: #1d2d49; }
 .masa .btn-secondary, .masa .btn-danger { border-color: #2a3d5e; }
 .masa .ck { background: #0a1220; }
 .masa input, .masa textarea { color: var(--fg); }

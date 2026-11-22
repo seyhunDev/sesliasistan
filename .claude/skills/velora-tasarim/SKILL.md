@@ -51,17 +51,15 @@ Tailwind'de `bg-bg`, `text-mut`, `text-acc`, `border-line` gibi sınıflarla yaz
 - `Row.jsx`: `RowList`, `Row` (lead · başlık · alt yazı · sağ değer veya `Tag`), `ListHead`, `SkelRow`, `Tag`. Satır biçimi her listede aynıdır: öğe + durum. Satıra dokununca öğe kendi yerinde açılır. Uyarı alt yazısı amberdir.
 - `Gauge.jsx`: `Gauge` (halka), `Bar` (ince çubuk). "9/14 ödedi" gibi oranlar için kullanılır.
 - `ActionGrid.jsx`: kokpitteki adlı düğme ızgarası.
-- `Button.jsx`: tek düğme bileşeni. Yeni düğme yazılmaz, buradan alınır. Türleri: `primary` (vurgu rengi, ana iş), `secondary` (beyaz, kabarık), `text`, `icon`, `danger`, `back`, `round`. Hepsi kabarık durur ve basınca içeri göçer.
+- `Button.jsx`: tek düğme bileşeni (sınıflar `btn btn-primary|secondary|danger|text|icon|round|back`, küçük `btn-sm`). Yeni düğme yazılmaz, sayfa CSS'ine düğme rengi/kenar/gölge yazılmaz (yalnız yer ve boy). Görünüm "A · Düz" (Seyhun 2026-11-22): tek renk dolgu, degrade/gölge/çerçeve yok; Ana dolu mavi, İkincil açık gri (lacivertte yarı saydam beyaz), Tehlike açık kırmızı, Yazı/Simge zeminsiz; seçili İkincil `aria-pressed` mavi. Basınca biraz küçülür ve koyulaşır. Tasarım örneklerinde (HTML) `project-files/butonlar/ortak-dugme.css` aynen kullanılır (KULLANIM.md).
 - `BackButton.jsx`: yuvarlak simge geri düğmesi (karar "A · Yuvarlak simge", #642).
 - `Sheet.jsx`: alttan açılan pencere. Arka plan kaymaz (#627).
 
 ## Lacivert üstte düğmeler
 
-- `.ck .raised`: yarı saydam beyaz kabarık düğme.
-- `.act-main`: beyaz zemin, en önemli düğme ya da bugün.
-- `.ck-sel`: seçili olan elektrik mavisi (#3d7bff). `aria-pressed` ile birlikte kullanılır.
-- `.ck-glass`: yarı saydam kutu (şerit, ikincil düğme).
-- `.ck :is(.btn-round,.btn-back)`: yarı saydam yuvarlak düğme. Basınca açık renkte yanıp sönmez.
+- Aynı ortak düğme: `.ck`, `.navy` içinde kendiliğinden lacivert görünüm alır (Ana #3d7bff, İkincil yarı saydam beyaz). Eski `raised`, `act-main`, `ck-btn`, `ck-pill`, `food-btn` düğme olarak kullanılmaz (2026-11-12'de kaldırıldı); `raised` yalnız seçim kutuları/çipler için kaldı.
+- `.ck-sel`: seçili çip elektrik mavisi (#3d7bff). `aria-pressed` ile birlikte kullanılır.
+- `.ck-glass`: yarı saydam kutu (şerit, arama kutusu).
 
 ## Ana sayfa (2026-11-11 iPad, 2026-11-12 iPhone da, "A · Zaman şeridi")
 
@@ -99,7 +97,7 @@ Bir sayfa geçince bu listeyi güncelle.
 
 Yarışlar listesi ve yarış detayı diğer sayfalar gibi lacivert kokpit kullanır (Seyhun 2026-11-07 "diğer sayfalardaki gibi olsun, başlık geri butonun yanında; iPad'de tıklamalar net, ortak butonlar"; örnek project-files/yaris-tasarim/sade/ust-*.png onaylı). Yayın sayfası ayrı (kendi sahibi).
 
-- Üst lacivert (`.ck`): yuvarlak geri (`BackButton`), yanında başlık (liste "Yarışlar", detayda yarışın adı), sağda beyaz `+ Yarış` (`ck-btn`) ya da yuvarlak ⋯ (`btn btn-round`). Detayda altında tek satır: tarih · yer · kalan gün. Başlık bir kez yazılır.
+- Üst lacivert (`.ck`): yuvarlak geri (`BackButton`), yanında başlık (liste "Yarışlar", detayda yarışın adı), sağda `AddButton` (`+ Yarış`, ortak Ana düğme) ya da yuvarlak ⋯ (`btn btn-round`). Detayda altında tek satır: tarih · yer · kalan gün. Başlık bir kez yazılır.
 - Sıradaki yarış mavi kart (`ck-plan`, Planlar'daki Bugün kartı gibi); altında Canlı ekran (beyaz) · Yayın (cam) (`RaceGo`, ortak `.btn`).
 - Altı açık gri zemin, üstü yuvarlak (`.rzc-body`); satırlar beyaz kartta (`.rz-list`), satır 3.5rem (iPad'de net dokunma). Yan yana açılır satırlar (`Fold`) tek kart olur.
 - Az kullanılanlar altta açılır "Diğer"de (Geçmiş yarışlar, Yarış takvimi, Siteden ekle); detayda ek işler ⋯ içinde.
