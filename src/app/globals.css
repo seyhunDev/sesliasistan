@@ -671,64 +671,45 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
   [data-press][data-pressed], .raised[data-pressed] { transform: none; }
 }
 
-/* ORTAK DÜĞMELER (Seyhun, 2026-10-20; components/ui/Button.jsx, buttonClass.js): beş çeşit, renkler temadan.
-   Ana = vurgu rengi (.acc-btn gibi), İkincil = kabarık (.raised gibi), Tehlike = kabarık + kırmızı yazı, Yazı ve Simge = zeminsiz,
-   Geri ve Yuvarlak (simgeli kabarık) = kabarık yuvarlak.
-   Basılı hal yalnız parmak dururken (usePress, data-pressed): kabarıklar içe göçer, zeminsizlerde hafif gri zemin.
+/* ORTAK DÜĞMELER (Seyhun, 2026-10-20; components/ui/Button.jsx, buttonClass.js). Görünüm 2026-11-22 "A · Düz" (Seyhun: "modern, sade,
+   profesyonel"; örnek project-files/butonlar/oneri.png, örnekler için aynı parça butonlar/ortak-dugme.css): tek renk dolgu; degrade, gölge ve
+   çerçeve yok. Ana = dolu vurgu rengi, İkincil / Geri / Yuvarlak = açık gri dolgu, Tehlike = açık kırmızı dolgu + kırmızı yazı,
+   Yazı ve Simge = zeminsiz. Renkler değişkenden (--btn-bg, --btn-fg): bir sayfa yalnız bunları değiştirir, kendi düğmesini yazmaz.
+   Basılı hal yalnız parmak dururken (usePress, data-pressed): biraz küçülür ve koyulaşır, zeminsizlerde hafif gri zemin; renk yanıp sönmez.
    Görünüm @layer components içinde: sayfadaki Tailwind sınıfları (text-rec, h-10…) gerekirse üstüne yazar; basılı hal katmansız. */
 @layer components {
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-    height: 3rem; padding: 0 1rem; border-radius: .875rem;
+    height: 3rem; padding: 0 1rem; border-radius: .75rem; border: 0;
     font-size: 1rem; font-weight: var(--font-weight-semibold); line-height: 1; white-space: nowrap;
-    --btn-top: #ffffff;
-    --btn-bot: color-mix(in srgb, var(--card) 80%, var(--line));
+    background: var(--btn-bg); color: var(--btn-fg);
+    transition: transform .12s, filter .12s, background-color .12s;
+    --btn-bg: transparent; --btn-fg: var(--fg);
+    --btn-gray: color-mix(in srgb, var(--fg) 8%, var(--card));
   }
-  html[data-theme="dark"] .btn { --btn-top: color-mix(in srgb, var(--card) 88%, var(--fg)); --btn-bot: var(--card); }
-  .btn-sm { height: 2.25rem; padding: 0 .75rem; border-radius: .75rem; font-size: .84375rem; }
-  .btn:disabled { opacity: .5; }
-  .btn-primary {
-    color: var(--on-acc);
-    border: 1px solid color-mix(in srgb, var(--acc) 72%, #000);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 82%, #fff) 0%, var(--acc) 100%);
-  }
-  .btn-secondary, .btn-danger {
-    color: var(--fg);
-    border: 1px solid color-mix(in srgb, var(--line) 80%, var(--fg) 20%);
-    background: linear-gradient(180deg, var(--btn-top) 0%, var(--btn-bot) 100%);
-  }
-  .btn-danger { color: var(--rec); border-color: color-mix(in srgb, var(--rec) 35%, var(--line)); }
-  .btn-text { color: var(--acc); background: transparent; padding: 0 .625rem; }
-  .btn-icon { width: 2.75rem; height: 2.75rem; padding: 0; border-radius: 9999px; color: var(--fg2); background: transparent; }
-  .btn-sm.btn-icon { width: 2.25rem; height: 2.25rem; }
-  /* Geri ve yuvarlak simge düğmesi: kabarık yuvarlak (Seyhun, 2026-10-20: geri düğmeleri de ortak sisteme) */
-  .btn-back, .btn-round {
-    width: 2.75rem; height: 2.75rem; padding: 0; border-radius: 9999px; flex-shrink: 0; color: var(--fg);
-    border: 1px solid color-mix(in srgb, var(--line) 80%, var(--fg) 20%);
-    background: linear-gradient(180deg, var(--btn-top) 0%, var(--btn-bot) 100%);
-  }
-  .btn-sm:is(.btn-back, .btn-round) { width: 2.25rem; height: 2.25rem; }
-  /* Lacivert zeminde (kokpit .ck, lacivert sayfa .navy, video galerisi .lvd, yemek kartı .food-card) aynı çeşitler (Seyhun 2026-11-12 "butonların hepsi farklı, ortak
-     tasarımı kullanalım"): İkincil yarı saydam beyaz kabarık (.ck .raised gibi), Ana elektrik mavisi, Tehlike açık kırmızı yazı, seçili İkincil
-     (aria-pressed) elektrik mavisi. Daha önce lacivertte ortak düğmenin görünümü yoktu, sayfalar kendi düğmesini yazıyordu. */
-  html :is(.ck, .navy, .lvd, .food-card) .btn { --btn-top: rgba(255, 255, 255, .1); --btn-bot: rgba(255, 255, 255, .06); }
-  :is(.ck, .navy, .lvd, .food-card) :is(.btn-secondary, .btn-danger) { color: #fff; border-color: rgba(255, 255, 255, .14); box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
-  :is(.ck, .navy, .lvd, .food-card) .btn-danger { color: #f4a49c; }
-  :is(.ck, .navy, .lvd, .food-card) .btn-primary { --acc: #3d7bff; --on-acc: #fff; border-color: #3d7bff; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
-  :is(.ck, .navy, .lvd, .food-card) .btn-text { color: #8fb3ff; }
-  :is(.ck, .navy, .lvd, .food-card) .btn-icon { color: rgba(255, 255, 255, .85); }
-  html :is(.ck, .navy, .lvd, .food-card) .btn-secondary[aria-pressed="true"] { --btn-top: #3d7bff; --btn-bot: #3d7bff; border-color: #3d7bff; color: #fff; }
+  .btn-sm { height: 2.25rem; padding: 0 .75rem; border-radius: .625rem; font-size: .84375rem; }
+  .btn:disabled { opacity: .45; }
+  .btn-primary { --btn-bg: var(--acc); --btn-fg: var(--on-acc); }
+  .btn-secondary, .btn-back, .btn-round { --btn-bg: var(--btn-gray); }
+  .btn-danger { --btn-bg: color-mix(in srgb, var(--rec) 12%, var(--card)); --btn-fg: var(--rec); }
+  .btn-text { --btn-fg: var(--acc); padding: 0 .625rem; }
+  .btn-icon { --btn-fg: var(--fg2); }
+  .btn-icon, .btn-back, .btn-round { width: 2.75rem; height: 2.75rem; padding: 0; border-radius: 9999px; flex-shrink: 0; }
+  .btn-sm:is(.btn-icon, .btn-back, .btn-round) { width: 2.25rem; height: 2.25rem; }
+  .btn-secondary[aria-pressed="true"] { --btn-bg: var(--acc); --btn-fg: var(--on-acc); }
+  /* Lacivert zeminde (kokpit .ck, lacivert sayfa .navy, video galerisi .lvd, yemek kartı .food-card; Seyhun 2026-11-12 "ortak tasarımı
+     kullanalım"): Ana elektrik mavisi + beyaz yazı, İkincil yarı saydam beyaz, Tehlike açık kırmızı */
+  :is(.ck, .navy, .lvd, .food-card) .btn { --btn-gray: rgba(255, 255, 255, .1); --btn-fg: #fff; }
+  :is(.ck, .navy, .lvd, .food-card) :is(.btn-primary, .btn-secondary[aria-pressed="true"]) { --btn-bg: #3d7bff; --btn-fg: #fff; }
+  :is(.ck, .navy, .lvd, .food-card) .btn-danger { --btn-bg: rgba(240, 129, 120, .16); --btn-fg: #ff9a90; }
+  :is(.ck, .navy, .lvd, .food-card) .btn-text { --btn-fg: #8fb3ff; }
+  :is(.ck, .navy, .lvd, .food-card) .btn-icon { --btn-fg: rgba(255, 255, 255, .85); }
 }
-.btn-primary[data-pressed] {
-  transform: scale(0.97); filter: none;
-  background: linear-gradient(180deg, var(--acc) 0%, color-mix(in srgb, var(--acc) 82%, #fff) 100%);
-}
-.btn-secondary[data-pressed], .btn-danger[data-pressed], .btn-back[data-pressed], .btn-round[data-pressed] {
-  transform: scale(0.97); filter: none;
-  background: linear-gradient(180deg, var(--btn-bot) 0%, var(--btn-top) 100%);
-}
+.btn[data-pressed] { transform: scale(.97); filter: brightness(.94); }
+:is(.ck, .navy, .lvd, .food-card, html[data-theme="dark"]) .btn[data-pressed] { filter: brightness(1.15); }
 /* Zeminsiz düğme ve liste satırı (data-press="row"): WhatsApp gibi hafif gri zemin, büyüklük değişmez */
-.btn-text[data-pressed], .btn-icon[data-pressed] { transform: none; filter: none; background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.btn:is(.btn-text, .btn-icon)[data-pressed] { transform: none; filter: none; background: color-mix(in srgb, var(--fg) 8%, transparent); }
+:is(.ck, .navy, .lvd, .food-card) .btn:is(.btn-text, .btn-icon)[data-pressed] { background: rgba(255, 255, 255, .1); }
 [data-press="row"] { transition: background-color .12s; }
 [data-press="row"][data-pressed] { transform: none; filter: none; background-color: color-mix(in srgb, var(--fg) 6%, transparent); }
 @media (prefers-reduced-motion: reduce) {
@@ -957,9 +938,6 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
     radial-gradient(90% 60% at 0% 100%, rgba(99, 102, 241, .12), transparent 62%),
     #0b1a33;
 }
-.ck :is(.btn-round, .btn-back), .navy :is(.btn-round, .btn-back) { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .16); color: #fff; box-shadow: none; }
-/* Lacivertte basınca açık renk parlamasın: yalnız içeri girer, zemin biraz koyulaşır (geri düğmesi: Seyhun 2026-10-21 "A · Yuvarlak simge") */
-.ck :is(.btn-round, .btn-back)[data-pressed], .navy :is(.btn-round, .btn-back)[data-pressed] { background: rgba(255, 255, 255, .06); }
 .ck .btn-round .ring-bg { --tw-ring-color: #0b1a33; }
 /* Ana sayfa kokpiti: yalnız sağ üstteki ışık; altta düz lacivert, notların zeminiyle birleşir (Seyhun 2026-10-23) */
 .ck.ck-top { background: radial-gradient(120% 70% at 88% 0%, rgba(61, 123, 255, .24), transparent 62%), #0b1a33; }
@@ -1338,9 +1316,8 @@ main.rzc .ck .rz-seg-b { color: rgba(255, 255, 255, .75); }
 main.rzc .ck .rz-seg-b[aria-pressed="true"] { background: #fff; color: #0b1a33; }
 /* Canlı ekran beyaz, Yayın cam (ortak .btn; lacivertte) */
 .ck .rz-go .btn { height: 3rem; border-radius: .875rem; font-weight: 700; }
-.ck .rz-go .btn-primary { border-color: #fff; background: #fff; color: #0b1a33; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+.ck .rz-go .btn-primary { --btn-bg: #fff; --btn-fg: #0b1a33; }
 .ck .rz-go .rz-soft { border: 1px solid rgba(255, 255, 255, .18); background: rgba(255, 255, 255, .12); color: #fff; }
-.ck .rz-go .btn-primary[data-pressed] { background: #e9eef7; }
 .ck .rz-go .rz-soft[data-pressed] { background: rgba(255, 255, 255, .06); }
 /* sıradaki yarış kartı */
 .rzc-next .rzc-r { display: flex; align-items: center; gap: .75rem; width: 100%; min-height: 3rem; border-top: 1px solid rgba(255, 255, 255, .22); text-align: left; }
