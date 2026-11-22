@@ -1026,12 +1026,48 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
   color: var(--fg);
   background: #0b1a33;
 }
+/* Hava/ana sayfa renk değişkenleri (--wx-*, rüzgâr --wc*): lacivertte (.navy) açık tonlar, açık temada (.acik) koyu gri tonlar.
+   Hava kutusu, grafik ve gün kutuları (weather/WxPanel.jsx) renklerini buradan alır; aynı parça iki temada da çalışır */
+.navy { --wx-strong: #fff; --wx-t2: #cfdcf5; --wx-t3: #a9b8d6; --wx-mut: #7d90b5; --wx-faint: #4f6389; --wx-line: #1d3256; --wx-line2: #2a4472; --wx-acc: #8fb3ff;
+  --wx-fc: #8fb3ff; --wx-area: rgba(61, 123, 255, .5); --wx-gust: rgba(143, 179, 255, .55); --wx-obs: #fff; --wx-axis: #5d7099; --wx-grid: #1d3256;
+  --wx-rain: #7db4ff; --wx-raint: #9cc2ff; --wx-raindot: #cfe3ff; --wx-mm: #7fb0ff; }
+/* AÇIK TEMA (Seyhun 2026-11-22 "Apple beyazı… beyaz, gri, koyu gri tonları; sade, gözü yormayan"; örnek ana-sayfa/sade-2026-11/acik-ana-sayfa.html).
+   Yeni tasarımın temeli: sayfanın <main>'ine "acik" sınıfı verilir, içindeki kartlar ve ortak düğmeler kendiliğinden uyar. Zemin #f5f5f7, kartlar beyaz
+   (gölge yerine çok ince çerçeve), yazı koyu gri, tek vurgu mavi. Rüzgâr rakamları koyu, yalnız 18 kn ve üstü kehribar. Sayfa açıkken sol menü ve alt çubuk da açık */
+.acik {
+  color-scheme: light;
+  --bg: #f5f5f7; --card: #fff; --fg: #1d1d1f; --fg2: #3a3a3c; --mut: #6e6e73; --mut2: #aeaeb2; --line: #e5e5ea; --fill: #eeeef2;
+  --acc: #2563eb; --acc2: #2563eb; --on-acc: #fff; --accbg: #e8effe; --rec: #e5484d; --ok: #2f8a57; --warn: #b7791f; --warnbg: #f6eedf;
+  --wx-strong: #1d1d1f; --wx-t2: #3a3a3c; --wx-t3: #6e6e73; --wx-mut: #6e6e73; --wx-faint: #aeaeb2; --wx-line: #e5e5ea; --wx-line2: #d1d1d6; --wx-acc: #2563eb;
+  --wx-fc: #3a3a3c; --wx-area: rgba(60, 60, 67, .13); --wx-gust: #aeaeb2; --wx-obs: #2563eb; --wx-axis: #aeaeb2; --wx-grid: #eeeef2;
+  --wx-rain: #2563eb; --wx-raint: #2563eb; --wx-raindot: #2563eb; --wx-mm: #2563eb;
+  --wc0: #aeaeb2; --wc1: #6e6e73; --wc2: #3a3a3c; --wc3: #1d1d1f; --wc4: #b7791f;
+  --sky-sun: #e0a019; --sky-sun2: #d9a43a; --sky-cloud: #8e8e93; --sky-rain: #2563eb; --sky-storm: #6e5bd0; --sky-snow: #7fa6d6;
+  color: var(--fg);
+  background: var(--bg);
+}
+html:has(main.acik), body:has(main.acik) { background: #f5f5f7 !important; }
+html .acik .tone-st { --tbg: #e1eee8; --tfg: #2f7360; }
+html .acik .tone-sp { --tbg: #e2ebf4; --tfg: #3b6590; }
+html .acik .tone-ve { --tbg: #efe7f3; --tfg: #7a5a8c; }
+html .acik .tone-fa { --tbg: #f5e8de; --tfg: #8f5f3e; }
+html .acik .tone-fit { --tbg: #fbeadb; --tfg: #a65f20; }
+html .acik .tone-gen { --tbg: #eceae5; --tfg: #8a8e94; }
 /* Sol menü ve alt sekme çubuğu lacivert (Seyhun 2026-11-13, örnek solmenu.html): her sayfada aynı */
 .sidenav.navy { background: linear-gradient(180deg, #0a1830 0%, #071224 100%); }
 .atabbar { --card: #071224; --line: #1d3256; background: rgba(7, 18, 36, .94); box-shadow: 0 -1px 0 #1d3256; }
 .atabbar a { color: #7d90b5; }
 .atabbar a[aria-current="page"] { color: #fff; }
 .acenter { background: #071224; box-shadow: 0 -1px 0 #1d3256; }
+.sidenav { --sn-fg: #cfdcf5; --sn-on: #fff; --sn-on-bg: rgba(61, 123, 255, .16); --sn-bar: #3d7bff; --sn-hover: rgba(255, 255, 255, .04); --sn-line: #1d3256; --sn-logo: #fff; }
+/* Açık sayfada (main.acik) sol menü ve alt çubuk da açık (örnek acik-ana-sayfa.html): menü #fbfbfd, seçili satır açık gri zemin, logo koyu */
+body:has(main.acik) .sidenav.navy { color-scheme: light; --bg: #fbfbfd; --card: #fff; --fg: #1d1d1f; --fg2: #3a3a3c; --mut: #6e6e73; --line: #e5e5ea; --acc: #2563eb;
+  --sn-fg: #3a3a3c; --sn-on: #1d1d1f; --sn-on-bg: #eeeef2; --sn-bar: transparent; --sn-hover: rgba(0, 0, 0, .04); --sn-line: #e5e5ea; --sn-logo: #1d1d1f;
+  background: #fbfbfd; color: #1d1d1f; }
+body:has(main.acik) .atabbar { --card: #fbfbfd; --line: #e5e5ea; background: rgba(251, 251, 253, .94); box-shadow: 0 -1px 0 #e5e5ea; }
+body:has(main.acik) .atabbar a { color: #6e6e73; }
+body:has(main.acik) .atabbar a[aria-current="page"] { color: #1d1d1f; }
+body:has(main.acik) .acenter { background: #fbfbfd; box-shadow: 0 -1px 0 #e5e5ea; }
 .navy :is(.bg-amber-50, .bg-amber-100) { background-color: rgba(245, 158, 11, .14); }
 .navy .bg-emerald-100 { background-color: rgba(16, 185, 129, .16); }
 .navy :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900) { color: #fbbf5c; }
@@ -1572,37 +1608,37 @@ main.iph {
 .iph-date { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 0.75rem; margin: 0; }
 .iph-date b { font-size: 1.75rem; font-weight: 600; letter-spacing: -.02em; white-space: nowrap; }
 .iph-date small { font-size: 0.9375rem; font-weight: 600; color: var(--mut); white-space: nowrap; }
-.iph-clock { font-size: 1.75rem; font-weight: 500; color: #fff; margin-right: 0.5rem; }
+.iph-clock { font-size: 1.75rem; font-weight: 500; color: var(--wx-strong); margin-right: 0.5rem; }
 .iph-add { height: 2.5rem; padding: 0 1rem; border-radius: 99px; background: #fff; color: #0b1a33; font-weight: 650; font-size: 0.875rem; white-space: nowrap; transition: transform .12s; }
 .iph-add:active { transform: scale(.96); }
-.iph-ghost { background: rgba(255, 255, 255, .08); color: #fff; border: 1px solid #2a4472; }
-.iph-me { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; flex: none; border-radius: 99px; background: rgba(255, 255, 255, .1); border: 1px solid #2a4472; color: #fff; font-weight: 650; font-size: 0.8125rem; }
-.iph-pn { background: rgba(255, 255, 255, .028); border: 1px solid #1d3256; border-radius: 1.5rem; padding: 1rem 1.25rem; min-width: 0; }
-.iph-pt { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.625rem; font-size: 0.75rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: #7d90b5; min-height: 1.75rem; }
-.iph-pt em { font-style: normal; text-transform: none; letter-spacing: 0; color: #4f6389; font-weight: 600; }
+.iph-ghost { background: rgba(255, 255, 255, .08); color: var(--wx-strong); border: 1px solid var(--wx-line2); }
+.iph-me { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; flex: none; border-radius: 99px; background: rgba(255, 255, 255, .1); border: 1px solid var(--wx-line2); color: var(--wx-strong); font-weight: 650; font-size: 0.8125rem; }
+.iph-pn { background: rgba(255, 255, 255, .028); border: 1px solid var(--wx-line); border-radius: 1.5rem; padding: 1rem 1.25rem; min-width: 0; }
+.iph-pt { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.625rem; font-size: 0.75rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--wx-mut); min-height: 1.75rem; }
+.iph-pt em { font-style: normal; text-transform: none; letter-spacing: 0; color: var(--wx-faint); font-weight: 600; }
 .iph-lg { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.125rem 0.75rem; text-transform: none; letter-spacing: 0; font-weight: 600; }
 .iph-lg i { display: inline-block; width: 0.625rem; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 0.3rem; }
-.iph-lg .iph-dash { background: repeating-linear-gradient(90deg, #8fb3ff 0 3px, transparent 3px 6px); }
-.iph-lg .iph-dash-w { background: repeating-linear-gradient(90deg, #fff 0 3px, transparent 3px 6px); }
+.iph-lg .iph-dash { background: repeating-linear-gradient(90deg, var(--wx-gust) 0 3px, transparent 3px 6px); }
+.iph-lg .iph-dash-w { background: repeating-linear-gradient(90deg, var(--wx-obs) 0 3px, transparent 3px 6px); }
 /* Hava kutusu (Seyhun 2026-11-15, örnek hava-gomulu.html): pusula yok; üstte rüzgâr ok + rakam, sağda sıcaklık; grafik kenardan kenara; yağış tek satır */
 .iph-wx { position: relative; overflow: hidden; isolation: isolate; padding: 0; background: radial-gradient(120% 140% at 0% 0%, #14305a 0%, #0d2042 45%, #0a1a36 100%); }
 .iph-now { display: flex; align-items: flex-start; gap: 1rem; width: 100%; padding: 1.125rem 1.5rem 0; text-align: left; }
 .iph-now > .min-w-0 { flex: 1; }
 .iph-now .iph-pt { margin-bottom: 0.25rem; }
-.iph-live { display: inline-flex; align-items: center; gap: 0.375rem; color: #fff !important; font-weight: 700 !important; }
+.iph-live { display: inline-flex; align-items: center; gap: 0.375rem; color: var(--wx-strong) !important; font-weight: 700 !important; }
 .iph-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--rec); box-shadow: 0 0 0 3px rgba(255, 90, 90, .25); }
 .iph-kn { display: flex; align-items: center; gap: 0.5rem; line-height: 0.9; }
-.iph-kn b { font-size: 4.25rem; font-weight: 500; letter-spacing: -.03em; color: #fff; }
-.iph-kn small { align-self: flex-end; margin-bottom: 0.375rem; font-size: 1rem; font-weight: 600; color: #7d90b5; }
-.iph-kn-sub { display: block; margin-top: 0.375rem; font-size: 0.9375rem; color: #cfdcf5; }
-.iph-kn-sub b { color: #fff; font-weight: 650; }
+.iph-kn b { font-size: 4.25rem; font-weight: 500; letter-spacing: -.03em; color: var(--wx-strong); }
+.iph-kn small { align-self: flex-end; margin-bottom: 0.375rem; font-size: 1rem; font-weight: 600; color: var(--wx-mut); }
+.iph-kn-sub { display: block; margin-top: 0.375rem; font-size: 0.9375rem; color: var(--wx-t2); }
+.iph-kn-sub b { color: var(--wx-strong); font-weight: 650; }
 .iph-nowr { display: grid; justify-items: end; gap: 0.25rem; padding-top: 1.75rem; white-space: nowrap; }
-.iph-wxlg { justify-content: flex-start; padding: 0.625rem 1.5rem 0; font-size: 0.75rem; color: #7d90b5; }
+.iph-wxlg { justify-content: flex-start; padding: 0.625rem 1.5rem 0; font-size: 0.75rem; color: var(--wx-mut); }
 .iph-wxlg > span:first-child { margin-right: auto; font-weight: 650; }
 .iph-wch { margin-top: 0.25rem; }
-.iph-rain { display: flex; align-items: center; gap: 0.5rem; margin: 0; padding: 0.625rem 1.5rem 0.75rem; border-top: 1px solid #1d3256; white-space: nowrap; font-size: 0.875rem; font-weight: 600; color: #8fb3ff; }
+.iph-rain { display: flex; align-items: center; gap: 0.5rem; margin: 0; padding: 0.625rem 1.5rem 0.75rem; border-top: 1px solid var(--wx-line); white-space: nowrap; font-size: 0.875rem; font-weight: 600; color: var(--wx-acc); }
 .iph-rain span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.iph-rain em { flex: none; font-style: normal; background: #8fb3ff; color: #06283a; border-radius: 99px; padding: 0.0625rem 0.5rem; font-size: 0.6875rem; font-weight: 800; }
+.iph-rain em { flex: none; font-style: normal; background: var(--wx-acc); color: #06283a; border-radius: 99px; padding: 0.0625rem 0.5rem; font-size: 0.6875rem; font-weight: 800; }
 .iph-cl { position: absolute; z-index: -1; right: 4rem; top: 0.75rem; width: 20rem; height: 7rem; border-radius: 50%; background: #c9d8f5; filter: blur(28px); opacity: .1; pointer-events: none; }
 .iph-cl-b { right: 19rem; top: 4rem; width: 15rem; height: 5.5rem; }
 @media (prefers-reduced-motion: no-preference) { .iph-cl { animation: iphcl 26s ease-in-out infinite alternate; } .iph-cl-b { animation-duration: 34s; } }
@@ -1610,11 +1646,11 @@ main.iph {
 .iph-cal { display: grid; gap: 0.75rem; align-content: start; align-self: start; }
 .iph-lane { position: relative; height: 4.75rem; margin: 0 0.25rem; }
 .iph-blk { position: absolute; height: 2.5rem; min-width: 7.5rem; display: flex; flex-direction: column; justify-content: center; padding: 0 0.625rem; border-radius: 0.75rem; text-align: left; overflow: hidden; text-decoration: none;
-  background: color-mix(in srgb, var(--tfg) 16%, transparent); border: 1.4px solid var(--tfg); color: #fff; }
+  background: color-mix(in srgb, var(--tfg) 16%, transparent); border: 1.4px solid var(--tfg); color: var(--wx-strong); }
 .iph-blk b { font-size: 0.8125rem; font-weight: 650; line-height: 1.15; }
-.iph-blk small { font-size: 0.6875rem; color: #a9b8d6; font-weight: 600; text-decoration: none; }
-.iph-axis { position: absolute; left: 0; right: 0; bottom: 0; height: 1.5rem; border-top: 1px solid #1d3256; }
-.iph-axis span { position: absolute; top: 0.3rem; transform: translateX(-50%); font-size: 0.6875rem; font-weight: 600; color: #4f6389; }
+.iph-blk small { font-size: 0.6875rem; color: var(--wx-t3); font-weight: 600; text-decoration: none; }
+.iph-axis { position: absolute; left: 0; right: 0; bottom: 0; height: 1.5rem; border-top: 1px solid var(--wx-line); }
+.iph-axis span { position: absolute; top: 0.3rem; transform: translateX(-50%); font-size: 0.6875rem; font-weight: 600; color: var(--wx-faint); }
 .iph-nowl { position: absolute; bottom: 1.5rem; top: 0.25rem; width: 1.6px; background: var(--rec); transform: translateX(-50%); }
 .iph-nowl::after { content: ""; position: absolute; bottom: -4px; left: -3.2px; width: 8px; height: 8px; border-radius: 50%; background: var(--rec); }
 /* Takvim plan kartları (Seyhun 2026-11-12, örnek takvim.html): ince saat şeridi + kartlar (1 tam genişlik, 2 yan yana, 3+ satır) */
@@ -1624,39 +1660,35 @@ main.iph {
 .iph-strip .iph-nowl { bottom: 1rem; top: 0; }
 .iph-strip .iph-nowl::after { display: none; }
 .iph-sbar { position: absolute; top: 0.3rem; height: 0.75rem; border-radius: 0.3rem; background: var(--tfg); }
-.iph-cards { display: grid; gap: 0.5rem; }
-.iph-cards-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.iph-pc { display: grid; gap: 0.25rem; min-width: 0; padding: 0.75rem 0.875rem; border-radius: 1rem; text-align: left; color: #fff; background: color-mix(in srgb, var(--tfg) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tfg) 70%, transparent); }
-.iph-pc b { font-size: 1rem; font-weight: 650; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.iph-pc small { font-size: 0.75rem; font-weight: 600; color: #a9b8d6; }
-.iph-pc-1 { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 0.75rem; }
-.iph-pc-1 b { font-size: 1.125rem; }
-.iph-pc-1 .iph-pw { grid-column: 2; grid-row: 1 / 3; }
-.iph-pw { display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; font-weight: 700; }
-.iph-pw-big { font-size: 0.8125rem; }
-.iph-pr { display: grid; grid-template-columns: 3.25rem minmax(0, 1fr) auto; align-items: center; gap: 0.625rem; padding: 0.55rem 0.75rem; border-radius: 0.875rem; text-align: left; color: #fff; background: color-mix(in srgb, var(--tfg) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tfg) 70%, transparent); }
-.iph-pr-t { font-size: 0.8125rem; font-weight: 700; }
-.iph-pr b { display: block; font-size: 0.9375rem; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.iph-pr small { display: block; font-size: 0.75rem; font-weight: 600; color: #a9b8d6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.iph-chip { font-size: 0.6875rem; font-weight: 650; text-transform: none; letter-spacing: 0; padding: 0.2rem 0.5rem; border-radius: 0.5rem; border-left: 3px solid var(--tfg); background: var(--tbg); color: #fff; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.iph-mini { text-transform: none; letter-spacing: 0; height: 1.875rem; padding: 0 0.75rem; display: grid; place-items: center; border-radius: 0.625rem; font-size: 0.75rem; font-weight: 650; color: #fff; background: rgba(255, 255, 255, .08); border: 1px solid #2a4472; }
+/* Takvim planları (Seyhun 2026-11-22 "planlarda rüzgârı göstermeyelim, yazı ikinci satıra geçmesin, genişliği iyi kullanalım"):
+   her plan tek satır: saat · renkli nokta · başlık · yer (sağda, soluk). Şu an süren plan açık gri zeminli (.iph-pl-now) */
+.iph-pls { display: grid; }
+.iph-pl { display: flex; align-items: center; gap: 0.75rem; min-width: 0; height: 2.75rem; padding: 0 0.625rem; border-radius: 0.75rem; border-top: 1px solid var(--wx-line); text-align: left; white-space: nowrap; color: var(--fg); }
+.iph-pl:first-child, .iph-pl-now, .iph-pl-now + .iph-pl { border-top-color: transparent; }
+.iph-pl-now { background: var(--fill, rgba(255, 255, 255, .06)); }
+.iph-pl-t { flex: none; width: 4rem; font-size: 0.9375rem; font-weight: 600; }
+.iph-pl-d { flex: none; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--tfg); }
+.iph-pl b { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.9375rem; font-weight: 600; }
+.iph-pl small { flex: 0 1 auto; min-width: 0; max-width: 40%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.8125rem; font-weight: 500; color: var(--mut); }
+.iph-chip { font-size: 0.6875rem; font-weight: 650; text-transform: none; letter-spacing: 0; padding: 0.2rem 0.5rem; border-radius: 0.5rem; border-left: 3px solid var(--tfg); background: var(--tbg); color: var(--wx-strong); max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.iph-mini { text-transform: none; letter-spacing: 0; height: 1.875rem; padding: 0 0.75rem; display: grid; place-items: center; border-radius: 0.625rem; font-size: 0.75rem; font-weight: 650; color: var(--wx-strong); background: rgba(255, 255, 255, .08); border: 1px solid var(--wx-line2); }
 .iph-mini-on { background: #fff; color: #0b1a33; border-color: #fff; }
-.iph-wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.375rem; border-top: 1px solid #1d3256; padding-top: 0.75rem; }
+.iph-wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.375rem; border-top: 1px solid var(--wx-line); padding-top: 0.75rem; }
 .iph-day { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; padding: 0.5rem; white-space: nowrap; border-radius: 1rem; border: 1px solid transparent; background: rgba(255, 255, 255, .02); text-align: left; color: var(--fg); transition: border-color .15s; }
-.iph-day small { font-size: 0.75rem; font-weight: 600; color: #7d90b5; }
+.iph-day small { font-size: 0.75rem; font-weight: 600; color: var(--wx-mut); }
 .iph-day[aria-pressed="true"] { border-color: #3d7bff; background: rgba(61, 123, 255, .1); }
 .iph-side { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
-.iph-row { display: flex; align-items: center; gap: 0.625rem; width: 100%; padding: 0.55rem 0; border-top: 1px solid #1d3256; text-align: left; }
+.iph-row { display: flex; align-items: center; gap: 0.625rem; width: 100%; padding: 0.55rem 0; border-top: 1px solid var(--wx-line); text-align: left; }
 .iph-row:first-of-type { border-top: 0; }
 .iph-row b { font-size: 0.875rem; font-weight: 600; }
-.iph-row small { font-size: 0.75rem; color: #7d90b5; }
+.iph-row small { font-size: 0.75rem; color: var(--wx-mut); }
 /* Hava sayfası (WeatherTop; Seyhun 2026-11-12, örnek hava.html): ana sayfayla aynı Hava kutusu; altında 12 gün yana kayar (geçmiş günler açık zeminli),
    saat saat tablo ve Bölge haritası (geniş ekranda yan yana) */
 .iph-wk.iph-wk-x { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 7.25rem; overflow-x: auto; scrollbar-width: none; border-top: 0; padding-top: 0; scroll-snap-type: x proximity; }
 .iph-wk.iph-wk-x::-webkit-scrollbar { display: none; }
 .iph-wk-x .iph-day { scroll-snap-align: start; }
 .iph-day[data-past] { background: rgba(255, 255, 255, .05); }
-.iph-tag { align-self: flex-start; font-size: 0.625rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; background: rgba(255, 255, 255, .12); border-radius: 0.375rem; padding: 0.05rem 0.375rem; }
+.iph-tag { align-self: flex-start; font-size: 0.625rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--wx-strong); background: rgba(255, 255, 255, .12); border-radius: 0.375rem; padding: 0.05rem 0.375rem; }
 .iph-wxg { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 64rem) { .iph-wxg { grid-template-columns: minmax(0, 1fr) 24rem; align-items: start; } }
 /* Telefon (Seyhun 2026-11-12 "iPhone'da da aynısı"; örnek ipad.html "A · iPhone"): paneller alt alta, pusula solda küçük, günler yana kayar */
@@ -1684,6 +1716,8 @@ main.iph {
   .iph-wk, .iph-wk.iph-wk-x { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 6.5rem; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
   .iph-wk.iph-wk-x { padding-top: 0; }
   .iph-wk::-webkit-scrollbar { display: none; }
+  .iph-pl small { display: none; }
+  .iph-pl-t { width: 3.25rem; }
   .iph-day { scroll-snap-align: start; }
 }
 @media (min-width: 64rem) {
@@ -1694,6 +1728,29 @@ main.iph {
 @media (min-width: 64rem) {
   main.iph.iph-page { height: auto; overflow: visible; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-content: start; padding-bottom: calc(7rem + env(safe-area-inset-bottom)); }
 }
+
+/* ===== AÇIK ANA SAYFA (main.iph.acik; Seyhun 2026-11-22, örnek ana-sayfa/sade-2026-11/acik-ana-sayfa.html): Apple beyazı zemin, beyaz kartlar,
+   gri tonlar, tek vurgu mavi (ölçülen rüzgâr, ana düğme). Renkler .acik değişkenlerinden; burada yalnız lacivertte farklı olan zemin/çerçeveler ===== */
+main.iph.acik { background: var(--bg); }
+.acik .iph-pn { background: var(--card); border-color: transparent; box-shadow: 0 1px 0 rgba(0, 0, 0, .04), 0 0 0 1px rgba(0, 0, 0, .03); }
+.acik .iph-wx { background: var(--card); }
+.acik .iph-clock { color: var(--fg2); }
+.acik .iph-pt { text-transform: none; letter-spacing: 0; font-size: 0.8125rem; }
+.iph-pt .btn { text-transform: none; letter-spacing: 0; }
+.acik .iph-me { background: var(--fill); border-color: transparent; }
+.acik .iph-live i { background: var(--acc); box-shadow: 0 0 0 3px rgba(37, 99, 235, .16); }
+.acik .iph-rain { color: var(--fg2); font-weight: 500; }
+.acik .iph-rain em { background: none; color: var(--acc); padding: 0; font-size: inherit; font-weight: 700; }
+.acik .iph-cl { background: #8e8e93; opacity: .07; }
+.acik .iph-sbar { background: var(--mut2); }
+.acik .iph-sbar-on { background: var(--fg2); }
+.acik .iph-day { background: var(--card); border-color: var(--line); }
+.acik .iph-day[aria-pressed="true"] { background: var(--card); border-color: var(--fg); box-shadow: inset 0 0 0 0.5px var(--fg); }
+.acik .iph-day[data-past] { background: var(--fill); border-color: transparent; }
+.acik .iph-tag { color: var(--fg2); background: var(--fill); }
+.acik .lt { background: var(--card); color: var(--fg); border-color: transparent; box-shadow: 0 1px 0 rgba(0, 0, 0, .04), 0 0 0 1px rgba(0, 0, 0, .03); }
+.acik .lt-ic { background: var(--fill); }
+.acik .lt-go { color: var(--acc); }
 
 /* Spor seçimi (src/sports, 2026-11-12): gece denizi arka planı, Sailing / Diğer, Yakında, tekne animasyonu */
 .sp-screen { background: #0b1a33; }

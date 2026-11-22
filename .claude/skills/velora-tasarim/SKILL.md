@@ -1,9 +1,19 @@
 ---
 name: velora-tasarim
-description: Velora yeni tasarım kuralları (lacivert kokpit + sade liste). Bir sayfayı, pencereyi ya da bileşeni tasarlarken veya yeni tasarıma geçirirken önce bunu oku.
+description: Velora yeni tasarım kuralları (açık tema .acik 2026-11-22; eski lacivert kokpit + sade liste). Bir sayfayı, pencereyi ya da bileşeni tasarlarken veya yeni tasarıma geçirirken önce bunu oku.
 ---
 
 # Velora yeni tasarım kuralları
+
+## AÇIK TEMA (Seyhun 2026-11-22, en güncel temel; örnek /mnt/project-files/ana-sayfa/sade-2026-11/acik-ana-sayfa.html)
+
+"Renk cümbüşü göz yoruyor": yeni tasarımlar Apple beyazı ve sade. İlk sayfa ana sayfa (`IpadHome.jsx`, `main.iph.acik`); diğer sayfalar sırayla buna geçecek.
+- Sayfanın `<main>`'ine `acik` sınıfı ver (globals.css `.acik`). Renkler oradan: zemin `#f5f5f7`, kart beyaz (gölge yerine çok ince çerçeve), yazı `#1d1d1f`, ikinci yazı `#3a3a3c`, soluk `#6e6e73`/`#aeaeb2`, çizgi `#e5e5ea`, açık gri dolgu `--fill #eeeef2`, tek vurgu mavi `#2563eb`.
+- Sayfada `main.acik` varken sol menü ve alt çubuk kendiliğinden açık olur (`body:has(main.acik)`). Lacivert sayfalar (`.navy`) eskisi gibi kalır.
+- Hava/grafik renkleri değişkenden (`--wx-*`, rüzgâr `--wc0…4`, gök `--sky-*`): aynı HavaPanel/WindChart/DayCell iki temada da çalışır. Açıkta tahmin koyu gri çizgi, ölçülen mavi, sağanak gri kesik, yağış açık mavi bant; rüzgâr rakamları koyu, yalnız 18 kn ve üstü kehribar.
+- Başlıklar normal harf (büyük harf değil). Düğmeler ortak `btn` (btn-primary/secondary btn-sm).
+- Takvim planları tek satır: saat · renkli nokta · başlık · yer (telefonda yer gizli); rüzgâr yok; süren plan açık gri zemin.
+- Renk yalnız anlam taşıyınca: plan türü küçük nokta, uyarı kehribar, şimdi kırmızı çizgi.
 
 Ana sayfa (2026-10-21, "C · Lacivert kokpit") bu kuralların örneğidir. Yeni bir sayfa yaparken önce `src/features/home/` ve `src/features/weather/WeatherTop.jsx` dosyalarına bak, aynı parçaları kullan.
 
