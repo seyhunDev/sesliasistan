@@ -193,56 +193,61 @@ function Tekneler({ boats: all, ch, now }) {
   );
 }
 
-// Alt panel saati (Seyhun 2026-11-22 örnek "Yönet alt panel" onaylandı): ortak sayaç. Start öncesi büyük süre + Başlat + 5·4·2·1 dk;
-// geri sayımda mavi süre, azalan çizgi ve 5·4·1·0 bayrak sırası, küçük Bitir; start sonrası akan süre (+)
+// Süre paneli (Seyhun 2026-11-22 örnek "Yönet alt kısım 2" onaylandı "Yap"): konuşmadan ayrı, en altta. Start öncesi büyük süre + küçük "4 dk"
+// (dokununca 5·4·2·1 açılır, seçince kapanır) ve en altta boydan boya Başlat. Geri sayımda mavi süre + 5·4·1·0, aynı yerde içi süreyle boşalan
+// Bitir. Start sonrası akan süre, start saati ve Bitir.
 const DURS = [300, 240, 120, 60];
 function PanelClock() {
   const { t, now, running, rem, up } = useTimerRun();
+  const [pick, setPick] = useState(false);
   const time = up ? `+${mmss(Math.max(0, Math.floor((now - t.end) / 1000)))}` : mmss(Math.max(0, running ? rem : (t.left ?? t.dur)));
+  const stop = () => writeTimer({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero, own: "", where: "" });
   if (!running)
     return (
       <>
         <div className="bzy-clk">
           <b className="num">{time}</b>
-          <Button className="bzy-go2" onClick={() => raceStart(null, "start", "Bilgi ekranı")}>
-            Başlat
-          </Button>
+          <button type="button" className="bzy-dur" aria-expanded={pick} onClick={() => setPick((x) => !x)} data-press>
+            {Math.round(t.dur / 60)} dk
+            <Ic n={pick ? "chev" : "up"} />
+          </button>
         </div>
-        <div className="bzy-durs" role="group" aria-label="Süre">
-          {DURS.map((d) => (
-            <button key={d} type="button" aria-pressed={t.dur === d} onClick={() => chooseDur(d)} data-press>
-              {d / 60}
-            </button>
-          ))}
-          <em>dk</em>
-        </div>
+        {pick && (
+          <div className="bzy-durs" role="group" aria-label="Süre">
+            {DURS.map((d) => (
+              <button key={d} type="button" aria-pressed={t.dur === d} onClick={() => (chooseDur(d), setPick(false))} data-press>
+                {d / 60}
+              </button>
+            ))}
+            <em>dk</em>
+          </div>
+        )}
+        <Button full className="bzy-goB" onClick={() => (setPick(false), raceStart(null, "start", "Bilgi ekranı"))}>
+          Başlat
+        </Button>
       </>
     );
   const flag = rem > 240 ? "5" : rem > 60 ? "4" : "1";
+  const left = up ? 0 : Math.max(0, Math.min(100, (rem / (t.dur || 1)) * 100));
   return (
     <>
       <div className="bzy-clk" data-run="1" data-up={up ? "1" : undefined}>
         <b className="num">{up ? time : `−${time}`}</b>
-        <Button variant="text" className="bzy-stop" onClick={() => writeTimer({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero, own: "", where: "" })}>
-          Bitir
-        </Button>
+        {up ? (
+          <span className="bzy-sat num">Start {hhmm(t.end)}</span>
+        ) : t.dur === 300 ? (
+          <span className="bzy-lad" aria-hidden="true">
+            {["5", "4", "1", "0"].map((x) => (
+              <i key={x} data-on={x === flag ? "1" : undefined}>
+                {x}
+              </i>
+            ))}
+          </span>
+        ) : null}
       </div>
-      {!up && (
-        <>
-          <div className="bzy-prog" aria-hidden="true">
-            <i style={{ width: `${Math.max(0, Math.min(100, (rem / (t.dur || 1)) * 100))}%` }} />
-          </div>
-          {t.dur === 300 && (
-            <div className="bzy-lad" aria-hidden="true">
-              {["5", "4", "1", "0"].map((x) => (
-                <span key={x} data-on={x === flag ? "1" : undefined}>
-                  {x}
-                </span>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+      <Button variant="secondary" full className="bzy-goB bzy-stopB" style={{ "--p": `${left}%` }} onClick={stop}>
+        <span>Bitir</span>
+      </Button>
     </>
   );
 }
@@ -431,6 +436,7 @@ const IC = {
   mic: <path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3" />,
   kb: <path d="M4.5 6h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />,
   chev: <path d="M6 9l6 6 6-6" />,
+  up: <path d="M6 15l6-6 6 6" />,
   send: <path d="M5 12h13M13 6l6 6-6 6" />,
 };
 const Ic = ({ n }) => (
@@ -504,8 +510,9 @@ function KanalInfo({ kanal, link, count, onList }) {
   );
 }
 
-// Konuşma satırı: solda kime (dokununca isimler açılır), ortada büyük mikrofon (basılı tut, konuş; sola kaydırınca iptal), sağda yazarak mesaj.
-// Kayıt sürerken satır yeşil olur: solda ses seviyesi, sağda süre. Mikrofon düğmesi yerinden oynamaz (parmak onun üstünde kalır).
+// Konuşma (Seyhun 2026-11-22 örnek "Yönet alt kısım 2"): süreden ayrı, sağda haritanın üstünde. Büyük mikrofon en sağda (basılı tut, konuş;
+// uzağa kaydırınca iptal), solunda kime ("Hepsi"ye dokununca isimler açılır) ve klavye (yazarak mesaj). Kayıtta mikrofon yeşil olur, solunda
+// kime konuştuğun, süre ve ses seviyesi görünür. Mikrofon yerinden oynamaz (parmak onun üstünde kalır).
 function TalkBar({ to, ptt, now, who, onWho, onType }) {
   const rec = ptt.rec;
   const st = rec ? (rec.cancel ? "cancel" : "rec") : ptt.arm ? "arm" : "";
@@ -514,16 +521,25 @@ function TalkBar({ to, ptt, now, who, onWho, onType }) {
   return (
     <div className="bzy-tk" data-st={st || undefined}>
       {rec ? (
-        <span className="bzy-tkl" aria-hidden="true">
-          {[0.5, 0.85, 1, 0.75, 0.55].map((f, i) => (
-            <i key={i} style={{ height: `${0.375 + Math.min(1, ptt.lvl * f * 1.6) * 1.25}rem` }} />
-          ))}
-        </span>
+        <div className="bzy-bub" aria-live="polite">
+          <b>{rec.cancel ? "Bırak: iptal" : name}</b>
+          <small className="num">{rec.cancel ? "Ses gönderilmez" : `Konuşuyorsun · 0:${pad(sec)}`}</small>
+          <span className="bzy-tkl" aria-hidden="true">
+            {[0.5, 0.85, 1, 0.75, 0.55].map((f, i) => (
+              <i key={i} style={{ height: `${0.375 + Math.min(1, ptt.lvl * f * 1.6) * 1.25}rem` }} />
+            ))}
+          </span>
+        </div>
       ) : (
-        <button type="button" className="bzy-whob" onClick={onWho} aria-expanded={who} aria-label={`Kime: ${name}`} data-press>
-          <span>{name}</span>
-          <Ic n="chev" />
-        </button>
+        <>
+          <button type="button" className="bzy-whob" onClick={onWho} aria-expanded={who} aria-label={`Kime: ${name}`} data-press>
+            <span>{name}</span>
+            <Ic n="chev" />
+          </button>
+          <button type="button" className="btn btn-round bzy-fab bzy-kb" onClick={onType} aria-label="Yazarak mesaj" data-press>
+            <Ic n="kb" />
+          </button>
+        </>
       )}
       <button
         type="button"
@@ -537,13 +553,6 @@ function TalkBar({ to, ptt, now, who, onWho, onType }) {
       >
         <Ic n="mic" />
       </button>
-      {rec ? (
-        <span className="bzy-tks num">0:{pad(sec)}</span>
-      ) : (
-        <button type="button" className="btn btn-icon bzy-kb" onClick={onType} aria-label="Yazarak mesaj" data-press>
-          <Ic n="kb" />
-        </button>
-      )}
     </div>
   );
 }
@@ -846,7 +855,7 @@ export function BilgiAdmin() {
 
   // Harita düzeni (Seyhun 2026-11-22 örnekler "Yönet harita düzeni" + "Yönet alt panel" onaylandı "Yap"): harita bütün ekran. Kanal kapalıyken
   // yalnız Kanal aç kartı. Açıkken üstte yalnız geri; solda araçlar (en altta onaylı Kapat), sağda yakınlaştır/uzaklaştır/sığdır/video;
-  // altta bulanık zeminli yüzen panel: küçük kanal adı (dokununca Link, Ekranı aç, Eski kanallar), büyük süre, konuşma satırı.
+  // altta süre paneli (küçük kanal adı → Link, Ekranı aç, Eski kanallar; süre; boydan boya Başlat), üstünde sağda ayrı konuşma (örnek "Yönet alt kısım 2").
   const open = !!kanal?.open;
   const tools = [
     ...(yaris.data
@@ -925,21 +934,24 @@ export function BilgiAdmin() {
             </button>
             <VideoBtn />
           </div>
-          <section className="bzy-pnl" aria-label="Süre ve konuşma">
-            <div className="bzy-kl">
-              <button type="button" className="bzy-kn2" onClick={() => setSheet("kanal")} data-press>
-                <i className="bzy-dot" aria-hidden="true" />
-                <span>
-                  {kanal.name} · {members.length} kişi
-                </span>
-              </button>
-              {tst && (
-                <span className="bzy-tst" data-k={tst[0] || undefined} aria-live="polite">
-                  {tst[1]}
-                </span>
-              )}
-            </div>
-            {!typing && <PanelClock />}
+          <div className="bzy-bot">
+            {who && (
+              <div className="bzy-who" aria-label="Kime">
+                {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
+                  <button
+                    key={m.id || "hepsi"}
+                    type="button"
+                    aria-pressed={(to?.dev || "") === m.id}
+                    onClick={() => (setToDev(m.id), setWho(false))}
+                    data-press
+                  >
+                    {m.no ? <u className="num">{m.no}</u> : null}
+                    {m.label}
+                    {m.st && <i data-k={m.st.k} aria-label={m.st.t} />}
+                  </button>
+                ))}
+              </div>
+            )}
             {typing ? (
               <form
                 className="bzy-typ"
@@ -969,27 +981,27 @@ export function BilgiAdmin() {
                   <Ic n="send" />
                 </button>
               </form>
-            ) : null}
-            {who && (
-              <div className="bzy-who" aria-label="Kime">
-                {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
-                  <button
-                    key={m.id || "hepsi"}
-                    type="button"
-                    aria-pressed={(to?.dev || "") === m.id}
-                    onClick={() => (setToDev(m.id), setWho(false))}
-                    data-press
-                  >
-                    {m.no ? <u className="num">{m.no}</u> : null}
-                    {m.label}
-                    {m.st && <i data-k={m.st.k} aria-label={m.st.t} />}
-                  </button>
-                ))}
-              </div>
+            ) : (
+              <TalkBar to={to} ptt={ptt} now={now} who={who} onWho={() => setWho((x) => !x)} onType={() => (setWho(false), setTyping(true))} />
             )}
-            {!typing && <TalkBar to={to} ptt={ptt} now={now} who={who} onWho={() => setWho((x) => !x)} onType={() => (setWho(false), setTyping(true))} />}
             {(dl0?.state === "fail" || dl0?.state === "part") && <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />}
-          </section>
+            <section className="bzy-pnl" aria-label="Süre">
+              <div className="bzy-kl">
+                <button type="button" className="bzy-kn2" onClick={() => setSheet("kanal")} data-press>
+                  <i className="bzy-dot" aria-hidden="true" />
+                  <span>
+                    {kanal.name} · {members.length} kişi
+                  </span>
+                </button>
+                {tst && (
+                  <span className="bzy-tst" data-k={tst[0] || undefined} aria-live="polite">
+                    {tst[1]}
+                  </span>
+                )}
+              </div>
+              <PanelClock />
+            </section>
+          </div>
         </>
       )}
       <Sheet open={sheet === "kanal"} onClose={() => setSheet("")} title={kanal?.name || "Kanal"}>
