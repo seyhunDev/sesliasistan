@@ -65,21 +65,6 @@ function Seg({ value, items, onPick }) {
   );
 }
 
-// Bas konuş (Seyhun 2026-11-22 örnek onaylandı "daha profesyonel, sade ve kullanışlı"): sporcular yukarıdan aşağı liste (iPad'de sağda,
-// telefonda altta); satıra dokununca hedef seçilir ("Hepsi" herkese). Satırın sağında o kişiye son gidenin durumu. Konuşmak için tek büyük düğme.
-function TalkRow({ label, no, picked, st, onPick }) {
-  return (
-    <button type="button" className="bzy-pr" aria-pressed={picked} onClick={onPick} data-press>
-      <span className="bzy-pr-no num">{no}</span>
-      <span className="bzy-pr-nm">{label}</span>
-      {st && (
-        <span className="bzy-pr-st" data-k={st.k}>
-          {st.t}
-        </span>
-      )}
-    </button>
-  );
-}
 // Son gönderinin bu satırdaki durumu: … gidiyor, ✓ iletildi, ✓✓ gördü, görmedi / ulaşmadı
 function rowSt(last, m, now) {
   if (!last || (last.to && last.to.dev !== m.id)) return null;
@@ -95,59 +80,6 @@ function allSt(d, last) {
   if (d.state === "seen") return { k: "seen", t: `✓✓ ${d.of > 1 ? `${d.seen}/${d.of}` : hhmm(last.at)}` };
   if (d.state === "part") return { k: "bad", t: `${d.seen}/${d.of} gördü` };
   return { k: "ok", t: `✓ ${hhmm(last.at)}` };
-}
-
-// Tek büyük konuş düğmesi: her an ne olduğunu yazar. Hazır (kime) → Mikrofon açılıyor… → Kaydediliyor · 4 sn (ses seviyesi) → Gönderiliyor… → ✓ İletildi / ✓✓ Görüldü.
-// Parmak düğmeden uzağa kayınca kırmızı "Bırak: iptal". Basılı tutma süresi en çok SES_MAX_SEC.
-function PttBig({ to, ptt, last, d, now }) {
-  const rec = ptt.rec;
-  const recent = last?.kind === "ses" && now - last.at < 6000;
-  const st = rec ? (rec.cancel ? "cancel" : "rec") : ptt.arm ? "arm" : ptt.tap && now - ptt.tap.at < 1800 ? "tap" : recent && d ? d.state : "idle";
-  const name = to?.name || "Hepsi";
-  const sec = rec ? Math.max(0, Math.floor((now - rec.t0) / 1000)) : 0;
-  const [b, sm] =
-    st === "rec"
-      ? [`Kaydediliyor · ${sec} sn`, null]
-      : st === "cancel"
-        ? ["Bırak: iptal", "Ses gönderilmez"]
-        : st === "arm"
-          ? ["Mikrofon açılıyor…", name]
-          : st === "tap"
-            ? ["Basılı tut", name]
-            : st === "wait"
-              ? ["Gönderiliyor…", `${name} · ${last.dur || 0} sn`]
-              : st === "sent"
-                ? ["✓ İletildi", `${name} · ${last.dur || 0} sn`]
-                : st === "seen"
-                  ? ["✓✓ Görüldü", `${name} · ${last.dur || 0} sn`]
-                  : st === "fail" || st === "part"
-                    ? ["Ulaşmadı", name]
-                    : [name, "Basılı tut, konuş"];
-  const k = st === "part" ? "fail" : st;
-  return (
-    <button
-      type="button"
-      className="bzy-big bzy-ptt"
-      data-st={k}
-      aria-label={`Bas konuş · ${name}`}
-      onPointerDown={(e) => ptt.begin(e, "big", to)}
-      onPointerMove={ptt.move}
-      onPointerUp={ptt.end}
-      onPointerCancel={ptt.end}
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      <b aria-live="polite">{b}</b>
-      {st === "rec" ? (
-        <span className="bzy-lv" aria-hidden="true">
-          {[0.5, 0.85, 1, 0.75, 0.55].map((f, i) => (
-            <i key={i} style={{ height: `${0.25 + Math.min(1, ptt.lvl * f * 1.6) * 1}rem` }} />
-          ))}
-        </span>
-      ) : (
-        sm && <small>{sm}</small>
-      )}
-    </button>
-  );
 }
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -261,8 +193,59 @@ function Tekneler({ boats: all, ch, now }) {
   );
 }
 
-// Küçük sayaç (tam ekran haritanın üstünde; ortak sayaç, start dizisi): süre, durunca süre seçimi + Başlat, çalışırken Bitir
+// Alt panel saati (Seyhun 2026-11-22 örnek "Yönet alt panel" onaylandı): ortak sayaç. Start öncesi büyük süre + Başlat + 5·4·2·1 dk;
+// geri sayımda mavi süre, azalan çizgi ve 5·4·1·0 bayrak sırası, küçük Bitir; start sonrası akan süre (+)
 const DURS = [300, 240, 120, 60];
+function PanelClock() {
+  const { t, now, running, rem, up } = useTimerRun();
+  const time = up ? `+${mmss(Math.max(0, Math.floor((now - t.end) / 1000)))}` : mmss(Math.max(0, running ? rem : (t.left ?? t.dur)));
+  if (!running)
+    return (
+      <>
+        <div className="bzy-clk">
+          <b className="num">{time}</b>
+          <Button className="bzy-go2" onClick={() => raceStart(null, "start", "Bilgi ekranı")}>
+            Başlat
+          </Button>
+        </div>
+        <div className="bzy-durs" role="group" aria-label="Süre">
+          {DURS.map((d) => (
+            <button key={d} type="button" aria-pressed={t.dur === d} onClick={() => chooseDur(d)} data-press>
+              {d / 60}
+            </button>
+          ))}
+          <em>dk</em>
+        </div>
+      </>
+    );
+  const flag = rem > 240 ? "5" : rem > 60 ? "4" : "1";
+  return (
+    <>
+      <div className="bzy-clk" data-run="1" data-up={up ? "1" : undefined}>
+        <b className="num">{up ? time : `−${time}`}</b>
+        <Button variant="text" className="bzy-stop" onClick={() => writeTimer({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero, own: "", where: "" })}>
+          Bitir
+        </Button>
+      </div>
+      {!up && (
+        <>
+          <div className="bzy-prog" aria-hidden="true">
+            <i style={{ width: `${Math.max(0, Math.min(100, (rem / (t.dur || 1)) * 100))}%` }} />
+          </div>
+          {t.dur === 300 && (
+            <div className="bzy-lad" aria-hidden="true">
+              {["5", "4", "1", "0"].map((x) => (
+                <span key={x} data-on={x === flag ? "1" : undefined}>
+                  {x}
+                </span>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </>
+  );
+}
 // Video (Seyhun 2026-11-21 "yönetim ekranında video butonu olmalı, geri sayımı gösteren"): ortak kamera (RecPick), üstünde bu sayaç akar.
 // Video iPhone'un Fotoğraflar'ına kaydedilir. Sayaç yalnız uygulamada görünür, bu yüzden düğme yalnız uygulamada.
 const noSub = () => () => {};
@@ -272,37 +255,11 @@ function VideoBtn() {
   if (!app) return null;
   const done = (f) => (setShooting(null), toast(f?.asset ? "Video Fotoğraflar'a kaydedildi" : "Video kaydedilemedi. Fotoğraflar iznini kontrol et."));
   return (
-    <RecPick onFile={done} className="bzy-tb bzy-rec" aria-label="Video çek">
-      Video
+    <RecPick onFile={done} className="btn btn-round bzy-fab" aria-label="Video çek">
+      <Ic n="cam" />
     </RecPick>
   );
 }
-function MiniTimer() {
-  const { t, now, running, rem, up } = useTimerRun();
-  const time = up ? `+${mmss(Math.max(0, Math.floor((now - t.end) / 1000)))}` : mmss(Math.max(0, running ? rem : (t.left ?? t.dur)));
-  const next = DURS[(DURS.indexOf(t.dur) + 1) % DURS.length];
-  return (
-    <div className="bzy-tm" data-run={running ? "1" : "0"}>
-      <b className="num">{up || running ? (up ? time : `-${time}`) : time}</b>
-      <VideoBtn />
-      {running ? (
-        <button type="button" className="bzy-tb" data-press onClick={() => writeTimer({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero, own: "", where: "" })}>
-          Bitir
-        </button>
-      ) : (
-        <>
-          <button type="button" className="bzy-tb bzy-tb2" data-press onClick={() => chooseDur(next)}>
-            {Math.round(t.dur / 60)} dk
-          </button>
-          <button type="button" className="bzy-tb bzy-go" data-press onClick={() => raceStart(null, "start", "Bilgi ekranı")}>
-            Başlat
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
 // Telefonun konumu bir kez ("Konumum": hakem botundaysan ya da şamandıranın yanındaysan)
 const here = () =>
   new Promise((ok) =>
@@ -438,97 +395,169 @@ function ParkurEdit({ org, pk }) {
   );
 }
 
-// Kanal (Seyhun 2026-11-15): ekranlar yalnız açık kanala katılarak başlar. Aç: ad + yeni link (eski link çalışmaz). Kapat: ekranlar durur
-// Kanal şeridi (Seyhun 2026-11-22 örnek B "Onaylıyorum", ortak düğme): üst satırda geri, kanal adı ve durumu (kapalıyken ad kutusu), ⋯;
-// altında tam genişlikte düğmeler: kapalıyken "Kanal aç", açıkken "Link" + "Kapat". Kapat 5 sn "Geri al" bekler (link değişmesin diye
-// kanal o sürede açık kalır). ⋯ içinde Kanallar ve Ekranı aç.
-function Kanal({ org, kanal, link, count, def = "Antrenman", onList, back }) {
+// Simgeler (Yönet harita düzeni, Seyhun 2026-11-22 örnek onaylandı): sol araçlar, sağ harita düğmeleri, alt panel
+const IC = {
+  back: <path d="M15 5l-7 7 7 7" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  minus: <path d="M5 12h14" />,
+  fit: (
+    <>
+      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+      <circle cx="12" cy="12" r="2" />
+    </>
+  ),
+  cam: <path d="M3 9a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM16 11l5-3v9l-5-3" />,
+  ant: <path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6" />,
+  sonuc: <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" />,
+  grup: (
+    <>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20a6 6 0 0 1 12 0M16 14.5a5 5 0 0 1 5 5" />
+      <circle cx="17" cy="9" r="2.5" />
+    </>
+  ),
+  prog: <path d="M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM4 10h16M9 3v4M15 3v4" />,
+  hava: <path d="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7" />,
+  parkur: (
+    <>
+      <path d="M6 21V4l10 4-10 4" />
+      <circle cx="18" cy="18" r="2" />
+    </>
+  ),
+  ekran: <path d="M9 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM11 18h2" />,
+  kayit: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
+  kapat: <path d="M12 3v9M6.3 7a8 8 0 1 0 11.4 0" />,
+  link: <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />,
+  mic: <path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3" />,
+  kb: <path d="M4.5 6h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />,
+  chev: <path d="M6 9l6 6 6-6" />,
+  send: <path d="M5 12h13M13 6l6 6-6 6" />,
+};
+const Ic = ({ n }) => (
+  <svg viewBox="0 0 24 24" className="bzy-i" aria-hidden="true">
+    {IC[n]}
+  </svg>
+);
+
+// Kanal aç ekranı (Seyhun 2026-11-22 "kanalı açmadan bu sayfayı göstermemiz mantıklı"): kanal kapalıyken yalnız bu kart. Ad o günün
+// antrenmanı ya da yarışıyla hazır gelir; Kanal aç yeni link oluşturur. Eski kanallar listesi (tekrar aç, iz, sil) buradan da açılır.
+function KanalStart({ org, kanal, def, onList }) {
   const toast = useToast();
   const [name, setName] = useState(def);
-  const [more, setMore] = useState(false);
-  const [closing, setClosing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const open = async () => {
+    setBusy(true);
+    await openKanal(org, name, kanal).catch(() => toast("Kanal açılamadı"));
+    setBusy(false);
+  };
+  return (
+    <form
+      className="bzy-start"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (name.trim() && !busy) open();
+      }}
+    >
+      <h1>Yeni kanal</h1>
+      <p>Sporcular linkle katılır, ekranları başlar.</p>
+      <input className="bzy-in" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} aria-label="Kanal adı" />
+      <Button type="submit" full loading={busy} disabled={!name.trim()} className="bzy-open">
+        Kanal aç
+      </Button>
+      <Button variant="text" full onClick={onList}>
+        Eski kanallar
+      </Button>
+    </form>
+  );
+}
+
+// Kanal penceresi (alt paneldeki küçük kanal adına dokununca): Link, Ekranı aç, Eski kanallar ve izler
+function KanalInfo({ kanal, link, count, onList }) {
+  const toast = useToast();
   const url = link ? linkUrl(link) : "";
   const copy = () =>
     navigator.clipboard?.writeText(url).then(
       () => toast("Link kopyalandı"),
       () => toast(url),
     ) ?? toast(url);
-  const open = () => openKanal(org, name, kanal).catch(() => toast("Kanal açılamadı"));
-  const close = () => {
-    let undone = false;
-    setClosing(true);
-    toast("Kanal kapanıyor", {
-      action: {
-        label: "Geri al",
-        onClick: () => {
-          undone = true;
-          setClosing(false);
-        },
-      },
-      duration: 5000,
-    });
-    setTimeout(() => {
-      if (undone) return;
-      closeKanal(org, kanal.id).then(
-        () => setClosing(false),
-        () => (setClosing(false), toast("Kapatılamadı")),
-      );
-    }, 5200);
-  };
-  const isOpen = !!kanal?.open;
   return (
-    <div className="bzy-kn">
-      <div className="bzy-kh">
-        {back}
-        {isOpen ? (
-          <>
-            <i className="bzy-dot" aria-hidden="true" />
-            <div className="bzy-kt">
-              <b>{kanal.name}</b>
-              <span className="num">{closing ? "Kapanıyor…" : `Açık · ${count} kişi`}</span>
-            </div>
-          </>
-        ) : (
-          <input className="bzy-in" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} aria-label="Kanal adı" />
-        )}
-        <button type="button" className="btn btn-round btn-sm" onClick={() => setMore((x) => !x)} aria-label="Diğer" aria-expanded={more} data-press>
-          <svg viewBox="0 0 24 24">
-            <circle cx="5" cy="12" r="1" />
-            <circle cx="12" cy="12" r="1" />
-            <circle cx="19" cy="12" r="1" />
-          </svg>
-        </button>
-      </div>
-      {more && (
-        <div className="bzy-ka">
-          <Button variant="secondary" size="sm" onClick={() => (setMore(false), onList())}>
-            Kanallar
-          </Button>
-          {isOpen && (
-            <Link href="/bilgi" className="btn btn-secondary btn-sm w-full" data-press>
-              Ekranı aç
-            </Link>
-          )}
-        </div>
-      )}
-      <div className="bzy-ka">
-        {isOpen ? (
-          <>
-            <Button variant="secondary" disabled={!url} onClick={copy}>
-              Link
-            </Button>
-            <Button variant="danger" disabled={closing} onClick={close}>
-              Kapat
-            </Button>
-          </>
-        ) : (
-          <Button disabled={!name.trim()} onClick={open}>
-            Kanal aç
-          </Button>
-        )}
+    <div className="flex flex-col gap-3 pb-2">
+      <p className="bzy-kinfo">
+        <i className="bzy-dot" aria-hidden="true" />
+        Açık · {count} kişi{kanal?.at ? ` · ${hhmm(kanal.at)}'den beri` : ""}
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="secondary" disabled={!url} onClick={copy}>
+          <Ic n="link" />
+          Link
+        </Button>
+        <Link href="/bilgi" className="btn btn-secondary" data-press>
+          <Ic n="ekran" />
+          Ekranı aç
+        </Link>
+        <Button variant="secondary" className="col-span-2" onClick={onList}>
+          <Ic n="kayit" />
+          Eski kanallar ve izler
+        </Button>
       </div>
     </div>
   );
+}
+
+// Konuşma satırı: solda kime (dokununca isimler açılır), ortada büyük mikrofon (basılı tut, konuş; sola kaydırınca iptal), sağda yazarak mesaj.
+// Kayıt sürerken satır yeşil olur: solda ses seviyesi, sağda süre. Mikrofon düğmesi yerinden oynamaz (parmak onun üstünde kalır).
+function TalkBar({ to, ptt, now, who, onWho, onType }) {
+  const rec = ptt.rec;
+  const st = rec ? (rec.cancel ? "cancel" : "rec") : ptt.arm ? "arm" : "";
+  const sec = rec ? Math.max(0, Math.floor((now - rec.t0) / 1000)) : 0;
+  const name = to?.name || "Hepsi";
+  return (
+    <div className="bzy-tk" data-st={st || undefined}>
+      {rec ? (
+        <span className="bzy-tkl" aria-hidden="true">
+          {[0.5, 0.85, 1, 0.75, 0.55].map((f, i) => (
+            <i key={i} style={{ height: `${0.375 + Math.min(1, ptt.lvl * f * 1.6) * 1.25}rem` }} />
+          ))}
+        </span>
+      ) : (
+        <button type="button" className="bzy-whob" onClick={onWho} aria-expanded={who} aria-label={`Kime: ${name}`} data-press>
+          <span>{name}</span>
+          <Ic n="chev" />
+        </button>
+      )}
+      <button
+        type="button"
+        className="bzy-mic bzy-ptt"
+        aria-label={`Bas konuş · ${name}`}
+        onPointerDown={(e) => ptt.begin(e, "big", to)}
+        onPointerMove={ptt.move}
+        onPointerUp={ptt.end}
+        onPointerCancel={ptt.end}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <Ic n="mic" />
+      </button>
+      {rec ? (
+        <span className="bzy-tks num">0:{pad(sec)}</span>
+      ) : (
+        <button type="button" className="btn btn-icon bzy-kb" onClick={onType} aria-label="Yazarak mesaj" data-press>
+          <Ic n="kb" />
+        </button>
+      )}
+    </div>
+  );
+}
+// Kanal satırının sağındaki durum: konuşurken ne olduğu, sonra son gidenin durumu (birkaç saniye)
+function talkSt(ptt, last, d, now, to) {
+  const name = last?.to?.name || "Hepsi";
+  if (ptt.rec) return ptt.rec.cancel ? ["bad", "Bırak: iptal"] : ["rec", `${to?.name || "Hepsi"} · iptal için kaydır`];
+  if (ptt.arm) return ["", "Mikrofon açılıyor…"];
+  if (ptt.tap && now - ptt.tap.at < 1800) return ["", "Basılı tut, konuş"];
+  if (!last || !d || now - last.at > 8000) return null;
+  if (d.state === "wait") return ["", `${name} · gidiyor…`];
+  if (d.state === "seen") return ["ok", `✓✓ ${name} gördü`];
+  if (d.state === "sent") return ["", `✓ ${name} · iletildi`];
+  return ["bad", d.state === "part" ? `${d.seen}/${d.of} gördü` : "Ulaşmadı"];
 }
 
 // Son gönderilenin durumu: İletildi (sunucu onayı, tik çizilerek) → Görüldü (ekran gösterdi/çaldı) → 15 sn'de görmeyen Ulaşmadı + Tekrar
@@ -692,6 +721,10 @@ export function BilgiAdmin() {
   const [last, setLast] = useState(null);
   const marked = useRef("");
   const [sheet, setSheet] = useState("");
+  const [who, setWho] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const mapApi = useRef(null);
+  const ask = useConfirm();
   // Canlı'nın Sonuçlar, Gruplar, Program'ı (Seyhun 2026-11-19 örnek onaylandı): o günün yarışı; pencere açıkken 20 sn, kapalıyken 2 dk'da bir
   const yaris = useCanliRace(!!org, ["sonuc", "grup", "prog"].includes(sheet) ? 20e3 : 120e3);
   const [resMsg, setResMsg] = useState("");
@@ -811,11 +844,34 @@ export function BilgiAdmin() {
 
   if (!org) return <main className="p-6 text-mut">Bu sayfa yalnız ana hesapta açılır.</main>;
 
-  // Tam ekran harita düzeni (Seyhun 2026-11-15 örnek C "Harita tam olanı yap"): alt çubuk yok, kaydırma yok. Harita bütün ekran;
-  // üstte geri + kanal satırı + küçük sayaç + Parkur/Ekran/Kayıtlar, altta bas-konuş isimleri ve tek satır mesaj. İkinciller alttan pencere.
+  // Harita düzeni (Seyhun 2026-11-22 örnekler "Yönet harita düzeni" + "Yönet alt panel" onaylandı "Yap"): harita bütün ekran. Kanal kapalıyken
+  // yalnız Kanal aç kartı. Açıkken üstte yalnız geri; solda araçlar (en altta onaylı Kapat), sağda yakınlaştır/uzaklaştır/sığdır/video;
+  // altta bulanık zeminli yüzen panel: küçük kanal adı (dokununca Link, Ekranı aç, Eski kanallar), büyük süre, konuşma satırı.
+  const open = !!kanal?.open;
+  const tools = [
+    ...(yaris.data
+      ? [
+          ["sonuc", "Sonuçlar"],
+          ["grup", "Gruplar"],
+          ["prog", "Program"],
+        ]
+      : []),
+    ["hava", "Hava"],
+    ["parkur", "Parkur"],
+    ["ekran", "Ekran"],
+    ["kayit", "Kayıtlar"],
+  ];
+  const closeAsk = () =>
+    ask({
+      title: "Kanal kapatılsın mı?",
+      text: "Sporcuların ekranı durur, link çalışmaz. İz ve kayıtlar saklanır.",
+      yes: "Kapat",
+      run: () => closeKanal(org, kanal.id),
+    }).then((ok) => ok === false && toast("Kapatılamadı"));
+  const tst = talkSt(ptt, last, dl0, now, to);
   return (
-    <main className="bzy-app" aria-label="Bilgi ekranı yönetimi">
-      <TekneMap boats={izK ? iz.boats : chBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full />
+    <main className="bzy-app" aria-label="Bilgi ekranı yönetimi" data-open={open ? "1" : undefined}>
+      <TekneMap boats={izK ? iz.boats : chBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full api={mapApi} />
       {izK && <IzPanel k={izK} iz={iz} onClose={() => setIzK(null)} />}
       {!izK && talk && !chBoats.some((x) => x.id === talk.dev && Number.isFinite(x.lat)) && (
         <div className="bzy-talk" role="status">
@@ -823,84 +879,122 @@ export function BilgiAdmin() {
           <Wave />
         </div>
       )}
-      <div className="bzy-top" style={izK ? { display: "none" } : undefined}>
-        <div className="bzy-bar">
-          <Kanal
-            org={org}
-            kanal={kanal}
-            link={b?.link || ""}
-            count={members.length}
-            def={antAd || "Antrenman"}
-            onList={() => setSheet("kanallar")}
-            back={
-              <Link href="/" className="btn btn-round btn-sm" aria-label="Geri" data-press>
-                <svg viewBox="0 0 24 24">
-                  <path d="M15 5l-7 7 7 7" />
-                </svg>
-              </Link>
-            }
-          />
-        </div>
-        <MiniTimer />
-        <div className="bzy-pills">
-          {ant ? (
-            <Link href={`/training/day?id=${ant}`} data-press>
-              Antrenman
-            </Link>
-          ) : null}
-          {[
-            ...(yaris.data
-              ? [
-                  ["sonuc", "Sonuçlar"],
-                  ["grup", "Gruplar"],
-                  ["prog", "Program"],
-                ]
-              : []),
-            ["hava", "Hava"],
-            ["parkur", "Parkur"],
-            ["ekran", "Ekran"],
-            ["kayit", "Kayıtlar"],
-          ].map(([k, l]) => (
-            <button key={k} type="button" data-press onClick={() => setSheet(k)}>
-              {l}
-            </button>
-          ))}
-        </div>
-      </div>
-      {kanal?.open && !izK && (
-        <div className="bzy-dock">
-          <div className="bzy-pl" aria-label="Kime">
-            <TalkRow label="Hepsi" picked={!to} st={!last?.to ? allSt(dl0, last) : null} onPick={() => setToDev("")} />
-            {members.map((m) => (
-              <TalkRow key={m.id} no={m.sail || ""} label={m.name || m.sail || "Sporcu"} picked={to?.dev === m.id} st={rowSt(last, m, now)} onPick={() => setToDev(m.id)} />
-            ))}
-          </div>
-          <PttBig to={to} ptt={ptt} last={last} d={dl0} now={now} />
-          <form
-            className="bzy-msg"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (text.trim()) send();
-            }}
-          >
-            <input
-              className="bzy-in"
-              value={text}
-              maxLength={200}
-              onChange={(e) => setText(e.target.value)}
-              placeholder={to ? `${to.name} · mesaj yaz` : "Mesaj yaz"}
-              aria-label="Mesaj"
-              enterKeyHint="send"
-            />
-            <button type="submit" className="bzy-send" disabled={!text.trim()} aria-label="Gönder" data-press>
-              <svg viewBox="0 0 24 24">
-                <path d="M5 12h13M13 6l6 6-6 6" />
-              </svg>
-            </button>
-          </form>
-          {(dl0?.state === "fail" || dl0?.state === "part") && <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />}
-        </div>
+      {!izK && (
+        <Link href="/" className="btn btn-round bzy-fab bzy-back" aria-label="Geri" data-press>
+          <Ic n="back" />
+        </Link>
       )}
+      {!izK && !open && (
+        <>
+          <div className="bzy-veil" />
+          <KanalStart key={kanal?.id || "yok"} org={org} kanal={kanal} def={antAd || yaris.data?.race?.name?.slice(0, 30) || "Antrenman"} onList={() => setSheet("kanallar")} />
+        </>
+      )}
+      {!izK && open && (
+        <>
+          <nav className="bzy-rail" aria-label="Araçlar">
+            {ant ? (
+              <Link href={`/training/day?id=${ant}`} className="bzy-tool" data-press>
+                <Ic n="ant" />
+                <small>Antrenman</small>
+              </Link>
+            ) : null}
+            {tools.map(([k, l]) => (
+              <button key={k} type="button" className="bzy-tool" onClick={() => setSheet(k)} data-press>
+                <Ic n={k} />
+                <small>{l}</small>
+              </button>
+            ))}
+            <i className="bzy-sep" />
+            <button type="button" className="bzy-tool bzy-off" onClick={closeAsk} data-press>
+              <Ic n="kapat" />
+              <small>Kapat</small>
+            </button>
+          </nav>
+          <div className="bzy-rr">
+            <div className="bzy-zm">
+              <button type="button" className="btn btn-icon" aria-label="Yakınlaştır" onClick={() => mapApi.current?.zoom(1)} data-press>
+                <Ic n="plus" />
+              </button>
+              <button type="button" className="btn btn-icon" aria-label="Uzaklaştır" onClick={() => mapApi.current?.zoom(-1)} data-press>
+                <Ic n="minus" />
+              </button>
+            </div>
+            <button type="button" className="btn btn-round bzy-fab" aria-label="Tekneleri sığdır" onClick={() => mapApi.current?.fit()} data-press>
+              <Ic n="fit" />
+            </button>
+            <VideoBtn />
+          </div>
+          <section className="bzy-pnl" aria-label="Süre ve konuşma">
+            <div className="bzy-kl">
+              <button type="button" className="bzy-kn2" onClick={() => setSheet("kanal")} data-press>
+                <i className="bzy-dot" aria-hidden="true" />
+                <span>
+                  {kanal.name} · {members.length} kişi
+                </span>
+              </button>
+              {tst && (
+                <span className="bzy-tst" data-k={tst[0] || undefined} aria-live="polite">
+                  {tst[1]}
+                </span>
+              )}
+            </div>
+            {!typing && <PanelClock />}
+            {typing ? (
+              <form
+                className="bzy-typ"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!text.trim()) return;
+                  setTyping(false);
+                  await send();
+                }}
+              >
+                <button type="button" className="bzy-whob" onClick={() => setWho((x) => !x)} aria-expanded={who} aria-label={`Kime: ${to?.name || "Hepsi"}`} data-press>
+                  <span>{to?.name || "Hepsi"}</span>
+                  <Ic n="chev" />
+                </button>
+                <input
+                  className="bzy-in"
+                  autoFocus
+                  value={text}
+                  maxLength={200}
+                  onChange={(e) => setText(e.target.value)}
+                  onBlur={() => !text.trim() && setTimeout(() => setTyping(false), 150)}
+                  placeholder="Mesaj yaz"
+                  aria-label="Mesaj"
+                  enterKeyHint="send"
+                />
+                <button type="submit" className="btn btn-primary btn-round bzy-snd" disabled={!text.trim()} aria-label="Gönder" data-press>
+                  <Ic n="send" />
+                </button>
+              </form>
+            ) : null}
+            {who && (
+              <div className="bzy-who" aria-label="Kime">
+                {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
+                  <button
+                    key={m.id || "hepsi"}
+                    type="button"
+                    aria-pressed={(to?.dev || "") === m.id}
+                    onClick={() => (setToDev(m.id), setWho(false))}
+                    data-press
+                  >
+                    {m.no ? <u className="num">{m.no}</u> : null}
+                    {m.label}
+                    {m.st && <i data-k={m.st.k} aria-label={m.st.t} />}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!typing && <TalkBar to={to} ptt={ptt} now={now} who={who} onWho={() => setWho((x) => !x)} onType={() => (setWho(false), setTyping(true))} />}
+            {(dl0?.state === "fail" || dl0?.state === "part") && <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />}
+          </section>
+        </>
+      )}
+      <Sheet open={sheet === "kanal"} onClose={() => setSheet("")} title={kanal?.name || "Kanal"}>
+        <KanalInfo kanal={kanal} link={b?.link || ""} count={members.length} onList={() => setSheet("kanallar")} />
+      </Sheet>
       <Sheet open={sheet === "kanallar"} onClose={() => setSheet("")} title="Kanallar">
         <KanalList
           org={org}
