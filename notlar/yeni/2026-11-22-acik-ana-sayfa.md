@@ -14,3 +14,5 @@
 ## Tasarım
 
 - AÇIK TEMA temel (2026-11-22): `.claude/skills/velora-tasarim/SKILL.md` en üstteki "AÇIK TEMA" bölümü.
+
+- Düzeltme: telefonda "Gün boyu" saat sütununa sığmıyor, nokta ve başlıkla üst üste geliyordu; `.iph-pl-t` sabit genişlik yerine en az genişlik (min-width), yazı kendini sığdırır.

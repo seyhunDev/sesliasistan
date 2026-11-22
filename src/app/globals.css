@@ -1666,7 +1666,7 @@ main.iph {
 .iph-pl { display: flex; align-items: center; gap: 0.75rem; min-width: 0; height: 2.75rem; padding: 0 0.625rem; border-radius: 0.75rem; border-top: 1px solid var(--wx-line); text-align: left; white-space: nowrap; color: var(--fg); }
 .iph-pl:first-child, .iph-pl-now, .iph-pl-now + .iph-pl { border-top-color: transparent; }
 .iph-pl-now { background: var(--fill, rgba(255, 255, 255, .06)); }
-.iph-pl-t { flex: none; width: 4rem; font-size: 0.9375rem; font-weight: 600; }
+.iph-pl-t { flex: none; min-width: 4rem; font-size: 0.9375rem; font-weight: 600; white-space: nowrap; }
 .iph-pl-d { flex: none; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--tfg); }
 .iph-pl b { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.9375rem; font-weight: 600; }
 .iph-pl small { flex: 0 1 auto; min-width: 0; max-width: 40%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.8125rem; font-weight: 500; color: var(--mut); }
@@ -1717,7 +1717,7 @@ main.iph {
   .iph-wk.iph-wk-x { padding-top: 0; }
   .iph-wk::-webkit-scrollbar { display: none; }
   .iph-pl small { display: none; }
-  .iph-pl-t { width: 3.25rem; }
+  .iph-pl-t { min-width: 3.25rem; }
   .iph-day { scroll-snap-align: start; }
 }
 @media (min-width: 64rem) {
