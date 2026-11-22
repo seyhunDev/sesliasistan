@@ -1751,6 +1751,10 @@ main.iph.acik { background: var(--bg); }
 .acik .lt { background: var(--card); color: var(--fg); border-color: transparent; box-shadow: 0 1px 0 rgba(0, 0, 0, .04), 0 0 0 1px rgba(0, 0, 0, .03); }
 .acik .lt-ic { background: var(--fill); }
 .acik .lt-go { color: var(--acc); }
+/* Hava sayfası ve Yönet › Hava açık (2026-11-22): bölge haritasının alt şeridi ve "Şu an" yağmur satırı açık temada */
+.acik { --rg-bg: var(--card); --rg-fg: var(--fg); --rg-mut: var(--mut); --rg-track: var(--line); --rg-play: var(--acc); --rg-on-play: #fff; --nr: var(--warn); --nr-on: #fff; }
+.acik .ck-range::-webkit-slider-thumb { box-shadow: 0 0 0 1px rgba(0, 0, 0, .08), 0 1px 4px rgba(0, 0, 0, .25); }
+.acik .ck-range::-moz-range-thumb { box-shadow: 0 0 0 1px rgba(0, 0, 0, .08), 0 1px 4px rgba(0, 0, 0, .25); }
 
 /* Spor seçimi (src/sports, 2026-11-12): gece denizi arka planı, Sailing / Diğer, Yakında, tekne animasyonu */
 .sp-screen { background: #0b1a33; }

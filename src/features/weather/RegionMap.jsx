@@ -256,24 +256,24 @@ export function RegionMap({ place, station, obs, day, onPick, startOpen = false,
 
   if (!full && !inline && mini)
     return (
-      <button type="button" onClick={() => (setErr(false), setFull(true))} aria-label="Bölge haritasını aç" className={`relative block w-full overflow-hidden rounded-[1.125rem] bg-[#0f1f38] active:scale-[.98] ${className || "h-24"}`}>
+      <button type="button" onClick={() => (setErr(false), setFull(true))} aria-label="Bölge haritasını aç" className={`relative block w-full overflow-hidden rounded-[1.125rem] bg-[color:var(--rg-bg,#0f1f38)] active:scale-[.98] ${className || "h-24"}`}>
         {/* maplibre kabı kendine position:relative verir (absolute ezilir, yükseklik 0 kalıyordu): kap, sabit boyutlu sarmalın içinde h-full */}
         <div className="pointer-events-none absolute inset-0">
           <div ref={box} className="h-full w-full" />
         </div>
-        {err && <span className="absolute inset-0 grid place-items-center text-[0.8125rem] text-white/70">Harita açılamadı</span>}
+        {err && <span className="absolute inset-0 grid place-items-center text-[0.8125rem] text-[color:var(--rg-mut,rgba(255,255,255,.7))]">Harita açılamadı</span>}
       </button>
     );
   if (!full && !inline)
     return (
-      <button type="button" onClick={() => (setErr(false), setFull(true))} aria-label="Bölge haritasını aç" className="flex h-12 w-full items-center justify-center gap-2 rounded-[1.125rem] bg-[#0f1f38] text-[0.9375rem] font-semibold text-white active:scale-[.98]">
+      <button type="button" onClick={() => (setErr(false), setFull(true))} aria-label="Bölge haritasını aç" className="flex h-12 w-full items-center justify-center gap-2 rounded-[1.125rem] bg-[color:var(--rg-bg,#0f1f38)] text-[0.9375rem] font-semibold text-[color:var(--rg-fg,#fff)] active:scale-[.98]">
         <Icon name="map" className="size-[1.125rem]" />
         Harita
       </button>
     );
   if (err)
     return (
-      <button type="button" onClick={() => (setErr(false), setFull(false))} aria-label="Bölge haritası" className="grid h-24 w-full place-items-center rounded-[1.125rem] bg-[#0f1f38] px-4 text-center text-[0.8125rem] text-white/70">
+      <button type="button" onClick={() => (setErr(false), setFull(false))} aria-label="Bölge haritası" className="grid h-24 w-full place-items-center rounded-[1.125rem] bg-[color:var(--rg-bg,#0f1f38)] px-4 text-center text-[0.8125rem] text-[color:var(--rg-mut,rgba(255,255,255,.7))]">
         Harita açılamadı. İnterneti kontrol et.
       </button>
     );
@@ -292,7 +292,7 @@ export function RegionMap({ place, station, obs, day, onPick, startOpen = false,
   }
   const nowPct = steps.length > 1 ? (Math.max(0, nowIx) / (steps.length - 1)) * 100 : 0;
   return (
-    <div className={inline ? `relative flex flex-col overflow-hidden rounded-[1.125rem] bg-[#0f1f38] text-white ${className}` : "fixed inset-0 z-[60] flex flex-col bg-[#0f1f38] pt-[env(safe-area-inset-top)]"} aria-label="Bölge haritası">
+    <div className={inline ? `relative flex flex-col overflow-hidden rounded-[1.125rem] bg-[color:var(--rg-bg,#0f1f38)] text-[color:var(--rg-fg,#fff)] ${className}` : "fixed inset-0 z-[60] flex flex-col bg-[color:var(--rg-bg,#0f1f38)] pt-[env(safe-area-inset-top)]"} aria-label="Bölge haritası">
       <div className={inline ? "relative h-[18rem] min-h-[14rem] flex-1" : "relative min-h-0 flex-1"}>
         <div ref={box} className="h-full w-full" />
         <div className="absolute left-2.5 top-2.5 flex rounded-full bg-[rgba(15,31,56,.78)] p-[3px] backdrop-blur" role="group" aria-label="Katman">
@@ -315,24 +315,24 @@ export function RegionMap({ place, station, obs, day, onPick, startOpen = false,
           <Icon name="x" className="size-4" />
         </button>}
       </div>
-      <div className={inline ? "px-3 pb-3 pt-2.5 text-white" : "px-3 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] text-white"}>
+      <div className={inline ? "px-3 pb-3 pt-2.5 text-[color:var(--rg-fg,#fff)]" : "px-3 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] text-[color:var(--rg-fg,#fff)]"}>
         <div className="flex items-center gap-2.5">
-          <button type="button" onClick={() => (setSel(ix >= steps.length - 1 ? 0 : ix), setPlay((p) => !p))} aria-label={play ? "Durdur" : "Oynat"} className="grid size-9 shrink-0 place-items-center rounded-full bg-[#3d7bff] text-[#06283a]">
+          <button type="button" onClick={() => (setSel(ix >= steps.length - 1 ? 0 : ix), setPlay((p) => !p))} aria-label={play ? "Durdur" : "Oynat"} className="grid size-9 shrink-0 place-items-center rounded-full bg-[color:var(--rg-play,#3d7bff)] text-[color:var(--rg-on-play,#06283a)]">
             <Icon name={play ? "pause" : "play"} className="size-4" />
           </button>
           <div className="relative h-8 min-w-0 flex-1">
-            <div className="absolute inset-x-0 top-[9px] h-1 rounded-full bg-white/18" />
-            {!other && <div className="absolute left-0 top-[9px] h-1 rounded-full bg-white" style={{ width: `${nowPct}%` }} />}
+            <div className="absolute inset-x-0 top-[9px] h-1 rounded-full bg-[color:var(--rg-track,rgba(255,255,255,.18))]" />
+            {!other && <div className="absolute left-0 top-[9px] h-1 rounded-full bg-[color:var(--rg-fg,#fff)]" style={{ width: `${nowPct}%` }} />}
             {!other && <div className="absolute top-1 h-3.5 w-0.5 bg-[#ff6b6b]" style={{ left: `${nowPct}%` }} />}
             <input type="range" min={0} max={Math.max(0, steps.length - 1)} value={ix} onChange={(e) => (setPlay(false), setSel(+e.target.value))} aria-label="Zaman" className="ck-range absolute inset-x-0 top-0 h-6 w-full" />
             {other ? (
-              <div className="absolute inset-x-0 top-[1.15rem] text-[0.625rem] text-white/60">
+              <div className="absolute inset-x-0 top-[1.15rem] text-[0.625rem] text-[color:var(--rg-mut,rgba(255,255,255,.6))]">
                 <span className="absolute left-0">00</span>
                 <span className="absolute left-1/2 -translate-x-1/2">12</span>
                 <span className="absolute right-0">23</span>
               </div>
             ) : (
-            <div className="absolute inset-x-0 top-[1.15rem] text-[0.625rem] text-white/60">
+            <div className="absolute inset-x-0 top-[1.15rem] text-[0.625rem] text-[color:var(--rg-mut,rgba(255,255,255,.6))]">
               {/* "Şimdi" başa yakınken "−2 sa" ile üst üste biniyordu (Seyhun 2026-11-04): o zaman başlangıç yazısı yazılmaz */}
               {nowPct >= 20 && <span className="absolute left-0">−2 sa</span>}
               <span className="absolute whitespace-nowrap" style={{ left: `${nowPct}%`, transform: `translateX(-${nowPct < 20 ? Math.round(nowPct * 2.5) : 50}%)` }}>Şimdi</span>
@@ -343,7 +343,7 @@ export function RegionMap({ place, station, obs, day, onPick, startOpen = false,
         </div>
         <p className="mt-1.5 truncate text-[0.8125rem] font-semibold">
           {step ? (other ? `${dayName(other, today)} ${HM.format(step.at)}` : step.now ? `Şimdi ${HM.format(step.at)}` : HM.format(step.at)) : "…"}
-          {info && <span className="font-medium text-white/65"> · {info}</span>}
+          {info && <span className="font-medium text-[color:var(--rg-mut,rgba(255,255,255,.65))]"> · {info}</span>}
         </p>
       </div>
     </div>
