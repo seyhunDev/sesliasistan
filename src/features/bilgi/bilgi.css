@@ -382,3 +382,15 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
   .bzy-pl { flex: 1; max-height: none; }
   .bzy-top { right: calc(env(safe-area-inset-right, 0px) + min(21rem, 38vw) + 0.75rem); }
 }
+/* Kanal şeridi B (Seyhun 2026-11-22): üst satır geri + ad/durum + ⋯, altında tam genişlikte ortak düğmeler */
+.bzy-kn { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; min-width: 0; padding: 0.25rem; }
+.bzy-kh { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.bzy-kh .bzy-in { flex: 1; min-width: 0; width: auto; height: 2.25rem; padding: 0 0.75rem; }
+.bzy-kh .btn svg { width: 1.125rem; height: 1.125rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bzy-kh .bzy-dot { margin-left: 0.25rem; box-shadow: 0 0 0 3px rgba(22, 163, 74, .18); }
+.bzy-kt { flex: 1; min-width: 0; line-height: 1.2; }
+.bzy-kt b { display: block; font-weight: 650; font-size: 0.9375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzy-kt span { font-size: 0.75rem; color: var(--mut); }
+.bzy-ka { display: flex; gap: 0.5rem; }
+.bzy-ka > .btn { flex: 1; min-width: 0; }
+.bzy-app .bzy-bar:has(.bzy-kn) { padding: 0.25rem; }

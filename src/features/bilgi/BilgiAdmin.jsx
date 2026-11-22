@@ -72,7 +72,11 @@ function TalkRow({ label, no, picked, st, onPick }) {
     <button type="button" className="bzy-pr" aria-pressed={picked} onClick={onPick} data-press>
       <span className="bzy-pr-no num">{no}</span>
       <span className="bzy-pr-nm">{label}</span>
-      {st && <span className="bzy-pr-st" data-k={st.k}>{st.t}</span>}
+      {st && (
+        <span className="bzy-pr-st" data-k={st.k}>
+          {st.t}
+        </span>
+      )}
     </button>
   );
 }
@@ -102,15 +106,23 @@ function PttBig({ to, ptt, last, d, now }) {
   const name = to?.name || "Hepsi";
   const sec = rec ? Math.max(0, Math.floor((now - rec.t0) / 1000)) : 0;
   const [b, sm] =
-    st === "rec" ? [`Kaydediliyor · ${sec} sn`, null]
-    : st === "cancel" ? ["Bırak: iptal", "Ses gönderilmez"]
-    : st === "arm" ? ["Mikrofon açılıyor…", name]
-    : st === "tap" ? ["Basılı tut", name]
-    : st === "wait" ? ["Gönderiliyor…", `${name} · ${last.dur || 0} sn`]
-    : st === "sent" ? ["✓ İletildi", `${name} · ${last.dur || 0} sn`]
-    : st === "seen" ? ["✓✓ Görüldü", `${name} · ${last.dur || 0} sn`]
-    : st === "fail" || st === "part" ? ["Ulaşmadı", name]
-    : [name, "Basılı tut, konuş"];
+    st === "rec"
+      ? [`Kaydediliyor · ${sec} sn`, null]
+      : st === "cancel"
+        ? ["Bırak: iptal", "Ses gönderilmez"]
+        : st === "arm"
+          ? ["Mikrofon açılıyor…", name]
+          : st === "tap"
+            ? ["Basılı tut", name]
+            : st === "wait"
+              ? ["Gönderiliyor…", `${name} · ${last.dur || 0} sn`]
+              : st === "sent"
+                ? ["✓ İletildi", `${name} · ${last.dur || 0} sn`]
+                : st === "seen"
+                  ? ["✓✓ Görüldü", `${name} · ${last.dur || 0} sn`]
+                  : st === "fail" || st === "part"
+                    ? ["Ulaşmadı", name]
+                    : [name, "Basılı tut, konuş"];
   const k = st === "part" ? "fail" : st;
   return (
     <button
@@ -427,56 +439,59 @@ function ParkurEdit({ org, pk }) {
 }
 
 // Kanal (Seyhun 2026-11-15): ekranlar yalnız açık kanala katılarak başlar. Aç: ad + yeni link (eski link çalışmaz). Kapat: ekranlar durur
-function Kanal({ org, kanal, link, count, def = "Antrenman", onList }) {
+// Kanal şeridi (Seyhun 2026-11-22 örnek B "Onaylıyorum", ortak düğme): üst satırda geri, kanal adı ve durumu (kapalıyken ad kutusu), ⋯;
+// altında tam genişlikte düğmeler: kapalıyken "Kanal aç", açıkken "Link" + "Kapat". Kapat 5 sn "Geri al" bekler (link değişmesin diye
+// kanal o sürede açık kalır). ⋯ içinde Kanallar ve Ekranı aç.
+function Kanal({ org, kanal, link, count, def = "Antrenman", onList, back }) {
   const toast = useToast();
   const [name, setName] = useState(def);
-  const [busy, setBusy] = useState(false);
   const [more, setMore] = useState(false);
+  const [closing, setClosing] = useState(false);
   const url = link ? linkUrl(link) : "";
-  const copy = (u) =>
-    navigator.clipboard?.writeText(u).then(
+  const copy = () =>
+    navigator.clipboard?.writeText(url).then(
       () => toast("Link kopyalandı"),
-      () => toast(u),
-    ) ?? toast(u);
-  const open = async () => {
-    setBusy(true);
-    await openKanal(org, name, kanal).catch(() => toast("Kanal açılamadı"));
-    setBusy(false);
+      () => toast(url),
+    ) ?? toast(url);
+  const open = () => openKanal(org, name, kanal).catch(() => toast("Kanal açılamadı"));
+  const close = () => {
+    let undone = false;
+    setClosing(true);
+    toast("Kanal kapanıyor", {
+      action: {
+        label: "Geri al",
+        onClick: () => {
+          undone = true;
+          setClosing(false);
+        },
+      },
+      duration: 5000,
+    });
+    setTimeout(() => {
+      if (undone) return;
+      closeKanal(org, kanal.id).then(
+        () => setClosing(false),
+        () => (setClosing(false), toast("Kapatılamadı")),
+      );
+    }, 5200);
   };
-  if (!kanal?.open)
-    return (
-      <section>
-        <div className="bzy-row mt-0">
-          <input className="bzy-in" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} aria-label="Kanal adı" />
-          <Button disabled={busy || !name.trim()} onClick={open} className="!flex-none">
-            Kanal aç
-          </Button>
-          <button type="button" className="bzy-ic" onClick={onList} aria-label="Kanallar" data-press>
-            <svg viewBox="0 0 24 24">
-              <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
-            </svg>
-          </button>
-        </div>
-      </section>
-    );
-  // Açık kanal tek satır (Seyhun 2026-11-15 "çok yer kaplıyor"): yeşil nokta + ad + kişi sayısı, kopyala simgesi (link), ⋯ içinde Kapat
+  const isOpen = !!kanal?.open;
   return (
-    <section>
-      <div className="bzy-kanal">
-        <i className="bzy-dot" aria-label="Açık" />
-        <b>{kanal.name}</b>
-        <span className="num">{count} kişi</span>
-        <button type="button" className="bzy-ic" onClick={onList} aria-label="Kanallar" data-press>
-          <svg viewBox="0 0 24 24">
-            <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
-          </svg>
-        </button>
-        <button type="button" className="bzy-ic" disabled={!url} onClick={() => copy(url)} aria-label="Linki kopyala" data-press>
-          <svg viewBox="0 0 24 24">
-            <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
-          </svg>
-        </button>
-        <button type="button" className="bzy-ic" onClick={() => setMore((x) => !x)} aria-label="Diğer" aria-expanded={more} data-press>
+    <div className="bzy-kn">
+      <div className="bzy-kh">
+        {back}
+        {isOpen ? (
+          <>
+            <i className="bzy-dot" aria-hidden="true" />
+            <div className="bzy-kt">
+              <b>{kanal.name}</b>
+              <span className="num">{closing ? "Kapanıyor…" : `Açık · ${count} kişi`}</span>
+            </div>
+          </>
+        ) : (
+          <input className="bzy-in" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} aria-label="Kanal adı" />
+        )}
+        <button type="button" className="btn btn-round btn-sm" onClick={() => setMore((x) => !x)} aria-label="Diğer" aria-expanded={more} data-press>
           <svg viewBox="0 0 24 24">
             <circle cx="5" cy="12" r="1" />
             <circle cx="12" cy="12" r="1" />
@@ -485,24 +500,34 @@ function Kanal({ org, kanal, link, count, def = "Antrenman", onList }) {
         </button>
       </div>
       {more && (
-        <div className="bzy-row">
-          <Link href="/bilgi" className="btn btn-secondary" data-press>
-            Ekranı aç
-          </Link>
-          <Button
-            variant="secondary"
-            onClick={() =>
-              closeKanal(org, kanal.id).then(
-                () => setMore(false),
-                () => toast("Kapatılamadı"),
-              )
-            }
-          >
-            Kanalı kapat
+        <div className="bzy-ka">
+          <Button variant="secondary" size="sm" onClick={() => (setMore(false), onList())}>
+            Kanallar
           </Button>
+          {isOpen && (
+            <Link href="/bilgi" className="btn btn-secondary btn-sm w-full" data-press>
+              Ekranı aç
+            </Link>
+          )}
         </div>
       )}
-    </section>
+      <div className="bzy-ka">
+        {isOpen ? (
+          <>
+            <Button variant="secondary" disabled={!url} onClick={copy}>
+              Link
+            </Button>
+            <Button variant="danger" disabled={closing} onClick={close}>
+              Kapat
+            </Button>
+          </>
+        ) : (
+          <Button disabled={!name.trim()} onClick={open}>
+            Kanal aç
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -800,14 +825,21 @@ export function BilgiAdmin() {
       )}
       <div className="bzy-top" style={izK ? { display: "none" } : undefined}>
         <div className="bzy-bar">
-          <Link href="/" className="bzy-ic" aria-label="Geri" data-press>
-            <svg viewBox="0 0 24 24">
-              <path d="M15 5l-7 7 7 7" />
-            </svg>
-          </Link>
-          <div className="min-w-0 flex-1">
-            <Kanal org={org} kanal={kanal} link={b?.link || ""} count={members.length} def={antAd || "Antrenman"} onList={() => setSheet("kanallar")} />
-          </div>
+          <Kanal
+            org={org}
+            kanal={kanal}
+            link={b?.link || ""}
+            count={members.length}
+            def={antAd || "Antrenman"}
+            onList={() => setSheet("kanallar")}
+            back={
+              <Link href="/" className="btn btn-round btn-sm" aria-label="Geri" data-press>
+                <svg viewBox="0 0 24 24">
+                  <path d="M15 5l-7 7 7 7" />
+                </svg>
+              </Link>
+            }
+          />
         </div>
         <MiniTimer />
         <div className="bzy-pills">
@@ -974,9 +1006,7 @@ function YarisSheets({ yaris, now, sheet, onClose, onResult, resMsg }) {
         </div>
       </Sheet>
       <Sheet open={sheet === "prog"} onClose={onClose} title={name ? `Program · ${name}` : "Program"}>
-        <div className="sc-res bare">
-          {prog.length || ag ? <ScProgPanel prog={prog} ag={ag} /> : <p className="sc-vno">Program yok</p>}
-        </div>
+        <div className="sc-res bare">{prog.length || ag ? <ScProgPanel prog={prog} ag={ag} /> : <p className="sc-vno">Program yok</p>}</div>
       </Sheet>
     </>
   );
