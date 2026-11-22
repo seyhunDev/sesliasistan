@@ -1,8 +1,8 @@
-Commit: 28eed26 · Bildirime dokununca ekran dönüp kalmasın: takılan geçişte sayfa tam yüklenir (#1483)
-Zaman: 2026-11-22-2026 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45047346806
+Commit: da833e0 · Ana sayfa takvim: "Gün boyu" yazısı noktanın üstüne binmesin (#1485)
+Zaman: 2026-11-22-2054 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45049956685
 
-TAM TEST · 22.11.2026 20:04:43
+TAM TEST · 22.11.2026 20:32:36
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -22,7 +22,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Ana sayfa: yarış günü havası…
     Antrenman: sesle başlat ve bitir…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 26/28 geçti
+    Çevrimdışı: 28/28 geçti
     Yarış sayfası (sporcu seçili, yarış günü)…
     Yarış günü (sporcu seçili)…
     Yarıştan önce (sporcu seçili)…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1409/1441 geçti · 32 kalan · 1316 sn
+SONUÇ: 1411/1441 geçti · 30 kalan · 1331 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -293,7 +293,7 @@ SONUÇ: 1409/1441 geçti · 32 kalan · 1316 sn
   ✓ Antrenman yarışı sesle: 4/4
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 26/28
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 28/28
   ✓ Anında açılış: 7/7
   ✓ İnternet varken: 2/2
   ✓ Yavaş bağlantı: 3/3
@@ -302,13 +302,7 @@ SONUÇ: 1409/1441 geçti · 32 kalan · 1316 sn
   ✓ Bağlantı gelince: 2/2
   ✓ Açıkken kopup gelince: 2/2
   ✓ Önbellek iç hatası: 3/3
-  ✗ iPhone: 0/2
-      ✗ “internetsiz kayıt ekranda”
-          beklenen: Limon listede
-          olan:     hayır
-      ✗ “bağlantı gelince”
-          beklenen: Limon sunucuda
-          olan:     hayır
+  ✓ iPhone: 2/2
 
 3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 16/22
   ✗ Yarış sayfası: 11/14
