@@ -53,7 +53,7 @@ export function HomeGrid({ pages, side, athletes, receipts, owner, allOnly = fal
     <>
       {/* iPad ana sayfada (IpadHome, sol menü yokken) yalnız "Tümü" düğmesi */}
       {allOnly ? (
-        <button type="button" data-press onClick={() => setAll(true)} className="iph-add iph-ghost">
+        <button type="button" data-press onClick={() => setAll(true)} className="btn btn-secondary btn-sm">
           Tümü
         </button>
       ) : (

@@ -1167,8 +1167,8 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
             noAi ? null : (
               <>
                 {/* Solda logo; sağda klavye (yazarak sor) ve en sağda konuşma, ikisi aynı yuvarlak (Seyhun 2026-11-13) */}
-                <Link href="/" aria-label="Velora" className="shrink-0">
-                  <VeloraGlyph size={40} />
+                <Link href="/" aria-label="Velora" className="shrink-0 text-[var(--sn-logo)]">
+                  <VeloraGlyph size={40} color="currentColor" />
                 </Link>
                 <span className="flex-1" />
                 <button type="button" onClick={typeNow} aria-label="Yazarak sor" data-press className="skb grid size-12 shrink-0 place-items-center rounded-full text-white active:scale-95">
