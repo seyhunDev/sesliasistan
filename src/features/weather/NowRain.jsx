@@ -15,9 +15,9 @@ export function NowRain({ place, rows, radar: given }) {
   const text = hereLine(radar, (rows || []).some((r) => +r.hh >= h0 && r.mm >= 0.1), HM);
   if (!text) return null;
   return (
-    <p className="mt-2.5 flex items-center gap-2 whitespace-nowrap px-1 text-[0.8125rem] font-semibold text-[#ffa94d]" aria-label="Şu an">
+    <p className="mt-2.5 flex items-center gap-2 whitespace-nowrap px-1 text-[0.8125rem] font-semibold text-[color:var(--nr,#ffa94d)]" aria-label="Şu an">
       {/* Tek satır, turuncu (Seyhun 2026-11-04 "tek satır olarak yazmalıyız, turuncu daha dikkat çeker"); sığmazsa sonu … */}
-      <span className="shrink-0 rounded-full bg-[#ffa94d] px-2 py-0.5 text-[0.6875rem] font-bold text-[#0b1a33]">Şu an</span>
+      <span className="shrink-0 rounded-full bg-[color:var(--nr,#ffa94d)] px-2 py-0.5 text-[0.6875rem] font-bold text-[color:var(--nr-on,#0b1a33)]">Şu an</span>
       <span className="min-w-0 truncate">{text}</span>
     </p>
   );

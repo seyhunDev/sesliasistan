@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { syncPush } from "@/lib/push";
 import { wireNativePush } from "@/lib/nativePush";
+import { listenWorkerOpen, openOutside } from "@/lib/openOutside";
 import { applyTheme, readTheme, watchTheme } from "@/lib/theme";
 import { OFFLINE_GRACE, netText, netTone } from "@/lib/netSync";
 import { checkWrites, netState, subscribeNet, watchReconnect } from "./netWatch";
@@ -31,8 +32,9 @@ export function ServiceWorkerSetup() {
 export function PushSync({ profile }) {
   const uid = profile?.uid;
   const router = useRouter();
-  // Android uygulaması: bildirime dokununca ilgili sayfa açılır
-  useEffect(() => wireNativePush((url) => router.push(url)), [router]);
+  // Bildirime dokununca ilgili sayfa açılır (uygulama: nativePush, web: service worker mesajı). Takılmayan geçiş: lib/openOutside.js
+  useEffect(() => wireNativePush((url) => openOutside(router, url)), [router]);
+  useEffect(() => listenWorkerOpen(router), [router]);
   useEffect(() => {
     if (!uid) return;
     let last = 0;

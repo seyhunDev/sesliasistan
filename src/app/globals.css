@@ -557,6 +557,14 @@ html[data-warm] .boot:not([data-phase="out"]) { animation: bootwarm .3s ease-out
   animation: bootin .7s cubic-bezier(.2, .9, .3, 1) .75s both; }
 .boot-sub { margin-top: .7rem; font-size: .75rem; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: rgba(230, 240, 250, .5);
   animation: bootin .7s cubic-bezier(.2, .9, .3, 1) .9s both, bootpulse 1.8s ease-in-out 1.6s infinite; }
+/* Açık açılış (Seyhun 2026-11-23 "uygulama ilk açılırken ana sayfa renklerini kullansın"): Apple beyazı zemin, koyu daire içinde V, koyu gri yazı */
+.boot { color: #1d1d1f; }
+.boot-bg { background: #f5f5f7; }
+.boot::before { display: none; }
+.boot-disc { fill: #1d1d1f; }
+.boot-disc-glow { display: none; }
+.boot-word { color: #1d1d1f; }
+.boot-sub { color: #6e6e73; }
 .boot[data-phase="out"] { pointer-events: none; animation: bootout .55s cubic-bezier(.4, 0, .2, 1) forwards; }
 .boot[data-phase="out"] .boot-mark { animation: bootzoom .55s cubic-bezier(.4, 0, .2, 1) forwards; }
 /* Giriş ekranına uçuş (BootSplash flyTo): logo giriş ekranındaki yerine kayıp küçülür, zemin ve yazılar solar, alttaki lacivert giriş ekranı görünür */
@@ -1666,7 +1674,7 @@ main.iph {
 .iph-pl { display: flex; align-items: center; gap: 0.75rem; min-width: 0; height: 2.75rem; padding: 0 0.625rem; border-radius: 0.75rem; border-top: 1px solid var(--wx-line); text-align: left; white-space: nowrap; color: var(--fg); }
 .iph-pl:first-child, .iph-pl-now, .iph-pl-now + .iph-pl { border-top-color: transparent; }
 .iph-pl-now { background: var(--fill, rgba(255, 255, 255, .06)); }
-.iph-pl-t { flex: none; width: 4rem; font-size: 0.9375rem; font-weight: 600; }
+.iph-pl-t { flex: none; min-width: 4rem; white-space: nowrap; font-size: 0.9375rem; font-weight: 600; }
 .iph-pl-d { flex: none; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--tfg); }
 .iph-pl b { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.9375rem; font-weight: 600; }
 .iph-pl small { flex: 0 1 auto; min-width: 0; max-width: 40%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.8125rem; font-weight: 500; color: var(--mut); }
@@ -1717,7 +1725,7 @@ main.iph {
   .iph-wk.iph-wk-x { padding-top: 0; }
   .iph-wk::-webkit-scrollbar { display: none; }
   .iph-pl small { display: none; }
-  .iph-pl-t { width: 3.25rem; }
+  .iph-pl-t { min-width: 3.25rem; }
   .iph-day { scroll-snap-align: start; }
 }
 @media (min-width: 64rem) {
@@ -1751,6 +1759,10 @@ main.iph.acik { background: var(--bg); }
 .acik .lt { background: var(--card); color: var(--fg); border-color: transparent; box-shadow: 0 1px 0 rgba(0, 0, 0, .04), 0 0 0 1px rgba(0, 0, 0, .03); }
 .acik .lt-ic { background: var(--fill); }
 .acik .lt-go { color: var(--acc); }
+/* Hava sayfası ve Yönet › Hava açık (2026-11-22): bölge haritasının alt şeridi ve "Şu an" yağmur satırı açık temada */
+.acik { --rg-bg: var(--card); --rg-fg: var(--fg); --rg-mut: var(--mut); --rg-track: var(--line); --rg-play: var(--acc); --rg-on-play: #fff; --nr: var(--warn); --nr-on: #fff; }
+.acik .ck-range::-webkit-slider-thumb { box-shadow: 0 0 0 1px rgba(0, 0, 0, .08), 0 1px 4px rgba(0, 0, 0, .25); }
+.acik .ck-range::-moz-range-thumb { box-shadow: 0 0 0 1px rgba(0, 0, 0, .08), 0 1px 4px rgba(0, 0, 0, .25); }
 
 /* Spor seçimi (src/sports, 2026-11-12): gece denizi arka planı, Sailing / Diğer, Yakında, tekne animasyonu */
 .sp-screen { background: #0b1a33; }

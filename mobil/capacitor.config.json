@@ -20,7 +20,7 @@
     }
   },
   "ios": {
-    "backgroundColor": "#0b1a33",
+    "backgroundColor": "#f5f5f7",
     "appendUserAgent": "VeloraKaydir"
   }
 }

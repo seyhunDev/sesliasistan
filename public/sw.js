@@ -156,19 +156,23 @@ self.addEventListener("push", (e) => {
   e.waitUntil(onPush(e).catch(() => self.registration.showNotification(FALLBACK.body).catch(() => {})));
 });
 
-// Bildirime dokununca: açık uygulama varsa ona geç, yoksa aç
+// Bildirime dokununca: açık uygulama varsa ona geç ve sayfayı aç, yoksa uygulamayı o sayfayla aç.
+// Önceden navigate() hatası (sayfa bu service worker'a bağlı değilken) yutuluyordu: uygulama öne geliyor ama sayfa değişmiyordu.
+// Artık o durumda sayfaya "şu adresi aç" denir (src/lib/openOutside.js listenWorkerOpen).
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   const url = e.notification.data?.url || "/";
   e.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-      for (const c of list) {
-        if ("focus" in c) {
-          c.navigate?.(url);
-          return c.focus();
-        }
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (list) => {
+      const c = list.find((x) => "focus" in x);
+      if (!c) return self.clients.openWindow(url);
+      await c.focus().catch(() => {});
+      try {
+        if (!c.navigate) throw new Error("navigate yok");
+        await c.navigate(url);
+      } catch {
+        c.postMessage({ sa: "open", url });
       }
-      return self.clients.openWindow(url);
     }),
   );
 });
