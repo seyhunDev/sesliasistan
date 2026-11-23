@@ -697,7 +697,9 @@ export function BilgiScreen({ pub = "" }) {
   const sv = startView(b?.timer, now);
   const dur = b?.timer?.dur ?? 300;
   const seq = sv.phase === "down" && dur === 300 ? seqMarks(sv.left) : null;
-  const msg = myMsg && now - myMsg.at < FRESH_MS ? myMsg : null;
+  // Sabit mesaj (Seyhun 2026-11-23): Yönet kaldırana kadar durur; yeni mesaj gelince 1 dk o görünür, sonra sabit geri gelir
+  const myPin = forMe(b?.pin) ? b.pin : null;
+  const msg = (myMsg && now - myMsg.at < FRESH_MS && myMsg.id !== myPin?.id ? myMsg : null) || myPin;
   const mode = screenMode(sv);
   const show = b?.show || SHOW_DEF;
   useBeeps(on, sv.phase === "down" || sv.phase === "up" ? sv.left : null);
@@ -858,7 +860,7 @@ export function BilgiScreen({ pub = "" }) {
             {pad(new Date(msg.at).getHours())}:{pad(new Date(msg.at).getMinutes())}
           </time>
           <p>
-            {msg.to && <em>Sana</em>}
+            {(msg === myPin || msg.to) && <em>{[msg === myPin ? "Sabit" : "", msg.to ? "Sana" : ""].filter(Boolean).join(" · ")}</em>}
             {msg.text}
           </p>
         </div>

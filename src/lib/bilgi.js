@@ -38,6 +38,7 @@ export function cleanBilgi(d = {}) {
     state: S(d.state, 80),
     timer: t ? { dur: Number(t.dur) || 300, end: Number.isFinite(+t.end) && t.end != null ? +t.end : null, left: Number.isFinite(+t.left) && t.left != null ? +t.left : null, mode: S(t.mode, 20) } : null,
     msg: m && m.id ? { id: S(m.id, 40), text: S(m.text, MSG_MAX), at: Number(m.at) || 0, to: S(m.to, 30) } : null,
+    pin: d.pin && typeof d.pin === "object" && d.pin.id ? { id: S(d.pin.id, 40), text: S(d.pin.text, MSG_MAX), at: Number(d.pin.at) || 0, to: S(d.pin.to, 30) } : null,
     parkur: cleanParkur(d.parkur),
     kanal: d.kanal && typeof d.kanal === "object" && d.kanal.id ? { id: S(d.kanal.id, 40), name: S(d.kanal.name, 30) || "Kanal", open: d.kanal.open === true } : null,
   };

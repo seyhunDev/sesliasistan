@@ -452,6 +452,12 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
   .bzy-pnl { gap: 0.5rem; padding: 0.625rem 0.875rem 0.75rem; max-height: calc(100dvh - 1.5rem); overflow-y: auto; }
   .bzy-start { max-height: calc(100dvh - 2rem); overflow-y: auto; }
 }
+/* Mesajlar: durum etiketi (Sabit / Ekranda / Gizli) */
+.bzy-tag { display: inline-block; margin-left: 0.375rem; font-size: 0.6875rem; font-weight: 700; font-style: normal; padding: 0.0625rem 0.5rem; border-radius: 999px; vertical-align: 0.0625rem; }
+.bzy-tag[data-k="on"] { background: #e7f6ec; color: #16a34a; }
+.bzy-tag[data-k="pin"] { background: #fff7e6; color: #b45309; }
+.bzy-tag[data-k="off"] { background: var(--line); color: var(--mut); }
+.bzy-mli b { white-space: normal; overflow-wrap: anywhere; }
 /* Katıl kartını kapat (Seyhun 2026-11-23): sol üstte ortak yuvarlak düğme */
 .bz-x { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 0.75rem); left: max(0.75rem, env(safe-area-inset-left, 0px)); }
 .bz-x svg { width: 1.25rem; height: 1.25rem; }
