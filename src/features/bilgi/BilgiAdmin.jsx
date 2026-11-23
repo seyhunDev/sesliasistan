@@ -1007,7 +1007,7 @@ export function BilgiAdmin() {
       <Sheet open={sheet === "kanal"} onClose={() => setSheet("")} title={kanal?.name || "Kanal"}>
         <KanalInfo kanal={kanal} link={b?.link || ""} count={members.length} onList={() => setSheet("kanallar")} />
       </Sheet>
-      <Sheet open={sheet === "kanallar"} onClose={() => setSheet("")} title="Kanallar">
+      <Sheet big open={sheet === "kanallar"} onClose={() => setSheet("")} title="Kanallar">
         <KanalList
           org={org}
           list={kanallar}
@@ -1021,7 +1021,7 @@ export function BilgiAdmin() {
         />
       </Sheet>
       <YarisSheets yaris={yaris} now={now} sheet={sheet} onClose={() => setSheet("")} onResult={addRes} resMsg={resMsg} />
-      <Sheet open={sheet === "hava"} onClose={() => setSheet("")} title="Hava">
+      <Sheet big open={sheet === "hava"} onClose={() => setSheet("")} title="Hava">
         {sheet === "hava" && <RaceAtWx org={org} id={yaris.id} />}
       </Sheet>
       <Sheet open={sheet === "parkur"} onClose={() => setSheet("")} title="Parkur">
@@ -1059,7 +1059,7 @@ export function BilgiAdmin() {
           })}
         </div>
       </Sheet>
-      <Sheet open={sheet === "kayit"} onClose={() => setSheet("")} title="Kayıtlar">
+      <Sheet big open={sheet === "kayit"} onClose={() => setSheet("")} title="Kayıtlar">
         <div className="flex flex-col gap-6">
           <Tekneler boats={boats} ch={ch} now={now} />
           <SentList rows={log} />
@@ -1101,17 +1101,17 @@ function YarisSheets({ yaris, now, sheet, onClose, onResult, resMsg }) {
   const prog = dayProgram(data, day);
   return (
     <>
-      <Sheet open={sheet === "sonuc"} onClose={onClose} title={name ? `Sonuçlar · ${name}` : "Sonuçlar"}>
+      <Sheet big open={sheet === "sonuc"} onClose={onClose} title={name ? `Sonuçlar · ${name}` : "Sonuçlar"}>
         <div className="sc-res bare">
           <ScAthPanel data={data} ath={scAth(data, day)} day={day} onResult={onResult} resMsg={resMsg} />
         </div>
       </Sheet>
-      <Sheet open={sheet === "grup"} onClose={onClose} title={name ? `Gruplar · ${name}` : "Gruplar"}>
+      <Sheet big open={sheet === "grup"} onClose={onClose} title={name ? `Gruplar · ${name}` : "Gruplar"}>
         <div className="sc-res bare">
           <ScGrpPanel data={data} day={day} />
         </div>
       </Sheet>
-      <Sheet open={sheet === "prog"} onClose={onClose} title={name ? `Program · ${name}` : "Program"}>
+      <Sheet big open={sheet === "prog"} onClose={onClose} title={name ? `Program · ${name}` : "Program"}>
         <div className="sc-res bare">{prog.length || ag ? <ScProgPanel prog={prog} ag={ag} /> : <p className="sc-vno">Program yok</p>}</div>
       </Sheet>
     </>
