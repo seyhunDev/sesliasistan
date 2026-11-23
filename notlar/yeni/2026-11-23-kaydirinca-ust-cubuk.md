@@ -5,3 +5,5 @@
 ## Sıradaki işler
 
 - iOS uygulamasında dene. Diğer sayfalar açık temaya geçerken aynı ScrollBar'ı alır.
+
+- iPad için de (2026-11-23): `.ptb` her genişlikte; sol menü varken `left: 15rem`; ScrollBar pencere kaydırmasını ve yatay iPad'de main.iph içi kaydırmayı (document scroll capture) yakalar.
