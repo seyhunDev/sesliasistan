@@ -30,7 +30,8 @@ const typing = () => {
 // X ile, arka plana dokunarak, Esc ile ya da aşağı çekerek kapanır. dirty: yazılmış bir şey varsa kapatmadan önce "Yazdıkların silinsin mi?" sorulur.
 // footer: en altta sabit iş düğmeleri (SheetActions). Sayfanın en üst katmanına (body) çizilir: kaydırılan bir kutunun içinden açılsa da kırpılmaz.
 // top: başka pencerenin üstünde açılan soru (onay penceresi) her zaman en üstte durur
-export function Sheet({ open, onClose, title, navy, children, footer, dirty, anchor, top }) {
+// big: iPad ve geniş ekranda geniş pencere (Seyhun 2026-11-23 "iPad'de telefondaki gibi gösteriyor"; tablolar, hava): ekranın çoğunu kaplar
+export function Sheet({ open, onClose, title, navy, children, footer, dirty, anchor, top, big }) {
   const zBack = top ? "z-[95]" : "z-40";
   const zFront = top ? "z-[96]" : "z-50";
   const wide = useWide();
@@ -153,7 +154,7 @@ export function Sheet({ open, onClose, title, navy, children, footer, dirty, anc
             aria-label={title}
             data-theme={navy ? "dark" : undefined}
             style={pop ? { position: "absolute", ...(pos || { left: "50%", top: "30%", width: 320 }) } : undefined}
-            className={`${panel} w-full overflow-hidden transition duration-200 ease-out ${pop ? "max-h-[28rem] rounded-[1.25rem] border border-line pb-3 shadow-[0_18px_44px_rgba(11,26,51,.22)]" : "max-h-[85dvh] max-w-[28rem] rounded-3xl pb-5 shadow-[0_24px_60px_rgba(0,0,0,.25)]"} ${
+            className={`${panel} w-full overflow-hidden transition duration-200 ease-out ${pop ? "max-h-[28rem] rounded-[1.25rem] border border-line pb-3 shadow-[0_18px_44px_rgba(11,26,51,.22)]" : `${big ? "max-h-[90dvh] max-w-[min(64rem,100%)]" : "max-h-[85dvh] max-w-[28rem]"} rounded-3xl pb-5 shadow-[0_24px_60px_rgba(0,0,0,.25)]`} ${
               open ? "pointer-events-auto scale-100 opacity-100" : "scale-[.97] opacity-0"
             }`}
           >
