@@ -11,7 +11,7 @@ import { authErrorMessage, register } from "@/lib/auth";
 
 const SIGNUP = process.env.NEXT_PUBLIC_ALLOW_SIGNUP === "1";
 
-// Giriş ekranı lacivert; kayıt formu onun içinde açık renkli kartta durur
+// Giriş ekranı açık zemin; kayıt formu onun içinde beyaz kartta durur
 const CARD = "rounded-3xl bg-card p-6 text-fg";
 
 export default function RegisterPage() {
