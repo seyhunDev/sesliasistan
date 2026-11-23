@@ -27,7 +27,7 @@ function Grow({ value, onChange, className, ...rest }) {
 }
 
 const btn = "h-11 min-w-0 flex-1 truncate rounded-xl border px-2 text-[0.9375rem] font-semibold transition active:scale-[.97]";
-const plain = `${btn} border-line bg-card text-fg shadow-[0_2px_0_rgba(38,40,44,.08)]`;
+const plain = `${btn} border-line bg-card text-fg`;
 
 // Not sayfası (Seyhun 2026-10-23): not tam sayfa açılır, başlığa ya da yazıya dokunup hemen yazılır; Kaydet yok,
 // alandan çıkınca, sayfadan ayrılınca ya da uygulama arka plana geçince kendiliğinden kaydedilir. /notes/new boş not açar,
@@ -240,7 +240,7 @@ export default function NotePage() {
             Paylaş
           </button>
           {ro ? null : off ? (
-            <button type="button" onClick={() => set(noteReopenPatch())} data-press className={`${btn} flex-[1.6] border-acc bg-acc text-white shadow-[0_2px_0_#075c70]`}>
+            <button type="button" onClick={() => set(noteReopenPatch())} data-press className={`${btn} flex-[1.6] border-acc bg-acc text-white`}>
               Notlara al
             </button>
           ) : (
@@ -248,7 +248,7 @@ export default function NotePage() {
               type="button"
               onClick={done}
               data-press
-              className={`${btn} flex flex-[1.6] items-center justify-center gap-2 text-white transition-colors duration-300 ${finishing ? "border-ok bg-ok shadow-[0_2px_0_#356b4b]" : "border-acc bg-acc shadow-[0_2px_0_#075c70]"}`}
+              className={`${btn} flex flex-[1.6] items-center justify-center gap-2 text-white transition-colors duration-300 ${finishing ? "border-ok bg-ok" : "border-acc bg-acc"}`}
             >
               {finishing ? (
                 <span className="note-burst grid size-[1.375rem] place-items-center rounded-full bg-white text-ok">

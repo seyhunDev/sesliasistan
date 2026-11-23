@@ -38,7 +38,7 @@ export function FinishTap({ race, people, onSave, onAll, voice = null, extra = n
               type="button"
               onClick={() => tap(p)}
               aria-pressed={!!f}
-              className={`flex h-[3.625rem] min-w-0 flex-col items-center justify-center rounded-[0.9375rem] border px-1 active:translate-y-px ${f ? "border-acc/30 bg-accbg" : "border-line bg-card shadow-[0_3px_0_var(--line)] active:shadow-none"}`}
+              className={`flex h-[3.625rem] min-w-0 flex-col items-center justify-center rounded-[0.9375rem] border px-1 active:translate-y-px ${f ? "border-acc/30 bg-accbg" : "border-line bg-card"}`}
             >
               <b className="max-w-full truncate text-[0.9375rem] font-semibold">{first(p.name)}</b>
               {f && <small className="text-[0.75rem] font-bold tabular-nums text-acc">{[f.code || pl[p.id], f.t != null ? mmss(f.t) : ""].filter(Boolean).join(" · ")}</small>}
