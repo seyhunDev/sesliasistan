@@ -12,6 +12,7 @@ import { mmss } from "@/lib/raceScore";
 import { Sheet } from "@/components/ui/Sheet";
 import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
+import { MsgList } from "./BilgiMesaj";
 import {
   closeKanal,
   deleteKanal,
@@ -430,6 +431,7 @@ const IC = {
     </>
   ),
   ekran: <path d="M9 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM11 18h2" />,
+  mesaj: <path d="M4 5h16v11H8l-4 4z" />,
   kayit: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
   kapat: <path d="M12 3v9M6.3 7a8 8 0 1 0 11.4 0" />,
   link: <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />,
@@ -868,6 +870,7 @@ export function BilgiAdmin() {
     ["hava", "Hava"],
     ["parkur", "Parkur"],
     ["ekran", "Ekran"],
+    ["mesaj", "Mesajlar"],
     ["kayit", "Kayıtlar"],
   ];
   const closeAsk = () =>
@@ -1058,6 +1061,9 @@ export function BilgiAdmin() {
             );
           })}
         </div>
+      </Sheet>
+      <Sheet big open={sheet === "mesaj"} onClose={() => setSheet("")} title="Mesajlar">
+        <MsgList org={org} b={b} log={log} now={now} onChange={reload} />
       </Sheet>
       <Sheet big open={sheet === "kayit"} onClose={() => setSheet("")} title="Kayıtlar">
         <div className="flex flex-col gap-6">

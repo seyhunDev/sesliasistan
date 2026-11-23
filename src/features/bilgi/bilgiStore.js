@@ -263,9 +263,23 @@ export async function sendMsg(org, text, ctx, to = null) {
   if (!t) return { ok: false };
   const id = newId();
   await saveBilgi(org, { msg: { id, text: t, at: Date.now(), to: to?.dev || "" } });
-  const logId = await logSent(org, { kind: "msg", text: t, id, to: to?.name || "" }, ctx);
+  const logId = await logSent(org, { kind: "msg", text: t, id, to: to?.name || "", dev: to?.dev || "" }, ctx);
   return { id, ok: await confirmed(), logId };
 }
+
+// Mesajlar (Seyhun 2026-11-23 örnek onaylandı): gönderilen yazılı mesaj sporcu ekranında sabitlenir (pin; biri kaldırana kadar durur,
+// aynı anda bir tane), gizlenir (ekrandan hemen kalkar; günlükte hid) ya da silinir (günlükten de). r: loadLog satırı (id: mesaj, logId: günlük belgesi).
+export const pinMsg = (org, r) => saveBilgi(org, { pin: { id: r.id, text: r.text, at: r.at, to: r.dev || "" } });
+export const unpinMsg = (org) => saveBilgi(org, { pin: null });
+// Ekrandan kaldır: o mesaj şu an gösteriliyorsa (son mesaj ya da sabit) boşaltılır
+export async function offScreen(org, b, mid) {
+  const p = {};
+  if (b?.msg?.id === mid) p.msg = null;
+  if (b?.pin?.id === mid) p.pin = null;
+  if (Object.keys(p).length) await saveBilgi(org, p);
+}
+export const hideMsg = (org, b, r, hid = true) => Promise.all([hid ? offScreen(org, b, r.id) : null, markLog(org, r.logId, { hid })]);
+export const delLog = (org, id) => deleteDoc(doc(db, "orgs", org, "bilgiLog", id));
 
 // Kanal aç: aynı link (yalnız ilk kez yeni link) + kanal adı; ekranlar yalnız açık kanala katılarak başlar. Kapat: ekranlar durur.
 // Her kanalın kaydı orgs/{org}/bilgiKanal/{id} { name, at (açılış), end (kapanış, açıksa null) } (Seyhun 2026-11-17 "Kanallar":
@@ -345,9 +359,10 @@ export async function loadIz(org, ch) {
 }
 
 // Son gönderilenler (yönetimde açılınca bir kez okunur)
+// id: mesaj/ses kimliği (kayıtta varsa; yoksa belge kimliği), logId: günlük belgesinin kimliği (silme, gizleme)
 export async function loadLog(org, n = 30) {
   const s = await getDocs(query(collection(db, "orgs", org, "bilgiLog"), orderBy("at", "desc"), limit(n)));
-  return s.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return s.docs.map((d) => ({ id: d.id, ...d.data(), logId: d.id }));
 }
 
 // Pusula kaydı: ekran açıkken telefonun yönü ve yatışı saniyede bir alınır, dakikada bir tek belge olarak yazılır
