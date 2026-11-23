@@ -27,7 +27,6 @@ import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { miniText, pullAction } from "@/lib/miniOrb";
 import { ringOf } from "@/lib/assistRing";
 import { SideNav, useWide } from "./SideNav";
-import { TimerChip } from "@/features/training/TimerChip";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor (bas-konuş olmayan küçük küreler)
 export const CHECK_MS = 1500; // iş bitince küredeki yeşil ✓ bu kadar görünür, sonra asistan düğmesi geri gelir
@@ -941,7 +940,6 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                 </div>
                 {!noAi && (
                   <div data-ptt="" className="relative w-[6rem] shrink-0">
-                    <TimerChip />
                     <span className="acenter absolute -top-7 right-2.5 rounded-full p-1">
                       {/* Küçülen asistan bu küreyi kullanır: rengi o anki durum (ikinci küre yok) */}
                       <VoiceLight state={small ? state : "idle"} onPress={press} onRelease={release} onHold={typeNow} size="size-[4.75rem]" />

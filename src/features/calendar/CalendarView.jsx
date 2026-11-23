@@ -33,7 +33,7 @@ const shortDay = (s) => `${new Date(`${s}T00:00`).toLocaleDateString("tr-TR", { 
 // (planlar ve görevler noktayla). Altta seçili günün listesi tek kartta: solda saat, ad, alt satır, sağda durum.
 // Fitness: ana sayfadaki gibi kendi ve sporcuların antrenmanları (fitDays; fitOthers zaten yüklü, ek okuma yok), turuncu nokta ve satır.
 export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat = false }) {
-  const light = embedded; // ana sayfada açık zeminde (hava alanıyla bütünleşik); Takvim sayfası lacivert kalır
+  const light = true; // ana sayfada ve (2026-11-23'ten beri) Takvim sayfasında açık tema (main.acik)
   const evMax = embedded ? (flat ? 2 : 3) : 4; // ana sayfa iPad hücresinde en çok 3 plan, fazlası "+N daha"
   const { plans: all, fitOthers, members, myUid, tasks, toggleTask, birthdays, lessons } = useData();
   const plans = useMemo(() => all.filter((p) => !isFit(p)), [all]);
@@ -109,7 +109,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
 
   return (
     <Root embedded={embedded} open={dayOpen} flat={flat}>
-      <section className={embedded ? "cal-top px-3.5 pb-3 pt-3" : "cal-top ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]"} aria-label="Takvim">
+      <section className={embedded ? "cal-top px-3.5 pb-3 pt-3" : "cal-top -mx-5 px-5 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]"} aria-label="Takvim">
         <header className="flex items-center gap-2">
           {!embedded && <BackButton href="/" />}
           <h1 className={`min-w-0 flex-1 truncate font-bold capitalize tracking-[-.02em] ${embedded ? "text-[1.0625rem]" : "text-[1.375rem]"}`}>{monthLabel(month)}</h1>
@@ -154,7 +154,8 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
           </Link>
         </header>
 
-        {/* Ay */}
+        {/* Ay (Takvim sayfasında beyaz kart .cal-mo; ana sayfada sarmal yok sayılır) */}
+        <div className="cal-mo">
         <div className="cal-week mt-4 flex items-center justify-between">
           <button type="button" onClick={() => setMonth((m) => shift(m, -1))} aria-label="Önceki ay" data-press className="btn btn-round size-9">
             <Icon name="back" className="size-4" />
@@ -214,8 +215,9 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
             );
           })}
         </div>
-        <div className="cal-legend mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[0.6875rem] text-white/60">
-          <span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-white" /> Plan</span>
+        </div>
+        <div className="cal-legend mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[0.6875rem] text-mut">
+          <span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-acc" /> Plan</span>
           <span className="flex items-center gap-1"><i className="tone-fit tone-bar size-1.5 rounded-full" /> Fitness</span>
           <span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-amber-600" /> Görev</span>
           <span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-rec" /> Gecikmiş</span>
@@ -224,7 +226,7 @@ export function CalendarView({ initial, sel: selP, onSel, embedded = false, flat
       </section>
 
       {(!embedded || flat || dayOpen) && (
-      <div className={embedded ? "cal-body relative space-y-4" : "cal-body relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5"}>
+      <div className={embedded ? "cal-body relative space-y-4" : "cal-body relative -mx-5 space-y-6 bg-bg px-5 pt-2"}>
         {/* Seçili gün */}
         <section>
           {side ? (
@@ -376,6 +378,6 @@ function Root({ embedded, open, flat, children }) {
   return embedded ? (
     <div className={flat ? "cal-emb cal-flatv" : "cal-emb"} data-open={open || undefined}>{children}</div>
   ) : (
-    <main className="cal-wide mx-auto max-w-[30rem] px-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">{children}</main>
+    <main className="cal-wide acik mx-auto max-w-[30rem] px-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">{children}</main>
   );
 }

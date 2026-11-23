@@ -31,7 +31,6 @@ import { goBack } from "@/lib/navTrail";
 import { siteDocBlob } from "@/features/athletes/raceSite";
 import { SiteDocs } from "@/features/athletes/SiteDocs";
 import { addResults, importResults, importToast } from "@/features/athletes/resultsImport";
-import { BG_PHOTO } from "@/features/liveScreen/bgPhoto";
 import { BilgiBtns, LiveBtn } from "@/features/athletes/raceUi";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
@@ -300,17 +299,10 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   );
 
   return (
-    <main className={`rz rzc split split-even${race?.id && !missingRace ? " rzi" : ""} mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]`}>
-      {/* iPad (Seyhun 2026-11-09 "tam ekranı iyi kullan, arkada canlı yayındaki fotoğraf bulanık"; örnek yaris-tasarim/ipad-detay onaylı):
-          arkada bulanık fotoğraf, solda soluk büyük ad ve düğmeler, sağda cam panel; telefonda görünmez (globals.css "YARIŞ DETAYI iPAD") */}
-      {race?.id && !missingRace && (
-        <div className="rzi-bg" aria-hidden="true">
-          <i style={{ backgroundImage: `url(${BG_PHOTO})` }} />
-        </div>
-      )}
+    <main className="rz rzc rzd acik split split-even mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {!race || missingRace ? (
         <>
-          <section className="ck split-top -mx-5 px-5 pb-10 pt-[calc(0.75rem+env(safe-area-inset-top))]">{head}</section>
+          <section className="rzt split-top pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]">{head}</section>
           <div className="rzc-body bg-bg pb-4">
             {err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
             {missingRace ? <p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p> : fail && !race ? <LoadFail onRetry={() => (setFail(false), setRetry((n) => n + 1))} /> : <Loading label="Yarış yükleniyor" />}
