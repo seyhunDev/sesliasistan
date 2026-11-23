@@ -470,7 +470,7 @@ function KanalStart({ org, kanal, def, onList }) {
       <Button type="submit" full loading={busy} disabled={!name.trim()} className="bzy-open">
         Kanal aç
       </Button>
-      <Button variant="text" full onClick={onList}>
+      <Button type="button" variant="text" full onClick={onList}>
         Eski kanallar
       </Button>
     </form>
