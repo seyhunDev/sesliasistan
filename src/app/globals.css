@@ -1184,6 +1184,34 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
   .cal-acts { display: flex; gap: 0.5rem; }
 }
 @media (max-width: 47.99rem) { .cal-acts { display: none; } }
+/* Takvim sayfası açık (2026-11-23, ana sayfa #1480 gibi): ay beyaz kartta, ince gri çizgiler, seçili gün açık gri; ızgaradaki planlar açık gri
+   zeminde koyu yazı, türü soldaki ince renkli çizgi (antrenman yeşil, yarış/toplantı mavi, diğer turuncu). Ana sayfada (.cal-emb) sarmal yok sayılır */
+.lh { text-transform: uppercase; }
+.acik .lh { text-transform: none; letter-spacing: 0; font-size: 0.875rem; font-weight: 650; color: var(--fg2); }
+.cal-emb .cal-mo { display: contents; }
+main.cal-wide.acik .cal-mo { margin-top: 0.75rem; padding: 0.5rem 0.25rem 0.375rem; border-radius: 1.25rem; background: var(--card); box-shadow: 0 1px 0 rgba(0, 0, 0, .04), 0 0 0 1px rgba(0, 0, 0, .03); }
+main.cal-wide.acik .cal-mo .cal-week { margin-top: 0; }
+@media (min-width: 48rem) {
+  main.cal-wide.acik .cal-mo { padding: 0.75rem 0 0; overflow: hidden; }
+  main.cal-wide.acik .cal-mo .cal-week { padding: 0 0.375rem 0.375rem; }
+  main.cal-wide.acik .cal-grid { border-top-color: var(--line); }
+  main.cal-wide.acik .cal-grid .cal-cell { border-color: var(--line); }
+  main.cal-wide.acik .cal-grid .cal-cell:nth-last-child(-n+7) { border-bottom: 0; }
+  main.cal-wide.acik .cal-grid .cal-cell[data-on] { background: var(--fill); }
+  main.cal-wide.acik .cal-evs i { background: var(--fill); color: var(--fg); border-left: 3px solid var(--mut2); border-radius: 0.25rem; }
+  main.cal-wide.acik .cal-evs i[data-k="g"] { border-left-color: #16a34a; }
+  main.cal-wide.acik .cal-evs i[data-k="bl"] { border-left-color: #2563eb; }
+  main.cal-wide.acik .cal-evs i[data-k="or"] { border-left-color: #ea580c; }
+  main.cal-wide.acik .cal-evs i[data-c="task"] { border-left-color: var(--warn); }
+  main.cal-wide.acik .cal-evs i[data-c="late"] { border-left-color: var(--rec); color: var(--rec); }
+  main.cal-wide.acik .cal-evs i[data-c="bday"] { border-left-color: #db2777; }
+  main.cal-wide.acik .cal-evs i[data-c="more"] { background: none; border: 0; color: var(--mut); }
+  main.cal-wide.acik .cal-evs b { color: var(--mut); }
+}
+@media (min-width: 64rem) {
+  body[data-side] main.cal-wide.acik .cal-mo { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  body[data-side] main.cal-wide.acik > .cal-body { background: var(--bg); border-left: 1px solid var(--line); padding-top: calc(1.25rem + env(safe-area-inset-top)); }
+}
 @media (min-width: 64rem) {
   body[data-side] main.cal-wide.max-w-\[30rem\] { max-width: none; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) 24rem; height: 100dvh; overflow: hidden; }
   body[data-side] main.cal-wide > .cal-top { margin: 0; padding: calc(1.25rem + env(safe-area-inset-top)) 2rem 1.5rem; display: flex; flex-direction: column; min-height: 0; }
