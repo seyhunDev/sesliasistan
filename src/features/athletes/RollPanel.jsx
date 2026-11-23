@@ -99,7 +99,7 @@ export function RollPanel({ inSheet = false, day = "", onSaved }) {
     const days = Array.from({ length: 7 }, (_, i) => shift(last, i - 6));
     const marked = (d) => active.some((a) => stateOf(a, d));
     const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
-    const glass = "ck-glass shadow-[0_2px_0_rgba(0,0,0,.35)] data-[pressed]:translate-y-px";
+    const glass = "ck-glass data-[pressed]:translate-y-px";
     const close = (f) => () => {
       setMenu(false);
       f();

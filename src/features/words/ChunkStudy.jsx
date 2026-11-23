@@ -266,7 +266,7 @@ export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpe
             {t.pool.map((b) => {
               const used = !left.includes(b);
               return (
-                <button key={b.k} type="button" disabled={used || !!check} onClick={() => place(b)} className={`rounded-[0.95rem] px-4 py-2.5 transition-opacity ${used ? "bg-white/8 opacity-20" : "bg-white/8 shadow-[0_3px_0_rgba(0,0,0,.35)] active:translate-y-[2px] active:shadow-none"}`}>
+                <button key={b.k} type="button" disabled={used || !!check} onClick={() => place(b)} className={`rounded-[0.95rem] px-4 py-2.5 transition-opacity ${used ? "bg-white/8 opacity-20" : "bg-white/8 active:translate-y-[2px]"}`}>
                   {b.t}
                 </button>
               );

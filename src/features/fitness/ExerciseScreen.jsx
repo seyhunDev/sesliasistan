@@ -147,7 +147,7 @@ export function ExerciseScreen({ e, uses = 0, put, onBack, children }) {
             ["video", "Video", free < 1],
             ["paperclip", "Bağlantı", false],
           ].map(([icon, label, off]) => (
-            <button key={label} type="button" disabled={off} onClick={() => tap(label)} className={`flex h-[4.75rem] flex-col items-center justify-center gap-1.5 rounded-2xl border bg-card text-[0.875rem] font-semibold shadow-[0_2px_0_var(--line)] transition active:translate-y-0.5 active:shadow-none disabled:opacity-45 ${label === "Bağlantı" && link ? "border-acc text-acc" : "border-line"}`}>
+            <button key={label} type="button" disabled={off} onClick={() => tap(label)} className={`flex h-[4.75rem] flex-col items-center justify-center gap-1.5 rounded-2xl border bg-card text-[0.875rem] font-semibold transition active:translate-y-0.5 disabled:opacity-45 ${label === "Bağlantı" && link ? "border-acc text-acc" : "border-line"}`}>
               <Icon name={icon} className="size-6 text-acc" />
               {label}
             </button>
