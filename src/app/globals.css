@@ -1770,9 +1770,6 @@ main.iph.acik { background: var(--bg); }
 .acik .iph-day[aria-pressed="true"] { background: var(--card); border-color: var(--fg); box-shadow: inset 0 0 0 0.5px var(--fg); }
 .acik .iph-day[data-past] { background: var(--fill); border-color: transparent; }
 .acik .iph-tag { color: var(--fg2); background: var(--fill); }
-.acik .lt { background: var(--card); color: var(--fg); border-color: transparent; box-shadow: 0 1px 0 rgba(0, 0, 0, .04), 0 0 0 1px rgba(0, 0, 0, .03); }
-.acik .lt-ic { background: var(--fill); }
-.acik .lt-go { color: var(--acc); }
 /* Hava sayfası ve Yönet › Hava açık (2026-11-22): bölge haritasının alt şeridi ve "Şu an" yağmur satırı açık temada */
 .acik { --rg-bg: var(--card); --rg-fg: var(--fg); --rg-mut: var(--mut); --rg-track: var(--line); --rg-play: var(--acc); --rg-on-play: #fff; --nr: var(--warn); --nr-on: #fff; }
 .acik .ck-range::-webkit-slider-thumb { box-shadow: 0 0 0 1px rgba(0, 0, 0, .08), 0 1px 4px rgba(0, 0, 0, .25); }
@@ -1819,13 +1816,54 @@ main.iph.acik { background: var(--bg); }
   .sp-word { animation: none; opacity: 1; }
 }
 
-/* Dış proje kartı (LinkTile, "Velora Simülatör" 2026-11-12): alanın genişliğinde */
-.lt { position: relative; display: flex; align-items: center; gap: 0.75rem; width: 100%; min-height: 5.5rem; padding: 0.875rem 1.125rem 1.75rem; border-radius: 1.5rem; border: 1px solid #2a4472; background: linear-gradient(160deg, #13243f, #0b1a33); color: #fff; text-align: left; overflow: hidden; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 2px 0 #060e1d; transition: transform .12s; }
-.lt:active { transform: scale(.98); }
-.lt-ic { position: relative; z-index: 1; display: grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none; border-radius: 0.625rem; background: #fff; }
-.lt-t { position: relative; z-index: 1; flex: 1; min-width: 0; font-size: 1rem; font-weight: 650; }
-.lt-go { position: relative; z-index: 1; color: #8fb3ff; font-size: 1rem; }
-.lt-wave { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 45%; pointer-events: none; }
+/* Ortak tanıtım kutusu (IntroTile, Seyhun 2026-11-23; örnek project-files/tanitim-kutulari/ornek.html): üstte canlı önizleme, altta ad + tek satır.
+   Ana sayfada Tekne Ekranı (önizleme: start sayacı + pusula) ve Velora Sailing (açık deniz üstünde start → tramola → şamandıra). */
+.it { display: grid; width: 100%; min-width: 0; overflow: hidden; padding: 0; border: 0; border-radius: 1.25rem; background: var(--card); color: var(--fg); text-align: left; font: inherit; box-shadow: 0 1px 0 rgba(0, 0, 0, .04), 0 0 0 1px rgba(0, 0, 0, .03); }
+.it-btn { cursor: pointer; transition: transform .12s; }
+.it-btn:active { transform: scale(.985); }
+.it-pv { position: relative; aspect-ratio: 3 / 2; overflow: hidden; background: #e6eef8; }
+.it-pv-short { aspect-ratio: auto; height: 7rem; background: var(--card); }
+.it-bd { display: flex; align-items: center; gap: 0.75rem; min-width: 0; padding: 0.75rem 1rem 0.875rem; }
+.it-tx { flex: 1; min-width: 0; }
+.it-t { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.0625rem; font-weight: 650; }
+.it-s { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mut); font-size: 0.8125rem; }
+.it-go { color: var(--acc); font-size: 1.4rem; line-height: 1; }
+.it-acts { display: flex; gap: 0.5rem; padding: 0 1rem 0.875rem; }
+/* Velora Sailing denizi (renkler Velora Sailing açık temasından: hat kehribar, şamandıra turuncu, "sen" mavi) */
+.it-sea, .it-sea svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.it-wave { fill: none; stroke: rgba(37, 99, 235, .07); stroke-width: 2; }
+.it-lay { fill: none; stroke: rgba(37, 99, 235, .28); stroke-width: 1; stroke-dasharray: 3 4; }
+.it-line { stroke: #d29a12; stroke-width: 1.4; stroke-dasharray: 5 4; }
+.it-buoy { fill: #ff8c42; }
+.it-mark { stroke: #fff; stroke-width: 1; }
+.it-hull { fill: #fff; stroke: #1d1d1f; stroke-width: 1.6; }
+.it-hull.it-me { fill: #2563eb; }
+.it-boom { stroke: #3a3a3c; stroke-width: 3; stroke-linecap: round; }
+.it-boom-me { stroke: #fff; }
+.it-wind { fill: none; stroke: #6e6e73; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.it-step { position: absolute; left: 0.75rem; top: 0.625rem; padding: 0.1875rem 0.5625rem; border-radius: 999px; background: rgba(255, 255, 255, .85); color: #3a3a3c; font-size: 0.78rem; font-weight: 600; transition: opacity .3s; }
+.it-step:empty { opacity: 0; }
+/* Tekne Ekranı önizlemesi */
+.it-te { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; align-items: center; justify-items: center; }
+.it-te-l { display: grid; justify-items: center; gap: 0.125rem; }
+.it-te-l small { color: var(--mut); font-size: 0.75rem; font-weight: 600; }
+.it-cd { font-size: 2.6rem; font-weight: 500; line-height: 1; letter-spacing: -.02em; }
+.it-cd.it-go-on { color: var(--acc); }
+.it-cmp { width: 4.75rem; height: 4.75rem; }
+.it-cmp-r { fill: none; stroke: var(--line); stroke-width: 2; }
+.it-cmp-k { fill: var(--mut); font-size: 8px; font-weight: 700; }
+.it-cmp-n { fill: var(--acc); }
+.it-cmp-s { fill: #c7c7cc; }
+.it-cmp-c { fill: var(--fg); }
+@media (prefers-reduced-motion: reduce) { .it-btn, .it-step { transition: none; } }
+html[data-theme="dark"] .it-pv:not(.it-pv-short) { background: #0f2340; }
+html[data-theme="dark"] .it-hull:not(.it-me) { fill: #f1f5fb; stroke: #0b1a33; }
+html[data-theme="dark"] .it-boom:not(.it-boom-me) { stroke: #c8d6e8; }
+html[data-theme="dark"] .it-wave { stroke: rgba(255, 255, 255, .05); }
+html[data-theme="dark"] .it-lay { stroke: rgba(143, 179, 255, .35); }
+html[data-theme="dark"] .it-line { stroke: #ffd166; }
+html[data-theme="dark"] .it-wind { stroke: #8fb3ff; }
+html[data-theme="dark"] .it-step { background: rgba(11, 26, 51, .7); color: #dbe6f7; }
 
 /* ===== İş göstergesi (JobPill, lib/jobs.js; Seyhun 2026-11-13): üstte tek lacivert hap; bildirim + arka plan işleri ===== */
 .jb { position: fixed; z-index: 90; left: 50%; top: calc(0.875rem + env(safe-area-inset-top)); max-width: calc(100vw - 2rem); color: #fff;
