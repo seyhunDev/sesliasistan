@@ -446,7 +446,7 @@ const Ic = ({ n }) => (
 );
 
 // Kanal aç ekranı (Seyhun 2026-11-22 "kanalı açmadan bu sayfayı göstermemiz mantıklı"): kanal kapalıyken yalnız bu kart. Ad o günün
-// antrenmanı ya da yarışıyla hazır gelir; Kanal aç yeni link oluşturur. Eski kanallar listesi (tekrar aç, iz, sil) buradan da açılır.
+// antrenmanı ya da yarışıyla hazır gelir; link her kanalda aynı kalır. Eski kanallar listesi (tekrar aç, iz, sil) buradan da açılır.
 function KanalStart({ org, kanal, def, onList }) {
   const toast = useToast();
   const [name, setName] = useState(def);

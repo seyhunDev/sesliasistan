@@ -267,7 +267,7 @@ export async function sendMsg(org, text, ctx, to = null) {
   return { id, ok: await confirmed(), logId };
 }
 
-// Kanal aç: yeni link (eski link çalışmaz) + kanal adı; ekranlar yalnız açık kanala katılarak başlar. Kapat: ekranlar durur.
+// Kanal aç: aynı link (yalnız ilk kez yeni link) + kanal adı; ekranlar yalnız açık kanala katılarak başlar. Kapat: ekranlar durur.
 // Her kanalın kaydı orgs/{org}/bilgiKanal/{id} { name, at (açılış), end (kapanış, açıksa null) } (Seyhun 2026-11-17 "Kanallar":
 // eski kanallar listede durur, tekrar açılır, adı değişir, verisiyle silinir). Aynı anda tek kanal açık.
 const kanalRef = (org, id) => doc(db, "orgs", org, "bilgiKanal", id);
@@ -277,7 +277,9 @@ const kanalName = (name) =>
     .slice(0, 30) || "Antrenman";
 async function startKanal(org, id, name, prev) {
   if (prev?.open && prev.id && prev.id !== id) await updateDoc(kanalRef(org, prev.id), { end: Date.now() }).catch(() => {});
-  await newLink(org);
+  // Link her kanalda aynı kalır (Seyhun 2026-11-23 "her açtığım kanal için link kopyalamam gerekiyor"): yalnız hiç link yoksa yenisi açılır.
+  // Sporcu ekranı yeni kanalı görünce katılma kartına döner.
+  if (!(await linkOf(org))) await newLink(org);
   const at = Date.now();
   await saveBilgi(org, { kanal: { id, name, open: true, at } });
   await syncLink(org);
@@ -289,7 +291,7 @@ export async function openKanal(org, name, prev = null) {
   const at = await startKanal(org, id, n, prev);
   await setDoc(kanalRef(org, id), { name: n, at, end: null });
 }
-// Eski kanalı tekrar aç (yeni link; izler ve kayıtlar aynı kanalda birikir)
+// Eski kanalı tekrar aç (aynı link; izler ve kayıtlar aynı kanalda birikir)
 export async function reopenKanal(org, k, prev = null) {
   await startKanal(org, k.id, kanalName(k.name), prev);
   await setDoc(kanalRef(org, k.id), { name: kanalName(k.name), at: k.at || Date.now(), end: null }, { merge: true });
