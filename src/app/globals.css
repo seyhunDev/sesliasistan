@@ -1817,12 +1817,12 @@ main.iph.acik { background: var(--bg); }
 }
 
 /* Ortak tanıtım kutusu (IntroTile, Seyhun 2026-11-23; örnek project-files/tanitim-kutulari/ornek.html): üstte canlı önizleme, altta ad + tek satır.
-   Ana sayfada Tekne Ekranı (önizleme: start sayacı + pusula) ve Velora Sailing (açık deniz üstünde start → tramola → şamandıra). */
+   Ana sayfada Velora Sailing (açık deniz üstünde start → tramola → şamandıra). Telefonda önizleme üstte; iPad ve geniş ekranda
+   yazı solda, animasyon sağda küçük (Seyhun 2026-11-23 "iPad'de çok büyük duruyor"). */
 .it { display: grid; width: 100%; min-width: 0; overflow: hidden; padding: 0; border: 0; border-radius: 1.25rem; background: var(--card); color: var(--fg); text-align: left; font: inherit; box-shadow: 0 1px 0 rgba(0, 0, 0, .04), 0 0 0 1px rgba(0, 0, 0, .03); }
 .it-btn { cursor: pointer; transition: transform .12s; }
 .it-btn:active { transform: scale(.985); }
 .it-pv { position: relative; aspect-ratio: 3 / 2; overflow: hidden; background: #e6eef8; }
-.it-pv-short { aspect-ratio: auto; height: 7rem; background: var(--card); }
 .it-bd { display: flex; align-items: center; gap: 0.75rem; min-width: 0; padding: 0.75rem 1rem 0.875rem; }
 .it-tx { flex: 1; min-width: 0; }
 .it-t { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.0625rem; font-weight: 650; }
@@ -1843,20 +1843,17 @@ main.iph.acik { background: var(--bg); }
 .it-wind { fill: none; stroke: #6e6e73; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .it-step { position: absolute; left: 0.75rem; top: 0.625rem; padding: 0.1875rem 0.5625rem; border-radius: 999px; background: rgba(255, 255, 255, .85); color: #3a3a3c; font-size: 0.78rem; font-weight: 600; transition: opacity .3s; }
 .it-step:empty { opacity: 0; }
-/* Tekne Ekranı önizlemesi */
-.it-te { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; align-items: center; justify-items: center; }
-.it-te-l { display: grid; justify-items: center; gap: 0.125rem; }
-.it-te-l small { color: var(--mut); font-size: 0.75rem; font-weight: 600; }
-.it-cd { font-size: 2.6rem; font-weight: 500; line-height: 1; letter-spacing: -.02em; }
-.it-cd.it-go-on { color: var(--acc); }
-.it-cmp { width: 4.75rem; height: 4.75rem; }
-.it-cmp-r { fill: none; stroke: var(--line); stroke-width: 2; }
-.it-cmp-k { fill: var(--mut); font-size: 8px; font-weight: 700; }
-.it-cmp-n { fill: var(--acc); }
-.it-cmp-s { fill: #c7c7cc; }
-.it-cmp-c { fill: var(--fg); }
+@media (min-width: 48rem) {
+  .it { grid-template-columns: minmax(0, 1fr) min(46%, 13rem); }
+  .it-pv { grid-column: 2; grid-row: 1; aspect-ratio: auto; height: 8.5rem; }
+  .it-bd { grid-column: 1; grid-row: 1; align-items: center; padding: 0.875rem 0.5rem 0.875rem 1rem; }
+  .it-t { white-space: normal; }
+  .it-s { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .it-step { left: 0.5rem; top: 0.5rem; font-size: 0.7rem; padding: 0.125rem 0.4375rem; }
+  .it-acts { grid-column: 1 / -1; }
+}
 @media (prefers-reduced-motion: reduce) { .it-btn, .it-step { transition: none; } }
-html[data-theme="dark"] .it-pv:not(.it-pv-short) { background: #0f2340; }
+html[data-theme="dark"] .it-pv { background: #0f2340; }
 html[data-theme="dark"] .it-hull:not(.it-me) { fill: #f1f5fb; stroke: #0b1a33; }
 html[data-theme="dark"] .it-boom:not(.it-boom-me) { stroke: #c8d6e8; }
 html[data-theme="dark"] .it-wave { stroke: rgba(255, 255, 255, .05); }

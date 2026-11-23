@@ -2,11 +2,11 @@
 
 // Ortak tanıtım kutusu (Seyhun 2026-11-23, örnek project-files/tanitim-kutulari/ornek.html): üstte canlı önizleme, altta ad + ne
 // olduğunu söyleyen tek satır. Düğmeler (children) varsa altta durur ve kutu dokunulmaz; yoksa bütün kutu tek düğmedir (sağda ›).
-// Kullananlar: ana sayfada Tekne Ekranı (BilgiTile) ve Velora Sailing (SailingTile). Görünüm globals.css ".it".
-export function IntroTile({ preview, title, sub, onOpen, label, short = false, children }) {
+// Telefonda önizleme üstte, 48rem ve üstünde (iPad) yazı solda, önizleme sağda. Kullanan: ana sayfada Velora Sailing. Görünüm globals.css ".it".
+export function IntroTile({ preview, title, sub, onOpen, label, children }) {
   const body = (
     <>
-      <div className={`it-pv${short ? " it-pv-short" : ""}`} aria-hidden>
+      <div className="it-pv" aria-hidden>
         {preview}
       </div>
       <div className="it-bd">
