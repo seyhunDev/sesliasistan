@@ -10,6 +10,7 @@ import { useData } from "@/features/data/DataProvider";
 import { LogDetails, Missing } from "@/features/training/LogDetails";
 import { monthLabel, shiftMonth } from "@/features/athletes/attendanceReport";
 import { RATINGS, isTraining, logLine, monthLog, presentOn } from "@/lib/trainingLog";
+import { antLine } from "@/lib/antKayit";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { loadAthletes } from "@/features/athletes/data";
@@ -75,8 +76,8 @@ export default function TrainingPage() {
             <Icon name="chev" className="size-4" />
           </button>
           {racer && (
-            <Link href="/training/day" data-press className="btn btn-primary tw-hb">
-              Bugün
+            <Link href="/bilgi/yonet" data-press className="btn btn-primary tw-hb">
+              Yönet
             </Link>
           )}
         </header>
@@ -122,6 +123,7 @@ export default function TrainingPage() {
                     <b className="truncate text-[0.9375rem] font-semibold">{p.title}</b>
                     <small className="shrink-0 text-[0.8125rem] text-[#7d90b5]">{dayText(p)}</small>
                   </span>
+                  {antLine(p.ant) && <small className="block text-[0.8125rem] text-[#7d90b5]">{antLine(p.ant)}</small>}
                   {logLine(p.log) && <small className="block text-[0.8125rem] text-[#7d90b5]">{logLine(p.log)}</small>}
                   {p.log.rating && <small className="block text-[0.75rem] font-semibold text-[#8fb3ff]">{RATINGS.find(([k]) => k === p.log.rating)?.[1]}</small>}
                   {p.log.note && <p className="mt-1 line-clamp-2 text-[0.875rem] leading-snug text-[#cfdcf5]">{p.log.note}</p>}
@@ -170,8 +172,8 @@ export default function TrainingPage() {
           <BackButton href="/" />
           <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">Antrenman günlüğü</h1>
           {racer && (
-            <Link href="/training/day" data-press className="btn btn-primary btn-sm shrink-0">
-              Bugün
+            <Link href="/bilgi/yonet" data-press className="btn btn-primary btn-sm shrink-0">
+              Yönet
             </Link>
           )}
         </header>
@@ -241,6 +243,7 @@ export default function TrainingPage() {
                     <b className="truncate text-[0.9375rem] font-semibold">{p.title}</b>
                     <small className="shrink-0 text-[0.8125rem] text-mut">{dayText(p)}</small>
                   </span>
+                  {antLine(p.ant) && <small className="block text-[0.8125rem] text-mut">{antLine(p.ant)}</small>}
                   {logLine(p.log) && <small className="block text-[0.8125rem] text-mut">{logLine(p.log)}</small>}
                   {p.log.rating && <small className="block text-[0.75rem] font-semibold text-acc">{RATINGS.find(([k]) => k === p.log.rating)?.[1]}</small>}
                   {p.log.note && <p className="mt-1 line-clamp-3 text-[0.875rem] leading-snug">{p.log.note}</p>}

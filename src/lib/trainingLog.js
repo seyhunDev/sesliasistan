@@ -280,10 +280,10 @@ export function attLine({ marked = [], unknown = [], fromAtt = [] } = {}) {
 }
 
 // Bugünün yelken antrenmanına dokununca Bilgi Yönet açılır (Seyhun 2026-11-17: "antrenmanı oradan, kanaldan yöneteceğim"); kanal adı
-// antrenmanın adıyla hazır gelir, Yönet'teki Antrenman düğmesi bu sayfaya (yoklama, günlük, sıralama) döner. Başka günün antrenmanı eski sayfada.
+// antrenmanın adıyla hazır gelir. Antrenman sayfası kalktı (2026-11-23): başka günün antrenmanı günlük listesinde (/training).
 export function antYonet(p, today = todayStr()) {
   if (!p?.id) return "/bilgi/yonet";
-  if (p.date && p.date !== today) return `/training/day?id=${p.id}`;
+  if (p.date && p.date !== today) return "/training";
   const ad = String(p.title || "Antrenman").trim().slice(0, 30);
   return `/bilgi/yonet?ant=${encodeURIComponent(p.id)}&ad=${encodeURIComponent(ad)}`;
 }

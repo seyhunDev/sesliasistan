@@ -1075,9 +1075,9 @@ async function trainVoice(h) {
   const { check, newPage, waitFor, typeAsk, closeAll, convo, log } = h;
   log("    Antrenman: sesle başlat ve bitir…");
   const { page, errs } = await newPage();
-  const G = "Antrenman yarışı sesle";
+  const G = "Antrenman sesle (Yönet)";
   const home = async () => {
-    await page.goto(new URL(page.url()).origin + "/training", { waitUntil: "load" }); // bugün yarış da var: antrenman sözleri Antrenman'da antrenmanın
+    await page.goto(new URL(page.url()).origin + "/bilgi/yonet", { waitUntil: "load" }); // bugün yarış da var: antrenman sözleri Yönet'te antrenmanın (2026-11-23)
     await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
     await page.waitForTimeout(1200);
   };
@@ -1089,19 +1089,12 @@ async function trainVoice(h) {
     const t = await timer();
     return [!!seen && !(t?.end > 0), `${seen ? "3·2·1 göründü" : "3·2·1 yok"} · sayaç ${t?.end ? "başlamış" : "bekliyor"}`];
   });
-  await check(G, "3 sn sonra", "2 dakikalık geri sayım başladı, yarış açıldı", async () => {
+  await check(G, "3 sn sonra", "2 dakikalık geri sayım başladı, sayacın sahibi Yönet", async () => {
     const ok = await waitFor(async () => ((await timer())?.end || 0) > Date.now() + 100000, 7000);
     const t = await timer();
     const gone = await page.locator("[role=status][aria-label^='Başlıyor']").count();
     const left = t?.end ? Math.round((t.end - Date.now()) / 1000) : null;
-    return [!!ok && t.rid && t.mode === "start" && gone === 0 && left > 100 && left <= 120, `kalan ${left} sn · yarış ${t?.rid ? "var" : "yok"} · mod ${t?.mode} · 3·2·1 ${gone ? "duruyor" : "kalktı"}`];
-  });
-  await check(G, "antrenman sayfası", "antrenman günü açıldı, Yarış 1 sayacın başlığında", async () => {
-    const went = await waitFor(async () => new URL(page.url()).pathname === "/training/day", 30000);
-    // süre kartının başlığı büyük harfle yazılır (YARIŞ 1); Türkçe küçük harfe çevrilip aranır
-    const ok = await waitFor(async () => /yarış 1/.test((await page.locator("main").first().innerText().catch(() => "")).toLocaleLowerCase("tr-TR")), 15000);
-    if (process.env.ANT_SHOT) await page.screenshot({ path: `${process.env.ANT_SHOT}.png` }).catch(() => {});
-    return [!!went && !!ok, `sayfa ${new URL(page.url()).pathname} · ${ok ? "Yarış 1 var" : `Yarış 1 yok: ${(await page.locator("main").first().innerText().catch(() => "")).replace(/\s+/g, " ").slice(0, 80)}`}`];
+    return [!!ok && t.own === "/bilgi/yonet" && t.mode === "start" && gone === 0 && left > 100 && left <= 120, `kalan ${left} sn · sahibi ${t?.own || "-"} · mod ${t?.mode} · 3·2·1 ${gone ? "duruyor" : "kalktı"}`];
   });
   await closeAll(page);
   await home();
@@ -1111,9 +1104,9 @@ async function trainVoice(h) {
     localStorage.setItem("sa-sayac", JSON.stringify({ ...t, end: Date.now() - 30000 }));
     window.dispatchEvent(new Event("sa-sayac"));
   });
-  await typeAsk(page, "yarışı bitir");
-  await check(G, "yarışı bitir", "sayaç durur, “Yarış 1 bitti” denir", async () => {
-    const ok = await waitFor(async () => /Yarış 1 bitti/.test(await convo(page)), 8000);
+  await typeAsk(page, "sayacı bitir");
+  await check(G, "sayacı bitir", "sayaç durur, “Bitti” denir", async () => {
+    const ok = await waitFor(async () => /Bitti/.test(await convo(page)), 8000);
     const t = await timer();
     return [!!ok && t?.end == null, `${ok ? "bitti dendi" : `cevap: ${(await convo(page)).slice(-80)}`} · sayaç ${t?.end == null ? "durdu" : "sürüyor"}`];
   });

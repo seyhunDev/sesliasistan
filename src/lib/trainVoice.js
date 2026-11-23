@@ -1,7 +1,6 @@
-// Antrenman yarışını sesle yönetme (Seyhun 2026-11-02 "hepsini sesli yapmak istiyorum"):
-// "2 dakika başlat", "iki dakikalık yarış başlat", "yarışı başlat", "start ver", "sayacı başlat" → 3·2·1 sonra geri sayım (yarış açılır);
-// "yarışı bitir", "yarış bitti" → süre yazılır; aynı cümlede sonuç da söylenebilir ("yarışı bitir, birinci Ali ikinci Ayşe").
-// Yalnız sonuç cümlesi eskisi gibi trainResult'a gider (lib/raceVoice.js resultCommand).
+// Antrenmanı sesle yönetme (Seyhun 2026-11-02 "hepsini sesli yapmak istiyorum"; 2026-11-23'ten Yönet'in süresi, yarış ve sonuç yok):
+// "2 dakika başlat", "iki dakikalık yarış başlat", "yarışı başlat", "start ver", "sayacı başlat" → 3·2·1 sonra geri sayım;
+// "yarışı bitir", "sayacı bitir", "yarış bitti" → sayaç durur; "antrenmanı kaydet" → Yönet'te "Antrenman olarak kaydet?".
 import { numberIn } from "@/lib/raceLive";
 
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/[’'`]/g, "").replace(/[.,!;:]/g, " ").replace(/\s+/g, " ").trim();
@@ -12,10 +11,13 @@ const START_W = /(dakika|dk|yarış|start|saya[cç]|geri say)/u;
 const FIN = /^(?:(?:hadi|tamam|şimdi|bu|son)\s+)*(?:yarış\p{L}*|sayac\p{L}*|sayaç)\s+(?:bitir\p{L}*|bitti|durdur\p{L}*)(?![\p{L}])\s*/u;
 const FIN2 = /^(?:bitir|durdur)\p{L}*\s+(?:yarış\p{L}*|sayac\p{L}*)(?![\p{L}])\s*/u;
 
-// { start: saniye (0: telefondaki seçili süre) } | { finish: true, rest: "sonuç cümlesi" | "" } | null
+const SAVE = /^(?:(?:bugünkü|bugünün|bu|şimdiki)\s+)?(?:antrenman\p{L}*|çalışma\p{L}*)\s+(?:(?:antrenman\s+olarak|olarak)\s+)?kaydet\p{L}*$/u;
+
+// { start: saniye (0: telefondaki seçili süre) } | { finish: true, rest } | { save: true } | null
 export function trainCommand(raw) {
   const s = low(raw);
   if (!s || /\?|(?<![\p{L}])kaç(?![\p{L}])/u.test(low(raw) + String(raw)) || s.split(" ").length > 80) return null;
+  if (SAVE.test(s)) return { save: true };
   if (START.test(s) && START_W.test(s) && (!/ ver$/.test(s) || /start/.test(s))) {
     const min = numberIn(s, "dakika|dk");
     return { start: min && min <= 30 ? min * 60 : 0 };

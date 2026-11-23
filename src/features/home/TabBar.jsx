@@ -92,9 +92,9 @@ const PAGES = {
 const RACE = { ph: "Bu yarışla ilgili söyle…", ex: ["Mehmet'i de ekle", "Not al: otel rezervasyonu yapılacak", "Bütçeye otel kişi başı 3500 ekle"] };
 const isRace = (path) => path.startsWith("/athletes/races/");
 // Yarış multimedya ve antrenman sayfası kendi alt sekmelerini (Süre · Medya · Hava · Sonuçlar) gösterir
-// Tam ekran sayfalar (sekme çubuğu yok): yarış multimedya, antrenman günü, gömülü Market /sanal (Seyhun 2026-10-25 "tam ekran olmalı"), gömülü Velora Sailing /sailing
+// Tam ekran sayfalar (sekme çubuğu yok): yarış multimedya, gömülü Market /sanal (Seyhun 2026-10-25 "tam ekran olmalı"), gömülü Velora Sailing /sailing
 // yarış sayfası da (kendi alt çubuğu: Yarış · Süre · Medya · Parkur · Sonuçlar, RaceMedia RACE_DOCK); yeni yarış formu değil
-const isMedia = (path) => /^\/athletes\/races\/[^/]+\/(media|yayin)/.test(path) || /^\/athletes\/races\/(?!new$)[^/]+$/.test(path) || path === "/training/day" || path === "/sanal" || path === "/sailing";
+const isMedia = (path) => /^\/athletes\/races\/[^/]+\/(media|yayin)/.test(path) || /^\/athletes\/races\/(?!new$)[^/]+$/.test(path) || path === "/sanal" || path === "/sailing";
 // Tek gönderi ekranı: söylenen açık gönderiyi değiştirir (PostEditor)
 const POST = { ph: "Gönderiyle ilgili söyle…", ex: ["Daha kısa ve samimi yaz", "Mete ikinci oldu diye ekle", "Gün batımında teknelerle görsel üret"] };
 const isPost = (path) => path.startsWith("/posts/");

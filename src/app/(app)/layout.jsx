@@ -11,6 +11,7 @@ import { TimerSound } from "@/features/training/Countdown";
 import { TimerChip } from "@/features/training/TimerChip";
 import { IosBridge } from "@/features/ios/IosBridge";
 import { BilgiSync } from "@/features/bilgi/BilgiSync";
+import { AntTemizle } from "@/features/training/AntTemizle";
 import { AppLock } from "@/features/ios/AppLock";
 import { DataProvider } from "@/features/data/DataProvider";
 import { ChatProvider } from "@/features/chat/ChatProvider";
@@ -109,6 +110,7 @@ export default function AppLayout({ children }) {
                   {!live && <SportGate />}
                   <TimerSound />
                   <BilgiSync />
+                  <AntTemizle />
                   <IosBridge />
                   <AppLock />
                  </DockProvider>

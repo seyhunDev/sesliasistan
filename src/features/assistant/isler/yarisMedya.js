@@ -44,7 +44,7 @@ export async function timerCmd(ctx, s, viaVoice) {
   const tc = racer ? timerCommand(s) : null;
   if (!tc) return undefined;
   const r = raceFor(ctx);
-  const own = r ? `/athletes/races/${r.id}/yayin` : "/training/day";
+  const own = r ? `/athletes/races/${r.id}/yayin` : "/bilgi/yonet"; // yarış yoksa antrenman: Yönet (2026-11-23)
   startTimer(tc.sec, r ? "start" : "", own); // sayaç gidilen sayfanın (kendi sayfasında görünür)
   const href = own;
   if (`${window.location.pathname}${window.location.search}` !== href) router.push(href);
