@@ -254,7 +254,7 @@ export function homeActions(o) {
     ["Kulüp", [
       o.athletes && { href: "/athletes", icon: "anchor", label: "Sporcular" },
       o.athletes && { href: "/athletes/attendance", icon: "checks", label: "Yoklama" },
-      o.athletes && !o.side && { href: "/training/day", icon: "clock", label: "Antrenman" }, // sayaç, yoklama, yarışlar, günlük
+      o.athletes && !o.side && { href: "/bilgi/yonet", icon: "clock", label: "Antrenman" }, // Yönet: süre, yoklama, günlük (2026-11-23)
       !o.athletes && !o.side && o.training && { href: "/training", icon: "clock", label: "Antrenman" },
       { href: o.races ? "/athletes/races" : "/races", icon: "flag", label: "Yarışlar" }, // Kulübüm · Takvim tek sayfa
       o.athletes && !o.side && { href: "/media", icon: "image", label: "Medya" }, // antrenman ve yarış fotoğraf/videoları (Seyhun 2026-10-22)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, waitForPendingWrites, where } from "firebase/firestore";
+import { arrayUnion, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, waitForPendingWrites, where } from "firebase/firestore";
 import { addDoc, deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { cleanBilgi, MSG_MAX } from "@/lib/bilgi";
@@ -321,6 +321,15 @@ export async function renameKanal(org, id, name, isOpen) {
 }
 // Açık kanalın kaydı yoksa (bu özellikten önce açılmış) oluşturulur
 export const ensureKanal = (org, k) => setDoc(kanalRef(org, k.id), { name: kanalName(k.name), at: k.at || Date.now(), end: k.open ? null : Date.now() }, { merge: true });
+// Antrenman (Seyhun 2026-11-23 "antrenmanın bilgi ekranı burası olacak"): Yönet'te (ya da sesle) verilen her start açık kanalın
+// kaydına yazılır (starts: start anları); "Antrenman olarak kaydet" bunları sayar. Kanal kapalıysa yazılmaz.
+export async function noteStart(org, at = Date.now()) {
+  if (!org) return;
+  const k = (await getDoc(ref(org, "ekran")).catch(() => null))?.data()?.kanal;
+  if (k?.open && k.id) await updateDoc(kanalRef(org, k.id), { starts: arrayUnion(at) }).catch(() => {});
+}
+// Kanal kaydedilen antrenmana bağlanır (plan: plan id); aynı kanal ikinci kez kaydedilince aynı plan güncellenir
+export const markKanalPlan = (org, id, plan) => updateDoc(kanalRef(org, id), { plan }).catch(() => {});
 export function useKanallar(org) {
   const [v, setV] = useState(null);
   useEffect(() => {

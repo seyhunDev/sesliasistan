@@ -28,7 +28,6 @@ group("Yarış çevresi")([
 
 // Yarış havası (raceWeather.js): yarış günleri, gündüz rüzgârı, kayıt temizliği, 16 günlük ufuk
 const RW = await import("@/features/athletes/raceWeather");
-const TRK = await import("@/lib/trainRank");
 const HRS = Array.from({ length: 48 }, (_, i) => `2026-10-0${7 + Math.floor(i / 24)}T${String(i % 24).padStart(2, "0")}:00`);
 const WJ = {
   hourly: { time: HRS, temperature_2m: HRS.map(() => 20), weather_code: HRS.map(() => 1), is_day: HRS.map((t) => (+t.slice(11, 13) >= 7 && +t.slice(11, 13) <= 19 ? 1 : 0)),
@@ -335,34 +334,12 @@ group("Antrenman yarışları")([
   ["yeni yarış", { desc: "sıradaki ad ve kimlik", fn: () => TY.newRace([{ id: "y1" }, { id: "y3" }]), ok: (r) => r.name === "Yarış 3" && r.id === "y4" }],
 ]);
 
-// Antrenman yarışı sonucunu sesle girme (raceVoice.js): sıra sözcükleri, kodlar, ad eşleme ve düzeltme, hangi yarış, yarışa yazma
-const RV = await import("@/lib/raceVoice");
-const VA = ["Ali Kaya", "Ayşe Şahin", "Mehmet Can", "Can Er", "Ece Demir", "Ali Uz"].map((n, i) => ({ id: `s${i + 1}`, studentName: n, status: "active" }));
-const vres = (t, present = ["s1", "s2", "s3", "s4", "s5"], al = {}) => RV.resolveResult(RV.resultCommand(t), VA, present, al);
-const vline = (r) => r.items.map((x) => `${x.name.split(" ")[0]}${x.code || x.place}`).join(",");
-group("Antrenman sonucu sesle")([
-  ["sıra sözcükleri", { desc: "birinci Ali, ikinci Ayşe, üçüncü Mehmet", fn: () => vline(vres("birinci Ali, ikinci Ayşe, üçüncü Mehmet")), ok: (r) => r === "Ali1,Ayşe2,Mehmet3" }],
-  ["rakamla", { desc: "1. Ali 2. Ayşe 3 Mehmet", fn: () => vline(vres("1. Ali 2. Ayşe 3 Mehmet")), ok: (r) => r === "Ali1,Ayşe2,Mehmet3" }],
-  ["bir şu oldu", { desc: "bir Ali oldu, iki Ayşe oldu, üç Mehmet oldu", fn: () => vline(vres("bir Ali oldu, iki Ayşe oldu, üç Mehmet oldu")), ok: (r) => r === "Ali1,Ayşe2,Mehmet3" }],
-  ["ad önce", { desc: "Ali birinci Ayşe ikinci, Can DNF", fn: () => vline(vres("Ali birinci Ayşe ikinci Can DNF")), ok: (r) => r === "Ali1,Ayşe2,CanDNF" }],
-  ["kod sözleri", { desc: "bitirmedi, siyah bayrak, d n f", fn: () => vline(vres("birinci Ayşe ikinci Ali Ece bitirmedi Mehmet siyah bayrak Can d n f")), ok: (r) => r === "Ayşe1,Ali2,EceDNF,MehmetBFD,CanDNF" }],
-  ["liste", { desc: "yarış sonucu: Ali, Ayşe, Mehmet", fn: () => vline(vres("yarış sonucu: Ali, Ayşe, Mehmet")), ok: (r) => r === "Ali1,Ayşe2,Mehmet3" }],
-  ["iki sözcüklü ad", { desc: "Ali Kaya ile Can Er ayrılır, Mehmet Can tek kişi", fn: () => vline(vres("birinci Ali Kaya ikinci Mehmet Can üçüncü Can Er")), ok: (r) => r === "Ali1,Mehmet2,Can3" }],
-  ["virgül ayırır", { desc: "Mehmet, Can DNF iki kişi; Can ilk adı Can olan (Mehmet Can değil)", fn: () => vline(vres("birinci Ali, ikinci Mehmet, Can DNF")), ok: (r) => r === "Ali1,Mehmet2,CanDNF" }],
-  ["gelenler önce", { desc: "iki Ali var, yalnız Ali Kaya geldi", fn: () => vres("birinci Ali ikinci Ece").items[0].name, ok: (r) => r === "Ali Kaya" }],
-  ["yanlış duyulan ad", { desc: "Aişe → Ayşe Şahin (gelenlerden tek yakın)", fn: () => vres("birinci Ali ikinci Aişe"), ok: (r) => r.items[1]?.name === "Ayşe Şahin" && r.fixed[0]?.said === "aişe" && !r.unknown.length }],
-  ["ses adı", { desc: "dizindeki söyleniş", fn: () => vres("birinci Memo ikinci Ali", undefined, { s3: ["memo"] }).items[0]?.name, ok: (r) => r === "Mehmet Can" }],
-  ["bilinmeyen ad", { desc: "kaydedilmez, yakınlar sorulur", fn: () => vres("birinci Zeynep ikinci Ali"), ok: (r) => r.unknown.length === 1 && r.unknown[0].said === "zeynep" && r.unknown[0].place === 1 && r.items[0].place === 2 }],
-  ["yarış numarası", { desc: "ikinci yarış / 3. yarış / yeni yarış / son yarış", fn: () => ["ikinci yarış: birinci Ali ikinci Ayşe", "3. yarış birinci Ali ikinci Ayşe", "yeni yarış 1 Ali 2 Ayşe", "son yarışta Can DNF"].map((t) => JSON.stringify(RV.resultCommand(t).race)), ok: (r) => r.join("|") === '{"n":2}|{"n":3}|{"new":true}|{"last":true}' }],
-  ["sonuç değil", { desc: "soru, rüzgâr, sayaç, tek ad, plan", fn: () => ["Ali kaçıncı oldu", "birinci kim oldu?", "rüzgar 15 knot kuzeybatı", "5 dakikalık sayacı başlat", "Ali bitirmedi", "yarın 2 yarış var", "Ali'yi yarışa ekle", "bugün 3 kişi geldi", "yarış sonuçlarını göster"].map((t) => RV.resultCommand(t)), ok: (r) => r.every((x) => x === null) }],
-  ["hangi yarış", { desc: "boş son yarış; 1. söylenince yeni; devam eden sıra eskiye; sayaç yarışı", fn: () => { const rs = [{ id: "y1", finishes: tfin("a") }, { id: "y2", finishes: [] }]; const full = [{ id: "y1", finishes: tfin("a") }]; const c = RV.resultCommand("birinci Ali ikinci Ayşe"); return [RV.pickRace(rs, c, [{ place: 1 }]).index, RV.pickRace(full, c, [{ place: 1 }]).isNew, RV.pickRace(full, c, [{ place: 4 }]).index, RV.pickRace(rs, c, [{ place: 1 }], "y1").index, RV.pickRace(full, RV.resultCommand("4. yarış birinci Ali ikinci Ayşe"), []).error]; }, ok: ([a, b, c, d, e]) => a === 1 && b === true && c === 0 && d === 0 && /1 yarış var/.test(e) }],
-  ["yarışa yaz", { desc: "söylenen eski yerinden çıkar, sıraya girer, kodlu sona", fn: () => RV.applyResult({ id: "y", finishes: tfin("a", "b", "c") }, [{ id: "c", name: "C", place: 1 }, { id: "a", name: "A", code: "DNF" }]), ok: (r) => r.finishes.map((f) => f.id + (f.code || "")).join() === "c,b,aDNF" }],
-  ["sonuç satırı", { desc: "kodlular sıra almaz", fn: () => RV.resultLine({ finishes: tfin("a", ["b", "DNF"], "c") }), ok: (r) => r === "1 A, B DNF, 2 C" }],
-  ["sayfada yalnız adlar", { desc: "antrenman sayfası düğmesi: tetik sözcüğü olmadan ad listesi", fn: () => vline(RV.resolveResult(RV.resultCommand("Ali Ayşe Mehmet", { force: true }), VA, ["s1", "s2", "s3", "s4", "s5"], {})), ok: (r) => r === "Ali1,Ayşe2,Mehmet3" }],
-  ["karışık numara", { desc: "1 Ali, Ayşe, 3 Mehmet: numarasız ad sıradaki yeri alır", fn: () => vline(RV.resolveResult(RV.resultCommand("1 Ali, Ayşe, 3 Mehmet", { force: true }), VA, ["s1", "s2", "s3", "s4", "s5"], {})), ok: (r) => r === "Ali1,Ayşe2,Mehmet3" }],
-  ["onaysız yaz", { desc: "bilinmeyen ad en yakına yazılır, yakını yoksa atlanır; yeni yarış açılır", fn: () => RV.voiceResult("birinci Ali ikinci Aişe üçüncü Xqzt", { races: [], athletes: VA, present: ["s1", "s2", "s3"], aliases: {}, force: true }), ok: (r) => !r.error && r.isNew && r.list.length === 1 && r.race.finishes.map((f) => f.id).join() === "s1,s2" && r.lost.join() === "xqzt" }],
-  ["sesli cevap", { desc: "yazılan yarış ve sıra okunur", fn: () => RV.voiceText(RV.voiceResult("Ali Ayşe Mehmet", { races: [], athletes: VA, present: ["s1", "s2", "s3"], aliases: {}, force: true })), ok: (r) => /1 Ali Kaya/.test(r) && /3 Mehmet Can/.test(r) }],
-  ["anlaşılmayan", { desc: "kimse bulunamazsa hata verir, yazmaz", fn: () => RV.voiceResult("şey", { races: [], athletes: VA, present: [], aliases: {}, force: true }).error, ok: (r) => !!r }],
+// Yönet'teki çalışma antrenman olarak (lib/antKayit.js; Seyhun 2026-11-23): katılanlar sporculara eşlenir, saat, start sayısı
+const AK = await import("@/lib/antKayit");
+const AKA = [{ id: "s1", studentName: "Ali Kaya", sailNo: "TUR 1234" }, { id: "s2", studentName: "Ayşe Şahin" }, { id: "s3", studentName: "Ali Uz" }, { id: "s4", studentName: "Mehmet Can" }];
+group("Antrenman Yönet'te")([
+  ["tekne → sporcu", { desc: "yelken no rakamı, tam ad, tek eşleşen ad; iki Ali'de ad yetmez", fn: () => [AK.athleteOf({ sail: "1234", name: "" }, AKA), AK.athleteOf({ sail: "", name: "ayse sahin" }, AKA), AK.athleteOf({ name: "Mehmet" }, AKA), AK.athleteOf({ name: "Ali" }, AKA), AK.athleteOf({ name: "Zeynep" }, AKA)].join(), ok: (r) => r === "s1,s2,s4,," }],
+  ["kaydetme özeti", { desc: "kanalın tekneleri bir kez, saat, start sayısı (tekrar yok), eşlenmeyen ad da katılan", fn: () => { const at = Date.UTC(2026, 10, 23, 12, 10); const o = AK.antOzet({ kanal: { id: "k1", at, end: at + 115 * 60e3, starts: [1, 2, 2, 3, 4] }, boats: [{ id: "d1", ch: "k1", sail: "TUR 1234", name: "Ali" }, { id: "d1", ch: "k1" }, { id: "d2", ch: "k1", name: "Zeynep" }, { id: "d3", ch: "k2", name: "Ayşe Şahin" }], athletes: AKA }); return [o.date, o.time, o.endTime, o.starts, o.crew.join(), o.present.join(), o.kanal, AK.antLine(AK.antField(o))]; }, ok: (r) => r.join("|") === "2026-11-23|15:10|17:05|4|Ali Kaya,Zeynep|s1|k1|15:10–17:05 · 2 sporcu · 4 start" }],
 ]);
 
 // Yarış multimedya sayfası (lib/raceLive.js): start sayacı bipleri, rüzgâr kaydı, startlar, fotoğraf grupları, genel sıralama, asistan cümleleri
@@ -378,18 +355,9 @@ group("Yarış multimedya")([
   ["antrenman sayacı değişmedi", { desc: "son 5 sn + 0", fn: () => seq(120, ""), ok: (r) => r === "5s,4s,3s,2s,1s,0l" }],
   ["rüzgâr cümlesi", { desc: "knot + yön (kuzeybatı, karayel, poyraz), sağanak", fn: () => [RL.windCommand("rüzgar 15 knot kuzeybatı"), RL.windCommand("rüzgarı yaz karayel 12 knot"), RL.windCommand("rüzgar poyraz 18 knot sağanak 24"), RL.windCommand("kuzeybatıdan on dört knot esiyor")], ok: ([a, b, c, d]) => a.kn === 15 && a.dir === 315 && b.dir === 315 && b.kn === 12 && c.dir === 45 && c.gust === 24 && c.kn === 18 && d?.kn === 14 }],
   ["rüzgâr sorusu kayıt değil", { desc: "soru, tahmin, yönsüz", fn: () => [RL.windCommand("yarın rüzgar kaç knot"), RL.windCommand("rüzgar 15 knot olacak mı?"), RL.windCommand("rüzgar 15 knot")], ok: (r) => r.every((x) => x === null) }],
-  ["antrenman genel sıralama", { desc: "ayın yalnız yarış sayılan (cnt) startları; gelmediği DNC; yarış sayısı; günün yerleri", fn: () => {
-    const f = (id, name) => ({ id, name });
-    const plans = [
-      { id: "p1", date: "2026-11-02", races: [{ id: "y1", cnt: true, finishes: [f("a", "Ali"), f("b", "Ayşe")] }, { id: "y2", finishes: [f("b", "Ayşe"), f("a", "Ali")] }] },
-      { id: "p2", date: "2026-11-04", races: [{ id: "y1", cnt: true, finishes: [f("a", "Ali"), f("c", "Can")] }] },
-      { id: "p3", date: "2026-10-30", races: [{ id: "y1", cnt: true, finishes: [f("b", "Ayşe")] }] },
-    ];
-    const t = TRK.monthRank(plans, "2026-11");
-    return [t.races.length, t.rows.map((r) => `${r.name}:${r.net}:${r.n}`).join(","), TRK.dayPlaces(plans[0].races, "a")];
-  }, ok: ([n, rows, dp]) => n === 2 && rows === "Ali:2:2,Can:6:1,Ayşe:6:1" && dp === "1 · 2" }],
   ["antrenman sesle başlat", { desc: "2 dakika başlat → 120 sn; süresiz → 0 (seçili süre); başka işin başlat'ı değil", fn: () => ["2 dakika başlat", "iki dakikalık yarış başlat", "yarışı başlat", "start ver", "5 dakikalık sayacı başlat", "toplantıyı başlat", "kaç dakika başlat?", "antrenmanı başlat", "ver"].map((t) => TV.trainCommand(t)), ok: ([a, b, c, d, e, f, g, h, i]) => a.start === 120 && b.start === 120 && c.start === 0 && d.start === 0 && e.start === 300 && f === null && g === null && h === null && i === null }],
   ["antrenman sesle bitir", { desc: "yarışı bitir; aynı cümlede sonuç kalanı", fn: () => ["yarışı bitir", "yarış bitti, sonuçlar: birinci Ali ikinci Ayşe", "bitir yarışı 1 Ali 2 Ayşe", "antrenman planını bitir", "Ali bitirdi"].map((t) => TV.trainCommand(t)), ok: ([a, b, c, d, e]) => a.finish && a.rest === "" && b.finish && b.rest === "birinci ali ikinci ayşe" && c.rest === "1 ali 2 ayşe" && d === null && e === null }],
+  ["antrenmanı kaydet sesle", { desc: "Seyhun 2026-11-23: Yönet'teki çalışma o günün antrenmanı; kaydet cümlesi, başka 'kaydet' değil", fn: () => ["antrenmanı kaydet", "bugünkü antrenmanı kaydet", "çalışmayı antrenman olarak kaydet", "notu kaydet", "antrenman günlüğüne kaydet: start çalıştık"].map((t) => !!TV.trainCommand(t)?.save), ok: (r) => r.join() === "true,true,true,false,false" }],
   ["sayaç cümlesi", { desc: "süre yoksa 5 dk; dakika söylenirse o", fn: () => [RL.timerCommand("sayacı başlat"), RL.timerCommand("2 dakikalık geri sayımı başlat"), RL.timerCommand("bir dakikalık sayaç başlat"), RL.timerCommand("sayaç kaç dakika")], ok: ([a, b, c, d]) => a.sec === 300 && b.sec === 120 && c.sec === 60 && d === null }],
   ["sayaçtan start", { desc: "günün sıradaki numarası, son 90 dk'daki rüzgâr; aynı an iki kez yazılmaz", fn: () => { const w = RL.cleanWind([{ at: at("10:50"), dir: 315, kn: 14 }]); const a = RL.newStart([], at("11:05"), w); const b = RL.newStart([a], at("12:20"), w); return [a, b, RL.newStart([a], at("11:05"), w)]; }, ok: ([a, b, c]) => a.n === 1 && a.kn === 14 && a.dir === 315 && a.day === "2026-10-19" && b.n === 2 && b.kn === null && c === null }],
   ["yeniden numara", { desc: "bütün seri boyunca sıra: ertesi gün kalınan yerden", fn: () => RL.renumber([{ id: "b", day: "2026-10-19", at: at("12:00"), n: 5 }, { id: "a", day: "2026-10-19", at: at("11:00"), n: 9 }, { id: "c", day: "2026-10-20", at: at("09:00"), n: 3 }]), ok: (r) => r.map((x) => `${x.id}${x.n}`).join() === "c1,a2,b3" }],

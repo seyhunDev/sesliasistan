@@ -15,7 +15,7 @@ export function widgetPlans(plans, { uid, ownerId, today }) {
     .slice(0, 8);
 }
 
-// Antrenmanlar: bugünkü ve sıradaki antrenman planları, en çok 3 (dokununca /training/day?id=… Süre ekranı): [{ id, title, date, time, place }].
+// Antrenmanlar: bugünkü ve sıradaki antrenman planları, en çok 3 (dokununca Yönet açılır; eski /training/day?id=… adresi oraya gider): [{ id, title, date, time, place }].
 // Ana sayfadaki gibi kime atandığına bakılmaz (antrenman sporculara atanır; Seyhun 2026-10-24: "yarın antrenman var, widget yok diyor").
 // Bugünkü antrenman bitirilene (done) kadar gün boyu kalır; widget geçmiş günleri kendisi düşer.
 export function widgetTrainings(plans, { today }) {

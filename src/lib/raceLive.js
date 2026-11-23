@@ -277,7 +277,7 @@ export function resetPatch(media, now, keep = {}) {
 export const pickTimer = (t) => ({ dur: t?.dur ?? 300, end: t?.end ?? null, left: t?.left ?? null, mode: t?.mode || "", rid: t?.rid || "", zero: t?.zero ?? null, own: t?.own || "", where: t?.where || "" });
 // Sayacın sahibi (Seyhun 2026-10-21: "süreyi başlatıyorum, diğer yarışın sayımını açıyor"): sayaç telefonda tek, ama her sayfa yalnız kendi
 // başlattığını gösterir. own = sayacın sayfası (yol, antrenmanda ?id=plan). Biri planlı biri plansız antrenman adresiyse yol yeter (asistan
-// "/training/day" yazar, sayfa "?id=" ile açılmış olabilir). own'u olmayan eski kayıt her sayfanındır.
+// planlı/plansız adres yazmış olabilir, sayfa "?id=" ile açılmış olabilir). own'u olmayan eski kayıt her sayfanındır.
 export function ownedBy(own, here) {
   if (!own || own === here) return true;
   const [a, qa] = String(own).split("?");

@@ -16,6 +16,7 @@ import { MsgList } from "./BilgiMesaj";
 import {
   closeKanal,
   deleteKanal,
+  noteStart,
   ensureKanal,
   linkUrl,
   loadLog,
@@ -37,6 +38,7 @@ import { TekneMap } from "./TekneMap";
 import { usePtt } from "./usePtt";
 import { Wave } from "./Wave";
 import { IzPanel, KanalList, useIz } from "./BilgiIz";
+import { AntrenmanSheets } from "./BilgiAntrenman";
 import { ScAthPanel, ScGrpPanel, ScProgPanel, canliDay, scAth, useCanliRace } from "@/features/liveScreen/sonuclar";
 import { dayProgram } from "@/features/liveScreen/program";
 import { agendaView } from "@/lib/raceProgram";
@@ -198,7 +200,7 @@ function Tekneler({ boats: all, ch, now }) {
 // (dokununca 5·4·2·1 açılır, seçince kapanır) ve en altta boydan boya Başlat. Geri sayımda mavi süre + 5·4·1·0, aynı yerde içi süreyle boşalan
 // Bitir. Start sonrası akan süre, start saati ve Bitir.
 const DURS = [300, 240, 120, 60];
-function PanelClock() {
+function PanelClock({ org }) {
   const { t, now, running, rem, up } = useTimerRun();
   const [pick, setPick] = useState(false);
   const time = up ? `+${mmss(Math.max(0, Math.floor((now - t.end) / 1000)))}` : mmss(Math.max(0, running ? rem : (t.left ?? t.dur)));
@@ -223,7 +225,7 @@ function PanelClock() {
             <em>dk</em>
           </div>
         )}
-        <Button full className="bzy-goB" onClick={() => (setPick(false), raceStart(null, "start", "Bilgi ekranı"))}>
+        <Button full className="bzy-goB" onClick={() => (setPick(false), raceStart({ onStart: (end) => noteStart(org, end) }, "start", "Bilgi ekranı", "/bilgi/yonet"))}>
           Başlat
         </Button>
       </>
@@ -714,7 +716,7 @@ function useGelenPlay(org, ctx, onLog) {
 export function BilgiAdmin() {
   const { profile } = useAuth();
   // Bugünün antrenmanından gelindi (Seyhun 2026-11-17 "antrenmanı oradan yöneteceğim"): ?ant=plan id, ?ad=antrenmanın adı.
-  // Kanal adı antrenmanın adıyla hazır gelir; üstte Antrenman düğmesi eski sayfayı (yoklama, günlük, sıralama) açar
+  // Kanal adı antrenmanın adıyla hazır gelir; soldaki Antrenman düğmesi Yoklama, Günlük ve "Antrenman olarak kaydet" penceresini açar (BilgiAntrenman.jsx)
   const q = useSearchParams();
   const ant = (q.get("ant") || "").replace(/[^\w-]/g, "").slice(0, 60);
   const antAd = (q.get("ad") || "").trim().slice(0, 30);
@@ -775,6 +777,18 @@ export function BilgiAdmin() {
   const [hidden, setHidden] = useState([]);
   const [izK, setIzK] = useState(null);
   const [kbusy, setKbusy] = useState(false);
+  const [antK, setAntK] = useState(null); // kapanınca kaydetme özeti için kapanan kanal
+  const [antUsed, setAntUsed] = useState(false);
+  // Asistan "antrenmanı kaydet" (isler/antrenmanSes.js): ?kaydet=1 açık kanalı, yoksa son kanalı kaydetme penceresinde açar
+  const [kaydetQ, setKaydetQ] = useState(() => q.get("kaydet") === "1");
+  if (kaydetQ && kanallar && b !== undefined) {
+    setKaydetQ(false);
+    const k = kanal?.open ? kanal : kanallar[0];
+    if (k) {
+      setAntK(k);
+      setSheet("kaydet");
+    }
+  }
   const iz = useIz(org, izK?.id || "");
   useEffect(() => {
     if (org && kanal?.open && kanal.id && kanallar && !kanallar.some((x) => x.id === kanal.id)) ensureKanal(org, kanal).catch(() => {});
@@ -873,14 +887,26 @@ export function BilgiAdmin() {
     ["mesaj", "Mesajlar"],
     ["kayit", "Kayıtlar"],
   ];
-  const closeAsk = () =>
-    ask({
+  const closeAsk = () => {
+    let err = false;
+    return ask({
       title: "Kanal kapatılsın mı?",
       text: "Sporcuların ekranı durur. İz ve kayıtlar saklanır.",
       yes: "Kapat",
-      run: () => closeKanal(org, kanal.id),
-    }).then((ok) => ok === false && toast("Kapatılamadı"));
+      run: () => closeKanal(org, kanal.id).catch((e) => ((err = true), Promise.reject(e))),
+    }).then((ok) => {
+      if (err) return toast("Kapatılamadı");
+      // Antrenmanda kapanınca "Antrenman olarak kaydet?" (Seyhun 2026-11-23); yarış gününde sorulmaz
+      if (ok && antOn) setAntK(kanal), setSheet("kaydet");
+    });
+  };
   const tst = talkSt(ptt, last, dl0, now, to);
+  // Antrenman (BilgiAntrenman.jsx): yarış günü değilse ya da antrenmandan gelindiyse; kanal kaydı listeden (starts, end, plan)
+  const antOn = !!ant || !yaris.data;
+  // Sporcular (kulüp listesi) yalnız Antrenman penceresi ilk açılınca okunur; sonra iç pencereler (Yoklama, Günlük) için açık kalır
+  if (!antUsed && (sheet === "ant" || sheet === "kaydet")) setAntUsed(true);
+  const antBase = sheet === "kaydet" && antK ? antK : kanal;
+  const antDoc = antBase?.id ? { ...antBase, ...(kanallar?.find((x) => x.id === antBase.id) || {}) } : null;
   return (
     <main className="bzy-app" aria-label="Bilgi ekranı yönetimi" data-open={open ? "1" : undefined}>
       <TekneMap boats={izK ? iz.boats : chBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full api={mapApi} />
@@ -905,11 +931,11 @@ export function BilgiAdmin() {
       {!izK && open && (
         <>
           <nav className="bzy-rail" aria-label="Araçlar">
-            {ant ? (
-              <Link href={`/training/day?id=${ant}`} className="bzy-tool" data-press>
+            {antOn ? (
+              <button type="button" className="bzy-tool" onClick={() => setSheet("ant")} data-press>
                 <Ic n="ant" />
                 <small>Antrenman</small>
-              </Link>
+              </button>
             ) : null}
             {tools.map(([k, l]) => (
               <button key={k} type="button" className="bzy-tool" onClick={() => setSheet(k)} data-press>
@@ -1002,11 +1028,12 @@ export function BilgiAdmin() {
                   </span>
                 )}
               </div>
-              <PanelClock />
+              <PanelClock org={org} />
             </section>
           </div>
         </>
       )}
+      {antUsed && <AntrenmanSheets org={org} view={sheet} onView={setSheet} k={antDoc} boats={boats} ant={ant} />}
       <Sheet open={sheet === "kanal"} onClose={() => setSheet("")} title={kanal?.name || "Kanal"}>
         <KanalInfo kanal={kanal} link={b?.link || ""} count={members.length} onList={() => setSheet("kanallar")} />
       </Sheet>

@@ -44,7 +44,6 @@ import { grpCommand, timerCommand, windCommand } from "@/lib/raceLive";
 import { penCommand, roundCommand, routeCommand, screenCommand } from "@/lib/raceRounds";
 import { bilgiCommand } from "@/lib/bilgi";
 import { COURSE_WORD, courseAsk, courseCommand, courseRelative, courseUndo } from "@/lib/raceCourse";
-import { resultCommand } from "@/lib/raceVoice";
 import { trainCommand, raceToday } from "@/lib/trainVoice";
 import { attQueryAsk } from "@/lib/attQuery";
 import { clubAsk } from "@/lib/clubAsk";
@@ -82,8 +81,8 @@ export function moreKind(s, c = {}) {
   if (owner && bilgiCommand(s)) return "bilgi";
   // Canlı ekran (isler/canliEkran.js): şamandıra dönüşü, parkur sırası, ekranda gösterme; az önce yazılan dönüşü "geri al"
   if (owner && racer && (routeCommand(s) || roundCommand(s) || screenCommand(s) || grpCommand(s) || penCommand(s) || (c.roundJust && courseUndo(s)))) return "liveScreen";
-  // Antrenman yarışı sesle (isler/antrenmanSes.js): "2 dakika başlat", "yarışı bitir, birinci Ali …"; yarış günü antrenman sayfası dışında Yayın'ın
-  if (owner && racer && trainCommand(s) && (path.startsWith("/training") || (!path.startsWith("/athletes/races/") && !raceToday(c.races || [], c.today || "2000-01-01")))) return "trainVoice";
+  // Antrenman sesle (isler/antrenmanSes.js; Yönet'in süresi): "2 dakika başlat", "sayacı bitir", "antrenmanı kaydet"; yarış günü Yönet dışında Yayın'ın
+  if (owner && racer && trainCommand(s) && (path.startsWith("/bilgi/yonet") || (!path.startsWith("/athletes/races/") && !raceToday(c.races || [], c.today || "2000-01-01")))) return "trainVoice";
   if (racer && timerCommand(s)) return "raceTimer";
   if (owner && racer && c.courseJust && courseUndo(s)) return "raceCourse"; // parkura az önce yazılanı "geri al" / "yanlış"
   if (owner && racer && courseCommand(s)?.list.length > 1) return "raceCourse"; // "rüzgar kuzeybatı 12 knot, eksen 320" parkura
@@ -92,7 +91,6 @@ export function moreKind(s, c = {}) {
   if (owner && racer && windCommand(s)) return "raceWind";
   if (owner && racer && courseCommand(s)) return "raceCourse";
   if (onRace && racer && raceHereCommand(s)) return "raceHere";
-  if (owner && racer && !onRace && resultCommand(s)) return "trainResult";
   if (owner && receiptPayCommand(s)) return "receiptPay";
   if (owner && receiptScopeCommand(s)) return "receiptScope";
   if (owner && racer && absentNotifyCommand(s)) return "absent";

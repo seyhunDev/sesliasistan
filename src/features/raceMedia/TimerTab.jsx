@@ -194,7 +194,7 @@ function StartForm({ s, onSave, onDrop }) {
 
 // Parkur noktaları: dokununca startan beri geçen süre; sıradaki çerçeveli. + / − şamandıra ekler, çıkarır.
 // Yalnız açılmış yarış startı geçmişken görünür (Seyhun 2026-10-21: "Yarışta göster"; düz startta boş duruyordu).
-// Start · Şamandıra · Finish kareleri (antrenman sayfası da kullanır, training/day): kareye dokununca startan beri geçen süre yazılır
+// Start · Şamandıra · Finish kareleri: kareye dokununca startan beri geçen süre yazılır
 export function Marks({ buoys, s, on, onMark, onBuoys }) {
   const next = on ? nextBuoy(buoys, s) : "";
   const small = "grid flex-1 place-items-center rounded-[0.625rem] border border-line bg-card text-[1.0625rem] text-fg2 active:bg-bg disabled:opacity-40";

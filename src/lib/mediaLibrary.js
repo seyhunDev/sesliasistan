@@ -33,7 +33,7 @@ export function librarySections(docs, { plans = [], races = [], today = dayOf(ne
       const pid = d.id.slice(4);
       const p = plans.find((x) => x.id === pid);
       const day = p?.date || dayOf(items[0].at);
-      ant.push({ key: d.id, id: d.id, title: p?.title || "Antrenman", sub: `${dayText(day, today)} · ${n}`, href: `/training/day?id=${pid}&tab=media`, items, last });
+      ant.push({ key: d.id, id: d.id, title: p?.title || "Antrenman", sub: `${dayText(day, today)} · ${n}`, href: "/training", items, last });
     } else {
       const r = races.find((x) => x.id === d.id);
       const where = r?.district || r?.city || "";

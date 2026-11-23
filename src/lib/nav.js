@@ -27,7 +27,7 @@ export const PAGES = {
   races: { path: "/athletes/races", label: "Yarışlar", need: "athletes" },
   raceCalendar: { path: "/races", label: "Yarış takvimi (bütün yarışlar, talimat, sonuçlar)" },
   training: { path: "/training", label: "Antrenman günlüğü" },
-  trainingDay: { path: "/training/day", label: "Antrenman sayfası (sayaç, yoklama, yarışlar)", need: "athletes" },
+  trainingDay: { path: "/bilgi/yonet", label: "Antrenman (Yönet: süre, yoklama, günlük)", need: "athletes" },
   weather: { path: "/weather", label: "Hava durumu" },
   wind: { path: "/wind", label: "Rüzgâr haritası" },
   sea: { path: "/sea", label: "Deniz trafiği (gemiler, Sahil Güvenlik, acil)" },
