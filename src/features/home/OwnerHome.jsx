@@ -2,6 +2,7 @@
 
 import { BilgiTile } from "@/features/bilgi/BilgiTile";
 import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
@@ -24,7 +25,7 @@ import { RaceLive } from "./RaceLive";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { IpadHome, Waiting } from "./IpadHome";
 import { LinkTile } from "@/components/ui/LinkTile";
-import { SIMULATOR_URL, openSailing } from "@/lib/externalLinks";
+import { SIMULATOR_URL } from "@/lib/externalLinks";
 
 // Ana sayfa (Seyhun 2026-11-11 "A · Zaman şeridi", 2026-11-12 iPhone'da da aynı): IpadHome (lacivert; Hava, Takvim, Bekleyen, Kulüp). Alttaki asistan kubbesi her sayfada aynı (TabBar).
 export function OwnerHome() {
@@ -62,6 +63,7 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
   const athletes = canSeeAthletes(profile?.email);
   const race = useRaceHome();
   const { openMeeting } = useMeeting();
+  const router = useRouter();
   const training = plans.some((p) => (p.cat || p.category) === "Antrenman");
   // Antrenman kartında fitness antrenmanları da: kendi planların ve (ana hesapta) sporcularınki
   const fit = useMemo(() => (side ? [] : fitDays(plans, owner ? fitOthers || [] : [], members, profile?.uid)), [side, owner, plans, fitOthers, members, profile?.uid]);
@@ -98,7 +100,8 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
                 </p>
               )}
               <PaidNotice />
-              <LinkTile title="Velora Sailing" href={SIMULATOR_URL} onOpen={openSailing} />
+              {/* Velora'nın içinde tam ekran açılır (/sailing, Seyhun 2026-11-22); dışarıdan da velora-sailing.netlify.app olarak açılabilir */}
+              <LinkTile title="Velora Sailing" href={SIMULATOR_URL} inside onOpen={() => router.push("/sailing")} />
               {owner && (
                 <div className="iph-club empty:hidden">
                   <HomeSummary title="Kulüp" money={canReceipts(kind)} race={null} dues={!!athletes} invoices lead={athletes ? <ClubRows open={race.open} fit={fit} /> : null} />

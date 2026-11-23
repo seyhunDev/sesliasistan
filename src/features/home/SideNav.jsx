@@ -56,7 +56,7 @@ function usePages() {
 
 // Açık sayfa: mavi zemin, solda mavi çizgi, beyaz yazı (Seyhun 2026-11-13 lacivert menü, örnek ana-sayfa/sade-2026-11/solmenu.html)
 const row = (on) =>
-  `relative flex h-10 w-full items-center justify-between rounded-xl px-3.5 text-left transition active:scale-[.98] ${on ? "bg-[rgba(61,123,255,.16)] font-semibold text-white before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[#3d7bff] before:content-['']" : "text-[#cfdcf5] hover:bg-white/[.04]"}`;
+  `relative flex h-10 w-full items-center justify-between rounded-xl px-3.5 text-left transition active:scale-[.98] ${on ? "bg-[var(--sn-on-bg)] font-semibold text-[var(--sn-on)] before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[var(--sn-bar)] before:content-['']" : "text-[var(--sn-fg)] hover:bg-[var(--sn-hover)]"}`;
 
 // Açık gruplar cihazda saklanır (Seyhun 2026-11-04 "gruplara ayıralım, tıklayınca açılsın"); kayıt yoksa yalnız açık sayfanın grubu açık
 const OPEN_KEY = "sa-side-open";
@@ -96,9 +96,9 @@ export function SideNav({ path, unread = 0, orb = null }) {
     } catch {}
   };
   return (
-    // Lacivert (Seyhun 2026-11-13 "sol sidebar'ı uygulamayla uyumlu renge getir"): üstte logo yok (iPad saat satırıyla çakışmasın), menü Ana sayfa ile başlar;
+    // Lacivert (Seyhun 2026-11-13 "sol sidebar'ı uygulamayla uyumlu renge getir"); açık sayfada (main.acik, 2026-11-22) açık, renkler --sn-* (globals.css): üstte logo yok (iPad saat satırıyla çakışmasın), menü Ana sayfa ile başlar;
     // üstte saat satırıyla karışmasın diye boşluk; logo en altta solda, sağda klavye ve asistan küresi (TabBar orb)
-    <nav aria-label="Menü" className="sidenav navy fixed inset-y-0 left-0 z-[37] hidden w-60 flex-col border-r border-[#1d3256] pt-[calc(env(safe-area-inset-top)+1.75rem)]">
+    <nav aria-label="Menü" className="sidenav navy fixed inset-y-0 left-0 z-[37] hidden w-60 flex-col border-r border-[var(--sn-line)] pt-[calc(env(safe-area-inset-top)+1.75rem)]">
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin]">
         {TABS.map(([href, label]) => (
           <Link key={href} href={href} aria-current={at(href) ? "page" : undefined} className={`${row(at(href))} text-[0.9375rem] ${at(href) ? "" : "font-medium"}`}>
@@ -147,7 +147,7 @@ export function SideNav({ path, unread = 0, orb = null }) {
           <span className="truncate pl-2 text-[0.75rem] font-normal text-mut">{profile?.name}</span>
         </Link>
       </div>
-      {orb && <div className="sidenav-orb flex shrink-0 items-center gap-2.5 border-t border-[#1d3256] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">{orb}</div>}
+      {orb && <div className="sidenav-orb flex shrink-0 items-center gap-2.5 border-t border-[var(--sn-line)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">{orb}</div>}
     </nav>
   );
 }

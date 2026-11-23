@@ -1,12 +1,33 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import { MAP_STYLE, loadMapLibre } from "@/lib/maplibre";
 
 // Yönet › Tekneler haritası (Seyhun 2026-11-15): bilgi ekranını açan her telefon kendi GPS noktasında, üstünde yelken no ve isim.
 // 1 dk'dır konum gelmeyen soluk (gri). İlk tekneler gelince hepsi görünecek şekilde yaklaşır; sonra kullanıcı kaydırır.
 // Simge (tekne şekli, yön) ileride.
 const STALE = 90e3;
+// Tam ekranda kenar payı: solda araç sırası, sağda harita düğmeleri, altta panel (dikey telefonda), üstte geri
+function pad(m) {
+  const c = m.getContainer();
+  const w = c.clientWidth;
+  const h = c.clientHeight;
+  if (w < 600 && h > w) return { top: 80, left: 92, right: 72, bottom: Math.min(340, h * 0.42) };
+  if (h < 600 || w < 1000) return { top: 60, left: 92, right: Math.min(420, w * 0.45), bottom: 40 };
+  return { top: 70, left: 100, right: 440, bottom: 60 };
+}
+function fitTo(m, lib, pts, duration) {
+  const full = m.getContainer().classList.contains("tkm-full");
+  const p = full ? pad(m) : 48;
+  if (pts.length === 1) return m.easeTo({ center: [pts[0].lon, pts[0].lat], zoom: 14, padding: full ? p : 0, duration });
+  const b = new lib.LngLatBounds();
+  pts.forEach((x) => b.extend([x.lon, x.lat]));
+  try {
+    m.fitBounds(b, { padding: p, maxZoom: 15, duration });
+  } catch {
+    m.fitBounds(b, { padding: 24, maxZoom: 15, duration });
+  }
+}
 function markEl() {
   const d = document.createElement("div");
   d.className = "tkm";
@@ -16,7 +37,9 @@ function markEl() {
 
 // talk: o an konuşan teknenin cihaz kimliği (Seyhun 2026-11-17 örnek C): işareti yeşil atar, adının yanında ses dalgası
 // tracks: geri oynatmada izler [{ id, color, line: [[boylam, enlem], …] }]; boat.color verilirse nokta o renkte
-export function TekneMap({ boats, course = null, full = false, talk = "", tracks = null }) {
+// api (Yönet harita düzeni, Seyhun 2026-11-22): sağdaki düğmeler için { zoom(+1/-1), fit() }. Tam ekranda sığdırma alt paneli ve yan
+// sıraları hesaba katar (tekneler panelin altında kalmasın).
+export function TekneMap({ boats, course = null, full = false, talk = "", tracks = null, api = null }) {
   const box = useRef(null);
   const map = useRef(null);
   const ml = useRef(null);
@@ -96,13 +119,24 @@ export function TekneMap({ boats, course = null, full = false, talk = "", tracks
     ];
     if (!pts.length) return;
     fitted.current = fitKey;
-    if (pts.length === 1) m.jumpTo({ center: [pts[0].lon, pts[0].lat], zoom: 14 });
-    else {
-      const b = new lib.LngLatBounds();
-      pts.forEach((p) => b.extend([p.lon, p.lat]));
-      m.fitBounds(b, { padding: 48, maxZoom: 15, duration: 0 });
-    }
+    fitTo(m, lib, pts, 0);
   }, [fitKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+  const allPts = useRef([]);
+  useEffect(() => {
+    allPts.current = [
+      ...(boats || []).filter((b) => Number.isFinite(b.lat) && Number.isFinite(b.lon)),
+      ...(course?.pts || []),
+      ...(tracks || []).flatMap((x) => x.line.map(([lon, lat]) => ({ lon, lat }))),
+    ];
+  });
+  useImperativeHandle(
+    api,
+    () => ({
+      zoom: (d) => map.current?.easeTo({ zoom: map.current.getZoom() + d, duration: 250 }),
+      fit: () => map.current && ml.current && allPts.current.length && fitTo(map.current, ml.current, allPts.current, 400),
+    }),
+    [],
+  );
 
   // Parkur şamandıraları (Yönet › Parkur): turuncu nokta + numara, hakem botu ve pin mavi
   const cm = useRef([]);
