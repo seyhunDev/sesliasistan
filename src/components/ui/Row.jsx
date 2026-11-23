@@ -60,8 +60,9 @@ export function Row({ href, onClick, lead, title, sub, right, warn = false, chev
 export function ListHead({ title, count, href, more = "Tümü", id, action = null }) {
   return (
     <div className="mb-1.5 flex items-center justify-between gap-3 px-1">
-      <h2 id={id} className="min-w-0 truncate text-[0.8125rem] font-bold tracking-[.04em] text-mut">
-        {title.toLocaleUpperCase("tr-TR")}
+      {/* Büyük harf CSS ile (html lang="tr"); açık temada (.acik) normal harf, globals.css .lh */}
+      <h2 id={id} className="lh min-w-0 truncate text-[0.8125rem] font-bold tracking-[.04em] text-mut">
+        {title}
         {count ? <span className="ml-1.5 font-semibold tabular-nums">{count}</span> : null}
       </h2>
       {href && (

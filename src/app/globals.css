@@ -343,10 +343,9 @@ html[data-nav="none"]::view-transition-new(.vt-in) { animation: none; }
   box-shadow: 0 -0.5px 0 var(--line), 0 -8px 24px -18px rgba(20, 40, 34, .25); }
 /* Altta, güvenli alanın da altında aynı renk: iPhone sabit çubuğu yukarı iterse altta boşluk görünmesin */
 .atabbar::after, .asheet::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 6rem; background: inherit; }
-/* Kaydırınca üst çubuk (ScrollBar; Seyhun 2026-11-23 "A"): yalnız telefonda. Saat/pil çubuğunun altını da kaplar (içerik saatin arkasında
+/* Kaydırınca üst çubuk (ScrollBar; Seyhun 2026-11-23 "A", iPad'de de): sol menü varken menünün sağında. Saat/pil çubuğunun altını da kaplar (içerik saatin arkasında
    görünmez); buzlu cam, ortada küçük başlık, sağda tek düğme. data-on yokken görünmez ve dokunuş almaz. Sayaç adası varken başlık gizli */
-.ptb { display: none; }
-@media (max-width: 47.99rem) {
+@media all {
   .ptb { position: fixed; z-index: 45; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 0.5rem; box-sizing: border-box; transition: opacity .2s, height .2s;
     height: calc(env(safe-area-inset-top) + 2.75rem); padding: env(safe-area-inset-top) 1rem 0;
     background: color-mix(in srgb, var(--bg, #f5f5f7) 78%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
@@ -851,6 +850,7 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
   body[data-side] main.max-w-\[30rem\], body[data-side] [data-screen] > div, body[data-side] main.fixed > div.max-w-\[30rem\] { max-width: 80rem; }
   body[data-side] .atabbar-wrap { display: none; }
   body[data-side] .tisl { left: calc(50% + 7.5rem); }
+  body[data-side] .ptb { left: 15rem; }
   body[data-side] .cartbar { left: 15rem; bottom: -1.5rem; }
   body[data-side] :is(.fixed[data-pagebar], [data-screen], main.fixed), body[data-side] > [data-bar] { left: 15rem; }
   body[data-side] .dome:not([data-on]) { left: 15rem; }
@@ -1183,6 +1183,34 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
   .cal-acts { display: flex; gap: 0.5rem; }
 }
 @media (max-width: 47.99rem) { .cal-acts { display: none; } }
+/* Takvim sayfası açık (2026-11-23, ana sayfa #1480 gibi): ay beyaz kartta, ince gri çizgiler, seçili gün açık gri; ızgaradaki planlar açık gri
+   zeminde koyu yazı, türü soldaki ince renkli çizgi (antrenman yeşil, yarış/toplantı mavi, diğer turuncu). Ana sayfada (.cal-emb) sarmal yok sayılır */
+.lh { text-transform: uppercase; }
+.acik .lh { text-transform: none; letter-spacing: 0; font-size: 0.875rem; font-weight: 650; color: var(--fg2); }
+.cal-emb .cal-mo { display: contents; }
+main.cal-wide.acik .cal-mo { margin-top: 0.75rem; padding: 0.5rem 0.25rem 0.375rem; border-radius: 1.25rem; background: var(--card); box-shadow: 0 1px 0 rgba(0, 0, 0, .04), 0 0 0 1px rgba(0, 0, 0, .03); }
+main.cal-wide.acik .cal-mo .cal-week { margin-top: 0; }
+@media (min-width: 48rem) {
+  main.cal-wide.acik .cal-mo { padding: 0.75rem 0 0; overflow: hidden; }
+  main.cal-wide.acik .cal-mo .cal-week { padding: 0 0.375rem 0.375rem; }
+  main.cal-wide.acik .cal-grid { border-top-color: var(--line); }
+  main.cal-wide.acik .cal-grid .cal-cell { border-color: var(--line); }
+  main.cal-wide.acik .cal-grid .cal-cell:nth-last-child(-n+7) { border-bottom: 0; }
+  main.cal-wide.acik .cal-grid .cal-cell[data-on] { background: var(--fill); }
+  main.cal-wide.acik .cal-evs i { background: var(--fill); color: var(--fg); border-left: 3px solid var(--mut2); border-radius: 0.25rem; }
+  main.cal-wide.acik .cal-evs i[data-k="g"] { border-left-color: #16a34a; }
+  main.cal-wide.acik .cal-evs i[data-k="bl"] { border-left-color: #2563eb; }
+  main.cal-wide.acik .cal-evs i[data-k="or"] { border-left-color: #ea580c; }
+  main.cal-wide.acik .cal-evs i[data-c="task"] { border-left-color: var(--warn); }
+  main.cal-wide.acik .cal-evs i[data-c="late"] { border-left-color: var(--rec); color: var(--rec); }
+  main.cal-wide.acik .cal-evs i[data-c="bday"] { border-left-color: #db2777; }
+  main.cal-wide.acik .cal-evs i[data-c="more"] { background: none; border: 0; color: var(--mut); }
+  main.cal-wide.acik .cal-evs b { color: var(--mut); }
+}
+@media (min-width: 64rem) {
+  body[data-side] main.cal-wide.acik .cal-mo { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  body[data-side] main.cal-wide.acik > .cal-body { background: var(--bg); border-left: 1px solid var(--line); padding-top: calc(1.25rem + env(safe-area-inset-top)); }
+}
 @media (min-width: 64rem) {
   body[data-side] main.cal-wide.max-w-\[30rem\] { max-width: none; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) 24rem; height: 100dvh; overflow: hidden; }
   body[data-side] main.cal-wide > .cal-top { margin: 0; padding: calc(1.25rem + env(safe-area-inset-top)) 2rem 1.5rem; display: flex; flex-direction: column; min-height: 0; }
