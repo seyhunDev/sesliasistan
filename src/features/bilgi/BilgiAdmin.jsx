@@ -873,7 +873,7 @@ export function BilgiAdmin() {
   const closeAsk = () =>
     ask({
       title: "Kanal kapatılsın mı?",
-      text: "Sporcuların ekranı durur, link çalışmaz. İz ve kayıtlar saklanır.",
+      text: "Sporcuların ekranı durur. İz ve kayıtlar saklanır.",
       yes: "Kapat",
       run: () => closeKanal(org, kanal.id),
     }).then((ok) => ok === false && toast("Kapatılamadı"));
