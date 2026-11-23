@@ -1,8 +1,8 @@
-Commit: c9f6790 · Hava grafiği: gök ve sıcaklık arkada soluk; yatay iPad'de sağ sütun tam (#1503)
-Zaman: 2026-11-23-2328 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45255760295
+Commit: 787e222 · Antrenman Yönet'e taşındı: antrenman sayfası, start ve yarış kısmı kalktı (#1504)
+Zaman: 2026-11-24-0033 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45267448136
 
-TAM TEST · 23.11.2026 23:06:15
+TAM TEST · 24.11.2026 00:13:46
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1410/1441 geçti · 31 kalan · 1341 sn
+SONUÇ: 1402/1433 geçti · 31 kalan · 1192 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4590 test”
+      ✗ “4563 test”
           beklenen: hepsi geçer
-          olan:     4540/4590 geçti
+          olan:     4513/4563 geçti
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “Yarışlar geri dönüş” → false (beklenen: liste racesNow ile başlar, yarış 1 dk içindeki listeden açılır)
       ✗ “tek kutu” → false (beklenen: solda kutu, sağda bas-konuş küresi)
@@ -206,12 +206,12 @@ SONUÇ: 1410/1441 geçti · 31 kalan · 1341 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 68/68
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 67/67
   ✓ Sunucu ucu: girişsiz istek reddedilir: 18/18
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 47/47
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 122/139
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 117/135
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✗ Ana sayfa: 3/8
       ✗ “iş düğmeleri”
@@ -235,7 +235,7 @@ SONUÇ: 1410/1441 geçti · 31 kalan · 1341 sn
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 3/3
   ✓ Kısa dokun yaz: 1/1
-  ✓ Sayfa hataları: 13/13
+  ✓ Sayfa hataları: 12/12
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Yeniden açılış: 3/3
   ✓ Sesli yanıt: 8/8
@@ -283,14 +283,20 @@ SONUÇ: 1410/1441 geçti · 31 kalan · 1341 sn
   ✗ Hava: 0/3
       ✗ “yağmur grafiği”
           beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var
-          olan:     sütun 48 · gün düğmesi 0 · 5,5 true
+          olan:     sütun 48 · gün düğmesi 0 · 5,5 false
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 24 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 1 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 24 · açıklama 24 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
-  ✓ Antrenman yarışı sesle: 4/4
+          olan:     yağan çubuk 1 · açıklama 1 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+  ✗ Senaryolar: 0/1
+      ✗ “çalıştırma”
+          beklenen: tamamlanır
+          olan:     locator.boundingBox: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('nav[aria-label=\'Sekmeler\'] [data-orb]')
+ |     at typeAsk (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/senaryolar.mjs:231:33) |     at async trainVoice (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:1086:3) |     at async scenarios4 (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:1070:3) |     at async scenarios3 (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:769:3) |     at async scenarios2 (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:399:3) |     at async scenarios (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:217:3)
   ✓ Güvenlik: 1/1
 
 3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 28/28
@@ -304,8 +310,8 @@ SONUÇ: 1410/1441 geçti · 31 kalan · 1341 sn
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 15/22
-  ✗ Yarış sayfası: 10/14
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 13/19
+  ✗ Yarış sayfası: 11/14
       ✗ “yarış günü, sporcu seçili”
           beklenen: çökmeden açılır, "Canlı ekran" görünür
           olan:     "Canlı ekran" görünmedi
@@ -315,10 +321,6 @@ SONUÇ: 1410/1441 geçti · 31 kalan · 1341 sn
       ✗ “bütün sekmeler”
           beklenen: her sekme çökmeden açılır
           olan:     2 sekme açıldı
-      ✗ “bitiren kim”
-          beklenen: çökmeden açılır, "Start sayacı" görünür
-          olan:     kare göründü · satırda yok · kareler kalktı
-  ✓ Antrenman: 3/3
   ✓ Asılı bağlantı: 2/2
   ✗ Yayın: 0/3
       ✗ “gruplar ayrı, ekranda seçim, kameralar”
