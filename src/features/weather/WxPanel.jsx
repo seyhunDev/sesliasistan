@@ -179,14 +179,15 @@ function curve(p) {
 }
 
 // Seçili günün rüzgâr eğrisi (06–24), kutunun bir kenarından öbürüne, eksensiz: dolgu rüzgâr (tahmin), kesik çizgi sağanak, beyaz çizgi ölçülen (istasyon);
-// yağış saatleri mavi bantta (WindRibbon.rainSpan, #1210, üstünde mm); bugünse kırmızı çizgi şimdi. Altında 3 saatlik bloklar: ok + rüzgâr aralığı, derece, gök, sıcaklık
+// yağış saatleri mavi bantta (WindRibbon.rainSpan, #1210, üstünde mm); bugünse kırmızı çizgi şimdi. Gök + sıcaklık grafiğin arkasında soluk (.iph-sky);
+// altında 3 saatlik bloklar: ok + rüzgâr aralığı, derece
 export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
   const [ref, W] = useWidth();
-  const H = 222;
+  const H = 208;
   const pts = (rows || []).filter((h) => +h.hh >= H0).map((h) => ({ ...h, x: +h.hh }));
   const X = (h) => ((h - H0) / (H1 - H0)) * W;
   const wy0 = 24;
-  const wy1 = H - 78;
+  const wy1 = H - 70;
   const top = Math.max(20, ...pts.map((p) => p.gust ?? p.wind ?? 0), ...(obs || []).map((o) => o.gust ?? o.wind ?? 0)) + 3;
   const Y = (k) => wy1 - (k / top) * (wy1 - wy0);
   const blocks = [];
@@ -215,8 +216,19 @@ export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
   const rx1 = rs ? X(rs.to + 0.5) : 0;
   return (
     <div ref={ref} role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} className="iph-wch relative cursor-pointer" style={{ height: H }} aria-label="Saat saat rüzgâr">
+      {/* Gök ve sıcaklık (Seyhun 2026-11-23 "grafikte arka plana hafif soluk"): her 3 saatin üstünde, çizgilerin arkasında */}
       {W > 0 && pts.length > 1 && (
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
+        <div className="iph-sky absolute inset-x-0 flex px-2" style={{ top: wy0 + 4 }} aria-hidden="true">
+          {blocks.map((b) => (
+            <span key={b.h} className="flex min-w-0 flex-1 items-center justify-center gap-1">
+              <SkyIcon code={b.code} day={b.day} size="size-5" />
+              <span className="num text-[0.8125rem] font-semibold">{b.t}°</span>
+            </span>
+          ))}
+        </div>
+      )}
+      {W > 0 && pts.length > 1 && (
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="relative block">
           <defs>
             <linearGradient id="iph-wz" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" style={{ stopColor: "var(--wx-area)" }} />
@@ -258,7 +270,7 @@ export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
         </svg>
       )}
       {W > 0 && (
-        <div className="absolute inset-x-0 bottom-0 flex px-2">
+        <div className="absolute inset-x-0 bottom-0 flex px-2 pb-2.5">
           {blocks.map((b) => {
             const col = b.obs ? "var(--wx-obs)" : windColor((b.wind + b.gust) / 2);
             return (
@@ -268,10 +280,6 @@ export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
                   {Math.round(b.wind)}–{Math.round(b.gust)}
                 </b>
                 <small className="num text-[0.6875rem] text-mut">{dirDeg(b.dir)}</small>
-                <span className="flex items-center gap-1 text-[0.75rem] font-semibold text-[var(--wx-t2)]">
-                  <SkyIcon code={b.code} day={b.day} size="size-4" />
-                  {b.t}°
-                </span>
               </span>
             );
           })}
