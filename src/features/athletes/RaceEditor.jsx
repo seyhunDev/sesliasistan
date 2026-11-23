@@ -1019,9 +1019,9 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
       ) : null}
     </>
   );
-  // Lacivert üst (yarış kart, Seyhun 2026-11-07 "diğer sayfalardaki gibi"; Planlar gibi); geniş ekranda solda sabit sütun (split-top)
+  // Üst (açık tema 2026-11-23; önce lacivertti): başlık ve bilgi şeridi; geniş ekranda solda sabit sütun (split-top)
   const navy = (body) => (
-    <section className="ck split-top -mx-5 px-5 pb-10 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={r.name || "Yarış"}>
+    <section className="rzt split-top pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={r.name || "Yarış"}>
       {head}
       {body}
     </section>

@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { todayStr } from "@/lib/utils/format";
-import { doneFor, stepsOf } from "./races";
-import { RaceGo } from "./raceUi";
+import { stepsOf } from "./races";
 
 const MON = ["OCA", "ŞUB", "MAR", "NİS", "MAY", "HAZ", "TEM", "AĞU", "EYL", "EKİ", "KAS", "ARA"];
 const day = (s) => new Date(`${s}T12:00:00`);
@@ -38,10 +37,6 @@ export function DateBadge({ r, light }) {
   );
 }
 
-const nextStep = (r) => stepsOf(r)[0]?.label;
-// Talimattaki en yakın son tarih; yapıldı işaretlenen işin son tarihi atlanır (Seyhun: "yaptıysak bir sonrakini göstermeli")
-const nextDeadline = (r) =>
-  [...(r.notice?.deadlines || [])].sort((a, b) => String(a.date).localeCompare(String(b.date))).find((d) => diff(d.date) >= 0 && !doneFor(r, d.title, d.date));
 // Sağdaki kısa süre: "12 gün", "Yarın", "Bugün", "Sürüyor", uzaksa "4 ay"
 function soonText(r) {
   if (!r.startDate) return "";
@@ -71,102 +66,141 @@ const shortRange = (r) => {
   if (!b) return `${a.getDate()} ${m(a)}`;
   return a.getMonth() === b.getMonth() ? `${a.getDate()}–${b.getDate()} ${m(b)}` : `${a.getDate()} ${m(a)}–${b.getDate()} ${m(b)}`;
 };
-// Satır (yarış kart, Seyhun 2026-11-07): solda tarih kutusu (gün, ay), ortada ad, altında yer · sporcu; sağda tek durum: sarı "Sporcu seç" /
-// "N iş eksik", yoksa kalan süre; geçmişte "Sonuç var"
+// En iyi derece: yarışa giden sporcularımızın genel sıralamadaki en iyi yeri (sonuç yoksa 0)
+const bestPlace = (r) => {
+  const rows = r.results?.rows || {};
+  const ps = (r.athleteIds || []).map((id) => rows[id]?.place || 0).filter((x) => x > 0);
+  return ps.length ? Math.min(...ps) : 0;
+};
+const monShort = (d) => MON[d.getMonth()].charAt(0) + MON[d.getMonth()].slice(1).toLocaleLowerCase("tr-TR");
+// Satır (açık tema, Seyhun 2026-11-23 "Yap"): solda gün ve ay, ortada ad, altında yer · sporcu; sağda kalan gün ("23 / gün"), eksikte sarı
+// "Sporcu seç" / "N iş eksik"; geçmişte "En iyi 3."
 function RaceRow({ r, past, onOpen }) {
   const s = r.startDate && day(r.startDate);
   const n = r.athleteIds.length;
   const todo = stepsOf(r).length;
   const close = r.startDate && diff(r.startDate) <= 7;
   const sub = [placeText(r), r.abroad && "Yurt dışı", n && `${n} sporcu`].filter(Boolean).join(" · ") || shortRange(r);
-  const right = past
-    ? r.results?.rows && Object.keys(r.results.rows).length ? ["Sonuç var", ""] : ["", ""]
-    : !n ? ["Sporcu seç", "rz-warn font-semibold"] : close && todo ? [`${todo} iş eksik`, "rz-warn font-semibold"] : [soonText(r), ""];
+  const best = past ? bestPlace(r) : 0;
+  const a = r.startDate ? diff(r.startDate) : null;
+  let right = null;
+  if (past) right = best ? <span className="rz-v rz-strong">En iyi {best}.</span> : null;
+  else if (!n) right = <span className="rz-v rz-warn font-semibold">Sporcu seç</span>;
+  else if (close && todo) right = <span className="rz-v rz-warn font-semibold">{todo} iş eksik</span>;
+  else if (a != null && a > 1 && a <= 59) right = <span className="rzl-left"><b>{a}</b><small>gün</small></span>;
+  else if (a != null) right = <span className="rz-v rz-strong">{soonText(r)}</span>;
   return (
     <button type="button" onClick={() => onOpen(r)} data-press="row" className="rz-row w-full text-left">
       <span className={`rzc-day ${past ? "rzc-past" : ""}`}>
         <b className="tabular-nums">{s ? s.getDate() : "?"}</b>
-        <small>{s ? MON[s.getMonth()] : "—"}</small>
+        <small>{s ? monShort(s) : "—"}</small>
       </span>
       <span className="rz-k">
         {r.name || "Adsız yarış"}
         {sub && <small>{sub}</small>}
       </span>
-      {right[0] && <span className={`rz-v ${right[1]}`}>{right[0]}</span>}
-      <span className="rz-chev" aria-hidden="true" />
+      {right}
     </button>
   );
 }
 
-// Sıradaki ya da süren yarış (Yarışlar yeni tasarım, Seyhun 2026-11-09 "minimal, modern, profesyonel"; örnek yl-telefon.png onaylı): mavi
-// kart yok; ince çizgiler arasında durum (yarışta kırmızı), ad, tarih · yer · sporcu · son tarih ya da sıradaki iş; altında ana hesapta
-// Canlı ekran · Yayın (RaceGo)
-function NextTop({ r, onOpen, owner }) {
+// Sıradaki ya da süren yarış (açık tema 2026-11-23): beyaz kart; üstte "Sıradaki" (yarışta kırmızı "Yarışta · 2. gün"), ad, tarih · yer;
+// sağda büyük kalan gün; altında ince çizgi ve Sporcu · Evrak · Yapılacak
+function NextCard({ r, onOpen }) {
   const a = diff(r.startDate);
   const on = a <= 0 && diff(r.endDate || r.startDate) >= 0;
-  const dl = nextDeadline(r);
-  const step = nextStep(r);
-  const lbl = on ? `Yarışta · ${1 - a}. gün` : a > 1 ? `Sıradaki · ${a} gün kaldı` : `Sıradaki · ${leftText(r)}`;
-  const info = [shortRange(r), placeText(r), r.athleteIds.length && `${r.athleteIds.length} sporcu`, dl ? `Son tarih: ${dl.title} · ${diff(dl.date) ? `${diff(dl.date)} gün` : "Bugün"}` : step && `Sıradaki iş: ${step}`].filter(Boolean).join(" · ");
+  const todo = stepsOf(r).length;
+  const n = r.athleteIds.length;
+  const lbl = on ? `Yarışta · ${1 - a}. gün` : "Sıradaki";
+  const info = [shortRange(r), placeText(r)].filter(Boolean).join(" · ");
+  const big = on ? null : a > 1 ? [a, "gün"] : [a === 1 ? "Yarın" : "Bugün", ""];
   return (
-    <div className="rzl-now mt-5" aria-label="Sıradaki yarış">
-      <button type="button" onClick={() => onOpen(r)} data-press="row" className="block w-full text-left">
-        <small className={on ? "rzl-on" : ""}>{lbl}</small>
-        <b>{r.name || "Adsız yarış"}</b>
-        <span>{info}</span>
-      </button>
-      {owner && r.id && <RaceGo id={r.id} className="mt-3.5" />}
-    </div>
+    <button type="button" onClick={() => onOpen(r)} data-press="row" className="rzl-next w-full text-left" aria-label={`Sıradaki yarış: ${r.name || ""}`}>
+      <span className="rzl-next-top">
+        <span className="min-w-0 flex-1">
+          <small className={on ? "rzl-on" : ""}>{lbl}</small>
+          <b>{r.name || "Adsız yarış"}</b>
+          {info && <span className="rzl-info">{info}</span>}
+        </span>
+        {big && (
+          <span className={`rzl-big ${big[1] ? "" : "rzl-big-w"}`}>
+            <b>{big[0]}</b>
+            {big[1] && <small>{big[1]}</small>}
+          </span>
+        )}
+      </span>
+      <span className="rzl-facts">
+        <span>
+          <small>Sporcu</small>
+          <b className={n ? "" : "rz-warn"}>{n || "Seç"}</b>
+        </span>
+        <span>
+          <small>Evrak</small>
+          <b>{r.docsAt ? "Hazır" : "Yok"}</b>
+        </span>
+        <span>
+          <small>Yapılacak</small>
+          <b className={todo ? "rz-warn" : ""}>{todo ? `${todo} iş` : "Tamam"}</b>
+        </span>
+      </span>
+    </button>
   );
 }
 
-// Yarış listesi: lacivert üstte başlık (head) ve sıradaki yarış; açık zeminde Yaklaşan ve Diğer (açılır Geçmiş yarışlar + extra satırlar)
-export function RaceList({ races, onOpen, head, owner = false, extra = null, children }) {
+// Yarış listesi (açık tema, Seyhun 2026-11-23 "Yap"; örnek ac-liste-tel/ipad): üstte başlık (head), beyaz Sıradaki kartı, Yaklaşan listesi;
+// Geçmiş son iki yarış ("Tümü" hepsini açar), Yarış takvimi (extra). iPad'de iki sütun: solda Sıradaki + Yaklaşan, sağda Geçmiş + takvim.
+const PAST_N = 2;
+export function RaceList({ races, onOpen, head, extra = null, children }) {
   const [showPast, setShowPast] = useState(false);
   const list = races || [];
   const up = list.filter((r) => !isPast(r)).sort((a, b) => (a.startDate || "9").localeCompare(b.startDate || "9"));
   const past = list.filter(isPast).sort((a, b) => b.startDate.localeCompare(a.startDate));
   const next = up.find((r) => r.startDate);
   const rest = up.filter((r) => r !== next);
+  const pastShown = showPast ? past : past.slice(0, PAST_N);
 
   return (
     <>
-      <section className="ck split-top -mx-5 px-5 pb-10 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Yarışlar">
+      <section className="rzl-head pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Yarışlar">
         {head}
-        {next && <NextTop r={next} onOpen={onOpen} owner={owner} />}
       </section>
-      <div className="rzc-body bg-bg pb-4">
-        {children}
-        {races && !list.length && <p className="py-8 text-center text-[0.9375rem] text-mut">Henüz yarış yok</p>}
-        {races && list.length > 0 && !up.length && <p className="py-6 text-center text-[0.9375rem] text-mut">Yaklaşan yarış yok</p>}
-        {rest.length > 0 && (
-          <section>
-            <h2 className="rz-h">Yaklaşan</h2>
-            <div className="rz-list">
-              {rest.map((r) => (
-                <RaceRow key={r.id} r={r} onOpen={onOpen} />
-              ))}
-            </div>
-          </section>
-        )}
-        {races && (past.length > 0 || extra) && (
-          <section>
-            <h2 className="rz-h">Diğer</h2>
-            <div className="rz-list">
-              {past.length > 0 && (
-                <div>
-                  <button type="button" onClick={() => setShowPast((v) => !v)} aria-expanded={showPast} data-press="row" className="rz-row w-full text-left">
-                    <span className="rz-k">Geçmiş yarışlar</span>
-                    <span className="rz-v">{past.length}</span>
-                    <span className={`rz-chev ${showPast ? "rz-up" : "rz-dn"}`} aria-hidden="true" />
+      {children}
+      {races && !list.length && <p className="py-8 text-center text-[0.9375rem] text-mut">Henüz yarış yok</p>}
+      <div className="rzl-cols">
+        <div>
+          {next && <NextCard r={next} onOpen={onOpen} />}
+          {races && list.length > 0 && !up.length && <p className="py-6 text-center text-[0.9375rem] text-mut">Yaklaşan yarış yok</p>}
+          {rest.length > 0 && (
+            <section>
+              <h2 className="rz-h">Yaklaşan</h2>
+              <div className="rz-list">
+                {rest.map((r) => (
+                  <RaceRow key={r.id} r={r} onOpen={onOpen} />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+        <div>
+          {past.length > 0 && (
+            <section>
+              <div className="rz-h flex items-center justify-between">
+                <h2>Geçmiş</h2>
+                {past.length > PAST_N && (
+                  <button type="button" onClick={() => setShowPast((v) => !v)} aria-expanded={showPast} data-press className="rzl-all">
+                    {showPast ? "Az" : "Tümü"}
                   </button>
-                  {showPast && past.map((r) => <RaceRow key={r.id} r={r} past onOpen={onOpen} />)}
-                </div>
-              )}
-              {extra}
-            </div>
-          </section>
-        )}
+                )}
+              </div>
+              <div className="rz-list">
+                {pastShown.map((r) => (
+                  <RaceRow key={r.id} r={r} past onOpen={onOpen} />
+                ))}
+              </div>
+            </section>
+          )}
+          {extra && <div className="rz-list rzl-extra">{extra}</div>}
+        </div>
       </div>
     </>
   );
