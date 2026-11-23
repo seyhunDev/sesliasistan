@@ -452,3 +452,6 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
   .bzy-pnl { gap: 0.5rem; padding: 0.625rem 0.875rem 0.75rem; max-height: calc(100dvh - 1.5rem); overflow-y: auto; }
   .bzy-start { max-height: calc(100dvh - 2rem); overflow-y: auto; }
 }
+/* Katıl kartını kapat (Seyhun 2026-11-23): sol üstte ortak yuvarlak düğme */
+.bz-x { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 0.75rem); left: max(0.75rem, env(safe-area-inset-left, 0px)); }
+.bz-x svg { width: 1.25rem; height: 1.25rem; }
