@@ -285,7 +285,9 @@ const WHY = {
   none: "Bu link geçersiz ya da eski. Antrenöründen yeni linki iste.",
   err: "Bağlanılamadı. İnterneti kontrol edip sayfayı yenile.",
 };
-function StartCard({ onGo, kanal, why = "" }) {
+// Kapat (Seyhun 2026-11-23 "katıl ve başlat, değiştir açılıyor, geri ya da X yok, öyle kalıyor"): sol üstte X. Değiştir açıkken X değiştirmeyi
+// bırakır; değilse ekrandan çıkar (uygulamada geri; linkte yalnız geri gidilecek sayfa varsa görünür).
+function StartCard({ onGo, onClose, kanal, why = "" }) {
   // Saklı kimlik ilk çizimden sonra okunur (sunucu çizimiyle uyuşsun): sunucuda null
   const raw = useSyncExternalStore(noSub, whoRaw, () => null);
   const who = raw ? readWho() : null;
@@ -305,15 +307,25 @@ function StartCard({ onGo, kanal, why = "" }) {
     setName(who?.name || "");
     setEditing(true);
   };
-  if (raw === null || kanal === undefined) return <div className="bz-go" />;
+  const close = editing && who ? () => setEditing(false) : onClose;
+  const x = close ? (
+    <button type="button" className="btn btn-round bz-x" onClick={close} aria-label={editing && who ? "Vazgeç" : "Kapat"} data-press>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+        <path d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+  ) : null;
+  if (raw === null || kanal === undefined) return <div className="bz-go navy">{x}</div>;
   if (!kanal?.open)
     return (
-      <div className="bz-go">
+      <div className="bz-go navy">
+        {x}
         <div className="bz-card bz-none">{WHY[why] || "Kanal açık değil"}</div>
       </div>
     );
   return (
-    <div className="bz-go">
+    <div className="bz-go navy">
+      {x}
       <form
         className="bz-card"
         onSubmit={(e) => {
@@ -674,6 +686,7 @@ export function BilgiScreen({ pub = "" }) {
       } catch {}
     setOn(true);
   };
+  const canBack = useSyncExternalStore(noSub, () => window.history.length > 1, () => false);
   const leave = () => {
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     router.back();
@@ -858,7 +871,7 @@ export function BilgiScreen({ pub = "" }) {
         </span>
       )}
       {showMap && map}
-      {!active && <StartCard onGo={start} kanal={kanal} why={pub ? pwhy : ""} />}
+      {!active && <StartCard onGo={start} onClose={!pub || canBack ? leave : null} kanal={kanal} why={pub ? pwhy : ""} />}
     </main>
   );
 }
