@@ -1686,6 +1686,8 @@ main.iph {
 .iph-wxlg { justify-content: flex-start; padding: 0.625rem 1.5rem 0; font-size: 0.75rem; color: var(--wx-mut); }
 .iph-wxlg > span:first-child { margin-right: auto; font-weight: 650; }
 .iph-wch { margin-top: 0.25rem; }
+/* Gök + sıcaklık grafiğin arkasında soluk (WindChart; Seyhun 2026-11-23) */
+.iph-sky { color: var(--wx-t2); opacity: .4; pointer-events: none; }
 .iph-rain { display: flex; align-items: center; gap: 0.5rem; margin: 0; padding: 0.625rem 1.5rem 0.75rem; border-top: 1px solid var(--wx-line); white-space: nowrap; font-size: 0.875rem; font-weight: 600; color: var(--wx-acc); }
 .iph-rain span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .iph-rain em { flex: none; font-style: normal; background: var(--wx-acc); color: #06283a; border-radius: 99px; padding: 0.0625rem 0.5rem; font-size: 0.6875rem; font-weight: 800; }
@@ -1771,12 +1773,12 @@ main.iph {
   .iph-day { scroll-snap-align: start; }
 }
 @media (min-width: 64rem) {
-  main.iph { height: 100dvh; overflow-y: auto; padding-bottom: 1.25rem; grid-template-columns: minmax(0, 1fr) 16.5rem; grid-template-rows: auto auto minmax(0, 1fr); align-content: stretch; }
+  main.iph { padding-bottom: 1.25rem; grid-template-columns: minmax(0, 1fr) 16.5rem; align-content: start; }
   .iph-hd, .iph-wx { grid-column: 1 / -1; }
-  .iph-side { overflow-y: auto; scrollbar-width: none; }
+  .iph-side { align-self: start; }
 }
 @media (min-width: 64rem) {
-  main.iph.iph-page { height: auto; overflow: visible; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-content: start; padding-bottom: calc(7rem + env(safe-area-inset-bottom)); }
+  main.iph.iph-page { grid-template-columns: minmax(0, 1fr); align-content: start; padding-bottom: calc(7rem + env(safe-area-inset-bottom)); }
 }
 
 /* ===== AÇIK ANA SAYFA (main.iph.acik; Seyhun 2026-11-22, örnek ana-sayfa/sade-2026-11/acik-ana-sayfa.html): Apple beyazı zemin, beyaz kartlar,
