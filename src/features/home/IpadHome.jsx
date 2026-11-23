@@ -17,6 +17,7 @@ import { initials, todayStr } from "@/lib/utils/format";
 import { InboxBell } from "./Inbox";
 import { BirthdayBadge } from "./PeopleStrip";
 import { useWide as useSide } from "./SideNav";
+import { ScrollBar } from "@/components/ui/ScrollBar";
 
 // iPad ana sayfa (Seyhun 2026-11-11 "A · Zaman şeridi", örnek ana-sayfa/sade-2026-11/ipad.html; "minimal ama teknolojik, fütüristik"):
 // açık tema (.acik; Seyhun 2026-11-22 "Apple beyazı, beyaz ve gri tonlar"; örnek acik-ana-sayfa.html): beyaz kartlar, gri yazılar, tek vurgu mavi; rakamlar Space Grotesk (--font-num).
@@ -56,6 +57,11 @@ export function IpadHome({ weather, inbox, onInbox, side }) {
 
   return (
     <main className="iph acik" data-home-ipad>
+      <ScrollBar title={new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long" })}>
+        <button type="button" data-press onClick={() => openAdd()} tabIndex={-1} className="btn btn-primary btn-sm">
+          + Ekle
+        </button>
+      </ScrollBar>
       <header className="iph-hd">
         <h1 className="iph-date">
           <b>{new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long" })}</b>

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { TimerSound } from "@/features/training/Countdown";
+import { TimerChip } from "@/features/training/TimerChip";
 import { IosBridge } from "@/features/ios/IosBridge";
 import { BilgiSync } from "@/features/bilgi/BilgiSync";
 import { AppLock } from "@/features/ios/AppLock";
@@ -99,6 +100,7 @@ export default function AppLayout({ children }) {
                   <PushSync profile={profile} />
                   {children}
                   {!live && <TabBarHost />}
+                  {!live && <TimerChip />}
                   <BrainSync />
                   <OpenFromUrl />
                   <InboxSeen />

@@ -1,6 +1,7 @@
 /** Uygulama logosu (Velora, Seyhun 2026-11-03): beyaz dairenin içinden oyulmuş dolu V, üstü açık. Sol kolun iç kenarı
- *  rüzgârla dolan yelken gibi kavisli. Simge: koyu lacivert (#0b1a33) yuvarlak kare üstünde (public/brand/velora-mark.svg);
- *  koyu zeminlerde yalnız işaret (VeloraGlyph, zemin saydam, V boşluğundan arkası görünür).
+ *  rüzgârla dolan yelken gibi kavisli. Açık tema (Seyhun 2026-11-23, seçenek A): simge beyaz yuvarlak kare, içinde koyu gri (#1d1d1f)
+ *  daire ve beyaz V (public/brand/velora-mark.svg, uygulama ikonları); açılış ve giriş ekranında açık zeminde koyu işaret (VeloraGlyph,
+ *  zemin saydam, V boşluğundan arkası görünür). Koyu zeminlerde (canlı ekran, widget) işaret beyaz kalır.
  *  variant "mark": yalnız simge, "full": simge + Velora yazısı (geniş yerler). size simgenin genişliğidir. */
 
 // İşaretin çizimi (100 birimlik kutu): daire ve içinden oyulan V. Açılış ekranı, iPhone widget'ı ve saat aynı ölçüleri kullanır.

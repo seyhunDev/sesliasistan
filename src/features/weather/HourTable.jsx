@@ -47,7 +47,8 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
   }, [date, start, nowAt]);
 
   if (!cols.length) return null;
-  const vars = { ...(tone === "light" ? LIGHT : DARK), ...(flat ? { "--ht-card": "transparent" } : {}) };
+  const acik = tone === "acik";
+  const vars = { ...(acik ? ACIK : tone === "light" ? LIGHT : DARK), ...(flat ? { "--ht-card": "transparent" } : {}) };
   const labels = [["Saat"], [""], ["Sıcaklık"], ...(hasFeel ? [["Hissedilen"]] : []), ["Yağmur", "mm"], ["Rüzgâr", "kn"], ["Sağanak", "kn"], ["Yön"], ...(anyObs ? [["Ölçülen", "kn", true]] : []), ...(lines.length ? [[""]] : [])];
 
   return (
@@ -85,7 +86,7 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
                   {i === nowAt && <span aria-hidden className="pointer-events-none absolute inset-x-0.5 bottom-0.5 top-0.5 rounded-lg border border-[color:var(--ht-now)]" />}
                   <Cell className={`text-[0.75rem] font-semibold ${c.first ? "text-[color:var(--ht-fg)]" : "text-[color:var(--ht-mut)]"}`}>{c.first ? c.dname : c.hh}</Cell>
                   <Cell>
-                    <Icon name={s.icon} className={`size-[1.15rem] ${tone === "light" ? skyTone(s.icon) : DARK_SKY[s.icon] || "text-white/80"}`} />
+                    <Icon name={s.icon} className={`size-[1.15rem] ${tone !== "dark" ? skyTone(s.icon) : DARK_SKY[s.icon] || "text-white/80"}`} />
                   </Cell>
                   <Cell className="text-[0.9375rem] font-bold">{c.t}°</Cell>
                   {hasFeel && <Cell className="text-[0.8125rem] text-[color:var(--ht-mut)]">{c.feel != null ? `${c.feel}°` : ""}</Cell>}
@@ -95,7 +96,9 @@ export function HourTable({ rows, next = null, date, tone = "dark", onClick, cla
                   </Cell>
                   <Cell className="text-[0.875rem] font-bold">{c.wind}</Cell>
                   <Cell>
-                    {(c.gust ?? c.wind) != null && (
+                    {(c.gust ?? c.wind) != null && acik ? (
+                      <span className={`text-[0.875rem] font-bold ${(c.gust ?? c.wind) >= 18 ? "text-[color:var(--warn)]" : ""}`}>{c.gust ?? c.wind}</span>
+                    ) : (c.gust ?? c.wind) != null && (
                       <span className="grid h-6 w-9 place-items-center rounded-md text-[0.8125rem] font-bold text-[#0b1730]" style={{ background: colorOf(c.gust ?? c.wind) }}>
                         {c.gust ?? c.wind}
                       </span>
@@ -142,6 +145,8 @@ function Cell({ className = "", children }) {
 }
 
 const DARK = { "--ht-wind": "#67e8f9", "--ht-gust": "#c4b5fd", "--ht-obs": "#9ed6ff", "--ht-mark": "#ff5c8f", "--ht-fg": "#fff", "--ht-mut": "rgba(255,255,255,.62)", "--ht-line": "rgba(255,255,255,.12)", "--ht-card": "#0f1f38", "--ht-rain": "#7fb6ff", "--ht-now": "#f05a5a" };
+// Açık tema (main.acik, Seyhun 2026-11-22): gri tonlar, ölçülen mavi, sağanak renkli kutu yerine düz rakam (18 kn ve üstü kehribar)
+const ACIK = { "--ht-wind": "#d1d1d6", "--ht-gust": "var(--mut2)", "--ht-obs": "var(--acc)", "--ht-mark": "var(--rec)", "--ht-fg": "var(--fg)", "--ht-mut": "var(--mut)", "--ht-line": "var(--line)", "--ht-card": "var(--card)", "--ht-rain": "var(--acc)", "--ht-now": "var(--rec)", "--ht-ring": "#fff" };
 const LIGHT = { "--ht-wind": "#38bdf8", "--ht-gust": "#7c6bd6", "--ht-obs": "#1f6fd1", "--ht-mark": "#e0336f", "--ht-fg": "var(--color-fg, #1d2433)", "--ht-mut": "var(--color-mut, #6b7385)", "--ht-line": "var(--color-line, #e3e6ec)", "--ht-card": "var(--color-card, #fff)", "--ht-rain": "#2f6fc0", "--ht-now": "#e5484d" };
 
 // Tablonun üstündeki rüzgâr grafiği (Seyhun 2026-11-04 "bu tasarıma bir grafik de ekle"): her sütunun üstünde, tabloyla birlikte kayar; dolu alan rüzgâr, kesik çizgi sağanak,
@@ -157,7 +162,7 @@ function WindChart({ cols, nowAt }) {
     <svg data-wind-chart width={W} height={CH} viewBox={`0 0 ${W} ${CH}`} className="block" aria-hidden="true">
       <path d={`${line("w")}L${pts[pts.length - 1].x},${CH}L${pts[0].x},${CH}Z`} fill="var(--ht-wind)" fillOpacity=".8" />
       <path d={line("g")} fill="none" stroke="var(--ht-gust)" strokeWidth="1.5" strokeDasharray="4 3" />
-      {cols.map((c, i) => c.ob && <circle key={i} cx={(i + 0.5) * COL} cy={y(c.ob.wind)} r="3.5" fill="var(--ht-obs)" stroke="#0b1a33" strokeWidth="1.5" />)}
+      {cols.map((c, i) => c.ob && <circle key={i} cx={(i + 0.5) * COL} cy={y(c.ob.wind)} r="3.5" fill="var(--ht-obs)" stroke="var(--ht-ring, #0b1a33)" strokeWidth="1.5" />)}
       {nowAt >= 0 && <line x1={(nowAt + 0.5) * COL} x2={(nowAt + 0.5) * COL} y1="0" y2={CH} stroke="var(--ht-now)" strokeWidth="2" />}
     </svg>
   );

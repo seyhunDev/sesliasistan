@@ -1,22 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import { Row, RowList } from "@/components/ui/Row";
 
-// Ana sayfada bilgi ekranı paneli (Seyhun 2026-11-15 "ana sayfadan iki ayrı düğmeyle"): Ekran herkes (ana hesap, sporcu), Yönet yalnız ana hesap
+// Ana sayfada Tekne Ekranı kutusu (eski adı "Bilgi ekranı"). Seyhun 2026-11-23: önizleme (geri sayım, pusula) kalktı, "daha minimal":
+// örnek C, ana sayfadaki listeler gibi iki satır. Üst satır ekranı açar (herkes: ana hesap, sporcu), alt satır Yönet (yalnız ana hesap).
 export function BilgiTile({ owner }) {
   return (
-    <section className="iph-pn" aria-label="Bilgi ekranı">
-      <div className="iph-pt">Bilgi ekranı</div>
-      <div className="flex gap-2">
-        <Link href="/bilgi" className="btn btn-primary flex-1" data-press>
-          Ekran
-        </Link>
-        {owner && (
-          <Link href="/bilgi/yonet" className="btn btn-secondary flex-1" data-press>
-            Yönet
-          </Link>
-        )}
-      </div>
-    </section>
+    <RowList>
+      <Row href="/bilgi" title="Tekne Ekranı" sub="Start sayacı · pusula · parkur · antrenör sesi" />
+      {owner && <Row href="/bilgi/yonet" title="Yönet" />}
+    </RowList>
   );
 }
