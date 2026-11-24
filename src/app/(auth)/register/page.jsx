@@ -8,6 +8,7 @@ import { sportName } from "@/sports";
 import { Button } from "@/components/ui/Button";
 import { Field, PasswordField } from "@/components/ui/Field";
 import { authErrorMessage, register } from "@/lib/auth";
+import { goToSailing, sailingBusy, useSailingReturn } from "@/lib/sailingReturn";
 
 const SIGNUP = process.env.NEXT_PUBLIC_ALLOW_SIGNUP === "1";
 
@@ -22,9 +23,12 @@ export default function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [sport, setSport] = useState(""); // önce "Hangi spor?" (src/sports), sonra form
   const router = useRouter();
+  // Velora Sailing'den gelen (?sailing=…, Seyhun 2026-11-24): kayıt kapalı olsa da açık, spor yelken seçili gelir,
+  // kayıt bitince geldiği Sailing sayfasına döner. Profilde via:"sailing" → Sailing'de rolü "kayitli" (sahip değil).
+  const sailing = useSailingReturn();
 
   // Kayıt kapalıyken form yerine bilgi göster
-  if (!SIGNUP) {
+  if (!SIGNUP && !sailing) {
     return (
       <div className={CARD}>
         <h1 className="text-[1.375rem] font-semibold tracking-tight">Kayıt kapalı</h1>
@@ -36,16 +40,22 @@ export default function RegisterPage() {
     );
   }
 
-  if (!sport) return <SportPick onDone={setSport} onBack={() => router.push("/login")} />;
+  if (!sport && !sailing) return <SportPick onDone={setSport} onBack={() => router.push("/login")} />;
 
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
     if (password.length < 6) return setError("Şifre en az 6 karakter olmalı.");
     setBusy(true);
+    if (sailing) sailingBusy(true);
     try {
-      await register(name, email, password, sport);
+      await register(name, email, password, sport || "sailing", sailing ? { via: "sailing" } : undefined);
+      if (sailing) {
+        sailingBusy(false);
+        await goToSailing();
+      }
     } catch (err) {
+      sailingBusy(false);
       setError(authErrorMessage(err));
       setBusy(false);
     }
@@ -53,9 +63,11 @@ export default function RegisterPage() {
 
   return (
     <form onSubmit={onSubmit} className={CARD}>
-      <button type="button" onClick={() => setSport("")} className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-accbg px-3 py-1 text-[0.8125rem] font-semibold text-acc">
-        {sportName(sport)} · Değiştir
-      </button>
+      {!sailing && (
+        <button type="button" onClick={() => setSport("")} className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-accbg px-3 py-1 text-[0.8125rem] font-semibold text-acc">
+          {sportName(sport)} · Değiştir
+        </button>
+      )}
       <h1 className="text-[1.375rem] font-semibold tracking-tight">Hesap oluştur</h1>
       <p className="mt-1 text-[0.875rem] text-mut">Birkaç bilgiyle hemen başla.</p>
 

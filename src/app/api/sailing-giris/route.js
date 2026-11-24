@@ -7,6 +7,7 @@ export const runtime = "nodejs";
 // hesabıyla giriş yaptıysam ve Velora'dan geliyorsam kendi hesabımla açılmalı"). /api/sanal-giris ile aynı yöntem: kimlik belirteci
 // yönetici SDK'sıyla doğrulanır, aynı kişi için 1 saatlik özel giriş anahtarı (custom token) döner; Sailing onunla oturum açar.
 // Her Velora hesabı girebilir. Anahtardaki `vs` bilgisi Sailing'deki rolü verir: işletmenin ana hesabı "sahip", diğerleri "kayitli".
+// Sailing bağlantısından kaydolan sporcu da kendi işletmesinin sahibi olur; ona "sahip" verilmez (profilde via: "sailing", 2026-11-24).
 export async function POST(request) {
   if (!adminReady()) return NextResponse.json({ error: "Sunucuda Firebase yönetici anahtarı tanımlı değil." }, { status: 503 });
   const h = request.headers.get("authorization") || "";
@@ -18,6 +19,6 @@ export async function POST(request) {
     return NextResponse.json({ error: "Oturum gerekli. Giriş yapıp tekrar dene." }, { status: 401 });
   }
   const d = (await adminDb().collection("users").doc(uid).get()).data() || {};
-  const owner = (d.role || "owner") === "owner" && (d.orgId || uid) === uid;
+  const owner = (d.role || "owner") === "owner" && (d.orgId || uid) === uid && d.via !== "sailing";
   return NextResponse.json({ token: await adminAuth().createCustomToken(uid, { vs: owner ? "sahip" : "kayitli", ad: String(d.name || "").slice(0, 60) }) });
 }
