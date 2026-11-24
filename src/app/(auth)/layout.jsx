@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Splash } from "@/components/ui/Splash";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
+import { goToSailing, pendingSailingReturn, sailingBusy, useSailingReturn } from "@/lib/sailingReturn";
 
 // Uygulamanın ilk yüzü: açılış ekranıyla aynı açık zemin (Apple beyazı, koyu daire içinde V; 2026-11-23, önceden lacivert kokpit). Logo ekranın üstünde sabit durur (ortalanmaz), böylece
 // telefonda klavye açılınca yukarı kaymaz; her adımda tek kutu + tek düğme klavyenin üstünde kalır (2026-10-22).
@@ -16,8 +17,14 @@ export default function AuthLayout({ children }) {
   // İlk çizimde açılış ekranı yoksa logo kendisi belirir (uçuş olmayacak)
   const [pop] = useState(() => typeof document !== "undefined" && !document.documentElement.dataset.boot);
 
+  // Velora Sailing'den gelindiyse (?sailing=…) oturum açılınca o Sailing sayfasına dönülür (lib/sailingReturn.js)
+  const sailing = useSailingReturn();
+
   useEffect(() => {
-    if (!loading && user) router.replace("/");
+    if (loading || !user) return;
+    if (pendingSailingReturn()) {
+      if (!sailingBusy()) goToSailing(); // kayıt sürüyorsa kayıt sayfası profil yazılınca kendisi gönderir
+    } else router.replace("/");
   }, [loading, user, router]);
 
   if (loading || user) return <Splash />;
@@ -31,6 +38,11 @@ export default function AuthLayout({ children }) {
           </span>
         </div>
         <div className="auth-rise" style={{ "--d": ".6s" }}>
+          {sailing && (
+            <p className="mb-4 rounded-2xl bg-accbg px-4 py-3 text-center text-[0.9375rem] leading-snug text-fg">
+              <b className="font-semibold">Velora Sailing</b> için Velora hesabınla gir ya da ücretsiz kaydol. Sonra kaldığın sayfaya dönersin.
+            </p>
+          )}
           {children}
         </div>
       </div>
