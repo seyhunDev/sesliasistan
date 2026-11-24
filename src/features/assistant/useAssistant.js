@@ -33,7 +33,7 @@ import { PAGES, isCloseNow, isEnd } from "@/lib/assistantLocal";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { useChat } from "@/features/chat/ChatProvider";
 import { unglue } from "@/lib/speech/normalize";
-import { GROUPS, canReceipts, isAthleteSide, waPhone } from "@/lib/kinds";
+import { GROUPS, canReceipts, isAthleteSide, isCoach, waPhone } from "@/lib/kinds";
 import { extraNote } from "@/lib/steps";
 import * as is_kayit from "./isler/kayit";
 import * as is_mesaj from "./isler/mesaj";
@@ -495,6 +495,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   const canOpen = (page) => {
     const need = PAGES[page]?.need;
     if (need === "athletes") return canSeeAthletes(profile?.email);
+    if (need === "yonet") return canSeeAthletes(profile?.email) || isCoach(profile);
     if (need === "athleteSide") return isAthleteSide(myKind);
     if (need === "owner") return !isStaff;
     if (need === "receipts") return canReceipts(myKind);

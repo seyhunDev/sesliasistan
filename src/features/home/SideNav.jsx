@@ -6,7 +6,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { useKind } from "@/features/auth/useKind";
-import { canReceipts, isAthleteSide } from "@/lib/kinds";
+import { canReceipts, isAthleteSide, isCoach, isPlain } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
 import { myFit } from "@/lib/fitness/model";
 import { useRaceHome } from "@/features/athletes/raceHome";
@@ -24,11 +24,18 @@ const sub = (cb) => {
 };
 export const useWide = () => useSyncExternalStore(sub, () => window.matchMedia(WIDE).matches, () => false);
 
-const TABS = [
+const FULL_TABS = [
   ["/", "Ana sayfa"],
   ["/calendar", "Takvim"],
   ["/messages", "Mesajlar"],
   ["/tasks", "Görevler"],
+];
+// Normal kullanıcı (Seyhun 2026-11-24): alt çubukla aynı; Mesajlar ve Görevler gruplarda
+const PLAIN_TABS = [
+  ["/", "Ana sayfa"],
+  ["/calendar", "Takvim"],
+  ["/sailing", "Kulüp"],
+  ["/english", "İngilizce"],
 ];
 
 // Ana sayfadaki sayfa düğmeleriyle aynı liste ve aynı izinler (homeActions)
@@ -51,6 +58,8 @@ function usePages() {
     shop: listsFor(kind, members).length > 0,
     lessons: lessons.length > 0,
     fit: staff && myFit(plans, profile?.uid).length > 0,
+    plain: profile?.role !== "owner" && isPlain(kind),
+    coach: isCoach(profile),
   }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
 }
 
@@ -72,6 +81,8 @@ function readOpen() {
 export function SideNav({ path, unread = 0, orb = null }) {
   const pages = usePages();
   const { profile } = useAuth();
+  const kind = useKind();
+  const TABS = profile?.role !== "owner" && isPlain(kind) ? PLAIN_TABS : FULL_TABS;
   const [open, setOpen] = useState(null); // null: henüz okunmadı (sunucu çizimiyle aynı başlar)
   useEffect(() => {
     document.body.dataset.side = "1";

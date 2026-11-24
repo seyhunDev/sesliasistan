@@ -13,7 +13,8 @@ import { useQuota } from "@/lib/quota";
 import { InboxSheet, useInbox } from "./Inbox";
 import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
-import { canReceipts, isAthleteSide } from "@/lib/kinds";
+import { canReceipts, isAthleteSide, isCoach, isPlain } from "@/lib/kinds";
+import { Row, RowList } from "@/components/ui/Row";
 import { listsFor } from "@/features/shop/shop";
 import { ClubRows } from "./HomeWidgets";
 import { HomeSummary } from "./HomeSummary";
@@ -60,6 +61,8 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
   const owner = profile?.role === "owner";
   const kind = useKind();
   const side = isAthleteSide(kind);
+  const plain = !owner && isPlain(kind); // normal kullanıcı: sade ana sayfa (Seyhun 2026-11-24)
+  const coach = isCoach(profile);
   const athletes = canSeeAthletes(profile?.email);
   const race = useRaceHome();
   const { openMeeting } = useMeeting();
@@ -80,6 +83,8 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
     shop: listsFor(kind, members).length > 0,
     lessons: lessons.length > 0,
     fit: staff && myFit(plans, profile?.uid).length > 0,
+    plain,
+    coach,
   }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
   // Ana sayfa (Seyhun 2026-11-11 "A · Zaman şeridi", 2026-11-12 telefonda da): lacivert tek ekran, hava ve takvim ayrı panellerde; sağ sütunda yarış, Bekleyen, Kulüp
   return (
@@ -94,7 +99,17 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
               {athletes && <RaceLive open={race.open} />}
               {(owner || side) && <BilgiTile owner={owner} />}
               <Waiting inbox={inbox} onAll={onInbox} />
-              {quota && (
+              {coach && (
+                <RowList>
+                  <Row href="/bilgi/yonet" title="Yönet" />
+                </RowList>
+              )}
+              {plain && (
+                <RowList>
+                  <Row href="/english" title="İngilizce" />
+                </RowList>
+              )}
+              {quota && !plain && (
                 <p className="px-1 text-[0.75rem] tabular-nums text-mut">
                   Bugün kalan · asistan {quota.qa.left}/{quota.qa.limit} · fiş {quota.qr.left}/{quota.qr.limit}
                 </p>

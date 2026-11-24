@@ -2,7 +2,7 @@
 // Yapay zekaya gitmeden çözülür (anında). Emin olunamayan cümlelerde null döner; o zaman yapay zekaya sorulur.
 // Dönüş: { page } | { back: true } | { chat: "team" | "family" | "athletes" } | { chatWith: "<kişi adı>" } | null
 
-// need: sayfayı kimler açabilir (AssistantSheet denetler) — athletes: sporcu yetkisi · athleteSide: sporcu/veli · owner: ana hesap · receipts: fiş ekleyebilen
+// need: sayfayı kimler açabilir (AssistantSheet denetler) — athletes: sporcu yetkisi · athleteSide: sporcu/veli · yonet: sporcu yetkisi ya da antrenör · owner: ana hesap · receipts: fiş ekleyebilen
 export const PAGES = {
   home: { path: "/", label: "Ana sayfa" },
   calendar: { path: "/calendar", label: "Takvim" },
@@ -27,7 +27,7 @@ export const PAGES = {
   races: { path: "/athletes/races", label: "Yarışlar", need: "athletes" },
   raceCalendar: { path: "/races", label: "Yarış takvimi (bütün yarışlar, talimat, sonuçlar)" },
   training: { path: "/training", label: "Antrenman günlüğü" },
-  trainingDay: { path: "/bilgi/yonet", label: "Antrenman (Yönet: süre, yoklama, günlük)", need: "athletes" },
+  trainingDay: { path: "/bilgi/yonet", label: "Antrenman (Yönet: süre, yoklama, günlük)", need: "yonet" }, // ana hesap ya da antrenör
   weather: { path: "/weather", label: "Hava durumu" },
   wind: { path: "/wind", label: "Rüzgâr haritası" },
   sea: { path: "/sea", label: "Deniz trafiği (gemiler, Sahil Güvenlik, acil)" },

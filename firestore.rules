@@ -31,6 +31,13 @@ service cloud.firestore {
       return signedIn() && p.role == "staff" && p.orgId == orgId;
     }
     function inOrg(orgId) { return isOwner(orgId) || isStaff(orgId); }
+    // Antrenörün kendi Yönet alanı (Seyhun 2026-11-24): "k-" + kendi uid'si; ana hesabın "Antrenör" işaretlediği çalışan (users.coach, sunucu yazar).
+    // Bilgi ekranı belgeleri bu alanda orgs/k-{uid} altında, açık link ve tekne belgelerinde org = "k-{uid}".
+    function isCoachSpace(o) {
+      return signedIn() && o == "k-" + request.auth.uid
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get("coach", false) == true;
+    }
+    function bilgiAdmin(o) { return isOwner(o) || isCoachSpace(o); }
     // Velora Yemek kuryesi (profili yalnız sunucu açar: role "courier", courierOf = işletme). Yalnız okur; yazmalar /api/kurye
     function isCourier(orgId) {
       let p = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
@@ -129,12 +136,12 @@ service cloud.firestore {
     // okur (liste yok, anahtar tahmin edilemez); yalnız ana hesap yazar ve siler.
     match /bilgiAcik/{key} {
       allow get: if true;
-      allow create: if key.size() >= 12 && isOwner(request.resource.data.org);
-      allow update: if isOwner(resource.data.org) && request.resource.data.org == resource.data.org;
-      allow delete: if isOwner(resource.data.org);
+      allow create: if key.size() >= 12 && bilgiAdmin(request.resource.data.org);
+      allow update: if bilgiAdmin(resource.data.org) && request.resource.data.org == resource.data.org;
+      allow delete: if bilgiAdmin(resource.data.org);
       match /ses/{id} {
         allow get: if true;
-        allow write: if isOwner(get(/databases/$(database)/documents/bilgiAcik/$(key)).data.org);
+        allow write: if bilgiAdmin(get(/databases/$(database)/documents/bilgiAcik/$(key)).data.org);
       }
     }
 
@@ -154,7 +161,7 @@ service cloud.firestore {
             || (d.get('k', '') is string && d.get('k', '').size() >= 12
                 && get(/databases/$(database)/documents/bilgiAcik/$(d.k)).data.org == d.org);
       }
-      allow read, delete: if isOwner(resource.data.org);
+      allow read, delete: if bilgiAdmin(resource.data.org);
       allow create: if dev.matches('^[a-z0-9]{12,24}$') && okPos(request.resource.data) && mayPos(request.resource.data);
       allow update: if okPos(request.resource.data) && request.resource.data.org == resource.data.org && mayPos(request.resource.data);
     }
@@ -175,7 +182,7 @@ service cloud.firestore {
             || (d.get('k', '') is string && d.get('k', '').size() >= 12
                 && get(/databases/$(database)/documents/bilgiAcik/$(d.k)).data.org == d.org);
       }
-      allow read, delete: if isOwner(resource.data.org);
+      allow read, delete: if bilgiAdmin(resource.data.org);
       allow create: if dev.matches('^[a-z0-9]{12,24}$') && okSes(request.resource.data) && maySes(request.resource.data);
       allow update: if okSes(request.resource.data) && request.resource.data.org == resource.data.org && maySes(request.resource.data);
     }
@@ -194,7 +201,7 @@ service cloud.firestore {
             || (d.get('k', '') is string && d.get('k', '').size() >= 12
                 && get(/databases/$(database)/documents/bilgiAcik/$(d.k)).data.org == d.org);
       }
-      allow read, delete: if isOwner(resource.data.org);
+      allow read, delete: if bilgiAdmin(resource.data.org);
       allow create: if okIz(request.resource.data) && mayIz(request.resource.data);
     }
 
@@ -202,6 +209,8 @@ service cloud.firestore {
       // Ana hesap: kendi işletmesindeki her şey (doğum günleri hariç: kişiye özel, aşağıda)
       match /{col}/{document=**} {
         allow read, write: if isOwner(orgId) && !(col in ["birthdays", "chats", "calls"]);
+        // Antrenörün kendi Yönet alanı (orgs/k-{uid}): yalnız bilgi ekranı belgeleri (ekran, ses, kanallar, kayıtlar, pusula)
+        allow read, write: if col in ["bilgi", "bilgiKanal", "bilgiLog", "bilgiPusula"] && isCoachSpace(orgId);
       }
       // Kurye: bugünün siparişleri ve yemek ayarı (kurye listesi), yalnız okuma
       match /yemekSiparisler/{id} {

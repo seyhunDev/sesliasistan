@@ -22,7 +22,7 @@ import { buildLine } from "@/lib/buildInfo";
 import { openText, readOpens } from "@/lib/openTime";
 import { logout } from "@/lib/auth";
 import { FaceIdRow } from "@/features/ios/AppLock";
-import { KIND_LABEL, kindOf } from "@/lib/kinds";
+import { KIND_LABEL, isCoach, isPlain, kindOf } from "@/lib/kinds";
 import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 
 // Lacivert üst: geri, Ayarlar, altında ad · hesap türü, sağda fotoğraf (yeni tasarım, 2026-11-03)
@@ -78,6 +78,28 @@ function OpenRow() {
 function PersonSettings({ profile, n }) {
   const kind = kindOf(profile);
   const ai = kind !== "athlete" && kind !== "student";
+  // Normal kullanıcı (çalışan, aile, diğer; Seyhun 2026-11-24 "sade, net"): yalnız 8 satır. Plan hatırlatması, günlük özetler,
+  // sürüm ve Android satırı yok (gizli, silinmedi). Sporcu tarafı eskisi gibi.
+  if (isPlain(kind))
+    return (
+      <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+        <Top profile={profile} label={isCoach(profile) ? "Antrenör" : KIND_LABEL[kind] || "Kişi"} />
+        <Body>
+          <Sec title="Ayarlar">
+            <SizeRow />
+            <ThemeRow />
+            <NotifyRow n={n} />
+            <VoiceRow />
+            <WeatherPlaceRow />
+          </Sec>
+          <Sec title="Hesap">
+            <PasswordRow />
+            <FaceIdRow />
+            <Row title="Çıkış yap" danger onClick={() => logout()} />
+          </Sec>
+        </Body>
+      </main>
+    );
   return (
     <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <Top profile={profile} label={KIND_LABEL[kind] || "Kişi"} />
