@@ -1,8 +1,8 @@
-Commit: 566f24d · Velora Sailing'den kayıt/giriş sonrası Sailing'e dönüş (#1506)
-Zaman: 2026-11-24-1122 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45352623230
+Commit: 537d585 · Evraklarda muhatap her zaman İzmir Gençlik ve Spor (#1507)
+Zaman: 2026-11-24-1204 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45358596578
 
-TAM TEST · 24.11.2026 11:02:17
+TAM TEST · 24.11.2026 11:43:45
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1402/1433 geçti · 31 kalan · 1203 sn
+SONUÇ: 1402/1433 geçti · 31 kalan · 1263 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
