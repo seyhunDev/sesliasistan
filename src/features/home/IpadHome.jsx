@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
+import { isCoach } from "@/lib/kinds";
 import { usePlanOpen } from "@/features/athletes/usePlanOpen";
 import { useData } from "@/features/data/DataProvider";
 import { dayHours } from "@/features/weather/weather";
@@ -124,7 +125,8 @@ function DayLane({ date, today, nowH, dname }) {
             Yoklama
           </Link>
         )}
-        {sail && (
+        {/* Yönet: ana hesap ve antrenör (Seyhun 2026-11-24); diğer hesaplarda yok */}
+        {sail && (profile?.role === "owner" || isCoach(profile)) && (
           <Link href={antYonet(sail)} data-press className="btn btn-primary btn-sm">
             Yönet
           </Link>

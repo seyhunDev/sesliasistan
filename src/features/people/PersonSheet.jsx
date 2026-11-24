@@ -53,6 +53,7 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
       kind: kindOf(person || { kind: prefill?.kind || defaultKind }),
       relation: src.relation || "",
       title: src.title || "",
+      coach: src.coach === true,
       phone: src.phone || "",
       email: src.email || "",
       birth: src.birth || "",
@@ -84,6 +85,7 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
       kind: f.kind,
       relation: f.kind === "family" ? f.relation : "",
       title: f.kind === "staff" ? f.title.trim() : "",
+      coach: f.kind === "staff" && f.coach,
       phone: f.phone.replace(/[^\d+ ]/g, "").trim(),
       email: f.email.trim().toLowerCase(),
       birth: f.birth,
@@ -108,7 +110,9 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
         onClose(ref.id);
       } else {
         await updateDoc(doc(db, "orgs", myUid, "members", person.uid), data);
-        if (hasAccount && (name !== person.name || f.kind !== kindOf(person))) await call("PATCH", { uid: person.uid, name, kind: f.kind }).catch((err) => toast(err.message));
+        const coachNow = f.kind === "staff" && f.coach;
+        if (hasAccount && (name !== person.name || f.kind !== kindOf(person) || coachNow !== (person.coach === true)))
+          await call("PATCH", { uid: person.uid, name, kind: f.kind, coach: coachNow }).catch((err) => toast(err.message));
         await syncBirthday(person.uid, name);
         toast("Kaydedildi");
         onClose();
@@ -194,6 +198,12 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
             </div>
           )}
           {f.kind === "staff" && <Field label="Görevi / unvanı (isteğe bağlı)" placeholder="Antrenör, muhasebe…" value={f.title} onChange={set("title")} />}
+          {/* Antrenör (Seyhun 2026-11-24): kendi Yönet ekranı açılır, kendi sporcularına link gönderir; verisi kulübünkinden ayrı */}
+          {f.kind === "staff" && (
+            <button type="button" onClick={() => setF((x) => ({ ...x, coach: !x.coach }))} aria-pressed={f.coach} className={chip(f.coach)}>
+              Antrenör
+            </button>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Field label="Telefon" type="tel" inputMode="tel" autoComplete="off" placeholder="05xx…" value={f.phone} onChange={set("phone")} />
             <Field label="Doğum günü" type="date" value={f.birth} onChange={set("birth")} />

@@ -89,6 +89,7 @@ export function AuthProvider({ children }) {
             role: doc_?.role === "staff" || doc_?.role === "courier" ? doc_.role : "owner", // courier: Velora Food kurye hesabı (Velora'da yalnız "Velora Food'dan gir" ekranı)
             orgId: doc_?.orgId || user.uid,
             courierOf: doc_?.role === "courier" ? doc_?.courierOf || "" : "", // kuryenin çalıştığı işletme (sunucu yazar)
+            coach: doc_?.role === "staff" && doc_?.coach === true, // antrenör: kendi Yönet alanı (lib/kinds isCoach; ana hesap işaretler, sunucu yazar)
             kind: doc_?.role === "staff" ? doc_?.kind || "staff" : "owner", // kişi türü (lib/kinds): staff | family | athlete | student | parent | other
             photo: doc_?.photo || "", // profil fotoğrafı adresi (Storage; /api/photo yazar)
             photoPath: doc_?.photoPath || "",

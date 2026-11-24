@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { bilgiOrg } from "@/lib/kinds";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
@@ -721,7 +722,10 @@ export function BilgiAdmin() {
   const ant = (q.get("ant") || "").replace(/[^\w-]/g, "").slice(0, 60);
   const antAd = (q.get("ad") || "").trim().slice(0, 30);
   const toast = useToast();
-  const org = profile?.role === "owner" ? profile?.orgId || "" : "";
+  // Ana hesap kulübün alanını, antrenör kendi alanını (orgs/k-{uid}, Seyhun 2026-11-24) yönetir. Antrenörde kulübün yarışı ve
+  // antrenman kaydı (yoklama, günlük) yok: onlar kulübün verisi.
+  const org = bilgiOrg(profile);
+  const club = profile?.role === "owner";
   const b = useBilgi(org);
   const [text, setText] = useState("");
   const [label, setLabel] = useState(null);
@@ -739,7 +743,7 @@ export function BilgiAdmin() {
   const mapApi = useRef(null);
   const ask = useConfirm();
   // Canlı'nın Sonuçlar, Gruplar, Program'ı (Seyhun 2026-11-19 örnek onaylandı): o günün yarışı; pencere açıkken 20 sn, kapalıyken 2 dk'da bir
-  const yaris = useCanliRace(!!org, ["sonuc", "grup", "prog"].includes(sheet) ? 20e3 : 120e3);
+  const yaris = useCanliRace(club && !!org, ["sonuc", "grup", "prog"].includes(sheet) ? 20e3 : 120e3);
   const [resMsg, setResMsg] = useState("");
   const addRes = (file) => {
     setResMsg("Okunuyor…");
@@ -780,7 +784,7 @@ export function BilgiAdmin() {
   const [antK, setAntK] = useState(null); // kapanınca kaydetme özeti için kapanan kanal
   const [antUsed, setAntUsed] = useState(false);
   // Asistan "antrenmanı kaydet" (isler/antrenmanSes.js): ?kaydet=1 açık kanalı, yoksa son kanalı kaydetme penceresinde açar
-  const [kaydetQ, setKaydetQ] = useState(() => q.get("kaydet") === "1");
+  const [kaydetQ, setKaydetQ] = useState(() => q.get("kaydet") === "1" && profile?.role === "owner");
   if (kaydetQ && kanallar && b !== undefined) {
     setKaydetQ(false);
     const k = kanal?.open ? kanal : kanallar[0];
@@ -867,7 +871,7 @@ export function BilgiAdmin() {
   const course = buildCourse(b?.parkur);
   const chBoats = (boats || []).filter((x) => !ch || x.ch === ch);
 
-  if (!org) return <main className="p-6 text-mut">Bu sayfa yalnız ana hesapta açılır.</main>;
+  if (!org) return <main className="p-6 text-mut">Bu sayfa ana hesapta ve antrenörde açılır.</main>;
 
   // Harita düzeni (Seyhun 2026-11-22 örnekler "Yönet harita düzeni" + "Yönet alt panel" onaylandı "Yap"): harita bütün ekran. Kanal kapalıyken
   // yalnız Kanal aç kartı. Açıkken üstte yalnız geri; solda araçlar (en altta onaylı Kapat), sağda yakınlaştır/uzaklaştır/sığdır/video;
@@ -902,7 +906,7 @@ export function BilgiAdmin() {
   };
   const tst = talkSt(ptt, last, dl0, now, to);
   // Antrenman (BilgiAntrenman.jsx): yarış günü değilse ya da antrenmandan gelindiyse; kanal kaydı listeden (starts, end, plan)
-  const antOn = !!ant || !yaris.data;
+  const antOn = club && (!!ant || !yaris.data);
   // Sporcular (kulüp listesi) yalnız Antrenman penceresi ilk açılınca okunur; sonra iç pencereler (Yoklama, Günlük) için açık kalır
   if (!antUsed && (sheet === "ant" || sheet === "kaydet")) setAntUsed(true);
   const antBase = sheet === "kaydet" && antK ? antK : kanal;
@@ -1033,7 +1037,7 @@ export function BilgiAdmin() {
           </div>
         </>
       )}
-      {antUsed && <AntrenmanSheets org={org} view={sheet} onView={setSheet} k={antDoc} boats={boats} ant={ant} />}
+      {antUsed && club && <AntrenmanSheets org={org} view={sheet} onView={setSheet} k={antDoc} boats={boats} ant={ant} />}
       <Sheet open={sheet === "kanal"} onClose={() => setSheet("")} title={kanal?.name || "Kanal"}>
         <KanalInfo kanal={kanal} link={b?.link || ""} count={members.length} onList={() => setSheet("kanallar")} />
       </Sheet>

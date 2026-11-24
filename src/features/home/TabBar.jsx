@@ -23,7 +23,7 @@ import { MicDot } from "@/features/speech/MicDot";
 import { useTts } from "@/features/speech/TtsProvider";
 import { SpeakerGlyph } from "@/features/speech/SpeakerGlyph";
 import { useSpeech } from "@/hooks/useSpeech";
-import { canReceipts, isAthleteSide } from "@/lib/kinds";
+import { canReceipts, isAthleteSide, isPlain } from "@/lib/kinds";
 import { miniText, pullAction } from "@/lib/miniOrb";
 import { ringOf } from "@/lib/assistRing";
 import { SideNav, useWide } from "./SideNav";
@@ -568,7 +568,7 @@ function ReadToggle() {
   );
 }
 
-function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = false, state, live, talk, press, release, typeNow, typing, onTypingDone, cfg, onClose, onMini, setSlot, path, unread, voice = {}, typeInit = "" }) {
+function Dome({ noAi = false, plain = false, bar, slim, rec, active, leaving = false, small = false, state, live, talk, press, release, typeNow, typing, onTypingDone, cfg, onClose, onMini, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
@@ -935,8 +935,18 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                 <div className="grid min-w-0 flex-1 grid-cols-4">
                   <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
                   <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
-                  <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} />
-                  <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} />
+                  {/* Normal kullanıcı (Seyhun 2026-11-24): Kulüp (Velora Sailing) ve İngilizce; Mesajlar ve Görevler menüde (Tümü) */}
+                  {plain ? (
+                    <>
+                      <NavTab href="/sailing" icon="anchor" label="Kulüp" active={path === "/sailing"} />
+                      <NavTab href="/english" icon="book" label="İngilizce" active={String(path || "").startsWith("/english")} />
+                    </>
+                  ) : (
+                    <>
+                      <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} />
+                      <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} />
+                    </>
+                  )}
                 </div>
                 {!noAi && (
                   <div data-ptt="" className="relative w-[6rem] shrink-0">
@@ -1109,6 +1119,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
     <>
       <Dome
         noAi={noAi}
+        plain={!owner && isPlain(kind)}
         bar={bar}
         slim={slim}
         rec={rec && !noAi}
