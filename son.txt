@@ -1,8 +1,8 @@
-Commit: 537d585 · Evraklarda muhatap her zaman İzmir Gençlik ve Spor (#1507)
-Zaman: 2026-11-24-1204 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45358596578
+Commit: 50c7e8e · Sailing'de çıkış yapan gelince Velora oturumunu da kapat (#1508)
+Zaman: 2026-11-24-1241 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45364362523
 
-TAM TEST · 24.11.2026 11:43:45
+TAM TEST · 24.11.2026 12:21:36
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1402/1433 geçti · 31 kalan · 1263 sn
+SONUÇ: 1402/1433 geçti · 31 kalan · 1209 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -286,10 +286,10 @@ SONUÇ: 1402/1433 geçti · 31 kalan · 1263 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 12 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 13 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 12 · açıklama 12 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 13 · açıklama 13 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✗ Senaryolar: 0/1
       ✗ “çalıştırma”
           beklenen: tamamlanır
