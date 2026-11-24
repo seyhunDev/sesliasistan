@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Splash } from "@/components/ui/Splash";
 import { VeloraGlyph } from "@/components/ui/AppLogo";
-import { goToSailing, pendingSailingReturn, sailingBusy, useSailingReturn } from "@/lib/sailingReturn";
+import { goToSailing, pendingSailingReturn, sailingBusy, takeSailingLogout, useSailingReturn } from "@/lib/sailingReturn";
+import { logout } from "@/lib/auth";
 
 // Uygulamanın ilk yüzü: açılış ekranıyla aynı açık zemin (Apple beyazı, koyu daire içinde V; 2026-11-23, önceden lacivert kokpit). Logo ekranın üstünde sabit durur (ortalanmaz), böylece
 // telefonda klavye açılınca yukarı kaymaz; her adımda tek kutu + tek düğme klavyenin üstünde kalır (2026-10-22).
@@ -21,7 +22,13 @@ export default function AuthLayout({ children }) {
   const sailing = useSailingReturn();
 
   useEffect(() => {
-    if (loading || !user) return;
+    if (loading) return;
+    const out = takeSailingLogout(); // ilk çizimde bir kez: Sailing'de çıkış yapıldıysa Velora oturumu da kapanır
+    if (!user) return;
+    if (out) {
+      logout(); // oturum kapanınca giriş/kayıt formu görünür, sonra yine Sailing'e dönülür
+      return;
+    }
     if (pendingSailingReturn()) {
       if (!sailingBusy()) goToSailing(); // kayıt sürüyorsa kayıt sayfası profil yazılınca kendisi gönderir
     } else router.replace("/");

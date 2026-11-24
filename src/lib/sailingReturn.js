@@ -34,6 +34,17 @@ export function pendingSailingReturn() {
   return null;
 }
 
+// Sailing'de çıkış yapıp gelen (?cikis=1): Velora'daki eski oturum kapanır, yoksa kişi eski hesapla geri gönderilirdi
+// (Seyhun 2026-11-24: "çıkış yapıp tekrar girmek istediğimde benim hesabım tekrar açılıyor"). Bir kez okunur, adresten silinir.
+export function takeSailingLogout() {
+  if (typeof window === "undefined") return false;
+  const q = new URLSearchParams(window.location.search);
+  if (q.get("cikis") !== "1") return false;
+  q.delete("cikis");
+  window.history.replaceState(null, "", window.location.pathname + (q.toString() ? "?" + q : "") + window.location.hash);
+  return true;
+}
+
 export function clearSailingReturn() {
   try {
     localStorage.removeItem(KEY);
