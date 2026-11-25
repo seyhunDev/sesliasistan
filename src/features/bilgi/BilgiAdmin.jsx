@@ -30,6 +30,9 @@ import {
   sendKalip,
   sendMsg,
   sendSes,
+  sendSesPart,
+  finishSes,
+  cancelSes,
   syncLink,
   useBilgi,
   useGelen,
@@ -783,7 +786,16 @@ export function BilgiAdmin() {
   const to = sel.length ? { dev: sel.map((m) => m.id).join(","), name: sel.length > 2 ? `${sel.length} kişi` : sel.map(nm).join(", ") } : null;
   const pickTo = (id) => setToSel((x) => (!id ? [] : x.includes(id) ? x.filter((y) => y !== id) : [...x.filter((y) => members.some((m) => m.id === y)), id]));
   const talk = useGelenPlay(org, ctx, () => reload());
-  const ptt = usePtt({ send: (blob, dur, to) => sendSes(org, blob, dur, ctx, to), onSent: (x) => got(x) });
+  // Parça parça (Seyhun 2026-11-25): konuşurken 2,5 sn'de bir gider, sporcu ekranı sırayla çalar
+  const ptt = usePtt({
+    send: (blob, dur, to) => sendSes(org, blob, dur, ctx, to),
+    onSent: (x) => got(x),
+    live: {
+      part: (blob, seq, end, id, to, dur) => sendSesPart(org, { id, seq, end, blob, dur, to }),
+      finish: (id, dur, to) => finishSes(org, ctx, id, dur, to),
+      cancel: (id) => cancelSes(org, id),
+    },
+  });
   const got = (x) => {
     setLast((o) => ({ ...(o && o.at === x.at ? o : {}), ...x }));
     if (x.ok != null) reload();

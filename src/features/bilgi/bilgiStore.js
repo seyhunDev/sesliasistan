@@ -473,6 +473,35 @@ export async function sendSes(org, blob, dur, ctx, to = null) {
   return { id: d.id, ok: await confirmed(), logId };
 }
 
+// Parça parça bas-konuş (Seyhun 2026-11-25): konuşurken her ~2,5 sn'lik parça aynı ses belgesine yazılır (id konuşmanın kimliği,
+// seq sıra, end son parça). Ekran hızlı gelen iki parçayı tek seferde görürse biri kaybolmasın diye belge bir önceki parçayı da taşır
+// (prevSeq, prevData). Parça başına 1 yazma (açık link varsa +1); günlüğe konuşma bitince tek kayıt (finishSes).
+const LAST_PART = new Map(); // konuşma kimliği → { seq, data }
+export async function sendSesPart(org, { id, seq, end, blob, dur, to }) {
+  const data = await b64(blob);
+  if (!data || data.length > 300000) return false;
+  const prev = LAST_PART.get(id);
+  const d = { id, at: Date.now(), type: (blob.type || "audio/mp4").split(";")[0], seq, end: !!end, data, to: to?.dev || "" };
+  if (end) d.dur = Math.round(dur || 0);
+  if (prev && prev.seq === seq - 1) Object.assign(d, { prevSeq: prev.seq, prevData: prev.data });
+  if (end) LAST_PART.delete(id);
+  else LAST_PART.set(id, { seq, data });
+  mirror(org, d, "ses", "son");
+  await setDoc(ref(org, "ses"), d);
+  return true;
+}
+export async function finishSes(org, ctx, id, dur, to) {
+  const logId = await logSent(org, { kind: "ses", dur: Math.round(dur), id, to: to?.name || "" }, ctx);
+  return { id, ok: await confirmed(), logId };
+}
+// Kaydırıp iptal: çalınmakta olan parçalar ekranda durur (çalınmış olanlar geri alınamaz)
+export function cancelSes(org, id) {
+  LAST_PART.delete(id);
+  const d = { id, at: Date.now(), cancel: true };
+  mirror(org, d, "ses", "son");
+  return setDoc(ref(org, "ses"), d).catch(() => {});
+}
+
 // Sporcudan Yönet'e bas-konuş (Seyhun 2026-11-16): ekran son kaydını bilgiGelen/{cihaz} belgesine yazar (cihaz başına tek belge,
 // üstüne; depoda birikmez). Yazma kuralı bilgiTekne ile aynı (işletme hesabı ya da açık link anahtarı k); okuyan yalnız ana hesap.
 // who: { org, k, ch, sail, name, uid }

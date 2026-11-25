@@ -499,13 +499,74 @@ function useVoice(on, msg, ses, loadKalip) {
     if (AUDIO) sayWith(AUDIO, msg.text, opts);
     else sayDevice(msg.text, opts);
   }, [on, msg]);
+  // Parça parça bas-konuş (Seyhun 2026-11-25): ses belgesi konuşma sürerken her parçayla güncellenir (seq, son parçada end).
+  // Parçalar sırayla kuyruktan çalınır; gelmeyen parça 3 sn beklenip atlanır; "cancel" gelirse çalan konuşma durur.
+  const q = useRef({ id: null });
   useEffect(() => {
-    if (!ses?.id || seen.current.ses === ses.id) return;
+    const key = ses?.id ? `${ses.id}|${ses.seq ?? ""}|${ses.cancel ? 1 : ""}` : null;
+    if (!key || seen.current.ses === key) return;
     const first = seen.current.ses === null;
-    seen.current.ses = ses.id;
-    if (first && Date.now() - ses.at > 5000) return;
+    seen.current.ses = key;
     const a = AUDIO;
+    if (ses.cancel) {
+      if (q.current.id === ses.id) {
+        clearTimeout(q.current.t);
+        q.current = { id: null };
+        a?.pause();
+        setTalk(false);
+      }
+      return;
+    }
+    if (first && Date.now() - ses.at > 5000) return;
     if (!on || !a || Date.now() - ses.at > FRESH_MS) return;
+    if (ses.seq != null) {
+      let c = q.current;
+      if (c.id !== ses.id) {
+        clearTimeout(c.t);
+        c = q.current = { id: ses.id, next: ses.prevSeq ?? ses.seq, parts: new Map(), last: null, playing: false, t: 0 };
+      }
+      if (ses.seq >= c.next) c.parts.set(ses.seq, ses.data);
+      if (ses.prevSeq != null && ses.prevData && ses.prevSeq >= c.next && !c.parts.has(ses.prevSeq)) c.parts.set(ses.prevSeq, ses.prevData);
+      if (ses.end) c.last = ses.seq;
+      const pump = () => {
+        if (q.current !== c || c.playing) return;
+        clearTimeout(c.t);
+        if (c.last != null && c.next > c.last) {
+          q.current = { id: c.id };
+          return setTalk(false);
+        }
+        const data = c.parts.get(c.next);
+        if (!data) {
+          // Sıradaki parça gelmedi: 3 sn bekle, sonra ilk gelmiş parçaya geç (yoksa bekleyiş sürer)
+          c.t = setTimeout(() => {
+            const later = [...c.parts.keys()].filter((n) => n > c.next).sort((x, y) => x - y)[0];
+            if (later == null) return;
+            c.next = later;
+            pump();
+          }, 3000);
+          return;
+        }
+        c.parts.delete(c.next);
+        c.playing = true;
+        let over = false;
+        const done = () => {
+          if (over || q.current !== c) return;
+          over = true;
+          c.playing = false;
+          c.next++;
+          pump();
+        };
+        a.onplaying = () => setTalk(true);
+        a.onpause = null;
+        a.onended = a.onerror = done;
+        a.src = `data:${ses.type || "audio/mp4"};base64,${data}`;
+        a.play().catch(done);
+      };
+      pump();
+      return;
+    }
+    clearTimeout(q.current.t);
+    q.current = { id: null };
     const play = (data, type) => {
       a.src = `data:${type || "audio/mp4"};base64,${data}`;
       a.onplaying = () => setTalk(true);
@@ -513,7 +574,7 @@ function useVoice(on, msg, ses, loadKalip) {
       a.play().catch(() => setTalk(false));
     };
     if (ses.data) play(ses.data, ses.type);
-    else if (ses.kalip && loadKalip) loadKalip(ses.kalip).then((x) => x?.data && seen.current.ses === ses.id && play(x.data, x.type || ses.type));
+    else if (ses.kalip && loadKalip) loadKalip(ses.kalip).then((x) => x?.data && seen.current.ses === key && play(x.data, x.type || ses.type));
   }, [on, ses]); // eslint-disable-line react-hooks/exhaustive-deps
   // Tarayıcı sesi yalnız dokunuştan sonra çalar: aynı ses öğesi dokunuşta bir kez sessizce çalınır, sonra gelen kayıtlar onunla çalar
   const unlock = async () => {

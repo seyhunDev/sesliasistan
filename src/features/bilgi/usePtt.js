@@ -12,7 +12,12 @@ import { SES_MAX_SEC } from "@/lib/bilgi";
 // send(blob, sn, hedef) gönderimi yapar ve { ok } döner.
 // İptal (Seyhun 2026-11-18): kayıt sürerken parmak düğmeden uzağa (yukarıdaki "İptal"e) kaydırılıp bırakılırsa ses gönderilmez.
 const CANCEL_PX = 60;
-export function usePtt({ send, onSent }) {
+// Parça parça (Seyhun 2026-11-25 "2-3 saniyede bir eklenenleri gönderip sporcuya sırayla"): live verilirse konuşurken ses PART_MS'de bir
+// ayrı kayıt olarak gönderilir (her parça tek başına çalınabilir dosya; aynı mikrofondan ikinci kaydedici). Tam ses yine ayrıca kaydedilir
+// (Kalıp yap, Tekrar). live = { part(blob, seq, end, id, to, sn) → Promise<bool>, finish(id, sn, to) → { id, ok, logId }, cancel(id) }
+const PART_MS = 2500;
+const talkId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+export function usePtt({ send, onSent, live = null }) {
   const toast = useToast();
   const [rec, setRec] = useState(null); // { key, t0 } basılı tutulan hedef
   const [done, setDone] = useState(null); // { key, at } son giden ses (düğmede kısa ✓)
@@ -26,6 +31,11 @@ export function usePtt({ send, onSent }) {
     if (!s) return;
     st.current = null;
     clearTimeout(s.timer);
+    clearTimeout(s.segT);
+    s.ending = true;
+    s.segDone = new Promise((r) => (s.segRes = r));
+    if (s.seg && s.seg.state !== "inactive") s.seg.stop();
+    else s.segRes();
     s.meter?.();
     setLvl(0);
     if (s.mr.state !== "inactive") {
@@ -77,10 +87,19 @@ export function usePtt({ send, onSent }) {
       holdMic(false);
       const dur = (Date.now() - t0) / 1000;
       if (dur < 0.6) return; // kısa dokunuş: yalnız hedef seçildi
-      if (s.far) return toast("Ses iptal edildi");
+      if (s.far) {
+        if (s.live) s.live.cancel(s.id);
+        return toast("Ses iptal edildi");
+      }
       const blob = new Blob(parts, { type: mr.mimeType || type || "audio/mp4" });
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, at: Date.now(), ok: null });
-      const r = await send(blob, dur, to).catch(() => ({ ok: false }));
+      if (s.live) await Promise.race([s.segDone, new Promise((ok) => setTimeout(ok, 1500))]);
+      // Parça gitmediyse (ikinci kaydedici açılmadı ya da bir parça yazılamadı) tam ses eski yolla bir kez gider
+      const all = s.live ? await Promise.all(s.sent) : [];
+      const r =
+        s.live && all.length && all.every(Boolean)
+          ? await s.live.finish(s.id, dur, to).catch(() => ({ ok: false }))
+          : await send(blob, dur, to).catch(() => ({ ok: false }));
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, ...r, ok: !!r.ok });
       if (r.ok) {
         haptic("success");
@@ -92,6 +111,36 @@ export function usePtt({ send, onSent }) {
     };
     s.mr = mr;
     mr.start();
+    if (live) {
+      s.live = live;
+      s.id = talkId();
+      s.seq = 0;
+      s.sent = [];
+      const seg = () => {
+        if (s.ending) return;
+        let r;
+        try {
+          r = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 32000 });
+        } catch {
+          return;
+        }
+        const bits = [];
+        r.ondataavailable = (ev) => ev.data?.size && bits.push(ev.data);
+        r.onstop = () => {
+          const dur = (Date.now() - t0) / 1000;
+          if (!s.far && bits.length && !(s.ending && dur < 0.6)) {
+            const n = s.seq++;
+            s.sent.push(live.part(new Blob(bits, { type: r.mimeType || type || "audio/mp4" }), n, !!s.ending, s.id, to, dur).catch(() => false));
+          }
+          if (s.ending) s.segRes?.();
+          else seg();
+        };
+        s.seg = r;
+        r.start();
+        s.segT = setTimeout(() => r.state !== "inactive" && r.stop(), PART_MS);
+      };
+      seg();
+    }
     haptic("medium"); // kayıt başladı: parmağın altında hissedilir
     s.meter = meter(stream, setLvl);
     setArm(null);
