@@ -249,8 +249,11 @@ service cloud.firestore {
       // Çalışan: yalnızca "people" listesinde kendisi olan kayıtlar
       match /{col}/{id} {
         allow read: if col in ["plans", "tasks", "notes", "receipts", "receiptImages", "birthdays", "lessons"] && isStaff(orgId) && mine();
+        // Sporcu tarafı (sporcu, öğrenci, veli): alanın antrenman planlarını (tür "Antrenman") people'da olmasa da okur (Seyhun 2026-11-25)
+        allow read: if col == "plans" && isStaff(orgId) && myKind() in ["athlete", "student", "parent"] && resource.data.cat == "Antrenman";
         allow create: if col in ["plans", "tasks", "notes", "receipts", "receiptImages", "birthdays", "lessons"] && isStaff(orgId)
                       && (!(col in ["receipts", "receiptImages"]) || myKind() in ["staff", "family"])
+                      && !(col == "plans" && request.resource.data.get("cat", "") == "Antrenman" && myKind() in ["athlete", "student", "parent"])
                       && request.resource.data.get("people", []) == [request.auth.uid]
                       && request.resource.data.get("assignees", [request.auth.uid]) == [request.auth.uid]
                       && request.resource.data.get("createdByUid", null) == request.auth.uid

@@ -21,6 +21,8 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { readWarmData, saveWarmData, slim } from "@/lib/warmStart";
 import { pulseSync } from "@/lib/syncLine";
 import { trainingShares } from "@/lib/sporcuPaylas";
+import { isAthleteSide, kindOf } from "@/lib/kinds";
+import { isTraining } from "@/lib/trainingLog";
 import { todayStr } from "@/lib/utils/format";
 
 // Bu alanlardan biri değişince kayıttaki kişilere "değişti" bildirimi gider
@@ -98,6 +100,7 @@ export function DataProvider({ children }) {
   const uid = profile?.uid ?? null;
   const orgId = profile?.orgId ?? null;
   const staff = profile?.role === "staff";
+  const side = staff && isAthleteSide(kindOf(profile)); // sporcu tarafı hesap
   // Anında açılış (lib/warmStart.js): önceki açılışın kopyası varsa ekran onunla hemen çizilir, dinleyiciler arkada tazeler
   const [warm0] = useState(() => readWarmData(uid, orgId, staff));
   const warmKey = useRef(warm0 ? `${uid}|${orgId}|${staff}` : ""); // kopyanın ait olduğu oturum
@@ -131,7 +134,7 @@ export function DataProvider({ children }) {
       const key = `${x.id}|${x.people.join()}`;
       if (sharedRef.current.has(key)) continue;
       sharedRef.current.add(key);
-      updateDoc(doc(db, "orgs", orgId, "plans", x.id), { people: x.people }).catch(() => {});
+      updateDoc(doc(db, "orgs", orgId, "plans", x.id), { people: x.people, ...(x.cat ? { cat: x.cat } : {}) }).catch(() => {});
     }
   }, [owner, uid, orgId, data.plans, members]);
 
@@ -291,10 +294,31 @@ export function DataProvider({ children }) {
         c();
       };
     };
+    // Sporcu tarafı hesap (sporcu, öğrenci, veli): kendi planlarına ek olarak alanın antrenman planları (tür "Antrenman") doğrudan,
+    // people'da olmasa da (Seyhun 2026-11-25 "eklediğim antrenmanı bütün sporcularım görebilmeli"; firestore.rules). Kural yayınlanmadıysa
+    // ikinci dinleyici sessizce boş kalır, people yolu çalışır.
+    const sidePlans = () => {
+      const col = collection(db, "orgs", orgId, "plans");
+      const parts = { mine: [], club: [] };
+      const show = (snap) => {
+        const plans = [...new Map([...parts.club, ...parts.mine].map((x) => [x.id, x])).values()];
+        if (snap) changed("plans", plans, snap);
+        setData((p) => ({ ...p, plans }));
+      };
+      const rows = (snap) => snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      const a = onSnapshot(query(col, where("people", "array-contains", uid)), (snap) => ((parts.mine = rows(snap)), show(snap), done("plans")), bad("plans"));
+      const b = onSnapshot(query(col, where("cat", "==", "Antrenman")), (snap) => ((parts.club = rows(snap).filter((p) => !p.fit)), show(snap)), () => {});
+      return () => {
+        a();
+        b();
+      };
+    };
     const unsubs = COLS.map((k) =>
       !staff && k === "plans"
         ? ownerPlans()
-        : onSnapshot(
+        : staff && side && k === "plans"
+          ? sidePlans()
+          : onSnapshot(
         staff
           ? query(collection(db, "orgs", orgId, k), where("people", "array-contains", uid))
           : k === "birthdays" || k === "lessons" // doğum günleri ve ders programı kişiye özel: ana hesap da yalnızca kendi eklediklerini görür
@@ -309,7 +333,7 @@ export function DataProvider({ children }) {
       clearTimeout(t);
       unsubs.forEach((u) => u());
     };
-  }, [uid, orgId, staff, toast]);
+  }, [uid, orgId, staff, side, toast]);
 
   // Ana hesap: çalışan listesi (isimleri göstermek ve atama için)
   useEffect(() => {
@@ -370,6 +394,8 @@ export function DataProvider({ children }) {
           if (base.assignees.length || me.current.staff) toNotify.push(["plan", planIds[i]]);
           const rec = {
             ...base,
+            // Adında antrenman geçen Genel plan "Antrenman" türünde kaydedilir: sporcular kuralla doğrudan görür (2026-11-25)
+            ...(!side && base.cat === "Genel" && isTraining({ title: d.title }) ? { cat: "Antrenman" } : {}),
             title: d.title.trim(),
             date: d.date,
             endDate: d.endDate && d.endDate !== d.date ? d.endDate : "", // dahil (son gün)
@@ -443,7 +469,7 @@ export function DataProvider({ children }) {
       if (st === "slow") checkWrites(); // üstteki şerit: "kaydedildi, bağlantı gelince gönderilecek"
       return { ...count, ids, queued: st === "slow" && offline };
     },
-    [getOrgId, fail, notifyAssign],
+    [getOrgId, fail, notifyAssign, side],
   );
 
   // Başkasının eklediği kayıt (çalışan için): değiştirilemez, silinemez
