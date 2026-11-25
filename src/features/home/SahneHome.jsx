@@ -83,7 +83,10 @@ function SahneFrame({ big, children }) {
 }
 
 // Üç alan: a hava, b günler ve planlar, c hesaba göre kartlar
-function Layout({ side }) {
+// iPad düzeni (Seyhun 2026-11-25 "yap", örnek velora-tarama/ana-ipad-duzen.html): telefonda hava, günler, planlar, sağ sütun, Bekleyen;
+// dik iPad'de hava ve 7 gün tam genişlik, altında solda planlar + Bekleyen, sağda kartlar; yatayda solda hava, günler, planlar, sağda kartlar + Bekleyen.
+// Bekleyen iki yerde çizilir, ekran genişliğine göre biri görünür (sporcu.css .sh-wl / .sh-wr).
+function Layout({ side, inbox, onInbox }) {
   const now = useNow(30000);
   const today = todayStr();
   const [sel, setSel] = useState(today);
@@ -102,11 +105,22 @@ function Layout({ side }) {
       <div className="sh-a">
         <SahneHava date={date} today={today} nowH={nowH} />
       </div>
-      <div className="sh-b">
+      <div className="sh-d">
         <Days days={days} date={date} today={today} onSel={setSel} />
-        <Plans date={date} nowH={date === today ? nowH : null} />
       </div>
-      <div className="sh-c3">{side}</div>
+      <div className="sh-b">
+        <Plans date={date} nowH={date === today ? nowH : null} />
+        <div className="sh-wl">
+          <Waiting inbox={inbox} onAll={onInbox} />
+        </div>
+      </div>
+      <div className="sh-c3">
+        {side}
+        <div className="sh-wr">
+          <Waiting inbox={inbox} onAll={onInbox} />
+        </div>
+        <PaidNotice />
+      </div>
     </div>
   );
 }
@@ -236,15 +250,7 @@ export function OwnerSahne() {
   return (
     <SahneFrame big={OWNER_BIG(h.athletes)}>
       {(inbox, onInbox) => (
-        <Layout
-          side={
-            <>
-              <Kokpit />
-              <Waiting inbox={inbox} onAll={onInbox} />
-              <PaidNotice />
-            </>
-          }
-        />
+        <Layout inbox={inbox} onInbox={onInbox} side={<Kokpit />} />
       )}
     </SahneFrame>
   );
@@ -384,14 +390,21 @@ function MoneyTile() {
   const list = useOpenInvoices(orgId, true);
   const inv = list ? invoiceTile(list, todayStr()) : null;
   const nInv = inv ? parseInt(inv.sub, 10) || 1 : 0;
-  if (m.bank)
+  // Büyük rakam banka + nakit toplamı, altında nakit ayrıca (Seyhun 2026-11-25 "sadece nakit değil, banka artı nakit toplam; altta nakit ayrıca")
+  if (m.bank) {
+    const tl = (n) => `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(Math.round(n || 0))} ₺`;
+    const total = (m.bank.bankTL || 0) + (m.bank.kasa || 0);
     return (
       <Link href="/mail" data-press className="sh-tile">
-        <span className="sh-k">Hesaplar</span>
-        <b className="sh-c sh-kn num">{m.bank.big}</b>
-        <small className={`sh-s ${inv?.warn ? "sh-warn" : ""}`}>{nInv ? `${nInv} açık fatura` : m.bank.label}</small>
+        <span className="sh-k">Hesaplar · toplam</span>
+        <b className="sh-c sh-kn num">{tl(total)}</b>
+        <small className="sh-s">
+          Nakit {tl(m.bank.kasa)}
+          {nInv > 0 && <span className={inv?.warn ? "sh-warn" : ""}> · {nInv} açık fatura</span>}
+        </small>
       </Link>
     );
+  }
   if (!inv) return null;
   return (
     <Link href="/receipts" data-press className="sh-tile">
@@ -424,10 +437,10 @@ export function NormalSahne() {
                 </Link>
               )}
               {fit && <FitWide fit={fit} />}
-              <Waiting inbox={inbox} onAll={onInbox} />
-              <PaidNotice />
             </>
           }
+          inbox={inbox}
+          onInbox={onInbox}
         />
       )}
     </SahneFrame>
