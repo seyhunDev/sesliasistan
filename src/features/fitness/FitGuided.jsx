@@ -335,6 +335,9 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
   const tts = useTts();
   const [added, setAdded] = useState({}); // ana hesabın bu ekranda eklediği fotoğraf/video (kütüphaneden plana gelene kadar)
   const byVoice = useRef(false);
+  const talk = useRef(false); // dinlenmede anlatım sürüyor
+  const talkId = useRef(0);
+  const waitGo = useRef(false); // dinlenme bitti, anlatım bitince başlanacak
   const min = estMinutes(items);
   const say = (t) => {
     if (!quiet && t) tts.speak(t);
@@ -370,9 +373,38 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
     try {
       localStorage.setItem(QUIET, q ? "1" : "0");
     } catch {}
-    if (q) tts.stop();
+    if (q) {
+      hush();
+      tts.stop();
+    }
   }
 
+  // Dinlenmede sıradaki hareketin anlatımı: bitene kadar talk açık (dinlenme erken biterse "Başla" anlatımdan sonra gelir).
+  // Ses çıkmazsa (sessiz, okuma hatası) en geç metin uzunluğu kadar beklenir.
+  function restSay(t) {
+    const id = ++talkId.current;
+    waitGo.current = false;
+    const end = () => {
+      if (talkId.current !== id || !talk.current) return;
+      talk.current = false;
+      if (waitGo.current) {
+        waitGo.current = false;
+        if (autoRef.current && !heldRef.current) begin(posRef.current, true);
+      }
+    };
+    if (quiet || !t) {
+      talk.current = false;
+      return;
+    }
+    talk.current = true;
+    tts.speak(t, end);
+    setTimeout(end, 5000 + t.length * 90);
+  }
+  const hush = () => {
+    talkId.current++;
+    talk.current = false;
+    waitGo.current = false;
+  };
   // Otomatik: söyler, okuma bitince (ses çıkmazsa biraz sonra) setin süresini başlatır
   function cueThen(t, fn) {
     const id = ++seq.current;
@@ -395,6 +427,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
   // afterRest: dinlenme bitti (sıradaki hareket dinlenmede anlatıldı, kısa "başla")
   function begin(p, afterRest = false) {
     if (!p) return;
+    hush();
     const t = afterRest ? (p.k ? `Set ${p.k + 1}. Başla.` : "Başla.") : p.k ? `${items[p.i]?.name}, set ${p.k + 1}. ${sayGoal(items[p.i], sets[p.i]?.[p.k])}.` : moveText(p);
     cueThen(t, () => startSet(posRef.current));
   }
@@ -405,6 +438,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
   }
   function pauseAll() {
     seq.current++;
+    hush();
     tts.stop();
     timer.pause();
     rest.pause();
@@ -426,6 +460,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
       else if (rest.run) rest.resume();
       else if (pos && !intro) begin(pos);
     } else {
+      hush();
       tts.stop();
       if (rest.run) rest.resume();
       if (timer.run && pos && !isTimed(items[pos.i])) timer.stop();
@@ -451,7 +486,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
     if (n) {
       const sec = restAfter(items[i], n.i !== i);
       rest.start(sec);
-      if (auto && !byVoice.current) say(restText(n, sec, n.i !== i));
+      if (auto && !byVoice.current) restSay(restText(n, sec, n.i !== i));
     } else if (auto && !byVoice.current) say("Hepsi bitti. Nasıl geçti?");
     return n;
   }
@@ -471,13 +506,19 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
   }
 
   function go() {
+    hush();
     tts.stop();
     setIntro(false);
     if (auto && pos) begin(pos);
   }
   useEffect(() => {
     ends.current = {
-      rest: () => autoRef.current && !heldRef.current && begin(posRef.current, true),
+      // Dinlenme bittiğinde sıradaki hareketin anlatımı sürüyorsa kesilmez: anlatım bitince "Başla"
+      rest: () => {
+        if (!autoRef.current || heldRef.current) return;
+        if (talk.current) waitGo.current = true;
+        else begin(posRef.current, true);
+      },
       set: (took, full) => complete(isTimed(items[posRef.current?.i]) ? { took, full } : null),
     };
   });
