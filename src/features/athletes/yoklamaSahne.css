@@ -6,17 +6,22 @@ main.ya-sh { max-width: 30rem; }
 .ya-two { display: flex; flex-direction: column; gap: .9rem; min-width: 0; }
 .ya-col { display: flex; flex-direction: column; gap: .9rem; min-width: 0; }
 .ya-kid { font-size: 2.1rem; margin: .4rem 0 -.2rem; overflow-wrap: anywhere; }
-.ya-hero { background: #141416; border: 1px solid #26262b; border-radius: 1.4rem; padding: .95rem 1rem 1rem; display: flex; flex-direction: column; gap: .75rem; }
+.ya-hero { background: #141416; border: 1px solid #26262b; border-radius: 1.4rem; padding: 1rem; display: flex; align-items: center; gap: 1.1rem; min-width: 0; }
 .ya-k { font-size: .6875rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #a1a1aa; }
-.ya-row { display: flex; align-items: flex-end; gap: 1rem; }
-.ya-big { font-size: 5rem; color: var(--sh-lime); flex-shrink: 0; }
-.ya-big[data-none] { color: #52525b; }
-.ya-st { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; margin-bottom: .35rem; }
-.ya-st span { display: flex; flex-direction: column; min-width: 0; }
-.ya-st b { font-family: var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-weight: 800; font-size: 1.9rem; line-height: 1; }
-.ya-st small { font-size: .72rem; font-weight: 600; color: #a1a1aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ya-strip { display: flex; gap: .25rem; flex-wrap: wrap; }
-.ya-strip i { width: 1.05rem; height: 1.05rem; border-radius: .3rem; background: var(--ya-c, #3f3f46); }
+/* Halka: arka gri, dilimler saat 12'den başlar */
+.ya-ring { position: relative; width: 7.5rem; height: 7.5rem; flex-shrink: 0; }
+.ya-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+.ya-ring circle { fill: none; stroke: var(--ya-c); stroke-width: 11; }
+.ya-ring .ya-ring-bg { stroke: #26262b; }
+.ya-ring-in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ya-ring-in b { font-size: 2.6rem; line-height: .9; }
+.ya-ring-in small { font-size: .7rem; font-weight: 700; color: #a1a1aa; }
+/* Sayılar alt alta: dar telefonda da satır kırılmaz */
+.ya-leg { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .45rem; }
+.ya-lr { display: flex; align-items: center; gap: .55rem; min-width: 0; }
+.ya-lr i { width: .6rem; height: .6rem; border-radius: 50%; background: var(--ya-c); flex-shrink: 0; }
+.ya-lr small { flex: 1; min-width: 0; font-size: .875rem; font-weight: 600; color: #d4d4d8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ya-lr b { font-size: 1.05rem; font-weight: 700; flex-shrink: 0; }
 .ya-sh [data-s="present"] { --ya-c: #d4ff3a; }
 .ya-sh [data-s="absent"] { --ya-c: #ff6b6b; }
 .ya-sh [data-s="excused"] { --ya-c: #fbbf5c; }
@@ -35,7 +40,7 @@ main.ya-sh { max-width: 30rem; }
 .ya-none { margin: 0; padding: .85rem .2rem; font-size: .9375rem; font-weight: 600; color: #71717a; }
 @media (min-width: 48rem) {
   main.ya-sh { max-width: 46rem; }
-  .ya-big { font-size: 6.4rem; }
+  .ya-ring { width: 8.5rem; height: 8.5rem; }
 }
 @media (min-width: 64rem) {
   main.ya-sh { max-width: 64rem; }
