@@ -164,6 +164,15 @@ export function withLib(it, lib) {
   if (e.media?.length) o.media = e.media;
   return o;
 }
+// Cinsiyete göre fotoğraf (Seyhun 2026-11-25): erkek ("e") kullanıcı, varsa g:"m" işaretli erkek fotoğrafını görür;
+// diğerleri (kız, bilinmeyen) işaretsizleri. Hareketin yalnız erkek fotoğrafı varsa herkes onu görür.
+export function forSex(media, sex) {
+  const m = media || [];
+  const male = m.filter((x) => x?.g === "m");
+  if (!male.length) return m;
+  const rest = m.filter((x) => x?.g !== "m");
+  return sex === "e" || !rest.length ? male : rest;
+}
 export const itemsWithLib = (items = [], lib) => (items || []).map((it) => withLib(it, lib));
 export const progWithLib = (prog, lib) => ({ ...prog, days: (prog?.days || []).map((d) => ({ ...d, items: itemsWithLib(d.items, lib) })) });
 

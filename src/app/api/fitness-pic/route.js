@@ -26,17 +26,28 @@ export async function POST(request) {
   const name = S(body?.name, 60);
   const how = S([body?.setup, body?.how].filter(Boolean).join(" "), 600);
   const ref = typeof body?.ref === "string" && body.ref.length < 1_500_000 ? body.ref : "";
+  // Erkek versiyonu (Seyhun 2026-11-25): ref hareketin kız fotoğrafı; aynı fotoğraf, aynı poz, kız yerine genç erkek
+  const male = body?.male === true && !!ref;
+  const ratio = ["1:1", "3:2", "2:3", "4:3", "3:4", "5:4", "4:5", "16:9", "9:16", "21:9"].includes(body?.ratio) ? body.ratio : "16:9";
   if (!name) return bad("Hareket adı yok.");
   const usage = await imageUsage(au.uid, "fitpic");
   if (usage.left <= 0) return bad(`Bugünkü fotoğraf hakkı bitti (${usage.limit}).`, 429, { usage });
 
-  const prompt = [
+  const prompt = (male
+    ? [
+        `Recreate the attached exercise photo ("${name}") exactly, but replace the young woman with a fit young man (about 16-20 years old, short dark hair).`,
+        "Keep EVERYTHING else identical: the same number of frames and their layout, the same body positions and joint angles in each frame, the same hand and foot placement, the same props (mat, band, backpack, step, table, wall, sofa, pillow, ball, towel, dumbbell) in the same places, the same camera angle, framing, room and light.",
+        "Outfit: navy t-shirt, navy shorts, white sneakers (or socks or barefoot exactly as in the original).",
+        how ? `The exercise for reference: ${how}` : "",
+        "The whole body stays fully visible, nothing cut off. No text, no letters, no numbers, no arrows, no logos, no watermark.",
+      ]
+    : [
     ref ? "Use the attached photo ONLY as a style reference: same bright home room with white walls, light wood floor, green plants, grey exercise mat, same soft daylight, same outfit (navy t-shirt, navy shorts or leggings, white sneakers). Do not copy the person's face; draw a generic young athlete." : "Bright home room with white walls, light wood floor, plants, grey exercise mat, soft daylight. Generic young athlete in a navy t-shirt, navy shorts and white sneakers.",
     `Create a clean, realistic photo demonstrating the home exercise "${name}".`,
     how ? `How it is done: ${how}` : "",
     "Show two frames side by side: the start position on the left and the end position on the right. The whole body is fully visible and centered in each frame, nothing cut off at the edges. Side or three-quarter camera angle so the movement is clear.",
     "No text, no letters, no numbers, no arrows, no logos, no watermark.",
-  ]
+  ])
     .filter(Boolean)
     .join("\n");
 
@@ -49,7 +60,7 @@ export async function POST(request) {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
-      body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "16:9" } } }),
+      body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: male ? ratio : "16:9" } } }),
       signal: ctrl.signal,
     });
     const text = await res.text();

@@ -4,8 +4,8 @@
 export const IMAGE_MODEL = () => process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
 export const IMAGE_DAY = () => Number(process.env.GEMINI_IMAGE_DAY) || 10; // günlük sınır (kendi koyduğumuz)
 // İngilizce kalıp resimleri ayrı sayılır (kind "engpic"; 37 kalıp bir günde çizilebilsin diye sınır 60)
-// Fitness hareket fotoğrafları ayrı (kind "fitpic"; hazır programdaki fotoğrafsız hareketler, günde 20)
-const LIMIT = { postimg: () => IMAGE_DAY(), engpic: () => Number(process.env.ENGLISH_PIC_DAY) || 60, fitpic: () => Number(process.env.FIT_PIC_DAY) || 20 };
+// Fitness hareket fotoğrafları ayrı (kind "fitpic"; hazır programdaki fotoğrafsız hareketler ve erkek fotoğrafları, günde 60)
+const LIMIT = { postimg: () => IMAGE_DAY(), engpic: () => Number(process.env.ENGLISH_PIC_DAY) || 60, fitpic: () => Number(process.env.FIT_PIC_DAY) || 60 };
 export const IMAGE_PRICE = () => Number(process.env.GEMINI_IMAGE_PRICE) || 0.039; // görsel başı yaklaşık $ (gemini-2.5-flash-image)
 
 const TZ = "Europe/Istanbul";
