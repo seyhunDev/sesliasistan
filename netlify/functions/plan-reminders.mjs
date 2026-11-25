@@ -22,6 +22,7 @@ import { sendDevice } from "../../src/lib/server/sendDevice.js";
 import { testDue } from "../../src/lib/pushTest.js";
 import { missTest, sendTest } from "../../src/lib/server/pushTestSend.js";
 import { attRemindDue, attRemindText, sunsetHM } from "../../src/lib/attRemind.js";
+import { allowNotify, planCat } from "../../src/lib/notifyRules.js";
 
 // Sporcuya hazırlanan fitness antrenmanı (fit.for başka kişi): ana hesaba hatırlatma/özet gitmez, yalnız sporcuya
 const others = (p, uid) => !!p.fit?.for && p.fit.for !== uid;
@@ -97,7 +98,10 @@ async function sendDueReminders() {
     // Çalışan yalnızca kendisini ilgilendiren (people listesinde olduğu) planlar için bildirim alır.
     const oid = orgId || u.id;
     const snap = await q(`near:${oid}:${today}`, db.collection("orgs").doc(oid).collection("plans").where("date", ">=", today).where("date", "<=", addDays(today, 2)));
-    const plans = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((p) => p.status !== "cancelled" && !p.done && planRemind(p) === null && (role !== "staff" || (p.people || []).includes(u.id)) && !others(p, u.id));
+    // Sporcuya yalnız antrenman ve kendi fitness planı (lib/notifyRules)
+    const plans = snap.docs
+      .map((d) => ({ ...d.data(), id: d.id }))
+      .filter((p) => p.status !== "cancelled" && !p.done && planRemind(p) === null && (role !== "staff" || (p.people || []).includes(u.id)) && !others(p, u.id) && allowNotify(u.data(), planCat(p)));
     for (const p of dueReminders(plans, { lead, tz, uid: u.id })) {
       const payload = await withBadge(db, u.id, reminderText(p, lead, { tz }));
       await Promise.all(
@@ -168,6 +172,11 @@ async function sendPlanReminders(db, all, q) {
           if (u.exists) byId.set(uid, u);
         }
         const d = u.exists ? u.data() : null;
+        // Bu kişi bu planın türünü almıyor (veliye antrenman, sporcuya yarış planı…): gönderilmez, "gitmedi" de yazılmaz
+        if (d && !allowNotify(d, planCat(p))) {
+          await doc.ref.update({ [`reminded.${uid}`]: remindKey(p, lead), [`remindFail.${uid}`]: FieldValue.delete() });
+          continue;
+        }
         const subs = Object.entries(d?.push || {});
         let ok = 0;
         let why = !d ? "account" : !subs.length ? "device" : "";
@@ -201,7 +210,8 @@ async function sendPlanReminders(db, all, q) {
 // Günlük özetler: sabah (o gün, istenirse yarın da) ve akşam (ertesi gün); her biri günde bir kez
 async function sendSummaries(db, all, q) {
   let n = 0;
-  for (const u of all.filter((x) => hasAt(x.data(), "summaryAt") || hasAt(x.data(), "eveningAt"))) {
+  // Sporcu ve veli günlük özet almaz (lib/notifyRules)
+  for (const u of all.filter((x) => (hasAt(x.data(), "summaryAt") || hasAt(x.data(), "eveningAt")) && allowNotify(x.data(), "summary"))) {
     const d = u.data();
     const subs = Object.entries(d.push || {});
     if (!subs.length) continue;
@@ -248,7 +258,8 @@ async function sendSummaries(db, all, q) {
 // Ek bildirimler (Ayarlar › Günlük özetler): doğum günü, rüzgâr uyarısı, pazartesi haftalık özet; her biri günde bir kez
 const DIKILI = { lat: 39.0717, lon: 26.8886 };
 async function sendExtras(db, all, q) {
-  const users = all.filter((x) => ["birthdayAt", "windAt", "weeklyAt"].some((k) => hasAt(x.data(), k)));
+  // Sporcu ve veli bunları almaz (lib/notifyRules)
+  const users = all.filter((x) => ["birthdayAt", "windAt", "weeklyAt"].some((k) => hasAt(x.data(), k)) && allowNotify(x.data(), "extra"));
   const winds = new Map(); // konum -> bugünün saatleri (her çalışmada bir kez indirilir)
   let n = 0;
   for (const u of users) {

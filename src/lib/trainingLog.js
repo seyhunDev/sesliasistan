@@ -4,6 +4,7 @@
 //   next (sonraki antrenmanda), details [{k, v}] (başka her şey), src "ai"
 // Saf fonksiyonlar (test edilir); ekran AddSheet içindeki TrainingLog.jsx, liste /training.
 import { todayStr } from "@/lib/utils/format";
+import { isTraining } from "./notifyRules.js";
 export const TOPICS = ["Start", "Tramola", "Kavança", "Şamandıra dönüşü", "Rota", "Hız/trim", "Taktik", "Ağır hava", "Hafif hava", "Yarış provası", "Kondisyon", "Teori"];
 export const DIRS = ["Poyraz", "Gündoğusu", "Keşişleme", "Kıble", "Lodos", "Kaba", "Batı", "Karayel"];
 export const RATINGS = [
@@ -12,8 +13,9 @@ export const RATINGS = [
   [3, "Çok iyi"],
 ];
 
-// Kategorisi Antrenman ya da başlığında antrenman/idman geçen plan (elle "Genel" kategoride açılmış antrenmanlar da)
-export const isTraining = (p) => !p?.fit && (p?.cat || p?.category) !== "Fitness" && ((p?.cat || p?.category) === "Antrenman" || /antre?nman|idman/i.test(p?.title || ""));
+// Kategorisi Antrenman ya da başlığında antrenman/idman geçen plan (bildirim kuralıyla ortak: lib/notifyRules)
+export { isTraining };
+
 // Günlük, antrenmanın günü ya da sonrasında yazılır (iptal edilen hariç)
 export const canLog = (p, today) => isTraining(p) && p.status !== "cancelled" && !!p.date && p.date <= today;
 

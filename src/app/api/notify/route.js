@@ -6,11 +6,12 @@ import { ackSig, pushReady, sendTo as sendPush } from "@/lib/server/pushSend";
 import { TLk, totalOf } from "@/lib/receipts";
 import { payLine } from "@/lib/invoices";
 import { addedText, assignedText, cancelledText, changedText, doneText, paidText, receiptNewText } from "@/lib/notifyText";
-import { GROUPS, GROUP_IDS, kindOf } from "@/lib/kinds";
+import { GROUPS, GROUP_IDS, isAthleteSide, kindOf } from "@/lib/kinds";
 import { planRemind, reminderText } from "@/lib/reminders";
 import { absentPush } from "@/lib/absent";
 import { remindPush, unpaidRoster } from "@/lib/duesRemind";
 import { fileLabel } from "@/lib/chatFile";
+import { recordCat, trainees } from "@/lib/notifyRules";
 
 export const runtime = "nodejs";
 
@@ -83,7 +84,7 @@ export async function POST(request) {
       async (u) => {
         const v = (await db.collection("users").doc(u).get()).data()?.viewing;
         if (v?.key === `chat-${cid}` && Date.now() - Date.parse(v.at || 0) < 75e3) return 0;
-        return sendTo(u, { title: `${from.split(" ")[0]}${group ? ` (${group})` : ""}: ${text}`, body: "", tag: `chat-${cid}`, url: `/messages?c=${cid}` });
+        return sendTo(u, { title: `${from.split(" ")[0]}${group ? ` (${group})` : ""}: ${text}`, body: "", tag: `chat-${cid}`, url: `/messages?c=${cid}`, cat: "chat" });
       },
     );
     return NextResponse.json({ ok: true, sent });
@@ -106,7 +107,7 @@ export async function POST(request) {
       if (!to.length) continue;
       parents += to.length;
       const msg = absentPush(r.name, date, today);
-      sent += await sendAll(to, (u) => sendTo(u, { ...msg, tag: `absent-${mid}-${date}`, url: "/my-attendance" }));
+      sent += await sendAll(to, (u) => sendTo(u, { ...msg, tag: `absent-${mid}-${date}`, url: "/my-attendance", cat: "absent" }));
       await ref.update({ [`absentSent.${date}`]: new Date().toISOString() });
     }
     return NextResponse.json({ ok: true, sent, parents });
@@ -133,7 +134,7 @@ export async function POST(request) {
       if (!to.length) continue;
       parents += to.length;
       const msg = remindPush(x, ym);
-      sent += await sendAll(to, (u) => sendTo(u, { ...msg, tag: `dues-${mid}-${ym}`, url: "/?bildirim=1" }));
+      sent += await sendAll(to, (u) => sendTo(u, { ...msg, tag: `dues-${mid}-${ym}`, url: "/?bildirim=1", cat: "dues" }));
       await ref.update({ [`duesSent.${ym}`]: new Date().toISOString() });
     }
     return NextResponse.json({ ok: true, sent, parents });
@@ -145,7 +146,7 @@ export async function POST(request) {
     const ref = org.collection("fitPrograms").doc(String(body.id || "").slice(0, 128) || "-");
     const p = (await ref.get()).data();
     if (!p?.for || p.notifiedAt) return NextResponse.json({ ok: true, skipped: p ? "gönderildi" : "program yok" });
-    const sent = await sendTo(p.for, { title: `Yeni fitness programın hazır: ${String(p.title || "Antrenman programı").slice(0, 80)}`, body: "", tag: `fit-${ref.id}`, url: "/fitness" });
+    const sent = await sendTo(p.for, { title: `Yeni fitness programın hazır: ${String(p.title || "Antrenman programı").slice(0, 80)}`, body: "", tag: `fit-${ref.id}`, url: "/fitness", cat: "fitness" });
     await ref.update({ notifiedAt: new Date().toISOString() });
     return NextResponse.json({ ok: true, sent });
   }
@@ -159,7 +160,7 @@ export async function POST(request) {
     if (!to) return NextResponse.json({ error: "Antrenman yok" }, { status: 404 });
     if (p.fitNudgeAt) return NextResponse.json({ ok: true, sent: 1, skipped: "gönderildi" });
     const name = String(p.fit?.name || p.title || "Antrenman").slice(0, 80);
-    const sent = await sendTo(to, { title: `Bugünkü antrenmanın bekliyor: ${name}`, body: "", tag: `fitn-${ref.id}`, url: "/fitness" });
+    const sent = await sendTo(to, { title: `Bugünkü antrenmanın bekliyor: ${name}`, body: "", tag: `fitn-${ref.id}`, url: "/fitness", cat: "fitness" });
     if (sent) await ref.update({ fitNudgeAt: new Date().toISOString() });
     return NextResponse.json({ ok: true, sent });
   }
@@ -179,7 +180,7 @@ export async function POST(request) {
     const to = [...new Set([r.createdByUid, me.orgId, ...(r.people || []), ...(r.assignees || [])])].filter((u) => u && u !== au.uid);
     const info = { kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, pay: payLine(r.invoice), from: me.name || "Ana hesap" };
     const msg = kind === "plan" && r.status === "cancelled" ? cancelledText({ ...info, reason: CANCEL_WHY[r.cancelReason] || "" }) : changedText(info);
-    const sent = await sendAll(to, (u) => sendTo(u, { ...msg, tag: `${kind}-${ref.id}`, url: `/?open=${kind}:${ref.id}` }));
+    const sent = await sendAll(to, (u) => sendTo(u, { ...msg, tag: `${kind}-${ref.id}`, url: `/?open=${kind}:${ref.id}`, cat: recordCat(kind, r) }));
     return NextResponse.json({ ok: true, sent });
   }
 
@@ -196,7 +197,7 @@ export async function POST(request) {
     if (!fresh(r.doneBy?.[au.uid])) return NextResponse.json({ ok: true, skipped: "tamamlama yok" });
     const msg = doneText({ kind, title: r.title, from: me.name });
     const to = [...new Set([r.createdByUid, me.orgId, ...(r.assignees || [])])].filter((u) => u && u !== au.uid);
-    const sent = await sendAll(to, (u) => sendTo(u, { ...msg, tag: `done-${kind}-${ref.id}`, url: `/?open=${kind}:${ref.id}` }));
+    const sent = await sendAll(to, (u) => sendTo(u, { ...msg, tag: `done-${kind}-${ref.id}`, url: `/?open=${kind}:${ref.id}`, cat: recordCat(kind, r) }));
     return NextResponse.json({ ok: true, sent });
   }
 
@@ -214,7 +215,7 @@ export async function POST(request) {
     const sent = await sendAll(to, async (u) => {
       const out = {};
       // Kendi hatırlatması da olabilir (ana hesap): bu cihaz hariç tutulmaz
-      const n = await sendPush(u, reminderText({ ...r, id: ref.id }, lead, { tz: r.tz || undefined }), new Set(), out);
+      const n = await sendPush(u, { ...reminderText({ ...r, id: ref.id }, lead, { tz: r.tz || undefined }), cat: recordCat("plan", r) }, new Set(), out);
       if (n) patch[`remindFail.${u}`] = FieldValue.delete();
       else {
         patch[`remindFail.${u}`] = { why: out.why || "device", ...(out.msg ? { msg: String(out.msg).slice(0, 160) } : {}), at: Date.now() };
@@ -238,6 +239,17 @@ export async function POST(request) {
     // Kişinin (çalışan, sporcu…) az önce eklediği kayıt: ana hesaba "yeni kayıt" bildirimi (bir kez)
     const byMember = au.uid !== me.orgId && r.createdByUid === au.uid && !r.notified?.[me.orgId] && Date.now() - Date.parse(r.createdAt || 0) < 2 * 60e3;
     if (byMember && !to.includes(me.orgId)) to.push(me.orgId);
+    // Yeni antrenman (ana hesap, antrenör ya da çalışan ekledi): uygulamadaki sporcu ve öğrencilere bir kez "Yarın 16:00'da
+    // Antrenman var". Sorumlu yapılmazlar; yalnız yeni eklenen, bugünkü/ileriki, iptal olmayan plan (Seyhun 2026-11-25)
+    const fresh = Date.now() - Date.parse(r.createdAt || 0) < 2 * 60e3;
+    if (kind === "plan" && !body.retry && fresh && recordCat(kind, r) === "training" && r.status !== "cancelled" && r.createdByUid === au.uid) {
+      const today = new Date().toLocaleDateString("sv-SE", { timeZone: r.tz || "Europe/Istanbul" });
+      const side = me.role === "staff" && isAthleteSide(kindOf(me));
+      if (!side && (r.endDate || r.date || "") >= today) {
+        const ath = trainees((await org.collection("members").get()).docs.map((d) => ({ uid: d.id, ...d.data() })));
+        for (const u of ath) if (u !== au.uid && !r.notified?.[u] && !to.includes(u)) to.push(u);
+      }
+    }
     if (!to.length) return NextResponse.json({ ok: true, sent: 0 });
     const info = { kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, pay: payLine(r.invoice), from: me.name || "Ana hesap" };
     const msg = assignedText(info);
@@ -253,6 +265,7 @@ export async function POST(request) {
           ...(byMember && u === me.orgId ? addedText(info) : msg),
           tag: `${kind}-${ref.id}`,
           url: `/?open=${kind}:${ref.id}`,
+          cat: recordCat(kind, r),
           ...(assignee(u) && { ack: { o: me.orgId, c: COLS[kind], i: ref.id, u, s: ackSig(me.orgId, COLS[kind], ref.id, u) } }),
         },
         mine,
@@ -282,13 +295,13 @@ export async function POST(request) {
     const r = (await org.collection("receipts").doc(id).get()).data();
     const fresh = r && Date.now() - Date.parse(r.createdAt || 0) < 2 * 60e3;
     if (!r || r.createdByUid !== au.uid || r.payStatus !== "pending" || !fresh || au.uid === me.orgId) return NextResponse.json({ ok: true, skipped: "bildirim gerekmiyor" });
-    const sent = await sendTo(me.orgId, { ...receiptNewText({ merchant: r.merchant, amount: TLk(totalOf(r)), from: me.name }), tag: `pay-${id}`, url: `/receipts/${id}` });
+    const sent = await sendTo(me.orgId, { ...receiptNewText({ merchant: r.merchant, amount: TLk(totalOf(r)), from: me.name }), tag: `pay-${id}`, url: `/receipts/${id}`, cat: "receipt" });
     return NextResponse.json({ ok: true, sent });
   }
   // ---- Fiş ödendi ----
   if (me.role !== "owner") return NextResponse.json({ error: "Yalnızca ana hesap" }, { status: 403 });
   const r = (await org.collection("receipts").doc(id).get()).data();
   if (!r || r.payStatus !== "paid" || !r.createdByUid || r.createdByUid === au.uid) return NextResponse.json({ ok: false, skipped: "bildirim gerekmiyor" });
-  const sent = await sendTo(r.createdByUid, { ...paidText({ merchant: r.merchant, amount: TLk(totalOf(r)) }), tag: `paid-${id}`, url: `/receipts/${id}` });
+  const sent = await sendTo(r.createdByUid, { ...paidText({ merchant: r.merchant, amount: TLk(totalOf(r)) }), tag: `paid-${id}`, url: `/receipts/${id}`, cat: "receipt" });
   return NextResponse.json({ ok: true, sent });
 }
