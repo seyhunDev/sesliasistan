@@ -52,7 +52,7 @@ import { agendaView } from "@/lib/raceProgram";
 import { addResults, importToast } from "@/features/athletes/resultsImport";
 import { loadRace } from "@/features/athletes/races";
 import { loadAthletes } from "@/features/athletes/data";
-import { PlaceWx } from "@/features/weather/PlaceWx";
+import { YonetWx } from "./YonetWx";
 import { racePlace } from "@/features/athletes/raceWeather";
 import { getPlace } from "@/features/weather/weather";
 import { hasCamera } from "@/lib/nativeIos";
@@ -1135,7 +1135,7 @@ function RaceAtWx({ org, id }) {
     };
   }, [org, id]);
   if (!at) return <div className="ck-shim h-[22rem] rounded-[1.5rem]" role="status" aria-label="Hava yükleniyor" />;
-  return <PlaceWx at={at} />;
+  return <YonetWx at={at} />;
 }
 
 // Sonuçlar, Gruplar, Program (canlı ekranla aynı bileşenler, liveScreen/sonuclar.jsx); başlık pencerenin kendi başlığı, yarışın adı altında

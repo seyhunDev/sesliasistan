@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import { Button } from "./Button";
@@ -31,7 +31,12 @@ const typing = () => {
 // footer: en altta sabit iş düğmeleri (SheetActions). Sayfanın en üst katmanına (body) çizilir: kaydırılan bir kutunun içinden açılsa da kırpılmaz.
 // top: başka pencerenin üstünde açılan soru (onay penceresi) her zaman en üstte durur
 // big: iPad ve geniş ekranda geniş pencere (Seyhun 2026-11-23 "iPad'de telefondaki gibi gösteriyor"; tablolar, hava): ekranın çoğunu kaplar
-export function Sheet({ open, onClose, title, navy, children, footer, dirty, anchor, top, big }) {
+// Koyu "Sahne" sayfaları (Yönet, Seyhun 2026-11-25 "araçlar beyaz, yazılar okunmuyor"): <SheetTone.Provider value="sahne"> içindeki
+// bütün pencereler koyu açılır (zemin #17171a, beyaz yazı, limon vurgu); her pencereye ayrı ayar gerekmez
+export const SheetTone = createContext("");
+export function Sheet({ open, onClose, title, navy: navyProp, children, footer, dirty, anchor, top, big }) {
+  const sahne = useContext(SheetTone) === "sahne" && !navyProp;
+  const navy = navyProp || sahne;
   const zBack = top ? "z-[95]" : "z-40";
   const zFront = top ? "z-[96]" : "z-50";
   const wide = useWide();
@@ -139,7 +144,7 @@ export function Sheet({ open, onClose, title, navy, children, footer, dirty, anc
     </div>
   );
   const foot = footer && <div className="shrink-0 border-t border-line px-5 pt-3">{footer}</div>;
-  const panel = `flex flex-col ${navy ? "navy" : "bg-card"}`;
+  const panel = `flex flex-col ${navy ? (sahne ? "navy sahne" : "navy") : "bg-card"}`;
 
   let ui;
   if (wide) {

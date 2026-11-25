@@ -3,7 +3,9 @@
 import "./sporcu.css";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { useHesap } from "@/features/auth/useHesap";
+import { useBilgiDoc } from "@/features/bilgi/bilgiStore";
 import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
 import { usePlanOpen } from "@/features/athletes/usePlanOpen";
@@ -54,6 +56,11 @@ export function SporcuHome() {
   const now = useNow(60000);
   const tr = useTraining(now);
   const fit = useTodayFit();
+  // Yönet'te gün başlatıldıysa (kanal açık) Tekne ekranı her gün görünür (Seyhun 2026-11-25 "bugün antrenman olmadığı için katılma düğmesi
+  // gözükmüyor"): antrenman kartında "Katıl", antrenman yoksa en üstte ayrı Katıl kartı. Kanal kapanınca kaybolur.
+  const { profile } = useAuth();
+  const kanal = useBilgiDoc(profile?.orgId || "", "ekran")?.kanal;
+  const live = kanal?.open ? kanal : null;
   // Gidecek sayfası olmayan bildirime dokununca (/?bildirim=1) zil penceresi açılır
   useEffect(() => {
     if (!/[?&]bildirim=1/.test(window.location.search)) return;
@@ -71,8 +78,9 @@ export function SporcuHome() {
         <div className="sh-grid">
           <div className="sh-col">
             <Hello tr={tr} now={now} />
+            {live && !tr && <LiveHero kanal={live} />}
             {fit && <FitHero fit={fit} />}
-            {tr && <Today tr={tr} />}
+            {tr && <Today tr={tr} live={!!live} />}
             <RaceCard />
           </div>
           <div className="sh-col">
@@ -163,7 +171,7 @@ export function useTodayFit() {
 const fitKey = (f) => (f.fin ? (f.st === "done" ? "YAPILDI" : "ATLANDI") : `BUGÜN${f.p.time ? ` · ${f.p.time.slice(0, 5)}` : ""}`);
 
 // Antrenman dev kartı: adı, saati, rüzgârı, süresi, yeri. Sağ altta Tekne ekranı (/bilgi).
-function Today({ tr }) {
+function Today({ tr, live }) {
   const { w } = useWeather();
   const { open } = usePlanOpen();
   const at = tr.time && dayHours(w, todayStr())?.find((r) => r.hh === tr.time.slice(0, 2));
@@ -196,8 +204,23 @@ function Today({ tr }) {
           )}
         </span>
       </button>
-      <Link href="/bilgi" data-press className="sh-go">
-        Tekne ekranı
+      <Link href="/bilgi" data-press className="sh-go" data-live={live ? "1" : undefined}>
+        {live ? "Katıl" : "Tekne ekranı"}
+      </Link>
+    </section>
+  );
+}
+
+// Antrenman planı olmayan günde Yönet günü başlattıysa: en üstte Katıl kartı (Tekne ekranı)
+function LiveHero({ kanal }) {
+  return (
+    <section className="sh-hero sh-live" aria-label="Tekne ekranı açık">
+      <Link href="/bilgi" className="sh-hero-in">
+        <span className="sh-k sh-lime">ŞİMDİ · TEKNE EKRANI</span>
+        <span className="sh-c sh-hero-t">{kanal.name || "Antrenman"}</span>
+      </Link>
+      <Link href="/bilgi" data-press className="sh-go" data-live="1">
+        Katıl
       </Link>
     </section>
   );

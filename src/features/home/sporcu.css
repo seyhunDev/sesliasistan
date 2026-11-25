@@ -211,3 +211,8 @@ main.sh.sh .tone-st { --tfg: #22c55e; } main.sh.sh .tone-sp { --tfg: #60a5fa; } 
   .sh-hero { min-height: 20rem; }
   .sh-sail { width: 8rem; height: 10rem; }
 }
+/* Yönet günü başlattı: Katıl (canlı nokta) ve antrenmansız günde kısa Katıl kartı */
+.sh-go[data-live]::before { content: ""; display: inline-block; width: .5rem; height: .5rem; margin-right: .4rem; border-radius: 50%; background: #16a34a; vertical-align: .05rem; animation: sh-blink 1.4s ease-in-out infinite; }
+@keyframes sh-blink { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .sh-go[data-live]::before { animation: none; } }
+.sh-live { min-height: 8.5rem; }
