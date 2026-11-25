@@ -326,7 +326,7 @@ export function AddSheet({ open, onClose, seed }) {
   if (edit?.kind === "plan" && rec?.fit && !locked) {
     return (
       <Screen voice full open={open} onClose={shut} title="Antrenman">
-        <FitPlanView key={rec.id} rec={rec} by={by} onClose={shut} onDelete={removeRecord} />
+        <FitPlanView key={rec.id} rec={rec} by={by} open={open} onClose={shut} onDelete={removeRecord} />
       </Screen>
     );
   }

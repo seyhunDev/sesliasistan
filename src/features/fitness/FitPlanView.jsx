@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet, SheetActions } from "@/components/ui/Sheet";
@@ -10,7 +10,9 @@ import { RemindChips } from "@/features/add/DraftCard";
 import { addDays, dowOf } from "@/lib/fitness/model";
 import { rel, todayStr } from "@/lib/utils/format";
 import { FitWorkout } from "./FitWorkout";
-import { DOW } from "./FitDark";
+import { DOW, FsHead } from "./FitDark";
+import { liveHead } from "@/features/liveScreen/fonts";
+import "./fitSahne.css";
 
 // Fitness antrenmanının kendi ekranı (Seyhun 2026-11-25, örnek project-files/fitness-sade/antrenman.html): Plan sayfası yerine açılır.
 // Lacivert üstte zaman düğmesi ("Bugün · 19:00", dokununca Ne zaman penceresi), ad ve hareket · set · dakika; altında hareketler (FitWorkout bare).
@@ -23,13 +25,19 @@ const sub = (cb) => {
 };
 const useLand = () => useSyncExternalStore(sub, () => window.matchMedia(LAND).matches, () => false);
 
-export function FitPlanView({ rec, by, onClose, onDelete }) {
+export function FitPlanView({ rec, by, open = true, onClose, onDelete }) {
   const land = useLand();
   const router = useRouter();
   const [dockL, setDockL] = useState(null);
   const [dockB, setDockB] = useState(null);
   const [whenOpen, setWhenOpen] = useState(false);
   const [more, setMore] = useState(false);
+  // Alttan açılan pencereler body'ye çizilir: açıkken onlar da koyu (fitSahne.css body.fs-body)
+  useEffect(() => {
+    if (!open) return;
+    document.body.classList.add("fs-body");
+    return () => document.body.classList.remove("fs-body");
+  }, [open]);
   const fit = rec.fit || { items: [] };
   const items = fit.items || [];
   const sets = items.reduce((t, it) => t + (+it.sets || 1), 0);
@@ -43,26 +51,18 @@ export function FitPlanView({ rec, by, onClose, onDelete }) {
 
   const top = (
     <>
-      <div className="flex items-center gap-2.5 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <button type="button" onClick={onClose} aria-label="Kapat" data-press className="btn btn-round size-10">
-          <Icon name="back" className="size-5" />
-        </button>
-        <span className="flex-1" />
-        <button type="button" onClick={() => setMore(true)} aria-label="Diğer" data-press className="btn btn-round size-10">
-          <Icon name="more" className="size-5" />
-        </button>
-      </div>
-      <button type="button" onClick={() => setWhenOpen(true)} data-press className="inline-flex h-9 items-center gap-2 rounded-full bg-white/12 px-3.5 text-[0.9375rem] font-semibold">
-        <Icon name="clock" className="size-4 text-[#8fb3ff]" />
+      <FsHead label="Antrenman" onBack={onClose} onMore={() => setMore(true)} />
+      <button type="button" onClick={() => setWhenOpen(true)} data-press className="fs-pill fs-g inline-flex h-10 items-center gap-2 text-[0.9375rem]">
+        <Icon name="clock" className="size-4 text-[#d4ff3a]" />
         {whenText}
       </button>
-      <h1 className="mt-3 text-[2.125rem] font-bold leading-[1.08] tracking-[-.025em] [text-wrap:balance]">{name}</h1>
+      <h1 className="fs-c mt-3 text-[3rem] [overflow-wrap:anywhere]">{name}</h1>
       {items.length > 0 && (
         <div className="mt-3.5 flex gap-6">
           {facts.map(([v, l]) => (
             <span key={l} className="grid">
               <b className="num text-[1.75rem] font-bold leading-none">{v}</b>
-              <small className="mt-1 text-[0.875rem] font-medium text-white/70">{l}</small>
+              <small className="mt-1 text-[0.875rem] font-medium text-[#a1a1aa]">{l}</small>
             </span>
           ))}
         </div>
@@ -73,14 +73,14 @@ export function FitPlanView({ rec, by, onClose, onDelete }) {
   const workout = <FitWorkout key={`fit-${rec.id}-${fit.res?.st || ""}-${items.length}`} rec={rec} by={by} bare dock={land ? dockL : dockB} />;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className={`fs-root ${liveHead.variable} flex min-h-0 flex-1 flex-col`}>
       {/* Tek ağaç: döndürünce yalnız sınıflar değişir, FitWorkout (açık adım adım ekran, sayaç) yeniden kurulmaz */}
       <div data-scroll={land ? undefined : ""} className={land ? "grid min-h-0 flex-1 grid-cols-[22rem_minmax(0,1fr)]" : "min-h-0 flex-1 overflow-y-auto overscroll-contain"}>
-        <div className={land ? "ck flex min-h-0 flex-col overflow-y-auto px-5 pb-[calc(1rem+env(safe-area-inset-bottom))]" : "ck px-5 pb-11"}>
+        <div className={land ? "flex min-h-0 flex-col overflow-y-auto border-r border-[#26262b] px-5 pb-[calc(1rem+env(safe-area-inset-bottom))]" : "px-5 pb-5"}>
           {top}
           {land && <div ref={setDockL} className="mt-auto pt-6" />}
         </div>
-        <div data-scroll={land ? "" : undefined} className={land ? "min-h-0 overflow-y-auto overscroll-contain px-5 pb-8 pt-[calc(1rem+env(safe-area-inset-top))]" : "relative -mt-7 rounded-t-[1.75rem] bg-bg px-4 pb-6 pt-2"}>
+        <div data-scroll={land ? "" : undefined} className={land ? "min-h-0 overflow-y-auto overscroll-contain px-5 pb-8 pt-[calc(1rem+env(safe-area-inset-top))]" : "px-4 pb-6"}>
           <div className={land ? "" : "mx-auto max-w-[40rem]"}>{workout}</div>
         </div>
       </div>
