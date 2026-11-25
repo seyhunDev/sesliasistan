@@ -28,6 +28,7 @@ import { TrainingLog } from "./TrainingLog";
 import { antYonet, canLog } from "@/lib/trainingLog";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { FitWorkout } from "@/features/fitness/FitWorkout";
+import { FitPlanView } from "@/features/fitness/FitPlanView";
 import { NoteActions } from "./NoteActions";
 import { TaskInvoice } from "@/features/invoices/TaskInvoice";
 import { blank, check, firstNeed, fresh, tidy, toPatch } from "./drafts";
@@ -320,6 +321,15 @@ export function AddSheet({ open, onClose, seed }) {
       hint: ask.kind === "time" ? "Cevap vermezsen tüm gün olarak eklerim." : "",
     }
     : null;
+
+  // Fitness antrenmanı Plan sayfasında değil kendi ekranında açılır (Seyhun 2026-11-25; sporcuya verilen salt okunur görünüm aynı kalır)
+  if (edit?.kind === "plan" && rec?.fit && !locked) {
+    return (
+      <Screen voice full open={open} onClose={shut} title="Antrenman">
+        <FitPlanView key={rec.id} rec={rec} by={by} onClose={shut} onDelete={removeRecord} />
+      </Screen>
+    );
+  }
 
   return (
     <Screen voice open={open} onClose={shut} title={title}>
