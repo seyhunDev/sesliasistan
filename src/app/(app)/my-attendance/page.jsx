@@ -1,63 +1,88 @@
 "use client";
 
-import { useEffect } from "react";
+import "@/features/home/sporcu.css";
+import "@/features/athletes/yoklamaSahne.css";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BackButton } from "@/components/ui/BackButton";
+import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
-import { Gauge } from "@/components/ui/Gauge";
-import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { useKind } from "@/features/auth/useKind";
 import { monthOf, useMyAttendance } from "@/features/athletes/myAttendance";
+import { liveHead } from "@/features/liveScreen/fonts";
 import { isAthleteSide } from "@/lib/kinds";
+import { todayStr } from "@/lib/utils/format";
 
-const ST = {
-  present: { label: "Geldi", text: "text-[#9fe7c6]" },
-  absent: { label: "Gelmedi", text: "text-[#f3a39a]" },
-  excused: { label: "İzinli", text: "text-[#e3b46c]" },
-};
-const MONTH = new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" });
-const DAY = new Intl.DateTimeFormat("tr-TR", { weekday: "short", day: "numeric", month: "short" });
+const LABEL = { present: "Geldi", absent: "Gelmedi", excused: "İzinli" };
+const MONTH = new Intl.DateTimeFormat("tr-TR", { month: "long" });
+const MON = new Intl.DateTimeFormat("tr-TR", { month: "short" });
+const WDAY = new Intl.DateTimeFormat("tr-TR", { weekday: "long" });
+// İlk açılışta son 6 antrenman, "Daha fazla göster" her basışta 10 tane daha (Seyhun 2026-11-25).
+// Yoklamanın hepsi tek belgede (athleteAtt/{uid}): okuma tek, sınır yalnız ekrana çizilen satır sayısı.
+const FIRST = 6;
+const STEP = 10;
+const dayOf = (d) => new Date(`${d}T12:00:00`);
 
-// Bir sporcunun yoklaması (Seyhun 2026-10-25 lacivert tasarım): üstte bu ayın devamı (yay) ve geldi / gelmedi / izinli sayıları,
-// altında ay ay günler (gün + durum). Devam oranında izinli sayılmaz (ana sayfadaki Yoklama kartıyla aynı: monthOf).
+// Bir sporcunun yoklaması (Sahne): üstte bu ay (devam %, geldi / gelmedi / izinli, ayın günleri kare kare), altında son antrenmanlar.
+// Devam oranında izinli sayılmaz (ana sayfadaki Yoklamam kutusuyla aynı: monthOf).
 function Card({ rec }) {
+  const [n, setN] = useState(FIRST);
   const days = Object.entries(rec.att || {}).sort((a, b) => b[0].localeCompare(a[0]));
-  const m = monthOf(rec);
-  const groups = days.reduce((g, [d, v]) => {
-    const k = d.slice(0, 7);
-    (g[k] = g[k] || []).push([d, v]);
-    return g;
-  }, {});
+  const ym = todayStr().slice(0, 7);
+  const m = monthOf(rec, ym);
+  const month = days.filter(([d]) => d.startsWith(ym)).reverse();
   return (
-    <section className="space-y-6">
-      <div className="food-card flex items-center gap-4 rounded-[1.375rem] px-4 py-4">
-        <Gauge dark value={m.rate || 0} label={m.rate == null ? "—" : `%${m.rate}`} sub="Bu ay devam" size={104} className="shrink-0" />
-        <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 text-center">
-          {["present", "absent", "excused"].map((s) => (
-            <span key={s} className="min-w-0">
-              <b className={`block text-[1.375rem] font-bold tabular-nums ${ST[s].text}`}>{m[s]}</b>
-              <small className="block truncate text-[0.75rem] text-white/65">{ST[s].label}</small>
-            </span>
-          ))}
-        </div>
-      </div>
-      {days.length === 0 ? (
-        <p className="px-1 text-[0.9375rem] text-mut">Henüz yoklama kaydı yok.</p>
-      ) : (
-        Object.entries(groups)
-          .slice(0, 6)
-          .map(([k, list]) => (
-            <div key={k}>
-              <ListHead title={MONTH.format(new Date(`${k}-15T12:00:00`))} count={list.length} />
-              <RowList>
-                {list.map(([d, v]) => (
-                  <Row key={d} title={DAY.format(new Date(`${d}T12:00:00`))} right={<span className={`text-[0.875rem] font-semibold ${ST[v]?.text || "text-mut"}`}>{ST[v]?.label || v}</span>} />
-                ))}
-              </RowList>
+    <div className="ya-two">
+      <div className="ya-col">
+        <section className="ya-hero">
+          <span className="ya-k">{MONTH.format(dayOf(`${ym}-15`))} · devam</span>
+          <div className="ya-row">
+            <b className="sh-c num ya-big" data-none={m.rate == null ? "" : undefined}>{m.rate == null ? "—" : `%${m.rate}`}</b>
+            <div className="ya-st">
+              {["present", "absent", "excused"].map((s) => (
+                <span key={s} data-s={s}>
+                  <b className="ya-c num">{m[s]}</b>
+                  <small>{LABEL[s]}</small>
+                </span>
+              ))}
             </div>
-          ))
-      )}
-    </section>
+          </div>
+          {month.length > 0 && (
+            <div className="ya-strip">
+              {month.map(([d, v]) => (
+                <i key={d} data-s={v} title={`${dayOf(d).getDate()} ${MON.format(dayOf(d))}: ${LABEL[v] || v}`} />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+      <div className="ya-col">
+        <h2 className="ya-sec m-0">Son antrenmanlar</h2>
+        {days.length === 0 ? (
+          <p className="ya-none">Henüz yoklama kaydı yok.</p>
+        ) : (
+          <>
+            <ul className="ya-ls">
+              {days.slice(0, n).map(([d, v]) => (
+                <li key={d}>
+                  <span className="ya-dt">
+                    <b className="sh-c num">{dayOf(d).getDate()}</b>
+                    <small>{MON.format(dayOf(d))}</small>
+                  </span>
+                  <span className="ya-wd">{WDAY.format(dayOf(d))}</span>
+                  <span className="ya-tg" data-s={v}>{LABEL[v] || v}</span>
+                </li>
+              ))}
+            </ul>
+            {days.length > n && (
+              <button type="button" data-press className="ya-more" onClick={() => setN((x) => x + STEP)}>
+                Daha fazla göster
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -77,26 +102,34 @@ export default function MyAttendance() {
 function Attendance({ kind }) {
   const { recs, err } = useMyAttendance(kind);
   const parent = kind === "parent";
+  // Koyu zemin sayfanın altına da (ana sayfadaki gibi body.sh-body)
+  useEffect(() => {
+    document.body.classList.add("sh-body");
+    return () => document.body.classList.remove("sh-body");
+  }, []);
 
   return (
-    <main data-theme="dark" className="navy page-navy mx-auto min-h-dvh max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-      <div className="flex items-center gap-2.5 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <BackButton href="/" className="-my-0.5 touch-manipulation" />
-        <h1 className="min-w-0 flex-1 truncate text-[1.875rem] font-bold leading-tight tracking-[-.02em]">{parent ? "Yoklama" : "Yoklamam"}</h1>
-      </div>
+    <main data-theme="dark" className={`sh ya-sh ${liveHead.variable}`}>
+      <header className="sh-top">
+        <Link href="/" aria-label="Geri" data-press className="sh-rb">
+          <Icon name="back" className="size-5" />
+        </Link>
+        <h1 className="sh-date m-0">{parent ? "Yoklama" : "Yoklamam"}</h1>
+        <span className="w-10 shrink-0" />
+      </header>
       {!recs ? (
         <Loading className="py-10" />
       ) : recs.length ? (
-        <div className="space-y-8">
+        <div className="ya-g">
           {recs.map((r) => (
-            <div key={r.id}>
-              {parent && <h2 className="mb-2 px-1 text-[1.125rem] font-semibold">{r.name}</h2>}
+            <div key={r.id} className="ya-col">
+              {parent && <h2 className="sh-c ya-kid">{r.name}</h2>}
               <Card rec={r} />
             </div>
           ))}
         </div>
       ) : (
-        <p className="mt-10 text-center text-[0.9375rem] text-mut">{err || "Henüz yoklama bilgisi yok."}</p>
+        <p className="ya-none mt-10 text-center">{err || "Henüz yoklama bilgisi yok."}</p>
       )}
     </main>
   );
