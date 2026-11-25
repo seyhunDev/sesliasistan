@@ -19,7 +19,9 @@ import { SkyIcon, WindArrow, WindChart, rainText, useObsRows } from "@/features/
 import { useNow } from "@/hooks/useNow";
 import { invoiceTile } from "@/lib/invoices";
 import { isFit } from "@/lib/fitness/model";
-import { canReceipts } from "@/lib/kinds";
+import { bilgiOrg, canReceipts } from "@/lib/kinds";
+import { membersOf } from "@/lib/bilgi";
+import { useBilgi, useTekneler } from "@/features/bilgi/bilgiStore";
 import { attHref, clubDues, dayPlans, dayWeather, duesLive, fitDays, fitWeek, liveRace, planTone, readSum, saveSum } from "@/lib/homeTiles";
 import { isTraining } from "@/lib/trainingLog";
 import { todayStr } from "@/lib/utils/format";
@@ -256,8 +258,8 @@ export function OwnerSahne() {
   );
 }
 
-// Kulüp kokpiti: süren yarış (canlı satır) ya da sıradaki yarışın geri sayımı; kutular: yoklama, fitness bu hafta, aidat, hesaplar, Tekne ekranı (Aç · Yönet),
-// Velora Sailing. Bilgisi olmayan kutu çizilmez (Tekne ekranı ve Velora Sailing her zaman).
+// Kulüp kokpiti: süren yarış (canlı satır) ya da sıradaki yarışın geri sayımı; kutular: yoklama, fitness bu hafta, aidat, hesaplar, Yönet,
+// Velora Sailing. Bilgisi olmayan kutu çizilmez (Yönet ve Velora Sailing her zaman).
 function Kokpit() {
   const h = useHesap();
   const { plans, members, fitOthers } = useData();
@@ -286,25 +288,36 @@ function Kokpit() {
         )}
         {sport && <DuesTile />}
         <MoneyTile />
-        <div className="sh-tile sh-boat">
-          <span className="sh-k">Tekne ekranı</span>
-          <span className="flex gap-1.5">
-            <Link href="/bilgi" data-press className="sh-mini sh-mini-on">
-              Aç
-            </Link>
-            {(h.owner || h.coach) && (
-              <Link href="/bilgi/yonet" data-press className="sh-mini">
-                Yönet
-              </Link>
-            )}
-          </span>
-        </div>
+        {(h.owner || h.coach) && <YonetTile profile={h.profile} />}
         <Link href="/sailing" data-press className="sh-tile sh-sailing">
           <span className="sh-k">Velora Sailing</span>
           <b className="sh-t">Aç</b>
         </Link>
       </div>
     </>
+  );
+}
+
+// Yönet kutusu (Seyhun 2026-11-25 örnek C): Tekne ekranı "Aç" düğmesi kalktı (ekran yalnız sporcu için), tüm kutu Yönet'i açar.
+// Kanal açıkken altında "Açık · 5 tekne" (son 90 sn'de konum veren tekneler); tekneler yalnız kanal açıkken dinlenir.
+function YonetTile({ profile }) {
+  const org = bilgiOrg(profile);
+  const b = useBilgi(org);
+  const k = b?.kanal?.open ? b.kanal : null;
+  const boats = useTekneler(k ? org : "");
+  const now = useNow(30000).getTime();
+  const n = k ? membersOf(boats, k.id, now).length : 0;
+  return (
+    <Link href="/bilgi/yonet" data-press className="sh-tile sh-yonk">
+      <span className="sh-k">Antrenman</span>
+      <b className="sh-c sh-kn">Yönet</b>
+      {k && (
+        <span className="sh-wx-live">
+          <i />
+          {n ? `Açık · ${n} tekne` : "Açık"}
+        </span>
+      )}
+    </Link>
   );
 }
 
