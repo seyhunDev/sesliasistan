@@ -29,7 +29,9 @@ import { ExerciseLibrary } from "./ExerciseLibrary";
 import { BodyStep, FitIntro } from "./FitIntro";
 import { HistoryCard, MonthCard, ProgramCard, ProgressCard, WeekCard, progSub } from "./FitDashboard";
 import { FoodView } from "./FoodView";
-import { DOW, FitPhoto, WeekBoxes } from "./FitDark";
+import { DOW, FsHead, WeekBoxes } from "./FitDark";
+import { liveHead } from "@/features/liveScreen/fonts";
+import "./fitSahne.css";
 import { FitReview } from "./FitReview";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ScrollBar } from "@/components/ui/ScrollBar";
@@ -319,7 +321,7 @@ export function FitnessHome() {
 
   if (edit) {
     return (
-      <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
+      <main className={`fs ${liveHead.variable} mx-auto min-h-dvh max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]`}>
         <PageHeader title={edit.prog.for ? `${edit.prog.forName} için program` : edit.simple ? "Programın hazır" : edit.fresh ? "Yeni program" : "Programı düzenle"} back="/fitness" />
         <ProgramEditor key={edit.k} prog={edit.prog} fresh={edit.fresh} simple={edit.simple} busy={busy} onSave={save} onCancel={() => {
           setEdit(null);
@@ -341,24 +343,19 @@ export function FitnessHome() {
     </Sheet>
   );
 
-  // Benim ve Beslenme de Sporcular gibi baştan sona koyu (yeni tasarım, 2026-11-03): üstte salon fotoğrafı, Fitness başlığı, sekmeler
-  const darkTop = (btns) => (
+  // Bütün Fitness ekranları "Sahne" (Seyhun 2026-11-25, fitSahne.css): ana sayfadaki üst çubuk (geri · ad ve tarih · ⋯ · limon +), sekme kapsülü
+  const darkTop = (more) => (
     <>
-      <FitPhoto />
-      <div className="relative flex items-center gap-2.5 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <BackButton href="/" className="-my-0.5 touch-manipulation" />
-        <h1 className="min-w-0 flex-1 truncate text-[1.875rem] font-bold leading-tight tracking-[-.02em]">Fitness</h1>
-        {btns}
-      </div>
-      <Tabs tab={tab} setTab={setTab} withAth={athletes.length > 0} dark />
+      <FsHead onMore={more ? () => setMenuOpen(true) : undefined} onAdd={() => newFor("")} addLabel="Program hazırla" />
+      <Tabs tab={tab} setTab={setTab} withAth={athletes.length > 0} />
     </>
   );
-  const darkMain = "navy fit-dark relative mx-auto min-h-dvh max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]";
+  const darkMain = `fs ${liveHead.variable} relative mx-auto min-h-dvh max-w-[30rem] px-4 pb-[calc(var(--stage-h,6rem)+2rem)] md:max-w-[40rem]`;
 
   if (tab === "food") {
     return (
-      <main data-theme="dark" className={darkMain}>
-        {darkTop(null)}
+      <main className={darkMain}>
+        {darkTop(false)}
         <div className="relative">
           <FoodView orgId={orgId} uid={uid} fit={fitProf} fitW={profile.fitW} trainDays={prog?.days?.length || 3} onBody={() => setBodyOpen(true)} />
         </div>
@@ -371,8 +368,8 @@ export function FitnessHome() {
   // ikisinden birini çizip sonra değiştirmek yerine aynı yerde sakin bir iskelet (zıplama olmasın)
   if (!list && !all.length) {
     return (
-      <main data-theme="dark" className={darkMain}>
-        {darkTop(null)}
+      <main className={darkMain}>
+        {darkTop(false)}
         <div aria-hidden="true" className="relative mt-4 grid gap-3">
           <div className="ck-shim h-36 rounded-2xl" />
           <div className="ck-shim h-20 rounded-2xl" />
@@ -385,8 +382,8 @@ export function FitnessHome() {
   // Hiç programı, fitness antrenmanı ve program verilecek sporcusu yoksa: tek ekran tanıtım, "Programımı hazırla" (hedef ve hafta pencerede sorulur)
   if (mine && !mine.length && !all.length && !rows.length && !athletes.length) {
     return (
-      <main data-theme="dark" className={darkMain}>
-        {darkTop(null)}
+      <main className={darkMain}>
+        {darkTop(false)}
         <div className="relative">
         <FitIntro
           name={profile.name}
@@ -432,7 +429,7 @@ export function FitnessHome() {
   // Sporcunun haftalık değerlendirmesi (sporcu sayfasındaki Değerlendirme): tam sayfa, geri ile sporcu sayfasına
   if (ath && revOpen && (selRow || selAth)) {
     return (
-      <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
+      <main className={`fs ${liveHead.variable} mx-auto min-h-dvh max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)] md:max-w-[40rem]`}>
         <FitReview orgId={orgId} uid={ath} name={selAth?.name || selRow?.name || ""} meta={athMeta(selAth, selRow?.prog, today)} prog={selRow?.prog} plans={selRow?.plans || []} today={today} onBack={() => setRevOpen(false)} />
       </main>
     );
@@ -441,7 +438,7 @@ export function FitnessHome() {
   // Sporcu sayfası (Sporcular listesinden): tam sayfa, geri ile listeye
   if (ath && (selRow || selAth)) {
     return (
-      <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
+      <main className={`fs ${liveHead.variable} mx-auto min-h-dvh max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)] md:max-w-[40rem]`}>
         <AthletePage
           name={selAth?.name || selRow?.name || ""}
           row={selRow}
@@ -469,16 +466,6 @@ export function FitnessHome() {
   }
 
   const todayRows = dayRows(fitOthers, athletes, today, today);
-  const headBtns = (
-    <>
-      <button type="button" onClick={() => setMenuOpen(true)} aria-label="Diğer" data-press className="btn btn-round size-10 text-fg">
-        <Icon name="more" className="size-5" />
-      </button>
-      <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" className="grid size-10 place-items-center rounded-full bg-[#3d7bff] text-[#06283a]">
-        <Icon name="plus" className="size-5" />
-      </button>
-    </>
-  );
   // Benim (yeni tasarım, 2026-11-03; sporcunun Fitness sayfası gibi): bugünün antrenmanı büyük, bu hafta çubuğu ve Pzt–Paz kutuları, tek ana düğme;
   // altta bugünkü hareketler, sıradaki antrenmanlar, Program (Programım · Gelişim · Geçmiş pencereleri)
   const plan = todays[0];
@@ -489,7 +476,7 @@ export function FitnessHome() {
   const sub = !plan
     ? null
     : st === "done"
-      ? [["Yaptın", "text-[#9fe7c6]"], plan.fit?.res?.min && [`${plan.fit.res.min} dk`], resLine(plan.fit) && [resLine(plan.fit)]]
+      ? [["Yaptın", "text-[#d4ff3a]"], plan.fit?.res?.min && [`${plan.fit.res.min} dk`], resLine(plan.fit) && [resLine(plan.fit)]]
       : st === "skip"
         ? [["Atladın"]]
         : [[`${moves.length} hareket`], [`${moves.reduce((t, it) => t + (+it.sets || 1), 0)} set`]];
@@ -523,9 +510,9 @@ export function FitnessHome() {
   // altta sporcular duruma göre gruplu: Yapmadı (Hatırlat) · Bekliyor · Yaptı · Atladı · Bugün yok · Programı yok
   if (tab === "ath") {
     return (
-      <main className="acik relative mx-auto min-h-dvh max-w-[30rem] pb-[calc(var(--stage-h,6rem)+2rem)]">
+      <main className={darkMain}>
         <ScrollBar title="Fitness">
-          <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" data-press className="btn btn-round size-9">
+          <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" data-press className="fs-rb fs-add size-9">
             <Icon name="plus" className="size-5" />
           </button>
         </ScrollBar>
@@ -535,21 +522,7 @@ export function FitnessHome() {
           rows={rows}
           rest={rest}
           orgId={orgId}
-          top={
-            <>
-              <div className="flex items-center gap-2.5 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-                <BackButton href="/" className="-my-0.5 touch-manipulation" />
-                <h1 className="min-w-0 flex-1 truncate num text-[2rem] font-bold leading-tight tracking-[-.025em]">Fitness</h1>
-                <button type="button" onClick={() => setMenuOpen(true)} aria-label="Diğer" data-press className="btn btn-round size-10">
-                  <Icon name="more" className="size-5" />
-                </button>
-                <button type="button" onClick={() => newFor("")} data-press className="btn btn-primary btn-sm">
-                  + Program
-                </button>
-              </div>
-              <Tabs tab={tab} setTab={setTab} withAth dark />
-            </>
-          }
+          top={darkTop(true)}
           onAth={(uid) => (setRevOpen(false), setAth(uid))}
           onNew={newFor}
         />
@@ -560,23 +533,31 @@ export function FitnessHome() {
   }
 
   return (
-    <main data-theme="dark" className={darkMain}>
-      {darkTop(headBtns)}
+    <main className={darkMain}>
+      {darkTop(true)}
 
       {list && !prog && !todays.length && !all.length ? (
         <section className="relative mt-4">
-          <b className="block text-[1.625rem] font-bold leading-tight tracking-[-.02em]">Kendi programın yok</b>
-          <Button full onClick={() => newFor("")} className="mt-4 [--acc:#3d7bff]">
+          <h2 className="fs-c text-[2.75rem]">Kendi programın yok</h2>
+          <Button full onClick={() => newFor("")} className="mt-4">
             Programımı hazırla
           </Button>
         </section>
       ) : (
         <div className="relative">
-          <section className="mt-4">
-            <small className="text-[0.75rem] font-bold tracking-[.06em] text-white/60">{`BUGÜN · ${shortDay(today).toLocaleUpperCase("tr-TR")}${plan?.time ? ` · ${plan.time}` : ""}`}</small>
-            <b className="mt-0.5 block truncate text-[1.625rem] font-bold leading-tight tracking-[-.02em]">{plan ? plan.fit?.name || plan.title : "Dinlenme günü"}</b>
-            {sub && (
-              <p className="mt-1 truncate text-[0.875rem] text-white/75">
+          {/* Bugünün antrenmanı: ana sayfadaki turuncu fitness kartı (Sahne) */}
+          <section className="fs-hero p-4">
+            <span className="fs-k text-[#ff7a1a]">{`Bugün · ${shortDay(today)}${plan?.time ? ` · ${plan.time}` : ""}`}</span>
+            <h2 className="fs-c mt-1.5 text-[2.9rem] [overflow-wrap:anywhere]">{plan ? plan.fit?.name || plan.title : "Dinlenme günü"}</h2>
+            {plan && st !== "done" && st !== "skip" && moves.length > 0 && (
+              <div className="mt-2.5 flex gap-5 text-[0.8125rem] text-[#d4d4d8]">
+                <span><b className="num block text-[1.25rem] font-bold text-white">{moves.length}</b>hareket</span>
+                <span><b className="num block text-[1.25rem] font-bold text-white">{moves.reduce((t, it) => t + (+it.sets || 1), 0)}</b>set</span>
+                {plan.durationMin > 0 && <span><b className="num block text-[1.25rem] font-bold text-white">{`~${plan.durationMin}`}</b>dakika</span>}
+              </div>
+            )}
+            {sub && (st === "done" || st === "skip") && (
+              <p className="mt-1.5 truncate text-[0.9375rem] text-[#d4d4d8]">
                 {sub.filter(Boolean).map(([t, cl], i) => (
                   <span key={t} className={cl}>
                     {i ? " · " : ""}
@@ -585,21 +566,19 @@ export function FitnessHome() {
                 ))}
               </p>
             )}
-            {week.planned > 0 && (
-              <div className="mt-3.5 flex items-center gap-2.5 text-[0.8125rem]">
-                <span className="text-white/75">Bu hafta</span>
-                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/15">
-                  <span className="block h-full rounded-full bg-[#8fb3ff]" style={{ width: `${Math.round((week.done / week.planned) * 100)}%` }} />
-                </span>
-                <b className="tabular-nums">{`${week.done}/${week.planned}`}</b>
-              </div>
-            )}
-            <WeekBoxes days={week.days} today={today} onOpen={open} className="mt-3" />
             {plan && (
-              <Button full onClick={() => open(plan)} className="mt-4 [--acc:#3d7bff]">
+              <button type="button" onClick={() => open(plan)} data-press className="mt-4 flex h-13 w-full items-center justify-center gap-2 rounded-full bg-[#d4ff3a] text-[1.0625rem] font-extrabold text-[#111]">
                 {st === "done" || st === "skip" ? "Sonucu aç" : started ? "Devam et" : "Antrenmana başla"}
-              </Button>
+              </button>
             )}
+          </section>
+
+          <section className="mt-6">
+            <div className="mx-1 mb-2 flex items-baseline justify-between">
+              <h3 className="fs-c text-[1.375rem]">Bu hafta</h3>
+              {week.planned > 0 && <span className="num text-[1rem] font-semibold text-mut">{`${week.done}/${week.planned}`}</span>}
+            </div>
+            <WeekBoxes days={week.days} today={today} onOpen={open} />
           </section>
 
           {plan && st !== "done" && st !== "skip" && moves.length > 0 && (
@@ -678,13 +657,13 @@ export function FitnessHome() {
   );
 }
 
-// Sporcular | Benim | Beslenme (adres: /fitness, ?tab=me, ?tab=food; sporcusu yoksa Sporcular yok)
-function Tabs({ tab, setTab, withAth, dark }) {
+// Sporcular | Benim | Beslenme (adres: /fitness, ?tab=me, ?tab=food; sporcusu yoksa Sporcular yok). Sahne: koyu kapsül, seçili beyaz
+function Tabs({ tab, setTab, withAth }) {
   const tabs = [withAth && ["ath", "Sporcular"], ["me", "Benim"], ["food", "Beslenme"]].filter(Boolean);
   return (
-    <div className={`relative mb-3 grid gap-1 rounded-full p-1 ${dark ? "bg-white/10 ring-1 ring-white/15" : "bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)]"} ${tabs.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+    <div className={`mb-4 grid gap-1 rounded-full border border-[#26262b] bg-[#17171a] p-1 ${tabs.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
       {tabs.map(([k, n]) => (
-        <button key={k} type="button" onClick={() => setTab(k)} className={`h-10 rounded-full text-[0.9375rem] font-semibold transition-colors ${tab === k ? (dark ? "bg-white text-[#0b1a33]" : "bg-acc text-white") : dark ? "text-white/70" : "text-mut"}`}>
+        <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={tab === k} className={`h-10 rounded-full text-[0.9375rem] font-bold transition-colors ${tab === k ? "bg-white text-[#111]" : "text-[#a1a1aa]"}`}>
           {n}
         </button>
       ))}
@@ -724,7 +703,7 @@ const shortDay = (d) => new Date(`${d}T12:00`).toLocaleDateString("tr-TR", { wee
 
 // Sporcular sekmesi ("B · Kokpit", 2026-11-25): lacivert üstte bugünün dev rakamı ve durum çubuğu; altta sporcular duruma göre gruplu.
 // Yapmayan en üstte, "Hatırlat" ile sporcuya tek bildirim (antrenman başına bir kez). Satıra dokununca sporcunun sayfası açılır.
-const ST_COL = { done: "#4fd39a", wait: "#3d7bff", missed: "#ff7a7f", skip: "rgb(255 255 255 / .3)" };
+const ST_COL = { done: "#d4ff3a", wait: "#fff", missed: "#ff6b6b", skip: "#3f3f46" };
 function AthTab({ today, todayRows, rows, rest, orgId, top, onAth, onNew }) {
   const toast = useToast();
   const [sent, setSent] = useState({});
@@ -752,25 +731,22 @@ function AthTab({ today, todayRows, rows, rest, orgId, top, onAth, onNew }) {
   const date = new Date(`${today}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
   return (
     <>
-      <section className="ck px-5 pb-12">
-        {top}
-        <p className="mt-1 text-[1rem] font-semibold text-[#8fb3ff]">{`Bugün · ${date}`}</p>
+      {top}
+      <section>
+        <span className="fs-k">{`Bugün · ${date}`}</span>
         {todayRows.length ? (
           <>
-            <div className="mt-1 flex items-end gap-3">
-              <b className="num text-[5.5rem] font-bold leading-[.85] tracking-[-.05em]">{todayRows.length}</b>
-              <span className="pb-1.5 text-[1.25rem] font-semibold leading-tight">
-                sporcu
-                <br />
-                antrenmanda
-              </span>
-            </div>
-            <div className="mt-5 flex h-3 gap-1">
+            <h2 className="fs-c mt-1 text-[3.4rem]">
+              <span className="num text-[#d4ff3a]">{todayRows.length}</span> sporcu
+              <br />
+              antrenmanda
+            </h2>
+            <div className="mt-4 flex h-2.5 gap-1">
               {parts.map(([k]) => (
-                <i key={k} className="rounded" style={{ flex: by[k].length, background: ST_COL[k] }} />
+                <i key={k} className="rounded-[3px]" style={{ flex: by[k].length, background: ST_COL[k] }} />
               ))}
             </div>
-            <div className="mt-2.5 flex justify-between gap-3 text-[0.9375rem] font-medium text-white/85">
+            <div className="mt-2.5 flex justify-between gap-3 text-[0.9375rem] text-[#d4d4d8]">
               {parts.map(([k, t]) => (
                 <span key={k}>
                   <b className="num mr-1 text-[1.15rem] font-bold text-white">{by[k].length}</b>
@@ -780,18 +756,18 @@ function AthTab({ today, todayRows, rows, rest, orgId, top, onAth, onNew }) {
             </div>
           </>
         ) : (
-          <b className="mt-1 block text-[1.75rem] font-bold leading-tight tracking-[-.02em]">Bugün antrenman yok</b>
+          <h2 className="fs-c mt-1 text-[2.75rem]">Bugün antrenman yok</h2>
         )}
       </section>
 
-      <div className="relative -mt-7 space-y-6 rounded-t-[1.75rem] bg-bg px-4 pt-5">
-        <Group title="Yapmadı" n={by.missed.length}>
+      <div className="mt-6 space-y-5">
+        <Group title="Yapmadı" n={by.missed.length} tone="text-[#ff6b6b]">
           {by.missed.map((r) => (
             <AthRow key={r.uid} name={r.name} sub={nameOf(r)} onClick={() => onAth(r.uid)}>
               {r.plan.fitNudgeAt || sent[r.plan.id] ? (
                 <span className="shrink-0 text-[0.9375rem] font-semibold text-mut">Gönderildi</span>
               ) : (
-                <button type="button" onClick={() => nudge(r)} data-press className="btn btn-secondary btn-sm shrink-0">
+                <button type="button" onClick={() => nudge(r)} data-press className="fs-pill">
                   Hatırlat
                 </button>
               )}
@@ -801,11 +777,11 @@ function AthTab({ today, todayRows, rows, rest, orgId, top, onAth, onNew }) {
         <Group title="Bekliyor" n={by.wait.length}>
           {by.wait.map((r) => (
             <AthRow key={r.uid} name={r.name} sub={[nameOf(r), r.plan.time].filter(Boolean).join(" · ")} onClick={() => onAth(r.uid)}>
-              {count(r.uid, "text-acc")}
+              {count(r.uid, "text-white")}
             </AthRow>
           ))}
         </Group>
-        <Group title="Yaptı" n={by.done.length}>
+        <Group title="Yaptı" n={by.done.length} tone="text-[#d4ff3a]">
           {by.done.map((r) => (
             <AthRow key={r.uid} name={r.name} sub={[nameOf(r), r.plan.fit?.res?.min && `${r.plan.fit.res.min} dk`].filter(Boolean).join(" · ")} onClick={() => onAth(r.uid)}>
               {count(r.uid, "text-ok")}
@@ -829,7 +805,7 @@ function AthTab({ today, todayRows, rows, rest, orgId, top, onAth, onNew }) {
         <Group title="Programı yok" n={rest.length}>
           {rest.map((a) => (
             <AthRow key={a.uid} name={a.name}>
-              <button type="button" onClick={() => onNew(a.uid)} data-press className="btn btn-secondary btn-sm shrink-0">
+              <button type="button" onClick={() => onNew(a.uid)} data-press className="fs-pill fs-g">
                 + Program
               </button>
             </AthRow>
@@ -840,15 +816,15 @@ function AthTab({ today, todayRows, rows, rest, orgId, top, onAth, onNew }) {
   );
 }
 
-function Group({ title, n, children }) {
+function Group({ title, n, tone = "", children }) {
   if (!n) return null;
   return (
     <section>
-      <div className="mx-1 mb-2.5 flex items-baseline justify-between text-[1.125rem] font-bold">
-        {title}
-        <span className="text-[1rem] font-medium text-mut tabular-nums">{n}</span>
+      <div className="mx-1 mb-2 flex items-baseline justify-between">
+        <h3 className={`fs-c text-[1.375rem] ${tone}`}>{title}</h3>
+        <span className="num text-[1rem] font-semibold text-mut">{n}</span>
       </div>
-      <div className="overflow-hidden rounded-[1.375rem] border border-line bg-card">{children}</div>
+      <div className="fs-list">{children}</div>
     </section>
   );
 }
@@ -857,15 +833,15 @@ function Group({ title, n, children }) {
 function AthRow({ name, sub, onClick, children }) {
   const body = (
     <>
-      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--fill,#eeeef2)] text-[0.9375rem] font-bold text-[#3a3a3c]">{initialsOf(name)}</span>
+      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#1f1f22] text-[0.9375rem] font-extrabold text-[#e4e4e7]">{initialsOf(name)}</span>
       <span className="min-w-0 flex-1">
-        <b className="block truncate text-[1.0625rem] font-semibold">{name}</b>
+        <b className="block truncate text-[1.0625rem] font-bold">{name}</b>
         {sub && <small className="block truncate text-[0.9375rem] text-mut">{sub}</small>}
       </span>
     </>
   );
   return (
-    <div className="flex min-h-[4.125rem] items-center gap-3 border-t border-line px-4 py-2.5 first:border-t-0">
+    <div className="flex min-h-[4.125rem] items-center gap-3 border-t border-[#26262b] px-4 py-2.5 first:border-t-0">
       {onClick ? (
         <button type="button" onClick={onClick} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 text-left">
           {body}
@@ -910,19 +886,13 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew,
   };
   return (
     <>
-      <div className="sticky top-0 z-10 -mx-5 mb-3 flex items-center gap-2.5 bg-bg/90 px-4 pb-2.5 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur">
-        <BackButton onClick={onBack} />
-        <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-semibold">{name}</h1>
-        <button type="button" aria-label="Diğer işlemler" onClick={() => (setSure(false), setMore(true))} data-press className="btn btn-round shrink-0">
-          <Icon name="more" className="size-5" />
-        </button>
-      </div>
-      <section className="rounded-[1.625rem] bg-deep p-5 text-white">
+      <FsHead label="Fitness · Sporcu" onBack={onBack} onMore={() => (setSure(false), setMore(true))} />
+      <section className="fs-hero p-5 text-white">
         <div className="flex items-center gap-3">
           <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white/15 text-[1rem] font-bold">{initialsOf(name)}</span>
           <span className="min-w-0 flex-1">
-            <b className="block truncate text-[1.125rem] font-semibold">{name}</b>
-            {meta && <small className="block truncate text-[0.8125rem] text-white/70">{meta}</small>}
+            <b className="fs-c block truncate text-[2rem]">{name}</b>
+            {meta && <small className="mt-1 block truncate text-[0.9375rem] text-[#d4d4d8]">{meta}</small>}
           </span>
           {row?.week.planned > 0 && (
             <span className="shrink-0 text-right">
@@ -940,16 +910,16 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew,
               const look = !d
                 ? "text-white/30"
                 : d.st === "done"
-                  ? "bg-[#bfe8d6] text-deep"
+                  ? "bg-[#d4ff3a] text-[#111]"
                   : d.st === "missed"
-                    ? "bg-[#f3a39a] text-[#5a1610]"
+                    ? "bg-[#3a1416] text-[#ff6b6b]"
                     : d.st === "skip"
                       ? "bg-white/15 text-white/70"
                       : "border border-white/50 text-white";
               return (
                 <button key={date} type="button" disabled={!plan} onClick={() => plan && onOpen(plan)} className="flex flex-col items-center gap-1">
                   <small className={`text-[0.6875rem] ${date === today ? "font-bold text-white" : "text-white/60"}`}>{["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"][i]}</small>
-                  <span className={`grid h-9 w-full place-items-center rounded-xl text-[0.8125rem] font-bold ${look} ${date === today && d ? "ring-2 ring-white" : ""}`}>
+                  <span className={`grid h-9 w-full place-items-center rounded-xl text-[0.8125rem] font-bold ${look} ${date === today && d ? "ring-2 ring-[#d4ff3a]" : ""}`}>
                     {!d ? "·" : d.st === "done" ? <Icon name="check" className="size-4" /> : d.st === "missed" ? "✕" : d.st === "skip" ? "–" : +date.slice(8)}
                   </span>
                 </button>
