@@ -493,7 +493,8 @@ function listen(text) {
 
 // + Sesli kalıp: sporculara gitmeden kayıt; dinle, beğenmezsen yeniden çek, ad ver, sakla (en çok 30 sn, tam ses tek parça)
 const KAYIT_MAX = 30;
-function KalipKayit({ org, list, onDone }) {
+// save verilirse (sporcuya sesli not) ad sorulmaz, kayıt save(blob, sn) ile gider
+export function KalipKayit({ org, list, onDone, save: saveTo = null, max = KAYIT_MAX }) {
   const toast = useToast();
   const [st, setSt] = useState({ s: "idle" }); // idle | rec { t0 } | done { blob, dur }
   const [name, setName] = useState("");
@@ -528,9 +529,9 @@ function KalipKayit({ org, list, onDone }) {
       if (dur < 0.6 || !bits.length) return setSt({ s: "idle" });
       const blob = new Blob(bits, { type: mr.mimeType || type || "audio/mp4" });
       setSt({ s: "done", blob, dur });
-      if (!name) firstWords(blob).then((w) => w && setName((n) => n || w));
+      if (!name && !saveTo) firstWords(blob).then((w) => w && setName((n) => n || w));
     };
-    const timer = setTimeout(() => mr.state !== "inactive" && mr.stop(), KAYIT_MAX * 1000);
+    const timer = setTimeout(() => mr.state !== "inactive" && mr.stop(), max * 1000);
     r.current = { stop: () => mr.state !== "inactive" && mr.stop() };
     mr.start();
     setNow(t0);
@@ -539,7 +540,8 @@ function KalipKayit({ org, list, onDone }) {
   const save = async () => {
     setBusy(true);
     try {
-      await saveKalip(org, list, { blob: st.blob, dur: st.dur, name: name || `Kalıp ${(list?.length || 0) + 1}` });
+      if (saveTo) await saveTo(st.blob, st.dur);
+      else await saveKalip(org, list, { blob: st.blob, dur: st.dur, name: name || `Kalıp ${(list?.length || 0) + 1}` });
       onDone();
     } catch {
       toast("Kaydedilemedi");
@@ -552,20 +554,20 @@ function KalipKayit({ org, list, onDone }) {
       {st.s === "done" ? (
         <>
           <audio src={url} controls className="w-full" />
-          <input className="bzy-in" value={name} maxLength={30} placeholder="Ad" onChange={(e) => setName(e.target.value)} aria-label="Kalıp adı" />
+          {!saveTo && <input className="bzy-in" value={name} maxLength={30} placeholder="Ad" onChange={(e) => setName(e.target.value)} aria-label="Kalıp adı" />}
           <div className="grid grid-cols-2 gap-2">
             <Button full variant="secondary" onClick={() => (setSt({ s: "idle" }), start())}>
               Yeniden çek
             </Button>
             <Button full loading={busy} onClick={save}>
-              Kaydet
+              {saveTo ? "Gönder" : "Kaydet"}
             </Button>
           </div>
         </>
       ) : (
         <button type="button" className="bzy-krec" data-rec={st.s === "rec" ? "1" : undefined} onClick={() => (st.s === "rec" ? r.current?.stop() : start())} data-press>
           <b className="num">{st.s === "rec" ? `0:${pad(sec)}` : "●"}</b>
-          <small>{st.s === "rec" ? `Bitirmek için dokun · en çok ${KAYIT_MAX} sn` : "Kayda başla"}</small>
+          <small>{st.s === "rec" ? `Bitirmek için dokun · en çok ${max} sn` : "Kayda başla"}</small>
         </button>
       )}
     </div>

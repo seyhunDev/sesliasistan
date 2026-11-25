@@ -41,8 +41,9 @@ import {
   useKanallar,
   useTekneler,
   setCeza,
+  sendNot,
 } from "./bilgiStore";
-import { DayStart, KalipRow, KalipSheets, kalipEntry, ToolsSheet, VideoTags, VideoTile, dayKey, dayLabel, kanalDay, useRepeat } from "./YonetParts";
+import { DayStart, KalipKayit, KalipRow, KalipSheets, kalipEntry, ToolsSheet, VideoTags, VideoTile, dayKey, dayLabel, kanalDay, useRepeat } from "./YonetParts";
 import { saveYonetVideo } from "./yonetVideo";
 import { setShooting } from "@/features/raceMedia/shooting";
 import { TekneMap } from "./TekneMap";
@@ -520,7 +521,7 @@ function PttTile({ to, ptt, now }) {
 }
 // Sporcu penceresi (Seyhun 2026-11-25 örnek "Yönet Ceza Uyarısı"): adına basılı tutunca açılır. Ceza: 360° / 720° / FD (faux départ);
 // sporcunun ekranında 10 sn tam ekran, sonra şerit; buradan "Cezayı kaldır" ile kalkar. Haritada noktası renkli, adının yanında rozet.
-function SporcuSheet({ org, id, boat, cur, onClose, onVideo }) {
+function SporcuSheet({ org, id, boat, cur, onClose, onVideo, onNot }) {
   const toast = useToast();
   const [pick, setPick] = useState("");
   const [busy, setBusy] = useState(false);
@@ -549,9 +550,14 @@ function SporcuSheet({ org, id, boat, cur, onClose, onVideo }) {
         ))}
       </div>
       <div className="mt-3 grid gap-2">
-        <RecPick onFile={onVideo(boat)} className="btn btn-secondary w-full" aria-label={`${name}: video çek`}>
-          ● Video çek
-        </RecPick>
+        <div className="grid grid-cols-2 gap-2">
+          <RecPick onFile={onVideo(boat)} className="btn btn-secondary w-full" aria-label={`${name}: video çek`}>
+            ● Video
+          </RecPick>
+          <Button variant="secondary" full onClick={() => onNot(id)}>
+            Sesli not
+          </Button>
+        </div>
         <Button variant="primary" full disabled={busy || !k || k === cur?.k} onClick={() => run(k)}>
           {cur && k !== cur.k ? "Cezayı değiştir" : "Cezayı gönder"}
         </Button>
@@ -1149,7 +1155,17 @@ export function BilgiAdmin() {
       />
       <KalipSheets org={org} list={kaliplar} view={sheet} onView={setSheet} src={canKalip || sheet === "kyap" ? last : null} to={to} members={members.length} onSend={sendK} repeat={repeat} onSaved={() => setLast((o) => (o ? { ...o, kalip: "saved" } : o))} />
       {antUsed && club && <AntrenmanSheets org={org} view={sheet} onView={setSheet} k={antDoc} boats={boats} ant={ant} />}
-      <SporcuSheet org={org} id={sheet.startsWith("sp:") ? sheet.slice(3) : ""} boat={chBoats.find((x) => `sp:${x.id}` === sheet)} cur={ceza[sheet.slice(3)]} onClose={() => setSheet("")} onVideo={(bt) => shot([athTag(bt)])} />
+      <SporcuSheet org={org} id={sheet.startsWith("sp:") ? sheet.slice(3) : ""} boat={chBoats.find((x) => `sp:${x.id}` === sheet)} cur={ceza[sheet.slice(3)]} onClose={() => setSheet("")} onVideo={(bt) => shot([athTag(bt)])} onNot={(i) => setSheet(`not:${i}`)} />
+      <Sheet open={sheet.startsWith("not:")} onClose={() => setSheet("")} title={`Sesli not · ${athTag(chBoats.find((x) => `not:${x.id}` === sheet)) || "Sporcu"}`}>
+        {sheet.startsWith("not:") && (
+          <KalipKayit
+            org={org}
+            max={60}
+            save={(blob, dur) => sendNot(org, chBoats.find((x) => `not:${x.id}` === sheet), blob, dur, kday || dayKey(now))}
+            onDone={() => (setSheet(""), toast("Not gönderildi"))}
+          />
+        )}
+      </Sheet>
       <VideoTags job={vid} onSave={saveVid} />
       <Sheet open={sheet === "kanal"} onClose={() => setSheet("")} title={kanal?.name || "Kanal"}>
         <KanalInfo kanal={kanal} link={b?.link || ""} count={members.length} onList={() => setSheet("kanallar")} />
