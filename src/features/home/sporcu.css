@@ -108,6 +108,82 @@ body.sh-body { background: #0b0b0c; }
 .sh-mini { border-radius: 999px; padding: .35rem .65rem; font-size: .75rem; font-weight: 700; background: #ffffff1a; color: #fff; white-space: nowrap; }
 .sh-mini-on { background: var(--sh-lime); color: #111; }
 
+/* ─── Ana hesap ve normal kullanıcı Sahne (SahneHome.jsx; Seyhun 2026-11-25, örnek velora-tarama/ana-normal-sahne.html) ─── */
+body:has(main.sh) .atabbar { --card: #0b0b0c; --line: #1f1f22; background: rgba(11, 11, 12, .94); box-shadow: 0 -1px 0 #1f1f22; }
+body:has(main.sh) .atabbar a { color: #71717a; }
+body:has(main.sh) .atabbar a[aria-current="page"] { color: var(--sh-lime, #d4ff3a); }
+body:has(main.sh) .acenter { background: #0b0b0c; box-shadow: 0 -1px 0 #1f1f22; }
+body:has(main.sh) .sidenav.navy { background: #0f0f11; --sn-line: #1f1f22; --sn-on-bg: rgba(212, 255, 58, .12); --sn-bar: #d4ff3a; }
+.shm-blue { background: linear-gradient(160deg, #1e3a8a, #0b1020); border-color: #1e40af; }
+.sh-g3 { display: grid; gap: .8rem; margin-top: .9rem; grid-template-areas: "a" "b" "c"; }
+.sh-a { grid-area: a; min-width: 0; }
+.sh-b { grid-area: b; min-width: 0; display: flex; flex-direction: column; gap: .7rem; }
+.sh-c3 { grid-area: c; min-width: 0; display: flex; flex-direction: column; gap: .8rem; }
+.sh-sec { font-size: .6875rem; font-weight: 800; letter-spacing: .12em; color: #71717a; margin: .2rem 0 -.3rem .15rem; }
+.sh-kn { font-size: 2rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-bar { display: block; height: .3rem; border-radius: .2rem; background: #ffffff1a; overflow: hidden; }
+.sh-bar i { display: block; height: 100%; background: var(--sh-fit); }
+.sh-warn { color: #fbbf5c; }
+.sh-rl > a { margin-top: 0; }
+.sh-wide.sh-yon { background: linear-gradient(150deg, #1e3a8a, #0b1020); border: 1px solid #1e40af; }
+.sh-wide.sh-yon .sh-k { color: #93c5fd; }
+.sh-wide.sh-yon .sh-wide-b { background: #fff; }
+/* Hava paneli: ortak WindChart'ın renkleri burada (ölçülen limon, tahmin beyaz kesik, sağanak gri) */
+.sh-wxp { background: linear-gradient(180deg, #0f1d2b, #0b0b0c); border: 1px solid #1e2a36; border-radius: 1.4rem; overflow: hidden; color: #fff;
+  --wx-strong: #fff; --wx-t2: #cbd5e1; --wx-t3: #94a3b8; --wx-mut: #94a3b8; --wx-faint: #64748b; --wx-line: #1e2a36; --wx-line2: #2a3a4a; --wx-acc: #93c5fd;
+  --wx-fc: #fff; --wx-area: rgba(255, 255, 255, .1); --wx-gust: #94a3b8; --wx-obs: #d4ff3a; --wx-axis: #64748b; --wx-grid: #1e2a36;
+  --wx-rain: #93c5fd; --wx-raint: #bfdbfe; --wx-raindot: #bfdbfe; --wx-mm: #93c5fd; --rec: #ef4444;
+  --wc0: #64748b; --wc1: #cbd5e1; --wc2: #e2e8f0; --wc3: #fde68a; --wc4: #fca5a5;
+  --sky-sun: #fcd34d; --sky-sun2: #fcd34d; --sky-cloud: #94a3b8; --sky-rain: #93c5fd; --sky-storm: #c4b5fd; --sky-snow: #e0f2fe; }
+.sh-wxp .text-mut { color: #94a3b8; }
+.sh-wxp .iph-sky { color: #cbd5e1; opacity: .3; }
+.sh-wxp .iph-wch svg path[stroke="url(#iph-wl)"] { stroke: #fff; stroke-dasharray: 5 5; opacity: .8; }
+.sh-wx-now { display: flex; flex-direction: column; gap: .1rem; width: 100%; text-align: left; padding: .85rem .95rem 0; color: #fff; }
+.sh-wx-live { display: inline-flex; align-items: center; gap: .35rem; color: var(--sh-lime); font-size: .6875rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.sh-wx-live i { width: .45rem; height: .45rem; border-radius: 50%; background: var(--sh-lime); }
+.sh-wx-row { display: flex; align-items: flex-end; gap: .6rem; }
+.sh-wx-ar { margin-bottom: .7rem; }
+.sh-wx-big { font-size: 4.6rem; color: #fff; }
+.sh-wx-big small { font-size: 1.1rem; color: #a1a1aa; margin-left: .2rem; }
+.sh-wx-info { flex: 1; min-width: 0; margin-bottom: .55rem; font-size: .8rem; color: #cbd5e1; line-height: 1.35; display: flex; flex-direction: column; }
+.sh-wx-info b { color: #fff; font-size: .9rem; }
+.sh-wx-t { text-align: right; margin-bottom: .55rem; display: flex; flex-direction: column; align-items: flex-end; }
+.sh-wx-t b { font-size: 1.7rem; font-weight: 700; line-height: 1; }
+.sh-wx-t small { display: flex; align-items: center; gap: .3rem; font-size: .72rem; color: #94a3b8; margin-top: .25rem; }
+.sh-wx-wait { display: grid; place-items: center; min-height: 6rem; font-size: .875rem; color: #94a3b8; width: 100%; }
+.sh-wx-rain { margin: 0; padding: .55rem .95rem .75rem; border-top: 1px solid #1e2a36; font-size: .78rem; font-weight: 600; color: #93c5fd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Gün şeridi */
+.sh-days { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; margin: 0 -1rem; padding: 0 1rem; scroll-padding: 0 1rem; }
+.sh-days::-webkit-scrollbar { display: none; }
+.sh-day { flex: 1 0 4.4rem; min-width: 0; background: #141416; border: 1px solid #26262b; border-radius: .9rem; padding: .45rem .5rem; font-size: .625rem; font-weight: 700; letter-spacing: .04em; color: #a1a1aa; text-align: left; display: flex; flex-direction: column; }
+.sh-day b { color: #fff; font-family: var(--lv-font-c), system-ui; font-weight: 800; font-size: 1.15rem; line-height: 1.1; }
+.sh-day span.num { font-size: .6875rem; letter-spacing: 0; white-space: nowrap; }
+.sh-day-w { display: flex; align-items: flex-end; gap: 2px; height: 1rem; margin: .2rem 0; }
+.sh-day-w i { flex: 1; background: #475569; border-radius: 1px; }
+.sh-day-on { border-color: var(--sh-lime); }
+.sh-day-on b { color: var(--sh-lime); }
+.sh-day-on .sh-day-w i { background: var(--sh-lime); opacity: .7; }
+/* Planlar */
+.sh-plans { background: #141416; border: 1px solid #26262b; border-radius: 1.2rem; padding: .25rem .85rem; display: flex; flex-direction: column; overflow: hidden; }
+.sh-pl { display: flex; align-items: center; gap: .65rem; padding: .6rem 0; border-top: 1px solid #1f1f22; font-size: .875rem; text-align: left; color: #fff; min-width: 0; }
+.sh-pl:first-child { border-top: 0; }
+.sh-pl-t { font-size: .8125rem; font-weight: 700; color: #a1a1aa; width: 3.2rem; flex-shrink: 0; white-space: nowrap; }
+.sh-pl i { width: .25rem; height: 1.6rem; border-radius: .2rem; background: var(--tfg); flex-shrink: 0; }
+.sh-pl b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.sh-pl small { color: #71717a; font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+.sh-pl-now { background: #d4ff3a14; margin: 0 -.85rem; padding: .6rem .85rem; }
+main.sh.sh .tone-st { --tfg: #22c55e; } main.sh.sh .tone-sp { --tfg: #60a5fa; } main.sh.sh .tone-ve { --tfg: #a78bfa; } main.sh.sh .tone-fa { --tfg: #d6a77a; } main.sh.sh .tone-fit { --tfg: #ff7a1a; } main.sh.sh .tone-gen { --tfg: #71717a; }
+.sh-noplan { margin: 0; padding: .7rem .2rem; font-size: .8125rem; font-weight: 600; color: #71717a; }
+@media (min-width: 48rem) {
+  .sh-g3 { grid-template-columns: 1fr 1fr; grid-template-areas: "a a" "b c"; gap: 1.1rem; align-items: start; }
+  .sh-days { margin: 0; padding: 0; }
+  .sh-wx-big { font-size: 5.6rem; }
+}
+@media (min-width: 64rem) {
+  .sh-g3 { grid-template-columns: 1.35fr 1fr; grid-template-areas: "a c" "b c"; grid-template-rows: auto 1fr; }
+  .sh-b { align-self: start; }
+}
+
 @media (min-width: 48rem) {
   .sh { padding-left: max(1.5rem, env(safe-area-inset-left)); padding-right: max(1.5rem, env(safe-area-inset-right)); }
   .sh-grid { grid-template-columns: 1.25fr 1fr; gap: 1.1rem; align-items: start; }
