@@ -103,6 +103,15 @@ Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar 
 
 Bir sayfa geçince bu listeyi güncelle.
 
+## Yarış detayı "Sahne" (Seyhun 2026-11-25 "Yap"; örnek project-files/yaris-detay-sahne/ornek.html)
+
+Yarış detayı ana sayfa ve Fitness ile aynı koyu dilde (`main.fs.rsh`, CSS `src/features/athletes/raceSahne.css`). Aşağıdaki "yarış kart" düzeninin yerini alır (Yarışlar listesi şimdilik eski).
+- Üst çubuk: yuvarlak geri, ortada küçük büyük harfle "Yarışlar" (yarış günü kırmızı noktalı "Yarışta · 2. gün"), sağda Ekran · Yönet · limon Canlı (ana hesap, yarış günü) ve ⋯.
+- Yarış kartı `RaceHero`: tarih · yer, dar büyük ad; önce sağda kalan gün (limon), yarış günü altta Bugün · Sıradaki kutuları.
+- Hava: ana sayfadaki panel (`.sh-wxp`, ortak `WindChart`), birden çok yarış günü varsa gün kutuları; altında Harita kutusu (Aç).
+- Sekmeler `RaceTiles`: kısa durumlu kutular, seçili limon çerçeve, eksik kehribar, yeni limon. Aynı durum ayrıca yazılmaz.
+- iPad yatay: solda kart, hava, harita; sağda sekmeler ve içi.
+
 ## Yarış sayfaları: "yarış kart" (2026-11-07)
 
 Yarışlar listesi ve yarış detayı diğer sayfalar gibi lacivert kokpit kullanır (Seyhun 2026-11-07 "diğer sayfalardaki gibi olsun, başlık geri butonun yanında; iPad'de tıklamalar net, ortak butonlar"; örnek project-files/yaris-tasarim/sade/ust-*.png onaylı). Yayın sayfası ayrı (kendi sahibi).

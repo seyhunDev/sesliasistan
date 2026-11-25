@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { openInApp } from "@/features/liveScreen/InAppBack";
+import { todayStr } from "@/lib/utils/format";
+import { placeText } from "./RaceList";
 
 // Yarış sayfalarının yeni görünümü (Seyhun 2026-11-06 "tasarımı tamamen değiştir… bundan sonraki yarışla ilgili kısımları bu sade tasarım
 // anlayışı, buton anlayışıyla yapacağız"; örnek yaris-detay-sade/yeni-dil/ornek.png onaylı): beyaz zemin, lacivert blok ve kart çerçevesi yok,
@@ -37,52 +39,73 @@ export function RaceSeg({ tabs, value, onChange, className = "" }) {
   );
 }
 
-// Üstteki bilgi şeridi (Seyhun 2026-11-09 sade öneri "üç bilgi"; 2026-11-09 Takip yeni tasarım: kutu yok, ince çizgiler arasında tek satır):
-// [etiket, büyük değer, küçük ek, dokununca (isteğe bağlı), açık mı]; boş değerli hücre yazılmaz. Hava hücresi dokununca saat saat havayı açar.
-export function RaceStats({ items, className = "" }) {
-  const list = items.filter((x) => x && x[1] !== "" && x[1] != null);
-  if (!list.length) return null;
+// Yarış detayının sekmeleri "Sahne" (Seyhun 2026-11-25 "Yap"; örnek project-files/yaris-detay-sahne/ornek.html): kısa durumlu kutular
+// [anahtar, ad, durum, eksik mi, yeni sayısı]; seçili kutu limon çerçeve, eksik durum kehribar, yeni limon. Eski bilgi şeridinin yerini aldı (tekrar yok).
+export function RaceTiles({ tabs, value, onChange, className = "" }) {
   return (
-    <div className={`rz-stats ${className}`} style={{ gridTemplateColumns: `repeat(${list.length}, minmax(0, 1fr))` }}>
-      {list.map(([k, v, s, onTap, open]) => {
-        const body = (
-          <>
-            <small>{k}</small>
-            <b>
-              {v}
-              {s ? <em>{s}</em> : null}
-            </b>
-          </>
-        );
-        return onTap ? (
-          <button key={k} type="button" onClick={onTap} aria-expanded={!!open} data-press className="rz-stat-b">
-            {body}
-          </button>
-        ) : (
-          <div key={k}>{body}</div>
-        );
-      })}
-    </div>
+    <nav aria-label="Bölümler" className={`rsh-tabs ${className}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+      {tabs.map(([k, name, stat, warn, extra]) => (
+        <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)} data-press className="rsh-tb">
+          <span>{stat ? name : ""}</span>
+          <b className={`rsh-c ${extra ? "rsh-new" : warn ? "rsh-warn" : ""}`}>{stat || name}</b>
+        </button>
+      ))}
+    </nav>
   );
 }
 
-// İki giriş (Seyhun 2026-11-06 "hem yayını açabilmeliyim hem de kendi canlı yayın sayfamı"; yayin-canli/ornek.png onaylı): yan yana
-// "Canlı ekran" (dolu mavi; kendi canlı ekranı uygulama içinde, /canli/<id>, geri kaydırınca buraya döner) ve "Yayın" (açık mavi; yönetim
-// sayfası). Yalnız ana hesapta gösterilir (çağıran karar verir). Lacivert üstte (yarış kart, 2026-11-07) Canlı ekran beyaz, Yayın cam (.ck .rz-go).
-// extra: yanına üçüncü düğme (yarış günü "Harita", Seyhun 2026-11-09 Takip yeni tasarım)
-export function RaceGo({ id, className = "", extra = null }) {
-  const router = useRouter();
+// Yarış kartı (Sahne): tarih · yer, büyük ad; yarıştan önce sağda kalan gün, yarış günü altta iki kutu (now: [ad, değer, ek]). sub: ad altındaki kısa satır
+export function RaceHero({ r, sub = "", now = null }) {
+  const t = todayStr();
+  const n = r.startDate ? gap(t, r.startDate) : null;
+  const over = !!r.startDate && t > (r.endDate || r.startDate);
+  const cnt = now ? null : over ? ["", "Bitti"] : n > 0 ? [n, "gün kaldı"] : null;
+  const where = whereText(r);
   return (
-    <div className={`rz-go grid ${extra ? "grid-cols-3" : "grid-cols-2"} gap-2 ${className}`}>
-      <button type="button" onClick={() => openInApp(router, `/canli/${id}`)} data-press className="btn btn-primary">
-        Canlı ekran
-      </button>
-      <Link href={`/athletes/races/${id}/yayin`} data-press className="btn rz-soft">
-        Yayın
-      </Link>
-      {extra}
-    </div>
+    <section className="rsh-hero" aria-label={r.name || "Yarış"}>
+      {where && <span className="rsh-k">{where}</span>}
+      <h1 className={`rsh-c rsh-tt ${cnt ? "rsh-pr" : ""}`}>{r.name || "Yarış"}</h1>
+      {sub && <span className="rsh-sub">{sub}</span>}
+      {cnt && (
+        <span className="rsh-cnt">
+          {cnt[0] !== "" && <b className="rsh-c">{cnt[0]}</b>}
+          <small className={cnt[0] === "" ? "rsh-c rsh-done" : ""}>{cnt[1]}</small>
+        </span>
+      )}
+      {now?.length > 0 && (
+        <div className="rsh-now">
+          {now.map(([k, v, s]) => (
+            <div key={k}>
+              <span>{k}</span>
+              <b className="rsh-c">{v === "" || v == null ? "–" : v}</b>
+              {s ? <small>{s}</small> : null}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
+}
+
+// "12 Kas"
+const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+const gap = (a, b) => Math.round((new Date(`${b}T12:00:00`) - new Date(`${a}T12:00:00`)) / 864e5);
+// Yarış bugün sürüyor mu (başlangıçtan bitişe)
+export function racing(r) {
+  if (!r?.startDate) return false;
+  const t = todayStr();
+  return t >= r.startDate && t <= (r.endDate || r.startDate);
+}
+// Üst çubuğun ortası yarış günü: "Yarışta · 3. gün"
+export function kickText(r) {
+  return racing(r) ? `Yarışta · ${gap(r.startDate, todayStr()) + 1}. gün` : "";
+}
+// "8–11 Kas · Foça, İzmir"
+export function whereText(r) {
+  const a = r.startDate;
+  const b = r.endDate && r.endDate !== a ? r.endDate : "";
+  const when = !a ? "" : !b ? shortDay(a) : a.slice(0, 7) === b.slice(0, 7) ? `${+a.slice(8)}–${shortDay(b)}` : `${shortDay(a)}–${shortDay(b)}`;
+  return [when, placeText(r)].filter(Boolean).join(" · ");
 }
 
 // Tek "Canlı" düğmesi (Seyhun 2026-11-09 "harita butonuna, yayın butonuna gerek yok; bir tane canlı butonumuz var"; örnek c-telefon.png "Yap"):
