@@ -5,9 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Icon } from "@/components/ui/Icon";
 import { createPortal } from "react-dom";
-import { fold } from "@/lib/fitness/exercises";
 import { ytThumb } from "@/lib/fitness/youtube";
-import { libAdd, libDupes, libKeepOf, libKey, libList, libMediaIds } from "@/lib/fitness/library";
+import { libAdd, libDupes, libKeepOf, libKey, libList, libMediaIds, nameKey } from "@/lib/fitness/library";
 import { Thumb } from "./ExerciseMedia";
 import { ExerciseScreen } from "./ExerciseScreen";
 import { getThumb, loadMedia, looseMedia } from "./fitMedia";
@@ -58,7 +57,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
     const item = p.custom ? { ex: "", name: p.name } : { ex: p.id, name: p.name, kind: p.kind };
     const { lib: next } = libAdd(lib, [item]);
     const saved = await saveLib(orgId, next).catch(() => null);
-    const k = libList(saved || next).find((x) => fold(x.name) === fold(item.name) || (item.ex && x.key === item.ex));
+    const k = libList(saved || next).find((x) => nameKey(x.name) === nameKey(item.name) || (item.ex && x.key === item.ex));
     if (k) setSel(k.key);
   };
   const close = () => {

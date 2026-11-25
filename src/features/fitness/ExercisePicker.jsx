@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { EQUIP, EXERCISES, GROUPS, fold } from "@/lib/fitness/exercises";
-import { isCustomKey, libList } from "@/lib/fitness/library";
+import { isCustomKey, libList, nameKey } from "@/lib/fitness/library";
 import { useFitLib } from "./useFitLib";
 
 // Hareket seç: arama + kas grubu; dokununca seçilir. Liste uygulamanın içinde + kulübün kendi hareketleri (kütüphane).
@@ -15,9 +15,11 @@ export function ExercisePicker({ open, onClose, onPick }) {
   const [g, setG] = useState("");
   const f = fold(q);
   const nos = lib?.items || {};
-  const own = g ? [] : libList(lib, q).filter((e) => isCustomKey(e.key));
-  const list = EXERCISES.filter((e) => (!g || e.group === g) && (!f || fold(e.name).includes(f) || e.id.includes(f)));
-  const exact = f && (list.some((e) => fold(e.name) === f) || own.some((e) => fold(e.name) === f));
+  // Aynı hareket başka yazımla varsa ("+" / "-" / "ve", sözcük sırası) o gösterilir, yeni olarak sunulmaz
+  const nk = nameKey(q);
+  const own = g ? [] : libList(lib).filter((e) => isCustomKey(e.key) && (!f || fold(e.name).includes(f) || String(e.no) === f || nameKey(e.name) === nk));
+  const list = EXERCISES.filter((e) => (!g || e.group === g) && (!f || fold(e.name).includes(f) || e.id.includes(f) || nameKey(e.name) === nk));
+  const exact = f && (EXERCISES.some((e) => nameKey(e.name) === nk) || libList(lib).some((e) => nameKey(e.name) === nk));
   const pick = (e) => {
     onPick(e);
     onClose();

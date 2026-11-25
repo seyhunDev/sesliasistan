@@ -22,6 +22,16 @@ export function exKey(it) {
 }
 export const isCustomKey = (k) => String(k || "").startsWith("c:");
 
+// Aynı hareket mi (ad karşılaştırma anahtarı): Türkçe harfsiz, işaretsiz ("+", "-", "/", "&"), "ve/ile/and" atılır, sözcük
+// sırası önemsiz. "Burun nefesi + yürüyüş" = "Burun nefesi - yürüyüş" = "Yürüyüş ve burun nefesi" (Seyhun 2026-11-25).
+const JOIN = new Set(["ve", "ile", "and", "with"]);
+export const nameKey = (s) =>
+  fold(String(s || "").replace(/&/g, " "))
+    .split(" ")
+    .filter((w) => w && !JOIN.has(w))
+    .sort()
+    .join(" ");
+
 // Kütüphanedeki anahtar: birleştirilmiş eski anahtar → kalan; kütüphanede yoksa aynı adlı kayıt
 export function libKey(lib, it) {
   const k = exKey(it);
@@ -30,10 +40,10 @@ export function libKey(lib, it) {
   const a = lib?.alias?.[k];
   if (a && items[a]) return a;
   if (items[k]) return k;
-  const f = fold(it?.name || exById(k)?.name);
+  const f = nameKey(it?.name || exById(k)?.name);
   if (!f) return k;
   const same = Object.entries(items)
-    .filter(([, e]) => fold(e.name) === f)
+    .filter(([, e]) => nameKey(e.name) === f)
     .sort((x, y) => x[1].no - y[1].no)[0];
   return same ? same[0] : k;
 }
@@ -126,7 +136,7 @@ export function libAliases(lib, items = [], pairs = []) {
   let n = 0;
   for (const p of pairs || []) {
     if (!lib?.items?.[p.key]) continue;
-    const it = (items || []).find((x) => fold(x.name) === fold(p.name));
+    const it = (items || []).find((x) => nameKey(x.name) === nameKey(p.name));
     const k = it && exKey(it);
     if (!k || lib.items[k] || alias[k]) continue;
     alias[k] = p.key;
@@ -180,7 +190,7 @@ const mediaCount = (e) => (e.media?.length || 0) + (e.spare?.length || 0) + (e.y
 export function libDupes(lib) {
   const by = new Map();
   for (const e of libList(lib)) {
-    const f = fold(e.name);
+    const f = nameKey(e.name);
     if (!f) continue;
     by.set(f, [...(by.get(f) || []), e]);
   }
@@ -271,7 +281,7 @@ export function libRename(lib, key, name) {
   if (!e || !n) return { lib, err: "Ad boş olamaz" };
   if (n === e.name) return { lib };
   const k2 = exKey({ ex: "", name: n });
-  const other = Object.entries(lib.items).find(([k, x]) => k !== key && (fold(x.name) === fold(n) || k === k2));
+  const other = Object.entries(lib.items).find(([k, x]) => k !== key && (nameKey(x.name) === nameKey(n) || k === k2));
   if (other) return { lib, err: `“${other[1].name}” adlı hareket var; ikisi aynıysa birleştir` };
   const alias = { ...(lib.alias || {}) };
   if (k2 && k2 !== key) alias[k2] = key;

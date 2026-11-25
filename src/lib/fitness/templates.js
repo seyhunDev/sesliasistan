@@ -1,5 +1,6 @@
 // Hazır programlar: seçili sporcuya tek dokunuşla eklenir (kayıttan önce düzenleme ekranında açılır).
-// Hareket adları kulübün kendi hareketi olarak kalır (ex: ""), fotoğraflar sonra kütüphaneden eklenir.
+// Hareket adları kulübün kendi hareketi olarak kalır (ex: ""). Fotoğraflar uygulamayla gelir (public/fitness/hazir/*.jpg,
+// PHOTOS): program seçilince fotoğrafı olmayan hareketlerin kütüphanesine yüklenir (templatePhotos, NewProgram).
 import { cleanProgram } from "./model";
 
 // Hazırlık ve reset hareketleri arka arkaya akar (PDF: her biri 1 dk): araya kısa geçiş
@@ -31,9 +32,10 @@ const RESET = [
 // Yelken sonrası 6 dk: her biri 1 dk
 const AFTER_SAIL = ["Yürüyüş ve burun nefesi", "Baldır esnetme", "Kalça fleksör esnetme", "Adduktor esnetme", "Torakal rotasyon", "Uzun verişli nefes"].map((name) => easy(name, { sec: 60 }));
 
-// RIP · 12 haftalık yelken ev kuvveti (İlay İmamoğulları programı, 14 yaş), PDF'teki haftanın aynısı:
-// Pzt atletizm + 8 dk reset, Salı Kuvvet A (akşam gitar), Çrş atletizm + 5 dk nefes ve mobilite, Prş Kuvvet B,
-// Cuma isteğe bağlı mikrodoz (2 tur), Cmt ve Paz yelken sonrası 6 dk. Kulüp/okul yükü günün notunda.
+// 12 haftalık yelken ev kuvveti: bir sporcu için hazırlanmış PDF programdan bütün sporculara ORTAK program (Seyhun 2026-11-25;
+// kişiye özel saat, okul/gitar notu ve yaş çıkarıldı). Hafta: Pzt atletizm + 8 dk reset, Salı Kuvvet A, Çrş atletizm + 5 dk
+// nefes ve mobilite, Prş Kuvvet B, Cuma isteğe bağlı mikrodoz (2 tur), Cmt ve Paz yelken sonrası 6 dk. Gün ve saatler
+// düzenleme ekranında değiştirilir.
 const YELKEN_EV = {
   title: "Yelken ev kuvveti · 12 hafta",
   goal: "kondisyon",
@@ -47,7 +49,7 @@ const YELKEN_EV = {
       time: "17:45",
       min: 40,
       name: "Kuvvet A · Alt gövde ve çekiş",
-      note: "17.45–18.25 · akşam 20.00–21.00 gitar. Pazartesi atletizminden bacaklar yorgunsa alt gövde hareketlerinden birer set çıkar. İlk hafta RPE 6.",
+      note: "Önceki günün antrenmanından bacaklar yorgunsa alt gövde hareketlerinden birer set çıkar. İlk hafta RPE 6.",
       items: [
         prep("90 90 nefes", { reps: 5, breath: "5 yavaş nefes", note: "Kaburga pelvis kontrolü" }),
         prep("Kedi deve", { reps: 6, note: "Omurga hareketi" }),
@@ -59,7 +61,7 @@ const YELKEN_EV = {
         prep("Ana harekete prova", { reps: 6, note: "6 kolay tekrar, teknik hazırlık" }),
         main("Sırt çantalı split squat", { sets: 3, reps: 8, repsTo: 12, side: true, rpe: "6–7 · RIR 3–4", rest: 75, note: `Diz ikinci parmağa. ${BAG}` }),
         main("Tek bacak Romanian deadlift", { sets: 3, reps: 8, repsTo: 10, side: true, rpe: "6–7 · RIR 3", rest: 60, note: "Kalça geriye, pelvis düz" }),
-        main("Masa altı row", { sets: 3, reps: 10, repsTo: 15, rpe: "7 · RIR 3", rest: 60, note: "Omuz kulaktan uzak", alt: "Band row; masa güvenli değilse iki elde su şişesiyle bent over row" }),
+        main("Band row", { sets: 3, reps: 10, repsTo: 15, rpe: "7 · RIR 3", rest: 60, note: "Omuz kulaktan uzak", alt: "Masa altı row; band yoksa iki elde su şişesiyle bent over row" }),
         main("Eğimli şınav", { sets: 3, reps: 8, repsTo: 12, rpe: "6–7 · RIR 3", rest: 60, note: "Gövde tek parça" }),
         main("Tek bacak calf raise", { sets: 2, reps: 12, repsTo: 15, side: true, rpe: "7 · RIR 3", rest: 45, note: "Üstte 1 sn bekle" }),
         main("Dead bug", { sets: 3, reps: 6, repsTo: 8, side: true, rpe: "6", rest: 45, note: "Bel boşluğunu koru" }),
@@ -71,7 +73,7 @@ const YELKEN_EV = {
       time: "17:45",
       min: 40,
       name: "Kuvvet B · Full body ve core",
-      note: "17.45–18.25. Hafta sonuna 48 saat kala bitir; tükenene kadar set ve kas ağrısı yapan ek çalışma yok.",
+      note: "Hafta sonu yelkenine 48 saat kala bitir; tükenene kadar set ve kas ağrısı yapan ek çalışma yok.",
       items: [
         prep("Crocodile breathing", { reps: 5, breath: "5 nefes, diyafram ritmi" }),
         prep("Open book", { reps: 6, side: true, note: "Torakal rotasyon" }),
@@ -103,7 +105,7 @@ const YELKEN_EV = {
       time: "19:00",
       min: 8,
       name: "Günlük reset",
-      note: "18.00–19.00 atletizm (haftanın ana yükü). Evde yalnız 8 dk reset.",
+      note: "Atletizm ya da kulüp antrenmanı günü: evde yalnız 8 dk reset.",
       items: RESET,
     },
     {
@@ -111,7 +113,7 @@ const YELKEN_EV = {
       time: "19:00",
       min: 5,
       name: "Nefes ve mobilite",
-      note: "18.00–19.00 atletizm. Ek kuvvet yok, 5 dk nefes ve mobilite.",
+      note: "Atletizm ya da kulüp antrenmanı günü: ek kuvvet yok, 5 dk nefes ve mobilite.",
       items: [RESET[0], RESET[1], RESET[2], RESET[3], RESET[6]],
     },
     {
@@ -119,7 +121,7 @@ const YELKEN_EV = {
       time: "16:00",
       min: 6,
       name: "Yelken sonrası 6 dk",
-      note: "09.00–16.00 yelken (branş ana yükü).",
+      note: "Yelken antrenmanından sonra.",
       items: AFTER_SAIL,
     },
     {
@@ -127,7 +129,7 @@ const YELKEN_EV = {
       time: "16:00",
       min: 6,
       name: "Yelken sonrası 6 dk",
-      note: "09.00–16.00 yelken / yarış. Pazartesi yorgunluğu izlenir.",
+      note: "Yelken ya da yarıştan sonra. Pazartesi yorgunluğu izlenir.",
       items: AFTER_SAIL,
     },
   ],
@@ -170,8 +172,69 @@ const YELKEN_EV = {
 };
 
 export const TEMPLATES = [
-  { id: "yelken-ev-12", title: "Yelken ev kuvveti", sub: "12 hafta · Salı, Perşembe kuvvet, Cuma mikrodoz, her gün reset · 14 yaş için", forAge: 14, sport: "yelken", prog: YELKEN_EV },
+  { id: "yelken-ev-12", title: "Yelken ev kuvveti", sub: "12 hafta · Salı, Perşembe kuvvet, Cuma mikrodoz, her gün reset · fotoğraflı", sport: "yelken", prog: YELKEN_EV },
 ];
+
+// Hazır programların hareket fotoğrafları (public/fitness/hazir/<ad>.jpg). Program PDF'indeki afişlerden kesildi.
+// Fotoğrafı olmayanlar: 90 90 nefes, Kedi deve, Ayak bileği knee to wall, Adductor rock back, Bodyweight split squat,
+// Ana harekete prova (PDF'teki Kuvvet A hazırlık afişi yanlışlıkla ana çalışmayı gösteriyor).
+const PHOTOS = {
+  "Glute bridge": "hip-thrust",
+  "Wall slide": "wall-slide",
+  "Sırt çantalı split squat": "split-squat",
+  "Tek bacak Romanian deadlift": "tek-bacak-rdl",
+  "Band row": "row",
+  "Eğimli şınav": "egimli-sinav",
+  "Tek bacak calf raise": "calf-raise",
+  "Dead bug": "dead-bug",
+  "Side plank kısa kol": "side-plank",
+  "Crocodile breathing": "crocodile",
+  "Open book": "open-book",
+  "Hip hinge drill": "hip-hinge",
+  "Squat to reach": "squat-reach",
+  "Scapular push up": "scapular-push-up",
+  "Band pull apart": "band-pull-apart",
+  "Lateral lunge reach": "lateral-lunge",
+  "Sırt çantalı squat": "squat",
+  "Hip thrust": "hip-thrust",
+  "Yarım diz band pulldown": "pulldown",
+  "Half kneeling tek kol press": "tek-kol-press",
+  "Reverse lunge": "reverse-lunge",
+  "Pallof press": "pallof",
+  "Suitcase carry": "suitcase",
+  "Hiking hold duvara dayanmalı": "hiking-hold",
+  "Band rope pull": "band-rope-pull",
+  "Lateral step and stick": "lateral-step",
+  "Half kneeling chop": "chop",
+  "Towel grip hold": "towel-grip",
+  "Bear plank shoulder tap": "bear-plank",
+  "Uzun verişli burun nefesi": "burun-nefesi",
+  "Ayak tabanı ve baldır mobilitesi": "ayak-baldir",
+  "90 90 kalça geçişi": "90-90",
+  "Child pose yan uzanma": "child-pose",
+  "Bacaklar yukarı sakin nefes": "bacaklar-yukari",
+  "Yürüyüş ve burun nefesi": "yuruyus-burun-nefesi",
+  "Baldır esnetme": "baldir",
+  "Kalça fleksör esnetme": "kalca-fleksoru",
+  "Adduktor esnetme": "adduktor",
+  "Torakal rotasyon": "torakal-rotasyon",
+  "Uzun verişli nefes": "uzun-verisli-nefes",
+};
+
+// Programın fotoğraflı hareketleri, her hareket bir kez: [{ ex, name, kind, src }]
+export function templatePhotos(id) {
+  const p = fromTemplate(id);
+  const seen = new Set();
+  const out = [];
+  for (const d of p?.days || [])
+    for (const it of d.items || []) {
+      const f = PHOTOS[it.name];
+      if (!f || seen.has(it.name)) continue;
+      seen.add(it.name);
+      out.push({ ex: it.ex || "", name: it.name, kind: it.kind, src: `/fitness/hazir/${f}.jpg` });
+    }
+  return out;
+}
 
 // Şablondan yeni program (kayıtsız): başlangıç verilen gün, kimin için bilgisi ayrı eklenir
 export function fromTemplate(id, start = "") {
