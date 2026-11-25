@@ -1,0 +1,301 @@
+Commit: 932db5b · Canlı logo: Sahne siyahı simge, limon daire (seçenek A) (#1545)
+Zaman: 2026-11-25-1652 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45624422630
+
+TAM TEST · 25.11.2026 16:31:37
+Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
+
+1/4 Birim testleri çalışıyor…
+2/4 Anlama ve görev listesi (hatalı girdilerle)…
+    Sahte Firebase (emülatör) açılıyor…
+3/4 Uygulama bu bilgisayarda açılıyor (ilk derleme 1-3 dakika sürebilir)…
+    Sayfalar tarayıcıda açılıyor…
+    Sesli asistan ekranı (sahte Firebase, yapay zekasız)…
+    Asistan: sekme çubuğu, açılış, dinleme, kapanış…
+    Asistan: çalışırken, küçültme, sesli yanıt, geçmiş…
+    Asistan: kayıt, onaylar, görev listesi…
+    Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
+    Deniz trafiği sayfası…
+    Kameralar sayfası…
+    Hava: yağış şeridi…
+    Hava: ölçülen / beklenen yağmur…
+    Ana sayfa: yarış günü havası…
+    Antrenman: sesle başlat ve bitir…
+    Çevrimdışı çalışma (internet kesilip açılır)…
+    Çevrimdışı: 28/28 geçti
+    Yarış sayfası (sporcu seçili, yarış günü)…
+    Yarış günü (sporcu seçili)…
+    Yarıştan önce (sporcu seçili)…
+    Multimedya…
+4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
+
+======================================================================
+SONUÇ: 1401/1433 geçti · 32 kalan · 1245 sn
+======================================================================
+
+1. BİRİM TESTLERİ: 0/1
+  ✗ Birim testleri: 0/1
+      ✗ “çalıştırma”
+          beklenen: çalışır
+          olan:      Invalid regular expression flags
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:110:18)
+    at #translate (node:internal/modules/esm/loader:559:20)
+    at afterLoad (node:internal/modules/esm/loader:612:29)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:162:19)
+
+Node.js v22.23.5
+
+
+2. ANLAMA: temiz cümleler: 120/121
+  ✗ Temiz cümle: Plan / takvim: 7/8
+      ✗ “15 Ekim'de saat 11'de federasyon toplantısı var, takvime yaz.”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
+  ✓ Temiz cümle: Görev: 6/6
+  ✓ Temiz cümle: Not: 3/3
+  ✓ Temiz cümle: Mesaj: 10/10
+  ✓ Temiz cümle: Soru: 5/5
+  ✓ Temiz cümle: Soru (yoklamadan): 2/2
+  ✓ Temiz cümle: Soru (kulüp verisinden): 1/1
+  ✓ Temiz cümle: Yoklama: 6/6
+  ✓ Temiz cümle: Yoklama (yoklama sayfasında): 3/3
+  ✓ Temiz cümle: Antrenman günlüğü: 3/3
+  ✓ Temiz cümle: Yarış: 5/5
+  ✓ Temiz cümle: Yarış aç: 2/2
+  ✓ Temiz cümle: Yarış (yarış sayfasında): 3/3
+  ✓ Temiz cümle: Instagram: 4/4
+  ✓ Temiz cümle: Instagram (gönderi ekranında): 2/2
+  ✓ Temiz cümle: Nakit ödeme / bağış: 3/3
+  ✓ Temiz cümle: Aidat: 2/2
+  ✓ Temiz cümle: Fatura: 2/2
+  ✓ Temiz cümle: Fiş: 2/2
+  ✓ Temiz cümle: Sporcu: 2/2
+  ✓ Temiz cümle: Kişi: 1/1
+  ✓ Temiz cümle: Doğum günü: 1/1
+  ✓ Temiz cümle: Alışveriş: 3/3
+  ✓ Temiz cümle: Envanter: 2/2
+  ✓ Temiz cümle: Etkinlik: 2/2
+  ✓ Temiz cümle: Ders programı: 1/1
+  ✓ Temiz cümle: Arama: 2/2
+  ✓ Temiz cümle: Sayfa açma: 10/10
+  ✓ Temiz cümle: Kapatma: 4/4
+  ✓ Temiz cümle: Kapatma (soru sonrası): 2/2
+  ✓ Temiz cümle: Geri al: 1/1
+  ✓ Temiz cümle: çok iş: 18/18
+
+2. ANLAMA: insan ve ses tanıma hataları: 625/630
+  ✗ Bozuk: noktalamasız: 120/121
+      ✗ “15 Ekim'de saat 11'de federasyon toplantısı var takvime yaz”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
+  ✗ Bozuk: küçük harf, kesme işaretsiz: 120/121
+      ✗ “15 ekimde saat 11de federasyon toplantısı var takvime yaz”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
+  ✗ Bozuk: Türkçe harfsiz (klavye): 101/102
+      ✗ “15 Ekim'de saat 11'de federasyon toplantisi var, takvime yaz.”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
+  ✗ Bozuk: dolgu sözlü (şey, ııı): 120/121
+      ✗ “şey ııı 15 Ekim'de saat 11'de federasyon toplantısı var, takvime yaz.”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
+  ✗ Bozuk: kekeme (ilk söz iki kez): 120/121
+      ✗ “15 15 Ekim'de saat 11'de federasyon toplantısı var, takvime yaz.”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     chatPlan
+  ✓ Gerçek hata: yanlış duyulan fiil (oluru, hazirla): 1/1
+  ✓ Gerçek hata: aynı cümle, Türkçe harfsiz ve noktasız: 1/1
+  ✓ Gerçek hata: yanlış duyulan fiil + sonra: 1/1
+  ✓ Gerçek hata: Türkçe harfsiz, antreman: 3/3
+  ✓ Gerçek hata: noktasız, Türkçe harfsiz: 1/1
+  ✓ Gerçek hata: kesmesiz, Türkçe harfsiz: 2/2
+  ✓ Gerçek hata: antreman: 1/1
+  ✓ Gerçek hata: sayı yazıyla, antreman: 1/1
+  ✓ Gerçek hata: kelime bölünmüş (yok lama): 1/1
+  ✓ Gerçek hata: "Ali ve" birleşik duyulmuş: 1/1
+  ✓ Gerçek hata: Türkçe harfsiz: 3/3
+  ✓ Gerçek hata: insta, Türkçe harfsiz: 1/1
+  ✓ Gerçek hata: bitişik soru eki: 2/2
+  ✓ Gerçek hata: vatsap: 1/1
+  ✓ Gerçek hata: marka adı eksik harf: 1/1
+  ✓ Gerçek hata: sayı yazıyla: 1/1
+  ✓ Gerçek hata: knot → not: 1/1
+  ✓ Gerçek hata: kapatma sözü: 1/1
+  ✓ Gerçek hata: Türkçe harfsiz kapatma: 1/1
+  ✓ Gerçek hata: kapatma + söz: 1/1
+  ✓ Gerçek hata: yıl yazıyla: 1/1
+  ✓ Gerçek hata: git yerine gir: 1/1
+  ✓ Gerçek hata: kısa sayfa adı: 1/1
+  ✓ Gerçek hata: kesmesiz, -yla: 1/1
+  ✓ Gerçek hata: gönder yerine yolla: 1/1
+  ✓ Gerçek hata: ödemedi yerine vermedi: 1/1
+  ✓ Gerçek hata: tutar yazıyla, kesmesiz: 1/1
+  ✓ Gerçek hata: kesmesiz, bitişik soru eki: 1/1
+  ✓ Gerçek hata: "ki" ayrı yazılmış: 1/1
+  ✓ Gerçek hata: konuşma dili (yapcaz): 1/1
+  ✓ Gerçek hata: yazım hatası (yazz): 1/1
+  ✓ Gerçek hata: mesaj, yoklama sanılmamalı: 1/1
+  ✓ Gerçek hata: soru, yoklama yazılmamalı: 2/2
+  ✓ Gerçek hata: mesaj, kapatma sanılmamalı: 1/1
+  ✓ Gerçek hata: optimist → optimus: 1/1
+  ✓ Gerçek hata: noktasız (yoklama sayfasında): 1/1
+  ✓ Gerçek hata: yazım hatası (gönderi ekranında): 1/1
+
+2. ANLAMA: insan davranışları (düzeltme, vazgeçme, onay, tekrar, soru/komut, öğrenme): 187/187
+  ✓ Mesaj kartına cevap (gönder / vazgeç / değiştir): 45/45
+  ✓ Kayıt taslağına cevap (kaydet / vazgeç / değiştir): 24/24
+  ✓ “Başka bir isteğin var mı?” cevabı: 19/19
+  ✓ “Saat kaçta olsun?” cevabı: 19/19
+  ✓ Yeni cümle: Düzeltme: 8/8
+  ✓ Yeni cümle: Vazgeçme: 7/7
+  ✓ Yeni cümle: Gönderme: 9/9
+  ✓ Yeni cümle: Soru / komut: 13/13
+  ✓ Yeni cümle: Tekrar: 6/6
+  ✓ Yeni cümle: Kibar / sokak ağzı: 12/12
+  ✓ Uzun, dağınık anlatım (yapay zeka cevap vermezse): 4/4
+  ✓ Öğrenme deposu: yapay zekanın cevabı bir dahaki sefere yerelde: 11/11
+  ✓ Yanlış / eksik söylenen sporcu adı (günlük ↔ yoklama): 10/10
+
+3. AKIŞ: görev listesi, takılma, çökme: 245/245
+  ✓ Yedek görev listesi (yapay zeka cevap vermezse): 115/115
+  ✓ Görev listesi: sıra ve takılma: 115/115
+  ✓ Saçma girdi: çökmez, takılmaz: 14/14
+  ✓ Hız: 1/1
+
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 67/67
+  ✓ Sunucu ucu: girişsiz istek reddedilir: 18/18
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 47/47
+  ✓ Giriş ekranı: 2/2
+
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 116/135
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
+  ✗ Ana sayfa: 2/8
+      ✗ “iş düğmeleri”
+          beklenen: dört sütun, iki satır (en çok 8), her düğmede ikon ve ad
+          olan:     0 düğme · 0 sütun · 0 ikonlu
+      ✗ “sade ana sayfa”
+          beklenen: İngilizce/Görevler/Medya kartları, Yemek · Market · Giyim ve Deniz trafiği · Kameralar düğmeleri yok
+          olan:     hata: locator.waitFor: Timeout 15000ms exceeded.
+      ✗ “iPad tek ekran”
+          beklenen: yatay 1180x820 ve dikey 820x1180: hava, takvim ve düğmeler görünür, sayfa kaymaz; telefonda takvim kenardan kenara bant
+          olan:     {"out":[["yatay",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}],["dikey",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}]],"ph":{"screen":false,"cal":false,"tl":false}}
+      ✗ “saat saat hava tablosu”
+          beklenen: hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “Tümü grupları”
+          beklenen: Tümü penceresinde gruplar kapalı başlar, dokununca tek grup açılır, Yarışlar bir kez
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “yarış günü havası”
+          beklenen: yarın (Foça'da yarış) takvimde seçilince hava alanı aynı kalır, yarış yeri tablosu çıkmaz; altında o günün planları alt alta okunur
+          olan:     hata: locator.waitFor: Timeout 12000ms exceeded.
+  ✓ Enerji (boşta): 2/2
+  ✓ Bas konuş: tam ekran açılış: 4/4
+  ✓ Halka renkleri: 6/6
+  ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
+  ✓ Kapanış: 3/3
+  ✓ Kısa dokun yaz: 1/1
+  ✓ Sayfa hataları: 12/12
+  ✓ Küçültme (aşağı kaydır): 4/4
+  ✓ Yeniden açılış: 3/3
+  ✓ Sesli yanıt: 8/8
+  ✗ Onaysız kayıt ve “Kaydedildi”: 5/12
+      ✗ “geri sayımda ✕”
+          beklenen: kaydedilmez, “kaydetmedim” denir
+          olan:     kaydedilen kart 0 · “not al süt al Bunu kayda çeviremedim, biraz daha açık söyler misin?”
+      ✗ “saatsiz plan”
+          beklenen: “saatsiz” denir, saat teklif edilir
+          olan:     yarın tekne yıkama planı ekle Bunu kayda çeviremedim, biraz daha açık söyler misin?
+      ✗ “teklife saat cevabı”
+          beklenen: plan 18:00 olur, yapay zekaya gitmez
+          olan:     akşam 6'da Tamam. · yz isteği 1
+      ✗ “son tarihsiz görev”
+          beklenen: son tarih teklif edilir
+          olan:     motoru kontrol et diye görev ekle Bunu kayda çeviremedim, biraz daha açık söyler misin?
+      ✗ “teklife tarih cevabı”
+          beklenen: son tarih yarın olur, yapay zekaya gitmez
+          olan:     yarın Tamam. · yz isteği 1
+      ✗ “doğal cümle (söz)”
+          beklenen: sonuç söz yapay zekasına gider, dönen cümle gösterilir
+          olan:     yarın kayık boyama planı ekle Bunu kayda çeviremedim, biraz daha açık söyler misin? · söz: Bunu kayda çeviremedim, biraz daha açık söyler misin?
+      ✗ “söz sonrası teklif cevabı”
+          beklenen: plan 19:00 olur
+          olan:     akşam 7'de Tamam.
+      … 1 kalan daha (hepsi sonuç dosyasında)
+  ✓ Onay isteyen işler: 10/10
+  ✓ Görev listesi ve ilerleme halkası: 3/3
+  ✓ Tohum cümleler (telefonda cevap): 12/12
+  ✗ Kişi kare kodu: 3/4
+      ✗ “kare kodun fotoğrafı”
+          beklenen: kişi okunur, yapay zekaya gitmez
+          olan:     hata: dome is not defined
+  ✓ Asistanın gizli olduğu yerler: 8/8
+  ✗ Geniş ekran (sol menü): 2/3
+      ✗ “1280×800”
+          beklenen: sol menüde asistan düğmesi ve “Yazarak sor”
+          olan:     1 düğme · Yazarak sor 0 · x=175
+  ✓ Asistan raporu: 3/3
+  ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
+  ✓ Instagram gönderisi: 1/1
+  ✓ Tam ekran üstte: 1/1
+  ✓ Deniz trafiği: 2/2
+  ✓ Kameralar: 5/5
+  ✗ Hava: 0/3
+      ✗ “yağmur grafiği”
+          beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var
+          olan:     sütun 48 · gün düğmesi 0 · 5,5 true
+      ✗ “ölçülen / beklenen yağmur”
+          beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
+          olan:     ölçülen sütun 17 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+      ✗ “radar ve nokta”
+          beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
+          olan:     yağan çubuk 17 · açıklama 17 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+  ✗ Senaryolar: 0/1
+      ✗ “çalıştırma”
+          beklenen: tamamlanır
+          olan:     locator.boundingBox: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('nav[aria-label=\'Sekmeler\'] [data-orb]')
+ |     at typeAsk (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/senaryolar.mjs:231:33) |     at async trainVoice (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:1086:3) |     at async scenarios4 (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:1070:3) |     at async scenarios3 (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:769:3) |     at async scenarios2 (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:399:3) |     at async scenarios (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:217:3)
+  ✓ Güvenlik: 1/1
+
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 28/28
+  ✓ Anında açılış: 7/7
+  ✓ İnternet varken: 2/2
+  ✓ Yavaş bağlantı: 3/3
+  ✓ Takılan bağlantı: 2/2
+  ✓ İnternet yok: 5/5
+  ✓ Bağlantı gelince: 2/2
+  ✓ Açıkken kopup gelince: 2/2
+  ✓ Önbellek iç hatası: 3/3
+  ✓ iPhone: 2/2
+
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 13/19
+  ✗ Yarış sayfası: 11/14
+      ✗ “yarış günü, sporcu seçili”
+          beklenen: çökmeden açılır, "Canlı ekran" görünür
+          olan:     "Canlı ekran" görünmedi
+      ✗ “havada gün düğmeleri”
+          beklenen: çökmeden açılır, "gün kaldı" görünür
+          olan:     gün satırı yok
+      ✗ “bütün sekmeler”
+          beklenen: her sekme çökmeden açılır
+          olan:     2 sekme açıldı
+  ✓ Asılı bağlantı: 2/2
+  ✗ Yayın: 0/3
+      ✗ “gruplar ayrı, ekranda seçim, kameralar”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 10000ms exceeded.
+      ✗ “video sekmesi sade”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “satırdan başlat, dur, devam”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 10000ms exceeded.
+
+4. GERÇEK YAPAY ZEKA: 0/0
+  – Gerçek yapay zeka: ATLANDI (--yzsiz)
+
+Okuma: ✓ geçti, ✗ kalan (hata var), – atlandı. “beklenen” asistanın yapması gereken, “olan” şu an yaptığı.
+“yapay zeka (plan/görev/not/mesaj/soru)”: cümle ana yapay zekaya gidiyor; plan, görev, not, mesaj ve sorular için doğru yer budur.
