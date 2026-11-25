@@ -1057,16 +1057,14 @@ html .acik .tone-fa { --tbg: #f5e8de; --tfg: #8f5f3e; }
 html .acik .tone-fit { --tbg: #fbeadb; --tfg: #a65f20; }
 html .acik .tone-gen { --tbg: #eceae5; --tfg: #8a8e94; }
 /* Sol menü ve alt sekme çubuğu lacivert (Seyhun 2026-11-13, örnek solmenu.html): her sayfada aynı */
-.sidenav.navy { background: linear-gradient(180deg, #0a1830 0%, #071224 100%); }
-.atabbar { --card: #071224; --line: #1d3256; background: rgba(7, 18, 36, .94); box-shadow: 0 -1px 0 #1d3256; }
-.atabbar a { color: #7d90b5; }
-.atabbar a[aria-current="page"] { color: #fff; }
-.acenter { background: #071224; box-shadow: 0 -1px 0 #1d3256; }
-.sidenav { --sn-fg: #cfdcf5; --sn-on: #fff; --sn-on-bg: rgba(61, 123, 255, .16); --sn-bar: #3d7bff; --sn-hover: rgba(255, 255, 255, .04); --sn-line: #1d3256; --sn-logo: #d4ff3a; }
-/* Açık sayfada (main.acik) sol menü ve alt çubuk da açık (örnek acik-ana-sayfa.html): menü #fbfbfd, seçili satır açık gri zemin, logo koyu */
-body:has(main.acik) .sidenav.navy { color-scheme: light; --bg: #fbfbfd; --card: #fff; --fg: #1d1d1f; --fg2: #3a3a3c; --mut: #6e6e73; --line: #e5e5ea; --acc: #2563eb;
-  --sn-fg: #3a3a3c; --sn-on: #1d1d1f; --sn-on-bg: #eeeef2; --sn-bar: transparent; --sn-hover: rgba(0, 0, 0, .04); --sn-line: #e5e5ea; --sn-logo: #0f0f11; --sn-logo-v: #d4ff3a;
-  background: #fbfbfd; color: #1d1d1f; }
+/* Sol menü ve alt çubuk her sayfada tek koyu Sahne (örnek menu-zil-sahne.html, 2026-11-25): seçili satır/sekme limon.
+   Telefonda açık (main.acik) sayfalar alt çubukta şimdilik kendi açık rengini korur. */
+.sidenav.navy { background: #0f0f11; --sn-logo-v: transparent; }
+.atabbar { --card: #0b0b0c; --line: #1f1f22; background: rgba(11, 11, 12, .94); box-shadow: 0 -1px 0 #1f1f22; }
+.atabbar a { color: #71717a; }
+.atabbar a[aria-current="page"] { color: #d4ff3a; }
+.acenter { background: #0b0b0c; box-shadow: 0 -1px 0 #1f1f22; }
+.sidenav { --sn-fg: #d4d4d8; --sn-on: #d4ff3a; --sn-on-bg: rgba(212, 255, 58, .12); --sn-bar: #d4ff3a; --sn-hover: rgba(255, 255, 255, .04); --sn-line: #1f1f22; --sn-logo: #d4ff3a; }
 body:has(main.acik) .atabbar { --card: #fbfbfd; --line: #e5e5ea; background: rgba(251, 251, 253, .94); box-shadow: 0 -1px 0 #e5e5ea; }
 body:has(main.acik) .atabbar a { color: #6e6e73; }
 body:has(main.acik) .atabbar a[aria-current="page"] { color: #1d1d1f; }

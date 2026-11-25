@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { doc, runTransaction } from "firebase/firestore";
 import { updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
-import { Sheet } from "@/components/ui/Sheet";
+import { Sheet, SheetTone } from "@/components/ui/Sheet";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { listTime } from "@/features/chat/bits";
@@ -123,7 +123,7 @@ function Row({ x, first, onHide, hideLabel = "Gizle" }) {
           <span className="mt-0.5 flex items-center gap-2">
             <span className={`min-w-0 flex-1 text-[0.8125rem] leading-snug ${x.wrap ? "whitespace-pre-line break-words" : "truncate"} ${x.subTone || "text-mut"}`}>{x.sub}</span>
             {x.badge > 0 && (
-              <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-acc px-1.5 text-[0.6875rem] font-bold tabular-nums text-white">{x.badge > 99 ? "99+" : x.badge}</span>
+              <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-acc px-1.5 text-[0.6875rem] font-bold tabular-nums text-[var(--on-acc,#fff)]">{x.badge > 99 ? "99+" : x.badge}</span>
             )}
             {x.dot && <span className="size-2.5 shrink-0 rounded-full bg-acc" aria-label="yeni" />}
           </span>
@@ -150,7 +150,9 @@ export function InboxSheet({ inbox, open, onClose }) {
   const { actions, history, hide, clearAll } = inbox;
   const go = (x) => (x.stay ? x : { ...x, onOpen: () => (onClose(), x.onOpen()) });
   return (
-    <Sheet open={open} onClose={onClose} title="Senin için">
+    // Zil penceresi koyu Sahne (örnek menu-zil-sahne.html, 2026-11-25): yeni bildirim limon noktalı
+    <SheetTone.Provider value="sahne">
+      <Sheet open={open} onClose={onClose} title="Senin için">
       <div className="space-y-5">
         {!actions.length && !history.length && <p className="px-1 py-6 text-center text-[0.875rem] text-mut">Yeni bir şey yok.</p>}
         {history.length > 0 && (
@@ -170,6 +172,7 @@ export function InboxSheet({ inbox, open, onClose }) {
           </section>
         )}
       </div>
-    </Sheet>
+      </Sheet>
+    </SheetTone.Provider>
   );
 }
