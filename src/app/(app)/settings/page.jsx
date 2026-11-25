@@ -112,7 +112,7 @@ function PersonSettings({ profile, n }) {
           <ThemeRow />
           <NotifyRow n={n} />
           <NotifyMoreRow n={n} />
-          {ai && <SummaryRow />}
+          {ai && kind !== "parent" && <SummaryRow />}
           {ai && <VoiceRow />}
           <WeatherPlaceRow />
           {(kind === "athlete" || kind === "student") && <TekneKimRow />}

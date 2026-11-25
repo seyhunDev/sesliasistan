@@ -414,6 +414,8 @@ export function DataProvider({ children }) {
             ...(d.raceId ? { raceId: d.raceId } : {}), // yarıştan eklenen plan: dokununca yarış sayfası (features/athletes/raceLinks.js)
             ...(d.fromMsg ? { fromMsg: String(d.fromMsg).slice(0, 120) } : {}), // mesajdaki dosyadan eklenen plan (lib/chatPlan.js): "sohbet/mesaj"
           };
+          // Yeni antrenman: uygulamadaki sporculara da bildirim gider (sunucu seçer; lib/notifyRules trainees). Sporcunun eklediği hariç.
+          if (!side && isTraining(rec) && !toNotify.some(([, x]) => x === planIds[i])) toNotify.push(["plan", planIds[i]]);
           ids.push(["plan", planIds[i]]);
           // Haftalık tekrar: her hafta için ayrı plan (seriesId ortak); bildirim yalnız ilki için
           const dates = d.repeat === "week" && !rec.endDate ? seriesDates(d.date, d.repeatUntil) : [];

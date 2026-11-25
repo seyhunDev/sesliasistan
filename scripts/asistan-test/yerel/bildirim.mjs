@@ -77,7 +77,7 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   F.sent.length = 0;
   put("orgs/own/tasks/t1", { title: "Tekneleri yıka", due: "2026-10-20", createdByUid: "own", createdAt: nowIso(), assignees: ["mete"] });
   r = await call("own", { kind: "task", id: "t1" });
-  add(G, "Seyhun sporcu Mete'ye görev verdi (Android)", "Mete'nin Android telefonuna gider", F.sent.some((x) => x.to === "t-mete" && x.android) && r.sent === 1);
+  add(G, "Seyhun sporcu Mete'ye görev verdi", "sporcuya görev bildirimi gitmez, nedeni Seyhun'a yazılır (kural)", !F.sent.some((x) => x.to === "t-mete") && r.sent === 0 && r.fail?.[0]?.why === "rule" && !(get("users/mete").inbox || []).length);
 
   F.sent.length = 0;
   put("orgs/own/notes/n1", { title: "Malzeme listesi", createdByUid: "own", createdAt: nowIso(), assignees: ["es"] });
@@ -85,9 +85,9 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   add(G, "Seyhun eşine (aile) not verdi", "Eda'ya gider", sentTo("e-es") === 1 && r.sent === 1);
 
   F.sent.length = 0;
-  plan("p2", { assignees: ["ali", "veli"] });
+  plan("p2", { assignees: ["ali", "es"] });
   r = await call("own", { kind: "plan", id: "p2" });
-  add(G, "iki kişiye birden verildi", "ikisine de gider", sentTo("e-ali") === 1 && sentTo("e-veli") === 1 && r.sent === 2);
+  add(G, "iki kişiye birden verildi", "ikisine de gider", sentTo("e-ali") === 1 && sentTo("e-es") === 1 && r.sent === 2);
 
   r = await call("ali", { kind: "plan", id: "p1" });
   add(G, "Ali başkasının planı için bildirim istedi", "yetki yok (403)", r.error === "Yetki yok");
@@ -130,14 +130,14 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   add(G, "Ali uygulamayı silmiş (abonelik bitmiş)", "telefon kaydı silinir, gitmedi yazılır", !get("users/ali").push?.["k-ali"] && r2.fail?.[0]?.why === "device");
 
   reset();
-  F.fail["e-veli"] = 403;
-  plan("p3", { assignees: ["veli"] });
+  F.fail["e-es"] = 403;
+  plan("p3", { assignees: ["es"] });
   r2 = await call("own", { kind: "plan", id: "p3" });
-  add(G, "VAPID anahtarı uyuşmuyor", "neden \"anahtar\" diye yazılır, telefon kaydı silinmez", r2.fail?.[0]?.why === "error" && /anahtar/i.test(r2.fail?.[0]?.msg || "") && !!get("users/veli").push?.["k-veli"]?.err);
+  add(G, "VAPID anahtarı uyuşmuyor", "neden \"anahtar\" diye yazılır, telefon kaydı silinmez", r2.fail?.[0]?.why === "error" && /anahtar/i.test(r2.fail?.[0]?.msg || "") && !!get("users/es").push?.["k-es"]?.err);
 
-  delete F.fail["e-veli"];
+  delete F.fail["e-es"];
   r2 = await call("own", { kind: "plan", id: "p3", retry: true });
-  add(G, "Yeniden gönder (anahtar düzeldi)", "gider, \"gitmedi\" işareti kalkar", r2.sent === 1 && !get("orgs/own/plans/p3").ack?.veli?.x && !!get("orgs/own/plans/p3").ack?.veli?.s);
+  add(G, "Yeniden gönder (anahtar düzeldi)", "gider, \"gitmedi\" işareti kalkar", r2.sent === 1 && !get("orgs/own/plans/p3").ack?.es?.x && !!get("orgs/own/plans/p3").ack?.es?.s);
   r2 = await call("own", { kind: "plan", id: "p3", retry: true });
   add(G, "Yeniden gönder'e ikinci kez basıldı", "giden kişiye tekrar gitmez", r2.sent === 0);
 }
@@ -208,9 +208,9 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   let r = await call("own", { kind: "plan", id: "p1", event: "changed" });
   add(G, "Seyhun antrenmanı 11'e aldı", "Ali'ye \"değişti\" bildirimi, Seyhun'a gitmez", r.sent === 1 && sentTo("e-own") === 0);
   F.sent.length = 0;
-  plan("p2", { people: ["ali", "veli"], updatedAt: nowIso(), status: "cancelled", cancelReason: "wind" });
+  plan("p2", { people: ["ali", "mete", "veli"], updatedAt: nowIso(), status: "cancelled", cancelReason: "wind" });
   r = await call("own", { kind: "plan", id: "p2", event: "changed" });
-  add(G, "rüzgâr yüzünden antrenman iptal", "Ali ve Ayşe'ye \"iptal\" bildirimi", r.sent === 2 && /iptal/i.test(JSON.stringify(to("e-ali")[0]?.payload)));
+  add(G, "rüzgâr yüzünden antrenman iptal", "Ali ve sporcu Mete'ye \"iptal\" bildirimi, veli Ayşe'ye gitmez", r.sent === 2 && /iptal/i.test(JSON.stringify(to("e-ali")[0]?.payload)) && F.sent.some((x) => x.to === "t-mete") && sentTo("e-veli") === 0);
   plan("p3", { people: ["ali"], updatedAt: new Date(Date.now() - 10 * 60e3).toISOString() });
   r = await call("own", { kind: "plan", id: "p3", event: "changed" });
   add(G, "değişiklik 10 dakika önceydi", "gönderilmez", r.skipped === "değişiklik yok");
@@ -370,6 +370,116 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   put("users/kisi", { ...get("users/kisi"), push: { "k-kisi": { endpoint: "e-kisi", keys: {} } } });
   const r = await call("own", { kind: "plan", id: "pD", event: "remind" });
   add(G, "Kaan bildirimleri açtı, Seyhun \"Yeniden gönder\"e bastı", "Kaan'a gider, \"gitmedi\" yalnız hesapsız kişide kalır", r.sent === 1 && sentTo("e-kisi") === 1 && !get("orgs/own/plans/pD").remindFail?.kisi && !!get("orgs/own/plans/pD").remindFail?.yok);
+}
+
+// ---------------- Sporcuya yalnız antrenman, fitness ve mesaj; veliye devamsızlık, aidat ve mesaj (lib/notifyRules) ----------------
+{
+  const G = "Kim neyi alır (sporcu, veli)";
+  reset();
+  // İkinci sporcu Deniz (öğrenci), hesapsız sporcu, ayrılmış sporcu
+  put("users/deniz", { role: "staff", orgId: "own", name: "Deniz", kind: "student", push: { "k-deniz": { endpoint: "e-deniz", keys: {} } } });
+  put("orgs/own/members/deniz", { kind: "student", account: true });
+  put("orgs/own/members/hesapsiz", { kind: "athlete", account: false });
+  put("users/gitti", { role: "staff", orgId: "own", name: "Gitti", kind: "athlete", push: { "k-gitti": { endpoint: "e-gitti", keys: {} } } });
+  put("orgs/own/members/gitti", { kind: "athlete", status: "left" });
+  const day = (n) => new Date(Date.now() + n * 864e5).toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+  const mete = () => F.sent.filter((x) => x.to === "t-mete");
+  const rules = await import("@/lib/notifyRules");
+
+  plan("t1", { title: "Antrenman", cat: "Antrenman", date: day(1), time: "16:00", place: "Liman" });
+  let r = await call("own", { kind: "plan", id: "t1" });
+  add(G, "Seyhun yarına antrenman ekledi", "sporcu Mete ve öğrenci Deniz'e gider; veli, çalışan, aile, ayrılan sporcu almaz", mete().length === 1 && sentTo("e-deniz") === 1 && sentTo("e-veli") === 0 && sentTo("e-ali") === 0 && sentTo("e-es") === 0 && sentTo("e-gitti") === 0 && sentTo("e-own") === 0);
+  add(G, "antrenman bildirimi metni", "\"Yarın 16:00'da Antrenman var (Liman)\"", to("e-deniz")[0]?.payload.title === "Yarın 16:00'da Antrenman var (Liman)" && to("e-deniz")[0]?.payload.url === "/?open=plan:t1" && !("cat" in (to("e-deniz")[0]?.payload || {})));
+  add(G, "sporcunun zili", "Deniz'in bildirim kutusuna yazılır, sorumlu yapılmaz", (get("users/deniz").inbox || []).length === 1 && !get("orgs/own/plans/t1").assignees && !!get("orgs/own/plans/t1").notified?.deniz);
+  r = await call("own", { kind: "plan", id: "t1" });
+  add(G, "aynı antrenman yeniden kaydedildi", "sporculara ikinci kez gitmez", mete().length === 1 && sentTo("e-deniz") === 1);
+
+  F.sent.length = 0;
+  plan("t2", { title: "Akşam idmanı", cat: "Genel", date: day(0), time: "23:59" });
+  await call("own", { kind: "plan", id: "t2" });
+  add(G, "adında \"idman\" geçen Genel plan", "antrenman sayılır, sporculara gider", mete().length === 1 && sentTo("e-deniz") === 1);
+
+  F.sent.length = 0;
+  plan("t3", { title: "Antrenman", cat: "Antrenman", date: day(-1) });
+  plan("t4", { title: "Antrenman", cat: "Antrenman", date: day(2), createdAt: new Date(Date.now() - 10 * 60e3).toISOString() });
+  plan("t5", { title: "Antrenman", cat: "Antrenman", date: day(2), status: "cancelled" });
+  for (const id of ["t3", "t4", "t5"]) await call("own", { kind: "plan", id });
+  add(G, "dünkü, 10 dk önce eklenmiş ya da iptal antrenman", "sporculara \"yeni antrenman\" gitmez", mete().length === 0 && sentTo("e-deniz") === 0);
+
+  F.sent.length = 0;
+  put("users/mete", { ...get("users/mete"), push: {} });
+  plan("t6", { title: "Antrenman", cat: "Antrenman", date: day(1), createdByUid: "deniz", people: ["deniz"] });
+  r = await call("deniz", { kind: "plan", id: "t6" });
+  add(G, "öğrenci Deniz kendine antrenman ekledi", "diğer sporculara gitmez, Seyhun'a \"Deniz yeni plan ekledi\"", sentTo("e-own") === 1 && /Deniz yeni plan ekledi/.test(to("e-own")[0]?.payload.title) && F.sent.length === 1);
+  put("users/mete", { ...get("users/mete"), push: { "k-mete": { fcm: "t-mete", app: "android" } } });
+
+  F.sent.length = 0;
+  plan("y1", { title: "Ege Kupası", cat: "Yarış", date: day(3), assignees: ["mete", "ali"], people: ["mete", "ali"] });
+  r = await call("own", { kind: "plan", id: "y1" });
+  add(G, "yarış planı Mete'ye ve Ali'ye verildi", "Ali alır; Mete almaz, nedeni \"kural\" diye yazılır", sentTo("e-ali") === 1 && mete().length === 0 && r.fail?.[0]?.u === "mete" && r.fail?.[0]?.why === "rule" && get("orgs/own/plans/y1").ack?.mete?.x?.why === "rule");
+  const { pushWhy } = await import("@/lib/people");
+  add(G, "Seyhun'a gösterilen neden", "\"Sporcuya yalnız antrenman, fitness ve mesaj…\"", /^Sporcuya yalnız antrenman, fitness ve mesaj/.test(pushWhy({ why: "rule" })));
+
+  F.sent.length = 0;
+  plan("y1", { ...get("orgs/own/plans/y1"), updatedAt: nowIso(), time: "09:00" });
+  r = await call("own", { kind: "plan", id: "y1", event: "changed" });
+  add(G, "yarış planı değişti", "Ali alır, Mete almaz", sentTo("e-ali") === 1 && mete().length === 0);
+
+  F.sent.length = 0;
+  plan("t1", { ...get("orgs/own/plans/t1"), people: ["own", "mete", "deniz", "veli"], updatedAt: nowIso(), time: "17:00" });
+  await call("own", { kind: "plan", id: "t1", event: "changed" });
+  add(G, "antrenman 17:00'ye alındı", "sporculara \"değişti\" gider, veliye gitmez", mete().length === 1 && sentTo("e-deniz") === 1 && sentTo("e-veli") === 0);
+
+  F.sent.length = 0;
+  put("orgs/own/fitPrograms/f1", { for: "mete", title: "Kuvvet" });
+  r = await call("own", { event: "fitProgram", id: "f1" });
+  add(G, "Mete'ye fitness programı", "Mete alır", r.sent === 1 && mete().length === 1);
+
+  F.sent.length = 0;
+  put("orgs/own/chats/dm2", { type: "dm", members: ["own", "mete"] });
+  put("orgs/own/chats/dm2/messages/m1", { by: "own", text: "Yarın 9'da limandayız", at: ts(Date.now()) });
+  r = await call("own", { event: "chat", chat: "dm2", mid: "m1" });
+  add(G, "Seyhun Mete'ye mesaj yazdı", "Mete alır", r.sent === 1 && mete().length === 1);
+
+  F.sent.length = 0;
+  put("orgs/own/tasks/k1", { title: "Yelkenleri kurut", createdByUid: "own", createdAt: nowIso(), assignees: ["veli"] });
+  r = await call("own", { kind: "task", id: "k1" });
+  add(G, "veliye görev verildi", "veliye gitmez (kural)", sentTo("e-veli") === 0 && r.fail?.[0]?.why === "rule");
+
+  F.sent.length = 0;
+  put("orgs/own/athleteAtt/a1", { name: "Mete", parents: ["veli", "mete"], att: { [day(0)]: "absent" } });
+  r = await call("own", { event: "absent", date: day(0), ids: ["a1"] });
+  add(G, "Mete antrenmana gelmedi", "veli Ayşe alır; sporcunun kendisine devamsızlık gitmez", sentTo("e-veli") === 1 && mete().length === 0);
+
+  add(G, "kural tablosu", "sporcu: antrenman, fitness, mesaj; veli: devamsızlık, aidat, mesaj; çalışan ve aile hepsi; türsüz bildirim sporcuya gitmez",
+    rules.allowNotify({ role: "staff", kind: "athlete" }, "training") && rules.allowNotify({ role: "staff", kind: "athlete" }, "fitness") && rules.allowNotify({ role: "staff", kind: "athlete" }, "chat") &&
+    !rules.allowNotify({ role: "staff", kind: "athlete" }, "plan") && !rules.allowNotify({ role: "staff", kind: "athlete" }, "task") && !rules.allowNotify({ role: "staff", kind: "athlete" }, "summary") && !rules.allowNotify({ role: "staff", kind: "athlete" }, undefined) &&
+    rules.allowNotify({ role: "staff", kind: "parent" }, "absent") && !rules.allowNotify({ role: "staff", kind: "parent" }, "training") &&
+    rules.allowNotify({ role: "staff", kind: "staff" }, "plan") && rules.allowNotify({ role: "staff" }, undefined) && rules.allowNotify({ role: "owner" }, undefined) &&
+    rules.planCat({ title: "Sabah antrenmanı", cat: "Genel" }) === "training" && rules.planCat({ title: "Antrenman", fit: { for: "mete" } }) === "fitness" && rules.planCat({ title: "Toplantı" }) === "plan");
+
+  // Zamanlayıcı: hatırlatmalar ve özetler
+  reset();
+  F.sent.length = 0;
+  const at = (min) => {
+    const d = new Date(Date.now() + min * 60e3);
+    return { date: d.toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" }), time: d.toLocaleTimeString("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit", hour12: false }) };
+  };
+  const nowHM = at(0).time;
+  // Özet saati şimdi (2 saatlik pencere içinde); karşılaştırma için çalışan Ali de açık
+  put("users/mete", { ...get("users/mete"), reminders: { on: true, lead: 60 }, summaryAt: nowHM, eveningAt: nowHM, weeklyAt: nowHM });
+  put("users/veli", { ...get("users/veli"), reminders: { on: true, lead: 60 }, summaryAt: nowHM });
+  put("users/ali", { ...get("users/ali"), summaryAt: nowHM });
+  put("orgs/own/plans/sA", { title: "Antrenman", cat: "Antrenman", remind: 60, people: ["mete", "veli"], ...at(40) });
+  put("orgs/own/plans/sB", { title: "Kulüp toplantısı", remind: 60, people: ["mete", "veli"], ...at(40) });
+  put("orgs/own/plans/sC", { title: "Sabah antrenmanı", people: ["mete", "veli"], ...at(45) });
+  put("orgs/own/plans/sD", { title: "Mete fitness", cat: "Fitness", fit: { for: "mete" }, people: ["mete"], ...at(45) });
+  await run();
+  const mt = F.sent.filter((x) => x.to === "t-mete").map((x) => JSON.stringify(x.payload));
+  add(G, "antrenman hatırlatması (planda Hatırlat)", "Mete'ye gider, veliye gitmez, veli için \"gitmedi\" yazılmaz", mt.some((x) => x.includes("remind-sA")) && !to("e-veli").some((x) => x.payload.tag === "remind-sA") && !get("orgs/own/plans/sA").remindFail?.veli && !!get("orgs/own/plans/sA").reminded?.veli);
+  add(G, "toplantı hatırlatması", "sporcuya ve veliye gitmez", !mt.some((x) => x.includes("remind-sB")) && !to("e-veli").some((x) => x.payload.tag === "remind-sB") && !get("orgs/own/plans/sB").remindFail?.mete);
+  add(G, "kendi hatırlatması açık sporcu", "antrenman ve kendi fitness'ı hatırlatılır; veliye antrenman hatırlatılmaz", mt.some((x) => x.includes("remind-sC")) && mt.some((x) => x.includes("remind-sD")) && !to("e-veli").some((x) => x.payload.tag === "remind-sC"));
+  add(G, "sabah/akşam özeti", "çalışan Ali alır; sporcuya ve veliye gitmez", to("e-ali").some((x) => /^summary-/.test(x.payload.tag || "")) && !mt.some((x) => /summary-|evening-|weekly-/.test(x)) && !to("e-veli").some((x) => /summary-/.test(x.payload.tag || "")) && !get("users/mete").summarySent && !get("users/veli").summarySent);
 }
 
 // ---------------- Bildirim testi (Ayarlar › Testler › Bildirim testi) ----------------

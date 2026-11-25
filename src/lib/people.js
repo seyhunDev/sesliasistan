@@ -47,6 +47,8 @@ export function pushWhy(x) {
       return "Bildirim anahtarı sunucuda geçersiz (Netlify VAPID ayarı).";
     case "error":
       return x.msg || "Bildirim sunucusu kabul etmedi.";
+    case "rule":
+      return "Sporcuya yalnız antrenman, fitness ve mesaj bildirimi gider; veliye devamsızlık, aidat ve mesaj.";
     default:
       return "Telefonunda bildirim kaydı yok. Ana ekrandaki uygulamayı açıp Ayarlar › Bildirimler'i açsın.";
   }

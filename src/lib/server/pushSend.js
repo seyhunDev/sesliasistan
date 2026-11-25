@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/server/admin";
 import { recordInbox } from "@/lib/inbox";
 import { otherDevices } from "@/lib/pushDevices";
 import { sendDevice } from "@/lib/server/sendDevice";
+import { allowNotify } from "@/lib/notifyRules";
 
 export const pushReady = () => !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
 
@@ -23,17 +24,23 @@ export function pushError(e) {
 }
 
 // Bildirim neden gitmedi (atama ekranında sorumlunun yanında yazar; lib/people pushWhy)
-export const WHY = { account: "account", device: "device", same: "same", key: "key", error: "error" };
+// rule: kişi bu türü almaz (sporcuya yalnız antrenman, fitness, mesaj; lib/notifyRules)
+export const WHY = { account: "account", device: "device", same: "same", key: "key", error: "error", rule: "rule" };
 
+// payload.cat: bildirimin türü (lib/notifyRules); kişi o türü almıyorsa ne zile yazılır ne telefona gider.
 // skip: gönderenin kendi cihaz anahtarları (lib/pushDevices)
 // out (isteğe bağlı): hiçbir cihaza gitmezse nedeni yazılır: out.why (WHY), out.msg (kısa açıklama)
-export async function sendTo(uid, payload, skip, out = {}) {
+export async function sendTo(uid, { cat, ...payload }, skip, out = {}) {
   const db = adminDb();
   const ref = db.collection("users").doc(uid);
   const snap = await ref.get();
   // Hesabı olmayan kişi (Kişiler'de hesapsız kayıt): telefonu yok, bildirim kutusu da yok
   if (!snap.exists) {
     out.why = WHY.account;
+    return 0;
+  }
+  if (!allowNotify(snap.data(), cat)) {
+    out.why = WHY.rule;
     return 0;
   }
   // Önce bildirim kutusuna (ana sayfadaki "Bildirimler"); simgedeki sayı oradaki okunmamışların sayısı (lib/inbox)
