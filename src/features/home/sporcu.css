@@ -188,22 +188,42 @@ body:has(main.sh) .sidenav.navy { background: #0f0f11; --sn-line: #1f1f22; --sn-
 .sh-pl-now { background: #d4ff3a14; margin: 0 -.85rem; padding: .6rem .85rem; }
 main.sh.sh .tone-st { --tfg: #22c55e; } main.sh.sh .tone-sp { --tfg: #60a5fa; } main.sh.sh .tone-ve { --tfg: #a78bfa; } main.sh.sh .tone-fa { --tfg: #d6a77a; } main.sh.sh .tone-fit { --tfg: #ff7a1a; } main.sh.sh .tone-gen { --tfg: #71717a; }
 .sh-noplan { margin: 0; padding: .7rem .2rem; font-size: .8125rem; font-weight: 600; color: #71717a; }
+/* Bugün kartı başlığı ve kulüp ızgarasında geniş yarış kutusu (iPad örneği v2, 2026-11-25) */
+.sh-bh { display: none; }
+.sh-span { grid-column: 1 / -1; min-width: 0; display: flex; flex-direction: column; }
+.sh-span > * { flex: 1; }
+.sh-span:empty, .sh-span:has(> .sh-rl:empty) { display: none; }
 @media (min-width: 48rem) {
   main.sh:has(.sh-g3) { max-width: none; }
-  .sh-g3 { grid-template-columns: 1fr 1fr; grid-template-areas: "a a" "d d" "b c"; gap: 1.1rem; align-items: start; }
+  .sh-g3 { grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "d" "b" "c"; gap: 1.1rem; }
   .sh-days { margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); overflow: visible; }
   .sh-day { min-width: 0; }
   .sh-wx-big { font-size: 5.6rem; }
-  .sh-wl { display: block; }
+  /* Bugün: planlar ve bekleyen tek kartta; dikeyde yan yana iki sütun */
+  .sh-b { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "h h" "p w"; column-gap: 1.4rem; row-gap: .2rem; align-content: start; background: #141416; border: 1px solid #26262b; border-radius: 1.2rem; padding: .9rem 1.1rem; }
+  .sh-b:not(:has(.sh-wl > *)) { grid-template-areas: "h h" "p p"; }
+  .sh-bh { grid-area: h; display: flex; align-items: center; gap: .5rem; font-size: .6875rem; font-weight: 800; letter-spacing: .12em; color: #a1a1aa; }
+  .sh-bh em { font-style: normal; color: var(--sh-lime, #d4ff3a); }
+  .sh-b > .sh-plans, .sh-b > .sh-noplan { grid-area: p; background: none; border: 0; border-radius: 0; padding: 0; }
+  .sh-b .sh-pl:first-child { border-top: 0; }
+  .sh-b .sh-pl-now { margin: 0 -.5rem; padding: .6rem .5rem; border-radius: .6rem; }
+  .sh-wl { grid-area: w; display: block; border-left: 1px solid #26262b; padding-left: 1.4rem; }
   .sh-wl:empty { display: none; }
+  .sh-wl .iph-pn { background: none; border: 0; border-radius: 0; padding: 0; }
   .sh-wr { display: none; }
+  /* Kulüp: 4 eşit sütun, yarış 2 sütun */
+  .sh-c3 .sh-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(7rem, auto); gap: .8rem; }
+  .sh-c3 .sh-span { grid-column: span 2; }
+  .sh-c3 .sh-span .sh-race { height: 100%; }
 }
 @media (min-width: 64rem) {
-  .sh-g3 { grid-template-columns: 1.5fr 1fr; grid-template-areas: "a c" "d c" "b c"; grid-template-rows: auto auto 1fr; }
-  .sh-b { align-self: start; }
-  .sh-wl { display: none; }
-  .sh-wr { display: block; }
-  .sh-wr:empty { display: none; }
+  /* Yatay: üstte Hava + Bugün yan yana eşit boy; altta 7 gün; en altta kulüp */
+  .sh-g3 { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); grid-template-areas: "a b" "d d" "c c"; align-items: stretch; }
+  .sh-a { display: flex; flex-direction: column; }
+  .sh-a > * { flex: 1; }
+  .sh-b { grid-template-columns: minmax(0, 1fr); grid-template-areas: "h" "p" "w"; grid-template-rows: auto auto 1fr; }
+  .sh-b:not(:has(.sh-wl > *)) { grid-template-areas: "h" "p"; }
+  .sh-wl { border-left: 0; padding-left: 0; border-top: 1px solid #26262b; padding-top: .8rem; margin-top: .6rem; align-self: start; }
 }
 @media (min-width: 48rem) {
   .sh { padding-left: max(1.5rem, env(safe-area-inset-left)); padding-right: max(1.5rem, env(safe-area-inset-right)); }

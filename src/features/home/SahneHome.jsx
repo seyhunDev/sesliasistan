@@ -110,6 +110,7 @@ function Layout({ side, inbox, onInbox }) {
         <Days days={days} date={date} today={today} onSel={setSel} />
       </div>
       <div className="sh-b">
+        <BugunHead date={date} today={today} />
         <Plans date={date} nowH={date === today ? nowH : null} />
         <div className="sh-wl">
           <Waiting inbox={inbox} onAll={onInbox} />
@@ -123,6 +124,20 @@ function Layout({ side, inbox, onInbox }) {
         <PaidNotice />
       </div>
     </div>
+  );
+}
+
+// iPad "Bugün" kartının başlığı (telefonda gizli): seçili gün ve plan sayısı
+function BugunHead({ date, today }) {
+  const { plans } = useData();
+  const n = dayPlans(plans, date).length;
+  const day = date === today ? "Bugün" : new Date(`${date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long" });
+  return (
+    <span className="sh-bh">
+      {day.toLocaleUpperCase("tr-TR")}
+      <span className="flex-1" />
+      {n > 0 && <em className="num">{n} PLAN</em>}
+    </span>
   );
 }
 
@@ -271,8 +286,8 @@ function Kokpit() {
   return (
     <>
       <span className="sh-sec">KULÜP</span>
-      {sport && (live ? <div className="sh-rl">{<RaceLive open={race.open} />}</div> : <NextRace open={race.open} today={today} />)}
       <div className="sh-tiles">
+        {sport && <div className="sh-span">{live ? <div className="sh-rl">{<RaceLive open={race.open} />}</div> : <NextRace open={race.open} today={today} />}</div>}
         {sport && <AttTile today={today} />}
         {fw.n > 0 && (
           <Link href={`/fitness?sporcular=1&gun=${today}`} data-press className="sh-tile">
