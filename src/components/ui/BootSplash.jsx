@@ -93,6 +93,8 @@ export function BootSplash() {
               <path className="boot-v" d={MARK_V} fill="#000" />
             </mask>
           </defs>
+          {/* Canlı logo (2026-11-25): V oyuğundan limon görünür */}
+          <circle className="boot-disc boot-under" {...MARK_DISC} fill="#d4ff3a" />
           <g mask="url(#boot-cut)">
             <circle className="boot-disc-glow" {...MARK_DISC} fill="#3d7bff" />
             <circle className="boot-disc" {...MARK_DISC} fill="#fff" />

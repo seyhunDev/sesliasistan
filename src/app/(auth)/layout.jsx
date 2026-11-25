@@ -39,7 +39,7 @@ export default function AuthLayout({ children }) {
     <div className="acik auth-acik min-h-dvh overflow-hidden">
       <div className="mx-auto max-w-[26.25rem] px-6 pb-10 pt-[calc(env(safe-area-inset-top)+3.5rem)]">
         <div className="mb-8 flex flex-col items-center">
-          <VeloraGlyph size={80} color="#1d1d1f" data-boot-target="" className={pop ? "auth-pop" : ""} />
+          <VeloraGlyph size={80} color="#0f0f11" v="#d4ff3a" data-boot-target="" className={pop ? "auth-pop" : ""} />
           <span className="auth-rise mt-3 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-fg" style={{ "--d": ".5s" }}>
             Velora
           </span>
