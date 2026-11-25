@@ -22,13 +22,12 @@ import { isFit } from "@/lib/fitness/model";
 import { bilgiOrg, canReceipts } from "@/lib/kinds";
 import { membersOf } from "@/lib/bilgi";
 import { useBilgi, useTekneler } from "@/features/bilgi/bilgiStore";
-import { attHref, clubDues, dayPlans, dayWeather, duesLive, fitDays, fitWeek, liveRace, planTone, readSum, saveSum } from "@/lib/homeTiles";
+import { attHref, clubDues, dayPlans, dayWeather, duesLive, fitDays, fitWeek, lastTraining, liveRace, planTone, readSum, saveSum } from "@/lib/homeTiles";
 import { isTraining } from "@/lib/trainingLog";
 import { todayStr } from "@/lib/utils/format";
 import { InboxSheet, useInbox } from "./Inbox";
-import { Waiting } from "./IpadHome";
 import { RaceLive } from "./RaceLive";
-import { useLastTraining } from "./HomeWidgets";
+import { loadAthletes } from "@/features/athletes/data";
 import { useMoney } from "./TeamMoney";
 import { FitWide, useTodayFit } from "./SporcuHome";
 import { ADDS, BIG, SahneTop, SporcuAdd, SporcuMenu } from "./SporcuMenu";
@@ -458,4 +457,49 @@ export function NormalSahne() {
       )}
     </SahneFrame>
   );
+}
+
+// "Bekleyen" (zil penceresindeki "Senin için" listesinin ilk satırları; eski IpadHome.jsx'ten taşındı)
+export function Waiting({ inbox, onAll }) {
+  const list = inbox.list || [];
+  if (!list.length) return null;
+  return (
+    <section className="iph-pn" aria-label="Bekleyen">
+      <span className="iph-pt">
+        Bekleyen<span className="flex-1" />
+        <button type="button" onClick={onAll} className="num">
+          {list.length}
+        </button>
+      </span>
+      {list.slice(0, 4).map((x) => (
+        <button key={x.id} type="button" data-press onClick={x.onOpen} className="iph-row">
+          <span className="min-w-0 flex-1">
+            <b className="block truncate">{x.title}</b>
+            {x.sub && <small className="block truncate">{x.sub}</small>}
+          </span>
+          {x.time && <span className="shrink-0 text-[0.75rem] text-mut">{x.time}</span>}
+        </button>
+      ))}
+    </section>
+  );
+}
+
+// Son yoklamalı antrenman (Kulüp › Yoklama kutusu): kulüp verisinden (loadAthletes, oturumda 3 dk saklanır); son sonuç bu cihazda tutulur
+export function useLastTraining(plans, today) {
+  const [t, setT] = useState(() => readSum().train || null);
+  useEffect(() => {
+    let live = true;
+    loadAthletes()
+      .then(({ athletes }) => {
+        if (!live) return;
+        const next = lastTraining(athletes, plans, today);
+        saveSum("train", next);
+        setT(next);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [plans, today]);
+  return t;
 }
