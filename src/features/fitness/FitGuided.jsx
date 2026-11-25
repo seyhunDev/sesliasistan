@@ -12,7 +12,7 @@ import { setGuideHandler } from "./guideVoice";
 import { useKind } from "@/features/auth/useKind";
 import { useTts } from "@/features/speech/TtsProvider";
 import { liveHead } from "@/features/liveScreen/fonts";
-import { LIME, SahneAdd, SahneBtn, SahneIntro, head } from "./FitSahne";
+import { LIME, SahneAdd, SahneBtn, SahneIntro, SahneToggles, head } from "./FitSahne";
 
 // Adım adım antrenman (FitWorkout'tan açılır, tam ekran): yalnız o anki hareket ve set görünür.
 // "Tamamlandı" seti işaretler (FitWorkout kaydeder), dinlenme sayacı başlar, sonra sıradaki set / hareket gelir.
@@ -609,6 +609,8 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
 
   const withAdded = (it, i) => (added[i]?.length ? { ...it, media: [...(it.media || []), ...added[i].filter((m) => !(it.media || []).some((x) => x.id === m.id))] } : it);
 
+  const toggles = <SahneToggles auto={auto} onMode={setMode} quiet={quiet} onQuiet={toggleQuiet} />;
+
   if (intro) {
     const first = withAdded(items[0] || {}, 0);
     return (
@@ -623,6 +625,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
           onSay={() => (tts.speaking ? tts.stop() : tts.speak(introText))}
           onGo={go}
           onClose={onClose}
+          toggles={toggles}
         />
       </div>
     );
@@ -643,18 +646,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
           <Icon name="x" className="size-5" />
         </button>
         <span className="flex-1" />
-        <button
-          type="button"
-          onClick={() => setMode(!auto)}
-          aria-pressed={auto}
-          className={`h-10 rounded-full border px-3.5 text-[0.875rem] font-bold backdrop-blur ${auto ? "bg-black/40" : "border-white/25 bg-black/40 text-white/70"}`}
-          style={auto ? { borderColor: LIME, color: LIME } : undefined}
-        >
-          {auto ? "Otomatik" : "Elle"}
-        </button>
-        <button type="button" onClick={toggleQuiet} aria-label={quiet ? "Sesi aç" : "Sesi kapat"} aria-pressed={!quiet} className="grid size-10 place-items-center rounded-full bg-black/40 text-white backdrop-blur">
-          <Icon name={quiet ? "mute" : "volume"} className="size-5" />
-        </button>
+        {toggles}
         <span className={`${head} min-w-[2.75rem] text-right text-[1.125rem] text-white tabular-nums`}>{pos ? `${pos.i + 1} / ${items.length}` : `${done}/${total}`}</span>
       </div>
     </div>

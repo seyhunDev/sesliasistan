@@ -15,7 +15,23 @@ import { useFitLib } from "./useFitLib";
 export const LIME = "#d4ff3a";
 export const head = "font-[family-name:var(--lv-font-c)] font-extrabold uppercase leading-[.9]";
 
-export function SahneIntro({ name, items, sets, min, bg, speaking, onSay, onGo, onClose }) {
+// Ses ve Otomatik/Elle düğmeleri (Seyhun 2026-11-25): sporcu da her ekranda görür; yazılı, büyük; seçim cihazda hatırlanır
+export function SahneToggles({ auto, onMode, quiet, onQuiet }) {
+  const pill = "flex h-11 shrink-0 items-center gap-1.5 rounded-full border bg-black/45 px-3 text-[0.9375rem] font-bold backdrop-blur";
+  return (
+    <div className="flex items-center gap-2">
+      <button type="button" onClick={() => onMode(!auto)} aria-pressed={auto} className={`${pill} ${auto ? "" : "border-white/30 text-white"}`} style={auto ? { borderColor: LIME, color: LIME } : undefined}>
+        {auto ? "Otomatik" : "Elle"}
+      </button>
+      <button type="button" onClick={onQuiet} aria-pressed={!quiet} className={`${pill} ${quiet ? "border-white/30 text-white/80" : "border-white/30 text-white"}`}>
+        <Icon name={quiet ? "mute" : "volume"} className="size-5" />
+        {quiet ? "Sessiz" : "Ses açık"}
+      </button>
+    </div>
+  );
+}
+
+export function SahneIntro({ name, items, sets, min, bg, speaking, onSay, onGo, onClose, toggles }) {
   const total = sets.reduce((t, s) => t + s.length, 0);
   const d = new Date();
   const day = d.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
@@ -26,6 +42,7 @@ export function SahneIntro({ name, items, sets, min, bg, speaking, onSay, onGo, 
       <button type="button" onClick={onClose} aria-label="Kapat" className="absolute left-4 top-[max(0.75rem,env(safe-area-inset-top))] z-10 grid size-10 place-items-center rounded-full bg-black/40 text-white backdrop-blur">
         <Icon name="x" className="size-5" />
       </button>
+      {toggles && <div className="absolute right-4 top-[max(0.75rem,env(safe-area-inset-top))] z-10">{toggles}</div>}
       <div className="relative mt-auto flex min-h-0 flex-col px-5">
         <small className="text-[0.75rem] font-bold uppercase tracking-[.14em] text-white/75">{`Bugün · ${day}`}</small>
         <h2 className={`${head} mt-2 text-[3.5rem] [overflow-wrap:anywhere]`}>{name}</h2>
