@@ -1,0 +1,94 @@
+/* Takvim "Sahne" (CalendarView.jsx; Seyhun 2026-11-25 "Yap", örnek project-files/takvim-sahne/ornek.html).
+   Ana sayfanın koyu dili (features/home/sporcu.css: .sh, .sh-top, .sh-rb, .sh-c, .sh-pill), daha sade; tek vurgu limon.
+   Telefon: ay (rakam + noktalar), altında gün. iPad dik (48rem+): hücrelerde adlar. iPad yatay (64rem+): solda ay, sağda gün. */
+main.cal-sh { max-width: 30rem; }
+.cal-sh { --cs-box: #141416; --cs-line: #26262b; --cs-line2: #1f1f22; --cs-task: #fbbf5c; --cs-late: #ff6b6b; --cs-bday: #f472b6; }
+main.cal-sh .tone-st { --tfg: #22c55e; } main.cal-sh .tone-sp { --tfg: #60a5fa; } main.cal-sh .tone-ve { --tfg: #a78bfa; } main.cal-sh .tone-fa { --tfg: #d6a77a; } main.cal-sh .tone-fit { --tfg: #ff7a1a; } main.cal-sh .tone-gen { --tfg: #71717a; }
+.cal-sh [data-c="bday"] { --tfg: var(--cs-bday); } .cal-sh [data-c="task"] { --tfg: var(--cs-task); } .cal-sh [data-c="late"] { --tfg: var(--cs-late); } .cal-sh [data-c="plan"] { --tfg: #fff; } .cal-sh [data-c="fit"] { --tfg: #ff7a1a; }
+.cal-sh .sh-date { font-size: .75rem; }
+.cal-sh-add { background: var(--sh-lime); border-color: var(--sh-lime); color: #111; }
+.cal-sh-menu { position: absolute; right: 0; top: calc(100% + .4rem); z-index: 50; width: 10rem; background: #1f1f22; border: 1px solid #2e2e33; border-radius: 1rem; padding: .25rem 0; overflow: hidden; }
+.cal-sh-menu button { display: block; width: 100%; min-height: 2.75rem; padding: 0 1rem; text-align: left; font-size: .9375rem; font-weight: 600; color: #fff; }
+.cal-sh-g { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
+.cal-sh-left, .cal-sh-day { display: flex; flex-direction: column; gap: .8rem; min-width: 0; }
+
+/* Ay başlığı */
+.cal-sh-mh { display: flex; align-items: flex-end; gap: .5rem; }
+.cal-sh-mh h2 { flex: 1; min-width: 0; margin: 0; font-size: 3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-sh-mh h2 small { font-size: 1rem; font-weight: 700; color: #71717a; margin-left: .35rem; letter-spacing: 0; }
+.cal-sh-mh > button { margin-bottom: .2rem; }
+
+/* Ay ızgarası */
+.cal-sh-mo { background: var(--cs-box); border: 1px solid var(--cs-line); border-radius: 1.4rem; padding: .75rem .5rem .6rem; }
+.cal-sh-wk, .cal-sh-gr { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.cal-sh-wk { text-align: center; font-size: .625rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #71717a; padding-bottom: .3rem; }
+.cal-sh-gr { row-gap: .15rem; }
+.cal-sh-cl { display: flex; flex-direction: column; align-items: center; padding: .15rem 0; min-width: 0; color: #fff; }
+.cal-sh-cl:active { opacity: .6; }
+.cal-sh-cl > b { width: 2.3rem; height: 2.3rem; border-radius: 50%; display: grid; place-items: center; font-family: var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-weight: 800; font-size: 1.2rem; }
+.cal-sh-cl[data-out] > b { color: #3f3f46; }
+.cal-sh-cl[data-today] > b { box-shadow: inset 0 0 0 1.5px var(--sh-lime); color: var(--sh-lime); }
+.cal-sh-cl[data-on] > b { background: var(--sh-lime); color: #111; box-shadow: none; }
+.cal-sh-dots { display: flex; gap: 2px; height: .3rem; margin-top: .1rem; }
+.cal-sh-dots i { width: .3rem; height: .3rem; border-radius: 50%; background: var(--tfg); }
+.cal-sh-cl[data-out] .cal-sh-dots { opacity: .4; }
+.cal-sh-evs { display: none; }
+
+/* Seçili gün */
+.cal-sh-dh { display: flex; align-items: flex-end; gap: .6rem; }
+.cal-sh-dh h3 { flex: 1; min-width: 0; margin: 0; font-size: 2.1rem; overflow-wrap: anywhere; }
+.cal-sh-dh small { font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #a1a1aa; white-space: nowrap; margin-bottom: .15rem; }
+.cal-sh-dh small em { font-style: normal; color: var(--sh-lime); }
+.cal-sh-ls { list-style: none; margin: 0; background: var(--cs-box); border: 1px solid var(--cs-line); border-radius: 1.3rem; padding: .2rem .9rem; overflow: hidden; }
+.cal-sh-ls > li + li { border-top: 1px solid var(--cs-line2); }
+.cal-sh-none { padding: .85rem 0; font-size: .9375rem; font-weight: 600; color: #71717a; }
+.cal-sh-it { display: flex; align-items: center; gap: .7rem; width: 100%; min-height: 3.5rem; padding: .65rem 0; text-align: left; color: #fff; min-width: 0; }
+.cal-sh-ls > li > .cal-sh-it { padding: .65rem 0; }
+.cal-sh-t { width: 2.9rem; flex-shrink: 0; font-size: .8125rem; font-weight: 700; color: #a1a1aa; white-space: nowrap; display: flex; }
+.cal-sh-it > i { width: .25rem; align-self: stretch; min-height: 2.2rem; border-radius: .2rem; background: var(--tfg); flex-shrink: 0; }
+.cal-sh-x { flex: 1; min-width: 0; display: block; }
+.cal-sh-x b { display: block; font-size: .9375rem; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.cal-sh-x small { display: block; margin-top: .1rem; font-size: .75rem; line-height: 1.35; color: #71717a; }
+.cal-sh-who { display: flex; margin-top: .35rem; }
+.cal-sh-off { color: #71717a; text-decoration: line-through; }
+.cal-sh-late { color: var(--cs-late) !important; font-weight: 600; }
+.cal-sh-it[data-imp] .cal-sh-t { color: #93c5fd; }
+.cal-sh-it[data-now] { background: #d4ff3a14; margin: 0 -.9rem; padding-left: .9rem; padding-right: .9rem; width: calc(100% + 1.8rem); }
+.cal-sh-it[data-now] .cal-sh-t { color: var(--sh-lime); }
+.cal-sh-tg { flex-shrink: 0; border-radius: 999px; padding: .2rem .55rem; font-size: .6875rem; font-weight: 800; white-space: nowrap; background: #ffffff14; color: #a1a1aa; }
+.cal-sh-ok { background: #d4ff3a22; color: var(--sh-lime); }
+.cal-sh-live { background: var(--sh-lime); color: #111; }
+.cal-sh-ck { width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 1.6px solid #52525b; display: grid; place-items: center; color: transparent; }
+li[data-c="late"] .cal-sh-ck { border-color: var(--cs-late); }
+.cal-sh-ck[data-done] { background: var(--sh-lime); border-color: var(--sh-lime); color: #111; }
+.cal-sh-ck:active { transform: scale(.9); }
+.cal-sh-acts { display: flex; gap: .5rem; }
+.cal-sh-bt { flex: 1; min-height: 2.75rem; border-radius: 999px; padding: 0 1rem; font-size: .875rem; font-weight: 800; background: #1f1f22; border: 1px solid #2e2e33; color: #fff; }
+.cal-sh-bt:active { transform: scale(.97); }
+.cal-sh-p { background: var(--sh-lime); border-color: var(--sh-lime); color: #111; }
+.cal-sh-r { flex: 0 0 2.75rem; padding: 0; display: grid; place-items: center; }
+
+/* iPad dik ve üstü: ay büyük, hücrelerde adlar */
+@media (min-width: 48rem) {
+  main.cal-sh { max-width: 46rem; }
+  .cal-sh-mo { padding: .4rem .2rem 0; }
+  .cal-sh-wk { padding: .3rem 0 .45rem; }
+  .cal-sh-gr { row-gap: 0; border-top: 1px solid var(--cs-line2); }
+  .cal-sh-cl { align-items: stretch; justify-content: flex-start; gap: .2rem; min-height: 6.4rem; padding: .35rem .3rem; border-bottom: 1px solid var(--cs-line2); overflow: hidden; text-align: left; }
+  .cal-sh-cl:not(:nth-child(7n)) { border-right: 1px solid var(--cs-line2); }
+  .cal-sh-cl:nth-last-child(-n + 7) { border-bottom: 0; }
+  .cal-sh-cl > b { width: 1.9rem; height: 1.9rem; font-size: 1.05rem; }
+  .cal-sh-cl[data-on] { background: #d4ff3a0d; }
+  .cal-sh-dots { display: none; }
+  .cal-sh-evs { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+  .cal-sh-cl[data-out] .cal-sh-evs { opacity: .35; }
+  .cal-sh-evs i { display: block; font-style: normal; font-size: .6875rem; font-weight: 600; line-height: 1.3; padding: .12rem .35rem; border-radius: .35rem; background: #1f1f22; border-left: 3px solid var(--tfg, #71717a); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e4e4e7; }
+  .cal-sh-evs i em { font-style: normal; font-weight: 700; color: #71717a; margin-right: .2rem; }
+  .cal-sh-evs i[data-c="more"] { background: none; border: 0; color: #71717a; padding-top: 0; }
+}
+/* iPad yatay ve Mac: solda ay, sağda seçili gün */
+@media (min-width: 64rem) {
+  main.cal-sh { max-width: none; }
+  .cal-sh-g { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 1.2rem; align-items: start; }
+  .cal-sh-day { padding-top: .3rem; }
+}
