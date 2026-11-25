@@ -6,9 +6,10 @@ import { bestVoice, rankVoices, speechChunks, speechText } from "@/lib/speech/sp
 import { timingSpeak } from "@/lib/assistTiming";
 import { playbackMark } from "@/lib/speech/playback";
 
-// Yanıtları sesli okur. Ses "Otomatik"teyse önce sunucudan doğal ses (Google Cloud, /api/tts) ister; sunucuda anahtar
-// yoksa, yanıt 4 sn'de gelmezse ya da çalınamazsa cihazın kendi sesine düşer. Ayarlar'da cihaz sesi seçilirse hep o.
-// speak(text, onDone): okuma bitince onDone çağrılır (durdurulursa veya yeni bir okuma başlarsa çağrılmaz).
+// Yanıtları sesli okur. Ses "Otomatik"teyse önce sunucudan doğal ses (Gemini-TTS, olmazsa Chirp; /api/tts) ister; sunucuda anahtar
+// yoksa, yanıt 8 sn'de gelmezse ya da çalınamazsa cihazın kendi sesine düşer. Ayarlar'da cihaz sesi seçilirse hep o.
+// speak(text, onDone, { style, cache }): style asistan|anlatim|fitness (lib/server/tts.js), cache: sabit metin sunucuda
+// saklanır, bir daha üretilmez (docs/seslendirme.md). Okuma bitince onDone çağrılır (durdurulursa veya yeni bir okuma başlarsa çağrılmaz).
 // Cihaz sesi: en doğal Türkçe ses (Premium > Gelişmiş > Kompakt) seçilir, metin Türkçe okunuşa çevrilir
 // (saat, para, birim, emoji; lib/speech/speakText.js) ve kısa parçalar halinde aralıksız okunur.
 // Ses ve hız bu cihazda saklanır (Ayarlar › Sesli yanıt).
@@ -80,6 +81,7 @@ export function TtsProvider({ children }) {
   const [cloud, setCloud] = useState(true);
   const [gvoice, setGVoiceState] = useState("");
   const gvoiceRef = useRef("");
+  const optRef = useRef({}); // bu okumanın tarzı ve önbelleği: { style, cache } (speak'in 3. bağımsız değişkeni)
   const rid = useRef(0);
   const unlocked = useRef(false);
   const on = useRef(false);
@@ -224,16 +226,17 @@ export function TtsProvider({ children }) {
     else go();
   }, []);
 
-  // Bir parçanın sesi (önbellekte varsa oradan). İlk parça en çok 4 sn beklenir, sonrakiler çalarken hazırlanır.
+  // Bir parçanın sesi (önbellekte varsa oradan). İlk parça en çok 8 sn beklenir, sonrakiler çalarken hazırlanır.
   const fetchPart = useCallback((p, ms) => {
-    const key = `${gvoiceRef.current}|${rateRef.current}|${p}`;
+    const { style = "asistan", cache: keep = false } = optRef.current;
+    const key = `${gvoiceRef.current}|${rateRef.current}|${style}|${p}`;
     const hit = cache.current.get(key);
     if (hit) return hit;
     const job = (async () => {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), ms);
       try {
-        const res = await authFetch("/api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: p, rate: rateRef.current, voice: gvoiceRef.current }), signal: ctrl.signal });
+        const res = await authFetch("/api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: p, rate: rateRef.current, voice: gvoiceRef.current, style, cache: keep }), signal: ctrl.signal });
         if (!res.ok) {
           const e = new Error(`tts ${res.status}`);
           e.status = res.status;
@@ -260,7 +263,7 @@ export function TtsProvider({ children }) {
     for (let i = 0; i < parts.length; i++) {
       let url;
       try {
-        url = await fetchPart(parts[i], i === 0 ? 4000 : 12000);
+        url = await fetchPart(parts[i], i === 0 ? 8000 : 15000); // Gemini sesi 1-4 sn sürebilir; sunucu 6 sn'de Chirp'e geçer
       } catch (e) {
         if (e.status === 501) {
           serverOk.current = false; // sunucuda ses anahtarı yok: bir daha deneme
@@ -276,7 +279,7 @@ export function TtsProvider({ children }) {
         return true;
       }
       if (id !== rid.current) return true; // arada başka bir okuma başladı veya durduruldu
-      if (i + 1 < parts.length) fetchPart(parts[i + 1], 12000).catch(() => { }); // sıradaki parça çalarken hazırlansın
+      if (i + 1 < parts.length) fetchPart(parts[i + 1], 15000).catch(() => { }); // sıradaki parça çalarken hazırlansın
       const done = await new Promise((ok) => {
         a.onended = () => ok(true);
         a.onerror = () => ok(false);
@@ -304,13 +307,14 @@ export function TtsProvider({ children }) {
   }, [fetchPart, speakDevice]);
 
   const speak = useCallback(
-    async (text, onDone) => {
+    async (text, onDone, opts) => {
       const t = plain(text || "");
       if (!t) {
         onDone?.();
         return;
       }
       stop();
+      optRef.current = opts || {};
       const id = rid.current;
 
       if (serverOk.current && audio.current && !read(VOICE_KEY)) {

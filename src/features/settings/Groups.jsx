@@ -118,7 +118,7 @@ export function VoiceRow() {
                     aria-checked={on}
                     onClick={() => {
                       tts.setGVoice(i === 0 ? "" : id);
-                      tts.speak(SAMPLE);
+                      tts.speak(SAMPLE, undefined, { cache: true });
                     }}
                     className={`rounded-full px-3 py-1.5 text-[0.875rem] font-medium transition active:scale-95 ${on ? "bg-acc text-white" : "border border-line bg-card text-fg"}`}
                   >
@@ -139,7 +139,7 @@ export function VoiceRow() {
                 {label}
               </button>
             ))}
-            <Btn kind="line" small className="ml-auto" onClick={() => tts.speak(SAMPLE)}>
+            <Btn kind="line" small className="ml-auto" onClick={() => tts.speak(SAMPLE, undefined, { cache: true })}>
               Dinle
             </Btn>
           </div>

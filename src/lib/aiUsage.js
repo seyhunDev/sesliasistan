@@ -51,9 +51,13 @@ export function sttUsage(doc) {
 
 // Google seslendirme (Cloud Text-to-Speech): seslendirilen harf sayılır; ayda 1 milyon harf ücretsiz (Chirp 3 HD)
 export const TTS_FREE = 1000000;
+// Gemini-TTS (gemini-2.5-flash-tts): ses çıktısı 10 $ / 1 milyon token, saniyede 25 token; Türkçe ≈ 14 harf/sn
+// → harf başı ≈ 0,000018 $ (1000 harf ≈ 2 sent), tahmini. Önbellekten gelen ses sayılmaz.
+export const TTS_GEM_PRICE_CHR = 0.000018;
 export function ttsUsage(doc) {
   const chars = Number(doc?.["tts-chr"]) || 0;
-  return { chars, pct: Math.round((chars / TTS_FREE) * 100) };
+  const gem = Number(doc?.["tts-gem"]) || 0;
+  return { chars, pct: Math.round((chars / TTS_FREE) * 100), gem, gemCost: gem * TTS_GEM_PRICE_CHR };
 }
 
 // Yaklaşık maliyet ($): metin istekleri × istek başı fiyat + görseller
