@@ -57,6 +57,15 @@ export function useFitLib() {
     },
     [orgId],
   );
+  // Erkek modeli seçer (Hareketler › Modeller)
+  const setModel = useCallback(
+    async (meta) => {
+      if (!orgId) return null;
+      const cur = await loadLib(orgId, { force: true });
+      return saveLib(orgId, { ...cur, models: { ...(cur.models || {}), m: meta } });
+    },
+    [orgId],
+  );
   // Erkek fotoğrafları (hazır program, g:"m"): [{ it, meta }]; hareketin erkek fotoğrafı zaten varsa dokunulmaz
   const addMale = useCallback(
     async (list) => {
@@ -116,5 +125,5 @@ export function useFitLib() {
     },
     [orgId],
   );
-  return { lib, setMedia, addMany, addMale, merge, attach, rename, drop };
+  return { lib, setMedia, addMany, addMale, setModel, merge, attach, rename, drop };
 }

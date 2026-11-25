@@ -14,6 +14,7 @@ import { ExercisePicker } from "./ExercisePicker";
 import { saveLib, similarGroups } from "./fitnessData";
 import { useFitLib } from "./useFitLib";
 import { PosterImport } from "./PosterImport";
+import { FitModels } from "./FitModels";
 
 // Hareketler: kulübün hareket kütüphanesi (programlarda geçen her hareket bir kez, numarasıyla). Harekete eklenen
 // fotoğraf, video ve YouTube bağlantısı o hareketin geçtiği bütün programlarda ve sporcuların antrenmanlarında görünür.
@@ -21,7 +22,8 @@ const hasMedia = (x) => !!(x.yt?.id || (x.media || []).length);
 
 export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   const confirmAsk = useConfirm();
-  const { lib, setMedia, merge, attach, rename, drop } = useFitLib();
+  const { lib, setMedia, addMale, setModel, merge, attach, rename, drop } = useFitLib();
+  const [models, setModels] = useState(false); // Modeller: kız/erkek model, erkek fotoğrafları
   const toast = useToast();
   const [join, setJoin] = useState(false);
   const [naming, setNaming] = useState(null);
@@ -169,7 +171,10 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
               {label}
             </button>
           ))}
-          <button type="button" onClick={() => setPoster(true)} className="ml-auto h-9 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc ring-1 ring-line">
+          <button type="button" onClick={() => setModels(true)} className="ml-auto h-9 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc ring-1 ring-line">
+            Modeller
+          </button>
+          <button type="button" onClick={() => setPoster(true)} className="h-9 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc ring-1 ring-line">
             Afişten
           </button>
         </div>
@@ -206,6 +211,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
         </ul>
       </div>
       <ExercisePicker open={pick} onClose={() => setPick(false)} onPick={add} />
+      <FitModels open={models} onClose={() => setModels(false)} orgId={orgId} lib={lib} setModel={setModel} addMale={addMale} />
       <PosterImport open={poster} onClose={() => setPoster(false)} orgId={orgId} lib={lib} setMedia={setMedia} />
     </div>,
     document.body,
