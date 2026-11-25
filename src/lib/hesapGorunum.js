@@ -67,7 +67,7 @@ export function homeActions(o) {
       !o.side && full && { href: "/cams", icon: "video", label: "Kameralar", hid: true }, // halka açık canlı kameralar, Windy (Seyhun 2026-10-23)
     ]],
     ["Kişisel", [
-      (!o.staff || o.fit) && { href: "/fitness", icon: "dumbbell", label: "Fitness" },
+      { href: "/fitness", icon: "dumbbell", label: "Fitness" }, // herkeste (Seyhun 2026-11-25 "normal kullanıcı ve sporcular da fitness görebilmeli")
       !o.side && { href: "/english", icon: "chat", label: "İngilizce" }, // kelimeler ve hazır cümleler (Seyhun 2026-10-22)
       o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
       o.lessons && full && { href: "/schedule", icon: "book", label: "Dersler", hid: true },

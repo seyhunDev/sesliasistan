@@ -24,7 +24,7 @@ import { IpadHome, Waiting } from "./IpadHome";
 // Üçü aynı çerçeve: HomeFrame (IpadHome: üst satır, Hava, Takvim; Seyhun 2026-11-11 "A · Zaman şeridi"), sağ sütun / telefonda alt kısım her sayfanın kendisi.
 
 // Ortak çerçeve: hava, zil penceresi, Tümü sayfaları; children(inbox, onInbox) sağ sütunu çizer
-export function HomeFrame({ children }) {
+export function HomeFrame({ children, lead = null }) {
   const h = useHesap();
   const weather = useWeather();
   const inbox = useInbox();
@@ -44,7 +44,7 @@ export function HomeFrame({ children }) {
         inbox={inbox}
         onInbox={onInbox}
         can={{ yoklama: h.athletes, yonet: h.owner || h.coach }}
-        side={{ all: <HomeGrid pages={actions} />, body: children(inbox, onInbox) }}
+        side={{ all: <HomeGrid pages={actions} />, lead, body: children(inbox, onInbox) }}
       />
       <InboxSheet inbox={inbox} open={inbox.open} onClose={() => setSheet(false)} />
     </>
