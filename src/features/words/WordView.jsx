@@ -3,6 +3,7 @@
 import { Icon } from "@/components/ui/Icon";
 import { release, silentWav } from "@/features/speech/TtsProvider";
 import { authFetch } from "@/lib/authFetch";
+import { playbackMark } from "@/lib/speech/playback";
 
 // Telefonun İngilizce sesi (sunucu sesi yoksa ya da gelmezse)
 function device(text) {
@@ -34,6 +35,20 @@ export function primeEn() {
   el = new Audio();
   el.src = silentWav();
   el.play().catch(() => {});
+}
+// Mikrofon açılmadan önce: okunan İngilizce susar, yolda olan okuma da çalmaz (kayda girmesin; iPhone'da çalma biter bitmez
+// açılan mikrofon ses vermeyebiliyor, bu yüzden susturma anı işaretlenir, mikrofon kısa bir an bekler)
+export function stopEn() {
+  job += 1;
+  try {
+    window.speechSynthesis?.cancel();
+  } catch {
+    /* yok */
+  }
+  if (el && !el.paused) {
+    el.pause();
+    playbackMark();
+  }
 }
 export function sayEn(text) {
   const t = String(text || "").replace(/\s+/g, " ").trim().slice(0, 400);
@@ -70,7 +85,7 @@ export function sayEn(text) {
   url.then(
     (u) => {
       if (id !== job) return;
-      a.onended = () => release(a);
+      a.onended = () => (playbackMark(), release(a));
       a.src = u;
       a.play().catch(() => device(t));
     },

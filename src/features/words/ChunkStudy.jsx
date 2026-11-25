@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -10,6 +10,7 @@ import { WordTalk } from "./WordTalk";
 import { hearSay } from "./wordData";
 import { useEnMic } from "./useEnMic";
 import { cachedPic, drawing, loadPic, makePic } from "./chunkPics";
+import { Altyazi } from "./Altyazi";
 
 // Kalıp bloklama (Seyhun 2026-11-02: "kalıplarla kelimeleri öğreneceğim… tek tek kelime öğrenmek istemiyorum"; örnek
 // /mnt/project-files/ingilizce-kelime/kaliplar/ornek.png onaylandı 2026-11-04). Bir kalıp dört adımda: Dinle · Değiştir (parçaya
@@ -178,27 +179,33 @@ export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpe
     setPhase(talk ? "talk" : "done");
     await onSave(right);
   };
-  const mic = useEnMic({ onFail: (m) => setHeard({ err: m }), onLong: () => tapMic() });
+  const lvRef = useRef(null);
+  const mic = useEnMic({ onFail: (m) => setHeard({ err: m }), onLong: () => tapMic(), levelRef: lvRef });
+  // Açılırken, dururken ve yapay zeka bakarken dokunuş yok sayılır (önceden ikinci dokunuş kaydı boş gönderiyordu)
   const tapMic = async () => {
-    if (listening) return;
+    if (listening || mic.state === "opening" || mic.state === "stopping") return;
     if (!mic.on) {
       primeEn();
       setHeard(null);
       return mic.start();
     }
-    const blob = await mic.stop();
-    if (!blob) return setHeard({ err: "Ses duyulmadı, tekrar dene." });
     setListening(true);
     try {
+      const blob = await mic.stop();
+      if (!blob) return setHeard({ err: "Sesini duyamadım. Bas, cümleyi söyle, sonra yeniden bas." });
       const r = await hearSay(say0, blob);
       setHeard(r);
       if (!r.ok) setMiss(true);
       sayEn(say0);
     } catch (e) {
-      setHeard({ err: e.message });
+      setHeard({ err: e.message || "Dinleyemedim, tekrar dene." });
     } finally {
       setListening(false);
     }
+  };
+  const again = () => {
+    setHeard(null);
+    tapMic();
   };
   const show = () => {
     mic.cancel();
@@ -295,66 +302,12 @@ export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpe
 
   if (phase === "recall") {
     const answered = heard && (heard.shown || typeof heard.ok === "boolean");
-    return (
-      <>
-        {top(
-          <Button variant="icon" size="sm" aria-label="Hatırla'yı kapat" onClick={() => (mic.cancel(), setPhase("learn"))} className="!text-white/50">
-            <Icon name="x" className="size-5" />
-          </Button>,
-          <b className="font-semibold text-white/88">Hatırla</b>,
-          <span className="size-9" />,
-        )}
-        <Steps at={3} />
-        <section aria-label="Hatırla" className="relative flex flex-1 flex-col justify-center gap-5 py-6">
-          {pic.img || pic.wait ? <Pic pic={pic} className="mx-auto max-w-[20rem]" /> : <TrLine text={c.fills[0][2]} part={c.fills[0][1]} className="text-[1.5rem] font-semibold leading-[1.3]" />}
-          <div className="min-h-[3.25rem] text-[1.25rem] font-bold leading-snug">
-            {answered ? (
-              <button type="button" onClick={() => sayEn(say0)} className="text-left">
-                {heard.ok ? (
-                  <span className="inline-flex items-center gap-1.5 text-[#9fe7c6]">
-                    <Icon name="check" className="size-5" /> {say0}
-                  </span>
-                ) : (
-                  <>
-                    {!heard.shown && <span className="block text-[0.9375rem] font-semibold text-[#f3a39a]">{heard.heard}</span>}
-                    <span className="text-white/90">{say0}</span>
-                  </>
-                )}
-              </button>
-            ) : heard?.err ? (
-              <p className="text-[1rem] font-semibold text-[#f3a39a]">{heard.err}</p>
-            ) : null}
-          </div>
-          {!answered && (
-            <button
-              type="button"
-              onClick={tapMic}
-              disabled={listening}
-              aria-label={mic.on ? "Bitti" : "Söyle"}
-              className={`mx-auto grid size-[4.5rem] place-items-center rounded-full text-white disabled:opacity-60 ${mic.on ? "animate-pulse bg-[#ff3d77]" : GRAD}`}
-            >
-              <Icon name={mic.on ? "up" : "mic"} className="size-7" />
-            </button>
-          )}
-        </section>
-        <footer className="relative flex items-center justify-between gap-3">
-          {answered ? (
-            <Button variant="text" onClick={() => finish(!miss, false)} className="!px-0 !text-white/50">
-              Atla
-            </Button>
-          ) : (
-            <Button variant="text" onClick={show} disabled={listening} className="!px-0 !text-white/50">
-              Göster
-            </Button>
-          )}
-          {answered && (
-            <Button variant="secondary" full={false} onClick={() => finish(!miss, true)} className={GO}>
-              Konuş
-            </Button>
-          )}
-        </footer>
-      </>
-    );
+    const wrong = answered && !heard.ok && !heard.shown;
+    const st = listening || mic.state === "stopping" ? "wait" : mic.state === "opening" ? "open" : mic.rec ? "rec" : "idle";
+    const close = () => (mic.cancel(), setPhase("learn"));
+    const skip = () => (mic.cancel(), finish(!miss, false));
+    const talk = () => (mic.cancel(), finish(!miss, true));
+    return <Altyazi {...{ pic, say0, tr: c.fills[0][2], heard, answered, wrong, st, lvRef, onMic: wrong ? again : tapMic, onClose: close, onShow: show, onSkip: skip, onTalk: talk }} />;
   }
 
   if (phase === "talk") return <WordTalk w={{ en: patternText(c), tr: c.tr, kind: "phrase" }} onClose={() => setPhase(saved ? "done" : "learn")} />;

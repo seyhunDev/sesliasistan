@@ -24,6 +24,7 @@ export const AI_LABELS = {
   fitness: "Fitness",
   "fitness-intro": "Fitness tanıtım kartları",
   "fitness-import": "Fitness programı (PDF/metin)",
+  "fitness-poster": "Afişten hareket fotoğrafları",
   food: "Beslenme (yemek okuma)",
   "bank-analyze": "Banka Excel incelemesi",
   "post-caption": "Instagram yazısı",

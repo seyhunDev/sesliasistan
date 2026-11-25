@@ -2,6 +2,7 @@
 
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -53,7 +54,9 @@ function partsOf(items) {
   return PARTS.map(([k, l]) => [l, items.map((it, i) => ((it.part || "ana") === k ? i : -1)).filter((i) => i >= 0)]).filter(([, l]) => l.length);
 }
 
-export function FitWorkout({ rec, by, hero = false }) {
+// bare: Fitness'ın kendi antrenman ekranı (FitPlanView) üst kısmı kendisi çizer: fotoğraflı kart ve sayılar yok, yazılar büyük.
+// dock: "Antrenmana başla" şeridi bu öğeye çizilir (telefonda listenin altında sabit, iPad yatayda sol sütunda); yoksa listenin altında yapışkan.
+export function FitWorkout({ rec, by, hero = false, bare = false, dock = null }) {
   const confirmAsk = useConfirm();
   const { plans, updateRecord } = useData();
   const toast = useToast();
@@ -162,10 +165,23 @@ export function FitWorkout({ rec, by, hero = false }) {
     return null;
   })();
   const name = fit.name || String(rec.title || "").replace(/^Fitness · /, "") || "Antrenman";
+  const startBar = (
+    <>
+      <button type="button" onClick={() => setGuide(true)} data-press className="btn btn-primary h-14 w-full">
+        {done ? "Kaldığın yerden devam et" : "Antrenmana başla"}
+      </button>
+      {done > 0 && (
+        <button type="button" onClick={restart} data-press className="btn btn-text btn-sm w-full text-acc">
+          Baştan başlat
+        </button>
+      )}
+    </>
+  );
 
   return (
-    <div className={hero ? "" : "mt-3"}>
+    <div className={hero || bare ? "" : "mt-3"}>
       {/* Üst kart: ilk (ya da sıradaki) hareketin fotoğrafı üstünde saat, antrenmanın adı; altında süre, hareket, set ya da ilerleme */}
+      {!bare && (
       <section className="relative h-64 overflow-hidden rounded-[1.625rem] bg-deep text-white">
         <Pic key={next?.i ?? 0} it={items[next?.i ?? 0]} className="absolute inset-0 size-full" />
         <span className="absolute inset-0 bg-gradient-to-b from-black/0 from-30% to-black/75" />
@@ -183,6 +199,7 @@ export function FitWorkout({ rec, by, hero = false }) {
           )}
         </div>
       </section>
+      )}
       {done > 0 ? (
         <section className={`${box} mt-2.5 px-4 py-3`}>
           <div className="flex justify-between text-[0.8125rem] font-semibold">
@@ -195,7 +212,7 @@ export function FitWorkout({ rec, by, hero = false }) {
             <div className="h-full rounded-full bg-acc transition-all" style={{ width: `${(done / total) * 100}%` }} />
           </div>
         </section>
-      ) : (
+      ) : bare ? null : (
         <section className={`${box} mt-2.5`}>
           <div className="grid grid-cols-2 divide-x divide-line py-3 text-center">
             {[
@@ -213,6 +230,7 @@ export function FitWorkout({ rec, by, hero = false }) {
       )}
       {guide && (
         <FitGuided
+          name={name}
           items={items}
           sets={sets}
           at={at}
@@ -264,7 +282,7 @@ export function FitWorkout({ rec, by, hero = false }) {
       {items.length > 0 &&
         partsOf(items).map(([label, idx]) => (
           <div key={label || "all"}>
-            <p className="mt-5 px-1 text-[0.9375rem] font-semibold text-mut">{label || "Bu antrenmanda"}</p>
+            <p className={`px-1 font-semibold text-mut ${bare ? "mt-4 text-[1rem]" : "mt-5 text-[0.9375rem]"}`}>{label || (bare ? "Hareketler" : "Bu antrenmanda")}</p>
             <ul className={`${box} mt-2 divide-y divide-line`}>
               {idx.map((i) => {
             const it = items[i];
@@ -287,8 +305,8 @@ export function FitWorkout({ rec, by, hero = false }) {
                     </span>
                   </span>
                   <span className="min-w-0 flex-1">
-                    <b className={`block truncate text-[0.9375rem] font-semibold ${all ? "text-mut" : ""}`}>{it.name}</b>
-                    <small className="block truncate text-[0.8125rem] text-mut">
+                    <b className={`block truncate font-semibold ${bare ? "text-[1.0625rem]" : "text-[0.9375rem]"} ${all ? "text-mut" : ""}`}>{it.name}</b>
+                    <small className={`block truncate text-mut ${bare ? "text-[0.9375rem]" : "text-[0.8125rem]"}`}>
                       {itemLine(it)}
                       {t.up && <span className="ml-1 font-semibold text-acc">↑</span>}
                     </small>
@@ -394,19 +412,10 @@ export function FitWorkout({ rec, by, hero = false }) {
         </button>
       )}
 
-      {/* Başla / devam et: ekranın altında sabit */}
-      {total > 0 && !allDone && !rest && (
-        <div className="sticky bottom-0 z-10 -mx-5 mt-3 bg-gradient-to-b from-bg/0 to-bg to-30% px-5 pb-1 pt-4">
-          <button type="button" onClick={() => setGuide(true)} data-press className="btn btn-primary h-14 w-full">
-            {done ? "Kaldığın yerden devam et" : "Antrenmana başla"}
-          </button>
-          {done > 0 && (
-            <button type="button" onClick={restart} data-press className="btn btn-text btn-sm w-full text-acc">
-              Baştan başlat
-            </button>
-          )}
-        </div>
-      )}
+      {/* Başla / devam et: ekranın altında sabit (dock verilmişse oraya çizilir, listenin üstüne binmez) */}
+      {total > 0 && !allDone && !rest && (dock ? createPortal(<div className="pt-3">{startBar}</div>, dock) : (
+        <div className="sticky bottom-0 z-10 -mx-5 mt-3 bg-gradient-to-b from-bg/0 to-bg to-30% px-5 pb-1 pt-4">{startBar}</div>
+      ))}
     </div>
   );
 }

@@ -10,6 +10,10 @@ import { AGE_GROUPS, DOWS, DOW_LONG, GOALS, LEVELS, PLACES, SPORTS, ageFrom, age
 import { bmiOf, bmiText } from "@/lib/fitness/forecast";
 import { todayStr } from "@/lib/utils/format";
 import { TEMPLATES } from "@/lib/fitness/templates";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { useToast } from "@/components/ui/ToastProvider";
+import { useFitLib } from "./useFitLib";
+import { seedTemplatePhotos } from "./templateSeed";
 
 // Seçenek kartlarının simgesi ve kısa açıklaması (yazı model.js'teki listelerden)
 const GOAL_UI = {
@@ -240,6 +244,10 @@ export function ProfileFields({ f, set, withGoal = true, withPlace = true }) {
 // onImport({ file, text, ask }, f, pre), onTemplate(id, f, pre): sonuç kaydedilmeden düzenleme ekranında açılır.
 export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, onTemplate, busy, goal, athletes = [], forUid = "", error = "" }) {
   const [mode, setMode] = useState("ai");
+  const { profile: me, isOwner } = useAuth();
+  const { lib, addMany } = useFitLib();
+  const toast = useToast();
+  const [seed, setSeed] = useState("");
   const [file, setFile] = useState(null);
   const [paste, setPaste] = useState("");
   const [ask, setAsk] = useState("");
@@ -319,6 +327,22 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
       .filter(Boolean)
       .join(" ");
   const pre = { days: sorted, time, weeks, min, start, ...(who ? { for: who, forName: whoName } : {}) };
+  // Hazır program: önce hareket fotoğrafları kütüphaneye (yalnız fotoğrafı olmayanlar), sonra düzenleme ekranı
+  const addTpl = async (id) => {
+    if (seed) return;
+    if (isOwner) {
+      try {
+        const r = await seedTemplatePhotos({ id, orgId: me?.orgId, lib, addMany, onProg: setSeed });
+        const n = r.added + r.drawn;
+        if (n || r.failed) toast([n ? `${n} hareket fotoğrafı eklendi` : "", r.failed ? `${r.failed} fotoğraf çizilemedi, "+" ile ekleyebilirsin` : ""].filter(Boolean).join(" · "));
+      } catch (x) {
+        toast(/storage\//.test(x?.code || "") ? "Fotoğraflar yüklenemedi: Firebase Storage açık değil" : "Fotoğraflar yüklenemedi");
+      } finally {
+        setSeed("");
+      }
+    }
+    onTemplate?.(id, f, pre);
+  };
   // Eksik seçim: düğmenin üstünde yazar (önceden düğme yalnız soluk kalıyordu)
   const missing = !sorted.length ? "En az bir gün seç." : !f.goal ? "Hedef seç." : !f.place ? "Nerede çalışılacağını seç." : !time ? "Saati seç." : who && !f.age ? "Sporcunun yaşını seç." : "";
   const startText = start === todayStr() ? "bugün" : new Date(`${start}T12:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
@@ -398,9 +422,9 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
               <div key={t.id} className="rounded-2xl bg-bg p-3">
                 <b className="block text-[0.9375rem] font-semibold">{t.title}</b>
                 <small className="mt-0.5 block text-[0.8125rem] leading-snug text-mut">{t.sub}</small>
-                <Button className="mt-2.5" loading={busy} onClick={() => onTemplate?.(t.id, f, pre)}>
+                <Button className="mt-2.5" loading={busy} disabled={!!seed} onClick={() => addTpl(t.id)}>
                   <Icon name="plus" className="size-5" />
-                  Örnek programı ekle
+                  {seed || "Örnek programı ekle"}
                 </Button>
               </div>
             ))}

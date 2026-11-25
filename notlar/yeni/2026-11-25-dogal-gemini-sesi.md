@@ -10,3 +10,4 @@
 
 ## Asistan
 - Seslendirme tek yerden: `lib/server/tts.js`. Yeni sesli özellik doğrudan Google'a istek atmaz; `useTts().speak` ya da `lib/speech/ttsClient.js` kullanır. Sabit metinde `cache: true`, kişisel veri taşıyan cevapta değil.
+- Fitness adım adım antrenman (FitGuided) anlatımı da ortak servise bağlandı: `FIT_VOICE = { style: "fitness", cache: true }`; ses gelmezse bekleme süresi 5→8 sn + metin.

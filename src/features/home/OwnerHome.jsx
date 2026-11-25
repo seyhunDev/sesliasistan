@@ -1,132 +1,79 @@
 "use client";
 
-import { BilgiTile } from "@/features/bilgi/BilgiTile";
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
-import { canSeeAthletes } from "@/features/athletes/access";
+import { useHesap } from "@/features/auth/useHesap";
+import { BilgiTile } from "@/features/bilgi/BilgiTile";
 import { PaidNotice } from "@/features/receipts/Payment";
 import { useWeather } from "@/features/weather/useWeather";
-import { fitDays, homeActions } from "@/lib/homeTiles";
-import { useQuota } from "@/lib/quota";
-import { InboxSheet, useInbox } from "./Inbox";
-import { HomeGrid } from "./HomeGrid";
-import { useKind } from "@/features/auth/useKind";
-import { canReceipts, isAthleteSide, isCoach, isPlain } from "@/lib/kinds";
-import { Row, RowList } from "@/components/ui/Row";
-import { listsFor } from "@/features/shop/shop";
-import { ClubRows } from "./HomeWidgets";
-import { HomeSummary } from "./HomeSummary";
-import { MyAttendanceCard } from "./MyAttendanceCard";
-import { MyFitCard } from "./MyFitCard";
-import { myFit } from "@/lib/fitness/model";
+import { fitDays } from "@/lib/homeTiles";
 import { useRaceHome } from "@/features/athletes/raceHome";
-import { RaceLive } from "./RaceLive";
-import { useMeeting } from "@/features/meeting/MeetingProvider";
-import { IpadHome, Waiting } from "./IpadHome";
 import { IntroTile } from "@/components/ui/IntroTile";
 import { SailingPreview } from "@/features/intro/SailingPreview";
+import { InboxSheet, useInbox } from "./Inbox";
+import { HomeGrid } from "./HomeGrid";
+import { usePages } from "./usePages";
+import { ClubRows } from "./HomeWidgets";
+import { HomeSummary } from "./HomeSummary";
+import { RaceLive } from "./RaceLive";
+import { IpadHome, Waiting } from "./IpadHome";
 
-// Ana sayfa (Seyhun 2026-11-11 "A · Zaman şeridi", 2026-11-12 iPhone'da da aynı): IpadHome (lacivert; Hava, Takvim, Bekleyen, Kulüp). Alttaki asistan kubbesi her sayfada aynı (TabBar).
-export function OwnerHome() {
-  const { profile } = useAuth();
+// ÜÇ ANA SAYFA (Seyhun 2026-11-25): ana hesap (bu dosya, OwnerHome), normal kullanıcı (NormalHome), sporcu (SporcuHome).
+// Kim neyi görür lib/hesapGorunum.js'te; görünüm useHesap'tan (ana hesap "… gibi gör" ile ötekilerine bakar).
+// Üçü aynı çerçeve: HomeFrame (IpadHome: üst satır, Hava, Takvim; Seyhun 2026-11-11 "A · Zaman şeridi"), sağ sütun / telefonda alt kısım her sayfanın kendisi.
+
+// Ortak çerçeve: hava, zil penceresi, Tümü sayfaları; children(inbox, onInbox) sağ sütunu çizer
+export function HomeFrame({ children }) {
+  const h = useHesap();
   const weather = useWeather();
-  const staff = profile?.role === "staff";
-  const qa = useQuota("assistant");
-  const qr = useQuota("receipt");
   const inbox = useInbox();
   const setSheet = inbox.setOpen;
+  const actions = usePages();
   // Gidecek sayfası olmayan bildirime dokununca (/?bildirim=1) zil penceresi açılır, bildirimin tam metni orada
   useEffect(() => {
     if (!/[?&]bildirim=1/.test(window.location.search)) return;
     setSheet(true);
     window.history.replaceState(null, "", "/");
   }, [setSheet]);
-
-  // Telefon ve iPad aynı ana sayfa (Seyhun 2026-11-12 "hem iPad hem iPhone'da, birleştir"): IpadHome, ekrana göre dizilişi globals.css'te
+  const onInbox = () => setSheet(true);
   return (
     <>
-      <HomeFeed weather={weather} inbox={inbox} onInbox={() => setSheet(true)} quota={staff && qa && qr ? { qa, qr } : null} />
+      <IpadHome
+        weather={weather}
+        inbox={inbox}
+        onInbox={onInbox}
+        can={{ yoklama: h.athletes, yonet: h.owner || h.coach }}
+        side={{ all: <HomeGrid pages={actions} />, body: children(inbox, onInbox) }}
+      />
       <InboxSheet inbox={inbox} open={inbox.open} onClose={() => setSheet(false)} />
     </>
   );
 }
 
-// Sayfa düğmeleri (homeActions, yetkiye göre) "Tümü" penceresinde (HomeGrid allOnly); sağ sütun / telefonda alt kısım: yarış, Bekleyen, Kulüp, hesaba göre kartlar.
-export function HomeFeed({ weather, inbox, onInbox, quota }) {
-  const { profile } = useAuth();
-  const { plans, lessons, members, notes, fitOthers } = useData();
-  const staff = profile?.role === "staff";
-  const owner = profile?.role === "owner";
-  const kind = useKind();
-  const side = isAthleteSide(kind);
-  const plain = !owner && isPlain(kind); // normal kullanıcı: sade ana sayfa (Seyhun 2026-11-24)
-  const coach = isCoach(profile);
-  const athletes = canSeeAthletes(profile?.email);
+// Ana hesap: süren yarış, Tekne ekranı (Aç · Yönet), Bekleyen, ödeme bildirimi, Velora Sailing, Kulüp listesi
+export function OwnerHome() {
+  const h = useHesap();
+  const { plans, members, fitOthers } = useData();
   const race = useRaceHome();
-  const { openMeeting } = useMeeting();
   const router = useRouter();
-  const training = plans.some((p) => (p.cat || p.category) === "Antrenman");
-  // Antrenman kartında fitness antrenmanları da: kendi planların ve (ana hesapta) sporcularınki
-  const fit = useMemo(() => (side ? [] : fitDays(plans, owner ? fitOthers || [] : [], members, profile?.uid)), [side, owner, plans, fitOthers, members, profile?.uid]);
-
-  const actions = homeActions({
-    staff,
-    owner,
-    side,
-    parent: kind === "parent",
-    athletes,
-    races: race.on,
-    training,
-    receipts: canReceipts(kind),
-    shop: listsFor(kind, members).length > 0,
-    lessons: lessons.length > 0,
-    fit: staff && myFit(plans, profile?.uid).length > 0,
-    plain,
-    coach,
-  }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
-  // Ana sayfa (Seyhun 2026-11-11 "A · Zaman şeridi", 2026-11-12 telefonda da): lacivert tek ekran, hava ve takvim ayrı panellerde; sağ sütunda yarış, Bekleyen, Kulüp
+  // Kulüp › Antrenman satırında fitness antrenmanları da: kendi planların ve sporcularınki
+  const fit = useMemo(() => fitDays(plans, fitOthers || [], members, h.profile?.uid), [plans, fitOthers, members, h.profile?.uid]);
   return (
-      <IpadHome
-        weather={weather}
-        inbox={inbox}
-        onInbox={onInbox}
-        side={{
-          all: <HomeGrid allOnly pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />,
-          body: (
-            <>
-              {athletes && <RaceLive open={race.open} />}
-              {(owner || side) && <BilgiTile owner={owner} />}
-              <Waiting inbox={inbox} onAll={onInbox} />
-              {coach && (
-                <RowList>
-                  <Row href="/bilgi/yonet" title="Yönet" />
-                </RowList>
-              )}
-              {plain && (
-                <RowList>
-                  <Row href="/english" title="İngilizce" />
-                </RowList>
-              )}
-              {quota && !plain && (
-                <p className="px-1 text-[0.75rem] tabular-nums text-mut">
-                  Bugün kalan · asistan {quota.qa.left}/{quota.qa.limit} · fiş {quota.qr.left}/{quota.qr.limit}
-                </p>
-              )}
-              <PaidNotice />
-              {/* Velora'nın içinde tam ekran açılır (/sailing, Seyhun 2026-11-22); tanıtım animasyonu Sailing senaryoları gibi (2026-11-23, örnek A) */}
-              <IntroTile preview={<SailingPreview />} title="Velora Sailing" sub="Taktik ve kural senaryoları" onOpen={() => router.push("/sailing")} />
-              {owner && (
-                <div className="iph-club empty:hidden">
-                  <HomeSummary title="Kulüp" money={canReceipts(kind)} race={null} dues={!!athletes} invoices lead={athletes ? <ClubRows open={race.open} fit={fit} /> : null} />
-                </div>
-              )}
-              {staff && <MyFitCard />}
-              {side && <MyAttendanceCard kind={kind} />}
-            </>
-          ),
-        }}
-      />
-    );
+    <HomeFrame>
+      {(inbox, onInbox) => (
+        <>
+          {h.athletes && <RaceLive open={race.open} />}
+          <BilgiTile owner />
+          <Waiting inbox={inbox} onAll={onInbox} />
+          <PaidNotice />
+          {/* Velora'nın içinde tam ekran açılır (/sailing, Seyhun 2026-11-22); tanıtım animasyonu Sailing senaryoları gibi (2026-11-23, örnek A) */}
+          <IntroTile preview={<SailingPreview />} title="Velora Sailing" sub="Taktik ve kural senaryoları" onOpen={() => router.push("/sailing")} />
+          <div className="iph-club empty:hidden">
+            <HomeSummary title="Kulüp" money race={null} dues={!!h.athletes} invoices lead={h.athletes ? <ClubRows open={race.open} fit={fit} /> : null} />
+          </div>
+        </>
+      )}
+    </HomeFrame>
+  );
 }

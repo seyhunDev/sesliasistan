@@ -2,17 +2,10 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { useAuth } from "@/features/auth/AuthProvider";
-import { useData } from "@/features/data/DataProvider";
-import { canSeeAthletes } from "@/features/athletes/access";
-import { useKind } from "@/features/auth/useKind";
-import { canReceipts, isAthleteSide, isCoach, isPlain } from "@/lib/kinds";
-import { listsFor } from "@/features/shop/shop";
-import { myFit } from "@/lib/fitness/model";
-import { useRaceHome } from "@/features/athletes/raceHome";
-import { useMeeting } from "@/features/meeting/MeetingProvider";
-import { homeActions } from "@/lib/homeTiles";
 import { Icon } from "@/components/ui/Icon";
+import { useHesap } from "@/features/auth/useHesap";
+import { tabsOf } from "@/lib/hesapGorunum";
+import { usePages } from "./usePages";
 
 // Geniş ekran (bilgisayar, yatay tablet): alt sekme çubuğu yerine solda sabit menü (Seyhun 2026-10-18: "cep telefonu, tablet ve
 // web uyumlu olsun"). Telefonda ve dik tablette görünmez; sayfaların içi aynı kalır, yalnız genişler (globals.css "Geniş ekran").
@@ -23,45 +16,6 @@ const sub = (cb) => {
   return () => m.removeEventListener("change", cb);
 };
 export const useWide = () => useSyncExternalStore(sub, () => window.matchMedia(WIDE).matches, () => false);
-
-const FULL_TABS = [
-  ["/", "Ana sayfa"],
-  ["/calendar", "Takvim"],
-  ["/messages", "Mesajlar"],
-  ["/tasks", "Görevler"],
-];
-// Normal kullanıcı (Seyhun 2026-11-24): alt çubukla aynı; Mesajlar ve Görevler gruplarda
-const PLAIN_TABS = [
-  ["/", "Ana sayfa"],
-  ["/calendar", "Takvim"],
-  ["/sailing", "Kulüp"],
-  ["/english", "İngilizce"],
-];
-
-// Ana sayfadaki sayfa düğmeleriyle aynı liste ve aynı izinler (homeActions)
-function usePages() {
-  const { profile } = useAuth();
-  const { plans, lessons, members } = useData();
-  const kind = useKind();
-  const race = useRaceHome();
-  const { openMeeting } = useMeeting();
-  const staff = profile?.role === "staff";
-  return homeActions({
-    staff,
-    owner: profile?.role === "owner",
-    side: isAthleteSide(kind),
-    parent: kind === "parent",
-    athletes: canSeeAthletes(profile?.email),
-    races: race.on,
-    training: plans.some((p) => (p.cat || p.category) === "Antrenman"),
-    receipts: canReceipts(kind),
-    shop: listsFor(kind, members).length > 0,
-    lessons: lessons.length > 0,
-    fit: staff && myFit(plans, profile?.uid).length > 0,
-    plain: profile?.role !== "owner" && isPlain(kind),
-    coach: isCoach(profile),
-  }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
-}
 
 // Açık sayfa: mavi zemin, solda mavi çizgi, beyaz yazı (Seyhun 2026-11-13 lacivert menü, örnek ana-sayfa/sade-2026-11/solmenu.html)
 const row = (on) =>
@@ -80,9 +34,8 @@ function readOpen() {
 
 export function SideNav({ path, unread = 0, orb = null }) {
   const pages = usePages();
-  const { profile } = useAuth();
-  const kind = useKind();
-  const TABS = profile?.role !== "owner" && isPlain(kind) ? PLAIN_TABS : FULL_TABS;
+  const { view, profile } = useHesap();
+  const TABS = tabsOf(view); // alt çubukla aynı sekmeler (lib/hesapGorunum.js)
   const [open, setOpen] = useState(null); // null: henüz okunmadı (sunucu çizimiyle aynı başlar)
   useEffect(() => {
     document.body.dataset.side = "1";

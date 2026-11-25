@@ -23,6 +23,8 @@ import { openText, readOpens } from "@/lib/openTime";
 import { logout } from "@/lib/auth";
 import { FaceIdRow } from "@/features/ios/AppLock";
 import { KIND_LABEL, isCoach, isPlain, kindOf } from "@/lib/kinds";
+import { setGibiGor, useHesap } from "@/features/auth/useHesap";
+import { useRouter } from "next/navigation";
 import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 
 // Lacivert üst: geri, Ayarlar, altında ad · hesap türü, sağda fotoğraf (yeni tasarım, 2026-11-03)
@@ -144,7 +146,11 @@ export default function SettingsPage() {
   const { profile } = useAuth();
   const { members } = useData();
   const n = useNotifications();
+  const h = useHesap();
+  const router = useRouter();
   if (!profile) return null;
+  // "… gibi gör" (ana hesap): o hesabın Ayarlar düzeni görünür (lib/hesapGorunum.js)
+  if (h.preview) return <PersonSettings profile={{ ...profile, role: "staff", kind: h.kind, coach: false }} n={n} />;
   if (profile.role !== "owner") return <PersonSettings profile={profile} n={n} />;
 
   return (
@@ -184,6 +190,12 @@ export default function SettingsPage() {
 
         <Sec>
           <Row title="Testler" href="/settings/tests" />
+        </Sec>
+
+        {/* Üç hesap görünümü (Seyhun 2026-11-25 "ben her şeye hakim olmalıyım"): ötekilerin ana sayfası, alt çubuğu, menüsü; veri yine senin */}
+        <Sec title="Görünüm">
+          <Row title="Normal kullanıcı gibi gör" onClick={() => (setGibiGor("normal"), router.push("/"))} chevron />
+          <Row title="Sporcu gibi gör" onClick={() => (setGibiGor("sporcu"), router.push("/"))} chevron />
         </Sec>
 
         <Sec title="Hesap">

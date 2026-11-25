@@ -210,6 +210,12 @@ export function TtsProvider({ children }) {
       setSpeaking(true);
       timingSpeak(); // süre kaydı: okuma başladı
     };
+    // iPhone/iPad: cancel bazen kuyruktaki parçaları silmiyor; eski okumanın parçası başlarsa susturulur (iki ses üst üste olmasın)
+    list.slice(1).forEach((u) => {
+      u.onstart = () => {
+        if (cur.current !== list) synth.cancel();
+      };
+    });
     list.forEach((u, i) => {
       u.onerror = end;
       if (i === list.length - 1) u.onend = end;
@@ -280,6 +286,8 @@ export function TtsProvider({ children }) {
       }
       if (id !== rid.current) return true; // arada başka bir okuma başladı veya durduruldu
       if (i + 1 < parts.length) fetchPart(parts[i + 1], 15000).catch(() => { }); // sıradaki parça çalarken hazırlansın
+      // Cihaz sesinden kalan bir okuma varsa susar: sunucu sesiyle aynı anda iki ses çalmasın
+      if (canDevice() && !cur.current && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) window.speechSynthesis.cancel();
       const done = await new Promise((ok) => {
         a.onended = () => ok(true);
         a.onerror = () => ok(false);
