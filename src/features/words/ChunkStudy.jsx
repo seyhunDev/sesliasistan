@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -178,27 +178,33 @@ export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpe
     setPhase(talk ? "talk" : "done");
     await onSave(right);
   };
-  const mic = useEnMic({ onFail: (m) => setHeard({ err: m }), onLong: () => tapMic() });
+  const lvRef = useRef(null);
+  const mic = useEnMic({ onFail: (m) => setHeard({ err: m }), onLong: () => tapMic(), levelRef: lvRef });
+  // Açılırken, dururken ve yapay zeka bakarken dokunuş yok sayılır (önceden ikinci dokunuş kaydı boş gönderiyordu)
   const tapMic = async () => {
-    if (listening) return;
+    if (listening || mic.state === "opening" || mic.state === "stopping") return;
     if (!mic.on) {
       primeEn();
       setHeard(null);
       return mic.start();
     }
-    const blob = await mic.stop();
-    if (!blob) return setHeard({ err: "Ses duyulmadı, tekrar dene." });
     setListening(true);
     try {
+      const blob = await mic.stop();
+      if (!blob) return setHeard({ err: "Sesini duyamadım. Bas, cümleyi söyle, sonra yeniden bas." });
       const r = await hearSay(say0, blob);
       setHeard(r);
       if (!r.ok) setMiss(true);
       sayEn(say0);
     } catch (e) {
-      setHeard({ err: e.message });
+      setHeard({ err: e.message || "Dinleyemedim, tekrar dene." });
     } finally {
       setListening(false);
     }
+  };
+  const again = () => {
+    setHeard(null);
+    tapMic();
   };
   const show = () => {
     mic.cancel();
@@ -295,6 +301,8 @@ export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpe
 
   if (phase === "recall") {
     const answered = heard && (heard.shown || typeof heard.ok === "boolean");
+    const wrong = answered && !heard.ok && !heard.shown;
+    const st = listening || mic.state === "stopping" ? "wait" : mic.state === "opening" ? "open" : mic.rec ? "rec" : "idle";
     return (
       <>
         {top(
@@ -306,8 +314,8 @@ export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpe
         )}
         <Steps at={3} />
         <section aria-label="Hatırla" className="relative flex flex-1 flex-col justify-center gap-5 py-6">
-          {pic.img || pic.wait ? <Pic pic={pic} className="mx-auto max-w-[20rem]" /> : <TrLine text={c.fills[0][2]} part={c.fills[0][1]} className="text-[1.5rem] font-semibold leading-[1.3]" />}
-          <div className="min-h-[3.25rem] text-[1.25rem] font-bold leading-snug">
+          {pic.img ? <Pic pic={pic} className="mx-auto max-w-[20rem]" /> : <TrLine text={c.fills[0][2]} part={c.fills[0][1]} className="text-[1.5rem] font-semibold leading-[1.3]" />}
+          <div aria-live="polite" className="min-h-[3.25rem] text-[1.25rem] font-bold leading-snug">
             {answered ? (
               <button type="button" onClick={() => sayEn(say0)} className="text-left">
                 {heard.ok ? (
@@ -316,39 +324,53 @@ export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpe
                   </span>
                 ) : (
                   <>
-                    {!heard.shown && <span className="block text-[0.9375rem] font-semibold text-[#f3a39a]">{heard.heard}</span>}
+                    {wrong && <span className="block text-[0.9375rem] font-semibold text-[#f3a39a]">Sen: {heard.heard}</span>}
                     <span className="text-white/90">{say0}</span>
                   </>
                 )}
               </button>
-            ) : heard?.err ? (
+            ) : heard?.err && st === "idle" ? (
               <p className="text-[1rem] font-semibold text-[#f3a39a]">{heard.err}</p>
             ) : null}
           </div>
-          {!answered && (
-            <button
-              type="button"
-              onClick={tapMic}
-              disabled={listening}
-              aria-label={mic.on ? "Bitti" : "Söyle"}
-              className={`mx-auto grid size-[4.5rem] place-items-center rounded-full text-white disabled:opacity-60 ${mic.on ? "animate-pulse bg-[#ff3d77]" : GRAD}`}
-            >
-              <Icon name={mic.on ? "up" : "mic"} className="size-7" />
-            </button>
+          {(!answered || wrong) && (
+            <div className="flex flex-col items-center gap-3">
+              <button
+                type="button"
+                onClick={wrong ? again : tapMic}
+                aria-label={st === "rec" ? "Bitti" : "Bas ve konuş"}
+                aria-busy={st === "wait" || st === "open"}
+                className={`relative grid place-items-center rounded-full text-white transition-transform active:scale-95 ${wrong ? "size-14" : "size-[5.5rem]"} ${st === "rec" ? "bg-[#ff3d77]" : st === "idle" ? GRAD : "bg-white/10"}`}
+              >
+                {st === "rec" && (
+                  <span
+                    ref={lvRef}
+                    aria-hidden
+                    className="absolute inset-0 rounded-full bg-[#ff3d77]/35 transition-transform duration-75"
+                    style={{ transform: "scale(calc(1 + var(--lv, 0) * 0.7))" }}
+                  />
+                )}
+                {(st === "wait" || st === "open") && <span aria-hidden className="absolute inset-0 animate-spin rounded-full border-[3px] border-white/15 border-t-[#ffb38a]" />}
+                <Icon name={st === "rec" ? "up" : "mic"} className={`relative ${wrong ? "size-6" : "size-8"}`} />
+              </button>
+              <span className={`text-[0.9375rem] font-semibold ${st === "rec" ? "text-[#ff9ab4]" : "text-white/60"}`}>
+                {st === "rec" ? "Dinliyorum · bitince bas" : st === "open" ? "Mikrofon açılıyor…" : st === "wait" ? "Bakıyorum…" : wrong ? "Tekrar söyle" : "Bas ve konuş"}
+              </span>
+            </div>
           )}
         </section>
         <footer className="relative flex items-center justify-between gap-3">
           {answered ? (
-            <Button variant="text" onClick={() => finish(!miss, false)} className="!px-0 !text-white/50">
+            <Button variant="text" onClick={() => (mic.cancel(), finish(!miss, false))} disabled={st !== "idle"} className="!px-0 !text-white/50">
               Atla
             </Button>
           ) : (
-            <Button variant="text" onClick={show} disabled={listening} className="!px-0 !text-white/50">
+            <Button variant="text" onClick={show} disabled={st === "wait"} className="!px-0 !text-white/50">
               Göster
             </Button>
           )}
           {answered && (
-            <Button variant="secondary" full={false} onClick={() => finish(!miss, true)} className={GO}>
+            <Button variant="secondary" full={false} onClick={() => (mic.cancel(), finish(!miss, true))} disabled={st === "wait"} className={GO}>
               Konuş
             </Button>
           )}
