@@ -21,12 +21,11 @@ import { chunkStats, dueChunks } from "@/lib/englishChunkStudy";
 import { DECK_KEY, cachedDeck } from "@/lib/englishWords";
 import { dayPlans } from "@/lib/homeTiles";
 import { isTraining } from "@/lib/trainingLog";
-import { initials, todayStr } from "@/lib/utils/format";
-import { Icon } from "@/components/ui/Icon";
+import { todayStr } from "@/lib/utils/format";
 import { InboxSheet, useInbox } from "./Inbox";
 import { Waiting } from "./IpadHome";
 import { DersCard } from "./DersCard";
-import { SporcuAdd, SporcuMenu } from "./SporcuMenu";
+import { SahneTop, SporcuAdd, SporcuMenu } from "./SporcuMenu";
 
 // SPORCU ANA SAYFASI · "Sahne" (Seyhun 2026-11-25 "tamamen farklı, profesyonel, modern"; A seçti; örnek velora-tarama/sporcu-ana-yeni.html):
 // Fitness Sahne ile aynı dil: koyu zemin, dar dev başlıklar (Barlow Condensed), tek vurgu limon sarısı. Telefon önce; iPad'de iki sütun (sporcu.css).
@@ -70,7 +69,7 @@ export function SporcuHome() {
   return (
     <>
       <main data-theme="dark" className={`sh ${liveHead.variable}`} data-home-sporcu>
-        <Top inbox={inbox} onInbox={() => setSheet(true)} onMenu={() => setMenu(true)} onAdd={() => setAdd(true)} />
+        <SahneTop inbox={inbox} onInbox={() => setSheet(true)} onMenu={() => setMenu(true)} onAdd={() => setAdd(true)} />
         <div className="sh-grid">
           <div className="sh-col">
             <Hello tr={tr} now={now} />
@@ -96,33 +95,6 @@ export function SporcuHome() {
       <SporcuMenu open={menu} onClose={() => setMenu(false)} />
       <SporcuAdd open={add} onClose={() => setAdd(false)} />
     </>
-  );
-}
-
-// Üst çubuk (Seyhun 2026-11-25 "karman çorman, menü ikonu koyalım; Ekle diğer düğmelerle aynı, sadece artı")
-function Top({ inbox, onInbox, onMenu, onAdd }) {
-  const { profile } = useHesap();
-  const d = new Date();
-  const n = inbox.count || 0;
-  return (
-    <header className="sh-top">
-      <button type="button" data-press onClick={onMenu} aria-label="Menü" className="sh-rb">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-        </svg>
-      </button>
-      <span className="sh-date">{d.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}</span>
-      <button type="button" data-press onClick={onAdd} aria-label="Ekle" className="sh-rb">
-        <Icon name="plus" className="size-5" />
-      </button>
-      <button type="button" data-press onClick={onInbox} aria-label={n ? `Bildirimler, ${n} yeni` : "Bildirimler"} className="sh-rb">
-        <Icon name="bell" className="size-5" />
-        {n > 0 && <em className="sh-badge num">{n > 9 ? "9+" : n}</em>}
-      </button>
-      <Link href="/settings" aria-label="Ayarlar" className="sh-me">
-        {initials(profile?.name)}
-      </Link>
-    </header>
   );
 }
 
@@ -174,7 +146,7 @@ function useTraining(now) {
 }
 
 // Bugünün fitness antrenmanı (antrenörün hazırladığı): { p, fin, st, n (hareket), sets, go }; Başla doğrudan adım adım ekranı açar
-function useTodayFit() {
+export function useTodayFit() {
   const { profile } = useHesap();
   const { plans } = useData();
   const { openAdd } = useAdd();
@@ -296,7 +268,7 @@ function FitHero({ fit }) {
 }
 
 // Antrenman da varsa: fitness yatay tek kart
-function FitWide({ fit }) {
+export function FitWide({ fit }) {
   return (
     <button type="button" data-press onClick={fit.go} className="sh-wide sh-fit">
       <span className="min-w-0 flex-1">
@@ -369,7 +341,7 @@ function BoatTile() {
     </Link>
   );
 }
-function SailingTile() {
+export function SailingTile() {
   return (
     <Link href="/sailing" data-press className="sh-tile sh-sailing">
       <span className="sh-k">Velora Sailing</span>

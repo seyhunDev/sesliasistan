@@ -202,7 +202,7 @@ export function ClubRows({ open, fit }) {
   );
 }
 
-function useLastTraining(plans, today) {
+export function useLastTraining(plans, today) {
   const [t, setT] = useState(() => readSum().train || null);
   useEffect(() => {
     let live = true;

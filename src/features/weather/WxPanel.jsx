@@ -65,7 +65,7 @@ export function WindArrow({ dir, size = 16, color = "currentColor", className = 
 }
 
 // Tek satır yağış: burada bekleniyorsa saat aralığı + mm, yoksa radar yakında gösteriyorsa uzaklık ve yön
-function rainText(rows, nowH, radar) {
+export function rainText(rows, nowH, radar) {
   const rs = rows?.length ? rainSpan(rows, nowH ?? -1, radar) : null;
   if (!rs) return "";
   if (rs.here) {
