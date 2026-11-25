@@ -235,7 +235,7 @@ export function raceForPlan(plan, open, today) {
   return now.length === 1 ? now[0].id : null;
 }
 
-// Ana sayfa › İşlemler düğmeleri, gruplu (sıra sabit). o: { staff, owner, side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi),
+// Ana sayfa › İşlemler düğmeleri, gruplu (sıra sabit). o: { staff, owner, side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi), plain, coach,
 // races (Yarışlar ana sayfada), training, receipts, shop, lessons, fit (antrenörün hazırladığı fitness antrenmanı var) }. Toplantı bir sayfa değil: { id: "meeting" } döner.
 // Dönüş: [{ title, items: [{ href | id, icon, label }] }]; boş grup çıkmaz.
 export function homeActions(o) {
@@ -250,16 +250,16 @@ export function homeActions(o) {
       { href: "/tasks", icon: "task", label: "Görevler" },
       { href: "/notes", icon: "note", label: "Notlar" },
       o.plain && { href: "/messages", icon: "chat", label: "Mesajlar" },
-      !o.side && full && { id: "meeting", icon: "mic", label: "Toplantı" },
+      !o.side && full && { id: "meeting", icon: "mic", label: "Toplantı", hid: true },
       o.side && { href: "/my-attendance", icon: "check", label: o.parent ? "Yoklama" : "Yoklamam" },
-      { href: "/birthdays", icon: "cake", label: "Doğum günü" },
+      { href: "/birthdays", icon: "cake", label: "Doğum günü", hid: !o.side }, // sporcu tarafında görünür kalır
       full && { href: "/archive", icon: "archive", label: "Arşiv" },
     ]],
     ["Kulüp", [
-      o.coach && { href: "/bilgi/yonet", icon: "clock", label: "Yönet" }, // antrenörün kendi Yönet'i (kendi sporcuları, kendi linki)
+      o.coach && !o.athletes && { href: "/bilgi/yonet", icon: "clock", label: "Yönet" }, // antrenörün kendi Yönet'i (kendi sporcuları, kendi linki)
       o.athletes && { href: "/athletes", icon: "anchor", label: "Sporcular" },
       o.athletes && { href: "/athletes/attendance", icon: "checks", label: "Yoklama" },
-      o.athletes && !o.side && { href: "/bilgi/yonet", icon: "clock", label: "Antrenman" }, // Yönet: süre, yoklama, günlük (2026-11-23)
+      o.athletes && !o.side && { href: "/bilgi/yonet", icon: "clock", label: "Yönet" }, // süre, yoklama, günlük (2026-11-23; adı Seyhun 2026-11-25)
       !o.athletes && !o.side && full && o.training && { href: "/training", icon: "clock", label: "Antrenman" },
       { href: o.races ? "/athletes/races" : "/races", icon: "flag", label: "Yarışlar" }, // Kulübüm · Takvim tek sayfa
       o.athletes && !o.side && { href: "/media", icon: "image", label: "Medya" }, // antrenman ve yarış fotoğraf/videoları (Seyhun 2026-10-22)
@@ -272,45 +272,28 @@ export function homeActions(o) {
     ]],
     ["Hava ve deniz", [
       { href: "/weather", icon: "wind", label: "Hava" }, // bölge haritası rüzgârı da gösterir (eski Rüzgâr düğmesi)
-      !o.side && full && { href: "/sea", icon: "map", label: "Gemiler" }, // gemiler canlı, Sahil Güvenlik, acil (Seyhun 2026-10-23)
-      !o.side && full && { href: "/cams", icon: "video", label: "Kameralar" }, // halka açık canlı kameralar, Windy (Seyhun 2026-10-23)
+      !o.side && full && { href: "/sea", icon: "map", label: "Gemiler", hid: true }, // gemiler canlı, Sahil Güvenlik, acil (Seyhun 2026-10-23)
+      !o.side && full && { href: "/cams", icon: "video", label: "Kameralar", hid: true }, // halka açık canlı kameralar, Windy (Seyhun 2026-10-23)
     ]],
     ["Kişisel", [
       (!o.staff || o.fit) && { href: "/fitness", icon: "dumbbell", label: "Fitness" },
       !o.side && { href: "/english", icon: "chat", label: "İngilizce" }, // kelimeler ve hazır cümleler (Seyhun 2026-10-22)
       o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
-      o.lessons && full && { href: "/schedule", icon: "book", label: "Dersler" },
+      o.lessons && full && { href: "/schedule", icon: "book", label: "Dersler", hid: true },
     ]],
     ["Kişiler ve sosyal", [
       !o.staff && { href: "/people/staff", icon: "users", label: "Kişiler" },
-      !o.staff && { href: "/posts", icon: "instagram", label: "Instagram", brand: "instagram" },
+      !o.staff && { href: "/posts", icon: "instagram", label: "Instagram", brand: "instagram", hid: true },
       !o.staff && { href: "/events", icon: "tent", label: "Etkinlikler" },
     ]],
   ];
-  return groups
-    .map(([title, items]) => ({ title, items: items.filter(Boolean) }))
-    .filter((g) => g.items.length);
+  // Seyrek sayfalar (Seyhun 2026-11-25 "gizli olarak, tıkladığımda açılabilir bir yerde tutalım"): kendi gruplarından çıkar, en sonda kapalı "Gizli" grubunda
+  const all = groups.map(([title, items]) => ({ title, items: items.filter(Boolean) }));
+  const hid = all.flatMap((g) => g.items.filter((a) => a.hid));
+  return [...all.map((g) => ({ ...g, items: g.items.filter((a) => !a.hid) })), { title: "Gizli", items: hid }].filter((g) => g.items.length);
 }
 
-// Ana sayfa › Kısayollar: İşlemler'in hepsi yerine en çok SHORTCUT_MAX düğme; kalanlar "Tümü" penceresinde (gruplu).
-// Seçim kişinin profilinde (users/{uid}.homeLinks: anahtar listesi, anahtar = href ya da id). Seçim yoksa ya da seçilenler
-// bu kişide yoksa varsayılanlar, eksik kalırsa grupların sırasıyla tamamlanır. Dönüş: düğmeler (homeActions öğeleri).
-export const SHORTCUT_MAX = 7; // 4 sütunda iki sıra: 7 kısayol + "Tümü"
-export const DEFAULT_SHORTCUTS = ["/plans", "/notes", "/athletes", "/athletes/attendance", "meeting", "/inventory", "/receipts"];
 export const linkKey = (a) => a.href || a.id;
-export function shortcutsOf(groups, picked) {
-  const all = groups.flatMap((g) => g.items);
-  const byKey = new Map(all.map((a) => [linkKey(a), a]));
-  const own = Array.isArray(picked) ? picked.filter((k) => byKey.has(k)) : [];
-  const keys = own.length ? own : DEFAULT_SHORTCUTS.filter((k) => byKey.has(k));
-  if (!own.length) for (const a of all) if (keys.length < SHORTCUT_MAX && !keys.includes(linkKey(a))) keys.push(linkKey(a));
-  return keys.slice(0, SHORTCUT_MAX).map((k) => byKey.get(k));
-}
-// Tümü penceresinde bir düğmeyi kısayollara ekle/çıkar: yeni anahtar listesi (dolu iken ekleme yapılmaz → null)
-export function toggleShortcut(current, key) {
-  if (current.includes(key)) return current.filter((k) => k !== key);
-  return current.length >= SHORTCUT_MAX ? null : [...current, key];
-}
 
 // Ana sayfa › NOTLAR: arşivlenmemiş notlardan önce sabitlenenler, sonra en yeni (oluşturma ya da son değişiklik); en çok n tane.
 // Bellekteki notlardan (DataProvider), Firestore'a ek okuma yok. Dönüş: { list, total }.
