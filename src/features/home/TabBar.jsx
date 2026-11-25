@@ -931,7 +931,7 @@ function Dome({ noAi = false, tabs = [], bar, slim, rec, active, leaving = false
               {/* Sporcu tarafında asistan düğmesi yok, dört sekme (Seyhun: "sporcu sesli asistanı kullanmayacak", 2026-10-13) */}
               {/* Bas-konuş (Seyhun 2026-10-25 "A · Çubuğun sağ ucunda"): dört sekme solda, büyük küre sağ uçta, baş parmağın altında */}
               <div className="mx-auto flex h-14 max-w-[34rem] items-stretch">
-                <div className="grid min-w-0 flex-1 grid-cols-4">
+                <div className="grid min-w-0 flex-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
                   {/* Sekmeler hesap görünümüne göre (lib/hesapGorunum.js TABS; normal kullanıcıda Kulüp ve İngilizce, Seyhun 2026-11-24) */}
                   {tabs.map(([href, label, icon, key]) => (
                     <NavTab key={href} href={href} icon={icon} label={label} active={href === "/" ? path === "/" : String(path || "").startsWith(href)} badge={key === "msg" ? unread : undefined} />
@@ -1054,7 +1054,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
       canReceipts(kind) && ["camera", "Fiş", "Fotoğrafla", () => openReceipt()],
       owner && ["receipt", "Fatura", "PDF ya da fotoğraf", to("/invoices")],
       !side && ["users", "Toplantı", "Sesli tutanak", () => openMeeting()],
-      ["chat", "Mesaj", "Kişi ya da grup", to("/messages")],
+      !side && ["chat", "Mesaj", "Kişi ya da grup", to("/messages")], // sporcu tarafında Mesajlar yok (2026-11-25)
     ]],
     ["Paylaş", [
       !staff && !side && ["instagram", "Instagram", "Gönderi hazırla", to("/posts/new")],

@@ -7,11 +7,12 @@ import { kindOf } from "./kinds.js";
 // Bildirim türleri (payload.cat): training (antrenman planı: yeni, değişti, iptal, hatırlatma), fitness, chat, absent
 // (devamsızlık), dues (aidat), plan (diğer planlar), task, note, receipt, summary (günlük özetler), extra (rüzgâr, doğum günü,
 // haftalık), calls, race, mail, test
-// Sporcu ve öğrenci: yalnız antrenman, fitness ve mesajlar. Veli: çocuğunun devamsızlığı, aidat ve mesajlar.
+// Sporcu ve öğrenci: yalnız antrenman ve fitness. Veli: çocuğunun devamsızlığı ve aidat. Mesaj (chat) sporcu tarafına gitmez:
+// Mesajlar sporcu tarafında gizli (Seyhun 2026-11-25 "mesajları şimdilik sporculara göstermeyelim").
 export const ALLOW = {
-  athlete: new Set(["training", "fitness", "chat", "test"]),
-  student: new Set(["training", "fitness", "chat", "test"]),
-  parent: new Set(["absent", "dues", "chat", "test"]),
+  athlete: new Set(["training", "fitness", "test"]),
+  student: new Set(["training", "fitness", "test"]),
+  parent: new Set(["absent", "dues", "test"]),
 };
 
 // Kategorisi Antrenman ya da başlığında antrenman/idman geçen plan (fitness hariç; lib/trainingLog buradan alır)

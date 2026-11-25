@@ -23,7 +23,6 @@ import { dayPlans } from "@/lib/homeTiles";
 import { isTraining } from "@/lib/trainingLog";
 import { todayStr } from "@/lib/utils/format";
 import { InboxSheet, useInbox } from "./Inbox";
-import { Waiting } from "./IpadHome";
 import { DersCard } from "./DersCard";
 import { SahneTop, SporcuAdd, SporcuMenu } from "./SporcuMenu";
 
@@ -33,7 +32,7 @@ import { SahneTop, SporcuAdd, SporcuMenu } from "./SporcuMenu";
 // · antrenman varsa en üstte antrenman dev kartı (içinde Tekne ekranı); fitness da varsa hemen altında yatay tek fitness kartı
 // · antrenman yoksa fitness en üstteki dev alana geçer, Tekne ekranı onun altında küçük kutu (Velora Sailing yanında)
 // · ikisi de yoksa "Serbest gün" ve Tekne ekranı
-// Sonra kayıtlı yarış kendi kartında (kaç gün kaldı büyük; /api/my-races), İngilizce yatay kart, kutular, Bekleyen.
+// Sonra kayıtlı yarış kendi kartında (kaç gün kaldı büyük; /api/my-races), İngilizce yatay kart, kutular. Bekleyen yok (Seyhun 2026-11-25 "zaten takvim var").
 // Üst çubuk: ☰ menü · tarih · ＋ · zil · profil, hepsi aynı yuvarlak düğme; menü ve + Ekle koyu (SporcuMenu.jsx). Asistan yok.
 const pad = (n) => String(n).padStart(2, "0");
 const noSub = () => () => {};
@@ -86,7 +85,6 @@ export function SporcuHome() {
           <div className="sh-col">
             <EnCard />
             <Tiles sailing={!(boat && fit)} />
-            <Waiting inbox={inbox} onAll={() => setSheet(true)} />
             <PaidNotice />
           </div>
         </div>

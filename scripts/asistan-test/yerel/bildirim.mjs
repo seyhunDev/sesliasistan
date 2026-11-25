@@ -157,8 +157,8 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   put("orgs/own/chats/athletes", { type: "group" });
   msg("athletes", "m2", "own", "Cumartesi antrenman 10:00");
   r = await call("own", { event: "chat", chat: "athletes", mid: "m2" });
-  add(G, "Sporcular grubuna yazıldı", "Ali (antrenör), Mete, veli Ayşe alır; aile Eda almaz", sentTo("e-ali") === 1 && F.sent.some((x) => x.to === "t-mete") && sentTo("e-veli") === 1 && sentTo("e-es") === 0);
-  add(G, "grup bildirim metni", "\"Seyhun (Sporcular): …\"", /^Seyhun \(Sporcular\): /.test(to("e-veli")[0]?.payload.title));
+  add(G, "Sporcular grubuna yazıldı", "Ali (antrenör) alır; sporcu Mete, veli Ayşe (Mesajlar sporcu tarafında gizli) ve aile Eda almaz", sentTo("e-ali") === 1 && !F.sent.some((x) => x.to === "t-mete") && sentTo("e-veli") === 0 && sentTo("e-es") === 0);
+  add(G, "grup bildirim metni", "\"Seyhun (Sporcular): …\"", /^Seyhun \(Sporcular\): /.test(to("e-ali")[0]?.payload.title));
 
   F.sent.length = 0;
   put("orgs/own/chats/team", { type: "group" });
@@ -451,8 +451,8 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   r = await call("own", { event: "absent", date: day(0), ids: ["a1"] });
   add(G, "Mete antrenmana gelmedi", "veli Ayşe alır; sporcunun kendisine devamsızlık gitmez", sentTo("e-veli") === 1 && mete().length === 0);
 
-  add(G, "kural tablosu", "sporcu: antrenman, fitness, mesaj; veli: devamsızlık, aidat, mesaj; çalışan ve aile hepsi; türsüz bildirim sporcuya gitmez",
-    rules.allowNotify({ role: "staff", kind: "athlete" }, "training") && rules.allowNotify({ role: "staff", kind: "athlete" }, "fitness") && rules.allowNotify({ role: "staff", kind: "athlete" }, "chat") &&
+  add(G, "kural tablosu", "sporcu: antrenman, fitness; veli: devamsızlık, aidat (mesaj yok); çalışan ve aile hepsi; türsüz bildirim sporcuya gitmez",
+    rules.allowNotify({ role: "staff", kind: "athlete" }, "training") && rules.allowNotify({ role: "staff", kind: "athlete" }, "fitness") && !rules.allowNotify({ role: "staff", kind: "athlete" }, "chat") && !rules.allowNotify({ role: "staff", kind: "parent" }, "chat") &&
     !rules.allowNotify({ role: "staff", kind: "athlete" }, "plan") && !rules.allowNotify({ role: "staff", kind: "athlete" }, "task") && !rules.allowNotify({ role: "staff", kind: "athlete" }, "summary") && !rules.allowNotify({ role: "staff", kind: "athlete" }, undefined) &&
     rules.allowNotify({ role: "staff", kind: "parent" }, "absent") && !rules.allowNotify({ role: "staff", kind: "parent" }, "training") &&
     rules.allowNotify({ role: "staff", kind: "staff" }, "plan") && rules.allowNotify({ role: "staff" }, undefined) && rules.allowNotify({ role: "owner" }, undefined) &&
