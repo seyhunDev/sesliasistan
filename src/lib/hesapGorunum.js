@@ -22,7 +22,8 @@ export function viewOf(role, kind) {
 export const TABS = {
   ana: [["/", "Ana sayfa", "home"], ["/calendar", "Takvim", "cal"], ["/messages", "Mesajlar", "chat", "msg"], ["/tasks", "Görevler", "task"]],
   normal: [["/", "Ana sayfa", "home"], ["/calendar", "Takvim", "cal"], ["/sailing", "Kulüp", "anchor"], ["/english", "İngilizce", "book"]],
-  sporcu: [["/", "Ana sayfa", "home"], ["/calendar", "Takvim", "cal"], ["/messages", "Mesajlar", "chat", "msg"], ["/tasks", "Görevler", "task"]],
+  // Sporcu tarafında Mesajlar yok (Seyhun 2026-11-25 "mesajları şimdilik sporculara göstermeyelim"; /messages ana sayfaya döner)
+  sporcu: [["/", "Ana sayfa", "home"], ["/calendar", "Takvim", "cal"], ["/english", "İngilizce", "book"]], // Görevler yerine İngilizce (Seyhun 2026-11-25)
 };
 export const tabsOf = (view) => TABS[view] || TABS.ana;
 

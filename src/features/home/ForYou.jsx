@@ -14,6 +14,7 @@ import { fitGroups, fitText } from "@/lib/fitness/newProgram";
 import { TLk, totalOf } from "@/lib/receipts";
 import { todayStr } from "@/lib/utils/format";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { useHesap } from "@/features/auth/useHesap";
 import { useOpenInvoices } from "@/features/invoices/openInvoices";
 import { amountText, dueText, urgentInvoices } from "@/lib/invoices";
 
@@ -82,6 +83,7 @@ export function useForYou() {
   const router = useRouter();
   const { plans, tasks, notes, receipts, myUid, nameOf, isStaff, markSeen, deleteRecord, rejectDelete, toggleTask, markPaid } = useData();
   const { chats, personName } = useChat();
+  const { side } = useHesap(); // sporcu tarafında Mesajlar yok (Seyhun 2026-11-25)
   const { openAdd } = useAdd();
   const { openReceipt } = useReceipt();
   const orgId = useAuth().profile?.orgId;
@@ -122,7 +124,7 @@ export function useForYou() {
           ),
         });
   // Mesaj: sohbetler (kişi, grup, Ekip) — okunmamış
-  for (const c of chats)
+  for (const c of side ? [] : chats)
     if (c.unread > 0 && !c.mutedByMe && c.last && !(c.last.deleted && c.unread < 2) && c.last.by !== myUid)
       items.push({
         id: `chat:${c.id}:${c.seq}`,
