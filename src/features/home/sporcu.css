@@ -73,6 +73,9 @@ body.sh-body { background: #0b0b0c; }
 .sh-sailing .sh-k { color: #a5f3fc; }
 .sh-boat { background: linear-gradient(160deg, #14532d, #0b1410); border-color: #166534; }
 .sh-boat .sh-k { color: #bbf7d0; }
+.sh-yonk { background: linear-gradient(150deg, #1e3a8a, #0b1020); border-color: #1e40af; }
+.sh-yonk .sh-k { color: #93c5fd; }
+.sh-yonk .sh-wx-live { text-transform: none; letter-spacing: 0; font-size: .75rem; }
 
 /* Menü (tam ekran) ve + Ekle (alttan) — SporcuMenu.jsx */
 .shm { position: fixed; inset: 0; z-index: 60; background: #0b0b0c; color: #fff; overflow-y: auto; overscroll-behavior: contain; animation: shm-in .18s ease-out; }
