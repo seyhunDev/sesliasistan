@@ -176,7 +176,7 @@ private struct LogoIsaret: View {
     var boy: CGFloat
     var body: some View {
         ZStack {
-            LogoDaire().fill(Color.white)
+            LogoDaire().fill(Color(red: 0.831, green: 1.0, blue: 0.227))
             LogoV().fill(Color.black).blendMode(.destinationOut)
         }
         .compositingGroup()

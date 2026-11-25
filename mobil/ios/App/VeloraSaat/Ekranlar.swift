@@ -295,7 +295,7 @@ private struct LogoIsaret: View {
     var boy: CGFloat
     var body: some View {
         ZStack {
-            LogoDaire().fill(Color.white)
+            LogoDaire().fill(Color(red: 0.831, green: 1.0, blue: 0.227))
             LogoV().fill(Color.black).blendMode(.destinationOut)
         }
         .compositingGroup()
@@ -303,13 +303,13 @@ private struct LogoIsaret: View {
     }
 }
 
-// Saat ana ekranındaki logo: koyu lacivert (#0b1a33) kürenin içinde beyaz işaret
+// Saat ana ekranındaki logo: Sahne siyahı (#0f0f11) kürenin içinde limon işaret (canlı logo 2026-11-25)
 struct LogoKure: View {
     var body: some View {
         GeometryReader { g in
             let w = min(g.size.width, g.size.height)
             ZStack {
-                Circle().fill(Color(red: 0.043, green: 0.102, blue: 0.2))
+                Circle().fill(Color(red: 0.059, green: 0.059, blue: 0.067))
                 Circle().stroke(Color.white.opacity(0.14), lineWidth: 1.5)
                 LogoIsaret(boy: w * 0.56)
             }
