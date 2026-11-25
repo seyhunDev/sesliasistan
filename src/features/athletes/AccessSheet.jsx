@@ -95,7 +95,7 @@ export function AccessSheet({ open, onClose, athletes }) {
   const text = done ? `Velora giriş bilgileri\n${typeof location !== "undefined" ? location.origin : ""}\nŞifre: ${password}\n${done.filter((d) => d.login && !d.note).map((d) => `${d.name}: ${d.login}`).join("\n")}` : "";
   const one = athletes.length === 1;
   return (
-    <Sheet open={open} onClose={() => onClose(!!done)} title={one ? `${athletes[0]?.studentName} · uygulama` : `${athletes.length} sporcu · uygulama`}>
+    <Sheet open={open} onClose={() => onClose(!!done, done ? password : "")} title={one ? `${athletes[0]?.studentName} · uygulama` : `${athletes.length} sporcu · uygulama`}>
       {done ? (
         <div className="space-y-3 pb-2">
           <div className="rounded-2xl bg-bg p-3.5 text-[0.875rem]">
@@ -120,7 +120,7 @@ export function AccessSheet({ open, onClose, athletes }) {
           >
             <Icon name="clip" className="size-5" /> Giriş bilgilerini kopyala
           </button>
-          <button type="button" onClick={() => onClose(true)} className="h-11 w-full rounded-xl bg-deep text-[0.9375rem] font-semibold text-white">
+          <button type="button" onClick={() => onClose(true, password)} className="h-11 w-full rounded-xl bg-deep text-[0.9375rem] font-semibold text-white">
             Tamam
           </button>
         </div>
