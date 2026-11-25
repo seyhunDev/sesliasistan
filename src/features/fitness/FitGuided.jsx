@@ -12,7 +12,7 @@ import { setGuideHandler } from "./guideVoice";
 import { useKind } from "@/features/auth/useKind";
 import { useTts } from "@/features/speech/TtsProvider";
 import { liveHead } from "@/features/liveScreen/fonts";
-import { LIME, SahneAdd, SahneBtn, SahneIntro, SahneToggles, head } from "./FitSahne";
+import { LIME, SahneAdd, SahneBtn, SahneIcons, SahneIntro, SahneToggles, head } from "./FitSahne";
 
 // Antrenör sesi: doğal Gemini sesi, "fitness" tarzı; metinler sabit olduğu için sunucuda saklanır (docs/seslendirme.md)
 const FIT_VOICE = { style: "fitness", cache: true };
@@ -218,7 +218,7 @@ function MediaBox({ it, still = false }) {
         ))}
       </div>
       {slides.length > 1 && !still && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-28 flex justify-center gap-1.5">
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
           {slides.map((x, i) => (
             <i key={x.k} className={`size-[0.4375rem] rounded-full ${i === at ? "bg-white" : "bg-white/45"}`} />
           ))}
@@ -238,7 +238,7 @@ function Slide({ orgId, m, onOpen, still }) {
   return (
     <button type="button" onClick={() => !still && onOpen(m)} aria-label={m.kind === "video" ? "Videoyu büyüt" : "Fotoğrafı büyüt"} className="relative block size-full overflow-hidden">
       {m.kind !== "video" && <img src={url} alt="" aria-hidden className="absolute inset-0 size-full scale-125 object-cover opacity-55 blur-2xl" />}
-      <span className={`absolute inset-x-3 flex items-center justify-center ${still ? "bottom-[38%] top-[calc(env(safe-area-inset-top)+3.75rem)]" : "bottom-[6.5rem] top-[calc(env(safe-area-inset-top)+4.25rem)]"}`}>
+      <span className={`absolute inset-x-3 flex items-center justify-center ${still ? "bottom-[38%] top-[calc(env(safe-area-inset-top)+3.75rem)]" : "bottom-0 top-[env(safe-area-inset-top)]"}`}>
         {m.kind === "video" ? (
           <video src={url} autoPlay={!still} loop muted playsInline onError={fail} className={fit} />
         ) : (
@@ -644,13 +644,12 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
           </i>
         ))}
       </div>
-      <div className="mt-2.5 flex items-center gap-2">
-        <button type="button" onClick={onClose} aria-label="Kapat" className="grid size-10 place-items-center rounded-full bg-black/40 text-white backdrop-blur">
-          <Icon name="x" className="size-5" />
+      <div className="mt-2 flex items-center gap-2">
+        <button type="button" onClick={onClose} aria-label="Kapat" className="grid size-9 place-items-center rounded-full bg-black/45 text-white backdrop-blur">
+          <Icon name="x" className="size-[1.125rem]" />
         </button>
         <span className="flex-1" />
-        {toggles}
-        <span className={`${head} min-w-[2.75rem] text-right text-[1.125rem] text-white tabular-nums`}>{pos ? `${pos.i + 1} / ${items.length}` : `${done}/${total}`}</span>
+        <SahneIcons auto={auto} onMode={setMode} quiet={quiet} onQuiet={toggleQuiet} count={pos ? `${pos.i + 1}/${items.length}` : `${done}/${total}`} />
       </div>
     </div>
   );
@@ -707,32 +706,35 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
   const sub = [...g.more, state].filter(Boolean);
 
   return (
-    <div role="dialog" aria-label="Antrenman" className={`${liveHead.variable} fixed inset-0 z-[54] flex flex-col bg-[#0c0d0f] text-[#f4f4f2]`}>
-      <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="relative h-[58dvh] min-h-[22rem] landscape:h-[80dvh]">
+    // Hareket ekranı (Seyhun 2026-11-25): fotoğraf en üstte, kapat/otomatik/ses/sıra fotoğrafın üstünde küçük işaretler;
+    // yazı kendi alanında kayar, süre ve düğmeler altta ayrı kutuda (hiçbir şeyin üstüne binmez). iPad yatay: fotoğraf solda.
+    <div role="dialog" aria-label="Antrenman" className={`${liveHead.variable} fixed inset-0 z-[54] flex flex-col bg-[#0c0d0f] text-[#f4f4f2] md:landscape:flex-row`}>
+      <div className="relative h-[calc(env(safe-area-inset-top)+min(40dvh,26rem))] flex-none overflow-hidden bg-black md:landscape:h-auto md:landscape:flex-[1.25]">
+        <div className="absolute inset-0">
           {has ? (
             <MediaBox key={pos.i} it={it} />
           ) : kind === "owner" ? (
             <SahneAdd it={items[pos.i]} onAdded={(m) => setAdded((o) => ({ ...o, [pos.i]: [...(o[pos.i] || []), m] }))} />
           ) : (
-            <span aria-hidden className={`${head} absolute left-5 top-[calc(env(safe-area-inset-top)+5rem)] text-[11rem] text-transparent [-webkit-text-stroke:2px_rgba(255,255,255,.16)]`}>
+            <span aria-hidden className={`${head} absolute left-5 top-[calc(env(safe-area-inset-top)+3.5rem)] text-[8rem] text-transparent [-webkit-text-stroke:2px_rgba(255,255,255,.16)]`}>
               {String(pos.i + 1).padStart(2, "0")}
             </span>
           )}
-          {has && <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(12,13,15,.45)_0%,rgba(12,13,15,0)_22%,rgba(12,13,15,0)_55%,#0c0d0f_100%)]" />}
+          {has && <span className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[linear-gradient(180deg,rgba(12,13,15,.5),rgba(12,13,15,0))]" />}
         </div>
-        <div className="relative -mt-24 px-5 pb-5">
-          <h2 className={`${head} text-[3rem] [overflow-wrap:anywhere]`}>{it.name}</h2>
-          <HowBody key={`h${pos.i}`} it={it} />
-        </div>
+        {top}
       </div>
-      {top}
-      <div className="flex-none px-5 pb-[calc(var(--rec-h,0px)+1rem)] pt-3">
+      <div className="flex min-h-0 flex-1 flex-col md:landscape:min-w-0">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-3 pt-4 md:px-8 md:pt-7">
+        <h2 className={`${head} text-[2.125rem] [overflow-wrap:anywhere] md:text-[2.75rem]`}>{it.name}</h2>
+        <HowBody key={`h${pos.i}`} it={it} />
+      </div>
+      <div className="flex-none border-t border-white/[.08] px-5 pb-[calc(var(--rec-h,0px)+max(0.75rem,env(safe-area-inset-bottom)))] pt-3 md:px-8">
         {rest.run ? (
           <>
             <div className="flex items-end justify-between gap-3">
               <span>
-                <b className={`${head} text-[5rem] tabular-nums`} style={{ color: LIME }}>
+                <b className={`${head} text-[3.75rem] leading-none tabular-nums md:text-[4.5rem]`} style={{ color: LIME }}>
                   {rest.left}
                 </b>
                 <small className="ml-2 text-[0.8125rem] font-bold uppercase tracking-[.12em] text-white/60">{held ? "durduruldu" : "sn dinlen"}</small>
@@ -770,12 +772,12 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
             <div className="flex items-end justify-between gap-3">
               <span className="min-w-0">
                 {timed ? (
-                  <b className={`${head} text-[5rem] tabular-nums`} style={left <= 3 && timer.run ? { color: LIME } : undefined}>
+                  <b className={`${head} text-[3.75rem] leading-none tabular-nums md:text-[4.5rem]`} style={left <= 3 && timer.run ? { color: LIME } : undefined}>
                     {clockText(left)}
                   </b>
                 ) : (
                   <>
-                    <b className={`${head} text-[5rem] tabular-nums`}>{g.big}</b>
+                    <b className={`${head} text-[3.75rem] leading-none tabular-nums md:text-[4.5rem]`}>{g.big}</b>
                     <small className="ml-2 text-[0.8125rem] font-bold uppercase tracking-[.12em] text-white/60">{g.unit}</small>
                   </>
                 )}
@@ -819,6 +821,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
             </button>
           </>
         )}
+      </div>
       </div>
     </div>
   );
