@@ -82,6 +82,34 @@ const mediaOf = (prog) => (prog?.days || []).flatMap((d) => (d.items || []).flat
 
 // Programı tamamen siler: bütün antrenmanları (geçmiş, yapılan, atlanan dahil; tek sorgu), programın fotoğraf ve videoları
 // (başka programda da kullanılmıyorsa) ve programın kendisi. Dönüş: silinen antrenman sayısı
+// Hesabı yeniden açılan sporcu (ör. Ayarlar › Hesapları temizle sonrası yeni hesap = yeni uid): eski hesaba bağlı kalan program ve
+// antrenmanları (yapılanlar dahil) adı aynı olan tek sporcuya taşınır; yoksa sporcu antrenmanlarını göremez (Seyhun 2026-11-25).
+// Yeni hesabın zaten programı varsa ya da aynı adda birden çok sporcu varsa dokunulmaz. Dönüş: taşınan sporcu sayısı.
+const low = (s) => String(s || "").trim().toLocaleLowerCase("tr-TR");
+export async function relinkPrograms(orgId, progs = [], athletes = []) {
+  const live = new Set(athletes.map((a) => a.uid));
+  const has = new Set(progs.map((p) => p.for).filter(Boolean));
+  const moves = new Map();
+  for (const p of progs) {
+    if (!p.for || live.has(p.for) || moves.has(p.for) || !low(p.forName)) continue;
+    const hit = athletes.filter((a) => low(a.name) === low(p.forName));
+    if (hit.length === 1 && !has.has(hit[0].uid)) moves.set(p.for, hit[0]);
+  }
+  if (!moves.size) return 0;
+  const ops = progs.filter((p) => moves.has(p.for)).map((p) => [doc(col(orgId), p.id), { for: moves.get(p.for).uid, forName: moves.get(p.for).name }]);
+  for (const [old, a] of moves) {
+    const snap = await getDocs(query(collection(db, "orgs", orgId, "plans"), where("fit.for", "==", old)));
+    snap.docs.forEach((d) => ops.push([d.ref, { people: [a.uid], "fit.for": a.uid }]));
+  }
+  for (let i = 0; i < ops.length; i += 400) {
+    const b = writeBatch(db);
+    ops.slice(i, i + 400).forEach(([ref, v]) => b.update(ref, v));
+    await b.commit();
+  }
+  if (cache.org === orgId) cache.at = 0;
+  return moves.size;
+}
+
 export async function deleteProgram(orgId, id) {
   const snap = await getDocs(query(collection(db, "orgs", orgId, "plans"), where("fit.prog", "==", id)));
   await dropPlans(orgId, snap.docs.map((d) => d.id));

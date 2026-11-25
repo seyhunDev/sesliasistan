@@ -1,7 +1,7 @@
 "use client";
 
 import { useConfirm } from "@/components/ui/ConfirmProvider";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { BackButton } from "@/components/ui/BackButton";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -20,7 +20,7 @@ import {
 import { libList } from "@/lib/fitness/library";
 import { useFitLib } from "./useFitLib";
 import { kindOf } from "@/lib/kinds";
-import { FIT_PREVIEW, FIT_SAVED, activeOf, adoptProgram, spreadLib, askFitness, deleteProgram, loadPrograms, resetFitness, notifyProgram, removePlans, dropFrom, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
+import { FIT_PREVIEW, FIT_SAVED, activeOf, adoptProgram, spreadLib, askFitness, deleteProgram, loadPrograms, resetFitness, notifyProgram, removePlans, dropFrom, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms, relinkPrograms } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
 import { importFile, importText } from "./fitImport";
 import { TEMPLATES, fromTemplate } from "@/lib/fitness/templates";
@@ -103,6 +103,16 @@ export function FitnessHome() {
         .catch(() => setList([])),
     [orgId],
   );
+  // Yeniden açılan sporcu hesabı: eski hesaba bağlı programları ona taşı (oturumda bir kez)
+  const relinked = useRef(false);
+  useEffect(() => {
+    if (relinked.current || !list?.length || !athletes.length) return;
+    relinked.current = true;
+    relinkPrograms(orgId, list, athletes)
+      .then((n) => n && reload(true))
+      .catch(() => {});
+  }, [list, athletes, orgId, reload]);
+
   useEffect(() => {
     reload(false);
     const onSaved = () => reload(false);
