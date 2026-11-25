@@ -26,32 +26,54 @@ import { LIME, SahneAdd, SahneBtn, SahneIntro, head } from "./FitSahne";
 // sa-fit-sessiz). Fotoğrafı olmayan harekette sporcu dev sıra numarasını, ana hesap "+" görür (SahneAdd).
 // Sonda "Nasıl geçti?" ve "Antrenmanı bitir". Kapatınca ilerleme kalır (her set işaretlenince plana yazılır).
 // Ana asistanla da yürür: ekran kayıt kubbesinin (z-55) altında durur; "tamam", "atla", "15 saniye ekle", "nasıl yapılır",
-// "zor geçti", "antrenmanı bitir" buraya gelir (guideWord, words.js; setGuideHandler, guideVoice.js).
+// "zor geçti", "antrenmanı bitir", "durdur", "otomatiğe geç / elle" buraya gelir (guideWord, words.js; setGuideHandler, guideVoice.js).
+// Otomatik (Seyhun 2026-11-25; varsayılan açık, üstteki "Otomatik" düğmesi, sa-fit-oto): hareket/set söylenir, okuma bitince süre
+// kendiliğinden başlar (tekrarlı harekette tahmini süre: tekrar × 4 sn, en az 20 sn; "Bitirdim" erken bitirir); süre dolunca set
+// işaretlenir, dinlenme başlar ve sıradaki söylenir (yeni hareketse adı, yapılışı, seti); dinlenme bitince sıradaki set başlar.
+// "Durdur" her şeyi bekletir (süre, dinlenme, okuma), "Devam et" sürdürür. Elle: eski düzen, her şeyi kullanıcı başlatır.
 const KEY = { time: "sec", cardio: "min", reps: "reps" };
 const UNIT = { sec: "sn", min: "dk", reps: "tekrar" };
 
-function useCountdown() {
-  const [run, setRun] = useState(null); // { end, total }
+// Dinlenme sayacı: duraklatılır (otomatikte "Durdur"), süre dolunca onEnd çağrılır (Geç ile durdurulursa çağrılmaz)
+function useCountdown(onEnd) {
+  const [run, setRun] = useState(null); // { end, total, rem (duraklatılmışsa kalan ms) }
   const [now, setNow] = useState(0);
+  const end = useRef(onEnd);
   useEffect(() => {
-    if (!run) return;
+    end.current = onEnd;
+  });
+  useEffect(() => {
+    if (!run || run.rem != null) return;
     const t = setInterval(() => {
       const n = Date.now();
       if (n >= run.end) {
         clearInterval(t);
         navigator.vibrate?.([30, 60, 30]);
         setRun(null);
+        end.current?.();
       } else setNow(n);
     }, 250);
     return () => clearInterval(t);
   }, [run]);
-  const left = run ? Math.max(0, Math.ceil((run.end - now) / 1000)) : 0;
+  const left = run ? Math.max(0, Math.ceil((run.rem != null ? run.rem : run.end - now) / 1000)) : 0;
   const start = (sec) => {
     const n = Date.now();
     setNow(n);
-    setRun({ end: n + sec * 1000, total: sec });
+    setRun({ end: n + sec * 1000, total: sec, rem: null });
   };
-  return { run, left, start, stop: () => setRun(null), add: (s) => setRun((r) => (r ? { end: r.end + s * 1000, total: r.total + s } : r)) };
+  return {
+    run,
+    left,
+    start,
+    stop: () => setRun(null),
+    add: (s) => setRun((r) => (r ? (r.rem != null ? { ...r, rem: r.rem + s * 1000, total: r.total + s } : { ...r, end: r.end + s * 1000, total: r.total + s }) : r)),
+    pause: () => setRun((r) => (r && r.rem == null ? { ...r, rem: Math.max(0, r.end - Date.now()) } : r)),
+    resume: () => {
+      const n = Date.now();
+      setNow(n);
+      setRun((r) => (r && r.rem != null ? { ...r, end: n + r.rem, rem: null } : r));
+    },
+  };
 }
 
 // Set geri sayımı: duraklatılır, devam ettirilir; geçen süre saniye olarak tutulur
@@ -240,24 +262,45 @@ function sayGoal(it, cur = {}) {
   return v ? `${v}${it.repsTo ? ` ile ${it.repsTo}` : ""} tekrar` : "";
 }
 const QUIET = "sa-fit-sessiz";
+const AUTO = "sa-fit-oto";
+// Otomatikte setin süresi: süreli harekette hedef, tekrarlıda tekrar × 4 sn (en az 20 sn)
+const workSec = (it, cur = {}) => (isTimed(it) ? goalSec(it, cur) : Math.max(20, (+(cur.reps || it.reps) || 10) * 4));
+const readKey = (k) => {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+};
+const saveKey = (k, v) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {}
+};
 
 export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck, feel, setFeel, onFinish, onClose }) {
   const [pos, setPos] = useState(() => (at && !sets[at.i]?.[at.k]?.ok ? at : nextOpen(sets, 0, 0)));
-  const rest = useCountdown();
-  const timer = useSetClock((took, full) => complete({ took, full }));
+  const [quiet, setQuiet] = useState(() => readKey(QUIET) === "1");
+  const [auto, setAuto] = useState(() => readKey(AUTO) !== "0");
+  const [held, setHeld] = useState(false); // otomatikte "Durdur"
+  const seq = useRef(0); // bekleyen "okuma bitince başla" işini iptal etmek için
+  const posRef = useRef(pos);
+  const autoRef = useRef(auto);
+  const heldRef = useRef(held);
+  useEffect(() => {
+    posRef.current = pos;
+    autoRef.current = auto;
+    heldRef.current = held;
+  });
+  const ends = useRef({}); // süre/dinlenme bitince çağrılacaklar (aşağıda tanımlanan işlevler; her çizimde güncellenir)
+  const rest = useCountdown(() => ends.current.rest?.());
+  const timer = useSetClock((took, full) => ends.current.set?.(took, full));
   const total = sets.reduce((t, s) => t + s.length, 0);
   const done = sets.reduce((t, s) => t + s.filter((x) => x.ok).length, 0);
   // Hiç set yapılmadıysa önce giriş (bugünkü antrenman, süre, hareketler; sesli okunur)
   const [intro, setIntro] = useState(() => done === 0 && !at && items.length > 0);
   const kind = useKind();
   const tts = useTts();
-  const [quiet, setQuiet] = useState(() => {
-    try {
-      return localStorage.getItem(QUIET) === "1";
-    } catch {
-      return false;
-    }
-  });
   const [added, setAdded] = useState({}); // ana hesabın bu ekranda eklediği fotoğraf/video (kütüphaneden plana gelene kadar)
   const byVoice = useRef(false);
   const min = estMinutes(items);
@@ -275,18 +318,16 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
   useEffect(() => {
     const o = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const q = seq;
     return () => {
       document.body.style.overflow = o;
+      q.current++;
       tts.stop();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Giriş açılınca okunur
-  useEffect(() => {
-    if (intro) say(introText);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Yeni harekete geçince adı ve seti söylenir (asistanla geçildiyse asistan zaten söyler)
   useEffect(() => {
-    if (intro || !pos || pos.k !== 0) return;
+    if (intro || !pos || pos.k !== 0 || auto) return;
     if (byVoice.current) byVoice.current = false;
     else say(moveText(pos));
   }, [intro, pos?.i]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -299,9 +340,65 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
     } catch {}
     if (q) tts.stop();
   }
-  function go() {
+
+  // Otomatik: söyler, okuma bitince (ses çıkmazsa biraz sonra) setin süresini başlatır
+  function cueThen(t, fn) {
+    const id = ++seq.current;
+    const fire = () => {
+      if (seq.current !== id) return;
+      seq.current++;
+      fn();
+    };
+    if (quiet || !t) {
+      setTimeout(fire, 1500);
+      return;
+    }
+    tts.speak(t, fire);
+    setTimeout(fire, 5000 + t.length * 90);
+  }
+  const startSet = (p) => {
+    seq.current++;
+    if (p) timer.start(workSec(items[p.i], sets[p.i]?.[p.k]));
+  };
+  // afterRest: dinlenme bitti (sıradaki hareket dinlenmede anlatıldı, kısa "başla")
+  function begin(p, afterRest = false) {
+    if (!p) return;
+    const t = afterRest ? (p.k ? `Set ${p.k + 1}. Başla.` : "Başla.") : p.k ? `${items[p.i]?.name}, set ${p.k + 1}. ${sayGoal(items[p.i], sets[p.i]?.[p.k])}.` : moveText(p);
+    cueThen(t, () => startSet(posRef.current));
+  }
+  // Dinlenmede söylenen: süre ve sıradaki (yeni hareketse adı, yapılışı, seti)
+  function restText(n, sec, newEx) {
+    if (!newEx) return `${sec} saniye dinlen. Sonra set ${n.k + 1}.`;
+    const h = howOf(items[n.i]).slice(0, 3);
+    return `${sec} saniye dinlen. ${moveText(n)}${h.length ? ` ${h.join(". ")}.` : ""}`;
+  }
+  function pauseAll() {
+    seq.current++;
     tts.stop();
-    setIntro(false);
+    timer.pause();
+    rest.pause();
+    setHeld(true);
+  }
+  function resumeAll() {
+    setHeld(false);
+    if (timer.run) timer.resume();
+    else if (rest.run) rest.resume();
+    else begin(pos);
+  }
+  function setMode(on) {
+    setAuto(on);
+    saveKey(AUTO, on ? "1" : "0");
+    seq.current++;
+    setHeld(false);
+    if (on) {
+      if (timer.run) timer.resume();
+      else if (rest.run) rest.resume();
+      else if (pos && !intro) begin(pos);
+    } else {
+      tts.stop();
+      if (rest.run) rest.resume();
+      if (timer.run && pos && !isTimed(items[pos.i])) timer.stop();
+    }
   }
 
   // rec: süreli sette { took, full }; verilmezse ve geri sayım sürüyorsa erken geçildi sayılır
@@ -319,7 +416,12 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
     const next = sets.map((s, a) => (a === i ? s.map((x, b) => (b === k ? { ...x, ok: true } : x)) : s));
     const n = nextOpen(next, i, k + 1);
     setPos(n);
-    if (n) rest.start(restAfter(items[i], n.i !== i));
+    seq.current++;
+    if (n) {
+      const sec = restAfter(items[i], n.i !== i);
+      rest.start(sec);
+      if (auto && !byVoice.current) say(restText(n, sec, n.i !== i));
+    } else if (auto && !byVoice.current) say("Hepsi bitti. Nasıl geçti?");
     return n;
   }
   function skipEx() {
@@ -328,17 +430,61 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
     timer.stop();
     const n = nextOpen(sets, pos.i + 1, 0);
     setPos(n);
+    seq.current++;
+    setHeld(false);
+    if (auto && n) {
+      if (byVoice.current) cueThen("", () => startSet(posRef.current));
+      else begin(n);
+    }
     return n;
   }
 
+  function go() {
+    tts.stop();
+    setIntro(false);
+    if (auto && pos) begin(pos);
+  }
+  useEffect(() => {
+    ends.current = {
+      rest: () => autoRef.current && !heldRef.current && begin(posRef.current, true),
+      set: (took, full) => complete(isTimed(items[posRef.current?.i]) ? { took, full } : null),
+    };
+  });
+
+  // Açılınca: giriş okunur; yarım kalan antrenman otomatikte kaldığı setten sürer
+  useEffect(() => {
+    if (intro) say(introText);
+    else if (auto && pos) begin(pos);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Sesle söylenenler: yapılan işi kısa söyler
   const setText = (p) => (p ? `${p.i === pos?.i ? "" : `Sıradaki hareket: ${items[p.i]?.name}. `}Set ${p.k + 1} / ${sets[p.i]?.length || 0}.` : "");
+  // Otomatikte sesle yapılan işin cevabını asistan söyler; bayrak hemen iner (elle düzende hareket değişince iner)
   function voice(g) {
+    const out = voiceDo(g);
+    if (auto) byVoice.current = false;
+    return out;
+  }
+  function voiceDo(g) {
     if (!g) return "";
     if (intro && (g.op === "done" || g.op === "skip")) {
       byVoice.current = true;
       go();
       return pos ? moveText(pos) : "Başlıyoruz.";
+    }
+    if (g.op === "auto") {
+      setMode(g.k);
+      return g.k ? "Otomatik. Süreler ve dinlenmeler kendiliğinden başlar." : "Elle. Her seti sen başlatırsın.";
+    }
+    if (g.op === "pause") {
+      if (!auto) return timer.run && timer.going ? (timer.pause(), "Durdurdum.") : "Durduracak bir şey yok.";
+      pauseAll();
+      return "Durdurdum. Devam etmek için devam et de.";
+    }
+    if (held && g.op === "done") {
+      byVoice.current = true;
+      resumeAll();
+      return "Devam ediyorum.";
     }
     if (g.op === "finish") {
       if (done < total) return `Bitirmek için bütün setleri tamamla. ${total - done} set kaldı.`;
@@ -365,12 +511,17 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
       return n ? `Geçtim. ${setText(n)}` : "Geçtim. Atladığın setler kaldı, bitirmek için onları da tamamla.";
     }
     if (g.op === "done") {
+      if (auto && !rest.run && !timer.run) {
+        startSet(pos);
+        return "Süre başladı.";
+      }
       if (!rest.run && isTimed(items[pos.i]) && !timer.run) {
         timer.start(goalSec(items[pos.i], sets[pos.i]?.[pos.k]));
         return "Süre başladı.";
       }
       if (rest.run) {
         rest.stop();
+        if (auto) cueThen("", () => startSet(posRef.current));
         return `Dinlenme bitti. ${items[pos.i]?.name}, set ${pos.k + 1} / ${sets[pos.i]?.length || 0}.`;
       }
       byVoice.current = true;
@@ -420,6 +571,15 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
           <Icon name="x" className="size-5" />
         </button>
         <span className="flex-1" />
+        <button
+          type="button"
+          onClick={() => setMode(!auto)}
+          aria-pressed={auto}
+          className={`h-10 rounded-full border px-3.5 text-[0.875rem] font-bold backdrop-blur ${auto ? "bg-black/40" : "border-white/25 bg-black/40 text-white/70"}`}
+          style={auto ? { borderColor: LIME, color: LIME } : undefined}
+        >
+          {auto ? "Otomatik" : "Elle"}
+        </button>
         <button type="button" onClick={toggleQuiet} aria-label={quiet ? "Sesi aç" : "Sesi kapat"} aria-pressed={!quiet} className="grid size-10 place-items-center rounded-full bg-black/40 text-white backdrop-blur">
           <Icon name={quiet ? "mute" : "volume"} className="size-5" />
         </button>
@@ -453,7 +613,16 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
           )}
         </div>
         <div className="px-5 pb-[calc(var(--rec-h,0px)+1rem)]">
-          {left ? <SahneBtn onClick={() => setPos(nextOpen(sets, 0, 0))}>Kalan setlere dön</SahneBtn> : <SahneBtn onClick={() => onFinish("done")}>Antrenmanı bitir</SahneBtn>}
+          {left ? <SahneBtn
+              onClick={() => {
+                const n = nextOpen(sets, 0, 0);
+                setPos(n);
+                setHeld(false);
+                if (auto) begin(n);
+              }}
+            >
+              Kalan setlere dön
+            </SahneBtn> : <SahneBtn onClick={() => onFinish("done")}>Antrenmanı bitir</SahneBtn>}
         </div>
       </div>
     );
@@ -467,7 +636,8 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
   const g = goalOf(it, cur);
   const left = timer.run ? timer.left : goal;
   const has = mediaOf(it).length > 0;
-  const sub = [...g.more, timed && timer.run ? (timer.going ? "kalan" : "Duraklatıldı") : g.to].filter(Boolean);
+  const state = held ? "Durduruldu" : timer.run ? (timer.going ? (timed ? "kalan" : `${clockText(timer.left)} kalan`) : "Duraklatıldı") : auto ? "Hazırlan" : g.to;
+  const sub = [...g.more, state].filter(Boolean);
 
   return (
     <div role="dialog" aria-label="Antrenman" className={`${liveHead.variable} fixed inset-0 z-[54] flex flex-col bg-[#0c0d0f] text-[#f4f4f2]`}>
@@ -498,7 +668,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
                 <b className={`${head} text-[5rem] tabular-nums`} style={{ color: LIME }}>
                   {rest.left}
                 </b>
-                <small className="ml-2 text-[0.8125rem] font-bold uppercase tracking-[.12em] text-white/60">sn dinlen</small>
+                <small className="ml-2 text-[0.8125rem] font-bold uppercase tracking-[.12em] text-white/60">{held ? "durduruldu" : "sn dinlen"}</small>
               </span>
               <SetDots s={s} k={pos.k} />
             </div>
@@ -506,10 +676,26 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
               <span className="block h-full rounded-full transition-all" style={{ width: `${(rest.left / rest.run.total) * 100}%`, background: LIME }} />
             </span>
             <div className="mt-4 flex gap-2">
-              <SahneBtn ghost onClick={() => rest.add(15)}>
-                +15 sn
+              {auto ? (
+                <SahneBtn ghost onClick={held ? resumeAll : pauseAll}>
+                  {held ? "Devam et" : "Durdur"}
+                </SahneBtn>
+              ) : (
+                <SahneBtn ghost onClick={() => rest.add(15)}>
+                  +15 sn
+                </SahneBtn>
+              )}
+              <SahneBtn
+                onClick={() => {
+                  rest.stop();
+                  if (auto) {
+                    setHeld(false);
+                    begin(pos, true);
+                  }
+                }}
+              >
+                Geç
               </SahneBtn>
-              <SahneBtn onClick={rest.stop}>Geç</SahneBtn>
             </div>
           </>
         ) : (
@@ -535,15 +721,24 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
                 <SetDots s={s} k={pos.k} />
               </span>
             </div>
-            {timed && timer.run && (
+            {timer.run && (
               <span className="mt-3 block h-1 overflow-hidden rounded-full bg-white/15">
-                <span className="block h-full rounded-full bg-white transition-all" style={{ width: `${goal ? (left / goal) * 100 : 0}%` }} />
+                <span className="block h-full rounded-full bg-white transition-all" style={{ width: `${timer.run.total ? (timer.left / timer.run.total) * 100 : 0}%` }} />
               </span>
             )}
             <div className="mt-4">
-              {!timed && <SahneBtn onClick={() => complete()}>Tamamlandı</SahneBtn>}
-              {timed && !timer.run && <SahneBtn onClick={() => timer.start(goal)}>Başlat</SahneBtn>}
-              {timed && timer.run && (
+              {auto && held && <SahneBtn onClick={resumeAll}>Devam et</SahneBtn>}
+              {auto && !held && (
+                <div className="flex gap-2">
+                  <SahneBtn ghost onClick={pauseAll}>
+                    Durdur
+                  </SahneBtn>
+                  {timer.run ? <SahneBtn onClick={() => complete()}>{timed ? "Bitirdim" : "Tamamlandı"}</SahneBtn> : <SahneBtn onClick={() => startSet(pos)}>Başla</SahneBtn>}
+                </div>
+              )}
+              {!auto && !timed && <SahneBtn onClick={() => complete()}>Tamamlandı</SahneBtn>}
+              {!auto && timed && !timer.run && <SahneBtn onClick={() => timer.start(goal)}>Başlat</SahneBtn>}
+              {!auto && timed && timer.run && (
                 <div className="flex gap-2">
                   <SahneBtn ghost onClick={timer.going ? timer.pause : timer.resume}>
                     {timer.going ? "Duraklat" : "Devam et"}

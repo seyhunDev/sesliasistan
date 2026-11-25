@@ -54,8 +54,11 @@ export function guideWord(raw) {
   if (/\b(antrenman\w*|idman\w*) (bitir\w*|bitti)\b|^bitirelim$|^bitir$/.test(t)) return { op: "finish" };
   const f = t.match(/\b(zor|iyi|kolay)\w*\b( gecti| geldi)?$/);
   if (f && (f[2] || t.split(" ").length <= 2)) return { op: "feel", k: { zor: 1, iyi: 2, kolay: 3 }[f[1]] };
+  if (/^(otomatig\w*|otomatik\w*) (kapat\w*|durdur\w*)$|^(elle|manuel\w*|manuele)( (gec\w*|yap\w*|devam\w*))?$/.test(t)) return { op: "auto", k: false };
+  if (/^(otomatik\w*|otomatige)( (ac\w*|gec\w*|yap\w*|devam\w*|baslat\w*))?$/.test(t)) return { op: "auto", k: true };
+  if (/^(dur|durdur\w*|duraklat\w*|bekle|biraz bekle|ara ver|mola ver)( lutfen)?$/.test(t)) return { op: "pause" };
   if (/\b(atla\w*|hareket\w* gec\w*|sonraki harekete gec\w*|bunu gec\w*|yapamiyorum)\b/.test(t)) return { op: "skip" };
-  if (/^(tamam\w*|tamamlandi|tamamladim|bitti|bitirdim|yaptim|yapildi|oldu|sonraki\w*|devam\w*|hazirim|gec|gectim|evet|basla\w*|hadi|ok|okey)( (tamam\w*|set\w*|seti|bitti|yaptim|devam\w*|lutfen|ettim|edelim))*$|^(set\w*|seti) (tamam\w*|bitti|bitirdim|yaptim|yapildi)$/.test(t)) return { op: "done" };
+  if (/^(tamam\w*|tamamlandi|tamamladim|bitti|bitirdim|yaptim|yapildi|oldu|sonraki\w*|devam\w*|hazirim|gec|gectim|evet|basla\w*|hadi|ok|okey)( (tamam\w*|set\w*|seti|bitti|yaptim|devam\w*|lutfen|ettim|edelim|et))*$|^(set\w*|seti) (tamam\w*|bitti|bitirdim|yaptim|yapildi)$/.test(t)) return { op: "done" };
   return null;
 }
 
