@@ -468,7 +468,7 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
    gibi). İsimler hep açık (birden çok seçilir, Hepsi herkes); altta aynı boyda iki büyük kutu: solda Süre (kutunun tamamı Başlat/Bitir),
    sağda Bas konuş. Pencereler (Sheet) eskisi gibi açık renk. */
 .bzy-app { --bg: #0b0b0c; --card: #17171a; --fg: #fff; --fg2: #e4e4e7; --mut: #a1a1aa; --line: #26262b; --acc: #d4ff3a; --on-acc: #111; --talk: #d4ff3a;
-  --glass: rgba(23, 23, 26, .9); --frost: rgba(23, 23, 26, .78); --frost-b: blur(18px) saturate(1.4); --lime: #d4ff3a; --sc: var(--lv-font-c), var(--font-num), system-ui, sans-serif;
+  --glass: rgba(23, 23, 26, .9); --frost: rgba(23, 23, 26, .78); --frost-b: blur(18px) saturate(1.4); --lime: #d4ff3a; --sc: var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif;
   background: #101418; color-scheme: dark; }
 .bzy-app .tkm-map.tkm-full { background: #101418; }
 .bzy-app .bzy-fab, .bzy-app .bzy-zm .btn, .bzy-app .bzy-tool { color: #fff; }
@@ -610,7 +610,7 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-kname span { font-size: 0.8125rem; color: var(--mut); }
 /* Günler: tarih kutusu ve İzle (koyu Yönet'te ve açık pencerede) */
 .bzy-dt { flex: none; width: 2.5rem; display: flex; flex-direction: column; align-items: center; line-height: 1; }
-.bzy-dt b { font: 800 1.375rem/1 var(--lv-font-c), var(--font-num), system-ui, sans-serif; }
+.bzy-dt b { font: 800 1.375rem/1 var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; }
 .bzy-dt small { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; color: var(--mut); }
 .bzy-dt[data-on] b { color: #16a34a; }
 .bzy-izle { flex: none; height: 2rem; padding: 0 0.875rem; border: 0; border-radius: 999px; background: var(--fg); color: var(--bg, #fff); font-size: 0.8125rem; font-weight: 700; }
@@ -671,7 +671,7 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .sahne .bzy-seg2 button { background: #1f1f22; color: #f4f4f5; }
 .sahne .bzy-seg2 button[aria-pressed="true"] { background: #d4ff3a; color: #111; }
 .sahne .bzy-izle { background: #d4ff3a; color: #111; }
-.sahne { --lime: #d4ff3a; --sc: var(--lv-font-c), var(--font-num), system-ui, sans-serif; }
+.sahne { --lime: #d4ff3a; --sc: var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; }
 .sahne .bzy-day { gap: 0.875rem; }
 .sahne .bzy-dt[data-on] b { color: #d4ff3a; }
 
@@ -683,9 +683,9 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-pens small { font-size: 0.75rem; font-weight: 600; color: var(--mut); }
 .bzy-pens button[aria-checked="true"] { border-color: var(--pen); background: rgba(255, 90, 60, .14); }
 .bzy-pens button[data-k="fd"][aria-checked="true"] { border-color: var(--pen-fd); background: rgba(255, 214, 10, .12); }
-.bzy-pen { font: 800 0.75rem/1 var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-style: normal; letter-spacing: .03em; padding: 0.1875rem 0.3125rem; border-radius: 0.3125rem; background: var(--pen); color: #fff; }
+.bzy-pen { font: 800 0.75rem/1 var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; font-style: normal; letter-spacing: .03em; padding: 0.1875rem 0.3125rem; border-radius: 0.3125rem; background: var(--pen); color: #fff; }
 .bzy-pen[data-k="fd"] { background: var(--pen-fd); color: #111; }
-.tkm-pen { display: none; font: 800 0.6875rem/1 var(--lv-font-c), var(--font-num), system-ui, sans-serif; padding: 0.125rem 0.25rem; border-radius: 0.25rem; background: var(--pen); color: #fff; }
+.tkm-pen { display: none; font: 800 0.6875rem/1 var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; padding: 0.125rem 0.25rem; border-radius: 0.25rem; background: var(--pen); color: #fff; }
 .tkm[data-pen]:not([data-pen=""]) .tkm-pen { display: inline-block; }
 .tkm[data-pen="fd"] .tkm-pen { background: var(--pen-fd); color: #111; }
 .tkm[data-pen]:not([data-pen=""]) i { background: var(--pen); box-shadow: 0 0 0 4px rgba(255, 90, 60, .3); }
@@ -694,16 +694,16 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 /* Sporcu ekranı: ilk 10 sn tam ekran (arkası bulanık), sonra üstte şerit; Yönet kaldırana kadar */
 .bz-penb { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1.5rem; text-align: center; border: 0; color: #fff;
   background: rgba(10, 10, 12, .55); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); animation: bz-penin .25s ease-out; }
-.bz-penb small { font-size: 0.9375rem; font-weight: 600; color: #d4d4d8; }
-.bz-penb b { font: 800 clamp(5rem, 30vw, 10rem)/.85 var(--lv-font-c), var(--font-num), system-ui, sans-serif; color: var(--pen); }
+.bz-penb small { font-size: clamp(1.125rem, 4.5vw, 1.5rem); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #e4e4e7; }
+.bz-penb b { font: 800 clamp(5rem, 30vw, 10rem)/.85 var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; color: var(--pen); }
 .bz-penb[data-k="fd"] b { color: var(--pen-fd); }
-.bz-penb span { font-size: clamp(1.25rem, 5vw, 2rem); font-weight: 700; max-width: 18ch; line-height: 1.25; }
-.bz-penb em { font-style: normal; width: 3.5rem; height: 3.5rem; display: grid; place-items: center; border-radius: 50%; border: 4px solid rgba(255, 255, 255, .25); font: 800 1.375rem/1 var(--font-num), system-ui; }
+.bz-penb span { font-size: clamp(2rem, 9vw, 3.5rem); font-weight: 800; max-width: 14ch; line-height: 1.1; }
+.bz-penb em { font-style: normal; width: 4.5rem; height: 4.5rem; display: grid; place-items: center; border-radius: 50%; border: 4px solid rgba(255, 255, 255, .25); font: 800 1.75rem/1 var(--font-num, system-ui), system-ui; }
 .bz-pens { position: fixed; left: max(0.75rem, var(--bz-sl)); right: max(0.75rem, var(--bz-sr)); top: calc(var(--bz-st) + 3.25rem); z-index: 30;
-  display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 0.875rem; border: 0; border-radius: 1rem; background: var(--pen); color: #fff; text-align: left; box-shadow: 0 6px 20px rgba(0, 0, 0, .35); }
+  display: flex; align-items: center; gap: 0.875rem; padding: 0.75rem 1rem; border: 0; border-radius: 1.25rem; background: var(--pen); color: #fff; text-align: left; box-shadow: 0 6px 20px rgba(0, 0, 0, .35); }
 .bz-pens[data-k="fd"] { background: var(--pen-fd); color: #111; }
-.bz-pens b { flex: none; font: 800 2rem/1 var(--lv-font-c), var(--font-num), system-ui, sans-serif; }
-.bz-pens span { font-size: 1rem; font-weight: 700; line-height: 1.25; }
+.bz-pens b { flex: none; font: 800 3rem/1 var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; }
+.bz-pens span { font-size: clamp(1.25rem, 5vw, 1.75rem); font-weight: 800; line-height: 1.15; }
 @keyframes bz-penin { from { opacity: 0; transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .bz-penb { animation: none; } }
 
@@ -767,3 +767,11 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-kon button { height: 2.25rem; padding: 0 0.75rem; border: 1px solid var(--line, #2e2e33); border-radius: 999px; background: var(--fill, #1f1f22); color: var(--fg, #fff); font-size: 0.875rem; font-weight: 600; }
 .bzy-kon button[data-ok] { color: #d4ff3a; }
 .bzy-kon button[aria-pressed="true"] { background: #fff; color: #111; }
+
+/* Ceza tek dokunuşla kaldır (2026-11-25): paneldeki ceza düğmeleri ve haritadaki rozet (✕) */
+.bzy-penl { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.bzy-penl button { display: inline-flex; align-items: center; gap: 0.5rem; height: 2.5rem; padding: 0 0.75rem; border: 0; border-radius: 0.875rem; background: var(--pen); color: #fff; font-size: 0.9375rem; font-weight: 700; }
+.bzy-penl button[data-k="fd"] { background: var(--pen-fd); color: #111; }
+.bzy-penl b { font: 800 1.25rem/1 var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; }
+.bzy-penl i { font-style: normal; font-size: 1rem; opacity: .85; }
+.tkm .tkm-pen { pointer-events: auto; cursor: pointer; font-size: 0.875rem; padding: 0.3125rem 0.5rem; border-radius: 0.375rem; }

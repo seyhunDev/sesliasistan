@@ -926,6 +926,17 @@ export function BilgiAdmin() {
       }, 550);
   };
   const holdOff = () => clearTimeout(holdT.current.t);
+  // Cezayı tek dokunuşla kaldır (Seyhun 2026-11-25 "2-3 adımda kaldırabiliyorum"): panel düğmesi ya da haritadaki rozet; 5 sn Geri al
+  const unPen = (id) => {
+    const c = ceza[id];
+    if (!c) return;
+    const bt = chBoats.find((x) => x.id === id);
+    setCeza(org, id, null).then(
+      () => toast(`${athTag(bt) || "Sporcu"} · ${PEN[c.k].big} kaldırıldı`, { action: { label: "Geri al", onClick: () => setCeza(org, id, c.k).catch(() => {}) } }),
+      () => toast("Kaldırılamadı, tekrar dene."),
+    );
+  };
+  const penList = Object.entries(ceza || {}).filter(([id, c]) => PEN[c?.k] && chBoats.some((x) => x.id === id));
 
   const repeat = useRepeat(org, kaliplar, ctx, got);
   const sendK = async (k) => {
@@ -1000,7 +1011,7 @@ export function BilgiAdmin() {
   const names = [...new Set([antAd, yaris.data?.race?.name?.slice(0, 30), "Antrenman"].filter(Boolean))];
   return (
     <main className="bzy-app" aria-label="Bilgi ekranı yönetimi" data-open={open && !izK ? "1" : undefined} data-mini={mini ? "1" : undefined}>
-      <TekneMap boats={izK ? iz.boats : liveBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full api={mapApi} />
+      <TekneMap boats={izK ? iz.boats : liveBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full api={mapApi} onPen={izK ? null : unPen} />
       {izK && <IzPanel k={izK} iz={iz} onClose={() => setIzK(null)} />}
       {!izK && talk && !liveBoats.some((x) => x.id === talk.dev && Number.isFinite(x.lat)) && (
         <div className="bzy-talk" role="status">
@@ -1085,6 +1096,17 @@ export function BilgiAdmin() {
                   </button>
                 )}
               </div>
+              {penList.length > 0 && (
+                <div className="bzy-penl" aria-label="Cezalar">
+                  {penList.map(([id, c]) => (
+                    <button key={id} type="button" data-k={c.k} onClick={() => unPen(id)} aria-label={`${athTag(chBoats.find((x) => x.id === id)) || "Sporcu"}: cezayı kaldır`} data-press>
+                      <b>{PEN[c.k].big}</b>
+                      <span>{athTag(chBoats.find((x) => x.id === id)) || "Sporcu"}</span>
+                      <i aria-hidden="true">✕</i>
+                    </button>
+                  ))}
+                </div>
+              )}
               {!mini && (
                 <div className="bzy-who" aria-label="Kime">
                   {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
