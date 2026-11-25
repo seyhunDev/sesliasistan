@@ -911,6 +911,17 @@ group("Ana sayfa kartları")([
     const p = pg.flatMap((x) => x.items.map((i) => i.label));
     return !s.includes("Envanter") && !s.includes("Kişiler") && s.includes("Fiş / Fatura") && !s.includes("Instagram") && !p.includes("Toplantı") && p.includes("Yoklama") && !p.includes("Fiş / Fatura") && !p.includes("Antrenman") && [...sg, ...pg].every((x) => x.items.length);
   })],
+  ["işlemler: sporcu", F("Yarışlarım (yalnız kayıtlı yarışlar), genel Yarışlar yok; İngilizce ve Velora Sailing var (Seyhun 2026-11-25)", () => {
+    const a = HT.homeActions({ staff: true, side: true }).flatMap((x) => x.items);
+    const has = (h) => a.some((x) => x.href === h);
+    return has("/my-races") && !has("/races") && !has("/athletes/races") && has("/english") && has("/sailing") && a.find((x) => x.href === "/my-races").label === "Yarışlarım";
+  })],
+  ["sporcu yarışı: kaç gün", F("sürüyor -1, bugün 0, 3 gün sonra 3; biten yarış yaklaşanlarda yok", async () => {
+    const MR = await import("@/lib/raceDays");
+    const t = "2026-11-25";
+    const r = (s, e) => ({ startDate: s, endDate: e || s });
+    return MR.daysTo(r("2026-11-24", "2026-11-26"), t) === -1 && MR.daysTo(r(t), t) === 0 && MR.daysTo(r("2026-11-28"), t) === 3 && MR.upcoming([r("2026-11-20"), r("2026-11-28")], t).length === 1;
+  })],
   ["sırada listesi", F("süren plan ŞİMDİ, sonra bugün/yarın/gün adı; iptal ve geçen sayılmaz; en çok n", () => {
     const now = new Date("2026-10-07T14:20:00");
     const ps = [
