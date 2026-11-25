@@ -107,6 +107,14 @@ body.sh-body { background: #0b0b0c; }
 @media (prefers-reduced-motion: reduce) { .shm, .shm-dim, .shm-sheet { animation: none; } }
 .sh-mini { border-radius: 999px; padding: .35rem .65rem; font-size: .75rem; font-weight: 700; background: #ffffff1a; color: #fff; white-space: nowrap; }
 .sh-mini-on { background: var(--sh-lime); color: #111; }
+.sh-ders-n { display: block; font-size: 1.6rem; color: #fff; }
+.sh-ders-add { display: flex; align-items: center; justify-content: space-between; }
+.sh-ders-add b { font-size: 1.6rem; }
+.sh-ders-add span { width: 1.9rem; height: 1.9rem; border-radius: 50%; background: var(--sh-lime); color: #111; display: grid; place-items: center; font-weight: 800; font-size: 1.2rem; }
+.sh-opt { display: flex; align-items: center; gap: .8rem; background: var(--sh-tile, #17171a); border: 1px solid var(--sh-line, #26262b); border-radius: 1rem; padding: .9rem; color: #fff; text-align: left; }
+.sh-opt b { display: block; font-size: 1rem; }
+.sh-opt small { display: block; font-size: .78rem; opacity: .7; }
+.sh-opt-on { background: var(--sh-lime, #d4ff3a); border-color: var(--sh-lime, #d4ff3a); color: #111; }
 
 /* ─── Ana hesap ve normal kullanıcı Sahne (SahneHome.jsx; Seyhun 2026-11-25, örnek velora-tarama/ana-normal-sahne.html) ─── */
 body:has(main.sh) .atabbar { --card: #0b0b0c; --line: #1f1f22; background: rgba(11, 11, 12, .94); box-shadow: 0 -1px 0 #1f1f22; }
