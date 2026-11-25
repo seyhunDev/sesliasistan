@@ -481,7 +481,7 @@ function KanalInfo({ kanal, link, count, onList }) {
   );
 }
 
-// Bas konuş kutusu (Seyhun 2026-11-25 örnek "Yönet bas-konuş köşesi"): süre kutusuyla aynı boyda, sağ altta. Basılı tut, konuş, bırak: gider;
+// Bas konuş kutusu (Seyhun 2026-11-25 örnek "Yönet bas-konuş köşesi"): süre kutusuyla aynı boyda, sağ altta. Basılı tut, konuş, bırak: gider; Aç/kapa (2026-11-25): dokun başlasın, tekrar dokun gönder; 60 sn sınır.
 // uzağa kaydırınca iptal. Üstünde kime gideceği büyük yazar; kayıtta beyaz olur, süre ve ses seviyesi görünür.
 function PttTile({ to, ptt, now }) {
   const rec = ptt.rec;
@@ -493,14 +493,14 @@ function PttTile({ to, ptt, now }) {
       type="button"
       className="bzy-pt bzy-ptt"
       data-st={st || undefined}
-      aria-label={`Bas konuş · ${name}`}
-      onPointerDown={(e) => ptt.begin(e, "big", to)}
-      onPointerMove={ptt.move}
-      onPointerUp={ptt.end}
-      onPointerCancel={ptt.end}
+      aria-label={rec ? `Bitir ve gönder · ${name}` : `Konuş · ${name}`}
+      aria-pressed={!!rec}
+      onPointerDown={(e) => ptt.flip(e, "big", to)}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <small aria-live="polite">{rec ? (rec.cancel ? "Bırak: iptal" : `Konuşuyor · 0:${pad(sec)}`) : st === "arm" ? "Mikrofon açılıyor" : "Bas konuş"}</small>
+      <small aria-live="polite">
+        {rec ? `Konuşuyor · ${Math.floor(sec / 60)}:${pad(sec % 60)}${ptt.max - sec <= 10 ? ` · ${ptt.max - sec} sn kaldı` : ""}` : st === "arm" ? "Mikrofon açılıyor" : "Dokun, konuş"}
+      </small>
       <b>{name}</b>
       {rec ? (
         <span className="bzy-tkl" aria-hidden="true">
@@ -517,9 +517,8 @@ function PttTile({ to, ptt, now }) {
 // Kanal satırının sağındaki durum: konuşurken ne olduğu, sonra son gidenin durumu (birkaç saniye)
 function talkSt(ptt, last, d, now, to) {
   const name = last?.to?.name || "Hepsi";
-  if (ptt.rec) return ptt.rec.cancel ? ["bad", "Bırak: iptal"] : ["rec", `${to?.name || "Hepsi"} · iptal için kaydır`];
+  if (ptt.rec) return ["rec", `${to?.name || "Hepsi"} · bitirmek için dokun`];
   if (ptt.arm) return ["", "Mikrofon açılıyor…"];
-  if (ptt.tap && now - ptt.tap.at < 1800) return ["", "Basılı tut, konuş"];
   if (!last || !d || now - last.at > 8000) return null;
   if (d.state === "wait") return ["", `${name} · gidiyor…`];
   if (d.state === "seen") return ["ok", `✓✓ ${name} gördü`];
@@ -790,6 +789,7 @@ export function BilgiAdmin() {
   const ptt = usePtt({
     send: (blob, dur, to) => sendSes(org, blob, dur, ctx, to),
     onSent: (x) => got(x),
+    max: 60,
     live: {
       part: (blob, seq, end, id, to, dur) => sendSesPart(org, { id, seq, end, blob, dur, to }),
       finish: (id, dur, to) => finishSes(org, ctx, id, dur, to),

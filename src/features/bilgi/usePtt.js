@@ -17,7 +17,9 @@ const CANCEL_PX = 60;
 // (Kalıp yap, Tekrar). live = { part(blob, seq, end, id, to, sn) → Promise<bool>, finish(id, sn, to) → { id, ok, logId }, cancel(id) }
 const PART_MS = 2500;
 const talkId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-export function usePtt({ send, onSent, live = null }) {
+// Aç/kapa (Seyhun 2026-11-25 "bas konuş değil, tıklayınca başlasın, tekrar tıklayınca dursun"): flip(e, key, to) ilk dokunuşta kaydı
+// hemen başlatır, ikinci dokunuşta bitirip gönderir. Açık unutulmasın diye max saniyede kendiliğinden biter.
+export function usePtt({ send, onSent, live = null, max = SES_MAX_SEC }) {
   const toast = useToast();
   const [rec, setRec] = useState(null); // { key, t0 } basılı tutulan hedef
   const [done, setDone] = useState(null); // { key, at } son giden ses (düğmede kısa ✓)
@@ -44,10 +46,10 @@ export function usePtt({ send, onSent, live = null }) {
     }
     setRec(null);
   };
-  const begin = async (e, key, to) => {
+  const begin = async (e, key, to, flip = false) => {
     e.preventDefault();
     try {
-      e.currentTarget.setPointerCapture?.(e.pointerId);
+      if (!flip) e.currentTarget.setPointerCapture?.(e.pointerId);
     } catch {}
     if (st.current) return;
     haptic("select");
@@ -57,7 +59,7 @@ export function usePtt({ send, onSent, live = null }) {
     setArm({ key });
     setTap(null);
     // Kısa dokunuş yalnız hedef seçer: 0,3 sn basılı kalmadıysa mikrofon hiç açılmaz
-    await new Promise((r) => setTimeout(r, 300));
+    if (!flip) await new Promise((r) => setTimeout(r, 300));
     if (s.up) {
       st.current = null;
       setArm(null);
@@ -145,7 +147,7 @@ export function usePtt({ send, onSent, live = null }) {
     s.meter = meter(stream, setLvl);
     setArm(null);
     setRec({ key, t0 });
-    s.timer = setTimeout(stop, SES_MAX_SEC * 1000);
+    s.timer = setTimeout(stop, max * 1000);
     if (s.up) stop(); // izin sorulurken parmak kalktıysa
   };
   // Basılıyken parmak uzaklaşınca iptal kipine girer (düğme kırmızılaşır), geri gelince çıkar
@@ -159,8 +161,16 @@ export function usePtt({ send, onSent, live = null }) {
     setRec((r) => r && { ...r, cancel: far });
   };
   const end = () => (st.current && !st.current.mr ? (st.current.up = true) : stop());
+  // Aç/kapa: kayıt yoksa başlat, varsa bitir ve gönder (mikrofon açılırken gelen dokunuş açılınca hemen bitirir)
+  const flip = (e, key, to) => {
+    const s = st.current;
+    if (!s) return begin(e, key, to, true);
+    e.preventDefault();
+    if (s.mr) stop();
+    else s.up = true;
+  };
   useEffect(() => () => stop(), []);
-  return { rec, done, arm, tap, lvl, begin, end, move };
+  return { rec, done, arm, tap, lvl, begin, end, move, flip, max };
 }
 
 // Mikrofonun ses seviyesi (kayıt düğmesindeki çubuklar): saniyede ~12 kez 0–1 arası; durdurma işlevi döner. Açılamazsa çubuklar kendiliğinden oynar.
